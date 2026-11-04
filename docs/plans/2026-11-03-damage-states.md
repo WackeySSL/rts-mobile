@@ -7,13 +7,14 @@ life (ADR 0027); no ROADMAP box, and no row here is on the Phase 3 gate path. Ro
 reworked P148 of `docs/plans/2026-11-02-unit-life.md`; P155 (this plan and ADR 0028) is done on
 `claude/damage-states-plan`; the lead's acceptance row is P26ar.
 
-**Reworked 2026-11-03 by ADR 0029** (`docs/adr/0029-buildings-shot-to-pieces.md`, accepted 2026-11-04, P26as,
-on `main` at 4b5c26d; revised 2026-11-04 on 321092e), from Michael's reference sheets for buildings that are shot to pieces and his
-answer "Kun grafik": four stages (INTAKT, SKADET, KRITISK, RUIN) at 67 and 34, a whole `ruin` sprite
-after DIED, a collapse and hit feedback; no camera shake (Michael, 2026-11-04). The section "ADR 0029 rework"
-below holds the new and re-scoped rows (P163-P167, P157c, P158a, P158b; P159, P148 and P162
-re-scoped); where it differs from the rows above, it wins. P158 as written is replaced by P158a and
-P158b.
+**Reworked 2026-11-03 by ADR 0029** (`docs/adr/0029-buildings-shot-to-pieces.md`, accepted
+2026-11-04, P26as, on `main` at 4b5c26d; revised 2026-11-04 on 321092e), from Michael's reference
+sheets for buildings that are shot to pieces and his answers: three damage stages (INTAKT, SKADET,
+KRITISK) at 67 and 34 for buildings, a collapse at DIED that ends in today's crater (no ruin:
+Michael dropped it on 2026-11-04), hit feedback, no camera shake. The section "ADR 0029 rework"
+below holds the new and re-scoped rows (P163, P163b, P167, P158a, P158b, P165, P166; P159, P160,
+P161, P148 and P162 re-scoped); where it differs from the rows above, it wins. P158 as written is
+replaced by P158a and P158b.
 
 ## Goal
 Michael, 2026-11-03: buildings and vehicles under 50 % hp look as if they are falling apart, in two
@@ -26,9 +27,8 @@ it view and art, honest to the fog, in both orientations and on the web, inside 
 Repair and healing (no rule in the sim; ADR 0028 §2 says what a repair ADR would decide), stages
 for infantry, a damaged defence head, a damaged shadow or build card, death animations (P152's
 wrecks stay a separate row), sound, camera shake, any sim rule, state or event. (2026-11-03,
-ADR 0029: the collapse at 0 % and the ruin are now in scope; camera shake stays out (Michael,
-2026-11-04, "Ingen rystelse"); repair,
-sound and any sim rule stay out.)
+ADR 0029: the collapse at 0 % is now in scope; a ruin is not (Michael, 2026-11-04), nor a camera
+shake ("Ingen rystelse"); repair, sound and any sim rule stay out.)
 
 ## Affected modules
 - `tools/artgen/`: `ArtModel.gd`, `ArtMove.gd`, `ArtGen.gd`, `ArtSheet.gd`, `ArtRender.gd`,
@@ -77,8 +77,8 @@ Size = production lines (tests, fixtures, models, generated frames and SVG not c
 | P148 | V3 | touch-ux-dev | view (reworked, ADR 0028 §6): `AirFx`'s damage ring (64), soot, fire and sparks by stage from the `damage` points of buildings and vehicles, `LifeFx.unit_layer`; HOW_TO_PLAY Buildings and Units clauses | 200 | P145, P159, P160 | - |
 | P162 | H | qa-engineer | test: the damage budget on the base arena (`perf_bases.tres`), in `test_life_budget.gd` | 0 | P146, P148, P161 | - |
 
-(2026-11-03, ADR 0029: P158 is replaced by P158a and P158b; P159, P148 and P162 are re-scoped; new
-rows P157c and P163-P167. See "ADR 0029 rework" below.)
+(2026-11-03, ADR 0029: P158 is replaced by P158a and P158b; P159, P160, P161, P148 and P162 are
+re-scoped; new rows P163, P163b, P165, P166, P167. See "ADR 0029 rework" below.)
 
 **P148, how its row changes** (in the unit-life plan the row reads "damage smoke and flame by hp
 (buildings, vehicles)", 120 lines, after P145): it moves here with its id, owner and lane (V3) and
@@ -298,35 +298,36 @@ No new control; wording only, no Teach mark.
 - **P148** adds to both: "A damaged building or vehicle smokes; under a quarter it burns and throws
   sparks (the sparks are off with reduced effects)."
 
-## ADR 0029 rework (2026-11-03, P26as; revised 2026-11-04 after the docs lens and on acceptance)
+## ADR 0029 rework (2026-11-03, P26as; revised 2026-11-04 after the docs lens, on acceptance, and when Michael dropped the ruin)
 Decisions: `docs/adr/0029-buildings-shot-to-pieces.md`, **accepted 2026-11-04** (Michael's
-answers: 1 vehicles keep 50/25, 2 A the ruin at 50 % if needed, 3 the ruin sinks, 4 no camera
-shake). Base: `main` at 321092e (P157
-merged as #299). Open at the time of writing: P157b (PR #300 at 1c2a031), P158
-(`claude/p158-building-damage`, 573f720, on hold). Size = production lines (tests, fixtures, models,
-generated frames and SVG not counted: an art row's generated files never count toward the ~400-line
-guide). "At once" = may start the day P26as (#301) merges.
+answers: 1 vehicles keep 50/25, 4 no camera shake; 2 and 3 were about the ruin, which Michael
+dropped the same day: "Fjern ruinen, den er der i så kort tid at det er lige meget"). Base: `main`
+at 321092e (P157 merged as #299). Open at the time of writing: P157b (PR #300), P158
+(`claude/p158-building-damage`, 573f720, on hold); P157c is dropped and its PR #302 closed. Size =
+production lines (tests, fixtures, models, generated frames and SVG not counted: an art row's
+generated files never count toward the ~400-line guide). "At once" = may start the day P26as (#301)
+merges.
 
 | Row | Lane | Owner | Title | Size | Depends | HOW_TO_PLAY |
 | --- | --- | --- | --- | --- | --- | --- |
-| P26as | - | architect | docs: ADR 0029, this section and ADR 0029's acceptance (P26at folded in, 2026-11-04): Michael's answers; dated notes in ADR 0028 (top, §2, §3, §6-§9), ADR 0027 (top, §3's quota table, §8) and ADR 0023 §5 | 0 | P26ar | no |
-| P163 | A | art-director | art: generator v5a: the `ruin` pose (`damage=3`, a whole picture cropped to ink, no `anim`, `mount` may move, debris limits, the height refusal, needs `dmg2`), materials `interior`, `slab`, `hole`, `rebar`, `beam`, moves `blow` and `soot`, `char` of key faces out of the band, the counts (2-4 `damage`/`dmg_gas`/`dmg_spark`, 1-3 `ruin`), the ink test for points and emitters, `anim_kritisk`, emitter `group=` and `emitter_quiet`, the odd-canvas refusal, the key-share test; at once | 240 | P26as | no |
-| P163b | A | art-director | art: generator v5b: shapes `broken` (teeth) and `rod` (with `bend`), helpers `petals` and `rubble` | 200 | P163 | no |
+| P26as | - | architect | docs: ADR 0029, this section and ADR 0029's acceptance (P26at folded in, 2026-11-04): Michael's answers; dated notes in ADR 0028 (top, §2, §3, §4, §6-§9), ADR 0027 (top, §3's quota table, §8) and ADR 0023 §5 | 0 | P26ar | no |
+| P163 | A | art-director | art: generator v5a: materials `interior`, `slab`, `hole`, `rebar`, `beam`; the move `blow` (djb2 order, `roundi`, intact glass only, refused without glass); `char` of team faces only out of the band; 2-4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with ink under them at stages 1 and 2; ambient emitters inked; `anim_kritisk` (required with an `anim` and a `dmg2`); emitter `group=` and `emitter_quiet`; the odd-canvas refusal; the key-share test; at once | 170 | P26as | no |
+| P163b | A | art-director | art: generator v5b: shapes `broken` (teeth) and `rod` (with `bend`), the helper `petals`; no `rubble` (it was the ruin's) | 150 | P163 | no |
 | P167 | A4 | art-director | art: life atlas frames `hit_flash`, `chip`, `dust_cloud`, `ember`, `glow`, `jet`, their `LifeRegions` entries, STYLE.md's fx section, the gallery's life page; at once | SVG + 30 | P26as | no |
-| P157c | V2 | touch-ux-dev | view: `ruin` joins `IsoAtlas.DAMAGE_PARTS` with its own factor `RUIN_SCALE`, equal to `DAMAGE_SCALE` (0.75) at first (P158b lowers it to 0.5 only if its measured page needs it, Michael's answer 2); the page tests count a crafted ruin | 30 | P157b | no |
-| P158a | A | art-director | art: the eight Fossil buildings in four stages (`dmg1` SKADET, `dmg2` KRITISK, `ruin`), 2-4 typed damage points (a second one for `defence_turret`), 1-3 ruin points, `anim_kritisk`, emitter groups; carries the P158 branch's gallery Stage button (now with RUIN), page-test structure and `DAMAGE_PARTS` pin; STYLE.md "Damage stages" rewritten to four stages; `TODAY_*` | models + 60 | P163b, P157c | look text if P159 merged first |
-| P158b | A3 | art-director | art: the eight Renew buildings, the same (a second point for `renew_defence`); the final `TODAY_*`; ADR 0029 §11's steps 3 and 4 if needed | models + 10 | P163b, P157c; merges after P158a | look text if P159 merged first |
-| P159 | V1 | touch-ux-dev | view (re-scoped): building stages SKADET and KRITISK by `building_stage_percent` [67, 34], `vehicle_stage_percent` [50, 25]; the `Anim` at KRITISK by `anim_kritisk`; ADR 0029 §12's seam rule; the ruin hook and the `BuildingRuins.gd` stub; the rest as its row above | 260 | P157b | yes (what it shows) |
-| P161 | V1 | touch-ux-dev | view: vehicle overlays, as its row above; reads `vehicle_stage_percent` | 190 | P159, P160 | yes (as above) |
-| P148 | V3 | touch-ux-dev | view (re-scoped again): `FxRing`; particles per stage for buildings and vehicles; the burning points; the smoke cap and defaults; the glow pass; `jet` at SKADET, sparks by point type; quiet ambient emitters; the damage ring 80 | 260 | P145, P159, P160, P167 | yes |
-| P165 | V6 | touch-ux-dev | view: the collapse and the ruin (`BuildingRuins` filled in, `CollapseFx`): the timed sequence, sink, switch, dust inside 250-900 ms, the slot split for many collapses, 45 s, the sink to the crater, `crater_scale_milli`, removal by a shown building on its tiles, the fog rule, sites and cancelled sites, the ruin's smoke and embers | 320 | P159, P148, P157c, P167 | yes |
-| P166 | V7 | touch-ux-dev | view: hit feedback (`HitFx`: the flash and 3-5 chips from IMPACT and from hitscan SHOT on shown buildings, `BuildingLayer.row_of`; a hit whose target died in the tick draws none); no camera shake (Michael, 2026-11-04) | 130 | P148, P167 | yes |
-| P162 | H | qa-engineer | test (re-scoped): the damage budget plus collapses, hits and ruins on `perf_bases.tres` | 0 | P146, P148, P161, P165, P166 | no |
+| P158a | A | art-director | art: the eight Fossil buildings in three stages (`dmg1` SKADET, `dmg2` KRITISK), 2-4 typed damage points (a second one for `defence_turret`), `anim_kritisk`, emitter groups; carries the P158 branch's gallery Stage button (three stages), page-test structure and `DAMAGE_PARTS` pin; STYLE.md "Damage stages" rewritten; `TODAY_*`; the whole HOW_TO_PLAY Buildings row | models + 60 | P163b, P157b | yes (the whole row) |
+| P158b | A3 | art-director | art: the eight Renew buildings, the same (a second point for `renew_defence`); the final `TODAY_*`; ADR 0029 §10's fallbacks if needed | models + 10 | P163b, P157b; merges after P158a | no |
+| P159 | V1 | touch-ux-dev | view (re-scoped): building stages SKADET and KRITISK by `building_stage_percent` [67, 34], `vehicle_stage_percent` [50, 25]; the `Anim` at KRITISK from the sheet's `anim_kritisk` (missing = hide); ADR 0029 §11's seam rule; `damage_building_writes >= 6`; the hook in `_drop` as `BuildingRuins.gd` (verified); the rest as its row above | 260 | P157b | no (moved to P158a) |
+| P160 | A2 | art-director | art: the vehicle overlays, as its row above; `scar_milli` 1000 = the scar's canvas as drawn (the Bullhead 800); measures `LOOSE_SCALE` (about 0.8) | SVG + models + 30 | P156, P157 | no |
+| P161 | V1 | touch-ux-dev | view: vehicle overlays, as its row above; reads `vehicle_stage_percent`; `Scar.scale` (by `scar_milli`) and `Loose.scale` (`LOOSE_SCALE`) set when a rig is dressed for a type, not per stage; a mirrored `Loose` by a negative `scale.x` (1 write per side switch) | 190 | P159, P160 | yes (as above) |
+| P148 | V3 | touch-ux-dev | view (re-scoped again): `FxRing`; particles per stage for buildings and vehicles; the burning points; the smoke cap and defaults; the glow pass; `jet` at SKADET, sparks by point type; quiet ambient emitters (an empty `emitter_quiet` = zeros); the crater sources' smoke and embers after a collapse; the damage ring 80 | 270 | P145, P159, P160, P167 | yes |
+| P165 | V6 | touch-ux-dev | view: the collapse only (renames `BuildingRuins.gd` to `BuildingCollapse.gd`, new `CollapseFx`): flash, sink, dust inside 250-900 ms, hide at 700, node freed at 900, the crater with `crater_scale_milli`, the smoke and embers over the crater (P148's crater sources), the slot split for many collapses, the fog rule, sites and cancelled sites | 220 | P159, P148, P167 | yes |
+| P166 | V7 | touch-ux-dev | view: hit feedback (`HitFx`: the flash and 3-5 chips from IMPACT and from hitscan SHOT on shown buildings, `BuildingLayer.row_of`; a hit whose target died in the tick draws none); no camera shake | 130 | P148, P167 | yes |
+| P162 | H | qa-engineer | test (re-scoped): the damage budget plus collapses and hits on `perf_bases.tres` | 0 | P146, P148, P161, P165, P166 | no |
 
-**Rows that do not change:** P156 and P157 (merged), P157b (#300; its `DAMAGE_SCALE` doc block is
-ADR 0029 §12's seam rule), P160 (the vehicle overlays). P161 changes only the name of the list it
-reads (`vehicle_stage_percent`, [50, 25] by Michael's answer 1); its HOW_TO_PLAY clause keeps "half"
-and "a quarter".
+**Rows dropped:** P157c (the ruin's scale; PR #302 closed). **Rows that do not change:** P156 and
+P157 (merged), P157b (#300; its `DAMAGE_SCALE` doc block is ADR 0029 §11's seam rule). P160 and P161
+keep their rows above with the lead decisions in their lines here (ADR 0029 §12, a dated note in
+ADR 0028 §4).
 
 ### Lanes, files and order (rework)
 Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not reused.
@@ -334,42 +335,40 @@ Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not 
   `art_gallery_build.gd`, the page test's `TODAY_*` until P158a merges.
 - **A3** (art-director): P158b, beside P158a after P163b; owns the Renew building models; merges
   after P158a (rebases `TODAY_*`, STYLE.md's change log and the gallery).
-- **A2** (art-director): P160 (unchanged; may start now, P157 has merged).
+- **A2** (art-director): P160 (may start now, P157 has merged).
 - **A4** (art-director): P167 at once (`assets/art/svg/fx/life_atlas.svg`, `LifeRegions.gd`,
   `art_gallery_life.gd`).
-- **V2** (touch-ux-dev): P157b → P157c (`IsoAtlas.gd`, `WorldSort.gd`).
+- **V2** (touch-ux-dev): P157b (`IsoAtlas.gd`, `WorldSort.gd`); no further row.
 - **V1** (touch-ux-dev): P159 → P161 (`BuildingLayer.gd`, `BuildingDamage.gd`, `BuildingAnims.gd`,
-  `GhostMemoryLayer.gd`, the stub `BuildingRuins.gd`, `UnitLayer.gd`, `VehicleDamage.gd`,
+  `GhostMemoryLayer.gd`, the hook `BuildingRuins.gd`, `UnitLayer.gd`, `VehicleDamage.gd`,
   `LifeSettings.gd`, `data/life_settings.tres`; later rows append their fields).
 - **V3** (touch-ux-dev): P148 (`AirFx.gd`, `LifeFx.gd`, new `FxRing.gd`).
-- **V6** (touch-ux-dev): P165 (fills `BuildingRuins.gd`; new `CollapseFx.gd`; calls in
-  `BuildingLayer.gd`; one ring line in `AirFx.gd`).
+- **V6** (touch-ux-dev): P165 (renames `BuildingRuins.gd` to `BuildingCollapse.gd` and fills it in;
+  new `CollapseFx.gd`; calls in `BuildingLayer.gd` and `DecalLayer.gd`'s crater scale; one ring line
+  in `AirFx.gd`).
 - **V7** (touch-ux-dev): P166 (new `HitFx.gd`; `BuildingLayer.row_of`; one ring line in
   `AirFx.gd`). `RtsCamera.gd` is not touched by any row (no camera shake).
 - **H** (qa-engineer): P162.
-- **Shared, serialised:** `AirFx.gd` (P148, then one line each from P165 and P166, in that order);
-  `BuildingLayer.gd` (P159, then P165's calls, then P166's `row_of`); `BuildingRuins.gd` (P159's
-  stub, then P165); `data/life_settings.tres` (P159 first, then P148, P165, P166 append);
-  `docs/HOW_TO_PLAY.md` Buildings rows (P159, P158a/b, P148, P165, P166: each rebases on the one
-  before); `assets/art/STYLE.md` (P163, P163b, P167, P158a, P158b: different sections, one change
-  log). `scenes/main.tscn`: P159 and P148 as above; P165 and P166 add no export (the rings are
-  made in code from `LifeFx`'s existing references).
-- **Start as soon as #301 (P26as) merges:** P163 (A), P167 (A4) and P157c (V2, on P157b's branch
-  or after #300 merges; it needs `DAMAGE_SCALE`); P160 (A2) may start now (P157 has merged); P159
-  (V1) after P157b (#300). Every question of ADR 0029 is answered, so no row waits for Michael.
-- **Path:** P157b → P159 → P148 → P165 → P162 (five slots; P157 has merged). P166 runs beside P165
-  after P148 (it needs P148's `FxRing` and P167's frames, not P165: a hit whose target died in the
-  tick draws no hit feedback, so the killing hit is the death's effects, today's DIED burst and
-  P165's collapse flash once it lands; the flash stays in P165). P165 and P166 each add one ring
-  line to `AirFx.gd`: the second to merge rebases. P148 also waits for P160 (A2) and P167 (A4);
-  both may start now and are one slot each, so the path runs through them only if either takes
-  longer than P157b and P159 together. The art path P163 → P163b →
-  P158a → P158b (four) runs beside it; the vehicle path P160 → P161 joins at P162. P159 no longer
-  waits for the art: a sheet without damage parts shows intact, so P159 and P165 are tested on
+- **Shared, serialised:** `AirFx.gd` (P148, then one line each from P165 and P166: the second to
+  merge rebases); `BuildingLayer.gd` (P159, then P165's calls and P166's `row_of`, in merge order);
+  `BuildingRuins.gd` (P159's hook, renamed by P165); `data/life_settings.tres` (P159 first, then
+  P148, P165, P166 append); `docs/HOW_TO_PLAY.md` Buildings rows (P158a, P148, P165, P166: each
+  rebases on the one before); `assets/art/STYLE.md` (P163, P163b, P167, P158a, P158b: different
+  sections, one change log). `scenes/main.tscn`: P159 and P148 as above; P165 and P166 add no export.
+- **Start as soon as #301 (P26as) merges:** P163 (A) and P167 (A4). P160 (A2) may start now. P159
+  (V1) runs after P157b (#300). No row waits for Michael.
+- **Path:** P157b → P159 → P148 → P165 → P162 (five slots). P166 runs beside P165 after P148 (it
+  needs P148's `FxRing` and P167's frames, not P165: a hit whose target died in the tick draws no
+  hit feedback, so the killing hit is the death's effects; the collapse flash stays in P165). P148
+  also waits for P160 (A2) and P167 (A4); both may start now and are one slot each, so the path
+  runs through them only if either takes longer than P157b and P159 together. The art path P163 →
+  P163b → P158a → P158b (four) runs beside it; the vehicle path P160 → P161 joins at P162. P159 does
+  not wait for the art: a sheet without damage parts shows intact, so P159 and P165 are tested on
   crafted sheets and the real look arrives with P158a and P158b.
-- **HOW_TO_PLAY's look text** ("blown windows, soot, a broken corner ...") describes the art, so it
-  lands with whichever of P159 and P158b merges last; P159 alone writes only what it shows (the
-  picture changes at two thirds and at a third).
+- **HOW_TO_PLAY's Buildings row "A building is badly damaged"** moves wholly to P158a, the stage
+  percents included (a lead decision on P159): nothing is visible in a match before the art. P158a
+  merges after P159 in practice (P159 is on the shorter path); if it does not, the row waits for
+  P159.
 
 ### Acceptance per row (rework)
 Every row: the common rules above (its suite alone, gdformat and gdlint, no `Time`, `randi`,
@@ -377,79 +376,81 @@ Every row: the common rules above (its suite alone, gdformat and gdlint, no `Tim
 new view files, no allocation on a frame path, no node per frame, every number from `LifeSettings`
 or a sheet, no file in `game/sim` or `native/`, a phone-preview check line in the PR). Art rows:
 every committed generated file deterministic and byte-identical on a second run (staleness test).
-- **P163** On a crafted model in a test's temporary output (none committed): a `ruin` pose
-  generates `<id>_ruin.svg`, a whole picture cropped to its ink, with `damage=3` primitives only
-  there and no `anim` primitive; a ruin may move `mount`, `dmg1` and `dmg2` still may not; a ruin
-  primitive more than a quarter tile outside the footprint or above 0.1 tile there is refused, as
-  is a ruin whose ink rises above half the body's canvas and a ruin without `dmg2`; `interior`,
-  `slab`, `hole`, `rebar` and `beam` draw their pinned colours; `blow 50` on a group of four panes
-  turns exactly the two first in the hash order into `hole` and keeps the frames; `soot <p>` chars
-  every hull face; a `char` of a key face whose result stays inside the key band is refused, one
-  outside it passes; 2-4 points of `damage`, `dmg_gas`, `dmg_spark` pass, 1 and 5 are refused; a
-  point below `dmg1`'s cut, or whose spot is not inside the outline of a primitive drawn in `dmg1`
-  or in `dmg2`, is refused; 1-3 `ruin` points with ink under them pass, 0, 4 and one over empty
-  ground are refused; `anim_kritisk run` is written to the sheet and refused when the `anim`
-  part's lowest point has no ink under it in `dmg2`; an ambient emitter with `group=` whose group a
-  stage moves or hides gets `emitter_quiet` of that stage (1 when `dmg1` moves it, 2 when only
-  `dmg2` does, 0 without a group); vehicles and infantry keep their counts; an odd body canvas
-  height with damage parts is refused; the key-share test (the stages rasterised with
-  `Image.load_svg_from_string`) passes the crafted model at SKADET 55-85 %, KRITISK 20-50 %, RUIN
-  1-20 % and fails a crafted model outside them; every committed file is byte-identical.
+- **P163** On a crafted model in a test's temporary output (none committed): `interior`, `slab`,
+  `hole`, `rebar` and `beam` draw their pinned colours; `blow 50` on a group of four intact panes
+  turns exactly `roundi(50 x 4 / 100)` = 2 of them into `hole`, the first two in the order of an
+  inlined djb2 of the art id and the line index (pinned), and keeps the frames; panes already `hole`
+  do not count; `blow` on a group with no glass is refused; a `char` of a team face whose result
+  stays inside the key band is refused, one outside it passes; 2-4 points of `damage`, `dmg_gas`,
+  `dmg_spark` pass on every building with damage poses, 1 and 5 are refused; a point whose spot is
+  not inside the outline of a primitive drawn at stage 1 (for a `dmg2`-only model: the intact
+  picture plus its `damage=1` primitives) or at stage 2 is refused; an ambient emitter with no ink
+  under it at a stage at which it still emits is refused; a building with an `anim` and a `dmg2`
+  without `anim_kritisk` is refused, `anim_kritisk run` is written to the sheet and refused when the
+  `anim` part's lowest point has no ink under it in `dmg2`; an ambient emitter with `group=` whose
+  group a stage moves or hides gets `emitter_quiet` of that stage (1 when `dmg1` moves it, 2 when
+  only `dmg2` does, 0 without a group), and a sheet without damage poses writes it empty; vehicles
+  and infantry keep their counts; an odd body canvas height with damage parts is refused; the
+  key-share test (the stages rasterised with `Image.load_svg_from_string`) passes the crafted model
+  at SKADET 55-85 % and KRITISK 20-50 % and fails a crafted model outside them; every committed file
+  is byte-identical.
 - **P163b** `broken teeth=N low=f` draws N teeth between f and the full height, the same on two runs
   and different for two lines; `rod` draws a stroke at its width with no outline at its midpoint's
   depth, `bend` makes two segments; `petals` expands to `n` plates turned by `tilt` and an
-  `interior` disc, `rubble` to `n` ground primitives inside its rect (exact counts); every
-  committed file is byte-identical.
+  `interior` disc (exact counts); every committed file is byte-identical. No `rubble`: a KRITISK
+  patch cannot reach the foot, so a ground heap has no stage (ADR 0029 §5).
 - **P167** The new frames pass the hand-drawn rules (STYLE.md, no filter or pattern, no colour in
   either key band at saturation 0.30 or more, flames, embers and the glow at hue 46° or more,
   `hit_flash` white); each has a `LifeRegions` entry (atlas, first region, count, size, pivot); the
   gallery's life page shows them; CREDITS unchanged.
-- **P157c** `IsoAtlas.RUIN_SCALE` is a constant of its own, equal to `DAMAGE_SCALE` (0.75);
-  `IsoAtlas.part_factor(&"ruin")` is `RUIN_SCALE`; a crafted sheet's ruin region is that share of
-  its full-scale size and its body is unchanged; `WorldSort.dress` draws it at the same world px as
-  at full scale; the page tests count a crafted ruin; the `DAMAGE_PARTS` pin lists `dmg1`, `dmg2`,
-  `ruin`.
-- **P158a, P158b** Each building of the faction has `dmg1`, `dmg2` and `ruin` from its model (none
+- **P158a, P158b** Each building of the faction has `dmg1` and `dmg2` from its model (none
   hand-edited) after ADR 0029 §4's table, its material rule and its own rule (the barracks' team
   paint burns off from the top down; the refinery's thin pipes and flare bend and never shatter);
   SKADET changes the silhouette (a nick at a corner, a mast or a wing; blown panes with frames; soot
   over the holes) within the top half of the body's rows; KRITISK shows a collapsed part with the
-  inside visible (slabs, rebar or beams, dark rooms) down to just above the foot at most; the ruin
-  is low (at most half the canvas height), messy and sooted, never clean blocks, with debris outside
-  the footprint and no `anim` or head; the key share passes the bands of P163; 2-4 typed damage
-  points (the two defences gain a second one) and 1-3 ruin points, all with ink under them;
+  inside visible (slabs, rebar or beams, dark rooms), jagged, down to just above the foot at most;
+  no ruin picture and no ruin points; the key share passes the bands of P163; 2-4 typed damage
+  points (the two defences gain a second one), all with ink under them at both stages;
   `anim_kritisk` set for each building with an `anim` (run where the carrier stands in `dmg2`, hide
   where it falls); the ambient emitters on a chimney, flare, stack or tank that a stage breaks name
   their group (the headquarters, the refinery, the power plant, the renew refinery); the gallery
-  shows each building at the four stages in both orientations' zooms (the `Anim` at KRITISK by
-  `anim_kritisk`, none in the ruin); shadows and cards byte-identical; the page test passes at most
-  3584 for the cross-faction match and both mirrors, with `TODAY_*` updated and the figures in the
-  PR. P158b: if the measured page passes 3584, or has under 30 rows left, after ADR 0029 §11's
-  steps 1-2, it applies step 3 (SKADET within the top 35 %), and if that is still not enough, the
-  ruin at 50 % (`RUIN_SCALE` 0.5, Michael's answer 2), and says so in the PR. The
-  look text of HOW_TO_PLAY lands here if P159 merged first (below).
+  shows each building at the three stages in both orientations' zooms (the `Anim` at KRITISK by
+  `anim_kritisk`); shadows and cards byte-identical; the page test passes at most 3584 for the
+  cross-faction match and both mirrors (estimate about 3476), with `TODAY_*` updated and the figures
+  in the PR. P158b: if the measured page passes 3584, it applies ADR 0029 §10's fallbacks in order
+  (SKADET within the top 35 %, then tighter KRITISK patches) and says so in the PR. **P158a** writes
+  the whole HOW_TO_PLAY Buildings row "A building is badly damaged": "Under two thirds of its health
+  a building shows blown windows, soot and a broken corner, mast or wing; under a third part of it
+  has collapsed, you can see inside, and it burns from inside. A building under construction does
+  not show it. An enemy building shows its damage only while you see it; its dimmed picture in the
+  fog shows the damage you last saw (`building_stage_percent` in `data/life_settings.tres`)."
 - **P159** (re-scoped) As its acceptance above, with: `BuildingDamage.stage_of` over the golden
   table of `[67, 34]` (hp 67 of 100 is 0, 66 is 1, 34 is 1, 33 is 2, 1 is 2; max hp 1 with hp 1 is 0)
   and of `[50, 25]` for vehicles (the earlier table); a data test holds `100 > P1 > P2 > 0` for both
-  lists. The `Anim` at KRITISK: shown and running when the sheet's `anim_kritisk` is true, hidden
-  when it is false (one visibility write, as ADR 0028 §8), running at SKADET; a defence's `Head`
-  stays at both stages; this replaces "the `Anim` is hidden at stage 2" above. The seam (ADR 0029
-  §12): the `Damage` patch is a sibling of `Body` at the same position, the body is trimmed by
-  `IsoAtlas.body_cut_row(cut, canvas_h, region_h)` with `region_filter_clip_enabled`, the patch uses
-  its whole region, the strict overlap invariant holds at `MIN_SCALE` for crafted even canvases (and
-  the odd 101 / 97 case gives 0, the reason for P163's refusal), a ghost's patch child has
-  `scale = body_texels / patch_texels`, and a `show_frame` or `show_base` after a stage is followed
-  by the trim again (a test). The ruin hook: P159 creates `game/view/BuildingRuins.gd` as a stub
-  with `adopt(entry, died_tick, was_site, cancelled)`, and `_drop` of a shown building calls it (the
-  DIED records of the tick give the tick and `Production.DIED_CANCEL_FLAG_AT`); the stub frees the
-  node and lays the crater exactly as today (the crater and node counts of today's tests hold).
-  HOW_TO_PLAY, Buildings, a new row "A building is badly damaged", what P159 shows: "Under two
-  thirds of its health a building's picture changes to a damaged one, and under a third to a
-  critically damaged one. A building under construction does not show it. An enemy building shows
-  its damage only while you see it; its dimmed picture in the fog shows the damage you last saw
-  (`building_stage_percent` in `data/life_settings.tres`)." The look text, landed by the later of
-  P159 and P158b: "Damaged: blown windows, soot and a broken corner, mast or wing. Critical: part of
-  it has collapsed and you can see inside."
+  lists and `damage_building_writes >= 6`, the largest stage cost (0 → 2 with the `Anim` hidden).
+  The `Anim` at KRITISK reads the sheet property `anim_kritisk`: shown and running when true, hidden
+  when false or when the sheet has no such field (one visibility write, as ADR 0028 §8), running at
+  SKADET; a defence's `Head` stays at both stages; this replaces "the `Anim` is hidden at stage 2"
+  above. The seam (ADR 0029 §11): the `Damage` patch is a sibling of `Body` at the same position,
+  the body is trimmed by `IsoAtlas.body_cut_row(cut, canvas_h, region_h)` with
+  `region_filter_clip_enabled`, the patch uses its whole region, the strict overlap invariant holds
+  at `MIN_SCALE` for crafted even canvases (and the odd 101 / 97 case gives 0, the reason for P163's
+  refusal), a ghost's patch child has `scale = body_texels / patch_texels`, and a `show_frame` or
+  `show_base` after a stage is followed by the trim again (a test). The hook (verified): P159 ships
+  `game/view/BuildingRuins.gd` with `adopt(entry, died_tick, was_site, cancelled)`, and `_drop` of a
+  shown building calls it (the DIED records of the tick give the tick and
+  `Production.DIED_CANCEL_FLAG_AT`); it frees the node and lays the crater exactly as today (the
+  crater and node counts of today's tests hold). P165 renames it. No HOW_TO_PLAY line (P158a's).
+- **P160** (lead decisions, ADR 0029 §12) As its acceptance above, with: `scar_milli` 1000 is the
+  scar's canvas as drawn (the Bullhead 800, each vehicle's value pinned); the PR reports the loose
+  part's measured view scale for `LOOSE_SCALE` (about 0.8) against the hulls in the gallery.
+- **P161** (lead decisions, ADR 0029 §12) As its acceptance above, with: `Scar.scale` from the
+  sheet's `scar_milli` and `Loose.scale` from `LOOSE_SCALE` (not `scar_milli`) are set when a rig is
+  dressed for a type, new or out of the pool for another type, and never on a stage change (a test
+  takes a pooled rig of one type for another and checks both scales); a mirrored `Loose` has a
+  negative `scale.x`, which mirrors its texels and its offset about the anchor (a test checks the
+  drawn rect against the hang point on both sides); a side switch writes 1 (`scale.x`), the counts
+  of ADR 0028 §8 stand.
 - **P148** (re-scoped again) As its acceptance above, with: the rings are `FxRing` objects drawn in
   `AirFx`'s one `_draw` (the emitter ring of P145 unchanged, its tests green); the damage ring holds
   `damage_slots` (80); a shown complete building at SKADET burns exactly the point
@@ -459,39 +460,40 @@ every committed generated file deterministic and byte-identical on a second run 
   and a strong `glow` (`damage` and `dmg_gas`: **a `jet` only ever at SKADET**), sparks at every
   burning point, and sparks and no fire at a `dmg_spark` point; three buildings of one type with
   fixed ids burn the pinned points; with the default numbers no burning building has more than 15
-  live smoke puffs, and a data test holds every stage's numbers under `damage_smoke_cap` (30); every
-  glow is drawn before every other quad; an ambient emitter stops from its sheet's `emitter_quiet`
-  stage on and keeps puffing before it; vehicles as ADR 0028 §6 with `vehicle_stage_percent`;
-  `reduced` keeps smoke, fire and glow and drops the sparks. HOW_TO_PLAY, Buildings and Units: "A
-  damaged building burns at one spot with thin grey smoke; under a third it burns from inside with
-  thick black smoke and throws sparks. A damaged vehicle smokes; under a quarter it burns and
-  throws sparks (the sparks are off with reduced effects)."
-- **P165** `BuildingRuins.adopt` (P159's stub) runs the collapse. A crafted DIED of a shown complete
-  building plays, on match time from the DIED tick: at 0 ms the `Anim` and `Head` hidden and the
-  collapse ring's flash and `collapse_fire_puffs` fire; the sink steps (`collapse_sink_steps`, to
-  `collapse_sink_percent` of the rise by `collapse_switch_ms`) with `collapse_dust_puffs` dust and
-  `collapse_debris` debris, every dust puff born and gone inside `collapse_dust_ms` (250-900); at
-  `collapse_switch_ms` the `Body` dressed with `ruin`, `Damage` hidden, the shadow removed; from
-  `ruin_from_ms` the ruin's points smoke (`ruin_smoke_ms`) and glow with embers (`ruin_ember_ms`) in
-  the damage ring within the smoke cap; at `ruin_life_ms` the sink to nothing in `ruin_fade_steps`
-  over `ruin_fade_ms` with `ruin_fade_dust_puffs`, then the node freed; the crater is laid at DIED,
-  scaled by `crater_scale_milli` (a refinery's 1.5 times the default), and stays; `n` collapses in
-  one tick get at most `collapse_slots / n` puffs each, dust first (eight at once: five dust each);
-  a pause freezes the sequence and two runs give the same regions and quads; a ruin is not picked,
-  has no bar and leaves the selection; a site's death plays the flash, explosion and dust and ends
-  in the crater with no ruin; a cancelled site plays nothing and leaves no crater; a sheet without
-  `ruin` ends in the crater at the switch; an own or shown building placed on overlapping tiles
-  removes the ruin in that tick, a hidden enemy one does not until it is shown; an enemy ruin is
-  drawn only while any cell of its footprint is seen, and one seen again inside its time is drawn
-  with the time left; a building that died unseen leaves no ruin; the 17th ruin ends the oldest;
-  collapse writes go first in `damage_building_writes` and a crafted eight-building kill never
-  writes more than 20 in a frame, with no lost step; no node at DIED; `RtsCamera` untouched (no shake);
-  `reduced` keeps the ruin, the fire, the flash and
-  the dust and drops debris, embers and the ruin's smoke. HOW_TO_PLAY, Buildings, "A building is
-  destroyed" becomes: "It flashes, sinks into itself in a cloud of dust and leaves a low, smoking
-  ruin for 45 seconds, then a crater for the rest of the match. The ruin blocks nothing: units drive
-  over it, and a building placed on it clears it at once. One you saw fall, and any of your own,
-  leaves the ruin and the crater; one destroyed out of your sight leaves neither."
+  live smoke puffs, and a data test holds every stage's numbers and the crater's under
+  `damage_smoke_cap` (30); every glow is drawn before every other quad; an ambient emitter stops
+  from its sheet's `emitter_quiet` stage on and keeps puffing before it, and an empty
+  `emitter_quiet` reads as all zeros; a crater source (added through a call P165 uses; a crafted one
+  here) smokes for `crater_smoke_ms` and glows with embers for `crater_ember_ms` from its points at
+  ground height, at most `crater_sources` (16) at once, oldest first out, only while its footprint
+  is seen (own always); vehicles as ADR 0028 §6 with `vehicle_stage_percent`; `reduced` keeps smoke,
+  fire and glow and drops the sparks, the embers and the crater's smoke. HOW_TO_PLAY, Buildings and
+  Units: "A damaged building burns at one spot with thin grey smoke; under a third it burns from
+  inside with thick black smoke and throws sparks. A damaged vehicle smokes; under a quarter it
+  burns and throws sparks (the sparks are off with reduced effects)."
+- **P165** P165 renames P159's `BuildingRuins.gd` to `BuildingCollapse.gd` and fills in `adopt`. A
+  crafted DIED of a shown complete building plays, on match time from the DIED tick: at 0 ms the
+  `Anim` and `Head` hidden and the collapse ring's flash and `collapse_fire_puffs` fire; the sink
+  steps (`collapse_sink_steps`, to `collapse_sink_percent` of the rise by `collapse_hide_ms`) with
+  `collapse_dust_puffs` dust and `collapse_debris` debris, every dust puff born and gone inside
+  `collapse_dust_ms` (250-900); at `collapse_hide_ms` (700) the node hidden and the shadow removed;
+  at `collapse_end_ms` (900) the node freed and the building's damage points (at ground height; the
+  footprint centre without a sheet) added as crater sources in P148's damage ring; the crater is
+  laid at DIED, scaled by `crater_scale_milli` (a refinery's 1.5 times the default), and stays; `n`
+  collapses in one tick get at most `collapse_slots / n` puffs each, dust first (eight at once: five
+  dust each); a pause freezes the sequence and two runs give the same regions and quads; a
+  collapsing building is not picked, has no bar and leaves the selection; at most `collapse_max`
+  (16) at once, the 17th ends the oldest; a site's death plays the flash, explosion, sink and dust
+  and ends in the crater with no smoke over it; a cancelled site plays nothing and leaves no crater;
+  an own or shown building placed on the crater's tiles stops its smoke and embers in that tick (a
+  hidden enemy one does not until it is shown); a building that died unseen gets no collapse and no
+  crater; collapse writes (28 over a collapse) go first in `damage_building_writes` and a crafted
+  eight-building kill never writes more than 20 in a frame, with no lost step; no node at DIED;
+  `RtsCamera` untouched; `reduced` keeps the flash, explosion, sink and dust and drops debris, the
+  embers and the crater's smoke. HOW_TO_PLAY, Buildings, "A building is destroyed" becomes: "It
+  flashes and sinks into itself in a cloud of dust; when the dust settles it is gone, and a crater
+  with a little smoke and glowing embers lies where it stood. One you saw fall, and any of your own,
+  leaves the crater for the rest of the match; one destroyed out of your sight leaves none."
 - **P166** A hit on a shown building, found by `BuildingLayer.row_of(id)` (-1 for a building that
   is gone), draws a `hit_flash` for `hit_flash_ms` (60) at the lifted hit point inside the middle
   `hit_flash_box_milli` (500) of its `frame_box` and exactly `hit_chips[0] + pick(hit id, SALT_CHIP,
@@ -501,40 +503,42 @@ every committed generated file deterministic and byte-identical on a second run 
   building or with target 0 draws none; a hit whose target has a DIED record in the same tick
   draws none (the death's own effects stand for it; a test with and without P165's collapse); the
   hit ring holds `hit_slots` (16) and overwrites its oldest; `reduced` keeps the flash and drops the
-  chips; no file outside `HitFx.gd`, `BuildingLayer.gd` (`row_of`) and `AirFx.gd` (one line) and
+  chips; no file outside `HitFx.gd`, `BuildingLayer.gd` (`row_of`), `AirFx.gd` (one line) and
   `data/life_settings.tres` (its fields) changes, and `RtsCamera.gd` not at all. HOW_TO_PLAY,
   Buildings, "A building is hit, or selected" gains: "A white flash and a few chips show where a shot
   hit it."
 - **P162** (re-scoped) As its acceptance above, plus: a crafted tick that kills eight shown buildings
   at once and a siege pass of shells and rifle fire on buildings in view; the building writes never
   above 20 in a frame with the collapse steps; `AirFx` never plans more than 240 quads (80 + 80 + 24
-  + 40 + 16); at most 16 ruins; node and object counts flat after warm-up; the page at most 3584.
-  Pinned numbers in the PR.
+  + 40 + 16); at most 16 collapses and 16 crater sources at once; node and object counts flat after
+  warm-up (a collapsing node is freed by 900 ms); the page at most 3584. Pinned numbers in the PR.
 
 ### Test plan (rework, what is proven headless)
 - **Sim untouched:** no file in `game/sim` or `native/`; golden and checkpoint hashes unchanged.
-- **Stages:** the two golden tables (P159); the `Anim` at KRITISK by `anim_kritisk` (P159).
+- **Stages:** the two golden tables (P159); the `Anim` at KRITISK by `anim_kritisk`, missing = hide
+  (P159).
 - **Seam:** the strict overlap at `MIN_SCALE`, the ghost scale and the trim after `show_frame` (P159).
-- **Collapse and ruin:** the timed sequence on match time, the dust window, the slot split, the
-  removal rule, the fog rule, sites and cancels, the crater scale, the cap, the writes, determinism
-  on two runs (P165).
+- **Collapse:** the timed sequence on match time, the dust window, the hide and free, the slot
+  split, the crater scale, the crater's smoke and its stop under a new building, the fog rule, sites
+  and cancels, the cap, the writes, determinism on two runs (P165).
 - **Particles:** the burning points by `pick`, the jet only at SKADET, the smoke cap, the glow
-  order, quiet emitters, the ring caps, reduced (P148, P165, P166).
-- **Hits:** IMPACT and hitscan SHOT, the row lookup, exact chip counts (P166).
-- **Art:** the generator's new refusals, the ink test and shapes on crafted models, staleness, the
-  key share, the page (P163, P163b, P158a, P158b, P157c).
+  order, quiet emitters, the crater sources, the ring caps, reduced (P148, P165, P166).
+- **Hits:** IMPACT and hitscan SHOT, the row lookup, exact chip counts, none on a killing hit (P166).
+- **Vehicles:** the scales set at dress, the mirror by a negative `scale.x` (P161).
+- **Art:** the generator's new refusals, the ink test, `blow`'s djb2 order and shapes on crafted
+  models, staleness, the key share, the page (P163, P163b, P158a, P158b).
 - **Budget:** P162 on the base arena; P147's phone card is the only timing.
 
 ### Risks (rework)
-- **The page** is at its edge (ADR 0029 §11): with steps 1-3 the estimate is 3561-3586, so step 4
-  (the ruin at 50 %, Michael's answer 2, 3517-3533) is likely needed. P158b measures it.
+- **The page:** the two patches at 75 % measured 3476 in P158; the new poses may differ. P158b
+  measures it; ADR 0029 §10's fallbacks are in order and never lower the scale without Michael.
 - **`AirFx` time:** the worst moment is estimated at about 0.55 ms against ADR 0027 §9's 0.56 ms
   with a per-quad cost derived, not measured; the rings are data and P162 and the phone card decide
-  (ADR 0029 §11's fallbacks).
+  (ADR 0029 §10's fallbacks).
 - **A mass kill** (a strike): the collapse ring gives each building only a few dust puffs, so the
-  switch to the ruin may show through; accepted for the budget, P162's eight-building pass shows it
-  in the gallery check.
-- **Art effort:** 48 generated pictures with new materials and shapes; P158a and P158b split it by
+  hide may show through; accepted for the budget, P162's eight-building pass shows it in the gallery
+  check.
+- **Art effort:** 32 generated pictures with new materials and shapes; P158a and P158b split it by
   faction so they run in parallel.
 - **A cancelled site today:** `game/view/` reads no `Production.DIED_CANCEL_FLAG_AT`, so a shown
   cancelled site seems to get `EffectsLayer`'s DIED burst and `BuildingLayer`'s crater now. P165
@@ -542,8 +546,9 @@ every committed generated file deterministic and byte-identical on a second run 
   for the lead to check.
 
 ## Questions for Michael
-ADR 0029's four questions are answered (Michael, 2026-11-04): vehicles keep 50/25; the ruin at 50 %
-if the page needs it; the ruin sinks into the ground; no camera shake ("Ingen rystelse"). The
+ADR 0029's questions are answered (Michael, 2026-11-04): vehicles keep 50/25; no camera shake
+("Ingen rystelse"); the two questions about the ruin (its page fallback and its exit) are moot,
+since he dropped the ruin ("Fjern ruinen, den er der i så kort tid at det er lige meget"). The
 answers are at the end of ADR 0029.
 
 The two questions are at the end of ADR 0028 (how much of a building breaks; the vehicles' darker

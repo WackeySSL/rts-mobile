@@ -545,11 +545,12 @@ and the notes above stand where ADR 0028 does not change them):
 - **"Out of Phase 3: building damage states"** is now withdrawn in full: ADR 0028 adds them.
 
 Status note (2026-11-04, P26as; ADR 0029 §3 and §5 accepted 2026-11-04; the text above stays as
-accepted): a building's sheet gains a third damage part, **`ruin`** (`<type_id>_ruin.svg`): a whole
-low picture of the rubble, the foot and the debris outside the footprint, cropped to its ink, with
-no cut, shown on the dying building's `Body` after its DIED and baked at `IsoAtlas.RUIN_SCALE`. The
-sheet also gains `anim_kritisk` and `emitter_quiet`, and the emitter kinds `dmg_gas`, `dmg_spark` and
-`ruin`. `dmg1` is now SKADET and `dmg2` KRITISK (ADR 0029 §3).
+accepted): `dmg1` is now SKADET and `dmg2` KRITISK (ADR 0029 §3); no third damage part (Michael
+dropped the ruin). A building's sheet gains `anim_kritisk` (whether the `Anim` runs at KRITISK) and
+`emitter_quiet` (from which stage an ambient emitter goes quiet), and the emitter kinds `dmg_gas`
+and `dmg_spark` beside `damage`. The generator gains the shapes `broken` and `rod`, the helper
+`petals`, the move `blow` and the materials `interior`, `slab`, `hole`, `rebar` and `beam` (ADR
+0029 §5).
 
 ### 6. Factions: names, look and data
 - **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;

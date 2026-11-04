@@ -27,9 +27,10 @@ fallback); a third hides a building's `Anim` at stage 2. No accepted text change
 
 Status note (2026-11-04, P26as): **amended by ADR 0029** (`docs/adr/0029-buildings-shot-to-pieces.md`,
 accepted 2026-11-04 with Michael's answers), from Michael's reference sheets for buildings that are
-shot to pieces: four stages (INTAKT, SKADET, KRITISK, RUIN), a whole `ruin` sprite after DIED, a
-collapse, hit feedback, no camera shake. Dated notes below in §2, §3, §6, §7, §8 and §9; no
-accepted text changed. Where ADR 0029 differs from this ADR, ADR 0029 wins.
+shot to pieces: three damage stages (INTAKT, SKADET, KRITISK) at 67 and 34 for buildings, a
+collapse at DIED that ends in today's crater (no ruin: Michael dropped it), hit feedback, no camera
+shake. Dated notes below in §2, §3, §4, §6, §7, §8 and §9; no accepted text changed. Where ADR 0029
+differs from this ADR, ADR 0029 wins.
 
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
@@ -139,7 +140,7 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
   stage 1) and `LifeSettings.vehicle_stage_percent` [50, 25] (Michael's answer 1 of ADR 0029:
   vehicles keep this ADR's values). They replace `damage_stage_percent`;
   `BuildingDamage.stage_of(hp, max, percents)` takes the list. Stateless, no hysteresis, as above.
-- RUIN (0 %) is not a value of the function: it is what the view shows after a building's DIED.
+- At 0 % a building collapses (ADR 0029 §8); there is no stage after stage 2.
 
 ### 3. Building stages: generated top patches
 - **How the generator makes them** (art-director, `tools/artgen/`). A model gains damage poses
@@ -295,29 +296,28 @@ amendment's "a `mount` or `anim` element ... stands alone on a stub" for `anim`)
 Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
 - **What the patches show** (ADR 0029 §3, §4): `dmg1` is SKADET (small nicks at a corner, a mast or
   a wing, blown panes with their frames, soot over the holes; within the top half of the body, or
-  35 % if ADR 0029 §11's step 3 is taken) and `dmg2` is KRITISK (a part has collapsed, the inside
-  shows: slabs, rebar, beams, dark rooms; down to just above the foot). The low ruin of the second
-  amendment is now a third part, `ruin`, a whole low sprite shown after DIED, not a patch. P158's
-  poses are re-slotted: its `dmg1` starts the new `dmg2`, its `dmg2` starts the `ruin`.
+  35 % if ADR 0029 §10's fallback is taken) and `dmg2` is KRITISK (a part has collapsed, the inside
+  shows: slabs, rebar, beams, dark rooms; down to just above the foot). The second amendment's low
+  ruin is dropped (Michael, 2026-11-04: no ruin); P158's `dmg1` poses start the new `dmg2`.
+  `DAMAGE_PARTS` stays `[dmg1, dmg2]`.
 - **The `Anim` at stage 2 follows its carrier** (ADR 0029 §3, a lead decision of 2026-11-04; it
   replaces the third amendment for stage 2): it runs where its carrier still stands in the KRITISK
-  pose and is hidden where its carrier fell, per sheet (`anim_kritisk run` or `hide`, written by
-  the generator). The third amendment hid it because stage 2 was then a low ruin; that ruin is now
-  RUIN, where the `Anim` and the `Head` are hidden at the collapse's start. A defence's `Head` stays
-  at stages 1 and 2.
-- **The seam** (ADR 0029 §12; it replaces the second amendment's open point and the P26ar note's
+  pose and is hidden where its carrier fell, per sheet (`anim_kritisk run` or `hide`, written by the
+  generator, required of a building with an `anim` and a `dmg2`; a sheet without the field hides
+  it). The third amendment hid it because stage 2 was then a low ruin. A defence's `Head` stays at
+  stages 1 and 2.
+- **The seam** (ADR 0029 §11; it replaces the second amendment's open point and the P26ar note's
   `ceil(cut x bake_scale)`): the patch is a sibling of the body with the same parent and position;
   the body is trimmed by T = `IsoAtlas.body_cut_row(cut, canvas_h, region_h)` texels (the integer
   ceil), with `region_filter_clip_enabled`; the patch uses its whole region; the overlap is strictly
   above 0 for even canvases (the generator refuses odd ones); under a ghost body the patch is a child
   with `scale = body_texels / patch_texels`; the trim is applied again after every `show_frame` and
   `show_base`.
-- **Points** (ADR 0029 §5): a building has 2 to 4 damage points (`damage`, `dmg_gas`, `dmg_spark`),
-  each with ink under it in `dmg1` and `dmg2`, and 1 to 3 `ruin` points; the "at most two" above is
-  replaced.
-- **The page** (ADR 0029 §11): the ruin is baked at `IsoAtlas.RUIN_SCALE`, equal to
-  `DAMAGE_SCALE` at first; Michael's answer 2 of ADR 0029: if the page is still too full after the
-  crop, the ruin at 75 % and SKADET within 35 %, the ruin goes to 50 %.
+- **Points** (ADR 0029 §5): every building with damage poses has 2 to 4 damage points (`damage`,
+  `dmg_gas`, `dmg_spark`), each with ink under it at stages 1 and 2; the "at most two" above is
+  replaced. Ambient emitters on a group a stage breaks go quiet from that stage (`emitter_quiet`).
+- **The page** (ADR 0029 §10): the two patches at `DAMAGE_SCALE` fit (P158 measured 3476); the
+  fallback is SKADET within 35 %, then tighter KRITISK patches.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
@@ -373,6 +373,15 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
   flame colours or its smoke columns. Flames stay yellow-white and smoke grey, outside both
   factions' key bands, so a fire never reads as team colour.
 
+Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
+- **`scar_milli`** (ADR 0029 §12, a lead decision on P160): 1000 means **the scar's canvas as
+  drawn**, not "the battle tank" above; the Bullhead is 800.
+- **The loose part** takes one constant view scale `LOOSE_SCALE` (about 0.8, measured by P160), not
+  `scar_milli`. P161 sets `Scar.scale` and `Loose.scale` when a rig is dressed for a type (new or
+  from the pool), not per stage.
+- **A mirrored `Loose`** mirrors its offset about the anchor too: P161 uses a negative `scale.x`, so
+  a side switch stays 1 write (with `flip_h` it would be 2); §8's counts stand.
+
 ### 5. Fog and ghosts
 - **Live rows:** the stage is drawn only where the row is: an enemy building while
   `BuildingLayer.is_shown`, an enemy vehicle while its rig is visible (its children hide with it). A
@@ -425,10 +434,10 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
 Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
 - **The particles per stage are ADR 0029 §6:** SKADET burns one point chosen by
   `LifeClock.pick(id, salt, n)` with grey thin `smoke` and a small fire or a gas `jet`; KRITISK
-  burns up to three points with black thick `soot`, a large fire lit from inside and sparks; the
-  ruin smokes 8 s and glows with embers 15 s. At most 30 smoke puffs per burning building (15 by
-  default), one shared alpha glow pass, no blur; ambient emitters on a group a stage breaks go
-  quiet from that stage. The looks table above is replaced for buildings; vehicles keep it.
+  burns up to three points with black thick `soot`, a large fire lit from inside and sparks; after
+  a collapse thin smoke rises over the crater for 8 s and embers glow for 15 s. At most 30 smoke
+  puffs per burning building (15 by default), one shared alpha glow pass, no blur. The looks table
+  above is replaced for buildings; vehicles keep it.
 - **The quota:** the damage ring is 80 (not 64), beside a collapse ring of 40 and a hit ring of 16:
   `AirFx` holds emitters 80, damage 80, muzzle 24, collapse 40, hit 16, 240 quads in all.
 
@@ -440,9 +449,9 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
   today; the damage ring keeps its puffs (they are not ambient).
 
 Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
-- `reduced` also keeps the ruin, its sink, the fire's glow, the hit flash and the collapse's flash,
-  explosion and dust, and drops embers, hit chips, collapse debris and the ruin's smoke (ADR 0029
-  §10). There is no camera shake to drop (ADR 0029, answer 4).
+- `reduced` also keeps the fire's glow, the hit flash and the collapse's flash, explosion, sink and
+  dust, and drops embers, hit chips, collapse debris and the smoke over the crater (ADR 0029 §6,
+  §8). There is no camera shake (ADR 0029, answer 4).
 
 ### 8. Budget
 - **Draw calls: none new.** Patches, trimmed bodies and overlays are regions of the sorted world's
@@ -503,12 +512,12 @@ vehicles, 187 at 40, against ADR 0027 §9's 150). P162's in-step turn must inclu
 frame; `damage_loose` off removes both the loose part's position write and its flip write.
 
 Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
-- No new draw call still holds. A collapse writes 51 sprite writes over its life inside
+- No new draw call still holds. A collapse writes 28 sprite writes over its life inside
   `damage_building_writes`, first in that share; a step that does not fit is written later, coarser,
-  never lost (ADR 0029 §11).
+  never lost. The share must be at least 6, the largest stage cost (0 → 2 with the `Anim` hidden), a
+  data test (ADR 0029 §10).
 - `AirFx` plans at most 240 quads; the life layers' worst moment is estimated at about 0.55 ms,
-  inside ADR 0027 §9's 0.56 ms (ADR 0029 §11, with a derived per-quad cost the phone card checks).
-- The page bound stays 3584; ADR 0029 §11 has the estimate and the fallback order for the ruin.
+  inside ADR 0027 §9's 0.56 ms (ADR 0029 §10, with a derived per-quad cost the phone card checks).
 
 ### 9. Numbers in data
 `data/life_settings.tres` gains `damage_stage_percent` ([50, 25]), `damage_writes_per_frame` (60),
@@ -519,9 +528,9 @@ numbers (`cuts`, `scar_milli`, the `damage` and `hang` points) are sheet fields 
 
 Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accepted):
 - `damage_stage_percent` is replaced by `building_stage_percent` [67, 34] and
-  `vehicle_stage_percent` [50, 25]; `damage_slots` is 80; ADR 0029 §14 lists the new fields (the
-  burning points, the smoke cap, the hit, collapse and ruin numbers, `crater_scale_milli`). There is
-  no shake field.
+  `vehicle_stage_percent` [50, 25]; `damage_slots` is 80; ADR 0029 §13 lists the new fields (the
+  burning points, the smoke cap, the hit, collapse and crater numbers, `crater_scale_milli`). There
+  is no shake field and no ruin field.
 
 ## Consequences
 - A battle reads at a glance: a base that is losing shows broken roofs, smoke and fire; a tank near
