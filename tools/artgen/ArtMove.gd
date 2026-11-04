@@ -91,6 +91,17 @@ static func parse(line: String) -> ArtMove:
 	return move
 
 
+## A turn of `degrees` about the line along `axis` (0, 1 or 2) through `pivot`, made in code: what
+## a `petals` plate is placed by (ADR 0029 section 5).
+static func turned(axis: int, degrees: float, pivot: Vector3) -> ArtMove:
+	var move: ArtMove = ArtMove.new()
+	move.kind = &"turn"
+	move.axis = axis
+	move.degrees = degrees
+	move.pivot = pivot
+	return move
+
+
 ## `point` after the move.
 func place(point: Vector3) -> Vector3:
 	if kind == &"turn":

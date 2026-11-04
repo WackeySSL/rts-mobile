@@ -204,7 +204,7 @@ func test_the_loose_part_is_bolted_to_the_hull_and_does_not_drag() -> void:
 	for id: String in VEHICLES:
 		var sheet: IsoSheetDef = _vehicle_sheet(id)
 		var at: int = sheet.emitters.find("hang")
-		var scale: float = Iso.LOOSE_SCALE
+		var scale: float = VehicleDamage.LOOSE_SCALE
 		for dir: int in 16:
 			var hull: Image = _layer(sheet.path(&"hull", dir), sheet.origin(&"hull"), 1.0)
 			var point: Vector2 = sheet.emitter_point(at, dir)
@@ -235,7 +235,9 @@ func test_the_loose_part_is_bolted_to_the_hull_and_does_not_drag() -> void:
 func test_every_loose_frame_still_reads_at_zoom_1() -> void:
 	var neutral: IsoSheetDef = _sheet()
 	for frame: int in 4:
-		var raster: Image = _raster(neutral.path(&"loose", -1, frame), 0.5 * Iso.LOOSE_SCALE)
+		var raster: Image = _raster(
+			neutral.path(&"loose", -1, frame), 0.5 * VehicleDamage.LOOSE_SCALE
+		)
 		var ink: int = 0
 		for y: int in raster.get_height():
 			for x: int in raster.get_width():

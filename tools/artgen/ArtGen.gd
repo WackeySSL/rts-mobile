@@ -257,7 +257,7 @@ static func _outline(model: ArtModel, prim: ArtPrim) -> Array[ArtRender.Poly]:
 ## that move its group, and the other primitive of a swapped pair.
 static func _describe(model: ArtModel, part: StringName, reach: Dictionary) -> String:
 	var prim: ArtPrim = reach["prim"]
-	var text: String = "`%s` (line %d)" % [prim.line, prim.index + 1]
+	var text: String = "`%s` (line %d)" % [prim.label(), prim.index + 1]
 	var moves: PackedStringArray = PackedStringArray()
 	for move: ArtMove in model.pose_moves(part, 0):
 		if prim.group != &"" and move.group == prim.group:
@@ -268,7 +268,7 @@ static func _describe(model: ArtModel, part: StringName, reach: Dictionary) -> S
 	if other != null:
 		text += (
 			" and `%s` (line %d), drawn in another order than intact, overlap"
-			% [other.line, other.index + 1]
+			% [other.label(), other.index + 1]
 		)
 	return text
 
