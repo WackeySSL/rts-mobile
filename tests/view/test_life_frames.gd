@@ -105,7 +105,12 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_apply_idle",
 		"_update_rigs",
 		"_show_hull",
+		"_write_damage",
 	],
+	# P161: `_queue_damage` (appends to the queue) and `_pool_rig` (erases from it) run on events,
+	# not every frame, and are exempt like P159's `_queue_stage`.
+	"res://game/view/VehicleDamage.gd":
+	["follow", "_place_loose", "_point", "apply", "cost", "stage_of"],
 	"res://game/view/BuildingAnims.gd": ["phase_ms", "frame_at", "low_power"],
 	"res://game/view/BuildingLayer.gd":
 	["_on_ticked", "_shot_seen", "_kick_heads", "_sweep_heads", "_play_anims"],

@@ -74,3 +74,4 @@ building_stage_percent = PackedInt32Array(67, 34)
 vehicle_stage_percent = PackedInt32Array(50, 25)
 damage_writes_per_frame = 60
 damage_building_writes = 20
+damage_loose = true
