@@ -199,7 +199,7 @@ func primitives(part: StringName) -> Array[ArtPrim]:
 	return found
 
 
-## The hull primitives at damage `stage` (1 to 3): every hull primitive that is drawn from that
+## The hull primitives at damage `stage` (1 or 2): every hull primitive that is drawn from that
 ## stage on or before it, placed by the stage's moves, without the hidden ones.
 func damage_prims(stage: int) -> Array[ArtPrim]:
 	var found: Array[ArtPrim] = []
@@ -256,18 +256,26 @@ func damage_changes(stage: int) -> Array[Array]:
 
 
 ## The primitive as a stage's moves place it: `blow` turns the panes it takes (the first of the
-## group's `glass` primitives in `blow_order`) into `hole`, and nothing else about them.
+## group's `glass` primitives in `blow_order`) into `hole`, and nothing else about them. A primitive
+## that only `blow` moves touches and the blow does not take comes back as itself, unchanged.
 func _posed(prim: ArtPrim, by: Array[ArtMove]) -> ArtPrim:
 	var posed: ArtPrim = prim.moved(by)
-	if posed == prim or prim.material != &"glass":
-		return posed
-	var order: Array[int] = ArtDamage.blow_order(self, prim.group)
-	var rank: int = order.find(prim.index)
+	if posed == prim:
+		return prim
+	var only_blow: bool = true
+	var taken: bool = false
+	var order: Array[int] = []
+	if prim.material == &"glass":
+		order = ArtDamage.blow_order(self, prim.group)
 	for move: ArtMove in posed.moves:
-		if move.kind == &"blow" and rank >= 0:
-			if rank < roundi(order.size() * move.blow_percent / 100.0):
-				posed.material = &"hole"
-	return posed
+		only_blow = only_blow and move.kind == &"blow"
+		if move.kind == &"blow" and order.has(prim.index):
+			taken = (
+				taken or order.find(prim.index) < roundi(order.size() * move.blow_percent / 100.0)
+			)
+	if taken:
+		posed.material = &"hole"
+	return posed if taken or not only_blow else prim
 
 
 ## Every valid hull primitive, also those that appear at a damage stage, in the model's order.
@@ -457,6 +465,8 @@ func _point_problems(kinds: Array[StringName]) -> PackedStringArray:
 	elif not ArtDamage.staged(self):
 		if typed > (1 if category == &"veh" else 2):
 			found.append("%s: a vehicle has one damage point, a building two at most" % art_id)
+		if typed > kinds.count(&"damage"):
+			found.append("%s: dmg_gas and dmg_spark need a building with damage poses" % art_id)
 	else:
 		if typed < 2 or typed > 4:
 			found.append("%s: a building with damage poses has 2 to 4 damage points" % art_id)

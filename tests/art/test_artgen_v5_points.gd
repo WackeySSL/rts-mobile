@@ -205,7 +205,7 @@ func test_vehicles_and_squads_keep_their_counts() -> void:
 	squad.prims = PackedStringArray(["box hull steel 0 0 0 0.3 0.3 0.4"])
 	squad.emitters = PackedStringArray(["damage 0 0 0.4"])
 	assert_str(_problems(squad)).contains("damage and hang points are for buildings and vehicles")
-	# A building without damage poses keeps the v4 rule: two damage points at most.
+	# A building with poses needs 2 to 4 points; one without keeps the v4 rule, two at most.
 	var v4: ArtModel = (
 		Support
 		. with_prims(
@@ -224,10 +224,15 @@ func test_vehicles_and_squads_keep_their_counts() -> void:
 	assert_str(_problems(v4)).contains("2 to 4 damage points")
 	v4.emitters = PackedStringArray(["damage -0.3 -0.3 1.0", "damage 0.2 0.5 5.0"])  # in the air
 	assert_str(_problems(v4)).contains("no ink under it")
-	v4.emitters = PackedStringArray(["damage -0.3 -0.3 1.0", "damage -0.5 0.1 1.0"])
 	v4.poses = PackedStringArray([])
 	v4.emitters = PackedStringArray(["damage 0 0 1", "damage 0.1 0 1", "damage 0.2 0 1"])
 	assert_str(_problems(v4)).contains("a building two at most")
+	# Without poses only `damage` points are allowed.
+	for kind: String in ["dmg_gas", "dmg_spark"]:
+		v4.emitters = PackedStringArray(["damage 0 0 1", "%s 0.1 0 1" % kind])
+		assert_str(_problems(v4)).contains("need a building with damage poses")
+	v4.emitters = PackedStringArray(["damage 0 0 1", "damage 0.1 0 1"])
+	assert_str(_problems(v4)).is_equal("")
 	var sheet: IsoSheetDef = ArtSheet.of(v4, ArtGen.all_shots(v4))
 	assert_str(ArtSheet.text(sheet)).not_contains("emitter_quiet")
 	assert_str(ArtSheet.text(sheet)).not_contains("anim_kritisk")
@@ -270,6 +275,8 @@ func test_the_counts_and_the_ink_tests_hold_for_a_building_with_poses() -> void:
 	assert_str(_problems(Support.with_prims(prims, poses, air))).contains("no ink under it")
 	# Stage 1 is the intact picture when a model has dmg2 alone: the mast (damage=2) is no ink there.
 	var alone: Array[String] = ["dmg2 0 cap hide"]
+	assert_str(_problems(Support.with_prims(prims, alone, []))).contains("2 to 4 damage points")
+	assert_str(_problems(Support.with_prims(prims, alone, [good[0]]))).contains("2 to 4")
 	var mast: Array[String] = ["damage -0.3 -0.3 1.0", "dmg_gas 0.0 -0.6 2.0"]
 	var found: String = _problems(Support.with_prims(prims, alone, mast))
 	assert_str(found).contains("no ink under it at stage 1")
@@ -295,3 +302,38 @@ func test_anim_kritisk_is_stated_and_its_lowest_point_is_taken_over_all_frames()
 	assert_str(_problems(swung)).contains("nothing stands under the anim in dmg2")
 	swung.anim_kritisk = &"hide"
 	assert_str(_problems(swung)).is_equal("")
+
+
+func test_a_blow_changes_only_the_panes_it_takes() -> void:
+	var prims: Array[String] = [
+		"box hull titanium 0 0 0 1.6 1.6 0.4 group=base",
+		"box hull glass -0.3 -0.8 0.4 0.3 0.1 0.5 group=facade",
+		"box hull glass 0.3 -0.8 0.4 0.3 0.1 0.5 group=facade",
+		"box hull titanium 0 -0.85 0.4 1.4 0.1 0.04 group=facade",
+		"box hull titanium 0.5 0.5 0.4 0.3 0.3 0.4 group=cap",
+	]
+	var points: Array[String] = ["damage -0.6 -0.4 0.4", "dmg_spark -0.3 -0.5 0.4"]
+	var poses: Array[String] = ["dmg1 0 facade blow 50", "dmg2 0 cap hide"]
+	var model: ArtModel = Support.with_prims(prims, poses, points)
+	model.faction = &"renew"
+	assert_str(_problems(model)).is_equal("")
+	# One pane is blown; the other pane and the sill frame are not changes.
+	var changed: int = 0
+	for pair: Array in model.damage_changes(1):
+		changed += 1
+		assert_str(pair[1].material).is_equal("hole")
+	assert_int(changed).is_equal(1)
+	# A frame in the group (the sill) does not pull the cut down to its own outline.
+	var sill_less: Array[String] = prims.duplicate()
+	sill_less.remove_at(3)
+	var other: ArtModel = Support.with_prims(sill_less, poses, points)
+	other.faction = &"renew"
+	var body: ArtGen.Layout = ArtGen.all_shots(model)[&"hull"].layout
+	assert_int(ArtGen.damage_cut(model, 1, body)).is_equal(ArtGen.damage_cut(other, 1, body))
+	# A blow that takes no pane changes nothing, so the stage is refused.
+	for percent: int in [0, 10]:
+		var none: ArtModel = Support.with_prims(
+			prims, ["dmg1 0 facade blow %d" % percent, "dmg2 0 cap hide"], points
+		)
+		none.faction = &"renew"
+		assert_str(_problems(none)).contains("dmg1 changes nothing")

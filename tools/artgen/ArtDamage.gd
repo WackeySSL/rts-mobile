@@ -54,7 +54,7 @@ static func problems(model: ArtModel, body: ArtGen.Layout) -> PackedStringArray:
 	return found
 
 
-## The seam invariant of ADR 0029 section 12 holds for even canvas heights only. `ArtGen._layout`
+## The seam invariant of ADR 0029 section 11 holds for even canvas heights only. `ArtGen._layout`
 ## rounds every canvas up to even, so this is a guard against a future change of it, not a rule a
 ## model can break today.
 static func canvas_problems(model: ArtModel, body: ArtGen.Layout) -> PackedStringArray:

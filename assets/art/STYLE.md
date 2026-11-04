@@ -238,24 +238,28 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   the ground point (an `anim` at the footprint centre); the bar lift clears the `anim` element in
   its highest frame. Model fields `stride_milli` (needs `walk`), `anim_ms` (needs `anim`),
   `emitters` (`<kind> <x> <y> <z>` in tiles; `smoke`, `steam`, `flame`, `exhaust`, `launch`,
-  `damage` and `hang`, see "Damage poses") and
+  `damage`, `dmg_gas`, `dmg_spark` and `hang`, an ambient one with `group=<name>`; see "Damage
+  poses") and
   `marks` (`tracks` or `wheels`, vehicles). The sheet gains `frames` (`frame_count(part)` says 1
   when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
-- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, extended by v5a, P163, ADR 0029 section 5; no model uses them yet). A
+- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, extended by
+  v5a, P163, ADR 0029 section 5; no model uses them yet). A
   building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
   face colours, edges too, are mixed that far towards the char colour **#2A2522**; a charred `team`
-  primitive leaves the key band or the generator refuses the model: only about 100 % does, so a
-  charred team face is the char colour and the bake no longer recolours it). The groups are the
-  hull's. A hull primitive tagged `damage=K` (1 or 2) is drawn from stage K on and never in the intact
-  body, the shadow or the card. **Stage 2 does not inherit stage 1's moves** (list them again), but the
+  primitive leaves the key band or the generator refuses the model: the Derrick League's does from
+  about 97 %, the Lumen Accord's from about 86 %, where its mid key is a blue-grey, #283739, not the
+  char colour; a charred face is no longer a key colour, so the bake does not recolour it). The groups are the
+  hull's. A hull primitive tagged `damage=K` (1 or 2) is drawn from stage K on and never in the
+  intact body, the shadow or the card. **Stage 2 does not inherit stage 1's moves** (list them
+  again), but the
   `damage=1` primitives do appear at stage 2. A model has both stages or stage 2 alone. The group
   `mount` (a defence's Head seat) and the groups of the `anim` primitives may not be touched by a
-  damage move: the generator fails such a model, so the moving element stays seated and the `anim`
-  part keeps running at both stages. (There is no ruin picture: ADR 0029's ruin was dropped on
+  damage move: the generator fails such a model, so the moving element stays seated; the `anim`
+  part runs at stage 1 and follows `anim_kritisk` at stage 2. (There is no ruin picture: ADR 0029's ruin was dropped on
   2026-11-04, a collapse ends in the crater.)
   **The patch.** Each stage is a part of its own, `<type_id>_dmg1.svg` and `_dmg2.svg`, drawn with
   today's projection, light, edge and team key. The stage is drawn in its own greedy painter's
@@ -291,26 +295,27 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
     blue-grey, mid **#20262B**), `rebar` (rust-dark, mid **#4A4038**) and `beam` (steel, mid
     **#5C645B**); the ramp is the usual top 122 %, left 100 %, right 76 % of the mid tone.
   - **Moves.** `<stage> 0 <group> blow <percent>` turns the first `roundi(n x percent / 100)` of
-    the group's intact `glass` primitives, in the hash order (an integer djb2 hash of the art id
-    and the line, no randomness), into `hole`; the frames, other primitives of the group, stay. A
+    the group's intact `glass` primitives, in the hash order (djb2 over the art id's UTF-8 bytes,
+    mixed with the line index by an integer `_mix`; no randomness), into `hole`; the frames, other primitives of the group, stay. A
     `blow` on a group with no intact glass is refused.
   - **Points.** A building has the typed damage points `damage` (fire and smoke), `dmg_gas` (a gas
-    jet, a fire at the torn opening) and `dmg_spark` (sparks, no fire), ; a vehicle has
+    jet, a fire at the torn opening) and `dmg_spark` (sparks, no fire); a vehicle has
     one `damage` and one `hang`, infantry none. A building with damage poses has **2 to 4** typed
-    points together (without damage poses the v4 limit of two `damage` points stands, and a
-    `dmg_gas` or `dmg_spark` point is for a building with poses). The ink test is geometric, no
+    points together. A building without damage poses keeps the v4 limit of two points, and only
+    `damage` ones (`dmg_gas` and `dmg_spark` are refused there). The ink tests below run only for a
+    building with damage poses. The ink test is geometric, no
     raster: a damage point lies inside a drawn face of stage 1 (the intact picture plus any
     `damage=1` primitive when there is no `dmg1`) and of stage 2, and above `dmg1`'s cut row. The
     tests wait for a sound cut.
   - **Ambient emitters that break.** `smoke`, `steam` and `flame` may end in `group=<name>` (a
     hull group; other kinds refuse it). The sheet's `emitter_quiet` (parallel to `emitters`; written
     only when one is not 0) holds the first stage, 1 or 2, whose pose shifts, turns or hides the
-    group, 0 for never or no group. The emitter needs ink in the intact picture and at each stage
-    before its quiet stage.
+    group, 0 for never or no group. For a building with damage poses the emitter needs ink in the
+    intact picture and at each stage before its quiet stage.
   - **`anim_kritisk`** (model field, `run` or `hide`) is required of a building with an `anim`
     and a `dmg2`, and written as the sheet's bool `anim_kritisk` (true for `run`). `run` is refused
     when the lowest vertex of the `anim` element over all its frames has no ink under it in `dmg2`.
-  - **Canvas.** The seam of the trimmed body (ADR 0029 section 12) holds only for even canvas
+  - **Canvas.** The seam of the trimmed body (ADR 0029 section 11) holds only for even canvas
     heights; `ArtGen` rounds every canvas up to even, so the refusal of an odd body canvas is a
     guard against a later change, not a rule a model can break today.
   - **Key share.** `tests/art/artgen_v5_support.gd` rasterises a stage (`Image.load_svg_from_string`)
