@@ -23,7 +23,6 @@ const HINT: String = "Tap to jump there"
 @export var camera: RtsCamera
 @export var safe_area: SafeAreaMargin
 @export var pill: Control  ## Landscape: the toast stands after it.
-@export var top_left: Control  ## Upright: the toast stands under this stack (Dev over Surrender).
 ## Landscape, where the room beside the pill is short, the toast stands under the top line: right
 ## of this column, which starts on that line.
 @export var group_column: GroupColumn
@@ -83,9 +82,6 @@ func place() -> void:
 	if group_column != null:
 		shown.groups = group_column.item_count()
 	shown.ready = build_button != null and build_button.ready_type >= 0
-	if top_left != null and top_left.visible:
-		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
-		shown.left_height = top_left.get_combined_minimum_size().y / dp
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)

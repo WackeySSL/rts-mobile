@@ -297,7 +297,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	await await_idle_frame()
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
-	for node_name: String in ["Deselect", "Chip", "Stop", "GroupColumn", "DevButton"]:
+	for node_name: String in ["Deselect", "Chip", "Stop", "GroupColumn", "EconomyPill"]:
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)

@@ -123,8 +123,6 @@ func place() -> void:
 		shown.strike = true
 		shown.aim = strike_row.aim.active
 	if pill != null:  # Where the pill stands now, in the layout's terms (as `EconomyPill.place`).
-		var from: float = (pill.position.x - safe.position.x) / dp
-		shown.left_taken = maxf(from - HudCorners.GAP_DP, 0.0) if from > 0.5 else 0.0
 		shown.pill_width = pill.size.x / dp
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown

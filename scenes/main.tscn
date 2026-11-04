@@ -4,7 +4,6 @@
 [ext_resource type="Script" path="res://game/view/LifeFx.gd" id="138_life_fx"]
 [ext_resource type="Script" path="res://game/view/GroundLayer.gd" id="23_ground"]
 [ext_resource type="Script" path="res://game/view/RtsCamera.gd" id="2_cam"]
-[ext_resource type="Script" path="res://game/ui/dev_menu_button.gd" id="3_dev"]
 [ext_resource type="Script" path="res://game/view/main_view.gd" id="4_main"]
 [ext_resource type="Script" path="res://game/input/TouchInput.gd" id="5_touch"]
 [ext_resource type="Resource" path="res://data/input_settings.tres" id="6_settings"]
@@ -15,7 +14,6 @@
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
 [ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
 [ext_resource type="Script" path="res://game/ui/SafeAreaMargin.gd" id="12_safe"]
-[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="13_dp"]
 [ext_resource type="Script" path="res://game/ui/GroupColumn.gd" id="14_group_column"]
 [ext_resource type="Script" path="res://game/ui/CommandBar.gd" id="15_command_bar"]
 [ext_resource type="Theme" path="res://game/ui/theme.tres" id="16_theme"]
@@ -45,9 +43,7 @@
 [ext_resource type="Script" path="res://game/ui/AttackCues.gd" id="44_attack_cues"]
 [ext_resource type="Script" path="res://game/ui/AttackToast.gd" id="45_attack_toast"]
 [ext_resource type="Script" path="res://game/ui/BuildButton.gd" id="44_build_button"]
-[ext_resource type="Script" path="res://game/ui/SurrenderButton.gd" id="90_surrender"]
-[ext_resource type="Script" path="res://game/ui/TopLeftStack.gd" id="90_stack"]
-[ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="90_confirm"]
+[ext_resource type="Script" path="res://game/ui/PauseMenu.gd" id="90_pause"]
 [ext_resource type="Script" path="res://game/ui/ResultScreen.gd" id="90_result"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
@@ -233,7 +229,7 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
-clear_of = [NodePath("../SafeArea/TopLeft"), NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
+clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast")]
 
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
@@ -245,45 +241,15 @@ mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("12_safe")
 
-[node name="TopLeft" type="VBoxContainer" parent="Hud/SafeArea"]
-mouse_filter = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-script = ExtResource("90_stack")
-
-[node name="DevButton" type="Button" parent="Hud/SafeArea/TopLeft"]
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_type_variation = &"DevButton"
-text = "Dev"
-script = ExtResource("3_dev")
-
-[node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/DevButton"]
-script = ExtResource("13_dp")
-
-[node name="SurrenderButton" type="Button" parent="Hud/SafeArea/TopLeft" node_paths=PackedStringArray("runner", "controller", "dialog")]
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_type_variation = &"DevButton"
-text = "Surrender"
-script = ExtResource("90_surrender")
-runner = NodePath("../../../../MatchRunner")
-controller = NodePath("../../../../PlayerController")
-dialog = NodePath("../../../SurrenderDialog")
-
-[node name="DpMinSize" type="Node" parent="Hud/SafeArea/TopLeft/SurrenderButton"]
-script = ExtResource("13_dp")
-
-[node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "top_left", "feed", "card")]
+[node name="EconomyPill" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("runner", "safe_area", "feed", "card")]
 theme = ExtResource("16_theme")
 script = ExtResource("40_pill")
 runner = NodePath("../../MatchRunner")
 safe_area = NodePath("../SafeArea")
-top_left = NodePath("../SafeArea/TopLeft")
 feed = NodePath("../HudStateFeed")
 card = NodePath("../EconomyCard")
 
-[node name="GroupColumn" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "safe_area", "strike_aim", "top_left", "build_button")]
+[node name="GroupColumn" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "safe_area", "strike_aim", "build_button")]
 mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("14_group_column")
@@ -291,7 +257,6 @@ settings = ExtResource("6_settings")
 feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 strike_aim = NodePath("../../StrikeAim")
-top_left = NodePath("../SafeArea/TopLeft")
 build_button = NodePath("../BuildButton")
 
 [node name="CommandBar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "safe_area", "placement", "strike_aim", "build_button", "building_layer")]
@@ -313,7 +278,7 @@ runner = NodePath("../../MatchRunner")
 camera = NodePath("../../Camera")
 feed = NodePath("../HudStateFeed")
 
-[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "top_left", "group_column", "build_button")]
+[node name="AttackToast" type="PanelContainer" parent="Hud" node_paths=PackedStringArray("cues", "feed", "camera", "safe_area", "pill", "group_column", "build_button")]
 visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("45_attack_toast")
@@ -322,7 +287,6 @@ feed = NodePath("../HudStateFeed")
 camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
 pill = NodePath("../EconomyPill")
-top_left = NodePath("../SafeArea/TopLeft")
 group_column = NodePath("../GroupColumn")
 build_button = NodePath("../BuildButton")
 
@@ -396,15 +360,15 @@ feed = NodePath("../HudStateFeed")
 pill = NodePath("../EconomyPill")
 safe_area = NodePath("../SafeArea")
 
-[node name="SurrenderDialog" type="Control" parent="Hud"]
+[node name="PauseMenu" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "pill")]
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme = ExtResource("16_theme")
-script = ExtResource("90_confirm")
-question = "SURRENDER?"
-detail = "You lose the match at once."
-yes_text = "SURRENDER"
-no_text = "KEEP PLAYING"
+script = ExtResource("90_pause")
+runner = NodePath("../../MatchRunner")
+controller = NodePath("../../PlayerController")
+feed = NodePath("../HudStateFeed")
+pill = NodePath("../EconomyPill")
 
 [node name="ResultScreen" type="Control" parent="Hud" node_paths=PackedStringArray("runner")]
 anchor_right = 1.0

@@ -208,15 +208,14 @@ func test_with_nothing_shown_only_the_four_anchors_and_all_army_are_placed() -> 
 	assert_float(share / (890.0 * 387.0)).is_less(0.07)
 
 
-func test_the_pill_starts_after_what_stands_at_the_top_left_and_stays_clear_of_the_scope() -> void:
+func test_the_pill_stands_in_the_corner_and_stays_clear_of_the_scope() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	shown.left_taken = 48.0
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
-	_assert_rect(out[HudCorners.PILL], Rect2(56.0, 0.0, 200.0, 48.0))  # A gap after the button.
+	_assert_rect(out[HudCorners.PILL], Rect2(0.0, 0.0, 200.0, 48.0))  # Nothing stands before it.
 	assert_float(out[HudCorners.PILL].end.x).is_less_equal(out[HudCorners.SCOPE].position.x - 8.0)
 	shown.pill_width = 290.0  # A wider content takes what is left, no more than the scope allows.
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
-	assert_float(out[HudCorners.PILL].size.x).is_equal(216.0)
+	assert_float(out[HudCorners.PILL].size.x).is_equal(272.0)
 	out = _place(Rect2(0.0, 0.0, 890.0, 387.0), false, shown)
 	assert_float(out[HudCorners.PILL].size.x).is_equal(290.0)
 	shown.pill_width = 900.0
@@ -224,34 +223,31 @@ func test_the_pill_starts_after_what_stands_at_the_top_left_and_stays_clear_of_t
 	assert_float(out[HudCorners.PILL].size.x).is_equal(HudCorners.PILL_MAX_DP)
 
 
-func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_after_the_stack() -> void:
+func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_at_the_edge() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
-	shown.left_taken = 48.0
 	shown.pill_width = 900.0
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
 	assert_bool(out.has(HudCorners.PILL)).is_false()  # The drawer's head shows the economy.
-	# Centred in 56..456 (after the stack's first row and a gap, short of the panel by a gap).
-	_assert_rect(out[HudCorners.TOAST], Rect2(116.0, 0.0, 280.0, 48.0))
+	# Centred in 0..456 (from the safe edge, short of the panel by a gap).
+	_assert_rect(out[HudCorners.TOAST], Rect2(88.0, 0.0, 280.0, 48.0))
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
 	assert_bool(out.has(HudCorners.PILL)).is_false()
 	assert_bool(out.has(HudCorners.SCOPE)).is_true()  # The scope stays over the sheet.
 
 
-## Where the room from the stack to the panel is under `TOAST_LEAST_DP` (the pill is folded, so the
-## room starts at the pill's place), the toast stands under the top line, from that place or, where
+## Where the room from the edge to the panel is under `TOAST_LEAST_DP` (the pill is folded, so the
+## room starts at the pill's place), the toast stands under the top line, from the edge or, where
 ## the group column stands there, a gap right of the column (it is 56 dp wide: 64).
 func test_a_folded_pill_leaves_the_toast_its_least_width_or_the_top_line() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
-	shown.left_taken = 48.0
-	shown.left_height = 104.0  # Dev over Surrender.
-	var safe: Rect2 = Rect2(0.0, 0.0, 526.0, 280.0)  # Panel at 214..526: 56..206 is 150 dp.
+	var safe: Rect2 = Rect2(0.0, 0.0, 500.0, 280.0)  # Panel at 188..500: 0..180 is under the least.
 	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
-	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 112.0, 142.0, 48.0))
-	safe = Rect2(0.0, 0.0, 576.0, 280.0)  # 56..256 is exactly the least width: beside the stack.
+	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 64.0, 116.0, 48.0))
+	safe = Rect2(0.0, 0.0, 520.0, 280.0)  # 0..200 is exactly the least width: on the top line.
 	out = _place(safe, false, shown)
 	assert_float(out[HudCorners.TOAST].position.y).is_equal(0.0)
 	assert_float(out[HudCorners.TOAST].size.x).is_greater_equal(HudCorners.TOAST_LEAST_DP)
-	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(56.0)
+	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(0.0)
 
 
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:
@@ -306,19 +302,18 @@ func test_the_toast_sits_between_the_pill_and_the_scope_or_under_the_pill() -> v
 
 func test_the_economy_card_hangs_under_the_pill_280_wide() -> void:
 	var shown: HudCorners.Shown = _shown(["card"])
-	shown.left_taken = 48.0
 	shown.card_height = 150.0
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 890.0, 387.0), false, shown)
-	_assert_rect(out[HudCorners.CARD], Rect2(56.0, 56.0, 280.0, 150.0))
+	_assert_rect(out[HudCorners.CARD], Rect2(0.0, 56.0, 280.0, 150.0))
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # The safe width at most.
-	_assert_rect(out[HudCorners.CARD], Rect2(56.0, 56.0, 280.0, 150.0))
+	_assert_rect(out[HudCorners.CARD], Rect2(0.0, 56.0, 280.0, 150.0))
 	out = _place(Rect2(0.0, 0.0, 300.0, 676.0), true, shown)
 	assert_float(out[HudCorners.CARD].end.x).is_less_equal(300.0)
 
 
 ## The economy card at its tallest (six kinds of consumer and the low-power line, `CardHeights`;
-## test_economy_card.gd measures the real one against that number) under the pill after the Dev
-## button, with every combination of the other parts, at every screen, mirrored and not: inside the
+## test_economy_card.gd measures the real one against that number) under the pill, with every
+## combination of the other parts, at every screen, mirrored and not: inside the
 ## safe rect, and clear of every part but the three it may cover (the toast, the groups and, on the
 ## short landscape screens, the command bar).
 func test_the_tallest_economy_card_stays_inside_and_covers_only_its_overlay() -> void:
@@ -331,7 +326,6 @@ func test_the_tallest_economy_card_stays_inside_and_covers_only_its_overlay() ->
 			if not shown.card:
 				continue
 			shown.card_height = CardHeights.TALLEST_DP
-			shown.left_taken = 48.0  # The Dev button.
 			for mirror: bool in [false, true]:
 				var out: Dictionary[StringName, Rect2] = HudCorners.place(
 					safe, screen["portrait"], dp, mirror, shown
@@ -397,43 +391,6 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 					_assert_stack_within_40_percent(out, safe, dp, why, shown)
 				checked += 1
 	assert_int(checked).is_greater(2000)
-
-
-## The top-left stack's height (Dev over Surrender, until P124) moves the upright toast under it:
-## with the stack at 48, 104 and 160 dp, at every screen and set of parts, mirrored or not, every
-## part is inside and clear of the others, and the toast is clear of the stack's rect.
-func test_the_toast_stands_clear_of_a_top_left_stack_of_any_height() -> void:
-	var checked: int = 0
-	for screen: Dictionary in _screens():
-		var safe: Rect2 = screen["safe"]
-		var dp: float = screen["dp"]
-		for shown: HudCorners.Shown in _combinations():
-			if not shown.toast or shown.map:
-				continue
-			shown.left_taken = 77.0
-			for height: float in [48.0, 104.0, 160.0]:
-				shown.left_height = height
-				for mirror: bool in [false, true]:
-					var out: Dictionary[StringName, Rect2] = HudCorners.place(
-						safe, screen["portrait"], dp, mirror, shown
-					)
-					var why: String = (
-						"%s, stack %s dp, mirror %s, %s"
-						% [screen["label"], height, mirror, _describe(shown)]
-					)
-					_assert_parts(out, safe, dp, why)
-					_assert_gaps(out, dp, why)
-					var stack: Rect2 = Rect2(Vector2.ZERO, Vector2(77.0, height) * dp)
-					stack.position = safe.position
-					if mirror:
-						stack.position.x = safe.end.x - stack.size.x
-					(
-						assert_bool(out[HudCorners.TOAST].intersects(stack))
-						. override_failure_message(why)
-						. is_false()
-					)
-					checked += 1
-	assert_int(checked).is_greater(200)
 
 
 func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
@@ -698,36 +655,31 @@ func test_upright_during_the_aim_the_column_holds_three_items_in_one_column() ->
 	assert_float(lined[HudCorners.STRIKE_ROW].position.x - 56.0).is_equal(64.0)
 
 
-## The column starts under the Dev stack (`left_height`) sideways, and the toast, when it stands
-## under the top line, starts right of the column: at every screen, the stack at 48, 104 and 160 dp,
-## a wide pill beside the open drawer, one to five group items.
-func test_sideways_the_column_stands_under_the_stack_and_the_short_toast_clear_of_it() -> void:
+## The column starts under the pill sideways, and the toast, when it stands under the top line,
+## starts right of the column: at every screen, a wide pill beside the open drawer, one to five
+## group items.
+func test_sideways_the_column_stands_under_the_pill_and_the_short_toast_clear_of_it() -> void:
 	var checked: int = 0
 	for screen: Dictionary in _screens():
 		if screen["portrait"]:
 			continue
 		var safe: Rect2 = screen["safe"]
 		var dp: float = screen["dp"]
-		for height: float in [0.0, 48.0, 104.0]:
-			for groups: int in [1, 3, 5]:
-				var shown: HudCorners.Shown = _shown(["toast", "drawer"], groups)
-				shown.pill_width = 320.0
-				shown.left_taken = 77.0 if height > 0.0 else 0.0
-				shown.left_height = height
-				var out: Dictionary[StringName, Rect2] = HudCorners.place(
-					safe, false, dp, false, shown
-				)
-				var why: String = "%s, stack %s, %d groups" % [screen["label"], height, groups]
-				var first: Rect2 = out[HudCorners.group_key(0)]
-				(
-					assert_float(first.position.y - safe.position.y)
-					. override_failure_message(why)
-					. is_greater_equal(maxf(48.0, height) * dp + 8.0 * dp - TOLERANCE)
-				)
-				for index: int in groups:
-					var rect: Rect2 = out[HudCorners.group_key(index)]
-					var toast: Rect2 = out[HudCorners.TOAST]
-					assert_bool(rect.intersects(toast)).override_failure_message(why).is_false()
-					assert_bool(out.has(HudCorners.PILL)).override_failure_message(why).is_false()
-				checked += 1
-	assert_int(checked).is_greater(40)
+		for groups: int in [1, 3, 5]:
+			var shown: HudCorners.Shown = _shown(["toast", "drawer"], groups)
+			shown.pill_width = 320.0
+			var out: Dictionary[StringName, Rect2] = HudCorners.place(safe, false, dp, false, shown)
+			var why: String = "%s, %d groups" % [screen["label"], groups]
+			var first: Rect2 = out[HudCorners.group_key(0)]
+			(
+				assert_float(first.position.y - safe.position.y)
+				. override_failure_message(why)
+				. is_greater_equal(48.0 * dp + 8.0 * dp - TOLERANCE)
+			)
+			for index: int in groups:
+				var rect: Rect2 = out[HudCorners.group_key(index)]
+				var toast: Rect2 = out[HudCorners.TOAST]
+				assert_bool(rect.intersects(toast)).override_failure_message(why).is_false()
+				assert_bool(out.has(HudCorners.PILL)).override_failure_message(why).is_false()
+			checked += 1
+	assert_int(checked).is_greater(10)

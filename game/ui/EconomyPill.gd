@@ -6,7 +6,7 @@ extends PanelContainer
 ## player's credits and power) and sends nothing to the sim.
 ## Credits and power are tap areas of at least 48 dp each; a tap asks `HudState` for the ECONOMY
 ## unfold, which shows the detail card `EconomyCard` under the pill, and the next touch closes it.
-## The menu button (`menu_pressed`) stays hidden until the pause menu (P124). Numbers keep fixed
+## The menu button (`menu_pressed`) opens the pause menu (P124). Numbers keep fixed
 ## digit slots (`DigitRow`). Low power (`power_used` above `power_made`) is a word, a shape and a
 ## colour: the pill's border and the bar turn danger red, the bolt becomes the warning triangle and
 ## the word "LOW POWER" takes the numbers' place in the bar where it fits.
@@ -15,9 +15,8 @@ extends PanelContainer
 ## further change inside that time adds to the chip and starts the time again); after a fall the
 ## number counts down to the new value in that time, a rise shows at once. A new match starts
 ## without a flash.
-## This node takes the pill's rect from `HudCorners.place` (after what stands at the top left,
-## `top_left`: the first visible of the Dev and Surrender buttons), on `_ready`, on every resize and
-## when its content changes size.
+## This node takes the pill's rect from `HudCorners.place` (the top left corner), on `_ready`, on
+## every resize and when its content changes size.
 ## The pill is as wide as its content and asks the layout for the room the numbers (on low power the
 ## word) need in the bar: the bar takes what is left (P85c's fit), the layout gives what the safe
 ## rect and the scope's corner leave, and what does not fit drops (the numbers, then the word; the
@@ -60,7 +59,6 @@ const CHIP_GAP_DP: float = 4.0  ## Between the pill and the chip under its credi
 
 @export var runner: MatchRunner
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
-@export var top_left: Control  ## The pill starts after its first visible child (Dev, or Surrender).
 @export var feed: HudStateFeed  ## Its `state` is asked for the card; none: the pill has no card.
 ## The detail card, a root of the HUD beside the pill (a control outside a container cannot take a
 ## touch from a child of one, so the card is not the pill's child). Hidden until the ECONOMY unfold.
@@ -140,7 +138,7 @@ func _ready() -> void:
 	_line.add_child(_menu)
 	_divider.name = "Divider"
 	_line.add_child(_divider)
-	set_menu_shown(false)
+	set_menu_shown(true)
 	_credits_glyph = _fill_area(_credits_tap, "CreditsTap", "CreditsGlyph", "glyph_credits")
 	_credits.name = "Credits"
 	_credits.variation = &"NumberLabel"
@@ -205,7 +203,7 @@ func refresh() -> void:
 		card.show_from(snap, player, _ring.per_minute())
 
 
-## The menu button and its divider show from the pause menu's row (P124) on.
+## The menu button and its divider show or hide (shown from `_ready` on, P124).
 func set_menu_shown(shown: bool) -> void:
 	_menu.visible = shown
 	_divider.visible = shown
@@ -224,8 +222,6 @@ func place() -> void:
 		return
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	if top_left != null and top_left.visible:
-		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
 	shown.pill_width = _wanted_dp()
 	shown.drawer = feed != null and feed.state.is_open(HudState.Unfold.DRAWER)
 	visible = not shown.drawer  # Folded: the drawer's head shows the economy (`EconomyLine`).

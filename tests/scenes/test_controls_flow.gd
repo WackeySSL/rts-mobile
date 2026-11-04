@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 ## n is row n - 1 of the 6-column block, which the 2:1 projection (P117) shows as a diamond: column
 ## c = (n - 1) % 6 and row r = (n - 1) / 6 stand at world px x = -320 + 48 (c - r) and
 ## y = 432 + 24 (c + r). Ids 1-30 are blue (the player's), 31-40 red. No map touch
-## starts on the command bar, the group column or the Dev button: they keep their touches.
+## starts on the command bar, the group column or the pill: they keep their touches.
 ## Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
@@ -313,14 +313,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
 	for node_name: String in [
-		"Deselect",
-		"Chip",
-		"Stop",
-		"GroupColumn",
-		"DevButton",
-		"SurrenderButton",
-		"EconomyPill",
-		"BuildSidebar"
+		"Deselect", "Chip", "Stop", "GroupColumn", "EconomyPill", "BuildSidebar"
 	]:
 		if _column_aside and node_name == "GroupColumn":
 			continue

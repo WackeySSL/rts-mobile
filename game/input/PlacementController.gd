@@ -135,7 +135,7 @@ func confirm() -> bool:
 	_command = Command.place(runner.scenario.local_player, at.x, at.y)
 	pending = true
 	controller.command_sink.call(_command)
-	if controller.settings.haptics_enabled:
+	if HudPrefs.vibrates(controller.settings):
 		controller.vibrate.call(controller.settings.haptic_ms)
 	changed.emit()
 	return true

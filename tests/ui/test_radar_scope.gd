@@ -7,9 +7,9 @@ extends GdUnitTestSuite
 ## circle of `scope_radius_tiles` meets the rim), one textured polygon of 32 points cut to the map
 ## where the camera is near an edge; the camera's frame is the visible world rect scaled about the
 ## middle; it redraws only when the camera or the picture moved; a tap opens the full map and
-## nothing else happens (no Command, no pan, no map gesture); in a release build at 360 dp the
-## pill's 200 dp minimum reaches into the scope's corner, which the scope wins by touch (P124
-## removes the Surrender button that causes it). The full map under it is test_radar_map's.
+## nothing else happens (no Command, no pan, no map gesture); at 360 dp upright the pill, its menu
+## button included, stands clear of the scope's corner (P124 took the Surrender button away, whose
+## room had pushed the pill into the scope). The full map under it is test_radar_map's.
 ## Player 1 has a Headquarters, two light tanks, a Heavy Yard and a Bunkhouse.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -93,8 +93,8 @@ func test_the_scope_is_56_dp_at_the_top_right_of_the_safe_rect_at_every_screen()
 			edge.position.y, 1.0
 		)
 		assert_bool(safe.encloses(rect)).override_failure_message(at).is_true()
-		# Clear of the pill and the Dev button, and the scope takes its touches itself.
-		for other: String in ["EconomyPill", "DevButton"]:
+		# Clear of the pill, and the scope takes its touches itself.
+		for other: String in ["EconomyPill"]:
 			var clash: String = "%s: %s %s" % [at, other, _rect(other)]
 			assert_bool(rect.intersects(_rect(other))).override_failure_message(clash).is_false()
 		assert_int(_scope.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
@@ -385,36 +385,18 @@ func test_a_modal_between_the_press_and_the_lift_spends_the_tap() -> void:
 	assert_int(_state.current).is_equal(HudState.Unfold.RADAR)
 
 
-## Release build, 360 dp upright: the Dev button is hidden, the Surrender button stands first at
-## the top left and the pill's 200 dp minimum (a Control does not shrink below it) reaches into
-## the scope's corner, as `EconomyPill.gd` documents. The scope is drawn over the pill and wins the
-## touch in the overlap, so the pill's tap areas are not hit by a tap meant for the scope. P124
-## takes the Surrender button away and the overlap with it.
-func test_in_a_release_build_at_360_dp_the_scope_wins_the_touch_where_the_pill_reaches_it() -> void:
+## 360 dp upright: the pill (menu button, credits and power bar) starts at the corner and ends a
+## gap short of the scope, so a tap meant for the scope never lands on the pill.
+func test_at_360_dp_the_pill_stands_clear_of_the_scope() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
 	await _open(phone.window_size, phone)
-	(_hud("DevButton") as Control).visible = false  # A release build hides it (DevRoutes).
 	var pill: EconomyPill = _hud("EconomyPill") as EconomyPill
 	pill.place()
 	await _settle()
 	var pill_rect: Rect2 = pill.get_global_rect()
 	var scope: Rect2 = _scope.get_global_rect()
-	var surrender: Control = _hud("SurrenderButton") as Control
-	assert_bool(surrender.is_visible_in_tree()).is_true()
-	assert_float(pill_rect.position.x).is_equal_approx(
-		surrender.get_global_rect().end.x + UiScale.dp(8.0), 1.5
-	)
-	var reach: float = pill_rect.end.x - scope.position.x  # How far the pill reaches into the scope.
-	assert_float(reach).is_greater(0.0)  # The known overlap (at 360 dp with the Surrender button).
-	assert_float(reach).is_less(scope.size.x * 0.5)  # Not past the scope's middle.
-	var taps: Array[int] = [0]
-	pill.economy_pressed.connect(func() -> void: taps[0] += 1)
-	var in_overlap: Vector2 = Vector2(scope.position.x + reach * 0.5, scope.get_center().y)
-	assert_bool(pill_rect.has_point(in_overlap) and scope.has_point(in_overlap)).is_true()
-	TouchEvents.press(get_viewport(), 0, in_overlap)
-	TouchEvents.release(get_viewport(), 0, in_overlap)
-	assert_int(taps[0]).is_equal(0)  # Not the pill's.
-	assert_int(_state.current).is_equal(HudState.Unfold.RADAR)  # The scope's.
+	assert_bool(pill_rect.intersects(scope)).is_false()
+	assert_float(scope.position.x - pill_rect.end.x).is_greater_equal(UiScale.dp(8.0) - 1.0)
 
 
 ## Twice the polygon's signed area, halved and made positive: its area.

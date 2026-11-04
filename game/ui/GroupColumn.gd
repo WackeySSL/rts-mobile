@@ -32,7 +32,6 @@ const ICON_DP: float = 24.0
 ## Upright during its aim the column holds three items and scrolls.
 @export var strike_aim: StrikeAim
 ## The Dev over Surrender stack (until P124): the column stands under it.
-@export var top_left: Control
 @export var build_button: BuildButton  ## Its Ready chip takes room beside BUILD upright.
 
 var _all: Button = Button.new()
@@ -140,9 +139,6 @@ func place() -> void:
 	if strike_aim != null and strike_aim.owned:  # The aim's check mark and X stand left of it.
 		shown.strike = true
 		shown.aim = strike_aim.active
-	if top_left != null and top_left.visible:
-		shown.left_taken = HudLayout.first_visible_width(top_left) / dp
-		shown.left_height = top_left.get_combined_minimum_size().y / dp
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)

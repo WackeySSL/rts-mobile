@@ -117,7 +117,7 @@ func confirm() -> bool:
 	if fire:
 		var player: int = runner.scenario.local_player
 		controller.command_sink.call(Command.superweapon(player, building_id, point.x, point.y))
-		if controller.settings.haptics_enabled:
+		if HudPrefs.vibrates(controller.settings):
 			controller.vibrate.call(controller.settings.haptic_ms)
 	cancel()
 	return fire

@@ -641,14 +641,14 @@ func test_the_scan_reads_the_scripts_and_the_hud_nodes_it_should() -> void:
 	assert_array(files).contains([MAIN_SCENE])
 	assert_int(files.size()).is_greater_equal(14)
 	var names: Array[String] = _hud_node_names(FileAccess.get_file_as_string(MAIN_SCENE))
-	for node_name: String in ["Hud", "BoxOverlay", "SafeArea", "DevButton", "GroupColumn"]:
+	for node_name: String in ["Hud", "BoxOverlay", "SafeArea", "PauseMenu", "GroupColumn"]:
 		assert_array(names).contains([node_name])
 	assert_array(names).contains(["CommandBar"])
 	assert_array(names).not_contains(["MatchRunner", "UnitLayer", "MarkerLayer", "Camera"])
-	# The subtree holds a theme on its roots and a variation on the Dev button: lines it reads.
+	# The subtree holds a theme on its roots and a variation on the Ready chip: lines it reads.
 	var scene: String = "\n".join(_hud_lines(FileAccess.get_file_as_string(MAIN_SCENE)))
 	assert_str(scene).contains('theme = ExtResource("16_theme")')
-	assert_str(scene).contains('theme_type_variation = &"DevButton"')
+	assert_str(scene).contains('theme_type_variation = &"ReadyBadge"')
 
 
 func test_each_exception_has_a_reason_and_is_still_needed() -> void:

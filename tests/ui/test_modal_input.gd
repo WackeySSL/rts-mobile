@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
-## A modal takes every touch (plan P90, review round 1): the Surrender dialog and the result screen
-## cover the HUD, and nothing under them hears a wheel, a finger already down or a hold in flight.
+## A modal takes every touch (plan P90, review round 1): the pause menu (P124; P90 had the
+## Surrender dialog) and the result screen cover the HUD, and nothing under them hears a wheel, a
+## finger already down or a hold in flight.
 ## For each modal, each case runs the same input twice: once with the modal still closed, where it
 ## acts (the positive control), and once with the modal shown, where it does not. The cases are the
 ## wheel (it zoomed the camera through the modal), a finger resting on the map whose lift sent a
 ## MOVE and whose drag went on panning, a finger held on the minimap whose hold sent a MOVE, and a
 ## held group button whose hold assigned a group. A modal that shows ends them all through
-## `TouchInput.CANCEL_GROUP`. The plain taps on the modal are test_surrender's and
+## `TouchInput.CANCEL_GROUP`. The plain taps on the modal are test_pause_menu's and
 ## test_result_screen's.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -15,9 +16,9 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 ## Open ground at 1280x720, clear of every HUD control and of both modals' panels.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
-## How the modal opens: the dialog by a tap of a second finger on Surrender, the result screen by
-## the match ending (the other side surrenders).
-const MODALS: Array[String] = ["dialog", "result"]
+## How the modal opens: the pause menu by a tap of a second finger on the pill's menu button, the
+## result screen by the match ending (the other side surrenders).
+const MODALS: Array[String] = ["pause", "result"]
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -207,20 +208,18 @@ func _open() -> void:
 	touch.map_gesture.connect(func() -> void: _gestures[0] += 1)
 
 
-## Shows `modal`. The dialog by a tap of finger 1 on Surrender (`with_finger`) or a press signal;
-## the result screen by the other side's surrender.
+## Shows `modal`. The pause menu by a tap of finger 1 on the menu button (`with_finger`) or a press
+## signal; the result screen by the other side's surrender.
 func _show(modal: String, with_finger: bool) -> void:
-	if modal == "dialog":
+	if modal == "pause":
 		if with_finger:
-			_tap_with_finger_1(_hud("SurrenderButton"))
+			_tap_with_finger_1(_hud("Menu"))
 		else:
-			(_hud("SurrenderButton") as Button).pressed.emit()
+			(_hud("Menu") as Button).pressed.emit()
 	else:
 		MatchRig.end(_main, [2])
 	await await_idle_frame()
-	var shown: Control = _main.get_node(
-		"Hud/SurrenderDialog" if modal == "dialog" else "Hud/ResultScreen"
-	)
+	var shown: Control = _main.get_node("Hud/PauseMenu" if modal == "pause" else "Hud/ResultScreen")
 	assert_bool(shown.visible).override_failure_message(modal).is_true()
 
 

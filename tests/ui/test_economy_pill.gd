@@ -145,6 +145,16 @@ func test_low_power_shows_the_word_in_the_bar_at_every_size() -> void:
 		await await_idle_frame()
 		var room: float = _rect("PowerBar").size.x - 2.0 * UiScale.dp(2.0)
 		var why: String = "%s: word %s in a bar of %s" % [profile, word.size.x, room]
+		if (
+			_pill.size.x >= UiScale.dp(HudCorners.PILL_MAX_DP) - 0.5
+			and (word.get_combined_minimum_size().x > room)
+		):
+			# The pill is at its 320 dp cap and the menu button (P124) took the bar's room: the word
+			# drops, as ADR 0025 section 3 has it; the triangle and the red edge speak alone.
+			assert_bool(word.visible).override_failure_message(why).is_false()
+			_publish(0, 6, 4)
+			await await_idle_frame()
+			continue
 		assert_bool(word.visible).override_failure_message(why).is_true()
 		assert_bool(_node("PowerText").visible).is_false()  # The word has the place.
 		var needs: float = word.get_combined_minimum_size().x
@@ -188,7 +198,7 @@ func test_the_numbers_of_a_power_plant_show_where_the_layout_has_room_for_them()
 
 ## Where the layout has no room the numbers drop (and then the word; the triangle and the red edge
 ## stay), and the pill never reaches the scope's corner: on the narrowest portrait screen (360 dp,
-## the Dev button before the pill) it ends at least 64 dp before the safe rect's end, normal and on
+## the pill in the corner) it ends at least 64 dp before the safe rect's end, normal and on
 ## low power, with the menu button shown or not, and is 48 dp high.
 func test_on_the_narrowest_portrait_the_pill_ends_before_the_scopes_corner() -> void:
 	await _open()

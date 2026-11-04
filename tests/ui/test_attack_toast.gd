@@ -159,14 +159,10 @@ func _expect_title_fits(why: String, whole: bool) -> void:
 	assert_float(title.size.x).override_failure_message(at).is_less_equal(_toast.size.x)
 
 
-func test_the_portrait_toast_stands_under_the_taller_top_left_stack() -> void:
+func test_the_portrait_toast_stands_a_gap_under_the_scope() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.toast = true
-	shown.left_taken = 56.0
-	shown.left_height = 104.0
 	var safe: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(safe, true, 1.0, false, shown)
-	assert_float(rects[HudCorners.TOAST].position.y).is_equal(112.0)
-	shown.left_height = 0.0
-	rects = HudCorners.place(safe, true, 1.0, false, shown)
-	assert_float(rects[HudCorners.TOAST].position.y).is_equal(64.0)  # A gap under the scope.
+	assert_float(rects[HudCorners.TOAST].position.y).is_equal(64.0)
+	assert_float(rects[HudCorners.TOAST].position.x).is_equal(0.0)

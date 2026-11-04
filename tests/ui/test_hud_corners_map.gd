@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## P122: the pinned full map beside the strike aim's row starts at the larger of the pill's end and
 ## the group column's end. It narrowed from the pill only: on the 800 x 304 dp screen with the
-## command bar and the Dev-over-Surrender stack (104 dp high: one button per column, the column
-## ends after the pill does), it overlapped the last group button. The column holds at most four
-## items ("All army", `SelectionModel.GROUP_COUNT` = 3 groups; "+" shows only while one is free).
-## The map keeps 8 dp from every one at every landscape profile (also with a cutout), for a narrow
-## and a wide pill and with and without that stack.
+## command bar (and, until P124, the Dev-over-Surrender stack, which made the column one button per
+## column), it overlapped the last group button. The column holds at most four items ("All army",
+## `SelectionModel.GROUP_COUNT` = 3 groups; "+" shows only while one is free). The map keeps 8 dp
+## from every one at every landscape profile (also with a cutout), for a narrow and a wide pill.
+## P124 removed the stack; the case stays as the guard of the column against the map.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -37,13 +37,12 @@ func test_the_pinned_map_with_the_aim_keeps_clear_of_the_group_column_too() -> v
 			var safe: Rect2 = SafeAreaMargin.rect_inside(full, 12.0)
 			for groups: int in [1, 3, SelectionModel.GROUP_COUNT + 1]:
 				for pill: float in [0.0, 320.0]:
-					for stack: float in [0.0, 104.0]:
-						var label: String = "%s, %s" % [profile_name, screen.safe_area]
-						checked += _check(safe, dp, groups, pill, stack, label)
-	assert_int(checked).is_greater(60)
+					var label: String = "%s, %s" % [profile_name, screen.safe_area]
+					checked += _check(safe, dp, groups, pill, label)
+	assert_int(checked).is_greater(30)
 
 
-func _check(safe: Rect2, dp: float, groups: int, pill: float, stack: float, label: String) -> int:
+func _check(safe: Rect2, dp: float, groups: int, pill: float, label: String) -> int:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.bar = true
 	shown.strike = true
@@ -51,8 +50,6 @@ func _check(safe: Rect2, dp: float, groups: int, pill: float, stack: float, labe
 	shown.map = true
 	shown.groups = groups
 	shown.pill_width = pill
-	shown.left_height = stack
-	shown.left_taken = 56.0 if stack > 0.0 else 0.0
 	var out: Dictionary[StringName, Rect2] = HudCorners.place(safe, false, dp, false, shown)
 	var map: Rect2 = out[HudCorners.MAP]
 	for index: int in groups:

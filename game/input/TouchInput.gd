@@ -189,7 +189,7 @@ func _route(e: GestureEvent) -> void:
 		GestureEvent.Kind.CAMERA_END:
 			camera.end_gesture()
 		GestureEvent.Kind.LONG_PRESS:
-			if settings.haptics_enabled:
+			if HudPrefs.vibrates(settings):
 				vibrate.call(settings.haptic_ms)
 			_to_controller(e)
 		_:  # TAP, DOUBLE_TAP and BOX_*.

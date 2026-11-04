@@ -62,9 +62,6 @@ const DRAWER: StringName = &"drawer"
 class Shown:
 	extends RefCounted
 
-	var left_taken: float = 0.0  ## Width of what stands at the top left already (the Dev button).
-	## Height of that stack (Dev over Surrender, until P124); the portrait toast stands under it.
-	var left_height: float = 0.0
 	var pill_width: float = 0.0  ## The pill's content width; 0 is its least.
 	var bar: bool = false  ## The command bar (a selection, or the slot a mode keeps).
 	var bar_width: float = 0.0  ## Landscape content width; 0 is the least.
@@ -128,16 +125,13 @@ static func place(
 				)
 	if not side:
 		out[SCOPE] = Rect2(w - SCOPE_DP, 0.0, SCOPE_DP, SCOPE_DP)
-	var pill_x: float = shown.left_taken + (GAP_DP if shown.left_taken > 0.0 else 0.0)
 	if not shown.drawer:
 		var edge: float = w - SCOPE_DP  # The pill ends a gap short.
-		var room: float = minf(PILL_MAX_DP, edge - GAP_DP - pill_x)
+		var room: float = minf(PILL_MAX_DP, edge - GAP_DP)
 		var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
-		out[PILL] = Rect2(pill_x, 0.0, pill_w, PILL_DP.y)
+		out[PILL] = Rect2(0.0, 0.0, pill_w, PILL_DP.y)
 		if shown.card:
-			out[CARD] = Rect2(
-				pill_x, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w - pill_x), shown.card_height
-			)
+			out[CARD] = Rect2(0.0, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w), shown.card_height)
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast.
@@ -154,15 +148,7 @@ static func place(
 		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
 		_map(out, w, portrait, strike if shown.strike else build, row, column_end)
 	if shown.toast and not shown.map:
-		out[TOAST] = _toast(
-			w,
-			portrait,
-			out,
-			open if side else Rect2(w, 0.0, 0.0, 0.0),
-			shown.left_height,
-			pill_x,
-			column_end
-		)
+		out[TOAST] = _toast(w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), column_end)
 	var result: Dictionary[StringName, Rect2] = {}
 	for key: StringName in out:
 		var r: Rect2 = out[key]
@@ -195,34 +181,26 @@ static func _bar(
 
 
 ## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
-## dp, the pill's line 48) and under the top-left stack (`left_height`); landscape, centred between
-## the pill (or the safe edge) and the scope (or the open panel). Where that room is under
-## `TOAST_LEAST_DP` (a wide pill beside the open panel on a narrow phone) the toast stands under
-## the top line instead, as the portrait rule has it: from the pill's start (right of the top-left
-## stack's first row, and of the group column, which starts on that line), a gap under the scope's
-## foot and under the stack (`left_height`), no further right than the open panel or the safe edge.
-## With the drawer open the pill is folded (P120d): the toast starts where the pill would
-## (`start_dp`, after the top-left stack's first row).
+## dp, the pill's line 48); landscape, centred between the pill (or the safe edge) and the scope (or
+## the open panel). Where that room is under `TOAST_LEAST_DP` (a wide pill beside the open panel on
+## a narrow phone) the toast stands under the top line instead, as the portrait rule has it: from
+## the start (right of the group column, which starts on that line), a gap under the scope's foot,
+## no further right than the open panel or the safe edge. With the drawer open the pill is folded
+## (P120d): the toast starts at the edge, where the pill would.
 static func _toast(
-	w: float,
-	portrait: bool,
-	placed: Dictionary[StringName, Rect2],
-	open: Rect2,
-	left_height: float,
-	start_dp: float,
-	column_end: float
+	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2, column_end: float
 ) -> Rect2:
 	if portrait:
-		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		var top: float = SCOPE_DP + GAP_DP
 		return Rect2(0.0, top, minf(w, TOAST_W_DP.y), TOAST_H_DP)
-	var left: float = start_dp
+	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
 	var edge: float = (open.position.x if open.size.x > 0.0 else w) - GAP_DP
 	var right: float = edge if open.size.x > 0.0 else w - SCOPE_DP - GAP_DP
 	if right - left < TOAST_LEAST_DP:
-		var start: float = maxf(start_dp, column_end + GAP_DP if column_end > 0.0 else 0.0)
-		var top: float = maxf(SCOPE_DP, left_height) + GAP_DP
+		var start: float = column_end + GAP_DP if column_end > 0.0 else 0.0
+		var top: float = SCOPE_DP + GAP_DP
 		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, edge - start), 0.0), TOAST_H_DP)
 	var width: float = minf(TOAST_W_DP.x, right - left)
 	return Rect2(left + (right - left - width) * 0.5, 0.0, width, TOAST_H_DP)
@@ -263,11 +241,10 @@ static func _map(
 
 
 ## The group column at the left edge: 56 dp buttons, as many to a column as the room holds, more
-## columns to the right. Landscape: from below the pill (and the top-left stack, `left_height`,
-## until P124 removes it) down to the bar (or the safe bottom), from the top. Portrait: above the
-## bar, up to the 40 % line (ADR 0015 section 5), against the bottom; a column taller than that
-## line only where more columns would stand in BUILD's way (a cutout on a short phone), which the
-## ADR's 360 x 700 dp numbers never reach.
+## columns to the right. Landscape: from below the pill down to the bar (or the safe bottom), from
+## the top. Portrait: above the bar, up to the 40 % line (ADR 0015 section 5), against the bottom;
+## a column taller than that line only where more columns would stand in BUILD's way (a cutout on a
+## short phone), which the ADR's 360 x 700 dp numbers never reach.
 static func _groups(
 	out: Dictionary[StringName, Rect2],
 	h: float,
@@ -279,8 +256,7 @@ static func _groups(
 	var bottom: float = h - (BAR_DP.y + GAP_DP if bar_on else 0.0)
 	var top: float = h - floorf(HudLayout.STACK_SHARE * h)
 	if not portrait:
-		# A stack too tall for one button above the bar gives way (no phone has one that tall).
-		top = minf(maxf(PILL_DP.y, shown.left_height) + GAP_DP, bottom - GROUP_DP)
+		top = minf(PILL_DP.y + GAP_DP, bottom - GROUP_DP)
 	var step: float = GROUP_DP + GAP_DP
 	var fit: int = floori((bottom - top + GAP_DP) / step)
 	var count: int = shown.groups

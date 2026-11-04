@@ -83,8 +83,8 @@ func test_a_number_is_written_only_when_it_changes() -> void:
 
 
 ## ADR 0025 section 2: 48 dp high, the credits and the power each a tap area of at least 48 dp, the
-## menu button (hidden until the pause menu, P124) as large.
-func test_the_pill_is_48_dp_high_with_tap_areas_of_48_dp_and_no_menu_button_yet() -> void:
+## menu button (shown from P124 on) as large.
+func test_the_pill_is_48_dp_high_with_tap_areas_of_48_dp_and_the_menu_button() -> void:
 	await _open()
 	for profile: StringName in _every_profile():
 		await _turn(profile)
@@ -98,14 +98,13 @@ func test_the_pill_is_48_dp_high_with_tap_areas_of_48_dp_and_no_menu_button_yet(
 			assert_float(rect.size.y).override_failure_message(why + area).is_greater_equal(least)
 			assert_bool(_pill.get_global_rect().grow(0.5).encloses(rect)).is_true()
 		var menu: Button = _node("Menu")
-		assert_bool(menu.visible).is_false()
+		assert_bool(menu.visible).is_true()
 		assert_float(menu.custom_minimum_size.x).override_failure_message(why).is_greater_equal(
 			least
 		)
 		assert_float(menu.custom_minimum_size.y).override_failure_message(why).is_greater_equal(
 			least
 		)
-	_pill.set_menu_shown(true)  # What the pause menu row does.
 	for profile: StringName in _every_profile():
 		await _turn(profile)
 		var dp: float = UiScale.base_px_per_dp()
@@ -172,9 +171,10 @@ func test_a_tap_on_the_credits_or_the_power_is_the_pills_and_orders_nothing() ->
 	assert_array(_sent).has_size(1)
 
 
-## The pill stands where `HudCorners.place` puts it: at the safe rect's top, a gap after the Dev
-## button, at least 200 dp wide, clear of the scope's corner; at the six sizes of ScreenSizes.ALL,
-## at every profile of both orientations and after a turn, and the same node in both orientations.
+## The pill stands where `HudCorners.place` puts it: in the safe rect's top corner (P124 took the
+## Dev stack away), at least 200 dp wide, clear of the scope's corner; at the six sizes of
+## ScreenSizes.ALL, at every profile of both orientations and after a turn, and the same node in
+## both orientations.
 func test_the_pill_takes_its_rect_from_the_layout_at_every_size_and_after_a_turn() -> void:
 	await _open()
 	var seen: EconomyPill = _pill
@@ -187,9 +187,8 @@ func test_the_pill_takes_its_rect_from_the_layout_at_every_size_and_after_a_turn
 		await place.call()
 		var dp: float = UiScale.base_px_per_dp()
 		var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 12.0)
-		var dev: Rect2 = _rect("DevButton")
 		var rect: Rect2 = _pill.get_global_rect()
-		var why: String = "%s: pill %s, safe %s, dev %s" % [get_window().size, rect, safe, dev]
+		var why: String = "%s: pill %s, safe %s" % [get_window().size, rect, safe]
 		assert_object(_node("EconomyPill")).is_same(seen)
 		assert_bool(_pill.visible).override_failure_message(why).is_true()
 		assert_bool(safe.grow(0.5).encloses(rect)).override_failure_message(why).is_true()
@@ -197,16 +196,15 @@ func test_the_pill_takes_its_rect_from_the_layout_at_every_size_and_after_a_turn
 			safe.position.y, 0.5
 		)
 		assert_float(rect.position.x).override_failure_message(why).is_equal_approx(
-			dev.end.x + 8.0 * dp, 1.0
+			safe.position.x, 1.0
 		)
 		assert_float(rect.size.x).override_failure_message(why).is_greater_equal(200.0 * dp - 0.5)
 		assert_float(rect.end.x).override_failure_message(why).is_less_equal(
 			safe.end.x - 64.0 * dp + 0.5
 		)
-		assert_bool(rect.intersects(dev)).override_failure_message(why).is_false()
 		var planned: Rect2 = (
 			HudCorners
-			. place(safe, HudLayout.is_portrait(), dp, false, _shown_like_the_pill(dp))[
+			. place(safe, HudLayout.is_portrait(), dp, false, _shown_like_the_pill())[
 				HudCorners.PILL
 			]
 		)
@@ -240,38 +238,9 @@ func test_the_pills_parts_are_inside_it_clear_of_each_other_and_the_glyphs_24_dp
 			assert_float(size.y).override_failure_message(small).is_greater_equal(least)
 
 
-## In a release build the Dev button is hidden and the Surrender button (P90) is the first of the
-## top-left row: the pill starts a gap after it, clear of it, at every profile and after a turn.
-func test_without_the_dev_button_the_pill_starts_after_the_surrender_button() -> void:
-	await _open()
-	(_node("DevButton") as Control).visible = false
-	for profile: StringName in _every_profile():
-		await _turn(profile)
-		get_viewport().size_changed.emit()  # Measured again, as a release build measures it.
-		await await_idle_frame()
-		await await_idle_frame()
-		var surrender: Rect2 = _rect("SurrenderButton")
-		var pill: Rect2 = _pill.get_global_rect()
-		var why: String = "%s: pill %s, Surrender %s" % [profile, pill, surrender]
-		assert_bool(surrender.intersects(pill)).override_failure_message(why).is_false()
-		assert_float(pill.position.x).override_failure_message(why).is_equal_approx(
-			surrender.end.x + UiScale.dp(8.0), 1.5
-		)
-		assert_float(pill.position.y).override_failure_message(why).is_equal_approx(
-			(
-				SafeAreaMargin
-				. rect_inside(get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP)
-				. position
-				. y
-			),
-			0.5
-		)
-
-
-func _shown_like_the_pill(dp: float) -> HudCorners.Shown:
+func _shown_like_the_pill() -> HudCorners.Shown:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	shown.left_taken = (_node("DevButton") as Control).get_combined_minimum_size().x / dp
-	shown.pill_width = _pill.get_combined_minimum_size().x / dp
+	shown.pill_width = _pill.call("_wanted_dp")  # What `place` asks the layout for, in dp.
 	return shown
 
 
