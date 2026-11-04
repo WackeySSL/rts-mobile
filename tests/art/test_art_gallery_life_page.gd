@@ -54,7 +54,7 @@ func test_the_rows_are_the_atlases_then_every_kind_of_the_table_in_order() -> vo
 		want.append("Row" + String(row["kind"]).to_pascal_case())
 	var rows: Node = gallery.get_node("LifePage/Scroll/Rows")
 	assert_array(rows.get_children().map(_node_name)).is_equal(want)
-	assert_int(want.size()).is_equal(23)
+	assert_int(want.size()).is_equal(29)
 	for row: Node in rows.get_children():
 		assert_array(row.get_children().map(_node_name)).is_equal(["Grass", "Sand"])
 		assert_that((row.get_node("Grass") as ColorRect).color).is_equal(
@@ -125,9 +125,9 @@ func test_each_kind_shows_its_frames_at_the_three_zooms_on_both_grounds() -> voi
 					assert_float(rect.position.y + rect.size.y).is_equal(tallest)
 					textures[texture] = true
 					shown += 1
-	# 24 frames of the life atlas and 12 of the strike atlas, each on two grounds at three zooms.
-	assert_int(shown).is_equal(36 * 2 * 3)
-	assert_int(textures.size()).is_equal(36)
+	# 36 frames of the life atlas and 12 of the strike atlas, each on two grounds at three zooms.
+	assert_int(shown).is_equal(48 * 2 * 3)
+	assert_int(textures.size()).is_equal(48)
 
 
 ## Everything is inside its half, clear of the corner buttons and of the other frames and rows, at
