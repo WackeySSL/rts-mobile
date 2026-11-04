@@ -24,7 +24,7 @@ func test_a_site_throws_a_spark_every_spark_ms_and_a_finished_building_none() ->
 	_set_site(1, 500)
 	var born: Array[int] = _births(START, START + 60)
 	assert_array(born).is_equal(_expected_births(1, START, START + 60))
-	assert_int(born.size()).is_between(19, 21)  # Every 200 ms = 3 ticks, 60 ticks.
+	assert_int(born.size()).is_equal(20)  # Every 200 ms = 3 ticks, over 60 ticks.
 	assert_int(_expected_births(2, START, START + 60).size()).is_equal(0)  # Building 2 is done.
 
 
@@ -53,6 +53,28 @@ func test_the_spark_stands_on_the_footprint_lifted_and_is_the_third_kind() -> vo
 	assert_int(ring.quad_count()).is_equal(0)  # Planned by the frame, not the tick.
 
 
+func test_the_two_axes_of_the_spot_have_their_own_hash() -> void:
+	_open([[1, 4, 4]])
+	_set_site(1, 500)
+	var snap: MatchSnapshot = _runner.snapshot
+	var row: int = snap.index_of(1)
+	var apart: int = 0
+	var seen: int = 0
+	for tick: int in range(START, START + 90):
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		for slot: int in _ring().count():
+			var ground: Vector2i = IsoProjection.px_to_ground(
+				_ring().puff_at(slot) + Vector2(0.0, _life.spark_lift_px)
+			)
+			seen += 1
+			# One hash for both axes would put every spark on the footprint's diagonal.
+			apart += (
+				1 if absi((ground.x - snap.pos_x[row]) - (ground.y - snap.pos_y[row])) > 40 else 0
+			)
+	assert_int(seen).is_greater(0)
+	assert_int(apart).is_greater(seen / 2)
+
+
 func test_the_spark_flies_up_fades_and_is_drawn_after_the_clouds() -> void:
 	_open([[1, 4, 4]])
 	_run(START - 1, START)  # The styles are read at the first tick; no site yet.
@@ -61,6 +83,8 @@ func test_the_spark_flies_up_fades_and_is_drawn_after_the_clouds() -> void:
 	_frame(START, 0.0)
 	var low: Rect2 = ring.quad_rect(0)
 	assert_float(ring.quad_alpha(0)).is_equal_approx(DATA.spark_alpha, 0.001)
+	_frame(START + 4, 0.0)  # 267 ms: alive, a life of `spark_ms` (200) would be over.
+	assert_int(ring.quad_count()).is_equal(1)
 	_frame(START + 2, 0.0)  # 133 ms of 300.
 	assert_float(ring.quad_alpha(0)).is_less(DATA.spark_alpha)
 	assert_float(ring.quad_rect(0).position.y).is_less(low.position.y)
@@ -98,6 +122,7 @@ func test_reduced_keeps_the_sparks_and_drops_the_muzzle_smoke_and_the_exhaust() 
 	assert_array(_births(START, START + 30)).is_equal(_expected_births(1, START, START + 30))
 	assert_int(_ring().count()).is_greater(0)
 	_life.reduced = false
+	_air._process(0.0)  # The layer sees the full effects again.
 	_ring().add(PuffFx.Style.MUZZLE, Vector2.ZERO, LifeClock.tick_ms(START + 30), 0)
 	_ring().add(PuffFx.Style.EXHAUST, Vector2.ZERO, LifeClock.tick_ms(START + 30), 0)
 	var sparks: int = _sparks_alive()

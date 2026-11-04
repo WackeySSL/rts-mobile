@@ -192,6 +192,13 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"exhaust_grow",
 		"exhaust_alpha",
 		"puff_idle_ms",
+		# P150: the spark block (its values are pinned in test_site_sparks.gd).
+		"spark_ms",
+		"spark_life_ms",
+		"spark_lift_px",
+		"spark_rise_px",
+		"spark_grow",
+		"spark_alpha",
 	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))

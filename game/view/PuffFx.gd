@@ -88,7 +88,7 @@ func build(snap: MatchSnapshot, sort: WorldSort) -> void:
 		_exhaust.append(found)
 
 
-## Takes the ring's size and the looks of the two styles from `life`.
+## Takes the ring's size and the looks of the three styles from `life`.
 func read(life: LifeSettings) -> void:
 	ring.size_to(life.puff_slots)
 	ring.set_style(

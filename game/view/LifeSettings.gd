@@ -99,8 +99,9 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 
 ## `GroundFx` dust, the rest of its numbers (P138): a puff is born `dust_back_milli` behind the
 ## vehicle's position, along the way it came, grows from `dust_grow_from` to `dust_grow_to` times
-## the frame's size and fades from `dust_alpha` to 0 in its life. A `dust_every_milli` or
-## `dust_slots` of 0 turns the dust off.
+## the frame's size and fades from `dust_alpha` to 0 in its life. A `dust_every_milli` of 0 turns
+## the dust behind vehicles off (the puff at a factory's exit stays, P150); a `dust_slots` of 0
+## turns both off.
 @export var dust_back_milli: int = 300
 @export var dust_alpha: float = 0.8
 @export var dust_grow_from: float = 0.6
