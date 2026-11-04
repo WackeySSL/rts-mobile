@@ -20,9 +20,9 @@ a hit ring of 16; §8, what `reduced` keeps) and ADR 0023 §5 (the new sheet fie
 plan's "no camera shake" line stays as it is.
 
 Status note (2026-11-04, P26au docs; on `main` at 48e7415): dated notes at the end of §4, §5, §7,
-§12 and §13 (with pointers in §6 and §10) record what P163 (#306), P163b (#307), P161 (#308) and
-P148 (#309) built, what P148b (#310), P158a, P158b and P166 hold on their branches, and the
-decisions taken for them by Michael and the lead. No accepted text changed.
+§12 and §13, with pointers in §6 and §10, record what was built and decided. P163 (#306), P163b
+(#307), P161 (#308) and P148 (#309) are merged. P148b (#310), P158a, P158b and P166 are on their
+branches. The decisions are Michael's and the lead's. No accepted text changed.
 
 It amends ADR 0028: §2 (the thresholds, one list per kind), §3 (what `dmg1` and `dmg2` show, the
 `Anim` at stage 2, the damage points, and the second amendment's open point on the seam, §11 here),
@@ -237,20 +237,25 @@ owner's team colour.
   our own models; flames stay yellow-white and smoke grey, outside both factions' key bands.
 
 Notes (2026-11-04, P26au docs; the text above stays as accepted):
-- (Michael, 2026-11-04, approved after the P158a and P158b sheets) **SKADET may reach past the top
-  half of the body's rows, at most 80 %.** This applies where the team colour or blown glass sits
-  low, so that the SKADET key share of 55-85 % (§5) holds. It replaces "at most half" in "Depth on
-  the body" above. Measured: the Redoubt (`defence_turret`) 76 %, the Rigworks (`headquarters`) and
-  the Heavy Yard (`vehicle_factory`) 69 % (P158a); the Lumen Accord's factory 72 %, its barracks and
-  defence 64 % (P158b).
+- (Michael, 2026-11-04) **The look of both factions' buildings is approved**, from the sheets of
+  P158a and P158b (intact, SKADET, KRITISK).
+- (Michael, 2026-11-04) **SKADET may reach past the top half of the body's rows, at most 80 %.**
+  It replaces "at most half" in "Depth on the body" above. Two things push the cut down: a team
+  colour that sits low (a change there keeps the SKADET key share of 55-85 %, §5) and a blown pane
+  that sits low (its outline sets the cut). 13 of the 16 pass the half. The deepest: the Redoubt
+  (`defence_turret`) 76 %, the Rigworks (`headquarters`) and the Heavy Yard (`vehicle_factory`)
+  69 % (P158a); the Motor Works (`renew_factory`) 72 %, the Crew Hall (`renew_barracks`) and the
+  Rail Battery (`renew_defence`) 64 % (P158b).
 - (P158a) **The Derrick League has no glass.** A blown pane there is a `hole` box over a `lamp`
   window. `blow` is used by the Lumen Accord only.
 - (P158a) **No brick.** The table's "brick" for the Turbine Hall (`power_plant`) and the Heavy Yard
   (`vehicle_factory`) is concrete in the art, because ADR 0023 dropped brick. Both follow the
   concrete rule; the brick line of the material rules has no building.
-- (P158a, P158b) **§10's first fallback** ("SKADET within the top 35 %") can no longer apply to the
-  Rigworks, the Heavy Yard or the Redoubt without breaking the key-share band. For them only the
-  second fallback (tighter KRITISK patches) is left.
+- (P158a, P158b) **§10's first fallback** ("SKADET within the top 35 %") can no longer apply to many
+  of the sixteen without breaking the key-share band. A raster probe on the intact hulls puts at
+  least nine above the band even if every key pixel in the top 35 % went, among them the Rigworks,
+  the Heavy Yard, the Redoubt, the Crew Hall and the Rail Battery. For them only the second fallback
+  (tighter KRITISK patches) is left.
 - (P158a and P158b together, on `claude/p158b-renew-damage` at 35f4954, not yet merged) **The page
   with all 16 buildings** is measured: cross-faction 3550 (3558 in the other key triads), Derrick
   League mirror 3008, Lumen Accord mirror 3140. All are within 3584, so no fallback of §10 is
@@ -336,7 +341,7 @@ above stays as accepted):
   `petals <part> <material> <cx> <cy> <z> <diameter> <n> <tilt>`. It is allowed only in `hull` and
   `anim`.
 - (P163b) **`rod` takes any material**, not only `rebar` and `beam`, **and casts no shadow.** Both
-  are the generator's own decisions; this ADR decided only "no outline".
+  are the generator's own decisions; this ADR decided "no outline" and named `rebar` and `beam`.
 - (P163b) **`taper` is refused** on `rod`, `broken` and `petals`.
 
 ### 6. Particles per stage (P148, reworked again)
@@ -525,8 +530,9 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms"); its "ruin from 900 ms" bec
   `DAMAGE_SCALE` without Michael, never a second page (a draw call and about 16 MB more), never the
   512 rows above 3584 that ADR 0027 §4 keeps for later types. The page's GPU memory stays under ADR
   0023 §2's 64 MB.
-- (2026-11-04, P26au docs) P158a and P158b measured the page with all 16 buildings at 3550, within
-  3584, and fallback (1) can no longer apply to three buildings; see the notes at the end of §4.
+- (2026-11-04, P26au docs) P158a and P158b, not yet merged, measured the cross-faction page with all
+  16 buildings at 3550, within 3584. Fallback (1) can no longer apply to many buildings; see the
+  notes at the end of §4.
 
 ### 11. The seam of the trimmed body and its patch (replaces ADR 0028 §3's second amendment's open point)
 ADR 0028 §3's second amendment asked for "at least 1 texel" of overlap and named "the `floor` of the
@@ -602,17 +608,19 @@ too; the text above stays as accepted). P148b is on `claude/p148b-crater-sources
 - (P148b) **A flame and its glow are born together**, on one grid per point of
   `ceil(damage_emit_ms[fire] x 15 / 1000)` ticks (8). The glow lives one flame cycle, about 533 ms,
   not the fire's 700 ms, so it is steady: it never pulses and never overlaps the next one. This
-  replaces "`glow` the life of its fire" above. The fire now comes every 533 ms, not every 500.
-- (P148b) **The jet rides the fire's cycle** at both stages (life 600 ms), so the SKADET and
-  KRITISK glows of a gas point follow each other with no gap. `damage_emit_ms[jet]` is removed;
-  "`jet` 300 / 600" above keeps only its life.
+  replaces "`glow` the life of its fire" above. A building's fire now comes every 533 ms, not every
+  500; a vehicle's fire keeps its 500 ms cycle.
+- (P148b) **A gas point keeps the fire's grid at both stages.** Its SKADET `jet` (life 600 ms) is
+  born on that grid, as its KRITISK fire is, so the two glows follow each other with no gap.
+  `damage_emit_ms[jet]` is removed; "`jet` 300 / 600" above keeps only its life.
 - (P148b) **The rings are planned at alpha at most 0.98** (`AirFx.MAX_PLAN_ALPHA`), so the view
   never draws time at or past a tick that is not yet published (a glow vanished at alpha 1.0 while
   the worker held a tick).
 - (P148) **A vehicle's fire has no glow.** It keeps ADR 0028 §6's looks.
 - (P148) **The 80-slot damage ring** keeps every soot puff for 15 of the 56 id sets of three
-  buildings at KRITISK. In the other sets it peaks at 81-88 puffs and loses only soot at 80 % or
-  more of its 2000 ms life. That is §6's "the oldest, most faded smoke goes".
+  buildings at KRITISK (P148 as merged). In the other sets the demand peaks at 81-88 puffs, and
+  the ring loses only soot at 80 % or more of its 2000 ms life. That is §6's "the oldest, most faded
+  smoke goes". P148b's shorter glow lowers the demand (not measured).
 - (P148b) **The crater's ground point** is each sheet point's x on the footprint centre line. A
   sheet point is a 2D screen offset with no height of its own, so its "ground x and y" (§6) cannot
   be read from it. A type without points uses the footprint centre.

@@ -336,8 +336,9 @@ Status (2026-11-04, P26au docs; on `main` at 48e7415; the rows above stay as wri
   `claude/p148b-crater-sources`), and the steady glow and P148's round-2 review nits went with them.
   P165 calls P148b's `AirFx.add_crater_source` and `AirFx.end_crater_sources_on`, so it waits for
   P148b too. P166's branch (`claude/p166-hit-fx`, no PR yet) is built on P148b's.
-- **P148's HOW_TO_PLAY text** is a separate Buildings row, "Watch a damaged building burn", not a
-  clause of another row.
+- **P148's HOW_TO_PLAY text:** its Buildings text is a separate row, "Watch a damaged building
+  burn", not a clause of another row; its Units text is a clause of "Watch a unit drive or fight", as
+  planned.
 - What P148, P148b, P161, P163, P163b, P166, P158a and P158b decided is in ADR 0029's dated notes
   (§4, §5, §7, §12, §13).
 
