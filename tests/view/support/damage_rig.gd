@@ -15,6 +15,7 @@ const OVERLAP_PX: int = 4
 const ART_ID: StringName = &"barracks"
 const UNIT: String = "barracks"
 const ANIM_FRAMES: int = 4
+# TODO(P163): use IsoSheetDef and its real `anim_kritisk` field, and delete kritisk_sheet.gd.
 const KritiskSheet: GDScript = preload("res://tests/view/support/kritisk_sheet.gd")
 
 

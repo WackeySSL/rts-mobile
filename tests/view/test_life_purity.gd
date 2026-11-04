@@ -46,6 +46,7 @@ const LIFE_FUNCTIONS: Dictionary[String, Array] = {
 		"_play_anims",
 		"_note_stages",
 		"_queue_stage",
+		"_stage_at",
 		"_write_stages",
 		"_dress_patch",
 		"remembered_stage",
