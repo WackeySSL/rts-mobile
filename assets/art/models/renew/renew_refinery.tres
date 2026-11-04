@@ -53,7 +53,7 @@ prims = PackedStringArray(
 "box hull mint -0.1 1.36 0.06 0.05 0.16 0.02",
 "box hull mint 0.1 1.36 0.06 0.05 0.16 0.02",
 "box hull mint 0.3 1.36 0.06 0.05 0.16 0.02",
-"broken hull ceramic 0.4 -0.2 0.86 0.3 0.2 0.12 teeth=3 low=0.3 group=deb damage=1",
+"broken hull ceramic -0.7 0.95 0.86 0.3 0.2 0.12 teeth=3 low=0.3 group=deb damage=1",
 "petals hull ceramic -0.85 -0.85 0.94 0.6 7 50 damage=2",
 "petals hull ceramic 0.85 -0.85 0.94 0.6 6 40 damage=2",
 "broken hull glass 0 -0.85 0.94 0.6 0.6 0.32 teeth=6 low=0.3 damage=2",

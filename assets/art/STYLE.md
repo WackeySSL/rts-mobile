@@ -1055,25 +1055,36 @@ which is the wall with the door.
   page shows its frames, the head's 16 directions among them.
 - **Damage stages (P158b, ADR 0029 sections 3 to 5).** Each of the eight has `dmg1` (SKADET) and
   `dmg2` (KRITISK) from its model, never by hand: SKADET blows the panes (`blow`, a dark ring or
-  band with the frames kept), soots the cap and the thin rings (`char`), tilts a lid or a nacelle
+  band with the frames kept), soots the cap and the thin rings (`char`), tilts or slides a lid or turns a nacelle
   and burns a scorch patch on a team band (a `broken interior` strip laid flat on the wall,
   `damage=1`); KRITISK collapses a part: the hidden group is replaced by a dark `interior` pad on
   the floor below it with jagged `broken` wall stumps, a `slab` chunk and `rebar` or `beam` rods
   that bend, and the wall breach is a larger `broken interior` strip. Per building: the barracks
-  and the headquarters lose the top of their rotunda and drum (the headquarters' mast comes down,
-  `anim_kritisk hide`; the barracks' signal pole stands, `run`), the factory its glass roof (two of
-  three panes at SKADET, all of it with the lid at KRITISK), the Wind Park one tower snapped at a
-  point with its top lying beside it and the other leaning 16 degrees (the rotors are hidden), the
-  Relay Tower its relay house open and its mast gone (the `anim` carries the mast, so it hides),
-  the Blackout Array two pillars snapped and the ring beam lying (the core and its sparks run),
-  the renew refinery one tank torn open as a flower (`petals`), one fallen over its neighbour and
-  one cracked (its steam emitters name `vent1` and `vent2`: the first goes quiet at SKADET, the
-  second at KRITISK), the Lumen defence a bite out of its plinth, a gaping breach and an open lid
-  (two damage points). A key-band wall overlay must stand clear of its prism's box (the painter's
-  order puts a primitive that overlaps the wall's box behind it): lay it 0.01 tile outside the
-  face. Where the team paint sits low on a wall (the barracks, the factory, the Relay Tower), the
-  scorch that brings the key share into 55-85 % and 20-50 % reaches below half the body, so those
-  SKADET patches are deeper than ADR 0029 section 4's half; the measured pages are in the PR.
+  (Crew Hall) and the headquarters (Grid Hub) lose the top of their rotunda and drum (the
+  headquarters' mast comes down, `anim_kritisk hide`; the barracks' signal pole stands, `run`), the
+  factory its glass roof (two of three panes at SKADET, all of it with the lid at KRITISK), the
+  Wind Park one tower snapped at a point with its top lying beside it and the other leaning 16
+  degrees (the rotors are hidden), the Relay Tower its relay house opened (the dome punctured at
+  SKADET goes with the dome at KRITISK) and its mast gone (the `anim` carries the mast, so it
+  hides), the Blackout Array two pillars snapped with their tops lying beside the stumps, the back
+  bar of the ring beam hanging from the left pillar onto a stump and a front bar lying on the
+  floor (the core and its sparks run), the renew refinery two tanks torn open as flowers
+  (`petals`) and the tallest one fallen over its neighbour (its steam emitters name `vent1` and
+  `vent2`: the first goes quiet at SKADET, the second at KRITISK), the Lumen defence a bite out of
+  its plinth, two gaping breaches and an open lid (two damage points on the plinth's visible face).
+  A key-band wall overlay must stand clear of its prism's box (the painter's order puts a
+  primitive that overlaps the wall's box behind it): lay it 0.01 tile outside the face, and turn it
+  with a `turn` move to lie flat on a slanted face.
+  **Depth.** Michael's decision of 2026-11-04: no SKADET cut passes 80 % of the hull's rows
+  (`test_renew_damage.gd` pins it, and that KRITISK is deeper). Measured, cut row over hull rows
+  and what sets it: headquarters 179 / 352 (50.9 %, the blown glass ring of the drum), power 124 /
+  236 (52.5 %, the soot on tower A's ring and nacelle), refinery 158 / 294 (53.7 %, the blown tank
+  glass and the charred ring), strike 216 / 388 (55.7 %, the blown core glass), radar 96 / 160
+  (60.0 %, the blown glass ring of the relay house), barracks 150 / 236 (63.6 %) and defence 66 /
+  104 (63.5 %) and factory 240 / 332 (72.3 %): these three because the team paint sits low on the
+  wall and the scorch patch that brings the key share into 55-85 % reaches it. KRITISK cuts: 280,
+  187, 273, 240, 217, 350, 108 and 80 (headquarters, barracks, factory, refinery, power, strike,
+  radar, defence), none at the foot.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is

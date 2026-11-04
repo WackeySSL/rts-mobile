@@ -557,7 +557,8 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 				. is_false()
 			)
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
-	# The four squads (P139) and the eight animated buildings (P143) are the only models with a pose.
+	# The four squads (P139), the eight animated buildings (P143) and the Lumen Accord buildings with
+	# damage poses (P158b: the defence, the factory, the refinery besides) are the models with a pose.
 	posed.sort()
 	(
 		assert_array(posed)

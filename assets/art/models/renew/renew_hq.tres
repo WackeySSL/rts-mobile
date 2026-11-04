@@ -56,14 +56,14 @@ prims = PackedStringArray(
 "box hull slab 0.25 0.25 1.5 0.5 0.4 0.08 group=chunk damage=2",
 "rod hull rebar -0.5 -0.2 1.95 -0.4 -0.1 2.3 3 bend=35 damage=2",
 "rod hull rebar 0.1 -0.5 2.0 0.2 -0.5 2.35 3 bend=-30 damage=2",
-"rod hull titanium 0.7 0.1 1.2 1.2 0.6 1.2 5 damage=2",
-"broken hull interior 1.32 0.0 0.5 0.1 1.5 0.34 teeth=6 low=0.4 damage=2"
+"rod hull titanium 0.6 -0.55 1.2 1.2 -0.25 1.2 5 damage=2",
+"broken hull interior 1.32 0.0 0.58 0.1 1.5 0.28 teeth=6 low=0.4 damage=2"
 )
 poses = PackedStringArray(
 "anim 2",
 "anim 1 beacon turn z 90 -0.3 -0.3 0",
 "dmg1 0 gl_up blow 100",
-"dmg1 0 lid_up turn x -6 0 0 2.12",
+"dmg1 0 lid_up shift 0.09 0.06 0",
 "dmg1 0 tb_up char 100",
 "dmg1 0 c_up1 char 55",
 "dmg1 0 tb_up2 char 100",

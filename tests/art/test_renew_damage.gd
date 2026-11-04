@@ -94,3 +94,13 @@ func test_the_collapse_shows_its_inside_and_no_stage_reaches_the_foot() -> void:
 				. override_failure_message(String(id))
 				. is_true()
 			)
+
+
+func test_skadet_stays_within_80_percent_of_the_hull_and_kritisk_is_deeper() -> void:
+	# Michael's cap of 2026-11-04: no SKADET cut passes 80 % of the hull's rows.
+	for id: StringName in IDS:
+		var sheet: IsoSheetDef = _index.sheet(id)
+		var rows: float = float(sheet.frame_size(&"hull").y)
+		var why: String = "%s SKADET cut %d of %d rows" % [id, sheet.cuts[0], rows]
+		assert_bool(sheet.cuts[0] <= 0.80 * rows).override_failure_message(why).is_true()
+		assert_int(sheet.cuts[1]).override_failure_message(String(id)).is_greater(sheet.cuts[0])
