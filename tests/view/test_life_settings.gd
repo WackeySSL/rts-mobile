@@ -56,6 +56,14 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"emit_flame_to": 0.7,
 	&"damage_writes_per_frame": 60,  # P159: the two stage lists are in test_building_damage.gd.
 	&"damage_building_writes": 20,
+	&"damage_slots": 80,  # P148: the damage particles (the lists are in test_damage_fx_data.gd).
+	&"damage_smoke_cap": 30,
+	&"damage_fire_scale": 1.6,
+	&"damage_vehicle_fire_scale": 0.8,
+	&"damage_rise_px": 28.0,
+	&"damage_spark_rise_px": 14.0,
+	&"glow_weak_alpha": 0.3,
+	&"glow_strong_alpha": 0.55,
 }
 const RECOIL: Dictionary[StringName, float] = {
 	&"tank_cannon": 3.0,
@@ -103,7 +111,10 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"emit_ms",
 		"emit_life_ms",
 		"building_stage_percent",
-		"vehicle_stage_percent"
+		"vehicle_stage_percent",
+		"damage_burning_points",
+		"damage_emit_ms",
+		"damage_life_ms",
 	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))
