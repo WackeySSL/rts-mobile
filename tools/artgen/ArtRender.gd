@@ -70,7 +70,18 @@ static func render(
 				disc.prim = i
 				out.append(disc)
 			continue
+		if prim.shape == &"rod":
+			for stroke: Poly in _strokes(prim, turn, faction):
+				stroke.prim = i
+				out.append(stroke)
+			continue
 		var tops: Array[Poly] = []
+		var sides: Array[Poly] = []
+		var edges: Array[Poly] = []
+		var broken: bool = prim.shape == &"broken"
+		var across: Vector3 = Vector3(0, 1, 0) if prim.size.x >= prim.size.y else Vector3(1, 0, 0)
+		# The side of a tooth quad that faces the camera: its points 2 and 3, or 0 and 1.
+		var near_side: bool = _turn(prim.spin(across), turn).dot(VIEW) > 0.0
 		var faces: Array[ArtMesh.Face] = ArtMesh.faces(prim)
 		var at_rest: Array[ArtMesh.Face] = faces if rest.is_empty() else ArtMesh.faces(rest[i])
 		for k: int in faces.size():
@@ -78,14 +89,32 @@ static func render(
 			var normal: Vector3 = _turn(face.normal, turn)
 			if normal.dot(VIEW) < MIN_FACING:
 				continue
-			var is_top: bool = at_rest[k].normal.z >= 0.5
+			var is_top: bool = at_rest[k].normal.z >= (0.01 if broken else 0.5)
 			var poly: Poly = Poly.new()
 			poly.prim = i
 			for point: Vector3 in face.points:
 				poly.points.append(project(_turn(point, turn)))
 			poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, level(normal)))
 			poly.stroke = _scorch(prim, ArtPalette.edge(faction, prim.material, is_top))
+			if broken:
+				(tops if is_top else sides).append(poly)
+				if is_top:
+					edges.append(_light_edge(prim, poly, near_side, faction))
+				continue
 			(tops if is_top else out).append(poly)
+		if broken:
+			# A concave primitive: the tops far to near (the teeth are in order along its length),
+			# then the sides and the end caps over them, then the light edge of each visible tooth's
+			# front segment, which only the sides would have covered.
+			var along: Vector3 = (
+				Vector3(1, 0, 0) if prim.size.x >= prim.size.y else Vector3(0, 1, 0)
+			)
+			if _turn(prim.spin(along), turn).dot(VIEW) < 0.0:
+				tops.reverse()
+			out.append_array(tops)
+			out.append_array(sides)
+			out.append_array(edges)
+			continue
 		out.append_array(tops)
 	return out
 
@@ -207,6 +236,36 @@ static func _is_behind(a: AABB, b: AABB, cam: Vector3) -> bool:
 		a_first = a_first or b_lo - a_hi >= -1e-4
 		b_first = b_first or a_lo - b_hi >= -1e-4
 	return a_first and not b_first
+
+
+## The light edge of a broken box's tooth quad `top` on its camera-facing side: a 2 px band along
+## that segment, drawn over the sides, in the colour a top edge has.
+static func _light_edge(prim: ArtPrim, top: Poly, near_side: bool, faction: StringName) -> Poly:
+	var edge: Poly = Poly.new()
+	edge.prim = top.prim
+	var p: Vector2 = top.points[2] if near_side else top.points[0]
+	var q: Vector2 = top.points[3] if near_side else top.points[1]
+	var lift: Vector2 = (q - p).normalized().orthogonal()
+	edge.points = PackedVector2Array([p - lift, q - lift, q + lift, p + lift])
+	edge.fill = _scorch(prim, ArtPalette.edge(faction, prim.material, true))
+	return edge
+
+
+## A rod as a quad per segment, `width` px across, in the middle tone of its material, no outline.
+static func _strokes(prim: ArtPrim, turn: Vector2, faction: StringName) -> Array[Poly]:
+	var path: PackedVector3Array = prim.rod_path()
+	var out: Array[Poly] = []
+	for k: int in path.size() - 1:
+		var from: Vector2 = project(_turn(prim.place(path[k]), turn))
+		var to: Vector2 = project(_turn(prim.place(path[k + 1]), turn))
+		if from.is_equal_approx(to):
+			continue
+		var side: Vector2 = (to - from).normalized().orthogonal() * prim.width / 2.0
+		var poly: Poly = Poly.new()
+		poly.points = PackedVector2Array([from + side, to + side, to - side, from - side])
+		poly.fill = _scorch(prim, ArtPalette.tone(faction, prim.material, ArtPalette.LEFT))
+		out.append(poly)
+	return out
 
 
 ## A sphere of diameter `size.x` as three discs, the dark one first and the lit one on top, each a

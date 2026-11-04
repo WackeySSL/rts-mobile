@@ -130,10 +130,12 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
   material (0.45 of its mid tone) on the sides, a thin light edge (the top tone 40 % towards white)
   on top faces, so every top edge catches the light (Spec 02). A team zone's edges are its key
   colours. A sphere is three discs, dark, mid and a lit one up and left, in a ring of 16 points.
+  A `rod` has no outline (generator v5b, below).
 - **Cast shadows** are separate frames (`<id>_shadow_d<NN>.svg`, a building's `<id>_shadow.svg`, one
   per hull frame): every primitive is dropped onto the ground towards **+gx, the south-east of the
   screen** (Spec 02), a point `0.8 x its height` tiles further along +gx (`ArtShadow.REACH`), and
-  a convex solid's shadow is the hull of its dropped corners, a sphere's an ellipse. Black, one
+  a convex solid's shadow is the hull of its dropped corners, a sphere's an ellipse (a `rod`
+  casts none, generator v5b below). Black, one
   polygon per primitive, **35 % as one group** (`<g opacity="0.35">`, so where two overlap the
   shadow is no darker; the group is why a shadow file has a decimal that is an opacity). The light
   does not turn with a unit: the unit is turned first, so every frame's shadow falls to the right.
@@ -322,6 +324,34 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   - **Key share.** `tests/art/artgen_v5_support.gd` rasterises a stage (`Image.load_svg_from_string`)
     and measures its key-band pixels against the intact picture's: SKADET 55 to 85 %, KRITISK 20 to
     50 %; P158a and P158b run it on the real buildings.
+  **Generator v5b** (P163b, ADR 0029 section 5), on crafted models in `tests/art/test_artgen_v5b.gd`;
+  a model that uses none of it gives the same bytes as before:
+  - **`broken <part> <material> cx cy z0 sx sy sz teeth=N low=f`** is a box whose top edge, along
+    its longer horizontal axis, is a zigzag of `N` points (2 to 12, default 5) between `f` (above
+    0, below 1, default 0.5) and the full height, high and low in turn. The heights come from an integer hash
+    of the art id and the line (the inlined djb2 and `_mix` of `blow`; no randomness), so two runs
+    agree and two lines differ. Faces: front and back with the zigzag, two ends, the floor and one
+    quad per tooth segment. It is one concave primitive: its tops are drawn far to near, then the
+    front and the end cap over them, then the light edge of each visible tooth's front segment (no
+    slices, so no seams), and each tooth quad is oriented
+    against a point below its own middle.
+  - **`rod <part> <material> x0 y0 z0 x1 y1 z1 width [bend=deg]`** is one polygon quad `width` art
+    px across (at least 2) in the material's mid tone, with no outline, ordered at its midpoint's
+    depth. `bend` (at most 90 degrees) turns the half towards the second point about the
+    horizontal axis (up x direction from the first point to the second), right-handed, and makes
+    two quads: a rod written bottom to top swings its far half towards +x, one written top to
+    bottom towards -x, and a rod written along +x droops. It takes any material. "No outline" is ADR
+    0029 section 5's decision; "casts no shadow" is the generator's own (a rod has no faces to
+    drop; the Edges and Cast shadows rules above do not apply to it).
+  - **`petals <part> <material> cx cy z diameter n tilt [group=] [damage=]`** expands when the
+    model is read into `n` (3 to 16) thin plates of the material round the opening, each turned
+    outward by `tilt` degrees (above 0, at most 90) about its base, and an `interior` disc 0.03
+    tile tall in the opening: `n` plates and one disc, in exact counts, all in the line's group.
+    Only in `hull` and `anim` (a turret or head would shift the plates' pivots). The primitives
+    of one line have keys of their own for `blow` and the swap test; a message names the `petals`
+    line.
+  - There is no `rubble` helper: a KRITISK patch cannot reach the foot, so a ground heap has no
+    stage to be in.
 - **Item cards** (`ArtIcon`): 128 x 128 px, a dark plate (#1C2127, rim #2F363D, the corners cut), a
   faint 2:1 grid (#2A3036, lines every 16 px through the centre, so the diamonds are 32 x 16), the
   type's default view (`d06`, `d10` for the Lumen Accord, a building's one view, a turret or head
@@ -2465,3 +2495,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.23 (P167, art-director, ADR 0029 sections 6 to 8): six kinds in `fx/life_atlas.svg` (`hit_flash`, `chip`, `dust_cloud`, `ember`, `glow`, `jet`; 12 frames), the canvas grown from 552x320 to 552x536 (below the old content, so no region moved), their `LifeRegions` entries, the table, colours and the Life page rows. |
 | 2026-11-04 | v1.24 (P160, art-director, ADR 0028 section 4): the neutral vehicle damage overlays (`scar1`, `scar2`, `loose`, 8 frames and their sheet in `assets/art/svg/damage/`), `damage`, `hang` and `scar_milli` on the eight vehicle models (their sheets regenerated, every frame byte for byte as before), the Iso page's Damage rows ("Damage overlays"). |
 | 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
+| 2026-11-04 | v1.26 (P163b, art-director, ADR 0029 section 5): generator v5b, the shapes `broken` (teeth) and `rod` (with `bend`) and the helper `petals` ("Generator v5b" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
