@@ -82,7 +82,6 @@ damage_emit_ms = Dictionary[StringName, int]({
 &"ember": 900,
 &"exhaust": 600,
 &"fire": 500,
-&"jet": 300,
 &"smoke": 500,
 &"soot": 400,
 &"spark": 400

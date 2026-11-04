@@ -156,6 +156,25 @@ func test_an_enemy_crater_in_the_dark_puffs_when_reveal_enemies_is_set() -> void
 	assert_int(_styles_at(enemy).size()).is_greater(0)
 
 
+func test_a_new_source_takes_a_free_slot_before_it_ends_the_oldest() -> void:
+	_life.damage_slots = 400
+	var one: PackedVector2Array = PackedVector2Array([Vector2.ZERO])
+	var foots: Array[Rect2i] = []
+	for id: int in 16:
+		foots.append(Rect2i(id * 3, 20, 2, 2))
+		_crater(id + 1, one, 1, START, foots[id])
+	_air.end_crater_sources_on(foots[5])  # One slot frees up.
+	assert_int(_air.damage().crater_count()).is_equal(15)
+	var centre: Vector2 = _crater(30, one, 1, START)
+	assert_int(_air.damage().crater_count()).is_equal(16)  # The free slot, no one was ended.
+	_crater(31, one, 1, START)  # Full: now the oldest (id 1) ends.
+	assert_int(_air.damage().crater_count()).is_equal(16)
+	_run(START + 1, START + 30)
+	assert_int(_styles_at(_centre(1) + Vector2(4.0, 0.0)).size()).is_equal(0)  # Source 1 ended.
+	assert_int(_styles_at(_centre(1) + Vector2(8.0, 0.0)).size()).is_greater(0)  # Source 2 lives.
+	assert_int(_styles_at(centre).size()).is_greater(0)
+
+
 func test_building_on_the_crater_ends_its_source_and_the_puffs_live_out() -> void:
 	var one: PackedVector2Array = PackedVector2Array([Vector2.ZERO])
 	var over: Vector2 = _crater(1, one, 1, START, FOOT)

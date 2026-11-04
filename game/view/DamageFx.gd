@@ -73,7 +73,8 @@ var _life_ms: Dictionary[StringName, int] = {}
 var _glow_ticks: PackedInt32Array = PackedInt32Array()  ## Per Style: ticks a glow lives, 0 if none.
 # The crater sources: a ring of `_c_cap` with up to MAX_POINTS ground offsets each.
 var _c_cap: int = 0
-var _c_head: int = 0
+var _c_next: int = 0  ## The number of the newest source.
+var _c_seq: PackedInt32Array = PackedInt32Array()  ## Per slot: the number of its source.
 var _c_id: PackedInt32Array = PackedInt32Array()
 var _c_start: PackedInt32Array = PackedInt32Array()
 var _c_owner: PackedInt32Array = PackedInt32Array()
@@ -175,7 +176,8 @@ func add_crater_offsets(
 
 
 ## Ends every live crater source whose footprint meets `foot` (tiles): a building was placed on it.
-## Their puffs live out.
+## Their puffs live out. Births stop from the call on: P165 calls it before `AirFx` emits for the
+## tick (before its `ticked` handler), so a source stops in that tick.
 func end_craters_on(foot: Rect2i) -> void:
 	for slot: int in _c_cap:
 		var at: int = slot * 4
@@ -191,8 +193,15 @@ func _take_crater(
 	_make_craters_if_resized(life)
 	if _c_cap == 0:
 		return -1
-	var slot: int = _c_head
-	_c_head = (_c_head + 1) % _c_cap
+	var slot: int = 0  # A free slot, else the oldest source's (the lowest number).
+	for at: int in _c_cap:
+		if _c_n[at] == 0:
+			slot = at
+			break
+		if _c_seq[at] < _c_seq[slot]:
+			slot = at
+	_c_next += 1
+	_c_seq[slot] = _c_next
 	_c_id[slot] = id
 	_c_start[slot] = tick
 	_c_owner[slot] = owner
@@ -229,8 +238,8 @@ func read(life: LifeSettings) -> void:
 	_style(Style.SOOT, K_SOOT, &"soot", Vector2(rise, drift), grown, a, false)
 	_style(Style.CRATER_SMOKE, K_SMOKE, &"crater_smoke", Vector2(rise, drift), grown, a, false)
 	_style(Style.TRAIL, K_EXHAUST, &"exhaust", Vector2(rise, drift), grown, a, false)
-	_style(Style.FIRE, K_FIRE, &"fire", Vector2.ZERO, flame, a, true)
-	_style(Style.FIRE_BIG, K_FIRE, &"fire", Vector2.ZERO, flame * big, a, true)
+	_style(Style.FIRE, K_FIRE, &"fire", Vector2.ZERO, flame, a, true, &"fire")
+	_style(Style.FIRE_BIG, K_FIRE, &"fire", Vector2.ZERO, flame * big, a, true, &"fire")
 	_style(
 		Style.FIRE_CAR,
 		K_FIRE,
@@ -370,7 +379,8 @@ func _glow(style: int, named: StringName, grow: Vector2, a: float) -> void:
 
 
 # Sets style `style`: sprite `kind`, the rate and life of `named`, motion = rise and drift px, the
-# growth, the alpha, and whether it is a flame (it holds its alpha until the next one is born).
+# growth, the alpha, and whether it is a flame (it holds its alpha for a cycle: of `cycle_of`'s grid
+# if that is given, else of its own rate).
 func _style(
 	style: int,
 	kind: int,
@@ -384,8 +394,10 @@ func _style(
 	var every: int = _emit_ms.get(named, 0)
 	_every[style] = every
 	var hold: float = 0.0
-	if flame:  # Holds its alpha for one cycle of the grid (the glow's life).
-		hold = LifeClock.tick_ms(_ticks(_emit_ms.get(cycle_of if cycle_of != &"" else named, 0)))
+	if flame:  # Holds its alpha for one cycle: the grid's (the glow's life), else its own rate.
+		hold = float(every)
+		if cycle_of != &"":
+			hold = LifeClock.tick_ms(_ticks(_emit_ms.get(cycle_of, 0)))
 	ring.set_style(style, kind, float(_life_ms.get(named, 0)), motion.x, motion.y, grow, a, hold)
 
 
@@ -469,7 +481,9 @@ func _make_craters_if_resized(life: LifeSettings) -> void:
 ## Makes the arrays for `want` sources (any change ends them all).
 func _resize_craters(want: int) -> void:
 	_c_cap = want
-	_c_head = 0
+	_c_next = 0
+	_c_seq.resize(want)
+	_c_seq.fill(0)
 	_c_id.resize(want)
 	_c_start.resize(want)
 	_c_owner.resize(want)

@@ -55,6 +55,8 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"quad_rect",
 		"_emit_ambient",
 		"_stage_of",
+		"add_crater_source",
+		"end_crater_sources_on",
 	],
 	# P148: the damage particles' ring and rules, and the ambient emitters beside them.
 	"res://game/view/FxRing.gd":

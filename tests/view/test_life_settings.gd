@@ -89,7 +89,6 @@ const DAMAGE_EMIT_MS: Dictionary[StringName, int] = {
 	&"smoke": 500,
 	&"soot": 400,
 	&"fire": 500,
-	&"jet": 300,
 	&"spark": 400,
 	&"exhaust": 600,
 	&"crater_smoke": 700,

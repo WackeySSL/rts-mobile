@@ -14,6 +14,7 @@ const SPAWNS: Array = [
 ## point (id 8), both gas points and the spark.
 const PINNED: Array[int] = [2, 4, 3, 4, 3, 2, 4, 1]
 const SECOND: float = 15.0
+const ALPHAS: Array[float] = [0.0, 0.5, 0.9, 0.99, 1.0]
 const FLAMES: Array[String] = ["fire", "fire_big", "jet"]
 const GLOWS: Array[String] = ["glow_weak", "glow_strong", "glow_jet"]
 
@@ -195,6 +196,27 @@ func _at(spot: Vector2, names: Array[String]) -> int:
 	return found
 
 
+## The index (0 to 2) of the burning point of building `id` that quad box `rect` is nearest to.
+func _nearest(rect: Rect2, id: int) -> int:
+	var at: Vector2 = Vector2(rect.get_center().x, rect.end.y)
+	var best: int = 0
+	for index: int in 3:
+		if _spot(id, 1 + index).distance_to(at) < _spot(id, 1 + best).distance_to(at):
+			best = index
+	return best
+
+
+## The alpha of the glow quads whose centre lies within 25 px of `spot`.
+func _glow_at(spot: Vector2) -> float:
+	var ring: FxRing = _air.damage().ring
+	var sum: float = 0.0
+	for q: int in ring.quad_count():
+		if ring.quad_kind(q) == DamageFx.K_GLOW:
+			if ring.quad_rect(q).get_center().distance_to(spot) < 25.0:
+				sum += ring.quad_alpha(q)
+	return sum
+
+
 ## Changes building `id`'s hp in the running match without emptying the ring.
 func _live_hp(id: int, percent: int) -> void:
 	Dmg.set_hp(_runner, id, percent)
@@ -224,16 +246,27 @@ func test_each_burning_point_holds_exactly_one_glow_and_a_kritisk_building_three
 				assert_int(glows).override_failure_message(note).is_equal(1)
 		if tick < START + 8:  # Each point starts on its own tick of the first 8.
 			continue
-		for alpha: float in [0.0, 0.5, 0.9]:
+		for alpha: float in ALPHAS:
 			_frame(tick, alpha)
 			var sum: float = 0.0
 			var quads: int = 0
+			var brightest: Array[float] = [0.0, 0.0, 0.0]
 			for q: int in ring.quad_count():
 				if ring.quad_kind(q) == DamageFx.K_GLOW:
 					sum += ring.quad_alpha(q)
 					quads += 1
-			assert_int(quads).is_equal(3)
-			assert_float(sum).is_equal_approx(3.0 * _life.glow_strong_alpha, 0.01)
+				elif ring.quad_kind(q) == DamageFx.K_FIRE:
+					var near: int = _nearest(ring.quad_rect(q), 8)
+					brightest[near] = maxf(brightest[near], ring.quad_alpha(q))
+			var note: String = "tick %d alpha %s" % [tick, alpha]
+			assert_int(quads).override_failure_message(note).is_equal(3)
+			assert_float(sum).override_failure_message(note).is_equal_approx(
+				3.0 * _life.glow_strong_alpha, 0.01
+			)
+			for light: float in brightest:  # A flame holds its full alpha for a whole cycle.
+				assert_float(light).override_failure_message(note).is_equal_approx(
+					_life.emit_alpha, 0.001
+				)
 
 
 func test_a_fire_a_jet_and_their_glow_start_together_at_both_stages() -> void:
@@ -258,6 +291,10 @@ func test_a_fire_a_jet_and_their_glow_start_together_at_both_stages() -> void:
 				for index: int in [1, 2, 3, 4]:
 					flames += _at(_spot(id, index), FLAMES)
 					glows += _at(_spot(id, index), GLOWS)
+				for index: int in [1, 2, 3, 4]:  # And the reverse: a glow has a flame.
+					var lit: Vector2 = _spot(id, index)
+					if _at(lit, GLOWS) > 0:
+						assert_int(_at(lit, FLAMES)).is_greater(0)
 				first_flame = tick if flames > 0 and first_flame < 0 else first_flame
 				first_glow = tick if glows > 0 and first_glow < 0 else first_glow
 			assert_int(first_glow).override_failure_message("id %d" % id).is_equal(first_flame)
@@ -299,6 +336,13 @@ func test_a_gas_point_changing_from_skadet_to_kritisk_never_holds_two_glows_or_n
 		Rig.deliver(_runner, PackedInt32Array(), tick)
 		var note: String = "tick %d" % tick
 		assert_int(_at(spot, GLOWS)).override_failure_message(note).is_equal(1)
+		for alpha: float in ALPHAS:  # And in every frame of the tick, not only at its end.
+			_frame(tick, alpha)
+			(
+				assert_float(_glow_at(spot))
+				. override_failure_message("%s alpha %s" % [note, alpha])
+				. is_greater(0.1)
+			)
 		strong = strong or _at(spot, ["glow_strong"]) > 0
 	assert_bool(strong).is_true()
 	assert_int(_at(spot, ["glow_jet"])).is_equal(0)

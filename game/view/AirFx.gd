@@ -42,6 +42,11 @@ const SALT_EMIT: int = 0x60000000
 const SALT_LOOK: int = 0x68000000
 ## An emitter puffs no faster than this and a puff lives no longer than this (ADR 0027 section 3:
 ## at most four alive from one emitter).
+## The latest fraction of a tick the rings are planned at. A tick that is not published yet is never
+## shown, since `MatchRunner.alpha()` holds 1.0 while a worker tick is awaited and the glow of a
+## flame ends on the next tick. Keep it below `1 - 1 ms / tick_ms(1)` (the glow's 1 ms fade, about
+## 0.985).
+const MAX_PLAN_ALPHA: float = 0.98
 const MIN_EMIT_MS: int = 500
 const MAX_LIFE_MS: int = 2000
 
@@ -132,7 +137,7 @@ func _process(_delta: float) -> void:
 		_make_ring_if_resized()
 		_plan(snap)
 	_ring_quads = 0
-	var now_ms: float = LifeClock.ms(snap, runner.alpha())
+	var now_ms: float = LifeClock.ms(snap, minf(runner.alpha(), MAX_PLAN_ALPHA))
 	for ring: FxRing in _rings:
 		ring.plan(now_ms)
 		_ring_quads += ring.quad_count()

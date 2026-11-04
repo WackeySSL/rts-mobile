@@ -149,7 +149,8 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 ## `damage_slots` puffs. A building at SKADET burns `damage_burning_points[0]` of its damage points
 ## and at KRITISK up to `[1]`; a data test holds each stage's smoke (points x ceil(life / emit))
 ## under `damage_smoke_cap`. `damage_emit_ms` and `damage_life_ms` are keyed by the puff: `smoke`
-## (SKADET), `soot` (KRITISK), `fire`, `jet`, `spark` and `exhaust` (a damaged vehicle's trail). A
+## (SKADET), `soot` (KRITISK), `fire`, `spark` and `exhaust` (a vehicle's trail); `jet` has a life
+## only, since a jet is born with the fire at its point. A
 ## KRITISK fire and its glow are `damage_fire_scale` times their frame, a vehicle's fire
 ## `damage_vehicle_fire_scale`. Smoke and soot rise `damage_rise_px` and drift `emit_drift_px`; a
 ## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET),
@@ -166,7 +167,6 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 	&"smoke": 500,
 	&"soot": 400,
 	&"fire": 500,
-	&"jet": 300,
 	&"spark": 400,
 	&"exhaust": 600,
 	&"crater_smoke": 700,
