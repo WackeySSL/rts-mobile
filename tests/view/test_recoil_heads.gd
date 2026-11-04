@@ -139,7 +139,7 @@ func test_the_kick_of_a_head_that_is_gone_ends_with_it() -> void:
 	_shoot(Rig.REDOUBT, &"redoubt_gun")
 	_frame(Rig.SHOT_TICK, 0.75)
 	assert_int(_layer.kick_count()).is_equal(1)
-	_layer._drop(_layer._entries[Rig.REDOUBT])  # The building left the rows.
+	_layer._drop(_layer._entries[Rig.REDOUBT], _layer.runner.snapshot)  # The building left the rows.
 	_frame(Rig.SHOT_TICK, 0.9)
 	assert_int(_layer.kick_count()).is_equal(0)
 
