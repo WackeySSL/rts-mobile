@@ -236,7 +236,8 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 			# origin, which then lies on the bottom edge (the footprint's centre is the anchor).
 			var slack: Vector2i = Vector2i.ONE if part == ArtPrim.ANIM else Vector2i.ZERO
 			var canvas: Rect2i = Rect2i(Vector2i.ZERO, layout.size + slack)
-			# A damage patch (ADR 0028 section 3) ends above the ground point, which lies below it.
+			# A damage patch (ADR 0029 section 3) of KRITISK reaches past the ground point of the
+			# footprint's centre, so its origin need not lie below it.
 			if part not in ArtModel.DAMAGE_PARTS:
 				(
 					assert_bool(canvas.has_point(layout.origin))
@@ -246,7 +247,7 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 			if part in ArtModel.DAMAGE_PARTS:
 				# Anchored like the body: the back corner, 32 px a tile above the footprint's centre.
 				assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
-				assert_int(layout.origin.y).is_greater_equal(layout.size.y)
+				assert_int(layout.origin.y).is_greater(0)
 			elif part in [&"hull", ArtModel.SHADOW] and model.category == &"bld":
 				# A tile is 128 x 64 px at 2x: the canvas of the body is the footprint wide, the
 				# origin its centre, the anchor the diamond's back corner 32 x n px above it

@@ -11,13 +11,14 @@ extends GdUnitTestSuite
 const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## The pages of the committed sheets, px tall (4096 wide), with the squads' walk and idle frames
 ## (P139; before them the pages were 2682, 2206 and 2226) and the buildings' `anim` frames (P143;
-## before them 3066, 2524 and 2624): P153 and P154 update these in the PR that changes them. The
-## cross-faction page is 3266 for the default pair (Signal and Arktisk, the key triads) and 3286
-## for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that much); a mirror page can differ too:
-## Derrick's is 2702 when a player wears Signal, its key triad (the default match), 2698 when
-## neither does (the slot names, which break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 3266
-const TODAY_MIRROR_DERRICK: int = 2702
+## before them 3066, 2524 and 2624) and the Derrick League's damage patches at 75 % (P158a, ADR
+## 0029; the Lumen Accord's follow in P158b; before them 3266, 2702 and 2894): P153 and P154 update
+## these in the PR that changes them. The cross-faction page is 3402 for the default pair (Signal
+## and Arktisk, the key triads) and 3402 for Karmin and Kobolt (`OTHER_TRIADS_PX` allows 40 more);
+## a mirror page can differ too: Derrick's is 3008 for the default match and for other triads alike
+## (the slot names, which break ties between frames of one height, order the shelves).
+const TODAY_CROSS: int = 3402
+const TODAY_MIRROR_DERRICK: int = 3008
 const TODAY_MIRROR_LUMEN: int = 2894
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (

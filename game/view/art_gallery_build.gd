@@ -11,7 +11,11 @@ extends "res://game/view/art_gallery_iso.gd"
 ## faction's default view; a defence's head faces the tank in front of it. The faction's emblem sits
 ## left of the item card. A building with an `anim` part gets an `Anim` sprite after its `Hull` that
 ## plays the part's frames, one every `anim_ms`, written only when the frame changes (P143; the game
-## draws it with P144). Built on first show; view-only.
+## draws it with P144). The Stage button steps the buildings through their damage stages (P158a,
+## ADR 0029): intact, SKADET (under 67 %) and KRITISK (under 34 %). A stage shows the body from
+## its cut row down, with the stage's patch (`Damage`) over it, as the game does (P159): the `Anim`
+## runs at SKADET and at KRITISK where the sheet's `anim_kritisk` says so, and a defence's `Head`
+## stays. Built on first show; view-only.
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
@@ -38,9 +42,13 @@ const SHADOW_Z: int = -1
 const GAP_PX: float = 16.0
 const EMBLEM_PX: float = 72.0  ## The faction's emblem, left of the item card.
 const TITLE_WIDTH_PX: float = 460.0  ## Clear of the emblem.
+const STAGE_NAMES: Array[String] = ["intact", "SKADET (under 67 %)", "KRITISK (under 34 %)"]
+const STAGE_BUTTON_RECT: Rect2 = Rect2(456.0, 100.0, 300.0, 56.0)  ## Under the title.
 
 var atlas: IsoAtlas = IsoAtlas.new()  ## The bake of the building shown; empty before the first.
 var _emblem: TextureRect = null
+var _stage_button: Button = null
+var _stage: int = 0  ## 0 intact, 1 SKADET, 2 KRITISK: for every building the page shows.
 var _plays: Array[AnimPlay] = []  ## The `Anim` sprites of the page's scenes.
 var _clock_ms: float = 0.0
 
@@ -119,6 +127,21 @@ func _build_ui() -> void:
 	_emblem.offset_top = 24.0 + (ICON_PX - EMBLEM_PX) / 2.0
 	_emblem.offset_bottom = _emblem.offset_top + EMBLEM_PX
 	add_child(_emblem)
+	_stage_button = Button.new()
+	_stage_button.name = "Stage"
+	_stage_button.position = STAGE_BUTTON_RECT.position
+	_stage_button.size = STAGE_BUTTON_RECT.size
+	_stage_button.custom_minimum_size = STAGE_BUTTON_RECT.size
+	_stage_button.text = STAGE_NAMES[0]
+	_stage_button.pressed.connect(_next_stage)
+	add_child(_stage_button)
+
+
+## The next stage (intact after KRITISK) for every building the page shows.
+func _next_stage() -> void:
+	_stage = (_stage + 1) % STAGE_NAMES.size()
+	_stage_button.text = STAGE_NAMES[_stage]
+	_fill()
 
 
 ## The building at `_index`: its atlas, then a section for each zoom and triad.
@@ -256,6 +279,7 @@ func _scene_rig(
 	rig.name = rig_name
 	rig.position = _px(milli, zoom)
 	var hull_dir: int = -1 if sheet.category == &"bld" else dir
+	var stage: int = BuildingDamage.picture(sheet, _stage) if sheet.category == &"bld" else 0
 	for part: StringName in [&"shadow", &"hull", &"turret", &"head"]:
 		if not sheet.has_part(part):
 			continue
@@ -266,17 +290,60 @@ func _scene_rig(
 		sprite.region_enabled = true
 		sprite.centered = false
 		sprite.region_rect = Rect2(atlas.region(sheet.art_id, part, frame, triad))
-		sprite.scale = Vector2.ONE * BASE_SCALE * zoom / atlas.bake_scale()
-		sprite.offset = -Vector2(sheet.origin(part)) * atlas.bake_scale()
+		_size_sprite(sprite, sheet, part, zoom)
 		if part == &"shadow":
 			sprite.z_index = SHADOW_Z
 		if part in [&"turret", &"head"]:
 			var mount_dir: int = 6 if sheet.category == &"bld" else dir
 			sprite.position = sheet.mount(mount_dir) * BASE_SCALE * zoom
+		if part == &"hull" and stage > 0:
+			_trim_to_cut(sprite, sheet.cuts[stage - 1], sheet.frame_size(&"hull").y)
 		rig.add_child(sprite)
-		if part == &"hull" and sheet.has_part(&"anim"):
+		if part == &"hull" and stage > 0:
+			rig.add_child(_damage_sprite(sheet, stage, zoom, triad))
+		if (
+			part == &"hull"
+			and sheet.has_part(&"anim")
+			and not BuildingDamage.anim_hidden_at(sheet, stage)
+		):
 			rig.add_child(_anim_sprite(sheet, zoom, triad))
 	return rig
+
+
+## `sprite` sized from the texels per px the part really has on the atlas, per axis, as
+## `WorldSort.dress` does (the raster rounds each axis; a damage patch is baked at
+## `IsoAtlas.DAMAGE_SCALE`).
+func _size_sprite(sprite: Sprite2D, sheet: IsoSheetDef, part: StringName, zoom: float) -> void:
+	var canvas: Vector2i = sheet.frame_size(part)
+	var per_px: Vector2 = IsoAtlas.texels_per_px(canvas, atlas.part_scale(part))
+	sprite.scale = Vector2(BASE_SCALE * zoom / per_px.x, BASE_SCALE * zoom / per_px.y)
+	sprite.offset = -Vector2(sheet.origin(part)) * per_px
+
+
+## `sprite` (a building's Hull) cut to the rows from the cut `cut` (art px of a canvas `canvas_h`
+## px tall) down, by the rule of `IsoAtlas.DAMAGE_SCALE`: the integer ceil of the cut in texels,
+## and the clip on, so the filter cannot read the row above the new top edge.
+func _trim_to_cut(sprite: Sprite2D, cut: int, canvas_h: int) -> void:
+	var region: Rect2 = sprite.region_rect
+	var rows: int = IsoAtlas.body_cut_row(cut, canvas_h, int(region.size.y))
+	sprite.region_rect = Rect2(
+		region.position.x, region.position.y + rows, region.size.x, region.size.y - rows
+	)
+	sprite.offset.y += rows
+	sprite.region_filter_clip_enabled = true
+
+
+## The `Damage` sprite of a building at `stage`: the stage's patch, anchored as the body is.
+func _damage_sprite(sheet: IsoSheetDef, stage: int, zoom: float, triad: int) -> Sprite2D:
+	var part: StringName = BuildingDamage.PARTS[stage - 1]
+	var sprite: Sprite2D = Sprite2D.new()
+	sprite.name = "Damage"
+	sprite.texture = atlas.texture()
+	sprite.region_enabled = true
+	sprite.centered = false
+	sprite.region_rect = Rect2(atlas.region(sheet.art_id, part, -1, triad))
+	_size_sprite(sprite, sheet, part, zoom)
+	return sprite
 
 
 ## The `Anim` sprite of a building: frame 0 of its `anim` part, at the footprint's centre, playing
@@ -293,8 +360,7 @@ func _anim_sprite(sheet: IsoSheetDef, zoom: float, triad: int) -> Sprite2D:
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.region_rect = Rect2(atlas.frame_region(play.base, 0))
-	sprite.scale = Vector2.ONE * BASE_SCALE * zoom / atlas.bake_scale()
-	sprite.offset = -Vector2(sheet.origin(&"anim")) * atlas.bake_scale()
+	_size_sprite(sprite, sheet, &"anim", zoom)
 	play.sprite = sprite
 	_plays.append(play)
 	return sprite

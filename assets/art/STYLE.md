@@ -247,8 +247,9 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
 - **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4, extended by v5a, P163, ADR
-  0029 section 5; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`, and no
-  building uses the damage poses yet). A building's `poses` gain `dmg1` and `dmg2`, its body at
+  0029 section 5; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`; the Derrick
+  League's eight buildings use the damage poses since P158a, "Damage stages" below, and the Lumen
+  Accord's follow in P158b). A building's `poses` gain `dmg1` and `dmg2`, its body at
   damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
@@ -702,6 +703,67 @@ adds (the body, the shadow and the card do not move).
   (the "radar dish" Michael asked for; not a dome), rotors turn, fans turn; a beacon bar turns. No
   rocket rising from silo doors, no beam from orbit: the launch points are where the Deep Bore's
   lance and the Blackout Array's net will start.
+
+### Damage stages (P158a)
+Plan row P158a gives the Derrick League's eight buildings their two damage stages (ADR 0029 sections
+3 to 5 and 11; the Lumen Accord's eight follow in P158b). **SKADET** (`dmg1`, under 67 %) is small
+breaks, a blown pane as a dark hole, soot over the break and one fire's worth of damage; **KRITISK**
+(`dmg2`, under 34 %) is a part collapsed with the inside showing (dark rooms, slabs, rebar, beams),
+jagged and never down to the foot. There is no ruin picture and no ruin point (Michael, 2026-11-04):
+a building that dies sinks into the crater. Both stages are model poses (`dmg1`, `dmg2` and
+`damage=<k>` primitives, "Damage poses" under "Generated art"), never edited frames; the intact body,
+the shadow, the card and the `anim` frames are byte for byte as before (a test builds each model
+without its damage lines and compares them). Smoke, fire and sparks are never drawn into a sprite
+(P148's particles are).
+- **Material rules.** *Concrete* breaks along its panel joints and slabs: `broken` walls (a zigzag
+  top, teeth and low point from the line's hash) with `rebar` rods standing out of every break and
+  `slab` lumps. *Steel* bends and twists and never shatters: a `turn` of a group about its break, or a
+  `rod` with `bend`, never a hidden piece. *Panes* go first, as `hole` boxes where a lit `lamp`
+  window was (the Derrick League has no glass material, so `blow` is the Lumen Accord's). *Tanks and
+  spheres* get a `hole` and a charred sphere in SKADET and, in KRITISK, a cup with a `petals` flower of
+  plates round a dark disc. *Masts and chimneys* snap at one point and fall one way: the group above
+  the break `turn`s about it and `shift`s down, and the stump keeps a bent rod. The dark inside is
+  `interior` (two flat tones, no light ramp), put where a stage hides a wall or a roof.
+- **Per building** (cut row of the body canvas, SKADET / KRITISK; key share of the intact picture's
+  team pixels; patch px at 2x):
+
+  | Building (art id) | SKADET | KRITISK | Cut | Key share | Patch 1 / 2 |
+  | --- | --- | --- | --- | --- | --- |
+  | Bunkhouse (`barracks`) | the rear ridge cap burnt and broken, a dark ragged hole in the right roof with bare rafters, the aerial bent | the right half fallen in behind broken walls and rebar, the left half stands under its roof, the eave band burnt at the rear | 89 / 178 of 200 | 0.83 / 0.29 | 200x80 / 250x154 |
+  | Redoubt (`defence_turret`) | the front corner of the top slab and its team band torn off over a dark gap, rebar, the aerial bent | the front half gone, the head's pillar stands in a broken shell | 99 / 121 of 130 | 0.68 / 0.39 | 122x98 / 122x98 |
+  | Signal Mast (`fossil_radar`) | a leg of the third tier gone and one buckled, the top tier leaning with its girders burnt | snapped under the top tier, which lies on the ground; the bunker roof torn open, its team band burnt | 121 / 219 of 260 | 0.77 / 0.32 | 104x126 / 250x202 |
+  | Deep Bore (`fossil_strike`) | a leg and a girder of the top tier buckled, the crown scorched, the back team girders burnt | the upper tiers twisted and leaning over buckled legs, the doghouse fallen in, the ring burnt | 189 / 293 of 362 | 0.82 / 0.42 | 240x194 / 378x282 |
+  | Rigworks (`headquarters`) | the control block's roof corner torn open, the skylight blown, the chimney top leaning and burnt, the crane beam scorched | the right half of the hall fallen in, the chimney snapped and lying in the pit | 265 / 328 of 382 | 0.65 / 0.35 | 338x264 / 378x270 |
+  | Turbine Hall (`power_plant`) | the tall stack leaning over a kink, the rear ridge cap burnt, a dark hole in the roof with rafters | the right half of the hall fallen in, the stack toppled across the standing roof | 126 / 221 of 252 | 0.83 / 0.46 | 186x126 / 250x192 |
+  | Cracking Plant (`refinery`) | the back sphere holed and scorched, the column's top and ring burnt, the flare bent | the back sphere torn open as a flower of plates, the front one cracked, the dock roof fallen in, the flare bent double, the column top leaning | 160 / 242 of 294 | 0.81 / 0.40 | 290x144 / 378x226 |
+  | Vehicle Works (`vehicle_factory`) | two glazed risers blown to dark holes, a torn roof sheet over a dark gap, the chimney top leaning, the lintel burnt | the roof fallen in behind the front wall, the chimney snapped and lying across the back | 239 / 309 of 346 | 0.71 / 0.43 | 378x234 / 378x258 |
+
+- **Depth.** The generator takes the whole outline of a hidden or charred primitive into the cut, so a
+  roof or a band that is changed counts down to its eave. SKADET reaches the top half of the body
+  (cut at most 50 %) for the Bunkhouse, the Signal Mast and the Turbine Hall; the Deep Bore (52 %) and
+  the Cracking Plant (54 %) go a little past it, and the Redoubt (76 %), the Rigworks and the Vehicle
+  Works (69 %) further, because their team colour sits low and ADR 0029 section 5's key share (SKADET
+  55 to 85 %) needs a change there. `tests/art/test_fossil_damage_stages.gd` pins the cuts (at most
+  80 %, the half for the three). KRITISK reaches 81 to 93 % (the foot is refused).
+- **Points and emitters.** Two to four typed points each (`damage`, `dmg_spark`, and `dmg_gas` on the
+  Cracking Plant's spheres); the Redoubt has two. Every point has ink under it at both stages and lies
+  above SKADET's cut. The Rigworks' chimney `smoke` names `chtop` (quiet from SKADET), the Turbine
+  Hall's tall stack `smoke` names `st1top` (quiet from SKADET), the Cracking Plant's column `steam`
+  names `coltop` (quiet from KRITISK) and its flare `flame` names `flare` (quiet from SKADET).
+- **The `Anim`.** `anim_kritisk run` for the Turbine Hall (its fans stand on their platform);
+  `hide` for the Signal Mast and the Deep Bore (their carriers fell or are twisted off).
+- **Resolution and cost.** The patches are baked at 75 % of the bake scale (`IsoAtlas.DAMAGE_SCALE`)
+  and a sprite sizes itself per axis from its raster; the body is cut at `IsoAtlas.body_cut_row`
+  with the clip on (ADR 0029 section 11). The sorted world's page at bake scale 1.0 grows from 3266 to
+  3402 px for the cross-faction match and from 2702 to 3008 for a Derrick League mirror (budget 3584;
+  the Lumen Accord's patches come with P158b). 16 patch frames and their imports and 8 sheets were
+  written; every other generated file is byte for byte as before.
+- **The gallery's Build page** has a Stage button: intact, SKADET (under 67 %), KRITISK (under
+  34 %) for the building shown, in all twelve sections, the body trimmed to its cut and the patch as
+  `Damage` after `Hull`; the `Anim` runs at SKADET and at KRITISK by `anim_kritisk`; a defence's
+  `Head` stays.
+- **Originality.** Walls, floors, rebar, beams, a snapped chimney, a torn tank: plain real-world
+  collapse of the building's own materials, in the Derrick League's palette.
 
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
@@ -2496,3 +2558,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.24 (P160, art-director, ADR 0028 section 4): the neutral vehicle damage overlays (`scar1`, `scar2`, `loose`, 8 frames and their sheet in `assets/art/svg/damage/`), `damage`, `hang` and `scar_milli` on the eight vehicle models (their sheets regenerated, every frame byte for byte as before), the Iso page's Damage rows ("Damage overlays"). |
 | 2026-11-04 | v1.25 (P163, art-director, ADR 0029 section 5): generator v5a, the materials `interior`, `slab`, `hole`, `rebar`, `beam`, the move `blow`, a charred team face that leaves the key band, 2 to 4 typed damage points (`damage`, `dmg_gas`, `dmg_spark`) with their ink tests, emitter `group=` and `emitter_quiet`, `anim_kritisk`, the odd-canvas guard and the key-share raster test ("Generator v5a" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
 | 2026-11-04 | v1.26 (P163b, art-director, ADR 0029 section 5): generator v5b, the shapes `broken` (teeth) and `rod` (with `bend`) and the helper `petals` ("Generator v5b" under "Damage poses"); no model uses them, every committed frame and sheet is byte for byte as before. |
+| 2026-11-04 | v1.27 (P158a, art-director, ADR 0029 sections 3 to 5 and 11): the Derrick League's eight buildings in three damage stages (`dmg1` SKADET, `dmg2` KRITISK: `broken` walls, `rod` rebar and beams, `interior` dark rooms, a `petals` flower on the sphere, bent and toppled steel; 2 to 4 typed damage points, `anim_kritisk`, emitter groups), 16 patch frames, the gallery's Stage button for three stages, the page 3266 to 3402 and 2702 to 3008 ("Damage stages" under "Generated art"); the intact bodies, shadows and cards are byte for byte as before. |
