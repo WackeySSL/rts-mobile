@@ -3,18 +3,19 @@
 **In short, for Michael:** a building now shows four pictures as it is shot (whole, damaged,
 critical, ruin) and changes its shape at each, with smoke and fire on top as particles. When it
 dies it flashes, sinks into a dust cloud and leaves a low ruin for 45 seconds that blocks nothing.
-Hits flash and throw chips, a collapse you watch shakes the view a little; four questions at the end.
+Hits flash and throw chips. The camera never shakes (Michael's answer 4).
 
-Status: proposed 2026-11-03 (P26as, architect). Written on `main` at 4b5c26d (#297, P26ar,
-merged); revised 2026-11-04 after the docs lens (on `main` at 321092e, P157 #299 merged). The
-decisions taken from Michael's two reference sheets of 2026-11-03 and from his answer "Kun grafik"
-are his and are not open; the questions at the end are. Plan:
+Status: **accepted 2026-11-04** (Michael's answers: 1 keep 50/25 for vehicles, 2 A, 3 sink,
+4 "Ingen rystelse"; see "Answers" at the end). Proposed 2026-11-03 (P26as, architect) on `main` at
+4b5c26d (#297, P26ar, merged); revised 2026-11-04 after the docs lens (on `main` at 321092e, P157
+#299 merged); the camera shake taken out on acceptance (answer 4). The decisions taken from
+Michael's two reference sheets of 2026-11-03 and from his answer "Kun grafik" are his. Plan:
 `docs/plans/2026-11-03-damage-states.md`, section "ADR 0029 rework" (rows P163-P167, P157c, P158a,
-P158b, the re-scoped P159, P148 and P162). On acceptance the lead's P26at writes the dated notes:
-ADR 0028 (a status note at the top pointing here, and §3's third amendment: the `Anim` at stage 2
-now follows its carrier, §3 here), ADR 0027 §3 (the quota table: damage 24 → 80, the new collapse
-ring 40 and hit ring 16), ADR 0027 §8 (what `reduced` keeps), the unit-life plan's "camera shake"
-out-of-scope line, ADR 0023 §5 (the part name `ruin`).
+P158b, the re-scoped P159, P148 and P162). The acceptance row P26at is folded into P26as: the same
+PR writes the dated notes in ADR 0028 (a status note at the top and notes in §2, §3, §6-§9), ADR
+0027 §3 (the quota table: damage 24 → 80, a collapse ring of 40, a hit ring of 16) and §8 (what
+`reduced` keeps), and ADR 0023 §5 (the part name `ruin`). The unit-life plan's "no camera shake"
+line stays as it is.
 
 It amends ADR 0028: §2 (the thresholds, one list per kind), §3 (what `dmg1` and `dmg2` show, the
 `Anim` at stage 2, and the second amendment's open point on the seam, §12 here), §6 (the
@@ -23,8 +24,8 @@ stands: view and art only, stages as a pure function of hp, the trimmed body wit
 sibling, `DAMAGE_SCALE`, the vehicle overlays, the remembered stage and the ghosts. No rule, state
 column, Command, event or golden hash changes; no file in `game/sim` or `native/` changes.
 
-**Why a new ADR and not a fourth amendment of ADR 0028.** The sheets add three systems ADR 0028
-does not have (a collapse with a ruin, hit feedback, a camera shake), change the meaning of both
+**Why a new ADR and not a fourth amendment of ADR 0028.** The sheets add two systems ADR 0028
+does not have (a collapse with a ruin, hit feedback), change the meaning of both
 stage pictures and the thresholds, and touch ADR 0027 and ADR 0023 too. ADR 0028 already carries
 three dated amendments of its §3; a fourth that rewrites §2, §3, §6, §7 and §8 would leave no
 readable text. ADR 0028 stays the record of the stage mechanics; this ADR is the record of the look.
@@ -60,7 +61,8 @@ readable text. ADR 0028 stays the record of the stage mechanics; this ADR is the
   `BuildingLayer._drop` lays for a building that falls in sight, and `AirFx` with its one ring,
   the emitters' 80 (P145); the damage ring (64, P148, ADR 0028) and the muzzle ring (24, P149) are
   still to come; P152's wrecks (a husk for 20 s) are a later row. `RtsCamera` has no shake; the
-  unit-life plan puts camera shake out of scope ("the camera moves only by the player's hand").
+  unit-life plan puts camera shake out of scope ("the camera moves only by the player's hand"), and
+  this ADR keeps it so (answer 4).
   There is no repair.
 - **Hits in the events** (`Combat.gd`): a shell writes `[IMPACT, projectile id, x, y, target id,
   weapon, 0, 0]` when it lands; a hitscan weapon (speed 0, the `rifle`) writes only `[SHOT, shooter
@@ -92,13 +94,13 @@ owner's team colour.
 6. **Particles per stage** in `AirFx`: a fixed-seed choice of the burning points, at most 30 smoke
    puffs per burning building (15 by default), one shared glow pass, no blur; 240 quads in all.
 7. **Hit feedback:** a white flash of 60 ms at the hit point and 3-5 chips, from IMPACT and from the
-   SHOT of a hitscan weapon. **Only a collapse shakes the camera** (question 4).
+   SHOT of a hitscan weapon. **Nothing shakes the camera** (Michael's answer 4, "Ingen rystelse").
 8. **Collapse** from DIED: flash and explosion 0-250 ms, sink and dust 250-900 ms, the switch to the
    ruin under the dust at 700, the ruin from 900; it lies 45 s, then sinks into the crater.
 9. **Fog:** a collapse and a ruin only for a death the player saw; a ruin is drawn by the fog rule of
    a live building; no ghost of a ruin; nothing is invented for a death not seen.
 10. **Reduced effects** keep every picture, the ruin, the fire, the flash and the dust; they drop
-    sparks, embers, chips, debris, the ruin's smoke and the shake.
+    sparks, embers, chips, debris and the ruin's smoke.
 11. **Budget:** no new draw call; collapse writes inside the buildings' write share; the life
     layers' worst moment stays inside ADR 0027 §9's 0.56 ms; the page stays at most 3584 (§11).
 12. **The seam rule** of the trimmed body and its patch is the one in `IsoAtlas`'s `DAMAGE_SCALE`
@@ -335,7 +337,7 @@ model id and the line, as `LifeClock.mix` does in the view), **generated, never 
 - **Who sees it:** a shown building (`BuildingLayer.is_shown`) or a shown ruin (§9) inside the view
   rect grown by a tile, as ADR 0028 §6; a site never burns; a blackout does not stop a fire.
 
-### 7. Hit feedback and the camera shake
+### 7. Hit feedback (no camera shake)
 - **The flash and the chips** (rule 4): a hit on a building the local player is shown draws a white
   `hit_flash` for `hit_flash_ms` (60) and `hit_chips[0] + LifeClock.pick(hit id, SALT_CHIP,
   hit_chips[1] - hit_chips[0] + 1)` chips (3 to 5, `chip` frames) that fly out from the hit point in
@@ -353,28 +355,19 @@ model id and the line, as `LifeClock.mix` does in the view), **generated, never 
 - **The hit point** is the event's point lifted as `EffectsLayer` lifts its impact puff
   (`SpriteLift`), moved by the hash inside the middle `hit_flash_box_milli` (500, the middle half)
   of the building's `frame_box` and clamped into it, so the flash is on the picture. Hits on units
-  keep today's puff (the sheet is about buildings). A hit that killed (DIED of the same id in the
-  tick) gives the collapse's flash instead (§8).
+  keep today's puff (the sheet is about buildings). A hit whose target has a DIED record in the
+  same tick draws no hit flash and no chips: the death's own effects stand for it (today's DIED
+  burst, and §8's collapse flash once P165 has landed), so the hit feedback needs nothing of the
+  collapse to be right.
 - **A deviation from the sheet, stated** (a lead decision, 2026-11-04): the sheet asks for a white
   flash on the hit building; we draw it **at the hit point**, not as the whole building turning
   white. A whole white building needs a white copy of every body on the page (about 200 to 358
   rows: it does not fit, §11) or a tint or shader on the body, which splits the one-draw-call world
   at every hit building.
-- **The camera shake** (rule 4: only a collapse may shake the camera; question 4 asks whether to
-  have it): a small view-only shake, `collapse_shake_px` (3 base px, divided by the zoom) for
-  `collapse_shake_ms` (300), decaying, its direction per step from `LifeClock.mix` (no randomness),
-  on match time (a pause ends it: the offset goes to 0).
-  - **Which collapses shake** (the recommendation of question 4): every collapse the local player
-    sees (§9: an own building, or an enemy one shown in its DIED tick) whose footprint centre is
-    inside the visible world rect. Own and enemy alike: the kill the player watches is the moment
-    to feel; a shake from off screen reads as a fault (the HUD's alerts are for off-screen losses).
-    One shake at a time: a new collapse restarts it, never adds to it. A site that dies shakes too;
-    a cancelled site does not.
-  - **How:** `CameraShake.gd` (made by `LifeFx`, no scene edit) writes `RtsCamera.offset` only.
-    `position`, the clamp, the zoom snap and the gestures never move. `screen_to_world` and
-    `world_to_screen` add the offset (one term each), so a tap during a shake hits what is drawn.
-    It takes "a collapse started" from `BuildingRuins` (P165), so it agrees with §8 and §9.
-  - **None in reduced effects.** It amends the unit-life plan's "no camera shake".
+- **No camera shake** (Michael, 2026-11-04: "Ingen rystelse"). The sheet's rule 4 ("kun kollaps
+  må ryste kameraet", only a collapse may shake the camera) is a limit, and no shake at all meets
+  it. `RtsCamera` is untouched; the camera moves only by the player's hand, as the unit-life plan
+  has it. A collapse is felt through its flash, its sink and its dust.
 
 ### 8. The collapse at 0 % and the ruin
 Every time is match time from the DIED tick (`LifeClock.tick_ms(died_tick)`), so a pause freezes
@@ -411,7 +404,7 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms, ruin from 900 ms"); its coll
   tick, an enemy one when it is shown), the ruin goes in that tick, with no fade; its puffs live out.
 - **A site that dies** (killed while `build_left > 0`) gets the flash, the explosion and the dust,
   and then the crater; no ruin (it was never built). **A cancelled site** (`DIED` with
-  `Production.DIED_CANCEL_FLAG_AT` set) gets no collapse, no ruin, no shake and no crater (the
+  `Production.DIED_CANCEL_FLAG_AT` set) gets no collapse, no ruin and no crater (the
   view reads no cancel flag today, so a shown cancelled site seems to get a crater now; P165 fixes
   it). The entry remembers whether it was a site at its last tick (ADR 0028 §2 already reads it).
 - **The sort:** the ruin stands at the building's sort key, so a unit that drives over the ruin's
@@ -450,7 +443,8 @@ rule 5 ("explosion 0-250 ms, dust cloud 250-900 ms, ruin from 900 ms"); its coll
   the burning points, the damage smoke (ADR 0028 §7), the hit flash (it says "you hit it"), the
   collapse's flash, explosion and dust (the dust hides the switch).
 - **Dropped:** sparks, embers, hit chips, collapse debris, the ruin's smoke (ambient after the
-  collapse), the camera shake. On the switch the dropped kinds stop being born; live puffs live out.
+  collapse). On the switch the dropped kinds stop being born; live puffs live out. (There is no
+  camera shake to drop, answer 4.)
 
 ### 11. Budget
 - **Draw calls: none new** (§8). ADR 0027's forecast stays 16 (about 22 in the worst moment).
@@ -571,7 +565,6 @@ back `repair_step_ms` later. A ruin never repairs: the row is gone.
     `ruin_from_ms` 900;
   - ruin: `ruin_life_ms` 45000, `ruin_fade_ms` 1500, `ruin_fade_steps` 10, `ruin_fade_dust_puffs` 2,
     `ruin_slots` 16, `crater_scale_milli` {`refinery`: 1500} (others 1000);
-  - shake: `collapse_shake_px` 3.0, `collapse_shake_ms` 300.
   - Data tests hold the order of the times (flash end = sink start; sink end = switch; switch <
     ruin start = dust end; ruin start < ruin life), each `[min, max]` with min at most max, the smoke
     cap for every stage, and one collapse's puffs (1 + 3 + 8 + 8 = 20) at most half of
@@ -585,7 +578,7 @@ back `repair_step_ms` later. A ruin never repairs: the row is gone.
 ## Consequences
 - A building's damage reads in its shape at phone zoom: nicks and blown panes, then a collapsed part
   with its inside showing and fire inside, then a low dark ruin that smokes and glows; a kill is a
-  flash, a sinking building, a dust cloud and a short shake.
+  flash, a sinking building and a dust cloud; the camera never shakes.
 - Still view and art only: no sim change, no golden hash, no new draw call.
 - The generator grows by a pose, two shapes, two helpers, two moves, four materials, an ink test and
   new counts; sixteen buildings get a third picture and their poses are redone (P158's are the
@@ -594,11 +587,10 @@ back `repair_step_ms` later. A ruin never repairs: the row is gone.
   P154 have no room without one of §11's steps.
 - `AirFx` holds five rings (240 quads); the life layers' worst moment is about 0.55 ms, inside ADR
   0027 §9; the smoke is thinner than rule 8's cap allows (15 of 30 per building) to stay there.
-- `RtsCamera` gains an offset term in two functions; the camera still moves only by the player's
-  hand except for a collapse's 300 ms shake.
-- Amends (dated notes by the lead's P26at on acceptance): ADR 0028 (§2 lists, §3 stage meanings,
-  the `Anim` at stage 2 and the seam, §6, §7, §8, §9), ADR 0027 §3 (the quota table) and §8
-  (reduced), the unit-life plan's out-of-scope line (camera shake), ADR 0023 §5 (the part `ruin`).
+- `RtsCamera` is untouched: the camera moves only by the player's hand.
+- Amends (dated notes written with this ADR's acceptance, P26as): ADR 0028 (the top, §2 lists, §3
+  stage meanings, the `Anim` at stage 2 and the seam, §6, §7, §8, §9), ADR 0027 §3 (the quota
+  table) and §8 (reduced), ADR 0023 §5 (the part `ruin`).
 
 ## Alternatives considered
 - **A ruin in the sim** (blocking 45 s): Michael's "Kun grafik"; rejected (§1).
@@ -615,12 +607,14 @@ back `repair_step_ms` later. A ruin never repairs: the row is gone.
 - **Additive glow:** a material, one more draw call; rejected for one alpha glow pass (§6).
 - **30 smoke puffs per building by default:** the rings would pass ADR 0027 §9; rejected for 15
   under the cap of 30 (§6, §11).
-- **Shake on every own loss or on every collapse anywhere:** a shake from off screen reads as a
-  fault; rejected for "seen and on screen" (§7, question 4).
+- **A camera shake for a collapse** (seen and on screen, own or enemy; the proposal's
+  recommendation), for own buildings only, or on every collapse: rejected by Michael (answer 4,
+  "Ingen rystelse").
 - **A second atlas page or the reserve rows:** rejected (§11).
 - **A shared neutral ruin:** saves nothing on the cross page; not a fallback (§11).
 
 ## Questions for Michael
+As asked on 2026-11-03 and 2026-11-04; the answers follow.
 1. **When do vehicles look damaged?** Your sheet is about buildings, which now change at 66 % and
    33 %. Recommended: **vehicles keep 50 % and 25 %**, as today. If they changed at 66 %, most of an
    army would look worn after its first fight, and vehicles have no ruin. Alternative: vehicles
@@ -640,3 +634,14 @@ back `repair_step_ms` later. A ruin never repairs: the row is gone.
    had no shake at all. Recommended: **a small, short shake for every collapse you see on the
    screen, your own buildings and the enemy's**, and none with reduced effects. Alternatives: shake
    only for your own buildings, or no shake at all.
+
+**Answers (Michael, 2026-11-04):**
+1. **Vehicles keep 50 % and 25 %** (the recommendation): `vehicle_stage_percent` [50, 25];
+   buildings change at 66 % and 33 % (`building_stage_percent` [67, 34]).
+2. **A, the ruin at 50 %** (the recommendation), only if the page is still too full after §11's
+   steps 1-3: `IsoAtlas.RUIN_SCALE` starts equal to `DAMAGE_SCALE` (0.75, P157c), and P158b lowers
+   it to 0.5 only if its measured page needs it.
+3. **The ruin sinks into the ground** over 1.5 s with a little dust (the recommendation).
+4. **"Ingen rystelse"**: no camera shake at all, against the recommendation. The shake is taken out
+   of this ADR (§7, §10, §11, §14, the Consequences and P166's row); `RtsCamera` stays untouched;
+   the sheet's rule 4 ("kun kollaps må ryste kameraet") is met by no shake at all.

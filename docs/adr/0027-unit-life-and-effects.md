@@ -20,6 +20,12 @@ buildings and vehicles; building stages are parts, not frames, and spend about 2
 free rows; `reduced` keeps the stages and drops the sparks. P148 is reworked there. No accepted text
 changed.
 
+Status note (2026-11-04, P26as; ADR 0029 accepted 2026-11-04): §3 and §8 carry dated status notes
+for ADR 0029 (buildings shot to pieces): `AirFx`'s damage ring is 80, beside a collapse ring of 40
+and a hit ring of 16; `reduced` keeps the ruin, the fire and the flashes and drops embers, chips,
+debris and the ruin's smoke. No camera shake (Michael's answer 4): the camera still moves only by
+the player's hand. No accepted text changed.
+
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate
    rows go first.
@@ -183,6 +189,14 @@ the oldest puff goes. `AirFx` then holds three rings: emitters 80 (P145), damage
 and exhaust 24 (P149). A vehicle's flame and smoke over a building in front of it is accepted (ADR
 0028 §6); its scar and loose part are sprites on the sorted world's page (ADR 0028 §4), not in
 `LifeFx`.
+
+Status note (2026-11-04, P26as; ADR 0029 §6 accepted 2026-11-04; the table and the note above stay
+as accepted): the quotas of `AirFx` become **emitters 80 (P145), damage 80 (P148; the 24 above and
+ADR 0028's 64 are replaced), muzzle 24 (P149), collapse 40 (P165: the collapse's flash, fire, dust
+and debris and the ruin's fade dust) and hit 16 (P166: the hit flash and its chips)**, 240 quads in
+all, each a ring of its own (`FxRing`) in the same `_draw` from the same texture; when a ring is
+full its oldest puff goes. The ruin's smoke and embers use the damage ring. The sizes hold the life
+layers' worst moment inside §9's 0.56 ms (ADR 0029 §11).
 
 ### 4. Art: the frame axis and the atlas budget
 - **The frame axis** (the generator, art-director): an `ArtPrim` may carry `group=<name>`; an
@@ -364,6 +378,16 @@ as accepted):
   building under 25 % hp hides its `Anim` child, so "building animations (they hold when a building
   is offline or a site)" above and §6's hold rule gain a third case: hidden at stage 2. At stage 1
   it runs; a defence's `Head` stays.
+
+Status note (2026-11-04, P26as; ADR 0029 §10 accepted 2026-11-04; the text and notes above stay as
+accepted):
+- **Reduced** also keeps the ruin and its 45 s, the sink at its end, the fire's glow on the burning
+  points, the hit flash and the collapse's flash, explosion and dust (the dust hides the switch to
+  the ruin). It drops embers, hit chips, collapse debris and the ruin's smoke, besides the sparks.
+- **The thresholds** are one list per kind: `building_stage_percent` ([67, 34]) and
+  `vehicle_stage_percent` ([50, 25]) replace `damage_stage_percent`.
+- **Building animations at stage 2** follow their carrier (ADR 0029 §3, replacing the third case
+  above for stage 2): hidden only where the KRITISK pose has felled the carrier (`anim_kritisk`).
 
 ### 9. Budget and proof
 - **Work:** life costs at most 0.56 ms of main-thread work per frame on the phone card, judged by

@@ -7,10 +7,10 @@ life (ADR 0027); no ROADMAP box, and no row here is on the Phase 3 gate path. Ro
 reworked P148 of `docs/plans/2026-11-02-unit-life.md`; P155 (this plan and ADR 0028) is done on
 `claude/damage-states-plan`; the lead's acceptance row is P26ar.
 
-**Reworked 2026-11-03 by ADR 0029** (`docs/adr/0029-buildings-shot-to-pieces.md`, proposed, P26as,
+**Reworked 2026-11-03 by ADR 0029** (`docs/adr/0029-buildings-shot-to-pieces.md`, accepted 2026-11-04, P26as,
 on `main` at 4b5c26d; revised 2026-11-04 on 321092e), from Michael's reference sheets for buildings that are shot to pieces and his
 answer "Kun grafik": four stages (INTAKT, SKADET, KRITISK, RUIN) at 67 and 34, a whole `ruin` sprite
-after DIED, a collapse, hit feedback and a collapse-only camera shake. The section "ADR 0029 rework"
+after DIED, a collapse and hit feedback; no camera shake (Michael, 2026-11-04). The section "ADR 0029 rework"
 below holds the new and re-scoped rows (P163-P167, P157c, P158a, P158b; P159, P148 and P162
 re-scoped); where it differs from the rows above, it wins. P158 as written is replaced by P158a and
 P158b.
@@ -26,7 +26,8 @@ it view and art, honest to the fog, in both orientations and on the web, inside 
 Repair and healing (no rule in the sim; ADR 0028 §2 says what a repair ADR would decide), stages
 for infantry, a damaged defence head, a damaged shadow or build card, death animations (P152's
 wrecks stay a separate row), sound, camera shake, any sim rule, state or event. (2026-11-03,
-ADR 0029: the collapse at 0 %, the ruin and a collapse-only camera shake are now in scope; repair,
+ADR 0029: the collapse at 0 % and the ruin are now in scope; camera shake stays out (Michael,
+2026-11-04, "Ingen rystelse"); repair,
 sound and any sim rule stay out.)
 
 ## Affected modules
@@ -297,35 +298,35 @@ No new control; wording only, no Teach mark.
 - **P148** adds to both: "A damaged building or vehicle smokes; under a quarter it burns and throws
   sparks (the sparks are off with reduced effects)."
 
-## ADR 0029 rework (2026-11-03, P26as; revised 2026-11-04 after the docs lens)
-Decisions: `docs/adr/0029-buildings-shot-to-pieces.md` (proposed). Base: `main` at 321092e (P157
+## ADR 0029 rework (2026-11-03, P26as; revised 2026-11-04 after the docs lens and on acceptance)
+Decisions: `docs/adr/0029-buildings-shot-to-pieces.md`, **accepted 2026-11-04** (Michael's
+answers: 1 vehicles keep 50/25, 2 A the ruin at 50 % if needed, 3 the ruin sinks, 4 no camera
+shake). Base: `main` at 321092e (P157
 merged as #299). Open at the time of writing: P157b (PR #300 at 1c2a031), P158
 (`claude/p158-building-damage`, 573f720, on hold). Size = production lines (tests, fixtures, models,
 generated frames and SVG not counted: an art row's generated files never count toward the ~400-line
-guide). "At once" = may start the day P26as lands: the rows that start at once do not depend on the
-open questions of ADR 0029.
+guide). "At once" = may start the day P26as (#301) merges.
 
 | Row | Lane | Owner | Title | Size | Depends | HOW_TO_PLAY |
 | --- | --- | --- | --- | --- | --- | --- |
-| P26as | - | architect | docs: ADR 0029 and this section | 0 | P26ar | no |
-| P26at | - | lead | docs: ADR 0029 on acceptance: Michael's answers in it; dated notes in ADR 0028 (top; §3's third amendment: the `Anim` at stage 2 follows its carrier), ADR 0027 §3 (quota table: damage 24 → 80, collapse 40, hit 16) and §8, ADR 0023 §5, the unit-life plan's out-of-scope line | 0 | P26as, the answers | no |
+| P26as | - | architect | docs: ADR 0029, this section and ADR 0029's acceptance (P26at folded in, 2026-11-04): Michael's answers; dated notes in ADR 0028 (top, §2, §3, §6-§9), ADR 0027 (top, §3's quota table, §8) and ADR 0023 §5 | 0 | P26ar | no |
 | P163 | A | art-director | art: generator v5a: the `ruin` pose (`damage=3`, a whole picture cropped to ink, no `anim`, `mount` may move, debris limits, the height refusal, needs `dmg2`), materials `interior`, `slab`, `hole`, `rebar`, `beam`, moves `blow` and `soot`, `char` of key faces out of the band, the counts (2-4 `damage`/`dmg_gas`/`dmg_spark`, 1-3 `ruin`), the ink test for points and emitters, `anim_kritisk`, emitter `group=` and `emitter_quiet`, the odd-canvas refusal, the key-share test; at once | 240 | P26as | no |
 | P163b | A | art-director | art: generator v5b: shapes `broken` (teeth) and `rod` (with `bend`), helpers `petals` and `rubble` | 200 | P163 | no |
 | P167 | A4 | art-director | art: life atlas frames `hit_flash`, `chip`, `dust_cloud`, `ember`, `glow`, `jet`, their `LifeRegions` entries, STYLE.md's fx section, the gallery's life page; at once | SVG + 30 | P26as | no |
-| P157c | V2 | touch-ux-dev | view: `ruin` joins `IsoAtlas.DAMAGE_PARTS` with its own factor `RUIN_SCALE`, equal to `DAMAGE_SCALE` (0.75) at first (P158b lowers it if question 2 says so); the page tests count a crafted ruin | 30 | P157b | no |
+| P157c | V2 | touch-ux-dev | view: `ruin` joins `IsoAtlas.DAMAGE_PARTS` with its own factor `RUIN_SCALE`, equal to `DAMAGE_SCALE` (0.75) at first (P158b lowers it to 0.5 only if its measured page needs it, Michael's answer 2); the page tests count a crafted ruin | 30 | P157b | no |
 | P158a | A | art-director | art: the eight Fossil buildings in four stages (`dmg1` SKADET, `dmg2` KRITISK, `ruin`), 2-4 typed damage points (a second one for `defence_turret`), 1-3 ruin points, `anim_kritisk`, emitter groups; carries the P158 branch's gallery Stage button (now with RUIN), page-test structure and `DAMAGE_PARTS` pin; STYLE.md "Damage stages" rewritten to four stages; `TODAY_*` | models + 60 | P163b, P157c | look text if P159 merged first |
 | P158b | A3 | art-director | art: the eight Renew buildings, the same (a second point for `renew_defence`); the final `TODAY_*`; ADR 0029 §11's steps 3 and 4 if needed | models + 10 | P163b, P157c; merges after P158a | look text if P159 merged first |
 | P159 | V1 | touch-ux-dev | view (re-scoped): building stages SKADET and KRITISK by `building_stage_percent` [67, 34], `vehicle_stage_percent` [50, 25]; the `Anim` at KRITISK by `anim_kritisk`; ADR 0029 §12's seam rule; the ruin hook and the `BuildingRuins.gd` stub; the rest as its row above | 260 | P157b | yes (what it shows) |
 | P161 | V1 | touch-ux-dev | view: vehicle overlays, as its row above; reads `vehicle_stage_percent` | 190 | P159, P160 | yes (as above) |
 | P148 | V3 | touch-ux-dev | view (re-scoped again): `FxRing`; particles per stage for buildings and vehicles; the burning points; the smoke cap and defaults; the glow pass; `jet` at SKADET, sparks by point type; quiet ambient emitters; the damage ring 80 | 260 | P145, P159, P160, P167 | yes |
 | P165 | V6 | touch-ux-dev | view: the collapse and the ruin (`BuildingRuins` filled in, `CollapseFx`): the timed sequence, sink, switch, dust inside 250-900 ms, the slot split for many collapses, 45 s, the sink to the crater, `crater_scale_milli`, removal by a shown building on its tiles, the fog rule, sites and cancelled sites, the ruin's smoke and embers | 320 | P159, P148, P157c, P167 | yes |
-| P166 | V7 | touch-ux-dev | view: hit feedback (`HitFx`: the flash and 3-5 chips from IMPACT and from hitscan SHOT on shown buildings, `BuildingLayer.row_of`) and the collapse camera shake (`CameraShake`, the offset terms in `RtsCamera`) | 190 | P148, P165, P167 | yes |
+| P166 | V7 | touch-ux-dev | view: hit feedback (`HitFx`: the flash and 3-5 chips from IMPACT and from hitscan SHOT on shown buildings, `BuildingLayer.row_of`; a hit whose target died in the tick draws none); no camera shake (Michael, 2026-11-04) | 130 | P148, P167 | yes |
 | P162 | H | qa-engineer | test (re-scoped): the damage budget plus collapses, hits and ruins on `perf_bases.tres` | 0 | P146, P148, P161, P165, P166 | no |
 
 **Rows that do not change:** P156 and P157 (merged), P157b (#300; its `DAMAGE_SCALE` doc block is
 ADR 0029 §12's seam rule), P160 (the vehicle overlays). P161 changes only the name of the list it
-reads (`vehicle_stage_percent`); if Michael answers question 1 with "follow the buildings", the list
-becomes [67, 34] by a data edit and its HOW_TO_PLAY clause says "two thirds" and "a third".
+reads (`vehicle_stage_percent`, [50, 25] by Michael's answer 1); its HOW_TO_PLAY clause keeps "half"
+and "a quarter".
 
 ### Lanes, files and order (rework)
 Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not reused.
@@ -343,22 +344,26 @@ Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not 
 - **V3** (touch-ux-dev): P148 (`AirFx.gd`, `LifeFx.gd`, new `FxRing.gd`).
 - **V6** (touch-ux-dev): P165 (fills `BuildingRuins.gd`; new `CollapseFx.gd`; calls in
   `BuildingLayer.gd`; one ring line in `AirFx.gd`).
-- **V7** (touch-ux-dev): P166 (new `HitFx.gd`, `CameraShake.gd`; two lines in `RtsCamera.gd`;
-  `BuildingLayer.row_of`; one ring line in `AirFx.gd`; `LifeFx.gd` makes `CameraShake`).
+- **V7** (touch-ux-dev): P166 (new `HitFx.gd`; `BuildingLayer.row_of`; one ring line in
+  `AirFx.gd`). `RtsCamera.gd` is not touched by any row (no camera shake).
 - **H** (qa-engineer): P162.
 - **Shared, serialised:** `AirFx.gd` (P148, then one line each from P165 and P166, in that order);
   `BuildingLayer.gd` (P159, then P165's calls, then P166's `row_of`); `BuildingRuins.gd` (P159's
   stub, then P165); `data/life_settings.tres` (P159 first, then P148, P165, P166 append);
   `docs/HOW_TO_PLAY.md` Buildings rows (P159, P158a/b, P148, P165, P166: each rebases on the one
   before); `assets/art/STYLE.md` (P163, P163b, P167, P158a, P158b: different sections, one change
-  log). `scenes/main.tscn`: P159 and P148 as above; P165 and P166 add no export (`CameraShake` and
-  the rings are made in code from `LifeFx`'s existing references).
-- **Start at once after P26as:** P163, P167, P160; P157c and P159 after P157b. The questions touch
-  only P159's data (question 1), P158b's steps 3-4 and `RUIN_SCALE` (question 2), P165's fade
-  (question 3) and P166's shake (question 4); the answers are expected before those rows open.
-- **Path:** P157b → P159 → P148 → P165 → P166 → P162 (six slots; P157 has merged). P148 also waits
-  for P160 (A2) and P167 (A4); both may start now and are one slot each, so the path runs through
-  them only if either takes longer than P157b and P159 together. The art path P163 → P163b →
+  log). `scenes/main.tscn`: P159 and P148 as above; P165 and P166 add no export (the rings are
+  made in code from `LifeFx`'s existing references).
+- **Start as soon as #301 (P26as) merges:** P163 (A), P167 (A4) and P157c (V2, on P157b's branch
+  or after #300 merges; it needs `DAMAGE_SCALE`); P160 (A2) may start now (P157 has merged); P159
+  (V1) after P157b (#300). Every question of ADR 0029 is answered, so no row waits for Michael.
+- **Path:** P157b → P159 → P148 → P165 → P162 (five slots; P157 has merged). P166 runs beside P165
+  after P148 (it needs P148's `FxRing` and P167's frames, not P165: a hit whose target died in the
+  tick draws no hit feedback, so the killing hit is the death's effects, today's DIED burst and
+  P165's collapse flash once it lands; the flash stays in P165). P165 and P166 each add one ring
+  line to `AirFx.gd`: the second to merge rebases. P148 also waits for P160 (A2) and P167 (A4);
+  both may start now and are one slot each, so the path runs through them only if either takes
+  longer than P157b and P159 together. The art path P163 → P163b →
   P158a → P158b (four) runs beside it; the vehicle path P160 → P161 joins at P162. P159 no longer
   waits for the art: a sheet without damage parts shows intact, so P159 and P165 are tested on
   crafted sheets and the real look arrives with P158a and P158b.
@@ -421,7 +426,7 @@ every committed generated file deterministic and byte-identical on a second run 
   3584 for the cross-faction match and both mirrors, with `TODAY_*` updated and the figures in the
   PR. P158b: if the measured page passes 3584, or has under 30 rows left, after ADR 0029 §11's
   steps 1-2, it applies step 3 (SKADET within the top 35 %), and if that is still not enough, the
-  option Michael chose in question 2 (`RUIN_SCALE` or `DAMAGE_SCALE`), and says so in the PR. The
+  ruin at 50 % (`RUIN_SCALE` 0.5, Michael's answer 2), and says so in the PR. The
   look text of HOW_TO_PLAY lands here if P159 merged first (below).
 - **P159** (re-scoped) As its acceptance above, with: `BuildingDamage.stage_of` over the golden
   table of `[67, 34]` (hp 67 of 100 is 0, 66 is 1, 34 is 1, 33 is 2, 1 is 2; max hp 1 with hp 1 is 0)
@@ -480,8 +485,8 @@ every committed generated file deterministic and byte-identical on a second run 
   drawn only while any cell of its footprint is seen, and one seen again inside its time is drawn
   with the time left; a building that died unseen leaves no ruin; the 17th ruin ends the oldest;
   collapse writes go first in `damage_building_writes` and a crafted eight-building kill never
-  writes more than 20 in a frame, with no lost step; no node at DIED; `BuildingRuins` tells
-  `CameraShake` (P166) that a collapse started; `reduced` keeps the ruin, the fire, the flash and
+  writes more than 20 in a frame, with no lost step; no node at DIED; `RtsCamera` untouched (no shake);
+  `reduced` keeps the ruin, the fire, the flash and
   the dust and drops debris, embers and the ruin's smoke. HOW_TO_PLAY, Buildings, "A building is
   destroyed" becomes: "It flashes, sinks into itself in a cloud of dust and leaves a low, smoking
   ruin for 45 seconds, then a crater for the rest of the match. The ruin blocks nothing: units drive
@@ -493,17 +498,13 @@ every committed generated file deterministic and byte-identical on a second run 
   hit_chips[1] - hit_chips[0] + 1)` chips living `hit_chip_ms` (pinned for fixed ids); a hit is an
   IMPACT with a target, or the SHOT of a weapon whose `weapon_projectile_speed` is 0 (the rifle:
   target id at +4, point at +6/+7); a SHOT of a shell weapon, an IMPACT on a unit, on a hidden
-  building or with target 0 draws none; a hit whose target died in the tick draws none (the
-  collapse's flash is P165's); the hit ring holds `hit_slots` (16) and overwrites its oldest; a
-  collapse that `BuildingRuins` reports and whose footprint centre is in the visible world rect
-  shakes `RtsCamera.offset` by at most `collapse_shake_px / zoom` for `collapse_shake_ms`, decaying,
-  and ends at 0; a collapse off screen, unseen or of a cancelled site does not shake; a second
-  collapse restarts the shake, never adds; a pause ends it at 0; `position`, the clamp and the zoom
-  snap never change by it, and `screen_to_world(world_to_screen(p))` is `p` during a shake;
-  `reduced` keeps the flash, drops the chips and the shake. HOW_TO_PLAY, Buildings, "A building is
-  hit, or selected" gains: "A white flash and a few chips show where a shot hit it."; "A building is
-  destroyed" gains: "If you watch it fall, the view shakes briefly (not with reduced effects)."
-  (Question 4 may change or drop the shake.)
+  building or with target 0 draws none; a hit whose target has a DIED record in the same tick
+  draws none (the death's own effects stand for it; a test with and without P165's collapse); the
+  hit ring holds `hit_slots` (16) and overwrites its oldest; `reduced` keeps the flash and drops the
+  chips; no file outside `HitFx.gd`, `BuildingLayer.gd` (`row_of`) and `AirFx.gd` (one line) and
+  `data/life_settings.tres` (its fields) changes, and `RtsCamera.gd` not at all. HOW_TO_PLAY,
+  Buildings, "A building is hit, or selected" gains: "A white flash and a few chips show where a shot
+  hit it."
 - **P162** (re-scoped) As its acceptance above, plus: a crafted tick that kills eight shown buildings
   at once and a siege pass of shells and rifle fire on buildings in view; the building writes never
   above 20 in a frame with the collapse steps; `AirFx` never plans more than 240 quads (80 + 80 + 24
@@ -526,7 +527,7 @@ every committed generated file deterministic and byte-identical on a second run 
 
 ### Risks (rework)
 - **The page** is at its edge (ADR 0029 §11): with steps 1-3 the estimate is 3561-3586, so step 4
-  (question 2) is likely needed. P158b measures it.
+  (the ruin at 50 %, Michael's answer 2, 3517-3533) is likely needed. P158b measures it.
 - **`AirFx` time:** the worst moment is estimated at about 0.55 ms against ADR 0027 §9's 0.56 ms
   with a per-quad cost derived, not measured; the rings are data and P162 and the phone card decide
   (ADR 0029 §11's fallbacks).
@@ -541,8 +542,9 @@ every committed generated file deterministic and byte-identical on a second run 
   for the lead to check.
 
 ## Questions for Michael
-ADR 0029's four questions (the vehicles' thresholds, the page fallback, the ruin's fade, the camera
-shake) are at its end, each with its recommendation.
+ADR 0029's four questions are answered (Michael, 2026-11-04): vehicles keep 50/25; the ruin at 50 %
+if the page needs it; the ruin sinks into the ground; no camera shake ("Ingen rystelse"). The
+answers are at the end of ADR 0029.
 
 The two questions are at the end of ADR 0028 (how much of a building breaks; the vehicles' darker
 look), each with its recommendation.
