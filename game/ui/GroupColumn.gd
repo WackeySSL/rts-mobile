@@ -134,6 +134,7 @@ func place() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	if feed != null:
 		feed.state.fill(shown)
+		feed.state.fill_bar(shown)
 	shown.groups = _items.size()
 	shown.ready = build_button != null and build_button.ready_type >= 0  # The chip beside BUILD.
 	if strike_aim != null and strike_aim.owned:  # The aim's check mark and X stand left of it.

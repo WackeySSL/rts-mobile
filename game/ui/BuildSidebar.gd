@@ -493,7 +493,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 		var type_tab: int = snap.type_tab[type]
 		if type_tab < 0 or type_tab >= World.TABS:
 			continue
-		var art: String = SelectionPanel.ICON_ART % snap.type_ids[type]  # The generated card (P99b).
+		var art: String = CommandBar.ICON_ART % snap.type_ids[type]  # The generated card (P99b).
 		var tile: ItemTile = ItemTile.new()
 		tile.name = "Tile_%s" % snap.type_ids[type]
 		tile.setup(
@@ -614,7 +614,7 @@ func _apply_dp() -> void:
 	_show_tab()
 	_place(true)
 	if is_open():
-		state_changed.emit()  # Whoever reserves the panel's room (`SelectionPanel`) reads it anew.
+		state_changed.emit()  # `HudLayout.drawer_side_dp` has a new value.
 
 
 ## Reads what the window decides, once per resize: the orientation and the dp, the drawer's rect

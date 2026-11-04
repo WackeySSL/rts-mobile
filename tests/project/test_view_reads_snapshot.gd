@@ -39,7 +39,7 @@ const KNOWN_SCRIPTS: Array[String] = [
 	"res://game/view/UnitLayer.gd",
 	"res://game/view/FogLayer.gd",
 	"res://game/input/PlayerController.gd",
-	"res://game/ui/SelectionPanel.gd",
+	"res://game/ui/CommandBar.gd",
 ]
 
 ## A member access to one of the runner's guarded objects. White space or a `\` after the dot also

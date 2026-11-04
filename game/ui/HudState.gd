@@ -21,7 +21,8 @@ extends RefCounted
 ## - The full map folds `radar_close_ms` of frame time after it opened or was last touched
 ##   (`touch_radar`), unless it is pinned. The pin is view state for the match.
 ## - A turn is no event here: the state is kept. A new match (`reset`) starts with nothing unfolded.
-## `fill` hands the layout (`HudCorners.place`) the three entries the unfolds decide.
+## `fill` hands the layout (`HudCorners.place`) the three entries the unfolds decide; `fill_bar`
+## the two the command bar decides (whether it holds its slot, and how wide it asks to be, P122).
 
 ## The unfold changed (`previous` was open before it), or the pin flipped (then `previous` is the
 ## unfold that stays).
@@ -50,6 +51,8 @@ var pinned: bool:
 		changed.emit(_current)
 
 var _current: Unfold = Unfold.NONE
+var _bar: bool = false  ## The command bar holds its slot (a selection, or the slot a mode keeps).
+var _bar_width: float = 0.0  ## The bar's content width in dp (landscape), 0 for its least.
 var _pinned: bool = false
 var _idle_ms: float = 0.0  ## Frame time since the full map opened or was touched.
 var _card_guard: bool = false  ## A touch closed the card; no first finger has gone down since.
@@ -134,6 +137,24 @@ func fill(shown: HudCorners.Shown) -> void:
 	shown.drawer = _current == Unfold.DRAWER
 	shown.map = _current == Unfold.RADAR
 	shown.card = _current == Unfold.ECONOMY
+
+
+## The command bar's slot and width changed (`CommandBar`): the parts that stand by it (BUILD's
+## lift, the group column, the full map) place themselves again through `changed`, which carries
+## the open unfold unchanged. Nothing is emitted when neither value moved.
+func set_bar(slot: bool, width_dp: float) -> void:
+	if slot == _bar and is_equal_approx(width_dp, _bar_width):
+		return
+	_bar = slot
+	_bar_width = width_dp
+	changed.emit(_current)
+
+
+## Sets the entries of `shown` that the command bar decides (BUILD, the strike button and the
+## group column read only these).
+func fill_bar(shown: HudCorners.Shown) -> void:
+	shown.bar = _bar
+	shown.bar_width = _bar_width
 
 
 func _fold_for_map() -> void:

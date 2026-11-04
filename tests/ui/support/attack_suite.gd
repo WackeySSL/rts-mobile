@@ -59,14 +59,14 @@ func after_test() -> void:
 
 
 ## The toast's rect is `HudCorners.place`'s for the screen in force, inside the safe rect and clear
-## of the scope and the pill by the 8 dp gap and of the stack and the selection panel.
+## of the scope and the pill by the 8 dp gap and of the stack and the command bar.
 func _expect_toast_placed(why: String) -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var toast: Rect2 = _toast.get_global_rect()
 	var scope: Rect2 = _scope.get_global_rect()
 	var stack: Control = _hud("TopLeft") as Control
 	var pill: Rect2 = (_hud("EconomyPill") as Control).get_global_rect()
-	var panel: Control = _hud("SelectionPanel") as Control
+	var panel: Control = _hud("CommandBar") as Control
 	var safe: Rect2 = SafeAreaMargin.rect_inside(
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
@@ -75,9 +75,6 @@ func _expect_toast_placed(why: String) -> void:
 	shown.pill_width = (_hud("EconomyPill") as Control).size.x / dp
 	shown.left_taken = HudLayout.first_visible_width(stack) / dp
 	shown.left_height = stack.get_combined_minimum_size().y / dp
-	if HudLayout.is_portrait() and panel.is_visible_in_tree():
-		var below: float = (panel.get_global_rect().end.y - safe.position.y) / dp
-		shown.left_height = maxf(shown.left_height, below)
 	var placed: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)

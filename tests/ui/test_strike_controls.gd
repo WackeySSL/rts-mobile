@@ -35,7 +35,7 @@ const TOLERANCE_PX: float = 0.5
 ## The parts of the row, and the other HUD controls they must clear.
 const TAPPABLE: Array[String] = ["StrikeConfirm", "StrikeCancel", "StrikeButton"]
 const OTHERS: Array[String] = [
-	"DevButton", "SurrenderButton", "GroupColumn", "SelectionPanel", "BuildSidebar", "BuildButton"
+	"DevButton", "SurrenderButton", "GroupColumn", "CommandBar", "BuildSidebar", "BuildButton"
 ]
 
 var _window_size_before: Vector2i
@@ -189,6 +189,7 @@ func test_the_button_stands_8_dp_above_build_with_the_row_to_its_left_in_both_or
 		var shown: HudCorners.Shown = HudCorners.Shown.new()
 		shown.strike = true
 		shown.aim = true
+		_state().fill_bar(shown)  # A selected tank: the bar lifts BUILD upright.
 		var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
 			SafeAreaMargin.rect_inside(
 				get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
@@ -254,11 +255,10 @@ func test_the_row_hides_with_build_under_the_drawer_and_the_pause_menu() -> void
 		_aim.cancel()
 
 
-## The SelectionPanel's band (landscape) reserves the Ready chip's room and, while aiming, the
-## row's, from `HudLayout.right_zone_px`: with one or two unit types selected the panel stays clear
-## of the chip and the row at every screen, the short and the narrow short ones included. Upright
-## it stands under the pill and meets neither.
-func test_the_selection_panel_stays_clear_of_the_ready_chip_and_the_aim_row() -> void:
+## With one or two unit types selected the command bar stays clear of the Ready chip and the aim's
+## row at every screen, the short and the narrow short ones included (`HudCorners` leaves the bar
+## the room beside BUILD and the chip; upright BUILD, the chip and the row stand above the bar).
+func test_the_command_bar_stays_clear_of_the_ready_chip_and_the_aim_row() -> void:
 	var screens: Array[Dictionary] = _screens_and_short()
 	var narrow: UiMetrics = RadarRig.narrow_short_landscape()
 	screens.append({"label": "narrow short", "size": narrow.window_size, "metrics": narrow})
@@ -268,7 +268,7 @@ func test_the_selection_panel_stays_clear_of_the_ready_chip_and_the_aim_row() ->
 		_make_ready()
 		var chip: Control = _hud("ReadyChip") as Control
 		assert_bool(chip.visible).override_failure_message(why).is_true()
-		var panel: Control = _hud("SelectionPanel") as Control
+		var panel: Control = _hud("CommandBar") as Control
 		for ids: Array in [[TANK], [TANK, RIFLE]]:
 			for aiming: bool in [false, true]:
 				_aim.cancel()
@@ -295,7 +295,7 @@ func test_the_selection_panel_stays_clear_of_the_ready_chip_and_the_aim_row() ->
 		_aim.cancel()
 
 
-## The aim's room in the SelectionPanel's band goes with the row: lost the strike building during
+## The aim's reserved room goes with the row: lost the strike building during
 ## the aim, or covered by the drawer and lost then, the zone is BUILD's 72 dp again (no stale 224).
 func test_the_aim_gives_its_room_back_when_the_building_is_lost_during_the_aim() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"android_6in")
@@ -374,6 +374,7 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 			shown.ready = true
 			shown.strike = true
 			shown.aim = aiming
+			_state().fill_bar(shown)
 			var dp: float = UiScale.base_px_per_dp()
 			var margin: float = (_hud("SafeArea") as SafeAreaMargin).margin_dp
 			var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin)
@@ -410,12 +411,12 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 				_controller.selection.set_ids(PackedInt32Array([BORE]))  # A spurious tap would recall.
 				var camera_before: Vector2 = (_main.get_node("Camera") as Camera2D).position
 				# Out and back to the start of the press: a drag, so neither a tap nor a hold.
-				await _drag_item("Group2", Vector2(0.0, -dp * 30.0), true)
+				await _drag_item("Group1", Vector2(0.0, -dp * 30.0), true)
 				assert_int(scroll.scroll_vertical).override_failure_message(tall).is_between(0, 3)
-				await _drag_item("Group2", Vector2(0.0, -dp * 40.0))  # A finger moves the items.
+				await _drag_item("Group1", Vector2(0.0, -dp * 40.0))  # A finger moves the items.
 				var moved: float = scroll.scroll_vertical  # By as much as the finger went.
 				assert_float(moved).override_failure_message(tall).is_equal_approx(dp * 40.0, 3.0)
-				await _drag_item("Group2", Vector2(0.0, -dp * 60.0))
+				await _drag_item("Group1", Vector2(0.0, -dp * 160.0))
 				var last: Rect2 = _rect("Group3")
 				var reached: bool = (
 					last.end.y <= column.end.y + 1.5 and last.position.y >= column.position.y - 1.5
@@ -655,6 +656,10 @@ func _make_ready() -> void:
 	snap.queue_progress[queue] = snap.type_build_ticks[plant] * Production.PROGRESS_PER_TICK
 	snap.tick += 1
 	(_hud("BuildButton") as BuildButton).refresh(snap)
+
+
+func _state() -> HudState:
+	return (_main.get_node("Hud/HudStateFeed") as HudStateFeed).state
 
 
 func _ready_to_fire() -> void:

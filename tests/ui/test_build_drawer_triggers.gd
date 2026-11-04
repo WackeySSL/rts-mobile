@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## P85f, ADR 0024 sections 1, 5, 6 and 9), in the main scene through the real GUI at the six sizes
 ## of ScreenSizes.ALL. A match starts closed. A tap, a double-tap, a long-press with its box, a pan,
 ## a pinch and a wheel step on the map close it and still do their own work; a touch on the group
-## column,
-## the SelectionPanel, a tab, a card, a hold on a card or a scroll of the grid never does. The start
+## column, the command bar's chip,
+## a tab, a card, a hold on a card or a scroll of the grid never does. The start
 ## of placement closes it, and so does a restart of placement by a READY card tapped in a drawer
 ## opened meanwhile; the end of placement by a build or the X opens it again (it returns to the
 ## state placement began in) and a strike aim that ends placement leaves it closed; a tap on an own
@@ -131,11 +131,13 @@ func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 		var touches: Array[Control] = [
 			_hud("AllArmy") as Control,
 			_hud("Group1") as Control,
-			_hud("SelectionPanel") as Control,
 			_hud("TabVehicles") as Control,
 			_hud("TabStructures") as Control,
 			card,
 		]
+		var chip: Control = _hud("Chip") as Control
+		if chip.is_visible_in_tree() and not HudLayout.is_portrait():  # The sheet covers it upright.
+			touches.append(chip)
 		for control: Control in touches:
 			var note: String = "%s: a tap on %s" % [why, control.name]
 			_tap(control.get_global_rect().get_center())

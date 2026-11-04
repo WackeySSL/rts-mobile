@@ -11,8 +11,8 @@ extends Node
 ## The copy is the root's `theme` and never a node override, so a restyle that adds a type, a
 ## variation or a StyleBox edits the theme file and no code here.
 ## It must be the first child of the Hud: its `size_changed` handler then runs before the HUD
-## scripts' own, and what they read from the theme on a resize (`SelectionPanel.Row.fit_name`
-## measures the name with the font size) is already the new one.
+## scripts' own, and what they read from the theme on a resize (`CommandBar`
+## measures its chip's label with the font size) is already the new one.
 ## Not scaled: a StyleBoxTexture's texture margins (they cut the picture, in texture px), the
 ## theme's constants (a font's `outline_size` too: layout stays in code, in dp through UiScale),
 ## colours, fonts and icons, and the properties of a StyleBox that are not sizes: `skew` (a shear

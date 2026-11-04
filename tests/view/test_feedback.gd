@@ -23,7 +23,7 @@ const PROFILES: Array[StringName] = [
 ]
 ## No unit near it, past the tank block's upper right edge: milli (10000, 15000), 102 px or more
 ## from every tank. On screen it is 128 px right of and 144 px above the middle of the view, clear
-## of the build sidebar, the selection panel and the group column at every profile.
+## of the build sidebar, the command bar and the group column at every profile.
 const GROUND: Vector2 = Vector2(-160, 400)
 const CAMERA_START: Vector2 = Vector2(-288, 544)  ## The centre of tile (12, 21).
 const RED_TANK: Vector2 = Vector2(768, 720)  ## Tank 31, on tile (34, 10).

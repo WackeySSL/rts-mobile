@@ -24,8 +24,6 @@ const HINT: String = "Tap to jump there"
 @export var safe_area: SafeAreaMargin
 @export var pill: Control  ## Landscape: the toast stands after it.
 @export var top_left: Control  ## Upright: the toast stands under this stack (Dev over Surrender).
-## Upright the selection panel stands on the top line too (until P122): the toast goes under it.
-@export var selection: Control
 ## Landscape, where the room beside the pill is short, the toast stands under the top line: right
 ## of this column, which starts on that line.
 @export var group_column: GroupColumn
@@ -65,9 +63,6 @@ func _ready() -> void:
 	cues.cue_changed.connect(_sync)
 	if pill != null:  # A wider pill (the low-power word, more digits) moves the toast's room.
 		pill.item_rect_changed.connect(_replace)
-	if selection != null:  # The panel grows, shrinks and hides with the selection.
-		selection.item_rect_changed.connect(_replace)
-		selection.visibility_changed.connect(_replace)
 	if group_column != null:  # More or fewer groups move the column's right edge.
 		group_column.laid_out.connect(_replace)
 	feed.state.changed.connect(_on_unfold_changed)
@@ -80,6 +75,7 @@ func place() -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	feed.state.fill(shown)
+	feed.state.fill_bar(shown)
 	shown.map = false  # Hidden then; the rect is still the toast's own.
 	shown.toast = true
 	if pill != null:
@@ -94,9 +90,6 @@ func place() -> void:
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
-	if selection != null and selection.is_visible_in_tree() and HudLayout.is_portrait():
-		var below: float = (selection.get_global_rect().end.y - safe.position.y) / dp
-		shown.left_height = maxf(shown.left_height, below)
 	var rect: Rect2 = HudCorners.place(safe, HudLayout.is_portrait(), dp, false, shown)[
 		HudCorners.TOAST
 	]

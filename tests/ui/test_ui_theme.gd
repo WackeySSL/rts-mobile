@@ -13,7 +13,6 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const ARMY_FONT_DP: float = 18.0
-const NAME_FONT_DP: float = 16.0
 const NUMBER_FONT_DP: float = 20.0
 const DEV_FONT_PX: int = 40  ## Base px, not dp.
 ## What the file keeps in base px: the Dev button's size and, since P118, the three tracking
@@ -169,18 +168,8 @@ func test_a_resize_gives_the_hud_the_new_dp_values_before_its_scripts_read_them(
 	await await_idle_frame()
 	_assert_hud_resolves("after a resize")
 	assert_int(_hud("AllArmy").get_theme_font_size("font_size")).is_equal(roundi(18.0 * 1.75))
-	# The panel fits the name to its text when the viewport changes size, in the same signal:
-	# that reads the font size of the new theme only if HudTheme ran first.
-	var title: Label = _hud("Name")
-	var font_px: int = title.get_theme_font_size("font_size")
-	var text_px: float = (
-		title
-		. get_theme_font("font")
-		. get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px)
-		. x
-	)
-	assert_int(font_px).is_equal(28)
-	assert_float(title.custom_minimum_size.x).is_equal(ceilf(text_px))
+	# The command bar's chip count is a NumberLabel: it reads the new theme's size in the same signal.
+	assert_int(_hud("Count").get_theme_font_size("font_size")).is_equal(roundi(20.0 * 1.75))
 	assert_bool(_main.get_node("Hud").get_child(0) is HudTheme).is_true()
 
 
@@ -200,6 +189,7 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 				"SafeArea",
 				"EconomyPill",
 				"GroupColumn",
+				"CommandBar",
 				"AttackToast",
 				"EconomyCard",
 				"RadarScope",
@@ -313,12 +303,10 @@ func test_a_theme_with_another_look_restyles_the_whole_hud_from_the_file_alone()
 	other.set_font_size("font_size", "NumberLabel", 27)
 	for root: Control in _roots(_main.get_node("Hud")):
 		root.theme = other
-	var shown: StyleBoxFlat = _hud("SelectionPanel").get_theme_stylebox("panel")
+	var shown: StyleBoxFlat = _hud("Chip").get_theme_stylebox("panel")
 	assert_that(shown.bg_color).is_equal(Color(0.9, 0.1, 0.1, 0.5))
 	assert_int(_hud("Group2").get_theme_font_size("font_size")).is_equal(31)
-	assert_int(_hud("Name").get_theme_font_size("font_size")).is_equal(23)
 	assert_int(_hud("Count").get_theme_font_size("font_size")).is_equal(27)
-	assert_int(_hud("Total").get_theme_font_size("font_size")).is_equal(27)
 	assert_int(_hud("DevButton").get_theme_font_size("font_size")).is_equal(DEV_FONT_PX)  # Its own.
 
 
@@ -386,11 +374,11 @@ func _assert_hud_resolves(why: String) -> void:
 		theme.get_font_size("font_size", "DevButton")
 	)
 	var sizes: Array[int] = []
-	for node_name: String in ["Name", "Count", "Total"]:
+	for node_name: String in ["Count"]:  # The command bar's chip.
 		sizes.append(_hud(node_name).get_theme_font_size("font_size"))
-	var pinned: Array[int] = [_px(NAME_FONT_DP), _px(NUMBER_FONT_DP), _px(NUMBER_FONT_DP)]
+	var pinned: Array[int] = [_px(NUMBER_FONT_DP)]
 	assert_array(sizes).override_failure_message(why).is_equal(pinned)
-	var panel: SelectionPanel = _hud("SelectionPanel")
+	var panel: PanelContainer = _hud("Chip") as PanelContainer
 	var backdrop: StyleBoxFlat = panel.get_theme_stylebox("panel")
 	assert_object(backdrop).override_failure_message(why).is_same(
 		theme.get_stylebox("panel", "SelectionPanel")

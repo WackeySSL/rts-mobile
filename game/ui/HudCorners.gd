@@ -140,9 +140,6 @@ static func place(
 			)
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
-	if shown.map and not shown.drawer:
-		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
-		_map(out, w, portrait, strike if shown.strike else build, row)
 	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast.
 	if not sheet:
 		# Upright, the column leaves BUILD (and the Ready chip) their width: that many columns.
@@ -153,6 +150,9 @@ static func place(
 		var held: int = _groups(out, h, portrait, shown, bar_on, columns)
 		for index: int in held:
 			column_end = maxf(column_end, out[group_key(index)].end.x)
+	if shown.map and not shown.drawer:
+		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
+		_map(out, w, portrait, strike if shown.strike else build, row, column_end)
 	if shown.toast and not shown.map:
 		out[TOAST] = _toast(
 			w,
@@ -232,9 +232,15 @@ static func _toast(
 ## holds the head and a box 96 dp high at least; else left of the column, from the safe top.
 ## Left of the column, while the strike aim's row (`row`, empty when it does not show) stands in
 ## its way, the map ends a gap left of the row and narrows (the box stays 2:1, 192 dp wide at the
-## least) to start a gap right of the pill: the pinned map and the aim meet only here.
+## least) to start a gap right of the pill and of the group column (`column_end`, 0 for none), the
+## larger of the two: the pinned map and the aim meet only here.
 static func _map(
-	out: Dictionary[StringName, Rect2], w: float, portrait: bool, next: Rect2, row: Rect2
+	out: Dictionary[StringName, Rect2],
+	w: float,
+	portrait: bool,
+	next: Rect2,
+	row: Rect2,
+	column_end: float
 ) -> void:
 	var cap: Vector2 = MAP_BOX_PORTRAIT_DP if portrait else MAP_BOX_DP
 	var top: float = SCOPE_DP + GAP_DP
@@ -248,6 +254,7 @@ static func _map(
 		if row.size.x > 0.0 and row.position.y < MAP_HEAD_DP + cap.y + GAP_DP:
 			right = row.position.x - GAP_DP
 			var from: float = out[PILL].end.x + GAP_DP if out.has(PILL) else 0.0
+			from = maxf(from, column_end + GAP_DP if column_end > 0.0 else 0.0)
 			width = clampf(right - from, 2.0 * MAP_BOX_LEAST_H_DP, cap.x)
 		box = Rect2(right - width, MAP_HEAD_DP, width, width * cap.y / cap.x)
 	out[MAP_HEAD] = Rect2(box.position.x, box.position.y - MAP_HEAD_DP, box.size.x, MAP_HEAD_DP)

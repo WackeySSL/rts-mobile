@@ -173,9 +173,8 @@ func test_a_match_that_ends_under_the_dialog_closes_it() -> void:
 
 
 ## A release build hides the Dev button (dev_menu_button.gd), and the stack then starts with the
-## Surrender button: the credits pill (both ways) stands after it and not on it, and the selection
-## line (upright, with a selection) stands under it and not on it, at every size.
-func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selection_line() -> void:
+## Surrender button: the credits pill (both ways) stands after it and not on it, at every size.
+func test_without_the_dev_button_surrender_is_clear_of_the_pill() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size
 		await await_idle_frame()
@@ -206,17 +205,6 @@ func test_without_the_dev_button_surrender_is_clear_of_the_pill_and_the_selectio
 		assert_float(other.position.x).override_failure_message(where).is_equal_approx(
 			rect.end.x + UiScale.dp(8.0), 1.5
 		)
-		# Upright the selection line stands under the Surrender button, not on it: it starts at
-		# least 8 dp below its foot (the line is under the top-left row, whichever buttons show).
-		if UiScale.is_portrait_size(size):
-			var line: Control = _main.find_child("SelectionPanel", true, false)
-			assert_bool(line.is_visible_in_tree()).override_failure_message(where).is_true()
-			var below: Rect2 = line.get_global_rect()
-			var message: String = "%s, selection line %s" % [where, below]
-			assert_bool(rect.intersects(below)).override_failure_message(message).is_false()
-			assert_float(below.position.y).override_failure_message(message).is_greater_equal(
-				rect.end.y + UiScale.dp(8.0) - 0.5
-			)
 		_main.free()
 		await await_idle_frame()
 

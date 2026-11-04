@@ -31,7 +31,7 @@ const MIN_DRIVE_TICKS: int = 40
 ## tanks kill four without losing one, so the fight needs a loss to prove the selection and the
 ## badge follow it.
 const WOUNDED: int = 4
-const BAND: String = "Hud/SafeArea/SelectionBand/SelectionPanel"
+const BAND: String = "Hud/CommandBar"
 
 var _window_size_before: Vector2i
 var _now_ms: int = 0
@@ -42,7 +42,7 @@ var _camera: RtsCamera
 var _touch: TouchInput
 var _controller: PlayerController
 var _effects: EffectsLayer
-var _panel: SelectionPanel
+var _panel: CommandBar
 var _scan: LogScan
 var _sent: Array[Command] = []
 
@@ -170,8 +170,7 @@ func test_select_all_tap_a_visible_red_tank_and_fight_until_it_dies() -> void:
 
 func _assert_panel(count: String) -> void:
 	assert_bool(_panel.visible).is_true()
-	assert_str((_panel.get_node("Rows/Row0/Name") as Label).text).is_equal("Flarejack")
-	assert_str((_panel.get_node("Rows/Row0/Count") as Label).text).is_equal(count)
+	assert_str((_panel.find_child("Count", true, false) as Label).text).is_equal(count)
 
 
 ## The blue tanks `ids` are what is selected and what group 1 holds, and the panel and the badge
@@ -298,7 +297,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	await await_idle_frame()
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
-	for node_name: String in ["SelectionPanel", "GroupColumn", "DevButton"]:
+	for node_name: String in ["Deselect", "Chip", "Stop", "GroupColumn", "DevButton"]:
 		var hud: Control = _hud(node_name)
 		var why: String = "%s is on %s %s" % [at, node_name, hud.get_global_rect()]
 		var under: bool = hud.is_visible_in_tree() and hud.get_global_rect().has_point(at)

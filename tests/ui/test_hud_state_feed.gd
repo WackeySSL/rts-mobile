@@ -28,13 +28,11 @@ const GESTURES: Array[StringName] = [&"tap", &"double_tap", &"box", &"pan", &"pi
 const FOLDING: Array[HudState.Unfold] = [
 	HudState.Unfold.DRAWER, HudState.Unfold.ECONOMY, HudState.Unfold.RADAR
 ]
-## HUD controls of the scene as it stands (the band, the group column), found by name. The pill's
-## numbers are not among them: a tap on them asks for the economy card, and opening an unfold
+## HUD controls of the scene as it stands (the bar's chip, the group column), found by name. The
+## pill's numbers are not among them: a tap on them asks for the economy card, and opening an unfold
 ## closes the open one (test_economy_card.gd has the pill's touches). The scope is left out too:
 ## a tap on it opens the full map, and the full map's own touches are test_radar_map's.
-const CONTROLS: Array[String] = [
-	"AllArmy", "Group1", "SelectionPanel", "TabVehicles", "TabStructures"
-]
+const CONTROLS: Array[String] = ["AllArmy", "Group1", "Chip", "TabVehicles", "TabStructures"]
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -139,7 +137,8 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 				var there: bool = unfold == HudState.Unfold.DRAWER or not label.begins_with("Tab")
 				# The portrait sheet covers the group column's place (`HudCorners.place`): the
 				# column is not shown then, so there is nothing of it to touch.
-				var column: bool = label == "AllArmy" or label.begins_with("Group")
+				# The command bar's chip stands in the same place (the bottom): covered likewise.
+				var column: bool = label in ["AllArmy", "Chip"] or label.begins_with("Group")
 				if unfold == HudState.Unfold.DRAWER and column and HudLayout.is_portrait():
 					there = false
 				assert_bool(control.is_visible_in_tree()).override_failure_message(why).is_equal(

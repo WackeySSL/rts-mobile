@@ -18,7 +18,7 @@ const Lifts: GDScript = preload("res://tests/view/support/lifts.gd")
 ## more), with room to drag 888 px to the left.
 const PAN_FROM_X: float = 900.0
 ## World px with no unit near it, past the tank block's upper right edge and clear of the build
-## sidebar and the selection panel at every size (P85): milli (10000, 15000). The nearest tank is
+## sidebar and the command bar at every size (P85): milli (10000, 15000). The nearest tank is
 ## 102 px away.
 const GROUND: Vector2 = Vector2(-160, 400)
 const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
