@@ -313,7 +313,8 @@ func _rig(
 
 ## The overlays of damage `stage` on a vehicle's rig (`Scar`, and at stage 2 `Loose`), in the order
 ## of the tree after the hull: the scar at the `damage` point scaled by `scar_milli`, the loose part
-## at the `hang` point (already on the camera side), mirrored when that is left of the centre.
+## at the `hang` point (on the camera side but in d00 and d08), scaled the same and mirrored when
+## that is left of the centre.
 ## A look is a frame of the part, alternating with the direction.
 func _add_damage(rig: Node2D, model: ArtModel, dir: int, zoom: float, stage: int) -> void:
 	var scale_px: float = BASE_SCALE * zoom
@@ -331,6 +332,7 @@ func _add_damage(rig: Node2D, model: ArtModel, dir: int, zoom: float, stage: int
 			var loose: Sprite2D = _overlay(&"loose", look, at.x < 0.0, zoom)
 			loose.name = "Loose"
 			loose.position = at * scale_px
+			loose.scale = Vector2.ONE * model.scar_milli / 1000.0  # With the vehicle, as the scar.
 			rig.add_child(loose)
 
 

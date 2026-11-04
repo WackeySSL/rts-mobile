@@ -54,7 +54,7 @@ prims = PackedStringArray(
 emitters = PackedStringArray(
 "exhaust -0.62 0.2 0.14",
 "damage -0.4 0 0.3",
-"hang 0.04 0.51 0.14"
+"hang 0.04 0.4 0.28"
 )
 marks = &"tracks"
 scar_milli = 900

@@ -243,8 +243,8 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   when absent), `stride_milli`, `anim_ms`, `emitters` with `emitter_points` (px of the 2x art, per
   hull frame for each, once for a building: `emitter_point(index, dir)`) and `marks`, each written
   only when set, so today's sheets are unchanged. `tests/art/test_artgen_frames.gd` pins it.
-- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4; since P160 the eight vehicles carry `damage`, `hang` and `scar_milli`, no building uses the poses yet). A
-  building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
+- **Damage poses** (P156, ADR 0028 sections 3 and 4; generator v4; since P160 the eight vehicles
+  carry `damage`, `hang` and `scar_milli`). A building's `poses` gain `dmg1` and `dmg2`, its body at damage stage 1 and 2, a move a line, frame
   0 and no header line: `dmg1|dmg2 0 <group> shift <dx> <dy> <dz>`, `... turn <x|y|z> <degrees>
   <px> <py> <pz>`, `... hide` (the group is not drawn) or `... char <percent>` (0 to 100: its
   face colours, edges too, are mixed that far towards the char colour **#2A2522**; a `team`
@@ -1684,39 +1684,53 @@ hand-written neutral sheet in `assets/art/svg/damage/` (no team colour, authored
 `assets/CREDITS.md` is unchanged): `damage_sheet.tres` (`IsoSheetDef`, `faction` `neutral`,
 `category` `dmg`, `root` this folder, every part one view) and eight SVGs, each with a "Keep File"
 import so the export carries the text the bake reads (`IsoAtlas.NEUTRAL_SHEET`). Every frame is a
-slot shared by all players (no key colour), 2x px, drawn at least 1 px inside its canvas. Vehicle
-stages are 50 and 25 % of max hp (`vehicle_stage_percent`); the view (P161) shows `scar1` at stage 1,
-`scar2` and `loose` at stage 2.
+slot shared by all players (no key colour), 2x px, drawn at least 1 px inside its canvas. Vehicles
+take their stages at 50 % and 25 % of max hp (ADR 0028 section 2); the view (P161) shows `scar1` at
+stage 1, `scar2` and `loose` at stage 2.
 
 | Part | Frames | Canvas | Anchor | Look |
 | --- | --- | --- | --- | --- |
-| `scar1` | 2 (`damage_scar1_f0`, `_f1`) | 64 x 36 | centre 32, 18 | A cluster of soot smudges in near-black at 30 to 50 % alpha, three pale scratches across it (#A9B4BE, #7D8893); the two looks mirror the heavy side. |
+| `scar1` | 2 (`damage_scar1_f0`, `_f1`) | 64 x 36 | centre 32, 18 | A cluster of soot smudges in near-black at 30 to 50 % alpha, three pale scratches across it (#A9B4BE, #7D8893); the two looks differ in where the smudges are heaviest. |
 | `scar2` | 2 | 64 x 36 | centre 32, 18 | A larger char patch (#2A2522, #1C2127) with a torn edge, bare-metal scratches and a thin ember seam through it, #FFD84D with a short #FFF2B0 core (hue 47 and 50 degrees, outside both key bands). |
-| `loose` | 4 (`_f0`, `_f1` skirt plates for `marks` `tracks`; `_f2`, `_f3` fenders for `wheels`) | 44 x 40 | bracket 6, 6 | A grey steel part (#7D8893 face, #A9B4BE lit edge, #5B6670 underside, #30342E edge) hanging off one bolt at its top left and dropping to the right: a slab with a torn low corner, a plate snapped in two, a curved fender peeled outward, a creased fender. |
+| `loose` | 4 (`_f0`, `_f1` skirt plates for `marks` `tracks`; `_f2`, `_f3` fenders for `wheels`) | 44 x 40 | bracket 6, 6 | A grey steel part (#7D8893 face, #A9B4BE lit edge, #5B6670 underside, #30342E edge and bolt, soot smudges) hanging off one bolt at its top left and dropping to the right: a slab with a torn low corner, a plate snapped in two, a curved fender peeled outward, a creased fender. |
 
-- **Shapes and colour.** Polygons, ellipses and polylines only, two tones of grey metal and the
-  char colours, so one sprite sits on olive, white and graphite hulls alike. No colour in either key
-  band (saturation 0.30 or more within 20 degrees of a key colour), and the only saturated colours are
-  the ember's yellow-white (hue at least 46 degrees, ADR 0027 section 4). The scar's alpha is the
-  group `opacity`, so it lets the hull's own shading through; the part is opaque.
-- **Placement.** A model's `damage` point (px of the 2x art from the hull's ground point, per hull
-  frame, on a top face the turret does not cover) is the scar's centre; `scar_milli` scales it to
-  that top (1000 is the Bullhead's, the battle tank: 900 the Torque, 700 the Tanker and the Fuel
-  Runner, 600 the Flarejack, the Mortar Rig and the Arcline, 550 the Swift). The `hang` point (a
-  track's outer top edge, or the top of a wheel) is on the side that faces the camera in every hull
-  frame, where `loose` is anchored; it is drawn mirrored when that point is left of the hull's centre,
-  so the part hangs away from the hull. Both draw over the hull and under the turret.
+- **Shapes and colour.** Polygons, ellipses and polylines only. The scar's alpha is a per-element
+  `opacity`, so the hull's own shading shows through; the loose part is opaque, in four greys (face,
+  lit edge, underside, edge) so it sits on olive, white and graphite hulls alike. No colour in either
+  key band (saturation 0.30 or more within 20 degrees of a key colour); the only saturated colours
+  are the ember's yellow-white (hue at least 46 degrees, ADR 0027 section 4).
+- **The damage point** (px of the 2x art from the hull's ground point, per hull frame) is the
+  scar's centre. It is on a top face the turret does not cover, at the turret's default aim
+  (straight ahead): on the hull in all 16 frames and clear of the turret in at least 11. With a
+  centred turret and a long barrel, a vehicle facing up the screen may hide its scar (the Bullhead's
+  at d15 to d01, the Arcline's at d07 to d09 facing the camera); no vehicle hides it in more than
+  five frames. At most 5 % of a scar's ink falls outside the hull and turret silhouette, so a scar
+  on a drum (the two tankers) stays below its outline: the point sits about 0.1 tile under the drum top.
+  `tests/art/test_damage_overlays.gd` measures all of it from the committed frames.
+- **Scale.** `scar_milli` scales both the scar and the loose part (1000 is the canvas as drawn).
+  The Bullhead takes 800 (its glacis is the one flat top face the turret leaves), 900 the Torque,
+  600 the Flarejack, the Mortar Rig, 500 the Tanker, the Fuel Runner and the Swift, 450 the Arcline.
+  The view (P161) scales `Loose` as it scales `Scar`.
+- **The hang point** is the bolt of `loose`, on the top edge of the hull body above the wheel or
+  the track (about 0.28 tile from the long axis on a wheeled vehicle, 0.38 on the Bullhead, 0.4 on
+  the Torque), on the side that faces the camera in every hull frame except the two edge-on ones
+  (d00 and d08), where the generator's mirror cannot help: there it is on the hull's edge too, with
+  the part hanging past it. The bolt is on the hull silhouette in all 16 frames, and the part
+  never hangs below the hull's lowest ink by more than 2 px (the plate does not drag). It is drawn
+  mirrored (`flip_h`) when the point is left of the hull's centre, so the part hangs away from the
+  hull. Both overlays draw over the hull and under the turret.
 - **Looks.** The two looks of a part are picked per vehicle by the view (`LifeClock.mix`); the
-  gallery alternates them with the direction.
+  gallery alternates them with the direction (scar `dir % 2`, loose `dir % 2` plus 2 for wheels).
 - **Gallery.** The Iso page's Damage rows (`art_gallery_iso.gd`, under the two triad rows of every
   vehicle, on both grounds): the 16 directions at stage 1 (`scar1`), then at stage 2 (`scar2` and
   `loose`), Signal triad, zoom 1. Judge there that the scar sits on the hull and not on the ground,
   and that the loose part hangs from the near side in every direction.
 - **Readability.** At 32 px in greyscale a scar is a dark patch on the hull and a loose part a
-  light flag at its side; neither changes the silhouette's role cue (the gun, the drum, the wheels).
-  The vehicle must still read without them: they only add.
+  grey flag at its side, dark on grass and light on sand; neither changes the silhouette's role cue
+  (the gun, the drum, the wheels). The vehicle must still read without them: they only add.
 - Tests: `tests/art/test_damage_overlays.gd` (sheet, files, imports, edge, key bands, the models'
-  points), `tests/view/test_neutral_sheet.gd` (the bake), `tests/art/test_art_gallery_iso.gd` (the rows).
+  points, the visibility, silhouette and bolt measures), `tests/view/test_neutral_sheet.gd` (the
+  bake), `tests/art/test_art_gallery_iso.gd` (the rows: positions, frames, order, z, anchor ink).
 
 ## Health bars (new)
 Bars are filled rects only, drawn in one `_draw()` (ADR 0011 section 3), sized in dp so they look the
