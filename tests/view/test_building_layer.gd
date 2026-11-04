@@ -160,13 +160,15 @@ func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void
 	var sprites: Array[Node] = _layer.world_sort.find_children("*", "Sprite2D", true, false)
 	sprites.append_array(_layer.decals.find_children("*", "Sprite2D", true, false))
 	var animated: int = 0  # The moving elements (P144): a child after the body.
+	var patched: int = 0  # The damage patches (P158b): a child after the body.
 	for row: int in 5:
 		var sheet: IsoSheetDef = _layer.world_sort.sheet(
 			_runner.snapshot.type_ids[_runner.snapshot.type_index[row]]
 		)
 		animated += 1 if sheet.has_part(&"anim") else 0
+		patched += 1 if sheet.has_part(&"dmg1") else 0
 	assert_int(animated).is_greater(0)
-	assert_int(sprites.size()).is_equal(5 + 5 + 2 + animated)  # Bodies, shadows, heads, anims.
+	assert_int(sprites.size()).is_equal(5 + 5 + 2 + animated + patched)
 	for node: Node in sprites:
 		var sprite: Sprite2D = node
 		var why: String = "%s of %s" % [sprite.name, sprite.get_parent().name]
@@ -174,6 +176,8 @@ func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void
 		assert_that(sprite.modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_that(sprite.self_modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_object(sprite.material).override_failure_message(why).is_null()
+		if sprite.name == &"Damage":  # Empty until a stage shows (P158b).
+			continue
 		assert_bool(sprite.region_rect.has_area()).override_failure_message(why).is_true()
 	# A Lumen Accord building and a Derrick League one are different regions of the same page, in
 	# their owners' triads.
@@ -265,7 +269,7 @@ func test_a_building_with_no_sheet_or_an_atlas_that_did_not_bake_is_a_flat_diamo
 	_open_with([Rig.spawn(1, "headquarters", 4, 4), spawn])
 	var snap: MatchSnapshot = _runner.snapshot
 	var art: Node2D = _layer.building(snap.unit_id[0])
-	assert_array(_child_names(art)).is_equal([&"Body"])
+	assert_array(_child_names(art)).is_equal([&"Body", &"Damage"])  # A patch (P158a).
 	var bare: Node2D = _layer.building(snap.unit_id[1])
 	assert_array(_child_names(bare)).is_equal([&"Marker"])
 	var marker: Node2D = bare.get_node("Marker")
@@ -344,6 +348,8 @@ func _child_names(node: Node) -> Array:
 ## element (P144), and its Head last if `head`.
 func _parts(sheet: IsoSheetDef, head: bool) -> Array[StringName]:
 	var names: Array[StringName] = [&"Body"]
+	if sheet.has_part(&"dmg1"):  # The damage patch (P158b), a sibling after the body.
+		names.append(&"Damage")
 	if sheet.has_part(&"anim"):
 		names.append(&"Anim")
 	if head:
