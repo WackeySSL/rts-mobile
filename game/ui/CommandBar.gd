@@ -4,8 +4,8 @@ extends Control
 ## bottom, BUILD lifted above it) while something is selected. From its start: Deselect (48 x 64
 ## dp, `glyph_deselect` over "CLEAR"), the selection chips (one per selected type while they fit in
 ## the bar's room: the type's item card, "xN" or a building's name, its health; then a "+N" chip for
-## the types left out; an enemy building's chip wears an amber frame and a notch in its top edge)
-## and the orders the game has, from
+## the types left out; an enemy building's chip wears P115b's look: amber corner brackets round its
+## picture and an amber health bar with a notch in its top edge) and the orders the game has, from
 ## `ORDERS` (Stop, for units; a building has none). Orders that do not fit scroll sideways inside
 ## the bar, a button never shrinks below 56 dp. A row that adds an order adds an `ORDERS` entry, its
 ## glyph and its HOW_TO_PLAY line. There is no Attack button (ADR 0025 answer 4).
@@ -33,8 +33,8 @@ const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may 
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
-const ENEMY_CHIP: StringName = &"SelectionPanelEnemy"  ## The same, in the amber frame.
-const NOTCH_DP: Vector2 = Vector2(6.0, 2.0)  ## An enemy chip's notch: width, depth under the frame.
+const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
+const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
 ## The orders, in the bar's order: id, glyph, word, and whether it is for units.
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "units": true},
@@ -62,6 +62,7 @@ var _buttons: Dictionary[StringName, Button] = {}
 var _has: bool = false  ## Something is selected.
 var _frozen: bool = false  ## A mode runs: the slot is `_held`.
 var _held: bool = false
+var _held_px: float = 0.0  ## The bar's width as the mode began: the room while it runs.
 var _slot: bool = false  ## The bar holds its place (shown or an empty plate).
 var _publish_queued: bool = false
 var _published: float = 0.0  ## The content width last told to the state, dp.
@@ -73,7 +74,7 @@ class Chip:
 
 	var card: TextureRect = TextureRect.new()
 	var label: Label = Label.new()  ## "xN" for units, the name of a building.
-	var health: ProgressBar = ProgressBar.new()
+	var health: HealthBar = HealthBar.new()
 	var type: StringName = &""  ## The card's type, to load it once.
 	var enemy: bool = false
 
@@ -101,8 +102,10 @@ class Chip:
 		text.add_child(health)
 		line.add_child(text)
 		add_child(line)
+		card.resized.connect(queue_redraw)
+		resized.connect(queue_redraw)
 
-	## Writes the chip for one type; an enemy building wears the amber frame and the notch.
+	## Writes the chip for one type; an enemy building wears P115b's look (brackets, amber bar).
 	func show_type(snap: MatchSnapshot, group: Group, as_enemy: bool) -> void:
 		var units: bool = not group.building
 		var text: String = "×%d" % group.count if units else snap.type_names[group.type]
@@ -115,7 +118,7 @@ class Chip:
 			card.texture = load(art) if ResourceLoader.exists(art) else null
 		if enemy != as_enemy:
 			enemy = as_enemy
-			theme_type_variation = ENEMY_CHIP if enemy else CHIP
+			health.set_enemy(enemy)
 			queue_redraw()
 		health.max_value = maxf(group.max_hp, 1.0)
 		health.value = group.hp
@@ -137,21 +140,63 @@ class Chip:
 		health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
 		fit_label()
 
-	## The notch of an enemy chip (empty for an own one): a gap in the top edge of the amber frame,
-	## open down to `NOTCH_DP.y` under it, the cue that does not rest on colour alone (as the
-	## enemy health bar's, `HealthBarLayer`).
+	## The brackets of an enemy building's chip (none for any other), as `HealthBarLayer` frames a
+	## selected building: four corners round the picture, each an arm `FRAME_ARM_DP` long at the
+	## most and `FRAME_THICK_DP` thick, the dark outline of every arm first (8 rects), then the 8
+	## arms. It is drawn over the chip and takes no room.
+	func frame_rects() -> Array[Rect2]:
+		var out: Array[Rect2] = []
+		if not enemy:
+			return out
+		var box: Rect2 = Rect2(card.global_position - global_position, card.size)
+		var dp: float = UiScale.base_px_per_dp()
+		var arm: float = minf(HealthBarLayer.FRAME_ARM_DP * dp, 0.4 * minf(box.size.x, box.size.y))
+		var thick: float = HealthBarLayer.FRAME_THICK_DP * dp
+		for outline: int in 2:
+			for arm_at: int in 8:
+				var corner: int = arm_at >> 1
+				var way: Vector2 = Vector2(-1.0 if corner & 1 else 1.0, -1.0 if corner & 2 else 1.0)
+				var from: Vector2 = Vector2(
+					box.end.x if corner & 1 else box.position.x,
+					box.end.y if corner & 2 else box.position.y
+				)
+				var along: Vector2 = Vector2(arm, thick) if arm_at & 1 == 0 else Vector2(thick, arm)
+				var rect: Rect2 = Rect2(from, along * way).abs()
+				out.append(rect.grow(HealthBarLayer.EDGE_DP * dp) if outline == 0 else rect)
+		return out
+
+	func _draw() -> void:
+		var rects: Array[Rect2] = frame_rects()
+		for index: int in rects.size():
+			var tone: StringName = &"edge" if index < 8 else &"enemy"
+			draw_rect(rects[index], get_theme_color(tone, FRAME))
+
+
+## A chip's health bar. An enemy building's is amber (the theme's `EnemyHealth`) with a notch in
+## its top edge, the cue that does not rest on colour alone: `HealthBarLayer`'s enemy bar.
+class HealthBar:
+	extends ProgressBar
+
+	var enemy: bool = false
+
+	func set_enemy(on: bool) -> void:
+		enemy = on
+		theme_type_variation = ENEMY_BAR if on else &""
+		queue_redraw()
+
+	## The notch, `NOTCH_WIDTH_DP` by `NOTCH_DEPTH_DP` at the middle of the top edge (empty for an
+	## own bar).
 	func notch_rect() -> Rect2:
 		if not enemy:
 			return Rect2()
-		var box: StyleBoxFlat = get_theme_stylebox(&"panel") as StyleBoxFlat
-		var depth: float = UiScale.dp(NOTCH_DP.y) + (0.0 if box == null else box.border_width_top)
-		var width: float = UiScale.dp(NOTCH_DP.x)
-		return Rect2(roundf((size.x - width) / 2.0), 0.0, width, ceilf(depth))
+		var dp: float = UiScale.base_px_per_dp()
+		var width: float = HealthBarLayer.NOTCH_WIDTH_DP * dp
+		return Rect2(roundf((size.x - width) / 2.0), 0.0, width, HealthBarLayer.NOTCH_DEPTH_DP * dp)
 
 	func _draw() -> void:
 		var notch: Rect2 = notch_rect()
 		if notch.size != Vector2.ZERO:
-			draw_rect(notch, get_theme_color(&"notch"))
+			draw_rect(notch, get_theme_color(&"edge", FRAME))
 
 
 ## What the selection holds of one type, for `_fill`.
@@ -174,7 +219,7 @@ func _ready() -> void:
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_row)
 	_build_clear()
-	_build_chip()
+	_build_more()
 	_chip_for(0)  # The first chip stands from the start, the others when a selection needs them.
 	_scroll.name = "Orders"
 	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -260,8 +305,8 @@ func _face(button: Button, glyph: String, word: String) -> void:
 	button.add_child(face)
 
 
-## The "+N" chip (the type chips are made when a selection first needs them, `_chip_for`).
-func _build_chip() -> void:
+## The "+N" plate (the type chips are made when a selection first needs them, `_chip_for`).
+func _build_more() -> void:
 	_more_chip.name = "More"
 	_more_chip.theme_type_variation = CHIP
 	_more_chip.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -269,6 +314,7 @@ func _build_chip() -> void:
 	_more.name = "Number"
 	_more.theme_type_variation = NUMBER
 	_more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_more_chip.add_child(_more)
 	_row.add_child(_more_chip)
 	_more_chip.minimum_size_changed.connect(_queue_publish)
@@ -355,7 +401,8 @@ func _fill(ids: PackedInt32Array) -> void:
 		_fit_chips()
 
 
-## Shows the chips that fit in the bar's room, one per type while they do, then a "+N" chip for the
+## Shows the chips that fit in the bar's room (while placement or the strike aim run: in the width
+## the bar had as the mode began), one per type while they do, then a "+N" chip for the
 ## types left out (the old `SelectionPanel`'s rule). The first chip always shows. The room is what
 ## the bar may be at the most (`HudCorners.place` with a content that asks for more than any screen
 ## has), less Deselect, the orders and the gaps, so the fit never depends on the width it gave.
@@ -365,6 +412,8 @@ func _fit_chips() -> void:
 		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
 		var rects: Dictionary[StringName, Rect2] = _rects(true)
 		var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
+		if _frozen:
+			room = minf(room, _held_px)  # A mode runs: the extra types go into "+N".
 		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
 		for count: int in range(_types, 0, -1):
 			shown = count
@@ -396,8 +445,12 @@ func _update_slot() -> void:
 	)
 	if moded and not _frozen:
 		_held = _slot  # The slot the bar has as the mode begins, not what the selection says now.
+		_held_px = size.x  # And its width: no selection widens the bar under the thumb.
+	var changed: bool = moded != _frozen
 	_frozen = moded
 	_slot = _held if _frozen else _has
+	if changed:
+		_fit_chips()  # The room is the held width while the mode runs, the bar's own after it.
 	_publish()
 
 
