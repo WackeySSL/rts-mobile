@@ -162,20 +162,61 @@ func test_a_source_outside_the_view_grown_by_a_tile_emits_nothing_and_a_blackout
 	assert_int(_air.damage().ring.count()).is_greater(0)
 
 
-func test_the_ring_never_holds_more_than_80_and_overwrites_its_oldest() -> void:
+func test_the_ring_never_holds_more_than_80_and_a_new_puff_overwrites_the_oldest() -> void:
 	for id: int in IDS:
 		_hp(id, 10)
 	_camera.position = (_centre(1) + _centre(5)) * 0.5
 	_life.damage_slots = 80
-	var oldest: float = INF
 	_run(START, START + 150)
 	var ring: FxRing = _air.damage().ring
 	assert_int(ring.count()).is_equal(80)
-	for puff: Array in _puffs():
-		oldest = minf(oldest, puff[2])
-	assert_float(oldest).is_greater(LifeClock.tick_ms(START))  # The first births are gone.
+	var second: float = ring.puff_born(1)
+	var newest: float = ring.puff_born(79)
+	var born: float = LifeClock.tick_ms(START + 150)
+	ring.add(DamageFx.Style.SMOKE, Vector2(7.0, 7.0), born, 0)
+	assert_int(ring.count()).is_equal(80)  # Full: one in, the oldest out.
+	assert_float(ring.puff_born(0)).is_equal(second)
+	assert_float(ring.puff_born(78)).is_equal(newest)
+	assert_float(ring.puff_born(79)).is_equal(born)
+	assert_vector(ring.puff_at(79)).is_equal(Vector2(7.0, 7.0))
 	_frame(START + 149, 0.5)
 	assert_int(ring.quad_count()).is_less_equal(80)
+
+
+func test_a_kritisk_building_holds_three_glows_and_each_burning_point_glows_steadily() -> void:
+	_only(1)
+	_hp(1, 10)
+	_only(1)
+	var first: int = _first_point(1)
+	var spots: Array[Vector2] = []
+	for step: int in 3:
+		spots.append(_spot(1, 1 + (first - 1 + step) % 4))
+	var ring: FxRing = _air.damage().ring
+	var sums: Array[float] = []
+	for tick: int in range(START, START + 75):  # 5 s; the glows start within a cycle.
+		Rig.deliver(_runner, PackedInt32Array(), tick)
+		var glows: int = 0
+		for index: int in ring.count():
+			var style: int = ring.puff_style(index)
+			if style == DamageFx.Style.GLOW_STRONG or style == DamageFx.Style.GLOW_WEAK:
+				glows += 1
+		assert_int(glows).override_failure_message("tick %d" % tick).is_less_equal(3)
+		if tick < START + 45:
+			continue
+		for alpha: float in [0.0, 0.5, 0.9]:  # Two seconds of frames, three to a tick.
+			_frame(tick, alpha)
+			var sum: float = 0.0
+			for index: int in ring.quad_count():
+				sum += ring.quad_alpha(index) if ring.quad_kind(index) == DamageFx.K_GLOW else 0.0
+			sums.append(sum)
+	assert_int(sums.size()).is_equal(90)
+	var most: float = sums.max()
+	var least: float = sums.min()
+	assert_float(most - least).is_less(0.05)
+	# Two of the three points are fire points at most (a spark point has no fire or glow).
+	assert_float(most).is_less_equal(3.0 * _life.glow_strong_alpha + 0.001)
+	assert_float(least).is_greater(0.0)
+	assert_int(spots.size()).is_equal(3)
 
 
 func test_no_burning_building_has_more_than_15_live_smoke_puffs_with_the_default_numbers() -> void:
@@ -230,8 +271,7 @@ func test_the_kritisk_fire_and_glow_are_larger_and_stronger_than_the_skadet_ones
 	assert_float(_life.glow_strong_alpha).is_greater(_life.glow_weak_alpha)
 
 
-func test_three_kritisk_buildings_keep_every_soot_puff_for_its_life_and_four_lose_the_oldest(
-) -> void:
+func test_the_pinned_ids_1_2_3_at_kritisk_keep_every_soot_puff_and_four_lose_the_oldest() -> void:
 	var three: Array[int] = [1, 2, 3]
 	var kept: Array = _soot_log(three, 80)
 	var room: Array = _soot_log(three, 2000)  # With room for all.

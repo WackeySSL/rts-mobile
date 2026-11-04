@@ -57,9 +57,26 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"_stage_of",
 	],
 	# P148: the damage particles' ring and rules, and the ambient emitters beside them.
-	"res://game/view/FxRing.gd": ["set_style", "clear", "add", "compact", "plan", "draw"],
+	"res://game/view/FxRing.gd":
+	["set_style", "size_to", "clear", "add", "compact", "plan", "draw", "quad_rect"],
 	"res://game/view/DamageFx.gd":
-	["read", "emit", "_burn", "_drive", "_due", "_cloud", "_flame", "_birth", "_style"],
+	[
+		"read",
+		"emit",
+		"_burn",
+		"_drive",
+		"_due",
+		"_cloud",
+		"_flame",
+		"_lamp",
+		"_birth",
+		"_style",
+		"_glow",
+		"add_crater",
+		"_craters",
+		"_seen",
+		"_make_craters_if_resized",
+	],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":

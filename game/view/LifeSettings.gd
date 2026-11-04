@@ -152,8 +152,13 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 ## (SKADET), `soot` (KRITISK), `fire`, `jet`, `spark` and `exhaust` (a damaged vehicle's trail). A
 ## KRITISK fire and its glow are `damage_fire_scale` times their frame, a vehicle's fire
 ## `damage_vehicle_fire_scale`. Smoke and soot rise `damage_rise_px` and drift `emit_drift_px`; a
-## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET) or
-## `glow_strong_alpha` (KRITISK).
+## spark rises `damage_spark_rise_px`. A glow's alpha is `glow_weak_alpha` (SKADET),
+## `glow_strong_alpha` (KRITISK) or `glow_faint_alpha` (a crater). A glow is steady: one per burning
+## point, born again the tick the last one ends, each living the ticks of its fire's (or ember's)
+## `damage_emit_ms`, so at most one glow per point shows.
+## Craters (ADR 0029 section 6; P165 adds them): a source of a fallen building smokes
+## (`crater_smoke`) for `crater_smoke_ms` and glows with embers (`ember`) for `crater_ember_ms`; at
+## most `crater_sources` are alive at once, the oldest ends first.
 @export var damage_slots: int = 80
 @export var damage_burning_points: PackedInt32Array = PackedInt32Array([1, 3])
 @export var damage_smoke_cap: int = 30
@@ -164,6 +169,8 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 	&"jet": 300,
 	&"spark": 400,
 	&"exhaust": 600,
+	&"crater_smoke": 700,
+	&"ember": 900,
 }
 @export var damage_life_ms: Dictionary[StringName, int] = {
 	&"smoke": 2000,
@@ -172,6 +179,8 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 	&"jet": 600,
 	&"spark": 500,
 	&"exhaust": 1200,
+	&"crater_smoke": 2000,
+	&"ember": 1800,
 }
 @export var damage_fire_scale: float = 1.6
 @export var damage_vehicle_fire_scale: float = 0.8
@@ -179,3 +188,7 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var damage_spark_rise_px: float = 14.0
 @export var glow_weak_alpha: float = 0.3
 @export var glow_strong_alpha: float = 0.55
+@export var glow_faint_alpha: float = 0.2
+@export var crater_smoke_ms: int = 8000
+@export var crater_ember_ms: int = 15000
+@export var crater_sources: int = 16

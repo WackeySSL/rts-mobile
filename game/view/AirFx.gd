@@ -171,6 +171,16 @@ func damage() -> DamageFx:
 	return _dmg
 
 
+## Starts a crater source: smoke and embers over the spot of a building that fell (ADR 0029
+## section 6; P165's collapse calls it when it ends). `centre` is the footprint centre in world px,
+## `offsets` the damage points at ground height (`DamageFx.ground_points`; none: the centre),
+## `foot` the footprint in tiles, `owner_id` its player, `tick` the tick the smoke starts in.
+func add_crater(
+	id: int, centre: Vector2, offsets: PackedVector2Array, foot: Rect2i, owner_id: int, tick: int
+) -> void:
+	_dmg.add_crater(life, id, centre, offsets, foot, owner_id, tick)
+
+
 ## Puffs in the ring, alive or not yet overwritten.
 func slot_count() -> int:
 	return _count
@@ -242,6 +252,7 @@ func _follow_match(snap: MatchSnapshot) -> void:
 		_empty()
 		for ring: FxRing in _rings:
 			ring.clear()
+		_dmg.end_craters()
 
 
 func _empty() -> void:
@@ -339,7 +350,15 @@ func _on_ticked(_tick: int) -> void:
 		_read_numbers()
 		_emit_ambient(snap, view)
 	_dmg.read(life)
-	_dmg.emit(snap, view, life, building_layer, unit_layer, get_global_transform().affine_inverse())
+	_dmg.emit(
+		snap,
+		view,
+		life,
+		building_layer,
+		unit_layer,
+		get_global_transform().affine_inverse(),
+		FogLayer.local_player_of(runner)
+	)
 
 
 ## A puff at each ambient emitter whose cycle turned over, of a building the player can see that is
