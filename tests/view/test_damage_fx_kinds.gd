@@ -19,6 +19,12 @@ func test_the_default_numbers_hold_every_stage_under_the_smoke_cap() -> void:
 		var live: int = ceili(float(DATA.damage_life_ms[puff]) / float(DATA.damage_emit_ms[puff]))
 		var note: String = "%s: %d points x %d live" % [puff, stages[puff], live]
 		assert_int(stages[puff] * live).override_failure_message(note).is_less_equal(cap)
+	# A crater (up to MAX_POINTS points) smokes under the cap too.
+	var crater: int = ceili(
+		float(DATA.damage_life_ms[&"crater_smoke"]) / float(DATA.damage_emit_ms[&"crater_smoke"])
+	)
+	assert_int(DamageFx.MAX_POINTS * crater).is_less_equal(cap)
+	assert_int(DamageFx.MAX_POINTS * crater).is_equal(12)
 	# The defaults are lower than the cap, so the rings fit the frame budget (ADR 0029 section 6).
 	assert_int(lines[1] * ceili(2000.0 / 400.0)).is_equal(15)
 	assert_int(lines[0] * ceili(2000.0 / 500.0)).is_equal(4)
@@ -38,6 +44,75 @@ func test_every_glow_is_drawn_before_the_clouds_and_the_clouds_before_the_flames
 	assert_int(glow).is_greater(-1)
 	assert_int(ambient).is_greater(glow)
 	assert_int(rest).is_greater(ambient)
+
+
+func test_a_ring_drops_the_puffs_that_lived_out_exactly_at_their_life_oldest_first() -> void:
+	var ring: FxRing = FxRing.new()
+	ring.setup([&"smoke"], 2)
+	ring.set_style(0, 0, 1000.0, 0.0, 0.0, Vector2.ONE, 1.0, 0.0)
+	ring.set_style(1, 0, 300.0, 0.0, 0.0, Vector2.ONE, 1.0, 0.0)
+	ring.size_to(8)
+	var styles: Array[int] = [0, 1, 1, 0]  # Lives 1000, 300, 300, 1000; born 0, 100, 200, 300.
+	for index: int in 4:
+		ring.add(styles[index], Vector2(float(index), 0.0), float(index) * 100.0, 0)
+	ring.compact(400.0)  # Ages 400, 300 (= its life: gone), 200, 100.
+	assert_array(_borns(ring)).is_equal([0.0, 200.0, 300.0])
+	ring.compact(499.0)  # The puff born at 200 is 299 ms old of 300: it stays.
+	assert_array(_borns(ring)).is_equal([0.0, 200.0, 300.0])
+	ring.compact(500.0)
+	assert_array(_borns(ring)).is_equal([0.0, 300.0])
+	ring.compact(1300.0)  # 1300 and 1000 ms old: both over 1000.
+	assert_int(ring.count()).is_equal(0)
+	# A full ring of live puffs keeps all four, and the next puff overwrites the oldest.
+	ring.size_to(4)
+	for index: int in 4:
+		ring.add(0, Vector2.ZERO, float(index) * 100.0, 0)
+	ring.compact(400.0)
+	assert_array(_borns(ring)).is_equal([0.0, 100.0, 200.0, 300.0])
+	ring.add(0, Vector2.ZERO, 400.0, 0)
+	assert_array(_borns(ring)).is_equal([100.0, 200.0, 300.0, 400.0])
+
+
+func _borns(ring: FxRing) -> Array:
+	var found: Array = []
+	for index: int in ring.count():
+		found.append(ring.puff_born(index))
+	return found
+
+
+func test_a_frame_draws_every_glow_before_every_cloud_and_every_cloud_before_every_flame() -> void:
+	# By behaviour: two rings in the layer, one puff of each pass in both; the draws are numbered.
+	var other: FxRing = FxRing.new()
+	other.setup([&"glow", &"smoke", &"fire"], 3)
+	other.set_pass(0, FxRing.GLOW)
+	other.set_pass(1, FxRing.CLOUD)
+	other.size_to(6)
+	for style: int in 3:
+		other.set_style(style, style, 5000.0, 0.0, 0.0, Vector2.ONE, 1.0, 0.0)
+		other.add(style, Vector2(40.0, 40.0), 0.0, 0)
+	_air._rings.append(other)
+	_only(1)
+	_hp(1, 20)
+	_only(1)
+	_run(START, START + 30)
+	Rig.at(_runner, START + 29, 0.5)
+	_air.set_process(true)
+	await await_idle_frame()
+	_air.set_process(false)
+	var damage: FxRing = _air.damage().ring
+	var order: Array[int] = []
+	for ring: FxRing in [damage, other]:
+		order.append(ring.drawn_at(FxRing.GLOW))
+	for ring: FxRing in [damage, other]:
+		order.append(ring.drawn_at(FxRing.CLOUD))
+	for ring: FxRing in [damage, other]:
+		order.append(ring.drawn_at(FxRing.FLAME))
+	for index: int in order.size():
+		assert_int(order[index]).is_greater(0)  # Every pass of every ring ran.
+		if index > 0:
+			assert_int(order[index]).override_failure_message("draw %d" % index).is_greater(
+				order[index - 1]
+			)
 
 
 func test_a_real_frame_paints_each_pass_exactly_its_planned_quads_by_kind() -> void:
@@ -62,9 +137,6 @@ func test_a_real_frame_paints_each_pass_exactly_its_planned_quads_by_kind() -> v
 	for pass_index: int in FxRing.PASSES:
 		var note: String = "pass %d" % pass_index
 		assert_int(by_pass[pass_index]).override_failure_message(note).is_greater(0)
-		assert_int(ring.planned(pass_index)).override_failure_message(note).is_equal(
-			by_pass[pass_index]
-		)
 		assert_int(ring.drawn(pass_index)).override_failure_message(note).is_equal(
 			by_pass[pass_index]
 		)

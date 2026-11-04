@@ -55,11 +55,35 @@ const FRAME_PATH: Dictionary[String, Array] = {
 		"quad_rect",
 		"_emit_ambient",
 		"_stage_of",
+		"add_crater_source",
+		"end_crater_sources_on",
 	],
 	# P148: the damage particles' ring and rules, and the ambient emitters beside them.
-	"res://game/view/FxRing.gd": ["set_style", "clear", "add", "compact", "plan", "draw"],
+	"res://game/view/FxRing.gd":
+	["set_style", "size_to", "clear", "add", "compact", "plan", "draw", "quad_rect"],
 	"res://game/view/DamageFx.gd":
-	["read", "emit", "_burn", "_drive", "_due", "_cloud", "_flame", "_birth", "_style"],
+	[
+		"read",
+		"emit",
+		"_burn",
+		"_drive",
+		"_due",
+		"_cloud",
+		"_flame",
+		"_on_grid",
+		"_ticks",
+		"_birth",
+		"_style",
+		"_glow",
+		"add_crater",
+		"add_crater_offsets",
+		"end_craters",
+		"end_craters_on",
+		"_take_crater",
+		"_craters",
+		"_seen",
+		"_make_craters_if_resized",
+	],
 	"res://game/view/GroundFx.gd":
 	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":
