@@ -79,6 +79,33 @@ show three figures. Artillery needs a radar.
 Armour classes: infantry, light, heavy, building. Weapons deal a percentage of damage per class;
 the table lives in `data/`.
 
+## Damage and destruction
+How a building or vehicle looks as it is shot (Michael's sheets of 2026-11-03 and his answers of
+2026-11-04; ADR 0028 and ADR 0029). It is a look only: the stages change no rule, and the hp, the
+health bar and the fight are the same with or without them. The thresholds and every time below live
+in `data/life_settings.tres`.
+
+Buildings show the damage in their shape, not only in their colour:
+| Stage | Hp left | Shape | Surface | Fire and smoke |
+| --- | --- | --- | --- | --- |
+| Whole | above 2/3 | whole | clean | none |
+| Damaged | 2/3 down to 1/3 | small breaks: a corner, a mast, a wing | blown panes as dark holes, soot over the breaks; the team colour starts to burn off | one fire with a weak glow, thin grey smoke; a cracked gas tank burns as a jet |
+| Critical | under 1/3 | a part has collapsed and the inside shows: floors, rebar, beams, dark rooms | soot over the breaks; little team colour left | fire lit from inside, thick black smoke |
+
+- **Materials break their own way:** concrete along its joints with rebar sticking out, steel bends
+  and twists (never shatters), glass goes first as dark holes with the frames left, tanks and spheres
+  crack, burn as a jet and then tear open, masts and towers snap at one point and fall one way.
+- **Smoke and fire are effects, not drawn into the building**, so they move, and which of a
+  building's points burn differs between two of the same building.
+- **A hit** gives a short white flash where it lands and a few small chips.
+- **Destroyed (0 hp):** a flash and a burst, the building sinks into itself behind a dust cloud, and
+  when the dust settles a scorch crater is left (the refinery's is the largest). Smoke rises from the
+  crater for 8 seconds and embers glow for 15. There is no ruin, and the camera does not shake.
+- **Vehicles:** a soot scar under half their hp; under a quarter a charred patch, a loose skirt plate
+  or fender, and a small fire with smoke that trails behind them.
+- **Fog:** a stage, a collapse and its crater show only where the player sees them; a building seen
+  and then hidden keeps the stage it had when last seen.
+
 ## Superweapons (MVP)
 One per faction, built after the radar. It charges for 5 minutes from completion; then the player
 taps its button and a spot and confirms:
