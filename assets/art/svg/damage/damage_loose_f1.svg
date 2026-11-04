@@ -1,0 +1,13 @@
+<!-- Damage overlay loose, look B: a track-guard skirt plate (ADR 0028 section 4), neutral, 44x40 at 2x -->
+<!-- Silhouette: A grey steel skirt plate snapped in two, the upper half on its bracket bolt and the lower half dangling below on a strap. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="40" viewBox="0 0 44 40">
+<polygon points="9,10 28,16 29,24 11,18" fill="#7D8893" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="7,6 26,12 28,16 9,10" fill="#A9B4BE" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="11,18 29,24 29,27 12,21" fill="#5B6670" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="24,24 38,30 36,37 22,31" fill="#7D8893" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="24,24 38,30 37,32 23,26" fill="#A9B4BE" stroke="#30342E" stroke-width="2" stroke-linejoin="round"/>
+<polyline points="26,24 24,27" fill="none" stroke="#30342E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="18" cy="15" rx="5" ry="3" fill="#1C2127" opacity="0.5"/>
+<polygon points="3,3 9,3 9,9 3,9" fill="#30342E"/>
+<ellipse cx="6" cy="6" rx="2" ry="2" fill="#A9B4BE" opacity="1"/>
+</svg>

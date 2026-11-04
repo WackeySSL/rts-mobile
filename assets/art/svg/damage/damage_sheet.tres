@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="IsoSheetDef" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/IsoSheetDef.gd" id="0_script"]
+
+[resource]
+script = ExtResource("0_script")
+art_id = &"damage"
+faction = &"neutral"
+category = &"dmg"
+parts = PackedStringArray("scar1", "scar2", "loose")
+counts = PackedInt32Array(1, 1, 1)
+frames = PackedInt32Array(2, 2, 4)
+sizes = PackedInt32Array(64, 36, 64, 36, 44, 40)
+anchors = PackedInt32Array(32, 18, 32, 18, 6, 6)
+root = "res://assets/art/svg/damage"

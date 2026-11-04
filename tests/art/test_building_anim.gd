@@ -309,7 +309,8 @@ func test_the_emitters_are_where_the_plan_says_and_inside_the_picture() -> void:
 		var model: ArtModel = load(path) as ArtModel
 		var want: Array = EMITTERS.get(model.art_id, [])
 		if model.category == &"veh":
-			want = [&"exhaust"]
+			# The exhaust, then the overlays' damage and hang points (P160, ADR 0028 section 4).
+			want = [&"exhaust", &"damage", &"hang"]
 		var kinds: Array = model.emitter_list().map(func(e: Array) -> StringName: return e[0])
 		assert_array(kinds).override_failure_message(path).is_equal(want)
 		var sheet: IsoSheetDef = _index.sheet(model.art_id)
@@ -333,10 +334,12 @@ func test_the_emitters_are_where_the_plan_says_and_inside_the_picture() -> void:
 						inside = rect if inside.size == Vector2.ZERO else inside.merge(rect)
 				assert_bool(inside.grow(8.0).has_point(sheet.emitter_point(index, -1))).is_true()
 			else:
-				# A vehicle's: a point per hull direction, behind the middle of the unit at d06.
+				# A vehicle's: a point per hull direction; the exhaust is behind the middle of the
+				# unit at d06 (the damage and hang points are pinned in test_damage_overlays).
 				assert_int(sheet.emitter_points.size()).is_equal(16 * want.size())
-				assert_bool(point.x < 0.0).override_failure_message(path).is_true()
-				assert_bool(point.z > 0.0).override_failure_message(path).is_true()
+				if want[index] == &"exhaust":
+					assert_bool(point.x < 0.0).override_failure_message(path).is_true()
+					assert_bool(point.z > 0.0).override_failure_message(path).is_true()
 
 
 func test_every_vehicle_model_has_marks_from_its_running_gear_and_nothing_else_has() -> void:
