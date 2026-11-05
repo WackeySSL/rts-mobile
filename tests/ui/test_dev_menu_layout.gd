@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The dev menu in either orientation (plan P63, ADR 0015 section 5 "Other screens"): at the six
 ## test sizes its title and its eight buttons (the two Skirmishes of plan P90, test map, strike
-## test, art gallery, touch probe, perf arena) lie inside the safe rect, every button is at least
+## test, art gallery, touch probe, perf arena, perf bases) lie inside the safe rect, every button
+## is at least
 ## dp(48) on each axis with text of 14 sp or more, and nothing overlaps. The same holds on the
 ## phone browsers (the buttons are 48 dp tall and stand in two columns sideways and one upright, so
 ## that they fit a phone browser held sideways without a scroll), with the cutouts of Michael's

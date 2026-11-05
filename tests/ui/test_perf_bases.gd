@@ -169,7 +169,13 @@ func test_the_shipped_base_arena_matches_every_checkpoint_on_the_card() -> void:
 	hud.run_ticks = 900
 	add_child(hud)
 	hud.restart()
-	runner.run_ticks(900)
+	var heavy_ticks: int = 0
+	for _tick: int in 900:
+		runner.run_ticks(1)
+		heavy_ticks += 1 if _rigs_in(runner.snapshot) >= gate.heavy_rigs else 0
+	# The heavy window (600 frames at 4 frames a tick, so 150 ticks): measured 205 ticks (0 to 204,
+	# peak 150 rigs) in review. The map is wholly in view, so every rig counts.
+	assert_int(heavy_ticks).is_greater_equal(150)
 	var s: Dictionary = hud.summary()
 	assert_array(s["checkpoints"]).has_size(6)
 	assert_int(s["golden_checked"]).is_equal(6)
@@ -184,7 +190,10 @@ func test_the_report_carries_the_atlas_bake_and_the_card_the_draw_call_forecast(
 	assert_bool(hud.summary().has("atlas_bake_ms")).is_true()
 	assert_bool(JSON.parse_string(JSON.stringify(hud.summary())).has("atlas_bake_ms")).is_true()
 	var lines: PackedStringArray = hud.card_lines()
-	var forecast: String = PerfBases.calls_line(0)
+	var forecast: String = (
+		"draw calls p95 0 | forecast 16, 17 while a strike is aimed or in flight, about 22 at "
+		+ "worst, plus the HUD (no verdict)"
+	)
 	assert_array(Array(lines)).contains([forecast])
 	assert_array(Array(lines)).contains(["atlas bake 0.0 ms | page none (no verdict)"])
 	var other: Node2D = _open(PerfHud.ARENA_UNITS)
@@ -221,6 +230,14 @@ func test_the_union_and_the_diamond_rules() -> void:
 	assert_bool(ArenaRig.ArenaScript.in_diamond(inside, 4, 2)).is_false()
 	assert_bool(ArenaRig.ArenaScript.in_diamond(inside, 3, 3)).is_false()
 	assert_bool(ArenaRig.ArenaScript.in_diamond(Vector2(0, -50), 54, 24)).is_false()
+
+
+## The rows of `snap` that are not buildings: the rigs the card counts.
+func _rigs_in(snap: MatchSnapshot) -> int:
+	var count: int = 0
+	for type: int in snap.type_index:
+		count += 0 if WorldSort.is_building(snap, type) else 1
+	return count
 
 
 ## An arena of `kind` in the tree with its slow seams stubbed; freed with the case.

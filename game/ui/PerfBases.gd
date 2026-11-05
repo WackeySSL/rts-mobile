@@ -9,14 +9,17 @@ const ARENA_UNITS: String = "arena"
 const ARENA_BASES: String = "bases"
 ## The gate fields of the base arena's pair, named in a mismatch so a re-pin goes to the right one.
 const FIELDS: String = " (bases_golden_ticks, bases_golden_hex)"
-## ADR 0023 section 2's draw-call forecast of the base arena, HUD left out: 14 since the craters
-## (note of 2026-10-30), and at least 15 while a strike is aimed or in flight (`StrikeMarkerLayer`).
+## ADR 0023 section 2's draw-call forecast of the base arena, HUD left out: 16 (14 + `GroundFx` +
+## `AirFx`, note of 2026-11-02, P132), about 22 in the worst moment, and one more while a strike is
+## aimed or in the air (`StrikeMarkerLayer`, note of 2026-10-30; the 2026-10-31 note adds the
+## ghost, outside this arena).
 ## Printed beside the measured p95 with no verdict; the gate's ceiling is `draw_calls_max`.
-const CALLS_FORECAST: int = 14
-const CALLS_STRIKE: int = 15
+const CALLS_FORECAST: int = 16
+const CALLS_STRIKE: int = 17
+const CALLS_WORST: int = 22
 const CALLS_LINE: String = (
-	"draw calls p95 %d | forecast %d, %d while a strike is aimed or in flight, plus the HUD "
-	+ "(no verdict)"
+	"draw calls p95 %d | forecast %d, %d while a strike is aimed or in flight, about %d at worst, "
+	+ "plus the HUD (no verdict)"
 )
 
 
@@ -35,7 +38,7 @@ static func fields(kind: String) -> String:
 
 ## The card's draw-call line of the base arena for the measured p95.
 static func calls_line(p95: int) -> String:
-	return CALLS_LINE % [p95, CALLS_FORECAST, CALLS_STRIKE]
+	return CALLS_LINE % [p95, CALLS_FORECAST, CALLS_STRIKE, CALLS_WORST]
 
 
 ## The checkpoints of a run (`got_ticks` and `got_hex`, index by index) against the golden `ticks`

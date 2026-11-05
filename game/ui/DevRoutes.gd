@@ -46,7 +46,7 @@ static func open_perf_bases(tree: SceneTree) -> Error:
 		push_error("DevRoutes: scene not found: %s" % PERF_ARENA_SCENE)
 		return ERR_FILE_NOT_FOUND
 	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
-	arena.set("arena_kind", PerfHud.ARENA_BASES)
+	arena.arena_kind = PerfHud.ARENA_BASES
 	return tree.change_scene_to_node(arena)
 
 
