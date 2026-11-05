@@ -196,8 +196,11 @@ func test_a_finger_on_the_check_mark_sends_no_place_under_the_pause_menu() -> vo
 	assert_array(_sent).is_empty()
 	assert_bool(placement.active).is_true()
 	assert_bool(placement.pending).is_false()
-	# Resume: the check mark is lit again and one press sends one PLACE.
+	# Resume: the check mark is lit again and one press sends one PLACE. Resume unpauses the
+	# runner; pause it again in the same frame, so that no tick re-checks the ghost's tile (the
+	# forced OK verdict) before the asserts.
 	(_main.get_node("Hud/HudStateFeed") as HudStateFeed).state.close(HudState.Unfold.PAUSE)
+	(_main.get_node("MatchRunner") as MatchRunner).paused = true
 	await await_idle_frame()
 	assert_bool((confirm as Button).disabled).is_false()
 	TouchEvents.press(get_viewport(), 0, at)
