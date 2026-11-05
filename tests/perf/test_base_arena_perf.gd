@@ -117,7 +117,7 @@ func test_the_base_arena_stays_inside_its_phase_3_cost_bounds_in_all_six_runs() 
 ## lost its native runs cannot pass on an empty report. The headroom prints either way.
 func test_the_native_tick_stays_under_the_bases_budget() -> void:
 	var budget: Dictionary = PerfBudget.read(PerfBudget.PATH, PerfBudget.BASES_SECTION)
-	print(PerfBudget.status_line(_native_report, budget, "bases native"))
+	print(PerfBudget.status_line(_native_report, budget, "bases native", PerfBudget.ARENA_BASES))
 	assert_bool(_native_report.is_empty()).is_equal(not ClassDB.class_exists(&"SimKernels"))
 	if _native_report.is_empty():
 		return

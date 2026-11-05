@@ -108,7 +108,12 @@ func test_the_status_line_shows_the_headroom_or_the_skip_note() -> void:
 		"perf: native mean_ms 0.279 of the budget 0.4575, p95_ms 0.492 of 0.8475"
 	)
 	var note: String = PerfBudget.status_line({}, _budget(0.4575, 0.8475))
-	assert_str(note).is_equal(PerfBudget.SKIPPED)
+	assert_str(note).is_equal(PerfBudget.SKIPPED_FORMAT % PerfBudget.ARENA_SIM)
+	var bases_note: String = PerfBudget.status_line(
+		{}, _budget(0.4575, 0.8475), "bases native", PerfBudget.ARENA_BASES
+	)
+	assert_str(bases_note).contains("no bases budget check")
+	assert_str(bases_note).is_not_equal(note)
 	assert_bool(note.begins_with("perf: ")).is_true()
 	assert_bool("\n" in note).is_false()
 	for rejected: String in ["SCRIPT ERROR", "ERROR:", "Parse Error", "WARNING:"]:
@@ -116,16 +121,16 @@ func test_the_status_line_shows_the_headroom_or_the_skip_note() -> void:
 
 
 ## [bases] is a section of the same file with the same four keys (plan P93b): the arena of 178 rows
-## (150 mobile units and its buildings), 900 ticks, times above 0 in order, over [sim]'s because the
-## base arena's tick costs more, and under the catastrophic cap. Each section is read on its own: a
-## config with only [sim] gives no [bases] budget and the other way round, so a section that is
-## missing is refused and never read from the other, and the refusal names the section asked for.
+## (150 mobile units and its buildings), 900 ticks, times above 0 in order and under the
+## catastrophic cap (no ordering to [sim]'s: both are calibrations that move on their own).
+## Each section is read on its own: a config with only [sim] gives no [bases] budget and the other
+## way round, so a section that is missing is refused and never read from the other, and the
+## refusal names the section asked for.
 func test_the_bases_section_holds_its_own_budget_for_the_178_row_arena() -> void:
 	var budget: Dictionary = PerfBudget.read(PerfBudget.PATH, PerfBudget.BASES_SECTION)
 	assert_array(budget.keys()).is_equal(["mean_ms", "p95_ms", "ticks", "units"])
 	assert_int(budget["ticks"]).is_equal(900)
 	assert_int(budget["units"]).is_equal(178)
-	assert_float(budget["mean_ms"]).is_greater(PerfBudget.read()["mean_ms"])
 	assert_float(budget["mean_ms"]).is_less_equal(budget["p95_ms"])
 	assert_float(budget["p95_ms"]).is_less(PerfReport.CATASTROPHIC_MEAN_MS)
 	var sim_only: ConfigFile = _config({})

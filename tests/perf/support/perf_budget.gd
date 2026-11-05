@@ -2,8 +2,9 @@ extends RefCounted
 ## The CI wall-clock budget (plan P49b, ADR 0012 section 4): reads tests/perf/budget.cfg and judges
 ## a perf report against it. A regression ratchet at 1.5 x the worst calibrated min-of-3 of the
 ## native tick; the numbers live only in that file. Pure: no clock and no World, the caller passes
-## the report. test_perf_budget.gd pins it on hand-made budgets and reports; test_sim_perf.gd
-## applies it to the report of the native runs. Not a test suite.
+## the report. test_perf_budget.gd pins it on hand-made budgets and reports; two suites apply it to
+## the report of their native runs: test_sim_perf.gd (section [sim], the perf arena) and
+## test_base_arena_perf.gd (section [bases], the base arena). Not a test suite.
 
 const PATH: String = "res://tests/perf/budget.cfg"
 const SECTION: String = "sim"
@@ -16,11 +17,14 @@ const MS_KEYS: Array[String] = ["mean_ms", "p95_ms"]
 const COUNT_KEYS: Array[String] = ["ticks", "units"]
 ## What the suite prints in place of the headroom line when the library is not loaded (the web, a
 ## build without it): the budget is calibrated on the native tick, so the GDScript line is not
-## judged. Plain text: it does not start with `PERF ` (P51 copies those lines).
-const SKIPPED: String = (
-	"perf: no budget check, the SimKernels library is not loaded"
+## judged. Plain text: it does not start with `PERF ` (P51 copies those lines). `%s` is the arena
+## (ARENA_SIM or ARENA_BASES), so the two suites print different lines.
+const SKIPPED_FORMAT: String = (
+	"perf: no %s budget check, the SimKernels library is not loaded"
 	+ " (the budget is calibrated on the native tick)"
 )
+const ARENA_SIM: String = "sim"
+const ARENA_BASES: String = "bases"
 
 
 ## The budget of the file at `path`: mean_ms and p95_ms (floats) and ticks and units (ints); an
@@ -70,11 +74,15 @@ static func violations(
 	return found
 
 
-## The line the suite prints: each time of `report` against its limit, or SKIPPED for an empty
-## report (no native line). Printed from the one statement that both paths run.
-static func status_line(report: Dictionary, budget: Dictionary, label: String = "native") -> String:
+## The line the suite prints: each time of `report` against its limit, or the skip note
+## (SKIPPED_FORMAT for `arena`) for an empty report (no native line). `label` names the tick in
+## the line ("native", or "bases native" for the base arena) and `arena` the arena in the note.
+## Printed from the one statement that both paths run.
+static func status_line(
+	report: Dictionary, budget: Dictionary, label: String = "native", arena: String = ARENA_SIM
+) -> String:
 	if report.is_empty():
-		return SKIPPED
+		return SKIPPED_FORMAT % arena
 	return (
 		"perf: %s %s of the budget %s, %s of %s"
 		% [
