@@ -55,6 +55,7 @@ const DRAW_ORDER: Array[int] = [SHADOW, HULL, TURRET]  ## Also the order of a ri
 const MARKER_KIND: int = 1 << PARTS  ## A rig's kind has a bit for each part it holds, then this.
 ## And then this for a vehicle's damage overlays (P161): a squad never takes a vehicle's rig.
 const DAMAGE_KIND: int = 1 << (PARTS + 1)
+const CARGO_KIND: int = 1 << (PARTS + 2)  ## And this for a tanker's cargo bar (P84b).
 const DIRECTIONS: int = 16  ## Steps of a full turn in a hull's frames (a squad has every other).
 const D_EAST: int = 6  ## The frame `d06` faces grid +x, and each step is 22.5 degrees from it.
 const NO_FRAME: int = -1
@@ -122,7 +123,7 @@ var _has_turret: PackedByteArray = PackedByteArray()  ## Per type index: 1 for a
 var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
 var _damage_queue: Array[Rig] = []  ## Rigs whose overlays await a stage write, oldest first (P161).
 var _follow_writes: int = 0  ## Overlay follow writes since the last `_write_damage`.
-var _dp_px: float = 1.0  ## Base px per dp, read when the selection or the window changes.
+var _dp_px: float = UiScale.base_px_per_dp()  ## Base px per dp, read when the window changes.
 
 
 ## The ring texture as a 2:1 ground ellipse (the selection radius, `IsoProjection.ellipse_px`):
@@ -163,6 +164,7 @@ class Rig:
 	var idle: RigLife.Idle = RigLife.Idle.new()  ## The drive rumble and the look, on top of the kicks.
 	var pose: RigLife.Pose = RigLife.Pose.new()  ## What a squad's Hull shows (P142).
 	var damage: VehicleDamage.Parts = null  ## The Scar and Loose of a vehicle's Hull (P161).
+	var cargo: TankerCargo = null  ## A tanker's cargo bar (P84b).
 
 
 func _ready() -> void:
@@ -190,6 +192,7 @@ func _process(delta: float) -> void:
 		_update_rigs(snap, delta)
 		_kick_rigs(snap)
 		_write_damage()
+		TankerCargo.follow_all(snap, _rigs, _dp_px, camera)
 		if not _ringed.is_empty() and camera.zoom.x != _ring_zoom:
 			_refresh_rings(snap)
 
@@ -602,7 +605,7 @@ func _new_rig(
 	var type: int = snap.type_index[row]
 	var owner_id: int = snap.owner[row]
 	var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
-	var kind: int = _kind_of(sheet, snap.type_armour[type])
+	var kind: int = _kind_of(sheet, snap.type_armour[type], snap.type_harvest[type])
 	var rig: Rig = _take_rig(kind)
 	if rig == null:
 		rig = _make_rig(kind)
@@ -643,10 +646,10 @@ func _new_rig(
 
 
 ## What a rig for `sheet` holds: a bit for each part it has, the Marker's without a sheet or atlas,
-## and the damage overlays' for a hull of any armour but infantry that has a scar and the neutral
-## sheet to draw it from.
-func _kind_of(sheet: IsoSheetDef, armour: int) -> int:
-	var kind: int = 0
+## the cargo bar's for a type with a cargo `capacity`, and the damage overlays' for a hull of any
+## armour but infantry that has a scar and the neutral sheet to draw it from.
+func _kind_of(sheet: IsoSheetDef, armour: int, capacity: int) -> int:
+	var kind: int = CARGO_KIND if capacity > 0 else 0
 	for part: int in PARTS:
 		if sheet != null and sheet.has_part(PART_NAMES[part]):
 			kind |= 1 << part
@@ -684,6 +687,7 @@ func _make_rig(kind: int) -> Rig:
 			rig.add_child(rig.sprites[part])
 	if kind & DAMAGE_KIND != 0:
 		rig.damage = VehicleDamage.make(rig.sprites[HULL])
+	rig.cargo = TankerCargo.make(rig) if kind & CARGO_KIND != 0 else null
 	if rig.sprites[SHADOW] != null:
 		rig.sprites[SHADOW].z_index = WorldSort.Z_SHADOW - WorldSort.Z_SORT
 	if kind & MARKER_KIND != 0:

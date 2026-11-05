@@ -233,7 +233,8 @@ func test_a_turretless_vehicle_has_overlays_and_never_shares_a_rig_with_a_squad(
 	var harvester: UnitLayer.Rig = _rig(HARVESTER)
 	assert_int(harvester.kind & UnitLayer.DAMAGE_KIND).is_not_equal(0)
 	assert_int(harvester.kind | UnitLayer.DAMAGE_KIND).is_equal(harvester.kind)
-	assert_int(harvester.kind ^ UnitLayer.DAMAGE_KIND).is_equal(_rig(SQUAD).kind)  # Only the bit.
+	var bits: int = UnitLayer.DAMAGE_KIND | UnitLayer.CARGO_KIND  # A tanker: and the cargo bar.
+	assert_int(harvester.kind ^ bits).is_equal(_rig(SQUAD).kind)  # Only the bits.
 	_hit(HARVESTER, 10)
 	assert_bool(_scar(HARVESTER).visible and _loose(HARVESTER).visible).is_true()
 	_kill(HARVESTER)
