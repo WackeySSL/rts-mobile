@@ -101,7 +101,7 @@ func test_a_building_in_the_snapshot_after_the_commands_tick_ends_the_mode() -> 
 	assert_int(_runner.world.dropped_commands).is_equal(0)
 	assert_array(_sent).has_size(1)
 	await _settle()
-	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()  # The menu is back.
+	assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()  # Stays down (Michael).
 	assert_bool((_hud("GhostControls") as Control).visible).is_false()  # The buttons are gone.
 
 

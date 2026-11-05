@@ -109,9 +109,12 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	suite.assert_bool(placement.active).is_true()
 	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_false()
 	await _visit(suite, main, "placement", visit)
-	placement.cancel()  # The X: the drawer returns, as it was open when placement began.
+	placement.cancel()  # The X: the drawer stays down (Michael, 2026-11-05) ...
 	await frames(suite)
 	suite.assert_bool(placement.active).is_false()
+	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_false()
+	await tap(suite, hud(main, "BuildButton"))  # ... and BUILD brings it back.
+	await frames(suite)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_true()
 	await _visit(suite, main, "drawer again", visit)
 	await tap(suite, sidebar.find_child("Close", true, false) as Control)
