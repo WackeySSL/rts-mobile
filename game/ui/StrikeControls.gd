@@ -106,7 +106,7 @@ func _release() -> void:
 func _on_unfold(_previous: HudState.Unfold) -> void:
 	_show()
 	if visible:
-		place()  # The command bar's slot moves BUILD, and the button with it.
+		place()  # The command bar is frozen or not; the button stays.
 
 
 func _covered() -> bool:
@@ -128,7 +128,7 @@ func place() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.strike = true
 	shown.aim = _aiming
-	feed.state.fill_bar(shown)  # Upright the button stands above BUILD, which the bar lifts.
+	feed.state.fill_bar(shown)  # The button stands above BUILD, bar or none.
 	var margin_dp: float = SafeAreaMargin.DEFAULT_MARGIN_DP
 	margin_dp = margin_dp if safe_area == null else safe_area.margin_dp
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)

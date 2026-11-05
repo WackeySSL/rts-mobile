@@ -135,11 +135,10 @@ func test_a_touch_on_a_hud_control_closes_nothing_but_the_economy_card() -> void
 				_state.open(unfold)
 				# The tabs are the drawer's: with the map open they are hidden, and say so.
 				var there: bool = unfold == HudState.Unfold.DRAWER or not label.begins_with("Tab")
-				# The portrait sheet covers the group column's place (`HudCorners.place`): the
-				# column is not shown then, so there is nothing of it to touch.
-				# The command bar's chip stands in the same place (the bottom): covered likewise.
-				var column: bool = label in ["AllArmy", "Chip"] or label.begins_with("Group")
-				if unfold == HudState.Unfold.DRAWER and column and HudLayout.is_portrait():
+				# The portrait sheet covers the command bar's place (the bottom), so its chip is not
+				# shown then. The group column stands under the pill, above the sheet (Michael,
+				# 2026-11-05).
+				if unfold == HudState.Unfold.DRAWER and label == "Chip" and HudLayout.is_portrait():
 					there = false
 				assert_bool(control.is_visible_in_tree()).override_failure_message(why).is_equal(
 					there

@@ -6,8 +6,12 @@ extends RefCounted
 ## sets one `Shown` entry and reads one rect. `place` knows no node, no screen and no time.
 ## The frame is the safe rect's own: every size is in dp, the rect it returns is in base px, inside
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
+## Both orientations keep the corners (Michael, 2026-11-05): the group column under the pill at the
+## left edge, BUILD in the bottom right corner (the strike button a gap above it), the command bar
+## bottom left, as wide as its content and short of BUILD and the Ready chip.
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
-## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
+## button, the scope), the portrait sheet covers the bottom (BUILD, the bar) and the scope stays,
+## and the group column stands above the sheet where all its buttons fit there; the pill
 ## stays in its corner (sideways it ends a gap short of the panel; Michael, 2026-11-05).
 ## The economy card and the full map are one unfold at a time (ADR 0025 section 1), and the card
 ## and the strike aim's row are not shown together either; a pinned full map does stay open
@@ -25,9 +29,6 @@ const BUILD_DP: float = 64.0
 const READY_DP: Vector2 = Vector2(112.0, 48.0)
 const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chip) and height.
 const GROUP_DP: float = 56.0
-## Upright during the strike aim the column holds this many items in one column (the rest scroll),
-## so it never meets the aim's check mark and X (lead decision, P122b).
-const AIM_GROUPS: int = 3
 const TOAST_H_DP: float = 48.0
 const TOAST_W_DP: Vector2 = Vector2(280.0, 360.0)  ## At most, landscape then portrait.
 ## Least landscape width beside the pill: glyph 24, gap 6, padding and a title of about 14 letters
@@ -93,9 +94,9 @@ static func place(
 	var side: bool = shown.drawer and not portrait
 	var sheet: bool = shown.drawer and portrait
 	var bar_on: bool = shown.bar and not sheet
-	var lift: float = BAR_DP.y + GAP_DP if portrait and bar_on else 0.0
-	# The right column, from the bottom up: BUILD (lifted over the portrait bar), the strike button.
-	var build: Rect2 = Rect2(w - BUILD_DP, h - lift - BUILD_DP, BUILD_DP, BUILD_DP)
+	# The right column, from the bottom up: BUILD (in the corner, bar or none, in both orientations;
+	# Michael, 2026-11-05), the strike button.
+	var build: Rect2 = Rect2(w - BUILD_DP, h - BUILD_DP, BUILD_DP, BUILD_DP)
 	var strike: Rect2 = Rect2(
 		w - StrikeButton.SIZE_DP,
 		build.position.y - GAP_DP - StrikeButton.SIZE_DP,
@@ -137,17 +138,19 @@ static func place(
 	if shown.card and not shown.drawer:
 		out[CARD] = Rect2(0.0, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w), shown.card_height)
 	if bar_on:
-		out[BAR] = _bar(w, h, portrait, shown, open, side)
-	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast.
-	if not sheet:
-		# Upright, the column leaves BUILD (and the Ready chip) their width: that many columns.
-		var columns: int = 1 << 20
-		if portrait:
-			var right: float = BUILD_DP + GAP_DP + (READY_DP.x + GAP_DP if shown.ready else 0.0)
-			columns = maxi(floori((w - right) / (GROUP_DP + GAP_DP)), 1)
-		var held: int = _groups(out, h, portrait, shown, bar_on, columns)
-		for index: int in held:
-			column_end = maxf(column_end, out[group_key(index)].end.x)
+		out[BAR] = _bar(w, h, shown, open, side)
+	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast and the map.
+	# The column stands under the pill in both orientations. Upright it leaves BUILD (and the Ready
+	# chip) their width: that many columns. Under the open sheet it stands above it, if all fit.
+	var columns: int = 1 << 20
+	if portrait:
+		var right: float = 0.0
+		if not sheet:
+			right = BUILD_DP + GAP_DP + (READY_DP.x + GAP_DP if shown.ready else 0.0)
+		columns = maxi(floori((w - right) / (GROUP_DP + GAP_DP)), 1)
+	var held: int = _groups(out, h, shown, bar_on, columns, open.position.y if sheet else -1.0)
+	for index: int in held:
+		column_end = maxf(column_end, out[group_key(index)].end.x)
 	if shown.map and not shown.drawer:
 		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
 		_map(out, w, portrait, strike if shown.strike else build, row, column_end)
@@ -172,20 +175,17 @@ static func _drawer(w: float, h: float, portrait: bool) -> Rect2:
 
 
 ## The command bar: bottom left, as wide as its content and no wider than the room beside BUILD
-## (and the Ready chip) or the open panel; the portrait bar is the full width.
-static func _bar(
-	w: float, h: float, portrait: bool, shown: Shown, open: Rect2, side: bool
-) -> Rect2:
-	if portrait:
-		return Rect2(0.0, h - BAR_DP.y, w, BAR_DP.y)
+## (and the Ready chip) or the open panel; the same upright (Michael, 2026-11-05).
+static func _bar(w: float, h: float, shown: Shown, open: Rect2, side: bool) -> Rect2:
 	var taken: float = BUILD_DP + GAP_DP
 	taken += READY_DP.x + GAP_DP if shown.ready else 0.0
 	var room: float = w - (open.size.x + GAP_DP if side else taken)
 	return Rect2(0.0, h - BAR_DP.y, minf(maxf(shown.bar_width, BAR_DP.x), room), BAR_DP.y)
 
 
-## The toast: portrait, under the pill at the start, a gap under the scope's foot (the scope is 56
-## dp, the pill's line 48); landscape, centred between the pill (or the safe edge) and the scope (or
+## The toast: portrait, under the pill, a gap under the scope's foot (the scope is 56 dp, the pill's
+## line 48), from the start or right of the group column (`column_end`, which starts on that line);
+## landscape, centred between the pill (or the safe edge) and the scope (or
 ## the open panel). Where that room is under `TOAST_LEAST_DP` (a wide pill beside the open panel on
 ## a narrow phone) the toast stands under the top line instead, as the portrait rule has it: from
 ## the start (right of the group column, which starts on that line), a gap under the scope's foot,
@@ -196,7 +196,8 @@ static func _toast(
 ) -> Rect2:
 	if portrait:
 		var top: float = SCOPE_DP + GAP_DP
-		return Rect2(0.0, top, minf(w, TOAST_W_DP.y), TOAST_H_DP)
+		var from: float = column_end + GAP_DP if column_end > 0.0 else 0.0
+		return Rect2(from, top, minf(w - from, TOAST_W_DP.y), TOAST_H_DP)
 	var left: float = 0.0
 	if placed.has(PILL):
 		left = placed[PILL].end.x + GAP_DP
@@ -227,6 +228,8 @@ static func _map(
 	var cap: Vector2 = MAP_BOX_PORTRAIT_DP if portrait else MAP_BOX_DP
 	var top: float = SCOPE_DP + GAP_DP
 	var box_h: float = minf(cap.y, next.position.y - GAP_DP - top - MAP_HEAD_DP)
+	if column_end > 0.0:  # The box (2:1) ends a gap right of the group column.
+		box_h = minf(box_h, (w - column_end - GAP_DP) * 0.5)
 	var box: Rect2
 	if box_h >= MAP_BOX_LEAST_H_DP:
 		box = Rect2(w - 2.0 * box_h, top + MAP_HEAD_DP, 2.0 * box_h, box_h)
@@ -244,34 +247,31 @@ static func _map(
 	out[MAP] = out[MAP_HEAD].merge(box)
 
 
-## The group column at the left edge: 56 dp buttons, as many to a column as the room holds, more
-## columns to the right. Landscape: from below the pill down to the bar (or the safe bottom), from
-## the top. Portrait: above the bar, up to the 40 % line (ADR 0015 section 5), against the bottom;
-## a column taller than that line only where more columns would stand in BUILD's way (a cutout on a
-## short phone), which the ADR's 360 x 700 dp numbers never reach.
+## The group column at the left edge, under the pill in both orientations (Michael, 2026-11-05):
+## 56 dp buttons from a gap under the pill's line, as many to a column as the room holds down to the
+## bar (or the safe bottom), more columns to the right. Under the open portrait sheet (`sheet_top`
+## >= 0) it stands above the sheet if every button fits there, else none shows (the return is 0).
+## Returns how many buttons have a place.
 static func _groups(
 	out: Dictionary[StringName, Rect2],
 	h: float,
-	portrait: bool,
 	shown: Shown,
 	bar_on: bool,
-	columns: int
+	columns: int,
+	sheet_top: float
 ) -> int:
 	var bottom: float = h - (BAR_DP.y + GAP_DP if bar_on else 0.0)
-	var top: float = h - floorf(HudLayout.STACK_SHARE * h)
-	if not portrait:
-		top = minf(PILL_DP.y + GAP_DP, bottom - GROUP_DP)
+	if sheet_top >= 0.0:
+		bottom = sheet_top - GAP_DP
+	var top: float = minf(PILL_DP.y + GAP_DP, bottom - GROUP_DP)
 	var step: float = GROUP_DP + GAP_DP
 	var fit: int = floori((bottom - top + GAP_DP) / step)
 	var count: int = shown.groups
-	if portrait and shown.aim:  # One column of three at most; the rest scroll (the node's part).
-		columns = 1
-		count = mini(count, maxi(mini(AIM_GROUPS, fit), 1))
 	var per: int = maxi(fit, ceili(float(count) / columns))
+	if sheet_top >= 0.0 and (top < PILL_DP.y + GAP_DP or per > fit):
+		return 0
 	for index: int in count:
 		var column: int = index / per
 		var row: int = index % per
-		var rows: int = mini(per, count - column * per)  # A portrait column rests on the bottom.
-		var y: float = bottom - rows * step + GAP_DP + row * step if portrait else top + row * step
-		out[group_key(index)] = Rect2(column * step, y, GROUP_DP, GROUP_DP)
+		out[group_key(index)] = Rect2(column * step, top + row * step, GROUP_DP, GROUP_DP)
 	return count

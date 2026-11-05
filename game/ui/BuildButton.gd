@@ -202,7 +202,7 @@ func _show_ready(snap: MatchSnapshot, type: int) -> void:
 
 
 func _on_changed(_previous: HudState.Unfold) -> void:
-	place()  # The command bar's slot lifts or lowers BUILD (upright).
+	place()  # The drawer hides BUILD.
 	visible = not (
 		feed.state.is_open(HudState.Unfold.DRAWER) or feed.state.is_open(HudState.Unfold.PAUSE)
 	)

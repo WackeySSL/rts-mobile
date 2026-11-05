@@ -145,20 +145,23 @@ func test_stop_works_during_the_aim_and_buzzes() -> void:
 	assert_int(buzzes.size()).is_equal(1)
 
 
-func test_upright_build_stands_a_gap_above_the_bar_and_drops_when_it_goes() -> void:
+## Michael, 2026-11-05: upright BUILD stays in the bottom right corner, whether the bar shows or
+## not, and the bar ends a gap short of it.
+func test_upright_build_stays_in_the_corner_and_the_bar_ends_short_of_it() -> void:
 	for size: Vector2i in ScreenSizes.PORTRAIT:
 		await _open(size, null)
+		var empty: Rect2 = _rect("BuildButton")
 		await _select([TANK])
 		var bar: Rect2 = _bar.get_global_rect()
 		var gap: float = UiScale.dp(8.0)
-		(
-			assert_float(_rect("BuildButton").end.y)
-			. override_failure_message(str(size))
-			. is_equal_approx(bar.position.y - gap, 1.5)
+		var build: Rect2 = _rect("BuildButton")
+		assert_that(build).override_failure_message(str(size)).is_equal(empty)
+		assert_float(bar.end.x).override_failure_message(str(size)).is_less_equal(
+			build.position.x - gap + 1.5
 		)
-		await _select([])
-		var low: Rect2 = _rect("BuildButton")
-		assert_float(low.end.y).override_failure_message(str(size)).is_greater(bar.position.y)
+		assert_float(bar.end.y).override_failure_message(str(size)).is_equal_approx(
+			build.end.y, 1.5
+		)
 
 
 ## Placement keeps the bar's slot: a group tap that fills or empties the selection moves neither

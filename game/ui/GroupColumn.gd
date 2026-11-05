@@ -10,12 +10,11 @@ extends Control
 ## The buttons stand where `HudCorners.place` puts the group keys (56 dp each, as many to a
 ## column as the room holds, more columns to the right), taken on a change of the groups, the
 ## unfolds and every resize. The node's own rect is the buttons' bounding box (so `GhostControls`
-## keeps clear of it) and it is hidden while the portrait sheet covers the place. Texts are written
-## when a count changes, never per frame. A number and a count are Labels in a face that lets every
-## touch through, so a button's minimum height is its dp size whatever the text (ADR 0025 section
-## 2: 56 dp plates). Upright during the strike aim the column holds three items and the rest
-## scroll: a finger that moves beyond `tap_slop_dp` on an item scrolls them and the press is
-## neither a tap nor a hold.
+## keeps clear of it) and it is hidden while the portrait sheet leaves no room for it. Texts are
+## written when a count changes, never per frame. A number and a count are Labels in a face that
+## lets every touch through, so a button's minimum height is its dp size whatever the text (ADR 0025
+## section 2: 56 dp plates). A column the layout cannot hold whole scrolls: a finger that moves
+## beyond `tap_slop_dp` on an item scrolls them and the press is neither a tap nor a hold.
 
 signal all_army_pressed
 signal group_tapped(slot: int)
@@ -29,9 +28,8 @@ const ICON_DP: float = 24.0
 @export var settings: InputSettings
 @export var feed: HudStateFeed
 @export var safe_area: SafeAreaMargin
-## Upright during its aim the column holds three items and scrolls.
 @export var strike_aim: StrikeAim
-## BUILD and its Ready chip: the column leaves them their width upright.
+## BUILD and its Ready chip: upright the column leaves them their width (columns).
 @export var build_button: BuildButton  ## Its Ready chip takes room beside BUILD upright.
 
 var _all: Button = Button.new()
@@ -41,12 +39,12 @@ var _icon: TextureRect = TextureRect.new()  ## All army's glyph.
 var _items: Array[Button] = [_all]  ## What shows now, top to bottom.
 var _counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Per slot, the last counts shown.
 var _can_save: bool = false
-## Scrolls only while the aim limits the column.
+## Scrolls only while the layout limits the column.
 var _scroll: ScrollContainer = ScrollContainer.new()
 var _content: Control = Control.new()  ## The buttons' parent.
 var _numbers: Array[Label] = []  ## Group `slot`'s number, at `slot - 1`.
 var _totals: Array[Label] = []  ## And its count.
-var _limited: bool = false  ## The aim holds the column to three items.
+var _limited: bool = false  ## The layout holds the column to fewer items.
 var _offset: Vector2 = Vector2.ZERO  ## What the finger on an item has moved.
 var _scrolling: bool = false  ## The finger went beyond the slop: this press scrolls.
 var _aim_key: int = -1  ## (owned, active) as last placed: only a change of it places again.
@@ -146,7 +144,7 @@ func place() -> void:
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)
-	visible = rects.has(HudCorners.group_key(0))  # The portrait sheet covers the place.
+	visible = rects.has(HudCorners.group_key(0))  # The portrait sheet may leave no room.
 	if not visible:
 		_report(false, Rect2())
 		return

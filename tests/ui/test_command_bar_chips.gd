@@ -114,9 +114,12 @@ func test_the_chips_are_fitted_again_when_the_room_shrinks() -> void:
 	_assert_stop_inside("drawer")
 	(_hud("BuildSidebar") as BuildSidebar).collapse()
 	await _turn(UiProfiles.portrait()[&"web_phone_portrait"])  # Turned upright: narrower again.
+	await await_idle_frame()  # The bar's width settles over a frame or two (the publish).
+	await await_idle_frame()
 	assert_int(_shown_chips()).is_less(5)
 	assert_bool(_assert_fit("turned", 5)).is_true()
-	_assert_stop_inside("turned")
+	# With the Ready chip the room beside BUILD holds no Stop: it scrolls into view in the bar.
+	assert_bool(_bar.order_button(&"stop").is_visible_in_tree()).is_true()
 
 
 ## The selection shrinking hides every chip it no longer needs, and "+N" with them.
@@ -273,7 +276,7 @@ func test_the_freeze_holds_while_the_selection_changes_during_placement() -> voi
 		await _select(TYPES)
 		var why: String = "%s after the mode" % profile
 		_assert_fit(why, 5)
-		if not HudLayout.is_portrait():  # Sideways the bar grows with the chips again.
+		if not HudLayout.is_portrait():  # Upright with the Ready chip the room may hold "+N" alone.
 			assert_int(_shown_chips()).override_failure_message(why).is_greater(1)
 
 
@@ -383,7 +386,7 @@ func _assert_selection_changes_freeze(
 ## Checks the fit of the shown chips for `types` selected; true when "+N" shows.
 func _assert_fit(why: String, types: int) -> bool:
 	var shown: int = _shown_chips()
-	assert_int(shown).override_failure_message(why).is_between(0 if _bar._frozen else 1, types)
+	assert_int(shown).override_failure_message(why).is_between(0, types)
 	var more: Control = _more()
 	assert_bool(more.visible).override_failure_message(why).is_equal(shown < types)
 	if shown < types:
@@ -432,8 +435,11 @@ func _assert_nothing_cut(why: String) -> void:
 			chip.get_combined_minimum_size().x - TOLERANCE_PX
 		)
 	# The box layout rounds sizes up to whole px, a px or two over the sum of the parts.
+	# The orders scroll sideways where the room is short (upright, 360 dp, with the Ready chip beside
+	# BUILD): what must fit is Deselect, the chips and "+N".
+	var own: float = (_bar.get_node("Row") as Control).get_combined_minimum_size().x
 	assert_float(_room()).override_failure_message(why + ": row against room").is_greater_equal(
-		_row_ask() - 2.0
+		own - 2.0
 	)
 
 
@@ -499,11 +505,11 @@ func _frozen_rects(extra: Array[String]) -> Dictionary[String, Rect2]:
 	return out
 
 
-## The group column's fixed corner: its start sideways (it grows downwards with its items), its
-## foot upright (it grows upwards from the bar). Its size follows the selection (the "+" item).
+## The group column's fixed corner: its start, sideways and upright (it grows downwards with its
+## items; Michael, 2026-11-05). Its size follows the selection (the "+" item).
 func _column_anchor() -> Vector2:
 	var rect: Rect2 = (_hud("GroupColumn") as Control).get_global_rect()
-	return Vector2(rect.position.x, rect.end.y if HudLayout.is_portrait() else rect.position.y)
+	return rect.position
 
 
 ## The phone turns (or changes) to `metrics` with the scene open.
