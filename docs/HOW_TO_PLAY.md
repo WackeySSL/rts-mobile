@@ -84,6 +84,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Action | Result | Teach |
 |---|---|---|
 | Look at an oil field | A field is a patch of dark, oil-stained ground with a wellhead standing in it. A full field is one black pool; as oil is taken the pool shrinks to a small one with bare earth round it (half) and then to a cracked stain (dry), and the field fills up again slowly, a step at a time | yes |
+| Look at a tanker | A small bar under every tanker, yours and the enemy's, shows how full it is. Empty it is a bare dark track; while it loads it fills with credits gold, a step at a time; full it is the whole track with a white edge, and the tanker drives to the refinery. After it unloads the bar is empty again | yes |
 
 ## Fog
 | Action | Result | Teach |

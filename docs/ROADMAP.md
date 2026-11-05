@@ -44,7 +44,7 @@ Tick a box in the PR that meets the criterion.
   rotate during a placement
 - [x] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
-- [ ] Ore fields, harvester loop, refinery and credits
+- [x] Ore fields, harvester loop, refinery and credits
 - [x] Production of all MVP units with rally points
 - [x] Victory and defeat conditions and a result screen
 - [ ] Two original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League and the
