@@ -158,7 +158,10 @@ plan's "Interim places" say where each part stands meanwhile.
 - No ads on this screen, except one banner at the foot of the open pause menu where the foot is
   free (`admob-policy`; Michael, 2026-11-05).
 - Keep every control inside `DisplayServer.get_display_safe_area()`; safe areas: the same
-  `SafeAreaMargin` rule (both sides of an axis get the larger inset).
+  `SafeAreaMargin` rule (both sides of an axis get the larger inset). The one control that may
+  reach past the safe area: upright, the build drawer's card list scrolls on under the gesture bar
+  to the screen's bottom edge. Its foot room lets the last row scroll clear, and a tap on the Ready
+  chip scrolls that card inside the safe area (Michael, 2026-11-05, P120i).
 - A turn keeps the camera centre and the world size per dp (ADR 0015 §4) and cancels gestures in
   flight; it never issues a Command.
 
