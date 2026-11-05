@@ -35,8 +35,12 @@ const ARC_POINTS: int = 48
 const STALLED: StringName = &"BuildButton"  ## The theme type that holds the stalled ring's grey.
 const CHIP_ICON_DP: float = 28.0
 const MARK: String = "!"
-## One of the two accents (the theme's `AccentRenew`, `AccentFossil`) by the faction's index.
-const ACCENTS: Array[StringName] = [&"AccentRenew", &"AccentFossil"]
+## The theme's accent of each side, by faction id (`type_faction` is an index into `faction_ids`,
+## in order of first appearance, so the id is the key, as PauseMenu's SIDES are).
+const ACCENTS: Dictionary[StringName, StringName] = {
+	&"renew": &"AccentRenew", &"fossil": &"AccentFossil"
+}
+const FALLBACK_SIDE: StringName = &"renew"
 
 @export var runner: MatchRunner
 @export var feed: HudStateFeed
@@ -47,6 +51,7 @@ var progress: float = 0.0  ## The ring: the first-finishing head's share, 0 to 1
 var count: int = 0  ## The badge: the items in the player's queues.
 var stalled: bool = false  ## No head advanced between the last two snapshots (grey ring, "!").
 var ready_type: int = -1  ## The finished structure at the head of the Structures queue, else -1.
+var disc_color: Color  ## The colour the disc was last drawn in (the side's accent).
 var draws: int = 0  ## How many times it was drawn, for the tests.
 var badge_font: Font = null  ## The face and size the badge's digits were last drawn with.
 var badge_font_size: int = 0
@@ -60,7 +65,7 @@ var _compared: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot l
 var _before_count: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## By tab, at that snapshot:
 var _before_done: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## items and the head's progress.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
-var _faction: int = 0
+var _side: StringName = FALLBACK_SIDE  ## The local player's faction id.
 var _chip_room: float = 0.0  ## dp from the safe right edge to the chip's left, and a gap.
 var _dp: float = 1.0  ## Base px per dp, read by `place` (a resize): a frame asks `UiScale` nothing.
 @onready var _chip: Button = $ReadyChip  ## In the scene, so that placement's buttons can clear it.
@@ -161,13 +166,15 @@ func refresh(snap: MatchSnapshot) -> void:
 	_compared = key
 	for row: int in snap.unit_id.size():
 		if snap.owner[row] == player:
-			var faction: int = clampi(
-				snap.type_faction[snap.type_index[row]], 0, ACCENTS.size() - 1
-			)
-			if faction != _faction:
-				_faction = faction
-				queue_redraw()
-			break
+			var index: int = snap.type_faction[snap.type_index[row]]
+			if index < 0 or index >= snap.faction_ids.size():
+				continue  # A row without a faction is skipped, as BuildSidebar skips it.
+			var side: StringName = snap.faction_ids[index]
+			if ACCENTS.has(side):
+				if side != _side:
+					_side = side
+					queue_redraw()
+				break
 	var halted: bool = waiting and (stalled if not compare else not moved)
 	if finished != ready_type:
 		_show_ready(snap, finished)
@@ -207,7 +214,7 @@ func _draw() -> void:
 	var middle: Vector2 = size * 0.5
 	var ring: float = RING_DP * dp
 	var outer: float = minf(size.x, size.y) * 0.5
-	var accent: StringName = ACCENTS[_faction]
+	var accent: StringName = ACCENTS[_side]
 	draw_arc(
 		middle, outer - ring * 0.5, 0.0, TAU, ARC_POINTS, get_theme_color(&"border", TOKENS), ring
 	)
@@ -220,7 +227,8 @@ func _draw() -> void:
 		)
 		draw_arc(middle, outer - ring * 0.5, -PI * 0.5, to, ARC_POINTS, ring_color, ring)
 		ring_drawn = true
-	draw_circle(middle, outer - ring, get_theme_color(&"accent", accent))
+	disc_color = get_theme_color(&"accent", accent)
+	draw_circle(middle, outer - ring, disc_color)
 	var side: float = GLYPH_DP * dp
 	draw_texture_rect(
 		_glyph,

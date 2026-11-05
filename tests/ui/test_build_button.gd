@@ -303,7 +303,14 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	await await_idle_frame()
 	assert_bool(_button.stalled).is_true()
 	var grey: Color = _button.get_theme_color(&"ring_stalled", BuildButton.STALLED)
-	var faction: Color = _button.get_theme_color(&"light", BuildButton.ACCENTS[0])
+	# The side of player 1's buildings in this world, by id (index 0 of `faction_ids` is not "renew").
+	var side: StringName = &""
+	var own: MatchSnapshot = Sw.snapshot(world, 0)
+	for row: int in own.unit_id.size():
+		if own.owner[row] == 1:
+			side = own.faction_ids[own.type_faction[own.type_index[row]]]
+			break
+	var faction: Color = _button.get_theme_color(&"light", BuildButton.ACCENTS[side])
 	assert_bool(grey.is_equal_approx(faction)).is_false()
 	# What _draw really did: the grey arc and the "!" disc.
 	assert_bool(_button.ring_drawn).is_true()
