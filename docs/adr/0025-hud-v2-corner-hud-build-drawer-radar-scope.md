@@ -58,6 +58,37 @@ ad", and §15's pause-menu banner row. CLAUDE.md and `admob-policy` take the ban
 Michael's yes of 2026-11-05 (`touch-ui-rules` points to it); the drawer rules follow his decisions
 of 2026-11-05.
 
+Status note (2026-11-05, P26az docs; Michael's decisions of 2026-11-05 on his web-preview check;
+rows P120g and P120h): upright, the HUD keeps its landscape corners, and the drawer no longer comes
+back by itself after a placement. Michael, verbatim: "forstår ikke hvorfor knapperne flytter
+plads, når skærmen bliver lille? jeg syntes det ser ud til at de godt kan blive på deres
+placering? og efter man har placeret en bygning skal "Build" menuen ikke åbne op af sig selv".
+- **Upright corners (P120g):**
+  - The group column stands on the left edge under the pill, as sideways. It stays visible above
+    the portrait sheet where all its buttons fit there, else it hides under it.
+  - BUILD stands in the bottom-right corner whether the command bar shows or not. The strike button
+    stands 8 dp above BUILD, with its row to its left.
+  - The command bar is bottom left and as wide as its content, ending a gap short of BUILD, as
+    sideways.
+  - The toast and the full map clear the column.
+  - Lead decisions:
+    - Upright, the Ready chip stands in the right column above the strike button (above BUILD
+      without one), because a 360 dp phone has no room for it in the bottom row. Sideways it stays
+      left of BUILD.
+    - The bar fits Deselect and its orders first, then the chips that fit, then "+N". With more
+      than one type, "+N" may stand alone, so Stop is never scrolled out of view.
+  - Replaced accepted text: §9's "Portrait BUILD lift" bullet; "portrait: above the bar" in §9's
+    Groups bullet; "portrait BUILD lifts above it" in row 9 of the table; §10's "It rides with
+    BUILD's portrait lift"; the portrait rows of §2's table (BUILD "8 dp above the bar", the
+    column "to the 40 % line"); §2's "The 40 % rule in portrait" bullet; and the P26ar lead
+    decision on the group column during a strike aim in portrait (three buttons, the rest
+    scroll), which lapses with the bottom column. ADR 0015 §5's 40 % bottom stack no longer
+    applies to the battle screen (its own dated note).
+- **No drawer return (P120h):** placement closes the drawer, and it stays closed when a build, the
+  X, a strike aim or the match's end ends placement. BUILD brings it back. The selection hook (a
+  producer's tap opens its tab) stays. The 2026-11-03 note on "the restart (R1)" lapses: no return
+  is set, so there is none to restart.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.

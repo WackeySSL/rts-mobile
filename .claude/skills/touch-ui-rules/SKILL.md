@@ -107,8 +107,8 @@ until confirm.
   "Blocked" (the word under the glyph; moving the ghost clears it). Cancel keeps the structure
   ready. A turn keeps the ghost's tile and sends nothing; the check mark and X stay beside the
   ghost.
-- Placement closes the build drawer; when a build or the X ends it, the drawer comes back if
-  placement began in it; a strike aim that ends placement leaves it closed.
+- Placement closes the build drawer, and it stays closed when a build, the X, a strike aim or the
+  match's end ends placement; BUILD brings it back (Michael, 2026-11-05).
 - Placement begins with a tap on a "Ready" structure card; ADR 0026's place-first switch (P130)
   is not built (Michael, 2026-11-05).
 
@@ -118,10 +118,12 @@ replaces works as ADR 0024 decided (the open or collapsed menu, the strip and th
 plan's "Interim places" say where each part stands meanwhile.
 - In battle only the corners show: the pill (menu, credits, power) top left, the radar scope top
   right, BUILD bottom right, the strike button (72 dp) above BUILD when owned, the group column on
-  the left edge, and the command bar bottom left (portrait: bottom, with BUILD lifted 8 dp above it)
-  while something is selected. One function places them (`HudCorners.place`), mirror-ready; ADR
-  0025 §2's table gives the numbers on the short screens. Placement and the strike aim freeze the
-  bar's slot and BUILD's lift, so nothing moves under the thumb while the player places or aims.
+  the left edge under the pill, and the command bar bottom left while something is selected, ending
+  short of BUILD. Upright keeps the same corners (Michael, 2026-11-05): no lift, BUILD stays in its
+  corner; the Ready chip stands left of BUILD sideways and above the strike button (or BUILD)
+  upright. One function places them (`HudCorners.place`), mirror-ready; ADR 0025 §2's table gives
+  the numbers on the short screens. Placement and the strike aim freeze the bar's slot, so nothing
+  moves under the thumb while the player places or aims.
 - One unfold at a time: the build drawer, the full map, the economy card, the pause menu. A map
   gesture closes it (not a pinned full map, not pause) and still does its work; the game runs on
   behind all but pause, which pauses the match. A match starts with nothing unfolded.
@@ -131,9 +133,11 @@ plan's "Interim places" say where each part stands meanwhile.
   swipe; the card grid (cards at least 88 x 96 dp, as many columns as fit (two or more on every
   supported screen), stretched so a full row ends at the right edge; it scrolls on short screens).
   No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on
-  BUILD, on a producer's selection (its tab) and after a placement begun in it.
+  BUILD and on a producer's selection (its tab); never on its own after a placement (Michael,
+  2026-11-05).
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders the
-  game has (Stop for units; none for a building). No Attack
+  game has (Stop for units; none for a building). Deselect and the orders always fit; the chips take
+  what is left, then "+N". No Attack
   button. Later orders join the list with a glyph and a HOW_TO_PLAY line.
 - The groups: "All army" on top, the saved groups, "+" while units are selected and a group is free;
   56 dp buttons, more columns where one does not fit.
@@ -148,8 +152,9 @@ plan's "Interim places" say where each part stands meanwhile.
   Decide the shape only through `UiScale`'s orientation function (P59; height > width is
   portrait).
 - Where each part stands: the section above and ADR 0025 §2's table.
-- The bottom stack (command bar, BUILD and the group column) takes at most 40% of the safe height;
-  the drawer is transient and may take half.
+- Upright the battle screen has no bottom stack (the corners as sideways, Michael, 2026-11-05); a
+  later bottom stack would take at most 40% of the safe height. The drawer is transient and may take
+  half.
 - No ads on this screen, except one banner at the foot of the open pause menu where the foot is
   free (`admob-policy`; Michael, 2026-11-05).
 - Keep every control inside `DisplayServer.get_display_safe_area()`; safe areas: the same

@@ -26,6 +26,14 @@ within 40 % of the safe height; the portrait top line holds the economy pill and
 the SelectionPanel's line and fit levels move into the command bar's chips; the minimap is the
 radar's full map at the top right. No accepted text changed.
 
+Status note (2026-11-05, P26az docs; Michael's decision of 2026-11-05, rows P120g and P120h of
+`docs/plans/2026-11-01-hud-v2.md`): upright, the battle screen keeps its landscape corners. The
+group column stands under the pill and BUILD stays in the bottom-right corner, with no lift over
+the command bar. The battle screen therefore has no portrait bottom stack. §5's 40 % limit still
+holds for any later bottom stack (none today); the drawer stays transient and may take half.
+ADR 0025's status note of the same date lists the replaced text. No accepted text of this ADR
+changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes
