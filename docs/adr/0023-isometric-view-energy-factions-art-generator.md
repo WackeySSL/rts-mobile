@@ -62,6 +62,10 @@ mark and X (P112c). No accepted text changed.
 Status note (2026-10-31, P26an docs): §2 carries a dated status note on the `GhostLayer` (P86)
 the draw-call forecast left out. No accepted text changed.
 
+Status note (2026-11-05, P26bb docs; the Phase 3 gate): §2 carries a dated status note on P84e
+(#342): the tanker's cargo bar leaves the sort's z for the health bars' z (30), so the base arena
+is back to 13 draw calls. No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
@@ -374,6 +378,24 @@ stand where ADR 0028 does not change them):
 - **No new draw call and no tint:** "nothing tints a sorted sprite" holds (the burnt look is the
   scar, the char and the smoke); the forecast stays 16. The page stays at most 3584 rows.
 - **Destroyed** is unchanged: a destroyed building still leaves its crater.
+
+Status note (2026-11-05, P26bb docs; the Phase 3 gate, issue #340; P84e,
+[#342](https://github.com/WackeySSL/rts-mobile/pull/342), merged with this note; the text and the
+notes above stand):
+- **The cargo bar split the sorted world's batch.** P84b's `TankerCargo` was a child of the tanker's rig
+  with no z of its own, so it drew at the sort's z (10) between atlas sprites. Its untextured rects broke
+  the one batch twice per tanker: the base-arena card read 29 draw calls (p95) on the phone and the web,
+  against 13 before P84b. The perf arena, which has no tankers, read 13.
+- **P84e moves the bar to the health bars' z.** That z is 30, now named `WorldSort.Z_BARS` (the scenes'
+  `HealthBarLayer` z, pinned equal by tests). It is a rig child at relative +20, as the Shadow and the
+  Ring are rig children at their own z.
+- **No extra call.** The cargo bars share the health bars' batch, so they add no call while health bars
+  show and one call when none show. #342's review counted this with a probe, a count and not a timing;
+  on #342's preview the base arena's web card read 13. Like the health bar, the cargo bar now draws over a building or
+  smoke in front of the tanker.
+- **A guard suite** (`tests/view/test_sorted_world_batch.gd`) walks the dressed and selected unit rigs of
+  a squad, a tank and a tanker of each faction; buildings are not in it yet. Everything at the sort's z must be an atlas sprite with no material and the default filter. The
+  `Marker`, the dev fallback for a type without art, is the one exception.
 
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.

@@ -28,6 +28,21 @@ commit (GDScript phases, seed 42, the perf arena, 900 ticks through `MatchLoop`;
 and read no clock). Its checkpoint hashes at ticks 150, 450 and 900 equal `golden_hex` in
 `data/dev/perf_gate.tres`, so it played the gate's run. The probe was deleted afterwards.
 
+Status note (2026-11-05, P26bb docs; the Phase 3 gate, issue #340): the Phase 3 gate is the first
+gate after P65. Its first card, the base arena's run 1, read `job_minus_step_p95_cp_ms` 3.615 ms,
+above the 3.325 ms line. The perf arena's run 1, the arena of the Phase 2 table above, read 3.403 ms.
+
+All six release cards (Pixel 9a, `NATIVE`, `WORKER`) read:
+- base arena: 3.615, 3.538 and 2.971;
+- perf arena: 3.403, 3.296 and 3.573.
+
+The non-checkpoint half read 1.054-1.177 (the perf arena alone 1.054-1.145), under the line; it was
+0.752-0.772 on the Phase 2 runs in the table above. Every gate verdict passed.
+
+So answer 4's condition is met, and the lead adds P66 and P66b (§3) without asking again. They follow
+the gate as measurement-only rows. P66b first needs room in `PerfHud.gd`, which is at 995 of gdlint's
+1000 lines. P67 is decided from P66b's card in a later dated note here. No accepted text changed.
+
 ## Context
 
 ### The line and what the gate phone measured
