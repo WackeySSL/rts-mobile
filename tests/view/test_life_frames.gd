@@ -134,9 +134,18 @@ const FRAME_PATH: Dictionary[String, Array] = {
 	# P149: the muzzle smoke and the exhaust puffs. `build` and `_sync_rows` run once a match or
 	# when the rows change, and make their tables then, like DamageFx's `build`.
 	"res://game/view/PuffFx.gd":
-	["read", "drop_all", "follow_reduced", "emit", "_muzzle", "_drive"],
+	[
+		"read",
+		"drop_all",
+		"follow_reduced",
+		"emit",
+		"_muzzle",
+		"_drive",
+		"_sites",
+		"_across",
+	],
 	"res://game/view/GroundFx.gd":
-	["_process", "_draw", "_plan", "_on_ticked", "_add", "_empty", "quad_rect"],
+	["_process", "_draw", "_plan", "_on_ticked", "_exit_puffs", "_add", "_empty", "quad_rect"],
 	"res://game/view/StrikeFx.gd":
 	[
 		"_process",
