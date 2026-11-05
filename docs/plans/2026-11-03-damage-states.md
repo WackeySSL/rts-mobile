@@ -351,6 +351,17 @@ written):
   which is not merged.
 - What P165a and P165b decided is in ADR 0029's dated note at the end of §8.
 
+Status (2026-11-04, P26aw docs; on `main` at f40e2a4; the rows and the statuses above stay as
+written):
+- **P162 is merged (#319)**, after the unit-life plan's P146 (#318). It pins `damage_slots` at 80
+  and holds the damage ring within it in every damage pass: the 80 of ADR 0029 (§10, §13) and of
+  the rework's P148 row, not the 64 of the first P148 row and of P148's and P162's acceptance
+  above.
+- **Every row of this plan is merged;** P158 was replaced by P158a and P158b, and P157c was
+  dropped (above).
+- ADR 0029 §10 gains a note: the crater `Sprite2D` that `DecalLayer` makes at DIED is a node at
+  DIED, and `DecalLayer` does not cap the craters (they stay for the match).
+
 ### Lanes, files and order (rework)
 Lane names are this plan's; the unit-life plan's V4 and V5 (P141, P147) are not reused.
 - **A** (art-director): P163 → P163b → P158a. Owns `tools/artgen/`, the Fossil building models,

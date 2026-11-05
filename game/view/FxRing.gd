@@ -146,9 +146,12 @@ func add(style: int, spot: Vector2, born_ms: float, look: int, flip: int = -1) -
 	_count = mini(_count + 1, _size)
 
 
-## Drops the puffs that have lived out by match time `now_ms`, keeping the others in order: call it
-## once a tick, at the tick's time, before the tick's births. Allocates nothing.
-func compact(now_ms: float) -> void:
+## Drops the puffs that have lived out by match time `now_ms` (none, for a negative one) and, with a
+## `kind` of 0 or more, every puff whose style is that sprite kind (an index of `setup`'s list),
+## keeping the others in order. A tick calls it once, at the tick's time, before the tick's births;
+## the switch to reduced effects takes the ambient kinds out of a mixed ring with `compact(-1.0,
+## kind)`. Allocates nothing.
+func compact(now_ms: float, kind: int = -1) -> void:
 	if _count == 0:
 		return
 	var oldest: int = (_head - _count + _size) % _size
@@ -156,7 +159,9 @@ func compact(now_ms: float) -> void:
 	for step: int in _count:
 		var from: int = (oldest + step) % _size
 		var style: int = _style[from]
-		if LifeClock.age_ms(now_ms, _born[from]) >= _s_life[style]:
+		if now_ms >= 0.0 and LifeClock.age_ms(now_ms, _born[from]) >= _s_life[style]:
+			continue
+		if kind >= 0 and _s_kind[style] == kind:
 			continue
 		var to: int = (oldest + kept) % _size
 		if to != from:
