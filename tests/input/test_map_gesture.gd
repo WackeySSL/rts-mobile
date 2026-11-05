@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## and motion never emit it. A small scene as in test_touch_input: a camera, a TouchInput, a button
 ## and a fake clock, on a 2400x1080 phone. The menu's reaction is test_build_menu_triggers.gd's.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const GestureSpy: GDScript = preload("res://tests/input/support/gesture_spy.gd")
@@ -35,6 +36,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	var profile: UiMetrics = UiProfiles.by_name(&"android_6in")
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
@@ -71,6 +73,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 
 

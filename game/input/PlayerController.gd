@@ -133,7 +133,7 @@ func stop() -> bool:
 	if not _units_selected():
 		return false
 	command_sink.call(Command.stop(_local_player(), selection.selected))
-	if settings.haptics_enabled:
+	if HudPrefs.vibrates(settings):
 		vibrate.call(settings.haptic_ms)
 	return true
 
@@ -155,7 +155,7 @@ func assign_group(slot: int) -> void:
 		return
 	selection.assign_group(slot)
 	_show_groups()
-	if settings.haptics_enabled:
+	if HudPrefs.vibrates(settings):
 		vibrate.call(settings.haptic_ms)
 
 
@@ -218,7 +218,7 @@ func _building_ground_tap(pos: Vector2) -> void:
 	var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
 	command_sink.call(Command.rally(_local_player(), building, ground.x, ground.y))
 	rally_ordered.emit(OrderRules.rally_tab(runner.snapshot, building), ground.x, ground.y)
-	if settings.haptics_enabled:
+	if HudPrefs.vibrates(settings):
 		vibrate.call(settings.haptic_ms)
 
 
@@ -332,7 +332,7 @@ func move_selected_to(ground: Vector2i) -> bool:
 	if aiming or placing or not _units_selected():
 		return false
 	_move(ground.x, ground.y)
-	if settings.haptics_enabled:
+	if HudPrefs.vibrates(settings):
 		vibrate.call(settings.haptic_ms)
 	return true
 

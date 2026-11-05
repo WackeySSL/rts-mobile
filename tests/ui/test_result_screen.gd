@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## stats of the published snapshot. At the six test sizes and on the phone browsers its panel, its
 ## emblem and its two buttons lie inside the safe rect, the buttons are at least 48 dp each way (64
 ## dp high), and the panel fits without a scroll. "Play again" opens a new main scene of the same
-## scenario and opponents, "Back" the dev menu. The Surrender button that leads here is
-## test_surrender's, the wheel and the fingers already down under the screen are
+## scenario and opponents, "Back" the dev menu. The pause menu's Surrender that leads
+## here is test_pause_menu's, the wheel and the fingers already down under the screen are
 ## test_modal_input's, the routes are test_skirmish_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -16,7 +16,7 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
 const BUTTON_DP: float = 64.0
 const TOLERANCE_PX: float = 0.5
-## Open ground at 1280x720, left of the panel and clear of the Dev button and the group column.
+## Open ground at 1280x720, left of the panel and clear of the group column.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
 ## Each outcome: who surrenders, the word, the emblem file and the theme colour of its tint.
 const OUTCOMES: Array[Array] = [
@@ -245,7 +245,7 @@ func test_the_body_follows_a_turn_of_the_window() -> void:
 
 
 ## The screen takes every touch: with units selected, a tap on the ground orders nothing, and the
-## HUD's Dev button under the screen does not press.
+## HUD's menu button under the screen does not press.
 func test_a_tap_on_the_map_or_the_hud_under_the_screen_does_nothing() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
@@ -261,10 +261,10 @@ func test_a_tap_on_the_map_or_the_hud_under_the_screen_does_nothing() -> void:
 	assert_array(sent).has_size(1)
 	sent.clear()
 	MatchRig.end(_main, [1])
-	var dev: Button = _main.find_child("DevButton", true, false)
+	var menu: Button = _main.find_child("Menu", true, false)
 	var pressed: Array[int] = [0]
-	dev.pressed.connect(func() -> void: pressed[0] += 1)
-	for at: Vector2 in [GROUND_POINT, dev.get_global_rect().get_center()]:
+	menu.pressed.connect(func() -> void: pressed[0] += 1)
+	for at: Vector2 in [GROUND_POINT, menu.get_global_rect().get_center()]:
 		TouchEvents.press(get_viewport(), 0, at)
 		TouchEvents.release(get_viewport(), 0, at)
 		await await_idle_frame()

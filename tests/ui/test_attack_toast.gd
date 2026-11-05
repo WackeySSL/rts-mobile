@@ -1,7 +1,7 @@
 extends "res://tests/ui/support/attack_suite.gd"
 ## The attack toast and its place (plan P123, ADR 0025 sections 2 and 8): at every screen, with
-## units selected, it is `HudCorners.place`'s rect and clear of the pill, the scope, the top-left
-## stack and the command bar; a turn replaces it; the placement buttons keep clear of it; a tap
+## units selected, it is `HudCorners.place`'s rect and clear of the pill, the scope
+## and the command bar; a turn replaces it; the placement buttons keep clear of it; a tap
 ## on it jumps the camera and nothing else; none while the full map or the pause menu is open; the
 ## longest title fits.
 
@@ -51,8 +51,8 @@ func test_a_tap_on_the_toast_jumps_the_camera_and_closes_the_drawer() -> void:
 	assert_int(_controller.selection.selected.size()).is_greater(0)  # Still selected.
 
 
-## The toast keeps clear of what stands near it at every screen: the pill, the scope, the top-left
-## stack and, with units selected, the command bar; and it is the rect `HudCorners.place` gives.
+## The toast keeps clear of what stands near it at every screen: the pill, the scope
+## and, with units selected, the command bar; and it is the rect `HudCorners.place` gives.
 func test_the_toast_keeps_clear_at_every_screen_with_units_selected() -> void:
 	var screens: Array[Dictionary] = RadarRig.screens()
 	var short: UiMetrics = RadarRig.short_landscape()
@@ -70,7 +70,7 @@ func test_the_toast_keeps_clear_at_every_screen_with_units_selected() -> void:
 
 
 ## The open drawer, landscape and portrait: the pill is folded and the toast keeps clear of the
-## scope, the stack and the drawer, and keeps its least width, at every screen.
+## scope and the drawer, and keeps its least width, at every screen.
 func test_the_toast_keeps_clear_of_the_pill_and_the_drawer_at_every_screen() -> void:
 	var screens: Array[Dictionary] = RadarRig.screens()
 	var short: UiMetrics = RadarRig.short_landscape()
@@ -159,14 +159,10 @@ func _expect_title_fits(why: String, whole: bool) -> void:
 	assert_float(title.size.x).override_failure_message(at).is_less_equal(_toast.size.x)
 
 
-func test_the_portrait_toast_stands_under_the_taller_top_left_stack() -> void:
+func test_the_portrait_toast_stands_a_gap_under_the_scope() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.toast = true
-	shown.left_taken = 56.0
-	shown.left_height = 104.0
 	var safe: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(safe, true, 1.0, false, shown)
-	assert_float(rects[HudCorners.TOAST].position.y).is_equal(112.0)
-	shown.left_height = 0.0
-	rects = HudCorners.place(safe, true, 1.0, false, shown)
-	assert_float(rects[HudCorners.TOAST].position.y).is_equal(64.0)  # A gap under the scope.
+	assert_float(rects[HudCorners.TOAST].position.y).is_equal(64.0)
+	assert_float(rects[HudCorners.TOAST].position.x).is_equal(0.0)

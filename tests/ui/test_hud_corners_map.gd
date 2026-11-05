@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## P122: the pinned full map beside the strike aim's row starts at the larger of the pill's end and
 ## the group column's end. It narrowed from the pill only: on the 800 x 304 dp screen with the
-## command bar and the Dev-over-Surrender stack (104 dp high: one button per column, the column
-## ends after the pill does), it overlapped the last group button. The column holds at most four
-## items ("All army", `SelectionModel.GROUP_COUNT` = 3 groups; "+" shows only while one is free).
-## The map keeps 8 dp from every one at every landscape profile (also with a cutout), for a narrow
-## and a wide pill and with and without that stack.
+## command bar (and, until P124, the Dev-over-Surrender stack, which made the column one button per
+## column), it overlapped the last group button. The column holds at most four items ("All army",
+## `SelectionModel.GROUP_COUNT` = 3 groups; "+" shows only while one is free). The map keeps 8 dp
+## from every one at every landscape profile (also with a cutout), for a narrow and a wide pill.
+## P124 removed the stack; the case stays as the guard of the column against the map.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -37,13 +37,12 @@ func test_the_pinned_map_with_the_aim_keeps_clear_of_the_group_column_too() -> v
 			var safe: Rect2 = SafeAreaMargin.rect_inside(full, 12.0)
 			for groups: int in [1, 3, SelectionModel.GROUP_COUNT + 1]:
 				for pill: float in [0.0, 320.0]:
-					for stack: float in [0.0, 104.0]:
-						var label: String = "%s, %s" % [profile_name, screen.safe_area]
-						checked += _check(safe, dp, groups, pill, stack, label)
-	assert_int(checked).is_greater(60)
+					var label: String = "%s, %s" % [profile_name, screen.safe_area]
+					checked += _check(safe, dp, groups, pill, label)
+	assert_int(checked).is_greater(30)
 
 
-func _check(safe: Rect2, dp: float, groups: int, pill: float, stack: float, label: String) -> int:
+func _check(safe: Rect2, dp: float, groups: int, pill: float, label: String) -> int:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.bar = true
 	shown.strike = true
@@ -51,8 +50,6 @@ func _check(safe: Rect2, dp: float, groups: int, pill: float, stack: float, labe
 	shown.map = true
 	shown.groups = groups
 	shown.pill_width = pill
-	shown.left_height = stack
-	shown.left_taken = 56.0 if stack > 0.0 else 0.0
 	var out: Dictionary[StringName, Rect2] = HudCorners.place(safe, false, dp, false, shown)
 	var map: Rect2 = out[HudCorners.MAP]
 	for index: int in groups:
@@ -95,3 +92,25 @@ func test_upright_the_pinned_map_keeps_clear_of_the_group_column() -> void:
 				. override_failure_message("%s: group_%d" % [size, index])
 				. is_false()
 			)
+
+
+## On a very short screen the group column wraps into several columns and ends right of the pill:
+## the pinned map beside the aim's row then starts a gap right of the column, not of the pill.
+## (The `column_end` clause of `HudCorners._map`: no phone profile reaches it, since P124 took the
+## Dev stack away, so the case is crafted: 700 x 240 dp of safe rect.)
+func test_a_column_that_ends_right_of_the_pill_pushes_the_pinned_map_right() -> void:
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.bar = true
+	shown.strike = true
+	shown.aim = true
+	shown.map = true
+	shown.groups = 4
+	shown.pill_width = 200.0
+	var out: Dictionary[StringName, Rect2] = HudCorners.place(
+		Rect2(0.0, 0.0, 700.0, 240.0), false, 1.0, false, shown
+	)
+	var last: Rect2 = out[HudCorners.group_key(3)]
+	assert_float(last.end.x).is_greater(out[HudCorners.PILL].end.x + 8.0)  # Right of the pill.
+	var map: Rect2 = out[HudCorners.MAP]
+	assert_float(map.position.x - last.end.x).is_greater_equal(8.0 - TOLERANCE)
+	assert_bool(map.intersects(out[HudCorners.STRIKE_ROW])).is_false()

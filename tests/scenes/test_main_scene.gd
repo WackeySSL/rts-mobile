@@ -2,9 +2,9 @@ extends GdUnitTestSuite
 ## The main scene (ROADMAP Phase 1 boxes 1 and 2, P117, P116): a MatchRunner on the controls_test
 ## scenario, a 48x48 map of 64 x 32 px diamond tiles (ADR 0023 section 1) that GroundLayer draws and
 ## MapView only bakes, 40 unit rigs, an RtsCamera driven by a TouchInput (both on
-## data/input_settings.tres), and the Dev button. Composition only: the camera and gesture rules are
-## tested in tests/view and tests/input. Fingers enter through the touch_events helper, which
-## converts base px to the window px that push_input takes.
+## data/input_settings.tres), and the pill's menu button. Composition only: the camera and gesture
+## rules are tested in tests/view and tests/input. Fingers enter through the touch_events helper,
+## which converts base px to the window px that push_input takes.
 ##
 ## Every test starts at a 1280x720 window. The headless window is 64x64 by default, and GUI
 ## hit-tests silently miss until the window has the base size. Tests that resize the window reset
@@ -32,7 +32,7 @@ const NORTH_TIP: Vector2 = Vector2(0, 0)
 const SOUTH_TIP: Vector2 = Vector2(0, 1536)
 const POSITION_MARGIN_PX: float = 0.5
 const TOLERANCE: Vector2 = Vector2(0.01, 0.01)
-## Mid-screen at 1280x720, well clear of the Dev button (24..144 px).
+## Mid-screen at 1280x720, well clear of the pill (0..300 px, 0..60 px).
 const MAP_POINT: Vector2 = Vector2(640, 360)
 
 var _window_size_before: Vector2i
@@ -209,8 +209,8 @@ func test_a_pinch_zooms_about_the_fingers_and_snaps_to_a_level_at_every_target_r
 		assert_float(_camera.zoom.x).is_equal_approx(1.5, 0.001)
 
 
-func test_dev_button_is_pressed_exactly_once_by_a_touch_at_every_target_resolution() -> void:
-	var button: Button = _count_dev_button_presses()
+func test_menu_button_is_pressed_exactly_once_by_a_touch_at_every_target_resolution() -> void:
+	var button: Button = _count_menu_button_presses()
 	assert_bool(button.visible).is_true()
 	var start: Vector2 = _camera.position
 	for size: Vector2i in TARGET_SIZES:
@@ -219,26 +219,28 @@ func test_dev_button_is_pressed_exactly_once_by_a_touch_at_every_target_resoluti
 		_pressed_count = 0
 		var centre: Vector2 = button.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, centre)
-		TouchEvents.drag(get_viewport(), 0, centre + Vector2(30, 30), Vector2(30, 30))
+		# 18 dp: past the 12 dp tap slop (a pan, were the finger the map's), inside the 48 dp button.
+		var drag: Vector2 = Vector2(18.0, 0.0) * UiScale.base_px_per_dp()
+		TouchEvents.drag(get_viewport(), 0, centre + drag, drag)
 		await await_idle_frame()
-		TouchEvents.release(get_viewport(), 0, centre + Vector2(30, 30))
+		TouchEvents.release(get_viewport(), 0, centre + drag)
 		await await_idle_frame()
 		assert_int(_pressed_count).is_equal(1)
 		# A touch that starts on the button stays with it: no pan.
 		assert_that(_camera.position).is_equal(start)
 
 
-func _on_dev_button_pressed() -> void:
+func _on_menu_button_pressed() -> void:
 	_pressed_count += 1
 
 
-## Replaces the Dev button's scene change with a counter, so no scene is changed inside a test.
-func _count_dev_button_presses() -> Button:
-	var button: Button = _main.get_node("Hud/SafeArea/TopLeft/DevButton")
+## Replaces the pill menu button's pause with a counter, so no menu opens inside a test.
+func _count_menu_button_presses() -> Button:
+	var button: Button = _main.get_node("Hud/EconomyPill").find_child("Menu", true, false)
 	for connection: Dictionary in button.pressed.get_connections():
 		var callable: Callable = connection["callable"]
 		button.pressed.disconnect(callable)
-	button.pressed.connect(_on_dev_button_pressed)
+	button.pressed.connect(_on_menu_button_pressed)
 	return button
 
 

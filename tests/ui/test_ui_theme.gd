@@ -197,7 +197,7 @@ func test_every_control_that_is_a_child_of_the_hud_has_the_hud_theme() -> void:
 				"StrikeControls",
 				"BuildButton",
 				"BuildSidebar",
-				"SurrenderDialog",
+				"PauseMenu",
 				"ResultScreen"
 			]
 		)
@@ -307,7 +307,6 @@ func test_a_theme_with_another_look_restyles_the_whole_hud_from_the_file_alone()
 	assert_that(shown.bg_color).is_equal(Color(0.9, 0.1, 0.1, 0.5))
 	assert_int(_hud("Group2").get_theme_font_size("font_size")).is_equal(31)
 	assert_int(_hud("Count").get_theme_font_size("font_size")).is_equal(27)
-	assert_int(_hud("DevButton").get_theme_font_size("font_size")).is_equal(DEV_FONT_PX)  # Its own.
 
 
 func test_the_override_check_sees_a_colour_font_size_or_style_and_lets_a_constant_pass() -> void:
@@ -366,13 +365,6 @@ func _assert_hud_resolves(why: String) -> void:
 		var where: String = "%s %s" % [why, node_name]
 		assert_int(font_px).override_failure_message(where).is_equal(_px(ARMY_FONT_DP))
 		assert_int(font_px).is_equal(theme.get_font_size("font_size", "Button"))
-	var dev: Button = _hud("DevButton")
-	assert_int(dev.get_theme_font_size("font_size")).override_failure_message(why).is_equal(
-		DEV_FONT_PX
-	)
-	assert_int(dev.get_theme_font_size("font_size")).is_equal(
-		theme.get_font_size("font_size", "DevButton")
-	)
 	var sizes: Array[int] = []
 	for node_name: String in ["Count"]:  # The command bar's chip.
 		sizes.append(_hud(node_name).get_theme_font_size("font_size"))

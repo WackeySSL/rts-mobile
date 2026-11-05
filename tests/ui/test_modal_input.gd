@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
-## A modal takes every touch (plan P90, review round 1): the Surrender dialog and the result screen
-## cover the HUD, and nothing under them hears a wheel, a finger already down or a hold in flight.
+## A modal takes every touch (plan P90, review round 1): the pause menu (P124; P90 had the
+## Surrender dialog) and the result screen cover the HUD, and nothing under them hears a wheel, a
+## finger already down or a hold in flight.
 ## For each modal, each case runs the same input twice: once with the modal still closed, where it
 ## acts (the positive control), and once with the modal shown, where it does not. The cases are the
 ## wheel (it zoomed the camera through the modal), a finger resting on the map whose lift sent a
 ## MOVE and whose drag went on panning, a finger held on the minimap whose hold sent a MOVE, and a
 ## held group button whose hold assigned a group. A modal that shows ends them all through
-## `TouchInput.CANCEL_GROUP`. The plain taps on the modal are test_surrender's and
+## `TouchInput.CANCEL_GROUP`. The plain taps on the modal are test_pause_menu's and
 ## test_result_screen's.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -15,9 +16,9 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 ## Open ground at 1280x720, clear of every HUD control and of both modals' panels.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
-## How the modal opens: the dialog by a tap of a second finger on Surrender, the result screen by
-## the match ending (the other side surrenders).
-const MODALS: Array[String] = ["dialog", "result"]
+## How the modal opens: the pause menu by a tap of a second finger on the pill's menu button, the
+## result screen by the match ending (the other side surrenders).
+const MODALS: Array[String] = ["pause", "result"]
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -160,6 +161,50 @@ func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 		_main.free()
 
 
+## A plain button (the placement's check mark) that a finger went down on before the pause menu
+## opened sends no PLACE when the finger lifts under it (P124); the same press sends one without it.
+func test_a_finger_on_the_check_mark_sends_no_place_under_the_pause_menu() -> void:
+	await _open()
+	# Paused, so that no tick ends the mode (it is not ready in a queue) during the idle frames.
+	(_main.get_node("MatchRunner") as MatchRunner).paused = true
+	var placement: PlacementController = _main.get_node("PlacementController")
+	var snap: MatchSnapshot = (_main.get_node("MatchRunner") as MatchRunner).snapshot
+	var type: int = -1
+	for row: int in snap.unit_count():
+		if snap.owner[row] == 1 and WorldSort.is_building(snap, snap.type_index[row]):
+			type = snap.type_index[row]
+			break
+	assert_bool(placement.begin(type)).is_true()
+	placement.reason = Placement.Reason.OK  # The ghost fits, whatever the tile under the view.
+	placement.changed.emit()
+	await await_idle_frame()
+	await await_idle_frame()
+	var confirm: Control = _hud("PlaceConfirm")
+	var at: Vector2 = confirm.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(_sent).override_failure_message("the control").has_size(1)
+	assert_int(_sent[0].type).is_equal(Command.Type.PLACE)
+	_sent.clear()
+	placement.pending = false
+	placement.changed.emit()
+	await await_idle_frame()
+	TouchEvents.press(get_viewport(), 0, at)
+	await _show("pause", true)
+	TouchEvents.release(get_viewport(), 0, at)
+	await await_idle_frame()
+	assert_array(_sent).is_empty()
+	assert_bool(placement.active).is_true()
+	assert_bool(placement.pending).is_false()
+	# Resume: the check mark is lit again and one press sends one PLACE.
+	(_main.get_node("Hud/HudStateFeed") as HudStateFeed).state.close(HudState.Unfold.PAUSE)
+	await await_idle_frame()
+	assert_bool((confirm as Button).disabled).is_false()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(_sent).has_size(1)
+
+
 ## The economy pill takes a tap on its credits or its power (`economy_pressed`). A modal ends a
 ## finger that went down there before it showed (no tap when it lifts), and a tap while it shows
 ## lands on the modal: the pill stands under it in the HUD's order.
@@ -207,20 +252,18 @@ func _open() -> void:
 	touch.map_gesture.connect(func() -> void: _gestures[0] += 1)
 
 
-## Shows `modal`. The dialog by a tap of finger 1 on Surrender (`with_finger`) or a press signal;
-## the result screen by the other side's surrender.
+## Shows `modal`. The pause menu by a tap of finger 1 on the menu button (`with_finger`) or a press
+## signal; the result screen by the other side's surrender.
 func _show(modal: String, with_finger: bool) -> void:
-	if modal == "dialog":
+	if modal == "pause":
 		if with_finger:
-			_tap_with_finger_1(_hud("SurrenderButton"))
+			_tap_with_finger_1(_hud("Menu"))
 		else:
-			(_hud("SurrenderButton") as Button).pressed.emit()
+			(_hud("Menu") as Button).pressed.emit()
 	else:
 		MatchRig.end(_main, [2])
 	await await_idle_frame()
-	var shown: Control = _main.get_node(
-		"Hud/SurrenderDialog" if modal == "dialog" else "Hud/ResultScreen"
-	)
+	var shown: Control = _main.get_node("Hud/PauseMenu" if modal == "pause" else "Hud/ResultScreen")
 	assert_bool(shown.visible).override_failure_message(modal).is_true()
 
 

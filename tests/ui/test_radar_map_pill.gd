@@ -15,7 +15,7 @@ const STRIKE_SPAWNS: Array[Array] = [
 const BORE: int = 1  ## The Deep Bore of STRIKE_SPAWNS.
 const TOLERANCE_PX: float = 1.5
 ## Window widths (px at 3 px per dp) either side of the pinned map's fold: the first keeps it.
-const FOLD_WIDTHS: Array[int] = [2124, 2088]
+const FOLD_WIDTHS: Array[int] = [2046, 2022]
 
 var _window_size_before: Vector2i
 var _main: Node2D
@@ -45,7 +45,7 @@ func before_test() -> void:
 	MenuRig.begin()
 
 
-## Where the pinned map cannot fit beside the pill and the aim's row (a safe width under about 680
+## Where the pinned map cannot fit beside the pill and the aim's row (a safe width under about 654
 ## dp) it folds when the aim begins, the pin kept, instead of covering the pill's end; opened again
 ## during the aim it folds again. On the narrower screen of the test above it stays.
 func test_a_pinned_map_that_cannot_fit_beside_the_pill_folds_when_the_aim_begins() -> void:
@@ -92,7 +92,7 @@ func test_a_pinned_map_that_cannot_fit_beside_the_pill_folds_when_the_aim_begins
 
 
 ## The map follows the pill's real width: on the narrow short screen, pinned through an aim, the
-## pill widens (low power's word, then 260 dp by hand) and the map narrows to keep a gap right of
+## pill widens (low power's word, then 300 dp by hand) and the map narrows to keep a gap right of
 ## its end; where it cannot, it folds. A map that ignored the pill's width, or did not place again
 ## when the pill is resized, would stand over it.
 func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> void:
@@ -114,6 +114,7 @@ func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> v
 	var dp: float = UiScale.dp(1.0)
 	var before: Rect2 = _map.get_global_rect()
 	assert_bool(_state.is_open(HudState.Unfold.RADAR)).is_true()
+	var normal: float = pill.size.x
 	# Low power: the pill asks for a few dp more.
 	snap.power_used[1] = snap.power_made[1] + 10
 	snap.tick += 1
@@ -121,7 +122,7 @@ func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> v
 	await _settle()
 	await _settle()
 	var wide: Rect2 = pill.get_global_rect()
-	assert_float(wide.size.x).is_greater(200.0 * dp)
+	assert_float(wide.size.x).is_greater(normal + 1.0)  # Low power widened it.
 	var map: Rect2 = _map.get_global_rect()
 	var why: String = "pill %s, map %s (before %s)" % [wide, map, before]
 	assert_bool(_state.is_open(HudState.Unfold.RADAR)).override_failure_message(why).is_true()
@@ -129,8 +130,8 @@ func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> v
 		8.0 * dp - TOLERANCE_PX
 	)
 	assert_float(map.size.x).override_failure_message(why).is_less(before.size.x - 1.0)
-	# By hand to 260 dp: it cannot fit beside the pill and the row, so the pinned map folds.
-	pill.size = Vector2(260.0 * dp, pill.size.y)
+	# By hand to 300 dp: it cannot fit beside the pill and the row, so the pinned map folds.
+	pill.size = Vector2(300.0 * dp, pill.size.y)
 	await _settle()
 	await _settle()
 	assert_bool(_state.is_open(HudState.Unfold.RADAR)).is_false()

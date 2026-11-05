@@ -393,13 +393,17 @@ func test_any_next_touch_closes_the_card_and_does_its_own_work() -> void:
 		assert_bool(_card().visible).override_failure_message(why).is_false()
 		assert_array(_sent).override_failure_message(why).is_empty()
 		assert_array(_controller.selection.selected).is_equal(tank)
-		_controller.selection.set_ids(PackedInt32Array())  # So that All army has something to do.
 		await _tap_control("PowerTap")
-		await _tap_control("AllArmy")  # A control of the HUD: its own work, the selection.
+		# A control of the HUD that the card does not cover (it covers the group column's start since
+		# P124 took the Dev stack away): its own work, the drawer.
+		await _tap_control("BuildButton")
 		await _settle()
 		assert_bool(_card().visible).override_failure_message(why).is_false()
 		assert_array(_sent).override_failure_message(why).is_empty()
+		assert_bool(_state.is_open(HudState.Unfold.DRAWER)).override_failure_message(why).is_true()
 		assert_array(_controller.selection.selected).override_failure_message(why).is_equal(tank)
+		_state.close(HudState.Unfold.DRAWER)
+		await _settle()
 		# The same through the other gestures of the map: a pan, a double-tap and a pinch.
 		await _tap_control("PowerTap")
 		_drag(_ground(), Vector2(80.0, 30.0))
@@ -591,7 +595,6 @@ func _check_rect(why: String) -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 12.0)
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	shown.left_taken = HudLayout.first_visible_width(_node("TopLeft") as Control) / dp
 	shown.card = true
 	shown.card_height = _card().get_combined_minimum_size().y / dp
 	var planned: Rect2 = HudCorners.place(safe, HudLayout.is_portrait(), dp, false, shown)[

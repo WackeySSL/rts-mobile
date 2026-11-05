@@ -263,8 +263,8 @@ func _read_main(main: Node) -> Dictionary:
 	for row: int in [1, 39]:
 		var ring: Sprite2D = main.get_node("UnitLayer").rig(row).get_node("Ring")
 		rings.append([ring.unit, ring.radius, ring.scale])
-	var dev: Control = main.get_node("Hud/SafeArea/TopLeft/DevButton")
-	var button_sizes: Array[Vector2] = [dev.custom_minimum_size, column.size]
+	var menu: Control = main.get_node("Hud/EconomyPill").find_child("Menu", true, false)
+	var button_sizes: Array[Vector2] = [menu.custom_minimum_size, column.size]
 	return {
 		"button_sizes": button_sizes,
 		"safe_margins": _margins(safe),

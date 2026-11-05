@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 ## n is row n - 1 of the 6-column block, which the 2:1 projection (P117) shows as a diamond: column
 ## c = (n - 1) % 6 and row r = (n - 1) / 6 stand at world px x = -320 + 48 (c - r) and
 ## y = 432 + 24 (c + r). Ids 1-30 are blue (the player's), 31-40 red. No map touch
-## starts on the command bar, the group column or the Dev button: they keep their touches.
+## starts on the command bar, the group column or the pill: they keep their touches.
 ## Timings,
 ## buzzes and the formation bound come from the data. The zoom levels and the scenario are pins.
 
@@ -38,7 +38,7 @@ const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
 const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
-## block is at y 688 and lower, so above it, under the Surrender button (P90) and under the
+## block is at y 688 and lower, so above it, under the pill and under the
 ## command bar's place (P122: along the bottom upright; `_assert_off_hud` checks its parts).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
 const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 372, 220, 120)
@@ -313,14 +313,7 @@ func _assert_off_hud(at: Vector2) -> void:
 	var screen: Rect2 = get_viewport().get_visible_rect()
 	assert_bool(screen.has_point(at)).override_failure_message("%s is off screen" % at).is_true()
 	for node_name: String in [
-		"Deselect",
-		"Chip",
-		"Stop",
-		"GroupColumn",
-		"DevButton",
-		"SurrenderButton",
-		"EconomyPill",
-		"BuildSidebar"
+		"Deselect", "Chip", "Stop", "GroupColumn", "EconomyPill", "BuildSidebar"
 	]:
 		if _column_aside and node_name == "GroupColumn":
 			continue

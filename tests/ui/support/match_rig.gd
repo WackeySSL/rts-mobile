@@ -1,5 +1,5 @@
 extends RefCounted
-## The main scene on a Skirmish, for the suites of the result screen, the Surrender button and the
+## The main scene on a Skirmish, for the suites of the result screen, the pause menu and the
 ## two routes (plan P90). Not a suite. A suite that builds the scene through it calls
 ## `MenuRig.begin()` and `MenuRig.end()` itself (tests/project/test_menu_rig_scan.gd).
 

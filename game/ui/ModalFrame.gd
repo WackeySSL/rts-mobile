@@ -1,6 +1,7 @@
 class_name ModalFrame
 extends Control
-## The frame of a screen that covers the HUD (plan P90): the result screen and the confirm dialog.
+## The frame of a screen that covers the HUD (plan P90): the result screen, the pause menu and the
+## confirm dialog.
 ## The root takes every touch, so nothing behind it is selected, ordered or panned. The safe area
 ## and a scroll (for a window too short for the panel) hold the panel; a subclass adds its rows to
 ## `column` in `_ready`, after `super()`, and shows itself with `visible`. The look is the theme's.

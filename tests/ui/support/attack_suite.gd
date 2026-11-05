@@ -59,12 +59,11 @@ func after_test() -> void:
 
 
 ## The toast's rect is `HudCorners.place`'s for the screen in force, inside the safe rect and clear
-## of the scope and the pill by the 8 dp gap and of the stack and the command bar.
+## of the scope and the pill by the 8 dp gap and of the command bar.
 func _expect_toast_placed(why: String) -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var toast: Rect2 = _toast.get_global_rect()
 	var scope: Rect2 = _scope.get_global_rect()
-	var stack: Control = _hud("TopLeft") as Control
 	var pill: Rect2 = (_hud("EconomyPill") as Control).get_global_rect()
 	var panel: Control = _hud("CommandBar") as Control
 	var safe: Rect2 = SafeAreaMargin.rect_inside(
@@ -73,8 +72,6 @@ func _expect_toast_placed(why: String) -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.toast = true
 	shown.pill_width = (_hud("EconomyPill") as Control).size.x / dp
-	shown.left_taken = HudLayout.first_visible_width(stack) / dp
-	shown.left_height = stack.get_combined_minimum_size().y / dp
 	var placed: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)
@@ -90,7 +87,6 @@ func _expect_toast_placed(why: String) -> void:
 	assert_bool(safe.grow(0.5).encloses(toast)).override_failure_message(at).is_true()
 	assert_bool(toast.grow(gap).intersects(scope)).override_failure_message(at).is_false()
 	assert_bool(toast.grow(gap).intersects(pill)).override_failure_message(at).is_false()
-	assert_bool(toast.intersects(stack.get_global_rect())).override_failure_message(at).is_false()
 	if panel.is_visible_in_tree():
 		var panel_at: String = "%s, panel %s" % [at, panel.get_global_rect()]
 		(
@@ -101,7 +97,7 @@ func _expect_toast_placed(why: String) -> void:
 
 
 ## With the drawer open (the pill folded, P120d) and the pill on low power (its widest when it is
-## back), the toast keeps clear of the scope, the top-left stack, the drawer and BUILD, and is at
+## back), the toast keeps clear of the scope, the drawer and BUILD, and is at
 ## least `TOAST_LEAST_DP` wide.
 func _expect_toast_clear_of_drawer(why: String) -> void:
 	var pill_node: EconomyPill = _hud("EconomyPill") as EconomyPill
@@ -124,9 +120,6 @@ func _expect_toast_clear_of_drawer(why: String) -> void:
 	)
 	assert_float(toast.size.y).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
 	var parts: Array[Rect2] = [_scope.get_global_rect(), drawer]
-	# The stack's second row can be wider than its first, which the toast stands after: it must not
-	# touch the stack, and leaves it the gap of the first row at least.
-	assert_bool(toast.intersects(_rect("TopLeft"))).override_failure_message(at).is_false()
 	var build: Control = _hud("BuildButton") as Control
 	if build.is_visible_in_tree():
 		parts.append(build.get_global_rect())

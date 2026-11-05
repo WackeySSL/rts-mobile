@@ -49,7 +49,6 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 		var safe: Rect2 = UiScale.safe_rect_base()
 		var visible_rect: Rect2 = get_viewport().get_visible_rect()
 		var big: Dictionary[String, Rect2] = {
-			"DevButton": _rect("DevButton"),
 			"GroupColumn": _rect("GroupColumn"),
 			"Bar": _rect(_panel),
 			"Build": _rect("BuildButton"),
@@ -79,7 +78,7 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 
 ## The open drawer is a HUD control too (plan P120): at every screen, sideways the command bar and
 ## the group column end before the panel with a gap (`HudCorners` leaves the bar the room beside
-## it), upright the sheet covers the bar and the column; and none of the pill, the Dev button, the
+## it), upright the sheet covers the bar and the column; and none of the pill, the
 ## column and the bar overlaps the drawer's rect in either orientation.
 func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() -> void:
 	for screen: Dictionary in _screens():
@@ -110,8 +109,6 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() 
 			parts["Bar"] = _rect(_panel)
 		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # The sheet covers it upright.
 			parts["GroupColumn"] = _rect("GroupColumn")
-		if (_hud("DevButton") as Control).is_visible_in_tree():
-			parts["DevButton"] = _rect("DevButton")
 		for part: String in parts:
 			var at: String = "%s: %s %s against the drawer %s" % [why, part, parts[part], drawer]
 			assert_bool(parts[part].intersects(drawer)).override_failure_message(at).is_false()
@@ -149,7 +146,7 @@ func test_a_resize_with_the_drawer_open_refits_the_bar_to_the_new_width() -> voi
 
 ## Upright the drawer is closed, the zone is 0 and the command bar stands on the safe bottom with
 ## BUILD and the group column a gap above it (P122b, P122); the column stands at the left edge,
-## within 40% of the safe height from the bottom, left of BUILD and clear of the Dev stack. A
+## within 40% of the safe height from the bottom, left of BUILD. A
 ## cutout takes height from both ends of
 ## the screen (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out
 ## of the limit, as a phone browser that is only 700 dp tall has no room left for it.
@@ -178,9 +175,6 @@ func test_in_portrait_the_group_column_stands_at_the_bottom_left_beside_build() 
 		assert_float(column.end.x).override_failure_message(why).is_less_equal(
 			build.position.x - gap + TOLERANCE_PX
 		)
-		assert_float(_rect("DevButton").end.y).override_failure_message(why).is_less_equal(
-			column.position.y
-		)
 		assert_bool(safe.encloses(column)).override_failure_message(why).is_true()
 		if not screen["cutout"]:
 			var stack: float = safe.end.y - column.position.y
@@ -190,16 +184,17 @@ func test_in_portrait_the_group_column_stands_at_the_bottom_left_beside_build() 
 
 
 ## There is no band in landscape: the sidebar leaves the zone at 0 and the column stands at the left
-## edge under the Dev stack, whatever zone it is told of.
-func test_in_landscape_the_group_column_stands_under_the_dev_stack_whatever_the_zone() -> void:
+## edge under the pill, whatever zone it is told of.
+func test_in_landscape_the_group_column_stands_under_the_pill_whatever_the_zone() -> void:
 	for screen: Dictionary in _screens(false):
 		await _open(screen)
 		var why: String = str(screen["label"])
 		assert_float(HudLayout.bottom_zone_px()).override_failure_message(why).is_equal(0.0)
 		var column: Rect2 = _rect("GroupColumn")
-		var stack: Rect2 = _rect("TopLeft")
+		var pill: Rect2 = _rect("EconomyPill")
+		# The pill is 48 dp plus the px its containers round up (up to 1.5 px, test_economy_pill_layout).
 		assert_float(column.position.y).override_failure_message(why).is_greater_equal(
-			stack.end.y + UiScale.dp(8.0) - TOLERANCE_PX
+			pill.end.y + UiScale.dp(8.0) - TOLERANCE_PX - 1.5
 		)
 		var before: Rect2 = column
 		HudLayout.bottom_zone_dp = 200.0  # Not what the sidebar sets: nothing reads it here.

@@ -554,7 +554,6 @@ func _expect_clear_of_row(why: String, map: Rect2, parts: Array, aiming: bool = 
 	shown.map = true
 	shown.strike = true
 	shown.aim = aiming
-	shown.left_taken = HudLayout.first_visible_width(_hud("TopLeft") as Control) / dp
 	shown.pill_width = pill.size.x / dp
 	var safe: Rect2 = SafeAreaMargin.rect_inside(
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP

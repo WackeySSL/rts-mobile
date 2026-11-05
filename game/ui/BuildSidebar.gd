@@ -666,7 +666,7 @@ func _send(command: Command) -> void:
 
 
 func _buzz() -> void:
-	if controller.settings.haptics_enabled:
+	if HudPrefs.vibrates(controller.settings):
 		controller.vibrate.call(controller.settings.haptic_ms)
 
 

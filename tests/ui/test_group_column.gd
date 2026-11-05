@@ -141,8 +141,8 @@ func test_the_column_stays_inside_the_safe_area_at_every_screen() -> void:
 
 
 ## Every side counts, a resize recomputes it and a 180 degree turn (the same window, the cutout on
-## the other side) changes nothing. Dev is top-left, the column under it, on the 1600x720 canvas of
-## android_6in.
+## the other side) changes nothing. The pill is top-left, the column under it, on the 1600x720
+## canvas of android_6in.
 func test_margins_follow_all_four_sides_of_the_safe_area_and_a_window_change() -> void:
 	var android: UiMetrics = UiProfiles.by_name(&"android_6in")
 	await _open(UiProfiles.by_name(&"desktop"))
@@ -151,9 +151,11 @@ func test_margins_follow_all_four_sides_of_the_safe_area_and_a_window_change() -
 	await await_idle_frame()
 	# Insets 67, 20, 34 and 47 base px: the larger of each axis plus dp(12) = 21.
 	assert_array(_margins()).is_equal([88, 68, 88, 68])
-	assert_vector(_rect("DevButton").position).is_equal(Vector2(88, 68))
+	assert_vector(_rect("EconomyPill").position).is_equal(Vector2(88, 68))
 	assert_float(_column().position.x).is_equal(88.0)
-	assert_float(_column().position.y).is_greater_equal(_rect("TopLeft").end.y + UiScale.dp(8.0))
+	assert_float(_column().position.y).is_greater_equal(
+		_rect("EconomyPill").end.y + UiScale.dp(8.0)
+	)
 	var number: Label = _hud("Group1").get_node("Face/Number")
 	assert_int(number.get_theme_font_size("font_size")).is_equal(roundi(UiScale.dp(16.0)))
 	await _open(UiProfiles.with_safe_area(android, Rect2i(50, 70, 2250, 980)))  # Turned.
@@ -305,8 +307,8 @@ func test_four_items_take_two_columns_on_the_small_phone_and_one_upright_without
 
 
 ## At every screen, with the toast and the pill on, the column is clear of the pill, the attack
-## toast, the Dev stack, the scope and BUILD, however many groups it holds.
-func test_the_column_is_clear_of_the_pill_the_toast_the_stack_the_scope_and_build() -> void:
+## toast, the scope and BUILD, however many groups it holds.
+func test_the_column_is_clear_of_the_pill_the_toast_the_scope_and_build() -> void:
 	for screen: Dictionary in _screens():
 		await _open(screen["metrics"], screen["size"])
 		_save_groups(3)
@@ -316,7 +318,7 @@ func test_the_column_is_clear_of_the_pill_the_toast_the_stack_the_scope_and_buil
 		await await_idle_frame()
 		var why: String = str(screen["label"])
 		var column: Rect2 = _column()
-		for other: String in ["EconomyPill", "RadarScope", "BuildButton", "TopLeft", "AttackToast"]:
+		for other: String in ["EconomyPill", "RadarScope", "BuildButton", "AttackToast"]:
 			var rect: Rect2 = _rect(other)
 			var at: String = "%s: column %s and %s %s" % [why, column, other, rect]
 			assert_bool(column.intersects(rect)).override_failure_message(at).is_false()
