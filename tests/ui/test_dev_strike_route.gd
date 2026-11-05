@@ -26,11 +26,11 @@ func after() -> void:
 	get_window().size = _window_size_before
 
 
-## The scene a test left is freed, and the orders a test queued are dropped.
 func before_test() -> void:
 	MenuRig.begin()
 
 
+## The scene a test left is freed, and the orders a test queued are dropped.
 func after_test() -> void:
 	MenuRig.end()
 	var tree: SceneTree = get_tree()

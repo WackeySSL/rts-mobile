@@ -165,6 +165,8 @@ func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 ## opened sends no PLACE when the finger lifts under it (P124); the same press sends one without it.
 func test_a_finger_on_the_check_mark_sends_no_place_under_the_pause_menu() -> void:
 	await _open()
+	# Paused, so that no tick ends the mode (it is not ready in a queue) during the idle frames.
+	(_main.get_node("MatchRunner") as MatchRunner).paused = true
 	var placement: PlacementController = _main.get_node("PlacementController")
 	var snap: MatchSnapshot = (_main.get_node("MatchRunner") as MatchRunner).snapshot
 	var type: int = -1
@@ -194,6 +196,13 @@ func test_a_finger_on_the_check_mark_sends_no_place_under_the_pause_menu() -> vo
 	assert_array(_sent).is_empty()
 	assert_bool(placement.active).is_true()
 	assert_bool(placement.pending).is_false()
+	# Resume: the check mark is lit again and one press sends one PLACE.
+	(_main.get_node("Hud/HudStateFeed") as HudStateFeed).state.close(HudState.Unfold.PAUSE)
+	await await_idle_frame()
+	assert_bool((confirm as Button).disabled).is_false()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(_sent).has_size(1)
 
 
 ## The economy pill takes a tap on its credits or its power (`economy_pressed`). A modal ends a

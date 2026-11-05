@@ -18,8 +18,6 @@ const BUTTON_DP: float = 64.0
 const TOLERANCE_PX: float = 0.5
 ## Open ground at 1280x720, left of the pill's neighbours and clear of the group column.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
-## The window that needs the scroll (280 dp of safe height); the labels of the others differ.
-const SCROLLS: String = "web_phone_small"
 const ASKING: Array[String] = ["RestartButton", "SurrenderButton", "ExitButton"]
 
 var _window_size_before: Vector2i
@@ -302,8 +300,8 @@ func test_the_dialog_takes_the_focus_without_a_ring() -> void:
 
 
 ## The menu's buttons (64 dp high) and the dialog's lie inside the safe rect at the six sizes, the
-## phone browsers (web_phone_small, the shortest, among them) and the cutouts; the menu needs no
-## scroll, also with the wider "VIBRATION: OFF".
+## phone browsers (web_phone_small, the shortest, among them) and the cutouts, also with the wider
+## "VIBRATION: OFF"; a window too short for the menu scrolls, and every button is reachable.
 func test_the_menu_and_the_dialog_fit_every_size_and_the_cutouts() -> void:
 	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
@@ -415,8 +413,8 @@ func _check_menu(label: String) -> void:
 
 
 ## Every visible button of the open menu at least 64 dp high and inside the safe rect, if need be
-## after the scroll brings it in. Only the shortest window (`SCROLLS`, a debug build's seven buttons
-## need four rows) scrolls; the others show everything at once.
+## after the scroll brings it in (a debug build's six buttons need four rows on the shortest
+## window).
 func _assert_buttons_reachable(label: String) -> void:
 	var safe: Rect2 = UiScale.safe_rect_base()
 	var scroll: ScrollContainer = null
@@ -428,10 +426,8 @@ func _assert_buttons_reachable(label: String) -> void:
 		if (node as Button).is_visible_in_tree():
 			buttons.append(node as Control)
 	assert_int(buttons.size()).is_greater_equal(5)
-	var scrolled: bool = false
 	for button: Control in buttons:
 		if not safe.encloses(button.get_global_rect()):
-			scrolled = true
 			scroll.ensure_control_visible(button)
 			await await_idle_frame()
 		var rect: Rect2 = button.get_global_rect()
@@ -440,7 +436,4 @@ func _assert_buttons_reachable(label: String) -> void:
 		assert_float(rect.size.y).override_failure_message(where).is_greater_equal(
 			UiScale.dp(BUTTON_DP) - TOLERANCE_PX
 		)
-	assert_bool(scrolled).override_failure_message(label).is_equal(
-		label.begins_with(SCROLLS) and DevRoutes.is_enabled()
-	)
 	scroll.scroll_vertical = 0

@@ -79,7 +79,7 @@ func test_exit_yes_and_the_developer_menu_button_open_the_dev_menu() -> void:
 
 
 ## One SURRENDER per match: after the confirm the menu does not open again and a second confirm
-## sends nothing; a new match (another serial) can surrender again.
+## sends nothing.
 func test_surrender_is_sent_once_per_match() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()

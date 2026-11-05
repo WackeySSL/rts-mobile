@@ -16,7 +16,7 @@ extends ModalFrame
 
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
-const GLYPH_DP: float = 20.0  ## The glyph in front of a button's word (P118g drew them).
+const GLYPH_DP: float = 24.0  ## The glyph in front of a button's word (P118g drew them).
 const CARD_DP: float = 200.0  ## The card's width: the buttons take the rest (two to a row).
 
 @export var runner: MatchRunner

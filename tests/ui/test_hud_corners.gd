@@ -87,8 +87,8 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 ## The pinned full map stays open through a strike aim (plan P120c). Under the scope it is clear of
 ## the row by its height; left of the column on a short screen it ends a gap left of the check mark
 ## and the X and narrows (2:1, 192 dp wide at the least) to start a gap right of the pill, however
-## wide the pill is (up to its 320 dp), down to the width where both fit; with no aim, or a row
-## that stands below the map, it is the ADR table's.
+## wide the pill is (to 320 dp here; the cap is 372), down to the width where both fit; with no aim,
+## or a row that stands below the map, it is the ADR table's.
 func test_the_pinned_map_with_the_aim_keeps_clear_of_the_row_and_the_pill() -> void:
 	var plain: Dictionary[StringName, Rect2] = _place(
 		Rect2(0.0, 0.0, 776.0, 280.0), false, _shown(["strike", "map"])

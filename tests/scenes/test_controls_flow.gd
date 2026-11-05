@@ -38,7 +38,7 @@ const GROUND_MILLI: Vector2i = Vector2i(10000, 15000)
 const DRAG_FROM: Vector2 = Vector2(900, 400)
 const DRAG_FROM_PORTRAIT: Vector2 = Vector2(660, 400)
 ## A box with no tank in it, in base px: left of the block flat (it starts at x 576); upright the
-## block is at y 688 and lower, so above it, under the Surrender button (P90) and under the
+## block is at y 688 and lower, so above it, under the pill and under the
 ## command bar's place (P122: along the bottom upright; `_assert_off_hud` checks its parts).
 const EMPTY_BOX: Rect2 = Rect2(80, 300, 220, 200)
 const EMPTY_BOX_PORTRAIT: Rect2 = Rect2(80, 372, 220, 120)

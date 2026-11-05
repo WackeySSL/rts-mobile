@@ -114,6 +114,7 @@ func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> v
 	var dp: float = UiScale.dp(1.0)
 	var before: Rect2 = _map.get_global_rect()
 	assert_bool(_state.is_open(HudState.Unfold.RADAR)).is_true()
+	var normal: float = pill.size.x
 	# Low power: the pill asks for a few dp more.
 	snap.power_used[1] = snap.power_made[1] + 10
 	snap.tick += 1
@@ -121,7 +122,7 @@ func test_the_pinned_map_keeps_a_gap_right_of_the_pill_as_the_pill_widens() -> v
 	await _settle()
 	await _settle()
 	var wide: Rect2 = pill.get_global_rect()
-	assert_float(wide.size.x).is_greater(200.0 * dp)
+	assert_float(wide.size.x).is_greater(normal + 1.0)  # Low power widened it.
 	var map: Rect2 = _map.get_global_rect()
 	var why: String = "pill %s, map %s (before %s)" % [wide, map, before]
 	assert_bool(_state.is_open(HudState.Unfold.RADAR)).override_failure_message(why).is_true()
