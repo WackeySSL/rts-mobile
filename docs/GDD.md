@@ -43,10 +43,9 @@ funded by optional rewarded ads and capped post-match interstitials.
 
 ## Buildings (MVP)
 Each faction builds its own eight; every footprint is square.
-Structures are placed first and built on the spot (ADR 0026): the player picks the place, the price
-is paid when the place is confirmed, and the building rises there, one at a time; while it rises it
-can be attacked and does nothing for its owner (no power, production or shots); a cancel refunds
-75 % of the price.
+Structures are ordered in the build drawer, built in the queue and placed when they are ready
+(ADR 0017, ADR 0019). ADR 0026's place-first path (a site that rises on the spot, 75 % refund on
+cancel) is in the sim but not used (Michael, 2026-11-05).
 
 | Role | Derrick League | Lumen Accord | Size | Cost | Power | Requires | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |

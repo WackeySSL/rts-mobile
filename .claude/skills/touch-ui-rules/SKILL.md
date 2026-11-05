@@ -39,7 +39,7 @@ with the phone; no UI code assumes width > height.
 | Any gesture on the map | Also closes the open drawer, full map (unless pinned) or economy card; the gesture still does its work; a touch on a HUD control never closes them |
 | Tap BUILD | Open the build drawer |
 | Swipe the drawer toward its edge (portrait: from its handle or its tabs) | Close it (`drawer_swipe_dp`) |
-| Tap the Ready chip (until ADR 0026's P130) | Open the drawer on the Structures tab, the ready card in view |
+| Tap the Ready chip | Open the drawer on the Structures tab, the ready card in view |
 | Tap the pill's menu button | Pause the match and open the pause menu |
 | Tap the credits or the power in the pill | Show the economy card; the next touch closes it |
 | Tap the attack toast | Jump the camera to the attack |
@@ -109,9 +109,8 @@ until confirm.
   ghost.
 - Placement closes the build drawer; when a build or the X ends it, the drawer comes back if
   placement began in it; a strike aim that ends placement leaves it closed.
-- From ADR 0026's row P130 on, placement begins with a tap on a structure's card (there is no
-  "Ready" state), the check mark shows the price (18 sp) and pays it, and the building goes up on
-  the spot.
+- Placement begins with a tap on a "Ready" structure card; ADR 0026's place-first switch (P130)
+  is not built (Michael, 2026-11-05).
 
 ## Corner HUD and build drawer (ADR 0025)
 Plan rows P119-P125 (`docs/plans/2026-11-01-hud-v2.md`) build it; until a row merges, the part it
@@ -134,7 +133,7 @@ plan's "Interim places" say where each part stands meanwhile.
   No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on
   BUILD, on a producer's selection (its tab) and after a placement begun in it.
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders the
-  game has (Stop for units; none for a building until ADR 0026's Cancel for a site). No Attack
+  game has (Stop for units; none for a building). No Attack
   button. Later orders join the list with a glyph and a HOW_TO_PLAY line.
 - The groups: "All army" on top, the saved groups, "+" while units are selected and a group is free;
   56 dp buttons, more columns where one does not fit.

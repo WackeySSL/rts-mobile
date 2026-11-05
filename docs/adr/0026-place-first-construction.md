@@ -21,6 +21,18 @@ drawer's queue row show it" (row 9) have no place to show. The architect re-plan
 under construction shows in the HUD before P130 starts (the HUD v2 plan's status of 2026-11-05).
 No accepted text changed.
 
+Status note (2026-11-05, P26ay docs; Michael's decision of 2026-11-05 on P130: leave it as it is,
+the building is ordered in the menu and placed afterwards): the player-facing switch is not made. A
+structure is still ordered in the drawer, built in the queue and placed when it is ready (ADR 0017's
+and ADR 0019's path). The rows P130 (the HUD), P129 (#266, the dummy; closed unmerged, so the dummy
+builds as the player does) and P131 (the old path goes) are dropped. What P128 (#262) and P128b
+(#265) merged stays: the sim's place-first path (`PLACE [type]`, `build_left`, `CANCEL_BUILD`,
+`STATE_FORMAT` 5, the rule ints) sits beside the old path and no Command source uses it; removing it
+would need a re-pin of every golden hash and is not planned. §8, §9 and the decisions on the HUD and
+the dummy stay as written, unbuilt; the answers 1, 2 and 4 apply to a site only, so nothing in the
+game uses them today. Answer 3 (a strike building charges from completion) holds on the old path
+too.
+
 ## Michael's answers (2026-11-02, on #259)
 1. **B:** a cancelled site refunds 75 % of its price (`construct_refund_percent` 75).
 2. **A:** a site starts at `construct_start_hp_percent` (10) of its hit points and rises with the

@@ -298,6 +298,10 @@ Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the tex
 accepted): a finished structure waiting at the Structures head has no work left, so it is the item
 that "finishes first" and **the ring shows full** until it is placed (until P130).
 
+Note (2026-11-05, P26ay docs): P130 is not built (Michael, 2026-11-05), so the Ready chip, the READY
+state and the full ring until placement stay; "interim" and "until P130" above no longer apply, and
+a construction never occurs, so the ring and the count badge read the queues' items alone.
+
 Status note (2026-11-03, P26ar docs; lead decisions on P120c #295, as merged; the text and the note
 above stand):
 - **Stalled** means that no queue head advanced between two published snapshots. Low power is no
@@ -554,7 +558,8 @@ accepted):
     glyph and its HOW_TO_PLAY line. Guard, Patrol and Scatter (units) and Repair, Sell, Rally and
     Primary (buildings) are not in the game (ADR 0023 §8); the bar shows none of them. Rally stays
     the ground tap with a producer selected (P87). A building's orders today: none (its chip only);
-    ADR 0026 adds Cancel for one under construction.
+    ADR 0026 adds Cancel for one under construction. (Note, 2026-11-05, P26ay docs: ADR 0026's
+    Cancel for a site is not built, P130 being dropped; a building has no command-bar action.)
   - **Overflow:** more orders than fit scroll sideways inside the bar; a button never shrinks below
     56 dp.
 - **Portrait BUILD lift:** while the bar shows, BUILD (and the strike button above it) stands 8 dp
