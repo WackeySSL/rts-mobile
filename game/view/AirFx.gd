@@ -6,14 +6,14 @@ extends Node2D
 ## no object per puff and allocates nothing per frame. Its quota is its own: no other effect takes
 ## a slot of it and it takes none of theirs.
 ## A puff is born in `ticked` at an emitter of the sheet of a building (`smoke`, `steam` and `flame`
-## points; `exhaust` and `launch` belong to other layers) when the building is complete (no site),
-## online (not blacked out) and shown to the local player (`BuildingLayer.is_shown`: an own one
-## always, an enemy one only while its footprint is seen), and its spot is in the view rect grown
-## by a tile. An emitter puffs every `emit_ms` of its sprite kind (never faster than
-## `MIN_EMIT_MS`, so it has at most four puffs alive) from a phase of its own, `LifeClock.pick` of
-## the building's id and the emitter's index, so two Turbine Halls, and the two stacks of one, do
-## not puff in step. The cycle is a function of the tick alone, so a run is the same on every
-## device. The ring overwrites its oldest puff when full.
+## points; a vehicle's `exhaust` is `PuffFx`'s and `launch` `StrikeFx`'s) when the building is
+## complete (no site), online (not blacked out) and shown to the local player
+## (`BuildingLayer.is_shown`: an own one always, an enemy one only while its footprint is seen), and
+## its spot is in the view rect grown by a tile. An emitter puffs every `emit_ms` of its sprite
+## kind (never faster than `MIN_EMIT_MS`, so it has at most four puffs alive) from a phase of its
+## own, `LifeClock.pick` of the building's id and the emitter's index, so two Turbine Halls, and
+## the two stacks of one, do not puff in step. The cycle is a function of the tick alone, so a run
+## is the same on every device. The ring overwrites its oldest puff when full.
 ## A puff lives `emit_life_ms` of its kind (at most `MAX_LIFE_MS`) of match time (`LifeClock`): it
 ## rises `emit_rise_px` and drifts `emit_drift_px` east while smoke and steam grow from
 ## `emit_grow_from` to `emit_grow_to` times their frame. A flame keeps its base on its point (no
@@ -29,7 +29,9 @@ extends Node2D
 ## names (an empty one reads as all zeros: it never stops), when the building is that damaged.
 ## The hit ring (`HitFx`, ADR 0029 section 7: the flash and chips where a shot hits a shown
 ## building) is a third ring, planned and drawn with the others, and so is the collapse ring
-## (`CollapseFx`, section 8: the flash, fire, dust and debris of a building that falls).
+## (`CollapseFx`, section 8: the flash, fire, dust and debris of a building that falls), and a
+## fourth holds the small puffs (`PuffFx`, plan P149: the muzzle smoke of a shot and the exhaust of
+## a vehicle, which `reduced` takes out of it).
 ## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
 ## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
 ## other quad, and a switch to `reduced` leaves its puffs alive.
@@ -56,8 +58,8 @@ const MAX_LIFE_MS: int = 2000
 @export var runner: MatchRunner
 @export var camera: RtsCamera
 @export var life: LifeSettings
-## Kept for the wiring `LifeFx` gives every layer; unread here: who is shown follows
-## `building_layer.is_shown` (which has its own `reveal_enemies`).
+## Shows the shots of tiles the fog hides too (`PuffFx`); who else is shown follows
+## `building_layer.is_shown` and `unit_layer.is_shown` (which have their own `reveal_enemies`).
 @export var reveal_enemies: bool = false
 ## Says whether a building is shown to the local player, and where its sheet is.
 @export var building_layer: BuildingLayer
@@ -85,7 +87,8 @@ var _dmg: DamageFx = DamageFx.new()
 ## The other rings, planned and drawn with the ambient one: a ring is added with one line here.
 var _hit: HitFx = HitFx.new()
 var _collapse: CollapseFx = CollapseFx.new()
-var _rings: Array[FxRing] = [_dmg.ring, _hit.ring, _collapse.ring]
+var _puff: PuffFx = PuffFx.new()
+var _rings: Array[FxRing] = [_dmg.ring, _hit.ring, _collapse.ring, _puff.ring]
 var _ring_quads: int = 0  ## Quads of the rings' plans.
 var _size: int = 0  ## Slots in the ring (`life.emitter_slots` when it was made).
 var _head: int = 0
@@ -136,6 +139,7 @@ func _process(_delta: float) -> void:
 	if snap == null:
 		return
 	_follow_match(snap)
+	_puff.follow_reduced(life.reduced)
 	if life.reduced:
 		if _count > 0 or _quads > 0:  # The switch to reduced: nothing stays frozen mid-life.
 			_empty()
@@ -207,6 +211,11 @@ func collapses() -> CollapseFx:
 ## The hit feedback (a test hook); its ring is the second of `_rings`.
 func hits() -> HitFx:
 	return _hit
+
+
+## The muzzle smoke and exhaust (a test hook); its ring is the fourth of `_rings`.
+func puffs() -> PuffFx:
+	return _puff
 
 
 ## Puffs in the ring, alive or not yet overwritten.
@@ -282,6 +291,7 @@ func _follow_match(snap: MatchSnapshot) -> void:
 			ring.clear()
 		_dmg.end_craters()
 		_collapse.end_all()
+		_puff.forget()
 
 
 func _empty() -> void:
@@ -349,6 +359,7 @@ func _sync_types(snap: MatchSnapshot) -> bool:
 				)
 	_type_first.append(_em_kind.size())
 	_dmg.build(snap, sort)
+	_puff.build(snap, sort)
 	return true
 
 
@@ -393,6 +404,17 @@ func _on_ticked(_tick: int) -> void:
 	)
 	_hit.read(life)
 	_hit.emit(snap, life, building_layer, view)
+	_puff.read(life)
+	_puff.emit(
+		snap,
+		life,
+		view,
+		building_layer,
+		unit_layer,
+		get_global_transform().affine_inverse(),
+		FogLayer.local_player_of(runner),
+		reveal_enemies
+	)
 	_collapse.read(life)
 	_collapse.emit(snap, life, view)
 

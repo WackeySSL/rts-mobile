@@ -143,3 +143,27 @@ crater_scale_milli = Dictionary[StringName, int]({
 &"refinery": 1500,
 &"renew_refinery": 1500
 })
+puff_slots = 24
+muzzle_smoke_ms = 500
+muzzle_reach_default_px = 13.0
+muzzle_reach_px = Dictionary[StringName, float]({
+&"arcline_gun": 13.0,
+&"artillery_gun": 13.0,
+&"breaker_rocket": 13.0,
+&"heavy_cannon": 13.0,
+&"redoubt_gun": 13.0,
+&"rifle": 13.0,
+&"rocket": 13.0,
+&"tank_cannon": 31.0,
+&"turret_gun": 13.0
+})
+muzzle_smoke_rise_px = 10.0
+muzzle_smoke_drift_px = 4.0
+muzzle_smoke_grow = Vector2(0.7, 1.5)
+muzzle_smoke_alpha = 0.8
+exhaust_ms = 500
+exhaust_rise_px = 8.0
+exhaust_drift_px = 3.0
+exhaust_grow = Vector2(0.7, 1.4)
+exhaust_alpha = 0.8
+puff_idle_ms = Vector2i(3000, 5000)
