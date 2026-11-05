@@ -271,3 +271,39 @@ var emit_life_ms: Dictionary[StringName, int] = {&"smoke": 1800, &"steam": 1200,
 @export var collapse_end_ms: int = 900
 @export
 var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"renew_refinery": 1500}
+
+## Muzzle smoke and exhaust puffs (P149, ADR 0027 sections 3 and 8): the small puffs of `AirFx`'s
+## `PuffFx` ring, `puff_slots` of them for muzzle smoke, exhaust and (P150) construction sparks,
+## each living at most 500 ms. A SHOT of a weapon that fires a projectile (a cannon, artillery or a
+## rocket; the rifle does not) leaves a `puff` `muzzle_smoke_ms` long at the flash's point, that
+## many px from the shooter towards the target (`muzzle_reach_px` per weapon id, the figures of
+## `EffectsLayer.muzzle_px`, `muzzle_reach_default_px` for a weapon with no row). A vehicle that
+## starts to drive puffs `exhaust` once from its exhaust point; one that stands puffs again every
+## `puff_idle_ms.x` to `.y` ms, a time of its own by `LifeClock.pick` (an `x` of 0 or less turns
+## idle puffs off). A puff rises `*_rise_px` and drifts east `*_drift_px` while it grows from
+## `*_grow.x` to `.y` times its frame and fades from `*_alpha` to 0. A `puff_slots` of 0, or a
+## `muzzle_smoke_ms` or `exhaust_ms` of 0, turns it off.
+@export var puff_slots: int = 24
+@export var muzzle_smoke_ms: int = 500
+@export var muzzle_reach_default_px: float = 13.0
+@export var muzzle_reach_px: Dictionary[StringName, float] = {
+	&"tank_cannon": 31.0,
+	&"rocket": 13.0,
+	&"rifle": 13.0,
+	&"heavy_cannon": 13.0,
+	&"turret_gun": 13.0,
+	&"artillery_gun": 13.0,
+	&"breaker_rocket": 13.0,
+	&"redoubt_gun": 13.0,
+	&"arcline_gun": 13.0,
+}
+@export var muzzle_smoke_rise_px: float = 10.0
+@export var muzzle_smoke_drift_px: float = 4.0
+@export var muzzle_smoke_grow: Vector2 = Vector2(0.7, 1.5)
+@export var muzzle_smoke_alpha: float = 0.8
+@export var exhaust_ms: int = 500
+@export var exhaust_rise_px: float = 8.0
+@export var exhaust_drift_px: float = 3.0
+@export var exhaust_grow: Vector2 = Vector2(0.7, 1.4)
+@export var exhaust_alpha: float = 0.8
+@export var puff_idle_ms: Vector2i = Vector2i(3000, 5000)

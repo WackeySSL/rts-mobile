@@ -36,7 +36,6 @@ func _table() -> Dictionary[String, Variant]:
 		"attack_cue_ms": 4000,
 		"attack_cue_area_tiles": 12,
 		"drawer_swipe_dp": 48.0,
-		"queue_hold_count": 5,
 	}
 
 

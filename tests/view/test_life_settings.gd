@@ -177,6 +177,21 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"collapse_lift_milli",
 		"collapse_end_ms",
 		"crater_scale_milli",
+		# P149: the puff block (its values are pinned in test_puff_fx.gd).
+		"puff_slots",
+		"muzzle_smoke_ms",
+		"muzzle_reach_default_px",
+		"muzzle_reach_px",
+		"muzzle_smoke_rise_px",
+		"muzzle_smoke_drift_px",
+		"muzzle_smoke_grow",
+		"muzzle_smoke_alpha",
+		"exhaust_ms",
+		"exhaust_rise_px",
+		"exhaust_drift_px",
+		"exhaust_grow",
+		"exhaust_alpha",
+		"puff_idle_ms",
 	]
 	for field: StringName in SCALARS:
 		expected.append(String(field))

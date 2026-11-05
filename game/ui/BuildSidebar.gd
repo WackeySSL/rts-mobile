@@ -7,9 +7,9 @@ extends Control
 ## name) with the close button and the grid of the open tab's item cards, which scrolls up and down.
 ## The economy pill stays in its corner while the drawer is open (Michael, 2026-11-05; ADR 0025's
 ## "folds under the drawer" no longer holds). It sends nothing to the sim but Commands through
-## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on a unit card
-## queues up to `queue_hold_count` (P120b), a hold on a structure card cancels the last of its type
-## (until ADR 0026's P130). It reads the published snapshot only and never keeps one.
+## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on any card
+## cancels the last of its type queued (Michael, 2026-11-05). It reads the published snapshot only
+## and never keeps one.
 ## Open or closed is `HudState`'s DRAWER (`feed.state`, ADR 0025 section 1), view state only: no
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
@@ -106,6 +106,7 @@ var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last 
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
+var _cancelling: Command = null  ## The CANCEL of a hold in flight; holds wait for a newer tick.
 var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
 var _before: bool = false  ## The drawer was open when placement began: what its end returns to.
 var _sliding: bool = false
@@ -432,6 +433,7 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 	var key: Vector2i = Vector2i(snap.match_serial, snap.type_tab.size())
 	if key != _built:
 		_built = key
+		_cancelling = null  # A new match: the old Command and ticks mean nothing.
 		_build_tiles(snap)
 	if _tiles.is_empty():
 		return
@@ -556,41 +558,26 @@ func _on_chose(tile: ItemTile) -> void:
 			tile.shake()
 
 
-## A hold on a unit card: as many QUEUEs as the queue has room for and the credits pay, at most
-## `queue_hold_count` (ADR 0025 section 5, answer 2 A); a card that cannot take one shakes, as a
-## tap does. The hold is final once it fires at `hold_ms` (ADR 0004): a drag after it does not take
-## it back. A hold on a structure card cancels the last of its type, as before, until P130.
-@warning_ignore("integer_division")
+## A hold on a card (`hold_ms`, final once it fires, ADR 0004; a drag after it does not take it
+## back) cancels the last item of its type that is queued, with the refund, units, vehicles and
+## structures alike. A card with none queued does nothing. Slots shift after a cancel, so holds wait
+## until a snapshot newer than the CANCEL's stamped tick has been read (PlacementController's rule:
+## on Android the first snapshot after a hold is published before the Command is drained).
 func _on_long_pressed(tile: ItemTile) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or controller == null:
 		return
-	if tile.tab == World.Tab.STRUCTURES:
-		_cancel_last(snap, tile)
-		return
-	if tile.state != ItemTile.State.AVAILABLE:
-		tile.shake()
-		return
-	var player: int = _local_player()
-	var queue: int = player * World.TABS + tile.tab
-	var room: int = _queue_slots(snap) - _entry(snap.queue_count, queue)
-	var cost: int = maxi(snap.type_cost[tile.type_index], 1)
-	var afford: int = _entry(snap.credits, player) / cost
-	var count: int = mini(mini(room, afford), _input_settings().queue_hold_count)
-	for _item: int in count:
-		controller.command_sink.call(Command.queue(player, tile.type_index))
-	if count > 0:
-		_buzz()
-
-
-## The last queued item of the tile's type leaves its queue (and is paid back).
-func _cancel_last(snap: MatchSnapshot, tile: ItemTile) -> void:
+	if _cancelling != null:
+		if _cancelling.tick < 0 or snap.tick <= _cancelling.tick:
+			return
+		_cancelling = null
 	var player: int = _local_player()
 	var queue: int = player * World.TABS + tile.tab
 	var base: int = queue * _queue_slots(snap)
 	for slot: int in range(_entry(snap.queue_count, queue) - 1, -1, -1):
 		if snap.queue_type[base + slot] == tile.type_index:
-			_send(Command.cancel(player, tile.tab, slot))
+			_cancelling = Command.cancel(player, tile.tab, slot)
+			_send(_cancelling)
 			return
 
 

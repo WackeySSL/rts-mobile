@@ -592,6 +592,18 @@ before its DIED, not in it; see the observed edge in §8's notes.)
 - (2026-11-04, P26av docs) How P165a writes the collapses (oldest first, the fewest steps first,
   `collapse_max` 0) is in §8's notes.
 
+(2026-11-04, P26aw docs; P162 #319 as merged) **One node at DIED:** the crater that §8 lays at DIED
+(`DecalLayer.add_crater`, as before this ADR) is a `Sprite2D`, so "none at DIED" above and §8's "No
+node is made at DIED" hold for the collapse only. `DecalLayer` caps nothing: the craters stay for
+the match and go only in `clear()` at a new match, one per building handed to the collapse (a
+cancelled site lays none, §8). `test_life_budget.gd` (P162) accepts a node change on a tick where a
+collapse starts (with its crater), hides or ends.
+
+(2026-11-04, P26aw docs) P162 pins `damage_slots` at 80 (§13), as the rework's P148 row has it (the
+first P148 row and P162's acceptance in `docs/plans/2026-11-03-damage-states.md` said 64), and
+holds every damage pass within the rings, `collapse_max` and `crater_sources` (the cap on the
+smoke sources over the craters, not on the craters).
+
 ### 11. The seam of the trimmed body and its patch (replaces ADR 0028 §3's second amendment's open point)
 ADR 0028 §3's second amendment asked for "at least 1 texel" of overlap and named "the `floor` of the
 patch's cut" as a way; P157b's review found that both are wrong (the raster rounds each axis, so a
