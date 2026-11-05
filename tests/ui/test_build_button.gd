@@ -409,13 +409,9 @@ func test_the_ready_chip_stands_where_the_layout_puts_it() -> void:
 ## size and in both orientations (the grid scrolls: upright the sheet holds few rows), even from
 ## another tab; it sends no Command and does not place anything.
 func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_in_view() -> void:
-	var screens: Array[Dictionary] = []
-	for size: Vector2i in ScreenSizes.ALL:
-		screens.append({"label": str(size), "size": size, "metrics": null})
-	for profile: StringName in [&"web_phone_small", &"web_phone", &"web_phone_portrait"]:
-		var metrics: UiMetrics = UiProfiles.by_name(profile)
-		screens.append({"label": str(profile), "size": metrics.window_size, "metrics": metrics})
+	var screens: Array[Dictionary] = _screens()  # Every profile too, the cutouts included.
 	var scrolled: int = 0
+	var upright_scrolled: int = 0
 	for screen: Dictionary in screens:
 		await _open(screen["size"], screen["metrics"])
 		var why: String = str(screen["label"])
@@ -424,7 +420,7 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 		var sent: Array[Command] = []
 		var controller: PlayerController = _main.get_node("PlayerController")
 		controller.command_sink = func(command: Command) -> void: sent.append(command)
-		var world: World = Sw.world()
+		var world: World = Sw.world_full()  # Three rows upright, as shipped.
 		Sw.own(world, BASE)
 		_publish(world, 1)  # The tiles are made from the first snapshot.
 		sidebar.refresh()
@@ -454,16 +450,21 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 		var items: ScrollContainer = sidebar.find_child("Items", true, false) as ScrollContainer
 		var grid: Rect2 = items.get_global_rect()
 		var card: Rect2 = last.get_global_rect()
-		var seen: bool = grid.encloses(card.grow(-1.0))
+		# The card is in the safe rect, not only in the scroll area, which upright runs to the
+		# screen's edge, under the gesture bar.
+		var safe: Rect2 = SafeAreaMargin.rect_inside(
+			get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+		)
+		var seen: bool = grid.encloses(card.grow(-1.0)) and safe.grow(1.0).encloses(card)
 		if card.size.y > grid.size.y:  # A short grid shows less than a card.
 			seen = card.position.y >= grid.position.y - 1.0 and card.position.y < grid.end.y
-		var cards: String = (
-			"%s: card %s, grid %s" % [why, last.get_global_rect(), items.get_global_rect()]
-		)
+		var cards: String = "%s: card %s, grid %s, safe %s" % [why, card, grid, safe]
 		assert_bool(seen).override_failure_message(cards).is_true()
 		scrolled += int(items.scroll_vertical > 0)
+		upright_scrolled += int(items.scroll_vertical > 0 and HudLayout.is_portrait())
 		assert_array(sent).override_failure_message(why).is_empty()
 	assert_int(scrolled).override_failure_message("the scroll was never needed").is_greater(0)
+	assert_int(upright_scrolled).override_failure_message("no upright scroll").is_greater(0)
 
 
 ## The snapshot of `world` at `tick`, published to the runner the button reads (its own frames

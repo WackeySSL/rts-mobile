@@ -5,8 +5,9 @@ extends GdUnitTestSuite
 ## height, its backdrop reaching on to the screen's edge and its content inside the safe rect;
 ## upright a bottom sheet of the full safe width and half the height (at least 312 dp). The close
 ## button (at the tabs row's end), the tabs (with their names) and the cards are at least 48 dp and
-## inside the safe rect; the cards are as many columns as fit on every tab (three upright on the
-## 6-inch phone and at 360 dp, four from about 450 dp), and on the smallest web phone the
+## inside the safe rect (upright the card list runs on to the screen's edge and its last row
+## scrolls clear of it, P120i); the cards are as many columns as fit on every tab (three upright
+## on the 6-inch phone and at 360 dp, four from about 450 dp), and on the smallest web phone the
 ## grid scrolls vertically. The slide (`menu_slide_ms`) eases out, ends on its target, can be
 ## reversed, and a turn ends it; the zone and the top follow it (ADR 0024 section 4). The interim
 ## places: upright the closed drawer's zone is BUILD's own 64 dp, sideways it is 0. The unfold
@@ -161,6 +162,93 @@ func test_the_drawer_fills_its_side_or_its_half_and_its_parts_are_inside_the_saf
 			assert_float(rect.end.x).override_failure_message(why).is_less_equal(
 				_rect("Items").end.x + TOLERANCE_PX
 			)
+
+
+## Michael, 2026-11-05 (P120i): upright the card list runs on to the screen's edge and scrolls under
+## the gesture bar; the grid's foot room is the old band (the padding, the edge beyond the safe rect
+## and the panel's margin), so the last row still scrolls clear of it. It runs on the shipped seven
+## structures, so that the grid scrolls upright.
+func test_upright_the_card_list_reaches_the_screens_edge_and_the_last_row_scrolls_clear() -> void:
+	var seen: int = 0
+	var scrolling: int = 0
+	var plain_edge: float = -1.0
+	for screen: Dictionary in _screens():
+		if not UiScale.is_portrait_size(screen["size"]):
+			continue
+		await _open(screen["size"], screen["metrics"], true, true)
+		seen += 1
+		var why: String = str(screen["label"])
+		var full: Rect2 = get_viewport().get_visible_rect()
+		var safe: Rect2 = SafeAreaMargin.rect_inside(full, SafeAreaMargin.DEFAULT_MARGIN_DP)
+		var edge: float = full.end.y - safe.end.y
+		var gap: float = float(roundi(UiScale.dp(SafeAreaMargin.DEFAULT_MARGIN_DP)))
+		if why.ends_with("with a cutout"):
+			assert_float(edge).override_failure_message(why).is_greater(gap + 0.5)
+		var pad: int = roundi(UiScale.dp(BuildSidebar.PAD_DP))
+		var panel_foot: int = roundi(
+			_hud("Backdrop").get_theme_stylebox(&"panel").get_margin(SIDE_BOTTOM)
+		)
+		var items: ScrollContainer = _hud("Items")
+		assert_float(items.get_global_rect().end.y).override_failure_message(why).is_equal_approx(
+			_rect("Backdrop").end.y, 1.0
+		)
+		assert_float(items.get_global_rect().end.y).override_failure_message(why).is_equal_approx(
+			full.end.y, 1.0
+		)
+		var room: MarginContainer = _hud("GridRoom")
+		assert_int(room.get_theme_constant("margin_bottom")).override_failure_message(why).is_equal(
+			pad + roundi(edge) + panel_foot
+		)
+		var bar: VScrollBar = items.get_v_scroll_bar()
+		if bar.max_value <= bar.page + 1.0:
+			continue
+		scrolling += 1
+		items.scroll_vertical = ceili(bar.max_value)
+		await await_idle_frame()
+		var last: float = 0.0
+		for tile: ItemTile in _visible_tiles():
+			last = maxf(last, tile.get_global_rect().end.y)
+		var want: float = safe.end.y - pad - panel_foot
+		var foot: String = "%s: last row ends %s, old content bottom %s" % [why, last, want]
+		assert_float(last).override_failure_message(foot).is_equal_approx(want, 1.0)
+	assert_int(seen).is_greater(0)
+	assert_int(scrolling).override_failure_message("no upright grid scrolled").is_greater(0)
+
+
+## Sideways nothing moves: the stack keeps the padding at the left, the right (with the edge beyond
+## the safe rect) and the foot, and none at the top, as before P120i.
+func test_sideways_the_stack_keeps_its_padding_as_before() -> void:
+	var seen: int = 0
+	for screen: Dictionary in _screens():
+		if UiScale.is_portrait_size(screen["size"]):
+			continue
+		await _open(screen["size"], screen["metrics"])
+		seen += 1
+		var why: String = str(screen["label"])
+		var full: Rect2 = get_viewport().get_visible_rect()
+		var safe: Rect2 = SafeAreaMargin.rect_inside(full, SafeAreaMargin.DEFAULT_MARGIN_DP)
+		var edge: float = full.end.x - safe.end.x
+		var pad: float = float(roundi(UiScale.dp(BuildSidebar.PAD_DP)))
+		var around: Rect2 = _rect("Pad")
+		var want: Rect2 = Rect2(
+			around.position + Vector2(pad, 0.0),
+			around.size - Vector2(2.0 * pad + roundf(edge), pad)
+		)
+		var got: Rect2 = _rect("Stack")
+		var at: String = "%s: stack %s, want %s" % [why, got, want]
+		assert_float(got.position.x).override_failure_message(at).is_equal_approx(
+			want.position.x, 1.0
+		)
+		assert_float(got.position.y).override_failure_message(at).is_equal_approx(
+			want.position.y, 1.0
+		)
+		assert_float(got.size.x).override_failure_message(at).is_equal_approx(want.size.x, 1.0)
+		assert_float(got.size.y).override_failure_message(at).is_equal_approx(want.size.y, 1.0)
+		(
+			assert_int((_hud("GridRoom") as MarginContainer).get_theme_constant("margin_bottom"))
+			. is_equal(0)
+		)
+	assert_int(seen).is_greater(0)
 
 
 func test_the_columns_are_three_upright_on_the_phone_and_four_on_a_wide_screen() -> void:
@@ -362,8 +450,10 @@ func _settle() -> void:
 
 ## A new main scene at `size`, under `metrics` (a profile; null for the engine's own), its match
 ## paused, with a snapshot of a base for the sidebar (which reads a runner of its own), the drawer
-## open when `drawer`.
-func _open(size: Vector2i, metrics: UiMetrics, drawer: bool = true) -> void:
+## open when `drawer`; `full_list`: the shipped seven structures, else the suite's five.
+func _open(
+	size: Vector2i, metrics: UiMetrics, drawer: bool = true, full_list: bool = false
+) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
@@ -381,7 +471,7 @@ func _open(size: Vector2i, metrics: UiMetrics, drawer: bool = true) -> void:
 	runner.scenario = _main.get_node("MatchRunner").scenario
 	_sidebar = _hud("BuildSidebar")
 	_sidebar.runner = runner
-	var world: World = Sw.world()
+	var world: World = Sw.world_full() if full_list else Sw.world()
 	Sw.own(world, BASE)
 	runner.snapshot = Sw.snapshot(world)
 	_sidebar.refresh()

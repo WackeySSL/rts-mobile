@@ -36,6 +36,16 @@ static func world() -> World:
 	return made
 
 
+## `world()` with the Derrick League's strike building and its radar left on the Structures tab, so
+## that the tab holds seven cards, three rows upright, as in the game.
+static func world_full() -> World:
+	var ids: Array[String] = IDS.duplicate()
+	ids.append("fossil_strike")
+	var made: World = Worlds.open(COLS, ROWS, ids)
+	made.type_requires[type_of(made, "artillery")] = World.TYPE_PAD_NONE
+	return made
+
+
 ## The type index of `id`.
 static func type_of(made: World, id: String) -> int:
 	return Worlds.type_of(made, id)
