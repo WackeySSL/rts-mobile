@@ -32,6 +32,16 @@ top-left check; what "stalled" means on low power; a pinned full map on very sho
 the aim (§7); a hold on a group with nothing selected; the group column under the portrait sheet.
 No accepted text changed.
 
+Status note (2026-11-04, P26aw docs; P120b #320 and P122 #321 as merged, main f40e2a4): §5 and §9
+carry dated notes: Michael's decision on the locked card (the padlock and the full name, no
+"Needs"), the `web_phone_small` grid budget of about 53 dp, the queue row's cancel wait, the final
+hold; and for the command bar, Stop during placement and the strike aim, the chip's label cap, no
+health for a fogged enemy building, the bar's plain Control, and the chip's fit rule and the amber
+frame and notch left for P122c. Two accepted phrases are replaced, each where its note says so:
+§5's "Needs <display_name>" (with §19's P120 row's "("Needs <name>")"), by Michael's decision, and
+§5's "until the next published snapshot shows the queue again", by the queue row's wait. No other
+accepted text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
@@ -354,6 +364,27 @@ above stand):
 - **The toast** beside the open drawer, with the pill folded, is checked against the top-left stack
   for plain no-overlap, not for §2's 8 dp gap.
 
+Notes (2026-11-04, P26aw docs; P120b #320 as merged; the text and the notes above stand, except
+where a note below says what it replaces):
+- **The locked card** (Michael's decision, 2026-11-04): it shows the padlock and the missing
+  building's full display name, with no "Needs" prefix and no ellipsis; this replaces the words
+  "Needs <display_name>" above and "("Needs <name>")" in §19's P120 row. The name takes at most 2
+  lines at 14 sp inside the stage, so a long name ("Cracking Plant", "Synthesis Works") is never
+  cut. The padlock is then 14 dp, at the top left of the stage, clear of the count badge.
+- **The budget on `web_phone_small`** is about **53 dp** for the grid, not the 76 dp of the note of
+  2026-11-03 above: the drawer's padding counts too (sideways, the panel's 8 dp top and bottom and
+  the pad's 8 dp at the foot). The grid's least height is 48 dp (`BuildSidebar.FIT_LEAST_DP`) and it
+  scrolls. A whole 96 dp card row would need about 43 dp more; the 56 dp queue thumbs can give at
+  most 8 dp before the 48 dp touch floor, so the grid scrolls instead.
+- **The queue row's wait after a cancel** ends when a snapshot is past the tick the runner stamped
+  on the CANCEL, when the tab changes, or when a match restarts. This replaces "until the next
+  published snapshot shows the queue again" above, which is not enough: on Android (WORKER mode)
+  the first snapshot after a tap is published before the Command is drained into a tick, so it
+  still shows the old queue, and this wait is what stops a second tap from hitting a shifted
+  slot.
+- **A hold on a unit card is final** once it fires at `long_press_ms` (the tile's `hold_ms`; as a
+  group hold in ADR 0004 §5): a drag after that does not take back its QUEUEs.
+
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
 | --- | --- | --- |
@@ -494,6 +525,20 @@ accepted):
   selection, with the haptic. An empty group is not shown. This changes today's "hold 1-3 to
   assign" into "+" to save and a hold to overwrite (the design's rule); the group numbers and
   `SelectionModel` stay.
+
+Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as accepted):
+- **Stop also works during placement and the strike aim** (a lead decision): it is a tap on the
+  HUD, not on the map, and this section names no exception.
+- **The chip's label** asks for its text's width, capped at 140 dp (`CommandBar.LABEL_MAX_DP`), and
+  the bar grows with it, so a building's name is not cut to the health bar's width.
+- **A fogged enemy building** selected in the chip shows no health, as `HealthBarLayer` hides its
+  bar.
+- **The bar is a plain Control.** Only the chip uses the theme variation `SelectionPanel`, which
+  keeps its name although the `SelectionPanel` node is gone.
+- **Not in P122:** the chip's fit rule (above: "keeps its fit rule (the chips that fit, then
+  "+N")"; P122 shows the first type's chip and "+N") and an enemy building's amber frame and notch
+  (above: "an enemy building its amber frame and notch (P115b)"). Both go into P122c's row of
+  `docs/plans/2026-11-01-hud-v2.md`.
 
 ### 10. The strike button
 - The strike button (P112, 72 dp: `StrikeButton.SIZE_DP` with its 40 dp card, 6 dp ring and foot
