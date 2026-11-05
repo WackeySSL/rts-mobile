@@ -685,14 +685,25 @@ func test_upright_the_corners_are_the_landscape_corners_at_the_three_portrait_si
 				safe.end.x, TOLERANCE
 			)
 			var bar: Rect2 = with_bar[HudCorners.BAR]
-			var stop: float = (with_bar[HudCorners.READY] if chip else build).position.x
 			assert_float(bar.position.x).is_equal_approx(safe.position.x, TOLERANCE)
+			# Upright the bar's room is BUILD's only: the Ready chip is in the right column.
 			assert_float(bar.end.x).override_failure_message(why).is_less_equal(
-				stop - 8.0 * dp + TOLERANCE
+				build.position.x - 8.0 * dp + TOLERANCE
 			)
 			# The strike button a gap above BUILD, the row to its left at its height.
 			var strike: Rect2 = with_bar[HudCorners.STRIKE]
 			assert_float(build.position.y - strike.end.y).is_equal_approx(8.0 * dp, TOLERANCE)
+			assert_that(strike).override_failure_message(why).is_equal(bare[HudCorners.STRIKE])
+			if chip:  # A gap above the strike button, at the column's right edge; nothing moves.
+				var ready: Rect2 = with_bar[HudCorners.READY]
+				assert_float(ready.end.x).is_equal_approx(safe.end.x, TOLERANCE)
+				assert_float(strike.position.y - ready.end.y).is_equal_approx(8.0 * dp, TOLERANCE)
+				var lone: Dictionary[StringName, Rect2] = HudCorners.place(
+					safe, true, dp, false, _shown(["ready"], 5)
+				)
+				assert_float(build.position.y - lone[HudCorners.READY].end.y).is_equal_approx(
+					8.0 * dp, TOLERANCE
+				)
 			checked += 1
 	assert_int(checked).is_greater_equal(ScreenSizes.PORTRAIT.size() * 2)
 
@@ -710,7 +721,7 @@ func test_upright_the_toast_and_the_full_map_clear_the_column_the_strike_button_
 		for groups: int in [1, 5, 8]:
 			for extra: String in ["toast", "map"]:
 				for aim: bool in [false, true]:
-					var names: Array[String] = ["bar", "strike", extra]
+					var names: Array[String] = ["bar", "strike", "ready", extra]
 					if aim:
 						names.append("aim")
 					var out: Dictionary[StringName, Rect2] = HudCorners.place(

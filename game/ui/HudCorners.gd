@@ -108,12 +108,21 @@ static func place(
 	else:
 		out[BUILD] = build
 		if shown.ready:
-			out[READY] = Rect2(
-				build.position.x - GAP_DP - READY_DP.x,
-				build.position.y + (BUILD_DP - READY_DP.y) * 0.5,
-				READY_DP.x,
-				READY_DP.y
-			)
+			# Sideways it stands left of BUILD. Upright the bar needs the width beside BUILD, so it
+			# stands in the right column, a gap above the strike button (or BUILD): nothing below
+			# it moves (lead decision, 2026-11-05).
+			if portrait:
+				var below: float = strike.position.y if shown.strike else build.position.y
+				out[READY] = Rect2(
+					w - READY_DP.x, below - GAP_DP - READY_DP.y, READY_DP.x, READY_DP.y
+				)
+			else:
+				out[READY] = Rect2(
+					build.position.x - GAP_DP - READY_DP.x,
+					build.position.y + (BUILD_DP - READY_DP.y) * 0.5,
+					READY_DP.x,
+					READY_DP.y
+				)
 		if shown.strike:
 			out[STRIKE] = strike
 			if shown.aim:
@@ -138,7 +147,7 @@ static func place(
 	if shown.card and not shown.drawer:
 		out[CARD] = Rect2(0.0, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w), shown.card_height)
 	if bar_on:
-		out[BAR] = _bar(w, h, shown, open, side)
+		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast and the map.
 	# The column stands under the pill in both orientations. Upright it leaves BUILD (and the Ready
 	# chip) their width: that many columns. Under the open sheet it stands above it, if all fit.
@@ -146,14 +155,16 @@ static func place(
 	if portrait:
 		var right: float = 0.0
 		if not sheet:
-			right = BUILD_DP + GAP_DP + (READY_DP.x + GAP_DP if shown.ready else 0.0)
+			right = maxf(BUILD_DP, READY_DP.x if shown.ready else 0.0) + GAP_DP
 		columns = maxi(floori((w - right) / (GROUP_DP + GAP_DP)), 1)
 	var held: int = _groups(out, h, shown, bar_on, columns, open.position.y if sheet else -1.0)
 	for index: int in held:
 		column_end = maxf(column_end, out[group_key(index)].end.x)
 	if shown.map and not shown.drawer:
 		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
-		_map(out, w, portrait, strike if shown.strike else build, row, column_end)
+		var next: Rect2 = strike if shown.strike else build
+		next = out[READY] if out.has(READY) and portrait else next
+		_map(out, w, portrait, next, row, column_end)
 	if shown.toast and not shown.map:
 		out[TOAST] = _toast(w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), column_end)
 	var result: Dictionary[StringName, Rect2] = {}
@@ -175,10 +186,13 @@ static func _drawer(w: float, h: float, portrait: bool) -> Rect2:
 
 
 ## The command bar: bottom left, as wide as its content and no wider than the room beside BUILD
-## (and the Ready chip) or the open panel; the same upright (Michael, 2026-11-05).
-static func _bar(w: float, h: float, shown: Shown, open: Rect2, side: bool) -> Rect2:
+## (and, sideways, the Ready chip) or the open panel; the same upright (Michael, 2026-11-05), where
+## the Ready chip stands in the right column instead.
+static func _bar(
+	w: float, h: float, portrait: bool, shown: Shown, open: Rect2, side: bool
+) -> Rect2:
 	var taken: float = BUILD_DP + GAP_DP
-	taken += READY_DP.x + GAP_DP if shown.ready else 0.0
+	taken += READY_DP.x + GAP_DP if shown.ready and not portrait else 0.0
 	var room: float = w - (open.size.x + GAP_DP if side else taken)
 	return Rect2(0.0, h - BAR_DP.y, minf(maxf(shown.bar_width, BAR_DP.x), room), BAR_DP.y)
 

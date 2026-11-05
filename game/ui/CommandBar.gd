@@ -404,22 +404,22 @@ func _fill(ids: PackedInt32Array) -> void:
 
 ## Shows the chips that fit in the bar's room (while placement or the strike aim run: in the width
 ## the bar had as the mode began), one per type while they do, then a "+N" chip for the types left
-## out (the old `SelectionPanel`'s rule). The first chip gives way too where even it does not fit
-## (an upright 360 dp phone with the Ready chip beside BUILD): "+N" alone then counts the types. The
-## room is what the bar may be at the most (`HudCorners.place` with a content that asks for more
-## than any screen has), less Deselect, the orders and the gaps, so the fit never depends on the
-## width it gave.
+## out (the old `SelectionPanel`'s rule: "+N" replaces the last chip that does not fit). Deselect
+## and the orders come first, so Stop is never pushed out of the bar by a chip; the chips take what
+## is left. The first chip always shows. The room is what the bar may be at the most
+## (`HudCorners.place` with a content that asks for more than any screen has), less Deselect, the
+## orders and the gaps, so the fit never depends on the width it gave.
 func _fit_chips() -> void:
 	var shown: int = _types
-	if _types > 0:
+	if _types > 1:  # One type always shows its chip.
 		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
 		var rects: Dictionary[StringName, Rect2] = _rects(true)
 		var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
 		if _frozen:
 			room = minf(room, _held_px)  # The bar never grows under the thumb.
 		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
-		# Even the first chip may give way, so "+N" alone counts the types.
-		for count: int in range(_types, -1, -1):
+		# A mode runs: even the first chip may give way, so "+N" alone counts the types.
+		for count: int in range(_types, -1 if _frozen else 0, -1):
 			shown = count
 			var need: float = gap * (count + 1)  # Between Deselect, the chips, "+N" and the orders.
 			for index: int in count:
@@ -503,7 +503,7 @@ func _rects(widest: bool) -> Dictionary[StringName, Rect2]:
 ## Takes the rect `HudCorners.place` gives the bar; hidden without a slot, under the upright sheet
 ## and in the pause menu.
 func place() -> void:
-	if _types > 0:
+	if _types > 1:
 		_fit_chips()  # The room changes with the Ready chip, the drawer and the window.
 	var rects: Dictionary[StringName, Rect2] = _rects(false)
 	_row.layout_direction = (

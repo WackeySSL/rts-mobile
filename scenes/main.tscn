@@ -334,13 +334,14 @@ runner = NodePath("../../MatchRunner")
 feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 
-[node name="BuildButton" type="Button" parent="Hud" node_paths=PackedStringArray("runner", "feed", "safe_area", "sidebar")]
+[node name="BuildButton" type="Button" parent="Hud" node_paths=PackedStringArray("runner", "feed", "safe_area", "sidebar", "strike_aim")]
 theme = ExtResource("16_theme")
 script = ExtResource("44_build_button")
 runner = NodePath("../../MatchRunner")
 feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 sidebar = NodePath("../BuildSidebar")
+strike_aim = NodePath("../../StrikeAim")
 
 [node name="ReadyChip" type="Button" parent="Hud/BuildButton"]
 visible = false

@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const PlacementRig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const BORE: int = 1
 const TANK: int = 2
@@ -114,12 +115,9 @@ func test_the_chips_are_fitted_again_when_the_room_shrinks() -> void:
 	_assert_stop_inside("drawer")
 	(_hud("BuildSidebar") as BuildSidebar).collapse()
 	await _turn(UiProfiles.portrait()[&"web_phone_portrait"])  # Turned upright: narrower again.
-	await await_idle_frame()  # The bar's width settles over a frame or two (the publish).
-	await await_idle_frame()
 	assert_int(_shown_chips()).is_less(5)
 	assert_bool(_assert_fit("turned", 5)).is_true()
-	# With the Ready chip the room beside BUILD holds no Stop: it scrolls into view in the bar.
-	assert_bool(_bar.order_button(&"stop").is_visible_in_tree()).is_true()
+	_assert_stop_inside("turned")
 
 
 ## The selection shrinking hides every chip it no longer needs, and "+N" with them.
@@ -276,8 +274,9 @@ func test_the_freeze_holds_while_the_selection_changes_during_placement() -> voi
 		await _select(TYPES)
 		var why: String = "%s after the mode" % profile
 		_assert_fit(why, 5)
-		if not HudLayout.is_portrait():  # Upright with the Ready chip the room may hold "+N" alone.
-			assert_int(_shown_chips()).override_failure_message(why).is_greater(1)
+		# Sideways the bar grows with the chips again; upright one chip and "+N" fit beside Stop.
+		var least: int = 1 if HudLayout.is_portrait() else 2
+		assert_int(_shown_chips()).override_failure_message(why).is_greater_equal(least)
 
 
 func test_the_freeze_holds_while_the_selection_changes_during_the_strike_aim() -> void:
@@ -386,7 +385,7 @@ func _assert_selection_changes_freeze(
 ## Checks the fit of the shown chips for `types` selected; true when "+N" shows.
 func _assert_fit(why: String, types: int) -> bool:
 	var shown: int = _shown_chips()
-	assert_int(shown).override_failure_message(why).is_between(0, types)
+	assert_int(shown).override_failure_message(why).is_between(0 if _bar._frozen else 1, types)
 	var more: Control = _more()
 	assert_bool(more.visible).override_failure_message(why).is_equal(shown < types)
 	if shown < types:
@@ -414,8 +413,9 @@ func _assert_order(why: String, mirrored: bool) -> void:
 func _assert_stop_inside(why: String) -> void:
 	var stop: Button = _bar.order_button(&"stop")
 	assert_bool(stop.is_visible_in_tree()).override_failure_message(why + ": Stop").is_true()
-	var bar: Rect2 = _bar.get_global_rect().grow(TOLERANCE_PX)
-	assert_bool(bar.encloses(stop.get_global_rect())).override_failure_message(why).is_true()
+	var bar: Rect2 = _bar.get_global_rect().grow(1.5)  # The layout rounds sizes up to whole px.
+	var where: String = "%s: bar %s, Stop %s" % [why, bar, stop.get_global_rect()]
+	assert_bool(bar.encloses(stop.get_global_rect())).override_failure_message(where).is_true()
 	assert_float(stop.size.x).override_failure_message(why + ": Stop width").is_greater_equal(
 		UiScale.dp(CommandBar.ORDER_DP.x) - TOLERANCE_PX
 	)
@@ -435,11 +435,8 @@ func _assert_nothing_cut(why: String) -> void:
 			chip.get_combined_minimum_size().x - TOLERANCE_PX
 		)
 	# The box layout rounds sizes up to whole px, a px or two over the sum of the parts.
-	# The orders scroll sideways where the room is short (upright, 360 dp, with the Ready chip beside
-	# BUILD): what must fit is Deselect, the chips and "+N".
-	var own: float = (_bar.get_node("Row") as Control).get_combined_minimum_size().x
 	assert_float(_room()).override_failure_message(why + ": row against room").is_greater_equal(
-		own - 2.0
+		_row_ask() - 2.0
 	)
 
 
@@ -565,3 +562,38 @@ func _open(metrics: UiMetrics) -> void:
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
 	await await_idle_frame()
+
+
+## Michael / lead, 2026-11-05: Deselect and the orders come first, so at the three portrait sizes
+## Stop is fully inside the bar (never scrolled out) with the Ready chip showing too, whatever the
+## number of types; one type always shows its chip; types that do not fit are counted in "+N".
+func test_upright_stop_is_always_inside_the_bar_and_the_chips_take_what_is_left() -> void:
+	var cut_seen: bool = false
+	for size: Vector2i in ScreenSizes.PORTRAIT:
+		await _open(_metrics_for(size))
+		_make_ready()  # The Ready chip stands in the right column: the bar's room is BUILD's only.
+		await await_idle_frame()
+		for types: int in [1, 2, 5]:
+			await _select(TYPES.slice(0, types))
+			await await_idle_frame()
+			await await_idle_frame()
+			var why: String = "%s, %d types" % [size, types]
+			_assert_stop_inside(why)
+			var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
+			if scroll != null:
+				assert_int(scroll.scroll_horizontal).override_failure_message(why).is_equal(0)
+			if types == 1:
+				assert_int(_shown_chips()).override_failure_message(why).is_equal(1)
+			cut_seen = _assert_fit(why, types) or cut_seen
+	assert_bool(cut_seen).override_failure_message("no size cut a type into +N").is_true()
+
+
+## The engine's own metrics for a window `size` (a dp is a window px), as test_hud_corners does.
+func _metrics_for(size: Vector2i) -> UiMetrics:
+	var base: Vector2 = Vector2(
+		float(ProjectSettings.get_setting("display/window/size/viewport_width")),
+		float(ProjectSettings.get_setting("display/window/size/viewport_height"))
+	)
+	var turned: Vector2 = Vector2(base.y, base.x) if UiScale.is_portrait_size(size) else base
+	var stretch: float = minf(size.x / turned.x, size.y / turned.y)
+	return UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())

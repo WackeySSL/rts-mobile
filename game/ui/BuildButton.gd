@@ -47,6 +47,8 @@ const FALLBACK_SIDE: StringName = &"renew"
 @export var feed: HudStateFeed
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 @export var sidebar: BuildSidebar  ## The Ready chip's tap opens it on the Structures tab.
+## Upright the Ready chip stands above the strike button while one is owned (else above BUILD).
+@export var strike_aim: StrikeAim
 
 var progress: float = 0.0  ## The ring: the first-finishing head's share, 0 to 1.
 var count: int = 0  ## The badge: the items in the player's queues.
@@ -67,6 +69,7 @@ var _before_count: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## By tab, at
 var _before_done: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## items and the head's progress.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _side: StringName = FALLBACK_SIDE  ## The local player's faction id.
+var _strike_owned: bool = false  ## The strike button showed when the chip was last placed.
 var _chip_room: float = 0.0  ## dp from the safe right edge to the chip's left, and a gap.
 var _dp: float = 1.0  ## Base px per dp, read by `place` (a resize): a frame asks `UiScale` nothing.
 @onready var _chip: Button = $ReadyChip  ## In the scene, so that placement's buttons can clear it.
@@ -79,6 +82,8 @@ func _ready() -> void:
 	pressed.connect(func() -> void: feed.state.open(HudState.Unfold.DRAWER))
 	_chip.pressed.connect(func() -> void: sidebar.show_ready())
 	feed.state.changed.connect(_on_changed)
+	if strike_aim != null:
+		strike_aim.changed.connect(_on_strike_changed)
 	get_viewport().size_changed.connect(place)
 	place()
 	_on_changed(HudState.Unfold.NONE)
@@ -99,6 +104,8 @@ func place() -> void:
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.ready = true  # The chip's rect; whether it shows is `ready_type`.
+	_strike_owned = strike_aim != null and strike_aim.owned
+	shown.strike = _strike_owned
 	feed.state.fill_bar(shown)  # Upright BUILD stands a gap above the command bar.
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), UiScale.base_px_per_dp(), false, shown
@@ -199,6 +206,12 @@ func _show_ready(snap: MatchSnapshot, type: int) -> void:
 		_chip_type = type
 		var art: String = CommandBar.ICON_ART % snap.type_ids[type]
 		_chip.icon = load(art) if ResourceLoader.exists(art) else null
+
+
+## The strike building was gained or lost (`StrikeAim.changed` also fires on every charge tick).
+func _on_strike_changed() -> void:
+	if strike_aim.owned != _strike_owned:
+		place()
 
 
 func _on_changed(_previous: HudState.Unfold) -> void:
