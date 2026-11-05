@@ -1,10 +1,12 @@
 extends GdUnitTestSuite
 ## The HUD v2 state walk (plan P125, ADR 0025 sections 1, 2 and 17) at the six sizes of
 ## ScreenSizes.ALL, with a turn of the phone in each state (the state must be kept, and the state
-## is visited again turned): battle, the drawer, placement of a structure whose READY is forced (the
-## old way: place it when ready; the X ends it), the drawer again, the command bar (Stop, then
-## Deselect), the pinned full map, the pause menu and Resume; and the strike aim twice, whose bottom
-## stays where it was under group taps (the freeze). In every state, turned or not:
+## is visited again turned; the aim's later states are not turned, because a turn ends the aim):
+## battle, the drawer (on the Infantry tab, so that a reset would show), placement of a structure
+## whose READY is forced (the old way: place it when ready; `placement.cancel()` ends it, not a tap
+## on the X), the drawer again, the command bar (Stop, then Deselect), the pinned full map, the
+## pause menu and Resume; and the strike aim twice, whose bottom stays where it was under group
+## taps (the freeze). In every state, turned or not:
 ## - each HUD control that shows is inside the safe rect and none overlaps another;
 ## - what the state must show shows (SHOWS);
 ## - each visible control that takes input is at least 48 dp on its short side;
@@ -110,7 +112,7 @@ func test_the_strike_aim_with_group_taps_holds_the_layout_and_the_freeze_at_the_
 func _check(label: String, main: Node2D) -> void:
 	_seen.append(label)
 	var base: String = label.trim_suffix(" turned")
-	var why_label: String = "%s (window %s)" % [label, main.get_window().size]
+	var why_label: String = label  # The checks add the window's size.
 	HudWalk.check_layout(self, main, why_label)
 	if label != "aim turned":
 		for part: String in SHOWS.get(base, []):

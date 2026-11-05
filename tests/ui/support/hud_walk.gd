@@ -90,6 +90,10 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	var pill: Control = hud(main, "EconomyPill")  # P120e: the pill stays in its corner.
 	suite.assert_that(pill.get_global_rect()).is_equal(pill_rect)
 	suite.assert_bool(pill.is_visible_in_tree() and pill.modulate.a == 1.0).is_true()
+	# A tab other than the default one, so that a turn that reset the tab would be seen.
+	await tap(suite, sidebar.find_child("TabInfantry", true, false) as Control)
+	await frames(suite)
+	suite.assert_int(sidebar.tab).is_equal(World.Tab.INFANTRY)
 	await _visit(suite, main, "drawer", visit)
 	# A structure the old way: it is ready in the queue, and a tap on its card places it.
 	var snap: MatchSnapshot = runner.snapshot
@@ -132,9 +136,9 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	await frames(suite)
 	await _visit(suite, main, "full map pinned", visit)
 	runner.paused = false  # The match runs, so that the menu's pause is seen to be the menu's.
-	await tap(suite, hud(main, "Menu"))
-	await frames(suite)
+	tap_now(suite, hud(main, "Menu"))  # No frame between: the menu's pause is what is seen.
 	suite.assert_bool(runner.paused).is_true()
+	await frames(suite)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.PAUSE)).is_true()
 	for part: String in ["EconomyPill", "BuildButton", "RadarScope", "CommandBar"]:
 		var covered: Control = hud(main, part)  # P124b: the HUD is clear under the menu.
@@ -224,7 +228,8 @@ static func _visit(
 	await frames(suite)
 	var why: String = "%s: after a turn to %s" % [label, suite.get_window().size]
 	if aiming:
-		suite.assert_bool((main.get_node("StrikeAim") as StrikeAim).active).is_false()
+		var aim: StrikeAim = main.get_node("StrikeAim")
+		suite.assert_bool(aim.active).override_failure_message(why + ": aim still on").is_false()
 		suite.assert_array(main.get_meta("sent")).override_failure_message(why).is_empty()
 	else:
 		suite.assert_dict(facts(main)).override_failure_message(why).is_equal(kept)

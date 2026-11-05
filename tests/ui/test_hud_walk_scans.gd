@@ -76,8 +76,7 @@ func test_the_48_dp_scan_finds_a_small_button_and_leaves_the_rest_alone() -> voi
 	assert_str(found).not_contains("TinyHidden")
 
 
-## The scan is not blind: a node whose script lives in `game/ads`, and a node of a class with an ad
-## word, are found.
+## The scan is not blind: a node whose script lives in `game/ads` is found.
 func test_the_ad_scan_finds_an_ad_node() -> void:
 	_main = auto_free(await HudWalk.open(self, ScreenSizes.ALL[0]))
 	assert_array(HudWalk.ad_nodes(_main)).is_empty()

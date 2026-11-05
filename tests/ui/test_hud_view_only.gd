@@ -3,11 +3,12 @@ extends GdUnitTestSuite
 ## main-scene run of the Derrick League's Skirmish against its dummy, with the same Commands at the
 ## same ticks, ends with the same state hash, checked every 15 ticks, and the same command log as
 ## the run in which the HUD is worked between the ticks: the drawer opened and closed, a selection
-## and Deselect, a pause and Resume, the full map opened and pinned and folded. Nothing the HUD does
+## and Deselect, a pause and Resume, the full map opened and pinned and folded, and the economy
+## card opened from the pill with the drawer open and closed by the next touch. Nothing the HUD does
 ## queues a Command, and pause sends none.
-## Time is the test's: the match is paused for the whole run and only `run_ticks` plays, so the
-## frames that the HUD actions wait for play no tick, and a Resume is paused again before the next
-## frame.
+## Time is the test's: the match is paused except for the instant between a pause menu's open or
+## Resume and the line that pauses it again, with no frame between, and only `run_ticks` plays, so
+## the frames that the HUD actions wait for play no tick.
 
 const HudWalk: GDScript = preload("res://tests/ui/support/hud_walk.gd")
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
