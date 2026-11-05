@@ -150,8 +150,8 @@ func set_bar(slot: bool, width_dp: float) -> void:
 	changed.emit(_current)
 
 
-## Sets the entries of `shown` that the command bar decides (BUILD, the strike button and the
-## group column read only these).
+## Sets the entries of `shown` that the command bar decides (the bar's own rect and the group
+## column's foot read them).
 func fill_bar(shown: HudCorners.Shown) -> void:
 	shown.bar = _bar
 	shown.bar_width = _bar_width

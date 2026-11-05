@@ -16,7 +16,8 @@ extends Button
 ## destroyed on low power is a stall like any other.
 ## The comparison keeps two integers per queue, made once; the button redraws when `stalled`
 ## changes, as for the ring and the count.
-## The Ready chip (until ADR 0026's P130): a child button left of BUILD, at the rect `HudCorners`
+## The Ready chip (until ADR 0026's P130): a child button left of BUILD (sideways; upright above
+## the strike button or BUILD), at the rect `HudCorners`
 ## gives READY, with the finished structure's card and "Ready"; a tap opens the drawer on the
 ## Structures tab with that card in view (`BuildSidebar.show_ready`). It hides with BUILD.
 
@@ -106,7 +107,6 @@ func place() -> void:
 	shown.ready = true  # The chip's rect; whether it shows is `ready_type`.
 	_strike_owned = strike_aim != null and strike_aim.owned
 	shown.strike = _strike_owned
-	feed.state.fill_bar(shown)  # Upright BUILD stands a gap above the command bar.
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), UiScale.base_px_per_dp(), false, shown
 	)
@@ -215,7 +215,6 @@ func _on_strike_changed() -> void:
 
 
 func _on_changed(_previous: HudState.Unfold) -> void:
-	place()  # The drawer hides BUILD.
 	visible = not (
 		feed.state.is_open(HudState.Unfold.DRAWER) or feed.state.is_open(HudState.Unfold.PAUSE)
 	)

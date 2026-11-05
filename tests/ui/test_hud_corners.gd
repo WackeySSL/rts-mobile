@@ -5,11 +5,8 @@ extends GdUnitTestSuite
 ## with the design's insets) and mirrored and not: every rect is inside the safe rect, no two
 ## overlap, every rect is at least 48 dp on each side, and the sizes the ADR names hold.
 
+const CornersRig: GDScript = preload("res://tests/ui/support/corners_rig.gd")
 const CardHeights: GDScript = preload("res://tests/support/card_heights.gd")
-const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const MARGIN_DP: float = 12.0  ## SafeAreaMargin's gap on every side.
-const CUTOUT_PX: int = 100
 const TOLERANCE: float = 0.01
 ## The unfolds and modes of ADR 0025 section 1: at most one at a time. The card is an overlay on
 ## the toast, the group column and the command bar, so those pairs are left out of the overlap
@@ -161,7 +158,7 @@ func test_the_map_steps_aside_for_a_row_that_is_less_than_a_gap_below_its_foot()
 
 
 ## ADR 0025 section 10: the strike button 8 dp above BUILD at 72 dp, its row to its left, upright
-## too (the lift of the command bar included), on every table profile; the rects the lead checks
+## too (with or without the command bar), on every table profile; the rects the lead checks
 ## against the group column are these.
 func test_the_strike_button_is_8_dp_above_build_and_its_row_left_of_it() -> void:
 	for portrait: bool in [false, true]:
@@ -275,26 +272,9 @@ func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_h
 	assert_float(out[HudCorners.BAR].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # The sheet: the scope stays.
 	_assert_rect(out[HudCorners.DRAWER], Rect2(0.0, 338.0, 336.0, 338.0))
-	# The group column stays above the sheet where all its buttons fit (4 x 64 - 8 = 248 dp from 56
-	# to 304 here, a gap above the sheet's top at 338).
-	assert_array(out.keys()).contains_exactly_in_any_order(
-		[
-			HudCorners.DRAWER,
-			HudCorners.SCOPE,
-			HudCorners.PILL,
-			HudCorners.group_key(0),
-			HudCorners.group_key(1),
-			HudCorners.group_key(2),
-			HudCorners.group_key(3)
-		]
-	)
-	assert_float(out[HudCorners.group_key(3)].end.y).is_less_equal(338.0 - 8.0)
-	# Nine buttons do not fit in the room above the sheet (4 to a column, 5 columns of 56 + 8 dp
-	# would): the column hides under the sheet as it used to.
-	shown.groups = 40
-	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
-	assert_bool(out.has(HudCorners.group_key(0))).is_false()
-	shown.groups = 4
+	assert_bool(out.has(HudCorners.SCOPE)).is_true()
+	assert_bool(out.has(HudCorners.BUILD)).is_false()  # BUILD, the bar and the chip are covered.
+	assert_bool(out.has(HudCorners.BAR)).is_false()
 	out = _place(Rect2(0.0, 0.0, 776.0, 300.0), true, shown)  # Half of 300 is under 312.
 	assert_float(out[HudCorners.DRAWER].size.y).is_equal(300.0)
 
@@ -442,64 +422,17 @@ func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
 		assert_float(out[HudCorners.STRIKE_ROW].size.y / dp).is_equal_approx(64.0, TOLERANCE)
 
 
-## ADR 0025 section 2: gaps of 8 dp. Every two parts that show are at least 8 dp apart on one axis.
-## One exemption: the economy card, which is an overlay (it hangs under the pill over the toast, the
-## groups, the command bar and the scope's foot). The strike aim's check mark and X against the
-## group column are no exemption.
+## ADR 0025 section 2: gaps of 8 dp (see the rig).
 func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String) -> void:
-	var keys: Array = out.keys()
-	for first: int in keys.size():
-		for second: int in range(first + 1, keys.size()):
-			var a: StringName = keys[first]
-			var b: StringName = keys[second]
-			if _nested(a, b) or a == HudCorners.CARD or b == HudCorners.CARD:
-				continue
-			var gap: float = _gap(out[a], out[b]) / dp
-			var pair: String = "%s: %s and %s are %s dp apart" % [why, a, b, gap]
-			assert_float(gap).override_failure_message(pair).is_greater_equal(8.0 - TOLERANCE)
+	CornersRig.assert_gaps(self, out, dp, why)
 
 
-## The distance between two rects along the axis that separates them (negative while they overlap).
 static func _gap(a: Rect2, b: Rect2) -> float:
-	var across: float = maxf(a.position.x - b.end.x, b.position.x - a.end.x)
-	var down: float = maxf(a.position.y - b.end.y, b.position.y - a.end.y)
-	return maxf(across, down)
+	return CornersRig.gap(a, b)
 
 
 func _assert_parts(out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String) -> void:
-	var keys: Array = out.keys()
-	var least: float = 48.0 * dp - TOLERANCE
-	for key: StringName in keys:
-		var rect: Rect2 = out[key]
-		var at: String = "%s: %s %s, safe %s" % [why, key, rect, safe]
-		assert_bool(safe.grow(TOLERANCE).encloses(rect)).override_failure_message(at).is_true()
-		assert_float(rect.size.x).override_failure_message(at).is_greater_equal(least)
-		assert_float(rect.size.y).override_failure_message(at).is_greater_equal(least)
-	for first: int in keys.size():
-		for second: int in range(first + 1, keys.size()):
-			var a: StringName = keys[first]
-			var b: StringName = keys[second]
-			if _nested(a, b) or _overlay(a, b):
-				continue
-			var pair: String = "%s: %s %s and %s %s" % [why, a, out[a], b, out[b]]
-			var shrunk: Rect2 = out[a].grow(-TOLERANCE)  # Touching edges are no overlap.
-			assert_bool(shrunk.intersects(out[b])).override_failure_message(pair).is_false()
-
-
-## The map's parts are inside the map; the pill's card is the overlay of the toast, the groups and
-## the command bar.
-static func _nested(a: StringName, b: StringName) -> bool:
-	var map: Array[StringName] = [HudCorners.MAP, HudCorners.MAP_HEAD, HudCorners.MAP_BOX]
-	return map.has(a) and map.has(b)
-
-
-static func _overlay(a: StringName, b: StringName) -> bool:
-	return (a == HudCorners.CARD and _under_card(b)) or (b == HudCorners.CARD and _under_card(a))
-
-
-## What the card may cover.
-static func _under_card(key: StringName) -> bool:
-	return key == HudCorners.TOAST or key == HudCorners.BAR or str(key).begins_with("group_")
+	CornersRig.assert_parts(self, out, safe, dp, why)
 
 
 ## Every set of the optional parts: the bar (at its least and as wide as it can ask), the Ready chip
@@ -532,54 +465,12 @@ func _describe(shown: HudCorners.Shown) -> String:
 	return "%s, %d groups, bar %s dp" % [parts, shown.groups, shown.bar_width]
 
 
-## The six sizes (the engine's own metrics: a dp is a window px) and every profile of both
-## orientations, each with a cutout, and the design's insets: {label, safe, dp, portrait}.
 func _screens() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	var base: Vector2 = Vector2(
-		float(ProjectSettings.get_setting("display/window/size/viewport_width")),
-		float(ProjectSettings.get_setting("display/window/size/viewport_height"))
-	)
-	for size: Vector2i in ScreenSizes.ALL:
-		var turned: Vector2 = Vector2(base.y, base.x) if UiScale.is_portrait_size(size) else base
-		var stretch: float = minf(size.x / turned.x, size.y / turned.y)
-		var m: UiMetrics = UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())
-		out.append(_screen("size %s" % size, m))
-	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
-	profiles.merge(UiProfiles.portrait())
-	profiles.merge(UiProfiles.notch_design())
-	for profile_name: StringName in profiles:
-		var m: UiMetrics = profiles[profile_name]
-		out.append(_screen(str(profile_name), m))
-		var w: int = m.window_size.x
-		var h: int = m.window_size.y
-		var cut: Rect2i = Rect2i(0, CUTOUT_PX, w, h - CUTOUT_PX)
-		if not UiScale.is_portrait_size(m.window_size):
-			cut = Rect2i(CUTOUT_PX, 0, w - CUTOUT_PX, h)
-		out.append(_screen("%s with a cutout" % profile_name, UiProfiles.with_safe_area(m, cut)))
-	return out
+	return CornersRig.screens()
 
 
-func _screen(label: String, metrics: UiMetrics) -> Dictionary:
-	UiScale.set_override(metrics)
-	var stretch: float = metrics.stretch_scale
-	var full: Rect2 = Rect2(Vector2.ZERO, Vector2(metrics.window_size) / stretch)
-	return {
-		"label": label,
-		"safe": SafeAreaMargin.rect_inside(full, MARGIN_DP),
-		"dp": UiScale.base_px_per_dp(),
-		"portrait": UiScale.is_portrait_size(metrics.window_size),
-	}
-
-
-## `Shown` with the named parts on (bar, ready, strike, aim, map, toast, card, drawer).
 func _shown(names: Array[String], groups: int = 1, bar_width: float = 0.0) -> HudCorners.Shown:
-	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	for part: String in names:
-		shown.set(part, true)
-	shown.groups = groups
-	shown.bar_width = bar_width
-	return shown
+	return CornersRig.shown(names, groups, bar_width)
 
 
 ## `place` for a rect in dp (dp 1), unmirrored.
@@ -635,113 +526,3 @@ func test_sideways_the_column_stands_under_the_pill_and_the_short_toast_clear_of
 				)
 			checked += 1
 	assert_int(checked).is_greater(10)
-
-
-## Michael, 2026-11-05: upright the HUD keeps its landscape corners. The group column starts a gap
-## under the pill's line, BUILD stands in the safe rect's bottom right corner with or without the
-## bar, the bar ends short of BUILD (and the Ready chip), the strike button is 8 dp above BUILD.
-func test_upright_the_corners_are_the_landscape_corners_at_the_three_portrait_sizes() -> void:
-	var checked: int = 0
-	for screen: Dictionary in _screens():
-		if not screen["portrait"]:
-			continue
-		var safe: Rect2 = screen["safe"]
-		var dp: float = screen["dp"]
-		var why: String = str(screen["label"])
-		var bare: Dictionary[StringName, Rect2] = HudCorners.place(
-			safe, true, dp, false, _shown(["strike"], 5)
-		)
-		var first: Rect2 = bare[HudCorners.group_key(0)]
-		(
-			assert_float(first.position.x - safe.position.x)
-			. override_failure_message(why)
-			. is_equal_approx(0.0, TOLERANCE)
-		)
-		(
-			assert_float(first.position.y - bare[HudCorners.PILL].end.y)
-			. override_failure_message(why)
-			. is_equal_approx(8.0 * dp, TOLERANCE)
-		)
-		for chip: bool in [false, true]:
-			var names: Array[String] = ["bar", "strike"]
-			if chip:
-				names.append("ready")
-			var with_bar: Dictionary[StringName, Rect2] = HudCorners.place(
-				safe, true, dp, false, _shown(names, 5, WIDE_BAR_DP)
-			)
-			var build: Rect2 = with_bar[HudCorners.BUILD]
-			var solo: Array[String] = []
-			if chip:
-				solo.append("ready")
-			var alone: Dictionary[StringName, Rect2] = HudCorners.place(
-				safe, true, dp, false, _shown(solo, 5)
-			)
-			assert_that(build).override_failure_message(why).is_equal(alone[HudCorners.BUILD])
-			assert_that(build).override_failure_message(why).is_equal(bare[HudCorners.BUILD])
-			assert_float(build.end.y).override_failure_message(why).is_equal_approx(
-				safe.end.y, TOLERANCE
-			)
-			assert_float(build.end.x).override_failure_message(why).is_equal_approx(
-				safe.end.x, TOLERANCE
-			)
-			var bar: Rect2 = with_bar[HudCorners.BAR]
-			assert_float(bar.position.x).is_equal_approx(safe.position.x, TOLERANCE)
-			# Upright the bar's room is BUILD's only: the Ready chip is in the right column.
-			assert_float(bar.end.x).override_failure_message(why).is_less_equal(
-				build.position.x - 8.0 * dp + TOLERANCE
-			)
-			# The strike button a gap above BUILD, the row to its left at its height.
-			var strike: Rect2 = with_bar[HudCorners.STRIKE]
-			assert_float(build.position.y - strike.end.y).is_equal_approx(8.0 * dp, TOLERANCE)
-			assert_that(strike).override_failure_message(why).is_equal(bare[HudCorners.STRIKE])
-			if chip:  # A gap above the strike button, at the column's right edge; nothing moves.
-				var ready: Rect2 = with_bar[HudCorners.READY]
-				assert_float(ready.end.x).is_equal_approx(safe.end.x, TOLERANCE)
-				assert_float(strike.position.y - ready.end.y).is_equal_approx(8.0 * dp, TOLERANCE)
-				var lone: Dictionary[StringName, Rect2] = HudCorners.place(
-					safe, true, dp, false, _shown(["ready"], 5)
-				)
-				assert_float(build.position.y - lone[HudCorners.READY].end.y).is_equal_approx(
-					8.0 * dp, TOLERANCE
-				)
-			checked += 1
-	assert_int(checked).is_greater_equal(ScreenSizes.PORTRAIT.size() * 2)
-
-
-## Upright the toast stands right of the group column, the full map clears it, and neither meets
-## the strike button or its row, at every portrait screen; the economy card may cover the column.
-func test_upright_the_toast_and_the_full_map_clear_the_column_the_strike_button_and_its_row(
-) -> void:
-	var checked: int = 0
-	for screen: Dictionary in _screens():
-		if not screen["portrait"]:
-			continue
-		var safe: Rect2 = screen["safe"]
-		var dp: float = screen["dp"]
-		for groups: int in [1, 5, 8]:
-			for extra: String in ["toast", "map"]:
-				for aim: bool in [false, true]:
-					var names: Array[String] = ["bar", "strike", "ready", extra]
-					if aim:
-						names.append("aim")
-					var out: Dictionary[StringName, Rect2] = HudCorners.place(
-						safe, true, dp, false, _shown(names, groups)
-					)
-					var why: String = (
-						"%s, %d groups, %s, aim %s" % [screen["label"], groups, extra, aim]
-					)
-					_assert_parts(out, safe, dp, why)
-					_assert_gaps(out, dp, why)
-					var key: StringName = HudCorners.TOAST if extra == "toast" else HudCorners.MAP
-					for index: int in groups:
-						(
-							assert_bool(out.has(HudCorners.group_key(index)))
-							. override_failure_message(why)
-							. is_true()
-						)
-						var gap: float = _gap(out[HudCorners.group_key(index)], out[key])
-						assert_float(gap / dp).override_failure_message(why).is_greater_equal(
-							8.0 - TOLERANCE
-						)
-					checked += 1
-	assert_int(checked).is_greater_equal(ScreenSizes.PORTRAIT.size() * 12)

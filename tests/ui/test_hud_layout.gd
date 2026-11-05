@@ -78,7 +78,7 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 
 ## The open drawer is a HUD control too (plan P120): at every screen, sideways the command bar and
 ## the group column end before the panel with a gap (`HudCorners` leaves the bar the room beside
-## it), upright the sheet covers the bar and the column; and none of the pill, the
+## it), upright the sheet covers the bar and leaves the column above it; and none of the pill, the
 ## column and the bar overlaps the drawer's rect in either orientation.
 func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() -> void:
 	for screen: Dictionary in _screens():
@@ -107,7 +107,7 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() 
 		var parts: Dictionary[String, Rect2] = {"Pill": _rect("EconomyPill")}
 		if _panel.visible:
 			parts["Bar"] = _rect(_panel)
-		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # The sheet covers it upright.
+		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # Upright it stands above the sheet.
 			parts["GroupColumn"] = _rect("GroupColumn")
 		for part: String in parts:
 			var at: String = "%s: %s %s against the drawer %s" % [why, part, parts[part], drawer]
@@ -164,9 +164,9 @@ func test_in_portrait_the_corners_are_the_landscape_corners() -> void:
 			build.position.x - gap + TOLERANCE_PX
 		)
 		var column: Rect2 = _rect("GroupColumn")
-		var pill: Rect2 = _rect("EconomyPill")
-		assert_float(column.position.y).override_failure_message(why).is_greater_equal(
-			pill.end.y + gap - TOLERANCE_PX - 1.5
+		var inner_top: float = _hud("SafeArea").get_theme_constant("margin_top")
+		assert_float(column.position.y).override_failure_message(why).is_equal_approx(
+			inner_top + UiScale.dp(56.0), 1.5
 		)
 		var inner_left: float = _hud("SafeArea").get_theme_constant("margin_left")
 		assert_float(column.position.x).override_failure_message(why).is_equal_approx(

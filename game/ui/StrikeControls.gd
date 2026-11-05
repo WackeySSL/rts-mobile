@@ -9,8 +9,7 @@ extends HBoxContainer
 ## BUILD at its 72 dp, the check mark and the X to its left, in both orientations; the parent is
 ## the Hud, and this node takes the rect that holds the button and, while aiming, the row, on
 ## `_ready`, on every resize and when the aim starts or ends. It hides with BUILD while the drawer
-## or the pause menu is open (the landscape panel covers its column, the portrait sheet the bottom
-## stack).
+## or the pause menu is open (the landscape panel covers its column, the portrait sheet the bottom).
 
 signal reserved_changed  ## The room the aim's row takes changed (`HudLayout.aim_zone_dp`).
 
@@ -106,7 +105,7 @@ func _release() -> void:
 func _on_unfold(_previous: HudState.Unfold) -> void:
 	_show()
 	if visible:
-		place()  # The command bar is frozen or not; the button stays.
+		place()  # `_release` zeroed the aim zone while the drawer or the menu covered the row.
 
 
 func _covered() -> bool:
@@ -128,7 +127,6 @@ func place() -> void:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.strike = true
 	shown.aim = _aiming
-	feed.state.fill_bar(shown)  # The button stands above BUILD, bar or none.
 	var margin_dp: float = SafeAreaMargin.DEFAULT_MARGIN_DP
 	margin_dp = margin_dp if safe_area == null else safe_area.margin_dp
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), margin_dp)

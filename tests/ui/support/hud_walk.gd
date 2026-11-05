@@ -267,8 +267,8 @@ static func frozen_rects(main: Node2D) -> Dictionary[String, Rect2]:
 
 
 ## The layout check of one state: every HUD part that shows is inside the safe rect, and no two
-## overlap. The Ready chip is BUILD's child and stands beside it; the drawer's rect is its panel
-## without the strip that reaches on to the screen's edge.
+## overlap. The Ready chip is BUILD's child and stands beside it (upright, above it or the strike
+## button); the drawer's rect is its panel without the strip that reaches on to the screen's edge.
 static func check_layout(suite: GdUnitTestSuite, main: Node2D, label: String) -> void:
 	var safe: Rect2 = UiScale.safe_rect_base().grow(TOLERANCE_PX)
 	var rects: Dictionary[String, Rect2] = {}

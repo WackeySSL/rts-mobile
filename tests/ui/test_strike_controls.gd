@@ -189,7 +189,7 @@ func test_the_button_stands_8_dp_above_build_with_the_row_to_its_left_in_both_or
 		var shown: HudCorners.Shown = HudCorners.Shown.new()
 		shown.strike = true
 		shown.aim = true
-		_state().fill_bar(shown)  # A selected tank: the bar lifts BUILD upright.
+		_state().fill_bar(shown)  # A selected tank: the bar shows.
 		var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
 			SafeAreaMargin.rect_inside(
 				get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
@@ -257,7 +257,8 @@ func test_the_row_hides_with_build_under_the_drawer_and_the_pause_menu() -> void
 
 ## With one or two unit types selected the command bar stays clear of the Ready chip and the aim's
 ## row at every screen, the short and the narrow short ones included (`HudCorners` leaves the bar
-## the room beside BUILD and the chip; upright BUILD, the chip and the row stand above the bar).
+## the room beside BUILD (sideways also the chip); upright the chip, the strike button and the row
+## stand right of the bar's end).
 func test_the_command_bar_stays_clear_of_the_ready_chip_and_the_aim_row() -> void:
 	var screens: Array[Dictionary] = _screens_and_short()
 	var narrow: UiMetrics = RadarRig.narrow_short_landscape()
@@ -351,7 +352,7 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"], true)
 		var why: String = str(screen["label"])
-		_make_ready()  # The Ready chip stands beside BUILD: the column leaves it its width too.
+		_make_ready()  # The Ready chip's room: upright the column leaves it its width.
 		var tank: Array = [2]
 		for slot: int in range(1, 4):
 			_controller.selection.set_ids(PackedInt32Array(tank))
@@ -394,31 +395,28 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 			_aim.cancel()
 
 
-## The charge counts down tick by tick (the aim's `changed` fires on each): the column is not laid
-## out again for it, only once when the aim begins.
-func test_the_charge_countdown_does_not_lay_the_column_out_again() -> void:
+## Upright the Ready chip stands a gap above the strike button while the strike building is owned
+## and a gap above BUILD when it is not. Gaining and losing the building re-places the chip with
+## no other trigger (no selection, unfold or resize): `BuildButton` listens to `StrikeAim.changed`.
+func test_the_ready_chip_follows_the_strike_building_upright() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
 	await _open(phone.window_size, phone, true)
-	for slot: int in range(1, 4):
-		_controller.selection.set_ids(PackedInt32Array([TANK]))
-		_controller.assign_group(slot)
-	_wait(40)
+	_make_ready()
 	await await_idle_frame()
-	var column: GroupColumn = _hud("GroupColumn")
-	var laid: Array[int] = [0]
-	column.laid_out.connect(func() -> void: laid[0] += 1)
-	column.place()  # Placing again where nothing moved tells nobody.
-	column.place()
-	assert_int(laid[0]).is_equal(0)
-	for wait: int in range(39, 0, -1):  # 39 ticks of the countdown.
-		_wait(wait)
-	assert_int(laid[0]).is_equal(0)
-	_wait(0)
-	assert_int(laid[0]).is_equal(0)
-	assert_bool(_aim.begin()).is_true()  # The aim on: the column stays where it stands.
-	assert_int(laid[0]).is_equal(0)
-	_aim.cancel()
-	assert_int(laid[0]).is_equal(0)  # And back.
+	await await_idle_frame()
+	var gap: float = UiScale.dp(8.0)
+	var chip: Control = _hud("ReadyChip") as Control
+	assert_bool(chip.is_visible_in_tree()).is_true()
+	var strike: Rect2 = _rect("StrikeButton")
+	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
+	_aim.owned = false  # The Deep Bore is gone: nothing else happens.
+	_aim.changed.emit()
+	assert_float(_rect("BuildButton").position.y - _rect("ReadyChip").end.y).is_equal_approx(
+		gap, 1.5
+	)
+	_aim.owned = true  # And gained again.
+	_aim.changed.emit()
+	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
 
 
 ## "+" and a hold need units: with the Deep Bore (a building) selected "+" hides, `save_group` and a

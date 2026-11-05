@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## and 10), in the main scene: the game's frames run the slide (`_process` calls `advance`); a
 ## reversal mid-slide takes the share of `menu_slide_ms` that the distance left needs; a turn
 ## during a slide ends it at its target at once; a press under the holder's clip edge reaches no
-## hidden control; upright, the zone (what the bottom stack stands above) follows the slide at every
+## hidden control; upright, the zone (the sheet's height) follows the slide at every
 ## step; the per-frame functions name no `UiScale` and no engine query; and a whole match with
 ## drawer actions ends in the state hash of one without, with no Command made.
 

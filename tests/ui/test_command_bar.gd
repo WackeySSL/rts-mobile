@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## ScreenSizes.ALL: it shows for a selection and hides without one; Deselect (48 x 64 dp) clears
 ## units, an own building and an enemy building with no Command; Stop sends one STOP for units and
 ## a building has no order; there is no Attack button; the bar keeps its slot during placement and
-## the strike aim (BUILD, the strike button and its check mark and X stay where they are); upright
-## BUILD stands a gap above the bar; Deselect is at the bar's start, mirrored too.
+## the strike aim (the bar's place and width stay, with an empty plate); upright BUILD stays in the
+## corner and the bar ends short of it; Deselect is at the bar's start, mirrored too.
 ## Player 1 has a Deep Bore (id 1, an own building), a light tank (2), a rifle squad (4) and the
 ## enemy Headquarters (3).
 
@@ -369,7 +369,7 @@ func _check_frozen(why: String, shown_at_start: bool) -> void:
 
 
 ## The mode ended with nothing selected: the bar follows the selection again (hidden, no slot) and,
-## upright, BUILD is back at its unlifted place on the safe bottom.
+## upright, BUILD is still at its place on the safe bottom.
 func _assert_released(why: String, portrait: bool) -> void:
 	assert_bool(_bar.has_slot()).override_failure_message(why + ": slot after the mode").is_false()
 	assert_bool(_bar.visible).override_failure_message(why + ": bar after the mode").is_false()

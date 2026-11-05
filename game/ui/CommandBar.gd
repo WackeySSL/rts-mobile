@@ -12,11 +12,10 @@ extends Control
 ## The bar is view and input state: Deselect sends no Command (`PlayerController.deselect`), Stop
 ## sends one STOP (`PlayerController.stop`).
 ## Its slot (shown or not) follows the selection, except while placement or the strike aim run: it
-## keeps the slot it had when the mode began, as an empty plate when the selection empties, so
-## BUILD, the strike button and its check mark and X do not move under the thumb (ADR 0025 section
-## 1). The
-## slot and the bar's content width go to `HudState.set_bar`; every part that stands by the bar
-## (BUILD, the strike button, the group column, the full map) reads them through the state.
+## keeps the slot it had when the mode began, as an empty plate when the selection empties, and its
+## width, so nothing beside it moves under the thumb (ADR 0025 section 1). The slot and the bar's
+## content width go to `HudState.set_bar`; the parts that stand by the bar (the group column's
+## foot, the full map) read them through the state. BUILD and the strike button do not.
 ## Its rect is `HudCorners.BAR`, taken on every change and every resize. `mirror` flips it and its
 ## content (left-handed mode, Phase 5).
 
@@ -404,11 +403,12 @@ func _fill(ids: PackedInt32Array) -> void:
 
 ## Shows the chips that fit in the bar's room (while placement or the strike aim run: in the width
 ## the bar had as the mode began), one per type while they do, then a "+N" chip for the types left
-## out (the old `SelectionPanel`'s rule: "+N" replaces the last chip that does not fit). Deselect
-## and the orders come first, so Stop is never pushed out of the bar by a chip; the chips take what
-## is left. The first chip always shows. The room is what the bar may be at the most
-## (`HudCorners.place` with a content that asks for more than any screen has), less Deselect, the
-## orders and the gaps, so the fit never depends on the width it gave.
+## out (the old `SelectionPanel`'s rule: "+N" replaces the last chip that does not fit, and where
+## not even one chip and "+N" fit, "+N" counts all the types). Deselect and the orders come first,
+## so Stop never scrolls out; the chips take what is left. One type always shows its chip. The room
+## is what the bar may be at the most (`HudCorners.place` with a content that asks for more than any
+## screen has), less Deselect, the orders and the gaps, so the fit never depends on the width it
+## gave.
 func _fit_chips() -> void:
 	var shown: int = _types
 	if _types > 1:  # One type always shows its chip.
@@ -418,8 +418,9 @@ func _fit_chips() -> void:
 		if _frozen:
 			room = minf(room, _held_px)  # The bar never grows under the thumb.
 		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
-		# A mode runs: even the first chip may give way, so "+N" alone counts the types.
-		for count: int in range(_types, -1 if _frozen else 0, -1):
+		# Even the first chip may give way (more than one type), so "+N" alone counts the types
+		# and Stop never scrolls out; one type always shows its chip.
+		for count: int in range(_types, -1, -1):
 			shown = count
 			var need: float = gap * (count + 1)  # Between Deselect, the chips, "+N" and the orders.
 			for index: int in count:

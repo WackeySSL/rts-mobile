@@ -8,7 +8,7 @@ extends RefCounted
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
 ## Both orientations keep the corners (Michael, 2026-11-05): the group column under the pill at the
 ## left edge, BUILD in the bottom right corner (the strike button a gap above it), the command bar
-## bottom left, as wide as its content and short of BUILD and the Ready chip.
+## bottom left, as wide as its content and short of BUILD (sideways also the Ready chip).
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
 ## button, the scope), the portrait sheet covers the bottom (BUILD, the bar) and the scope stays,
 ## and the group column stands above the sheet where all its buttons fit there; the pill
@@ -66,7 +66,7 @@ class Shown:
 
 	var pill_width: float = 0.0  ## The pill's content width; 0 is its least.
 	var bar: bool = false  ## The command bar (a selection, or the slot a mode keeps).
-	var bar_width: float = 0.0  ## Landscape content width; 0 is the least.
+	var bar_width: float = 0.0  ## Content width; 0 is the least.
 	var ready: bool = false  ## The Ready chip (until ADR 0026's UI row).
 	var strike: bool = false  ## The strike button.
 	var aim: bool = false  ## The strike aim's check mark and X.
@@ -153,7 +153,7 @@ static func place(
 	# chip) their width: that many columns. Under the open sheet it stands above it, if all fit.
 	var columns: int = 1 << 20
 	if portrait:
-		var right: float = 0.0
+		var right: float = SCOPE_DP + GAP_DP  # Under the sheet the scope's width.
 		if not sheet:
 			right = maxf(BUILD_DP, READY_DP.x if shown.ready else 0.0) + GAP_DP
 		columns = maxi(floori((w - right) / (GROUP_DP + GAP_DP)), 1)
@@ -226,7 +226,9 @@ static func _toast(
 
 
 ## The full map: under the scope, right-aligned, when the room down to the right column's next part
-## holds the head and a box 96 dp high at least; else left of the column, from the safe top.
+## (upright the Ready chip, when it shows) holds the head and a box 96 dp high at least, its box
+## narrowed (2:1) to stay a gap right of the group column (`column_end`); else left of the column,
+## from the safe top.
 ## Left of the column, while the strike aim's row (`row`, empty when it does not show) stands in
 ## its way, the map ends a gap left of the row and narrows (the box stays 2:1, 192 dp wide at the
 ## least) to start a gap right of the pill and of the group column (`column_end`, 0 for none), the
