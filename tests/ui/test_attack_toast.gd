@@ -165,4 +165,5 @@ func test_the_portrait_toast_stands_a_gap_under_the_scope() -> void:
 	var safe: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(safe, true, 1.0, false, shown)
 	assert_float(rects[HudCorners.TOAST].position.y).is_equal(64.0)
-	assert_float(rects[HudCorners.TOAST].position.x).is_equal(0.0)
+	# Right of the group column (All army, 56 dp, and a gap).
+	assert_float(rects[HudCorners.TOAST].position.x).is_equal(64.0)

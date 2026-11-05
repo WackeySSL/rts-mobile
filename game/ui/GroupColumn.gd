@@ -10,12 +10,10 @@ extends Control
 ## The buttons stand where `HudCorners.place` puts the group keys (56 dp each, as many to a
 ## column as the room holds, more columns to the right), taken on a change of the groups, the
 ## unfolds and every resize. The node's own rect is the buttons' bounding box (so `GhostControls`
-## keeps clear of it) and it is hidden while the portrait sheet covers the place. Texts are written
-## when a count changes, never per frame. A number and a count are Labels in a face that lets every
-## touch through, so a button's minimum height is its dp size whatever the text (ADR 0025 section
-## 2: 56 dp plates). Upright during the strike aim the column holds three items and the rest
-## scroll: a finger that moves beyond `tap_slop_dp` on an item scrolls them and the press is
-## neither a tap nor a hold.
+## keeps clear of it) and it is hidden while the portrait sheet leaves no room for it. Texts are
+## written when a count changes, never per frame. A number and a count are Labels in a face that
+## lets every touch through, so a button's minimum height is its dp size whatever the text (ADR 0025
+## section 2: 56 dp plates). The buttons stand in `ColumnScroll/ColumnItems`, plain containers.
 
 signal all_army_pressed
 signal group_tapped(slot: int)
@@ -29,10 +27,8 @@ const ICON_DP: float = 24.0
 @export var settings: InputSettings
 @export var feed: HudStateFeed
 @export var safe_area: SafeAreaMargin
-## Upright during its aim the column holds three items and scrolls.
-@export var strike_aim: StrikeAim
-## BUILD and its Ready chip: the column leaves them their width upright.
-@export var build_button: BuildButton  ## Its Ready chip takes room beside BUILD upright.
+## BUILD and its Ready chip: upright the column leaves them their width (more columns).
+@export var build_button: BuildButton
 
 var _all: Button = Button.new()
 var _groups: Array[HoldButton] = []  ## Group `slot` is at `slot - 1`.
@@ -41,15 +37,10 @@ var _icon: TextureRect = TextureRect.new()  ## All army's glyph.
 var _items: Array[Button] = [_all]  ## What shows now, top to bottom.
 var _counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## Per slot, the last counts shown.
 var _can_save: bool = false
-## Scrolls only while the aim limits the column.
 var _scroll: ScrollContainer = ScrollContainer.new()
 var _content: Control = Control.new()  ## The buttons' parent.
 var _numbers: Array[Label] = []  ## Group `slot`'s number, at `slot - 1`.
 var _totals: Array[Label] = []  ## And its count.
-var _limited: bool = false  ## The aim holds the column to three items.
-var _offset: Vector2 = Vector2.ZERO  ## What the finger on an item has moved.
-var _scrolling: bool = false  ## The finger went beyond the slop: this press scrolls.
-var _aim_key: int = -1  ## (owned, active) as last placed: only a change of it places again.
 var _last_box: Rect2 = Rect2()
 var _last_visible: bool = false
 
@@ -60,18 +51,18 @@ func _ready() -> void:
 		settings = InputSettings.new()  # The script defaults are the ADR table.
 	_make(_all, "AllArmy", "", "")
 	_stack_icon_over_word(_all)
-	_all.pressed.connect(func() -> void: _emit_unless_scrolled(all_army_pressed))
+	_all.pressed.connect(func() -> void: all_army_pressed.emit())
 	for slot: int in range(1, SelectionModel.GROUP_COUNT + 1):
 		var group: HoldButton = HoldButton.new()
 		_make(group, "Group%d" % slot, "", "")
 		_face_of_group(group)
 		group.hold_ms = settings.group_assign_ms
-		group.tapped.connect(func() -> void: _emit_unless_scrolled(group_tapped, slot))
-		group.held.connect(func() -> void: _emit_unless_scrolled(group_assign_requested, slot))
+		group.tapped.connect(func() -> void: group_tapped.emit(slot))
+		group.held.connect(func() -> void: group_assign_requested.emit(slot))
 		group.visible = false
 		_groups.append(group)
 	_make(_add, "AddGroup", "", "plus")
-	_add.pressed.connect(func() -> void: _emit_unless_scrolled(save_requested))
+	_add.pressed.connect(func() -> void: save_requested.emit())
 	_add.visible = false
 	_scroll.name = "ColumnScroll"
 	_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -85,12 +76,8 @@ func _ready() -> void:
 		button.reparent(_content, false)
 	for group: HoldButton in _groups:
 		group.reparent(_content, false)
-	for button: Button in [_all, _add] + _groups:
-		button.gui_input.connect(_on_item_input)
 	if feed != null:
 		feed.state.changed.connect(_on_unfold_changed)
-	if strike_aim != null:
-		strike_aim.changed.connect(_on_aim_changed)
 	if build_button != null:
 		build_button.ready_changed.connect(place)
 	get_viewport().size_changed.connect(_apply_dp)
@@ -135,10 +122,8 @@ func place() -> void:
 		feed.state.fill(shown)
 		feed.state.fill_bar(shown)
 	shown.groups = _items.size()
-	shown.ready = build_button != null and build_button.ready_type >= 0  # The chip beside BUILD.
-	if strike_aim != null and strike_aim.owned:  # The aim's check mark and X stand left of it.
-		shown.strike = true
-		shown.aim = strike_aim.active
+	# The Ready chip leaves the columns their room beside it upright.
+	shown.ready = build_button != null and build_button.ready_type >= 0
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
@@ -146,43 +131,19 @@ func place() -> void:
 	var rects: Dictionary[StringName, Rect2] = HudCorners.place(
 		safe, HudLayout.is_portrait(), dp, false, shown
 	)
-	visible = rects.has(HudCorners.group_key(0))  # The portrait sheet covers the place.
+	visible = rects.has(HudCorners.group_key(0))  # The portrait sheet may leave no room.
 	if not visible:
 		_report(false, Rect2())
 		return
-	var held: int = 0  # The items that have a place; the rest of a limited column scroll.
-	while held < _items.size() and rects.has(HudCorners.group_key(held)):
-		held += 1
 	var box: Rect2 = rects[HudCorners.group_key(0)]
-	for index: int in held:
+	for index: int in _items.size():
 		box = box.merge(rects[HudCorners.group_key(index)])
 	position = box.position
 	size = box.size
 	_scroll.size = box.size
-	var limited: bool = held < _items.size()
-	_limited = limited
-	var step: float = rects[HudCorners.group_key(0)].size.y
-	step += HudCorners.GAP_DP * dp
-	if limited:
-		_content.custom_minimum_size = Vector2(
-			box.size.x, step * _items.size() - HudCorners.GAP_DP * dp
-		)
-		_content.size = _content.custom_minimum_size
-	else:
-		_content.custom_minimum_size = Vector2.ZERO
-		_content.size = box.size
-	var mode: ScrollContainer.ScrollMode = (
-		ScrollContainer.SCROLL_MODE_SHOW_NEVER if limited else ScrollContainer.SCROLL_MODE_DISABLED
-	)
-	_scroll.vertical_scroll_mode = mode
-	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS if limited else Control.MOUSE_FILTER_IGNORE
-	if not limited:
-		_scroll.scroll_vertical = 0
+	_content.size = box.size
 	for index: int in _items.size():
-		var at: Vector2 = Vector2(0.0, index * step)
-		if not limited:
-			at = rects[HudCorners.group_key(index)].position - box.position
-		_items[index].position = at
+		_items[index].position = rects[HudCorners.group_key(index)].position - box.position
 		_items[index].size = rects[HudCorners.group_key(0)].size
 	_report(true, box)
 
@@ -194,41 +155,6 @@ func _report(now_visible: bool, box: Rect2) -> void:
 	_last_visible = now_visible
 	_last_box = box
 	laid_out.emit()
-
-
-## The strike building was gained or lost, or the aim began or ended: the only changes that move the
-## column. (`StrikeAim.changed` also fires every tick of the charge countdown.)
-func _on_aim_changed() -> void:
-	var key: int = (2 if strike_aim.owned else 0) + (1 if strike_aim.active else 0)
-	if key != _aim_key:
-		_aim_key = key
-		place()
-
-
-## A finger on an item: beyond the slop it scrolls the limited column and the press is spent.
-func _on_item_input(event: InputEvent) -> void:
-	var touch: InputEventScreenTouch = event as InputEventScreenTouch
-	var drag: InputEventScreenDrag = event as InputEventScreenDrag
-	if touch != null and touch.pressed:
-		_offset = Vector2.ZERO
-		_scrolling = false
-	elif drag != null and _limited:
-		if _scrolling:
-			_scroll.scroll_vertical -= roundi(drag.relative.y)
-		else:
-			_offset += drag.relative
-			if _offset.length() > UiScale.dp(settings.tap_slop_dp):
-				_scrolling = true
-				_scroll.scroll_vertical -= roundi(_offset.y)
-
-
-func _emit_unless_scrolled(which: Signal, slot: int = 0) -> void:
-	if _scrolling:
-		return
-	if slot > 0:
-		which.emit(slot)
-	else:
-		which.emit()
 
 
 ## The face of a group button: its number over its count, in Labels that take no touch.

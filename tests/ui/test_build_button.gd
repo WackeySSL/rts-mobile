@@ -339,11 +339,11 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	assert_object(made.search(body)).override_failure_message(body).is_null()
 
 
-## The Ready chip is `READY_DP` (112 x 48 dp) a gap left of BUILD, centred on it, inside the safe
-## rect and clear of the pill, the scope and the strike button, at every screen and in both
-## orientations; it shows only while a structure is finished, with its word and its card, and
-## hides with BUILD under the drawer.
-func test_the_ready_chip_stands_left_of_build_where_the_layout_puts_it() -> void:
+## The Ready chip is `READY_DP` (112 x 48 dp) a gap left of BUILD, centred on it (upright: in the
+## right column, a gap above BUILD or the strike button), inside the safe rect and clear of the
+## pill, the scope and the strike button, at every screen and in both orientations; it shows only
+## while a structure is finished, with its word and its card, and hides with BUILD under the drawer.
+func test_the_ready_chip_stands_where_the_layout_puts_it() -> void:
 	var screens: Array[Dictionary] = _screens()
 	var short: UiMetrics = RadarRig.short_landscape()
 	screens.append({"label": "short landscape", "size": short.window_size, "metrics": short})
@@ -371,12 +371,22 @@ func test_the_ready_chip_stands_left_of_build_where_the_layout_puts_it() -> void
 		var at: String = "%s: chip %s, BUILD %s" % [why, rect, build]
 		assert_float(rect.size.x).override_failure_message(at).is_equal_approx(112.0 * dp, 1.5)
 		assert_float(rect.size.y).override_failure_message(at).is_equal_approx(48.0 * dp, 1.5)
-		assert_float(build.position.x - rect.end.x).override_failure_message(at).is_equal_approx(
-			8.0 * dp, 1.5
-		)
-		assert_float(rect.get_center().y).override_failure_message(at).is_equal_approx(
-			build.get_center().y, 1.5
-		)
+		if HudLayout.is_portrait():  # In the right column, a gap above BUILD (no strike building).
+			(
+				assert_float(build.position.y - rect.end.y)
+				. override_failure_message(at)
+				. is_equal_approx(8.0 * dp, 1.5)
+			)
+			assert_float(rect.end.x).override_failure_message(at).is_equal_approx(build.end.x, 1.5)
+		else:
+			(
+				assert_float(build.position.x - rect.end.x)
+				. override_failure_message(at)
+				. is_equal_approx(8.0 * dp, 1.5)
+			)
+			assert_float(rect.get_center().y).override_failure_message(at).is_equal_approx(
+				build.get_center().y, 1.5
+			)
 		assert_bool(safe.grow(TOLERANCE_PX).encloses(rect)).override_failure_message(at).is_true()
 		for other: String in ["EconomyPill", "RadarScope", "StrikeControls"]:
 			var control: Control = _main.get_node("Hud").find_child(other, true, false) as Control

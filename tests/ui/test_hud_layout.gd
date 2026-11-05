@@ -6,13 +6,13 @@ extends GdUnitTestSuite
 ## the economy pill (P119) at the top left and the radar scope (P121) at the top right in both
 ## orientations; in landscape the command bar (bottom left, with all own units selected) stays left
 ## of BUILD's column or of the open drawer. In portrait, while the drawer is closed, the zone is 0
-## (P122b), the bar stands at the safe bottom and BUILD and the group column a gap above it.
+## (P122b); since Michael's decision of 2026-11-05 the bar stands at the safe bottom left, BUILD in
+## the bottom right corner and the group column under the pill, as in landscape.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const STACK_LIMIT: float = 0.4  ## The bottom stack's share of the safe height, at most.
 const CUTOUT_PX: int = 100
 const TOLERANCE_PX: float = 0.5
 
@@ -78,7 +78,7 @@ func test_every_hud_control_is_inside_the_safe_rect_48_dp_and_clear_of_the_other
 
 ## The open drawer is a HUD control too (plan P120): at every screen, sideways the command bar and
 ## the group column end before the panel with a gap (`HudCorners` leaves the bar the room beside
-## it), upright the sheet covers the bar and the column; and none of the pill, the
+## it), upright the sheet covers the bar and leaves the column above it; and none of the pill, the
 ## column and the bar overlaps the drawer's rect in either orientation.
 func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() -> void:
 	for screen: Dictionary in _screens():
@@ -107,7 +107,7 @@ func test_the_open_drawer_overlaps_none_of_the_hud_and_the_bar_ends_before_it() 
 		var parts: Dictionary[String, Rect2] = {"Pill": _rect("EconomyPill")}
 		if _panel.visible:
 			parts["Bar"] = _rect(_panel)
-		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # The sheet covers it upright.
+		if (_hud("GroupColumn") as Control).is_visible_in_tree():  # Upright it stands above the sheet.
 			parts["GroupColumn"] = _rect("GroupColumn")
 		for part: String in parts:
 			var at: String = "%s: %s %s against the drawer %s" % [why, part, parts[part], drawer]
@@ -144,13 +144,9 @@ func test_a_resize_with_the_drawer_open_refits_the_bar_to_the_new_width() -> voi
 	assert_float(_rect(_panel).end.x).is_less_equal(drawer_x - UiScale.dp(8.0) + TOLERANCE_PX)
 
 
-## Upright the drawer is closed, the zone is 0 and the command bar stands on the safe bottom with
-## BUILD and the group column a gap above it (P122b, P122); the column stands at the left edge,
-## within 40% of the safe height from the bottom, left of BUILD. A
-## cutout takes height from both ends of
-## the screen (SafeAreaMargin gives top and bottom the larger inset), so a case with one is left out
-## of the limit, as a phone browser that is only 700 dp tall has no room left for it.
-func test_in_portrait_the_group_column_stands_at_the_bottom_left_beside_build() -> void:
+## Michael, 2026-11-05: upright the group column stands at the left edge under the pill, BUILD in
+## the bottom right corner (not lifted over the bar) and the bar bottom left, short of BUILD.
+func test_in_portrait_the_corners_are_the_landscape_corners() -> void:
 	for screen: Dictionary in _screens(true):
 		await _open(screen)
 		var why: String = str(screen["label"])
@@ -162,25 +158,21 @@ func test_in_portrait_the_group_column_stands_at_the_bottom_left_beside_build() 
 		assert_bool(_panel.visible).override_failure_message(why).is_true()
 		assert_float(bar.end.y).override_failure_message(why).is_equal_approx(_inner_bottom(), 1.0)
 		assert_float(build.end.y).override_failure_message(why).is_equal_approx(
-			bar.position.y - gap, 1.0
+			_inner_bottom(), 1.0
+		)
+		assert_float(bar.end.x).override_failure_message(why).is_less_equal(
+			build.position.x - gap + TOLERANCE_PX
 		)
 		var column: Rect2 = _rect("GroupColumn")
-		assert_float(column.end.y).override_failure_message(why).is_equal_approx(
-			bar.position.y - gap, 1.0
+		var inner_top: float = _hud("SafeArea").get_theme_constant("margin_top")
+		assert_float(column.position.y).override_failure_message(why).is_equal_approx(
+			inner_top + UiScale.dp(56.0), 1.5
 		)
 		var inner_left: float = _hud("SafeArea").get_theme_constant("margin_left")
 		assert_float(column.position.x).override_failure_message(why).is_equal_approx(
 			inner_left, 1.0
 		)
-		assert_float(column.end.x).override_failure_message(why).is_less_equal(
-			build.position.x - gap + TOLERANCE_PX
-		)
 		assert_bool(safe.encloses(column)).override_failure_message(why).is_true()
-		if not screen["cutout"]:
-			var stack: float = safe.end.y - column.position.y
-			var limit: float = STACK_LIMIT * safe.size.y
-			var share: String = "%s: stack %s of %s" % [why, stack, safe.size.y]
-			assert_float(stack).override_failure_message(share).is_less_equal(limit)
 
 
 ## There is no band in landscape: the sidebar leaves the zone at 0 and the column stands at the left

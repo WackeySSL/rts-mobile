@@ -13,7 +13,6 @@ extends RefCounted
 ## A scene without a sidebar leaves them at 0 and INF (the sidebar puts them back when it leaves).
 ## The orientation is the one rule of UiScale, applied to the window the UI scale is made for.
 
-const STACK_SHARE: float = 0.4  ## The most the bottom stack takes of the portrait safe height.
 ## BUILD and a gap (BUILD 64 dp, 8 dp): what the landscape bottom row leaves at its right end.
 const BUILD_ROW_DP: float = 72.0  # HudCorners.BUILD_DP + GAP_DP; pinned equal by a test.
 

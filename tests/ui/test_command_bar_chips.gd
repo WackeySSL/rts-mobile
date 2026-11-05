@@ -383,7 +383,9 @@ func _assert_selection_changes_freeze(
 ## Checks the fit of the shown chips for `types` selected; true when "+N" shows.
 func _assert_fit(why: String, types: int) -> bool:
 	var shown: int = _shown_chips()
-	assert_int(shown).override_failure_message(why).is_between(0 if _bar._frozen else 1, types)
+	assert_int(shown).override_failure_message(why).is_between(
+		0 if _bar._frozen or types > 1 else 1, types
+	)
 	var more: Control = _more()
 	assert_bool(more.visible).override_failure_message(why).is_equal(shown < types)
 	if shown < types:
@@ -412,7 +414,8 @@ func _assert_stop_inside(why: String) -> void:
 	var stop: Button = _bar.order_button(&"stop")
 	assert_bool(stop.is_visible_in_tree()).override_failure_message(why + ": Stop").is_true()
 	var bar: Rect2 = _bar.get_global_rect().grow(TOLERANCE_PX)
-	assert_bool(bar.encloses(stop.get_global_rect())).override_failure_message(why).is_true()
+	var where: String = "%s: bar %s, Stop %s" % [why, bar, stop.get_global_rect()]
+	assert_bool(bar.encloses(stop.get_global_rect())).override_failure_message(where).is_true()
 	assert_float(stop.size.x).override_failure_message(why + ": Stop width").is_greater_equal(
 		UiScale.dp(CommandBar.ORDER_DP.x) - TOLERANCE_PX
 	)
@@ -499,11 +502,11 @@ func _frozen_rects(extra: Array[String]) -> Dictionary[String, Rect2]:
 	return out
 
 
-## The group column's fixed corner: its start sideways (it grows downwards with its items), its
-## foot upright (it grows upwards from the bar). Its size follows the selection (the "+" item).
+## The group column's fixed corner: its start, sideways and upright (it grows downwards with its
+## items; Michael, 2026-11-05). Its size follows the selection (the "+" item).
 func _column_anchor() -> Vector2:
 	var rect: Rect2 = (_hud("GroupColumn") as Control).get_global_rect()
-	return Vector2(rect.position.x, rect.end.y if HudLayout.is_portrait() else rect.position.y)
+	return rect.position
 
 
 ## The phone turns (or changes) to `metrics` with the scene open.
@@ -559,3 +562,47 @@ func _open(metrics: UiMetrics) -> void:
 	_sent.clear()
 	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
 	await await_idle_frame()
+
+
+## Lead, 2026-11-05: Deselect and the orders come first, so upright Stop is fully inside the bar
+## and its scroll takes no touch (never scrolled out), with the Ready chip showing too, at every
+## portrait profile and at a 296 dp safe width (a 320 dp phone), with 1, 3 and 5 types: one type
+## shows its chip, and types that do not fit are counted in "+N" (alone where not even one chip and
+## "+N" fit).
+func test_upright_stop_is_always_inside_the_bar_and_the_chips_take_what_is_left() -> void:
+	var screens: Dictionary[String, UiMetrics] = {"320 dp wide": _metrics_for(Vector2i(320, 640))}
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.portrait()
+	for name: StringName in profiles:
+		screens[str(name)] = profiles[name]
+	var cut_seen: bool = false
+	for label: String in screens:
+		await _open(screens[label])
+		_make_ready()  # The Ready chip stands in the right column: the bar's room is BUILD's only.
+		await await_idle_frame()
+		for types: int in [1, 3, 5]:
+			await _select(TYPES.slice(0, types))
+			await await_idle_frame()
+			await await_idle_frame()
+			var why: String = "%s, %d types" % [label, types]
+			_assert_stop_inside(why)
+			var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
+			assert_object(scroll).override_failure_message(why).is_not_null()
+			assert_int(scroll.mouse_filter).override_failure_message(why).is_equal(
+				Control.MOUSE_FILTER_IGNORE
+			)
+			assert_int(scroll.scroll_horizontal).override_failure_message(why).is_equal(0)
+			if types == 1:
+				assert_int(_shown_chips()).override_failure_message(why).is_equal(1)
+			cut_seen = _assert_fit(why, types) or cut_seen
+	assert_bool(cut_seen).override_failure_message("no screen cut a type into +N").is_true()
+
+
+## The engine's own metrics for a window `size` (a dp is a window px), as test_hud_corners does.
+func _metrics_for(size: Vector2i) -> UiMetrics:
+	var base: Vector2 = Vector2(
+		float(ProjectSettings.get_setting("display/window/size/viewport_width")),
+		float(ProjectSettings.get_setting("display/window/size/viewport_height"))
+	)
+	var turned: Vector2 = Vector2(base.y, base.x) if UiScale.is_portrait_size(size) else base
+	var stretch: float = minf(size.x / turned.x, size.y / turned.y)
+	return UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())

@@ -139,8 +139,8 @@ func fill(shown: HudCorners.Shown) -> void:
 	shown.card = _current == Unfold.ECONOMY
 
 
-## The command bar's slot and width changed (`CommandBar`): the parts that stand by it (BUILD's
-## lift, the group column, the full map) place themselves again through `changed`, which carries
+## The command bar's slot and width changed (`CommandBar`): the parts that stand by it (the group
+## column's foot, the full map) place themselves again through `changed`, which carries
 ## the open unfold unchanged. Nothing is emitted when neither value moved.
 func set_bar(slot: bool, width_dp: float) -> void:
 	if slot == _bar and is_equal_approx(width_dp, _bar_width):
@@ -150,8 +150,8 @@ func set_bar(slot: bool, width_dp: float) -> void:
 	changed.emit(_current)
 
 
-## Sets the entries of `shown` that the command bar decides (BUILD, the strike button and the
-## group column read only these).
+## Sets the entries of `shown` that the command bar decides (the bar's own rect and the group
+## column's foot read them).
 func fill_bar(shown: HudCorners.Shown) -> void:
 	shown.bar = _bar
 	shown.bar_width = _bar_width

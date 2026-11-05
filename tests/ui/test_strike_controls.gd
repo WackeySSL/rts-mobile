@@ -189,7 +189,7 @@ func test_the_button_stands_8_dp_above_build_with_the_row_to_its_left_in_both_or
 		var shown: HudCorners.Shown = HudCorners.Shown.new()
 		shown.strike = true
 		shown.aim = true
-		_state().fill_bar(shown)  # A selected tank: the bar lifts BUILD upright.
+		_state().fill_bar(shown)  # A selected tank: the bar shows.
 		var wanted: Dictionary[StringName, Rect2] = HudCorners.place(
 			SafeAreaMargin.rect_inside(
 				get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
@@ -257,7 +257,8 @@ func test_the_row_hides_with_build_under_the_drawer_and_the_pause_menu() -> void
 
 ## With one or two unit types selected the command bar stays clear of the Ready chip and the aim's
 ## row at every screen, the short and the narrow short ones included (`HudCorners` leaves the bar
-## the room beside BUILD and the chip; upright BUILD, the chip and the row stand above the bar).
+## the room beside BUILD (sideways also the chip); upright the chip, the strike button and the row
+## stand right of the bar's end).
 func test_the_command_bar_stays_clear_of_the_ready_chip_and_the_aim_row() -> void:
 	var screens: Array[Dictionary] = _screens_and_short()
 	var narrow: UiMetrics = RadarRig.narrow_short_landscape()
@@ -342,17 +343,16 @@ func test_the_reserved_rooms_are_reset_when_the_hud_leaves_the_tree() -> void:
 	assert_float(HudLayout.aim_zone_dp).is_equal(0.0)
 
 
-## Lead decision (P122b): upright, during the aim, the group column holds three items in one column
-## (the rest scroll), so it keeps 8 dp or more from the check mark and the X, at every screen with
-## all three groups saved. Against the strike button's and the row's real rects (P120c: 8 dp above
-## BUILD, `HudCorners.STRIKE_ROW`). Outside the aim the strike button alone stands
-## there.
+## The group column (under the pill, Michael 2026-11-05) keeps 8 dp or more from the check mark and
+## the X, at every screen with all three groups saved. Against the strike button's and the row's
+## real rects (P120c: 8 dp above BUILD, `HudCorners.STRIKE_ROW`). Outside the aim the strike
+## button alone stands there.
 func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> void:
 	var gap: float = 0.0
 	for screen: Dictionary in _screens(null):
 		await _open(screen["size"], screen["metrics"], true)
 		var why: String = str(screen["label"])
-		_make_ready()  # The Ready chip stands beside BUILD: the column leaves it its width too.
+		_make_ready()  # The Ready chip's room: upright the column leaves it its width.
 		var tank: Array = [2]
 		for slot: int in range(1, 4):
 			_controller.selection.set_ids(PackedInt32Array(tank))
@@ -392,100 +392,31 @@ func test_the_group_column_keeps_clear_of_the_strike_row_during_the_aim() -> voi
 						gap, maxf(column.position.y - rect.end.y, rect.position.y - column.end.y)
 					)
 					assert_float(gap).override_failure_message(at).is_greater_equal(near)
-			if aiming and HudLayout.is_portrait():
-				var three: float = dp * (3.0 * 56.0 + 2.0 * 8.0)
-				var tall: String = "%s: column %s holds more than three" % [why, column]
-				assert_float(column.size.y).override_failure_message(tall).is_less_equal(
-					three + 1.5
-				)
-				assert_float(column.size.x).override_failure_message(tall).is_less_equal(
-					dp * 56.0 + 1.5
-				)
-				# The fourth item is reached by scrolling.
-				var scroll: ScrollContainer = _hud("ColumnScroll")
-				assert_int(scroll.vertical_scroll_mode).is_not_equal(
-					ScrollContainer.SCROLL_MODE_DISABLED
-				)
-				assert_int(scroll.scroll_vertical).is_equal(0)
-				_buzzes.clear()
-				_controller.selection.set_ids(PackedInt32Array([BORE]))  # A spurious tap would recall.
-				var camera_before: Vector2 = (_main.get_node("Camera") as Camera2D).position
-				# Out and back to the start of the press: a drag, so neither a tap nor a hold.
-				await _drag_item("Group1", Vector2(0.0, -dp * 30.0), true)
-				assert_int(scroll.scroll_vertical).override_failure_message(tall).is_between(0, 3)
-				await _drag_item("Group1", Vector2(0.0, -dp * 40.0))  # A finger moves the items.
-				var moved: float = scroll.scroll_vertical  # By as much as the finger went.
-				assert_float(moved).override_failure_message(tall).is_equal_approx(dp * 40.0, 3.0)
-				await _drag_item("Group1", Vector2(0.0, -dp * 160.0))
-				var last: Rect2 = _rect("Group3")
-				var reached: bool = (
-					last.end.y <= column.end.y + 1.5 and last.position.y >= column.position.y - 1.5
-				)
-				assert_bool(scroll.scroll_vertical > 0).override_failure_message(tall).is_true()
-				assert_bool(reached).override_failure_message(tall).is_true()
-				_assert_drag_did_nothing(camera_before, why)
 			_aim.cancel()
 
 
-## A finger drag on an item of the limited column scrolls it and spends the press: no recall, no
-## assign, no Command, no buzz, and the camera stays (web_phone_portrait and the other upright
-## screens are walked by the test above).
-func _assert_drag_did_nothing(camera_before: Vector2, why: String) -> void:
-	assert_array(_controller.selection.selected).override_failure_message(why).is_equal([BORE])
-	for slot: int in range(1, 4):
-		assert_array(_controller.selection.group(slot)).override_failure_message(why).is_equal(
-			[TANK]
-		)
-	assert_array(_sent).override_failure_message(why).is_empty()
-	assert_array(_buzzes).override_failure_message(why).is_empty()
-	(
-		assert_vector((_main.get_node("Camera") as Camera2D).position)
-		. override_failure_message(why)
-		. is_equal(camera_before)
-	)
-
-
-## A finger down on the middle of the item `name`, moved by `by` in small steps, and lifted.
-func _drag_item(item: String, by: Vector2, and_back: bool = false) -> void:
-	var at: Vector2 = (_hud(item) as Control).get_global_rect().get_center()
-	TouchEvents.press(get_viewport(), 0, at)
-	var steps: int = 6
-	for step: int in steps:
-		at += by / steps
-		TouchEvents.drag(get_viewport(), 0, at, by / steps)
-	if and_back:
-		for step: int in steps:
-			at -= by / steps
-			TouchEvents.drag(get_viewport(), 0, at, -by / steps)
-	TouchEvents.release(get_viewport(), 0, at)
-	await await_idle_frame()
-
-
-## The charge counts down tick by tick (the aim's `changed` fires on each): the column is not laid
-## out again for it, only once when the aim begins.
-func test_the_charge_countdown_does_not_lay_the_column_out_again() -> void:
+## Upright the Ready chip stands a gap above the strike button while the strike building is owned
+## and a gap above BUILD when it is not. Gaining and losing the building re-places the chip with
+## no other trigger (no selection, unfold or resize): `BuildButton` listens to `StrikeAim.changed`.
+func test_the_ready_chip_follows_the_strike_building_upright() -> void:
 	var phone: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
 	await _open(phone.window_size, phone, true)
-	for slot: int in range(1, 4):
-		_controller.selection.set_ids(PackedInt32Array([TANK]))
-		_controller.assign_group(slot)
-	_wait(40)
+	_make_ready()
 	await await_idle_frame()
-	var column: GroupColumn = _hud("GroupColumn")
-	var laid: Array[int] = [0]
-	column.laid_out.connect(func() -> void: laid[0] += 1)
-	column.place()  # Placing again where nothing moved tells nobody.
-	column.place()
-	assert_int(laid[0]).is_equal(0)
-	for wait: int in range(39, 0, -1):  # 39 ticks of the countdown.
-		_wait(wait)
-	assert_int(laid[0]).is_equal(0)
-	_wait(0)
-	assert_int(laid[0]).is_equal(0)
-	assert_bool(_aim.begin()).is_true()  # The strike owned and the aim on: four items, three shown.
-	assert_int(laid[0]).is_equal(1)
-	_aim.cancel()
-	assert_int(laid[0]).is_equal(2)  # And back.
+	await await_idle_frame()
+	var gap: float = UiScale.dp(8.0)
+	var chip: Control = _hud("ReadyChip") as Control
+	assert_bool(chip.is_visible_in_tree()).is_true()
+	var strike: Rect2 = _rect("StrikeButton")
+	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
+	_aim.owned = false  # The Deep Bore is gone: nothing else happens.
+	_aim.changed.emit()
+	assert_float(_rect("BuildButton").position.y - _rect("ReadyChip").end.y).is_equal_approx(
+		gap, 1.5
+	)
+	_aim.owned = true  # And gained again.
+	_aim.changed.emit()
+	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
 
 
 ## "+" and a hold need units: with the Deep Bore (a building) selected "+" hides, `save_group` and a

@@ -144,8 +144,8 @@ func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 			assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
 			assert_int(_told).override_failure_message(note).is_equal(0)
 		assert_int(card.shakes).override_failure_message(why).is_equal(shakes + 1)  # A locked card.
-		# Upright the sheet covers the group column, so a tap at its centre may land on a card, which
-		# queues one: at most such QUEUEs, and nothing at all sideways.
+		# Upright a tap at a control's centre may land on a card of the sheet, which queues one: at
+		# most such QUEUEs, and nothing at all sideways.
 		for command: Command in _sent:
 			assert_bool(HudLayout.is_portrait()).override_failure_message(why).is_true()
 			assert_int(command.type).override_failure_message(why).is_equal(Command.Type.QUEUE)

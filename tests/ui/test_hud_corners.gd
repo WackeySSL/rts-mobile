@@ -5,11 +5,8 @@ extends GdUnitTestSuite
 ## with the design's insets) and mirrored and not: every rect is inside the safe rect, no two
 ## overlap, every rect is at least 48 dp on each side, and the sizes the ADR names hold.
 
+const CornersRig: GDScript = preload("res://tests/ui/support/corners_rig.gd")
 const CardHeights: GDScript = preload("res://tests/support/card_heights.gd")
-const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const MARGIN_DP: float = 12.0  ## SafeAreaMargin's gap on every side.
-const CUTOUT_PX: int = 100
 const TOLERANCE: float = 0.01
 ## The unfolds and modes of ADR 0025 section 1: at most one at a time. The card is an overlay on
 ## the toast, the group column and the command bar, so those pairs are left out of the overlap
@@ -72,16 +69,13 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 	# web_phone_portrait: 360 x 700, safe 336 x 676.
 	var upright: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
 	lined = _place(upright, true, _shown(["bar", "strike", "map"], 5))
-	_assert_rect(lined[HudCorners.BAR], Rect2(0.0, 612.0, 336.0, 64.0))
-	_assert_rect(lined[HudCorners.BUILD], Rect2(272.0, 540.0, 64.0, 64.0))  # 8 dp over the bar.
-	_assert_rect(lined[HudCorners.STRIKE], Rect2(264.0, 460.0, 72.0, 72.0))
+	# Michael, 2026-11-05: the landscape corners upright too.
+	_assert_rect(lined[HudCorners.BAR], Rect2(0.0, 612.0, 120.0, 64.0))  # As wide as its content.
+	_assert_rect(lined[HudCorners.BUILD], Rect2(272.0, 612.0, 64.0, 64.0))  # The corner.
+	_assert_rect(lined[HudCorners.STRIKE], Rect2(264.0, 532.0, 72.0, 72.0))
 	_assert_rect(lined[HudCorners.MAP], Rect2(76.0, 64.0, 260.0, 178.0))
-	assert_int(_column(lined, 5)).is_equal(3)  # 198 dp above the bar: three, then two.
-	assert_float(lined[HudCorners.group_key(3)].position.x).is_equal(64.0)
-	var top: float = 676.0
-	for key: StringName in [HudCorners.BAR, HudCorners.group_key(0), HudCorners.group_key(3)]:
-		top = minf(top, lined[key].position.y)
-	assert_float(676.0 - top).is_less_equal(floorf(0.4 * 676.0))  # Within 270 dp.
+	assert_int(_column(lined, 5)).is_equal(5)  # 548 dp from under the pill to the bar: all five.
+	_assert_rect(lined[HudCorners.group_key(0)], Rect2(0.0, 56.0, 56.0, 56.0))
 
 
 ## The pinned full map stays open through a strike aim (plan P120c). Under the scope it is clear of
@@ -164,7 +158,7 @@ func test_the_map_steps_aside_for_a_row_that_is_less_than_a_gap_below_its_foot()
 
 
 ## ADR 0025 section 10: the strike button 8 dp above BUILD at 72 dp, its row to its left, upright
-## too (the lift of the command bar included), on every table profile; the rects the lead checks
+## too (with or without the command bar), on every table profile; the rects the lead checks
 ## against the group column are these.
 func test_the_strike_button_is_8_dp_above_build_and_its_row_left_of_it() -> void:
 	for portrait: bool in [false, true]:
@@ -278,9 +272,9 @@ func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_h
 	assert_float(out[HudCorners.BAR].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # The sheet: the scope stays.
 	_assert_rect(out[HudCorners.DRAWER], Rect2(0.0, 338.0, 336.0, 338.0))
-	assert_array(out.keys()).contains_exactly_in_any_order(
-		[HudCorners.DRAWER, HudCorners.SCOPE, HudCorners.PILL]
-	)
+	assert_bool(out.has(HudCorners.SCOPE)).is_true()
+	assert_bool(out.has(HudCorners.BUILD)).is_false()  # BUILD, the bar and the chip are covered.
+	assert_bool(out.has(HudCorners.BAR)).is_false()
 	out = _place(Rect2(0.0, 0.0, 776.0, 300.0), true, shown)  # Half of 300 is under 312.
 	assert_float(out[HudCorners.DRAWER].size.y).is_equal(300.0)
 
@@ -293,7 +287,8 @@ func test_the_toast_sits_between_the_pill_and_the_scope_or_under_the_pill() -> v
 	var upright: Dictionary[StringName, Rect2] = _place(
 		Rect2(0.0, 0.0, 336.0, 676.0), true, _shown(["toast"])
 	)
-	_assert_rect(upright[HudCorners.TOAST], Rect2(0.0, 64.0, 336.0, 48.0))  # Under the scope.
+	# Under the scope, right of the column.
+	_assert_rect(upright[HudCorners.TOAST], Rect2(64.0, 64.0, 272.0, 48.0))
 	upright = _place(Rect2(0.0, 0.0, 800.0, 900.0), true, _shown(["toast"]))
 	assert_float(upright[HudCorners.TOAST].size.x).is_equal(360.0)
 	var open: Dictionary[StringName, Rect2] = _place(
@@ -395,8 +390,6 @@ func test_every_part_is_inside_the_safe_rect_48_dp_and_clear_of_the_others() -> 
 				var why: String = "%s, mirror %s, %s" % [screen["label"], mirror, _describe(shown)]
 				_assert_parts(out, safe, dp, why)
 				_assert_gaps(out, dp, why)
-				if screen["portrait"] and shown.bar:
-					_assert_stack_within_40_percent(out, safe, dp, why, shown)
 				checked += 1
 	assert_int(checked).is_greater(2000)
 
@@ -427,94 +420,19 @@ func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
 		assert_float(out[HudCorners.PILL].size.y / dp).is_equal_approx(48.0, TOLERANCE)
 		assert_float(out[HudCorners.BAR].size.y / dp).is_equal_approx(64.0, TOLERANCE)
 		assert_float(out[HudCorners.STRIKE_ROW].size.y / dp).is_equal_approx(64.0, TOLERANCE)
-		# The portrait stack (the bar, BUILD lifted over it, the strike button) is 216 dp high.
-		if screen["portrait"]:
-			var rise: float = (out[HudCorners.BAR].end.y - out[HudCorners.STRIKE].position.y) / dp
-			assert_float(rise).override_failure_message(why).is_equal_approx(216.0, TOLERANCE)
 
 
-## ADR 0015 section 5: the bottom stack (the bar and the group column) is at most 40 % of the safe
-## height, whole dp. With the Ready chip the column leaves BUILD's column and the chip their width,
-## so it has as many columns as that leaves and as many to a column as those need: the real bound
-## there is the taller of the 40 % line and that column (declared in the PR).
-func _assert_stack_within_40_percent(
-	out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String, shown: HudCorners.Shown
-) -> void:
-	var top: float = safe.end.y
-	for key: StringName in out:
-		if key == HudCorners.BAR or str(key).begins_with("group_"):
-			top = minf(top, out[key].position.y)
-	var stack: float = (safe.end.y - top) / dp
-	var limit: float = floorf(HudLayout.STACK_SHARE * safe.size.y / dp)
-	if shown.ready:
-		var right: float = HudCorners.BUILD_DP + HudCorners.GAP_DP + HudCorners.READY_DP.x + 8.0
-		var columns: int = maxi(floori((safe.size.x / dp - right) / 64.0), 1)
-		var rows: int = ceili(float(shown.groups) / columns)
-		limit = maxf(limit, HudCorners.BAR_DP.y + HudCorners.GAP_DP + rows * 64.0 - 8.0)
-	var message: String = "%s: stack %s dp of at most %s" % [why, stack, limit]
-	assert_float(stack).override_failure_message(message).is_less_equal(limit + TOLERANCE)
-
-
-## ADR 0025 section 2: gaps of 8 dp. Every two parts that show are at least 8 dp apart on one axis.
-## One exemption: the economy card, which is an overlay (it hangs under the pill over the toast, the
-## groups, the command bar and the scope's foot). The strike aim's check mark and X against the
-## group
-## column are no exemption: upright the aim holds the column to three items in one column (lead
-## decision, P122b), where the ADR's own numbers (a 120 dp column, the 136 dp row) leave no gap.
+## ADR 0025 section 2: gaps of 8 dp (see the rig).
 func _assert_gaps(out: Dictionary[StringName, Rect2], dp: float, why: String) -> void:
-	var keys: Array = out.keys()
-	for first: int in keys.size():
-		for second: int in range(first + 1, keys.size()):
-			var a: StringName = keys[first]
-			var b: StringName = keys[second]
-			if _nested(a, b) or a == HudCorners.CARD or b == HudCorners.CARD:
-				continue
-			var gap: float = _gap(out[a], out[b]) / dp
-			var pair: String = "%s: %s and %s are %s dp apart" % [why, a, b, gap]
-			assert_float(gap).override_failure_message(pair).is_greater_equal(8.0 - TOLERANCE)
+	CornersRig.assert_gaps(self, out, dp, why)
 
 
-## The distance between two rects along the axis that separates them (negative while they overlap).
 static func _gap(a: Rect2, b: Rect2) -> float:
-	var across: float = maxf(a.position.x - b.end.x, b.position.x - a.end.x)
-	var down: float = maxf(a.position.y - b.end.y, b.position.y - a.end.y)
-	return maxf(across, down)
+	return CornersRig.gap(a, b)
 
 
 func _assert_parts(out: Dictionary[StringName, Rect2], safe: Rect2, dp: float, why: String) -> void:
-	var keys: Array = out.keys()
-	var least: float = 48.0 * dp - TOLERANCE
-	for key: StringName in keys:
-		var rect: Rect2 = out[key]
-		var at: String = "%s: %s %s, safe %s" % [why, key, rect, safe]
-		assert_bool(safe.grow(TOLERANCE).encloses(rect)).override_failure_message(at).is_true()
-		assert_float(rect.size.x).override_failure_message(at).is_greater_equal(least)
-		assert_float(rect.size.y).override_failure_message(at).is_greater_equal(least)
-	for first: int in keys.size():
-		for second: int in range(first + 1, keys.size()):
-			var a: StringName = keys[first]
-			var b: StringName = keys[second]
-			if _nested(a, b) or _overlay(a, b):
-				continue
-			var pair: String = "%s: %s %s and %s %s" % [why, a, out[a], b, out[b]]
-			var shrunk: Rect2 = out[a].grow(-TOLERANCE)  # Touching edges are no overlap.
-			assert_bool(shrunk.intersects(out[b])).override_failure_message(pair).is_false()
-
-
-## The map's parts are inside the map; the pill's card is the overlay of the toast, the groups and
-## the command bar.
-static func _nested(a: StringName, b: StringName) -> bool:
-	var map: Array[StringName] = [HudCorners.MAP, HudCorners.MAP_HEAD, HudCorners.MAP_BOX]
-	return map.has(a) and map.has(b)
-
-
-static func _overlay(a: StringName, b: StringName) -> bool:
-	return (a == HudCorners.CARD and _under_card(b)) or (b == HudCorners.CARD and _under_card(a))
-
-
-## What the card may cover.
-static func _under_card(key: StringName) -> bool:
-	return key == HudCorners.TOAST or key == HudCorners.BAR or str(key).begins_with("group_")
+	CornersRig.assert_parts(self, out, safe, dp, why)
 
 
 ## Every set of the optional parts: the bar (at its least and as wide as it can ask), the Ready chip
@@ -547,54 +465,12 @@ func _describe(shown: HudCorners.Shown) -> String:
 	return "%s, %d groups, bar %s dp" % [parts, shown.groups, shown.bar_width]
 
 
-## The six sizes (the engine's own metrics: a dp is a window px) and every profile of both
-## orientations, each with a cutout, and the design's insets: {label, safe, dp, portrait}.
 func _screens() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	var base: Vector2 = Vector2(
-		float(ProjectSettings.get_setting("display/window/size/viewport_width")),
-		float(ProjectSettings.get_setting("display/window/size/viewport_height"))
-	)
-	for size: Vector2i in ScreenSizes.ALL:
-		var turned: Vector2 = Vector2(base.y, base.x) if UiScale.is_portrait_size(size) else base
-		var stretch: float = minf(size.x / turned.x, size.y / turned.y)
-		var m: UiMetrics = UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())
-		out.append(_screen("size %s" % size, m))
-	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
-	profiles.merge(UiProfiles.portrait())
-	profiles.merge(UiProfiles.notch_design())
-	for profile_name: StringName in profiles:
-		var m: UiMetrics = profiles[profile_name]
-		out.append(_screen(str(profile_name), m))
-		var w: int = m.window_size.x
-		var h: int = m.window_size.y
-		var cut: Rect2i = Rect2i(0, CUTOUT_PX, w, h - CUTOUT_PX)
-		if not UiScale.is_portrait_size(m.window_size):
-			cut = Rect2i(CUTOUT_PX, 0, w - CUTOUT_PX, h)
-		out.append(_screen("%s with a cutout" % profile_name, UiProfiles.with_safe_area(m, cut)))
-	return out
+	return CornersRig.screens()
 
 
-func _screen(label: String, metrics: UiMetrics) -> Dictionary:
-	UiScale.set_override(metrics)
-	var stretch: float = metrics.stretch_scale
-	var full: Rect2 = Rect2(Vector2.ZERO, Vector2(metrics.window_size) / stretch)
-	return {
-		"label": label,
-		"safe": SafeAreaMargin.rect_inside(full, MARGIN_DP),
-		"dp": UiScale.base_px_per_dp(),
-		"portrait": UiScale.is_portrait_size(metrics.window_size),
-	}
-
-
-## `Shown` with the named parts on (bar, ready, strike, aim, map, toast, card, drawer).
 func _shown(names: Array[String], groups: int = 1, bar_width: float = 0.0) -> HudCorners.Shown:
-	var shown: HudCorners.Shown = HudCorners.Shown.new()
-	for part: String in names:
-		shown.set(part, true)
-	shown.groups = groups
-	shown.bar_width = bar_width
-	return shown
+	return CornersRig.shown(names, groups, bar_width)
 
 
 ## `place` for a rect in dp (dp 1), unmirrored.
@@ -616,51 +492,6 @@ func _assert_rect(actual: Rect2, expected: Rect2) -> void:
 	assert_that(actual).override_failure_message("%s, expected %s" % [actual, expected]).is_equal(
 		expected
 	)
-
-
-## Lead decision (P122b): upright, while the strike aim shows, the group column holds at most three
-## items in one column (the rest scroll), so it never meets the check mark and X, at 8 dp or more,
-## at
-## every screen; sideways nothing changes. Without the aim the columns follow section 2.
-func test_upright_during_the_aim_the_column_holds_three_items_in_one_column() -> void:
-	var checked: int = 0
-	for screen: Dictionary in _screens():
-		var safe: Rect2 = screen["safe"]
-		var dp: float = screen["dp"]
-		for groups: int in [1, 4, 5]:
-			for bar: bool in [false, true]:
-				var shown: HudCorners.Shown = _shown(["strike", "aim"], groups)
-				shown.bar = bar
-				var out: Dictionary[StringName, Rect2] = HudCorners.place(
-					safe, screen["portrait"], dp, false, shown
-				)
-				var why: String = "%s, %d groups, bar %s" % [screen["label"], groups, bar]
-				var held: int = 0
-				for index: int in groups:
-					if out.has(HudCorners.group_key(index)):
-						held += 1
-						var gap: float = _gap(
-							out[HudCorners.group_key(index)], out[HudCorners.STRIKE_ROW]
-						)
-						assert_float(gap / dp).override_failure_message(why).is_greater_equal(
-							8.0 - TOLERANCE
-						)
-				if screen["portrait"]:
-					assert_int(held).override_failure_message(why).is_between(1, mini(groups, 3))
-					assert_int(_column(out, held)).override_failure_message(why).is_equal(held)
-				else:
-					assert_int(held).override_failure_message(why).is_equal(groups)
-				checked += 1
-	assert_int(checked).is_greater(40)
-	# 360 x 700 dp: the ADR's own numbers, the column of five takes two columns (120 dp) without the
-	# aim.
-	var upright: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
-	var lined: Dictionary[StringName, Rect2] = _place(upright, true, _shown(["bar", "strike"], 5))
-	assert_float(lined[HudCorners.group_key(4)].end.x).is_equal(120.0)
-	lined = _place(upright, true, _shown(["bar", "strike", "aim"], 5))
-	assert_bool(lined.has(HudCorners.group_key(3))).is_false()
-	assert_float(lined[HudCorners.group_key(2)].end.x).is_equal(56.0)
-	assert_float(lined[HudCorners.STRIKE_ROW].position.x - 56.0).is_equal(64.0)
 
 
 ## The column starts under the pill sideways, and the toast, when it stands under the top line,
