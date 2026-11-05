@@ -2,20 +2,20 @@ class_name BuildSidebar
 extends Control
 ## The build drawer (ADR 0025 sections 5 and 6, plan P120; it grew out of ADR 0019 section 1, ADR
 ## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
-## portrait, over the map. From the top: the head with the close button, the three tabs (an icon
-## over the name) and the grid of the open tab's item cards, which scrolls vertically. BUILD
-## (`BuildButton`) opens it. The head shows the credits and the power (`EconomyLine`, a mirror of
-## the `EconomyPill`, which folds while the drawer is open). It sends nothing to the sim but
-## Commands through `PlayerController.command_sink`: a tap on an available card is one QUEUE, a
-## hold on a unit card queues up to `queue_hold_count` (P120b; a hold on a structure card still
-## cancels the last of its type, until ADR 0026's P130), a tap on an item of the queue row at the
-## foot (`QueueRow`) is a CANCEL of that slot. It
-## reads the published snapshot only and never keeps one.
+## portrait, over the map. From the top: the handle (upright), the three tabs (an icon over the
+## name) with the close button and the grid of the open tab's item cards, which scrolls vertically.
+## name) with the close button and the grid of the open tab's item cards, which scrolls up and down.
+## The economy pill stays in its corner while the drawer is open (Michael, 2026-11-05; ADR 0025's
+## "folds under the drawer" no longer holds). It sends nothing to the sim but Commands through
+## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on a unit card
+## queues up to `queue_hold_count` (P120b), a hold on a structure card cancels the last of its type
+## (until ADR 0026's P130). It reads the published snapshot only and never keeps one.
 ## Open or closed is `HudState`'s DRAWER (`feed.state`, ADR 0025 section 1), view state only: no
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
-## horizontal drag on the panel, portrait a drag that starts on the head). BUILD, a tap that selects
+## horizontal drag on the panel, portrait a drag that starts
+## on the handle or the tabs). BUILD, a tap that selects
 ## an own producer (its tab, `set_selected`) and the end of a placement that began in the drawer
 ## (ADR 0024 R1; not after a strike aim, not at the match's end) open it. Starting a placement from
 ## the drawer again (a READY card tapped while one runs) closes it, as the first start did.
@@ -58,19 +58,19 @@ const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp o
 const TAB_ICON_DP: float = 22.0
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
-const CLOSE_DP: float = 48.0
-const HANDLE_GAP_DP: float = 2.0  ## Between the handle and the economy line below it.
+const CLOSE_DP: float = 48.0  ## The close button's least width; it is as high as the tabs.
+const HANDLE_GAP_DP: float = 4.0  ## Above and below the handle.
 const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
+const TAB_GAP_DP: float = 4.0  ## Between the tabs and the close button: "Structures" needs it.
 ## The slot of the cards is their height and this, because a box container sorts in whole px and
 ## would otherwise leave a card a fraction of a px taller than the slot that holds it.
 const ROW_SLACK_DP: float = 2.0
 ## The grid's least height: the drawer's content must fit the safe height on `web_phone_small`
 ## (ADR 0025 section 5: the grid scrolls there), so no whole card row is asked for.
 const FIT_LEAST_DP: float = 48.0
-const COLUMNS_LEAST: int = 2
 
 ## Tests only, like `UiScale`'s override: the slide's duration in ms, or -1 for the settings'. A
 ## test that sets one clears it in `after_test`, and never writes `menu_slide_ms` into the resource.
@@ -81,7 +81,6 @@ static var _slide_override: int = -1
 @export var placement: PlacementController  ## A tap on a READY card begins it. None: no placement.
 @export var strike_aim: StrikeAim  ## Aiming a strike takes the drawer down, as placement does.
 @export var feed: HudStateFeed  ## Its `state` says whether the drawer is open.
-@export var pill: EconomyPill  ## What the head's economy line mirrors; none: no line.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 
 ## The open tab, a `World.Tab`.
@@ -90,28 +89,21 @@ var tab: int = World.Tab.STRUCTURES
 var _backdrop: PanelContainer = PanelContainer.new()  ## The drawer, at its full size.
 var _pad: MarginContainer = MarginContainer.new()  ## The padding, and the screen edge beyond.
 var _stack: VBoxContainer = VBoxContainer.new()
-var _head: HBoxContainer = HBoxContainer.new()
-var _economy: EconomyLine = EconomyLine.new()
-var _room: Control  ## The head's room for the line (and the handle upright).
-var _room_fit: DpMinSize = DpMinSize.new()
+var _grab: HBoxContainer = HBoxContainer.new()  ## The handle's row, upright only.
 var _close: Button = Button.new()
 var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leaves by.
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _tab_icons: Array[TextureRect] = []
-var _handle: ColorRect = ColorRect.new()  ## Upright only, on the head.
+var _handle: ColorRect = ColorRect.new()  ## Upright only.
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: a sliver of a row.
-var _queue: QueueRow = QueueRow.new()  ## The open tab's queue, at the drawer's foot.
-var _arts: Array[Texture2D] = []  ## Scratch of a refresh: the card picture of each queued item.
-var _items_q: PackedInt32Array = PackedInt32Array()  ## And the queued types, head first.
 var _makers: PackedInt32Array = PackedInt32Array()  ## The type that produces each tab, else -1.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tiles are made for.
-var _art_cache: Dictionary[String, Texture2D] = {}
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
 var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
@@ -147,7 +139,7 @@ func _ready() -> void:
 	_backdrop.add_child(_pad)
 	_stack.name = "Stack"
 	_pad.add_child(_stack)
-	_build_head()
+	_build_grab()
 	_build_tabs()
 	_items.name = "Items"
 	_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,9 +150,6 @@ func _ready() -> void:
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_items.add_child(_grid)
 	_stack.add_child(_items)
-	_queue.cancel_requested.connect(_on_queue_tapped)
-	_queue.configure(_input_settings().tap_slop_dp, _input_settings().long_press_ms)
-	_stack.add_child(_queue)
 	select_tab(tab)
 	_apply_dp()  # Sets the zone before the strike row reads it.
 	get_viewport().size_changed.connect(_apply_dp)
@@ -274,8 +263,7 @@ func _input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	var drag: InputEventScreenDrag = event as InputEventScreenDrag
 	if touch != null:
-		var zone: Control = _head if _portrait else _backdrop
-		var on: bool = touch.pressed and zone.get_global_rect().has_point(touch.position)
+		var on: bool = touch.pressed and _swipe_zone(touch.position)
 		if on and _swipe < 0:
 			_swipe = touch.index
 			_swipe_from = touch.position
@@ -288,6 +276,13 @@ func _input(event: InputEvent) -> void:
 		if toward >= UiScale.dp(_input_settings().drawer_swipe_dp) and toward > absf(across):
 			_swipe = -1
 			collapse()
+
+
+## Whether a touch at `at` starts a swipe: sideways the panel, upright the handle and the tabs.
+func _swipe_zone(at: Vector2) -> bool:
+	if not _portrait:
+		return _backdrop.get_global_rect().has_point(at)
+	return _grab.get_global_rect().has_point(at) or _tab_row.get_global_rect().has_point(at)
 
 
 ## Reads the published snapshot: the cards' states from the local player's queues and rows.
@@ -310,7 +305,6 @@ func select_tab(index: int) -> void:
 	if index != tab:
 		tab = index
 		_items.scroll_vertical = 0
-		_queue.release()  # Another queue is not the one a cancel has shifted.
 		_show_tab()
 		tab_selected.emit(index)
 
@@ -355,35 +349,25 @@ static func _min_dp(control: Control, size_dp: Vector2) -> void:
 	control.add_child(min_size)
 
 
-## The head: the economy line (P120d) with the handle on its top edge, and the close button.
-func _build_head() -> void:
-	_head.name = "Head"
-	_stack.add_child(_head)
-	var room: Control = Control.new()
-	room.name = "HeadRoom"
-	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_room_fit.min_dp = Vector2(0.0, CLOSE_DP)
-	room.add_child(_room_fit)
-	_head.add_child(room)
-	_room = room
-	if pill != null:
-		_economy.name = "Economy"
-		_economy.pill = pill
-		_economy.set_anchors_preset(Control.PRESET_FULL_RECT)
-		room.add_child(_economy)
-		# Last in the holder: it draws over the tabs, and stays inside the holder's clip.
-		add_child(_economy.chip())
+## The handle's row (upright only): the sheet's grab handle, centred.
+func _build_grab() -> void:
+	_grab.name = "Grab"
+	_grab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grab.alignment = BoxContainer.ALIGNMENT_CENTER
+	_stack.add_child(_grab)
 	_handle.name = "Handle"
 	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_handle.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_handle.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	room.add_child(_handle)
+	_handle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_grab.add_child(_handle)
+
+
+## The close button at the tabs row's right end: a chevron toward the edge the drawer leaves by.
+func _build_close() -> void:
 	_close.name = "Close"
 	_close.flat = true
 	_close.focus_mode = Control.FOCUS_NONE
 	_close.pressed.connect(collapse)
-	_min_dp(_close, Vector2(CLOSE_DP, CLOSE_DP))
+	_min_dp(_close, Vector2(CLOSE_DP, TAB_DP))
 	_chevron.texture = load(ICON_ART % "glyph_chevron")
 	_chevron.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_chevron.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -391,7 +375,7 @@ func _build_head() -> void:
 	_chevron.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chevron.resized.connect(func() -> void: _chevron.pivot_offset = _chevron.size / 2.0)
 	_close.add_child(_chevron)
-	_head.add_child(_close)
+	_tab_row.add_child(_close)
 
 
 ## The tabs: an icon over the name each (`tab_<name>`, grey at rest and white when open, from the
@@ -435,6 +419,7 @@ func _build_tabs() -> void:
 		_tab_row.add_child(button)
 		_tabs.append(button)
 		_tab_icons.append(icon)
+	_build_close()
 
 
 ## The icon's tint: the open tab's white or the resting grey, from the tab's theme colours.
@@ -447,7 +432,6 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 	var key: Vector2i = Vector2i(snap.match_serial, snap.type_tab.size())
 	if key != _built:
 		_built = key
-		_queue.release()  # A new match: the old one's Command and ticks mean nothing.
 		_build_tiles(snap)
 	if _tiles.is_empty():
 		return
@@ -477,7 +461,6 @@ func _refresh_items(snap: MatchSnapshot, player: int) -> void:
 	var slots: int = _queue_slots(snap)
 	for tile: ItemTile in _tiles:
 		_show_tile(tile, snap, player, slots)
-	_show_queue(snap, player, slots)
 
 
 ## One tile's state, queued count and progress from the player's queue of its tab.
@@ -533,6 +516,7 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 			snap.type_names[type]
 		)
 		tile.faction = snap.type_faction[type]
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # The columns share the room.
 		tile.hold_ms = settings.long_press_ms
 		tile.slop_dp = settings.tap_slop_dp
 		tile.chose.connect(_on_chose.bind(tile))
@@ -544,18 +528,19 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 
 
 ## Shows the tiles of the open tab that the local player's faction may queue, as cards of the
-## orientation's size, in as many columns as the drawer's width holds (at least two).
+## orientation's size, in as many columns as the drawer's width holds (no more than the cards).
 func _show_tab() -> void:
 	var card: Vector2 = ItemTile.CARD_PORTRAIT_DP if _portrait else ItemTile.CARD_DP
+	var shown: int = 0
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
+		shown += 1 if tile.visible else 0
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
-	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	if snap != null and runner.scenario != null and not _makers.is_empty():
-		_show_queue(snap, runner.scenario.local_player, _queue_slots(snap))
+	# As many columns as the width holds, no more than there are cards: the cards (they expand)
+	# then end at the right edge, with the margin the left edge has.
 	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
-	_grid.columns = maxi(floori(room / (card.x + GAP_DP)), COLUMNS_LEAST)
+	_grid.columns = clampi(floori(room / (card.x + GAP_DP)), 1, maxi(shown, 1))
 
 
 ## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and
@@ -609,49 +594,6 @@ func _cancel_last(snap: MatchSnapshot, tile: ItemTile) -> void:
 			return
 
 
-## A tap on an item of the queue row: CANCEL for its slot in the open tab (the row then waits for
-## a snapshot past the tick the runner stamps on the Command).
-func _on_queue_tapped(slot: int) -> void:
-	if controller == null:
-		_queue.release()
-		return
-	var command: Command = Command.cancel(_local_player(), tab, slot)
-	_send(command)
-	_queue.wait_for(command)  # The runner stamps its tick; the row waits for a snapshot past it.
-
-
-## The open tab's queue in the row: the producer's name, the items, the head's progress.
-func _show_queue(snap: MatchSnapshot, player: int, slots: int) -> void:
-	var queue: int = player * World.TABS + tab
-	var count: int = mini(_entry(snap.queue_count, queue), slots)
-	_items_q.resize(count)
-	_arts.resize(count)
-	for slot: int in count:
-		var type: int = snap.queue_type[queue * slots + slot]
-		_items_q[slot] = type
-		var art: String = CommandBar.ICON_ART % snap.type_ids[type]
-		_arts[slot] = _art(art)
-	var share: float = 0.0
-	if count > 0:
-		var goal: int = maxi(snap.type_build_ticks[_items_q[0]], 1) * Production.PROGRESS_PER_TICK
-		share = clampf(float(_entry(snap.queue_progress, queue)) / goal, 0.0, 1.0)
-	var maker: int = _makers[tab] if _makers.size() > tab else -1
-	_queue.show_queue(
-		snap.type_names[maker] if maker >= 0 else TAB_NAMES[tab],
-		slots,
-		_items_q,
-		_arts,
-		share,
-		snap.tick
-	)
-
-
-func _art(path: String) -> Texture2D:
-	if not _art_cache.has(path):
-		_art_cache[path] = load(path) if ResourceLoader.exists(path) else null
-	return _art_cache[path]
-
-
 ## The grid follows a finger that went beyond the slop on a tile.
 func _scroll_by(relative: Vector2) -> void:
 	_items.scroll_vertical -= roundi(relative.y)
@@ -684,8 +626,8 @@ func _input_settings() -> InputSettings:
 func _apply_dp() -> void:
 	_measure()
 	var gap: int = roundi(UiScale.dp(GAP_DP))
-	for row: BoxContainer in [_stack, _tab_row]:
-		row.add_theme_constant_override("separation", gap)
+	_stack.add_theme_constant_override("separation", gap)
+	_tab_row.add_theme_constant_override("separation", roundi(UiScale.dp(TAB_GAP_DP)))
 	_grid.add_theme_constant_override("h_separation", gap)
 	_grid.add_theme_constant_override("v_separation", gap)
 	for button: Button in _tabs:  # The content stands inside the plate's margins.
@@ -695,16 +637,10 @@ func _apply_dp() -> void:
 		content.offset_top = plate.get_margin(SIDE_TOP)
 		content.offset_right = -plate.get_margin(SIDE_RIGHT)
 		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
+	_grab.visible = _portrait
 	_handle.visible = _portrait
-	# Upright the head grows by the handle and its gap, the line stands under them, and the handle
-	# is centred on the sheet: the room is short of its middle by the close button and a separation.
-	var lift: float = HANDLE_DP.y + HANDLE_GAP_DP if _portrait else 0.0
-	_room_fit.min_dp = Vector2(0.0, CLOSE_DP + lift)
-	_economy.offset_top = UiScale.dp(lift)
-	var shift: float = UiScale.dp(CLOSE_DP) * 0.5 + _head.get_theme_constant("separation") * 0.5
-	_handle.offset_left = shift
-	_handle.offset_right = shift
 	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
+	_grab.custom_minimum_size.y = UiScale.dp(HANDLE_DP.y + HANDLE_GAP_DP)
 	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
 	for at: int in _tab_icons.size():
 		_tab_icons[at].modulate = _tab_tint(_tabs[at].button_pressed)

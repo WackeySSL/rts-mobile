@@ -411,16 +411,19 @@ func test_a_match_starts_closed_and_build_close_and_the_map_unfold_it() -> void:
 
 
 ## ADR 0025 section 5: a drag toward the edge the drawer came from, past `drawer_swipe_dp`, closes
-## it. Landscape: any horizontal drag on the panel; upright: one that starts on the head, while a
+## it. Landscape: any horizontal drag on the panel; upright: one that starts on the handle or the
+## tabs, while a
 ## vertical drag on the grid scrolls it and a drag the wrong way or too short closes nothing.
-func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_head() -> void:
+func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_handle() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var portrait: bool = HudLayout.is_portrait()
 		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
 		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
-		var head: Vector2 = (_hud("Head") as Control).get_global_rect().get_center() - toward * 8.0
+		var head: Vector2 = (
+			(_hud("Grab" if portrait else "Tabs") as Control).get_global_rect().get_center()
+		)
 		var grid: Vector2 = (_hud("Tile_power_plant") as Control).get_global_rect().get_center()
 		var panel: Vector2 = head if portrait else grid
 		_swipe(panel, -toward * far)  # The wrong way.
@@ -446,7 +449,7 @@ func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again
 		var portrait: bool = HudLayout.is_portrait()
 		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
 		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
-		var zone: Control = (_hud("Head") if portrait else _hud("Backdrop")) as Control
+		var zone: Control = (_hud("Grab") if portrait else _hud("Backdrop")) as Control
 		var from: Vector2 = zone.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, from)  # On the drawer.
 		_sidebar.collapse()  # It folds under the finger,
@@ -457,20 +460,33 @@ func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again
 		TouchEvents.release(get_viewport(), 0, from + toward * far)
 
 
-## The pill folds while the drawer is open (P120d: the drawer's head shows the economy) and is back,
-## where it was, when the drawer closes.
-func test_the_pill_folds_while_the_drawer_is_open() -> void:
+## The pill stays where it is while the drawer is open (Michael, 2026-11-05) and the two do not
+## overlap, at every size. A tap on the pill opens the economy card, which closes the drawer.
+func test_the_pill_stays_while_the_drawer_is_open_and_clear_of_it() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null, false, false)
+		var why: String = str(size)
 		var pill: Control = _hud("EconomyPill") as Control
 		var before: Rect2 = pill.get_global_rect()
 		_sidebar.open()
 		await _settle()
-		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_false()
-		_sidebar.collapse()
+		assert_bool(pill.is_visible_in_tree()).override_failure_message(why).is_true()
+		assert_bool(pill.get_global_rect() == before).override_failure_message(why).is_true()
+		var drawer: Rect2 = _rect_of("Backdrop")
+		(
+			assert_bool(pill.get_global_rect().intersects(drawer))
+			. override_failure_message(why)
+			. is_false()
+		)
+		var tap: Vector2 = pill.find_child("CreditsTap", true, false).get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, tap)
+		TouchEvents.release(get_viewport(), 0, tap)
 		await _settle()
-		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_true()
-		assert_bool(pill.get_global_rect() == before).override_failure_message(str(size)).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+
+
+func _rect_of(node_name: String) -> Rect2:
+	return (_hud(node_name) as Control).get_global_rect()
 
 
 func _swipe(from: Vector2, by: Vector2) -> void:

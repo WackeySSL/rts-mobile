@@ -279,9 +279,8 @@ func test_a_lone_own_producer_that_is_selected_opens_the_tab_it_builds() -> void
 	assert_array(_tiles_shown()).is_equal(["light_tank", "heavy_tank", "harvester", "artillery"])
 
 
-## The orders as the sim takes them: a tap pays and queues, a tap on the queue row's item gives its
-## price back, and the tiles then show the new bank and queue.
-func test_the_orders_run_in_the_sim_a_tap_pays_and_the_queue_row_pays_back() -> void:
+## The orders as the sim takes them: a tap pays and queues, and the tiles then show the queue.
+func test_the_orders_run_in_the_sim_a_tap_pays_and_queues() -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
@@ -297,13 +296,6 @@ func test_the_orders_run_in_the_sim_a_tap_pays_and_the_queue_row_pays_back() -> 
 	_sent.clear()
 	await _publish(world)
 	assert_int(_tile("rifle_squad").queued).is_equal(2)
-	var row: QueueRow = _sidebar.find_child("QueueRow", true, false)
-	row.thumb(2).pressed.emit()  # The last rifle squad, the third item.
-	Rig.step(world, _sent)
-	assert_int(world.credits[1]).is_equal(2000 - 100 - 300)
-	assert_int(world.dropped_commands).is_equal(0)
-	await _publish(world)
-	assert_int(_tile("rifle_squad").queued).is_equal(1)
 
 
 func _grid() -> GridContainer:

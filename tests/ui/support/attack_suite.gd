@@ -96,9 +96,9 @@ func _expect_toast_placed(why: String) -> void:
 		)
 
 
-## With the drawer open (the pill folded, P120d) and the pill on low power (its widest when it is
-## back), the toast keeps clear of the scope, the drawer and BUILD, and is at
-## least `TOAST_LEAST_DP` wide.
+## With the drawer open (the pill stays in its corner) and the pill on low power (its widest), the
+## toast keeps clear of the pill, the scope, the drawer and BUILD, and is at least `TOAST_LEAST_DP`
+## wide.
 func _expect_toast_clear_of_drawer(why: String) -> void:
 	var pill_node: EconomyPill = _hud("EconomyPill") as EconomyPill
 	_runner.snapshot.power_made = PackedInt32Array([0, 4, 4])
@@ -114,12 +114,12 @@ func _expect_toast_clear_of_drawer(why: String) -> void:
 	var gap: float = UiScale.dp(HudCorners.GAP_DP) - 0.5
 	assert_bool(pill_node.is_low()).override_failure_message(at).is_true()
 	assert_bool(_toast.visible).override_failure_message(at).is_true()
-	assert_bool(pill_node.visible).override_failure_message(at).is_false()  # Folded.
+	assert_bool(pill_node.visible).override_failure_message(at).is_true()  # It stays.
 	assert_float(toast.size.x).override_failure_message(at).is_greater_equal(
 		UiScale.dp(HudCorners.TOAST_LEAST_DP) - 0.5
 	)
 	assert_float(toast.size.y).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
-	var parts: Array[Rect2] = [_scope.get_global_rect(), drawer]
+	var parts: Array[Rect2] = [_scope.get_global_rect(), drawer, pill_node.get_global_rect()]
 	var build: Control = _hud("BuildButton") as Control
 	if build.is_visible_in_tree():
 		parts.append(build.get_global_rect())

@@ -126,13 +126,16 @@ static func place(
 				)
 	if not side:
 		out[SCOPE] = Rect2(w - SCOPE_DP, 0.0, SCOPE_DP, SCOPE_DP)
-	if not shown.drawer:
-		var edge: float = w - SCOPE_DP  # The pill ends a gap short.
-		var room: float = minf(PILL_MAX_DP, edge - GAP_DP)
-		var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
-		out[PILL] = Rect2(0.0, 0.0, pill_w, PILL_DP.y)
-		if shown.card:
-			out[CARD] = Rect2(0.0, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w), shown.card_height)
+	# The pill stays in its corner while the drawer is open (Michael, 2026-11-05): sideways it ends a
+	# gap short of the panel, upright the sheet is below it.
+	var edge: float = w - SCOPE_DP  # The pill ends a gap short.
+	if side:
+		edge = open.position.x
+	var room: float = minf(PILL_MAX_DP, edge - GAP_DP)
+	var pill_w: float = minf(maxf(shown.pill_width, PILL_DP.x), room)
+	out[PILL] = Rect2(0.0, 0.0, pill_w, PILL_DP.y)
+	if shown.card and not shown.drawer:
+		out[CARD] = Rect2(0.0, PILL_DP.y + GAP_DP, minf(CARD_W_DP, w), shown.card_height)
 	if bar_on:
 		out[BAR] = _bar(w, h, portrait, shown, open, side)
 	var column_end: float = 0.0  # Where the group column ends (0 for none), for the toast.
@@ -159,7 +162,7 @@ static func place(
 
 
 ## The open drawer: the landscape panel at the right edge (40 % of the width, 312 to 420 dp), the
-## portrait sheet at the bottom (half the height, at least the head, tabs, a row and the queue).
+## portrait sheet at the bottom (half the height, at least the tabs and a row of cards).
 static func _drawer(w: float, h: float, portrait: bool) -> Rect2:
 	if portrait:
 		var height: float = minf(maxf(h * SHEET_SHARE, SHEET_LEAST_DP), h)
@@ -186,8 +189,8 @@ static func _bar(
 ## the open panel). Where that room is under `TOAST_LEAST_DP` (a wide pill beside the open panel on
 ## a narrow phone) the toast stands under the top line instead, as the portrait rule has it: from
 ## the start (right of the group column, which starts on that line), a gap under the scope's foot,
-## no further right than the open panel or the safe edge. With the drawer open the pill is folded
-## (P120d): the toast starts at the edge, where the pill would.
+## no further right than the open panel or the safe edge. The pill stays in its corner with the
+## drawer open, so the room is that of the closed drawer, up to the panel.
 static func _toast(
 	w: float, portrait: bool, placed: Dictionary[StringName, Rect2], open: Rect2, column_end: float
 ) -> Rect2:

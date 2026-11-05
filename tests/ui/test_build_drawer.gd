@@ -80,13 +80,13 @@ func test_the_drawer_fills_its_side_or_its_half_and_its_parts_are_inside_the_saf
 			)
 			var panel: float = (back.size.x - (full.end.x - safe.end.x)) / dp
 			assert_float(panel).override_failure_message(why).is_between(311.5, 420.5)
-		# The panel token of ADR 0025 section 13, and the sheet's handle on its head (upright only).
+		# The panel token of ADR 0025 section 13, and the sheet's handle (upright only).
 		assert_str(_hud("Backdrop").theme_type_variation).is_equal("HudPanel")
 		var handle: Control = _hud("Handle") as Control
 		assert_bool(handle.visible).override_failure_message(why).is_equal(HudLayout.is_portrait())
 		if handle.visible:
-			var head: Rect2 = _rect("Head")
-			assert_bool(head.grow(TOLERANCE_PX).encloses(handle.get_global_rect())).is_true()
+			var grab: Rect2 = _rect("Grab")
+			assert_bool(grab.grow(TOLERANCE_PX).encloses(handle.get_global_rect())).is_true()
 			assert_float(handle.size.x).is_greater_equal(UiScale.dp(HANDLE_MIN_DP) - TOLERANCE_PX)
 		var least: float = UiScale.dp(48.0) - TOLERANCE_PX
 		var parts: Array[Control] = [_hud("Close") as Control]
@@ -186,16 +186,65 @@ func test_on_the_smallest_web_phone_the_grid_scrolls_vertically() -> void:
 	var bar: VScrollBar = items.get_v_scroll_bar()
 	assert_float(bar.max_value).is_greater(bar.page + 1.0)  # More than the room shows.
 	assert_int(items.horizontal_scroll_mode).is_equal(ScrollContainer.SCROLL_MODE_DISABLED)
-	# The queue row's 76 dp leave the grid less than a whole row (ADR 0025 section 5): the top of
-	# the first card shows, and the drawer's content stays inside the safe height.
+	# The top of the first card shows, and the drawer's content stays inside the safe height.
 	var first: Rect2 = _visible_tiles()[0].get_global_rect()
 	assert_float(first.position.y).is_greater_equal(items.get_global_rect().position.y - 0.5)
 	assert_float(first.position.y).is_less(items.get_global_rect().end.y)
-	var row: Control = _hud("QueueRow")
 	var safe: Rect2 = SafeAreaMargin.rect_inside(
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
-	assert_bool(safe.grow(TOLERANCE_PX).encloses(row.get_global_rect())).is_true()
+	assert_bool(safe.grow(TOLERANCE_PX).encloses(items.get_global_rect())).is_true()
+
+
+## Michael, 2026-11-05: the head row and the queue row are gone; the close button ends the tabs row
+## (the pill is not in the drawer), and the cards fill the drawer's width.
+func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> void:
+	for screen: Dictionary in _screens():
+		await _open(screen["size"], screen["metrics"])
+		var why: String = str(screen["label"])
+		(
+			assert_object(_sidebar.find_child("Head", true, false))
+			. override_failure_message(why)
+			. is_null()
+		)
+		assert_object(_sidebar.find_child("QueueRow", true, false)).is_null()
+		assert_object(_sidebar.find_child("Economy", true, false)).is_null()
+		var tabs: Rect2 = _rect("Tabs")
+		var close: Rect2 = _rect("Close")
+		var last: Rect2 = _rect(TABS[TABS.size() - 1])
+		assert_float(close.position.x).override_failure_message(why).is_greater_equal(
+			last.end.x - 1.0
+		)
+		assert_float(close.end.x).override_failure_message(why).is_equal_approx(tabs.end.x, 1.0)
+		assert_float(close.position.y).override_failure_message(why).is_equal_approx(
+			tabs.position.y, 1.0
+		)
+		assert_float(close.size.x).override_failure_message(why).is_greater_equal(
+			UiScale.dp(48.0) - TOLERANCE_PX
+		)
+		# The grid has the room between the tabs row and the drawer's foot, edge to edge.
+		var items: Rect2 = _rect("Items")
+		assert_float(items.position.y).is_greater_equal(tabs.end.y - 1.0)
+		assert_float(items.size.x).override_failure_message(why).is_equal_approx(tabs.size.x, 1.0)
+		for tab: int in TABS.size():
+			_sidebar.select_tab(tab)
+			await await_idle_frame()
+			await await_idle_frame()
+			var cards: Array[ItemTile] = _visible_tiles()
+			assert_bool(cards.is_empty()).override_failure_message(why).is_false()
+			var left: float = 1e9
+			var right: float = -1e9
+			for card: ItemTile in cards:
+				left = minf(left, card.get_global_rect().position.x)
+				right = maxf(right, card.get_global_rect().end.x)
+				var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+				assert_float(card.size.x).override_failure_message(why).is_greater_equal(floor_px)
+			var gap: String = (
+				"%s, tab %d: cards %s..%s in items %s" % [why, tab, left, right, items]
+			)
+			assert_float(left - items.position.x).override_failure_message(gap).is_less_equal(1.5)
+			# The columns are no more than the cards: the first row ends at the right edge too.
+			assert_float(items.end.x - right).override_failure_message(gap).is_less_equal(1.5)
 
 
 func test_the_zone_is_zero_while_closed_upright_and_sideways() -> void:
