@@ -119,6 +119,57 @@ func test_steps_of_never_reads_a_load_as_empty_or_full_and_an_unknown_capacity_a
 	assert_int(TankerCargo.steps_of(50, 0)).is_equal(0)
 
 
+func test_the_bar_draws_the_fill_as_its_share_of_the_track_in_gold_with_a_white_edge_when_full(
+) -> void:
+	var bar: TankerCargo = _bar(_spawn(FOSSIL, 8000))
+	var gold: Color = Color("F2B705")
+	var share: Callable = func() -> float: return bar.fill_rect().size.x / bar.track_rect().size.x
+	assert_float(share.call()).is_equal(0.0)  # Empty: no fill is drawn, the dark edge stays.
+	assert_object(bar.edge_now()).is_equal(bar.edge_color)
+	assert_object(bar.load_color).is_equal(gold)
+	for steps: int in range(1, TankerCargo.STEPS):  # Partly: the share of the steps, the dark edge.
+		bar.steps = steps
+		assert_float(share.call()).is_equal_approx(float(steps) / TankerCargo.STEPS, 0.0001)
+		assert_object(bar.edge_now()).is_equal(bar.edge_color)
+		assert_float(bar.fill_rect().position.x).is_equal(bar.track_rect().position.x)
+	bar.steps = TankerCargo.STEPS  # Full: the whole track and the white edge.
+	assert_float(share.call()).is_equal_approx(1.0, 0.0001)
+	assert_object(bar.edge_now()).is_equal(bar.full_edge_color)
+	assert_object(bar.full_edge_color).is_equal(Color("FFFFFF"))
+	assert_bool(bar.outer_rect().encloses(bar.track_rect())).is_true()
+	var health: HealthBarLayer = auto_free(HealthBarLayer.new())
+	assert_bool(gold != health.own_color and gold != health.enemy_color).is_true()  # Not health.
+
+
+func test_the_bar_stands_under_the_selection_ring_at_every_zoom() -> void:
+	var row: int = _spawn(FOSSIL, 8000)
+	var snap: MatchSnapshot = _runner.snapshot
+	var radius: int = snap.type_selection_radius[snap.type_index[row]] + UnitLayer.RING_PAD_MILLI
+	for zoom: float in [0.5, 1.0, 2.0]:
+		_camera.zoom = Vector2(zoom, zoom)
+		_layer._process(0.0)
+		var unit: float = UiScale.base_px_per_dp() / zoom
+		var ring_low: float = maxf(
+			IsoProjection.ellipse_px(radius).y,
+			UnitLayer.RING_MIN_DP * unit * IsoProjection.GROUND_FLATTEN
+		)
+		var top: float = _bar(row).position.y
+		assert_float(top).is_greater_equal(ring_low + unit)  # Clear of the ring, with a gap.
+		assert_float(top).is_less_equal(ring_low + 3.0 * unit)
+		assert_float(_bar(row).position.x).is_equal(0.0)  # Centred on the rig.
+
+
+func test_a_rig_is_dressed_with_an_empty_bar_before_any_follow() -> void:
+	var row: int = _spawn(FOSSIL, 8000)
+	var rig: Node2D = _layer.rig(row)
+	_carry(row, _capacity(FOSSIL))
+	_lose(row)
+	_add(FOSSIL, 11000)  # Published and merged, but no `_process`: no follow has run.
+	_layer.sync_rows()
+	assert_object(_layer.rig(_runner.snapshot.unit_count() - 1)).is_same(rig)
+	assert_int(_bar(_runner.snapshot.unit_count() - 1).steps).is_equal(0)
+
+
 func test_the_bar_leaves_the_sim_alone() -> void:
 	var row: int = _spawn(FOSSIL, 8000)
 	_carry(row, 100)
@@ -129,11 +180,15 @@ func test_the_bar_leaves_the_sim_alone() -> void:
 
 ## A tanker of player 1 at x, y 12000, published.
 func _spawn(type_id: StringName, x: int) -> int:
-	var type: int = _runner.world.type_ids.find(type_id)
-	_runner.world.add_unit(1, type, x, 12000)
-	_runner.run_ticks(1)
+	_add(type_id, x)
 	_layer._process(0.0)
 	return _runner.snapshot.unit_count() - 1
+
+
+## Adds a unit of player 1 and publishes a tick, without drawing a frame.
+func _add(type_id: StringName, x: int) -> void:
+	_runner.world.add_unit(1, _runner.world.type_ids.find(type_id), x, 12000)
+	_runner.run_ticks(1)
 
 
 ## Sets the cargo of row `row` in the sim as the harvest rows would, publishes and draws a frame.

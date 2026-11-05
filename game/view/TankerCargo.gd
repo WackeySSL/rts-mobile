@@ -13,13 +13,16 @@ extends Node2D
 const WIDTH_DP: int = 22  ## The track's outer width, as a vehicle's health bar.
 const HEIGHT_DP: int = 5  ## And height, with the edge.
 const EDGE_DP: int = 1
-const DROP_DP: int = 4  ## From the rig's ground point to the track's top edge.
+const GAP_DP: int = 2  ## Between the lower edge of the selection ring and the track.
 const STEPS: int = 8  ## The fill's resolution: the interior width in dp is divided into this.
-const EDGE: Color = Color("1C2127")
-const TRACK: Color = Color("3A434D")
-const PARTLY: Color = Color("F5A524")  ## STYLE.md warning amber.
-const FULL: Color = Color("30A46C")  ## STYLE.md ok green.
-const FULL_EDGE: Color = Color("FFFFFF")
+
+## The look: exports of this world-space node like `HealthBarLayer`'s, so a new palette edits them
+## here. The load is the economy's credits gold (STYLE.md's tint of `glyph_credits`), not the
+## health bar's ok green and warning amber, so it never reads as health.
+@export var edge_color: Color = Color("1C2127")
+@export var track_color: Color = Color("3A434D")
+@export var load_color: Color = Color("F2B705")  ## The fill, partly or full.
+@export var full_edge_color: Color = Color("FFFFFF")  ## The edge of a full bar.
 
 var steps: int = 0  ## 0 empty, STEPS full, in between partly.
 var draws: int = 0  ## Redraws asked for (a test hook).
@@ -54,13 +57,24 @@ static func follow_all(
 	for row: int in rigs.size():
 		var rig: UnitLayer.Rig = rigs[row] as UnitLayer.Rig
 		if rig != null and rig.cargo != null:
-			rig.cargo.follow(snap.cargo[row], snap.type_harvest[snap.type_index[row]], unit)
+			var type: int = snap.type_index[row]
+			var semi: float = (
+				IsoProjection
+				. ellipse_px(snap.type_selection_radius[type] + UnitLayer.RING_PAD_MILLI)
+				. y
+			)
+			var ring: float = maxf(
+				semi, UnitLayer.RING_MIN_DP * unit * IsoProjection.GROUND_FLATTEN
+			)
+			rig.cargo.follow(snap.cargo[row], snap.type_harvest[type], unit, ring + GAP_DP * unit)
 
 
 ## Shows `cargo` of `capacity` at `unit` world px a dp. Writes only what changed.
-func follow(cargo: int, capacity: int, unit: float) -> void:
+func follow(cargo: int, capacity: int, unit: float, drop: float) -> void:
 	if scale.x != unit:
 		scale = Vector2(unit, unit)
+	if position.y != drop:
+		position.y = drop
 	var wanted: int = steps_of(cargo, capacity)
 	if wanted != steps:
 		steps = wanted
@@ -69,13 +83,36 @@ func follow(cargo: int, capacity: int, unit: float) -> void:
 
 
 func _draw() -> void:
-	var inner: int = WIDTH_DP - 2 * EDGE_DP
-	var full: bool = steps >= STEPS
-	var edge: Color = FULL_EDGE if full else EDGE
-	draw_rect(Rect2(-WIDTH_DP / 2.0, DROP_DP, WIDTH_DP, HEIGHT_DP), edge)
-	var left: float = -WIDTH_DP / 2.0 + EDGE_DP
-	var top: float = DROP_DP + EDGE_DP
-	var high: float = HEIGHT_DP - 2.0 * EDGE_DP
-	draw_rect(Rect2(left, top, inner, high), TRACK)
+	draw_rect(outer_rect(), edge_now())
+	draw_rect(track_rect(), track_color)
 	if steps > 0:
-		draw_rect(Rect2(left, top, float(inner * steps) / STEPS, high), FULL if full else PARTLY)
+		draw_rect(fill_rect(), load_color)
+
+
+## The rects and colours `_draw` paints, in dp from the node's origin (the ring's lower edge, the
+## bar centred on it), as functions so a test reads what is drawn.
+func outer_rect() -> Rect2:
+	return Rect2(-WIDTH_DP / 2.0, 0.0, WIDTH_DP, HEIGHT_DP)
+
+
+func track_rect() -> Rect2:
+	return outer_rect().grow(-EDGE_DP)
+
+
+## The fill: the track's left part, `steps` of STEPS of its width.
+func fill_rect() -> Rect2:
+	var track: Rect2 = track_rect()
+	return Rect2(track.position, Vector2(track.size.x * steps / STEPS, track.size.y))
+
+
+func edge_now() -> Color:
+	return full_edge_color if steps >= STEPS else edge_color
+
+
+## Back to the empty bar, for a rig that is dressed for another unit. Null-safe (a rig that holds
+## no bar).
+static func clear(bar: TankerCargo) -> void:
+	if bar != null and bar.steps != 0:
+		bar.steps = 0
+		bar.draws += 1
+		bar.queue_redraw()

@@ -123,7 +123,7 @@ var _has_turret: PackedByteArray = PackedByteArray()  ## Per type index: 1 for a
 var _ring_zoom: float = 1.0  ## Camera zoom the rings are sized for.
 var _damage_queue: Array[Rig] = []  ## Rigs whose overlays await a stage write, oldest first (P161).
 var _follow_writes: int = 0  ## Overlay follow writes since the last `_write_damage`.
-var _dp_px: float = UiScale.base_px_per_dp()  ## Base px per dp, read when the window changes.
+var _dp_px: float = UiScale.base_px_per_dp()  ## Base px per dp: start, selection, resize.
 
 
 ## The ring texture as a 2:1 ground ellipse (the selection radius, `IsoProjection.ellipse_px`):
@@ -627,6 +627,7 @@ func _new_rig(
 			snap.hp[row], snap.type_max_hp[type], life.vehicle_stage_percent
 		)
 		_queue_damage(rig)
+	TankerCargo.clear(rig.cargo)
 	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked, shaken or turned.
 	rig.hull_kick = Vector2.ZERO
 	rig.idle.reset()
