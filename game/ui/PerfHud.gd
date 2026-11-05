@@ -155,12 +155,17 @@ const NEEDS: Dictionary = {
 	"work_tick_p95_ms": "heavy_publish_frames", "sim_p95_ms": "job_ticks", "job_p99_ms": "job_ticks"
 }
 
+## Which arena the card judges (P93c): the seed-42 arena or the base arena.
+const ARENA_UNITS: String = PerfBases.ARENA_UNITS
+const ARENA_BASES: String = PerfBases.ARENA_BASES
+
 @export var runner: MatchRunner
 @export var gate: PerfGateDef = PerfGateDef.new()
 @export var run_ticks: int = 900
 
 ## Printed on the card and in the summary; P50b sets them.
 var layer_mode: String = "all"
+var arena_kind: String = ARENA_UNITS
 var zoom: float = 1.0
 var atlas_bake_ms: float = 0.0  ## P113, report-only: the scene's atlas bake (0: none) ...
 var atlas_page: String = "none"  ## ... and its page, "4096x2258 at 1.000"; `restart()` keeps both.
@@ -526,27 +531,12 @@ func invalid_reasons() -> PackedStringArray:
 	return out
 
 
-## The checkpoints against the gate's golden values (ADR 0011 section 5), the golden ticks up to
-## `run_ticks`: `match` is true when at least one was checked and every one agrees. `tick` is the
-## first golden tick that differs (-1 for none) with the hash text the run `got` there ("none" when
-## a finished run lacks it) and the golden `want`; a tick the unfinished run has not reached is
-## skipped.
+## The checkpoints against the gate's golden values (ADR 0011 section 5; the base arena's pair for
+## `ARENA_BASES`), see `PerfBases.compare`.
 func golden_result() -> Dictionary:
-	var out: Dictionary = {"match": false, "checked": 0, "tick": -1, "got": "", "want": ""}
-	var ticks: PackedInt32Array = gate.golden_ticks
-	for i: int in mini(ticks.size(), gate.golden_hex.size()):
-		var at: int = _checkpoint_ticks.find(ticks[i])
-		if ticks[i] > run_ticks or (at < 0 and not _finished):
-			continue
-		out["checked"] += 1
-		var got: String = _checkpoint_hex[at] if at >= 0 else "none"
-		if got != gate.golden_hex[i]:
-			out["tick"] = ticks[i]
-			out["got"] = got
-			out["want"] = gate.golden_hex[i]
-			return out
-	out["match"] = out["checked"] > 0
-	return out
+	var ticks: PackedInt32Array = PerfBases.ticks(gate, arena_kind)
+	var hexes: PackedStringArray = PerfBases.hexes(gate, arena_kind)
+	return PerfBases.compare(ticks, hexes, _checkpoint_ticks, _checkpoint_hex, run_ticks, _finished)
 
 
 ## The period P of ADR 0014 section 1, ms: 1000 / min(refresh, max_fps), a `max_fps` of 0 counting
@@ -668,6 +658,7 @@ func summary() -> Dictionary:
 		"invalid": not reasons.is_empty(),
 		"invalid_reasons": Array(reasons),
 		"layer_mode": layer_mode,
+		"arena": arena_kind,
 		"atlas_bake_ms": atlas_bake_ms,
 		"atlas_page": atlas_page,
 		"screen": "%dx%d" % [screen.x, screen.y],
@@ -702,6 +693,8 @@ func card_lines() -> PackedStringArray:
 	lines.append(_impl_line(s, lockstep))
 	for row: Array in CARD_ROWS:
 		lines.append(row[0] % row.slice(1).map(func(key: String) -> Variant: return s[key]))
+	if arena_kind == ARENA_BASES:
+		lines.append(PerfBases.calls_line(s["draw_calls_p95"]))
 	lines.append(_phase_line("phase means per tick", s["phases_ms"]))
 	lines.append(_phase_line("p95 per phase without checkpoint ticks", s["phases_p95_noncp_ms"]))
 	lines.append("GATE: %s" % (PASS if s["gate_pass"] else FAIL))
@@ -902,6 +895,8 @@ func _golden_row() -> String:
 		)
 	elif golden["checked"] > 0:
 		detail = "MATCH, %d checkpoints" % golden["checked"]
+	if not golden["match"]:
+		detail += PerfBases.fields(arena_kind)
 	return _check("golden_hashes", golden["match"], detail)
 
 
