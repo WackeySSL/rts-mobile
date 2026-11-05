@@ -440,7 +440,7 @@ func test_a_tap_on_the_ready_chip_opens_the_drawer_on_structures_with_the_card_i
 		var grid: Rect2 = items.get_global_rect()
 		var card: Rect2 = last.get_global_rect()
 		var seen: bool = grid.encloses(card.grow(-1.0))
-		if card.size.y > grid.size.y:  # The queue row leaves a short grid less than a card (P120b).
+		if card.size.y > grid.size.y:  # A short grid shows less than a card.
 			seen = card.position.y >= grid.position.y - 1.0 and card.position.y < grid.end.y
 		var cards: String = (
 			"%s: card %s, grid %s" % [why, last.get_global_rect(), items.get_global_rect()]

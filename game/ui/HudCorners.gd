@@ -8,7 +8,7 @@ extends RefCounted
 ## `safe`. Mirrored, every rect is flipped about the safe rect's middle (left-handed mode, Phase 5).
 ## Drawer open: the landscape panel covers the right column (BUILD, the Ready chip, the strike
 ## button, the scope), the portrait sheet covers the bottom stack and the scope stays; the pill
-## folds too (P120d: the drawer's head shows the economy, so it is on screen once).
+## stays in its corner (sideways it ends a gap short of the panel; Michael, 2026-11-05).
 ## The economy card and the full map are one unfold at a time (ADR 0025 section 1), and the card
 ## and the strike aim's row are not shown together either; a pinned full map does stay open
 ## through the aim (`_map` keeps it clear of the row and the pill). The card is a transient overlay

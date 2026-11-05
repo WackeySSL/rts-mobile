@@ -3,8 +3,8 @@ extends Control
 ## The build drawer (ADR 0025 sections 5 and 6, plan P120; it grew out of ADR 0019 section 1, ADR
 ## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
 ## portrait, over the map. From the top: the handle (upright), the three tabs (an icon over the
-## name) with the close button and the grid of the open tab's item cards, which scrolls vertically.
-## name) with the close button and the grid of the open tab's item cards, which scrolls up and down.
+## name) with the close button at the row's end, and the grid of the open tab's item cards, which
+## scrolls vertically.
 ## The economy pill stays in its corner while the drawer is open (Michael, 2026-11-05; ADR 0025's
 ## "folds under the drawer" no longer holds). It sends nothing to the sim but Commands through
 ## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on any card
@@ -14,11 +14,11 @@ extends Control
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
-## horizontal drag on the panel, portrait a drag that starts
-## on the handle or the tabs). BUILD, a tap that selects
-## an own producer (its tab, `set_selected`) and the end of a placement that began in the drawer
-## (ADR 0024 R1; not after a strike aim, not at the match's end) open it. Starting a placement from
-## the drawer again (a READY card tapped while one runs) closes it, as the first start did.
+## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD, a
+## tap that selects an own producer (its tab, `set_selected`) and the end of a placement that
+## began in the drawer (ADR 0024 R1; not after a strike aim, not at the match's end) open it.
+## Starting a placement from the drawer again (a READY card tapped while one runs) closes it, as
+## the first start did.
 ## This node is the clipping holder (a plain `Control` with `clip_contents`), over the part of
 ## the drawer that has slid in: `Backdrop` is at the drawer's full size (`HudCorners`' DRAWER
 ## rect, reaching on to the screen's edge, its content inside the safe rect) and the holder's extent
@@ -64,7 +64,8 @@ const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
-const TAB_GAP_DP: float = 4.0  ## Between the tabs and the close button: "Structures" needs it.
+const CARD_SLACK_DP: float = 0.25
+const TAB_GAP_DP: float = 2.0  ## Between the tabs and the close button: "Structures" needs it.
 ## The slot of the cards is their height and this, because a box container sorts in whole px and
 ## would otherwise leave a card a fraction of a px taller than the slot that holds it.
 const ROW_SLACK_DP: float = 2.0
@@ -255,9 +256,9 @@ func _process(delta: float) -> void:
 
 
 ## A drag toward the edge the drawer came from, past `drawer_swipe_dp`, closes it (ADR 0025 section
-## 5). Seen before the GUI and consumed by no one: the cards and the head still get their touches.
-## Landscape: any horizontal drag that starts on the panel; upright only one that starts on the head
-## (the grid's own scroll is vertical).
+## 5). Seen before the GUI and consumed by no one: the cards and the tabs still get their touches.
+## Landscape: any horizontal drag that starts on the panel; upright only one that starts on the
+## handle or the tabs (the grid's own scroll is vertical).
 func _input(event: InputEvent) -> void:
 	if not is_open():
 		return
@@ -530,19 +531,21 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 
 
 ## Shows the tiles of the open tab that the local player's faction may queue, as cards of the
-## orientation's size, in as many columns as the drawer's width holds (no more than the cards).
+## orientation's size, in as many columns as the drawer's width holds.
 func _show_tab() -> void:
 	var card: Vector2 = ItemTile.CARD_PORTRAIT_DP if _portrait else ItemTile.CARD_DP
-	var shown: int = 0
+	# As many columns as the width holds, on every tab, and the cards are as wide as the columns
+	# share the room (a quarter dp short: the pixel rounding stays inside the drawer; the cards
+	# expand over the slack). So a card has one width throughout and a full row ends at the right
+	# edge, with the margin the left edge has.
+	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
+	var columns: int = maxi(floori(room / (card.x + GAP_DP)), 1)
+	card.x = maxf(card.x, (room - columns * GAP_DP) / columns - CARD_SLACK_DP)
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)
 		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
-		shown += 1 if tile.visible else 0
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
-	# As many columns as the width holds, no more than there are cards: the cards (they expand)
-	# then end at the right edge, with the margin the left edge has.
-	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
-	_grid.columns = clampi(floori(room / (card.x + GAP_DP)), 1, maxi(shown, 1))
+	_grid.columns = columns
 
 
 ## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and
@@ -617,12 +620,16 @@ func _apply_dp() -> void:
 	_tab_row.add_theme_constant_override("separation", roundi(UiScale.dp(TAB_GAP_DP)))
 	_grid.add_theme_constant_override("h_separation", gap)
 	_grid.add_theme_constant_override("v_separation", gap)
-	for button: Button in _tabs:  # The content stands inside the plate's margins.
-		var plate: StyleBox = button.get_theme_stylebox(&"normal", TAB_VARIATION)
+	for button: Button in _tabs:
+		# The content stands inside the plate's margins above and below, and inside its border
+		# (not its 8 dp margin) at the sides, so "Structures" fits the narrowest panel.
+		var plate: StyleBoxFlat = (
+			button.get_theme_stylebox(&"normal", TAB_VARIATION) as StyleBoxFlat
+		)
 		var content: Control = button.get_node("Content")
-		content.offset_left = plate.get_margin(SIDE_LEFT)
+		content.offset_left = plate.get_border_width(SIDE_LEFT)
 		content.offset_top = plate.get_margin(SIDE_TOP)
-		content.offset_right = -plate.get_margin(SIDE_RIGHT)
+		content.offset_right = -plate.get_border_width(SIDE_RIGHT)
 		content.offset_bottom = -plate.get_margin(SIDE_BOTTOM)
 	_grab.visible = _portrait
 	_handle.visible = _portrait

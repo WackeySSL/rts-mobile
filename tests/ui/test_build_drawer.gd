@@ -3,9 +3,10 @@ extends GdUnitTestSuite
 ## ScreenSizes.ALL with the engine's own metrics and at every profile of both orientations, also
 ## with a cutout. Sideways a side panel at the right edge, 312 to 420 dp wide and the full safe
 ## height, its backdrop reaching on to the screen's edge and its content inside the safe rect;
-## upright a bottom sheet of the full safe width and half the height (at least 312 dp). The head's
-## close button, the tabs (with their names) and the cards are at least 48 dp and inside the safe
-## rect; the cards are as many columns as fit, never fewer than two (three upright on the 6-inch
+## upright a bottom sheet of the full safe width and half the height (at least 312 dp). The close
+## button (at the tabs row's end), the tabs (with their names) and the cards are at least 48 dp and
+## inside the safe rect; the cards are as many columns as fit on every tab (three upright on the
+## 6-inch
 ## phone and at 360 dp, four from about 450 dp), and on the smallest web phone the grid scrolls
 ## vertically. The slide (`menu_slide_ms`) eases out, ends on its target, can be reversed, and a
 ## turn ends it; the zone and the top follow it (ADR 0024 section 4). The interim places: upright
@@ -226,6 +227,20 @@ func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> v
 		var items: Rect2 = _rect("Items")
 		assert_float(items.position.y).is_greater_equal(tabs.end.y - 1.0)
 		assert_float(items.size.x).override_failure_message(why).is_equal_approx(tabs.size.x, 1.0)
+		# Every tab's name lies inside its own tab, whatever the width (the narrowest panel is 312 dp).
+		for tab_name: String in TABS:
+			var tab_rect: Rect2 = _rect(tab_name)
+			var name_rect: Rect2 = (
+				((_hud(tab_name) as Control).find_child("Name", true, false) as Control)
+				. get_global_rect()
+			)
+			var inside: String = "%s: %s %s in %s" % [why, tab_name, name_rect, tab_rect]
+			(
+				assert_bool(tab_rect.grow(0.5).encloses(name_rect))
+				. override_failure_message(inside)
+				. is_true()
+			)
+		var widths: Array[float] = []
 		for tab: int in TABS.size():
 			_sidebar.select_tab(tab)
 			await await_idle_frame()
@@ -243,8 +258,17 @@ func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> v
 				"%s, tab %d: cards %s..%s in items %s" % [why, tab, left, right, items]
 			)
 			assert_float(left - items.position.x).override_failure_message(gap).is_less_equal(1.5)
-			# The columns are no more than the cards: the first row ends at the right edge too.
-			assert_float(items.end.x - right).override_failure_message(gap).is_less_equal(1.5)
+			widths.append(cards[0].size.x)
+			# One width on every tab (a short tab's cards may take a few px of the grid's slack).
+			var spread: float = absf(widths[-1] - widths[0])
+			assert_float(spread).override_failure_message(gap).is_less_equal(widths[0] * 0.06)
+			# A full row ends at the right edge, like the left margin (a short row leaves the rest).
+			var columns: int = (
+				(_sidebar.find_children("*", "GridContainer", true, false)[0] as GridContainer)
+				. columns
+			)
+			if cards.size() >= columns:
+				assert_float(items.end.x - right).override_failure_message(gap).is_less_equal(1.5)
 
 
 func test_the_zone_is_zero_while_closed_upright_and_sideways() -> void:

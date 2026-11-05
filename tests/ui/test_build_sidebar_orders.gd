@@ -87,7 +87,7 @@ func test_a_hold_on_a_queued_unit_or_vehicle_card_cancels_the_last_of_its_type_a
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
 	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad", "rifle_squad"])
-	Sw.enqueue(world, World.Tab.VEHICLES, ["light_tank", "light_tank"])
+	Sw.enqueue(world, World.Tab.VEHICLES, ["light_tank", "light_tank", "harvester"])
 	await _publish(world)
 	_sidebar.select_tab(World.Tab.INFANTRY)
 	await _settle()
@@ -95,15 +95,15 @@ func test_a_hold_on_a_queued_unit_or_vehicle_card_cancels_the_last_of_its_type_a
 	assert_int(_sent.size()).is_equal(1)  # One CANCEL, no QUEUE with it.
 	_assert_cancel(_sent[0], World.Tab.INFANTRY, 2)
 	assert_array(_buzzed).is_equal([15])
+	_sent[0].tick = _runner.snapshot.tick  # The first CANCEL is drained (stamped) ...
 	_sent.clear()
-	_runner.snapshot.tick += 1  # The first CANCEL is drained (stamped) and a newer snapshot is read.
-	_sidebar._cancelling.tick = _runner.snapshot.tick - 1
+	_runner.snapshot.tick += 1  # ... and a newer snapshot is read.
 	_sidebar.refresh()
 	_sidebar.select_tab(World.Tab.VEHICLES)
 	await _settle()
 	_hold("light_tank")
 	assert_int(_sent.size()).is_equal(1)
-	_assert_cancel(_sent[0], World.Tab.VEHICLES, 1)
+	_assert_cancel(_sent[0], World.Tab.VEHICLES, 1)  # Not slot 2: the harvester stays.
 
 
 func test_a_hold_on_a_card_with_nothing_queued_sends_nothing_and_a_tap_still_queues_one() -> void:
@@ -117,6 +117,7 @@ func test_a_hold_on_a_card_with_nothing_queued_sends_nothing_and_a_tap_still_que
 	_hold("rifle_squad")  # Another type is queued, not this one.
 	assert_array(_sent).is_empty()
 	assert_array(_buzzed).is_empty()
+	assert_int(_tile("rifle_squad").shakes).is_equal(0)
 	_tap("rifle_squad")
 	assert_int(_sent.size()).is_equal(1)
 	assert_int(_sent[0].type).is_equal(Command.Type.QUEUE)
@@ -143,6 +144,26 @@ func test_a_second_hold_waits_for_a_snapshot_past_the_cancels_tick() -> void:
 	assert_int(_sent.size()).is_equal(2)
 
 
+## A match that starts again in the scene forgets the cancel in flight (its tick is the old one's).
+func test_a_new_match_releases_the_wait_of_a_cancel_in_flight() -> void:
+	await _open(&"android_6in")
+	var world: World = Sw.world()
+	Sw.own(world, BASE)
+	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rifle_squad"])
+	await _publish(world)
+	_sidebar.select_tab(World.Tab.INFANTRY)
+	await _settle()
+	_hold("rifle_squad")
+	_hold("rifle_squad")  # Waits: the CANCEL is not drained.
+	assert_int(_sent.size()).is_equal(1)
+	_runner.snapshot = Sw.snapshot(world, 1)  # Another match serial.
+	_runner.snapshot.tick = 2
+	_sidebar.refresh()
+	await _settle()
+	_hold("rifle_squad")
+	assert_int(_sent.size()).is_equal(2)
+
+
 func test_a_hold_on_a_structure_card_cancels_the_last_of_its_type_until_p130() -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
@@ -152,8 +173,13 @@ func test_a_hold_on_a_structure_card_cancels_the_last_of_its_type_until_p130() -
 	_hold("power_plant")
 	assert_int(_sent.size()).is_equal(1)
 	_assert_cancel(_sent[0], World.Tab.STRUCTURES, 2)
-	_hold("refinery")  # None queued: nothing, however long.
+	assert_array(_buzzed).is_equal([15])
+	_sent[0].tick = _runner.snapshot.tick  # Drained, and a newer snapshot is read: no wait left.
+	_runner.snapshot.tick += 1
+	_sidebar.refresh()
+	_hold("refinery")  # None queued: nothing, however long (and no shake).
 	assert_int(_sent.size()).is_equal(1)
+	assert_int(_tile("refinery").shakes).is_equal(0)
 	assert_array(_buzzed).is_equal([15])
 
 
@@ -276,8 +302,9 @@ func test_a_lone_own_producer_that_is_selected_opens_the_tab_it_builds() -> void
 	assert_array(_tiles_shown()).is_equal(["light_tank", "heavy_tank", "harvester", "artillery"])
 
 
-## The orders as the sim takes them: a tap pays and queues, and the tiles then show the queue.
-func test_the_orders_run_in_the_sim_a_tap_pays_and_queues() -> void:
+## The orders as the sim takes them: a tap pays and queues, a hold on a card gives the last one's
+## price back, and the tiles then show the queue.
+func test_the_orders_run_in_the_sim_a_tap_pays_and_a_hold_pays_back() -> void:
 	await _open(&"android_6in")
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
@@ -293,6 +320,14 @@ func test_the_orders_run_in_the_sim_a_tap_pays_and_queues() -> void:
 	_sent.clear()
 	await _publish(world)
 	assert_int(_tile("rifle_squad").queued).is_equal(2)
+	_hold("rifle_squad")  # The last rifle squad, the third item, goes with its price.
+	assert_int(_sent.size()).is_equal(1)
+	Rig.step(world, _sent)
+	assert_int(world.credits[1]).is_equal(2000 - 100 - 300)
+	assert_int(world.dropped_commands).is_equal(0)
+	await _publish(world)
+	assert_int(_tile("rifle_squad").queued).is_equal(1)
+	assert_int(_tile("rocket_squad").queued).is_equal(1)
 
 
 func _grid() -> GridContainer:
@@ -309,6 +344,7 @@ func _tiles_shown() -> Array[String]:
 
 func _assert_cancel(command: Command, tab: int, slot: int) -> void:
 	assert_int(command.type).is_equal(Command.Type.CANCEL)
+	assert_int(command.player_id).is_equal(1)
 	assert_array(command.payload).is_equal([tab, slot])
 
 

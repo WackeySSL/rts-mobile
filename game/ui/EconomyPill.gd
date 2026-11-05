@@ -236,7 +236,7 @@ func place() -> void:
 	)
 	position = rects[HudCorners.PILL].position
 	size = rects[HudCorners.PILL].size
-	if shown.card:
+	if shown.card and rects.has(HudCorners.CARD):
 		card.position = rects[HudCorners.CARD].position
 		card.size = rects[HudCorners.CARD].size
 	_update_chip()
