@@ -113,7 +113,7 @@ func test_the_chips_are_fitted_again_when_the_room_shrinks() -> void:
 	assert_bool(_assert_fit("drawer", 5)).is_true()
 	_assert_stop_inside("drawer")
 	(_hud("BuildSidebar") as BuildSidebar).collapse()
-	await _turn(UiProfiles.by_name(&"web_phone_portrait"))  # Turned upright: narrower again.
+	await _turn(UiProfiles.portrait()[&"web_phone_portrait"])  # Turned upright: narrower again.
 	assert_int(_shown_chips()).is_less(5)
 	assert_bool(_assert_fit("turned", 5)).is_true()
 	_assert_stop_inside("turned")
@@ -129,7 +129,7 @@ func test_a_smaller_selection_leaves_no_stale_chip_or_plus_n() -> void:
 	await _select([])
 	assert_int(_shown_chips()).is_equal(0)
 	assert_bool(_more().visible).is_false()
-	await _open(UiProfiles.by_name(&"web_phone_portrait"))
+	await _open(UiProfiles.portrait()[&"web_phone_portrait"])
 	await _select(TYPES)
 	assert_bool(_more().visible).is_true()
 	await _select([TANK])
