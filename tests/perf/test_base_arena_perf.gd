@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The base arena's perf lines and cost bounds (plan row P93, ADR 0021 section 2, ADR 0013 section
-## 15). The seed-42 run of data/scenarios/perf_bases.tres (P80: both factions, about 30 buildings,
+## 15). The seed-42 run of data/scenarios/perf_bases.tres (P80: both factions, 28 buildings,
 ## 150 mobile rows, both strikes) is played for 900 ticks through TickJob.run() in SYNC, the way
 ## test_sim_perf.gd plays the perf arena: three runs with the GDScript phases and three with the C++
 ## kernels attached, in the order G N G N G N, with the reference loop timed before and after. The
@@ -9,20 +9,22 @@ extends GdUnitTestSuite
 ## P96 shows them beside the others. Without the library only the GDScript line prints, and a plain
 ## note stands in for the native one.
 ##
-## The lines are REPORT ONLY. No time is judged here: not the best mean, not a cap and not a ratio
-## to the perf arena. The `[bases]` section of budget.cfg is P93b's, once the last Phase 3 sim row
-## has merged. What the suite enforces is deterministic and read from the World, never from the
-## clock: the six runs end on the same state hash at every 15 ticks (the GDScript twins against the
-## kernels, ADR 0013 section 3), the World.stats maxima are the same in all six, and the three Phase
-## 3 counters stay inside their bounds (tests/perf/support/perf_bounds.gd, P49a's margin on the
-## measured maxima). The golden hashes are test_golden_hashes.gd's and the hash bytes
-## test_base_hash_bytes.gd's.
+## The native line is judged once (plan P93b, ADR 0021 section 1): its best mean and p95 at most the
+## limits of `[bases]` in tests/perf/budget.cfg, on the workload they are calibrated on (900 ticks
+## of 178 rows), through tests/perf/support/perf_budget.gd as test_sim_perf.gd judges `[sim]`. The
+## GDScript line stays report only, and a run without the library judges nothing. What else the
+## suite enforces is deterministic and read from the World, never from the clock: the six runs end
+## on the same state hash at every 15 ticks (the GDScript twins against the kernels, ADR 0013
+## section 3), the World.stats maxima are the same in all six, and the three Phase 3 counters stay
+## inside their bounds (tests/perf/support/perf_bounds.gd, P49a's margin on the measured maxima).
+## The golden hashes are test_golden_hashes.gd's and the hash bytes test_base_hash_bytes.gd's.
 ##
 ## The counters follow the arena. It has no building death (every building type stands for the whole
 ## run), so MEMORY_CHECKS here is the MEMORY phase alone; a death in sight adds the checks of the
 ## in-sight drop in REMOVE (LastSeen.forget_dead, P77b), which the bound's margin is for.
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
+const PerfBudget: GDScript = preload("res://tests/perf/support/perf_budget.gd")
 const PerfBounds: GDScript = preload("res://tests/perf/support/perf_bounds.gd")
 const Run: GDScript = preload("res://tests/perf/support/perf_run.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_bases.tres"
@@ -106,6 +108,20 @@ func test_the_base_arena_stays_inside_its_phase_3_cost_bounds_in_all_six_runs() 
 	assert_array(found).is_empty()
 	for stat: int in PerfBounds.base_cost_bounds():
 		assert_int(twin.stats_max[stat]).override_failure_message(str(stat)).is_greater(0)
+
+
+## The native line stays inside `[bases]` of budget.cfg: the best mean and p95 at most 1.5 x the
+## worst calibrated min-of-3, and 900 ticks of 178 rows, the workload of the calibration. The
+## budget is read from the file's own section, so the arena and the perf arena cannot swap limits.
+## The report is empty exactly when the library is absent (an independent source), so a suite that
+## lost its native runs cannot pass on an empty report. The headroom prints either way.
+func test_the_native_tick_stays_under_the_bases_budget() -> void:
+	var budget: Dictionary = PerfBudget.read(PerfBudget.PATH, PerfBudget.BASES_SECTION)
+	print(PerfBudget.status_line(_native_report, budget, "bases native"))
+	assert_bool(_native_report.is_empty()).is_equal(not ClassDB.class_exists(&"SimKernels"))
+	if _native_report.is_empty():
+		return
+	assert_array(PerfBudget.violations(_native_report, budget, PerfBudget.BASES_SECTION)).is_empty()
 
 
 ## The `PERF bases` line has the keys of the `PERF sim` line in the same order under its own head,

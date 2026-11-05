@@ -115,6 +115,36 @@ func test_the_status_line_shows_the_headroom_or_the_skip_note() -> void:
 		assert_bool(note.contains(rejected)).is_false()
 
 
+## [bases] is a section of the same file with the same four keys (plan P93b): the arena of 178 rows
+## (150 mobile units and its buildings), 900 ticks, times above 0 in order, over [sim]'s because the
+## base arena's tick costs more, and under the catastrophic cap. Each section is read on its own: a
+## config with only [sim] gives no [bases] budget and the other way round, so a section that is
+## missing is refused and never read from the other, and the refusal names the section asked for.
+func test_the_bases_section_holds_its_own_budget_for_the_178_row_arena() -> void:
+	var budget: Dictionary = PerfBudget.read(PerfBudget.PATH, PerfBudget.BASES_SECTION)
+	assert_array(budget.keys()).is_equal(["mean_ms", "p95_ms", "ticks", "units"])
+	assert_int(budget["ticks"]).is_equal(900)
+	assert_int(budget["units"]).is_equal(178)
+	assert_float(budget["mean_ms"]).is_greater(PerfBudget.read()["mean_ms"])
+	assert_float(budget["mean_ms"]).is_less_equal(budget["p95_ms"])
+	assert_float(budget["p95_ms"]).is_less(PerfReport.CATASTROPHIC_MEAN_MS)
+	var sim_only: ConfigFile = _config({})
+	assert_dict(PerfBudget.from_config(sim_only, PerfBudget.BASES_SECTION)).is_empty()
+	var bases_only: ConfigFile = ConfigFile.new()
+	for key: String in budget:
+		bases_only.set_value(PerfBudget.BASES_SECTION, key, budget[key])
+	assert_dict(PerfBudget.from_config(bases_only)).is_empty()
+	assert_dict(PerfBudget.from_config(bases_only, PerfBudget.BASES_SECTION)).is_equal(budget)
+	var refused: Array[String] = PerfBudget.violations({}, {}, PerfBudget.BASES_SECTION)
+	assert_str(refused[0]).contains("[bases]")
+	assert_str(PerfBudget.status_line(_report(0.3, 0.5), budget, "bases native")).is_equal(
+		(
+			"perf: bases native mean_ms 0.300 of the budget %.4f, p95_ms 0.500 of %.4f"
+			% [budget["mean_ms"], budget["p95_ms"]]
+		)
+	)
+
+
 func _budget(mean_ms: float, p95_ms: float) -> Dictionary:
 	return {"mean_ms": mean_ms, "p95_ms": p95_ms, "ticks": 900, "units": 150}
 

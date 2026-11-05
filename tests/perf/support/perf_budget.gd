@@ -7,6 +7,9 @@ extends RefCounted
 
 const PATH: String = "res://tests/perf/budget.cfg"
 const SECTION: String = "sim"
+## The section of the base arena (plan P93b, ADR 0021 section 1): the same four keys, calibrated on
+## the base arena's native tick (the `PERF bases impl=native` line), 900 ticks of 178 rows.
+const BASES_SECTION: String = "bases"
 ## The times that the report may not pass (the report's best mean and p95, ms per tick), and the
 ## workload that they are calibrated on (the report's ticks and units, which must be equal).
 const MS_KEYS: Array[String] = ["mean_ms", "p95_ms"]
@@ -21,22 +24,22 @@ const SKIPPED: String = (
 
 
 ## The budget of the file at `path`: mean_ms and p95_ms (floats) and ticks and units (ints); an
-## empty dictionary when the file cannot be read or does not hold all four in [sim].
-static func read(path: String = PATH) -> Dictionary:
+## empty dictionary when the file cannot be read or does not hold all four in `section`.
+static func read(path: String = PATH, section: String = SECTION) -> Dictionary:
 	var config: ConfigFile = ConfigFile.new()
 	if config.load(path) != OK:
 		return {}
-	return from_config(config)
+	return from_config(config, section)
 
 
 ## The budget that `config` holds, or an empty dictionary when one of the four is missing, of
 ## another type (a whole number is taken for a time) or not above 0.
-static func from_config(config: ConfigFile) -> Dictionary:
+static func from_config(config: ConfigFile, section: String = SECTION) -> Dictionary:
 	var budget: Dictionary = {}
 	for key: String in MS_KEYS + COUNT_KEYS:
-		if not config.has_section_key(SECTION, key):
+		if not config.has_section_key(section, key):
 			return {}
-		var value: Variant = config.get_value(SECTION, key)
+		var value: Variant = config.get_value(section, key)
 		var is_count: bool = key in COUNT_KEYS
 		if typeof(value) != TYPE_INT and (is_count or typeof(value) != TYPE_FLOAT):
 			return {}
@@ -49,10 +52,12 @@ static func from_config(config: ConfigFile) -> Dictionary:
 ## One line for each way that `report` (a PerfReport dictionary) fails `budget`: a ticks or units
 ## count that is not the budget's (the numbers are calibrated on that workload), a best mean or p95
 ## above its limit. An empty budget is refused with one line, so a missing file cannot pass.
-static func violations(report: Dictionary, budget: Dictionary) -> Array[String]:
+static func violations(
+	report: Dictionary, budget: Dictionary, section: String = SECTION
+) -> Array[String]:
 	var found: Array[String] = []
 	if budget.is_empty():
-		found.append("%s is missing or has no value above 0 for each of [%s]" % [PATH, SECTION])
+		found.append("%s is missing or has no value above 0 for each of [%s]" % [PATH, section])
 		return found
 	for key: String in COUNT_KEYS:
 		if report[key] != budget[key]:
@@ -67,12 +72,13 @@ static func violations(report: Dictionary, budget: Dictionary) -> Array[String]:
 
 ## The line the suite prints: each time of `report` against its limit, or SKIPPED for an empty
 ## report (no native line). Printed from the one statement that both paths run.
-static func status_line(report: Dictionary, budget: Dictionary) -> String:
+static func status_line(report: Dictionary, budget: Dictionary, label: String = "native") -> String:
 	if report.is_empty():
 		return SKIPPED
 	return (
-		"perf: native %s of the budget %s, %s of %s"
+		"perf: %s %s of the budget %s, %s of %s"
 		% [
+			label,
 			"mean_ms %.3f" % report["mean_ms"],
 			"%.4f" % budget.get("mean_ms", 0.0),
 			"p95_ms %.3f" % report["p95_ms"],
