@@ -4,9 +4,9 @@ extends Node2D
 ## children the engine sorts by their y every frame, so a unit standing south of a thing is drawn
 ## after it. A unit rig stands at its projected ground point (`UnitLayer`); a building stands at
 ## its footprint centre's (`BuildingLayer`, P115), which sorts a unit east or south of an n x n
-## footprint in front of it and one north or west behind it. Everything in it is a region of the one
-## per-match atlas in white, so the whole list is one draw call however types, owners and depths
-## interleave.
+## footprint in front of it and one north or west behind it. Everything drawn at its z is a region
+## of the one per-match atlas in white, so the whole list is one draw call however types, owners
+## and depths interleave. A rig's other children draw at their own z (shadow, ring, cargo bar).
 ## The node also owns the atlas of the match: `bake` rasterises the frames of every type the
 ## scenario registers, each player in its faction's art and its own triad (`IsoPlayerArt`,
 ## `IsoAtlas`), and `sync` does it again for a match whose art or players differ from what the
@@ -26,6 +26,9 @@ extends Node2D
 const Z_SORT: int = 10  ## Unit rigs and buildings.
 const Z_SHADOW: int = 2  ## A rig's Shadow, under the rings (3) and the fog (4).
 const Z_RING: int = 3
+## The health bars' z (`HealthBarLayer` in the scenes), after the sorted world. What is untextured
+## and rides a rig, as the cargo bar, draws here too, so the sorted world stays one atlas batch.
+const Z_BARS: int = 30
 const ART_SCALE: float = 0.5  ## World px per px of the 2x art, before the bake scale.
 const FACTION_FILE: String = "res://data/factions/%s.tres"
 const DEFAULT_FACTION: StringName = &"fossil"

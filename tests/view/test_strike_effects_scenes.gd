@@ -61,7 +61,7 @@ func test_both_scenes_wire_the_effects_to_the_decals_and_keep_the_z_table() -> v
 		var wired: Variant = _value(state, "EffectsLayer", &"decals")
 		assert_that(wired).override_failure_message(path).is_equal(NodePath("../DecalLayer"))
 		assert_int(int(_value(state, "DecalLayer", &"z_index", 0))).is_equal(1)
-		assert_int(int(_value(state, "HealthBarLayer", &"z_index", 0))).is_equal(30)
+		assert_int(int(_value(state, "HealthBarLayer", &"z_index", 0))).is_equal(WorldSort.Z_BARS)
 		assert_int(int(_value(state, "EffectsLayer", &"z_index", 0))).is_equal(50)
 
 
