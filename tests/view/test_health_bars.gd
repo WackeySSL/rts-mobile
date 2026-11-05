@@ -403,7 +403,7 @@ func test_the_main_scene_has_the_layer_at_z_30_between_the_units_and_the_markers
 	await await_idle_frame()  # _ready: every export is wired and the match runs.
 	var layer: HealthBarLayer = main.get_node("HealthBarLayer") as HealthBarLayer
 	assert_object(layer).is_not_null()
-	assert_int(layer.z_index).is_equal(30)  # ADR 0023 section 2, over the sorted world at 10.
+	assert_int(layer.z_index).is_equal(WorldSort.Z_BARS)  # ADR 0023 section 2, over the world at 10.
 	assert_bool(layer.z_as_relative).is_false()
 	assert_object(layer.runner).is_same(main.get_node("MatchRunner"))
 	assert_object(layer.unit_layer).is_same(main.get_node("UnitLayer"))

@@ -4,11 +4,12 @@ extends Node2D
 ## shows how full it is, read from the snapshot's `cargo` against the type's `type_harvest`. It is
 ## drawn in dp, so the node's scale is the world px of one dp (`UnitLayer` sets it from the dp and
 ## the camera zoom), and it redraws only when the filled step changes, so a rig that is followed
-## every frame allocates nothing. Empty is the bare outlined track, partly is an amber fill of 1 to
-## STEPS - 1 steps (never read as empty or full), full is the whole track in green with a bright
-## edge. The step, and the width, say it as well as the colour. The bar is a child of the rig that
-## `UnitLayer` makes for a type with a cargo capacity (`UnitLayer.CARGO_KIND`), so both factions'
-## tankers have it and a squad or a tank has none.
+## every frame allocates nothing. It draws at the health bars' z (`WorldSort.Z_BARS`), outside
+## the sort, as one untextured batch after the world (P84e). Empty is the bare outlined track,
+## partly is a gold fill of 1 to STEPS - 1 steps (never read as empty or full), full is the whole
+## track in gold with a white edge. The step, and the width, say it as well as the colour. The bar
+## is a child of the rig that `UnitLayer` makes for a type with a cargo capacity
+## (`UnitLayer.CARGO_KIND`), so both factions' tankers have it and a squad or a tank has none.
 
 const WIDTH_DP: int = 22  ## The track's outer width, as a vehicle's health bar.
 const HEIGHT_DP: int = 5  ## And height, with the edge.
@@ -42,6 +43,8 @@ static func steps_of(cargo: int, capacity: int) -> int:
 static func make(rig: Node2D) -> TankerCargo:
 	var bar: TankerCargo = TankerCargo.new()
 	bar.name = "Cargo"
+	# Untextured `draw_rect`s would break the sorted world's one atlas batch: draw with the bars.
+	bar.z_index = WorldSort.Z_BARS - WorldSort.Z_SORT
 	rig.add_child(bar)
 	return bar
 

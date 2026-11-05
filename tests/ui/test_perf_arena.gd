@@ -134,7 +134,7 @@ func test_the_three_layers_with_the_export_reveal_enemies_in_the_arena_and_not_i
 	assert_array([fog.z_index, fog.z_as_relative]).is_equal([4, false])
 	assert_object(fog.runner).is_same(arena.runner)
 	assert_array([arena.projectile_layer.z_index, arena.effects_layer.z_index]).is_equal([40, 50])
-	assert_int(arena.bar_layer.z_index).is_equal(30)
+	assert_int(arena.bar_layer.z_index).is_equal(WorldSort.Z_BARS)
 	assert_object(arena.world_sort).is_same(arena.get_node("WorldSort"))
 	assert_object(arena.unit_layer.world_sort).is_same(arena.world_sort)
 	assert_int(arena.world_sort.z_index).is_equal(WorldSort.Z_SORT)

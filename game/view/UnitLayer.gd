@@ -24,7 +24,7 @@ extends Node2D
 ## footprint is a building: no rig (a null in every per-row list), no ring, no pick, no unit bar.
 ## A selected unit has a Ring after the Shadow, under the sprites: the 2:1 ground ellipse of its
 ## selection radius (`ui/selection_ellipse.svg`). The Shadow draws at z 2 and the Ring at 3, the
-## rest in the sort at 10 (ADR 0023 section 2), so mixed types and owners still batch. The layer
+## rest in the sort at 10, a tanker's cargo bar at 30 (ADR 0023 section 2), so all batch. The layer
 ## also keeps, per row, the hp it last saw and the frame clock of the last hp drop
 ## (`hit_time_ms`), which the health bars read together with `is_ringed`.
 ## A tap picks a unit round its lifted centre: the ground point raised by its sheet's
@@ -594,7 +594,7 @@ func _row_position(row: int) -> Vector2:
 ## one, with the children Shadow, Hull and Turret on the atlas, where the sheet has the part, and a
 ## Marker where there is no art. It appends the sprites (null for a missing part) to `layers`, its
 ## sheet to `sheets` and its frames to `frames`. The Shadow draws at z 2, under the rings and the
-## fog, and the rest at the sort's z.
+## fog, and the rest at the sort's z (a tanker's cargo bar at 30).
 func _new_rig(
 	snap: MatchSnapshot,
 	row: int,
