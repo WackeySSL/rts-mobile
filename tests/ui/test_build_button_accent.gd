@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## BUILD's ring, disc and badge wear the local player's side (plan P120f): the accent is keyed by
+## BUILD's ring and disc wear the local player's side (plan P120f): the accent is keyed by
 ## the faction id (`type_faction` indexes `faction_ids`, in order of first appearance, so index 0
 ## is fossil on the Derrick League's routes), as the pause menu's is. A row without a faction is
 ## skipped.
@@ -103,3 +103,45 @@ func test_a_first_own_row_without_a_faction_is_skipped_and_the_id_decides() -> v
 		assert_object(button.disc_color).override_failure_message(str(accent)).is_equal(
 			button.get_theme_color(&"accent", accent)
 		)
+
+
+## No side to read: an id ACCENTS lacks, and no own row with a faction, both draw renew (a fresh
+## button each), and a side seen before is dropped when a snapshot names none.
+func test_an_unknown_id_or_no_own_faction_row_falls_back_to_renew() -> void:
+	get_window().size = ScreenSizes.LANDSCAPE[0]
+	await await_idle_frame()
+	var main: Node = auto_free(await MatchRig.open(self))
+	(main.get_node("MatchRunner") as MatchRunner).paused = true
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = main.get_node("MatchRunner").scenario
+	var button: BuildButton = main.get_node("Hud/BuildButton")
+	button.runner = runner
+	var world: World = Sw.world()
+	Sw.own(world, ["headquarters", "power_plant"])
+	var renew: Color = button.get_theme_color(&"accent", &"AccentRenew")
+	for case: String in ["unknown", "none", "dropped"]:
+		var snap: MatchSnapshot = Sw.snapshot(world, 0)
+		snap.faction_ids = _ids([&"martian"] if case == "unknown" else [&"fossil", &"renew"])
+		if case == "unknown":
+			snap.type_faction.fill(0)
+		else:
+			snap.type_faction.fill(-1)
+		if case == "dropped":  # Fossil first, then a snapshot without a faction.
+			var named: MatchSnapshot = Sw.snapshot(world, 0)
+			named.faction_ids = _ids([&"fossil", &"renew"])
+			named.type_faction.fill(0)
+			runner.snapshot = named
+			button.refresh(named)
+			await await_idle_frame()
+			assert_object(button.disc_color).is_not_equal(renew)
+		runner.snapshot = snap
+		button.refresh(snap)
+		await await_idle_frame()
+		await await_idle_frame()
+		assert_object(button.disc_color).override_failure_message(case).is_equal(renew)
+
+
+func _ids(ids: Array) -> Array[StringName]:
+	var typed: Array[StringName] = []
+	typed.assign(ids)
+	return typed

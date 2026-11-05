@@ -303,15 +303,10 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	await await_idle_frame()
 	assert_bool(_button.stalled).is_true()
 	var grey: Color = _button.get_theme_color(&"ring_stalled", BuildButton.STALLED)
-	# The side of player 1's buildings in this world, by id (index 0 of `faction_ids` is not "renew").
-	var side: StringName = &""
-	var own: MatchSnapshot = Sw.snapshot(world, 0)
-	for row: int in own.unit_id.size():
-		if own.owner[row] == 1:
-			side = own.faction_ids[own.type_faction[own.type_index[row]]]
-			break
-	var faction: Color = _button.get_theme_color(&"light", BuildButton.ACCENTS[side])
-	assert_bool(grey.is_equal_approx(faction)).is_false()
+	var lights: Array[Color] = []  # Whichever side player 1 is, the grey is none of them.
+	for accent: StringName in BuildButton.ACCENTS.values():
+		lights.append(_button.get_theme_color(&"light", accent))
+		assert_bool(grey.is_equal_approx(lights[-1])).is_false()
 	# What _draw really did: the grey arc and the "!" disc.
 	assert_bool(_button.ring_drawn).is_true()
 	assert_bool(_button.ring_color.is_equal_approx(grey)).is_true()
@@ -329,7 +324,10 @@ func test_the_stalled_look_redraws_once_per_change_and_nothing_per_snapshot() ->
 	assert_bool(_button.stalled).is_false()
 	assert_int(_button.draws).is_equal(drawn + 1)
 	assert_bool(_button.ring_drawn).is_true()
-	assert_bool(_button.ring_color.is_equal_approx(faction)).is_true()  # The faction's, no mark.
+	var wears: bool = false  # The faction's light, no mark.
+	for light: Color in lights:
+		wears = wears or _button.ring_color.is_equal_approx(light)
+	assert_bool(wears).is_true()
 	assert_bool(_button.mark_drawn).is_false()
 	# The comparison keeps its numbers in arrays made once: `refresh` makes nothing.
 	var source: String = FileAccess.get_file_as_string("res://game/ui/BuildButton.gd")

@@ -40,6 +40,7 @@ const MARK: String = "!"
 const ACCENTS: Dictionary[StringName, StringName] = {
 	&"renew": &"AccentRenew", &"fossil": &"AccentFossil"
 }
+## The side drawn before a snapshot names one, and when none of the player's rows does.
 const FALLBACK_SIDE: StringName = &"renew"
 
 @export var runner: MatchRunner
@@ -164,17 +165,18 @@ func refresh(snap: MatchSnapshot) -> void:
 			_before_count[tab] = filled
 			_before_done[tab] = done
 	_compared = key
+	var side: StringName = FALLBACK_SIDE
 	for row: int in snap.unit_id.size():
 		if snap.owner[row] == player:
 			var index: int = snap.type_faction[snap.type_index[row]]
 			if index < 0 or index >= snap.faction_ids.size():
 				continue  # A row without a faction is skipped, as BuildSidebar skips it.
-			var side: StringName = snap.faction_ids[index]
-			if ACCENTS.has(side):
-				if side != _side:
-					_side = side
-					queue_redraw()
+			if ACCENTS.has(snap.faction_ids[index]):
+				side = snap.faction_ids[index]
 				break
+	if side != _side:
+		_side = side
+		queue_redraw()
 	var halted: bool = waiting and (stalled if not compare else not moved)
 	if finished != ready_type:
 		_show_ready(snap, finished)
