@@ -223,31 +223,36 @@ func test_the_pill_stands_in_the_corner_and_stays_clear_of_the_scope() -> void:
 	assert_float(out[HudCorners.PILL].size.x).is_equal(HudCorners.PILL_MAX_DP)
 
 
-func test_the_pill_folds_with_the_drawer_open_and_the_toast_starts_at_the_edge() -> void:
+func test_the_pill_stays_in_its_corner_with_the_drawer_open_and_ends_short_of_the_panel() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
 	shown.pill_width = 900.0
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
-	assert_bool(out.has(HudCorners.PILL)).is_false()  # The drawer's head shows the economy.
-	# Centred in 0..456 (from the safe edge, short of the panel by a gap).
-	_assert_rect(out[HudCorners.TOAST], Rect2(88.0, 0.0, 280.0, 48.0))
+	# The panel is at 464: the widest pill (372) ends a gap short of it; the toast, with 76 dp left
+	# of the panel, stands under the top line, right of the group column.
+	_assert_rect(out[HudCorners.PILL], Rect2(0.0, 0.0, 372.0, 48.0))
+	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 64.0, 280.0, 48.0))
+	shown.pill_width = 0.0
+	out = _place(Rect2(0.0, 0.0, 776.0, 280.0), false, shown)
+	_assert_rect(out[HudCorners.PILL], Rect2(0.0, 0.0, 200.0, 48.0))
+	_assert_rect(out[HudCorners.TOAST], Rect2(208.0, 0.0, 248.0, 48.0))  # Between pill and panel.
+	shown.pill_width = 900.0
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)
-	assert_bool(out.has(HudCorners.PILL)).is_false()
+	_assert_rect(out[HudCorners.PILL], Rect2(0.0, 0.0, 272.0, 48.0))  # Short of the scope, as shut.
 	assert_bool(out.has(HudCorners.SCOPE)).is_true()  # The scope stays over the sheet.
+	assert_bool(out[HudCorners.PILL].intersects(out[HudCorners.DRAWER])).is_false()
 
 
-## Where the room from the edge to the panel is under `TOAST_LEAST_DP` (the pill is folded, so the
-## room starts at the pill's place), the toast stands under the top line, from the edge or, where
-## the group column stands there, a gap right of the column (it is 56 dp wide: 64).
-func test_a_folded_pill_leaves_the_toast_its_least_width_or_the_top_line() -> void:
+## A narrow room left of the panel narrows the pill (never under its 48 dp height) and sends the
+## toast to the top line, from the edge or, where the group column stands there, a gap right of it.
+func test_a_narrow_room_beside_the_panel_narrows_the_pill_and_sends_the_toast_down() -> void:
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
-	var safe: Rect2 = Rect2(0.0, 0.0, 500.0, 280.0)  # Panel at 188..500: 0..180 is under the least.
-	var out: Dictionary[StringName, Rect2] = _place(safe, false, shown)
+	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 500.0, 280.0), false, shown)
+	assert_float(out[HudCorners.PILL].end.x).is_equal(180.0)  # Panel at 188: a gap short of it.
 	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 64.0, 116.0, 48.0))
-	safe = Rect2(0.0, 0.0, 520.0, 280.0)  # 0..200 is exactly the least width: on the top line.
-	out = _place(safe, false, shown)
+	out = _place(Rect2(0.0, 0.0, 900.0, 280.0), false, shown)  # Panel at 540: room for both.
 	assert_float(out[HudCorners.TOAST].position.y).is_equal(0.0)
-	assert_float(out[HudCorners.TOAST].size.x).is_greater_equal(HudCorners.TOAST_LEAST_DP)
-	assert_float(out[HudCorners.TOAST].position.x).is_greater_equal(0.0)
+	assert_bool(out[HudCorners.TOAST].intersects(out[HudCorners.PILL])).is_false()
+	assert_float(out[HudCorners.TOAST].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
 
 
 func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_half_sheet() -> void:
@@ -258,10 +263,11 @@ func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_h
 	_assert_rect(out[HudCorners.DRAWER], Rect2(534.0, 0.0, 356.0, 387.0))
 	out = _place(Rect2(0.0, 0.0, 1400.0, 700.0), false, shown)
 	assert_float(out[HudCorners.DRAWER].size.x).is_equal(420.0)
-	# Beside the panel: the bar and the groups; under it: the right column and the pill.
+	# Beside the panel: the pill, the bar and the groups; under it: the right column.
 	assert_array(out.keys()).contains_exactly_in_any_order(
 		[
 			HudCorners.DRAWER,
+			HudCorners.PILL,
 			HudCorners.BAR,
 			HudCorners.group_key(0),
 			HudCorners.group_key(1),
@@ -272,7 +278,9 @@ func test_the_drawer_is_a_side_panel_of_40_percent_between_312_and_420_dp_or_a_h
 	assert_float(out[HudCorners.BAR].end.x).is_less_equal(out[HudCorners.DRAWER].position.x - 8.0)
 	out = _place(Rect2(0.0, 0.0, 336.0, 676.0), true, shown)  # The sheet: the scope stays.
 	_assert_rect(out[HudCorners.DRAWER], Rect2(0.0, 338.0, 336.0, 338.0))
-	assert_array(out.keys()).contains_exactly_in_any_order([HudCorners.DRAWER, HudCorners.SCOPE])
+	assert_array(out.keys()).contains_exactly_in_any_order(
+		[HudCorners.DRAWER, HudCorners.SCOPE, HudCorners.PILL]
+	)
 	out = _place(Rect2(0.0, 0.0, 776.0, 300.0), true, shown)  # Half of 300 is under 312.
 	assert_float(out[HudCorners.DRAWER].size.y).is_equal(300.0)
 
@@ -294,7 +302,7 @@ func test_the_toast_sits_between_the_pill_and_the_scope_or_under_the_pill() -> v
 	assert_bool(open.has(HudCorners.TOAST)).is_false()  # Never beside the full map.
 	var panel: Dictionary[StringName, Rect2] = _place(
 		Rect2(0.0, 0.0, 890.0, 387.0), false, _shown(["toast", "drawer"])
-	)  # No pill, no scope: from the safe edge to the panel.
+	)  # The pill at the edge, no scope: the toast stands between the pill and the panel.
 	assert_float(panel[HudCorners.TOAST].end.x).is_less_equal(
 		panel[HudCorners.DRAWER].position.x - 8.0
 	)
@@ -680,6 +688,10 @@ func test_sideways_the_column_stands_under_the_pill_and_the_short_toast_clear_of
 				var rect: Rect2 = out[HudCorners.group_key(index)]
 				var toast: Rect2 = out[HudCorners.TOAST]
 				assert_bool(rect.intersects(toast)).override_failure_message(why).is_false()
-				assert_bool(out.has(HudCorners.PILL)).override_failure_message(why).is_false()
+				(
+					assert_bool(rect.intersects(out[HudCorners.PILL]))
+					. override_failure_message(why)
+					. is_false()
+				)
 			checked += 1
 	assert_int(checked).is_greater(10)

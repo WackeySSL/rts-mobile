@@ -144,13 +144,13 @@ func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 			assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
 			assert_int(_told).override_failure_message(note).is_equal(0)
 		assert_int(card.shakes).override_failure_message(why).is_equal(shakes + 1)  # A locked card.
-		# Upright the sheet covers the group column, so a tap at its centre may land on an item of the
-		# queue row (P120b), which cancels it: at most such CANCELs, and nothing sideways.
+		# Upright the sheet covers the group column, so a tap at its centre may land on a card, which
+		# queues one: at most such QUEUEs, and nothing at all sideways.
 		for command: Command in _sent:
 			assert_bool(HudLayout.is_portrait()).override_failure_message(why).is_true()
-			assert_int(command.type).override_failure_message(why).is_equal(Command.Type.CANCEL)
+			assert_int(command.type).override_failure_message(why).is_equal(Command.Type.QUEUE)
 		_sent.clear()
-		# A hold on a locked card (it shakes, nothing is queued), then a scroll of the row.
+		# A hold on a locked card (nothing is queued, nothing is cancelled), then a scroll of the row.
 		var at: Vector2 = card.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, at)
 		_now_ms += _touch.settings.long_press_ms
@@ -411,16 +411,19 @@ func test_a_match_starts_closed_and_build_close_and_the_map_unfold_it() -> void:
 
 
 ## ADR 0025 section 5: a drag toward the edge the drawer came from, past `drawer_swipe_dp`, closes
-## it. Landscape: any horizontal drag on the panel; upright: one that starts on the head, while a
-## vertical drag on the grid scrolls it and a drag the wrong way or too short closes nothing.
-func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_head() -> void:
+## it. Landscape: any horizontal drag on the panel; upright: one that starts on the handle or on the
+## tabs row, while a vertical drag on the grid scrolls it and a drag the wrong way or too short
+## closes nothing.
+func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_handle() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
 		var portrait: bool = HudLayout.is_portrait()
 		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
 		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
-		var head: Vector2 = (_hud("Head") as Control).get_global_rect().get_center() - toward * 8.0
+		var head: Vector2 = (
+			(_hud("Grab" if portrait else "Tabs") as Control).get_global_rect().get_center()
+		)
 		var grid: Vector2 = (_hud("Tile_power_plant") as Control).get_global_rect().get_center()
 		var panel: Vector2 = head if portrait else grid
 		_swipe(panel, -toward * far)  # The wrong way.
@@ -432,7 +435,15 @@ func test_a_swipe_toward_the_edge_closes_the_drawer_from_the_panel_or_the_head()
 		else:
 			_swipe(head, Vector2(0.0, far * 1.5))  # Vertical: the grid scrolls.
 			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		_swipe(panel, toward * far)
+		if portrait:  # The tabs row is a swipe zone as much as the 8 dp handle strip is.
+			_swipe((_hud("Tabs") as Control).get_global_rect().get_center(), toward * far)
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+			_sidebar.open()
+			await _settle()
+			var strip: Vector2 = (_hud("Grab") as Control).get_global_rect().get_center()
+			_swipe(strip, toward * far)
+		else:
+			_swipe(panel, toward * far)
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		assert_int(_told).override_failure_message(why).is_equal(0)
 
@@ -446,7 +457,7 @@ func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again
 		var portrait: bool = HudLayout.is_portrait()
 		var toward: Vector2 = Vector2(0.0, 1.0) if portrait else Vector2(1.0, 0.0)
 		var far: float = UiScale.dp(_touch.settings.drawer_swipe_dp) + 10.0
-		var zone: Control = (_hud("Head") if portrait else _hud("Backdrop")) as Control
+		var zone: Control = (_hud("Grab") if portrait else _hud("Backdrop")) as Control
 		var from: Vector2 = zone.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, from)  # On the drawer.
 		_sidebar.collapse()  # It folds under the finger,
@@ -457,20 +468,40 @@ func test_a_finger_down_when_the_drawer_folds_swipes_nothing_when_it_opens_again
 		TouchEvents.release(get_viewport(), 0, from + toward * far)
 
 
-## The pill folds while the drawer is open (P120d: the drawer's head shows the economy) and is back,
-## where it was, when the drawer closes.
-func test_the_pill_folds_while_the_drawer_is_open() -> void:
+## The pill stays where it is while the drawer is open (Michael, 2026-11-05) and the two do not
+## overlap, at every size. A tap on the pill opens the economy card, which closes the drawer.
+func test_the_pill_stays_while_the_drawer_is_open_and_clear_of_it() -> void:
+	var screens: Array[Array] = []
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, null, false, false)
+		screens.append([size, null])
+	for profile: StringName in [&"web_phone_small", &"web_phone_portrait"]:  # The narrowest.
+		var metrics: UiMetrics = UiProfiles.by_name(profile)
+		screens.append([metrics.window_size, metrics])
+	for screen: Array in screens:
+		var size: Vector2i = screen[0]
+		await _open(size, screen[1], false, false)
+		var why: String = str(size)
 		var pill: Control = _hud("EconomyPill") as Control
 		var before: Rect2 = pill.get_global_rect()
 		_sidebar.open()
 		await _settle()
-		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_false()
-		_sidebar.collapse()
+		assert_bool(pill.is_visible_in_tree()).override_failure_message(why).is_true()
+		assert_bool(pill.get_global_rect() == before).override_failure_message(why).is_true()
+		var drawer: Rect2 = _rect_of("Backdrop")
+		(
+			assert_bool(pill.get_global_rect().intersects(drawer))
+			. override_failure_message(why)
+			. is_false()
+		)
+		var tap: Vector2 = pill.find_child("CreditsTap", true, false).get_global_rect().get_center()
+		TouchEvents.press(get_viewport(), 0, tap)
+		TouchEvents.release(get_viewport(), 0, tap)
 		await _settle()
-		assert_bool(pill.is_visible_in_tree()).override_failure_message(str(size)).is_true()
-		assert_bool(pill.get_global_rect() == before).override_failure_message(str(size)).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+
+
+func _rect_of(node_name: String) -> Rect2:
+	return (_hud(node_name) as Control).get_global_rect()
 
 
 func _swipe(from: Vector2, by: Vector2) -> void:

@@ -45,4 +45,3 @@ extends Resource
 @export var attack_cue_ms: int = 4000
 @export var attack_cue_area_tiles: int = 12
 @export var drawer_swipe_dp: float = 48.0  ## A drag past this toward its edge closes the drawer.
-@export var queue_hold_count: int = 5  ## A long-press on a unit card queues up to this many.

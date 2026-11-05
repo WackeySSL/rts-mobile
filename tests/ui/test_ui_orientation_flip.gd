@@ -308,7 +308,7 @@ func _sidebar_state(sidebar: BuildSidebar) -> Dictionary:
 		"tab_aligns": aligns,
 		"icon_widths": icon_widths,
 		"items_min": sidebar._items.custom_minimum_size,
-		"head_min": sidebar._head.custom_minimum_size,
+		"grab_min": sidebar._grab.custom_minimum_size,
 	}
 
 

@@ -1,15 +1,10 @@
 extends GdUnitTestSuite
-## The drawer's queue row, the card words and the hold (plan P120b, ADR 0025 section 5), in the
-## main scene: the row names the producer and the count, shows one 56 dp thumb per queue slot (the
-## items, the head's bar, dashed empties), a tap on an item sends `CANCEL [tab, slot]` with the
-## haptic and the row then takes no tap until another snapshot is published; a locked card says
-## the missing building's name, a full queue's card "FULL". Layout at the six sizes of
-## ScreenSizes.ALL and on the smallest web phone.
+## The card words and the padlock (plan P120b, ADR 0025 section 5), in the main scene: a locked card
+## says the missing building's name, a full queue's card "FULL", the words stay inside the card and
+## clear of the padlock whatever the name, and the padlock stands in one place.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
-const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const Sw: GDScript = preload("res://tests/ui/support/sidebar_world.gd")
 const BASE: Array[String] = [
 	"headquarters", "power_plant", "barracks", "refinery", "vehicle_factory"
@@ -40,168 +35,6 @@ func after_test() -> void:
 
 func before_test() -> void:
 	MenuRig.begin()
-
-
-func test_the_row_has_a_thumb_per_slot_inside_the_drawer_at_every_size() -> void:
-	var screens: Array = []
-	for size: Vector2i in ScreenSizes.ALL:
-		screens.append([size, null, str(size)])
-	var small: UiMetrics = UiProfiles.by_name(&"web_phone_small")
-	screens.append([small.window_size, small, "web_phone_small"])
-	for entry: Array in screens:
-		await _open(entry[0], entry[1])
-		var world: World = Sw.world()
-		Sw.own(world, BASE)
-		Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad"], 100)
-		await _publish(world)
-		_sidebar.select_tab(World.Tab.INFANTRY)
-		await _settle()
-		var why: String = str(entry[2])
-		var row: QueueRow = _row()
-		var back: Rect2 = _sidebar.find_child("Backdrop", true, false).get_global_rect()
-		var slots: int = BuildSidebar._queue_slots(Sw.snapshot(world))
-		assert_int(row.thumb_count()).override_failure_message(why).is_equal(slots)
-		var safe: Rect2 = SafeAreaMargin.rect_inside(
-			get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
-		)
-		# The row fits the content: the backdrop is no wider than the drawer (it would be placed
-		# short of the holder's edge and clip its padding otherwise).
-		var wide: float = (
-			_sidebar._rect.size.x + (0.0 if HudLayout.is_portrait() else _sidebar._edge)
-		)
-		(
-			assert_float((_sidebar.find_child("Backdrop", true, false) as Control).size.x)
-			. override_failure_message(why)
-			. is_less_equal(wide + 0.5)
-		)
-		(
-			assert_float(
-				(
-					(_sidebar.find_child("Backdrop", true, false) as Control)
-					. get_combined_minimum_size()
-					. x
-				)
-			)
-			. override_failure_message(why)
-			. is_less_equal(wide + 0.5)
-		)
-		for slot: int in slots:
-			var rect: Rect2 = row.thumb(slot).get_global_rect()
-			var least: float = UiScale.dp(QueueRow.THUMB_DP) - 0.5
-			var narrow: float = UiScale.dp(QueueRow.THUMB_LEAST_DP) - 0.5
-			assert_float(rect.size.x).override_failure_message(why).is_greater_equal(narrow)
-			assert_float(rect.size.y).override_failure_message(why).is_greater_equal(least)
-			assert_bool(back.grow(1.5).encloses(rect)).override_failure_message(why).is_true()
-			assert_bool(safe.grow(1.5).encloses(rect)).override_failure_message(why).is_true()
-
-
-func test_the_row_names_the_producer_and_counts_the_queue_and_shows_the_head() -> void:
-	await _open(&"android_6in")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad", "rifle_squad"], 100)
-	await _publish(world)
-	_sidebar.select_tab(World.Tab.INFANTRY)
-	await _settle()
-	var label: Label = _row().find_child("Label", true, false)
-	var maker: String = world.type_names[Sw.type_of(world, "barracks")]
-	assert_str(label.text).is_equal("%s  3 IN QUEUE" % maker)
-	assert_bool(_row().thumb(0).head).is_true()
-	assert_float(_row().thumb(0).share).is_greater(0.0)
-	assert_bool(_row().thumb(1).head).is_false()
-	assert_int(_row().thumb(3).type_index).is_equal(-1)  # An empty slot is dashed.
-	assert_int(_row().thumb(2).type_index).is_equal(Sw.type_of(world, "rifle_squad"))
-	_sidebar.select_tab(World.Tab.VEHICLES)  # Its own queue, empty.
-	await _settle()
-	assert_str(label.text).ends_with("0 IN QUEUE")
-	assert_int(_row().thumb(0).type_index).is_equal(-1)
-
-
-func test_a_tap_on_an_item_cancels_that_slot_and_the_row_waits_past_the_commands_tick() -> void:
-	await _open(&"android_6in")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad", "rifle_squad"])
-	await _publish(world, 10)
-	_sidebar.select_tab(World.Tab.INFANTRY)
-	await _settle()
-	_tap_thumb(1)
-	assert_int(_sent.size()).is_equal(1)
-	assert_int(_sent[0].type).is_equal(Command.Type.CANCEL)
-	assert_int(_sent[0].player_id).is_equal(1)
-	assert_array(_sent[0].payload).is_equal([World.Tab.INFANTRY, 1])
-	assert_array(_buzzed).is_equal([15])
-	assert_bool(_row().is_waiting()).is_true()
-	_tap_thumb(0)  # A quick second tap: the first cancel has shifted the slots.
-	_tap_thumb(1)
-	assert_int(_sent.size()).is_equal(1)
-	# The runner has not stamped the Command yet: no snapshot ends the wait.
-	await _publish(world, 11)
-	assert_bool(_row().is_waiting()).is_true()
-	# Stamped with tick 12 (drained into job 12): the snapshot of tick 12 does not hold it yet
-	# (WORKER mode publishes job N before it drains the queue into N + 1), the one past it does.
-	_sent[0].tick = 12
-	await _publish(world, 12)
-	assert_bool(_row().is_waiting()).is_true()
-	_tap_thumb(0)
-	assert_int(_sent.size()).is_equal(1)
-	await _publish(world, 13)
-	assert_bool(_row().is_waiting()).is_false()
-	_tap_thumb(0)
-	assert_int(_sent.size()).is_equal(2)
-	assert_array(_sent[1].payload).is_equal([World.Tab.INFANTRY, 0])
-	await _publish(world, 14)
-	_tap_thumb(4)  # An empty slot sends nothing.
-	assert_int(_sent.size()).is_equal(2)
-
-
-func test_a_tab_change_ends_the_wait_and_a_swipe_on_a_thumb_is_no_tap() -> void:
-	await _open(&"android_6in")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad"])
-	Sw.enqueue(world, World.Tab.VEHICLES, ["light_tank", "harvester"])
-	await _publish(world, 10)
-	_sidebar.select_tab(World.Tab.INFANTRY)
-	await _settle()
-	_tap_thumb(0)
-	assert_bool(_row().is_waiting()).is_true()
-	_sidebar.select_tab(World.Tab.VEHICLES)  # Another queue: nothing there was shifted.
-	await _settle()
-	assert_bool(_row().is_waiting()).is_false()
-	_tap_thumb(1)
-	assert_array(_sent[-1].payload).is_equal([World.Tab.VEHICLES, 1])
-	await _publish(world, 20)
-	_sent[-1].tick = 5
-	await _publish(world, 21)
-	# A finger that moves beyond the slop across a thumb and lifts on it sends nothing.
-	var count: int = _sent.size()
-	var thumb: Control = _row().thumb(0)
-	var at: Vector2 = thumb.get_global_rect().get_center()
-	var by: float = UiScale.dp(20.0)
-	TouchEvents.press(get_viewport(), 0, at)
-	TouchEvents.drag(get_viewport(), 0, at + Vector2(by, 0.0), Vector2(by, 0.0))
-	TouchEvents.release(get_viewport(), 0, at)
-	assert_int(_sent.size()).is_equal(count)
-
-
-func test_the_row_follows_the_open_tab_and_every_queue_cancels() -> void:
-	await _open(&"android_6in")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.STRUCTURES, ["power_plant"])
-	Sw.enqueue(world, World.Tab.VEHICLES, ["light_tank", "harvester"])
-	await _publish(world)
-	assert_int(_row().thumb(0).type_index).is_equal(Sw.type_of(world, "power_plant"))
-	_sidebar.select_tab(World.Tab.VEHICLES)
-	await _settle()
-	assert_int(_row().thumb(1).type_index).is_equal(Sw.type_of(world, "harvester"))
-	_tap_thumb(1)
-	assert_array(_sent[0].payload).is_equal([World.Tab.VEHICLES, 1])
-	_sidebar.select_tab(World.Tab.STRUCTURES)  # Ends the wait: a different queue.
-	await _settle()
-	_tap_thumb(0)
-	assert_array(_sent[1].payload).is_equal([World.Tab.STRUCTURES, 0])
 
 
 func test_a_locked_card_says_what_it_needs_and_a_full_queue_says_full() -> void:
@@ -378,24 +211,8 @@ func test_the_first_line_of_the_word_clears_the_padlock() -> void:
 
 
 ## A match that starts again in the scene forgets the cancel in flight (its tick is the old one's).
-func test_a_new_match_releases_the_queue_row() -> void:
-	await _open(&"android_6in")
-	var world: World = Sw.world()
-	Sw.own(world, BASE)
-	Sw.enqueue(world, World.Tab.INFANTRY, ["rifle_squad", "rocket_squad"])
-	await _publish(world, 50)
-	_sidebar.select_tab(World.Tab.INFANTRY)
-	await _settle()
-	_tap_thumb(0)
-	_sent[0].tick = 500
-	assert_bool(_row().is_waiting()).is_true()
-	_runner.snapshot = Sw.snapshot(world, 1)  # Another match serial.
-	_runner.snapshot.tick = 2
-	_sidebar.refresh()
-	assert_bool(_row().is_waiting()).is_false()
 
 
-## The width of the first line of `text` wrapped at the label's width (words kept whole).
 func _first_line_width(label: Label, text: String) -> float:
 	var font: Font = label.get_theme_font(&"font")
 	var font_size: int = label.get_theme_font_size(&"font_size")
@@ -426,17 +243,8 @@ func _display_names() -> PackedStringArray:
 	return found
 
 
-func _row() -> QueueRow:
-	return _sidebar.find_child("QueueRow", true, false) as QueueRow
-
-
 func _tile(id: String) -> ItemTile:
 	return _sidebar.find_child("Tile_" + id, true, false) as ItemTile
-
-
-## A tap on the thumb of `slot`, through the button's own signal.
-func _tap_thumb(slot: int) -> void:
-	_row().thumb(slot).pressed.emit()
 
 
 func _publish(world: World, tick: int = 0) -> void:
