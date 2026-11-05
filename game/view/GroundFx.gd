@@ -12,6 +12,10 @@ extends Node2D
 ## into view does not start with a debt). The ring overwrites its oldest puff when full, and
 ## dust never takes a slot of another kind. With `life.reduced` nothing is born and the ring is
 ## emptied; a new match empties it too.
+## A vehicle or a squad that is made (a SPAWNED record of a mobile type) leaves one puff at its
+## factory's exit, the point the record carries, in the same ring and under the same rules (an own
+## unit, or a source tile the local player sees; the view rect; `reduced` and `dust_slots` of 0 turn
+## it off). A DIED record, cancelled or not, draws nothing here.
 ## A puff lives `dust_life_ms` of match time (`LifeClock`): it grows from `dust_grow_from` to
 ## `dust_grow_to` times its frame and fades from `dust_alpha` to 0. Which of the three frames it
 ## shows is `LifeClock.pick` of the unit id and the tick, so two runs draw the same puffs.
@@ -21,6 +25,8 @@ const KIND: StringName = &"dust"
 const Z: int = 3
 ## The salt of `LifeClock.mix` for the dust frame (RigLife's idle salts are 0x1... to 0x3...).
 const SALT_DUST: int = 0x40000000
+## The frame of the puff at a factory's exit.
+const SALT_EXIT: int = 0x41000000
 ## The view rect is grown by a tile before a puff asks whether it is in it.
 const VIEW_MARGIN_PX: float = IsoProjection.HALF_W * 2.0
 
@@ -176,9 +182,16 @@ func _on_ticked(_tick: int) -> void:
 	if snap == null or life == null:
 		return
 	_follow_match(snap)
-	if life.reduced or life.dust_every_milli <= 0:
+	if life.reduced:
 		return
 	_make_ring_if_resized()
+	var player: int = FogLayer.local_player_of(runner)
+	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
+	if camera != null:
+		view = camera.visible_world_rect().grow(VIEW_MARGIN_PX)
+	_exit_puffs(snap, view, player)
+	if life.dust_every_milli <= 0:
+		return
 	_sync_rows(snap)
 	var every: int = life.dust_every_milli
 	var back: int = life.dust_back_milli
@@ -192,10 +205,6 @@ func _on_ticked(_tick: int) -> void:
 	var cur_y: PackedInt32Array = snap.pos_y
 	var owners: PackedInt32Array = snap.owner
 	var ids: PackedInt32Array = snap.unit_id
-	var player: int = FogLayer.local_player_of(runner)
-	var view: Rect2 = Rect2()  # Without a camera nothing is in view.
-	if camera != null:
-		view = camera.visible_world_rect().grow(VIEW_MARGIN_PX)
 	for row: int in ids.size():
 		var type: int = types[row]
 		if speeds[type] <= 0 or armours[type] == World.Armour.INFANTRY:
@@ -224,6 +233,34 @@ func _on_ticked(_tick: int) -> void:
 		)
 		if view.has_point(spot):
 			_add(spot, tick, LifeClock.pick(ids[row], SALT_DUST + tick, _regions.size()))
+
+
+## A puff at the exit of each factory that made a vehicle or a squad in this tick: the SPAWNED
+## record of a mobile type, `[SPAWNED, id, x, y, type index, owner]`.
+func _exit_puffs(snap: MatchSnapshot, view: Rect2, player: int) -> void:
+	var events: PackedInt32Array = snap.events
+	var speeds: PackedInt32Array = snap.type_speed
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] != World.Event.SPAWNED:
+			continue
+		var type: int = events[at + 4]
+		if type < 0 or type >= speeds.size() or speeds[type] <= 0:
+			continue  # A building or a site: it has no exit.
+		var x: int = events[at + 2]
+		var y: int = events[at + 3]
+		if (
+			not reveal_enemies
+			and events[at + 5] != player
+			and not FogLayer.is_seen(snap, player, x, y)
+		):
+			continue
+		var spot: Vector2 = IsoProjection.ground_to_px(x, y)
+		if view.has_point(spot):
+			_add(
+				spot,
+				snap.tick,
+				LifeClock.pick(events[at + 1], SALT_EXIT + snap.tick, _regions.size())
+			)
 
 
 ## Keeps `_travel` aligned with the snapshot's rows: when the rows change, each unit that is still

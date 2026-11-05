@@ -30,8 +30,9 @@ extends Node2D
 ## The hit ring (`HitFx`, ADR 0029 section 7: the flash and chips where a shot hits a shown
 ## building) is a third ring, planned and drawn with the others, and so is the collapse ring
 ## (`CollapseFx`, section 8: the flash, fire, dust and debris of a building that falls), and a
-## fourth holds the small puffs (`PuffFx`, plan P149: the muzzle smoke of a shot and the exhaust of
-## a vehicle, which `reduced` takes out of it).
+## fourth holds the small puffs (`PuffFx`, plans P149 and P150: the muzzle smoke of a shot and the
+## exhaust of a vehicle, which `reduced` takes out of it, and the sparks of a construction site,
+## which it keeps).
 ## The damage ring (`DamageFx`, `FxRing`, ADR 0029 section 6) is a second ring of its own, planned
 ## and drawn in the same `_draw` from the same texture; every glow of it is drawn before every
 ## other quad, and a switch to `reduced` leaves its puffs alive.
@@ -213,7 +214,8 @@ func hits() -> HitFx:
 	return _hit
 
 
-## The muzzle smoke and exhaust (a test hook); its ring is the fourth of `_rings`.
+## The muzzle smoke, exhaust and construction sparks (a test hook); its ring is the fourth of
+## `_rings`.
 func puffs() -> PuffFx:
 	return _puff
 
