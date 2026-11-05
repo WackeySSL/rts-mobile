@@ -21,7 +21,9 @@ extends Control
 ## the first start did.
 ## This node is the clipping holder (a plain `Control` with `clip_contents`), over the part of
 ## the drawer that has slid in: `Backdrop` is at the drawer's full size (`HudCorners`' DRAWER
-## rect, reaching on to the screen's edge, its content inside the safe rect) and the holder's extent
+## rect, reaching on to the screen's edge, its content inside the safe rect, except that upright the
+## card list runs on to the screen's edge and scrolls under the gesture bar, `GridRoom`'s foot
+## letting its last row clear it; Michael, 2026-11-05) and the holder's extent
 ## slides over `menu_slide_ms` (ADR 0024 section 8): its width in landscape, its height in portrait.
 ## Input never waits: what is outside the holder is neither drawn nor picked. A turn ends a slide at
 ## its target and lays the drawer out for the other orientation.
@@ -83,7 +85,8 @@ static var _slide_override: int = -1
 var tab: int = World.Tab.STRUCTURES
 
 var _backdrop: PanelContainer = PanelContainer.new()  ## The drawer, at its full size.
-var _pad: MarginContainer = MarginContainer.new()  ## The padding, and the screen edge beyond.
+## The padding; sideways the screen edge too, upright its foot takes the panel's margin back.
+var _pad: MarginContainer = MarginContainer.new()
 var _stack: VBoxContainer = VBoxContainer.new()
 var _grab: HBoxContainer = HBoxContainer.new()  ## The handle's row, upright only.
 var _close: Button = Button.new()
@@ -95,6 +98,7 @@ var _handle: ColorRect = ColorRect.new()  ## Upright only.
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: a sliver of a row.
 var _makers: PackedInt32Array = PackedInt32Array()  ## The type that produces each tab, else -1.
+var _grid_room: MarginContainer = MarginContainer.new()  ## Around the grid: the foot room upright.
 var _grid: GridContainer = GridContainer.new()
 var _tiles: Array[ItemTile] = []
 var _faction: int = -1  ## The local player's faction (`type_faction`); -1 until a row shows it.
@@ -142,8 +146,12 @@ func _ready() -> void:
 	_items.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_items.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # A finger drags it.
 	_items.add_child(_items_fit)
+	_grid_room.name = "GridRoom"
+	_grid_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grid_room.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_items.add_child(_grid_room)
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_items.add_child(_grid)
+	_grid_room.add_child(_grid)
 	_stack.add_child(_items)
 	select_tab(tab)
 	_apply_dp()  # Sets the zone before the strike row reads it.
@@ -186,9 +194,15 @@ func show_ready() -> void:
 	await get_tree().process_frame
 	for tile: ItemTile in _tiles:
 		if tile.tab == World.Tab.STRUCTURES and tile.state == ItemTile.State.READY:
-			_items.ensure_control_visible(tile)
-			if tile.size.y > _items.size.y:  # A short grid: show the card's top, not its foot.
+			# Upright the scroll area runs on under the gesture bar: the card must clear the foot room.
+			var clear: float = _items.size.y - _grid_room.get_theme_constant(&"margin_bottom")
+			if tile.size.y > clear:  # A short grid: show the card's top, not its foot.
 				_items.scroll_vertical = roundi(tile.position.y)
+			else:
+				_items.ensure_control_visible(tile)
+				_items.scroll_vertical = maxi(
+					_items.scroll_vertical, ceili(tile.position.y + tile.size.y - clear)
+				)
 			return
 
 
@@ -622,7 +636,15 @@ func _apply_dp() -> void:
 	_pad.add_theme_constant_override("margin_left", pad)
 	_pad.add_theme_constant_override("margin_top", 0)
 	_pad.add_theme_constant_override("margin_right", pad + (0 if _portrait else roundi(_edge)))
-	_pad.add_theme_constant_override("margin_bottom", pad + (roundi(_edge) if _portrait else 0))
+	# Upright the list runs on to the screen's edge and scrolls under the gesture bar (Michael,
+	# 2026-11-05): the panel's own bottom margin is taken back, and the foot room inside the scroll
+	# (the old padding, edge and panel margin) lets the last row still clear the strip below the
+	# safe rect (the gesture bar).
+	var panel_foot: int = roundi(_backdrop.get_theme_stylebox(&"panel").get_margin(SIDE_BOTTOM))
+	_pad.add_theme_constant_override("margin_bottom", -panel_foot if _portrait else pad)
+	_grid_room.add_theme_constant_override(
+		"margin_bottom", pad + roundi(_edge) + panel_foot if _portrait else 0
+	)
 	_show_tab()
 	_place(true)
 	if is_open():
