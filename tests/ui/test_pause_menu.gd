@@ -14,7 +14,8 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
-const BUTTON_DP: float = 64.0
+const BUTTON_DP: float = 64.0  ## The confirm dialog's buttons.
+const PRIMARY_DP: float = 56.0
 const TOLERANCE_PX: float = 0.5
 ## Open ground at 1280x720, left of the pill's neighbours and clear of the group column.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
@@ -140,14 +141,13 @@ func test_the_card_shows_the_map_the_goal_the_time_and_the_losses() -> void:
 	await await_idle_frame()
 	await _open()
 	_runner().run_ticks(Sim.TICK_RATE * 65)
+	_runner().snapshot.stat_lost_units[_runner().scenario.local_player] = 3
 	_pill().menu_pressed.emit()
 	var texts: Array[String] = []
 	for label: Node in _menu().find_children("*", "Label", true, false):
 		texts.append((label as Label).text)
-	assert_array(texts).contains(["SKIRMISH", "Kestrel Flats", "Time 1:05", "Units lost 0"])
+	assert_array(texts).contains(["SKIRMISH", "KESTREL FLATS", "Time 1:05", "Units lost: 3"])
 	assert_array(texts).contains([PauseMenu.OBJECTIVE])
-	var lost: int = _runner().snapshot.stat_lost_units[_runner().scenario.local_player]
-	assert_int(lost).is_equal(0)
 
 
 ## Restart, Surrender and Exit each ask first and send or change nothing until the yes; the no
@@ -253,6 +253,7 @@ func test_the_menu_does_not_open_over_the_result_and_gives_way_to_it() -> void:
 	assert_bool(_menu().visible).is_false()
 	assert_bool(_runner().paused).is_false()
 	assert_bool((_main.get_node("Hud/ResultScreen") as Control).visible).is_true()
+	assert_float(_pill().modulate.a).is_equal(1.0)  # The HUD under the menu is back.
 	_pill().menu_pressed.emit()
 	assert_bool(_state().is_open(HudState.Unfold.PAUSE)).is_false()
 	assert_bool(_menu().visible).is_false()
@@ -266,9 +267,11 @@ func test_a_new_match_closes_the_menu() -> void:
 	await _open()
 	_pill().menu_pressed.emit()
 	assert_bool(_runner().paused).is_true()
+	assert_float(_pill().modulate.a).is_equal(0.0)
 	_state().reset()
 	assert_bool(_menu().visible).is_false()
 	assert_bool(_runner().paused).is_false()
+	assert_float(_pill().modulate.a).is_equal(1.0)
 
 
 ## The words the player reads, and a Developer menu entry in a debug build.
@@ -299,9 +302,10 @@ func test_the_dialog_takes_the_focus_without_a_ring() -> void:
 	assert_bool(no_button.has_focus(true)).is_false()
 
 
-## The menu's buttons (64 dp high) and the dialog's lie inside the safe rect at the six sizes, the
-## phone browsers (web_phone_small, the shortest, among them) and the cutouts, also with the wider
-## "VIBRATION: OFF"; a window too short for the menu scrolls, and every button is reachable.
+## The menu's buttons (Resume 56 dp, the rest 48 dp high) and the dialog's (64 dp) lie inside the
+## safe rect at the six sizes, the phone browsers (web_phone_small, the shortest, among them) and
+## the cutouts, also with the wider "VIBRATION: OFF"; a window too short for the menu scrolls, and
+## every button is reachable.
 func test_the_menu_and_the_dialog_fit_every_size_and_the_cutouts() -> void:
 	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
@@ -386,7 +390,7 @@ func _tap(control: Control) -> void:
 	TouchEvents.release(get_viewport(), 0, at)
 
 
-## The open menu: every button inside the safe rect and at least 64 dp high, no scroll, also with
+## The open menu: every button inside the safe rect and at least its own height, also with
 ## the switch off; then the Surrender dialog's buttons inside it too.
 func _check_menu(label: String) -> void:
 	_pill().menu_pressed.emit()
@@ -412,8 +416,8 @@ func _check_menu(label: String) -> void:
 		)
 
 
-## Every visible button of the open menu at least 64 dp high and inside the safe rect, if need be
-## after the scroll brings it in (a debug build's six buttons need four rows on the shortest
+## Every visible button of the open menu at least 56 dp (Resume) or 48 dp high and inside the safe
+## rect, if need be after the scroll brings it in (the single column is tall on the shortest
 ## window).
 func _assert_buttons_reachable(label: String) -> void:
 	var safe: Rect2 = UiScale.safe_rect_base()
@@ -425,7 +429,7 @@ func _assert_buttons_reachable(label: String) -> void:
 	for node: Node in _menu().find_children("*", "Button", true, false):
 		if (node as Button).is_visible_in_tree():
 			buttons.append(node as Control)
-	assert_int(buttons.size()).is_greater_equal(5)
+	assert_int(buttons.size()).is_greater_equal(5)  # Resume, Restart, Surrender, Exit, Vibration.
 	for button: Control in buttons:
 		if not safe.encloses(button.get_global_rect()):
 			scroll.ensure_control_visible(button)
@@ -433,7 +437,8 @@ func _assert_buttons_reachable(label: String) -> void:
 		var rect: Rect2 = button.get_global_rect()
 		var where: String = "%s: %s %s" % [label, button.name, rect]
 		assert_bool(safe.encloses(rect)).override_failure_message(where).is_true()
+		var least: float = PRIMARY_DP if button.name == &"ResumeButton" else MIN_DP
 		assert_float(rect.size.y).override_failure_message(where).is_greater_equal(
-			UiScale.dp(BUTTON_DP) - TOLERANCE_PX
+			UiScale.dp(least) - TOLERANCE_PX
 		)
 	scroll.scroll_vertical = 0

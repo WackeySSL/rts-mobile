@@ -144,9 +144,7 @@ func test_a_turn_keeps_the_menu_open_and_the_match_paused() -> void:
 		assert_bool(runner.paused).override_failure_message(why).is_true()
 		assert_int(runner.snapshot.tick).override_failure_message(why).is_equal(tick)
 		assert_bool(menu.visible).override_failure_message(why).is_true()
-		var body: BoxContainer = (
-			menu.find_child("ResumeButton", true, false).get_parent().get_parent().get_parent()
-		)
+		var body: BoxContainer = menu.find_child("Body", true, false) as BoxContainer
 		assert_bool(body.vertical).override_failure_message(why).is_equal(size.y > size.x)
 		var card: Rect2 = (body.get_child(0) as Control).get_global_rect()
 		var grid: Rect2 = (body.get_child(1) as Control).get_global_rect()
