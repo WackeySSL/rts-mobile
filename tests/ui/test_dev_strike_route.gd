@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## of the menu at the six sizes is test_dev_menu_layout's, the scenario's data are
 ## test_dev_strikes', the other routes are test_dev_routes'.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TEST_MAP_SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const MIN_DP: float = 48.0
@@ -26,7 +27,12 @@ func after() -> void:
 
 
 ## The scene a test left is freed, and the orders a test queued are dropped.
+func before_test() -> void:
+	MenuRig.begin()
+
+
 func after_test() -> void:
+	MenuRig.end()
 	var tree: SceneTree = get_tree()
 	if tree.current_scene != null:
 		tree.current_scene.free()

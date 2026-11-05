@@ -63,6 +63,40 @@ func test_the_scan_sees_a_missing_call_and_leaves_the_rest_alone() -> void:
 	assert_array(_findings('var path: String = "res://scenes/main.tscn"\n')).is_empty()
 
 
+## A suite that replaces a `vibrate` callable reaches the haptic gate, `HudPrefs.vibrates`, which
+## reads the prefs file: it needs the same two calls, so that it never reads the machine's real
+## `user://settings.cfg` (ADR 0024 section 7, P124).
+func test_every_suite_that_reaches_the_haptic_gate_sets_and_clears_the_prefs_override() -> void:
+	var missing: Array[String] = []
+	for path: String in FileScan.list_files(TESTS_DIR, ".gd"):
+		if path.contains("/support/"):
+			continue  # A rig: the suites that use it are the ones scanned.
+		var findings: Array[String] = _gate_findings(FileAccess.get_file_as_string(path))
+		if not findings.is_empty():
+			missing.append("%s: %s" % [path, ", ".join(findings)])
+	assert_array(missing).override_failure_message("\n".join(missing)).is_empty()
+
+
+func test_the_gate_scan_sees_a_vibrate_assignment_without_the_calls() -> void:
+	var line: String = "\t_touch.vibrate = func(_ms: int) -> void: pass\n"
+	assert_array(_gate_findings(line)).is_equal(["no " + BEGIN, "no " + END])
+	assert_array(_gate_findings(line + "\tMenuRig.begin()\n\tMenuRig.end()\n")).is_empty()
+	assert_array(_gate_findings("# x.vibrate = 1\n")).is_empty()
+	assert_array(_gate_findings("var a: int = 1\n")).is_empty()
+
+
+func _gate_findings(text: String) -> Array[String]:
+	var code: String = "\n".join(FileScan.code_lines(text))
+	var out: Array[String] = []
+	if not code.contains(".vibrate = "):
+		return out
+	if not code.contains(BEGIN):
+		out.append("no " + BEGIN)
+	if not code.contains(END):
+		out.append("no " + END)
+	return out
+
+
 ## What a source lacks: it names the main scene and instantiates something, but not the two calls.
 func _findings(text: String) -> Array[String]:
 	var code: String = "\n".join(FileScan.code_lines(text))

@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## enter the window in window px through the helper, on a 2400x1080 phone (stretch 1.5, so base px
 ## are window px / 1.5). Snaps are immediate unless a test sets `zoom_snap_ms`.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const GestureSpy: GDScript = preload("res://tests/input/support/gesture_spy.gd")
@@ -43,6 +44,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	await _use_profile(&"android_6in")
 	_vp = get_viewport()
 	_now_ms = 0
@@ -73,6 +75,7 @@ func before_test() -> void:
 
 ## The override is static state: leaving one behind changes every later suite.
 func after_test() -> void:
+	MenuRig.end()
 	UiScale.clear_override()
 
 

@@ -32,8 +32,7 @@ const ICON_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EPSILON: float = 0.01  ## Base px: a rect that ends where another starts does not overlap it.
 
 @export var placement: PlacementController
-## The HUD controls the buttons keep clear of while they are visible: the Dev button, the group
-## column,
+## The HUD controls the buttons keep clear of while they are visible: the group column,
 ## the command bar, the strike row, the build menu, the economy pill, the radar scope and the
 ## full map (an island while it is pinned open, ADR 0025 section 6) and the attack toast (ADR 0025
 ## section 8).
@@ -48,6 +47,7 @@ var _rects: Array[Rect2] = []  ## The visible HUD controls' rects of this frame,
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # Only the two buttons take touches.
+	add_to_group(TouchInput.CANCEL_GROUP)
 	_confirm.name = "PlaceConfirm"
 	_cancel.name = "PlaceCancel"
 	_confirm.pressed.connect(placement.confirm)
@@ -77,6 +77,16 @@ func read_metrics() -> void:
 		button.add_theme_constant_override("icon_max_width", roundi(ICON_DP * _dp_px))
 		button.custom_minimum_size = Vector2.ONE * (ACTION_DP * _dp_px)
 		button.size = button.custom_minimum_size  # A plain Control parent never shrinks it.
+
+
+## A modal covers the screen (the pause menu): a finger that went down on the check mark or the X
+## before it showed is spent, and sends nothing when it lifts (TouchInput.CANCEL_GROUP). A button
+## that is disabled drops the press it holds.
+func cancel_gestures() -> void:
+	_confirm.disabled = true
+	_cancel.disabled = true
+	_cancel.disabled = false
+	_on_changed()
 
 
 ## The mode began or ended, or the ghost's tile, verdict or answer changed.

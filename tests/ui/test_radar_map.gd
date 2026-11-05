@@ -522,10 +522,9 @@ func test_with_a_strike_building_the_open_map_keeps_clear_of_the_strike_row_and_
 		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		map = _map.get_global_rect()
 		why += " (aiming: map %s, pill %s)" % [map, _rect("EconomyPill")]
-		if label == "narrow":  # Between the pill and the row, from 192 dp (the Dev stack that once
-			# narrowed it below the 240 dp of the table is gone, P124) to 240 dp.
+		if label == "narrow":  # Narrowed to fit between the pill and the row, not below 192 dp.
 			var dp: float = UiScale.dp(1.0)
-			assert_float(map.size.x).override_failure_message(why).is_less_equal(240.0 * dp + 1.0)
+			assert_float(map.size.x).override_failure_message(why).is_less(240.0 * dp - 1.0)
 			assert_float(map.size.x).override_failure_message(why).is_greater_equal(
 				192.0 * dp - 1.0
 			)

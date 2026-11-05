@@ -11,15 +11,24 @@ const SECTION: String = "hud"
 const KEY_HAPTICS: String = "haptics"
 
 static var _path_override: String = ""
+## The switch as read: 1 on, 0 off, -1 not read since the last change.
+static var _haptics: int = -1
 
 
 ## Tests: read and write `path` instead of the device's file.
 static func set_path_override(path: String) -> void:
 	_path_override = path
+	_haptics = -1
 
 
 static func clear_path_override() -> void:
 	_path_override = ""
+	_haptics = -1
+
+
+## Forgets the value read, so the next ask reads the file again (a test that wrote it by hand).
+static func forget_read() -> void:
+	_haptics = -1
 
 
 static func path() -> String:
@@ -28,11 +37,15 @@ static func path() -> String:
 
 ## Whether the Vibration switch is on (default on).
 static func haptics_enabled() -> bool:
-	var file: ConfigFile = ConfigFile.new()
-	if file.load(path()) != OK:
-		return true
-	var value: Variant = file.get_value(SECTION, KEY_HAPTICS, true)
-	return value if value is bool else true
+	if _haptics < 0:  # Read once, not at every buzz.
+		var file: ConfigFile = ConfigFile.new()
+		var on: bool = true  # A missing or unreadable file, or a key of another type: on.
+		if file.load(path()) == OK:
+			var value: Variant = file.get_value(SECTION, KEY_HAPTICS, true)
+			if value is bool:
+				on = value
+		_haptics = 1 if on else 0
+	return _haptics == 1
 
 
 ## Saves the Vibration switch. The other keys of the file stay.
@@ -40,6 +53,7 @@ static func set_haptics_enabled(on: bool) -> Error:
 	var file: ConfigFile = ConfigFile.new()
 	file.load(path())  # A missing file starts an empty one; an unreadable one is replaced.
 	file.set_value(SECTION, KEY_HAPTICS, on)
+	_haptics = 1 if on else 0
 	return file.save(path())
 
 

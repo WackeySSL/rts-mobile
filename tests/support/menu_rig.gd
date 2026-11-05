@@ -13,18 +13,22 @@ extends RefCounted
 ## `tests/project/test_menu_rig_scan.gd` fails on a suite that loads the main scene without calling
 ## it.
 
-const PREFS_PATH: String = "user://test_menu_rig_settings.cfg"
-
 
 ## Before each test of a suite that builds the main scene.
 static func begin() -> void:
 	BuildSidebar.set_slide_ms_override(0)
-	HudPrefs.set_path_override(PREFS_PATH)
-	DirAccess.remove_absolute(PREFS_PATH)
+	HudPrefs.set_path_override(prefs_path())
+	DirAccess.remove_absolute(prefs_path())
 
 
 ## After each test of the same suite: no state is left for the next one.
 static func end() -> void:
 	BuildSidebar.clear_slide_ms_override()
 	HudPrefs.clear_path_override()
-	DirAccess.remove_absolute(PREFS_PATH)
+	DirAccess.remove_absolute(prefs_path())
+
+
+## The prefs file of this process: one per process, so lanes that run tests on one machine at the
+## same time never share it.
+static func prefs_path() -> String:
+	return "user://test_menu_rig_settings_%d.cfg" % OS.get_process_id()

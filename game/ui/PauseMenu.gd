@@ -5,16 +5,18 @@ extends ModalFrame
 ## uses: the sim only stops ticking, no Command, nothing in the replay or the hash) and the menu is
 ## the one thing that takes a touch. Resume (or a new match) closes it and unpauses.
 ## The card: "SKIRMISH" and the map's name, the objective, the match time and the units lost.
-## Buttons (two to a row, so the six or seven fit a phone held sideways): Resume; Restart (the
-## result screen's route: the same scenario and opponents, a new main scene; asks first);
-## Surrender (resumes, then sends SURRENDER through the controller's sink; asks first);
-## Exit to menu (the dev menu until Phase 5's start page; asks first); in a debug or `dev_menu`
-## build the Developer menu; and the Vibration switch, saved by `HudPrefs`. Sound, Music
+## Buttons (two to a row, with the Vibration switch across the foot, so they fit a phone held
+## sideways): Resume; Restart (the result screen's route: the same scenario and opponents, a new
+## main scene; asks first); Surrender (resumes, then sends SURRENDER through the controller's sink;
+## asks first); Exit to menu (the dev menu until Phase 5's start page; asks first); in a debug or
+## `dev_menu` build the Developer menu; and the Vibration switch, saved by `HudPrefs`. Sound, Music
 ## and Settings come with Phase 5. No ad, ever: this is the battle (admob-policy).
 ## The result screen is later in the scene and covers this menu; the menu does not open once the
 ## match has ended.
 
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
+const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
+const GLYPH_DP: float = 20.0  ## The glyph in front of a button's word (P118g drew them).
 const CARD_DP: float = 200.0  ## The card's width: the buttons take the rest (two to a row).
 
 @export var runner: MatchRunner
@@ -24,6 +26,7 @@ const CARD_DP: float = 200.0  ## The card's width: the buttons take the rest (tw
 
 var _body: BoxContainer
 var _card: VBoxContainer
+var _actions: VBoxContainer  ## The grid of buttons, and the Vibration switch under it.
 var _buttons: GridContainer
 var _map: Label
 var _time: Label
@@ -33,11 +36,13 @@ var _vibration: Button
 var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
 var _exit_dialog: ConfirmDialog
+var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent in.
 
 
 func _ready() -> void:
 	_body = BoxContainer.new()  # Before `super()`, whose `_apply_dp` sizes them.
 	_card = VBoxContainer.new()
+	_actions = VBoxContainer.new()
 	_buttons = GridContainer.new()
 	_buttons.columns = 2
 	super()
@@ -49,21 +54,20 @@ func _ready() -> void:
 	add_label(_card, OBJECTIVE, &"Label").autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_time = add_label(_card, "", &"NumberLabel")
 	_lost = add_label(_card, "", &"NumberLabel")
-	_body.add_child(_buttons)
-	_resume = add_button(_buttons, "RESUME", _resume_pressed)
-	_resume.name = &"ResumeButton"
-	add_button(_buttons, "RESTART", _restart_dialog_open).name = &"RestartButton"
-	add_button(_buttons, "SURRENDER", _surrender_dialog_open).name = &"SurrenderButton"
-	add_button(_buttons, "EXIT TO MENU", _exit_dialog_open).name = &"ExitButton"
+	_body.add_child(_actions)
+	_actions.add_child(_buttons)
+	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton")
+	_add_action("RESTART", "restart", _restart_dialog_open, &"RestartButton")
+	_add_action("SURRENDER", "surrender", _surrender_dialog_open, &"SurrenderButton")
+	_add_action("EXIT TO MENU", "exit", _exit_dialog_open, &"ExitButton")
 	if DevRoutes.is_enabled():
-		add_button(_buttons, "DEVELOPER MENU", _open_dev_menu).name = &"DevMenuButton"
-	_vibration = add_button(_buttons, "", _toggle_vibration)
-	_vibration.name = &"VibrationButton"
+		_add_action("DEVELOPER MENU", "", _open_dev_menu, &"DevMenuButton")
+	_vibration = _add_action("", "vibration", _toggle_vibration, &"VibrationButton", _actions)
 	_restart_dialog = _make_dialog("RESTART?", "You lose this match.", "RESTART", _restart)
 	_surrender_dialog = _make_dialog(
 		"SURRENDER?", "You lose the match at once.", "SURRENDER", _surrender
 	)
-	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _exit)
+	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _open_dev_menu)
 	if pill != null:
 		pill.menu_pressed.connect(_on_menu_pressed)
 	feed.state.changed.connect(_on_changed)
@@ -79,6 +83,23 @@ func _apply_dp() -> void:
 	_buttons.add_theme_constant_override("h_separation", gap)
 	_buttons.add_theme_constant_override("v_separation", gap)
 	_card.custom_minimum_size.x = UiScale.dp(CARD_DP)
+	_actions.add_theme_constant_override("separation", gap)
+	for row: Container in [_buttons, _actions]:
+		for button: Node in row.get_children():
+			if button is Button:
+				button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(GLYPH_DP)))
+
+
+## One button of the grid, with the P118g glyph `glyph` ("" for none) in front of its word.
+func _add_action(
+	text: String, glyph: String, action: Callable, node_name: StringName, parent: Container = null
+) -> Button:
+	var button: Button = add_button(_buttons if parent == null else parent, text, action)
+	button.name = node_name
+	if glyph != "":
+		button.icon = load(GLYPH_ART % glyph) as Texture2D
+		button.expand_icon = false
+	return button
 
 
 func _make_dialog(
@@ -96,25 +117,29 @@ func _make_dialog(
 
 
 func _on_menu_pressed() -> void:
-	if runner.snapshot != null and runner.snapshot.match_end_tick > 0:
-		return  # The result screen covers the HUD; nothing opens over it.
+	var snap: MatchSnapshot = runner.snapshot
+	if snap != null and (snap.match_end_tick > 0 or snap.match_serial == _surrendered_in):
+		return  # The result screen covers the HUD, and a SURRENDER is on its way: nothing opens.
 	feed.state.open(HudState.Unfold.PAUSE)
 
 
 ## PAUSE opened: pause the match and show the card. PAUSE left (Resume, a new match): unpause.
+## A `changed` while it stays open (a bar width, the pin) leaves the focus where it is.
 func _on_changed(previous: HudState.Unfold) -> void:
 	var open: bool = feed.state.is_open(HudState.Unfold.PAUSE)
 	if open:
 		runner.paused = true
-		_fill_card()
-		_show_vibration()
-		show_over(_resume)
+		if previous != HudState.Unfold.PAUSE:
+			_fill_card()
+			_show_vibration()
+			show_over(_resume)
 	elif previous == HudState.Unfold.PAUSE:
 		runner.paused = false
 		_close_dialogs()
 		visible = false
 
 
+@warning_ignore("integer_division")
 func _fill_card() -> void:
 	var scenario: ScenarioDef = runner.scenario
 	var source: String = scenario.map.resource_path if scenario.map != null else ""
@@ -159,12 +184,13 @@ func _restart() -> void:
 
 ## Resumes first, so the tick that carries the Command runs.
 func _surrender() -> void:
+	var snap: MatchSnapshot = runner.snapshot
+	if snap != null:
+		if snap.match_serial == _surrendered_in:
+			return  # Once per match, as P90's button was.
+		_surrendered_in = snap.match_serial
 	feed.state.close(HudState.Unfold.PAUSE)
 	controller.command_sink.call(Command.surrender(runner.scenario.local_player))
-
-
-func _exit() -> void:
-	DevRoutes.open(get_tree(), DevRoutes.DEV_MENU_SCENE)
 
 
 func _open_dev_menu() -> void:

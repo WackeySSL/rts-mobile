@@ -3,13 +3,13 @@ extends GdUnitTestSuite
 ## 0019 section 6, question 3): the pill's menu button opens it, the match is paused while it
 ## shows (`MatchRunner.paused`, no Command), Resume unpauses; Restart, Surrender and Exit ask first
 ## and only a yes answers; only the Surrender yes sends SURRENDER, once, through the controller's
-## sink; the Vibration switch writes `HudPrefs` and every `vibrate` call obeys it; the menu takes
-## every touch, does not open over the result screen and carries no ad. At the six sizes and on the
-## phone browsers the menu and the dialogs lie inside the safe rect.
+## sink; the menu takes every touch and does not open over the result screen. At the six sizes and
+## on the phone browsers the menu and the dialogs lie inside the safe rect. The Vibration switch,
+## the haptic gate and the no-ad guard are test_pause_prefs'; the routes and the turn are
+## test_pause_menu_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
-const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -18,6 +18,8 @@ const BUTTON_DP: float = 64.0
 const TOLERANCE_PX: float = 0.5
 ## Open ground at 1280x720, left of the pill's neighbours and clear of the group column.
 const GROUND_POINT: Vector2 = Vector2(80, 300)
+## The window that needs the scroll (280 dp of safe height); the labels of the others differ.
+const SCROLLS: String = "web_phone_small"
 const ASKING: Array[String] = ["RestartButton", "SurrenderButton", "ExitButton"]
 
 var _window_size_before: Vector2i
@@ -157,11 +159,11 @@ func test_restart_surrender_and_exit_ask_first() -> void:
 	await await_idle_frame()
 	await _open()
 	var scene: Node = get_tree().current_scene
-	for name: String in ASKING:
+	for button_name: String in ASKING:
 		_pill().menu_pressed.emit()
 		await await_idle_frame()
-		var dialog: ConfirmDialog = await _dialog_after(name)
-		assert_bool(dialog.visible).override_failure_message(name).is_true()
+		var dialog: ConfirmDialog = await _dialog_after(button_name)
+		assert_bool(dialog.visible).override_failure_message(button_name).is_true()
 		assert_array(_sent).is_empty()
 		_tap(dialog.find_child("NoButton", true, false) as Control)
 		assert_bool(dialog.visible).is_false()
@@ -299,13 +301,15 @@ func test_the_dialog_takes_the_focus_without_a_ring() -> void:
 	assert_bool(no_button.has_focus(true)).is_false()
 
 
-## The menu, its buttons (64 dp high, 48 dp at the least) and the dialog lie inside the safe rect at
-## the six sizes, the phone browsers and the cutouts.
+## The menu's buttons (64 dp high) and the dialog's lie inside the safe rect at the six sizes, the
+## phone browsers (web_phone_small, the shortest, among them) and the cutouts; the menu needs no
+## scroll, also with the wider "VIBRATION: OFF".
 func test_the_menu_and_the_dialog_fit_every_size_and_the_cutouts() -> void:
 	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
 	var cases: Dictionary[String, UiMetrics] = {
 		"web_phone": UiProfiles.by_name(&"web_phone"),
+		"web_phone_small": UiProfiles.by_name(&"web_phone_small"),
 		"web_phone_portrait": UiProfiles.by_name(&"web_phone_portrait"),
 		"landscape cutout": UiProfiles.with_safe_area(landscape, Rect2i(152, 0, 2248, 1080)),
 		"portrait cutout": UiProfiles.with_safe_area(portrait, Rect2i(0, 100, 1080, 2237)),
@@ -384,26 +388,21 @@ func _tap(control: Control) -> void:
 	TouchEvents.release(get_viewport(), 0, at)
 
 
-## The open menu: the panel and every button inside the safe rect, the buttons at least 64 dp
-## high; then the Surrender dialog inside it too.
+## The open menu: every button inside the safe rect and at least 64 dp high, no scroll, also with
+## the switch off; then the Surrender dialog's buttons inside it too.
 func _check_menu(label: String) -> void:
 	_pill().menu_pressed.emit()
 	await await_idle_frame()
 	var safe: Rect2 = UiScale.safe_rect_base()
 	assert_bool(_menu().visible).override_failure_message(label).is_true()
 	assert_bool(_menu().get_rect().is_equal_approx(get_viewport().get_visible_rect())).is_true()
-	var buttons: Array[Control] = []
-	for node: Node in _menu().find_children("*", "Button", true, false):
-		if (node as Button).is_visible_in_tree():
-			buttons.append(node as Control)
-	assert_int(buttons.size()).is_greater_equal(5)
-	for button: Control in buttons:
-		var rect: Rect2 = button.get_global_rect()
-		var where: String = "%s: %s %s" % [label, button.name, rect]
-		assert_bool(safe.encloses(rect)).override_failure_message(where).is_true()
-		assert_float(rect.size.y).override_failure_message(where).is_greater_equal(
-			UiScale.dp(BUTTON_DP) - TOLERANCE_PX
-		)
+	await _assert_buttons_reachable(label)
+	_button("VibrationButton").pressed.emit()  # The wider word, "VIBRATION: OFF", fits too.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_str(_button("VibrationButton").text).is_equal("VIBRATION: OFF")
+	await _assert_buttons_reachable(label + " (vibration off)")
+	_button("VibrationButton").pressed.emit()
 	var dialog: ConfirmDialog = await _dialog_after("SurrenderButton")
 	assert_bool(dialog.visible).override_failure_message(label).is_true()
 	for button_name: String in ["NoButton", "YesButton"]:
@@ -413,3 +412,35 @@ func _check_menu(label: String) -> void:
 		assert_float(rect.size.y).override_failure_message(where).is_greater_equal(
 			UiScale.dp(BUTTON_DP) - TOLERANCE_PX
 		)
+
+
+## Every visible button of the open menu at least 64 dp high and inside the safe rect, if need be
+## after the scroll brings it in. Only the shortest window (`SCROLLS`, a debug build's seven buttons
+## need four rows) scrolls; the others show everything at once.
+func _assert_buttons_reachable(label: String) -> void:
+	var safe: Rect2 = UiScale.safe_rect_base()
+	var scroll: ScrollContainer = null
+	for node: Node in _menu().find_children("*", "ScrollContainer", true, false):
+		scroll = node as ScrollContainer
+		break
+	var buttons: Array[Control] = []
+	for node: Node in _menu().find_children("*", "Button", true, false):
+		if (node as Button).is_visible_in_tree():
+			buttons.append(node as Control)
+	assert_int(buttons.size()).is_greater_equal(5)
+	var scrolled: bool = false
+	for button: Control in buttons:
+		if not safe.encloses(button.get_global_rect()):
+			scrolled = true
+			scroll.ensure_control_visible(button)
+			await await_idle_frame()
+		var rect: Rect2 = button.get_global_rect()
+		var where: String = "%s: %s %s" % [label, button.name, rect]
+		assert_bool(safe.encloses(rect)).override_failure_message(where).is_true()
+		assert_float(rect.size.y).override_failure_message(where).is_greater_equal(
+			UiScale.dp(BUTTON_DP) - TOLERANCE_PX
+		)
+	assert_bool(scrolled).override_failure_message(label).is_equal(
+		label.begins_with(SCROLLS) and DevRoutes.is_enabled()
+	)
+	scroll.scroll_vertical = 0

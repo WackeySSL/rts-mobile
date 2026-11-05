@@ -62,7 +62,25 @@ func test_the_prefs_default_to_on() -> void:
 	var file: ConfigFile = ConfigFile.new()
 	file.set_value("hud", "haptics", "no")
 	file.save(HudPrefs.path())
+	HudPrefs.forget_read()  # Written by hand, behind the cache.
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
+
+
+## The file is read once, not at every buzz: a hand-written change shows after `forget_read` or a
+## new path, and a `set_haptics_enabled` shows at once.
+func test_the_prefs_file_is_read_once() -> void:
+	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Read, and cached.
+	var file: ConfigFile = ConfigFile.new()
+	file.set_value("hud", "haptics", false)
+	file.save(HudPrefs.path())
+	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Not read again.
+	HudPrefs.forget_read()
+	assert_bool(HudPrefs.haptics_enabled()).is_false()
+	HudPrefs.set_haptics_enabled(true)
+	assert_bool(HudPrefs.haptics_enabled()).is_true()
+	file.save(HudPrefs.path())  # False again, behind the cache.
+	HudPrefs.set_path_override(HudPrefs.path())  # A new path (here the same) drops the cache.
+	assert_bool(HudPrefs.haptics_enabled()).is_false()
 
 
 ## Switched off, a haptic call is silent; switched on, it buzzes; the data default still holds.
@@ -81,9 +99,9 @@ func test_every_haptic_obeys_the_switch() -> void:
 	assert_array(buzzes).has_size(1)
 	assert_array(_sent).has_size(2)
 	HudPrefs.set_haptics_enabled(true)
-	controller.settings.haptics_enabled = false
-	assert_bool(HudPrefs.vibrates(controller.settings)).is_false()
-	controller.settings.haptics_enabled = true  # The resource is shared by every suite.
+	var quiet: InputSettings = controller.settings.duplicate() as InputSettings
+	quiet.haptics_enabled = false  # The data default; the loaded resource is shared, so a copy.
+	assert_bool(HudPrefs.vibrates(quiet)).is_false()
 
 
 ## Every `vibrate` call in game/ stands behind `HudPrefs.vibrates`, the one gate; nothing reads

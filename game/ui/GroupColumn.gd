@@ -31,7 +31,7 @@ const ICON_DP: float = 24.0
 @export var safe_area: SafeAreaMargin
 ## Upright during its aim the column holds three items and scrolls.
 @export var strike_aim: StrikeAim
-## The Dev over Surrender stack (until P124): the column stands under it.
+## BUILD and its Ready chip: the column leaves them their width upright.
 @export var build_button: BuildButton  ## Its Ready chip takes room beside BUILD upright.
 
 var _all: Button = Button.new()

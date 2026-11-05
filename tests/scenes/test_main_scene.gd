@@ -219,9 +219,11 @@ func test_menu_button_is_pressed_exactly_once_by_a_touch_at_every_target_resolut
 		_pressed_count = 0
 		var centre: Vector2 = button.get_global_rect().get_center()
 		TouchEvents.press(get_viewport(), 0, centre)
-		TouchEvents.drag(get_viewport(), 0, centre + Vector2(10, 10), Vector2(10, 10))
+		# 18 dp: past the 12 dp tap slop (a pan, were the finger the map's), inside the 48 dp button.
+		var drag: Vector2 = Vector2(18.0, 0.0) * UiScale.base_px_per_dp()
+		TouchEvents.drag(get_viewport(), 0, centre + drag, drag)
 		await await_idle_frame()
-		TouchEvents.release(get_viewport(), 0, centre + Vector2(10, 10))
+		TouchEvents.release(get_viewport(), 0, centre + drag)
 		await await_idle_frame()
 		assert_int(_pressed_count).is_equal(1)
 		# A touch that starts on the button stays with it: no pan.

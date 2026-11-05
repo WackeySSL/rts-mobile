@@ -145,16 +145,6 @@ func test_low_power_shows_the_word_in_the_bar_at_every_size() -> void:
 		await await_idle_frame()
 		var room: float = _rect("PowerBar").size.x - 2.0 * UiScale.dp(2.0)
 		var why: String = "%s: word %s in a bar of %s" % [profile, word.size.x, room]
-		if (
-			_pill.size.x >= UiScale.dp(HudCorners.PILL_MAX_DP) - 0.5
-			and (word.get_combined_minimum_size().x > room)
-		):
-			# The pill is at its 320 dp cap and the menu button (P124) took the bar's room: the word
-			# drops, as ADR 0025 section 3 has it; the triangle and the red edge speak alone.
-			assert_bool(word.visible).override_failure_message(why).is_false()
-			_publish(0, 6, 4)
-			await await_idle_frame()
-			continue
 		assert_bool(word.visible).override_failure_message(why).is_true()
 		assert_bool(_node("PowerText").visible).is_false()  # The word has the place.
 		var needs: float = word.get_combined_minimum_size().x

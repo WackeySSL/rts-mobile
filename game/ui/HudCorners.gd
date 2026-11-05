@@ -18,7 +18,8 @@ extends RefCounted
 
 const GAP_DP: float = 8.0
 const PILL_DP: Vector2 = Vector2(200.0, 48.0)  ## The pill's least width and its height.
-const PILL_MAX_DP: float = 320.0
+## 320 before the menu button (P124), which takes 52 dp of the pill (48 and its divider).
+const PILL_MAX_DP: float = 372.0
 const SCOPE_DP: float = 56.0
 const BUILD_DP: float = 64.0
 const READY_DP: Vector2 = Vector2(112.0, 48.0)

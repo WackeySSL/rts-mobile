@@ -214,7 +214,7 @@ func is_low() -> bool:
 	return _low
 
 
-## Takes the rect `HudCorners.place` gives the pill: after the top-left control, as wide as it asks
+## Takes the rect `HudCorners.place` gives the pill: in the top left corner, as wide as it asks
 ## (its content and the room the bar's text needs, at least 200 dp, at most what the layout has),
 ## inside the safe rect, in both orientations.
 func place() -> void:

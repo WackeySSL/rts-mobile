@@ -161,6 +161,41 @@ func test_a_hold_button_does_not_hold_or_tap_under_a_modal() -> void:
 		_main.free()
 
 
+## A plain button (the placement's check mark) that a finger went down on before the pause menu
+## opened sends no PLACE when the finger lifts under it (P124); the same press sends one without it.
+func test_a_finger_on_the_check_mark_sends_no_place_under_the_pause_menu() -> void:
+	await _open()
+	var placement: PlacementController = _main.get_node("PlacementController")
+	var snap: MatchSnapshot = (_main.get_node("MatchRunner") as MatchRunner).snapshot
+	var type: int = -1
+	for row: int in snap.unit_count():
+		if snap.owner[row] == 1 and WorldSort.is_building(snap, snap.type_index[row]):
+			type = snap.type_index[row]
+			break
+	assert_bool(placement.begin(type)).is_true()
+	placement.reason = Placement.Reason.OK  # The ghost fits, whatever the tile under the view.
+	placement.changed.emit()
+	await await_idle_frame()
+	await await_idle_frame()
+	var confirm: Control = _hud("PlaceConfirm")
+	var at: Vector2 = confirm.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_array(_sent).override_failure_message("the control").has_size(1)
+	assert_int(_sent[0].type).is_equal(Command.Type.PLACE)
+	_sent.clear()
+	placement.pending = false
+	placement.changed.emit()
+	await await_idle_frame()
+	TouchEvents.press(get_viewport(), 0, at)
+	await _show("pause", true)
+	TouchEvents.release(get_viewport(), 0, at)
+	await await_idle_frame()
+	assert_array(_sent).is_empty()
+	assert_bool(placement.active).is_true()
+	assert_bool(placement.pending).is_false()
+
+
 ## The economy pill takes a tap on its credits or its power (`economy_pressed`). A modal ends a
 ## finger that went down there before it showed (no tap when it lifts), and a tap while it shows
 ## lands on the modal: the pill stands under it in the HUD's order.

@@ -5,9 +5,9 @@ extends PanelContainer
 ## A tap (a press and a release by one finger on it) centres the camera on the hit, folds the
 ## drawer and dismisses the cue; the touch is the toast's own and never reaches the map. It is
 ## hidden while the full map is open (the attack is a ping there) and while the pause menu is.
-## Its rect is `HudCorners.TOAST` (between the pill and the scope, upright under the pill and the
-## top-left stack), taken on a cue, a change of the unfolds and every resize. Texts are written
-## when the cue changes, never per frame.
+## Its rect is `HudCorners.TOAST` (between the pill and the scope, upright under the pill), taken on
+## a cue, a change of the unfolds and every resize. Texts are written when the cue changes, never
+## per frame.
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const VARIATION: StringName = &"EconomyPillLow"  ## The pill's danger edge.
@@ -69,7 +69,7 @@ func _ready() -> void:
 	_apply_dp()
 
 
-## The rect `HudCorners.place` gives the toast for the screen, the pill and the stack in force.
+## The rect `HudCorners.place` gives the toast for the screen and the pill in force.
 func place() -> void:
 	var dp: float = UiScale.base_px_per_dp()
 	var shown: HudCorners.Shown = HudCorners.Shown.new()

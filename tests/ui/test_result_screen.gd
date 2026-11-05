@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## stats of the published snapshot. At the six test sizes and on the phone browsers its panel, its
 ## emblem and its two buttons lie inside the safe rect, the buttons are at least 48 dp each way (64
 ## dp high), and the panel fits without a scroll. "Play again" opens a new main scene of the same
-## scenario and opponents, "Back" the dev menu. The Surrender button that leads here is
-## test_surrender's, the wheel and the fingers already down under the screen are
+## scenario and opponents, "Back" the dev menu. The pause menu's Surrender that leads
+## here is test_pause_menu's, the wheel and the fingers already down under the screen are
 ## test_modal_input's, the routes are test_skirmish_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")

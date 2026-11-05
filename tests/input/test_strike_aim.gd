@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## strike_rig.gd; the HUD is test_strike_controls', the taps on the map test_strike_taps'.
 
 const Rig: GDScript = preload("res://tests/input/support/strike_rig.gd")
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 
 var _world: World
 var _aim: StrikeAim
@@ -18,6 +19,7 @@ var _changes: int = 0
 
 
 func before_test() -> void:
+	MenuRig.begin()
 	_world = Rig.world()
 	_sent.clear()
 	_buzzed.clear()
@@ -30,6 +32,10 @@ func before_test() -> void:
 	_aim.controller = _controller
 	_aim.changed.connect(func() -> void: _changes += 1)
 	_read()
+
+
+func after_test() -> void:
+	MenuRig.end()
 
 
 ## Reads `_world` as it stands, as the next tick's snapshot would be (one match).

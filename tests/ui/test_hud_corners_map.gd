@@ -92,3 +92,25 @@ func test_upright_the_pinned_map_keeps_clear_of_the_group_column() -> void:
 				. override_failure_message("%s: group_%d" % [size, index])
 				. is_false()
 			)
+
+
+## On a very short screen the group column wraps into several columns and ends right of the pill:
+## the pinned map beside the aim's row then starts a gap right of the column, not of the pill.
+## (The `column_end` clause of `HudCorners._map`: no phone profile reaches it, since P124 took the
+## Dev stack away, so the case is crafted: 700 x 240 dp of safe rect.)
+func test_a_column_that_ends_right_of_the_pill_pushes_the_pinned_map_right() -> void:
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	shown.bar = true
+	shown.strike = true
+	shown.aim = true
+	shown.map = true
+	shown.groups = 4
+	shown.pill_width = 200.0
+	var out: Dictionary[StringName, Rect2] = HudCorners.place(
+		Rect2(0.0, 0.0, 700.0, 240.0), false, 1.0, false, shown
+	)
+	var last: Rect2 = out[HudCorners.group_key(3)]
+	assert_float(last.end.x).is_greater(out[HudCorners.PILL].end.x + 8.0)  # Right of the pill.
+	var map: Rect2 = out[HudCorners.MAP]
+	assert_float(map.position.x - last.end.x).is_greater_equal(8.0 - TOLERANCE)
+	assert_bool(map.intersects(out[HudCorners.STRIKE_ROW])).is_false()
