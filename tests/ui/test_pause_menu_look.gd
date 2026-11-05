@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The look of the pause menu (plan P124b, Michael's design of 2026-11-05): one column of buttons in
-## the design's order and looks, the Vibration chip, the objective line, and the foot left free for
-## a later ad. The fit at every size is test_pause_menu's.
+## the design's order and looks, the Vibration chip, the objective line, and the foot kept free, as
+## the design draws it. The fit at every size is test_pause_menu's.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -176,7 +176,10 @@ func _check_side(route: String, id: String, accent: StringName, suffix: String) 
 	assert_object(fill.bg_color).is_equal(_menu().get_theme_color(&"accent", accent))
 	var ring: StyleBoxFlat = badge.get_theme_stylebox(&"panel") as StyleBoxFlat
 	assert_object(ring.border_color).is_equal(_menu().get_theme_color(&"accent", accent))
+	assert_object(emblem.modulate).is_equal(_menu().get_theme_color(&"light", accent))
 	var resume: Button = _button("ResumeButton")
+	var pressed: StyleBoxFlat = resume.get_theme_stylebox(&"pressed") as StyleBoxFlat
+	assert_object(pressed.bg_color).is_equal(_menu().get_theme_color(&"light", accent))
 	assert_object(resume.get_theme_color(&"font_color")).is_equal(
 		_menu().get_theme_color(&"on_accent", accent)
 	)
@@ -186,6 +189,42 @@ func _check_side(route: String, id: String, accent: StringName, suffix: String) 
 	assert_object(_button("SurrenderButton").get_theme_color(&"font_color")).is_equal(
 		_menu().get_theme_color(&"danger", &"HudTokens")
 	)
+
+
+## The first own row has no faction (-1): it is skipped and the next row names the side; with no
+## own row the Lumen Accord's look stays.
+func test_a_row_without_a_faction_is_skipped_and_none_falls_back() -> void:
+	await _open_menu()
+	var snap: MatchSnapshot = MatchSnapshot.new()
+	snap.faction_ids = [&"renew", &"fossil"]
+	snap.type_faction = PackedInt32Array([-1, 1])
+	snap.type_index = PackedInt32Array([0, 1, 1])
+	snap.owner = PackedInt32Array([1, 1, 2])
+	snap.unit_id = PackedInt32Array([10, 11, 12])
+	_menu()._show_side(snap, 1)
+	assert_str(_menu().find_child("Badge", true, false).theme_type_variation).is_equal(
+		"PauseBadgeFossil"
+	)
+	_menu()._show_side(snap, 3)  # No row of its own.
+	assert_str(_menu().find_child("Badge", true, false).theme_type_variation).is_equal("PauseBadge")
+	_menu()._show_side(null, 1)
+	assert_str(_button("ResumeButton").theme_type_variation).is_equal("PausePrimary")
+
+
+## A top-level child of the HUD (the pill's flash chip) ignores its parent's alpha: the menu clears
+## it too, and it comes back at Resume.
+func test_a_top_level_flash_is_hidden_under_the_menu() -> void:
+	get_window().size = ScreenSizes.LANDSCAPE[0]
+	await await_idle_frame()
+	_main = auto_free(await MatchRig.open(self))
+	var flash: Control = _main.find_child("Flash", true, false) as Control
+	assert_bool(flash.top_level).is_true()
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await await_idle_frame()
+	assert_float(flash.modulate.a).is_equal(0.0)
+	_button("ResumeButton").pressed.emit()
+	await await_idle_frame()
+	assert_float(flash.modulate.a).is_equal(1.0)
 
 
 ## A main scene with the pause menu open.

@@ -16,8 +16,7 @@ extends ModalFrame
 ## the toggle chips: Vibration only (saved by `HudPrefs`; Sound, Music and Settings come with
 ## Phase 5 and stay hidden). Upright the card is above the column; sideways it is to the left.
 ## No ad, ever: this is the battle (admob-policy). The menu is laid out from the top and the foot
-## stays free, as Michael's design draws it (2026-11-05: a banner may go there later, once the
-## docs row changes the ad rules; banners are Phase 6, P127). No ad code is here.
+## stays free, as Michael's design draws it (2026-11-05). No ad code is here.
 ## The objective is one checklist line that stays open: the snapshot cannot tell "no enemy
 ## Headquarters" from "none built yet" and "no production building" from "none yet" without
 ## reading past the fog, and a won match closes the menu for the result screen.
@@ -302,7 +301,7 @@ func _show_side(snap: MatchSnapshot, player: int) -> void:
 				and SIDES.has(snap.faction_ids[index])
 			):
 				id = snap.faction_ids[index]
-			break
+				break  # A row without a faction is skipped, as BuildSidebar skips it.
 	_side = id
 	var side: Dictionary = SIDES[id]
 	_emblem.texture = load(EMBLEM_ART % id) as Texture2D
@@ -316,9 +315,13 @@ func _show_side(snap: MatchSnapshot, player: int) -> void:
 ## (each `place` sets it), so the menu clears their `modulate`, which no one of them writes, and
 ## puts the saved one back; the result screen and this menu stay.
 func _hide_hud() -> void:
-	for node: Node in get_parent().get_children():
+	var covered: Array[Node] = get_parent().get_children()
+	for node: Node in get_parent().find_children("*", "Control", true, false):
+		if (node as Control).top_level:  # A top-level child (the pill's flash) ignores its parent.
+			covered.append(node)
+	for node: Node in covered:
 		var control: Control = node as Control
-		if control == null or control == self or control is ResultScreen:
+		if control == null or control == self or control is ResultScreen or is_ancestor_of(control):
 			continue
 		_hidden[control] = control.modulate
 		control.modulate = get_theme_color(&"hidden", &"PauseHud")
