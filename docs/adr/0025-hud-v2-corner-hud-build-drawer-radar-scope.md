@@ -79,15 +79,20 @@ placering? og efter man har placeret en bygning skal "Build" menuen ikke åbne o
       than one type, "+N" may stand alone, so Stop is never scrolled out of view.
   - Replaced accepted text: §9's "Portrait BUILD lift" bullet; "portrait: above the bar" in §9's
     Groups bullet; "portrait BUILD lifts above it" in row 9 of the table; §10's "It rides with
-    BUILD's portrait lift"; the portrait rows of §2's table (BUILD "8 dp above the bar", the
-    column "to the 40 % line"); §2's "The 40 % rule in portrait" bullet; and the P26ar lead
-    decision on the group column during a strike aim in portrait (three buttons, the rest
-    scroll), which lapses with the bottom column. ADR 0015 §5's 40 % bottom stack no longer
+    BUILD's portrait lift"; §9's heading ("the portrait BUILD lift"); the portrait rows of §2's
+    table (BUILD "8 dp above the bar", the column "to the 40 % line"); §2's "The 40 % rule in
+    portrait" bullet; in §2's "The 8 dp gaps" bullet, the 360 x 700 exemption and the lead
+    decision of 2026-11-03 that the group column holds at most three items in one column and the
+    rest scroll (with the P26ar note that confirms it), which lapse with the bottom column; and
+    §18's proposed 40 % bullet for `touch-ui-rules`. ADR 0015 §5's 40 % bottom stack no longer
     applies to the battle screen (its own dated note).
 - **No drawer return (P120h):** placement closes the drawer, and it stays closed when a build, the
   X, a strike aim or the match's end ends placement. BUILD brings it back. The selection hook (a
-  producer's tap opens its tab) stays. The 2026-11-03 note on "the restart (R1)" lapses: no return
-  is set, so there is none to restart.
+  producer's tap opens its tab) stays. Replaced accepted text: in §5's "Opens", "after a placement
+  that began in the drawer ends by a build or the X (ADR 0024 R1 kept; a strike aim leaves it
+  closed)"; "the return after placement (R1)" in row 6 of the decisions table and in §6's table
+  (R1 is no longer kept; Q3 A stays); §18's proposed "Building placement" bullet. The 2026-11-03
+  note on "the restart" lapses: no return is set, so there is none to restart.
 
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
