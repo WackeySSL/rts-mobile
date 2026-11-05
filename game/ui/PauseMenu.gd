@@ -15,8 +15,9 @@ extends ModalFrame
 ## 5's start page; asks first) and, in a debug or `dev_menu` build, the Developer menu. Under them
 ## the toggle chips: Vibration only (saved by `HudPrefs`; Sound, Music and Settings come with
 ## Phase 5 and stay hidden). Upright the card is above the column; sideways it is to the left.
-## The menu is laid out from the top and leaves the foot free: Phase 5's banner ad goes there
-## (Michael, 2026-11-05; no ad code here, and none on the battle screen).
+## No ad, ever: this is the battle (admob-policy). The menu is laid out from the top and the foot
+## stays free, as Michael's design draws it (2026-11-05: a banner may go there later, once the
+## docs row changes the ad rules; banners are Phase 6, P127). No ad code is here.
 ## The objective is one checklist line that stays open: the snapshot cannot tell "no enemy
 ## Headquarters" from "none built yet" and "no production building" from "none yet" without
 ## reading past the fog, and a won match closes the menu for the result screen.
@@ -26,10 +27,8 @@ extends ModalFrame
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
-const EMBLEMS: Array[String] = ["renew", "fossil"]  ## By the faction's index, as the accents.
 const GLYPH_DP: float = 24.0  ## The glyph in front of a button's word (P118g drew them).
 const CARD_DP: float = 300.0  ## The left column's width sideways; upright it takes the width.
-const ACTIONS_DP: float = 300.0  ## The least the button column takes sideways.
 const BADGE_DP: float = 48.0  ## The round badge of the card, and the emblem in it.
 const EMBLEM_DP: float = 32.0
 const CHECK_DP: float = 24.0  ## The checklist circle.
@@ -38,11 +37,29 @@ const SECONDARY_DP: float = 48.0
 const TIGHT_DP: float = 8.0  ## The gap between buttons and between the card's rows.
 const BUTTON_GAP_DP: float = 12.0  ## The glyph's gap to the word.
 const PLAIN: StringName = &"PauseButton"
-const PRIMARY: StringName = &"PausePrimary"
 const DANGER: StringName = &"PauseDanger"
-const CHIP_ON: StringName = &"PauseChip"
+const PRIMARY_LOOK: StringName = &"PausePrimary"  ## At build; `_show_side` swaps in the side's.
+const CHIP_LOOK: StringName = &"PauseChip"
 const CHIP_OFF: StringName = &"PauseChipOff"
-const ACCENTS: Array[StringName] = [&"AccentRenew", &"AccentFossil"]
+## Per faction id (`faction_ids`): the accent's theme type, and the variations of Resume, the
+## badge and the ON chip that carry it (the Lumen Accord's cyan is the design's).
+const SIDES: Dictionary[StringName, Dictionary] = {
+	&"renew":
+	{
+		&"accent": &"AccentRenew",
+		&"primary": &"PausePrimary",
+		&"badge": &"PauseBadge",
+		&"chip": &"PauseChip"
+	},
+	&"fossil":
+	{
+		&"accent": &"AccentFossil",
+		&"primary": &"PausePrimaryFossil",
+		&"badge": &"PauseBadgeFossil",
+		&"chip": &"PauseChipFossil"
+	},
+}
+const FALLBACK_SIDE: StringName = &"renew"
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink (Surrender).
@@ -57,8 +74,10 @@ var _tight: Array[BoxContainer] = []  ## Spaced TIGHT_DP apart.
 var _loose: Array[BoxContainer] = []  ## Spaced GAP_DP apart.
 var _glyphed: Array[Button] = []  ## Every button with a glyph, for the dp step.
 var _emblem: TextureRect
+var _badge: PanelContainer
+var _side: StringName = FALLBACK_SIDE
 var _title: Label
-var _hidden: Dictionary[Control, float] = {}  ## The HUD controls hidden while PAUSE shows.
+var _hidden: Dictionary[Control, Color] = {}  ## The HUD controls hidden while PAUSE shows.
 var _time: Label
 var _lost: Label
 var _resume: Button
@@ -74,6 +93,7 @@ func _ready() -> void:
 	_body.name = &"Body"
 	_left = VBoxContainer.new()
 	_actions = VBoxContainer.new()
+	_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_toggles = HBoxContainer.new()
 	super()
 	_unframe()
@@ -82,14 +102,14 @@ func _ready() -> void:
 	_body.add_child(_actions)
 	add_label(_left, "PAUSED", &"CapsBigTitle")
 	_build_card()
-	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton", PRIMARY)
+	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton", PRIMARY_LOOK)
 	_add_action("RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN)
 	_add_action("SURRENDER", "surrender", _surrender_dialog_open, &"SurrenderButton", DANGER)
 	_add_action("EXIT TO MENU", "exit", _exit_dialog_open, &"ExitButton", PLAIN)
 	if DevRoutes.is_enabled():
 		_add_action("DEVELOPER MENU", "menu", _open_dev_menu, &"DevMenuButton", PLAIN)
 	_actions.add_child(_toggles)
-	_vibration = _add_action("", "vibration", _toggle_vibration, &"VibrationButton", CHIP_ON)
+	_vibration = _add_action("", "vibration", _toggle_vibration, &"VibrationButton", CHIP_LOOK)
 	_restart_dialog = _make_dialog("RESTART?", "You lose this match.", "RESTART", _restart)
 	_surrender_dialog = _make_dialog(
 		"SURRENDER?", "You lose the match at once.", "SURRENDER", _surrender
@@ -126,21 +146,27 @@ func _build_card() -> void:
 	var head: HBoxContainer = HBoxContainer.new()
 	_loose.append(head)
 	rows.add_child(head)
-	var badge: PanelContainer = PanelContainer.new()
-	badge.theme_type_variation = &"PauseBadge"
-	_fix_size(badge, Vector2(BADGE_DP, BADGE_DP))
-	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(badge)
+	_badge = PanelContainer.new()
+	_badge.name = &"Badge"
+	_badge.theme_type_variation = &"PauseBadge"
+	_fix_size(_badge, Vector2(BADGE_DP, BADGE_DP))
+	_badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_badge)
 	_emblem = TextureRect.new()
+	_emblem.name = &"Emblem"
 	_emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_fix_size(_emblem, Vector2(EMBLEM_DP, EMBLEM_DP))
-	badge.add_child(_emblem)
+	_emblem.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_emblem.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_badge.add_child(_emblem)
 	var words: VBoxContainer = VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(words)
 	add_label(words, "SKIRMISH", &"PauseMuted")
 	_title = add_label(words, "", &"CapsTitle")
+	_title.clip_text = true
+	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var item: HBoxContainer = HBoxContainer.new()
 	_loose.append(item)
 	rows.add_child(item)
@@ -179,8 +205,6 @@ func _apply_dp() -> void:
 		Control.SIZE_EXPAND_FILL if _body.vertical else Control.SIZE_SHRINK_BEGIN
 	)
 	_left.custom_minimum_size.x = 0.0 if _body.vertical else UiScale.dp(CARD_DP)
-	_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_actions.custom_minimum_size.x = 0.0 if _body.vertical else UiScale.dp(ACTIONS_DP)
 	for button: Button in _glyphed:
 		button.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(GLYPH_DP)))
 		button.add_theme_constant_override("h_separation", roundi(UiScale.dp(BUTTON_GAP_DP)))
@@ -192,7 +216,7 @@ func _add_action(
 	text: String, glyph: String, action: Callable, node_name: StringName, variation: StringName
 ) -> Button:
 	var button: Button = Button.new()
-	var chip: bool = variation == CHIP_ON
+	var chip: bool = variation == CHIP_LOOK
 	button.theme_type_variation = variation
 	button.name = node_name
 	button.text = text
@@ -200,7 +224,7 @@ func _add_action(
 	button.expand_icon = false
 	button.icon = load(GLYPH_ART % glyph) as Texture2D
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if chip else Control.SIZE_EXPAND_FILL
-	_fix_size(button, Vector2(0.0, PRIMARY_DP if variation == PRIMARY else SECONDARY_DP))
+	_fix_size(button, Vector2(0.0, PRIMARY_DP if variation == PRIMARY_LOOK else SECONDARY_DP))
 	button.pressed.connect(action)
 	(_toggles if chip else _actions).add_child(button)
 	_glyphed.append(button)
@@ -251,6 +275,7 @@ func _fill_card() -> void:
 	var scenario: ScenarioDef = runner.scenario
 	var source: String = scenario.map.resource_path if scenario.map != null else ""
 	_title.text = source.get_file().get_basename().capitalize().to_upper()
+	_title.visible = _title.text != ""
 	var snap: MatchSnapshot = runner.snapshot
 	var seconds: int = 0 if snap == null else snap.tick / Sim.TICK_RATE
 	_time.text = "Time %d:%02d" % [seconds / 60, seconds % 60]
@@ -258,46 +283,58 @@ func _fill_card() -> void:
 	if snap != null and scenario.local_player < snap.stat_lost_units.size():
 		lost = snap.stat_lost_units[scenario.local_player]
 	_lost.text = "Units lost: %d" % lost
-	_show_emblem(snap, scenario.local_player)
+	_show_side(snap, scenario.local_player)
 
 
-## The local player's faction emblem (the first row it owns names the faction, as the build
-## button's accent does), tinted with that faction's accent.
-func _show_emblem(snap: MatchSnapshot, player: int) -> void:
-	var faction: int = 0
+## The local player's side: `type_faction` indexes `faction_ids`, so the id is the key (the first
+## row the player owns names it, as BuildSidebar's tab does). Its emblem, in the accent's light, and
+## the variations of Resume, the badge and the ON chip.
+func _show_side(snap: MatchSnapshot, player: int) -> void:
+	var id: StringName = FALLBACK_SIDE
 	if snap != null:
 		for row: int in snap.unit_id.size():
-			if snap.owner[row] == player:
-				faction = clampi(snap.type_faction[snap.type_index[row]], 0, EMBLEMS.size() - 1)
-				break
-	_emblem.texture = load(EMBLEM_ART % EMBLEMS[faction]) as Texture2D
-	_emblem.modulate = get_theme_color(&"light", ACCENTS[faction])
+			if snap.owner[row] != player:
+				continue
+			var index: int = snap.type_faction[snap.type_index[row]]
+			if (
+				index >= 0
+				and index < snap.faction_ids.size()
+				and SIDES.has(snap.faction_ids[index])
+			):
+				id = snap.faction_ids[index]
+			break
+	_side = id
+	var side: Dictionary = SIDES[id]
+	_emblem.texture = load(EMBLEM_ART % id) as Texture2D
+	_emblem.modulate = get_theme_color(&"light", side[&"accent"])
+	_badge.theme_type_variation = side[&"badge"]
+	_resume.theme_type_variation = side[&"primary"]
 
 
 ## The HUD's controls (the pill, the scope, the group column, BUILD, the command bar and the rest
 ## of the layer) go clear under the menu and come back at Resume. Their own `visible` is theirs
-## (each `place` sets it), so the menu clears their `modulate` alpha, which no one of them writes;
-## the result screen and this menu stay.
+## (each `place` sets it), so the menu clears their `modulate`, which no one of them writes, and
+## puts the saved one back; the result screen and this menu stay.
 func _hide_hud() -> void:
 	for node: Node in get_parent().get_children():
 		var control: Control = node as Control
-		if control == null or control == self or control is ResultScreen or _hidden.has(control):
+		if control == null or control == self or control is ResultScreen:
 			continue
-		_hidden[control] = control.modulate.a
+		_hidden[control] = control.modulate
 		control.modulate = get_theme_color(&"hidden", &"PauseHud")
 
 
 func _restore_hud() -> void:
 	for control: Control in _hidden:
 		if is_instance_valid(control):
-			control.modulate.a = _hidden[control]
+			control.modulate = _hidden[control]
 	_hidden.clear()
 
 
 func _show_vibration() -> void:
 	var on: bool = HudPrefs.haptics_enabled()
 	_vibration.text = "VIBRATION: ON" if on else "VIBRATION: OFF"
-	_vibration.theme_type_variation = CHIP_ON if on else CHIP_OFF
+	_vibration.theme_type_variation = SIDES[_side][&"chip"] if on else CHIP_OFF
 
 
 func _toggle_vibration() -> void:

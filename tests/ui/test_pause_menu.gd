@@ -141,14 +141,13 @@ func test_the_card_shows_the_map_the_goal_the_time_and_the_losses() -> void:
 	await await_idle_frame()
 	await _open()
 	_runner().run_ticks(Sim.TICK_RATE * 65)
+	_runner().snapshot.stat_lost_units[_runner().scenario.local_player] = 3
 	_pill().menu_pressed.emit()
 	var texts: Array[String] = []
 	for label: Node in _menu().find_children("*", "Label", true, false):
 		texts.append((label as Label).text)
-	assert_array(texts).contains(["SKIRMISH", "KESTREL FLATS", "Time 1:05", "Units lost: 0"])
+	assert_array(texts).contains(["SKIRMISH", "KESTREL FLATS", "Time 1:05", "Units lost: 3"])
 	assert_array(texts).contains([PauseMenu.OBJECTIVE])
-	var lost: int = _runner().snapshot.stat_lost_units[_runner().scenario.local_player]
-	assert_int(lost).is_equal(0)
 
 
 ## Restart, Surrender and Exit each ask first and send or change nothing until the yes; the no
@@ -254,6 +253,7 @@ func test_the_menu_does_not_open_over_the_result_and_gives_way_to_it() -> void:
 	assert_bool(_menu().visible).is_false()
 	assert_bool(_runner().paused).is_false()
 	assert_bool((_main.get_node("Hud/ResultScreen") as Control).visible).is_true()
+	assert_float(_pill().modulate.a).is_equal(1.0)  # The HUD under the menu is back.
 	_pill().menu_pressed.emit()
 	assert_bool(_state().is_open(HudState.Unfold.PAUSE)).is_false()
 	assert_bool(_menu().visible).is_false()
@@ -267,9 +267,11 @@ func test_a_new_match_closes_the_menu() -> void:
 	await _open()
 	_pill().menu_pressed.emit()
 	assert_bool(_runner().paused).is_true()
+	assert_float(_pill().modulate.a).is_equal(0.0)
 	_state().reset()
 	assert_bool(_menu().visible).is_false()
 	assert_bool(_runner().paused).is_false()
+	assert_float(_pill().modulate.a).is_equal(1.0)
 
 
 ## The words the player reads, and a Developer menu entry in a debug build.
