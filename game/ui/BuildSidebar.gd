@@ -14,7 +14,7 @@ extends Control
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
-## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD, a
+## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD and a
 ## tap that selects an own producer (its tab, `set_selected`) open it; the end of a placement (a
 ## build, the X, the match's end) does not: the drawer stays down (Michael, 2026-11-05).
 ## Starting a placement from the drawer again (a READY card tapped while one runs) closes it, as
@@ -76,7 +76,6 @@ static var _slide_override: int = -1
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic, the selection.
 @export var placement: PlacementController  ## A tap on a READY card begins it. None: no placement.
-@export var strike_aim: StrikeAim  ## Aiming a strike takes the drawer down, as placement does.
 @export var feed: HudStateFeed  ## Its `state` says whether the drawer is open.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 

@@ -210,7 +210,7 @@ func test_a_tap_on_an_own_producer_opens_the_drawer_on_its_tab_with_no_visible_m
 		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.VEHICLES)
 
 
-func test_placement_closes_the_drawer_and_a_build_or_the_x_gives_it_back() -> void:
+func test_placement_closes_the_drawer_and_a_build_or_the_x_leaves_it_down() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		var why: String = str(size)
@@ -258,7 +258,7 @@ func test_build_brings_the_cards_back_while_the_ghost_is_out_and_ready_restarts_
 		assert_bool(_placement.active).override_failure_message(why).is_true()
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		_placement.cancel()
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()  # Began closed.
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 
 
 ## A tap on the READY card closes the drawer only when placement really begins: where the game
