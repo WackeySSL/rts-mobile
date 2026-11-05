@@ -14,6 +14,13 @@ Status note (2026-11-03, the docs row after wave y; P128b #265 as merged): §6 c
 status note that a cancelled row holds its site slot until REMOVE, and §12's list of amended
 sections gains ADR 0007 §10 (the `DIED` record's cancel flag). No accepted text changed.
 
+Status note (2026-11-05, P26ax docs; Michael's decisions on the build drawer, row P120e): the
+drawer has no queue row any more (ADR 0025 §5's note of 2026-11-05), so §9's "The drawer's queue
+row on the Structures tab" ("CONSTRUCTION", "NOTHING BUILDING") and the decisions table's "the
+drawer's queue row show it" (row 9) have no place to show. The architect re-plans where a site
+under construction shows in the HUD before P130 starts (the HUD v2 plan's status of 2026-11-05).
+No accepted text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 1. **B:** a cancelled site refunds 75 % of its price (`construct_refund_percent` 75).
 2. **A:** a site starts at `construct_start_hp_percent` (10) of its hit points and rises with the

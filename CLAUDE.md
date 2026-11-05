@@ -80,9 +80,11 @@ tap = select, tap ground = move (stops an attack), long-press + drag = box selec
 Details: skill `touch-ui-rules`.
 
 ## Monetization rules
-Never any ad on the battle screen. Rewarded ads only on explicit player choice. Interstitials only
-between matches, capped. Banners only in menus. Debug builds use Google test ad IDs; real IDs are
-injected only by the release workflow. UMP consent before any ad request. Details: skill `admob-policy`.
+No ad on the battle screen, except one banner at the foot of the open pause menu (Michael,
+2026-11-05), at least 16 dp from any button; no rewarded or interstitial ad on the pause menu.
+Rewarded ads only on explicit player choice. Interstitials only between matches, capped. Banners
+only in menus and at that foot. Debug builds use Google test ad IDs; real IDs are injected only by
+the release workflow. UMP consent before any ad request. Details: skill `admob-policy`.
 
 ## Legal (hard)
 - No names, units, factions, art, audio, music or UI look from Command & Conquer, Red Alert or any

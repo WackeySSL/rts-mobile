@@ -26,3 +26,13 @@ metadata:
 - Pitfall (fonts): test_ui_theme_scan flags FontVariation/set_font in any game/ui script; per-size FontVariations in theme.tres with base-px spacing in metadata/base_px avoid code; STYLE.md and theme.tres name a "Licences screen" that does not exist yet.
 - ACCEPTED 2026-11-02 (Michael on #259: "Ja til anbefalinger undtagen attack. Punkt 4 behold som det er i dag men lav en knap så man kan fjerne sin markering af en enhed"): 0025 1 A, 2 A, 3 A, 4 = no Attack button/mode + a Deselect button (48 x 64 dp at the bar's start, glyph_deselect = broken selection ring, "CLEAR", view-only, freeze holds), 5 no, 6 no, 7 ja (GDD team colour per side), 8 ja; 0026 1 B (75 %), 2 A, 3 ja (GDD charge from completion), 4 A (site goes on). P26ap folded into #259: dated notes in ADR headers before "## Context" (0015, 0017-0020, 0023, 0024), ADR 0024 status line, GDD, ROADMAP box 3 wording, P85f2 withdrawn, P89 re-scoped; touch-ui-rules as a separate last commit; rts-sim-conventions waits for P128 (still right until then).
 - P26ar (2026-11-03) ADR 0025 notes from wave z lead decisions: drawer head economy line takes no touch (card only from the pill), no "POWER" caption, portrait head 54 dp (handle 4 + gap 2 + 48), landscape 48; toast vs top-left stack = plain no-overlap with the pill folded; stalled = no head advanced between snapshots, low power no exception (blackout on low power is a stall); <= ~680 dp wide (rig tiny_short_landscape) a pinned map folds at aim start (pin kept, scope tap reopens), follow-up lets HudCorners drop MAP; group hold with nothing selected does nothing; §2 "Always" for the group column but hidden under the portrait sheet (since #268).
+- P26ax (2026-11-05) Michael's phone check: P120e drops the queue row (QueueRow, QueueThumb), the
+  drawer head and EconomyLine and `queue_hold_count`; a long press on any card CANCELs the last of
+  its type (holds wait for a snapshot past the CANCEL's tick; a tab change no longer ends the wait);
+  the pill stays in its corner; the chevron sits at the tabs row's end; no coded floor of two
+  columns. P124b: the pause menu's look; a banner at its foot is allowed where the foot is free
+  (upright), sideways and scrolling left to P127. P130 needs a new place for the site under
+  construction (ADR 0026 §9).
+- Pitfall (docs notes): a note that replaces accepted text must name every phrase it replaces
+  (decisions-table rows, §3 bullets, quoted answers) and follow the code's end conditions, not the
+  earlier note's.

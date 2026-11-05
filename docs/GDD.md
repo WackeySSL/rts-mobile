@@ -133,8 +133,9 @@ without watching ads.
 Rewarded ads offer double XP after a match and +500 starting credits for the next match.
 
 ## Monetization
-Rules in the `admob-policy` skill: never ads in battle, rewarded by choice, capped interstitial
-after a match, banners only in menus, plus a Remove ads purchase.
+Rules in the `admob-policy` skill: no ads in battle but one banner at the foot of the open pause
+menu (Michael, 2026-11-05), rewarded by choice, capped interstitial after a match, banners only in
+menus, plus a Remove ads purchase.
 
 ## Art and audio
 Rules in the `svg-art-style` skill: an isometric 2:1 view (ADR 0023) in a flat-shaded, muted vector

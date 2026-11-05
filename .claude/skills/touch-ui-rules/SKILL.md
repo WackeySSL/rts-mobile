@@ -35,11 +35,10 @@ with the phone; no UI code assumes width > height.
 | Tap the radar scope | Unfold the full map under it |
 | Tap or drag the full map | Move the camera there; with units selected a long-press moves them there |
 | Tap a unit card | Queue one (`QUEUE`, paid at once) |
-| Long-press a unit card | Queue as many as room and credits allow, at most `queue_hold_count` |
-| Tap an item in the queue row | Cancel it (`CANCEL`, full refund) |
+| Long-press a card | Cancel the last one of its type in the queue (`CANCEL`, full refund); nothing if none is queued; further holds do nothing until the queue shows the cancel |
 | Any gesture on the map | Also closes the open drawer, full map (unless pinned) or economy card; the gesture still does its work; a touch on a HUD control never closes them |
 | Tap BUILD | Open the build drawer |
-| Swipe the drawer toward its edge (portrait: from its head) | Close it (`drawer_swipe_dp`) |
+| Swipe the drawer toward its edge (portrait: from its handle or its tabs) | Close it (`drawer_swipe_dp`) |
 | Tap the Ready chip (until ADR 0026's P130) | Open the drawer on the Structures tab, the ready card in view |
 | Tap the pill's menu button | Pause the match and open the pause menu |
 | Tap the credits or the power in the pill | Show the economy card; the next touch closes it |
@@ -128,11 +127,12 @@ plan's "Interim places" say where each part stands meanwhile.
   gesture closes it (not a pinned full map, not pause) and still does its work; the game runs on
   behind all but pause, which pauses the match. A match starts with nothing unfolded.
 - The drawer: landscape a side panel from the right (40 % of the width, 312 to 420 dp), portrait a
-  bottom sheet of half the height; the economy in its head (the pill hides), a close button and the
-  swipe, the tabs with names (Structures, Infantry, Vehicles), the card grid (cards at least 88 x 96
-  dp, as many columns as fit, at least two; it scrolls on short screens), the queue row (tap an item
-  to cancel). It slides over `menu_slide_ms`; no pin. It opens on BUILD, on a producer's selection
-  (its tab) and after a placement begun in it.
+  bottom sheet of half the height; the economy pill stays in its corner (Michael, 2026-11-05); the
+  tabs with names (Structures, Infantry, Vehicles) with the close chevron at the row's end, and the
+  swipe; the card grid (cards at least 88 x 96 dp, as many columns as fit (two or more on every
+  supported screen), stretched so a full row ends at the right edge; it scrolls on short screens).
+  No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on
+  BUILD, on a producer's selection (its tab) and after a placement begun in it.
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders the
   game has (Stop for units; none for a building until ADR 0026's Cancel for a site). No Attack
   button. Later orders join the list with a glyph and a HOW_TO_PLAY line.
@@ -151,7 +151,8 @@ plan's "Interim places" say where each part stands meanwhile.
 - Where each part stands: the section above and ADR 0025 §2's table.
 - The bottom stack (command bar, BUILD and the group column) takes at most 40% of the safe height;
   the drawer is transient and may take half.
-- No ads on this screen, ever (pause included).
+- No ads on this screen, except one banner at the foot of the open pause menu where the foot is
+  free (`admob-policy`; Michael, 2026-11-05).
 - Keep every control inside `DisplayServer.get_display_safe_area()`; safe areas: the same
   `SafeAreaMargin` rule (both sides of an axis get the larger inset).
 - A turn keeps the camera centre and the world size per dp (ADR 0015 §4) and cancels gestures in

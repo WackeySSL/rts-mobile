@@ -5,6 +5,7 @@ paths:
   - "game/ads/**"
   - "game/meta/**"
   - "game/ui/menus/**"
+  - "game/ui/PauseMenu.gd"
 ---
 
 # AdMob policy for rts-mobile
@@ -15,13 +16,17 @@ AdMob account.
 ## Placement matrix
 | Screen | Banner | Interstitial | Rewarded |
 | --- | --- | --- | --- |
-| Battle, including pause | Never | Never | Never |
+| Battle screen, but the open pause menu | Never | Never | Never |
+| Pause menu (Michael, 2026-11-05) | Adaptive banner at its foot where the foot is free (upright), never within 16 dp of a control; shown only while the menu is open; sideways or wherever the menu scrolls, none until P127 decides (ADR 0025 §11's note) | Never | Never |
 | Match result | Never | After the player taps Continue, capped | Offer "Double XP" |
 | Main menu, map select, settings | Adaptive banner at the bottom, at least 16 dp from any button | Never | Offer "+500 starting credits next match" |
 | App start and loading | Never | Never | Never |
 
 AdMob's own guidance rejects banners on gameplay screens where players tap continuously
-(https://support.google.com/admob/answer/6275345). This game goes further: no ads in battle.
+(https://support.google.com/admob/answer/6275345). This game goes further: no ad on the battle
+screen but this one banner. The pause menu is a menu the player opened, over a paused match: its
+banner sits below the last control, never beside, between or over controls, goes when the menu
+closes, and the Remove ads purchase removes it.
 
 ## Frequency caps (in `data/ads_settings.tres`)
 - Interstitial: at most one per 4 minutes of play, none in a new player's first 2 matches,
