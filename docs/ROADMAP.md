@@ -36,12 +36,12 @@ Tick a box in the PR that meets the criterion.
 ## Phase 3: Base building and economy
 - [x] Buildings from the GDD with placement (ghost, valid and invalid tint, confirm and cancel)
 - [x] Build sidebar with tabs, queues, cost and progress; power bar and low-power effects
-- [ ] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build menu keep their dp sizes in both
+- [x] Portrait and landscape on the battle screen (ADR 0015): the HUD, selection and build menu keep their dp sizes in both
   orientations and follow ADR 0015 §5's layout as ADR 0025 amends it (the corner HUD and the build drawer; upright the
   same corners as sideways, Michael, 2026-11-05); a turn during a match keeps the camera centre and the world size per
   dp and queues no Command; UI and layout tests run at 1280x720, 2400x1080, 2048x1536, 720x1280, 1080x2400 and
   1536x2048; checked on Michael's phone in portrait: build an item with one hand, jump with the radar's full map,
-  rotate during a placement
+  rotate during a placement (passed with the Phase 3 gate, Michael, 2026-11-05, issue #340)
 - [x] The Android build follows the device's sensor (ADR 0015 §7: `window/handheld/orientation=6`, manifest
   `screenOrientation` 13), as the last row of `docs/plans/2026-10-19-portrait.md`
 - [x] Ore fields, harvester loop, refinery and credits
@@ -50,7 +50,8 @@ Tick a box in the PR that meets the criterion.
 - [x] Two original factions with their own buildings, units and superweapon (ADR 0023): the Derrick League and the
   Lumen Accord, each with eight buildings, six unit types and one superweapon, both playable; the build menu shows only the
   player's own faction
-- [ ] Gate: a full match can be played against a dummy opponent that only builds and defends
+- [x] Gate: a full match can be played against a dummy opponent that only builds and defends (passed, Michael,
+  2026-11-05, issue #340)
 
 ## Phase 4: Opponent AI and balance
 - [ ] AI with build orders from data, scouting, army grouping, attack waves and retreat
