@@ -5,9 +5,10 @@ extends ModalFrame
 ## match is paused (`MatchRunner.paused`, the path the app pause uses: the sim only stops ticking,
 ## no Command, nothing in the replay or the hash) and the menu is the one thing that takes a touch.
 ## Resume (or a new match) closes it and unpauses.
-## The look: a heavy dim over the field (the HUD under it is all but gone), "PAUSED" top left, a
-## card (the faction's emblem, "SKIRMISH . <MAP>", the goal's short form, the objective as a
-## checklist line, the match time and the units lost) and one column of full-width buttons: Resume
+## The look: the usual dim over the field and the HUD's own controls hidden under it (ADR 0025's
+## layout table: "under the drawer and pause"), "PAUSED" top left, a card (the faction's emblem,
+## "SKIRMISH", the map's name, the objective as a checklist line, the match time and the units
+## lost) and one column of full-width buttons: Resume
 ## (the accent's fill, 56 dp), Restart (the result screen's route: the same scenario and
 ## opponents, a new main scene; asks first), Surrender (the danger red; resumes, then sends
 ## SURRENDER through the controller's sink; asks first), Exit to menu (the dev menu until Phase
@@ -23,7 +24,6 @@ extends ModalFrame
 ## match has ended.
 
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
-const GOAL: String = "DESTROY THE ENEMY BASE"  ## The objective's short form, the card's title.
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
 const EMBLEMS: Array[String] = ["renew", "fossil"]  ## By the faction's index, as the accents.
@@ -43,7 +43,6 @@ const DANGER: StringName = &"PauseDanger"
 const CHIP_ON: StringName = &"PauseChip"
 const CHIP_OFF: StringName = &"PauseChipOff"
 const ACCENTS: Array[StringName] = [&"AccentRenew", &"AccentFossil"]
-const SCRIM: StringName = &"PauseScrim"
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink (Surrender).
@@ -58,7 +57,8 @@ var _tight: Array[BoxContainer] = []  ## Spaced TIGHT_DP apart.
 var _loose: Array[BoxContainer] = []  ## Spaced GAP_DP apart.
 var _glyphed: Array[Button] = []  ## Every button with a glyph, for the dp step.
 var _emblem: TextureRect
-var _kicker: Label
+var _title: Label
+var _hidden: Dictionary[Control, float] = {}  ## The HUD controls hidden while PAUSE shows.
 var _time: Label
 var _lost: Label
 var _resume: Button
@@ -102,11 +102,8 @@ func _ready() -> void:
 	_apply_dp()
 
 
-## The frame's plate and centring go: the column sits at the top of the scroll, full width, and
-## the dim is the pause's own (the HUD under it is hidden by it, ADR 0025 section 1's table).
+## The frame's plate and centring go: the column sits at the top of the scroll, full width.
 func _unframe() -> void:
-	var scrim: PanelContainer = get_child(0) as PanelContainer
-	scrim.theme_type_variation = SCRIM
 	var panel: Node = column.get_parent()
 	var centre: Node = panel.get_parent()
 	var scroll: Node = centre.get_parent()
@@ -142,9 +139,8 @@ func _build_card() -> void:
 	var words: VBoxContainer = VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(words)
-	_kicker = add_label(words, "", &"PauseMuted")
-	var goal: Label = add_label(words, GOAL, &"CapsTitle")
-	goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_label(words, "SKIRMISH", &"PauseMuted")
+	_title = add_label(words, "", &"CapsTitle")
 	var item: HBoxContainer = HBoxContainer.new()
 	_loose.append(item)
 	rows.add_child(item)
@@ -241,10 +237,12 @@ func _on_changed(previous: HudState.Unfold) -> void:
 		if previous != HudState.Unfold.PAUSE:
 			_fill_card()
 			_show_vibration()
+			_hide_hud()
 			show_over(_resume)
 	elif previous == HudState.Unfold.PAUSE:
 		runner.paused = false
 		_close_dialogs()
+		_restore_hud()
 		visible = false
 
 
@@ -252,7 +250,7 @@ func _on_changed(previous: HudState.Unfold) -> void:
 func _fill_card() -> void:
 	var scenario: ScenarioDef = runner.scenario
 	var source: String = scenario.map.resource_path if scenario.map != null else ""
-	_kicker.text = ("SKIRMISH \u00b7 %s" % source.get_file().get_basename().capitalize()).to_upper()
+	_title.text = source.get_file().get_basename().capitalize().to_upper()
 	var snap: MatchSnapshot = runner.snapshot
 	var seconds: int = 0 if snap == null else snap.tick / Sim.TICK_RATE
 	_time.text = "Time %d:%02d" % [seconds / 60, seconds % 60]
@@ -274,6 +272,26 @@ func _show_emblem(snap: MatchSnapshot, player: int) -> void:
 				break
 	_emblem.texture = load(EMBLEM_ART % EMBLEMS[faction]) as Texture2D
 	_emblem.modulate = get_theme_color(&"light", ACCENTS[faction])
+
+
+## The HUD's controls (the pill, the scope, the group column, BUILD, the command bar and the rest
+## of the layer) go clear under the menu and come back at Resume. Their own `visible` is theirs
+## (each `place` sets it), so the menu clears their `modulate` alpha, which no one of them writes;
+## the result screen and this menu stay.
+func _hide_hud() -> void:
+	for node: Node in get_parent().get_children():
+		var control: Control = node as Control
+		if control == null or control == self or control is ResultScreen or _hidden.has(control):
+			continue
+		_hidden[control] = control.modulate.a
+		control.modulate = get_theme_color(&"hidden", &"PauseHud")
+
+
+func _restore_hud() -> void:
+	for control: Control in _hidden:
+		if is_instance_valid(control):
+			control.modulate.a = _hidden[control]
+	_hidden.clear()
 
 
 func _show_vibration() -> void:

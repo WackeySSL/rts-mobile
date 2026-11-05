@@ -101,6 +101,33 @@ func test_the_foot_stays_free_for_the_banner_upright() -> void:
 	assert_object(_menu().find_child("*Ad*", true, false)).is_null()
 
 
+## The HUD's controls are gone while PAUSE shows (the pill, the scope, the group column, BUILD, the
+## command bar) and are back after Resume; the menu itself stays.
+func test_the_hud_is_hidden_under_the_menu_and_back_after_resume() -> void:
+	get_window().size = ScreenSizes.LANDSCAPE[0]
+	await await_idle_frame()
+	_main = auto_free(await MatchRig.open(self))
+	var names: Array[String] = [
+		"EconomyPill", "RadarScope", "GroupColumn", "BuildButton", "CommandBar"
+	]
+	for node_name: String in names:
+		assert_float(_hud(node_name).modulate.a).override_failure_message(node_name).is_equal(1.0)
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await await_idle_frame()
+	for node_name: String in names:
+		assert_float(_hud(node_name).modulate.a).override_failure_message(node_name).is_equal(0.0)
+	assert_bool(_menu().visible).is_true()
+	assert_float(_menu().modulate.a).is_equal(1.0)
+	_button("ResumeButton").pressed.emit()
+	await await_idle_frame()
+	for node_name: String in names:
+		assert_float(_hud(node_name).modulate.a).override_failure_message(node_name).is_equal(1.0)
+
+
+func _hud(node_name: String) -> Control:
+	return _main.get_node("Hud/" + node_name) as Control
+
+
 ## A main scene with the pause menu open.
 func _open_menu() -> void:
 	_main = auto_free(await MatchRig.open(self))

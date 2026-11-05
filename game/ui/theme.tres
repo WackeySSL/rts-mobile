@@ -45,7 +45,7 @@
 ; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner,
 ; ItemCaption, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
 ; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
-; EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseScrim, PauseCard, PauseBadge, PauseCheck,
+; EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseCard, PauseBadge, PauseCheck,
 ; PauseMuted, PauseButton, PausePrimary, PauseDanger, PauseChip, PauseChipOff) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
@@ -299,21 +299,13 @@ corner_radius_bottom_left = 4
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scrim"]
 bg_color = Color(0.03921569, 0.05490196, 0.06666667, 0.7)
 
-; The pause menu's look (PauseMenu.gd, P124b, Michael's design of 2026-11-05). PauseScrim: the panel colour
-; at 94 %, so the HUD under the menu is all but hidden and the field still shows faintly. PauseCard: the card's
+; The pause menu's look (PauseMenu.gd, P124b, Michael's design of 2026-11-05; the dim is the usual Scrim). PauseCard: the card's
 ; plate, the panel's colour a little lighter, a 1 dp edge, 12 dp corners and 12 dp inside. PauseBadge: the
 ; round plate of the emblem (24 dp corners on a 48 dp square). PauseCheck: the empty circle of an open
 ; objective, a 2 dp muted line on nothing. PauseButton: a dark plate with a 1 dp edge and 16 dp in front of
 ; the glyph, 8 dp corners; PausePrimary is the accent's fill with dark type (5.9:1), PauseDanger the same
 ; plate with the danger red on word and glyph. PauseChip and PauseChipOff: the toggle chips, the accent's
 ; light on the plate while on, muted and dimmed while off. PauseMuted: the small grey caps line and foot.
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pause_scrim"]
-bg_color = Color(0.03921569, 0.05490196, 0.06666667, 0.94)
-corner_radius_top_left = 0
-corner_radius_top_right = 0
-corner_radius_bottom_right = 0
-corner_radius_bottom_left = 0
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pause_card"]
 content_margin_left = 12
 content_margin_top = 12
@@ -673,8 +665,9 @@ ResultScreen/colors/victory = Color(0.18823529, 0.64313725, 0.42352941, 1)
 Scrim/base_type = &"PanelContainer"
 Scrim/styles/panel = SubResource("StyleBoxFlat_scrim")
 ; The pause menu (PauseMenu.gd, P124b): see the block of sub-resources above.
-PauseScrim/base_type = &"PanelContainer"
-PauseScrim/styles/panel = SubResource("StyleBoxFlat_pause_scrim")
+; PauseHud: the modulate the HUD controls take while the pause menu covers them (clear).
+PauseHud/base_type = &"Control"
+PauseHud/colors/hidden = Color(1, 1, 1, 0)
 PauseCard/base_type = &"PanelContainer"
 PauseCard/styles/panel = SubResource("StyleBoxFlat_pause_card")
 PauseBadge/base_type = &"PanelContainer"

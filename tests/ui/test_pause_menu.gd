@@ -145,9 +145,7 @@ func test_the_card_shows_the_map_the_goal_the_time_and_the_losses() -> void:
 	var texts: Array[String] = []
 	for label: Node in _menu().find_children("*", "Label", true, false):
 		texts.append((label as Label).text)
-	assert_array(texts).contains(
-		["SKIRMISH \u00b7 KESTREL FLATS", PauseMenu.GOAL, "Time 1:05", "Units lost: 0"]
-	)
+	assert_array(texts).contains(["SKIRMISH", "KESTREL FLATS", "Time 1:05", "Units lost: 0"])
 	assert_array(texts).contains([PauseMenu.OBJECTIVE])
 	var lost: int = _runner().snapshot.stat_lost_units[_runner().scenario.local_player]
 	assert_int(lost).is_equal(0)
