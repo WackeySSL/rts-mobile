@@ -60,15 +60,11 @@ const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0  ## The close button's least width; it is as high as the tabs.
 const HANDLE_GAP_DP: float = 4.0  ## Above and below the handle.
-const CLOSE_ICON_DP: float = 28.0
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
-const CARD_SLACK_DP: float = 0.25
+const CARD_SLACK_PX: float = 2.0  ## The cards leave this much of the width over (px rounding).
 const TAB_GAP_DP: float = 2.0  ## Between the tabs and the close button: "Structures" needs it.
-## The slot of the cards is their height and this, because a box container sorts in whole px and
-## would otherwise leave a card a fraction of a px taller than the slot that holds it.
-const ROW_SLACK_DP: float = 2.0
 ## The grid's least height: the drawer's content must fit the safe height on `web_phone_small`
 ## (ADR 0025 section 5: the grid scrolls there), so no whole card row is asked for.
 const FIT_LEAST_DP: float = 48.0
@@ -519,7 +515,6 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 			snap.type_names[type]
 		)
 		tile.faction = snap.type_faction[type]
-		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # The columns share the room.
 		tile.hold_ms = settings.long_press_ms
 		tile.slop_dp = settings.tap_slop_dp
 		tile.chose.connect(_on_chose.bind(tile))
@@ -535,15 +530,23 @@ func _build_tiles(snap: MatchSnapshot) -> void:
 func _show_tab() -> void:
 	var card: Vector2 = ItemTile.CARD_PORTRAIT_DP if _portrait else ItemTile.CARD_DP
 	# As many columns as the width holds, on every tab, and the cards are as wide as the columns
-	# share the room (a quarter dp short: the pixel rounding stays inside the drawer; the cards
-	# expand over the slack). So a card has one width throughout and a full row ends at the right
-	# edge, with the margin the left edge has.
+	# share the room (whole px, `CARD_SLACK_PX` short in all, so the rounding stays inside the
+	# drawer). A row of as many cards as columns expands over the slack and ends at the right edge,
+	# with the margin the left edge has. A shorter row must not expand: the grid counts the empty
+	# columns as expanding and would spread their gaps over its cards, so its cards keep the width.
 	var room: float = _rect.size.x / _dp_px - 4.0 * PAD_DP + GAP_DP
 	var columns: int = maxi(floori(room / (card.x + GAP_DP)), 1)
-	card.x = maxf(card.x, (room - columns * GAP_DP) / columns - CARD_SLACK_DP)
+	var width_px: float = floorf((room - GAP_DP) * _dp_px) - CARD_SLACK_PX
+	var gap_px: float = roundf(GAP_DP * _dp_px)
+	card.x = maxf(card.x, floorf((width_px - (columns - 1) * gap_px) / columns) / _dp_px)
+	var shown: int = 0
+	for tile: ItemTile in _tiles:
+		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
+		shown += 1 if tile.visible else 0
+	var fill: int = Control.SIZE_EXPAND_FILL if shown >= columns else Control.SIZE_FILL
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)
-		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
+		tile.size_flags_horizontal = fill
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
 	_grid.columns = columns
 

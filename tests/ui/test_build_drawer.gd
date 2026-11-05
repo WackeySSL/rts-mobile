@@ -6,12 +6,11 @@ extends GdUnitTestSuite
 ## upright a bottom sheet of the full safe width and half the height (at least 312 dp). The close
 ## button (at the tabs row's end), the tabs (with their names) and the cards are at least 48 dp and
 ## inside the safe rect; the cards are as many columns as fit on every tab (three upright on the
-## 6-inch
-## phone and at 360 dp, four from about 450 dp), and on the smallest web phone the grid scrolls
-## vertically. The slide (`menu_slide_ms`) eases out, ends on its target, can be reversed, and a
-## turn ends it; the zone and the top follow it (ADR 0024 section 4). The interim places: upright
-## the closed drawer's zone is BUILD's own 64 dp, sideways it is 0. The unfold rules are
-## test_build_drawer_triggers'.
+## 6-inch phone and at 360 dp, four from about 450 dp), and on the smallest web phone the
+## grid scrolls vertically. The slide (`menu_slide_ms`) eases out, ends on its target, can be
+## reversed, and a turn ends it; the zone and the top follow it (ADR 0024 section 4). The interim
+## places: upright the closed drawer's zone is BUILD's own 64 dp, sideways it is 0. The unfold
+## rules are test_build_drawer_triggers'.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -259,16 +258,19 @@ func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> v
 			)
 			assert_float(left - items.position.x).override_failure_message(gap).is_less_equal(1.5)
 			widths.append(cards[0].size.x)
-			# One width on every tab (a short tab's cards may take a few px of the grid's slack).
+			# One width on every tab, however many cards the tab has.
 			var spread: float = absf(widths[-1] - widths[0])
-			assert_float(spread).override_failure_message(gap).is_less_equal(widths[0] * 0.06)
+			var allowed: float = BuildSidebar.CARD_SLACK_PX + 2.0
+			assert_float(spread).override_failure_message(gap).is_less_equal(allowed)
 			# A full row ends at the right edge, like the left margin (a short row leaves the rest).
 			var columns: int = (
 				(_sidebar.find_children("*", "GridContainer", true, false)[0] as GridContainer)
 				. columns
 			)
 			if cards.size() >= columns:
-				assert_float(items.end.x - right).override_failure_message(gap).is_less_equal(1.5)
+				assert_float(items.end.x - right).override_failure_message(gap).is_between(
+					-0.5, 1.5
+				)
 
 
 func test_the_zone_is_zero_while_closed_upright_and_sideways() -> void:

@@ -323,7 +323,9 @@ func test_the_orders_run_in_the_sim_a_tap_pays_and_a_hold_pays_back() -> void:
 	_hold("rifle_squad")  # The last rifle squad, the third item, goes with its price.
 	assert_int(_sent.size()).is_equal(1)
 	Rig.step(world, _sent)
-	assert_int(world.credits[1]).is_equal(2000 - 100 - 300)
+	var rifle: int = world.type_cost[Sw.type_of(world, "rifle_squad")]
+	var rocket: int = world.type_cost[Sw.type_of(world, "rocket_squad")]
+	assert_int(world.credits[1]).is_equal(2000 - rifle - rocket)  # The last rifle squad paid back.
 	assert_int(world.dropped_commands).is_equal(0)
 	await _publish(world)
 	assert_int(_tile("rifle_squad").queued).is_equal(1)
