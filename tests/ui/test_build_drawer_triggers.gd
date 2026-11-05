@@ -6,8 +6,8 @@ extends GdUnitTestSuite
 ## column, the command bar's chip,
 ## a tab, a card, a hold on a card or a scroll of the grid never does. The start
 ## of placement closes it, and so does a restart of placement by a READY card tapped in a drawer
-## opened meanwhile; the end of placement by a build or the X opens it again (it returns to the
-## state placement began in) and a strike aim that ends placement leaves it closed; a tap on an own
+## opened meanwhile; the end of placement by a build, the X or the match's end leaves it closed
+## (Michael, 2026-11-05: BUILD brings it back) and so does a strike aim; a tap on an own
 ## producer opens it on its tab with no visible move; a turn and a cancel_all() keep the state; a
 ## new match starts closed. Player 1 has a Headquarters, two light tanks, a Heavy Yard and a
 ## Bunkhouse, and a finished structure in its queue.
@@ -227,15 +227,17 @@ func test_placement_closes_the_drawer_and_a_build_or_the_x_gives_it_back() -> vo
 		_tap(_ground())
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		assert_bool(_placement.active).is_true()
-		# The X returns it to the state placement began in.
+		# The X leaves it down (Michael, 2026-11-05); BUILD brings it back.
 		_placement.cancel()
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 		await _settle()
-		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()
+		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
+		_tap((_hud("BuildButton") as Control).get_global_rect().get_center())
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
 
 
 ## The Build button stays live while the ghost is out (a HUD touch): the cards are back, the READY
-## card can be tapped again, and the end of placement leaves the menu up.
+## card can be tapped again, and the end of placement leaves it down.
 func test_build_brings_the_cards_back_while_the_ghost_is_out_and_ready_restarts_it_closed() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null, false, false)
@@ -281,9 +283,9 @@ func test_a_ready_tap_that_placement_refuses_leaves_the_drawer_open_and_sends_no
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 
 
-func test_a_build_gives_the_drawer_back_and_a_strike_aim_or_the_matchs_end_does_not() -> void:
+func test_the_end_of_a_placement_never_opens_the_drawer() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], null, true)
-	# A build: the check mark, the tick that answers it, and the menu is open again.
+	# A build: the check mark, the tick that answers it, and the menu stays down.
 	assert_bool(_sidebar.is_open()).is_true()
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 	assert_bool(_sidebar.is_open()).is_false()
@@ -292,7 +294,7 @@ func test_a_build_gives_the_drawer_back_and_a_strike_aim_or_the_matchs_end_does_
 	assert_bool(_sidebar.is_open()).is_false()  # Pending: the ghost is held, the menu down.
 	_runner.run_ticks(1)
 	assert_bool(_placement.active).is_false()
-	assert_bool(_sidebar.is_open()).is_true()
+	assert_bool(_sidebar.is_open()).is_false()
 	# A strike aim ends placement and the menu stays down, so the strike row does not move.
 	await _open(ScreenSizes.PORTRAIT[0], null, true)
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
@@ -305,15 +307,14 @@ func test_a_build_gives_the_drawer_back_and_a_strike_aim_or_the_matchs_end_does_
 	assert_bool(_sidebar.is_open()).is_false()
 	aim.cancel()
 	assert_bool(_sidebar.is_open()).is_false()  # Ending the aim opens nothing either.
-	# The end of the match opens nothing (the result screen covers the HUD): placement began in the
-	# open menu, so only the match's end keeps it down.
+	# The end of the match opens nothing either (the result screen covers the HUD).
 	_sidebar.open()
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()
 	assert_bool(_sidebar.is_open()).is_false()
 	_runner.snapshot.match_end_tick = 5
 	_placement.cancel()
 	assert_bool(_sidebar.is_open()).is_false()
-	# Placement that began in the collapsed menu ends in it.
+	# And placement that began in the collapsed menu ends in it.
 	_runner.snapshot.match_end_tick = 0
 	_sidebar.collapse()
 	assert_bool(_placement.begin(Rig.plant(_runner.snapshot))).is_true()

@@ -15,8 +15,8 @@ extends Control
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
 ## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD, a
-## tap that selects an own producer (its tab, `set_selected`) and the end of a placement that
-## began in the drawer (ADR 0024 R1; not after a strike aim, not at the match's end) open it.
+## tap that selects an own producer (its tab, `set_selected`) open it; the end of a placement (a
+## build, the X, the match's end) does not: the drawer stays down (Michael, 2026-11-05).
 ## Starting a placement from the drawer again (a READY card tapped while one runs) closes it, as
 ## the first start did.
 ## This node is the clipping holder (a plain `Control` with `clip_contents`), over the part of
@@ -104,8 +104,6 @@ var _built: Vector2i = Vector2i(-1, -1)  ## Match serial and type count the tile
 var _owned: PackedInt32Array = PackedInt32Array()  ## Scratch of a refresh: own rows per type.
 var _producers: PackedInt32Array = PackedInt32Array()  ## And own producers per tab.
 var _cancelling: Command = null  ## The CANCEL of a hold in flight; holds wait for a newer tick.
-var _placing: bool = false  ## Placement mode was on at the last `placement.changed`.
-var _before: bool = false  ## The drawer was open when placement began: what its end returns to.
 var _sliding: bool = false
 var _extent: float = 0.0  ## How far the drawer has slid in, base px along its axis.
 var _target: float = 0.0  ## And where the slide goes: 0 or `_open_px`.
@@ -154,8 +152,6 @@ func _ready() -> void:
 	feed.state.changed.connect(_on_hud_changed)
 	if controller != null:
 		controller.selection_changed.connect(set_selected)
-	if placement != null:
-		placement.changed.connect(_on_placement_changed)
 
 
 func _exit_tree() -> void:
@@ -213,32 +209,13 @@ func advance(seconds: float) -> void:
 	_apply_extent(lerpf(_from, _target, 1.0 - pow(1.0 - share, 3.0)))
 
 
-## The unfold changed: slide to the new state, and keep what placement or the aim folded.
+## The unfold changed: slide to the new state.
 func _on_hud_changed(previous: HudState.Unfold) -> void:
 	_swipe = -1  # A finger still down on a folded drawer swipes nothing.
 	var folded: bool = previous == HudState.Unfold.DRAWER and not is_open()
-	if folded and placement != null and placement.active and not _placing:
-		_before = true  # The feed folded it for the placement that is just beginning.
 	if folded or is_open():
 		_place(false)
 		state_changed.emit()
-
-
-## Placement ends with a build or the X: the drawer returns if it was open when placement began,
-## but not after a strike aim (which would move its row under the thumb) and not at the match's end.
-func _on_placement_changed() -> void:
-	if placement == null or placement.active == _placing:
-		return
-	_placing = placement.active
-	if _placing:
-		return
-	var aimed: bool = strike_aim != null and strike_aim.active
-	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	var ended: bool = snap != null and snap.match_end_tick > 0
-	var back: bool = _before and not aimed and not ended
-	_before = false
-	if back:
-		open()
 
 
 ## A frame moves the slide on, and reads the published snapshot when it is a new one (a tick, or a

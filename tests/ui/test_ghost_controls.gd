@@ -100,11 +100,13 @@ func test_a_tap_on_a_ready_card_stands_the_buttons_beside_the_ghost_and_the_menu
 		assert_bool((_hud("BuildButton") as Control).visible).is_true()
 		assert_array(_sent).override_failure_message(why).is_empty()
 		_expect_placed(why)
-		_placement.cancel()  # The X: the menu comes back to the state it had.
+		_placement.cancel()  # The X: the menu stays down (Michael, 2026-11-05).
 		await _settle()
 		assert_bool(_ghost.visible).override_failure_message(why).is_false()
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_bool((_hud("Items") as Control).is_visible_in_tree()).is_false()
+		_sidebar.open()  # BUILD: the drawer is as big as before.
+		await _settle()
 		(
 			assert_vector(_sidebar.get_global_rect().size)
 			. override_failure_message(why)
