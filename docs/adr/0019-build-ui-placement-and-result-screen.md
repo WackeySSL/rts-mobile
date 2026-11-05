@@ -69,6 +69,14 @@ Status note (2026-11-03, the docs row after wave y): §3 carries a dated status 
 flags stay drawn while no producer is selected (P87), and §6 one that Surrender stands under the
 Dev button, not beside it, until P124 (P90). No accepted text changed.
 
+Status note (2026-11-05, P26ax docs; Michael's decisions of 2026-11-05, ADR 0025's notes on §5
+and §11): from P120e on, §1's hold cancels again: a long press on any card cancels the last one of
+its type in its queue (full refund), and the drawer has no queue row, so the P26ap note's "a hold
+on a unit card queues up to `queue_hold_count` and a tap on an item in the drawer's queue row
+cancels it" no longer holds. §6's "No ad, ever, on the battle screen" now excepts one banner at
+the foot of the open pause menu where the foot is free (P127; CLAUDE.md, `admob-policy`). No
+accepted text changed.
+
 ## Context
 - `touch-ui-rules` already fixes, in its gesture table and its "Building placement" section: tap an
   own building selects it and "a production building opens its build tab"; tap minimap moves the

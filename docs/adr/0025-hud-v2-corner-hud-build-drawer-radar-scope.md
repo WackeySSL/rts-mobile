@@ -42,6 +42,22 @@ frame and notch left for P122c. Two accepted phrases are replaced, each where it
 §5's "until the next published snapshot shows the queue again", by the queue row's wait. No other
 accepted text changed.
 
+Status note (2026-11-05, P26ax docs; Michael's decisions of 2026-11-05 on his phone check of P124
+and of the build drawer; rows P124b and P120e): dated notes at the end of §5, §11, §15, §16 and
+§19 record them. They replace accepted text where each note says so. For the pill: "under the
+drawer" in §2's table, §3's "Hidden while the drawer is open" bullet, row 3 of "Decisions in
+short" ("hidden while the drawer is open (the drawer's head shows the economy)") and §5's "the pill
+hides" (twice). For the drawer: §5's head ("From the top: the head (48 dp) ..."), the swipe's
+"a drag that starts on the sheet's head with its handle", the long-press's "as many `QUEUE`s ...
+at most `queue_hold_count`", the "Queue row" bullet, "never fewer than two" as a coded floor, and
+row 5's "economy head" and "a queue row (tap an item = cancel, full refund)"; answer 2 A is
+superseded and the P26ar notes on the head's economy line lapse. The P26aw notes on the queue
+row's wait and the final hold stay, for the hold's CANCEL, except that a tab change no longer ends
+the wait (§5's note). For the pause menu: §11's "64 dp high" and "No ad, ever", row 11's "no
+ad", and §15's pause-menu banner row. CLAUDE.md and `admob-policy` take the banner rule with
+Michael's yes of 2026-11-05 (`touch-ui-rules` points to it); the drawer rules follow his decisions
+of 2026-11-05.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
@@ -385,6 +401,35 @@ where a note below says what it replaces):
 - **A hold on a unit card is final** once it fires at `long_press_ms` (the tile's `hold_ms`; as a
   group hold in ADR 0004 §5): a drag after that does not take back its QUEUEs.
 
+Notes (2026-11-05, P26ax docs; Michael's decisions on the build drawer, row P120e; they replace the
+text and the notes above where they say so):
+- **The pill stays in its corner** while the drawer is open, in both orientations (sideways it ends
+  a gap short of the side panel; upright the sheet is below it). This replaces "under the drawer"
+  in §2's table for the pill, §3's "Hidden while the drawer is open" bullet and "the pill hides"
+  twice above: P120d's economy line in the head goes, and the P26ar notes on it lapse. A tap on
+  the pill's credits or power with the drawer open opens the economy card and closes the drawer
+  (§1's one unfold).
+- **The close chevron sits at the right end of the tabs row** (at least 48 dp wide, as high as the
+  tabs). The head row goes ("From the top: the head (48 dp) ..." above); upright the grab handle
+  stays above the tabs, and the swipe to close starts on the handle or the tabs, replacing "a drag
+  that starts on the sheet's head with its handle".
+- **The cards fill the drawer's width:** as many columns as fit, every tab the same count (two or
+  more on every supported screen; the code keeps no floor, so "never fewer than two" above is no
+  longer a coded rule), the cards stretched so a full row ends at the right edge with the left
+  margin; a shorter row keeps the column width and leaves the rest empty.
+- **No queue row** (P120b's goes; Michael found it did not fit). **A long press on a card cancels
+  the last one of its type in the queue** (`CANCEL`, full refund, the haptic; infantry, vehicles
+  and structures alike); on a card with none queued it does nothing. A tap queues one. This
+  replaces the "Queue row" bullet and the long-press's "as many `QUEUE`s ... at most
+  `queue_hold_count`" above (`queue_hold_count` goes); the hold cancels again, as before answer
+  2 A. The P26aw notes stay for the hold: it is final once it fires (a drag after it does not take
+  back its CANCEL), and after it every hold does nothing until a snapshot is past the tick the
+  runner stamped on that CANCEL, or a new match starts; a tab change no longer ends the wait.
+- **What else lapses:** the sheet's least content "at least the head, the tabs, one row of cards
+  and the queue row (about 312 dp)" (the least height stays 312 dp, `HudCorners.SHEET_LEAST_DP`),
+  the grid budgets on `web_phone_small` above (84, 76 and about 53 dp; the grid still scrolls
+  there), §2's "queue items 56" and the toast's "(or the safe left edge while the pill hides)".
+
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
 | --- | --- | --- |
@@ -570,6 +615,24 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
 - **No ad**, ever (admob-policy: "Battle, including pause: never"); the design's banner is dropped
   (§15).
 
+Notes (2026-11-05, P26ax docs; Michael's design for the pause menu, row P124b, and his decision on
+its banner; they replace the text above where they say so):
+- **The look** follows Michael's design: "PAUSED" at the top left over the dimmed field (the HUD's
+  controls are hidden under the menu); a card with the side's emblem, "SKIRMISH", the map's name,
+  the objective as an open check line, and Time and Units lost; one column of buttons, full width
+  under the card upright and right of it sideways: Resume (56 dp, filled with the side's accent),
+  Restart, Surrender (word and glyph in danger red), Exit to menu and, in debug and `dev_menu`
+  builds, Developer menu (48 dp each, replacing "64 dp high"; the confirm dialogs keep 64 dp); the
+  Vibration chip below them. Settings, Sound and Music stay hidden until their features exist
+  (Michael).
+- **A banner at the menu's foot** (Michael, 2026-11-05): this replaces "No ad, ever ... the design's
+  banner is dropped" above and row 11's "no ad" in the decisions table. It shows only while the
+  menu is open, below the last control and at least 16 dp from any button, never beside, between
+  or over controls. It applies where the foot is free: upright, below the Vibration chip. Sideways
+  the column reaches the safe bottom (P124b), and on short screens the menu scrolls: there it shows
+  no banner until P127's row decides. It is built with the menu banners (P127's row), not in
+  P124b; CLAUDE.md and `admob-policy` say so.
+
 ### 12. The start page (Phase 5)
 - Built by ROADMAP Phase 5's "Main menu" box, not in this wave (a decision from the roadmap, not a
   question: ADR 0019 §7 Q4 keeps
@@ -658,6 +721,10 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
 The design's swipe to close the drawer and its 48 dp gap round a menu banner are taken as drawn
 (§5, §12), not overruled.
 
+Note (2026-11-05, P26ax docs): the row "Banner on the pause menu and the end screen" now holds for
+the end screen only. Michael allows the pause menu's banner (§11's note of 2026-11-05), so its
+"Here" cell's "pause" no longer holds.
+
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
   the right edge that stacks the radar, the credits, the power bar and a grid of build icons, always
@@ -685,6 +752,9 @@ The design's swipe to close the drawer and its 48 dp gap round a menu banner are
   fewer than Red Alert's build, ready, place" names a game, not an asset: placing a foundation first
   is the common RTS pattern (StarCraft, Age of Empires, Warcraft), a mechanic, which the legal rules
   do not cover (ADR 0026).
+
+Note (2026-11-05, P26ax docs): the drawer has no queue row any more (§5's note of 2026-11-05), so
+§16's "a queue row with cancel" no longer applies; the rest of the list carries the point.
 
 ### 17. Performance and headless proof
 - **Per frame at rest:** no work beyond today's: the HUD reads each published snapshot (15 Hz),
@@ -827,6 +897,10 @@ Each row adds or rewrites these entries in `docs/HOW_TO_PLAY.md` in its own PR (
 | P124 | Pause (new) | Tap the menu button in the pill → the match pauses: the goal, the time and your losses, and Resume, Restart, Surrender, Exit to menu and Vibration; Restart, Surrender and Exit ask first (yes) |
 | P120 + P121 | Turn the phone | The drawer, the full map and the toast keep their state through a turn and move to the other layout |
 | P130 (ADR 0026) | Build menu | ADR 0026 §9's rows |
+
+Note (2026-11-05, P26ax docs): P120e rewrites the P120b rows (a hold cancels the last one of its
+type; no queue row) and the drawer's rows (the chevron on the tabs row, the pill staying in its
+corner); P124b rewrites the P124 row with the menu's look. Their PRs carry the wording.
 
 ## Consequences
 - The field gets the screen: in battle about 5 % is HUD, against the band's 20-30 % in portrait.
