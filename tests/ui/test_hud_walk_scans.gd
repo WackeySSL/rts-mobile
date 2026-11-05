@@ -1,23 +1,16 @@
 extends GdUnitTestSuite
-## The 48 dp scan of the HUD v2 walk (plan P125, ADR 0025 section 17, ADR 0004 section 3): in every
-## walked state and at the six sizes of ScreenSizes.ALL, each visible `Control` that takes input (a
-## button, or a control that stops the mouse) is at least dp(48) on its short side. The states are
-## the walk's, so the scan reaches what `test_touch_target_sizes` does not: the drawer and its
-## cards, placement, the command bar with its chips, the pinned full map, the aim and the pause
-## menu. While the pause menu shows, the menu alone takes touches and is what is scanned.
+## The scans of the HUD v2 walk are not blind (plan P125): a 20 px button and a 20 px control with
+## a `_gui_input` are found by the 48 dp scan, a decoration that only stops the mouse by default,
+## a control that ignores the mouse and a hidden one are not; a node whose script lives in
+## `game/ads` is found by the ad scan.
+## `test_hud_walk` runs the scans in every walked state.
 
 const HudWalk: GDScript = preload("res://tests/ui/support/hud_walk.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 
-## Least controls that take input in a state, counted by hand: the walk reached the state, and the
-## scan did not read an empty one. The menu has Resume, Restart, Surrender and Exit.
-const MINIMUM: Dictionary[String, int] = {"pause": 3, "drawer": 6, "drawer again": 6}
-
 var _window_size_before: Vector2i
 var _main: Node2D
-var _small: Array[String] = []
-var _scanned: Array[String] = []
 
 
 func before() -> void:
@@ -30,8 +23,6 @@ func after() -> void:
 
 func before_test() -> void:
 	MenuRig.begin()
-	_small.clear()
-	_scanned.clear()
 
 
 func after_test() -> void:
@@ -42,24 +33,10 @@ func after_test() -> void:
 	HudLayout.menu_top_px = INF
 
 
-func test_every_control_that_takes_input_is_48_dp_in_every_walked_state() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		_main = auto_free(await HudWalk.open(self, size))
-		await HudWalk.walk_battle(self, _main, _scan)
-		_main.free()
-		await await_idle_frame()
-		_main = auto_free(await HudWalk.open(self, size))
-		await HudWalk.walk_aim(self, _main, _scan)
-		_main.free()
-		await await_idle_frame()
-	assert_array(_small).is_empty()
-	assert_int(_scanned.size()).is_equal(12 * ScreenSizes.ALL.size())
-
-
 ## The scan is not blind: a 20 px button, and a 20 px control with a `_gui_input`, in the HUD of a
 ## state are found; a decoration that only stops the mouse by default, one that ignores the mouse
 ## and a hidden one are not.
-func test_the_scan_finds_a_small_button_and_leaves_the_rest_alone() -> void:
+func test_the_48_dp_scan_finds_a_small_button_and_leaves_the_rest_alone() -> void:
 	_main = auto_free(await HudWalk.open(self, ScreenSizes.ALL[0]))
 	assert_array(HudWalk.small_targets(_main, "start")).is_empty()
 	var hud: Node = _main.get_node("Hud")
@@ -99,10 +76,22 @@ func test_the_scan_finds_a_small_button_and_leaves_the_rest_alone() -> void:
 	assert_str(found).not_contains("TinyHidden")
 
 
-func _scan(label: String, main: Node2D) -> void:
-	_scanned.append(label)
-	var count: int = HudWalk.input_controls(main).size()
-	assert_int(count).override_failure_message("%s: %d controls" % [label, count]).is_greater(
-		MINIMUM.get(label, 1)
-	)
-	_small.append_array(HudWalk.small_targets(main, label))
+## The scan is not blind: a node whose script lives in `game/ads`, and a node of a class with an ad
+## word, are found.
+func test_the_ad_scan_finds_an_ad_node() -> void:
+	_main = auto_free(await HudWalk.open(self, ScreenSizes.ALL[0]))
+	assert_array(HudWalk.ad_nodes(_main)).is_empty()
+	var service: Node = Node.new()
+	service.name = "Service"
+	var script: GDScript = GDScript.new()
+	script.source_code = "extends Node\n"
+	script.take_over_path("res://game/ads/FakeService.gd")
+	script.reload()
+	service.set_script(script)
+	_main.add_child(service)
+	var found: String = "\n".join(HudWalk.ad_nodes(_main))
+	assert_str(found).contains("Service")
+	assert_str(found).contains("/ads/")
+	_main.remove_child(service)
+	service.free()
+	script.take_over_path("")

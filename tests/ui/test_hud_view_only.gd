@@ -98,7 +98,6 @@ func _play(size: Vector2i, hud: bool, extra: bool = false) -> Dictionary:
 				. override_failure_message("chunk %d" % chunk)
 				. is_zero()
 			)
-			assert_bool(runner.paused).override_failure_message("chunk %d" % chunk).is_true()
 	var out: Dictionary = {
 		"hashes": hashes,
 		"final": runner.world.state_hash(),
@@ -124,16 +123,20 @@ func _act(chunk: int, units: PackedInt32Array) -> void:
 			controller.selection.set_ids(units)
 			await HudWalk.frames(self)
 		2:
-			await HudWalk.tap(self, HudWalk.hud(_main, "Close"))  # Closes the drawer.
+			await HudWalk.tap(
+				self, HudWalk.hud(_main, "BuildSidebar").find_child("Close", true, false) as Control
+			)  # Closes the drawer.
 			assert_bool(state.is_open(HudState.Unfold.NONE)).is_true()
 		3:
 			await HudWalk.tap(self, HudWalk.hud(_main, "Deselect"))
 			assert_array(controller.selection.selected).is_empty()
 		4:
-			await HudWalk.tap(self, HudWalk.hud(_main, "Menu"))  # The pause menu opens.
+			runner.paused = false  # With no frame between, so that the menu's pause can be seen.
+			HudWalk.tap_now(self, HudWalk.hud(_main, "Menu"))  # The pause menu opens.
 			assert_bool(runner.paused).is_true()
 			assert_bool(state.is_open(HudState.Unfold.PAUSE)).is_true()
 			(HudWalk.hud(_main, "ResumeButton") as Button).pressed.emit()
+			assert_bool(runner.paused).is_false()
 			runner.paused = true  # Before any frame plays a tick.
 			await HudWalk.frames(self)
 			assert_bool(state.is_open(HudState.Unfold.PAUSE)).is_false()
@@ -152,5 +155,14 @@ func _act(chunk: int, units: PackedInt32Array) -> void:
 			controller.deselect()
 			controller.tap_group(1)
 			await HudWalk.frames(self)
+		9:
+			await HudWalk.tap(self, HudWalk.hud(_main, "BuildButton"))  # The drawer is open ...
+			assert_bool(state.is_open(HudState.Unfold.DRAWER)).is_true()
+		10:
+			await HudWalk.tap(self, HudWalk.hud(_main, "CreditsTap"))  # ... and the pill opens the card.
+			assert_bool(state.is_open(HudState.Unfold.ECONOMY)).is_true()
+		11:
+			await HudWalk.tap(self, HudWalk.hud(_main, "CreditsTap"))  # The next touch closes it.
+			assert_bool(state.is_open(HudState.Unfold.ECONOMY)).is_false()
 		_:
 			await HudWalk.frames(self)

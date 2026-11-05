@@ -1,12 +1,21 @@
 extends RefCounted
 ## The HUD v2 walk (plan P125, ADR 0025 sections 1, 2, 9 and 17). Not a suite. It opens the main
-## scene at one size and walks the HUD states with a turn in each: `walk_battle` goes battle,
-## drawer, placement (of a ready structure, the old way: order, READY, place), drawer again, the
-## command bar (Stop, Deselect) and the pinned full map, pause and resume; `walk_aim` goes into a
-## strike aim and taps a group in it. After each state `visit` is called with (label, main), so a
-## suite chooses what it checks there: the layout, the 48 dp scan or the no-ad guard.
+## scene at one size and walks the HUD states, with a turn of the phone in each: after a state's
+## visit the window is turned to its transpose, the state is checked to be kept (the unfold and
+## its pin, the drawer's tab, placement, the pause), the visit runs again as "<label> turned", and
+## the window turns back. `walk_battle` goes battle, drawer, placement, drawer again, the command
+## bar (Stop, Deselect), the pinned full map, pause and resume. Placement is the old way, except
+## that the structure's READY is forced in the published snapshot (no order is run), and placement
+## ends with the X (`cancel`), not a build. `walk_aim` goes into a strike aim twice: with nothing
+## selected, where a group tap fills the selection, and with a tank selected, where Deselect empties
+## it and a group tap fills it again; the bottom stays where it was (the freeze), and a turn ends
+## the aim and sends no Command (the designed behaviour; the aim's later states are not turned).
+## After each state `visit` is called with (label, main), so a suite chooses what it checks there.
 ## A suite that uses it calls `MenuRig.begin()` and `MenuRig.end()` itself.
 
+## What a visit does after the state: turns the phone and finds the state kept, finds the aim
+## ended, or does not turn.
+enum Turn { KEPT, ENDS_AIM, NONE }
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const PlacementRig: GDScript = preload("res://tests/input/support/placement_rig.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
@@ -53,6 +62,7 @@ static func open(suite: GdUnitTestSuite, size: Vector2i) -> Node2D:
 	await suite.await_idle_frame()
 	var sent: Array[Command] = []
 	main.set_meta("sent", sent)
+	main.set_meta("size", size)
 	(main.get_node("PlayerController") as PlayerController).command_sink = func(
 		command: Command
 	) -> void:
@@ -72,11 +82,15 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	var sent: Array[Command] = main.get_meta("sent")
 	controller.selection.set_ids(own_units(main))
 	await frames(suite)
-	visit.call("battle", main)
+	var pill_rect: Rect2 = hud(main, "EconomyPill").get_global_rect()
+	await _visit(suite, main, "battle", visit)
 	await tap(suite, hud(main, "BuildButton"))
 	await frames(suite)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_true()
-	visit.call("drawer", main)
+	var pill: Control = hud(main, "EconomyPill")  # P120e: the pill stays in its corner.
+	suite.assert_that(pill.get_global_rect()).is_equal(pill_rect)
+	suite.assert_bool(pill.is_visible_in_tree() and pill.modulate.a == 1.0).is_true()
+	await _visit(suite, main, "drawer", visit)
 	# A structure the old way: it is ready in the queue, and a tap on its card places it.
 	var snap: MatchSnapshot = runner.snapshot
 	PlacementRig.make_ready(snap)
@@ -90,24 +104,24 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	await frames(suite)
 	suite.assert_bool(placement.active).is_true()
 	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_false()
-	visit.call("placement", main)
+	await _visit(suite, main, "placement", visit)
 	placement.cancel()  # The X: the drawer returns, as it was open when placement began.
 	await frames(suite)
 	suite.assert_bool(placement.active).is_false()
 	suite.assert_bool(state(main).is_open(HudState.Unfold.DRAWER)).is_true()
-	visit.call("drawer again", main)
+	await _visit(suite, main, "drawer again", visit)
 	await tap(suite, sidebar.find_child("Close", true, false) as Control)
 	await frames(suite)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.NONE)).is_true()
 	suite.assert_bool(bar.visible).is_true()
-	visit.call("command bar", main)
+	await _visit(suite, main, "command bar", visit)
 	await tap(suite, bar.order_button(&"stop"))
 	await tap(suite, bar.find_child("Deselect", true, false) as Control)
 	await frames(suite)
 	suite.assert_array(controller.selection.selected).is_empty()
 	suite.assert_int(sent.size()).is_equal(1)
 	suite.assert_int(sent[0].type).is_equal(Command.Type.STOP)
-	visit.call("deselected", main)
+	await _visit(suite, main, "deselected", visit)
 	await tap(suite, hud(main, "RadarScope"))
 	await frames(suite)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.RADAR)).is_true()
@@ -116,56 +130,125 @@ static func walk_battle(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -
 	suite.assert_bool(state(main).pinned).is_true()
 	controller.selection.set_ids(own_units(main))
 	await frames(suite)
-	visit.call("full map pinned", main)
-	runner.paused = false  # So that Resume has something to give back.
+	await _visit(suite, main, "full map pinned", visit)
+	runner.paused = false  # The match runs, so that the menu's pause is seen to be the menu's.
 	await tap(suite, hud(main, "Menu"))
 	await frames(suite)
 	suite.assert_bool(runner.paused).is_true()
 	suite.assert_bool(state(main).is_open(HudState.Unfold.PAUSE)).is_true()
-	visit.call("pause", main)
-	await tap(suite, hud(main, "ResumeButton"))
-	runner.paused = true  # No tick runs in the frames of the test.
+	for part: String in ["EconomyPill", "BuildButton", "RadarScope", "CommandBar"]:
+		var covered: Control = hud(main, part)  # P124b: the HUD is clear under the menu.
+		suite.assert_float(covered.modulate.a).override_failure_message(part).is_equal(0.0)
+	await _visit(suite, main, "pause", visit)
+	tap_now(suite, hud(main, "ResumeButton"))
+	suite.assert_bool(runner.paused).is_false()  # Resume gives the match back ...
+	runner.paused = true  # ... and the test takes it again in the same frame: no tick plays.
 	await frames(suite)
+	suite.assert_float(pill.modulate.a).is_equal(1.0)
 	suite.assert_bool(state(main).is_open(HudState.Unfold.PAUSE)).is_false()
 	suite.assert_int(sent.size()).is_equal(1)  # Pause, Resume and the rest sent nothing.
-	visit.call("resumed", main)
+	await _visit(suite, main, "resumed", visit)
 
 
-## A strike aim with the tank selected, a group tap in the aim that selects the rifle squad (the
-## bottom stays where it was: ADR 0025 section 1's freeze), then Deselect and a group tap again.
+## The strike aim, twice (ADR 0025 section 1's freeze). First with nothing selected: a group tap
+## fills the selection and the bottom stays where it was, with no bar. Then with the tank
+## selected: Deselect empties the selection and leaves an empty plate, a group tap fills it again,
+## and nothing under the thumb moves. A turn ends the aim and sends no Command.
 static func walk_aim(suite: GdUnitTestSuite, main: Node2D, visit: Callable) -> void:
 	var controller: PlayerController = main.get_node("PlayerController")
 	var aim: StrikeAim = main.get_node("StrikeAim")
+	var bar: CommandBar = hud(main, "CommandBar")
 	var tank: int = id_of(main, &"light_tank")
 	var rifle: int = id_of(main, &"rifle_squad")
 	for entry: Array in [[tank, 1], [rifle, 2]]:
 		controller.selection.set_ids(PackedInt32Array([entry[0]]))
 		controller.assign_group(entry[1])
-	controller.selection.set_ids(PackedInt32Array([tank]))
+	controller.deselect()
 	var snap: MatchSnapshot = main.get_node("MatchRunner").snapshot
 	snap.ready_tick[snap.index_of(id_of(main, &"fossil_strike"))] = snap.tick + 1
-	aim.refresh()
-	await frames(suite)
-	suite.assert_bool(aim.begin()).is_true()
-	await frames(suite)
-	visit.call("aim", main)
+	await _begin_aim(suite, main)
+	suite.assert_bool(bar.has_slot()).is_false()
+	await _visit(suite, main, "aim", visit, Turn.ENDS_AIM)
+	await _begin_aim(suite, main)  # The turn ended the first.
 	var before: Dictionary[String, Rect2] = frozen_rects(main)
 	suite.assert_array(before.keys()).contains(["BuildButton", "StrikeConfirm", "StrikeCancel"])
 	await tap(suite, hud(main, "Group2"))
 	await frames(suite)
 	suite.assert_array(controller.selection.selected).is_equal([rifle])
 	suite.assert_that(frozen_rects(main)).is_equal(before)
-	visit.call("aim group tap", main)
+	suite.assert_bool(bar.has_slot()).is_false()  # Filled under the freeze: no bar appears.
+	await _visit(suite, main, "aim group tap", visit, Turn.NONE)
+	aim.cancel()
+	controller.selection.set_ids(PackedInt32Array([tank]))
+	await frames(suite)
+	await _begin_aim(suite, main)
+	before = frozen_rects(main)
+	suite.assert_bool(bar.has_slot()).is_true()
 	await tap(suite, hud(main, "Deselect"))
+	await frames(suite)
+	suite.assert_array(controller.selection.selected).is_empty()
+	suite.assert_that(frozen_rects(main)).is_equal(before)
+	suite.assert_bool(bar.has_slot()).is_true()  # An empty plate, not a gone one.
+	await _visit(suite, main, "aim deselected", visit, Turn.NONE)
 	await tap(suite, hud(main, "Group1"))
 	await frames(suite)
 	suite.assert_array(controller.selection.selected).is_equal([tank])
 	suite.assert_that(frozen_rects(main)).is_equal(before)
-	suite.assert_bool((hud(main, "CommandBar") as CommandBar).has_slot()).is_true()
-	visit.call("aim group tap after deselect", main)
+	suite.assert_bool(bar.has_slot()).is_true()
+	await _visit(suite, main, "aim group tap after deselect", visit, Turn.NONE)
 	aim.cancel()
 	await frames(suite)
 	suite.assert_array(main.get_meta("sent")).is_empty()
+
+
+static func _begin_aim(suite: GdUnitTestSuite, main: Node2D) -> void:
+	var aim: StrikeAim = main.get_node("StrikeAim")
+	aim.refresh()
+	await frames(suite)
+	suite.assert_bool(aim.begin()).is_true()
+	await frames(suite)
+
+
+## Calls `visit` for the state, then turns the phone: the state must be kept (the aim excepted: a
+## turn ends it, with no Command), `visit` runs as "<label> turned", and the window turns back.
+static func _visit(
+	suite: GdUnitTestSuite, main: Node2D, label: String, visit: Callable, turn: Turn = Turn.KEPT
+) -> void:
+	visit.call(label, main)
+	if turn == Turn.NONE:  # The aim goes on: a turn would end it.
+		return
+	var aiming: bool = turn == Turn.ENDS_AIM
+	var kept: Dictionary = facts(main)
+	var size: Vector2i = main.get_meta("size")
+	suite.get_window().size = Vector2i(size.y, size.x)
+	await frames(suite)
+	var why: String = "%s: after a turn to %s" % [label, suite.get_window().size]
+	if aiming:
+		suite.assert_bool((main.get_node("StrikeAim") as StrikeAim).active).is_false()
+		suite.assert_array(main.get_meta("sent")).override_failure_message(why).is_empty()
+	else:
+		suite.assert_dict(facts(main)).override_failure_message(why).is_equal(kept)
+	visit.call(label + " turned", main)
+	suite.get_window().size = size
+	await frames(suite)
+	if not aiming:
+		suite.assert_dict(facts(main)).override_failure_message(label + ": turned back").is_equal(
+			kept
+		)
+
+
+## What a turn keeps: the unfold and its pin, the drawer's tab, placement, the pause, the
+## selection.
+static func facts(main: Node2D) -> Dictionary:
+	return {
+		"unfold": state(main).current,
+		"pinned": state(main).pinned,
+		"tab": (hud(main, "BuildSidebar") as BuildSidebar).tab,
+		"placing": (main.get_node("PlacementController") as PlacementController).active,
+		"paused": (main.get_node("MatchRunner") as MatchRunner).paused,
+		"selected":
+		Array((main.get_node("PlayerController") as PlayerController).selection.selected),
+	}
 
 
 ## The rects the strike aim freezes: BUILD and the check mark and X.
@@ -226,11 +309,11 @@ static func check_layout(suite: GdUnitTestSuite, main: Node2D, label: String) ->
 
 ## Pairs the layout allows: the landscape drawer covers the scope (ADR 0025 section 2's table:
 ## "always but under the landscape drawer", and section 5: the backdrop covers it), and the ghost's
-## two buttons are a pair of their own.
+## two buttons are 16 dp apart by construction and are checked like the rest.
 static func exempt(a: String, b: String, _main: Node2D) -> bool:
 	if a == "RadarScope" and b == "Drawer":
 		return not HudLayout.is_portrait()
-	return a.begins_with("Place") and b.begins_with("Place")
+	return false
 
 
 ## The drawer's panel inside the safe rect: its backdrop less the strip to the screen's edge.
@@ -344,10 +427,15 @@ static func ready_card(sidebar: BuildSidebar) -> ItemTile:
 
 ## A finger down and up on the middle of `control`, then a frame.
 static func tap(suite: GdUnitTestSuite, control: Control) -> void:
+	tap_now(suite, control)
+	await suite.await_idle_frame()
+
+
+## The same touch, with no frame after it.
+static func tap_now(suite: GdUnitTestSuite, control: Control) -> void:
 	var at: Vector2 = control.get_global_rect().get_center()
 	TouchEvents.press(suite.get_viewport(), 0, at)
 	TouchEvents.release(suite.get_viewport(), 0, at)
-	await suite.await_idle_frame()
 
 
 static func frames(suite: GdUnitTestSuite) -> void:
