@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The dev menu in either orientation (plan P63, ADR 0015 section 5 "Other screens"): at the six
-## test sizes its title and its seven buttons (the two Skirmishes of plan P90, test map, strike
-## test, art gallery, touch probe, perf arena) lie inside the safe rect, every button is at least
+## test sizes its title and its eight buttons (the two Skirmishes of plan P90, test map, strike
+## test, art gallery, touch probe, perf arena, perf bases) lie inside the safe rect, every button
+## is at least
 ## dp(48) on each axis with text of 14 sp or more, and nothing overlaps. The same holds on the
 ## phone browsers (the buttons are 48 dp tall and stand in two columns sideways and one upright, so
 ## that they fit a phone browser held sideways without a scroll), with the cutouts of Michael's
@@ -19,7 +20,8 @@ const BUTTONS: Array[String] = [
 	"StrikeTestButton",
 	"GalleryButton",
 	"TouchProbeButton",
-	"PerfArenaButton"
+	"PerfArenaButton",
+	"PerfBasesButton"
 ]
 ## Michael's phone in landscape (a cutout on the left) and the ADR's phone in portrait (a cutout at
 ## the top, the gesture bar at the bottom), as window px of the profile they are put on.
@@ -90,7 +92,8 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 			"StrikeTestButton": true,
 			"GalleryButton": true,
 			"TouchProbeButton": true,
-			"PerfArenaButton": true
+			"PerfArenaButton": true,
+			"PerfBasesButton": true
 		}
 	)
 
@@ -128,10 +131,10 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 	_close(menu)
 
 
-## The hand-over of P112d: seven 48 dp buttons do not fit a phone browser held sideways in one
+## The hand-over of P112d: eight 48 dp buttons do not fit a phone browser held sideways in one
 ## column (the menu has 331 dp there), so they stand in two, and nothing scrolls at web_phone;
 ## upright there is one column, which has the height.
-func test_the_seven_buttons_stand_in_two_columns_sideways_and_in_one_upright() -> void:
+func test_the_eight_buttons_stand_in_two_columns_sideways_and_in_one_upright() -> void:
 	for profile_name: StringName in [&"web_phone", &"android_6in", &"web_tablet", &"desktop"]:
 		var menu: Control = await _open(UiProfiles.by_name(profile_name))
 		var label: String = str(profile_name)
@@ -152,7 +155,7 @@ func test_the_seven_buttons_stand_in_two_columns_sideways_and_in_one_upright() -
 		UiScale.clear_override()
 
 
-## `profile` shown: the title and the seven buttons, then the checks of the plan's acceptance.
+## `profile` shown: the title and the eight buttons, then the checks of the plan's acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)
 	var safe: Rect2 = UiScale.safe_rect_base()

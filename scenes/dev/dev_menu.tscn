@@ -124,3 +124,12 @@ text = "Perf arena"
 [node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/PerfArenaButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
+
+[node name="PerfBasesButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Perf bases"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/PerfBasesButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 48)

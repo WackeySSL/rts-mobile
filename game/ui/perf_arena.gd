@@ -34,6 +34,13 @@ extends Node2D
 ## The card and one console line (`atlas_bake_ms`, `atlas_page`) describe the second, P113's
 ## report-only bake: every sheet of both factions, each player in its faction's key triad, which is
 ## what a real two-faction match start bakes (ADR 0023 section 2), whatever this scenario spawns.
+## Two scenarios (plan P93c): the seed-42 arena above, and the base arena (`arena_kind` bases, set
+## by the dev menu's "Perf bases" through `DevRoutes.open_perf_bases` before the scene enters the
+## tree), P80's `perf_bases.tres` on the same card machinery; the card then checks the run against
+## `bases_golden_ticks` and `bases_golden_hex` and names them in a mismatch. Its framing is not the
+## scenario's tile and zoom but every sprite inside the map's diamond, overhangs included (the P50c
+## rule as revision 5 states it): the camera centres on the union of their boxes and zooms out,
+## below the start zoom when they need it, until they fit the view.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -55,6 +62,11 @@ const GAP_DP: float = 8.0
 ## starts anyway and `portrait` marks it, as on the web preview.
 const LANDSCAPE_WAIT_FRAMES: int = 120
 const ATLAS_SCALE: float = 1.0  ## The scale the arena asks the atlas for.
+## The box of a unit's rig, world px, around its feet: a tile's width and a tile and a half up
+## (the sprite of a tank or a squad with its bar's room), a view size and not a rule value.
+const RIG_BOX_PX: Vector2 = Vector2(64.0, 48.0)
+## Room grown round the union of the boxes, world px.
+const FRAME_MARGIN_PX: float = 32.0
 
 @export var scenario: ScenarioDef
 ## The frame cap of the arena (ADR 0011 section 5).
@@ -69,8 +81,12 @@ const ATLAS_SCALE: float = 1.0  ## The scale the arena asks the atlas for.
 @export var projectile_layer: ProjectileLayer
 @export var effects_layer: EffectsLayer
 @export var fog_layer: FogLayer
+@export var building_layer: BuildingLayer
 @export var camera: RtsCamera
 @export var hud: PerfHud
+## `PerfHud.ARENA_UNITS` (the scene's scenario) or `PerfHud.ARENA_BASES` (P80's, loaded in
+## `_ready`).
+@export var arena_kind: String = PerfHud.ARENA_UNITS
 @export var back_button: Button
 @export var layers_button: Button
 ## The boxes whose gap is GAP_DP: the column of bar and card, and the bar of the two buttons.
@@ -132,6 +148,9 @@ func _exit_tree() -> void:
 
 
 func _ready() -> void:
+	if arena_kind == PerfHud.ARENA_BASES:
+		scenario = load(DevRoutes.PERF_BASES_SCENARIO) as ScenarioDef
+	hud.arena_kind = arena_kind
 	back_button.pressed.connect(_on_back_pressed)
 	layers_button.pressed.connect(_on_layers_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
@@ -182,10 +201,70 @@ func set_layer_mode(mode: String) -> void:
 ## here (`_ready` and `PerfHud.before_restart`), wherever a finger left the camera.
 func frame_camera() -> void:
 	camera.set_map_rect(map_view.map_diamond_px())
+	if arena_kind == PerfHud.ARENA_BASES:
+		_frame_sprites()
+		return
 	camera.zoom = Vector2.ONE * start_zoom
 	camera.centre_on(
 		IsoProjection.cell_centre_px(scenario.camera_start_tile.x, scenario.camera_start_tile.y)
 	)
+
+
+## The base arena's framing: the camera centred on the union of every sprite box inside the diamond
+## and zoomed to hold it, at most the start zoom. A match with no sprite falls back to the
+## scenario's tile and the start zoom.
+func _frame_sprites() -> void:
+	var box: Rect2 = union_of(sprite_boxes())
+	if box.size == Vector2.ZERO:
+		camera.zoom = Vector2.ONE * start_zoom
+		camera.centre_on(
+			IsoProjection.cell_centre_px(scenario.camera_start_tile.x, scenario.camera_start_tile.y)
+		)
+		return
+	box = box.grow(FRAME_MARGIN_PX)
+	var view: Vector2 = get_viewport_rect().size
+	camera.zoom = Vector2.ONE * minf(start_zoom, minf(view.x / box.size.x, view.y / box.size.y))
+	camera.centre_on(box.get_center())
+
+
+## The box of every sprite of the match whose feet stand inside the map's diamond, world px: a
+## building's `frame_box` (footprint width, from the top of the picture to the diamond's bottom
+## corner) and a rig's `RIG_BOX_PX` round its position. Both layers are synced first, so a frame
+## right after the match start sees the rows.
+func sprite_boxes() -> Array[Rect2]:
+	var boxes: Array[Rect2] = []
+	var snap: MatchSnapshot = runner.snapshot
+	if snap == null:
+		return boxes
+	unit_layer.sync_rows()
+	building_layer.sync_rows()
+	for row: int in snap.unit_id.size():
+		var box: Rect2 = building_layer.frame_box(row)
+		var feet: Vector2 = Vector2(box.get_center().x, box.end.y - IsoProjection.HALF_H)
+		var rig: Node2D = unit_layer.rig(row)
+		if rig != null:
+			box = Rect2(rig.position - Vector2(RIG_BOX_PX.x * 0.5, RIG_BOX_PX.y), RIG_BOX_PX)
+			feet = rig.position
+		if box.size != Vector2.ZERO and in_diamond(feet, snap.map_cols, snap.map_rows):
+			boxes.append(box)
+	return boxes
+
+
+## Whether the world px `feet` lie on a map of `cols` by `rows` tiles.
+static func in_diamond(feet: Vector2, cols: int, rows: int) -> bool:
+	var ground: Vector2i = IsoProjection.px_to_ground(feet)
+	var milli: int = ViewScale.MILLI_PER_TILE
+	return ground.x >= 0 and ground.y >= 0 and ground.x < cols * milli and ground.y < rows * milli
+
+
+## The smallest rect that holds all of `boxes`, empty for none.
+static func union_of(boxes: Array[Rect2]) -> Rect2:
+	if boxes.is_empty():
+		return Rect2()
+	var out: Rect2 = boxes[0]
+	for box: Rect2 in boxes:
+		out = out.merge(box)
+	return out
 
 
 ## The first run (plan P63c), in the order "Run again" keeps: the match starts, the view is framed

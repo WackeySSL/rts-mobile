@@ -1,9 +1,10 @@
 extends Control
 ## Developer menu: jump to a Skirmish (one per side, plan P90), the test map, the strike test, the
-## art gallery, the touch probe or the perf arena. When the dev menu is not enabled (a release
-## export without the `dev_menu` feature) it opens the main scene instead.
+## art gallery, the touch probe, the perf arena or the perf bases (the same scene with the base
+## arena). When the dev menu is not enabled (a release export without the `dev_menu` feature) it
+## opens the main scene instead.
 ## Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015 section 5): one
-## column upright, two sideways, so the seven fit a phone browser held sideways; a window too short
+## column upright, two sideways, so the eight fit a phone browser held sideways; a window too short
 ## for them scrolls. The look is the theme's, sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
@@ -17,6 +18,7 @@ const GAP_DP: float = 12.0
 @onready var _gallery_button: Button = %GalleryButton
 @onready var _probe_button: Button = %TouchProbeButton
 @onready var _arena_button: Button = %PerfArenaButton
+@onready var _bases_button: Button = %PerfBasesButton
 
 
 func _ready() -> void:
@@ -27,6 +29,10 @@ func _ready() -> void:
 	_gallery_button.disabled = not ResourceLoader.exists(DevRoutes.ART_GALLERY_SCENE)
 	_probe_button.disabled = not ResourceLoader.exists(DevRoutes.TOUCH_PROBE_SCENE)
 	_arena_button.disabled = not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
+	_bases_button.disabled = (
+		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
+		or not ResourceLoader.exists(DevRoutes.PERF_BASES_SCENARIO)
+	)
 	_derrick_button.pressed.connect(
 		_on_skirmish_pressed.bind(DevRoutes.SKIRMISH_DERRICK, DevRoutes.DUMMY_RENEW)
 	)
@@ -38,6 +44,7 @@ func _ready() -> void:
 	_gallery_button.pressed.connect(_on_gallery_pressed)
 	_probe_button.pressed.connect(_on_probe_pressed)
 	_arena_button.pressed.connect(_on_arena_pressed)
+	_bases_button.pressed.connect(_on_bases_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 
@@ -77,3 +84,7 @@ func _on_probe_pressed() -> void:
 
 func _on_arena_pressed() -> void:
 	DevRoutes.open(get_tree(), DevRoutes.PERF_ARENA_SCENE)
+
+
+func _on_bases_pressed() -> void:
+	DevRoutes.open_perf_bases(get_tree())

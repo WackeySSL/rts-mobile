@@ -1,8 +1,8 @@
 class_name DevRoutes
 extends RefCounted
 ## Scene paths and gating for the developer-only screens (dev menu, art gallery, touch probe, perf
-## arena), the main scene's scenario for the "Strike test" route and the two Skirmish routes (a
-## scenario and the dummy of the other side).
+## arena and its base arena), the main scene's scenario for the "Strike test" route and the two
+## Skirmish routes (a scenario and the dummy of the other side).
 ##
 ## The dev menu is available in debug builds and in any export that sets the custom feature
 ## `dev_menu` (the Web preview preset does). Store presets must not set it.
@@ -12,6 +12,9 @@ const DEV_MENU_SCENE: String = "res://scenes/dev/dev_menu.tscn"
 const ART_GALLERY_SCENE: String = "res://scenes/dev/art_gallery.tscn"
 const TOUCH_PROBE_SCENE: String = "res://scenes/dev/touch_probe.tscn"
 const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
+## The base arena of the perf arena scene (plan P93c): P80's scenario, run by the same scene and
+## card, checked against the gate's `bases_golden_*` fields.
+const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Blackout Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
@@ -33,6 +36,18 @@ static func open(tree: SceneTree, scene_path: String) -> Error:
 		push_error("DevRoutes: scene not found: %s" % scene_path)
 		return ERR_FILE_NOT_FOUND
 	return tree.change_scene_to_file(scene_path)
+
+
+## Changes to the perf arena scene with its base arena scenario (`PerfArena.arena_kind` is set on
+## the new scene before it enters the tree, as `open_main_with` does for the runner). Reports a
+## missing scene with push_error instead of crashing.
+static func open_perf_bases(tree: SceneTree) -> Error:
+	if not ResourceLoader.exists(PERF_ARENA_SCENE):
+		push_error("DevRoutes: scene not found: %s" % PERF_ARENA_SCENE)
+		return ERR_FILE_NOT_FOUND
+	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
+	arena.arena_kind = PerfHud.ARENA_BASES
+	return tree.change_scene_to_node(arena)
 
 
 ## Changes to the main scene with `scenario_path` in the MatchRunner in place of the scene's own

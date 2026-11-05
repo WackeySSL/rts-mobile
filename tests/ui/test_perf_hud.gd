@@ -90,6 +90,7 @@ const KEYS: PackedStringArray = [
 	"job_minus_step_p95_noncp_ms",
 	"invalid",
 	"layer_mode",
+	"arena",
 	"screen",
 	"zoom",
 	"model",
