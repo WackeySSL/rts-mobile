@@ -37,6 +37,15 @@ extends RefCounted
 ##   player sees now, which `seen_rows` lists as well. `ghost_of(id)` finds a record by building id
 ##   and `ghost_pos(i)` gives its position, the footprint centre in milli-tiles as `row_pos` gives
 ##   it for a live building.
+## - Plan row P172 (ADR 0030 section 7), all from data a player may know or its own state: the
+##   combat and strike type tables (`type_max_hp`, `type_armour`, `type_range`, `type_min_range`
+##   and `type_vs_armour` from the type's weapon, `type_sight`, `type_faction`, `type_strike_kind`,
+##   `type_strike_radius`, `type_charge_ticks`), the own-row getters `row_ready_tick` and
+##   `row_offline_until` (MISSING for any row that is not the player's own: an enemy's charge and
+##   blackout stay hidden), the pending ruptures that every player sees (`warned_x`, `warned_y`,
+##   `warned_tick`, one entry per player with a rupture pending, ascending player; the owner is not
+##   listed) and the rule caps `unit_cap` and `building_cap`. No enemy order, cargo, charge,
+##   credits or queue is exposed.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
 ##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`).
@@ -89,6 +98,8 @@ const _OWN: int = 1
 const _SEEN: int = 2
 ## The largest id a column of the World can hold (its ids are 32-bit ints, counted up from 1).
 const _MAX_ID: int = 0x7FFFFFFF
+## The armour classes of `World.Armour`, the width of `type_vs_armour`.
+const ARMOUR_CLASSES: int = 4
 
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
@@ -138,6 +149,31 @@ var type_weapon: PackedInt32Array = PackedInt32Array()
 var type_harvest: PackedInt32Array = PackedInt32Array()
 var type_power: PackedInt32Array = PackedInt32Array()
 var type_build_ticks: PackedInt32Array = PackedInt32Array()
+## More type tables (P172), copies, one entry per type index: hit points, the armour class
+## (`World.Armour`), the type's weapon range and minimum range in milli-tiles (0 for a type
+## without a weapon), sight in tiles as the World keeps it, the faction (an index into the World's
+## faction ids, -1 for none), the strike kind (0 none, 1 rupture, 2 blackout), its radius in
+## milli-tiles and its charge in ticks.
+var type_max_hp: PackedInt32Array = PackedInt32Array()
+var type_armour: PackedInt32Array = PackedInt32Array()
+var type_range: PackedInt32Array = PackedInt32Array()
+var type_min_range: PackedInt32Array = PackedInt32Array()
+var type_sight: PackedInt32Array = PackedInt32Array()
+var type_faction: PackedInt32Array = PackedInt32Array()
+var type_strike_kind: PackedInt32Array = PackedInt32Array()
+var type_strike_radius: PackedInt32Array = PackedInt32Array()
+var type_charge_ticks: PackedInt32Array = PackedInt32Array()
+## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
+## a type without a weapon.
+var type_vs_armour: PackedInt32Array = PackedInt32Array()
+## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
+## milli-tiles and the landing tick, one entry per player that has one, ascending player.
+var warned_x: PackedInt32Array = PackedInt32Array()
+var warned_y: PackedInt32Array = PackedInt32Array()
+var warned_tick: PackedInt32Array = PackedInt32Array()
+## The rule caps on units and buildings per player (0 when the World has none).
+var unit_cap: int = 0
+var building_cap: int = 0
 
 ## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
@@ -151,6 +187,8 @@ var _build_left: PackedInt32Array = PackedInt32Array()
 var _order: PackedInt32Array = PackedInt32Array()
 var _harvest_mode: PackedInt32Array = PackedInt32Array()
 var _home: PackedInt32Array = PackedInt32Array()
+var _ready_tick: PackedInt32Array = PackedInt32Array()
+var _offline_until: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
 ## that make a type a refinery.
@@ -173,6 +211,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_tables(world)
 	view._take_player(world)
 	view._take_ghosts(world)
+	view._take_warned(world)
 	view._take_rows(world)
 	return view
 
@@ -228,6 +267,16 @@ func row_harvest_mode(row: int) -> int:
 
 func row_home(row: int) -> int:
 	return _home[row] if _level(row) == _OWN else MISSING
+
+
+## The tick an own strike building may fire (0 for any other own row), and the tick an own building
+## that a blackout hit comes back (0 = on). MISSING for a row that is not the player's own.
+func row_ready_tick(row: int) -> int:
+	return _ready_tick[row] if _level(row) == _OWN else MISSING
+
+
+func row_offline_until(row: int) -> int:
+	return _offline_until[row] if _level(row) == _OWN else MISSING
 
 
 ## Whether the head of the STRUCTURES queue is built and waits for a PLACE: the condition
@@ -318,6 +367,46 @@ func _take_tables(world: World) -> void:
 	_dock_x = world.type_dock_x.duplicate()
 	_dock_y = world.type_dock_y.duplicate()
 	_type_ids = world.type_ids.duplicate()
+	type_max_hp = world.type_max_hp.duplicate()
+	type_armour = world.type_armour.duplicate()
+	type_sight = world.type_sight.duplicate()
+	type_faction = world.type_faction.duplicate()
+	type_strike_kind = world.type_strike_kind.duplicate()
+	type_strike_radius = world.type_strike_radius.duplicate()
+	type_charge_ticks = world.type_charge_ticks.duplicate()
+	unit_cap = world.unit_cap
+	building_cap = world.building_cap
+	_take_weapon_tables(world)
+
+
+## `type_range`, `type_min_range` and `type_vs_armour`, read through each type's weapon.
+func _take_weapon_tables(world: World) -> void:
+	var types: int = world.type_weapon.size()
+	type_range.resize(types)
+	type_min_range.resize(types)
+	type_vs_armour.resize(types * ARMOUR_CLASSES)
+	for type: int in types:
+		var weapon: int = world.type_weapon[type]
+		if weapon < 0 or weapon >= world.weapon_range.size():
+			continue
+		type_range[type] = world.weapon_range[weapon]
+		type_min_range[type] = _entry(world.weapon_min_range, weapon)
+		for armour: int in ARMOUR_CLASSES:
+			type_vs_armour[type * ARMOUR_CLASSES + armour] = _entry(
+				world.weapon_vs_armour, weapon * ARMOUR_CLASSES + armour
+			)
+
+
+## The pending ruptures: one entry for each player past 0 whose `strike_tick` is set.
+func _take_warned(world: World) -> void:
+	var players: int = mini(
+		world.strike_tick.size(), mini(world.strike_x.size(), world.strike_y.size())
+	)
+	for who: int in range(1, players):
+		if world.strike_tick[who] > 0:
+			warned_x.append(world.strike_x[who])
+			warned_y.append(world.strike_y[who])
+			warned_tick.append(world.strike_tick[who])
 
 
 ## The player's credits, power and queues. A player past the World's per-player arrays (a hand-built
@@ -373,6 +462,8 @@ func _take_rows(world: World) -> void:
 	_order = world.order
 	_harvest_mode = world.harvest_mode
 	_home = world.home
+	_ready_tick = world.ready_tick
+	_offline_until = world.offline_until
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows

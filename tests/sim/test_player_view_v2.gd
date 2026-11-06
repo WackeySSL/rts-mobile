@@ -1,0 +1,187 @@
+extends GdUnitTestSuite
+## PlayerView v2 (plan row P172, ADR 0030 section 7): the type tables the managers read, the
+## own-only charge and blackout getters, the pending ruptures every player sees and the rule caps.
+## The strike rig of `strike_worlds.gd` gives a bore (charge 40, warning 12, radius 3000); every
+## case reads its numbers from the World's tables, never from a literal.
+
+const StrikeWorlds: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
+const ViewWorlds: GDScript = preload("res://tests/sim/support/view_worlds.gd")
+const MISSING: int = PlayerView.MISSING
+const TABLES: Array[StringName] = [
+	&"type_max_hp",
+	&"type_armour",
+	&"type_range",
+	&"type_min_range",
+	&"type_sight",
+	&"type_faction",
+	&"type_strike_kind",
+	&"type_strike_radius",
+	&"type_charge_ticks",
+	&"type_vs_armour",
+	&"warned_x",
+	&"warned_y",
+	&"warned_tick",
+]
+const SENTINEL: int = 7777
+
+
+## Runs to the first tick the bore may fire and fires it at the rig's point.
+func _fire(world: World) -> void:
+	StrikeWorlds.run_to(world, StrikeWorlds.fire_tick(world, StrikeWorlds.BORE_A))
+	StrikeWorlds.step(world, [StrikeWorlds.fire(StrikeWorlds.BORE_A)])
+
+
+func test_each_new_table_is_a_copy_of_the_worlds() -> void:
+	var world: World = StrikeWorlds.world()
+	_fire(world)
+	var state: int = world.state_hash()
+	var defs: int = world.defs_hash()
+	var costs: Array = Array(world.type_max_hp)
+	var view: PlayerView = PlayerView.of(world, 1)
+	var types: int = world.type_ids.size()
+	for field: StringName in TABLES:
+		var table: PackedInt32Array = view.get(field)
+		assert_bool(table.size() > 0).override_failure_message(String(field)).is_true()
+		var before: PackedInt32Array = table.duplicate()
+		for at: int in table.size():
+			table[at] += 1000
+		# The write lands in the view's own array and in no World array.
+		assert_int(table[0]).is_equal(before[0] + 1000)
+	assert_int(world.state_hash()).is_equal(state)
+	assert_int(world.defs_hash()).is_equal(defs)
+	assert_array(Array(world.type_max_hp)).is_equal(costs)
+	var fresh: PlayerView = PlayerView.of(world, 1)
+	assert_array(Array(fresh.type_max_hp)).is_equal(Array(world.type_max_hp))
+	assert_array(Array(fresh.type_armour)).is_equal(Array(world.type_armour))
+	assert_array(Array(fresh.type_sight)).is_equal(Array(world.type_sight))
+	assert_array(Array(fresh.type_faction)).is_equal(Array(world.type_faction))
+	assert_array(Array(fresh.type_strike_kind)).is_equal(Array(world.type_strike_kind))
+	assert_array(Array(fresh.type_strike_radius)).is_equal(Array(world.type_strike_radius))
+	assert_array(Array(fresh.type_charge_ticks)).is_equal(Array(world.type_charge_ticks))
+	assert_int(fresh.type_range.size()).is_equal(types)
+	assert_int(fresh.type_min_range.size()).is_equal(types)
+	assert_int(fresh.type_vs_armour.size()).is_equal(types * 4)
+
+
+func test_the_weapon_tables_read_through_each_types_weapon() -> void:
+	var world: World = StrikeWorlds.world()
+	var view: PlayerView = PlayerView.of(world, 1)
+	var armed: int = 0
+	for type: int in world.type_ids.size():
+		var weapon: int = world.type_weapon[type]
+		if weapon < 0 or weapon >= world.weapon_range.size():
+			assert_int(view.type_range[type]).is_equal(0)
+			assert_int(view.type_min_range[type]).is_equal(0)
+			for armour: int in 4:
+				assert_int(view.type_vs_armour[type * 4 + armour]).is_equal(0)
+			continue
+		armed += 1
+		assert_int(view.type_range[type]).is_equal(world.weapon_range[weapon])
+		assert_int(view.type_min_range[type]).is_equal(world.weapon_min_range[weapon])
+		for armour: int in 4:
+			assert_int(view.type_vs_armour[type * 4 + armour]).is_equal(
+				world.weapon_vs_armour[weapon * 4 + armour]
+			)
+	# The strike rig's units are unarmed; a shipped-style World (the view rig's rifle squad) is armed.
+	var crafted: World = ViewWorlds.crafted()
+	var armed_view: PlayerView = PlayerView.of(crafted, 1)
+	for type: int in crafted.type_ids.size():
+		var weapon: int = crafted.type_weapon[type]
+		if weapon < 0:
+			continue
+		armed += 1
+		assert_int(armed_view.type_range[type]).is_equal(crafted.weapon_range[weapon])
+		assert_int(armed_view.type_min_range[type]).is_equal(crafted.weapon_min_range[weapon])
+		for armour: int in 4:
+			assert_int(armed_view.type_vs_armour[type * 4 + armour]).is_equal(
+				crafted.weapon_vs_armour[weapon * 4 + armour]
+			)
+	assert_bool(armed > 0).is_true()
+	# The bore's rupture is a building's strike weapon, not its `type_weapon`; its kind, radius and
+	# charge come through the strike tables.
+	var bore: int = StrikeWorlds.type_of(world, "bore")
+	assert_int(view.type_strike_kind[bore]).is_equal(world.type_strike_kind[bore])
+	assert_int(view.type_strike_kind[bore]).is_not_equal(0)
+	assert_int(view.type_strike_radius[bore]).is_equal(StrikeWorlds.radius_of(world, "bore"))
+	assert_int(view.type_charge_ticks[bore]).is_equal(StrikeWorlds.charge_of(world, "bore"))
+	var tank: int = StrikeWorlds.type_of(world, "tank")
+	assert_int(view.type_armour[tank]).is_equal(World.Armour.HEAVY)
+	assert_int(view.type_max_hp[tank]).is_equal(world.type_max_hp[tank])
+
+
+func test_own_getters_answer_for_an_own_row_and_missing_for_a_seen_enemy() -> void:
+	var world: World = ViewWorlds.crafted()
+	var own: int = world.index_of(ViewWorlds.HQ_1)
+	var foe: int = world.index_of(ViewWorlds.NEAR_FOE)
+	world.ready_tick[own] = 120
+	world.offline_until[own] = 240
+	world.ready_tick[foe] = SENTINEL
+	world.offline_until[foe] = SENTINEL + 1
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_bool(view.seen_rows.has(foe)).is_true()
+	assert_int(view.row_ready_tick(own)).is_equal(120)
+	assert_int(view.row_offline_until(own)).is_equal(240)
+	assert_int(view.row_ready_tick(foe)).is_equal(MISSING)
+	assert_int(view.row_offline_until(foe)).is_equal(MISSING)
+	for row: int in [-1, world.unit_id.size(), 1 << 40]:
+		assert_int(view.row_ready_tick(row)).is_equal(MISSING)
+		assert_int(view.row_offline_until(row)).is_equal(MISSING)
+
+
+func test_hidden_rows_expose_nothing_and_no_public_field_carries_an_enemys_charge() -> void:
+	var world: World = ViewWorlds.crafted()
+	var hidden: int = world.index_of(ViewWorlds.FAR_FOE)
+	var seen: int = world.index_of(ViewWorlds.NEAR_FOE)
+	world.ready_tick[hidden] = SENTINEL
+	world.offline_until[hidden] = SENTINEL
+	world.ready_tick[seen] = SENTINEL
+	world.offline_until[seen] = SENTINEL
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_bool(view.own_rows.has(hidden) or view.seen_rows.has(hidden)).is_false()
+	assert_int(view.row_ready_tick(hidden)).is_equal(MISSING)
+	assert_int(view.row_offline_until(hidden)).is_equal(MISSING)
+	for property: Dictionary in view.get_property_list():
+		var field: StringName = StringName(property["name"])
+		if (int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0 or field.begins_with("_"):
+			continue
+		var value: Variant = view.get(field)
+		if value is PackedInt32Array:
+			var column: PackedInt32Array = value
+			assert_bool(column.has(SENTINEL)).override_failure_message(String(field)).is_false()
+
+
+func test_warned_ruptures_list_exactly_the_pending_strikes_of_every_player() -> void:
+	var world: World = StrikeWorlds.world(true, 3)
+	var view: PlayerView = PlayerView.of(world, 2)
+	assert_int(view.warned_x.size()).is_equal(0)
+	assert_int(view.warned_y.size()).is_equal(0)
+	assert_int(view.warned_tick.size()).is_equal(0)
+	# Player 1 fires for real; player 3 has a rupture written in by hand.
+	_fire(world)
+	var landing: int = world.strike_tick[1]
+	assert_int(landing).is_greater(0)
+	world.strike_x[3] = 4500
+	world.strike_y[3] = 5500
+	world.strike_tick[3] = landing + 5
+	for who: int in [1, 2, 3]:
+		var seen_by: PlayerView = PlayerView.of(world, who)
+		assert_array(Array(seen_by.warned_x)).is_equal([StrikeWorlds.POINT.x, 4500])
+		assert_array(Array(seen_by.warned_y)).is_equal([StrikeWorlds.POINT.y, 5500])
+		assert_array(Array(seen_by.warned_tick)).is_equal([landing, landing + 5])
+	# Once the first has landed (strike_tick back to 0) only the second is listed.
+	StrikeWorlds.run_to(world, landing)
+	var after: PlayerView = PlayerView.of(world, 2)
+	assert_int(world.strike_tick[1]).is_equal(0)
+	assert_array(Array(after.warned_tick)).is_equal([landing + 5])
+	assert_array(Array(after.warned_x)).is_equal([4500])
+
+
+func test_the_rule_caps_come_from_the_world() -> void:
+	var world: World = StrikeWorlds.world()
+	world.unit_cap = 31
+	world.building_cap = 17
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_int(view.unit_cap).is_equal(31)
+	assert_int(view.building_cap).is_equal(17)
+	world.unit_cap = 99
+	assert_int(view.unit_cap).is_equal(31)
