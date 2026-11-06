@@ -19,7 +19,9 @@ to 2 and one top-level key moves, §3) and records ADR 0013 §3's note on `run-s
 hash changes.
 
 Status note (2026-11-06, P26be docs, from the reviews of P186): the note at the end of §2 records
-how the harness reads §1's kill attribution and §2's flags. No accepted text changed.
+how the harness reads §1's kill attribution and §2's flags. No accepted text changed; the note
+narrows §2's "as today" for `--matches` (at most nine digits), the one old call whose meaning
+changes.
 
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
@@ -175,10 +177,12 @@ Note (2026-11-06, P26be docs, from the reviews of P186):
 - **Kill attribution, in order:** a `SHOT` at the row in the tick it dies credits that shooter;
   else an enemy rupture landing in that tick, when the row died within the rupture's radius of the
   `STRIKE` point, credits the strike building's type; else the row's last shooter; else nobody. A
-  cancelled site is neither a loss nor a kill.
+  cancelled site is neither a loss nor a kill. This reads §1's "no shot was recorded" as no shot
+  at the row in that tick, so a rupture beats an older shooter; the radius test is the harness's
+  own. P187's markdown (§4) states this order, not "the last shooter".
 - **Per-type maps** hold only the types that occurred (absent means 0). P187's checks that need
-  every unit type (§6 check 4, the under-5 % flag) read the faction rosters. `kills` can hold
-  structure types, which have no `spent`; P187's kills per 1 000 credits skips them.
+  every unit type (§6 check 4 and §4's flag under 50 per-mille) read the faction rosters. `kills`
+  can hold structure types, which have no `spent`; P187's kills per 1 000 credits skips them.
 - **A dropped Command** fails the run naming its seed and the tick of the first drop. The tick is
   printed, not stored: the report's keys stay those of §3.
 - **Flags:** an empty value is a bad flag (exit 2), and the numbers take at most nine digits, so
