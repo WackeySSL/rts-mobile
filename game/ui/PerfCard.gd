@@ -1,19 +1,17 @@
 class_name PerfCard
 extends RefCounted
 ## The text of the perf card (plan P184, split out of PerfHud): the verdict rows and the rows
-## without a verdict, their keys, and the lines the card shows over `hud.summary()`. It reads the
-## hud's gate, run and preflight state and holds none of its own. The summary itself, the samples
-## and the buttons stay in PerfHud.
+## without a verdict, their keys, and the lines the card shows over `hud.summary()`. It holds no
+## state of its own: it reads the hud's gate, run and preflight state, among them the private
+## `_runs`, `_sim_impl` and `_self_check_result` of PerfHud (the way WorldHash reads World's
+## `_map_digest`), and `SYNC`, `WORKER` and `SELF_CHECK_*` are PerfHud's constants. The summary
+## itself, the samples and the buttons stay in PerfHud. To add a key to the card: its value goes in
+## `PerfHud.summary()`, its format in `CARD_ROWS` (or a line in `card_lines()` for one arena, as
+## `PerfBases.calls_line`); a verdict is a `ROWS` entry and its PerfGateDef field. The theme's
+## `PerfCard` variation styles PerfHud's panel, not this class.
 
 const PASS: String = "PASS"
 const FAIL: String = "FAIL"
-const SYNC: String = "SYNC"
-const WORKER: String = "WORKER"
-## The self-check seam's results (ADR 0013 section 3): the 60-tick lockstep of the seed-42 arena.
-const SELF_CHECK_MATCH: String = "match"
-const SELF_CHECK_MISMATCH: String = "mismatch"
-const SELF_CHECK_NOT_RUN: String = "not run"
-const SELF_CHECK_TICKS: int = 60
 
 ## The verdict rows that compare one summary key with one PerfGateDef field: the row's name, the
 ## key judged, the field, the unit printed, and whether the key must be at least the field (else at
@@ -132,18 +130,18 @@ func card_lines() -> PackedStringArray:
 	var s: Dictionary = hud.summary()
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append(
-		(
-			"PERF run %d | %s | %s build | %s"
-			% [hud._runs, s["tick_mode"], hud._build(), hud.layer_mode]
-		)
+		"PERF run %d | %s | %s build | %s" % [hud._runs, s["tick_mode"], _build(), hud.layer_mode]
 	)
 	lines.append_array(PackedStringArray(s["verdicts"]))
 	lines.append("held_ticks %d (no verdict)" % hud.held_ticks)
 	var lockstep: String = "not run"
-	if s["self_check"] != SELF_CHECK_NOT_RUN:
+	if s["self_check"] != PerfHud.SELF_CHECK_NOT_RUN:
 		lockstep = (
 			"%s (%d ticks)"
-			% ["yes" if s["self_check"] == SELF_CHECK_MATCH else "NO", SELF_CHECK_TICKS]
+			% [
+				"yes" if s["self_check"] == PerfHud.SELF_CHECK_MATCH else "NO",
+				PerfHud.SELF_CHECK_TICKS
+			]
 		)
 	lines.append(_impl_line(s, lockstep))
 	for row: Array in CARD_ROWS:
@@ -189,7 +187,7 @@ func verdicts(s: Dictionary) -> Array[String]:
 			rows.append(_check(row[0], false, "no %s" % needs))
 		else:
 			rows.append(_judge(row[0], s[row[1]], hud.gate.get(row[2]), row[3], row[4]))
-	if s["tick_mode"] == WORKER:
+	if s["tick_mode"] == PerfHud.WORKER:
 		rows.append(_judge("late_ticks_max", hud.late_ticks, hud.gate.late_ticks_max, "late ticks"))
 	else:
 		rows.append("late_ticks_max: n/a (SYNC: late_ticks counts inline ticks)")
@@ -199,9 +197,7 @@ func verdicts(s: Dictionary) -> Array[String]:
 	fog_text = fog_text % [fog, s["fog_updates"], hud.gate.fog_update_p95_ms]
 	rows.append(_check("fog_update_p95_ms", fog_ok, fog_text))
 	rows.append(
-		_check(
-			"build", not (hud.gate.release_only and hud.debug_build), "%s template" % hud._build()
-		)
+		_check("build", not (hud.gate.release_only and hud.debug_build), "%s template" % _build())
 	)
 	rows.append(_impl_row())
 	rows.append(_golden_row())
@@ -216,7 +212,7 @@ func _impl_row() -> String:
 		return "impl: n/a (only Android requires the library)"
 	if hud._sim_impl != MatchRunner.SimImpl.NATIVE:
 		return _check("impl", false, "gdscript")
-	var matched: bool = hud._self_check_result == SELF_CHECK_MATCH
+	var matched: bool = hud._self_check_result == PerfHud.SELF_CHECK_MATCH
 	return _check("impl", matched, "self-check %s" % hud._self_check_result)
 
 
@@ -246,5 +242,10 @@ func _judge(name: String, value: float, limit: float, unit: String, lower: bool 
 	return _check(name, ok, "%.2f %s, limit %.2f" % [value, unit, limit])
 
 
+## Whether `line` is a verdict line that failed (`<name>: FAIL (...)`).
 static func failed(line: String) -> bool:
 	return line.contains(": %s (" % FAIL)
+
+
+func _build() -> String:
+	return "debug" if hud.debug_build else "release"

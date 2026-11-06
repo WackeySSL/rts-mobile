@@ -27,6 +27,7 @@ job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
 Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
 p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
 atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
@@ -70,6 +71,7 @@ GATE: PASS
   "drop_ms": 25.0,
   "dropped": 0,
   "dropped_pct": 0.0,
+  "engine": "<engine>",
   "extra_slots": [
     1000,
     0,
@@ -116,8 +118,10 @@ GATE: PASS
   "late_ticks": 0,
   "latency_usec_max": 0,
   "layer_mode": "all",
+  "model": "<model>",
   "native_build": "",
   "native_phases": [],
+  "os": "Linux",
   "period_ms": 16.6666666666667,
   "phases_ms": [
     0.0,
@@ -157,6 +161,7 @@ GATE: PASS
   "refresh_hz_start": 60.0,
   "render_cpu_p95_ms": 1.0,
   "runs": 1,
+  "screen": "<screen>",
   "self_check": "not run",
   "sim_impl": "GDSCRIPT",
   "speed_fog_pct": 100.0,
@@ -223,6 +228,7 @@ job ms mean 10.44 p50 10.00 p95 10.00 p99 30.00 max 30.00 | latency max 0 us
 Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
 p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
 atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
@@ -266,6 +272,7 @@ GATE: FAIL
   "drop_ms": 25.0,
   "dropped": 1,
   "dropped_pct": 0.1,
+  "engine": "<engine>",
   "extra_slots": [
     999,
     1,
@@ -314,8 +321,10 @@ GATE: FAIL
   "late_ticks": 0,
   "latency_usec_max": 0,
   "layer_mode": "all",
+  "model": "<model>",
   "native_build": "",
   "native_phases": [],
+  "os": "Linux",
   "period_ms": 16.6666666666667,
   "phases_ms": [
     0.0,
@@ -355,6 +364,7 @@ GATE: FAIL
   "refresh_hz_start": 60.0,
   "render_cpu_p95_ms": 1.0,
   "runs": 1,
+  "screen": "<screen>",
   "self_check": "not run",
   "sim_impl": "GDSCRIPT",
   "speed_fog_pct": 100.0,
@@ -421,6 +431,7 @@ job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
 Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
 p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
 atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
 draw calls p95 40 | forecast 16, 17 while a strike is aimed or in flight, about 22 at worst, plus the HUD (no verdict)
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
@@ -465,6 +476,7 @@ GATE: FAIL
   "drop_ms": 25.0,
   "dropped": 0,
   "dropped_pct": 0.0,
+  "engine": "<engine>",
   "extra_slots": [
     1000,
     0,
@@ -511,8 +523,10 @@ GATE: FAIL
   "late_ticks": 0,
   "latency_usec_max": 0,
   "layer_mode": "all",
+  "model": "<model>",
   "native_build": "",
   "native_phases": [],
+  "os": "Linux",
   "period_ms": 16.6666666666667,
   "phases_ms": [
     0.0,
@@ -552,6 +566,7 @@ GATE: FAIL
   "refresh_hz_start": 60.0,
   "render_cpu_p95_ms": 1.0,
   "runs": 1,
+  "screen": "<screen>",
   "self_check": "not run",
   "sim_impl": "GDSCRIPT",
   "speed_fog_pct": 100.0,
@@ -617,6 +632,7 @@ job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
 Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
 p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
 atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Android | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
@@ -660,6 +676,7 @@ GATE: PASS
   "drop_ms": 25.0,
   "dropped": 0,
   "dropped_pct": 0.0,
+  "engine": "<engine>",
   "extra_slots": [
     1000,
     0,
@@ -706,11 +723,13 @@ GATE: PASS
   "late_ticks": 0,
   "latency_usec_max": 0,
   "layer_mode": "all",
+  "model": "<model>",
   "native_build": "arm64 release",
   "native_phases": [
     "FLOW",
     "MOVE"
   ],
+  "os": "Android",
   "period_ms": 16.6666666666667,
   "phases_ms": [
     0.0,
@@ -750,6 +769,7 @@ GATE: PASS
   "refresh_hz_start": 60.0,
   "render_cpu_p95_ms": 1.0,
   "runs": 1,
+  "screen": "<screen>",
   "self_check": "match",
   "sim_impl": "NATIVE",
   "speed_fog_pct": 100.0,
@@ -815,6 +835,7 @@ job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
 Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
 p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
 atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Android | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
@@ -858,6 +879,7 @@ GATE: FAIL
   "drop_ms": 25.0,
   "dropped": 0,
   "dropped_pct": 0.0,
+  "engine": "<engine>",
   "extra_slots": [
     1000,
     0,
@@ -904,8 +926,10 @@ GATE: FAIL
   "late_ticks": 0,
   "latency_usec_max": 0,
   "layer_mode": "all",
+  "model": "<model>",
   "native_build": "",
   "native_phases": [],
+  "os": "Android",
   "period_ms": 16.6666666666667,
   "phases_ms": [
     0.0,
@@ -945,6 +969,7 @@ GATE: FAIL
   "refresh_hz_start": 60.0,
   "render_cpu_p95_ms": 1.0,
   "runs": 1,
+  "screen": "<screen>",
   "self_check": "not run",
   "sim_impl": "GDSCRIPT",
   "speed_fog_pct": 100.0,

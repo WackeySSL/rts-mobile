@@ -1,8 +1,9 @@
 class_name PerfHud
 extends PanelContainer
 ## The perf card (plan P50a and P50a2; ADR 0012 section 4, ADR 0013 sections 3 and 15, ADR 0014):
-## one run of `run_ticks` published ticks, the samples it takes on the main thread, `summary()`, the
-## verdicts of a PerfGateDef and the card that shows them. A run keeps one row per frame and one per
+## one run of `run_ticks` published ticks, the samples it takes on the main thread, `summary()` and
+## the card that shows it (the card's text and the verdicts of a PerfGateDef are PerfCard's, P184).
+## A run keeps one row per frame and one per
 ## published tick, read from `runner.snapshot` only (ADR 0012 section 3, never the World, the loop
 ## or the replay). Main-thread CPU verdicts use ADR 0014's per-frame normalisation
 ## (RefLoop.normalised_p95), worker verdicts stay raw. Tests feed record_frame() and
@@ -15,10 +16,11 @@ extends PanelContainer
 ## and "Run again" (the burst again, then a new match and a new run). P50b is the scene that sets
 ## the seams below.
 
+## Aliases of PerfCard.PASS and PerfCard.FAIL (the suites read them here).
 const PASS: String = PerfCard.PASS
 const FAIL: String = PerfCard.FAIL
-const SYNC: String = PerfCard.SYNC
-const WORKER: String = PerfCard.WORKER
+const SYNC: String = "SYNC"
+const WORKER: String = "WORKER"
 ## Why a run is INVALID (a measurement fault, never a verdict): a preflight refused with a job in
 ## flight; the app paused or lost focus; ADR 0014 section 2's refresh and median rules; ADR 0012
 ## section 4's monitors that read 0 (a release template compiles them out); the camera moved while
@@ -36,11 +38,11 @@ const REASON_NO_RENDER_CPU: String = "render_cpu_p95_zero"
 const REASON_CAMERA_MOVED: String = "camera_moved"
 const REASON_PORTRAIT: String = "portrait"
 ## The self-check seam's results (ADR 0013 section 3): the 60-tick lockstep of the seed-42 arena.
-const SELF_CHECK_MATCH: String = PerfCard.SELF_CHECK_MATCH
-const SELF_CHECK_MISMATCH: String = PerfCard.SELF_CHECK_MISMATCH
-const SELF_CHECK_NOT_RUN: String = PerfCard.SELF_CHECK_NOT_RUN
+const SELF_CHECK_MATCH: String = "match"
+const SELF_CHECK_MISMATCH: String = "mismatch"
+const SELF_CHECK_NOT_RUN: String = "not run"
 const SELF_CHECK_SEED: int = 42
-const SELF_CHECK_TICKS: int = PerfCard.SELF_CHECK_TICKS
+const SELF_CHECK_TICKS: int = 60
 const ARENA: String = "res://data/scenarios/perf_arena.tres"
 ## A checkpoint hash is kept at every published tick this divides (the golden ticks).
 const CHECKPOINT_EVERY: int = 150
@@ -52,7 +54,7 @@ const GAP_DP: float = 8.0
 const COPY_TEXT: String = "Copy report"
 const COPIED_TEXT: String = "Copied"
 const AGAIN_TEXT: String = "Run again"
-## The card's rows without a verdict (the table lives in PerfCard).
+## Alias of PerfCard.CARD_ROWS (the suites read it here).
 const CARD_ROWS: Array = PerfCard.CARD_ROWS
 
 ## Which arena the card judges (P93c): the seed-42 arena or the base arena.
@@ -702,10 +704,6 @@ func _burst() -> PackedFloat64Array:
 		if began >= start + (span >> 1):
 			kept.append(at - began)
 	return kept
-
-
-func _build() -> String:
-	return "debug" if debug_build else "release"
 
 
 func _slot_ms() -> float:
