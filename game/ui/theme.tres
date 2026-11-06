@@ -44,11 +44,10 @@
 ; Type variations (DevButton, NumberLabel, SelectionPanel, EnemyHealth, PerfCard, SidebarTab,
 ; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner,
 ; ItemCaption, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
-; CapsTitle,
-; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
-; EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
-; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary, PausePrimaryFossil,
-; PauseDanger, PauseChip, PauseChipFossil, PauseChipOff) are set by
+; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
+; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
+; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
+; PausePrimaryFossil, PauseDanger, PauseChip, PauseChipFossil, PauseChipOff) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The tabs of the build sidebar get their tints from the icon colours of SidebarTab; the glyphs of
@@ -561,8 +560,9 @@ ReadyBadge/styles/pressed = SubResource("StyleBoxFlat_badge_pressed")
 ; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1). The name under the
 ; plate of a landscape card is 14 dp, white on the tile's dark plate.
 ; A locked card's sash (ItemSash, P120j): the band (#D9E0E8) with a dark edge line, the missing
-; building's name on it in Chakra Petch Bold 14 dp, dark on the light (13.8:1), one line that a test pins
-; against ItemTile.sash_room_px; the seal is a dark disc with a white padlock. The tile draws them.
+; building's name on it in Chakra Petch Bold 14 dp, dark on the light (13.8:1), one line that a test
+; pins against ItemTile.sash_room_px; the seal is a dark disc with a white padlock. The tile draws
+; them.
 ItemTile/base_type = &"Button"
 ItemTile/colors/fill = Color(1, 1, 1, 0.4)
 ItemTile/colors/icon = Color(1, 1, 1, 1)
