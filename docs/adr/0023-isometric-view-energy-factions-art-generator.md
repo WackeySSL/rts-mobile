@@ -110,6 +110,14 @@ status notes: "a damaged building looks intact" is withdrawn (two damage stages,
 no new draw call); new part names `dmg1` and `dmg2`, new sheet fields and emitter kinds, and a
 hand-written neutral sheet outside the generated tree. No accepted text changed.
 
+Status note (2026-11-06, P120k docs; ADR 0032 accepted 2026-11-06, Michael: "ja til anbefaling"):
+six display names of §7 are superseded by ADR 0032 §1: Cracking Plant → Oil Works, Synthesis
+Works → Fuel Works, Motor Works → Motor Hall, Relay Tower → Relay Post, Blackout Array → Dusk Array,
+Roustabouts → Rig Hands; Turbine Hall stays on ADR 0032 §3's condition. Where §13's rows, the
+answers and the other sections name the old six, they read as history; ADR 0032 §6 adds the screen
+of the new names. The strike's effect is still a blackout (§10). Ids are unchanged. No accepted text
+changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics

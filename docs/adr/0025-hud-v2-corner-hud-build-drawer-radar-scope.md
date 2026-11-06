@@ -122,6 +122,12 @@ menuen?" The lead proposed letting the card list run on under the gesture bar, a
   - ADR 0015 §3's inset rule is unchanged; its own dated note points here.
   - No other accepted text changed.
 
+Status note (2026-11-06, P120k docs; Michael's decisions of 2026-11-06): the locked build card
+becomes option A of ADR 0032 §3 (a diagonal band with the missing building's name on one line, a
+26 dp padlock seal, the price hidden), and six display names get shorter so every requirement fits
+that band on one line (ADR 0032 §1-§2). The dated note at the end of §5 names the accepted text it
+replaces; row P120j builds the look.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
@@ -497,6 +503,24 @@ text and the notes above where they say so):
   and the queue row (about 312 dp)" (the least height stays 312 dp, `HudCorners.SHEET_LEAST_DP`),
   the grid budgets on `web_phone_small` above (84, 76 and about 53 dp; the grid still scrolls
   there), §2's "queue items 56" and the toast's "(or the safe left edge while the pill hides)".
+
+Note (2026-11-06, P120k docs; ADR 0032 accepted 2026-11-06, Michael: option A, "kun når teksten
+står på én linje", and "ja til anbefaling" to the short names; applied by P120j): **the locked card
+is option A of ADR 0032 §3.** A light band rises diagonally across the dimmed picture and runs off
+both edges with the missing building's name on one line in Chakra Petch Bold 14 sp, dark on light;
+a 26 dp padlock seal sits at the top left; the price is hidden; the card's own name stays in the
+caption. Every requirement name fits the band on one line and every display name fits the caption
+on one line at the 88 dp card on every test profile (ADR 0032 §2, guarded by
+`tests/ui/test_display_name_fit.gd`). This replaces, in the note of 2026-11-04 above: "The name
+takes at most 2 lines at 14 sp inside the stage, so a long name ("Cracking Plant", "Synthesis
+Works") is never cut" (now one line on the band, which crosses the picture rather than standing
+inside the stage, and both names are retired) and "The padlock is then 14 dp, at the top left of
+the stage, clear of the count badge" (now the 26 dp seal; the band's text stays clear of the badge,
+whose plate is drawn over the band's end). In §5's "Cards" bullet, "A card shows the item card
+picture (P85e), the name and the price (tabular)" no longer holds for a locked card: it hides its
+price. "The missing building's full display name, with no "Needs" prefix and no ellipsis" stands.
+§19's P120 row ("a padlocked card says what you need for it") gets P120j's new HOW_TO_PLAY
+wording. No other accepted text changed.
 
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
