@@ -1,7 +1,7 @@
 extends RefCounted
 ## Worlds and helpers for the targeting tests (P41). Not a test suite.
 ##
-## `data_world` builds a World from the three shipped unit types (rifle squad, rocket squad, light
+## `data_world` builds a World from the three frozen unit types (rifle squad, rocket squad, light
 ## tank: types 0, 1 and 2, weapons 0, 1 and 2), so the ranges and armour percents are the ones of
 ## data/: rifle range 4000 and acquire 5000 with 100/10 percent against infantry/light, rocket 5000
 ## and 5500 with 20/100, tank 4500 and 5500 with 70/60; sight is 6000 or 7000. Targets within
@@ -24,7 +24,7 @@ const ROCKET: int = 1
 const TANK: int = 2
 
 
-## A World of `cols` x `rows` open tiles with the shipped rules and the three shipped types, with
+## A World of `cols` x `rows` open tiles with the frozen rules and the three frozen types, with
 ## the map revealed to both players unless `revealed` is false (see the top of the file).
 static func data_world(cols: int = 20, rows: int = 12, revealed: bool = true) -> World:
 	var units: Array[UnitDef] = [
@@ -33,8 +33,8 @@ static func data_world(cols: int = 20, rows: int = 12, revealed: bool = true) ->
 	return world_of(units, cols, rows, revealed)
 
 
-## A World of `cols` x `rows` open tiles with the shipped rules, one type per entry of `units`
-## (type 0 is `units[0]`) and `players` players (two, as the shipped scenarios), with the map
+## A World of `cols` x `rows` open tiles with the frozen rules, one type per entry of `units`
+## (type 0 is `units[0]`) and `players` players (two, as the scenarios), with the map
 ## revealed to all of them unless `revealed` is false (see the top of the file).
 static func world_of(
 	units: Array, cols: int = 20, rows: int = 12, revealed: bool = true, players: int = 2

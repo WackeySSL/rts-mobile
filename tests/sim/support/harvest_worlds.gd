@@ -1,8 +1,8 @@
 extends RefCounted
 ## Worlds with ore for the harvest suites (plan rows P75 and P75b, ADR 0018 section 3): a map from
-## one string per tile row over the shipped terrain set ('.' grass, 'o' ore, '#' rock, ':' sand, '~'
+## one string per tile row over the terrain set ('.' grass, 'o' ore, '#' rock, ':' sand, '~'
 ## water), loaded through `World.from_scenario`, so the ore cells are listed and filled the way a
-## match does it. The roster is the shipped harvester, refinery, power plant and rifle squad; the
+## match does it. The roster is the frozen harvester, refinery, power plant and rifle squad; the
 ## rules are `data/dev/arena/rules.tres` (the frozen defs, ADR 0031). Harvesters and refineries are
 ## the test's to add. Not a test suite.
 

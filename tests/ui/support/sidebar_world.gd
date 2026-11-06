@@ -1,12 +1,13 @@
 extends RefCounted
-## The World behind the build sidebar's item suites (plan P85b): the shipped units and buildings
-## (the twelve of Phase 2 and the first Phase 3 plan), a 24 x 16 open map and two players. A suite
-## gives player 1 buildings, credits and queued items, captures the snapshot the sidebar reads and
-## gets the real tables (costs, tabs, requirements, producers, build ticks) rather than copies of
-## them, with one exception: the Derrick League's radar (plan P107, ADR 0023 section 7), which
-## gates artillery and which the loader pulls in after it, is taken off the tabs and artillery's
-## requirement is dropped, so that these suites keep pinning the sidebar's own rules on the same
-## twelve tiles. Not a suite.
+## The World behind the build sidebar's item suites (plan P85b): the frozen copies in
+## `data/dev/arena/units/` of the units and buildings (the twelve of Phase 2 and the first Phase 3
+## plan; built through `building_worlds.gd` since P171b, so a tuning row to the shipped files does
+## not move these suites), a 24 x 16 open map and two players. A suite gives player 1 buildings,
+## credits and queued items, captures the snapshot the sidebar reads and gets the real tables
+## (costs, tabs, requirements, producers, build ticks) rather than hand-made ones, with one
+## exception: the Derrick League's radar (plan P107, ADR 0023 section 7), which gates artillery and
+## which the loader pulls in after it, is taken off the tabs and artillery's requirement is dropped,
+## so that these suites keep pinning the sidebar's own rules on the same twelve tiles. Not a suite.
 
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const IDS: Array[String] = [

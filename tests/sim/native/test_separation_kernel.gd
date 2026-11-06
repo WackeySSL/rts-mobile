@@ -30,7 +30,7 @@ const LARGE_DIVISOR: int = 3037000
 const REACH_MAX: int = 2097151
 const PRODUCT_MAX: int = 3037000499
 const UNITS_DIR: String = "res://data/units"
-const RULES_PATH: String = "res://data/dev/arena/rules.tres"
+const RULES_PATH: String = "res://data/rules.tres"
 ## What the kernel gets or sets, in table order: the rule ints, the columns of the World that the
 ## pass reads or writes, and the separation grid.
 const SEPARATION_NAMES: Array[String] = [

@@ -222,8 +222,8 @@ func _tables(world: World) -> Array:
 
 
 ## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: the frozen
-## data/dev/arena/rules.tres)
-## and, with `paint`, a tenth of its cells turned to slow ground, scrub, rock or water.
+## data/dev/arena/rules.tres) and, with `paint`, a tenth of its cells turned to slow ground, scrub,
+## rock or water.
 func _arena(rules: RulesDef = null, paint: bool = false) -> World:
 	var scenario: ScenarioDef = (load(ARENA_PATH) as ScenarioDef).duplicate() as ScenarioDef
 	if rules != null:

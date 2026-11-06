@@ -1,9 +1,9 @@
 extends RefCounted
 ## Worlds with buildings for the P71 suites (plan row P71, ADR 0017 sections 1 and 2): a map from
-## one string per tile row (GridWorld's characters), the shipped units and buildings, and helpers
+## one string per tile row (GridWorld's characters), the frozen units and buildings, and helpers
 ## to find a type by id. Not a test suite.
 ##
-## The roster has the three shipped Phase 2 units, then the buildings and units of Phase 3 that the
+## The roster has the three frozen Phase 2 units, then the buildings and units of Phase 3 that the
 ## suites use. The type indexes depend on what `requires` pulls in after a type, so a test asks
 ## `type_of(world, id)`.
 
@@ -24,18 +24,21 @@ const ROSTER: Array[String] = [
 ## Which terrains of GridWorld.GROUND a building may stand on: grass, 'w', 't', '2' and '4'; not
 ## scrub ('^') and not rock ('#').
 const BUILDABLE: Array[int] = [1, 0, 0, 1, 1, 1, 1]
-
-## A prepared World of the map `rows` (GridWorld's characters), with the roster and 2 players, and
-## the terrains' buildable flags. With `revealed` (the default) every cell is visible and explored
-## for both players; without, the fog is real and a row is blind until its player's first FOG turn
-## (TargetingWorlds.stamp_fog gives it sight at once).
+##  A prepared World of the map `rows` (GridWorld's characters), with the roster and 2 players, and
+## the terrains' buildable flags. The unit files come from `unit_dir` (default: the frozen defs).
+## With `revealed` (the default) every cell is visible and explored for both players; without, the
+## fog is real and a row is blind until its player's first FOG turn (TargetingWorlds.stamp_fog gives
+## it sight at once).
 @warning_ignore("integer_division")
 static func world(
-	rows: PackedStringArray, ids: Array[String] = ROSTER, revealed: bool = true
+	rows: PackedStringArray,
+	ids: Array[String] = ROSTER,
+	revealed: bool = true,
+	unit_dir: String = UNIT_DIR
 ) -> World:
 	var units: Array[UnitDef] = []
 	for id: String in ids:
-		units.append(load(UNIT_DIR + id + ".tres") as UnitDef)
+		units.append(load(unit_dir + id + ".tres") as UnitDef)
 	var cols: int = len(rows[0])
 	var made: World = Rig.world_of(units, cols, rows.size(), revealed)
 	made.terrain_cost = PackedByteArray(GridWorld.GROUND_COST)
@@ -47,9 +50,12 @@ static func world(
 	return made
 
 
-## An open map of `cols` x `rows` tiles (see world()).
-static func open(cols: int, rows: int, ids: Array[String] = ROSTER) -> World:
-	return world(GridWorld.grass(cols, rows), ids)
+## An open map of `cols` x `rows` tiles (see world()). `unit_dir` is the folder the unit files are
+## loaded from (the frozen copies by default; a suite about the shipped data passes its own).
+static func open(
+	cols: int, rows: int, ids: Array[String] = ROSTER, unit_dir: String = UNIT_DIR
+) -> World:
+	return world(GridWorld.grass(cols, rows), ids, true, unit_dir)
 
 
 ## The type index of `id` in `world`, or -1.
@@ -103,7 +109,7 @@ static func _weaken(made: World, id: int, hit_points: int) -> void:
 
 
 ## An unarmed building of `width` x `height` tiles with plenty of hit points, for a case that must
-## outlive the fight (the shipped buildings are the real ones; this one has no weapon and no tab).
+## outlive the fight (the frozen buildings are the real ones; this one has no weapon and no tab).
 static func block(id: String, width: int, height: int) -> BuildingDef:
 	var def: BuildingDef = BuildingDef.new()
 	def.type_id = StringName(id)
@@ -138,7 +144,7 @@ static func behind_rock(width: int, height: int) -> World:
 	return made
 
 
-## A World of 40 x 24 open tiles for the artillery check: the shipped artillery (type 0) of player 1
+## A World of 40 x 24 open tiles for the artillery check: the frozen artillery (type 0) of player 1
 ## at `distance` milli west of the centre of a Headquarters (type 1) of player 2 at (20, 10), whose
 ## centre is (21500, 11500), on the same row; the map is revealed.
 static func artillery_range(distance: int) -> World:

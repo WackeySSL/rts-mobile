@@ -247,9 +247,9 @@ func _assert_reached(rig: RefCounted, least: Dictionary) -> void:
 
 
 ## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: the frozen
-## data/dev/arena/rules.tres),
-## then with the members of `members` set on the World, and, with `pile`, the 150 units gathered
-## into a square of PILE_SIDE milli-tiles (their goals follow them: they stand idle there).
+## data/dev/arena/rules.tres), then with the members of `members` set on the World, and, with
+## `pile`, the 150 units gathered into a square of PILE_SIDE milli-tiles (their goals follow them:
+## they stand idle there).
 func _arena(
 	pile: bool = false, rules: RulesDef = null, members: Dictionary = {}, pile_at: int = PILE_AT
 ) -> World:
