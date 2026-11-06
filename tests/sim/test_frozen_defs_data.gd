@@ -6,20 +6,22 @@ extends GdUnitTestSuite
 ## compares a copy with its shipped original field by field: the first tuning row would break it.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
-const ARENA_DIR: String = "res://data/dev/arena"
-const SCENARIOS: Array[String] = [
-	"res://data/scenarios/perf_arena.tres",
-	"res://data/scenarios/perf_bases.tres",
-	"res://data/scenarios/controls_test.tres",
-]
+const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
+const ARENA_DIR: String = Frozen.ARENA_DIR
+const SCENARIOS: Array[String] = Frozen.SCENARIOS
 ## The only data folders a pinned scenario may reach, through any chain of ext_resources.
 const ALLOWED: Array[String] = [ARENA_DIR + "/", "res://data/maps/", "res://data/terrain/"]
-const RES_PATH: String = 'path="(res://[^"]+)"'
+## Every ext_resource path, whatever its form: a relative path or a uid would get past a walk that
+## reads only `res://` paths, so the walk asserts there are none.
+const ANY_PATH: String = 'path="([^"]+)"'
 
 
 func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
 	for scenario_path: String in SCENARIOS:
 		var reached: Array[String] = _closure(scenario_path)
+		for walked: String in reached + [scenario_path]:
+			if walked.ends_with(".tres"):
+				_assert_plain_paths(walked)
 		var arena_files: int = 0
 		for path: String in reached:
 			(
@@ -42,6 +44,7 @@ func test_a_frozen_file_points_only_at_frozen_files() -> void:
 	var files: Array[String] = FileScan.list_files(ARENA_DIR, ".tres")
 	assert_int(files.size()).is_greater(30)
 	for file: String in files:
+		_assert_plain_paths(file)
 		for path: String in _resource_paths(file):
 			if path.begins_with("res://data/"):
 				assert_str(path).override_failure_message("%s reads %s" % [file, path]).starts_with(
@@ -80,26 +83,38 @@ func test_the_arena_spawns_use_the_frozen_tank_and_not_the_shipped_one() -> void
 	assert_int(matches).is_greater(0)
 
 
-## Every data file reachable from `file` through ext_resource paths (the file itself included),
-## each once. Only `.tres` files are followed; scripts and art end the walk.
+## Every data file reachable from `file` through ext_resource paths (the file itself left out),
+## each once, whatever its format: a `.res` def is listed for the allowlist too. Only `.tres` files
+## are read further; scripts, art and binary resources end the walk.
 func _closure(file: String) -> Array[String]:
-	var visited: Array[String] = []
+	var visited: Array[String] = [file]
 	var todo: Array[String] = [file]
 	while not todo.is_empty():
 		var next: String = todo.pop_back()
-		if next in visited:
-			continue
-		visited.append(next)
 		for path: String in _resource_paths(next):
-			if path.begins_with("res://data/") and path.ends_with(".tres"):
+			if not path.begins_with("res://data/") or path in visited:
+				continue
+			visited.append(path)
+			if path.ends_with(".tres"):
 				todo.append(path)
 	visited.erase(file)
 	return visited
 
 
+## Every ext_resource of `file` names an absolute `res://` path and no uid, so the text walk sees
+## the file Godot loads.
+func _assert_plain_paths(file: String) -> void:
+	var text: String = FileAccess.get_file_as_string(file)
+	assert_bool(text.contains('uid="')).override_failure_message("%s holds a uid" % file).is_false()
+	for path: String in _resource_paths(file):
+		assert_str(path).override_failure_message("%s reads %s" % [file, path]).starts_with(
+			"res://"
+		)
+
+
 func _resource_paths(file: String) -> Array[String]:
 	var found: Array[String] = []
-	var regex: RegEx = RegEx.create_from_string(RES_PATH)
+	var regex: RegEx = RegEx.create_from_string(ANY_PATH)
 	for hit: RegExMatch in regex.search_all(FileAccess.get_file_as_string(file)):
 		found.append(hit.get_string(1))
 	return found
