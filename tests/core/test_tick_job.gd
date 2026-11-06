@@ -231,7 +231,7 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()
 	job.run()
-	assert_int(ai.work_max).is_equal(1)
+	assert_array((ai as OpponentAi).slot_thinks).is_equal(PackedInt32Array([1, 0, 0]))
 	visited.clear()
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()
@@ -239,7 +239,7 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 
 
 ## think_usec is 0 on a tick where no controller thought (none seated, or none due), and on a tick
-## with a think it lies between 0 and the whole job's job_usec, which counts the thinks.
+## with a think it lies between 1 and the whole job's job_usec, which counts the thinks.
 func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> void:
 	var job: TickJob = _arena_job()
 	job.run()
@@ -264,8 +264,8 @@ func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> vo
 	assert_array(thought).is_equal([15, 30])
 
 
-## A think that takes time is counted: a controller that waits for the clock to move by one
-## microsecond makes think_usec at least 1 and at most job_usec.
+## A think that takes time is counted: a controller that waits for the clock to move by
+## SlowAi.THINK_USEC makes think_usec at least that and at most job_usec.
 func test_think_usec_counts_a_think_that_takes_time() -> void:
 	var job: TickJob = _arena_job()
 	var slow: AiController = SlowAi.new()
@@ -275,7 +275,7 @@ func test_think_usec_counts_a_think_that_takes_time() -> void:
 	(job.probe as StepProbe).target = stamp
 	job.run()
 	var snap: MatchSnapshot = job.snapshot
-	assert_int(snap.think_usec).is_between(1, snap.job_usec)
+	assert_int(snap.think_usec).is_between(SlowAi.THINK_USEC, snap.job_usec)
 	# The clock is read after the thinks and before the step: the step's probe waits WAIT_USEC in
 	# begin(), so the thinks end at least that long before begin() returns.
 	var started: int = snap.end_usec - snap.job_usec

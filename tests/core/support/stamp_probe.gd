@@ -1,8 +1,8 @@
 extends SimProbe
 ## A SimProbe that takes 2 ms in begin() and in mark() and stamps the clock where begin() returns
 ## and where mark() starts, so a probe that passes its calls on can be checked to read the clock
-## between them. Not a test suite; test_match_runner.gd preloads it. It has its own file because an
-## inner class may not extend a script, and it never names itself
+## between them. Not a test suite; test_match_runner.gd and test_tick_job.gd preload it. It has its
+## own file because an inner class may not extend a script, and it never names itself
 ## (tests/project/test_inner_classes_extend_engine_classes.gd).
 
 const WAIT_USEC: int = 2000
