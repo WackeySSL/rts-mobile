@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## P111 suites (`strike_worlds.gd` data, `blackout_worlds.gd` data). A Deep Bore placed at tick 0
 ## charges for its `charge_ticks` and is accepted on the first tick that reaches them and not a tick
 ## before; its rupture lands on exactly `strike_tick` and takes the weapon's damage times the armour
-## percent from every row within the radius, own rows included, and from none outside; a Blackout
+## percent from every row within the radius, own rows included, and from none outside; a Dusk
 ## Array takes the enemy buildings within its radius offline for exactly `strike_ticks`, which the
 ## power totals show; and `Strike.rupture_type` finds the Deep Bore when both rosters are loaded.
 ## Every expected tick, radius and damage is read from the World's tables (the numbers themselves
@@ -14,7 +14,7 @@ extends GdUnitTestSuite
 ##
 ## The world is 40 x 30 open tiles with the shipped rules. Player 1 plays the Derrick League and
 ## owns its Headquarters (`HQ_1`, id 1) and Deep Bore (`BORE`, 2) at the north-west corner; player 2
-## plays the Lumen Accord and owns its Grid Hub (`HQ_2`, 3) and Blackout Array (`ARRAY`, 4) at the
+## plays the Lumen Accord and owns its Grid Hub (`HQ_2`, 3) and Dusk Array (`ARRAY`, 4) at the
 ## south-east corner. The types of both rosters are registered, the spawned ones first. The
 ## weapons are taken from every type (`type_weapon` -1), so that no shot lands while a strike is in
 ## the air: only the strike changes a hit point or a flag. The cases step from tick 0 to the tick of
@@ -41,7 +41,7 @@ const MILLI: int = World.MILLI_PER_TILE
 ## the stamp one short of `ready_tick` is dropped and counted, with the building and the player left
 ## as they were; on the next tick it is accepted. The Headquarters makes less than the bore uses, so
 ## player 1 is on low power throughout and the charge does not wait for it (ADR 0023 section 10).
-## The Blackout Array of the other roster charges the same way, by its own charge.
+## The Dusk Array of the other roster charges the same way, by its own charge.
 func test_a_placed_deep_bore_charges_for_its_charge_ticks_and_fires_on_the_first_tick_it_may(
 ) -> void:
 	var world: World = _world()
@@ -186,9 +186,9 @@ func test_the_blackout_takes_enemy_buildings_in_its_radius_offline_for_exactly_i
 
 ## `Strike.rupture_type` is the first type of kind RUPTURE. With both rosters loaded, that is the
 ## Deep Bore whichever player plays which faction: with the Derrick League first its type index is
-## the lower one, and with the Lumen Accord first (its spawns come first, so its Blackout Array is
-## the first strike type of the World) the Blackout Array has the lower index and the rupture type
-## is still the Deep Bore. The Blackout Array is of kind BLACKOUT and the only other strike type.
+## the lower one, and with the Lumen Accord first (its spawns come first, so its Dusk Array is
+## the first strike type of the World) the Dusk Array has the lower index and the rupture type
+## is still the Deep Bore. The Dusk Array is of kind BLACKOUT and the only other strike type.
 ## The landing reads the radius and the weapon from it, and the weapon is the shipped file's.
 func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_either_order() -> void:
 	var reversed: Array[String] = [FACTIONS[1], FACTIONS[0]]
@@ -199,7 +199,7 @@ func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_eith
 		var array: int = Strikes.type_of(world, "renew_strike")
 		assert_int(bore).is_greater_equal(0)
 		assert_int(array).is_greater_equal(0)
-		# The order really is the one the case names, so that the Blackout Array comes first in the
+		# The order really is the one the case names, so that the Dusk Array comes first in the
 		# second pass and the lowest strike type is not the Deep Bore.
 		if flipped:
 			assert_int(array).override_failure_message(str(paths)).is_less(bore)
@@ -219,7 +219,7 @@ func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_eith
 ## A World of the shipped rosters of `paths` (the factions of players 1 and 2, in that order) with
 ## each player's Headquarters and strike building, and no weapon fired by anyone. The spawns follow
 ## the players, so the types of the first player's faction are registered first (the rosters come
-## last, ADR 0023 section 6): `paths` reversed puts the Blackout Array before the Deep Bore.
+## last, ADR 0023 section 6): `paths` reversed puts the Dusk Array before the Deep Bore.
 func _world(paths: Array[String] = FACTIONS) -> World:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(COLS, ROWS)

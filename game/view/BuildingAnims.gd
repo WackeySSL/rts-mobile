@@ -10,7 +10,7 @@ extends RefCounted
 ## clock goes on, so a frame never jumps when power runs out or comes back.
 ## Rest pose: the atlas holds the frames of the loop and nothing else, so the rest is frame 0. A
 ## held loop (a site, a blackout) shows it, and so do the placement ghost and the last-seen ghosts.
-## It is not the unposed `anim` primitives of the card and the shadow for the Relay Tower, the Wind
+## It is not the unposed `anim` primitives of the card and the shadow for the Relay Post, the Wind
 ## Park and the Turbine Hall (their groups start a few frames out of phase); it is the nearest
 ## frame the atlas has, and the one every layer agrees on.
 

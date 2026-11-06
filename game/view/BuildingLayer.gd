@@ -8,7 +8,7 @@ extends Node2D
 ## child at the sheet's mount that turns in 16 steps toward the building's target as a tank's
 ## turret does. Its cast shadow is a sprite in the `DecalLayer` at z 1, so the units in front of
 ## the building stand on it. A building with no sheet, an atlas that did not bake, or a sheet of a
-## faction its owner does not wear (the strike test's Blackout Array for a Derrick League player),
+## faction its owner does not wear (the strike test's Dusk Array for a Derrick League player),
 ## gets a flat diamond of its footprint in its owner's colour instead, so it is never invisible.
 ## Buildings are static, so a frame compares three integers and nothing more: the nodes are made
 ## when `rows_version` moves (`redraw_count` counts those merges) by a walk over the ascending unit

@@ -1,4 +1,4 @@
-<!-- Strike atlas: the Deep Bore's lance and the Blackout Array's seed and net of light for the strike layer (ADR 0027), no team colour, 480x472 at 2x, so 240x236 px after the 0.5 import scale. -->
+<!-- Strike atlas: the Deep Bore's lance and the Dusk Array's seed and net of light for the strike layer (ADR 0027), no team colour, 480x472 at 2x, so 240x236 px after the 0.5 import scale. -->
 <!-- Silhouette: A dark auger lance with a collar, four helical flights and a swept-back yellow-white burn, a mint teardrop seed with a trail, a flat mint hexagon of light and flashes, a ground ring and a shadow. -->
 <!-- Regions in imported px (x, y, w, h): lance_down 0,0,34,164; lance_up 38,0,34,164; trail 76,0,16,64; shadow 76,68,50,26; seed 96,0,18,34; seed_trail 118,0,12,64; glint 134,0,14,14; hex 134,18,38,20; hex_lit 134,42,38,20; launch_flash 0,168,66,66; core_flash 70,168,66,66; launch_ring 140,168,98,50. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="472" viewBox="0 0 480 472">

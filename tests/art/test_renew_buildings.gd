@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## one view and one cast shadow each and the Rail Battery's 16 heads, the canvas of every frame and
 ## its anchor at the footprint's back corner (Spec 03), the height each type has in Spec 05, the
 ## team share of about a twelfth, the dock and the exits where the data puts them, the white ceramic
-## on graphite look with its mint lights, the Blackout Array as an open frame that is neither a
+## on graphite look with its mint lights, the Dusk Array as an open frame that is neither a
 ## spire nor a dish, and eight silhouettes that read apart at 32 px in greyscale. That the frames
 ## are the generator's bytes, the key band and the shadows' rules are in test_artgen*.gd, the
 ## Derrick League's twin is test_fossil_buildings.gd, the emblem is in test_renew_emblem.gd and the
@@ -29,12 +29,12 @@ const IDS: Array[StringName] = [
 const NAMES: Dictionary[StringName, String] = {
 	&"renew_hq": "Grid Hub",
 	&"renew_power": "Wind Park",
-	&"renew_refinery": "Synthesis Works",
+	&"renew_refinery": "Fuel Works",
 	&"renew_barracks": "Crew Hall",
-	&"renew_factory": "Motor Works",
-	&"renew_radar": "Relay Tower",
+	&"renew_factory": "Motor Hall",
+	&"renew_radar": "Relay Post",
 	&"renew_defence": "Rail Battery",
-	&"renew_strike": "Blackout Array",
+	&"renew_strike": "Dusk Array",
 }
 const FOOTPRINTS: Dictionary[StringName, int] = {
 	&"renew_hq": 3,
@@ -79,11 +79,11 @@ const MUZZLE_LIFT_PX: int = 33  ## Where a shot leaves the Rail Battery at zoom 
 const HEAD_DIR: int = 10  ## The Lumen Accord's default view (Spec 04): south-west.
 ## The team share of a default view, about a twelfth (STYLE.md "Light"; the generator's own pin is 3
 ## to 20 %). The picture is the body with frame 0 of its `anim` part (P143). `SHARE_LOW` holds the
-## floors that differ: the Relay Tower's frame 0 is its array turned by a phase of 11 degrees.
+## floors that differ: the Relay Post's frame 0 is its array turned by a phase of 11 degrees.
 const SHARE: Vector2 = Vector2(0.065, 0.125)
 const SHARE_LOW: Dictionary[StringName, float] = {&"renew_radar": 0.06}
 const MAX_OVERLAP: float = 0.85  ## Silhouettes of two types at 32 px: intersection over union.
-## The Blackout Array is an open frame: between the plate and the ring beam its members cover at
+## The Dusk Array is an open frame: between the plate and the ring beam its members cover at
 ## most `FRAME_MEAN` of the box they stand in on average and `FRAME_MAX` at any height (the core's
 ## drums), and above the core the four columns cover under `ABOVE_CORE` of it.
 const FRAME_MEAN: float = 0.35
@@ -354,7 +354,7 @@ func test_every_building_is_white_ceramic_on_graphite_with_a_team_zone_a_mint_li
 
 
 ## No spire (STYLE.md "Palette per faction", CLAUDE.md Legal): nothing is one solid four-sided
-## column that tapers to a point, and the Blackout Array is an open frame, not a crystal, not a
+## column that tapers to a point, and the Dusk Array is an open frame, not a crystal, not a
 ## dish and not a coil: four columns and a ring beam round a core that stays lower than the ring, no
 ## sphere, no wedge, no taper and no big upright disc.
 func test_nothing_is_a_spire_and_the_blackout_array_is_an_open_frame_that_is_no_dish() -> void:
@@ -456,7 +456,7 @@ func test_the_wind_park_has_two_four_bladed_turbines_of_different_heights() -> v
 	assert_int(rings).is_equal(2)
 
 
-## The Relay Tower carries three upright hexagonal phased-array faces (a blue-grey panel in a team
+## The Relay Post carries three upright hexagonal phased-array faces (a blue-grey panel in a team
 ## frame), turned alternately to +y and to +x, on one slim pole of three segments.
 func test_the_relay_tower_carries_three_array_faces_on_one_slim_pole() -> void:
 	var model: ArtModel = load(MODEL % &"renew_radar") as ArtModel
@@ -509,7 +509,7 @@ func test_the_style_guide_names_the_eight_buildings_their_files_and_the_rules() 
 		"Lumen Accord",
 		"`emblem_renew.svg`",
 		"white ceramic on graphite",
-		"Blackout Array",
+		"Dusk Array",
 		"neither a spire nor a dish",
 		"graphite door",
 		"about 7 to 11 %",

@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## scenario SUPERWEAPON order fires the strike building of its faction once, inside the 900-tick
 ## run, on a tick that the charge has ended by (the scenario starts the building
 ## `charge_elapsed_ticks` into its charge of `charge_ticks`, see test_spawn_charge_elapsed). The
-## Derrick League's Deep Bore ruptures the Lumen Accord's base and the Lumen Accord's Blackout
+## Derrick League's Deep Bore ruptures the Lumen Accord's base and the Lumen Accord's Dusk
 ## Array takes the Derrick League's buildings offline. The arena is played to the end of the
 ## blackout (a few ticks past the 900) in the GDScript phases and in the C++ kernels; rows are
 ## counted before and after the strikes, never time. Every number (ticks, radius, damage, percents)

@@ -55,7 +55,7 @@ func test_the_ring_is_the_ground_circle_of_the_radius_as_a_two_to_one_ellipse() 
 		assert_float(ys.max() - ys.min()).is_equal_approx(2.0 * semi.y, 0.01)
 
 
-## The rig's world has a Deep Bore (a rupture, radius 3000) and a Blackout Array (4000): the warning
+## The rig's world has a Deep Bore (a rupture, radius 3000) and a Dusk Array (4000): the warning
 ## is the rupture's, and one of each player's, the enemy's too.
 func test_every_players_rupture_in_the_air_is_noticed_with_the_ruptures_radius() -> void:
 	var bore: int = Rig.type_of(_world, "fossil_strike")

@@ -80,7 +80,7 @@ base_font = ExtResource("4_shoulders_800")
 spacing_glyph = 3
 
 ; The title of the attack toast (AttackToast.gd): the same face at 16 dp with 3 px tracking (ADR 0025
-; section 13's 6 to 14 % band), so that the longest building name ("SYNTHESIS WORKS UNDER ATTACK") fits.
+; section 13's 6 to 14 % band), so that the longest building name ("TURBINE HALL UNDER ATTACK") fits.
 [sub_resource type="FontVariation" id="FontVariation_attack_title"]
 base_font = ExtResource("4_shoulders_800")
 spacing_glyph = 3

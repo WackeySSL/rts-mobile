@@ -1,6 +1,6 @@
 class_name StrikeNet
 extends RefCounted
-## The net of light of the Blackout Array (ADR 0027 sections 3 and 6, STYLE.md "Life effects",
+## The net of light of the Dusk Array (ADR 0027 sections 3 and 6, STYLE.md "Life effects",
 ## "The net"), for `StrikeFx`: the lines of its lattice, the plan of the nets of a frame and their
 ## drawing. The lattice is flat-topped hexagons on `LifeRegions`' distances whose centre lies in the
 ## ground ellipse of the strike. It has three sets of lines per radius, built when the radius is

@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The building `anim` parts, the `emitters` and the `marks` of the models (plan row P143, ADR 0027
 ## section 4, STYLE.md "Building life (P143)"): the eight animated buildings of both factions play
-## their frames (Signal Mast 16, Relay Tower 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Blackout
+## their frames (Signal Mast 16, Relay Post 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Dusk
 ## Array 4, Grid Hub 2, Crew Hall 2), each frame is a picture of its own and the loop closes, the
 ## moving element leaves the body and stays in the shadow and the card, no turned face sits on a
 ## light cut (but for the two hexagonal sets, below), the emitters sit where the plan says and every
@@ -24,7 +24,7 @@ const BUILDINGS: Dictionary[StringName, Array] = {
 ## What a turned face may be from a light cut, in shade (P139's margin, 0.016). The two hexagonal
 ## sets cannot reach it: a hexagon's slanted faces cross the cut of the top level at two angles of
 ## a turn, 96 degrees apart, and a lattice of 22.5 (or 15) degrees cannot miss both by more than a
-## few degrees, whatever its phase (the best phases are used: 11 degrees for the Relay Tower, 2.5
+## few degrees, whatever its phase (the best phases are used: 11 degrees for the Relay Post, 2.5
 ## for the Wind Park). Their floors are what the committed frames have.
 const CUT_MARGIN: float = 0.016
 const CUT_FLOORS: Dictionary[StringName, float] = {&"renew_radar": 0.007, &"renew_power": 0.011}
@@ -32,7 +32,7 @@ const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
 ## The most a default view may show of the team colour in any frame of a loop (STYLE.md: about a
 ## tenth, never a large plate): the pins of the building suites.
 const SHARE_MAX: Dictionary[StringName, float] = {&"fossil": 0.13, &"renew": 0.125}
-## The Relay Tower's cap is lower: its worst frame is 0.0995, and a face that shows its back as a
+## The Relay Post's cap is lower: its worst frame is 0.0995, and a face that shows its back as a
 ## bare team hexagon (one back panel missing) lifts the worst frame to 0.111 to 0.120, which the
 ## faction's cap would let through.
 const SHARE_MAX_ID: Dictionary[StringName, float] = {&"renew_radar": 0.105}
@@ -135,7 +135,7 @@ func test_a_loop_closes_one_step_after_its_last_frame_is_the_first() -> void:
 	# the fans are a few frames ahead of the first), and `frames x step` is a whole number of its
 	# symmetry (360 degrees for a panel or an array, 90 for a four-bladed rotor, a fan or a kelly's
 	# cross, 180 for a bar): the frame after the last is the first again. The sparks of the
-	# Blackout Array shift instead: a pulse that restarts.
+	# Dusk Array shift instead: a pulse that restarts.
 	var turning: int = 0
 	for id: StringName in BUILDINGS:
 		var model: ArtModel = _model(id)
