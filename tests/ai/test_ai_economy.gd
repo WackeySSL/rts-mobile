@@ -214,6 +214,19 @@ func test_a_place_goes_to_the_first_free_slot_and_the_next_search_starts_again_t
 	assert_int(economy.placed).is_equal(1)
 
 
+func test_a_search_that_places_in_its_first_thinks_starts_over_at_slot_0_next_time() -> void:
+	var world: World = _start()
+	AiRig.explore_all(world)
+	_ready_head(world, 1, "power_plant")
+	var memory: AiMemory = _memory("fossil")
+	# Slots 4 to 11 hold ring 1's last four cells, so the first search places.
+	memory.spiral_resume = 4
+	var economy: AiEconomy = _economy("fossil", "normal")
+	var sent: Array[Command] = _run(economy, memory, world, 1)
+	assert_int(_of_type(sent, Command.Type.PLACE).size()).is_equal(1)
+	assert_int(memory.spiral_resume).is_equal(0)
+
+
 func test_a_defence_goes_to_the_free_slot_nearest_the_staging_point() -> void:
 	var staging: Vector2i = Vector2i(22, 6)
 	var world: World = _start()
