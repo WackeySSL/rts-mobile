@@ -13,7 +13,7 @@ const BaseArena: GDScript = preload("res://tests/sim/support/base_arena.gd")
 const MAP_PATH: String = "res://data/maps/perf_bases.tres"
 const SCENARIO_PATH: String = "res://data/scenarios/perf_bases.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const SIZE: Vector2i = Vector2i(54, 24)
 ## The ridge is the rock of columns 26 and 27, the map's two middle columns, except on the gap rows.
 const RIDGE: int = 26

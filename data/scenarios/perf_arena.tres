@@ -4,10 +4,10 @@
 [ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
 [ext_resource type="Script" path="res://game/sim/defs/OrderDef.gd" id="3_order"]
 [ext_resource type="Resource" path="res://data/maps/perf_arena.tres" id="4_map"]
-[ext_resource type="Resource" path="res://data/rules.tres" id="5_rules"]
-[ext_resource type="Resource" path="res://data/units/light_tank.tres" id="6_tank"]
-[ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="7_rifle"]
-[ext_resource type="Resource" path="res://data/units/rocket_squad.tres" id="8_rocket"]
+[ext_resource type="Resource" path="res://data/dev/arena/rules.tres" id="5_rules"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/light_tank.tres" id="6_tank"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/rifle_squad.tres" id="7_rifle"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/rocket_squad.tres" id="8_rocket"]
 
 [sub_resource type="Resource" id="Spawn_p1_tanks"]
 script = ExtResource("2_spawn")
