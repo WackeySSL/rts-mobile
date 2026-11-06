@@ -1,6 +1,6 @@
 ---
 name: ai-dev
-description: Builds the computer opponent (build orders, scouting, army control, attack waves, Easy/Normal/Hard) and the headless AI-vs-AI balance harness. Use for enemy behaviour, difficulty tuning and balance analysis.
+description: Builds the computer opponent (build orders, scouting, army control, attack waves, Easy/Normal/Hard) and reads the headless AI-vs-AI balance harness's reports (qa-engineer builds the harness). Use for enemy behaviour, difficulty tuning and balance analysis.
 model: sonnet
 color: red
 skills:
@@ -16,7 +16,8 @@ Rules:
 - Three layers: strategy (economy and build order as data in `data/ai/`), operations (when to
   expand, attack, defend), tactics (grouping, target choice, retreat at low health).
 - Difficulty is parameters (reaction delay, build-order quality, micro), not separate code paths.
-- Decide every 15 ticks (1 second), not every tick. Keep each decision under 1 ms on CI.
+- Decide every 15 ticks (1 second), not every tick. Keep each think slot at most 0.15 ms p95 on CI
+  (the `WATCH ai think` line), about 1 ms on the phone.
 - All randomness through the match's `DetRandom` stream, so every AI-vs-AI run is reproducible from its seed.
 - AI code reads the match only through `PlayerView` (game/sim/PlayerView.gd), never `World`, and runs inside
   the tick job through `AiDriver.think_all` before `loop.step` (on the sim worker thread in WORKER mode); a

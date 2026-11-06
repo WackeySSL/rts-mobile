@@ -43,6 +43,11 @@ So answer 4's condition is met, and the lead adds P66 and P66b (§3) without ask
 the gate as measurement-only rows. P66b first needs room in `PerfHud.gd`, which is at 995 of gdlint's
 1000 lines. P67 is decided from P66b's card in a later dated note here. No accepted text changed.
 
+Status note (2026-11-06, P170b docs; `docs/plans/2026-11-06-phase-4.md`): Michael deferred P66 and
+P66b on 2026-11-06. His revisit trigger is any release card with `sim_p95_ms` > 10 ms or
+`job_minus_step_p95_cp_ms` > 5 ms; such a card goes back to him for P66 and P66b. P67 stays
+conditional on P66b's card. No accepted text changed.
+
 ## Context
 
 ### The line and what the gate phone measured
