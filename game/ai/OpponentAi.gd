@@ -25,17 +25,12 @@ var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
 ## Commands cut because a think sent more than the level allows.
 var commands_cut: int = 0
 
-## The level and def, copied into ints.
+## The level and def, copied into ints. A manager copies the values it reads itself when it is made
+## (plan row of ADR 0030 section 6), so only what the controller uses is here.
 var def_id: StringName = &""
 var level_id: StringName = &""
 var tier: int = 0
-var reaction_ticks: int = 0
 var commands_per_think_max: int = 0
-var uses_strike: int = 0
-var defend_radius_tiles: int = 0
-var staging_offset_tiles: int = 0
-var place_tries_per_think: int = 0
-var target_tests_max: int = 0
 
 ## A controller for `player_id` on `def` at `level`, which it copies and does not keep. A null level
 ## plays as the script defaults, which are Normal's.
@@ -53,13 +48,7 @@ static func create(
 	ai.def_id = def.id
 	ai.level_id = chosen.id
 	ai.tier = clampi(chosen.build_order_tier, 0, OpponentDef.TIERS - 1)
-	ai.reaction_ticks = chosen.reaction_ticks
-	ai.commands_per_think_max = chosen.commands_per_think_max
-	ai.uses_strike = chosen.uses_strike
-	ai.defend_radius_tiles = def.defend_radius_tiles
-	ai.staging_offset_tiles = def.staging_offset_tiles
-	ai.place_tries_per_think = def.place_tries_per_think
-	ai.target_tests_max = def.target_tests_max
+	ai.commands_per_think_max = maxi(chosen.commands_per_think_max, 0)
 	return ai
 
 
@@ -72,6 +61,7 @@ func slot_of(tick: int) -> int:
 func think(view: PlayerView, out: Array[Command]) -> void:
 	var before: int = out.size()
 	work = 1
+	memory.commands_left = commands_per_think_max
 	memory.unit_cap = view.unit_cap
 	last_slot = slot_of(view.tick)
 	slot_thinks[last_slot] += 1
@@ -82,6 +72,8 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 			_run_army_slot(view, out)
 		_:
 			_run_intel_slot(view, out)
+	# A guard, not the budget: managers check `memory.can_send` before they append, so the cut
+	# stays 0 (the manager suites assert `commands_cut == 0`).
 	var sent: int = out.size() - before
 	if sent > commands_per_think_max:
 		out.resize(before + commands_per_think_max)
@@ -96,7 +88,7 @@ func _run_economy_slot(_view: PlayerView, _out: Array[Command]) -> void:
 	pass
 
 
-## Slot 1: P177 adds the intel refresh, P180 `AiArmy`.
+## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
 func _run_army_slot(_view: PlayerView, _out: Array[Command]) -> void:
 	pass
 

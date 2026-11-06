@@ -58,7 +58,7 @@ func test_each_level_file_has_the_numbers_of_the_adr(
 	assert_array(found).is_equal(_LEVELS[level])
 
 
-func test_the_levels_differ_only_in_data_and_keep_the_money_at_100() -> void:
+func test_easy_never_uses_the_strike_and_no_level_gets_a_money_bonus() -> void:
 	assert_array([Rig.level_of("easy").uses_strike, Rig.level_of("normal").uses_strike]).is_equal(
 		[0, 1]
 	)
@@ -192,9 +192,54 @@ func test_the_strong_tier_builds_the_factory_and_second_refinery_earlier(
 	var standard: int = def.build_orders[1].steps.find(factory)
 	var strong: int = def.build_orders[2].steps.find(factory)
 	assert_int(strong).is_between(0, standard - 1)
+	(
+		assert_int(
+			def.build_orders[1].steps.count(
+				&"refinery" if faction == "fossil" else &"renew_refinery"
+			)
+		)
+		. is_equal(1)
+	)
 	var refinery: StringName = &"refinery" if faction == "fossil" else &"renew_refinery"
 	assert_int(def.build_orders[2].steps.count(refinery)).is_equal(2)
 	assert_int(def.build_orders[0].steps.count(refinery)).is_equal(1)
+
+
+func test_every_role_with_weight_has_its_producer_and_requirement_in_the_tiers_steps(
+	faction: String, _test_parameters := _factions()
+) -> void:
+	var def: OpponentDef = Rig.def_of(faction)
+	var roles: Dictionary[int, Array] = {
+		OpponentDef.Role.ANTI_INFANTRY: [def.anti_infantry_type],
+		OpponentDef.Role.ANTI_VEHICLE: def.anti_vehicle_types,
+		OpponentDef.Role.TANK: [def.tank_type],
+		OpponentDef.Role.ARTILLERY: [def.artillery_type],
+	}
+	for tier: int in OpponentDef.TIERS:
+		var built: Array[StringName] = [def.hq_type]
+		built.append_array(def.build_orders[tier].steps)
+		for role: int in roles:
+			if def.role_weight(tier, role) == 0:
+				continue
+			for id: StringName in roles[role]:
+				var unit: UnitDef = _unit(id)
+				var producer: bool = false
+				for step: StringName in built:
+					if _building(step).produces == unit.tab:
+						producer = true
+				(
+					assert_bool(producer)
+					. override_failure_message("tier %d: no producer of %s" % [tier, id])
+					. is_true()
+				)
+				if unit.requires != null:
+					(
+						assert_array(built)
+						. override_failure_message(
+							"tier %d: %s needs %s" % [tier, id, unit.requires.type_id]
+						)
+						. contains([unit.requires.type_id])
+					)
 
 
 func test_the_role_weights_cover_every_tier_and_role_and_each_tier_draws_something(

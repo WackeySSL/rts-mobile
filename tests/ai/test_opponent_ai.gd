@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const Rig: GDScript = preload("res://tests/ai/support/opponent_rig.gd")
 const AiRig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const FactionRig: GDScript = preload("res://tests/ai/support/faction_rig.gd")
+const Probe: GDScript = preload("res://tests/ai/support/opponent_probe.gd")
 
 
 func test_the_slot_of_every_think_follows_the_tick_in_the_order_economy_army_intel() -> void:
@@ -16,7 +17,6 @@ func test_the_slot_of_every_think_follows_the_tick_in_the_order_economy_army_int
 		for tick: int in 300:
 			if (tick + ai.think_offset) % ai.think_period != 0:
 				continue
-			assert_int(ai.slot_of(tick)).is_equal((tick + ai.think_offset) / 5 % 3)
 			# Consecutive thinks rotate through the slots, whichever slot the first one has.
 			if previous >= 0:
 				assert_int(ai.slot_of(tick)).is_equal((previous + 1) % 3)
@@ -102,8 +102,8 @@ func test_the_same_seed_at_two_levels_gives_the_same_class_with_different_ints()
 		[hard.think_period, hard.think_offset]
 	)
 	assert_array(_ints(easy)).is_not_equal(_ints(hard))
-	assert_array(_ints(easy)).is_equal([0, 90, 3, 0])
-	assert_array(_ints(hard)).is_equal([2, 15, 12, 1])
+	assert_array(_ints(easy)).is_equal([0, 3])
+	assert_array(_ints(hard)).is_equal([2, 12])
 
 
 func test_the_controller_copies_its_defs_and_keeps_no_resource() -> void:
@@ -121,23 +121,81 @@ func test_the_controller_copies_its_defs_and_keeps_no_resource() -> void:
 	assert_str(String(ai.level_id)).is_equal("normal")
 
 
-func test_a_think_sends_at_most_the_levels_commands_and_counts_the_cut() -> void:
+func test_each_slot_runs_its_own_hook_whichever_player_thinks() -> void:
+	var world: World = FactionRig.start("fossil", "renew")
+	# Players 2 and 3 think on ticks 1, 6, 11 and 2, 7, 12 of the round: ARMY, INTEL, ECONOMY.
+	for player: int in [2, 3]:
+		var probe: Variant = Probe.new()
+		probe.copy_from(Rig.opponent("fossil", "normal", player))
+		var ticks: Array[int] = [player - 1, player + 4, player + 9]
+		for tick: int in ticks:
+			world.tick = tick
+			probe.think(PlayerView.of(world, player), [] as Array[Command])
+		assert_array(probe.ran).is_equal(
+			[OpponentAi.Slot.ARMY, OpponentAi.Slot.INTEL, OpponentAi.Slot.ECONOMY]
+		)
+	# Player 1 starts on slot ECONOMY at tick 0.
+	var first: Variant = Probe.new()
+	first.copy_from(Rig.opponent("fossil", "normal", 1))
+	for tick: int in [0, 5, 10]:
+		world.tick = tick
+		first.think(PlayerView.of(world, 1), [] as Array[Command])
+	assert_array(first.ran).is_equal(
+		[OpponentAi.Slot.ECONOMY, OpponentAi.Slot.ARMY, OpponentAi.Slot.INTEL]
+	)
+
+
+func test_the_guard_keeps_the_first_commands_in_order_and_counts_the_cut() -> void:
 	var world: World = FactionRig.start("fossil", "renew")
 	var ai: OpponentAi = Rig.opponent("fossil", "easy", 1)
 	assert_int(ai.commands_per_think_max).is_equal(3)
-	# A probe subclass-free check of the cap: five Commands already in the list stay (they are not
-	# this think's), and what a slot appends beyond the cap is cut.
-	var probe: _Probe = _Probe.new()
+	var probe: Variant = Probe.new()
 	probe.copy_from(ai)
 	probe.extra = 5
-	var sent: Array[Command] = [Command.stop(1, PackedInt32Array())]
+	# One Command already in the list (not this think's) stays; of the five, the first three stay.
+	var sent: Array[Command] = [Command.stop(1, PackedInt32Array([99]))]
 	probe.think(PlayerView.of(world, 1), sent)
-	assert_int(sent.size()).is_equal(1 + 3)
+	assert_array(_unit_ids(sent)).is_equal([99, 1, 2, 3])
 	assert_array([probe.commands, probe.commands_cut]).is_equal([3, 2])
 	probe.extra = 2
 	probe.think(PlayerView.of(world, 1), sent)
-	assert_int(sent.size()).is_equal(1 + 3 + 2)
+	assert_array(_unit_ids(sent)).is_equal([99, 1, 2, 3, 1, 2])
 	assert_array([probe.commands, probe.commands_cut]).is_equal([5, 2])
+
+
+func test_a_manager_that_checks_the_budget_is_never_cut() -> void:
+	var world: World = FactionRig.start("fossil", "renew")
+	var probe: Variant = Probe.new()
+	probe.copy_from(Rig.opponent("fossil", "easy", 1))
+	probe.extra = 5
+	probe.polite = true
+	var sent: Array[Command] = []
+	probe.think(PlayerView.of(world, 1), sent)
+	assert_array(_unit_ids(sent)).is_equal([1, 2, 3])
+	assert_array([probe.commands, probe.commands_cut, probe.memory.commands_left]).is_equal(
+		[3, 0, 0]
+	)
+	# The budget is set again at the start of the next think.
+	probe.think(PlayerView.of(world, 1), sent)
+	assert_int(sent.size()).is_equal(6)
+	assert_int(probe.commands_cut).is_equal(0)
+
+
+func test_a_negative_cap_is_clamped_and_never_cuts_commands_already_in_the_list() -> void:
+	var world: World = FactionRig.start("fossil", "renew")
+	var level: AiDifficultyDef = Rig.level_of("easy").duplicate() as AiDifficultyDef
+	level.commands_per_think_max = -2
+	var ai: OpponentAi = OpponentAi.create(
+		Rig.def_of("fossil"), level, 1, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1)
+	)
+	assert_int(ai.commands_per_think_max).is_equal(0)
+	var probe: Variant = Probe.new()
+	probe.copy_from(ai)
+	probe.extra = 2
+	var sent: Array[Command] = [Command.stop(1, PackedInt32Array([99]))]
+	probe.think(PlayerView.of(world, 1), sent)
+	assert_array(_unit_ids(sent)).is_equal([99])
+	assert_int(probe.commands_cut).is_equal(2)
 
 
 func test_the_memory_starts_at_its_none_values_within_the_defs_caps() -> void:
@@ -163,19 +221,57 @@ func test_the_memory_starts_at_its_none_values_within_the_defs_caps() -> void:
 	assert_array([memory.member_id.size(), memory.hp_id.size()]).is_equal([0, 0])
 
 
-func test_the_goal_keys_are_capped_and_a_live_key_is_not_added_twice() -> void:
-	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
+func test_the_caps_come_from_their_own_def_fields() -> void:
+	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.goal_keys_max = 3
+	def.squads_max = 5
+	def.sectors_max = 7
+	var memory: AiMemory = AiMemory.create(def)
+	assert_array([memory.goal_keys_max, memory.squads_max, memory.sectors_max]).is_equal([3, 5, 7])
+	assert_array([memory.squad_role.size(), memory.sector_own.size()]).is_equal([5, 7])
 	assert_bool(memory.add_goal_key(10, 12, 2)).is_true()
 	assert_bool(memory.add_goal_key(10, 12, 2)).is_true()
 	assert_int(memory.goal_keys()).is_equal(1)
 	assert_bool(memory.add_goal_key(10, 12, 0)).is_true()
 	assert_bool(memory.add_goal_key(20, 20, 2)).is_true()
-	assert_bool(memory.add_goal_key(20, 20, 0)).is_true()
-	assert_int(memory.goal_keys()).is_equal(4)
-	assert_bool(memory.add_goal_key(30, 30, 2)).is_false()
-	assert_int(memory.goal_keys()).is_equal(4)
+	assert_int(memory.goal_keys()).is_equal(3)
+	assert_bool(memory.add_goal_key(20, 20, 0)).is_false()
+	assert_int(memory.goal_keys()).is_equal(3)
 	memory.clear_goal_keys()
-	assert_int(memory.goal_keys()).is_equal(0)
+	assert_array([memory.goal_keys(), memory.goal_owner.size()]).is_equal([0, 0])
+
+
+func test_goal_keys_know_their_owner_and_one_can_be_removed() -> void:
+	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
+	memory.add_goal_key(5, 5, 2, AiMemory.Owner.STAGING)
+	memory.add_goal_key(30, 30, 0, AiMemory.Owner.ARMY)
+	memory.add_goal_key(30, 30, 2, AiMemory.Owner.ARMY)
+	memory.add_goal_key(12, 40, 2, AiMemory.Owner.SCOUT)
+	assert_array([memory.goal_keys_of(0), memory.goal_keys_of(1), memory.goal_keys_of(2)]).is_equal(
+		[1, 2, 1]
+	)
+	# The army replaces its goal: it removes its key, then adds the next one.
+	memory.remove_goal_key(1)
+	assert_array(memory.goal_x).is_equal(PackedInt32Array([5, 30, 12]))
+	assert_array(memory.goal_owner).is_equal(
+		PackedInt32Array([AiMemory.Owner.STAGING, AiMemory.Owner.ARMY, AiMemory.Owner.SCOUT])
+	)
+	memory.remove_goal_key(7)
+	memory.remove_goal_key(-1)
+	assert_int(memory.goal_keys()).is_equal(3)
+
+
+func test_the_command_budget_and_the_credit_reserve_start_empty() -> void:
+	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
+	assert_bool(memory.can_send()).is_false()
+	memory.commands_left = 2
+	assert_bool(memory.can_send(2)).is_true()
+	assert_bool(memory.can_send(3)).is_false()
+	memory.spent(2)
+	assert_bool(memory.can_send()).is_false()
+	memory.spent()
+	assert_int(memory.commands_left).is_equal(0)
+	assert_int(memory.reserve_credits).is_equal(0)
 
 
 func test_a_think_records_the_rules_unit_cap_in_the_memory() -> void:
@@ -212,23 +308,13 @@ func test_the_dummy_counts_its_commands_and_nothing_else() -> void:
 	)
 
 
-## The ints a level sets: tier, reaction delay, Commands per think and the strike flag.
+## The ints a level sets in the controller: build-order tier and Commands per think.
 func _ints(ai: OpponentAi) -> Array:
-	return [ai.tier, ai.reaction_ticks, ai.commands_per_think_max, ai.uses_strike]
+	return [ai.tier, ai.commands_per_think_max]
 
 
-## A controller whose ECONOMY slot appends `extra` Commands, to test the cap on a think.
-class _Probe:
-	extends OpponentAi
-	var extra: int = 0
-
-	func copy_from(other: OpponentAi) -> void:
-		player_id = other.player_id
-		think_period = other.think_period
-		think_offset = other.think_offset
-		memory = other.memory
-		commands_per_think_max = other.commands_per_think_max
-
-	func _run_economy_slot(_view: PlayerView, out: Array[Command]) -> void:
-		for _i: int in extra:
-			out.append(Command.stop(player_id, PackedInt32Array()))
+func _unit_ids(commands: Array[Command]) -> Array[int]:
+	var ids: Array[int] = []
+	for command: Command in commands:
+		ids.append(command.unit_ids[0])
+	return ids

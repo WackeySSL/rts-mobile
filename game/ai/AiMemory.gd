@@ -9,6 +9,10 @@ extends RefCounted
 
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
+## The owners of a goal key: the staging point (rally, retreat), the army goal and the scout's way.
+enum Owner { STAGING, ARMY, SCOUT }
+## What a squad is for (AiArmy, P179, owns the meaning; NONE: the slot is free).
+enum SquadRole { HOME, WAVE }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 
@@ -18,13 +22,23 @@ var sectors_max: int = 0
 var goal_keys_max: int = 0
 var unit_cap: int = 0
 
+## The Commands this think may still send. `OpponentAi.think` sets it to the level's
+## `commands_per_think_max` before the managers run. Every manager checks `can_send` BEFORE it
+## appends a Command and before it records "sent" in this memory or in a counter, then calls
+## `spent`; so the cut after the think (`commands_cut`) stays 0.
+var commands_left: int = 0
+## Credits the economy keeps for the build order's next structure (writer: AiEconomy, P176;
+## reader: AiProduction, P178, which queues units only from what is above it). 0 = none.
+var reserve_credits: int = 0
+
 ## Army: the staging point and the enemy base estimate, in tiles, (NONE, NONE) when not set.
 var staging_x: int = NONE
 var staging_y: int = NONE
 var base_x: int = NONE
 var base_y: int = NONE
 ## Squads, `squads_max` of each (a squad is used while its `squad_role` is not NONE): role, state,
-## goal point in tiles, and the army value at launch. Their members are the pairs of `member_id`
+## goal point in tiles, and the army value at launch. `squad_role` holds a `SquadRole` and
+## `squad_state` a `SquadState`. Their members are the pairs of `member_id`
 ## (ascending, at most `unit_cap`) and `member_squad`.
 var squad_role: PackedInt32Array = PackedInt32Array()
 var squad_state: PackedInt32Array = PackedInt32Array()
@@ -40,7 +54,8 @@ var wave_start_tick: int = NONE
 var threat_first_tick: int = NONE
 ## Intel: the scout's unit id (NONE: none) and its waypoint index, the sector map's own and enemy
 ## value (`sectors_max` each) and, per type index of the view's roster, the count last seen and the
-## first and last tick it was seen (NONE: never).
+## first and last tick it was seen (NONE: never). Empty until AiIntel (P177) sizes them to the
+## view's type count and fills the ticks with NONE.
 var scout_id: int = NONE
 var scout_waypoint: int = 0
 var sector_own: PackedInt32Array = PackedInt32Array()
@@ -52,10 +67,13 @@ var seen_last_tick: PackedInt32Array = PackedInt32Array()
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
-## class, at most `goal_keys_max`.
+## class, at most `goal_keys_max`, and who set each (`Owner`; writers: AiArmy for STAGING and ARMY,
+## AiIntel for SCOUT). The army goal is one cell at a time: AiArmy removes its key before it adds
+## the next. The scout's key is added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
 var goal_class: PackedInt32Array = PackedInt32Array()
+var goal_owner: PackedInt32Array = PackedInt32Array()
 ## Economy: where the placement spiral resumes (a slot index).
 var spiral_resume: int = 0
 
@@ -92,8 +110,9 @@ func goal_keys() -> int:
 	return goal_x.size()
 
 
-## Adds the key (tile, move class) unless it is live already; false when the cap is reached.
-func add_goal_key(x: int, y: int, move_class: int) -> bool:
+## Adds the key (tile, move class) for `owner` unless it is live already; false when the cap is
+## reached.
+func add_goal_key(x: int, y: int, move_class: int, owner: int = Owner.ARMY) -> bool:
 	for at: int in goal_x.size():
 		if goal_x[at] == x and goal_y[at] == y and goal_class[at] == move_class:
 			return true
@@ -102,10 +121,41 @@ func add_goal_key(x: int, y: int, move_class: int) -> bool:
 	goal_x.append(x)
 	goal_y.append(y)
 	goal_class.append(move_class)
+	goal_owner.append(owner)
 	return true
+
+
+## Removes the key at index `key` (0 to `goal_keys() - 1`); the later keys keep their order.
+func remove_goal_key(key: int) -> void:
+	if key < 0 or key >= goal_x.size():
+		return
+	goal_x.remove_at(key)
+	goal_y.remove_at(key)
+	goal_class.remove_at(key)
+	goal_owner.remove_at(key)
+
+
+## How many live keys `owner` holds.
+func goal_keys_of(owner: int) -> int:
+	var found: int = 0
+	for at: int in goal_owner.size():
+		if goal_owner[at] == owner:
+			found += 1
+	return found
 
 
 func clear_goal_keys() -> void:
 	goal_x.clear()
 	goal_y.clear()
 	goal_class.clear()
+	goal_owner.clear()
+
+
+## Whether `count` more Commands fit in this think's budget.
+func can_send(count: int = 1) -> bool:
+	return commands_left >= count
+
+
+## Takes `count` Commands off the budget.
+func spent(count: int = 1) -> void:
+	commands_left = maxi(commands_left - count, 0)

@@ -20,9 +20,11 @@ var think_offset: int = 0
 var rng: DetRandom = null
 
 ## Counters a harness reads from any controller without a cast (ADR 0030 section 3). `work` is the
-## items the last think touched (reset at the start of each think; the opponent counts the view as
-## one), `work_max` its largest value over the match. The rest only grow: waves launched, retreats
-## ordered, scouts sent, superweapon shots, and Commands appended. `DummyAi` fills `commands` only.
+## passes over the view's rows the last think made (reset at the start of each think; the view's
+## own pass counts 1 and a slot adds at most 2 more, section 4; a manager counts its items in its
+## own ints, never here), `work_max` its largest value over the match. The rest only grow: waves
+## launched, retreats ordered, scouts sent, superweapon shots, and Commands appended. `DummyAi`
+## fills `commands` only.
 var work: int = 0
 var work_max: int = 0
 var waves: int = 0
