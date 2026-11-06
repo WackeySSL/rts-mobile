@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## The launch and the fall of the superweapons (plan P141, ADR 0027 sections 3, 6 and 7): the lance
 ## rises at a shown building and falls from above the visible top onto the point in the last
 ## `fall_ms` before the landing tick, for every player, and is gone at the landing tick; a short
-## delay starts the fall at the event; the seed and the net of the Blackout Array show where the
+## delay starts the fall at the event; the seed and the net of the Dusk Array show where the
 ## player sees the point or fired; the ring of 8 slots; the clock that never steps back; `reduced`
 ## and a new match. The scene and the cost are in test_strike_fx_scene.gd.
-## Fixture: the 32 x 32 building match, player 1 the local one with a Blackout Array (id 1, tile
+## Fixture: the 32 x 32 building match, player 1 the local one with a Dusk Array (id 1, tile
 ## 16, 10)
-## and a Deep Bore (id 2, tile 6, 12); player 2 a Blackout Array (id 3, tile 26, 26) in the
+## and a Deep Bore (id 2, tile 6, 12); player 2 a Dusk Array (id 3, tile 26, 26) in the
 ## dark. The runner is paused and not in the tree: the test sets the snapshot's tick and the alpha,
 ## delivers a tick's events the way the runner does and calls `_process` for a frame. Events are
 ## `[STRIKE, building id, x, y, kind, owner, landing tick, 0]`. A frame sits a hundredth of a tick
@@ -17,7 +17,7 @@ const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/recoil_rig.gd")
 const SizedCamera: GDScript = preload("res://tests/view/support/sized_camera.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const ARRAY: int = 1  ## Own Blackout Array.
+const ARRAY: int = 1  ## Own Dusk Array.
 const BORE: int = 2  ## Own Deep Bore: its id is not its owner's.
 const ENEMY_ARRAY: int = 3
 const RUPTURE: int = 1
@@ -206,7 +206,7 @@ func test_an_enemy_building_in_sight_shows_its_launch() -> void:
 
 
 func test_a_seed_rises_and_a_net_falls_onto_the_spot_when_the_player_fired_it() -> void:
-	_fire(ARRAY, BLACKOUT, 0)  # Player 1's own Blackout Array at a dark point.
+	_fire(ARRAY, BLACKOUT, 0)  # Player 1's own Dusk Array at a dark point.
 	_frame(T0, 0.0)
 	assert_array(_parts()).is_equal([CORE, SEED_TRAIL, SEED])
 	var top_of_array: Vector2 = _emitter_launch(&"renew_strike", _centre(ARRAY))  # P143: the core.

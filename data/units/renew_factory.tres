@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_building")
 type_id = &"renew_factory"
-display_name = "Motor Works"
+display_name = "Motor Hall"
 faction = &"renew"
 max_hp = 1600
 armour = 3

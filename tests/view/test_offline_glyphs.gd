@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The mark on a building a Blackout Array has switched off (plan P112b, ADR 0023 sections 2 and
+## The mark on a building a Dusk Array has switched off (plan P112b, ADR 0023 sections 2 and
 ## 10, assets/art/STYLE.md "Icons and glyphs"): the offline glyph over each building whose
 ## `offline_until` is above the snapshot's tick, in the bar layer at z 30, GLYPH_DP (32 dp) square
 ## at every zoom and on every screen, centred on the footprint centre and standing a dp over the

@@ -7,7 +7,7 @@
 [resource]
 script = ExtResource("1_building")
 type_id = &"renew_refinery"
-display_name = "Synthesis Works"
+display_name = "Fuel Works"
 faction = &"renew"
 max_hp = 1500
 armour = 3

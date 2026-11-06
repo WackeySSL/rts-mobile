@@ -15,7 +15,7 @@ const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
 ## The base arena of the perf arena scene (plan P93c): P80's scenario, run by the same scene and
 ## card, checked against the gate's `bases_golden_*` fields.
 const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
-## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Blackout Array
+## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Dusk Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
 ## The two Skirmish routes (plan P90), one per side: Kestrel Flats with the player on the Derrick

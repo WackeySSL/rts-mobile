@@ -151,12 +151,12 @@ func test_the_buildings_see_around_them_and_only_the_rail_battery_acquires() -> 
 	var expected: Array = [
 		["renew_hq", "Grid Hub", 7000, 0],
 		["renew_power", "Wind Park", 5000, 0],
-		["renew_refinery", "Synthesis Works", 5000, 0],
+		["renew_refinery", "Fuel Works", 5000, 0],
 		["renew_barracks", "Crew Hall", 5000, 0],
-		["renew_factory", "Motor Works", 5000, 0],
-		["renew_radar", "Relay Tower", 5000, 0],
+		["renew_factory", "Motor Hall", 5000, 0],
+		["renew_radar", "Relay Post", 5000, 0],
 		["renew_defence", "Rail Battery", 7000, 5500],
-		["renew_strike", "Blackout Array", 5000, 0],
+		["renew_strike", "Dusk Array", 5000, 0],
 	]
 	var got: Array = []
 	for row: Array in expected:
@@ -403,7 +403,7 @@ func test_the_rail_batterys_gun_is_strong_against_vehicles_and_weak_against_infa
 	)
 
 
-func test_the_fuel_runner_carries_450_is_unarmed_and_only_the_synthesis_works_brings_one() -> void:
+func test_the_fuel_runner_carries_450_is_unarmed_and_only_the_fuel_works_brings_one() -> void:
 	var tanker: UnitDef = _unit("renew_tanker")
 	assert_int(tanker.harvest_capacity).is_equal(450)
 	assert_object(tanker.weapon).is_null()

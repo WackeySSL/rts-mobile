@@ -7,14 +7,14 @@ extends Node2D
 ## costs no object per strike
 ## and allocates nothing per frame. Each strike is read from the `STRIKE` event of a tick:
 ## - Launch: at a building the local player is shown (`BuildingLayer.is_shown`) the Deep Bore's
-##   lance (kind 1) or the Blackout Array's light seed (kind 2) rises from the building's launch
+##   lance (kind 1) or the Dusk Array's light seed (kind 2) rises from the building's launch
 ##   point for `launch_ms` and fades, with a flash; the point is the sheet's `launch` emitter, else
 ##   the footprint centre lifted by the building's rise.
 ## - The Deep Bore's lance falls onto the point in the last `fall_ms` before the landing tick, for
 ##   every player (its warning is public, so it shows nothing new), from above the visible top
 ##   edge of the view, and is gone at the landing tick, where `EffectsLayer` bursts. A rupture whose
 ##   delay is shorter than `fall_ms` starts its fall at the event and falls shorter.
-## - The Blackout Array's net of light falls onto the point, as large as the firing type's
+## - The Dusk Array's net of light falls onto the point, as large as the firing type's
 ##   `type_strike_radius`, in `net_land_ms`, then settles for `net_settle_ms`. It shows where the
 ##   local player sees the point's tile, or fired it. The offline glyphs are not touched.
 ## The effects of a superweapon tell the player something, so `life.reduced` leaves them. The clock

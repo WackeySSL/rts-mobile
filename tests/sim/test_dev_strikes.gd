@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## The "Strike test" scenario (plan row P112d, ADR 0023 section 10): the data file
 ## `data/scenarios/dev_strikes.tres`, the one place on `main` where the local player owns a strike
 ## building, so the phone preview can fire a rupture and a blackout. Player 1 (the Derrick League)
-## owns a Headquarters, power, a Deep Bore that is charged at once and a Blackout Array that
+## owns a Headquarters, power, a Deep Bore that is charged at once and a Dusk Array that
 ## charges for four more seconds. Player 2 (the Lumen Accord) is a small base on open ground, with
 ## buildings of all three footprints and a few units. Player 1's six tanks watch it from three
 ## sides (two west of it, two north, two south), each pair 5 to 7 tiles from the buildings it
@@ -16,7 +16,7 @@ extends GdUnitTestSuite
 const PATH: String = "res://data/scenarios/dev_strikes.tres"
 const MAP_PATH: String = "res://data/maps/controls_test.tres"
 const SEED: int = 1
-## The Blackout Array is ready this many ticks into the match (four seconds); the Deep Bore at once.
+## The Dusk Array is ready this many ticks into the match (four seconds); the Deep Bore at once.
 const ARRAY_READY_TICKS: int = 60
 ## A quiet stretch of the match: ten seconds with nobody giving an order.
 const QUIET_TICKS: int = 150

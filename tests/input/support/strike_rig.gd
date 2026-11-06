@@ -2,7 +2,7 @@ extends RefCounted
 ## Fixtures of the strike suites (plan P112). Not a test suite. `world()` is 24 x 16 open tiles with
 ## the shipped Derrick League and Lumen Accord strike buildings, two players and these rows, in this
 ## order (ids from 1), all placed at tick 0: player 1's two Deep Bores `BORE_A` and `BORE_B` (3x3 at
-## tiles (2, 2) and (6, 2)), its Blackout Array `ARRAY` (3x3 at (10, 2)) and its Headquarters `HQ`
+## tiles (2, 2) and (6, 2)), its Dusk Array `ARRAY` (3x3 at (10, 2)) and its Headquarters `HQ`
 ## (3x3 at (2, 10)); player 2's Deep Bore `ENEMY_BORE` (3x3 at (18, 10)). Every number a case needs
 ## (the charge, the radius) is read from the World's tables, never written here.
 

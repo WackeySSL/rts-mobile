@@ -1,7 +1,7 @@
 class_name Strike
 extends RefCounted
 ## Superweapons (ADR 0023 section 10, plan rows P110 and P111): the charge of a strike building, the
-## SUPERWEAPON command, the Deep Bore's rupture and the Blackout Array's blackout.
+## SUPERWEAPON command, the Deep Bore's rupture and the Dusk Array's blackout.
 ##
 ## Ticks. "Stamp" is `world.tick + 1`, the tick the step in progress produces (the stamp
 ## `defeated_tick` and `match_end_tick` carry). A command is applied in the step of its own `tick`.

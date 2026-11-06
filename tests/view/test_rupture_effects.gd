@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 ## buildings leave; `reveal_enemies` shows them everywhere, as it does every effect. The burst is a
 ## slot of the ring (nothing is made for it) and expires; the crater stays. The warning before the
 ## landing is StrikeMarkerLayer's. On a 32 x 32 map: player 1's Deep Bore at tile (4, 4) and player
-## 2's Blackout Array at (20, 20); 1 dp is 1.75 px.
+## 2's Dusk Array at (20, 20); 1 dp is 1.75 px.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")

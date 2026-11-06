@@ -121,7 +121,7 @@ func test_the_buildings_see_around_them_and_only_the_turret_acquires() -> void:
 	var expected: Array = [
 		["headquarters", "Rigworks", 7000, 0],
 		["power_plant", "Turbine Hall", 5000, 0],
-		["refinery", "Cracking Plant", 5000, 0],
+		["refinery", "Oil Works", 5000, 0],
 		["barracks", "Bunkhouse", 5000, 0],
 		["vehicle_factory", "Heavy Yard", 5000, 0],
 		["fossil_radar", "Signal Mast", 5000, 0],

@@ -11,7 +11,7 @@ extends GdUnitTestSuite
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
 ## Michael's display names (ADR 0023 answer 2, section 7), by art id.
 const NAMES: Dictionary[String, String] = {
-	"rifle_squad": "Roustabouts",
+	"rifle_squad": "Rig Hands",
 	"rocket_squad": "Wildcatters",
 	"light_tank": "Flarejack",
 	"heavy_tank": "Bullhead",

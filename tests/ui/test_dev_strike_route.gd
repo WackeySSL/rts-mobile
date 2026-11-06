@@ -119,9 +119,9 @@ func test_the_touch_steps_of_a_rupture_end_in_one_superweapon_the_sim_takes() ->
 
 
 ## What the phone shows of player 1's strike buildings: the scenario makes player 1 a Derrick League
-## player and gives it the Lumen Accord's Blackout Array, which the atlas has no frame of for
+## player and gives it the Lumen Accord's Dusk Array, which the atlas has no frame of for
 ## player 1. Every building of player 1 must still be drawn, as its Body or the flat marker, and
-## the Blackout Array must be one the player sees where it stands.
+## the Dusk Array must be one the player sees where it stands.
 func test_every_building_of_the_local_player_is_drawn_and_so_is_the_blackout_array() -> void:
 	var main: Node = await _press("StrikeTestButton")
 	var runner: MatchRunner = main.get_node("MatchRunner")
@@ -142,7 +142,7 @@ func test_every_building_of_the_local_player_is_drawn_and_so_is_the_blackout_arr
 		var drawn: bool = (body != null and body.visible) or node.has_node("Marker")
 		assert_bool(drawn).override_failure_message("player 1's %s is not drawn" % art_id).is_true()
 		assert_bool(node.visible).is_true()
-	assert_int(own).is_greater_equal(4)  # The Headquarters, power, Deep Bore, Blackout Array.
+	assert_int(own).is_greater_equal(4)  # The Headquarters, power, Deep Bore, Dusk Array.
 	assert_array(seen).contains([&"fossil_strike", &"renew_strike"])
 	var blackout: Node2D = layer.building(snap.unit_id[_row_of(snap, &"renew_strike")])
 	assert_bool(blackout.has_node("Marker")).is_true()  # No frame of its faction for player 1.
