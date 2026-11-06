@@ -20,7 +20,8 @@ Status note (2026-11-06, P26bd docs; wave 1 merged: P171 #349, P172 #347, P184 #
 of §7 says what and why. §4's "`PerfHud.gd:438`" now reads `PerfHud.record_snapshot`, where the
 card keeps the checkpoint ticks apart (P184 moved the card's text to `PerfCard.gd`). The Phase 4
 plan's live P181 rows name the Lumen Accord's strike building Dusk Array (ADR 0032); §6's "a
-Blackout Array fires" keeps the name of its day. No other accepted text changed.
+Blackout Array fires" keeps the name of its day (read Dusk Array, ADR 0032 §7). No accepted text
+changed; this note amends §4's pointer.
 
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
