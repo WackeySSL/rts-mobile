@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## test scenario and World.from_scenario. Pins ids, positions and type stats.
 
 const SCENARIO_PATH: String = "res://data/scenarios/controls_test.tres"
-const TANK_PATH: String = "res://data/units/light_tank.tres"
+const TANK_PATH: String = "res://data/dev/arena/units/light_tank.tres"
 const MAP_MILLI: int = 48000
 
 var _scenario: ScenarioDef

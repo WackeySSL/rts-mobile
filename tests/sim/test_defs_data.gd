@@ -7,6 +7,12 @@ const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const UNITS_DIR: String = "res://data/units"
 const SCENARIOS_DIR: String = "res://data/scenarios"
 const WEAPONS_DIR: String = "res://data/weapons"
+const FROZEN_RULES_PATH: String = "res://data/dev/arena/rules.tres"
+const FROZEN_SCENARIOS: Array[String] = [
+	"res://data/scenarios/controls_test.tres",
+	"res://data/scenarios/perf_arena.tres",
+	"res://data/scenarios/perf_bases.tres",
+]
 const RULES_PATH: String = "res://data/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
 const ARENA_MAP_PATH: String = "res://data/maps/perf_arena.tres"
@@ -366,7 +372,9 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 		var rules_path: String = (
 			"no rules" if scenario.rules == null else scenario.rules.resource_path
 		)
-		assert_str(rules_path).override_failure_message(path).is_equal(RULES_PATH)
+		# The three pinned scenarios play the frozen copy (P171), the rest the shipped file.
+		var expected: String = FROZEN_RULES_PATH if path in FROZEN_SCENARIOS else RULES_PATH
+		assert_str(rules_path).override_failure_message(path).is_equal(expected)
 		if scenario.map != null:
 			assert_array(scenario.map.validate()).override_failure_message(path).is_empty()
 
