@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"arcline_gun"
+range = 10000
+min_range = 3000
+damage = 80
+cooldown_ticks = 60
+projectile_speed = 300
+vs_armour = PackedInt32Array(60, 60, 50, 150)
