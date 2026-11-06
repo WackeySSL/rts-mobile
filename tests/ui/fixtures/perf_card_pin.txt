@@ -1,0 +1,1008 @@
+== passing_units ==
+PERF run 1 | WORKER | release build | all
+heavy_frames_min: PASS (1000.00 frames, limit 600.00)
+dropped_pct_max: PASS (0.00 % of frames, limit 1.00)
+heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)
+cadence_pct_min: PASS (100.00 % cadence, limit 99.00)
+heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)
+hitches_max: PASS (0.00 heavy hitches, limit 0.00)
+work_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)
+job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)
+draw_calls_max: PASS (40.00 calls p95, limit 60.00)
+late_ticks_max: PASS (0.00 late ticks, limit 0.00)
+fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)
+build: PASS (release template)
+impl: n/a (only Android requires the library)
+golden_hashes: PASS (MATCH, 6 checkpoints)
+held_ticks 0 (no verdict)
+sim impl: gdscript | C++ matches GDScript: not run
+refresh 60.00 to 60.00 Hz | P 16.67 ms | dropped above 25.00 ms
+intervals p50 16.7 p95 16.7 p99 16.7 max 16.7 ms | extra slots [1000, 0, 0, 0] | jitter 100.0 %
+dropped 0 (heavy 0) | hitches 0 (heavy 0)
+ref peak 25.0 us (p95 25.0) | speed main 100 %, tick 100 %, fog 100 %
+work p95 raw / normalised ms: heavy 4.00 / 4.00, publish 4.00 / 4.00, other 4.00 / 4.00, fog 0.20 / 0.20
+job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
+Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
+p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
+atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
+last hash a7bb0d0000000000 | units alive 0
+phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+GATE: PASS
+{
+  "alive": 0,
+  "arena": "arena",
+  "atlas_bake_ms": 12.5,
+  "atlas_page": "4096x2258 at 1.000",
+  "cadence_pct": 99.9980000400002,
+  "checkpoints": [
+    {
+      "hash_hex": "f749020000000000",
+      "tick": 150
+    },
+    {
+      "hash_hex": "e793040000000000",
+      "tick": 300
+    },
+    {
+      "hash_hex": "d7dd060000000000",
+      "tick": 450
+    },
+    {
+      "hash_hex": "c727090000000000",
+      "tick": 600
+    },
+    {
+      "hash_hex": "b7710b0000000000",
+      "tick": 750
+    },
+    {
+      "hash_hex": "a7bb0d0000000000",
+      "tick": 900
+    }
+  ],
+  "debug": false,
+  "draw_calls_p95": 40,
+  "drawn_rigs_max": 140,
+  "drawn_rigs_p50": 140,
+  "drop_ms": 25.0,
+  "dropped": 0,
+  "dropped_pct": 0.0,
+  "engine": "<engine>",
+  "extra_slots": [
+    1000,
+    0,
+    0,
+    0
+  ],
+  "finished": true,
+  "flow_slice_p95_ms": 0.0,
+  "fog_update_p95_ms": 0.2,
+  "fog_update_p95_norm_ms": 0.2,
+  "fog_updates": 84,
+  "fps_avg": 59.9988000240001,
+  "frame_max_ms": 16.667,
+  "frame_p50_ms": 16.667,
+  "frame_p95_ms": 16.667,
+  "frame_p99_ms": 16.667,
+  "frames": 1000,
+  "gate_pass": true,
+  "golden_checked": 6,
+  "golden_match": true,
+  "golden_mismatch_tick": -1,
+  "hash_hex": "a7bb0d0000000000",
+  "heavy_cadence_pct": 99.9980000400002,
+  "heavy_dropped": 0,
+  "heavy_dropped_pct": 0.0,
+  "heavy_frames": 1000,
+  "heavy_hitches": 0,
+  "heavy_jitter_pct": 100.0,
+  "heavy_publish_frames": 250,
+  "held_ticks": 0,
+  "hitches": 0,
+  "invalid": false,
+  "invalid_reasons": [],
+  "jitter_pct": 100.0,
+  "job_max_ms": 10.0,
+  "job_mean_ms": 10.0,
+  "job_minus_step_p95_cp_ms": 2.0,
+  "job_minus_step_p95_noncp_ms": 2.0,
+  "job_p50_ms": 10.0,
+  "job_p95_ms": 10.0,
+  "job_p95_noncp_ms": 10.0,
+  "job_p99_ms": 10.0,
+  "job_ticks": 900,
+  "late_ticks": 0,
+  "latency_usec_max": 0,
+  "layer_mode": "all",
+  "model": "<model>",
+  "native_build": "",
+  "native_phases": [],
+  "os": "Linux",
+  "period_ms": 16.6666666666667,
+  "phases_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "phases_p95_noncp_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ref_peak_p95_us": 25.0,
+  "ref_peak_us": 25.0,
+  "refresh_hz_end": 60.0,
+  "refresh_hz_start": 60.0,
+  "render_cpu_p95_ms": 1.0,
+  "runs": 1,
+  "screen": "<screen>",
+  "self_check": "not run",
+  "sim_impl": "GDSCRIPT",
+  "speed_fog_pct": 100.0,
+  "speed_main_pct": 100.0,
+  "speed_tick_pct": 100.0,
+  "tick_max_ms": 8.0,
+  "tick_mode": "WORKER",
+  "tick_p50_ms": 8.0,
+  "tick_p95_ms": 8.0,
+  "verdicts": [
+    "heavy_frames_min: PASS (1000.00 frames, limit 600.00)",
+    "dropped_pct_max: PASS (0.00 % of frames, limit 1.00)",
+    "heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)",
+    "cadence_pct_min: PASS (100.00 % cadence, limit 99.00)",
+    "heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)",
+    "hitches_max: PASS (0.00 heavy hitches, limit 0.00)",
+    "work_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)",
+    "job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)",
+    "draw_calls_max: PASS (40.00 calls p95, limit 60.00)",
+    "late_ticks_max: PASS (0.00 late ticks, limit 0.00)",
+    "fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)",
+    "build: PASS (release template)",
+    "impl: n/a (only Android requires the library)",
+    "golden_hashes: PASS (MATCH, 6 checkpoints)"
+  ],
+  "view_p95_ms": 3.0,
+  "work_other_p95_ms": 4.0,
+  "work_other_p95_norm_ms": 4.0,
+  "work_p95_ms": 4.0,
+  "work_p95_norm_ms": 4.0,
+  "work_tick_p95_ms": 4.0,
+  "work_tick_p95_norm_ms": 4.0,
+  "zoom": 1.0
+}
+== failing_debug_paused ==
+PERF run 1 | WORKER | debug build | all
+INVALID: app_paused
+heavy_frames_min: PASS (1000.00 frames, limit 600.00)
+dropped_pct_max: PASS (0.10 % of frames, limit 1.00)
+heavy_dropped_pct: PASS (0.10 % of heavy frames, limit 1.00)
+cadence_pct_min: PASS (99.86 % cadence, limit 99.00)
+heavy_cadence_pct: PASS (99.86 % heavy cadence, limit 99.00)
+hitches_max: PASS (0.00 heavy hitches, limit 0.00)
+work_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)
+job_p99_ms: FAIL (30.00 ms raw job p99, limit 26.70)
+draw_calls_max: PASS (40.00 calls p95, limit 60.00)
+late_ticks_max: PASS (0.00 late ticks, limit 0.00)
+fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)
+build: FAIL (debug template)
+impl: n/a (only Android requires the library)
+golden_hashes: PASS (MATCH, 6 checkpoints)
+held_ticks 0 (no verdict)
+sim impl: gdscript | C++ matches GDScript: not run
+refresh 60.00 to 60.00 Hz | P 16.67 ms | dropped above 25.00 ms
+intervals p50 16.7 p95 16.7 p99 16.7 max 40.0 ms | extra slots [999, 1, 0, 0] | jitter 99.9 %
+dropped 1 (heavy 1) | hitches 0 (heavy 0)
+ref peak 25.0 us (p95 25.0) | speed main 100 %, tick 100 %, fog 100 %
+work p95 raw / normalised ms: heavy 4.00 / 4.00, publish 4.00 / 4.00, other 4.00 / 4.00, fog 0.20 / 0.20
+job ms mean 10.44 p50 10.00 p95 10.00 p99 30.00 max 30.00 | latency max 0 us
+Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
+p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
+atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
+last hash a7bb0d0000000000 | units alive 0
+phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+GATE: FAIL
+{
+  "alive": 0,
+  "arena": "arena",
+  "atlas_bake_ms": 12.5,
+  "atlas_page": "4096x2258 at 1.000",
+  "cadence_pct": 99.8582033484103,
+  "checkpoints": [
+    {
+      "hash_hex": "f749020000000000",
+      "tick": 150
+    },
+    {
+      "hash_hex": "e793040000000000",
+      "tick": 300
+    },
+    {
+      "hash_hex": "d7dd060000000000",
+      "tick": 450
+    },
+    {
+      "hash_hex": "c727090000000000",
+      "tick": 600
+    },
+    {
+      "hash_hex": "b7710b0000000000",
+      "tick": 750
+    },
+    {
+      "hash_hex": "a7bb0d0000000000",
+      "tick": 900
+    }
+  ],
+  "debug": true,
+  "draw_calls_p95": 40,
+  "drawn_rigs_max": 140,
+  "drawn_rigs_p50": 140,
+  "drop_ms": 25.0,
+  "dropped": 1,
+  "dropped_pct": 0.1,
+  "engine": "<engine>",
+  "extra_slots": [
+    999,
+    1,
+    0,
+    0
+  ],
+  "finished": true,
+  "flow_slice_p95_ms": 0.0,
+  "fog_update_p95_ms": 0.2,
+  "fog_update_p95_norm_ms": 0.2,
+  "fog_updates": 84,
+  "fps_avg": 59.9149220090462,
+  "frame_max_ms": 40.0,
+  "frame_p50_ms": 16.667,
+  "frame_p95_ms": 16.667,
+  "frame_p99_ms": 16.667,
+  "frames": 1000,
+  "gate_pass": false,
+  "golden_checked": 6,
+  "golden_match": true,
+  "golden_mismatch_tick": -1,
+  "hash_hex": "a7bb0d0000000000",
+  "heavy_cadence_pct": 99.8582033484103,
+  "heavy_dropped": 1,
+  "heavy_dropped_pct": 0.1,
+  "heavy_frames": 1000,
+  "heavy_hitches": 0,
+  "heavy_jitter_pct": 99.9,
+  "heavy_publish_frames": 250,
+  "held_ticks": 0,
+  "hitches": 0,
+  "invalid": true,
+  "invalid_reasons": [
+    "app_paused"
+  ],
+  "jitter_pct": 99.9,
+  "job_max_ms": 30.0,
+  "job_mean_ms": 10.4444444444444,
+  "job_minus_step_p95_cp_ms": 2.0,
+  "job_minus_step_p95_noncp_ms": 2.0,
+  "job_p50_ms": 10.0,
+  "job_p95_ms": 10.0,
+  "job_p95_noncp_ms": 10.0,
+  "job_p99_ms": 30.0,
+  "job_ticks": 900,
+  "late_ticks": 0,
+  "latency_usec_max": 0,
+  "layer_mode": "all",
+  "model": "<model>",
+  "native_build": "",
+  "native_phases": [],
+  "os": "Linux",
+  "period_ms": 16.6666666666667,
+  "phases_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "phases_p95_noncp_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ref_peak_p95_us": 25.0,
+  "ref_peak_us": 25.0,
+  "refresh_hz_end": 60.0,
+  "refresh_hz_start": 60.0,
+  "render_cpu_p95_ms": 1.0,
+  "runs": 1,
+  "screen": "<screen>",
+  "self_check": "not run",
+  "sim_impl": "GDSCRIPT",
+  "speed_fog_pct": 100.0,
+  "speed_main_pct": 100.0,
+  "speed_tick_pct": 100.0,
+  "tick_max_ms": 8.0,
+  "tick_mode": "WORKER",
+  "tick_p50_ms": 8.0,
+  "tick_p95_ms": 8.0,
+  "verdicts": [
+    "INVALID: app_paused",
+    "heavy_frames_min: PASS (1000.00 frames, limit 600.00)",
+    "dropped_pct_max: PASS (0.10 % of frames, limit 1.00)",
+    "heavy_dropped_pct: PASS (0.10 % of heavy frames, limit 1.00)",
+    "cadence_pct_min: PASS (99.86 % cadence, limit 99.00)",
+    "heavy_cadence_pct: PASS (99.86 % heavy cadence, limit 99.00)",
+    "hitches_max: PASS (0.00 heavy hitches, limit 0.00)",
+    "work_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)",
+    "job_p99_ms: FAIL (30.00 ms raw job p99, limit 26.70)",
+    "draw_calls_max: PASS (40.00 calls p95, limit 60.00)",
+    "late_ticks_max: PASS (0.00 late ticks, limit 0.00)",
+    "fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)",
+    "build: FAIL (debug template)",
+    "impl: n/a (only Android requires the library)",
+    "golden_hashes: PASS (MATCH, 6 checkpoints)"
+  ],
+  "view_p95_ms": 3.0,
+  "work_other_p95_ms": 4.0,
+  "work_other_p95_norm_ms": 4.0,
+  "work_p95_ms": 4.0,
+  "work_p95_norm_ms": 4.0,
+  "work_tick_p95_ms": 4.0,
+  "work_tick_p95_norm_ms": 4.0,
+  "zoom": 1.0
+}
+== bases_arena ==
+PERF run 1 | WORKER | release build | all
+heavy_frames_min: PASS (1000.00 frames, limit 600.00)
+dropped_pct_max: PASS (0.00 % of frames, limit 1.00)
+heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)
+cadence_pct_min: PASS (100.00 % cadence, limit 99.00)
+heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)
+hitches_max: PASS (0.00 heavy hitches, limit 0.00)
+work_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)
+job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)
+draw_calls_max: PASS (40.00 calls p95, limit 60.00)
+late_ticks_max: PASS (0.00 late ticks, limit 0.00)
+fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)
+build: PASS (release template)
+impl: n/a (only Android requires the library)
+golden_hashes: FAIL (no golden checkpoint up to tick 900 (bases_golden_ticks, bases_golden_hex))
+held_ticks 0 (no verdict)
+sim impl: gdscript | C++ matches GDScript: not run
+refresh 60.00 to 60.00 Hz | P 16.67 ms | dropped above 25.00 ms
+intervals p50 16.7 p95 16.7 p99 16.7 max 16.7 ms | extra slots [1000, 0, 0, 0] | jitter 100.0 %
+dropped 0 (heavy 0) | hitches 0 (heavy 0)
+ref peak 25.0 us (p95 25.0) | speed main 100 %, tick 100 %, fog 100 %
+work p95 raw / normalised ms: heavy 4.00 / 4.00, publish 4.00 / 4.00, other 4.00 / 4.00, fog 0.20 / 0.20
+job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
+Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
+p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
+atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Linux | <engine> | screen <screen> | zoom 1.00
+last hash a7bb0d0000000000 | units alive 0
+draw calls p95 40 | forecast 16, 17 while a strike is aimed or in flight, about 22 at worst, plus the HUD (no verdict)
+phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+GATE: FAIL
+{
+  "alive": 0,
+  "arena": "bases",
+  "atlas_bake_ms": 12.5,
+  "atlas_page": "4096x2258 at 1.000",
+  "cadence_pct": 99.9980000400002,
+  "checkpoints": [
+    {
+      "hash_hex": "f749020000000000",
+      "tick": 150
+    },
+    {
+      "hash_hex": "e793040000000000",
+      "tick": 300
+    },
+    {
+      "hash_hex": "d7dd060000000000",
+      "tick": 450
+    },
+    {
+      "hash_hex": "c727090000000000",
+      "tick": 600
+    },
+    {
+      "hash_hex": "b7710b0000000000",
+      "tick": 750
+    },
+    {
+      "hash_hex": "a7bb0d0000000000",
+      "tick": 900
+    }
+  ],
+  "debug": false,
+  "draw_calls_p95": 40,
+  "drawn_rigs_max": 140,
+  "drawn_rigs_p50": 140,
+  "drop_ms": 25.0,
+  "dropped": 0,
+  "dropped_pct": 0.0,
+  "engine": "<engine>",
+  "extra_slots": [
+    1000,
+    0,
+    0,
+    0
+  ],
+  "finished": true,
+  "flow_slice_p95_ms": 0.0,
+  "fog_update_p95_ms": 0.2,
+  "fog_update_p95_norm_ms": 0.2,
+  "fog_updates": 84,
+  "fps_avg": 59.9988000240001,
+  "frame_max_ms": 16.667,
+  "frame_p50_ms": 16.667,
+  "frame_p95_ms": 16.667,
+  "frame_p99_ms": 16.667,
+  "frames": 1000,
+  "gate_pass": false,
+  "golden_checked": 0,
+  "golden_match": false,
+  "golden_mismatch_tick": -1,
+  "hash_hex": "a7bb0d0000000000",
+  "heavy_cadence_pct": 99.9980000400002,
+  "heavy_dropped": 0,
+  "heavy_dropped_pct": 0.0,
+  "heavy_frames": 1000,
+  "heavy_hitches": 0,
+  "heavy_jitter_pct": 100.0,
+  "heavy_publish_frames": 250,
+  "held_ticks": 0,
+  "hitches": 0,
+  "invalid": false,
+  "invalid_reasons": [],
+  "jitter_pct": 100.0,
+  "job_max_ms": 10.0,
+  "job_mean_ms": 10.0,
+  "job_minus_step_p95_cp_ms": 2.0,
+  "job_minus_step_p95_noncp_ms": 2.0,
+  "job_p50_ms": 10.0,
+  "job_p95_ms": 10.0,
+  "job_p95_noncp_ms": 10.0,
+  "job_p99_ms": 10.0,
+  "job_ticks": 900,
+  "late_ticks": 0,
+  "latency_usec_max": 0,
+  "layer_mode": "all",
+  "model": "<model>",
+  "native_build": "",
+  "native_phases": [],
+  "os": "Linux",
+  "period_ms": 16.6666666666667,
+  "phases_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "phases_p95_noncp_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ref_peak_p95_us": 25.0,
+  "ref_peak_us": 25.0,
+  "refresh_hz_end": 60.0,
+  "refresh_hz_start": 60.0,
+  "render_cpu_p95_ms": 1.0,
+  "runs": 1,
+  "screen": "<screen>",
+  "self_check": "not run",
+  "sim_impl": "GDSCRIPT",
+  "speed_fog_pct": 100.0,
+  "speed_main_pct": 100.0,
+  "speed_tick_pct": 100.0,
+  "tick_max_ms": 8.0,
+  "tick_mode": "WORKER",
+  "tick_p50_ms": 8.0,
+  "tick_p95_ms": 8.0,
+  "verdicts": [
+    "heavy_frames_min: PASS (1000.00 frames, limit 600.00)",
+    "dropped_pct_max: PASS (0.00 % of frames, limit 1.00)",
+    "heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)",
+    "cadence_pct_min: PASS (100.00 % cadence, limit 99.00)",
+    "heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)",
+    "hitches_max: PASS (0.00 heavy hitches, limit 0.00)",
+    "work_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)",
+    "job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)",
+    "draw_calls_max: PASS (40.00 calls p95, limit 60.00)",
+    "late_ticks_max: PASS (0.00 late ticks, limit 0.00)",
+    "fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)",
+    "build: PASS (release template)",
+    "impl: n/a (only Android requires the library)",
+    "golden_hashes: FAIL (no golden checkpoint up to tick 900 (bases_golden_ticks, bases_golden_hex))"
+  ],
+  "view_p95_ms": 3.0,
+  "work_other_p95_ms": 4.0,
+  "work_other_p95_norm_ms": 4.0,
+  "work_p95_ms": 4.0,
+  "work_p95_norm_ms": 4.0,
+  "work_tick_p95_ms": 4.0,
+  "work_tick_p95_norm_ms": 4.0,
+  "zoom": 1.0
+}
+== android_native ==
+PERF run 1 | WORKER | release build | all
+heavy_frames_min: PASS (1000.00 frames, limit 600.00)
+dropped_pct_max: PASS (0.00 % of frames, limit 1.00)
+heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)
+cadence_pct_min: PASS (100.00 % cadence, limit 99.00)
+heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)
+hitches_max: PASS (0.00 heavy hitches, limit 0.00)
+work_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)
+job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)
+draw_calls_max: PASS (40.00 calls p95, limit 60.00)
+late_ticks_max: PASS (0.00 late ticks, limit 0.00)
+fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)
+build: PASS (release template)
+impl: PASS (self-check match)
+golden_hashes: PASS (MATCH, 6 checkpoints)
+held_ticks 0 (no verdict)
+sim impl: native (arm64 release, phases FLOW, MOVE) | C++ matches GDScript: yes (60 ticks)
+refresh 60.00 to 60.00 Hz | P 16.67 ms | dropped above 25.00 ms
+intervals p50 16.7 p95 16.7 p99 16.7 max 16.7 ms | extra slots [1000, 0, 0, 0] | jitter 100.0 %
+dropped 0 (heavy 0) | hitches 0 (heavy 0)
+ref peak 25.0 us (p95 25.0) | speed main 100 %, tick 100 %, fog 100 %
+work p95 raw / normalised ms: heavy 4.00 / 4.00, publish 4.00 / 4.00, other 4.00 / 4.00, fog 0.20 / 0.20
+job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
+Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
+p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
+atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Android | <engine> | screen <screen> | zoom 1.00
+last hash a7bb0d0000000000 | units alive 0
+phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+GATE: PASS
+{
+  "alive": 0,
+  "arena": "arena",
+  "atlas_bake_ms": 12.5,
+  "atlas_page": "4096x2258 at 1.000",
+  "cadence_pct": 99.9980000400002,
+  "checkpoints": [
+    {
+      "hash_hex": "f749020000000000",
+      "tick": 150
+    },
+    {
+      "hash_hex": "e793040000000000",
+      "tick": 300
+    },
+    {
+      "hash_hex": "d7dd060000000000",
+      "tick": 450
+    },
+    {
+      "hash_hex": "c727090000000000",
+      "tick": 600
+    },
+    {
+      "hash_hex": "b7710b0000000000",
+      "tick": 750
+    },
+    {
+      "hash_hex": "a7bb0d0000000000",
+      "tick": 900
+    }
+  ],
+  "debug": false,
+  "draw_calls_p95": 40,
+  "drawn_rigs_max": 140,
+  "drawn_rigs_p50": 140,
+  "drop_ms": 25.0,
+  "dropped": 0,
+  "dropped_pct": 0.0,
+  "engine": "<engine>",
+  "extra_slots": [
+    1000,
+    0,
+    0,
+    0
+  ],
+  "finished": true,
+  "flow_slice_p95_ms": 0.0,
+  "fog_update_p95_ms": 0.2,
+  "fog_update_p95_norm_ms": 0.2,
+  "fog_updates": 84,
+  "fps_avg": 59.9988000240001,
+  "frame_max_ms": 16.667,
+  "frame_p50_ms": 16.667,
+  "frame_p95_ms": 16.667,
+  "frame_p99_ms": 16.667,
+  "frames": 1000,
+  "gate_pass": true,
+  "golden_checked": 6,
+  "golden_match": true,
+  "golden_mismatch_tick": -1,
+  "hash_hex": "a7bb0d0000000000",
+  "heavy_cadence_pct": 99.9980000400002,
+  "heavy_dropped": 0,
+  "heavy_dropped_pct": 0.0,
+  "heavy_frames": 1000,
+  "heavy_hitches": 0,
+  "heavy_jitter_pct": 100.0,
+  "heavy_publish_frames": 250,
+  "held_ticks": 0,
+  "hitches": 0,
+  "invalid": false,
+  "invalid_reasons": [],
+  "jitter_pct": 100.0,
+  "job_max_ms": 10.0,
+  "job_mean_ms": 10.0,
+  "job_minus_step_p95_cp_ms": 2.0,
+  "job_minus_step_p95_noncp_ms": 2.0,
+  "job_p50_ms": 10.0,
+  "job_p95_ms": 10.0,
+  "job_p95_noncp_ms": 10.0,
+  "job_p99_ms": 10.0,
+  "job_ticks": 900,
+  "late_ticks": 0,
+  "latency_usec_max": 0,
+  "layer_mode": "all",
+  "model": "<model>",
+  "native_build": "arm64 release",
+  "native_phases": [
+    "FLOW",
+    "MOVE"
+  ],
+  "os": "Android",
+  "period_ms": 16.6666666666667,
+  "phases_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "phases_p95_noncp_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ref_peak_p95_us": 25.0,
+  "ref_peak_us": 25.0,
+  "refresh_hz_end": 60.0,
+  "refresh_hz_start": 60.0,
+  "render_cpu_p95_ms": 1.0,
+  "runs": 1,
+  "screen": "<screen>",
+  "self_check": "match",
+  "sim_impl": "NATIVE",
+  "speed_fog_pct": 100.0,
+  "speed_main_pct": 100.0,
+  "speed_tick_pct": 100.0,
+  "tick_max_ms": 8.0,
+  "tick_mode": "WORKER",
+  "tick_p50_ms": 8.0,
+  "tick_p95_ms": 8.0,
+  "verdicts": [
+    "heavy_frames_min: PASS (1000.00 frames, limit 600.00)",
+    "dropped_pct_max: PASS (0.00 % of frames, limit 1.00)",
+    "heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)",
+    "cadence_pct_min: PASS (100.00 % cadence, limit 99.00)",
+    "heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)",
+    "hitches_max: PASS (0.00 heavy hitches, limit 0.00)",
+    "work_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)",
+    "job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)",
+    "draw_calls_max: PASS (40.00 calls p95, limit 60.00)",
+    "late_ticks_max: PASS (0.00 late ticks, limit 0.00)",
+    "fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)",
+    "build: PASS (release template)",
+    "impl: PASS (self-check match)",
+    "golden_hashes: PASS (MATCH, 6 checkpoints)"
+  ],
+  "view_p95_ms": 3.0,
+  "work_other_p95_ms": 4.0,
+  "work_other_p95_norm_ms": 4.0,
+  "work_p95_ms": 4.0,
+  "work_p95_norm_ms": 4.0,
+  "work_tick_p95_ms": 4.0,
+  "work_tick_p95_norm_ms": 4.0,
+  "zoom": 1.0
+}
+== android_gdscript ==
+PERF run 1 | WORKER | release build | all
+heavy_frames_min: PASS (1000.00 frames, limit 600.00)
+dropped_pct_max: PASS (0.00 % of frames, limit 1.00)
+heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)
+cadence_pct_min: PASS (100.00 % cadence, limit 99.00)
+heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)
+hitches_max: PASS (0.00 heavy hitches, limit 0.00)
+work_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)
+sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)
+job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)
+draw_calls_max: PASS (40.00 calls p95, limit 60.00)
+late_ticks_max: PASS (0.00 late ticks, limit 0.00)
+fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)
+build: PASS (release template)
+impl: FAIL (gdscript)
+golden_hashes: PASS (MATCH, 6 checkpoints)
+held_ticks 0 (no verdict)
+sim impl: gdscript | C++ matches GDScript: not run
+refresh 60.00 to 60.00 Hz | P 16.67 ms | dropped above 25.00 ms
+intervals p50 16.7 p95 16.7 p99 16.7 max 16.7 ms | extra slots [1000, 0, 0, 0] | jitter 100.0 %
+dropped 0 (heavy 0) | hitches 0 (heavy 0)
+ref peak 25.0 us (p95 25.0) | speed main 100 %, tick 100 %, fog 100 %
+work p95 raw / normalised ms: heavy 4.00 / 4.00, publish 4.00 / 4.00, other 4.00 / 4.00, fog 0.20 / 0.20
+job ms mean 10.00 p50 10.00 p95 10.00 p99 10.00 max 10.00 | latency max 0 us
+Sim.step ms p50 8.00 p95 8.00 max 8.00 | flow slice p95 0.00 ms | render CPU p95 1.00 ms
+p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, other 2.00
+atlas bake 12.5 ms | page 4096x2258 at 1.000 (no verdict)
+<model> | Android | <engine> | screen <screen> | zoom 1.00
+last hash a7bb0d0000000000 | units alive 0
+phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
+GATE: FAIL
+{
+  "alive": 0,
+  "arena": "arena",
+  "atlas_bake_ms": 12.5,
+  "atlas_page": "4096x2258 at 1.000",
+  "cadence_pct": 99.9980000400002,
+  "checkpoints": [
+    {
+      "hash_hex": "f749020000000000",
+      "tick": 150
+    },
+    {
+      "hash_hex": "e793040000000000",
+      "tick": 300
+    },
+    {
+      "hash_hex": "d7dd060000000000",
+      "tick": 450
+    },
+    {
+      "hash_hex": "c727090000000000",
+      "tick": 600
+    },
+    {
+      "hash_hex": "b7710b0000000000",
+      "tick": 750
+    },
+    {
+      "hash_hex": "a7bb0d0000000000",
+      "tick": 900
+    }
+  ],
+  "debug": false,
+  "draw_calls_p95": 40,
+  "drawn_rigs_max": 140,
+  "drawn_rigs_p50": 140,
+  "drop_ms": 25.0,
+  "dropped": 0,
+  "dropped_pct": 0.0,
+  "engine": "<engine>",
+  "extra_slots": [
+    1000,
+    0,
+    0,
+    0
+  ],
+  "finished": true,
+  "flow_slice_p95_ms": 0.0,
+  "fog_update_p95_ms": 0.2,
+  "fog_update_p95_norm_ms": 0.2,
+  "fog_updates": 84,
+  "fps_avg": 59.9988000240001,
+  "frame_max_ms": 16.667,
+  "frame_p50_ms": 16.667,
+  "frame_p95_ms": 16.667,
+  "frame_p99_ms": 16.667,
+  "frames": 1000,
+  "gate_pass": false,
+  "golden_checked": 6,
+  "golden_match": true,
+  "golden_mismatch_tick": -1,
+  "hash_hex": "a7bb0d0000000000",
+  "heavy_cadence_pct": 99.9980000400002,
+  "heavy_dropped": 0,
+  "heavy_dropped_pct": 0.0,
+  "heavy_frames": 1000,
+  "heavy_hitches": 0,
+  "heavy_jitter_pct": 100.0,
+  "heavy_publish_frames": 250,
+  "held_ticks": 0,
+  "hitches": 0,
+  "invalid": false,
+  "invalid_reasons": [],
+  "jitter_pct": 100.0,
+  "job_max_ms": 10.0,
+  "job_mean_ms": 10.0,
+  "job_minus_step_p95_cp_ms": 2.0,
+  "job_minus_step_p95_noncp_ms": 2.0,
+  "job_p50_ms": 10.0,
+  "job_p95_ms": 10.0,
+  "job_p95_noncp_ms": 10.0,
+  "job_p99_ms": 10.0,
+  "job_ticks": 900,
+  "late_ticks": 0,
+  "latency_usec_max": 0,
+  "layer_mode": "all",
+  "model": "<model>",
+  "native_build": "",
+  "native_phases": [],
+  "os": "Android",
+  "period_ms": 16.6666666666667,
+  "phases_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "phases_p95_noncp_ms": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ref_peak_p95_us": 25.0,
+  "ref_peak_us": 25.0,
+  "refresh_hz_end": 60.0,
+  "refresh_hz_start": 60.0,
+  "render_cpu_p95_ms": 1.0,
+  "runs": 1,
+  "screen": "<screen>",
+  "self_check": "not run",
+  "sim_impl": "GDSCRIPT",
+  "speed_fog_pct": 100.0,
+  "speed_main_pct": 100.0,
+  "speed_tick_pct": 100.0,
+  "tick_max_ms": 8.0,
+  "tick_mode": "WORKER",
+  "tick_p50_ms": 8.0,
+  "tick_p95_ms": 8.0,
+  "verdicts": [
+    "heavy_frames_min: PASS (1000.00 frames, limit 600.00)",
+    "dropped_pct_max: PASS (0.00 % of frames, limit 1.00)",
+    "heavy_dropped_pct: PASS (0.00 % of heavy frames, limit 1.00)",
+    "cadence_pct_min: PASS (100.00 % cadence, limit 99.00)",
+    "heavy_cadence_pct: PASS (100.00 % heavy cadence, limit 99.00)",
+    "hitches_max: PASS (0.00 heavy hitches, limit 0.00)",
+    "work_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "work_tick_p95_ms: PASS (4.00 ms normalised, limit 5.60)",
+    "sim_p95_ms: PASS (10.00 ms raw job p95, limit 13.30)",
+    "job_p99_ms: PASS (10.00 ms raw job p99, limit 26.70)",
+    "draw_calls_max: PASS (40.00 calls p95, limit 60.00)",
+    "late_ticks_max: PASS (0.00 late ticks, limit 0.00)",
+    "fog_update_p95_ms: PASS (0.20 ms normalised, 84 updates, limit 0.40)",
+    "build: PASS (release template)",
+    "impl: FAIL (gdscript)",
+    "golden_hashes: PASS (MATCH, 6 checkpoints)"
+  ],
+  "view_p95_ms": 3.0,
+  "work_other_p95_ms": 4.0,
+  "work_other_p95_norm_ms": 4.0,
+  "work_p95_ms": 4.0,
+  "work_p95_norm_ms": 4.0,
+  "work_tick_p95_ms": 4.0,
+  "work_tick_p95_norm_ms": 4.0,
+  "zoom": 1.0
+}
