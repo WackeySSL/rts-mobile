@@ -213,6 +213,65 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	assert_array(_engine_objects(job, {})).is_equal(["job.world.kernels: Node"])
 
 
+## The walk with an OpponentAi (built by the factory at Hard, with its AiMemory) finds no Node and
+## no Resource either, before and after a run in which it thinks: the controller copies the defs
+## into ints and arrays and keeps neither.
+func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
+	var job: TickJob = _arena_job()
+	var def: AiDef = load("res://data/ai/opponent_fossil.tres") as AiDef
+	var level: AiDifficultyDef = load("res://data/ai/difficulty/hard.tres") as AiDifficultyDef
+	var stream: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + 2)
+	var ai: AiController = AiFactory.create(def, level, 2, stream)
+	assert_bool(ai is OpponentAi).is_true()
+	ai.think_offset = 0
+	job.controllers.append(ai)
+	var visited: Dictionary = {}
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+	job.run()
+	visited.clear()
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+	assert_bool(visited.has((ai as OpponentAi).memory.get_instance_id())).is_true()
+
+
+## think_usec is 0 on a tick where no controller thought (none seated, or none due), and on a tick
+## with a think it lies between 0 and the whole job's job_usec, which counts the thinks.
+func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> void:
+	var job: TickJob = _arena_job()
+	job.run()
+	assert_int(job.snapshot.think_usec).is_equal(0)
+	var controller: AiController = RecordingAi.new()
+	controller.player_id = 2
+	controller.think_period = 15
+	controller.think_offset = 0
+	controller.set(&"journal", [])
+	job.controllers.append(controller)
+	var thought: Array[int] = []
+	for _step: int in 31:
+		var tick: int = job.world.tick
+		job.previous = job.snapshot
+		job.snapshot = _new_snapshot()
+		job.run()
+		if tick % 15 == 0:
+			thought.append(tick)
+			assert_int(job.snapshot.think_usec).is_between(0, job.snapshot.job_usec)
+		else:
+			assert_int(job.snapshot.think_usec).is_equal(0)
+	assert_array(thought).is_equal([15, 30])
+
+
+## A think that takes time is counted: a controller that waits for the clock to move by one
+## microsecond makes think_usec at least 1 and at most job_usec.
+func test_think_usec_counts_a_think_that_takes_time() -> void:
+	var job: TickJob = _arena_job()
+	var slow: SlowAi = SlowAi.new()
+	slow.player_id = 2
+	job.controllers.append(slow)
+	job.run()
+	assert_int(job.snapshot.think_usec).is_between(1, job.snapshot.job_usec)
+
+
 ## run() lets the controllers think on the World before the step, after the commands the list
 ## holds (ADR 0020 section 3): a recording controller of player 2 that thinks on every tick sees the
 ## view of tick 0 with the human's command already in the list, and its STOP is stamped tick 0 after
@@ -397,3 +456,13 @@ func _banned_in(line: String, patterns: Array[RegEx], strings: RegEx) -> int:
 		if patterns[index].search(code) != null:
 			return index
 	return -1
+
+
+## A controller whose think returns after the clock has moved by at least one microsecond.
+class SlowAi:
+	extends AiController
+
+	func think(_view: PlayerView, _out: Array[Command]) -> void:
+		var start: int = Time.get_ticks_usec()
+		while Time.get_ticks_usec() == start:
+			pass

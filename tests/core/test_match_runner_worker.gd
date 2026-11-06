@@ -31,7 +31,7 @@ const DELAY_MSEC: int = 30
 const SHORT_DELAY_MSEC: int = 5
 ## The MatchSnapshot fields that are timings, not state, so the lockstep leaves them out.
 const TIMINGS: Array[StringName] = [
-	&"phase_usec", &"step_usec", &"job_usec", &"post_usec", &"end_usec"
+	&"phase_usec", &"step_usec", &"job_usec", &"think_usec", &"post_usec", &"end_usec"
 ]
 const SYNC: int = MatchRunner.TickMode.SYNC
 const WORKER: int = MatchRunner.TickMode.WORKER

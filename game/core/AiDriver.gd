@@ -15,10 +15,12 @@ extends RefCounted
 ## to `out` after what it holds. A controller's turn is a tick with `(tick + think_offset) %
 ## think_period == 0`, a period below 1 counting as 1. A null entry is skipped. Nothing thinks once
 ## the match has ended (`match_end_tick` above 0): the sim drops every Command after the end, and a
-## controller cannot see the end through its view.
-static func think_all(world: World, controllers: Array[AiController], out: Array[Command]) -> void:
+## controller cannot see the end through its view. Returns how many controllers thought (0 for a
+## tick without a think), which TickJob uses to time the thinks.
+static func think_all(world: World, controllers: Array[AiController], out: Array[Command]) -> int:
 	if world.match_end_tick > 0 or controllers.is_empty():
-		return
+		return 0
+	var thought: int = 0
 	var tick: int = world.tick
 	# A selection without scratch storage: each pass picks the due controller with the smallest
 	# (player, list index) after the one that thought last. O(n^2), with n at most 3 opponents.
@@ -38,8 +40,10 @@ static func think_all(world: World, controllers: Array[AiController], out: Array
 			if next < 0 or player < controllers[next].player_id:
 				next = index
 		if next < 0:
-			return
+			return thought
 		var chosen: AiController = controllers[next]
 		last = next
 		last_player = chosen.player_id
 		chosen.think(PlayerView.of(world, last_player), out)
+		thought += 1
+	return thought

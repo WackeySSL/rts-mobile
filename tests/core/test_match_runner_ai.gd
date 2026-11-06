@@ -13,6 +13,7 @@ extends GdUnitTestSuite
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const SEED: int = 42
+const FOSSIL: AiDef = preload("res://data/ai/opponent_fossil.tres")
 ## Ticks of the dummy match: 40 checkpoints, in which the dummy queues and places its power plant
 ## and queues the next items of its build order. Its last think is at tick 592, and the job a
 ## WORKER runner runs ahead (tick 600 to 601) adds no Command and no checkpoint.
@@ -66,6 +67,62 @@ func test_start_builds_a_dummy_per_opponent_with_its_players_stream() -> void:
 	assert_bool(built[0].rng.state() == built[1].rng.state()).is_false()
 	var none: Array[AiDef] = []
 	assert_array(_runner(SYNC, none)._job.controllers).is_empty()
+
+
+## An OpponentDef builds an OpponentAi at the entry's level, a plain AiDef the dummy (whatever its
+## level); a missing or null level is Normal's. The levels are told apart by their ids and tiers.
+func test_an_opponent_def_builds_opponent_ai_at_its_level_and_a_missing_level_is_normal() -> void:
+	var opponent: AiDef = FOSSIL
+	var easy: AiDifficultyDef = load("res://data/ai/difficulty/easy.tres") as AiDifficultyDef
+	var hard: AiDifficultyDef = load("res://data/ai/difficulty/hard.tres") as AiDifficultyDef
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = DummyStart.scenario()
+	runner.match_seed = SEED
+	runner.opponents = [opponent, opponent, opponent, DummyStart.dummy_def()]
+	runner.opponent_levels = [easy, null, hard]
+	var built: Array[AiController] = runner._opponent_controllers()
+	var players: Array = built.map(func(ai: AiController) -> int: return ai.player_id)
+	assert_array(players).is_equal([2, 3, 4, 5])
+	var levels: Array = []
+	for index: int in 3:
+		var ai: OpponentAi = built[index] as OpponentAi
+		assert_object(ai).is_not_null()
+		levels.append([ai.level_id, ai.tier])
+	assert_array(levels).is_equal([[&"easy", 0], [&"normal", 1], [&"hard", 2]])
+	# The fourth entry has a plain def and no level: the dummy.
+	assert_bool(built[3] is DummyAi).is_true()
+	# No levels at all: Normal's for every opponent.
+	runner.opponent_levels = []
+	var normal: Array = []
+	for index: int in 3:
+		normal.append((runner._opponent_controllers()[index] as OpponentAi).level_id)
+	assert_array(normal).is_equal([&"normal", &"normal", &"normal"])
+
+
+## `first_opponent` 1 seats entry 0 on player 1 and entry 1 on player 2, each with its own stream;
+## the default seats entry 0 on player 2, as before.
+func test_first_opponent_seats_the_entries_from_that_player() -> void:
+	var fossil: AiDef = FOSSIL
+	var renew: AiDef = load("res://data/ai/opponent_renew.tres") as AiDef
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = DummyStart.scenario()
+	runner.match_seed = SEED
+	runner.opponents = [fossil, renew]
+	assert_int(runner.first_opponent).is_equal(MatchRunner.FIRST_OPPONENT)
+	assert_array(_seats(runner)).is_equal([[2, &"opponent_fossil"], [3, &"opponent_renew"]])
+	runner.first_opponent = 1
+	assert_array(_seats(runner)).is_equal([[1, &"opponent_fossil"], [2, &"opponent_renew"]])
+	for ai: AiController in runner._opponent_controllers():
+		var stream: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + ai.player_id)
+		assert_array(ai.rng.state()).is_equal(stream.state())
+
+
+## [player, def id] per controller the runner builds.
+func _seats(runner: MatchRunner) -> Array:
+	var seats: Array = []
+	for ai: AiController in runner._opponent_controllers():
+		seats.append([ai.player_id, (ai as OpponentAi).def_id])
+	return seats
 
 
 ## A restart builds the new match's controllers and lets the old ones go at once, as it does the old

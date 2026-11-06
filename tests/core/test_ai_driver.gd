@@ -113,6 +113,28 @@ func test_nothing_thinks_after_the_end_and_a_null_entry_is_skipped() -> void:
 	assert_array(_journal[0].slice(0, 3)).is_equal(["a", 1, 0])
 
 
+## think_all returns how many controllers thought: the due ones, 0 for a tick where none is due, for
+## an empty list, a list of nulls and a match that has ended.
+func test_think_all_returns_the_number_of_controllers_that_thought() -> void:
+	var world: World = Rig.start()
+	var controllers: Array[AiController] = [
+		_recorder("a", 1, 15, 0), _recorder("b", 2, 15, 0), _recorder("c", 2, 15, 3), null
+	]
+	var out: Array[Command] = []
+	world.tick = 30
+	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(2)
+	world.tick = 27
+	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(1)
+	world.tick = 31
+	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(0)
+	var none: Array[AiController] = []
+	assert_int(AiDriver.think_all(world, none, out)).is_equal(0)
+	world.tick = 30
+	world.match_end_tick = 5
+	world.winner = 1
+	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(0)
+
+
 ## A recording controller of `player` with `label`, `period` and `offset`, on the case's journal.
 func _recorder(label: String, player: int, period: int, offset: int) -> AiController:
 	var controller: AiController = RecordingAi.new()

@@ -5,7 +5,6 @@ extends RefCounted
 ## bases 28 tiles apart. The map, the roster and the bases are the rig's own. Not a test suite.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
-const UNIT_DIR: String = "res://data/units/"
 
 
 ## A new scenario of the rig's start. Built in code, so its resource_path is empty.
@@ -22,7 +21,7 @@ static func scenario() -> ScenarioDef:
 	built.spawns.append(_spawn(2, "headquarters", Rig.HQ_2, 1))
 	built.spawns.append(_spawn(2, "rifle_squad", Vector2i(24, 30), 2))
 	for id: String in Rig.ROSTER:
-		built.roster.append(load(UNIT_DIR + id + ".tres") as UnitDef)
+		built.roster.append(load(Rig.UNIT_DIR + id + ".tres") as UnitDef)
 	return built
 
 
@@ -34,7 +33,7 @@ static func dummy_def() -> AiDef:
 static func _spawn(owner: int, id: String, tile: Vector2i, count: int) -> SpawnDef:
 	var spawn: SpawnDef = SpawnDef.new()
 	spawn.owner = owner
-	spawn.unit = load(UNIT_DIR + id + ".tres") as UnitDef
+	spawn.unit = load(Rig.UNIT_DIR + id + ".tres") as UnitDef
 	spawn.count = count
 	spawn.origin_tile = tile
 	spawn.columns = 2

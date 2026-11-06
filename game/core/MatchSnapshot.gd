@@ -281,10 +281,12 @@ var events: PackedInt32Array = PackedInt32Array()
 var stats: PackedInt32Array = PackedInt32Array()
 
 ## Timings in microseconds, set by the tick job (plan P38j): the probe's per-phase split (empty
-## without a probe), Sim.step, the whole job, its post and its end.
+## without a probe), Sim.step, the whole job, its post and its end, and the computer players'
+## thinks (`think_usec`, ADR 0031: 0 on a tick where none thought).
 var phase_usec: PackedInt64Array = PackedInt64Array()
 var step_usec: int = 0
 var job_usec: int = 0
+var think_usec: int = 0
 var post_usec: int = 0
 var end_usec: int = 0
 

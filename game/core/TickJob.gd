@@ -56,14 +56,17 @@ func serve() -> void:
 ## One tick: the controllers' thinks (their Commands appended after the ones the list holds), the
 ## step, the hash of the last checkpoint, the capture, then the timings: Sim.step from the
 ## StepProbe, the TimingProbe's phases (a copy; empty without one) and the whole job, with the
-## thinks.
+## thinks. `think_usec` is the time from the job's start to the end of the thinks, 0 on a tick where
+## no controller thought.
 func run() -> void:
 	var started: int = Time.get_ticks_usec()
-	AiDriver.think_all(world, controllers, commands)
+	var thought: int = AiDriver.think_all(world, controllers, commands)
+	var thought_usec: int = Time.get_ticks_usec() - started if thought > 0 else 0
 	loop.step(world, commands, probe)
 	commands.clear()
 	var out: MatchSnapshot = snapshot
 	out.last_hash = loop.last_hash
+	out.think_usec = thought_usec
 	out.capture(world, previous)
 	var step_probe: StepProbe = probe as StepProbe
 	if step_probe != null:
