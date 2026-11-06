@@ -34,6 +34,10 @@ holds for any later bottom stack (none today); the drawer stays transient and ma
 ADR 0025's status note of the same date lists the replaced text. No accepted text of this ADR
 changed.
 
+Status note (2026-11-05, P26bc docs; P120i #343 as merged): §3 carries a dated note. The inset rule
+is unchanged; upright, the build drawer's card list scrolls on under the gesture bar to the
+screen's bottom edge (ADR 0025's status note of the same date). No accepted text changed.
+
 ## Context
 Michael, 2026-10-19, verbatim: **"Tilføj til tema at spillet også skal kunne spilles vertikale og
 ikke kun i landscape"**: the game shall be playable in portrait as well as landscape. That changes
@@ -231,6 +235,11 @@ do not change and never read it. A rotation issues no Command: a gesture in flig
   `TouchInput` and connects first, but whichever runs first, no `CAMERA_END` from a turn's cancel
   reaches the camera.
 - `TouchInput.configure()` keeps running on every `size_changed` (ADR 0004 §3).
+
+Status note (2026-11-05, P26bc docs; P120i #343 as merged; the text above stays as accepted): the
+inset rule is unchanged, and the build drawer's rect still uses it. Upright, the drawer's card list
+scrolls on under the gesture bar to the screen's bottom edge, with foot room so its last row scrolls
+clear (ADR 0025's status note of 2026-11-05, P26bc).
 
 ### 4. Camera on rotation
 `RtsCamera` keeps two values from the last `size_changed` it handled: the window's orientation

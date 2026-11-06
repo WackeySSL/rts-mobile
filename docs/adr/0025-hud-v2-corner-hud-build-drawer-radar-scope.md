@@ -94,6 +94,34 @@ placering? og efter man har placeret en bygning skal "Build" menuen ikke åbne o
   (R1 is no longer kept; Q3 A stays); §18's proposed "Building placement" bullet. The 2026-11-03
   note on "the restart" lapses: no return is set, so there is none to restart.
 
+Status note (2026-11-05, P26bc docs; P120i #343 as merged, main 6cc13a6): upright, the build
+drawer's card list runs on to the screen's bottom edge. Michael's question with the Phase 3 gate's
+verdict (#340), verbatim: "Men forstår ikke hvorfor der er en sort bjælke i bunden af build
+menuen?" The lead proposed letting the card list run on under the gesture bar, and Michael said
+"Ja". After checking #343's preview he wrote "Looks right".
+- **The cause.** Upright, the safe rect gives the bottom the larger of the two insets (§2, ADR 0015
+  §3), the status bar's.
+  - The sheet's backdrop already reached the screen's edge, but its card list stopped a band above
+    it, with the last row cut.
+  - That band was the old bottom room: the bottom inset, the safe rect's 12 dp, the drawer's 8 dp
+    padding and the panel's 8 dp bottom margin.
+- **The rule now:**
+  - Upright, the card list's scroll area runs on to the screen's bottom edge, under the gesture bar.
+  - A foot room the size of that band, under the last row, lets the row scroll clear, to where it
+    stood before.
+  - A tap on the Ready chip scrolls its card inside the safe rect.
+  - The handle, the tabs and the close chevron stay inside the safe rect. Sideways nothing changes.
+- **What it amends:**
+  - §2's "every rect is inside the safe rect" still holds for each rect `HudCorners.place` gives,
+    the drawer's included.
+  - The drawer's backdrop already ran on to the screen's edge (§5). Its card list now does too,
+    upright: it is the only control that may reach past the safe rect.
+  - §18 keeps "the safe-area ... bullets" of `touch-ui-rules`. The skill's safe-area bullet gains
+    this exception in its own text, in this row. Merging this row is Michael's yes to that skill
+    change.
+  - ADR 0015 §3's inset rule is unchanged; its own dated note points here.
+  - No other accepted text changed.
+
 ## Michael's answers (2026-11-02, on #259)
 "Ja til anbefalinger undtagen attack" (yes to the recommendations except attack):
 1. **A:** the build menu's pin is dropped (P85f2 withdrawn); its glyphs serve the radar pin.
