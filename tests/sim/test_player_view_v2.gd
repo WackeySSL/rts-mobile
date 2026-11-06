@@ -264,6 +264,8 @@ func test_own_strike_tick_is_the_viewers_own_pending_landing_and_never_anothers(
 	assert_int(PlayerView.of(world, 1).own_strike_tick).is_equal(landing)
 	assert_int(PlayerView.of(world, 2).own_strike_tick).is_equal(0)
 	assert_int(PlayerView.of(world, 3).own_strike_tick).is_equal(landing + 5)
+	StrikeWorlds.run_to(world, landing - 1)  # The boundary: still pending one step before landing.
+	assert_int(PlayerView.of(world, 1).own_strike_tick).is_equal(landing)
 	StrikeWorlds.run_to(world, landing)
 	assert_int(PlayerView.of(world, 1).own_strike_tick).is_equal(0)
 	assert_int(PlayerView.of(world, 3).own_strike_tick).is_equal(landing + 5)

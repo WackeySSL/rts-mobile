@@ -174,7 +174,10 @@ var warned_x: PackedInt32Array = PackedInt32Array()
 var warned_y: PackedInt32Array = PackedInt32Array()
 var warned_tick: PackedInt32Array = PackedInt32Array()
 ## The viewing player's own pending rupture: its landing tick, 0 when none is pending. Own state
-## only; no other player's tick is ever copied here (theirs are in the `warned_*` lists).
+## only; no other player's tick is ever copied here (theirs are in the `warned_*` lists). Test it
+## for 0 and never compare it with a stamp: the sim drops a SUPERWEAPON while it is set, one stamped
+## at the landing tick itself included (COMMANDS runs before FIRE clears it). A blackout never sets
+## it, so a rupture may follow a blackout in the same think, but nothing may follow a rupture.
 var own_strike_tick: int = 0
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
 ## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
