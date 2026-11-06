@@ -1,6 +1,6 @@
 ---
 name: balance-report
-description: Runs headless AI-vs-AI matches with fixed seeds and writes a balance report (win rates per side and difficulty, match length, production share and kill efficiency per unit) with at most three data-only tuning proposals. Use for any balance question, unit strength complaint, difficulty tuning and the nightly balance job.
+description: Runs headless AI-vs-AI matches with fixed seeds and writes a balance report (win rates per side and difficulty, match length, production share and kill efficiency per unit) with at most three data-only tuning proposals. Use for any balance question, unit strength complaint, difficulty tuning and the balance run (`balance.yml`).
 argument-hint: "[number of matches, default 100]"
 ---
 
@@ -9,7 +9,7 @@ argument-hint: "[number of matches, default 100]"
 Number of matches: `$ARGUMENTS` (use 100 if empty). Seeds are 1..N (`--seed-start 1`), so reports
 stay comparable; only the Phase 4 gate run uses the held-out seeds 1001-1100 (ADR 0031 §6).
 
-The matches run only in GitHub Actions (the nightly balance job), never in a session (CLAUDE.md,
+The matches run only in GitHub Actions (the balance run, `balance.yml`), never in a session (CLAUDE.md,
 Token budget). In a session, read the latest comment on the `balance` issue or the balance run's
 artifact instead of running step 1.
 
