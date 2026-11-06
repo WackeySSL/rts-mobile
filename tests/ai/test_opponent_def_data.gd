@@ -192,15 +192,8 @@ func test_the_strong_tier_builds_the_factory_and_second_refinery_earlier(
 	var standard: int = def.build_orders[1].steps.find(factory)
 	var strong: int = def.build_orders[2].steps.find(factory)
 	assert_int(strong).is_between(0, standard - 1)
-	(
-		assert_int(
-			def.build_orders[1].steps.count(
-				&"refinery" if faction == "fossil" else &"renew_refinery"
-			)
-		)
-		. is_equal(1)
-	)
 	var refinery: StringName = &"refinery" if faction == "fossil" else &"renew_refinery"
+	assert_int(def.build_orders[1].steps.count(refinery)).is_equal(1)
 	assert_int(def.build_orders[2].steps.count(refinery)).is_equal(2)
 	assert_int(def.build_orders[0].steps.count(refinery)).is_equal(1)
 
@@ -240,6 +233,13 @@ func test_every_role_with_weight_has_its_producer_and_requirement_in_the_tiers_s
 						)
 						. contains([unit.requires.type_id])
 					)
+
+
+func test_a_build_order_def_has_empty_defaults_unlike_the_other_defs() -> void:
+	var order: AiBuildOrderDef = AiBuildOrderDef.new()
+	assert_str(String(order.id)).is_empty()
+	assert_int(order.tier).is_equal(0)
+	assert_array(order.steps).is_empty()
 
 
 func test_the_role_weights_cover_every_tier_and_role_and_each_tier_draws_something(

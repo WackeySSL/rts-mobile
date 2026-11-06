@@ -11,8 +11,6 @@ extends RefCounted
 enum SquadState { HOME, WAVE, RETREAT }
 ## The owners of a goal key: the staging point (rally, retreat), the army goal and the scout's way.
 enum Owner { STAGING, ARMY, SCOUT }
-## What a squad is for (AiArmy, P179, owns the meaning; NONE: the slot is free).
-enum SquadRole { HOME, WAVE }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 
@@ -37,7 +35,7 @@ var staging_y: int = NONE
 var base_x: int = NONE
 var base_y: int = NONE
 ## Squads, `squads_max` of each (a squad is used while its `squad_role` is not NONE): role, state,
-## goal point in tiles, and the army value at launch. `squad_role` holds a `SquadRole` and
+## goal point in tiles, and the army value at launch. `squad_role` is AiArmy's role code (P179) and
 ## `squad_state` a `SquadState`. Their members are the pairs of `member_id`
 ## (ascending, at most `unit_cap`) and `member_squad`.
 var squad_role: PackedInt32Array = PackedInt32Array()
@@ -67,9 +65,10 @@ var seen_last_tick: PackedInt32Array = PackedInt32Array()
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
-## class, at most `goal_keys_max`, and who set each (`Owner`; writers: AiArmy for STAGING and ARMY,
-## AiIntel for SCOUT). The army goal is one cell at a time: AiArmy removes its key before it adds
-## the next. The scout's key is added only while the army goal is free or single-class.
+## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
+## STAGING and ARMY, AiIntel SCOUT). The army goal is one cell at a time: AiArmy releases its key
+## before it adds the next. The scout's key is added only while the army goal is free or
+## single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
 var goal_class: PackedInt32Array = PackedInt32Array()
@@ -110,24 +109,29 @@ func goal_keys() -> int:
 	return goal_x.size()
 
 
-## Adds the key (tile, move class) for `owner` unless it is live already; false when the cap is
-## reached.
-func add_goal_key(x: int, y: int, move_class: int, owner: int = Owner.ARMY) -> bool:
+## Adds `owner`'s bit to the key (tile, move class), making the key when it is not live; a key two
+## owners use keeps both bits. False when the key is new and the cap is reached.
+func add_goal_key(x: int, y: int, move_class: int, owner: int) -> bool:
 	for at: int in goal_x.size():
 		if goal_x[at] == x and goal_y[at] == y and goal_class[at] == move_class:
+			goal_owner[at] |= 1 << owner
 			return true
 	if goal_x.size() >= goal_keys_max:
 		return false
 	goal_x.append(x)
 	goal_y.append(y)
 	goal_class.append(move_class)
-	goal_owner.append(owner)
+	goal_owner.append(1 << owner)
 	return true
 
 
-## Removes the key at index `key` (0 to `goal_keys() - 1`); the later keys keep their order.
-func remove_goal_key(key: int) -> void:
+## Clears `owner`'s bit of the key at index `key` (0 to `goal_keys() - 1`) and removes the key,
+## in every parallel array and keeping the later keys' order, only when no owner is left.
+func release_goal_key(key: int, owner: int) -> void:
 	if key < 0 or key >= goal_x.size():
+		return
+	goal_owner[key] &= ~(1 << owner)
+	if goal_owner[key] != 0:
 		return
 	goal_x.remove_at(key)
 	goal_y.remove_at(key)
@@ -135,11 +139,11 @@ func remove_goal_key(key: int) -> void:
 	goal_owner.remove_at(key)
 
 
-## How many live keys `owner` holds.
+## How many live keys `owner` uses.
 func goal_keys_of(owner: int) -> int:
 	var found: int = 0
-	for at: int in goal_owner.size():
-		if goal_owner[at] == owner:
+	for mask: int in goal_owner:
+		if mask & (1 << owner) != 0:
 			found += 1
 	return found
 
@@ -156,6 +160,7 @@ func can_send(count: int = 1) -> bool:
 	return commands_left >= count
 
 
-## Takes `count` Commands off the budget.
+## Takes `count` (not negative) Commands off the budget; an overspend leaves 0, never less.
 func spent(count: int = 1) -> void:
+	assert(count >= 0)
 	commands_left = maxi(commands_left - count, 0)

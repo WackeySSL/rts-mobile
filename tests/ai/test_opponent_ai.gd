@@ -229,36 +229,57 @@ func test_the_caps_come_from_their_own_def_fields() -> void:
 	var memory: AiMemory = AiMemory.create(def)
 	assert_array([memory.goal_keys_max, memory.squads_max, memory.sectors_max]).is_equal([3, 5, 7])
 	assert_array([memory.squad_role.size(), memory.sector_own.size()]).is_equal([5, 7])
-	assert_bool(memory.add_goal_key(10, 12, 2)).is_true()
-	assert_bool(memory.add_goal_key(10, 12, 2)).is_true()
+	assert_bool(memory.add_goal_key(10, 12, 2, AiMemory.Owner.ARMY)).is_true()
+	assert_bool(memory.add_goal_key(10, 12, 2, AiMemory.Owner.ARMY)).is_true()
 	assert_int(memory.goal_keys()).is_equal(1)
-	assert_bool(memory.add_goal_key(10, 12, 0)).is_true()
-	assert_bool(memory.add_goal_key(20, 20, 2)).is_true()
+	assert_bool(memory.add_goal_key(10, 12, 0, AiMemory.Owner.ARMY)).is_true()
+	assert_bool(memory.add_goal_key(20, 20, 2, AiMemory.Owner.ARMY)).is_true()
 	assert_int(memory.goal_keys()).is_equal(3)
-	assert_bool(memory.add_goal_key(20, 20, 0)).is_false()
+	assert_bool(memory.add_goal_key(20, 20, 0, AiMemory.Owner.ARMY)).is_false()
 	assert_int(memory.goal_keys()).is_equal(3)
 	memory.clear_goal_keys()
 	assert_array([memory.goal_keys(), memory.goal_owner.size()]).is_equal([0, 0])
 
 
-func test_goal_keys_know_their_owner_and_one_can_be_removed() -> void:
+func test_goal_keys_keep_every_owner_and_go_when_the_last_releases() -> void:
 	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
-	memory.add_goal_key(5, 5, 2, AiMemory.Owner.STAGING)
-	memory.add_goal_key(30, 30, 0, AiMemory.Owner.ARMY)
-	memory.add_goal_key(30, 30, 2, AiMemory.Owner.ARMY)
-	memory.add_goal_key(12, 40, 2, AiMemory.Owner.SCOUT)
-	assert_array([memory.goal_keys_of(0), memory.goal_keys_of(1), memory.goal_keys_of(2)]).is_equal(
-		[1, 2, 1]
-	)
-	# The army replaces its goal: it removes its key, then adds the next one.
-	memory.remove_goal_key(1)
-	assert_array(memory.goal_x).is_equal(PackedInt32Array([5, 30, 12]))
-	assert_array(memory.goal_owner).is_equal(
-		PackedInt32Array([AiMemory.Owner.STAGING, AiMemory.Owner.ARMY, AiMemory.Owner.SCOUT])
-	)
-	memory.remove_goal_key(7)
-	memory.remove_goal_key(-1)
+	var staging: int = AiMemory.Owner.STAGING
+	var army: int = AiMemory.Owner.ARMY
+	var scout: int = AiMemory.Owner.SCOUT
+	memory.add_goal_key(5, 5, 2, staging)
+	memory.add_goal_key(30, 30, 2, army)
+	# The scout shares the army's key: one key, two owners.
+	memory.add_goal_key(30, 30, 2, scout)
+	memory.add_goal_key(12, 40, 2, scout)
 	assert_int(memory.goal_keys()).is_equal(3)
+	assert_array([memory.goal_keys_of(staging), memory.goal_keys_of(army)]).is_equal([1, 1])
+	assert_int(memory.goal_keys_of(scout)).is_equal(2)
+	# The army releases its goal: the scout keeps the shared key.
+	memory.release_goal_key(1, army)
+	assert_int(memory.goal_keys()).is_equal(3)
+	assert_array([memory.goal_keys_of(army), memory.goal_keys_of(scout)]).is_equal([0, 2])
+	# The scout releases it too: the key goes, in every parallel array, the others keep their order.
+	memory.release_goal_key(1, scout)
+	assert_int(memory.goal_keys()).is_equal(2)
+	assert_array(memory.goal_x).is_equal(PackedInt32Array([5, 12]))
+	assert_array(memory.goal_owner).is_equal(PackedInt32Array([1 << staging, 1 << scout]))
+	assert_array([memory.goal_y.size(), memory.goal_class.size()]).is_equal([2, 2])
+	memory.release_goal_key(7, army)
+	memory.release_goal_key(-1, army)
+	assert_int(memory.goal_keys()).is_equal(2)
+
+
+func test_a_shared_key_never_passes_the_cap_and_a_new_key_is_refused_when_full() -> void:
+	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.goal_keys_max = 2
+	var memory: AiMemory = AiMemory.create(def)
+	assert_bool(memory.add_goal_key(1, 1, 0, AiMemory.Owner.ARMY)).is_true()
+	assert_bool(memory.add_goal_key(2, 2, 0, AiMemory.Owner.STAGING)).is_true()
+	assert_bool(memory.add_goal_key(3, 3, 0, AiMemory.Owner.SCOUT)).is_false()
+	# A full cache still lets the scout use a key that is live.
+	assert_bool(memory.add_goal_key(1, 1, 0, AiMemory.Owner.SCOUT)).is_true()
+	assert_int(memory.goal_keys()).is_equal(2)
+	assert_int(memory.goal_keys_of(AiMemory.Owner.SCOUT)).is_equal(1)
 
 
 func test_the_command_budget_and_the_credit_reserve_start_empty() -> void:

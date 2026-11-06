@@ -7,8 +7,7 @@ extends AiDef
 ## at their script defaults by a data test: `build_order`, `place_tries`, `harvesters_wanted`,
 ## `guard_offset_tiles` (replaced by `build_orders`, `place_tries_per_think`, the level's
 ## `harvesters_per_refinery` and the staging point). A def lists only its own faction's type ids.
-## Script defaults equal the fossil file, but for `id` and `build_orders`
-## (resources).
+## Script defaults equal the fossil file, but for `id` and `build_orders` (resources).
 
 ## The roles of the army's mix, in the order of `role_weights`.
 enum Role { ANTI_INFANTRY, ANTI_VEHICLE, TANK, ARTILLERY }
