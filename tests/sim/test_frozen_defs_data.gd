@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
-## The frozen defs of the pinned scenarios (plan row P171, ADR 0031): the perf arena, the base
-## arena and the controls test map load their rules, units, weapons and factions from
-## `data/dev/arena/`, never from the shipped `data/units/`, `data/weapons/`, `data/factions/` or
-## `data/rules.tres`, so a tuning change to a shipped file cannot move a golden hash. No test here
-## compares a copy's numbers with its shipped original: the first tuning row would break it. Only
-## the display name follows the shipped def (it is presentation, not a rule).
+## The frozen defs of the pinned scenarios (plan rows P171 and P174, ADR 0031): the perf arena, the
+## base arena, the controls test map and `perf_ai` load their rules, units, weapons and factions
+## from `data/dev/arena/`, never from the shipped `data/units/`, `data/weapons/`, `data/factions/`
+## or `data/rules.tres`, so a tuning change to a shipped file cannot move a golden hash or
+## `perf_ai`'s AI workload. No test here compares a copy's numbers with its shipped original: the
+## first tuning row would break it. Only the display name follows the shipped def (it is
+## presentation, not a rule).
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")

@@ -88,6 +88,16 @@ func _assert_mirror(path: String, faction_one: StringName, faction_two: StringNa
 		)
 		if base.unit in source.factions[base.owner].roster and base.unit in faction.roster:
 			assert_object(made.unit).is_same(base.unit)
+	# A mirror: both sides start with the same blocks of the same units, in the same order.
+	assert_array(_type_ids(mirror, 2)).override_failure_message(path).is_equal(_type_ids(mirror, 1))
+
+
+func _type_ids(scenario: ScenarioDef, owner: int) -> Array[String]:
+	var ids: Array[String] = []
+	for spawn: SpawnDef in scenario.spawns:
+		if spawn.owner == owner:
+			ids.append(String(spawn.unit.type_id))
+	return ids
 
 
 func _same_spawn(a: SpawnDef, b: SpawnDef) -> bool:
