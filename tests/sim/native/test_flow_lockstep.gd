@@ -15,7 +15,8 @@ const StateDiff: GDScript = preload("res://tests/sim/support/state_diff.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const TICKS: int = 900
 const SMALL_TICKS: int = 300
-## Odd budgets, 0 (a checkpoint tick) and 509 (nearly the 512 of data/rules.tres).
+## Odd budgets, 0 (a checkpoint tick) and 509 (nearly the 512 of the frozen
+## data/dev/arena/rules.tres).
 const BUDGETS: Array[int] = [7, 61, 1, 127, 13, 0, 31, 509, 3, 97, 251, 63]
 const KEYS: int = 12
 ## A group of units takes the field of the next key every REQUEST_EVERY ticks.
@@ -242,10 +243,10 @@ func _take_field(world: World, group: int, key: Vector2i) -> void:
 
 
 func _rules() -> RulesDef:
-	return load("res://data/rules.tres") as RulesDef
+	return load("res://data/dev/arena/rules.tres") as RulesDef
 
 
-## The perf arena with `rules` (null: data/rules.tres).
+## The perf arena with `rules` (null: the frozen data/dev/arena/rules.tres).
 func _arena_scenario(rules: RulesDef) -> ScenarioDef:
 	var scenario: ScenarioDef = (load(ARENA_PATH) as ScenarioDef).duplicate() as ScenarioDef
 	if rules != null:
@@ -255,7 +256,7 @@ func _arena_scenario(rules: RulesDef) -> ScenarioDef:
 
 ## Sixty tanks on an open map of `size` tiles.
 func _small_scenario(size: Vector2i) -> ScenarioDef:
-	var tank: UnitDef = load("res://data/units/light_tank.tres") as UnitDef
+	var tank: UnitDef = load("res://data/dev/arena/units/light_tank.tres") as UnitDef
 	var spawn: SpawnDef = SpawnDef.new()
 	spawn.owner = 1
 	spawn.unit = tank

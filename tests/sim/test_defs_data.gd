@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## Phase 2 data files (plan P27b): the starting numbers of ADRs 0007-0010 as literals, the rules
-## every unit file keeps, and the link from every scenario to data/rules.tres. The perf arena map
-## and scenario (P27c, ADR 0011 section 4) are pinned here too.
+## every unit file keeps, and the link from every scenario to its rules file (the frozen
+## data/dev/arena/rules.tres for the three pinned scenarios, data/rules.tres for the rest). The perf
+## arena map and scenario (P27c, ADR 0011 section 4) are pinned here too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
@@ -79,7 +80,8 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_thirty_six_starting_ints_and_the_script_defaults_equal_it() -> void:
+func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_the_frozen_file(
+) -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -129,7 +131,11 @@ func test_rules_file_holds_the_thirty_six_starting_ints_and_the_script_defaults_
 	assert_array(fields).contains_exactly_in_any_order(expected.keys())
 	for field: String in expected:
 		assert_that(rules.get(field)).override_failure_message(field).is_equal(expected[field])
-		assert_that(defaults.get(field)).override_failure_message(field).is_equal(rules.get(field))
+	# RulesDef's script defaults are the frozen file's numbers (not data/rules.tres, which a tuning
+	# row changes): a hand-built World with no rules keeps them.
+	var frozen: RulesDef = load(FROZEN_RULES_PATH)
+	for field: String in expected:
+		assert_that(defaults.get(field)).override_failure_message(field).is_equal(frozen.get(field))
 
 
 func test_every_unit_file_keeps_its_ranges_ordered_and_its_numbers_in_bounds() -> void:

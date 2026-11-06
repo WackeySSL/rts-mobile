@@ -195,7 +195,7 @@ func test_a_wave_sends_no_order_that_it_has_no_unit_or_no_enemy_for() -> void:
 
 
 func _rules() -> RulesDef:
-	return load("res://data/rules.tres") as RulesDef
+	return load("res://data/dev/arena/rules.tres") as RulesDef
 
 
 ## Asserts that a run reached each rule at least as often as `least` (by tally name) says.
@@ -221,8 +221,9 @@ func _tables(world: World) -> Array:
 	]
 
 
-## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: data/rules.tres)
-## and, with `paint`, a tenth of its cells turned to slow ground, scrub, rock or water.
+## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: the frozen
+## data/dev/arena/rules.tres) and, with `paint`, a tenth of its cells turned to slow ground, scrub,
+## rock or water.
 func _arena(rules: RulesDef = null, paint: bool = false) -> World:
 	var scenario: ScenarioDef = (load(ARENA_PATH) as ScenarioDef).duplicate() as ScenarioDef
 	if rules != null:

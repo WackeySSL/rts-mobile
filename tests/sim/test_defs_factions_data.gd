@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
+## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
@@ -422,7 +423,7 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	for each: FactionDef in rosters:
 		for member: UnitDef in each.roster:
 			ids.append(String(member.type_id))
-	var world: World = Worlds.open(COLS, ROWS, ids)
+	var world: World = Worlds.open(COLS, ROWS, ids, UNITS_DIR + "/")
 	var at: int = 0
 	for each: FactionDef in rosters:
 		for member: UnitDef in each.roster:

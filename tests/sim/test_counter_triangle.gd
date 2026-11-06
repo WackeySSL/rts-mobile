@@ -19,6 +19,9 @@ extends GdUnitTestSuite
 ## has a row and stands beyond its sight (`_beyond_sight`): the data units never acquire farther
 ## than they see, and nothing here issues an `ATTACK`.
 
+## The shipped files this suite judges (the rig's default is the frozen copies).
+const SHIPPED_UNITS: String = "res://data/units/"
+const SHIPPED_RULES: String = "res://data/rules.tres"
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 ## The columns of a duel stand this far apart in x (centred on the 32000 wide map).
 const GAP: int = 14000
@@ -37,7 +40,7 @@ func test_six_rifle_squads_lose_to_one_light_tank() -> void:
 		var duel: Dictionary = _twice(Rig.RIFLE, 6, Rig.TANK, 1, swapped)
 		assert_array(duel["types"]).override_failure_message(label).is_equal([Rig.TANK])
 		assert_int(duel["ticks"]).override_failure_message(label).is_between(600, CAP - 1)
-		assert_int(duel["hp"][0]).override_failure_message(label).is_between(1, 300)
+		assert_int(duel["hp"][0]).override_failure_message(label).is_between(1, _tank_hp())
 
 
 ## 2 rocket squads against 1 light tank: at least one squad wins and the tank is dead; the fight is
@@ -91,6 +94,11 @@ func test_each_duel_gives_the_same_final_hash_twice_and_the_duels_differ() -> vo
 	assert_int(distinct.size()).is_equal(hashes.size())
 
 
+## The shipped light tank's hit points (the most it can end a fight with).
+func _tank_hp() -> int:
+	return (load(SHIPPED_UNITS + "light_tank.tres") as UnitDef).max_hp
+
+
 ## One duel run twice: the second result must equal the first (hash, survivors, hp, ticks), and
 ## the fight must have ended before the cap, with no shell left in flight. Returns the first.
 func _twice(
@@ -118,7 +126,7 @@ func _twice(
 func _duel(
 	first_type: int, first_count: int, second_type: int, second_count: int, swapped: bool
 ) -> Dictionary:
-	var world: World = Rig.data_world(32, 16)
+	var world: World = Rig.data_world(32, 16, true, SHIPPED_UNITS, SHIPPED_RULES)
 	var left_x: int = 16000 - GAP / 2
 	var right_x: int = 16000 + GAP / 2
 	var first_owner: int = 2 if swapped else 1

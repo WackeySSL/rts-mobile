@@ -1,7 +1,7 @@
 extends RefCounted
 ## Worlds and helpers for the targeting tests (P41). Not a test suite.
 ##
-## `data_world` builds a World from the three shipped unit types (rifle squad, rocket squad, light
+## `data_world` builds a World from the three frozen unit types (rifle squad, rocket squad, light
 ## tank: types 0, 1 and 2, weapons 0, 1 and 2), so the ranges and armour percents are the ones of
 ## data/: rifle range 4000 and acquire 5000 with 100/10 percent against infantry/light, rocket 5000
 ## and 5500 with 20/100, tank 4500 and 5500 with 70/60; sight is 6000 or 7000. Targets within
@@ -15,34 +15,48 @@ extends RefCounted
 ## player sees every cell from the start, as the authoring rule would give them. The fog suites and
 ## the lockstep worlds pass `revealed` false and stamp real discs (`Worlds.stamp_fog`).
 
-const RULES_PATH: String = "res://data/rules.tres"
-const RIFLE_PATH: String = "res://data/units/rifle_squad.tres"
-const ROCKET_PATH: String = "res://data/units/rocket_squad.tres"
-const TANK_PATH: String = "res://data/units/light_tank.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
+const RIFLE_PATH: String = UNIT_DIR + "rifle_squad.tres"
+const ROCKET_PATH: String = UNIT_DIR + "rocket_squad.tres"
+const TANK_PATH: String = UNIT_DIR + "light_tank.tres"
 const RIFLE: int = 0
 const ROCKET: int = 1
 const TANK: int = 2
 
 
-## A World of `cols` x `rows` open tiles with the shipped rules and the three shipped types, with
-## the map revealed to both players unless `revealed` is false (see the top of the file).
-static func data_world(cols: int = 20, rows: int = 12, revealed: bool = true) -> World:
-	var units: Array[UnitDef] = [
-		load(RIFLE_PATH) as UnitDef, load(ROCKET_PATH) as UnitDef, load(TANK_PATH) as UnitDef
-	]
-	return world_of(units, cols, rows, revealed)
+## A World of `cols` x `rows` open tiles with the frozen rules and the three frozen types, with
+## the map revealed to both players unless `revealed` is false (see the top of the file). A suite
+## about the shipped data passes `unit_dir` and `rules_path` (literals in the suite).
+static func data_world(
+	cols: int = 20,
+	rows: int = 12,
+	revealed: bool = true,
+	unit_dir: String = UNIT_DIR,
+	rules_path: String = RULES_PATH
+) -> World:
+	var units: Array[UnitDef] = []
+	for id: String in ["rifle_squad", "rocket_squad", "light_tank"]:
+		units.append(load(unit_dir + id + ".tres") as UnitDef)
+	return world_of(units, cols, rows, revealed, 2, rules_path)
 
 
-## A World of `cols` x `rows` open tiles with the shipped rules, one type per entry of `units`
-## (type 0 is `units[0]`) and `players` players (two, as the shipped scenarios), with the map
-## revealed to all of them unless `revealed` is false (see the top of the file).
+## A World of `cols` x `rows` open tiles with the frozen rules, one type per entry of `units`
+## (type 0 is `units[0]`) and `players` players (two, as the scenarios), with the map
+## revealed to all of them unless `revealed` is false (see the top of the file). `rules_path` is
+## the rules file (the frozen one by default).
 static func world_of(
-	units: Array, cols: int = 20, rows: int = 12, revealed: bool = true, players: int = 2
+	units: Array,
+	cols: int = 20,
+	rows: int = 12,
+	revealed: bool = true,
+	players: int = 2,
+	rules_path: String = RULES_PATH
 ) -> World:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(cols, rows)
 	scenario.player_count = players
-	scenario.rules = load(RULES_PATH) as RulesDef
+	scenario.rules = load(rules_path) as RulesDef
 	scenario.roster.assign(units)
 	var world: World = World.from_scenario(scenario)
 	if revealed:

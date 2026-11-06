@@ -194,7 +194,9 @@ func test_the_arena_gathered_into_the_corner_of_the_map_matches() -> void:
 
 
 func test_the_same_run_on_changed_rules_matches() -> void:
-	var rules: RulesDef = (load("res://data/rules.tres") as RulesDef).duplicate() as RulesDef
+	var rules: RulesDef = (
+		(load("res://data/dev/arena/rules.tres") as RulesDef).duplicate() as RulesDef
+	)
 	for info: Dictionary in rules.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info["type"] == TYPE_INT:
 			rules.set(info["name"], int(rules.get(info["name"])) + 3)
@@ -244,9 +246,10 @@ func _assert_reached(rig: RefCounted, least: Dictionary) -> void:
 		)
 
 
-## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: data/rules.tres),
-## then with the members of `members` set on the World, and, with `pile`, the 150 units gathered
-## into a square of PILE_SIDE milli-tiles (their goals follow them: they stand idle there).
+## The seed-42 arena (the jitter drawn as the runner draws it) with `rules` (null: the frozen
+## data/dev/arena/rules.tres), then with the members of `members` set on the World, and, with
+## `pile`, the 150 units gathered into a square of PILE_SIDE milli-tiles (their goals follow them:
+## they stand idle there).
 func _arena(
 	pile: bool = false, rules: RulesDef = null, members: Dictionary = {}, pile_at: int = PILE_AT
 ) -> World:

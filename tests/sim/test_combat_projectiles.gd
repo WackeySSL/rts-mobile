@@ -19,7 +19,7 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const INFANTRY: int = World.Armour.INFANTRY
 const LIGHT: int = World.Armour.LIGHT
 const HEAVY: int = World.Armour.HEAVY
@@ -41,7 +41,7 @@ const SHOOTER_AT: Vector2i = Vector2i(8000, 6000)
 const SIDE: int = 500
 ## 30 damage against (70, 60, 35, 40) percent: 18 against a light target, as in test_combat.gd.
 const GUN_VS: Array[int] = [70, 60, 35, 40]
-## The pool of the shipped rules (`max_projectiles`).
+## The pool of the frozen rules (`max_projectiles`).
 const POOL: int = 512
 
 
@@ -99,7 +99,7 @@ func test_a_shell_takes_the_top_slot_and_hits_a_flight_time_later() -> void:
 ## 600.0008 away and takes 2, which an integer root rounded down would call 1; the same at 5000
 ## (4000 east, 3001 south) takes 11 at 500 a tick where 4000 and 3000 take 10; 3-4-5 triangles
 ## (2700, 3600 at 600 is 8; 3000, 4000 at 300 is 17) and an axis (4500 at 600 is 8; 5000 at 300 is
-## 17, the longest flight of the shipped data).
+## 17, the longest flight of the frozen data).
 func test_the_flight_time_is_the_ceiling_of_the_distance_over_the_speed_and_at_least_1() -> void:
 	var cases: Array[Array] = [
 		[600, 0, 600, 1],
@@ -691,14 +691,13 @@ func test_a_shell_does_the_percent_damage_of_its_own_weapon_for_each_armour_clas
 			)
 
 
-## The shipped weapons: the tank cannon (600 a tick) at its full range of 4500 flies 8 ticks, the
+## The frozen weapons: the tank cannon (600 a tick) at its full range of 4500 flies 8 ticks, the
 ## rocket (300) at 5000 flies 17, the longest flight there is (`proj_ticks` is at most 17 with the
-## shipped data: the comment of the World's column), and the rifle is a hitscan that takes no slot:
+## frozen data: the comment of the World's column), and the rifle is a hitscan that takes no slot:
 ## its hit lands in the tick of the shot and the stack stays full. The first hits are the data's
 ## numbers: 21 hp from a cannon shell on a rifle squad (30 * 70 / 100) and 50 from a rocket on a
 ## tank (50 * 100 / 100).
-func test_the_shipped_weapons_fly_8_and_17_ticks_at_full_range_and_the_rifle_takes_no_slot(
-) -> void:
+func test_the_frozen_weapons_fly_8_and_17_ticks_at_full_range_and_the_rifle_takes_no_slot() -> void:
 	var world: World = Rig.data_world()
 	world.add_unit(1, Rig.TANK, 4000, 6000)
 	world.add_unit(2, Rig.RIFLE, 8500, 6000)
@@ -752,7 +751,7 @@ func _slot_world() -> World:
 	return world
 
 
-## A World with the shipped rules but `pool` projectile slots, on the open 20 x 12 tile map.
+## A World with the frozen rules but `pool` projectile slots, on the open 20 x 12 tile map.
 func _world(defs: Array[UnitDef], pool: int = POOL) -> World:
 	var rules: RulesDef = (load(RULES_PATH) as RulesDef).duplicate() as RulesDef
 	rules.max_projectiles = pool

@@ -1,9 +1,10 @@
 class_name RulesDef
 extends Resource
 ## Every tuning int of the sim (Phase 2: ADRs 0007-0010, Phase 3: ADR 0018). The instance is
-## res://data/rules.tres, where all tuning happens; these defaults equal that file (a test pins
-## both). World copies the ints under these names at match start. Times are ticks and distances are
-## milli-tiles.
+## res://data/rules.tres, where all tuning happens. These defaults equal the frozen
+## res://data/dev/arena/rules.tres, not the shipped file (a test pins both), so a tuning row leaves
+## a hand-built World's numbers alone. World copies the ints under these names at match start.
+## Times are ticks and distances are milli-tiles.
 
 ## Targeting: a unit scans for a target when (tick + id) % retarget_period_ticks == 0.
 @export var retarget_period_ticks: int = 5

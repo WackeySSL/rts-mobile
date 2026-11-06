@@ -3,10 +3,11 @@ extends GdUnitTestSuite
 ## footprint centre through `add_unit`, blocks the footprint for every movement class and bumps
 ## `map_version` once; `remove_dead` gives the tiles back; a scenario spawn of a BuildingDef places
 ## buildings through it; `had_producer` follows ADR 0018 section 7. Hand-built Worlds from
-## `tests/sim/support/building_worlds.gd`, the shipped units and buildings from `data/units/`.
+## `tests/sim/support/building_worlds.gd`, the frozen units and buildings from
+## `data/dev/arena/units/`.
 
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const BLOCKED: Array[int] = [0, 0, 0]
 const GRASS: Array[int] = [10, 10, 10]
 
@@ -153,7 +154,7 @@ func test_a_scenario_spawn_of_a_building_def_places_buildings_through_add_buildi
 	scenario.rules = load(RULES_PATH) as RulesDef
 	var spawn: SpawnDef = SpawnDef.new()
 	spawn.owner = 2
-	spawn.unit = load("res://data/units/headquarters.tres") as UnitDef
+	spawn.unit = load("res://data/dev/arena/units/headquarters.tres") as UnitDef
 	spawn.count = 3
 	spawn.columns = 2
 	spawn.origin_tile = Vector2i(1, 1)

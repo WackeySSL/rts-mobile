@@ -7,8 +7,8 @@ extends GdUnitTestSuite
 ## charge_elapsed_ticks` ticks into the match and not a tick earlier. The numbers are read from the
 ## Deep Bore's data file, so a retune moves no case.
 
-const BORE_PATH: String = "res://data/units/fossil_strike.tres"
-const HQ_PATH: String = "res://data/units/headquarters.tres"
+const BORE_PATH: String = "res://data/dev/arena/units/fossil_strike.tres"
+const HQ_PATH: String = "res://data/dev/arena/units/headquarters.tres"
 ## The first tick the aged bore accepts in the order cases.
 const FIRST_TICK: int = 40
 

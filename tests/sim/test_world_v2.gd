@@ -6,9 +6,10 @@ extends GdUnitTestSuite
 ## literals, so no data file can agree with a wrong rule.
 
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
-## The 18 Phase 3 rule ints in RulesDef's order, with their values in data/rules.tres.
+## The 18 Phase 3 rule ints in RulesDef's order, with their values in the frozen
+## data/dev/arena/rules.tres.
 const PHASE_3_RULES: Dictionary[String, int] = {
 	"start_credits": 2000,
 	"ore_start": 20,

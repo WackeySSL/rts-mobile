@@ -654,10 +654,10 @@ func _arena() -> World:
 
 
 ## A World on a map of `cols` x `rows` tiles with three players, three types and two weapons (a
-## rifle twin shares the rifle), five rows and the cap of data/rules.tres.
+## rifle twin shares the rifle), five rows and the cap of the frozen data/dev/arena/rules.tres.
 func _odd_world(cols: int, rows: int) -> World:
-	var tank: UnitDef = load("res://data/units/light_tank.tres") as UnitDef
-	var rifle: UnitDef = load("res://data/units/rifle_squad.tres") as UnitDef
+	var tank: UnitDef = load("res://data/dev/arena/units/light_tank.tres") as UnitDef
+	var rifle: UnitDef = load("res://data/dev/arena/units/rifle_squad.tres") as UnitDef
 	var twin: UnitDef = rifle.duplicate() as UnitDef
 	twin.type_id = &"rifle_twin"
 	var spawn: SpawnDef = SpawnDef.new()
@@ -668,7 +668,7 @@ func _odd_world(cols: int, rows: int) -> World:
 	spawn.columns = 3
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(cols, rows)
-	scenario.rules = load("res://data/rules.tres") as RulesDef
+	scenario.rules = load("res://data/dev/arena/rules.tres") as RulesDef
 	scenario.player_count = 3
 	scenario.roster.assign([tank, rifle, twin])
 	scenario.spawns.assign([spawn])

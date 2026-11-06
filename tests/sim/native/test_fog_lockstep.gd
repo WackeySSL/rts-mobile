@@ -293,7 +293,9 @@ func test_the_controls_test_scenario_under_four_seeds_matches() -> void:
 ## data's +3 is 6): the players take their turns on ticks 0, 4, 8 and 1, 5, 9, so a 3 written in
 ## C++ fails.
 func test_the_same_run_on_changed_rules_matches() -> void:
-	var rules: RulesDef = (load("res://data/rules.tres") as RulesDef).duplicate() as RulesDef
+	var rules: RulesDef = (
+		(load("res://data/dev/arena/rules.tres") as RulesDef).duplicate() as RulesDef
+	)
 	for info: Dictionary in rules.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info["type"] == TYPE_INT:
 			rules.set(info["name"], int(rules.get(info["name"])) + 3)

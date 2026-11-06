@@ -1,19 +1,19 @@
 extends GdUnitTestSuite
 ## Cancelling a site (plan row P128b, ADR 0026 section 6): `CANCEL_BUILD` 16 names an own row with
 ## work left (`build_left` above 0). In COMMANDS the credits rise by `construct_refund_percent` of
-## the price (integer, from `data/rules.tres`, whatever the work done or the damage taken), the hit
-## points fall to 0 and `build_left` becomes -1; the row leaves in the same tick's REMOVE with its
-## tiles freed, no loss counted and 1 in the seventh int of its DIED record. Until REMOVE the row
-## holds its site slot, its tiles and its reach, so a PLACE of the cancel's tick starts nothing. A
-## command for an enemy's row, a complete building, a unit, an unknown id or a row already
-## cancelled is dropped and counted and changes nothing else. `cancel_rig.gd` has the world; every
-## price and number is read from it. The REMOVE side, the slot, the reach and the derived state are
-## in `test_site_cancel_remove.gd`.
+## the price (integer, from the frozen `data/dev/arena/rules.tres`, whatever the work done or the
+## damage taken), the hit points fall to 0 and `build_left` becomes -1; the row leaves in the same
+## tick's REMOVE with its tiles freed, no loss counted and 1 in the seventh int of its DIED record.
+## Until REMOVE the row holds its site slot, its tiles and its reach, so a PLACE of the cancel's
+## tick starts nothing. A command for an enemy's row, a complete building, a unit, an unknown id or
+## a row already cancelled is dropped and counted and changes nothing else. `cancel_rig.gd` has the
+## world; every price and number is read from it. The REMOVE side, the slot, the reach and the
+## derived state are in `test_site_cancel_remove.gd`.
 
 const SiteRig: GDScript = preload("res://tests/sim/support/site_rig.gd")
 const Rig: GDScript = preload("res://tests/sim/support/cancel_rig.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const OWN_SITE: int = Rig.OWN_SITE
 const ENEMY_SITE: int = Rig.ENEMY_SITE
 const OPEN: Array[int] = Rig.OPEN
