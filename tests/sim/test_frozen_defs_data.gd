@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
-## The frozen defs of the pinned scenarios (plan row P171, ADR 0031): the perf arena, the base
-## arena and the controls test map load their rules, units, weapons and factions from
-## `data/dev/arena/`, never from the shipped `data/units/`, `data/weapons/`, `data/factions/` or
-## `data/rules.tres`, so a tuning change to a shipped file cannot move a golden hash. No test here
-## compares a copy's numbers with its shipped original: the first tuning row would break it. Only
-## the display name follows the shipped def (it is presentation, not a rule).
+## The frozen defs of the pinned scenarios (plan rows P171 and P174, ADR 0031): the perf arena, the
+## base arena, the controls test map and `perf_ai` load their rules, units, weapons and factions
+## from `data/dev/arena/`, never from the shipped `data/units/`, `data/weapons/`, `data/factions/`
+## or `data/rules.tres`, so a tuning change to a shipped file cannot move a golden hash or
+## `perf_ai`'s AI workload. No test here compares a copy's numbers with its shipped original: the
+## first tuning row would break it. Only the display name follows the shipped def (it is
+## presentation, not a rule).
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
@@ -17,7 +18,7 @@ const ALLOWED: Array[String] = [ARENA_DIR + "/", "res://data/maps/", "res://data
 const ANY_PATH: String = 'path="([^"]+)"'
 
 
-func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
+func test_the_pinned_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
 	for scenario_path: String in SCENARIOS:
 		var reached: Array[String] = _closure(scenario_path)
 		for walked: String in reached + [scenario_path]:
@@ -33,7 +34,11 @@ func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void
 			if path.begins_with(ARENA_DIR + "/"):
 				arena_files += 1
 		# The walk must not pass on nothing: a scenario takes rules, units, weapons and factions.
-		var least: int = 30 if scenario_path.ends_with("perf_bases.tres") else 1
+		var least: int = (
+			30
+			if scenario_path.ends_with("perf_bases.tres") or scenario_path.ends_with("perf_ai.tres")
+			else 1
+		)
 		(
 			assert_int(arena_files)
 			. override_failure_message("%s reached %d arena files" % [scenario_path, arena_files])
