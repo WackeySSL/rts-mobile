@@ -51,19 +51,19 @@ cancel) is in the sim but not used (Michael, 2026-11-05).
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Headquarters | Rigworks | Grid Hub | 3x3 | - | +20 | - | Builds structures |
 | Power | Turbine Hall | Wind Park | 2x2 | 300 (Wind Park 250) | +100 (Wind Park +80) | Headquarters | Power |
-| Refinery | Cracking Plant | Synthesis Works | 3x3 | 1 400 | -30 | Power | Oil and gas drop-off, includes 1 tanker |
+| Refinery | Oil Works | Fuel Works | 3x3 | 1 400 | -30 | Power | Oil and gas drop-off, includes 1 tanker |
 | Barracks | Bunkhouse | Crew Hall | 2x2 | 400 | -20 | Power | Infantry |
-| Vehicle factory | Heavy Yard | Motor Works | 3x3 | 1 800 | -40 | Refinery | Vehicles |
-| Radar | Signal Mast | Relay Tower | 2x2 | 800 | -30 | Refinery | Unlocks artillery and the superweapon |
+| Vehicle factory | Heavy Yard | Motor Hall | 3x3 | 1 800 | -40 | Refinery | Vehicles |
+| Radar | Signal Mast | Relay Post | 2x2 | 800 | -30 | Refinery | Unlocks artillery and the superweapon |
 | Defence | Redoubt | Rail Battery | 1x1 | 600 | -20 | Barracks | Redoubt against infantry, Rail Battery against vehicles |
-| Superweapon | Deep Bore | Blackout Array | 3x3 | 2 500 | -60 | Radar | See "Superweapons" |
+| Superweapon | Deep Bore | Dusk Array | 3x3 | 2 500 | -60 | Radar | See "Superweapons" |
 
 ## Units (MVP)
 Starting points for balance runs; the real numbers live in `data/*.tres`.
 
 | Role | Derrick League | Lumen Accord | Cost | HP | Speed (tiles/s) | Range (tiles) | Strong against | Weak against |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Rifle squad | Roustabouts | Linemen | 100 | 100 | 1.0 | 4 | Infantry | Vehicles |
+| Rifle squad | Rig Hands | Linemen | 100 | 100 | 1.0 | 4 | Infantry | Vehicles |
 | Rocket squad | Wildcatters | Breakers | 300 | 90 | 0.9 | 5 | Vehicles, buildings | Infantry |
 | Scout tank | Flarejack | Swift | 600 | 300 | 1.8 | 4.5 | Infantry | Rocket squads, tanks |
 | Tank | Bullhead | Torque | 1 000 | 650 | 1.1 | 5 | Vehicles | Massed rocket squads |
@@ -110,7 +110,7 @@ One per faction, built after the radar. It charges for 5 minutes from completion
 taps its button and a spot and confirms:
 - **Deep Bore** (Derrick League): after a 3-second warning every player sees, the ground splits
   and everything within 3 tiles, own units and buildings included, takes heavy damage.
-- **Blackout Array** (Lumen Accord): enemy buildings within 4 tiles go dark for 30 seconds: no
+- **Dusk Array** (Lumen Accord): enemy buildings within 4 tiles go dark for 30 seconds: no
   power, defences silent, production paused. Units are not affected.
 
 No freeze weapons. The Phase 3 dummy opponent never builds or fires one; Phase 4's AI does.

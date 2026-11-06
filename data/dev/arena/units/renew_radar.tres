@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_building")
 type_id = &"renew_radar"
-display_name = "Relay Tower"
+display_name = "Relay Post"
 faction = &"renew"
 max_hp = 800
 armour = 3

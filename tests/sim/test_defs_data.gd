@@ -38,7 +38,7 @@ func test_unit_files_hold_the_adr_0009_starting_stats() -> void:
 	assert_array(_unit_row("rocket_squad")).is_equal([60, 300, 350, 900, 90, 0, 0, 6000, 5500])
 	# The display names are the Derrick League's (ADR 0023 section 7).
 	assert_array(_unit_label("light_tank")).is_equal(["Flarejack", "tank_cannon"])
-	assert_array(_unit_label("rifle_squad")).is_equal(["Roustabouts", "rifle"])
+	assert_array(_unit_label("rifle_squad")).is_equal(["Rig Hands", "rifle"])
 	assert_array(_unit_label("rocket_squad")).is_equal(["Wildcatters", "rocket"])
 
 

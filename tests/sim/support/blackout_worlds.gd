@@ -4,7 +4,7 @@ extends RefCounted
 ## is the rig's own, so the suites read every expected tick and number from the World's tables.
 ##
 ## `world()` is 40 x 24 open tiles with the shipped rules, two players, a revealed map and these
-## rows (ids from 1, all placed at tick 0): player 1's blackout array `ARRAY` (3x3 at tile (2, 2);
+## rows (ids from 1, all placed at tick 0): player 1's dusk array `ARRAY` (3x3 at tile (2, 2);
 ## it charges for 30 and blacks out buildings within 4000 for 90) and headquarters `HQ_1`; player
 ## 2's headquarters `HQ_2`, power plant `PLANT` (outside the blackout's reach), defence turrets
 ## `TURRET_IN` and `TURRET_OUT`, barracks `BARRACKS` (infantry) and vehicle factory `FACTORY`; and

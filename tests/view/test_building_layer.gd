@@ -293,7 +293,7 @@ func test_a_building_with_no_sheet_or_an_atlas_that_did_not_bake_is_a_flat_diamo
 
 
 ## P112d: a player owns a building of the other faction (the strike test gives a Derrick League
-## player the Lumen Accord's Blackout Array). The atlas has no frames of that faction for the
+## player the Lumen Accord's Dusk Array). The atlas has no frames of that faction for the
 ## player, so the Body would show nothing; the building must still be drawn, as the flat marker.
 func test_a_building_of_a_faction_its_owner_does_not_wear_is_a_marker_not_an_empty_body() -> void:
 	_open_with(

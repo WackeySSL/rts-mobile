@@ -17,7 +17,7 @@ const IDS: Array[StringName] = [
 const MODELS: String = "res://assets/art/models/fossil/%s.tres"
 ## SKADET changes the top of the body (ADR 0029 section 4 asks for its top half). Where the team
 ## colour of a building sits low (the Redoubt's band, the Rigworks' crane beam, the Vehicle Works'
-## lintel, the Deep Bore's ring girders and the Cracking Plant's column ring) the key share of
+## lintel, the Deep Bore's ring girders and the Oil Works' column ring) the key share of
 ## SKADET needs a change that reaches further down, so the bound is 0.80 of the rows (the Redoubt
 ## is at 76 %); the Barracks, the Signal Mast and the Turbine Hall keep to the half.
 const SKADET_MAX: float = 0.80

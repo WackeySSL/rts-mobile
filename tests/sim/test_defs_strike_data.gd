@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The strike numbers of the shipped data (plan row P110d, ADR 0023 sections 7 and 10, docs/GDD.md
 ## "Superweapons"): each faction file lists exactly one strike building, of its own kind (the
-## Derrick League's Deep Bore ruptures, the Lumen Accord's Blackout Array blacks out), with every
+## Derrick League's Deep Bore ruptures, the Lumen Accord's Dusk Array blacks out), with every
 ## number its kind reads present and positive and the numbers it does not read left at 0; the
 ## starting values are the GDD's times and radii in ticks and milli-tiles; the rupture's weapon is a
 ## file of its own that no unit fires; no other file has a strike; and the perf arena, which lists

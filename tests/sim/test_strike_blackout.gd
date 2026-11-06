@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## The Blackout Array's command (plan row P111, ADR 0023 section 10): a SUPERWEAPON of a blackout
+## The Dusk Array's command (plan row P111, ADR 0023 section 10): a SUPERWEAPON of a blackout
 ## building takes effect at once, in COMMANDS: every building not owned by the firing player within
 ## `type_strike_radius` of the point (by squared distance, the edge included) gets `offline_until =
 ## stamp + type_strike_ticks`, and nothing else is written but the building's own restarted charge.

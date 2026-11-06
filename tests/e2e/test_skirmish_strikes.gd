@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## scripted player of `skirmish_player.gd` builds its faction's strike building, waits for the
 ## charge with its army at the staging point, and fires one SUPERWEAPON at the dummy's base. The
 ## Derrick League's Deep Bore ruptures the Lumen Accord's base after its delay; the Lumen Accord's
-## Blackout Array takes the Derrick League's buildings offline at once. The rows are looked at
+## Dusk Array takes the Derrick League's buildings offline at once. The rows are looked at
 ## before and after the steps that matter (`BaseArena.snap`, taken by `skirmish_match.gd` for each
 ## tick from the one before the order to the end of the effect), and every number (ticks, radius,
 ## damage, percents) is read from the data files and the World's tables, so a retune moves no case.
@@ -111,7 +111,7 @@ func test_the_deep_bore_lands_on_its_tick_and_hits_every_row_within_its_radius()
 	assert_int(world.match_end_tick).is_greater(landing)
 
 
-## The Blackout Array: at once, in the order's step, every building of the other side within the
+## The Dusk Array: at once, in the order's step, every building of the other side within the
 ## radius is offline until the stamp plus the length, the player's own buildings and every building
 ## outside the radius are not, and the dummy's power falls by exactly what those buildings made and
 ## used. It covers the turrets (the point is chosen for them), so something armed goes dark.

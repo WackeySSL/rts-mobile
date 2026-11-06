@@ -21,7 +21,7 @@ extends Node2D
 ## enemy one.
 ## The frames are planned after the bars, in the same arrays: the rects from `frame_first_rect()`
 ## on, FRAME_RECTS for each of `frame_count()` frames, outline first.
-## A building a Blackout Array switched off (`offline_until` above the snapshot's tick, P112b, ADR
+## A building a Dusk Array switched off (`offline_until` above the snapshot's tick, P112b, ADR
 ## 0023 section 10) wears the offline glyph (`glyph_offline.svg`, GLYPH_DP square, amber) for as
 ## long as it is off, hit or not, over the place of its bar and centred on its footprint centre; an
 ## enemy one only while `building_layer.is_shown`. The glyphs are planned after the frames and

@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_unit")
 type_id = &"rifle_squad"
-display_name = "Roustabouts"
+display_name = "Rig Hands"
 faction = &"fossil"
 speed = 67
 radius = 300

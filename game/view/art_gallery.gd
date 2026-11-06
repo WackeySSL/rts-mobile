@@ -55,7 +55,7 @@ const ROSTER_IDS: Array[String] = [
 	"rifle_squad", "rocket_squad", "light_tank", "heavy_tank", "artillery", "harvester"
 ]
 const ROSTER_NAMES: Array[String] = [
-	"Roustabouts", "Wildcatters", "Flarejack", "Bullhead", "Mortar Rig", "Tanker"
+	"Rig Hands", "Wildcatters", "Flarejack", "Bullhead", "Mortar Rig", "Tanker"
 ]
 const ACCORD_IDS: Array[String] = [
 	"renew_rifle", "renew_rocket", "renew_scout", "renew_tank", "renew_artillery", "renew_tanker"

@@ -9,7 +9,7 @@ extends GdUnitTestSuite
 ## Fixtures: a paused runner whose tick and alpha the test sets (match time = (tick + alpha) x 1000
 ## / 15 ms), `_process` once for a frame. Player 1 (local): Signal Mast (`fossil_radar`, id 1, 16
 ## frames of 140 ms), Turbine Hall (`power_plant`, id 2, 4 of 90), a second Turbine Hall (id 3) and
-## a Barracks (id 4, no `anim`); player 2: Relay Tower (`renew_radar`, id 5, 16 of 150) and Wind
+## a Barracks (id 4, no `anim`); player 2: Relay Post (`renew_radar`, id 5, 16 of 150) and Wind
 ## Park (`renew_power`, id 6, 6 of 90). They stand along the diagonal so one camera sees them all.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -195,7 +195,7 @@ func test_an_own_building_slows_to_the_low_power_rate_and_resumes_without_a_jump
 		last_ms = ms
 		var want: int = _want(MAST, own_ms)
 		assert_that(_anim(MAST).region_rect).is_equal(Rect2(_region(MAST, want)))
-		# The enemy's Relay Tower follows the match time, whatever the local power does.
+		# The enemy's Relay Post follows the match time, whatever the local power does.
 		assert_that(_anim(RELAY).region_rect).is_equal(Rect2(_region(RELAY, _want(RELAY, ms))))
 		max_step = maxi(max_step, posmod(want - last_frame, frames))
 		last_frame = want

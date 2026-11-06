@@ -62,7 +62,7 @@ func test_a_locked_card_says_what_it_needs_and_a_full_queue_says_full() -> void:
 ## in for the requirement, so both factions' rosters are covered.
 func test_the_words_stay_inside_the_stage_of_every_card_with_every_name() -> void:
 	var names: PackedStringArray = _display_names()
-	assert_bool(names.has("Synthesis Works") and names.has("Cracking Plant")).is_true()
+	assert_bool(names.has("Turbine Hall") and names.has("Rail Battery")).is_true()
 	for profile: StringName in [&"android_6in", &"android_6in_portrait", &"web_phone_small"]:
 		await _open(profile)
 		var world: World = Sw.world()
@@ -176,7 +176,7 @@ func test_a_standalone_tile_locked_before_it_is_told_its_need_has_the_corner_pad
 	tile.size = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y)
 	tile.show_state(ItemTile.State.LOCKED, 0, 0.0)
 	await _settle()
-	tile.set_needs("Cracking Plant")
+	tile.set_needs("Turbine Hall")
 	await _settle()
 	_assert_worded_lock(tile)
 	holder.queue_free()
