@@ -90,12 +90,13 @@ func test_the_opponent_files_hold_the_numbers_of_the_adr(
 				def.sectors_max,
 				def.squads_max,
 				def.place_tries_per_think,
+				def.spiral_slots,
 				def.target_tests_max,
 				def.goal_keys_max,
 				def.strike_min_value
 			]
 		)
-		. is_equal([20, 6, 4, 8, 64, 4, 8, 512, 4, 3000])
+		. is_equal([20, 6, 4, 8, 64, 4, 8, 64, 512, 4, 3000])
 	)
 
 
@@ -266,6 +267,7 @@ func test_the_numbers_fit_the_rules_and_the_footprints(
 	assert_int(def.squads_max).is_greater(0)
 	assert_int(def.sectors_max).is_greater(0)
 	assert_int(def.place_tries_per_think).is_greater(0)
+	assert_int(def.spiral_slots).is_greater_equal(def.place_tries_per_think)
 	var widest: int = 0
 	for id: StringName in _all_types(def):
 		var unit: UnitDef = _unit(id)
