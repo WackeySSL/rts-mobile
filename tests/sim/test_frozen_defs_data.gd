@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## arena and the controls test map load their rules, units, weapons and factions from
 ## `data/dev/arena/`, never from the shipped `data/units/`, `data/weapons/`, `data/factions/` or
 ## `data/rules.tres`, so a tuning change to a shipped file cannot move a golden hash. No test here
-## compares a copy with its shipped original field by field: the first tuning row would break it.
+## compares a copy's numbers with its shipped original: the first tuning row would break it. Only
+## the display name follows the shipped def (it is presentation, not a rule).
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
@@ -81,6 +82,33 @@ func test_the_arena_spawns_use_the_frozen_tank_and_not_the_shipped_one() -> void
 			assert_bool(spawn.unit == shipped).is_false()
 			assert_bool(spawn.unit == frozen).is_true()
 	assert_int(matches).is_greater(0)
+
+
+## The names are not frozen: a display name is presentation, not a rule, and the arena's scenarios
+## (the controls test map is the app's first) must show the names the player knows. So each frozen
+## unit keeps its shipped twin's display name, and a rename in `data/units/` updates the copy too.
+func test_a_frozen_unit_keeps_its_shipped_display_name() -> void:
+	var copies: Array[String] = FileScan.list_files(ARENA_DIR + "/units", ".tres")
+	assert_int(copies.size()).is_greater(20)
+	for copy_path: String in copies:
+		var shipped_path: String = "res://data/units/" + copy_path.get_file()
+		(
+			assert_bool(ResourceLoader.exists(shipped_path))
+			. override_failure_message("%s has no shipped twin" % copy_path)
+			. is_true()
+		)
+		var copy: UnitDef = load(copy_path)
+		var shipped: UnitDef = load(shipped_path)
+		(
+			assert_str(copy.display_name)
+			. override_failure_message(
+				(
+					"%s is named %s, its shipped twin %s"
+					% [copy_path, copy.display_name, shipped.display_name]
+				)
+			)
+			. is_equal(shipped.display_name)
+		)
 
 
 ## Every data file reachable from `file` through ext_resource paths (the file itself left out),
