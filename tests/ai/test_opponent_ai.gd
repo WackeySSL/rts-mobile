@@ -211,8 +211,17 @@ func test_the_memory_starts_at_its_none_values_within_the_defs_caps() -> void:
 	assert_array([memory.scout_id, memory.wave_start_tick, memory.threat_first_tick]).is_equal(
 		[-1, -1, -1]
 	)
-	assert_array([memory.wave_count, memory.scout_waypoint, memory.spiral_resume]).is_equal(
-		[0, 0, 0]
+	(
+		assert_array(
+			[
+				memory.wave_count,
+				memory.scout_waypoint,
+				memory.spiral_resume,
+				memory.spiral_for_x,
+				memory.spiral_for_y
+			]
+		)
+		. is_equal([0, 0, 0, -1, -1])
 	)
 	assert_int(memory.squad_role.size()).is_equal(def.squads_max)
 	assert_int(memory.sector_own.size()).is_equal(def.sectors_max)

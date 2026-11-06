@@ -93,6 +93,7 @@ func test_the_loop_queues_power_while_the_surplus_is_under_the_margin() -> void:
 	var economy: AiEconomy = AiEconomy.create(def, Rig.level_of("normal"), 1)
 	var sent: Array[Command] = _run(economy, AiMemory.create(def), world)
 	assert_array(_queued_ids(sent, world)).is_equal(["power_plant"])
+	assert_int(economy.passes).is_equal(1)
 	def.power_margin -= 1  # At the margin: nothing (the rule is `<`).
 	economy = AiEconomy.create(def, Rig.level_of("normal"), 1)
 	var memory: AiMemory = AiMemory.create(def)
@@ -165,6 +166,11 @@ func test_a_tanker_that_waits_for_money_keeps_its_price() -> void:
 	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(sent).is_empty()
 	assert_int(memory.reserve_credits).is_equal(_cost(world, "harvester"))
+	# With money for one tanker: it is queued and counts in the reserve, besides the second's price.
+	world.credits[1] = _cost(world, "harvester") + 300
+	sent = _run(_economy("fossil", "normal"), memory, world)
+	assert_array(_queued_ids(sent, world)).is_equal(["harvester"])
+	assert_int(memory.reserve_credits).is_equal(2 * _cost(world, "harvester"))
 
 
 func test_a_full_queue_keeps_credits_for_the_next_structure_only_while_its_head_builds() -> void:
@@ -299,16 +305,25 @@ func test_a_defence_goes_to_the_free_slot_nearest_the_staging_point() -> void:
 
 
 func test_a_new_search_order_starts_at_its_first_slot() -> void:
+	# Two searches on rock under one staging point leave the resume index at 16.
+	var scenario: ScenarioDef = FactionRig.scenario("fossil", "renew")
+	scenario.map.rows = PackedStringArray(AiRig.rows(true))
+	var rock: World = World.from_scenario(scenario)
+	_ready_head(rock, 1, "defence_turret")
+	var memory: AiMemory = _memory("fossil")
+	memory.staging_x = 2
+	memory.staging_y = 22
+	var economy: AiEconomy = _economy("fossil", "normal")
+	for _think: int in 2:
+		_run(economy, memory, rock)
+	assert_int(memory.spiral_resume).is_equal(16)
+	# The staging point moves on the open start: the nearest slot is found from the new order's
+	# first slot, not from index 16 of the old one.
 	var world: World = _start()
 	AiRig.explore_all(world)
 	_ready_head(world, 1, "defence_turret")
-	var memory: AiMemory = _memory("fossil")
-	# A plain search was under way (resume 16); the staging point is set: the nearest slot is
-	# found from the nearest-first order's start, not from the plain order's 16.
-	memory.spiral_resume = 16
 	memory.staging_x = 22
 	memory.staging_y = 6
-	var economy: AiEconomy = _economy("fossil", "normal")
 	var places: Array[Command] = []
 	for _think: int in 20:
 		places = _of_type(_run(economy, memory, world), Command.Type.PLACE)
@@ -533,7 +548,7 @@ func _tile_of(command: Command) -> Array[int]:
 
 
 ## A fossil World whose player 1 owns every building of the Normal order, an extra refinery, and
-## its tankers (`full`), minus one of each type in `lacking`, with 100,000 credits.
+## `tankers` tankers, minus one of each type in `lacking`, with 100,000 credits.
 func _base(tankers: int = 4, lacking: Array = []) -> World:
 	var world: World = _start()
 	AiRig.explore_all(world)

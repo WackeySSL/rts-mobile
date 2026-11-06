@@ -14,6 +14,8 @@ extends RefCounted
 
 ## The faction index that matches no type (a roster without the Headquarters).
 const _NO_FACTION: int = -2
+## A type the roster lacks.
+const _NONE: int = PlayerView.MISSING
 
 ## Passes over the view's own rows the last run made (`OpponentAi` adds it to `work`).
 var passes: int = 0
@@ -41,12 +43,12 @@ var _spiral: PackedInt32Array = PackedInt32Array()
 ## the player's own faction, the cheapest power plant, a refinery and a vehicle factory.
 var _resolved: bool = false
 var _order: PackedInt32Array = PackedInt32Array()
-var _hq_type: int = PlayerView.MISSING
-var _harvester_type: int = PlayerView.MISSING
-var _defence_type: int = PlayerView.MISSING
-var _power_type: int = PlayerView.MISSING
-var _refinery_type: int = PlayerView.MISSING
-var _factory_type: int = PlayerView.MISSING
+var _hq_type: int = _NONE
+var _harvester_type: int = _NONE
+var _defence_type: int = _NONE
+var _power_type: int = _NONE
+var _refinery_type: int = _NONE
+var _factory_type: int = _NONE
 
 ## Read off the view by each run, used only inside it (`_have`: owned and queued per type).
 var _owned: PackedInt32Array = PackedInt32Array()
@@ -112,29 +114,21 @@ func _resolve(view: PlayerView) -> void:
 	_defence_type = view.type_index_of(_defence_id)
 	for id: StringName in _steps:
 		var type: int = view.type_index_of(id)
-		if type != PlayerView.MISSING and view.type_tab[type] >= 0:
+		if type != _NONE and view.type_tab[type] >= 0:
 			_order.append(type)
-	var faction: int = (
-		view.type_faction[_hq_type] if _hq_type != PlayerView.MISSING else _NO_FACTION
-	)
+	var faction: int = view.type_faction[_hq_type] if _hq_type != _NONE else _NO_FACTION
 	var cheapest: int = 0
 	for type: int in view.type_cost.size():
 		if view.type_tab[type] != PlayerView.Tab.STRUCTURES or view.type_foot_w[type] <= 0:
 			continue
 		if view.type_faction[type] != faction:
 			continue
-		if (
-			view.type_power[type] > 0
-			and (_power_type == PlayerView.MISSING or view.type_cost[type] < cheapest)
-		):
+		if view.type_power[type] > 0 and (_power_type == _NONE or view.type_cost[type] < cheapest):
 			_power_type = type
 			cheapest = view.type_cost[type]
-		if view.is_refinery(type) and _refinery_type == PlayerView.MISSING:
+		if view.is_refinery(type) and _refinery_type == _NONE:
 			_refinery_type = type
-		if (
-			view.type_produces[type] == PlayerView.Tab.VEHICLES
-			and _factory_type == PlayerView.MISSING
-		):
+		if view.type_produces[type] == PlayerView.Tab.VEHICLES and _factory_type == _NONE:
 			_factory_type = type
 
 
@@ -201,7 +195,11 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
 	var order: PackedInt32Array = PackedInt32Array()
 	var near: bool = head == _defence_type and memory.has_staging()
-	var aim: Vector2i = Vector2i(memory.staging_x, memory.staging_y) if near else Vector2i(-1, -1)
+	var aim: Vector2i = (
+		Vector2i(memory.staging_x, memory.staging_y)
+		if near
+		else Vector2i(AiMemory.NONE, AiMemory.NONE)
+	)
 	if memory.spiral_for_x != aim.x or memory.spiral_for_y != aim.y:
 		# The resume index belongs to one order of the slots; a new order starts at its first slot.
 		memory.spiral_for_x = aim.x
@@ -274,11 +272,12 @@ func _queue(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 ## The type to queue next, or -1 for none now: a tanker while there are too few and one can be
 ## queued, else the wish (`_wanted`) if it can be queued. A structure that waits only for its queued
 ## requirement, or for room while the queue's head is still being built, sets `_hold` to its price
-## (a head that is ready and cannot be placed keeps nothing: the credits would sit idle).
+## (also right after a PLACE of this run, whose view still shows the head; a head that is ready and
+## cannot be placed keeps nothing: the credits would sit idle).
 func _next(view: PlayerView, room: int) -> int:
 	var tanker: int = _harvester_type
 	if (
-		tanker != PlayerView.MISSING
+		tanker != _NONE
 		and _have[tanker] < _tankers_per_refinery * _refineries
 		and _buildable(view, tanker)
 		and _has_room(view, tanker, room)
@@ -308,7 +307,7 @@ func _wanted(view: PlayerView) -> int:
 	if wish < 0:
 		return -1
 	if (
-		_power_type != PlayerView.MISSING
+		_power_type != _NONE
 		and view.type_power[wish] < 0
 		and _surplus + view.type_power[wish] < _power_margin
 	):
@@ -330,13 +329,13 @@ func _first_missing() -> int:
 ## What the loop after the order wants, -1 for nothing: power under the margin, then refineries,
 ## factories and defences up to the level's caps.
 func _loop_need() -> int:
-	if _power_type != PlayerView.MISSING and _surplus < _power_margin:
+	if _power_type != _NONE and _surplus < _power_margin:
 		return _power_type
-	if _refinery_type != PlayerView.MISSING and _have[_refinery_type] < _refineries_max:
+	if _refinery_type != _NONE and _have[_refinery_type] < _refineries_max:
 		return _refinery_type
-	if _factory_type != PlayerView.MISSING and _have[_factory_type] < _factories_max:
+	if _factory_type != _NONE and _have[_factory_type] < _factories_max:
 		return _factory_type
-	if _defence_type != PlayerView.MISSING and _have[_defence_type] < _defences_max:
+	if _defence_type != _NONE and _have[_defence_type] < _defences_max:
 		return _defence_type
 	return -1
 
@@ -361,8 +360,8 @@ func _buildable(view: PlayerView, type: int) -> bool:
 	return mobile + view.queue_count[other] + _added[other] < view.unit_cap
 
 
-## Whether `type` is a structure that waits only for its requirement, which is queued or still
-## under construction (the player keeps its credits for it).
+## Whether `type` is a structure that waits only for its requirement, which is queued (the head of
+## the queue may be building it; the player keeps its credits for it).
 func _waits_for_requirement(view: PlayerView, type: int) -> bool:
 	var need: int = view.type_requires[type]
 	return (
