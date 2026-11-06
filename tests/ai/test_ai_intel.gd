@@ -242,7 +242,7 @@ func test_an_enemy_unit_alone_is_no_producer_and_leaves_the_mirror() -> void:
 # --- through the controller -----------------------------------------------------------------
 
 
-func test_run_makes_two_passes_and_sends_nothing_in_this_row() -> void:
+func test_run_makes_two_passes_and_sends_nothing_without_a_scout_unit() -> void:
 	AiRig.add_unit_of(_world, 2, "rifle_squad", 9500, 9500)
 	_settle()
 	_run(1800)

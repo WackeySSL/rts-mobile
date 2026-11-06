@@ -24,10 +24,14 @@ func before_test() -> void:
 	_make("normal")
 
 
-## A manager and a memory of the fossil def at `level`.
-func _make(level: String, seed: int = 1) -> void:
+## A manager and a memory of the fossil def at `level`, with the scout's first tick changed when
+## `first_tick` is not -1.
+func _make(level: String, first_tick: int = -1, seed: int = 1) -> void:
 	var def: OpponentDef = Rig.def_of("fossil")
-	_intel = AiIntel.create(def, Rig.level_of(level), 1)
+	var chosen: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
+	if first_tick >= 0:
+		chosen.scout_first_tick = first_tick
+	_intel = AiIntel.create(def, chosen, 1)
 	_memory = AiMemory.create(def)
 	_rng = DetRandom.create(seed, DetRandom.STREAM_AI_BASE + 1)
 	_out = []
@@ -43,6 +47,11 @@ func _run(tick: int, budget: int = 8) -> void:
 	_memory.commands_left = budget
 	_out = []
 	_intel.run(_view(), _memory, _rng, _out)
+
+
+## An own scout (the fossil light tank) at tile (`col`, `line`); returns its id.
+func _scout(col: int, line: int) -> int:
+	return AiRig.add_unit_of(_world, 1, "light_tank", col * 1000 + 500, line * 1000 + 500)
 
 
 func _type(id: String) -> int:
@@ -90,3 +99,42 @@ func _write_ghost(id: int, type_id: String, cell: int) -> void:
 	_world.ghost_owner[cap] = 2
 	_world.ghost_cell[cap] = cell
 	_world.ghost_count[1] = 1
+
+
+## Starts a trip by hand: scout `id` out at waypoint 1 with its trip begun at tick 1800.
+func _start_trip(id: int) -> void:
+	_memory.scout_id = id
+	_memory.scout_waypoint = 1
+	_memory.scout_trip_tick = 1800
+	_memory.scout_hp = _view().row_hp(_row(id))
+	_world.tick = 1800
+	_intel.refresh(_view(), _memory)
+
+
+## Replaces the World and its loop with a fresh start.
+func _before_trip_world() -> void:
+	_world = FactionRig.start("fossil", "fossil")
+	_loop = AiRig.loop_of(_world)
+
+
+## The tile of the own row `id`.
+func _tile_of(id: int) -> Vector2i:
+	var pos: Vector2i = _view().row_pos(_row(id))
+	return Vector2i(pos.x / 1000, pos.y / 1000)
+
+
+## The number of MOVE Commands in `sent`.
+func _moves_in(sent: Array[Command]) -> int:
+	var moves: int = 0
+	for command: Command in sent:
+		if command.type == Command.Type.MOVE:
+			moves += 1
+	return moves
+
+
+## The scout `id` stands on tile (`col`, `line`) and the sector's centre cell is explored.
+func _arrive(id: int, col: int, line: int) -> void:
+	var row: int = _row_in_world(id)
+	_world.pos_x[row] = col * 1000 + 500
+	_world.pos_y[row] = line * 1000 + 500
+	_world.fog.explored[line * 40 + col] = 1

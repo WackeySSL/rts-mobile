@@ -56,6 +56,16 @@ var threat_first_tick: int = NONE
 ## view's type count and fills the ticks with NONE.
 var scout_id: int = NONE
 var scout_waypoint: int = 0
+## AiIntel alone reads these: the tick the scout's trip began (NONE: none yet), the hp it had at
+## the last INTEL slot, and per sector the tick it was picked as a waypoint (a sector is open on a
+## trip while its tick is before the trip's start; NONE: never). A waypoint of NONE means the scout
+## is on its way home.
+var scout_trip_tick: int = NONE
+var scout_hp: int = NONE
+var scout_picked: PackedInt32Array = PackedInt32Array()
+## Set by AiIntel for AiProduction (P178): the type index of the scout it wants built (a trip is
+## due, the key rule allows it and no unit of the type lives), NONE when not wanted.
+var scout_wanted: int = NONE
 var sector_own: PackedInt32Array = PackedInt32Array()
 var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
@@ -93,6 +103,8 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.squad_goal_y.fill(NONE)
 	memory.sector_own.resize(memory.sectors_max)
 	memory.sector_enemy.resize(memory.sectors_max)
+	memory.scout_picked.resize(memory.sectors_max)
+	memory.scout_picked.fill(NONE)
 	return memory
 
 

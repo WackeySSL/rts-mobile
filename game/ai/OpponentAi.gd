@@ -101,3 +101,4 @@ func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:
 func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.run(view, memory, rng, out)
 	work += intel.passes
+	scouts = intel.scouts
