@@ -19,6 +19,18 @@ var think_offset: int = 0
 ## The player's random stream. A controller that needs a draw takes it here and nowhere else.
 var rng: DetRandom = null
 
+## Counters a harness reads from any controller without a cast (ADR 0030 section 3). `work` is the
+## items the last think touched (reset at the start of each think; the opponent counts the view as
+## one), `work_max` its largest value over the match. The rest only grow: waves launched, retreats
+## ordered, scouts sent, superweapon shots, and Commands appended. `DummyAi` fills `commands` only.
+var work: int = 0
+var work_max: int = 0
+var waves: int = 0
+var retreats: int = 0
+var scouts: int = 0
+var strikes: int = 0
+var commands: int = 0
+
 
 ## One turn: appends this player's Commands to `out` (the caller stamps and records them). The
 ## base class has nothing to do.

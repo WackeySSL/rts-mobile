@@ -73,6 +73,12 @@ static func create(def: AiDef, player_id: int, rng: DetRandom) -> DummyAi:
 
 
 func think(view: PlayerView, out: Array[Command]) -> void:
+	var before: int = out.size()
+	_think(view, out)
+	commands += out.size() - before
+
+
+func _think(view: PlayerView, out: Array[Command]) -> void:
 	placement_tries = 0
 	_resolve(view)
 	if not _take_census(view):

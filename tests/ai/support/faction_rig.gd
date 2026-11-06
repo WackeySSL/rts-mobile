@@ -14,9 +14,9 @@ extends RefCounted
 ## World; the dummy's def is the faction's own file in `data/ai/`.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
-const FACTION_DIR: String = "res://data/factions/"
+const FACTION_DIR: String = "res://data/dev/arena/factions/"
 const DEF_DIR: String = "res://data/ai/"
-const UNIT_DIR: String = "res://data/units/"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
 const FACTIONS: Array[String] = ["fossil", "renew"]
 ## The type ids that the suites name by role, per faction: Headquarters, rifle squad (infantry) and
 ## scout (the fastest light vehicle, which attacks).

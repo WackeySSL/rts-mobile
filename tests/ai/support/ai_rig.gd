@@ -14,9 +14,9 @@ extends RefCounted
 ## each controller on its turn gets a fresh `PlayerView` and appends its Commands, `MatchLoop`
 ## stamps and records them and runs `Sim.step`.
 
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
-const UNIT_DIR: String = "res://data/units/"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
 const DUMMY_PATH: String = "res://data/ai/dummy_fossil.tres"
 const SIZE: int = 40
 const ROSTER: Array[String] = [

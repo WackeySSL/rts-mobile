@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AiBuildOrderDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiBuildOrderDef.gd" id="1_order"]
+
+[resource]
+script = ExtResource("1_order")
+id = &"renew_weak"
+tier = 0
+steps = Array[StringName]([&"renew_power", &"renew_refinery", &"renew_barracks", &"renew_power", &"renew_factory", &"renew_defence"])
