@@ -69,6 +69,13 @@ func test_the_scan_fails_every_spelling_of_a_shipped_path_and_passes_the_allowed
 		assert_array(_outside(PackedStringArray([line]))).override_failure_message(line).is_empty()
 
 
+func test_a_path_in_a_comment_passes_and_the_same_path_in_code_fails() -> void:
+	var text: String = '# load("res://data/units/a.tres")\nvar x: int = 1  # res://data/rules.tres\n'
+	assert_array(_outside(FileScan.code_lines(text))).is_empty()
+	var code: String = 'var a: String = "res://data/units/a.tres"\n'
+	assert_array(_outside(FileScan.code_lines(code))).is_not_empty()
+
+
 ## The `res://data` literals of `lines` that start with none of the allowed entries.
 func _outside(lines: PackedStringArray) -> Array[String]:
 	var found: Array[String] = []

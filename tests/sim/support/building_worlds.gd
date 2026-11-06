@@ -24,7 +24,8 @@ const ROSTER: Array[String] = [
 ## Which terrains of GridWorld.GROUND a building may stand on: grass, 'w', 't', '2' and '4'; not
 ## scrub ('^') and not rock ('#').
 const BUILDABLE: Array[int] = [1, 0, 0, 1, 1, 1, 1]
-##  A prepared World of the map `rows` (GridWorld's characters), with the roster and 2 players, and
+
+## A prepared World of the map `rows` (GridWorld's characters), with the roster and 2 players, and
 ## the terrains' buildable flags. The unit files come from `unit_dir` (default: the frozen defs).
 ## With `revealed` (the default) every cell is visible and explored for both players; without, the
 ## fog is real and a row is blind until its player's first FOG turn (TargetingWorlds.stamp_fog gives
