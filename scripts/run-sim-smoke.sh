@@ -73,7 +73,7 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     --seed-start | --levels | --scenarios | --ticks)
-      if [ $# -lt 2 ]; then
+      if [ $# -lt 2 ] || [ -z "$2" ]; then
         echo "run-sim-smoke: $1 needs a value" >&2
         usage
         exit 2

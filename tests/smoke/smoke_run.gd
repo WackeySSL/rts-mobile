@@ -23,6 +23,8 @@ extends RefCounted
 ## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+## Untyped on purpose: the constant is also the type of `SmokeCount` variables.
+const SmokeCount = preload("res://tests/smoke/smoke_count.gd")
 
 const FLATS: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const FLATS_MIRRORED: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
@@ -54,23 +56,48 @@ const END_TIMEOUT: String = "timeout"
 
 
 ## Plays one match from `match_seed` and returns its record. It stops after `ticks` ticks, or at
-## the tick that ends the match (`match_end_tick` above 0).
+## the tick that ends the match (`match_end_tick` above 0). When a Command was dropped,
+## `drops[match_seed]` is the tick of the first drop (outside the record, which keeps the schema's
+## keys).
 static func play(
 	match_seed: int,
 	ticks: int = TICKS,
 	kind: String = KIND_CROSS,
-	levels: Array[String] = DEFAULT_LEVELS
+	levels: Array[String] = DEFAULT_LEVELS,
+	drops: Dictionary = {}
 ) -> Dictionary:
+	var match_setup: Dictionary = start(match_seed, kind, levels)
+	var world: World = match_setup["world"]
+	var counter: SmokeCount = match_setup["counter"]
+	var controllers: Array[AiController] = match_setup["controllers"]
+	run(world, match_setup["loop"], controllers, ticks, counter)
+	if counter.first_drop_tick >= 0:
+		drops[match_seed] = counter.first_drop_tick
+	return record_of(
+		world, match_seed, match_setup["path"], match_setup["seats"], controllers, counter
+	)
+
+
+## The match of `match_seed` ready to run: `path`, `world` (on the implementation AUTO picks, a
+## problem of the library is a push_error, which the script's error scan fails), `loop`, `seats`,
+## `controllers` and a `counter` that has read the scenario's rows.
+static func start(match_seed: int, kind: String, levels: Array[String]) -> Dictionary:
 	var path: String = scenario_path(kind, match_seed)
 	var world: World = world_of(match_seed, path)
-	var loop: MatchLoop = loop_of(world, match_seed, path)
+	var problems: Array[String] = attach_impl(world)
+	if not problems.is_empty():
+		push_error("run-sim-smoke: the native library is wrong: %s" % "; ".join(problems))
 	var seats: Array[Dictionary] = seats_of(path, levels)
-	var controllers: Array[AiController] = controllers_of(match_seed, path, levels)
-	var counter: SmokeCount = SmokeCount.create(seats.size())
-	attach_impl(world)
+	var counter: SmokeCount = SmokeCount.new(seats.size())
 	counter.start(world)
-	run(world, loop, controllers, ticks, counter)
-	return record_of(world, match_seed, path, seats, controllers, counter)
+	return {
+		"path": path,
+		"world": world,
+		"loop": loop_of(world, match_seed, path),
+		"seats": seats,
+		"controllers": controllers_of(match_seed, path, levels),
+		"counter": counter,
+	}
 
 
 ## The scenario file that seed `match_seed` plays under the scenario kind `kind`.
@@ -110,10 +137,10 @@ static func impl_problems() -> Array[String]:
 	return problems
 
 
-## Makes `world` run the implementation of `impl_name()`; the problems of a bad library, empty when
-## it worked (the entry checks `impl_problems()` once before the first match).
-static func attach_impl(world: World) -> Array[String]:
-	if impl_name() == IMPL_GDSCRIPT:
+## Makes `world` run `impl` (default: `impl_name()`); the problems of a bad library, empty when it
+## worked (the entry checks `impl_problems()` once before the first match).
+static func attach_impl(world: World, impl: String = "") -> Array[String]:
+	if (impl_name() if impl.is_empty() else impl) == IMPL_GDSCRIPT:
 		return Impls.use(world, Impls.Impl.GDSCRIPT)
 	return Impls.use(world, Impls.Impl.NATIVE)
 
@@ -278,12 +305,17 @@ static func write_report(path: String, report_data: Dictionary) -> bool:
 ## What is wrong with the `records` of a run, one text per problem. The AI never sends a Command
 ## the sim drops (ADR 0020 section 5), so a dropped Command is a bug in the AI, the sim or the loop.
 ## A timeout is no failure: the gate judges it (ADR 0031 section 2).
-static func failures(records: Array[Dictionary]) -> PackedStringArray:
+static func failures(records: Array[Dictionary], drops: Dictionary = {}) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	for record: Dictionary in records:
 		if int(record["dropped_commands"]) != 0:
 			var dropped: int = int(record["dropped_commands"])
-			found.append("seed %d: dropped commands %d" % [int(record["seed"]), dropped])
+			found.append(
+				(
+					"seed %d: dropped commands %d%s"
+					% [int(record["seed"]), dropped, _drop_text(drops, int(record["seed"]))]
+				)
+			)
 	return found
 
 
@@ -305,10 +337,10 @@ static func summary(
 
 
 ## The line that the run prints for the match `number` of `total`.
-static func line(record: Dictionary, number: int, total: int) -> String:
+static func line(record: Dictionary, number: int, total: int, drops: Dictionary = {}) -> String:
 	var winner: String = "none" if int(record["winner"]) == 0 else str(record["winner"])
 	var text: String = (
-		"%smatch %d of %d: seed %d, %s, %d ticks, %s, winner %s, hash %s, dropped %d, flow full %d"
+		"%smatch %d of %d: seed %d, %s, %d ticks, %s, winner %s, hash %s, dropped %d%s, flow full %d"
 		% [
 			PREFIX,
 			number,
@@ -320,6 +352,7 @@ static func line(record: Dictionary, number: int, total: int) -> String:
 			winner,
 			record["state_hash"],
 			record["dropped_commands"],
+			_drop_text(drops, int(record["seed"])),
 			record["flow_full_ticks"],
 		]
 	)
@@ -339,6 +372,11 @@ static func line(record: Dictionary, number: int, total: int) -> String:
 			]
 		)
 	return text
+
+
+## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.
+static func _drop_text(drops: Dictionary, match_seed: int) -> String:
+	return ", the first in tick %d" % drops[match_seed] if drops.has(match_seed) else ""
 
 
 static func _player(

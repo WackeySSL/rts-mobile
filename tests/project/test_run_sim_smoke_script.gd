@@ -16,9 +16,13 @@ const SEED_SCRIPT: String = "res://scripts/seed-extension-list.sh"
 ## What the script hands to `godot` to play, before `--matches`.
 const ENTRY: String = "--headless --path . -s res://tests/smoke/run_sim_smoke.gd --"
 const OK_LINES: String = (
-	"run-sim-smoke: match 1 of 2: seed 1, 1800 ticks, winner none, hash 0123456789abcdef\n"
-	+ "run-sim-smoke: match 2 of 2: seed 2, 1800 ticks, winner none, hash fedcba9876543210\n"
-	+ "run-sim-smoke: OK, 2 matches of 1800 ticks, no dropped commands\n"
+	"run-sim-smoke: impl gdscript (AUTO)\n"
+	+ "run-sim-smoke: match 1 of 2: seed 1, skirmish_kestrel_flats, 13500 ticks, timeout, "
+	+ "winner none, hash 0123456789abcdef, dropped 0, flow full 0\n"
+	+ "run-sim-smoke: match 2 of 2: seed 2, skirmish_kestrel_flats_mirrored, 13500 ticks, "
+	+ "timeout, winner none, hash fedcba9876543210, dropped 0, flow full 0\n"
+	+ "run-sim-smoke: OK, 2 matches of at most 13500 ticks, impl gdscript, 2 timeouts, "
+	+ "no dropped commands\n"
 )
 ## The stand-in. An import call (`--import`) only logs, and exits 1 in the mode import_fails. A play
 ## call prints the banner and a blank line (what Godot prints first) and then does what the mode
@@ -44,8 +48,8 @@ const FAKE_GODOT: String = (
 	+ 'case "$mode" in\n'
 	+ "  failed)\n"
 	+ '    report "$@"\n'
-	+ '    echo "run-sim-smoke: match 1 of 1: seed 1, 1800 ticks, dropped 2"\n'
-	+ '    echo "run-sim-smoke: FAILED, seed 1: dropped commands 2"\n'
+	+ '    echo "run-sim-smoke: match 1 of 1: seed 1, 900 ticks, dropped 2, tick 7"\n'
+	+ '    echo "run-sim-smoke: FAILED, seed 1: dropped commands 2, the first in tick 7"\n'
 	+ "    exit 1 ;;\n"
 	+ '  script_error) echo "SCRIPT ERROR: Invalid call."; cat ok_lines.txt ;;\n'
 	+ '  parse_error) echo "Parse Error: Identifier not found." ;;\n'
@@ -158,6 +162,10 @@ func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
 		["--bogus"],
 		["3"],
 		["--seed-start"],
+		["--seed-start", ""],
+		["--ticks", ""],
+		["--levels", ""],
+		["--scenarios", ""],
 		["--seed-start", "0"],
 		["--seed-start", "01"],
 		["--seed-start", "x"],

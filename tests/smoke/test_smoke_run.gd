@@ -11,6 +11,8 @@ extends GdUnitTestSuite
 ## a long match holds is the balance run's business (GitHub Actions); this suite pins the harness.
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
+const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
+const SmokeCount = preload("res://tests/smoke/smoke_count.gd")
 const TICKS: int = 900
 ## 900 ticks hold 60 checkpoints: one every 15th tick from tick 15.
 const CHECKPOINTS: int = 60
@@ -104,18 +106,16 @@ var _uncounted_hash: String = ""
 
 
 func before() -> void:
-	var path: String = Smoke.scenario_path("cross", 1)
 	for _again: int in 2:
-		var world: World = Smoke.world_of(1, path)
-		var loop: MatchLoop = Smoke.loop_of(world, 1, path)
-		var counter: SmokeCount = SmokeCount.create(2)
-		Smoke.attach_impl(world)
-		counter.start(world)
-		var controllers: Array[AiController] = Smoke.controllers_of(1, path, NORMAL)
-		Smoke.run(world, loop, controllers, TICKS, counter)
-		var seats: Array[Dictionary] = Smoke.seats_of(path, NORMAL)
-		_records.append(Smoke.record_of(world, 1, path, seats, controllers, counter))
-		_loops.append(loop)
+		var setup: Dictionary = Smoke.start(1, "cross", NORMAL)
+		var world: World = setup["world"]
+		var controllers: Array[AiController] = setup["controllers"]
+		Smoke.run(world, setup["loop"], controllers, TICKS, setup["counter"])
+		_records.append(
+			Smoke.record_of(world, 1, setup["path"], setup["seats"], controllers, setup["counter"])
+		)
+		_loops.append(setup["loop"])
+	var path: String = Smoke.scenario_path("cross", 1)
 	_dummy_record = Smoke.play(1, TICKS, "cross", DUMMIES)
 	var bare: World = Smoke.world_of(1, path)
 	Smoke.attach_impl(bare)
@@ -135,9 +135,6 @@ func test_a_seed_played_twice_gives_the_same_record_report_and_checkpoints() -> 
 	assert_int(first.checkpoint_ticks.size()).is_equal(CHECKPOINTS)
 	assert_array(Array(first.checkpoint_ticks)).is_equal(Array(second.checkpoint_ticks))
 	assert_array(Array(first.checkpoint_hashes)).is_equal(Array(second.checkpoint_hashes))
-	# play() is the same match by its own door.
-	var played: Dictionary = Smoke.play(1, TICKS, "cross", NORMAL)
-	assert_str(JSON.stringify(played)).is_equal(JSON.stringify(_records[0]))
 
 
 func test_the_scenario_kinds_and_the_cross_alternation() -> void:
@@ -245,21 +242,19 @@ func test_the_cap_ends_a_running_match_as_a_timeout() -> void:
 
 
 func test_a_match_that_ends_is_a_victory_or_a_draw() -> void:
-	var path: String = Smoke.FLATS
-	var world: World = Smoke.world_of(1, path)
-	var loop: MatchLoop = Smoke.loop_of(world, 1, path)
+	var setup: Dictionary = Smoke.start(1, "derrick", NORMAL)
+	var world: World = setup["world"]
 	for row: int in world.unit_count():
 		if world.owner[row] == 2 and world.type_foot_w[world.type_index[row]] > 0:
 			world.hp[row] = 0
-	var counter: SmokeCount = SmokeCount.create(2)
-	counter.start(world)
-	Smoke.run(world, loop, Smoke.controllers_of(1, path, NORMAL), 100, counter)
+	var controllers: Array[AiController] = setup["controllers"]
+	Smoke.run(world, setup["loop"], controllers, 100, setup["counter"])
 	assert_int(world.match_end_tick).is_greater(0)
 	assert_int(world.tick).is_equal(world.match_end_tick)
 	assert_int(world.winner).is_equal(1)
-	var seats: Array[Dictionary] = Smoke.seats_of(path, NORMAL)
-	var controllers: Array[AiController] = Smoke.controllers_of(1, path, NORMAL)
-	var record: Dictionary = Smoke.record_of(world, 1, path, seats, controllers, counter)
+	var record: Dictionary = Smoke.record_of(
+		world, 1, setup["path"], setup["seats"], controllers, setup["counter"]
+	)
 	(
 		assert_array([record["ticks"], record["match_end_tick"], record["winner"], record["end"]])
 		. is_equal([world.tick, world.match_end_tick, 1, "victory"])
@@ -289,9 +284,12 @@ func test_auto_picks_native_when_the_library_loads_and_records_it() -> void:
 	var world: World = Smoke.world_of(1, Smoke.FLATS)
 	assert_array(Smoke.attach_impl(world)).is_empty()
 	assert_bool(world.kernels != null).is_equal(native)
+	# The match itself runs on it: play() and the entry both go through start().
+	var started: World = Smoke.start(1, "cross", NORMAL)["world"]
+	assert_int(started.native_phases).is_equal(Impls.expected_mask() if native else 0)
+	assert_bool(started.kernels != null).is_equal(native)
 	var report: Dictionary = Smoke.report(_records, 2, TICKS)
-	assert_str(report["impl"]).is_equal(Smoke.impl_name())
-	assert_bool(["native", "gdscript"].has(report["impl"])).is_true()
+	assert_str(report["impl"]).is_equal("native" if native else "gdscript")
 
 
 func test_the_counting_changes_no_state_hash() -> void:
@@ -305,7 +303,7 @@ func test_the_counting_changes_no_state_hash() -> void:
 
 func test_the_counting_reads_spawns_and_free_units_from_events() -> void:
 	var world: World = Smoke.world_of(1, Smoke.FLATS)
-	var counter: SmokeCount = SmokeCount.create(2)
+	var counter: SmokeCount = SmokeCount.new(2)
 	counter.start(world)
 	# The scenario's rows are free; nothing else is counted at tick 0.
 	assert_int(counter.gifts[1]["headquarters"]).is_equal(1)
@@ -350,7 +348,7 @@ func test_the_counting_reads_spawns_and_free_units_from_events() -> void:
 
 func test_the_counting_credits_kills_to_the_last_shooter_and_the_strike() -> void:
 	var world: World = Smoke.world_of(1, Smoke.FLATS)
-	var counter: SmokeCount = SmokeCount.create(2)
+	var counter: SmokeCount = SmokeCount.new(2)
 	counter.start(world)
 	var rifle: int = world.type_ids.find(&"rifle_squad")
 	var tank: int = world.type_ids.find(&"light_tank")
@@ -439,7 +437,7 @@ func test_the_counting_credits_kills_to_the_last_shooter_and_the_strike() -> voi
 
 func test_flow_full_ticks_count_the_steps_after_which_every_slot_is_referenced() -> void:
 	var world: World = Smoke.world_of(1, Smoke.FLATS)
-	var counter: SmokeCount = SmokeCount.create(2)
+	var counter: SmokeCount = SmokeCount.new(2)
 	world.events = PackedInt32Array()
 	counter.after_step(world)
 	assert_int(world.flow.ref_count.size()).is_equal(8)
@@ -501,7 +499,7 @@ func test_every_number_in_the_report_is_an_int() -> void:
 func test_the_controllers_counters_reach_the_player_entry() -> void:
 	var path: String = Smoke.FLATS
 	var world: World = Smoke.world_of(1, path)
-	var counter: SmokeCount = SmokeCount.create(2)
+	var counter: SmokeCount = SmokeCount.new(2)
 	var controllers: Array[AiController] = Smoke.controllers_of(1, path, NORMAL)
 	controllers[1].waves = 3
 	controllers[1].retreats = 2
@@ -509,9 +507,11 @@ func test_the_controllers_counters_reach_the_player_entry() -> void:
 	controllers[1].strikes = 1
 	controllers[1].commands = 77
 	controllers[1].work_max = 4
+	counter.flow_full_ticks = 5
 	var record: Dictionary = Smoke.record_of(
 		world, 1, path, Smoke.seats_of(path, NORMAL), controllers, counter
 	)
+	assert_int(record["flow_full_ticks"]).is_equal(5)
 	var second: Dictionary = record["players"][1]
 	(
 		assert_array(
@@ -578,11 +578,19 @@ func test_a_dropped_command_fails_the_run_and_the_report() -> void:
 	broken["dropped_commands"] = 2
 	broken["seed"] = 2
 	var records: Array[Dictionary] = [_records[0], broken]
-	var failures: PackedStringArray = Smoke.failures(records)
-	assert_array(Array(failures)).is_equal(["seed 2: dropped commands 2"])
+	var drops: Dictionary = {2: 412}
+	var failures: PackedStringArray = Smoke.failures(records, drops)
+	assert_array(Array(failures)).is_equal(["seed 2: dropped commands 2, the first in tick 412"])
+	(
+		assert_bool(
+			Smoke.line(broken, 2, 2, drops).contains("dropped 2, the first in tick 412, flow")
+		)
+		. is_true()
+	)
+	assert_bool(Smoke.line(broken, 2, 2).contains("dropped 2, flow full")).is_true()
 	assert_str(Smoke.report(records, 2, TICKS)["status"]).is_equal("failed")
 	assert_str(Smoke.summary(records, TICKS, "gdscript", failures)).is_equal(
-		"run-sim-smoke: FAILED, seed 2: dropped commands 2"
+		"run-sim-smoke: FAILED, seed 2: dropped commands 2, the first in tick 412"
 	)
 
 

@@ -34,6 +34,7 @@ func _run(args: PackedStringArray) -> int:
 	while index < args.size():
 		var value: String = args[index + 1] if index + 1 < args.size() else ""
 		var number: bool = value.is_valid_int() and int(value) > 0
+		var parsed: Array[String] = _levels_of(value)
 		if args[index] == "--matches" and number:
 			matches = int(value)
 		elif args[index] == "--report" and not value.is_empty():
@@ -44,8 +45,8 @@ func _run(args: PackedStringArray) -> int:
 			ticks = int(value)
 		elif args[index] == "--scenarios" and Smoke.KINDS.has(value):
 			kind = value
-		elif args[index] == "--levels" and _levels_of(value).size() == 2:
-			levels = _levels_of(value)
+		elif args[index] == "--levels" and not parsed.is_empty():
+			levels = parsed
 		else:
 			printerr(
 				(
@@ -65,11 +66,12 @@ func _run(args: PackedStringArray) -> int:
 		return 1
 	print("%simpl %s (AUTO)" % [Smoke.PREFIX, impl])
 	var records: Array[Dictionary] = []
+	var drops: Dictionary = {}
 	for number: int in range(1, matches + 1):
-		var record: Dictionary = Smoke.play(seed_start + number - 1, ticks, kind, levels)
+		var record: Dictionary = Smoke.play(seed_start + number - 1, ticks, kind, levels, drops)
 		records.append(record)
-		print(Smoke.line(record, number, matches))
-	var failures: PackedStringArray = Smoke.failures(records)
+		print(Smoke.line(record, number, matches, drops))
+	var failures: PackedStringArray = Smoke.failures(records, drops)
 	if not report_path.is_empty():
 		var data: Dictionary = Smoke.report(records, matches, ticks, seed_start, levels, kind)
 		if not Smoke.write_report(report_path, data):
@@ -78,11 +80,13 @@ func _run(args: PackedStringArray) -> int:
 	return 1 if not failures.is_empty() else 0
 
 
-## The levels of the text `A,B`: both names known, else an empty array.
+## The levels of the text `A,B`: two names, both known, else an empty array.
 func _levels_of(text: String) -> Array[String]:
 	var levels: Array[String] = []
 	for name: String in text.split(","):
 		if not Smoke.LEVELS.has(name):
 			return []
 		levels.append(name)
+	if levels.size() != 2:
+		levels.clear()
 	return levels
