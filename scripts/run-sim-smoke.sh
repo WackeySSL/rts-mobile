@@ -1,29 +1,37 @@
 #!/usr/bin/env bash
-# Headless dummy-vs-dummy smoke run with fixed seeds (plan row P95, ADR 0020 question 2): N matches
-# (default 3) of 1,800 ticks on Kestrel Flats, the Derrick League (player 1, data/ai/dummy_fossil.tres)
-# against the Lumen Accord (player 2, data/ai/dummy_renew.tres), seeds 1 to N. The loop is
-# tests/smoke/smoke_run.gd (AiDriver.think_all, then MatchLoop.step, as MatchRunner does), entered
-# through tests/smoke/run_sim_smoke.gd. Phase 4 swaps in the real AI and the longer matches and keeps
-# the flags and the report schema. Balance runs (many matches) run only in GitHub Actions.
-# Usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH]
-#   --matches N    number of matches, a positive integer (default 3)
-#   --report PATH  also write a JSON report to PATH (parent directories are created). A relative PATH
-#                  is relative to the repository root. The report has schema, status ("ok" or
-#                  "failed"), scenario, ticks_per_match, matches_requested and one entry per match:
-#                  seed, ticks, winner (the player, 0 for none), match_end_tick, state_hash (16 hex
-#                  digits), dropped_commands, spawn_refused and per player the counts that
-#                  tests/smoke/smoke_run.gd lists. All of it is counted from the World, never timed.
-# Env:   GODOT=<binary> (default: godot)
-#        RUN_SIM_SMOKE_SKIP_IMPORT=1 skips the import step when the caller just ran it.
-# Output: on stdout one line "run-sim-smoke: match K of N: seed ..." per match, then the summary line
-#        "run-sim-smoke: OK, N matches of 1800 ticks, no dropped commands" (or "run-sim-smoke: FAILED,
-#        <what>"). Godot's own output goes to a log that is shown only when the run fails.
+# Headless AI-vs-AI smoke run with fixed seeds (plan rows P95 and P186, ADR 0020 question 2 and
+# ADR 0031 sections 1 to 3): N full matches (default 3) on Kestrel Flats, each player a computer
+# opponent (AiFactory: the faction's OpponentDef at a difficulty, or its dummy), seeds S to S+N-1.
+# A match ends at its end or after --ticks ticks (default 13,500 = 15 minutes of game); a match
+# still running then is a "timeout", which is not a failure. The loop is tests/smoke/smoke_run.gd
+# (AiDriver.think_all, then MatchLoop.step, as MatchRunner does), entered through
+# tests/smoke/run_sim_smoke.gd. The implementation is AUTO: native when the library loads, else the
+# GDScript reference; the run prints it and the report stores it. Balance runs (many matches) run
+# only in GitHub Actions.
+# Usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH] [--seed-start S]
+#          [--levels A,B] [--scenarios KIND] [--ticks T]
+#   --matches N     number of matches, a positive integer (default 3)
+#   --report PATH   also write a JSON report (schema 2, ADR 0031 section 3) to PATH (parent
+#                   directories are created). A relative PATH is relative to the repository root.
+#   --seed-start S  the first seed, a positive integer (default 1); matches play S .. S+N-1
+#   --levels A,B    the controller of player 1 and 2, each easy, normal, hard or dummy (default
+#                   normal,normal)
+#   --scenarios K   cross (default: odd seeds on skirmish_kestrel_flats, even seeds on its mirrored
+#                   twin, so each faction holds each seat in half the matches), derrick, lumen,
+#                   fossil-mirror or renew-mirror
+#   --ticks T       the cap per match, a positive integer (default 13500)
+#   Numbers have at most 9 digits and no leading zero.
+# Env:   GODOT=<binary> (default: godot); GITHUB_SHA is stored in the report as `commit` (else
+#        "local"). RUN_SIM_SMOKE_SKIP_IMPORT=1 skips the import step when the caller just ran it.
+# Output: on stdout one line "run-sim-smoke: impl ..." then "run-sim-smoke: match K of N: seed ..."
+#        per match, then the summary line "run-sim-smoke: OK, N matches of at most T ticks, impl I,
+#        K timeouts, no dropped commands" (or "run-sim-smoke: FAILED, <what>"). Godot's own output
+#        goes to a log that is shown only when the run fails.
 # Exit:  0 ok
-#        1 a match failed (a dropped Command: a dummy never sends one), Godot exited with an error or
-#          wrote SCRIPT ERROR, ERROR: or Parse Error, or the OK line is missing
-#        2 bad or unknown flag, or a --matches value that is not a positive integer
+#        1 a match failed (a dropped Command: the AI never sends one), Godot exited with an error
+#          or wrote SCRIPT ERROR, ERROR: or Parse Error, or the OK line is missing
+#        2 bad or unknown flag, or a value that is not valid
 #        3 Godot missing (the message names the binary and GODOT=, as export-web.sh does)
-# The matches run on the GDScript sim, which is the reference, so no native library is needed.
 # Bash 3.2 compatible.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -34,11 +42,16 @@ ENTRY="res://tests/smoke/run_sim_smoke.gd"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 
 usage() {
-  echo "usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH]" >&2
+  echo "usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH] [--seed-start S]" \
+    "[--levels A,B] [--scenarios KIND] [--ticks T]" >&2
 }
 
 matches=3
 report=""
+seed_start=""
+levels=""
+scenarios=""
+ticks=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --matches)
@@ -59,6 +72,20 @@ while [ $# -gt 0 ]; do
       report="$2"
       shift 2
       ;;
+    --seed-start | --levels | --scenarios | --ticks)
+      if [ $# -lt 2 ]; then
+        echo "run-sim-smoke: $1 needs a value" >&2
+        usage
+        exit 2
+      fi
+      case "$1" in
+        --seed-start) seed_start="$2" ;;
+        --levels) levels="$2" ;;
+        --scenarios) scenarios="$2" ;;
+        --ticks) ticks="$2" ;;
+      esac
+      shift 2
+      ;;
     -h | --help)
       usage
       exit 0
@@ -71,9 +98,35 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-case "$matches" in
-  '' | *[!0-9]* | 0*)
-    echo "run-sim-smoke: --matches must be a positive integer, got '${matches}'" >&2
+# A positive integer of at most 9 digits (no sign, no leading zero), so the sim's int never wraps.
+check_count() {
+  case "$2" in
+    '' | *[!0-9]* | 0* | ??????????*)
+      echo "run-sim-smoke: $1 must be a positive integer of at most 9 digits, got '$2'" >&2
+      exit 2
+      ;;
+  esac
+}
+check_count --matches "$matches"
+[ -z "$seed_start" ] || check_count --seed-start "$seed_start"
+[ -z "$ticks" ] || check_count --ticks "$ticks"
+if [ -n "$levels" ]; then
+  case "$levels" in
+    easy,easy | easy,normal | easy,hard | easy,dummy | normal,easy | normal,normal | normal,hard | \
+      normal,dummy | hard,easy | hard,normal | hard,hard | hard,dummy | dummy,easy | dummy,normal | \
+      dummy,hard | dummy,dummy) ;;
+    *)
+      echo "run-sim-smoke: --levels must be two of easy, normal, hard, dummy, like normal,hard," \
+        "got '${levels}'" >&2
+      exit 2
+      ;;
+  esac
+fi
+case "$scenarios" in
+  '' | cross | derrick | lumen | fossil-mirror | renew-mirror) ;;
+  *)
+    echo "run-sim-smoke: --scenarios must be cross, derrick, lumen, fossil-mirror or" \
+      "renew-mirror, got '${scenarios}'" >&2
     exit 2
     ;;
 esac
@@ -103,6 +156,11 @@ if [ -n "$report" ]; then
   rm -f "$report_dir_abs/$(basename "$report")"
   args+=(--report "$report_dir_abs/$(basename "$report")")
 fi
+
+[ -z "$seed_start" ] || args+=(--seed-start "$seed_start")
+[ -z "$levels" ] || args+=(--levels "$levels")
+[ -z "$scenarios" ] || args+=(--scenarios "$scenarios")
+[ -z "$ticks" ] || args+=(--ticks "$ticks")
 
 log="$(mktemp -t sim-smoke.XXXXXX)"
 trap 'rm -f "$log"' EXIT
