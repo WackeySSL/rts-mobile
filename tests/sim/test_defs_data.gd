@@ -369,7 +369,7 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 		var rules_path: String = (
 			"no rules" if scenario.rules == null else scenario.rules.resource_path
 		)
-		# The three pinned scenarios play the frozen copy (P171), the rest the shipped file.
+		# The pinned scenarios play the frozen copy (P171), the rest the shipped file.
 		var expected: String = FROZEN_RULES_PATH if path in FROZEN_SCENARIOS else RULES_PATH
 		assert_str(rules_path).override_failure_message(path).is_equal(expected)
 		if scenario.map != null:

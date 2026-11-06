@@ -17,7 +17,7 @@ const ALLOWED: Array[String] = [ARENA_DIR + "/", "res://data/maps/", "res://data
 const ANY_PATH: String = 'path="([^"]+)"'
 
 
-func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
+func test_the_pinned_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
 	for scenario_path: String in SCENARIOS:
 		var reached: Array[String] = _closure(scenario_path)
 		for walked: String in reached + [scenario_path]:
@@ -33,7 +33,11 @@ func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void
 			if path.begins_with(ARENA_DIR + "/"):
 				arena_files += 1
 		# The walk must not pass on nothing: a scenario takes rules, units, weapons and factions.
-		var least: int = 30 if scenario_path.ends_with("perf_bases.tres") else 1
+		var least: int = (
+			30
+			if scenario_path.ends_with("perf_bases.tres") or scenario_path.ends_with("perf_ai.tres")
+			else 1
+		)
 		(
 			assert_int(arena_files)
 			. override_failure_message("%s reached %d arena files" % [scenario_path, arena_files])

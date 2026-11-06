@@ -8,4 +8,5 @@ const SCENARIOS: Array[String] = [
 	"res://data/scenarios/perf_arena.tres",
 	"res://data/scenarios/perf_bases.tres",
 	"res://data/scenarios/controls_test.tres",
+	"res://data/scenarios/perf_ai.tres",
 ]
