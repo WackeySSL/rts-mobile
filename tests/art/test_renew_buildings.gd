@@ -357,7 +357,7 @@ func test_every_building_is_white_ceramic_on_graphite_with_a_team_zone_a_mint_li
 ## column that tapers to a point, and the Dusk Array is an open frame, not a crystal, not a
 ## dish and not a coil: four columns and a ring beam round a core that stays lower than the ring, no
 ## sphere, no wedge, no taper and no big upright disc.
-func test_nothing_is_a_spire_and_the_blackout_array_is_an_open_frame_that_is_no_dish() -> void:
+func test_nothing_is_a_spire_and_the_dusk_array_is_an_open_frame_that_is_no_dish() -> void:
 	for id: StringName in IDS:
 		for prim: ArtPrim in (load(MODEL % id) as ArtModel).primitives(&"hull"):
 			var spire: bool = (
@@ -458,7 +458,7 @@ func test_the_wind_park_has_two_four_bladed_turbines_of_different_heights() -> v
 
 ## The Relay Post carries three upright hexagonal phased-array faces (a blue-grey panel in a team
 ## frame), turned alternately to +y and to +x, on one slim pole of three segments.
-func test_the_relay_tower_carries_three_array_faces_on_one_slim_pole() -> void:
+func test_the_relay_post_carries_three_array_faces_on_one_slim_pole() -> void:
 	var model: ArtModel = load(MODEL % &"renew_radar") as ArtModel
 	var faces: Array[int] = []
 	var frames: int = 0

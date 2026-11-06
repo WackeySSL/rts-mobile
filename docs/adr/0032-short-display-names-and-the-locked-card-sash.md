@@ -11,8 +11,8 @@ Status: **accepted, 2026-11-06** (Michael: option A for the locked card, "kun n�
 én linje"; then "ja til anbefaling" to the names; Acceptance note below). Proposed 2026-11-06 by the
 architect in two notes to the lead (the locked card's three designs, then the short names), both
 answered in chat the same day; written down by the docs part of row P120k. Base: `main` at cd8fb3f.
-Supersedes six names of ADR 0023 §7 (and the places ADR 0023 repeats them) and adds rows to ADR
-0023 §13's screen (§6 here). Amends ADR 0025 §5 and its 2026-11-04 note on the locked card (a dated
+Supersedes six names of ADR 0023 §7 (and the places ADR 0023 repeats them) and extends ADR 0023
+§13's screen to the new names (§6 here). Amends ADR 0025 §5 and its 2026-11-04 note on the locked card (a dated
 note at the end of §5 names each phrase it replaces). No sim rule, Command, state column, state hash
 or golden hash changes; `defs_hash` changes (§5).
 
@@ -36,8 +36,8 @@ Michael answered two questions in chat on 2026-11-06, verbatim:
   names do not fit: Cracking Plant (99.4 dp), Synthesis Works (113.7), Motor Works (85.1), Relay
   Tower (81.7) and, on the worst profile, Turbine Hall (81.6).
 - **The caption is cut today.** The card's own name has 83.4 dp inside the card's 2 dp frame at
-  88 dp: "Cracking Pl…" and "Blackout Ar…" are cut by the ellipsis, and Roustabouts (84.6 dp) runs
-  over the frame.
+  88 dp: "Cracking Pl…", "Blackout Ar…" and Synthesis Works are cut by the ellipsis, and
+  Roustabouts (84.6 dp) runs over the frame.
 - **Widths depend on the profile.** Each profile draws 14 sp at its rounded pixel size:
   `android_6in` 25 px at 1.75 px per dp (+2.0 %), `web_tablet` 18 px at 1.25 (+2.9 %, the worst).
   Every width below is measured at the drawn size.
@@ -101,9 +101,9 @@ the light faction brings dusk to the enemy's base; a rig hand is an oilfield tra
   97.6 dp at 102 (the sideways drawer) and 109.1 dp at 113 (the upright sheet).
 - **Turbine Hall's condition:** P120j sets the band's end margin so the one-line room at 88 dp is
   **at least 83 dp** (about 2.9 dp of end margin); Turbine Hall then has 1.4 dp to spare on the
-  worst profile. If P120j cannot give 83 dp, the recommendation's fallback applies: Turbine Hall
-  becomes **Boiler Hall** (69.7 / 66.9 dp), in P120j's PR, with a dated note here, and the lead
-  tells Michael.
+  worst profile. If P120j cannot give 83 dp, Turbine Hall needs a shorter name. The architect's
+  fallback is **Boiler Hall** (69.7 / 66.9 dp, §6); it needs Michael's yes before P120j uses it,
+  and a dated note here records his answer.
 - **Proof headless (P120j):** the guard test; a suite that pins the hidden cost, one line at 88,
   102 and 113 dp, and a text box that never overlaps the badge's rect. Rotated text is rasterised
   level and then turned: check its sharpness on the Pixel 9a in the web preview.
@@ -133,7 +133,7 @@ Phase 7 trademark list (ADR 0006's note of 2026-10-26), and the six retired name
 | Oil Works, Fuel Works, Motor Hall, Relay Post, Rig Hands | no known hit in the screened games or among real military vehicles, aircraft, ships or weapon programmes; plain words or an oilfield trade | used (Michael, 2026-11-06) |
 | Dusk Array | no known hit as the pair; "Dusk" alone is a game title (DUSK, 2018) | used; "Dusk" never alone |
 | Turbine Hall | screened in ADR 0023 §13 | kept (on §3's condition) |
-| Boiler Hall | no known hit | §3's fallback only |
+| Boiler Hall | no known hit | §3's fallback, only with Michael's yes |
 | Gas Works, Still House, Synth Hall, Split House, Volt Works, Relay Mast, Sky Relay, Dark Array, Dim Array, Floorhands, Pipe Gang, Burner Hall | no known hit (Gas Works already in ADR 0023 §13) | not used |
 | Motor Bay | no known hit as the pair; "Bay" is StarCraft II's Engineering and Robotics Bay and Red Alert 3's Mecha Bay | not used |
 | Blackout Dish, Blackout Rig, Blackout Mast | too long for the caption | not used |
@@ -148,8 +148,9 @@ Phase 7 trademark list (ADR 0006's note of 2026-10-26), and the six retired name
   (the rows stay as the screen's history). A dated pointer note sits in its header.
 - **ADR 0025 §5:** the locked card (a dated note at the end of §5 names the phrases it replaces);
   §19's P120 row gets P120j's new HOW_TO_PLAY wording.
-- **Kept as history:** ADRs 0007, 0018, 0019, 0025 (§5's older notes, §15), 0026, 0027 and 0029,
-  and `docs/plans/`.
+- **Kept as history:** ADRs 0007, 0018, 0019, 0025 (§5's older notes, §15, §19's P120c row), 0026,
+  0027, 0029 and 0030 (§6's "a Blackout Array fires" reads Dusk Array), and `docs/plans/` except
+  the live Phase 4 plan, whose P181 rows P120k updates.
 - **Updated by P120k:** `docs/GDD.md`, `docs/HOW_TO_PLAY.md`, `assets/art/STYLE.md`,
   `assets/CREDITS.md`, the art model's silhouette line, comments and the tests that pin a name.
 
