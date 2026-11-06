@@ -129,6 +129,8 @@ func test_think_all_returns_the_number_of_controllers_that_thought() -> void:
 	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(0)
 	var none: Array[AiController] = []
 	assert_int(AiDriver.think_all(world, none, out)).is_equal(0)
+	var nulls: Array[AiController] = [null, null]
+	assert_int(AiDriver.think_all(world, nulls, out)).is_equal(0)
 	world.tick = 30
 	world.match_end_tick = 5
 	world.winner = 1

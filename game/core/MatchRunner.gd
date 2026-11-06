@@ -56,7 +56,8 @@ enum ImplLog { NONE = 0, WARNING = 1, ERROR = 2 }
 ## A tick is split into this many parts, so the frame clock is an integer and frame lengths
 ## that add up to whole ticks (four times 1/60 s) step exactly.
 const MICRO_TICKS_PER_TICK: int = 1_000_000
-## The player of the first entry of `opponents` (ADR 0020 section 3: player 2 upward).
+## The default of `first_opponent`: the player of the first entry of `opponents` (ADR 0020
+## section 3: player 2 upward).
 const FIRST_OPPONENT: int = 2
 ## OS.get_name() of the platform that requires the library (ADR 0013 section 3) and of the web
 ## preview, which packs no library (section 7) and falls back silently.
@@ -131,11 +132,11 @@ static var _live_workers: int = 0
 ## WORKER. The scenes set AUTO from P50b.
 @export var tick_mode: TickMode = TickMode.SYNC
 ## The computer players (ADR 0020 section 3, ADR 0030 section 6): entry i plays player
-## `first_opponent` + i, a null entry none; player 1 is the human. start() makes each one's
-## controller with AiFactory.create (an OpponentDef gives OpponentAi at the entry's level in
-## `opponent_levels`, a plain AiDef the dummy), with the stream
-## DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job.
-## Typed, and not exported on purpose: Godot 4.7.2 keeps an exported default in a cache that
+## `first_opponent` + i, a null entry none; player 1 is the human unless `first_opponent` is 1.
+## start() makes each one's controller with AiFactory.create (an OpponentDef gives OpponentAi at the
+## entry's level in `opponent_levels`, a plain AiDef the dummy), with the stream
+## DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job. Typed,
+## and not exported on purpose: Godot 4.7.2 keeps an exported default in a cache that
 ## GDScript::clear() leaves alone, and this typed array would hold the AiDef script there. At exit
 ## the editor (export, import) then frees AiDef while it clears MatchRunner; when AiDef is the next
 ## script of its list, the walk stops early and the autoload scripts (DetRandom, Command, UiScale,
@@ -145,8 +146,8 @@ var opponents: Array[AiDef] = []
 ## The difficulty of entry i of `opponents`; a missing or null level is Normal's file (the plain
 ## dummy ignores it). Typed and not exported, for the reason above.
 var opponent_levels: Array[AiDifficultyDef] = []
-## The player of the first entry of `opponents`; FIRST_OPPONENT keeps today's seating. 1 seats entry
-## 0 on player 1 (a computer player on the human's side, as a headless AI-vs-AI match does).
+## The player of the first entry of `opponents`; FIRST_OPPONENT is the default. 1 seats entry 0 on
+## player 1 (a computer player in the human's seat, as a headless AI-vs-AI match does).
 var first_opponent: int = FIRST_OPPONENT
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012

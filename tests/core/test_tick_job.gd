@@ -9,6 +9,8 @@ const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.g
 const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
+const StampProbe: GDScript = preload("res://tests/core/support/stamp_probe.gd")
+const SlowAi: GDScript = preload("res://tests/core/support/slow_ai.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
 ## How long before run() a late job is posted: far longer than any run, as a worker woken late.
@@ -229,6 +231,7 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()
 	job.run()
+	assert_int(ai.work_max).is_equal(1)
 	visited.clear()
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()
@@ -255,7 +258,7 @@ func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> vo
 		job.run()
 		if tick % 15 == 0:
 			thought.append(tick)
-			assert_int(job.snapshot.think_usec).is_between(0, job.snapshot.job_usec)
+			assert_int(job.snapshot.think_usec).is_between(1, job.snapshot.job_usec)
 		else:
 			assert_int(job.snapshot.think_usec).is_equal(0)
 	assert_array(thought).is_equal([15, 30])
@@ -265,11 +268,39 @@ func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> vo
 ## microsecond makes think_usec at least 1 and at most job_usec.
 func test_think_usec_counts_a_think_that_takes_time() -> void:
 	var job: TickJob = _arena_job()
-	var slow: SlowAi = SlowAi.new()
+	var slow: AiController = SlowAi.new()
 	slow.player_id = 2
 	job.controllers.append(slow)
+	var stamp: StampProbe = StampProbe.new()
+	(job.probe as StepProbe).target = stamp
 	job.run()
-	assert_int(job.snapshot.think_usec).is_between(1, job.snapshot.job_usec)
+	var snap: MatchSnapshot = job.snapshot
+	assert_int(snap.think_usec).is_between(1, snap.job_usec)
+	# The clock is read after the thinks and before the step: the step's probe waits WAIT_USEC in
+	# begin(), so the thinks end at least that long before begin() returns.
+	var started: int = snap.end_usec - snap.job_usec
+	assert_int(snap.think_usec).is_less_equal(
+		stamp.begin_exit_usec - StampProbe.WAIT_USEC - started
+	)
+
+
+## With about 1000 controllers seated and none due (period 2 on an odd tick) nothing thinks, and
+## think_usec is 0 although the driver scanned them all.
+func test_think_usec_is_zero_with_many_controllers_and_none_due() -> void:
+	var job: TickJob = _arena_job()
+	job.run()
+	assert_int(job.world.tick).is_equal(1)
+	for index: int in 1000:
+		var controller: AiController = RecordingAi.new()
+		controller.player_id = 1 + index % 2
+		controller.think_period = 2
+		controller.think_offset = 0
+		controller.set(&"journal", [])
+		job.controllers.append(controller)
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.run()
+	assert_int(job.snapshot.think_usec).is_equal(0)
 
 
 ## run() lets the controllers think on the World before the step, after the commands the list
@@ -456,13 +487,3 @@ func _banned_in(line: String, patterns: Array[RegEx], strings: RegEx) -> int:
 		if patterns[index].search(code) != null:
 			return index
 	return -1
-
-
-## A controller whose think returns after the clock has moved by at least one microsecond.
-class SlowAi:
-	extends AiController
-
-	func think(_view: PlayerView, _out: Array[Command]) -> void:
-		var start: int = Time.get_ticks_usec()
-		while Time.get_ticks_usec() == start:
-			pass

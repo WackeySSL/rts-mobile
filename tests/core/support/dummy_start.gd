@@ -1,8 +1,9 @@
 extends RefCounted
 ## The skirmish-like start of tests/ai/support/ai_rig.gd as a ScenarioDef (plan row P82), so a
-## MatchRunner can play it: 40 x 40 tiles of the shipped terrain and rules, two players, each with
-## a Headquarters, two rifle squads beside it, the rules' start credits and ore near its base, the
-## bases 28 tiles apart. The map, the roster and the bases are the rig's own. Not a test suite.
+## MatchRunner can play it: 40 x 40 tiles of the shipped terrain and the frozen rules and units, two
+## players, each with a Headquarters, two rifle squads beside it, the rules' start credits and ore
+## near its base, the bases 28 tiles apart. The map, the roster and the bases are the rig's own;
+## only the terrain is shipped. Not a test suite.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 

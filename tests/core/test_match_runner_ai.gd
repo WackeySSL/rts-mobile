@@ -1,14 +1,17 @@
 extends GdUnitTestSuite
-## MatchRunner's computer players (plan row P82, ADR 0020 sections 2, 3 and 5): start() builds one
-## DummyAi per def of `opponents` (player 2 upward) with its player's stream, and the tick job lets
-## the controllers think before each step, on the thread that runs it. The dummy match is
-## tests/core/support/dummy_start.gd (the start of tests/ai/support/ai_rig.gd as a scenario), seed
-## 42, player 2 the shipped dummy and player 1 idle but for one MOVE on a tick the dummy thinks:
-## played by a SYNC runner, a WORKER runner and a headless loop that calls AiDriver.think_all before
-## MatchLoop.step, it gives the same checkpoints and the same log, the dummy's Commands are in it
-## after the human's, and Replay.play reproduces it without any AI. The runners are built the Phase
-## 1 way (auto_free, never in the tree) and set their mode explicitly; the WORKER runners wait only
-## through wait_idle(). A thread suite: it runs three times in a row (CLAUDE.md).
+## MatchRunner's computer players (plan rows P82 and P182, ADR 0020 sections 2, 3 and 5, ADR 0030
+## section 6): start() builds one controller per def of `opponents` through AiFactory (an
+## OpponentDef gives OpponentAi at the level in `opponent_levels`, Normal's when missing; a plain
+## AiDef the DummyAi), seated from `first_opponent` (default player 2 upward) with its player's
+## stream, and the tick job lets the controllers think before each step, on the thread that runs it.
+## The dummy match is tests/core/support/dummy_start.gd (the start of tests/ai/support/ai_rig.gd as
+## a scenario), seed 42, player 2 the shipped dummy and player 1 idle but for one MOVE on a tick the
+## dummy thinks: played by a SYNC runner, a WORKER runner and a headless loop that calls
+## AiDriver.think_all before MatchLoop.step, it gives the same checkpoints and the same log, the
+## dummy's Commands are in it after the human's, and Replay.play reproduces it without any AI. The
+## runners are built the Phase 1 way (auto_free, never in the tree) and set their mode explicitly;
+## the WORKER runners wait only through wait_idle(). A thread suite: it runs three times in a row
+## (CLAUDE.md).
 
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
@@ -79,17 +82,18 @@ func test_an_opponent_def_builds_opponent_ai_at_its_level_and_a_missing_level_is
 	runner.scenario = DummyStart.scenario()
 	runner.match_seed = SEED
 	runner.opponents = [opponent, opponent, opponent, DummyStart.dummy_def()]
-	runner.opponent_levels = [easy, null, hard]
+	runner.first_opponent = 1
+	runner.opponent_levels = [easy, null, hard, hard]
 	var built: Array[AiController] = runner._opponent_controllers()
 	var players: Array = built.map(func(ai: AiController) -> int: return ai.player_id)
-	assert_array(players).is_equal([2, 3, 4, 5])
+	assert_array(players).is_equal([1, 2, 3, 4])
 	var levels: Array = []
 	for index: int in 3:
 		var ai: OpponentAi = built[index] as OpponentAi
 		assert_object(ai).is_not_null()
 		levels.append([ai.level_id, ai.tier])
 	assert_array(levels).is_equal([[&"easy", 0], [&"normal", 1], [&"hard", 2]])
-	# The fourth entry has a plain def and no level: the dummy.
+	# The fourth entry has a plain def, whatever its level: the dummy.
 	assert_bool(built[3] is DummyAi).is_true()
 	# No levels at all: Normal's for every opponent.
 	runner.opponent_levels = []

@@ -23,7 +23,7 @@ static func think_all(world: World, controllers: Array[AiController], out: Array
 	var thought: int = 0
 	var tick: int = world.tick
 	# A selection without scratch storage: each pass picks the due controller with the smallest
-	# (player, list index) after the one that thought last. O(n^2), with n at most 3 opponents.
+	# (player, list index) after the one that thought last. O(n^2), with n at most 4.
 	var last: int = -1
 	var last_player: int = 0
 	while true:
