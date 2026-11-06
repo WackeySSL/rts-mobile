@@ -44,11 +44,11 @@ const TIERS: int = 3
 ## tests per slot, and live flow-cache keys of the AI (a key is a goal cell and a move class).
 @export var squads_max: int = 4
 @export var place_tries_per_think: int = 8
+@export var target_tests_max: int = 512
+@export var goal_keys_max: int = 4
 ## The building slots of `PlacementSpiral` round the Headquarters that the economy asks about
 ## (ring 1 first); the search wraps round them across thinks.
 @export var spiral_slots: int = 64
-@export var target_tests_max: int = 512
-@export var goal_keys_max: int = 4
 ## The least enemy value a superweapon shot must hit (credits).
 @export var strike_min_value: int = 3000
 

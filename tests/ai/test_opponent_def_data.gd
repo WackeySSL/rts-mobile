@@ -90,13 +90,13 @@ func test_the_opponent_files_hold_the_numbers_of_the_adr(
 				def.sectors_max,
 				def.squads_max,
 				def.place_tries_per_think,
-				def.spiral_slots,
 				def.target_tests_max,
 				def.goal_keys_max,
+				def.spiral_slots,
 				def.strike_min_value
 			]
 		)
-		. is_equal([20, 6, 4, 8, 64, 4, 8, 64, 512, 4, 3000])
+		. is_equal([20, 6, 4, 8, 64, 4, 8, 512, 4, 64, 3000])
 	)
 
 

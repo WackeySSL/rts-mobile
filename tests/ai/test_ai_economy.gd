@@ -33,17 +33,20 @@ func test_a_step_waits_for_its_requirement_and_is_not_skipped() -> void:
 	var world: World = _start()
 	var economy: AiEconomy = _economy("fossil", "normal")
 	var memory: AiMemory = _memory("fossil")
-	var first: Array[Command] = _run(economy, memory, world, 1)
+	var first: Array[Command] = _run(economy, memory, world)
 	# The plant is the first step; the refinery needs a finished plant, so the order waits for it
 	# (it does not go on to the barracks) and the credits of the refinery are kept.
 	assert_array(_queued_ids(first, world)).is_equal(["power_plant"])
-	assert_int(memory.reserve_credits).is_equal(1400)
+	# The refinery's price is kept besides the plant's own spend.
+	assert_int(memory.reserve_credits).is_equal(
+		_cost(world, "power_plant") + _cost(world, "refinery")
+	)
 	# Applied, the plant is owned-or-queued: the next think wants the refinery, still waiting.
 	AiRig.step(world, AiRig.loop_of(world), first)
-	assert_array(_queued_ids(_run(economy, memory, world, 1), world)).is_empty()
+	assert_array(_queued_ids(_run(economy, memory, world), world)).is_empty()
 
 
-func test_each_tiers_order_is_queued_in_order_with_power_ahead_of_consumers() -> void:
+func test_each_tiers_order_is_queued_in_order_apart_from_the_added_plants() -> void:
 	for level: String in Rig.LEVELS:
 		for faction: String in Rig.FACTIONS:
 			var order: Array[StringName] = (
@@ -69,105 +72,160 @@ func test_power_is_queued_before_a_consumer_would_leave_the_surplus_under_the_ma
 	# A plant (100) and the Headquarters (20) make 120; a refinery, a factory and a radar use 100.
 	# A barracks (20) would leave 0, under the margin of 20, so a plant comes first; the queued
 	# plant counts, so the barracks follows in the same think.
+	var tight: World = _tight()
 	var def: OpponentDef = _def_with_steps("fossil", ["barracks"])
 	var economy: AiEconomy = AiEconomy.create(def, Rig.level_of("normal"), 1)
-	var sent: Array[Command] = _run(economy, AiMemory.create(def), _tight(), 1)
-	assert_array(_queued_ids(sent, _tight())).is_equal(["power_plant", "barracks"])
+	var sent: Array[Command] = _run(economy, AiMemory.create(def), tight)
+	assert_array(_queued_ids(sent, tight)).is_equal(["power_plant", "barracks"])
 	# With no margin the consumer is wanted at once, ahead of any plant (the loop's refinery after
 	# it is the one that wants a plant then).
 	def.power_margin = 0
 	economy = AiEconomy.create(def, Rig.level_of("normal"), 1)
-	sent = _run(economy, AiMemory.create(def), _tight(), 1)
-	assert_array(_queued_ids(sent, _tight()).slice(0, 1)).is_equal(["barracks"])
+	sent = _run(economy, AiMemory.create(def), tight)
+	assert_array(_queued_ids(sent, tight).slice(0, 1)).is_equal(["barracks"])
+
+
+func test_the_loop_queues_power_while_the_surplus_is_under_the_margin() -> void:
+	var world: World = _base()
+	var view: PlayerView = PlayerView.of(world, 1)
+	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.power_margin = view.power_made - view.power_used + 1
+	var economy: AiEconomy = AiEconomy.create(def, Rig.level_of("normal"), 1)
+	var sent: Array[Command] = _run(economy, AiMemory.create(def), world)
+	assert_array(_queued_ids(sent, world)).is_equal(["power_plant"])
+	def.power_margin -= 1  # At the margin: nothing (the rule is `<`).
+	economy = AiEconomy.create(def, Rig.level_of("normal"), 1)
+	var memory: AiMemory = AiMemory.create(def)
+	memory.reserve_credits = 77
+	sent = _run(economy, memory, world)
+	assert_array(_queued_ids(sent, world)).is_empty()
+	# A finished base wants nothing and keeps no credits.
+	assert_int(memory.reserve_credits).is_equal(0)
 
 
 func test_tankers_per_refinery_follow_the_level() -> void:
-	# (level, refineries, tankers owned, tankers wanted queued now); the vehicle queue holds two.
+	# (level, refineries, tankers owned); the vehicle queue holds `queue_target` items.
 	var cases: Array = [
-		["easy", 1, 0, 1],
-		["normal", 1, 0, 2],
-		["normal", 1, 1, 1],
-		["normal", 1, 2, 0],
-		["hard", 2, 2, 2],
-		["hard", 2, 4, 0],
+		["easy", 1, 0],
+		["normal", 1, 0],
+		["normal", 1, 1],
+		["normal", 1, 2],
+		["hard", 2, 2],
+		["hard", 2, 4]
 	]
 	for row: Array in cases:
 		# The base has two refineries; a case with one leaves the first of them out.
 		var world: World = _base(int(row[2]), ["refinery"] if int(row[1]) == 1 else [])
-		var sent: Array[Command] = _run(_economy("fossil", row[0]), _memory("fossil"), world, 1)
-		var tankers: int = _queued_ids(sent, world).count("harvester")
-		assert_int(tankers).override_failure_message("%s: %s" % [row, tankers]).is_equal(
-			int(row[3])
+		var per: int = Rig.level_of(row[0]).harvesters_per_refinery
+		var wanted: int = clampi(
+			per * int(row[1]) - int(row[2]), 0, Rig.def_of("fossil").queue_target
 		)
+		var sent: Array[Command] = _run(_economy("fossil", row[0]), _memory("fossil"), world)
+		var tankers: int = _queued_ids(sent, world).count("harvester")
+		assert_int(tankers).override_failure_message("%s: %s" % [row, tankers]).is_equal(wanted)
 
 
 func test_a_lost_building_is_wanted_again_at_its_place_in_the_order() -> void:
 	var world: World = _base(4, ["barracks"])
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), _memory("fossil"), world, 1)
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), _memory("fossil"), world)
 	# Every other step is owned; the barracks, the third step, is the one missing.
 	assert_array(_queued_ids(sent, world)).is_equal(["barracks"])
 	# A lost second power plant is wanted again too, and that wish is first in the list.
 	world = _base(4, ["power_plant"])
-	sent = _run(_economy("fossil", "normal"), _memory("fossil"), world, 1)
+	sent = _run(_economy("fossil", "normal"), _memory("fossil"), world)
 	assert_array(_queued_ids(sent, world)).is_equal(["power_plant"])
 
 
-func test_a_finished_base_wants_nothing_and_keeps_no_credits() -> void:
-	var world: World = _base()
-	var memory: AiMemory = _memory("fossil")
-	memory.reserve_credits = 77
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world, 1)
-	assert_array(_queued_ids(sent, world)).is_empty()
-	assert_int(memory.reserve_credits).is_equal(0)
-
-
-func test_the_credits_for_a_wish_that_waits_for_money_or_for_the_head_are_kept() -> void:
+func test_the_reserve_is_what_the_economy_queued_plus_the_price_it_keeps() -> void:
 	var world: World = _start()
 	var memory: AiMemory = _memory("fossil")
-	world.credits[1] = 100
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world, 1)
+	var plant: int = _cost(world, "power_plant")
+	world.credits[1] = plant - 200
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(sent).is_empty()
-	assert_int(memory.reserve_credits).is_equal(300)
-	# With a finished plant, money pays the refinery and the barracks; the next step, a second
-	# plant, waits for the queue's room while the head is being built.
+	assert_int(memory.reserve_credits).is_equal(_cost(world, "power_plant"))
+	# With a finished plant, money pays the refinery and the barracks (queued: 1,800); the next
+	# step, a second plant, waits for the queue's room while the head is being built, and 300 is
+	# kept for it. Production must leave 1,800 + 300, so nothing is left for it.
 	world = _start()
 	AiRig.give(world, 1, "power_plant", 10, 2)
 	Power.run(world)
-	sent = _run(_economy("fossil", "normal"), memory, world, 1)
+	sent = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(_queued_ids(sent, world)).is_equal(["refinery", "barracks"])
-	assert_int(memory.reserve_credits).is_equal(300)
+	var view: PlayerView = PlayerView.of(world, 1)
+	var queued: int = _cost(world, "refinery") + _cost(world, "barracks")
+	assert_int(memory.reserve_credits).is_equal(queued + plant)
+	assert_int(view.credits - memory.reserve_credits).is_equal(2000 - 1800 - 300)
 
 
-func test_a_player_with_no_producer_sends_nothing() -> void:
+func test_a_tanker_that_waits_for_money_keeps_its_price() -> void:
+	var world: World = _base(0, ["refinery"])
+	world.credits[1] = 1000
+	var memory: AiMemory = _memory("fossil")
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world)
+	assert_array(sent).is_empty()
+	assert_int(memory.reserve_credits).is_equal(_cost(world, "harvester"))
+
+
+func test_a_full_queue_keeps_credits_for_the_next_structure_only_while_its_head_builds() -> void:
+	# Plant given and a queue of two (a ready plant, a barracks): the refinery waits for room.
+	# Ready head that cannot be placed (rock): nothing is kept, the credits would sit idle.
+	var blocked: World = _queue_of_two(true)
+	var memory: AiMemory = _memory("fossil")
+	assert_array(_run(_economy("fossil", "normal"), memory, blocked)).is_empty()
+	assert_int(memory.reserve_credits).is_equal(0)
+	# Ready head that is placed in this run: the view is stale, the room comes next tick, so the
+	# refinery's price is kept.
+	var open: World = _queue_of_two(false)
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, open)
+	assert_int(_of_type(sent, Command.Type.PLACE).size()).is_equal(1)
+	assert_int(memory.reserve_credits).is_equal(_cost(open, "refinery"))
+
+
+func test_without_a_producer_nothing_is_sent_and_a_missing_requirement_keeps_nothing() -> void:
 	var world: World = _start()
 	var loop: MatchLoop = AiRig.loop_of(world)
 	AiRig.kill(world, loop, AiRig.row_of(world, 1, FactionRig.HQ["fossil"]))
 	var memory: AiMemory = _memory("fossil")
 	memory.reserve_credits = 5
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world, 1)
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(sent).is_empty()
+	assert_int(memory.reserve_credits).is_equal(0)
+	# A barracks lives but the Headquarters, which a plant needs, is neither owned nor queued: the
+	# plant's price is not kept (nothing could ever be built for it).
+	AiRig.give(world, 1, "barracks", 2, 2)
+	memory.reserve_credits = 5
+	assert_array(_run(_economy("fossil", "normal"), memory, world)).is_empty()
 	assert_int(memory.reserve_credits).is_equal(0)
 
 
-func test_the_rules_caps_stop_a_queue_that_would_be_refused() -> void:
+func test_the_rules_caps_hold_back_what_could_not_be_placed_or_spawned() -> void:
 	var world: World = _start()
 	world.building_cap = 1
-	assert_array(_run(_economy("fossil", "normal"), _memory("fossil"), world, 1)).is_empty()
-	world = _base()
-	world.unit_cap = AiRig.count_of(world, 1, "rifle_squad")
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), _memory("fossil"), world, 1)
-	assert_int(_queued_ids(sent, world).count("harvester")).is_equal(0)
+	assert_array(_run(_economy("fossil", "normal"), _memory("fossil"), world)).is_empty()
+	# Two refineries and two tankers: Normal wants two more. A cap of units + 2 allows none, units
+	# + 3 allows one (the run counts what it queued).
+	for room: int in [2, 3]:
+		world = _base(2)
+		var units: int = AiRig.count_of(world, 1, "rifle_squad") + 2
+		world.unit_cap = units + room - 2
+		var sent: Array[Command] = _run(_economy("fossil", "normal"), _memory("fossil"), world)
+		assert_int(_queued_ids(sent, world).count("harvester")).is_equal(room - 2)
 
 
 func test_no_command_is_sent_past_the_think_budget() -> void:
 	var world: World = _start()
 	var memory: AiMemory = _memory("fossil")
 	memory.commands_left = 1
-	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world, 1, false)
+	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world, false)
 	assert_int(sent.size()).is_equal(1)
 	assert_int(memory.commands_left).is_equal(0)
 	memory.commands_left = 0
-	assert_array(_run(_economy("fossil", "normal"), memory, world, 1, false)).is_empty()
+	assert_array(_run(_economy("fossil", "normal"), memory, world, false)).is_empty()
+	# A ready head is not placed without budget either.
+	AiRig.explore_all(world)
+	_ready_head(world, 1, "power_plant")
+	assert_array(_run(_economy("fossil", "normal"), memory, world, false)).is_empty()
 
 
 # --- Placement -------------------------------------------------------------------------------
@@ -183,12 +241,15 @@ func test_a_search_asks_at_most_the_budget_and_resumes_where_it_stopped() -> voi
 	var memory: AiMemory = _memory("fossil")
 	var resumes: Array[int] = []
 	for _think: int in 10:
-		var sent: Array[Command] = _run(economy, memory, world, 1)
+		var sent: Array[Command] = _run(economy, memory, world)
 		# The rock leaves no slot: nothing is placed, and a search asks 8 slots and no more.
 		assert_array(sent).is_empty()
 		assert_int(economy.placement_tries).is_equal(def.place_tries_per_think)
 		resumes.append(memory.spiral_resume)
-	assert_array(resumes).is_equal([8, 16, 24, 32, 40, 48, 56, 0, 8, 16])
+	var expected: Array[int] = []
+	for think: int in 10:
+		expected.append((think + 1) * def.place_tries_per_think % def.spiral_slots)
+	assert_array(resumes).is_equal(expected)
 	assert_int(economy.placed).is_equal(0)
 
 
@@ -202,63 +263,59 @@ func test_a_place_goes_to_the_first_free_slot_and_the_next_search_starts_again_t
 	var places: Array[Command] = []
 	var thinks: int = 0
 	while places.is_empty() and thinks < 12:
-		places = _of_type(_run(economy, memory, world, 1), Command.Type.PLACE)
+		places = _of_type(_run(economy, memory, world), Command.Type.PLACE)
 		thinks += 1
 	# Slots 24 to 63 are out of reach of a lone Headquarters, so the search wraps to ring 1.
-	assert_int(thinks).is_equal(6)
+	var tries: int = Rig.def_of("fossil").place_tries_per_think
+	var span: int = Rig.def_of("fossil").spiral_slots - 24
+	assert_int(thinks).is_equal((span + tries - 1) / tries + 1)
 	assert_int(places.size()).is_equal(1)
 	var view: PlayerView = PlayerView.of(world, 1)
 	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
 	assert_array(_tile_of(places[0])).is_equal(_nearest_ok(view, head, 24, Vector2i(NONE, NONE)))
 	assert_int(memory.spiral_resume).is_equal(0)
 	assert_int(economy.placed).is_equal(1)
-
-
-func test_a_search_that_places_in_its_first_thinks_starts_over_at_slot_0_next_time() -> void:
-	var world: World = _start()
-	AiRig.explore_all(world)
-	_ready_head(world, 1, "power_plant")
-	var memory: AiMemory = _memory("fossil")
-	# Slots 4 to 11 hold ring 1's last four cells, so the first search places.
+	# A search that places in its first think starts over at slot 0 as well (slots 4 to 11 hold
+	# ring 1's last cells).
 	memory.spiral_resume = 4
-	var economy: AiEconomy = _economy("fossil", "normal")
-	var sent: Array[Command] = _run(economy, memory, world, 1)
-	assert_int(_of_type(sent, Command.Type.PLACE).size()).is_equal(1)
+	_ready_head(world, 1, "power_plant")
+	economy = _economy("fossil", "normal")
+	places = _of_type(_run(economy, memory, world), Command.Type.PLACE)
+	assert_int(places.size()).is_equal(1)
 	assert_int(memory.spiral_resume).is_equal(0)
 
 
 func test_a_defence_goes_to_the_free_slot_nearest_the_staging_point() -> void:
-	var staging: Vector2i = Vector2i(22, 6)
+	var near: Array[int] = _place_with("defence_turret", Vector2i(22, 6))
+	var first: Array[int] = _place_with("defence_turret", Vector2i(NONE, NONE))
+	# The Headquarters' top-left tile is (6, 6): slot (1, 0) is (10, 6), slot (-1, -1) is (2, 2).
+	assert_array(near).is_equal([10, 6])
+	assert_array(first).is_equal([2, 2])
+	assert_array(near).is_equal(_oracle("defence_turret", Vector2i(22, 6)))
+	# Only a defence goes toward the staging point: a plant still takes the first free slot.
+	assert_array(_place_with("power_plant", Vector2i(22, 6))).is_equal([2, 2])
+	# The base is round the first Headquarters, even with a second one later in the rows.
+	assert_array(_place_with("power_plant", Vector2i(NONE, NONE), true)).is_equal([2, 2])
+
+
+func test_a_new_search_order_starts_at_its_first_slot() -> void:
 	var world: World = _start()
 	AiRig.explore_all(world)
 	_ready_head(world, 1, "defence_turret")
-	var view: PlayerView = PlayerView.of(world, 1)
-	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
 	var memory: AiMemory = _memory("fossil")
-	memory.staging_x = staging.x
-	memory.staging_y = staging.y
-	var near: Array[int] = _nearest_ok(view, head, 0, staging)
-	var first: Array[int] = _nearest_ok(view, head, 0, Vector2i(NONE, NONE))
-	assert_array(near).is_not_equal(first)
+	# A plain search was under way (resume 16); the staging point is set: the nearest slot is
+	# found from the nearest-first order's start, not from the plain order's 16.
+	memory.spiral_resume = 16
+	memory.staging_x = 22
+	memory.staging_y = 6
 	var economy: AiEconomy = _economy("fossil", "normal")
-	var found: Array[Command] = []
-	var thinks: int = 0
-	while found.is_empty() and thinks < 20:
-		found = _of_type(_run(economy, memory, world, 1), Command.Type.PLACE)
-		thinks += 1
-	assert_int(found.size()).is_equal(1)
-	assert_array(_tile_of(found[0])).is_equal(near)
-	# Every search asks at most the budget, so the slot is found within as many thinks as it takes.
-	assert_int(thinks).is_less_equal(8)
-	# With no staging point the same head takes the first free slot of the spiral.
-	var plain: AiMemory = _memory("fossil")
-	var other: AiEconomy = _economy("fossil", "normal")
-	found = []
-	thinks = 0
-	while found.is_empty() and thinks < 20:
-		found = _of_type(_run(other, plain, world, 1), Command.Type.PLACE)
-		thinks += 1
-	assert_array(_tile_of(found[0])).is_equal(first)
+	var places: Array[Command] = []
+	for _think: int in 20:
+		places = _of_type(_run(economy, memory, world), Command.Type.PLACE)
+		if not places.is_empty():
+			break
+	assert_int(places.size()).is_equal(1)
+	assert_array(_tile_of(places[0])).is_equal([10, 6])
 
 
 # --- Matches ---------------------------------------------------------------------------------
@@ -268,22 +325,19 @@ func test_no_command_is_dropped_in_a_2700_tick_match_and_the_bases_grow() -> voi
 	var world: World = _natural["world"]
 	assert_array([world.dropped_commands, world.spawn_refused]).is_equal([0, 0])
 	for player: int in [1, 2]:
-		assert_array([_natural["cut"][player - 1], _natural["work_max"][player - 1]]).is_equal(
-			[0, 2]
-		)
+		assert_int(_natural["cut"][player - 1]).is_equal(0)
+		# The view's pass and the economy's (later slots add their own passes).
+		assert_int(_natural["work_max"][player - 1]).is_between(2, 3)
 		assert_int(_natural["commands"][player - 1]).is_greater(8)
 	assert_int(AiRig.count_of(world, 1, "power_plant")).is_greater(0)
 	assert_int(AiRig.count_of(world, 2, "renew_refinery")).is_greater(0)
 
 
-func test_no_command_is_dropped_in_a_full_match_at_any_level() -> void:
+func test_the_loop_stops_at_the_levels_caps_and_no_command_is_dropped() -> void:
 	for level: String in Rig.LEVELS:
-		var world: World = _matches[level]["world"]
-		assert_array([world.dropped_commands, world.spawn_refused]).is_equal([0, 0])
+		var played: World = _matches[level]["world"]
+		assert_array([played.dropped_commands, played.spawn_refused]).is_equal([0, 0])
 		assert_array(_matches[level]["cut"]).is_equal([0, 0])
-
-
-func test_the_loop_stops_at_the_levels_caps() -> void:
 	var ids: Dictionary[String, Dictionary] = {
 		"fossil":
 		{"refinery": "refinery", "factory": "vehicle_factory", "defence": "defence_turret"},
@@ -313,16 +367,12 @@ func test_the_loop_stops_at_the_levels_caps() -> void:
 					)
 					. is_equal(expected)
 				)
-
-
-func test_the_tankers_follow_the_refineries_at_each_level() -> void:
-	for level: String in Rig.LEVELS:
-		var per: int = Rig.level_of(level).harvesters_per_refinery
-		var world: World = _matches[level]["world"]
-		var refineries: int = AiRig.count_of(world, 1, "refinery")
-		assert_int(AiRig.count_of(world, 1, "harvester")).is_equal(per * refineries)
-		refineries = AiRig.count_of(world, 2, "renew_refinery")
-		assert_int(AiRig.count_of(world, 2, "renew_tanker")).is_equal(per * refineries)
+			# The tankers follow the refineries: the level's number for each.
+			var tanker: String = "harvester" if faction == "fossil" else "renew_tanker"
+			var refineries: int = AiRig.count_of(world, at + 1, ids[faction]["refinery"])
+			assert_int(AiRig.count_of(world, at + 1, tanker)).is_equal(
+				level_def.harvesters_per_refinery * refineries
+			)
 
 
 func test_the_economy_holds_no_resource_and_draws_no_random_number() -> void:
@@ -334,9 +384,12 @@ func test_the_economy_holds_no_resource_and_draws_no_random_number() -> void:
 		assert_bool(value is Resource or value is Node).is_false()
 	var world: World = FactionRig.start("renew", "fossil")
 	var memory: AiMemory = _memory("renew")
+	memory.commands_left = 8
 	var stream: DetRandom = DetRandom.create(5, DetRandom.STREAM_AI_BASE + 1)
 	var twin: DetRandom = DetRandom.create(5, DetRandom.STREAM_AI_BASE + 1)
-	economy.run(PlayerView.of(world, 1), memory, stream, [] as Array[Command])
+	var out: Array[Command] = []
+	economy.run(PlayerView.of(world, 1), memory, stream, out)
+	assert_array(out).is_not_empty()
 	assert_array(stream.state()).is_equal(twin.state())
 
 
@@ -368,6 +421,61 @@ func _tight() -> World:
 	return world
 
 
+## The price of the type `id` in `world`.
+func _cost(world: World, id: String) -> int:
+	return world.type_cost[AiRig.type_of(world, id)]
+
+
+## A start where player 1 owns a finished plant and its STRUCTURES queue holds a ready plant and a
+## barracks (room for no more); on rock, nothing can be placed.
+func _queue_of_two(blocked: bool) -> World:
+	var scenario: ScenarioDef = FactionRig.scenario("fossil", "renew")
+	if blocked:
+		scenario.map.rows = PackedStringArray(AiRig.rows(true))
+	var world: World = World.from_scenario(scenario)
+	AiRig.explore_all(world)
+	world.credits[1] = RICH
+	AiRig.give(world, 1, "power_plant", 10, 2)
+	_ready_head(world, 1, "power_plant")
+	var queue: int = World.TABS + World.Tab.STRUCTURES
+	world.queue_type[queue * world.queue_slots + 1] = AiRig.type_of(world, "barracks")
+	world.queue_count[queue] = 2
+	Power.run(world)
+	return world
+
+
+## The tile a ready `id` head is placed on, with the staging point set unless it is (-1, -1).
+func _place_with(id: String, staging: Vector2i, second_hq: bool = false) -> Array[int]:
+	var world: World = _start()
+	if second_hq:
+		AiRig.give(world, 1, "headquarters", 30, 10)
+	AiRig.explore_all(world)
+	_ready_head(world, 1, id)
+	var memory: AiMemory = _memory("fossil")
+	if staging.x >= 0:
+		memory.staging_x = staging.x
+		memory.staging_y = staging.y
+	var economy: AiEconomy = _economy("fossil", "normal")
+	var found: Array[Command] = []
+	for _think: int in 20:
+		found = _of_type(_run(economy, memory, world), Command.Type.PLACE)
+		if not found.is_empty():
+			break
+	assert_int(found.size()).is_equal(1)
+	return _tile_of(found[0])
+
+
+## What the rule says for an `id` head: `_nearest_ok` on a fresh view.
+func _oracle(id: String, staging: Vector2i) -> Array[int]:
+	var world: World = _start()
+	AiRig.explore_all(world)
+	_ready_head(world, 1, id)
+	var view: PlayerView = PlayerView.of(world, 1)
+	return _nearest_ok(
+		view, view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots], 0, staging
+	)
+
+
 func _economy(faction: String, level: String) -> AiEconomy:
 	return AiEconomy.create(Rig.def_of(faction), Rig.level_of(level), 1)
 
@@ -376,18 +484,15 @@ func _memory(faction: String) -> AiMemory:
 	return AiMemory.create(Rig.def_of(faction))
 
 
-## One economy run on a fresh view of `world` for `player`; the memory's budget is the level's
-## largest unless `open` is false (the caller set it).
-func _run(
-	economy: AiEconomy, memory: AiMemory, source: Variant, player: int, open: bool = true
-) -> Array[Command]:
-	var view: PlayerView = (
-		source as PlayerView if source is PlayerView else PlayerView.of(source as World, player)
-	)
+## One economy run on a fresh view of `world` for player 1; the memory's budget is 99 Commands
+## unless `open` is false (the caller set it).
+func _run(economy: AiEconomy, memory: AiMemory, world: World, open: bool = true) -> Array[Command]:
 	if open:
 		memory.commands_left = 99
 	var out: Array[Command] = []
-	economy.run(view, memory, DetRandom.create(1, DetRandom.STREAM_AI_BASE + player), out)
+	economy.run(
+		PlayerView.of(world, 1), memory, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1), out
+	)
 	return out
 
 
