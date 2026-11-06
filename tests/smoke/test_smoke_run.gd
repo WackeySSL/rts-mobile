@@ -12,7 +12,7 @@ extends GdUnitTestSuite
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
-const SmokeCount = preload("res://tests/smoke/smoke_count.gd")
+const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 const TICKS: int = 900
 ## 900 ticks hold 60 checkpoints: one every 15th tick from tick 15.
 const CHECKPOINTS: int = 60
@@ -578,7 +578,7 @@ func test_a_dropped_command_fails_the_run_and_the_report() -> void:
 	broken["dropped_commands"] = 2
 	broken["seed"] = 2
 	var records: Array[Dictionary] = [_records[0], broken]
-	var drops: Dictionary = {2: 412}
+	var drops: Dictionary[int, int] = {2: 412}
 	var failures: PackedStringArray = Smoke.failures(records, drops)
 	assert_array(Array(failures)).is_equal(["seed 2: dropped commands 2, the first in tick 412"])
 	(

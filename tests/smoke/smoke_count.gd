@@ -24,8 +24,9 @@ extends RefCounted
 ##   with none of them is credited to nobody.
 ## - `first_drop_tick`: the tick of the first step after which `dropped_commands` was above 0, -1
 ##   while none was (a harness failure names it).
-## - Free-unit edges: a refused `spawn_free` (unit cap, no exit) in the tick of its refinery leaves
-##   the owed unit unused, and a later unit of that type counts as produced; and on the dormant
+## - Free-unit edges: a refused `spawn_free` (unit cap, no exit) in the tick of its refinery
+##   leaves the owed count in place for the rest of that tick, so a unit of that type produced in
+##   the same tick counts as free; and on the dormant
 ##   place-first path (ADR 0026) the free harvester spawns when the site completes, ticks after
 ##   the refinery's SPAWNED, so it counts as produced. The AI never uses that path.
 

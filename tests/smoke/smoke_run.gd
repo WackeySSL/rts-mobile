@@ -23,8 +23,7 @@ extends RefCounted
 ## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
-## Untyped on purpose: the constant is also the type of `SmokeCount` variables.
-const SmokeCount = preload("res://tests/smoke/smoke_count.gd")
+const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 
 const FLATS: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const FLATS_MIRRORED: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
@@ -64,7 +63,7 @@ static func play(
 	ticks: int = TICKS,
 	kind: String = KIND_CROSS,
 	levels: Array[String] = DEFAULT_LEVELS,
-	drops: Dictionary = {}
+	drops: Dictionary[int, int] = {}
 ) -> Dictionary:
 	var match_setup: Dictionary = start(match_seed, kind, levels)
 	var world: World = match_setup["world"]
@@ -305,7 +304,9 @@ static func write_report(path: String, report_data: Dictionary) -> bool:
 ## What is wrong with the `records` of a run, one text per problem. The AI never sends a Command
 ## the sim drops (ADR 0020 section 5), so a dropped Command is a bug in the AI, the sim or the loop.
 ## A timeout is no failure: the gate judges it (ADR 0031 section 2).
-static func failures(records: Array[Dictionary], drops: Dictionary = {}) -> PackedStringArray:
+static func failures(
+	records: Array[Dictionary], drops: Dictionary[int, int] = {}
+) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	for record: Dictionary in records:
 		if int(record["dropped_commands"]) != 0:
@@ -337,7 +338,9 @@ static func summary(
 
 
 ## The line that the run prints for the match `number` of `total`.
-static func line(record: Dictionary, number: int, total: int, drops: Dictionary = {}) -> String:
+static func line(
+	record: Dictionary, number: int, total: int, drops: Dictionary[int, int] = {}
+) -> String:
 	var winner: String = "none" if int(record["winner"]) == 0 else str(record["winner"])
 	var text: String = (
 		"%smatch %d of %d: seed %d, %s, %d ticks, %s, winner %s, hash %s, dropped %d%s, flow full %d"
@@ -375,7 +378,7 @@ static func line(record: Dictionary, number: int, total: int, drops: Dictionary 
 
 
 ## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.
-static func _drop_text(drops: Dictionary, match_seed: int) -> String:
+static func _drop_text(drops: Dictionary[int, int], match_seed: int) -> String:
 	return ", the first in tick %d" % drops[match_seed] if drops.has(match_seed) else ""
 
 

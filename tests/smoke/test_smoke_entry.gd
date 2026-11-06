@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## the rupture radius of the kill attribution, and the tick of the first dropped Command.
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
-const SmokeCount = preload("res://tests/smoke/smoke_count.gd")
+const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 const ENTRY: String = "res://tests/smoke/run_sim_smoke.gd"
 const DUMMIES: Array[String] = ["dummy", "dummy"]
 
@@ -41,6 +41,8 @@ func test_the_entry_plays_the_seeds_scenario_levels_and_ticks_it_is_given() -> v
 	)
 	assert_int(result["code"]).is_equal(0)
 	assert_str(result["text"]).contains("run-sim-smoke: OK, 2 matches of at most 15 ticks")
+	assert_str(result["text"]).not_contains("SCRIPT ERROR")
+	assert_str(result["text"]).not_contains("ERROR:")
 	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
 	(
 		assert_array(
@@ -116,15 +118,15 @@ func test_a_rupture_is_credited_only_inside_its_radius() -> void:
 		]
 	)
 	counter.after_step(world)
-	# The strike at (0, 0) lands in tick 8: row 41 dies inside the radius, row 42 outside it.
+	# The strike at (5000, 2000) lands in tick 8: row 41 dies inside the radius, row 42 outside it.
 	world.tick = 5
-	world.events = _events([_record(World.Event.STRIKE, 25, 0, 0, 1, 1, 8)])
+	world.events = _events([_record(World.Event.STRIKE, 25, 5000, 2000, 1, 1, 8)])
 	counter.after_step(world)
 	world.tick = 8
 	world.events = _events(
 		[
-			_record(World.Event.DIED, 41, radius, 0, rifle, 2),
-			_record(World.Event.DIED, 42, radius + 1, 0, rifle, 2),
+			_record(World.Event.DIED, 41, 5000 + radius, 2000, rifle, 2),
+			_record(World.Event.DIED, 42, 5000, 2000 + radius + 1, rifle, 2),
 		]
 	)
 	counter.after_step(world)
@@ -148,7 +150,7 @@ func test_the_tick_of_the_first_dropped_command_is_kept() -> void:
 	counter.after_step(world)
 	# The step that dropped it ran at tick 9 and left the World at tick 10.
 	assert_int(counter.first_drop_tick).is_equal(9)
-	var drops: Dictionary = {}
+	var drops: Dictionary[int, int] = {}
 	var record: Dictionary = Smoke.play(1, 15, "derrick", DUMMIES, drops)
 	assert_int(record["dropped_commands"]).is_equal(0)
 	assert_dict(drops).is_empty()

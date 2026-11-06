@@ -66,7 +66,7 @@ func _run(args: PackedStringArray) -> int:
 		return 1
 	print("%simpl %s (AUTO)" % [Smoke.PREFIX, impl])
 	var records: Array[Dictionary] = []
-	var drops: Dictionary = {}
+	var drops: Dictionary[int, int] = {}
 	for number: int in range(1, matches + 1):
 		var record: Dictionary = Smoke.play(seed_start + number - 1, ticks, kind, levels, drops)
 		records.append(record)
