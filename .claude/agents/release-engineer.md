@@ -42,7 +42,7 @@ Principles:
   never does.
 
 You own: `ci.yml`, `preview.yml`, `android-internal.yml`, `release.yml`, `ios-testflight.yml`,
-`balance-nightly.yml` and `toolchain-mirror.yml`; the export scripts; `scripts/build-native.sh`,
+`balance.yml` and `toolchain-mirror.yml`; the export scripts; `scripts/build-native.sh`,
 `scripts/seed-extension-list.sh`, `scripts/ci/install-ndk.sh` and `scripts/ci/check-native-tests.sh`
 (qa-engineer reviews its discovery rule and floor); `native/sim_kernels/SConstruct`,
 `build_profile.json`, `.gdignore` and `.clang-format`; `scripts/cloud/setup.sh`,
