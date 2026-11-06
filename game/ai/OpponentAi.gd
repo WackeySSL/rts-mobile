@@ -19,6 +19,8 @@ const SLOTS: int = 3
 
 ## The memory between thinks and the slot of the last think (-1 before the first).
 var memory: AiMemory = null
+## The intel manager (P177).
+var intel: AiIntel = null
 var last_slot: int = -1
 ## Thinks per slot, for the suites.
 var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
@@ -45,6 +47,7 @@ static func create(
 	ai.think_period = maxi(def.think_period, 1)
 	ai.think_offset = posmod(-(def.think_tick + player_id - 2), ai.think_period)
 	ai.memory = AiMemory.create(def)
+	ai.intel = AiIntel.create(def, chosen, player_id)
 	ai.def_id = def.id
 	ai.level_id = chosen.id
 	ai.tier = clampi(chosen.build_order_tier, 0, OpponentDef.TIERS - 1)
@@ -89,10 +92,12 @@ func _run_economy_slot(_view: PlayerView, _out: Array[Command]) -> void:
 
 
 ## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
-func _run_army_slot(_view: PlayerView, _out: Array[Command]) -> void:
-	pass
+func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:
+	intel.refresh(view, memory)
+	work += intel.passes
 
 
 ## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.
-func _run_intel_slot(_view: PlayerView, _out: Array[Command]) -> void:
-	pass
+func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
+	intel.run(view, memory, rng, out)
+	work += intel.passes
