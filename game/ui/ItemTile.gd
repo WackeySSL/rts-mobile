@@ -12,7 +12,8 @@ extends HoldButton
 ## The card is named (ADR 0025 section 5, plan P120): `set_card(size)` makes it
 ## `CARD_DP` sideways or
 ## `CARD_PORTRAIT_DP` upright and shows the type's display name in a line under the plate, in 14 dp
-## type, cut with an ellipsis where it does not fit; `SIZE_DP` is the nameless plate it starts as.
+## type (a name is built to fit, ADR 0032; the ellipsis is only a fallback); `SIZE_DP` is the
+## nameless plate it starts as.
 ## A LOCKED card that knows what it lacks (`set_needs`) is crossed by a sash (ADR 0025 section 5,
 ## P120j): a light band rising at about 27 degrees across the picture and off both edges of the
 ## card, with the missing building's name on it in one line, never cut or wrapped (a test pins
@@ -117,28 +118,28 @@ class Sash:
 	var band: Color
 	var edge: Color
 	var seal: Color
-	var text: Label = Label.new()
+	var label: Label = Label.new()
 	var centre: Vector2 = Vector2.ZERO  ## The middle of the band and of the name's box.
 
 	func _init() -> void:
-		text.name = "SashText"
-		text.theme_type_variation = ItemTile.SASH_VARIATION
-		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(text)
+		label.name = "SashText"
+		label.theme_type_variation = ItemTile.SASH_VARIATION
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(label)
 		resized.connect(lay_out)
 
 	## The name in a box of the band's room, turned to the band's angle about its middle. The middle
 	## is as low as the turned box can go, so that the band keeps clear of the count badge above.
 	func lay_out() -> void:
-		text.size = Vector2(ItemTile.sash_room_px(size), UiScale.dp(ItemTile.SASH_TEXT_DP))
-		text.pivot_offset = text.size / 2.0
-		var turned: float = text.size.x * sin(ItemTile.SASH_RISE_RAD)
-		turned += text.size.y * cos(ItemTile.SASH_RISE_RAD)
+		label.size = Vector2(ItemTile.sash_room_px(size), UiScale.dp(ItemTile.SASH_TEXT_DP))
+		label.pivot_offset = label.size / 2.0
+		var turned: float = label.size.x * sin(ItemTile.SASH_RISE_RAD)
+		turned += label.size.y * cos(ItemTile.SASH_RISE_RAD)
 		centre = Vector2(size.x / 2.0, size.y - turned / 2.0)
-		text.position = centre - text.size / 2.0
-		text.rotation = -ItemTile.SASH_RISE_RAD
+		label.position = centre - label.size / 2.0
+		label.rotation = -ItemTile.SASH_RISE_RAD
 		queue_redraw()
 
 	func _draw() -> void:
@@ -159,7 +160,14 @@ class Sash:
 			)
 		var seal_px: float = UiScale.dp(ItemTile.SEAL_DP)
 		var inset: float = UiScale.dp(ItemTile.SEAL_INSET_DP)
-		draw_circle(Vector2(inset, inset) + Vector2(seal_px, seal_px) / 2.0, seal_px / 2.0, seal)
+		draw_circle(
+			Vector2(inset, inset) + Vector2(seal_px, seal_px) / 2.0,
+			seal_px / 2.0,
+			seal,
+			true,
+			-1.0,
+			true
+		)
 
 
 ## The longest name, in px, that the sash holds in one line on a card `card_px` wide (base px; only
@@ -192,7 +200,7 @@ func _init() -> void:
 	_lock.add_child(_lock_fit)
 	_word.theme_type_variation = CAPTION_VARIATION
 	_word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_word.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_word.text = FULL_WORD
 	_word.visible = false
@@ -345,8 +353,9 @@ func _show_word() -> void:
 	_cost.visible = state != State.READY and not named
 	_word.visible = state == State.FULL
 	_sash.visible = named
-	_sash.text.text = _needs
-	_sash.lay_out()  # A label keeps the size a longer name gave it.
+	if named:
+		_sash.label.text = _needs
+		_sash.lay_out()  # A label keeps the size a longer name gave it.
 	_place_lock(named)
 
 

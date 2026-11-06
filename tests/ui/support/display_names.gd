@@ -12,7 +12,8 @@ static func defs() -> Dictionary[String, Resource]:
 	files.sort()
 	for file: String in files:
 		if file.ends_with(".tres"):
-			found[file.get_basename()] = load("%s/%s" % [DIR, file])
+			var def: Resource = load("%s/%s" % [DIR, file])
+			found[str(def.get("type_id"))] = def
 	return found
 
 

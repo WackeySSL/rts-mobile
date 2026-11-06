@@ -13,14 +13,13 @@ const BASE: Array[String] = [
 	"headquarters", "power_plant", "barracks", "refinery", "vehicle_factory"
 ]
 const NEAR_PX: float = 1.5
-const CAP_SHARE: float = 0.7  ## Chakra Petch's capitals, as a share of the font size.
+const BADGE_MARGIN_DP: float = 0.5  ## What the glyphs keep from the badge's drawn plate.
+const ARC_STEPS: int = 8
 
 var _window_size_before: Vector2i
 var _main: Node2D
 var _runner: MatchRunner
 var _sidebar: BuildSidebar
-var _sent: Array[Command] = []
-var _buzzed: Array[int] = []
 
 
 func before() -> void:
@@ -62,13 +61,15 @@ func test_a_locked_card_says_what_it_needs_and_a_full_queue_says_full() -> void:
 	assert_str(_tile("rocket_squad").word()).is_equal("FULL")
 
 
-## The sash fits the card at every profile, both ways up, for every name a locked card can show: one
-## line (a name is never wrapped or cut), the whole tilted box inside the stage, clear of the seal
-## and of the count badge, the price hidden and the caption still there.
-func test_the_sash_holds_every_requirement_name_in_one_line_clear_of_the_seal_and_badge() -> void:
+## The sash fits the card at every profile, both ways up, for every name a locked card can show: the
+## whole tilted box inside the stage, the name's width within the room, clear of the seal, and the
+## price hidden with the caption still there. A count shows, so the badge is on.
+func test_the_sash_holds_every_requirement_name_clear_of_the_seal_and_badge() -> void:
 	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
 	profiles.merge(UiProfiles.portrait())
 	var needed: Dictionary[String, String] = DisplayNames.requirements()
+	assert_int(needed.size()).is_greater(8)
+	var checked: int = 0
 	for profile: StringName in profiles:
 		await _open(profile)
 		var world: World = Sw.world()
@@ -76,15 +77,50 @@ func test_the_sash_holds_every_requirement_name_in_one_line_clear_of_the_seal_an
 		await _publish(world)
 		var tile: ItemTile = _tile("vehicle_factory")
 		assert_int(tile.state).is_equal(ItemTile.State.LOCKED)
-		tile.show_state(ItemTile.State.LOCKED, 2, 0.0)  # A count shows: the badge is on.
+		tile.show_state(ItemTile.State.LOCKED, 2, 0.0)
 		for id: String in needed:
 			tile.set_needs(needed[id])
 			await await_idle_frame()
 			var why: String = "%s: %s on %s" % [profile, needed[id], tile.get_global_rect()]
 			assert_str(tile.word()).override_failure_message(why).is_equal(needed[id])
 			_assert_sash_fits(tile, why)
+			assert_bool(_part(tile, "Badge").visible).override_failure_message(why).is_true()
+			_assert_clear_of_badge(tile, why)
+			checked += 1
 		assert_bool(_part(tile, "Cost").visible).is_false()
 		assert_bool(_part(tile, "Caption").visible).is_true()
+	assert_int(checked).is_equal(needed.size() * profiles.size())
+
+
+## The name's glyphs never reach the count badge's plate as drawn (ADR 0032 section 3), at the floor
+## card (88 dp) and the 102 x 96 dp card, on every profile, with a count shown. The label's box may
+## pass under the plate's corner: only the glyphs matter, and the plate's corners are rounded.
+func test_the_glyphs_clear_the_badge_plate_at_the_floor_and_the_102_card_on_every_profile() -> void:
+	var profiles: Dictionary[StringName, UiMetrics] = UiProfiles.all()
+	profiles.merge(UiProfiles.portrait())
+	var needed: Dictionary[String, String] = DisplayNames.requirements()
+	var cards: Array[Vector2] = [ItemTile.CARD_DP, Vector2(102.0, ItemTile.CARD_DP.y)]
+	var checked: int = 0
+	for profile: StringName in profiles:
+		await _open(profile)
+		for card: Vector2 in cards:
+			var holder: Control = Control.new()
+			_sidebar.add_child(holder)
+			var tile: ItemTile = ItemTile.new()
+			tile.setup(0, World.Tab.STRUCTURES, null, 100, "Name")
+			tile.set_card(card)
+			holder.add_child(tile)
+			tile.size = UiScale.dp_vec(card.x, card.y).floor()
+			tile.show_state(ItemTile.State.LOCKED, 2, 0.0)
+			for id: String in needed:
+				tile.set_needs(needed[id])
+				await await_idle_frame()
+				var why: String = "%s, card %s: %s" % [profile, card, needed[id]]
+				_assert_sash_fits(tile, why)
+				_assert_clear_of_badge(tile, why)
+				checked += 1
+			holder.queue_free()
+	assert_int(checked).is_equal(needed.size() * profiles.size() * cards.size())
 
 
 ## One tile's sash: read from the nodes, the way it is drawn.
@@ -92,7 +128,6 @@ func _assert_sash_fits(tile: ItemTile, why: String) -> void:
 	var label: Label = _part(tile, "SashText") as Label
 	var stage: Rect2 = _part(tile, "Stage").get_global_rect().grow(NEAR_PX)
 	assert_bool(_part(tile, "Sash").visible).override_failure_message(why).is_true()
-	assert_int(label.get_line_count()).override_failure_message(why).is_equal(1)
 	assert_int(label.autowrap_mode).is_equal(TextServer.AUTOWRAP_OFF)
 	assert_int(label.text_overrun_behavior).is_equal(TextServer.OVERRUN_NO_TRIMMING)
 	var font: Font = label.get_theme_font(&"font")
@@ -109,6 +144,11 @@ func _assert_sash_fits(tile: ItemTile, why: String) -> void:
 	assert_float(wide).override_failure_message("%s: %s of %s" % [why, wide, room]).is_less_equal(
 		room
 	)
+	# The room math takes the box as SASH_TEXT_DP high: the font's line must not need more.
+	var high: float = label.get_combined_minimum_size().y
+	assert_float(high).override_failure_message(why).is_less_equal(
+		UiScale.dp(ItemTile.SASH_TEXT_DP) + 0.5
+	)
 	var box: PackedVector2Array = _tilted(label)
 	for corner: Vector2 in box:
 		assert_bool(stage.has_point(corner)).override_failure_message(why + str(box)).is_true()
@@ -116,24 +156,92 @@ func _assert_sash_fits(tile: ItemTile, why: String) -> void:
 	var seal: Rect2 = _seal_rect(tile)
 	assert_bool(seal.grow(NEAR_PX).encloses(lock)).override_failure_message(why).is_true()
 	assert_bool(_overlaps(box, seal)).override_failure_message(why + " seal").is_false()
-	var badge: Control = _part(tile, "Badge")
-	if badge.visible:  # The glyphs (width, cap height) stay clear of the count, to a hairline.
-		var cap: float = CAP_SHARE * label.get_theme_font_size(&"font_size")
-		var glyphs: Rect2 = Rect2((label.size - Vector2(wide, cap)) / 2.0, Vector2(wide, cap))
-		var turn: Transform2D = label.get_global_transform()
+
+
+## The ink of the name (each glyph's real outline top over its own advance, on the baseline) keeps
+## `BADGE_MARGIN_DP` from the badge's plate as drawn, rounded corners included. The label's box
+## itself passes under the plate's corner on the wider cards, and that is allowed.
+func _assert_clear_of_badge(tile: ItemTile, why: String) -> void:
+	var label: Label = _part(tile, "SashText") as Label
+	var badge: Label = _part(tile, "Badge") as Label
+	assert_bool(badge.visible).override_failure_message(why).is_true()
+	var plate: PackedVector2Array = _plate(badge)
+	var font: Font = label.get_theme_font(&"font")
+	var size: int = label.get_theme_font_size(&"font_size")
+	var turn: Transform2D = label.get_global_transform()
+	var ascent: float = font.get_ascent(size)
+	for index: int in label.text.length():
+		var glyph: String = label.text.substr(index, 1)
+		if glyph == " ":
+			continue
+		var cell: Rect2 = label.get_character_bounds(index)
+		var base: float = cell.position.y + ascent
+		var top: float = _glyph_top(font, size, glyph)
 		var ink: PackedVector2Array = PackedVector2Array()
 		for corner: Vector2 in [
-			glyphs.position,
-			Vector2(glyphs.end.x, glyphs.position.y),
-			glyphs.end,
-			Vector2(glyphs.position.x, glyphs.end.y)
+			Vector2(cell.position.x, base - top),
+			Vector2(cell.end.x, base - top),
+			Vector2(cell.end.x, base),
+			Vector2(cell.position.x, base)
 		]:
 			ink.append(turn * corner)
+		var clear: bool = Geometry2D.intersect_polygons(ink, plate).is_empty()
 		(
-			assert_bool(_overlaps(ink, badge.get_global_rect().grow(-2.0 * NEAR_PX)))
-			. override_failure_message("%s badge %s ink %s" % [why, badge.get_global_rect(), ink])
-			. is_false()
+			assert_bool(clear)
+			. override_failure_message(
+				"%s: glyph '%s' reaches the badge plate %s, ink %s" % [why, glyph, plate, ink]
+			)
+			. is_true()
 		)
+
+
+## The badge's plate as drawn, in global coordinates: its rect with the corners of the theme's
+## StyleBox arced, grown by the margin.
+func _plate(badge: Label) -> PackedVector2Array:
+	var rect: Rect2 = badge.get_global_rect()
+	var box: StyleBoxFlat = badge.get_theme_stylebox(&"normal") as StyleBoxFlat
+	var radius: float = float(box.corner_radius_top_left)
+	var points: PackedVector2Array = PackedVector2Array()
+	var centres: Array[Vector2] = [
+		rect.position + Vector2(radius, radius),
+		Vector2(rect.end.x - radius, rect.position.y + radius),
+		rect.end - Vector2(radius, radius),
+		Vector2(rect.position.x + radius, rect.end.y - radius)
+	]
+	for corner: int in 4:
+		for step: int in ARC_STEPS + 1:
+			var angle: float = PI + (corner + float(step) / ARC_STEPS) * PI / 2.0
+			points.append(centres[corner] + Vector2.from_angle(angle) * radius)
+	var grown: Array[PackedVector2Array] = Geometry2D.offset_polygon(
+		points, UiScale.dp(BADGE_MARGIN_DP)
+	)
+	return grown[0]
+
+
+## How high a glyph stands over the baseline, from its outline (the contour points of the font):
+## the sign of the axis is read off "H", which has no part below the baseline.
+func _glyph_top(font: Font, size: int, glyph: String) -> float:
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var face: RID = font.get_rids()[0]
+	var up: float = _extreme(server, face, size, "H")
+	var points: PackedVector3Array = _contour(server, face, size, glyph)
+	var best: float = 0.0
+	for point: Vector3 in points:
+		best = maxf(best, point.y * signf(up))
+	return best
+
+
+func _extreme(server: TextServer, face: RID, size: int, glyph: String) -> float:
+	var far: float = 0.0
+	for point: Vector3 in _contour(server, face, size, glyph):
+		if absf(point.y) > absf(far):
+			far = point.y
+	return far
+
+
+func _contour(server: TextServer, face: RID, size: int, glyph: String) -> PackedVector3Array:
+	var index: int = server.font_get_glyph_index(face, size, glyph.unicode_at(0), 0)
+	return server.font_get_glyph_contours(face, size, index)["points"]
 
 
 ## The sash stands apart from every other state: only a LOCKED card that knows its need has it, and
@@ -154,6 +262,17 @@ func test_only_a_named_lock_has_the_sash_and_hides_the_price() -> void:
 		tile.show_state(state, 1, 0.0)
 		await _settle()
 		var why: String = "state %d" % state
+		if state == ItemTile.State.FULL:  # The word stands in the middle of the stripes.
+			var word: Label = _part(tile, "Word") as Label
+			var stage: Rect2 = _part(tile, "Stage").get_global_rect()
+			var glyph: Rect2 = word.get_character_bounds(0)
+			assert_int(word.vertical_alignment).is_equal(VERTICAL_ALIGNMENT_CENTER)
+			assert_str(word.text).is_equal("FULL")
+			(
+				assert_float(word.get_global_rect().position.y + glyph.get_center().y)
+				. override_failure_message(why)
+				. is_equal_approx(stage.get_center().y, UiScale.dp(2.0))
+			)
 		assert_bool(_part(tile, "Sash").visible).override_failure_message(why).is_false()
 		assert_bool(_part(tile, "Cost").visible).override_failure_message(why).is_equal(
 			state != ItemTile.State.READY
@@ -162,10 +281,16 @@ func test_only_a_named_lock_has_the_sash_and_hides_the_price() -> void:
 	await _settle()
 	assert_bool(_part(tile, "Sash").visible).is_true()
 	assert_bool(_part(tile, "Cost").visible).is_false()
+	var lock: TextureRect = _part(tile, "Lock") as TextureRect
+	assert_that(lock.modulate).is_equal(
+		tile.get_theme_color(&"seal_glyph", ItemTile.SASH_VARIATION)
+	)
 	tile.set_needs("")  # A lock with no name known keeps the big padlock in the middle.
 	await _settle()
 	assert_bool(_part(tile, "Sash").visible).is_false()
+	assert_bool(_part(tile, "Cost").visible).is_true()  # And its price comes back.
 	assert_bool(_part(tile, "Lock").visible).is_true()
+	assert_that(lock.modulate).is_equal(tile.get_theme_color(&"lock", ItemTile.VARIATION))
 	assert_float(_lock_rect(tile).size.x).is_equal_approx(UiScale.dp(ItemTile.LOCK_DP), NEAR_PX)
 
 
@@ -198,6 +323,7 @@ func test_the_sash_follows_a_turn_and_a_resize() -> void:
 	tile.set_needs("Turbine Hall")
 	await _settle()
 	var before_room: float = (_part(tile, "SashText") as Label).size.x
+	var rooms: Array[float] = []
 	for target: StringName in [&"android_6in_portrait", &"web_tablet", &"desktop"]:
 		var metrics: UiMetrics = UiProfiles.by_name(target)
 		UiScale.set_override(metrics)
@@ -213,13 +339,22 @@ func test_the_sash_follows_a_turn_and_a_resize() -> void:
 			. override_failure_message(why)
 			. is_equal_approx(ItemTile.sash_room_px(tile.size), NEAR_PX)
 		)
+		rooms.append((_part(tile, "SashText") as Label).size.x)
 	assert_float(before_room).is_greater(0.0)
+	(
+		assert_float(rooms[2])
+		. override_failure_message("desktop's room is not the phone's")
+		. is_not_equal(before_room)
+	)
+	assert_float(rooms[0]).is_greater(before_room)  # Upright, the card is wider.
 
 
-## The theme refits the sash: a new dp factor changes the room, the font and the seal at once, and
-## the name still stands in one line.
+## The theme refits the sash the way the game does: a new dp factor (`UiScale.set_override`) and
+## the theme scaled for it (`HudTheme.scaled`), on one tile that stays in the tree. After each the
+## font, the room, the seal and the fit follow. The factors rise, as a tile's own minimum size does
+## not shrink; they are all different (1.0, 1.25, 1.75, 2.03, 2.37 base px per dp).
 func test_the_sash_follows_a_theme_refit() -> void:
-	await _open(&"android_6in")
+	await _open(&"desktop")
 	var holder: Control = Control.new()
 	_sidebar.add_child(holder)
 	var tile: ItemTile = ItemTile.new()
@@ -228,20 +363,27 @@ func test_the_sash_follows_a_theme_refit() -> void:
 	holder.add_child(tile)
 	tile.show_state(ItemTile.State.LOCKED, 0, 0.0)
 	tile.set_needs("Turbine Hall")
-	for factor: float in [1.0, 2.0, 1.25]:
-		var theme: Theme = HudTheme.scaled(HudThemes.source(), factor)
-		holder.theme = theme
-		tile.size = Vector2(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y) * factor
+	var rooms: Array[float] = []
+	for profile: StringName in [
+		&"desktop", &"web_tablet", &"android_6in", &"web_phone", &"web_phone_small"
+	]:
+		UiScale.set_override(UiProfiles.by_name(profile))
+		holder.theme = HudTheme.scaled(HudThemes.source(), UiScale.base_px_per_dp())
+		tile.size = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y).floor()
 		await _settle()
 		var label: Label = _part(tile, "SashText") as Label
-		var why: String = "factor %s: label %s" % [factor, label.size]
+		var why: String = "%s: label %s, tile %s" % [profile, label.size, tile.size]
 		assert_int(label.get_theme_font_size(&"font_size")).override_failure_message(why).is_equal(
-			roundi(14.0 * factor)
+			roundi(14.0 * UiScale.base_px_per_dp())
 		)
-		assert_float(label.size.x).override_failure_message(why).is_equal_approx(
-			ItemTile.sash_room_px(tile.size), NEAR_PX
+		_assert_sash_fits(tile, why)
+		_assert_seal(tile)
+		assert_float(_part(tile, "Sash").size.x).override_failure_message(why).is_equal_approx(
+			tile.size.x, 0.5
 		)
-		assert_int(label.get_line_count()).override_failure_message(why).is_equal(1)
+		rooms.append(label.size.x)
+	for index: int in range(1, rooms.size()):
+		assert_float(rooms[index]).is_greater(rooms[index - 1])
 	holder.queue_free()
 
 
@@ -315,7 +457,7 @@ func test_a_standalone_tile_locked_before_it_is_told_its_need_has_the_seal() -> 
 func test_the_sash_room_at_the_floor_card_is_at_least_83_dp() -> void:
 	for profile_name: StringName in UiProfiles.all():
 		UiScale.set_override(UiProfiles.by_name(profile_name))
-		var card: Vector2 = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y)
+		var card: Vector2 = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y).floor()
 		var room_dp: float = ItemTile.sash_room_px(card) / UiScale.dp(1.0)
 		assert_float(room_dp).override_failure_message(str(profile_name)).is_greater_equal(83.0)
 		var wide: Vector2 = UiScale.dp_vec(ItemTile.CARD_PORTRAIT_DP.x, ItemTile.CARD_PORTRAIT_DP.y)
@@ -375,23 +517,14 @@ func _settle() -> void:
 	await await_idle_frame()
 
 
-## A new main scene (a profile name, or a size and metrics), the drawer open, the Commands caught.
-func _open(target: Variant, metrics: UiMetrics = null) -> void:
-	var size: Vector2i
-	var used: UiMetrics = metrics
-	if target is StringName:
-		used = UiProfiles.by_name(target as StringName)
-		size = used.window_size
-	else:
-		size = target as Vector2i
+## A new main scene at a profile, the drawer open.
+func _open(profile: StringName) -> void:
+	var used: UiMetrics = UiProfiles.by_name(profile)
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
-	if used != null:
-		UiScale.set_override(used)
-	else:
-		UiScale.clear_override()
-	get_window().size = size
+	UiScale.set_override(used)
+	get_window().size = used.window_size
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	_main.get_node("MatchRunner").paused = true
@@ -403,11 +536,6 @@ func _open(target: Variant, metrics: UiMetrics = null) -> void:
 	_sidebar.open()
 	await await_idle_frame()
 	_sidebar.runner = _runner
-	var controller: PlayerController = _main.get_node("PlayerController")
-	_sent.clear()
-	_buzzed.clear()
-	controller.command_sink = func(command: Command) -> void: _sent.append(command)
-	controller.vibrate = func(ms: int) -> void: _buzzed.append(ms)
 	var world: World = Sw.world()
 	Sw.own(world, BASE)
 	_runner.snapshot = Sw.snapshot(world)

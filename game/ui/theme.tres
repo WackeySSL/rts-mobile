@@ -43,7 +43,8 @@
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, EnemyHealth, PerfCard, SidebarTab,
 ; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner,
-; ItemCaption, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton, CapsTitle,
+; ItemCaption, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
+; CapsTitle,
 ; CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss, EconomyChipGain,
 ; EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary, PausePrimaryFossil,
@@ -560,7 +561,7 @@ ReadyBadge/styles/pressed = SubResource("StyleBoxFlat_badge_pressed")
 ; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1). The name under the
 ; plate of a landscape card is 14 dp, white on the tile's dark plate.
 ; A locked card's sash (ItemSash, P120j): the band (#D9E0E8) with a dark edge line, the missing
-; building's name on it in Chakra Petch Bold 14 dp, dark on the light (13:1), one line that a test pins
+; building's name on it in Chakra Petch Bold 14 dp, dark on the light (13.8:1), one line that a test pins
 ; against ItemTile.sash_room_px; the seal is a dark disc with a white padlock. The tile draws them.
 ItemTile/base_type = &"Button"
 ItemTile/colors/fill = Color(1, 1, 1, 0.4)
@@ -587,7 +588,7 @@ ItemCaption/base_type = &"Label"
 ItemCaption/colors/font_color = Color(1, 1, 1, 1)
 ItemCaption/font_sizes/font_size = 14
 ItemSash/base_type = &"Label"
-ItemSash/colors/band = Color(0.85098039, 0.87843137, 0.9098039, 1)
+ItemSash/colors/band = Color(0.85098039, 0.87843137, 0.90980392, 1)
 ItemSash/colors/edge = Color(0.06, 0.08, 0.11, 1)
 ItemSash/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 ItemSash/colors/seal = Color(0.06, 0.08, 0.11, 1)

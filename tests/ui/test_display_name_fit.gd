@@ -36,7 +36,8 @@ func _misfits(
 	UiScale.set_override(metrics)
 	var theme: Theme = HudTheme.scaled(HudThemes.source(), UiScale.base_px_per_dp())
 	var px_per_dp: float = UiScale.dp(1.0)
-	var card: Vector2 = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y)
+	# The container floors the card to whole px, and the sash is drawn on that.
+	var card: Vector2 = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y).floor()
 	var frame: StyleBoxFlat = theme.get_stylebox(&"normal", ItemTile.VARIATION) as StyleBoxFlat
 	var caption_room: float = card.x - frame.border_width_left - frame.border_width_right
 	var sash_room: float = ItemTile.sash_room_px(card)
