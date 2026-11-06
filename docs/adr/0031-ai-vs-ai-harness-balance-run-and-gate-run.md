@@ -1,14 +1,16 @@
-# ADR 0031: The AI-vs-AI harness, the balance report JSON, the nightly run and the Phase 4 gate run
+# ADR 0031: The AI-vs-AI harness, the balance report JSON, the balance run and the Phase 4 gate run
 
-**In short, for Michael:** `run-sim-smoke.sh` plays real computer-against-computer matches to
-the end (at most 15 minutes of game each), counts what every unit type did and writes one JSON
-file. GitHub runs about 190 such matches every night after `main` changed, adds them up and posts
-the result on an issue labelled `balance`. Balance changes are one number in `data/` per pull
-request, checked on the same seeds before and after. The gate is judged on 100 fresh seeds that
-no tuning ever saw. Five questions at the end.
+**In short, for Michael:** `run-sim-smoke.sh` plays real computer-against-computer matches to the
+end (at most 15 minutes of game each), counts what every unit type did and writes one JSON file.
+GitHub runs about 190 such matches after each merge that changes AI, balance or sim files, or when
+the lead starts it, adds them up and posts the result on an issue labelled `balance`. Balance
+changes are one number in `data/` per pull request, checked on the same seeds before and after. The
+gate is judged on 100 fresh seeds that no tuning ever saw. Michael answered the five questions on
+2026-11-06 (Acceptance note).
 
-Status: **proposed**, 2026-11-06 (architect, docs row P170). Revised the same day after the lead's
-docs lens on fe338f5 (the fixes are in the text). Base: `main` at f51e3ff. Plan:
+Status: **accepted, 2026-11-06** (Michael: 1 A, 2 A, 3 A, 4 ja, 5 A; Acceptance note below).
+Proposed 2026-11-06 (architect, docs row P170, PR #345); revised the same day after the lead's docs
+lens on fe338f5; accepted by the docs row P170b on the same PR. Base: `main` at f51e3ff. Plan:
 `docs/plans/2026-11-06-phase-4.md`. Builds on ADR 0030 (the AI) and ADR 0020 §3 and §5 (headless
 drivers call `AiDriver.think_all` before `MatchLoop.step`). Amends ADR 0020's answer 2 (the smoke's
 three matches become full AI-vs-AI matches; its flags and exit codes stay, the schema number moves
@@ -16,10 +18,68 @@ to 2 and one top-level key moves, §3) and records ADR 0013 §3's note on `run-s
 `AUTO` from Phase 4 and prints the implementation). No sim rule, Command, state column or golden
 hash changes.
 
+## Acceptance note (2026-11-06)
+Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
+numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
+5 A, 6 forstår ikke hvordor der er noget der skla køre om natten? er det ikke et færdig spil uden
+noget server? men hvis jeg skal vælge lyder A fornuftigt, 7 Ja, 8 A."
+
+(In English, his answer 6: "don't understand why something has to run at night? isn't it a
+finished game without any server? but if I have to choose, A sounds sensible".) The lead answered
+that the run is a development tool on GitHub's machines that players never see. Michael followed
+up on 6 the same day in two messages, verbatim:
+- "dvs. at de 100 kampe vil tage 2 dage at spille?" ("so the 100 matches will take 2 days to
+  play?") The lead answered that the matches run headless and sharded, about 30 minutes for all
+  sets, not in real time.
+- "bare kør dem når det passer ind i dit floa, kan ikke se hvorfro vi skal vente til et bestemt
+  tidspunkt med at køre dem?" ("just run them when it fits your flow, can't see why we should wait
+  for a particular time to run them?")
+
+He then added two more messages, verbatim:
+- "det jeg mener med det er at du skal ikke vente til et bestemt tidspunkt med at køre dem hvis
+  det passer ind" ("what I mean is that you should not wait for a particular time to run them if it
+  fits in")
+- "du skla kun vente hvis du kan se at det giver mening at samle noget sammen så de ikke skal køre
+  så mange gange" ("you should only wait if you can see that it makes sense to gather something
+  together so they don't have to run so many times")
+
+Under these the lead decided the trigger and the batching of §5 and §8: no schedule; a run after
+each push to `main` that changes AI, balance or sim files, and by hand; a workflow-level
+concurrency group that cancels a run in progress, so a burst of merges ends in one run on the
+newest commit; and the lead may merge several small tuning PRs together so one run reports on all
+of them. The lead records this ADR's five as "1 A, 2 A, 3 A (changed by Michael's follow-up),
+4 ja, 5 A" (chat numbers 4-8):
+1. **A (chat 4, "40-60 % against the mirror AI"):** the gate set crosses the factions; each faction
+   and the top start win 40-60 % of 100 held-out matches; a share of 350-399 or 601-650 per-mille
+   on check 1 or 2 gets one more run of 100 held-out seeds, and the 200 decide (§6). Options B
+   (seat only) and C (both) were not chosen; the same-faction mirrors stay a check of the balance
+   run only.
+2. **A (chat 5, "every unit type is used"):** each of the twelve unit types is built in at least 50
+   of the 100 gate matches; under 5 % of its side's production is a report flag, not a gate check.
+   Option B was not chosen.
+3. **A, changed by Michael's follow-up (chat 6, the balance run): on demand and after merges that
+   change AI, balance or sim files; no schedule.** The sets and seeds of §5 are A's; the time of day
+   and the "only when `main` changed" check are gone, because the path filter of §5 replaces them;
+   the concurrency group and the lead's batching of tuning PRs (§8) answer "only wait if it makes
+   sense to gather something together". Options B (every night) and C (by hand only) were not chosen
+   as written. Michael asked why anything runs at night when the game has no server; §5 now says
+   what the run is.
+4. **ja (chat 7, who tunes):** ai-dev merges data-only tuning rows, one number each, after the
+   lead's review, without asking Michael each time; he sees every report on the `balance` issue
+   and the gate report before the gate.
+5. **A (chat 8, the phone check):** Normal to the end as each faction; Easy and Hard may end with
+   Surrender after about 5 minutes. Option B was not chosen.
+
+The decision below is the accepted text; P170b changed the status, this note, one sentence in §5
+that answers Michael's question, §5's triggers and the name "balance run" (from "nightly"; the
+workflow is `balance.yml`) after his follow-up, the wording that named open answers, and the
+questions' "answered" marks. Nothing is applied in code yet: the plan's rows apply it.
+
 ## Context
 - **ROADMAP Phase 4, boxes 3-5:** "`run-sim-smoke.sh` runs real headless AI-vs-AI matches with
   seeds and writes the report JSON"; "`balance-nightly.yml` and an open issue labelled `balance`;
-  first report in `docs/balance/`"; "Gate: Normal wins 40-60% against the mirror AI over 100
+  first report in `docs/balance/`" (P170b renamed the file in box 4 to `balance.yml`, Michael's
+  follow-up of 2026-11-06); "Gate: Normal wins 40-60% against the mirror AI over 100
   matches, no match lasts over 15 minutes, every unit type is used".
 - **CLAUDE.md, Token budget:** no AI-vs-AI balance runs and no timing runs in a session; balance
   runs go to GitHub Actions only. `verify.sh`'s smoke step stays (`scripts/verify.sh:57-58` calls
@@ -35,8 +95,8 @@ hash changes.
 - **The skill `balance-report`:** seeds 1..N; win rate per side and per difficulty pairing, match
   length median and 90th percentile, per unit type production share, kills per 1000 credits spent
   and survival rate; flags outside 40-60 %, a median outside 8-10 minutes, a type below 5 % or above
-  40 % of production; at most three data-only proposals; the nightly comments on the open `balance`
-  issue.
+  40 % of production; at most three data-only proposals; the nightly job comments on the open
+  `balance` issue.
 - **Scenarios:** `skirmish_kestrel_flats.tres` puts the Derrick League at the top (player 1, tile
   7,7) and the Lumen Accord at the bottom (player 2, 54,54); `skirmish_kestrel_flats_mirrored.tres`
   swaps the factions, player 1 still at the top. Player 1 is always the top seat.
@@ -162,13 +222,23 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
 - The markdown is a fixed template (tables, then flags, then the gate); it says that kills are
   attributed to the last shooter.
 
-### 5. The nightly (`balance-nightly.yml`, release-engineer, P190)
-- **Triggers:** `schedule` (02:30 UTC) and `workflow_dispatch` with inputs `suite` (`nightly`,
-  `gate`, `custom`), `ref` (default `main`), and for `custom` `levels`, `scenarios`, `matches`,
-  `seed_start`.
+### 5. The balance run (`balance.yml`, release-engineer, P190)
+- **What it is:** a development tool that runs on GitHub's machines, like the CI that checks every
+  pull request; players never see it, and the game stays offline with no server.
+- **Triggers** (Michael's follow-up of 2026-11-06: "run them when it fits your flow"; no schedule):
+  - `push` to `main` with a path filter: `data/**`, `game/ai/**`, `game/sim/**` and `native/**`
+    (the harness runs native, §1). A merge that changes none of them starts no run, so no
+    "unchanged `main`" check is needed;
+  - `workflow_dispatch`, so the lead can start it by hand, with inputs `suite` (`balance`, `gate`,
+    `custom`), `ref` (default `main`), and for `custom` `levels`, `scenarios`, `matches`,
+    `seed_start`.
+  - It never runs on `pull_request`, is never a required check and never blocks a PR.
+  - **Batching by concurrency:** one workflow-level `concurrency` group,
+    `balance-${{ github.ref }}-${{ inputs.suite || 'balance' }}`, with `cancel-in-progress: true`.
+    A `push` run has no inputs, so it and a manual `balance` run share the group: a burst of merges
+    collapses to one completed run on the newest commit. A manual `gate` or `custom` run has its
+    own group, so a merge never cancels it.
 - **Jobs and permissions** (the workflow's top level grants nothing; each job names its own):
-  - `check` (`actions: read`, `contents: read`): a scheduled run whose `main` SHA equals the last
-    successful nightly's ends the workflow (question 3).
   - `build` (`contents: read`): Godot and the native library through the existing scripts,
     uploaded once as an artifact.
   - `shards` (`contents: read`; a matrix; 30-minute timeout): each shard runs
@@ -178,10 +248,10 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
     `balance-<date>-<sha>` with each set's JSON and markdown (kept 90 days).
   - `post` (`issues: write`, **checks out nothing and runs no repository code**): downloads the
     markdown artifact and runs `gh issue comment` on the open issue labelled `balance`, one comment
-    with a block per set and the ref and SHA at its top. Only `schedule` and `nightly` or `gate`
+    with a block per set and the ref and SHA at its top. Only `push` runs and `balance` or `gate`
     runs on `main` post; a `custom` run, or any run on another ref, keeps its result as the
     artifact only (the tuning PR links it).
-- **Sets and shards** (`nightly`):
+- **Sets and shards** (`push` and `suite=balance`):
 
   | Set | Levels | Scenarios | Seeds | Shards |
   | --- | --- | --- | --- | --- |
@@ -195,31 +265,35 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
   pair). `gate` runs §6's held-out set only.
 - **No open `balance` issue:** the `post` job fails and says so (CLAUDE.md: say what is missing, no
   work-around). The lead opens the issue and the label once (P190's acceptance).
-- **Cost** (estimate): about 190 matches at 5-10 s each on native, so 20-35 runner minutes a night
-  when `main` moved. P190 reads the real figure from the first runs.
+- **Cost** (estimate): about 190 matches at 5-10 s each on native, so 20-35 runner minutes per run,
+  one run per merge that touches the filtered paths (fewer when merges come close together and a
+  newer one cancels the older). P190 reads the real figure from the first runs.
 - `tests/project/test_ci_workflow.gd` pins the triggers, each job's permissions, that `post` has
-  no checkout step, the script calls and the shard table (release-engineer's suite).
+  no checkout step, the script calls, the shard table and that no seed of the `balance` sets
+  reaches 1000 (release-engineer's suite).
 
 ### 6. The Phase 4 gate run
-- **Held-out seeds.** The nightly's tuning set (seeds 1-100) is what every tuning row is judged
+- **Held-out seeds.** The balance run's tuning set (seeds 1-100) is what every tuning row is judged
   on, so the gate does not reuse it. The gate run is `suite=gate` on the `main` commit under test:
-  100 Normal vs Normal matches, `cross`, **seeds 1001-1100**, which no nightly and no tuning row
-  ever plays (P190's shard table and `test_ci_workflow.gd` keep the nightly below 1000). Seeds 1001,
-  1003, ... put the Derrick League at the top and 1002, 1004, ... the Lumen Accord.
+  100 Normal vs Normal matches, `cross`, **seeds 1001-1100**, which no balance run and no tuning row
+  ever plays (P190's shard table and `test_ci_workflow.gd` keep the balance run below 1000). The
+  gate run is a separate manual run (`workflow_dispatch`, `suite=gate`). Seeds 1001, 1003, ... put
+  the Derrick League at the top and 1002, 1004, ... the Lumen Accord.
 - **Checks** (the summary's `gate` block; every one must pass):
   1. each faction's win share is 400-600 per-mille (draws half);
   2. the top seat's win share is 400-600 per-mille;
   3. no timeout, and the longest match is at most 13 500 ticks;
-  4. every unit type of both factions (twelve, tankers included) is "used" (question 2);
+  4. every unit type of both factions (twelve, tankers included) is "used": built in at least 50 of
+     the 100 matches (answer 2 A);
   5. `dropped_commands` is 0 in every match;
   6. at least 95 distinct final hashes;
   7. `impl` is `native`, recorded.
 - **Chance.** At a true 50 % a share of 100 matches has a standard deviation of 5 points, so a fair
   AI misses 40-60 % on one check about one time in twenty, and on check 1 or 2 about one time in
-  ten. Question 1's option A carries one fixed answer to that, decided before any run: a share of
+  ten. Michael's answer 1 A carries one fixed answer to that, decided before any run: a share of
   350-399 or 601-650 per-mille on check 1 or 2 gets **one** more run, seeds 1101-1200 on the same
   commit, and the 200 matches together decide against 400-600. Outside 350-650 the gate fails and
-  tuning goes on. With B or C there is no re-run: the 100 decide.
+  tuning goes on. No other re-run.
 - Michael's phone check follows the run (plan, "Gate procedure").
 
 ### 7. Determinism, proven headless
@@ -238,11 +312,17 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
 - The full-length cases (13 500 ticks, 100 seeds) run only in Actions.
 
 ### 8. The balance workflow
-- **Data only, one number per pull request** (the skill; ai-dev). A tuning row names the number,
-  its file, the flag it answers, the expected effect, and shows before and after on the same seeds:
-  "before" is the latest nightly of `main`, "after" is a `custom` run of the same sets on the PR's
-  branch (`workflow_dispatch` with `ref`; artifact only, §5). Nothing runs in a session; ai-dev
-  reads the reports.
+- **Data only, one number per pull request** (the skill; ai-dev). A tuning row names the number, its
+  file, the flag it answers, the expected effect, and **the balance run (its commit) whose report
+  it was judged on**. Nothing runs in a session; ai-dev reads the reports.
+- **Before and after.** "Before" is that named run of `main`. "After" is either a `custom` run of
+  the same sets on the PR's branch (`workflow_dispatch` with `ref`; artifact only, §5), or, when
+  the lead batches, the balance run that the merge starts.
+- **The lead's batching** (Michael, 2026-11-06: "only wait if it makes sense to gather something
+  together"): when several small tuning PRs wait at once, the lead merges them together and lets
+  one balance run report on all of them; that run is the "after" of each, and the batch's
+  `docs/balance/<yyyy-mm-dd>-<topic>.md` lists the PRs and the run. With the concurrency group of
+  §5, merges that land close together end in one run anyway.
 - **Tuning moves no golden hash.** Plan row P171 gives the perf arena, the base arena and the
   controls test map (`controls_test.tres`) frozen copies of every def they load
   (`data/dev/arena/`: rules, units, buildings, weapons, factions), with the same numbers, type ids
@@ -256,8 +336,8 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
   that play the shipped Skirmish or read the shipped roster (the plan's exception 20 lists them).
   The `[ai]` ratchet (P189b) is calibrated by `test_ai_perf.gd` on frozen copies of the AI defs
   (`data/dev/arena/ai/`) and on `perf_ai.tres`'s frozen unit defs, so a data tuning row does not
-  move its workload (the phone's Perf AI card keeps the shipped AI defs; it is report-only); an AI code row may, and
-  a rise it causes is a qa-engineer PR with its reason, as for `[sim]`.
+  move its workload (the phone's Perf AI card keeps the shipped AI defs; it is report-only); an AI
+  code row may, and a rise it causes is a qa-engineer PR with its reason, as for `[sim]`.
 - **Pins:** a tuning row also updates the literal that pins its number under the plan's named
   exception 20; the owner of each file reviews.
 - **Rule changes are not tuning:** artillery splash (ADR 0018 question 4), an artillery back-away
@@ -265,8 +345,8 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
   stops a second producer (ADR 0023 §10's note) and a new field regrowth model (ADR 0023 §11) each
   need their own ADR and a gameplay-dev row. The plan lists them as conditional, not scheduled.
 - **`docs/balance/`:** the first report (P191, box 4), the gate run's report, and the before and
-  after of each tuning row as `docs/balance/<yyyy-mm-dd>-<topic>.md`. The nightly itself writes
-  no file in the repository; it comments and keeps its artifact.
+  after of each tuning row or batch as `docs/balance/<yyyy-mm-dd>-<topic>.md`. The balance run
+  itself writes no file in the repository; it comments and keeps its artifact.
 
 ## Consequences
 - Every `verify.sh` plays three real matches; CI's verify grows by about a minute (estimate).
@@ -274,53 +354,62 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
 - The gate is judged out of sample, on seeds the tuning never read.
 - The report counts kills by "last shooter"; splash, ruptures and focus fire make it an estimate,
   which the markdown says.
-- Actions minutes: about 20-35 a night when `main` moved.
-- The `balance-report` skill's lines change only with Michael's yes (ADR 0030 question 3).
+- Actions minutes: about 20-35 per balance run, one run per merge that touches AI, balance or sim
+  files, plus the lead's manual runs.
+- The `balance-report` skill's lines changed with Michael's ja to ADR 0030 question 3 (P170b).
 
 ## Alternatives considered
 - **Timeouts as draws:** would hide the "no match over 15 minutes" box. Rejected.
-- **The gate on the nightly's seeds 1-100:** the same text as the last nightly, and in sample.
+- **The gate on the balance run's seeds 1-100:** the same text as the last balance run, and in
+  sample.
 - **Same-faction mirrors as the gate set:** proves seat fairness and AI symmetry but not faction
-  balance; kept as a nightly set, offered as question 1's B.
+  balance; kept as a set of the balance run (question 1's B, not chosen).
 - **Per-type counters in the sim** (new hashed `stat_*` columns): would re-pin every golden and add
   sim work for a report; the events give the same counts outside the sim.
 - **A Python merge script:** a second implementation of the summary; the GDScript one is tested by
   the same suites.
-- **The nightly writing `docs/balance/` itself:** a bot commit or PR every night; comments and
+- **The balance run writing `docs/balance/` itself:** a bot commit or PR per run; comments and
   artifacts are enough until a human tunes.
 - **Re-pinning the arenas on each tuning row** instead of freezing them: churn on every tuning PR
   and a ratchet calibrated on a moving workload.
 
-## Questions for Michael
-1. **"Wins 40-60 % against the mirror AI".** Both sides play Normal. Recommended: **A**, because it
-   checks that the two factions are even, which is the balance you will feel, and B still runs
-   every night as a check.
-   - A: the factions: on 100 new matches (each side starts at the top in half of them) the Derrick
-     League and the Lumen Accord each win 40-60 %, and the top start wins 40-60 % too. A result of
-     35-39 % or 61-65 % gets one more run of 100 new matches, and the 200 decide; outside 35-65 %
-     it fails.
-   - B: the seat only: same-faction matches (League against League, Accord against Accord, 50
-     each); the top start wins 40-60 % in each; no re-run.
-   - C: both A's and B's checks, 200 matches, no re-run.
-2. **"Every unit type is used".** Recommended: **A**, because B would mostly measure the mix the
-   computer is told to build, not whether a unit is worth building.
-   - A: each of the twelve unit types is built in at least half of the 100 gate matches; a type
-     under 5 % of its side's production is flagged in the report.
-   - B: each type is at least 5 % of its side's production over the 100 matches.
-3. **The nightly run.** Recommended: **A**, because a run on an unchanged `main` repeats the last
-   one exactly and costs about 30 minutes of GitHub's machines.
-   - A: every night at 03:30 Danish winter time (02:30 UTC), only when `main` changed: the 100
-     tuning matches, Easy and Hard against Normal (20 each), the two same-faction mirrors (20
-     each) and Easy against the old dummy (10).
-   - B: every night, changed or not.
-   - C: only when started by hand.
-4. **Who tunes.** May ai-dev change one balance number per pull request in `data/` from the
-   reports, merged after the lead's review, without asking you each time? You see every report on
-   the `balance` issue and the gate run's report before the gate. (ja/nej; recommended: **ja**,
-   because tuning takes many small steps and each one is checked on the same seeds.)
-5. **Your phone check at the gate.** Six matches: Easy, Normal and Hard, each as both factions.
-   Recommended: **A**, because Normal is the level the gate judges, and five minutes is enough to
-   feel whether Easy and Hard are right.
-   - A: play Normal to the end as each side; Easy and Hard may end with Surrender once you have the
-     feel (after about 5 minutes).
-   - B: all six to the end.
+## Questions for Michael (answered 2026-11-06: 1 A, 2 A, 3 A changed by the follow-up, 4 ja, 5 A)
+The questions below are kept as they were asked, "nightly" included; the Acceptance note and §5
+record what was decided.
+
+1. **"Wins 40-60 % against the mirror AI".** **Answered: A.** Both sides play Normal. Recommended:
+   **A**, because it checks that the two factions are even, which is the balance you will feel, and
+   B still runs every night as a check.
+   - A (chosen): the factions: on 100 new matches (each side starts at the top in half of them) the
+     Derrick League and the Lumen Accord each win 40-60 %, and the top start wins 40-60 % too. A
+     result of 35-39 % or 61-65 % gets one more run of 100 new matches, and the 200 decide; outside
+     35-65 % it fails.
+   - B (not chosen): the seat only: same-faction matches (League against League, Accord against
+     Accord, 50 each); the top start wins 40-60 % in each; no re-run.
+   - C (not chosen): both A's and B's checks, 200 matches, no re-run.
+2. **"Every unit type is used".** **Answered: A.** Recommended: **A**, because B would mostly
+   measure the mix the computer is told to build, not whether a unit is worth building.
+   - A (chosen): each of the twelve unit types is built in at least half of the 100 gate matches; a
+     type under 5 % of its side's production is flagged in the report.
+   - B (not chosen): each type is at least 5 % of its side's production over the 100 matches.
+3. **The nightly run.** **Answered: A, then changed by Michael's follow-up** (Acceptance note): on
+   demand and after merges that change AI, balance or sim files; no schedule; renamed the balance
+   run. Recommended:
+   **A**, because a run on an unchanged `main` repeats the last one exactly and costs about 30
+   minutes of GitHub's machines.
+   - A (chosen for its sets; its schedule replaced by the follow-up): every night at 03:30 Danish
+     winter time (02:30 UTC), only when `main` changed: the 100 tuning matches, Easy and Hard
+     against Normal (20 each), the two same-faction mirrors (20 each) and Easy against the old dummy
+     (10).
+   - B (not chosen): every night, changed or not.
+   - C (not chosen): only when started by hand.
+4. **Who tunes.** **Answered: ja.** May ai-dev change one balance number per pull request in `data/`
+   from the reports, merged after the lead's review, without asking you each time? You see every
+   report on the `balance` issue and the gate run's report before the gate. (ja/nej; recommended:
+   **ja**, because tuning takes many small steps and each one is checked on the same seeds.)
+5. **Your phone check at the gate.** **Answered: A.** Six matches: Easy, Normal and Hard, each as
+   both factions. Recommended: **A**, because Normal is the level the gate judges, and five minutes
+   is enough to feel whether Easy and Hard are right.
+   - A (chosen): play Normal to the end as each side; Easy and Hard may end with Surrender once you
+     have the feel (after about 5 minutes).
+   - B (not chosen): all six to the end.

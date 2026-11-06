@@ -123,7 +123,9 @@ shows the last known buildings.
 ## AI difficulty
 - Easy: slow reactions, weak build order, small attack waves.
 - Normal: standard build order, scouting, mixed armies.
-- Hard: better economy and unit control plus a 20% income bonus. No extra vision.
+- Hard: better economy and unit control. No extra vision. No income bonus at first: a 20% income
+  bonus comes only if Hard proves not hard enough against Normal (ADR 0030, Michael's answer of
+  2026-11-06).
 
 ## Meta progression
 Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard difficulty, cosmetic

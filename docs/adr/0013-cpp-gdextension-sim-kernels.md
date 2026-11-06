@@ -950,6 +950,9 @@ absorbs next to the C++ phases.
     implementation in its report; `verify.sh` always builds the library first, so that means
     native, while the twin suites and the golden hashes cover GDScript. The Phase 4 plan
     records this.
+    Status note (2026-11-06, P170b docs; ADR 0031 accepted 2026-11-06): recorded in
+    `docs/plans/2026-11-06-phase-4.md` and ADR 0031 §1; P186 applies it, and the smoke's report
+    stores the resolved implementation as `impl`. No accepted text changed.
 - **One source for the native mask.** The library reports the phases it implements
   (`SimKernels.phases() -> int`, derived from `bind/kernel_list.h`). `MatchRunner` (for
   `NATIVE`) and `sim_impls.gd` both set `world.native_phases = kernels.phases()`, so CI tests the

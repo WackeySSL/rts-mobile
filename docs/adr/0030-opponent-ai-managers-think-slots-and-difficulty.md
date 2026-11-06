@@ -4,16 +4,41 @@
 production, intel and scouting, army, superweapon). Each part thinks once a second, the three
 groups of parts on three different ticks, so no single tick carries the whole AI. It sees only
 what its side sees. Easy, Normal and Hard are three data files with different numbers, never
-three programs. Three questions at the end.
+three programs. Michael answered the three questions on 2026-11-06 (Acceptance note).
 
-Status: **proposed**, 2026-11-06 (architect, docs row P170). Revised the same day after the lead's
-docs lens on fe338f5 (ten blockers, 29 nits; the fixes are in the text, no answer was given yet).
-Base: `main` at f51e3ff (the Phase 3 gate passed on 2026-11-05, issue #340). Plan:
-`docs/plans/2026-11-06-phase-4.md`. Michael said yes to starting Phase 4 on 2026-11-06; nothing
-here is built before he accepts this ADR, ADR 0031 and the plan. Amends ADR 0020 §2 (the think
+Status: **accepted, 2026-11-06** (Michael: 1 C, 2 A, 3 ja; Acceptance note below). Proposed
+2026-11-06 (architect, docs row P170, PR #345); revised the same day after the lead's docs lens on
+fe338f5 (ten blockers, 29 nits); accepted by the docs row P170b on the same PR. Base: `main` at
+f51e3ff (the Phase 3 gate passed on 2026-11-05, issue #340). Plan:
+`docs/plans/2026-11-06-phase-4.md`. Amends ADR 0020 §2 (the think
 period and tick of the new controller; who is seated where) and §4 (the Skirmish routes leave the
 dummy); the dummy's own rules are unchanged (§9). Changes no sim rule, Command, state column or
-golden hash, except the one conditional setup row of §8 (question 1).
+golden hash, except the one conditional setup row of §8 (answer 1 C).
+
+## Acceptance note (2026-11-06)
+Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
+numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
+5 A, 6 forstår ikke hvordor der er noget der skla køre om natten? er det ikke et færdig spil uden
+noget server? men hvis jeg skal vælge lyder A fornuftigt, 7 Ja, 8 A."
+
+The lead records this ADR's three as "1 C, 2 A, 3 ja":
+1. **C (Hard and money):** no income bonus at first; Hard is better play only. Once the AI is
+   complete (P181) and the first balance report has merged (P191), the lead runs one 100-match
+   Hard-against-Normal set on held-out seeds (the plan's "Gate procedure", step 0). If Hard's share
+   is under 600 per-mille, P173 and P183b run (+20 % income on Hard, shown beside its button);
+   otherwise both are withdrawn. Options A (the bonus from the start) and B (never a bonus) were
+   not chosen.
+2. **A (superweapon):** Normal and Hard build and fire their side's superweapon; Easy never builds
+   it (`uses_strike` 0, and the weak build-order tier has no radar and no strike building).
+   Options B (all levels) and C (none) were not chosen.
+3. **ja (the two rule files):** the lead updated `.claude/agents/ai-dev.md` (lines 3 and 19) and
+   `.claude/skills/balance-report/SKILL.md` (lines 9 and 12, steps 1 and 5) in P170b, as question 3
+   words it, with "nightly" read as "balance run" after Michael's follow-up on ADR 0031's question
+   3 (ADR 0031's Acceptance note). The question below is kept as it was asked.
+
+The decision below is the accepted text; P170b changed only the status, this note, the wording that
+named open answers, and the questions' "answered" marks. The two lead decisions stay lead
+decisions. Nothing is applied in code yet: the plan's rows apply it.
 
 ## Context
 - **ROADMAP Phase 4, box 1 and 2:** "AI with build orders from data, scouting, army grouping,
@@ -71,9 +96,10 @@ golden hash, except the one conditional setup row of §8 (question 1).
   buttons, Easy, Normal and Hard, Normal chosen at start, above the two Skirmish buttons; Restart
   and "Play again" keep the level. The gate's phone check plays every level, so the choice cannot
   wait for Phase 5's menus. Plan row P183.
-- **The dummy stays** (it was question 4): `DummyAi`, `DummyDefence`, `PlacementSpiral` and
-  `data/ai/dummy_*.tres` remain as the Phase 3 suites' and end-to-end tests' opponent and as the
-  nightly's fixed yardstick ("Easy beats the dummy", ADR 0031 §5). It is test infrastructure (§9).
+- **The dummy stays** (it was question 4 of the first draft): `DummyAi`, `DummyDefence`,
+  `PlacementSpiral` and `data/ai/dummy_*.tres` remain as the Phase 3 suites' and end-to-end tests'
+  opponent and as the balance run's fixed yardstick ("Easy beats the dummy", ADR 0031 §5). It is
+  test infrastructure (§9).
 
 ## Decision
 
@@ -173,7 +199,7 @@ layers are ai-dev.md's:
 
   So one AI holds at most 4 keys, and a Normal-vs-Normal match up to 8, which is the whole cache
   before tankers and fights. The harness counts `flow_full_ticks` (ticks after which every slot is
-  referenced; ADR 0031 §1), P188 and P189 report it on their matches and the nightly on every
+  referenced; ADR 0031 §1), P188 and P189 report it on their matches and the balance run on every
   match. If it is above 0, the lead chooses, by data: `goal_keys_max` 3 (the rally follows the
   army goal, so the staging point holds no keys while a wave is out), or the conditional plan row
   P194, `flow_cache_size` 12 in the shipped `data/rules.tres` (gameplay-dev). P194 moves no golden
@@ -240,14 +266,14 @@ is one of these fields.
   | `retreat_percent` / `retreat_ratio_percent` | 0 / 0 (never) | 40 / 200 | 50 / 150 | a group pulls back below this share of its launch value, or when the enemy value near it passes this ratio |
   | `unit_retreat_hp_percent` / `focus_fire` | 0 / 0 | 0 / 0 | 30 / 1 | Hard's unit control |
   | `counter_percent` | 0 | 30 | 60 | how far the mix shifts toward counters of what was seen |
-  | `uses_strike` | 0 | 1 | 1 | question 2 |
+  | `uses_strike` | 0 | 1 | 1 | answer 2 A |
   | `commands_per_think_max` | 3 | 8 | 12 | Easy's slow hands |
-  | `income_percent` | 100 | 100 | 100 (120 only on question 1's A, or C's trigger) | §8 |
+  | `income_percent` | 100 | 100 | 100 (120 only if question 1's trigger fires, answer C) | §8 |
 
 - **`OpponentDef extends AiDef`** (`game/ai/OpponentDef.gd`; `data/ai/opponent_fossil.tres`,
   `opponent_renew.tres`): one per faction.
-  - **Inherited and used:** `id`, `hq_type`, `harvester_type`, `queue_target`,
-    `place_stride_tiles`, `defend_radius_tiles`, `think_period` (5 in these files), `think_tick` (6).
+  - **Inherited and used:** `id`, `hq_type`, `harvester_type`, `queue_target`, `place_stride_tiles`,
+    `defend_radius_tiles`, `think_period` (5 in these files), `think_tick` (6).
   - **Inherited and ignored by `OpponentAi`:** `build_order`, `place_tries`, `harvesters_wanted`,
     `guard_offset_tiles` (replaced by `build_orders`, `place_tries_per_think`, the level's
     `harvesters_per_refinery` and the staging point). The data test requires them at their script
@@ -324,17 +350,17 @@ hash moves.
 - **Vision:** never. Every level reads only `PlayerView` (the `game/ai` scan of
   `test_view_reads_snapshot.gd` and `test_sim_purity.gd` stays). The point-mirror guess of §6 is
   map knowledge a player has too, not a sight of the enemy.
-- **Resources:** the AI gets nothing a player cannot, unless Michael chooses otherwise (question
-  1). The GDD and ai-dev.md already name a 20 % income bonus for Hard; this ADR asks again because
-  it is the one place the AI would not play by the same rules. If he chooses a bonus, it is match
-  setup, not a cheat in the AI's code: row P173 adds `World.income_percent` per player (set at load
-  from the opponent's level, 100 for a human), applied where a tanker unloads (`credits +=
-  ore * credits_per_ore * income_percent / 100`), outside the state hash and inside `defs_hash`
-  like the rule ints, and carried in the replay's header (`Replay.FORMAT` 2). At 100 the
-  arithmetic is the same, so **no state hash and no golden moves**; every World's `defs_hash`
-  value changes once (a new input), which no literal pins
-  (`tests/sim/test_world_hash.gd:274-292` compares values with each other). The Skirmish's Hard
-  button then shows the bonus, formed from `income_percent - 100` (P183b), never a literal.
+- **Resources:** the AI gets nothing a player cannot (Michael's answer 1 C): Hard starts without a
+  bonus. Only if the trigger run of the Acceptance note shows Hard under 600 per-mille against
+  Normal does Hard get +20 % income, the one place the AI would then not play by the same rules.
+  That bonus is match setup, not a cheat in the AI's code: row P173 adds `World.income_percent` per
+  player (set at load from the opponent's level, 100 for a human), applied where a tanker unloads
+  (`credits += ore * credits_per_ore * income_percent / 100`), outside the state hash and inside
+  `defs_hash` like the rule ints, and carried in the replay's header (`Replay.FORMAT` 2). At 100 the
+  arithmetic is the same, so **no state hash and no golden moves**; every World's `defs_hash` value
+  changes once (a new input), which no literal pins (`tests/sim/test_world_hash.gd:274-292` compares
+  values with each other). The Skirmish's Hard button then shows the bonus, formed from
+  `income_percent - 100` (P183b), never a literal.
 
 ### 9. The dummy stays (lead decision above)
 `DummyAi`, `DummyDefence`, `PlacementSpiral` and `data/ai/dummy_*.tres` stay as they are.
@@ -354,7 +380,7 @@ are written from this game's own roster and `requires` chains.
   rise by about the dearest slot in matches against the AI.
 - The AI holds at most four flow-cache keys; AI-vs-AI can fill the cache, which the harness counts.
 - Balance tuning has a parameter set per level and a role table per faction, all data; ADR 0031's
-  nightly reads their effect.
+  balance run reads their effect.
 - `PlayerView` grows by a dozen copied tables (read-only). `MatchRunner` builds controllers through
   one factory and can seat a computer player on player 1.
 - Two controllers exist side by side: the dummy for tests and baselines, the opponent for players.
@@ -375,27 +401,29 @@ are written from this game's own roster and `requires` chains.
   implementation of fast-changing code.
 - **Replacing the dummy:** loses a fixed baseline and rewrites the Phase 3 end-to-end suites.
 
-## Questions for Michael
-1. **Hard and money.** Recommended: **C**, because it keeps the computer fair unless better play
-   proves not to be enough, and the bonus is ready if it is needed.
-   - A: keep the GDD: Hard gets +20 % income from the start, and the Hard button says so.
-   - B: no bonus: Hard is only better play (economy, reactions, retreat, focus fire).
-   - C: no bonus first. After the AI is complete (row P181) and the first tuning, the lead runs 100
-     Hard-against-Normal matches once (each level on each side half the time, seeds that tuning
-     never used). If Hard wins under 60 % of them, the +20 % comes in (row P173) and the Hard
+## Questions for Michael (answered 2026-11-06: 1 C, 2 A, 3 ja)
+1. **Hard and money.** **Answered: C.** Recommended: **C**, because it keeps the computer fair
+   unless better play proves not to be enough, and the bonus is ready if it is needed.
+   - A (not chosen): keep the GDD: Hard gets +20 % income from the start, and the Hard button says
+     so.
+   - B (not chosen): no bonus: Hard is only better play (economy, reactions, retreat, focus fire).
+   - C (chosen): no bonus first. After the AI is complete (row P181) and the first tuning, the lead
+     runs 100 Hard-against-Normal matches once (each level on each side half the time, seeds that
+     tuning never used). If Hard wins under 60 % of them, the +20 % comes in (row P173) and the Hard
      button says so.
-2. **Superweapon.** Recommended: **A**, because the GDD promises it for the Phase 4 AI and a
-   newcomer on Easy should not face a strike.
-   - A: Normal and Hard build and fire their side's superweapon; Easy never builds it.
-   - B: all three levels.
-   - C: none in Phase 4.
-3. **Two rule files that would go stale.** May the lead update `.claude/agents/ai-dev.md` and the
-   skill `.claude/skills/balance-report/SKILL.md` so they match these two ADRs? (ja/nej;
-   recommended: **ja**, because otherwise ai-dev works to a time rule that is about six times too
-   loose on the phone and reads reports from a folder the nightly does not write.)
+2. **Superweapon.** **Answered: A.** Recommended: **A**, because the GDD promises it for the Phase 4
+   AI and a newcomer on Easy should not face a strike.
+   - A (chosen): Normal and Hard build and fire their side's superweapon; Easy never builds it.
+   - B (not chosen): all three levels.
+   - C (not chosen): none in Phase 4.
+3. **Two rule files that would go stale.** **Answered: ja** (applied in P170b). May the lead update
+   `.claude/agents/ai-dev.md` and the skill `.claude/skills/balance-report/SKILL.md` so they match
+   these two ADRs? (ja/nej; recommended: **ja**, because otherwise ai-dev works to a time rule that
+   is about six times too loose on the phone and reads reports from a folder the nightly does not
+   write.)
    - `ai-dev.md` line 19: "Keep each decision under 1 ms on CI" becomes "Keep each think slot at
      most 0.15 ms p95 on CI (the `WATCH ai think` line), about 1 ms on the phone". Line 3: the
      harness is qa-engineer's to build and ai-dev's to read.
-   - `SKILL.md` line 12: "read the latest report in `docs/balance/`" becomes "read the latest comment
-     on the `balance` issue or the nightly's artifact"; line 9's seeds and step 1 get the new flags
-     and `scripts/balance-summary.sh`; step 5 posts one comment block per set.
+   - `SKILL.md` line 12: "read the latest report in `docs/balance/`" becomes "read the latest
+     comment on the `balance` issue or the nightly's artifact"; line 9's seeds and step 1 get the
+     new flags and `scripts/balance-summary.sh`; step 5 posts one comment block per set.
