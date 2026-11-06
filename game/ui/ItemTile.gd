@@ -30,8 +30,19 @@ const CARD_DP: Vector2 = Vector2(88.0, 96.0)
 const CARD_PORTRAIT_DP: Vector2 = Vector2(92.0, 100.0)
 const ICON_INSET_DP: float = 3.0
 const LOCK_DP: float = 32.0
-## The padlock when words stand under it (the missing building's name, ADR 0025 section 5).
+## The padlock when the missing building's name stands beside it (ADR 0025 section 5): inline, the
+## first thing on the name's first line.
 const LOCK_WORDED_DP: float = 14.0
+const LOCK_GAP_DP: float = 2.0  ## Between that padlock and the name's first glyph.
+## The padlock's room at the start of line one is no-break spaces (NBSP), each followed by a word
+## joiner. The joiner is not a space: when the room ends line one (the name's first word starts line
+## two), the label's edge-space trim would otherwise cut the NBSPs down to one. The font has no
+## glyph for it; the shaper hides it (zero width). Do not "clean it up".
+const NBSP: String = "\u00a0"
+const JOIN: String = "\u2060"
+## After the room and before the name: a break is allowed here and nowhere inside the room, so a
+## name too long to share line one with the padlock starts line two whole.
+const BREAK_OK: String = "\u200b"
 const FULL_WORD: String = "FULL"
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
 const VARIATION: StringName = &"ItemTile"
@@ -61,9 +72,11 @@ var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
 var _banner: Label = Label.new()
 var _caption: Label = Label.new()
-var _word: Label = Label.new()  ## In the stage: "FULL", or the missing name.
+var _word: Label = Label.new()  ## In the stage: "FULL", or the name (after the padlock's room).
 var _lock_fit: DpMinSize = DpMinSize.new()
 var _needs: String = ""  ## The display name of the missing requirement or producer.
+var _word_key: String = ""  ## What the word was last laid out for (state, name, badge).
+var _inline: bool = false  ## The padlock stands inline before the name (else in the corner).
 var _cost: Label = Label.new()
 var _badge: Label = Label.new()
 var _offset: Vector2 = Vector2.ZERO  ## The finger's move since the press.
@@ -111,8 +124,10 @@ func _init() -> void:
 	_word.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_word.max_lines_visible = 2  # The stage holds two lines of 14 sp (a test pins every name).
 	_word.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING  # A name is never cut.
+	_word.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED  # A translation keys on the name.
 	_word.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_word.visible = false
+	_word.resized.connect(_fit_word)
 	_banner.text = "Ready"
 	_banner.theme_type_variation = BANNER_VARIATION
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -175,7 +190,8 @@ func set_card(size_dp: Vector2) -> void:
 
 
 ## The display name of what a LOCKED card lacks (its requirement, or its producer when there is
-## none); "" when nothing is known. The card then shows that name beside a smaller padlock.
+## none); "" when nothing is known. The card then shows that name with a small padlock before it
+## (inline when the name and the padlock fit and no count shows, else in the card's corner).
 func set_needs(display_name: String) -> void:
 	if display_name == _needs:
 		return
@@ -184,10 +200,11 @@ func set_needs(display_name: String) -> void:
 
 
 ## The word of the state: "FULL" in the middle of the stripes, the missing name in up to two
-## lines at the stage's foot, with the padlock shrunk into its top left corner (the count badge has
-## the top right).
+## lines at the stage's foot (the padlock inline before it, or in the stage's top left corner).
 func word() -> String:
-	return _word.text if _word.visible else ""
+	if not _word.visible:
+		return ""
+	return _name() if _worded() else _word.text
 
 
 ## Shows the state, the queued count and the head's progress (a share, 0 to 1).
@@ -252,19 +269,103 @@ func _on_held() -> void:
 		long_pressed.emit()
 
 
+func _worded() -> bool:
+	return state == State.LOCKED and not _needs.is_empty()
+
+
+## Lays the word out again only when what it is made of changed: the state, the name or whether a
+## count shows (the count and the progress as such never move it).
 func _show_word() -> void:
-	var needs: bool = state == State.LOCKED and not _needs.is_empty()
+	var key: String = "%d|%s|%s" % [state, _needs, queued > 0]
+	if key == _word_key:
+		return
+	_word_key = key
+	_fit_word()
+
+
+## The name as shown: a translation keys on the display name itself.
+func _name() -> String:
+	return tr(_needs)
+
+
+## The word, the padlock and their fit. A name with a padlock inline needs: no count badge on the
+## card, the padlock and the name's first word together on line one, the whole name in at most two
+## lines. Else the card is main's: the bare name and the padlock in the stage's top left corner.
+func _fit_word() -> void:
+	var needs: bool = _worded()
 	_word.visible = needs or state == State.FULL
-	_word.text = _needs if needs else FULL_WORD
 	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM if needs else VERTICAL_ALIGNMENT_CENTER
 	var size_dp: float = LOCK_WORDED_DP if needs else LOCK_DP
 	_lock_fit.min_dp = Vector2(size_dp, size_dp)
+	_inline = false
+	if needs:
+		if queued == 0:
+			_word.text = _room() + _name()
+			_inline = _word.size.x <= 0.0 or _name_fits_inline()  # A size comes with the layout.
+		if not _inline:
+			_word.text = _name()
+	else:
+		_word.text = FULL_WORD
+	_tint_lock()
 	if needs:
 		_lock.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
+		_lock.grow_horizontal = Control.GROW_DIRECTION_END
+		_lock.grow_vertical = Control.GROW_DIRECTION_END
+		if _inline:
+			_place_lock()
 	else:
 		_lock.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
-	_lock.grow_horizontal = Control.GROW_DIRECTION_END if needs else Control.GROW_DIRECTION_BOTH
-	_lock.grow_vertical = Control.GROW_DIRECTION_END if needs else Control.GROW_DIRECTION_BOTH
+		_lock.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_lock.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+
+## The padlock's room and the gap: whole no-break spaces at least as wide as both (the padlock is
+## placed against the name, so the room's slack stays at its left). A space is measured in the
+## label itself, as it lays the text out (a font measure of a lone no-break space is a pixel off).
+func _room() -> String:
+	_word.text = NBSP + JOIN + "x"
+	var space: float = _word.get_character_bounds(0).size.x
+	if space <= 0.0:
+		return ""
+	var wide: float = UiScale.dp(LOCK_WORDED_DP + LOCK_GAP_DP)
+	return (NBSP + JOIN).repeat(ceili(wide / space)) + BREAK_OK
+
+
+## The room's length in the word's text, and the name's.
+func _room_length() -> int:
+	return _word.text.length() - _name().length()
+
+
+## Read from the label after its layout: the whole name in the visible lines, and the padlock's
+## room and the name's first word on one line.
+func _name_fits_inline() -> bool:
+	var lines: int = _word.get_line_count()
+	if lines > _word.max_lines_visible:
+		return false
+	var name_text: String = _name()
+	var start: int = _room_length()
+	var end: int = name_text.find(" ")
+	end = name_text.length() if end < 0 else end
+	var line_y: float = _word.get_character_bounds(0).position.y
+	for index: int in [start, start + end - 1]:
+		if absf(_word.get_character_bounds(index).position.y - line_y) > 1.0:
+			return false
+	return true
+
+
+## The padlock inline: on line one's box (the label's own layout, with its spacing, margins and
+## alignment), with the gap against the name's first glyph.
+func _place_lock() -> void:
+	var edge: float = UiScale.dp(LOCK_WORDED_DP)
+	var line: Rect2 = _word.get_character_bounds(0)
+	var first: Rect2 = _word.get_character_bounds(_room_length())
+	_lock.position = (
+		_word.position
+		+ Vector2(
+			first.position.x - UiScale.dp(LOCK_GAP_DP) - edge,
+			line.position.y + (line.size.y - edge) / 2.0
+		)
+	)
 
 
 ## A part of the tile that the finger never finds: the tile is what it finds.
@@ -278,7 +379,8 @@ func _add(part: Control, part_name: String, parent: Control = self) -> void:
 func _look() -> void:
 	_tint_icon()
 	_fill.color = get_theme_color(&"fill", VARIATION)
-	_lock.modulate = get_theme_color(&"lock", VARIATION)
+	_tint_lock()
+	_fit_word.call_deferred()  # The word's own theme items are fresh only after this notification.
 	_stripes.color = get_theme_color(&"stripe", VARIATION)
 	_stripes.step = UiScale.dp(STRIPE_DP.x)
 	_stripes.width = UiScale.dp(STRIPE_DP.y)
@@ -286,6 +388,15 @@ func _look() -> void:
 	_icon.set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, roundi(UiScale.dp(ICON_INSET_DP))
 	)
+
+
+## The padlock inline is tinted like the name; in the corner or alone it has the theme's lock
+## colour.
+func _tint_lock() -> void:
+	if _worded() and _inline:
+		_lock.modulate = get_theme_color(&"font_color", CAPTION_VARIATION)
+	else:
+		_lock.modulate = get_theme_color(&"lock", VARIATION)
 
 
 ## The icon is dimmed behind the padlock of a locked tile.

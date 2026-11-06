@@ -555,7 +555,7 @@ ReadyBadge/styles/hover_pressed = SubResource("StyleBoxFlat_badge_pressed")
 ReadyBadge/styles/normal = SubResource("StyleBoxFlat_badge")
 ReadyBadge/styles/pressed = SubResource("StyleBoxFlat_badge_pressed")
 ; The build item tiles (ItemTile.gd, plan P85b): the icon (dimmed behind a padlock), the fill that rises
-; over it with the head's progress, the padlock (#9AA5B1) and the stripes of a tile that cannot take an
+; over it with the head's progress, the padlock (#9AA5B1 alone or in the corner; inline before a name it takes ItemCaption's font_color) and the stripes of a tile that cannot take an
 ; item (the warning amber, half clear). The cost and the count are 18 dp numbers on a plate (the cost
 ; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1). The name under the
 ; plate of a landscape card is 14 dp, white on the tile's dark plate.
