@@ -256,7 +256,7 @@ func _steer(
 	elif home.x >= 0:
 		_travel(view, memory, rng, out, home, row)
 	else:
-		memory.scout_hp = view.row_hp(row)
+		_end(memory)  # The Headquarters is gone: nowhere to go home to, the trip is over.
 
 
 ## A scout on its trip: hit (home), travelling, or arrived (the next sector). A hit stays
@@ -274,6 +274,8 @@ func _travel(
 	if memory.scout_hp != AiMemory.NONE and hp < memory.scout_hp:
 		if _return(view, memory, out, home):
 			memory.scout_hp = hp
+		elif view.row_order(row) == PlayerView.Order.IDLE:
+			_drop_key(memory)
 		return
 	memory.scout_hp = hp
 	if view.row_order(row) != PlayerView.Order.IDLE:

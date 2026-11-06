@@ -201,6 +201,24 @@ func test_a_second_trip_starts_with_every_sector_open_again() -> void:
 	assert_int(closed).is_equal(1)
 
 
+func test_a_sector_picked_but_not_reached_on_trip_one_is_open_on_trip_two() -> void:
+	var id: int = _scout(8, 12)
+	_settle()
+	_run(1800)
+	_run(1815)
+	assert_int(_intel.draws).is_equal(1)
+	AiRig.kill(_world, _loop, _row(id))
+	_scout(8, 12)
+	_settle()
+	_run(1900)
+	_run(4500)
+	assert_int(_intel.scouts).is_equal(2)
+	_run(4515)
+	# (4, 20) and (12, 20) are both open again on trip 2, so they tie and a draw settles them.
+	assert_int(_out.size()).is_equal(1)
+	assert_int(_intel.draws).is_equal(2)
+
+
 func test_a_scout_with_nothing_left_to_explore_goes_home() -> void:
 	var id: int = _scout(8, 12)
 	_settle()

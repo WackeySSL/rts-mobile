@@ -206,3 +206,37 @@ func test_the_same_seed_gives_the_same_trip() -> void:
 		trips.append(picks)
 	assert_array(trips[0]).is_equal(trips[1])
 	assert_bool(trips[0].size() > 1).is_true()
+
+
+func test_a_hit_idle_scout_that_cannot_go_home_lets_go_of_its_key() -> void:
+	var id: int = _scout(8, 12)
+	_settle()
+	_run(1800)
+	_memory.add_goal_key(20, 20, AiIntel.FOOT, AiMemory.Owner.ARMY)
+	_memory.add_goal_key(20, 20, AiIntel.TRACKED, AiMemory.Owner.ARMY)
+	_world.hp[_row(id)] -= 10
+	# Moving, it keeps its key; idle (the order ended), it lets go of it. The hit stays pending.
+	_world.order[_row(id)] = World.Order.MOVE
+	_run(1815)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.SCOUT)).is_equal(1)
+	_world.order[_row(id)] = World.Order.IDLE
+	_run(1830)
+	assert_array(_out).is_empty()
+	assert_array([_memory.goal_keys(), _memory.goal_keys_of(AiMemory.Owner.SCOUT)]).is_equal([2, 0])
+	_memory.release_goal_key(0, AiMemory.Owner.ARMY)
+	_run(1845)
+	assert_int(_out.size()).is_equal(1)
+	assert_array([_out[0].target_x, _out[0].target_y]).is_equal([7500, 7500])
+
+
+func test_a_trip_ends_when_the_headquarters_is_lost() -> void:
+	var id: int = _scout(8, 12)
+	_settle()
+	_run(1800)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.SCOUT)).is_equal(1)
+	_world.hp[_row_in_world(AiRig.ids_of(_world, 1, "headquarters")[0])] = 0
+	AiRig.step(_world, _loop)
+	_run(1815)
+	assert_array(_out).is_empty()
+	assert_array([_memory.scout_id, _memory.goal_keys()]).is_equal([-1, 0])
+	assert_bool(_row(id) >= 0).is_true()
