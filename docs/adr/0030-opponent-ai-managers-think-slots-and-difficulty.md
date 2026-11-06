@@ -15,6 +15,13 @@ period and tick of the new controller; who is seated where) and §4 (the Skirmis
 dummy); the dummy's own rules are unchanged (§9). Changes no sim rule, Command, state column or
 golden hash, except the one conditional setup row of §8 (answer 1 C).
 
+Status note (2026-11-06, P26bd docs; wave 1 merged: P171 #349, P172 #347, P184 #348, main
+98f0a3a): §7 gains one read, `own_strike_tick`, and §4's code pointer moves; the note at the end
+of §7 says what and why. §4's "`PerfHud.gd:438`" now reads `PerfHud.record_snapshot`, where the
+card keeps the checkpoint ticks apart (P184 moved the card's text to `PerfCard.gd`). The Phase 4
+plan's live P181 rows name the Lumen Accord's strike building Dusk Array (ADR 0032); §6's "a
+Blackout Array fires" keeps the name of its day. No other accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -343,6 +350,17 @@ Added, all from data a player may know or its own state, so pillar 4 holds:
 - **Rule caps:** `unit_cap`, `building_cap`.
 No enemy order, cargo, charge, credits or queue is exposed. `PlayerView` stays read-only, so no
 hash moves.
+
+Note (2026-11-06, P26bd docs; P172 #347 as merged): one read is added to the list above, from the
+P172 review (a lead decision). **`own_strike_tick`**: the viewing player's own pending rupture,
+its landing tick, 0 when none. §1 says no `SUPERWEAPON` while the player's rupture is pending,
+and the warned lists name no owner, so without it the AI could not tell its own entry from an
+enemy's. It is own state only. Test it for 0 and never against a stamp: the sim drops a
+`SUPERWEAPON` stamped at the landing tick itself too, and a blackout never sets it (so in one
+think a rupture may follow a blackout, but nothing may follow a rupture). The type tables, own
+rows, warned lists and caps are as listed; `type_vs_armour` is indexed `type * 4 + class`, read
+through the type's weapon (`PlayerView.ARMOUR_CLASSES` is 4, pinned to `World.Armour`).
+`type_sight` is in milli-tiles.
 
 ### 8. Difficulty is parameters; the AI never sees more than its side
 - One code path for all three levels; only `AiDifficultyDef` differs. A test runs the same seed at
