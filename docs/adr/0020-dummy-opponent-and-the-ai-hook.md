@@ -46,6 +46,18 @@ Status note (2026-11-02, P26ap docs; ADR 0026 accepted 2026-11-02 on #259): from
 site under way and can pay, it sends one `PLACE [type]` on the first spiral slot `placement`
 accepts, under the player's rules (ADR 0026 §8). No accepted text changed.
 
+Status note (2026-11-06, P170b docs; ADRs 0030 and 0031 accepted 2026-11-06 on #345; the text
+above stays as accepted and as dated):
+- **§2:** Phase 4's `OpponentAi` (ADR 0030 §2) has `think_period` 5 and `think_tick` 6 and rotates
+  three slots, so each of its managers thinks once per 15 ticks and players 1 to 4 never think on
+  a checkpoint tick. `MatchRunner` gains `first_opponent` (default 2; 1 seats a computer player on
+  player 1 too) and `opponent_levels`, and builds controllers through `AiFactory` (plan row P182).
+  The dummy keeps period 15 and its tick.
+- **§4:** the dummy stays as the test opponent and the balance run's yardstick (a lead decision in
+  ADR 0030); the Skirmish routes play `OpponentAi` from plan row P183 on.
+- **§5 and answer 2:** `run-sim-smoke.sh` plays full AI-vs-AI matches from plan row P186 (ADR 0031).
+No accepted text changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use
