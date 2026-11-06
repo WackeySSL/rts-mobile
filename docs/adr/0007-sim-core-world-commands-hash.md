@@ -56,6 +56,13 @@ Status note (2026-11-03, the docs row after wave y): §10 carries a dated status
 record's seventh int (index 6) is 1 for a cancelled construction site (ADR 0026 §6, P128b). No
 accepted text changed and no hash moves.
 
+Status note (2026-11-06, P26bd docs; Phase 4 rows P171 and P171b, ADR 0031): §4's "those defaults
+equal `data/rules.tres`, pinned by a test" now reads: the `RulesDef` script defaults equal the
+frozen rules in `data/dev/arena/rules.tres`, pinned by `tests/sim/test_defs_data.gd`. Phase 4's
+tuning rows change the shipped `data/rules.tres` (exception 20 of the Phase 4 plan), so the two
+may differ; every shipped scenario names `data/rules.tres`, and only hand-built and dev worlds use
+the defaults. No other accepted text changed and no hash moves.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a

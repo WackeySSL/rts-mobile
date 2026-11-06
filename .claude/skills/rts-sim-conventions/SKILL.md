@@ -118,7 +118,9 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
 - Sim rules give orders as the unit-group commands do (`order`, goal, `group_cell` -1,
   `Movement.reset_nav`), never through `reset_row` (Targeting's, with a C++ twin).
 - **AI:** `game/ai` reads the World only through `PlayerView` (own rows, seen enemy rows, own
-  economy, explored cells, `Placement` for its player). `AiDriver.think_all` calls the controllers
+  economy, explored cells, `Placement` for its player; since v2 also the combat and strike type
+  tables, its own strike charge and offline ticks, the warned ruptures every player sees,
+  `own_strike_tick` and the rule caps, ADR 0030 §7). `AiDriver.think_all` calls the controllers
   inside the tick job before `loop.step`, so their Commands are stamped and recorded like a
   player's. A controller copies its `AiDef` into ints and arrays and keeps no Resource or Node.
 
