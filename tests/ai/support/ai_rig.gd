@@ -1,10 +1,11 @@
 extends RefCounted
 ## Matches for the AI suites (plan row P83). Not a test suite.
 ##
-## `start()` is a skirmish-like start on 40 x 40 tiles of the shipped terrain and rules with the
-## fog real: each of two players has a Headquarters (3x3), two rifle squads beside it and 2,000
-## credits (the rules' `start_credits`), and ore near its base. Player 1's Headquarters has its
-## top-left tile at (6, 6), with ore at tiles 14-17 x 6-9 and 6-9 x 14-17; player 2's base is the
+## `start()` is a skirmish-like start on 40 x 40 tiles of the shipped terrain and the frozen rules
+## and units of `data/dev/arena/` with the fog real: each of two players has a Headquarters (3x3),
+## two rifle squads beside it and 2,000 credits (the rules' `start_credits`), and ore near its base.
+## Player 1's Headquarters has its top-left tile at (6, 6), with ore at tiles 14-17 x 6-9 and
+## 6-9 x 14-17; player 2's base is the
 ## same base moved 20 tiles east and 20 south (Headquarters at (26, 26), ore at 34-37 x 26-29 and
 ## 26-29 x 34-37), so two dummies on it run alike. The bases are 28 tiles apart, so no row sees or
 ## hits a row of the other base. The roster is the Headquarters, the five buildings of the dummy's
@@ -14,9 +15,9 @@ extends RefCounted
 ## each controller on its turn gets a fresh `PlayerView` and appends its Commands, `MatchLoop`
 ## stamps and records them and runs `Sim.step`.
 
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
-const UNIT_DIR: String = "res://data/units/"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
 const DUMMY_PATH: String = "res://data/ai/dummy_fossil.tres"
 const SIZE: int = 40
 const ROSTER: Array[String] = [

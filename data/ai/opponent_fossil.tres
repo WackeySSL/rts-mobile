@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="OpponentDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/OpponentDef.gd" id="1_def"]
+[ext_resource type="Script" path="res://game/ai/AiBuildOrderDef.gd" id="2_order"]
+[ext_resource type="Resource" path="res://data/ai/build_orders/fossil_weak.tres" id="3_weak"]
+[ext_resource type="Resource" path="res://data/ai/build_orders/fossil_standard.tres" id="4_standard"]
+[ext_resource type="Resource" path="res://data/ai/build_orders/fossil_strong.tres" id="5_strong"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"opponent_fossil"
+hq_type = &"headquarters"
+harvester_type = &"harvester"
+queue_target = 2
+place_stride_tiles = 4
+defend_radius_tiles = 12
+think_period = 5
+think_tick = 6
+scout_type = &"light_tank"
+anti_infantry_type = &"rifle_squad"
+anti_vehicle_types = Array[StringName]([&"rocket_squad"])
+tank_type = &"heavy_tank"
+artillery_type = &"artillery"
+defence_type = &"defence_turret"
+strike_type = &"fossil_strike"
+role_weights = PackedInt32Array(50, 40, 10, 0, 35, 30, 25, 10, 20, 25, 35, 20)
+build_orders = Array[ExtResource("2_order")]([ExtResource("3_weak"), ExtResource("4_standard"), ExtResource("5_strong")])
+power_margin = 20
+staging_offset_tiles = 6
+unseen_hit_shift_tiles = 4
+sector_tiles = 8
+sectors_max = 64
+squads_max = 4
+place_tries_per_think = 8
+target_tests_max = 512
+goal_keys_max = 4
+strike_min_value = 3000

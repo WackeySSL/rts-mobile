@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="AiBuildOrderDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiBuildOrderDef.gd" id="1_order"]
+
+[resource]
+script = ExtResource("1_order")
+id = &"fossil_strong"
+tier = 2
+steps = Array[StringName]([&"power_plant", &"refinery", &"vehicle_factory", &"barracks", &"refinery", &"power_plant", &"fossil_radar", &"defence_turret", &"power_plant", &"fossil_strike", &"defence_turret"])
