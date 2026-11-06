@@ -122,7 +122,7 @@ func test_the_touch_steps_of_a_rupture_end_in_one_superweapon_the_sim_takes() ->
 ## player and gives it the Lumen Accord's Dusk Array, which the atlas has no frame of for
 ## player 1. Every building of player 1 must still be drawn, as its Body or the flat marker, and
 ## the Dusk Array must be one the player sees where it stands.
-func test_every_building_of_the_local_player_is_drawn_and_so_is_the_blackout_array() -> void:
+func test_every_building_of_the_local_player_is_drawn_and_so_is_the_dusk_array() -> void:
 	var main: Node = await _press("StrikeTestButton")
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	var layer: BuildingLayer = main.get_node("BuildingLayer")

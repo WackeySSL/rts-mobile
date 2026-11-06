@@ -50,7 +50,7 @@ func test_the_scenario_is_two_players_one_in_each_faction_on_the_test_map_with_n
 	assert_int(_world.spawn_refused).is_equal(0)
 
 
-func test_player_one_owns_a_headquarters_power_a_deep_bore_and_a_blackout_array() -> void:
+func test_player_one_owns_a_headquarters_power_a_deep_bore_and_a_dusk_array() -> void:
 	var owned: Dictionary[StringName, int] = _owned(1)
 	for id: StringName in [&"headquarters", &"fossil_strike", &"renew_strike"]:
 		assert_int(owned.get(id, 0)).override_failure_message(str(id)).is_equal(1)
@@ -67,7 +67,7 @@ func test_player_one_owns_a_headquarters_power_a_deep_bore_and_a_blackout_array(
 	assert_int(made).is_greater_equal(used)  # No low power to start with.
 
 
-func test_the_deep_bore_is_ready_at_once_and_the_blackout_array_within_four_seconds() -> void:
+func test_the_deep_bore_is_ready_at_once_and_the_dusk_array_within_four_seconds() -> void:
 	var bore: int = _row_of(&"fossil_strike")
 	var array: int = _row_of(&"renew_strike")
 	# The first step has the stamp world.tick + 1 = 1.
