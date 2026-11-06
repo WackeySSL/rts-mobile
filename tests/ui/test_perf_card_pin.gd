@@ -12,7 +12,8 @@ extends GdUnitTestSuite
 
 const Cases: GDScript = preload("res://tests/ui/support/perf_card_cases.gd")
 const FIXTURE: String = "res://tests/ui/fixtures/perf_card_pin.txt"
-const REMADE: String = "user://perf_card_pin.txt"
+## Per process, so two worktrees that fail the pin at once do not overwrite each other's output.
+var _remade: String = "user://perf_card_pin_%d.txt" % OS.get_process_id()
 
 
 func test_every_case_renders_as_before_the_split() -> void:
@@ -23,13 +24,16 @@ func test_every_case_renders_as_before_the_split() -> void:
 	assert_int(want.length()).is_greater(0)
 	var message: String = first_difference(want, got)
 	if message != "":
-		var file: FileAccess = FileAccess.open(REMADE, FileAccess.WRITE)
-		file.store_string(got)
-		file.close()
-		message += (
-			"\nAn intended change of the card or the summary: cp '%s' %s"
-			% [ProjectSettings.globalize_path(REMADE), FIXTURE.trim_prefix("res://")]
-		)
+		var file: FileAccess = FileAccess.open(_remade, FileAccess.WRITE)
+		if file == null:
+			message += "\n(could not write %s to re-make the fixture)" % _remade
+		else:
+			file.store_string(got)
+			file.close()
+			message += (
+				"\nAn intended change of the card or the summary: cp '%s' %s"
+				% [ProjectSettings.globalize_path(_remade), FIXTURE.trim_prefix("res://")]
+			)
 	assert_str(message).is_empty()
 
 

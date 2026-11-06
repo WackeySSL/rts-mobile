@@ -3,18 +3,17 @@ extends PanelContainer
 ## The perf card (plan P50a and P50a2; ADR 0012 section 4, ADR 0013 sections 3 and 15, ADR 0014):
 ## one run of `run_ticks` published ticks, the samples it takes on the main thread, `summary()` and
 ## the card that shows it (the card's text and the verdicts of a PerfGateDef are PerfCard's, P184).
-## A run keeps one row per frame and one per
-## published tick, read from `runner.snapshot` only (ADR 0012 section 3, never the World, the loop
-## or the replay). Main-thread CPU verdicts use ADR 0014's per-frame normalisation
-## (RefLoop.normalised_p95), worker verdicts stay raw. Tests feed record_frame() and
-## record_snapshot(); the live path feeds them from `frame_post_draw` and `ticked`. The card is
-## hidden while a run records, so it adds no draw call to a measured frame; at `run_ticks` it shows
-## and pauses the runner. Put it in a SafeAreaMargin (a full-rect child of a CanvasLayer, as the HUD
-## roots are): it fills what that margin leaves, so it lies inside the safe area at any size, and
-## its text scrolls. Its look is the inherited theme's (`game/ui/theme.tres`, the `PerfCard`
-## variation). Under the text sit two buttons: "Copy report" (the summary as JSON to the clipboard)
-## and "Run again" (the burst again, then a new match and a new run). P50b is the scene that sets
-## the seams below.
+## A run keeps one row per frame and one per published tick, read from `runner.snapshot` only (ADR
+## 0012 section 3, never the World, the loop or the replay). Main-thread CPU verdicts use ADR 0014's
+## per-frame normalisation (RefLoop.normalised_p95), worker verdicts stay raw. Tests feed
+## record_frame() and record_snapshot(); the live path feeds them from `frame_post_draw` and
+## `ticked`. The card is hidden while a run records, so it adds no draw call to a measured frame; at
+## `run_ticks` it shows and pauses the runner. Put it in a SafeAreaMargin (a full-rect child of a
+## CanvasLayer, as the HUD roots are): it fills what that margin leaves, so it lies inside the safe
+## area at any size, and its text scrolls. Its look is the inherited theme's (`game/ui/theme.tres`,
+## the `PerfCard` variation). Under the text sit two buttons: "Copy report" (the summary as JSON to
+## the clipboard) and "Run again" (the burst again, then a new match and a new run). P50b is the
+## scene that sets the seams below.
 
 ## Aliases of PerfCard.PASS and PerfCard.FAIL (the suites read them here).
 const PASS: String = PerfCard.PASS

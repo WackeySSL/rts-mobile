@@ -46,7 +46,8 @@ static func render(case_name: String) -> String:
 	var summary: Dictionary = hud.summary()
 	var masked: Dictionary = summary.duplicate()
 	for key: String in MACHINE_KEYS:
-		masked[key] = "<%s>" % key
+		if masked.has(key):  # A key summary() dropped stays absent, so the pin sees it go.
+			masked[key] = "<%s>" % key
 	var real_line: String = _machine_line(summary)
 	var lines: PackedStringArray = PackedStringArray()
 	for line: String in hud.card_lines():
