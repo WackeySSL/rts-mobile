@@ -73,9 +73,20 @@ func _row_in_world(id: int) -> int:
 func _remember_barracks(col: int, line: int) -> void:
 	var id: int = AiRig.give(_world, 2, "barracks", col, line)
 	var row: int = _row_in_world(id)
+	var cell: int = _world.pos_y[row] / 1000 * _world.map_cols + _world.pos_x[row] / 1000
+	_write_ghost(id, "barracks", cell)
+
+
+## Writes a record of the enemy building `id` of the type `type_id` with its footprint's top-left
+## tile at (`col`, `line`), for an id that no row has (a building that is gone).
+func _ghost(id: int, type_id: String, col: int, line: int) -> void:
+	_write_ghost(id, type_id, (line + 1) * _world.map_cols + col + 1)
+
+
+func _write_ghost(id: int, type_id: String, cell: int) -> void:
 	var cap: int = _world.ghost_cap
 	_world.ghost_id[cap] = id
-	_world.ghost_type[cap] = _type("barracks")
+	_world.ghost_type[cap] = _type(type_id)
 	_world.ghost_owner[cap] = 2
-	_world.ghost_cell[cap] = _world.pos_y[row] / 1000 * _world.map_cols + _world.pos_x[row] / 1000
+	_world.ghost_cell[cap] = cell
 	_world.ghost_count[1] = 1

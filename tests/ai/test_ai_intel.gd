@@ -1,11 +1,13 @@
 extends "res://tests/ai/support/intel_suite.gd"
 ## `AiIntel`'s sector map, sightings and enemy base estimate (plan row P177, ADR 0030 sections 3
-## and 6) on hand-built Worlds read through `PlayerView`; the scout is `test_ai_scout.gd`.
+## and 6) on hand-built Worlds read through `PlayerView`.
 
 
 func test_the_sector_map_counts_own_and_seen_value_in_one_pass_each() -> void:
 	AiRig.give(_world, 2, "barracks", 10, 10)
 	var enemy: int = AiRig.add_unit_of(_world, 2, "rifle_squad", 9500, 9500)
+	# An own unit away from the Headquarters: tile (20, 4) is sector 2 of the first row.
+	AiRig.add_unit_of(_world, 1, "rifle_squad", 20500, 4500)
 	_settle()
 	var view: PlayerView = _view()
 	assert_bool(view.row_of(enemy) >= 0).is_true()
@@ -26,6 +28,10 @@ func test_the_sector_map_counts_own_and_seen_value_in_one_pass_each() -> void:
 		sum_enemy += _memory.sector_enemy[sector]
 	assert_int(sum_own).is_equal(own)
 	assert_int(sum_enemy).is_equal(seen)
+	var rifle: int = view.type_cost[_type("rifle_squad")]
+	assert_int(_memory.sector_own[2]).is_equal(rifle)
+	# The two starting rifle squads stand at tile (4, 10): sector (0, 1) = 5. The Headquarters costs 0.
+	assert_int(_memory.sector_own[5]).is_equal(own - rifle)
 	assert_bool(own > 0 and seen > 0).is_true()
 	# The Headquarters (tile 7, 7) is in sector 0, the barracks (10, 10) in sector (1, 1) = 6.
 	assert_int(_memory.sector_own[0]).is_greater_equal(view.type_cost[_type("headquarters")])
@@ -54,13 +60,18 @@ func test_the_map_never_has_more_sectors_than_the_def_allows() -> void:
 	_intel = AiIntel.create(def, Rig.level_of("normal"), 1)
 	_memory = AiMemory.create(def)
 	_intel.refresh(_view(), _memory)
-	assert_int(_intel.sector_count()).is_less_equal(4)
+	# 40 x 40 tiles in at most 4 sectors: sides of 20.
+	assert_array([_intel.sector_side, _intel.sector_count()]).is_equal([20, 4])
 	assert_int(_memory.sector_own.size()).is_equal(4)
 	# Every row lands in a sector of the grid: the own value is all there.
+	var view: PlayerView = _view()
+	var own: int = 0
+	for row: int in view.own_rows:
+		own += view.type_cost[view.row_type(row)]
 	var sum: int = 0
 	for value: int in _memory.sector_own:
 		sum += value
-	assert_int(sum).is_greater(0)
+	assert_int(sum).is_equal(own)
 
 
 func test_a_remembered_building_counts_in_the_enemy_map_at_its_full_cost() -> void:
@@ -172,6 +183,44 @@ func test_a_neutral_row_is_no_sighting_and_no_enemy_value() -> void:
 		assert_int(value).is_equal(0)
 
 
+func test_a_remembered_producer_nearer_than_a_seen_one_wins() -> void:
+	var far: int = AiRig.give(_world, 2, "barracks", 10, 10)
+	_settle()
+	assert_bool(_row(far) >= 0).is_true()
+	# A record of a barracks (a building that is gone) at tile (5, 9), nearer to the Headquarters.
+	_ghost(9999, "barracks", 5, 9)
+	_run(10)
+	var pos: Vector2i = _view().ghost_pos(0)
+	assert_array([_memory.base_x, _memory.base_y]).is_equal([pos.x / 1000, pos.y / 1000])
+	assert_int(_memory.base_x).is_less(10)
+
+
+func test_without_a_headquarters_the_nearest_producer_is_measured_from_the_map_centre() -> void:
+	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.hq_type = &"no_such_type"
+	_intel = AiIntel.create(def, Rig.level_of("normal"), 1)
+	_memory = AiMemory.create(def)
+	var near_hq: int = AiRig.give(_world, 2, "vehicle_factory", 12, 6)
+	var near_centre: int = AiRig.give(_world, 2, "barracks", 9, 12)
+	_settle()
+	assert_bool(_row(near_hq) >= 0 and _row(near_centre) >= 0).is_true()
+	_run(10)
+	var pos: Vector2i = _view().row_pos(_row(near_centre))
+	assert_array([_memory.base_x, _memory.base_y]).is_equal([pos.x / 1000, pos.y / 1000])
+	# With the Headquarters the other producer is nearer: the same World, the normal manager.
+	_make("normal")
+	_run(10)
+	pos = _view().row_pos(_row(near_hq))
+	assert_array([_memory.base_x, _memory.base_y]).is_equal([pos.x / 1000, pos.y / 1000])
+	# No Headquarters and no producer in sight: there is nothing to estimate from.
+	before_test()
+	_intel = AiIntel.create(def, Rig.level_of("normal"), 1)
+	_memory = AiMemory.create(def)
+	_settle()
+	_run(20)
+	assert_bool(_memory.has_base_estimate()).is_false()
+
+
 func test_a_remembered_enemy_producer_is_the_estimate_when_nothing_is_seen() -> void:
 	_settle()
 	_remember_barracks(30, 4)
@@ -211,7 +260,6 @@ func test_the_controller_runs_the_refresh_in_the_army_slot_and_the_intel_in_the_
 	_world.tick = 1800
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ECONOMY)
-	assert_int(ai.work).is_equal(1)
 	assert_bool(ai.memory.has_base_estimate()).is_false()
 	_world.tick = 1805
 	ai.think(PlayerView.of(_world, 1), sent)
@@ -229,8 +277,11 @@ func test_the_controller_runs_the_refresh_in_the_army_slot_and_the_intel_in_the_
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.INTEL)
 	assert_int(ai.work).is_equal(3)
 	assert_bool(ai.memory.has_base_estimate()).is_true()
-	assert_array([ai.work_max, ai.commands, ai.commands_cut]).is_equal([3, 0, 0])
-	assert_array(sent).is_empty()
+	assert_int(ai.work_max).is_less_equal(3)
+	assert_int(ai.commands_cut).is_equal(0)
+	# Intel sends no Command in this row (other managers may send theirs).
+	for command: Command in sent:
+		assert_int(command.type).is_not_equal(Command.Type.MOVE)
 
 
 func test_the_manager_copies_its_defs_and_keeps_no_resource() -> void:

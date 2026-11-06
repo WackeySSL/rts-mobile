@@ -7,8 +7,12 @@ extends RefCounted
 ## view's ghosts, nothing else.
 ##
 ## `refresh` (ARMY slot) rebuilds the sector map, one pass over the own rows and one over the seen
-## rows. `run` (INTEL slot) keeps the sightings and the base estimate, again two passes. Sectors are
+## rows. `run` (INTEL slot) keeps the sightings and the base estimate, again two passes (`passes`
+## counts them at each loop head). Sectors are
 ## squares of `sector_tiles`, grown only when the map would need more than `sectors_max` of them.
+
+## The id that no row has, larger than every real id.
+const NO_ID: int = 0x7FFFFFFF
 
 ## Copied from the defs when the manager is made.
 var hq_type: StringName = &""
@@ -25,6 +29,13 @@ var passes: int = 0
 
 var _map_cols: int = 0
 var _map_rows: int = 0
+## Scratch kept between thinks (resized and filled, never remade): the enemy rows per type, those of
+## them seen now, and the nearest enemy producer so far.
+var _counts: PackedInt32Array = PackedInt32Array()
+var _seen_now: PackedInt32Array = PackedInt32Array()
+var _best: Vector2i = Vector2i(-1, -1)
+var _best_distance: int = -1
+var _best_id: int = 0
 
 
 ## A manager for `player_id` that copies what it reads of `def` and `level`.
@@ -57,18 +68,18 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	_fit(view, memory)
 	memory.sector_own.fill(0)
 	memory.sector_enemy.fill(0)
+	passes += 1
 	for row: int in view.own_rows:
 		var at: Vector2i = _tile(view.row_pos(row))
 		memory.sector_own[sector_at(at.x, at.y)] += _value(view, row)
-	passes = 1
+	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:
 			continue
 		var at: Vector2i = _tile(view.row_pos(row))
 		memory.sector_enemy[sector_at(at.x, at.y)] += _value(view, row)
-	passes = 2
 	for record: int in view.ghost_count:
-		if view.ghost_owner[record] == view.player or view.row_of(view.ghost_id[record]) >= 0:
+		if not _remembered(view, record):
 			continue
 		var at: Vector2i = _tile(view.ghost_pos(record))
 		memory.sector_enemy[sector_at(at.x, at.y)] += _entry(
@@ -81,16 +92,15 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, _out: Array[Comman
 	passes = 0
 	_fit(view, memory)
 	var home: Vector2i = Vector2i(PlayerView.MISSING, PlayerView.MISSING)
-	var hq_id: int = 0x7FFFFFFF
+	var hq_id: int = NO_ID
 	var hq: int = view.type_index_of(hq_type)
+	passes += 1
 	for row: int in view.own_rows:
 		var id: int = view.row_id(row)
 		if view.row_type(row) == hq and id < hq_id:
 			hq_id = id
 			home = _tile(view.row_pos(row))
-	passes = 1
 	var found: Vector2i = _sight(view, memory, home)
-	passes = 2
 	if found.x >= 0:
 		memory.base_x = found.x
 		memory.base_y = found.y
@@ -100,56 +110,63 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, _out: Array[Comman
 
 
 ## Counts the seen enemy rows and the remembered buildings per type into the sightings, and returns
-## the tile of the enemy producer nearest to `home` (the map's centre while the Headquarters is
-## gone), (-1, -1) for none. A remembered building a seen row now shows is read once, as a row.
+## the tile of the enemy producer, seen or remembered, nearest to `home` (the map's centre while
+## the Headquarters is gone; ties to the lower id), (-1, -1) for none.
 @warning_ignore("integer_division")
 func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
-	var counts: PackedInt32Array = PackedInt32Array()
-	counts.resize(memory.seen_count.size())
+	_counts.fill(0)
+	_seen_now.fill(0)
+	_best = Vector2i(-1, -1)
+	_best_distance = -1
+	_best_id = 0
 	var from: Vector2i = home if home.x >= 0 else Vector2i(view.map_cols / 2, view.map_rows / 2)
-	var best: Vector2i = Vector2i(-1, -1)
-	var best_distance: int = -1
-	var best_id: int = 0
-	var seen_now: PackedInt32Array = counts.duplicate()
+	passes += 1
 	for row: int in view.seen_rows:
-		var owner: int = view.row_owner(row)
-		if owner <= 0:
+		if view.row_owner(row) <= 0:
 			continue
 		var type: int = view.row_type(row)
-		counts[type] += 1
-		seen_now[type] += 1
+		_counts[type] += 1
+		_seen_now[type] += 1
 		if _is_producer(view, type):
-			var at: Vector2i = _tile(view.row_pos(row))
-			var id: int = view.row_id(row)
-			var distance: int = _distance(at, from)
-			if _nearer(distance, id, best_distance, best_id):
-				best = at
-				best_distance = distance
-				best_id = id
+			_offer(_tile(view.row_pos(row)), view.row_id(row), from)
 	for record: int in view.ghost_count:
-		if view.ghost_owner[record] == view.player or view.row_of(view.ghost_id[record]) >= 0:
+		if not _remembered(view, record):
 			continue
 		var type: int = view.ghost_type[record]
-		if type < 0 or type >= counts.size():
+		if type < 0 or type >= _counts.size():
 			continue
-		counts[type] += 1
+		_counts[type] += 1
 		if _is_producer(view, type):
-			var at: Vector2i = _tile(view.ghost_pos(record))
-			var id: int = view.ghost_id[record]
-			var distance: int = _distance(at, from)
-			if _nearer(distance, id, best_distance, best_id):
-				best = at
-				best_distance = distance
-				best_id = id
-	for type: int in counts.size():
-		if counts[type] == 0:
+			_offer(_tile(view.ghost_pos(record)), view.ghost_id[record], from)
+	for type: int in _counts.size():
+		if _counts[type] == 0:
 			continue
-		memory.seen_count[type] = counts[type]
+		memory.seen_count[type] = _counts[type]
 		if memory.seen_first_tick[type] == AiMemory.NONE:
 			memory.seen_first_tick[type] = view.tick
-		if seen_now[type] > 0:
+		if _seen_now[type] > 0:
 			memory.seen_last_tick[type] = view.tick
-	return best
+	return _best
+
+
+## Takes the producer at `at` with `id` as the nearest to `from` when it beats the best so far
+## (equal distances go to the lower id).
+func _offer(at: Vector2i, id: int, from: Vector2i) -> void:
+	var distance: int = _distance(at, from)
+	if (
+		_best_distance < 0
+		or distance < _best_distance
+		or (distance == _best_distance and id < _best_id)
+	):
+		_best = at
+		_best_distance = distance
+		_best_id = id
+
+
+## Whether the ghost `record` is a building of another player that no row of the view shows now (a
+## seen building is read as its row, once).
+static func _remembered(view: PlayerView, record: int) -> bool:
+	return view.ghost_owner[record] != view.player and view.row_of(view.ghost_id[record]) < 0
 
 
 ## The sector grid of this map, and the memory's arrays sized to it and to the view's types.
@@ -176,6 +193,9 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 		memory.seen_count.fill(0)
 		memory.seen_first_tick.fill(AiMemory.NONE)
 		memory.seen_last_tick.fill(AiMemory.NONE)
+	if _counts.size() != types:
+		_counts.resize(types)
+		_seen_now.resize(types)
 
 
 func _blocks(side: int) -> int:
@@ -200,16 +220,6 @@ static func _is_producer(view: PlayerView, type: int) -> bool:
 		view.type_produces[type] if type >= 0 and type < view.type_produces.size() else -1
 	)
 	return tab >= 0 and tab < PlayerView.TABS
-
-
-## Whether a producer at `distance` with `id` beats the best so far (none yet: a negative best);
-## equal distances go to the lower id.
-static func _nearer(distance: int, id: int, best_distance: int, best_id: int) -> bool:
-	return (
-		best_distance < 0
-		or distance < best_distance
-		or (distance == best_distance and id < best_id)
-	)
 
 
 static func _distance(a: Vector2i, b: Vector2i) -> int:

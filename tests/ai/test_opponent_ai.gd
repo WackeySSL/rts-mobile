@@ -43,17 +43,18 @@ func test_a_manager_runs_once_in_fifteen_ticks_and_the_thinks_record_their_slot(
 	assert_array(ai.slot_thinks).is_equal(PackedInt32Array([4, 4, 4]))
 
 
-func test_a_think_before_the_scout_is_due_sends_nothing_and_counts_the_views_passes() -> void:
+func test_a_think_with_empty_managers_sends_nothing_and_counts_one_view() -> void:
 	var world: World = FactionRig.start("fossil", "renew")
-	var ai: OpponentAi = Rig.opponent("fossil", "normal", 1)
+	# The probe's hooks stand for managers with nothing to do (the real managers have their suites).
+	var ai: Variant = Probe.new()
+	ai.copy_from(Rig.opponent("fossil", "normal", 1))
 	var sent: Array[Command] = []
 	for tick: int in 15:
 		world.tick = tick
 		ai.think(PlayerView.of(world, 1), sent)
-		# The view's own pass, and in the ARMY and INTEL slots the intel manager's two (P177).
-		assert_int(ai.work).is_equal(1 if ai.last_slot == OpponentAi.Slot.ECONOMY else 3)
+		assert_int(ai.work).is_equal(1)
 	assert_array(sent).is_empty()
-	assert_array([ai.work_max, ai.commands, ai.commands_cut]).is_equal([3, 0, 0])
+	assert_array([ai.work_max, ai.commands, ai.commands_cut]).is_equal([1, 0, 0])
 	assert_array([ai.waves, ai.retreats, ai.scouts, ai.strikes]).is_equal([0, 0, 0, 0])
 
 
