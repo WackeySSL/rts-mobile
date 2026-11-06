@@ -12,7 +12,7 @@ extends GdUnitTestSuite
 
 const HashBytes: GDScript = preload("res://tests/perf/support/hash_bytes.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const RULES: Dictionary[StringName, int] = {
 	&"construct_start_hp_percent": 10,
 	&"construct_refund_percent": 75,

@@ -19,7 +19,7 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const RecordingProbe: GDScript = preload("res://tests/sim/recording_probe.gd")
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const INFANTRY: int = World.Armour.INFANTRY
 const LIGHT: int = World.Armour.LIGHT
 const HEAVY: int = World.Armour.HEAVY

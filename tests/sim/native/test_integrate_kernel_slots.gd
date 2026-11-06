@@ -104,7 +104,8 @@ func test_slots_past_the_answers_the_pass_keeps_are_asked_on_each_use() -> void:
 
 
 ## The number of slots the pass keeps an answer for is the value bits of an int64_t (63), and it
-## covers the cache of data/rules.tres. The states are the same for any number (a slot past it is
+## covers the cache of the frozen data/dev/arena/rules.tres. The states are the same for any number
+## (a slot past it is
 ## asked on each use, correct and slower), so no state comparison sees a smaller one: with a
 ## MEMO_SLOTS of 4 and the 8 slots of the rules, the rows on slots 4 to 7 would pay an Object::get
 ## of `complete` each again, the per-row get that ADR 0013 section 2 forbids and that the next
@@ -118,7 +119,7 @@ func test_the_slots_the_pass_keeps_an_answer_for_are_the_value_bits_of_an_int64(
 	if found == null:
 		return
 	assert_str(found.get_string(1).strip_edges()).is_equal(MEMO_EXPRESSION)
-	var rules: RulesDef = load("res://data/rules.tres") as RulesDef
+	var rules: RulesDef = load("res://data/dev/arena/rules.tres") as RulesDef
 	assert_int(rules.flow_cache_size).is_less_equal(MEMO_SLOTS)
 
 

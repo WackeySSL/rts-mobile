@@ -3,11 +3,12 @@ extends RefCounted
 ## one string per tile row over the shipped terrain set ('.' grass, 'o' ore, '#' rock, ':' sand, '~'
 ## water), loaded through `World.from_scenario`, so the ore cells are listed and filled the way a
 ## match does it. The roster is the shipped harvester, refinery, power plant and rifle squad; the
-## rules are `data/rules.tres`. Harvesters and refineries are the test's to add. Not a test suite.
+## rules are `data/dev/arena/rules.tres` (the frozen defs, ADR 0031). Harvesters and refineries are
+## the test's to add. Not a test suite.
 
-const RULES_PATH: String = "res://data/rules.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
-const UNIT_DIR: String = "res://data/units/"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
 const ROSTER: Array[String] = ["harvester", "refinery", "power_plant", "rifle_squad"]
 
 

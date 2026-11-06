@@ -15,10 +15,10 @@ extends RefCounted
 ## player sees every cell from the start, as the authoring rule would give them. The fog suites and
 ## the lockstep worlds pass `revealed` false and stamp real discs (`Worlds.stamp_fog`).
 
-const RULES_PATH: String = "res://data/rules.tres"
-const RIFLE_PATH: String = "res://data/units/rifle_squad.tres"
-const ROCKET_PATH: String = "res://data/units/rocket_squad.tres"
-const TANK_PATH: String = "res://data/units/light_tank.tres"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
+const RIFLE_PATH: String = "res://data/dev/arena/units/rifle_squad.tres"
+const ROCKET_PATH: String = "res://data/dev/arena/units/rocket_squad.tres"
+const TANK_PATH: String = "res://data/dev/arena/units/light_tank.tres"
 const RIFLE: int = 0
 const ROCKET: int = 1
 const TANK: int = 2

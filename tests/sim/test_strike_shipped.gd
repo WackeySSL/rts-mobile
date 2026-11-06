@@ -22,10 +22,10 @@ extends GdUnitTestSuite
 ## `POINT` is the tile centre (20, 15) in the middle of the map.
 
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
-const RULES_PATH: String = "res://data/rules.tres"
-const UNITS_DIR: String = "res://data/units/"
+const RULES_PATH: String = "res://data/dev/arena/rules.tres"
+const UNITS_DIR: String = "res://data/dev/arena/units/"
 const FACTIONS: Array[String] = [
-	"res://data/factions/fossil.tres", "res://data/factions/renew.tres"
+	"res://data/dev/arena/factions/fossil.tres", "res://data/dev/arena/factions/renew.tres"
 ]
 const COLS: int = 40
 const ROWS: int = 30

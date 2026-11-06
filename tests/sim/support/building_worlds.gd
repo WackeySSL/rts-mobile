@@ -10,7 +10,7 @@ extends RefCounted
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const TargetingWorlds: GDScript = preload("res://tests/sim/support/targeting_worlds.gd")
-const UNIT_DIR: String = "res://data/units/"
+const UNIT_DIR: String = "res://data/dev/arena/units/"
 const ROSTER: Array[String] = [
 	"rifle_squad",
 	"rocket_squad",
