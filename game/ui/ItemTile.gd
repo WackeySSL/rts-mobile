@@ -13,10 +13,19 @@ extends HoldButton
 ## `CARD_DP` sideways or
 ## `CARD_PORTRAIT_DP` upright and shows the type's display name in a line under the plate, in 14 dp
 ## type, cut with an ellipsis where it does not fit; `SIZE_DP` is the nameless plate it starts as.
+## A LOCKED card that knows what it lacks (`set_needs`) is crossed by a sash (ADR 0025 section 5,
+## P120j): a light band rising at about 27 degrees across the picture and off both edges of the
+## card, with the missing building's name on it in one line, never cut or wrapped (a test pins
+## every name of the data against `sash_room_px`), and a padlock seal on a dark disc at the top
+## left.
+## The price is hidden then, as under a READY banner; the card's own name stays in the caption. The
+## band is a shape, so the state does not rest on colour. A LOCKED card with no name known keeps the
+## big centred padlock.
 ## `BuildSidebar` tells it what to show (`show_state`); it tells the sidebar what the finger did:
 ## `chose` for a tap, `long_pressed` for a hold of `hold_ms`, `dragged` for a drag beyond `slop_dp`,
 ## which scrolls the row and is then neither. The tile is a Button, so a touch on it never reaches
-## the map. The look is the theme's (`ItemTile`, `ItemCost`, `ItemCostLow`, `ItemBanner`), in dp.
+## the map. The look is the theme's (`ItemTile`, `ItemCost`, `ItemCostLow`, `ItemBanner`,
+## `ItemSash`), in dp.
 
 signal chose  ## A tap: released before `hold_ms`, within `slop_dp`.
 signal long_pressed  ## A hold of `hold_ms`, within `slop_dp`.
@@ -30,19 +39,21 @@ const CARD_DP: Vector2 = Vector2(88.0, 96.0)
 const CARD_PORTRAIT_DP: Vector2 = Vector2(92.0, 100.0)
 const ICON_INSET_DP: float = 3.0
 const LOCK_DP: float = 32.0
-## The padlock when the missing building's name stands beside it (ADR 0025 section 5): inline, the
-## first thing on the name's first line.
-const LOCK_WORDED_DP: float = 14.0
-const LOCK_GAP_DP: float = 2.0  ## Between that padlock and the name's first glyph.
-## The padlock's room at the start of line one is no-break spaces (NBSP), each followed by a word
-## joiner. The joiner is not a space: when the room ends line one (the name's first word starts line
-## two), the label's edge-space trim would otherwise cut the NBSPs down to one. The font has no
-## glyph for it; the shaper hides it (zero width). Do not "clean it up".
-const NBSP: String = "\u00a0"
-const JOIN: String = "\u2060"
-## After the room and before the name: a break is allowed here and nowhere inside the room, so a
-## name too long to share line one with the padlock starts line two whole.
-const BREAK_OK: String = "\u200b"
+## The sash of a locked card (all dp but the angle): the band rises SASH_RISE_RAD (27 degrees)
+## about the stage's middle, as low as the name's tilted box goes (its corner on the stage's foot,
+## where the count badge above is farthest away), SASH_THICK_DP thick with an edge line of
+## SASH_EDGE_DP. The name stands in a box SASH_TEXT_DP high (a line of 14 sp) that keeps SASH_END_DP
+## clear of the card's edge at both ends.
+## The seal is a SEAL_DP disc SEAL_INSET_DP from the stage's top left corner (the count badge has
+## the top right) with a SEAL_GLYPH_DP padlock in it.
+const SASH_RISE_RAD: float = 0.4712389
+const SASH_THICK_DP: float = 24.0
+const SASH_EDGE_DP: float = 1.5
+const SASH_TEXT_DP: float = 19.0
+const SASH_END_DP: float = 2.5
+const SEAL_DP: float = 26.0
+const SEAL_INSET_DP: float = 3.0
+const SEAL_GLYPH_DP: float = 16.0
 const FULL_WORD: String = "FULL"
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
 const VARIATION: StringName = &"ItemTile"
@@ -50,6 +61,7 @@ const COST_VARIATION: StringName = &"ItemCost"
 const COST_LOW_VARIATION: StringName = &"ItemCostLow"
 const BANNER_VARIATION: StringName = &"ItemBanner"
 const CAPTION_VARIATION: StringName = &"ItemCaption"
+const SASH_VARIATION: StringName = &"ItemSash"
 const LOCK_ART: String = "res://assets/art/svg/icons/glyph_lock.svg"
 const SHAKE_RAD: float = 0.08
 const SHAKE_S: float = 0.05
@@ -72,11 +84,10 @@ var _stripes: Stripes = Stripes.new()
 var _lock: TextureRect = TextureRect.new()
 var _banner: Label = Label.new()
 var _caption: Label = Label.new()
-var _word: Label = Label.new()  ## In the stage: "FULL", or the name (after the padlock's room).
+var _word: Label = Label.new()  ## In the stage: "FULL".
+var _sash: Sash = Sash.new()  ## In the stage: the band with the missing name, and the seal's disc.
 var _lock_fit: DpMinSize = DpMinSize.new()
 var _needs: String = ""  ## The display name of the missing requirement or producer.
-var _word_key: String = ""  ## What the word was last laid out for (state, name, badge).
-var _inline: bool = false  ## The padlock stands inline before the name (else in the corner).
 var _cost: Label = Label.new()
 var _badge: Label = Label.new()
 var _offset: Vector2 = Vector2.ZERO  ## The finger's move since the press.
@@ -97,6 +108,67 @@ class Stripes:
 		while at < size.x:
 			draw_line(Vector2(at, size.y), Vector2(at + size.y, 0.0), color, width)
 			at += step
+
+
+## The band, its edges and the seal's disc of a locked card, and the name that runs along it. It
+## fills the stage; the stage clips the band, so it runs off the card's edges and no further.
+class Sash:
+	extends Control
+	var band: Color
+	var edge: Color
+	var seal: Color
+	var text: Label = Label.new()
+	var centre: Vector2 = Vector2.ZERO  ## The middle of the band and of the name's box.
+
+	func _init() -> void:
+		text.name = "SashText"
+		text.theme_type_variation = ItemTile.SASH_VARIATION
+		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(text)
+		resized.connect(lay_out)
+
+	## The name in a box of the band's room, turned to the band's angle about its middle. The middle
+	## is as low as the turned box can go, so that the band keeps clear of the count badge above.
+	func lay_out() -> void:
+		text.size = Vector2(ItemTile.sash_room_px(size), UiScale.dp(ItemTile.SASH_TEXT_DP))
+		text.pivot_offset = text.size / 2.0
+		var turned: float = text.size.x * sin(ItemTile.SASH_RISE_RAD)
+		turned += text.size.y * cos(ItemTile.SASH_RISE_RAD)
+		centre = Vector2(size.x / 2.0, size.y - turned / 2.0)
+		text.position = centre - text.size / 2.0
+		text.rotation = -ItemTile.SASH_RISE_RAD
+		queue_redraw()
+
+	func _draw() -> void:
+		var along: Vector2 = Vector2.from_angle(-ItemTile.SASH_RISE_RAD)
+		var across: Vector2 = along.orthogonal() * UiScale.dp(ItemTile.SASH_THICK_DP) / 2.0
+		var at: Vector2 = centre
+		var reach: Vector2 = along * (size.x + size.y)  # Well past both edges of the stage.
+		draw_colored_polygon(
+			PackedVector2Array(
+				[at - reach - across, at + reach - across, at + reach + across, at - reach + across]
+			),
+			band
+		)
+		for side: float in [-1.0, 1.0]:
+			var line: Vector2 = across * side
+			draw_line(
+				at - reach + line, at + reach + line, edge, UiScale.dp(ItemTile.SASH_EDGE_DP), true
+			)
+		var seal_px: float = UiScale.dp(ItemTile.SEAL_DP)
+		var inset: float = UiScale.dp(ItemTile.SEAL_INSET_DP)
+		draw_circle(Vector2(inset, inset) + Vector2(seal_px, seal_px) / 2.0, seal_px / 2.0, seal)
+
+
+## The longest name, in px, that the sash holds in one line on a card `card_px` wide (base px; only
+## the width counts, the stage is as wide as the card): the box of the name, tilted, spans the card
+## less `SASH_END_DP` at each end. The drawing and the name-fit test both read this.
+static func sash_room_px(card_px: Vector2) -> float:
+	var end: float = UiScale.dp(SASH_END_DP)
+	var tall: float = UiScale.dp(SASH_TEXT_DP)
+	return (card_px.x - 2.0 * end - tall * sin(SASH_RISE_RAD)) / cos(SASH_RISE_RAD)
 
 
 func _init() -> void:
@@ -121,13 +193,12 @@ func _init() -> void:
 	_word.theme_type_variation = CAPTION_VARIATION
 	_word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_word.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_word.max_lines_visible = 2  # The stage holds two lines of 14 sp (a test pins every name).
-	_word.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING  # A name is never cut.
-	_word.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED  # A translation keys on the name.
 	_word.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_word.text = FULL_WORD
 	_word.visible = false
-	_word.resized.connect(_fit_word)
+	_sash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_sash.visible = false
+	_stage.clip_contents = true  # The band runs off the card's edges and stops there.
 	_banner.text = "Ready"
 	_banner.theme_type_variation = BANNER_VARIATION
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -153,6 +224,7 @@ func _init() -> void:
 	_add(_caption, "Caption", _column)  # Under the foot, in the named card.
 	_add(_fill, "Fill", _stage)
 	_add(_stripes, "Stripes", _stage)
+	_add(_sash, "Sash", _stage)
 	_add(_lock, "Lock", _stage)
 	_add(_word, "Word", _stage)
 	_add(_badge, "Badge")
@@ -190,8 +262,7 @@ func set_card(size_dp: Vector2) -> void:
 
 
 ## The display name of what a LOCKED card lacks (its requirement, or its producer when there is
-## none); "" when nothing is known. The card then shows that name with a small padlock before it
-## (inline when the name and the padlock fit and no count shows, else in the card's corner).
+## none); "" when nothing is known. The card then shows that name on its sash.
 func set_needs(display_name: String) -> void:
 	if display_name == _needs:
 		return
@@ -199,12 +270,11 @@ func set_needs(display_name: String) -> void:
 	_show_word()
 
 
-## The word of the state: "FULL" in the middle of the stripes, the missing name in up to two
-## lines at the stage's foot (the padlock inline before it, or in the stage's top left corner).
+## The word of the state: "FULL" in the middle of the stripes, or the missing name on the sash.
 func word() -> String:
-	if not _word.visible:
-		return ""
-	return _name() if _worded() else _word.text
+	if _sash.visible:
+		return _needs
+	return _word.text if _word.visible else ""
 
 
 ## Shows the state, the queued count and the head's progress (a share, 0 to 1).
@@ -220,7 +290,6 @@ func show_state(new_state: State, count: int, share: float) -> void:
 	_lock.visible = new_state == State.LOCKED
 	_stripes.visible = new_state == State.UNAFFORDABLE or new_state == State.FULL
 	_banner.visible = ready
-	_cost.visible = not ready
 	_fill.visible = share > 0.0 and not ready
 	_fill.anchor_top = 1.0 - share
 	_badge.visible = count > 0
@@ -269,102 +338,39 @@ func _on_held() -> void:
 		long_pressed.emit()
 
 
-func _worded() -> bool:
-	return state == State.LOCKED and not _needs.is_empty()
-
-
-## Lays the word out again only when what it is made of changed: the state, the name or whether a
-## count shows (the count and the progress as such never move it).
+## The words and shapes of the state. A named lock hides the price (the sash stands over the
+## picture and the seal takes the padlock's place); else the padlock is the big centred one.
 func _show_word() -> void:
-	var key: String = "%d|%s|%s" % [state, _needs, queued > 0]
-	if key == _word_key:
-		return
-	_word_key = key
-	_fit_word()
+	var named: bool = state == State.LOCKED and not _needs.is_empty()
+	_cost.visible = state != State.READY and not named
+	_word.visible = state == State.FULL
+	_sash.visible = named
+	_sash.text.text = _needs
+	_sash.lay_out()  # A label keeps the size a longer name gave it.
+	_place_lock(named)
 
 
-## The name as shown: a translation keys on the display name itself.
-func _name() -> String:
-	return tr(_needs)
-
-
-## The word, the padlock and their fit. A name with a padlock inline needs: no count badge on the
-## card, the padlock and the name's first word together on line one, the whole name in at most two
-## lines. Else the card is main's: the bare name and the padlock in the stage's top left corner.
-func _fit_word() -> void:
-	var needs: bool = _worded()
-	_word.visible = needs or state == State.FULL
-	_word.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM if needs else VERTICAL_ALIGNMENT_CENTER
-	var size_dp: float = LOCK_WORDED_DP if needs else LOCK_DP
-	_lock_fit.min_dp = Vector2(size_dp, size_dp)
-	_inline = false
-	if needs:
-		if queued == 0:
-			_word.text = _room() + _name()
-			_inline = _word.size.x <= 0.0 or _name_fits_inline()  # A size comes with the layout.
-		if not _inline:
-			_word.text = _name()
-	else:
-		_word.text = FULL_WORD
-	_tint_lock()
-	if needs:
-		_lock.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
-		_lock.grow_horizontal = Control.GROW_DIRECTION_END
-		_lock.grow_vertical = Control.GROW_DIRECTION_END
-		if _inline:
-			_place_lock()
+## The padlock: whole and grey in the middle of the stage, or white in the seal's disc at its top
+## left.
+func _place_lock(named: bool) -> void:
+	var glyph: float = SEAL_GLYPH_DP if named else LOCK_DP
+	_lock_fit.min_dp = Vector2(glyph, glyph)
+	if named:
+		var room: float = SEAL_INSET_DP + (SEAL_DP - SEAL_GLYPH_DP) / 2.0
+		_lock.set_anchors_and_offsets_preset(
+			Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE, roundi(UiScale.dp(room))
+		)
 	else:
 		_lock.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
-		_lock.grow_horizontal = Control.GROW_DIRECTION_BOTH
-		_lock.grow_vertical = Control.GROW_DIRECTION_BOTH
-
-
-## The padlock's room and the gap: whole no-break spaces at least as wide as both (the padlock is
-## placed against the name, so the room's slack stays at its left). A space is measured in the
-## label itself, as it lays the text out (a font measure of a lone no-break space is a pixel off).
-func _room() -> String:
-	_word.text = NBSP + JOIN + "x"
-	var space: float = _word.get_character_bounds(0).size.x
-	if space <= 0.0:
-		return ""
-	var wide: float = UiScale.dp(LOCK_WORDED_DP + LOCK_GAP_DP)
-	return (NBSP + JOIN).repeat(ceili(wide / space)) + BREAK_OK
-
-
-## The room's length in the word's text, and the name's.
-func _room_length() -> int:
-	return _word.text.length() - _name().length()
-
-
-## Read from the label after its layout: the whole name in the visible lines, and the padlock's
-## room and the name's first word on one line.
-func _name_fits_inline() -> bool:
-	var lines: int = _word.get_line_count()
-	if lines > _word.max_lines_visible:
-		return false
-	var name_text: String = _name()
-	var start: int = _room_length()
-	var end: int = name_text.find(" ")
-	end = name_text.length() if end < 0 else end
-	var line_y: float = _word.get_character_bounds(0).position.y
-	for index: int in [start, start + end - 1]:
-		if absf(_word.get_character_bounds(index).position.y - line_y) > 1.0:
-			return false
-	return true
-
-
-## The padlock inline: on line one's box (the label's own layout, with its spacing, margins and
-## alignment), with the gap against the name's first glyph.
-func _place_lock() -> void:
-	var edge: float = UiScale.dp(LOCK_WORDED_DP)
-	var line: Rect2 = _word.get_character_bounds(0)
-	var first: Rect2 = _word.get_character_bounds(_room_length())
-	_lock.position = (
-		_word.position
-		+ Vector2(
-			first.position.x - UiScale.dp(LOCK_GAP_DP) - edge,
-			line.position.y + (line.size.y - edge) / 2.0
-		)
+	var edge: Control.GrowDirection = (
+		Control.GROW_DIRECTION_END if named else Control.GROW_DIRECTION_BOTH
+	)
+	_lock.grow_horizontal = edge
+	_lock.grow_vertical = edge
+	_lock.modulate = (
+		get_theme_color(&"seal_glyph", SASH_VARIATION)
+		if named
+		else get_theme_color(&"lock", VARIATION)
 	)
 
 
@@ -379,8 +385,11 @@ func _add(part: Control, part_name: String, parent: Control = self) -> void:
 func _look() -> void:
 	_tint_icon()
 	_fill.color = get_theme_color(&"fill", VARIATION)
-	_tint_lock()
-	_fit_word.call_deferred()  # The word's own theme items are fresh only after this notification.
+	_sash.band = get_theme_color(&"band", SASH_VARIATION)
+	_sash.edge = get_theme_color(&"edge", SASH_VARIATION)
+	_sash.seal = get_theme_color(&"seal", SASH_VARIATION)
+	_sash.lay_out()
+	_place_lock(_sash.visible)
 	_stripes.color = get_theme_color(&"stripe", VARIATION)
 	_stripes.step = UiScale.dp(STRIPE_DP.x)
 	_stripes.width = UiScale.dp(STRIPE_DP.y)
@@ -388,15 +397,6 @@ func _look() -> void:
 	_icon.set_anchors_and_offsets_preset(
 		Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, roundi(UiScale.dp(ICON_INSET_DP))
 	)
-
-
-## The padlock inline is tinted like the name; in the corner or alone it has the theme's lock
-## colour.
-func _tint_lock() -> void:
-	if _worded() and _inline:
-		_lock.modulate = get_theme_color(&"font_color", CAPTION_VARIATION)
-	else:
-		_lock.modulate = get_theme_color(&"lock", VARIATION)
 
 
 ## The icon is dimmed behind the padlock of a locked tile.
