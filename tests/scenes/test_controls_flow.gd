@@ -145,7 +145,8 @@ func test_tap_ground_450_ticks_idle_slots(profile: String, _test_parameters := P
 	assert_int(world.tick).is_equal(450)
 	assert_int(CommandQueue.pending()).is_equal(0)
 	assert_int(world.dropped_commands).is_equal(0)
-	var spacing: float = (load("res://data/units/light_tank.tres") as UnitDef).formation_spacing
+	# P171: the spacing of the tank the scenario plays (the frozen one), not the shipped file.
+	var spacing: float = world.type_spacing[world.type_ids.find(&"light_tank")]
 	var spots: Array[Vector2] = []
 	for id: int in command.unit_ids:
 		var row: int = world.index_of(id)

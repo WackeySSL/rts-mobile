@@ -12,49 +12,40 @@ const SCENARIOS: Array[String] = [
 	"res://data/scenarios/perf_bases.tres",
 	"res://data/scenarios/controls_test.tres",
 ]
-## Folders and files a pinned scenario must not read.
-const SHIPPED: Array[String] = [
-	"res://data/units/",
-	"res://data/weapons/",
-	"res://data/factions/",
-	"res://data/rules.tres",
-]
+## The only data folders a pinned scenario may reach, through any chain of ext_resources.
+const ALLOWED: Array[String] = [ARENA_DIR + "/", "res://data/maps/", "res://data/terrain/"]
 const RES_PATH: String = 'path="(res://[^"]+)"'
 
 
-func test_the_three_scenarios_load_nothing_from_the_shipped_defs() -> void:
+func test_the_three_scenarios_reach_only_frozen_maps_and_terrain_files() -> void:
 	for scenario_path: String in SCENARIOS:
-		var paths: Array[String] = _resource_paths(scenario_path)
-		assert_int(paths.size()).override_failure_message(scenario_path).is_greater(0)
-		for path: String in paths:
-			for shipped: String in SHIPPED:
-				(
-					assert_bool(path.begins_with(shipped))
-					. override_failure_message("%s reads %s" % [scenario_path, path])
-					. is_false()
-				)
-		# Every def a scenario takes (rules, units, weapons, factions) is a frozen copy.
-		var defs: Array[String] = []
-		for path: String in paths:
-			if path.begins_with("res://data/") and not path.begins_with("res://data/maps/"):
-				defs.append(path)
-		assert_int(defs.size()).is_greater(0)
-		for path: String in defs:
-			if path.begins_with("res://data/terrain/"):
-				continue
-			assert_str(path).override_failure_message(scenario_path).starts_with(ARENA_DIR + "/")
+		var reached: Array[String] = _closure(scenario_path)
+		var arena_files: int = 0
+		for path: String in reached:
+			(
+				assert_bool(ALLOWED.any(func(dir: String) -> bool: return path.begins_with(dir)))
+				. override_failure_message("%s reaches %s" % [scenario_path, path])
+				. is_true()
+			)
+			if path.begins_with(ARENA_DIR + "/"):
+				arena_files += 1
+		# The walk must not pass on nothing: a scenario takes rules, units, weapons and factions.
+		var least: int = 30 if scenario_path.ends_with("perf_bases.tres") else 1
+		(
+			assert_int(arena_files)
+			. override_failure_message("%s reached %d arena files" % [scenario_path, arena_files])
+			. is_greater_equal(least)
+		)
 
 
-func test_a_frozen_file_points_only_at_frozen_files_and_never_at_a_shipped_def() -> void:
+func test_a_frozen_file_points_only_at_frozen_files() -> void:
 	var files: Array[String] = FileScan.list_files(ARENA_DIR, ".tres")
 	assert_int(files.size()).is_greater(30)
 	for file: String in files:
 		for path: String in _resource_paths(file):
-			for shipped: String in SHIPPED:
-				(
-					assert_bool(path.begins_with(shipped))
-					. override_failure_message("%s reads %s" % [file, path])
-					. is_false()
+			if path.begins_with("res://data/"):
+				assert_str(path).override_failure_message("%s reads %s" % [file, path]).starts_with(
+					ARENA_DIR + "/"
 				)
 
 
@@ -72,18 +63,38 @@ func test_the_loaded_scenarios_hold_frozen_resources_only() -> void:
 				assert_str(unit.resource_path).starts_with(ARENA_DIR + "/")
 
 
-## Editing a shipped def does not reach the arenas: the frozen light tank is its own file, so a
-## change in memory to the shipped one leaves the arena's untouched.
-func test_a_change_to_a_shipped_def_does_not_reach_the_frozen_copy() -> void:
+## The arena's tanks are the frozen light tank, not the shipped object, so a tuning change to the
+## shipped file has nothing to reach.
+func test_the_arena_spawns_use_the_frozen_tank_and_not_the_shipped_one() -> void:
 	var shipped: UnitDef = load("res://data/units/light_tank.tres")
 	var frozen: UnitDef = load(ARENA_DIR + "/units/light_tank.tres")
 	assert_bool(shipped == frozen).is_false()
 	assert_str(frozen.resource_path).is_not_equal(shipped.resource_path)
 	var arena: ScenarioDef = load(SCENARIOS[0])
+	var matches: int = 0
 	for spawn: SpawnDef in arena.spawns:
 		if spawn.unit.type_id == shipped.type_id:
+			matches += 1
 			assert_bool(spawn.unit == shipped).is_false()
 			assert_bool(spawn.unit == frozen).is_true()
+	assert_int(matches).is_greater(0)
+
+
+## Every data file reachable from `file` through ext_resource paths (the file itself included),
+## each once. Only `.tres` files are followed; scripts and art end the walk.
+func _closure(file: String) -> Array[String]:
+	var visited: Array[String] = []
+	var todo: Array[String] = [file]
+	while not todo.is_empty():
+		var next: String = todo.pop_back()
+		if next in visited:
+			continue
+		visited.append(next)
+		for path: String in _resource_paths(next):
+			if path.begins_with("res://data/") and path.ends_with(".tres"):
+				todo.append(path)
+	visited.erase(file)
+	return visited
 
 
 func _resource_paths(file: String) -> Array[String]:

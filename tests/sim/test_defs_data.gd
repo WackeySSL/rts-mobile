@@ -4,15 +4,12 @@ extends GdUnitTestSuite
 ## and scenario (P27c, ADR 0011 section 4) are pinned here too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+const FrozenDefsData: GDScript = preload("res://tests/sim/test_frozen_defs_data.gd")
 const UNITS_DIR: String = "res://data/units"
 const SCENARIOS_DIR: String = "res://data/scenarios"
 const WEAPONS_DIR: String = "res://data/weapons"
 const FROZEN_RULES_PATH: String = "res://data/dev/arena/rules.tres"
-const FROZEN_SCENARIOS: Array[String] = [
-	"res://data/scenarios/controls_test.tres",
-	"res://data/scenarios/perf_arena.tres",
-	"res://data/scenarios/perf_bases.tres",
-]
+const FROZEN_SCENARIOS: Array[String] = FrozenDefsData.SCENARIOS
 const RULES_PATH: String = "res://data/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
 const ARENA_MAP_PATH: String = "res://data/maps/perf_arena.tres"
