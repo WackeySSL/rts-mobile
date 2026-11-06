@@ -105,7 +105,9 @@ the light faction brings dusk to the enemy's base; a rig hand is an oilfield tra
   fallback is **Boiler Hall** (69.7 / 66.9 dp, §6); it needs Michael's yes before P120j uses it,
   and a dated note here records his answer.
 - **Proof headless (P120j):** the guard test; a suite that pins the hidden cost, one line at 88,
-  102 and 113 dp, and a text box that never overlaps the badge's rect. Rotated text is rasterised
+  102 and 113 dp, and the name's glyphs never reaching the count badge's plate as drawn (its
+  rounded corners included; the label's box itself may pass under the plate's corner, since a
+  room of 83 dp or more leaves no box that clears the full rect). Rotated text is rasterised
   level and then turned: check its sharpness on the Pixel 9a in the web preview.
 
 ### 4. "Blackout" stays the effect's word
@@ -147,7 +149,8 @@ Phase 7 trademark list (ADR 0006's note of 2026-10-26), and the six retired name
 - **ADR 0023:** §7's six names, and the same names where §13's rows and the answers repeat them
   (the rows stay as the screen's history). A dated pointer note sits in its header.
 - **ADR 0025 §5:** the locked card (a dated note at the end of §5 names the phrases it replaces);
-  §19's P120 row gets P120j's new HOW_TO_PLAY wording.
+  §19's P120 row is replaced by P120j's HOW_TO_PLAY row (the §5 note says so; the row's text
+  stays as history, as with the earlier notes).
 - **Kept as history:** ADRs 0007, 0018, 0019, 0025 (§5's older notes, §15, §19's P120c row), 0026,
   0027, 0029 and 0030 (§6's "a Blackout Array fires" reads Dusk Array), and `docs/plans/` except
   the live Phase 4 plan, whose P181 rows P120k updates.
