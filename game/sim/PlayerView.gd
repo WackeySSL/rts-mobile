@@ -37,9 +37,20 @@ extends RefCounted
 ##   player sees now, which `seen_rows` lists as well. `ghost_of(id)` finds a record by building id
 ##   and `ghost_pos(i)` gives its position, the footprint centre in milli-tiles as `row_pos` gives
 ##   it for a live building.
+## - Plan row P172 (ADR 0030 section 7), all from data a player may know or its own state: the
+##   combat and strike type tables (`type_max_hp`, `type_armour`, `type_sight`, `type_faction`,
+##   `type_strike_kind`, `type_strike_radius`, `type_charge_ticks`, and `type_range`,
+##   `type_min_range` and `type_vs_armour`, read through the type's weapon), the own-row getters
+##   `row_ready_tick` and `row_offline_until` (MISSING for any row that is not the player's own:
+##   an enemy's charge and blackout stay hidden), the pending ruptures that every player sees
+##   (`warned_x`, `warned_y`, `warned_tick`, one entry per player with a rupture pending, ascending
+##   player; the owner is not listed), the player's own pending landing tick `own_strike_tick`
+##   (0 = none; own state only, so the AI can obey ADR 0030 section 1's "not while the player's
+##   rupture is pending") and the rule caps `unit_cap` and `building_cap`. No enemy order, cargo,
+##   charge, credits or queue is exposed.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
-##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`).
+##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`, `ARMOUR_CLASSES`).
 ##
 ## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
 ## so an array the view takes from the World without copying is the World's own and live: it shows
@@ -89,6 +100,8 @@ const _OWN: int = 1
 const _SEEN: int = 2
 ## The largest id a column of the World can hold (its ids are 32-bit ints, counted up from 1).
 const _MAX_ID: int = 0x7FFFFFFF
+## The armour classes of `World.Armour` (a test pins them equal), the width of `type_vs_armour`.
+const ARMOUR_CLASSES: int = 4
 
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
@@ -138,6 +151,38 @@ var type_weapon: PackedInt32Array = PackedInt32Array()
 var type_harvest: PackedInt32Array = PackedInt32Array()
 var type_power: PackedInt32Array = PackedInt32Array()
 var type_build_ticks: PackedInt32Array = PackedInt32Array()
+## More type tables (P172), copies, one entry per type index: hit points, the armour class
+## (`World.Armour`), the type's weapon range and minimum range in milli-tiles (0 for a type
+## without a weapon), sight in milli-tiles as the World keeps it (the radius of the fog's disc), the
+## faction (an index into the World's faction ids, -1 for none), the strike kind (0 none, 1
+## rupture, 2 blackout), its radius in milli-tiles and its charge in ticks.
+var type_max_hp: PackedInt32Array = PackedInt32Array()
+var type_armour: PackedInt32Array = PackedInt32Array()
+var type_range: PackedInt32Array = PackedInt32Array()
+var type_min_range: PackedInt32Array = PackedInt32Array()
+var type_sight: PackedInt32Array = PackedInt32Array()
+var type_faction: PackedInt32Array = PackedInt32Array()
+var type_strike_kind: PackedInt32Array = PackedInt32Array()
+var type_strike_radius: PackedInt32Array = PackedInt32Array()
+var type_charge_ticks: PackedInt32Array = PackedInt32Array()
+## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
+## a type without a weapon.
+var type_vs_armour: PackedInt32Array = PackedInt32Array()
+## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
+## milli-tiles and the landing tick, one entry per player that has one, ascending player.
+var warned_x: PackedInt32Array = PackedInt32Array()
+var warned_y: PackedInt32Array = PackedInt32Array()
+var warned_tick: PackedInt32Array = PackedInt32Array()
+## The viewing player's own pending rupture: its landing tick, 0 when none is pending. Own state
+## only; no other player's tick is ever copied here (theirs are in the `warned_*` lists). Test it
+## for 0 and never compare it with a stamp: the sim drops a SUPERWEAPON while it is set, one stamped
+## at the landing tick itself included (COMMANDS runs before FIRE clears it). A blackout never sets
+## it, so a rupture may follow a blackout in the same think, but nothing may follow a rupture.
+var own_strike_tick: int = 0
+## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
+## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
+var unit_cap: int = 0
+var building_cap: int = 0
 
 ## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
@@ -151,6 +196,8 @@ var _build_left: PackedInt32Array = PackedInt32Array()
 var _order: PackedInt32Array = PackedInt32Array()
 var _harvest_mode: PackedInt32Array = PackedInt32Array()
 var _home: PackedInt32Array = PackedInt32Array()
+var _ready_tick: PackedInt32Array = PackedInt32Array()
+var _offline_until: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
 ## that make a type a refinery.
@@ -173,6 +220,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_tables(world)
 	view._take_player(world)
 	view._take_ghosts(world)
+	view._take_warned(world)
 	view._take_rows(world)
 	return view
 
@@ -228,6 +276,20 @@ func row_harvest_mode(row: int) -> int:
 
 func row_home(row: int) -> int:
 	return _home[row] if _level(row) == _OWN else MISSING
+
+
+## The stamp from which an own strike building may fire, and the stamp until which an own building
+## is offline after a blackout. MISSING for a row that is not the player's own. The sim compares
+## against the stamp of a Command, `tick + 1` for a think at `view.tick`: charged when
+## `view.tick + 1 >= row_ready_tick(row)`, online when `row_offline_until(row) <= view.tick + 1`.
+## `offline_until` is never reset to 0, so do not test for `== 0`. A strike building still under
+## construction reads `ready_tick` 0: check `row_build_left(row) == 0` as well.
+func row_ready_tick(row: int) -> int:
+	return _ready_tick[row] if _level(row) == _OWN else MISSING
+
+
+func row_offline_until(row: int) -> int:
+	return _offline_until[row] if _level(row) == _OWN else MISSING
 
 
 ## Whether the head of the STRUCTURES queue is built and waits for a PLACE: the condition
@@ -301,8 +363,8 @@ func ghost_pos(record: int) -> Vector2i:
 	)
 
 
-## Copies of the World's type tables and type ids: a dozen entries each, so a caller that writes
-## one writes its own.
+## Copies of the World's type tables and type ids (a dozen entries each, so a caller that writes
+## one writes its own), the two rule caps and the weapon tables.
 func _take_tables(world: World) -> void:
 	type_cost = world.type_cost.duplicate()
 	type_tab = world.type_tab.duplicate()
@@ -318,6 +380,63 @@ func _take_tables(world: World) -> void:
 	_dock_x = world.type_dock_x.duplicate()
 	_dock_y = world.type_dock_y.duplicate()
 	_type_ids = world.type_ids.duplicate()
+	type_max_hp = world.type_max_hp.duplicate()
+	type_armour = world.type_armour.duplicate()
+	type_sight = world.type_sight.duplicate()
+	type_faction = world.type_faction.duplicate()
+	type_strike_kind = world.type_strike_kind.duplicate()
+	type_strike_radius = world.type_strike_radius.duplicate()
+	type_charge_ticks = world.type_charge_ticks.duplicate()
+	unit_cap = world.unit_cap
+	building_cap = world.building_cap
+	_take_weapon_tables(world)
+
+
+## `type_range`, `type_min_range` and `type_vs_armour`, read through each type's weapon.
+func _take_weapon_tables(world: World) -> void:
+	var weapons: PackedInt32Array = world.type_weapon
+	var ranges: PackedInt32Array = world.weapon_range
+	var min_ranges: PackedInt32Array = world.weapon_min_range
+	var percents: PackedInt32Array = world.weapon_vs_armour
+	var types: int = weapons.size()
+	var made_range: PackedInt32Array = PackedInt32Array()
+	var made_min: PackedInt32Array = PackedInt32Array()
+	var made_percent: PackedInt32Array = PackedInt32Array()
+	made_range.resize(types)
+	made_min.resize(types)
+	made_percent.resize(types * ARMOUR_CLASSES)
+	for type: int in types:
+		var weapon: int = weapons[type]
+		if weapon < 0 or weapon >= ranges.size():
+			continue
+		made_range[type] = ranges[weapon]
+		made_min[type] = _entry(min_ranges, weapon)
+		for armour: int in ARMOUR_CLASSES:
+			made_percent[type * ARMOUR_CLASSES + armour] = _entry(
+				percents, weapon * ARMOUR_CLASSES + armour
+			)
+	type_range = made_range
+	type_min_range = made_min
+	type_vs_armour = made_percent
+
+
+## The pending ruptures: one entry for each player past 0 whose `strike_tick` is set.
+func _take_warned(world: World) -> void:
+	var ticks: PackedInt32Array = world.strike_tick
+	var xs: PackedInt32Array = world.strike_x
+	var ys: PackedInt32Array = world.strike_y
+	var players: int = mini(ticks.size(), mini(xs.size(), ys.size()))
+	var made_x: PackedInt32Array = PackedInt32Array()
+	var made_y: PackedInt32Array = PackedInt32Array()
+	var made_tick: PackedInt32Array = PackedInt32Array()
+	for who: int in range(1, players):
+		if ticks[who] > 0:
+			made_x.append(xs[who])
+			made_y.append(ys[who])
+			made_tick.append(ticks[who])
+	warned_x = made_x
+	warned_y = made_y
+	warned_tick = made_tick
 
 
 ## The player's credits, power and queues. A player past the World's per-player arrays (a hand-built
@@ -329,6 +448,7 @@ func _take_player(world: World) -> void:
 	credits = world.credits[player]
 	power_made = _entry(world.power_made, player)
 	power_used = _entry(world.power_used, player)
+	own_strike_tick = _entry(world.strike_tick, player)
 	low_power = Power.is_low(world, player)
 	var first: int = player * TABS
 	queue_count = world.queue_count.slice(first, first + TABS)
@@ -373,6 +493,8 @@ func _take_rows(world: World) -> void:
 	_order = world.order
 	_harvest_mode = world.harvest_mode
 	_home = world.home
+	_ready_tick = world.ready_tick
+	_offline_until = world.offline_until
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows
