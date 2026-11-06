@@ -23,6 +23,11 @@ plan's live P181 rows name the Lumen Accord's strike building Dusk Array (ADR 00
 Blackout Array fires" keeps the name of its day (read Dusk Array, ADR 0032 §7). No accepted text
 changed; this note amends §4's pointer.
 
+Status note (2026-11-06, P26be docs; wave 2 merged: P174 #352, P175 #353, P171b #354, main
+9c16815): the reviews of wave 3 (P176 economy, P177 and P177b intel and scouting, P182 the
+factory in `MatchRunner`) found three gaps in §6 and one in §1, and the lead decided them. The note
+at the end of §6 records them. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -337,6 +342,26 @@ is one of these fields.
   - *Strikes:* a Deep Bore fires on the point of the most enemy value within its radius with no own
     row inside it, once the value passes `strike_min_value`; a Blackout Array fires on the enemy's
     producer cluster as a wave launches against it. Both read only seen rows and ghosts.
+
+Note (2026-11-06, P26be docs; lead decisions from the wave-3 reviews):
+- **`spiral_slots`** (P: 64) joins `OpponentDef`'s added fields: the number of `PlacementSpiral`
+  slots the economy asks about; its search resumes across thinks and wraps over them, and it is at
+  least `place_tries_per_think` (the data test pins both). This section named no field for the
+  spiral's length when it replaced `place_tries` with a budget per think; `place_tries` stays
+  inherited and ignored.
+- **The credits the next structure keeps** (*Production* above) are `AiMemory.reserve_credits`:
+  what the economy queued in this think plus the price of the structure, or the tanker, it keeps
+  for its next step. Production spends at most `view.credits - reserve_credits`. Both managers read
+  the same view in the ECONOMY slot and the economy's `QUEUE`s apply first, so a reserve without
+  the economy's own spend would let production send a `QUEUE` the sim drops (§1).
+- **The scout is queued by production.** No role and no build order holds `scout_type`, and §1
+  leaves unit `QUEUE`s to `AiProduction`. So `AiIntel` sets `AiMemory.scout_wanted` (NONE, else the
+  scout type's index) while a trip is due, no unit of `scout_type` lives and the key rule would
+  allow it, and production queues one ahead of its role draw while it is set. Intel still sends
+  only the scout's moves (§1's table).
+- **The scout's first waypoint** is the point mirror of the own Headquarters even when a producer
+  is already known (the *Intel* line above), and the base estimate is the nearest of the seen and
+  the remembered producers together (ties to the lower id).
 
 ### 7. `PlayerView` v2 (gameplay-dev, P172): the reads the managers need, nothing hidden
 Added, all from data a player may know or its own state, so pillar 4 holds:

@@ -18,6 +18,9 @@ to 2 and one top-level key moves, §3) and records ADR 0013 §3's note on `run-s
 `AUTO` from Phase 4 and prints the implementation). No sim rule, Command, state column or golden
 hash changes.
 
+Status note (2026-11-06, P26be docs, from the reviews of P186): the note at the end of §2 records
+how the harness reads §1's kill attribution and §2's flags. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -167,6 +170,22 @@ questions' "answered" marks. Nothing is applied in code yet: the plan's rows app
   ms at 178 rows; full bases reach about 230 rows) plus the thinks: about 1 minute on top of
   today's 29-30. If the smoke step alone passes 3 minutes, a qa-engineer row adds `--ticks 4500` to
   the verify call (never a silent change).
+
+Note (2026-11-06, P26be docs, from the reviews of P186):
+- **Kill attribution, in order:** a `SHOT` at the row in the tick it dies credits that shooter;
+  else an enemy rupture landing in that tick, when the row died within the rupture's radius of the
+  `STRIKE` point, credits the strike building's type; else the row's last shooter; else nobody. A
+  cancelled site is neither a loss nor a kill.
+- **Per-type maps** hold only the types that occurred (absent means 0). P187's checks that need
+  every unit type (§6 check 4, the under-5 % flag) read the faction rosters. `kills` can hold
+  structure types, which have no `spent`; P187's kills per 1 000 credits skips them.
+- **A dropped Command** fails the run naming its seed and the tick of the first drop. The tick is
+  printed, not stored: the report's keys stay those of §3.
+- **Flags:** an empty value is a bad flag (exit 2), and the numbers take at most nine digits, so
+  `--matches` with ten or more digits, valid before, now exits 2. No caller passes one.
+- **Cost today:** until P176-P180 merge, the smoke's controllers send few or no Commands, so CI's
+  smoke time is a floor. The lead reads it again after P176, P178 and P180 against the 3-minute
+  line above.
 
 ### 3. The report JSON, schema 2
 One file per run. Every schema 1 key keeps its name and meaning except one: the top-level
