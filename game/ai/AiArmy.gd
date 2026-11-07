@@ -38,7 +38,6 @@ var _ids: PackedInt32Array = PackedInt32Array()
 var _squads: PackedInt32Array = PackedInt32Array()
 var _next: PackedInt32Array = PackedInt32Array()
 var _send: PackedInt32Array = PackedInt32Array()
-var _hit: PackedInt32Array = PackedInt32Array()
 var _kept: PackedInt32Array = PackedInt32Array()
 
 
@@ -217,34 +216,32 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	memory.squad_goal_y[HOME] = goal.y
 
 
-## The unseen-hit response (P179b). A unit that lost hp since the last run, while no seen enemy unit
-## or building was within its weapon range, makes its squad's goal move `shift_tiles` toward the
-## base estimate (the point mirror of the Headquarters without one): an army order, all or nothing.
-## Only while no threat stands and none stood at the last run (`calm`; the squad fought it, and a
-## foe it killed is gone from the view), one squad a run (the army goal is one cell), the lowest
-## index first. The hp of a hit squad's units is kept for the next run when no order went (no
-## budget, no keys), so the hit is found again; a unit whose range test ran into the test cap
-## counts as covered.
+## The unseen-hit response (P179b), for the home squad only (a wave's goal is the waves' own). A
+## home unit that lost hp since the last run, while no seen enemy unit or building was within its
+## weapon range, makes the squad's goal move `shift_tiles` toward the base estimate (the point
+## mirror of the Headquarters without one): an army order, all or nothing. Once: a squad whose goal
+## is already shifted holds it until a defence or the return replaces it. Only while no threat
+## stands and none stood at the last run (`calm`; the squad fought it, and a foe it killed is gone
+## from the view). The hp of the home units is kept for the next run when no order went (no budget,
+## no keys), so the hit is found again; a unit whose range test ran into the test cap counts as
+## covered.
 func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: bool) -> void:
 	hit_tests = 0
-	_hit.resize(memory.squads_max)
-	_hit.fill(0)
-	var first: int = -1
-	if calm:
+	var refused: bool = false
+	if calm and memory.squad_shifted[HOME] == 0:
 		for at: int in memory.unit_id.size():
-			var was: int = _hp_was(memory, memory.unit_id[at])
-			var squad: int = memory.member_squad[at]
-			if was <= memory.unit_hp[at] or squad >= _hit.size() or _hit[squad] != 0:
+			if memory.member_squad[at] != HOME:
+				continue
+			if _hp_was(memory, memory.unit_id[at]) <= memory.unit_hp[at]:
 				continue
 			if not _covered(view, memory, view.row_of(memory.unit_id[at])):
-				_hit[squad] = 1
-				first = squad if first < 0 else mini(first, squad)
-	var done: bool = first >= 0 and _shift(view, memory, out, first)
+				refused = not _shift(view, memory, out)
+				break
 	_kept.clear()
 	for at: int in memory.unit_id.size():
-		var squad: int = memory.member_squad[at]
-		var keep: bool = squad < _hit.size() and _hit[squad] != 0 and not (done and squad == first)
-		var was: int = _hp_was(memory, memory.unit_id[at]) if keep else AiMemory.NONE
+		var was: int = AiMemory.NONE
+		if refused and memory.member_squad[at] == HOME:
+			was = _hp_was(memory, memory.unit_id[at])
 		_kept.append(was if was != AiMemory.NONE else memory.unit_hp[at])
 	memory.hp_id = memory.unit_id.duplicate()
 	memory.hp_value = _kept.duplicate()
@@ -279,10 +276,10 @@ func _covered(view: PlayerView, memory: AiMemory, row: int) -> bool:
 	return false
 
 
-## The shift of `squad`'s goal by `shift_tiles` toward the base estimate, ordered to its members.
+## The shift of the home squad's goal by `shift_tiles` toward the base estimate, ordered to it.
 ## False, nothing changed, when the order was refused; true when sent or nothing is to be done.
-func _shift(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
-	var goal: Vector2i = Vector2i(memory.squad_goal_x[squad], memory.squad_goal_y[squad])
+func _shift(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
+	var goal: Vector2i = Vector2i(memory.squad_goal_x[HOME], memory.squad_goal_y[HOME])
 	if goal.x == AiMemory.NONE or memory.home_x == AiMemory.NONE or shift_tiles == 0:
 		return true
 	var base: Vector2i = Vector2i(memory.base_x, memory.base_y)
@@ -295,18 +292,15 @@ func _shift(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 		to = goal + Vector2i(_scaled(along.x, length), _scaled(along.y, length))
 	to.x = clampi(to.x, 0, view.map_cols - 1)
 	to.y = clampi(to.y, 0, view.map_rows - 1)
-	_send.clear()
-	for at: int in memory.member_id.size():
-		if memory.member_squad[at] == squad:
-			_send.append(memory.member_id[at])
-	if to == goal or _send.is_empty():
+	var send: PackedInt32Array = _members(memory, true)
+	if to == goal or send.is_empty():
 		return true
 	var centre: Vector2i = to * PlayerView.MILLI_PER_TILE + Vector2i.ONE * PlayerView.TILE_CENTRE
-	if not _order(view, memory, out, _send, to, AiMemory.Owner.ARMY, centre):
+	if not _order(view, memory, out, send, to, AiMemory.Owner.ARMY, centre):
 		return false
-	memory.squad_goal_x[squad] = to.x
-	memory.squad_goal_y[squad] = to.y
-	memory.squad_shifted[squad] = 1
+	memory.squad_goal_x[HOME] = to.x
+	memory.squad_goal_y[HOME] = to.y
+	memory.squad_shifted[HOME] = 1
 	shifts += 1
 	return true
 
