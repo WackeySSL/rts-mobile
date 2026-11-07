@@ -34,6 +34,7 @@ func test_seen_tankers_count_in_the_value() -> void:
 	AiRig.add_unit_of(_world, 2, "harvester", 9500, 27000)
 	_fire(READY)
 	_fire(KNOWN)
+	assert_int(_memory.seen_mobile_id.size()).is_equal(2)
 	assert_array(_target()).is_equal([MIXED_POINT.x, MIXED_POINT.y])
 
 
@@ -112,6 +113,21 @@ func test_a_building_that_is_seen_and_remembered_counts_once() -> void:
 	_fire(READY)
 	_fire(KNOWN)
 	assert_array(_out).is_empty()
+
+
+func test_the_richer_sector_is_tried_first() -> void:
+	# A lone factory (1,800) alone in its sector; a refinery, a barracks and a plant (2,100) in
+	# another. The cap has room for one sum, so only the first anchor is summed: the richest
+	# thing of the richest sector, not the richest thing.
+	_arm_strikes("normal", 1, "fossil", 1000, 15)
+	_enemy_building("vehicle_factory", 30, 4)
+	_enemy_building("refinery", 8, 24)
+	_enemy_building("barracks", 11, 24)
+	_enemy_building("power_plant", 8, 27)
+	_see_all()
+	_fire(READY)
+	_fire(KNOWN)
+	assert_array(_target()).is_equal([MIXED_POINT.x, MIXED_POINT.y])
 
 
 func test_an_own_check_that_the_cap_cuts_off_is_not_clear() -> void:

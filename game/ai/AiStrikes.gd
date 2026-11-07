@@ -26,8 +26,9 @@ extends RefCounted
 ## a pre-filter and not counted), else its radius is summed (one counted test per thing). The run
 ## stops when the next step would pass `target_tests_max`: a check cut off by the cap is not clear.
 ##
-## No pass over the view's rows: the own buildings are the list `refresh` filled, the own and seen
-## units the lists `AiIntel.run` filled in this very slot, found again by id. The ghosts are walked,
+## No pass over the view's rows: the own buildings, the seen buildings and the seen combat units
+## are lists `refresh` filled in the ARMY slot (one slot old), the own units and the seen tankers
+## lists `AiIntel.run` filled in this very slot, all found again by id. The ghosts are walked,
 ## as intel does, and are not a pass over rows. No random number is drawn.
 
 ## `type_strike_kind` values (`Strike.Kind`; a test pins them equal).
@@ -302,7 +303,9 @@ func _rank(view: PlayerView, memory: AiMemory) -> void:
 func _sector_value(view: PlayerView, memory: AiMemory, x: int, y: int) -> int:
 	if memory.sector_side <= 0:
 		return 0
+	@warning_ignore("integer_division")
 	var col: int = clampi(x / PlayerView.MILLI_PER_TILE, 0, maxi(view.map_cols - 1, 0))
+	@warning_ignore("integer_division")
 	var line: int = clampi(y / PlayerView.MILLI_PER_TILE, 0, maxi(view.map_rows - 1, 0))
 	@warning_ignore("integer_division")
 	var at: int = line / memory.sector_side * memory.sector_cols + col / memory.sector_side

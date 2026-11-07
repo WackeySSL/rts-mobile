@@ -176,6 +176,7 @@ func test_a_wave_launched_by_the_army_makes_the_array_fire() -> void:
 	def.staging_offset_tiles = OFFSET
 	def.defend_radius_tiles = DEFENCE
 	def.goal_keys_max = KEYS
+	_memory.goal_keys_max = KEYS
 	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
 	level.reaction_ticks = REACTION
 	level.wave_first_tick = WAVE_TICK

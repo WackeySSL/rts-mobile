@@ -14,6 +14,9 @@ const READY: int = 1000
 ## def's, pinned by a case) in milli-tiles.
 const KNOWN: int = READY + REACTION
 const RADIUS: int = 3000
+## The sector grid the suites own: tiles per sector side and the most sectors (5 x 5 on the map).
+const SECTOR_TILES: int = 8
+const SECTORS_MAX: int = 64
 
 var _striker: AiStrikes = null
 var _scratch: Array[Command] = []
@@ -45,6 +48,8 @@ func _arm_strikes(
 	var def: OpponentDef = Rig.def_of(faction).duplicate() as OpponentDef
 	def.strike_min_value = least
 	def.target_tests_max = tests
+	def.sector_tiles = SECTOR_TILES
+	def.sectors_max = SECTORS_MAX
 	var chosen: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
 	chosen.uses_strike = uses
 	chosen.reaction_ticks = REACTION

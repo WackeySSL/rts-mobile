@@ -8,6 +8,13 @@ const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 const RICH: int = 100000
 ## The order's steps before the strike: the first nine of `SPOTS`.
 const STEPS: int = 9
+## The economy numbers the World is built for: power margin, tankers per refinery, and the caps on
+## refineries, factories and defences.
+const MARGIN: int = 20
+const TANKERS: int = 2
+const REFINERIES: int = 2
+const FACTORIES: int = 1
+const DEFENCES: int = 2
 ## The suite's economy: a fossil World whose player 1 owns every building of the suite's order but
 ## the Deep Bore (the order is `SPOTS`' first nine, then the Deep Bore), and an extra refinery.
 const SPOTS: Array = [
@@ -98,6 +105,7 @@ func _economy_world() -> World:
 
 func _economy_run(uses: int, world: World) -> Array[Command]:
 	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.power_margin = MARGIN
 	var order: AiBuildOrderDef = AiBuildOrderDef.new()
 	for spot: Array in SPOTS:
 		if order.steps.size() < STEPS:
@@ -107,6 +115,10 @@ func _economy_run(uses: int, world: World) -> Array[Command]:
 	def.build_orders = orders
 	var chosen: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
 	chosen.uses_strike = uses
+	chosen.harvesters_per_refinery = TANKERS
+	chosen.refineries_max = REFINERIES
+	chosen.factories_max = FACTORIES
+	chosen.defences_max = DEFENCES
 	var economy: AiEconomy = AiEconomy.create(def, chosen, 1)
 	var memory: AiMemory = AiMemory.create(def)
 	memory.commands_left = 99
