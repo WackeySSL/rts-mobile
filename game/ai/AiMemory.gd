@@ -49,6 +49,9 @@ var squad_goal_y: PackedInt32Array = PackedInt32Array()
 var squad_launch_value: PackedInt32Array = PackedInt32Array()
 var member_id: PackedInt32Array = PackedInt32Array()
 var member_squad: PackedInt32Array = PackedInt32Array()
+## 1 while the home squad's goal is an unseen-hit shift AiArmy made (a probe: held while a member it
+## named still moves, see `AiArmy._probing`), else 0. Waves: P180.
+var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
 ## threat now at the base (NONE: no threat).
 var wave_count: int = 0
@@ -94,9 +97,6 @@ var seen_site_id: PackedInt32Array = PackedInt32Array()
 ## whose squad's shift was not sent keeps its older value, so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
-## Per squad, 1 while its goal is a shift AiArmy made after a hit by the unseen (the return to the
-## staging point leaves such a goal alone until a defence replaces it), else 0.
-var squad_shifted: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
 ## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
@@ -124,7 +124,6 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.squad_goal_x.resize(memory.squads_max)
 	memory.squad_goal_y.resize(memory.squads_max)
 	memory.squad_launch_value.resize(memory.squads_max)
-	memory.squad_shifted.resize(memory.squads_max)
 	memory.squad_role.fill(NONE)
 	memory.squad_goal_x.fill(NONE)
 	memory.squad_goal_y.fill(NONE)

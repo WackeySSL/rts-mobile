@@ -4,10 +4,10 @@ extends RefCounted
 ## squad (every own combat unit but the scout type), defence of a threat within
 ## `defend_radius_tiles` of a building after `reaction_ticks`, and the `MOVE` back. Waves: P180;
 ## the unseen-hit response: `_unseen_hit` (P179b). It makes no pass over the view's rows:
-## `AiIntel.refresh` fills the lists it walks. Goal keys: the defence is owner ARMY, the rally and
-## return owner STAGING; both precede the scout, which yields at the cap (its order in flight keeps
-## its cell until the leg ends). An order is all or nothing: budget and keys first, no memory
-## change if refused.
+## `AiIntel.refresh` fills the lists it walks. Goal keys: the defence and the shift are owner ARMY,
+## the rally and return owner STAGING; both precede the scout, which yields at the cap (its order
+## in flight keeps its cell until the leg ends). An order is all or nothing: budget and keys first,
+## no memory change if refused.
 
 ## The home squad's index and role code.
 const HOME: int = 0
@@ -38,6 +38,8 @@ var _ids: PackedInt32Array = PackedInt32Array()
 var _squads: PackedInt32Array = PackedInt32Array()
 var _next: PackedInt32Array = PackedInt32Array()
 var _send: PackedInt32Array = PackedInt32Array()
+## The tick of the last unseen-hit shift (-1: none yet).
+var _shifted_at: int = -1
 var _kept: PackedInt32Array = PackedInt32Array()
 
 
@@ -190,13 +192,14 @@ func _defend(view: PlayerView, memory: AiMemory, out: Array[Command], at: Vector
 	_fresh.clear()
 	memory.squad_goal_x[HOME] = goal.x
 	memory.squad_goal_y[HOME] = goal.y
-	memory.squad_shifted[HOME] = 0
+	memory.home_shifted = 0
 
 
 ## The home squad goes back to the staging point with a `MOVE` after a defence, after the staging
-## point moved and at the start of the match; once, until the goal changes again.
+## point moved, at the start of the match and when an unseen-hit probe is over (`_probing`); once,
+## until the goal changes again.
 func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
-	if not memory.has_staging() or memory.squad_shifted[HOME] != 0:
+	if not memory.has_staging() or (memory.home_shifted != 0 and _probing(view, memory)):
 		return
 	var goal: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
 	if memory.squad_goal_x[HOME] == goal.x and memory.squad_goal_y[HOME] == goal.y:
@@ -214,21 +217,24 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	_fresh.clear()
 	memory.squad_goal_x[HOME] = goal.x
 	memory.squad_goal_y[HOME] = goal.y
+	memory.home_shifted = 0
 
 
 ## The unseen-hit response (P179b), for the home squad only (a wave's goal is the waves' own). A
-## home unit that lost hp since the last run, while no seen enemy unit or building was within its
-## weapon range, makes the squad's goal move `shift_tiles` toward the base estimate (the point
-## mirror of the Headquarters without one): an army order, all or nothing. Once: a squad whose goal
-## is already shifted holds it until a defence or the return replaces it. Only while no threat
-## stands and none stood at the last run (`calm`; the squad fought it, and a foe it killed is gone
-## from the view). The hp of the home units is kept for the next run when no order went (no budget,
-## no keys), so the hit is found again; a unit whose range test ran into the test cap counts as
-## covered.
+## home unit that lost hp since the last run, while no seen enemy combat unit or building was
+## within its weapon range, makes the squad's goal move `shift_tiles` toward the base estimate (the
+## point mirror of the Headquarters without one): an army order, all or nothing. The shifted goal
+## is a probe, held while `home_shifted` is set (see `_probing`); further hits do not move it, but
+## after the return to the staging point a new hit shifts again, out and back, never creeping. Only
+## while no threat stands and none stood at the last run (`calm`; the squad fought it, and a foe
+## it killed is gone from the view). The hp of the home units is kept for the next run when no
+## order went (no budget, no keys), so the hit is found again; a unit whose range test ran into
+## the test cap counts as covered. `unit_id` and `member_id` are the same list after `_join`, so
+## an index of one is the other's.
 func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: bool) -> void:
 	hit_tests = 0
 	var refused: bool = false
-	if calm and memory.squad_shifted[HOME] == 0:
+	if calm and memory.home_shifted == 0:
 		for at: int in memory.unit_id.size():
 			if memory.member_squad[at] != HOME:
 				continue
@@ -243,8 +249,11 @@ func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: 
 		if refused and memory.member_squad[at] == HOME:
 			was = _hp_was(memory, memory.unit_id[at])
 		_kept.append(was if was != AiMemory.NONE else memory.unit_hp[at])
-	memory.hp_id = memory.unit_id.duplicate()
-	memory.hp_value = _kept.duplicate()
+	memory.hp_id.clear()
+	memory.hp_id.append_array(memory.unit_id)
+	var old: PackedInt32Array = memory.hp_value
+	memory.hp_value = _kept
+	_kept = old
 
 
 ## The hp unit `id` had at the last run, NONE when it was not listed.
@@ -255,60 +264,88 @@ func _hp_was(memory: AiMemory, id: int) -> int:
 	return AiMemory.NONE
 
 
-## Whether a seen enemy unit or building stands within the weapon range of the own unit at `row`,
-## or the test cap (`tests_max` a run, shared by all units) ran out first.
+## Whether a seen enemy combat unit or building stands within the weapon range of the own unit at
+## `row`, or the test cap (`tests_max` a run, shared by all units) ran out first.
 func _covered(view: PlayerView, memory: AiMemory, row: int) -> bool:
 	if row < 0:
 		return true
 	var at: Vector2i = view.row_pos(row)
 	var reach: int = view.type_range[view.row_type(row)]
-	for list: PackedInt32Array in [memory.seen_unit_id, memory.seen_site_id]:
-		for foe: int in list:
-			if hit_tests >= tests_max:
-				return true
-			hit_tests += 1
-			var other: int = view.row_of(foe)
-			if other < 0:
-				continue
-			var gap: Vector2i = view.row_pos(other) - at
-			if gap.x * gap.x + gap.y * gap.y <= reach * reach:
-				return true
+	return (
+		_reaches(view, memory.seen_unit_id, at, reach)
+		or _reaches(view, memory.seen_site_id, at, reach)
+	)
+
+
+## Whether a row of `list` is within `reach` of `at`, or the test cap ran out (one test a row).
+func _reaches(view: PlayerView, list: PackedInt32Array, at: Vector2i, reach: int) -> bool:
+	for foe: int in list:
+		if hit_tests >= tests_max:
+			return true
+		hit_tests += 1
+		var other: int = view.row_of(foe)
+		if other < 0:
+			continue
+		var gap: Vector2i = view.row_pos(other) - at
+		if gap.x * gap.x + gap.y * gap.y <= reach * reach:
+			return true
 	return false
 
 
-## The shift of the home squad's goal by `shift_tiles` toward the base estimate, ordered to it.
-## False, nothing changed, when the order was refused; true when sent or nothing is to be done.
+## The shift of the home squad's goal by `shift_tiles` toward the base estimate, ordered to the
+## whole squad (so no joiner is pending after it). False, nothing changed, when the order was
+## refused; true when sent or nothing is to be done. Without a Headquarters only the mirror
+## fallback is lost: a known base estimate still serves.
 func _shift(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[HOME], memory.squad_goal_y[HOME])
-	if goal.x == AiMemory.NONE or memory.home_x == AiMemory.NONE or shift_tiles == 0:
-		return true
 	var base: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	if not memory.has_base_estimate():
+		if memory.home_x == AiMemory.NONE:
+			return true
 		base = AiMemory.mirror(Vector2i(memory.home_x, memory.home_y), view.map_cols, view.map_rows)
+	if goal.x == AiMemory.NONE or shift_tiles == 0:
+		return true
 	var along: Vector2i = base - goal
 	var length: int = FixedMath.isqrt(along.x * along.x + along.y * along.y)
 	var to: Vector2i = base
 	if length > shift_tiles:
-		to = goal + Vector2i(_scaled(along.x, length), _scaled(along.y, length))
-	to.x = clampi(to.x, 0, view.map_cols - 1)
-	to.y = clampi(to.y, 0, view.map_rows - 1)
+		to = goal + _scaled(along, length)
 	var send: PackedInt32Array = _members(memory, true)
 	if to == goal or send.is_empty():
 		return true
 	var centre: Vector2i = to * PlayerView.MILLI_PER_TILE + Vector2i.ONE * PlayerView.TILE_CENTRE
 	if not _order(view, memory, out, send, to, AiMemory.Owner.ARMY, centre):
 		return false
+	_fresh.clear()
 	memory.squad_goal_x[HOME] = to.x
 	memory.squad_goal_y[HOME] = to.y
-	memory.squad_shifted[HOME] = 1
+	memory.home_shifted = 1
+	_shifted_at = view.tick
 	shifts += 1
 	return true
 
 
-## `part` of a vector of `length` scaled to `shift_tiles`, rounded to the nearest tile.
-func _scaled(part: int, length: int) -> int:
+## `along` scaled to `shift_tiles` tiles (`length` is its length), each part rounded to the nearest
+## tile, halves away from zero.
+func _scaled(along: Vector2i, length: int) -> Vector2i:
 	@warning_ignore("integer_division")
-	return (2 * part * shift_tiles + signi(part) * length) / (2 * length)
+	return (along * (2 * shift_tiles) + along.sign() * length) / (2 * length)
+
+
+## Whether the shifted home goal is still held: not in the slot of the shift (its order is not in
+## the view yet), and while a home member the shift named is alive and not idle (still on its way
+## or fighting). When every one has arrived idle or died the probe is over.
+func _probing(view: PlayerView, memory: AiMemory) -> bool:
+	if view.tick == _shifted_at:
+		return true
+	for at: int in memory.member_id.size():
+		var id: int = memory.member_id[at]
+		if memory.member_squad[at] != HOME or _is_pending(id):
+			continue
+		var row: int = view.row_of(id)
+		if row >= 0 and view.row_order(row) != PlayerView.Order.IDLE:
+			return true
+	return false
 
 
 ## Whether `id` joined and no order has named it yet (`_fresh` is ascending).
