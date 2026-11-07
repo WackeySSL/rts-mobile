@@ -30,6 +30,15 @@ records them; P182's `think_usec` of at least 1 on a think tick (§4) is in the 
 "Interface contracts". No accepted text changed; the note makes one exception to §1's field "that
 P175 declares" (`scout_wanted`, declared by P177b).
 
+Status note (2026-11-07, P26bf docs; wave 3 merged: P176 #355, P177 #358, P177b #359, P182 #356,
+main fd4eb15): the reviews of wave 4 (P178 production, P179 the army's first part) decided how the
+ARMY slot keeps §4's pass budget, who yields a goal key at the cap, and how production counts the
+economy's QUEUEs of the same think; the note at the end of §4 records them. No accepted text
+changed; the note makes a second exception to §1's field "that P175 declares" (the army's input
+lists), one to §1's "writes only its own part of the memory" (the army releases the scout's key at
+the cap) and one to §3's "every id list is at most `unit_cap`" (the seen list holds up to
+(players - 1) times `unit_cap`, the same bound when two players play).
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -248,6 +257,23 @@ layers are ai-dev.md's:
   has no gate (ADR 0013 §7).
 - `game/ai` stays exempt from the sim's allocation check (ADR 0020 §3's note); managers keep their
   scratch arrays between thinks (`resize`, not new arrays) where it is cheap to.
+
+Note (2026-11-07, P26bf docs; lead decisions from the wave-4 reviews):
+- **The ARMY slot's two passes** are `AiIntel.refresh`'s pass over own rows and its pass over seen
+  rows. `refresh` also fills, in those same passes, the lists `AiArmy` reads (the Headquarters'
+  tile, the own buildings, the own combat units other than `scout_type`, the seen enemy combat
+  units), declared in `AiMemory` with "none" values by P179; `AiArmy` iterates those lists and
+  makes no pass over the view's rows, so the slot's `work` stays 3. The seen list holds up to
+  (players - 1) times `unit_cap` ids, more than §3's `unit_cap` bound when more than two players
+  play.
+- **Who yields a key at the cap:** the army and the staging point come first. When the cap is full
+  and only the scout uses a key, the army releases it; the scout's MOVE already sent finishes
+  its leg (its flow-cache slot stays in use until then, one more than the AI's keys show), and
+  its next MOVE waits for room under the key rule above. The army's key helpers, a unit type's
+  move class and the point mirror live in `AiMemory`; `AiIntel` keeps its own key-room
+  arithmetic until a follow-up shares one copy.
+- **Production in the ECONOMY slot** counts the economy's unit `QUEUE`s of the same think toward
+  its queue room and the unit cap (the view is taken before the think, so it cannot show them).
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
