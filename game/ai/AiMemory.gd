@@ -49,6 +49,9 @@ var squad_goal_y: PackedInt32Array = PackedInt32Array()
 var squad_launch_value: PackedInt32Array = PackedInt32Array()
 var member_id: PackedInt32Array = PackedInt32Array()
 var member_squad: PackedInt32Array = PackedInt32Array()
+## 1 while the home squad's goal is an unseen-hit shift AiArmy made (a probe: held while a member it
+## named still moves, see `AiArmy._probing`), else 0. Waves: P180.
+var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
 ## threat now at the base (NONE: no threat).
 var wave_count: int = 0
@@ -86,7 +89,12 @@ var site_x: PackedInt32Array = PackedInt32Array()
 var site_y: PackedInt32Array = PackedInt32Array()
 var unit_id: PackedInt32Array = PackedInt32Array()
 var seen_unit_id: PackedInt32Array = PackedInt32Array()
-## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending.
+## Also filled by `refresh` (P179b): the hp of each unit of `unit_id` now (same order), and the seen
+## enemy buildings' ids (at most (players - 1) x `building_cap`).
+var unit_hp: PackedInt32Array = PackedInt32Array()
+var seen_site_id: PackedInt32Array = PackedInt32Array()
+## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending. A unit
+## whose squad's shift was not sent keeps its older value, so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
