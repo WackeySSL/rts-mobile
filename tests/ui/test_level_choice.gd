@@ -39,45 +39,38 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_the_paths_name_the_files_of_the_computer_and_its_levels() -> void:
-	assert_str(DevRoutes.OPPONENT_FOSSIL).is_equal("res://data/ai/opponent_fossil.tres")
-	assert_str(DevRoutes.OPPONENT_RENEW).is_equal("res://data/ai/opponent_renew.tres")
+## The level files carry the ids of their buttons; the computers are `OpponentDef`s, the dummies
+## (kept for tests/e2e) are plain `AiDef`s.
+func test_the_paths_load_the_computers_and_the_three_levels() -> void:
 	var levels: Array[String] = [DevRoutes.LEVEL_EASY, DevRoutes.LEVEL_NORMAL, DevRoutes.LEVEL_HARD]
 	for index: int in levels.size():
 		var level: AiDifficultyDef = load(levels[index]) as AiDifficultyDef
 		assert_object(level).is_not_null()
 		assert_str(str(level.id)).is_equal(str(LEVEL_IDS[index]))
-	assert_bool(load(DevRoutes.OPPONENT_FOSSIL) is OpponentDef).is_true()
-	assert_bool(load(DevRoutes.OPPONENT_RENEW) is OpponentDef).is_true()
-	# The dummies stay for tests/e2e.
-	assert_bool(load(DevRoutes.DUMMY_FOSSIL) is OpponentDef).is_false()
-	assert_bool(load(DevRoutes.DUMMY_RENEW) is AiDef).is_true()
+	for path: String in [DevRoutes.OPPONENT_FOSSIL, DevRoutes.OPPONENT_RENEW]:
+		assert_bool(load(path) is OpponentDef).override_failure_message(path).is_true()
+	for path: String in [DevRoutes.DUMMY_FOSSIL, DevRoutes.DUMMY_RENEW]:
+		assert_bool(load(path) is AiDef and not load(path) is OpponentDef).is_true()
 
 
-## Three toggle buttons of at least 48 dp in a row at the six sizes; Normal is down at the start
-## and the label says so.
+## Three toggle buttons of at least 48 dp; Normal is down at the start and the label says so. The
+## six sizes are test_dev_menu_layout's.
 func test_three_level_buttons_normal_chosen_at_the_start_and_the_choice_shown() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		get_window().size = size
-		await await_idle_frame()
-		var menu: Node = await _open_menu()
-		var floor_px: float = UiScale.dp(48.0) - 0.5
-		var names: Array[String] = ["Easy", "Normal", "Hard"]
-		for index: int in LEVEL_BUTTONS.size():
-			var button: Button = menu.find_child(LEVEL_BUTTONS[index], true, false)
-			var label: String = "%s at %s" % [LEVEL_BUTTONS[index], size]
-			assert_str(button.text).override_failure_message(label).is_equal(names[index])
-			assert_bool(button.disabled).override_failure_message(label).is_false()
-			(
-				assert_bool(button.get_global_rect().size.y >= floor_px)
-				. override_failure_message(label)
-				. is_true()
-			)
-			assert_bool(button.button_pressed).override_failure_message(label).is_equal(index == 1)
-		var shown: Label = menu.find_child("LevelLabel", true, false)
-		assert_str(shown.text).is_equal("Level: Normal")
-		menu.free()
-		get_tree().current_scene = null
+	var menu: Node = await _open_menu()
+	var floor_px: float = UiScale.dp(48.0) - 0.5
+	var names: Array[String] = ["Easy", "Normal", "Hard"]
+	for index: int in LEVEL_BUTTONS.size():
+		var button: Button = menu.find_child(LEVEL_BUTTONS[index], true, false)
+		var label: String = LEVEL_BUTTONS[index]
+		assert_str(button.text).override_failure_message(label).is_equal(names[index])
+		assert_bool(button.disabled).override_failure_message(label).is_false()
+		(
+			assert_bool(button.get_global_rect().size.y >= floor_px)
+			. override_failure_message(label)
+			. is_true()
+		)
+		assert_bool(button.button_pressed).override_failure_message(label).is_equal(index == 1)
+	assert_str((menu.find_child("LevelLabel", true, false) as Label).text).is_equal("Level: Normal")
 
 
 func test_pressing_a_level_moves_the_choice_and_its_label() -> void:
@@ -139,13 +132,16 @@ func test_the_computer_of_a_route_plays_as_player_2() -> void:
 func test_the_pause_menus_restart_keeps_the_opponent_and_the_level() -> void:
 	for chosen: int in [0, 2]:
 		var old: Node = await _start("SkirmishLumenButton", chosen)
+		(old.get_node("MatchRunner") as MatchRunner).first_opponent = 1  # Not the default seat.
 		var facts: Dictionary = _facts(old)
 		var menu: PauseMenu = old.get_node("Hud/PauseMenu")
 		old.get_node("Hud/EconomyPill").menu_pressed.emit()
 		(menu.find_child("RestartButton", true, false) as Button).pressed.emit()
-		for dialog: Node in menu.find_children("*", "ConfirmDialog", true, false):
-			if (dialog as ConfirmDialog).visible:
-				dialog.find_child("YesButton", true, false).pressed.emit()
+		var asking: Array[Node] = menu.find_children("*", "ConfirmDialog", true, false).filter(
+			func(dialog: Node) -> bool: return (dialog as ConfirmDialog).visible
+		)
+		assert_int(asking.size()).is_equal(1)  # Restart asks first.
+		asking[0].find_child("YesButton", true, false).pressed.emit()
 		await await_idle_frame()
 		await await_idle_frame()
 		_expect_same_opponent(facts, get_tree().current_scene, "restart", chosen)
@@ -158,6 +154,7 @@ func test_the_pause_menus_restart_keeps_the_opponent_and_the_level() -> void:
 func test_the_result_screens_play_again_keeps_the_opponent_and_the_level() -> void:
 	for chosen: int in [0, 2]:
 		var old: Node = await _start("SkirmishDerrickButton", chosen)
+		(old.get_node("MatchRunner") as MatchRunner).first_opponent = 1  # Not the default seat.
 		var facts: Dictionary = _facts(old)
 		CommandQueue.submit(Command.surrender(2))
 		(old.get_node("MatchRunner") as MatchRunner).run_ticks(1)

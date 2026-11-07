@@ -5,25 +5,26 @@ extends Control
 ## with the base arena). When the dev menu is not enabled (a release export without the `dev_menu`
 ## feature) it opens the main scene instead. Buttons of at least 48 dp in the safe area, in either
 ## orientation (ADR 0015 section 5): one column upright, two sideways, so the eight fit a phone
-## browser held sideways; a window too short for them scrolls. The look is the theme's, sized in dp
-## by `HudTheme`; the gap is dp here.
+## browser held sideways; a window too short for them scrolls. The level row is three across in both
+## orientations, its choice named in "Level: ..." beside the title. The look is the theme's,
+## sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
 ## The level buttons, in the order of the row: name shown and the file of `data/ai/difficulty/`.
-const LEVELS: Array[Dictionary] = [
-	{"name": "Easy", "path": DevRoutes.LEVEL_EASY},
-	{"name": "Normal", "path": DevRoutes.LEVEL_NORMAL},
-	{"name": "Hard", "path": DevRoutes.LEVEL_HARD},
+const LEVEL_NAMES: Array[String] = ["Easy", "Normal", "Hard"]
+const LEVEL_PATHS: Array[String] = [
+	DevRoutes.LEVEL_EASY, DevRoutes.LEVEL_NORMAL, DevRoutes.LEVEL_HARD
 ]
 const START_LEVEL: int = 1
 
-## The chosen index of `LEVELS`.
-var level_index: int = START_LEVEL
+## The chosen index of `LEVEL_NAMES` and `LEVEL_PATHS`.
+var _level_index: int = START_LEVEL
 
 @onready var _column: VBoxContainer = %Column
 @onready var _grid: GridContainer = %Grid
 @onready var _level_label: Label = %LevelLabel
 @onready var _level_row: HBoxContainer = %LevelRow
+@onready var _levels: Array[Button] = [%LevelEasyButton, %LevelNormalButton, %LevelHardButton]
 @onready var _derrick_button: Button = %SkirmishDerrickButton
 @onready var _lumen_button: Button = %SkirmishLumenButton
 @onready var _test_map_button: Button = %TestMapButton
@@ -47,12 +48,11 @@ func _ready() -> void:
 		or not ResourceLoader.exists(DevRoutes.PERF_BASES_SCENARIO)
 	)
 	var group: ButtonGroup = ButtonGroup.new()
-	for index: int in LEVELS.size():
-		var button: Button = _level_row.get_child(index) as Button
-		button.text = LEVELS[index]["name"]
+	for index: int in _levels.size():
+		var button: Button = _levels[index]
 		button.toggle_mode = true
 		button.button_group = group
-		button.button_pressed = index == level_index
+		button.button_pressed = index == _level_index
 		button.toggled.connect(_on_level_toggled.bind(index))
 	_show_level()
 	_derrick_button.pressed.connect(
@@ -87,17 +87,17 @@ func _open_main() -> void:
 
 func _on_level_toggled(on: bool, index: int) -> void:
 	if on:
-		level_index = index
+		_level_index = index
 		_show_level()
 
 
 ## The label names the choice in words, so it does not rest on the pressed look alone.
 func _show_level() -> void:
-	_level_label.text = "Level: %s" % LEVELS[level_index]["name"]
+	_level_label.text = "Level: %s" % LEVEL_NAMES[_level_index]
 
 
 func _on_skirmish_pressed(scenario_path: String, opponent_path: String) -> void:
-	DevRoutes.open_skirmish(get_tree(), scenario_path, opponent_path, LEVELS[level_index]["path"])
+	DevRoutes.open_skirmish(get_tree(), scenario_path, opponent_path, LEVEL_PATHS[_level_index])
 
 
 func _on_test_map_pressed() -> void:

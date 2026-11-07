@@ -19,7 +19,7 @@ const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
 ## The two Skirmish routes (plan P90), one per side: Kestrel Flats with the player on the Derrick
-## League, or on the Lumen Accord (player 1 is local in both), and the dummy of the other side.
+## League, or on the Lumen Accord (player 1 is local in both), and the computer of the other side.
 const SKIRMISH_DERRICK: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const SKIRMISH_LUMEN: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
 ## The dummies stay the test opponents of `tests/e2e` and the balance run's yardstick (ADR 0030).
@@ -61,7 +61,8 @@ static func open_perf_bases(tree: SceneTree) -> Error:
 ## scenario (Test map's), and `opponents` as its computer players with their `levels` and the player
 ## of the first (`MatchRunner`'s three fields are not exported, so they are set here; a restart
 ## passes the old runner's, so the new match has the same opponent at the same level). The runner
-## starts its match in its own `_ready`, so both are set on the new scene before it enters the tree.
+## starts its match in its own `_ready`, so all four are set on the new scene before it enters the
+## tree.
 ## Reports a missing scenario with push_error instead of crashing.
 static func open_main_with(
 	tree: SceneTree,

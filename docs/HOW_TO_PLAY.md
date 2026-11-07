@@ -159,14 +159,14 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Factions
 | Action | Result | Teach |
 |---|---|---|
-| Open the dev menu (in a debug or preview build: the pause menu's "Developer menu" button), choose Easy, Normal or Hard (Normal is chosen at first; the choice is named at the top right of the menu), then "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom, at the level you chose. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build drawer shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
+| Open the dev menu (in a debug or preview build: the pause menu's "Developer menu" button), choose Easy, Normal or Hard (Normal is chosen each time the menu opens; the words "Level: ..." beside the title "Dev menu" name the choice), then "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom, at the level you chose. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build drawer shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
 
 ## The computer opponent
 | Action | Result | Teach |
 |---|---|---|
 | Play against Easy, Normal or Hard | The computer sees only what its units see and plays by your rules. Easy reacts slowly, builds a smaller base and attacks in small groups; Normal sends a scout early, mixes its army and attacks in waves that grow; Hard builds faster and reacts sooner | yes |
 | Attack the computer's base | It calls its army home to defend | |
-| Beat back a wave | A group that has lost too much pulls back home and comes again with the next wave; Hard also pulls single damaged units back and fires at your weakest unit first | |
+| Beat back a wave | On Normal and Hard, a group that has lost too much pulls back home and comes again with the next wave; Hard also pulls single damaged units back and fires at your weakest unit first | |
 
 ## Winning
 | Action | Result | Teach |

@@ -119,6 +119,14 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 		var gap: int = roundi(UiScale.dp(12.0))
 		assert_int(_control(menu, "Column").get_theme_constant("separation")).is_equal(gap)
 		var grid: GridContainer = _control(menu, "Grid") as GridContainer
+		assert_int(_control(menu, "LevelRow").get_theme_constant("separation")).is_equal(gap)
+		for name_in_menu: String in ["Title", "LevelLabel"]:
+			var text_rect: Rect2 = _control(menu, name_in_menu).get_global_rect()
+			(
+				assert_bool(visible_rect.encloses(text_rect))
+				. override_failure_message("%s at %s: %s" % [name_in_menu, size, text_rect])
+				. is_true()
+			)
 		assert_int(grid.get_theme_constant("h_separation")).is_equal(gap)
 		assert_int(grid.get_theme_constant("v_separation")).is_equal(gap)
 		assert_int(grid.columns).is_equal(1 if size.y > size.x else 2)  # The turn changes it.
@@ -161,7 +169,8 @@ func test_the_eight_buttons_stand_in_two_columns_sideways_and_in_one_upright() -
 		UiScale.clear_override()
 
 
-## `profile` shown: the title and the eight buttons, then the checks of the plan's acceptance.
+## `profile` shown: the title, the level label and the eleven buttons, then the checks of the plan's
+## acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)
 	var safe: Rect2 = UiScale.safe_rect_base()
@@ -175,6 +184,11 @@ func _check_layout(profile: UiMetrics, label: String) -> void:
 			. override_failure_message("%s: title or level label %s" % [label, rects[index]])
 			. is_true()
 		)
+	(
+		assert_int(_control(menu, "LevelLabel").get_theme_font_size("font_size"))
+		. override_failure_message("%s: level label font" % label)
+		. is_greater_equal(text_floor)
+	)
 	for button_name: String in BUTTONS:
 		var button: Button = _control(menu, button_name) as Button
 		var rect: Rect2 = button.get_global_rect()
