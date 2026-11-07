@@ -73,7 +73,7 @@ func test_a_refused_step_back_changes_nothing_and_is_asked_again() -> void:
 	assert_array(_memory.withdrawn_id).is_equal(PackedInt32Array([tank]))
 
 
-func test_a_unit_that_stepped_back_is_left_out_of_the_defence() -> void:
+func test_a_unit_that_stepped_back_still_takes_the_home_defence_order() -> void:
 	_control(STEP_PERCENT, 0)
 	var tank: int = _tank()
 	_hp(tank, 100)
@@ -86,8 +86,41 @@ func test_a_unit_that_stepped_back_is_left_out_of_the_defence() -> void:
 	_think(35)
 	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
 	assert_int(sent.size()).is_equal(1)
-	assert_array(sent[0].unit_ids).is_equal(_squads())
+	assert_array(sent[0].unit_ids).is_equal(_all_ids(tank))
 	assert_int(_army.defences).is_equal(1)
+
+
+func test_a_unit_that_stepped_back_is_left_out_of_a_wave_s_launch() -> void:
+	_control(STEP_PERCENT, 0)
+	_target_at()
+	var hurt: int = _tank()
+	var whole: int = _tank(10500, 9500)
+	_hp(hurt, 100)
+	_settle()
+	_until(LAUNCH)
+	assert_int(_memory.wave_count).is_equal(1)
+	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	var expected: PackedInt32Array = _squads()
+	expected.append(whole)
+	assert_array(sent[0].unit_ids).is_equal(expected)
+	assert_array(_members(AiArmy.HOME)).is_equal(PackedInt32Array([hurt]))
+	assert_bool(_members(AiArmy.WAVE).has(hurt)).is_false()
+
+
+func test_a_unit_that_stepped_back_joins_the_all_in() -> void:
+	_control(STEP_PERCENT, 0)
+	_target_at()
+	var hurt: int = _tank()
+	_hp(hurt, 100)
+	_settle()
+	_until(ALL_IN - 15)
+	assert_int(_memory.wave_count).is_equal(0)
+	_think(ALL_IN)
+	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(_all_ids(hurt))
+	assert_array(_members(AiArmy.WAVE)).is_equal(_all_ids(hurt))
 
 
 func test_a_dead_unit_leaves_the_list_and_the_levels_without_control_never_step_back() -> void:

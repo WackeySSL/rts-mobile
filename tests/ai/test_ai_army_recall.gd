@@ -4,23 +4,33 @@ extends "res://tests/ai/support/control_suite.gd"
 ## the wave units that rejoin during a standing defence, and a retreat whose staging point moves.
 
 
-func test_a_threat_that_outweighs_the_home_squad_recalls_the_wave_on_the_reaction_tick() -> void:
+func test_a_threat_that_outweighs_the_home_squad_recalls_the_wave_to_defend() -> void:
 	_two_tanks()
 	_to_field()
+	var wave: PackedInt32Array = _members(AiArmy.WAVE)
 	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
 	_see_all()
 	# Seen at LAUNCH + 15; the defence answers 30 ticks later, and so does the recall.
 	_think(LAUNCH + 15)
 	_think(LAUNCH + 30)
 	assert_array(_out).is_empty()
+	assert_int(_army.recalls).is_equal(0)
+	# The recall disbands the wave into the home squad at once, with no order of its own.
 	_think(LAUNCH + 45)
-	var sent: Array[Command] = _of(Command.Type.MOVE)
-	assert_int(sent.size()).is_equal(1)
-	assert_array(sent[0].unit_ids).is_equal(_members(AiArmy.WAVE))
-	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([STAGE_AT.x, STAGE_AT.y])
-	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.RETREAT)
-	assert_int(_army.retreats).is_equal(1)
+	assert_array(_out).is_empty()
+	assert_int(_army.recalls).is_equal(1)
+	assert_int(_army.retreats).is_equal(0)
+	assert_int(_memory.squad_role[AiArmy.WAVE]).is_equal(AiMemory.NONE)
+	assert_array(_members(AiArmy.HOME)).is_equal(wave)
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(0)
+	# The next ARMY slot: the defence sends the recalled units to the threat, and no `MOVE` home.
+	_think(LAUNCH + 60)
+	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(wave)
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([NEAR.x, NEAR.y])
+	assert_array(_of(Command.Type.MOVE)).is_empty()
+	assert_int(_army.retreats).is_equal(0)
 	assert_int(_view().row_of(foe)).is_greater_equal(0)
 
 
@@ -44,11 +54,16 @@ func test_a_threat_that_does_not_outweigh_the_home_squad_leaves_the_wave_out() -
 	assert_int(_army.retreats).is_equal(0)
 	assert_array(_members(AiArmy.HOME)).is_equal(PackedInt32Array([home]))
 	# One more squad of rifles passes it: 2100 against 1000 times 2.
+	var wave: PackedInt32Array = _members(AiArmy.WAVE)
 	_enemy("rifle_squad", NEAR.x + 500, NEAR.y)
 	_see_all()
 	_think(LAUNCH + 75)
-	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
-	assert_int(_army.retreats).is_equal(1)
+	assert_int(_army.recalls).is_equal(1)
+	assert_int(_army.retreats).is_equal(0)
+	assert_array(_of(Command.Type.MOVE)).is_empty()
+	# The home tank's defence stands on its tile: only the recalled units are sent, to the threat.
+	_think(LAUNCH + 90)
+	assert_array(_of(Command.Type.ATTACK_MOVE)[0].unit_ids).is_equal(wave)
 
 
 func test_a_level_without_a_ratio_never_recalls() -> void:
@@ -60,7 +75,7 @@ func test_a_level_without_a_ratio_never_recalls() -> void:
 	for tick: int in [LAUNCH + 15, LAUNCH + 30, LAUNCH + 45, LAUNCH + 60]:
 		_think(tick)
 		assert_array(_of(Command.Type.MOVE)).is_empty()
-	assert_int(_army.retreats).is_equal(0)
+	assert_int(_army.retreats + _army.recalls).is_equal(0)
 
 
 func test_the_all_in_overrides_the_recall() -> void:
@@ -73,7 +88,7 @@ func test_the_all_in_overrides_the_recall() -> void:
 	for tick: int in [ALL_IN, ALL_IN + 15, ALL_IN + 30, ALL_IN + 45]:
 		_think(tick)
 		assert_array(_of(Command.Type.MOVE)).is_empty()
-	assert_int(_army.retreats).is_equal(0)
+	assert_int(_army.retreats + _army.recalls).is_equal(0)
 	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.WAVE)
 
 
