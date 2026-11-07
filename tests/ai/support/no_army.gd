@@ -16,6 +16,7 @@ func copy_from(other: OpponentAi) -> void:
 	intel = other.intel
 	economy = other.economy
 	production = other.production
+	striker = other.striker
 
 
 func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:
