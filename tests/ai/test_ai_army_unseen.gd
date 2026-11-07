@@ -237,6 +237,12 @@ func test_a_standing_threat_keeps_the_squad_on_it_and_its_losses_are_not_unseen_
 	_think(FIRST + 60)
 	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
 	assert_int(_army.shifts).is_equal(0)
+	# A loss after that slot, with nothing in sight, is an unseen hit again.
+	_think(FIRST + 75)
+	_hurt(_squads()[0])
+	_think(FIRST + 90)
+	assert_int(_army.shifts).is_equal(1)
+	assert_array(_goal()).is_equal([14, 14])
 
 
 func test_a_defence_replaces_a_shifted_goal_and_the_squads_then_go_back() -> void:

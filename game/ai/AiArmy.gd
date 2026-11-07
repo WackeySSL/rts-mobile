@@ -60,7 +60,7 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	_join(memory)
 	_stage(view, memory, out)
 	var threat: int = _threat(view, memory)
-	_unseen_hit(view, memory, out, threat < 0)
+	_unseen_hit(view, memory, out, threat < 0 and memory.threat_first_tick == AiMemory.NONE)
 	if threat < 0:
 		memory.threat_first_tick = AiMemory.NONE
 		_return(view, memory, out)
@@ -220,10 +220,11 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 ## The unseen-hit response (P179b). A unit that lost hp since the last run, while no seen enemy unit
 ## or building was within its weapon range, makes its squad's goal move `shift_tiles` toward the
 ## base estimate (the point mirror of the Headquarters without one): an army order, all or nothing.
-## Only while no threat stands (`calm`; the squad already fights one), one squad a run (the army
-## goal is one cell), the lowest index first. The hp of a hit squad's units is kept for the next run
-## when no order went (no budget, no keys), so the hit is found again; a unit whose range test ran
-## into the test cap counts as covered.
+## Only while no threat stands and none stood at the last run (`calm`; the squad fought it, and a
+## foe it killed is gone from the view), one squad a run (the army goal is one cell), the lowest
+## index first. The hp of a hit squad's units is kept for the next run when no order went (no
+## budget, no keys), so the hit is found again; a unit whose range test ran into the test cap
+## counts as covered.
 func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: bool) -> void:
 	hit_tests = 0
 	_hit.resize(memory.squads_max)
