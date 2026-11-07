@@ -71,6 +71,19 @@ func test_an_enemy_far_from_the_wave_does_not_count() -> void:
 	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.WAVE)
 
 
+func test_an_enemy_in_the_box_but_beyond_the_radius_does_not_count() -> void:
+	_launched()
+	_wave_to_field()
+	# Five tanks 9 tiles off on both axes: inside the box round the wave, 12.7 tiles away.
+	for index: int in 5:
+		_enemy("heavy_tank", FIELD.x + 9000, FIELD.y + 9000 - index * 100)
+	_see_all()
+	_think(LAUNCH + 15)
+	assert_array(_out).is_empty()
+	assert_int(_army.tests).is_equal(5)
+	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.WAVE)
+
+
 func test_the_ratio_reads_at_most_the_def_s_tests_and_they_are_counted() -> void:
 	var def: OpponentDef = _def()
 	def.target_tests_max = 2
