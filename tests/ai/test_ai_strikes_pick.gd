@@ -104,6 +104,50 @@ func test_a_live_army_goal_keeps_a_point_clear_and_a_dead_one_does_not() -> void
 	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
 
 
+func test_the_staging_point_blocks_while_a_threat_stands_and_the_home_goal_is_cleared() -> void:
+	# A recall that cleared the home goal off the staging point leaves it NONE for one INTEL slot
+	# while the threat stands: the recalled units are about to be sent to the staging point.
+	_cluster()
+	_fire(READY)
+	_memory.staging_x = 33
+	_memory.staging_y = 31
+	_memory.threat_first_tick = KNOWN
+	assert_int(_memory.squad_goal_x[AiArmy.HOME]).is_equal(AiMemory.NONE)
+	_fire(KNOWN)
+	assert_array(_target()).is_equal([BARRACKS_POINT.x, BARRACKS_POINT.y])
+	# No threat: the staging point blocks nothing and the factory's point is the best again.
+	_memory.threat_first_tick = AiMemory.NONE
+	_fire(KNOWN + 30)
+	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+
+
+func test_the_staging_point_stands_in_by_both_of_its_coordinates() -> void:
+	# A lone barracks (centre (30000, 34000), off the diagonal) and the staging point (29, 34) 707
+	# milli-tiles from it: no point is clear. A swapped coordinate would put the point far away.
+	_arm_strikes("normal", 1, "fossil", 400)
+	_enemy_building("barracks", 29, 33)
+	_see_all()
+	_fire(READY)
+	_memory.staging_x = 29
+	_memory.staging_y = 34
+	_memory.threat_first_tick = KNOWN
+	_fire(KNOWN)
+	assert_array(_out).is_empty()
+	_memory.threat_first_tick = AiMemory.NONE
+	_fire(KNOWN + 30)
+	assert_array(_target()).is_equal([BARRACKS_POINT.x, BARRACKS_POINT.y])
+
+
+func test_a_staging_point_outside_the_radius_blocks_nothing_while_a_threat_stands() -> void:
+	_cluster()
+	_fire(READY)
+	_memory.staging_x = 40
+	_memory.staging_y = 10
+	_memory.threat_first_tick = KNOWN
+	_fire(KNOWN)
+	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+
+
 func test_a_building_that_is_seen_and_remembered_counts_once() -> void:
 	var factory: int = _enemy_building("vehicle_factory", 30, 30)
 	_see_all()

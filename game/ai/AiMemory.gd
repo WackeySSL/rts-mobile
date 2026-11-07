@@ -57,7 +57,8 @@ var member_squad: PackedInt32Array = PackedInt32Array()
 ## launch and an all-in join clear it.
 var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
-## threat now at the base (NONE: no threat).
+## threat now at the base (NONE: no threat). While it is set and the home goal is NONE (a recall
+## cleared it off the staging point), `AiStrikes` keeps the staging point clear of a Deep Bore.
 var wave_count: int = 0
 var wave_start_tick: int = NONE
 var threat_first_tick: int = NONE
