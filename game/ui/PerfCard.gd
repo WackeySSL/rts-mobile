@@ -148,6 +148,8 @@ func card_lines() -> PackedStringArray:
 		lines.append(row[0] % row.slice(1).map(func(key: String) -> Variant: return s[key]))
 	if hud.arena_kind == PerfBases.ARENA_BASES:
 		lines.append(PerfBases.calls_line(s["draw_calls_p95"]))
+	if hud.arena_kind == PerfBases.ARENA_AI:
+		lines.append(PerfBases.ai_line(s["ai_think_p95_ms"], s["ai_think_max_ms"], s["ai_thinks"]))
 	lines.append(_phase_line("phase means per tick", s["phases_ms"]))
 	lines.append(_phase_line("p95 per phase without checkpoint ticks", s["phases_p95_noncp_ms"]))
 	lines.append("GATE: %s" % (PASS if s["gate_pass"] else FAIL))
@@ -219,6 +221,8 @@ func _impl_row() -> String:
 ## `golden_hashes`: MATCH, or MISMATCH with the first differing tick; no golden checkpoint to
 ## compare never passes.
 func _golden_row() -> String:
+	if not PerfBases.has_golden(hud.arena_kind):
+		return "golden_hashes: n/a (this arena has no golden pair)"
 	var golden: Dictionary = hud.golden_result()
 	var detail: String = "no golden checkpoint up to tick %d" % hud.run_ticks
 	if golden["tick"] >= 0:

@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
-## Pins the text of `PerfCard` and the keys of `PerfHud.summary()` (plan P184): five fixed runs
-## (units arena, a failing and paused run, the base arena, Android with the library and without)
+## Pins the text of `PerfCard` and the keys of `PerfHud.summary()` (plan P184): six fixed runs
+## (units arena, a failing and paused run, the base arena, Android with the library and without,
+## the AI arena of P185)
 ## render to `fixtures/perf_card_pin.txt`, which was made on the code before the `PerfHud` split, so
 ## the split is proven a pure move. The machine's own values (model, engine, screen) are masked.
 ##

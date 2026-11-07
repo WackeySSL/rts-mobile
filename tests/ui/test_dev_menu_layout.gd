@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## The dev menu in either orientation (plan P63, ADR 0015 section 5 "Other screens"): at the six
 ## test sizes its title, the level label and row (plan P183) and its buttons (the two Skirmishes of
-## plan P90, test map, strike test, art gallery, touch probe, perf arena, perf bases) lie inside the
-## safe rect, every button is at least dp(48) on each axis with text of 14 sp or more, and nothing
-## overlaps. The same holds on the phone browsers (the buttons are 48 dp tall and stand in two
-## columns sideways and one upright, so that they fit a phone browser held sideways without a
-## scroll), with the cutouts of Michael's phone and of the ADR's portrait phone, and after a turn. A
-## window that is too short for them scrolls, so no button is out of reach. Which scene a button
-## opens is test_dev_routes.gd's.
+## plan P90, test map, strike test, art gallery, touch probe, perf arena, perf bases, perf AI) lie
+## inside the safe rect, every button is at least dp(48) on each axis with text of 14 sp or more,
+## and nothing overlaps. The same holds on the phone browsers (the buttons are 48 dp tall and stand
+## in three columns sideways and one upright, so that they fit a phone browser held sideways
+## without a scroll), with the cutouts of Michael's phone and of the ADR's portrait phone, and
+## after a turn. A window that is too short for them scrolls, so no button is out of reach. Which
+## scene a button opens is test_dev_routes.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -24,7 +24,8 @@ const BUTTONS: Array[String] = [
 	"GalleryButton",
 	"TouchProbeButton",
 	"PerfArenaButton",
-	"PerfBasesButton"
+	"PerfBasesButton",
+	"PerfAiButton"
 ]
 ## Michael's phone in landscape (a cutout on the left) and the ADR's phone in portrait (a cutout at
 ## the top, the gesture bar at the bottom), as window px of the profile they are put on.
@@ -99,7 +100,8 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 			"GalleryButton": true,
 			"TouchProbeButton": true,
 			"PerfArenaButton": true,
-			"PerfBasesButton": true
+			"PerfBasesButton": true,
+			"PerfAiButton": true
 		}
 	)
 
@@ -129,7 +131,7 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 			)
 		assert_int(grid.get_theme_constant("h_separation")).is_equal(gap)
 		assert_int(grid.get_theme_constant("v_separation")).is_equal(gap)
-		assert_int(grid.columns).is_equal(1 if size.y > size.x else 2)  # The turn changes it.
+		assert_int(grid.columns).is_equal(1 if size.y > size.x else 3)  # The turn changes it.
 		assert_float(grid.get_global_rect().get_center().x).is_equal_approx(
 			visible_rect.get_center().x, 1.0
 		)  # The block stays in the middle of the turn.
@@ -145,18 +147,20 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 	_close(menu)
 
 
-## The hand-over of P112d: eight 48 dp buttons do not fit a phone browser held sideways in one
-## column (the menu has 331 dp there), so they stand in two, and nothing scrolls at web_phone;
-## upright there is one column, which has the height.
-func test_the_eight_buttons_stand_in_two_columns_sideways_and_in_one_upright() -> void:
+## The hand-over of P112d, widened by P185: nine 48 dp buttons do not fit a phone browser held
+## sideways in one column (the menu has 331 dp there), nor in two (five rows), so they stand in
+## three, and nothing scrolls at web_phone; upright there is one column, which has the height.
+func test_the_nine_buttons_stand_in_three_columns_sideways_and_in_one_upright() -> void:
 	for profile_name: StringName in [&"web_phone", &"android_6in", &"web_tablet", &"desktop"]:
 		var menu: Control = await _open(UiProfiles.by_name(profile_name))
 		var label: String = str(profile_name)
-		assert_int((_control(menu, "Grid") as GridContainer).columns).is_equal(2)
+		assert_int((_control(menu, "Grid") as GridContainer).columns).is_equal(3)
 		var left: float = _control(menu, "SkirmishDerrickButton").get_global_rect().position.x
-		var right: float = _control(menu, "SkirmishLumenButton").get_global_rect().position.x
-		var below: float = _control(menu, "TestMapButton").get_global_rect().position.x
-		assert_float(right).override_failure_message(label).is_greater(left)
+		var middle: float = _control(menu, "SkirmishLumenButton").get_global_rect().position.x
+		var right: float = _control(menu, "TestMapButton").get_global_rect().position.x
+		var below: float = _control(menu, "StrikeTestButton").get_global_rect().position.x
+		assert_float(middle).override_failure_message(label).is_greater(left)
+		assert_float(right).override_failure_message(label).is_greater(middle)
 		assert_float(below).override_failure_message(label).is_equal_approx(left, 0.5)
 		var bar: VScrollBar = (_control(menu, "Scroll") as ScrollContainer).get_v_scroll_bar()
 		assert_float(bar.max_value).override_failure_message(label).is_less_equal(bar.page + 0.5)

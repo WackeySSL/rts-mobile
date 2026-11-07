@@ -41,6 +41,9 @@ extends Node2D
 ## scenario's tile and zoom but every sprite inside the map's diamond, overhangs included (the P50c
 ## rule as revision 5 states it): the camera centres on the union of their boxes and zooms out,
 ## below the start zoom when they need it, until they fit the view.
+## A third scenario (plan P185, `arena_kind` ai, `DevRoutes.open_perf_ai`): `perf_ai.tres`, two
+## mirror bases with a Normal computer player on each; the card adds the AI's think time (no
+## verdict) and has no golden comparison. Framed as the scenario says, like the seed-42 arena.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
 
@@ -84,8 +87,8 @@ const FRAME_MARGIN_PX: float = 32.0
 @export var building_layer: BuildingLayer
 @export var camera: RtsCamera
 @export var hud: PerfHud
-## `PerfHud.ARENA_UNITS` (the scene's scenario) or `PerfHud.ARENA_BASES` (P80's, loaded in
-## `_ready`).
+## `PerfHud.ARENA_UNITS` (the scene's scenario), `PerfHud.ARENA_BASES` (P80's) or
+## `PerfHud.ARENA_AI` (P174's, with its computers); both loaded in `_ready`.
 @export var arena_kind: String = PerfHud.ARENA_UNITS
 @export var back_button: Button
 @export var layers_button: Button
@@ -150,6 +153,9 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	if arena_kind == PerfHud.ARENA_BASES:
 		scenario = load(DevRoutes.PERF_BASES_SCENARIO) as ScenarioDef
+	elif arena_kind == PerfHud.ARENA_AI:
+		scenario = load(DevRoutes.PERF_AI_SCENARIO) as ScenarioDef
+		_seat_computers()
 	hud.arena_kind = arena_kind
 	back_button.pressed.connect(_on_back_pressed)
 	layers_button.pressed.connect(_on_layers_pressed)
@@ -170,6 +176,19 @@ func _ready() -> void:
 		_wait_left = LANDSCAPE_WAIT_FRAMES
 	else:
 		_start_first_run()
+
+
+## The AI arena's computers (plan P185): a Normal `OpponentAi` on each player, the Derrick League's
+## on player 1 (`first_opponent` 1, the view stays player 1's) and the Lumen Accord's on player 2.
+func _seat_computers() -> void:
+	var opponents: Array[AiDef] = [
+		load(DevRoutes.OPPONENT_FOSSIL) as AiDef, load(DevRoutes.OPPONENT_RENEW) as AiDef
+	]
+	var normal: AiDifficultyDef = load(DevRoutes.LEVEL_NORMAL) as AiDifficultyDef
+	var levels: Array[AiDifficultyDef] = [normal, normal]
+	runner.opponents = opponents
+	runner.opponent_levels = levels
+	runner.first_opponent = 1
 
 
 func _process(_delta: float) -> void:

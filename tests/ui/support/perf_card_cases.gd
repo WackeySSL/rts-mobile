@@ -7,7 +7,12 @@ extends RefCounted
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 const CASES: PackedStringArray = [
-	"passing_units", "failing_debug_paused", "bases_arena", "android_native", "android_gdscript"
+	"passing_units",
+	"failing_debug_paused",
+	"bases_arena",
+	"android_native",
+	"android_gdscript",
+	"ai_arena"
 ]
 const MACHINE_KEYS: PackedStringArray = ["model", "engine", "screen"]
 
@@ -38,6 +43,13 @@ static func hud_of(case_name: String) -> PerfHud:
 		"android_gdscript":
 			hud.os_name = MatchRunner.OS_ANDROID
 			Rig.run(hud)
+		"ai_arena":  # P185: every fifth tick thinks, the one at 450 dearest; no golden pair.
+			hud.arena_kind = PerfHud.ARENA_AI
+			Rig.pass_frames(hud)
+			for tick: int in range(1, hud.run_ticks + 1):
+				var snap: MatchSnapshot = Rig.snapshot(tick)
+				snap.think_usec = (2_500 if tick == 450 else 500) if tick % 5 == 0 else 0
+				hud.record_snapshot(snap)
 	return hud
 
 
