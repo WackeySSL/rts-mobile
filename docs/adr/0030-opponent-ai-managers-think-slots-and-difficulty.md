@@ -39,6 +39,15 @@ lists), one to §1's "writes only its own part of the memory" (the army releases
 the cap) and one to §3's "every id list is at most `unit_cap`" (the seen list holds up to
 (players - 1) times `unit_cap`, the same bound when two players play).
 
+Status note (2026-11-07, P26bg docs; wave 4 merged: P178 #362, P179 #363, main 0781901): the
+reviews of wave 5 (P179b the unseen-hit response, P180 the army's waves) decided how the unseen
+hit and the waves read §6's *Army* line; the note at the end of §4 records them. No accepted text
+changed. The note makes one exception to §2's reaction delay (a hit is answered at once) and one
+to §4's cap of `target_tests_max` tests per slot (the hit's range tests have their own cap). It
+makes a third exception to §1's field "that P175 declares" (`unit_hp` and `seen_site_id`,
+declared by P179b). It reads §6's "moves its squad's goal" as the home squad's, and it moves §6's
+wave recall in the field to row P180b.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -274,6 +283,25 @@ Note (2026-11-07, P26bf docs; lead decisions from the wave-4 reviews):
   arithmetic until a follow-up shares one copy.
 - **Production in the ECONOMY slot** counts the economy's unit `QUEUE`s of the same think toward
   its queue room and the unit cap (the view is taken before the think, so it cannot show them).
+
+Note (2026-11-07, P26bg docs; lead decisions from the wave-5 reviews):
+- **The unseen hit** moves the home squad's goal only, once, as a probe. A home member the shift
+  named holds the goal while it is alive and not idle, or idle with a seen enemy in its weapon
+  range; then the squad returns to the staging point and the army keys go. A hit is answered at
+  once, without `reaction_ticks` (an exception to §2's reaction delay: a hit is an event, not an
+  aged sighting). The range tests have their own cap (`hit_tests`, at most `target_tests_max`), so
+  one ARMY slot may run up to twice that many tests.
+- **The army keys of a wave in the field** stay held until the wave retreats or disbands, or a
+  home order with members (a defence or an unseen-hit shift) takes the army goal cell. The home
+  return and an empty defence never release them. A launch and the all-in join move the home goal
+  to the staging point.
+- **The all-in** (`all_in_tick`, 0 means never) overrides the defence. Before that tick a wave
+  launches only when this think's threat search finds nothing (at once, not after
+  `reaction_ticks`). From that tick no defence order is sent, the launch and join ignore a standing
+  threat, and the wave no longer retreats.
+- **Wave strength** compounds: each wave asks `wave_growth_percent` more than the one before.
+- **Moved to P180b:** §6's recall of a wave in the field when the threat outweighs the home
+  squad, and armed seen enemy buildings in the retreat ratio (P180 counts combat units only).
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
