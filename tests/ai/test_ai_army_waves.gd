@@ -204,6 +204,26 @@ func test_a_goal_moved_off_the_target_is_not_pulled_back_while_the_target_stands
 	)
 
 
+func test_a_shifted_home_squad_that_launches_a_wave_leaves_the_flag_clear() -> void:
+	_target_at()
+	_tank()
+	_settle()
+	_until(LAUNCH - 15)
+	# The unseen-hit response (P179b) moved the home squad's goal and set its flag.
+	_memory.squad_shifted[AiArmy.HOME] = 1
+	_memory.squad_goal_x[AiArmy.HOME] = 20
+	_memory.squad_goal_y[AiArmy.HOME] = 20
+	_think(LAUNCH)
+	assert_int(_memory.wave_count).is_equal(1)
+	assert_int(_memory.squad_shifted[AiArmy.HOME]).is_equal(0)
+	# The units that join afterwards are sent to the staging point: `_return` is not held back.
+	_world.tick = LAUNCH + 15
+	AiRig.add_unit_of(_world, 1, "rifle_squad", 8500, 11500)
+	_settle()
+	_think(LAUNCH + 15)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+
+
 func test_a_launch_the_budget_cannot_pay_changes_nothing_and_is_asked_again() -> void:
 	_target_at()
 	var tank: int = _tank()
