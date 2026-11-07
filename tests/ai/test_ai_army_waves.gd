@@ -254,7 +254,32 @@ func test_a_wave_takes_the_scout_s_key_at_the_cap() -> void:
 	assert_int(_memory.goal_keys()).is_equal(KEYS)
 
 
-func test_no_wave_launches_while_a_threat_stands_at_the_base() -> void:
+func test_no_wave_launches_on_the_think_a_threat_first_appears_or_while_it_stands() -> void:
+	_target_at()
+	_tank()
+	_settle()
+	_see_all()
+	_until(LAUNCH - 15)
+	assert_int(_memory.wave_count).is_equal(0)
+	# The foe shows up on the launch think itself: this think's threat blocks the launch.
+	var foe: int = _enemy("heavy_tank", 15500, 7500)
+	_see_all()
+	_think(LAUNCH)
+	assert_int(_memory.threat_first_tick).is_equal(LAUNCH)
+	assert_int(_memory.wave_count).is_equal(0)
+	_think(LAUNCH + 15)
+	_think(LAUNCH + 30)
+	assert_int(_memory.wave_count).is_equal(0)
+	# The think that sees it gone launches at once: no think of lag.
+	AiRig.kill(_world, _loop, _row_in_world(foe))
+	_see_all()
+	_think(LAUNCH + 45)
+	assert_int(_memory.threat_first_tick).is_equal(AiMemory.NONE)
+	assert_int(_memory.wave_count).is_equal(1)
+	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
+
+
+func test_a_defence_return_does_not_replace_the_new_wave_s_army_key() -> void:
 	_target_at()
 	_tank()
 	var foe: int = _enemy("heavy_tank", 15500, 7500)
@@ -262,16 +287,12 @@ func test_no_wave_launches_while_a_threat_stands_at_the_base() -> void:
 	_see_all()
 	_until(LAUNCH + 30)
 	assert_int(_memory.wave_count).is_equal(0)
-	assert_int(_memory.threat_first_tick).is_not_equal(AiMemory.NONE)
-	# The threat dies: the think that sees it gone still holds the launch back (the threat flag is
-	# the last think's), the next one launches.
+	# The foe dies on the think that would both return the squads and launch the wave.
 	AiRig.kill(_world, _loop, _row_in_world(foe))
 	_see_all()
 	_think(LAUNCH + 45)
-	assert_int(_memory.wave_count).is_equal(0)
-	assert_int(_memory.threat_first_tick).is_equal(AiMemory.NONE)
-	_think(LAUNCH + 60)
 	assert_int(_memory.wave_count).is_equal(1)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 
 
 func test_the_wave_squad_is_not_the_home_squad_s_defence() -> void:

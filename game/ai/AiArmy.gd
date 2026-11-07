@@ -84,16 +84,18 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 		return
 	_join(memory)
 	_stage(view, memory, out)
-	_wave(view, memory, rng, out)
 	var threat: int = _threat(view, memory)
 	if threat < 0:
 		memory.threat_first_tick = AiMemory.NONE
 		_return(view, memory, out)
-		return
-	if memory.threat_first_tick == AiMemory.NONE:
-		memory.threat_first_tick = view.tick
-	if view.tick - memory.threat_first_tick >= reaction_ticks:
-		_defend(view, memory, out, view.row_pos(threat))
+	else:
+		if memory.threat_first_tick == AiMemory.NONE:
+			memory.threat_first_tick = view.tick
+		if view.tick - memory.threat_first_tick >= reaction_ticks:
+			_defend(view, memory, out, view.row_pos(threat))
+	# After the threat and the return, so a launch reads this think's threat and the return cannot
+	# replace the new wave's army key.
+	_wave(view, memory, rng, out)
 
 
 ## A unit keeps its squad, a new one joins the home squad (pending in `_fresh`), a dead one goes.
