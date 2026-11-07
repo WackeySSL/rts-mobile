@@ -202,7 +202,8 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	if not memory.has_staging() or (memory.home_shifted != 0 and _probing(view, memory)):
 		return
 	var goal: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
-	if memory.squad_goal_x[HOME] == goal.x and memory.squad_goal_y[HOME] == goal.y:
+	var at_goal: bool = memory.squad_goal_x[HOME] == goal.x and memory.squad_goal_y[HOME] == goal.y
+	if at_goal and memory.home_shifted == 0:
 		_fresh.clear()
 		return
 	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
@@ -332,9 +333,11 @@ func _scaled(along: Vector2i, length: int) -> Vector2i:
 	return (along * (2 * shift_tiles) + along.sign() * length) / (2 * length)
 
 
-## Whether the shifted home goal is still held: not in the slot of the shift (its order is not in
-## the view yet), and while a home member the shift named is alive and not idle (still on its way
-## or fighting). When every one has arrived idle or died the probe is over.
+## Whether the shifted home goal is still held: in the slot of the shift (its order is not in the
+## view yet), and while a home member the shift named is alive and still on its way or fighting: not
+## idle, or idle with a seen enemy combat unit or building in its weapon range (it fires from where
+## it stands). A range test cut off by the test cap counts as not fighting, so a long seen list
+## cannot hold the probe for good. When every one has arrived, quiet, or died the probe is over.
 func _probing(view: PlayerView, memory: AiMemory) -> bool:
 	if view.tick == _shifted_at:
 		return true
@@ -343,7 +346,11 @@ func _probing(view: PlayerView, memory: AiMemory) -> bool:
 		if memory.member_squad[at] != HOME or _is_pending(id):
 			continue
 		var row: int = view.row_of(id)
-		if row >= 0 and view.row_order(row) != PlayerView.Order.IDLE:
+		if row < 0:
+			continue
+		if view.row_order(row) != PlayerView.Order.IDLE:
+			return true
+		if _covered(view, memory, row) and hit_tests < tests_max:
 			return true
 	return false
 
