@@ -48,6 +48,14 @@ makes a third exception to §1's field "that P175 declares" (`unit_hp` and `seen
 declared by P179b). It reads §6's "moves its squad's goal" as the home squad's, and it moves §6's
 wave recall in the field to row P180b.
 
+Status note (2026-11-07, P26bh docs; wave 5 merged: P179b #365, P180 #366, main f3e80f8): the
+reviews of wave 6 (P180b Hard's unit control and the recall, P181 the strikes, P183 the level
+choice) decided how §2's reaction delay in the field, §4's single cap, §4's "sectors first", §6's
+*Army* recall and §6's *Strikes* are read; the third note at the end of §4 records them. No accepted
+text changed. The note makes a fourth exception to §1's field "that P175 declares"
+(`own_mobile_id`, `seen_mobile_id` and the sector grid, filled by `AiIntel` for `AiStrikes`,
+declared by P181) and one to §3's "every id list is at most `unit_cap`" (`seen_mobile_id`).
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -302,6 +310,37 @@ Note (2026-11-07, P26bg docs; lead decisions from the wave-5 reviews):
 - **Wave strength** compounds: each wave asks `wave_growth_percent` more than the one before.
 - **Moved to P180b:** §6's recall of a wave in the field when the threat outweighs the home
   squad, and armed seen enemy buildings in the retreat ratio (P180 counts combat units only).
+
+Note (2026-11-07, P26bh docs; lead decisions from the wave-6 reviews):
+- **One cap for the army's searches.** Hard's focus search, the recall, the retreat ratio and the
+  threat search share one `target_tests_max` per ARMY slot (the unseen-hit tests keep their own,
+  as above). A focus search the cap cuts off keeps a living target. Focus fire reads no sector
+  map: its search is local (`defend_radius_tiles` round the group's centre), so it tests the seen
+  enemy combat units in id order inside the box round that circle (an uncounted pre-filter, as
+  the threat search's).
+- **The focus key.** A focus `ATTACK` books the target's tile at order time; the sim re-keys each
+  unit's field toward a moving target, so for a few ticks two cells per move class may be live
+  while the books hold one (like the scout's leg above).
+- **Sectors first, as read by `AiStrikes`.** The things are the first `target_tests_max` of the
+  lists in id order. The Deep Bore returns early when the sector map's enemy total is under
+  `strike_min_value`; both weapons rank the things by sector value, then by value. The rows are
+  then tested under `target_tests_max`; a check the cap cuts off is not clear.
+- **§3's memory:** `AiIntel.run`'s own and seen passes fill `own_mobile_id` and `seen_mobile_id`,
+  and `AiIntel` writes its sector grid (`sector_side`, `sector_cols`), all for `AiStrikes` (a
+  fourth exception to §1's field "that P175 declares"); `work` stays at most 3. `seen_mobile_id`
+  holds up to (players - 1) times `unit_cap` ids, more than §3's bound when more than two players
+  play, as P26bf's seen list. P180b's `withdrawn_id` (at most `unit_cap` ids) and `squad_focus`
+  are read by `AiArmy` alone, and P181's `strike_wave` by `AiStrikes` alone.
+- **§2's reaction delay in the field:** the wave's focus, its retreat ratio and the recall read
+  sightings at once; the delay stays on the base's threat and the home squad's answer to it.
+- **§6, *Army*:** the recall disbands the wave into the home squad and the defence (on Hard, the
+  home focus) sends it. A Hard unit that steps back stays out of a wave's launch only (the sim has
+  no healing).
+- **§6, *Strikes*:** the Deep Bore also keeps a live army goal out of its radius (the wave's goal
+  while a wave is in the field, the home goal while a threat stands): the army walks there and the
+  shot lands 45 ticks later. The Dusk Array's "as a wave launches against it" is read as once per
+  wave, while the wave is in the field and has a live member, on the producers within reach of the
+  wave's goal, else on the best producer cluster.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
