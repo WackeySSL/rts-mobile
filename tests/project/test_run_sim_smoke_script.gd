@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
-## The flags, exit codes and output of scripts/run-sim-smoke.sh (plan row P95, ADR 0020 question
-## 2): `--matches N` and `--report PATH` as the Phase 0 stub documented them, exit 0 ok, 2 for a
-## bad flag, and the new 3 (Godot missing) and 1 (a run that is not OK). CLAUDE.md says CI and
-## skills call the flags, so they stay stable.
+## The flags, exit codes and output of scripts/run-sim-smoke.sh (plan rows P95 and P186, ADR 0020
+## question 2, ADR 0031 section 2): `--matches N` and `--report PATH` as the Phase 0 stub documented
+## them, `--seed-start`, `--levels`, `--scenarios` and `--ticks` of Phase 4, exit 0 ok, 2 for a bad
+## flag, and 3 (Godot missing) and 1 (a run that is not OK). CLAUDE.md says CI and skills call the
+## flags, so they stay stable.
 ##
 ## Tested without playing a match: the real script runs in a scratch project against a stand-in
 ## `godot` that records its arguments in calls.txt and prints what a mode of the file `mode`
@@ -15,9 +16,13 @@ const SEED_SCRIPT: String = "res://scripts/seed-extension-list.sh"
 ## What the script hands to `godot` to play, before `--matches`.
 const ENTRY: String = "--headless --path . -s res://tests/smoke/run_sim_smoke.gd --"
 const OK_LINES: String = (
-	"run-sim-smoke: match 1 of 2: seed 1, 1800 ticks, winner none, hash 0123456789abcdef\n"
-	+ "run-sim-smoke: match 2 of 2: seed 2, 1800 ticks, winner none, hash fedcba9876543210\n"
-	+ "run-sim-smoke: OK, 2 matches of 1800 ticks, no dropped commands\n"
+	"run-sim-smoke: impl gdscript (AUTO)\n"
+	+ "run-sim-smoke: match 1 of 2: seed 1, skirmish_kestrel_flats, 13500 ticks, timeout, "
+	+ "winner none, hash 0123456789abcdef, dropped 0, flow full 0\n"
+	+ "run-sim-smoke: match 2 of 2: seed 2, skirmish_kestrel_flats_mirrored, 13500 ticks, "
+	+ "timeout, winner none, hash fedcba9876543210, dropped 0, flow full 0\n"
+	+ "run-sim-smoke: OK, 2 matches of at most 13500 ticks, impl gdscript, 2 timeouts, "
+	+ "no dropped commands\n"
 )
 ## The stand-in. An import call (`--import`) only logs, and exits 1 in the mode import_fails. A play
 ## call prints the banner and a blank line (what Godot prints first) and then does what the mode
@@ -43,8 +48,8 @@ const FAKE_GODOT: String = (
 	+ 'case "$mode" in\n'
 	+ "  failed)\n"
 	+ '    report "$@"\n'
-	+ '    echo "run-sim-smoke: match 1 of 1: seed 1, 1800 ticks, dropped 2"\n'
-	+ '    echo "run-sim-smoke: FAILED, seed 1: dropped commands 2"\n'
+	+ '    echo "run-sim-smoke: match 1 of 1: seed 1, 900 ticks, dropped 2, tick 7"\n'
+	+ '    echo "run-sim-smoke: FAILED, seed 1: dropped commands 2, the first in tick 7"\n'
 	+ "    exit 1 ;;\n"
 	+ '  script_error) echo "SCRIPT ERROR: Invalid call."; cat ok_lines.txt ;;\n'
 	+ '  parse_error) echo "Parse Error: Identifier not found." ;;\n'
@@ -117,6 +122,33 @@ func test_the_report_of_an_older_run_does_not_survive_a_run_that_writes_none() -
 	assert_bool(FileAccess.file_exists(root.path_join("old/r.json"))).is_false()
 
 
+func test_the_new_flags_reach_godot_in_a_fixed_order() -> void:
+	var root: String = _project()
+	_run(
+		root,
+		[
+			"--ticks",
+			"900",
+			"--scenarios",
+			"lumen",
+			"--levels",
+			"easy,dummy",
+			"--seed-start",
+			"101",
+			"--matches",
+			"4",
+		]
+	)
+	assert_str(_read(root, "calls.txt")).is_equal(
+		ENTRY + " --matches 4 --seed-start 101 --levels easy,dummy --scenarios lumen --ticks 900\n"
+	)
+	# Every level pair and every scenario kind the ADR names is accepted.
+	for pair: String in ["easy,normal", "normal,easy", "hard,hard", "dummy,dummy", "dummy,hard"]:
+		_run(_project(), ["--levels", pair])
+	for kind: String in ["cross", "derrick", "lumen", "fossil-mirror", "renew-mirror"]:
+		_run(_project(), ["--scenarios", kind])
+
+
 func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
 	var bad: Array[Array] = [
 		["--matches"],
@@ -129,6 +161,28 @@ func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
 		["--report", ""],
 		["--bogus"],
 		["3"],
+		["--seed-start"],
+		["--seed-start", ""],
+		["--ticks", ""],
+		["--levels", ""],
+		["--scenarios", ""],
+		["--seed-start", "0"],
+		["--seed-start", "01"],
+		["--seed-start", "x"],
+		["--seed-start", "1234567890"],
+		["--ticks"],
+		["--ticks", "0"],
+		["--ticks", "-5"],
+		["--ticks", "1.5"],
+		["--levels"],
+		["--levels", "normal"],
+		["--levels", "normal,"],
+		["--levels", "normal,normal,normal"],
+		["--levels", "normal,expert"],
+		["--levels", "Normal,normal"],
+		["--scenarios"],
+		["--scenarios", "mirror"],
+		["--scenarios", "Cross"],
 	]
 	for args: Array in bad:
 		var root: String = _project()
@@ -144,6 +198,8 @@ func test_help_prints_the_usage_and_exits_0() -> void:
 	var root: String = _project()
 	_run(root, ["--help"])
 	assert_str(_read(root, "stderr.txt")).contains("[--matches N] [--report PATH]")
+	assert_str(_read(root, "stderr.txt")).contains("[--seed-start S] [--levels A,B]")
+	assert_str(_read(root, "stderr.txt")).contains("[--scenarios KIND] [--ticks T]")
 	assert_bool(FileAccess.file_exists(root.path_join("calls.txt"))).is_false()
 
 
