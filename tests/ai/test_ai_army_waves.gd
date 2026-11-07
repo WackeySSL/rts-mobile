@@ -119,6 +119,22 @@ func test_the_next_wave_asks_the_growth_more_after_a_fresh_start_tick() -> void:
 	assert_int(_memory.wave_count).is_equal(2)
 	assert_int(_memory.squad_launch_value[AiArmy.WAVE]).is_equal(1800)
 	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
+	# The third wave asks 1800 * 150 / 100 = 2700, compounded (linear growth would ask 2400).
+	for id: int in _members(AiArmy.WAVE):
+		_world.hp[_row_in_world(id)] = 0
+	AiRig.step(_world, _loop)
+	_think(LAUNCH + 75)
+	_tank()
+	_tank(10500, 9500)
+	_squad_row(4, 10)
+	_settle()
+	_think(LAUNCH + 90)
+	assert_int(_memory.wave_count).is_equal(2)
+	_squad_row(3, 11)
+	_settle()
+	_think(LAUNCH + 105)
+	assert_int(_memory.wave_count).is_equal(3)
+	assert_int(_memory.squad_launch_value[AiArmy.WAVE]).is_equal(2700)
 
 
 ## `count` own rifle squads in a row on tile line `line`.
@@ -187,41 +203,28 @@ func test_a_wave_re_targets_once_when_its_target_is_gone() -> void:
 	assert_int(_memory.wave_count).is_equal(1)
 
 
-func test_a_goal_moved_off_the_target_is_not_pulled_back_while_the_target_stands() -> void:
-	_launched()
-	# The unseen-hit response (P179b) moves the squad's goal, never the target.
-	_memory.squad_goal_x[AiArmy.WAVE] = 28
-	_memory.squad_goal_y[AiArmy.WAVE] = 28
-	_think(LAUNCH + 15)
-	assert_array(_of(Command.Type.ATTACK_MOVE)).is_empty()
-	assert_array([_memory.wave_target_x, _memory.wave_target_y]).is_equal([TARGET.x, TARGET.y])
-	# A new target is ordered whatever the goal was.
-	_target_at(Vector2i(20, 30))
-	_think(LAUNCH + 30)
-	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
-	assert_array([_memory.squad_goal_x[AiArmy.WAVE], _memory.squad_goal_y[AiArmy.WAVE]]).is_equal(
-		[20, 30]
-	)
-
-
-func test_a_shifted_home_squad_that_launches_a_wave_leaves_the_flag_clear() -> void:
+func test_a_shifted_home_squad_that_launches_a_wave_keeps_the_wave_s_army_keys() -> void:
 	_target_at()
 	_tank()
 	_settle()
 	_until(LAUNCH - 15)
 	# The unseen-hit response (P179b) moved the home squad's goal and set its flag.
-	_memory.squad_shifted[AiArmy.HOME] = 1
+	_memory.home_shifted = 1
 	_memory.squad_goal_x[AiArmy.HOME] = 20
 	_memory.squad_goal_y[AiArmy.HOME] = 20
 	_think(LAUNCH)
 	assert_int(_memory.wave_count).is_equal(1)
-	assert_int(_memory.squad_shifted[AiArmy.HOME]).is_equal(0)
-	# The units that join afterwards are sent to the staging point: `_return` is not held back.
-	_world.tick = LAUNCH + 15
-	AiRig.add_unit_of(_world, 1, "rifle_squad", 8500, 11500)
-	_settle()
+	assert_int(_memory.home_shifted).is_equal(0)
+	# The empty home squad's goal is the staging point, and the wave keeps its two keys while it
+	# marches: neither the return nor the next thinks release them.
+	assert_array([_memory.squad_goal_x[AiArmy.HOME], _memory.squad_goal_y[AiArmy.HOME]]).is_equal(
+		[STAGING.x, STAGING.y]
+	)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
 	_think(LAUNCH + 15)
-	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+	_think(LAUNCH + 30)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
+	assert_array(_out).is_empty()
 
 
 func test_a_launch_the_budget_cannot_pay_changes_nothing_and_is_asked_again() -> void:
@@ -315,20 +318,15 @@ func test_a_defence_return_does_not_replace_the_new_wave_s_army_key() -> void:
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 
 
-func test_the_wave_squad_is_not_the_home_squad_s_defence() -> void:
-	var tank: int = _launched()
-	var foe: int = _enemy("heavy_tank", 15500, 7500)
+func test_a_threat_with_an_empty_home_squad_leaves_the_wave_its_army_keys() -> void:
+	_launched()
+	_enemy("heavy_tank", 15500, 7500)
 	_settle()
 	_see_all()
+	# The defence has no unit to send, no order is made, and the wave's keys stay.
 	for tick: int in [LAUNCH + 15, LAUNCH + 30, LAUNCH + 45, LAUNCH + 60]:
 		_think(tick)
-		# The home squad is empty: no defence order names a unit of the wave.
-		for command: Command in _of(Command.Type.ATTACK_MOVE):
-			assert_array(command.unit_ids).is_not_equal(_all_ids(tank))
-	assert_array(_members(AiArmy.WAVE)).is_equal(_all_ids(tank))
-	assert_int(_view().row_of(foe)).is_greater_equal(0)
-
-
-func test_the_wave_logic_makes_no_pass_over_the_view_s_rows() -> void:
-	_launched()
-	assert_int(_intel.passes).is_equal(2)
+		assert_array(_out).is_empty()
+		assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
+	assert_int(_memory.threat_first_tick).is_not_equal(AiMemory.NONE)
+	assert_int(_army.defences).is_equal(0)

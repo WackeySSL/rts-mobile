@@ -11,6 +11,8 @@ const GROWTH: int = 50
 const ALL_IN: int = 2000
 const RETREAT_PERCENT: int = 50
 const RATIO_PERCENT: int = 200
+## The ticks a threat must stand before the defence answers.
+const REACTION: int = 30
 ## The first think after `FIRST_TICK` on the slots 5, 20, 35, ...
 const LAUNCH: int = 110
 ## The point mirror of the Headquarters' tile: the target while no enemy producer is known.
@@ -25,6 +27,7 @@ func before_test() -> void:
 ## A copy of Normal's level with the suite's wave numbers and a start jitter of `jitter` ticks.
 func _level(jitter: int = 0) -> AiDifficultyDef:
 	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
+	level.reaction_ticks = REACTION
 	level.wave_first_tick = FIRST_TICK
 	level.wave_first_strength = STRENGTH
 	level.wave_growth_percent = GROWTH
@@ -43,12 +46,13 @@ func _arm_waves(level: AiDifficultyDef = null, def: OpponentDef = null) -> void:
 	_army = AiArmy.create(own, level if level != null else _level(), 1)
 
 
-## The base estimate by hand (the intel slot is not run), and an own heavy tank beside the squads.
+## The base estimate by hand (the intel slot is not run).
 func _target_at(tile: Vector2i = TARGET) -> void:
 	_memory.base_x = tile.x
 	_memory.base_y = tile.y
 
 
+## An own heavy tank (beside the squads by default); returns its id.
 func _tank(x: int = 9500, y: int = 9500) -> int:
 	return AiRig.add_unit_of(_world, 1, "heavy_tank", x, y)
 

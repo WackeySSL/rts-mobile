@@ -1,10 +1,11 @@
 extends "res://tests/ai/support/army_suite.gd"
-## `AiArmy`'s response to a hit by the unseen (plan row P179b, ADR 0030 section 4): a unit that lost
-## hp since the last think with no seen enemy in its weapon range moves its squad's goal
-## `unseen_hit_shift_tiles` toward the base estimate, as an army order under the goal-key rules.
-## The suite's def has no defence radius (a seen enemy in range is not a threat here, so the range
-## test is what the cases pin) and a shift of 4 tiles. From the staging point (11, 11) toward the
-## point mirror (32, 32) the first shift lands on (14, 14), the second on (17, 17).
+## `AiArmy`'s response to a hit by the unseen (plan row P179b, ADR 0030 sections 4 and 6): a unit
+## that lost hp since the last think with no seen enemy combat unit or building in its weapon range
+## moves the home squad's goal `unseen_hit_shift_tiles` toward the base estimate, as an army order
+## under the goal-key rules. The suite's def has no defence radius (a seen enemy in range is not a
+## threat here, so the range test is what the cases pin) and a shift of 4 tiles. From the staging
+## point (11, 11) toward the point mirror (32, 32) the shift lands on (14, 14). The probe rule
+## (held, returned, no creep) is in `test_ai_army_unseen_probe.gd`.
 
 const SHIFT: int = 4
 ## The first ARMY slot of the suite (15 ticks apart), and a spot 8 tiles east of the Headquarters.
@@ -51,7 +52,8 @@ func _east_of(id: int, gap: int) -> int:
 	return _enemy("heavy_tank", at.x + gap, at.y)
 
 
-func test_a_hit_with_no_enemy_in_sight_moves_the_squad_goal_toward_the_base_estimate() -> void:
+func test_a_hit_with_no_enemy_in_weapon_range_moves_the_squad_goal_toward_the_base_estimate(
+) -> void:
 	_arm_shift()
 	_start()
 	_hurt(_squads()[0])
@@ -63,9 +65,7 @@ func test_a_hit_with_no_enemy_in_sight_moves_the_squad_goal_toward_the_base_esti
 	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([14500, 14500])
 	assert_int(sent[0].player_id).is_equal(1)
 	assert_array(_goal()).is_equal([14, 14])
-	assert_array([_army.shifts, _memory.squad_shifted[0], _memory.commands_left]).is_equal(
-		[1, 1, 7]
-	)
+	assert_array([_army.shifts, _memory.home_shifted, _memory.commands_left]).is_equal([1, 1, 7])
 
 
 func test_the_shifted_goal_holds_one_army_key_and_the_staging_key_stays() -> void:
@@ -81,53 +81,14 @@ func test_the_shifted_goal_holds_one_army_key_and_the_staging_key_stays() -> voi
 			assert_int(_memory.goal_class[at]).is_equal(AiMemory.FOOT)
 
 
-func test_nothing_is_sent_without_a_loss_and_the_return_leaves_a_shifted_goal_alone() -> void:
+func test_nothing_is_sent_without_a_loss() -> void:
 	_arm_shift()
 	_start()
-	_think(FIRST + 15)
-	assert_array(_out).is_empty()
-	_hurt(_squads()[0])
-	_think(FIRST + 30)
-	assert_int(_army.shifts).is_equal(1)
-	# The same hp next slots: no second shift and no MOVE back to the staging point.
-	for tick: int in [45, 60, 75]:
+	for tick: int in [15, 30, 45]:
 		_think(FIRST + tick)
 		assert_array(_out).is_empty()
-	assert_array(_goal()).is_equal([14, 14])
-	assert_int(_army.returns).is_equal(1)
-
-
-func test_a_shifted_squad_is_not_shifted_again_until_it_is_back_at_the_staging_point() -> void:
-	# The defence radius is back, for the defence that replaces the goal.
-	var def: OpponentDef = _def()
-	def.unseen_hit_shift_tiles = SHIFT
-	_arm("normal", def)
-	_start()
-	_hurt(_squads()[0])
-	_think(FIRST + 15)
-	assert_array(_goal()).is_equal([14, 14])
-	# More hits on the shifted squad: nothing is sent, the goal and the keys stay.
-	var keys: int = _memory.goal_keys()
-	for tick: int in [30, 45]:
-		_hurt(_squads()[tick % 2])
-		_think(FIRST + tick)
-		assert_array(_out).is_empty()
-		assert_array(_goal()).is_equal([14, 14])
-	assert_array([_army.shifts, _memory.goal_keys()]).is_equal([1, keys])
-	# A defence and the return replace the goal; a hit after that shifts again.
-	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
-	_see_all()
-	for tick: int in [60, 75, 90]:
-		_think(FIRST + tick)
-	_world.hp[_row_in_world(foe)] = 0
-	AiRig.step(_world, _loop)
-	_think(FIRST + 105)
+	assert_array([_army.shifts, _memory.home_shifted]).is_equal([0, 0])
 	assert_array(_goal()).is_equal([11, 11])
-	_think(FIRST + 120)
-	_hurt(_squads()[0])
-	_think(FIRST + 135)
-	assert_array(_goal()).is_equal([14, 14])
-	assert_int(_army.shifts).is_equal(2)
 
 
 func test_the_shift_ends_on_the_base_estimate_when_it_is_nearer_than_the_shift() -> void:
@@ -157,6 +118,18 @@ func test_a_known_base_estimate_sets_the_direction() -> void:
 	assert_array(_goal()).is_equal([9, 17])
 
 
+func test_a_shift_toward_smaller_coordinates_rounds_away_from_zero_too() -> void:
+	_arm_shift()
+	_memory.base_x = 1
+	_memory.base_y = 31
+	_start()
+	assert_array(_goal()).is_equal([6, 13])
+	_hurt(_squads()[0])
+	_think(FIRST + 15)
+	# From (6, 13) along (-5, 18), length 18: (-1.1, 4) rounds to (-1, 4).
+	assert_array(_goal()).is_equal([5, 17])
+
+
 func test_a_seen_enemy_unit_in_weapon_range_is_not_an_unseen_hit() -> void:
 	_arm_shift()
 	var squad: int = _squads()[0]
@@ -180,7 +153,7 @@ func test_one_milli_tile_beyond_the_weapon_range_it_is() -> void:
 	assert_array(_goal()).is_equal([14, 14])
 
 
-func test_a_seen_enemy_building_in_weapon_range_covers_the_hit_and_a_fogged_unit_does_not() -> void:
+func test_a_seen_enemy_building_in_weapon_range_covers_the_hit_and_the_fog_hides_a_unit() -> void:
 	_arm_shift()
 	var squad: int = _squads()[0]
 	var building: int = AiRig.give(_world, 2, "barracks", 30, 30)
@@ -193,13 +166,12 @@ func test_a_seen_enemy_building_in_weapon_range_covers_the_hit_and_a_fogged_unit
 	_hurt(squad)
 	_think(FIRST + 15)
 	assert_array(_out).is_empty()
-	# The building beyond the range, and a tank in range that the fog hides: an unseen hit.
-	_put(building, at.x + _reach(squad) + 1, at.y)
-	_east_of(squad, 0)
+	# A tank in range that the fog hides (and the building with it): an unseen hit.
+	var hidden: int = _east_of(squad, 0)
 	_world.fog.visible.fill(0)
 	_hurt(squad)
 	_think(FIRST + 30)
-	assert_int(_view().row_of(_east_of(squad, 0))).is_less(0)
+	assert_int(_view().row_of(hidden)).is_less(0)
 	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
 
 
@@ -255,41 +227,21 @@ func test_a_standing_threat_keeps_the_squad_on_it_and_its_losses_are_not_unseen_
 	_think(FIRST + 45)
 	assert_array(_out).is_empty()
 	assert_array(_goal()).is_equal([15, 7])
-	# The foe dies: the loss was recorded under the threat, so it is not found afterwards.
+	# A loss in the slot the threat ends in, then the foe dies: no shift at the think after.
+	_hurt(_squads()[1])
 	_world.hp[_row_in_world(foe)] = 0
 	AiRig.step(_world, _loop)
 	_think(FIRST + 60)
 	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
 	assert_int(_army.shifts).is_equal(0)
-	# A loss after that slot, with nothing in sight, is an unseen hit again.
+	# Both losses are on record: none is found at the next calm slot.
 	_think(FIRST + 75)
+	assert_array(_out).is_empty()
+	assert_int(_army.shifts).is_equal(0)
 	_hurt(_squads()[0])
 	_think(FIRST + 90)
 	assert_int(_army.shifts).is_equal(1)
 	assert_array(_goal()).is_equal([14, 14])
-
-
-func test_a_defence_replaces_a_shifted_goal_and_the_squads_then_go_back() -> void:
-	var def: OpponentDef = _def()
-	def.unseen_hit_shift_tiles = SHIFT
-	_arm("normal", def)
-	_start()
-	_hurt(_squads()[0])
-	_think(FIRST + 15)
-	assert_array(_goal()).is_equal([14, 14])
-	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
-	_see_all()
-	for tick: int in [30, 45, 60]:
-		_think(FIRST + tick)
-	assert_array(_goal()).is_equal([15, 7])
-	assert_int(_memory.squad_shifted[0]).is_equal(0)
-	_world.hp[_row_in_world(foe)] = 0
-	AiRig.step(_world, _loop)
-	_think(FIRST + 75)
-	var moves: Array[Command] = _of(Command.Type.MOVE)
-	assert_int(moves.size()).is_equal(1)
-	assert_array([moves[0].target_x, moves[0].target_y]).is_equal([11500, 11500])
-	assert_array(_goal()).is_equal([11, 11])
 
 
 func test_a_shift_the_budget_cannot_pay_changes_nothing_and_the_hit_is_found_again() -> void:
@@ -300,13 +252,12 @@ func test_a_shift_the_budget_cannot_pay_changes_nothing_and_the_hit_is_found_aga
 	_think(FIRST + 15, 0)
 	assert_array(_out).is_empty()
 	assert_array(_goal()).is_equal([11, 11])
-	assert_array([_memory.goal_keys(), _memory.squad_shifted[0], _army.shifts]).is_equal(
-		[keys, 0, 0]
-	)
+	assert_array([_memory.goal_keys(), _memory.home_shifted, _army.shifts]).is_equal([keys, 0, 0])
 	_think(FIRST + 30)
 	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
 	assert_array(_goal()).is_equal([14, 14])
-	# Sent once: the hp is on record now.
+	# Sent once: the squad is shifted now (its order is in the world, so the probe goes on).
+	AiRig.step(_world, _loop, _out)
 	_think(FIRST + 45)
 	assert_array(_out).is_empty()
 
@@ -321,9 +272,7 @@ func test_a_shift_the_keys_cannot_hold_is_refused_whole_and_counted() -> void:
 	assert_array(_goal()).is_equal([11, 11])
 	assert_int(_memory.goal_keys()).is_equal(1)
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.STAGING)).is_equal(1)
-	assert_array([_army.starved, _memory.commands_left, _memory.squad_shifted[0]]).is_equal(
-		[1, 8, 0]
-	)
+	assert_array([_army.starved, _memory.commands_left, _memory.home_shifted]).is_equal([1, 8, 0])
 	_think(FIRST + 30)
 	assert_int(_army.starved).is_equal(2)
 
@@ -354,9 +303,7 @@ func test_only_the_home_squad_is_shifted_a_wave_squad_keeps_its_goal() -> void:
 	_think(FIRST + 15)
 	assert_array(_out).is_empty()
 	assert_array([_goal(0), _goal(1)]).is_equal([[11, 11], [20, 8]])
-	assert_array([_memory.squad_shifted[0], _memory.squad_shifted[1], _army.shifts]).is_equal(
-		[0, 0, 0]
-	)
+	assert_array([_memory.home_shifted, _army.shifts]).is_equal([0, 0])
 	# The home squad is still shifted, and only its members are ordered.
 	_hurt(ids[0])
 	_think(FIRST + 30)

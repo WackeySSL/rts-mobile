@@ -272,9 +272,13 @@ func test_without_a_headquarters_there_is_no_staging_point_and_no_rally() -> voi
 
 func test_the_army_draws_only_the_wave_jitter_and_the_refresh_keeps_its_two_passes() -> void:
 	_seed_crowd()
-	# The reference stream makes the one draw the army owns: the first wave's start jitter.
+	# The army on a level that owns its jitter (40 ticks); the reference stream makes the one draw
+	# the army owns: the first wave's start jitter.
+	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
+	level.wave_jitter_ticks = 40
+	_army = AiArmy.create(_def(), level, 1)
 	var reference: DetRandom = DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1)
-	reference.next_int(_army.wave_jitter + 1)
+	reference.next_int(41)
 	var expected: int = reference.next_int(1000)
 	_think(5)
 	assert_int(_intel.passes).is_equal(2)

@@ -66,6 +66,11 @@ func test_no_unit_order_went_beyond_the_radius_of_a_building_and_the_first_went_
 	)
 
 
+func test_the_scenario_ends_before_any_wave_or_scout_so_the_audit_sees_every_order() -> void:
+	assert_int(_ai.waves).is_equal(0)
+	assert_int(_ai.scouts).is_equal(0)
+
+
 func test_the_sim_dropped_nothing_the_opponent_sent() -> void:
 	assert_int(_world.dropped_commands).is_equal(0)
 
@@ -139,14 +144,10 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 		assert_bool(ai.memory.has_staging()).is_true()
 
 
-## Counts the unit orders of `sent` (the opponent's, player 2) and audits them. The scout's MOVEs
-## (intel's, a trip to the far side) and everything after the first wave (it attacks the enemy's
-## base by design, P180) are not the defence's orders and are skipped.
+## Counts the unit orders of `sent` (the opponent's, player 2) and audits them.
 func _audit(sent: Array[Command]) -> void:
 	for command: Command in sent:
 		if command.type != Command.Type.ATTACK_MOVE and command.type != Command.Type.MOVE:
-			continue
-		if _ai.waves > 0 or _is_scout(command):
 			continue
 		if _orders == 0:
 			_first_unit_order = Vector2i(command.target_x, command.target_y)
@@ -155,12 +156,3 @@ func _audit(sent: Array[Command]) -> void:
 			_at_attackers += 1
 		if not Audit.within(_world, command, _radius):
 			_beyond += 1
-
-
-## Whether `command` names a unit of the scout type (player 2's own).
-func _is_scout(command: Command) -> bool:
-	var row: int = _world.index_of(command.unit_ids[0])
-	return (
-		row >= 0
-		and _world.type_index[row] == AiRig.type_of(_world, String(Rig.def_of("fossil").scout_type))
-	)

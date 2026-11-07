@@ -103,7 +103,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		var type: int = view.row_type(row)
 		var pos: Vector2i = view.row_pos(row)
 		var at: Vector2i = _tile(pos)
-		memory.sector_own[sector_at(at.x, at.y)] += _value(view, row)
+		memory.sector_own[sector_at(at.x, at.y)] += value_of(view, row)
 		if _entry(view.type_foot_w, type) > 0:
 			var id: int = view.row_id(row)
 			memory.site_id.append(id)
@@ -121,7 +121,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		if view.row_owner(row) <= 0:
 			continue
 		var at: Vector2i = _tile(view.row_pos(row))
-		memory.sector_enemy[sector_at(at.x, at.y)] += _value(view, row)
+		memory.sector_enemy[sector_at(at.x, at.y)] += value_of(view, row)
 		if _combat[view.row_type(row)] != 0:
 			memory.seen_unit_id.append(view.row_id(row))
 		elif _entry(view.type_foot_w, view.row_type(row)) > 0:
@@ -512,7 +512,7 @@ static func _distance(a: Vector2i, b: Vector2i) -> int:
 
 
 ## The row's army value: its type's cost scaled by its hit points.
-static func _value(view: PlayerView, row: int) -> int:
+static func value_of(view: PlayerView, row: int) -> int:
 	var type: int = view.row_type(row)
 	var cost: int = _entry(view.type_cost, type)
 	var max_hp: int = _entry(view.type_max_hp, type)

@@ -31,9 +31,9 @@ func test_distant_low_id_units_cost_no_test_and_do_not_hide_an_attacker() -> voi
 	assert_int(_memory.threat_first_tick).is_equal(5)
 
 
-func test_without_the_box_the_first_far_unit_would_have_used_the_cap() -> void:
-	# The same crowd with the far units inside the box (a building near them): each costs the 40
-	# tests of the cap, and the attacker behind them is never tested. This pins what the box saves.
+func test_a_far_unit_inside_the_box_is_tested_and_uses_the_cap() -> void:
+	# A building near the far unit puts it inside the box: it costs the 40 tests of the cap, and the
+	# attacker behind it is never tested. This is what the box saves when no building is near.
 	_sites(SITES - 1)
 	_memory.site_id.append(900)
 	_memory.site_x.append(36500)
@@ -57,19 +57,23 @@ func test_a_unit_outside_the_box_is_not_tested_at_all() -> void:
 	assert_int(_memory.threat_first_tick).is_equal(-1)
 
 
-func test_the_box_edge_is_inside_and_one_milli_tile_past_it_is_outside() -> void:
+func test_the_box_edge_is_inside_and_one_milli_tile_past_it_is_outside_on_every_side() -> void:
 	_memory.site_id = PackedInt32Array([900])
-	_memory.site_x = PackedInt32Array([7500])
-	_memory.site_y = PackedInt32Array([7500])
-	var edge: int = _enemy("heavy_tank", 7500 + RADIUS * 1000, 7500)
-	var past: int = _enemy("heavy_tank", 7500 + RADIUS * 1000 + 1, 7500)
-	_see_all()
-	_memory.seen_unit_id = PackedInt32Array([past])
-	_run_army(5)
-	assert_array([_army.tests, _memory.threat_first_tick]).is_equal([0, -1])
-	_memory.seen_unit_id = PackedInt32Array([edge])
-	_run_army(20)
-	assert_array([_army.tests, _memory.threat_first_tick]).is_equal([1, 20])
+	_memory.site_x = PackedInt32Array([20500])
+	_memory.site_y = PackedInt32Array([20500])
+	var tick: int = 5
+	for side: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var edge: Vector2i = Vector2i(20500, 20500) + side * RADIUS * 1000
+		var past: int = _enemy("heavy_tank", edge.x + side.x, edge.y + side.y)
+		var on: int = _enemy("heavy_tank", edge.x, edge.y)
+		_see_all()
+		_memory.seen_unit_id = PackedInt32Array([past])
+		_run_army(tick)
+		assert_array([_army.tests, _memory.threat_first_tick]).is_equal([0, -1])
+		_memory.seen_unit_id = PackedInt32Array([on])
+		_run_army(tick + 15)
+		assert_array([_army.tests, _memory.threat_first_tick]).is_equal([1, tick + 15])
+		tick += 30
 
 
 func test_a_unit_in_the_box_but_beyond_every_radius_is_tested_and_is_no_threat() -> void:

@@ -106,11 +106,11 @@ func test_a_level_with_no_retreat_never_pulls_back() -> void:
 	level.retreat_percent = 0
 	level.retreat_ratio_percent = 0
 	_arm_waves(level)
-	_launched()
+	var tank: int = _launched()
 	_wave_to_field()
 	_foes(5, 0)
-	for id: int in _squads():
-		_world.hp[_row_in_world(id)] = 0
+	# Both tests would fire (the tank gone leaves 200 of 1200, five tanks stand beside it).
+	_world.hp[_row_in_world(tank)] = 0
 	AiRig.step(_world, _loop)
 	_see_all()
 	_think(LAUNCH + 15)
@@ -144,6 +144,10 @@ func test_a_retreat_leaves_the_army_key_to_a_defence_that_holds_it() -> void:
 	_see_all()
 	for tick: int in [LAUNCH + 15, LAUNCH + 30, LAUNCH + 45]:
 		_think(tick)
+	assert_int(_army.defences).is_equal(1)
+	assert_array([_memory.squad_goal_x[AiArmy.HOME], _memory.squad_goal_y[AiArmy.HOME]]).is_equal(
+		[15, 7]
+	)
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 	for id: int in _squads():
 		if id != defender:
@@ -174,8 +178,7 @@ func test_a_wave_rejoins_the_home_squad_when_every_unit_has_stopped() -> void:
 	_world.order[_row_in_world(two[0])] = World.Order.IDLE
 	_think(LAUNCH + 45)
 	assert_array(_members(AiArmy.WAVE)).is_equal(two)
-	# Both stopped: the squad is the home squad again, no order is sent, and the next wave must
-	# be the grown strength after a fresh start tick.
+	# Both stopped: the squad is the home squad again and no order is sent.
 	_world.order[_row_in_world(two[1])] = World.Order.IDLE
 	_think(LAUNCH + 60)
 	assert_array(_out).is_empty()
@@ -186,6 +189,15 @@ func test_a_wave_rejoins_the_home_squad_when_every_unit_has_stopped() -> void:
 	)
 	assert_int(_memory.wave_count).is_equal(1)
 	assert_int(_memory.squad_state[AiArmy.HOME]).is_equal(AiMemory.SquadState.HOME)
+	# The next wave asks the grown strength (1800), not the first (1200): 1500 does not launch,
+	# 2000 does.
+	_world.hp[_row_in_world(two[0])] = 325
+	_think(LAUNCH + 75)
+	assert_int(_memory.wave_count).is_equal(1)
+	assert_array(_out).is_empty()
+	_world.hp[_row_in_world(two[0])] = 650
+	_think(LAUNCH + 90)
+	assert_int(_memory.wave_count).is_equal(2)
 
 
 func test_from_the_all_in_tick_the_whole_home_squad_goes_whatever_its_value() -> void:
@@ -220,16 +232,26 @@ func test_after_the_all_in_tick_every_new_unit_joins_the_wave_with_its_own_order
 	assert_array(_out).is_empty()
 
 
-func test_an_all_in_joiner_of_a_shifted_home_squad_leaves_the_flag_clear() -> void:
+func test_an_all_in_joiner_of_a_shifted_home_squad_leaves_the_flag_clear_and_the_keys_held(
+) -> void:
 	_target_at()
 	_settle()
 	_think(ALL_IN)
-	_memory.squad_shifted[AiArmy.HOME] = 1
+	_memory.home_shifted = 1
+	_memory.squad_goal_x[AiArmy.HOME] = 20
+	_memory.squad_goal_y[AiArmy.HOME] = 20
 	_tank()
 	_settle()
 	_think(ALL_IN + 15)
 	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
-	assert_int(_memory.squad_shifted[AiArmy.HOME]).is_equal(0)
+	assert_int(_memory.home_shifted).is_equal(0)
+	assert_array([_memory.squad_goal_x[AiArmy.HOME], _memory.squad_goal_y[AiArmy.HOME]]).is_equal(
+		[STAGING.x, STAGING.y]
+	)
+	# Foot and tracked: the wave's two keys, held on the next thinks.
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
+	_think(ALL_IN + 30)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
 
 
 func test_the_all_in_tick_sends_a_retreating_wave_out_again_and_ends_retreats() -> void:
@@ -238,6 +260,10 @@ func test_the_all_in_tick_sends_a_retreating_wave_out_again_and_ends_retreats() 
 	AiRig.step(_world, _loop)
 	_think(LAUNCH + 15)
 	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.RETREAT)
+	# The squads are still walking home at the all-in tick: it, not idleness, ends the retreat.
+	AiRig.step(_world, _loop, _of(Command.Type.MOVE))
+	for id: int in _squads():
+		assert_int(_world.order[_row_in_world(id)]).is_equal(World.Order.MOVE)
 	_think(ALL_IN)
 	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
 	assert_int(sent.size()).is_equal(1)
@@ -250,6 +276,84 @@ func test_the_all_in_tick_sends_a_retreating_wave_out_again_and_ends_retreats() 
 	_think(ALL_IN + 15)
 	assert_array(_out).is_empty()
 	assert_int(_army.retreats).is_equal(1)
+
+
+func test_all_in_tick_zero_never_sends_everything() -> void:
+	var level: AiDifficultyDef = _level()
+	level.all_in_tick = 0
+	_arm_waves(level)
+	_target_at()
+	_settle()
+	# The two squads (200) are far under the strength: no launch at any tick.
+	for tick: int in [LAUNCH, ALL_IN, ALL_IN * 5]:
+		_think(tick)
+		assert_array(_of(Command.Type.ATTACK_MOVE)).is_empty()
+	assert_int(_memory.wave_count).is_equal(0)
+
+
+func test_the_all_in_overrides_the_defence_and_a_standing_threat() -> void:
+	_target_at()
+	_enemy("heavy_tank", 15500, 7500)
+	_settle()
+	_see_all()
+	_think(ALL_IN - 30)
+	_think(ALL_IN - 15)
+	assert_int(_army.defences).is_equal(0)
+	assert_int(_memory.wave_count).is_equal(0)
+	# The threat has stood for the reaction delay: no defence order, one launch order.
+	_think(ALL_IN)
+	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(_squads())
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([32500, 32500])
+	assert_int(_army.defences).is_equal(0)
+	# A new unit joins the wave with one order, not a defence order as well.
+	var late: int = _tank()
+	_see_all()
+	_think(ALL_IN + 15)
+	sent = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(PackedInt32Array([late]))
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([32500, 32500])
+	assert_int(_army.defences).is_equal(0)
+
+
+func test_a_wave_in_the_field_goes_on_after_the_headquarters_is_gone() -> void:
+	AiRig.give(_world, 1, "barracks", 12, 6)
+	var two: PackedInt32Array = _two_tanks()
+	var hq: int = _row_in_world(AiRig.ids_of(_world, 1, "headquarters")[0])
+	_world.hp[hq] = 0
+	for id: int in _squads():
+		_world.hp[_row_in_world(id)] = 0
+	AiRig.step(_world, _loop)
+	_think(LAUNCH + 15)
+	assert_int(_memory.home_x).is_equal(AiMemory.NONE)
+	# Tank a at 65 of 650 and tank b full: 1100 is half of 2200; 64 hp is under it.
+	_world.hp[_row_in_world(two[0])] = 64
+	_think(LAUNCH + 30)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+	assert_array(_of(Command.Type.MOVE)[0].unit_ids).is_equal(two)
+	assert_int(_army.retreats).is_equal(1)
+
+
+func test_a_wave_unit_s_hp_lost_in_the_wave_is_no_home_unseen_hit_after_the_disband() -> void:
+	var two: PackedInt32Array = _two_tanks()
+	for id: int in _squads():
+		_world.hp[_row_in_world(id)] = 0
+	# Tank a loses hp in the wave (no seen enemy near it), and the wave goes home.
+	_world.hp[_row_in_world(two[0])] = 1
+	AiRig.step(_world, _loop)
+	_think(LAUNCH + 15)
+	AiRig.step(_world, _loop, _of(Command.Type.MOVE))
+	for id: int in two:
+		_world.order[_row_in_world(id)] = World.Order.IDLE
+	_think(LAUNCH + 30)
+	assert_array(_members(AiArmy.HOME)).is_equal(two)
+	# Home again with the hp it has: no think finds a hit, no shift order is sent.
+	for tick: int in [LAUNCH + 45, LAUNCH + 60, LAUNCH + 75]:
+		_think(tick)
+		assert_array(_out).is_empty()
+	assert_int(_army.shifts).is_equal(0)
 
 
 ## Launches the first wave with two tanks (a, b ascending) and the squads: value 2200. Returns the
