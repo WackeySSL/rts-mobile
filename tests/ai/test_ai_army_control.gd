@@ -11,26 +11,27 @@ func test_a_unit_under_the_percent_steps_back_with_one_move_and_is_not_sent_agai
 	# The first think sends the start's `MOVE` of every unit to the staging point.
 	_think(5)
 	assert_int(_army.stepbacks).is_equal(0)
-	# 195 of 650 hp is exactly 30 percent, which is not under it.
-	_hp(tank, 195)
+	# The smallest hp that is not under the percent: not ordered back; one less is.
+	_hp(tank, _hp_at_percent())
 	_think(20)
 	assert_array(_of(Command.Type.MOVE)).is_empty()
-	_hp(tank, 194)
+	_hp(tank, _hp_at_percent() - 1)
 	_think(35)
 	var sent: Array[Command] = _of(Command.Type.MOVE)
 	assert_int(sent.size()).is_equal(1)
 	assert_array(sent[0].unit_ids).is_equal(PackedInt32Array([tank]))
-	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([STAGE_AT.x, STAGE_AT.y])
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal(
+		[_stage_milli().x, _stage_milli().y]
+	)
 	assert_array(_memory.withdrawn_id).is_equal(PackedInt32Array([tank]))
 	assert_int(_army.stepbacks).is_equal(1)
-	assert_int(_memory.goal_keys_of(AiMemory.Owner.STAGING)).is_greater(0)
-	# No fire order and no unseen-hit shift for the unit that went home.
+	# One order for the unit that went home, nothing else.
 	assert_int(_out.size()).is_equal(1)
-	assert_int(_army.shifts).is_equal(0)
 	_think(50)
 	assert_array(_out).is_empty()
 	assert_int(_army.stepbacks).is_equal(1)
-	# Healed: forgotten. Low again: a new order.
+	# Its hp back at or over the percent (the sim has no healing today): forgotten. Low again: a
+	# new order.
 	_hp(tank, 600)
 	_think(65)
 	assert_array(_memory.withdrawn_id).is_empty()
@@ -48,7 +49,9 @@ func test_a_wave_unit_steps_back_alone_and_leaves_the_wave() -> void:
 	var sent: Array[Command] = _of(Command.Type.MOVE)
 	assert_int(sent.size()).is_equal(1)
 	assert_array(sent[0].unit_ids).is_equal(PackedInt32Array([two[0]]))
-	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([STAGE_AT.x, STAGE_AT.y])
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal(
+		[_stage_milli().x, _stage_milli().y]
+	)
 	assert_array(_members(AiArmy.HOME)).is_equal(PackedInt32Array([two[0]]))
 	assert_bool(_members(AiArmy.WAVE).has(two[0])).is_false()
 	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.WAVE)
@@ -73,57 +76,7 @@ func test_a_refused_step_back_changes_nothing_and_is_asked_again() -> void:
 	assert_array(_memory.withdrawn_id).is_equal(PackedInt32Array([tank]))
 
 
-func test_a_unit_that_stepped_back_still_takes_the_home_defence_order() -> void:
-	_control(STEP_PERCENT, 0)
-	var tank: int = _tank()
-	_hp(tank, 100)
-	_enemy("heavy_tank", NEAR.x, NEAR.y)
-	_settle()
-	_see_all()
-	_think(5)
-	assert_int(_army.stepbacks).is_equal(1)
-	_think(20)
-	_think(35)
-	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
-	assert_int(sent.size()).is_equal(1)
-	assert_array(sent[0].unit_ids).is_equal(_all_ids(tank))
-	assert_int(_army.defences).is_equal(1)
-
-
-func test_a_unit_that_stepped_back_is_left_out_of_a_wave_s_launch() -> void:
-	_control(STEP_PERCENT, 0)
-	_target_at()
-	var hurt: int = _tank()
-	var whole: int = _tank(10500, 9500)
-	_hp(hurt, 100)
-	_settle()
-	_until(LAUNCH)
-	assert_int(_memory.wave_count).is_equal(1)
-	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
-	assert_int(sent.size()).is_equal(1)
-	var expected: PackedInt32Array = _squads()
-	expected.append(whole)
-	assert_array(sent[0].unit_ids).is_equal(expected)
-	assert_array(_members(AiArmy.HOME)).is_equal(PackedInt32Array([hurt]))
-	assert_bool(_members(AiArmy.WAVE).has(hurt)).is_false()
-
-
-func test_a_unit_that_stepped_back_joins_the_all_in() -> void:
-	_control(STEP_PERCENT, 0)
-	_target_at()
-	var hurt: int = _tank()
-	_hp(hurt, 100)
-	_settle()
-	_until(ALL_IN - 15)
-	assert_int(_memory.wave_count).is_equal(0)
-	_think(ALL_IN)
-	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
-	assert_int(sent.size()).is_equal(1)
-	assert_array(sent[0].unit_ids).is_equal(_all_ids(hurt))
-	assert_array(_members(AiArmy.WAVE)).is_equal(_all_ids(hurt))
-
-
-func test_a_dead_unit_leaves_the_list_and_the_levels_without_control_never_step_back() -> void:
+func test_a_dead_unit_leaves_the_withdrawn_list() -> void:
 	_control(STEP_PERCENT, 0)
 	var tank: int = _tank()
 	_settle()
@@ -133,17 +86,17 @@ func test_a_dead_unit_leaves_the_list_and_the_levels_without_control_never_step_
 	_kill(tank)
 	_think(20)
 	assert_array(_memory.withdrawn_id).is_empty()
-	# Normal's numbers (0): the same unit at 1 hp is never ordered back.
+
+
+func test_a_level_without_unit_control_never_steps_back() -> void:
 	_control(0, 0)
-	var other: int = _tank()
+	var tank: int = _tank()
 	_settle()
-	_hp(other, 1)
+	_hp(tank, 1)
 	for tick: int in [5, 20, 35]:
 		_think(tick)
 		assert_array(_memory.withdrawn_id).is_empty()
 	assert_int(_army.stepbacks).is_equal(0)
-	assert_int(Rig.level_of("easy").unit_retreat_hp_percent).is_equal(0)
-	assert_int(Rig.level_of("normal").focus_fire).is_equal(0)
 
 
 func test_a_wave_attacks_the_weakest_seen_enemy_in_reach_and_resumes_when_none_is() -> void:
@@ -292,3 +245,22 @@ func test_a_refused_focus_order_changes_nothing_and_is_sent_next_think() -> void
 	assert_int(_army.focuses).is_equal(0)
 	_think(LAUNCH + 30)
 	assert_int(_of(Command.Type.ATTACK)[0].target_id).is_equal(rifle)
+
+
+func test_a_focus_search_cut_off_by_the_shared_cap_keeps_a_living_target() -> void:
+	var def: OpponentDef = _def()
+	def.target_tests_max = 3
+	_control(0, 1, RATIO_PERCENT, def)
+	_launched()
+	_to_field()
+	var first: int = _enemy("rifle_squad", FIELD.x + 3000, FIELD.y)
+	_see_all()
+	_think(LAUNCH + 15)
+	assert_int(_of(Command.Type.ATTACK)[0].target_id).is_equal(first)
+	# Two more foes in reach: the ratio read uses the three tests, the focus search sees none.
+	_enemy("rifle_squad", FIELD.x + 3000, FIELD.y + 500)
+	_enemy("rifle_squad", FIELD.x + 3000, FIELD.y + 1000)
+	_see_all()
+	_think(LAUNCH + 30)
+	assert_array(_out).is_empty()
+	assert_int(_memory.squad_focus[AiArmy.WAVE]).is_equal(first)

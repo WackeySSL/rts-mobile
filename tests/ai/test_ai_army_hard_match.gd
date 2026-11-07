@@ -1,10 +1,13 @@
 extends GdUnitTestSuite
 ## A whole Hard-vs-Hard match of `OpponentAi` (plan row P180b, seed 1): the unit control (the
 ## step-back and the focus fire) runs on the shipped Hard level. It runs to its end or to 13 500
-## ticks, and the sim must have dropped none of the Commands the two AIs sent. Its end, its length
-## and who wins are NOT asserted: the balance run judges those. Every think it checks the bounds no
-## tuning can move: the goal keys within the cap and the army's within two, no Command cut, the
-## tests within the def's, the work within 3 and the step-back list within the unit cap.
+## ticks, and the sim must have dropped none of the Commands the two AIs sent (so the step-back
+## `MOVE`s and the focus `ATTACK`s pass the sim's validation). Its end, its length and who wins
+## are NOT asserted: the balance run judges those. Two asserts are seed-1 pins under exception 20:
+## that step-backs and focus orders happen at all; a tuning row that zeroes one changes the seed
+## and lists it. Every think it checks the bounds no tuning can move: the goal keys within the cap
+## and the army's and the staging's within two, no Command cut, the tests within the def's, the
+## work within 3 and the step-back list within the AI's own unit count.
 
 const AiRig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const FactionRig: GDScript = preload("res://tests/ai/support/faction_rig.gd")
@@ -27,9 +30,10 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 		for ai: OpponentAi in ais:
 			assert_int(ai.memory.goal_keys()).is_less_equal(ai.memory.goal_keys_max)
 			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.ARMY)).is_less_equal(2)
+			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.STAGING)).is_less_equal(2)
 			assert_int(ai.commands_cut).is_equal(0)
 			assert_int(ai.army.tests).is_less_equal(cap)
-			assert_int(ai.memory.withdrawn_id.size()).is_less_equal(world.unit_cap)
+			assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_id.size())
 	assert_int(world.dropped_commands).is_equal(0)
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)

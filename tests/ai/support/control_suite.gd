@@ -3,27 +3,51 @@ extends "res://tests/ai/support/wave_suite.gd"
 ## the army made on a copy of Normal's level that holds the suite's own unit-control numbers. Not a
 ## test suite.
 
-## A heavy tank's hp (data), the step-back percent the suite plays (Hard ships 30) and where the
-## staging point is, in milli-tiles.
-const TANK_HP: int = 650
+## The step-back percent the suite plays (Hard ships 30).
 const STEP_PERCENT: int = 30
-const STAGE_AT: Vector2i = Vector2i(11500, 11500)
 ## A spot for a wave in the field, and a spot of the base: 8 tiles east of the Headquarters.
 const FIELD: Vector2i = Vector2i(20500, 20500)
 const NEAR: Vector2i = Vector2i(15500, 7500)
 
 
-## The suite's level with the step-back percent `hp_percent`, `focus` (0 or 1) and the ratio, on a
-## def without the unseen-hit shift (a unit's hp lost here is not a hit the squad answers).
+## The suite's level with the step-back percent `hp_percent`, `focus` (0 or 1), the ratio and the
+## first wave's strength. A passed `def` is used as it is; the default def has no unseen-hit shift
+## (a unit's hp lost here is not a hit the squad answers).
 func _control(
-	hp_percent: int, focus: int, ratio: int = RATIO_PERCENT, def: OpponentDef = null
+	hp_percent: int,
+	focus: int,
+	ratio: int = RATIO_PERCENT,
+	def: OpponentDef = null,
+	strength: int = STRENGTH
 ) -> void:
 	var level: AiDifficultyDef = _level(0, ratio)
 	level.unit_retreat_hp_percent = hp_percent
 	level.focus_fire = focus
-	var own: OpponentDef = def if def != null else _def()
-	own.unseen_hit_shift_tiles = 0
+	level.wave_first_strength = strength
+	var own: OpponentDef = def
+	if own == null:
+		own = _def()
+		own.unseen_hit_shift_tiles = 0
 	_arm_waves(level, own)
+
+
+## The staging point in milli-tiles.
+func _stage_milli() -> Vector2i:
+	return _centre(STAGING)
+
+
+## The smallest hp of a heavy tank that is not under the step-back percent.
+func _hp_at_percent() -> int:
+	var max_hp: int = _view().type_max_hp[AiRig.type_of(_world, "heavy_tank")]
+	@warning_ignore("integer_division")
+	return (max_hp * STEP_PERCENT + 99) / 100
+
+
+## Thinks on the slots from `first` up to and including `last` (15 apart), keeping the Commands of
+## the last.
+func _between(first: int, last: int) -> void:
+	for tick: int in range(first, last + 1, 15):
+		_think(tick)
 
 
 ## Sets the hp of the unit `id` (any owner).

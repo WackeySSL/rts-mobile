@@ -8,7 +8,7 @@ func test_a_threat_that_outweighs_the_home_squad_recalls_the_wave_to_defend() ->
 	_two_tanks()
 	_to_field()
 	var wave: PackedInt32Array = _members(AiArmy.WAVE)
-	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
+	_enemy("heavy_tank", NEAR.x, NEAR.y)
 	_see_all()
 	# Seen at LAUNCH + 15; the defence answers 30 ticks later, and so does the recall.
 	_think(LAUNCH + 15)
@@ -31,7 +31,6 @@ func test_a_threat_that_outweighs_the_home_squad_recalls_the_wave_to_defend() ->
 	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([NEAR.x, NEAR.y])
 	assert_array(_of(Command.Type.MOVE)).is_empty()
 	assert_int(_army.retreats).is_equal(0)
-	assert_int(_view().row_of(foe)).is_greater_equal(0)
 
 
 func test_a_threat_that_does_not_outweigh_the_home_squad_leaves_the_wave_out() -> void:
@@ -81,7 +80,7 @@ func test_a_level_without_a_ratio_never_recalls() -> void:
 func test_the_all_in_overrides_the_recall() -> void:
 	_two_tanks()
 	_to_field()
-	_until(ALL_IN - 15)
+	_between(LAUNCH + 15, ALL_IN - 15)
 	_enemy("heavy_tank", NEAR.x, NEAR.y)
 	_see_all()
 	# Seen at ALL_IN: the all-in tick is the first without a defence and without a recall.
@@ -99,6 +98,7 @@ func test_armed_seen_buildings_count_in_the_ratio_by_their_hp() -> void:
 	_to_field()
 	var turret: int = AiRig.type_of(_world, "defence_turret")
 	var cost: int = _view().type_cost[turret]
+	@warning_ignore("integer_division")
 	var count: int = 2200 / cost
 	for index: int in count:
 		AiRig.give(_world, 2, "defence_turret", 14 + index * 3, 29)
@@ -108,10 +108,17 @@ func test_armed_seen_buildings_count_in_the_ratio_by_their_hp() -> void:
 	# `count` turrets are worth at most 2200: not past it.
 	assert_array(_of(Command.Type.MOVE)).is_empty()
 	assert_int(_army.retreats).is_equal(0)
-	AiRig.give(_world, 2, "defence_turret", 14 + count * 3, 29)
+	# An unfinished turret (work left) does not count either.
+	var site: int = AiRig.give(_world, 2, "defence_turret", 14 + count * 3, 29)
+	_world.build_left[_world.index_of(site)] = 1000000
 	_settle()
 	_see_all()
 	_think(LAUNCH + 30)
+	assert_array(_of(Command.Type.MOVE)).is_empty()
+	AiRig.give(_world, 2, "defence_turret", 14 + (count + 1) * 3, 29)
+	_settle()
+	_see_all()
+	_think(LAUNCH + 45)
 	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
 	assert_int(_army.retreats).is_equal(1)
 	# Out of every weapon's range, so nothing fought: a whole turret is worth its cost.
@@ -141,13 +148,16 @@ func test_a_damaged_armed_building_counts_its_hp_share() -> void:
 	_two_tanks()
 	_to_field()
 	var cost: int = _view().type_cost[AiRig.type_of(_world, "defence_turret")]
+	@warning_ignore("integer_division")
 	var count: int = 2200 / cost + 1
 	var ids: Array[int] = []
 	for index: int in count:
 		ids.append(AiRig.give(_world, 2, "defence_turret", 14 + index * 3, 29))
 	# Every turret at a third of its hp: `count` of them are worth a third of `count` costs.
+	@warning_ignore("integer_division")
+	var third: int = _view().type_max_hp[AiRig.type_of(_world, "defence_turret")] / 3
 	for id: int in ids:
-		_hp(id, _view().type_max_hp[AiRig.type_of(_world, "defence_turret")] / 3)
+		_hp(id, third)
 	_settle()
 	_see_all()
 	_think(LAUNCH + 15)
@@ -160,7 +170,7 @@ func test_a_dead_wave_s_army_keys_go_in_the_all_in_with_a_threat_standing() -> v
 	_two_tanks()
 	_enemy("heavy_tank", NEAR.x, NEAR.y)
 	_see_all()
-	_until(ALL_IN - 15)
+	_between(LAUNCH + 15, ALL_IN - 15)
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
 	for id: int in _members(AiArmy.WAVE):
 		_hp(id, 0)
@@ -228,8 +238,52 @@ func test_a_retreat_follows_the_staging_point_when_it_moves() -> void:
 		[13, 7]
 	)
 	# The books hold the new point and not the old one; asked once.
+	var staged: int = 0
 	for key: int in _memory.goal_keys():
 		assert_bool(_memory.goal_x[key] == 11 and _memory.goal_y[key] == 11).is_false()
-	assert_int(_memory.goal_keys_of(AiMemory.Owner.STAGING)).is_greater(0)
+		if _memory.goal_x[key] == 13 and _memory.goal_y[key] == 7:
+			assert_int(_memory.goal_owner[key] & (1 << AiMemory.Owner.STAGING)).is_not_equal(0)
+			staged += 1
+	assert_int(staged).is_greater(0)
 	_think(LAUNCH + 45)
 	assert_array(_of(Command.Type.MOVE)).is_empty()
+
+
+func test_a_recall_with_the_threat_on_the_staging_tile_still_gets_the_units_an_order() -> void:
+	_two_tanks()
+	_to_field()
+	var wave: PackedInt32Array = _members(AiArmy.WAVE)
+	var foe: int = _enemy("heavy_tank", STAGING.x * 1000 + 500, STAGING.y * 1000 + 500)
+	_see_all()
+	_between(LAUNCH + 15, LAUNCH + 45)
+	assert_int(_army.recalls).is_equal(1)
+	# The threat leaves before the defence could send them: the return brings them home.
+	_kill(foe)
+	_think(LAUNCH + 60)
+	var sent: Array[Command] = _of(Command.Type.MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(wave)
+	assert_array([sent[0].target_x, sent[0].target_y]).is_equal(
+		[_stage_milli().x, _stage_milli().y]
+	)
+
+
+func test_a_threat_that_left_does_not_recall_the_wave_on_the_last_think_s_read() -> void:
+	_two_tanks()
+	_to_field()
+	var home: int = _tank(8500, 11500)
+	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	# 1000 against the home tank's 1000 times 2: no recall; the reaction delay has passed.
+	_between(LAUNCH + 15, LAUNCH + 45)
+	assert_int(_army.recalls).is_equal(0)
+	# The home tank dies and the foe steps out of every building's radius, 6 tiles from where the
+	# threat stood: a stale threat would recall the wave against a home worth 0.
+	_kill(home)
+	_put(foe, 21500, 7500)
+	_see_all()
+	_think(LAUNCH + 60)
+	assert_int(_memory.threat_first_tick).is_equal(AiMemory.NONE)
+	assert_int(_army.recalls).is_equal(0)
+	assert_int(_memory.squad_state[AiArmy.WAVE]).is_equal(AiMemory.SquadState.WAVE)
