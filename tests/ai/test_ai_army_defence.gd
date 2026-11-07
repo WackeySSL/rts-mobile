@@ -235,20 +235,22 @@ func test_a_threat_that_stays_after_the_whole_home_squad_died_releases_the_army_
 
 func test_the_threat_search_stops_at_the_def_s_test_cap_and_takes_the_best_it_tested() -> void:
 	var def: OpponentDef = _def()
-	def.target_tests_max = 3
+	def.target_tests_max = 2
 	_arm("normal", def)
-	# One building. The enemy's two starting squads (far away, seen) take two tests, the first foe
-	# the third; the nearest foe has the highest id and is never tested.
+	# One building. The enemy's two starting squads are far away: the box pre-filter skips them
+	# without a test (P180). The first two foes take the two tests and the nearer of them is the
+	# best tested; the nearest foe has the highest id and is never tested.
 	_enemy("heavy_tank", 17500, 7500)
+	_enemy("heavy_tank", 15500, 7500)
 	_enemy("heavy_tank", 13500, 7500)
 	_settle()
 	_see_all()
 	_think(FIRST)
-	assert_int(_army.tests).is_equal(3)
+	assert_int(_army.tests).is_equal(2)
 	assert_int(_memory.threat_first_tick).is_equal(FIRST)
 	_think(FIRST + 30)
-	assert_int(_army.tests).is_equal(3)
-	assert_array([_out[0].target_x, _out[0].target_y]).is_equal([17500, 7500])
+	assert_int(_army.tests).is_equal(2)
+	assert_array([_out[0].target_x, _out[0].target_y]).is_equal([15500, 7500])
 
 
 func test_the_squads_go_back_to_the_staging_point_once_when_the_threat_is_gone() -> void:

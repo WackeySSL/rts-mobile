@@ -66,6 +66,11 @@ func test_no_unit_order_went_beyond_the_radius_of_a_building_and_the_first_went_
 	)
 
 
+func test_the_scenario_ends_before_any_wave_or_scout_so_the_audit_sees_every_order() -> void:
+	assert_int(_ai.waves).is_equal(0)
+	assert_int(_ai.scouts).is_equal(0)
+
+
 func test_the_sim_dropped_nothing_the_opponent_sent() -> void:
 	assert_int(_world.dropped_commands).is_equal(0)
 
@@ -105,6 +110,9 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 	var world: World = FactionRig.start("fossil", "renew")
 	var loop: MatchLoop = AiRig.loop_of(world)
 	var ais: Array = [Rig.opponent("fossil", "normal", 1), Rig.opponent("renew", "hard", 2)]
+	var caps: Array[int] = [
+		Rig.def_of("fossil").target_tests_max, Rig.def_of("renew").target_tests_max
+	]
 	var most_keys: int = 0
 	var army_orders: int = 0
 	for _tick: int in MATCH_TICKS:
@@ -119,7 +127,10 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 				var row: int = world.index_of(id)
 				if row >= 0:
 					assert_int(world.owner[row]).is_equal(command.player_id)
-		for ai: OpponentAi in ais:
+		for at: int in ais.size():
+			var ai: OpponentAi = ais[at]
+			# The tests of a think stay within its own def's cap, every think.
+			assert_int(ai.army.tests).is_less_equal(caps[at])
 			most_keys = maxi(most_keys, ai.memory.goal_keys())
 			assert_int(ai.memory.goal_keys()).is_less_equal(ai.memory.goal_keys_max)
 			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.ARMY)).is_less_equal(2)
@@ -130,7 +141,6 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)
 		assert_int(ai.commands_cut).is_equal(0)
-		assert_int(ai.army.tests).is_less_equal(Rig.def_of("fossil").target_tests_max)
 		assert_bool(ai.memory.has_staging()).is_true()
 
 
