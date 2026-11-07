@@ -297,7 +297,7 @@ func test_the_army_goal_is_one_cell_with_a_key_per_class() -> void:
 
 
 func test_the_army_has_precedence_over_the_scout_which_yields_at_the_cap() -> void:
-	# Staging holds foot and tracked (two keys) and the scout one: three of four. A mixed defence
+	# Staging holds foot and tracked (two keys) and the scout one: three of KEYS (4). A mixed defence
 	# needs two more: the scout's key goes, the army and the staging point keep theirs.
 	AiRig.give(_world, 1, "barracks", 12, 6)
 	AiRig.give(_world, 1, "vehicle_factory", 12, 10)
@@ -338,7 +338,7 @@ func test_the_scout_keeps_its_key_when_there_is_room_for_the_army() -> void:
 				_memory.goal_keys()
 			]
 		)
-		. is_equal([1, 1, 4])
+		. is_equal([1, 1, KEYS])
 	)
 
 

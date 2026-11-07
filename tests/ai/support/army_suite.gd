@@ -7,9 +7,11 @@ extends "res://tests/ai/support/intel_suite.gd"
 ## toward the point mirror (32, 32), (4, 4) along each axis after the integer division.
 const STAGING: Vector2i = Vector2i(11, 11)
 ## The numbers the suites own (the def is copied and set to them, so a tuning row of the shipped
-## `data/ai/` cannot move them): the staging offset and the defence radius, in tiles.
+## `data/ai/` cannot move them): the staging offset and the defence radius, in tiles, and the
+## goal-key cap.
 const OFFSET: int = 6
 const RADIUS: int = 12
+const KEYS: int = 4
 
 var _army: AiArmy = null
 
@@ -28,11 +30,12 @@ func _arm(level: String, def: OpponentDef = null) -> void:
 	_army = AiArmy.create(own, Rig.level_of(level), 1)
 
 
-## A copy of the fossil def with the suite's staging offset and defence radius.
+## A copy of the fossil def with the suite's staging offset, defence radius and key cap.
 func _def() -> OpponentDef:
 	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
 	def.staging_offset_tiles = OFFSET
 	def.defend_radius_tiles = RADIUS
+	def.goal_keys_max = KEYS
 	return def
 
 
