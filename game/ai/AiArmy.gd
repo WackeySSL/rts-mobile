@@ -44,8 +44,8 @@ var focus_fire: bool = false
 ## Counted for the suites: tests of the last run: the threat search's, the home focus search's, the
 ## wave's ratio read, the recall's read and the wave focus search's (they all share the cap of
 ## `tests_max`, in that order, so an earlier one that uses it up leaves the later ones blind that
-## think); over the match RALLY
-## Commands, defence and return orders sent, and orders refused for want of keys.
+## think); over the match RALLY Commands, defence and return orders sent, and orders refused for
+## want of keys.
 var tests: int = 0
 var rallies: int = 0
 var defences: int = 0
@@ -704,11 +704,12 @@ static func _armed(view: PlayerView, row: int) -> bool:
 
 
 ## Launches the next wave when the draw is made, its tick has come, no threat stands at the base
-## (this think's: the threat search ran first) and the home squad's value reaches the strength: the
-## whole home squad goes to the target (`base` of the memory: the nearest known producer, else the
-## estimate). The start tick is drawn once per wave, after the first tick or after the last wave
-## ended. From the all-in tick the launch ignores the strength, the tick and a standing threat (the
-## all-in overrides the defence, `_all_in_wave`).
+## (this think's: the threat search ran first) and the value of the units that march reaches the
+## strength: the home squad but for its withdrawn units goes to the target (`base` of the memory:
+## the nearest known producer, else the estimate). The all-in counts and sends every unit. The start
+## tick is drawn once per wave, after the first tick or after the last wave ended. From the all-in
+## tick the launch ignores the strength, the tick and a standing threat (the all-in overrides the
+## defence, `_all_in_wave`).
 func _launch(
 	view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command], all_in: bool
 ) -> void:
@@ -886,11 +887,12 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 ## tie) within the defence radius of the group's centre, at most `tests_max` tests a run (shared
 ## with the threat search). The group gets one `ATTACK` on it when it is a new target (the home
 ## squad also when a unit joined since); the target's tile is the squad's goal and the army goal.
-## The key books the target's tile at order time: the sim re-keys an `ATTACK` field toward its
-## moving target, one field either way, so the key count holds (parked for P26bh). The tests share
-## the cap with the reads that ran first (see `tests`); a search the cap cut off before any
-## candidate keeps a living target. True while a target is in reach (sent, held or refused: the
-## group's own order waits), false when none is, which also forgets the old target.
+## The key books the target's tile at order time: the sim re-keys each unit's `ATTACK` field toward
+## the moving target, so for a few ticks two cells may be live while the books hold the order-time
+## tile. The tests share the cap with the reads that ran first (see `tests`); a search the cap cut
+## off before any candidate keeps a living target as the candidate (a joiner still gets the order).
+## True while a target is in reach (sent, held or refused: the group's own order waits), false when
+## none is, which also forgets the old target.
 func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
 	_capped = false
 	var sum: Vector2i = Vector2i.ZERO
@@ -901,10 +903,10 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 	if not members.is_empty():
 		@warning_ignore("integer_division")
 		best = _weakest(view, memory, sum / members.size())
+	var kept: int = memory.squad_focus[squad]
+	if best < 0 and _capped and kept != AiMemory.NONE:
+		best = view.row_of(kept)
 	if best < 0:
-		var kept: int = memory.squad_focus[squad]
-		if _capped and kept != AiMemory.NONE and view.row_of(kept) >= 0:
-			return true
 		memory.squad_focus[squad] = AiMemory.NONE
 		return false
 	var target: int = view.row_id(best)
@@ -929,7 +931,6 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 func _weakest(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
 	var found: int = -1
 	var least: int = 0
-	_capped = false
 	for id: int in memory.seen_unit_id:
 		if tests >= tests_max:
 			_capped = true

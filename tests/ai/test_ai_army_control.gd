@@ -264,3 +264,27 @@ func test_a_focus_search_cut_off_by_the_shared_cap_keeps_a_living_target() -> vo
 	_think(LAUNCH + 30)
 	assert_array(_out).is_empty()
 	assert_int(_memory.squad_focus[AiArmy.WAVE]).is_equal(first)
+
+
+func test_a_capped_search_still_sends_a_joiner_to_the_kept_target() -> void:
+	var def: OpponentDef = _def()
+	def.target_tests_max = 4
+	_control(0, 1, RATIO_PERCENT, def)
+	var foe: int = _enemy("rifle_squad", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	for tick: int in [5, 20, 35]:
+		_think(tick)
+	assert_int(_of(Command.Type.ATTACK)[0].target_id).is_equal(foe)
+	# Four more foes in the box: the threat search uses the four tests, the focus search none.
+	for index: int in 4:
+		_enemy("heavy_tank", NEAR.x + 1000, NEAR.y + index * 300)
+	var late: int = _tank()
+	_settle()
+	_see_all()
+	_think(50)
+	var sent: Array[Command] = _of(Command.Type.ATTACK)
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].target_id).is_equal(foe)
+	assert_array(sent[0].unit_ids).is_equal(_all_ids(late))
+	assert_int(_memory.squad_focus[AiArmy.HOME]).is_equal(foe)
