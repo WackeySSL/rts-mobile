@@ -136,6 +136,8 @@ func test_a_retreat_the_budget_cannot_pay_changes_nothing_and_is_asked_again() -
 
 
 func test_a_retreat_leaves_the_army_key_to_a_defence_that_holds_it() -> void:
+	# No ratio, so no recall: the retreat here is the percent's.
+	_arm_waves(_level(0, 0))
 	var two: PackedInt32Array = _two_tanks()
 	# A new squad stays at home and defends against a foe at the base: the army goal is its now.
 	var defender: int = AiRig.add_unit_of(_world, 1, "rifle_squad", 8500, 11500)

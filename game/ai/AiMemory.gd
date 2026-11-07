@@ -98,6 +98,11 @@ var seen_site_id: PackedInt32Array = PackedInt32Array()
 ## whose squad's shift was not sent keeps its older value, so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
+## Hard's unit control (P180b): the own units that stepped back on their own and are still under
+## `unit_retreat_hp_percent` (ids ascending, at most `unit_cap`; no group order names them), and per
+## squad the id of the enemy its group was last ordered to `ATTACK` (NONE: none).
+var withdrawn_id: PackedInt32Array = PackedInt32Array()
+var squad_focus: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
 ## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
@@ -128,6 +133,8 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.squad_role.fill(NONE)
 	memory.squad_goal_x.fill(NONE)
 	memory.squad_goal_y.fill(NONE)
+	memory.squad_focus.resize(memory.squads_max)
+	memory.squad_focus.fill(NONE)
 	memory.sector_own.resize(memory.sectors_max)
 	memory.sector_enemy.resize(memory.sectors_max)
 	memory.scout_picked.resize(memory.sectors_max)
