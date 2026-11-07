@@ -32,6 +32,8 @@ var economy: AiEconomy = null
 var production: AiProduction = null
 ## The army manager (P179), slot ARMY after the intel refresh.
 var army: AiArmy = null
+## The superweapon manager (P181), slot INTEL after the intel run (`strikes` is the counter).
+var striker: AiStrikes = null
 
 ## The level and def, copied into ints. A manager copies the values it reads itself when it is made
 ## (plan row of ADR 0030 section 6), so only what the controller uses is here.
@@ -61,6 +63,7 @@ static func create(
 	ai.economy = AiEconomy.create(def, chosen, player_id)
 	ai.production = AiProduction.create(def, chosen, player_id)
 	ai.army = AiArmy.create(def, chosen, player_id)
+	ai.striker = AiStrikes.create(def, chosen, player_id)
 	return ai
 
 
@@ -117,3 +120,6 @@ func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.run(view, memory, rng, out)
 	work += intel.passes
 	scouts = intel.scouts
+	striker.run(view, memory, rng, out)
+	work += striker.passes
+	strikes = striker.strikes

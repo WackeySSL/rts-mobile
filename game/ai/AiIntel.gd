@@ -93,6 +93,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	memory.site_y.clear()
 	memory.unit_id.clear()
 	memory.unit_hp.clear()
+	memory.aux_id.clear()
 	memory.seen_unit_id.clear()
 	memory.seen_site_id.clear()
 	var hq: int = view.type_index_of(hq_type)
@@ -116,6 +117,8 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		elif _combat[type] != 0 and type != scout:
 			memory.unit_id.append(view.row_id(row))
 			memory.unit_hp.append(view.row_hp(row))
+		else:
+			memory.aux_id.append(view.row_id(row))
 	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:

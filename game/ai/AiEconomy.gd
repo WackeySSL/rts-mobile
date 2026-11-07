@@ -75,6 +75,9 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._defence_id = def.defence_type
 	if tier < def.build_orders.size() and def.build_orders[tier] != null:
 		economy._steps = def.build_orders[tier].steps.duplicate()
+	if level.uses_strike == 0:
+		while economy._steps.has(def.strike_type):
+			economy._steps.erase(def.strike_type)
 	economy._queue_target = def.queue_target
 	economy._stride = maxi(def.place_stride_tiles, 1)
 	economy._power_margin = def.power_margin
