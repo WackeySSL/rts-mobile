@@ -117,7 +117,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Tap the menu button (at the start of the pill, top left) | The match pauses and the screen dims, the battle controls hidden behind it. "Paused" stands top left over a card with your side's emblem, the map's name, the goal (destroy the enemy Headquarters and every production building, with an open check circle), the time and your units lost; below it (to the right when the phone is held sideways) stand the buttons in one column: Resume (the big one in your colour), Restart, Surrender (in red), Exit to menu (a Developer menu button too in a debug or preview build), and the Vibration switch under them. Nothing else reacts while it stands; the game does not run behind it | yes |
 | Tap Resume | The menu closes and the match goes on where it stopped | |
-| Tap Restart, Surrender or Exit to menu | A question asks first; "Keep playing" closes it and the match stays paused. Restart begins a new match of the same Skirmish against the same computer side; Exit to menu returns to the dev menu until the start page exists. Surrender loses the match at once and the result screen follows | yes |
+| Tap Restart, Surrender or Exit to menu | A question asks first; "Keep playing" closes it and the match stays paused. Restart begins a new match of the same Skirmish against the same computer side at the same level; Exit to menu returns to the dev menu until the start page exists. Surrender loses the match at once and the result screen follows | yes |
 | Tap Vibration | Switches the phone's buzz off or on (it reads "VIBRATION: ON" in colour or "VIBRATION: OFF" greyed out). It is kept on the phone for the next match and silences every buzz of the game | |
 | Turn the phone with the pause menu open | It stays open, the match stays paused, and the menu takes the other layout | |
 | The match ends | The pause menu cannot open over the result screen | |
@@ -159,14 +159,21 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 ## Factions
 | Action | Result | Teach |
 |---|---|---|
-| Open the dev menu (in a debug or preview build: the pause menu's "Developer menu" button) and choose "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build drawer shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
+| Open the dev menu (in a debug or preview build: the pause menu's "Developer menu" button), choose Easy, Normal or Hard (Normal is chosen at first; the choice is named at the top right of the menu), then "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom, at the level you chose. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build drawer shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
+
+## The computer opponent
+| Action | Result | Teach |
+|---|---|---|
+| Play against Easy, Normal or Hard | The computer sees only what its units see and plays by your rules. Easy reacts slowly, builds a smaller base and attacks in small groups; Normal sends a scout early, mixes its army and attacks in waves that grow; Hard builds faster and reacts sooner | yes |
+| Attack the computer's base | It calls its army home to defend | |
+| Beat back a wave | A group that has lost too much pulls back home and comes again with the next wave; Hard also pulls single damaged units back and fires at your weakest unit first | |
 
 ## Winning
 | Action | Result | Teach |
 |---|---|---|
 | Destroy the enemy's Headquarters and every building that trains units or builds vehicles | You win: the match ends at once. Lose all of yours and you lose it; if both sides fall in the same moment the match is a draw | yes |
 | Tap Surrender in the pause menu | A question stands over the screen. "Keep playing" closes it and nothing happens; "Surrender" loses the match at once. Nothing is sent before you answer, and the map and the buttons behind the question do not react while it stands (a finger already on the map or the full map when it opens is let go: it orders and pans nothing, and the mouse wheel does not zoom) | |
-| The match ends | A screen covers the game with a word and a picture: VICTORY (a star), DEFEAT (a broken shield) or DRAW (an equals sign), the time the match took, and for you and for the enemy the units built, the units lost, the buildings lost and the credits harvested (the losses count only for a side that had a production building). "Play again" starts a new match of the same Skirmish against the same computer side, "Back" returns to the dev menu. The game does not go on behind the screen | |
+| The match ends | A screen covers the game with a word and a picture: VICTORY (a star), DEFEAT (a broken shield) or DRAW (an equals sign), the time the match took, and for you and for the enemy the units built, the units lost, the buildings lost and the credits harvested (the losses count only for a side that had a production building). "Play again" starts a new match of the same Skirmish against the same computer side at the same level, "Back" returns to the dev menu. The game does not go on behind the screen | |
 
 ## Not yet in the game
 Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).

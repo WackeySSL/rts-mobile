@@ -51,11 +51,54 @@ size_flags_vertical = 3
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Title" type="Label" parent="SafeArea/Scroll/Center/Column"]
+[node name="Header" type="HBoxContainer" parent="SafeArea/Scroll/Center/Column"]
 layout_mode = 2
+
+[node name="Title" type="Label" parent="SafeArea/Scroll/Center/Column/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"NumberLabel"
 text = "Dev menu"
-horizontal_alignment = 1
+
+[node name="LevelLabel" type="Label" parent="SafeArea/Scroll/Center/Column/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Level: Normal"
+horizontal_alignment = 2
+
+[node name="LevelRow" type="HBoxContainer" parent="SafeArea/Scroll/Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="LevelEasyButton" type="Button" parent="SafeArea/Scroll/Center/Column/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Easy"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/LevelRow/LevelEasyButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(72, 48)
+
+[node name="LevelNormalButton" type="Button" parent="SafeArea/Scroll/Center/Column/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Normal"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/LevelRow/LevelNormalButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(72, 48)
+
+[node name="LevelHardButton" type="Button" parent="SafeArea/Scroll/Center/Column/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Hard"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/LevelRow/LevelHardButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(72, 48)
 
 [node name="Grid" type="GridContainer" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
