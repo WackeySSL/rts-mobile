@@ -18,7 +18,7 @@ func test_a_threat_is_answered_only_after_the_reaction_delay_on_exact_ticks() ->
 		_settle()
 		_see_all()
 		var acted: Array[int] = []
-		for tick: int in range(FIRST, FIRST + 120, 15):
+		for tick: int in range(FIRST, FIRST + delay + 60, 15):
 			_think(tick)
 			if not _of(Command.Type.ATTACK_MOVE).is_empty():
 				acted.append(tick)
@@ -27,8 +27,10 @@ func test_a_threat_is_answered_only_after_the_reaction_delay_on_exact_ticks() ->
 				assert_array(command.unit_ids).is_equal(_squads())
 				assert_array([command.target_x, command.target_y]).is_equal([NEAR.x, NEAR.y])
 				assert_int(command.player_id).is_equal(1)
-		# One order, on the first slot at or after first-seen plus the delay.
-		assert_array(acted).is_equal([FIRST + delay])
+		# One order, on the first slot (15 ticks apart) at or after first-seen plus the delay.
+		@warning_ignore("integer_division")
+		var due: int = FIRST + (delay + 14) / 15 * 15
+		assert_array(acted).is_equal([due])
 		assert_int(_memory.threat_first_tick).is_equal(FIRST)
 		assert_int(_view().row_of(foe)).is_greater_equal(0)
 
@@ -210,6 +212,25 @@ func test_a_defence_with_no_home_squad_holds_no_army_key() -> void:
 	assert_array(_out).is_empty()
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(0)
 	assert_array([_memory.squad_goal_x[0], _memory.squad_goal_y[0]]).is_equal([16, 8])
+
+
+func test_a_threat_that_stays_after_the_whole_home_squad_died_releases_the_army_keys() -> void:
+	_enemy("heavy_tank", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	for tick: int in [0, 15, 30]:
+		_think(FIRST + tick)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
+	for id: int in _squads():
+		_world.hp[_row_in_world(id)] = 0
+	AiRig.step(_world, _loop)
+	_see_all()
+	# The foe has not moved: the goal is the same tile, and no unit is left to hold the keys.
+	_think(FIRST + 45)
+	assert_array(_out).is_empty()
+	assert_int(_memory.unit_id.size()).is_equal(0)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(0)
+	assert_array([_memory.squad_goal_x[0], _memory.squad_goal_y[0]]).is_equal([15, 7])
 
 
 func test_the_threat_search_stops_at_the_def_s_test_cap_and_takes_the_best_it_tested() -> void:

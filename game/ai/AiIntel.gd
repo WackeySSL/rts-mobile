@@ -92,7 +92,9 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	memory.site_x.clear()
 	memory.site_y.clear()
 	memory.unit_id.clear()
+	memory.unit_hp.clear()
 	memory.seen_unit_id.clear()
+	memory.seen_site_id.clear()
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
 	var hq_id: int = NO_ID
@@ -113,6 +115,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 				memory.home_y = at.y
 		elif _combat[type] != 0 and type != scout:
 			memory.unit_id.append(view.row_id(row))
+			memory.unit_hp.append(view.row_hp(row))
 	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:
@@ -121,6 +124,8 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		memory.sector_enemy[sector_at(at.x, at.y)] += _value(view, row)
 		if _combat[view.row_type(row)] != 0:
 			memory.seen_unit_id.append(view.row_id(row))
+		elif _entry(view.type_foot_w, view.row_type(row)) > 0:
+			memory.seen_site_id.append(view.row_id(row))
 	for record: int in view.ghost_count:
 		if not _remembered(view, record):
 			continue

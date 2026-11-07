@@ -86,9 +86,17 @@ var site_x: PackedInt32Array = PackedInt32Array()
 var site_y: PackedInt32Array = PackedInt32Array()
 var unit_id: PackedInt32Array = PackedInt32Array()
 var seen_unit_id: PackedInt32Array = PackedInt32Array()
-## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending.
+## Also filled by `refresh` (P179b): the hp of each unit of `unit_id` now (same order), and the seen
+## enemy buildings' ids (at most (players - 1) x `building_cap`).
+var unit_hp: PackedInt32Array = PackedInt32Array()
+var seen_site_id: PackedInt32Array = PackedInt32Array()
+## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending. A unit
+## whose squad's shift was not sent keeps its older value, so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
+## Per squad, 1 while its goal is a shift AiArmy made after a hit by the unseen (the return to the
+## staging point leaves such a goal alone until a defence replaces it), else 0.
+var squad_shifted: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
 ## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
@@ -116,6 +124,7 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.squad_goal_x.resize(memory.squads_max)
 	memory.squad_goal_y.resize(memory.squads_max)
 	memory.squad_launch_value.resize(memory.squads_max)
+	memory.squad_shifted.resize(memory.squads_max)
 	memory.squad_role.fill(NONE)
 	memory.squad_goal_x.fill(NONE)
 	memory.squad_goal_y.fill(NONE)
