@@ -184,3 +184,77 @@ func test_a_unit_that_joins_in_the_slot_of_the_shift_is_named_by_it() -> void:
 	_think(FIRST + 30)
 	assert_array(_out).is_empty()
 	assert_int(_memory.home_shifted).is_equal(1)
+
+
+func test_an_idle_member_that_fires_at_a_foe_in_range_keeps_the_probe_until_it_is_gone() -> void:
+	# No defence radius: the foe is no threat, only a target in weapon range of the arrived squad.
+	_arm_shift()
+	_start()
+	_shift_at(FIRST + 15)
+	_walk_until_idle()
+	var at: Vector2i = Vector2i(
+		_world.pos_x[_row_in_world(_squads()[0])], _world.pos_y[_row_in_world(_squads()[0])]
+	)
+	var foe: int = _enemy("rifle_squad", at.x + 2000, at.y)
+	_see_all()
+	_think(FIRST + 700)
+	assert_array(_out).is_empty()
+	assert_array([_memory.home_shifted, _memory.goal_keys_of(AiMemory.Owner.ARMY)]).is_equal([1, 1])
+	_world.hp[_row_in_world(foe)] = 0
+	AiRig.step(_world, _loop)
+	_see_all()
+	_think(FIRST + 715)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+	assert_array([_memory.home_shifted, _memory.goal_keys_of(AiMemory.Owner.ARMY)]).is_equal([0, 0])
+
+
+func test_a_shift_that_lands_on_the_staging_tile_still_ends_with_the_keys_released() -> void:
+	_arm_shift()
+	_start()
+	# A defence goal (8, 8) whose return was refused: the shift from it lands on (11, 11).
+	_memory.squad_goal_x[0] = 8
+	_memory.squad_goal_y[0] = 8
+	_shift_at(FIRST + 15)
+	assert_array(_goal()).is_equal([11, 11])
+	_walk_until_idle()
+	_see_all()
+	_think(FIRST + 700)
+	assert_array([_memory.home_shifted, _memory.goal_keys_of(AiMemory.Owner.ARMY)]).is_equal([0, 0])
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.STAGING)).is_equal(1)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+
+
+func test_a_fresh_unit_walking_to_the_rally_point_does_not_hold_the_probe() -> void:
+	_arm_shift()
+	_start()
+	_shift_at(FIRST + 15)
+	var tank: int = AiRig.add_unit_of(_world, 1, "heavy_tank", 8500, 9500)
+	_think(FIRST + 30)
+	assert_array(_out).is_empty()
+	AiRig.step(_world, _loop, [Command.move(1, PackedInt32Array([tank]), 20500, 20500)])
+	_walk_until_idle()
+	_see_all()
+	_think(FIRST + 700)
+	var moves: Array[Command] = _of(Command.Type.MOVE)
+	assert_int(moves.size()).is_equal(1)
+	assert_array(moves[0].unit_ids).is_equal(PackedInt32Array([_squads()[0], _squads()[1], tank]))
+	assert_int(_memory.home_shifted).is_equal(0)
+
+
+func test_a_range_test_cut_off_by_the_cap_does_not_hold_the_probe() -> void:
+	_arm_shift()
+	_start()
+	_shift_at(FIRST + 15)
+	_walk_until_idle()
+	var at: Vector2i = Vector2i(
+		_world.pos_x[_row_in_world(_squads()[0])], _world.pos_y[_row_in_world(_squads()[0])]
+	)
+	# The foe has the highest id, so it is the last row of the seen lists: the last test.
+	_enemy("rifle_squad", at.x + 2000, at.y)
+	_see_all()
+	_intel.refresh(_view(), _memory)
+	var rows: int = _memory.seen_unit_id.size() + _memory.seen_site_id.size()
+	_army.tests_max = rows - 1
+	_think(FIRST + 700)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+	assert_int(_memory.home_shifted).is_equal(0)
