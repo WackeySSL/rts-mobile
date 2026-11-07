@@ -93,7 +93,6 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	memory.site_y.clear()
 	memory.unit_id.clear()
 	memory.unit_hp.clear()
-	memory.aux_id.clear()
 	memory.seen_unit_id.clear()
 	memory.seen_site_id.clear()
 	var hq: int = view.type_index_of(hq_type)
@@ -117,8 +116,6 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		elif _combat[type] != 0 and type != scout:
 			memory.unit_id.append(view.row_id(row))
 			memory.unit_hp.append(view.row_hp(row))
-		else:
-			memory.aux_id.append(view.row_id(row))
 	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:
@@ -130,7 +127,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		elif _entry(view.type_foot_w, view.row_type(row)) > 0:
 			memory.seen_site_id.append(view.row_id(row))
 	for record: int in view.ghost_count:
-		if not _remembered(view, record):
+		if not remembered(view, record):
 			continue
 		var at: Vector2i = _tile(view.ghost_pos(record))
 		memory.sector_enemy[sector_at(at.x, at.y)] += _entry(
@@ -149,10 +146,13 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	var scout_rows: int = 0
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
+	memory.own_mobile_id.clear()
 	passes += 1
 	for row: int in view.own_rows:
 		var type: int = view.row_type(row)
 		var id: int = view.row_id(row)
+		if _entry(view.type_foot_w, type) <= 0:
+			memory.own_mobile_id.append(id)
 		if type == hq and id < hq_id:
 			hq_id = id
 			home = _tile(view.row_pos(row))
@@ -187,6 +187,7 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 	_best = Vector2i(-1, -1)
 	_best_distance = -1
 	_best_id = 0
+	memory.seen_mobile_id.clear()
 	var from: Vector2i = home if home.x >= 0 else Vector2i(view.map_cols / 2, view.map_rows / 2)
 	passes += 1
 	for row: int in view.seen_rows:
@@ -195,16 +196,18 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 		var type: int = view.row_type(row)
 		_counts[type] += 1
 		_seen_now[type] += 1
-		if _is_producer(view, type):
+		if _combat[type] == 0 and _entry(view.type_foot_w, type) <= 0:
+			memory.seen_mobile_id.append(view.row_id(row))
+		if is_producer(view, type):
 			_offer(_tile(view.row_pos(row)), view.row_id(row), from)
 	for record: int in view.ghost_count:
-		if not _remembered(view, record):
+		if not remembered(view, record):
 			continue
 		var type: int = view.ghost_type[record]
 		if type < 0 or type >= _counts.size():
 			continue
 		_counts[type] += 1
-		if _is_producer(view, type):
+		if is_producer(view, type):
 			_offer(_tile(view.ghost_pos(record)), view.ghost_id[record], from)
 	for type: int in _counts.size():
 		if _counts[type] == 0:
@@ -233,7 +236,7 @@ func _offer(at: Vector2i, id: int, from: Vector2i) -> void:
 
 ## Whether the ghost `record` is a building of another player that no row of the view shows now (a
 ## seen building is read as its row, once).
-static func _remembered(view: PlayerView, record: int) -> bool:
+static func remembered(view: PlayerView, record: int) -> bool:
 	return view.ghost_owner[record] != view.player and view.row_of(view.ghost_id[record]) < 0
 
 
@@ -454,6 +457,8 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 		sector_side = side
 		sector_cols = _span(_map_cols, side)
 		sector_rows = _span(_map_rows, side)
+	memory.sector_side = sector_side
+	memory.sector_cols = sector_cols
 	var size: int = maxi(sectors_max, sector_count())
 	if memory.sector_own.size() != size:
 		memory.sector_own.resize(size)
@@ -503,7 +508,7 @@ static func _tile(pos: Vector2i) -> Vector2i:
 
 
 ## Whether `type` produces a tab (a building with a queue).
-static func _is_producer(view: PlayerView, type: int) -> bool:
+static func is_producer(view: PlayerView, type: int) -> bool:
 	var tab: int = (
 		view.type_produces[type] if type >= 0 and type < view.type_produces.size() else -1
 	)

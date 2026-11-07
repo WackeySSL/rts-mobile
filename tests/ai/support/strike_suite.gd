@@ -21,17 +21,30 @@ var _strike: int = 0
 
 
 func before_test() -> void:
-	super()
-	_arm_strikes()
-	_strike = _give_strike("fossil_strike", 12, 2)
+	_world = FactionRig.start(_side(), "fossil")
+	_loop = AiRig.loop_of(_world)
+	_arm_strikes("normal", 1, _side())
+	_strike = _give_strike(_side() + "_strike", 12, 2)
 
 
-## The strike manager of a copy of the def of `faction` (the suite's minimum and tests) at a copy
-## of Normal's level (`uses_strike` as given, the suite's reaction), and a fresh memory.
-func _arm_strikes(level: String = "normal", uses: int = 1, faction: String = "fossil") -> void:
+## The faction of player 1 (player 2 is always the Derrick League): a suite overrides it.
+func _side() -> String:
+	return "fossil"
+
+
+## The strike manager of a copy of the def of `faction` (`least` as `strike_min_value`, `tests` as
+## `target_tests_max`) at a copy of Normal's level (`uses_strike` as given, the suite's reaction),
+## and a fresh memory.
+func _arm_strikes(
+	level: String = "normal",
+	uses: int = 1,
+	faction: String = "fossil",
+	least: int = MIN,
+	tests: int = TESTS
+) -> void:
 	var def: OpponentDef = Rig.def_of(faction).duplicate() as OpponentDef
-	def.strike_min_value = MIN
-	def.target_tests_max = TESTS
+	def.strike_min_value = least
+	def.target_tests_max = tests
 	var chosen: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
 	chosen.uses_strike = uses
 	chosen.reaction_ticks = REACTION
@@ -39,6 +52,7 @@ func _arm_strikes(level: String = "normal", uses: int = 1, faction: String = "fo
 	_memory = AiMemory.create(def)
 	_striker = AiStrikes.create(def, chosen, 1)
 	_rng = DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1)
+	_out = []
 
 
 ## Player 1's strike building `id` with its top-left tile at (`col`, `line`), charged from `READY`.
@@ -48,14 +62,16 @@ func _give_strike(id: String, col: int, line: int) -> int:
 	return building
 
 
-## An INTEL slot at `tick` with a budget of `budget`: the intel refresh and run (the sightings),
-## then the strike manager; `_out` holds what the strike manager sent.
-func _fire(tick: int, budget: int = 8) -> void:
+## An INTEL slot at `tick` with a budget of `budget`: the intel refresh (unless `refresh` is false:
+## the ARMY slot's lists then stay as they were) and run (the sightings), then the strike manager;
+## `_out` holds what the strike manager sent.
+func _fire(tick: int, budget: int = 8, refresh: bool = true) -> void:
 	_world.tick = tick
 	var view: PlayerView = _view()
 	_memory.commands_left = budget
 	_scratch = []
-	_intel.refresh(view, _memory)
+	if refresh:
+		_intel.refresh(view, _memory)
 	_intel.run(view, _memory, _rng, _scratch)
 	_memory.commands_left = budget
 	_out = []
@@ -87,3 +103,10 @@ func _cluster() -> void:
 	_enemy_building("vehicle_factory", 30, 30)
 	_enemy_building("barracks", 29, 33)
 	_see_all()
+
+
+## The point of the one SUPERWEAPON of `_out`, as [x, y].
+func _target() -> Array[int]:
+	var shots: Array[Command] = _shots()
+	assert_int(shots.size()).is_equal(1)
+	return [shots[0].target_x, shots[0].target_y]

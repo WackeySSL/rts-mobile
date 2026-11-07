@@ -94,9 +94,16 @@ var seen_unit_id: PackedInt32Array = PackedInt32Array()
 ## enemy buildings' ids (at most (players - 1) x `building_cap`).
 var unit_hp: PackedInt32Array = PackedInt32Array()
 var seen_site_id: PackedInt32Array = PackedInt32Array()
-## Filled by `refresh` for `AiStrikes` (P181) in its own pass: the own units `unit_id` leaves out
-## (the scout type and every non-combat unit, the tankers), ids ascending, at most `unit_cap`.
-var aux_id: PackedInt32Array = PackedInt32Array()
+## Filled by `AiIntel.run` for `AiStrikes` (P181) in its passes over the own and the seen rows, so
+## as fresh as the INTEL slot's view: every own row that is not a building, and every seen enemy row
+## that is neither a building nor a combat unit (the tankers); ids ascending, at most `unit_cap` and
+## (players - 1) times `unit_cap`.
+var own_mobile_id: PackedInt32Array = PackedInt32Array()
+var seen_mobile_id: PackedInt32Array = PackedInt32Array()
+## The sector grid `AiIntel` last used, for a reader that maps a point to its sector: tiles per side
+## and sectors per row (0 before the first intel call).
+var sector_side: int = 0
+var sector_cols: int = 0
 ## Strikes: the wave count the Dusk Array last fired for (0: none; the first wave makes it 1).
 var strike_wave: int = 0
 ## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending. A unit

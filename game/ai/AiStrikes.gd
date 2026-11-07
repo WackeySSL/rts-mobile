@@ -3,31 +3,49 @@ extends RefCounted
 ## The opponent's superweapon manager (ADR 0030 sections 1, 4 and 6, plan row P181), slot INTEL
 ## after `AiIntel.run`. It sends at most one `SUPERWEAPON` a think, from the own strike building of
 ## the def's `strike_type`, and only when the sim would take it: the level uses strikes, no own
-## rupture is pending (`own_strike_tick`; a blackout never sets it, and nothing may follow a
-## rupture), the building is complete, charged and not blacked out, and the think has budget
-## (`can_send` first, then `spent`; a Command that is not sent changes nothing in the memory).
+## rupture is pending (`own_strike_tick`; the sim drops a second SUPERWEAPON while the player's
+## rupture is pending), the building is complete, charged and not blacked out, and the think has
+## budget (`can_send` first, then `spent`; a Command not sent changes nothing in the memory).
 ##
 ## A Deep Bore (rupture) fires on the point of the most enemy value within its radius that holds no
-## own row, once that value is not below `strike_min_value`. A Dusk Array (blackout) fires once per
-## wave, on the enemy producers' densest cluster, while the wave is in the field. The two are told
-## apart by the view's `type_strike_kind`, not by a name. Both read only what the AI may know: the
-## seen enemy buildings and units that `AiIntel.refresh` listed, and the ghosts. A thing counts once
-## its type's first sighting is `reaction_ticks` old. The sector map is read first (an enemy that
-## totals under the minimum cannot make a shot); then at most `target_tests_max` (anchor, thing)
-## tests a run, the anchors being the things of most value when they are too many to test all.
+## own row and no live army goal (the wave's goal while a wave is in the field, the home goal while
+## a defence stands: the army is walking there and the shot lands 45 ticks later), once that value
+## is not below `strike_min_value`. A Dusk Array (blackout) fires once per wave, while the wave has
+## a live member, on the producer cluster of most value, preferring the producers within reach of
+## the wave's goal. The two are told apart by the view's `type_strike_kind`, not by a name. Both
+## read only what the AI may know: the seen enemy buildings, combat units and other units (tankers)
+## that `AiIntel` listed, and the ghosts. A thing counts once its type's first sighting is
+## `reaction_ticks` old.
 ##
-## No pass over the view's rows: the own buildings and units are the lists `refresh` filled in the
-## ARMY slot (`site_*`, `unit_id`, `aux_id`), found again by id, so the INTEL slot's `work` stays 3.
-## Those lists are one slot (5 ticks) old: a row made since is not in the own-row check. The ghosts
-## are walked, as intel does, and are not a pass over rows. No random number is drawn.
+## The search (ADR 0030 section 4: sectors first, then rows). The Deep Bore reads the sector map
+## first: an enemy that totals under the minimum cannot make a shot. The things are the first
+## `target_tests_max` of the lists in id order (seen buildings, units, other units, ghosts); the
+## anchors are ranked by their sector's enemy value, then by their own value, the earlier thing
+## first. Each anchor in turn is skipped when an own row or army goal holds its radius (one counted
+## test per such row, taken from the own rows inside the things' box grown by the radius, which is
+## a pre-filter and not counted), else its radius is summed (one counted test per thing). The run
+## stops when the next step would pass `target_tests_max`: a check cut off by the cap is not clear.
+##
+## No pass over the view's rows: the own buildings are the list `refresh` filled, the own and seen
+## units the lists `AiIntel.run` filled in this very slot, found again by id. The ghosts are walked,
+## as intel does, and are not a pass over rows. No random number is drawn.
 
 ## `type_strike_kind` values (`Strike.Kind`; a test pins them equal).
 const RUPTURE: int = 1
 const BLACKOUT: int = 2
 const _NONE: Vector2i = Vector2i(-1, -1)
+## The anchor sort key: the thing's index in the low bits (inverted, so the earlier thing sorts
+## higher), its value above them and its sector's value on top; at most 4,095 things.
+const _THING_BITS: int = 12
+const _THING_MASK: int = (1 << _THING_BITS) - 1
+const _THINGS_MAX: int = _THING_MASK
+const _VALUE_BITS: int = 16
+const _VALUE_MASK: int = (1 << _VALUE_BITS) - 1
+const _SECTOR_SHIFT: int = _THING_BITS + _VALUE_BITS
+const _SECTOR_MASK: int = (1 << 24) - 1
 
-## Passes over the view's rows (always 0), the (anchor, thing) tests of the last run, and the
-## shots sent over the match.
+## Passes over the view's rows (always 0), the counted tests of the last run, and the shots sent
+## over the match.
 var passes: int = 0
 var tests: int = 0
 var strikes: int = 0
@@ -39,11 +57,14 @@ var _tests_max: int = 0
 var _reaction: int = 0
 ## The strike type as an index of the view's roster, found on the first run (-2: not yet).
 var _type: int = -2
-## Scratch kept between runs: the things of a search (milli-tiles, credits) and the anchors' marks.
+## Scratch kept between runs: the things of a search (milli-tiles, credits), the anchors' sort keys
+## and the own rows and goals that could hold an anchor's radius.
 var _x: PackedInt32Array = PackedInt32Array()
 var _y: PackedInt32Array = PackedInt32Array()
 var _value: PackedInt32Array = PackedInt32Array()
-var _used: PackedByteArray = PackedByteArray()
+var _keys: PackedInt64Array = PackedInt64Array()
+var _bx: PackedInt32Array = PackedInt32Array()
+var _by: PackedInt32Array = PackedInt32Array()
 
 
 ## A manager that copies what it reads of `def` and `level`.
@@ -52,7 +73,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	strike._uses = level.uses_strike != 0
 	strike._strike_id = def.strike_type
 	strike._min_value = maxi(def.strike_min_value, 0)
-	strike._tests_max = maxi(def.target_tests_max, 1)
+	strike._tests_max = clampi(def.target_tests_max, 1, _THINGS_MAX)
 	strike._reaction = maxi(level.reaction_ticks, 0)
 	return strike
 
@@ -67,9 +88,9 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	if _type < 0 or _type >= view.type_strike_kind.size():
 		return
 	var kind: int = view.type_strike_kind[_type]
-	if kind == BLACKOUT and not _wave_in_field(memory):
+	if kind == BLACKOUT and not _wave_in_field(view, memory):
 		return
-	var building: int = _ready(view, memory)
+	var building: int = _charged_building(view, memory)
 	if building == AiMemory.NONE:
 		return
 	var radius: int = view.type_strike_radius[_type]
@@ -87,18 +108,23 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 		memory.strike_wave = memory.wave_count
 
 
-## Whether a wave is in the field that the Dusk Array has not yet answered.
-func _wave_in_field(memory: AiMemory) -> bool:
-	return (
-		memory.squads_max > AiArmy.WAVE
-		and memory.squad_state[AiArmy.WAVE] == AiMemory.SquadState.WAVE
-		and memory.wave_count > memory.strike_wave
-	)
+## Whether a wave with a live member is in the field that the Dusk Array has not yet answered.
+func _wave_in_field(view: PlayerView, memory: AiMemory) -> bool:
+	if (
+		memory.squads_max <= AiArmy.WAVE
+		or memory.squad_state[AiArmy.WAVE] != AiMemory.SquadState.WAVE
+		or memory.wave_count <= memory.strike_wave
+	):
+		return false
+	for at: int in memory.member_id.size():
+		if memory.member_squad[at] == AiArmy.WAVE and view.row_of(memory.member_id[at]) >= 0:
+			return true
+	return false
 
 
 ## The id of the lowest own strike building that is complete, charged and online now (the sim's
 ## test, with the stamp `tick + 1`), NONE for none.
-func _ready(view: PlayerView, memory: AiMemory) -> int:
+func _charged_building(view: PlayerView, memory: AiMemory) -> int:
 	var stamp: int = view.tick + 1
 	for id: int in memory.site_id:
 		var row: int = view.row_of(id)
@@ -109,8 +135,8 @@ func _ready(view: PlayerView, memory: AiMemory) -> int:
 	return AiMemory.NONE
 
 
-## The Deep Bore's point: the thing whose radius holds the most enemy value, with no own row in it
-## and not below the minimum; `_NONE` for none.
+## The Deep Bore's point: the thing whose radius holds the most enemy value, with no own row or army
+## goal in it and not below the minimum; `_NONE` for none.
 func _bore_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i:
 	var total: int = 0
 	for value: int in memory.sector_enemy:
@@ -118,18 +144,29 @@ func _bore_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i:
 	if total < _min_value:
 		return _NONE
 	_gather(view, memory, false)
-	return _best(view, memory, radius, _min_value, true)
+	_block(view, memory, radius)
+	return _best(view, memory, radius, _min_value, _NONE)
 
 
-## The Dusk Array's point: the enemy producer whose radius holds the most producer value.
+## The Dusk Array's point: the producer whose radius holds the most producer value, among those in
+## reach of the wave's goal when there are any, else among all.
 func _cluster_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i:
 	_gather(view, memory, true)
-	return _best(view, memory, radius, 1, false)
+	_bx.clear()  # A blackout hits no own building: nothing keeps a point clear.
+	_by.clear()
+	var goal: Vector2i = Vector2i(
+		memory.squad_goal_x[AiArmy.WAVE], memory.squad_goal_y[AiArmy.WAVE]
+	)
+	if goal.x >= 0 and goal.y >= 0:
+		var near: Vector2i = _best(view, memory, radius, 1, _centre(goal))
+		if near != _NONE:
+			return near
+	return _best(view, memory, radius, 1, _NONE)
 
 
-## Fills the scratch with the enemy things the AI may act on: the seen buildings, then (unless
-## `producers_only`) the seen combat units, then the remembered buildings, ids ascending inside each
-## group, at most `_tests_max` of them.
+## Fills the scratch with the enemy things the AI may act on, at most `_tests_max` of them: the
+## seen buildings, then (unless `producers_only`) the seen combat units and other units, then the
+## remembered buildings, ids ascending inside each group.
 func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 	_x.clear()
 	_y.clear()
@@ -139,15 +176,17 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 	if not producers_only:
 		for id: int in memory.seen_unit_id:
 			_take(view, memory, view.row_of(id), false)
+		for id: int in memory.seen_mobile_id:
+			_take(view, memory, view.row_of(id), false)
 	for record: int in view.ghost_count:
 		if _x.size() >= _tests_max:
 			return
 		var type: int = view.ghost_type[record]
-		if view.ghost_owner[record] <= 0 or view.ghost_owner[record] == view.player:
+		if view.ghost_owner[record] <= 0 or not AiIntel.remembered(view, record):
 			continue
-		if view.row_of(view.ghost_id[record]) >= 0 or not _known(view, memory, type):
+		if not _known(view, memory, type):
 			continue
-		if producers_only and not _produces(view, type):
+		if producers_only and not AiIntel.is_producer(view, type):
 			continue
 		var pos: Vector2i = view.ghost_pos(record)
 		_add(pos.x, pos.y, view.type_cost[type])
@@ -159,7 +198,9 @@ func _take(view: PlayerView, memory: AiMemory, row: int, producers_only: bool) -
 	var type: int = view.row_type(row)
 	if view.row_owner(row) <= 0 or view.row_owner(row) == view.player:
 		return
-	if not _known(view, memory, type) or (producers_only and not _produces(view, type)):
+	if not _known(view, memory, type):
+		return
+	if producers_only and not AiIntel.is_producer(view, type):
 		return
 	var pos: Vector2i = view.row_pos(row)
 	_add(pos.x, pos.y, AiIntel.value_of(view, row))
@@ -171,64 +212,128 @@ func _add(x: int, y: int, value: int) -> void:
 	_value.append(value)
 
 
-## The best anchor among the scratch: the thing whose `radius` holds the largest sum of value, not
-## below `least` (at least 1) and, with `own_free`, with none of the own rows inside. The anchors
-## are all the things when n * n fits the tests, else the `tests_max / n` of most value (an equal
-## value goes to the earlier thing). A tie in the sum goes to the earlier anchor tested.
-func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, own_free: bool) -> Vector2i:
+## Fills `_bx`, `_by` with the own rows (buildings from `site_*`, units from `own_mobile_id`) and
+## the live army goals that lie within `radius` of the things' bounding box. Not counted: it is
+## the pre-filter of the own check.
+func _block(view: PlayerView, memory: AiMemory, radius: int) -> void:
+	_bx.clear()
+	_by.clear()
+	if _x.is_empty():
+		return
+	var lo: Vector2i = Vector2i(_x[0] - radius, _y[0] - radius)
+	var hi: Vector2i = Vector2i(_x[0] + radius, _y[0] + radius)
+	for at: int in _x.size():
+		lo = Vector2i(mini(lo.x, _x[at] - radius), mini(lo.y, _y[at] - radius))
+		hi = Vector2i(maxi(hi.x, _x[at] + radius), maxi(hi.y, _y[at] + radius))
+	for at: int in memory.site_x.size():
+		_keep(memory.site_x[at], memory.site_y[at], lo, hi)
+	for id: int in memory.own_mobile_id:
+		var row: int = view.row_of(id)
+		if row >= 0:
+			var pos: Vector2i = view.row_pos(row)
+			_keep(pos.x, pos.y, lo, hi)
+	var wave: int = AiArmy.WAVE
+	if (
+		memory.squads_max > wave
+		and memory.squad_role[wave] != AiMemory.NONE
+		and memory.squad_state[wave] == AiMemory.SquadState.WAVE
+	):
+		_keep_goal(memory.squad_goal_x[wave], memory.squad_goal_y[wave], lo, hi)
+	if memory.squads_max > AiArmy.HOME and memory.threat_first_tick != AiMemory.NONE:
+		_keep_goal(memory.squad_goal_x[AiArmy.HOME], memory.squad_goal_y[AiArmy.HOME], lo, hi)
+
+
+func _keep_goal(col: int, line: int, lo: Vector2i, hi: Vector2i) -> void:
+	if col >= 0 and line >= 0:
+		var at: Vector2i = _centre(Vector2i(col, line))
+		_keep(at.x, at.y, lo, hi)
+
+
+func _keep(x: int, y: int, lo: Vector2i, hi: Vector2i) -> void:
+	if x >= lo.x and x <= hi.x and y >= lo.y and y <= hi.y:
+		_bx.append(x)
+		_by.append(y)
+
+
+## The best anchor among the scratch (see the header): the thing whose `radius` holds the largest
+## sum of value, not below `least` (at least 1). With a `goal` (not `_NONE`) only anchors within
+## `radius` of it count. A tie in the sum goes to the earlier anchor tried.
+func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Vector2i) -> Vector2i:
 	var count: int = _x.size()
-	if count == 0:
-		return _NONE
-	var anchors: int = clampi(_tests_max / count, 1, count)
-	_used.resize(count)
-	_used.fill(0)
 	var reach: int = radius * radius
+	_rank(view, memory)
 	var best_sum: int = maxi(least, 1) - 1
 	var best: Vector2i = _NONE
-	for _round: int in anchors:
-		var anchor: int = _next_anchor(count)
-		_used[anchor] = 1
+	for step: int in count:
+		var anchor: int = _THING_MASK - (_keys[count - 1 - step] & _THING_MASK)
+		if goal != _NONE and _far(_x[anchor], _y[anchor], goal.x, goal.y, reach):
+			continue
+		var clear: int = _clear(anchor, reach)
+		if clear < 0:
+			break
+		if clear == 0:
+			continue
+		if tests + count > _tests_max:
+			break
 		var sum: int = 0
 		for other: int in count:
 			tests += 1
-			var dx: int = _x[other] - _x[anchor]
-			var dy: int = _y[other] - _y[anchor]
-			if dx * dx + dy * dy <= reach:
+			if not _far(_x[other], _y[other], _x[anchor], _y[anchor], reach):
 				sum += _value[other]
-		if sum > best_sum and (not own_free or _clear(view, memory, anchor, reach)):
+		if sum > best_sum:
 			best_sum = sum
 			best = Vector2i(_x[anchor], _y[anchor])
 	return best
 
 
-## The unused thing of most value (the earliest on a tie).
-func _next_anchor(count: int) -> int:
-	var found: int = -1
-	for thing: int in count:
-		if _used[thing] == 0 and (found < 0 or _value[thing] > _value[found]):
-			found = thing
-	return found
+## Sorts the anchors: `_keys` ascending, so the last is the best: the sector's enemy value, then the
+## thing's value, then the earlier thing (the sort is native, an uncounted sort of at most
+## `_tests_max` ints).
+func _rank(view: PlayerView, memory: AiMemory) -> void:
+	_keys.resize(_x.size())
+	for at: int in _x.size():
+		var sector: int = clampi(_sector_value(view, memory, _x[at], _y[at]), 0, _SECTOR_MASK)
+		var value: int = clampi(_value[at], 0, _VALUE_MASK)
+		_keys[at] = (sector << _SECTOR_SHIFT) | (value << _THING_BITS) | (_THING_MASK - at)
+	_keys.sort()
 
 
-## Whether no own building or unit lies within `reach` (squared milli-tiles) of the anchor.
-func _clear(view: PlayerView, memory: AiMemory, anchor: int, reach: int) -> bool:
-	for at: int in memory.site_x.size():
-		if _near(memory.site_x[at], memory.site_y[at], anchor, reach):
-			return false
-	for list: PackedInt32Array in [memory.unit_id, memory.aux_id]:
-		for id: int in list:
-			var row: int = view.row_of(id)
-			if row >= 0:
-				var pos: Vector2i = view.row_pos(row)
-				if _near(pos.x, pos.y, anchor, reach):
-					return false
-	return true
+## The enemy value of the sector that holds the point (0 before intel has made the grid).
+func _sector_value(view: PlayerView, memory: AiMemory, x: int, y: int) -> int:
+	if memory.sector_side <= 0:
+		return 0
+	var col: int = clampi(x / PlayerView.MILLI_PER_TILE, 0, maxi(view.map_cols - 1, 0))
+	var line: int = clampi(y / PlayerView.MILLI_PER_TILE, 0, maxi(view.map_rows - 1, 0))
+	@warning_ignore("integer_division")
+	var at: int = line / memory.sector_side * memory.sector_cols + col / memory.sector_side
+	return memory.sector_enemy[at] if at < memory.sector_enemy.size() else 0
 
 
-func _near(x: int, y: int, anchor: int, reach: int) -> bool:
-	var dx: int = x - _x[anchor]
-	var dy: int = y - _y[anchor]
-	return dx * dx + dy * dy <= reach
+## 1 when no own row or goal of the pre-filter is within `reach` of the anchor, 0 when one is, and
+## -1 when the cap on counted tests ends the check first.
+func _clear(anchor: int, reach: int) -> int:
+	for at: int in _bx.size():
+		if tests >= _tests_max:
+			return -1
+		tests += 1
+		if not _far(_bx[at], _by[at], _x[anchor], _y[anchor], reach):
+			return 0
+	return 1
+
+
+## Whether (x, y) is farther than `reach` (squared milli-tiles) from (px, py): a row exactly on the
+## radius is hit by the sim, so it is not far.
+static func _far(x: int, y: int, px: int, py: int, reach: int) -> bool:
+	var dx: int = x - px
+	var dy: int = y - py
+	return dx * dx + dy * dy > reach
+
+
+## The centre of a tile in milli-tiles.
+static func _centre(tile: Vector2i) -> Vector2i:
+	return (
+		tile * PlayerView.MILLI_PER_TILE + Vector2i(PlayerView.TILE_CENTRE, PlayerView.TILE_CENTRE)
+	)
 
 
 ## Whether the type's first sighting is `reaction_ticks` old (ADR 0030 section 2).
@@ -237,11 +342,3 @@ func _known(view: PlayerView, memory: AiMemory, type: int) -> bool:
 		return false
 	var first: int = memory.seen_first_tick[type]
 	return first != AiMemory.NONE and view.tick - first >= _reaction
-
-
-## Whether the type is a building with a queue.
-static func _produces(view: PlayerView, type: int) -> bool:
-	var tab: int = (
-		view.type_produces[type] if type >= 0 and type < view.type_produces.size() else -1
-	)
-	return tab >= 0 and tab < PlayerView.TABS

@@ -5,23 +5,23 @@ extends "res://tests/ai/support/strike_suite.gd"
 ## strike building is the Lumen Accord's, so player 1 is the Lumen Accord and player 2 the Derrick
 ## League. One case plays the wave through the real `AiArmy`.
 
-## The factory's centre, the cluster's point (a radius of 4,000 holds the barracks beside it).
+## The factory's centre, the cluster's point: no other producer is within the radius of 4,000.
 const CLUSTER_POINT: Vector2i = Vector2i(31500, 31500)
-## The wave numbers of the integration case: the first tick and strength (a heavy tank and the two
-## starting rifle squads: 1000 + 100 + 100); the first ARMY slot is tick 5, 15 ticks apart.
+## The far barracks the wave's goal may point at.
+const FAR_POINT: Vector2i = Vector2i(7000, 29000)
+## The wave numbers of the integration case: the first tick and strength (a Lumen Accord tank and
+## the two starting rifle squads: 1000 + 100 + 100); the first ARMY slot is tick 5, 15 ticks apart.
 const WAVE_TICK: int = 100
 const WAVE_STRENGTH: int = 1200
 const LAUNCH: int = 110
+## The army's own numbers for that case: staging offset and defence radius (tiles), and the keys.
+const OFFSET: int = 6
+const DEFENCE: int = 12
+const KEYS: int = 4
 
-var _dusk: int = 0
 
-
-func before_test() -> void:
-	super()
-	_world = FactionRig.start("renew", "fossil")
-	_loop = AiRig.loop_of(_world)
-	_arm_strikes("normal", 1, "renew")
-	_dusk = _give_strike("renew_strike", 16, 2)
+func _side() -> String:
+	return "renew"
 
 
 func test_without_a_wave_in_the_field_the_array_waits() -> void:
@@ -51,7 +51,7 @@ func test_a_launched_wave_makes_the_array_fire_on_the_producer_cluster() -> void
 	assert_int(shots.size()).is_equal(1)
 	(
 		assert_array([shots[0].player_id, shots[0].target_id, shots[0].target_x, shots[0].target_y])
-		. is_equal([1, _dusk, CLUSTER_POINT.x, CLUSTER_POINT.y])
+		. is_equal([1, _strike, CLUSTER_POINT.x, CLUSTER_POINT.y])
 	)
 	assert_int(_memory.strike_wave).is_equal(1)
 	assert_int(_memory.commands_left).is_equal(7)
@@ -77,8 +77,8 @@ func test_the_array_answers_a_wave_once_and_the_next_wave_again() -> void:
 	_fire(READY)
 	_fire(KNOWN)
 	AiRig.step(_world, _loop, _shots())
-	_world.ready_tick[_row_in_world(_dusk)] = 0
-	_world.offline_until[_row_in_world(_dusk)] = 0
+	_world.ready_tick[_row_in_world(_strike)] = 0
+	_world.offline_until[_row_in_world(_strike)] = 0
 	_fire(KNOWN + 15)
 	assert_array(_out).is_empty()
 	_wave(2, AiMemory.SquadState.WAVE)
@@ -119,7 +119,7 @@ func test_no_known_producer_means_no_shot_and_the_wave_stays_unanswered() -> voi
 func test_the_charge_and_the_budget_gate_the_array_to_the_tick() -> void:
 	_producers()
 	_wave(1, AiMemory.SquadState.WAVE)
-	_world.ready_tick[_row_in_world(_dusk)] = 5000
+	_world.ready_tick[_row_in_world(_strike)] = 5000
 	_fire(KNOWN)
 	_fire(5000 - 2)
 	assert_array(_out).is_empty()
@@ -128,12 +128,13 @@ func test_the_charge_and_the_budget_gate_the_array_to_the_tick() -> void:
 	assert_int(_memory.strike_wave).is_equal(0)
 	_fire(5000 - 1)
 	assert_int(_shots().size()).is_equal(1)
+	AiRig.step(_world, _loop, _shots())
+	assert_int(_world.dropped_commands).is_equal(0)
 
 
-func test_hard_fires_and_easy_does_not() -> void:
+func test_the_levels_flag_gates_the_array() -> void:
 	_producers()
-	_wave(1, AiMemory.SquadState.WAVE)
-	_arm_strikes("easy", 0, "renew")
+	_arm_strikes("normal", 0, "renew")
 	_wave(1, AiMemory.SquadState.WAVE)
 	_fire(READY)
 	_fire(KNOWN)
@@ -145,8 +146,36 @@ func test_hard_fires_and_easy_does_not() -> void:
 	assert_int(_shots().size()).is_equal(1)
 
 
+func test_the_array_prefers_the_producers_in_reach_of_the_waves_goal() -> void:
+	_producers()
+	_wave(1, AiMemory.SquadState.WAVE)
+	# The wave heads for the far barracks: its tile is the goal, though the factory is richer.
+	_memory.squad_goal_x[AiArmy.WAVE] = 7
+	_memory.squad_goal_y[AiArmy.WAVE] = 29
+	_fire(READY)
+	_fire(KNOWN)
+	assert_array([_shots()[0].target_x, _shots()[0].target_y]).is_equal([FAR_POINT.x, FAR_POINT.y])
+
+
+func test_a_wave_without_a_live_member_does_not_make_the_array_fire() -> void:
+	_producers()
+	_wave(1, AiMemory.SquadState.WAVE)
+	_memory.member_id = PackedInt32Array([99999])
+	_memory.member_squad = PackedInt32Array([AiArmy.WAVE])
+	_fire(READY)
+	_fire(KNOWN)
+	assert_array(_out).is_empty()
+	_memory.member_squad = PackedInt32Array([AiArmy.HOME])
+	_memory.member_id = PackedInt32Array([AiRig.ids_of(_world, 1, "renew_rifle")[0]])
+	_fire(KNOWN + 15)
+	assert_array(_out).is_empty()
+
+
 func test_a_wave_launched_by_the_army_makes_the_array_fire() -> void:
 	var def: OpponentDef = Rig.def_of("renew").duplicate() as OpponentDef
+	def.staging_offset_tiles = OFFSET
+	def.defend_radius_tiles = DEFENCE
+	def.goal_keys_max = KEYS
 	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
 	level.reaction_ticks = REACTION
 	level.wave_first_tick = WAVE_TICK
@@ -186,3 +215,5 @@ func _wave(count: int, state: int) -> void:
 	_memory.wave_count = count
 	_memory.squad_state[AiArmy.WAVE] = state
 	_memory.squad_role[AiArmy.WAVE] = AiArmy.ROLE_WAVE
+	_memory.member_id = PackedInt32Array([AiRig.ids_of(_world, 1, "renew_rifle")[0]])
+	_memory.member_squad = PackedInt32Array([AiArmy.WAVE])
