@@ -72,6 +72,19 @@ var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
 var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
+## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (plan row P179; walking these
+## lists is not a pass over the view's rows): the own Headquarters' tile (the lowest id), the own
+## buildings (ids ascending, centres in milli-tiles), the own combat units except the scout type
+## (ids ascending, with their hp) and the seen enemy combat units (ids ascending). Rebuilt every
+## ARMY slot, at most `unit_cap` units and `building_cap` buildings of the own side.
+var home_x: int = NONE
+var home_y: int = NONE
+var site_id: PackedInt32Array = PackedInt32Array()
+var site_x: PackedInt32Array = PackedInt32Array()
+var site_y: PackedInt32Array = PackedInt32Array()
+var unit_id: PackedInt32Array = PackedInt32Array()
+var unit_hp: PackedInt32Array = PackedInt32Array()
+var seen_unit_id: PackedInt32Array = PackedInt32Array()
 ## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
@@ -162,6 +175,42 @@ func goal_keys_of(owner: int) -> int:
 		if mask & (1 << owner) != 0:
 			found += 1
 	return found
+
+
+## Whether the key (tile, move class) is live.
+func has_goal_key(x: int, y: int, move_class: int) -> bool:
+	for at: int in goal_x.size():
+		if goal_x[at] == x and goal_y[at] == y and goal_class[at] == move_class:
+			return true
+	return false
+
+
+## The keys that fit under the cap once the keys that only `owner` uses are released.
+func goal_room(owner: int) -> int:
+	var live: int = goal_x.size()
+	for mask: int in goal_owner:
+		if mask == 1 << owner:
+			live -= 1
+	return goal_keys_max - live
+
+
+## Clears `owner`'s bit of every key it uses (a key no one else uses goes).
+func release_owner(owner: int) -> void:
+	for at: int in range(goal_x.size() - 1, -1, -1):
+		if goal_owner[at] & (1 << owner) != 0:
+			release_goal_key(at, owner)
+
+
+## The live keys, copied, for `goal_restore` (an order that cannot be sent in full puts them back).
+func goal_snapshot() -> Array[PackedInt32Array]:
+	return [goal_x.duplicate(), goal_y.duplicate(), goal_class.duplicate(), goal_owner.duplicate()]
+
+
+func goal_restore(snapshot: Array[PackedInt32Array]) -> void:
+	goal_x = snapshot[0]
+	goal_y = snapshot[1]
+	goal_class = snapshot[2]
+	goal_owner = snapshot[3]
 
 
 func clear_goal_keys() -> void:

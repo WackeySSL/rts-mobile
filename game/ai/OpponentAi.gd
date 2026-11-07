@@ -28,6 +28,8 @@ var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
 var commands_cut: int = 0
 ## The economy manager (P176), slot ECONOMY.
 var economy: AiEconomy = null
+## The army manager (P179), slot ARMY after the intel refresh.
+var army: AiArmy = null
 
 ## The level and def, copied into ints. A manager copies the values it reads itself when it is made
 ## (plan row of ADR 0030 section 6), so only what the controller uses is here.
@@ -55,6 +57,7 @@ static func create(
 	ai.tier = clampi(chosen.build_order_tier, 0, OpponentDef.TIERS - 1)
 	ai.commands_per_think_max = maxi(chosen.commands_per_think_max, 0)
 	ai.economy = AiEconomy.create(def, chosen, player_id)
+	ai.army = AiArmy.create(def, chosen, player_id)
 	return ai
 
 
@@ -96,9 +99,11 @@ func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 
 
 ## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
-func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:
+func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.refresh(view, memory)
 	work += intel.passes
+	army.run(view, memory, rng, out)
+	work += army.passes
 
 
 ## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.

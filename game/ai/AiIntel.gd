@@ -45,6 +45,8 @@ var _map_rows: int = 0
 ## them seen now, and the nearest enemy producer so far.
 var _counts: PackedInt32Array = PackedInt32Array()
 var _seen_now: PackedInt32Array = PackedInt32Array()
+## Per type, 1 when it is a combat unit (`DummyDefence.is_combat`).
+var _combat: PackedByteArray = PackedByteArray()
 var _best: Vector2i = Vector2i(-1, -1)
 var _best_distance: int = -1
 var _best_id: int = 0
@@ -78,22 +80,51 @@ func sector_count() -> int:
 
 ## The sector map: own value and seen enemy value per sector, from this view alone. Value is the
 ## type's cost scaled by the row's hit points; a remembered building (a ghost nothing now shows)
-## counts at its full cost.
+## counts at its full cost. The same two passes fill the lists `AiArmy` reads (plan row P179, the
+## lead's pass budget): in the own pass the Headquarters' tile, the buildings and the combat units
+## other than the scout type, in the seen pass the enemy combat units.
 func refresh(view: PlayerView, memory: AiMemory) -> void:
 	passes = 0
 	_fit(view, memory)
 	memory.sector_own.fill(0)
 	memory.sector_enemy.fill(0)
+	memory.home_x = AiMemory.NONE
+	memory.home_y = AiMemory.NONE
+	memory.site_id.clear()
+	memory.site_x.clear()
+	memory.site_y.clear()
+	memory.unit_id.clear()
+	memory.unit_hp.clear()
+	memory.seen_unit_id.clear()
+	var hq: int = view.type_index_of(hq_type)
+	var scout: int = view.type_index_of(scout_type)
+	var hq_id: int = NO_ID
 	passes += 1
 	for row: int in view.own_rows:
-		var at: Vector2i = _tile(view.row_pos(row))
+		var type: int = view.row_type(row)
+		var pos: Vector2i = view.row_pos(row)
+		var at: Vector2i = _tile(pos)
 		memory.sector_own[sector_at(at.x, at.y)] += _value(view, row)
+		if _entry(view.type_foot_w, type) > 0:
+			var id: int = view.row_id(row)
+			memory.site_id.append(id)
+			memory.site_x.append(pos.x)
+			memory.site_y.append(pos.y)
+			if type == hq and id < hq_id:
+				hq_id = id
+				memory.home_x = at.x
+				memory.home_y = at.y
+		elif _combat[type] != 0 and type != scout:
+			memory.unit_id.append(view.row_id(row))
+			memory.unit_hp.append(view.row_hp(row))
 	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:
 			continue
 		var at: Vector2i = _tile(view.row_pos(row))
 		memory.sector_enemy[sector_at(at.x, at.y)] += _value(view, row)
+		if _combat[view.row_type(row)] != 0:
+			memory.seen_unit_id.append(view.row_id(row))
 	for record: int in view.ghost_count:
 		if not _remembered(view, record):
 			continue
@@ -225,7 +256,7 @@ func _start(
 	id: int
 ) -> void:
 	var target: Vector2i = Vector2i(view.map_cols - 1 - home.x, view.map_rows - 1 - home.y)
-	var move_class: int = _class_of(view, scout)
+	var move_class: int = class_of(view, scout)
 	if not _allowed(memory, target.x, target.y, move_class):
 		return
 	if scout_rows == 0:
@@ -275,13 +306,13 @@ func _travel(
 		if _return(view, memory, out, home):
 			memory.scout_hp = hp
 		elif view.row_order(row) == PlayerView.Order.IDLE:
-			_drop_key(memory)
+			memory.release_owner(AiMemory.Owner.SCOUT)
 		return
 	memory.scout_hp = hp
 	if view.row_order(row) != PlayerView.Order.IDLE:
 		return
 	if not _may_go(memory):
-		_drop_key(memory)
+		memory.release_owner(AiMemory.Owner.SCOUT)
 		return
 	var next: int = _nearest_unexplored(view, memory, rng, _tile(view.row_pos(row)))
 	if next < 0:
@@ -327,8 +358,8 @@ func _nearest_unexplored(view: PlayerView, memory: AiMemory, rng: DetRandom, at:
 	return _tied[rng.next_int(_tied.size())]
 
 
-## The tab's move class of the type `type`.
-static func _class_of(view: PlayerView, type: int) -> int:
+## The tab's move class of the type `type` (the army reads it too).
+static func class_of(view: PlayerView, type: int) -> int:
 	var tab: int = view.type_tab[type] if type >= 0 and type < view.type_tab.size() else -1
 	return TRACKED if tab == PlayerView.Tab.VEHICLES else FOOT
 
@@ -339,14 +370,17 @@ func _may_go(memory: AiMemory) -> bool:
 	return (
 		memory.can_send()
 		and memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1
-		and _free_keys(memory) > 0
+		and memory.goal_room(AiMemory.Owner.SCOUT) > 0
 	)
 
 
 ## Whether a trip to (`col`, `line`) fits the key rule, budget aside.
 func _allowed(memory: AiMemory, col: int, line: int, move_class: int) -> bool:
 	return (
-		memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1 and _key_room(memory, col, line, move_class)
+		memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1
+		and (
+			memory.has_goal_key(col, line, move_class) or memory.goal_room(AiMemory.Owner.SCOUT) > 0
+		)
 	)
 
 
@@ -359,10 +393,10 @@ func _go(
 	var row: int = view.row_of(id)
 	if row < 0 or not memory.can_send():
 		return false
-	var move_class: int = _class_of(view, view.row_type(row))
+	var move_class: int = class_of(view, view.row_type(row))
 	if not _allowed(memory, col, line, move_class):
 		return false
-	_drop_key(memory)
+	memory.release_owner(AiMemory.Owner.SCOUT)
 	memory.add_goal_key(col, line, move_class, AiMemory.Owner.SCOUT)
 	memory.spent()
 	out.append(
@@ -376,37 +410,9 @@ func _go(
 	return true
 
 
-## Whether the key (`col`, `line`, `move_class`) is live or fits once the scout's own is released.
-func _key_room(memory: AiMemory, col: int, line: int, move_class: int) -> bool:
-	for at: int in memory.goal_keys():
-		if (
-			memory.goal_x[at] == col
-			and memory.goal_y[at] == line
-			and memory.goal_class[at] == move_class
-		):
-			return true
-	return _free_keys(memory) > 0
-
-
-## The keys that fit under the cap once the scout's own key (when only it uses it) is released.
-func _free_keys(memory: AiMemory) -> int:
-	var live: int = memory.goal_keys()
-	for mask: int in memory.goal_owner:
-		if mask == 1 << AiMemory.Owner.SCOUT:
-			live -= 1
-	return memory.goal_keys_max - live
-
-
-## Releases the scout's goal key, if it holds one.
-func _drop_key(memory: AiMemory) -> void:
-	for at: int in range(memory.goal_keys() - 1, -1, -1):
-		if memory.goal_owner[at] & (1 << AiMemory.Owner.SCOUT) != 0:
-			memory.release_goal_key(at, AiMemory.Owner.SCOUT)
-
-
 ## The trip is over: the scout is lost or home, its key is free and it is no one's scout.
 func _end(memory: AiMemory) -> void:
-	_drop_key(memory)
+	memory.release_owner(AiMemory.Owner.SCOUT)
 	memory.scout_id = AiMemory.NONE
 	memory.scout_waypoint = 0
 	memory.scout_hp = AiMemory.NONE
@@ -442,6 +448,10 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 	if _counts.size() != types:
 		_counts.resize(types)
 		_seen_now.resize(types)
+	if _combat.size() != types:
+		_combat.resize(types)
+		for type: int in types:
+			_combat[type] = 1 if DummyDefence.is_combat(view, type) else 0
 
 
 func _blocks(side: int) -> int:
