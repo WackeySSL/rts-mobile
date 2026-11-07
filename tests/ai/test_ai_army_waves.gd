@@ -212,6 +212,8 @@ func test_a_shifted_home_squad_that_launches_a_wave_keeps_the_wave_s_army_keys()
 	_memory.home_shifted = 1
 	_memory.squad_goal_x[AiArmy.HOME] = 20
 	_memory.squad_goal_y[AiArmy.HOME] = 20
+	# A squad member is still walking, so the probe holds the shifted goal until the launch.
+	_world.order[_row_in_world(_squads()[0])] = World.Order.MOVE
 	_think(LAUNCH)
 	assert_int(_memory.wave_count).is_equal(1)
 	assert_int(_memory.home_shifted).is_equal(0)
