@@ -274,7 +274,7 @@ jobs:
       # fails the check's floor.
       - name: Run the determinism suites (gdUnit4)
         run: |
-          bash scripts/run-tests.sh -a res://tests/sim/native -a res://tests/sim/test_determinism.gd -a res://tests/sim/test_world_hash.gd -a res://tests/perf/test_golden_hashes.gd
+          bash scripts/run-tests.sh -a res://tests/sim/native -a res://tests/sim/test_determinism.gd -a res://tests/sim/test_world_hash.gd -a res://tests/perf/test_golden_hashes.gd -a res://tests/ai/test_ai_determinism.gd
 
       - name: Check the native suites ran (check-native-tests.sh)
         run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes --require test_determinism --require test_world_hash

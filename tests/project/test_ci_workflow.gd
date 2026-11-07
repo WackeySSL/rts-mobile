@@ -61,6 +61,7 @@ const ARM64_SUITES: Array[String] = [
 	"res://tests/sim/test_determinism.gd",
 	"res://tests/sim/test_world_hash.gd",
 	"res://tests/perf/test_golden_hashes.gd",
+	"res://tests/ai/test_ai_determinism.gd",
 ]
 const ARM64_CHECK_RUN: String = (
 	CHECK_RUN + " --require test_golden_hashes --require test_determinism --require test_world_hash"
