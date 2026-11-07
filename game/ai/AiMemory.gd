@@ -13,6 +13,9 @@ enum SquadState { HOME, WAVE, RETREAT }
 enum Owner { STAGING, ARMY, SCOUT }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
+## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).
+const FOOT: int = 0
+const TRACKED: int = 2
 
 ## The caps, from the def and the first view (`unit_cap` is 0 until a think has set it).
 var squads_max: int = 0
@@ -72,27 +75,25 @@ var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
 var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
-## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (plan row P179; walking these
-## lists is not a pass over the view's rows): the own Headquarters' tile (the lowest id), the own
-## buildings (ids ascending, centres in milli-tiles), the own combat units except the scout type
-## (ids ascending, with their hp) and the seen enemy combat units (ids ascending). Rebuilt every
-## ARMY slot, at most `unit_cap` units and `building_cap` buildings of the own side.
+## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
+## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
+## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
+## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
 var home_x: int = NONE
 var home_y: int = NONE
 var site_id: PackedInt32Array = PackedInt32Array()
 var site_x: PackedInt32Array = PackedInt32Array()
 var site_y: PackedInt32Array = PackedInt32Array()
 var unit_id: PackedInt32Array = PackedInt32Array()
-var unit_hp: PackedInt32Array = PackedInt32Array()
 var seen_unit_id: PackedInt32Array = PackedInt32Array()
 ## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
-## STAGING and ARMY, AiIntel SCOUT). The army goal is one cell at a time: AiArmy releases its key
-## before it adds the next. The scout's key is added only while the army goal is free or
-## single-class.
+## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
+## goal is one cell at a time: AiArmy releases its key before it adds the next. The scout's key is
+## added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
 var goal_class: PackedInt32Array = PackedInt32Array()
@@ -123,6 +124,17 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.scout_picked.resize(memory.sectors_max)
 	memory.scout_picked.fill(NONE)
 	return memory
+
+
+## The move class of the type `type`: its tab's (vehicles tracked, the rest on foot).
+static func class_of(view: PlayerView, type: int) -> int:
+	var tab: int = view.type_tab[type] if type >= 0 and type < view.type_tab.size() else -1
+	return TRACKED if tab == PlayerView.Tab.VEHICLES else FOOT
+
+
+## The point mirror of `tile` on a map of `cols` x `rows` tiles.
+static func mirror(tile: Vector2i, cols: int, rows: int) -> Vector2i:
+	return Vector2i(cols - 1 - tile.x, rows - 1 - tile.y)
 
 
 func has_staging() -> bool:
@@ -175,14 +187,6 @@ func goal_keys_of(owner: int) -> int:
 		if mask & (1 << owner) != 0:
 			found += 1
 	return found
-
-
-## Whether the key (tile, move class) is live.
-func has_goal_key(x: int, y: int, move_class: int) -> bool:
-	for at: int in goal_x.size():
-		if goal_x[at] == x and goal_y[at] == y and goal_class[at] == move_class:
-			return true
-	return false
 
 
 ## The keys that fit under the cap once the keys that only `owner` uses are released.

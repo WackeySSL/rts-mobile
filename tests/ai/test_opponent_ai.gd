@@ -320,7 +320,8 @@ func test_a_think_records_the_rules_unit_cap_in_the_memory() -> void:
 	assert_int(ai.memory.unit_cap).is_equal(PlayerView.of(world, 1).unit_cap)
 
 
-func test_an_opponent_in_the_headless_loop_sends_only_economy_commands_and_drops_nothing() -> void:
+func test_an_opponent_in_the_headless_loop_sends_only_its_managers_commands_and_drops_nothing(
+) -> void:
 	var world: World = FactionRig.start("fossil", "renew")
 	var loop: MatchLoop = AiRig.loop_of(world)
 	var controllers: Array = [Rig.opponent("fossil", "normal", 1), Rig.opponent("renew", "hard", 2)]
@@ -359,7 +360,7 @@ func test_the_army_slot_adds_no_pass_over_the_rows_of_its_own() -> void:
 	world.tick = 5
 	ai.think(PlayerView.of(world, 1), [] as Array[Command])
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ARMY)
-	assert_array([ai.work, ai.intel.passes, ai.army.passes]).is_equal([3, 2, 0])
+	assert_array([ai.work, ai.intel.passes]).is_equal([3, 2])
 	var loop: MatchLoop = AiRig.loop_of(world)
 	AiRig.run(world, loop, [ai], 300)
 	assert_int(ai.work_max).is_less_equal(3)

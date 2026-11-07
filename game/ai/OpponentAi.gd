@@ -103,7 +103,6 @@ func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.refresh(view, memory)
 	work += intel.passes
 	army.run(view, memory, rng, out)
-	work += army.passes
 
 
 ## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.

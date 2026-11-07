@@ -14,6 +14,7 @@ const MATCH_TICKS: int = 2700
 
 var _world: World = null
 var _radius: int = 0
+var _ai: OpponentAi = null
 var _first_unit_order: Vector2i = Vector2i(-1, -1)
 var _orders: int = 0
 var _at_attackers: int = 0
@@ -25,6 +26,7 @@ func before() -> void:
 	_radius = Rig.def_of("fossil").defend_radius_tiles
 	var loop: MatchLoop = AiRig.loop_of(_world)
 	var ai: OpponentAi = Rig.opponent("fossil", "normal", 2)
+	_ai = ai
 	var tanks: PackedInt32Array = PackedInt32Array()
 	for index: int in TANKS:
 		tanks.append(
@@ -47,6 +49,7 @@ func test_the_attacker_still_wins_the_match() -> void:
 	assert_int(_world.match_end_tick).is_greater(0)
 	assert_int(_world.winner).is_equal(1)
 	assert_int(_world.defeated_tick[2]).is_greater(0)
+	assert_int(_world.defeated_tick[1]).is_equal(0)
 
 
 func test_the_opponent_met_the_tanks_with_attack_move_at_them() -> void:
@@ -57,9 +60,10 @@ func test_no_unit_order_went_beyond_the_radius_of_a_building_and_the_first_went_
 ) -> void:
 	assert_int(_orders).is_greater(0)
 	assert_int(_beyond).is_equal(0)
-	# Player 2's Headquarters is on tile (27, 27); its staging point lies 4 tiles toward the mirror
-	# point (12, 12) along each axis, tile (23, 23), when the first order goes out.
-	assert_vector(_first_unit_order).is_equal(Vector2i(23500, 23500))
+	# The first order goes to the staging point the memory holds.
+	assert_vector(_first_unit_order).is_equal(
+		Vector2i(_ai.memory.staging_x * 1000 + 500, _ai.memory.staging_y * 1000 + 500)
+	)
 
 
 func test_the_sim_dropped_nothing_the_opponent_sent() -> void:
@@ -85,12 +89,15 @@ func test_the_squads_go_back_to_the_staging_point_after_a_raid() -> void:
 	assert_int(world.index_of(raider)).is_less(0)
 	# Sent at the raider once, and back to the staging point once (after it died).
 	assert_array(attack_moves).is_equal([Vector2i(22500, 27500)])
-	assert_array(moves).is_equal([Vector2i(23500, 23500)])
+	var staging: Vector2i = (
+		Vector2i(ai.memory.staging_x, ai.memory.staging_y) * 1000 + Vector2i(500, 500)
+	)
+	assert_array(moves).is_equal([staging])
 	assert_int(AiRig.count_of(world, 2, "rifle_squad")).is_greater(0)
 	for id: int in AiRig.ids_of(world, 2, "rifle_squad"):
 		var row: int = world.index_of(id)
 		assert_int(world.order[row]).is_equal(World.Order.IDLE)
-		var gap: Vector2i = Vector2i(world.pos_x[row], world.pos_y[row]) - Vector2i(23500, 23500)
+		var gap: Vector2i = Vector2i(world.pos_x[row], world.pos_y[row]) - staging
 		assert_int(gap.x * gap.x + gap.y * gap.y).is_less_equal(2000 * 2000)
 
 
@@ -123,11 +130,11 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)
 		assert_int(ai.commands_cut).is_equal(0)
-		assert_int(ai.army.passes).is_equal(0)
+		assert_int(ai.army.tests).is_less_equal(Rig.def_of("fossil").target_tests_max)
 		assert_bool(ai.memory.has_staging()).is_true()
 
 
-## Counts the unit orders of `sent` (the opponent's, player 2) as the header says.
+## Counts the unit orders of `sent` (the opponent's, player 2) and audits them.
 func _audit(sent: Array[Command]) -> void:
 	for command: Command in sent:
 		if command.type != Command.Type.ATTACK_MOVE and command.type != Command.Type.MOVE:

@@ -14,8 +14,8 @@ extends RefCounted
 
 ## The move classes the scout's goal key names (`World.MoveClass`). The class of a type is its tab's
 ## (vehicles tracked, the rest on foot); a data test pins that for every roster.
-const FOOT: int = 0
-const TRACKED: int = 2
+const FOOT: int = AiMemory.FOOT
+const TRACKED: int = AiMemory.TRACKED
 
 ## The id that no row has, larger than every real id.
 const NO_ID: int = 0x7FFFFFFF
@@ -80,9 +80,7 @@ func sector_count() -> int:
 
 ## The sector map: own value and seen enemy value per sector, from this view alone. Value is the
 ## type's cost scaled by the row's hit points; a remembered building (a ghost nothing now shows)
-## counts at its full cost. The same two passes fill the lists `AiArmy` reads (plan row P179, the
-## lead's pass budget): in the own pass the Headquarters' tile, the buildings and the combat units
-## other than the scout type, in the seen pass the enemy combat units.
+## counts at its full cost. The same two passes fill the lists `AiArmy` reads (plan row P179).
 func refresh(view: PlayerView, memory: AiMemory) -> void:
 	passes = 0
 	_fit(view, memory)
@@ -94,7 +92,6 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	memory.site_x.clear()
 	memory.site_y.clear()
 	memory.unit_id.clear()
-	memory.unit_hp.clear()
 	memory.seen_unit_id.clear()
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
@@ -116,7 +113,6 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 				memory.home_y = at.y
 		elif _combat[type] != 0 and type != scout:
 			memory.unit_id.append(view.row_id(row))
-			memory.unit_hp.append(view.row_hp(row))
 	passes += 1
 	for row: int in view.seen_rows:
 		if view.row_owner(row) <= 0:
@@ -161,8 +157,9 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 		memory.base_x = found.x
 		memory.base_y = found.y
 	elif home.x >= 0:
-		memory.base_x = view.map_cols - 1 - home.x
-		memory.base_y = view.map_rows - 1 - home.y
+		var mirror: Vector2i = AiMemory.mirror(home, view.map_cols, view.map_rows)
+		memory.base_x = mirror.x
+		memory.base_y = mirror.y
 	memory.scout_wanted = AiMemory.NONE
 	if scout_interval_ticks <= 0:
 		return
@@ -255,8 +252,8 @@ func _start(
 	scout_rows: int,
 	id: int
 ) -> void:
-	var target: Vector2i = Vector2i(view.map_cols - 1 - home.x, view.map_rows - 1 - home.y)
-	var move_class: int = class_of(view, scout)
+	var target: Vector2i = AiMemory.mirror(home, view.map_cols, view.map_rows)
+	var move_class: int = AiMemory.class_of(view, scout)
 	if not _allowed(memory, target.x, target.y, move_class):
 		return
 	if scout_rows == 0:
@@ -306,13 +303,13 @@ func _travel(
 		if _return(view, memory, out, home):
 			memory.scout_hp = hp
 		elif view.row_order(row) == PlayerView.Order.IDLE:
-			memory.release_owner(AiMemory.Owner.SCOUT)
+			_drop_key(memory)
 		return
 	memory.scout_hp = hp
 	if view.row_order(row) != PlayerView.Order.IDLE:
 		return
 	if not _may_go(memory):
-		memory.release_owner(AiMemory.Owner.SCOUT)
+		_drop_key(memory)
 		return
 	var next: int = _nearest_unexplored(view, memory, rng, _tile(view.row_pos(row)))
 	if next < 0:
@@ -358,29 +355,20 @@ func _nearest_unexplored(view: PlayerView, memory: AiMemory, rng: DetRandom, at:
 	return _tied[rng.next_int(_tied.size())]
 
 
-## The tab's move class of the type `type` (the army reads it too).
-static func class_of(view: PlayerView, type: int) -> int:
-	var tab: int = view.type_tab[type] if type >= 0 and type < view.type_tab.size() else -1
-	return TRACKED if tab == PlayerView.Tab.VEHICLES else FOOT
-
-
 ## Whether the scout may order anything now: budget left, the army goal holding at most one key
 ## (ADR 0030 section 4), and room for a key of its own.
 func _may_go(memory: AiMemory) -> bool:
 	return (
 		memory.can_send()
 		and memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1
-		and memory.goal_room(AiMemory.Owner.SCOUT) > 0
+		and _free_keys(memory) > 0
 	)
 
 
 ## Whether a trip to (`col`, `line`) fits the key rule, budget aside.
 func _allowed(memory: AiMemory, col: int, line: int, move_class: int) -> bool:
 	return (
-		memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1
-		and (
-			memory.has_goal_key(col, line, move_class) or memory.goal_room(AiMemory.Owner.SCOUT) > 0
-		)
+		memory.goal_keys_of(AiMemory.Owner.ARMY) <= 1 and _key_room(memory, col, line, move_class)
 	)
 
 
@@ -393,10 +381,10 @@ func _go(
 	var row: int = view.row_of(id)
 	if row < 0 or not memory.can_send():
 		return false
-	var move_class: int = class_of(view, view.row_type(row))
+	var move_class: int = AiMemory.class_of(view, view.row_type(row))
 	if not _allowed(memory, col, line, move_class):
 		return false
-	memory.release_owner(AiMemory.Owner.SCOUT)
+	_drop_key(memory)
 	memory.add_goal_key(col, line, move_class, AiMemory.Owner.SCOUT)
 	memory.spent()
 	out.append(
@@ -410,9 +398,37 @@ func _go(
 	return true
 
 
+## Whether the key (`col`, `line`, `move_class`) is live or fits once the scout's own is released.
+func _key_room(memory: AiMemory, col: int, line: int, move_class: int) -> bool:
+	for at: int in memory.goal_keys():
+		if (
+			memory.goal_x[at] == col
+			and memory.goal_y[at] == line
+			and memory.goal_class[at] == move_class
+		):
+			return true
+	return _free_keys(memory) > 0
+
+
+## The keys that fit under the cap once the scout's own key (when only it uses it) is released.
+func _free_keys(memory: AiMemory) -> int:
+	var live: int = memory.goal_keys()
+	for mask: int in memory.goal_owner:
+		if mask == 1 << AiMemory.Owner.SCOUT:
+			live -= 1
+	return memory.goal_keys_max - live
+
+
+## Releases the scout's goal key, if it holds one.
+func _drop_key(memory: AiMemory) -> void:
+	for at: int in range(memory.goal_keys() - 1, -1, -1):
+		if memory.goal_owner[at] & (1 << AiMemory.Owner.SCOUT) != 0:
+			memory.release_goal_key(at, AiMemory.Owner.SCOUT)
+
+
 ## The trip is over: the scout is lost or home, its key is free and it is no one's scout.
 func _end(memory: AiMemory) -> void:
-	memory.release_owner(AiMemory.Owner.SCOUT)
+	_drop_key(memory)
 	memory.scout_id = AiMemory.NONE
 	memory.scout_waypoint = 0
 	memory.scout_hp = AiMemory.NONE

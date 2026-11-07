@@ -6,6 +6,10 @@ extends "res://tests/ai/support/intel_suite.gd"
 ## The staging point of player 1 while no enemy producer is known: 6 tiles from the Headquarters
 ## toward the point mirror (32, 32), (4, 4) along each axis after the integer division.
 const STAGING: Vector2i = Vector2i(11, 11)
+## The numbers the suites own (the def is copied and set to them, so a tuning row of the shipped
+## `data/ai/` cannot move them): the staging offset and the defence radius, in tiles.
+const OFFSET: int = 6
+const RADIUS: int = 12
 
 var _army: AiArmy = null
 
@@ -15,10 +19,21 @@ func before_test() -> void:
 	_arm("normal")
 
 
-## The managers of the fossil def at `level` (a fresh memory), and `_army` beside them.
-func _arm(level: String) -> void:
+## The managers of the fossil def at `level` (a fresh memory), and `_army` beside them. `def` is
+## the fossil def with its offset and radius set to the suite's; a case may pass its own.
+func _arm(level: String, def: OpponentDef = null) -> void:
+	var own: OpponentDef = def if def != null else _def()
 	_make(level)
-	_army = AiArmy.create(Rig.def_of("fossil"), Rig.level_of(level), 1)
+	_memory = AiMemory.create(own)
+	_army = AiArmy.create(own, Rig.level_of(level), 1)
+
+
+## A copy of the fossil def with the suite's staging offset and defence radius.
+func _def() -> OpponentDef:
+	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	def.staging_offset_tiles = OFFSET
+	def.defend_radius_tiles = RADIUS
+	return def
 
 
 ## An ARMY slot at `tick` with a budget of `budget` Commands: the intel refresh, then the army.
@@ -63,6 +78,6 @@ func _squads() -> PackedInt32Array:
 	return AiRig.ids_of(_world, 1, "rifle_squad")
 
 
-## The tile of the centre of the point in milli-tiles.
+## The centre of `tile` in milli-tiles.
 static func _centre(tile: Vector2i) -> Vector2i:
 	return tile * 1000 + Vector2i(500, 500)

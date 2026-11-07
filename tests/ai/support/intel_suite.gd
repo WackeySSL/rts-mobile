@@ -51,7 +51,9 @@ func _run(tick: int, budget: int = 8) -> void:
 
 ## An own scout (the fossil light tank) at tile (`col`, `line`); returns its id.
 func _scout(col: int, line: int) -> int:
-	return AiRig.add_unit_of(_world, 1, "light_tank", col * 1000 + 500, line * 1000 + 500)
+	return AiRig.add_unit_of(
+		_world, 1, String(_intel.scout_type), col * 1000 + 500, line * 1000 + 500
+	)
 
 
 func _type(id: String) -> int:
@@ -138,7 +140,7 @@ func _scout_move(command: Command) -> bool:
 	if command.type != Command.Type.MOVE:
 		return false
 	var view: PlayerView = _view()
-	return view.row_type(view.row_of(command.unit_ids[0])) == _type("light_tank")
+	return view.row_type(view.row_of(command.unit_ids[0])) == _type(String(_intel.scout_type))
 
 
 ## The scout `id` stands on tile (`col`, `line`) and the sector's centre cell is explored.

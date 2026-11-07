@@ -21,8 +21,6 @@ func test_refresh_fills_the_lists_the_army_reads_in_its_two_passes() -> void:
 	var expected: PackedInt32Array = squads.duplicate()
 	expected.append(tank)
 	assert_array(_memory.unit_id).is_equal(expected)
-	for at: int in _memory.unit_id.size():
-		assert_int(_memory.unit_hp[at]).is_equal(view.row_hp(view.row_of(_memory.unit_id[at])))
 	# The scout type and the harvester are not combat units of the army.
 	assert_bool(_memory.unit_id.has(scout)).is_false()
 	assert_bool(_memory.unit_id.has(harvester)).is_false()
@@ -82,25 +80,18 @@ func test_the_staging_point_follows_the_base_estimate() -> void:
 	assert_array([_memory.staging_x, _memory.staging_y]).is_equal([7, 7])
 
 
-func test_the_staging_point_stays_inside_the_map() -> void:
-	# An estimate to the north-west of a Headquarters near the corner: the point is cut to tile 0.
+func test_the_staging_point_is_the_offset_along_the_diagonal_toward_a_corner() -> void:
+	# From (7, 7) toward (0, 0): the way is (-7, -7), its length isqrt(98) = 9, so 6 * -7 / 9 = -4.
 	_memory.base_x = 0
 	_memory.base_y = 0
 	_think(5)
-	assert_int(_memory.staging_x).is_between(0, 39)
-	assert_int(_memory.staging_y).is_between(0, 39)
-	var distance: int = (
-		(_memory.staging_x - 7) * (_memory.staging_x - 7)
-		+ (_memory.staging_y - 7) * (_memory.staging_y - 7)
-	)
-	# 6 tiles along the diagonal: (4, 4) after the truncation of 6 * 7 / 9.9.
-	assert_int(distance).is_less_equal(36)
+	assert_array([_memory.staging_x, _memory.staging_y]).is_equal([3, 3])
 
 
 func test_a_long_offset_is_cut_to_the_map() -> void:
-	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	var def: OpponentDef = _def()
 	def.staging_offset_tiles = 12
-	_army = AiArmy.create(def, Rig.level_of("normal"), 1)
+	_arm("normal", def)
 	_memory.base_x = 0
 	_memory.base_y = 0
 	_think(5)
@@ -207,8 +198,7 @@ func test_every_unit_of_the_scout_type_is_left_to_intel_with_or_without_an_id() 
 	var moves: Array[Command] = _of(Command.Type.MOVE)
 	assert_int(moves.size()).is_equal(1)
 	assert_array(moves[0].unit_ids).is_equal(_squads())
-	# A wave of the scout type's kind would not take them either, but the home squad keeps no id of
-	# the type however many turns pass.
+	# The home squad keeps no id of the scout type however many turns pass.
 	_think(20)
 	assert_bool(_memory.member_id.has(fresh) or _memory.member_id.has(out)).is_false()
 
@@ -280,17 +270,60 @@ func test_without_a_headquarters_there_is_no_staging_point_and_no_rally() -> voi
 	assert_array([_memory.staging_x, _memory.staging_y]).is_equal([-1, -1])
 
 
-func test_the_army_makes_no_pass_and_draws_nothing() -> void:
+func test_the_army_draws_nothing_and_the_refresh_keeps_its_two_passes() -> void:
 	_seed_crowd()
 	var expected: int = DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1).next_int(1000)
 	_think(5)
 	assert_int(_intel.passes).is_equal(2)
-	assert_int(_army.passes).is_equal(0)
 	# The stream is where it started: the army drew nothing.
 	assert_int(_rng.next_int(1000)).is_equal(expected)
 
 
-## A crowd: tanks and squads of both sides, enemy buildings, so a pass would show.
+func test_the_army_source_names_no_row_list_of_the_view() -> void:
+	# A loop over the view's rows in the army would be an uncounted pass (ADR 0030 section 4).
+	var source: String = FileAccess.get_file_as_string("res://game/ai/AiArmy.gd")
+	assert_str(source).is_not_empty()
+	for name: String in ["own_rows", "seen_rows", "ghost_count"]:
+		assert_bool(source.contains(name)).is_false()
+
+
+func test_the_headquarters_with_the_lowest_id_is_the_home() -> void:
+	AiRig.give(_world, 1, "headquarters", 30, 30)
+	_settle()
+	_think(5)
+	assert_array([_memory.home_x, _memory.home_y]).is_equal([7, 7])
+
+
+func test_a_rally_goes_only_to_the_tab_whose_point_is_not_at_the_staging_point() -> void:
+	var barracks: int = AiRig.give(_world, 1, "barracks", 12, 6)
+	_settle()
+	_think(5)
+	AiRig.step(_world, _loop, _of(Command.Type.RALLY))
+	var factory: int = AiRig.give(_world, 1, "vehicle_factory", 12, 10)
+	_settle()
+	_think(20)
+	var rallies: Array[Command] = _of(Command.Type.RALLY)
+	assert_int(rallies.size()).is_equal(1)
+	assert_int(rallies[0].target_id).is_equal(factory)
+	assert_int(rallies[0].target_id).is_not_equal(barracks)
+	assert_int(_army.rallies).is_equal(2)
+
+
+func test_a_rally_the_keys_cannot_hold_is_not_sent_and_the_staging_point_waits() -> void:
+	var def: OpponentDef = _def()
+	def.goal_keys_max = 1
+	_arm("normal", def)
+	AiRig.give(_world, 1, "barracks", 12, 6)
+	AiRig.give(_world, 1, "vehicle_factory", 12, 10)
+	_settle()
+	_think(5)
+	# Foot and tracked need two keys and the cap is one: no RALLY, no new point, no key.
+	assert_array(_out).is_empty()
+	assert_array([_memory.staging_x, _memory.staging_y]).is_equal([-1, -1])
+	assert_array([_memory.goal_keys(), _memory.commands_left, _army.rallies]).is_equal([0, 8, 0])
+
+
+## A crowd: tanks of both sides.
 func _seed_crowd() -> void:
 	for index: int in 12:
 		AiRig.add_unit_of(_world, 1, "heavy_tank", 8500 + index * 500, 12500)

@@ -10,9 +10,10 @@ const NEAR: Vector2i = Vector2i(15500, 7500)
 
 
 func test_a_threat_is_answered_only_after_the_reaction_delay_on_exact_ticks() -> void:
-	for level: Array in [["easy", 90], ["normal", 30], ["hard", 15]]:
+	for level: String in ["easy", "normal", "hard"]:
 		_before_trip_world()
-		_arm(level[0])
+		_arm(level)
+		var delay: int = Rig.level_of(level).reaction_ticks
 		var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
 		_settle()
 		_see_all()
@@ -27,7 +28,7 @@ func test_a_threat_is_answered_only_after_the_reaction_delay_on_exact_ticks() ->
 				assert_array([command.target_x, command.target_y]).is_equal([NEAR.x, NEAR.y])
 				assert_int(command.player_id).is_equal(1)
 		# One order, on the first slot at or after first-seen plus the delay.
-		assert_array(acted).is_equal([FIRST + level[1]])
+		assert_array(acted).is_equal([FIRST + delay])
 		assert_int(_memory.threat_first_tick).is_equal(FIRST)
 		assert_int(_view().row_of(foe)).is_greater_equal(0)
 
@@ -151,8 +152,82 @@ func test_a_unit_that_joins_during_a_defence_gets_the_order_and_the_squad_does_n
 	assert_int(sent.size()).is_equal(1)
 	assert_array(sent[0].unit_ids).is_equal(PackedInt32Array([tank]))
 	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([NEAR.x, NEAR.y])
+	# The squads' foot key and the tank's tracked key are both held on the goal.
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(2)
 	_think(FIRST + 60)
 	assert_array(_out).is_empty()
+
+
+func test_a_joiner_stays_pending_until_an_order_names_it() -> void:
+	_enemy("heavy_tank", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	for tick: int in [0, 15, 30]:
+		_think(FIRST + tick)
+	var tank: int = AiRig.add_unit_of(_world, 1, "heavy_tank", 8500, 9500)
+	_think(FIRST + 45, 0)
+	assert_array(_out).is_empty()
+	# Next slot the tank is still pending (it is not in a goal change): it alone is ordered.
+	_think(FIRST + 60)
+	var sent: Array[Command] = _of(Command.Type.ATTACK_MOVE)
+	assert_int(sent.size()).is_equal(1)
+	assert_array(sent[0].unit_ids).is_equal(PackedInt32Array([tank]))
+	_think(FIRST + 75)
+	assert_array(_out).is_empty()
+
+
+func test_a_refused_return_keeps_the_army_keys_and_the_squad_goal() -> void:
+	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	for tick: int in [0, 15, 30]:
+		_think(FIRST + tick)
+	var keys: Array[int] = [_memory.goal_keys_of(AiMemory.Owner.ARMY), _memory.goal_keys()]
+	assert_int(keys[0]).is_greater(0)
+	_world.hp[_row_in_world(foe)] = 0
+	AiRig.step(_world, _loop)
+	_think(FIRST + 45, 0)
+	assert_array(_out).is_empty()
+	assert_array([_memory.goal_keys_of(AiMemory.Owner.ARMY), _memory.goal_keys()]).is_equal(keys)
+	assert_array([_memory.squad_goal_x[0], _memory.squad_goal_y[0]]).is_equal([15, 7])
+	_think(FIRST + 60)
+	assert_int(_of(Command.Type.MOVE).size()).is_equal(1)
+
+
+func test_a_defence_with_no_home_squad_holds_no_army_key() -> void:
+	var foe: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
+	_settle()
+	_see_all()
+	for tick: int in [0, 15, 30]:
+		_think(FIRST + tick)
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
+	for id: int in _squads():
+		_world.hp[_row_in_world(id)] = 0
+	AiRig.step(_world, _loop)
+	_see_all()
+	_put(foe, 16500, 8500)
+	_think(FIRST + 45)
+	assert_array(_out).is_empty()
+	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_equal(0)
+	assert_array([_memory.squad_goal_x[0], _memory.squad_goal_y[0]]).is_equal([16, 8])
+
+
+func test_the_threat_search_stops_at_the_def_s_test_cap_and_takes_the_best_it_tested() -> void:
+	var def: OpponentDef = _def()
+	def.target_tests_max = 3
+	_arm("normal", def)
+	# One building. The enemy's two starting squads (far away, seen) take two tests, the first foe
+	# the third; the nearest foe has the highest id and is never tested.
+	_enemy("heavy_tank", 17500, 7500)
+	_enemy("heavy_tank", 13500, 7500)
+	_settle()
+	_see_all()
+	_think(FIRST)
+	assert_int(_army.tests).is_equal(3)
+	assert_int(_memory.threat_first_tick).is_equal(FIRST)
+	_think(FIRST + 30)
+	assert_int(_army.tests).is_equal(3)
+	assert_array([_out[0].target_x, _out[0].target_y]).is_equal([17500, 7500])
 
 
 func test_the_squads_go_back_to_the_staging_point_once_when_the_threat_is_gone() -> void:
@@ -268,10 +343,9 @@ func test_the_scout_keeps_its_key_when_there_is_room_for_the_army() -> void:
 
 
 func test_an_order_the_keys_cannot_hold_even_with_the_scout_gone_is_refused_whole() -> void:
-	var def: OpponentDef = Rig.def_of("fossil").duplicate() as OpponentDef
+	var def: OpponentDef = _def()
 	def.goal_keys_max = 1
-	_memory = AiMemory.create(def)
-	_army = AiArmy.create(def, Rig.level_of("normal"), 1)
+	_arm("normal", def)
 	AiRig.add_unit_of(_world, 1, "heavy_tank", 8500, 9500)
 	_enemy("heavy_tank", NEAR.x, NEAR.y)
 	_settle()

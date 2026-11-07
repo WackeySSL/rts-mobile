@@ -1,59 +1,37 @@
 class_name AiArmy
 extends RefCounted
-## The opponent AI's army manager, part 1 (ADR 0030 sections 1, 4 and 6, plan row P179): the staging
-## point and its `RALLY`, the home squad, defence after the level's reaction delay and the return
-## to the staging point. Waves, targets and retreat are P180's, the response to a hit by something
-## unseen P179b's. It reads the `PlayerView` and `AiMemory` only, sends `RALLY`, `ATTACK_MOVE` and
-## `MOVE`, and writes the army's part of the memory.
-##
-## It makes no pass over the view's rows (the lead's pass budget, ADR 0030 section 4): `AiIntel`'s
-## refresh, which runs first in the ARMY slot, fills `memory.site_*`, `unit_*` and `seen_unit_id`
-## in its own two passes, and this manager walks those lists (and looks rows up by id).
-##
-## - The staging point is `staging_offset_tiles` from the Headquarters toward the base estimate (the
-##   point mirror of the Headquarters while none is known). One `RALLY` per tab (infantry,
-##   vehicles) whose view rally point is not there and that has a finished producer, all or none
-##   within the think's budget; the memory's point moves with the last of them.
-## - The home squad (squad 0) holds every own combat unit except those of the scout type, which
-##   stay with intel (a fresh scout has no id yet: the type, not `scout_id`, is left out).
-## - A threat is a seen enemy combat unit within `defend_radius_tiles` of an own building (the most
-##   pressing is the nearest to its nearest building, ties to the lower id). It is acted on once it
-##   has been at the base `reaction_ticks`: the home squad gets one `ATTACK_MOVE` at it, and again
-##   only when it moves to another tile; a unit that joins meanwhile gets the same order.
-## - With no threat the home squad gets one `MOVE` to the staging point (also the first order of
-##   the match and the one after the staging point moves), no fire on the way (ADR 0009 section 2).
-##
-## Goal keys (ADR 0030 section 4): the defence is the army goal (owner ARMY, one cell, up to two
-## classes, replaced), the return and the rally are the staging point's (owner STAGING, up to two
-## classes at one cell). The army and the staging point have precedence over the scout: when the cap
-## is full and the scout holds a key alone, the scout yields (its key is released; its order in
-## flight finishes, its next one waits for room, `AiIntel._may_go`). An order is all or nothing:
-## the budget for every Command of it and the keys are checked first, and a refused order changes
-## nothing in the memory (the next ARMY slot asks again).
+## The army manager, part 1 (ADR 0030, plan row P179): the staging point and its `RALLY`, the home
+## squad (every own combat unit but the scout type), defence of a threat within
+## `defend_radius_tiles` of a building after `reaction_ticks`, and the `MOVE` back. Waves: P180;
+## the unseen-hit response: P179b. It makes no pass over the view's rows: `AiIntel.refresh` fills
+## the lists it walks. Goal keys: the defence is owner ARMY, the rally and return owner STAGING;
+## both precede the scout, which yields at the cap (its order in flight keeps its cell until the
+## leg ends). An order is all or nothing: budget and keys first, no memory change if refused.
 
-## The squad index of the home squad and its role code in `memory.squad_role`.
+## The home squad's index and role code.
 const HOME: int = 0
 const ROLE_HOME: int = 0
 
-## Copied from the defs when the manager is made: the radius in milli-tiles, the staging offset in
-## tiles, the candidate tests per slot, the reaction delay in ticks.
+## Copied from the defs: the radius in milli-tiles, the staging offset in tiles, the tests per slot.
 var defend_radius: int = 0
 var staging_offset: int = 0
 var tests_max: int = 0
 var reaction_ticks: int = 0
 
-## Counted for the suites: passes over the view's rows (always 0), threat candidate tests of the
-## last run, and over the match the RALLY, defence and return Commands sent and the orders turned
-## down because the keys could not be had.
-var passes: int = 0
+## Counted for the suites: threat tests of the last run; over the match RALLY Commands, defence and
+## return orders sent, and orders refused for want of keys.
 var tests: int = 0
 var rallies: int = 0
 var defences: int = 0
 var returns: int = 0
 var starved: int = 0
 
-## The ids that joined the home squad in this run, ascending.
+## Joiners no order has named yet (ascending), and scratch lists kept between runs.
 var _fresh: PackedInt32Array = PackedInt32Array()
+var _ids: PackedInt32Array = PackedInt32Array()
+var _squads: PackedInt32Array = PackedInt32Array()
+var _next: PackedInt32Array = PackedInt32Array()
+var _send: PackedInt32Array = PackedInt32Array()
 
 
 ## A manager for `player_id` that copies what it reads of `def` and `level`.
@@ -67,7 +45,6 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 
 
 func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command]) -> void:
-	passes = 0
 	tests = 0
 	if memory.squads_max < 1:
 		return
@@ -84,22 +61,30 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 		_defend(view, memory, out, view.row_pos(threat))
 
 
-## Rebuilds the member lists from the combat units of this view: a unit keeps its squad, a new one
-## joins the home squad (and is noted in `_fresh`), a dead one is gone.
+## A unit keeps its squad, a new one joins the home squad (pending in `_fresh`), a dead one goes.
 func _join(memory: AiMemory) -> void:
-	var ids: PackedInt32Array = PackedInt32Array()
-	var squads: PackedInt32Array = PackedInt32Array()
-	_fresh.clear()
+	_ids.clear()
+	_squads.clear()
+	_next.clear()
 	for id: int in memory.unit_id:
 		var at: int = memory.member_id.bsearch(id)
-		ids.append(id)
+		_ids.append(id)
 		if at < memory.member_id.size() and memory.member_id[at] == id:
-			squads.append(memory.member_squad[at])
+			_squads.append(memory.member_squad[at])
+			if _is_pending(id):
+				_next.append(id)
 		else:
-			squads.append(HOME)
-			_fresh.append(id)
-	memory.member_id = ids
-	memory.member_squad = squads
+			_squads.append(HOME)
+			_next.append(id)
+	var old: PackedInt32Array = memory.member_id
+	memory.member_id = _ids
+	_ids = old
+	old = memory.member_squad
+	memory.member_squad = _squads
+	_squads = old
+	old = _fresh
+	_fresh = _next
+	_next = old
 	if memory.squad_role[HOME] == AiMemory.NONE:
 		memory.squad_role[HOME] = ROLE_HOME
 		memory.squad_state[HOME] = AiMemory.SquadState.HOME
@@ -112,7 +97,7 @@ func _stage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	if memory.home_x == AiMemory.NONE:
 		return
 	var home: Vector2i = Vector2i(memory.home_x, memory.home_y)
-	var base: Vector2i = Vector2i(view.map_cols - 1 - home.x, view.map_rows - 1 - home.y)
+	var base: Vector2i = AiMemory.mirror(home, view.map_cols, view.map_rows)
 	if memory.has_base_estimate():
 		base = Vector2i(memory.base_x, memory.base_y)
 	var along: Vector2i = base - home
@@ -126,23 +111,23 @@ func _stage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	var y: int = point.y * PlayerView.MILLI_PER_TILE + PlayerView.TILE_CENTRE
 	var producers: PackedInt32Array = _producers(view, memory)
 	var wanted: int = 0
-	for tab: int in [PlayerView.Tab.INFANTRY, PlayerView.Tab.VEHICLES]:
-		if producers[tab] != AiMemory.NONE and (view.rally_x[tab] != x or view.rally_y[tab] != y):
-			wanted += 1
-	if not memory.can_send(wanted):
-		return
 	var classes: int = 0
 	for tab: int in [PlayerView.Tab.INFANTRY, PlayerView.Tab.VEHICLES]:
 		if producers[tab] == AiMemory.NONE:
 			continue
-		classes |= 1 << (AiIntel.FOOT if tab == PlayerView.Tab.INFANTRY else AiIntel.TRACKED)
+		var tracked: bool = tab == PlayerView.Tab.VEHICLES
+		classes |= 1 << (AiMemory.TRACKED if tracked else AiMemory.FOOT)
 		if view.rally_x[tab] != x or view.rally_y[tab] != y:
+			wanted += 1
+	if not memory.can_send(wanted) or not _hold(memory, AiMemory.Owner.STAGING, point, classes):
+		return
+	for tab: int in [PlayerView.Tab.INFANTRY, PlayerView.Tab.VEHICLES]:
+		if producers[tab] != AiMemory.NONE and (view.rally_x[tab] != x or view.rally_y[tab] != y):
 			out.append(Command.rally(view.player, producers[tab], x, y))
 			memory.spent()
 			rallies += 1
 	memory.staging_x = point.x
 	memory.staging_y = point.y
-	_hold(memory, AiMemory.Owner.STAGING, point, classes)
 
 
 ## The id of the lowest finished own building per production tab (NONE for a tab without one).
@@ -193,6 +178,9 @@ func _defend(view: PlayerView, memory: AiMemory, out: Array[Command], at: Vector
 		if not _order(view, memory, out, send, goal, AiMemory.Owner.ARMY, at):
 			return
 		defences += 1
+	elif moved:
+		memory.release_owner(AiMemory.Owner.ARMY)
+	_fresh.clear()
 	memory.squad_goal_x[HOME] = goal.x
 	memory.squad_goal_y[HOME] = goal.y
 
@@ -204,6 +192,7 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		return
 	var goal: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
 	if memory.squad_goal_x[HOME] == goal.x and memory.squad_goal_y[HOME] == goal.y:
+		_fresh.clear()
 		return
 	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
 	memory.release_owner(AiMemory.Owner.ARMY)
@@ -214,22 +203,28 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 			memory.goal_restore(saved)
 			return
 		returns += 1
+	_fresh.clear()
 	memory.squad_goal_x[HOME] = goal.x
 	memory.squad_goal_y[HOME] = goal.y
 
 
-## The ids of the home squad to order: all of it, or only those that joined in this run.
+## Whether `id` joined and no order has named it yet (`_fresh` is ascending).
+func _is_pending(id: int) -> bool:
+	var at: int = _fresh.bsearch(id)
+	return at < _fresh.size() and _fresh[at] == id
+
+
+## The ids of the home squad to order: all of it, or only those still pending.
 func _members(memory: AiMemory, all: bool) -> PackedInt32Array:
-	var ids: PackedInt32Array = PackedInt32Array()
+	_send.clear()
 	for at: int in memory.member_id.size():
-		if memory.member_squad[at] == HOME and (all or _fresh.has(memory.member_id[at])):
-			ids.append(memory.member_id[at])
-	return ids
+		if memory.member_squad[at] == HOME and (all or _is_pending(memory.member_id[at])):
+			_send.append(memory.member_id[at])
+	return _send
 
 
-## Sends `ids` to `goal` (tile; `at` in milli-tiles) with an `ATTACK_MOVE` for the army owner and a
-## `MOVE` for the staging owner, one Command per `Command.MAX_UNITS`. False, and nothing sent or
-## changed, when the budget for all of them or the goal keys are missing.
+## One `ATTACK_MOVE` (army owner) or `MOVE` (staging owner) of `ids` to `goal` (`at` in milli-tiles;
+## `unit_cap` is under `Command.MAX_UNITS`). False, nothing changed, without budget or keys.
 func _order(
 	view: PlayerView,
 	memory: AiMemory,
@@ -239,38 +234,36 @@ func _order(
 	owner: int,
 	at: Vector2i
 ) -> bool:
-	var chunks: int = (ids.size() + Command.MAX_UNITS - 1) / Command.MAX_UNITS
-	if not memory.can_send(chunks):
+	if not memory.can_send():
 		return false
 	var classes: int = 0
 	for id: int in ids:
-		var type: int = view.row_type(view.row_of(id))
-		classes |= 1 << AiIntel.class_of(view, type)
+		classes |= 1 << AiMemory.class_of(view, view.row_type(view.row_of(id)))
 	if not _hold(memory, owner, goal, classes):
 		starved += 1
 		return false
-	for first: int in range(0, ids.size(), Command.MAX_UNITS):
-		var part: PackedInt32Array = ids.slice(first, first + Command.MAX_UNITS)
-		if owner == AiMemory.Owner.ARMY:
-			out.append(Command.attack_move(view.player, part, at.x, at.y))
-		else:
-			out.append(Command.move(view.player, part, at.x, at.y))
-		memory.spent()
+	if owner == AiMemory.Owner.ARMY:
+		out.append(Command.attack_move(view.player, ids.duplicate(), at.x, at.y))
+	else:
+		out.append(Command.move(view.player, ids.duplicate(), at.x, at.y))
+	memory.spent()
 	return true
 
 
-## Makes `owner`'s keys the cells of `goal` for the move classes in `classes` (a bit per class) and
-## those it already holds there; every key of it elsewhere is released. A full cache makes the scout
-## yield. False, with the keys as they were, when even that does not make room.
+## Makes `owner`'s keys the cells of `goal` for `classes` (a bit per move class) and those it holds
+## there; its other keys go. A full cache makes the scout yield. False, keys kept, if no room.
 func _hold(memory: AiMemory, owner: int, goal: Vector2i, classes: int) -> bool:
 	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
 	var wanted: int = classes
 	for at: int in memory.goal_keys():
-		if memory.goal_owner[at] & (1 << owner) != 0 and memory.goal_x[at] == goal.x:
-			if memory.goal_y[at] == goal.y:
-				wanted |= 1 << memory.goal_class[at]
+		if (
+			memory.goal_owner[at] & (1 << owner) != 0
+			and memory.goal_x[at] == goal.x
+			and memory.goal_y[at] == goal.y
+		):
+			wanted |= 1 << memory.goal_class[at]
 	memory.release_owner(owner)
-	for move_class: int in [AiIntel.FOOT, AiIntel.TRACKED]:
+	for move_class: int in [AiMemory.FOOT, AiMemory.TRACKED]:
 		if (
 			wanted & (1 << move_class) == 0
 			or memory.add_goal_key(goal.x, goal.y, move_class, owner)
