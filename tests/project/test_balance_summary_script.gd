@@ -19,13 +19,22 @@ const FAKE_GODOT: String = (
 	+ "  exit 0 ;;\n"
 	+ "esac\n"
 	+ "echo 'Godot Engine v4.7.2.stable.official - https://godotengine.org'\n"
+	# The files of the run, as the entry writes them: the JSON and its markdown.
+	+ 'prev=""\n'
+	+ 'for arg in "$@"; do\n'
+	+ '  [ "$prev" != --out ] || { printf "{}" >"$arg"; printf "#" >"${arg%.json}.md"; }\n'
+	+ '  prev="$arg"\n'
+	+ "done\n"
+	+ 'ok() { echo "balance-summary: OK, 2 matches from 1 reports, 0 flags"; }\n'
 	+ 'case "$mode" in\n'
 	+ "  refused) echo \"balance-summary: FAILED, field 'commit' differs\"; exit 1 ;;\n"
-	+ '  script_error) echo "SCRIPT ERROR: Invalid call."; echo "balance-summary: OK" ;;\n'
-	+ '  error_line) echo "ERROR: 3 resources in use."; echo "balance-summary: OK" ;;\n'
+	+ '  refused_error) echo "ERROR: broke."; echo "balance-summary: FAILED, x"; exit 1 ;;\n'
+	+ '  script_error) echo "SCRIPT ERROR: Invalid call."; ok ;;\n'
+	+ '  parse_error) echo "Parse Error: Identifier not found."; ok ;;\n'
+	+ '  error_line) echo "ERROR: 3 resources in use."; ok ;;\n'
 	+ "  silent) ;;\n"
 	+ "  crash) exit 134 ;;\n"
-	+ '  *) printf "%s" "balance-summary: OK, 2 matches from 1 reports, 0 flags\n" ;;\n'
+	+ "  *) ok ;;\n"
 	+ "esac\n"
 )
 const LAUNCH: String = (
@@ -70,16 +79,32 @@ func test_the_paths_reach_godot_absolute_and_the_stdout_holds_only_the_runs_line
 	assert_bool(FileAccess.file_exists(root.path_join("build/.gdignore"))).is_true()
 
 
-func test_gate_is_passed_on_and_a_stale_output_does_not_survive_a_failed_run() -> void:
+func test_gate_is_passed_on_and_the_markdown_name_follows_the_out_name() -> void:
 	var root: String = _project()
 	_run(root, ["--gate", "--out", "o.json", "r1.json"])
 	assert_str(_read(root, "calls.txt")).contains("--out %s --gate " % root.path_join("o.json"))
+	# .json becomes .md; a name that is not .json gets .md added.
+	assert_bool(FileAccess.file_exists(root.path_join("o.md"))).is_true()
+	assert_bool(FileAccess.file_exists(root.path_join("o.json.md"))).is_false()
+	_run(root, ["--out", "plain", "r1.json"])
+	assert_bool(FileAccess.file_exists(root.path_join("plain.md"))).is_true()
+
+
+func test_a_stale_output_does_not_survive_and_a_failed_run_leaves_none() -> void:
+	var root: String = _project()
 	_write(root.path_join("o.json"), "stale")
-	_write(root.path_join("o.json.md"), "stale")
+	_write(root.path_join("o.md"), "stale")
 	_write(root.path_join("mode"), "silent")
 	_run(root, ["--out", "o.json", "r1.json"], 1)
 	assert_bool(FileAccess.file_exists(root.path_join("o.json"))).is_false()
-	assert_bool(FileAccess.file_exists(root.path_join("o.json.md"))).is_false()
+	assert_bool(FileAccess.file_exists(root.path_join("o.md"))).is_false()
+	# Godot wrote the files and then an error line: the failed run removes both.
+	for mode: String in ["error_line", "script_error", "refused"]:
+		var other: String = _project()
+		_write(other.path_join("mode"), mode)
+		_run(other, ["--out", "o.json", "r1.json"], 1)
+		assert_bool(FileAccess.file_exists(other.path_join("o.json"))).is_false()
+		assert_bool(FileAccess.file_exists(other.path_join("o.md"))).is_false()
 
 
 func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
@@ -93,6 +118,9 @@ func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
 		["--out", "o.json", "missing.json"],
 		["--out", "o.json", ""],
 		["--out", "o.json", "."],
+		["--out", "--gate", "r1.json"],
+		["--out", "-o.json", "r1.json"],
+		["--out", ".", "r1.json"],
 		["--gate", "r1.json"],
 	]
 	for args: Array in bad:
@@ -122,14 +150,27 @@ func test_a_missing_godot_exits_3_after_the_flags_are_checked() -> void:
 	_run(root, ["--bogus"], 2, missing)
 
 
-func test_a_refusal_exits_1_with_its_line_and_the_other_failures_too() -> void:
+## Godot can exit 0 after a script error, and the fake then prints the full OK line, so only the
+## scan of Godot's output can fail these runs.
+func test_a_refusal_exits_1_with_its_line_and_the_error_scan_fails_a_run_that_prints_ok() -> void:
 	var root: String = _project()
 	_write(root.path_join("mode"), "refused")
 	_run(root, ["--out", "o.json", "r1.json"], 1)
 	assert_str(_read(root, "stdout.txt")).contains("FAILED, field 'commit' differs")
-	var cases: Dictionary[String, String] = {
+	var scanned: Dictionary[String, String] = {
 		"script_error": "SCRIPT ERROR: Invalid call.",
+		"parse_error": "Parse Error: Identifier not found.",
 		"error_line": "ERROR: 3 resources in use.",
+		# An error line before the script's own FAILED line is shown too.
+		"refused_error": "ERROR: broke.",
+	}
+	for mode: String in scanned:
+		var other: String = _project()
+		_write(other.path_join("mode"), mode)
+		_run(other, ["--out", "o.json", "r1.json"], 1)
+		assert_str(_read(other, "stderr.txt")).contains("Godot wrote errors")
+		assert_str(_read(other, "stderr.txt")).contains(scanned[mode])
+	var cases: Dictionary[String, String] = {
 		"silent": "the OK line is missing",
 		"crash": "Godot exited with code 134",
 	}

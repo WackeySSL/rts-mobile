@@ -1,21 +1,37 @@
 extends SceneTree
 ## The merge, the summary, the gate block and the markdown behind scripts/balance-summary.sh (plan
 ## row P187, ADR 0031 sections 4 to 6). Not a test suite; the entry point is `_initialize` (Godot
-## runs this script headless) and `test_balance_summary.gd` calls the same static functions.
+## runs this script headless) and the suites call the same static functions.
 ##
 ## Run: godot --headless --path . -s res://tests/smoke/balance_summary.gd -- --out PATH [--gate]
 ##      REPORT...   (PATH and the reports are absolute file paths; the shell script resolves them)
 ## Output: lines that start with "balance-summary: ", then "OK, ..." and exit code 0, or "FAILED,
-## <what>" and exit code 1 (a refusal names the field). Exit code 2: a bad argument.
+## <what>" and exit code 1 (a refusal names the field). Exit code 2: a bad argument. The markdown
+## goes to markdown_path(PATH).
 ##
 ## Every number is an int (shares in per-mille, ratios as `_x100`), so equal inputs give the same
 ## bytes. JSON hands numbers back as floats; load_report() turns them into ints again. Per type maps
 ## of a report hold only the types that occurred (absent = 0), so the unit rows read the faction
-## rosters from data/factions/*.tres, units being the roster's types with a queue tab.
+## rosters from data/factions/*.tres, units being the roster's types with an Infantry or Vehicles
+## tab.
+
+const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 
 const PREFIX: String = "balance-summary: "
-const SCHEMA: int = 2
 const FACTION_PATH: String = "res://data/factions/%s.tres"
+## The keys every report must hold (ADR 0031 section 3).
+const KEYS: Array[String] = [
+	"schema",
+	"status",
+	"commit",
+	"impl",
+	"ticks_per_match",
+	"seed_start",
+	"matches_requested",
+	"levels",
+	"scenarios",
+	"matches",
+]
 ## The skill's and the gate's limits (ADR 0031 sections 4 and 6), per-mille unless named.
 const SHARE_MIN: int = 400
 const SHARE_MAX: int = 600
@@ -26,40 +42,45 @@ const MEDIAN_MAX: int = 9000
 const TYPE_MIN: int = 50
 const TYPE_MAX: int = 400
 const HASH_MIN_PERCENT: int = 95
-const GATE_MAX_TICKS: int = 13500
-## The gate decides on 100 matches; a rerun (200 matches together) decides against 400-600.
+## The gate set (section 6): 100 matches of seeds 1001-1100, or with the one rerun 200 of 1001-1200,
+## Normal against Normal on `cross`, twelve unit types. The rerun band applies at exactly 100.
+const GATE_SEED_FIRST: int = 1001
+const GATE_MATCHES: int = 100
 const GATE_RERUN_MATCHES: int = 200
+const GATE_LEVELS: String = "normal,normal"
+const GATE_SCENARIOS: String = "cross"
+const GATE_TYPES: int = 12
 ## Ticks per minute (15 Hz).
 const TICKS_PER_MINUTE: int = 900
-const IMPL_NATIVE: String = "native"
-## The fields every shard of one set must share (levels is compared as an unordered pair).
-const SAME_FIELDS: Array[String] = ["commit", "impl", "ticks_per_match", "scenarios"]
+## The fields every shard of one set must share; `levels` is compared as an unordered pair.
+const MERGE_FIELDS: Array[String] = ["commit", "impl", "ticks_per_match", "scenarios", "levels"]
 
 
 func _initialize() -> void:
-	quit(_run(OS.get_cmdline_user_args()))
+	quit(run(OS.get_cmdline_user_args()))
 
 
 ## Merges the reports named in `args`, writes the JSON and the markdown, returns the exit code.
-func _run(args: PackedStringArray) -> int:
+static func run(args: PackedStringArray) -> int:
 	var out: String = ""
 	var gate: bool = false
 	var paths: Array[String] = []
 	var index: int = 0
 	while index < args.size():
-		if args[index] == "--out" and index + 1 < args.size() and not args[index + 1].is_empty():
-			out = args[index + 1]
+		var value: String = args[index + 1] if index + 1 < args.size() else ""
+		if args[index] == "--out" and not value.is_empty() and not value.begins_with("-"):
+			out = value
 			index += 1
 		elif args[index] == "--gate":
 			gate = true
-		elif not args[index].begins_with("--") and not args[index].is_empty():
+		elif not args[index].begins_with("-") and not args[index].is_empty():
 			paths.append(args[index])
 		else:
 			printerr("%sbad argument '%s'" % [PREFIX, args[index]])
 			return 2
 		index += 1
-	if out.is_empty() or paths.is_empty():
-		printerr("%s--out PATH and at least one REPORT are required" % PREFIX)
+	if out.is_empty() or paths.is_empty() or DirAccess.dir_exists_absolute(out):
+		printerr("%s--out FILE and at least one REPORT are required" % PREFIX)
 		return 2
 	var reports: Array[Dictionary] = []
 	for path: String in paths:
@@ -73,8 +94,9 @@ func _run(args: PackedStringArray) -> int:
 		print("%sFAILED, %s" % [PREFIX, result["error"]])
 		return 1
 	var merged: Dictionary = result["report"]
-	if not _write(out, report_text(merged)) or not _write(out + ".md", markdown(merged)):
-		print("%sFAILED, cannot write %s or %s.md" % [PREFIX, out, out])
+	var markdown_file: String = markdown_path(out)
+	if not _write(out, Smoke.report_text(merged)) or not _write(markdown_file, markdown(merged)):
+		print("%sFAILED, cannot write %s or %s" % [PREFIX, out, markdown_file])
 		return 1
 	var summary: Dictionary = merged["summary"]
 	var verdict: String = ", gate %s" % summary["gate"]["verdict"] if gate else ""
@@ -87,6 +109,12 @@ func _run(args: PackedStringArray) -> int:
 	return 0
 
 
+## Where the markdown of the JSON file `out` goes: `.json` becomes `.md`, any other name gets `.md`
+## added.
+static func markdown_path(out: String) -> String:
+	return out.trim_suffix(".json") + ".md" if out.ends_with(".json") else out + ".md"
+
+
 ## The report in the file `path` with every number an int; `{"error": text}` when it cannot be read.
 static func load_report(path: String) -> Dictionary:
 	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
@@ -96,9 +124,18 @@ static func load_report(path: String) -> Dictionary:
 	file.close()
 	if not parsed is Dictionary:
 		return {"error": "%s: not a JSON object" % path}
+	if _has_fraction(parsed):
+		return {"error": "%s: holds a number that is not a whole number" % path}
 	var data: Dictionary = _ints(parsed)
-	if data.get("schema", 0) != SCHEMA or not data.get("matches", null) is Array:
-		return {"error": "%s: field 'schema' is not %d" % [path, SCHEMA]}
+	if data.get("schema", 0) != Smoke.SCHEMA:
+		return {"error": "%s: field 'schema' is not %d" % [path, Smoke.SCHEMA]}
+	for key: String in KEYS:
+		if not data.has(key):
+			return {"error": "%s: field '%s' is missing" % [path, key]}
+	if not data["matches"] is Array:
+		return {"error": "%s: field 'matches' is not an array" % path}
+	if not data["levels"] is Array or data["levels"].size() != 2:
+		return {"error": "%s: field 'levels' is not a pair" % path}
 	return data
 
 
@@ -136,7 +173,7 @@ static func build(reports: Array[Dictionary], names: Array[String], gate: bool) 
 	if pairs.size() > 1:
 		levels.sort()
 	var merged: Dictionary = {
-		"schema": SCHEMA,
+		"schema": Smoke.SCHEMA,
 		"status": "failed" if failed else "ok",
 		"commit": reports[0]["commit"],
 		"impl": reports[0]["impl"],
@@ -147,14 +184,18 @@ static func build(reports: Array[Dictionary], names: Array[String], gate: bool) 
 		"scenarios": reports[0]["scenarios"],
 		"matches": matches,
 	}
-	merged["summary"] = summarize(merged, rosters_of(_factions_of(matches)), gate)
+	var rosters: Dictionary[String, Array] = rosters_of(_factions_of(matches))
+	var problem: String = _roster_problem(rosters)
+	if not problem.is_empty():
+		return {"error": problem}
+	merged["summary"] = summarize(merged, rosters, gate)
 	return {"report": merged}
 
 
-## The roster of each faction in `factions`: its unit types (the roster entries with a queue tab),
-## `{faction id: Array[String]}`.
-static func rosters_of(factions: Array) -> Dictionary:
-	var rosters: Dictionary = {}
+## The roster of each faction in `factions`: its unit types (the roster entries with an Infantry or
+## Vehicles tab), `{faction id: Array[String]}`. A faction with no readable file has an empty one.
+static func rosters_of(factions: Array[String]) -> Dictionary[String, Array]:
+	var rosters: Dictionary[String, Array] = {}
 	for faction: String in factions:
 		var def: FactionDef = null
 		if ResourceLoader.exists(FACTION_PATH % faction):
@@ -162,17 +203,40 @@ static func rosters_of(factions: Array) -> Dictionary:
 		var types: Array[String] = []
 		if def != null:
 			for unit: UnitDef in def.roster:
-				if unit.tab >= 1:
+				if unit.tab >= World.Tab.INFANTRY:
 					types.append(String(unit.type_id))
 		rosters[faction] = types
 	return rosters
 
 
+## What is wrong with `rosters` (an empty roster, or a type id listed for two factions, which would
+## share one row), empty when they are fine.
+static func _roster_problem(rosters: Dictionary[String, Array]) -> String:
+	var owner_of: Dictionary[String, String] = {}
+	for faction: String in rosters:
+		if rosters[faction].is_empty():
+			return (
+				"faction '%s' has no roster (%s is missing or does not load)"
+				% [faction, FACTION_PATH % faction]
+			)
+		for type_id: String in rosters[faction]:
+			if owner_of.has(type_id):
+				return (
+					"type '%s' is in the rosters of '%s' and '%s'"
+					% [type_id, owner_of[type_id], faction]
+				)
+			owner_of[type_id] = faction
+	return ""
+
+
 ## The summary of the merged `report` (ADR 0031 section 4). `rosters` is rosters_of() of its
-## factions. With `gate` the summary also has the gate block (section 6).
-static func summarize(report: Dictionary, rosters: Dictionary, gate: bool) -> Dictionary:
+## factions. With `gate` the summary also has the gate block (section 6). `by_faction` is left out
+## when every match is between players of one faction (a mirror), where it would read 500.
+static func summarize(
+	report: Dictionary, rosters: Dictionary[String, Array], gate: bool
+) -> Dictionary:
 	var matches: Array = report["matches"]
-	var ends: Dictionary[String, int] = {"victory": 0, "draw": 0, "timeout": 0}
+	var ends: Dictionary[String, int] = {}
 	var dropped: int = 0
 	var flow_total: int = 0
 	var flow_most: int = 0
@@ -188,18 +252,23 @@ static func summarize(report: Dictionary, rosters: Dictionary, gate: bool) -> Di
 	lengths.sort()
 	var summary: Dictionary = {
 		"matches": matches.size(),
-		"victories": ends["victory"],
-		"draws": ends["draw"],
-		"timeouts": ends["timeout"],
+		"victories": ends.get(Smoke.END_VICTORY, 0),
+		"draws": ends.get(Smoke.END_DRAW, 0),
+		"timeouts": ends.get(Smoke.END_TIMEOUT, 0),
 		"dropped_commands": dropped,
 		"flow_full_ticks": {"total": flow_total, "most_in_one": flow_most},
-		"by_faction": _shares(matches, "faction"),
 		"by_seat": _shares(matches, "seat"),
 		"length_ticks":
-		{"median": _median(lengths), "p90": _percentile(lengths, 90), "max": _last(lengths)},
+		{
+			"median": _median(lengths),
+			"p90": _percentile(lengths, 90),
+			"max": 0 if lengths.is_empty() else lengths[-1],
+		},
 		"types": _types(matches, rosters),
 		"distinct_final_hashes": hashes.size(),
 	}
+	if _factions_of(matches).size() > 1:
+		summary["by_faction"] = _shares(matches, "faction")
 	var levels: Array[String] = _strings(report["levels"])
 	if levels[0] != levels[1]:
 		summary["by_level"] = _shares(matches, "level")
@@ -215,7 +284,7 @@ static func _shares(matches: Array, field: String) -> Dictionary:
 	var halves: Dictionary[String, int] = {}
 	var seats: Dictionary[String, int] = {}
 	for record: Dictionary in matches:
-		var decided: bool = record["end"] == "victory" and int(record["winner"]) != 0
+		var decided: bool = record["end"] == Smoke.END_VICTORY and int(record["winner"]) != 0
 		for player: Dictionary in record["players"]:
 			var key: String = String(player[field])
 			var score: int = 1
@@ -230,7 +299,7 @@ static func _shares(matches: Array, field: String) -> Dictionary:
 
 
 ## The per type rows, `{type id: {...}}`, for the units of each faction's roster.
-static func _types(matches: Array, rosters: Dictionary) -> Dictionary:
+static func _types(matches: Array, rosters: Dictionary[String, Array]) -> Dictionary:
 	var rows: Dictionary = {}
 	for faction: String in rosters:
 		var sums: Dictionary[String, int] = {}
@@ -266,7 +335,20 @@ static func _types(matches: Array, rosters: Dictionary) -> Dictionary:
 	return rows
 
 
-## The flags, one text each, in a fixed order: the skill's, then the three of section 4.
+## The type ids of `types` in the order of the tables and flags: by faction, then id.
+static func _type_order(types: Dictionary) -> Array[String]:
+	var order: Array[String] = _strings(types.keys())
+	order.sort_custom(
+		func(a: String, b: String) -> bool:
+			if types[a]["faction"] != types[b]["faction"]:
+				return types[a]["faction"] < types[b]["faction"]
+			return a < b
+	)
+	return order
+
+
+## The flags, one text each, in a fixed order: the skill's, then the three of section 4. The type
+## shares are compared exactly, not on their rounded values.
 static func _flags(summary: Dictionary) -> Array[String]:
 	var found: Array[String] = []
 	for group: String in ["by_faction", "by_seat", "by_level"]:
@@ -283,13 +365,24 @@ static func _flags(summary: Dictionary) -> Array[String]:
 	if summary["matches"] > 0 and (median < MEDIAN_MIN or median > MEDIAN_MAX):
 		found.append("median length %d ticks is outside %d-%d" % [median, MEDIAN_MIN, MEDIAN_MAX])
 	var types: Dictionary = summary["types"]
-	for type_id: String in _sorted(types.keys()):
-		var share: int = types[type_id]["share_permille"]
-		if share < TYPE_MIN or share > TYPE_MAX:
+	var totals: Dictionary[String, int] = {}
+	for type_id: String in types:
+		var faction: String = types[type_id]["faction"]
+		totals[faction] = totals.get(faction, 0) + int(types[type_id]["produced"])
+	for type_id: String in _type_order(types):
+		var made: int = types[type_id]["produced"] * 1000
+		var total: int = totals[types[type_id]["faction"]]
+		if total == 0 or made < TYPE_MIN * total or made > TYPE_MAX * total:
 			found.append(
 				(
 					"%s (%s) is %d per-mille of its production, outside %d-%d"
-					% [type_id, types[type_id]["faction"], share, TYPE_MIN, TYPE_MAX]
+					% [
+						type_id,
+						types[type_id]["faction"],
+						types[type_id]["share_permille"],
+						TYPE_MIN,
+						TYPE_MAX
+					]
 				)
 			)
 	if summary["timeouts"] > 0:
@@ -308,35 +401,38 @@ static func _flags(summary: Dictionary) -> Array[String]:
 
 ## The gate block (ADR 0031 section 6): `matches` and `verdict` ("pass", "rerun" or "fail") and the
 ## `checks`, each with `id`, `name`, `value`, `min`, `max` (the limits, ints), `detail` and its own
-## verdict. A faction or seat share of 350-399 or 601-650 asks for the one rerun while the set is
-## under 200 matches; the 200 together decide against 400-600.
+## verdict. `set` comes first and fails unless this is a gate set: 100 matches of seeds 1001-1100
+## or 200 of 1001-1200, Normal against Normal on `cross`, twelve unit types. Checks `3a` and `3b`
+## together are section 6's check 3. A faction or seat share of 350-399 or 601-650 asks for the one
+## rerun at exactly 100 matches; the 200 together decide against 400-600, and checks 3 to 7 are
+## judged on all of them with the same proportions (half built, 95 percent distinct). Any failing
+## check makes the verdict `fail`, whatever order the checks come in.
 static func _gate(summary: Dictionary, report: Dictionary) -> Dictionary:
 	var count: int = summary["matches"]
-	var top: Dictionary = {"top": summary["by_seat"].get("top", 0)}
+	var top: Dictionary = {"top": summary["by_seat"].get(Smoke.SEATS[0], 0)}
 	var checks: Array[Dictionary] = [
-		_share_check("1", "faction win share", summary["by_faction"], count),
+		_set_check(summary, report),
+		_share_check("1", "faction win share", summary.get("by_faction", {}), count),
 		_share_check("2", "top seat win share", top, count),
 		_check("3a", "timeouts", summary["timeouts"], 0, 0, ""),
-		_check(
-			"3b", "longest match (ticks)", summary["length_ticks"]["max"], 0, GATE_MAX_TICKS, ""
-		),
+		_check("3b", "longest match (ticks)", summary["length_ticks"]["max"], 0, Smoke.TICKS, ""),
 	]
-	var least: int = count
+	var least: int = 0
 	var least_type: String = ""
-	for type_id: String in _sorted(summary["types"].keys()):
+	for type_id: String in _type_order(summary["types"]):
 		if least_type.is_empty() or summary["types"][type_id]["matches_built"] < least:
 			least = summary["types"][type_id]["matches_built"]
 			least_type = type_id
-	# Built in at least half the matches (50 of 100).
+	var half: int = maxi((count + 1) / 2, 1)
 	var detail: String = "%s in %d of %d" % [least_type, least, count]
+	checks.append(_check("4", "least built unit type (matches)", least, half, count, detail))
 	checks.append(
-		_check("4", "least built unit type (matches)", least, (count + 1) / 2, count, detail)
+		_check("5", "dropped commands (all matches)", summary["dropped_commands"], 0, 0, "")
 	)
-	checks.append(_check("5", "most dropped commands in a match", _most_dropped(report), 0, 0, ""))
-	var hashes: int = summary["distinct_final_hashes"]
 	var need: int = (HASH_MIN_PERCENT * count + 99) / 100
+	var hashes: int = summary["distinct_final_hashes"]
 	checks.append(_check("6", "distinct final hashes", hashes, need, count, ""))
-	var native: int = 1 if report["impl"] == IMPL_NATIVE else 0
+	var native: int = 1 if report["impl"] == Smoke.IMPL_NATIVE else 0
 	checks.append(_check("7", "impl is native", native, 1, 1, "impl %s" % report["impl"]))
 	var verdict: String = "pass"
 	for check: Dictionary in checks:
@@ -348,7 +444,41 @@ static func _gate(summary: Dictionary, report: Dictionary) -> Dictionary:
 	return {"matches": count, "verdict": verdict, "checks": checks}
 
 
-## Check 1 or 2: the share farthest from 500 among `shares`, against 400-600 with the rerun band.
+## The `set` check: value 1 when the matches are a gate set, else 0, the detail naming what is not.
+static func _set_check(summary: Dictionary, report: Dictionary) -> Dictionary:
+	var count: int = summary["matches"]
+	var problems: Array[String] = []
+	var seeds_ok: bool = count == GATE_MATCHES or count == GATE_RERUN_MATCHES
+	for index: int in count:
+		seeds_ok = seeds_ok and int(report["matches"][index]["seed"]) == GATE_SEED_FIRST + index
+	if not seeds_ok:
+		(
+			problems
+			. append(
+				(
+					"%d matches are not seeds %d-%d or %d-%d"
+					% [
+						count,
+						GATE_SEED_FIRST,
+						GATE_SEED_FIRST + GATE_MATCHES - 1,
+						GATE_SEED_FIRST,
+						GATE_SEED_FIRST + GATE_RERUN_MATCHES - 1,
+					]
+				)
+			)
+		)
+	if ",".join(_strings(report["levels"])) != GATE_LEVELS:
+		problems.append("levels %s, not %s" % [",".join(_strings(report["levels"])), GATE_LEVELS])
+	if report["scenarios"] != GATE_SCENARIOS:
+		problems.append("scenarios %s, not %s" % [report["scenarios"], GATE_SCENARIOS])
+	if summary["types"].size() != GATE_TYPES:
+		problems.append("%d unit types, not %d" % [summary["types"].size(), GATE_TYPES])
+	var detail: String = "; ".join(problems)
+	return _check("set", "a gate set", 0 if problems else 1, 1, 1, detail)
+
+
+## Check 1 or 2: the share farthest from 500 among `shares`, against 400-600 with the rerun band
+## (at exactly 100 matches).
 static func _share_check(id: String, name: String, shares: Dictionary, count: int) -> Dictionary:
 	var worst: int = 500
 	var detail: Array[String] = []
@@ -357,7 +487,7 @@ static func _share_check(id: String, name: String, shares: Dictionary, count: in
 		if absi(shares[key] - 500) > absi(worst - 500):
 			worst = shares[key]
 	var check: Dictionary = _check(id, name, worst, SHARE_MIN, SHARE_MAX, ", ".join(detail))
-	var rerun: bool = count < GATE_RERUN_MATCHES and worst >= RERUN_MIN and worst <= RERUN_MAX
+	var rerun: bool = count == GATE_MATCHES and worst >= RERUN_MIN and worst <= RERUN_MAX
 	if check["verdict"] == "fail" and rerun:
 		check["verdict"] = "rerun"
 	return check
@@ -377,16 +507,12 @@ static func _check(
 	}
 
 
-static func _most_dropped(report: Dictionary) -> int:
-	var most: int = 0
-	for record: Dictionary in report["matches"]:
-		most = maxi(most, int(record["dropped_commands"]))
-	return most
-
-
-## The text of the merged report file: sorted keys, indented, a newline at the end.
-static func report_text(report: Dictionary) -> String:
-	return JSON.stringify(report, "  ", true) + "\n"
+## One table row of `cells`.
+static func _row(cells: Array) -> String:
+	var texts: Array[String] = []
+	for cell: Variant in cells:
+		texts.append(str(cell))
+	return "| %s |" % " | ".join(texts)
 
 
 ## The markdown of the merged `report`: a fixed template of tables, then the flags, then the gate.
@@ -394,6 +520,10 @@ static func markdown(report: Dictionary) -> String:
 	var summary: Dictionary = report["summary"]
 	var flow: Dictionary = summary["flow_full_ticks"]
 	var length: Dictionary = summary["length_ticks"]
+	var matches: Array = report["matches"]
+	var seeds: String = ""
+	if not matches.is_empty():
+		seeds = ", seeds %d-%d" % [matches[0]["seed"], matches[-1]["seed"]]
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append("## Balance summary")
 	lines.append("")
@@ -401,13 +531,14 @@ static func markdown(report: Dictionary) -> String:
 		lines
 		. append(
 			(
-				"Commit `%s`, impl `%s`, levels `%s`, scenarios `%s`, at most %d ticks a match."
+				"Commit `%s`, impl `%s`, levels `%s`, scenarios `%s`, at most %d ticks a match%s."
 				% [
 					report["commit"],
 					report["impl"],
 					",".join(_strings(report["levels"])),
 					report["scenarios"],
 					report["ticks_per_match"],
+					seeds,
 				]
 			)
 		)
@@ -418,29 +549,27 @@ static func markdown(report: Dictionary) -> String:
 	(
 		lines
 		. append(
-			(
-				"| %d | %d | %d | %d | %d | %d, %d |"
-				% [
+			_row(
+				[
 					summary["matches"],
 					summary["victories"],
 					summary["draws"],
 					summary["timeouts"],
 					summary["dropped_commands"],
-					flow["total"],
-					flow["most_in_one"],
+					"%d, %d" % [flow["total"], flow["most_in_one"]],
 				]
 			)
 		)
 	)
 	lines.append("")
-	lines.append("### Win shares (per-mille; a draw or timeout counts half to each side)")
+	lines.append("### Win shares (per-mille; a draw or a timeout counts half to each side)")
 	lines.append("")
 	lines.append("| Group | Value | Share |")
 	lines.append("| --- | --- | --- |")
 	for group: String in ["by_faction", "by_seat", "by_level"]:
 		var shares: Dictionary = summary.get(group, {})
 		for key: String in _sorted(shares.keys()):
-			lines.append("| %s | %s | %d |" % [group.trim_prefix("by_"), key, shares[key]])
+			lines.append(_row([group.trim_prefix("by_"), key, shares[key]]))
 	lines.append("")
 	lines.append("### Match length")
 	lines.append("")
@@ -468,28 +597,19 @@ static func markdown(report: Dictionary) -> String:
 	)
 	lines.append("| --- | --- | --- | --- | --- | --- | --- |")
 	var types: Dictionary = summary["types"]
-	var order: Array[String] = _sorted(types.keys())
-	order.sort_custom(
-		func(a: String, b: String) -> bool:
-			if types[a]["faction"] != types[b]["faction"]:
-				return types[a]["faction"] < types[b]["faction"]
-			return a < b
-	)
-	for type_id: String in order:
+	for type_id: String in _type_order(types):
 		var row: Dictionary = types[type_id]
 		var kills: int = row["kills_per_1000_credits_x100"]
 		(
 			lines
 			. append(
-				(
-					"| %s | %s | %d | %d | %d.%02d | %d | %d |"
-					% [
+				_row(
+					[
 						row["faction"],
 						type_id,
 						row["produced"],
 						row["share_permille"],
-						kills / 100,
-						kills % 100,
+						"%d.%02d" % [kills / 100, kills % 100],
 						row["survival_permille"],
 						row["matches_built"],
 					]
@@ -497,16 +617,17 @@ static func markdown(report: Dictionary) -> String:
 			)
 		)
 	lines.append("")
-	lines.append("Share and survival are per-mille; a type that never occurred shows 0.")
-	(
-		lines
-		. append(
-			(
-				"Kills are an estimate, credited in this order: a shot at the unit in the tick it died; "
-				+ "else an enemy rupture landing in that tick within its radius (to the strike "
-				+ "building's type); else the unit's last shooter; else nobody. Structures and "
-				+ "cancelled sites are not in the unit rows."
-			)
+	lines.append(
+		"Share and survival are per-mille, rounded half up; a type that never occurred shows 0."
+	)
+	lines.append(
+		(
+			"Kills are an estimate, credited in this order: a shot at the row in the tick it died; "
+			+ "else an enemy rupture landing in that tick within its radius (to the strike "
+			+ "building's type); else the row's last shooter; else nobody. Kills by structures "
+			+ "(turrets, strike buildings) are not in the unit rows; a cancelled site is neither a "
+			+ "loss nor a kill. Kills by free rows (the scenario's units, a refinery's tanker) "
+			+ "count, while the credits spent count produced rows only."
 		)
 	)
 	lines.append("")
@@ -526,17 +647,16 @@ static func markdown(report: Dictionary) -> String:
 		lines.append("| Check | What | Value | Limit | Verdict | Detail |")
 		lines.append("| --- | --- | --- | --- | --- | --- |")
 		for check: Dictionary in gate["checks"]:
+			var limit: String = "%d-%d" % [check["min"], check["max"]]
 			(
 				lines
 				. append(
-					(
-						"| %s | %s | %d | %d-%d | %s | %s |"
-						% [
+					_row(
+						[
 							check["id"],
 							check["name"],
 							check["value"],
-							check["min"],
-							check["max"],
+							limit,
 							check["verdict"],
 							check["detail"],
 						]
@@ -555,7 +675,7 @@ static func _minutes(ticks: int) -> String:
 ## The text of a refusal naming the field two shards differ in, empty when they merge.
 static func _refusal(reports: Array[Dictionary], names: Array[String]) -> String:
 	for index: int in range(1, reports.size()):
-		for field: String in SAME_FIELDS + ["levels"]:
+		for field: String in MERGE_FIELDS:
 			if _field_key(reports[index], field) != _field_key(reports[0], field):
 				return (
 					"field '%s' differs: %s has %s, %s has %s"
@@ -587,7 +707,7 @@ static func _order_of(record: Dictionary) -> String:
 	return ",".join(levels)
 
 
-static func _factions_of(matches: Array[Dictionary]) -> Array[String]:
+static func _factions_of(matches: Array) -> Array[String]:
 	var found: Array[String] = []
 	for record: Dictionary in matches:
 		for player: Dictionary in record["players"]:
@@ -637,10 +757,6 @@ static func _percentile(values: Array[int], percent: int) -> int:
 	return values[(percent * values.size() + 99) / 100 - 1]
 
 
-static func _last(values: Array[int]) -> int:
-	return 0 if values.is_empty() else values[values.size() - 1]
-
-
 ## `value` with every float that holds a whole number turned into an int, deep.
 static func _ints(value: Variant) -> Variant:
 	if value is float and value == floorf(value):
@@ -656,6 +772,21 @@ static func _ints(value: Variant) -> Variant:
 			map[key] = _ints(value[key])
 		return map
 	return value
+
+
+## Whether `value` holds, anywhere inside, a float that is not a whole number.
+static func _has_fraction(value: Variant) -> bool:
+	if value is float:
+		return value != floorf(value)
+	if value is Array:
+		for item: Variant in value:
+			if _has_fraction(item):
+				return true
+	if value is Dictionary:
+		for key: Variant in value:
+			if _has_fraction(value[key]):
+				return true
+	return false
 
 
 static func _write(path: String, text: String) -> bool:
