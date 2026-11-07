@@ -31,7 +31,7 @@ const DELAY_MSEC: int = 30
 const SHORT_DELAY_MSEC: int = 5
 ## The MatchSnapshot fields that are timings, not state, so the lockstep leaves them out.
 const TIMINGS: Array[StringName] = [
-	&"phase_usec", &"step_usec", &"job_usec", &"post_usec", &"end_usec"
+	&"phase_usec", &"step_usec", &"job_usec", &"think_usec", &"post_usec", &"end_usec"
 ]
 const SYNC: int = MatchRunner.TickMode.SYNC
 const WORKER: int = MatchRunner.TickMode.WORKER
@@ -505,7 +505,7 @@ func _assert_lockstep(impl: int, expected: PackedInt64Array) -> void:
 	var names: Array = _state_of(sync.snapshot).keys()
 	assert_array(names).contains(["pos_x", "prev_pos_y", "prev_proj_x", "events", "stats"])
 	assert_array(names).contains(["tick", "last_hash", "target_row", "fog.visible", "fog.explored"])
-	assert_array(names).not_contains(["job_usec", "fog"])
+	assert_array(names).not_contains(["job_usec", "think_usec", "fog"])
 
 
 ## A `ticked(tick)` of runner `side` (0 SYNC, 1 WORKER): keeps the snapshot, checks the thread, that

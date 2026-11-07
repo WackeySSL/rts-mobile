@@ -56,7 +56,8 @@ enum ImplLog { NONE = 0, WARNING = 1, ERROR = 2 }
 ## A tick is split into this many parts, so the frame clock is an integer and frame lengths
 ## that add up to whole ticks (four times 1/60 s) step exactly.
 const MICRO_TICKS_PER_TICK: int = 1_000_000
-## The player of the first entry of `opponents` (ADR 0020 section 3: player 2 upward).
+## The default of `first_opponent`: the player of the first entry of `opponents` (ADR 0020
+## section 3: player 2 upward).
 const FIRST_OPPONENT: int = 2
 ## OS.get_name() of the platform that requires the library (ADR 0013 section 3) and of the web
 ## preview, which packs no library (section 7) and falls back silently.
@@ -130,16 +131,24 @@ static var _live_workers: int = 0
 ## Where the tick runs. SYNC by default: a runner a test builds ticks inline unless it asks for
 ## WORKER. The scenes set AUTO from P50b.
 @export var tick_mode: TickMode = TickMode.SYNC
-## The computer players (ADR 0020 section 3): entry i plays player FIRST_OPPONENT + i, a null entry
-## none; player 1 is the human. start() makes each one's controller with DummyAi.create, with the
-## stream DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job.
-## Typed, and not exported on purpose: Godot 4.7.2 keeps an exported default in a cache that
+## The computer players (ADR 0020 section 3, ADR 0030 section 6): entry i plays player
+## `first_opponent` + i, a null entry none; player 1 is the human unless `first_opponent` is 1.
+## start() makes each one's controller with AiFactory.create (an OpponentDef gives OpponentAi at the
+## entry's level in `opponent_levels`, a plain AiDef the dummy), with the stream
+## DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player), and hands them to the job. Typed,
+## and not exported on purpose: Godot 4.7.2 keeps an exported default in a cache that
 ## GDScript::clear() leaves alone, and this typed array would hold the AiDef script there. At exit
 ## the editor (export, import) then frees AiDef while it clears MatchRunner; when AiDef is the next
 ## script of its list, the walk stops early and the autoload scripts (DetRandom, Command, UiScale,
 ## UiMetrics) leak: "resources still in use at exit", which fails scripts/export-web.sh. Which
 ## script comes next depends on the file set. Set it in code.
 var opponents: Array[AiDef] = []
+## The difficulty of entry i of `opponents`; a missing or null level is Normal's file (the plain
+## dummy ignores it). Typed and not exported, for the reason above.
+var opponent_levels: Array[AiDifficultyDef] = []
+## The player of the first entry of `opponents`; FIRST_OPPONENT is the default. 1 seats entry 0 on
+## player 1 (a computer player in the human's seat, as a headless AI-vs-AI match does).
+var first_opponent: int = FIRST_OPPONENT
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
 ## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
@@ -516,16 +525,20 @@ func _post_next() -> void:
 
 
 ## One controller per def of `opponents` that is not null, in ascending player order: entry i plays
-## player FIRST_OPPONENT + i, with that player's stream of match_seed (ADR 0020 section 3).
+## player `first_opponent` + i, at the level `opponent_levels[i]` (null when missing), with that
+## player's stream of match_seed (ADR 0020 section 3).
 func _opponent_controllers() -> Array[AiController]:
 	var built: Array[AiController] = []
 	for index: int in opponents.size():
 		var def: AiDef = opponents[index]
 		if def == null:
 			continue
-		var player: int = FIRST_OPPONENT + index
+		var player: int = first_opponent + index
+		var level: AiDifficultyDef = (
+			opponent_levels[index] if index < opponent_levels.size() else null
+		)
 		var rng: DetRandom = DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player)
-		built.append(DummyAi.create(def, player, rng))
+		built.append(AiFactory.create(def, level, player, rng))
 	return built
 
 

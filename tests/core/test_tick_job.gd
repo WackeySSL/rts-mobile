@@ -9,6 +9,8 @@ const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.g
 const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
+const StampProbe: GDScript = preload("res://tests/core/support/stamp_probe.gd")
+const SlowAi: GDScript = preload("res://tests/core/support/slow_ai.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
 ## How long before run() a late job is posted: far longer than any run, as a worker woken late.
@@ -211,6 +213,94 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	holding.held = null
 	job.world.kernels = node
 	assert_array(_engine_objects(job, {})).is_equal(["job.world.kernels: Node"])
+
+
+## The walk with an OpponentAi (built by the factory at Hard, with its AiMemory) finds no Node and
+## no Resource either, before and after a run in which it thinks: the controller copies the defs
+## into ints and arrays and keeps neither.
+func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
+	var job: TickJob = _arena_job()
+	var def: AiDef = load("res://data/ai/opponent_fossil.tres") as AiDef
+	var level: AiDifficultyDef = load("res://data/ai/difficulty/hard.tres") as AiDifficultyDef
+	var stream: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + 2)
+	var ai: AiController = AiFactory.create(def, level, 2, stream)
+	assert_bool(ai is OpponentAi).is_true()
+	ai.think_offset = 0
+	job.controllers.append(ai)
+	var visited: Dictionary = {}
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+	job.run()
+	assert_array((ai as OpponentAi).slot_thinks).is_equal(PackedInt32Array([1, 0, 0]))
+	visited.clear()
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+	assert_bool(visited.has((ai as OpponentAi).memory.get_instance_id())).is_true()
+
+
+## think_usec is 0 on a tick where no controller thought (none seated, or none due), and on a tick
+## with a think it lies between 1 and the whole job's job_usec, which counts the thinks.
+func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> void:
+	var job: TickJob = _arena_job()
+	job.run()
+	assert_int(job.snapshot.think_usec).is_equal(0)
+	var controller: AiController = RecordingAi.new()
+	controller.player_id = 2
+	controller.think_period = 15
+	controller.think_offset = 0
+	controller.set(&"journal", [])
+	job.controllers.append(controller)
+	var thought: Array[int] = []
+	for _step: int in 31:
+		var tick: int = job.world.tick
+		job.previous = job.snapshot
+		job.snapshot = _new_snapshot()
+		job.run()
+		if tick % 15 == 0:
+			thought.append(tick)
+			assert_int(job.snapshot.think_usec).is_between(1, job.snapshot.job_usec)
+		else:
+			assert_int(job.snapshot.think_usec).is_equal(0)
+	assert_array(thought).is_equal([15, 30])
+
+
+## A think that takes time is counted: a controller that waits for the clock to move by
+## SlowAi.THINK_USEC makes think_usec at least that and at most job_usec.
+func test_think_usec_counts_a_think_that_takes_time() -> void:
+	var job: TickJob = _arena_job()
+	var slow: AiController = SlowAi.new()
+	slow.player_id = 2
+	job.controllers.append(slow)
+	var stamp: StampProbe = StampProbe.new()
+	(job.probe as StepProbe).target = stamp
+	job.run()
+	var snap: MatchSnapshot = job.snapshot
+	assert_int(snap.think_usec).is_between(SlowAi.THINK_USEC, snap.job_usec)
+	# The clock is read after the thinks and before the step: the step's probe waits WAIT_USEC in
+	# begin(), so the thinks end at least that long before begin() returns.
+	var started: int = snap.end_usec - snap.job_usec
+	assert_int(snap.think_usec).is_less_equal(
+		stamp.begin_exit_usec - StampProbe.WAIT_USEC - started
+	)
+
+
+## With about 1000 controllers seated and none due (period 2 on an odd tick) nothing thinks, and
+## think_usec is 0 although the driver scanned them all.
+func test_think_usec_is_zero_with_many_controllers_and_none_due() -> void:
+	var job: TickJob = _arena_job()
+	job.run()
+	assert_int(job.world.tick).is_equal(1)
+	for index: int in 1000:
+		var controller: AiController = RecordingAi.new()
+		controller.player_id = 1 + index % 2
+		controller.think_period = 2
+		controller.think_offset = 0
+		controller.set(&"journal", [])
+		job.controllers.append(controller)
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.run()
+	assert_int(job.snapshot.think_usec).is_equal(0)
 
 
 ## run() lets the controllers think on the World before the step, after the commands the list

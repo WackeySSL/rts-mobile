@@ -46,6 +46,9 @@ const TIERS: int = 3
 @export var place_tries_per_think: int = 8
 @export var target_tests_max: int = 512
 @export var goal_keys_max: int = 4
+## The building slots of `PlacementSpiral` round the Headquarters that the economy asks about
+## (ring 1 first); the search wraps round them across thinks.
+@export var spiral_slots: int = 64
 ## The least enemy value a superweapon shot must hit (credits).
 @export var strike_min_value: int = 3000
 
