@@ -9,7 +9,7 @@ extends ModalFrame
 ## layout table: "under the drawer and pause"), "PAUSED" top left, a card (the faction's emblem,
 ## "SKIRMISH", the map's name, the objective as a checklist line, the match time and the units
 ## lost) and one column of full-width buttons: Resume
-## (the accent's fill, 56 dp), Restart (the result screen's route: the same scenario and
+## (the accent's fill, 56 dp), Restart (the result screen's route: the same scenario, level and
 ## opponents, a new main scene; asks first), Surrender (the danger red; resumes, then sends
 ## SURRENDER through the controller's sink; asks first), Exit to menu (the dev menu until Phase
 ## 5's start page; asks first) and, in a debug or `dev_menu` build, the Developer menu. Under them
@@ -362,7 +362,13 @@ func _exit_dialog_open() -> void:
 
 
 func _restart() -> void:
-	DevRoutes.open_main_with(get_tree(), runner.scenario.resource_path, runner.opponents)
+	DevRoutes.open_main_with(
+		get_tree(),
+		runner.scenario.resource_path,
+		runner.opponents,
+		runner.opponent_levels,
+		runner.first_opponent
+	)
 
 
 ## Resumes first, so the tick that carries the Command runs.

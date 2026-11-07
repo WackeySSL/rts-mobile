@@ -3,7 +3,7 @@ extends ModalFrame
 ## The result screen (ADR 0019 section 6, plan P90): on `match_ended` it covers the HUD with the
 ## outcome as an emblem and a word, the match time and each player's units built and lost,
 ## buildings lost and credits harvested, from the published snapshot. "Play again" opens a new main
-## scene for the same scenario and opponents, "Back" the dev menu until Phase 5's start page.
+## scene for the same scenario, opponents and level, "Back" the dev menu until Phase 5's start page.
 ## Sideways the banner and the table stand side by side, upright one above the other. No ad.
 
 const EMBLEM_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
@@ -90,7 +90,13 @@ func _on_match_ended(winner: int) -> void:
 
 
 func _play_again() -> void:
-	DevRoutes.open_main_with(get_tree(), runner.scenario.resource_path, runner.opponents)
+	DevRoutes.open_main_with(
+		get_tree(),
+		runner.scenario.resource_path,
+		runner.opponents,
+		runner.opponent_levels,
+		runner.first_opponent
+	)
 
 
 func _back() -> void:

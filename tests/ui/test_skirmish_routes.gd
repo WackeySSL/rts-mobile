@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## The two Skirmish routes (plan P90, rev 5, ADR 0025 answer 7): the dev menu has "Skirmish (Derrick
 ## League)" and "Skirmish (Lumen Accord)" first; each opens the main scene on Kestrel Flats with the
-## player on that side as player 1, the dummy of the other side as `MatchRunner.opponents`, the
-## build menu of the player's own side only, and the player's units in the colour of that side:
-## orange for the Derrick League, cyan for the Lumen Accord, the other player in the other colour
-## (the Lumen Accord route is the scenario whose `team_triads` swap them). The layout of the menu
-## is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
+## player on that side as player 1, the computer of the other side as `MatchRunner.opponents` (plan
+## P183: `OpponentAi`), the build menu of the player's own side only, and the player's units in the
+## colour of that side: orange for the Derrick League, cyan for the Lumen Accord, the other player
+## in the other colour (the Lumen Accord route is the scenario whose `team_triads` swap them). The
+## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -15,7 +15,7 @@ const ROUTES: Array[Dictionary] = [
 		"button": "SkirmishDerrickButton",
 		"text": "Skirmish (Derrick League)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats.tres",
-		"dummy": &"dummy_renew",
+		"opponent": &"opponent_renew",
 		"own_hq": &"headquarters",
 		"other_hq": &"renew_hq",
 		"own_faction": &"fossil",
@@ -27,7 +27,7 @@ const ROUTES: Array[Dictionary] = [
 		"button": "SkirmishLumenButton",
 		"text": "Skirmish (Lumen Accord)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres",
-		"dummy": &"dummy_fossil",
+		"opponent": &"opponent_fossil",
 		"own_hq": &"renew_hq",
 		"other_hq": &"headquarters",
 		"own_faction": &"renew",
@@ -80,7 +80,7 @@ func test_the_dev_menu_lists_both_routes_first_as_enabled_buttons() -> void:
 	assert_int(menu.find_child("TestMapButton", true, false).get_index()).is_equal(ROUTES.size())
 
 
-func test_each_route_opens_its_scenario_with_the_other_sides_dummy() -> void:
+func test_each_route_opens_its_scenario_with_the_other_sides_computer() -> void:
 	for route: Dictionary in ROUTES:
 		var main: Node = await _press(route["button"])
 		var label: String = route["text"]
@@ -94,7 +94,7 @@ func test_each_route_opens_its_scenario_with_the_other_sides_dummy() -> void:
 		assert_int(runner.scenario.local_player).is_equal(1)  # Player 1 is local in both.
 		assert_int(runner.opponents.size()).is_equal(1)
 		assert_str(str(runner.opponents[0].id)).override_failure_message(label).is_equal(
-			str(route["dummy"])
+			str(route["opponent"])
 		)
 		assert_str(str(_hq_type(runner, 1))).override_failure_message(label).is_equal(
 			str(route["own_hq"])
@@ -107,9 +107,9 @@ func test_each_route_opens_its_scenario_with_the_other_sides_dummy() -> void:
 		CommandQueue.clear()
 
 
-## The dummy of the other side plays the match: its Commands appear in the replay as player 2's, a
-## QUEUE and a PLACE among them, and the sim drops none.
-func test_the_dummy_plays_its_own_side_in_each_route() -> void:
+## The computer of the other side plays the match: its Commands appear in the replay as player 2's,
+## a QUEUE and a PLACE among them, and the sim drops none.
+func test_the_computer_plays_its_own_side_in_each_route() -> void:
 	for route: Dictionary in ROUTES:
 		var main: Node = await _press(route["button"])
 		var runner: MatchRunner = main.get_node("MatchRunner")

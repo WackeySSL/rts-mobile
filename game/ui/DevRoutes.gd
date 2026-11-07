@@ -2,7 +2,7 @@ class_name DevRoutes
 extends RefCounted
 ## Scene paths and gating for the developer-only screens (dev menu, art gallery, touch probe, perf
 ## arena and its base arena), the main scene's scenario for the "Strike test" route and the two
-## Skirmish routes (a scenario and the dummy of the other side).
+## Skirmish routes (a scenario and the computer of the other side at a level, plan P183).
 ##
 ## The dev menu is available in debug builds and in any export that sets the custom feature
 ## `dev_menu` (the Web preview preset does). Store presets must not set it.
@@ -19,11 +19,18 @@ const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
 ## The two Skirmish routes (plan P90), one per side: Kestrel Flats with the player on the Derrick
-## League, or on the Lumen Accord (player 1 is local in both), and the dummy of the other side.
+## League, or on the Lumen Accord (player 1 is local in both), and the computer of the other side.
 const SKIRMISH_DERRICK: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const SKIRMISH_LUMEN: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
+## The dummies stay the test opponents of `tests/e2e` and the balance run's yardstick (ADR 0030).
 const DUMMY_FOSSIL: String = "res://data/ai/dummy_fossil.tres"
 const DUMMY_RENEW: String = "res://data/ai/dummy_renew.tres"
+## The computer of each side (`OpponentAi`, plan P183) and the three levels it plays at.
+const OPPONENT_FOSSIL: String = "res://data/ai/opponent_fossil.tres"
+const OPPONENT_RENEW: String = "res://data/ai/opponent_renew.tres"
+const LEVEL_EASY: String = "res://data/ai/difficulty/easy.tres"
+const LEVEL_NORMAL: String = "res://data/ai/difficulty/normal.tres"
+const LEVEL_HARD: String = "res://data/ai/difficulty/hard.tres"
 
 
 static func is_enabled() -> bool:
@@ -51,12 +58,18 @@ static func open_perf_bases(tree: SceneTree) -> Error:
 
 
 ## Changes to the main scene with `scenario_path` in the MatchRunner in place of the scene's own
-## scenario (Test map's), and `opponents` as its computer players (`MatchRunner.opponents` is not
-## exported, so it is set here). The runner starts its match in its own `_ready`, so both are set on
-## the new scene before it enters the tree. Reports a missing scenario with push_error instead of
-## crashing.
+## scenario (Test map's), and `opponents` as its computer players with their `levels` and the player
+## of the first (`MatchRunner`'s three fields are not exported, so they are set here; a restart
+## passes the old runner's, so the new match has the same opponent at the same level). The runner
+## starts its match in its own `_ready`, so all four are set on the new scene before it enters the
+## tree.
+## Reports a missing scenario with push_error instead of crashing.
 static func open_main_with(
-	tree: SceneTree, scenario_path: String, opponents: Array[AiDef] = []
+	tree: SceneTree,
+	scenario_path: String,
+	opponents: Array[AiDef] = [],
+	levels: Array[AiDifficultyDef] = [],
+	first_opponent: int = MatchRunner.FIRST_OPPONENT
 ) -> Error:
 	var scenario: ScenarioDef = (
 		load(scenario_path) as ScenarioDef if ResourceLoader.exists(scenario_path) else null
@@ -68,14 +81,29 @@ static func open_main_with(
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	runner.scenario = scenario
 	runner.opponents = opponents
+	runner.opponent_levels = levels
+	runner.first_opponent = first_opponent
 	return tree.change_scene_to_node(main)
 
 
-## A Skirmish: `scenario_path` against the dummy `dummy_path` as player 2.
-static func open_skirmish(tree: SceneTree, scenario_path: String, dummy_path: String) -> Error:
-	var dummy: AiDef = load(dummy_path) as AiDef if ResourceLoader.exists(dummy_path) else null
-	if dummy == null:
-		push_error("DevRoutes: dummy not found: %s" % dummy_path)
+## A Skirmish: `scenario_path` against the computer `opponent_path` as player 2, at the level in
+## `level_path` (a dummy takes no level). Reports a missing file with push_error instead of
+## crashing.
+static func open_skirmish(
+	tree: SceneTree, scenario_path: String, opponent_path: String, level_path: String = LEVEL_NORMAL
+) -> Error:
+	var opponent: AiDef = (
+		load(opponent_path) as AiDef if ResourceLoader.exists(opponent_path) else null
+	)
+	if opponent == null:
+		push_error("DevRoutes: opponent not found: %s" % opponent_path)
 		return ERR_FILE_NOT_FOUND
-	var opponents: Array[AiDef] = [dummy]
-	return open_main_with(tree, scenario_path, opponents)
+	var level: AiDifficultyDef = (
+		load(level_path) as AiDifficultyDef if ResourceLoader.exists(level_path) else null
+	)
+	if level == null:
+		push_error("DevRoutes: level not found: %s" % level_path)
+		return ERR_FILE_NOT_FOUND
+	var opponents: Array[AiDef] = [opponent]
+	var levels: Array[AiDifficultyDef] = [level]
+	return open_main_with(tree, scenario_path, opponents, levels)

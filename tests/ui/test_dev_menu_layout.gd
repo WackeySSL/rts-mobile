@@ -1,19 +1,22 @@
 extends GdUnitTestSuite
 ## The dev menu in either orientation (plan P63, ADR 0015 section 5 "Other screens"): at the six
-## test sizes its title and its eight buttons (the two Skirmishes of plan P90, test map, strike
-## test, art gallery, touch probe, perf arena, perf bases) lie inside the safe rect, every button
-## is at least
-## dp(48) on each axis with text of 14 sp or more, and nothing overlaps. The same holds on the
-## phone browsers (the buttons are 48 dp tall and stand in two columns sideways and one upright, so
-## that they fit a phone browser held sideways without a scroll), with the cutouts of Michael's
-## phone and of the ADR's portrait phone, and after a turn. A window that is too short for them
-## scrolls, so no button is out of reach. Which scene a button opens is test_dev_routes.gd's.
+## test sizes its title, the level label and row (plan P183) and its buttons (the two Skirmishes of
+## plan P90, test map, strike test, art gallery, touch probe, perf arena, perf bases) lie inside the
+## safe rect, every button is at least dp(48) on each axis with text of 14 sp or more, and nothing
+## overlaps. The same holds on the phone browsers (the buttons are 48 dp tall and stand in two
+## columns sideways and one upright, so that they fit a phone browser held sideways without a
+## scroll), with the cutouts of Michael's phone and of the ADR's portrait phone, and after a turn. A
+## window that is too short for them scrolls, so no button is out of reach. Which scene a button
+## opens is test_dev_routes.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const BUTTONS: Array[String] = [
+	"LevelEasyButton",
+	"LevelNormalButton",
+	"LevelHardButton",
 	"SkirmishDerrickButton",
 	"SkirmishLumenButton",
 	"TestMapButton",
@@ -86,6 +89,9 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 			seen[button_name] = seen.get(button_name, false) or safe.encloses(rect)
 	assert_dict(seen).is_equal(
 		{
+			"LevelEasyButton": true,
+			"LevelNormalButton": true,
+			"LevelHardButton": true,
 			"SkirmishDerrickButton": true,
 			"SkirmishLumenButton": true,
 			"TestMapButton": true,
@@ -113,6 +119,14 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 		var gap: int = roundi(UiScale.dp(12.0))
 		assert_int(_control(menu, "Column").get_theme_constant("separation")).is_equal(gap)
 		var grid: GridContainer = _control(menu, "Grid") as GridContainer
+		assert_int(_control(menu, "LevelRow").get_theme_constant("separation")).is_equal(gap)
+		for name_in_menu: String in ["Title", "LevelLabel"]:
+			var text_rect: Rect2 = _control(menu, name_in_menu).get_global_rect()
+			(
+				assert_bool(visible_rect.encloses(text_rect))
+				. override_failure_message("%s at %s: %s" % [name_in_menu, size, text_rect])
+				. is_true()
+			)
 		assert_int(grid.get_theme_constant("h_separation")).is_equal(gap)
 		assert_int(grid.get_theme_constant("v_separation")).is_equal(gap)
 		assert_int(grid.columns).is_equal(1 if size.y > size.x else 2)  # The turn changes it.
@@ -155,17 +169,25 @@ func test_the_eight_buttons_stand_in_two_columns_sideways_and_in_one_upright() -
 		UiScale.clear_override()
 
 
-## `profile` shown: the title and the eight buttons, then the checks of the plan's acceptance.
+## `profile` shown: the title, the level label and the eleven buttons, then the checks of the plan's
+## acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)
 	var safe: Rect2 = UiScale.safe_rect_base()
 	var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
 	var text_floor: int = roundi(UiScale.dp(14.0))  # 14 sp: the text of the HUD is dp.
 	var rects: Array[Rect2] = [_control(menu, "Title").get_global_rect()]
+	rects.append(_control(menu, "LevelLabel").get_global_rect())
+	for index: int in 2:
+		(
+			assert_bool(safe.encloses(rects[index]))
+			. override_failure_message("%s: title or level label %s" % [label, rects[index]])
+			. is_true()
+		)
 	(
-		assert_bool(safe.encloses(rects[0]))
-		. override_failure_message("%s: title %s" % [label, rects[0]])
-		. is_true()
+		assert_int(_control(menu, "LevelLabel").get_theme_font_size("font_size"))
+		. override_failure_message("%s: level label font" % label)
+		. is_greater_equal(text_floor)
 	)
 	for button_name: String in BUTTONS:
 		var button: Button = _control(menu, button_name) as Button
