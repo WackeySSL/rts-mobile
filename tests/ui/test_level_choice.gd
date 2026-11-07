@@ -6,7 +6,6 @@ extends GdUnitTestSuite
 ## and both orientations is test_dev_menu_layout's (it lists these buttons too).
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
-const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const LEVEL_BUTTONS: Array[String] = ["LevelEasyButton", "LevelNormalButton", "LevelHardButton"]
 const LEVEL_IDS: Array[StringName] = [&"easy", &"normal", &"hard"]
 const ROUTES: Array[Dictionary] = [
@@ -14,16 +13,6 @@ const ROUTES: Array[Dictionary] = [
 	{"button": "SkirmishLumenButton", "opponent": &"opponent_fossil"},
 ]
 const THINK_TICKS: int = 300
-
-var _window_size_before: Vector2i
-
-
-func before() -> void:
-	_window_size_before = get_window().size
-
-
-func after() -> void:
-	get_window().size = _window_size_before
 
 
 func before_test() -> void:
