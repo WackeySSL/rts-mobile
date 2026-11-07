@@ -6,7 +6,8 @@
 #   --out PATH  the merged JSON (parent directories are created). The markdown goes to PATH with
 #               a trailing .json replaced by .md, else to PATH.md. A relative PATH is relative
 #               to the repository root.
-#   --gate      also write the gate block (ADR 0031 section 6; the gate run's seeds 1001-1100)
+#   --gate      also write the gate block (ADR 0031 section 6; the gate run's seeds 1001-1100,
+#               or 1001-1200 with the rerun)
 #   REPORT...   one or more schema 2 reports of run-sim-smoke.sh (`--report`), at least one. They
 #               must agree on commit, impl, ticks_per_match, scenarios and the level pair (as an
 #               unordered pair, so easy,normal and normal,easy merge); a refusal names the field.

@@ -314,9 +314,15 @@ func test_the_gate_set_check_fails_on_anything_that_is_not_a_gate_set() -> void:
 	var gap: Array[Dictionary] = _balanced(100)
 	gap[50]["seed"] = 5000
 	assert_str(_verdict_of(_gate(gap), "set")).is_equal("fail")
+	# A gap inside the range (1051 missing, 1053 twice) keeps the count, the lowest and the highest.
+	var inside: Array[Dictionary] = _balanced(100)
+	inside[50]["seed"] = 1053
+	assert_str(_verdict_of(_gate(inside), "set")).is_equal("fail")
 	var other_levels: Dictionary = _gate(_balanced(100), {"levels": ["easy", "normal"]})
 	assert_str(_check_of(other_levels, "set")["detail"]).contains("levels easy,normal")
 	assert_str(other_levels["verdict"]).is_equal("fail")
+	var normal_hard: Dictionary = _gate(_balanced(100), {"levels": ["normal", "hard"]})
+	assert_str(_verdict_of(normal_hard, "set")).is_equal("fail")
 	var mirror: Dictionary = _gate(_balanced(100), {"scenarios": "fossil-mirror"})
 	assert_str(_check_of(mirror, "set")["detail"]).contains("scenarios fossil-mirror")
 	assert_str(mirror["verdict"]).is_equal("fail")
@@ -340,6 +346,10 @@ func test_gate_check_4_wants_half_of_the_matches_and_check_6_95_percent() -> voi
 	assert_int(_check_of(gate, "4")["min"]).is_equal(50)
 	fifty[49]["players"][0]["produced"].erase(_fossil[0])
 	assert_str(_verdict_of(_gate(fifty), "4")).is_equal("fail")
+	# 200 matches (the rerun set): the limits scale to 100 built and 190 distinct.
+	var two_hundred: Dictionary = _gate(_balanced(200))
+	assert_int(_check_of(two_hundred, "4")["min"]).is_equal(100)
+	assert_int(_check_of(two_hundred, "6")["min"]).is_equal(190)
 	# 95 distinct of 100 pass; 94 fail.
 	var hashes: Array[Dictionary] = _balanced(100)
 	for index: int in range(95, 100):
@@ -533,7 +543,7 @@ func test_the_markdown_is_a_fixed_template_that_states_the_kill_order() -> void:
 	matches[0]["flow_full_ticks"] = 1
 	var merged: Dictionary = _merge([_report(matches)], true)["report"]
 	var text: String = Summary.markdown(merged)
-	assert_str(text).is_equal(FileAccess.get_file_as_string(GOLDEN))
+	assert_str(text).is_equal(FileAccess.get_file_as_string(GOLDEN).replace("\r\n", "\n"))
 	# The order of the attribution, not only "last shooter".
 	var order: String = text.substr(text.find("Kills are an estimate"))
 	var shot: int = order.find("a shot at the row in the tick it died")
