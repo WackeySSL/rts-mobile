@@ -1,15 +1,17 @@
 class_name AiArmy
 extends RefCounted
-## The army manager (ADR 0030, plan rows P179 and P180): the staging point and its `RALLY`, the home
-## squad (every own combat unit but the scout type), defence of a threat within
+## The army manager (ADR 0030, plan rows P179, P180 and P180b): the staging point and its `RALLY`,
+## the home squad (every own combat unit but the scout type), defence of a threat within
 ## `defend_radius_tiles` of a building after `reaction_ticks`, and the `MOVE` back; the waves (a
-## second squad, WAVE, launched from the home squad, pulled back with a `MOVE` and rejoined); the
-## unseen-hit response (`_unseen_hit`, P179b). It makes no pass over the view's rows:
-## `AiIntel.refresh` fills the lists it walks. Goal keys: the defence, the shift and a wave are
-## owner ARMY (one goal cell at a time, the last order's), the rally, return and retreat owner
-## STAGING; both precede the scout, which yields at the cap (its order in flight keeps its cell
-## until the leg ends). An order is all or nothing: budget and keys first, no memory change if
-## refused. From `all_in_tick` the all-in overrides the defence (`_all_in_wave`).
+## second squad, WAVE, launched from the home squad, pulled back with a `MOVE` and rejoined, or
+## recalled into the home squad when a threat at the base outweighs it); the unseen-hit response
+## (`_unseen_hit`, P179b); Hard's unit control (`_step_back`, `_focus`). It makes no pass over the
+## view's rows: `AiIntel.refresh` fills the lists it walks. Goal keys: the defence, the shift, a
+## wave and a focus `ATTACK` are owner ARMY (one goal cell at a time, the last order's), the rally,
+## return, retreat and step-back owner STAGING; both precede the scout, which yields at the cap (its
+## order in flight keeps its cell until the leg ends). An order is all or nothing: budget and keys
+## first, no memory change if refused. From `all_in_tick` the all-in overrides the defence
+## (`_all_in_wave`).
 
 ## The home squad's index and role code.
 const HOME: int = 0
@@ -34,10 +36,16 @@ var retreat_percent: int = 0
 var retreat_ratio: int = 0
 ## How far a unit hit by the unseen moves its squad's goal, in tiles.
 var shift_tiles: int = 0
+## Hard's unit control, from the level: the hp percent a unit steps back under (0 = never) and
+## whether groups focus the weakest enemy in reach.
+var unit_retreat_hp: int = 0
+var focus_fire: bool = false
 
-## Counted for the suites: tests of the last run, the threat search's and the wave's ratio read
-## (they share the cap of `tests_max`); over the match RALLY Commands, defence and return orders
-## sent, and orders refused for want of keys.
+## Counted for the suites: tests of the last run: the threat search's, the home focus search's, the
+## wave's ratio read, the recall's read and the wave focus search's (they all share the cap of
+## `tests_max`, in that order, so an earlier one that uses it up leaves the later ones blind that
+## think); over the match RALLY Commands, defence and return orders sent, and orders refused for
+## want of keys.
 var tests: int = 0
 var rallies: int = 0
 var defences: int = 0
@@ -46,9 +54,14 @@ var starved: int = 0
 ## Waves launched and retreats ordered over the match (`OpponentAi` copies them to its counters).
 var waves: int = 0
 var retreats: int = 0
+## Waves recalled to defend the base over the match (disbanded into the home squad at once).
+var recalls: int = 0
 ## The unseen-hit tests of the last run (at most `tests_max`) and the shifts sent over the match.
 var hit_tests: int = 0
 var shifts: int = 0
+## Over the match: units stepped back on their own and focus-fire `ATTACK` orders sent.
+var stepbacks: int = 0
+var focuses: int = 0
 
 ## Joiners no order has named yet (ascending), and scratch lists kept between runs.
 var _fresh: PackedInt32Array = PackedInt32Array()
@@ -60,6 +73,8 @@ var _send: PackedInt32Array = PackedInt32Array()
 ## idle units, and the wave's centre (milli-tiles). The box round the own buildings, grown by the
 ## defence radius (`_box`): a unit outside it is within the radius of none.
 var _home_value: int = 0
+var _ready_value: int = 0
+var _capped: bool = false
 var _wave_value: int = 0
 var _wave_units: int = 0
 var _wave_idle: int = 0
@@ -68,7 +83,13 @@ var _lo: Vector2i = Vector2i.ZERO
 var _hi: Vector2i = Vector2i.ZERO
 ## The tick of the last unseen-hit shift (-1: none yet).
 var _shifted_at: int = -1
+## Scratch for two swaps: the hp list of `_unseen_hit` and the withdrawn list of `_step_back`.
 var _kept: PackedInt32Array = PackedInt32Array()
+## The ids under the step-back percent that have not stepped back yet (`_step_back`).
+var _low: PackedInt32Array = PackedInt32Array()
+## This think's standing threat after `reaction_ticks` (before the all-in), for the wave's recall.
+var _threat_on: bool = false
+var _threat_at: Vector2i = Vector2i.ZERO
 
 
 ## A manager for `player_id` that copies what it reads of `def` and `level`.
@@ -86,19 +107,24 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army.retreat_percent = maxi(level.retreat_percent, 0)
 	army.retreat_ratio = maxi(level.retreat_ratio_percent, 0)
 	army.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
+	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
+	army.focus_fire = level.focus_fire > 0
 	return army
 
 
 func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
 	tests = 0
+	_threat_on = false
 	if memory.squads_max < 1:
 		return
 	_join(memory)
 	_stage(view, memory, out)
+	_step_back(view, memory, out)
 	var threat: int = _threat(view, memory)
 	_unseen_hit(view, memory, out, threat < 0 and memory.threat_first_tick == AiMemory.NONE)
 	if threat < 0:
 		memory.threat_first_tick = AiMemory.NONE
+		memory.squad_focus[HOME] = AiMemory.NONE
 		_return(view, memory, out)
 	else:
 		if memory.threat_first_tick == AiMemory.NONE:
@@ -107,7 +133,10 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 			view.tick - memory.threat_first_tick >= reaction_ticks
 			and not _all_in_wave(view, memory)
 		):
-			_defend(view, memory, out, view.row_pos(threat))
+			_threat_on = true
+			_threat_at = view.row_pos(threat)
+			if not focus_fire or not _focus(view, memory, out, HOME):
+				_defend(view, memory, out, _threat_at)
 	# After the threat and the return, so a launch reads this think's threat and the return cannot
 	# replace the new wave's army key.
 	_wave(view, memory, rng, out)
@@ -283,9 +312,10 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 
 
 ## The unseen-hit response (P179b), for the home squad only (a wave's goal is the waves' own). A
-## home unit that lost hp since the last run, while no seen enemy combat unit or building was
-## within its weapon range, makes the squad's goal move `shift_tiles` toward the base estimate (the
-## point mirror of the Headquarters without one): an army order, all or nothing. The shifted goal
+## home unit (not one that stepped back) that lost hp since the last run, while no seen enemy
+## combat unit or building was within its weapon range, makes the squad's goal move `shift_tiles`
+## toward the base estimate (the point mirror of the Headquarters without one): an army order, all
+## or nothing. The shifted goal
 ## is a probe, held while `home_shifted` is set (see `_probing`); further hits do not move it, but
 ## after the return to the staging point a new hit shifts again, out and back, never creeping. Only
 ## while no threat stands and none stood at the last run (`calm`; the squad fought it, and a foe
@@ -298,7 +328,7 @@ func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: 
 	var refused: bool = false
 	if calm and memory.home_shifted == 0:
 		for at: int in memory.unit_id.size():
-			if memory.member_squad[at] != HOME:
+			if memory.member_squad[at] != HOME or _withdrawn(memory, memory.unit_id[at]):
 				continue
 			if _hp_was(memory, memory.unit_id[at]) <= memory.unit_hp[at]:
 				continue
@@ -421,17 +451,28 @@ func _is_pending(id: int) -> bool:
 	return at < _fresh.size() and _fresh[at] == id
 
 
-## The ids of `squad` (the home squad) to order: all of it, or only those still pending.
-func _members(memory: AiMemory, all: bool, squad: int = HOME) -> PackedInt32Array:
+## The ids of `squad` (the home squad) to order: all of it, or only those still pending. A unit that
+## stepped back is left out when `launch` is set (a wave's launch), and only then: it still defends
+## the base and joins the all-in. The sim has no healing, so it stays withdrawn until it dies (the
+## list would let it go if its hp came back to the percent or over).
+func _members(
+	memory: AiMemory, all: bool, squad: int = HOME, launch: bool = false
+) -> PackedInt32Array:
 	_send.clear()
 	for at: int in memory.member_id.size():
-		if memory.member_squad[at] == squad and (all or _is_pending(memory.member_id[at])):
-			_send.append(memory.member_id[at])
+		var id: int = memory.member_id[at]
+		if (
+			memory.member_squad[at] == squad
+			and (all or _is_pending(id))
+			and not (launch and _withdrawn(memory, id))
+		):
+			_send.append(id)
 	return _send
 
 
-## One `ATTACK_MOVE` (army owner) or `MOVE` (staging owner) of `ids` to `goal` (`at` in milli-tiles;
-## `unit_cap` is under `Command.MAX_UNITS`). False, nothing changed, without budget or keys.
+## One `ATTACK_MOVE` (army owner; an `ATTACK` on `target` when that is set) or `MOVE` (staging
+## owner) of `ids` to `goal` (`at` in milli-tiles; `unit_cap` is under `Command.MAX_UNITS`). False,
+## nothing changed, without budget or keys.
 func _order(
 	view: PlayerView,
 	memory: AiMemory,
@@ -439,7 +480,8 @@ func _order(
 	ids: PackedInt32Array,
 	goal: Vector2i,
 	owner: int,
-	at: Vector2i
+	at: Vector2i,
+	target: int = AiMemory.NONE
 ) -> bool:
 	if not memory.can_send():
 		return false
@@ -449,7 +491,9 @@ func _order(
 	if not _hold(memory, owner, goal, classes):
 		starved += 1
 		return false
-	if owner == AiMemory.Owner.ARMY:
+	if owner == AiMemory.Owner.ARMY and target != AiMemory.NONE:
+		out.append(Command.attack(view.player, ids.duplicate(), target))
+	elif owner == AiMemory.Owner.ARMY:
 		out.append(Command.attack_move(view.player, ids.duplicate(), at.x, at.y))
 	else:
 		out.append(Command.move(view.player, ids.duplicate(), at.x, at.y))
@@ -497,6 +541,8 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 		if _wave_units > 0 and not retreating:
 			_fight(view, memory, out, all_in)
 			return
+		if _wave_units > 0 and retreating and not all_in and _restage(view, memory, out):
+			return
 		if _wave_units > 0 and not all_in and _wave_idle < _wave_units:
 			return
 		_disband(memory)
@@ -543,11 +589,13 @@ func _wave_holds_army(memory: AiMemory) -> bool:
 func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: bool) -> void:
 	if not all_in and _pull_back(view, memory, out):
 		return
+	var focused: bool = focus_fire and _focus(view, memory, out, WAVE)
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
 	var target: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	var wave: PackedInt32Array = _members(memory, true, WAVE)
 	if (
-		memory.has_base_estimate()
+		not focused
+		and memory.has_base_estimate()
 		and target != goal
 		and _order(view, memory, out, wave, target, AiMemory.Owner.ARMY, _at(target))
 	):
@@ -561,45 +609,82 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 		not home.is_empty()
 		and _order(view, memory, out, home, goal, AiMemory.Owner.ARMY, _at(goal))
 	):
-		_join_wave(memory)
+		_join_wave(memory, true)
 
 
-## Whether the wave is beaten (its value is under `retreat_percent` of its launch value, or the seen
-## enemy value near it passes `retreat_ratio` percent of its own) and so wants to go home; sends
-## the `MOVE` to the staging point when it can, else asks again next think.
+## Whether the wave is beaten (its value is under `retreat_percent` of its launch value, or the
+## seen enemy value near it passes `retreat_ratio` percent of its own) and so goes home with a
+## `MOVE`, asking again next think when that is refused. Or recalled: the seen enemy value near the
+## threat at the base passes `retreat_ratio` percent of the home squad's, and the wave disbands
+## into the home squad at once (`recalls`, not `retreats`), so the standing defence sends it to the
+## threat. True when either happened. The army keys go when the wave held them (judged before the
+## state changes).
 func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 	var weak: bool = (
 		retreat_percent > 0
 		and _wave_value * 100 < memory.squad_launch_value[WAVE] * retreat_percent
 	)
 	if not weak and retreat_ratio > 0:
-		weak = _enemy_near(view, memory) * 100 > _wave_value * retreat_ratio
+		weak = _near(view, memory, _wave_at) * 100 > _wave_value * retreat_ratio
+		# The recall: a threat at the base that outweighs the home squad calls the wave home, to
+		# defend (not a retreat).
+		if (
+			not weak
+			and _threat_on
+			and _near(view, memory, _threat_at) * 100 > _home_value * retreat_ratio
+		):
+			_disband(memory)
+			recalls += 1
+			# The home goal left at the staging point would make the next slot's defence or return
+			# order nothing: the recalled units must get an order.
+			if (
+				memory.squad_goal_x[HOME] == memory.staging_x
+				and memory.squad_goal_y[HOME] == memory.staging_y
+			):
+				memory.squad_goal_x[HOME] = AiMemory.NONE
+				memory.squad_goal_y[HOME] = AiMemory.NONE
+			return true
 	if not weak:
 		return false
+	var held: bool = _wave_holds_army(memory)
 	var stage: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
 	var ids: PackedInt32Array = _members(memory, true, WAVE)
 	if _order(view, memory, out, ids, stage, AiMemory.Owner.STAGING, _at(stage)):
 		memory.squad_state[WAVE] = AiMemory.SquadState.RETREAT
 		memory.squad_goal_x[WAVE] = stage.x
 		memory.squad_goal_y[WAVE] = stage.y
+		memory.squad_focus[WAVE] = AiMemory.NONE
 		retreats += 1
-		_free_army(memory)
+		if held:
+			memory.release_owner(AiMemory.Owner.ARMY)
 	return true
 
 
-## The value of the seen enemy combat units within the defence radius of the wave's centre; a unit
-## outside the box round the centre costs no test, the others one test each in `tests`, which the
-## threat search shares: a fight at the base that used up the cap leaves the ratio blind that think.
-func _enemy_near(view: PlayerView, memory: AiMemory) -> int:
+## The value of the seen enemy combat units and armed, finished buildings within the defence radius
+## of `centre`; a row outside the box round the centre costs no test, the others one test each in
+## `tests`, which the threat search shares: a fight at the base that used up the cap leaves the
+## ratio blind that think.
+func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
+	return (
+		_value_in(view, memory.seen_unit_id, centre, false)
+		+ _value_in(view, memory.seen_site_id, centre, true)
+	)
+
+
+## The value of the rows of `list` within the defence radius of `centre` (only armed, finished
+## buildings when `sites`), one test each past the box, until the cap.
+func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
 	var found: int = 0
-	for id: int in memory.seen_unit_id:
+	for id: int in list:
 		if tests >= tests_max:
 			break
 		var row: int = view.row_of(id)
 		if row < 0:
 			continue
-		var gap: Vector2i = view.row_pos(row) - _wave_at
+		var gap: Vector2i = view.row_pos(row) - centre
 		if absi(gap.x) > defend_radius or absi(gap.y) > defend_radius:
+			continue
+		if sites and not _armed(view, row):
 			continue
 		tests += 1
 		if gap.x * gap.x + gap.y * gap.y <= defend_radius * defend_radius:
@@ -607,12 +692,24 @@ func _enemy_near(view: PlayerView, memory: AiMemory) -> int:
 	return found
 
 
+## Whether the building at `row` is finished (`build_left` 0) and has a weapon.
+static func _armed(view: PlayerView, row: int) -> bool:
+	var type: int = view.row_type(row)
+	return (
+		view.row_build_left(row) == 0
+		and type >= 0
+		and type < view.type_weapon.size()
+		and view.type_weapon[type] >= 0
+	)
+
+
 ## Launches the next wave when the draw is made, its tick has come, no threat stands at the base
-## (this think's: the threat search ran first) and the home squad's value reaches the strength: the
-## whole home squad goes to the target (`base` of the memory: the nearest known producer, else the
-## estimate). The start tick is drawn once per wave, after the first tick or after the last wave
-## ended. From the all-in tick the launch ignores the strength, the tick and a standing threat (the
-## all-in overrides the defence, `_all_in_wave`).
+## (this think's: the threat search ran first) and the value of the units that march reaches the
+## strength: the home squad but for its withdrawn units goes to the target (`base` of the memory:
+## the nearest known producer, else the estimate). The all-in counts and sends every unit. The start
+## tick is drawn once per wave, after the first tick or after the last wave ended. From the all-in
+## tick the launch ignores the strength, the tick and a standing threat (the all-in overrides the
+## defence, `_all_in_wave`).
 func _launch(
 	view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command], all_in: bool
 ) -> void:
@@ -624,30 +721,40 @@ func _launch(
 	if (not all_in and view.tick < memory.wave_start_tick) or not memory.has_base_estimate():
 		return
 	_tally(view, memory)
-	var ids: PackedInt32Array = _members(memory, true)
-	if ids.is_empty() or (not all_in and _home_value < _strength(memory.wave_count)):
+	var ids: PackedInt32Array = _members(memory, true, HOME, not all_in)
+	# What marches: the value of the units that go (a withdrawn one goes only in the all-in).
+	var value: int = _home_value if all_in else _ready_value
+	if ids.is_empty() or (not all_in and value < _strength(memory.wave_count)):
 		return
 	var goal: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	if not _order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, _at(goal)):
 		return
-	_join_wave(memory)
+	_join_wave(memory, all_in)
 	memory.squad_role[WAVE] = ROLE_WAVE
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
-	memory.squad_launch_value[WAVE] = _home_value
+	memory.squad_launch_value[WAVE] = value
 	memory.squad_goal_x[WAVE] = goal.x
 	memory.squad_goal_y[WAVE] = goal.y
+	memory.squad_focus[WAVE] = AiMemory.NONE
 	memory.wave_count += 1
 	waves += 1
 
 
-## The home squad went into the wave: its goal is the staging point (it is empty, new units gather
-## there by the `RALLY`; a shifted or defending goal left behind would make `_return` release the
-## wave's keys), the shift is over and no joiner is pending.
-func _join_wave(memory: AiMemory) -> void:
-	_assign(memory, HOME, WAVE)
+## The home squad went into the wave, but for a withdrawn unit unless it is the all-in (the units
+## that were ordered): the home goal is the staging point (new units gather there by the `RALLY`; a
+## shifted or defending goal left behind would make `_return` release the wave's keys), the shift
+## is over, the focus is forgotten and no joiner is pending.
+func _join_wave(memory: AiMemory, all_in: bool) -> void:
+	for at: int in memory.member_squad.size():
+		if (
+			memory.member_squad[at] == HOME
+			and (all_in or not _withdrawn(memory, memory.member_id[at]))
+		):
+			memory.member_squad[at] = WAVE
 	memory.squad_goal_x[HOME] = memory.staging_x
 	memory.squad_goal_y[HOME] = memory.staging_y
 	memory.home_shifted = 0
+	memory.squad_focus[HOME] = AiMemory.NONE
 	_fresh.clear()
 
 
@@ -660,32 +767,46 @@ func _strength(launched: int) -> int:
 	return strength
 
 
-## The wave squad is over (all dead, or home and rejoined): its units join the home squad and the
-## next start tick is drawn again.
+## The wave squad is over (all dead, or home and rejoined): its units join the home squad, as
+## pending joiners (a standing defence sends them), and the next start tick is drawn again. The
+## army keys go when the wave held them (judged before the state changes).
 func _disband(memory: AiMemory) -> void:
+	var held: bool = _wave_holds_army(memory)
+	for at: int in memory.member_squad.size():
+		if memory.member_squad[at] == WAVE:
+			_fresh.append(memory.member_id[at])
+	_fresh.sort()
 	_assign(memory, WAVE, HOME)
 	memory.squad_role[WAVE] = AiMemory.NONE
 	memory.squad_state[WAVE] = AiMemory.SquadState.HOME
 	memory.squad_launch_value[WAVE] = 0
 	memory.squad_goal_x[WAVE] = AiMemory.NONE
 	memory.squad_goal_y[WAVE] = AiMemory.NONE
+	memory.squad_focus[WAVE] = AiMemory.NONE
 	memory.wave_start_tick = AiMemory.NONE
-	_free_army(memory)
-
-
-## Lets go of the army's goal keys unless the home squad's defence holds the goal.
-func _free_army(memory: AiMemory) -> void:
-	if (
-		memory.squad_goal_x[HOME] == memory.staging_x
-		and memory.squad_goal_y[HOME] == memory.staging_y
-	):
+	if held:
 		memory.release_owner(AiMemory.Owner.ARMY)
 
 
-## Sums the home squad's and the wave's value, and the wave's centre, units and idle units, over
+## While the wave walks home the staging point may move: the `MOVE` goes to the new point (again
+## next think when refused). True while the wave's goal is not the staging point.
+func _restage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
+	var stage: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
+	if memory.squad_goal_x[WAVE] == stage.x and memory.squad_goal_y[WAVE] == stage.y:
+		return false
+	var ids: PackedInt32Array = _members(memory, true, WAVE)
+	if _order(view, memory, out, ids, stage, AiMemory.Owner.STAGING, _at(stage)):
+		memory.squad_goal_x[WAVE] = stage.x
+		memory.squad_goal_y[WAVE] = stage.y
+	return true
+
+
+## Sums the home squad's value (`_home_value`, and `_ready_value` without the withdrawn units) and
+## the wave's value, and the wave's centre, units and idle units, over
 ## the members (a loop over the memory's list, not the view's rows).
 func _tally(view: PlayerView, memory: AiMemory) -> void:
 	_home_value = 0
+	_ready_value = 0
 	_wave_value = 0
 	_wave_units = 0
 	_wave_idle = 0
@@ -695,7 +816,10 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 		if row < 0:
 			continue
 		if memory.member_squad[at] == HOME:
-			_home_value += AiIntel.value_of(view, row)
+			var value: int = AiIntel.value_of(view, row)
+			_home_value += value
+			if not _withdrawn(memory, memory.member_id[at]):
+				_ready_value += value
 		elif memory.member_squad[at] == WAVE:
 			_wave_value += AiIntel.value_of(view, row)
 			_wave_units += 1
@@ -717,3 +841,110 @@ func _assign(memory: AiMemory, from: int, to: int) -> void:
 ## The centre of `tile` in milli-tiles.
 static func _at(tile: Vector2i) -> Vector2i:
 	return tile * PlayerView.MILLI_PER_TILE + Vector2i.ONE * PlayerView.TILE_CENTRE
+
+
+## Hard's step-back: an own combat unit under `unit_retreat_hp` percent of its type's hp that has
+## not stepped back yet goes to the staging point with one `MOVE` (no fire on the way) and leaves
+## its squad for the home squad. It is then left out of wave launches and joins only: it still takes
+## the defence, the focus, the return, the shift order and the all-in. The sim has no healing, so it
+## stays withdrawn until it dies. All or nothing: when the order is refused the units are asked
+## again next think. No order from the all-in tick (no retreat then; the all-in takes the unit
+## anyway). Walks the memory's unit list, no pass.
+func _step_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
+	if unit_retreat_hp == 0:
+		return
+	_low.clear()
+	_kept.clear()
+	for at: int in memory.unit_id.size():
+		var id: int = memory.unit_id[at]
+		var max_hp: int = view.type_max_hp[view.row_type(view.row_of(id))]
+		if max_hp <= 0 or memory.unit_hp[at] * 100 >= max_hp * unit_retreat_hp:
+			continue
+		if _withdrawn(memory, id):
+			_kept.append(id)
+		else:
+			_low.append(id)
+	if not _low.is_empty() and memory.has_staging() and not _all_in_wave(view, memory):
+		var stage: Vector2i = Vector2i(memory.staging_x, memory.staging_y)
+		if _order(view, memory, out, _low, stage, AiMemory.Owner.STAGING, _at(stage)):
+			for id: int in _low:
+				memory.member_squad[memory.member_id.bsearch(id)] = HOME
+			_kept.append_array(_low)
+			_kept.sort()
+			stepbacks += _low.size()
+	var old: PackedInt32Array = memory.withdrawn_id
+	memory.withdrawn_id = _kept
+	_kept = old
+
+
+## Whether unit `id` stepped back and is still under the percent (the memory's list).
+func _withdrawn(memory: AiMemory, id: int) -> bool:
+	var at: int = memory.withdrawn_id.bsearch(id)
+	return at < memory.withdrawn_id.size() and memory.withdrawn_id[at] == id
+
+
+## Hard's focus fire for `squad`: the weakest seen enemy combat unit (fewest hp, the lowest id on a
+## tie) within the defence radius of the group's centre, at most `tests_max` tests a run (shared
+## with the threat search). The group gets one `ATTACK` on it when it is a new target (the home
+## squad also when a unit joined since); the target's tile is the squad's goal and the army goal.
+## The key books the target's tile at order time: the sim re-keys each unit's `ATTACK` field toward
+## the moving target, so for a few ticks two cells may be live while the books hold the order-time
+## tile. The tests share the cap with the reads that ran first (see `tests`); a search the cap cut
+## off before any candidate keeps a living target as the candidate (a joiner still gets the order).
+## True while a target is in reach (sent, held or refused: the group's own order waits), false when
+## none is, which also forgets the old target.
+func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
+	_capped = false
+	var sum: Vector2i = Vector2i.ZERO
+	var members: PackedInt32Array = _members(memory, true, squad)
+	for id: int in members:
+		sum += view.row_pos(view.row_of(id))
+	var best: int = -1
+	if not members.is_empty():
+		@warning_ignore("integer_division")
+		best = _weakest(view, memory, sum / members.size())
+	var kept: int = memory.squad_focus[squad]
+	if best < 0 and _capped and kept != AiMemory.NONE:
+		best = view.row_of(kept)
+	if best < 0:
+		memory.squad_focus[squad] = AiMemory.NONE
+		return false
+	var target: int = view.row_id(best)
+	# `_fresh` holds home joiners only.
+	var pending: bool = squad == HOME and not _fresh.is_empty()
+	if target == memory.squad_focus[squad] and not pending:
+		return true
+	var tile: Vector2i = view.row_pos(best) / PlayerView.MILLI_PER_TILE
+	if not _order(view, memory, out, members, tile, AiMemory.Owner.ARMY, _at(tile), target):
+		return true
+	memory.squad_focus[squad] = target
+	memory.squad_goal_x[squad] = tile.x
+	memory.squad_goal_y[squad] = tile.y
+	if squad == HOME:
+		memory.home_shifted = 0
+		_fresh.clear()
+	focuses += 1
+	return true
+
+
+## The row of the weakest seen enemy combat unit within the defence radius of `centre`, -1 for none.
+func _weakest(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
+	var found: int = -1
+	var least: int = 0
+	for id: int in memory.seen_unit_id:
+		if tests >= tests_max:
+			_capped = true
+			break
+		var row: int = view.row_of(id)
+		if row < 0:
+			continue
+		var gap: Vector2i = view.row_pos(row) - centre
+		if absi(gap.x) > defend_radius or absi(gap.y) > defend_radius:
+			continue
+		tests += 1
+		if gap.x * gap.x + gap.y * gap.y > defend_radius * defend_radius:
+			continue
+		if found < 0 or view.row_hp(row) < least:
+			found = row
+			least = view.row_hp(row)
+	return found

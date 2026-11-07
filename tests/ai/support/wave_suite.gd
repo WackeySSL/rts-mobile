@@ -24,9 +24,10 @@ func before_test() -> void:
 	_arm_waves()
 
 
-## A copy of Normal's level with the suite's wave numbers and a start jitter of `jitter` ticks.
-func _level(jitter: int = 0) -> AiDifficultyDef:
-	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
+## A copy of Normal's level with the suite's wave numbers, a start jitter of `jitter` ticks and the
+## retreat ratio `ratio` (0: no ratio retreat and no recall).
+func _level(jitter: int = 0, ratio: int = RATIO_PERCENT) -> AiDifficultyDef:
+	var level: AiDifficultyDef = _plain("normal")
 	level.reaction_ticks = REACTION
 	level.wave_first_tick = FIRST_TICK
 	level.wave_first_strength = STRENGTH
@@ -34,7 +35,7 @@ func _level(jitter: int = 0) -> AiDifficultyDef:
 	level.wave_jitter_ticks = jitter
 	level.all_in_tick = ALL_IN
 	level.retreat_percent = RETREAT_PERCENT
-	level.retreat_ratio_percent = RATIO_PERCENT
+	level.retreat_ratio_percent = ratio
 	return level
 
 

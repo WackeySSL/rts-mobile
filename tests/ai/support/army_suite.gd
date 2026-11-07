@@ -27,7 +27,16 @@ func _arm(level: String, def: OpponentDef = null) -> void:
 	var own: OpponentDef = def if def != null else _def()
 	_make(level)
 	_memory = AiMemory.create(own)
-	_army = AiArmy.create(own, Rig.level_of(level), 1)
+	_army = AiArmy.create(own, _plain(level), 1)
+
+
+## A copy of the shipped level `level` with Hard's unit control off (P180b owns its suite), so the
+## suites of the group orders read the same plain defence and waves at every level.
+func _plain(level: String) -> AiDifficultyDef:
+	var plain: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
+	plain.unit_retreat_hp_percent = 0
+	plain.focus_fire = 0
+	return plain
 
 
 ## A copy of the fossil def with the suite's staging offset, defence radius and key cap.

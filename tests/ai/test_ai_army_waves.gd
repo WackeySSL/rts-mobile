@@ -320,7 +320,9 @@ func test_a_defence_return_does_not_replace_the_new_wave_s_army_key() -> void:
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 
 
-func test_a_threat_with_an_empty_home_squad_leaves_the_wave_its_army_keys() -> void:
+func test_a_threat_with_an_empty_home_squad_and_no_ratio_leaves_the_wave_its_army_keys() -> void:
+	# No ratio, so no recall: this case pins the keys, `test_ai_army_recall` the recall.
+	_arm_waves(_level(0, 0))
 	_launched()
 	_enemy("heavy_tank", 15500, 7500)
 	_settle()

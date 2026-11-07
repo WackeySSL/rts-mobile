@@ -47,11 +47,14 @@ var squad_state: PackedInt32Array = PackedInt32Array()
 var squad_goal_x: PackedInt32Array = PackedInt32Array()
 var squad_goal_y: PackedInt32Array = PackedInt32Array()
 var squad_launch_value: PackedInt32Array = PackedInt32Array()
+## Per squad, the id of the enemy its group was last ordered to `ATTACK` (Hard's focus fire, P180b;
+## NONE: none).
+var squad_focus: PackedInt32Array = PackedInt32Array()
 var member_id: PackedInt32Array = PackedInt32Array()
 var member_squad: PackedInt32Array = PackedInt32Array()
 ## 1 while the home squad's goal is an unseen-hit shift AiArmy made (a probe: held while a member it
-## named still moves, see `AiArmy._probing`), else 0. A defence, the return, a wave's launch and an
-## all-in join clear it.
+## named still moves, see `AiArmy._probing`), else 0. A defence, a home focus, the return, a wave's
+## launch and an all-in join clear it.
 var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
 ## threat now at the base (NONE: no threat).
@@ -98,6 +101,11 @@ var seen_site_id: PackedInt32Array = PackedInt32Array()
 ## whose squad's shift was not sent keeps its older value, so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
+## Hard's unit control (P180b): the own units that stepped back on their own and are still under
+## `unit_retreat_hp_percent` (ids ascending, at most `unit_cap`). They are left out of wave launches
+## and joins only; they still take the defence, the focus, the return, the shift order and the
+## all-in. The sim has no healing, so a unit stays listed until it dies.
+var withdrawn_id: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
 ## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
@@ -128,6 +136,8 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.squad_role.fill(NONE)
 	memory.squad_goal_x.fill(NONE)
 	memory.squad_goal_y.fill(NONE)
+	memory.squad_focus.resize(memory.squads_max)
+	memory.squad_focus.fill(NONE)
 	memory.sector_own.resize(memory.sectors_max)
 	memory.sector_enemy.resize(memory.sectors_max)
 	memory.scout_picked.resize(memory.sectors_max)
