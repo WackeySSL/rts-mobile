@@ -138,7 +138,7 @@ func test_a_retreat_the_budget_cannot_pay_changes_nothing_and_is_asked_again() -
 func test_a_retreat_leaves_the_army_key_to_a_defence_that_holds_it() -> void:
 	var two: PackedInt32Array = _two_tanks()
 	# A new squad stays at home and defends against a foe at the base: the army goal is its now.
-	AiRig.add_unit_of(_world, 1, "rifle_squad", 8500, 11500)
+	var defender: int = AiRig.add_unit_of(_world, 1, "rifle_squad", 8500, 11500)
 	_enemy("heavy_tank", 15500, 7500)
 	_settle()
 	_see_all()
@@ -146,12 +146,14 @@ func test_a_retreat_leaves_the_army_key_to_a_defence_that_holds_it() -> void:
 		_think(tick)
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 	for id: int in _squads():
-		_world.hp[_row_in_world(id)] = 0
+		if id != defender:
+			_world.hp[_row_in_world(id)] = 0
 	_world.hp[_row_in_world(two[0])] = 1
 	AiRig.step(_world, _loop)
 	_see_all()
 	_think(LAUNCH + 60)
 	assert_int(_army.retreats).is_equal(1)
+	assert_array(_members(AiArmy.HOME)).is_equal(PackedInt32Array([defender]))
 	assert_int(_memory.goal_keys_of(AiMemory.Owner.ARMY)).is_greater(0)
 
 
