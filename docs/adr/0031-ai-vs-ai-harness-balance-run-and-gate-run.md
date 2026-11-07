@@ -23,6 +23,13 @@ how the harness reads §1's kill attribution and §2's flags. No accepted text c
 narrows §2's "as today" for `--matches` (at most nine digits), the one old call whose meaning
 changes.
 
+Status note (2026-11-07, P26bf docs, from the reviews of P187): the note at the end of §4 records
+how `balance-summary.sh` names its markdown, tells the gate run apart and judges a gate set. No
+accepted text changed; the note reads §4's "plus `PATH.md`", "a draw counting half" (a timeout
+too), `by_faction` (left out of a mirror) and "present when the run is the gate run" (`--gate`),
+and §6's checks (a `set` check first) and its 200-match rerun. The Phase 4 plan's P190 row has
+a dated note on how the mirrors and the rerun are summarised.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -244,6 +251,25 @@ shares), so equal runs give equal text; `JSON.stringify` with sorted keys and a 
   - `gate`: present when the run is the gate run (§6), with each check's value, limit and verdict.
 - The markdown is a fixed template (tables, then flags, then the gate); it says that kills are
   attributed to the last shooter.
+
+Note (2026-11-07, P26bf docs, from the reviews of P187):
+- **The markdown file** is `--out PATH` with a trailing `.json` replaced by `.md` (`x.json` gives
+  `x.md`), else PATH with `.md` added. It states §2's note's attribution order, not only "the last
+  shooter".
+- **The gate run:** `balance-summary.sh` writes `gate` only when it is given `--gate`; P190
+  passes the flag on the gate run's summary.
+- **The gate judges only a gate set:** its first check, `set`, fails unless the matches are exactly
+  100 with seeds 1001-1100 or exactly 200 with seeds 1001-1200, the levels are `normal,normal`,
+  the kind is `cross` and the two rosters hold twelve unit types between them. The rerun band
+  (350-399 or 601-650 on checks 1 and 2) applies at exactly 100 matches and gives the verdict
+  `rerun`; on the 200, checks 1 and 2 decide against 400-600 and checks 3-7 are judged on all
+  200 (check 4: every type built in at least 100; check 6: at least 190 distinct hashes). Any
+  failing check makes the verdict `fail`.
+- **A timeout counts half to each side in the win shares**, as a draw does, so a set's two
+  faction shares (and its two seat shares) add up to 1 000, give or take 1 from rounding; the
+  timeout itself is still flagged and fails gate check 3.
+- `by_faction` is left out of a same-faction set. A faction whose roster is missing, does not
+  load or holds no unit type, or a type in two rosters, fails the summary (`FAILED`, exit 1).
 
 ### 5. The balance run (`balance.yml`, release-engineer, P190)
 - **What it is:** a development tool that runs on GitHub's machines, like the CI that checks every

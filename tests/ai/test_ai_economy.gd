@@ -8,21 +8,27 @@ extends GdUnitTestSuite
 const Rig: GDScript = preload("res://tests/ai/support/opponent_rig.gd")
 const AiRig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const FactionRig: GDScript = preload("res://tests/ai/support/faction_rig.gd")
+const EconomyOnly: GDScript = preload("res://tests/ai/support/economy_only.gd")
 
 const RICH: int = 100000
 const MATCH_TICKS: int = 5400
 const SHORT_TICKS: int = 2700
 const NONE: int = -1
 
-## One finished match per level, two players (fossil and renew) each, played in `before`.
+## One finished match per level, two players (fossil and renew) each, played in `before` by the
+## economy alone (production and the army would change the caps and the tankers: units fight, a
+## forward defence dies).
 var _matches: Dictionary[String, Dictionary] = {}
+## A Hard match of the full controllers with 100,000 credits each, for "no Command is dropped".
+var _full: Dictionary = {}
 ## A Normal match from the start credits, 2,700 ticks.
 var _natural: Dictionary = {}
 
 
 func before() -> void:
 	for level: String in Rig.LEVELS:
-		_matches[level] = _play(level, RICH, MATCH_TICKS)
+		_matches[level] = _play(level, RICH, MATCH_TICKS, true)
+	_full = _play("hard", RICH, MATCH_TICKS)
 	_natural = _play("normal", NONE, SHORT_TICKS)
 
 
@@ -346,6 +352,10 @@ func test_no_command_is_dropped_in_a_2700_tick_match_and_the_bases_grow() -> voi
 		assert_int(_natural["commands"][player - 1]).is_greater(8)
 	assert_int(AiRig.count_of(world, 1, "power_plant")).is_greater(0)
 	assert_int(AiRig.count_of(world, 2, "renew_refinery")).is_greater(0)
+	# The full controllers with production and a rich start drop nothing either.
+	var rich: World = _full["world"]
+	assert_array([rich.dropped_commands, rich.spawn_refused]).is_equal([0, 0])
+	assert_array(_full["cut"]).is_equal([0, 0])
 
 
 func test_the_loop_stops_at_the_levels_caps_and_no_command_is_dropped() -> void:
@@ -622,8 +632,9 @@ func _structures_queued(played: Dictionary, faction: String) -> Array[String]:
 
 
 ## Plays fossil (player 1) against renew (player 2), both on `level`, for `ticks` ticks with
-## `credits` each (NONE: the start credits). Returns the World and what the suites read.
-func _play(level: String, credits: int, ticks: int) -> Dictionary:
+## `credits` each (NONE: the start credits), the economy alone when `economy_only`. Returns the
+## World and what the suites read.
+func _play(level: String, credits: int, ticks: int, economy_only: bool = false) -> Dictionary:
 	var world: World = _start()
 	if credits != NONE:
 		world.credits[1] = credits
@@ -633,6 +644,11 @@ func _play(level: String, credits: int, ticks: int) -> Dictionary:
 		Rig.opponent("fossil", level, 1, 1),
 		Rig.opponent("renew", level, 2, 1),
 	]
+	if economy_only:
+		for at: int in 2:
+			var alone: Variant = EconomyOnly.new()
+			alone.copy_from(controllers[at])
+			controllers[at] = alone
 	var sent: Array[Command] = AiRig.run(world, loop, controllers, ticks)
 	var structures: Array = [[] as Array[String], [] as Array[String]]
 	for command: Command in sent:

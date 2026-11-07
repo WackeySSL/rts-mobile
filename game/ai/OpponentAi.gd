@@ -28,6 +28,8 @@ var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
 var commands_cut: int = 0
 ## The economy manager (P176), slot ECONOMY.
 var economy: AiEconomy = null
+## The production manager (P178), slot ECONOMY after the economy.
+var production: AiProduction = null
 ## The army manager (P179), slot ARMY after the intel refresh.
 var army: AiArmy = null
 
@@ -57,6 +59,7 @@ static func create(
 	ai.tier = clampi(chosen.build_order_tier, 0, OpponentDef.TIERS - 1)
 	ai.commands_per_think_max = maxi(chosen.commands_per_think_max, 0)
 	ai.economy = AiEconomy.create(def, chosen, player_id)
+	ai.production = AiProduction.create(def, chosen, player_id)
 	ai.army = AiArmy.create(def, chosen, player_id)
 	return ai
 
@@ -96,6 +99,8 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 	economy.run(view, memory, rng, out)
 	work += economy.passes
+	production.run(view, memory, rng, out)
+	work += production.passes
 
 
 ## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
