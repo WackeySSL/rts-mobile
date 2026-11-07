@@ -51,7 +51,9 @@ func _run(tick: int, budget: int = 8) -> void:
 
 ## An own scout (the fossil light tank) at tile (`col`, `line`); returns its id.
 func _scout(col: int, line: int) -> int:
-	return AiRig.add_unit_of(_world, 1, "light_tank", col * 1000 + 500, line * 1000 + 500)
+	return AiRig.add_unit_of(
+		_world, 1, String(_intel.scout_type), col * 1000 + 500, line * 1000 + 500
+	)
 
 
 func _type(id: String) -> int:
@@ -123,13 +125,22 @@ func _tile_of(id: int) -> Vector2i:
 	return Vector2i(pos.x / 1000, pos.y / 1000)
 
 
-## The number of MOVE Commands in `sent`.
+## The number of scout MOVE Commands in `sent`.
 func _moves_in(sent: Array[Command]) -> int:
 	var moves: int = 0
 	for command: Command in sent:
-		if command.type == Command.Type.MOVE:
+		if _scout_move(command):
 			moves += 1
 	return moves
+
+
+## Whether `command` is a MOVE of a unit of the scout type: through the controller the army also
+## sends MOVEs (the return to the staging point), of its own units only.
+func _scout_move(command: Command) -> bool:
+	if command.type != Command.Type.MOVE:
+		return false
+	var view: PlayerView = _view()
+	return view.row_type(view.row_of(command.unit_ids[0])) == _type(String(_intel.scout_type))
 
 
 ## The scout `id` stands on tile (`col`, `line`) and the sector's centre cell is explored.

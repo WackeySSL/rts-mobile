@@ -13,6 +13,9 @@ enum SquadState { HOME, WAVE, RETREAT }
 enum Owner { STAGING, ARMY, SCOUT }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
+## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).
+const FOOT: int = 0
+const TRACKED: int = 2
 
 ## The caps, from the def and the first view (`unit_cap` is 0 until a think has set it).
 var squads_max: int = 0
@@ -72,14 +75,25 @@ var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
 var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
+## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
+## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
+## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
+## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
+var home_x: int = NONE
+var home_y: int = NONE
+var site_id: PackedInt32Array = PackedInt32Array()
+var site_x: PackedInt32Array = PackedInt32Array()
+var site_y: PackedInt32Array = PackedInt32Array()
+var unit_id: PackedInt32Array = PackedInt32Array()
+var seen_unit_id: PackedInt32Array = PackedInt32Array()
 ## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
-## STAGING and ARMY, AiIntel SCOUT). The army goal is one cell at a time: AiArmy releases its key
-## before it adds the next. The scout's key is added only while the army goal is free or
-## single-class.
+## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
+## goal is one cell at a time: AiArmy releases its key before it adds the next. The scout's key is
+## added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
 var goal_class: PackedInt32Array = PackedInt32Array()
@@ -110,6 +124,17 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.scout_picked.resize(memory.sectors_max)
 	memory.scout_picked.fill(NONE)
 	return memory
+
+
+## The move class of the type `type`: its tab's (vehicles tracked, the rest on foot).
+static func class_of(view: PlayerView, type: int) -> int:
+	var tab: int = view.type_tab[type] if type >= 0 and type < view.type_tab.size() else -1
+	return TRACKED if tab == PlayerView.Tab.VEHICLES else FOOT
+
+
+## The point mirror of `tile` on a map of `cols` x `rows` tiles.
+static func mirror(tile: Vector2i, cols: int, rows: int) -> Vector2i:
+	return Vector2i(cols - 1 - tile.x, rows - 1 - tile.y)
 
 
 func has_staging() -> bool:
@@ -162,6 +187,34 @@ func goal_keys_of(owner: int) -> int:
 		if mask & (1 << owner) != 0:
 			found += 1
 	return found
+
+
+## The keys that fit under the cap once the keys that only `owner` uses are released.
+func goal_room(owner: int) -> int:
+	var live: int = goal_x.size()
+	for mask: int in goal_owner:
+		if mask == 1 << owner:
+			live -= 1
+	return goal_keys_max - live
+
+
+## Clears `owner`'s bit of every key it uses (a key no one else uses goes).
+func release_owner(owner: int) -> void:
+	for at: int in range(goal_x.size() - 1, -1, -1):
+		if goal_owner[at] & (1 << owner) != 0:
+			release_goal_key(at, owner)
+
+
+## The live keys, copied, for `goal_restore` (an order that cannot be sent in full puts them back).
+func goal_snapshot() -> Array[PackedInt32Array]:
+	return [goal_x.duplicate(), goal_y.duplicate(), goal_class.duplicate(), goal_owner.duplicate()]
+
+
+func goal_restore(snapshot: Array[PackedInt32Array]) -> void:
+	goal_x = snapshot[0]
+	goal_y = snapshot[1]
+	goal_class = snapshot[2]
+	goal_owner = snapshot[3]
 
 
 func clear_goal_keys() -> void:

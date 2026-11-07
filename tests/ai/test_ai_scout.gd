@@ -292,7 +292,7 @@ func test_a_scout_in_a_running_match_walks_the_sectors_and_the_sim_drops_nothing
 	var moves: Array[Vector2i] = []
 	for _tick: int in 1200:
 		for command: Command in AiRig.tick(_world, _loop, [ai]):
-			if command.type == Command.Type.MOVE:
+			if _scout_move(command):
 				moves.append(Vector2i(command.target_x / 1000, command.target_y / 1000))
 		assert_bool(ai.memory.goal_keys() <= ai.memory.goal_keys_max).is_true()
 		assert_bool(ai.memory.goal_keys_of(AiMemory.Owner.SCOUT) <= 1).is_true()
@@ -319,7 +319,7 @@ func test_a_scout_that_meets_the_enemy_base_comes_home_with_the_estimate() -> vo
 	var first: Vector2i = Vector2i(-1, -1)
 	for _tick: int in 1500:
 		for command: Command in AiRig.tick(_world, _loop, [ai]):
-			if first.x < 0 and command.type == Command.Type.MOVE:
+			if first.x < 0 and _scout_move(command):
 				first = Vector2i(command.target_x / 1000, command.target_y / 1000)
 	# On its way to the mirror point (inside player 2's base) it saw the base and was shot at: the
 	# estimate is the enemy producer it saw, and the trip ended at home with its key released.
@@ -329,7 +329,10 @@ func test_a_scout_that_meets_the_enemy_base_comes_home_with_the_estimate() -> vo
 	assert_array([ai.memory.base_x, ai.memory.base_y]).is_equal(
 		[_world.pos_x[hq] / 1000, _world.pos_y[hq] / 1000]
 	)
-	assert_array([ai.memory.scout_id, ai.memory.goal_keys()]).is_equal([-1, 0])
+	# The army's staging keys stay; the scout's are released.
+	assert_array([ai.memory.scout_id, ai.memory.goal_keys_of(AiMemory.Owner.SCOUT)]).is_equal(
+		[-1, 0]
+	)
 	assert_int(_world.dropped_commands).is_equal(0)
 	assert_int(_row(id)).is_greater_equal(0)
 	assert_int(ai.scouts).is_equal(1)
