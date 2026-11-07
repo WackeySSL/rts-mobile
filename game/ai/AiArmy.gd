@@ -359,15 +359,14 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 		return
 	if memory.has_base_estimate():
 		var goal: Vector2i = Vector2i(memory.base_x, memory.base_y)
-		if goal.x != memory.squad_goal_x[WAVE] or goal.y != memory.squad_goal_y[WAVE]:
+		if goal.x != memory.wave_target_x or goal.y != memory.wave_target_y:
 			if _order(
 				view, memory, out, _ids_of(memory, WAVE), goal, AiMemory.Owner.ARMY, _at(goal)
 			):
-				memory.squad_goal_x[WAVE] = goal.x
-				memory.squad_goal_y[WAVE] = goal.y
+				_aim(memory, goal)
 	if all_in:
 		var home: PackedInt32Array = _ids_of(memory, HOME)
-		var held: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
+		var held: Vector2i = Vector2i(memory.wave_target_x, memory.wave_target_y)
 		if (
 			not home.is_empty()
 			and _order(view, memory, out, home, held, AiMemory.Owner.ARMY, _at(held))
@@ -393,6 +392,8 @@ func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool
 		memory.squad_state[WAVE] = AiMemory.SquadState.RETREAT
 		memory.squad_goal_x[WAVE] = stage.x
 		memory.squad_goal_y[WAVE] = stage.y
+		memory.wave_target_x = AiMemory.NONE
+		memory.wave_target_y = AiMemory.NONE
 		retreats += 1
 		_free_army(memory)
 	return true
@@ -442,11 +443,18 @@ func _launch(
 	memory.squad_role[WAVE] = ROLE_WAVE
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
 	memory.squad_launch_value[WAVE] = _home_value
-	memory.squad_goal_x[WAVE] = goal.x
-	memory.squad_goal_y[WAVE] = goal.y
+	_aim(memory, goal)
 	memory.wave_count += 1
 	waves += 1
 	_fresh.clear()
+
+
+## The wave's goal and target are `goal` (a tile).
+func _aim(memory: AiMemory, goal: Vector2i) -> void:
+	memory.squad_goal_x[WAVE] = goal.x
+	memory.squad_goal_y[WAVE] = goal.y
+	memory.wave_target_x = goal.x
+	memory.wave_target_y = goal.y
 
 
 ## The value a wave needs: the first strength, grown by the growth percent once per wave launched.
@@ -467,6 +475,8 @@ func _disband(memory: AiMemory) -> void:
 	memory.squad_launch_value[WAVE] = 0
 	memory.squad_goal_x[WAVE] = AiMemory.NONE
 	memory.squad_goal_y[WAVE] = AiMemory.NONE
+	memory.wave_target_x = AiMemory.NONE
+	memory.wave_target_y = AiMemory.NONE
 	memory.wave_start_tick = AiMemory.NONE
 	_free_army(memory)
 

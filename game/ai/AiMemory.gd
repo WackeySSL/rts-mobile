@@ -53,6 +53,10 @@ var member_squad: PackedInt32Array = PackedInt32Array()
 ## threat now at the base (NONE: no threat).
 var wave_count: int = 0
 var wave_start_tick: int = NONE
+## The tile the wave in the field was last ordered at (NONE: no wave): the squad's goal may move off
+## it (an unseen-hit shift), the target is the base estimate until it moves.
+var wave_target_x: int = NONE
+var wave_target_y: int = NONE
 var threat_first_tick: int = NONE
 ## Intel: the scout's unit id (NONE: none) and its waypoint index, the sector map's own and enemy
 ## value (`sectors_max` each) and, per type index of the view's roster, the count last seen and the

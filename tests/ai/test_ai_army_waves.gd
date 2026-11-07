@@ -187,6 +187,23 @@ func test_a_wave_re_targets_once_when_its_target_is_gone() -> void:
 	assert_int(_memory.wave_count).is_equal(1)
 
 
+func test_a_goal_moved_off_the_target_is_not_pulled_back_while_the_target_stands() -> void:
+	_launched()
+	# The unseen-hit response (P179b) moves the squad's goal, never the target.
+	_memory.squad_goal_x[AiArmy.WAVE] = 28
+	_memory.squad_goal_y[AiArmy.WAVE] = 28
+	_think(LAUNCH + 15)
+	assert_array(_of(Command.Type.ATTACK_MOVE)).is_empty()
+	assert_array([_memory.wave_target_x, _memory.wave_target_y]).is_equal([TARGET.x, TARGET.y])
+	# A new target is ordered whatever the goal was.
+	_target_at(Vector2i(20, 30))
+	_think(LAUNCH + 30)
+	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
+	assert_array([_memory.squad_goal_x[AiArmy.WAVE], _memory.squad_goal_y[AiArmy.WAVE]]).is_equal(
+		[20, 30]
+	)
+
+
 func test_a_launch_the_budget_cannot_pay_changes_nothing_and_is_asked_again() -> void:
 	_target_at()
 	var tank: int = _tank()
