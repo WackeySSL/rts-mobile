@@ -105,6 +105,9 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 	var world: World = FactionRig.start("fossil", "renew")
 	var loop: MatchLoop = AiRig.loop_of(world)
 	var ais: Array = [Rig.opponent("fossil", "normal", 1), Rig.opponent("renew", "hard", 2)]
+	var caps: Array[int] = [
+		Rig.def_of("fossil").target_tests_max, Rig.def_of("renew").target_tests_max
+	]
 	var most_keys: int = 0
 	var army_orders: int = 0
 	for _tick: int in MATCH_TICKS:
@@ -119,7 +122,10 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 				var row: int = world.index_of(id)
 				if row >= 0:
 					assert_int(world.owner[row]).is_equal(command.player_id)
-		for ai: OpponentAi in ais:
+		for at: int in ais.size():
+			var ai: OpponentAi = ais[at]
+			# The tests of a think stay within its own def's cap, every think.
+			assert_int(ai.army.tests).is_less_equal(caps[at])
 			most_keys = maxi(most_keys, ai.memory.goal_keys())
 			assert_int(ai.memory.goal_keys()).is_less_equal(ai.memory.goal_keys_max)
 			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.ARMY)).is_less_equal(2)
@@ -130,14 +136,17 @@ func test_two_opponents_keep_the_goal_keys_work_and_orders_in_bounds_over_a_matc
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)
 		assert_int(ai.commands_cut).is_equal(0)
-		assert_int(ai.army.tests).is_less_equal(Rig.def_of("fossil").target_tests_max)
 		assert_bool(ai.memory.has_staging()).is_true()
 
 
-## Counts the unit orders of `sent` (the opponent's, player 2) and audits them.
+## Counts the unit orders of `sent` (the opponent's, player 2) and audits them. The scout's MOVEs
+## (intel's, a trip to the far side) and everything after the first wave (it attacks the enemy's
+## base by design, P180) are not the defence's orders and are skipped.
 func _audit(sent: Array[Command]) -> void:
 	for command: Command in sent:
 		if command.type != Command.Type.ATTACK_MOVE and command.type != Command.Type.MOVE:
+			continue
+		if _ai.waves > 0 or _is_scout(command):
 			continue
 		if _orders == 0:
 			_first_unit_order = Vector2i(command.target_x, command.target_y)
@@ -146,3 +155,12 @@ func _audit(sent: Array[Command]) -> void:
 			_at_attackers += 1
 		if not Audit.within(_world, command, _radius):
 			_beyond += 1
+
+
+## Whether `command` names a unit of the scout type (player 2's own).
+func _is_scout(command: Command) -> bool:
+	var row: int = _world.index_of(command.unit_ids[0])
+	return (
+		row >= 0
+		and _world.type_index[row] == AiRig.type_of(_world, String(Rig.def_of("fossil").scout_type))
+	)
