@@ -1,0 +1,305 @@
+name: Balance run
+
+# The balance run (P190, ADR 0031 section 5): headless AI-vs-AI matches on the native kernels, in shards, summarised per set
+# and posted as one comment on the open issue labelled `balance`. A development tool that runs on GitHub's machines: players
+# never see it. Never a required check, never on a pull request, no schedule. It starts after a merge that changes the AI, the
+# sim, the data or the native code, and by hand (`workflow_dispatch`: suite balance, gate or custom). The gate run (suite=gate)
+# plays the held-out seeds 1001-1100 on `main` (section 6); a custom run (the tuning PR's "after") keeps its artifact only.
+# scripts/ci/balance-plan.sh owns the shard table, tests/project/test_ci_workflow.gd pins it and this file's rules. The label
+# and the issue "Balance reports" are made once by the lead: `post` never creates them and fails clearly when they are missing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/**"
+      - "game/ai/**"
+      - "game/sim/**"
+      - "native/**"
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "balance: the five sets; gate: the held-out seeds 1001-1100; custom: one set below (artifact only)"
+        type: choice
+        options: [balance, gate, custom]
+        default: balance
+      ref:
+        description: "Branch, tag or SHA to run (a branch's custom run is its tuning PR's after)"
+        type: string
+        default: main
+      levels:
+        description: "custom: the two controllers, like normal,hard (easy, normal, hard, dummy)"
+        type: string
+        default: normal,normal
+      scenarios:
+        description: "custom: cross, derrick, lumen, fossil-mirror or renew-mirror"
+        type: string
+        default: cross
+      matches:
+        description: "custom: the number of matches, 1 to 200"
+        type: string
+        default: "20"
+      seed_start:
+        description: "custom: the first seed (the gate's 1000-1100 are refused)"
+        type: string
+        default: "1"
+
+# Nothing at the top; each job names its own.
+permissions: {}
+
+# A push and a manual balance run share a group, so a burst of merges ends in one run on the newest commit. A gate or custom
+# run has its own group: a merge never cancels it.
+concurrency:
+  group: balance-${{ github.ref }}-${{ inputs.suite || 'balance' }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GODOT_VERSION: "4.7.2"
+  SCONS_VERSION: "4.9.1"
+  # godot-cpp's SConstruct caches objects here, outside the workspace.
+  SCONS_CACHE: /home/runner/.cache/rts-mobile-scons
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.plan.outputs.sha }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      sets: ${{ steps.plan.outputs.sets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      # The shard table and the check of a custom run's inputs, before anything is built. A bad input fails here.
+      - name: Plan the shards
+        id: plan
+        env:
+          SUITE: ${{ inputs.suite || 'balance' }}
+          LEVELS: ${{ inputs.levels }}
+          SCENARIOS: ${{ inputs.scenarios }}
+          MATCHES: ${{ inputs.matches }}
+          SEED_START: ${{ inputs.seed_start }}
+        run: |
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "matrix=$(bash scripts/ci/balance-plan.sh matrix)"
+            echo "sets=$(bash scripts/ci/balance-plan.sh sets)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Cache Godot editor and web export templates
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Install the native toolchain (SCons, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      - name: Read the native cache key
+        id: native-key
+        run: |
+          key="$(bash scripts/build-native.sh --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
+      - name: Build the library (build-native.sh)
+        run: bash scripts/build-native.sh
+
+      # Built once; every shard downloads it. The artifact root is native/ (bin/ and the generated .gdextension).
+      - name: Upload the native library
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: balance-native
+          path: |
+            native/bin/
+            native/sim_kernels.gdextension
+          if-no-files-found: error
+          retention-days: 1
+
+  shards:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Restore the Godot editor and web export templates
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Download the native library
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: balance-native
+          path: native
+
+      # GITHUB_SHA is the commit that the report stores. A manual run of another `ref` runs on the checkout, not on the
+      # workflow's own commit, so the step sets it to the checkout's.
+      - name: Play the shard (run-sim-smoke.sh)
+        env:
+          GITHUB_SHA: ${{ needs.build.outputs.sha }}
+          SHARD: ${{ matrix.name }}
+          MATCHES: ${{ matrix.matches }}
+          SEED_START: ${{ matrix.seed_start }}
+          LEVELS: ${{ matrix.levels }}
+          SCENARIOS: ${{ matrix.scenarios }}
+        run: |
+          bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START" --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"
+
+      # The balance run measures the native kernels (ADR 0031 section 1): a shard that fell back to GDScript fails.
+      - name: Check the shard ran native
+        env:
+          SHARD: ${{ matrix.name }}
+        run: python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["impl"] == "native" else "the shard did not run on the native library")' "build/balance/$SHARD.json"
+
+      - name: Upload the shard report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shard-${{ matrix.name }}
+          path: build/balance/${{ matrix.name }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  summarise:
+    needs: [build, shards]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.name.outputs.name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Restore the Godot editor and web export templates
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      - name: Download the shard reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: shard-*
+          merge-multiple: true
+          path: build/balance/shards
+
+      # One summary per set (its shards merge; the two mirrors are two sets). Only the gate run passes --gate.
+      - name: Summarise each set (balance-summary.sh)
+        env:
+          SETS: ${{ needs.build.outputs.sets }}
+        run: |
+          for set in $SETS; do
+            flags=()
+            if [ "$set" = "gate" ]; then flags=(--gate); fi
+            bash scripts/balance-summary.sh --out "build/balance/summary/$set.json" "${flags[@]}" build/balance/shards/"$set"-*.json
+            cat "build/balance/summary/$set.md" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Name the artifact
+        id: name
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: echo "name=balance-$(date -u +%F)-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the summaries
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: build/balance/summary/
+          if-no-files-found: error
+          retention-days: 90
+
+  # No checkout and no repository code: it reads the markdown the summarise job made and talks to the issue. Only a push
+  # run and a balance or gate run of `main` post; a custom run, or a run of another ref, keeps the artifact only.
+  post:
+    needs: [build, summarise]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (inputs.suite != 'custom' && inputs.ref == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Download the summaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.summarise.outputs.artifact }}
+          path: summary
+
+      - name: Comment on the balance issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ needs.build.outputs.sha }}
+          SUITE: ${{ inputs.suite || 'balance' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          number="$(gh issue list --label balance --state open --limit 20 --json number,title --jq '[.[] | select(.title == "Balance reports")][0].number // empty')"
+          if [ -z "$number" ]; then
+            echo "::error::No open issue titled \"Balance reports\" with the label balance. The lead creates the label and the issue once; this job never does. The summaries stay in the artifact of this run."
+            exit 1
+          fi
+          {
+            echo "### Balance run on \`main\` at \`$SHA\`"
+            echo
+            echo "Suite: $SUITE. Run: $RUN_URL"
+            for f in summary/*.md; do
+              echo
+              echo "<details open><summary>$(basename "$f" .md)</summary>"
+              echo
+              cat "$f"
+              echo
+              echo "</details>"
+            done
+          } > body.md
+          if [ "$(wc -c < body.md)" -gt 60000 ]; then
+            head -c 58000 body.md > cut.md
+            printf '\n\n(Cut at 58000 bytes, the comment limit; the whole report is in the artifact of %s.)\n' "$RUN_URL" >> cut.md
+            mv cut.md body.md
+          fi
+          gh issue comment "$number" --body-file body.md

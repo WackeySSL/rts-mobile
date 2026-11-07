@@ -87,6 +87,17 @@ const BASES_GREP: String = (
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
 )
+## P190: after the bases block, the same step copies the `WATCH ai think` lines of
+## tests/perf/test_ai_perf.gd (P189) under a heading of their own. Report only.
+const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI think time, report only)'"
+const WATCH_AI_PATTERN: String = "^WATCH ai think"
+const WATCH_AI_GREP: String = (
+	"grep -a -E '"
+	+ WATCH_AI_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no WATCH ai line (the AI perf suite did not run)"'
+)
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
 ## P55a, the Android job (ADR 0013 sections 8 and 10).
@@ -340,6 +351,7 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	for line: String in skipped:
 		assert_bool(_perf_selected(line)).is_false()
 	_assert_perf_bases_summary(step)
+	_assert_watch_ai_summary(step)
 
 
 ## P55: native-clang builds with the flags its cache key names; gdUnit4 runs only if a suite exists,
@@ -716,6 +728,31 @@ func _assert_perf_bases_summary(step: Array) -> void:
 	]
 	for line: String in skipped:
 		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+
+
+## P190: the same step copies the `WATCH ai think` lines, under a heading of their own after the
+## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
+func _assert_watch_ai_summary(step: Array) -> void:
+	assert_array(step).contains([WATCH_AI_HEADING, WATCH_AI_GREP])
+	var heading: int = step.find(WATCH_AI_HEADING)
+	assert_int(heading).is_greater(step.find(BASES_GREP))
+	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
+	var shown: Array[String] = [
+		"WATCH ai think ticks=900 mean_us=412", "WATCH ai think impl=native"
+	]
+	for line: String in shown:
+		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_true()
+		assert_bool(_perf_selected(line)).is_false()
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+	var skipped: Array[String] = [
+		"WATCH bases hash_bytes checkpoints=60 min_bytes=20200 max_bytes=24996",
+		"WATCH sim hash_bytes checkpoints=60 min_bytes=19036 max_bytes=27688",
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		" WATCH ai think ticks=900",
+		"perf: WATCH ai think is not printed",
+	]
+	for line: String in skipped:
+		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_false()
 
 
 func _perf_selected(line: String, pattern: String = PERF_PATTERN) -> bool:
