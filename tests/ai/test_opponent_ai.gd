@@ -223,6 +223,12 @@ func test_the_memory_starts_at_its_none_values_within_the_defs_caps() -> void:
 		)
 		. is_equal([0, 0, 0, -1, -1])
 	)
+	# The intel part (P177b): no trip yet, no hp, no scout wanted, every sector open.
+	assert_array([memory.scout_trip_tick, memory.scout_hp, memory.scout_wanted]).is_equal(
+		[-1, -1, -1]
+	)
+	assert_int(memory.scout_picked.size()).is_equal(def.sectors_max)
+	assert_int(memory.scout_picked.count(-1)).is_equal(def.sectors_max)
 	assert_int(memory.squad_role.size()).is_equal(def.squads_max)
 	assert_int(memory.sector_own.size()).is_equal(def.sectors_max)
 	assert_int(memory.sector_enemy.size()).is_equal(def.sectors_max)
