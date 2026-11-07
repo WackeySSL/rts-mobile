@@ -48,6 +48,13 @@ makes a third exception to §1's field "that P175 declares" (`unit_hp` and `seen
 declared by P179b). It reads §6's "moves its squad's goal" as the home squad's, and it moves §6's
 wave recall in the field to row P180b.
 
+Status note (2026-11-07, P26bh docs; wave 5 merged: P179b #365, P180 #366, main f3e80f8): the
+reviews of wave 6 (P180b Hard's unit control and the recall, P181 the strikes, P183 the level
+choice) decided how §4's single cap, §4's "sectors first" and §6's *Army* recall are read; the
+second note at the end of §4 records them. No accepted text changed. The note makes a fourth
+exception to §1's field "that P175 declares" (`own_mobile_id`, `seen_mobile_id` and the sector
+grid, filled by `AiIntel` for `AiStrikes`, declared by P181).
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -302,6 +309,20 @@ Note (2026-11-07, P26bg docs; lead decisions from the wave-5 reviews):
 - **Wave strength** compounds: each wave asks `wave_growth_percent` more than the one before.
 - **Moved to P180b:** §6's recall of a wave in the field when the threat outweighs the home
   squad, and armed seen enemy buildings in the retreat ratio (P180 counts combat units only).
+
+Note (2026-11-07, P26bh docs; lead decisions from the wave-6 reviews):
+- **One cap for the army's searches.** Hard's focus search, the recall, the retreat ratio and the
+  threat search share one `target_tests_max` per ARMY slot (the unseen-hit tests keep their own,
+  as above). A focus search the cap cuts off keeps a living target.
+- **Sectors first, as read by `AiStrikes`.** The sector map is an early-out (an enemy under
+  `strike_min_value` cannot make a shot) and ranks the anchors by sector value, then by value. The
+  rows are then tested under `target_tests_max`; a check the cap cuts off is not clear.
+- **§3's memory:** `AiIntel.run` fills `own_mobile_id`, `seen_mobile_id` and the sector grid for
+  `AiStrikes` in its existing passes (a fourth exception to the plan's "`AiMemory.gd` is P175's"),
+  so `work` stays at most 3. P180b's `withdrawn_id` (at most `unit_cap` ids) and `squad_focus` are
+  read by `AiArmy` alone.
+- **§6, *Army*:** the recall disbands the wave into the home squad and the defence sends it. A Hard
+  unit that steps back stays out of wave launches and joins only (the sim has no healing).
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
