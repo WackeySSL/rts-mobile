@@ -25,8 +25,9 @@ var unit_cap: int = 0
 ## appends a Command and before it records "sent" in this memory or in a counter, then calls
 ## `spent`; so the cut after the think (`commands_cut`) stays 0.
 var commands_left: int = 0
-## Credits the economy keeps for the build order's next structure (writer: AiEconomy, P176;
-## reader: AiProduction, P178, which queues units only from what is above it). 0 = none.
+## The credits production must leave this think (writer: AiEconomy, P176; reader: AiProduction,
+## P178, which spends `maxi(view.credits - reserve_credits, 0)`): what the economy queued in it plus
+## the price of the structure or tanker it keeps credits for. 0 = none.
 var reserve_credits: int = 0
 
 ## Army: the staging point and the enemy base estimate, in tiles, (NONE, NONE) when not set.
@@ -73,8 +74,11 @@ var goal_x: PackedInt32Array = PackedInt32Array()
 var goal_y: PackedInt32Array = PackedInt32Array()
 var goal_class: PackedInt32Array = PackedInt32Array()
 var goal_owner: PackedInt32Array = PackedInt32Array()
-## Economy: where the placement spiral resumes (a slot index).
+## Economy: where the placement spiral resumes (a slot index) and the staging point of the order it
+## belongs to ((NONE, NONE): the plain spiral).
 var spiral_resume: int = 0
+var spiral_for_x: int = NONE
+var spiral_for_y: int = NONE
 
 
 ## A memory with the caps of `def`, every field at its "none" value.

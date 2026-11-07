@@ -45,7 +45,9 @@ func test_a_manager_runs_once_in_fifteen_ticks_and_the_thinks_record_their_slot(
 
 func test_a_think_with_empty_managers_sends_nothing_and_counts_one_view() -> void:
 	var world: World = FactionRig.start("fossil", "renew")
-	var ai: OpponentAi = Rig.opponent("fossil", "normal", 1)
+	# The probe's hooks stand for managers with nothing to do (the real managers have their suites).
+	var ai: Variant = Probe.new()
+	ai.copy_from(Rig.opponent("fossil", "normal", 1))
 	var sent: Array[Command] = []
 	for tick: int in 15:
 		world.tick = tick
@@ -209,8 +211,17 @@ func test_the_memory_starts_at_its_none_values_within_the_defs_caps() -> void:
 	assert_array([memory.scout_id, memory.wave_start_tick, memory.threat_first_tick]).is_equal(
 		[-1, -1, -1]
 	)
-	assert_array([memory.wave_count, memory.scout_waypoint, memory.spiral_resume]).is_equal(
-		[0, 0, 0]
+	(
+		assert_array(
+			[
+				memory.wave_count,
+				memory.scout_waypoint,
+				memory.spiral_resume,
+				memory.spiral_for_x,
+				memory.spiral_for_y
+			]
+		)
+		. is_equal([0, 0, 0, -1, -1])
 	)
 	assert_int(memory.squad_role.size()).is_equal(def.squads_max)
 	assert_int(memory.sector_own.size()).is_equal(def.sectors_max)
@@ -303,12 +314,15 @@ func test_a_think_records_the_rules_unit_cap_in_the_memory() -> void:
 	assert_int(ai.memory.unit_cap).is_equal(PlayerView.of(world, 1).unit_cap)
 
 
-func test_an_opponent_in_the_headless_loop_sends_nothing_yet_and_drops_nothing() -> void:
+func test_an_opponent_in_the_headless_loop_sends_only_economy_commands_and_drops_nothing() -> void:
 	var world: World = FactionRig.start("fossil", "renew")
 	var loop: MatchLoop = AiRig.loop_of(world)
 	var controllers: Array = [Rig.opponent("fossil", "normal", 1), Rig.opponent("renew", "hard", 2)]
 	var sent: Array[Command] = AiRig.run(world, loop, controllers, 150)
-	assert_array(sent).is_empty()
+	# Only the economy is wired so far (P176): it queues and places, nothing else.
+	assert_array(sent).is_not_empty()
+	for command: Command in sent:
+		assert_bool([Command.Type.QUEUE, Command.Type.PLACE].has(command.type)).is_true()
 	assert_int(world.dropped_commands).is_equal(0)
 	for controller: OpponentAi in controllers:
 		assert_array(controller.slot_thinks).is_equal(PackedInt32Array([10, 10, 10]))

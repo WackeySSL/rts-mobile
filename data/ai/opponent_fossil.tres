@@ -34,4 +34,5 @@ squads_max = 4
 place_tries_per_think = 8
 target_tests_max = 512
 goal_keys_max = 4
+spiral_slots = 64
 strike_min_value = 3000
