@@ -220,6 +220,18 @@ func test_after_the_all_in_tick_every_new_unit_joins_the_wave_with_its_own_order
 	assert_array(_out).is_empty()
 
 
+func test_an_all_in_joiner_of_a_shifted_home_squad_leaves_the_flag_clear() -> void:
+	_target_at()
+	_settle()
+	_think(ALL_IN)
+	_memory.squad_shifted[AiArmy.HOME] = 1
+	_tank()
+	_settle()
+	_think(ALL_IN + 15)
+	assert_int(_of(Command.Type.ATTACK_MOVE).size()).is_equal(1)
+	assert_int(_memory.squad_shifted[AiArmy.HOME]).is_equal(0)
+
+
 func test_the_all_in_tick_sends_a_retreating_wave_out_again_and_ends_retreats() -> void:
 	var first: int = _launched()
 	_world.hp[_row_in_world(first)] = 0
