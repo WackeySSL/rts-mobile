@@ -602,3 +602,11 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
    - A (recommended): heavier bombs (+25 % damage) and armour (-25 % damage taken).
    - B: heavier bombs and one more bomb per trip.
    - C: all three.
+
+Answered by Michael on 2026-11-09 (chat): 1 **A** (every first name), 2 **A** (everything after
+the Phase 4 gate, before Phase 5; the launch moves about 3-4 weeks), 3 **B** (the sweep lasts
+until the space centre is destroyed), 4 **A** (Normal and Hard use it by the same rules), 5 **A**
+(heavier bombs and armour). P230 adapts the reveal rule to answer 3 (no recharge timer; what a
+blackout or low power does to a standing sweep), moves "air units" out of the GDD's "Not in
+version 1" list and adds the ROADMAP phase. It also asks Michael's yes to the `touch-ui-rules` text
+for the Home, Board and Unload buttons.
