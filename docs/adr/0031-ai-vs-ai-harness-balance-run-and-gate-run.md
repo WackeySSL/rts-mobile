@@ -30,6 +30,12 @@ too), `by_faction` (left out of a mirror) and "present when the run is the gate 
 and §6's checks (a `set` check first) and its 200-match rerun. The Phase 4 plan's P190 row has
 a dated note on how the mirrors and the rerun are summarised.
 
+Status note (2026-11-09, P26bi docs, from the reviews of P188 and P190): the notes at the end of
+§5 and §7 record that `workflow_dispatch` has no `ref` input (a run plays the commit it is
+dispatched on), the gate and `post` guards, the manual gate rerun, and how §7's strike case reads
+"each charged strike building". No other accepted text changed; §5's inputs list and §8's "with
+`ref`" are read through the §5 note.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -321,6 +327,25 @@ Note (2026-11-07, P26bf docs, from the reviews of P187):
   no checkout step, the script calls, the shard table and that no seed of the `balance` sets
   reaches 1000 (release-engineer's suite).
 
+Note (2026-11-09, P26bi docs, from the reviews of P190):
+- **No `ref` input.** `workflow_dispatch` takes `suite` and `custom`'s set inputs only. A run plays
+  the commit it is dispatched on: an "after" run (§8) is dispatched from the PR's branch, and every
+  job checks out that one commit, so one run never mixes commits. This keeps a branch's code and
+  caches in that branch's scope, records the right `commit` in each report, and makes the
+  concurrency group key on the tested branch, so two branches' `custom` runs never cancel each
+  other (two on one branch still do, so they run one after the other).
+- **Guards:** `suite=gate` runs only on `main`, checked before any checkout; `post` runs only on
+  `main` and never for `custom`. A `custom` run refuses seeds 1000-1100 (the balance sets end below
+  1000 and the gate plays 1001-1100) and more than 200 matches.
+- **`build`** uploads the native library only; the shard and summarise jobs install Godot from the
+  cache. `post` finds the open issue labelled `balance` titled "Balance reports" and never creates
+  it.
+- **The gate rerun** of §6 is merged by hand: a `custom` run of seeds 1101-1200 with the gate's
+  sets, then `balance-summary.sh --gate` over both runs' reports (the workflow's header). A later
+  row may automate it.
+- **Pins** live in `tests/project/test_ci_balance_workflow.gd` (`test_ci_workflow.gd` already holds
+  gdlint's 20 public methods).
+
 ### 6. The Phase 4 gate run
 - **Held-out seeds.** The balance run's tuning set (seeds 1-100) is what every tuning row is judged
   on, so the gate does not reuse it. The gate run is `suite=gate` on the `main` commit under test:
@@ -359,6 +384,14 @@ Note (2026-11-07, P26bf docs, from the reviews of P187):
   agree, strikes included.
 - The harness's counting changes no hash (the state hash with and without it).
 - The full-length cases (13 500 ticks, 100 seeds) run only in Actions.
+
+Note (2026-11-09, P26bi docs, from the reviews of P188): "fires each charged strike building" is
+read as each building of the computer's own strike type. The fossil computer fires its Deep Bore;
+the Dusk Array fires only while a wave is in the field, after tick 4 050 on Normal, so P181's
+hand-built suite covers it. The strike case owns its `strike_min_value` and charge, so tuning
+cannot stop the shot, and its replay runs on the GDScript twin, so arm64 compares the two
+implementations with a strike in the log. The arm64 check step requires the suite (the plan's
+exception 21, widened to two lines).
 
 ### 8. The balance workflow
 - **Data only, one number per pull request** (the skill; ai-dev). A tuning row names the number, its
