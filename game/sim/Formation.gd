@@ -4,8 +4,9 @@ extends RefCounted
 ## no state kept between calls. It runs once per command, never per tick, and is O(n^2) in the
 ## group size. A slot on a tile that a movement class of the group cannot enter is skipped.
 
-## A sort key is the squared lattice distance times this, plus the generation index (below it),
-## so a plain sort puts nearer slots first and keeps generation order on ties.
+## A sort key is the squared lattice distance times this, plus the generation index (below it).
+## The sort compares the distance part (key / KEY_SHIFT), then the offset along the approach, then
+## across it, and the generation index only on a tie of all three (the index is the last word).
 const KEY_SHIFT: int = 1 << 20
 
 
@@ -16,8 +17,10 @@ const KEY_SHIFT: int = 1 << 20
 ## radius in the group (the box [low, high] below). On a tile that a class of the group cannot
 ## enter it moves to the centre of the nearest tile that every class can and whose centre is in the
 ## box (_open_centre), so the slot lattice always starts inside the box. The slots are spaced by
-## the largest formation spacing in the group. Each slot, nearest to the target first, takes the
-## nearest unassigned unit, ties to the lower id. Units left without a slot get the clamped target.
+## the largest formation spacing in the group. Each slot, nearest to the target first (an equal
+## distance: the one further along the approach, then across it), takes the nearest unassigned
+## unit (an equal distance: the larger offset along the approach, then across it, then the lower
+## id). Units left without a slot get the clamped target.
 ## It runs on the worker, so the World's arrays are aliased into locals before the loops (ADR
 ## 0012 section 2).
 static func assign(
@@ -114,7 +117,9 @@ static func _open_centre(
 	for ring: int in maxi(cols, rows):
 		var found: bool = false
 		var best: Vector2i = point
-		var best_key: Vector3i = Vector3i.ZERO
+		var best_d2: int = 0
+		var best_along: int = 0
+		var best_across: int = 0
 		for j: int in range(-ring, ring + 1):
 			var y: int = tile_y + j
 			if y < 0 or y >= rows:
@@ -145,22 +150,25 @@ static func _open_centre(
 					# The nearest to the point, then the one further along the approach and on
 					# the larger cross side: a rule that a half turn of the map keeps.
 					var gap: Vector2i = centre - point
-					var key: Vector3i = Vector3i(
-						gap.x * gap.x + gap.y * gap.y,
-						-(gap.x * way.x + gap.y * way.y),
-						-(gap.x * way.y - gap.y * way.x)
-					)
+					var d2: int = gap.x * gap.x + gap.y * gap.y
+					var along: int = -(gap.x * way.x + gap.y * way.y)
+					var across: int = -(gap.x * way.y - gap.y * way.x)
 					if (
 						not found
-						or key.x < best_key.x
+						or d2 < best_d2
 						or (
-							key.x == best_key.x
-							and (key.y < best_key.y or (key.y == best_key.y and key.z < best_key.z))
+							d2 == best_d2
+							and (
+								along < best_along
+								or (along == best_along and across < best_across)
+							)
 						)
 					):
 						found = true
 						best = centre
-						best_key = key
+						best_d2 = d2
+						best_along = along
+						best_across = across
 		if found:
 			return best
 	return point
@@ -248,8 +256,8 @@ static func _slots(
 		order.append(at)
 	order.sort_custom(
 		func(left: int, right: int) -> bool:
-			var left_ring: int = keys[left] >> 20
-			var right_ring: int = keys[right] >> 20
+			var left_ring: int = keys[left] / KEY_SHIFT
+			var right_ring: int = keys[right] / KEY_SHIFT
 			if left_ring != right_ring:
 				return left_ring < right_ring
 			if along[left] != along[right]:
@@ -267,7 +275,7 @@ static func _slots(
 
 
 ## The position in `unit_indices` of the unassigned unit nearest to `slot` (squared distance),
-## ties to the lower id. Independent of the order of `unit_indices`. The columns are the World's
+## ties by `_prefer` (along, across, lower id). Independent of the order of `unit_indices`. The columns are the World's
 ## pos_x, pos_y and unit_id, aliased by the caller.
 static func _nearest_free(
 	pos_x: PackedInt32Array,

@@ -168,6 +168,27 @@ func test_a_slot_on_a_blocked_tile_is_skipped() -> void:
 	assert_array(GridWorld.goals(world, rows)).contains_exactly_in_any_order(expected)
 
 
+## A long way keeps the tie rule right: 30 units around (10500, 10100) ordered to a 64 x 64 map's far
+## corner area (55500, 55500), whose tile and ring 1 are rock. The group's way is about
+## (1.35e6, 1.36e6) and a ring 2 tile is 2000 away, so a product of the two is 2.7e9, past 32 bits
+## (the review of ADR 0033: the first key held it in a Vector3i, and the tie went to the tile
+## against the way). The four tiles two away on an axis tie, and the one further along the way is
+## the one below (the way points slightly more down than right): (55500, 57500).
+func test_a_long_way_picks_the_tile_further_along_it_past_32_bits() -> void:
+	var rock: Array[Vector2i] = []
+	for x: int in range(54, 57):
+		for y: int in range(54, 57):
+			rock.append(Vector2i(x, y))
+	var world: World = GridWorld.from_rows(GridWorld.grass(64, 64, rock), [FOOT])
+	var rows: PackedInt32Array = GridWorld.add_block(world, 30, 6, 8500, 8500, 800, 0)
+	Formation.assign(world, rows, 55500, 55500)
+	var goals: Array[Vector2i] = GridWorld.goals(world, rows)
+	assert_bool(goals.has(Vector2i(55500, 57500))).is_true()
+	assert_bool(goals.has(Vector2i(53500, 55500))).is_false()
+	assert_bool(goals.has(Vector2i(57500, 55500))).is_false()
+	assert_bool(goals.has(Vector2i(55500, 53500))).is_false()
+
+
 ## Every tile of ring 1 is rock: the ring is still inside the map, so the search goes on to ring 2,
 ## and the nine units take the centre, the four axis points at distance 2 and four points at squared
 ## distance 5 (see _ring_two).

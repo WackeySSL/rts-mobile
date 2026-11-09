@@ -513,6 +513,8 @@ func _take_rows(world: World) -> void:
 		or cells / cols != lines
 	)
 	var block: int = (player - 1) * cells
+	var width: int = cols * MILLI_PER_TILE
+	var height: int = lines * MILLI_PER_TILE
 	var owners: PackedInt32Array = _owner
 	var xs: PackedInt32Array = _pos_x
 	var ys: PackedInt32Array = _pos_y
@@ -528,9 +530,15 @@ func _take_rows(world: World) -> void:
 			continue
 		var is_seen: bool = sees_all
 		if not is_seen:
+			var px: int = xs[row]
+			var py: int = ys[row]
+			if px % MILLI_PER_TILE == 0 and px * 2 > width:
+				px -= 1
+			if py % MILLI_PER_TILE == 0 and py * 2 > height:
+				py -= 1
 			var cell: int = (
-				clampi(ys[row] / MILLI_PER_TILE, 0, lines - 1) * cols
-				+ clampi(xs[row] / MILLI_PER_TILE, 0, cols - 1)
+				clampi(py / MILLI_PER_TILE, 0, lines - 1) * cols
+				+ clampi(px / MILLI_PER_TILE, 0, cols - 1)
 			)
 			is_seen = visible[block + cell] > 0
 		if is_seen:
