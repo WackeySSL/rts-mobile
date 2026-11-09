@@ -55,7 +55,7 @@ static func run(world: World) -> void:
 	var tick: int = world.tick
 	var checks: int = 0
 	for player: int in range(1, mini(world.fog.player_count, counts.size() - 1) + 1):
-		if (tick - (fog.player_count + 1 - player) + 1) % period == 0:
+		if (tick - (world.fog.player_count + 1 - player) + 1) % period == 0:
 			checks += _forget(world, player) + _remember(world, player)
 	world.stats[World.Stat.MEMORY_CHECKS] += checks
 
