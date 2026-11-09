@@ -124,8 +124,9 @@ jobs:
       # plain note, which is no PERF line, so only the first shows.
       # P96: the two PERF lines of tests/perf/test_base_arena_perf.gd (PERF bases units= and PERF bases impl=native
       # units=), copied the same way under their own heading, after the PERF sim lines, which show as before. Report
-      # only: nothing gates on them. The WATCH lines (WATCH sim hash_bytes and WATCH bases hash_bytes among them)
-      # stay in the verify log; the summary copies none of them.
+      # only: nothing gates on them. P190: every `WATCH ai ` line (tests/perf/test_ai_perf.gd, P189, and the
+      # determinism suite, P188), copied the same way under their own heading after the bases block, report only. The other WATCH lines (WATCH sim hash_bytes and
+      # WATCH bases hash_bytes among them) stay in the verify log; the summary copies none of them.
       - name: Job summary
         if: always()
         env:
@@ -150,6 +151,12 @@ jobs:
             echo
             echo '```'
             grep -a -E '^PERF bases (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
+            echo '```'
+            echo
+            echo '### WATCH ai (the opponent AI, report-only lines)'
+            echo
+            echo '```'
+            grep -a -E '^WATCH ai ' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
