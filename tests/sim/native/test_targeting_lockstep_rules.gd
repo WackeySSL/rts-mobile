@@ -60,6 +60,8 @@ const LATTICE_FLOORS: Dictionary[StringName, int] = {
 ## found, 46 fallbacks, 89,941 holding, 10,085 chasing, 2,153 chase starts, 10,203 line tests, 80
 ## re-tests, 2,789 blocked (f1494a5: 2,847,323; 50,457; 42,219; 3,942; 46; 89,863; 10,114; 2,153;
 ## 10,317; 165 re-tests; 2,789: the ATTACKs on an enemy out of sight are dropped now).
+## With the half-turn ties (ADR 0033, P195d-2) the five runs make 2 re-tests (80 before): the floor
+## is 1, the line tests (and so the lines) are still reached by `line_checks`.
 const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"looks": 1890000,
 	&"cands": 33600,
@@ -70,7 +72,7 @@ const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"chasing": 6720,
 	&"chase_starts": 1430,
 	&"line_checks": 6800,
-	&"retests": 53,
+	&"retests": 1,
 	&"blocked": 1850
 }
 ## The four scout runs together, measured: 2,012 unarmed rows on their turn, 32,748 looks, 664
