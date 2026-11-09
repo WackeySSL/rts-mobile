@@ -391,6 +391,10 @@ None for P202, P203, P205, P206 (the ring's colour is not described today), P209
 P218. GDD lines (damage table, fog) are P200b's.
 
 ## Questions for Michael
+Answered on 2026-11-09: 1 **A** and 2 **B** (Michael, in chat); 3 **A** (the lead's call on a
+technical fallback; Michael may overrule it). So P208 keeps the sash, P215 is in, and P216 depends
+on P215.
+
 1. **Locked build cards.** The board's cards show a small lock plate on a locked card. On
    2026-11-06 you chose the diagonal sash with the missing building's name (ADR 0032). A: keep the
    sash and give the cards only the new rail, price chip and face (recommended: the sash tells the

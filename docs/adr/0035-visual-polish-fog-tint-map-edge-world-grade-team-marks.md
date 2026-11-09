@@ -7,7 +7,9 @@ vignette; units stand on a pad in their team colour and the selection ring takes
 fog's soft edge at the limit of sight stays one tile wide, and nothing uses additive blending or a
 shader.
 
-Status: **proposed 2026-11-09** (P200, architect, on `main` at b6bfe95). Michael said yes to the
+Status: **accepted 2026-11-09** (Michael's answers in chat the same day: Q1 A, Q2 B; Q3 A, the
+lead's call on a technical fallback; see Questions). Proposed by P200, architect, on `main` at
+b6bfe95. Michael said yes to the
 eight proposals of art-director's board on 2026-11-09; this ADR records how they fit the accepted
 ADRs and what changes in them. Questions 2 and 3 of the plan
 (`docs/plans/2026-11-09-visual-polish.md`, "Questions for Michael") decide §1 and §4.3. Revised
@@ -156,3 +158,7 @@ one-texture ring.
 ## Questions
 In the plan, "Questions for Michael": Q2 decides §1 (A keep black, B blue-grey, recommended B), Q3
 decides §4.3 (A `SHADOW_SCALE` 0.75, recommended; B a separate pad sprite).
+
+Answered on 2026-11-09: Q1 **A** (Michael: keep ADR 0032's sash), Q2 **B** (Michael: unexplored
+ground in the very dark blue-grey `fog_rgb`; P215 is in), Q3 **A** (the lead: `SHADOW_SCALE` 0.75 if
+a page passes 3584 rows; Michael may overrule it).
