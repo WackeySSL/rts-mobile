@@ -9,7 +9,7 @@
 // per slot and call (the pass keeps the answer, core/integrate.cpp's is_complete, and a recycle updates it; the rows that
 // wait for a pending field ask it on every tick, so a get per row would be forbidden), and the rest of the slot (cost,
 // grid_cols, cell_count, stride) at event cadence, where a FIELD unit looks up its next tile. A slot past
-// integrate::MEMO_SLOTS is asked on each use (flow_cache_size is 8 in data/rules.tres). That is the second recorded
+// integrate::MEMO_SLOTS is asked on each use (flow_cache_size is 12 in data/rules.tres). That is the second recorded
 // exception to the rule, beside FLOW's re-read of `pending` (plan, P37n).
 // Twin: game/sim/Movement.gd (integrate). Tests: tests/sim/native/test_integrate_kernel.gd and the movement suites under both
 // implementations (tests/sim/test_movement*.gd). Lockstep: tests/sim/native/test_integrate_lockstep.gd (900 arena ticks, changed
