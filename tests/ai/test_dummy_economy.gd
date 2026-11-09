@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## The dummy's economy over a whole build (plan row P83, ADR 0020 section 4): one dummy as player 1
 ## of the skirmish-like start of `ai_rig.gd` (a Headquarters, two rifle squads, 2,000 credits, ore
 ## near, real fog), player 2 passive, run once for the suite through the headless loop. The build
-## order is complete at tick 4,193 on the shipped def and rules (counted; the explored rule is gone,
+## order is complete at tick 4,192 on the shipped def and rules (counted; the explored rule is gone,
 ## ADR 0033 section 4, so the first slot is used and the later ones shift); the bound below leaves
 ## room for a rebalance of a few percent and nothing more, so a dummy that dithers fails it.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
-## The ticks in which the whole build order must stand (measured 4,193).
+## The ticks in which the whole build order must stand (measured 4,192).
 const DONE_BOUND: int = 4400
 const TICKS: int = 4500
 

@@ -121,11 +121,11 @@ func test_ground_the_player_never_explored_is_placeable_near_their_own_buildings
 	assert_int(_plant(world, 7, 2)).is_equal(GROUND)  # So do the ground and unit rules.
 
 
-func test_a_ghost_over_black_ground_tells_only_what_the_player_knows() -> void:
+func test_the_answer_does_not_read_the_explored_map() -> void:
 	var world: World = _world()
 	world.fog.explored.fill(0)
-	# Rock the player never saw is still refused as ground, and the same answer as on seen ground,
-	# so the refusal leaks nothing the fog hides. A unit on unseen ground is OCCUPIED likewise.
+	# The answer does not depend on the explored map; it shows nothing UNEXPLORED's place in the
+	# order did not already show. Rock and a unit on black ground refuse as on seen ground.
 	var black_rock: int = _plant(world, 7, 2)
 	var black_free: int = _plant(world, 6, 2)
 	_unit_at(world, 12500, 10500, 2)
@@ -143,6 +143,30 @@ func test_a_ghost_over_black_ground_tells_only_what_the_player_knows() -> void:
 			world.fog.explored[cell] = rng.next_int(2)
 		assert_int(_plant(world, 7, 2)).is_equal(black_rock)
 		assert_int(_plant(world, 6, 2)).is_equal(black_free)
+
+
+func test_the_reason_numbers_stay_and_four_is_gone() -> void:
+	assert_int(TOO_FAR).is_equal(5)
+	assert_int(CAP).is_equal(6)
+	assert_object(Placement.Reason.find_key(4)).is_null()
+
+
+func test_too_far_comes_before_cap_on_black_ground() -> void:
+	var world: World = _world()
+	world.fog.explored.fill(0)
+	world.building_cap = 1  # Player 1 is at the cap.
+	assert_int(_plant(world, 10, 10)).is_equal(TOO_FAR)  # Far and capped.
+	assert_int(_plant(world, 5, 5)).is_equal(CAP)  # Near and capped.
+
+
+func test_a_player_with_no_building_is_too_far_everywhere_on_black_ground() -> void:
+	var world: World = _world()
+	world.fog.explored.fill(0)
+	var input: PlacementInput = PlacementInput.of_world(world)
+	var plant: int = Worlds.type_of(world, "power_plant")
+	for player: int in [3, 7]:  # Owns nothing.
+		assert_int(Placement.reason(input, player, plant, 6, 2)).is_equal(TOO_FAR)
+		assert_int(Placement.reason(input, player, plant, 12, 9)).is_equal(TOO_FAR)
 
 
 func test_a_footprint_farther_than_the_reach_from_every_own_building_is_too_far() -> void:

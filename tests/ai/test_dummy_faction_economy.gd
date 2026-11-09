@@ -15,7 +15,7 @@ const WRONG_TICKS: int = 900
 ## The ticks in which the whole build order must stand, per faction (measured 4,192 and 3,607 on the
 ## shipped defs, rules and rosters; the Lumen Accord's power plant costs less). Each bound leaves
 ## room for a rebalance of a few percent and nothing more, so a dummy that dithers fails it.
-const DONE_BOUND: Dictionary[String, int] = {"fossil": 4400, "renew": 3800}
+const DONE_BOUND: Dictionary[String, int] = {"fossil": 4400, "renew": 3780}
 
 var _runs: Dictionary[String, Run] = {}
 
