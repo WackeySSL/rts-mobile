@@ -30,4 +30,6 @@ ref_burst_ms = 400
 golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
 golden_hex = PackedStringArray("2baccf2e02ff4fe9", "ef55b512f8edda8a", "577336276303caec", "fb50cf870d8180eb", "9028a733228b6091", "7bcb20994df10b28")
 bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-bases_golden_hex = PackedStringArray("04a88ff62313a3d9", "c26e98a9e5d290cf", "a691298cb2ca1410", "0595b5eac93bec3a", "7dc578419c6c8cf9", "abe31870f7679f5c")
+; Re-pinned under exception 3 (ADR 0033 section 1: docks and exits face the map centre).
+; Before: 04a88ff62313a3d9 c26e98a9e5d290cf a691298cb2ca1410 0595b5eac93bec3a 7dc578419c6c8cf9 abe31870f7679f5c
+bases_golden_hex = PackedStringArray("feb5d0302777e816", "360f08cb64612295", "4fa7bcadcc63d38e", "ce6037ef45537892", "26d040f75b5d0364", "4f1b4973efe6377c")

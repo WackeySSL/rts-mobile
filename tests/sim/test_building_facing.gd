@@ -1,0 +1,243 @@
+extends GdUnitTestSuite
+## Docks and exits face the map centre (plan row P195c-1, ADR 0033 sections 1, 2 and 6): the facing
+## is a pure function of a building's position and the map size, `turned` turns the data's south
+## offsets with it, and the four places that read a dock or an exit (`ProductionSpawn.spawn`,
+## `exit_tile`, `spawn_free` and `Harvest._dock`) use the turned tile.
+
+const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
+const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
+const HWorlds: GDScript = preload("res://tests/sim/support/harvest_worlds.gd")
+const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
+const SmokeRun: GDScript = preload("res://tests/smoke/smoke_run.gd")
+const RosterCells: GDScript = preload("res://tests/sim/support/roster_cells.gd")
+
+const SOUTH: int = Buildings.Facing.SOUTH
+const WEST: int = Buildings.Facing.WEST
+const NORTH: int = Buildings.Facing.NORTH
+const EAST: int = Buildings.Facing.EAST
+const SIDE: int = 20
+## Origins of 3x3 buildings on the 20 x 20 map, one on each side of the centre and each well off
+## the diagonals: top, right, bottom, left, and the facing each one has.
+const SITES: Array[Array] = [
+	[Vector2i(8, 2), SOUTH],
+	[Vector2i(15, 8), WEST],
+	[Vector2i(8, 15), NORTH],
+	[Vector2i(2, 8), EAST],
+]
+## The data offset (1, 3) of a 3x3 building turned to each facing, and (1, 2) of a 2x2 one.
+const TURNED_3: Array[Vector2i] = [Vector2i(1, 3), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(3, 1)]
+const TURNED_2: Array[Vector2i] = [Vector2i(1, 2), Vector2i(-1, 1), Vector2i(0, -1), Vector2i(2, 0)]
+
+
+func test_the_facing_is_the_side_nearest_to_the_map_centre() -> void:
+	assert_int(Buildings.facing(64, 64, 32000, 10000)).is_equal(SOUTH)
+	assert_int(Buildings.facing(64, 64, 54000, 32000)).is_equal(WEST)
+	assert_int(Buildings.facing(64, 64, 32000, 54000)).is_equal(NORTH)
+	assert_int(Buildings.facing(64, 64, 10000, 32000)).is_equal(EAST)
+	# A wide map: the larger distance to the centre picks the axis.
+	assert_int(Buildings.facing(64, 40, 12000, 14000)).is_equal(EAST)
+	assert_int(Buildings.facing(64, 40, 30000, 3000)).is_equal(SOUTH)
+
+
+## A diagonal tie takes the side one quarter turn clockwise from the diagonal (y grows down).
+func test_a_diagonal_tie_and_the_exact_centre_have_their_sides() -> void:
+	assert_int(Buildings.facing(64, 64, 10000, 10000)).is_equal(SOUTH)
+	assert_int(Buildings.facing(64, 64, 54000, 10000)).is_equal(WEST)
+	assert_int(Buildings.facing(64, 64, 54000, 54000)).is_equal(NORTH)
+	assert_int(Buildings.facing(64, 64, 10000, 54000)).is_equal(EAST)
+	assert_int(Buildings.facing(64, 64, 32000, 32000)).is_equal(SOUTH)
+	# Half a tile off the centre on one axis only is not a tie.
+	assert_int(Buildings.facing(64, 64, 32500, 32000)).is_equal(WEST)
+
+
+## A quarter turn of a square map turns the facing by one quarter turn, a half turn of any map by
+## two, ties included, for every footprint centre of 2x2 and 3x3 buildings.
+func test_the_facing_turns_with_the_building_on_every_site() -> void:
+	for cols: int in [64, 63]:
+		for wide: int in [2, 3]:
+			for col: int in cols - wide + 1:
+				for line: int in cols - wide + 1:
+					var x: int = col * 1000 + wide * 500
+					var y: int = line * 1000 + wide * 500
+					if x * 2 == cols * 1000 and y * 2 == cols * 1000:
+						continue  # The exact centre of the map is its own turn: SOUTH at any turn.
+					var at: int = Buildings.facing(cols, cols, x, y)
+					var label: String = "%d %d %d" % [cols, x, y]
+					(
+						assert_int(Buildings.facing(cols, cols, cols * 1000 - y, x))
+						. override_failure_message(label)
+						. is_equal((at + 1) % 4)
+					)
+					(
+						assert_int(Buildings.facing(cols, cols, cols * 1000 - x, cols * 1000 - y))
+						. override_failure_message(label)
+						. is_equal((at + 2) % 4)
+					)
+	for col: int in 62:
+		for line: int in 38:
+			var x: int = col * 1000 + 1500
+			var y: int = line * 1000 + 1500
+			var turned: int = Buildings.facing(64, 40, 64000 - x, 40000 - y)
+			assert_int(turned).is_equal((Buildings.facing(64, 40, x, y) + 2) % 4)
+
+
+func test_turned_gives_the_table_and_four_turns_are_the_identity() -> void:
+	for facing: int in 4:
+		assert_that(Buildings.turned(Vector2i(1, 3), 3, facing)).is_equal(TURNED_3[facing])
+		assert_that(Buildings.turned(Vector2i(1, 2), 2, facing)).is_equal(TURNED_2[facing])
+	assert_that(Buildings.turned(Vector2i(1, 3), 3, 4)).is_equal(Vector2i(1, 3))
+	var offset: Vector2i = Vector2i(2, -1)
+	var around: Vector2i = offset
+	for _turn: int in 4:
+		around = Buildings.turned(around, 3, 1)
+	assert_that(around).is_equal(offset)
+
+
+## Every shipped type with a dock or an exit has a square footprint and its offset on the ring
+## around it, and the offset stays on the ring at every facing. The world holds the types of both
+## factions in the cross scenario.
+func test_every_shipped_dock_and_exit_is_on_the_ring_of_a_square_footprint() -> void:
+	var world: World = SmokeRun.world_of(1, SmokeRun.FLATS_MIRRORED)
+	var checked: int = 0
+	for type: int in world.type_ids.size():
+		var width: int = world.type_foot_w[type]
+		if width <= 0:
+			continue
+		var offsets: Array[Vector2i] = []
+		if world.type_dock_x[type] != 0 or world.type_dock_y[type] != 0:
+			offsets.append(Vector2i(world.type_dock_x[type], world.type_dock_y[type]))
+		if world.type_produces[type] >= World.Tab.INFANTRY:
+			offsets.append(Vector2i(world.type_exit_x[type], world.type_exit_y[type]))
+		for offset: Vector2i in offsets:
+			var label: String = "%s %s" % [world.type_names[type], offset]
+			assert_int(world.type_foot_h[type]).override_failure_message(label).is_equal(width)
+			for facing: int in 4:
+				var turned: Vector2i = Buildings.turned(offset, width, facing)
+				assert_bool(RosterCells.touches_footprint(Vector2i(width, width), turned)).is_true()
+			checked += 1
+	assert_int(checked).is_greater(4)
+
+
+## A factory on each side of the centre makes its first unit on the turned exit tile.
+func test_a_factory_in_each_quadrant_spawns_its_first_unit_on_the_turned_exit() -> void:
+	for site: Array in SITES:
+		var origin: Vector2i = site[0]
+		var world: World = _square()
+		var factory: int = world.index_of(
+			world.add_building(1, _type(world, "vehicle_factory"), origin.x, origin.y)
+		)
+		assert_that(Buildings.turned_at(world, factory, Vector2i(1, 3))).is_equal(TURNED_3[site[1]])
+		assert_bool(ProductionSpawn.spawn(world, 1, _type(world, "light_tank"), factory)).is_true()
+		var tile: Vector2i = origin + TURNED_3[site[1]]
+		assert_array(_last_tile(world)).override_failure_message(str(site)).is_equal(
+			[tile.x, tile.y]
+		)
+		assert_array([world.stats[World.Stat.EXIT_SCANNED]]).is_equal([1])
+		assert_that(ProductionSpawn.exit_tile(world, factory, World.MoveClass.TRACKED)).is_equal(
+			tile
+		)
+
+
+## A closed turned exit hands the unit to the next ring tile clockwise from it, counted by
+## `EXIT_SCANNED`: down the right column for the east side, along the top row for the north one.
+func test_a_closed_turned_exit_walks_clockwise_from_the_turned_tile() -> void:
+	var cases: Array[Array] = [
+		[Vector2i(2, 8), Vector2i(5, 9), Vector2i(5, 10)],
+		[Vector2i(8, 15), Vector2i(9, 14), Vector2i(10, 14)],
+	]
+	for case: Array in cases:
+		var world: World = _square()
+		var blocked: Vector2i = case[1]
+		world.set_terrain(blocked.y * SIDE + blocked.x, 2)  # '#' of GridWorld.GROUND.
+		var factory: int = world.index_of(
+			world.add_building(1, _type(world, "vehicle_factory"), case[0].x, case[0].y)
+		)
+		assert_bool(ProductionSpawn.spawn(world, 1, _type(world, "light_tank"), factory)).is_true()
+		assert_array(_last_tile(world)).override_failure_message(str(case)).is_equal(
+			[case[2].x, case[2].y]
+		)
+		assert_int(world.stats[World.Stat.EXIT_SCANNED]).is_equal(2)
+
+
+## The free harvester of a refinery appears at the turned dock, with `home` set.
+func test_the_free_harvester_appears_at_the_turned_dock() -> void:
+	for site: Array in SITES:
+		var origin: Vector2i = site[0]
+		var world: World = _square()
+		var refinery: int = world.index_of(
+			world.add_building(1, _type(world, "refinery"), origin.x, origin.y)
+		)
+		assert_bool(ProductionSpawn.spawn_free(world, refinery)).is_true()
+		var tile: Vector2i = origin + TURNED_3[site[1]]
+		assert_array(_last_tile(world)).override_failure_message(str(site)).is_equal(
+			[tile.x, tile.y]
+		)
+
+
+## SEEK's full load (`_go_home`), RETURN's choice (`_choose`) and RETURN's reach check (`run`) all
+## use the turned dock: a refinery on each side, a harvester with a full load, the order goes to
+## the dock tile's centre, and a harvester standing there starts to unload.
+func test_the_harvest_loop_orders_and_unloads_at_the_turned_dock() -> void:
+	for site: Array in SITES:
+		var origin: Vector2i = site[0]
+		var dock: Vector2i = (origin + TURNED_3[site[1]]) * 1000 + Vector2i(500, 500)
+		var far: Vector2i = Vector2i(500, 500) if site[1] != EAST else Vector2i(19500, 19500)
+		# SEEK with a full load and a home: `_go_home`.
+		var world: World = _harvest_square()
+		var refinery: int = HWorlds.add_refinery(world, 1, origin.x, origin.y)
+		var seeker: int = HWorlds.add_harvester(
+			world, 1, far.x, far.y, World.HarvestMode.SEEK, 0, refinery, 500
+		)
+		HWorlds.step(world)
+		var row: int = world.index_of(seeker)
+		assert_int(world.harvest_mode[row]).is_equal(World.HarvestMode.RETURN)
+		(
+			assert_array([world.goal_x[row], world.goal_y[row]])
+			. override_failure_message(str(site))
+			. is_equal([dock.x, dock.y])
+		)
+		# RETURN with no home: `_choose`.
+		world = _harvest_square()
+		HWorlds.add_refinery(world, 1, origin.x, origin.y)
+		var chooser: int = HWorlds.add_harvester(
+			world, 1, far.x, far.y, World.HarvestMode.RETURN, 0, 0, 500
+		)
+		HWorlds.step(world, HWorlds.turn(0, chooser, world.harvest_retry_ticks) + 1)  # Its turn.
+		row = world.index_of(chooser)
+		(
+			assert_array([world.goal_x[row], world.goal_y[row]])
+			. override_failure_message(str(site))
+			. is_equal([dock.x, dock.y])
+		)
+		# RETURN standing on the turned dock: within reach, so it unloads at once.
+		world = _harvest_square()
+		refinery = HWorlds.add_refinery(world, 1, origin.x, origin.y)
+		var docked: int = HWorlds.add_harvester(
+			world, 1, dock.x, dock.y, World.HarvestMode.RETURN, 0, refinery, 500
+		)
+		HWorlds.step(world)
+		(
+			assert_int(world.harvest_mode[world.index_of(docked)])
+			. override_failure_message(str(site))
+			. is_equal(World.HarvestMode.UNLOAD)
+		)
+
+
+func _square() -> World:
+	var world: World = Worlds.world(GridWorld.grass(SIDE, SIDE), Rig.IDS)
+	return world
+
+
+func _harvest_square() -> World:
+	return HWorlds.world(HWorlds.grass(SIDE, SIDE, [Vector2i(10, 10)]))
+
+
+func _type(world: World, id: String) -> int:
+	return Worlds.type_of(world, id)
+
+
+## The tile (x, y) of the newest row, as a two-element array of tile coordinates.
+@warning_ignore("integer_division")
+func _last_tile(world: World) -> Array[int]:
+	var row: int = world.unit_id.size() - 1
+	return [world.pos_x[row] / 1000, world.pos_y[row] / 1000]

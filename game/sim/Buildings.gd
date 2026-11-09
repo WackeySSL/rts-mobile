@@ -8,6 +8,49 @@ extends RefCounted
 ## + foot * 500` on each axis, so the origin is derived and no column stores it. Event cadence
 ## throughout, but rebuild_lists(): one scan on a tick where `rows_version` moved.
 
+## The side of a building a dock or an exit uses, as quarter turns clockwise from SOUTH, the side
+## its data offsets are authored for (ADR 0033 section 1).
+enum Facing { SOUTH = 0, WEST = 1, NORTH = 2, EAST = 3 }
+
+
+## The facing of a building whose centre is (`x`, `y`) milli-tiles on a map of `map_cols` x
+## `map_rows` tiles: the side whose outward direction is nearest to the way to the map's centre. A
+## pure function of position, the same for every player and seat (no state, no player index). With
+## `dx` and `dy` twice that vector (a half tile stays an integer): both 0 is SOUTH; the larger
+## absolute value picks its axis (`dy` above 0 SOUTH, below NORTH; `dx` above 0 EAST, below WEST);
+## a diagonal tie picks the side one quarter turn clockwise from the diagonal, (+, +) SOUTH,
+## (-, +) WEST, (-, -) NORTH, (+, -) EAST (y grows downwards). A quarter turn of a square map or a
+## half turn of any map turns the facing by the same number of quarter turns, ties included.
+static func facing(map_cols: int, map_rows: int, x: int, y: int) -> int:
+	var dx: int = map_cols * World.MILLI_PER_TILE - 2 * x
+	var dy: int = map_rows * World.MILLI_PER_TILE - 2 * y
+	if absi(dy) > absi(dx):
+		return Facing.SOUTH if dy > 0 else Facing.NORTH
+	if absi(dx) > absi(dy):
+		return Facing.EAST if dx > 0 else Facing.WEST
+	if dx == 0:
+		return Facing.SOUTH  # Both 0: the exact centre.
+	if dx > 0:
+		return Facing.SOUTH if dy > 0 else Facing.EAST
+	return Facing.WEST if dy > 0 else Facing.NORTH
+
+
+## `offset`, a tile offset from the origin of an `n` x `n` footprint authored for the SOUTH side,
+## turned to `facing`: one clockwise quarter turn about the footprint is `(x, y) -> (n - 1 - y, x)`,
+## applied `facing` times. A tile of the footprint's ring stays on the ring.
+static func turned(offset: Vector2i, n: int, facing: int) -> Vector2i:
+	var at: Vector2i = offset
+	for _turn: int in facing % 4:
+		at = Vector2i(n - 1 - at.y, at.x)
+	return at
+
+
+## `offset` (a dock or an exit of row `row`'s type, authored for the south side) turned to the
+## facing of the building's position on this map. Footprints with a dock or an exit are square.
+static func turned_at(world: World, row: int, offset: Vector2i) -> Vector2i:
+	var side: int = facing(world.map_cols, world.map_rows, world.pos_x[row], world.pos_y[row])
+	return turned(offset, world.type_foot_w[world.type_index[row]], side)
+
 
 ## Appends a building of `type` for `owner` with its top-left tile at (col, line) and returns its
 ## id, or 0 when it is refused: a type with no footprint or one that is not wholly on the map (both

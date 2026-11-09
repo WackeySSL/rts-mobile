@@ -13,9 +13,10 @@ const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const INFANTRY: int = World.Tab.INFANTRY
 const VEHICLES: int = World.Tab.VEHICLES
-## The tile centre of the barracks' exit (9, 3) and of the vehicle factory's (18, 4).
+## The tile centre of the barracks' exit (9, 3) and of the vehicle factory's (16, 2): the factory
+## at (17, 1) faces west on the 24 x 16 map, so its south exit (1, 3) turns to (-1, 1) (ADR 0033).
 const BARRACKS_EXIT: Vector2i = Vector2i(9500, 3500)
-const FACTORY_EXIT: Vector2i = Vector2i(18500, 4500)
+const FACTORY_EXIT: Vector2i = Vector2i(16500, 2500)
 
 
 func _at(world: World, row: int) -> Vector2i:
@@ -105,7 +106,7 @@ func test_the_queues_of_the_tabs_and_the_players_run_side_by_side() -> void:
 	Rig.run(world, 10)
 	var enemy: Array[int] = Rig.rows_of(world, 2, "rifle_squad")
 	assert_array(enemy).has_size(1)
-	assert_vector(_at(world, enemy[0])).is_equal(Vector2i(9500, 14500))
+	assert_vector(_at(world, enemy[0])).is_equal(Vector2i(8500, 11500))  # North: (1, 2) to (0, -1).
 	assert_array([world.stat_built[1], world.stat_built[2]]).is_equal([1, 1])
 	assert_array([world.credits[1], world.credits[2]]).is_equal([2000 - 700, 1900])
 
@@ -129,7 +130,7 @@ func test_the_primary_producer_is_the_lowest_id_building_of_the_tab() -> void:
 	Rig.step(world)
 	var rifles: Array[int] = Rig.rows_of(world, 1, "rifle_squad")
 	assert_array(rifles).has_size(2)
-	assert_vector(_at(world, rifles[1])).is_equal(Vector2i(9500, 8500))
+	assert_vector(_at(world, rifles[1])).is_equal(Vector2i(10500, 6500))  # East: (1, 2) to (2, 0).
 	assert_int(world.tick).is_equal(150)
 
 
@@ -151,7 +152,7 @@ func test_a_queue_without_a_producer_waits_and_goes_on_with_a_new_one() -> void:
 	Rig.step(world)
 	var rifles: Array[int] = Rig.rows_of(world, 1, "rifle_squad")
 	assert_array(rifles).has_size(1)
-	assert_vector(_at(world, rifles[0])).is_equal(Vector2i(5500, 8500))
+	assert_vector(_at(world, rifles[0])).is_equal(Vector2i(6500, 6500))  # Faces east, as above.
 
 
 ## A harvester from a factory starts in SEEK with no home and no cargo and ignores the rally point;

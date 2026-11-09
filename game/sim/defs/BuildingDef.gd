@@ -15,7 +15,9 @@ extends UnitDef
 ## Null = none.
 @export var free_unit: UnitDef
 ## The cell a harvester unloads at, and the cell a produced unit appears at: tile offsets from the
-## footprint's origin (its top-left tile).
+## footprint's origin (its top-left tile), authored for the south side of a square footprint on its
+## ring. The sim turns them to the side that faces the map's centre (Buildings.facing, ADR 0033).
+## A dock of (0, 0) means none and is never turned.
 @export var dock: Vector2i = Vector2i.ZERO
 @export var exit: Vector2i = Vector2i.ZERO
 

@@ -19,8 +19,9 @@ extends RefCounted
 ## cell it left is skipped, and a lone cell is tried again after the retry wait). HARVEST and the
 ## auto-resume therefore give their order in the same step that sets `harvest_slot` and SEEK
 ## (`_take`: `_order` and the cell's centre). A refinery is a building type with a dock other
-## than (0, 0), a tile inside the footprint that no unit can walk to (`BuildingDef.dock` defaults
-## to it, meaning none).
+## than (0, 0), the data's offset for the south side, which the sim turns to the side of the
+## footprint that faces the map's centre (`_dock`; `BuildingDef.dock` defaults to (0, 0), meaning
+## none, and that is tested on the raw data).
 
 ## ECONOMY: the ore grows back, then each harvester steps once. Ore: on a tick with
 ## `tick % ore_regrow_ticks == 0` every cell below `ore_cell_max` gains 1.
@@ -318,13 +319,17 @@ static func _choose(world: World, row: int) -> void:
 	_order(world, row, _dock(world, best))
 
 
-## The point of row `at`'s dock: its footprint's origin plus the type's dock offset, a tile centre.
+## The point of row `at`'s dock: its footprint's origin plus the type's dock offset turned to the
+## building's facing (Buildings.facing, the side toward the map's centre), a tile centre.
 static func _dock(world: World, at: int) -> Vector2i:
 	var origin: Vector2i = Buildings.footprint_origin(world, at)
 	var type: int = world.type_index[at]
+	var offset: Vector2i = Buildings.turned_at(
+		world, at, Vector2i(world.type_dock_x[type], world.type_dock_y[type])
+	)
 	return Vector2i(
-		(origin.x + world.type_dock_x[type]) * World.MILLI_PER_TILE + World.TILE_CENTRE,
-		(origin.y + world.type_dock_y[type]) * World.MILLI_PER_TILE + World.TILE_CENTRE
+		(origin.x + offset.x) * World.MILLI_PER_TILE + World.TILE_CENTRE,
+		(origin.y + offset.y) * World.MILLI_PER_TILE + World.TILE_CENTRE
 	)
 
 

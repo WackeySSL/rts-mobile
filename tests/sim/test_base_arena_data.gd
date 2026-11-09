@@ -115,13 +115,15 @@ func test_each_side_places_every_building_type_of_its_faction_with_the_counts_of
 
 
 ## Every footprint is inside the map on buildable ground and clear of the others, and the tile of a
-## dock or an exit is open: a unit leaves at the exit itself and a harvester docks at the dock
-## itself, with no walk round the ring (ProductionSpawn.tile_from finds them at once).
+## dock or an exit, turned to the building's facing (ADR 0033), is open: a unit leaves at the exit
+## itself and a harvester docks at the dock itself, with no walk round the ring
+## (ProductionSpawn.tile_from finds them at once).
 func test_the_buildings_stand_on_buildable_ground_apart_with_open_docks_and_exits() -> void:
 	assert_int(_world.spawn_refused).is_equal(0)
 	var taken: Dictionary[int, int] = {}
 	var problems: Array[String] = []
 	var tracked: int = World.MoveClass.TRACKED
+	var checks: Array[Array] = []
 	for row: int in _world.unit_count():
 		var type: int = _world.type_index[row]
 		var width: int = _world.type_foot_w[type]
@@ -136,16 +138,32 @@ func test_the_buildings_stand_on_buildable_ground_apart_with_open_docks_and_exit
 				taken[cell] = row
 				if _world.terrain_buildable[_world.terrain[cell]] != 1:
 					problems.append("%s on ground that is not buildable" % _world.type_names[type])
-		var exits: Array[Vector2i] = []
 		if _world.type_produces[type] > 0:
-			exits.append(Vector2i(_world.type_exit_x[type], _world.type_exit_y[type]))
+			checks.append(
+				[row, Vector2i(_world.type_exit_x[type], _world.type_exit_y[type]), false]
+			)
 		if _world.type_dock_x[type] != 0 or _world.type_dock_y[type] != 0:
-			exits.append(Vector2i(_world.type_dock_x[type], _world.type_dock_y[type]))
-		for offset: Vector2i in exits:
-			for move_class: int in [World.MoveClass.FOOT, tracked]:
-				var found: Vector2i = ProductionSpawn.tile_from(_world, row, move_class, offset)
-				if found != origin + offset:
-					problems.append("%s: tile %s is not open" % [_world.type_names[type], offset])
+			checks.append([row, Vector2i(_world.type_dock_x[type], _world.type_dock_y[type]), true])
+	# The turned tile of every dock is open. The turned exit of the two compact barracks is the
+	# vehicle factory's footprint (a neighbour at the east wall, ADR 0033): that one is closed and
+	# the ring walk hands the unit to an open tile next to it.
+	for check: Array in checks:
+		var row: int = check[0]
+		var tile: Vector2i = (
+			_world.footprint_origin(row) + Buildings.turned_at(_world, row, check[1])
+		)
+		var closed_by_building: bool = taken.has(tile.y * _world.map_cols + tile.x)
+		for move_class: int in [World.MoveClass.FOOT, tracked]:
+			var found: Vector2i = ProductionSpawn.tile_from(
+				_world, row, move_class, tile - _world.footprint_origin(row)
+			)
+			var allowed: bool = (
+				found == tile or (not check[2] and closed_by_building and found.x >= 0)
+			)
+			if not allowed:
+				problems.append(
+					"%s: tile %s is not open" % [_world.type_names[_world.type_index[row]], tile]
+				)
 	assert_array(problems).is_empty()
 	assert_int(taken.size()).is_greater(28)
 

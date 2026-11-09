@@ -3,13 +3,14 @@ extends GdUnitTestSuite
 ## the dock in SEEK with `home` set to the refinery, the walk of the exit rule takes over when the
 ## dock is closed, and at `unit_cap` mobile rows, with a full row table or with no open ring tile
 ## the refinery comes without one, with nothing held or owed. `place_rig.gd` has the world: a 3x3
-## refinery at tile (6, 5) has its dock at tile (7, 8). A replay-style run closes the suite.
+## refinery at tile (6, 5) faces east on its 24 x 16 map (ADR 0033), so its dock is the tile (9, 6).
+## A replay-style run closes the suite.
 
 const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 const PlaceRig: GDScript = preload("res://tests/sim/support/place_rig.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/building_worlds.gd")
 const ROCK: int = 2  # The index of '#' in GridWorld.GROUND.
-const DOCK_CENTRE: Vector2i = Vector2i(7500, 8500)
+const DOCK_CENTRE: Vector2i = Vector2i(9500, 6500)
 
 
 ## The base world with a refinery ready at the head of player 1's STRUCTURES queue.
@@ -77,8 +78,8 @@ func test_the_refinery_comes_with_a_harvester_at_the_dock_in_seek_with_home_set(
 				0,
 				World.Event.SPAWNED,
 				world.unit_id[row],
-				7500,
-				8500,
+				9500,
+				6500,
 				harvester,
 				1,
 				0,
@@ -97,13 +98,13 @@ func test_the_refinery_comes_with_a_harvester_at_the_dock_in_seek_with_home_set(
 
 
 ## The dock is closed to the harvester's class: the walk of the exit rule goes on clockwise from it,
-## past the closed tile to the next open one of the ring (tile (6, 8), the second scanned).
+## past the closed tile to the next open one of the ring (tile (9, 7), the second scanned).
 func test_a_closed_dock_hands_the_harvester_to_the_next_open_ring_tile() -> void:
-	var world: World = _ready_world([Vector2i(7, 8)])
+	var world: World = _ready_world([Vector2i(9, 6)])
 	var id: int = _place(world)
 	var rows: Array[int] = _homed(world, id)
 	assert_array(rows).has_size(1)
-	assert_array([world.pos_x[rows[0]], world.pos_y[rows[0]]]).is_equal([6500, 8500])
+	assert_array([world.pos_x[rows[0]], world.pos_y[rows[0]]]).is_equal([9500, 7500])
 	assert_int(world.stats[World.Stat.EXIT_SCANNED]).is_equal(2)
 
 
@@ -120,7 +121,7 @@ func test_a_refinery_with_no_open_ring_tile_comes_without_a_harvester() -> void:
 	assert_int(world.stats[World.Stat.EXIT_SCANNED]).is_equal(ring.size())
 	# No harvester, so no `home` is written anywhere: the refinery's own stays 0.
 	assert_int(world.home[world.index_of(id)]).is_equal(0)
-	world.set_terrain(8 * Rig.COLS + 7, 0)
+	world.set_terrain(6 * Rig.COLS + 9, 0)
 	Rig.run(world, 60)
 	assert_array(Rig.rows_of(world, 1, "harvester")).is_empty()
 
@@ -205,6 +206,7 @@ func test_the_free_unit_comes_from_the_free_unit_and_the_dock_of_the_type() -> v
 	world.type_free_unit[plant] = harvester
 	Rig.step(world, [PlaceRig.place(6, 5)])
 	assert_array([world.stat_built[1], ProductionSpawn.mobile_rows(world, 1)]).is_equal([1, 0])
+	# The plant at (6, 8) faces east, so its dock (1, 2) turns to (2, 0): the tile (8, 8).
 	world.type_dock_x[plant] = 1
 	world.type_dock_y[plant] = 2
 	PlaceRig.ready(world, "power_plant")
@@ -212,7 +214,7 @@ func test_the_free_unit_comes_from_the_free_unit_and_the_dock_of_the_type() -> v
 	var plants: Array[int] = Rig.rows_of(world, 1, "power_plant")
 	var made: Array[int] = _homed(world, world.unit_id[plants[plants.size() - 1]])
 	assert_array(made).has_size(1)
-	assert_array([world.pos_x[made[0]], world.pos_y[made[0]]]).is_equal([7500, 10500])
+	assert_array([world.pos_x[made[0]], world.pos_y[made[0]]]).is_equal([8500, 8500])
 	assert_int(world.harvest_mode[made[0]]).is_equal(World.HarvestMode.SEEK)
 
 

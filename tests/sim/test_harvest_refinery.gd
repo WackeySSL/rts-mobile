@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## and UNLOAD starts within `dock_reach_milli` of it. Hand-built worlds: the refineries come from
 ## `Buildings.add` and the harvesters from `add_unit`.
 ##
-## The map is 20 x 12 grass. Refinery A (player 1, id 1) has the tiles 2..4 x 2..4 (centre
+## The map is 20 x 22 grass, tall enough that all three face south (ADR 0033). Refinery A (player
+## 1, id 1) has the tiles 2..4 x 2..4 (centre
 ## (3 500, 3 500), dock (3 500, 5 500)), B (player 1, id 2) the tiles 12..14 x 2..4 (centre
 ## (13 500, 3 500), dock (13 500, 5 500)) and C (player 2, id 3) the tiles 8..10 x 7..9 (centre
 ## (9 500, 8 500), dock (9 500, 10 500)). The harvesters come after them, from id 4.
@@ -22,7 +23,7 @@ const DOCK_C: Vector2i = Vector2i(9500, 10500)
 
 
 func _world(with_b: bool = true, with_c: bool = true) -> World:
-	var world: World = Worlds.world(Worlds.grass(20, 12))
+	var world: World = Worlds.world(Worlds.grass(20, 22))
 	Worlds.add_refinery(world, 1, 2, 2)
 	if with_b:
 		Worlds.add_refinery(world, 1, 12, 2)

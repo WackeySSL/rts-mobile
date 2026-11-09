@@ -17,10 +17,11 @@ const ORE_AT: Vector2i = Vector2i(3500, 7500)
 const DOCK_AT: Vector2i = Vector2i(3500, 5500)
 
 
-## 12 x 10 tiles with one ore cell at (3, 7) and a refinery (player 1, id 1) whose footprint is the
+## 12 x 16 tiles (tall, so the refinery faces south, ADR 0033) with one ore cell at (3, 7) and a
+## refinery (player 1, id 1) whose footprint is the
 ## tiles 2..4 x 2..4: its dock is the tile (3, 5), centre (3 500, 5 500).
 func _trip_world(ore_units: int = 20) -> World:
-	var world: World = Worlds.world(Worlds.grass(12, 10, [Vector2i(3, 7)]))
+	var world: World = Worlds.world(Worlds.grass(12, 16, [Vector2i(3, 7)]))
 	Worlds.add_refinery(world, 1, 2, 2)
 	world.ore_amount[0] = ore_units
 	return world
@@ -154,7 +155,7 @@ func test_a_harvester_back_from_unloading_returns_to_its_cell_while_it_has_ore()
 
 
 func test_a_cell_that_runs_empty_sends_the_harvester_on_with_its_cargo_to_the_next_cell() -> void:
-	var rows: Array[String] = Worlds.grass(12, 10, [Vector2i(3, 7), Vector2i(8, 7)])
+	var rows: Array[String] = Worlds.grass(12, 16, [Vector2i(3, 7), Vector2i(8, 7)])
 	var world: World = Worlds.world(rows)
 	Worlds.add_refinery(world, 1, 2, 2)
 	world.ore_cell_max = 0
@@ -183,10 +184,11 @@ func test_a_full_load_goes_home_before_more_ore() -> void:
 	assert_int(world.ore_amount[0]).is_equal(20)
 
 
-## 16 x 10 tiles with one ore cell at (13, 7) and the refinery of `_trip_world` (id 1, dock (3 500,
-## 5 500)): the ore lies the other way from the dock for a harvester at (8 500, 7 500).
+## 16 x 18 tiles (tall, as above) with one ore cell at (13, 7) and the refinery of `_trip_world`
+## (id 1, dock (3 500, 5 500)): the ore lies the other way from the dock for a harvester at
+## (8 500, 7 500).
 func _far_world() -> World:
-	var world: World = Worlds.world(Worlds.grass(16, 10, [Vector2i(13, 7)]))
+	var world: World = Worlds.world(Worlds.grass(16, 18, [Vector2i(13, 7)]))
 	Worlds.add_refinery(world, 1, 2, 2)
 	world.ore_amount[0] = 20
 	return world
