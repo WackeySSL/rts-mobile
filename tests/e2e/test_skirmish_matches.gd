@@ -138,10 +138,15 @@ func test_both_economies_ran_and_both_sides_built() -> void:
 		var dummy: AiDef = load(Match.ROUTES[faction]["dummy"]) as AiDef
 		assert_int(world.stat_harvested[1]).override_failure_message(faction).is_greater(0)
 		assert_int(world.stat_harvested[2]).override_failure_message(faction).is_greater(0)
-		# The player: its structures, its army and the refinery's free tanker.
+		# The player: its structures and its army. The refinery's free tanker is not in `stat_built`
+		# (only a finished site, a placed structure and a queue item are: Production.gd), so it is not
+		# counted here; that it came is the player's harvested credits above. The count used to ask
+		# for one more than the script builds and met it only when a rifle squad died and was
+		# trained again; with the docks and exits facing the map centre (ADR 0033) that no longer
+		# happens in either match (22 built, nothing of the player's lost).
 		var army: int = Player.ESCORT - 2 + Player.ROCKETS
 		assert_int(world.stat_built[1]).override_failure_message(faction).is_greater_equal(
-			Player.structures() + army + 1
+			Player.structures() + army
 		)
 		# The dummy: its whole build order, which it keeps wanting back as it loses it.
 		assert_int(world.stat_built[2]).override_failure_message(faction).is_greater_equal(
