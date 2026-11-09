@@ -53,7 +53,7 @@ static func create(
 	ai.player_id = player_id
 	ai.rng = rng
 	ai.think_period = maxi(def.think_period, 1)
-	ai.think_offset = posmod(-(def.think_tick + player_id - 2), ai.think_period)
+	ai.think_offset = posmod(-(def.think_tick + (3 - player_id) - 2), ai.think_period)
 	ai.memory = AiMemory.create(def)
 	ai.intel = AiIntel.create(def, chosen, player_id)
 	ai.def_id = def.id
