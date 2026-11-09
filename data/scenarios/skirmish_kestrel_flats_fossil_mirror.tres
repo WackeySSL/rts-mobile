@@ -14,14 +14,14 @@ script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("8_hq")
 count = 1
-origin_tile = Vector2i(7, 7)
+origin_tile = Vector2i(54, 54)
 
 [sub_resource type="Resource" id="Spawn_p1_rifles"]
 script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("9_rifle")
 count = 2
-origin_tile = Vector2i(11, 11)
+origin_tile = Vector2i(50, 52)
 columns = 2
 spacing = 2000
 
@@ -30,14 +30,14 @@ script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("8_hq")
 count = 1
-origin_tile = Vector2i(54, 54)
+origin_tile = Vector2i(7, 7)
 
 [sub_resource type="Resource" id="Spawn_p2_rifles"]
 script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("9_rifle")
 count = 2
-origin_tile = Vector2i(50, 52)
+origin_tile = Vector2i(11, 11)
 columns = 2
 spacing = 2000
 
