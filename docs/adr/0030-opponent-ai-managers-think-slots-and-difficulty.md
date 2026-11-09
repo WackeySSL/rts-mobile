@@ -56,6 +56,13 @@ text changed. The note makes a fourth exception to §1's field "that P175 declar
 (`own_mobile_id`, `seen_mobile_id` and the sector grid, filled by `AiIntel` for `AiStrikes`,
 declared by P181) and one to §3's "every id list is at most `unit_cap`" (`seen_mobile_id`).
 
+Status note (2026-11-09, P26bi docs; wave 6 merged: P180b #370, P183 #368, P181 #369, main
+f3a63d8): the reviews of wave 7 decided how §6's *Strikes* reads after a recall (P181b's staging
+stand-in), what §4's time line carries and times (P189: `thinks=`, two more `WATCH ai` lines, a
+workload without contact until P189b) and when §4's flow-cache choice is made; the fourth note at
+the end of §4 records them. P188's and P190's decisions are in ADR 0031's notes, P185's in the
+plan. No accepted text changed; the note adds `thinks=` to §4's `WATCH ai think` keys.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -341,6 +348,19 @@ Note (2026-11-07, P26bh docs; lead decisions from the wave-6 reviews):
   shot lands 45 ticks later. The Dusk Array's "as a wave launches against it" is read as once per
   wave, while the wave is in the field and has a live member, on the producers within reach of the
   wave's goal, else on the best producer cluster.
+
+Note (2026-11-09, P26bi docs; lead decisions from the wave-7 reviews):
+- **The staging stand-in (P181b):** while a threat stands and the home goal is NONE (a recall
+  cleared it because it was the staging point), the Deep Bore keeps the staging point out of its
+  radius instead, until an order sets the home goal again. Like the home goal it replaces, it
+  passes the box pre-filter and costs one counted test per anchor checked only when it lies
+  inside the things' box grown by the radius; the counting rule does not change.
+- **The time line (P189):** `WATCH ai think` carries the keys above, with `thinks=` after `slots=`;
+  `WATCH ai flow` and `WATCH ai peaks` (count-only) follow it. `perf_ai.tres`'s 900 ticks make no
+  contact, so the timed workload is a building AI; the frozen AI defs of P189b add an early scout
+  and first wave before the `[ai]` ratchet is set.
+- **`flow_full_ticks`** is above 0 on `perf_ai` (191 of 900) and in the smoke's full matches. The
+  choice above (`goal_keys_max` 3 or P194) is made on the first balance run's counts.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
