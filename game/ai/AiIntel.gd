@@ -31,6 +31,10 @@ var scout_interval_ticks: int = 0
 ## The sector grid of the map last seen: tiles per side, and sectors per row and column.
 var sector_side: int = 0
 var sector_cols: int = 0
+## The grid of sectors is centred on the map (a half turn of the map maps sectors to sectors): the
+## tiles it overhangs on the left and the top.
+var sector_pad_x: int = 0
+var sector_pad_y: int = 0
 var sector_rows: int = 0
 
 ## Counted work for the suites: passes over the own and seen rows by the last call, and over the
@@ -70,7 +74,10 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 func sector_at(col: int, line: int) -> int:
 	var inside_col: int = clampi(col, 0, maxi(_map_cols - 1, 0))
 	var inside_line: int = clampi(line, 0, maxi(_map_rows - 1, 0))
-	return inside_line / sector_side * sector_cols + inside_col / sector_side
+	return (
+		(inside_line + sector_pad_y) / sector_side * sector_cols
+		+ (inside_col + sector_pad_x) / sector_side
+	)
 
 
 ## The number of sectors of the map last seen.
@@ -362,8 +369,48 @@ func _nearest_unexplored(view: PlayerView, memory: AiMemory, rng: DetRandom, at:
 		return -1
 	if _tied.size() == 1:
 		return _tied[0]
+	_order_tied(view, at)
 	draws += 1
 	return _tied[rng.next_int(_tied.size())]
+
+
+## Puts the tied sectors in an order that a half turn of the map keeps (nearest to the map centre
+## first, then by the share along and across the way from `at` to the centre), so that the draw
+## picks the same sector for a player and for its half-turn counterpart.
+func _order_tied(view: PlayerView, at: Vector2i) -> void:
+	var way: Vector2i = Vector2i(view.map_cols - 1 - 2 * at.x, view.map_rows - 1 - 2 * at.y)
+	var keys: Array[Vector3i] = []
+	for sector: int in _tied:
+		var centre: Vector2i = _centre(view, sector)
+		var gap: Vector2i = Vector2i(
+			2 * centre.x - (view.map_cols - 1), 2 * centre.y - (view.map_rows - 1)
+		)
+		var offset: Vector2i = centre - at
+		keys.append(
+			Vector3i(
+				gap.x * gap.x + gap.y * gap.y,
+				-(offset.x * way.x + offset.y * way.y),
+				-(offset.x * way.y - offset.y * way.x)
+			)
+		)
+	for index: int in range(1, _tied.size()):
+		var sector: int = _tied[index]
+		var key: Vector3i = keys[index]
+		var at_index: int = index
+		while at_index > 0 and _key_less(key, keys[at_index - 1]):
+			_tied[at_index] = _tied[at_index - 1]
+			keys[at_index] = keys[at_index - 1]
+			at_index -= 1
+		_tied[at_index] = sector
+		keys[at_index] = key
+
+
+static func _key_less(a: Vector3i, b: Vector3i) -> bool:
+	if a.x != b.x:
+		return a.x < b.x
+	if a.y != b.y:
+		return a.y < b.y
+	return a.z < b.z
 
 
 ## Whether the scout may order anything now: budget left, the army goal holding at most one key
@@ -457,8 +504,12 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 		sector_side = side
 		sector_cols = _span(_map_cols, side)
 		sector_rows = _span(_map_rows, side)
+		sector_pad_x = (sector_cols * side - _map_cols) / 2
+		sector_pad_y = (sector_rows * side - _map_rows) / 2
 	memory.sector_side = sector_side
 	memory.sector_cols = sector_cols
+	memory.sector_pad_x = sector_pad_x
+	memory.sector_pad_y = sector_pad_y
 	var size: int = maxi(sectors_max, sector_count())
 	if memory.sector_own.size() != size:
 		memory.sector_own.resize(size)
@@ -495,9 +546,9 @@ static func _span(tiles: int, side: int) -> int:
 ## The centre tile of `sector`, inside the map.
 @warning_ignore("integer_division")
 func _centre(view: PlayerView, sector: int) -> Vector2i:
-	var col: int = sector % sector_cols * sector_side + sector_side / 2
-	var line: int = sector / sector_cols * sector_side + sector_side / 2
-	return Vector2i(mini(col, view.map_cols - 1), mini(line, view.map_rows - 1))
+	var col: int = sector % sector_cols * sector_side + sector_side / 2 - sector_pad_x
+	var line: int = sector / sector_cols * sector_side + sector_side / 2 - sector_pad_y
+	return Vector2i(clampi(col, 0, view.map_cols - 1), clampi(line, 0, view.map_rows - 1))
 
 
 ## The tile of a position in milli-tiles.

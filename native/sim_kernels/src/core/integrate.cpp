@@ -60,8 +60,8 @@ int64_t Pass::cell_of(int64_t x, int64_t y) const {
 	if (rules_.map_cols == 0) {
 		return 0;
 	}
-	const int64_t column = clamp(x / MILLI_PER_TILE, 0, rules_.map_cols - 1);
-	const int64_t line = clamp(y / MILLI_PER_TILE, 0, rules_.map_rows - 1);
+	const int64_t column = clamp(fixed_math::centre_side(x, rules_.map_cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, rules_.map_cols - 1);
+	const int64_t line = clamp(fixed_math::centre_side(y, rules_.map_rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, rules_.map_rows - 1);
 	return line * rules_.map_cols + column;
 }
 
@@ -212,8 +212,8 @@ void Pass::run() {
 		// The cell of a FIELD unit with a slot; -1 for any other unit.
 		int64_t cell = -1;
 		if (mode == NAV_FIELD && order != ORDER_IDLE && cells > 0 && rows_.field.get(row) >= 0 && rows_.field.get(row) < slot_count) {
-			cell = clamp(y, 0, max_y) / MILLI_PER_TILE * cols + clamp(x, 0, max_x) / MILLI_PER_TILE;
-			if ((rows_.nav_next.get(row) == -1 || (tick + rows_.unit_id.get(row)) % period == 0) && is_complete(rows_.field.get(row))) {
+			cell = cell_of(clamp(x, 0, max_x), clamp(y, 0, max_y));
+			if ((rows_.nav_next.get(row) == -1 || tick % period == 0) && is_complete(rows_.field.get(row))) {
 				refresh_next(row, cell, move_class);
 			}
 		}
@@ -255,12 +255,13 @@ void Pass::run() {
 		int64_t new_y = clamp(y + step_y, 0, max_y);
 		if (cells > 0) {
 			const int64_t base = move_class * cells;
-			if (move_cost_.get(base + (new_y / MILLI_PER_TILE) * cols + new_x / MILLI_PER_TILE) == 0) {
-				const int64_t own_column = clamp(x, 0, max_x) / MILLI_PER_TILE;
-				const int64_t own_line = clamp(y, 0, max_y) / MILLI_PER_TILE;
-				if (move_cost_.get(base + own_line * cols + new_x / MILLI_PER_TILE) != 0) {
+			const int64_t new_cell = cell_of(new_x, new_y);
+			if (move_cost_.get(base + new_cell) == 0) {
+				const int64_t own_column = cell_of(clamp(x, 0, max_x), 0) % cols;
+				const int64_t own_line = cell_of(0, clamp(y, 0, max_y)) / cols;
+				if (move_cost_.get(base + own_line * cols + new_cell % cols) != 0) {
 					new_y = y;
-				} else if (move_cost_.get(base + (new_y / MILLI_PER_TILE) * cols + own_column) != 0) {
+				} else if (move_cost_.get(base + new_cell / cols * cols + own_column) != 0) {
 					new_x = x;
 				} else {
 					new_x = x;
@@ -274,7 +275,7 @@ void Pass::run() {
 		rows_.pos_x.set(row, new_x);
 		rows_.pos_y.set(row, new_y);
 		if (cell >= 0 && mode == NAV_FIELD) {
-			const int64_t entered = new_y / MILLI_PER_TILE * cols + new_x / MILLI_PER_TILE;
+			const int64_t entered = cell_of(new_x, new_y);
 			if (entered != cell && is_complete(rows_.field.get(row))) {
 				refresh_next(row, entered, move_class);
 			}

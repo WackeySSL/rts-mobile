@@ -64,8 +64,22 @@ static func run(world: World) -> void:
 		if player < 1 or player > players or (tick - player + 1) % period != 0:
 			continue
 		var cell: int = (
-			clampi(_tile(ys[row], map_rows * World.MILLI_PER_TILE), 0, map_rows - 1) * cols
-			+ clampi(_tile(xs[row], cols * World.MILLI_PER_TILE), 0, cols - 1)
+			(
+				clampi(
+					(
+						FixedMath.centre_side(ys[row], map_rows * World.MILLI_PER_TILE)
+						/ World.MILLI_PER_TILE
+					),
+					0,
+					map_rows - 1
+				)
+				* cols
+			)
+			+ clampi(
+				FixedMath.centre_side(xs[row], cols * World.MILLI_PER_TILE) / World.MILLI_PER_TILE,
+				0,
+				cols - 1
+			)
 		)
 		var old: int = stamped[row]
 		if cell == old:
@@ -96,12 +110,3 @@ static func _covered(
 		var reach: int = half[spans + y]
 		total += mini(centre_x + reach, width - 1) - maxi(centre_x - reach, 0) + 1
 	return total
-
-
-## The tile of a coordinate. A coordinate on a tile border (an even-sized building's centre) belongs
-## to the tile on the map centre's side, so that a half turn of the map maps a stamp to a stamp.
-static func _tile(coord: int, side: int) -> int:
-	var tile: int = coord / World.MILLI_PER_TILE
-	if coord % World.MILLI_PER_TILE == 0 and coord * 2 > side:
-		tile -= 1
-	return tile

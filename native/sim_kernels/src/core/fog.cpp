@@ -2,6 +2,8 @@
 // game/sim/FogGrid.gd: see fog.h. MIT.
 #include "fog.h"
 
+#include "fixed_math.h"
+
 namespace fog {
 
 namespace {
@@ -104,15 +106,6 @@ void stamp(Grid &grid, int64_t player, int64_t cell, int64_t mask, int64_t delta
 	}
 }
 
-// The tile of a coordinate; one on a tile border belongs to the tile on the map centre's side (FogUpdate._tile).
-static int64_t tile_of(int64_t coord, int64_t side) {
-	int64_t tile = coord / MILLI_PER_TILE;
-	if (coord % MILLI_PER_TILE == 0 && coord * 2 > side) {
-		tile -= 1;
-	}
-	return tile;
-}
-
 int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 	if (!usable(grid)) {
 		return 0;
@@ -125,7 +118,7 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 		if (player < 1 || player > grid.player_count || (rules.tick - player + 1) % period != 0) {
 			continue;
 		}
-		const int64_t cell = clamp(tile_of(rows.pos_y.get(row), grid.rows * MILLI_PER_TILE), 0, grid.rows - 1) * grid.cols + clamp(tile_of(rows.pos_x.get(row), grid.cols * MILLI_PER_TILE), 0, grid.cols - 1);
+		const int64_t cell = clamp(fixed_math::centre_side(rows.pos_y.get(row), grid.rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(fixed_math::centre_side(rows.pos_x.get(row), grid.cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.cols - 1);
 		const int64_t old = rows.fog_cell.get(row);
 		if (cell == old) {
 			continue;

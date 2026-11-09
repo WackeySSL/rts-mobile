@@ -53,13 +53,13 @@ static func assign(
 				bases.append(move_class * cells)
 	var low: Vector2i = Vector2i(mini(radius, world.map_w >> 1), mini(radius, world.map_h >> 1))
 	var high: Vector2i = Vector2i(world.map_w, world.map_h) - low
-	var centre: Vector2i = _open_centre(
-		world,
-		bases,
-		Vector2i(clampi(target_x, low.x, high.x), clampi(target_y, low.y, high.y)),
-		low,
-		high
+	var wanted: Vector2i = Vector2i(
+		clampi(target_x, low.x, high.x), clampi(target_y, low.y, high.y)
 	)
+	var way: Vector2i = wanted * count
+	for row: int in unit_indices:
+		way -= Vector2i(pos_x[row], pos_y[row])
+	var centre: Vector2i = _open_centre(world, bases, wanted, low, high, way)
 	var centre_cell: int = world.cell_of(centre.x, centre.y)
 	for row: int in unit_indices:
 		goal_x[row] = centre.x
@@ -89,7 +89,12 @@ static func assign(
 ## such tile is open.
 @warning_ignore("integer_division")
 static func _open_centre(
-	world: World, bases: PackedInt32Array, point: Vector2i, low: Vector2i, high: Vector2i
+	world: World,
+	bases: PackedInt32Array,
+	point: Vector2i,
+	low: Vector2i,
+	high: Vector2i,
+	way: Vector2i
 ) -> Vector2i:
 	if bases.is_empty():
 		return point
@@ -99,6 +104,9 @@ static func _open_centre(
 	var tile_x: int = mini(point.x / World.MILLI_PER_TILE, cols - 1)
 	var tile_y: int = mini(point.y / World.MILLI_PER_TILE, rows - 1)
 	for ring: int in maxi(cols, rows):
+		var found: bool = false
+		var best: Vector2i = point
+		var best_key: Vector3i = Vector3i.ZERO
 		for j: int in range(-ring, ring + 1):
 			var y: int = tile_y + j
 			if y < 0 or y >= rows:
@@ -126,7 +134,27 @@ static func _open_centre(
 					and centre.y >= low.y
 					and centre.y <= high.y
 				):
-					return centre
+					# The nearest to the point, then the one further along the approach and on
+					# the larger cross side: a rule that a half turn of the map keeps.
+					var gap: Vector2i = centre - point
+					var key: Vector3i = Vector3i(
+						gap.x * gap.x + gap.y * gap.y,
+						-(gap.x * way.x + gap.y * way.y),
+						-(gap.x * way.y - gap.y * way.x)
+					)
+					if (
+						not found
+						or key.x < best_key.x
+						or (
+							key.x == best_key.x
+							and (key.y < best_key.y or (key.y == best_key.y and key.z < best_key.z))
+						)
+					):
+						found = true
+						best = centre
+						best_key = key
+		if found:
+			return best
 	return point
 
 

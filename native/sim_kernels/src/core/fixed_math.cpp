@@ -48,13 +48,17 @@ int64_t isqrt(int64_t n) {
 	return root;
 }
 
-bool line_clear(const ArrayView<const uint8_t> &move_cost, int64_t cols, int64_t rows, int64_t x0, int64_t y0, int64_t x1, int64_t y1, int64_t move_class) {
+bool line_clear(const ArrayView<const uint8_t> &move_cost, int64_t cols, int64_t rows, int64_t x0_in, int64_t y0_in, int64_t x1_in, int64_t y1_in, int64_t move_class) {
 	if (cols == 0) {
 		return true;
 	}
 	if (move_class < 0 || move_class >= MOVE_CLASSES) {
 		return false;
 	}
+	const int64_t x0 = centre_side(x0_in, cols * MILLI_PER_TILE);
+	const int64_t x1 = centre_side(x1_in, cols * MILLI_PER_TILE);
+	const int64_t y0 = centre_side(y0_in, rows * MILLI_PER_TILE);
+	const int64_t y1 = centre_side(y1_in, rows * MILLI_PER_TILE);
 	const int64_t base = move_class * cols * rows;
 	const int64_t max_x = cols * MILLI_PER_TILE;
 	const int64_t max_y = rows * MILLI_PER_TILE;

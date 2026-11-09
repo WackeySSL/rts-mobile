@@ -108,6 +108,8 @@ var seen_mobile_id: PackedInt32Array = PackedInt32Array()
 ## and sectors per row (0 before the first intel call).
 var sector_side: int = 0
 var sector_cols: int = 0
+var sector_pad_x: int = 0
+var sector_pad_y: int = 0
 ## Strikes: the wave count the Dusk Array last fired for (0: none; the first wave makes it 1).
 var strike_wave: int = 0
 ## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending. A unit

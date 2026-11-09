@@ -318,7 +318,10 @@ func _sector_value(view: PlayerView, memory: AiMemory, x: int, y: int) -> int:
 	@warning_ignore("integer_division")
 	var line: int = clampi(y / PlayerView.MILLI_PER_TILE, 0, maxi(view.map_rows - 1, 0))
 	@warning_ignore("integer_division")
-	var at: int = line / memory.sector_side * memory.sector_cols + col / memory.sector_side
+	var at: int = (
+		(line + memory.sector_pad_y) / memory.sector_side * memory.sector_cols
+		+ (col + memory.sector_pad_x) / memory.sector_side
+	)
 	return memory.sector_enemy[at] if at < memory.sector_enemy.size() else 0
 
 

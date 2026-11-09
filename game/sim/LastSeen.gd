@@ -160,8 +160,22 @@ static func _remember(world: World, player: int) -> int:
 		if owner == player or owner < 1:
 			continue
 		var cell: int = (
-			clampi(ys[row] / World.MILLI_PER_TILE, 0, lines - 1) * cols
-			+ clampi(xs[row] / World.MILLI_PER_TILE, 0, cols - 1)
+			(
+				clampi(
+					(
+						FixedMath.centre_side(ys[row], lines * World.MILLI_PER_TILE)
+						/ World.MILLI_PER_TILE
+					),
+					0,
+					lines - 1
+				)
+				* cols
+			)
+			+ clampi(
+				FixedMath.centre_side(xs[row], cols * World.MILLI_PER_TILE) / World.MILLI_PER_TILE,
+				0,
+				cols - 1
+			)
 		)
 		var type: int = row_types[row]
 		if not _any_seen(visible, block, cols, lines, cell, widths[type], heights[type]):

@@ -85,7 +85,7 @@ static func run(world: World) -> void:
 				_go_home(world, row)  # A full load goes home before more ore.
 			elif not has_ore:
 				# A cell that ran empty (slot kept) is replaced at once; no cell waits for its turn.
-				if slot >= 0 or (tick + ids[row]) % retry == 0:
+				if slot >= 0 or (tick) % retry == 0:
 					_pick(world, row, -1)
 			elif orders[row] == World.Order.IDLE:
 				var centre: Vector2i = _centre(ore_cells[slot], cols)
@@ -96,7 +96,7 @@ static func run(world: World) -> void:
 				else:
 					_pick(world, row, slot)  # The order ended short of the cell.
 		elif mode == World.HarvestMode.MINE:
-			if (tick + ids[row]) % per_ore != 0:
+			if (tick) % per_ore != 0:
 				continue
 			if not has_ore:
 				modes[row] = World.HarvestMode.SEEK  # The cargo stays; SEEK scans next tick.
@@ -116,7 +116,7 @@ static func run(world: World) -> void:
 			)
 			if not kept:
 				# A refinery that is gone is replaced at once; with none at all it waits for its turn.
-				if home_id != 0 or (tick + ids[row]) % retry == 0:
+				if home_id != 0 or (tick) % retry == 0:
 					_choose(world, row)
 			elif orders[row] == World.Order.IDLE:
 				var dock: Vector2i = _dock(world, at)
@@ -127,7 +127,7 @@ static func run(world: World) -> void:
 				else:
 					_order(world, row, dock)
 		elif mode == World.HarvestMode.UNLOAD:
-			if (tick + ids[row]) % per_unload != 0:
+			if (tick) % per_unload != 0:
 				continue
 			var paid: int = mini(value, cargos[row])
 			cargos[row] -= paid
@@ -141,7 +141,7 @@ static func run(world: World) -> void:
 			mode == World.HarvestMode.IDLE
 			and resume > 0
 			and orders[row] == World.Order.IDLE
-			and (tick + ids[row]) % resume == 0
+			and (tick) % resume == 0
 		):
 			_resume(world, row)
 
@@ -251,6 +251,8 @@ static func _scan(world: World, x: int, y: int, skip: int, reach: int) -> int:
 		if best < 0 or d2 < best_d2:
 			best = index
 			best_d2 = d2
+		elif d2 == best_d2 and _toward_centre(world, x, y, centre, _centre(cells[best], cols)):
+			best = index
 	world.stats[World.Stat.ORE_SCANNED] += cells.size()
 	return best
 
@@ -350,3 +352,20 @@ static func _order(world: World, row: int, goal: Vector2i) -> void:
 	world.goal_y[row] = goal.y
 	world.group_cell[row] = -1
 	Movement.reset_nav(world, PackedInt32Array([row]), World.NavMode.DIRECT)  # alloc-ok
+
+
+## Whether `candidate` beats `held` for a point (x, y) when both are the same distance away: the one
+## further along the way to the map centre, then the one on the larger cross side. Both tests keep
+## their value when the whole map is turned half a turn, which a lowest-index rule does not.
+static func _toward_centre(
+	world: World, x: int, y: int, candidate: Vector2i, held: Vector2i
+) -> bool:
+	var way_x: int = world.map_w - 2 * x
+	var way_y: int = world.map_h - 2 * y
+	var along_a: int = (candidate.x - x) * way_x + (candidate.y - y) * way_y
+	var along_b: int = (held.x - x) * way_x + (held.y - y) * way_y
+	if along_a != along_b:
+		return along_a > along_b
+	var across_a: int = (candidate.x - x) * way_y - (candidate.y - y) * way_x
+	var across_b: int = (held.x - x) * way_y - (held.y - y) * way_x
+	return across_a > across_b

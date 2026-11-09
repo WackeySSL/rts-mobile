@@ -71,6 +71,17 @@ static func step_toward(x: int, y: int, tx: int, ty: int, speed: int) -> Vector2
 ## touched run from floor(low) to floor(high). The right edge of a strip is in the next column, so
 ## when y rises there the strip ends one numerator short of it; a corner there adds the rows on
 ## both sides of it, in both strips. A vertical segment is one column of its y range.
+## A coordinate on a tile border belongs to the tile on the map centre's side: one milli-tile is
+## taken off a border coordinate past the middle of a map `side` milli-tiles wide. The tile is then
+## the usual floor, and a half turn of the map maps the tile of a point to the tile of its image
+## (the floor alone keeps the border in the tile after it, which a half turn turns into the one
+## before). C++ twin: fixed_math::centre_side.
+static func centre_side(coord: int, side: int) -> int:
+	if coord % World.MILLI_PER_TILE == 0 and coord * 2 > side:
+		return coord - 1
+	return coord
+
+
 @warning_ignore("integer_division")
 static func line_clear(world: World, x0: int, y0: int, x1: int, y1: int, move_class: int) -> bool:
 	var cols: int = world.map_cols
@@ -79,6 +90,10 @@ static func line_clear(world: World, x0: int, y0: int, x1: int, y1: int, move_cl
 	if move_class < 0 or move_class >= World.MoveClass.size():
 		return false
 	var rows: int = world.map_rows
+	x0 = centre_side(x0, cols * World.MILLI_PER_TILE)
+	x1 = centre_side(x1, cols * World.MILLI_PER_TILE)
+	y0 = centre_side(y0, rows * World.MILLI_PER_TILE)
+	y1 = centre_side(y1, rows * World.MILLI_PER_TILE)
 	var cost: PackedByteArray = world.move_cost
 	var base: int = move_class * cols * rows
 	var tile: int = World.MILLI_PER_TILE
