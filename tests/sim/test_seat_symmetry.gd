@@ -67,6 +67,57 @@ func test_a_refinerys_dock_is_not_mirrored_so_the_same_site_earns_less_for_playe
 	assert_int(far.x).is_greater(far.y * 5 / 4)
 
 
+## A vehicle factory at (3, 7) and at its half turn each make one light tank, which then walks to
+## its side's staging point. The exit is at (1, 3), south of the footprint for both, so player 2's
+## tank leaves at the back of its base: it needs 57 ticks for player 1's 86 (and 5 for 68 from a
+## factory at (11, 7)).
+func test_a_factorys_exit_faces_south_so_player_2s_units_leave_at_the_back() -> void:
+	var near: Vector2i = _exit_walk(Vector2i(3, 7))
+	assert_int(near.y).is_greater(near.x + 20)
+	var far: Vector2i = _exit_walk(Vector2i(11, 7))
+	assert_int(far.y).is_greater(far.x + 50)
+
+
+## Two mirrored bases of the AI's first 11 buildings (player 1's first valid slots, player 2 the
+## half turn), 100000 credits and the same queue each: 1500 ticks give both the same count, so
+## production itself has no seat bias when the layout is mirrored.
+func test_mirrored_bases_make_the_same_number_of_units() -> void:
+	var world: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	var none: Array[Command] = []
+	var spiral: PackedInt32Array = PlacementSpiral.cells(64)
+	for id: String in [
+		"power_plant", "refinery", "barracks", "power_plant", "vehicle_factory", "fossil_radar"
+	]:
+		var view: PlayerView = PlayerView.of(world, 1)
+		var type: int = view.type_index_of(StringName(id))
+		for slot: int in 64:
+			var col: int = 7 + spiral[slot * 2] * 4
+			var line: int = 7 + spiral[slot * 2 + 1] * 4
+			if view.placement(type, col, line) == Placement.Reason.OK:
+				var wide: int = view.type_foot_w[type]
+				world.add_building(1, type, col, line)
+				world.add_building(2, type, SIDE - col - wide, SIDE - line - wide)
+				break
+		for _tick: int in 6:
+			Sim.step(world, none)
+	world.credits[1] = 100000
+	world.credits[2] = 100000
+	var rifle: int = PlayerView.of(world, 1).type_index_of(&"rifle_squad")
+	var loop: MatchLoop = MatchLoop.create(null, "", 1, world)
+	var orders: Array[Command] = []
+	for tick: int in 1500:
+		if tick % 60 == 0:
+			for player: int in [1, 2]:
+				orders.append(Command.queue(player, rifle))
+		loop.step(world, orders)
+		orders.clear()
+	var counts: Array[int] = [0, 0, 0]
+	for row: int in world.unit_count():
+		counts[world.owner[row]] += 1 if world.type_speed[world.type_index[row]] > 0 else 0
+	assert_int(counts[1]).is_greater(5)
+	assert_int(counts[1]).is_equal(counts[2])
+
+
 ## The centres of player `player`'s rows at the start, in milli-tiles, sorted.
 func _centres(world: World, player: int) -> Array[Vector2i]:
 	var found: Array[Vector2i] = []
@@ -156,3 +207,42 @@ func _harvest(origin: Vector2i) -> Vector2i:
 	for _tick: int in 3000:
 		Sim.step(world, none)
 	return Vector2i(world.stat_harvested[1], world.stat_harvested[2])
+
+
+## The ticks a light tank from a factory at `origin` (player 1) and one from its half turn (player
+## 2) need from the first tick they exist to within 1.5 tiles of their staging points.
+func _exit_walk(origin: Vector2i) -> Vector2i:
+	var world: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	var view: PlayerView = PlayerView.of(world, 1)
+	var factory: int = view.type_index_of(&"vehicle_factory")
+	var tank: int = view.type_index_of(&"light_tank")
+	world.add_building(1, factory, origin.x, origin.y)
+	world.add_building(2, factory, SIDE - origin.x - 3, SIDE - origin.y - 3)
+	world.credits[1] = 5000
+	world.credits[2] = 5000
+	var orders: Array[Command] = [Command.queue(1, tank), Command.queue(2, tank)]
+	var loop: MatchLoop = MatchLoop.create(null, "", 1, world)
+	var born: Array[int] = [0, -1, -1]
+	var walked: Array[int] = [0, 0, 0]
+	var ids: Array[int] = [0, 0, 0]
+	for tick: int in 1500:
+		loop.step(world, orders)
+		orders.clear()
+		for player: int in [1, 2]:
+			if ids[player] == 0:
+				for row: int in world.unit_count():
+					if world.owner[row] == player and world.type_index[row] == tank:
+						ids[player] = world.unit_id[row]
+						born[player] = tick
+						var stage: int = 12500 if player == 1 else SIDE_MILLI - 12500
+						orders.append(
+							Command.move(player, PackedInt32Array([ids[player]]), stage, stage)
+						)
+			elif walked[player] == 0:
+				var at: int = world.index_of(ids[player])
+				var stage: int = 12500 if player == 1 else SIDE_MILLI - 12500
+				var dx: int = world.pos_x[at] - stage
+				var dy: int = world.pos_y[at] - stage
+				if dx * dx + dy * dy < 1500 * 1500:
+					walked[player] = tick - born[player]
+	return Vector2i(walked[1], walked[2])
