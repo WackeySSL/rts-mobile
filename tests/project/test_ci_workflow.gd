@@ -71,6 +71,7 @@ const ARM64_CHECK_RUN: String = (
 const GODOT_SCRIPT: String = "res://scripts/ci/install-godot.sh"
 ## P51: the verify job's summary copies the PERF lines of the verify log.
 const SUMMARY_STEP: String = "Job summary"
+const LOG_STEP: String = "Job log lines"
 const PERF_PATTERN: String = "^PERF sim (units=|impl=native)"
 const PERF_GREP: String = (
 	"grep -a -E '"
@@ -355,6 +356,8 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 		assert_bool(_perf_selected(line)).is_false()
 	_assert_perf_bases_summary(step)
 	_assert_watch_ai_summary(step)
+	_assert_log_lines_step(job)
+	_assert_verify_prints_smoke_seconds()
 
 
 ## P55: native-clang builds with the flags its cache key names; gdUnit4 runs only if a suite exists,
@@ -761,6 +764,36 @@ func _assert_watch_ai_summary(step: Array) -> void:
 	]
 	for line: String in skipped:
 		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_false()
+
+
+## P190b: the job log (the REST API serves it, not the job summary) carries the same report-only
+## lines: one `::group::` each, in a step of their own after the summary, that never fails the job.
+func _assert_log_lines_step(job: PackedStringArray) -> void:
+	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP, LOG_STEP])
+	var step: Array = Array(_step(job, LOG_STEP))
+	assert_array(step).contains(["if: always()", "exit 0"])
+	var text: String = "\n".join(step)
+	assert_bool(text.contains("${{")).is_false()
+	var previous: int = -1
+	for name: String in ["VERIFY SUMMARY", "PERF sim", "PERF bases", "WATCH ai"]:
+		var group: int = step.find('echo "::group::%s"' % name)
+		assert_int(group).is_greater(previous)
+		assert_int(step.find('echo "::endgroup::"', group)).is_greater(group)
+		previous = group
+	for pattern: String in [PERF_PATTERN, BASES_PATTERN, WATCH_AI_PATTERN]:
+		assert_bool(text.contains("grep -a -E '" + pattern + "'")).is_true()
+	assert_bool(text.contains("sed -n '/===== VERIFY SUMMARY =====/,$p'")).is_true()
+
+
+## P190b: verify.sh adds one line to its VERIFY SUMMARY, after `commit:` and before RESULT, with the
+## seconds of the smoke step; no existing line changes.
+func _assert_verify_prints_smoke_seconds() -> void:
+	var text: String = FileAccess.get_file_as_string("res://scripts/verify.sh")
+	var line: String = 'echo "run-sim-smoke: 3 matches in ${SMOKE_SECS} s"'
+	assert_bool(text.contains(line)).is_true()
+	assert_int(text.find(line)).is_greater(text.find('echo "commit: '))
+	assert_int(text.find(line)).is_less(text.find('echo "RESULT: GREEN"'))
+	assert_bool(text.contains("SMOKE_SECS=$((SECONDS - SMOKE_START))")).is_true()
 
 
 func _perf_selected(line: String, pattern: String = PERF_PATTERN) -> bool:

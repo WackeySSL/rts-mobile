@@ -55,7 +55,9 @@ fi
 run_step "C++ format (clang-format)" bash scripts/ci/check-cpp-format.sh
 
 if [ -f scripts/run-sim-smoke.sh ]; then
+  SMOKE_START=$SECONDS
   run_step "sim smoke (3 seeded AI-vs-AI matches)" env RUN_SIM_SMOKE_SKIP_IMPORT=1 bash scripts/run-sim-smoke.sh --matches 3
+  SMOKE_SECS=$((SECONDS - SMOKE_START))
 else
   echo "::: sim smoke skipped (scripts/run-sim-smoke.sh not created yet)"
 fi
@@ -99,6 +101,7 @@ echo "godot:  $(godot --version 2>/dev/null | head -n 1)"
 DIRTY=""
 if ! git diff --quiet 2>/dev/null; then DIRTY=" (+ uncommitted changes)"; fi
 echo "commit: $(git rev-parse --short HEAD 2>/dev/null)${DIRTY}"
+if [ -n "${SMOKE_SECS:-}" ]; then echo "run-sim-smoke: 3 matches in ${SMOKE_SECS} s"; fi
 if [ ${#FAILED[@]} -eq 0 ]; then
   echo "RESULT: GREEN"
   rm -f "$LOG"
