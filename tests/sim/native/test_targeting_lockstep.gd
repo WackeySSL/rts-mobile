@@ -58,13 +58,16 @@ const CONTROLS_TICKS: int = 450
 ## The seeds of the controls_test runs, and the phases that the kernels' World runs in C++ in each.
 const CONTROLS_SEEDS: Array[int] = [1, 2, 3, 4]
 const CONTROLS_MASKS: Array[int] = [Rig.ONLY, Rig.ONLY, Rig.WITH_PORTED, Rig.ALL]
+## Re-measured with the half-turn ties (ADR 0033, P195d-2): the arena run counts 3,051 locked (floor
+## was 3,320) and 73 dropped (80); the changed-rules run 1,596 chasing (2,220), 667 line tests
+## (759) and 59 re-tests (201); the floors are two thirds of those.
 ## The floors of the plain arena run, in two groups: acquisition, then engagement.
 const ARENA_ACQUISITION: Dictionary[StringName, int] = {
 	&"looks": 173000,
 	&"cands": 9500,
-	&"locked": 3320,
+	&"locked": 2030,
 	&"fallbacks": 25,
-	&"dropped": 80,
+	&"dropped": 49,
 	&"due": 7050,
 	&"kept": 3620,
 	&"scans": 3430,
@@ -137,10 +140,10 @@ const CHANGED_FLOORS: Dictionary[StringName, int] = {
 	&"scans": 4520,
 	&"found": 704,
 	&"holding": 19600,
-	&"chasing": 2220,
+	&"chasing": 1060,
 	&"chase_starts": 292,
-	&"line_checks": 759,
-	&"retests": 201,
+	&"line_checks": 445,
+	&"retests": 39,
 	&"blocked": 93
 }
 

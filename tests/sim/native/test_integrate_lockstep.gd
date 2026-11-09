@@ -75,11 +75,12 @@ const SOUP_MODES: Array[int] = [2, 2, 2, 1, 1, 0, 3, 4]
 const SOUP_GROUND: String = "........^^#wt24"
 
 
+## Re-keys: 2 measured after the half-turn ties (ADR 0033, P195d-2), floor was 4.
 func test_900_arena_ticks_match_after_every_tick() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena)
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 4})
+	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 1})
 	_assert_reached(rig, {&"holding": 13000, &"chasing": 1800, &"lost": 70})
 	assert_int(rig.tally[&"own_fields"]).is_greater(0)
 	assert_int(rig.worlds[0].flow.requests).is_greater(30)
@@ -90,7 +91,7 @@ func test_the_same_run_with_only_integrate_in_c_plus_plus_matches() -> void:
 	assert_array(rig.problems).is_empty()
 	assert_bool(rig.worlds[1].native_phases == 1 << SimProbe.Phase.INTEGRATE).is_true()
 	assert_str(rig.run(TICKS, _orders)).is_empty()
-	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 4})
+	_assert_reached(rig, {&"field": 9700, &"named": 7400, &"ended": 40, &"rekeys": 1})
 	_assert_reached(rig, {&"lost": 70})
 
 
