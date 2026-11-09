@@ -153,9 +153,9 @@ static func _slots(
 	var extent: int = maxi(high.x - low.x, high.y - low.y)
 	while (last_ring < 0 or ring <= last_ring) and ring * spacing <= extent:
 		var inside: int = 0
-		for j: int in range(-ring, ring + 1):
+		for j: int in range(ring, -ring - 1, -1):  # EXPERIMENT G: reversed generation order
 			# Inner rows only hold their two end points.
-			for i: int in range(-ring, ring + 1, 1 if absi(j) == ring else maxi(2 * ring, 1)):
+			for i: int in range(ring, -ring - 1, -(1 if absi(j) == ring else maxi(2 * ring, 1))):
 				var point: Vector2i = centre + Vector2i(i, j) * spacing
 				if point.x < low.x or point.x > high.x or point.y < low.y or point.y > high.y:
 					continue
