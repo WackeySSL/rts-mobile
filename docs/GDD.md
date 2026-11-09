@@ -145,6 +145,111 @@ the in-repo generator (`tools/artgen/`) draws as SVG in every direction; team co
 in the player's colour.
 Audio: short radio chirps and mechanical sounds instead of voice acting, CC0 or generated.
 
+## Planned: air, anti-air, engineering centre, space centre (designed 2026-11-09, built after the Phase 4 gate)
+Michael asked for this on 2026-11-09: an airfield and aircraft, air defence, more buildings, an
+engineering centre that develops better bombers, and a space centre whose satellite makes the fog
+disappear. The same day he added an aircraft that carries infantry, infantry that fly with drones,
+and the repair of aircraft. The design is ADR 0036 (proposed) and the plan is
+`docs/plans/2026-11-09-air-and-tech.md`.
+
+**Michael's decision is pending:** version 1 or an update. The recommendation is update 1.1 (air,
+anti-air, satellite, research) after launch, then 1.2 (transport, drone squads) with the ground
+design's infantry carrier. Until he decides, the "Not in version 1" line below stands. If he
+chooses version 1, that line loses "air".
+
+Everything below is a starting value for the balance runs. The real numbers will live in `data/`.
+
+**How it plays**
+- **Aircraft hover and fly straight** over rock, water and buildings. There is no runway, landing
+  or fuel.
+- **Who hits aircraft:** anti-air buildings, rocket squads and fighters. The low-flying drone
+  squads are also hit by rifle squads and the Redoubt. Everything else (tanks, artillery, the Rail
+  Battery, bombers) hits only the ground.
+- **The airfield.** Each one serves 4 aircraft on its pads, which is the cap on aircraft. A bomber
+  carries 2 bombs, flies home by itself when it is empty, reloads on its pad, and waits there. An
+  aircraft on its pad is repaired for credits. Tap your airfield with aircraft selected to send
+  them home.
+- **The transport** carries squads:
+  - Select squads and tap your transport, or select the transport and tap a squad; the transport
+    flies to them and they climb in.
+  - "Unload" and a tap on the ground drop them there.
+  - If the transport is shot down, the squads aboard are lost.
+- **Drone squads** are infantry carried by drones at low height. They are built at the barracks
+  once you have an airfield, and they cross cliffs and water.
+- **The engineering centre** researches bomber upgrades, each once per match, in the Research tab:
+  heavier bombs and a tougher hull (question 5 of ADR 0036).
+- **The space centre** charges for 3 minutes. Then its button lifts the fog over the whole map for
+  45 seconds; ground you had never seen stays explored afterwards. The enemy sees a warning for as
+  long as it lasts. Destroying the space centre, or a Dusk Array blackout on it, ends the sweep at
+  once. The computer on Normal and Hard uses it by the same rules (questions 3 and 4).
+
+**Buildings (planned; 12 per faction instead of 8)**
+
+| Role | Size | Cost | Power | Requires | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| Airfield | 3x3 | 1 500 | -40 | Radar | Builds aircraft (Flight tab); 4 pads: reload, repair |
+| Anti-air | 1x1 | 700 | -20 | Barracks | Shoots high and low air only |
+| Engineering centre | 2x2 | 1 200 | -40 | Airfield | Research tab: bomber upgrades |
+| Space centre | 3x3 | 2 000 | -60 | Radar | Satellite sweep: whole map visible for a while |
+
+**Units (planned; Derrick League numbers, then the Lumen Accord's take)**
+
+| Role | Cost | HP | Speed (tiles/s) | Range (tiles) | Hits | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fighter | 900 | 260 | 3.0 | 5 | air | No ammo limit. Lumen: 3.6 tiles/s, 200 HP |
+| Bomber | 1 400 | 500 | 1.8 | 2.5 | ground | 2 bombs, then home to reload. Lumen: 2.2 tiles/s, 380 HP |
+| Transport | 1 000 | 600 | 1.6 | - | - | 3 squads. Lumen: 800 credits, 380 HP, 2.4 tiles/s, 2 squads |
+| Drone squad | 350 | 140 | 1.4 | 4 | ground | Flies low. Lumen: 300 credits, 90 HP, 2.0 tiles/s |
+
+**Name candidates (Michael picks; A is the first of each pair).** All are original, the short ones
+fit a build card on one line, and each is checked against other games and real military names (ADR
+0036 §16).
+
+| Item | Derrick League | Lumen Accord |
+| --- | --- | --- |
+| Airfield | Flight Yard / Hangar Row | Glide Deck / Sky Dock |
+| Fighter | Torchjet / Pipewing | Glint / Skylance |
+| Bomber | Drillhead / Gusher | Sunfall / Halcyon |
+| Transport | Skyhauler / Liftbarge | Ferrywing / Seedpod |
+| Drone squad | Hoist Crew / Liftjacks | Kite Crew / Updrafts |
+| Anti-air | Burst Stack / Sky Stack | Sky Needle / Sun Needle |
+| Engineering centre | Draft Shop / Test Bench | Lens Works / Kiln Lab |
+| Space centre | Skyrig / Launch Rig | Zenith / Lift Spire |
+| Satellite | Survey Eye / Plumb Star | Sunward / Noonlight |
+| Upgrade: bombs | Heavy Charges | Focused Charges |
+| Upgrade: hull | Plated Hull | Ceramic Hull |
+
+**Looks, in each faction's own style**
+- **Derrick League:** riveted olive steel, gas bottles and flare-stack exhausts.
+  - The fighter is a stubby delta with one big intake.
+  - The bomber is a fat twin-boom lifting body with a drill-bit nose.
+  - The transport is a boxy armoured hull on four ducted fans.
+  - The drone squad is soldiers hanging under heavy six-rotor drones.
+  - The anti-air gun is a stack of four short barrels on a concrete drum.
+  - The space centre is a launch tower built like a drilling derrick.
+- **Lumen Accord:** white ceramic, glass and blue-grey.
+  - The fighter is a slim forward-swept wing with a glass canopy.
+  - The bomber is a wide solar-topped flying wing.
+  - The transport is a glider-like wing on two tilting fans.
+  - The drone squad is soldiers on light kite-wing drones.
+  - The anti-air is a glass needle on a turning ring.
+  - The space centre is a white spire with a solar collar.
+- **Looks we never use:** no tandem twin-rotor transport, no jet-pack infantry and no dish uplink.
+  Those belong to other games.
+
+**More buildings: what else a complete mobile RTS could have, and what we recommend**
+- **Repair building:** the separate ground design covers it, and it meets this design at a shared
+  "repair" order. Aircraft are repaired at their airfield.
+- **A forward outpost that extends where you may build:** worth it later, once the balance runs
+  show whether far oil fields matter.
+- **Not recommended:**
+  - walls and gates: they are fiddly to place on a phone and costly for path finding;
+  - storage or silos: credits have no cap, so they would add nothing;
+  - jammers and a second defence tier: more to learn with little new play.
+
+So this expansion adds no buildings beyond the four above. The repair building comes with the
+ground design.
+
 ## Not in version 1
 Online multiplayer, campaign, air and naval units, map editor.
 
