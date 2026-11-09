@@ -132,7 +132,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
-| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms`; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273, skill yes |
+| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273, skill yes |
 | P273 | ART | Glyphs `glyph_repair` (wrench) and `glyph_sell`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
 | P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274 |

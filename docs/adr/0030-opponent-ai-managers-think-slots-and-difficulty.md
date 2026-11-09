@@ -63,11 +63,11 @@ workload without contact until P189b) and when §4's flow-cache choice is made; 
 the end of §4 records them. P188's and P190's decisions are in ADR 0031's notes, P185's in the
 plan. No accepted text changed; the note adds `thinks=` to §4's `WATCH ai think` keys.
 
-Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): the managers gain
-duties and no new manager: ADR 0036 §14 (air tiers, layer-aware counters, raids, the satellite on
-Normal and Hard, fired once charged) and ADR 0037 §10 (mend, repair, medics, rides, `AiMines` in
-`AiStrikes`' slot, `hold_types`). Easy builds no space centre, engineering centre, transport or
-wave-3 unit. No accepted text changed.
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): the managers
+gain duties and no new manager: ADR 0036 §14 (air tiers, layer-aware counters, raids, the
+satellite on Normal and Hard, fired once charged) and ADR 0037 §10 (mend, repair, medics, rides,
+`AiMines` in `AiStrikes`' slot, `hold_types`). Easy builds no space centre, engineering centre,
+transport or wave-3 unit. No accepted text changed.
 
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had

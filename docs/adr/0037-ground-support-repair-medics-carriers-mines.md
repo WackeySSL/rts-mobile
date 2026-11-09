@@ -234,6 +234,11 @@ of which about 120 are C++.
     match": Keep / Sell); only "Sell" sends the Command.
   - The order bar's new buttons are `touch-ui-rules` text and wait for Michael's yes, as ADR
     0036's P244 and P265 do.
+  - Note (2026-11-09, P270b fix 1, after touch-ux-dev's docs lens): the second tap sends `SELL`
+    only between `sell_arm_min_ms` (starting 400) and `sell_confirm_ms` (starting 3000) after
+    the first; a tap before the minimum is ignored and keeps the arm. Both live in
+    `data/input_settings.tres`. The Sell button keeps its place and a fixed width, so "+N" never
+    shifts it.
 - **AI.** Never sells (the managers have no rule that gains from it).
 - **Size.** Sim ~90, view and UI ~160.
 

@@ -26,10 +26,10 @@ and a hit ring of 16; `reduced` keeps the fire and the flashes and drops embers,
 the smoke over a crater. No camera shake (Michael's answer 4): the camera still moves only by the
 player's hand. No ruin (Michael, 2026-11-04). No accepted text changed.
 
-Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §7: the `STRIKE`
-event gains kind 3, `[5, building id, 0, 0, 3, owner, 0, 0]`: no landing tick, because the
-satellite's sweep has no end. ADR 0037 adds events 7 (`MINE_BLAST`) and 8 (`REPAIRED`); ADR 0036
-adds 6 (`UNLOADED`). No accepted text changed.
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §7: the
+`STRIKE` event gains kind 3, `[5, building id, 0, 0, 3, owner, 0, 0]`: no landing tick, because
+the satellite's sweep has no end. ADR 0037 adds events 7 (`MINE_BLAST`) and 8 (`REPAIRED`); ADR
+0036 adds 6 (`UNLOADED`). No accepted text changed.
 
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate

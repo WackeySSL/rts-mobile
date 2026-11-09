@@ -172,9 +172,9 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P230 | LEAD | **Done 2026-11-09** (with P270b, one commit on `claude/p230-phase4b-acceptance`): both ADRs accepted, ADR 0036 §11 rewritten for answer 3 B, the dated notes, the GDD sections, ROADMAP Phase 4b, the merge-order section and the skill draft below; the skill itself waits for Michael's yes. Acceptance docs: Michael's answers and names in ADR 0036 and the GDD; dated notes in ADRs 0007, 0008, 0009, 0010, 0013, 0016, 0017, 0018, 0023, 0027, 0030 and 0031; a ROADMAP section per update (or Phase 4b if version 1); the GDD "Not in version 1" line per question 2. The `touch-ui-rules` amendment (ADR 0036 §12: the Home, Board and Unload buttons and their aims) **needs Michael's explicit yes**, asked with the acceptance; the lead edits the skill only after it | docs | Michael's answers; the Phase 4 gate |
 | P231 | GD | Defs: `MoveClass` Air, `low_flying`, `ammo`, `rearm_ticks`, `WeaponDef.targets`, `pads` and `pad_offsets`, the repair role, `strike_kind` 3, `UpgradeDef`, `FactionDef.upgrades`, the Tab enum in exports; data tests (ranges, AIR-only fields, pad spacing at least the largest FLIGHT `formation_spacing`, `repair_reach_milli` at least 500, upgrade modifiers at most 400 %). `TerrainDef.cost` keeps 3 entries. Hash-neutral: World copies nothing yet | 150 | P230 |
 | P232 | GD + QA | World v6: the columns and tables of ADR 0036 §3 (1.1 part); `type_layer_bit`; the AIR plane with `World.GROUND_CLASSES` at the four sites of ADR 0036 §4 (`WorldLoad.gd:141` and the loader's AIR fill, `World.set_terrain`, `Buildings._write_cost`) plus the check of the other `MoveClass.size()` uses; `TABS` 5 (PlayerView slices, Production indexing; the drawer still lists three tabs); `MOVE_CLASSES` 4 in `world_access.h:54`, `fixed_math.cpp:9` and `integrate.cpp:14`; the X-list rows of `type_layer_bit` (TARGETING and SEPARATION flags) and `weapon_targets` (TARGETING) declared once in `world_access.h`; `type_layer_bit` and `weapon_targets` in `PlayerView` and `MatchSnapshot`'s field lists; WorldLoad, WorldHash, `STATE_FORMAT` 6, one re-pin (exception 23). QA: the sanitizer cases and `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h` gain 6, and `NativeKernels.self_check` is re-checked for the new sizes and classes. Split trigger (over ~400): P232b takes `TABS` 5 with PlayerView and Production indexing | 380 (C++ ~20) | P231 |
-| P233 | GD | Reveal (as amended 2026-11-09, P230, answer 3 B): `FogGrid.reveal`, `Reveal.run` in REMOVE (per player with `reveal_site` set: `index_of` the site, 0 when it is gone, else `reveal` 1 when it is online and the player is not low on power, 2 when paused; no row pass), the `prepare()` stamp on `reveal == 1` (ADR 0036 §11), SUPERWEAPON on a REVEAL building dropped while `reveal_site` is set, strike kind 3 in `Strike.apply_superweapon` with the REVEAL branch before the pending-rupture test (`Strike.gd:112`) and a test that fires a sweep while a rupture is pending, the STRIKE record of kind 3 (`[5, id, 0, 0, 3, owner, 0, 0]`), `PlayerView.reveal_state`; pause and resume cases (blackout, low power), a rebuild test across a pause; a FOG lockstep case | 250 | P232 |
+| P233 | GD | Reveal (as amended 2026-11-09, P230, answer 3 B): `FogGrid.reveal`, `Reveal.run` in REMOVE (per player with `reveal_site` set: `index_of` the site, 0 when it is gone, else `reveal` 1 when it is online and the player is not low on power, 2 when paused; no row pass), the `prepare()` stamp on `reveal == 1` (ADR 0036 §11), SUPERWEAPON on a REVEAL building dropped while `reveal_site` is set or while its owner is on low power (fix 1, 2026-11-09), strike kind 3 in `Strike.apply_superweapon` with the REVEAL branch before the pending-rupture test (`Strike.gd:112`) and a test that fires a sweep while a rupture is pending, the STRIKE record of kind 3 (`[5, id, 0, 0, 3, owner, 0, 0]`), `PlayerView.reveal_state`; pause and resume cases (blackout, low power), a rebuild test across a pause; a FOG lockstep case | 250 | P232 |
 | P234 | GD | Space centre data, both factions (`.tres`, rosters, requires Radar, one charge of 2,700 and no sweep timer: `strike_ticks` 0, answer 3 B, dated 2026-11-09); name width test; HOW_TO_PLAY Superweapon rows (Teach) | 80 | P233, P230 |
-| P235 | TUX | Reveal HUD: the strike button's no-aim variant (tap, check mark), the warning badge and line, the fog fade (`reveal_fade_ms`); six layout sizes. (2026-11-09, answer 3 B) The enemy's indicator badge from `reveal_state`: lit while on, dimmed with a pause mark while paused, gone at 0, placed in ADR 0025's corners; the owner's strike button shows on or paused; the fade runs both ways on a pause and a resume | 300 | P234 |
+| P235 | TUX | Reveal HUD: the strike button's no-aim variant (tap, check mark), the warning badge and line, the fog fade (`reveal_fade_ms`); six layout sizes. (2026-11-09, answer 3 B) The enemy's indicator badge from `reveal_state`: lit while on, dimmed with a pause mark while paused, gone at 0, placed in ADR 0025's corners; the owner's strike button shows on or paused; the fade runs both ways on a pause and a resume. (Fix 1, 2026-11-09) On low power the satellite's strike button dims and shows the reason (the low-power glyph), because the sim refuses the SUPERWEAPON then | 300 | P234 |
 | P236 | ART | Space centre models, both factions (whole + damage stages, a lift part as the anim) | art | P237 |
 | P237 | ART | Atlas page probe and split: page 2 for unsorted layers (AirLayer, air shadows, DecalLayer, building shadows); measures rows, bake ms and texture memory; options a/b/c of ADR 0036 §15 to the lead; page pins. Coordinate with polish rows P202-P204 | 250 | P230 (may start at once) |
 | P238 | GD | Target layers: TARGETING twin and kernel (reading `weapon_targets` and `type_layer_bit` as P232 declared them; acquisition and ATTACK lock), `_apply_attack`, `Combat.fire` guard, rupture skips air; masks on rocket (7), rifle (5) and Redoubt (5) weapons; lockstep cases. Split trigger: the lockstep test as P238b if over ~1,000 changed lines | 200 (C++ ~120) | P232 |
@@ -185,7 +185,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
 | P242 | GD | Airfield, fighter and bomber data, both factions (`.tres`, weapons, rosters); HOW_TO_PLAY Units, Orders and Buildings rows (Teach: go home, reload) | 120 | P241b, P230 |
 | P243 | GD | View: `AirLayer` z 20, shadows z 2, `fly_px`, bob, death fall, enemy flyers only where seen, page 2; draw-call guard +2. Split trigger (over ~400): P243b takes the bob and the death fall | 350 | P237, P242 |
-| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects, the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243; Michael's yes to the skill text (P230) |
+| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243; Michael's yes to the skill text (P230) |
 | P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow) | art | P237 |
 | P245b | ART | Airfield models, both factions (pads, damage stages) | art | P237 |
 | P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241 |
@@ -322,7 +322,15 @@ Then the lead pastes the five parts below in one docs commit, unchanged. P244, P
 P272, P282, P294, P299 (ADR 0037) wait for that commit. The buttons are command-bar orders, so
 each is `CommandBar.ORDER_DP` (at least 56 x 64 dp), above the 48 dp floor.
 
-**Part 1. Gesture map: add these rows after "Tap Stop".**
+Fix 1 (2026-11-09, after touch-ux-dev's docs lens: 5 must, 4 should, 2 nits; the lead's
+decisions): the command bar shows Deselect and Stop always and scrolls the rest (Part 3); the aims
+place their check mark and X by `GhostControls`' column rule, with each aim's anchor rect (Part
+4); Sell sends only between `sell_arm_min_ms` and `sell_confirm_ms` and keeps a fixed width (Part
+4); "always selects" holds outside an open aim (Part 4); an enemy that no selected unit can hit is
+not attacked and not selected (Parts 1 and 5); the flyer wins a pick only within one rank (Part
+5); Deselect keeps its place during an order aim too (Part 1).
+
+**Part 1. Gesture map: add these rows after "Tap Stop", and replace two rows.**
 
 ```markdown
 | Tap Home (aircraft selected) | Each selected aircraft flies to its own airfield's pad (`REPAIR`), reloads and is repaired there; no aim |
@@ -333,8 +341,23 @@ each is `CommandBar.ORDER_DP` (at least 56 x 64 dp), above the 48 dp floor.
 | Tap ground on a found enemy mine with minelayers selected | Move there (a plain move); a minelayer standing on it clears it |
 | Tap Hold (units selected) | Hold position on or off for all of them (`STANCE`) |
 | Tap Mend (an own building selected) | Its paid repair on or off (`MEND`) |
-| Tap Sell twice (an own building selected) | Sell it (`SELL`): the first tap arms, the second sends |
+| Tap Sell twice (an own building selected) | Sell it (`SELL`): the first tap arms, the second sends (Part 4's window) |
 ```
+
+Replace the row "Tap Deselect at the command bar's start" with:
+
+```markdown
+| Tap Deselect at the command bar's start | Clear the selection (no Command); the bar hides, except during placement, a strike aim or an order aim (Board, Unload, Mine), when it keeps its place |
+```
+
+Replace the row "Tap enemy with units selected" with:
+
+```markdown
+| Tap enemy with units selected | Attack it with the selected units that can hit it (a mixed selection attacks with those rows only); if none can hit it, nothing happens: a short shake, and the selection is kept |
+```
+
+The row "Tap an enemy unit with nothing selected | Nothing yet (its info card is out of Phase 3
+scope)" stays as it is.
 
 **Part 2. "Building placement": replace its second bullet with this one.**
 
@@ -348,22 +371,26 @@ each is `CommandBar.ORDER_DP` (at least 56 x 64 dp), above the 48 dp floor.
 ```markdown
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders
   the selection has, each at least 56 x 64 dp: for units Stop, Hold, Home (aircraft), Repair
-  (damaged ground units that an own repair building serves), Board (squads, while the player has
-  a carrier), Unload (a loaded carrier) and Mine (minelayers); for one own building Mend and Sell.
+  (damaged ground units that an own repair building serves), Board (squads, while the player has a
+  carrier), Unload (a loaded carrier) and Mine (minelayers); for one own building Mend and Sell.
   An order shows only while it can act on part of the selection, and it sends only the rows it
   serves: a mixed selection shows Home and Repair side by side, each for its own rows. Deselect
-  and the orders always fit; orders that do not fit scroll sideways, and the chips take what is
-  left, then "+N". No Attack button. Later orders join the list with a glyph and a HOW_TO_PLAY
-  line.
+  and, for units, Stop always show. The other orders follow in the order listed above and scroll
+  sideways when they do not fit; a half-cut last button, or a fade at the bar's edge, is the cue.
+  The chips take what is left, then "+N". Upright on a 360 dp phone about 264 dp is free for the
+  bar: Deselect (48), one chip (40), Stop (56) and two more orders (112) fit before the rest
+  scroll. No Attack button. Later orders join the list with a glyph and a HOW_TO_PLAY line.
 ```
 
 **Part 4. A new section after "Building placement".**
 
 ```markdown
 ## Orders and their aims (ADR 0036 §12, ADR 0037 §9)
-- No tap overload. A tap on an own unit or building always selects it, whatever is selected and
-  whatever it is (an airfield, a carrier, a repair building). Orders that name an own target come
-  only from the command bar. A hold never sells, lays, loads or repairs.
+- No tap overload. Outside an open aim, a tap on an own unit or building always selects it,
+  whatever is selected and whatever it is (an airfield, a carrier, a repair building). Orders
+  that name an own target come only from the command bar. During an aim, a tap on an own unit or
+  building other than the Board target is refused with a shake and no Command. A hold never
+  sells, lays, loads or repairs.
 - **Home** (aircraft selected): one tap sends each aircraft to its own airfield's pad (`REPAIR`),
   where it reloads and is repaired for credits. An aircraft whose airfield has no free pad, or
   that has no airfield, is left out. No aim.
@@ -380,11 +407,19 @@ each is `CommandBar.ORDER_DP` (at least 56 x 64 dp), above the 48 dp floor.
 - **Mine** (minelayers selected): the button shows laid mines over the cap ("7/12") and dims at the
   cap. Tap Mine, tap the ground (a mark and the blast ring show; another ground tap moves them),
   then the check mark: one `LAY_MINE` for the selected minelayers.
-- **The aims (Board, Unload, Mine)** follow the strike aim. The check mark and X, each at least
-  64 dp, stand beside the aimed point by the ghost's column rule, inside the safe area. The check
-  mark sends exactly one Command and ends the aim. X, a second tap on the same button, a turn of
-  the phone, or a selection that no longer holds a row the order serves ends it with nothing
-  sent. The command bar's slot stays frozen while an aim is open.
+- **The aims (Board, Unload, Mine)** follow the strike aim's one-Command, X, turn and exclusion
+  rules: the check mark sends exactly one Command and ends the aim; X, a second tap on the same
+  button, a turn of the phone, or a selection that no longer holds a row the order serves ends it
+  with nothing sent; placement, the strike aim and the order aims exclude each other. The command
+  bar's slot stays frozen while an aim is open.
+- **Where the aims' check mark and X stand.** Not in the strike aim's row by the strike button
+  (`HudCorners.STRIKE_ROW`): beside the aimed point, by `GhostControls`' column rule (right of
+  the anchor rect, else left, else above, never below; inside the safe area), each at least
+  64 dp. The anchor rect, in place of the ghost's silhouette:
+  - Board: the ringed carrier's pick square, its lifted centre plus and minus its pick radius
+    (at least 24 dp); no anchor and no check mark until a carrier is ringed;
+  - Unload: a 48 dp square round the chevron's ground point;
+  - Mine: the bounding box of the blast ring round the mark.
 - **Hold** (units selected): a toggle with a shield glyph, lit when every selected unit holds. A tap
   sets all of them to hold, or all to normal when all already hold (one `STANCE`). The selection
   chip shows a small shield on a type whose units hold. No world glyph.
@@ -392,14 +427,17 @@ each is `CommandBar.ORDER_DP` (at least 56 x 64 dp), above the 48 dp floor.
   lit while that building mends; a tap sends one `MEND`, on or off. It stops by itself at full
   health. The word differs from the units' Repair. An enemy building never shows its switch.
 - **Sell** (one own complete building with a price selected; never the Headquarters or a site):
-  the first tap arms it: it turns amber and shows "+N", the refund now. A second tap within
-  `sell_confirm_ms` sends one `SELL`, with a buzz. Any other touch, or the time running out,
-  disarms it with nothing sent. Never a hold: a resting thumb must not sell.
+  the first tap arms it: it turns amber and shows "+N", the refund now. A second tap sends one
+  `SELL`, with a buzz, only between `sell_arm_min_ms` (400) and `sell_confirm_ms` (3000) after
+  the first. A second tap before `sell_arm_min_ms` is ignored and keeps the arm. Any other touch,
+  or the window running out, disarms it with nothing sent. Never a hold: a resting thumb must not
+  sell. The Sell button keeps its place and a fixed width, sized for the widest "+N", so the
+  refund never shifts it or its neighbours.
   - On the player's last production building the second tap opens the question card that
     Surrender uses: "Selling it loses the match", Keep / Sell. Only Sell sends the Command; Keep,
     a tap outside the card or a turn of the phone closes it with nothing sent.
-- `sell_confirm_ms` lives in `data/input_settings.tres`. Each order adds its glyph and its
-  HOW_TO_PLAY line in the row that ships it.
+- `sell_arm_min_ms` and `sell_confirm_ms` live in `data/input_settings.tres`. Each order adds its
+  glyph and its HOW_TO_PLAY line in the row that ships it.
 ```
 
 **Part 5 (ADR 0036 §12's picking, which P244 also needs). "Sizes in dp": add after the
@@ -408,7 +446,9 @@ pick-order bullet.**
 ```markdown
 - Aircraft are picked at their lifted point (the ground point raised by the art's `fly_px`, or
   `low_fly_px` for drone squads), with the same least radius of 24 dp. A ground unit beneath stays
-  tappable at its own point. Where the two pick discs overlap the flyer wins, and the ground unit
-  is reached by a box or a double-tap on another of its type. With units selected, a tap on an
-  enemy that none of them can hit sends no attack; it selects that enemy for its info only.
+  tappable at its own point. Where two pick discs of one pick rank overlap, the flyer wins; the
+  rank order above still comes first, so with own units selected an enemy ground unit beats an
+  own flyer. A ground unit hidden under a flyer of its rank is reached by a box or a double-tap on
+  another of its type; a lone one by a box only. With units selected, a tap on an enemy that none
+  of them can hit does nothing: a short shake, and the selection is kept.
 ```

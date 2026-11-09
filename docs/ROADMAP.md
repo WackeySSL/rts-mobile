@@ -91,8 +91,8 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   in lockstep)
 - [ ] The AI uses every new unit and building through Commands only, with no target it has not seen,
   on Normal and Hard (satellite included); the fairness suite proves it headless
-- [ ] The balance run passes the ADR 0031 gate thresholds with the new units: 26 unit types, each
-  built in at least 50 of 100 matches
+- [ ] The balance run (seeds 1-100) passes the ADR 0031 gate thresholds with the new units: 26 unit
+  types, each built in at least 50 of 100 matches
 - [ ] Performance: 150 units at 60 fps on the reference phone with aircraft (`perf_air`) and with
   mines and repairers (`perf_bases`), draw calls within the forecast
 - [ ] Gate: the ADR 0031 gate run on held-out seeds passes with all 26 unit types, and on Michael's

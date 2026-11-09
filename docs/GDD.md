@@ -178,7 +178,8 @@ Everything below is a starting value for the balance runs. The real numbers live
 - **The engineering centre** researches two bomber upgrades, each once per match, in the Research
   tab: heavier bombs (+25 % damage) and a tougher hull (-25 % damage taken) (answer 5 A).
 - **The space centre** charges once, for 3 minutes. Then its button lifts the fog over the whole
-  map until that space centre is destroyed (answer 3 B). There is no timer and no recharge.
+  map until that space centre is destroyed (answer 3 B). There is no timer and no recharge. The
+  button cannot be fired while you are on low power.
   - A Dusk Array blackout on the space centre, or low power, pauses the sweep, as it silences
     defences. The sweep comes back by itself when the blackout ends or the power returns.
   - Ground the sweep showed stays explored, and the buildings it showed stay as last seen.

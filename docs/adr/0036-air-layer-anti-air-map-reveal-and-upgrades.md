@@ -457,6 +457,10 @@ options as they were asked.
 - **Duration (answer 3 B).** No timer. A sweep fired at minute 6 lifts the fog for the rest of the
   match unless the enemy answers it. The checks on it are the price (2,000), the 3-minute charge,
   the warning, the indicator and the pause. The balance run watches whether it decides matches.
+- Note (2026-11-09, P230 fix 1, after touch-ux-dev's docs lens): a SUPERWEAPON on a REVEAL
+  building is also refused while its owner is on low power (`Power.is_low`, as `Reveal.run`
+  reads it), so the single charge is never spent into a sweep that would pause at once. The
+  strike button dims and shows the reason. The pause rule for a standing sweep is unchanged.
 
 ### 12. Commands and touch, per unit (touch-ui-rules: 48 dp, portrait and landscape)
 | Unit | Gestures | New HUD |
@@ -483,6 +487,15 @@ options as they were asked.
   ground carriers (the Bunk Wagon and the Linecar), with the same aims. ADR 0037 adds the Repair,
   Mend, Sell, Mine and Hold buttons. The draft skill text for all of them is in the plan's section
   "touch-ui-rules text for Michael's yes (P230)".
+- Note (2026-11-09, P230 fix 1, after touch-ux-dev's docs lens): "48 dp" in the table above
+  reads "at least 48 dp; `CommandBar.ORDER_DP` 56 x 64". The fighter row's "the tap selects it,
+  as a tap on an own unit does" is replaced: with units selected, a tap on an enemy that none of
+  them can hit does nothing (a short shake, the selection kept), and a mixed selection attacks
+  with the rows that can hit. The flyer wins an overlapping pick only within one pick rank, so
+  with own units selected an enemy ground unit still beats an own flyer; a lone ground unit
+  hidden under a flyer is reached by a box only. Outside an open aim a tap on an own unit or
+  building selects it. The aims place their check mark and X by `GhostControls`' column rule
+  beside the aimed point, not in the strike aim's row.
 - **HOW_TO_PLAY.** Each row is added in the PR that ships it. Teach: aircraft go home to reload,
   the Home button, Board and Unload, and the satellite.
 

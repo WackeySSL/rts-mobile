@@ -22,14 +22,14 @@ unit acquires, keeps and locks only an enemy its player sees (`Targeting.sees`),
 a held target and of an `ATTACK` lock is tested, and who sees every cell (the lead's decision of
 2026-10-21). No accepted text changed.
 
-Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §1-§4: weapons
-gain a `targets` layer mask (ground 1, air 2, low air 4; default 1), tested in acquisition, the
-ATTACK lock, `_apply_attack` and `Combat.fire`; there is no fifth armour class. Damage becomes
-`Combat.damage(base, percent, dealt, taken)`, equal to today's formula at 100 and 100, with research
-modifiers (ADR 0036 §5, §10); mine blasts use it (ADR 0037 §8). §2-§3: hold position (ADR 0037 §15)
-makes a `stance` 1 row on ATTACK_MOVE acquire at weapon range and never chase, and an ATTACK whose
-target is gone go IDLE. ADR 0037's amends list missed this ADR; this note closes the gap. No
-accepted text changed.
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §1-§4:
+weapons gain a `targets` layer mask (ground 1, air 2, low air 4; default 1), tested in
+acquisition, the ATTACK lock, `_apply_attack` and `Combat.fire`; there is no fifth armour class.
+Damage becomes `Combat.damage(base, percent, dealt, taken)`, equal to today's formula at 100 and
+100, with research modifiers (ADR 0036 §5, §10); mine blasts use it (ADR 0037 §8). §2-§3: hold
+position (ADR 0037 §15) makes a `stance` 1 row on ATTACK_MOVE acquire at weapon range and never
+chase, and an ATTACK whose target is gone go IDLE. ADR 0037's amends list missed this ADR; this
+note closes the gap. No accepted text changed.
 
 ## Context
 ROADMAP Phase 2 asks for "combat with projectiles, armour classes and death". The GDD lists six
