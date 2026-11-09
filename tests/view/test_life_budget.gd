@@ -912,12 +912,12 @@ func test_nodes_and_objects_stay_flat_in_the_damage_passes() -> void:
 	# that hid or ended.
 	for run: Pass in _damage_passes():
 		assert_int(run.unexplained_nodes).is_equal(0)
-	# Objects too. Where shots and falling buildings run, one bare Object (not a Node or a
-	# Resource; its origin is unknown) comes and goes: bounded at 1 in the assault pass, and 1 tick
-	# in the collapse pass, whose other object changes are its nodes'.
+	# Objects too. Where shots and falling buildings run, one bare Object (not a Node or a Resource;
+	# its origin is unknown) comes and goes: 1 tick in the collapse pass, whose other object changes
+	# are its nodes'. Two buildings fall in the assault pass (P195d-2, ADR 0033): 5 nodes, 7 objects.
 	for run: Pass in [_full, _hp40, _hp20, _tail, _restore, _in_step, _heal, _flip]:
 		assert_int(run.unexplained_objects).is_equal(0)
-	assert_int(_assault_pass.objects_hi - _assault_pass.objects_lo).is_less_equal(1)
+	assert_int(_assault_pass.objects_hi - _assault_pass.objects_lo).is_less_equal(7)
 	assert_int(_collapse.unexplained_objects).is_less_equal(1)
 
 
