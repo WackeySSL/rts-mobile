@@ -325,3 +325,10 @@ counts, so the lead verifies their combined tree once before merging the second.
 
 Answered by Michael on 2026-11-09 (chat, "ADR 0033: begge A"): question 1 **A**, question 2 **A**.
 P195c-2 draws the second door; P195c-3 removes the explored rule (E1, §4).
+
+Note (2026-11-09, the lead, from P195c-1's review): §1's equivariance holds for every building
+centre except the map centre itself, the fixed point of every turn, where `facing` returns SOUTH by
+convention. Two seats can never both own a building there, so it adds no seat bias. Follow-up row
+P195e: a dock covered by the owner's own building never unloads (`Harvest._dock` does not walk the
+ring); either the dock walks the ring like `tile_from`, or Placement refuses a footprint on an own
+dock or exit tile. Turned docks make this easier to hit.
