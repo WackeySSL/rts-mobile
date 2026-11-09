@@ -5,11 +5,11 @@ name: Balance run
 # never see it. Never a required check, never on a pull request, no schedule. It starts after a merge that changes the AI, the
 # sim, the data or the native code, and by hand (`workflow_dispatch`: suite balance, gate or custom). The gate run (suite=gate)
 # plays the held-out seeds 1001-1100 on `main` (section 6); a custom run (the tuning PR's "after") keeps its artifact only.
-# A run plays the commit it is dispatched on ("Use workflow from"); there is no ref input, so github.sha is the commit played
-# and a branch's caches stay in the branch's own scope. scripts/ci/balance-plan.sh owns the shard table and
+# A run plays the commit it is dispatched on ("Use workflow from"); there is no ref input, so github.sha is the commit played.
+# scripts/ci/balance-plan.sh owns the shard table and
 # tests/project/test_ci_balance_workflow.gd pins it and this file's rules. The label and the issue "Balance reports" are made
 # once by the lead: `post` never creates them and fails clearly when they are missing.
-# The gate's rerun (ADR 0031 section 6, seeds 1101-1200) is merged by hand, not here: run `custom` on the gate's commit for the
+# The gate's rerun (ADR 0031 section 6, seeds 1101-1200) is merged by hand, not here: run `custom` on the gate's commit (dispatch from `main` if it has not moved, else from a branch pushed at the gate's SHA) for the
 # gate set's levels (normal,normal), scenarios cross and seeds 1101-1200, download the artifacts of both runs, then run
 # `bash scripts/balance-summary.sh --gate --out gate-200.json <the gate run's gate.json> <the rerun's custom.json>`.
 on:
@@ -48,7 +48,9 @@ on:
 permissions: {}
 
 # A push and a manual balance run share a group, so a burst of merges ends in one run on the newest commit. A gate or custom
-# run has its own group: a merge never cancels it.
+# run has its own group: a merge never cancels it. The group is keyed on the branch the run is dispatched from ("of `main`"
+# for a push), so two `custom` runs from one branch cancel each other: run the two custom runs of the gate procedure
+# one after the other.
 concurrency:
   group: balance-${{ github.ref }}-${{ inputs.suite || 'balance' }}
   cancel-in-progress: true
@@ -265,6 +267,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && !github.event.repository.fork && (github.event_name == 'push' || inputs.suite != 'custom')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # issues: write is for the one comment on the balance issue; nothing else is granted.
     permissions:
       issues: write
     steps:
@@ -303,7 +306,7 @@ jobs:
           } > body.md
           if [ "$(wc -c < body.md)" -gt 60000 ]; then
             head -c 58000 body.md > cut.md
-            printf '\n\n(Cut at 58000 bytes, the comment limit; the whole report is in the artifact of %s.)\n' "$RUN_URL" >> cut.md
+            printf '\n\n(Cut at 58000 bytes, under GitHub's 65536 character comment limit; the whole report is in the artifact of %s.)\n' "$RUN_URL" >> cut.md
             mv cut.md body.md
           fi
           gh issue comment "$number" --body-file body.md

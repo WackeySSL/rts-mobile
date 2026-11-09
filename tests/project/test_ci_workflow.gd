@@ -89,7 +89,7 @@ const BASES_GREP: String = (
 )
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
-const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI think time, report only)'"
+const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI's report-only lines)'"
 const WATCH_AI_PATTERN: String = "^WATCH ai "
 const WATCH_AI_GREP: String = (
 	"grep -a -E '"
@@ -738,9 +738,10 @@ func _assert_watch_ai_summary(step: Array) -> void:
 	assert_int(heading).is_greater(step.find(BASES_GREP))
 	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
 	var shown: Array[String] = [
-		"WATCH ai think impl=native slots=4 thinks=900 p95_us=412 max_us=900",
-		"WATCH ai flow_full_ticks=0 hash=4eb974e71b2107be",
-		"WATCH ai flow seed=3 match=1 ticks=2700",
+		"WATCH ai think impl=native slots=3 thinks=360 p95_us=412 max_us=900 est_phone_p95_ms=1.2",
+		"WATCH ai flow seed=42 ticks=900 full_ticks=191 hash=4eb974e71b2107be",
+		"WATCH ai peaks seed=42 ticks=900 work_max=3",
+		"WATCH ai flow impl=native match=normal-hard seed=1 ticks=2700 run=1 full_ticks=0",
 	]
 	for line: String in shown:
 		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_true()

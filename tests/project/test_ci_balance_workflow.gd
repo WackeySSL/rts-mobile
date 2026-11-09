@@ -210,7 +210,7 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 		)
 	var native: Array = Array(_step(shards, "Check the shard ran native on the built commit"))
 	assert_bool(native.any(_checks_native_and_commit)).is_true()
-	for step: Array in [shard, native]:
+	for step: Array in [shard, native, guard]:
 		for line: String in step:
 			(
 				assert_bool(line.begins_with("if:") or line.begins_with("continue-on-error:"))
