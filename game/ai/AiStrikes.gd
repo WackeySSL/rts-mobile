@@ -9,9 +9,10 @@ extends RefCounted
 ##
 ## A Deep Bore (rupture) fires on the point of the most enemy value within its radius that holds no
 ## own row and no live army goal (the wave's goal while a wave is in the field, the home goal while
-## a defence stands: the army is walking there and the shot lands 45 ticks later), once that value
-## is not below `strike_min_value`. A Dusk Array (blackout) fires once per wave, while the wave has
-## a live member, on the producer cluster of most value, preferring the producers within reach of
+## a threat stands, or the staging point when a recall has just cleared that goal: the army is
+## walking there and the shot lands 45 ticks later), once that value is not below
+## `strike_min_value`. A Dusk Array (blackout) fires once per wave, while the wave has a live
+## member, on the producer cluster of most value, preferring the producers within reach of
 ## the wave's goal. The two are told apart by the view's `type_strike_kind`, not by a name. Both
 ## read only what the AI may know: the seen enemy buildings, combat units and other units (tankers)
 ## that `AiIntel` listed, and the ghosts. A thing counts once its type's first sighting is
@@ -215,7 +216,8 @@ func _add(x: int, y: int, value: int) -> void:
 
 ## Fills `_bx`, `_by` with the own rows (buildings from `site_*`, units from `own_mobile_id`) and
 ## the live army goals that lie within `radius` of the things' bounding box. Not counted: it is
-## the pre-filter of the own check.
+## the pre-filter of the own check. While a threat stands and the home goal is NONE, the staging
+## point stands in for the home goal.
 func _block(view: PlayerView, memory: AiMemory, radius: int) -> void:
 	_bx.clear()
 	_by.clear()
@@ -241,7 +243,15 @@ func _block(view: PlayerView, memory: AiMemory, radius: int) -> void:
 	):
 		_keep_goal(memory.squad_goal_x[wave], memory.squad_goal_y[wave], lo, hi)
 	if memory.squads_max > AiArmy.HOME and memory.threat_first_tick != AiMemory.NONE:
-		_keep_goal(memory.squad_goal_x[AiArmy.HOME], memory.squad_goal_y[AiArmy.HOME], lo, hi)
+		var goal_x: int = memory.squad_goal_x[AiArmy.HOME]
+		var goal_y: int = memory.squad_goal_y[AiArmy.HOME]
+		if goal_x < 0 or goal_y < 0:
+			# A recall clears the home goal only when it was the staging point, so the staging
+			# point stands in for the cleared goal until an order sets the home goal again (the
+			# home squad's last order still leads there; the next defence or focus may not).
+			goal_x = memory.staging_x
+			goal_y = memory.staging_y
+		_keep_goal(goal_x, goal_y, lo, hi)
 
 
 func _keep_goal(col: int, line: int, lo: Vector2i, hi: Vector2i) -> void:
