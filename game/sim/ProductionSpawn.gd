@@ -15,6 +15,7 @@ extends RefCounted
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
 	var kind: int = world.type_index[producer]
 	var exit: Vector2i = Vector2i(world.type_exit_x[kind], world.type_exit_y[kind])
+	exit = Buildings.seat_offset(world, world.owner[producer], kind, exit)
 	return _spawn_from(world, player, type, producer, exit)
 
 
@@ -31,6 +32,7 @@ static func spawn_free(world: World, building: int) -> bool:
 	var dock: Vector2i = Vector2i(world.type_dock_x[kind], world.type_dock_y[kind])
 	if free < 0 or dock == Vector2i.ZERO:
 		return false
+	dock = Buildings.seat_offset(world, world.owner[building], kind, dock)
 	if not _spawn_from(world, world.owner[building], free, building, dock):
 		return false
 	if world.type_harvest[free] > 0:

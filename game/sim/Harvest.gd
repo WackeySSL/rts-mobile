@@ -322,9 +322,12 @@ static func _choose(world: World, row: int) -> void:
 static func _dock(world: World, at: int) -> Vector2i:
 	var origin: Vector2i = Buildings.footprint_origin(world, at)
 	var type: int = world.type_index[at]
+	var dock: Vector2i = Buildings.seat_offset(
+		world, world.owner[at], type, Vector2i(world.type_dock_x[type], world.type_dock_y[type])
+	)
 	return Vector2i(
-		(origin.x + world.type_dock_x[type]) * World.MILLI_PER_TILE + World.TILE_CENTRE,
-		(origin.y + world.type_dock_y[type]) * World.MILLI_PER_TILE + World.TILE_CENTRE
+		(origin.x + dock.x) * World.MILLI_PER_TILE + World.TILE_CENTRE,
+		(origin.y + dock.y) * World.MILLI_PER_TILE + World.TILE_CENTRE
 	)
 
 
