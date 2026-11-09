@@ -87,10 +87,10 @@ const BASES_GREP: String = (
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
 )
-## P190: after the bases block, the same step copies the `WATCH ai think` lines of
-## tests/perf/test_ai_perf.gd (P189) under a heading of their own. Report only.
+## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
+## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
 const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI think time, report only)'"
-const WATCH_AI_PATTERN: String = "^WATCH ai think"
+const WATCH_AI_PATTERN: String = "^WATCH ai "
 const WATCH_AI_GREP: String = (
 	"grep -a -E '"
 	+ WATCH_AI_PATTERN
@@ -730,7 +730,7 @@ func _assert_perf_bases_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
 
 
-## P190: the same step copies the `WATCH ai think` lines, under a heading of their own after the
+## P190: the same step copies every `WATCH ai ` line, under a heading of their own after the
 ## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
 func _assert_watch_ai_summary(step: Array) -> void:
 	assert_array(step).contains([WATCH_AI_HEADING, WATCH_AI_GREP])
@@ -738,7 +738,9 @@ func _assert_watch_ai_summary(step: Array) -> void:
 	assert_int(heading).is_greater(step.find(BASES_GREP))
 	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
 	var shown: Array[String] = [
-		"WATCH ai think ticks=900 mean_us=412", "WATCH ai think impl=native"
+		"WATCH ai think impl=native slots=4 thinks=900 p95_us=412 max_us=900",
+		"WATCH ai flow_full_ticks=0 hash=4eb974e71b2107be",
+		"WATCH ai flow seed=3 match=1 ticks=2700",
 	]
 	for line: String in shown:
 		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_true()
@@ -750,6 +752,7 @@ func _assert_watch_ai_summary(step: Array) -> void:
 		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
 		" WATCH ai think ticks=900",
 		"perf: WATCH ai think is not printed",
+		"WATCH aim think",
 	]
 	for line: String in skipped:
 		assert_bool(_perf_selected(line, WATCH_AI_PATTERN)).is_false()

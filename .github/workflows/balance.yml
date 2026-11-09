@@ -5,8 +5,13 @@ name: Balance run
 # never see it. Never a required check, never on a pull request, no schedule. It starts after a merge that changes the AI, the
 # sim, the data or the native code, and by hand (`workflow_dispatch`: suite balance, gate or custom). The gate run (suite=gate)
 # plays the held-out seeds 1001-1100 on `main` (section 6); a custom run (the tuning PR's "after") keeps its artifact only.
-# scripts/ci/balance-plan.sh owns the shard table, tests/project/test_ci_workflow.gd pins it and this file's rules. The label
-# and the issue "Balance reports" are made once by the lead: `post` never creates them and fails clearly when they are missing.
+# A run plays the commit it is dispatched on ("Use workflow from"); there is no ref input, so github.sha is the commit played
+# and a branch's caches stay in the branch's own scope. scripts/ci/balance-plan.sh owns the shard table and
+# tests/project/test_ci_balance_workflow.gd pins it and this file's rules. The label and the issue "Balance reports" are made
+# once by the lead: `post` never creates them and fails clearly when they are missing.
+# The gate's rerun (ADR 0031 section 6, seeds 1101-1200) is merged by hand, not here: run `custom` on the gate's commit for the
+# gate set's levels (normal,normal), scenarios cross and seeds 1101-1200, download the artifacts of both runs, then run
+# `bash scripts/balance-summary.sh --gate --out gate-200.json <the gate run's gate.json> <the rerun's custom.json>`.
 on:
   push:
     branches: [main]
@@ -18,14 +23,10 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: "balance: the five sets; gate: the held-out seeds 1001-1100; custom: one set below (artifact only)"
+        description: "balance: the five sets; gate: the held-out seeds 1001-1100; custom: one set below (artifact only); gate runs on main only"
         type: choice
         options: [balance, gate, custom]
         default: balance
-      ref:
-        description: "Branch, tag or SHA to run (a branch's custom run is its tuning PR's after)"
-        type: string
-        default: main
       levels:
         description: "custom: the two controllers, like normal,hard (easy, normal, hard, dummy)"
         type: string
@@ -39,7 +40,7 @@ on:
         type: string
         default: "20"
       seed_start:
-        description: "custom: the first seed (the gate's 1000-1100 are refused)"
+        description: "custom: the first seed (a range that reaches 1000-1100 is refused: 1000 bounds the balance sets, the gate plays 1001-1100)"
         type: string
         default: "1"
 
@@ -73,9 +74,20 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       sets: ${{ steps.plan.outputs.sets }}
     steps:
+      # First, before any checkout, so it runs no repository code: the held-out seeds are played on main only.
+      - name: Refuse a gate run off main
+        env:
+          SUITE: ${{ inputs.suite || 'balance' }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$SUITE" = "gate" ] && [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::A gate run plays main only (ADR 0031 section 6); dispatch it with Use workflow from: main."
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       # The shard table and the check of a custom run's inputs, before anything is built. A bad input fails here.
@@ -88,22 +100,10 @@ jobs:
           MATCHES: ${{ inputs.matches }}
           SEED_START: ${{ inputs.seed_start }}
         run: |
-          {
-            echo "sha=$(git rev-parse HEAD)"
-            echo "matrix=$(bash scripts/ci/balance-plan.sh matrix)"
-            echo "sets=$(bash scripts/ci/balance-plan.sh sets)"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Cache Godot editor and web export templates
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
-            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
-          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
-
-      - name: Install Godot (editor + web no-threads templates only)
-        run: bash scripts/ci/install-godot.sh
+          matrix="$(bash scripts/ci/balance-plan.sh matrix)"
+          sets="$(bash scripts/ci/balance-plan.sh sets)"
+          sha="$(git rev-parse HEAD)"
+          { echo "sha=$sha"; echo "matrix=$matrix"; echo "sets=$sets"; } >> "$GITHUB_OUTPUT"
 
       - name: Install the native toolchain (SCons, binutils)
         run: |
@@ -116,8 +116,9 @@ jobs:
           key="$(bash scripts/build-native.sh --print-cache-key)"
           echo "key=$key" >> "$GITHUB_OUTPUT"
 
-      - name: Cache godot-cpp and the SCons object cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore only: ci.yml's verify job saves this key on every push to main.
+      - name: Restore godot-cpp and the SCons object cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             native/godot-cpp
@@ -136,7 +137,7 @@ jobs:
             native/bin/
             native/sim_kernels.gdextension
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   shards:
     needs: build
@@ -150,7 +151,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ needs.build.outputs.sha }}
           persist-credentials: false
 
       - name: Restore the Godot editor and web export templates
@@ -170,24 +171,25 @@ jobs:
           name: balance-native
           path: native
 
-      # GITHUB_SHA is the commit that the report stores. A manual run of another `ref` runs on the checkout, not on the
-      # workflow's own commit, so the step sets it to the checkout's.
+      # The report stores GITHUB_SHA as its commit. The runner resets GITHUB_* in a step's env, so it is set in the shell.
       - name: Play the shard (run-sim-smoke.sh)
         env:
-          GITHUB_SHA: ${{ needs.build.outputs.sha }}
+          BUILD_SHA: ${{ needs.build.outputs.sha }}
           SHARD: ${{ matrix.name }}
           MATCHES: ${{ matrix.matches }}
           SEED_START: ${{ matrix.seed_start }}
           LEVELS: ${{ matrix.levels }}
           SCENARIOS: ${{ matrix.scenarios }}
         run: |
-          bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START" --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"
+          GITHUB_SHA="$BUILD_SHA" bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START" --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"
 
-      # The balance run measures the native kernels (ADR 0031 section 1): a shard that fell back to GDScript fails.
-      - name: Check the shard ran native
+      # The balance run measures the native kernels (ADR 0031 section 1): a shard that fell back to GDScript fails. The
+      # report must also name the commit that was built.
+      - name: Check the shard ran native on the built commit
         env:
           SHARD: ${{ matrix.name }}
-        run: python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["impl"] == "native" else "the shard did not run on the native library")' "build/balance/$SHARD.json"
+          BUILD_SHA: ${{ needs.build.outputs.sha }}
+        run: python3 -I -c 'import json, sys; r = json.load(open(sys.argv[1])); sys.exit(0 if r["impl"] == "native" and r["commit"] == sys.argv[2] else "the shard did not run native on the built commit")' "build/balance/$SHARD.json" "$BUILD_SHA"
 
       - name: Upload the shard report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -208,7 +210,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ needs.build.outputs.sha }}
           persist-credentials: false
 
       - name: Restore the Godot editor and web export templates
@@ -256,10 +258,11 @@ jobs:
           retention-days: 90
 
   # No checkout and no repository code: it reads the markdown the summarise job made and talks to the issue. Only a push
-  # run and a balance or gate run of `main` post; a custom run, or a run of another ref, keeps the artifact only.
+  # run and a balance or gate run of `main` post; a custom run, or a run of another branch, keeps the artifact only. Event data
+  # reaches the scripts only through env.
   post:
     needs: [build, summarise]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (inputs.suite != 'custom' && inputs.ref == 'main'))
+    if: github.ref == 'refs/heads/main' && !github.event.repository.fork && (github.event_name == 'push' || inputs.suite != 'custom')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -277,6 +280,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           SHA: ${{ needs.build.outputs.sha }}
           SUITE: ${{ inputs.suite || 'balance' }}
+          SETS: ${{ needs.build.outputs.sets }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           number="$(gh issue list --label balance --state open --limit 20 --json number,title --jq '[.[] | select(.title == "Balance reports")][0].number // empty')"
@@ -288,11 +292,11 @@ jobs:
             echo "### Balance run on \`main\` at \`$SHA\`"
             echo
             echo "Suite: $SUITE. Run: $RUN_URL"
-            for f in summary/*.md; do
+            for set in $SETS; do
               echo
-              echo "<details open><summary>$(basename "$f" .md)</summary>"
+              echo "<details open><summary>$set</summary>"
               echo
-              cat "$f"
+              cat "summary/$set.md"
               echo
               echo "</details>"
             done

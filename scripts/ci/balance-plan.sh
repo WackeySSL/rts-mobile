@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The shard table of the balance run (P190, ADR 0031 sections 5 and 6): prints the matrix of
 # .github/workflows/balance.yml's `shards` job, or the names of the sets that its `summarise` job
-# merges, for the suite in SUITE. tests/project/test_ci_workflow.gd runs this script and pins the table.
+# merges, for the suite in SUITE. tests/project/test_ci_balance_workflow.gd runs this script and pins the table.
 # Usage: bash scripts/ci/balance-plan.sh matrix|sets
 # Env:   SUITE   balance (default), gate or custom
 #        custom only: LEVELS (default normal,normal), SCENARIOS (default cross), MATCHES (default 20),
@@ -9,8 +9,9 @@
 # Output: matrix  one line of JSON, {"include":[{set, levels, scenarios, seed_start, matches, name}, ...]}
 #         sets    the set names, space separated; a set's shard reports are build/balance/<set>-*.json
 # Sets:  balance runs the five sets of the table below. gate runs the held-out set, seeds 1001-1100. custom
-#        plays one set in shards of at most 25 matches and refuses any seed from 1000 to 1100 (the gate's
-#        seeds stay unplayed, section 6; the rerun's 1101-1200 is allowed).
+#        plays one set in shards of at most 25 matches and refuses a seed range that reaches 1000-1100 (1000
+#        bounds the balance sets and the gate plays 1001-1100, which stay unplayed, section 6; the rerun's
+#        1101-1200 is allowed) or whose last seed has more than 9 digits (run-sim-smoke.sh's limit).
 # Exit:  0 ok; 2 bad argument or a value that is not valid
 # Bash 3.2 compatible.
 set -euo pipefail
@@ -73,8 +74,9 @@ case "$suite" in
     [[ "$seed_start" =~ ^[1-9][0-9]{0,8}$ ]] || bad "SEED_START must be a positive integer of at most 9 digits"
     last=$((seed_start + matches - 1))
     if [ "$seed_start" -le 1100 ] && [ "$last" -ge 1000 ]; then
-      bad "seeds $seed_start-$last reach the gate's held-out seeds 1000-1100; a custom run never plays them"
+      bad "seeds $seed_start-$last reach 1000-1100 (the gate plays 1001-1100); a custom run never plays them"
     fi
+    [ "$last" -le 999999999 ] || bad "seeds $seed_start-$last pass 9 digits, which run-sim-smoke.sh refuses"
     left="$matches"
     seed="$seed_start"
     while [ "$left" -gt 0 ]; do

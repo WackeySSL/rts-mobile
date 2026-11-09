@@ -17,7 +17,6 @@ const BALANCE_PATHS: Array[String] = [
 ]
 const BALANCE_INPUTS: Array[String] = [
 	"      suite:",
-	"      ref:",
 	"      levels:",
 	"      scenarios:",
 	"      matches:",
@@ -29,9 +28,23 @@ const BALANCE_CONCURRENCY: Array[String] = [
 	"  cancel-in-progress: true",
 ]
 const BALANCE_POST_IF: String = (
-	"    if: github.ref == 'refs/heads/main' && (github.event_name == 'push'"
-	+ " || (inputs.suite != 'custom' && inputs.ref == 'main'))"
+	"    if: github.ref == 'refs/heads/main' && !github.event.repository.fork"
+	+ " && (github.event_name == 'push' || inputs.suite != 'custom')"
 )
+const BALANCE_JOBS: Array[String] = ["  build:", "  shards:", "  summarise:", "  post:"]
+const GUARD_STEP: String = "Refuse a gate run off main"
+const GUARD_IF: String = 'if [ "$SUITE" = "gate" ] && [ "$REF" != "refs/heads/main" ]; then'
+const PLAN_MATRIX: String = 'matrix="$(bash scripts/ci/balance-plan.sh matrix)"'
+const PLAN_SETS: String = 'sets="$(bash scripts/ci/balance-plan.sh sets)"'
+const PLAN_OUTPUT: String = (
+	'{ echo "sha=$sha"; echo "matrix=$matrix"; echo "sets=$sets"; }' + ' >> "$GITHUB_OUTPUT"'
+)
+const POST_HEADER: String = 'echo "### Balance run on \\`main\\` at \\`$SHA\\`"'
+const NATIVE_ARTIFACT: Array[String] = [
+	"name: balance-native",
+	"native/bin/",
+	"native/sim_kernels.gdextension",
+]
 ## Set, levels, scenarios, first seed and matches of every shard of a balance run: 190 matches.
 const BALANCE_TABLE: Array[String] = [
 	"tuning|normal,normal|cross|1|25",
@@ -50,7 +63,7 @@ const BALANCE_TABLE: Array[String] = [
 
 
 ## P190: the triggers of balance.yml. A push to main that changes the AI, the sim, the data or the
-## native code, and a manual run with the suite, the ref and the custom set's inputs. No schedule,
+## native code, and a manual run with the suite and the custom set's inputs. No schedule,
 ## no pull request (so it can never be a required check), and nothing else starts it.
 func test_balance_workflow_runs_on_a_filtered_push_and_by_hand_only() -> void:
 	var lines: PackedStringArray = _lines(BALANCE)
@@ -75,7 +88,7 @@ func test_balance_workflow_runs_on_a_filtered_push_and_by_hand_only() -> void:
 	inputs = inputs.filter(func(line: String) -> bool: return not line.begins_with("      - "))
 	assert_array(inputs).contains_exactly(BALANCE_INPUTS)
 	assert_array(Array(block)).contains(["        options: [balance, gate, custom]"])
-	assert_array(Array(block)).contains(["        default: balance", "        default: main"])
+	assert_array(Array(block)).contains(["        default: balance"])
 	for line: String in lines:
 		if line.strip_edges().begins_with("#"):
 			continue
@@ -111,7 +124,18 @@ func test_balance_workflow_jobs_hold_the_least_permissions_and_post_runs_no_repo
 		assert_bool(job.has("    runs-on: ubuntu-24.04")).is_true()
 		_assert_job_always_runs(job)
 	var post: PackedStringArray = _job(lines, "  post:")
-	assert_str(post[post.find(BALANCE_POST_IF)]).is_equal(BALANCE_POST_IF)
+	assert_bool(post.has(BALANCE_POST_IF)).is_true()
+	var post_uses: Array[String] = []
+	for line: String in post:
+		if line.strip_edges().begins_with("- uses:") or line.strip_edges().begins_with("uses:"):
+			post_uses.append(line.strip_edges().trim_prefix("- "))
+	assert_int(post_uses.size()).is_equal(1)
+	assert_str(post_uses[0]).starts_with("uses: actions/download-artifact@")
+	var jobs: Array[String] = []
+	for at: int in range(lines.find("jobs:") + 1, lines.size()):
+		if lines[at].begins_with("  ") and lines[at][2] != " " and lines[at][2] != "#":
+			jobs.append(lines[at])
+	assert_array(jobs).contains_exactly(BALANCE_JOBS)
 	for line: String in post:
 		for word: String in ["checkout", "uses: ./", "scripts/", "bash scripts", "hashFiles"]:
 			assert_bool(line.contains(word)).is_false()
@@ -126,13 +150,40 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 	var lines: PackedStringArray = _lines(BALANCE)
 	var build: PackedStringArray = _job(lines, "  build:")
 	var plan: Array = Array(_step(build, "Plan the shards"))
-	for call: String in ["matrix", "sets"]:
-		assert_array(plan).contains(
-			['echo "%s=$(bash scripts/ci/balance-plan.sh %s)"' % [call, call]]
-		)
+	# The results are assigned before they are echoed: a failing script then fails the step.
+	var at_matrix: int = plan.find(PLAN_MATRIX)
+	assert_int(at_matrix).is_greater(-1)
+	assert_int(plan.find(PLAN_SETS)).is_greater(at_matrix)
+	assert_int(plan.find(PLAN_OUTPUT)).is_greater(plan.find(PLAN_SETS))
 	assert_array(plan).contains(["SUITE: ${{ inputs.suite || 'balance' }}"])
-	_assert_order(
-		build, ["Plan the shards", "Install Godot (editor + web no-threads templates only)"]
+	_assert_plan_step_fails_on_bad_input(plan)
+	var guard: Array = Array(_step(build, GUARD_STEP))
+	assert_array(guard).contains(
+		["SUITE: ${{ inputs.suite || 'balance' }}", "REF: ${{ github.ref }}", GUARD_IF, "exit 1"]
+	)
+	var checkout: int = build.find(
+		"      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
+	)
+	assert_int(build.find("      - name: " + GUARD_STEP)).is_less(checkout)
+	assert_int(checkout).is_greater(-1)
+	_assert_order(build, [GUARD_STEP, "Plan the shards"])
+	for line: String in build:
+		assert_bool(line.contains("install-godot") or line.contains("actions/cache@")).is_false()
+	var restore: Array = Array(_step(build, "Restore godot-cpp and the SCons object cache"))
+	assert_str(restore[1]).starts_with("uses: actions/cache/restore@")
+	assert_array(Array(_step(build, "Upload the native library"))).contains(NATIVE_ARTIFACT)
+	# One run plays one commit: the checkouts name it, and there is no ref input.
+	assert_bool(build.has("          ref: ${{ github.sha }}")).is_true()
+	for header: String in ["  shards:", "  summarise:"]:
+		(
+			assert_bool(_job(lines, header).has("          ref: ${{ needs.build.outputs.sha }}"))
+			. is_true()
+		)
+	for line: String in lines:
+		assert_bool(line.contains("inputs.ref")).is_false()
+	_assert_no_expression_in_run_blocks(lines)
+	assert_str(_pin(WORKFLOWS + BALANCE, "GODOT_VERSION")).is_equal(
+		_pin(WORKFLOWS + "ci.yml", "GODOT_VERSION")
 	)
 	_assert_order(build, ["Build the library (build-native.sh)", "Upload the native library"])
 	_assert_step(
@@ -141,10 +192,13 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 	var shards: PackedStringArray = _job(lines, "  shards:")
 	var shard: Array = Array(_step(shards, "Play the shard (run-sim-smoke.sh)"))
 	var run: String = (
-		'bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START"'
+		'GITHUB_SHA="$BUILD_SHA" bash scripts/run-sim-smoke.sh --matches "$MATCHES"'
+		+ ' --seed-start "$SEED_START"'
 		+ ' --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"'
 	)
-	assert_array(shard).contains([run, "GITHUB_SHA: ${{ needs.build.outputs.sha }}"])
+	assert_array(shard).contains([run, "BUILD_SHA: ${{ needs.build.outputs.sha }}"])
+	# The runner resets GITHUB_* in a step's env, so it is never set there.
+	assert_bool(shard.has("GITHUB_SHA: ${{ needs.build.outputs.sha }}")).is_false()
 	for field: String in ["matches", "seed_start", "levels", "scenarios", "name"]:
 		(
 			assert_bool(
@@ -154,13 +208,8 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 			)
 			. is_true()
 		)
-	var native: Array = Array(_step(shards, "Check the shard ran native"))
-	(
-		assert_bool(
-			native.any(func(line: String) -> bool: return line.contains('["impl"] == "native"'))
-		)
-		. is_true()
-	)
+	var native: Array = Array(_step(shards, "Check the shard ran native on the built commit"))
+	assert_bool(native.any(_checks_native_and_commit)).is_true()
 	for step: Array in [shard, native]:
 		for line: String in step:
 			(
@@ -195,6 +244,8 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 	assert_bool(text.contains("--label balance --state open")).is_true()
 	assert_bool(text.contains('select(.title == "Balance reports")')).is_true()
 	assert_bool(text.contains("exit 1")).is_true()
+	assert_bool(text.contains(POST_HEADER)).is_true()
+	assert_bool(text.contains("for set in $SETS; do")).is_true()
 	assert_bool(text.contains("gh issue comment")).is_true()
 	for word: String in ["gh issue create", "gh label", "gh api"]:
 		assert_bool(text.contains(word)).is_false()
@@ -247,7 +298,14 @@ func test_balance_plan_is_the_shard_table_and_keeps_the_gate_seeds_unplayed() ->
 	assert_array(odd.map(_row_text)).is_equal(
 		["custom|easy,hard|cross|1|25", "custom|easy,hard|cross|26|5"]
 	)
+	var edge: Dictionary = _plan("SUITE=custom SEED_START=980 MATCHES=20", "matrix")
+	assert_int(edge["code"]).is_equal(0)
+	assert_array(_plan_rows(edge["out"]).map(_row_text)).is_equal(
+		["custom|normal,normal|cross|980|20"]
+	)
 	for refused: String in [
+		"SUITE=custom SEED_START=981 MATCHES=20",
+		"SUITE=custom SEED_START=999999990 MATCHES=50",
 		"SUITE=custom SEED_START=990 MATCHES=20",
 		"SUITE=custom SEED_START=1000",
 		"SUITE=custom SEED_START=1100 MATCHES=5",
@@ -273,16 +331,68 @@ func _top_block(lines: PackedStringArray, header: String) -> PackedStringArray:
 	return lines.slice(start + 1, end)
 
 
-## Runs balance-plan.sh under `env` with `assignments` (VAR=value words, space separated) in its
+## Runs balance-plan.sh under `env -i` with `assignments` (VAR=value words, space separated) in its
 ## environment: its exit code and its stdout without the final newline.
 func _plan(assignments: String, mode: String) -> Dictionary:
 	var out: Array = []
-	var arguments: PackedStringArray = PackedStringArray()
+	var arguments: PackedStringArray = ["-i", "PATH=" + OS.get_environment("PATH")]
 	for word: String in assignments.split(" ", false):
 		arguments.append(word)
 	arguments.append_array(["bash", ProjectSettings.globalize_path(BALANCE_PLAN), mode])
 	var code: int = OS.execute("env", arguments, out)
 	return {"code": code, "out": str(out[0]).strip_edges() if out.size() > 0 else ""}
+
+
+## The step's own commands, run as the runner runs them (`bash --noprofile --norc -eo pipefail`),
+## fail when the script refuses its input and succeed on a good one.
+func _assert_plan_step_fails_on_bad_input(plan: Array) -> void:
+	var commands: Array[String] = []
+	for line: String in plan.slice(plan.find("run: |") + 1):
+		commands.append(line)
+	var script: String = "\n".join(commands)
+	var good: Array = _run_plan_step(script, "SUITE=balance")
+	assert_int(good[0]).is_equal(0)
+	for bad: String in ["SUITE=custom MATCHES=0", "SUITE=custom MATCHES=500", "SUITE=nope"]:
+		assert_int(_run_plan_step(script, bad)[0]).override_failure_message(bad).is_not_equal(0)
+
+
+## The step's commands go to a file: OS.execute mangles `$` in an argument (the same reason as
+## test_run_sim_smoke_script.gd's launcher file).
+func _run_plan_step(script: String, assignments: String) -> Array:
+	var path: String = "user://balance_plan_step.sh"
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	assert_object(file).is_not_null()
+	file.store_string("export " + assignments + "\n" + script + "\n")
+	file.close()
+	var arguments: PackedStringArray = ["-i", "PATH=" + OS.get_environment("PATH")]
+	arguments.append_array(["GITHUB_OUTPUT=/dev/null", "bash", "--noprofile", "--norc"])
+	arguments.append_array(["-eo", "pipefail", ProjectSettings.globalize_path(path)])
+	var out: Array = []
+	var code: int = OS.execute("env", arguments, out)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	return [code, out]
+
+
+## No `${{` inside a `run:` (single line or block): event data and inputs reach scripts through env.
+func _assert_no_expression_in_run_blocks(lines: PackedStringArray) -> void:
+	var block_indent: int = -1
+	for line: String in lines:
+		var indent: int = line.length() - line.lstrip(" ").length()
+		var text: String = line.strip_edges()
+		if block_indent >= 0:
+			if text.is_empty() or indent > block_indent:
+				assert_bool(line.contains("${{")).is_false()
+				continue
+			block_indent = -1
+		var key: String = text.trim_prefix("- ")
+		if key.begins_with("run:"):
+			assert_bool(line.contains("${{")).is_false()
+			if key.trim_prefix("run:").strip_edges() in ["|", ">", "|-", ">-"]:
+				block_indent = indent + (2 if text.begins_with("- ") else 0)
+
+
+func _checks_native_and_commit(line: String) -> bool:
+	return line.contains('r["impl"] == "native"') and line.contains('r["commit"] == sys.argv[2]')
 
 
 func _plan_rows(matrix_json: String) -> Array:
