@@ -63,6 +63,17 @@ tuning rows change the shipped `data/rules.tres` (exception 20 of the Phase 4 pl
 may differ; every shipped scenario names `data/rules.tres`, and only hand-built and dev worlds use
 the defaults. No other accepted text changed and no hash moves.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §4:
+`Mines.run` joins the FIRE mark after `Strike.run`; `Carry.board` (and the carrier eject of ADR
+0037 §7) and `Reveal.run` join the REMOVE mark after `FogUpdate.begin`; ECONOMY becomes
+`Power.run`, `Harvest.run`, `Air.run`, `Carry.run`, `Repair.run`, `Mend.run`, `Mines.lay`;
+`MineMemory.run` joins MEMORY after `LastSeen.run`. §5: new Command types `LOAD` 5, `UNLOAD` 6,
+`REPAIR` 7, `LAY_MINE` 8, `STANCE` 9, `SELL` 17 and `MEND` 18; 19 is reserved for `PATROL`. §8:
+`STATE_FORMAT` 6 (P232, exception 23) and 7 (P262, exception 24; P286 re-pins on 7 under
+exception 25). §10: events `UNLOADED` 6, `MINE_BLAST` 7 and `REPAIRED` 8, `STRIKE` kind 3 (the
+satellite); `DIED`'s index 6 becomes a mapping of `build_left`: 1 cancelled (-1), 2 boarded
+(-2), 3 sold (-3), else 0, and view readers match the value they mean. No accepted text changed.
+
 ## Context
 Phase 2's first box asks for an ADR on the World data model, the Command format and the state
 hash. Phase 1 shipped the v0 shapes of ADR 0003: a struct-of-arrays `World` that never removes a
