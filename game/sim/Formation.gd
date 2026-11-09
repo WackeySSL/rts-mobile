@@ -67,8 +67,14 @@ static func assign(
 		group_of[row] = centre_cell
 	var taken: PackedByteArray = PackedByteArray()
 	taken.resize(count)
-	for slot: Vector2i in _slots(world, bases, count, centre, spacing, low, high):
-		var pick: int = _nearest_free(pos_x, pos_y, ids, unit_indices, taken, slot)
+	# The group's approach, scaled by the unit count so that it is exact: centre * count - sum of the
+	# positions. A slot tie goes to the slot with the larger share along it, then across it, which a
+	# half turn of the whole situation keeps (both the offset and the approach change sign).
+	var approach: Vector2i = centre * count
+	for row: int in unit_indices:
+		approach -= Vector2i(pos_x[row], pos_y[row])
+	for slot: Vector2i in _slots(world, bases, count, centre, spacing, low, high, approach):
+		var pick: int = _nearest_free(pos_x, pos_y, ids, unit_indices, taken, slot, approach)
 		taken[pick] = 1
 		goal_x[unit_indices[pick]] = slot.x
 		goal_y[unit_indices[pick]] = slot.y
@@ -138,13 +144,16 @@ static func _slots(
 	centre: Vector2i,
 	spacing: int,
 	low: Vector2i,
-	high: Vector2i
+	high: Vector2i,
+	approach: Vector2i
 ) -> Array[Vector2i]:
 	var cost: PackedByteArray = world.move_cost
 	var cols: int = world.map_cols
 	var rows: int = world.map_rows
 	var points: Array[Vector2i] = []
 	var keys: Array[int] = []
+	var along: Array[int] = []
+	var across: Array[int] = []
 	var last_ring: int = -1
 	var ring: int = 0
 	# A ring r point is r * spacing away from the centre on an axis, and the centre is in the box
@@ -171,6 +180,8 @@ static func _slots(
 				if not open:
 					continue
 				keys.append((i * i + j * j) * KEY_SHIFT + points.size())
+				along.append(i * approach.x + j * approach.y)
+				across.append(i * approach.y - j * approach.x)
 				points.append(point)
 		# A ring with no point inside the box means no later ring has one either, so stop early.
 		# A ring whose points are all blocked says nothing about the later ones.
@@ -179,12 +190,26 @@ static func _slots(
 		if last_ring < 0 and points.size() >= count:
 			last_ring = FixedMath.isqrt(2 * ring * ring)
 		ring += 1
-	keys.sort()
+	var order: Array[int] = []
+	for at: int in keys.size():
+		order.append(at)
+	order.sort_custom(
+		func(left: int, right: int) -> bool:
+			var left_ring: int = keys[left] >> 20
+			var right_ring: int = keys[right] >> 20
+			if left_ring != right_ring:
+				return left_ring < right_ring
+			if along[left] != along[right]:
+				return along[left] > along[right]
+			if across[left] != across[right]:
+				return across[left] > across[right]
+			return left < right
+	)
 	var slots: Array[Vector2i] = []
-	for key: int in keys:
+	for at: int in order:
 		if slots.size() == count:
 			break
-		slots.append(points[key & (KEY_SHIFT - 1)])
+		slots.append(points[at])
 	return slots
 
 
@@ -197,7 +222,8 @@ static func _nearest_free(
 	ids: PackedInt32Array,
 	unit_indices: PackedInt32Array,
 	taken: PackedByteArray,
-	slot: Vector2i
+	slot: Vector2i,
+	approach: Vector2i
 ) -> int:
 	var best: int = -1
 	var best_d2: int = 0
@@ -211,6 +237,32 @@ static func _nearest_free(
 		if best < 0 or d2 < best_d2:
 			best = k
 			best_d2 = d2
-		elif d2 == best_d2 and ids[row] < ids[unit_indices[best]]:
+		elif d2 == best_d2 and _prefer(pos_x, pos_y, ids, row, unit_indices[best], slot, approach):
 			best = k
 	return best
+
+
+## Whether `row` beats `held` for `slot` on an equal distance: the larger offset along the approach,
+## then across it, then the lower id. The first two are the same after a half turn of everything.
+static func _prefer(
+	pos_x: PackedInt32Array,
+	pos_y: PackedInt32Array,
+	ids: PackedInt32Array,
+	row: int,
+	held: int,
+	slot: Vector2i,
+	approach: Vector2i
+) -> bool:
+	var ax: int = pos_x[row] - slot.x
+	var ay: int = pos_y[row] - slot.y
+	var bx: int = pos_x[held] - slot.x
+	var by: int = pos_y[held] - slot.y
+	var along_a: int = ax * approach.x + ay * approach.y
+	var along_b: int = bx * approach.x + by * approach.y
+	if along_a != along_b:
+		return along_a > along_b
+	var across_a: int = ax * approach.y - ay * approach.x
+	var across_b: int = bx * approach.y - by * approach.x
+	if across_a != across_b:
+		return across_a > across_b
+	return ids[row] < ids[held]
