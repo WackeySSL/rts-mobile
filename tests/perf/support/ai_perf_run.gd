@@ -1,7 +1,9 @@
 extends RefCounted
-## One match of `data/scenarios/perf_ai.tres` for the AI perf suite (plan row P189, ADR 0030 section
-## 4): two Normal `OpponentAi` through `AiDriver.think_all` and `MatchLoop.step` for `TICKS` ticks,
-## the way the smoke harness plays a match (`tests/smoke/smoke_run.gd`). It keeps the time of every
+## One match of `data/scenarios/perf_ai.tres` for the AI perf suite (plan rows P189 and P189b, ADR
+## 0030 section 4): two Normal `OpponentAi` on the frozen AI defs through `AiDriver.think_all` and
+## `MatchLoop.step` for `TICKS` ticks, the way the smoke harness plays a match
+## (`tests/smoke/smoke_run.gd`). The controllers are made as `MatchRunner._opponent_controllers`
+## makes them (`AiFactory.create`, stream `STREAM_AI_BASE + player`). It keeps the time of every
 ## think (report only), the lines of the counted bounds that a think broke (deterministic), the
 ## peak of every judged counter and the state hash at every checkpoint. It also builds the three
 ## report-only lines, so the suite and its pin of their heads share one source. Not a test suite.
@@ -11,9 +13,16 @@ const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 
 const PATH: String = "res://data/scenarios/perf_ai.tres"
+## The frozen AI defs of `data/dev/arena/ai/` (plan row P189b): the same files the Perf AI route
+## plays (`DevRoutes.PERF_AI_*`), so the card times the contact that this suite times. Player 1
+## plays the Derrick League's (fossil), player 2 the Lumen Accord's (renew), as `perf_ai.tres`
+## seats them.
+const OPPONENT_PATHS: Array[String] = [
+	"res://data/dev/arena/ai/opponent_fossil.tres", "res://data/dev/arena/ai/opponent_renew.tres"
+]
+const LEVEL_PATH: String = "res://data/dev/arena/ai/difficulty/normal.tres"
 const TICKS: int = 900
 const SEED: int = 42
-const LEVELS: Array[String] = ["normal", "normal"]
 ## The passes of one think: the view's own (1) and at most two more for a slot (ADR 0030 section 4).
 const PASSES_MAX: int = 3
 ## The report-only lines: `WATCH <area> <name> key=value ...`.
@@ -42,8 +51,10 @@ var match_end_tick: int = 0
 var controllers: Array[AiController] = []
 ## The implementation the sim ran with: "native" or "gdscript" (the AI is GDScript in both).
 var impl: String = ""
+## The most seen enemy units that each controller's memory held at once, in controller order.
+var seen_peaks: PackedInt32Array = PackedInt32Array()
 
-## The shipped AI defs the controllers were made from, by the same path (`SmokeRun.def_path`).
+## The frozen AI defs the controllers were made from (`OPPONENT_PATHS`).
 var _defs: Array[OpponentDef] = []
 
 
@@ -99,11 +110,14 @@ func play() -> void:
 	for problem: String in SmokeRun.attach_impl(world):
 		violations.append("sim impl: " + problem)
 	var loop: MatchLoop = SmokeRun.loop_of(world, SEED, PATH)
-	controllers = SmokeRun.controllers_of(SEED, PATH, LEVELS)
-	var scenario: ScenarioDef = load(PATH) as ScenarioDef
-	for index: int in controllers.size():
-		var faction: String = String(scenario.factions[index + 1].id)
-		_defs.append(load(SmokeRun.def_path(faction, LEVELS[index])) as OpponentDef)
+	var level: AiDifficultyDef = load(LEVEL_PATH) as AiDifficultyDef
+	for index: int in OPPONENT_PATHS.size():
+		var player: int = index + 1
+		var rng: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + player)
+		var def: OpponentDef = load(OPPONENT_PATHS[index]) as OpponentDef
+		_defs.append(def)
+		controllers.append(AiFactory.create(def, level, player, rng))
+		seen_peaks.append(0)
 	var counter: SmokeCount = SmokeCount.new(controllers.size())
 	counter.start(world)
 	var commands: Array[Command] = []
@@ -164,6 +178,7 @@ func _check(world: World, before: PackedInt32Array, sent: int) -> void:
 		_cap(tag, "keys_scout", memory.goal_keys_of(AiMemory.Owner.SCOUT), 1)
 		_cap(tag, "sectors", ai.intel.sector_count(), def.sectors_max)
 		_check_lists(world, memory, tag)
+		seen_peaks[index] = maxi(seen_peaks[index], memory.seen_unit_id.size())
 	if counted != sent:
 		_fail(
 			(
