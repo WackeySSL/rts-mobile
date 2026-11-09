@@ -146,13 +146,18 @@ func test_the_buildings_stand_on_buildable_ground_apart_with_open_docks_and_exit
 			checks.append([row, Vector2i(_world.type_dock_x[type], _world.type_dock_y[type]), true])
 	# The turned tile of every dock is open. The turned exit of the two compact barracks is the
 	# vehicle factory's footprint (a neighbour at the east wall, ADR 0033): that one is closed and
-	# the ring walk hands the unit to an open tile next to it.
+	# the ring walk hands the unit to an open tile next to it. Exactly those two are closed, so a
+	# scenario edit cannot add a ring walk unseen.
+	var closed_exits: int = 0
 	for check: Array in checks:
 		var row: int = check[0]
 		var tile: Vector2i = (
 			_world.footprint_origin(row) + Buildings.turned_at(_world, row, check[1])
 		)
 		var closed_by_building: bool = taken.has(tile.y * _world.map_cols + tile.x)
+		if closed_by_building:
+			assert_bool(check[2]).override_failure_message("a closed dock").is_false()
+			closed_exits += 1
 		for move_class: int in [World.MoveClass.FOOT, tracked]:
 			var found: Vector2i = ProductionSpawn.tile_from(
 				_world, row, move_class, tile - _world.footprint_origin(row)
@@ -165,6 +170,7 @@ func test_the_buildings_stand_on_buildable_ground_apart_with_open_docks_and_exit
 					"%s: tile %s is not open" % [_world.type_names[_world.type_index[row]], tile]
 				)
 	assert_array(problems).is_empty()
+	assert_int(closed_exits).is_equal(2)
 	assert_int(taken.size()).is_greater(28)
 
 

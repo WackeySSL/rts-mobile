@@ -81,6 +81,15 @@ func test_the_facing_turns_with_the_building_on_every_site() -> void:
 			assert_int(turned).is_equal((Buildings.facing(64, 40, x, y) + 2) % 4)
 
 
+## The exact centre is its own half turn and quarter turn, so it is SOUTH whatever the turn: the
+## one point where the equivariance above does not hold (the skip in that case), on any map.
+func test_the_exact_centre_is_south_on_square_and_wide_maps() -> void:
+	assert_int(Buildings.facing(64, 64, 32000, 32000)).is_equal(SOUTH)
+	assert_int(Buildings.facing(63, 63, 31500, 31500)).is_equal(SOUTH)
+	assert_int(Buildings.facing(64, 40, 32000, 20000)).is_equal(SOUTH)
+	assert_int(Buildings.facing(64, 40, 64000 - 32000, 40000 - 20000)).is_equal(SOUTH)
+
+
 func test_turned_gives_the_table_and_four_turns_are_the_identity() -> void:
 	for facing: int in 4:
 		assert_that(Buildings.turned(Vector2i(1, 3), 3, facing)).is_equal(TURNED_3[facing])
@@ -223,9 +232,79 @@ func test_the_harvest_loop_orders_and_unloads_at_the_turned_dock() -> void:
 		)
 
 
+## A whole trip to an east-facing refinery: the 22 x 10 map makes the refinery at (2, 2) face east,
+## its dock the tile (5, 3); the ore lies 4 tiles beyond it. The tanker mines, drives to that dock,
+## unloads there (500 credits) and goes back to the ore.
+func test_a_full_trip_to_an_east_facing_refinery_pays_and_returns_to_ore() -> void:
+	var world: World = HWorlds.world(HWorlds.grass(22, 10, [Vector2i(9, 3)]))
+	var refinery: int = HWorlds.add_refinery(world, 1, 2, 2)
+	world.ore_amount[0] = 20
+	var ore: Vector2i = Vector2i(9500, 3500)
+	var dock: Vector2i = Vector2i(5500, 3500)
+	assert_int(Buildings.facing(22, 10, 3500, 3500)).is_equal(EAST)
+	var id: int = HWorlds.add_harvester(
+		world, 1, ore.x, ore.y, World.HarvestMode.SEEK, -1, refinery
+	)
+	var row: int = world.index_of(id)
+	var docked: bool = false
+	for _tick: int in 900:
+		HWorlds.step(world)
+		if HWorlds.mode_of(world, id) == World.HarvestMode.UNLOAD and not docked:
+			docked = true
+			assert_array([world.pos_x[row], world.pos_y[row]]).is_equal([dock.x, dock.y])
+	assert_bool(docked).is_true()
+	assert_array([world.credits[1], world.stat_harvested[1]]).is_equal([2500, 500])
+	# After the unload it is back at the cell, SEEK or MINE, within the harvest reach of it.
+	(
+		assert_bool(
+			[World.HarvestMode.SEEK, World.HarvestMode.MINE].has(HWorlds.mode_of(world, id))
+		)
+		. is_true()
+	)
+	var dx: int = world.pos_x[row] - ore.x
+	var dy: int = world.pos_y[row] - ore.y
+	assert_int(dx * dx + dy * dy).is_less_equal(
+		world.harvest_reach_milli * world.harvest_reach_milli
+	)
+
+
+## The home refinery dies: the tanker picks another one, at another facing, and its order goes to
+## that one's turned dock. The first refinery faces south, the second east.
+func test_a_new_home_after_the_old_one_dies_uses_its_own_turned_dock() -> void:
+	var world: World = _harvest_square()
+	var first: int = HWorlds.add_refinery(world, 1, 8, 2)
+	HWorlds.add_refinery(world, 1, 2, 8)
+	var id: int = HWorlds.add_harvester(
+		world, 1, 12500, 12500, World.HarvestMode.RETURN, 0, first, 500
+	)
+	world.hp[world.index_of(first)] = 0
+	HWorlds.step(world, world.harvest_retry_ticks + 2)
+	var row: int = world.index_of(id)  # The dead refinery's row is gone: look the row up again.
+	var second_id: int = world.home[row]
+	assert_int(second_id).is_not_equal(first)
+	assert_int(second_id).is_not_equal(0)
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([5500, 9500])
+
+
+## A 2x2 barracks on the east side and one on the north side each make a squad on their turned
+## exit, (1, 2) turned to (2, 0) and to (0, -1): through the queue and the production phase.
+func test_a_barracks_on_a_non_south_side_makes_its_squad_on_the_turned_exit() -> void:
+	for site: Array in [[Vector2i(2, 9), Vector2i(4, 9)], [Vector2i(9, 16), Vector2i(9, 15)]]:
+		var world: World = _square()
+		world.add_building(1, _type(world, "barracks"), site[0].x, site[0].y)
+		Rig.add_plant(world, 1, 16, 2)
+		Rig.step(world, [Rig.queue(world, 1, "rifle_squad")])
+		Rig.run(world, 80)
+		var rifles: Array[int] = Rig.rows_of(world, 1, "rifle_squad")
+		assert_array(rifles).override_failure_message(str(site)).has_size(1)
+		var tile: Vector2i = site[1]
+		assert_array([world.pos_x[rifles[0]], world.pos_y[rifles[0]]]).is_equal(
+			[tile.x * 1000 + 500, tile.y * 1000 + 500]
+		)
+
+
 func _square() -> World:
-	var world: World = Worlds.world(GridWorld.grass(SIDE, SIDE), Rig.IDS)
-	return world
+	return Worlds.world(GridWorld.grass(SIDE, SIDE), Rig.IDS)
 
 
 func _harvest_square() -> World:

@@ -95,6 +95,8 @@ func test_four_harvesters_a_side_unload() -> void:
 	for id: int in _first.unloaded:
 		assert_int(world.owner[world.index_of(id)]).is_greater(0)
 		assert_int(_first.unloaded[id]).override_failure_message(str(id)).is_less(UNLOAD_BY)
+	# The slowest is at tick 333; a drift towards the bound must show.
+	assert_int(_first.unloaded.values().max()).is_less(360)
 	for player: int in [1, 2]:
 		assert_int(world.stat_harvested[player]).is_greater(0)
 

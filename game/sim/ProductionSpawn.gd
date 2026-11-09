@@ -24,8 +24,7 @@ static func spawn(world: World, player: int, type: int, producer: int) -> bool:
 ## by the holds of `spawn`: nothing is held or owed, so no later tick makes up for it. The unit
 ## appears at the dock, turned to the building's facing (Buildings.facing; the walk of `exit_tile`
 ## starts there, so a closed dock hands it to the next open ring tile) and a harvester gets `home`
-## set to the building's id, which SEEK and RETURN read
-## (Harvest).
+## set to the building's id, which SEEK and RETURN read (Harvest).
 static func spawn_free(world: World, building: int) -> bool:
 	var kind: int = world.type_index[building]
 	var free: int = world.type_free_unit[kind]
