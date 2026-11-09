@@ -43,18 +43,18 @@ func test_a_refinery_goes_on_the_valid_slot_nearest_the_nearest_ore_cell() -> vo
 	assert_object(placed).is_not_equal(first_valid)
 
 
-func test_the_first_three_buildings_of_two_mirrored_ais_are_half_turns() -> void:
+func test_the_plant_refinery_and_turret_of_two_mirrored_ais_are_half_turns() -> void:
 	var world: World = _flats()
 	var first: Array[Vector2i] = []
 	var second: Array[Vector2i] = []
-	for id: String in ["power_plant", "refinery"]:
+	for id: String in ["power_plant", "refinery", "defence_turret"]:
 		first.append(_place(world, 1, id))
 		second.append(_place(world, 2, id))
 		var wide: int = PlayerView.of(world, 1).type_foot_w[AiRig.type_of(world, id)]
 		var turned: Vector2i = Vector2i(SIDE - first[-1].x - wide, SIDE - first[-1].y - wide)
 		assert_object(second[-1]).override_failure_message(id).is_equal(turned)
-	# The Headquarters themselves are half turns (the scenario), and the ore is what moved the
-	# refinery off the first slot: the two plants stand apart from the refineries.
+	# The turret's footprint is not the plant's, so the footprint offset of the turn is exercised with
+	# two sizes besides the Headquarters'. The ore is what moved the refinery off the first slot.
 	assert_object(HQ_2).is_equal(Vector2i(SIDE - HQ_1.x - HQ_WIDE, SIDE - HQ_1.y - HQ_WIDE))
 	assert_object(first[0]).is_not_equal(first[1])
 
@@ -87,15 +87,25 @@ func test_the_walk_turns_away_from_the_enemy_estimate() -> void:
 	)
 
 
-func test_without_an_estimate_the_enemy_is_where_the_point_mirror_of_the_base_lies() -> void:
+func test_without_an_estimate_the_enemy_lies_at_the_point_mirror_of_the_base() -> void:
+	# No estimate: player 1 (top-left) turns 0, player 2 (bottom-right) turns 2, so player 2's first
+	# plant is the half turn of player 1's, with no estimate in the memory of either.
 	var world: World = _flats()
-	var none: AiMemory = AiMemory.create(Rig.def_of("fossil"))
-	var known: AiMemory = AiMemory.create(Rig.def_of("fossil"))
-	known.base_x = 56
-	known.base_y = 56
-	assert_object(_place(world, 1, "power_plant", none)).is_equal(
-		_place(_flats(), 1, "power_plant", known)
-	)
+	var first: Vector2i = _place(world, 1, "power_plant")
+	var second: Vector2i = _place(world, 2, "power_plant")
+	assert_object(first).is_equal(Vector2i(3, 3))
+	assert_object(second).is_equal(Vector2i(SIDE - first.x - 2, SIDE - first.y - 2))
+
+
+func test_a_quarter_turn_puts_the_first_slot_on_the_back_corner_of_that_side() -> void:
+	# The enemy south-west of the base: one quarter turn, so the back is the north-east corner. The
+	# plant's cell (-4, -4) gives the offset (-4 * 2 + 2 - 3, the same) = (-9, -9) from the
+	# Headquarters' centre in half tiles; `Vector2i(-y, x)` turns it to (9, -9), and the top-left
+	# tile is ((7 * 2 + 3 + 9 - 2) / 2, (7 * 2 + 3 - 9 - 2) / 2) = (12, 3).
+	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
+	memory.base_x = 2
+	memory.base_y = 55
+	assert_object(_place(_flats(), 1, "power_plant", memory)).is_equal(Vector2i(12, 3))
 
 
 func test_the_layout_does_not_depend_on_the_player_number() -> void:
@@ -116,7 +126,7 @@ func test_the_layout_does_not_depend_on_the_player_number() -> void:
 		assert_object(bottom_swapped).override_failure_message(id).is_equal(bottom)
 
 
-func test_the_view_and_the_order_do_not_change_after_the_first_place() -> void:
+func test_the_turn_is_latched_at_the_first_place() -> void:
 	# The turn is found once: a later sighting of the enemy does not turn the base round.
 	var world: World = _flats()
 	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
@@ -126,6 +136,95 @@ func test_the_view_and_the_order_do_not_change_after_the_first_place() -> void:
 	memory.base_y = 2
 	var second: Vector2i = _place_with(economy, _flats(), 1, "power_plant", memory)
 	assert_object(second).is_equal(first)
+
+
+func test_a_refinery_falls_to_the_next_nearest_slot_when_the_nearest_is_blocked() -> void:
+	var free: Vector2i = _place(_flats(), 1, "refinery")
+	var world: World = _flats()
+	AiRig.give(world, 1, "power_plant", free.x, free.y)
+	var view: PlayerView = PlayerView.of(world, 1)
+	var refinery: int = view.type_index_of(&"refinery")
+	var expected: Vector2i = _nearest_valid(world, refinery, _nearest_ore(world, HQ_1))
+	var placed: Vector2i = _place(world, 1, "refinery")
+	assert_object(placed).is_not_equal(free)
+	assert_object(placed).is_equal(expected)
+
+
+func test_a_map_without_ore_keeps_the_plain_spiral_order_for_a_refinery() -> void:
+	var world: World = _flats()
+	world.ore_cell = PackedInt32Array()
+	var view: PlayerView = PlayerView.of(world, 1)
+	var refinery: int = view.type_index_of(&"refinery")
+	var cells: PackedInt32Array = PlacementSpiral.cells(Rig.def_of("fossil").spiral_slots)
+	var first: Vector2i = Vector2i(-1, -1)
+	for slot: int in cells.size() / 2:
+		var tile: Vector2i = HQ_1 + Vector2i(cells[slot * 2], cells[slot * 2 + 1]) * STRIDE
+		if view.placement(refinery, tile.x, tile.y) == Placement.Reason.OK:
+			first = tile
+			break
+	assert_object(_place(world, 1, "refinery")).is_equal(first)
+
+
+func test_the_ore_tie_break_picks_mirrored_cells_for_both_seats() -> void:
+	# Two cells at the same distance from each Headquarters: 6 tiles east and 6 tiles south of
+	# player 1's centre, and their half turns for player 2.
+	var world: World = _flats()
+	var cols: int = world.map_cols
+	var ring: Array[Vector2i] = [Vector2i(14, 8), Vector2i(8, 14)]
+	var cells: PackedInt32Array = PackedInt32Array()
+	for cell: Vector2i in ring:
+		cells.append(cell.y * cols + cell.x)
+	for cell: Vector2i in ring:
+		cells.append((SIDE - 1 - cell.y) * cols + SIDE - 1 - cell.x)
+	world.ore_cell = cells
+	var first: AiEconomy = AiEconomy.create(Rig.def_of("fossil"), Rig.level_of("normal"), 1)
+	var second: AiEconomy = AiEconomy.create(Rig.def_of("fossil"), Rig.level_of("normal"), 2)
+	_place_with(first, world, 1, "refinery")
+	_place_with(second, world, 2, "refinery")
+	assert_object(first._ore).is_equal(Vector2i(14, 8))
+	# The refinery's slot order is made once and kept, for that head's type.
+	assert_int(first._ore_head).is_equal(AiRig.type_of(world, "refinery"))
+	assert_int(first._ore_order.size()).is_equal(Rig.def_of("fossil").spiral_slots)
+	assert_object(second._ore).is_equal(Vector2i(SIDE - 1 - first._ore.x, SIDE - 1 - first._ore.y))
+
+
+func test_only_explored_ore_is_known_to_the_ai_and_the_real_start_fog_is_mirrored() -> void:
+	# The real start fog (no `explore_all`): each AI latches the ore cell nearest its Headquarters
+	# among the cells it has explored, and the two are half turns of each other.
+	var world: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	var first: AiEconomy = AiEconomy.create(Rig.def_of("fossil"), Rig.level_of("normal"), 1)
+	var second: AiEconomy = AiEconomy.create(Rig.def_of("fossil"), Rig.level_of("normal"), 2)
+	var one: Vector2i = _place_with(first, world, 1, "refinery")
+	var two: Vector2i = _place_with(second, world, 2, "refinery")
+	assert_int(first._ore.x).is_greater_equal(0)
+	assert_object(second._ore).is_equal(Vector2i(SIDE - 1 - first._ore.x, SIDE - 1 - first._ore.y))
+	assert_object(two).is_equal(Vector2i(SIDE - one.x - 3, SIDE - one.y - 3))
+	# Ore nobody has explored is left out: with the fog closed at the first PLACE nothing is latched,
+	# and it is not latched later either, so the refinery keeps the plain spiral order.
+	var blind: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	blind.fog.explored.fill(0)
+	var economy: AiEconomy = AiEconomy.create(Rig.def_of("fossil"), Rig.level_of("normal"), 1)
+	var refinery: int = AiRig.type_of(blind, "refinery")
+	var queue: int = World.TABS + World.Tab.STRUCTURES
+	blind.queue_type[queue * blind.queue_slots] = refinery
+	blind.queue_count[queue] = 1
+	blind.queue_progress[queue] = blind.type_build_ticks[refinery] * Production.PROGRESS_PER_TICK
+	var memory: AiMemory = AiMemory.create(Rig.def_of("fossil"))
+	memory.commands_left = 99
+	var none: Array[Command] = []
+	economy.run(
+		PlayerView.of(blind, 1), memory, DetRandom.create(1, DetRandom.STREAM_AI_BASE), none
+	)
+	assert_object(economy._ore).is_equal(Vector2i(-1, -1))
+	AiRig.explore_all(blind)
+	var plain: Vector2i = _place_with(economy, blind, 1, "refinery")
+	var view: PlayerView = PlayerView.of(blind, 1)
+	var cells: PackedInt32Array = PlacementSpiral.cells(Rig.def_of("fossil").spiral_slots)
+	for slot: int in cells.size() / 2:
+		var tile: Vector2i = HQ_1 + Vector2i(cells[slot * 2], cells[slot * 2 + 1]) * STRIDE
+		if view.placement(refinery, tile.x, tile.y) == Placement.Reason.OK or tile == plain:
+			assert_object(plain).is_equal(tile)
+			break
 
 
 # --- Helpers ---------------------------------------------------------------------------------
@@ -187,3 +286,23 @@ func _place_with(
 	world.queue_count[queue] = 0
 	world.add_building(player, type, tile.x, tile.y)
 	return tile
+
+
+## The valid slot nearest the tile `ore` for a `head` footprint, the lower slot first among equals,
+## in the unturned spiral round player 1's Headquarters.
+func _nearest_valid(world: World, head: int, ore: Vector2i) -> Vector2i:
+	var view: PlayerView = PlayerView.of(world, 1)
+	var wide: int = view.type_foot_w[head]
+	var cells: PackedInt32Array = PlacementSpiral.cells(Rig.def_of("fossil").spiral_slots)
+	var best: Vector2i = Vector2i(-1, -1)
+	var least: int = 1 << 40
+	for slot: int in cells.size() / 2:
+		var tile: Vector2i = HQ_1 + Vector2i(cells[slot * 2], cells[slot * 2 + 1]) * STRIDE
+		if view.placement(head, tile.x, tile.y) != Placement.Reason.OK:
+			continue
+		var dx: int = tile.x * 2 + wide - (ore.x * 2 + 1)
+		var dy: int = tile.y * 2 + wide - (ore.y * 2 + 1)
+		if dx * dx + dy * dy < least:
+			least = dx * dx + dy * dy
+			best = tile
+	return best

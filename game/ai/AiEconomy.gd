@@ -42,6 +42,10 @@ var _spiral: PackedInt32Array = PackedInt32Array()
 ## the enemy (-1: not yet), and the nearest ore cell to the Headquarters as a tile (-1: no ore).
 var _turns: int = -1
 var _ore: Vector2i = Vector2i(-1, -1)
+## The slot order of a refinery head of type `_ore_head` (-1: not made yet), kept once made: it
+## depends only on the head's footprint, `_ore` and `_turns`, which do not change.
+var _ore_head: int = -1
+var _ore_order: PackedInt32Array = PackedInt32Array()
 
 ## The types as indexes of the view's roster (MISSING: the roster lacks it), found on the first run
 ## (the rules never change in a match): the steps that a tab builds, the tanker, the defence and, of
@@ -215,8 +219,13 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		memory.spiral_for_x = aim.x
 		memory.spiral_for_y = aim.y
 		memory.spiral_resume = 0
-	if near or ore:
+	if near:
 		order = _nearest_first(view, head, aim, slots)
+	elif ore:
+		if _ore_head != head:
+			_ore_head = head
+			_ore_order = _nearest_first(view, head, aim, slots)
+		order = _ore_order
 	var start: int = posmod(memory.spiral_resume, slots)
 	var tries: int = mini(_tries_max, slots)
 	for step: int in tries:
@@ -254,6 +263,7 @@ func _slot_tile(view: PlayerView, head: int, slot: int) -> Vector2i:
 	var tall: int = view.type_foot_h[head]
 	var across: int = view.type_foot_w[_hq_type] if _hq_type != _NONE else wide
 	var down: int = view.type_foot_h[_hq_type] if _hq_type != _NONE else tall
+	# Footprints are square today, so a quarter turn is exact; for others `>> 1` floors it.
 	var off: Vector2i = Vector2i(cell.x * 2 + wide - across, cell.y * 2 + tall - down)
 	off = _turned(off, _turns)
 	return Vector2i(
@@ -295,6 +305,8 @@ func _orient(view: PlayerView, memory: AiMemory) -> void:
 	var least: int = 1 << 40
 	var first: Vector2i = Vector2i.ZERO
 	for cell: int in view.ore_cells:
+		if not view.is_explored(cell):
+			continue  # Ore the player has not seen is not known to it (GDD pillar 4).
 		var off: Vector2i = Vector2i(
 			cell % view.map_cols * 2 + 1 - centre.x, cell / view.map_cols * 2 + 1 - centre.y
 		)

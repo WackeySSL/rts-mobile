@@ -108,10 +108,10 @@ const ARMOUR_CLASSES: int = 4
 var player: int = 0
 var tick: int = 0
 var map_cols: int = 0
-## The map's ore cells as `tile_row * map_cols + tile_col`: static terrain, public like the map
-## itself (the ore amount left is not in the view).
-var ore_cells: PackedInt32Array = PackedInt32Array()
 var map_rows: int = 0
+## The map's ore cells as `tile_row * map_cols + tile_col`: their places are static terrain, whether
+## the player has seen them is not (the AI keeps to `is_explored` cells); the ore left is not here.
+var ore_cells: PackedInt32Array = PackedInt32Array()
 ## The player's credits, and its power: the totals of the buildings' `type_power` (made is the
 ## positive entries, used the negative ones as positive numbers) and whether it is on low power.
 var credits: int = 0

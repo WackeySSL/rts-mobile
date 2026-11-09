@@ -304,8 +304,9 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 		if table.size() > 0:
 			var changed: PackedInt32Array = view.get(field)
 			assert_int(changed[0]).override_failure_message(String(field)).is_equal(table[0])
-	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its last-seen records and eleven type
-	# tables, ten more type tables and the three warned lists (`own_strike_tick` is an int).
+	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its
+	# last-seen records and eleven type tables, ten more type tables and the three warned lists
+	# (`own_strike_tick` is an int).
 	assert_int(touched).is_equal(36)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
