@@ -23,6 +23,6 @@ retreat_ratio_percent = 200
 unit_retreat_hp_percent = 0
 focus_fire = 0
 counter_percent = 30
-uses_strike = 1
+uses_strike = 0
 commands_per_think_max = 8
 income_percent = 100
