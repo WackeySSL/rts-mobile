@@ -35,6 +35,7 @@ constexpr int64_t MEMOISED = std::numeric_limits<int64_t>::digits;
 struct SlotData {
 	std::vector<int32_t> cost;
 	int64_t grid_cols = 0, cell_count = 0, stride = 0;
+	int64_t goal_cell = -1; // the field's goal, the aim of best_neighbour's tie-break
 	bool complete = false;
 };
 
@@ -74,6 +75,7 @@ public:
 			found.grid_cols = at(slot).grid_cols;
 			found.cell_count = at(slot).cell_count;
 			found.stride = at(slot).stride;
+			found.goal_cell = at(slot).goal_cell;
 			found.complete = at(slot).complete;
 		}
 		return found;
@@ -249,6 +251,7 @@ State from_dump(const Dump &dump) {
 		data.grid_cols = dump.scalar(prefix + "grid_cols");
 		data.cell_count = dump.scalar(prefix + "cell_count");
 		data.stride = dump.scalar(prefix + "stride");
+		data.goal_cell = dump.scalar(prefix + "goal_cell");
 		data.complete = dump.scalar(prefix + "complete") != 0;
 		state.slots.push_back(std::move(data));
 	}
@@ -372,6 +375,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 		data.grid_cols = field.grid_cols;
 		data.cell_count = field.cell_count;
 		data.stride = field.stride;
+		data.goal_cell = goal;
 		state.slots.push_back(std::move(data));
 		state.key_goal.push_back(static_cast<int32_t>(goal));
 		state.key_class.push_back(static_cast<int32_t>(cls));
@@ -420,6 +424,65 @@ void random_scenes(Tally &tally) {
 			}
 		}
 	}
+}
+
+// Every tile of an open 9 x 9 map costs 10 and the one field has its goal at the middle, so that the cost ties between
+// neighbours that best_neighbour breaks by the dot and cross products toward the goal (the half-turn rule); the same
+// field with no goal cell takes the first of the eight in order. A unit on every tile follows the field, so the refresh of
+// `nav_next` asks best_neighbour for each cell.
+void tied_field(Tally &tally) {
+	Stream stream = { 5 };
+	const int64_t cols = 9, rows = 9, cells = cols * rows, goal = 4 * cols + 4;
+	State state = make_scene(stream, cols, rows, 1, cells, BIG);
+	std::fill(state.move_cost.begin(), state.move_cost.end(), static_cast<uint8_t>(10));
+	const size_t padded = static_cast<size_t>((cols + flow::PAD) * (rows + flow::PAD));
+	SlotData data;
+	data.cost.assign(padded, static_cast<int32_t>(flow::UNREACHED));
+	std::vector<int32_t> next(padded), bucket_head(BUCKET_COUNT), link_next(padded), link_prev(padded);
+	std::vector<uint8_t> pad_cost(padded);
+	flow::Slot field;
+	field.cost = view(data.cost);
+	field.next = view(next);
+	field.bucket_head = view(bucket_head);
+	field.link_next = view(link_next);
+	field.link_prev = view(link_prev);
+	field.pad_cost = view(pad_cost);
+	flow::begin(field, goal, 0, cview(state.move_cost), cols, rows);
+	flow::advance(field, BIG);
+	if (field.swapped) {
+		std::swap(data.cost, next);
+	}
+	data.complete = field.complete;
+	data.grid_cols = field.grid_cols;
+	data.cell_count = field.cell_count;
+	data.stride = field.stride;
+	data.goal_cell = goal;
+	state.slots[0] = std::move(data);
+	state.key_goal[0] = static_cast<int32_t>(goal);
+	state.key_class[0] = 0;
+	state.status[0] = static_cast<int32_t>(flow::ACTIVE);
+	for (int64_t row = 0; row < cells; row++) {
+		const size_t at = static_cast<size_t>(row);
+		state.type_index[at] = 0;
+		state.pos_x[at] = static_cast<int32_t>(row % cols * 1000 + 500);
+		state.pos_y[at] = static_cast<int32_t>(row / cols * 1000 + 500);
+		state.goal_x[at] = 4500;
+		state.goal_y[at] = 4500;
+		state.group_cell[at] = -1;
+		state.order[at] = static_cast<int32_t>(ORDER_MOVE);
+		state.nav_mode[at] = static_cast<int32_t>(NAV_FIELD);
+		state.nav_cell[at] = -1;
+		state.field[at] = 0;
+		state.nav_next[at] = -1;
+		state.best_dist[at] = static_cast<int32_t>(flow::UNREACHED);
+		state.stall[at] = 0;
+		state.intent_x[at] = 0;
+		state.intent_y[at] = 0;
+	}
+	State unaimed = state;
+	unaimed.slots[0].goal_cell = -1;
+	play(state, 12, tally);
+	play(unaimed, 12, tally);
 }
 
 // More slots than the pass keeps an answer for (MEMOISED): the slots past them are asked on each use, and the ones
@@ -546,6 +609,7 @@ void isqrt_cases(Tally &tally) {
 
 void crafted(Tally &tally) {
 	random_scenes(tally);
+	tied_field(tally);
 	many_slots(tally);
 	no_map(tally);
 	rule_edges(tally);
