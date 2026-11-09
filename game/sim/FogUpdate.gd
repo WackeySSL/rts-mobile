@@ -25,7 +25,7 @@ static func begin(world: World) -> void:
 	var period: int = maxi(world.fog_period_ticks, 1)
 	var tick: int = world.tick
 	for player: int in range(1, fog.player_count + 1):
-		if (tick - player + 1) % period == 0:
+		if (tick - (fog.player_count + 1 - player) + 1) % period == 0:
 			fog.begin_update(player)
 
 
@@ -61,7 +61,7 @@ static func run(world: World) -> void:
 	var covered: int = 0
 	for row: int in owners.size():
 		var player: int = owners[row]
-		if player < 1 or player > players or (tick - player + 1) % period != 0:
+		if player < 1 or player > players or (tick - (fog.player_count + 1 - player) + 1) % period != 0:
 			continue
 		var cell: int = (
 			clampi(ys[row] / World.MILLI_PER_TILE, 0, map_rows - 1) * cols

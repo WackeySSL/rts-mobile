@@ -113,7 +113,7 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 	for (int64_t row = 0; row < rows.count; row++) {
 		const int64_t player = rows.owner.get(row);
 		// The left side is negative for a player past the tick, and % truncates toward zero as in GDScript.
-		if (player < 1 || player > grid.player_count || (rules.tick - player + 1) % period != 0) {
+		if (player < 1 || player > grid.player_count || (rules.tick - (grid.player_count + 1 - player) + 1) % period != 0) {
 			continue;
 		}
 		const int64_t cell = clamp(rows.pos_y.get(row) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(rows.pos_x.get(row) / MILLI_PER_TILE, 0, grid.cols - 1);
