@@ -86,12 +86,15 @@ func test_the_cell_is_nearest_the_point_not_the_harvester_and_the_order_is_not_r
 	assert_int(world.stats[World.Stat.ORE_SCANNED]).is_equal(0)
 
 
-func test_equally_near_cells_go_to_the_lowest_index() -> void:
+## On an equal distance the cell further toward the map centre is taken (Harvest._toward_centre),
+## not the lowest index: the small map's centre is (6 000, 4 000), so from (5 000, 2 500) it is the
+## cell to the right. The half turn of the map is in test_half_turn_rules.
+func test_equally_near_cells_go_to_the_one_toward_the_map_centre() -> void:
 	var world: World = _small()
 	var id: int = Worlds.add_harvester(world, 1, 5500, 5500, IDLE)
 	Worlds.send(world, [_harvest(1, [id], 5000, 2500)])  # 1 500 from both centres.
-	assert_int(world.harvest_slot[world.index_of(id)]).is_equal(0)
-	assert_that(_goal(world, id)).is_equal(Vector2i(3500, 2500))
+	assert_int(world.harvest_slot[world.index_of(id)]).is_equal(1)
+	assert_that(_goal(world, id)).is_equal(Vector2i(6500, 2500))
 
 
 @warning_ignore("integer_division")

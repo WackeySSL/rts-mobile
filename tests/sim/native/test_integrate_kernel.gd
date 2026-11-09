@@ -70,6 +70,7 @@ const INTEGRATE_NAMES: Array[String] = [
 	"FLOW.requested",
 	"FLOW.status",
 	"FLOW.fields",
+	"SLOT.goal_cell",
 	"SLOT.grid_cols",
 	"SLOT.cell_count",
 	"SLOT.stride",

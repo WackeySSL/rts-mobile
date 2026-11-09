@@ -62,14 +62,18 @@ func test_the_pocket_run_gives_the_same_hashes_twice(
 
 
 ## A unit that waited for a slot and gets one starts over on the new field. A cache of two slots on
-## the thin-wall map (30 x 14, column 20, rows 0 to 9): twelve tanks are ordered to (19500, 5500)
-## and a thirteenth to (25500, 1500) takes the second slot, so the tank whose slot lies east of the
+## the thin-wall map (30 x 14, column 20, rows 0 to 9): ten tanks are ordered to (19500, 5500)
+## and an eleventh to (25500, 1500) takes the second slot, so the tank whose slot lies east of the
 ## wall (21900, 5500) finds no free slot at the group target. It stands there, stalled (the count
-## is 12 when the thirteenth tank is stopped at tick 155 and its slot goes back), takes the field
+## is 12 when the eleventh tank is stopped at tick 155 and its slot goes back), takes the field
 ## of its own slot on tick 158 and must still reach it. The stall count and the best distance it
 ## made on the group's field (the way round the wall is longer than the 2019 it stands from its
 ## slot) are not carried over: it would otherwise end its order in front of its slot a few ticks
-## after the new field starts to lead it away from it.
+## after the new field starts to lead it away from it. Ten tanks, not twelve as before ADR 0033
+## (P195d2): the group comes from the west, so its approach points east, and an equal-distance slot
+## tie goes to the slots further along it: the 11th and 12th slots would be (2, 1) and (2, -1), both
+## east of the wall, where the scan from the north west took two on the west side. The ten slots
+## nearest the target hold (2, 0) as their one slot east of the wall, as the 12 did.
 func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -79,27 +83,27 @@ func test_a_unit_that_waited_for_a_slot_still_reaches_its_slot_when_it_gets_one(
 	var world: World = _in(GridWorld.from_rows(GridWorld.grass(30, 14, rock)), impl, false)
 	world.flow_cache_size = 2
 	world.flow.configure(world.map_cols, world.map_rows, World.MoveClass.size(), 2)
-	GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
+	GridWorld.add_block(world, 10, 4, 3000, 1500, 1000, 0)
 	world.add_unit(1, 0, 500, 1500)
 	var east: int = -1
 	var counted: int = 0
 	for tick: int in 700:
 		var commands: Array[Command] = []
 		if tick == 0:
-			var group: Command = Command.move(1, PackedInt32Array(range(1, 13)), 19500, 5500)
-			var holder: Command = Command.move(1, PackedInt32Array([13]), 25500, 1500)
+			var group: Command = Command.move(1, PackedInt32Array(range(1, 11)), 19500, 5500)
+			var holder: Command = Command.move(1, PackedInt32Array([11]), 25500, 1500)
 			group.tick = 0
 			holder.tick = 0
 			holder.sequence = 1
 			commands.append(group)
 			commands.append(holder)
 		if tick == 155:
-			var stop: Command = Command.stop(1, PackedInt32Array([13]))
+			var stop: Command = Command.stop(1, PackedInt32Array([11]))
 			stop.tick = tick
 			commands.append(stop)
 		Sim.step(world, commands)
 		if tick == 0:
-			for row: int in 12:
+			for row: int in 10:
 				if world.goal_x[row] > 20000:
 					east = row
 		if east >= 0 and tick == 157:

@@ -28,32 +28,37 @@ func test_rock_far_from_the_group_leaves_the_slots_as_phase_1s() -> void:
 	assert_array(world.goal_y).is_equal(twin.goal_y)
 
 
-## A target on a blocked tile moves to the centre of the first open tile in the rings around it:
-## ring by ring, each ring row by row from the top, left to right. The target (3100, 3900) is in the
-## bottom left of rock tile (3, 3): the first open tile is the top left neighbour (2, 2), though
-## (3, 4) and (2, 3) are nearer to the target.
-func test_a_target_on_rock_moves_to_the_first_open_tile_in_ring_row_order() -> void:
+## A target on a blocked tile moves to the centre of the nearest open tile in the first ring around
+## it that has one (ADR 0033: the nearest to the target, not the first in a scan from the top left).
+## An equal distance goes to the tile further along the unit's way to the target, then to the one on
+## the larger cross side, which a half turn of the map keeps. The units are at the bottom right
+## (7 500, 7 500), so the way is up and left. The target (3100, 3900) is in the bottom left of rock
+## tile (3, 3): (2, 3) and (3, 4) are equally near, and (2, 3), at (2 500, 3 500), is on the way.
+func test_a_target_on_rock_moves_to_the_nearest_open_tile_of_the_first_ring_with_one() -> void:
 	var cases: Array[Array] = [
 		# the rock tiles, the target, the goal of a lone unit
-		[[[3, 3]], Vector2i(3100, 3900), Vector2i(2500, 2500)],
-		[[[3, 3]], Vector2i(3400, 3600), Vector2i(2500, 2500)],
-		# Ring 1, row -1 blocked: the left tile of row 0, then its right tile, then row +1.
+		[[[3, 3]], Vector2i(3100, 3900), Vector2i(2500, 3500)],
+		[[[3, 3]], Vector2i(3400, 3600), Vector2i(2500, 3500)],
+		# The row above blocked: the left tile of the middle row is still the one on the way.
 		[[[3, 3], [2, 2], [3, 2], [4, 2]], Vector2i(3400, 3600), Vector2i(2500, 3500)],
-		[[[3, 3], [2, 2], [3, 2], [4, 2], [2, 3]], Vector2i(3400, 3600), Vector2i(4500, 3500)],
+		# And with it blocked too, the tile below, the nearest to the target now.
+		[[[3, 3], [2, 2], [3, 2], [4, 2], [2, 3]], Vector2i(3400, 3600), Vector2i(3500, 4500)],
 		[
 			[[3, 3], [2, 2], [3, 2], [4, 2], [2, 3], [4, 3]],
 			Vector2i(3400, 3600),
-			Vector2i(2500, 4500)
+			Vector2i(3500, 4500)
 		],
-		# The eight neighbours blocked as well: ring 2 starts at its top left tile.
+		# The eight neighbours blocked as well: in ring 2 the four tiles two away on an axis are
+		# nearest and equally near, and the one to the left is the larger on the cross side.
 		[
 			[[2, 2], [3, 2], [4, 2], [2, 3], [3, 3], [4, 3], [2, 4], [3, 4], [4, 4]],
 			Vector2i(3500, 3500),
-			Vector2i(1500, 1500)
+			Vector2i(1500, 3500)
 		],
 		# At a map corner the rings skip the tiles outside the map. The target is clamped to
-		# (400, 400) by the radius, its tile (0, 0) is rock, the first open tile is (1, 0).
-		[[[0, 0]], Vector2i(200, 300), Vector2i(1500, 500)],
+		# (400, 400) by the radius, its tile (0, 0) is rock, (1, 0) and (0, 1) are equally near and
+		# (0, 1) is the larger on the cross side.
+		[[[0, 0]], Vector2i(200, 300), Vector2i(500, 1500)],
 		# An open tile keeps the target where it is.
 		[[[3, 3]], Vector2i(4200, 3300), Vector2i(4200, 3300)],
 	]
@@ -75,7 +80,7 @@ func test_the_target_moves_only_for_a_class_that_cannot_enter_its_tile() -> void
 	var target: Vector2i = Vector2i(3500, 3500)
 	# the unit types of the group (0 = foot, 1 = tracked), the goal of its first unit
 	var cases: Array[Array] = [
-		[[0], target], [[1], Vector2i(2500, 2500)], [[0, 1], Vector2i(2500, 2500)]
+		[[0], target], [[1], Vector2i(2500, 3500)], [[0, 1], Vector2i(2500, 3500)]
 	]
 	for case: Array in cases:
 		var world: World = GridWorld.from_rows(map, [FOOT, TRACKED])
@@ -118,7 +123,8 @@ func test_a_map_of_rock_gives_every_unit_the_clamped_target() -> void:
 		assert_that(goal).is_equal(Vector2i(2600, 400))
 
 
-## A rock block around the target: the group forms around the first open tile centre, and the
+## A rock block around the target: the group forms around the nearest open tile centre (the four at
+## two tiles on an axis tie, and the group's approach, up and left, picks the left one), and the
 ## slots that fall on the block are skipped. The unit nearest that centre takes it.
 func test_a_group_forms_around_the_moved_target_and_off_the_rock() -> void:
 	var rock: Array[Vector2i] = []
@@ -131,7 +137,7 @@ func test_a_group_forms_around_the_moved_target_and_off_the_rock() -> void:
 	world.pos_y[4] = 4600
 	Formation.assign(world, rows, 6500, 6500)
 	var goals: Array[Vector2i] = GridWorld.goals(world, rows)
-	assert_that(goals[4]).is_equal(Vector2i(4500, 4500))
+	assert_that(goals[4]).is_equal(Vector2i(4500, 6500))
 	for goal: Vector2i in goals:
 		var tile: Vector2i = goal / World.MILLI_PER_TILE
 		(
@@ -163,8 +169,8 @@ func test_a_slot_on_a_blocked_tile_is_skipped() -> void:
 
 
 ## Every tile of ring 1 is rock: the ring is still inside the map, so the search goes on to ring 2,
-## and the nine units take the centre, the four axis points at distance 2 and the first four points
-## at squared distance 5 in generation order.
+## and the nine units take the centre, the four axis points at distance 2 and four points at squared
+## distance 5 (see _ring_two).
 func test_a_ring_of_blocked_slots_does_not_end_the_search() -> void:
 	var rock: Array[Vector2i] = []
 	for x: int in range(5, 8):
@@ -236,7 +242,7 @@ func test_a_point_on_the_far_edge_belongs_to_the_last_tile() -> void:
 
 ## A tile that costs more than grass is open: only a cost of 0 blocks (ADR 0008 section 1: 10 is
 ## normal, 20 and 40 are slower ground). A target on such a tile stays where it is, for every
-## class, and the same tile as rock (cost 0) moves it to the first open tile in ring order.
+## class, and the same tile as rock (cost 0) moves it to the nearest open tile.
 func test_a_target_on_slow_ground_stays_where_it_is() -> void:
 	var target: Vector2i = Vector2i(3400, 3600)
 	for symbol: String in ["2", "4", "#"]:
@@ -246,7 +252,7 @@ func test_a_target_on_slow_ground_stays_where_it_is() -> void:
 			var world: World = GridWorld.from_rows(map, [move_class])
 			var rows: PackedInt32Array = GridWorld.add_block(world, 1, 1, 7500, 7500, 0, 0)
 			Formation.assign(world, rows, target.x, target.y)
-			var expected: Vector2i = Vector2i(2500, 2500) if symbol == "#" else target
+			var expected: Vector2i = Vector2i(2500, 3500) if symbol == "#" else target
 			(
 				assert_that(GridWorld.goals(world, rows)[0])
 				. override_failure_message("tile '%s', class %d" % [symbol, move_class])
@@ -257,7 +263,7 @@ func test_a_target_on_slow_ground_stays_where_it_is() -> void:
 ## Slots on slow ground are used like those on grass: around the target (6500, 6500) the eight tiles
 ## of ring 1 cost 20 and 40, and nine units take the nine slots of an open map, as a foot group, a
 ## tank group and a mixed group. A slot on rock among them (cost 0) is skipped as before, and the
-## next slot in order, (6500, 4100), takes its place.
+## next slot in order, (4100, 6500), takes its place.
 @warning_ignore("integer_division")
 func test_slots_on_slow_ground_are_used_and_rock_among_them_is_skipped() -> void:
 	var slow: PackedStringArray = GridWorld.grass(14, 14)
@@ -272,7 +278,7 @@ func test_slots_on_slow_ground_are_used_and_rock_among_them_is_skipped() -> void
 			ring_one.append(Vector2i(6500, 6500) + Vector2i(i, j) * 1200)
 	var without_east: Array[Vector2i] = ring_one.duplicate()
 	without_east.erase(Vector2i(7700, 6500))
-	without_east.append(Vector2i(6500, 4100))
+	without_east.append(Vector2i(4100, 6500))
 	# the map, the unit types of the group (0 = foot, 1 = tracked), the nine goals
 	var cases: Array[Array] = [
 		[slow, [0, 0, 0, 0, 0, 0, 0, 0, 0], ring_one],
@@ -295,7 +301,9 @@ func test_slots_on_slow_ground_are_used_and_rock_among_them_is_skipped() -> void
 
 
 ## The nine slots around (6500, 6500) when ring 1 is out: the centre, the four axis points at
-## distance 2 and the first four points at squared distance 5 in generation order.
+## distance 2 and four of the eight points at squared distance 5. The units come from the bottom
+## right, so the approach is (-47 700, -47 700) and the points furthest along it are taken: (-2, -1)
+## and (-1, -2), then (-2, 1) and (1, -2) (ties go to the larger cross side).
 func _ring_two() -> Array[Vector2i]:
 	return [
 		Vector2i(6500, 6500),
@@ -306,5 +314,5 @@ func _ring_two() -> Array[Vector2i]:
 		Vector2i(5300, 4100),
 		Vector2i(7700, 4100),
 		Vector2i(4100, 5300),
-		Vector2i(8900, 5300),
+		Vector2i(4100, 7700),
 	]

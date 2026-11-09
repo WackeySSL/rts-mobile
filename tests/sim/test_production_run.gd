@@ -180,8 +180,10 @@ func test_a_harvester_starts_in_seek_and_ignores_the_rally_point() -> void:
 
 
 ## The rally point of the tab sends the new unit away by a one-unit MOVE: an open point is the goal
-## itself, a point on rock the centre of the first open tile of the ring around it (row by row from
-## the top-left tile, Formation's rule), and the unit then walks. The other tab's point and the
+## itself, a point on rock the centre of the nearest open tile of the ring around it (Formation's
+## rule: an equal distance goes to the tile further along the unit's way, so the one east of the
+## rock here, where the unit comes from the west; it was the first row by row from the top-left,
+## (14, 8), until ADR 0033, P195d2), and the unit then walks. The other tab's point and the
 ## other player's do not apply.
 func test_a_new_unit_goes_to_the_rally_point_by_the_rule_of_a_one_unit_move() -> void:
 	var world: World = Rig.base([Vector2i(15, 9)])
@@ -197,8 +199,8 @@ func test_a_new_unit_goes_to_the_rally_point_by_the_rule_of_a_one_unit_move() ->
 	var row: int = rifles[0]
 	assert_int(world.order[row]).is_equal(World.Order.MOVE)
 	assert_int(world.nav_mode[row]).is_equal(World.NavMode.DIRECT)
-	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([14500, 8500])
-	assert_int(world.group_cell[row]).is_equal(8 * Rig.COLS + 14)
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal([16500, 9500])
+	assert_int(world.group_cell[row]).is_equal(9 * Rig.COLS + 16)
 	assert_array([world.nav_cell[row], world.field[row], world.nav_next[row]]).is_equal(
 		[-1, -1, -1]
 	)

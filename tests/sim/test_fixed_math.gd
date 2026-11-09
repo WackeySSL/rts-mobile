@@ -398,40 +398,26 @@ func test_line_clear_a_diagonal_through_a_corner_touches_the_tiles_beside_it() -
 
 
 ## A corner is crossed only strictly between the ends of the segment. One that ends or starts on a
-## corner has no tiles beside it to touch: it is in the tile of the corner at that end.
+## corner has no tiles beside it to touch: it is in the tile of the corner at that end, the one on
+## the map centre's side (FixedMath.centre_side: the map is 5 tiles wide, so (3000, 3000), past its
+## middle at 2500, is in tile (2, 2) and not in (3, 3)).
 func test_line_clear_a_diagonal_that_ends_on_a_corner_does_not_cross_it() -> void:
 	var ends: Array[Vector2i] = _touched(Vector2i(500, 500), Vector2i(1000, 1000))
 	assert_array(ends).contains_exactly_in_any_order([Vector2i(0, 0), Vector2i(1, 1)])
 	var starts: Array[Vector2i] = _touched(Vector2i(1000, 1000), Vector2i(1500, 1500))
 	assert_array(starts).contains_exactly([Vector2i(1, 1)])
-	# From corner (1000, 1000) to corner (3000, 3000): the corner (2000, 2000) is crossed.
+	# From corner (1000, 1000) to corner (3000, 3000): the corner (2000, 2000) is crossed, and the
+	# far end, past the middle of the map, is in the tile before the corner.
 	var both: Array[Vector2i] = _touched(Vector2i(1000, 1000), Vector2i(3000, 3000))
-	(
-		assert_array(both)
-		. contains_exactly_in_any_order(
-			[
-				Vector2i(1, 1),
-				Vector2i(2, 1),
-				Vector2i(1, 2),
-				Vector2i(2, 2),
-				Vector2i(3, 3),
-			]
-		)
+	assert_array(both).contains_exactly_in_any_order(
+		[Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2), Vector2i(2, 2)]
 	)
-	# The other way up, from (1000, 3000) to (3000, 1000): the tile of the end corner is (3, 1).
+	# The other way up, from (1000, 3000) to (3000, 1000): both far ends are on a border past the
+	# middle, so the segment is x + y = 3999 from tile (1, 2) to tile (2, 1), one milli short of the
+	# corner (2000, 2000), and it touches the tile (1, 1) between them and no more.
 	var rising: Array[Vector2i] = _touched(Vector2i(1000, 3000), Vector2i(3000, 1000))
-	(
-		assert_array(rising)
-		. contains_exactly_in_any_order(
-			[
-				Vector2i(1, 3),
-				Vector2i(1, 2),
-				Vector2i(2, 2),
-				Vector2i(2, 1),
-				Vector2i(1, 1),
-				Vector2i(3, 1),
-			]
-		)
+	assert_array(rising).contains_exactly_in_any_order(
+		[Vector2i(1, 2), Vector2i(1, 1), Vector2i(2, 1)]
 	)
 
 
@@ -465,22 +451,23 @@ func test_line_clear_shallow_and_steep_lines_touch_the_tiles_they_cross() -> voi
 
 
 ## x + y = 4000 only grazes the corner (2000, 2000) of tile (2, 2) and of tile (1, 1). One milli
-## towards one of them misses it, and one milli towards the other crosses it.
+## towards one of them misses it, and one milli towards the other crosses it. The ends stay off
+## tile borders: one on a border past the middle of the map would move a milli (centre_side).
 func test_line_clear_a_line_that_grazes_a_blocked_tile_is_blocked() -> void:
 	var upper_left: World = _map([Vector2i(1, 1)])
 	var lower_right: World = _map([Vector2i(2, 2)])
-	var graze_a: Vector2i = Vector2i(1000, 3000)
-	var graze_b: Vector2i = Vector2i(3000, 1000)
+	var graze_a: Vector2i = Vector2i(500, 3500)
+	var graze_b: Vector2i = Vector2i(3500, 500)
 	assert_bool(_clear(lower_right, graze_a, graze_b)).is_false()
 	assert_bool(_clear(upper_left, graze_a, graze_b)).is_false()
 	# x + y = 3999: misses (2, 2) by a milli and crosses (1, 1).
-	var near_a: Vector2i = Vector2i(1000, 2999)
-	var near_b: Vector2i = Vector2i(2999, 1000)
+	var near_a: Vector2i = Vector2i(500, 3499)
+	var near_b: Vector2i = Vector2i(3499, 500)
 	assert_bool(_clear(lower_right, near_a, near_b)).is_true()
 	assert_bool(_clear(upper_left, near_a, near_b)).is_false()
 	# x + y = 4001: crosses (2, 2) and misses (1, 1).
-	var far_a: Vector2i = Vector2i(1001, 3000)
-	var far_b: Vector2i = Vector2i(3000, 1001)
+	var far_a: Vector2i = Vector2i(500, 3501)
+	var far_b: Vector2i = Vector2i(3501, 500)
 	assert_bool(_clear(lower_right, far_a, far_b)).is_false()
 	assert_bool(_clear(upper_left, far_a, far_b)).is_true()
 
@@ -542,7 +529,9 @@ func test_line_clear_clamps_points_to_the_grid() -> void:
 ## edge of the map, and the segment touches it when one of its points is in it. It also touches
 ## the four tiles around a tile corner that lies strictly between its ends, when it runs along
 ## neither axis.
-func _touches(a: Vector2i, b: Vector2i, tx: int, ty: int, cols: int, rows: int) -> bool:
+func _touches(a_in: Vector2i, b_in: Vector2i, tx: int, ty: int, cols: int, rows: int) -> bool:
+	var a: Vector2i = _on_centre_side(a_in, cols, rows)
+	var b: Vector2i = _on_centre_side(b_in, cols, rows)
 	var left: int = tx * TILE
 	var top: int = ty * TILE
 	var right: int = left + TILE + (1 if tx == cols - 1 else 0)
@@ -601,6 +590,15 @@ func _has_point_in(a: Vector2i, b: Vector2i, from: Vector2i, to: Vector2i) -> bo
 ## -1, 0 or 1 as the fraction x / x.y is below, equal to or above y / y.y (both denominators > 0).
 func _compare(x: Vector2i, y: Vector2i) -> int:
 	return signi(x.x * y.y - y.x * x.y)
+
+
+## An end on a tile border (a multiple of TILE) past the middle of the map is one milli inside the
+## tile before it, so that a half turn of the map turns a tile into a tile: the rule of
+## FixedMath.centre_side, written out per axis for the oracle.
+func _on_centre_side(point: Vector2i, cols: int, rows: int) -> Vector2i:
+	var x: int = point.x - 1 if point.x % TILE == 0 and point.x * 2 > cols * TILE else point.x
+	var y: int = point.y - 1 if point.y % TILE == 0 and point.y * 2 > rows * TILE else point.y
+	return Vector2i(x, y)
 
 
 @warning_ignore("integer_division")

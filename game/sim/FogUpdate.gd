@@ -64,8 +64,22 @@ static func run(world: World) -> void:
 		if player < 1 or player > players or (tick - player + 1) % period != 0:
 			continue
 		var cell: int = (
-			clampi(ys[row] / World.MILLI_PER_TILE, 0, map_rows - 1) * cols
-			+ clampi(xs[row] / World.MILLI_PER_TILE, 0, cols - 1)
+			(
+				clampi(
+					(
+						FixedMath.centre_side(ys[row], map_rows * World.MILLI_PER_TILE)
+						/ World.MILLI_PER_TILE
+					),
+					0,
+					map_rows - 1
+				)
+				* cols
+			)
+			+ clampi(
+				FixedMath.centre_side(xs[row], cols * World.MILLI_PER_TILE) / World.MILLI_PER_TILE,
+				0,
+				cols - 1
+			)
 		)
 		var old: int = stamped[row]
 		if cell == old:

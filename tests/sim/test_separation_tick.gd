@@ -7,7 +7,10 @@ extends GdUnitTestSuite
 ## into other units or turn back settle idle with no pair closer than 90% of the radii sum (720
 ## milli for two tanks). The crowds are the controls_test scenario: 30 blue tanks (ids 1 to 30) at
 ## (8000, 18500) in six columns 1500 apart, 10 red tanks (ids 31 to 40) far to the east. The tick
-## counts are measured and rounded up to a multiple of 15.
+## counts are measured and rounded up to a multiple of 15. They were measured again under ADR 0033
+## (P195d2: slot, unit and tile-border ties that a half turn of the map keeps), which changes which
+## unit takes which slot: all idle at tick 187 (crossing groups), 285 (the block into the red
+## group), 394 (the block back through itself), where they were 178, 279 and 378.
 ##
 ## Separation does not stop tanks from overlapping while they drive. A push is at most 60 milli a
 ## tick, half a tank's speed of 120 (ADR 0008 section 4), so tanks on crossing paths still slide
@@ -45,26 +48,29 @@ const ATTACK_HP: int = 1000000
 const NEVER_DUE: int = 1000000
 ## Two groups of 15 whose paths cross: the north half of the block is sent south of the point, the
 ## south half north of it, 2000 apart, so the two destinations overlap and the groups drive through
-## each other. All idle at tick 178.
+## each other. All idle at tick 187.
 const NORTH_TARGET: Vector2i = Vector2i(26000, 24500)
 const SOUTH_TARGET: Vector2i = Vector2i(26000, 22500)
-const CROSSING_TICKS: int = 180
+const CROSSING_TICKS: int = 195
 ## The controls_test tap-ground order of test_controls_flow (30 tanks to the point, 450 ticks) and
-## the Phase 1 bound on how far a tank may stand from it (the nearest 30 slots of a 1200 lattice
-## reach 3795). Measured maximum with separation: 3795.
+## the bound on how far a tank may stand from it (the nearest 30 slots of a 1200 lattice reach 3795,
+## the Phase 1 bound was 3800). Measured maximum with separation: 4045 under ADR 0033 (3795 before:
+## the unit-to-slot ties go another way now, and a tank ends 250 milli further out).
 const TAP_POINT: Vector2i = Vector2i(20016, 21516)
 const TAP_TICKS: int = 450
-const TAP_CENTRE_BOUND: int = 3800
-## The block driven into the red group (all idle at tick 279), and out and back again through
-## itself (the turn at tick 200, all idle at tick 378).
+const TAP_CENTRE_BOUND: int = 4050
+## The block driven into the red group (all idle at tick 285), and out and back again through
+## itself (the turn at tick 200, all idle at tick 394).
 const RED_POINT: Vector2i = Vector2i(34500, 10500)
-const RED_TICKS: int = 285
+const RED_TICKS: int = 300
 const OUT_POINT: Vector2i = Vector2i(26000, 22000)
 const BACK_POINT: Vector2i = Vector2i(12000, 22000)
 const TURN_TICK: int = 200
-const BACK_TICKS: int = 390
-## How far a tank of a group of 15 stands from its point at most (measured 3003).
-const GROUP_CENTRE_BOUND: int = 3400
+const BACK_TICKS: int = 405
+## How far a tank of a group of 15 stands from its point at most (measured 4712 in the crossing
+## run and 3367 in the run back; it was 3003 before ADR 0033: the crossing groups end more spread
+## out now, and the bound is the measured maximum rounded up).
+const GROUP_CENTRE_BOUND: int = 4720
 
 
 ## Row 0 is a tank sent east and row 1 an idle tank 300 ahead of it (overlapping, so the pair is
@@ -322,11 +328,11 @@ func test_an_attack_on_an_idle_tank_holds_at_weapon_range_and_does_not_shove_it(
 ## Two runs of the crossing groups give the same state hash at every checkpoint tick (every 15
 ## ticks), and the hashes are not the ones of a run without pushes: separation is part of the state.
 ## The C++ run (the tick runs FLOW, TARGETING, SEPARATION, INTEGRATE and FOG in the kernels) has the
-## hashes of the GDScript run, the whole 180 ticks through.
+## hashes of the GDScript run, the whole 195 ticks through.
 func test_two_runs_give_the_same_hashes(impl: int, _test_parameters := _both()) -> void:
 	var first: PackedInt64Array = _crossing_hashes(-1, impl)
 	var second: PackedInt64Array = _crossing_hashes(-1, impl)
-	assert_int(first.size()).is_equal(12)  # Every 15th tick of 180.
+	assert_int(first.size()).is_equal(13)  # Every 15th tick of 195.
 	assert_array(second).is_equal(first)
 	assert_array(_crossing_hashes(-1, SimImpls.Impl.GDSCRIPT)).is_equal(first)
 	var still: PackedInt64Array = _crossing_hashes(0, impl)

@@ -169,7 +169,7 @@ static func run(world: World) -> void:
 			):
 				mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
 			if mode == World.NavMode.FIELD:
-				var cell: int = clampi(y / tile, 0, last_row) * cols + clampi(x / tile, 0, cols - 1)
+				var cell: int = world.cell_of(x, y)
 				if cell != checked[row]:
 					mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
 				if mode == World.NavMode.FIELD and next_of[row] >= 0:
@@ -399,7 +399,7 @@ static func integrate(world: World) -> void:
 			and slot_of[row] >= 0
 			and slot_of[row] < slot_count
 		):
-			cell = clampi(y, 0, max_y) / tile * cols + clampi(x, 0, max_x) / tile
+			cell = world.cell_of(clampi(x, 0, max_x), clampi(y, 0, max_y))
 			if (
 				(next_of[row] == -1 or (tick + ids[row]) % period == 0)
 				and slots[slot_of[row]].complete
@@ -448,12 +448,13 @@ static func integrate(world: World) -> void:
 		var new_y: int = clampi(y + step_y, 0, max_y)
 		if cells > 0:
 			var base: int = classes[type] * cells
-			if cost[base + (new_y / tile) * cols + new_x / tile] == 0:
-				var own_column: int = clampi(x, 0, max_x) / tile
-				var own_line: int = clampi(y, 0, max_y) / tile
-				if cost[base + own_line * cols + new_x / tile] != 0:
+			var new_cell: int = world.cell_of(new_x, new_y)
+			if cost[base + new_cell] == 0:
+				var own_column: int = world.cell_of(clampi(x, 0, max_x), 0) % cols
+				var own_line: int = world.cell_of(0, clampi(y, 0, max_y)) / cols
+				if cost[base + own_line * cols + new_cell % cols] != 0:
 					new_y = y
-				elif cost[base + (new_y / tile) * cols + own_column] != 0:
+				elif cost[base + new_cell / cols * cols + own_column] != 0:
 					new_x = x
 				else:
 					new_x = x
@@ -463,6 +464,6 @@ static func integrate(world: World) -> void:
 		pos_x[row] = new_x
 		pos_y[row] = new_y
 		if cell >= 0 and mode == World.NavMode.FIELD:
-			var entered: int = new_y / tile * cols + new_x / tile
+			var entered: int = world.cell_of(new_x, new_y)
 			if entered != cell and slots[slot_of[row]].complete:
 				_refresh_next(world, slots, slot_of, next_of, row, entered, classes[type])

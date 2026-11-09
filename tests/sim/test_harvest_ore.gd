@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The ore of the harvest loop (plan row P75, ADR 0018 sections 2 and 3): regrowth up to the cap,
-## the look of SEEK (the nearest cell with ore, the lowest index on a tie, every cell counted in
+## the look of SEEK (the nearest cell with ore, the one toward the map centre on a tie, every cell counted in
 ## `Stat.ORE_SCANNED`, a look every `harvest_retry_ticks` while there is none), two harvesters on
 ## one cell, and the harvester whose order ended short of its cell. The harvester of the cases has
 ## no refinery: none of them fills a hold. The cells' own cap is 0 where a case needs the ore to
@@ -87,10 +87,12 @@ func test_a_look_counts_every_ore_cell_and_a_harvester_with_no_cell_looks_each_r
 	)
 
 
-func test_seek_takes_the_nearest_cell_with_ore_and_the_lowest_index_on_a_tie() -> void:
+func test_seek_takes_the_nearest_cell_with_ore_and_on_a_tie_the_one_toward_the_map_centre() -> void:
 	# Cells 0, 1 and 2 are the tiles (2, 1), (6, 1) and (4, 4); the harvester at (4 500, 1 500) is
-	# 2 000 from cells 0 and 1 and 3 000 from cell 2. Case: the ore of the three, the cell taken.
-	var cases: Array[Array] = [[[5, 5, 5], 0], [[0, 5, 5], 1], [[0, 0, 5], 2], [[5, 5, 0], 0]]
+	# 2 000 from cells 0 and 1 and 3 000 from cell 2. The map centre is (5 000, 3 000), so of the
+	# two equal cells the right one, cell 1, is further toward it. Case: the ore of the three, the
+	# cell taken.
+	var cases: Array[Array] = [[[5, 5, 5], 1], [[0, 5, 5], 1], [[0, 0, 5], 2], [[5, 5, 0], 1]]
 	for case: Array in cases:
 		var ore: Array[Vector2i] = [Vector2i(2, 1), Vector2i(6, 1), Vector2i(4, 4)]
 		var world: World = Worlds.world(Worlds.grass(10, 6, ore))

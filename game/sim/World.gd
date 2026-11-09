@@ -742,8 +742,12 @@ func prepare() -> void:
 func cell_of(x: int, y: int) -> int:
 	if map_cols == 0:
 		return 0
-	var column: int = clampi(x / MILLI_PER_TILE, 0, map_cols - 1)
-	var row: int = clampi(y / MILLI_PER_TILE, 0, map_rows - 1)
+	var column: int = clampi(
+		FixedMath.centre_side(x, map_cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, map_cols - 1
+	)
+	var row: int = clampi(
+		FixedMath.centre_side(y, map_rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, map_rows - 1
+	)
 	return row * map_cols + column
 
 

@@ -25,15 +25,17 @@ const BOUND: int = 1500
 
 
 ## Twelve tanks cross a wall (30 x 14, column 12, a gap in rows 6 and 7) to a group target in
-## column 22, and that tile turns to rock on tick 10, 20 or 30, while every tank is still FIELD
+## column 22, and that tile turns to rock on tick 10, 15 or 20, while every tank is still FIELD
 ## west of the wall (a DIRECT unit never checks its line again, so one whose line was clear when
-## the tile closed would slide along the rock and stall there). Every unit ends: the eleven whose
+## the tile closed would slide along the rock and stall there). The ticks were 10, 20 and 30 until
+## ADR 0033 (P195d2): the slot ties go another way, and by tick 25 the tank for the slot
+## (22500, 8900) has a clear line through the gap and is DIRECT. Every unit ends: the eleven whose
 ## own slot lies on another tile arrive on it (they take the field of their own goal tile), the
 ## one whose goal is the rock tile stalls short of it. No slot is referenced at the end.
 func test_twelve_tanks_end_their_orders_when_the_group_target_tile_turns_to_rock(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	for close_at: int in [10, 20, 30]:
+	for close_at: int in [10, 15, 20]:
 		var world: World = _gap_world(impl, false)
 		GridWorld.add_block(world, 12, 4, 3000, 1500, 1000, 0)
 		var goals: Array[Vector2i] = _close_and_run(world, 12, 22500, 6500, close_at)

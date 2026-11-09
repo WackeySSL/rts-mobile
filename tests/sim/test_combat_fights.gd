@@ -28,18 +28,22 @@ const DIED: int = World.Event.DIED
 const STRIDE: int = World.EVENT_STRIDE
 ## The meeting: three tanks a side on a 24 x 14 tile map, 14000 apart on one row, 1200 between the
 ## tanks of a side (a tank's formation spacing), each side attack-moving to the other's start.
-const MEETING_TICKS: int = 700
-## Before this tick of the meeting nobody has died: the first death is at tick 447.
-const BEFORE_DEATHS: int = 300
+## It was 700 until ADR 0033 (P195d2): the last unit is gone at tick 773 now.
+const MEETING_TICKS: int = 780
+## Before this tick of the meeting nobody has died: the first death is at tick 247 (447 before
+## ADR 0033).
+const BEFORE_DEATHS: int = 240
 
 
 ## Opposing groups of equal strength no longer hold for ever (the interim of P41b ends with P42a):
 ## three tanks a side attack-move at each other, stop at weapon range and trade cannon fire; at tick
-## 300 nobody has died but all six hold and both sides are damaged. By tick 700 all six are gone:
-## the two groups are alike, so every tank has taken the same hits (102 hp at tick 300, 12 at tick
-## 446) and five of them are removed in tick 447, the first death; the sixth was left with 12 hp and
-## a shell of a tank that died in tick 447 lands on it in tick 448 (a shell outlives its shooter,
-## P42b; with every hit at once, in P42a, one blue tank was left). Every tank that left did so with
+## 240 nobody has died but all six hold and both sides are damaged (hp 300, 12 and 156 on the blue
+## side, 156, 12 and 300 on the red one). By tick 780 all six are gone. The two columns are mirror
+## images of each other, but the slot ties of the formation go by the group's approach and the
+## larger cross product, and a mirror image flips the second: the groups no longer take the same
+## hits (before ADR 0033, P195d2, they did, and five tanks were removed in tick 447). One tank is
+## removed in tick 247 (id 5), another in tick 248 (id 2: a shell outlives its shooter, P42b), two
+## in tick 347, and the last two, one a side, are gone by tick 773. Every tank that left did so with
 ## one DIED record in the tick it was removed (the ids removed from the rows are the ids in the
 ## records, so the selection and the groups can follow them, P43a). A group that outnumbers the
 ## other is the next test.
@@ -69,7 +73,7 @@ func test_two_equal_groups_that_meet_hold_and_fight_until_both_are_gone() -> voi
 			assert_int(world.nav_mode.count(HOLD)).is_equal(6)
 			assert_bool(world.hp.slice(0, 3) != PackedInt32Array([300, 300, 300])).is_true()
 			assert_bool(world.hp.slice(3, 6) != PackedInt32Array([300, 300, 300])).is_true()
-	assert_int(first_death).is_equal(447)
+	assert_int(first_death).is_equal(247)
 	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([3, 3])
 	assert_int(world.unit_count()).is_equal(0)
 	assert_int(gone.size()).is_equal(6)
@@ -78,9 +82,9 @@ func test_two_equal_groups_that_meet_hold_and_fight_until_both_are_gone() -> voi
 ## The group that outnumbers the other wins and goes on (the attack-move row of HOW_TO_PLAY, "they
 ## stop to fight, then continue"): three blue tanks meet two red ones. The red tanks are removed in
 ## ticks 247 and 322, one DIED record each, and no blue tank is lost (84, 138 and 300 hp are left);
-## by tick 404 the last shell has landed and each of the three has gone on to its place at the red
-## start (x 17000, 17000 and 16608, far beyond the 12200 where the fight was) and is idle with no
-## navigation mode and no target.
+## by tick 413 the last shell has landed and each of the three has gone on to its place at the red
+## start (x 18200, 16933 and 17030, far beyond the 12200 where the fight was; 17000, 17000 and
+## 16608 by tick 404 before ADR 0033, P195d2) and is idle with no navigation mode and no target.
 func test_the_larger_group_of_a_meeting_wins_and_goes_on_to_its_goal() -> void:
 	var world: World = _meeting(2)
 	var commands: Array[Command] = _meeting_orders(world, 2)
@@ -95,14 +99,14 @@ func test_the_larger_group_of_a_meeting_wins_and_goes_on_to_its_goal() -> void:
 		if world.owner.count(2) == 0 and world.order.count(IDLE) == world.unit_count():
 			settled_at = tick
 			break
-	assert_int(settled_at).is_equal(404)
+	assert_int(settled_at).is_equal(413)
 	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([0, 2])
 	assert_array(world.unit_id).is_equal([1, 2, 3])
 	assert_array(world.hp).is_equal([84, 138, 300])
 	assert_array(world.order).is_equal([IDLE, IDLE, IDLE])
 	assert_array(world.nav_mode).is_equal([NONE, NONE, NONE])
 	assert_array(world.target).is_equal([0, 0, 0])
-	assert_array(world.pos_x).is_equal([17000, 17000, 16608])
+	assert_array(world.pos_x).is_equal([18200, 16933, 17030])
 	assert_int(world.max_projectiles - world.proj_free_top).is_equal(0)
 
 
