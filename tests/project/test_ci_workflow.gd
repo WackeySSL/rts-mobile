@@ -71,6 +71,7 @@ const ARM64_CHECK_RUN: String = (
 const GODOT_SCRIPT: String = "res://scripts/ci/install-godot.sh"
 ## P51: the verify job's summary copies the PERF lines of the verify log.
 const SUMMARY_STEP: String = "Job summary"
+## P190b: the step that prints the same blocks to the job log.
 const LOG_STEP: String = "Job log lines"
 const PERF_PATTERN: String = "^PERF sim (units=|impl=native)"
 const PERF_GREP: String = (
@@ -325,13 +326,15 @@ func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
 ## P51: the summary of the verify job copies the GDScript and the impl=native PERF line, after the
 ## VERIFY SUMMARY block, in a step that runs when verify.sh failed too. P96: the same step then
 ## copies the two `PERF bases` lines under a heading of their own (`_assert_perf_bases_summary`).
+## P190b: the step after it prints the same blocks to the job log (`_assert_log_lines_step`), and
+## verify.sh's summary gains the smoke seconds line (`_assert_verify_prints_smoke_seconds`).
 func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
 	var step: Array = Array(_step(job, SUMMARY_STEP))
 	assert_array(step).contains(["if: always()", PERF_GREP])
 	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP])
 	var block: int = step.find(
-		"sed -n '/===== VERIFY SUMMARY =====/,$p' " + '"$RUNNER_TEMP/verify.log"'
+		"sed -n '/^===== VERIFY SUMMARY =====$/,$p' " + '"$RUNNER_TEMP/verify.log"'
 	)
 	assert_int(block).is_greater(-1)
 	assert_int(step.find(PERF_GREP)).is_greater(block)
@@ -770,30 +773,48 @@ func _assert_watch_ai_summary(step: Array) -> void:
 ## lines: one `::group::` each, in a step of their own after the summary, that never fails the job.
 func _assert_log_lines_step(job: PackedStringArray) -> void:
 	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP, LOG_STEP])
-	var step: Array = Array(_step(job, LOG_STEP))
-	assert_array(step).contains(["if: always()", "exit 0"])
-	var text: String = "\n".join(step)
-	assert_bool(text.contains("${{")).is_false()
-	var previous: int = -1
-	for name: String in ["VERIFY SUMMARY", "PERF sim", "PERF bases", "WATCH ai"]:
-		var group: int = step.find('echo "::group::%s"' % name)
-		assert_int(group).is_greater(previous)
-		assert_int(step.find('echo "::endgroup::"', group)).is_greater(group)
-		previous = group
-	for pattern: String in [PERF_PATTERN, BASES_PATTERN, WATCH_AI_PATTERN]:
-		assert_bool(text.contains("grep -a -E '" + pattern + "'")).is_true()
-	assert_bool(text.contains("sed -n '/===== VERIFY SUMMARY =====/,$p'")).is_true()
+	var body: Array = [
+		"if: always()",
+		"run: |",
+		'log="$RUNNER_TEMP/verify.log"',
+		'echo "::group::VERIFY SUMMARY"',
+		'if [ -f "$log" ] && grep -q -x \'===== VERIFY SUMMARY =====\' "$log"; then',
+		"sed -n '/^===== VERIFY SUMMARY =====$/,$p' \"$log\" || true",
+		"else",
+		'echo "no VERIFY SUMMARY block (verify.sh did not finish)"',
+		"fi",
+		'echo "::endgroup::"',
+	]
+	var groups: Dictionary = {
+		"PERF sim": PERF_GREP, "PERF bases": BASES_GREP, "WATCH ai": WATCH_AI_GREP
+	}
+	for group: String in groups:
+		var grep: String = groups[group]
+		body.append('echo "::group::%s"' % group)
+		body.append(grep.replace('"$RUNNER_TEMP/verify.log"', '"$log"'))
+		body.append('echo "::endgroup::"')
+	body.append("exit 0")
+	_assert_step(job, LOG_STEP, body)
 
 
-## P190b: verify.sh adds one line to its VERIFY SUMMARY, after `commit:` and before RESULT, with the
-## seconds of the smoke step; no existing line changes.
+## P190b: verify.sh times the smoke step and adds one line to its VERIFY SUMMARY, after `commit:`
+## and before RESULT, with the seconds; no existing line changes.
 func _assert_verify_prints_smoke_seconds() -> void:
 	var text: String = FileAccess.get_file_as_string("res://scripts/verify.sh")
-	var line: String = 'echo "run-sim-smoke: 3 matches in ${SMOKE_SECS} s"'
-	assert_bool(text.contains(line)).is_true()
+	var timed: String = (
+		"  SMOKE_START=$SECONDS\n"
+		+ '  run_step "sim smoke (3 seeded AI-vs-AI matches)" env RUN_SIM_SMOKE_SKIP_IMPORT=1'
+		+ " bash scripts/run-sim-smoke.sh --matches 3\n"
+		+ "  SMOKE_SECS=$((SECONDS - SMOKE_START))\n"
+	)
+	assert_bool(text.contains(timed)).is_true()
+	assert_bool(text.contains('FAILED=()\nSMOKE_SECS=""\n')).is_true()
+	var line: String = (
+		'if [ -n "$SMOKE_SECS" ]; then'
+		+ ' echo "smoke:  ${SMOKE_SECS} s (run-sim-smoke.sh --matches 3)"; fi'
+	)
 	assert_int(text.find(line)).is_greater(text.find('echo "commit: '))
 	assert_int(text.find(line)).is_less(text.find('echo "RESULT: GREEN"'))
-	assert_bool(text.contains("SMOKE_SECS=$((SECONDS - SMOKE_START))")).is_true()
 
 
 func _perf_selected(line: String, pattern: String = PERF_PATTERN) -> bool:

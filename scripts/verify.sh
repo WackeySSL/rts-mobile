@@ -13,6 +13,7 @@ fi
 
 LOG="$(mktemp -t verify.XXXXXX)"
 FAILED=()
+SMOKE_SECS=""
 
 run_step() {
   local name="$1"
@@ -101,7 +102,7 @@ echo "godot:  $(godot --version 2>/dev/null | head -n 1)"
 DIRTY=""
 if ! git diff --quiet 2>/dev/null; then DIRTY=" (+ uncommitted changes)"; fi
 echo "commit: $(git rev-parse --short HEAD 2>/dev/null)${DIRTY}"
-if [ -n "${SMOKE_SECS:-}" ]; then echo "run-sim-smoke: 3 matches in ${SMOKE_SECS} s"; fi
+if [ -n "$SMOKE_SECS" ]; then echo "smoke:  ${SMOKE_SECS} s (run-sim-smoke.sh --matches 3)"; fi
 if [ ${#FAILED[@]} -eq 0 ]; then
   echo "RESULT: GREEN"
   rm -f "$LOG"
