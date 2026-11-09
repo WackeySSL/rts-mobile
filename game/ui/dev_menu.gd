@@ -21,6 +21,7 @@ const START_LEVEL: int = 1
 ## The chosen index of `LEVEL_NAMES` and `LEVEL_PATHS`.
 var _level_index: int = START_LEVEL
 
+@onready var _safe_area: SafeAreaMargin = $SafeArea
 @onready var _column: VBoxContainer = %Column
 @onready var _grid: GridContainer = %Grid
 @onready var _level_label: Label = %LevelLabel
@@ -88,14 +89,17 @@ func _apply_dp() -> void:
 	_grid.columns = 1 if HudLayout.is_portrait() else _sideways_columns(gap)
 
 
-## Three columns sideways where three of the widest button and the gaps fit the safe width (no
-## scroll at web_phone), else two (a 640 dp phone); horizontal scroll is off, so a wider block
-## would put buttons out of reach.
+## Three columns sideways where three of the widest button and the gaps fit the room inside the
+## safe margin (both sides take the larger inset; no scroll at web_phone), else two (a 640 dp
+## phone); horizontal scroll is off, so a wider block would put buttons out of reach.
 func _sideways_columns(gap: int) -> int:
 	var widest: float = 0.0
 	for button: Control in _grid.get_children():
 		widest = maxf(widest, button.get_combined_minimum_size().x)
-	return 3 if 3.0 * widest + 2.0 * gap <= UiScale.safe_rect_base().size.x else 2
+	var room: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), _safe_area.margin_dp
+	)
+	return 3 if 3.0 * widest + 2.0 * gap <= room.size.x else 2
 
 
 func _open_main() -> void:

@@ -90,6 +90,23 @@ func test_a_640_dp_wide_window_gets_two_columns_inside_the_safe_width() -> void:
 	_close(menu)
 
 
+## A one-sided cutout narrows the room by its inset on both sides (the margin is symmetric), so
+## three columns that fit the plain width must still give way to two.
+func test_a_one_sided_cutout_gets_two_columns_inside_the_safe_width() -> void:
+	var small: UiMetrics = UiProfiles.by_name(&"web_phone_small")
+	var cut: Rect2i = Rect2i(120, 0, small.window_size.x - 120, small.window_size.y)  # 40 dp left.
+	var menu: Control = await _open(UiProfiles.with_safe_area(small, cut))
+	var safe: Rect2 = UiScale.safe_rect_base()
+	assert_int((_control(menu, "Grid") as GridContainer).columns).is_equal(2)
+	for button_name: String in BUTTONS:
+		var rect: Rect2 = _control(menu, button_name).get_global_rect()
+		(
+			assert_bool(rect.position.x >= safe.position.x - 0.5 and rect.end.x <= safe.end.x + 0.5)
+			. is_true()
+		)
+	_close(menu)
+
+
 ## A phone browser held sideways with a cutout is too short for the column: the menu scrolls, and
 ## each button can be brought into the safe rect.
 func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
