@@ -1,132 +1,169 @@
 extends GdUnitTestSuite
 ## The AI's time and bounds (plan row P189, ADR 0030 section 4, ADR 0031 section 8). Two Normal
 ## `OpponentAi` play `data/scenarios/perf_ai.tres` (the base arena's layout on the frozen sim defs,
-## the shipped AI defs) for 900 ticks of seed 42, twice, through `AiDriver.think_all`.
+## the shipped AI defs) for 900 ticks of seed 42, three times, through `AiDriver.think_all`.
 ##
 ## What is judged is deterministic and read from the controllers, never from the clock: every think
-## stays inside the counted bounds of ADR 0030 section 4 (the passes, the Commands, the placement
-## tries, the candidate tests, the goal keys, the sectors, the squads and the id lists), the two
-## runs end on the same state hash at every checkpoint and drop no Command, and the counters that
-## judge a bound are live (a bound that nothing moves is not a bound). `flow_full_ticks` is printed
-## for the lead's choice between `goal_keys_max` 3 and plan row P194; it is not asserted.
+## stays inside the counted bounds of ADR 0030 section 4 (the passes, the Commands cut, the
+## placement tries, the candidate tests, the goal keys, the sectors, the squads and every id list of
+## the memory), the runs end on the same state hash at every checkpoint and drop no Command.
 ##
-## What is only printed: `WATCH ai think` (report only, no ratchet: that is P189b's), the time of a
-## think (the call of `think_all` that made it, the PlayerView included, as the snapshot's
-## `think_usec`) at the p95 and the max over the better run, with the phone estimate at the gate's
-## `ci_ratio_p95`. The watch value of the card is 1.0 ms on the phone (ADR 0030 section 4).
+## What this workload exercises, by `WATCH ai peaks`: the passes (3), the placement tries, the
+## STAGING goal keys, the own id lists, the Commands and every slot. What it does not: in 900 ticks
+## neither AI sees the enemy (Normal's scout comes at tick 1800 and its first wave at 4050), so the
+## seen lists, the army, hit and strike tests and the ARMY and SCOUT keys stay 0 here. Their bounds
+## hold on silence; the manager suites and P188's matches pin them on crafted Worlds and on
+## matches with contact, and P189b's frozen AI defs bring contact into this workload. Lead decision
+## (P189 round 1): the timed workload is a no-contact AI until then. Only the counters this workload
+## moves are asserted live. Two asserts depend on the shipped AI's timing until P189b: no match end
+## and Commands sent (exception 20's spirit; the file is not in its list).
+##
+## What is only printed (report only, no ratchet: that is P189b's):
+## - `WATCH ai think`: the time of a think (the call of `think_all` that made it, the PlayerView
+##   included, as the snapshot's `think_usec`), the p95 and the max, each the smallest of the runs
+##   (as `PerfReport.best_of`), with the phone estimate at the gate's `ci_ratio_p95`. `impl=` is the
+##   sim's implementation; the AI is GDScript in both. `thinks=` is added to ADR 0030 section 4's
+##   keys.
+##   The watch value of the card is 1.0 ms on the phone.
+## - `WATCH ai flow full_ticks=<n> hash=<hex>`: the lead's input for `goal_keys_max` 3 or row P194.
+## - `WATCH ai peaks name=count ...`: the largest value of every judged counter (counts only).
 
-const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
 const AiRun: GDScript = preload("res://tests/perf/support/ai_perf_run.gd")
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
-const WATCH_HEAD: String = "WATCH ai think"
-const RUNS: int = 2
+const RUNS: int = 3
+## The counters this workload moves (see the header); asserted greater than 0 in every run.
+const LIVE: Array[String] = [
+	"work", "placement_tries", "keys_staging", "unit_id", "own_mobile_id", "hp_id", "commands"
+]
 
-var _runs: Array = []
+var _runs: Array[AiRun] = []
 
 
 func before() -> void:
 	for _run: int in RUNS:
-		_runs.append(AiRun.play())
+		var run: AiRun = AiRun.new()
+		run.play()
+		_runs.append(run)
 	var gate: PerfGateDef = load(GATE_PATH) as PerfGateDef
-	var best: Variant = _best()
-	print(watch_line(best.think_usec, best.impl, best.thinks, gate.ci_ratio_p95))
-	print("WATCH ai flow_full_ticks=%d hash=%s" % [best.flow_full_ticks, _hex(best.final_hash)])
+	var first: AiRun = _runs[0]
+	var p95_us: float = _smallest(AiRun.p95_of)
+	var max_us: float = _smallest(AiRun.max_of)
+	print(AiRun.think_line(p95_us, max_us, first.impl, first.thinks, gate.ci_ratio_p95))
+	print(AiRun.flow_line(first.flow_full_ticks, World.hash_hex(first.final_hash)))
+	print(AiRun.peaks_line(first.peaks))
 
 
-## Both runs play the whole 900 ticks (no match end), every Command passes the sim's validation, and
-## both end on the same state hash at every checkpoint: the AI is a pure function of its views and
-## its stream, so the counted bounds below are the same in both.
-func test_both_runs_play_900_ticks_drop_nothing_and_agree_at_every_checkpoint() -> void:
-	var first: Variant = _runs[0]
+## The runs play the whole 900 ticks (no match end), every Command passes the sim's validation, and
+## all end on the same state hash at every checkpoint: the AI is a pure function of its views and
+## its stream, so the counted bounds below are the same in all of them.
+@warning_ignore("integer_division")
+func test_the_runs_play_900_ticks_drop_nothing_and_agree_at_every_checkpoint() -> void:
+	var first: AiRun = _runs[0]
 	assert_int(first.checkpoint_hashes.size()).is_equal(AiRun.TICKS / Replay.CHECKPOINT_PERIOD)
-	for run: Variant in _runs:
-		assert_int(run.match_end_tick).is_equal(0)
-		assert_int(run.dropped_commands).is_equal(0)
-		assert_array(run.checkpoint_ticks).is_equal(first.checkpoint_ticks)
-		assert_array(run.checkpoint_hashes).is_equal(first.checkpoint_hashes)
-		assert_int(run.final_hash).is_equal(first.final_hash)
-		assert_int(run.flow_full_ticks).is_equal(first.flow_full_ticks)
-		assert_int(run.thinks).is_equal(first.thinks)
+	for index: int in _runs.size():
+		var run: AiRun = _runs[index]
+		var tag: String = "run %d" % index
+		assert_int(run.match_end_tick).override_failure_message(tag).is_equal(0)
+		assert_int(run.dropped_commands).override_failure_message(tag).is_equal(0)
+		assert_array(run.checkpoint_ticks).override_failure_message(tag).is_equal(
+			first.checkpoint_ticks
+		)
+		assert_array(run.checkpoint_hashes).override_failure_message(tag).is_equal(
+			first.checkpoint_hashes
+		)
+		assert_int(run.final_hash).override_failure_message(tag).is_equal(first.final_hash)
+		assert_int(run.flow_full_ticks).override_failure_message(tag).is_equal(
+			first.flow_full_ticks
+		)
+		assert_int(run.thinks).override_failure_message(tag).is_equal(first.thinks)
+		assert_array(_peak_values(run)).override_failure_message(tag).is_equal(_peak_values(first))
 
 
-## Every think of both AIs, 900 ticks long, stays inside the bounds of ADR 0030 section 4; the run
-## itself is the planned one (two AIs, one think a tick at most, each AI thinks every fifth tick).
+## Every think of both AIs, 900 ticks long, stays inside the bounds of ADR 0030 sections 3 and 4;
+## the run itself is the planned one: two AIs, at most one think a tick, and as many thinks as the
+## driver's rule `(tick + think_offset) % think_period == 0` owes.
 func test_every_think_stays_inside_the_counted_bounds_of_the_adr() -> void:
-	for run: Variant in _runs:
-		assert_array(run.violations).is_empty()
-		assert_int(run.controllers.size()).is_equal(2)
-		assert_int(run.most_in_a_tick).is_equal(1)
-		assert_int(run.thinks).is_equal(run.think_usec.size())
-		var expected: int = 0
-		for ai: AiController in run.controllers:
-			expected += AiRun.TICKS / ai.think_period
-		assert_int(run.thinks).is_equal(expected)
+	for index: int in _runs.size():
+		var run: AiRun = _runs[index]
+		var tag: String = "run %d" % index
+		assert_array(run.violations).override_failure_message(tag).is_empty()
+		assert_int(run.controllers.size()).override_failure_message(tag).is_equal(2)
+		assert_int(run.most_in_a_tick).override_failure_message(tag).is_equal(1)
+		assert_int(run.thinks).override_failure_message(tag).is_equal(run.thinks_owed)
+		assert_int(run.thinks).override_failure_message(tag).is_equal(run.think_usec.size())
 
 
-## The counters that the bounds read moved: an AI that never sent a Command, never reached the pass
-## budget or never sent its slots' work would pass the bounds on silence. Each AI thought in every
-## slot, sent Commands, and its `work_max` reached the view's pass and the two of a slot (3).
-func test_the_counters_the_bounds_judge_are_live() -> void:
-	for run: Variant in _runs:
+## The counters that this workload moves did move, so their bounds were judged on something: the
+## passes reached the budget of 3, and each AI thought in every slot. The counters that stay 0 here
+## are named in the header and printed by `WATCH ai peaks`.
+func test_the_counters_this_workload_moves_are_live() -> void:
+	for index: int in _runs.size():
+		var run: AiRun = _runs[index]
+		for name: String in LIVE:
+			(
+				assert_int(run.peaks.get(name, 0))
+				. override_failure_message("run %d: %s never moved" % [index, name])
+				. is_greater(0)
+			)
+		assert_int(run.peaks["work"]).override_failure_message("run %d" % index).is_equal(
+			AiRun.PASSES_MAX
+		)
 		for controller: AiController in run.controllers:
 			var ai: OpponentAi = controller as OpponentAi
 			for slot: int in OpponentAi.SLOTS:
-				assert_int(ai.slot_thinks[slot]).is_greater(0)
-			assert_int(ai.commands).is_greater(0)
-			assert_int(ai.work_max).is_equal(3)
+				(
+					assert_int(ai.slot_thinks[slot])
+					. override_failure_message(
+						"run %d player %d slot %d" % [index, ai.player_id, slot]
+					)
+					. is_greater(0)
+				)
 
 
-## The WATCH line is the head, `impl=`, the slots, the think count, the p95 and the max in
-## microseconds and the phone estimate (the p95 in ms times the ratio), in that order; none starts
-## with `PERF `, the lines that P51 copies. Made-up samples: the p95 is the nearest rank.
-func test_the_watch_line_has_the_keys_in_order_and_the_phone_estimate() -> void:
+## The three report-only lines are `WATCH ai <name> key=value ...` with their keys in order, none
+## starts with `PERF `, the lines that P51 copies. Made-up samples: the p95 is the nearest rank.
+func test_the_watch_lines_have_the_heads_the_keys_in_order_and_the_phone_estimate() -> void:
+	assert_str(AiRun.THINK_HEAD).is_equal("WATCH ai think")
+	assert_str(AiRun.FLOW_HEAD).is_equal("WATCH ai flow")
+	assert_str(AiRun.PEAKS_HEAD).is_equal("WATCH ai peaks")
 	var samples: PackedFloat64Array = PackedFloat64Array()
 	for index: int in 20:
 		samples.append(float((index * 7) % 20 + 1) * 100.0)
-	var line: String = watch_line(samples, "gdscript", 20, 5.9)
-	assert_str(line).is_equal(
+	assert_float(AiRun.p95_of(samples)).is_equal(1900.0)
+	assert_float(AiRun.max_of(samples)).is_equal(2000.0)
+	assert_float(AiRun.max_of(PackedFloat64Array())).is_equal(0.0)
+	var think: String = AiRun.think_line(1900.0, 2000.0, "gdscript", 20, 5.9)
+	assert_str(think).is_equal(
 		(
 			"WATCH ai think impl=gdscript slots=3 thinks=20 p95_us=1900.000 max_us=2000.000 "
 			+ "est_phone_p95_ms=11.210"
 		)
 	)
-	assert_bool(line.begins_with("PERF ")).is_false()
-	var keys: Array[String] = []
-	for field: String in line.split(" "):
-		keys.append(field.get_slice("=", 0))
-	assert_array(keys).is_equal(
-		["WATCH", "ai", "think", "impl", "slots", "thinks", "p95_us", "max_us", "est_phone_p95_ms"]
+	assert_str(AiRun.think_line(0.0, 0.0, "native", 0, 5.9)).is_equal(
+		(
+			"WATCH ai think impl=native slots=3 thinks=0 p95_us=0.000 max_us=0.000 "
+			+ "est_phone_p95_ms=0.000"
+		)
 	)
-	assert_str(watch_line(PackedFloat64Array(), "native", 0, 5.9)).contains(
-		"impl=native slots=3 thinks=0 p95_us=0.000 max_us=0.000 est_phone_p95_ms=0.000"
-	)
+	assert_str(AiRun.flow_line(191, "00ab")).is_equal("WATCH ai flow full_ticks=191 hash=00ab")
+	var counts: Dictionary[String, int] = {"work": 3, "keys_scout": 0}
+	assert_str(AiRun.peaks_line(counts)).is_equal("WATCH ai peaks work=3 keys_scout=0")
+	for line: String in [think, AiRun.flow_line(0, ""), AiRun.peaks_line(counts)]:
+		assert_bool(line.begins_with("PERF ")).is_false()
+		assert_bool(line.begins_with("WATCH ai ")).is_true()
 
 
-## The line of `WATCH ai think` for the think times `usec` (floats, microseconds).
-static func watch_line(usec: PackedFloat64Array, impl: String, thinks: int, ratio: float) -> String:
-	var p95_us: float = PerfReport.p95(usec)
-	var max_us: float = 0.0
-	for sample: float in usec:
-		max_us = maxf(max_us, sample)
-	var values: Dictionary = {
-		"impl": impl,
-		"slots": OpponentAi.SLOTS,
-		"thinks": thinks,
-		"p95_us": p95_us,
-		"max_us": max_us,
-		"est_phone_p95_ms": p95_us / 1000.0 * ratio,
-	}
-	return PerfReport.sub_line(WATCH_HEAD, values, false)
+## The p95 and the max, each the smallest over the runs (like `PerfReport.best_of`).
+func _smallest(statistic: Callable) -> float:
+	var smallest: float = INF
+	for run: AiRun in _runs:
+		smallest = minf(smallest, statistic.call(run.think_usec))
+	return smallest
 
 
-## The run with the lower p95, the better of the two, as the perf lines take the best run.
-func _best() -> Variant:
-	var best: Variant = _runs[0]
-	for run: Variant in _runs:
-		if PerfReport.p95(run.think_usec) < PerfReport.p95(best.think_usec):
-			best = run
-	return best
-
-
-func _hex(hash_value: int) -> String:
-	return World.hash_hex(hash_value)
+## The peaks of `run` as a list in the order they were first seen, to compare two runs.
+func _peak_values(run: AiRun) -> Array[int]:
+	var values: Array[int] = []
+	for name: String in run.peaks:
+		values.append(run.peaks[name])
+	return values
