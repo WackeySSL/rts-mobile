@@ -10,11 +10,14 @@ shader.
 Status: **proposed 2026-11-09** (P200, architect, on `main` at b6bfe95). Michael said yes to the
 eight proposals of art-director's board on 2026-11-09; this ADR records how they fit the accepted
 ADRs and what changes in them. Questions 2 and 3 of the plan
-(`docs/plans/2026-11-09-visual-polish.md`, "Questions for Michael") decide §1 and §4.3.
+(`docs/plans/2026-11-09-visual-polish.md`, "Questions for Michael") decide §1 and §4.3. Revised
+the same day after the docs lens: the Hud's layer (§3), what the canvas tint covers (§3), the
+forecast's figures and where the code prints them (§7), the `data/` rows (§5).
 Amends, on acceptance: ADR 0010 §2 (fog colour), ADR 0023 §2 (the z table and the draw-call
 forecast) and §5 (key colours in shadow frames), ADR 0027 §9 (the forecast it carries), the GDD's
-"unexplored is black". Keeps: ADR 0029 §6's rejection of additive blending, ADR 0023 §2's "nothing
-tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §3's one-texture ring.
+"unexplored is black". Keeps: ADR 0029 §6's rejection of additive blending, ADR 0023 §2's
+"nothing tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §3's
+one-texture ring.
 
 ## Context
 - **The board** (art-director, Figma "Polish proposals", 2026-11-09): 1 contact shadows and ambient
@@ -29,8 +32,8 @@ tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §
   - **6** adds a full-screen layer and a canvas tint. ADR 0023 §2's z table and its forecast (16,
     ADR 0027 §9) list neither; "nothing tints a sorted sprite" is about per-sprite tints.
   - **3** bakes the key triad into a unit's shadow frame. ADR 0023 §5 and `IsoAtlas` bake a frame
-    with no key colour (a shadow) once per faction; ADR 0022 question 3 holds a model's team share at
-    about 8-12 %, and STYLE.md says team colour is "never a large plate".
+    with no key colour (a shadow) once per faction; ADR 0022 question 3 holds a model's team share
+    at about 8-12 %, and STYLE.md says team colour is "never a large plate".
   - **7** names additive blending for the flashes. ADR 0029 §6 rejected additive blending (a
     material on its own canvas item, one more draw call) for one alpha glow pass.
 - **Budgets:** CLAUDE.md rule 6 (150 units at 60 fps on a mid-range 2021 phone, Compatibility),
@@ -68,7 +71,15 @@ tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §
   item of that canvas, applied by the renderer as one canvas-wide factor, so no batch splits and no
   sprite is tinted on its own ("nothing tints a sorted sprite" holds). The HUD's `CanvasLayer` is
   not affected.
-- **A `WorldGrade` `CanvasLayer`** with a `layer` below the Hud's, holding one full-rect
+- **What it tints:** every item of the world canvas, `FogLayer` and `MapEdge` (§1, §2) included,
+  so the fog's and the mist's luminance bounds (P213's table) are measured after the modulate. The
+  clear colour (the off-map colour) is not a canvas item and is not tinted: `MapEdge`'s outer end
+  is chosen to meet it after the modulate.
+- **Layers:** the `Hud` `CanvasLayer` moves from the default layer 1 to **layer 2** in both
+  `scenes/main.tscn` and `scenes/dev/perf_arena.tscn`, and `WorldGrade` takes **layer 1** (layer 0
+  is the root canvas, where the world and the `CanvasModulate` are). The order does not rest on
+  tree order between equal layers; a test pins `WorldGrade.layer < Hud.layer` on both scenes.
+- **A `WorldGrade` `CanvasLayer`** at layer 1, holding one full-rect
   `TextureRect` of a small gradient texture (warm from the top left, cool to the bottom right, and
   a vignette), `mouse_filter` IGNORE, alpha at most `grade_alpha_max`. One draw call and one
   blended full-screen fill. It is screen-fixed: a grade, not a light, so it does not move with the
@@ -97,24 +108,31 @@ tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §
   colour, the gradient's colours and `grade_alpha_max`, `fog_rgb`, the mist colour,
   `edge_inner_tiles`, `edge_outer_tiles`, the edge alphas. Values come from STYLE.md's new section
   "Grade, fog and map edge" (art-director). Tests pin the bounds above, not the colours.
-- `data/**` starts a balance run in `balance.yml`: the file is written whole in one row (P214) so
-  only one merge touches `data/` for this ADR.
+- `data/**` starts a balance run in `balance.yml`: the file is written whole in one row (P214),
+  with every field P215 and P216 read, so P214 is the only row that writes `data/` and its merge
+  starts one run (cancel it: no sim input changed, the result cannot change); P215 and P216 read
+  the file and never write it.
 
 ### 6. Effects (keeps ADR 0029 §6)
-- Proposal 7's look (a two-frame muzzle flash, a core flash and a flat dust ring at impacts) is drawn
-  with normal alpha blending from the existing atlases: the bright core is in the frames. No
+- Proposal 7's look (a two-frame muzzle flash, a core flash and a flat dust ring at impacts) is
+  drawn with normal alpha blending from the existing atlases: the bright core is in the frames. No
   material, no additive pass, no new ring: the flash is the existing `EffectsLayer` slot with a
-  second region, the impact dust goes into `GroundFx`'s dust ring (`dust_slots`, as the factory-exit
-  puff does). No new draw call.
+  second region, the impact dust goes into `GroundFx`'s dust ring (`dust_slots`, as the
+  factory-exit puff does). No new draw call.
 
 ### 7. The draw-call forecast (amends ADR 0023 §2 and ADR 0027 §9's figure)
-- 16 + `MapEdge` 1 + `WorldGrade` 1 = **18** in an ordinary moment; the health bars' tick pass adds
-  at most 1 while bars show; about 26 at the worst moment (ADR 0027 §9's about 22-25, plus these 3).
-  Under the trigger of 40 and the ceiling of 60. The phone card on the base arena confirms it.
+- The figures are the ones the perf card prints (`game/ui/PerfBases.gd`: `CALLS_FORECAST` 16,
+  `CALLS_STRIKE` 17, `CALLS_WORST` 22, pinned by `tests/ui/test_perf_bases.gd`). New: **18** in an
+  ordinary moment (16 + `MapEdge` + `WorldGrade`), **19** while a strike is aimed or in flight,
+  **about 25** at the worst moment (22 + `MapEdge` + `WorldGrade` + the health bars' tick pass).
+  ADR 0027 §9's status note (the strike net's `draw_multiline` calls) is kept as it stands; it is
+  not added into these figures. Under the trigger of 40 and the ceiling of 60.
+- Plan row P216 (the last row that adds a layer) sets the three constants to 18, 19 and 25 and the
+  card line's test; P219 and the phone card on the base arena confirm them.
 
 ## Consequences
-- The GDD line "unexplored is black" and `HOW_TO_PLAY.md`'s Fog row ("Black ground has never been
-  seen") change with P215 if Q2 is B.
+- The GDD line "unexplored is black" and `HOW_TO_PLAY.md`'s Fog section row "Look at the map"
+  (line 92: "Black ground has never been seen") change with P215 if Q2 is B.
 - Every fog test that reads a texel's colour reads `fog_rgb`; the alpha tests are unchanged.
 - Greyscale figures in STYLE.md are measured without the grade; the grade's bounds (each channel at
   least 0.90, the gradient's alpha at most `grade_alpha_max`) keep them within about 10 %, and the
@@ -122,10 +140,12 @@ tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §
   rings.
 - A mirror match's page grows by the unit shadows of one faction (pads in key colours).
 - Two more draw calls in an ordinary moment and one blended full-screen fill.
+- The Hud's layer number changes (1 -> 2) in both scenes; nothing else reads it today.
 
 ## Alternatives considered
 - **A longer soft edge at the limit of sight:** shades seen tiles and seen enemies; rejected (§1).
-- **A fog or vignette shader, or a blur:** Compatibility and web cost, a material per item; rejected.
+- **A fog or vignette shader, or a blur:** Compatibility and web cost, a material per item;
+  rejected.
 - **A light that moves with the map** (a world-space gradient): a node following the camera every
   frame, or a shader; rejected for the screen-fixed grade.
 - **Additive flashes:** one more draw call per layer (ADR 0029 §6); rejected (§6).
