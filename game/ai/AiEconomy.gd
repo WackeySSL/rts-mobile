@@ -37,6 +37,8 @@ var _refineries_max: int = 0
 var _factories_max: int = 0
 var _defences_max: int = 0
 var _spiral: PackedInt32Array = PackedInt32Array()
+## EXPERIMENT: 1 for player 1, -1 for any other player (the slots are the half turn of player 1's).
+var _flip: int = 1
 
 ## The types as indexes of the view's roster (MISSING: the roster lacks it), found on the first run
 ## (the rules never change in a match): the steps that a tab builds, the tanker, the defence and, of
@@ -87,6 +89,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._factories_max = level.factories_max
 	economy._defences_max = level.defences_max
 	economy._spiral = PlacementSpiral.cells(def.spiral_slots)
+	economy._flip = 1 if player_id == 1 else -1
 	return economy
 
 
@@ -215,8 +218,12 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	for step: int in tries:
 		var at: int = (start + step) % slots
 		var slot: int = at if order.is_empty() else order[at]
-		var col: int = _anchor.x + _spiral[slot * 2] * _stride
-		var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride
+		var col: int = _anchor.x + _spiral[slot * 2] * _stride * _flip
+		var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride * _flip
+		if _flip < 0:
+			# The half turn of the footprint: the Headquarters' width less the building's.
+			col += view.type_foot_w[_hq_type] - view.type_foot_w[head]
+			line += view.type_foot_h[_hq_type] - view.type_foot_h[head]
 		placement_tries += 1
 		if view.placement(head, col, line) == Placement.Reason.OK:
 			memory.spent()
@@ -239,8 +246,8 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 func _nearest_first(memory: AiMemory, slots: int) -> PackedInt32Array:
 	var keys: PackedInt64Array = PackedInt64Array()
 	for slot: int in slots:
-		var dx: int = _anchor.x + _spiral[slot * 2] * _stride - memory.staging_x
-		var dy: int = _anchor.y + _spiral[slot * 2 + 1] * _stride - memory.staging_y
+		var dx: int = _anchor.x + _spiral[slot * 2] * _stride * _flip - memory.staging_x
+		var dy: int = _anchor.y + _spiral[slot * 2 + 1] * _stride * _flip - memory.staging_y
 		keys.append((dx * dx + dy * dy) * slots + slot)
 	keys.sort()
 	var order: PackedInt32Array = PackedInt32Array()
