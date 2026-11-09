@@ -135,6 +135,13 @@ Status note (2026-10-26, P26ai docs): §2 carries a dated status note: TARGETING
 holds 41 names since P71b (#185), and P71's building-world lockstep runs 450 ticks. No accepted
 text changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §1 and §5: no
+new kernel and no new port. Edits with twins and lockstep cases: `MOVE_CLASSES` 3 -> 4 in three
+literals, the TARGETING layer test and the SEPARATION same-layer test (ADR 0036 §13), and
+TARGETING's `stance` read for hold position (ADR 0037 §12). Every other new rule is GDScript
+only. The port rule (§1) is read again at the `perf_air` and `perf_bases` lines. No accepted
+text changed.
+
 From its acceptance (2026-10-12) it supersedes in part:
 - ADR 0012 §7: "GDExtension (C++) is not adopted now" and its trigger (a release perf-arena card
   miss after remedy steps 1 and 2). §15 below replaces them.

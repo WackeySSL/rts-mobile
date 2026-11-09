@@ -71,6 +71,12 @@ of §4 records them. The previous status note's "a workload without contact unti
 fourth note's "no contact" and "191 of 900" describe P189's workload, not P189b's. No accepted
 text changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): the managers
+gain duties and no new manager: ADR 0036 §14 (air tiers, layer-aware counters, raids, the
+satellite on Normal and Hard, fired once charged) and ADR 0037 §10 (mend, repair, medics, rides,
+`AiMines` in `AiStrikes`' slot, `hold_types`). Easy builds no space centre, engineering centre,
+transport or wave-3 unit. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,

@@ -118,6 +118,13 @@ answers and the other sections name the old six, they read as history; ADR 0032 
 of the new names. The strike's effect is still a blackout (§10). Ids are unchanged. No accepted text
 changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §9 is
+superseded by ADR 0036 (air units and anti-air; `AirLayer` takes the reserved z 20). §2: air
+shadows at z 2, a second atlas page for unsorted layers only, `MineLayer` at z 3 after
+`DecalLayer`. §10: strike kind 3, the satellite (ADR 0036 §11 as accepted). §13: the names
+screens of ADR 0036 §16 and ADR 0037 §14; the chosen names join Phase 7's search. No accepted
+text changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics
@@ -715,6 +722,11 @@ squads keep three figures per row.
 They need a movement class through FLOW, INTEGRATE and TARGETING (two kernels with their twins,
 ADR 0013 §5) and the GDD keeps them out of version 1; a later ADR decides them. The z table
 reserves 20 for them.
+
+Status note (2026-11-09, P230 docs; ADR 0036 accepted 2026-11-09): this section is superseded by
+ADR 0036, which decides the air units and anti-air for Phase 4b, before launch. The AIR move
+class needs no FLOW key and no INTEGRATE rule (an open cost plane); the reserved z 20 is
+`AirLayer`'s. The text above stays as accepted.
 
 ### 10. Superweapons (question 3 A: in Phase 3)
 - **State** (P109, one layout row, like P70): `ROW_ARRAYS` + `ready_tick` (the tick a strike

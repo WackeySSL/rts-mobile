@@ -44,6 +44,11 @@ frozen AI defs. No accepted text changed. Read through those notes: §5's and §
 only" for a `custom` run, and §8's "the phone's Perf AI card keeps the shipped AI defs" and its
 "printed ... `perf_ai` hashes" among what tuning moves.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §6 check 4
+counts 26 unit types at the Phase 4b gate run: 13 per faction (today's six, the fighter, bomber,
+transport and drone squad, the medic squad, the ground carrier and the minelayer). Each must be
+built in at least 50 of the 100 matches. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,

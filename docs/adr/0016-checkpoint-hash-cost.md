@@ -48,6 +48,13 @@ P66b on 2026-11-06. His revisit trigger is any release card with `sim_p95_ms` > 
 `job_minus_step_p95_cp_ms` > 5 ms; such a card goes back to him for P66 and P66b. P67 stays
 conditional on P66b's card. No accepted text changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09):
+`STATE_FORMAT` 6 (P232, exception 23) and 7 (P262, exception 24); P286 re-pins once more on 7
+(exception 25). Format 6 never ships, because both designs come before launch. New hashed state:
+`ammo`, `carry_mode`, `stance`, the player's `reveal_site`, `reveal` and `upgrades`, the section
+`passengers` and the section `mines`. `reveal_stamped`, the `mod_*` tables, `air_rows`,
+`repair_rows` and `mine_at` are derived. No accepted text changed.
+
 ## Context
 
 ### The line and what the gate phone measured
