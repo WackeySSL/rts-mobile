@@ -9,14 +9,14 @@ extends RefCounted
 
 ## The first rule that fails, in this order: a tile outside the map (or a type with no footprint);
 ## a tile that is not buildable or costs 0 for foot (rock, water, another building); a mobile row
-## whose disc touches the footprint; a tile the player never explored; no own building within
-## `build_reach_tiles`; `building_cap` buildings already.
+## whose disc touches the footprint; no own building within `build_reach_tiles`; `building_cap`
+## buildings already. The explored map is not read (ADR 0033 section 4): ground the player never
+## saw may be built on, near their own buildings. Number 4 stays unused so the others keep theirs.
 enum Reason {
 	OK = 0,
 	OUTSIDE = 1,
 	GROUND = 2,
 	OCCUPIED = 3,
-	UNEXPLORED = 4,
 	TOO_FAR = 5,
 	CAP = 6,
 }
@@ -28,7 +28,7 @@ const FOOT: int = World.MoveClass.FOOT
 ## The Reason `player` gets for a building of `type_index` with its top-left tile at (origin_col,
 ## origin_row). OCCUPIED counts a mobile row of any owner whose disc (centre and `type_radius`)
 ## touches the footprint rectangle, the edge included. A player who owns no building is TOO_FAR
-## from every tile, and a player the fog has no block for (the neutral 0) has explored everything.
+## from every tile.
 static func reason(
 	input: PlacementInput, player: int, type_index: int, origin_col: int, origin_row: int
 ) -> int:
@@ -47,8 +47,6 @@ static func reason(
 		return Reason.GROUND
 	if _occupied(input, origin_col, origin_row, width, height):
 		return Reason.OCCUPIED
-	if _unexplored(input, player, origin_col, origin_row, width, height):
-		return Reason.UNEXPLORED
 	return _reach_and_cap(input, player, origin_col, origin_row, width, height)
 
 
@@ -98,28 +96,6 @@ static func _occupied(input: PlacementInput, col: int, line: int, width: int, he
 		var radius: int = _entry(radii, type)
 		if dx * dx + dy * dy <= radius * radius:
 			return true
-	return false
-
-
-## Whether a footprint tile is unexplored in the player's block of `explored`. A player with no
-## block, or a fog whose block is not the map's, has hidden nothing.
-static func _unexplored(
-	input: PlacementInput, player: int, col: int, line: int, width: int, height: int
-) -> bool:
-	if (
-		player < 1
-		or player > input.fog_player_count
-		or input.fog_cells != input.map_cols * input.map_rows
-	):
-		return false
-	var base: int = (player - 1) * input.fog_cells
-	var seen: PackedByteArray = input.explored
-	var cols: int = input.map_cols
-	for y: int in range(line, line + height):
-		for x: int in range(col, col + width):
-			var at: int = base + y * cols + x
-			if at >= seen.size() or seen[at] == 0:
-				return true
 	return false
 
 

@@ -44,13 +44,16 @@ func test_an_unseen_enemy_unit_on_a_slot_is_asked_about_like_the_sim_does() -> v
 	assert_array([world.dropped_commands, Rig.count_of(world, 1, "power_plant")]).is_equal([0, 1])
 
 
-func test_a_slot_that_is_not_explored_is_passed_over() -> void:
+func test_a_slot_that_is_not_explored_is_used_all_the_same() -> void:
+	# ADR 0033 section 4: placement does not read the explored map. The Headquarters sees 7 tiles
+	# round its centre, so tile (2, 2) (50 away squared, 49 is the limit) is black, and is slot 1.
 	var world: World = _waiting()
 	var ai: DummyAi = Rig.dummy(1)
-	# The Headquarters sees 7 tiles round its centre: tile (2, 2) is 50 away squared, 49 is the
-	# limit; (6, 2) is 26 away. Two slots are asked about, as in the whole build (test_dummy_economy).
-	assert_array(_places(_think(world, ai))).is_equal([Vector2i(6500, 2500)])
-	assert_int(ai.placement_tries).is_equal(2)
+	var sent: Array[Command] = _think(world, ai)
+	assert_array(_places(sent)).is_equal([Vector2i(2500, 2500)])
+	assert_int(ai.placement_tries).is_equal(1)
+	Rig.step(world, Rig.loop_of(world), sent)
+	assert_array([world.dropped_commands, Rig.count_of(world, 1, "power_plant")]).is_equal([0, 1])
 
 
 func test_a_base_with_no_free_slot_asks_place_tries_slots_and_places_nothing() -> void:

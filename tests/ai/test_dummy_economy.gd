@@ -2,13 +2,14 @@ extends GdUnitTestSuite
 ## The dummy's economy over a whole build (plan row P83, ADR 0020 section 4): one dummy as player 1
 ## of the skirmish-like start of `ai_rig.gd` (a Headquarters, two rifle squads, 2,000 credits, ore
 ## near, real fog), player 2 passive, run once for the suite through the headless loop. The build
-## order is complete at tick 3,112 on the shipped def and rules (counted); the bound below leaves
+## order is complete at tick 4,193 on the shipped def and rules (counted; the explored rule is gone,
+## ADR 0033 section 4, so the first slot is used and the later ones shift); the bound below leaves
 ## room for a rebalance of a few percent and nothing more, so a dummy that dithers fails it.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
-## The ticks in which the whole build order must stand (measured 3,112).
-const DONE_BOUND: int = 3300
-const TICKS: int = 3600
+## The ticks in which the whole build order must stand (measured 4,193).
+const DONE_BOUND: int = 4400
+const TICKS: int = 4500
 
 var _world: World
 var _def: AiDef
@@ -78,10 +79,10 @@ func test_it_keeps_two_harvesters_for_its_one_refinery() -> void:
 
 func test_the_first_slot_that_placement_accepts_is_used() -> void:
 	# The Headquarters has its top-left tile at (6, 6). The first slot, (2, 2), is not explored yet
-	# (the Headquarters sees 7 tiles from its centre), the second, (6, 2), is: two slots asked.
+	# (the Headquarters sees 7 tiles from its centre), and is used all the same: one slot asked.
 	assert_array(_places).is_not_empty()
-	assert_object(_places[0]).is_equal(Vector2i(6, 2))
-	assert_int(_place_slots[0]).is_equal(2)
+	assert_object(_places[0]).is_equal(Vector2i(2, 2))
+	assert_int(_place_slots[0]).is_equal(1)
 
 
 func test_every_place_is_a_slot_of_the_lattice_round_the_headquarters() -> void:

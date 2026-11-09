@@ -211,9 +211,18 @@ func test_placement_is_placement_reason_for_the_player_on_every_tile() -> void:
 		Placement.Reason.OUTSIDE,
 		Placement.Reason.GROUND,
 		Placement.Reason.OCCUPIED,
-		Placement.Reason.UNEXPLORED,
 	]:
 		assert_bool(reasons.has(reason)).override_failure_message("reason %d" % reason).is_true()
+
+
+func test_placement_on_black_ground_is_the_same_answer_and_never_unexplored() -> void:
+	var world: World = ViewWorlds.crafted()
+	var types: Array[int] = _placement_types(world)
+	var black: Dictionary = _compare_placements(world, [1, 2], types)
+	world.fog.explored.fill(0)
+	var all_black: Dictionary = _compare_placements(world, [1, 2], types)
+	assert_bool(all_black.has(Placement.Reason.OK)).is_true()
+	assert_array(all_black.keys()).is_equal(black.keys())
 
 
 func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
@@ -222,7 +231,6 @@ func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
 	var types: Array[int] = _placement_types(world)
 	var far: Dictionary = _compare_placements(world, [1, 2], types)
 	assert_bool(far.has(Placement.Reason.TOO_FAR)).is_true()
-	assert_bool(far.has(Placement.Reason.UNEXPLORED)).is_false()
 	# One building each, so a cap of 1 turns every reachable tile into CAP.
 	world.building_cap = 1
 	var capped: Dictionary = _compare_placements(world, [1, 2], types)

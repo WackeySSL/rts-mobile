@@ -9,13 +9,13 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const Factions: GDScript = preload("res://tests/ai/support/faction_rig.gd")
-const TICKS: int = 3600
+const TICKS: int = 4500
 ## The ticks the wrongly paired dummy runs for.
 const WRONG_TICKS: int = 900
-## The ticks in which the whole build order must stand, per faction (measured 3,112 and 2,767 on the
+## The ticks in which the whole build order must stand, per faction (measured 4,192 and 3,607 on the
 ## shipped defs, rules and rosters; the Lumen Accord's power plant costs less). Each bound leaves
 ## room for a rebalance of a few percent and nothing more, so a dummy that dithers fails it.
-const DONE_BOUND: Dictionary[String, int] = {"fossil": 3300, "renew": 2950}
+const DONE_BOUND: Dictionary[String, int] = {"fossil": 4400, "renew": 3800}
 
 var _runs: Dictionary[String, Run] = {}
 
@@ -123,10 +123,10 @@ func test_the_first_slot_that_placement_accepts_is_used(
 ) -> void:
 	var run: Run = _runs[faction]
 	# Both Headquarters have their top-left tile at (6, 6), a 3 x 3 footprint and 7 tiles of sight
-	# from the centre. The first slot, (2, 2), is not explored yet, the second, (6, 2), is: two slots
-	# asked, and the dummy takes that one, not a later slot of the lattice.
-	assert_object(run.first_place).is_equal(Vector2i(6, 2))
-	assert_int(run.first_place_slots).is_equal(2)
+	# from the centre. The first slot, (2, 2), is not explored yet, and placement does not read the
+	# explored map (ADR 0033 section 4): one slot asked, and the dummy takes it.
+	assert_object(run.first_place).is_equal(Vector2i(2, 2))
+	assert_int(run.first_place_slots).is_equal(1)
 
 
 @warning_ignore("integer_division")
