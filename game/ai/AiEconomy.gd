@@ -37,6 +37,8 @@ var _refineries_max: int = 0
 var _factories_max: int = 0
 var _defences_max: int = 0
 var _spiral: PackedInt32Array = PackedInt32Array()
+## EXPERIMENT: 1 for player 1, -1 for any other player (the slots are the half turn of player 1's).
+var _flip: int = 1
 
 ## The types as indexes of the view's roster (MISSING: the roster lacks it), found on the first run
 ## (the rules never change in a match): the steps that a tab builds, the tanker, the defence and, of
@@ -87,6 +89,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._factories_max = level.factories_max
 	economy._defences_max = level.defences_max
 	economy._spiral = PlacementSpiral.cells(def.spiral_slots)
+	economy._flip = 1 if player_id == 1 else -1
 	return economy
 
 
@@ -198,10 +201,11 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
 	var order: PackedInt32Array = PackedInt32Array()
 	var near: bool = head == _defence_type and memory.has_staging()
+	var ore: bool = view.is_refinery(head)
 	var aim: Vector2i = (
 		Vector2i(memory.staging_x, memory.staging_y)
 		if near
-		else Vector2i(AiMemory.NONE, AiMemory.NONE)
+		else (Vector2i(-7, -7) if ore else Vector2i(AiMemory.NONE, AiMemory.NONE))
 	)
 	if memory.spiral_for_x != aim.x or memory.spiral_for_y != aim.y:
 		# The resume index belongs to one order of the slots; a new order starts at its first slot.
@@ -209,14 +213,17 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		memory.spiral_for_y = aim.y
 		memory.spiral_resume = 0
 	if near:
-		order = _nearest_first(memory, slots)
+		order = _nearest_first(view, memory, head, slots)
+	elif ore:
+		order = _nearest_ore(view, head, slots)
 	var start: int = posmod(memory.spiral_resume, slots)
 	var tries: int = mini(_tries_max, slots)
 	for step: int in tries:
 		var at: int = (start + step) % slots
 		var slot: int = at if order.is_empty() else order[at]
-		var col: int = _anchor.x + _spiral[slot * 2] * _stride
-		var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride
+		var tile: Vector2i = _slot_tile(view, head, slot)
+		var col: int = tile.x
+		var line: int = tile.y
 		placement_tries += 1
 		if view.placement(head, col, line) == Placement.Reason.OK:
 			memory.spent()
@@ -234,13 +241,46 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	memory.spiral_resume = (start + tries) % slots
 
 
-## The slot indexes by distance of their top-left tile from the staging point, nearest first (the
-## lower index first among equals).
-func _nearest_first(memory: AiMemory, slots: int) -> PackedInt32Array:
+## EXPERIMENT: the top-left tile of the footprint of `head` on spiral slot `slot`: player 1's is the
+## base's origin plus the cell times the stride, any other player's the half turn of that (the
+## Headquarters' width less the building's keeps the footprints exact mirror images).
+func _slot_tile(view: PlayerView, head: int, slot: int) -> Vector2i:
+	var col: int = _anchor.x + _spiral[slot * 2] * _stride * _flip
+	var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride * _flip
+	if _flip < 0 and _hq_type >= 0:
+		col += view.type_foot_w[_hq_type] - view.type_foot_w[head]
+		line += view.type_foot_h[_hq_type] - view.type_foot_h[head]
+	return Vector2i(col, line)
+
+
+## EXPERIMENT: the slot indexes by squared distance of the footprint's centre to the nearest ore
+## cell's centre (in half tiles), nearest first (the lower index first among equals): a refinery
+## goes beside the ore.
+func _nearest_ore(view: PlayerView, head: int, slots: int) -> PackedInt32Array:
 	var keys: PackedInt64Array = PackedInt64Array()
 	for slot: int in slots:
-		var dx: int = _anchor.x + _spiral[slot * 2] * _stride - memory.staging_x
-		var dy: int = _anchor.y + _spiral[slot * 2 + 1] * _stride - memory.staging_y
+		var tile: Vector2i = _slot_tile(view, head, slot)
+		var best: int = 1 << 40
+		for cell: int in view.ore_cells:
+			var dx: int = tile.x * 2 + view.type_foot_w[head] - (cell % view.map_cols * 2 + 1)
+			var dy: int = tile.y * 2 + view.type_foot_h[head] - (cell / view.map_cols * 2 + 1)
+			best = mini(best, dx * dx + dy * dy)
+		keys.append(best * slots + slot)
+	keys.sort()
+	var order: PackedInt32Array = PackedInt32Array()
+	for key: int in keys:
+		order.append(key % slots)
+	return order
+
+
+## The slot indexes by distance of their top-left tile from the staging point, nearest first (the
+## lower index first among equals).
+func _nearest_first(view: PlayerView, memory: AiMemory, head: int, slots: int) -> PackedInt32Array:
+	var keys: PackedInt64Array = PackedInt64Array()
+	for slot: int in slots:
+		var tile: Vector2i = _slot_tile(view, head, slot)
+		var dx: int = tile.x - memory.staging_x
+		var dy: int = tile.y - memory.staging_y
 		keys.append((dx * dx + dy * dy) * slots + slot)
 	keys.sort()
 	var order: PackedInt32Array = PackedInt32Array()

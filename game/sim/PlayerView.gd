@@ -108,6 +108,8 @@ const ARMOUR_CLASSES: int = 4
 var player: int = 0
 var tick: int = 0
 var map_cols: int = 0
+## EXPERIMENT: the map's ore cells (`tile_row * map_cols + tile_col`), static terrain.
+var ore_cells: PackedInt32Array = PackedInt32Array()
 var map_rows: int = 0
 ## The player's credits, and its power: the totals of the buildings' `type_power` (made is the
 ## positive entries, used the negative ones as positive numbers) and whether it is on low power.
@@ -215,6 +217,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view.player = player
 	view.tick = world.tick
 	view.map_cols = world.map_cols
+	view.ore_cells = world.ore_cell.duplicate()
 	view.map_rows = world.map_rows
 	view._input = PlacementInput.of_world(world)
 	view._take_tables(world)
