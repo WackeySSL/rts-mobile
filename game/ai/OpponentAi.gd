@@ -54,6 +54,9 @@ static func create(
 	ai.rng = rng
 	ai.think_period = maxi(def.think_period, 1)
 	ai.think_offset = posmod(-(def.think_tick + player_id - 2), ai.think_period)
+	# EXPERIMENT A: every player's first think is slot ECONOMY.
+	if player_id > 1:
+		ai.think_offset += ai.think_period * 2
 	ai.memory = AiMemory.create(def)
 	ai.intel = AiIntel.create(def, chosen, player_id)
 	ai.def_id = def.id
