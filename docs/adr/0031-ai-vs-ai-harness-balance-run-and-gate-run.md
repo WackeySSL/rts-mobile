@@ -37,6 +37,13 @@ dispatched on), the gate and `post` guards, the manual gate rerun, and how §7's
 list (`ref`), its `build` line (the library only) and its pins line, §6's `test_ci_workflow.gd`
 (the pins live in `test_ci_balance_workflow.gd`) and §8's "with `ref`".
 
+Status note (2026-11-09, P26bj docs, from P190b (#380), P189b and balance run 1): the notes at
+the end of §5 and §8 record that the job logs now carry each set's markdown and verify's summary
+(with the smoke's seconds), and that the `[ai]` workload and the phone's Perf AI card play the
+frozen AI defs. No accepted text changed. Read through those notes: §5's and §8's "the artifact
+only" for a `custom` run, and §8's "the phone's Perf AI card keeps the shipped AI defs" and its
+"printed ... `perf_ai` hashes" among what tuning moves.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -349,6 +356,18 @@ Note (2026-11-09, P26bi docs, from the reviews of P190):
 - **Pins** live in `tests/project/test_ci_balance_workflow.gd` (`test_ci_workflow.gd` already holds
   gdlint's 20 public methods).
 
+Note (2026-11-09, P26bj docs, from P190b, merged as #380):
+- **Job logs.** A session reads CI job logs, not job summaries. `summarise` now also prints each
+  set's markdown in its job log, one group per set. So a `custom` run's result is in its artifact
+  and in that log; it still posts no comment.
+- **verify's summary** gains `smoke:  N s (run-sim-smoke.sh --matches 3)`. `ci.yml`'s verify job
+  prints the VERIFY SUMMARY block, the `PERF sim` and `PERF bases` lines and every `WATCH ai` line
+  in its log, one group each (a step that never fails the job). CI read the smoke at 8 s, far
+  under §2's 3-minute line.
+- **Balance run 1:** run 42639401142 on b6bfe95 played §5's 190 matches in about 3 minutes of
+  wall clock; its summary is the first comment on issue #378. The plan's row P191 holds the
+  findings.
+
 ### 6. The Phase 4 gate run
 - **Held-out seeds.** The balance run's tuning set (seeds 1-100) is what every tuning row is judged
   on, so the gate does not reuse it. The gate run is `suite=gate` on the `main` commit under test:
@@ -432,6 +451,19 @@ step requires the suite (the plan's exception 21, widened to two lines).
 - **`docs/balance/`:** the first report (P191, box 4), the gate run's report, and the before and
   after of each tuning row or batch as `docs/balance/<yyyy-mm-dd>-<topic>.md`. The balance run
   itself writes no file in the repository; it comments and keeps its artifact.
+
+Note (2026-11-09, P26bj docs, from P189b, P190b and P194):
+- **The `[ai]` workload and the card are one** (lead decision at P189b). `test_ai_perf.gd` and the
+  phone's Perf AI route both play the frozen AI defs in `data/dev/arena/ai/`, copies but for
+  Normal's early scout and first wave, so the card times the AI in contact. "The phone's Perf AI
+  card keeps the shipped AI defs" above no longer holds; the Skirmish routes keep them. Plan row
+  P189c sets `[ai] p95_us` from 11 CI runs after P189b, read from the job logs.
+- **What tuning moves:** every def `perf_ai`'s match reads is now frozen (the terrain is shared,
+  and exception 20 tunes none), so a tuning row no longer moves `perf_ai`'s printed hashes; the
+  smoke's still move. An AI code row may move both.
+- **"After" runs** (`custom`): the result is the artifact and the summarise job's log (§5's note).
+- **P194** sets `flow_cache_size` 12 in the shipped `data/rules.tres`; the frozen rules keep 8, so
+  no golden and no `[sim]`, `[bases]` or `[ai]` workload moves.
 
 ## Consequences
 - Every `verify.sh` plays three real matches; CI's verify grows by about a minute (estimate).
