@@ -2,7 +2,8 @@
 
 **In short, for Michael:** each side gets four new buildings and four new kinds of unit:
 - The buildings: an airfield, an anti-air gun, an engineering centre that researches better
-  bombers, and a space centre whose satellite lifts the fog over the whole map for a while.
+  bombers, and a space centre whose satellite lifts the fog over the whole map until the space
+  centre is destroyed.
 - The units:
   - a fighter;
   - a bomber;
@@ -16,22 +17,35 @@ and tap a target. A "Home" button sends aircraft home, "Board" puts squads into 
 a loaded transport has an "Unload" button. The satellite has a button like the superweapon's.
 The computer plays by the same rules.
 
-The design is ready now. The work starts after the Phase 4 gate. The recommendation is two updates
-after launch:
-- 1.1: airfield, fighter, bomber, anti-air, satellite and research.
-- 1.2: the transport and the drone squads, together with the ground design's infantry carrier,
-  which shares their loading rules.
+Michael chose on 2026-11-09 to build all of it before launch, after the Phase 4 gate, in one block
+with the ground design (ADR 0037): ROADMAP Phase 4b. His five answers are at the end.
 
-Five questions are at the end.
+Status: **accepted, 2026-11-09** (Michael: 1 A, 2 A, 3 B, 4 A, 5 A; accepted in docs row P230 of
+`docs/plans/2026-11-09-air-and-tech.md`, together with ADR 0037). Proposed 2026-11-09 (architect,
+branch `claude/design-air-and-tech`, base `main` at b6bfe95). The scope addition of the same day
+(Michael's transport, drone squads and aircraft repair) is folded in. Revised the same day after the
+docs lens (gameplay-dev: 7 must, 7 should, 4 nits): the AIR plane sites, the three `MOVE_CLASSES`
+literals, the reveal convention, the boarded marker, selection groups, the SUPERWEAPON order, the
+touch buttons in place of taps on own units and buildings, the exception numbers and the sizes.
+GDD: the section "Air, anti-air, engineering centre, space centre".
 
-Status: **proposed, 2026-11-09** (architect, branch `claude/design-air-and-tech`, base `main` at
-b6bfe95). The scope addition of the same day (Michael's transport, drone squads and aircraft repair)
-is folded in. Revised the same day after the docs lens (gameplay-dev: 7 must, 7 should, 4 nits):
-the AIR plane sites, the three `MOVE_CLASSES` literals, the reveal convention, the boarded marker,
-selection groups, the SUPERWEAPON order, the touch buttons in place of taps on own units and
-buildings, the exception numbers and the sizes. Not accepted. The lead accepts it in docs row
-P230 of `docs/plans/2026-11-09-air-and-tech.md` once Michael has answered. GDD: the section "Planned: air,
-anti-air, engineering centre, space centre".
+Status note (2026-11-09, P230 docs; acceptance): what changed when it was accepted.
+- **§11 is rewritten for answer 3 B.** The sweep has no timer and no recharge. It starts when the
+  player fires it and lasts while the space centre that fired it stands. A blackout on it, or low
+  power, pauses it; it comes back by itself. The enemy sees the warning once and an indicator
+  while the sweep is on or paused. §2, §3, §12 and §14 follow (the strike data, the player's
+  `reveal` and `reveal_site`, the indicator, the AI).
+- **Answer 2 A.** Where this ADR says "1.1" and "1.2", read the block's first air part (P231-P256)
+  and its second (P262-P268). Both come before launch. The two layout rows stay (P232 under
+  exception 23, P262 under 24): P232 is already about 380 lines, and format 6 never ships.
+- **ADR 0037 (accepted the same day) amends §2** (the repair role is declared on `UnitDef`, with
+  `repair_slots` and `repair_seek_milli`), **§8** (`carry_eject_percent`) and **§12** (Board and
+  Unload also take a ground carrier). The notes sit in those sections.
+- **The `touch-ui-rules` text** for Home, Board and Unload is asked with this acceptance. The draft
+  is in the plan's section "touch-ui-rules text for Michael's yes (P230)". P244 and P265 wait for
+  Michael's yes; the skill is not edited before it.
+- Dated notes were written in ADRs 0007, 0008, 0009, 0010, 0013, 0016, 0017, 0018, 0023, 0027,
+  0030 and 0031. ADR 0023 §9 is superseded.
 
 Supersedes, on acceptance: ADR 0023 §9 ("Air units and anti-air: not Phase 3 ... a later ADR
 decides them"). Amends, on acceptance, by dated notes the lead writes in P230 (the accepted text of
@@ -111,8 +125,14 @@ each stays as it is):
     0 = none), `repair_hp` per `repair_period_ticks`, `repair_cost_percent` (the share of the
     unit's cost a repair from 0 to full hp costs) and `repair_reach_milli`. An airfield has
     `repair_classes` 8 and repairs on its pads only (§6).
-  - `BuildingDef.strike_kind` gains `Reveal = 3`. For a reveal building, `charge_ticks` is the
-    recharge and `strike_ticks` the sweep. Its radius, delay and weapon are 0 or null.
+  - Note (2026-11-09, P230; ADR 0037 accepted the same day): ADR 0037 §2 amends this bullet. The
+    repair role's fields keep their names but are declared on `UnitDef` (`BuildingDef extends
+    UnitDef`, so an airfield's data reads the same), so a squad may hold the role. The role gains
+    `repair_slots` and `repair_seek_milli`, whose defaults leave the airfield unchanged. `Air.run`
+    keeps every type with pads; ADR 0037's `Repair.run` serves the rest.
+  - `BuildingDef.strike_kind` gains `Reveal = 3`. For a reveal building, `charge_ticks` is the one
+    charge from completion; there is no recharge (§11, answer 3 B). Its `strike_ticks`, radius,
+    delay and weapon are 0 or null (a data test).
 - **Upgrades.** `UpgradeDef` (new Resource): `id`, `display_name`, `faction`, `cost`,
   `research_ticks`, `requires` (the engineering centre), `stat` (`DAMAGE_DEALT`, `DAMAGE_TAKEN` or
   `AMMO`), `value` (a percent, or an amount for `AMMO`) and `applies_to` (UnitDefs). They are listed
@@ -129,6 +149,10 @@ P232 adds every column the 1.1 rules need at once, under named exception 23 (22 
 release, P232 takes both and there is one re-pin. Rule rows after a layout row are hash-neutral for
 the frozen arenas.
 
+Note (2026-11-09, P230): Michael chose everything before launch (answer 2 A), but the two layout
+rows stay: P232 is already about 380 lines and cannot take the passengers. Format 6 never ships.
+ADR 0037's P286 re-pins once more on format 7 (exception 25).
+
 | Kind | Name | Hashed | Meaning |
 | --- | --- | --- | --- |
 | row | `ammo` | yes | shots left |
@@ -136,7 +160,7 @@ the frozen arenas.
 | type | `type_layer_bit` | rules | 1 ground, 2 air, 4 low air; derived at load from move class and `low_flying` |
 | type | `type_ammo`, `type_rearm_ticks`, `type_pads`, `type_upgrade`, the repair role, `type_carry_slots`, `type_carry_classes` (1.2) | rules | as §2; `type_upgrade` -1 except for research items |
 | weapon | `weapon_targets` | rules | layer mask |
-| player | `reveal_until`, `upgrades` | yes | §11, §10 |
+| player | `reveal_site`, `reveal`, `upgrades` | yes | §11 (the space centre that fired; 0 off, 1 on, 2 paused), §10 |
 | upgrade tables | `upgrade_stat`, `upgrade_value`, `upgrade_types` | rules | from `UpgradeDef` |
 | passengers (1.2) | `pass_carrier`, `pass_id`, `pass_type`, `pass_hp`, `pass_owner`, scalar `pass_count`, rule `passenger_cap` | yes, section `passengers` | boarded squads (§8) |
 | derived | `reveal_stamped`, `mod_dealt`, `mod_taken`, `mod_ammo`, `air_rows` | no | rebuilt by `prepare()` and when their inputs change |
@@ -302,6 +326,10 @@ the frozen arenas.
     refusal is a guard.)
 - **Carrier death.** When a carrier dies (REMOVE), its passengers die with it. They count as lost
   units, and DIED records carry their ids at the carrier's point.
+  - Note (2026-11-09, P230; ADR 0037 §7 accepted the same day): a new type field
+    `carry_eject_percent` amends this rule. At 0 (both transports) it is the rule above. Above 0
+    (the Bunk Wagon, 50) the passengers are put back round the carrier's point with that share of
+    their hp, and only those with no free cell die.
 - **Faction takes:**
   - The Derrick League's transport is slow and armoured (HEAVY) and carries 3 squads.
   - The Lumen Accord's is fast and LIGHT and carries 2.
@@ -344,11 +372,25 @@ the frozen arenas.
   ported (ADR 0013 §1, P42n), the `mod_*` tables join that kernel's checked list.
 
 ### 11. Space centre and the satellite (map reveal)
-- **Kind 3, REVEAL.** It charges like the other strike buildings: from completion, a blackout makes
-  it offline, and low power does not pause it.
-  - A valid SUPERWEAPON (the existing checks, payload empty, point ignored) sets
-    `reveal_until[p] = stamp + strike_ticks` (a longer sweep in progress is kept) and recharges.
-  - It appends `[STRIKE, building id, 0, 0, 3, owner, reveal_until, 0]`.
+Rewritten at acceptance (P230, 2026-11-09) for Michael's answer 3 B: the sweep lasts until the
+space centre is destroyed. The draft's timed sweep and its recharge are gone; question 3 keeps the
+options as they were asked.
+- **Kind 3, REVEAL: one charge, no recharge.** The space centre charges like the other strike
+  buildings: `charge_ticks` from completion (starting 2,700, 3 minutes). A blackout makes it
+  offline, and low power does not pause the charge. A fired sweep lasts while that building
+  stands, so there is nothing to recharge.
+- **State (player block, hashed; §3).**
+  - `reveal_site[p]`: the id of the space centre that fired the sweep, 0 = no sweep.
+  - `reveal[p]`: 0 off, 1 on (the fog is lifted), 2 paused.
+  - `reveal_stamped[p]` stays derived. Both hashed values replace the draft's `reveal_until`.
+- **Firing.** A valid SUPERWEAPON on a REVEAL building (the existing checks: own, complete,
+  charged, online; payload empty, point ignored) is taken only while `reveal_site[p]` is 0.
+  - It sets `reveal_site[p]` to the building's id and `reveal[p]` to 1.
+  - It appends `[STRIKE, building id, 0, 0, 3, owner, 0, 0]`: no landing tick, because the sweep
+    has no end.
+  - It does not set `ready_tick` again. While `reveal_site[p]` is not 0, every SUPERWEAPON on a
+    REVEAL building is dropped. A second space centre is a spare: it can fire only after the first
+    is gone.
   - It does not touch `strike_tick`, so it never blocks a rupture. It is also never blocked by
     one, but only because P233 puts the kind-3 branch first:
     - Today `Strike.apply_superweapon` (`Strike.gd:112`) drops every SUPERWEAPON while
@@ -363,39 +405,58 @@ the frozen arenas.
     and bumps `version`. It is GDScript only and allocates nothing.
 - **`Reveal.run`** sits in REMOVE, after `FogUpdate.begin` and `remove_dead` and before
   `FogUpdate.run`. It must come after `begin`, so the flips are not cleared on the player's fog
-  turn. Per player:
-  - `want` = `reveal_until > stamp` and the player owns a complete, online REVEAL building.
-    `stamp` is `world.tick + 1`, as in `Strike`. This is one pass over the rows, made only while
-    a sweep runs.
-  - If `want` is false, `reveal_until` becomes 0.
-  - If `want` differs from `reveal_stamped`, call `reveal(p, ±1)`.
+  turn. Per player whose `reveal_site` is not 0, with no pass over the rows:
+  - `row` = `world.index_of(reveal_site[p])`, a binary search over the ids.
+  - At -1 the space centre is gone (destroyed, or sold under ADR 0037 §3): `reveal_site[p]` and
+    `reveal[p]` become 0. The sweep is over. A new space centre charges from its completion.
+  - Otherwise `reveal[p]` becomes 1 when the row is online (`offline_until` not above the stamp
+    `world.tick + 1`, as in `Strike`) and the player is not on low power, else 2. Low power is
+    `Power.is_low` on the totals that `Combat.fire` read in this step, so the sweep and the
+    player's defences go dark on the same steps.
+  - If `reveal[p] == 1` differs from `reveal_stamped[p]`, call `reveal(p, ±1)`.
 
-  So at every step end `reveal_stamped[p] == (reveal_until[p] != 0)`. A sweep fired by a command
-  of tick c (stamp c + 1, `reveal_until` = c + 1 + `strike_ticks`) is stamped at the ends of steps
-  c to c + `strike_ticks` - 1, exactly `strike_ticks` steps.
-- **Rebuilding `visible`.** Every rebuild of `visible` from hashed state compares no tick: it
-  stamps the reveal for each player whose `reveal_until` is not 0. That is `World.prepare()` on a
-  fresh World (it returns at once once `prepared` is set, `World.gd:677`, so a running World is
-  never re-stamped) and the rebuild test, which compares the result with the live array after
-  every step of a sweep and after a replay to a checkpoint inside one. A snapshot copies
-  `visible` (`FogGrid.copy_into`) and needs no rebuild.
+  So at every step end `reveal_stamped[p] == (reveal[p] == 1)`. A sweep fired by a command of tick
+  c is stamped from the end of step c on, unless it is already paused there. The cost is one
+  binary search per player per step while a sweep stands, with no allocation.
+- **Blackout and low power pause the sweep.** This was the lead's recommendation, taken at
+  acceptance. It matches the GDD: low power puts defences offline, and the Dusk Array's blackout
+  silences them.
+  - While paused, `visible` falls back to the player's own discs at once. `explored` keeps what the
+    sweep showed, and `LastSeen` keeps the ghosts it recorded.
+  - The sweep comes back by itself in the first REMOVE after the blackout ends or the power
+    returns. It needs no Command and no new charge.
+  - Damage that does not destroy the space centre changes nothing.
+- **What the enemy sees.**
+  - **The warning.** The STRIKE record of kind 3 gives every other player the strike warning
+    (the toast and its line), once, as the Deep Bore's warning does.
+  - **The indicator.** While an enemy's `reveal` is 1, a satellite badge stays lit on the HUD.
+    While it is 2 the badge shows paused (dimmed, with a pause mark: never colour alone). At 0 the
+    badge goes. P235 places it in ADR 0025's corners. The owner sees on or paused on its own
+    strike button.
+  - `PlayerView.reveal_state(player)` (0, 1 or 2) is public for every player. So the pause is
+    public too: it tells the enemy that the space centre is blacked out or that its owner is short
+    of power. This is accepted. It is the counterplay's feedback ("did my blackout work?"), and
+    the AI reads the same value (Pillar 4 both ways).
+- **Rebuilding `visible`.** Every rebuild of `visible` from hashed state compares no tick, power
+  or offline value: it stamps the reveal for each player whose `reveal` is 1. That is
+  `World.prepare()` on a fresh World (it returns at once once `prepared` is set, `World.gd:677`,
+  so a running World is never re-stamped) and the rebuild test. The test compares the result with
+  the live array after every step of a sweep, across a pause and a resume, and after a replay to a
+  checkpoint inside one, on and paused. A snapshot copies `visible` (`FogGrid.copy_into`) and
+  needs no rebuild.
 - **What follows with no further change:**
   - TARGETING (twin and kernel), `Targeting.sees`, `PlayerView.seen_rows`, `LastSeen` (the sweep
     records every enemy building as a ghost), the radar and the fog view.
   - The FOG kernel is unchanged.
   - `explored` stays all 1 afterwards.
-- **Counterplay.** The target sees a warning for the whole sweep. Destroying or blacking out the
-  space centre ends it at once.
-- **The AI.** `PlayerView.enemy_reveal_active` is public (everyone sees the warning). The AI's own
-  sweep arrives through `seen_rows`. This keeps Pillar 4: vision from its own building, by the
-  human's rule.
-- **Duration.** All three options are data on the same code:
-  - A (recommended): a timed sweep, 675 ticks (45 s) every 2,700 (3 min).
-  - B: until the space centre falls. `strike_ticks` = int32 max, ended through `want`.
-  - C: the rest of the match (B with the building check off).
-
-  A full reveal from minute 6 of an 8-10 minute match would remove the fog play for its last
-  third.
+- **Counterplay.** The target sees the warning and the indicator. Destroying (or, for its owner,
+  selling) the space centre ends the sweep. A Dusk Array blackout on it, or cutting its owner's
+  power, pauses it.
+- **The AI.** `PlayerView.reveal_state` is public. The AI's own sweep arrives through
+  `seen_rows`. This keeps Pillar 4: vision from its own building, by the human's rule.
+- **Duration (answer 3 B).** No timer. A sweep fired at minute 6 lifts the fog for the rest of the
+  match unless the enemy answers it. The checks on it are the price (2,000), the 3-minute charge,
+  the warning, the indicator and the pause. The balance run watches whether it decides matches.
 
 ### 12. Commands and touch, per unit (touch-ui-rules: 48 dp, portrait and landscape)
 | Unit | Gestures | New HUD |
@@ -404,7 +465,7 @@ the frozen arenas.
 | Transport | select as above; a loaded transport shows pips (passengers) on its chip | an "Unload" button (48 dp) while a loaded transport is selected: tap it, then tap ground = UNLOAD at that point (a chevron, with the existing check mark and X beside it, as for a strike aim) |
 | Rifle and rocket squads (1.2) | as today | a "Board" button (48 dp) while squads are selected and the player owns a transport: tap it, then tap an own transport = LOAD (the check mark and X as above) |
 | Drone squad | as any squad | none |
-| Satellite | the strike button: tap the ready button, then the check mark; no map tap | a warning badge and line for the revealed player |
+| Satellite | the strike button: tap the ready button, then the check mark; no map tap | the warning once for every other player, then an indicator badge while the sweep is on or paused (§11); the owner's strike button shows on or paused |
 
 - **Today's tap rule stays.** A tap on an own unit or building selects it, whatever is selected,
   so a tap on an own airfield or transport always selects it. REPAIR and LOAD come only from the
@@ -418,6 +479,10 @@ the frozen arenas.
   `touch-ui-rules` text: the command bar's buttons and the aim modes. That skill edit needs
   Michael's explicit yes. The lead asks for it with the acceptance (P230), and P244 and P265 wait
   for it.
+- Note (2026-11-09, P230; ADR 0037 accepted the same day): Board and Unload also serve ADR 0037's
+  ground carriers (the Bunk Wagon and the Linecar), with the same aims. ADR 0037 adds the Repair,
+  Mend, Sell, Mine and Hold buttons. The draft skill text for all of them is in the plan's section
+  "touch-ui-rules text for Michael's yes (P230)".
 - **HOW_TO_PLAY.** Each row is added in the PR that ships it. Teach: aircraft go home to reload,
   the Home button, Board and Unload, and the satellite.
 
@@ -462,9 +527,11 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
 - **Drops (1.2).** On Normal and Hard, a transport loads `drop_squads` squads and unloads beside a
   seen or ghost refinery or harvester path, away from seen anti-air. Drone squads harass harvesters
   across cliffs.
-- **Strikes.** Fire the sweep when charged and either a wave is about to leave or no enemy building
-  has been seen for `reveal_blind_ticks`. While the enemy's sweep runs, move the staging point by
-  one step.
+- **Strikes** (amended at acceptance, P230, for answers 3 B and 4 A). Normal and Hard fire the
+  sweep as soon as it is charged: it lasts, so waiting gains nothing, and `reveal_blind_ticks` is
+  dropped. While an enemy's `reveal_state` is 1, move the staging point by one step, and make a
+  seen or ghost enemy space centre the first target of the bomber raids and of the AI's own
+  blackout. Easy builds no space centre.
 - **Research.** In data order once the engineering centre stands and credits exceed
   `research_floor`.
 - **Size and think cost.** Three rows for 1.1 (about 900 lines) and one for 1.2 (about 300). The
@@ -550,7 +617,8 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
     two aircraft, then a transport and a drone squad), and longer balance runs.
 - **Risks:**
   - Air dominance on small maps (rockets have mask 7, anti-air comes after the barracks).
-  - A reveal duration that ends the fog game (data, question 3).
+  - A sweep that lasts until the space centre falls ends the fog game for a player who cannot
+    answer it (answer 3 B; §11's counters).
   - Page memory on the web preview.
   - The AI's think cost during a sweep.
   - Fighters or transports may fail "built in at least half the matches" (the AI's build order
@@ -610,3 +678,7 @@ until the space centre is destroyed), 4 **A** (Normal and Hard use it by the sam
 blackout or low power does to a standing sweep), moves "air units" out of the GDD's "Not in
 version 1" list and adds the ROADMAP phase. It also asks Michael's yes to the `touch-ui-rules` text
 for the Home, Board and Unload buttons.
+
+Applied 2026-11-09 in P230: §11 holds the 3 B rule (pause on blackout and low power, the warning
+and the indicator), the GDD and the ROADMAP (Phase 4b) are updated, and the skill text waits in
+the plan for Michael's yes.

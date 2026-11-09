@@ -61,6 +61,44 @@ Tick a box in the PR that meets the criterion.
   Michael, 2026-11-06) and an open issue labelled `balance`; first report in `docs/balance/`
 - [ ] Gate: Normal wins 40-60% against the mirror AI over 100 matches, no match lasts over 15 minutes, every unit type is used
 
+## Phase 4b: Air and ground support (before launch)
+Michael, 2026-11-09: ADR 0036 (air, anti-air, satellite, research, transports, drone squads) and ADR
+0037 (sale, mend, repair, medics, ground carrier, mines, hold position), accepted 2026-11-09. It
+starts after the Phase 4 gate and ends before Phase 5. Plans:
+`docs/plans/2026-11-09-air-and-tech.md` and `docs/plans/2026-11-09-ground-support.md`. The visual
+polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
+- [ ] Air layer and anti-air: aircraft fly straight over rock, water and buildings; only anti-air,
+  rocket squads and fighters hit high air, and rifle squads and the Redoubt also hit the low drone
+  squads (ADR 0036 §4-§5)
+- [ ] Airfield and aircraft with repair: a fighter and a bomber per faction, the pad cap, ammo, the
+  return and reload, repair on the pad for credits, and the Home button
+- [ ] Satellite: the space centre's sweep lifts the fog until that space centre is destroyed, pauses
+  while it is blacked out or its owner is on low power, and the enemy sees the warning and an
+  indicator while it lasts
+- [ ] Engineering centre research: heavier bombs and a tougher hull per faction, each once per
+  match, from the Research tab
+- [ ] Transports and drone squads: Board and Unload, passengers in the unit cap and lost with a
+  downed transport; drone squads cross cliffs and water
+- [ ] Sale and mend: two-tap Sell with the question card for the last producer; the paid Mend switch
+  on a building
+- [ ] Repair buildings and medics: the Weld Shed and the Drone Dock repair vehicles through the
+  Repair button; Patchers and Menders heal squads
+- [ ] Ground carrier: the Bunk Wagon and the Linecar with Board and Unload; the Bunk Wagon's squads
+  get out at half health when it dies, the Linecar's are lost
+- [ ] Mines with fair detection: the Shot Truck and the Seeder lay hidden mines; a player knows an
+  enemy mine only through a minelayer's or scout tank's record; own mines never hurt own units
+- [ ] Hold position: the Hold toggle keeps units from chasing (`STANCE` 9, TARGETING twin and kernel
+  in lockstep)
+- [ ] The AI uses every new unit and building through Commands only, with no target it has not seen,
+  on Normal and Hard (satellite included); the fairness suite proves it headless
+- [ ] The balance run passes the ADR 0031 gate thresholds with the new units: 26 unit types, each
+  built in at least 50 of 100 matches
+- [ ] Performance: 150 units at 60 fps on the reference phone with aircraft (`perf_air`) and with
+  mines and repairers (`perf_bases`), draw calls within the forecast
+- [ ] Gate: the ADR 0031 gate run on held-out seeds passes with all 26 unit types, and on Michael's
+  phone, upright and sideways, he flies a raid, drops squads over a cliff, repairs, sells, lays and
+  finds mines and holds position
+
 ## Phase 5: Polish and meta
 - [ ] Main menu, map select, settings (sound, haptics, reduced effects (ADR 0027), privacy options placeholder)
 - [ ] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background

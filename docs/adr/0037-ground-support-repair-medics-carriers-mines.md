@@ -20,16 +20,37 @@ launch, after the Phase 4 gate, in one block with the air design. Inside the blo
 three waves: sale and building repair first; then repair buildings and medics, after the air rows
 they share; then the carrier, mines and hold position.
 
-Status: **proposed, 2026-11-09** (architect, branch `claude/design-ground-support`, base `main` at
-b6bfe95; reconciled the same day with ADR 0036 at 0c5cc75 on `claude/design-air-and-tech`; fix 1
-the same day after gameplay-dev's docs lens: 8 must, 10 should, 5 nits). Not accepted. The lead
-accepts it in docs row P270b of `docs/plans/2026-11-09-ground-support.md` once Michael has
-answered. Nothing here is built before the Phase 4 gate.
+Status: **accepted, 2026-11-09** (Michael: 1 A, 2 A, 3 A, 4 B, 5 A; accepted in docs row P270b
+of `docs/plans/2026-11-09-ground-support.md`, together with ADR 0036 in one commit). Proposed
+2026-11-09 (architect, branch `claude/design-ground-support`, base `main` at b6bfe95; reconciled
+the same day with ADR 0036 at 0c5cc75 on `claude/design-air-and-tech`; fix 1 the same day after
+gameplay-dev's docs lens: 8 must, 10 should, 5 nits). Nothing here is built before the Phase 4
+gate.
 
 Note (2026-11-09): Michael answered ADR 0036 (air before launch) and this ADR (1 A, 2 A, 3 A, 4 B,
 5 A) the same day. The status stays proposed: the lead accepts both ADRs in one docs row once both
 fix commits are in and Michael has said yes to the `touch-ui-rules` text. Where this ADR said
 "version 1", "1.1" and "1.2", read waves 1, 2 and 3 of the pre-launch block (§1).
+
+Status note (2026-11-09, P270b docs; acceptance):
+- Accepted with ADR 0036 in one docs row (P230 and P270b), before Michael's yes to the
+  `touch-ui-rules` text. The note above expected that yes first. The lead accepted the design
+  now, and the skill gate moved to the rows: P272, P282, P294 and P299 still wait for the yes.
+  The draft text is in `docs/plans/2026-11-09-air-and-tech.md`, section "touch-ui-rules text for
+  Michael's yes (P230)".
+- **This ADR amends ADR 0036 §2.** The repair role moves to `UnitDef` (a squad may hold it;
+  `BuildingDef extends UnitDef`, so the names and the airfield's data stay), and it gains
+  `repair_slots` and `repair_seek_milli`. ADR 0036 §2, §8 (`carry_eject_percent`) and §12 (Board
+  and Unload take a ground carrier) carry dated notes, and so does P231's row.
+- ADR 0036 §11 was rewritten at its acceptance (answer 3 B): the sweep lasts until the space
+  centre is destroyed and pauses while it is blacked out or its owner is on low power. A sale of
+  the space centre (§3) ends the sweep as its destruction does.
+- Dated notes were written in ADRs 0007, 0010, 0017, 0018, 0023, 0030 and 0031 (this ADR's list),
+  and in ADRs 0009 and 0013 for hold position's TARGETING edit and the mine blast, which the list
+  missed. The GDD has a "Ground support" section and the ROADMAP Phase 4b.
+- The order of the rows both designs share (§2, "whichever comes first") is fixed in one text,
+  "Merge order of the shared rows", in both plans: ADR 0036's P231, P232 and P241b come before
+  P276 and P277, and its `Carry.gd` (P262-P263b) before P289.
 
 Amends, on acceptance, by dated notes the lead writes in P270b (accepted text stays as it is):
 - ADR 0036 §2 (its line "Buildings ... The repair role") and P231's row text: **this ADR amends

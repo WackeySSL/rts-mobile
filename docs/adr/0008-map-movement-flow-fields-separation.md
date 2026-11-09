@@ -44,6 +44,11 @@ tile, and so does an `ATTACK` unit that has outrun its field; a blocked key tile
 next tile; a `FIELD` unit whose field names no next tile stalls at any distance. The accepted
 text stays as written; where it differs, the notes win.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §1-§4: a fourth
+move class `AIR` (3) with an open cost plane; `World.GROUND_CLASSES` (3) bounds every loop over
+terrain costs. FLOW never gets an AIR key, INTEGRATE never slides an aircraft, and SEPARATION counts
+a pair only when both rows have the same `type_layer_bit` (ADR 0036 §4). No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its

@@ -51,6 +51,12 @@ new row column); §4: `PLACE` carries `[type_index]` and starts a construction (
 dropped from P131), and `CANCEL_BUILD` takes 16 of the reserved 16-19; §7: `STATE_FORMAT` 5, one
 re-pin. ADR 0026 §1-§7 and §10 have the rules. No accepted text changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §3: the World
+gains the state of ADR 0036 §3 and ADR 0037 §11; `TABS` becomes 5 (FLIGHT 3, RESEARCH 4); the
+aircraft cap; research items are queue-only types; passengers count toward `unit_cap`. §5:
+known-mine records (`MineMemory.run`, after `LastSeen.run`) sit beside the last-seen buildings. No
+accepted text changed.
+
 ## Context
 What earlier ADRs already decided for Phase 3:
 - **ADR 0007 §2:** "Buildings (Phase 3) are rows of the same table", so targeting, damage, death

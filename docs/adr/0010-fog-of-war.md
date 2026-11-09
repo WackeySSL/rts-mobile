@@ -38,6 +38,13 @@ in the isometric view the fog lies on the ground at z 4, as diamonds under every
 last-seen enemy buildings draw at z 5 with one dim; ADR 0022's z 110 does not come. No accepted
 text changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §1: `visible[p]`
+gains the satellite's whole-map term (`FogGrid.reveal`, stamped while the player's sweep is on; ADR
+0036 §11 as accepted: it lasts until the space centre falls and pauses while that building is
+blacked out or its owner is on low power). `explored` stays 1 where the sweep showed it. Beside the
+last-seen buildings, each player keeps known-mine records, made only by a detector's sight (ADR 0037
+§8). No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;

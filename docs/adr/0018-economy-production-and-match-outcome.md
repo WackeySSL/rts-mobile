@@ -44,6 +44,11 @@ Headquarters dies; it starts at `construct_start_hp_percent` of its hit points; 
 queues and "paid when queued". §7: an unfinished producer keeps no player alive. No accepted text
 changed.
 
+Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09): §5: QUEUE on
+FLIGHT checks the pad cap; research items reuse the queue, the payment and the refund. `SELL` 17
+refunds `sell_refund_percent` (50) of the price, scaled by hp left. `MEND` 18 switches a paid repair
+of a building (the row's `cargo`), priced by `mend_cost_percent`. No accepted text changed.
+
 ## Context
 - `docs/GDD.md`, "Match setup": one Headquarters, 2 000 credits and 2 rifle squads at the start;
   victory when "the enemy has neither a Headquarters nor a production building left".

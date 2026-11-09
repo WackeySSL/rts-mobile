@@ -2,10 +2,10 @@
 
 Date: 2026-11-09. Base: `main` at b6bfe95. Author: architect (row P270, branch
 `claude/design-ground-support`). Decision:
-`docs/adr/0037-ground-support-repair-medics-carriers-mines.md` (**proposed**). Reconciled the same
-day with ADR 0036 and its plan `docs/plans/2026-11-09-air-and-tech.md` (branch
-`claude/design-air-and-tech`, 0c5cc75). Fix 1 the same day: gameplay-dev's docs lens (8 must,
-10 should, 5 nits) and Michael's answers.
+`docs/adr/0037-ground-support-repair-medics-carriers-mines.md` (**accepted, 2026-11-09**).
+Reconciled the same day with ADR 0036 and its plan `docs/plans/2026-11-09-air-and-tech.md` (branch
+`claude/design-air-and-tech`, 0c5cc75). Fix 1 the same day: gameplay-dev's docs lens (8 must, 10
+should, 5 nits) and Michael's answers.
 
 **Answered by Michael on 2026-11-09 (in chat, through the lead): 1 A, 2 A, 3 A, 4 B, 5 A.**
 Everything comes before launch, after the Phase 4 gate and before Phase 5, in one block with ADR
@@ -14,6 +14,13 @@ get out at half hp and the Linecar's die. Own mines never trigger under own unit
 them. Hold position comes before launch; ranks and patrol stay for later updates. The names stay.
 The status stays proposed: the lead accepts both ADRs in one docs row once both fix commits are in
 and Michael has said yes to the `touch-ui-rules` text.
+
+Note (2026-11-09, P270b done): ADR 0037 and ADR 0036 are accepted in one docs commit (P270b with
+P230), before Michael's yes to the skill text. That yes now gates only the rows marked "skill yes"
+(P272, P282, P294, P299), as it gates ADR 0036's P244 and P265. The draft text is in
+`docs/plans/2026-11-09-air-and-tech.md`, section "touch-ui-rules text for Michael's yes (P230)".
+ROADMAP Phase 4b holds both designs. The shared rows follow "Merge order of the shared rows"
+below, the same text as in the air plan; P276, P277 and P289 carry dated notes for it.
 
 - **Waves.** The old release split is now a build order inside the pre-launch block, set by the
   shared rows each wave needs:
@@ -119,7 +126,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
 | P270 | ARCH | This plan and ADR 0037 (proposed), fix 1 | 0 | - |
-| P270b | LEAD | Acceptance with ADR 0036 in one docs row: the answers (recorded), dated notes in ADRs 0007, 0010, 0017, 0018, 0023, 0030, 0031 and 0036 (ADR 0037's list, ADR 0036 §2 to `UnitDef`); the GDD; ROADMAP Phase 4b; the `touch-ui-rules` text with Michael's yes | docs | Michael's yes to the skill text |
+| P270b | LEAD | **Done 2026-11-09** (with P230, one commit on `claude/p230-phase4b-acceptance`; the skill text is drafted in the air plan and waits for Michael's yes). Acceptance with ADR 0036 in one docs row: the answers (recorded), dated notes in ADRs 0007, 0010, 0017, 0018, 0023, 0030, 0031 and 0036 (ADR 0037's list, ADR 0036 §2 to `UnitDef`); the GDD; ROADMAP Phase 4b; the `touch-ui-rules` text with Michael's yes | docs | Michael's yes to the skill text |
 
 ### Wave 1 (sale and building repair)
 | Row | Owner | What | Size | Depends |
@@ -133,8 +140,8 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 ### Wave 2 (repair buildings and medics)
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
-| P276 | GD | The repair role on `UnitDef` (ADR 0036 §2 names; defs and World type tables built here if P231 and P232 have not), `repair_slots` (1-8 without pads), `repair_seek_milli`; `repair_rows`; `Repair.gd` after `Carry.run`: staggered by rank, one row scan per acting repairer (no `target_grid`), footprint-centre reach, slots order, price, `REPAIRED`, medic seek; `REPAIR_CHECKS` | 310 | P270b; P231 and P232 if merged |
-| P277 | GD | `REPAIR` 7 to `Buildings.aim`'s approach point (built here if P241b has not, else added to it); the data test that reach covers every ring point (+500); the shared contract test's ground cases | 100 | P276; P241b if merged |
+| P276 | GD | The repair role on `UnitDef` (ADR 0036 §2 names; defs and World type tables built here if P231 and P232 have not), `repair_slots` (1-8 without pads), `repair_seek_milli`; `repair_rows`; `Repair.gd` after `Carry.run`: staggered by rank, one row scan per acting repairer (no `target_grid`), footprint-centre reach, slots order, price, `REPAIRED`, medic seek; `REPAIR_CHECKS` | 310 | P270b; P231 and P232 (2026-11-09, merge order 4: no longer "if merged"; P276 adds no defs or type tables) |
+| P277 | GD | `REPAIR` 7 to `Buildings.aim`'s approach point (built here if P241b has not, else added to it); the data test that reach covers every ring point (+500); the shared contract test's ground cases | 100 | P276; P241b (2026-11-09, merge order 4: P241b builds `REPAIR`, P277 adds the footprint-centre service point) |
 | P278 | GD | Data: Weld Shed (reach 2,700), Drone Dock, Patchers (slots 1), Menders (slots 2); name width test; HOW_TO_PLAY Units and Buildings rows (Teach: repair) | data | P277 |
 | P279 | ART | Weld Shed and Drone Dock models (body, `dmg2` at 0.75, `anim`), page pins | art | P237 |
 | P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237 |
@@ -150,7 +157,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P286 | GD + QA | The ground layout: the mine table, `next_mine_id`, the records, section `mines`, sparse `mine_at`; the `stance` row column; `STATE_FORMAT` stays 7; the sanitizer's format-7 cases regenerated; one re-pin of every golden and `TICK_0_SEED_1` (exception 25) | 190 | P285, P262 |
 | P287 | GD | `Mines.gd` 1: `LAY_MINE` 8 (Formation slots, `carry_mode` 2, every order-giving Command zeroes `carry_mode`), lay on the layer's own cell in ECONOMY with every check again at the lay tick, cost and cap, arm; mark, blast (`Strike._land`'s formula) and compact in the FIRE mark; no friendly damage, air passes, rupture clears, a placed building removes; `MINE_CHECKS`, `MINES_REFUSED` | 300 | P286 |
 | P288 | GD | `MineMemory.gd` (forget; remember by detectors x mines on the fog turn, counted), sweeping (`carry_mode` 3), `PlayerView.own_mines`/`known_mines`, the snapshot's own and known lists | 250 | P287 |
-| P289 | GD | `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
+| P289 | GD | (2026-11-09, merge order 5: after ADR 0036's `Carry.gd`) `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
 | P290 | GD | Data: Bunk Wagon, Linecar, Shot Truck, Seeder, shot charge and pulse seed weapons, detect on Flarejack and Swift, `hold_types` defaults; name width test; HOW_TO_PLAY Units, Orders, Fog rows (Teach: Board, Unload, Mine, hidden mines) | data | P288, P289 |
 | P291 | ART | Bunk Wagon and Linecar (16 directions, or 8 per P237's page result), item cards, page pins | art | P237 |
 | P292 | ART | Shot Truck and Seeder (as P291), mine marks per faction (own, known), `glyph_mine`, `glyph_hold`, item cards | art | P237 |
@@ -188,7 +195,7 @@ Shared with ADR 0036's rows: `Carry.gd` (P262-P263b first, then P289), `World.gd
 then P286), `world_access.h` (P232, then P298), `Targeting.gd` (P238, then P298),
 `EffectsLayer.gd` and `BuildingCollapse.gd` (P265 and P272: the first makes the flag a match),
 `CommandBar.gd` (P244, P265, P272, P282, P294, P299), `PlayerView.gd`. The lead keeps one open
-row per file.
+row per file. The order is in "Merge order of the shared rows" below (2026-11-09).
 
 ## Acceptance per row (short)
 - **P271:** ADR 0037 §3 and §4 cases pass; the state hash of the perf arena and `TICK_0_SEED_1`
@@ -236,9 +243,10 @@ block before launch, the launch moves later by the two plans together.
 - **The atlas page.** ADR 0036's buildings and this plan's types compete for page 1; P237
   decides the room. Fallbacks in ADR 0037 §13; Michael chooses if they are not enough.
 - **Shared rows and files.** `Carry.gd`, `REPAIR`, the role, P262, `Targeting.gd`, the DIED-flag
-  readers and `CommandBar.gd` belong to two plans; the lead merges in ADR 0037 §2's order.
+  readers and `CommandBar.gd` belong to two plans; the lead merges in ADR 0037 §2's order, made
+  one fixed order on 2026-11-09 ("Merge order of the shared rows").
 - **The skill text.** P272, P282, P294 and P299 wait for Michael's yes to the `touch-ui-rules`
-  text; wave 1's UI cannot merge before it.
+  text; wave 1's UI cannot merge before it. The draft was written on 2026-11-09 (P230/P270b).
 - **Mines and match length.** Mines could stall pushes; the balance run's "no match over 15
   minutes" and the median length watch it; `mine_cap` and `mine_cost` are the knobs.
 - **Hold position's effect.** Idle units already never chase today; hold position changes
@@ -249,3 +257,29 @@ block before launch, the launch moves later by the two plans together.
 - **Balance runs.** Every merge under `data/**` starts `balance.yml`; data rows are batched (P278,
   P290) so each wave starts few runs.
 - **Scope creep.** Ranks, patrol and hold fire stay out until a later update's plan.
+
+## Merge order of the shared rows (both plans; 2026-11-09, P230 and P270b)
+The same text stands in `docs/plans/2026-11-09-air-and-tech.md` and
+`docs/plans/2026-11-09-ground-support.md`. It replaces every "whichever comes first" of both plans
+and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
+1. **Start.** After the Phase 4 gate, P231 (defs), P237 (the page probe) and ADR 0037's wave 1
+   (P271, P273, P274) may start at once. Wave 1 needs no air row.
+2. **Art.** P237 merges before any art row of either plan: P236, P239b, P245, P245b, P249, P266,
+   P279, P280, P291 and P292.
+3. **Layouts and re-pins, in this order:** P232 (format 6, exception 23), then P262 (format 7,
+   exception 24), then P286 (format 7, exception 25). No other row re-pins a golden.
+4. **The repair role.** P231 declares it on `UnitDef` with `repair_slots` and `repair_seek_milli`
+   (ADR 0037 §2), and P232 adds its type tables. P241b builds `REPAIR` (7) with the pads. Then
+   P276 (`Repair.gd`) and P277 (the footprint-centre service point) follow. P276 adds no defs or
+   type tables, and P277 does not build `REPAIR`.
+5. **`Carry.gd`.** P262, P263 and P263b build it; then P289 adds the eject. The transport comes
+   first; ADR 0037 §2's option of the ground carrier first is not taken.
+6. **The DIED-flag readers.** The first of P272 and P265 to land turns `EffectsLayer._add_death`
+   and `BuildingCollapse.cancelled` into a match on the flag; P272 (wave 1) is expected first.
+7. **`Targeting.gd` and `world_access.h`.** P232 declares the X-list rows, P238 adds the layer
+   test, then P298 adds `stance`.
+8. **`CommandBar.gd`.** P272, P244, P282, P265, P294 and P299, one open at a time, in the order
+   they become ready. All six wait for Michael's yes to the `touch-ui-rules` text.
+9. **Balance runs and the gate.** P275 (after wave 1) and P255 with P284 (part 1 and wave 2, 18
+   types) are interim tuning runs. The Phase 4b gate is P268 with P297: 26 types, ADR 0031's gate
+   run on held-out seeds, then Michael's phone.
