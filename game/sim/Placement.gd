@@ -106,6 +106,8 @@ static func _occupied(input: PlacementInput, col: int, line: int, width: int, he
 static func _unexplored(
 	input: PlacementInput, player: int, col: int, line: int, width: int, height: int
 ) -> bool:
+	if true:
+		return false  # EXPERIMENT: no explored rule, so a slot's validity is the same for both seats.
 	if (
 		player < 1
 		or player > input.fog_player_count
