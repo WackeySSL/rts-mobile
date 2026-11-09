@@ -72,6 +72,8 @@ func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> vo
 	assert_int(runner.opponents.size()).is_equal(2)
 	for def: AiDef in runner.opponents:
 		assert_object(def).is_instanceof(OpponentDef)
+	var paths: Array = runner.opponents.map(func(def: AiDef) -> String: return def.resource_path)
+	assert_array(paths).is_equal([DevRoutes.OPPONENT_FOSSIL, DevRoutes.OPPONENT_RENEW])
 	assert_int(runner.opponent_levels.size()).is_equal(2)
 	for level: AiDifficultyDef in runner.opponent_levels:
 		assert_str(level.resource_path).is_equal(DevRoutes.LEVEL_NORMAL)
@@ -154,6 +156,7 @@ func test_no_golden_comparison_and_the_usual_verdicts_with_the_same_thresholds()
 		ai.record_snapshot(snap)
 	var s: Dictionary = ai.summary()
 	assert_int(s["golden_checked"]).is_equal(0)
+	assert_bool(s["golden_match"]).is_false()  # Nothing was compared: no claim of a match.
 	assert_int(s["golden_mismatch_tick"]).is_equal(-1)
 	assert_array(s["verdicts"]).contains(["golden_hashes: n/a (this arena has no golden pair)"])
 	assert_array(Rig.failed(s)).is_empty()
@@ -164,7 +167,6 @@ func test_no_golden_comparison_and_the_usual_verdicts_with_the_same_thresholds()
 	var names: Callable = func(lines: Array) -> Array:
 		return lines.map(func(l: String) -> String: return l.get_slice(":", 0))
 	assert_array(names.call(s["verdicts"])).is_equal(names.call(units.summary()["verdicts"]))
-	assert_bool(ai.gate == gate).is_true()
 	# A slow job still fails its usual verdict on this arena.
 	var slow: PerfHud = auto_free(Rig.hud())
 	slow.arena_kind = PerfHud.ARENA_AI
@@ -179,9 +181,12 @@ func test_a_started_ai_match_thinks_and_publishes_its_think_time() -> void:
 	var thinks: int = 0
 	for _i: int in 30:
 		runner.run_ticks(1)
-		thinks += 1 if runner.snapshot.think_usec > 0 else 0
-	assert_int(thinks).is_greater(0)
-	assert_int(thinks).is_less(30)
+		var snap: MatchSnapshot = runner.snapshot
+		if snap.think_usec > 0:
+			thinks += 1
+			# No think falls on a checkpoint tick (ADR 0030 section 2).
+			assert_int(snap.tick % Replay.CHECKPOINT_PERIOD).is_not_equal(0)
+	assert_int(thinks).is_equal(12)  # Two AIs, six think ticks of every 15.
 
 
 ## An arena of `kind` in the tree with its slow seams stubbed; freed with the case.

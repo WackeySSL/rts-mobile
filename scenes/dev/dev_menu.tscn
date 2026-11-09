@@ -103,7 +103,7 @@ min_dp = Vector2(72, 48)
 [node name="Grid" type="GridContainer" parent="SafeArea/Scroll/Center/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-columns = 2
+columns = 3
 
 [node name="SkirmishDerrickButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true

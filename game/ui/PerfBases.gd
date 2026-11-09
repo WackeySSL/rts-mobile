@@ -1,6 +1,7 @@
 class_name PerfBases
 extends RefCounted
-## The perf card's choice between the seed-42 arena and the base arena (plan P93c, ADR 0021): which
+## The perf card's choice between the seed-42 arena, the base arena (plan P93c, ADR 0021) and the AI
+## arena (plan P185, no golden pair, its report-only AI line): which
 ## golden pair the card judges, the comparison itself, the names a mismatch carries and the base
 ## arena's draw-call forecast. `PerfHud` keeps `arena_kind`; everything else about the choice is
 ## here so the card stays small.

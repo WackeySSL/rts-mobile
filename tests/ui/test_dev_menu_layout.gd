@@ -4,13 +4,15 @@ extends GdUnitTestSuite
 ## plan P90, test map, strike test, art gallery, touch probe, perf arena, perf bases, perf AI) lie
 ## inside the safe rect, every button is at least dp(48) on each axis with text of 14 sp or more,
 ## and nothing overlaps. The same holds on the phone browsers (the buttons are 48 dp tall and stand
-## in three columns sideways and one upright, so that they fit a phone browser held sideways
-## without a scroll), with the cutouts of Michael's phone and of the ADR's portrait phone, and
-## after a turn. A window that is too short for them scrolls, so no button is out of reach. Which
-## scene a button opens is test_dev_routes.gd's.
+## in three columns sideways, two where three do not fit, and one upright, so that they fit a phone
+## browser held sideways without a scroll), with the cutouts of Michael's phone and of the ADR's
+## portrait phone, and after a turn. A window that is too short for them scrolls, so no button is
+## out of reach. Which scene a button opens is test_dev_routes.gd's.
 
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+## A 640 dp wide safe area sideways (a 16:9 phone at 320 dpi): three columns do not fit it.
+const NARROW_CUTOUT: Rect2i = Rect2i(360, 0, 1680, 1080)
 const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const BUTTONS: Array[String] = [
@@ -67,6 +69,25 @@ func test_the_phone_browsers_and_the_cutouts_keep_every_control_inside() -> void
 	}
 	for label: String in cases:
 		await _check_layout(cases[label], label)
+
+
+## A sideways window too narrow for three columns gets two, and every button lies inside the safe
+## width (horizontal scroll is off, so nothing could be reached otherwise).
+func test_a_640_dp_wide_window_gets_two_columns_inside_the_safe_width() -> void:
+	var profile: UiMetrics = UiProfiles.with_safe_area(
+		UiProfiles.by_name(&"android_6in"), NARROW_CUTOUT
+	)
+	var menu: Control = await _open(profile)
+	var safe: Rect2 = UiScale.safe_rect_base()
+	assert_float(safe.size.x / UiScale.dp(1.0)).is_equal_approx(640.0, 1.0)
+	assert_int((_control(menu, "Grid") as GridContainer).columns).is_equal(2)
+	for button_name: String in BUTTONS:
+		var rect: Rect2 = _control(menu, button_name).get_global_rect()
+		(
+			assert_bool(rect.position.x >= safe.position.x - 0.5 and rect.end.x <= safe.end.x + 0.5)
+			. is_true()
+		)
+	_close(menu)
 
 
 ## A phone browser held sideways with a cutout is too short for the column: the menu scrolls, and
@@ -173,7 +194,7 @@ func test_the_nine_buttons_stand_in_three_columns_sideways_and_in_one_upright() 
 		UiScale.clear_override()
 
 
-## `profile` shown: the title, the level label and the eleven buttons, then the checks of the plan's
+## `profile` shown: the title, the level label and the twelve buttons, then the checks of the plan's
 ## acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)

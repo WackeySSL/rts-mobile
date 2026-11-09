@@ -1118,7 +1118,7 @@ GATE: PASS
   "frames": 1000,
   "gate_pass": true,
   "golden_checked": 0,
-  "golden_match": true,
+  "golden_match": false,
   "golden_mismatch_tick": -1,
   "hash_hex": "a7bb0d0000000000",
   "heavy_cadence_pct": 99.9980000400002,

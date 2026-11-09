@@ -438,11 +438,11 @@ func invalid_reasons() -> PackedStringArray:
 
 
 ## The checkpoints against the gate's golden values (ADR 0011 section 5; the base arena's pair for
-## `ARENA_BASES`), see `PerfBases.compare`. The AI arena has none: it reports a match of nothing
-## checked, and the card's `golden_hashes` row says n/a.
+## `ARENA_BASES`), see `PerfBases.compare`. The AI arena has none: it reports no match with
+## nothing checked (a report must not claim a pass), and the card's row says n/a.
 func golden_result() -> Dictionary:
 	if not PerfBases.has_golden(arena_kind):
-		return {"match": true, "checked": 0, "tick": -1, "got": "", "want": ""}
+		return {"match": false, "checked": 0, "tick": -1, "got": "", "want": ""}
 	var ticks: PackedInt32Array = PerfBases.ticks(gate, arena_kind)
 	var hexes: PackedStringArray = PerfBases.hexes(gate, arena_kind)
 	return PerfBases.compare(ticks, hexes, _checkpoint_ticks, _checkpoint_hex, run_ticks, _finished)

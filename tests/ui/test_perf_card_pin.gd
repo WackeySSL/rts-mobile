@@ -1,9 +1,9 @@
 extends GdUnitTestSuite
 ## Pins the text of `PerfCard` and the keys of `PerfHud.summary()` (plan P184): six fixed runs
 ## (units arena, a failing and paused run, the base arena, Android with the library and without,
-## the AI arena of P185)
-## render to `fixtures/perf_card_pin.txt`, which was made on the code before the `PerfHud` split, so
-## the split is proven a pure move. The machine's own values (model, engine, screen) are masked.
+## the AI arena of P185) render to `fixtures/perf_card_pin.txt`, made before the split (P184) and
+## re-made by P185 with the three `ai_think_*` keys and the `ai_arena` case. The machine's own
+## values (model, engine, screen) are masked.
 ##
 ## From now on it pins the card's lines and the summary of those runs. A row that changes the card
 ## or the summary on purpose re-makes the fixture and says why in its PR; P185 (the `ai_think_*`
@@ -17,7 +17,7 @@ const FIXTURE: String = "res://tests/ui/fixtures/perf_card_pin.txt"
 var _remade: String = "user://perf_card_pin_%d.txt" % OS.get_process_id()
 
 
-func test_every_case_renders_as_before_the_split() -> void:
+func test_every_case_renders_as_pinned() -> void:
 	var want: String = FileAccess.get_file_as_string(FIXTURE).replace("\r\n", "\n")
 	var got: String = ""
 	for case_name: String in Cases.CASES:

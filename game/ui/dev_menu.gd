@@ -5,10 +5,10 @@ extends Control
 ## with the base arena) or the perf AI (the same scene with two computer players, plan P185). When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
-## section 5): one column upright, three sideways, so the nine fit a phone browser held sideways; a
-## window too short for them scrolls. The level row is three across in both orientations, its
-## choice named in "Level: ..." beside the title. The look is the theme's, sized in dp by
-## `HudTheme`; the gap is dp here.
+## section 5): one column upright, three sideways where they fit the width (else two), so the nine
+## fit a phone browser held sideways; a window too short for them scrolls. The level row is three
+## across in both orientations, its choice named in "Level: ..." beside the title. The look is the
+## theme's, sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
 ## The level buttons, in the order of the row: name shown and the file of `data/ai/difficulty/`.
@@ -85,7 +85,17 @@ func _apply_dp() -> void:
 	_level_row.add_theme_constant_override("separation", gap)
 	_grid.add_theme_constant_override("h_separation", gap)
 	_grid.add_theme_constant_override("v_separation", gap)
-	_grid.columns = 1 if HudLayout.is_portrait() else 3
+	_grid.columns = 1 if HudLayout.is_portrait() else _sideways_columns(gap)
+
+
+## Three columns sideways where three of the widest button and the gaps fit the safe width (no
+## scroll at web_phone), else two (a 640 dp phone); horizontal scroll is off, so a wider block
+## would put buttons out of reach.
+func _sideways_columns(gap: int) -> int:
+	var widest: float = 0.0
+	for button: Control in _grid.get_children():
+		widest = maxf(widest, button.get_combined_minimum_size().x)
+	return 3 if 3.0 * widest + 2.0 * gap <= UiScale.safe_rect_base().size.x else 2
 
 
 func _open_main() -> void:
