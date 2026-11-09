@@ -1,12 +1,15 @@
 class_name PerfBases
 extends RefCounted
-## The perf card's choice between the seed-42 arena and the base arena (plan P93c, ADR 0021): which
-## golden pair the card judges, the comparison itself, the names a mismatch carries and the base
-## arena's draw-call forecast. `PerfHud` keeps `arena_kind`; everything else about the choice is
-## here so the card stays small.
+## The perf card's choice between the seed-42 arena, the base arena (plan P93c, ADR 0021) and the
+## AI arena (plan P185, no golden pair, its report-only AI line): which golden pair the card
+## judges, the comparison itself, the names a mismatch carries and the base arena's draw-call
+## forecast. `PerfHud` keeps `arena_kind`; everything else about the choice is here so the card
+## stays small.
 
 const ARENA_UNITS: String = "arena"
 const ARENA_BASES: String = "bases"
+## The AI arena (plan P185): `perf_ai.tres` with a computer on each player. It has no golden pair.
+const ARENA_AI: String = "ai"
 ## The gate fields of the base arena's pair, named in a mismatch so a re-pin goes to the right one.
 const FIELDS: String = " (bases_golden_ticks, bases_golden_hex)"
 ## ADR 0023 section 2's draw-call forecast of the base arena, HUD left out: 16 (14 + `GroundFx` +
@@ -21,6 +24,24 @@ const CALLS_LINE: String = (
 	"draw calls p95 %d | forecast %d, %d while a strike is aimed or in flight, about %d at worst, "
 	+ "plus the HUD (no verdict)"
 )
+
+## The card's AI line (plan P185, ADR 0030 section 4), report-only: the p95 and the dearest think
+## over the ticks on which a computer player thought, and how many ticks that was. 1.0 ms is the
+## watch value the p95 is read against, printed so the phone reads it without the ADR.
+const AI_WATCH_MS: float = 1.0
+const AI_LINE: String = (
+	"ai_think_p95_ms %.2f | ai_think_max_ms %.2f | ai_thinks %d | watch p95 at or below %.2f ms "
+	+ "(no verdict)"
+)
+
+
+## Whether the arena has a golden pair the card compares with (not the AI arena's).
+static func has_golden(kind: String) -> bool:
+	return kind != ARENA_AI
+
+
+static func ai_line(p95_ms: float, max_ms: float, thinks: int) -> String:
+	return AI_LINE % [p95_ms, max_ms, thinks, AI_WATCH_MS]
 
 
 static func ticks(gate: PerfGateDef, kind: String) -> PackedInt32Array:

@@ -1,13 +1,14 @@
 extends Control
 ## Developer menu: choose the computer's level (Easy, Normal or Hard; Normal at the start, the
 ## choice shown, plan P183), then jump to a Skirmish (one per side, plan P90), the test map, the
-## strike test, the art gallery, the touch probe, the perf arena or the perf bases (the same scene
-## with the base arena). When the dev menu is not enabled (a release export without the `dev_menu`
-## feature) it opens the main scene instead. Buttons of at least 48 dp in the safe area, in either
-## orientation (ADR 0015 section 5): one column upright, two sideways, so the eight fit a phone
-## browser held sideways; a window too short for them scrolls. The level row is three across in both
-## orientations, its choice named in "Level: ..." beside the title. The look is the theme's,
-## sized in dp by `HudTheme`; the gap is dp here.
+## strike test, the art gallery, the touch probe, the perf arena, the perf bases (the same scene
+## with the base arena) or the perf AI (the same scene with two computer players, plan P185). When
+## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
+## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
+## section 5): one column upright, three sideways where they fit the width (else two), so the nine
+## fit a phone browser held sideways; a window too short for them scrolls. The level row is three
+## across in both orientations, its choice named in "Level: ..." beside the title. The look is the
+## theme's, sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
 ## The level buttons, in the order of the row: name shown and the file of `data/ai/difficulty/`.
@@ -20,6 +21,7 @@ const START_LEVEL: int = 1
 ## The chosen index of `LEVEL_NAMES` and `LEVEL_PATHS`.
 var _level_index: int = START_LEVEL
 
+@onready var _safe_area: SafeAreaMargin = $SafeArea
 @onready var _column: VBoxContainer = %Column
 @onready var _grid: GridContainer = %Grid
 @onready var _level_label: Label = %LevelLabel
@@ -33,6 +35,7 @@ var _level_index: int = START_LEVEL
 @onready var _probe_button: Button = %TouchProbeButton
 @onready var _arena_button: Button = %PerfArenaButton
 @onready var _bases_button: Button = %PerfBasesButton
+@onready var _ai_button: Button = %PerfAiButton
 
 
 func _ready() -> void:
@@ -46,6 +49,10 @@ func _ready() -> void:
 	_bases_button.disabled = (
 		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
 		or not ResourceLoader.exists(DevRoutes.PERF_BASES_SCENARIO)
+	)
+	_ai_button.disabled = (
+		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
+		or not ResourceLoader.exists(DevRoutes.PERF_AI_SCENARIO)
 	)
 	var group: ButtonGroup = ButtonGroup.new()
 	for index: int in _levels.size():
@@ -67,6 +74,7 @@ func _ready() -> void:
 	_probe_button.pressed.connect(_on_probe_pressed)
 	_arena_button.pressed.connect(_on_arena_pressed)
 	_bases_button.pressed.connect(_on_bases_pressed)
+	_ai_button.pressed.connect(_on_ai_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 
@@ -78,7 +86,20 @@ func _apply_dp() -> void:
 	_level_row.add_theme_constant_override("separation", gap)
 	_grid.add_theme_constant_override("h_separation", gap)
 	_grid.add_theme_constant_override("v_separation", gap)
-	_grid.columns = 1 if HudLayout.is_portrait() else 2
+	_grid.columns = 1 if HudLayout.is_portrait() else _sideways_columns(gap)
+
+
+## Three columns sideways where three of the widest button and the gaps fit the room inside the
+## safe margin (both sides take the larger inset; no scroll at web_phone), else two (a 640 dp
+## phone); horizontal scroll is off, so a wider block would put buttons out of reach.
+func _sideways_columns(gap: int) -> int:
+	var widest: float = 0.0
+	for button: Control in _grid.get_children():
+		widest = maxf(widest, button.get_combined_minimum_size().x)
+	var room: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), _safe_area.margin_dp
+	)
+	return 3 if 3.0 * widest + 2.0 * gap <= room.size.x else 2
 
 
 func _open_main() -> void:
@@ -122,3 +143,7 @@ func _on_arena_pressed() -> void:
 
 func _on_bases_pressed() -> void:
 	DevRoutes.open_perf_bases(get_tree())
+
+
+func _on_ai_pressed() -> void:
+	DevRoutes.open_perf_ai(get_tree())

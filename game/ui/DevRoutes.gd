@@ -15,6 +15,9 @@ const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
 ## The base arena of the perf arena scene (plan P93c): P80's scenario, run by the same scene and
 ## card, checked against the gate's `bases_golden_*` fields.
 const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
+## The AI arena of the perf arena scene (plan P185, ADR 0030 section 4): the two mirror bases of
+## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair.
+const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
 ## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Dusk Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
@@ -54,6 +57,21 @@ static func open_perf_bases(tree: SceneTree) -> Error:
 		return ERR_FILE_NOT_FOUND
 	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
 	arena.arena_kind = PerfHud.ARENA_BASES
+	return tree.change_scene_to_node(arena)
+
+
+## Changes to the perf arena scene with the AI arena (plan P185): like `open_perf_bases`, with
+## `PerfArena.arena_kind` set before the scene enters the tree; the scene seats the two computer
+## players. Reports a missing scene or scenario with push_error instead of crashing.
+static func open_perf_ai(tree: SceneTree) -> Error:
+	if not ResourceLoader.exists(PERF_ARENA_SCENE):
+		push_error("DevRoutes: scene not found: %s" % PERF_ARENA_SCENE)
+		return ERR_FILE_NOT_FOUND
+	if not ResourceLoader.exists(PERF_AI_SCENARIO):
+		push_error("DevRoutes: scenario not found: %s" % PERF_AI_SCENARIO)
+		return ERR_FILE_NOT_FOUND
+	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
+	arena.arena_kind = PerfHud.ARENA_AI
 	return tree.change_scene_to_node(arena)
 
 

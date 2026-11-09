@@ -59,6 +59,7 @@ const CARD_ROWS: Array = PerfCard.CARD_ROWS
 ## Which arena the card judges (P93c): the seed-42 arena or the base arena.
 const ARENA_UNITS: String = PerfBases.ARENA_UNITS
 const ARENA_BASES: String = PerfBases.ARENA_BASES
+const ARENA_AI: String = PerfBases.ARENA_AI
 
 @export var runner: MatchRunner
 @export var gate: PerfGateDef = PerfGateDef.new()
@@ -352,6 +353,8 @@ func record_snapshot(snap: MatchSnapshot) -> void:
 		var cells: int = snap.stats[World.Stat.FLOW_CELLS] if not snap.stats.is_empty() else -1
 		if cells == flow_cells_per_tick:
 			_col(&"flow").append(usec[SimProbe.Phase.FLOW] / 1000.0)
+	if snap.think_usec > 0:  # P185: a tick on which no computer player thought has no think.
+		_col(&"think").append(snap.think_usec / 1000.0)
 	_alive = snap.unit_count()
 	_last_hash = snap.last_hash
 	if snap.tick % CHECKPOINT_EVERY == 0:
@@ -435,8 +438,11 @@ func invalid_reasons() -> PackedStringArray:
 
 
 ## The checkpoints against the gate's golden values (ADR 0011 section 5; the base arena's pair for
-## `ARENA_BASES`), see `PerfBases.compare`.
+## `ARENA_BASES`), see `PerfBases.compare`. The AI arena has none: it reports no match with
+## nothing checked (a report must not claim a pass), and the card's row says n/a.
 func golden_result() -> Dictionary:
+	if not PerfBases.has_golden(arena_kind):
+		return {"match": false, "checked": 0, "tick": -1, "got": "", "want": ""}
 	var ticks: PackedInt32Array = PerfBases.ticks(gate, arena_kind)
 	var hexes: PackedStringArray = PerfBases.hexes(gate, arena_kind)
 	return PerfBases.compare(ticks, hexes, _checkpoint_ticks, _checkpoint_hex, run_ticks, _finished)
@@ -540,6 +546,10 @@ func summary() -> Dictionary:
 		"held_ticks": held_ticks,
 		"latency_usec_max": latency_usec_max,
 		"flow_slice_p95_ms": _p(_col(&"flow"), 95),
+		# P185, report-only: the computer players' time over the ticks on which one thought.
+		"ai_think_p95_ms": _p(_col(&"think"), 95),
+		"ai_think_max_ms": _p(_col(&"think"), 100),
+		"ai_thinks": _col(&"think").size(),
 		"phases_ms": phases,
 		# ADR 0013 section 15 (printed, no verdict): the ticks that are not checkpoint ticks, and
 		# the job time beyond Sim.step on both kinds.
