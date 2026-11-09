@@ -19,4 +19,4 @@ requires = ExtResource("2_requires")
 footprint = Vector2i(3, 3)
 power = -30
 free_unit = ExtResource("3_free_unit")
-dock = Vector2i(1, 3)
+dock = Vector2i(1, -1)

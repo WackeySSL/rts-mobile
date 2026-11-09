@@ -18,4 +18,4 @@ requires = ExtResource("2_requires")
 footprint = Vector2i(2, 2)
 power = -20
 produces = 1
-exit = Vector2i(1, 2)
+exit = Vector2i(0, -1)
