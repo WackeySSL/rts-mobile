@@ -184,7 +184,7 @@ static func run(world: World) -> void:
 		if order != ATTACK_MOVE and order != IDLE:
 			targets[row] = 0
 			continue
-		if (tick) % period != 0:
+		if (tick + ids[row]) % period != 0:
 			continue
 		var type: int = types[row]
 		var weapon: int = type_weapon[type]
@@ -406,7 +406,7 @@ static func _engage(world: World) -> void:
 		if mode == HOLD:
 			mode = NONE if order == IDLE else DIRECT
 			Movement.reset_row(world, row, mode)
-		if (order != ATTACK_MOVE and order != ATTACK) or (tick) % period != 0:
+		if (order != ATTACK_MOVE and order != ATTACK) or (tick + ids[row]) % period != 0:
 			continue
 		if order == ATTACK:
 			if mode == DIRECT and checked[row] >= 0:
