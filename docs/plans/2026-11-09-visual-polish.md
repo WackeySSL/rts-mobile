@@ -4,9 +4,10 @@ Date: 2026-11-09. Base: `main` at b6bfe95 (Phase 4 wave 7 merged; waves 8 and 9 
 architect (row P200, branch `claude/plan-visual-polish`). Decisions:
 - `docs/adr/0034-skadet-shows-the-intact-picture.md`, **accepted** 2026-11-09 (Michael's "A",
   relayed by the lead): buildings drop the SKADET picture.
-- `docs/adr/0035-visual-polish-fog-tint-map-edge-world-grade-team-marks.md`, **proposed**: the parts
-  of the eight proposals that change accepted ADRs (fog colour, map edge, world grade, team colour
-  under units and on the ring, the draw-call forecast).
+- `docs/adr/0035-visual-polish-fog-tint-map-edge-world-grade-team-marks.md`, **accepted**
+  2026-11-09 (Q1 A, Q2 B; Q3 A by the lead): the parts of the eight proposals that change accepted
+  ADRs (fog colour, map edge, world grade, team colour under units and on the ring, the draw-call
+  forecast).
 
 Revised 2026-11-09 after the docs lens (touch-ux-dev as implementer; 4 must, 6 should): the
 damage part lists stay stage-indexed (P201, P202, ADR 0034 §3), P201 merges after P202, P216 owns
@@ -110,7 +111,7 @@ reserved; P200b is the lead's.
 
 | Row | Lane | Owner | Title | Size | Depends | Group |
 | --- | --- | --- | --- | --- | --- | --- |
-| P200 | - | architect | docs: this plan, ADR 0034 (accepted), ADR 0035 (proposed) | 0 | - | done |
+| P200 | - | architect | docs: this plan, ADR 0034 (accepted), ADR 0035 (accepted) | 0 | - | done |
 | P200b | - | lead | docs on acceptance: ADR 0029/0028/0023 notes (draft above), ADR 0035's answers and its notes in ADR 0010 §2 / 0023 §2 / 0027 §9, GDD lines (damage table, fog), svg-art-style skill text | 0 | P200, Michael's answers | 0 |
 | P201 | V2 | touch-ux-dev | view: SKADET draws the intact picture (`BuildingDamage.picture`, gallery Stage button); part lists unchanged | 30 | P202 (written beside it, merged after it) | 2 |
 | P202 | A | art-director | art: generator writes no `dmg1` frame (stage indexing kept); 16 frames and their sheet parts go; `dmg2` byte-identical; page pins down | 60 + art | P200b | 1 |
