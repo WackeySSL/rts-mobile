@@ -73,10 +73,10 @@ func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> vo
 	for def: AiDef in runner.opponents:
 		assert_object(def).is_instanceof(OpponentDef)
 	var paths: Array = runner.opponents.map(func(def: AiDef) -> String: return def.resource_path)
-	assert_array(paths).is_equal([DevRoutes.OPPONENT_FOSSIL, DevRoutes.OPPONENT_RENEW])
+	assert_array(paths).is_equal([DevRoutes.PERF_AI_FOSSIL, DevRoutes.PERF_AI_RENEW])
 	assert_int(runner.opponent_levels.size()).is_equal(2)
 	for level: AiDifficultyDef in runner.opponent_levels:
-		assert_str(level.resource_path).is_equal(DevRoutes.LEVEL_NORMAL)
+		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_LEVEL)
 	assert_object(runner.scenario).is_same(arena.scenario)
 	assert_int(FogLayer.local_player_of(runner)).is_equal(1)
 	var players: Array[int] = []

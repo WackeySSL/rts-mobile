@@ -18,6 +18,12 @@ const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## The AI arena of the perf arena scene (plan P185, ADR 0030 section 4): the two mirror bases of
 ## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair.
 const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
+## The computers of that arena play the frozen AI defs with early contact (plan P189b: an early
+## scout and first wave), the same files as `tests/perf/test_ai_perf.gd`, so the card times what
+## the suite times. The Skirmish routes keep the shipped defs below.
+const PERF_AI_FOSSIL: String = "res://data/dev/arena/ai/opponent_fossil.tres"
+const PERF_AI_RENEW: String = "res://data/dev/arena/ai/opponent_renew.tres"
+const PERF_AI_LEVEL: String = "res://data/dev/arena/ai/difficulty/normal.tres"
 ## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Dusk Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"

@@ -1,26 +1,27 @@
 extends GdUnitTestSuite
 ## The AI's time and bounds (plan row P189, ADR 0030 section 4, ADR 0031 section 8). Two Normal
 ## `OpponentAi` play `data/scenarios/perf_ai.tres` (the base arena's layout on the frozen sim defs,
-## the shipped AI defs) for 900 ticks of seed 42, three times, through `AiDriver.think_all`.
+## the frozen AI defs, below) for 900 ticks of seed 42, three times, through `AiDriver.think_all`.
 ##
 ## What is judged is deterministic and read from the controllers, never from the clock: every think
 ## stays inside the counted bounds of ADR 0030 section 4 (the passes, the Commands cut, the
 ## placement tries, the candidate tests, the goal keys, the sectors and every id list of the
 ## memory), the runs end on the same state hash at every checkpoint and drop no Command.
 ##
-## What this workload exercises, by `WATCH ai peaks`: the passes (3), the placement tries, the
-## STAGING goal keys, the own id lists, the Commands and every slot. What it does not: in 900 ticks
-## neither AI sees the enemy (Normal's scout comes at tick 1800 and its first wave at 4050), so the
-## seen lists, `withdrawn_id`, `commands_cut`, the army, hit and strike tests and the ARMY and
-## SCOUT keys stay 0 here (no contact before tick 900). Their bounds
-## hold on silence; the manager suites and P188's matches pin them on crafted Worlds and on
-## matches with contact, and P189b's frozen AI defs bring contact into this workload. Lead decision
-## (P189 round 1): the timed workload is a no-contact AI until then. Only the counters this workload
-## moves are asserted live. Until P189b these depend on the shipped AI data (exception 20's spirit;
-## the file is not in its list): the live checks of `placement_tries`, `keys_staging`, `commands`
-## and `work == 3`, and the asserts of no match end.
+## The workload plays the frozen AI defs of `data/dev/arena/ai/` (plan row P189b): copies of the
+## eleven shipped AI defs but for Normal's early scout (tick 30) and first wave (tick 300, no
+## jitter), so the 900 ticks make contact and the time is that of a fighting AI. What this workload
+## exercises, by `WATCH ai peaks`: the passes (3), the placement tries, the STAGING, ARMY and SCOUT
+## goal keys, the own and the seen id lists, the army's target tests, the strike manager's tests
+## (`perf_ai.tres` spawns a charged strike building for each player, so the Deep Bore and the Dusk
+## Array are tested as soon as enemy buildings are seen; a strike building built in the match would
+## need 600 build ticks and 4 500 charge ticks), the Commands and every slot. What it does not: an
+## unseen hit (`hit_tests`, `withdrawn_id`) and a seen mobile unit, so those stay 0 and
+## `commands_cut` stays 0 by its cap; their bounds hold on silence, and the manager suites and
+## P188's matches pin them on crafted Worlds. Only the counters this workload moves are asserted
+## live (`LIVE`, and `CONTACT` for the ones that need the enemy seen).
 ##
-## What is only printed (report only, no ratchet: that is P189b's):
+## What is only printed (report only; the `[ai]` budget value is a later row's, set from CI runs):
 ## - `WATCH ai think`: the time of a think (the call of `think_all` that made it, the PlayerView
 ##   included, as the snapshot's `think_usec`), the p95 and the max, each the smallest of the runs
 ##   (as `PerfReport.best_of`), with the phone estimate at the gate's `ci_ratio_p95`. `impl=` is the
@@ -35,6 +36,11 @@ const RUNS: int = 3
 ## The counters this workload moves (see the header); asserted greater than 0 in every run.
 const LIVE: Array[String] = [
 	"work", "placement_tries", "keys_staging", "unit_id", "own_mobile_id", "hp_id", "commands"
+]
+## The counters that move only once the enemy is seen: the early scout and first wave of the frozen
+## defs make contact inside the 900 ticks, so each is above 0 (P189 had them at 0).
+const CONTACT: Array[String] = [
+	"seen_unit_id", "seen_site_id", "army_tests", "strike_tests", "keys_army", "keys_scout"
 ]
 
 var _runs: Array[AiRun] = []
@@ -99,7 +105,7 @@ func test_every_think_stays_inside_the_counted_bounds_of_the_adr() -> void:
 func test_the_counters_this_workload_moves_are_live() -> void:
 	for index: int in _runs.size():
 		var run: AiRun = _runs[index]
-		for name: String in LIVE:
+		for name: String in LIVE + CONTACT:
 			(
 				assert_int(run.peaks.get(name, 0))
 				. override_failure_message("run %d: %s never moved" % [index, name])
@@ -118,6 +124,22 @@ func test_the_counters_this_workload_moves_are_live() -> void:
 					)
 					. is_greater(0)
 				)
+
+
+## The early scout and first wave make contact: both AIs see the enemy, and a wave is launched, in
+## every run.
+func test_the_frozen_defs_make_contact_within_the_900_ticks() -> void:
+	for index: int in _runs.size():
+		var run: AiRun = _runs[index]
+		var waves: int = 0
+		for controller: AiController in run.controllers:
+			var ai: OpponentAi = controller as OpponentAi
+			var tag: String = "run %d player %d" % [index, ai.player_id]
+			assert_int(ai.memory.scout_trip_tick).append_failure_message(tag).is_not_equal(
+				AiMemory.NONE
+			)
+			waves += ai.army.waves
+		assert_int(waves).append_failure_message("run %d" % index).is_greater(0)
 
 
 ## The three report-only lines are `WATCH ai <name> key=value ...` with their keys in order, none
