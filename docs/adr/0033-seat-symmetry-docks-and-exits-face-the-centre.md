@@ -16,8 +16,8 @@ per building, for every player; placement in a player's own base no longer depen
 player has explored; the golden hashes that move are re-pinned with this ADR as the reason. Two
 sub-choices change what the player sees: **Questions** below. Michael answered both on
 2026-11-09: A and A (a door on both front walls; the explored rule goes, E1). Written by the
-architect on `main` at b6bfe95 (plan row P195c). Amends ADR 0017 §2 (the `UNEXPLORED` rule, §4 here) and
-ADR 0018 §3 and §5 (where the dock and the exit are, §1 and §2 here); see §8.
+architect on `main` at b6bfe95 (plan row P195c). Amends ADR 0017 §2 (the `UNEXPLORED` rule, §4
+here) and ADR 0018 §3 and §5 (where the dock and the exit are, §1 and §2 here); see §8.
 
 ## Context
 - **The bias.** Balance run 1 (#378): in Normal-Normal mirrors the top seat (player 1, Headquarters
