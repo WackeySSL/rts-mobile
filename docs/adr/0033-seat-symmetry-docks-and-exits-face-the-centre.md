@@ -115,7 +115,8 @@ ADR 0018 §3 and §5 (where the dock and the exit are, §1 and §2 here); see §
   Headquarters), so no new state is needed. Unmeasured; an AI base that grows past the area meets
   the drift again at its edge, and it adds a rule int, an input field and a snapshot read.
 - **E3, mark the start area explored in the fog at tick 0.** Changes what the player sees at the
-  start (a revealed patch round each base) and the hashed fog; the drift at its edge stays. Rejected.
+  start (a revealed patch round each base) and the hashed fog; the drift at its edge stays.
+  Rejected.
 
 ## Decision
 
@@ -134,10 +135,11 @@ static func turned(offset: Vector2i, size: int, facing: int) -> Vector2i
   - `abs(dx) > abs(dy)`: `EAST` if `dx > 0`, else `WEST`;
   - a diagonal tie: the side one quarter turn clockwise from the diagonal (y grows downwards):
     (+, +) `SOUTH`, (-, +) `WEST`, (-, -) `NORTH`, (+, -) `EAST`.
+
   The rule is equivariant under a quarter turn of a square map and a half turn of any map: a
-  building's half turn gets `(facing + 2) % 4`, its quarter turn `(facing + 1) % 4`, ties included.
-  (A map mirrored across an axis is symmetric too, except for a building exactly on a diagonal
-  through the centre; maps stay half or quarter turns, as Kestrel Flats is.)
+  building's half turn gets `(facing + 2) % 4`, its quarter turn `(facing + 1) % 4`, ties
+  included. Maps mirrored across an axis are not covered; maps stay half or quarter turns, as
+  Kestrel Flats is.
 - `turned`: one clockwise quarter turn about an n x n footprint is `(x, y) -> (n - 1 - y, x)`;
   `facing` applies it that many times. It keeps a ring tile on the ring. For today's data:
 
@@ -148,10 +150,17 @@ static func turned(offset: Vector2i, size: int, facing: int) -> Vector2i
 
 - **Where it applies** (every read of a dock or exit position, nothing else):
   `ProductionSpawn.spawn` and `ProductionSpawn.exit_tile` (the exit), `ProductionSpawn.spawn_free`
-  and `Harvest._dock` (the dock). The tests for "has a dock" (`dock != (0, 0)` in Harvest,
-  `ProductionSpawn.spawn_free` and `PlayerView`) stay on the raw data: a dock of (0, 0) means none
-  and is never turned. The clockwise ring walk past a closed exit starts from the turned tile; a
-  rotation keeps clockwise clockwise, so the walk stays seat-symmetric.
+  and `Harvest._dock` (the dock). `_dock`'s three callers, `Harvest.run` (the reach check of a
+  harvester in RETURN), `_go_home` (SEEK's full load) and `_choose` (RETURN's refinery choice), all
+  pick up the turn through `_dock` and need no edit of their own. The tests for "has a dock"
+  (`dock != (0, 0)` in Harvest, `ProductionSpawn.spawn_free` and `PlayerView`) stay on the raw
+  data: a dock of (0, 0) means none and is never turned. The clockwise ring walk past a closed exit
+  starts from the turned tile; a rotation keeps clockwise clockwise, so the walk stays
+  seat-symmetric.
+- **Stale doc comments** that P195c-1 updates to "the offset turned to the building's facing":
+  `Harvest.gd` lines 21-23 (a refinery's dock), line 321 (`_dock`: "origin plus the type's dock
+  offset") and `ProductionSpawn.gd` line 81 (`exit_tile`), with `ProductionSpawn.spawn_free`'s and
+  `tile_from`'s comments where they name the raw offset.
 - **No state.** A building never moves, so its facing is derived where it is used: no row column,
   no `STATE_FORMAT` change, no snapshot or `PlayerView` change. The AI may call the static function
   if it wants a dock tile (P195b or later; not required). Cost: a dozen integer operations per spawn
@@ -190,10 +199,16 @@ refinery's dock, the factory's exit) are turned into cases that pin the symmetry
 ### 4. Explored rule: dropped (E1), unless Michael picks E2 (question 2)
 - P195c-3 removes `Placement._unexplored` and the `UNEXPLORED` member of `Placement.Reason`; the
   other members keep their numbers (`TOO_FAR` 5, `CAP` 6). `PlacementInput` keeps its fog fields
-  (`PlayerView.is_explored` reads them). `GhostLayer` finds a glyph by the reason's name, so it needs
-  no change; the unused `glyph_reason_unexplored.svg`, its gallery entry and its STYLE.md line go in
-  P195c-2 (art-director's files). `docs/HOW_TO_PLAY.md`'s placement row loses "you have not explored
-  the ground".
+  (`PlayerView.is_explored` reads them). `docs/HOW_TO_PLAY.md`'s placement row loses "you have not
+  explored the ground". The sim tests it rewrites (lines on b6bfe95): `tests/sim/test_placement.gd`
+  13, 113-120, 182, 224 and 264; `tests/sim/test_production_place.gd` 17 and 145;
+  `tests/sim/test_player_view_state.gd` 214-225. `GhostLayer` finds a glyph by the reason's name and
+  `tests/view/test_ghost_layer.gd:132` loops `Placement.Reason.keys()`, so neither needs an edit.
+- The glyph goes in P195c-2 (art-director's files), all in one commit so no test breaks between
+  them: `assets/art/svg/icons/glyph_reason_unexplored.svg` and its `.svg.import`;
+  `tests/art/test_icon_art.gd:67` (`REASONS` lists "unexplored", so it must lose the entry in the
+  same commit as the SVG); `game/view/art_gallery.gd:206` and `:245` (its name and its colour);
+  `assets/art/STYLE.md:1261` (the reason list) and `:1394` (the glyph's row).
 - For the AI: its placements are the same function (`PlayerView.placement`), so two mirrored AIs
   get the same answers for mirrored slots. For the human: a building may stand on black ground, but
   only within `build_reach_tiles` (4) of an own building, so next to the base.
@@ -204,10 +219,10 @@ refinery's dock, the factory's exit) are turned into cases that pin the symmetry
 ### 5. Determinism and golden hashes
 | Pin | P195c-1 (facing) | P195c-3 (explored, E1) |
 | --- | --- | --- |
-| `golden_hex` (perf arena, seed 42) and seed 43 | unchanged: units only, no building | unchanged: no `PLACE` |
+| `golden_hex` (perf arena, seed 42: all six checkpoints of `golden_ticks` in `data/dev/perf_gate.tres`) and seed 43 | unchanged: units only, no building | unchanged: no `PLACE` |
 | `TICK_0_SEED_1` (controls test) | unchanged: tick 0, no new state | unchanged |
 | `STATE_FORMAT` 5, `KNOWN_FORMATS` | unchanged (no layout change, no exception 10) | unchanged |
-| `bases_golden_hex` (base arena) | **moves**: both bases' producers and refineries sit east or west of the map centre and turn; re-pinned under the Phase 2 plan's exception 3 with "ADR 0033 §1" as the reason | unchanged: the arena's buildings are scenario spawns and it sends no `PLACE` (the row checks it) |
+| `bases_golden_hex` (base arena, six values at `bases_golden_ticks`) | **moves**, the one golden re-pinned: both bases' producers and refineries sit east or west of the map centre and turn; re-pinned under the Phase 2 plan's exception 3 with "ADR 0033 §1" as the reason | unchanged: the arena's buildings are scenario spawns and it sends no `PLACE` (the row checks it) |
 | `test_base_arena_run.gd` counted pins (`UNLOAD_BY`, the heavy window) | re-checked; a pin that moves is re-pinned with the reason | unchanged |
 | `perf_ai` (frozen scenario): printed hash, P189's counted bounds, P189b's `[ai]` ratchet | may move (AI refineries and factories turn) | moves (AI placements) |
 | Smoke and balance hashes | printed, not pinned | printed, not pinned |
@@ -225,15 +240,22 @@ refinery's dock, the factory's exit) are turned into cases that pin the symmetry
 ### 6. Tests (all headless)
 - **P195c-1**: `facing` on the four sides, the four diagonal ties and the exact centre; for every
   building centre of a 64 x 64 and a 63 x 63 map, `facing` of the quarter turn is `facing + 1`
-  (mod 4) and of the half turn `facing + 2`, and the half turn on a 64 x 40 map; `turned` gives the
-  table of §1, four turns are the identity, every shipped dock and exit stays on the ring; a factory
-  in each quadrant spawns its first unit on the turned exit, a closed turned exit walks clockwise
-  from it (the `EXIT_SCANNED` count), the free harvester appears at the turned dock and RETURN and
-  `_choose` order it there; the seat-symmetry suite's refinery and factory cases now pin equal
-  income and equal walk times (within what the row measures) for a site and its half turn; the base
-  arena stays bit-identical across runs, across GDSCRIPT and NATIVE and under replay (existing
-  cases). About 10 mutants (sign of `dx`, `>` for `>=` in the side test, each tie case, `n - 1 - y`
-  for `n - y`, no turn in each of the four call sites, `facing` not taken mod 4).
+  (mod 4) and of the half turn `facing + 2`, and the half turn on a 64 x 40 map; `turned` gives
+  the table of §1, four turns are the identity, every shipped dock and exit stays on the ring; a
+  factory in each quadrant spawns its first unit on the turned exit, a closed turned exit walks
+  clockwise from it (the `EXIT_SCANNED` count), the free harvester appears at the turned dock, and
+  `_go_home` (SEEK's full load), RETURN's reach check in `Harvest.run` and `_choose` all order it
+  there; existing suites that place a dock or an exit by the raw offset are rewritten for the
+  turned one: `tests/sim/test_base_arena_data.gd:118-142` (it reads `type_dock`/`type_exit` raw and
+  asserts that tile is open; it must test the turned tile) and
+  `tests/sim/test_production_free_harvester.gd` (its refinery at tile (6, 5) has its dock at (7, 8),
+  and its closed-dock and free-unit cases name dock tiles); the seat-symmetry suite's refinery and
+  factory cases now pin equal income and equal walk times (within what the row measures) for a site
+  and its half turn; the base arena stays bit-identical across runs, across GDSCRIPT and NATIVE
+  and under replay (existing cases).
+  Mutants: one per call site (no turn in `spawn`, `exit_tile`, `spawn_free`, `_dock`) plus the
+  facing rule's (sign of `dx`, `>` for `>=` in the side test, each tie case, `n - 1 - y` for
+  `n - y`, `facing` not taken mod 4), about 10 in all.
 - **P195c-3**: a never-explored footprint within reach is `OK`; no reason 4 is returned; the sim and
   `PlayerView.placement` agree; the ghost shows no unexplored sign; with P195b on `main`, a
   no-combat fossil-mirror match (both Normal, seed 1, 3 000 ticks) where every building of player 2
@@ -245,8 +267,8 @@ refinery's dock, the factory's exit) are turned into cases that pin the symmetry
 | Row | Owner | Title | ~Lines | Depends on |
 | --- | --- | --- | --- | --- |
 | P195c-1 | gameplay-dev | sim: docks and exits face the map centre (`Buildings.facing`, `turned`, the four call sites, the data test, `BuildingDef` comments, HOW_TO_PLAY rows, `bases_golden_hex` re-pin) | ~80 (tests ~300) | this ADR; none of the questions |
-| P195c-3 | gameplay-dev | sim: placement without the explored rule (E1), or the start area (E2), per question 2; HOW_TO_PLAY's placement row | ~-25 for E1, ~60 for E2 | question 2; P195b for its mirror-layout case |
-| P195c-2 | art-director | art: STYLE.md's dock and exit note; with question 1's yes, the second door on six models (A4); the unexplored glyph removed if P195c-3 took E1 | 0 (SVG, `.tres`, STYLE.md) | P195c-1; question 1; P195c-3 for the glyph |
+| P195c-3 | gameplay-dev | sim: placement without the explored rule (E1), or the start area (E2), per question 2; HOW_TO_PLAY's placement row; the sim tests of §4 (`test_placement.gd`, `test_production_place.gd`, `test_player_view_state.gd`) | ~-25 for E1, ~60 for E2 | question 2; P195b for its mirror-layout case |
+| P195c-2 | art-director | art: STYLE.md's dock and exit note; with question 1's yes, the second door on six models (A4); if P195c-3 took E1, the unexplored glyph in one commit (the SVG and its `.import`, `test_icon_art.gd`'s `REASONS`, `art_gallery.gd`'s two entries, STYLE.md lines 1261 and 1394; §4) | 0 (SVG, `.tres`, STYLE.md) | P195c-1; question 1; P195c-3 for the glyph |
 | P195d (conditional) | ai-dev with gameplay-dev | diagnosis of a remaining player-index edge (think order, fog turn, command order), its own plan entry and, if the sim changes, its own ADR | - | the balance run below fails |
 
 P195c-1 and P195c-3 touch different files and may run in parallel; both can move `perf_ai`'s
@@ -260,11 +282,19 @@ counts, so the lead verifies their combined tree once before merging the second.
   standard deviation of about 110 per-mille at 500, so a mirror set outside the band gets one rerun
   on seeds 21-40 and is judged on the pooled 40. Still outside: P195d. P192's tuning starts after
   this acceptance (the plan's P192 dependency on P195).
+- **Why the cross set may judge the seat.** A cross match has one faction a side, so a stronger
+  faction could pass for a stronger seat. It does not here: `cross` plays the odd seeds on Kestrel
+  Flats and the even ones on the mirrored scenario (`tests/smoke/smoke_run.gd`, the `--scenarios`
+  comment), so each faction holds each seat in half the matches, and the balance run's cross set is
+  seeds 1-100 (`scripts/ci/balance-plan.sh`, four blocks of 25): 50 matches each way. The faction's
+  strength then adds the same to both seats and cancels from the top seat's share. The cross set is
+  a seat test only with an even number of matches from an odd seed; a rerun or a custom run with an
+  odd count is judged on the two mirrors alone, and the faction balance is P192's.
 - **Amends** (the lead adds dated notes on merge; the accepted texts stay as they are): ADR 0017 §2
-  (`UNEXPLORED` 4 is no longer returned, E1); ADR 0018 §3 and §5 (the dock and the exit are the
-  origin plus the offset turned to the building's facing); ADR 0019's ghost reasons (one fewer).
-  STYLE.md's "Dock and exits" paragraphs are art-director's (P195c-2). No CLAUDE.md, skill or agent
-  change; no ROADMAP box.
+  (line 174: `UNEXPLORED` 4 is no longer returned, E1); ADR 0018 §3 and §5 (the dock and the exit
+  are the origin plus the offset turned to the building's facing); ADR 0019's ghost reasons (one
+  fewer). STYLE.md's "Dock and exits" paragraphs are art-director's (P195c-2). No CLAUDE.md, skill
+  or agent change; no ROADMAP box.
 
 ## Consequences
 - The economic seat bias from docks, exits and layout drift is gone by construction for every
