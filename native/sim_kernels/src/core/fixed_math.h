@@ -23,7 +23,8 @@ int64_t isqrt(int64_t n);
 // FixedMath.centre_side: a coordinate on a tile border (a multiple of 1000) past the middle of a map `side` milli-tiles
 // wide gives up one milli-tile, so that its tile is on the map centre's side and a half turn of the map maps tiles to tiles.
 inline int64_t centre_side(int64_t coord, int64_t side) {
-	return (coord % 1000 == 0 && coord * 2 > side) ? coord - 1 : coord;
+	constexpr int64_t milli_per_tile = 1000; // World.MILLI_PER_TILE
+	return (coord % milli_per_tile == 0 && coord + coord > side) ? coord - 1 : coord;
 }
 
 // FixedMath.line_clear: whether every tile that the segment (x0, y0)-(x1, y1) touches is passable for `move_class`,
