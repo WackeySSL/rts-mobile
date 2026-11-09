@@ -455,9 +455,9 @@ step requires the suite (the plan's exception 21, widened to two lines).
 Note (2026-11-09, P26bj docs, from P189b, P190b and P194):
 - **The `[ai]` workload and the card are one** (lead decision at P189b). `test_ai_perf.gd` and the
   phone's Perf AI route both play the frozen AI defs in `data/dev/arena/ai/`, copies but for
-  Normal's early scout and first wave, so the card times the AI in contact. "The phone's Perf AI
-  card keeps the shipped AI defs" above no longer holds; the Skirmish routes keep them. Plan row
-  P189c sets `[ai] p95_us` from 11 CI runs after P189b, read from the job logs.
+  Normal's early scout and first wave (no jitter), so the card times the AI in contact. "The phone's
+  Perf AI card keeps the shipped AI defs" above no longer holds; the Skirmish routes keep them. Plan
+  row P189c sets `[ai] p95_us` from 11 CI runs after P189b, read from the job logs.
 - **What tuning moves:** every def `perf_ai`'s match reads is now frozen (the terrain is shared,
   and exception 20 tunes none), so a tuning row no longer moves `perf_ai`'s printed hashes; the
   smoke's still move. An AI code row may move both.

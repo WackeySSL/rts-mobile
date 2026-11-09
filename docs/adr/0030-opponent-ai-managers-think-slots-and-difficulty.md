@@ -381,10 +381,10 @@ Note (2026-11-09, P26bj docs; lead decisions from balance run 1 and the wave-8 r
   and per FLOW pick's re-read of `pending`, and the bind layer's `check()` reading each slot's
   names on every call.
 - **Contact in the timed workload (P189b).** `test_ai_perf.gd` and the Perf AI route play the
-  frozen AI defs, copies but for Normal's early scout and first wave. Both sides scout and launch
-  a wave inside the 900 ticks; `flow_full_ticks` on `perf_ai` reads 200 of 900 (191 before). Not
-  exercised there: the Dusk Array's search (player 2 sees no enemy building), `hit_tests`,
-  `withdrawn_id` and `seen_mobile_id`. Lead decision: accepted. The Array's tests share
+  frozen AI defs, copies but for Normal's early scout and first wave (no jitter). Both sides scout
+  and launch a wave inside the 900 ticks; `flow_full_ticks` on `perf_ai` reads 200 of 900 (191
+  before). Not exercised there: the Dusk Array's search (player 2 sees no enemy building),
+  `hit_tests`, `withdrawn_id` and `seen_mobile_id`. Lead decision: accepted. The Array's tests share
   `target_tests_max` with the rest (the bound is asserted), and the `[ai]` ratchet times the Deep
   Bore's search. Plan row P189c sets the `[ai]` value from 11 CI runs after P189b.
 - **The first CI read** (P189's peaceful workload, before P189b): `WATCH ai think` p95 453 us, max
