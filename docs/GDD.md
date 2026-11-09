@@ -42,7 +42,8 @@ funded by optional rewarded ads and capped post-match interstitials.
 - No pumps, captured derricks or pipelines in the MVP.
 
 ## Buildings (MVP)
-Each faction builds its own eight; every footprint is square.
+Each faction builds its own eight; every footprint is square. Phase 4b adds five more per
+faction (13 in all): see "Air, anti-air, engineering centre, space centre" and "Ground support".
 Structures are ordered in the build drawer, built in the queue and placed when they are ready
 (ADR 0017, ADR 0019). ADR 0026's place-first path (a site that rises on the spot, 75 % refund on
 cancel) is in the sim but not used (Michael, 2026-11-05).
@@ -59,7 +60,8 @@ cancel) is in the sim but not used (Michael, 2026-11-05).
 | Superweapon | Deep Bore | Dusk Array | 3x3 | 2 500 | -60 | Radar | See "Superweapons" |
 
 ## Units (MVP)
-Starting points for balance runs; the real numbers live in `data/*.tres`.
+Starting points for balance runs; the real numbers live in `data/*.tres`. Phase 4b adds seven
+more per faction (13 in all) in the two sections named above.
 
 | Role | Derrick League | Lumen Accord | Cost | HP | Speed (tiles/s) | Range (tiles) | Strong against | Weak against |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -126,6 +128,8 @@ shows the last known buildings.
 - Hard: better economy and unit control. No extra vision. No income bonus at first: a 20% income
   bonus comes only if Hard proves not hard enough against Normal (ADR 0030, Michael's answer of
   2026-11-06).
+- The satellite: Normal and Hard build the space centre and fire the sweep by the same rules as
+  the player, as soon as it is charged; Easy builds none (ADR 0036, Michael's answer 4 A).
 
 ## Meta progression
 Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard difficulty, cosmetic
@@ -145,8 +149,142 @@ the in-repo generator (`tools/artgen/`) draws as SVG in every direction; team co
 in the player's colour.
 Audio: short radio chirps and mechanical sounds instead of voice acting, CC0 or generated.
 
+## Air, anti-air, engineering centre, space centre (Phase 4b, before launch)
+Michael asked for this on 2026-11-09: an airfield and aircraft, air defence, more buildings, an
+engineering centre that develops better bombers, and a space centre whose satellite makes the fog
+disappear. The same day he added an aircraft that carries infantry, infantry that fly with drones,
+and the repair of aircraft. Decision: ADR 0036, accepted 2026-11-09. Plan:
+`docs/plans/2026-11-09-air-and-tech.md`. It is built after the Phase 4 gate and before Phase 5
+(Michael's answer 2 A), with the ground support below.
+
+Everything below is a starting value for the balance runs. The real numbers live in `data/`.
+
+**How it plays**
+- **Aircraft hover and fly straight** over rock, water and buildings. There is no runway, landing
+  or fuel.
+- **Who hits aircraft:** anti-air buildings, rocket squads and fighters. The low-flying drone
+  squads are also hit by rifle squads and the Redoubt. Everything else (tanks, artillery, the Rail
+  Battery, bombers) hits only the ground.
+- **The airfield.** Each one serves 4 aircraft on its pads, which is the cap on aircraft. A bomber
+  carries 2 bombs, flies home by itself when it is empty, reloads on its pad, and waits there. An
+  aircraft on its pad is repaired for credits. The "Home" button sends selected aircraft home.
+- **The transport** carries squads:
+  - Select squads, tap "Board" and then your transport; the transport flies to them and they
+    climb in.
+  - "Unload" and a tap on the ground drop them there.
+  - If the transport is shot down, the squads aboard are lost.
+- **Drone squads** are infantry carried by drones at low height. They are built at the barracks
+  once you have an airfield, and they cross cliffs and water.
+- **The engineering centre** researches two bomber upgrades, each once per match, in the Research
+  tab: heavier bombs (+25 % damage) and a tougher hull (-25 % damage taken) (answer 5 A).
+- **The space centre** charges once, for 3 minutes. Then its button lifts the fog over the whole
+  map until that space centre is destroyed (answer 3 B). There is no timer and no recharge. The
+  button cannot be fired while you are on low power.
+  - A Dusk Array blackout on the space centre, or low power, pauses the sweep, as it silences
+    defences. The sweep comes back by itself when the blackout ends or the power returns.
+  - Ground the sweep showed stays explored, and the buildings it showed stay as last seen.
+  - The enemy sees a warning when it starts, then an indicator for as long as it lasts: lit while
+    on, dimmed while paused.
+
+**Buildings (12 per faction with these four)**
+
+| Role | Derrick League | Lumen Accord | Size | Cost | Power | Requires | Purpose |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Airfield | Flight Yard | Glide Deck | 3x3 | 1 500 | -40 | Radar | Builds aircraft (Flight tab); 4 pads: reload, repair |
+| Anti-air | Burst Stack | Sky Needle | 1x1 | 700 | -20 | Barracks | Shoots high and low air only |
+| Engineering centre | Draft Shop | Lens Works | 2x2 | 1 200 | -40 | Airfield | Research tab: bomber upgrades |
+| Space centre | Skyrig | Zenith | 3x3 | 2 000 | -60 | Radar | Satellite (Survey Eye, Sunward): the whole map visible until it falls |
+
+**Units (Derrick League numbers, then the Lumen Accord's take)**
+
+| Role | Derrick League | Lumen Accord | Cost | HP | Speed (tiles/s) | Range (tiles) | Hits | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fighter | Torchjet | Glint | 900 | 260 | 3.0 | 5 | air | No ammo limit. Lumen: 3.6 tiles/s, 200 HP |
+| Bomber | Drillhead | Sunfall | 1 400 | 500 | 1.8 | 2.5 | ground | 2 bombs, then home to reload. Lumen: 2.2 tiles/s, 380 HP |
+| Transport | Skyhauler | Ferrywing | 1 000 | 600 | 1.6 | - | - | 3 squads. Lumen: 800 credits, 380 HP, 2.4 tiles/s, 2 squads |
+| Drone squad | Hoist Crew | Kite Crew | 350 | 140 | 1.4 | 4 | ground | Flies low. Lumen: 300 credits, 90 HP, 2.0 tiles/s |
+
+**Upgrades:** Heavy Bombs and Plated Hull (Derrick League), Focus Bombs and Glaze Hull (Lumen
+Accord). The names are Michael's first choices (answer 1 A, ADR 0036 §16); Phase 7's trademark
+search checks them.
+
+**Looks, in each faction's own style**
+- **Derrick League:** riveted olive steel, gas bottles and flare-stack exhausts.
+  - The fighter is a stubby delta with one big intake.
+  - The bomber is a fat twin-boom lifting body with a drill-bit nose.
+  - The transport is a boxy armoured hull on four ducted fans.
+  - The drone squad is soldiers hanging under heavy six-rotor drones.
+  - The anti-air gun is a stack of four short barrels on a concrete drum.
+  - The space centre is a launch tower built like a drilling derrick.
+- **Lumen Accord:** white ceramic, glass and blue-grey.
+  - The fighter is a slim forward-swept wing with a glass canopy.
+  - The bomber is a wide solar-topped flying wing.
+  - The transport is a glider-like wing on two tilting fans.
+  - The drone squad is soldiers on light kite-wing drones.
+  - The anti-air is a glass needle on a turning ring.
+  - The space centre is a white spire with a solar collar.
+- **Looks we never use:** no tandem twin-rotor transport, no jet-pack infantry and no dish uplink.
+  Those belong to other games.
+
+**More buildings: what else a complete mobile RTS could have**
+- **Repair building:** in "Ground support" below. Aircraft are repaired at their airfield only.
+- **A forward outpost that extends where you may build:** worth it later, once the balance runs
+  show whether far oil fields matter.
+- **Not planned:**
+  - walls and gates: they are fiddly to place on a phone and costly for path finding;
+  - storage or silos: credits have no cap, so they would add nothing;
+  - jammers and a second defence tier: more to learn with little new play.
+
+## Ground support (Phase 4b, before launch)
+Michael asked on 2026-11-09 for an infantry carrier, repair of damaged tanks, a medic and a
+minelayer with hidden mines; the lead added sale, building repair and hold position. Decision:
+ADR 0037, accepted 2026-11-09 (answers 1 A, 2 A, 3 A, 4 B, 5 A). Plan:
+`docs/plans/2026-11-09-ground-support.md`. Built with the air design, in three waves.
+
+**How it plays**
+- **Sell:** select your building and tap Sell twice. You get half its price back, scaled by its
+  health. Selling your last production building asks first, because it loses the match. The
+  Headquarters cannot be sold.
+- **Mend:** select a damaged building and switch Mend on. It repairs 10 HP a second for credits
+  (a full repair costs 30 % of the price) and switches off at full health. It mends while blacked
+  out or on low power.
+- **Repair vehicles:** a damaged vehicle shows a Repair button; it drives to the nearest repair
+  building of yours and is repaired there for credits. Aircraft use their airfield instead.
+- **Medics** heal nearby squads (never vehicles, drone squads or themselves) for free, and walk to
+  hurt squads when idle.
+- **Ground carriers** use the transport's Board and Unload. Squads inside cannot shoot. If the
+  carrier is destroyed, the Bunk Wagon's squads get out with half their health; the Linecar's die.
+- **Mines:** select minelayers, tap Mine, tap the ground and confirm. A mine arms after 1 second
+  and blows up under the first enemy ground unit; aircraft and drone squads fly over. Your mines
+  never go off under your units and never hurt them (answer 3 A). Up to 12 laid mines per player.
+- **Finding mines:** an enemy mine is hidden until one of your minelayers (3 tiles) or scout tanks
+  (2 tiles) sees it. A found mine stays marked. A minelayer standing on a found mine clears it in
+  2 seconds; a Deep Bore rupture clears every mine it hits.
+- **Hold:** a toggle for selected units. Holding units fire at what comes in range but never leave
+  their path to chase, and stop where they are when their attack target is gone (answer 4 B).
+  Ranks, patrol and hold fire come in later updates.
+
+**Buildings (13 per faction with the repair building)**
+
+| Role | Derrick League | Lumen Accord | Size | Cost | Power | Requires | Purpose |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Repair building | Weld Shed | Drone Dock | 2x2 | 800 | -20 (Drone Dock -30) | Vehicle factory | Repairs vehicles; Weld Shed: 2 at a time, fast, short reach; Drone Dock: 4 at a time, slower, wide reach |
+
+**Units (13 types per faction, 26 in all)**
+
+| Role | Derrick League | Lumen Accord | Cost | From | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Medic squad | Patchers | Menders | 300 | Barracks | Unarmed. Patchers 110 HP, heal 1 squad; Menders 70 HP, 1.2 tiles/s, heal 2 squads in a wider reach |
+| Ground carrier | Bunk Wagon | Linecar | 700 (Linecar 500) | Vehicle factory | Unarmed. Bunk Wagon tracked, 700 HP, 1.0 tiles/s, 4 squads; Linecar wheeled, 320 HP, 2.0 tiles/s, 2 squads |
+| Minelayer | Shot Truck | Seeder | set in the data row (P290) | Vehicle factory, needs a radar | Unarmed, finds mines. Shot charge: 60 credits, 1-tile blast, strong against vehicles. Pulse seed: 50 credits, 1.5-tile blast, better against squads |
+
+**Looks:** the Weld Shed is an open steel shed with a crane arm and a welding flash; the Drone Dock
+a white ceramic rack of small hexagonal drones. Medics carry their side's own kit mark (an orange
+band, a mint ring), never a red cross, crescent or crystal. No passenger fires from a carrier's
+roof, and no small drone rides on a vehicle: those are other games' looks.
+
 ## Not in version 1
-Online multiplayer, campaign, air and naval units, map editor.
+Online multiplayer, campaign, naval units, map editor.
 
 ## Targets to validate after launch
 Day-1 retention, median session length and the share of players who accept a rewarded offer,
