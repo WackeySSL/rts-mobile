@@ -510,6 +510,10 @@ of which about 120 are C++.
 - **Michael's yes to the `touch-ui-rules` skill text** (the Repair, Mend, Sell, Mine and Hold
   buttons, the Mine aim, the two-tap and the question confirm) is asked with the acceptance
   (P270b); P272, P282, P294 and P299 wait for it, as ADR 0036's P244 and P265 do.
+- Note (2026-11-09, P270b, after fix 1): the `touch-ui-rules` text is accepted, Michael's "ja
+  til touch-teksten", and applied to `.claude/skills/touch-ui-rules/SKILL.md` (the Repair, Mend,
+  Sell, Mine and Hold buttons, the Mine aim, the two-tap and the question card). P272, P282, P294
+  and P299 no longer wait for it.
 - HOW_TO_PLAY gets each row in the PR that ships it. Teach: sell, Mend and Repair, Board and
   Unload, lay a mine, mines are hidden until found, Hold.
 

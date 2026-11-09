@@ -19,6 +19,8 @@ Note (2026-11-09, P270b done): ADR 0037 and ADR 0036 are accepted in one docs co
 P230), before Michael's yes to the skill text. That yes now gates only the rows marked "skill yes"
 (P272, P282, P294, P299), as it gates ADR 0036's P244 and P265. The draft text is in
 `docs/plans/2026-11-09-air-and-tech.md`, section "touch-ui-rules text for Michael's yes (P230)".
+(2026-11-09, later) Michael said yes; the text is applied to
+`.claude/skills/touch-ui-rules/SKILL.md`, and no row waits for it.
 ROADMAP Phase 4b holds both designs. The shared rows follow "Merge order of the shared rows"
 below, the same text as in the air plan; P276, P277 and P289 carry dated notes for it.
 
@@ -132,7 +134,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
-| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273, skill yes |
+| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P273 | ART | Glyphs `glyph_repair` (wrench) and `glyph_sell`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
 | P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274 |
@@ -146,7 +148,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P279 | ART | Weld Shed and Drone Dock models (body, `dmg2` at 0.75, `anim`), page pins | art | P237 |
 | P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237 |
 | P281 | TUX | `RepairFx`: sparks, drones out and back, medic glow, from `REPAIRED`, seen-only; ring quotas | 160 | P278, P279, P280 |
-| P282 | TUX | The **Repair** button: ground rows a building serves -> one `REPAIR` to the nearest serving building; beside ADR 0036's Home in a mixed selection, each sending its own rows; unarmed rows of an attack get `ATTACK_MOVE`; six sizes | 100 | P278, skill yes |
+| P282 | TUX | The **Repair** button: ground rows a building serves -> one `REPAIR` to the nearest serving building; beside ADR 0036's Home in a mixed selection, each sending its own rows; unarmed rows of an attack get `ATTACK_MOVE`; six sizes | 100 | P278 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P283 | AI | `AiProduction` (repair building after the vehicle factory, `medic_per_squads`), `AiArmy` (`REPAIR` under `repair_retreat_percent`, medics in waves with `ATTACK_MOVE`) | 170 | P278 |
 | P284 | LEAD | Joins ADR 0036's gate run (P255) and phone check (P256): 18 unit types once the medics are in | docs | P281-P283 |
 
@@ -162,13 +164,13 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P291 | ART | Bunk Wagon and Linecar (16 directions, or 8 per P237's page result), item cards, page pins | art | P237 |
 | P292 | ART | Shot Truck and Seeder (as P291), mine marks per faction (own, known), `glyph_mine`, `glyph_hold`, item cards | art | P237 |
 | P293 | TUX | `MineLayer` (z 3 after `DecalLayer`, own and known marks, dimmed records, unarmed half alpha, one `_draw`), blast fx and scorch where seen; draw-call guard +1 | 220 | P288, P290, P291, P292 |
-| P294 | TUX | The **Mine** button with "n/cap" and `MineAim` (tap, ring, check mark, X, turn cancels); a check that ADR 0036's Board and Unload (P265) take a ground carrier (data only); six sizes | 150 | P293, P265, skill yes |
+| P294 | TUX | The **Mine** button with "n/cap" and `MineAim` (tap, ring, check mark, X, turn cancels); a check that ADR 0036's Board and Unload (P265) take a ground carrier (data only); six sizes | 150 | P293, P265 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P295 | AI | `AiMines` in `AiStrikes`' slot: lay on the own-half route, sweep known mines before a wave, scouts ahead on Hard; Easy none | 250 | P290 |
 | P295b | AI | Ground rides in `AiArmy` on P267's drop code: load at staging, unload at `ride_unload_tiles` | 150 | P290, P267 |
 | P296 | QA | The fairness cases (unknown mine, loaded enemy carrier, enemy mend switch, enemy stance), counted bounds on `perf_bases` with 24 mines and repairers, the replay with every new Command, harness types (26) | tests | P293-P295b, P298 |
 | P297 | LEAD | Joins ADR 0036's gate run and phone check (P268): 26 unit types; mines found, swept and blasting; ground load, unload and eject; Hold | docs | P296, P299, P300 |
 | P298 | GD | Hold position: `STANCE` 9 (factory, branch), the TARGETING twin (`Targeting.gd`) and kernel (`core/targeting.cpp`, `bind/kernel_targeting.cpp`, `stance` in `world_access.h`'s TARGETING list): weapon-range acquisition and no `CHASE` on `ATTACK_MOVE`, IDLE after a held `ATTACK`; `PlayerView.row_stance`; lockstep cases; no golden moves | 230 (C++ ~120) | P286 |
-| P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292, skill yes |
+| P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P300 | AI | Normal and Hard set hold on `OpponentDef.hold_types` (each faction's artillery) when they join a wave | 40 | P298, P290 |
 
 ### Lanes and order
@@ -247,6 +249,7 @@ block before launch, the launch moves later by the two plans together.
   one fixed order on 2026-11-09 ("Merge order of the shared rows").
 - **The skill text.** P272, P282, P294 and P299 wait for Michael's yes to the `touch-ui-rules`
   text; wave 1's UI cannot merge before it. The draft was written on 2026-11-09 (P230/P270b).
+  Closed 2026-11-09: Michael said yes, and the text is applied to the skill.
 - **Mines and match length.** Mines could stall pushes; the balance run's "no match over 15
   minutes" and the median length watch it; `mine_cap` and `mine_cost` are the knobs.
 - **Hold position's effect.** Idle units already never chase today; hold position changes
@@ -279,7 +282,8 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 7. **`Targeting.gd` and `world_access.h`.** P232 declares the X-list rows, P238 adds the layer
    test, then P298 adds `stance`.
 8. **`CommandBar.gd`.** P272, P244, P282, P265, P294 and P299, one open at a time, in the order
-   they become ready. All six wait for Michael's yes to the `touch-ui-rules` text.
+   they become ready. (2026-11-09) Michael said yes to the `touch-ui-rules` text; it is applied
+   to the skill, so none of the six waits for it.
 9. **Balance runs and the gate.** P275 (after wave 1) and P255 with P284 (part 1 and wave 2, 18
    types) are interim tuning runs. The Phase 4b gate is P268 with P297: 26 types, ADR 0031's gate
    run on held-out seeds, then Michael's phone.

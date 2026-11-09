@@ -13,6 +13,9 @@ P252, P255, P256, P262 and P268 carry dated notes for answers 2 A and 3 B. The `
 draft is the last section of this plan; P244 and P265 (and ADR 0037's P272, P282, P294 and P299)
 still wait for Michael's yes to it.
 
+Note (2026-11-09, after fix 1): Michael said "ja til touch-teksten". The draft as revised in
+1edbf12 is applied to `.claude/skills/touch-ui-rules/SKILL.md`; no row waits for it any more.
+
 - **Status.** Accepted. **Building starts after the Phase 4 gate** (Michael, 2026-11-09), before
   Phase 5 (answer 2 A): part 1 (rows P230-P256), then part 2 (rows P262-P268) with the ground
   design's infantry carrier.
@@ -185,7 +188,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
 | P242 | GD | Airfield, fighter and bomber data, both factions (`.tres`, weapons, rosters); HOW_TO_PLAY Units, Orders and Buildings rows (Teach: go home, reload) | 120 | P241b, P230 |
 | P243 | GD | View: `AirLayer` z 20, shadows z 2, `fly_px`, bob, death fall, enemy flyers only where seen, page 2; draw-call guard +2. Split trigger (over ~400): P243b takes the bob and the death fall | 350 | P237, P242 |
-| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243; Michael's yes to the skill text (P230) |
+| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow) | art | P237 |
 | P245b | ART | Airfield models, both factions (pads, damage stages) | art | P237 |
 | P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241 |
@@ -207,7 +210,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P263 | GD | `Carry.gd`: LOAD (5), boarding in REMOVE (`hp` 0 with `build_left` = `Carry.BOARDED`, DIED flag 2 at index 6, `count_losses` skips it), passengers in `unit_cap` | 300 | P262 |
 | P263b | GD | UNLOAD (6), unloading in ECONOMY (ring search, `insert_row` refusal keeps the squad aboard, `UNLOADED` event), the carrier's death | 250 | P263 |
 | P264 | GD | Transport and drone squad data, both factions (drone squads `low_flying`, INFANTRY tab, requires the airfield); HOW_TO_PLAY rows (Teach: load and unload) | 120 | P263b, P230 |
-| P265 | TUX | The "Board" button and its aim (tap an own transport = LOAD), the "Unload" button and its aim (chevron, check mark, X), passenger pips on the chip; `PlayerController` skips DIED flag 2 for groups 1-3 and drops it only from the live selection, with a test that a group refills after the unload; six sizes. Split trigger (over ~400): P265b takes the controller change | 350 | P264; Michael's yes to the skill text (P230) |
+| P265 | TUX | The "Board" button and its aim (tap an own transport = LOAD), the "Unload" button and its aim (chevron, check mark, X), passenger pips on the chip; `PlayerController` skips DIED flag 2 for groups 1-3 and drops it only from the live selection, with a test that a group refills after the unload; six sizes. Split trigger (over ~400): P265b takes the controller change | 350 | P264 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P266 | ART | Transport models (16 directions) and drone squads (8 directions), both factions | art | P237 |
 | P267 | AI | Drops (Normal and Hard: load `drop_squads`, unload beside a seen or ghost refinery, away from seen anti-air), drone squads harass across cliffs | 300 | P264 |
 | P268 | LEAD | 1.2 harness types (20), gate run, phone check, docs. (2026-11-09) It is the **Phase 4b gate** with ADR 0037's P297: harness types 26, the ADR 0031 gate run on held-out seeds, Michael's phone check, the ROADMAP gate box | docs | P265-P267; ADR 0037's P296, P299 and P300 (P297 joins this run) |
@@ -311,12 +314,19 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 7. **`Targeting.gd` and `world_access.h`.** P232 declares the X-list rows, P238 adds the layer
    test, then P298 adds `stance`.
 8. **`CommandBar.gd`.** P272, P244, P282, P265, P294 and P299, one open at a time, in the order
-   they become ready. All six wait for Michael's yes to the `touch-ui-rules` text.
+   they become ready. (2026-11-09) Michael said yes to the `touch-ui-rules` text; it is applied
+   to the skill, so none of the six waits for it.
 9. **Balance runs and the gate.** P275 (after wave 1) and P255 with P284 (part 1 and wave 2, 18
    types) are interim tuning runs. The Phase 4b gate is P268 with P297: 26 types, ADR 0031's gate
    run on held-out seeds, then Michael's phone.
 
-## touch-ui-rules text for Michael's yes (P230)
+## touch-ui-rules text for Michael's yes (P230): applied to the skill on 2026-11-09 (Michael's yes)
+Status (2026-11-09): Michael said "ja til touch-teksten". Parts 1-5 below, as revised in fix 1
+(1edbf12), are applied to `.claude/skills/touch-ui-rules/SKILL.md` at the places each part names.
+One change on applying: Part 1's Sell row names the window by its section, "Orders and their
+aims", in place of "Part 4's window", which means nothing inside the skill. The text below stays
+as the record.
+
 Draft, 2026-11-09. `.claude/skills/touch-ui-rules/SKILL.md` is not edited until Michael says yes.
 Then the lead pastes the five parts below in one docs commit, unchanged. P244, P265 (ADR 0036) and
 P272, P282, P294, P299 (ADR 0037) wait for that commit. The buttons are command-bar orders, so

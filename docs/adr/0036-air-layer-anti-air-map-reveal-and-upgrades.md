@@ -496,6 +496,9 @@ options as they were asked.
   hidden under a flyer is reached by a box only. Outside an open aim a tap on an own unit or
   building selects it. The aims place their check mark and X by `GhostControls`' column rule
   beside the aimed point, not in the strike aim's row.
+- Note (2026-11-09, P230, after fix 1): the `touch-ui-rules` text (Home, Board, Unload and ADR
+  0037's buttons, the aims, the picking) is accepted, Michael's "ja til touch-teksten", and
+  applied to `.claude/skills/touch-ui-rules/SKILL.md`. P244 and P265 no longer wait for it.
 - **HOW_TO_PLAY.** Each row is added in the PR that ships it. Teach: aircraft go home to reload,
   the Home button, Board and Unload, and the satellite.
 
