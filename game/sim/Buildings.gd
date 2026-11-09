@@ -93,6 +93,15 @@ static func unblock_dead(world: World) -> void:
 		world.flow.invalidate(world.map_version)
 
 
+## EXPERIMENT: the offset `offset` (a dock or an exit, relative to the footprint's origin) as player
+## `owner` has it: player 2's is the half turn of the footprint's, so its tankers and units leave
+## on the mirror side of player 1's.
+static func seat_offset(world: World, owner: int, type: int, offset: Vector2i) -> Vector2i:
+	if owner != 2 or offset == Vector2i.ZERO:
+		return offset
+	return Vector2i(world.type_foot_w[type] - 1 - offset.x, world.type_foot_h[type] - 1 - offset.y)
+
+
 ## The point an ATTACK on building row `target_row` aims `row` at (ADR 0017 section 1): the
 ## centre of the ring tile (8-adjacent to the footprint, outside it, inside the map) that is
 ## passable for the row's class and nearest to the row's position by squared distance, then by
