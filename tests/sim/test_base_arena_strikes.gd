@@ -77,6 +77,7 @@ func test_the_rupture_lands_on_its_tick_and_hits_every_row_within_its_radius() -
 		var reach: int = world.type_strike_radius[world.type_ids.find(def.type_id)]
 		var hit: int = 0
 		var hit_buildings: int = 0
+		var near_misses: int = 0
 		var problems: Array[String] = []
 		for row: int in before.ids.size():
 			var id: int = before.ids[row]
@@ -98,10 +99,17 @@ func test_the_rupture_lands_on_its_tick_and_hits_every_row_within_its_radius() -
 				)
 			hit += 1 if loss > 0 else 0
 			hit_buildings += 1 if loss > 0 and world.type_foot_w[before.type_index[row]] > 0 else 0
+			near_misses += 1 if not inside and dx * dx + dy * dy <= 4 * reach * reach else 0
 		assert_array(problems).is_empty()
-		# Not vacuous: the point is over the Lumen Accord's refinery, with its neighbours.
-		assert_int(hit).is_greater_equal(3)
-		assert_int(hit_buildings).is_greater_equal(1)
+		# Not vacuous. The point is over the Lumen Accord's refinery. Since the docks and exits face
+		# the map centre (ADR 0033 sections 1 and 2) its harvesters no longer wait beside it, so the
+		# refinery is the one row inside the radius (3 rows before): that one is hit, and the
+		# radius test is still exercised by the rows just outside it (barracks, strike building and
+		# power plants stand 3.5 to 4.7 tiles away, within twice the radius), which `problems`
+		# proved untouched.
+		assert_int(hit).is_equal(1)
+		assert_int(hit_buildings).is_equal(1)
+		assert_int(near_misses).is_greater_equal(4)
 
 
 ## The blackout needs no warning: in the step that applies the order every building of another

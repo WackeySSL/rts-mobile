@@ -35,7 +35,12 @@ const MEASURED_FOG_CELLS: int = 7798
 ## the 600 ticks of a fog turn); a death in sight adds the in-sight drop's looks (LastSeen). They
 ## carry P49a's margin like the perf arena's measured maxima.
 const MEASURED_ORE_SCANNED: int = 72
-const MEASURED_EXIT_SCANNED: int = 3
+## EXIT_SCANNED was 3 before P195c-1 and is 6: since the exits face the map centre (ADR 0033
+## sections 1 and 2) a seat's barracks exit points at its neighbour, the vehicle factory standing
+## beside it in the arena row, so that exit tile is blocked and the ring walk of exit_tile looks at
+## 3 more tiles before it finds an open one (a rifle squad scans 4). The peak tick 450 is the
+## barracks, the factory and the other seat's factory each spawning in one tick (4 + 1 + 1).
+const MEASURED_EXIT_SCANNED: int = 6
 const MEASURED_MEMORY_CHECKS: int = 28
 ## The two ticks at which Performance.MEMORY_STATIC is read, and how much it may have grown between
 ## them. The arena run does not grow it: the static memory of the 900 ticks through TickJob falls

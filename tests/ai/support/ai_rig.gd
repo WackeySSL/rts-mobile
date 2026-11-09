@@ -203,7 +203,8 @@ static func kill(world: World, loop: MatchLoop, row: int) -> void:
 	step(world, loop)
 
 
-## Makes every tile explored for both players, so that no placement is refused as unexplored.
+## Makes every tile explored for both players (placement no longer reads it, ADR 0033 section 4;
+## the AI's scouting and the fog views still do).
 static func explore_all(world: World) -> void:
 	world.fog.explored.fill(1)
 

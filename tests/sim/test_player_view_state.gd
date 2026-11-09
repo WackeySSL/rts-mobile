@@ -46,6 +46,18 @@ func _compare_placements(world: World, players: Array[int], types: Array[int]) -
 	return found
 
 
+## The view's answer for each player, type and tile in a fixed order.
+func _answers(world: World, players: Array[int], types: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	for player: int in players:
+		var view: PlayerView = PlayerView.of(world, player)
+		for type: int in types:
+			for line: int in world.map_rows:
+				for col: int in world.map_cols:
+					out.append(view.placement(type, col, line))
+	return out
+
+
 func _placement_types(world: World) -> Array[int]:
 	var types: Array[int] = []
 	for id: String in ["headquarters", "power_plant", "refinery", "rifle_squad"]:
@@ -211,9 +223,18 @@ func test_placement_is_placement_reason_for_the_player_on_every_tile() -> void:
 		Placement.Reason.OUTSIDE,
 		Placement.Reason.GROUND,
 		Placement.Reason.OCCUPIED,
-		Placement.Reason.UNEXPLORED,
 	]:
 		assert_bool(reasons.has(reason)).override_failure_message("reason %d" % reason).is_true()
+
+
+func test_placement_on_black_ground_is_the_same_answer_tile_by_tile() -> void:
+	var world: World = ViewWorlds.crafted()
+	var types: Array[int] = _placement_types(world)
+	var partly: Array[int] = _answers(world, [1, 2], types)
+	world.fog.explored.fill(0)
+	var all_black: Array[int] = _answers(world, [1, 2], types)
+	assert_array(all_black).is_equal(partly)
+	assert_bool(all_black.has(Placement.Reason.OK)).is_true()
 
 
 func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
@@ -222,7 +243,6 @@ func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
 	var types: Array[int] = _placement_types(world)
 	var far: Dictionary = _compare_placements(world, [1, 2], types)
 	assert_bool(far.has(Placement.Reason.TOO_FAR)).is_true()
-	assert_bool(far.has(Placement.Reason.UNEXPLORED)).is_false()
 	# One building each, so a cap of 1 turns every reachable tile into CAP.
 	world.building_cap = 1
 	var capped: Dictionary = _compare_placements(world, [1, 2], types)
@@ -267,6 +287,19 @@ func test_the_type_tables_are_the_worlds_and_a_write_stays_in_the_view() -> void
 	assert_int(PlayerView.of(world, 1).type_cost[0]).is_equal(cost)
 
 
+## The ore cells are the map's static ore terrain, the same for either player (public like the map),
+## and a copy: the ore left in them is not in the view.
+func test_the_view_lists_the_maps_ore_cells_as_a_copy() -> void:
+	var world: World = PlaceRig.world()
+	world.ore_cell = PackedInt32Array([5, 9, 12])
+	var first: PlayerView = PlayerView.of(world, 1)
+	var second: PlayerView = PlayerView.of(world, 2)
+	assert_array(Array(first.ore_cells)).is_equal([5, 9, 12])
+	assert_array(Array(second.ore_cells)).is_equal([5, 9, 12])
+	first.ore_cells[0] = 77
+	assert_int(world.ore_cell[0]).is_equal(5)
+
+
 ## A caller can reach every public field, so none of them may be an array of the World's: writing
 ## into each leaves the state hash and the defs hash alone, and the write does land in the view.
 func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
@@ -291,9 +324,10 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 		if table.size() > 0:
 			var changed: PackedInt32Array = view.get(field)
 			assert_int(changed[0]).override_failure_message(String(field)).is_equal(table[0])
-	# Two lists, five slices of the player's state, four of its last-seen records and eleven type
-	# tables, ten more type tables and the three warned lists (`own_strike_tick` is an int).
-	assert_int(touched).is_equal(35)
+	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its
+	# last-seen records and eleven type tables, ten more type tables and the three warned lists
+	# (`own_strike_tick` is an int).
+	assert_int(touched).is_equal(36)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))

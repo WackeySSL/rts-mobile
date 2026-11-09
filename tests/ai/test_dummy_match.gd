@@ -1,12 +1,12 @@
 extends GdUnitTestSuite
 ## Two dummies against each other on the mirrored start of `ai_rig.gd` (plan row P83, ADR 0020
 ## sections 4 and 5, in the short form that this row can prove without the driver of row P82):
-## players 1 and 2, each on the shipped def, run for 3,600 ticks through the headless loop, twice
+## players 1 and 2, each on the shipped def, run for 5,400 ticks through the headless loop, twice
 ## from the same seed, then replayed without any AI. Nothing is dropped, both bases are built,
 ## each dummy thinks on its own tick, and the runs and the replay agree on every checkpoint.
 
 const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
-const TICKS: int = 3600
+const TICKS: int = 5400
 
 var _first: World
 var _second: World
@@ -54,8 +54,8 @@ func test_each_dummy_commands_on_its_own_tick() -> void:
 
 
 func test_two_runs_of_a_seed_have_the_same_checkpoints_and_commands() -> void:
-	# One checkpoint every 15th tick from tick 15: 240 of them by tick 3,600.
-	assert_int(_first_loop.replay.checkpoint_ticks.size()).is_equal(240)
+	# One checkpoint every 15th tick from tick 15: 360 of them by tick 5,400.
+	assert_int(_first_loop.replay.checkpoint_ticks.size()).is_equal(360)
 	assert_array(Array(_first_loop.replay.checkpoint_hashes)).is_equal(
 		Array(_second_loop.replay.checkpoint_hashes)
 	)

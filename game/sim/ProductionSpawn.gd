@@ -15,22 +15,23 @@ extends RefCounted
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
 	var kind: int = world.type_index[producer]
 	var exit: Vector2i = Vector2i(world.type_exit_x[kind], world.type_exit_y[kind])
-	return _spawn_from(world, player, type, producer, exit)
+	return _spawn_from(world, player, type, producer, Buildings.turned_at(world, producer, exit))
 
 
 ## Spawns the free unit of the placed building `building` (a row), the harvester of a refinery
 ## (ADR 0018 section 3), and returns true; false when the building's type gives none (no
 ## `type_free_unit`, or a dock of (0, 0), the tile that means "none") or the unit has to be left out
 ## by the holds of `spawn`: nothing is held or owed, so no later tick makes up for it. The unit
-## appears at the dock (the walk of `exit_tile` starts there, so a closed dock hands it to the next
-## open ring tile) and a harvester gets `home` set to the building's id, which SEEK and RETURN read
-## (Harvest).
+## appears at the dock, turned to the building's facing (Buildings.facing; the walk of `exit_tile`
+## starts there, so a closed dock hands it to the next open ring tile) and a harvester gets `home`
+## set to the building's id, which SEEK and RETURN read (Harvest).
 static func spawn_free(world: World, building: int) -> bool:
 	var kind: int = world.type_index[building]
 	var free: int = world.type_free_unit[kind]
 	var dock: Vector2i = Vector2i(world.type_dock_x[kind], world.type_dock_y[kind])
 	if free < 0 or dock == Vector2i.ZERO:
 		return false
+	dock = Buildings.turned_at(world, building, dock)
 	if not _spawn_from(world, world.owner[building], free, building, dock):
 		return false
 	if world.type_harvest[free] > 0:
@@ -73,7 +74,8 @@ static func mobile_rows(world: World, player: int) -> int:
 
 
 ## The tile where a unit of `move_class` appears at building row `producer`: the exit tile (the
-## footprint's origin plus the type's `type_exit_x`, `type_exit_y`) when its cost for the class is
+## footprint's origin plus the type's `type_exit_x`, `type_exit_y` turned to the building's facing,
+## Buildings.facing) when its cost for the class is
 ## above 0, else the first such tile of the ring around the footprint, walked clockwise from the
 ## exit (ring_tile). Every ring tile on the map that it looks at counts one `Stat.EXIT_SCANNED`;
 ## a ring tile outside the map is skipped without a count. (-1, -1) when none is open. An exit that
@@ -81,11 +83,12 @@ static func mobile_rows(world: World, player: int) -> int:
 static func exit_tile(world: World, producer: int, move_class: int) -> Vector2i:
 	var type: int = world.type_index[producer]
 	var exit: Vector2i = Vector2i(world.type_exit_x[type], world.type_exit_y[type])
-	return tile_from(world, producer, move_class, exit)
+	return tile_from(world, producer, move_class, Buildings.turned_at(world, producer, exit))
 
 
 ## The walk of `exit_tile` from any tile offset `start` of building row `building`'s footprint (the
-## exit, or a refinery's dock): the same ring, the same order, the same `EXIT_SCANNED` counts.
+## exit, or a refinery's dock, already turned to the building's facing): the same ring, the same
+## order, the same `EXIT_SCANNED` counts.
 static func tile_from(world: World, building: int, move_class: int, start: Vector2i) -> Vector2i:
 	var type: int = world.type_index[building]
 	var size: Vector2i = Vector2i(world.type_foot_w[type], world.type_foot_h[type])
