@@ -153,7 +153,7 @@ jobs:
             grep -a -E '^PERF bases (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
             echo '```'
             echo
-            echo '### WATCH ai (the opponent AI's report-only lines)'
+            echo '### WATCH ai (the opponent AI, report-only lines)'
             echo
             echo '```'
             grep -a -E '^WATCH ai ' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"

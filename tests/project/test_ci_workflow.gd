@@ -89,7 +89,7 @@ const BASES_GREP: String = (
 )
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
-const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI's report-only lines)'"
+const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI, report-only lines)'"
 const WATCH_AI_PATTERN: String = "^WATCH ai "
 const WATCH_AI_GREP: String = (
 	"grep -a -E '"

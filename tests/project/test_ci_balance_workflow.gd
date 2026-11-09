@@ -373,6 +373,56 @@ func _run_plan_step(script: String, assignments: String) -> Array:
 	return [code, out]
 
 
+## Every `run:` of balance.yml and ci.yml (single line or block) parses as bash: `bash -n` on each,
+## so a stray quote in an echo fails here and not in the run. A file per block, as the plan test.
+func test_every_run_block_of_the_two_workflows_is_valid_bash() -> void:
+	var checked: int = 0
+	for file_name: String in [BALANCE, "ci.yml"]:
+		for block: String in _run_blocks(_lines(file_name)):
+			var path: String = "user://run_block.sh"
+			var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+			file.store_string(block + "\n")
+			file.close()
+			var out: Array = []
+			var code: int = OS.execute(
+				"bash", ["-n", ProjectSettings.globalize_path(path)], out, true
+			)
+			(
+				assert_int(code)
+				. override_failure_message("%s: bash -n failed: %s\n%s" % [file_name, out, block])
+				. is_equal(0)
+			)
+			checked += 1
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run_block.sh"))
+	assert_int(checked).is_greater(40)
+
+
+func _run_blocks(lines: PackedStringArray) -> Array[String]:
+	var blocks: Array[String] = []
+	var current: PackedStringArray = PackedStringArray()
+	var block_indent: int = -1
+	for line: String in lines:
+		var indent: int = line.length() - line.lstrip(" ").length()
+		var text: String = line.strip_edges()
+		if block_indent >= 0:
+			if text.is_empty() or indent > block_indent:
+				current.append(line)
+				continue
+			blocks.append("\n".join(current))
+			block_indent = -1
+		var key: String = text.trim_prefix("- ")
+		if key.begins_with("run:"):
+			var rest: String = key.trim_prefix("run:").strip_edges()
+			if rest in ["|", ">", "|-", ">-"]:
+				block_indent = indent + (2 if text.begins_with("- ") else 0)
+				current = PackedStringArray()
+			else:
+				blocks.append(rest)
+	if block_indent >= 0:
+		blocks.append("\n".join(current))
+	return blocks
+
+
 ## No `${{` inside a `run:` (single line or block): event data and inputs reach scripts through env.
 func _assert_no_expression_in_run_blocks(lines: PackedStringArray) -> void:
 	var block_indent: int = -1

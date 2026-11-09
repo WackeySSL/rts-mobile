@@ -306,7 +306,7 @@ jobs:
           } > body.md
           if [ "$(wc -c < body.md)" -gt 60000 ]; then
             head -c 58000 body.md > cut.md
-            printf '\n\n(Cut at 58000 bytes, under GitHub's 65536 character comment limit; the whole report is in the artifact of %s.)\n' "$RUN_URL" >> cut.md
+            printf '\n\n(Cut at 58000 bytes, under the 65536 character comment limit of GitHub; the whole report is in the artifact of %s.)\n' "$RUN_URL" >> cut.md
             mv cut.md body.md
           fi
           gh issue comment "$number" --body-file body.md
