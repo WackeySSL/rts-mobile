@@ -57,6 +57,22 @@ func test_the_first_plant_of_each_opponent_goes_north_of_its_base() -> void:
 	assert_object(sites[2]).is_equal(Vector2i(54, 50))
 
 
+## The refinery's slot is the first valid one in the spiral, east of the Headquarters for both
+## players (slot 3), and the ore lies east and south of player 1 but west and north of player 2: the
+## nearest ore cell to player 1's slot is 5 tiles off, to player 2's 7 (squared: 26 and 49), and
+## its tankers dock on the south side, away from the ore on that side. In the no-combat Normal
+## match (exp G) this gave player 1 about 1.5 times the trips of player 2 in 3000 ticks.
+func test_the_refinerys_slot_is_nearer_the_ore_for_player_1_than_for_player_2() -> void:
+	var world: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	var spiral: PackedInt32Array = PlacementSpiral.cells(8)
+	var cell: Vector2i = Vector2i(spiral[6], spiral[7])
+	assert_object(cell).is_equal(Vector2i(1, 0))
+	var first: int = _ore_gap(world, HQ_1 + cell * STRIDE)
+	var second: int = _ore_gap(world, HQ_2 + cell * STRIDE)
+	assert_int(first).is_equal(26)
+	assert_int(second).is_equal(49)
+
+
 ## The first `count` slots of `player`'s spiral where a plant can be placed now.
 func _first_slots(world: World, player: int, count: int) -> Array[Vector2i]:
 	var view: PlayerView = PlayerView.of(world, player)
@@ -81,3 +97,13 @@ func _gap(slots: Array[Vector2i], target: Vector2i) -> int:
 		var dy: int = slot.y + PLANT_WIDE / 2 - target.y
 		total += dx * dx + dy * dy
 	return total / slots.size()
+
+
+## The squared distance, in tiles, from the tile `slot` to the nearest ore cell.
+func _ore_gap(world: World, slot: Vector2i) -> int:
+	var best: int = 1 << 30
+	for cell: int in world.ore_cell:
+		var dx: int = cell % world.map_cols - slot.x
+		var dy: int = cell / world.map_cols - slot.y
+		best = mini(best, dx * dx + dy * dy)
+	return best
