@@ -5,27 +5,28 @@ extends GdUnitTestSuite
 ##
 ## What is judged is deterministic and read from the controllers, never from the clock: every think
 ## stays inside the counted bounds of ADR 0030 section 4 (the passes, the Commands cut, the
-## placement tries, the candidate tests, the goal keys, the sectors, the squads and every id list of
-## the memory), the runs end on the same state hash at every checkpoint and drop no Command.
+## placement tries, the candidate tests, the goal keys, the sectors and every id list of the
+## memory), the runs end on the same state hash at every checkpoint and drop no Command.
 ##
 ## What this workload exercises, by `WATCH ai peaks`: the passes (3), the placement tries, the
 ## STAGING goal keys, the own id lists, the Commands and every slot. What it does not: in 900 ticks
 ## neither AI sees the enemy (Normal's scout comes at tick 1800 and its first wave at 4050), so the
-## seen lists, the army, hit and strike tests and the ARMY and SCOUT keys stay 0 here. Their bounds
+## seen lists, `withdrawn_id`, `commands_cut`, the army, hit and strike tests and the ARMY and
+## SCOUT keys stay 0 here (no contact before tick 900). Their bounds
 ## hold on silence; the manager suites and P188's matches pin them on crafted Worlds and on
 ## matches with contact, and P189b's frozen AI defs bring contact into this workload. Lead decision
 ## (P189 round 1): the timed workload is a no-contact AI until then. Only the counters this workload
-## moves are asserted live. Two asserts depend on the shipped AI's timing until P189b: no match end
-## and Commands sent (exception 20's spirit; the file is not in its list).
+## moves are asserted live. Until P189b these depend on the shipped AI data (exception 20's spirit;
+## the file is not in its list): the live checks of `placement_tries`, `keys_staging`, `commands`
+## and `work == 3`, and the asserts of no match end.
 ##
 ## What is only printed (report only, no ratchet: that is P189b's):
 ## - `WATCH ai think`: the time of a think (the call of `think_all` that made it, the PlayerView
 ##   included, as the snapshot's `think_usec`), the p95 and the max, each the smallest of the runs
 ##   (as `PerfReport.best_of`), with the phone estimate at the gate's `ci_ratio_p95`. `impl=` is the
 ##   sim's implementation; the AI is GDScript in both. `thinks=` is added to ADR 0030 section 4's
-##   keys.
-##   The watch value of the card is 1.0 ms on the phone.
-## - `WATCH ai flow full_ticks=<n> hash=<hex>`: the lead's input for `goal_keys_max` 3 or row P194.
+##   keys. The watch value of the card is 1.0 ms on the phone.
+## - `WATCH ai flow seed=<s> ticks=<t> full_ticks=<n> hash=<hex>`: input for goal_keys_max or P194.
 ## - `WATCH ai peaks name=count ...`: the largest value of every judged counter (counts only).
 
 const AiRun: GDScript = preload("res://tests/perf/support/ai_perf_run.gd")
@@ -56,27 +57,26 @@ func before() -> void:
 ## The runs play the whole 900 ticks (no match end), every Command passes the sim's validation, and
 ## all end on the same state hash at every checkpoint: the AI is a pure function of its views and
 ## its stream, so the counted bounds below are the same in all of them.
-@warning_ignore("integer_division")
 func test_the_runs_play_900_ticks_drop_nothing_and_agree_at_every_checkpoint() -> void:
 	var first: AiRun = _runs[0]
-	assert_int(first.checkpoint_hashes.size()).is_equal(AiRun.TICKS / Replay.CHECKPOINT_PERIOD)
+	@warning_ignore("integer_division")
+	var checkpoints: int = AiRun.TICKS / Replay.CHECKPOINT_PERIOD
+	assert_int(first.checkpoint_hashes.size()).is_equal(checkpoints)
 	for index: int in _runs.size():
 		var run: AiRun = _runs[index]
 		var tag: String = "run %d" % index
-		assert_int(run.match_end_tick).override_failure_message(tag).is_equal(0)
-		assert_int(run.dropped_commands).override_failure_message(tag).is_equal(0)
-		assert_array(run.checkpoint_ticks).override_failure_message(tag).is_equal(
+		assert_int(run.match_end_tick).append_failure_message(tag).is_equal(0)
+		assert_int(run.dropped_commands).append_failure_message(tag).is_equal(0)
+		assert_array(run.checkpoint_ticks).append_failure_message(tag).is_equal(
 			first.checkpoint_ticks
 		)
-		assert_array(run.checkpoint_hashes).override_failure_message(tag).is_equal(
+		assert_array(run.checkpoint_hashes).append_failure_message(tag).is_equal(
 			first.checkpoint_hashes
 		)
-		assert_int(run.final_hash).override_failure_message(tag).is_equal(first.final_hash)
-		assert_int(run.flow_full_ticks).override_failure_message(tag).is_equal(
-			first.flow_full_ticks
-		)
-		assert_int(run.thinks).override_failure_message(tag).is_equal(first.thinks)
-		assert_array(_peak_values(run)).override_failure_message(tag).is_equal(_peak_values(first))
+		assert_int(run.final_hash).append_failure_message(tag).is_equal(first.final_hash)
+		assert_int(run.flow_full_ticks).append_failure_message(tag).is_equal(first.flow_full_ticks)
+		assert_int(run.thinks).append_failure_message(tag).is_equal(first.thinks)
+		assert_array(_peak_values(run)).append_failure_message(tag).is_equal(_peak_values(first))
 
 
 ## Every think of both AIs, 900 ticks long, stays inside the bounds of ADR 0030 sections 3 and 4;
@@ -86,11 +86,11 @@ func test_every_think_stays_inside_the_counted_bounds_of_the_adr() -> void:
 	for index: int in _runs.size():
 		var run: AiRun = _runs[index]
 		var tag: String = "run %d" % index
-		assert_array(run.violations).override_failure_message(tag).is_empty()
-		assert_int(run.controllers.size()).override_failure_message(tag).is_equal(2)
-		assert_int(run.most_in_a_tick).override_failure_message(tag).is_equal(1)
-		assert_int(run.thinks).override_failure_message(tag).is_equal(run.thinks_owed)
-		assert_int(run.thinks).override_failure_message(tag).is_equal(run.think_usec.size())
+		assert_array(run.violations).append_failure_message(tag).is_empty()
+		assert_int(run.controllers.size()).append_failure_message(tag).is_equal(2)
+		assert_int(run.most_in_a_tick).append_failure_message(tag).is_equal(1)
+		assert_int(run.thinks).append_failure_message(tag).is_equal(run.thinks_owed)
+		assert_int(run.thinks).append_failure_message(tag).is_equal(run.think_usec.size())
 
 
 ## The counters that this workload moves did move, so their bounds were judged on something: the
@@ -145,7 +145,9 @@ func test_the_watch_lines_have_the_heads_the_keys_in_order_and_the_phone_estimat
 			+ "est_phone_p95_ms=0.000"
 		)
 	)
-	assert_str(AiRun.flow_line(191, "00ab")).is_equal("WATCH ai flow full_ticks=191 hash=00ab")
+	assert_str(AiRun.flow_line(191, "00ab")).is_equal(
+		"WATCH ai flow seed=42 ticks=900 full_ticks=191 hash=00ab"
+	)
 	var counts: Dictionary[String, int] = {"work": 3, "keys_scout": 0}
 	assert_str(AiRun.peaks_line(counts)).is_equal("WATCH ai peaks work=3 keys_scout=0")
 	for line: String in [think, AiRun.flow_line(0, ""), AiRun.peaks_line(counts)]:

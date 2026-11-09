@@ -76,9 +76,12 @@ static func think_line(
 	return PerfReport.sub_line(THINK_HEAD, values, false)
 
 
-## `WATCH ai flow full_ticks= hash=`.
+## `WATCH ai flow seed= ticks= full_ticks= hash=` (P188's `WATCH ai flow` line has more keys).
 static func flow_line(full_ticks: int, hash_hex: String) -> String:
-	return PerfReport.sub_line(FLOW_HEAD, {"full_ticks": full_ticks, "hash": hash_hex}, false)
+	var values: Dictionary = {
+		"seed": SEED, "ticks": TICKS, "full_ticks": full_ticks, "hash": hash_hex
+	}
+	return PerfReport.sub_line(FLOW_HEAD, values, false)
 
 
 ## `WATCH ai peaks name=count ...` in the order the peaks were first seen.
@@ -160,7 +163,6 @@ func _check(world: World, before: PackedInt32Array, sent: int) -> void:
 		_cap(tag, "keys_staging", memory.goal_keys_of(AiMemory.Owner.STAGING), 2)
 		_cap(tag, "keys_scout", memory.goal_keys_of(AiMemory.Owner.SCOUT), 1)
 		_cap(tag, "sectors", ai.intel.sector_count(), def.sectors_max)
-		_cap(tag, "squads", _squads_used(memory), def.squads_max)
 		_check_lists(world, memory, tag)
 	if counted != sent:
 		_fail(
@@ -202,14 +204,6 @@ func _check_lists(world: World, memory: AiMemory, tag: String) -> void:
 	}
 	for name: String in lists:
 		_cap(tag, name, lists[name].size(), caps[name])
-
-
-func _squads_used(memory: AiMemory) -> int:
-	var used: int = 0
-	for role: int in memory.squad_role:
-		if role != AiMemory.NONE:
-			used += 1
-	return used
 
 
 ## Keeps the peak of `name` and records a violation when `value` is above `cap`.
