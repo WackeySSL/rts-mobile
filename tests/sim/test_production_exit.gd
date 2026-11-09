@@ -124,25 +124,25 @@ func test_a_closed_exit_tile_hands_the_unit_to_the_next_open_ring_tile_clockwise
 
 
 ## The exit tile is judged for the unit's own class: scrub is open to foot units and not to
-## tracked ones (ring walk of the 3x3 vehicle factory at (17, 1), exit tile (18, 4): clockwise it
-## goes west along the bottom row to (17, 4)).
+## tracked ones (ring walk of the 3x3 vehicle factory at (17, 1), which faces west: exit tile
+## (16, 2); clockwise it goes up the left column to (16, 1)).
 func test_the_walk_asks_the_class_of_the_unit() -> void:
 	var world: World = Rig.base()
-	_block(world, [Vector2i(18, 4)], SCRUB)
+	_block(world, [Vector2i(16, 2)], SCRUB)
 	var factory: int = world.index_of(Rig.FACTORY)
 	world.stats.fill(0)
 	var foot: Vector2i = ProductionSpawn.exit_tile(world, factory, World.MoveClass.FOOT)
-	assert_array([foot, _scanned(world)]).is_equal([Vector2i(18, 4), 1])
+	assert_array([foot, _scanned(world)]).is_equal([Vector2i(16, 2), 1])
 	world.stats.fill(0)
 	var tracked: Vector2i = ProductionSpawn.exit_tile(world, factory, World.MoveClass.TRACKED)
-	assert_array([tracked, _scanned(world)]).is_equal([Vector2i(17, 4), 2])
+	assert_array([tracked, _scanned(world)]).is_equal([Vector2i(16, 1), 2])
 	# And through the phase: a harvester (tracked) appears on the next tile.
 	Rig.step(world, [Rig.queue(world, 1, "harvester")])
 	Rig.run(world, 298)
 	assert_int(_scanned(world)).is_equal(0)
 	Rig.step(world)
 	var rows: Array[int] = Rig.rows_of(world, 1, "harvester")
-	assert_vector(_tile_of(world, rows[0])).is_equal(Vector2i(17, 4))
+	assert_vector(_tile_of(world, rows[0])).is_equal(Vector2i(16, 1))
 	assert_int(_scanned(world)).is_equal(2)
 
 
@@ -150,9 +150,9 @@ func test_the_walk_asks_the_class_of_the_unit() -> void:
 ## skipped without a count. With the exit tile (1, 2) and (0, 2) closed the walk goes on clockwise
 ## past the left side and the top, off the map all the way, to (2, 0).
 func test_ring_tiles_off_the_map_are_skipped_and_not_counted() -> void:
-	var world: World = Worlds.world(GridWorld.grass(12, 8), Rig.IDS)
+	var world: World = Worlds.world(GridWorld.grass(8, 12), Rig.IDS)  # Tall: it faces south.
 	world.add_building(1, Worlds.type_of(world, "barracks"), 0, 0)
-	Rig.add_plant(world, 1, 8, 4)
+	Rig.add_plant(world, 1, 4, 8)
 	_block(world, [Vector2i(1, 2), Vector2i(0, 2)])
 	_almost_done(world)
 	Rig.step(world)

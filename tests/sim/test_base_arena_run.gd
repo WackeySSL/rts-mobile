@@ -20,8 +20,9 @@ const TICKS: int = BaseArena.RUN_TICKS
 ## The armies close for 65 ticks before the first death; 60 keeps a margin. The gate's own heavy
 ## window (below) is the number that must hold.
 const FULL_TICKS: int = 60
-## The tick by which every harvester has unloaded once (the slowest one does at tick 253).
-const UNLOAD_BY: int = 300
+## The tick by which every harvester has unloaded once (the slowest one does at tick 333; it was 253
+## and the bound 300 before ADR 0033 turned the docks to face the map centre).
+const UNLOAD_BY: int = 400
 
 var _first: BaseArena.Run
 var _second: BaseArena.Run
