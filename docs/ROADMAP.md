@@ -57,7 +57,7 @@ Tick a box in the PR that meets the criterion.
 - [x] AI with build orders from data, scouting, army grouping, attack waves and retreat
 - [x] Easy, Normal and Hard as parameter sets
 - [x] `run-sim-smoke.sh` runs real headless AI-vs-AI matches with seeds and writes the report JSON
-- [ ] `balance.yml` (runs after merges that change AI or balance data and on demand, not on a schedule;
+- [x] `balance.yml` (runs after merges that change AI or balance data and on demand, not on a schedule;
   Michael, 2026-11-06) and an open issue labelled `balance`; first report in `docs/balance/`
 - [ ] Gate: Normal wins 40-60% against the mirror AI over 100 matches, no match lasts over 15 minutes, every unit type is used
 

@@ -136,8 +136,8 @@ jobs:
             echo "Godot cache hit: ${CACHE_HIT:-false}"
             echo
             echo '```'
-            if [ -f "$RUNNER_TEMP/verify.log" ] && grep -q '===== VERIFY SUMMARY =====' "$RUNNER_TEMP/verify.log"; then
-              sed -n '/===== VERIFY SUMMARY =====/,$p' "$RUNNER_TEMP/verify.log"
+            if [ -f "$RUNNER_TEMP/verify.log" ] && grep -q -x '===== VERIFY SUMMARY =====' "$RUNNER_TEMP/verify.log"; then
+              sed -n '/^===== VERIFY SUMMARY =====$/,$p' "$RUNNER_TEMP/verify.log"
             else
               echo "no VERIFY SUMMARY block (verify.sh did not finish)"
             fi
@@ -159,6 +159,30 @@ jobs:
             grep -a -E '^WATCH ai ' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # P190b: the same report-only lines, one group each in a fixed place after the run (the REST API serves job logs,
+      # not job summaries; the Verify step's own output has them scattered). The step only prints and never fails the job.
+      - name: Job log lines
+        if: always()
+        run: |
+          log="$RUNNER_TEMP/verify.log"
+          echo "::group::VERIFY SUMMARY"
+          if [ -f "$log" ] && grep -q -x '===== VERIFY SUMMARY =====' "$log"; then
+            sed -n '/^===== VERIFY SUMMARY =====$/,$p' "$log" || true
+          else
+            echo "no VERIFY SUMMARY block (verify.sh did not finish)"
+          fi
+          echo "::endgroup::"
+          echo "::group::PERF sim"
+          grep -a -E '^PERF sim (units=|impl=native)' "$log" 2>/dev/null || echo "no PERF line (the perf suite did not run)"
+          echo "::endgroup::"
+          echo "::group::PERF bases"
+          grep -a -E '^PERF bases (units=|impl=native units=)' "$log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
+          echo "::endgroup::"
+          echo "::group::WATCH ai"
+          grep -a -E '^WATCH ai ' "$log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"
+          echo "::endgroup::"
+          exit 0
 
       - name: Upload web build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

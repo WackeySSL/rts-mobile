@@ -848,6 +848,12 @@ absorbs next to the C++ phases.
     lockstep for an `ATTACK` on a 1x1, a 2x2 and a 3x3 building with TARGETING alone, INTEGRATE
     alone or every kernel in C++ (the artillery cases: TARGETING alone and every kernel).
 
+  Status note (2026-11-09, P26bj docs, Phase 4 plan row P194; the text and the notes above stay
+  as accepted and as dated): the P26x note's "(`flow_cache_size` is 8 in `data/rules.tres`)" no
+  longer holds. The shipped rules hold 12 since P194, and the frozen `data/dev/arena/rules.tres`
+  keeps 8. Both stay under `integrate::MEMO_SLOTS` (63), and
+  `tests/sim/native/test_integrate_kernel_slots.gd` checks the shipped file against it.
+
 ### 3. Dispatch and the implementation switch
 - **`World` gains two members (P54):**
   - `kernels: Object`, where null means GDScript;
