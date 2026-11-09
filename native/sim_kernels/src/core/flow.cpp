@@ -165,7 +165,7 @@ int64_t best_neighbour(const Served &field, int64_t cell) {
 		return -1;
 	}
 	int64_t pick = -1;
-	for (int64_t k = 0; k < NEIGHBOURS; k++) {
+	for (int64_t k = NEIGHBOURS - 1; k >= 0; k--) { // EXPERIMENT H
 		const int64_t other = here + DY[k] * field.stride + DX[k];
 		if (field.cost.get(other) >= best) {
 			continue;

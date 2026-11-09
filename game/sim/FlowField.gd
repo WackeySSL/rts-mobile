@@ -202,7 +202,7 @@ func best_neighbour(cell: int) -> int:
 	if best == UNREACHED:
 		return -1
 	var pick: int = -1
-	for k: int in 8:
+	for k: int in range(7, -1, -1):  # EXPERIMENT H: ties go to the last neighbour
 		var other: int = here + DY[k] * stride + DX[k]
 		if served[other] >= best:
 			continue
