@@ -14,7 +14,6 @@ const STRUCTURES: int = World.Tab.STRUCTURES
 const OUTSIDE: int = Placement.Reason.OUTSIDE
 const GROUND: int = Placement.Reason.GROUND
 const OCCUPIED: int = Placement.Reason.OCCUPIED
-const UNEXPLORED: int = Placement.Reason.UNEXPLORED
 const TOO_FAR: int = Placement.Reason.TOO_FAR
 const CAP: int = Placement.Reason.CAP
 
@@ -135,14 +134,19 @@ func test_a_place_builds_the_head_complete_on_the_tile_of_the_point() -> void:
 	assert_int(ProductionSpawn.mobile_rows(world, 1)).is_equal(0)
 
 
+func test_a_place_on_ground_the_player_never_explored_builds() -> void:
+	var world: World = _ready_world()
+	world.fog.explored.fill(0)  # ADR 0033 section 4: the explored map is not a placement rule.
+	Rig.step(world, [PlaceRig.place(6, 5)])
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_vector(world.footprint_origin(world.unit_count() - 1)).is_equal(Vector2i(6, 5))
+
+
 func test_each_failing_reason_drops_the_place_and_keeps_the_head_ready() -> void:
 	_dropped("ground", _ready_world([Vector2i(7, 6)]), PlaceRig.place(6, 5), 6, 5, GROUND)
 	var occupied: World = _ready_world()
 	occupied.add_unit(2, Worlds.type_of(occupied, "harvester"), 6500, 5500)
 	_dropped("occupied", occupied, PlaceRig.place(6, 5), 6, 5, OCCUPIED)
-	var unexplored: World = _ready_world()
-	unexplored.fog.explored[5 * Rig.COLS + 6] = 0  # Player 1's block comes first.
-	_dropped("unexplored", unexplored, PlaceRig.place(6, 5), 6, 5, UNEXPLORED)
 	_dropped("too far", _ready_world(), PlaceRig.place(12, 12), 12, 12, TOO_FAR)
 	var capped: World = _ready_world()
 	capped.building_cap = 5  # The headquarters and four more: the enemy's barracks does not count.

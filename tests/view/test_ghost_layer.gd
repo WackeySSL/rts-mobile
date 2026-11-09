@@ -122,6 +122,17 @@ func test_no_cells_while_the_mode_is_off_and_a_bigger_footprint_marks_more() -> 
 	assert_array(_layer.cells()).is_empty()
 
 
+func test_a_ghost_on_black_ground_near_the_base_is_green_with_no_glyph() -> void:
+	_runner.snapshot.fog.explored.fill(0)
+	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
+	_placement.begin(Rig.plant(_runner.snapshot))
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(_placement.reason).is_equal(Placement.Reason.OK)
+	assert_that(_layer.tint()).is_equal(GhostLayer.FITS)
+	assert_object(_layer.last_glyph).is_null()
+
+
 func test_the_ghost_is_green_where_it_fits_and_red_with_the_reason_where_it_does_not() -> void:
 	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
 	_placement.begin(Rig.plant(_runner.snapshot))
