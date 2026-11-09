@@ -75,7 +75,8 @@ static func run(world: World) -> void:
 	var reach: int = world.harvest_reach_milli
 	var dock_reach: int = world.dock_reach_milli
 	var resume: int = world.harvest_resume_ticks
-	for row: int in rows:
+	for rank: int in range(rows.size() - 1, -1, -1):  # EXPERIMENT F: descending row order
+		var row: int = rows[rank]
 		var mode: int = modes[row]
 		var type: int = types[row]
 		var slot: int = slots[row]
