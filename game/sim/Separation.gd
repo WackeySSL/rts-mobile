@@ -96,8 +96,8 @@ static func run(world: World) -> void:
 		var block: int = 0
 		# The inner loop enforces the caps; testing them here as well only skips the cells left.
 		while block < BLOCK_CELLS and looked < scan_cap and hits < hit_cap:
-			var scan_column: int = column + block % BLOCK_SIDE - 1
-			var scan_line: int = line + block / BLOCK_SIDE - 1
+			var scan_column: int = column + 1 - block % BLOCK_SIDE
+			var scan_line: int = line + 1 - block / BLOCK_SIDE
 			block += 1
 			if scan_column < 0 or scan_column >= cols or scan_line < 0 or scan_line >= lines:
 				continue

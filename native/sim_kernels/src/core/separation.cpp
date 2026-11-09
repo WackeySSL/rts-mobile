@@ -64,8 +64,8 @@ int64_t run(const Rows &rows, const Types &types, const Grid &grid, const Rules 
 		int64_t block = 0;
 		// The inner loop enforces the caps; testing them here as well only skips the cells left.
 		while (block < BLOCK_CELLS && looked < scan_cap && hits < hit_cap) {
-			const int64_t scan_column = column + block % BLOCK_SIDE - 1;
-			const int64_t scan_line = line + block / BLOCK_SIDE - 1;
+			const int64_t scan_column = column + 1 - block % BLOCK_SIDE;
+			const int64_t scan_line = line + 1 - block / BLOCK_SIDE;
 			block += 1;
 			if (scan_column < 0 || scan_column >= cols || scan_line < 0 || scan_line >= lines) {
 				continue;
