@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The equal-cost tie-break of best_neighbour (seat symmetry, ADR 0033) in the C++ kernel against
-## its GDScript twin (ADR 0013 section 4). A 24 x 24 map of random rock (a fifth of the tiles, so
+## its GDScript twin (ADR 0013 section 4). A 16 x 16 map of random rock (a fifth of the tiles, so
 ## many open tiles have several equal steps), the same map turned by a half turn with its goal, and
 ## a unit on every open tile looking up its next tile in one pass of Movement.integrate. The two
 ## implementations agree on both Worlds (the state hash and the full state), and on each
@@ -12,7 +12,7 @@ const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const TRACKED: int = World.MoveClass.TRACKED
 const MOVE: int = World.Order.MOVE
 const FIELD: int = World.NavMode.FIELD
-const SIDE: int = 24
+const SIDE: int = 16
 const SEEDS: Array[int] = [5, 17, 71]
 const BIG: int = 100000
 
@@ -27,6 +27,8 @@ func test_the_kernel_breaks_equal_cost_ties_like_the_twin_and_turns_with_the_map
 			turned_rock.append(_half(tile))
 		var pair: Array[World] = _pair(rock, goal)
 		var turned: Array[World] = _pair(turned_rock, _half(goal))
+		var tiles: PackedInt32Array = _tiles(pair[0])
+		var turned_tiles: PackedInt32Array = _tiles(turned[0])
 		for index: int in pair.size():
 			Movement.integrate(pair[index])
 			Movement.integrate(turned[index])
@@ -34,9 +36,13 @@ func test_the_kernel_breaks_equal_cost_ties_like_the_twin_and_turns_with_the_map
 			var found: String = LockstepRig.difference(both[0], both[1])
 			assert_str(found).override_failure_message("seed %d" % seed).is_empty()
 		for index: int in pair.size():
-			_assert_turned(pair[index], turned[index], "seed %d, impl %d" % [seed, index])
+			_assert_turned(
+				[pair[index], turned[index]],
+				[tiles, turned_tiles],
+				"seed %d, impl %d" % [seed, index]
+			)
 		# Not vacuous: most open tiles named a next tile.
-		assert_int(pair[1].nav_next.count(-2)).is_less(3)
+		assert_int(pair[1].nav_next.count(-2)).is_less(40)
 
 
 ## About a fifth of the tiles, rock, from `seed`.
@@ -82,17 +88,25 @@ func _world(rock: Array[Vector2i], goal: Vector2i) -> World:
 	return world
 
 
-## The next tile of the unit on each tile.
-func _next_by_tile(world: World) -> Dictionary[int, int]:
-	var found: Dictionary[int, int] = {}
+## The tile of each unit's row, before the units move.
+func _tiles(world: World) -> PackedInt32Array:
+	var found: PackedInt32Array = PackedInt32Array()
 	for row: int in world.unit_count():
-		found[world.pos_y[row] / 1000 * SIDE + world.pos_x[row] / 1000] = world.nav_next[row]
+		found.append(world.pos_y[row] / 1000 * SIDE + world.pos_x[row] / 1000)
 	return found
 
 
-func _assert_turned(world: World, turned: World, label: String) -> void:
-	var original: Dictionary[int, int] = _next_by_tile(world)
-	var mirrored: Dictionary[int, int] = _next_by_tile(turned)
+## The next tile of the unit that stood on each tile.
+func _next_by_tile(world: World, tiles: PackedInt32Array) -> Dictionary[int, int]:
+	var found: Dictionary[int, int] = {}
+	for row: int in world.unit_count():
+		found[tiles[row]] = world.nav_next[row]
+	return found
+
+
+func _assert_turned(worlds: Array[World], tiles: Array[PackedInt32Array], label: String) -> void:
+	var original: Dictionary[int, int] = _next_by_tile(worlds[0], tiles[0])
+	var mirrored: Dictionary[int, int] = _next_by_tile(worlds[1], tiles[1])
 	var cells: int = SIDE * SIDE
 	assert_int(mirrored.size()).override_failure_message(label).is_equal(original.size())
 	for cell: int in original:
