@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AiDifficultyDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiDifficultyDef.gd" id="1_level"]
+
+[resource]
+script = ExtResource("1_level")
+id = &"easy"
+build_order_tier = 0
+reaction_ticks = 90
+harvesters_per_refinery = 1
+refineries_max = 1
+factories_max = 1
+defences_max = 1
+scout_first_tick = 0
+scout_interval_ticks = 0
+wave_first_tick = 6300
+wave_first_strength = 2000
+wave_growth_percent = 10
+wave_jitter_ticks = 450
+all_in_tick = 12600
+retreat_percent = 0
+retreat_ratio_percent = 0
+unit_retreat_hp_percent = 0
+focus_fire = 0
+counter_percent = 0
+uses_strike = 0
+commands_per_think_max = 3
+income_percent = 100
