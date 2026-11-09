@@ -287,6 +287,19 @@ func test_the_type_tables_are_the_worlds_and_a_write_stays_in_the_view() -> void
 	assert_int(PlayerView.of(world, 1).type_cost[0]).is_equal(cost)
 
 
+## The ore cells are the map's static ore terrain, the same for either player (public like the map),
+## and a copy: the ore left in them is not in the view.
+func test_the_view_lists_the_maps_ore_cells_as_a_copy() -> void:
+	var world: World = PlaceRig.world()
+	world.ore_cell = PackedInt32Array([5, 9, 12])
+	var first: PlayerView = PlayerView.of(world, 1)
+	var second: PlayerView = PlayerView.of(world, 2)
+	assert_array(Array(first.ore_cells)).is_equal([5, 9, 12])
+	assert_array(Array(second.ore_cells)).is_equal([5, 9, 12])
+	first.ore_cells[0] = 77
+	assert_int(world.ore_cell[0]).is_equal(5)
+
+
 ## A caller can reach every public field, so none of them may be an array of the World's: writing
 ## into each leaves the state hash and the defs hash alone, and the write does land in the view.
 func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
@@ -311,9 +324,10 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 		if table.size() > 0:
 			var changed: PackedInt32Array = view.get(field)
 			assert_int(changed[0]).override_failure_message(String(field)).is_equal(table[0])
-	# Two lists, five slices of the player's state, four of its last-seen records and eleven type
-	# tables, ten more type tables and the three warned lists (`own_strike_tick` is an int).
-	assert_int(touched).is_equal(35)
+	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its
+	# last-seen records and eleven type tables, ten more type tables and the three warned lists
+	# (`own_strike_tick` is an int).
+	assert_int(touched).is_equal(36)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))
