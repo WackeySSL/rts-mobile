@@ -178,13 +178,14 @@ func _ready() -> void:
 		_start_first_run()
 
 
-## The AI arena's computers (plan P185): a Normal `OpponentAi` on each player, the Derrick League's
-## on player 1 (`first_opponent` 1, the view stays player 1's) and the Lumen Accord's on player 2.
+## The AI arena's computers (plan P185, P189b): a Normal `OpponentAi` on the frozen defs with early
+## contact on each player, the Derrick League's on player 1 (`first_opponent` 1, the view stays
+## player 1's) and the Lumen Accord's on player 2.
 func _seat_computers() -> void:
 	var opponents: Array[AiDef] = [
-		load(DevRoutes.OPPONENT_FOSSIL) as AiDef, load(DevRoutes.OPPONENT_RENEW) as AiDef
+		load(DevRoutes.PERF_AI_FOSSIL) as AiDef, load(DevRoutes.PERF_AI_RENEW) as AiDef
 	]
-	var normal: AiDifficultyDef = load(DevRoutes.LEVEL_NORMAL) as AiDifficultyDef
+	var normal: AiDifficultyDef = load(DevRoutes.PERF_AI_LEVEL) as AiDifficultyDef
 	var levels: Array[AiDifficultyDef] = [normal, normal]
 	runner.opponents = opponents
 	runner.opponent_levels = levels

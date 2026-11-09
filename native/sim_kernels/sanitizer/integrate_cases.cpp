@@ -28,7 +28,7 @@ constexpr int64_t NAV_DIRECT = 1, NAV_FIELD = 2; // World.NavMode
 constexpr int64_t ORDER_ATTACK_MOVE = 1, ORDER_MOVE = 2, ORDER_ATTACK = 3; // World.Order
 // The slots the pass keeps an answer for: the value bits of an int64_t, a slot's bit being a shift by 0 to 62. It is
 // written here and not read from integrate::MEMO_SLOTS, so that a smaller MEMO_SLOTS is a Finding: the rows on the slots
-// between would pay an Object::get of `complete` each (the data/rules.tres cache has 8 slots).
+// between would pay an Object::get of `complete` each (the data/rules.tres cache has 12 slots).
 constexpr int64_t MEMOISED = std::numeric_limits<int64_t>::digits;
 
 // One FlowField as INTEGRATE sees it: the served cost and what indexes it.

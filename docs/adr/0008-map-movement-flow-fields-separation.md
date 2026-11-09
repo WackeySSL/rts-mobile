@@ -44,6 +44,9 @@ tile, and so does an `ATTACK` unit that has outrun its field; a blocked key tile
 next tile; a `FIELD` unit whose field names no next tile stalls at any distance. The accepted
 text stays as written; where it differs, the notes win.
 
+Status note (2026-11-09, P26bj docs, Phase 4 plan row P194): the shipped `flow_cache_size` is 12;
+the dated note at the end of §5 gives the detail. No decision changes.
+
 ## Context
 ROADMAP Phase 2 asks for "movement with flow fields and separation". Phase 1 moves units in
 straight lines to formation slots with no terrain and no collision (ADR 0003 §4-5), and its
@@ -411,6 +414,13 @@ Measurements (Godot 4.7.2 headless, 2026-10-11, Xeon cloud VM; mock code, not th
 
 ADRs 0007, 0009 and 0010 add to the same file. No such number is a constant in code (CLAUDE.md
 rule 5).
+
+Note (2026-11-09, P26bj docs, Phase 4 plan row P194; the text above stays as accepted): the
+shipped `data/rules.tres` holds `flow_cache_size` 12 since P194 (the opponent AI filled 8 slots in
+every balance set, ADR 0030 §4's fifth note). 8 is the starting value: the frozen rules
+(`data/dev/arena/rules.tres`) and `RulesDef`'s script defaults keep it, so §3's "(rules, 8)" and
+this section's "`flow_cache_size` 8" hold for them. §3's probe figures (the cache of 8, 55 of 5,600
+units at 8 slots) were measured at 8.
 
 ## Consequences
 - Phase 1's straight-line behaviour is the special case "line clear". The Phase 1 movement tests
