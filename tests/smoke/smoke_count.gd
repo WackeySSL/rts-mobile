@@ -44,6 +44,9 @@ var structures: Array[Dictionary] = []
 ## The ticks after which every slot of the World's flow cache was referenced (ADR 0030 section 4).
 var flow_full_ticks: int = 0
 var first_drop_tick: int = -1
+## EXPERIMENT: per player, the trips (a harvester entering UNLOAD) and the tanker ticks.
+var trips: PackedInt32Array = PackedInt32Array()
+var tanker_ticks: PackedInt32Array = PackedInt32Array()
 
 ## Row id -> packed (player, type) of every row seen alive.
 var _meta: Dictionary[int, int] = {}
@@ -59,6 +62,7 @@ var _strike_y: Array[int] = []
 var _strike_radius: Array[int] = []
 ## Free units owed in the tick being read: packed (player, unit type) -> count.
 var _owed: Dictionary[int, int] = {}
+var _unloading: Dictionary[int, bool] = {}
 
 
 ## A counter for `players` players (1..players).
@@ -69,6 +73,8 @@ func _init(players: int = 0) -> void:
 		lost.append({})
 		kills.append({})
 		structures.append({})
+		trips.append(0)
+		tanker_ticks.append(0)
 
 
 ## Reads the rows the World starts with: scenario rows are free.
@@ -107,6 +113,15 @@ func after_step(world: World) -> void:
 			World.Event.DIED:
 				_died(world, events, at)
 	_drop_landed_strikes(tick)
+	for row: int in world.harvester_rows:
+		var player: int = world.owner[row]
+		var id: int = world.unit_id[row]
+		var unloading: bool = world.harvest_mode[row] == World.HarvestMode.UNLOAD
+		if player < trips.size():
+			tanker_ticks[player] += 1
+			if unloading and not _unloading.get(id, false):
+				trips[player] += 1
+		_unloading[id] = unloading
 	if first_drop_tick < 0 and world.dropped_commands > 0:
 		first_drop_tick = tick - 1
 	if _flow_full(world.flow):
