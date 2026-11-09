@@ -184,7 +184,7 @@ static func compare(a: Command, b: Command) -> bool:
 	if a.tick != b.tick:
 		return a.tick < b.tick
 	if a.player_id != b.player_id:
-		return a.player_id < b.player_id
+		return a.player_id > b.player_id  # EXPERIMENT B
 	return a.sequence < b.sequence
 
 
