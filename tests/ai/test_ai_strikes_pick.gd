@@ -105,8 +105,9 @@ func test_a_live_army_goal_keeps_a_point_clear_and_a_dead_one_does_not() -> void
 
 
 func test_the_staging_point_blocks_while_a_threat_stands_and_the_home_goal_is_cleared() -> void:
-	# A recall that cleared the home goal off the staging point leaves it NONE for one INTEL slot
-	# while the threat stands: the recalled units are about to be sent to the staging point.
+	# A recall clears the home goal only when it was the staging point, so with a threat standing
+	# the staging point stands in for the cleared goal until an order sets the home goal again.
+	# The staging tile (33, 31), centre (33500, 31500), is 2,000 from the factory's point.
 	_cluster()
 	_fire(READY)
 	_memory.staging_x = 33
@@ -124,6 +125,7 @@ func test_the_staging_point_blocks_while_a_threat_stands_and_the_home_goal_is_cl
 func test_the_staging_point_stands_in_by_both_of_its_coordinates() -> void:
 	# A lone barracks (centre (30000, 34000), off the diagonal) and the staging point (29, 34) 707
 	# milli-tiles from it: no point is clear. A swapped coordinate would put the point far away.
+	# The minimum 400 is the barracks' own value.
 	_arm_strikes("normal", 1, "fossil", 400)
 	_enemy_building("barracks", 29, 33)
 	_see_all()
@@ -139,13 +141,24 @@ func test_the_staging_point_stands_in_by_both_of_its_coordinates() -> void:
 
 
 func test_a_staging_point_outside_the_radius_blocks_nothing_while_a_threat_stands() -> void:
+	# Tile (33, 36), centre (33500, 36500): inside the things' box grown by the radius, but 5,385
+	# from the factory's point and 4,301 from the barracks', beyond the 3,000 radius.
 	_cluster()
 	_fire(READY)
-	_memory.staging_x = 40
-	_memory.staging_y = 10
+	_memory.staging_x = 33
+	_memory.staging_y = 36
 	_memory.threat_first_tick = KNOWN
 	_fire(KNOWN)
 	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+	# Tile (36, 36), centre (36500, 36500), is outside the things' box grown by the radius: the
+	# pre-filter drops it, so it adds no counted test (the same count without the threat).
+	_memory.staging_x = 36
+	_fire(KNOWN + 15)
+	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+	var with_threat: int = _striker.tests
+	_memory.threat_first_tick = AiMemory.NONE
+	_fire(KNOWN + 30)
+	assert_int(_striker.tests).is_equal(with_threat)
 
 
 func test_a_building_that_is_seen_and_remembered_counts_once() -> void:
