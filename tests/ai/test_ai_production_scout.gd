@@ -7,10 +7,10 @@ extends "res://tests/ai/support/production_suite.gd"
 const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 
 ## The first tick of a Normal match (seed 1, fossil against renew) at which player 1's scout moves:
-## the economy's reserve takes most of the income for the build order, so production queues its
-## first infantry at 4,035 and the scout at 4,320.
-const SCOUT_MOVE_TICK: int = 4555
-const MATCH_TICKS: int = 5400
+## the economy's reserve takes most of the income for the build order. The explored rule is gone
+## (ADR 0033 section 4), so the base is laid out from the first slot and the build ends later.
+const SCOUT_MOVE_TICK: int = 5995
+const MATCH_TICKS: int = 6500
 
 # --- The scout ---------------------------------------------------------------------------------
 

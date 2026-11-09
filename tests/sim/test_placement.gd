@@ -10,7 +10,6 @@ const OK: int = Placement.Reason.OK
 const OUTSIDE: int = Placement.Reason.OUTSIDE
 const GROUND: int = Placement.Reason.GROUND
 const OCCUPIED: int = Placement.Reason.OCCUPIED
-const UNEXPLORED: int = Placement.Reason.UNEXPLORED
 const TOO_FAR: int = Placement.Reason.TOO_FAR
 const CAP: int = Placement.Reason.CAP
 const COLS: int = 20
@@ -110,15 +109,64 @@ func test_a_unit_whose_disc_touches_the_footprint_occupies_it() -> void:
 	assert_int(_plant(world, 9, 2)).is_equal(OK)
 
 
-func test_a_cell_the_player_never_explored_is_unexplored_for_that_player_only() -> void:
+func test_ground_the_player_never_explored_is_placeable_near_their_own_buildings() -> void:
 	var world: World = _world()
 	_unexplore(world, 1, 7, 3)
-	assert_int(_plant(world, 6, 2)).is_equal(UNEXPLORED)
-	assert_int(_plant(world, 6, 3)).is_equal(UNEXPLORED)
-	assert_int(_plant(world, 5, 3)).is_equal(OK)  # The cell is not in this footprint.
-	_unexplore(world, 2, 12, 10)
-	assert_int(_plant(world, 12, 9, 2)).is_equal(UNEXPLORED)
-	assert_int(_plant(world, 12, 9, 1)).is_equal(TOO_FAR)  # Player 1 explored it, and is far.
+	assert_int(_plant(world, 6, 2)).is_equal(OK)  # The unexplored cell is in this footprint.
+	assert_int(_plant(world, 6, 3)).is_equal(OK)
+	world.fog.explored.fill(0)  # Black everywhere, for both players.
+	assert_int(_plant(world, 6, 2)).is_equal(OK)
+	assert_int(_plant(world, 12, 9, 2)).is_equal(OK)  # Player 2 beside their headquarters.
+	assert_int(_plant(world, 12, 9, 1)).is_equal(TOO_FAR)  # Reach still applies on black ground.
+	assert_int(_plant(world, 7, 2)).is_equal(GROUND)  # So do the ground and unit rules.
+
+
+func test_the_answer_does_not_read_the_explored_map() -> void:
+	var world: World = _world()
+	world.fog.explored.fill(0)
+	# The answer does not depend on the explored map; it shows nothing UNEXPLORED's place in the
+	# order did not already show. Rock and a unit on black ground refuse as on seen ground.
+	var black_rock: int = _plant(world, 7, 2)
+	var black_free: int = _plant(world, 6, 2)
+	_unit_at(world, 12500, 10500, 2)
+	var black_unit: int = _plant(world, 12, 10, 2)
+	world.fog.explored.fill(1)
+	assert_int(black_rock).is_equal(GROUND)
+	assert_int(_plant(world, 7, 2)).is_equal(black_rock)
+	assert_int(black_free).is_equal(_plant(world, 6, 2))
+	assert_int(black_unit).is_equal(OCCUPIED)
+	assert_int(_plant(world, 12, 10, 2)).is_equal(black_unit)
+	# The answer is the same for any explored map: it does not read one.
+	for seed_value: int in [1, 2, 3]:
+		var rng: DetRandom = DetRandom.create(seed_value, 0)
+		for cell: int in world.fog.explored.size():
+			world.fog.explored[cell] = rng.next_int(2)
+		assert_int(_plant(world, 7, 2)).is_equal(black_rock)
+		assert_int(_plant(world, 6, 2)).is_equal(black_free)
+
+
+func test_the_reason_numbers_stay_and_four_is_gone() -> void:
+	assert_int(TOO_FAR).is_equal(5)
+	assert_int(CAP).is_equal(6)
+	assert_object(Placement.Reason.find_key(4)).is_null()
+
+
+func test_too_far_comes_before_cap_on_black_ground() -> void:
+	var world: World = _world()
+	world.fog.explored.fill(0)
+	world.building_cap = 1  # Player 1 is at the cap.
+	assert_int(_plant(world, 10, 10)).is_equal(TOO_FAR)  # Far and capped.
+	assert_int(_plant(world, 5, 5)).is_equal(CAP)  # Near and capped.
+
+
+func test_a_player_with_no_building_is_too_far_everywhere_on_black_ground() -> void:
+	var world: World = _world()
+	world.fog.explored.fill(0)
+	var input: PlacementInput = PlacementInput.of_world(world)
+	var plant: int = Worlds.type_of(world, "power_plant")
+	for player: int in [3, 7]:  # Owns nothing.
+		assert_int(Placement.reason(input, player, plant, 6, 2)).is_equal(TOO_FAR)
+		assert_int(Placement.reason(input, player, plant, 12, 9)).is_equal(TOO_FAR)
 
 
 func test_a_footprint_farther_than_the_reach_from_every_own_building_is_too_far() -> void:
@@ -173,13 +221,11 @@ func test_a_player_with_the_cap_of_buildings_gets_cap_when_near_and_too_far_when
 func test_the_first_rule_that_fails_is_the_reason() -> void:
 	var world: World = _world()
 	world.building_cap = 1  # Player 1 is at the cap.
-	_unexplore(world, 1, 7, 3)
 	var row: int = _unit_at(world, 7000, 3000)
 	assert_int(_plant(world, 19, 12)).is_equal(OUTSIDE)  # Also far, and out of the map.
-	assert_int(_plant(world, 7, 2)).is_equal(GROUND)  # Also occupied, unexplored and capped.
-	assert_int(_plant(world, 6, 2)).is_equal(OCCUPIED)  # Also unexplored and capped.
+	assert_int(_plant(world, 7, 2)).is_equal(GROUND)  # Also occupied and capped.
+	assert_int(_plant(world, 6, 2)).is_equal(OCCUPIED)  # Also capped.
 	world.pos_y[row] = 9000
-	assert_int(_plant(world, 6, 2)).is_equal(UNEXPLORED)  # Also capped.
 	assert_int(_plant(world, 10, 10)).is_equal(TOO_FAR)  # Far and capped.
 	assert_int(_plant(world, 5, 5)).is_equal(CAP)
 	world.building_cap = 2
@@ -220,10 +266,8 @@ func test_an_input_whose_arrays_are_short_is_refused_not_indexed() -> void:
 	)
 	input = PlacementInput.of_world(world)
 	input.explored = PackedByteArray()
-	assert_int(Placement.reason(input, 1, Worlds.type_of(world, "power_plant"), 6, 2)).is_equal(
-		UNEXPLORED
-	)
-	# A fog whose block is not the map's, or a player it has no block for, has hidden nothing.
+	assert_int(Placement.reason(input, 1, Worlds.type_of(world, "power_plant"), 6, 2)).is_equal(OK)
+	# A fog whose block is not the map's, or a player it has no block for, changes nothing.
 	input = PlacementInput.of_world(world)
 	input.fog_cells = 7
 	assert_int(Placement.reason(input, 1, Worlds.type_of(world, "power_plant"), 6, 2)).is_equal(OK)
@@ -261,7 +305,7 @@ func test_an_input_filled_from_copies_gives_the_same_reason_on_every_origin() ->
 					assert_int(Placement.reason(copy, player, type, col, line)).is_equal(want)
 					seen[want] = seen.get(want, 0) + 1
 	assert_int(world.state_hash()).is_equal(hash_before)
-	for reason: int in [OK, OUTSIDE, GROUND, OCCUPIED, UNEXPLORED, TOO_FAR]:
+	for reason: int in [OK, OUTSIDE, GROUND, OCCUPIED, TOO_FAR]:
 		assert_bool(seen.has(reason)).override_failure_message("never %d" % reason).is_true()
 
 

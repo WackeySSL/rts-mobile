@@ -46,6 +46,18 @@ func _compare_placements(world: World, players: Array[int], types: Array[int]) -
 	return found
 
 
+## The view's answer for each player, type and tile in a fixed order.
+func _answers(world: World, players: Array[int], types: Array[int]) -> Array[int]:
+	var out: Array[int] = []
+	for player: int in players:
+		var view: PlayerView = PlayerView.of(world, player)
+		for type: int in types:
+			for line: int in world.map_rows:
+				for col: int in world.map_cols:
+					out.append(view.placement(type, col, line))
+	return out
+
+
 func _placement_types(world: World) -> Array[int]:
 	var types: Array[int] = []
 	for id: String in ["headquarters", "power_plant", "refinery", "rifle_squad"]:
@@ -211,9 +223,18 @@ func test_placement_is_placement_reason_for_the_player_on_every_tile() -> void:
 		Placement.Reason.OUTSIDE,
 		Placement.Reason.GROUND,
 		Placement.Reason.OCCUPIED,
-		Placement.Reason.UNEXPLORED,
 	]:
 		assert_bool(reasons.has(reason)).override_failure_message("reason %d" % reason).is_true()
+
+
+func test_placement_on_black_ground_is_the_same_answer_tile_by_tile() -> void:
+	var world: World = ViewWorlds.crafted()
+	var types: Array[int] = _placement_types(world)
+	var partly: Array[int] = _answers(world, [1, 2], types)
+	world.fog.explored.fill(0)
+	var all_black: Array[int] = _answers(world, [1, 2], types)
+	assert_array(all_black).is_equal(partly)
+	assert_bool(all_black.has(Placement.Reason.OK)).is_true()
 
 
 func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
@@ -222,7 +243,6 @@ func test_placement_too_far_and_cap_are_the_same_answers_too() -> void:
 	var types: Array[int] = _placement_types(world)
 	var far: Dictionary = _compare_placements(world, [1, 2], types)
 	assert_bool(far.has(Placement.Reason.TOO_FAR)).is_true()
-	assert_bool(far.has(Placement.Reason.UNEXPLORED)).is_false()
 	# One building each, so a cap of 1 turns every reachable tile into CAP.
 	world.building_cap = 1
 	var capped: Dictionary = _compare_placements(world, [1, 2], types)
