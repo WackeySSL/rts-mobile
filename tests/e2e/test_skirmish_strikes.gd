@@ -49,10 +49,13 @@ func test_each_side_fires_its_strike_building_once_and_it_starts_charging_again(
 		var strike_kind: int = played.world.type_strike_kind[type]
 		assert_int(strike_kind).override_failure_message(faction).is_greater(0)
 		# Charged: ready at the stamp of the order or earlier, and not by a think's span (the script
-		# fires on the first think it can). Then the clock starts again from the order's step.
+		# fires on the first think it can: the first one at which the building has charged and the
+		# army stands at the staging point, `stage_tick` the first think of the latter). Then the
+		# clock starts again from the order's step.
 		var ready: int = before.ready_tick[row]
 		assert_int(tick + 1).override_failure_message(faction).is_greater_equal(ready)
-		assert_int(tick + 1 - ready).override_failure_message(faction).is_less(15)
+		var possible: int = maxi(ready, played.player.stage_tick + 1)
+		assert_int(tick + 1 - possible).override_failure_message(faction).is_less(15)
 		var charge: int = played.world.type_charge_ticks[type]
 		assert_int(after.ready_tick[after.row_of(order.target_id)]).is_equal(tick + 1 + charge)
 		assert_int(after.dropped).override_failure_message(faction).is_equal(0)

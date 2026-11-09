@@ -84,6 +84,8 @@ var events: Array[String] = []
 var strike_tick: int = -1
 var strike_point: Vector2i = Vector2i(-1, -1)
 var strike_effect_tick: int = -1
+## The tick of the first think at which the army stood at the staging point, -1 until then.
+var stage_tick: int = -1
 ## The id of the strike building that was fired.
 var strike_id: int = 0
 
@@ -92,6 +94,8 @@ var _list: Array[StringName] = []
 var _next: int = 0
 var _spiral: PackedInt32Array = PlacementSpiral.cells(PLACE_TRIES)
 var _staged: bool = false
+## The squads that were sent to the staging point, by id.
+var _marched: Dictionary[int, bool] = {}
 var _foe: int = 0
 var _building: int = 0
 var _resend_tick: int = -100000
@@ -205,17 +209,25 @@ func _train(view: PlayerView, out: Array[Command]) -> void:
 		out.append(Command.queue(PLAYER, type))
 
 
-## The army walks to the staging point once it is whole.
+## The army walks to the staging point once it is whole, and a squad trained later (to replace one
+## that fell on the way) walks there on its own: it would else stand at the rally point, and the
+## army would never count as at the staging point.
 func _march(view: PlayerView, out: Array[Command]) -> void:
 	if (
-		_staged
-		or _ids_of(view, "rifle").size() < ESCORT
-		or _ids_of(view, "rocket").size() < ROCKETS
+		not _staged
+		and (_ids_of(view, "rifle").size() < ESCORT or _ids_of(view, "rocket").size() < ROCKETS)
 	):
+		return
+	var fresh: PackedInt32Array = PackedInt32Array()
+	for id: int in _army(view):
+		if not _marched.has(id):
+			_marched[id] = true
+			fresh.append(id)
+	if fresh.is_empty():
 		return
 	var stage: Vector2i = _stage_point(view)
 	_staged = true
-	out.append(Command.attack_move(PLAYER, _army(view), stage.x, stage.y))
+	out.append(Command.attack_move(PLAYER, fresh, stage.x, stage.y))
 	_note(view.tick, "army marches to %d,%d" % [stage.x, stage.y])
 
 
@@ -227,6 +239,8 @@ func _strike(world: World, view: PlayerView, out: Array[Command]) -> void:
 	var row: int = strike_row(world)
 	if strike_tick >= 0 or row < 0 or not _staged or not _army_at_stage(view):
 		return
+	if stage_tick < 0:
+		stage_tick = world.tick
 	var type: int = world.type_index[row]
 	if world.tick + 1 < world.ready_tick[row] or world.offline_until[row] > world.tick + 1:
 		return
@@ -413,17 +427,22 @@ func _stage_point(view: PlayerView) -> Vector2i:
 	return Vector2i(enemy.x - step, enemy.y - step)
 
 
-## Whether every unit of the army stands within `STAGE_REACH` of the staging point.
+## Whether every unit of the army that was sent to the staging point stands within `STAGE_REACH` of
+## it (a squad trained this very think has not been sent yet and is not waited for).
 func _army_at_stage(view: PlayerView) -> bool:
 	var stage: Vector2i = _stage_point(view)
 	var army: PackedInt32Array = _army(view)
+	var waited: int = 0
 	for id: int in army:
+		if not _marched.get(id, false):
+			continue
+		waited += 1
 		var at: Vector2i = view.row_pos(view.row_of(id))
 		var dx: int = at.x - stage.x
 		var dy: int = at.y - stage.y
 		if dx * dx + dy * dy > STAGE_REACH * STAGE_REACH:
 			return false
-	return not army.is_empty()
+	return waited > 0
 
 
 func _note(tick: int, text: String) -> void:
