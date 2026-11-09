@@ -234,6 +234,17 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 			]
 		)
 	)
+	# P190b: each set's markdown also goes to the job log, in a group named for the set.
+	var at: int = summary.find('cat "build/balance/summary/$set.md" >> "$GITHUB_STEP_SUMMARY"')
+	assert_int(at).is_greater(-1)
+	assert_array(summary.slice(at + 1, at + 5)).contains_exactly(
+		[
+			'echo "::group::$set"',
+			'cat "build/balance/summary/$set.md"',
+			'echo "::endgroup::"',
+			"done"
+		]
+	)
 	var upload: Array = Array(_step(summarise, "Upload the summaries"))
 	assert_array(upload).contains(["name: ${{ steps.name.outputs.name }}", "retention-days: 90"])
 	assert_array(Array(_step(summarise, "Name the artifact"))).contains(

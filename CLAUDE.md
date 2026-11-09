@@ -95,6 +95,10 @@ the release workflow. UMP consent before any ad request. Details: skill `admob-p
   an entry in `assets/CREDITS.md`. Fonts may also be under SIL OFL 1.1, shipped with their
   license text and listed in `assets/CREDITS.md` (Michael, 2026-11-01; ADR 0025 §13). No
   asset-store packs, no AI images from outside tools, no web images.
+- Vector art we draw ourselves in Figma and export as SVG or PNG into this repo counts as our own
+  work; each file gets an entry in `assets/CREDITS.md` naming its Figma file (Michael,
+  2026-11-09). Never Figma's or a plugin's AI image or model tools, and never art from community
+  files or shared libraries.
 - Never read, print or commit secrets: keystores, `.godot/export_credentials.cfg`, `.env`, API keys.
 
 ## Workflow
