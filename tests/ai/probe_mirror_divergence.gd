@@ -17,6 +17,7 @@ func _initialize() -> void:
 	var ticks: int = 900
 	var align_think: bool = false
 	var align_fog: bool = false
+	var all_flow: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("seed="):
 			seed_value = int(arg.substr(5))
@@ -26,10 +27,12 @@ func _initialize() -> void:
 			align_think = true
 		elif arg == "fog=1":
 			align_fog = true
-	quit(_run(seed_value, ticks, align_think, align_fog))
+		elif arg == "flow=1":
+			all_flow = true
+	quit(_run(seed_value, ticks, align_think, align_fog, all_flow))
 
 
-func _run(seed_value: int, ticks: int, align_think: bool, align_fog: bool) -> int:
+func _run(seed_value: int, ticks: int, align_think: bool, align_fog: bool, all_flow: bool) -> int:
 	var world: World = Smoke.world_of(seed_value, Smoke.FOSSIL_MIRROR)
 	Smoke.attach_impl(world)
 	var loop: MatchLoop = Smoke.loop_of(world, seed_value, Smoke.FOSSIL_MIRROR)
@@ -44,6 +47,8 @@ func _run(seed_value: int, ticks: int, align_think: bool, align_fog: bool) -> in
 		controllers[1].think_offset = controllers[0].think_offset
 	if align_fog:
 		world.fog_period_ticks = 1
+	if all_flow:
+		world.flow_cells_per_tick = 100000000
 	print(
 		(
 			"probe: seed %d, think aligned %s, fog every tick %s, impl %s"
@@ -157,6 +162,38 @@ func _compare(
 							turned_y,
 							world.type_sight[world.type_index[row]]
 						]
+					)
+				)
+	if not out.is_empty():
+		for row: int in world.owner.size():
+			var side: int = world.owner[row]
+			if side < 1 or side > 2:
+				continue
+			var tx: int = world.pos_x[row] if side == 1 else width - world.pos_x[row]
+			var ty: int = world.pos_y[row] if side == 1 else height - world.pos_y[row]
+			if absi(tx - 10064) < 3500 and absi(ty - 13230) < 3500:
+				(
+					out
+					. append(
+						(
+							"  nearby P%d id %d type %d turned (%d,%d) order %d intent %d,%d nav %d next %d"
+							% [
+								side,
+								world.unit_id[row],
+								world.type_index[row],
+								tx,
+								ty,
+								world.order[row],
+								world.intent_x[row],
+								world.intent_y[row],
+								world.nav_mode[row],
+								(
+									world.nav_next[row]
+									if side == 1
+									else world.map_cols * world.map_rows - 1 - world.nav_next[row]
+								)
+							]
+						)
 					)
 				)
 	if not out.is_empty():
