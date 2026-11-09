@@ -63,6 +63,14 @@ workload without contact until P189b) and when §4's flow-cache choice is made; 
 the end of §4 records them. P188's and P190's decisions are in ADR 0031's notes, P185's in the
 plan. No accepted text changed; the note adds `thinks=` to §4's `WATCH ai think` keys.
 
+Status note (2026-11-09, P26bj docs; wave 7 merged: P181b #372, P185 #375, P188 #373, P189 #374,
+P190 #376, main b6bfe95): balance run 1 and the reviews of P189b and P194 decided §4's flow-cache
+choice (P194, `flow_cache_size` 12 in the shipped rules), the timed workload (contact since P189b,
+on the card too) and what §4's "the Perf AI card measures it" now means; the fifth note at the end
+of §4 records them. The previous status note's "a workload without contact until P189b" and the
+fourth note's "no contact" and "191 of 900" describe P189's workload, not P189b's. No accepted
+text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of this ADR and ADR 0031 in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are this ADR's, 4-8 are ADR 0031's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
@@ -361,6 +369,27 @@ Note (2026-11-09, P26bi docs; lead decisions from the wave-7 reviews):
   and first wave before the `[ai]` ratchet is set.
 - **`flow_full_ticks`** is above 0 on `perf_ai` (191 of 900) and in the smoke's full matches. The
   choice above (`goal_keys_max` 3 or P194) is made on the first balance run's counts.
+
+Note (2026-11-09, P26bj docs; lead decisions from balance run 1 and the wave-8 reviews):
+- **The flow-cache choice is P194.** Balance run 1 (run 42639401142, issue #378) found the cache
+  full in every set where the opponent AI plays both sides. `goal_keys_max` stays 4. The frozen
+  rules and `perf_ai` keep 8 (`perf_ai.tres` loads the shared frozen rules), so no card and no CI
+  budget times the larger cache: "the Perf AI card measures it" above no longer holds. The balance
+  run's `flow_full_ticks` is its measure (a `custom` run on P194: 242 ticks over 100 matches, was
+  46 722). The Context's "8 slots" now holds for the frozen rules only. Its cost: four more
+  fields at `configure` (about 76 KB each on a 64 x 64 map), four more slots per `acquire` scan
+  and per FLOW pick's re-read of `pending`, and the bind layer's `check()` reading each slot's
+  names on every call.
+- **Contact in the timed workload (P189b).** `test_ai_perf.gd` and the Perf AI route play the
+  frozen AI defs, copies but for Normal's early scout and first wave (no jitter). Both sides scout
+  and launch a wave inside the 900 ticks; `flow_full_ticks` on `perf_ai` reads 200 of 900 (191
+  before). Not exercised there: the Dusk Array's search (player 2 sees no enemy building),
+  `hit_tests`, `withdrawn_id` and `seen_mobile_id`. Lead decision: accepted. The Array's tests share
+  `target_tests_max` with the rest (the bound is asserted), and the `[ai]` ratchet times the Deep
+  Bore's search. Plan row P189c sets the `[ai]` value from 11 CI runs after P189b.
+- **The first CI read** (P189's peaceful workload, before P189b): `WATCH ai think` p95 453 us, max
+  545 us, `est_phone_p95_ms` 2.673, against the 1.0 ms watch value and the 0.15 ms CI target
+  above. The lead raised it with Michael on 2026-11-09; no remedy from "Over budget" is chosen yet.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
