@@ -11,9 +11,10 @@
 
 Aircraft fly straight over everything. Only anti-air, rocket squads and fighters hit them. Rifle
 squads and the anti-infantry gun can also hit the low drone squads. A bomber drops its bombs and
-flies home to reload, and an aircraft is repaired on its airfield's pad. On the phone you select,
-tap a target, and tap your own airfield to send aircraft home. A loaded transport has an "Unload"
-button. The satellite has a button like the superweapon's. The computer plays by the same rules.
+flies home to reload, and an aircraft is repaired on its airfield's pad. On the phone you select
+and tap a target. A "Home" button sends aircraft home, "Board" puts squads into a transport, and
+a loaded transport has an "Unload" button. The satellite has a button like the superweapon's.
+The computer plays by the same rules.
 
 The design is ready now. The work starts after the Phase 4 gate. The recommendation is two updates
 after launch:
@@ -25,8 +26,11 @@ Five questions are at the end.
 
 Status: **proposed, 2026-11-09** (architect, branch `claude/design-air-and-tech`, base `main` at
 b6bfe95). The scope addition of the same day (Michael's transport, drone squads and aircraft repair)
-is folded in. Not accepted. The lead accepts it in docs row P230 of
-`docs/plans/2026-11-09-air-and-tech.md` once Michael has answered. GDD: the section "Planned: air,
+is folded in. Revised the same day after the docs lens (gameplay-dev: 7 must, 7 should, 4 nits):
+the AIR plane sites, the three `MOVE_CLASSES` literals, the reveal convention, the boarded marker,
+selection groups, the SUPERWEAPON order, the touch buttons in place of taps on own units and
+buildings, the exception numbers and the sizes. Not accepted. The lead accepts it in docs row
+P230 of `docs/plans/2026-11-09-air-and-tech.md` once Michael has answered. GDD: the section "Planned: air,
 anti-air, engineering centre, space centre".
 
 Supersedes, on acceptance: ADR 0023 §9 ("Air units and anti-air: not Phase 3 ... a later ADR
@@ -119,9 +123,9 @@ each stays as it is):
   recommended.
 
 ### 3. State (one layout row per release, one re-pin each)
-P232 adds every column the 1.1 rules need at once, under one named exception (the next free
-number, 22 at this writing): `STATE_FORMAT` 6. The carriers' state (marked "1.2") comes with P262,
-the 1.2 layout row, as `STATE_FORMAT` 7 with one more re-pin. If Michael wants everything in one
+P232 adds every column the 1.1 rules need at once, under named exception 23 (22 is P189b's):
+`STATE_FORMAT` 6. The carriers' state (marked "1.2") comes with P262, the 1.2 layout row, as
+`STATE_FORMAT` 7 with one more re-pin under exception 24. If Michael wants everything in one
 release, P232 takes both and there is one re-pin. Rule rows after a layout row are hash-neutral for
 the frozen arenas.
 
@@ -146,15 +150,29 @@ the frozen arenas.
   progress, the cancel refund and `requires` are reused.
 
 ### 4. The air layer: movement
-- **The AIR move class has an open cost plane.**
-  - WorldLoad and `set_terrain` fill the plane with `World.GRASS_COST`. It is structure, not
-    balance.
-  - `Buildings` writes footprints into the three ground planes only.
-  - So `line_clear` is always true for AIR: `Movement.run` steers aircraft DIRECT and never asks
-    for a flow field, INTEGRATE never slides them, and `Formation.assign` and `Buildings.aim` find
-    slots over rock and buildings. The map clamp holds.
-- **Kernels.** Only `MOVE_CLASSES` changes, 3 -> 4. FLOW is configured with 4 classes and never
-  gets an AIR key.
+- **The AIR move class has an open cost plane.** It is structure, not balance: no terrain has an
+  air cost. A new constant `World.GROUND_CLASSES = 3` bounds every loop over terrain costs, and
+  the AIR plane (class 3) is filled with `World.GRASS_COST` apart from them. P232 changes these
+  sites, each of which loops over `World.MoveClass.size()` today:
+  - `WorldLoad.gd:141`: `terrain_cost[index * classes + move_class] = def.cost[move_class]` reads
+    `TerrainDef.cost`, which has 3 entries. `terrain_cost` stays `terrain * 3 + class`
+    (`World.gd:499`, ground classes only), and `MapDef.validate`'s 0..40 range is unchanged.
+    The loader fills the AIR plane with `GRASS_COST`, as the no-map path (`WorldLoad.gd:108-111`)
+    already fills every plane.
+  - `World.set_terrain` (`World.gd:771-779`) loops over `GROUND_CLASSES` and leaves the AIR plane
+    alone.
+  - `Buildings._write_cost` (`Buildings.gd:219-231`) loops over `GROUND_CLASSES`. Over every
+    class it would write 0 into the AIR plane under each footprint, and aircraft would slide off
+    buildings.
+  - Every other `World.MoveClass.size()` in `game/sim` (`Buildings.gd:106`, `:148`, `:294`,
+    `World.gd:728` and `:758`) is checked in P232. It stays 4 where it sizes a plane, the flow
+    cache or a passability test, and becomes `GROUND_CLASSES` where it walks terrain costs.
+- **What follows.** `line_clear` is always true for AIR: `Movement.run` steers aircraft DIRECT and
+  never asks for a flow field, INTEGRATE never slides them, and `Formation.assign` and
+  `Buildings.aim` find slots over rock and buildings. The map clamp holds.
+- **Kernels.** Only the literal `MOVE_CLASSES` changes, 3 -> 4. It is in three files:
+  `bind/world_access.h:54`, `core/fixed_math.cpp:9` and `core/integrate.cpp:14` (its own copy,
+  used at `:74`). FLOW is configured with 4 classes and never gets an AIR key.
 - **Hovering.** Aircraft and drone squads hover. There is no landing and no fuel.
 - **Separation is per layer.** A pair counts in SEPARATION only when both rows have the same
   `type_layer_bit`, so aircraft spread among themselves, drone squads among themselves, and
@@ -194,11 +212,17 @@ the frozen arenas.
 - **Home.** The producing airfield. When it dies, `Air.run` re-homes the aircraft to the lowest-id
   own complete airfield with a free pad, or sets home to 0. A homeless aircraft cannot reload or
   be repaired.
-- **Ammo.** A shot of a type with `type_ammo > 0` costs 1 (`Combat.fire`). At 0 the row holds fire
-  and keeps its target.
+- **Ammo.** A shot of a type with `type_ammo > 0` costs 1 (`Combat.fire`). At 0 the row does not
+  fire. With a home, `Air.run` gives it MOVE home in the same tick, and on its next TARGETING its
+  target is dropped, as for any MOVE row (`Targeting.gd:173`). Without a home it keeps its order
+  and holds fire.
 - **`Air.run`** walks `air_rows` once, after `Harvest.run`:
   - **Return.** An aircraft with ammo 0 and a home gets MOVE to its pad, through the reset
     `_apply_point` uses.
+  - **Pads and separation.** Aircraft that wait on pads are pushed apart by SEPARATION like any
+    pair on the same layer. So a data test requires the pads of an airfield to lie at least the
+    largest FLIGHT type's `formation_spacing` apart, and `repair_reach_milli` to be at least half
+    a tile. Otherwise waiting aircraft drift out of reach.
   - **Reload.** On the pad (within `repair_reach_milli` of it) with its home complete and online,
     it gains 1 ammo every `max(1, type_rearm_ticks / cap)` ticks, with cap `type_ammo + mod_ammo`.
     The tick is stamped in `ready_tick`, which mobile rows leave unused.
@@ -207,8 +231,7 @@ the frozen arenas.
     (100 * max_hp))`. There is no repair while the player cannot pay.
   - **Waiting.** A full, healthy aircraft waits over its pad. A bomber does not resume its old
     target in this version.
-- **Fighters** have ammo 0 (no limit) and return only when ordered (REPAIR, §7) or when idle with
-  no order.
+- **Fighters** have ammo 0 (no limit) and return only when ordered (REPAIR, §7).
 - **Cost:** O(air rows) per tick, with no allocation.
 
 ### 7. The interface shared with the ground design
@@ -236,30 +259,47 @@ the frozen arenas.
   move into the passenger table. Every kernel, the grids, fog, targeting and separation therefore
   ignore it with no edit.
   - **Unloading** puts it back as a row with the same id, inserted in id order by a new
-    `World.insert_row`. This is GDScript, at event cadence, O(rows x columns). It keeps selection
-    groups and the view's id keys.
+    `World.insert_row`. This is GDScript, at event cadence, O(rows x columns).
+    - It bumps `rows_version`, so the view and the derived lists see the change.
+    - It refuses (returns -1) when the table is at `max_rows`; the squad then stays aboard
+      (below).
+    - The id keys of the view stay valid.
+  - **Selection groups.** Today `PlayerController.gd:286` passes every DIED id to
+    `selection.remove_ids`, which also strips groups 1-3. P265 makes it skip records with the
+    boarded flag (§8, flag 2) for groups 1-3 and drop them only from the live selection. A group
+    then counts only the squads on the map and holds the boarded ones again after the unload.
+    P265 tests that a group with a squad aboard shows the right count and refills.
   - **Unit cap.** Passengers count toward `unit_cap`.
 - **LOAD** (unit ids = the squads, `target_id` = an own carrier). The valid squads are own FOOT
   rows whose class bit is in `carry_classes`, while slots remain.
   - The carrier gets MOVE to G, the position of the lowest-id squad.
   - Every squad gets MOVE to G with `order_target` = the carrier id: "board on arrival".
-  - The same Command with the squads selected and the carrier tapped, or the carrier selected and
-    a squad tapped, gives the same result.
+  - On the phone it comes from the "Board" button (§12).
   - P262 checks that TARGETING (twin and kernel) leaves `order_target` of a MOVE row untouched. If
     it does not, a BOARD order value takes its place with a TARGETING edit, and §13 gains a row.
 - **Boarding** (`Carry.board`, in the REMOVE mark after `FogUpdate.begin`, before
   `remove_dead`). A squad boards when its carrier lives, is within `load_reach_milli` and has a
   free slot. The checks run in ascending row order.
-  - The squad's record joins the table, and the row is marked for REMOVE with DIED flag 2
-    ("boarded"). It counts no loss, and the view draws it climbing in, not dying.
+  - The squad's record joins the table, and the row is marked for this tick's REMOVE as a
+    cancelled site is (`Production.CANCELLED`, `World.gd:894`): `hp` 0 (the one test
+    `remove_dead` uses) and `build_left` = `Carry.BOARDED` (-2; a mobile row's `build_left` is
+    0 otherwise).
+  - `World.remove_dead` writes its DIED record as for any death, with
+    `events[at + Production.DIED_CANCEL_FLAG_AT]` (index 6) = 0 died, 1 cancelled or 2 boarded,
+    and `events[at + 7]` stays 0. The view draws a flag-2 record as climbing in, not dying.
+  - `Outcome.count_losses` skips `Carry.BOARDED` as it skips `Production.CANCELLED`, so boarding
+    counts no loss. `LastSeen.forget_dead` keeps records of buildings only, so a squad leaves no
+    record to forget.
   - The fog unstamp lands in the dirty list as for any removed row.
 - **UNLOAD** (carrier ids, a point). The carrier gets MOVE to the point with `carry_mode` 1.
 - **Unloading** (`Carry.run`, ECONOMY). When a `carry_mode` 1 carrier has arrived (order IDLE):
   - Its passengers, in table order, are inserted on free FOOT-passable cells within
     `unload_reach_tiles` of it, by a bounded ring search counted in `stats[EXIT_SCANNED]`.
   - Each gets order IDLE and `fog_cell` -1, and an `UNLOADED` event (kind 6, view only).
-  - `carry_mode` goes back to 0. Squads with no room stay aboard, and the player tries another
-    spot.
+  - `carry_mode` goes back to 0. Squads with no free cell, or refused by `insert_row` at
+    `max_rows`, stay aboard with their records unchanged. The player tries another spot. (With
+    the shipped caps, 2 x 75 units + 2 x 40 buildings = 230 rows, below `max_rows` 256, the
+    refusal is a guard.)
 - **Carrier death.** When a carrier dies (REMOVE), its passengers die with it. They count as lost
   units, and DIED records carry their ids at the carrier's point.
 - **Faction takes:**
@@ -294,6 +334,9 @@ the frozen arenas.
   - With `dealt = taken = 100` it equals today's formula for every int, so no golden moves.
   - Who calls it: hitscan in `Combat.fire`, impacts in `advance_projectiles`, and the rupture with
     `dealt` 100. A shell stores `proj_owner` and `proj_weapon` already.
+  - The range note in `Combat.gd`'s header (`:76-79`: "`damage * percent` ... stays far below
+    2^62") is rewritten in P246 for the four-factor product. With `damage` below 2^31, `percent`
+    at most 200 and each modifier at most 400 % (a data test), the product stays below 2^56.
 - **Ammo.** `Air.run` reads `mod_ammo`.
 - **The rule for later upgrades.** An upgrade may change only stats read in GDScript-only phases:
   damage, ammo, reload, repair and build time. Range, speed and sight live in the TARGETING,
@@ -306,7 +349,13 @@ the frozen arenas.
   - A valid SUPERWEAPON (the existing checks, payload empty, point ignored) sets
     `reveal_until[p] = stamp + strike_ticks` (a longer sweep in progress is kept) and recharges.
   - It appends `[STRIKE, building id, 0, 0, 3, owner, reveal_until, 0]`.
-  - It does not touch `strike_tick`, so it never blocks a rupture and is never blocked by one.
+  - It does not touch `strike_tick`, so it never blocks a rupture. It is also never blocked by
+    one, but only because P233 puts the kind-3 branch first:
+    - Today `Strike.apply_superweapon` (`Strike.gd:112`) drops every SUPERWEAPON while
+      `strike_tick[player]` is not 0.
+    - P233 looks up the building first and, for kind REVEAL, skips the pending-rupture test. Kinds
+      1 and 2 keep it unchanged.
+    - A test fires a sweep while the same player's rupture is pending.
 - **The fog contract.**
   - `visible[p]` = the player's row discs + `reveal_stamped[p]` on every cell.
   - `FogGrid.reveal(player, delta)` adds `delta` to the whole block. Where a count rises above 0
@@ -315,13 +364,21 @@ the frozen arenas.
 - **`Reveal.run`** sits in REMOVE, after `FogUpdate.begin` and `remove_dead` and before
   `FogUpdate.run`. It must come after `begin`, so the flips are not cleared on the player's fog
   turn. Per player:
-  - `want` = `reveal_until > stamp` and the player owns a complete, online REVEAL building. This
-    is one pass over the rows, made only while a sweep runs.
+  - `want` = `reveal_until > stamp` and the player owns a complete, online REVEAL building.
+    `stamp` is `world.tick + 1`, as in `Strike`. This is one pass over the rows, made only while
+    a sweep runs.
   - If `want` is false, `reveal_until` becomes 0.
   - If `want` differs from `reveal_stamped`, call `reveal(p, ±1)`.
 
-  `World.prepare()` stamps the reveal after the discs, so the invariant holds at every step end,
-  snapshot and checkpoint. A test rebuilds `visible` and compares it.
+  So at every step end `reveal_stamped[p] == (reveal_until[p] != 0)`. A sweep fired by a command
+  of tick c (stamp c + 1, `reveal_until` = c + 1 + `strike_ticks`) is stamped at the ends of steps
+  c to c + `strike_ticks` - 1, exactly `strike_ticks` steps.
+- **Rebuilding `visible`.** Every rebuild of `visible` from hashed state compares no tick: it
+  stamps the reveal for each player whose `reveal_until` is not 0. That is `World.prepare()` on a
+  fresh World (it returns at once once `prepared` is set, `World.gd:677`, so a running World is
+  never re-stamped) and the rebuild test, which compares the result with the live array after
+  every step of a sweep and after a replay to a checkpoint inside one. A snapshot copies
+  `visible` (`FogGrid.copy_into`) and needs no rebuild.
 - **What follows with no further change:**
   - TARGETING (twin and kernel), `Targeting.sees`, `PlayerView.seen_rows`, `LastSeen` (the sweep
     records every enemy building as a ghost), the radar and the fog view.
@@ -343,24 +400,35 @@ the frozen arenas.
 ### 12. Commands and touch, per unit (touch-ui-rules: 48 dp, portrait and landscape)
 | Unit | Gestures | New HUD |
 | --- | --- | --- |
-| Fighter, bomber | tap the raised sprite to select (hit area at least 48 dp round the drawn point), box and double-tap as for units; tap an enemy = ATTACK (a target the weapon cannot hit is not offered: the tap selects it instead); tap ground = MOVE; tap an own airfield = REPAIR (go home, reload, repair) | none: the command bar already adapts to both orientations |
-| Transport | squads selected + tap an own transport = LOAD; transport selected + tap an own squad = LOAD; a loaded transport shows pips (passengers) on its chip | an "Unload" button (48 dp) in the command bar while a loaded transport is selected; tap it, then tap ground = UNLOAD at that point (a chevron and the existing check mark and X beside it, as for a strike aim) |
+| Fighter, bomber | tap to select: the pick radius is at least 24 dp round the lifted centre (the touch skill's rule); box and double-tap as for units; tap an enemy = ATTACK (a target the weapon cannot hit is not attacked: the tap selects it, as a tap on an own unit does); tap ground = MOVE | a "Home" button (48 dp) in the command bar while aircraft are selected: REPAIR to each aircraft's own airfield (go home, reload, repair) |
+| Transport | select as above; a loaded transport shows pips (passengers) on its chip | an "Unload" button (48 dp) while a loaded transport is selected: tap it, then tap ground = UNLOAD at that point (a chevron, with the existing check mark and X beside it, as for a strike aim) |
+| Rifle and rocket squads (1.2) | as today | a "Board" button (48 dp) while squads are selected and the player owns a transport: tap it, then tap an own transport = LOAD (the check mark and X as above) |
 | Drone squad | as any squad | none |
 | Satellite | the strike button: tap the ready button, then the check mark; no map tap | a warning badge and line for the revealed player |
 
-A tap on an own building with units selected currently selects the building. It becomes REPAIR or
-LOAD only when that building can serve the selection (repair role, carrier). Otherwise it selects,
-as today. HOW_TO_PLAY gets each row in the PR that ships it. Teach: aircraft go home to reload,
-loading and unloading, the satellite.
+- **Today's tap rule stays.** A tap on an own unit or building selects it, whatever is selected,
+  so a tap on an own airfield or transport always selects it. REPAIR and LOAD come only from the
+  command-bar buttons above, and Board and Unload take one target tap in the strike aim's pattern.
+  A carrier is a unit, so no tap on a building loads anything.
+- **Ground units under a hovering aircraft.** The aircraft is picked at its lifted point, so a
+  ground unit beneath it stays tappable at its own point. Where the two pick discs overlap (a low
+  drone squad's lift is small), the flyer wins the tap, and the ground unit is reached by a box
+  select or a double-tap on another of its type.
+- **The skill text needs Michael's yes.** The Home, Board and Unload buttons and their aims are new
+  `touch-ui-rules` text: the command bar's buttons and the aim modes. That skill edit needs
+  Michael's explicit yes. The lead asks for it with the acceptance (P230), and P244 and P265 wait
+  for it.
+- **HOW_TO_PLAY.** Each row is added in the PR that ships it. Teach: aircraft go home to reload,
+  the Home button, Board and Unload, and the satellite.
 
 ### 13. Native kernels (ADR 0013): edits, no new port
 | Kernel | Edit | Test (row) |
 | --- | --- | --- |
-| all | `MOVE_CLASSES` 3 -> 4 (`world_access.h`, `fixed_math.cpp`) | the size checks and every lockstep (P232) |
+| all | `MOVE_CLASSES` 3 -> 4 in `bind/world_access.h:54`, `core/fixed_math.cpp:9` and `core/integrate.cpp:14`; P232 declares the X-list rows of `type_layer_bit` (TARGETING and SEPARATION phase flags) and `weapon_targets` (TARGETING) once in `world_access.h` | the size checks, every lockstep, the sanitizer cases with `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h` gaining 6 (P262: 7), and `NativeKernels.self_check` (P232) |
 | FLOW | none; `classes` 4, never an AIR key | a world with aircraft asks for no AIR key (P232) |
 | INTEGRATE | none (the plane is open) | an aircraft straight over rock and a footprint (P240) |
-| TARGETING | `weapon_targets` and `type_layer_bit` join the checked list; the layer test in acquisition and the ATTACK lock | mixed layers, rockets on aircraft, rifles on drone squads, an unhittable lock (P238) |
-| SEPARATION | the same-layer test; `type_layer_bit` joins its list | stacked aircraft over tanks, drone squads over infantry (P240) |
+| TARGETING | reads `weapon_targets` and `type_layer_bit` (declared in P232); the layer test in acquisition and the ATTACK lock | mixed layers, rockets on aircraft, rifles on drone squads, an unhittable lock (P238) |
+| SEPARATION | the same-layer test, reading `type_layer_bit` (declared in P232) | stacked aircraft over tanks, drone squads over infantry (P240) |
 | FOG | none | a reveal while discs move (P233) |
 
 Carriers need no kernel edit, because boarded squads are not rows. If P262's check fails, there is
@@ -369,6 +437,10 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
 (P253).
 
 ### 14. AI (ADR 0030's managers; no new manager)
+- **What the AI reads.** P232 adds `type_layer_bit` and `weapon_targets` to `PlayerView` (rules,
+  which no fog hides) and to `MatchSnapshot`'s field lists (`game/core/MatchSnapshot.gd`, for the
+  view and input). P250 makes the counter choices layer-aware: today `AiProduction.gd:302` and
+  `AiArmy.gd:701` pick counters by `type_vs_armour` alone, and would field tanks against bombers.
 - **Fairness.** Every target comes from `seen_rows` or ghosts. Every act is a Command a human could
   send. Values live in `OpponentDef` and `AiDifficultyDef`. Easy builds no space centre, no
   engineering centre and no transport.
@@ -461,7 +533,7 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
 
 ## Consequences
 - **Gains:**
-  - Michael's seven items with three new Commands shared with the ground design. Replays,
+  - Michael's seven items, with three new Commands that the ground design shares. Replays,
     AI-vs-AI and multiplayer stay possible.
   - The reveal is one GDScript stamp that every reader, kernel included, gets for free.
   - Carrying needs no kernel change, because boarded squads leave the table.
@@ -472,8 +544,8 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   - Three kernel edits with lockstep cases.
   - `TABS` 5.
   - A second atlas page or a smaller damage bake.
-  - About 38 rows, about 7,500 production lines plus about 175-250 C++, and 16 generated models
-    (the plan's size estimate).
+  - About 38 rows, about 6,900 production lines (about 5,190 for 1.1 and 1,670 for 1.2) plus
+    about 175-250 C++, and 16 generated models (the plan's size estimate).
   - 20 unit types for ADR 0031's check 4 instead of 12 (16 after 1.1, 20 after 1.2: per faction
     two aircraft, then a transport and a drone squad), and longer balance runs.
 - **Risks:**

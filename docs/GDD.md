@@ -167,11 +167,10 @@ Everything below is a starting value for the balance runs. The real numbers will
   Battery, bombers) hits only the ground.
 - **The airfield.** Each one serves 4 aircraft on its pads, which is the cap on aircraft. A bomber
   carries 2 bombs, flies home by itself when it is empty, reloads on its pad, and waits there. An
-  aircraft on its pad is repaired for credits. Tap your airfield with aircraft selected to send
-  them home.
+  aircraft on its pad is repaired for credits. The "Home" button sends selected aircraft home.
 - **The transport** carries squads:
-  - Select squads and tap your transport, or select the transport and tap a squad; the transport
-    flies to them and they climb in.
+  - Select squads, tap "Board" and then your transport; the transport flies to them and they
+    climb in.
   - "Unload" and a tap on the ground drop them there.
   - If the transport is shot down, the squads aboard are lost.
 - **Drone squads** are infantry carried by drones at low height. They are built at the barracks
@@ -216,8 +215,8 @@ fit a build card on one line, and each is checked against other games and real m
 | Engineering centre | Draft Shop / Test Bench | Lens Works / Kiln Lab |
 | Space centre | Skyrig / Launch Rig | Zenith / Lift Spire |
 | Satellite | Survey Eye / Plumb Star | Sunward / Noonlight |
-| Upgrade: bombs | Heavy Charges | Focused Charges |
-| Upgrade: hull | Plated Hull | Ceramic Hull |
+| Upgrade: bombs | Heavy Bombs / Deep Charge | Focus Bombs / Lens Charge |
+| Upgrade: hull | Plated Hull / Iron Skin | Glaze Hull / Tile Shell |
 
 **Looks, in each faction's own style**
 - **Derrick League:** riveted olive steel, gas bottles and flare-stack exhausts.
