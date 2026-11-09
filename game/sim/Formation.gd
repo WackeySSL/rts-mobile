@@ -159,8 +159,7 @@ static func _open_centre(
 						or (
 							d2 == best_d2
 							and (
-								along < best_along
-								or (along == best_along and across < best_across)
+								along < best_along or (along == best_along and across < best_across)
 							)
 						)
 					):
@@ -275,8 +274,8 @@ static func _slots(
 
 
 ## The position in `unit_indices` of the unassigned unit nearest to `slot` (squared distance),
-## ties by `_prefer` (along, across, lower id). Independent of the order of `unit_indices`. The columns are the World's
-## pos_x, pos_y and unit_id, aliased by the caller.
+## ties by `_prefer` (along, across, lower id). Independent of the order of `unit_indices`. The
+## columns are the World's pos_x, pos_y and unit_id, aliased by the caller.
 static func _nearest_free(
 	pos_x: PackedInt32Array,
 	pos_y: PackedInt32Array,

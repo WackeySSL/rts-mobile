@@ -70,6 +70,28 @@ func test_the_cell_is_the_one_of_the_fogs_own_sides_and_not_of_the_maps() -> voi
 	assert_array(_duel_targets(_wide.bind(true), "swapped")).is_equal([0, 0])
 
 
+func test_an_enemy_on_a_far_half_border_is_seen_by_the_cell_before_it_in_both_versions() -> void:
+	# ADR 0033: a point on a tile border past the middle of the map is in the tile before it, for
+	# the new lock, the held target and the scan candidate alike, in the twin and in the kernel
+	# (`Pass::seen`). The enemy at x = 20000 (the columns 19 | 20) or y = 20000 (the lines 19 | 20)
+	# of the 30 x 30 map, player 1's block dark but for the cell before the border (the enemy is
+	# seen) or the one after it (it is not).
+	var cases: Array[Array] = [
+		[Vector2i(20000, 10500), Vector2i(17500, 10500), 10 * SQUARE + 19, 10 * SQUARE + 20],
+		[Vector2i(10500, 20000), Vector2i(10500, 17500), 19 * SQUARE + 10, 20 * SQUARE + 10],
+	]
+	for item: Array in cases:
+		for seen_cell: int in [item[2], item[3]]:
+			var before: bool = seen_cell == item[2]
+			for mode: String in ["scan", "held", "lock"]:
+				var label: String = "%s, %s, cell %d" % [item[0], mode, seen_cell]
+				var build: Callable = _border.bind(item[1], item[0], seen_cell, mode)
+				var found: Array = _border_run(build, label)
+				assert_int(found[0]).override_failure_message(label).is_equal(2 if before else 0)
+				if mode == "held":
+					assert_bool(found[1] == 0).override_failure_message(label).is_equal(before)
+
+
 ## One TARGETING phase of the pair that `build` makes: the twin's World and the kernel's, compared
 ## in full, and the targets of the two guns of the twin's World (the kernel's are asserted equal).
 ## `label` heads a failure.
@@ -126,4 +148,46 @@ func _wide(swapped: bool) -> World:
 	if swapped:
 		world.fog.cols = 20
 		world.fog.rows = 40
+	return world
+
+
+## The twin's target and candidate count of the subject (the kernel's are asserted equal), after one
+## TARGETING phase of the pair that `build` makes. `label` heads a failure.
+func _border_run(build: Callable, label: String) -> Array:
+	var problems: Array[String] = []
+	var worlds: Array[World] = Rig.pair(build, Rig.ALL, problems)
+	assert_array(problems).override_failure_message(label).is_empty()
+	for world: World in worlds:
+		world.stats.fill(0)
+		world.target_grid.rebuild(world.pos_x, world.pos_y, world.unit_count())
+		Targeting.run(world)
+	assert_str(StateDiff.first(worlds[0], worlds[1])).override_failure_message(label).is_empty()
+	assert_int(worlds[1].target[0]).override_failure_message(label).is_equal(worlds[0].target[0])
+	var candidates: int = worlds[0].stats[World.Stat.TARGET_CANDIDATES]
+	# A kept target is no scan, so no candidate is looked at: the count tells a kept target from one
+	# that was dropped and found again by the scan.
+	return [worlds[0].target[0], candidates]
+
+
+## Player 1's gun at `subject` and player 2's at `enemy` on the 30 x 30 map, the fog stamped, then
+## dark in player 1's block but for `seen_cell`; `mode` is how the subject holds the enemy: "scan"
+## (an idle gun), "held" (the enemy is its target already) or "lock" (an ATTACK on it).
+func _border(subject: Vector2i, enemy: Vector2i, seen_cell: int, mode: String) -> World:
+	var gun: UnitDef = TargetingRig.unit(&"gun", 3000, 5000, 4000, 0, [100, 100, 100, 100])
+	var units: Array[UnitDef] = [gun]
+	var world: World = TargetingRig.world_of(units, SQUARE, SQUARE, false)
+	world.retarget_period_ticks = 1
+	world.fog_period_ticks = 1
+	world.add_unit(1, GUN, subject.x, subject.y)
+	world.add_unit(2, GUN, enemy.x, enemy.y)
+	Worlds.stamp_fog(world)
+	world.fog.visible.fill(0)
+	world.fog.visible[seen_cell] = 1
+	# The enemy moves, so it scans nothing and the candidate count is the subject's alone.
+	world.order[1] = World.Order.MOVE
+	if mode == "held":
+		world.target[0] = 2
+	elif mode == "lock":
+		world.order[0] = World.Order.ATTACK
+		world.order_target[0] = 2
 	return world

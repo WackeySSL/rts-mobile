@@ -53,24 +53,6 @@ static func step_toward(x: int, y: int, tx: int, ty: int, speed: int) -> Vector2
 	return Vector2i(x + dx * speed / distance, y + dy * speed / distance)
 
 
-## Whether every tile that the segment (x0, y0)-(x1, y1) touches is passable for `move_class`
-## (ADR 0008 section 2). Points are milli-tiles and are clamped into the grid. A point is in the
-## tile that World.cell_of gives it (ADR 0008 section 1), so a tile is a half-open square: its left
-## and top edge belong to it, its right and bottom edge to the next tile, and the far edge of the
-## map to the last tile. The segment touches the tiles of its points, and where it crosses a tile
-## corner exactly (the corner is between its ends, and the segment is along no axis) it also touches
-## the two tiles beside the corner, which keeps the flow field's rule against cutting a corner. A
-## segment along an edge touches the tiles on one side only: a unit that stands on that edge is in
-## that tile, so a goal on an open tile is in reach of a clear line from every point of its tile.
-## It reads the grid like World.is_passable: true while no map is loaded, false for a class that
-## does not exist. Callers use it at event cadence (a line check, ADR 0007 section 1).
-##
-## Column by column: in the strip of tile column c the segment spans the y range between its
-## values at the strip's left and right edge. With dx = x1 - x0 > 0 that y is
-## (y0 * dx + dy * (x - x0)) / dx, so the numerators over dx * 1000 give tiles, and the rows
-## touched run from floor(low) to floor(high). The right edge of a strip is in the next column, so
-## when y rises there the strip ends one numerator short of it; a corner there adds the rows on
-## both sides of it, in both strips. A vertical segment is one column of its y range.
 ## A coordinate on a tile border belongs to the tile on the map centre's side: one milli-tile is
 ## taken off a border coordinate past the middle of a map `side` milli-tiles wide. The tile is then
 ## the usual floor, and a half turn of the map maps the tile of a point to the tile of its image
@@ -82,6 +64,32 @@ static func centre_side(coord: int, side: int) -> int:
 	return coord
 
 
+## Whether every tile that the segment (x0, y0)-(x1, y1) touches is passable for `move_class`
+## (ADR 0008 section 2). Points are milli-tiles and are clamped into the grid. A point is in the
+## tile that World.cell_of gives it (ADR 0008 section 1): up to the middle of the map a tile is a
+## half-open square whose left and top edge belong to it, and past the middle a point on a border
+## is in the tile before it (see `centre_side`). The far edge of the map belongs to the last tile.
+## The segment touches the tiles of its points, and where it crosses a tile
+## corner exactly (the corner is between its ends, and the segment is along no axis) it also touches
+## the two tiles beside the corner, which keeps the flow field's rule against cutting a corner. A
+## segment along an edge touches the tiles on one side only: a unit that stands on that edge is in
+## that tile, so a goal on an open tile is in reach of a clear line from every point of its tile.
+## It reads the grid like World.is_passable: true while no map is loaded, false for a class that
+## does not exist. Callers use it at event cadence (a line check, ADR 0007 section 1).
+##
+## The limit of the border rule: `centre_side` moves an end point by one milli, and so tilts the
+## whole segment, which is then the one between the moved ends. The tile of each end is exact, but
+## a corner in between is not always: on a 10 x 10 map the segment (2000, 1000)-(8000, 4000) passes
+## the corner (4000, 2000) exactly, and with its end moved to (7999, 4000) it passes just after it,
+## so the tile (4, 1) beside the corner is no longer touched. A canonical frame (the segment turned
+## so that both of its orientations are the same segment) would be exact, and is not done.
+##
+## Column by column: in the strip of tile column c the segment spans the y range between its
+## values at the strip's left and right edge. With dx = x1 - x0 > 0 that y is
+## (y0 * dx + dy * (x - x0)) / dx, so the numerators over dx * 1000 give tiles, and the rows
+## touched run from floor(low) to floor(high). The right edge of a strip is in the next column, so
+## when y rises there the strip ends one numerator short of it; a corner there adds the rows on
+## both sides of it, in both strips. A vertical segment is one column of its y range.
 @warning_ignore("integer_division")
 static func line_clear(world: World, x0: int, y0: int, x1: int, y1: int, move_class: int) -> bool:
 	var cols: int = world.map_cols

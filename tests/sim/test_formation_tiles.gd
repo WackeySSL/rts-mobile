@@ -168,7 +168,7 @@ func test_a_slot_on_a_blocked_tile_is_skipped() -> void:
 	assert_array(GridWorld.goals(world, rows)).contains_exactly_in_any_order(expected)
 
 
-## A long way keeps the tie rule right: 30 units around (10500, 10100) ordered to a 64 x 64 map's far
+## A long way keeps the tie rule right: 30 units around (10500, 10100) ordered to the far
 ## corner area (55500, 55500), whose tile and ring 1 are rock. The group's way is about
 ## (1.35e6, 1.36e6) and a ring 2 tile is 2000 away, so a product of the two is 2.7e9, past 32 bits
 ## (the review of ADR 0033: the first key held it in a Vector3i, and the tie went to the tile
