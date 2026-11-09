@@ -19,8 +19,8 @@ const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair.
 const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
 ## The computers of that arena play the frozen AI defs with early contact (plan P189b: an early
-## scout and first wave), the same files as `tests/perf/test_ai_perf.gd`, so the card times what
-## the suite times. The Skirmish routes keep the shipped defs below.
+## scout and first wave), the same files as `tests/perf/support/ai_perf_run.gd`, so the card
+## times what the suite times. The Skirmish routes keep the shipped defs below.
 const PERF_AI_FOSSIL: String = "res://data/dev/arena/ai/opponent_fossil.tres"
 const PERF_AI_RENEW: String = "res://data/dev/arena/ai/opponent_renew.tres"
 const PERF_AI_LEVEL: String = "res://data/dev/arena/ai/difficulty/normal.tres"

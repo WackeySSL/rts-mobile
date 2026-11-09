@@ -1,9 +1,9 @@
 extends GdUnitTestSuite
 ## The "Perf AI" route and its card (plan P185, ADR 0030 section 4): the dev menu button beside
 ## "Perf bases", the route into the perf arena scene on `perf_ai.tres` with a Normal `OpponentAi`
-## on each player (`first_opponent` 1, the view stays player 1's), the card's report-only AI keys
-## over fixed numbers (no timing is measured here), the card line only on this arena, and no golden
-## comparison for it. The other two cards are unchanged: `test_perf_card_pin.gd` pins their text.
+## on each player (the frozen AI defs of P189b; `first_opponent` 1, the view stays player 1's), the
+## card's report-only AI keys over fixed numbers (no timing is measured here), the card line only on
+## this arena, and no golden comparison for it. The other two cards are unchanged: `test_perf_card_pin.gd` pins their text.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
 const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
