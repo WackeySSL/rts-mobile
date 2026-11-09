@@ -589,10 +589,13 @@ func test_rows_on_tile_borders_are_stamped_in_the_centre_side_tile_by_both_versi
 		script[tick] = entries
 	assert_str(rig.run(26, Orders.scripted.bind(script))).is_empty()
 	_assert_whole(rig, "borders")
-	# A row on a border past the middle is in the tile before it: (12000, 9000) is the centre of the
-	# map, so the tile after it, and (20000, 15000) the one before (19, 14).
-	var world: World = Worlds.field(24, 17, 2, [3000], [[1, 0, 20000, 15000], [1, 0, 12000, 9000]])
-	assert_array(world.fog_cell).is_equal([14 * 24 + 19, 9 * 24 + 12])
+	# A row on a border past the middle is in the tile before it: the middle of the map is
+	# (12000, 8500), so (20000, 15000) is in (19, 14) and (12000, 9000) in (12, 8), while
+	# (12000, 8000), before the middle, stays in the tile after the border, (12, 8).
+	var world: World = Worlds.field(
+		24, 17, 2, [3000], [[1, 0, 20000, 15000], [1, 0, 12000, 9000], [1, 0, 12000, 8000]]
+	)
+	assert_array(world.fog_cell).is_equal([14 * 24 + 19, 8 * 24 + 12, 8 * 24 + 12])
 
 
 ## The cells the phase covers are added to what the tick has counted so far, also when the
