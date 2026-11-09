@@ -20,8 +20,9 @@ const TICKS: int = BaseArena.RUN_TICKS
 ## The armies close for 65 ticks before the first death; 60 keeps a margin. The gate's own heavy
 ## window (below) is the number that must hold.
 const FULL_TICKS: int = 60
-## The tick by which every harvester has unloaded once (the slowest one does at tick 253).
-const UNLOAD_BY: int = 300
+## The tick by which every harvester has unloaded once (the slowest one does at tick 333; it was 253
+## and the bound 300 before ADR 0033 turned the docks to face the map centre).
+const UNLOAD_BY: int = 400
 
 var _first: BaseArena.Run
 var _second: BaseArena.Run
@@ -94,6 +95,8 @@ func test_four_harvesters_a_side_unload() -> void:
 	for id: int in _first.unloaded:
 		assert_int(world.owner[world.index_of(id)]).is_greater(0)
 		assert_int(_first.unloaded[id]).override_failure_message(str(id)).is_less(UNLOAD_BY)
+	# The slowest is at tick 333; a drift towards the bound must show.
+	assert_int(_first.unloaded.values().max()).is_less(360)
 	for player: int in [1, 2]:
 		assert_int(world.stat_harvested[player]).is_greater(0)
 
