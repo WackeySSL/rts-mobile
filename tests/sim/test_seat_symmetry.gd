@@ -33,6 +33,24 @@ func test_the_fossil_mirror_spawns_are_half_turns_of_each_other() -> void:
 		assert_bool(second.has(centre)).is_true()
 
 
+## What each player has explored after the first fog turns is a half turn of the other's (209 tiles
+## each). It stops being one within 30 ticks of an AI match: the rifles' formation slots and the
+## one-tick fog turn put 12 tiles apart (measured in a no-combat match), so a placement slot on the
+## edge of the explored area, like (3, 3) for player 1, is open to one player and not the other.
+func test_the_explored_tiles_start_as_half_turns() -> void:
+	var world: World = SmokeRun.world_of(1, SmokeRun.FOSSIL_MIRROR)
+	var none: Array[Command] = []
+	for _tick: int in 12:
+		Sim.step(world, none)
+	var cells: int = world.fog.cells
+	var seen: PackedByteArray = world.fog.explored
+	var first: int = 0
+	for cell: int in cells:
+		first += 1 if seen[cell] != 0 else 0
+		assert_bool(seen[cell] != 0).is_equal(seen[cells + cells - 1 - cell] != 0)
+	assert_int(first).is_equal(209)
+
+
 ## Twelve of one type each, mirrored, attack-moving at each other on open ground: the survivors
 ## differ by at most 2 whichever player's rows come first. (Measured: rifle 4-4, heavy tank 6-6 and
 ## 6-5; the rocket squad's duel flips with the row order, 3-6 against 6-3, so it is no case here.)
