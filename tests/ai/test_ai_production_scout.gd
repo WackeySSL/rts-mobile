@@ -8,8 +8,9 @@ const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 
 ## The first tick of a Normal match (seed 1, fossil against renew) at which player 1's scout moves:
 ## the economy's reserve takes most of the income for the build order, so production queues its
-## first infantry at 4,035 and the scout at 4,320.
-const SCOUT_MOVE_TICK: int = 4555
+## first infantry at 4,035 and the scout at 4,320. It moved from 4,555 to 4,540 when the refinery
+## went to the slot nearest the ore (P195b): the tankers' trips are a little shorter.
+const SCOUT_MOVE_TICK: int = 4540
 const MATCH_TICKS: int = 5400
 
 # --- The scout ---------------------------------------------------------------------------------

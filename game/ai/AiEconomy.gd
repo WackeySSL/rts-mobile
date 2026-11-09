@@ -37,6 +37,11 @@ var _refineries_max: int = 0
 var _factories_max: int = 0
 var _defences_max: int = 0
 var _spiral: PackedInt32Array = PackedInt32Array()
+## The base's layout, found by the first PLACE and kept (`_orient`): the quarter turns (0 to 3,
+## clockwise on the screen) of the spiral, so that its first slots lie behind the base as seen from
+## the enemy (-1: not yet), and the nearest ore cell to the Headquarters as a tile (-1: no ore).
+var _turns: int = -1
+var _ore: Vector2i = Vector2i(-1, -1)
 
 ## The types as indexes of the view's roster (MISSING: the roster lacks it), found on the first run
 ## (the rules never change in a match): the steps that a tab builds, the tanker, the defence and, of
@@ -196,27 +201,30 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	if _anchor.x < 0 or slots == 0 or not memory.can_send():
 		return
 	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
+	_orient(view, memory)
 	var order: PackedInt32Array = PackedInt32Array()
 	var near: bool = head == _defence_type and memory.has_staging()
-	var aim: Vector2i = (
-		Vector2i(memory.staging_x, memory.staging_y)
-		if near
-		else Vector2i(AiMemory.NONE, AiMemory.NONE)
-	)
+	var ore: bool = view.is_refinery(head) and _ore.x >= 0
+	var aim: Vector2i = Vector2i(AiMemory.NONE, AiMemory.NONE)
+	if near:
+		aim = Vector2i(memory.staging_x, memory.staging_y)
+	elif ore:
+		aim = _ore
 	if memory.spiral_for_x != aim.x or memory.spiral_for_y != aim.y:
 		# The resume index belongs to one order of the slots; a new order starts at its first slot.
 		memory.spiral_for_x = aim.x
 		memory.spiral_for_y = aim.y
 		memory.spiral_resume = 0
-	if near:
-		order = _nearest_first(memory, slots)
+	if near or ore:
+		order = _nearest_first(view, head, aim, slots)
 	var start: int = posmod(memory.spiral_resume, slots)
 	var tries: int = mini(_tries_max, slots)
 	for step: int in tries:
 		var at: int = (start + step) % slots
 		var slot: int = at if order.is_empty() else order[at]
-		var col: int = _anchor.x + _spiral[slot * 2] * _stride
-		var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride
+		var tile: Vector2i = _slot_tile(view, head, slot)
+		var col: int = tile.x
+		var line: int = tile.y
 		placement_tries += 1
 		if view.placement(head, col, line) == Placement.Reason.OK:
 			memory.spent()
@@ -234,13 +242,81 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	memory.spiral_resume = (start + tries) % slots
 
 
-## The slot indexes by distance of their top-left tile from the staging point, nearest first (the
-## lower index first among equals).
-func _nearest_first(memory: AiMemory, slots: int) -> PackedInt32Array:
+## The top-left tile of the footprint of `head` on spiral slot `slot`: the base's origin plus the
+## cell times the stride, turned by `_turns` quarter turns about the Headquarters' centre. The
+## footprint's centre is what turns (in half tiles), the footprint itself keeps its shape; a half
+## turn of two footprints is then exactly their mirror image about that centre.
+func _slot_tile(view: PlayerView, head: int, slot: int) -> Vector2i:
+	var cell: Vector2i = Vector2i(_spiral[slot * 2], _spiral[slot * 2 + 1]) * _stride
+	if _turns <= 0:
+		return _anchor + cell
+	var wide: int = view.type_foot_w[head]
+	var tall: int = view.type_foot_h[head]
+	var across: int = view.type_foot_w[_hq_type] if _hq_type != _NONE else wide
+	var down: int = view.type_foot_h[_hq_type] if _hq_type != _NONE else tall
+	var off: Vector2i = Vector2i(cell.x * 2 + wide - across, cell.y * 2 + tall - down)
+	off = _turned(off, _turns)
+	return Vector2i(
+		(_anchor.x * 2 + across + off.x - wide) >> 1, (_anchor.y * 2 + down + off.y - tall) >> 1
+	)
+
+
+## `off` turned by `turns` quarter turns clockwise on the screen (y grows downwards).
+static func _turned(off: Vector2i, turns: int) -> Vector2i:
+	match turns % 4:
+		1:
+			return Vector2i(-off.y, off.x)
+		2:
+			return -off
+		3:
+			return Vector2i(off.y, -off.x)
+	return off
+
+
+## Once, at the first PLACE: the quarter turns that put the first slots behind the base (the
+## spiral starts at its top-left corner, which is behind a base whose enemy lies south-east; a tie
+## keeps that corner) and the ore cell nearest the Headquarters, which is static terrain. The enemy
+## is where `AiMemory` estimates its base, else at the Headquarters' point mirror (as `AiIntel`
+## starts its estimate).
+func _orient(view: PlayerView, memory: AiMemory) -> void:
+	if _turns >= 0:
+		return
+	var wide: int = view.type_foot_w[_hq_type] if _hq_type != _NONE else 1
+	var tall: int = view.type_foot_h[_hq_type] if _hq_type != _NONE else 1
+	var centre: Vector2i = Vector2i(_anchor.x * 2 + wide, _anchor.y * 2 + tall)
+	var enemy: Vector2i = Vector2i(view.map_cols * 2 - centre.x, view.map_rows * 2 - centre.y)
+	if memory.has_base_estimate():
+		enemy = Vector2i(memory.base_x * 2 + 1, memory.base_y * 2 + 1)
+	var west: bool = enemy.x < centre.x
+	var north: bool = enemy.y < centre.y
+	_turns = (2 if north else 1) if west else (3 if north else 0)
+	# The nearest ore cell, a tie going to the one that comes first (row, then column) in the base's
+	# own frame, turned back: two mirrored bases then pick mirrored cells.
+	var least: int = 1 << 40
+	var first: Vector2i = Vector2i.ZERO
+	for cell: int in view.ore_cells:
+		var off: Vector2i = Vector2i(
+			cell % view.map_cols * 2 + 1 - centre.x, cell / view.map_cols * 2 + 1 - centre.y
+		)
+		var gap: int = off.x * off.x + off.y * off.y
+		var canon: Vector2i = _turned(off, 4 - _turns)
+		if (
+			gap < least
+			or (gap == least and (canon.y < first.y or (canon.y == first.y and canon.x < first.x)))
+		):
+			least = gap
+			first = canon
+			_ore = Vector2i(cell % view.map_cols, cell / view.map_cols)
+
+
+## The slot indexes by distance of the footprint of `head` (its centre) from the tile `aim`, nearest
+## first (the lower index first among equals).
+func _nearest_first(view: PlayerView, head: int, aim: Vector2i, slots: int) -> PackedInt32Array:
 	var keys: PackedInt64Array = PackedInt64Array()
 	for slot: int in slots:
-		var dx: int = _anchor.x + _spiral[slot * 2] * _stride - memory.staging_x
-		var dy: int = _anchor.y + _spiral[slot * 2 + 1] * _stride - memory.staging_y
+		var tile: Vector2i = _slot_tile(view, head, slot)
+		var dx: int = tile.x * 2 + view.type_foot_w[head] - (aim.x * 2 + 1)
+		var dy: int = tile.y * 2 + view.type_foot_h[head] - (aim.y * 2 + 1)
 		keys.append((dx * dx + dy * dy) * slots + slot)
 	keys.sort()
 	var order: PackedInt32Array = PackedInt32Array()
