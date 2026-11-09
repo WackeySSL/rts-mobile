@@ -20,7 +20,7 @@ const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
 ## The names in each list, 107 in the table (a port adds names here, so a dropped or added name
-## shows in a diff). INTEGRATE's 49 are the names kernel_integrate.cpp gets or sets (P37n) and
+## shows in a diff). INTEGRATE's 50 are the names kernel_integrate.cpp gets or sets (P37n) and
 ## SEPARATION's 20 those of kernel_separation.cpp (P39n; it was 28, with the eight that Separation
 ## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
 ## type_move_class). TARGETING's 35 are the names kernel_targeting.cpp gets or sets (P41n; it was
@@ -30,7 +30,7 @@ const SLOTS: int = 8
 ## still keeps the row's goal, so the kernel reads type_speed again. FOG's 25 are the names
 ## kernel_fog.cpp gets or sets (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose
 ## its bit, type_sight stays because the pad mask is the size of that table).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 41, 5: 20, 6: 49, 10: 25}
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 41, 5: 20, 6: 50, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -119,7 +119,7 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.type_move_class": [3, 6],
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],
-	"SLOT.goal_cell": [1],
+	"SLOT.goal_cell": [1, 6],
 	"SLOT.cell_count": [1, 6],
 	"FOG.cols": [3, 10],
 	"FOG.rows": [3, 10],
