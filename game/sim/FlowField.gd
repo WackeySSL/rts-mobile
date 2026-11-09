@@ -18,7 +18,8 @@ const UNREACHED: int = 0x3FFFFFFF
 const BUCKETS: int = 512
 const BUCKET_MASK: int = BUCKETS - 1
 ## The 8 neighbours in ascending padded-index order: NW, N, NE, W, E, SW, S, SE. A tie in
-## best_neighbour goes to the first of them (the lower cell index).
+## best_neighbour goes to the step most aligned with the goal, then the larger cross product, and
+## only when the goal is the cell itself to the first of them (see best_neighbour).
 const DX: Array[int] = [-1, 0, 1, -1, 1, -1, 0, 1]
 const DY: Array[int] = [-1, -1, -1, 0, 0, 1, 1, 1]
 ## A step costs the terrain cost of the cell it labels (the cell a unit leaves) times
@@ -191,26 +192,49 @@ func advance(budget_cells: int) -> int:
 
 ## The neighbour with the lowest served cost strictly below this cell's, a diagonal only past
 ## two reached orthogonal cells (the corner rule, read from `cost`). -1 at the goal and at an
-## unreached or outside cell, so also while `cost` has not completed.
+## unreached or outside cell, so also while `cost` has not completed. Equal-cost neighbours go to
+## the step with the larger dot product (dx, dy) . (goal - cell), then the larger cross product
+## dx * goal_dy - dy * goal_dx: both are unchanged by any turn of the map, so a field and its
+## half turn (or quarter turn) pick mirrored steps (ADR 0033). With the goal on the cell, which
+## has no lower neighbour, a tie would fall to the first in DX/DY order. The maths runs on ties.
 @warning_ignore("integer_division")
 func best_neighbour(cell: int) -> int:
 	if cell < 0 or cell >= cell_count:
 		return -1
 	var served: PackedInt32Array = cost
 	var here: int = (cell / grid_cols + 1) * stride + cell % grid_cols + 1
-	var best: int = served[here]
-	if best == UNREACHED:
+	var below: int = served[here]
+	if below == UNREACHED:
 		return -1
+	var best: int = below
 	var pick: int = -1
+	var pick_k: int = -1
+	var to_x: int = 0
+	var to_y: int = 0
+	var aimed: bool = false
 	for k: int in 8:
 		var other: int = here + DY[k] * stride + DX[k]
-		if served[other] >= best:
+		var through: int = served[other]
+		if through >= below or through > best:
 			continue
 		if STEP_PERCENT[k] != STEP_BASE:
 			if served[here + DX[k]] == UNREACHED or served[here + DY[k] * stride] == UNREACHED:
 				continue
-		best = served[other]
+		if through == best and pick != -1:
+			if not aimed:
+				aimed = true
+				if goal_cell >= 0:
+					to_x = goal_cell % grid_cols - cell % grid_cols
+					to_y = goal_cell / grid_cols - cell / grid_cols
+			var dot: int = DX[k] * to_x + DY[k] * to_y
+			var held: int = DX[pick_k] * to_x + DY[pick_k] * to_y
+			if dot < held:
+				continue
+			if dot == held and DX[k] * to_y - DY[k] * to_x <= DX[pick_k] * to_y - DY[pick_k] * to_x:
+				continue
+		best = through
 		pick = other
+		pick_k = k
 	if pick == -1:
 		return -1
 	return (pick / stride - 1) * grid_cols + pick % stride - 1
