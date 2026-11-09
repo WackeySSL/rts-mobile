@@ -100,12 +100,15 @@ Run run(const Call &call, int64_t budget, Turns &turns);
 struct Served {
 	ArrayView<const int32_t> cost;
 	int64_t grid_cols = 0, cell_count = 0, stride = 0;
+	int64_t goal_cell = -1; // the field's own goal, the aim of the tie-break in best_neighbour
 	bool complete = false;
 };
 
-// FlowField.best_neighbour: the neighbour with the lowest served cost strictly below this cell's, the first of
-// NW, N, NE, W, E, SW, S, SE on a tie, a diagonal only past two reached orthogonal cells; -1 at the goal and at an
-// unreached or outside cell. Cells are plain cells, as in the twin.
+// FlowField.best_neighbour: the neighbour with the lowest served cost strictly below this cell's; among equals
+// the larger dot product of the step (DX, DY) with (goal - cell), then the larger cross product DX * goal_dy - DY *
+// goal_dx (both turn-invariant, so a half-turned field picks the half-turned step), else, with the goal on the cell
+// or goal_cell unset, the first of NW, N, NE, W, E, SW, S, SE. A diagonal only past two reached orthogonal cells; -1 at
+// the goal and at an unreached or outside cell. Cells are plain cells, as in the twin.
 int64_t best_neighbour(const Served &field, int64_t cell);
 
 // FlowCache's slot columns and counters as acquire() reads and writes them (the `requests` counter is stored back by

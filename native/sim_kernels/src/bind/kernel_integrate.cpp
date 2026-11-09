@@ -46,6 +46,7 @@ public:
 		found.grid_cols = access_.int_in(object, ID_SLOT_grid_cols);
 		found.cell_count = access_.int_in(object, ID_SLOT_cell_count);
 		found.stride = access_.int_in(object, ID_SLOT_stride);
+		found.goal_cell = access_.int_in(object, ID_SLOT_goal_cell);
 		found.complete = access_.bool_in(object, ID_SLOT_complete);
 		return found;
 	}
