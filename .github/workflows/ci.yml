@@ -221,9 +221,9 @@ jobs:
   # P51b (ADR 0013 section 10): the determinism suites on arm64 Linux, the architecture of the phone. The official
   # Godot 4.7.2 Linux arm64 editor (install-godot.sh picks it on an arm64 host) loads a library that build-native.sh
   # builds for the host with clang at the release optimisation (use_llvm=yes, optimize=speed). One run-tests.sh call
-  # plays the tests/sim/native suites, the two determinism suites and the golden hashes under both implementations
+  # plays the tests/sim/native suites, the two determinism suites, the golden hashes and the AI determinism suite (P188) under both implementations
   # (none of them reads a clock, so this job times nothing and prints no PERF line), and the check requires the
-  # three suites that live outside tests/sim/native. Not required. Whether the repository may use the
+  # four suites that live outside tests/sim/native. Not required. Whether the repository may use the
   # ubuntu-24.04-arm runner is shown by the run of this job.
   determinism-arm64:
     runs-on: ubuntu-24.04-arm
@@ -277,7 +277,7 @@ jobs:
           bash scripts/run-tests.sh -a res://tests/sim/native -a res://tests/sim/test_determinism.gd -a res://tests/sim/test_world_hash.gd -a res://tests/perf/test_golden_hashes.gd -a res://tests/ai/test_ai_determinism.gd
 
       - name: Check the native suites ran (check-native-tests.sh)
-        run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes --require test_determinism --require test_world_hash
+        run: bash scripts/ci/check-native-tests.sh --require test_golden_hashes --require test_determinism --require test_world_hash --require test_ai_determinism
 
   # ADR 0013 section 10 (P57): the sanitizer job runs on a pull request that touches native/**, game/sim/**,
   # data/** or tests/sim/native/**, because a World column, a rule or a twin change can break a kernel without
