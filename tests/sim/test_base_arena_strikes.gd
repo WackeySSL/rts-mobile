@@ -79,6 +79,13 @@ func test_the_rupture_lands_on_its_tick_and_hits_every_row_within_its_radius() -
 		var hit_buildings: int = 0
 		var near_misses: int = 0
 		var problems: Array[String] = []
+		# Rows that a shot or a shell of the ordinary fight reached in the same step are not the
+		# strike's to account for (with the half-turn ties two armies are in contact on the landing
+		# tick): their loss is the fight's, so a row outside the radius that was shot is skipped.
+		var fought: Dictionary[int, bool] = {}
+		for at: int in range(0, after.events.size(), World.EVENT_STRIDE):
+			if after.events[at] == World.Event.SHOT or after.events[at] == World.Event.IMPACT:
+				fought[after.events[at + 4]] = true
 		for row: int in before.ids.size():
 			var id: int = before.ids[row]
 			var dx: int = before.pos_x[row] - _point[1].x
@@ -89,6 +96,8 @@ func test_the_rupture_lands_on_its_tick_and_hits_every_row_within_its_radius() -
 			var loss: int = 0
 			if inside and percent > 0:
 				loss = maxi(1, world.weapon_damage[weapon] * percent / Combat.PERCENT)
+			if not inside and fought.has(id):
+				continue
 			var left: int = before.hp[row] - loss
 			var now: int = after.row_of(id)
 			if left <= 0 and now >= 0:

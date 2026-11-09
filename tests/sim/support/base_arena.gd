@@ -36,6 +36,8 @@ class Snap:
 	var power_made: PackedInt32Array = PackedInt32Array()
 	var power_used: PackedInt32Array = PackedInt32Array()
 	var dropped: int = 0
+	## The events of the step that reached this tick (SHOT and IMPACT name their targets).
+	var events: PackedInt32Array = PackedInt32Array()
 
 	## The row of unit `id`, -1 when it has none.
 	func row_of(id: int) -> int:
@@ -111,6 +113,7 @@ static func snap(world: World) -> Snap:
 	copy.power_made = world.power_made.duplicate()
 	copy.power_used = world.power_used.duplicate()
 	copy.dropped = world.dropped_commands
+	copy.events = world.events.duplicate()
 	return copy
 
 
