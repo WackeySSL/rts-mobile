@@ -243,6 +243,10 @@ jobs:
             if [ "$set" = "gate" ]; then flags=(--gate); fi
             bash scripts/balance-summary.sh --out "build/balance/summary/$set.json" "${flags[@]}" build/balance/shards/"$set"-*.json
             cat "build/balance/summary/$set.md" >> "$GITHUB_STEP_SUMMARY"
+            # P190b: the job log carries the same markdown (the REST API cannot read a job summary).
+            echo "::group::$set"
+            cat "build/balance/summary/$set.md"
+            echo "::endgroup::"
           done
 
       - name: Name the artifact
