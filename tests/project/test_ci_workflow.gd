@@ -54,16 +54,19 @@ const ARM64_INSTALL_RUN: Array[String] = [
 ]
 const ARM64_BUILD_STEP: String = "Build the library (arm64, clang, optimize=speed)"
 const ARM64_RUN_STEP: String = "Run the determinism suites (gdUnit4)"
-## The native suites and the three suites of the plan, in the one run-tests.sh call that the
+## The native suites and the four suites of the plan, in the one run-tests.sh call that the
 ## check reads.
 const ARM64_SUITES: Array[String] = [
 	"res://tests/sim/native",
 	"res://tests/sim/test_determinism.gd",
 	"res://tests/sim/test_world_hash.gd",
 	"res://tests/perf/test_golden_hashes.gd",
+	"res://tests/ai/test_ai_determinism.gd",
 ]
 const ARM64_CHECK_RUN: String = (
-	CHECK_RUN + " --require test_golden_hashes --require test_determinism --require test_world_hash"
+	CHECK_RUN
+	+ " --require test_golden_hashes --require test_determinism --require test_world_hash"
+	+ " --require test_ai_determinism"
 )
 const GODOT_SCRIPT: String = "res://scripts/ci/install-godot.sh"
 ## P51: the verify job's summary copies the PERF lines of the verify log.
@@ -357,8 +360,9 @@ func test_native_clang_job_builds_with_clang_at_speed_and_gates_gdunit4_on_disco
 
 ## P51b (ADR 0013 section 10): the arm64 job runs on the arm64 runner, installs the arm64 editor
 ## under a cache key that names the architecture, builds the library for its own host with clang
-## at speed, plays the native suites, the two determinism suites and the golden hashes in one
-## call, and the check requires the three suites outside tests/sim/native. None of the three
+## at speed, plays the native suites, the two determinism suites, the golden hashes and the AI
+## determinism suite in one call, and the check requires the four suites outside
+## tests/sim/native. None of the four
 ## reads a clock (the job times nothing), and install-godot.sh holds a pin for each editor build.
 func test_arm64_job_builds_a_clang_library_and_runs_the_determinism_suites() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
