@@ -202,7 +202,8 @@ func test_a_run_is_judged_by_every_bound_and_a_move_over_one_gives_one_line() ->
 
 ## The base arena (plan P93) bounds the three Phase 3 counters, each at its measured maximum over
 ## the 900 ticks of the seed-42 run plus the margin, rounded up: ore cells scanned 72 (bound 90),
-## exit cells scanned 3 (bound 4) and last-seen checks 28 (bound 35). They are a set of their own:
+## exit cells scanned 6 (bound 8; it was 3 before the exits faced the map centre, ADR 0033) and
+## last-seen checks 28 (bound 35). They are a set of their own:
 ## the perf arena's bounds do not hold them (it has no harvester, producer or last-seen building),
 ## and the base arena does not take the perf arena's.
 func test_the_base_arena_bounds_the_three_phase_3_counters_at_their_maxima_plus_a_quarter() -> void:
@@ -211,10 +212,10 @@ func test_the_base_arena_bounds_the_three_phase_3_counters_at_their_maxima_plus_
 		[World.Stat.ORE_SCANNED, World.Stat.EXIT_SCANNED, World.Stat.MEMORY_CHECKS]
 	)
 	assert_int(bounds[World.Stat.ORE_SCANNED]).is_equal(90)
-	assert_int(bounds[World.Stat.EXIT_SCANNED]).is_equal(4)
+	assert_int(bounds[World.Stat.EXIT_SCANNED]).is_equal(8)
 	assert_int(bounds[World.Stat.MEMORY_CHECKS]).is_equal(35)
 	assert_int(PerfBounds.MEASURED_ORE_SCANNED).is_equal(72)
-	assert_int(PerfBounds.MEASURED_EXIT_SCANNED).is_equal(3)
+	assert_int(PerfBounds.MEASURED_EXIT_SCANNED).is_equal(6)
 	assert_int(PerfBounds.MEASURED_MEMORY_CHECKS).is_equal(28)
 	var perf: Dictionary[int, int] = PerfBounds.cost_bounds(512, 16, 150)
 	for stat: int in bounds:
