@@ -165,7 +165,7 @@ static func run(world: World) -> void:
 			if (
 				mode == World.NavMode.DIRECT
 				and checked[row] == -1
-				and (tick + ids[row]) % period == 0
+				and (tick) % period == 0
 			):
 				mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
 			if mode == World.NavMode.FIELD:
@@ -401,7 +401,7 @@ static func integrate(world: World) -> void:
 		):
 			cell = clampi(y, 0, max_y) / tile * cols + clampi(x, 0, max_x) / tile
 			if (
-				(next_of[row] == -1 or (tick + ids[row]) % period == 0)
+				(next_of[row] == -1 or (tick) % period == 0)
 				and slots[slot_of[row]].complete
 			):
 				_refresh_next(world, slots, slot_of, next_of, row, cell, classes[type])

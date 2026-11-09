@@ -156,7 +156,7 @@ int64_t Pass::acquire() {
 			targets.set(row, 0);
 			continue;
 		}
-		if ((tick + ids.get(row)) % period != 0) {
+		if (tick % period != 0) {
 			continue;
 		}
 		const int64_t type = types.get(row);
@@ -297,7 +297,7 @@ int64_t Pass::engage() {
 			mode = order == IDLE ? NONE : DIRECT;
 			reset_row(row, mode);
 		}
-		if ((order != ATTACK_MOVE && order != ATTACK) || (tick + ids.get(row)) % period != 0) {
+		if ((order != ATTACK_MOVE && order != ATTACK) || tick % period != 0) {
 			continue;
 		}
 		if (order == ATTACK) {

@@ -85,7 +85,7 @@ static func run(world: World) -> void:
 				_go_home(world, row)  # A full load goes home before more ore.
 			elif not has_ore:
 				# A cell that ran empty (slot kept) is replaced at once; no cell waits for its turn.
-				if slot >= 0 or (tick + ids[row]) % retry == 0:
+				if slot >= 0 or (tick) % retry == 0:
 					_pick(world, row, -1)
 			elif orders[row] == World.Order.IDLE:
 				var centre: Vector2i = _centre(ore_cells[slot], cols)
@@ -96,7 +96,7 @@ static func run(world: World) -> void:
 				else:
 					_pick(world, row, slot)  # The order ended short of the cell.
 		elif mode == World.HarvestMode.MINE:
-			if (tick + ids[row]) % per_ore != 0:
+			if (tick) % per_ore != 0:
 				continue
 			if not has_ore:
 				modes[row] = World.HarvestMode.SEEK  # The cargo stays; SEEK scans next tick.
@@ -116,7 +116,7 @@ static func run(world: World) -> void:
 			)
 			if not kept:
 				# A refinery that is gone is replaced at once; with none at all it waits for its turn.
-				if home_id != 0 or (tick + ids[row]) % retry == 0:
+				if home_id != 0 or (tick) % retry == 0:
 					_choose(world, row)
 			elif orders[row] == World.Order.IDLE:
 				var dock: Vector2i = _dock(world, at)
@@ -127,7 +127,7 @@ static func run(world: World) -> void:
 				else:
 					_order(world, row, dock)
 		elif mode == World.HarvestMode.UNLOAD:
-			if (tick + ids[row]) % per_unload != 0:
+			if (tick) % per_unload != 0:
 				continue
 			var paid: int = mini(value, cargos[row])
 			cargos[row] -= paid
@@ -141,7 +141,7 @@ static func run(world: World) -> void:
 			mode == World.HarvestMode.IDLE
 			and resume > 0
 			and orders[row] == World.Order.IDLE
-			and (tick + ids[row]) % resume == 0
+			and (tick) % resume == 0
 		):
 			_resume(world, row)
 

@@ -213,7 +213,7 @@ void Pass::run() {
 		int64_t cell = -1;
 		if (mode == NAV_FIELD && order != ORDER_IDLE && cells > 0 && rows_.field.get(row) >= 0 && rows_.field.get(row) < slot_count) {
 			cell = clamp(y, 0, max_y) / MILLI_PER_TILE * cols + clamp(x, 0, max_x) / MILLI_PER_TILE;
-			if ((rows_.nav_next.get(row) == -1 || (tick + rows_.unit_id.get(row)) % period == 0) && is_complete(rows_.field.get(row))) {
+			if ((rows_.nav_next.get(row) == -1 || tick % period == 0) && is_complete(rows_.field.get(row))) {
 				refresh_next(row, cell, move_class);
 			}
 		}
