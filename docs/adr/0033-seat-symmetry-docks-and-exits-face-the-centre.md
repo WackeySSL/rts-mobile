@@ -6,16 +6,16 @@ and refinery sends its units out (and takes its tankers in) on its south side, w
 enemy for the top-left player and the map edge for the bottom-right one; and a building may not
 stand on ground its owner has never seen, which the two AIs see a little differently after the
 first seconds. From now on every such building uses the side that faces the middle of the map,
-yours as well as the AI's, so it is the same for every seat on every map. The pictures stay as they
-are for now (question 1), and the "never seen" rule goes (question 2). Nothing costs anything on
-the phone.
+yours as well as the AI's, so it is the same for every seat on every map. The six factories,
+barracks and refineries get a door on both front walls (question 1, A), and the "never seen" rule
+goes (question 2, A). Nothing costs anything on the phone.
 
 Status: **accepted, 2026-11-09**, for the direction Michael approved in chat on 2026-11-09 ("ja" to
 P195b and P195c, "including the ADR", relayed by the lead): docks and exits face the map centre
 per building, for every player; placement in a player's own base no longer depends on what that
 player has explored; the golden hashes that move are re-pinned with this ADR as the reason. Two
-sub-choices change what the player sees and are open: **Questions** below. Row P195c-1 does not
-wait for them; P195c-2 waits for question 1 and P195c-3 for question 2. Written by the architect
+sub-choices change what the player sees: **Questions** below. Michael answered both on
+2026-11-09: A and A (a door on both front walls; the explored rule goes, E1). Written by the architect
 on `main` at b6bfe95 (plan row P195c). Amends ADR 0017 §2 (the `UNEXPLORED` rule, §4 here) and
 ADR 0018 §3 and §5 (where the dock and the exit are, §1 and §2 here); see §8.
 
@@ -322,3 +322,6 @@ counts, so the lead verifies their combined tree once before merging the second.
    tested): drop the rule; you may place a building on black ground, but only near your own
    buildings, as today. **B**: keep the rule, except in an area round each Headquarters (its size
    in the data); not yet tested, and the two bases can still drift apart outside that area.
+
+Answered by Michael on 2026-11-09 (chat, "ADR 0033: begge A"): question 1 **A**, question 2 **A**.
+P195c-2 draws the second door; P195c-3 removes the explored rule (E1, §4).
