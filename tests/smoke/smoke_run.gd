@@ -361,7 +361,10 @@ static func line(
 	)
 	for player: Dictionary in record["players"]:
 		text += (
-			"; player %d %s %s: %d units, %d buildings, %d credits, built %d, lost %d+%d"
+			(
+				"; player %d %s %s: %d units, %d buildings, %d credits, built %d, lost %d+%d"
+				+ ", harvested %d, refineries %d, tankers %d, trips %d, %d ticks a trip"
+			)
 			% [
 				player["player"],
 				player["ai"],
@@ -372,6 +375,11 @@ static func line(
 				player["built"],
 				player["lost_units"],
 				player["lost_buildings"],
+				player["harvested"],
+				player["refineries"],
+				player["tankers"],
+				player["trips"],
+				player["trip_ticks"],
 			]
 		)
 	return text
@@ -395,7 +403,18 @@ static func _player(
 			buildings += 1
 		else:
 			units += 1
+	var refineries: int = 0
+	var tankers: int = 0
+	for row: int in world.unit_count():
+		if world.owner[row] == player:
+			var type: int = world.type_index[row]
+			refineries += 1 if world.type_dock_x[type] != 0 or world.type_dock_y[type] != 0 else 0
+			tankers += 1 if world.type_harvest[type] > 0 else 0
 	var data: Dictionary = {
+		"refineries": refineries,
+		"tankers": tankers,
+		"trips": counter.trips[player],
+		"trip_ticks": counter.tanker_ticks[player] / maxi(counter.trips[player], 1),
 		"player": player,
 		"faction": seat["faction"],
 		"seat": seat["seat"],
