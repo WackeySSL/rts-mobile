@@ -198,10 +198,11 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	var head: int = view.queue_type[PlayerView.Tab.STRUCTURES * view.queue_slots]
 	var order: PackedInt32Array = PackedInt32Array()
 	var near: bool = head == _defence_type and memory.has_staging()
+	var ore: bool = view.is_refinery(head)
 	var aim: Vector2i = (
 		Vector2i(memory.staging_x, memory.staging_y)
 		if near
-		else Vector2i(AiMemory.NONE, AiMemory.NONE)
+		else (Vector2i(-7, -7) if ore else Vector2i(AiMemory.NONE, AiMemory.NONE))
 	)
 	if memory.spiral_for_x != aim.x or memory.spiral_for_y != aim.y:
 		# The resume index belongs to one order of the slots; a new order starts at its first slot.
@@ -210,6 +211,8 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		memory.spiral_resume = 0
 	if near:
 		order = _nearest_first(memory, slots)
+	elif ore:
+		order = _nearest_ore(view, slots)
 	var start: int = posmod(memory.spiral_resume, slots)
 	var tries: int = mini(_tries_max, slots)
 	for step: int in tries:
@@ -232,6 +235,26 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 			)
 			return
 	memory.spiral_resume = (start + tries) % slots
+
+
+## EXPERIMENT: the slot indexes by squared distance of their top-left tile to the nearest ore cell,
+## nearest first (the lower index first among equals): a refinery goes beside the ore.
+func _nearest_ore(view: PlayerView, slots: int) -> PackedInt32Array:
+	var keys: PackedInt64Array = PackedInt64Array()
+	for slot: int in slots:
+		var col: int = _anchor.x + _spiral[slot * 2] * _stride
+		var line: int = _anchor.y + _spiral[slot * 2 + 1] * _stride
+		var best: int = 1 << 40
+		for cell: int in view.ore_cells:
+			var dx: int = cell % view.map_cols - col
+			var dy: int = cell / view.map_cols - line
+			best = mini(best, dx * dx + dy * dy)
+		keys.append(best * slots + slot)
+	keys.sort()
+	var order: PackedInt32Array = PackedInt32Array()
+	for key: int in keys:
+		order.append(key % slots)
+	return order
 
 
 ## The slot indexes by distance of their top-left tile from the staging point, nearest first (the
