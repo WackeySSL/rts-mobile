@@ -83,15 +83,14 @@ static func assign(
 ## `point` itself when its tile is open to every class in `bases` (the offsets into move_cost, see
 ## assign) or when no tile is blocked at all. Otherwise the centre of the nearest open tile whose
 ## centre is in the box [low, high], in the first ring of tiles around the point's tile that has one
-## (the tile by the rule of World.cell_of): the one nearest to the point, an equal distance to the one
-## further along `way` (the group's approach, the target * count - the sum of the positions: the dot
-## product of the offset from the point with it), then to the one with the larger cross product
+## (the tile by the rule of World.cell_of): the one nearest to the point, an equal distance to the
+## one further along `way` (the group's approach, the target * count - the sum of the positions: the
+## dot product of the offset from the point with it), then to the one with the larger cross product
 ## (offset.x * way.y - offset.y * way.x). Both products keep their value when the map and the group
-## are turned half a turn about the map centre, as the distance does, so the tile moves with them.
-## A tile centre outside the box (a unit radius above half a tile, or a map that is not a whole
-## number of tiles wide) would put the slots
-## outside the radius inset, and _slots would find none. `point`, which is in the box, again when no
-## such tile is open.
+## are turned half a turn about the map centre, as the distance does, so the tile moves with them. A
+## tile centre outside the box (a unit radius above half a tile, or a map that is not a whole number
+## of tiles wide) would put the slots outside the radius inset, and _slots would find none. `point`,
+## which is in the box, again when no such tile is open.
 @warning_ignore("integer_division")
 static func _open_centre(
 	world: World,

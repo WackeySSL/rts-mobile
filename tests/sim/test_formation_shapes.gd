@@ -391,8 +391,9 @@ func _in_box(point: Vector2i, radius: int, width: int, height: int) -> bool:
 ## The target of a group by the definition (ADR 0008 section 2, ADR 0033): the point itself on an
 ## open tile, otherwise the centre of the open tile in the nearest ring around the tile of the point
 ## that has one, whose centre is in the box: the nearest to the point, an equal distance to the one
-## further along `way` (the dot product of its offset from the point with `way`), then to the one with
-## the larger cross product (offset.x * way.y - offset.y * way.x). The point when there is none.
+## further along `way` (the dot product of its offset from the point with `way`), then to the one
+## with the larger cross product (offset.x * way.y - offset.y * way.x). The point when there is
+## none.
 @warning_ignore("integer_division")
 func _definition_centre(
 	rows: PackedStringArray,
@@ -450,10 +451,10 @@ func _closer(left: Vector2i, right: Vector2i, way: Vector2i) -> bool:
 	return left.x * way.y - left.y * way.x > right.x * way.y - right.y * way.x
 
 
-## The first `count` slots by the definition (ADR 0003 section 4, ADR 0008 section 2, ADR 0033): every
-## lattice point centre + spacing * (i, j) in the box on an open tile, nearest first by squared
-## lattice distance, then by the larger dot product of (i, j) with `way`, then by the larger cross
-## product, then (for a zero `way`) by ring, then row, then column.
+## The first `count` slots by the definition (ADR 0003 section 4, ADR 0008 section 2, ADR 0033):
+## every lattice point centre + spacing * (i, j) in the box on an open tile, nearest first by
+## squared lattice distance, then by the larger dot product of (i, j) with `way`, then by the larger
+## cross product, then (for a zero `way`) by ring, then row, then column.
 @warning_ignore("integer_division")
 func _definition_slots(
 	rows: PackedStringArray,

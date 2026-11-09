@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
 ## The ore of the harvest loop (plan row P75, ADR 0018 sections 2 and 3): regrowth up to the cap,
-## the look of SEEK (the nearest cell with ore, the one toward the map centre on a tie, every cell counted in
-## `Stat.ORE_SCANNED`, a look every `harvest_retry_ticks` while there is none), two harvesters on
-## one cell, and the harvester whose order ended short of its cell. The harvester of the cases has
-## no refinery: none of them fills a hold. The cells' own cap is 0 where a case needs the ore to
-## stay as the case sets it (regrowth would otherwise add 1 on tick 0, `0 % 150 == 0`).
+## the look of SEEK (the nearest cell with ore, the one toward the map centre on a tie, every cell
+## counted in `Stat.ORE_SCANNED`, a look every `harvest_retry_ticks` while there is none), two
+## harvesters on one cell, and the harvester whose order ended short of its cell. The harvester of
+## the cases has no refinery: none of them fills a hold. The cells' own cap is 0 where a case needs
+## the ore to stay as the case sets it (regrowth would otherwise add 1 on tick 0, `0 % 150 == 0`).
 
 const Worlds: GDScript = preload("res://tests/sim/support/harvest_worlds.gd")
 

@@ -1,10 +1,10 @@
 extends RefCounted
 ## Phase 1's Formation.assign, frozen as it was before P37a (ADR 0003 section 4), plus the equal-key
-## tie rules of ADR 0033 (P195d2): a slot tie and a unit tie go to the larger share along the group's
-## approach, then across it, instead of to generation order and to the lower id first. Nothing else
-## differs from that code. It is the oracle for "on an open map the slots equal Phase 1's" in
-## test_formation: it reads the World's arrays per row, as Phase 1 did, prepares nothing and knows
-## no tile. Not a test suite.
+## tie rules of ADR 0033 (P195d2): a slot tie and a unit tie go to the larger share along the
+## group's approach, then across it, instead of to generation order and to the lower id first.
+## Nothing else differs from that code. It is the oracle for "on an open map the slots equal Phase
+## 1's" in test_formation: it reads the World's arrays per row, as Phase 1 did, prepares nothing and
+## knows no tile. Not a test suite.
 
 ## A sort key is the squared lattice distance times this, plus the generation index (below it),
 ## so a plain sort puts nearer slots first and keeps generation order on ties.
@@ -103,8 +103,8 @@ static func _slots(
 	return slots
 
 
-## The position in `unit_indices` of the unassigned unit nearest to `slot` (squared distance),
-## ties to the larger offset along the approach, then across it, then the lower id. Independent of the
+## The position in `unit_indices` of the unassigned unit nearest to `slot` (squared distance), ties
+## to the larger offset along the approach, then across it, then the lower id. Independent of the
 ## order of `unit_indices`.
 static func _nearest_free(
 	world: World,

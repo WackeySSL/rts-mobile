@@ -65,8 +65,9 @@ const CONTROLS_MASKS: Array[int] = [Rig.ONLY, Rig.ONLY, Rig.WITH_PORTED, Rig.ALL
 ## 4,714 flips_off, 2,279 explored_new, 10,304 listed, 175 relisted, 2,460 version_flips, 6,436
 ## quiet_stamps, 98 deaths, 98 deaths_stamped, 29 death_on_turn, 117 clipped, 103 clip_w, the rest
 ## unchanged.
-## With the half-turn border rule (ADR 0033, P195d-2) the rows are stamped in other cells: 65 clipped,
-## 22 clip_w, 43 clip_n (floors were 68 and 58); the controls run counts 1 death_on_turn (floor 2).
+## With the half-turn border rule (ADR 0033, P195d-2) the rows are stamped in other cells: 65
+## clipped, 22 clip_w, 43 clip_n (floors were 68 and 58); the controls run counts 1 death_on_turn
+## (floor 2).
 const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 17000,
 	&"stays": 14000,

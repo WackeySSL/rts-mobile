@@ -26,7 +26,8 @@ const ROWS: int = 8
 ## blocked as well the y move alone; with both blocked it stays; with the destination open it
 ## takes the whole step. The unit starts off a tile border: a border point past the middle of the
 ## map belongs to the tile before it (FixedMath.centre_side), which these cases would then have to
-## read as another tile (the case on the border is in test_half_turn_rules). Each case is a list of the rock tiles and the position that follows.
+## read as another tile (the case on the border is in test_half_turn_rules). Each case is a list of
+## the rock tiles and the position that follows.
 ## Only the destination is tested (ADR 0008 section 4), so with both orthogonal neighbours of an
 ## open destination blocked the unit still takes the diagonal step between them: the flow field and
 ## `line_clear` call that corner cutting and forbid it. The last case pins the approximation (ADR
