@@ -48,6 +48,28 @@ func test_a_step_onto_a_border_reads_the_centre_side_tile_in_both_versions() -> 
 			assert_that(at).override_failure_message(str(case)).is_equal(case[2])
 
 
+## A FIELD unit whose step ends on a border past the middle enters the tile before it, so it is
+## refreshed to the next tile of that one (`entered` in both versions; the floor would call it the
+## tile it left and skip the refresh). On the pillar map the steps (7100, 6500) -> (7000, 6500),
+## (6500, 7100) -> (6500, 7000) and (7100, 7100) -> (7000, 7000) all end in tile (6, 6), so each
+## ends with the next tile of a unit that stood at the centre of (6, 6).
+func test_a_field_step_onto_a_far_border_refreshes_the_next_tile_of_the_tile_before_it() -> void:
+	var pair: Array[World] = _pair(_cross_world)
+	_integrate_all(pair)
+	_assert_same(pair)
+	for world: World in pair:
+		var reference: int = _row_at(world, Vector2i(6500, 6500))
+		for point: Vector2i in [Vector2i(7000, 6500), Vector2i(6500, 7000), Vector2i(7000, 7000)]:
+			var row: int = _row_at(world, point)
+			assert_int(row).override_failure_message(str(point)).is_not_equal(-1)
+			assert_int(world.nav_next[row]).override_failure_message(str(point)).is_not_equal(
+				NO_NEXT
+			)
+			assert_int(world.nav_next[row]).override_failure_message(str(point)).is_equal(
+				world.nav_next[reference]
+			)
+
+
 ## The pillar map with the field of its goal and a unit in FIELD on every border point (x and y both
 ## multiples of 1000, 1 to 8) whose centre side tile is open, and one at the centre of the tiles
 ## (6, 6) and (2, 2). Tick 9.
@@ -106,3 +128,30 @@ func _pair(build: Callable) -> Array[World]:
 func _integrate_all(pair: Array[World]) -> void:
 	for world: World in pair:
 		Movement.integrate(world)
+
+
+## The pillar map with its field and four FIELD units: one at the centre of tile (6, 6) and three
+## that step onto a border past the middle (intents -100 on x, on y and on both). Tick 9.
+func _cross_world() -> World:
+	var rock: Array[Vector2i] = [Vector2i(3, 3), Vector2i(5, 3), Vector2i(3, 5), Vector2i(5, 5)]
+	var world: World = GridWorld.from_rows(GridWorld.grass(9, 9, rock), [TRACKED])
+	assert_int(world.flow.acquire(4 + 4 * 9, TRACKED, world.map_version, 0)).is_equal(0)
+	FlowCache.run(world, BIG)
+	var starts: Array[Vector2i] = [
+		Vector2i(6500, 6500), Vector2i(7100, 6500), Vector2i(6500, 7100), Vector2i(7100, 7100)
+	]
+	var steps: Array[Vector2i] = [
+		Vector2i(0, 0), Vector2i(-100, 0), Vector2i(0, -100), Vector2i(-100, -100)
+	]
+	for at: int in starts.size():
+		var row: int = world.add_unit(1, 0, starts[at].x, starts[at].y) - 1
+		world.order[row] = MOVE
+		world.nav_mode[row] = FIELD
+		world.field[row] = 0
+		world.goal_x[row] = 4500
+		world.goal_y[row] = 4800
+		world.intent_x[row] = steps[at].x
+		world.intent_y[row] = steps[at].y
+	FlowCache.run(world, 0)  # The references.
+	world.tick = 9
+	return world

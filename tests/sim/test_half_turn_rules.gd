@@ -145,6 +145,35 @@ func test_the_fog_stamp_tile_of_a_unit_on_a_border_is_half_turned(
 			)
 
 
+## A unit on a centre line is stamped in the tile past the middle: a point on both lines is its own
+## half turn, so no rule can keep both it and its image, and the border rule leaves the pair rule
+## (the half-turn tests above) to the points off the lines. The unit at the middle (15000, 15000) of
+## the 30 x 30 map takes the cell 15 * 30 + 15, on a centre line in x only (15000, 10500) the column
+## 15 and in y only (10500, 15000) the line 15 (the follow-up row of ADR 0033 for a pinwheel tie).
+func test_the_fog_stamp_tile_of_a_unit_on_a_centre_line_is_the_one_past_the_middle(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var spots: Array[Vector2i] = [
+		Vector2i(15000, 15000), Vector2i(15000, 10500), Vector2i(10500, 15000)
+	]
+	var expected: Array[int] = [15 * FOG_COLS + 15, 10 * FOG_COLS + 15, 15 * FOG_COLS + 10]
+	var units: Array = []
+	for _spot: int in spots.size():
+		units.append([1, 0, 15500, 15500])
+	var members: Dictionary = {&"fog_period_ticks": 1}
+	var world: World = FogWorlds.field(FOG_COLS, FOG_COLS, 1, [3000], units, members)
+	assert_array(SimImpls.attach(world, impl, FOG)).is_empty()
+	for index: int in spots.size():
+		world.pos_x[index] = spots[index].x
+		world.pos_y[index] = spots[index].y
+	Sim.step(world, [])
+	for index: int in spots.size():
+		assert_int(world.fog_cell[index]).override_failure_message(str(spots[index])).is_equal(
+			expected[index]
+		)
+		assert_bool(Targeting.sees(world, 1, spots[index].x, spots[index].y)).is_true()
+
+
 ## A segment with an end on a border is as clear on a map with one rock tile as its half turn is on
 ## the half-turned map: every rock tile of a 6 x 6 map, every segment of the list, both ways round.
 ## The ends are on borders before and past the middle (3000), and the cases include ends that the
