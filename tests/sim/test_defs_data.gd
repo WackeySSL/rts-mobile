@@ -87,7 +87,7 @@ func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_t
 		"fog_period_ticks": 3,
 		"line_check_period_ticks": 5,
 		"flow_cells_per_tick": 512,
-		"flow_cache_size": 8,
+		"flow_cache_size": 12,
 		"separation_neighbours": 8,
 		"separation_scan": 16,
 		"separation_idle_share": 75,

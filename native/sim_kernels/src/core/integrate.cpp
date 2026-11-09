@@ -80,7 +80,7 @@ bool Pass::is_passable(int64_t cell, int64_t move_class) const {
 // slots[slot].complete, asked of the slot object once per slot and call. A FIELD unit that waits for a pending field
 // asks on every tick, and the bind layer's answer is an Object::get, which ADR 0013 section 2 forbids per row. Within a
 // call only a recycle changes `complete`, and remember() keeps the answer current, so the pass asks each slot once. A
-// slot at or past MEMO_SLOTS (flow_cache_size is 8 in data/rules.tres) is asked on every use: correct, and slower.
+// slot at or past MEMO_SLOTS (flow_cache_size is 12 in data/rules.tres) is asked on every use: correct, and slower.
 bool Pass::is_complete(int64_t slot) {
 	if (slot < 0 || slot >= MEMO_SLOTS) {
 		return slots_.complete(slot);
