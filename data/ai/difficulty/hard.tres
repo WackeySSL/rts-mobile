@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_level")
 id = &"hard"
-build_order_tier = 2
+build_order_tier = 1
 reaction_ticks = 15
 harvesters_per_refinery = 2
 refineries_max = 2
