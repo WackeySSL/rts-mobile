@@ -4,9 +4,12 @@ extends RefCounted
 ## command in stamping order and a checkpoint hash every CHECKPOINT_PERIOD ticks. The sim is a pure
 ## function of these. Pure sim code: no Node, no clock and no file access (the runner saves and
 ## loads files). A replay is valid only for the code and data that recorded it. `play` runs it
-## again through MatchLoop and finds where it stops matching.
+## again through MatchLoop and finds where it stops matching. Call `apply_setup` on the fresh world
+## before `play`: the income percents are match setup, not in the scenario, so a world left at 100
+## replays a match recorded at another value as PLAY_DEFS_DIFFER.
 
-const FORMAT: int = 1
+## 2 since P173: the header holds `income_percent`. A format 1 file is refused.
+const FORMAT: int = 2
 ## Ticks between two checkpoints; MatchLoop adds one when `tick % CHECKPOINT_PERIOD == 0`.
 const CHECKPOINT_PERIOD: int = 15
 
@@ -26,6 +29,7 @@ const KINDS: Dictionary[String, int] = {
 	"scenario": TYPE_STRING,
 	"seed": TYPE_INT,
 	"defs_hash": TYPE_INT,
+	"income_percent": TYPE_PACKED_INT32_ARRAY,
 	"commands": TYPE_PACKED_INT32_ARRAY,
 	"checkpoint_ticks": TYPE_PACKED_INT32_ARRAY,
 	"checkpoint_hashes": TYPE_PACKED_INT64_ARRAY,
@@ -41,6 +45,9 @@ var scenario_path: String = ""
 @warning_ignore("shadowed_global_identifier") var seed: int = 0
 ## World.defs_hash() of the world that recorded; an int64.
 var defs_hash: int = 0
+## World.income_percent of the world that recorded, per player (index 0 neutral). `apply_setup`
+## puts it on the world that plays; defs_hash covers it, so a world at another value is refused.
+var income_percent: PackedInt32Array = PackedInt32Array()
 ## Every command, back to back in Command.encode's layout (int32 each), in the order it was
 ## recorded: the order Sim.step saw them, with the stamps MatchLoop gave them.
 var commands: PackedInt32Array = PackedInt32Array()
@@ -55,12 +62,26 @@ var final_hash: int = 0
 ## An empty replay for the match that starts from `scenario_path` with `seed` on data whose
 ## World.defs_hash() is `defs_hash`. The parameters keep the contract's names.
 @warning_ignore("shadowed_variable", "shadowed_global_identifier")
-static func begin(scenario_path: String, seed: int, defs_hash: int) -> Replay:
+static func begin(
+	scenario_path: String,
+	seed: int,
+	defs_hash: int,
+	income_percent: PackedInt32Array = PackedInt32Array()
+) -> Replay:
 	var replay: Replay = Replay.new()
+	replay.income_percent = income_percent
 	replay.scenario_path = scenario_path
 	replay.seed = seed
 	replay.defs_hash = defs_hash
 	return replay
+
+
+## Sets the income percents of this replay on `world`, a fresh world of its scenario, before
+## `play` (which prepares it and compares defs_hash). A world left at another value is refused by
+## `play` as PLAY_DEFS_DIFFER; every replay site calls this first.
+func apply_setup(world: World) -> void:
+	for player: int in range(1, income_percent.size()):
+		WorldLoad.set_income(world, player, income_percent[player])
 
 
 ## Appends `command`, not null, as Command.encode writes it. MatchLoop calls it after stamping and
@@ -153,6 +174,7 @@ func to_bytes() -> PackedByteArray:
 		"scenario": scenario_path,
 		"seed": seed,
 		"defs_hash": defs_hash,
+		"income_percent": income_percent,
 		"commands": commands,
 		"checkpoint_ticks": checkpoint_ticks,
 		"checkpoint_hashes": checkpoint_hashes,
@@ -189,6 +211,7 @@ static func from_bytes(bytes: PackedByteArray) -> Replay:
 	replay.scenario_path = data["scenario"]
 	replay.seed = data["seed"]
 	replay.defs_hash = data["defs_hash"]
+	replay.income_percent = data["income_percent"]
 	replay.commands = data["commands"]
 	replay.checkpoint_ticks = data["checkpoint_ticks"]
 	replay.checkpoint_hashes = data["checkpoint_hashes"]
