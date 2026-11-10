@@ -211,6 +211,11 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 	for key: String in counter.kills[other]:
 		if key.contains("defence"):
 			turret += int(counter.kills[other][key])
+	var army: AiArmy = ai.army
+	var extra: String = (
+		" G%d,%d/%d,%d fo%d sg%d rc%d pr%s"
+		% [memory.squad_goal_x[1], memory.squad_goal_y[1], memory.staging_x, memory.staging_y, army.retreats, army.focuses, army.recalls, str(army._pressed)]
+	)
 	var out: String = (
 		"u%d i%d a%d m%d k%d w%d %s c%d,%d sp%d far%d nw%d/%d tg%s d%d fq%s P%d EP%d kp%d wc%d L%d T%d D%d/%d/%d/%d"
 		% [
@@ -220,6 +225,7 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 			_deaths[player][0], _deaths[player][1], _deaths[player][2], _deaths[player][3],
 		]
 	)
+	out += extra
 	_prev_lost[player] = lost
 	_prev_turret[player] = turret
 	_deaths[player] = [0, 0, 0, 0]
