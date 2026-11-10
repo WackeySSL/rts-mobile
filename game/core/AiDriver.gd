@@ -17,6 +17,9 @@ extends RefCounted
 ## the match has ended (`match_end_tick` above 0): the sim drops every Command after the end, and a
 ## controller cannot see the end through its view. Returns how many controllers thought (0 for a
 ## tick without a think), which TickJob uses to time the thinks.
+static var view_usec: PackedFloat64Array = PackedFloat64Array()
+
+
 static func think_all(world: World, controllers: Array[AiController], out: Array[Command]) -> int:
 	if world.match_end_tick > 0 or controllers.is_empty():
 		return 0
@@ -44,6 +47,9 @@ static func think_all(world: World, controllers: Array[AiController], out: Array
 		var chosen: AiController = controllers[next]
 		last = next
 		last_player = chosen.player_id
-		chosen.think(PlayerView.of(world, last_player), out)
+		var tv: int = Time.get_ticks_usec()
+		var pv: PlayerView = PlayerView.of(world, last_player)
+		view_usec.append(Time.get_ticks_usec() - tv)
+		chosen.think(pv, out)
 		thought += 1
 	return thought

@@ -63,6 +63,7 @@ func before() -> void:
 	print(AiRun.think_line(p95_us, max_us, first.impl, first.thinks, gate.ci_ratio_p95))
 	print(AiRun.flow_line(first.flow_full_ticks, World.hash_hex(first.final_hash)))
 	print(AiRun.peaks_line(first.peaks))
+	_print_prof(first)
 
 
 ## The runs play the whole 900 ticks (no match end), every Command passes the sim's validation, and
@@ -197,3 +198,23 @@ func _peak_values(run: AiRun) -> Array[int]:
 	for name: String in run.peaks:
 		values.append(run.peaks[name])
 	return values
+
+
+func _print_prof(run: AiRun) -> void:
+	var names: Array[String] = ["economy", "production", "refresh", "army", "intel", "striker"]
+	var parts: String = "WATCH ai prof view p95=%.0f mean=%.0f" % [AiRun.p95_of(AiDriver.view_usec), _mean(AiDriver.view_usec)]
+	print(parts)
+	var ai: OpponentAi = run.controllers[0] as OpponentAi
+	for i: int in names.size():
+		var all: PackedFloat64Array = PackedFloat64Array()
+		for c: AiController in run.controllers:
+			all.append_array((c as OpponentAi).prof[i])
+		print("WATCH ai prof %s n=%d p95=%.0f mean=%.0f max=%.0f" % [names[i], all.size(), AiRun.p95_of(all), _mean(all), AiRun.max_of(all)])
+	var _unused: OpponentAi = ai
+
+
+func _mean(a: PackedFloat64Array) -> float:
+	var t: float = 0.0
+	for v: float in a:
+		t += v
+	return t / maxf(1.0, float(a.size()))
