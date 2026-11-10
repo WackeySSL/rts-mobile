@@ -1,14 +1,15 @@
 extends OpponentAi
-## An `OpponentAi` without the army: its ARMY slot makes only the intel refresh, so the production
-## suite's scout tick (a pin on the economy, production and intel) does not move when the army
-## changes (plan row P178). Not a test suite. Made from a real controller by `copy_from`, since
-## `OpponentAi.create` is static.
+## An `OpponentAi` without the army: its ARMY slot does nothing (REFRESH still refreshes), so the
+## production suite's scout tick (a pin on the economy, production and intel) does not move when the
+## army changes (plan row P178). Not a test suite. Made from a real controller by `copy_from`,
+## since `OpponentAi.create` is static.
 
 
 func copy_from(other: OpponentAi) -> void:
 	player_id = other.player_id
 	think_period = other.think_period
 	think_offset = other.think_offset
+	slot_shift = other.slot_shift
 	rng = other.rng
 	memory = other.memory
 	tier = other.tier
@@ -19,6 +20,5 @@ func copy_from(other: OpponentAi) -> void:
 	striker = other.striker
 
 
-func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:
-	intel.refresh(view, memory)
-	work += intel.passes
+func _run_army_slot(_view: PlayerView, _out: Array[Command]) -> void:
+	pass

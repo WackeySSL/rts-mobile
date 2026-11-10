@@ -3,8 +3,9 @@ extends AiDef
 ## The data of the opponent AI of one faction (ADR 0030 section 6, plan row P175):
 ## `data/ai/opponent_<faction>.tres`. It extends `AiDef` so the factory can tell it from the dummy's
 ## def. Used from the base: `id`, `hq_type`, `harvester_type`, `queue_target`, `place_stride_tiles`,
-## `defend_radius_tiles`, `think_period` (5) and `think_tick` (6). Ignored by `OpponentAi` and held
-## at their script defaults by a data test: `build_order`, `place_tries`, `harvesters_wanted`,
+## `defend_radius_tiles`, `think_period` (3) and `think_tick` (6; its residue mod the period is the
+## first lane's, see `OpponentAi`). Ignored by `OpponentAi` and held at their script defaults by a
+## data test: `build_order`, `place_tries`, `harvesters_wanted`,
 ## `guard_offset_tiles` (replaced by `build_orders`, `place_tries_per_think`, the level's
 ## `harvesters_per_refinery` and the staging point). A def lists only its own faction's type ids.
 ## Script defaults equal the fossil file, but for `id` and `build_orders` (resources).
@@ -54,7 +55,7 @@ const TIERS: int = 3
 
 
 func _init() -> void:
-	think_period = 5
+	think_period = 3
 	think_tick = 6
 
 

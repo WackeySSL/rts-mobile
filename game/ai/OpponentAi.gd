@@ -6,31 +6,39 @@ extends AiController
 ## think, the difficulty and def copied into ints, the memory, the counters, and the cap on the
 ## Commands of a think. A manager row adds its call to its slot's function below and nothing else.
 ##
-## A think happens every `think_period` (5) ticks and runs one of three slots, chosen from the tick
-## alone: `((tick + think_offset) / think_period) % SLOTS`. Slot ECONOMY runs economy then
-## production, slot ARMY the intel refresh then the army, slot INTEL intel then strikes, so every
-## manager runs once a second and a think carries a third of the AI. The offset puts player `p` on
-## `tick % 5 == (p + 4) % 5`, never on 4: a checkpoint hashes in the step that starts at
-## `tick % 15 == 14` and no think falls there (players 1 to 4). Like every controller it reads the
-## match only through the view, uses no clock, and draws only from `rng`.
+## A think happens every `think_period` (3) ticks and runs one of five slots, chosen from the tick
+## alone: `(tick / think_period + slot_shift) % SLOTS`. Slot ECONOMY runs the economy, PRODUCTION
+## the production, REFRESH the intel refresh (the sector map and id lists), ARMY the army (which
+## reads what REFRESH wrote one think, 3 ticks, earlier) and INTEL the intel run and then the
+## strikes, so every manager runs once a second (15 ticks, P198b) and a think carries one fifth of
+## the AI. Two lanes of residues are free of the checkpoint (`tick % 3 != 2`, as a checkpoint
+## hashes in the step that starts at `tick % 15 == 14`): player `p` thinks on the residue of lane
+## `(p - 1) % 2`, so players 1 and 2 never share a tick, and players 3 and 4 share one with 1 and 2
+## but run slots two places on (`slot_shift`), so no two players ever run the same slot on one tick.
+## Like every controller it reads the match only through the view, uses no clock, and draws only
+## from `rng`.
 
-enum Slot { ECONOMY, ARMY, INTEL }
-const SLOTS: int = 3
+enum Slot { ECONOMY, PRODUCTION, REFRESH, ARMY, INTEL }
+const SLOTS: int = 5
+## How many slots a later lane of players runs ahead of the first lane.
+const LANE_SHIFT: int = 2
 
 ## The memory between thinks and the slot of the last think (-1 before the first).
 var memory: AiMemory = null
 ## The intel manager (P177).
 var intel: AiIntel = null
 var last_slot: int = -1
+## The slots this player runs ahead of the first lane (`LANE_SHIFT` a lane), from its player id.
+var slot_shift: int = 0
 ## Thinks per slot, for the suites.
-var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
+var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0])
 ## Commands cut because a think sent more than the level allows.
 var commands_cut: int = 0
 ## The economy manager (P176), slot ECONOMY.
 var economy: AiEconomy = null
-## The production manager (P178), slot ECONOMY after the economy.
+## The production manager (P178), slot PRODUCTION.
 var production: AiProduction = null
-## The army manager (P179), slot ARMY after the intel refresh.
+## The army manager (P179), slot ARMY, one think after the intel refresh.
 var army: AiArmy = null
 ## The superweapon manager (P181), slot INTEL after the intel run (`strikes` is the counter).
 var striker: AiStrikes = null
@@ -44,7 +52,7 @@ var commands_per_think_max: int = 0
 
 ## A controller for `player_id` on `def` at `level`, which it copies and does not keep. A null level
 ## plays as the script defaults, which are Normal's.
-@warning_ignore("shadowed_variable")
+@warning_ignore("shadowed_variable", "integer_division")
 static func create(
 	def: OpponentDef, level: AiDifficultyDef, player_id: int, rng: DetRandom
 ) -> OpponentAi:
@@ -53,7 +61,11 @@ static func create(
 	ai.player_id = player_id
 	ai.rng = rng
 	ai.think_period = maxi(def.think_period, 1)
-	ai.think_offset = posmod(-(def.think_tick + player_id - 2), ai.think_period)
+	# A checkpoint tick leaves `think_period - 1` residues free; a player takes the residue of its
+	# lane, and a player past the first lane runs its slots `LANE_SHIFT` places on (P198b).
+	var lanes: int = maxi(ai.think_period - 1, 1)
+	ai.think_offset = posmod(-(def.think_tick + posmod(player_id - 1, lanes)), ai.think_period)
+	ai.slot_shift = maxi(player_id - 1, 0) / lanes * LANE_SHIFT
 	ai.memory = AiMemory.create(def)
 	ai.intel = AiIntel.create(def, chosen, player_id)
 	ai.def_id = def.id
@@ -70,7 +82,7 @@ static func create(
 ## The slot of a think at `tick`.
 @warning_ignore("integer_division")
 func slot_of(tick: int) -> int:
-	return ((tick + think_offset) / think_period) % SLOTS
+	return (tick / maxi(think_period, 1) + slot_shift) % SLOTS
 
 
 func think(view: PlayerView, out: Array[Command]) -> void:
@@ -83,6 +95,10 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 	match last_slot:
 		Slot.ECONOMY:
 			_run_economy_slot(view, out)
+		Slot.PRODUCTION:
+			_run_production_slot(view, out)
+		Slot.REFRESH:
+			_run_refresh_slot(view)
 		Slot.ARMY:
 			_run_army_slot(view, out)
 		_:
@@ -98,24 +114,33 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 	work_max = maxi(work_max, work)
 
 
-## Slot 0: P176 adds `AiEconomy`, P178 `AiProduction`.
+## Slot ECONOMY: `AiEconomy`.
 func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 	economy.run(view, memory, rng, out)
 	work += economy.passes
+
+
+## Slot PRODUCTION: `AiProduction`.
+func _run_production_slot(view: PlayerView, out: Array[Command]) -> void:
 	production.run(view, memory, rng, out)
 	work += production.passes
 
 
-## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
-func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
+## Slot REFRESH: the intel refresh, which fills the sector map and the id lists that `AiArmy` reads
+## one think (3 ticks) later.
+func _run_refresh_slot(view: PlayerView) -> void:
 	intel.refresh(view, memory)
 	work += intel.passes
+
+
+## Slot ARMY: `AiArmy` on the lists of the last REFRESH.
+func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
 	army.run(view, memory, rng, out)
 	waves = army.waves
 	retreats = army.retreats
 
 
-## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.
+## Slot INTEL: `AiIntel` (memory, scouting), then `AiStrikes`.
 func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.run(view, memory, rng, out)
 	work += intel.passes

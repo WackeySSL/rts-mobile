@@ -187,7 +187,7 @@ func test_a_started_ai_match_thinks_and_publishes_its_think_time() -> void:
 			thinks += 1
 			# No think falls on a checkpoint tick (ADR 0030 section 2).
 			assert_int(snap.tick % Replay.CHECKPOINT_PERIOD).is_not_equal(0)
-	assert_int(thinks).is_equal(12)  # Two AIs, six think ticks of every 15.
+	assert_int(thinks).is_equal(20)  # Two AIs, ten think ticks of every 15 (P198b: period 3).
 
 
 ## An arena of `kind` in the tree with its slow seams stubbed; freed with the case.

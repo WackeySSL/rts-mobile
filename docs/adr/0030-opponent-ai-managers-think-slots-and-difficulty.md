@@ -214,6 +214,50 @@ layers are ai-dev.md's:
   it is `reaction_ticks` old in `AiMemory`. With the slot cadence the shortest reaction is one
   slot round (15 ticks).
 
+Note (2026-11-10, P198b, five slots on period 3; changes no accepted text above; Michael approved
+the row in chat: "ja til P198b"). The first lever of "Over budget" in section 4, GDScript only.
+
+*Design* (written before the code):
+- **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless. ECONOMY
+  runs `AiEconomy`; PRODUCTION `AiProduction`; REFRESH `AiIntel.refresh`; ARMY `AiArmy`; INTEL
+  `AiIntel.run` then `AiStrikes`. The cyclic order of the managers is the one of the three slots (intel
+  run and strikes, economy, production, refresh, army), so only the gaps change: the refresh and the
+  army are 3 ticks apart, not in one think. Every manager still runs once per 15 ticks, none slower, so
+  `reaction_ticks` and the placement spiral's resume across thinks mean what they did.
+- **Cost per slot** (CI microseconds after P198's step 1, view about 45 in every slot): ECONOMY 37 +
+  45, PRODUCTION 18 + 45, REFRESH 63 + 45, ARMY 100 + 45, INTEL (intel run 30, strikes 13) 43 + 45.
+  The ARMY slot is no longer the sum of view, refresh and army (208) but view and army (145), and it
+  alone sets the p95: the other four slots are 63 to 108.
+- **Checkpoint.** A checkpoint hashes in the step that starts at `tick % 15 == 14`, and 14 mod 3 is 2,
+  so a think may fall on residues 0 and 1 only: two lanes. Player p takes lane `(p - 1) % 2`, residue
+  `(think_tick + lane) % 3` with `think_tick` 6 kept in the data (6 mod 3 is lane 0's residue; the
+  formula is no longer the dummy's, because that one would put player 3 on residue 2). Player 1 thinks
+  on ticks 0, 3, 6 ..., player 2 on 1, 4, 7 ...: **no two players share a tick in a 1v1**, and neither
+  hits residue 2. A data test pins players 1 to 4 on residues 0 and 1.
+- **Three and four players.** Player 3 shares player 1's ticks and player 4 player 2's (only two
+  residues are free), and a later lane runs its slots two places on (`slot_shift` 2): two players on
+  one tick always run different slots, never ARMY with ARMY or REFRESH with ARMY, and the driver's
+  rule (ascending player order, one fresh view each) is unchanged. The worst shared tick adds one
+  ECONOMY-class slot to the ARMY slot of the other; a 3 to 4 player match is not in the perf workload
+  (two AIs) and has no gate of its own.
+- **What the managers read from an earlier slot.** The army reads the sector map, the own and seen id
+  lists and the home squad's hp that REFRESH wrote 3 ticks before (INTEL and the strikes 6, the
+  economy and production 9 and 12; they read memory and the fresh view as before). Only the army
+  acts on a unit id, so `AiArmy._order` now leaves out an id that is no longer in its view and sends
+  no order for none: without that, an order for a lone unit that died in those 3 ticks was dropped by
+  the sim (12 drops in a 5 400 tick Hard mirror, found by the economy suite's drop check). The
+  step-back list's bound against the id lists now holds after an ARMY think and, between a refresh
+  and it, against the unit cap.
+- **The view.** It cannot be built "only as far as the slot needs" inside this row: what a slot can
+  skip (the ghosts, the warned strikes, the weapon tables) is small, and the ARMY slot, which sets
+  the p95, reads the type tables, the weapon tables, the rally points and the rows. What would cut it
+  is sharing the static type tables between the views of a match (a COW assignment, not 22
+  `duplicate()` calls and the weapon loop), which needs a holder that is not a `PlayerView`
+  (`PlayerView` is at its 20 public methods). Not done here.
+- **Size.** `AiArmy.gd` is at the 1000-line limit: the helper `_armed` moved to `AiIntel.is_armed`
+  to make room for the live-id filter. The split the P198 note asks for (the reads into a helper) is
+  still the next row's.
+
 ### 3. State: `AiMemory`, ints only, ids never rows
 - `AiMemory` (`game/ai/AiMemory.gd`) holds everything a controller keeps between thinks, as ints
   and packed int arrays: the staging point, squads (role, state, goal point, launch value, member

@@ -567,6 +567,17 @@ static func value_of(view: PlayerView, row: int) -> int:
 	return value_at(view, view.row_type(row), view.row_hp(row))
 
 
+## Whether the building at `row` is finished (`build_left` 0) and has a weapon.
+static func is_armed(view: PlayerView, row: int) -> bool:
+	var type: int = view.row_type(row)
+	return (
+		view.row_build_left(row) == 0
+		and type >= 0
+		and type < view.type_weapon.size()
+		and view.type_weapon[type] >= 0
+	)
+
+
 ## The value of a `type` at `hp` hit points: its cost scaled by hp over its max hp.
 static func value_at(view: PlayerView, type: int, hp: int) -> int:
 	var cost: int = _entry(view.type_cost, type)

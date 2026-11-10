@@ -10,23 +10,30 @@ const FactionRig: GDScript = preload("res://tests/ai/support/faction_rig.gd")
 const Probe: GDScript = preload("res://tests/ai/support/opponent_probe.gd")
 
 
-func test_the_slot_of_every_think_follows_the_tick_in_the_order_economy_army_intel() -> void:
+func test_the_slot_of_every_think_follows_the_tick_through_the_five_slots_in_order() -> void:
 	for player: int in [1, 2, 3, 4]:
 		var ai: OpponentAi = Rig.opponent("fossil", "normal", player)
 		var previous: int = -1
 		for tick: int in 300:
 			if (tick + ai.think_offset) % ai.think_period != 0:
 				continue
-			# Consecutive thinks rotate through the slots, whichever slot the first one has.
+			# Consecutive thinks rotate through the slots.
 			if previous >= 0:
-				assert_int(ai.slot_of(tick)).is_equal((previous + 1) % 3)
+				assert_int(ai.slot_of(tick)).is_equal((previous + 1) % OpponentAi.SLOTS)
 			previous = ai.slot_of(tick)
-	# Player 1 thinks on tick 0 (slot 0), 5 (slot 1), 10 (slot 2), 15 (slot 0 again).
+	# Player 1 thinks on ticks 0, 3, 6, 9, 12 (slots 0 to 4), then 15 (slot 0 again); player 2 on
+	# 1, 4, 7, 10, 13 and 16 the same way.
 	var first: OpponentAi = Rig.opponent("fossil", "normal", 1)
-	(
-		assert_array([first.slot_of(0), first.slot_of(5), first.slot_of(10), first.slot_of(15)])
-		. is_equal([0, 1, 2, 0])
-	)
+	var second: OpponentAi = Rig.opponent("fossil", "normal", 2)
+	var ticks: Array[int] = [0, 3, 6, 9, 12, 15]
+	var slots: Array[int] = []
+	for tick: int in ticks:
+		slots.append(first.slot_of(tick))
+	assert_array(slots).is_equal([0, 1, 2, 3, 4, 0])
+	slots.clear()
+	for tick: int in ticks:
+		slots.append(second.slot_of(tick + 1))
+	assert_array(slots).is_equal([0, 1, 2, 3, 4, 0])
 
 
 func test_a_manager_runs_once_in_fifteen_ticks_and_the_thinks_record_their_slot() -> void:
@@ -38,9 +45,9 @@ func test_a_manager_runs_once_in_fifteen_ticks_and_the_thinks_record_their_slot(
 		if (tick + ai.think_offset) % ai.think_period == 0:
 			ai.think(PlayerView.of(world, 2), [] as Array[Command])
 			slots.append(ai.last_slot)
-	# Player 2's first think is on tick 1, which is the second slot of the round.
-	assert_array(slots).is_equal([1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0])
-	assert_array(ai.slot_thinks).is_equal(PackedInt32Array([4, 4, 4]))
+	# Player 2's first think is on tick 1, with the first slot of the round.
+	assert_array(slots).is_equal([0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4])
+	assert_array(ai.slot_thinks).is_equal(PackedInt32Array([4, 4, 4, 4, 4]))
 
 
 func test_a_think_with_empty_managers_sends_nothing_and_counts_one_view() -> void:
@@ -76,7 +83,7 @@ func test_the_factory_returns_the_dummy_for_a_plain_def_and_the_opponent_for_an_
 	)
 	assert_object(opponent).is_instanceof(OpponentAi)
 	assert_object(opponent.rng).is_same(stream)
-	assert_array([opponent.player_id, opponent.think_period]).is_equal([3, 5])
+	assert_array([opponent.player_id, opponent.think_period]).is_equal([3, 3])
 
 
 func test_a_null_level_plays_as_normal() -> void:
@@ -125,26 +132,27 @@ func test_the_controller_copies_its_defs_and_keeps_no_resource() -> void:
 
 func test_each_slot_runs_its_own_hook_whichever_player_thinks() -> void:
 	var world: World = FactionRig.start("fossil", "renew")
-	# Players 2 and 3 think on ticks 1, 6, 11 and 2, 7, 12 of the round: ARMY, INTEL, ECONOMY.
-	for player: int in [2, 3]:
+	var all: Array[int] = [
+		OpponentAi.Slot.ECONOMY,
+		OpponentAi.Slot.PRODUCTION,
+		OpponentAi.Slot.REFRESH,
+		OpponentAi.Slot.ARMY,
+		OpponentAi.Slot.INTEL
+	]
+	# Players 1 to 4 think on the first five ticks of their lane, three apart; players 3 and 4 run
+	# the slots two places on from the first lane's.
+	var starts: Array[int] = [0, 1, 0, 1]
+	for player: int in [1, 2, 3, 4]:
 		var probe: Variant = Probe.new()
 		probe.copy_from(Rig.opponent("fossil", "normal", player))
-		var ticks: Array[int] = [player - 1, player + 4, player + 9]
-		for tick: int in ticks:
-			world.tick = tick
+		for step: int in 5:
+			world.tick = starts[player - 1] + step * 3
 			probe.think(PlayerView.of(world, player), [] as Array[Command])
-		assert_array(probe.ran).is_equal(
-			[OpponentAi.Slot.ARMY, OpponentAi.Slot.INTEL, OpponentAi.Slot.ECONOMY]
-		)
-	# Player 1 starts on slot ECONOMY at tick 0.
-	var first: Variant = Probe.new()
-	first.copy_from(Rig.opponent("fossil", "normal", 1))
-	for tick: int in [0, 5, 10]:
-		world.tick = tick
-		first.think(PlayerView.of(world, 1), [] as Array[Command])
-	assert_array(first.ran).is_equal(
-		[OpponentAi.Slot.ECONOMY, OpponentAi.Slot.ARMY, OpponentAi.Slot.INTEL]
-	)
+		var shift: int = 2 if player > 2 else 0
+		var want: Array[int] = []
+		for step: int in 5:
+			want.append(all[(step + shift) % 5])
+		assert_array(probe.ran).is_equal(want)
 
 
 func test_the_guard_keeps_the_first_commands_in_order_and_counts_the_cut() -> void:
@@ -346,21 +354,26 @@ func test_an_opponent_in_the_headless_loop_sends_only_its_managers_commands_and_
 		)
 	assert_int(world.dropped_commands).is_equal(0)
 	for controller: OpponentAi in controllers:
-		assert_array(controller.slot_thinks).is_equal(PackedInt32Array([10, 10, 10]))
+		assert_array(controller.slot_thinks).is_equal(PackedInt32Array([10, 10, 10, 10, 10]))
 
 
-func test_the_army_slot_adds_no_pass_over_the_rows_of_its_own() -> void:
-	# The ARMY slot is the view (1) and the intel refresh's own and seen passes (2): the army walks
-	# the lists the refresh filled (plan row P179, ADR 0030 section 4's pass budget).
+func test_the_army_slot_adds_no_pass_over_the_rows_and_the_refresh_slot_adds_two() -> void:
+	# The REFRESH slot is the view (1) and the intel refresh's own and seen passes (2); the ARMY slot
+	# one think later is the view alone: the army walks the lists the refresh filled (plan row P179,
+	# ADR 0030 section 4's pass budget, P198b's five slots).
 	var world: World = FactionRig.start("fossil", "fossil")
 	for index: int in 10:
 		AiRig.add_unit_of(world, 1, "heavy_tank", 8500 + index * 500, 12500)
 		AiRig.add_unit_of(world, 2, "heavy_tank", 28500 + index * 500, 22500)
 	var ai: OpponentAi = Rig.opponent("fossil", "normal", 1)
-	world.tick = 5
+	world.tick = 6
+	ai.think(PlayerView.of(world, 1), [] as Array[Command])
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.REFRESH)
+	assert_array([ai.work, ai.intel.passes]).is_equal([3, 2])
+	world.tick = 9
 	ai.think(PlayerView.of(world, 1), [] as Array[Command])
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ARMY)
-	assert_array([ai.work, ai.intel.passes]).is_equal([3, 2])
+	assert_int(ai.work).is_equal(1)
 	var loop: MatchLoop = AiRig.loop_of(world)
 	AiRig.run(world, loop, [ai], 300)
 	assert_int(ai.work_max).is_less_equal(3)

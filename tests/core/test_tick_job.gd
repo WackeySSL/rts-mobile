@@ -231,7 +231,7 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()
 	job.run()
-	assert_array((ai as OpponentAi).slot_thinks).is_equal(PackedInt32Array([1, 0, 0]))
+	assert_array((ai as OpponentAi).slot_thinks).is_equal(PackedInt32Array([1, 0, 0, 0, 0]))
 	visited.clear()
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(ai.get_instance_id())).is_true()

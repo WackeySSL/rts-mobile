@@ -249,16 +249,16 @@ func test_the_controller_sends_the_scout_from_the_intel_slot_and_counts_it() -> 
 	_scout(8, 12)
 	_settle()
 	var sent: Array[Command] = []
-	# Player 1 thinks on ticks 0 (ECONOMY), 5 (ARMY), 10 (INTEL), ...
+	# Player 1 thinks on ticks 0 (ECONOMY), 3 (PRODUCTION), 6 (REFRESH), 9 (ARMY), 12 (INTEL), ...
 	_world.tick = 1800
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ECONOMY)
-	_world.tick = 1805
+	_world.tick = 1806
 	ai.think(PlayerView.of(_world, 1), sent)
-	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ARMY)
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.REFRESH)
 	assert_int(ai.work).is_equal(3)
 	assert_int(_moves_in(sent)).is_equal(0)
-	_world.tick = 1810
+	_world.tick = 1812
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.INTEL)
 	assert_int(ai.work).is_equal(3)
@@ -273,7 +273,7 @@ func test_easy_through_the_controller_never_scouts_in_a_match() -> void:
 	_scout(8, 12)
 	_settle()
 	var sent: Array[Command] = []
-	for tick: int in range(0, 4000, 5):
+	for tick: int in range(0, 4000, 3):
 		_world.tick = tick
 		ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(_moves_in(sent)).is_equal(0)

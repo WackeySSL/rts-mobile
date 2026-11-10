@@ -315,20 +315,20 @@ func test_run_makes_two_passes_and_sends_nothing_without_a_scout_unit() -> void:
 	assert_array(_out).is_empty()
 
 
-func test_the_controller_runs_the_refresh_in_the_army_slot_and_the_intel_in_the_intel_slot(
+func test_the_controller_runs_the_refresh_in_the_refresh_slot_and_the_intel_in_the_intel_slot(
 ) -> void:
 	var ai: OpponentAi = Rig.opponent("fossil", "normal", 1)
 	AiRig.add_unit_of(_world, 2, "rifle_squad", 9500, 9500)
 	_settle()
 	var sent: Array[Command] = []
-	# Player 1 thinks on ticks 0 (ECONOMY), 5 (ARMY), 10 (INTEL), ...
+	# Player 1 thinks on ticks 0 (ECONOMY), 3 (PRODUCTION), 6 (REFRESH), 9 (ARMY), 12 (INTEL), ...
 	_world.tick = 1800
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ECONOMY)
 	assert_bool(ai.memory.has_base_estimate()).is_false()
-	_world.tick = 1805
+	_world.tick = 1806
 	ai.think(PlayerView.of(_world, 1), sent)
-	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ARMY)
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.REFRESH)
 	assert_int(ai.work).is_equal(3)
 	var own: int = 0
 	var enemy: int = 0
@@ -337,7 +337,7 @@ func test_the_controller_runs_the_refresh_in_the_army_slot_and_the_intel_in_the_
 		enemy += ai.memory.sector_enemy[sector]
 	assert_bool(own > 0 and enemy > 0).is_true()
 	assert_bool(ai.memory.has_base_estimate()).is_false()
-	_world.tick = 1810
+	_world.tick = 1812
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.INTEL)
 	assert_int(ai.work).is_equal(3)

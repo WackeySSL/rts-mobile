@@ -79,7 +79,7 @@ func test_the_opponent_files_hold_the_numbers_of_the_adr(
 ) -> void:
 	var def: OpponentDef = Rig.def_of(faction)
 	assert_str(String(def.id)).is_equal("opponent_" + faction)
-	assert_array([def.think_period, def.think_tick]).is_equal([5, 6])
+	assert_array([def.think_period, def.think_tick]).is_equal([3, 6])
 	(
 		assert_array(
 			[
@@ -280,7 +280,7 @@ func test_the_numbers_fit_the_rules_and_the_footprints(
 	assert_int(def.place_stride_tiles).is_greater_equal(widest + 1)
 
 
-func test_players_1_to_4_think_on_residues_0_to_3_and_never_on_a_checkpoint_tick(
+func test_players_1_to_4_think_on_residues_0_and_1_and_never_on_a_checkpoint_tick(
 	faction: String, _test_parameters := _factions()
 ) -> void:
 	var def: OpponentDef = Rig.def_of(faction)
@@ -289,7 +289,8 @@ func test_players_1_to_4_think_on_residues_0_to_3_and_never_on_a_checkpoint_tick
 		var ai: OpponentAi = Rig.opponent(faction, "normal", player)
 		for tick: int in 30:
 			if (tick + ai.think_offset) % ai.think_period == 0:
-				assert_int(tick % 5).is_equal(player - 1)
+				# Two free residues: lane (player - 1) % 2 (P198b).
+				assert_int(tick % 3).is_equal((player - 1) % 2)
 				assert_int(tick % Replay.CHECKPOINT_PERIOD).is_not_equal(
 					Replay.CHECKPOINT_PERIOD - 1
 				)

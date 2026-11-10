@@ -61,6 +61,7 @@ func before() -> void:
 	var p95_us: float = _smallest(AiRun.p95_of)
 	var max_us: float = _smallest(AiRun.max_of)
 	print(AiRun.think_line(p95_us, max_us, first.impl, first.thinks, gate.ci_ratio_p95))
+	print(AiRun.slots_line(_runs))
 	print(AiRun.flow_line(first.flow_full_ticks, World.hash_hex(first.final_hash)))
 	print(AiRun.peaks_line(first.peaks))
 
@@ -154,6 +155,7 @@ func test_the_watch_lines_have_the_heads_the_keys_in_order_and_the_phone_estimat
 	assert_str(AiRun.THINK_HEAD).is_equal("WATCH ai think")
 	assert_str(AiRun.FLOW_HEAD).is_equal("WATCH ai flow")
 	assert_str(AiRun.PEAKS_HEAD).is_equal("WATCH ai peaks")
+	assert_str(AiRun.SLOTS_HEAD).is_equal("WATCH ai slots")
 	var samples: PackedFloat64Array = PackedFloat64Array()
 	for index: int in 20:
 		samples.append(float((index * 7) % 20 + 1) * 100.0)
@@ -163,22 +165,37 @@ func test_the_watch_lines_have_the_heads_the_keys_in_order_and_the_phone_estimat
 	var think: String = AiRun.think_line(1900.0, 2000.0, "gdscript", 20, 5.9)
 	assert_str(think).is_equal(
 		(
-			"WATCH ai think impl=gdscript slots=3 thinks=20 p95_us=1900.000 max_us=2000.000 "
+			"WATCH ai think impl=gdscript slots=5 thinks=20 p95_us=1900.000 max_us=2000.000 "
 			+ "est_phone_p95_ms=11.210"
 		)
 	)
 	assert_str(AiRun.think_line(0.0, 0.0, "native", 0, 5.9)).is_equal(
 		(
-			"WATCH ai think impl=native slots=3 thinks=0 p95_us=0.000 max_us=0.000 "
+			"WATCH ai think impl=native slots=5 thinks=0 p95_us=0.000 max_us=0.000 "
 			+ "est_phone_p95_ms=0.000"
 		)
 	)
 	assert_str(AiRun.flow_line(191, "00ab")).is_equal(
 		"WATCH ai flow seed=42 ticks=900 full_ticks=191 hash=00ab"
 	)
+	# Two made-up runs: slot 0 took 100 us over 2 thinks and 300 us over 2 more, the rest nothing.
+	var made: Array = []
+	for spent: float in [100.0, 300.0]:
+		var run: AiRun = AiRun.new()
+		run.slot_usec = PackedFloat64Array([spent, 0.0, 0.0, 0.0, 0.0])
+		run.slot_thinks = PackedInt32Array([2, 0, 0, 0, 0])
+		made.append(run)
+	(
+		assert_str(AiRun.slots_line(made))
+		. is_equal(
+			"WATCH ai slots slot0_us=100.000 slot1_us=0.000 slot2_us=0.000 slot3_us=0.000 slot4_us=0.000"
+		)
+	)
 	var counts: Dictionary[String, int] = {"work": 3, "keys_scout": 0}
 	assert_str(AiRun.peaks_line(counts)).is_equal("WATCH ai peaks work=3 keys_scout=0")
-	for line: String in [think, AiRun.flow_line(0, ""), AiRun.peaks_line(counts)]:
+	for line: String in [
+		think, AiRun.flow_line(0, ""), AiRun.peaks_line(counts), AiRun.slots_line(made)
+	]:
 		assert_bool(line.begins_with("PERF ")).is_false()
 		assert_bool(line.begins_with("WATCH ai ")).is_true()
 

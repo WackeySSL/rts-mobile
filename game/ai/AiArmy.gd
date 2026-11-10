@@ -521,9 +521,18 @@ func _order(
 ) -> bool:
 	if not memory.can_send():
 		return false
+	# The lists are from the last REFRESH slot, one think (3 ticks) old: a unit that died since is
+	# left out, and an order for none is not sent (P198b).
 	var classes: int = 0
+	var alive: PackedInt32Array = PackedInt32Array()
 	for id: int in ids:
-		classes |= 1 << AiMemory.class_of(view, view.row_type(view.row_of(id)))
+		var row: int = view.row_of(id)
+		if row >= 0:
+			alive.append(id)
+			classes |= 1 << AiMemory.class_of(view, view.row_type(row))
+	if alive.is_empty() or (target != AiMemory.NONE and view.row_of(target) < 0):
+		return false
+	ids = alive
 	if not _hold(memory, owner, goal, classes):
 		starved += 1
 		return false
@@ -726,24 +735,13 @@ func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites
 		var gap_y: int = ys[row] - centre.y
 		if gap_x > radius or gap_x < -radius or gap_y > radius or gap_y < -radius:
 			continue
-		if sites and not _armed(view, row):
+		if sites and not AiIntel.is_armed(view, row):
 			continue
 		used += 1
 		if gap_x * gap_x + gap_y * gap_y <= radius * radius:
 			found += AiIntel.value_of(view, row)
 	tests = used
 	return found
-
-
-## Whether the building at `row` is finished (`build_left` 0) and has a weapon.
-static func _armed(view: PlayerView, row: int) -> bool:
-	var type: int = view.row_type(row)
-	return (
-		view.row_build_left(row) == 0
-		and type >= 0
-		and type < view.type_weapon.size()
-		and view.type_weapon[type] >= 0
-	)
 
 
 ## Launches the next wave when the draw is made, its tick has come, no threat stands at the base

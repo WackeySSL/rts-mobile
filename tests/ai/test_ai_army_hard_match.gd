@@ -7,7 +7,7 @@ extends GdUnitTestSuite
 ## that step-backs and focus orders happen at all; a tuning row that zeroes one changes the seed
 ## and lists it. Every think it checks the bounds no tuning can move: the goal keys within the cap
 ## and the army's and the staging's within two, no Command cut, the tests within the def's, the
-## work within 3 and the step-back list within the AI's own unit count.
+## work within 3 and the step-back list within the AI's own unit count (after the ARMY slot).
 
 const AiRig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const FactionRig: GDScript = preload("res://tests/ai/support/faction_rig.gd")
@@ -26,6 +26,7 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 	for _tick: int in TICKS:
 		if world.match_end_tick > 0:
 			break
+		var thought: int = world.tick
 		AiRig.tick(world, loop, ais)
 		for ai: OpponentAi in ais:
 			assert_int(ai.memory.goal_keys()).is_less_equal(ai.memory.goal_keys_max)
@@ -33,7 +34,15 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.STAGING)).is_less_equal(2)
 			assert_int(ai.commands_cut).is_equal(0)
 			assert_int(ai.army.tests).is_less_equal(cap)
-			assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_id.size())
+			# The army prunes the list against the lists of the REFRESH slot before it (P198b), so
+			# the bound holds after the ARMY slot's think and, between a refresh and it, only the
+			# unit cap does.
+			assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_cap)
+			if (
+				(thought + ai.think_offset) % ai.think_period == 0
+				and ai.last_slot == OpponentAi.Slot.ARMY
+			):
+				assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_id.size())
 	assert_int(world.dropped_commands).is_equal(0)
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)

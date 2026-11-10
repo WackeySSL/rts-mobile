@@ -29,10 +29,15 @@ const PASSES_MAX: int = 3
 const THINK_HEAD: String = "WATCH ai think"
 const FLOW_HEAD: String = "WATCH ai flow"
 const PEAKS_HEAD: String = "WATCH ai peaks"
+const SLOTS_HEAD: String = "WATCH ai slots"
 
 ## The microseconds of each call of `think_all` that made a think (the view of the think included,
 ## as the snapshot's `think_usec` is), in tick order.
 var think_usec: PackedFloat64Array = PackedFloat64Array()
+## The sum of the think times (microseconds) and the number of thinks, per slot of `OpponentAi.Slot`
+## (a perf run has at most one think a tick, so the slot is the thinking controller's).
+var slot_usec: PackedFloat64Array = PackedFloat64Array()
+var slot_thinks: PackedInt32Array = PackedInt32Array()
 ## The lines of the counted bounds that some think broke, each once; empty inside every bound.
 var violations: Array[String] = []
 ## The largest value of each judged counter over every think of both AIs, by name (counts only).
@@ -87,6 +92,20 @@ static func think_line(
 	return PerfReport.sub_line(THINK_HEAD, values, false)
 
 
+## `WATCH ai slots mean_us=<slot 0..4>` over `runs`: the mean think time of each slot (the view
+## included), pooled over all the runs' thinks, in `OpponentAi.Slot` order (P198b).
+static func slots_line(runs: Array) -> String:
+	var values: Dictionary = {}
+	for slot: int in OpponentAi.SLOTS:
+		var spent: float = 0.0
+		var count: int = 0
+		for run: Variant in runs:
+			spent += run.slot_usec[slot]
+			count += run.slot_thinks[slot]
+		values["slot%d_us" % slot] = spent / float(maxi(count, 1))
+	return PerfReport.sub_line(SLOTS_HEAD, values, false)
+
+
 ## `WATCH ai flow seed= ticks= full_ticks= hash=` (P188's `WATCH ai flow` line has more keys).
 static func flow_line(full_ticks: int, hash_hex: String) -> String:
 	var values: Dictionary = {
@@ -110,6 +129,8 @@ func play() -> void:
 	for problem: String in SmokeRun.attach_impl(world):
 		violations.append("sim impl: " + problem)
 	var loop: MatchLoop = SmokeRun.loop_of(world, SEED, PATH)
+	slot_usec.resize(OpponentAi.SLOTS)
+	slot_thinks.resize(OpponentAi.SLOTS)
 	var level: AiDifficultyDef = load(LEVEL_PATH) as AiDifficultyDef
 	# This run seats no income (the printed hashes are of the 100 percent match): a frozen level that
 	# leaves 100 must be seated here, with SmokeRun.seat_income before loop_of, and re-pinned.
@@ -136,6 +157,7 @@ func play() -> void:
 		var spent: int = Time.get_ticks_usec() - started
 		if thought > 0:
 			think_usec.append(float(spent))
+			_note_slot(world.tick, float(spent))
 			thinks += thought
 			most_in_a_tick = maxi(most_in_a_tick, thought)
 			_check(world, before, commands.size())
@@ -147,6 +169,16 @@ func play() -> void:
 	final_hash = world.state_hash()
 	dropped_commands = world.dropped_commands
 	match_end_tick = world.match_end_tick
+
+
+## Adds a think of `usec` to the slot of the controller that thought on `tick`.
+func _note_slot(tick: int, usec: float) -> void:
+	for ai: AiController in controllers:
+		var opponent: OpponentAi = ai as OpponentAi
+		if opponent != null and (tick + ai.think_offset) % maxi(ai.think_period, 1) == 0:
+			slot_usec[opponent.last_slot] += usec
+			slot_thinks[opponent.last_slot] += 1
+			return
 
 
 ## Judges the think that just ran, for each controller that thought this tick, against the bounds
@@ -174,7 +206,7 @@ func _check(world: World, before: PackedInt32Array, sent: int) -> void:
 			OpponentAi.Slot.ARMY:
 				_cap(tag, "army_tests", ai.army.tests, def.target_tests_max)
 				_cap(tag, "hit_tests", ai.army.hit_tests, def.target_tests_max)
-			_:
+			OpponentAi.Slot.INTEL:
 				_cap(tag, "strike_tests", ai.striker.tests, def.target_tests_max)
 		_cap(tag, "goal_keys", memory.goal_keys(), def.goal_keys_max)
 		_cap(tag, "keys_army", memory.goal_keys_of(AiMemory.Owner.ARMY), 2)
