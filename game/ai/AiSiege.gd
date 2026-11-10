@@ -21,34 +21,21 @@ static func foes(army: AiArmy, view: PlayerView, memory: AiMemory, at: Vector2i)
 static func press(army: AiArmy, view: PlayerView, memory: AiMemory) -> bool:
 	if army._wave_units == 0 or producer_near(army, view, memory) < 0:
 		return false
-	if not ahead(army, view, memory):
+	var near: int = foes(army, view, memory, army._wave_front)
+	if army.tests >= army.tests_max or army._wave_value * 100 < near * army.press:
 		return false
 	army._pressed = true
 	return true
 
 
-## Whether the wave is worth `press` percent of the seen enemy value near its front, and the test
-## cap did not blind the read.
-static func ahead(army: AiArmy, view: PlayerView, memory: AiMemory) -> bool:
-	if army.press <= 0:
-		return false
-	var near: int = foes(army, view, memory, army._wave_front)
-	return army.tests < army.tests_max and army._wave_value * 100 >= near * army.press
-
-
-## The siege: a wave whose front stands within the defence radius of a seen, finished enemy producer
-## takes one `ATTACK` on the nearest of them (the buildings that decide the match, ahead of walls,
-## power and units that are not shooting), when nothing armed stands near the front or the wave
-## is `ahead` of what does. A tougher foe comes first: the focus is dropped when one shows up, so
-## the attack-move fights it. True while the target is held (sent, kept or refused), false when
-## none is, which forgets an old one.
+## The siege: a wave whose centre stands within the defence radius of a seen, finished enemy
+## producer, with nothing armed near it, takes one `ATTACK` on the nearest of them (the buildings
+## that decide the match, ahead of walls, power and units that are not shooting). Armed foes come
+## first: the focus is dropped when one shows up, so the attack-move fights it. True while the
+## target is held (sent, kept or refused), false when none is, which forgets an old one.
 static func siege(army: AiArmy, view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 	var best: int = producer_near(army, view, memory) if army.siege else -1
-	if (
-		best >= 0
-		and armed_near(army, view, memory, army._wave_front)
-		and not ahead(army, view, memory)
-	):
+	if best >= 0 and armed_near(army, view, memory, army._wave_front):
 		best = -1
 	var kept: int = memory.squad_focus[AiArmy.WAVE]
 	if best < 0:

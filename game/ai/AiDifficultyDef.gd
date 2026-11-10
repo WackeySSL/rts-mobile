@@ -46,7 +46,7 @@ extends Resource
 @export var gather_percent: int = 75
 ## From the all-in, units at home join a wave that is on its way in batches worth this percent of
 ## the first wave's strength, not one by one (0 = every think).
-@export var reinforce_percent: int = 50
+@export var reinforce_percent: int = 25
 ## Unit control: a unit under this percent of its hp steps back (0 = never), and groups focus the
 ## weakest seen enemy in reach (0 or 1).
 @export var unit_retreat_hp_percent: int = 0
