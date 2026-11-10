@@ -123,6 +123,42 @@ func test_a_cap_already_used_up_tests_nothing_more() -> void:
 	assert_array([_army.tests, _memory.threat_first_tick]).is_equal([0, -1])
 
 
+func test_the_nearer_of_two_units_in_the_box_wins_when_it_comes_second() -> void:
+	# One building, the farther unit first in id order: the search goes on past a fully tested unit.
+	_sites(1)
+	var far: int = _enemy("heavy_tank", 15500, 5500)
+	var near: int = _enemy("heavy_tank", 8500, 5500)
+	_see_all()
+	_memory.seen_unit_id = PackedInt32Array([far, near])
+	_world.tick = 5
+	_army.tests = 0
+	assert_int(_army._threat(_view(), _memory)).is_equal(_view().row_of(near))
+	assert_int(_army.tests).is_equal(2)
+
+
+func test_the_cap_at_two_units_of_three_buildings_decides_whether_the_second_is_fully_tested(
+) -> void:
+	# Three buildings: two in the west, one in the east beside the second unit only. With a cap of 6
+	# both units are tested against all three and the second (nearer the east one) wins; with 5 it
+	# is tested against the two western ones, finds nothing and the first stays the threat.
+	_memory.site_id = PackedInt32Array([900, 901, 902])
+	_memory.site_x = PackedInt32Array([5500, 5500, 30000])
+	_memory.site_y = PackedInt32Array([5500, 5500, 5500])
+	var first: int = _enemy("heavy_tank", 15500, 5500)
+	var second: int = _enemy("heavy_tank", 30500, 5500)
+	_see_all()
+	_memory.seen_unit_id = PackedInt32Array([first, second])
+	_world.tick = 5
+	for cap: int in [6, 5]:
+		_army.tests_max = cap
+		_army.tests = 0
+		var row: int = _army._threat(_view(), _memory)
+		assert_int(row).append_failure_message("cap %d" % cap).is_equal(
+			_view().row_of(second if cap == 6 else first)
+		)
+		assert_int(_army.tests).append_failure_message("cap %d" % cap).is_equal(cap)
+
+
 func test_no_building_means_no_search() -> void:
 	var foe: int = _enemy("heavy_tank", 15500, 7500)
 	_see_all()

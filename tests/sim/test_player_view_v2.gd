@@ -284,3 +284,37 @@ func test_the_rule_caps_come_from_the_world() -> void:
 	assert_int(view.building_cap).is_equal(17)
 	world.unit_cap = 99
 	assert_int(view.unit_cap).is_equal(31)
+
+
+## `type_range`, `type_min_range` and `type_vs_armour` read through a type's weapon, and a weapon
+## past a table's end reads as 0 there (plan row P198 rewrote the guards): one type's weapon is
+## exactly one past the range table, and another's minimum range and armour table are cut short.
+func test_a_weapon_past_the_end_of_a_table_reads_as_zero() -> void:
+	var world: World = ViewWorlds.crafted()
+	var armed: Array[int] = []
+	for type: int in world.type_weapon.size():
+		if world.type_weapon[type] >= 0:
+			armed.append(type)
+	assert_array(armed).is_not_empty()
+	var short: int = armed[0]
+	var past: int = (short + 1) % world.type_weapon.size()
+	var weapon: int = world.type_weapon[short]
+	world.type_weapon[past] = world.weapon_range.size()
+	# The second weapon has a range but no minimum range, and only 2 of its 4 armour entries.
+	world.weapon_min_range.resize(weapon)
+	world.weapon_vs_armour.resize(weapon * PlayerView.ARMOUR_CLASSES + 2)
+	var kept: Array[int] = [
+		world.weapon_vs_armour[weapon * PlayerView.ARMOUR_CLASSES],
+		world.weapon_vs_armour[weapon * PlayerView.ARMOUR_CLASSES + 1],
+	]
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_int(view.type_range[past]).is_equal(0)
+	assert_int(view.type_min_range[past]).is_equal(0)
+	for armour: int in PlayerView.ARMOUR_CLASSES:
+		assert_int(view.type_vs_armour[past * PlayerView.ARMOUR_CLASSES + armour]).is_equal(0)
+	assert_int(view.type_range[short]).is_equal(world.weapon_range[weapon])
+	assert_int(view.type_min_range[short]).is_equal(0)
+	var at: int = short * PlayerView.ARMOUR_CLASSES
+	assert_array([view.type_vs_armour[at], view.type_vs_armour[at + 1]]).is_equal(kept)
+	assert_int(view.type_vs_armour[at + 2]).is_equal(0)
+	assert_int(view.type_vs_armour[at + 3]).is_equal(0)

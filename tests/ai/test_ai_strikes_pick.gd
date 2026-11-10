@@ -44,6 +44,25 @@ func test_a_hurt_thing_counts_its_hit_points_share_in_the_value() -> void:
 	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
 
 
+func test_a_clear_check_that_hits_at_index_k_counts_k_plus_one_tests() -> void:
+	# The own-row check of an anchor (plan row P198 counts it in bulk): a clear check counts every
+	# row, a hit at index k counts k + 1, and the cap ends it at -1 after `room` tests.
+	_striker._tests_max = 10
+	_striker._x = PackedInt32Array([0])
+	_striker._y = PackedInt32Array([0])
+	_striker._bx = PackedInt32Array([9000, 9000, 100, 9000])
+	_striker._by = PackedInt32Array([0, 0, 0, 0])
+	_striker.tests = 2
+	assert_int(_striker._clear(0, 1000 * 1000)).is_equal(0)
+	assert_int(_striker.tests).is_equal(2 + 3)
+	_striker.tests = 0
+	assert_int(_striker._clear(0, 10)).is_equal(1)
+	assert_int(_striker.tests).is_equal(4)
+	_striker.tests = 8
+	assert_int(_striker._clear(0, 1000 * 1000)).is_equal(-1)
+	assert_int(_striker.tests).is_equal(10)
+
+
 func test_seen_tankers_count_in_the_value() -> void:
 	# The cluster is 2,200 without tankers; the refinery is 1,400 and with two tankers 3,800.
 	_cluster()
