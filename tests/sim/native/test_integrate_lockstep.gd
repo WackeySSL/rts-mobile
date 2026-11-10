@@ -75,7 +75,10 @@ const SOUP_MODES: Array[int] = [2, 2, 2, 1, 1, 0, 3, 4]
 const SOUP_GROUND: String = "........^^#wt24"
 
 
-## Re-keys: 2 measured after the half-turn ties (ADR 0033, P195d-2), floor was 4.
+## Re-keys: 2 measured after the half-turn ties (ADR 0033, P195d-2), floor was 4. The floor of 1
+## only says that the arena reached the re-key at all; the re-key is held by the crafted chase of
+## test_integrate_lockstep_cases.gd (ATTACK units on moving targets, `rekeys` 3), which is the
+## case that compares tables after every tick.
 func test_900_arena_ticks_match_after_every_tick() -> void:
 	var rig: RefCounted = LockstepRig.new().setup(_arena)
 	assert_array(rig.problems).is_empty()

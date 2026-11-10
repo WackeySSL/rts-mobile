@@ -72,6 +72,9 @@ const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"chasing": 6720,
 	&"chase_starts": 1430,
 	&"line_checks": 6800,
+	# The arena no longer re-tests much (2 in the five runs; see above), so this floor only says that
+	# the pass ran. The re-test of an ATTACK is held by the changed-rules run in
+	# test_targeting_lockstep.gd (CHANGED_FLOORS retests 39) and by the LATTICE, OPEN and SCOUT runs.
 	&"retests": 1,
 	&"blocked": 1850
 }

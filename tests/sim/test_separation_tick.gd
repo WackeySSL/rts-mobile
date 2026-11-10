@@ -54,8 +54,13 @@ const SOUTH_TARGET: Vector2i = Vector2i(26000, 22500)
 const CROSSING_TICKS: int = 195
 ## The controls_test tap-ground order of test_controls_flow (30 tanks to the point, 450 ticks) and
 ## the bound on how far a tank may stand from it (the nearest 30 slots of a 1200 lattice reach 3795,
-## the Phase 1 bound was 3800). Measured maximum with separation: 4045 under ADR 0033 (3795 before:
-## the unit-to-slot ties go another way now, and a tank ends 250 milli further out).
+## the Phase 1 bound was 3800). Measured maximum with separation: 4045 under ADR 0033 (3795 before).
+## The cause is the new unit-to-slot tie of Formation (the larger offset along the approach, then
+## across it, then the lower id), not another rule: with the earlier Formation and every other rule
+## of ADR 0033 the maximum is 3795 again, the far edge of the lattice. The pairing of units and
+## slots differs, and tank 29 (goal 2400 east of the point) now ends its order short of its slot,
+## at 4045: its way is blocked by the others, and the stall rule (stall_ticks without coming
+## nearer) ends the order where the tank stands. The bound is the measured maximum rounded up.
 const TAP_POINT: Vector2i = Vector2i(20016, 21516)
 const TAP_TICKS: int = 450
 const TAP_CENTRE_BOUND: int = 4050
@@ -67,9 +72,13 @@ const OUT_POINT: Vector2i = Vector2i(26000, 22000)
 const BACK_POINT: Vector2i = Vector2i(12000, 22000)
 const TURN_TICK: int = 200
 const BACK_TICKS: int = 405
-## How far a tank of a group of 15 stands from its point at most (measured 4712 in the crossing
-## run and 3367 in the run back; it was 3003 before ADR 0033: the crossing groups end more spread
-## out now, and the bound is the measured maximum rounded up).
+## How far a tank of a group of 15 stands from its point at most (measured 4676 in the crossing
+## run, tank 23, and 3367 in the run back; it was 3003 before ADR 0033). The cause is the new
+## unit-to-slot tie of Formation, not another rule: with the earlier Formation and every other rule
+## of ADR 0033 the crossing run is back at 3003. The two groups' slots overlap (the points are 2000
+## apart), the pairing of units and slots differs, and tank 23 (goal 800 from its point) is blocked
+## by the other group on its way, and the stall rule ends its order at (28330, 26555), 3700 short
+## of its goal. The bound is the measured maximum rounded up to 4720.
 const GROUP_CENTRE_BOUND: int = 4720
 
 
