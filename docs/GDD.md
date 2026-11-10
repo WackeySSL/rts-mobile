@@ -73,7 +73,7 @@ more per faction (13 in all) in the two sections named above.
 | Tanker | Tanker | Fuel Runner | 1 200 | 800 | 1.1 | - | - | Everything |
 
 The numbers are the Derrick League's: heavy, robust, slow. The Lumen Accord is fast, precise and
-fragile: Linemen 1.1 tiles/s and 80 HP, Breakers range 5.5, Swift 2.2 tiles/s and 220 HP, Torque
+fragile: Linemen 1.1 tiles/s and 70 HP, Breakers range 5.5, Swift 2.2 tiles/s and 220 HP, Torque
 1.4 tiles/s and 520 HP, Arcline range 10 and 160 HP, Fuel Runner 1.4 tiles/s carrying 450. Squads
 show three figures. Artillery needs a radar.
 
