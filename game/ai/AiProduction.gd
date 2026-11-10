@@ -212,6 +212,10 @@ func _queue_drawn(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array
 	var pick: int = rng.next_int(scaled)
 	for role: int in _ROLES:
 		if pick < _shares[role]:
+			# Experiment c: the draw ignores the price; a pick the budget cannot pay is waited for
+			# (credits pile up) instead of being swapped for a cheaper role.
+			if view.type_cost[_types[role]] > _budget:
+				return false
 			role_queued[role] += 1
 			_send(view, memory, out, _types[role])
 			return true
@@ -224,11 +228,11 @@ func _queue_drawn(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array
 func _type_of(view: PlayerView, role: int) -> int:
 	if role == OpponentDef.Role.ANTI_VEHICLE:
 		for type: int in _vehicle_types:
-			if type != _NONE and _queueable(view, type, true):
+			if type != _NONE and _queueable(view, type, false):
 				return type
 		return _NONE
 	var type: int = _role_types[role]
-	return type if type != _NONE and _queueable(view, type, true) else _NONE
+	return type if type != _NONE and _queueable(view, type, false) else _NONE
 
 
 ## Whether a QUEUE of `type` would be applied and its unit placed: a unit tab with a producer that
