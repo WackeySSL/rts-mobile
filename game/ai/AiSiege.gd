@@ -7,10 +7,11 @@ extends RefCounted
 
 
 ## The seen enemy value near the wave's centre (`AiArmy._near`), read once a think.
-static func foes(army: AiArmy, view: PlayerView, memory: AiMemory) -> int:
-	if army._foes_tick != view.tick:
-		army._foes_value = army._near(view, memory, army._wave_at)
+static func foes(army: AiArmy, view: PlayerView, memory: AiMemory, at: Vector2i) -> int:
+	if army._foes_tick != view.tick or army._foes_at != at:
+		army._foes_value = army._near(view, memory, at)
 		army._foes_tick = view.tick
+		army._foes_at = at
 	return army._foes_value
 
 
@@ -20,7 +21,7 @@ static func foes(army: AiArmy, view: PlayerView, memory: AiMemory) -> int:
 static func press(army: AiArmy, view: PlayerView, memory: AiMemory) -> bool:
 	if army._wave_units == 0 or producer_near(army, view, memory) < 0:
 		return false
-	var near: int = foes(army, view, memory)
+	var near: int = foes(army, view, memory, army._wave_front)
 	if army.tests >= army.tests_max or army._wave_value * 100 < near * army.press:
 		return false
 	army._pressed = true
@@ -34,7 +35,7 @@ static func press(army: AiArmy, view: PlayerView, memory: AiMemory) -> bool:
 ## target is held (sent, kept or refused), false when none is, which forgets an old one.
 static func siege(army: AiArmy, view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 	var best: int = producer_near(army, view, memory) if army.siege else -1
-	if best >= 0 and (foes(army, view, memory) > 0 or army.tests >= army.tests_max):
+	if best >= 0 and armed_near(army, view, memory, army._wave_front):
 		best = -1
 	var kept: int = memory.squad_focus[AiArmy.WAVE]
 	if best < 0:
@@ -58,8 +59,37 @@ static func siege(army: AiArmy, view: PlayerView, memory: AiMemory, out: Array[C
 	return true
 
 
+## Whether a seen enemy combat unit or armed, finished building stands within half the defence
+## radius of `at`, or the test cap ran out first (blind counts as armed).
+static func armed_near(army: AiArmy, view: PlayerView, memory: AiMemory, at: Vector2i) -> bool:
+	return (
+		_armed_in(army, view, memory.seen_unit_id, at, false)
+		or _armed_in(army, view, memory.seen_site_id, at, true)
+	)
+
+
+static func _armed_in(
+	army: AiArmy, view: PlayerView, list: PackedInt32Array, at: Vector2i, sites: bool
+) -> bool:
+	var reach: int = army.defend_radius / 2
+	for id: int in list:
+		if army.tests >= army.tests_max:
+			return true
+		var row: int = view.row_of(id)
+		if row < 0 or (sites and not AiArmy._armed(view, row)):
+			continue
+		var gap: Vector2i = view.row_pos(row) - at
+		if absi(gap.x) > reach or absi(gap.y) > reach:
+			continue
+		army.tests += 1
+		if gap.x * gap.x + gap.y * gap.y <= reach * reach:
+			return true
+	return false
+
+
 ## The row of the nearest seen, finished enemy producer within the defence radius of the wave's
-## centre (the lowest id on a tie), -1 for none; one test a producer, until the cap.
+## front (its unit nearest the target) (the lowest id on a tie), -1 for none; one test a producer,
+## until the cap.
 static func producer_near(army: AiArmy, view: PlayerView, memory: AiMemory) -> int:
 	var found: int = -1
 	var least: int = army.defend_radius * army.defend_radius + 1
@@ -72,7 +102,7 @@ static func producer_near(army: AiArmy, view: PlayerView, memory: AiMemory) -> i
 		if not AiIntel.is_producer(view, view.row_type(row)):
 			continue
 		army.tests += 1
-		var gap: Vector2i = view.row_pos(row) - army._wave_at
+		var gap: Vector2i = view.row_pos(row) - army._wave_front
 		if gap.x * gap.x + gap.y * gap.y < least:
 			least = gap.x * gap.x + gap.y * gap.y
 			found = row

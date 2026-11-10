@@ -246,3 +246,27 @@ func test_the_ladder_presses_and_sieges_from_normal_up() -> void:
 	assert_int(hard.siege_focus).is_equal(1)
 	# A lower percent presses on a smaller edge: Hard presses sooner than Normal.
 	assert_bool(normal.press_percent > hard.press_percent and hard.press_percent > 0).is_true()
+
+
+func test_the_front_of_a_strung_out_wave_sieges_not_its_centre() -> void:
+	_pressing(0, 1)
+	var barracks: int = _siege_scene()
+	# Three of the four units stand 30 tiles away: the centre is far from the producer, the front is
+	# not.
+	var wave: PackedInt32Array = _members(AiArmy.WAVE)
+	for index: int in 3:
+		_put(wave[index + 1], 36500, 6500)
+	_think(LAUNCH + 15)
+	var sent: Array[Command] = _of(Command.Type.ATTACK)
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].target_id).is_equal(barracks)
+
+
+func test_a_foe_far_from_the_front_does_not_stop_the_siege() -> void:
+	_pressing(0, 1)
+	_siege_scene()
+	# 9 tiles from the front (the reach is half the defence radius, 6 tiles): not armed near it.
+	_enemy("heavy_tank", SPOT.x + 9000, SPOT.y)
+	_see_all()
+	_think(LAUNCH + 15)
+	assert_int(_of(Command.Type.ATTACK).size()).is_equal(1)

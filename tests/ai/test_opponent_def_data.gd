@@ -38,9 +38,42 @@ const _LEVEL_FIELDS: Array[String] = [
 	"income_percent",
 	"press_percent",
 	"siege_focus",
+	"gather_tiles",
+	"gather_ticks",
+	"gather_percent",
+	"reinforce_percent",
 ]
 const _LEVELS: Dictionary[String, Array] = {
-	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 3, 100, 0, 0],
+	"easy":
+	[
+		0,
+		90,
+		1,
+		1,
+		1,
+		1,
+		0,
+		0,
+		6300,
+		2000,
+		10,
+		450,
+		12600,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		3,
+		100,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0
+	],
 	"normal":
 	[
 		1,
@@ -65,7 +98,11 @@ const _LEVELS: Dictionary[String, Array] = {
 		8,
 		100,
 		150,
-		1
+		1,
+		24,
+		1800,
+		75,
+		25
 	],
 	"hard":
 	[
@@ -91,7 +128,11 @@ const _LEVELS: Dictionary[String, Array] = {
 		12,
 		100,
 		120,
-		1
+		1,
+		24,
+		1500,
+		75,
+		20
 	],
 }
 

@@ -39,6 +39,8 @@ func _plain(level: String) -> AiDifficultyDef:
 	# P197 owns the siege and the press (tests/ai/test_ai_army_siege.gd).
 	plain.press_percent = 0
 	plain.siege_focus = 0
+	plain.gather_tiles = 0
+	plain.reinforce_percent = 0
 	return plain
 
 

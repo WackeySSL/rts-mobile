@@ -43,6 +43,12 @@ var focus_fire: bool = false
 ## The press percent (0 = never) and whether a wave at the enemy base focuses its producers (P197).
 var press: int = 0
 var siege: bool = false
+## The assembly of a wave (P197), from the level: tiles before the target, ticks and percent; and
+## the reinforcement batch in percent of the first strength.
+var gather_tiles: int = 0
+var gather_ticks: int = 0
+var gather_percent: int = 0
+var reinforce: int = 0
 
 ## Counted for the suites: tests of the last run: the threat search's, the home focus search's, the
 ## wave's ratio read, the recall's read and the wave focus search's (they all share the cap of
@@ -71,6 +77,13 @@ var _pressed: bool = false
 ## This think's seen enemy value near the wave (`_foes`), valid while `_foes_tick` is the tick.
 var _foes_value: int = 0
 var _foes_tick: int = -1
+var _foes_at: Vector2i = Vector2i.ZERO
+## The last tally's assembly point (tiles, NONE when none), wave units within half the defence
+## radius of it, and the wave unit nearest the target (milli-tiles); the tick of the wave's launch.
+var _gather_at: Vector2i = Vector2i(-1, -1)
+var _gather_in: int = 0
+var _wave_front: Vector2i = Vector2i.ZERO
+var _launched_at: int = 0
 
 ## Joiners no order has named yet (ascending), and scratch lists kept between runs.
 var _fresh: PackedInt32Array = PackedInt32Array()
@@ -120,6 +133,10 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army.focus_fire = level.focus_fire > 0
 	army.press = maxi(level.press_percent, 0)
 	army.siege = level.siege_focus > 0
+	army.gather_tiles = maxi(level.gather_tiles, 0)
+	army.gather_ticks = maxi(level.gather_ticks, 0)
+	army.gather_percent = clampi(level.gather_percent, 0, 100)
+	army.reinforce = maxi(level.reinforce_percent, 0)
 	return army
 
 
@@ -548,7 +565,7 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 		return
 	var all_in: bool = _all_in(view)
 	if memory.squad_role[WAVE] != AiMemory.NONE:
-		_tally(view, memory)
+		AiGather.tally(self, view, memory)
 		if not all_in and press > 0 and memory.squad_state[WAVE] == AiMemory.SquadState.WAVE:
 			all_in = AiSiege.press(self, view, memory)
 		var retreating: bool = memory.squad_state[WAVE] == AiMemory.SquadState.RETREAT
@@ -608,6 +625,8 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	)
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
 	var target: Vector2i = Vector2i(memory.base_x, memory.base_y)
+	if AiGather.holding(self, view, goal):
+		target = goal
 	var wave: PackedInt32Array = _members(memory, true, WAVE)
 	if (
 		not focused
@@ -621,6 +640,8 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	if not all_in:
 		return
 	var home: PackedInt32Array = _members(memory, true)
+	if AiGather.batching(self, goal):
+		return
 	if (
 		not home.is_empty()
 		and _order(view, memory, out, home, goal, AiMemory.Owner.ARMY, _at(goal))
@@ -642,10 +663,14 @@ func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool
 	)
 	# A wave that is ahead of the enemy near it keeps fighting (P197): the loss of value alone is no
 	# reason to walk home and start the next wave from nothing.
-	if weak and press > 0 and _wave_value * 100 >= AiSiege.foes(self, view, memory) * press:
+	if (
+		weak
+		and press > 0
+		and _wave_value * 100 >= AiSiege.foes(self, view, memory, _wave_at) * press
+	):
 		weak = false
 	if not weak and retreat_ratio > 0:
-		weak = AiSiege.foes(self, view, memory) * 100 > _wave_value * retreat_ratio
+		weak = AiSiege.foes(self, view, memory, _wave_at) * 100 > _wave_value * retreat_ratio
 		# The recall: a threat at the base that outweighs the home squad calls the wave home, to
 		# defend (not a retreat).
 		if (
@@ -740,15 +765,16 @@ func _launch(
 		memory.wave_start_tick = maxi(wave_first_tick, view.tick) + jitter
 	if (not all_in and view.tick < memory.wave_start_tick) or not memory.has_base_estimate():
 		return
-	_tally(view, memory)
+	AiGather.tally(self, view, memory)
 	var ids: PackedInt32Array = _members(memory, true, HOME, not all_in)
 	# What marches: the value of the units that go (a withdrawn one goes only in the all-in).
 	var value: int = _home_value if all_in else _ready_value
 	if ids.is_empty() or (not all_in and value < _strength(memory.wave_count)):
 		return
-	var goal: Vector2i = Vector2i(memory.base_x, memory.base_y)
+	var goal: Vector2i = AiGather.goal(self, memory)
 	if not _order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, _at(goal)):
 		return
+	_launched_at = view.tick
 	_join_wave(memory, all_in)
 	memory.squad_role[WAVE] = ROLE_WAVE
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
@@ -819,36 +845,6 @@ func _restage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 		memory.squad_goal_x[WAVE] = stage.x
 		memory.squad_goal_y[WAVE] = stage.y
 	return true
-
-
-## Sums the home squad's value (`_home_value`, and `_ready_value` without the withdrawn units) and
-## the wave's value, and the wave's centre, units and idle units, over
-## the members (a loop over the memory's list, not the view's rows).
-func _tally(view: PlayerView, memory: AiMemory) -> void:
-	_home_value = 0
-	_ready_value = 0
-	_wave_value = 0
-	_wave_units = 0
-	_wave_idle = 0
-	var sum: Vector2i = Vector2i.ZERO
-	for at: int in memory.member_id.size():
-		var row: int = view.row_of(memory.member_id[at])
-		if row < 0:
-			continue
-		if memory.member_squad[at] == HOME:
-			var value: int = AiIntel.value_of(view, row)
-			_home_value += value
-			if not _withdrawn(memory, memory.member_id[at]):
-				_ready_value += value
-		elif memory.member_squad[at] == WAVE:
-			_wave_value += AiIntel.value_of(view, row)
-			_wave_units += 1
-			sum += view.row_pos(row)
-			if view.row_order(row) == PlayerView.Order.IDLE:
-				_wave_idle += 1
-	if _wave_units > 0:
-		@warning_ignore("integer_division")
-		_wave_at = sum / _wave_units
 
 
 ## Moves every member of squad `from` to squad `to`.
