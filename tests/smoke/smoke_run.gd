@@ -374,6 +374,7 @@ static func line(
 				player["lost_buildings"],
 			]
 		)
+		text += " [%s]" % player.get("diag", "")
 	return text
 
 
@@ -388,13 +389,27 @@ static func _player(
 	var player: int = seat["player"]
 	var units: int = 0
 	var buildings: int = 0
+	var diag: String = ""
+	var idle: int = 0
+	var sum_x: int = 0
+	var sum_y: int = 0
 	for row: int in world.unit_count():
 		if world.owner[row] != player:
 			continue
 		if world.type_foot_w[world.type_index[row]] > 0:
 			buildings += 1
+			diag += (
+				" %s@%d,%d"
+				% [world.type_ids[world.type_index[row]], world.pos_x[row] / 1000, world.pos_y[row] / 1000]
+			)
 		else:
 			units += 1
+			sum_x += world.pos_x[row] / 1000
+			sum_y += world.pos_y[row] / 1000
+			if world.order[row] == World.Order.IDLE:
+				idle += 1
+	if units > 0:
+		diag += " | units idle %d of %d centre %d,%d" % [idle, units, sum_x / units, sum_y / units]
 	var data: Dictionary = {
 		"player": player,
 		"faction": seat["faction"],
@@ -404,6 +419,7 @@ static func _player(
 		"credits": world.credits[player],
 		"units": units,
 		"buildings": buildings,
+		"diag": diag,
 		"built": world.stat_built[player],
 		"lost_units": world.stat_lost_units[player],
 		"lost_buildings": world.stat_lost_buildings[player],
