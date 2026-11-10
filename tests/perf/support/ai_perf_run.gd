@@ -111,6 +111,10 @@ func play() -> void:
 		violations.append("sim impl: " + problem)
 	var loop: MatchLoop = SmokeRun.loop_of(world, SEED, PATH)
 	var level: AiDifficultyDef = load(LEVEL_PATH) as AiDifficultyDef
+	# This run seats no income (the printed hashes are of the 100 percent match): a frozen level that
+	# leaves 100 must be seated here, with SmokeRun.seat_income before loop_of, and re-pinned.
+	if level.income_percent != WorldLoad.PERCENT:
+		violations.append("frozen level income_percent is %d, not 100" % level.income_percent)
 	for index: int in OPPONENT_PATHS.size():
 		var player: int = index + 1
 		var rng: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + player)

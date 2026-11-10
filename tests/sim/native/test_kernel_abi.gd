@@ -776,5 +776,5 @@ func _lists(owner: String) -> Array:
 	var world_lists: Array = World.ROW_ARRAYS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
 	world_lists += World.PROJECTILE_ARRAYS + World.MAP_ARRAYS + World.SCRATCH_ARRAYS
 	world_lists += World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS
-	world_lists += World.DERIVED_ARRAYS
+	world_lists += World.DERIVED_ARRAYS + World.SETUP_ARRAYS
 	return world_lists + World.RUNTIME_ARRAYS + World.HASHED_SCALARS + World.UNHASHED_SCALARS

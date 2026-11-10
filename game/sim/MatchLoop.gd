@@ -6,7 +6,8 @@ extends RefCounted
 ## commands, stamps tick and sequence, records every command in the replay, calls Sim.step and
 ## adds a checkpoint every Replay.CHECKPOINT_PERIOD ticks. Pure sim code: no Node, no clock.
 
-## The match's log. Replay.begin(scenario_path, seed, defs_hash) made it; the caller finishes it.
+## The match's log. Replay.begin(scenario_path, seed, defs_hash, income_percent) made it; the
+## caller finishes it.
 var replay: Replay
 ## The state hash of the last checkpoint, 0 until the first one. The tick-0 state has no
 ## checkpoint: a checkpoint is the hash after a tick, and none has run yet.
@@ -19,17 +20,20 @@ var _orders: ScenarioOrders
 ## The commands of one tick, reused. Empty between two steps.
 var _commands: Array[Command] = []
 
-## A loop for the match of `world`. It records `scenario_path`, `seed` and the world's defs_hash
-## (ADR 0007 section 8) in its replay. `seed` is only recorded: the caller made the world's
-## DetRandom from it. A null `scenario` yields no scenario orders; Replay.play uses that, because
-## its log already holds the orders the scenario gave. The parameters keep the contract's names.
+## A loop for the match of `world`. It records `scenario_path`, `seed`, the world's defs_hash
+## (ADR 0007 section 8) and its income percents (P173) in its replay. `seed` is only recorded: the
+## caller made the world's DetRandom from it. A null `scenario` yields no scenario orders;
+## Replay.play uses that, because its log already holds the orders the scenario gave.
+## The parameters keep the contract's names.
 @warning_ignore("shadowed_global_identifier")
 static func create(
 	scenario: ScenarioDef, scenario_path: String, seed: int, world: World
 ) -> MatchLoop:
 	var loop: MatchLoop = MatchLoop.new()
 	world.prepare()
-	loop.replay = Replay.begin(scenario_path, seed, world.defs_hash())
+	loop.replay = Replay.begin(
+		scenario_path, seed, world.defs_hash(), world.income_percent.duplicate()
+	)
 	loop._orders = ScenarioOrders.create(scenario)
 	return loop
 

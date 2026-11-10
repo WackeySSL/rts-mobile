@@ -102,6 +102,7 @@ func test_the_log_replays_without_any_ai_to_the_same_checkpoints() -> void:
 	var replay: Replay = _runs[0]["loop"].replay
 	var world: World = Smoke.world_of(SEED, _runs[0]["path"])
 	assert_array(Smoke.attach_impl(world)).is_empty()
+	replay.apply_setup(world)
 	var result: int = Replay.play(replay, world, TICKS)
 	(
 		assert_int(result)
@@ -166,6 +167,7 @@ func test_an_opponent_on_player_one_fires_the_deep_bore_and_the_log_replays_on_t
 	var replayed: World = _strike_world()
 	assert_array(Smoke.attach_impl(replayed, Smoke.IMPL_GDSCRIPT)).is_empty()
 	assert_bool(Impls.is_native(replayed, SimProbe.Phase.FLOW)).is_false()
+	loop.replay.apply_setup(replayed)
 	var result: int = Replay.play(loop.replay, replayed, STRIKE_TICKS)
 	(
 		assert_int(result)
