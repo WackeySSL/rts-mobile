@@ -238,6 +238,7 @@ static func run(
 		commands.clear()
 		if counter != null:
 			counter.after_step(world)
+			P196.after(world)
 			P196.sample(world, controllers, counter)
 
 
