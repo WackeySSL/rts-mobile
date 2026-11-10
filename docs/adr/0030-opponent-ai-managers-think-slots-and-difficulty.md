@@ -442,6 +442,36 @@ Note (2026-11-10, P198, cheaper reads; changes no accepted text above):
   at the 1000-line lint limit and `PlayerView` at its 20 public methods, so the next row splits
   them first (for example `_threat`, `_near` and `_value_in` into a reads helper).
 
+Note (2026-11-10, P26bn, the lead; Michael's answers in chat the same day, "Ja til 1, 2 og 3"):
+**the phone after P198, and what binds.** It changes the watch value and the "goes back to him for
+P66/P66b" sentence above, and withdraws P198's 2 ms target (the P198 note's "the target stays
+open"); no other accepted text.
+- **The phone read** (Michael's Pixel 9a, three Perf AI runs on the perf APK of `main` a27803bd):
+  `ai_think_p95_ms` 5.94, 5.87 and 6.03 (mean 5.95, 0.63 of the gate's 9.40); `sim_p95_ms` 9.87,
+  9.85 and 9.93, under Michael's 10 ms trigger by 0.07-0.15 ms (the gate read 12.1-12.6);
+  `job_minus_step_p95_cp_ms` 3.07-3.34; every verdict passes, 0 hitches, about 60 fps, and the
+  hash `cbe70a78d01ee7c1` with `self_check` `match` on all three. CI's `WATCH ai think` p95 on the
+  same commit was 390 us (run 42901639565), so the phone read about 15.3 times CI, where the gate
+  read about 18.5: the ratio moves with the runner as much as the CI value does.
+- **What binds now** (Michael, point 2): the 1.0 ms watch value no longer binds. The binding phone
+  check is Michael's revisit trigger on every Perf AI card, with the AI in it: `sim_p95_ms` at or
+  below 10 ms and `job_minus_step_p95_cp_ms` at or below 5 ms. `ai_think_p95_ms` is read, not
+  judged. On CI, P189c's `[ai] p95_us` ratchet (1.5 times the worst of 11 runs, after P198c) keeps
+  the AI's cost from growing unnoticed.
+- **The lead's reading of point 2** (not Michael's words): the 0.15 ms CI target above falls with
+  the watch value it was derived from; at the measured ratio it stood for about 2.8 ms on the
+  phone. A card over the trigger still goes back to Michael, now with the AI's and the sim's share
+  of the job, so he can weigh an AI-side row under "Over budget" against P66/P66b.
+- **Five slots (P198b) is not merged** (Michael, point 3, and earlier the same day: "lad P198b
+  ligge"): period 3 with five slots cut the CI p95 only to 0.78 of P198's (391 us against 503, runs
+  42895222413 and 42895227397), built the view five times a round instead of three and moved
+  `AiArmy`'s inputs a think earlier. Its balance runs stayed within noise of P198's (a 40-match set
+  has a standard error near 80 per-mille) except Easy, 469 per-mille over 80 matches against the
+  band's 450. The branch `claude/p198b-five-slots` (68ae4858) stays as a reference.
+- **Next lever: P198c** (Michael, point 1): the match's fixed type tables built once
+  and shared, read-only, by every view, so a think stops rebuilding them. No decision changes; its
+  own note records the result.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
