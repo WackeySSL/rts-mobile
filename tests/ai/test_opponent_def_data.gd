@@ -169,7 +169,7 @@ func test_each_tier_has_one_build_order_buildable_in_order(
 			earlier.append(id)
 
 
-func test_only_the_strong_tier_has_the_strike_and_only_the_weak_tier_has_no_radar(
+func test_no_tier_builds_the_strike_and_only_the_weak_tier_has_no_radar(
 	faction: String, _test_parameters := _factions()
 ) -> void:
 	var def: OpponentDef = Rig.def_of(faction)
@@ -179,12 +179,13 @@ func test_only_the_strong_tier_has_the_strike_and_only_the_weak_tier_has_no_rada
 	assert_int(def.role_weight(0, OpponentDef.Role.ARTILLERY)).is_equal(0)
 	# The artillery needs the radar, so a tier that builds it may draw it.
 	assert_str(String(_unit(def.artillery_type).requires.type_id)).is_equal(String(radar))
-	# P192b: the standard tier keeps the radar (the artillery needs it) but drops the strike
-	# building, 2500 credits fired about 0.1 times a match; the strong tier keeps both.
+	# P192b/P192c: no tier builds the strike building (2500 credits, fired about 0.1 times a match
+	# at Normal; Hard's strong order lost it too). Tiers 1 and 2 keep the radar (the artillery
+	# needs it).
 	for tier: int in [1, 2]:
 		var steps: Array[StringName] = def.build_orders[tier].steps
 		assert_array(steps).contains([radar])
-		assert_int(steps.count(def.strike_type)).is_equal(1 if tier == 2 else 0)
+		assert_int(steps.count(def.strike_type)).is_equal(0)
 		assert_int(def.role_weight(tier, OpponentDef.Role.ARTILLERY)).is_greater(0)
 
 
