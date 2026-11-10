@@ -402,11 +402,14 @@ Note (2026-11-10, P26bm, the lead; the Phase 4 gate):
   `ai_think_p95_ms` 9.25-9.48 against the 1.0 ms watch; `sim_p95_ms` 12.1-12.6, over Michael's
   10 ms revisit trigger and under the 13.3 ms verdict; `job_minus_step_p95_cp_ms` 3.1-3.4, under its
   5 ms trigger (no think on a checkpoint tick, as above). CI's `WATCH ai think` p95 on the same
-  commit was 507 us, so AI code ran about 18.6 times slower on the phone than on CI, where the
-  estimate assumed about 5.9 (`est_phone_p95_ms` 2.991).
-- **The remedy:** Michael chose "Over budget"'s levers on 2026-11-10 (plan row P198: more slots,
-  smaller caps, cheaper sector reads, in GDScript), not P66/P66b, which stay deferred. The gate
-  passed with this read; P198 runs after it.
+  commit was 507 us, so AI code ran about 18.5 times slower on the phone than on CI (mean 9.40 ms
+  against 0.507 ms; 18.2-18.7 per run), where the estimate assumed about 5.9 (`est_phone_p95_ms`
+  2.991). At that ratio the target above (0.15 ms on CI) is about 2.8 ms on the phone, not 0.9.
+- **The remedy:** the lead proposed "Over budget"'s levers on #398 (plan row P198: more slots,
+  smaller caps, cheaper sector reads, in GDScript; `ai_think_p95_ms` at or below about 2 ms on the
+  Pixel 9a), with P66/P66b staying deferred: the trigger fired on `sim_p95_ms`, and the cause is
+  the AI's think time, not checkpoint hashing. Michael said yes in chat on 2026-11-10 ("Ja, kør
+  AI-optimeringen"). The gate passed with this read; P198 runs after it.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
