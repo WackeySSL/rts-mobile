@@ -64,17 +64,21 @@ class Played:
 	var screen_time: String = ""
 	var screen_cells: Array[String] = []
 
-	## Every Command of the replay's log, decoded, in the order it was recorded.
-	func commands() -> Array[Command]:
+	## Every Command of `from`'s log, decoded, in the order it was recorded (shared with P193's suite).
+	static func log_commands(from: Replay) -> Array[Command]:
 		var found: Array[Command] = []
 		var at: int = 0
-		while at < replay.commands.size():
+		while at < from.commands.size():
 			var command: Command = Command.new()
-			at = Command.decode(replay.commands, at, command)
+			at = Command.decode(from.commands, at, command)
 			if at <= 0:
 				break
 			found.append(command)
 		return found
+
+	## Every Command of the replay's log, decoded, in the order it was recorded.
+	func commands() -> Array[Command]:
+		return Played.log_commands(replay)
 
 	## Plays `runner` until its match ends or `MAX_TICKS`: the player thinks on the World the next
 	## tick will step, its Commands go through the queue, and one tick is played.
