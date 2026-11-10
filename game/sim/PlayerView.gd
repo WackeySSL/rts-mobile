@@ -544,9 +544,9 @@ func _take_rows(world: World) -> void:
 		if not is_seen:
 			var px: int = xs[row]
 			var py: int = ys[row]
-			if px % MILLI_PER_TILE == 0 and px * 2 > width:
+			if px * 2 > width and px % MILLI_PER_TILE == 0:
 				px -= 1
-			if py % MILLI_PER_TILE == 0 and py * 2 > height:
+			if py * 2 > height and py % MILLI_PER_TILE == 0:
 				py -= 1
 			# `clampi` written out: this loop runs once a row of the World, on every think.
 			var cell_col: int = px / MILLI_PER_TILE
