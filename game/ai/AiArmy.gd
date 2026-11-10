@@ -713,19 +713,24 @@ func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
 ## buildings when `sites`), one test each past the box, until the cap.
 func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
 	var found: int = 0
+	var columns: Array[PackedInt32Array] = view.columns()
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var reach: int = defend_radius * defend_radius
 	for id: int in list:
 		if tests >= tests_max:
 			break
 		var row: int = view.row_of(id)
 		if row < 0:
 			continue
-		var gap: Vector2i = view.row_pos(row) - centre
-		if absi(gap.x) > defend_radius or absi(gap.y) > defend_radius:
+		var gap_x: int = xs[row] - centre.x
+		var gap_y: int = ys[row] - centre.y
+		if absi(gap_x) > defend_radius or absi(gap_y) > defend_radius:
 			continue
 		if sites and not _armed(view, row):
 			continue
 		tests += 1
-		if gap.x * gap.x + gap.y * gap.y <= defend_radius * defend_radius:
+		if gap_x * gap_x + gap_y * gap_y <= reach:
 			found += AiIntel.value_of(view, row)
 	return found
 
