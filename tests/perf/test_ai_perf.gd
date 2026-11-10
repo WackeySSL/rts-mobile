@@ -211,6 +211,10 @@ func _print_prof(run: AiRun) -> void:
 			all.append_array((c as OpponentAi).prof[i])
 		print("WATCH ai prof %s n=%d p95=%.0f mean=%.0f max=%.0f" % [names[i], all.size(), AiRun.p95_of(all), _mean(all), AiRun.max_of(all)])
 	var _unused: OpponentAi = ai
+	for c: AiController in run.controllers:
+		var army: AiArmy = (c as OpponentAi).army
+		var runs: float = maxf(1.0, float(army.prof_runs))
+		print("WATCH ai prof army_stages p=%d runs=%d join=%.0f stage=%.0f step_back=%.0f threat=%.0f unseen=%.0f wave=%.0f" % [c.player_id, army.prof_runs, army.prof_sum[0] / runs, army.prof_sum[1] / runs, army.prof_sum[2] / runs, army.prof_sum[3] / runs, army.prof_sum[4] / runs, army.prof_sum[5] / runs])
 
 
 func _mean(a: PackedFloat64Array) -> float:
