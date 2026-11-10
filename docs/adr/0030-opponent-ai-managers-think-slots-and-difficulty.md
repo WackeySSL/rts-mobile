@@ -624,3 +624,14 @@ are written from this game's own roster and `requires` chains.
    - `SKILL.md` line 12: "read the latest report in `docs/balance/`" becomes "read the latest
      comment on the `balance` issue or the nightly's artifact"; line 9's seeds and step 1 get the
      new flags and `scripts/balance-summary.sh`; step 5 posts one comment block per set.
+
+Note (2026-11-10, P26bl, the lead): §8's trigger fired (Hard 350 per-mille against Normal on
+`d43b4bd`) and P173 (#394) wires `World.income_percent` as §8 describes. Every level still says
+100. Hard's 120 lands together with P183b, the label beside Hard. P183b also picks the result
+screen's wording: `stat_harvested` counts the cargo before the bonus, which is right for balance
+reports, but "Credits harvested" would read about 1/6 low for a player at 120. Hard is still weaker
+than Normal with 120 (362.5 per-mille). Its own fields (`retreat_percent` 50,
+`retreat_ratio_percent` 150, `unit_retreat_hp_percent` 30, `defences_max` 3, `factories_max` 2)
+are the suspects. Michael decided on 2026-11-10 to tune Hard and the number balance once, in
+Phase 4b's balance run. P197's wave assembly, siege focus and press (`claude/p197-ai-finishes`,
+not merged) are a reference for that run, not rules of this ADR.

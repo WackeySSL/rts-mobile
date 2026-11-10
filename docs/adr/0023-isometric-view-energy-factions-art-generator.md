@@ -1169,3 +1169,8 @@ asked with.
   the ROADMAP box, line by line as §15 lists. `assets/art/STYLE.md` changes in the art rows
   (art-director).
 - The lead adds the faction and unit names to the Phase 7 trademark search list (ADR 0006).
+
+Note (2026-11-10, P26bl, the lead): the Linemen's health in §7's roster (80 hp) becomes 70 in row
+P192a (`data/units/renew_rifle.tres`; Michael said yes in chat on 2026-11-10). With Normal's strike
+step gone (P192b), 70 puts cross Normal-Normal at 500/500 per-mille between the factions. The text
+above stays as accepted; `docs/GDD.md` carries the new number.
