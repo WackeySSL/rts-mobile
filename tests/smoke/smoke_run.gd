@@ -425,6 +425,12 @@ static func _player(
 				idle += 1
 	if units > 0:
 		diag += " | units idle %d of %d centre %d,%d" % [idle, units, sum_x / units, sum_y / units]
+	if controller.get("army") != null:
+		var army: AiArmy = controller.army
+		diag += (
+			" | waves %d retreats %d siege %d recalls %d pressed %s"
+			% [army.waves, army.retreats, army.focuses, army.recalls, str(army._pressed)]
+		)
 	var data: Dictionary = {
 		"player": player,
 		"faction": seat["faction"],
