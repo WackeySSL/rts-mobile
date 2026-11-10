@@ -171,7 +171,11 @@ func _fell(world: World, id: int) -> bool:
 
 ## The tile of a building's centre by the floor, the cell that LastSeen records (not
 ## World.cell_of: a footprint of an even width has its centre on a tile border, and the footprint
-## follows from the floor tile, so the border rule of ADR 0033 does not apply to it).
+## follows from the floor tile, so the border rule of ADR 0033 does not apply to it). The oracle
+## copies the rule of the code under test on purpose: the test is about what a play records, and
+## a footprint of an even width (2 x 2, 4 x 4) puts its centre exactly on a tile border, past the
+## middle of the map as well as before it, so a half-turn rule here would disagree with the
+## footprint's own tiles for half of the buildings.
 @warning_ignore("integer_division")
 func _floor_cell(world: World, row: int) -> int:
 	return (

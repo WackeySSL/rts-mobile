@@ -54,6 +54,12 @@ func test_each_side_fires_its_strike_building_once_and_it_starts_charging_again(
 		# clock starts again from the order's step.
 		var ready: int = before.ready_tick[row]
 		assert_int(tick + 1).override_failure_message(faction).is_greater_equal(ready)
+		# The army must have stood at the staging point (the strike waits for it). Since ADR 0033
+		# (P195d-2) the ties of targeting, formation and the flow field go by the half-turn rules, the
+		# fights on the way differ from the old scan-order ones, and a squad of the army can fall
+		# before it arrives: the script then trains and sends a replacement, so the staging comes
+		# later than the charge and `possible` is the later of the two.
+		assert_int(played.player.stage_tick).override_failure_message(faction).is_greater_equal(0)
 		var possible: int = maxi(ready, played.player.stage_tick + 1)
 		assert_int(tick + 1 - possible).override_failure_message(faction).is_less(15)
 		var charge: int = played.world.type_charge_ticks[type]

@@ -73,6 +73,12 @@ func test_two_equal_groups_that_meet_hold_and_fight_until_both_are_gone() -> voi
 			assert_int(world.nav_mode.count(HOLD)).is_equal(6)
 			assert_bool(world.hp.slice(0, 3) != PackedInt32Array([300, 300, 300])).is_true()
 			assert_bool(world.hp.slice(3, 6) != PackedInt32Array([300, 300, 300])).is_true()
+			# Equal strength: the two sides have taken the same damage in all (300 + 12 + 156 each),
+			# though not tank for tank (the pairing of the tanks differs between the sides).
+			var blue_hp: int = world.hp[0] + world.hp[1] + world.hp[2]
+			var red_hp: int = world.hp[3] + world.hp[4] + world.hp[5]
+			assert_int(blue_hp).is_equal(468)
+			assert_int(red_hp).is_equal(468)
 	assert_int(first_death).is_equal(247)
 	assert_array([gone.values().count(1), gone.values().count(2)]).is_equal([3, 3])
 	assert_int(world.unit_count()).is_equal(0)
