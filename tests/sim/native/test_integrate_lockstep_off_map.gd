@@ -166,3 +166,49 @@ func _off_map_goals_world() -> World:
 	FlowCache.run(world, 0)  # The references.
 	world.tick = 9
 	return world
+
+
+## A FIELD tank past the right end of a 6 x 4 grid whose step lands on rock and slides back to its
+## own point, which is off the map: it stands at (9500, 1500) on a map of 9000 x 7000 (wider than the
+## grid, so its tile is the grid's last column once clamped, (5, 1)), and its step (0, 1000) ends at
+## (5999, 2499) on rock, with rock at (5, 1) as well, so it stays. The tile it entered is then the one
+## it stood in, (5, 1), and its next tile is kept (7, a value no field gives it). A tile taken from the
+## unclamped end point is column 9, a tile outside the grid that the unit never entered, which asks
+## the field again and replaces the 7. The tick is one where this row has no periodic refresh.
+func test_a_field_unit_that_slides_back_to_an_off_map_point_has_not_entered_a_new_tile() -> void:
+	var problems: Array[String] = []
+	var pair: Array[World] = LockstepRig.pair(_field_slide_world, false, problems)
+	assert_array(problems).is_empty()
+	for world: World in pair:
+		assert_int(world.line_check_period_ticks).is_greater(1)
+		Movement.integrate(world)
+	assert_str(LockstepRig.difference(pair[0], pair[1])).is_empty()
+	for world: World in pair:
+		assert_int(world.pos_x[0]).is_equal(9500)
+		assert_int(world.pos_y[0]).is_equal(1500)
+		assert_int(world.nav_next[0]).is_equal(7)
+
+
+## The World of the case above: rock at (5, 1) and (5, 2), a complete field keyed on tile 0 and one
+## MOVE tank, FIELD, with a next tile already.
+func _field_slide_world() -> World:
+	var rock: Array[Vector2i] = GridWorld.tiles([[5, 1], [5, 2]])
+	var world: World = GridWorld.from_rows(GridWorld.grass(6, 4, rock), [TRACKED])
+	world.map_w = 9000
+	world.map_h = 7000
+	assert_int(world.flow.acquire(0, TRACKED, world.map_version, 0)).is_equal(0)
+	FlowCache.run(world, BIG)
+	var row: int = world.add_unit(1, 0, 9500, 1500) - 1
+	world.order[row] = MOVE
+	world.nav_mode[row] = FIELD
+	world.field[row] = 0
+	world.goal_x[row] = 500
+	world.goal_y[row] = 500
+	world.intent_x[row] = 0
+	world.intent_y[row] = 1000
+	FlowCache.run(world, 0)  # The references.
+	world.nav_next[row] = 7
+	world.tick = 9
+	if (world.tick + world.unit_id[row]) % maxi(world.line_check_period_ticks, 1) == 0:
+		world.tick += 1
+	return world
