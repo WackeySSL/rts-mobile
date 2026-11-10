@@ -168,13 +168,14 @@ func _off_map_goals_world() -> World:
 	return world
 
 
-## A FIELD tank past the right end of a 6 x 4 grid whose step lands on rock and slides back to its
-## own point, which is off the map: it stands at (9500, 1500) on a map of 9000 x 7000 (wider than the
-## grid, so its tile is the grid's last column once clamped, (5, 1)), and its step (0, 1000) ends at
-## (5999, 2499) on rock, with rock at (5, 1) as well, so it stays. The tile it entered is then the one
-## it stood in, (5, 1), and its next tile is kept (7, a value no field gives it). A tile taken from the
-## unclamped end point is column 9, a tile outside the grid that the unit never entered, which asks
-## the field again and replaces the 7. The tick is one where this row has no periodic refresh.
+## A FIELD tank past the right end of a 6 x 4 grid whose step lands on rock and slides back to
+## its own point, which is off the map: it stands at (9500, 1500) on a map of 9000 x 7000 (wider
+## than the grid, so its tile is the grid's last column once clamped, (5, 1)), and its step (0,
+## 1000) ends at (5999, 2499) on rock, with rock at (5, 1) as well, so it stays. The tile it
+## entered is then the one it stood in, (5, 1), and its next tile is kept (7, a value no field
+## gives it). A tile taken from the unclamped end point is column 9, a tile outside the grid that
+## the unit never entered, which asks the field again and replaces the 7. The tick is one where
+## this row has no periodic refresh.
 func test_a_field_unit_that_slides_back_to_an_off_map_point_has_not_entered_a_new_tile() -> void:
 	var problems: Array[String] = []
 	var pair: Array[World] = LockstepRig.pair(_field_slide_world, false, problems)

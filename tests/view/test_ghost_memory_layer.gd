@@ -179,9 +179,7 @@ func test_a_building_out_of_sight_is_drawn_where_its_footprint_centre_is() -> vo
 			(snap.pos_y[row] / World.MILLI_PER_TILE) * snap.map_cols
 			+ snap.pos_x[row] / World.MILLI_PER_TILE
 		)
-		assert_int(floor_cell).is_equal(
-			snap.ghost_cell[Ghosts.cap_of(snap) + at]
-		)
+		assert_int(floor_cell).is_equal(snap.ghost_cell[Ghosts.cap_of(snap) + at])
 
 
 func test_a_ghost_is_the_live_buildings_body_on_the_same_atlas_region() -> void:

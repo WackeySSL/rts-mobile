@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
-## The picker and the sim agree on an enemy building whose position is on a tile border (ADR 0033,
-## P195d-2 review round 2). A 2x2 building stands on the corner between four tiles on both axes, so
-## the cell under its position is `FixedMath.centre_side`'s, not the floor's, whenever it is past the
-## middle of the map: the sim reads it so (`Targeting.sees`, the check of an ATTACK), and
-## `building_targetable` must give the answer of that check in both fog directions, which a floor
-## cell would not. On a 30 x 30 map, player 1's light tank (id 1) and player 2's power plants (2x2) on
-## tiles 20-21 by 5-6 (position (21000, 6000): the column is 20, the row 6) and on tiles 20-21 by
-## 24-25 (position (21000, 25000): the column is 20 and the row 24, the floor gives 21 and 25).
+## The picker and the sim agree on an enemy building whose position is on a tile border (ADR
+## 0033, P195d-2 review round 2). A 2x2 building stands on the corner between four tiles on both
+## axes, so the cell under its position is `FixedMath.centre_side`'s, not the floor's, whenever
+## it is past the middle of the map: the sim reads it so (`Targeting.sees`, the check of an
+## ATTACK), and `building_targetable` must give the answer of that check in both fog directions,
+## which a floor cell would not. On a 30 x 30 map, player 1's light tank (id 1) and player 2's
+## power plants (2x2) on tiles 20-21 by 5-6 (position (21000, 6000): the column is 20, the row 6)
+## and on tiles 20-21 by 24-25 (position (21000, 25000): the column is 20 and the row 24, the
+## floor gives 21 and 25).
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 ## Id, centre-side cell and floor cell of the two power plants.
