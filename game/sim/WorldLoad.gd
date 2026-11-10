@@ -8,6 +8,9 @@ extends RefCounted
 ## World.gd's own, moved (P109 moved copy_rules and size_match_state, with no change), and ADR 0007
 ## section 2 and ADR 0017 section 3 keep every column, list and rule int in World itself.
 
+## The percent of an unchanged income, and the divisor of every percent: a human's income.
+const PERCENT: int = 100
+
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
 ## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
@@ -315,6 +318,27 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.construction_sites_max = rules.construction_sites_max
 
 
+## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
+## pay (a level's `income_percent`, set at load before the first step); `percent` is clamped to 0
+## or more. Player 0 is the neutral player and is refused, and so is a player above player_count on
+## a prepared world (its array is fitted already: it would grow and move defs_hash). Before
+## prepare() the array grows to `player`, and prepare() keeps what is set (size_match_state fits it
+## to player_count + 1, dropping an entry above that). Entries before `player` are PERCENT.
+static func set_income(world: World, player: int, percent: int) -> void:
+	if player < 1 or (world.prepared and player > world.player_count):
+		return
+	size_income(world, maxi(player + 1, world.income_percent.size()))
+	world.income_percent[player] = maxi(percent, 0)
+
+
+## Fits `income_percent` to `players` entries: the values set stay, a new entry is PERCENT.
+static func size_income(world: World, players: int) -> void:
+	var had: int = world.income_percent.size()
+	world.income_percent.resize(players)
+	for player: int in range(had, players):
+		world.income_percent[player] = PERCENT
+
+
 ## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
 ## count and the rule ints, so that no later row moves the hash through a start value: credits at
 ## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
@@ -324,6 +348,7 @@ static func size_match_state(world: World) -> void:
 	var players: int = world.player_count + 1
 	var queues: int = players * World.TABS
 	var ghosts: int = players * world.ghost_cap
+	size_income(world, players)
 	world.credits.resize(players)
 	for player: int in range(1, players):
 		world.credits[player] = world.start_credits

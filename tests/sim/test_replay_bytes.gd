@@ -282,10 +282,11 @@ func test_a_string_or_an_array_that_ends_the_buffer_is_taken() -> void:
 ## A replay with every field set: one command record, one checkpoint, ints of both widths.
 func _data() -> Dictionary:
 	return {
-		"format": 1,
+		"format": 2,
 		"scenario": "maps/a.tres",
 		"seed": 5_000_000_000,
 		"defs_hash": -7,
+		"income_percent": PackedInt32Array([100, 120]),
 		"commands": PackedInt32Array([1, 0, 0, 3, 0, 0, 0, 0, 0]),
 		"checkpoint_ticks": PackedInt32Array([15]),
 		"checkpoint_hashes": PackedInt64Array([5]),
