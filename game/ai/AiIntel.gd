@@ -81,6 +81,7 @@ func sector_count() -> int:
 ## The sector map: own value and seen enemy value per sector, from this view alone. Value is the
 ## type's cost scaled by the row's hit points; a remembered building (a ghost nothing now shows)
 ## counts at its full cost. The same two passes fill the lists `AiArmy` reads (plan row P179).
+@warning_ignore("integer_division")
 func refresh(view: PlayerView, memory: AiMemory) -> void:
 	passes = 0
 	_fit(view, memory)
@@ -98,34 +99,65 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
 	var hq_id: int = NO_ID
+	# The passes read the view's columns and the type tables through locals, once a row, with the
+	# arithmetic of `_tile`, `sector_at` and `value_of` inlined (P198); the results are theirs.
+	var ids: PackedInt32Array = view.column_id()
+	var owners: PackedInt32Array = view.column_owner()
+	var types: PackedInt32Array = view.column_type()
+	var xs: PackedInt32Array = view.column_x()
+	var ys: PackedInt32Array = view.column_y()
+	var hps: PackedInt32Array = view.column_hp()
+	var foot_w: PackedInt32Array = view.type_foot_w
+	var costs: PackedInt32Array = view.type_cost
+	var max_hps: PackedInt32Array = view.type_max_hp
+	var combat: PackedByteArray = _combat
+	var per: int = PlayerView.MILLI_PER_TILE
+	var col_last: int = maxi(_map_cols - 1, 0)
+	var line_last: int = maxi(_map_rows - 1, 0)
+	var side: int = sector_side
+	var across: int = sector_cols
 	passes += 1
 	for row: int in view.own_rows:
-		var type: int = view.row_type(row)
-		var pos: Vector2i = view.row_pos(row)
-		var at: Vector2i = _tile(pos)
-		memory.sector_own[sector_at(at.x, at.y)] += value_of(view, row)
-		if _entry(view.type_foot_w, type) > 0:
-			var id: int = view.row_id(row)
+		var type: int = types[row]
+		var pos_x: int = xs[row]
+		var pos_y: int = ys[row]
+		var at_col: int = mini(maxi(pos_x, 0) / per, col_last)
+		var at_line: int = mini(maxi(pos_y, 0) / per, line_last)
+		var cost: int = costs[type] if type < costs.size() else 0
+		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
+		var value: int = cost
+		if max_hp > 0:
+			value = cost * clampi(hps[row], 0, max_hp) / max_hp
+		memory.sector_own[at_line / side * across + at_col / side] += value
+		if foot_w[type] > 0:
+			var id: int = ids[row]
 			memory.site_id.append(id)
-			memory.site_x.append(pos.x)
-			memory.site_y.append(pos.y)
+			memory.site_x.append(pos_x)
+			memory.site_y.append(pos_y)
 			if type == hq and id < hq_id:
 				hq_id = id
-				memory.home_x = at.x
-				memory.home_y = at.y
-		elif _combat[type] != 0 and type != scout:
-			memory.unit_id.append(view.row_id(row))
-			memory.unit_hp.append(view.row_hp(row))
+				memory.home_x = maxi(pos_x, 0) / per
+				memory.home_y = maxi(pos_y, 0) / per
+		elif combat[type] != 0 and type != scout:
+			memory.unit_id.append(ids[row])
+			memory.unit_hp.append(hps[row])
 	passes += 1
 	for row: int in view.seen_rows:
-		if view.row_owner(row) <= 0:
+		if owners[row] <= 0:
 			continue
-		var at: Vector2i = _tile(view.row_pos(row))
-		memory.sector_enemy[sector_at(at.x, at.y)] += value_of(view, row)
-		if _combat[view.row_type(row)] != 0:
-			memory.seen_unit_id.append(view.row_id(row))
-		elif _entry(view.type_foot_w, view.row_type(row)) > 0:
-			memory.seen_site_id.append(view.row_id(row))
+		var type: int = types[row]
+		var at_col: int = mini(maxi(xs[row], 0) / per, col_last)
+		var at_line: int = mini(maxi(ys[row], 0) / per, line_last)
+		var cost: int = costs[type] if type < costs.size() else 0
+		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
+		var value: int = cost
+		if max_hp > 0:
+			value = cost * clampi(hps[row], 0, max_hp) / max_hp
+		memory.sector_enemy[at_line / side * across + at_col / side] += value
+		if combat[type] != 0:
+			memory.seen_unit_id.append(ids[row])
+		elif foot_w[type] > 0:
+			memory.seen_site_id.append(ids[row])
 	for record: int in view.ghost_count:
 		if not remembered(view, record):
 			continue
@@ -147,11 +179,14 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
 	memory.own_mobile_id.clear()
+	var ids: PackedInt32Array = view.column_id()
+	var types: PackedInt32Array = view.column_type()
+	var foot_w: PackedInt32Array = view.type_foot_w
 	passes += 1
 	for row: int in view.own_rows:
-		var type: int = view.row_type(row)
-		var id: int = view.row_id(row)
-		if _entry(view.type_foot_w, type) <= 0:
+		var type: int = types[row]
+		var id: int = ids[row]
+		if foot_w[type] <= 0:
 			memory.own_mobile_id.append(id)
 		if type == hq and id < hq_id:
 			hq_id = id
@@ -189,17 +224,23 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 	_best_id = 0
 	memory.seen_mobile_id.clear()
 	var from: Vector2i = home if home.x >= 0 else Vector2i(view.map_cols / 2, view.map_rows / 2)
+	var ids: PackedInt32Array = view.column_id()
+	var owners: PackedInt32Array = view.column_owner()
+	var types: PackedInt32Array = view.column_type()
+	var foot_w: PackedInt32Array = view.type_foot_w
+	var produces: PackedInt32Array = view.type_produces
 	passes += 1
 	for row: int in view.seen_rows:
-		if view.row_owner(row) <= 0:
+		if owners[row] <= 0:
 			continue
-		var type: int = view.row_type(row)
+		var type: int = types[row]
 		_counts[type] += 1
 		_seen_now[type] += 1
-		if _combat[type] == 0 and _entry(view.type_foot_w, type) <= 0:
-			memory.seen_mobile_id.append(view.row_id(row))
-		if is_producer(view, type):
-			_offer(_tile(view.row_pos(row)), view.row_id(row), from)
+		if _combat[type] == 0 and foot_w[type] <= 0:
+			memory.seen_mobile_id.append(ids[row])
+		var tab: int = produces[type] if type < produces.size() else -1
+		if tab >= 0 and tab < PlayerView.TABS:
+			_offer(_tile(view.row_pos(row)), ids[row], from)
 	for record: int in view.ghost_count:
 		if not remembered(view, record):
 			continue

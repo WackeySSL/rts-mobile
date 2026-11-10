@@ -237,6 +237,39 @@ func row_of(id: int) -> int:
 	return MISSING
 
 
+## The row columns as whole arrays (plan row P198), for a manager's loop that would otherwise call
+## `row_id`, `row_type`, `row_pos`... five times a row: index them only with a row of `own_rows` or
+## `seen_rows`, which hold the same values the `row_*` reads give. An index past those two lists
+## names a row the player cannot see, and what it holds is not the player's to read; no caller may
+## use one. The arrays are the World's own and must not be written.
+func column_id() -> PackedInt32Array:
+	return _ids
+
+
+func column_owner() -> PackedInt32Array:
+	return _owner
+
+
+func column_type() -> PackedInt32Array:
+	return _type
+
+
+func column_x() -> PackedInt32Array:
+	return _pos_x
+
+
+func column_y() -> PackedInt32Array:
+	return _pos_y
+
+
+func column_hp() -> PackedInt32Array:
+	return _hp
+
+
+func column_build_left() -> PackedInt32Array:
+	return _build_left
+
+
 ## The public columns of an own or a seen row: its id, owner (0 is neutral), type index, position
 ## in milli-tiles and hit points.
 func row_id(row: int) -> int:
@@ -536,11 +569,18 @@ func _take_rows(world: World) -> void:
 				px -= 1
 			if py % MILLI_PER_TILE == 0 and py * 2 > height:
 				py -= 1
-			var cell: int = (
-				clampi(py / MILLI_PER_TILE, 0, lines - 1) * cols
-				+ clampi(px / MILLI_PER_TILE, 0, cols - 1)
-			)
-			is_seen = visible[block + cell] > 0
+			# `clampi` written out: this loop runs once a row of the World, on every think.
+			var cell_col: int = px / MILLI_PER_TILE
+			if cell_col < 0:
+				cell_col = 0
+			elif cell_col >= cols:
+				cell_col = cols - 1
+			var cell_line: int = py / MILLI_PER_TILE
+			if cell_line < 0:
+				cell_line = 0
+			elif cell_line >= lines:
+				cell_line = lines - 1
+			is_seen = visible[block + cell_line * cols + cell_col] > 0
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN

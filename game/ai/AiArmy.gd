@@ -232,22 +232,32 @@ func _threat(view: PlayerView, memory: AiMemory) -> int:
 	var least: int = defend_radius * defend_radius + 1
 	if not _box(memory):
 		return found
+	# The inner loop reads locals and counts its tests once per unit: a unit that the cap cuts
+	# short tests exactly the sites the one-at-a-time loop would have, then the search ends.
+	var site_xs: PackedInt32Array = memory.site_x
+	var site_ys: PackedInt32Array = memory.site_y
+	var sites: int = memory.site_id.size()
+	var lo: Vector2i = _lo
+	var hi: Vector2i = _hi
 	for id: int in memory.seen_unit_id:
 		var row: int = view.row_of(id)
 		if row < 0:
 			continue
 		var at: Vector2i = view.row_pos(row)
-		if at.x < _lo.x or at.y < _lo.y or at.x > _hi.x or at.y > _hi.y:
+		if at.x < lo.x or at.y < lo.y or at.x > hi.x or at.y > hi.y:
 			continue
-		for site: int in memory.site_id.size():
-			if tests >= tests_max:
-				return found
-			tests += 1
-			var dx: int = at.x - memory.site_x[site]
-			var dy: int = at.y - memory.site_y[site]
-			if dx * dx + dy * dy < least:
-				least = dx * dx + dy * dy
+		var room: int = tests_max - tests
+		var upto: int = mini(sites, maxi(room, 0))
+		for site: int in upto:
+			var dx: int = at.x - site_xs[site]
+			var dy: int = at.y - site_ys[site]
+			var gap: int = dx * dx + dy * dy
+			if gap < least:
+				least = gap
 				found = row
+		tests += upto
+		if upto < sites:
+			return found
 	return found
 
 
