@@ -565,12 +565,16 @@ static func _distance(a: Vector2i, b: Vector2i) -> int:
 
 ## The row's army value: its type's cost scaled by its hit points.
 static func value_of(view: PlayerView, row: int) -> int:
-	var type: int = view.row_type(row)
+	return value_at(view, view.row_type(row), view.row_hp(row))
+
+
+## The value of a `type` at `hp` hit points: its cost scaled by hp over its max hp.
+static func value_at(view: PlayerView, type: int, hp: int) -> int:
 	var cost: int = _entry(view.type_cost, type)
 	var max_hp: int = _entry(view.type_max_hp, type)
 	if max_hp <= 0:
 		return cost
-	return cost * clampi(view.row_hp(row), 0, max_hp) / max_hp
+	return cost * clampi(hp, 0, max_hp) / max_hp
 
 
 static func _entry(table: PackedInt32Array, index: int) -> int:

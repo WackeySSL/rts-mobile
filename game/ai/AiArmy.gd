@@ -147,13 +147,25 @@ func _join(memory: AiMemory) -> void:
 	_ids.clear()
 	_squads.clear()
 	_next.clear()
-	for id: int in memory.unit_id:
-		var at: int = memory.member_id.bsearch(id)
+	# `unit_id`, `member_id` and `_fresh` ascend: one walk down each replaces a bsearch a unit.
+	var units: PackedInt32Array = memory.unit_id
+	var known: PackedInt32Array = memory.member_id
+	var known_squad: PackedInt32Array = memory.member_squad
+	var known_count: int = known.size()
+	var fresh_count: int = _fresh.size()
+	var at: int = 0
+	var pending: int = 0
+	for id: int in units:
+		while at < known_count and known[at] < id:
+			at += 1
 		_ids.append(id)
-		if at < memory.member_id.size() and memory.member_id[at] == id:
-			_squads.append(memory.member_squad[at])
-			if _is_pending(id):
-				_next.append(id)
+		if at < known_count and known[at] == id:
+			_squads.append(known_squad[at])
+			if fresh_count > 0:
+				while pending < fresh_count and _fresh[pending] < id:
+					pending += 1
+				if pending < fresh_count and _fresh[pending] == id:
+					_next.append(id)
 		else:
 			_squads.append(HOME)
 			_next.append(id)
@@ -232,19 +244,16 @@ func _threat(view: PlayerView, memory: AiMemory) -> int:
 	var least: int = defend_radius * defend_radius + 1
 	if not _box(memory):
 		return found
-	# The inner loop reads locals and counts its tests once per unit: a unit that the cap cuts
-	# short tests exactly the sites the one-at-a-time loop would have, then the search ends.
+	# Locals, and a unit's tests counted at once: the cap ends the search where it did.
 	var site_xs: PackedInt32Array = memory.site_x
 	var site_ys: PackedInt32Array = memory.site_y
 	var sites: int = memory.site_id.size()
-	var lo: Vector2i = _lo
-	var hi: Vector2i = _hi
 	for id: int in memory.seen_unit_id:
 		var row: int = view.row_of(id)
 		if row < 0:
 			continue
 		var at: Vector2i = view.row_pos(row)
-		if at.x < lo.x or at.y < lo.y or at.x > hi.x or at.y > hi.y:
+		if at.x < _lo.x or at.y < _lo.y or at.x > _hi.x or at.y > _hi.y:
 			continue
 		var room: int = tests_max - tests
 		var upto: int = mini(sites, maxi(room, 0))
@@ -337,20 +346,39 @@ func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: 
 	hit_tests = 0
 	var refused: bool = false
 	if calm and memory.home_shifted == 0:
-		for at: int in memory.unit_id.size():
-			if memory.member_squad[at] != HOME or _withdrawn(memory, memory.unit_id[at]):
+		# `unit_id` and `hp_id` ascend: one walk down `hp_id` replaces a bsearch a unit.
+		var units: PackedInt32Array = memory.unit_id
+		var hp_ids: PackedInt32Array = memory.hp_id
+		var hps: PackedInt32Array = memory.unit_hp
+		var squads: PackedInt32Array = memory.member_squad
+		var listed: int = hp_ids.size()
+		var withdrawn: bool = not memory.withdrawn_id.is_empty()
+		var walk: int = 0
+		for at: int in units.size():
+			if squads[at] != HOME:
 				continue
-			if _hp_was(memory, memory.unit_id[at]) <= memory.unit_hp[at]:
+			var id: int = units[at]
+			if withdrawn and _withdrawn(memory, id):
 				continue
-			if not _covered(view, memory, view.row_of(memory.unit_id[at])):
+			while walk < listed and hp_ids[walk] < id:
+				walk += 1
+			var was: int = AiMemory.NONE
+			if walk < listed and hp_ids[walk] == id:
+				was = memory.hp_value[walk]
+			if was <= hps[at]:
+				continue
+			if not _covered(view, memory, view.row_of(id)):
 				refused = not _shift(view, memory, out)
 				break
 	_kept.clear()
-	for at: int in memory.unit_id.size():
-		var was: int = AiMemory.NONE
-		if refused and memory.member_squad[at] == HOME:
-			was = _hp_was(memory, memory.unit_id[at])
-		_kept.append(was if was != AiMemory.NONE else memory.unit_hp[at])
+	if refused:
+		for at: int in memory.unit_id.size():
+			var was: int = AiMemory.NONE
+			if memory.member_squad[at] == HOME:
+				was = _hp_was(memory, memory.unit_id[at])
+			_kept.append(was if was != AiMemory.NONE else memory.unit_hp[at])
+	else:
+		_kept.append_array(memory.unit_hp)
 	memory.hp_id.clear()
 	memory.hp_id.append_array(memory.unit_id)
 	var old: PackedInt32Array = memory.hp_value
@@ -814,7 +842,6 @@ func _restage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 ## Sums the home squad's value (`_home_value`, and `_ready_value` without the withdrawn units) and
 ## the wave's value, and the wave's centre, units and idle units, over
 ## the members (a loop over the memory's list, not the view's rows).
-@warning_ignore("integer_division")
 func _tally(view: PlayerView, memory: AiMemory) -> void:
 	_home_value = 0
 	_ready_value = 0
@@ -822,29 +849,18 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 	_wave_units = 0
 	_wave_idle = 0
 	var sum: Vector2i = Vector2i.ZERO
-	# Locals for the arrays read once a member, `value_of` written out (plan row P198).
 	var columns: Array[PackedInt32Array] = view.columns()
 	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
-	var xs: PackedInt32Array = columns[PlayerView.Column.X]
-	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
-	var costs: PackedInt32Array = view.type_cost
-	var max_hps: PackedInt32Array = view.type_max_hp
 	var member_ids: PackedInt32Array = memory.member_id
-	var squads: PackedInt32Array = memory.member_squad
 	for at: int in member_ids.size():
-		var squad: int = squads[at]
+		var squad: int = memory.member_squad[at]
 		if squad != HOME and squad != WAVE:
 			continue
 		var row: int = view.row_of(member_ids[at])
 		if row < 0:
 			continue
-		var type: int = types[row]
-		var cost: int = costs[type] if type < costs.size() else 0
-		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
-		var value: int = cost
-		if max_hp > 0:
-			value = cost * clampi(hps[row], 0, max_hp) / max_hp
+		var value: int = AiIntel.value_at(view, types[row], hps[row])
 		if squad == HOME:
 			_home_value += value
 			if not _withdrawn(memory, member_ids[at]):
@@ -852,7 +868,7 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 		else:
 			_wave_value += value
 			_wave_units += 1
-			sum += Vector2i(xs[row], ys[row])
+			sum += view.row_pos(row)
 			if view.row_order(row) == PlayerView.Order.IDLE:
 				_wave_idle += 1
 	if _wave_units > 0:
