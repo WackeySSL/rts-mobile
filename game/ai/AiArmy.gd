@@ -19,6 +19,8 @@ const ROLE_HOME: int = 0
 ## The wave's squad index and role code.
 const WAVE: int = 1
 const ROLE_WAVE: int = 1
+## P196 experiment: the all-in sends the home squad to the wave only once this many units wait.
+const REINFORCE_MIN: int = 6
 
 ## Copied from the defs: the radius in milli-tiles, the staging offset in tiles, the tests per slot.
 var defend_radius: int = 0
@@ -605,6 +607,9 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	if not all_in:
 		return
 	var home: PackedInt32Array = _members(memory, true)
+	# P196 experiment: reinforcements go in groups, not one by one as each unit spawns.
+	if home.size() < REINFORCE_MIN:
+		return
 	if (
 		not home.is_empty()
 		and _order(view, memory, out, home, goal, AiMemory.Owner.ARMY, _at(goal))
