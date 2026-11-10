@@ -20,9 +20,11 @@ const FIELD: int = World.NavMode.FIELD
 
 ## MOVE and ATTACK_MOVE write the cell of Formation's centre for every unit of the command, whatever
 ## the unit's own slot (the slots lie on other tiles). The target is a rock tile (15, 5) of a 20 x
-## 10 map, so the centre has moved to the first open tile of ring 1, (14, 4), row by row, and the
-## cell is that tile's, not the target's. A unit outside the command keeps -1. Both order types are
-## run, a tank and a foot soldier in one command (one cell for the command, whatever the classes).
+## 10 map, so the centre has moved to an open tile of ring 1: the four orthogonal ones are equally
+## near, and the one furthest along the group's way, east, is (16, 5) (ADR 0033, P195d2; it was the
+## first in a scan row by row, (14, 4)). The cell is that tile's, not the target's. A unit outside
+## the command keeps -1. Both order types are run, a tank and a foot soldier in one command (one
+## cell for the command, whatever the classes).
 func test_move_and_attack_move_write_the_cell_of_the_centre_for_every_unit_of_the_command(
 	impl: int, _test_parameters := _both()
 ) -> void:
@@ -33,7 +35,7 @@ func test_move_and_attack_move_write_the_cell_of_the_centre_for_every_unit_of_th
 	world.add_unit(1, 1, 3000, 4500)
 	world.add_unit(1, 0, 3000, 6500)
 	assert_array(world.group_cell).is_equal([-1, -1, -1, -1, -1])
-	var centre: int = 4 * 20 + 14
+	var centre: int = 5 * 20 + 16
 	var attack_move: Array[Command] = [
 		_stamped(Command.attack_move(1, PackedInt32Array([1, 2, 4]), 15500, 5500), 0)
 	]

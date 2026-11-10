@@ -179,7 +179,7 @@ struct Entry {
 	X(FLOW, requested, I32, SLOTS, PH_F | PH_I) \
 	X(FLOW, status, I32, SLOTS, PH_F | PH_I) \
 	X(FLOW, fields, ARRAY, SLOTS, PH_F | PH_I) \
-	X(SLOT, goal_cell, INT, NONE, PH_F) \
+	X(SLOT, goal_cell, INT, NONE, PH_F | PH_I) \
 	X(SLOT, move_class, INT, NONE, PH_F) \
 	X(SLOT, grid_cols, INT, NONE, PH_F | PH_I) \
 	X(SLOT, cell_count, INT, NONE, PH_F | PH_I) \

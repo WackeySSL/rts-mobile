@@ -160,14 +160,20 @@ int64_t best_neighbour(const Served &field, int64_t cell) {
 		return -1;
 	}
 	const int64_t here = (cell / field.grid_cols + 1) * field.stride + cell % field.grid_cols + 1;
-	int64_t best = field.cost.get(here);
-	if (best == UNREACHED) {
+	const int64_t below = field.cost.get(here);
+	if (below == UNREACHED) {
 		return -1;
 	}
+	int64_t best = below;
 	int64_t pick = -1;
+	int64_t pick_k = -1;
+	int64_t to_x = 0;
+	int64_t to_y = 0;
+	bool aimed = false;
 	for (int64_t k = 0; k < NEIGHBOURS; k++) {
 		const int64_t other = here + DY[k] * field.stride + DX[k];
-		if (field.cost.get(other) >= best) {
+		const int64_t through = field.cost.get(other);
+		if (through >= below || through > best) {
 			continue;
 		}
 		if (STEP_PERCENT[k] != STEP_BASE) {
@@ -175,8 +181,26 @@ int64_t best_neighbour(const Served &field, int64_t cell) {
 				continue;
 			}
 		}
-		best = field.cost.get(other);
+		if (through == best && pick != -1) {
+			if (!aimed) {
+				aimed = true;
+				if (field.goal_cell >= 0) {
+					to_x = field.goal_cell % field.grid_cols - cell % field.grid_cols;
+					to_y = field.goal_cell / field.grid_cols - cell / field.grid_cols;
+				}
+			}
+			const int64_t dot = DX[k] * to_x + DY[k] * to_y;
+			const int64_t held = DX[pick_k] * to_x + DY[pick_k] * to_y;
+			if (dot < held) {
+				continue;
+			}
+			if (dot == held && DX[k] * to_y - DY[k] * to_x <= DX[pick_k] * to_y - DY[pick_k] * to_x) {
+				continue;
+			}
+		}
+		best = through;
 		pick = other;
+		pick_k = k;
 	}
 	if (pick == -1) {
 		return -1;

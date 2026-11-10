@@ -227,7 +227,9 @@ static func _pick(world: World, row: int, skip: int) -> void:
 
 
 ## The index of the ore cell with ore nearest to the milli point (x, y): the smallest squared
-## distance to the cell's centre, then the lowest index; `skip` is an index to pass over (-1 none)
+## distance to the cell's centre; on an equal distance the cell further toward the map centre, then
+## the one on the larger cross side (_toward_centre: the same after a half turn of the map, which a
+## lowest-index rule is not). `skip` is an index to pass over (-1 none)
 ## and `reach` the greatest distance that counts (-1: any, for a point on the map). -1 when no cell
 ## qualifies. Every cell of the list is looked at and counted in `Stat.ORE_SCANNED`. A point far
 ## off the map is cut by the box test before anything is squared.
@@ -237,6 +239,8 @@ static func _scan(world: World, x: int, y: int, skip: int, reach: int) -> int:
 	var cols: int = world.map_cols
 	var best: int = -1
 	var best_d2: int = 0
+	var way_x: int = world.map_w - 2 * x
+	var way_y: int = world.map_h - 2 * y
 	for index: int in cells.size():
 		if amounts[index] <= 0 or index == skip:
 			continue
@@ -251,6 +255,10 @@ static func _scan(world: World, x: int, y: int, skip: int, reach: int) -> int:
 		if best < 0 or d2 < best_d2:
 			best = index
 			best_d2 = d2
+		elif (
+			d2 == best_d2 and _toward_centre(x, y, way_x, way_y, centre, _centre(cells[best], cols))
+		):
+			best = index
 	world.stats[World.Stat.ORE_SCANNED] += cells.size()
 	return best
 
@@ -350,3 +358,19 @@ static func _order(world: World, row: int, goal: Vector2i) -> void:
 	world.goal_y[row] = goal.y
 	world.group_cell[row] = -1
 	Movement.reset_nav(world, PackedInt32Array([row]), World.NavMode.DIRECT)  # alloc-ok
+
+
+## Whether `candidate` beats `held` for a point (x, y) when both are the same distance away: the one
+## further along the way (`way_x`, `way_y` = the map size - 2 * the point, worked out once by the
+## caller) to the map centre, then the one on the larger cross side. Both tests keep
+## their value when the whole map is turned half a turn, which a lowest-index rule does not.
+static func _toward_centre(
+	x: int, y: int, way_x: int, way_y: int, candidate: Vector2i, held: Vector2i
+) -> bool:
+	var along_a: int = (candidate.x - x) * way_x + (candidate.y - y) * way_y
+	var along_b: int = (held.x - x) * way_x + (held.y - y) * way_y
+	if along_a != along_b:
+		return along_a > along_b
+	var across_a: int = (candidate.x - x) * way_y - (candidate.y - y) * way_x
+	var across_b: int = (held.x - x) * way_y - (held.y - y) * way_x
+	return across_a > across_b

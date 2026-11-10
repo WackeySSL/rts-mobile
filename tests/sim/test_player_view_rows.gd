@@ -302,6 +302,48 @@ func test_seen_is_targeting_sees_on_random_worlds_for_every_row_and_player() -> 
 			_check_seen_rule(world, player)
 
 
+## A row on a tile border in the far half of the map reads the tile before the border (the half-turn
+## rule of `FixedMath.centre_side`, ADR 0033), as `Targeting.sees` does, and a row on a near-half
+## border reads the tile after it. The fog edge is set by hand on a 30 x 20 map: a column and a line
+## seen on one side of the border and dark on the other, both ways round.
+func test_seen_follows_the_far_half_border_rule_at_a_fog_edge() -> void:
+	var world: World = TargetingWorlds.short_sighted(3, 30)
+	var fog: FogGrid = world.fog
+	var block: int = 0 * fog.cells
+	# (x, y, the one visible cell, 1 when the row must be seen): the far-half borders x = 20000
+	# (columns 19 | 20) and y = 12000 (lines 11 | 12) read the cell before them, so the cell after
+	# is the one the floor would read; the near-half borders x = 10000 and y = 8000 read the cell
+	# after them.
+	var cases: Array[Vector4i] = [
+		Vector4i(20000, 5500, 5 * 30 + 19, 1),
+		Vector4i(20000, 6500, 6 * 30 + 20, 0),
+		Vector4i(5500, 12000, 11 * 30 + 5, 1),
+		Vector4i(6500, 12000, 12 * 30 + 6, 0),
+		Vector4i(10000, 3500, 3 * 30 + 10, 1),
+		Vector4i(12500, 8000, 7 * 30 + 12, 0),
+		# On the centre lines x = 15000 (30 columns) and y = 10000 (20 lines), which are not past
+		# the middle: the tile after the border is the read one, so the cell before it is not.
+		Vector4i(15000, 5500, 5 * 30 + 15, 1),
+		Vector4i(15000, 2500, 2 * 30 + 14, 0),
+		Vector4i(2500, 10000, 10 * 30 + 2, 1),
+		Vector4i(4500, 10000, 9 * 30 + 4, 0),
+	]
+	var rows: Array[int] = []
+	for entry: Vector4i in cases:
+		rows.append(world.index_of(world.add_unit(2, 0, entry.x, entry.y)))
+		# Only the named cell is visible, and the cell the floor rule would read is dark.
+		for cell: int in [entry.z, entry.z - 1, entry.z + 1, entry.z - 30, entry.z + 30]:
+			fog.visible[block + cell] = 1 if cell == entry.z else 0
+	var view: PlayerView = PlayerView.of(world, 1)
+	for at: int in rows.size():
+		var row: int = rows[at]
+		var want: bool = cases[at].w == 1
+		assert_bool(Targeting.sees(world, 1, world.pos_x[row], world.pos_y[row])).is_equal(want)
+		assert_bool(_in(view.seen_rows, row)).is_equal(want)
+	_check_seen_rule(world, 1)
+	_check_seen_rule(world, 2)
+
+
 func test_seen_is_visible_now_not_explored_on_random_worlds_whose_rows_lost_their_sight() -> void:
 	for salt: int in [3, 4]:
 		var world: World = TargetingWorlds.short_sighted(salt, 30)

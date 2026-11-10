@@ -134,6 +134,9 @@ static func run(world: World) -> void:
 	var tile: int = World.MILLI_PER_TILE
 	var cols: int = world.map_cols
 	var last_row: int = world.map_rows - 1
+	# The sides of the map, for the border rule of `FixedMath.centre_side` (inlined below).
+	var side_x: int = cols * tile
+	var side_y: int = (last_row + 1) * tile
 	intent_x.fill(0)
 	intent_y.fill(0)
 	for row: int in count:
@@ -169,7 +172,18 @@ static func run(world: World) -> void:
 			):
 				mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
 			if mode == World.NavMode.FIELD:
-				var cell: int = clampi(y / tile, 0, last_row) * cols + clampi(x / tile, 0, cols - 1)
+				# World.cell_of, inlined: a point on a border past the middle is in the tile before it.
+				var cx: int = x
+				var cy: int = y
+				if cx % tile == 0 and cx * 2 > side_x:
+					cx -= 1
+				if cy % tile == 0 and cy * 2 > side_y:
+					cy -= 1
+				var cell: int = (
+					0
+					if cols == 0
+					else clampi(cy / tile, 0, last_row) * cols + clampi(cx / tile, 0, cols - 1)
+				)
 				if cell != checked[row]:
 					mode = _check_line(world, row, x, y, aim_x, aim_y, classes[type])
 				if mode == World.NavMode.FIELD and next_of[row] >= 0:
@@ -371,6 +385,10 @@ static func integrate(world: World) -> void:
 	var cols: int = world.map_cols
 	var cells: int = cols * world.map_rows
 	var tile: int = World.MILLI_PER_TILE
+	# The sides of the map, for the border rule of `FixedMath.centre_side` (inlined below).
+	var side_x: int = cols * tile
+	var side_y: int = world.map_rows * tile
+	var last_line: int = world.map_rows - 1
 	var period: int = maxi(world.line_check_period_ticks, 1)
 	var tick: int = world.tick
 	var stall_ticks: int = world.stall_ticks
@@ -399,7 +417,14 @@ static func integrate(world: World) -> void:
 			and slot_of[row] >= 0
 			and slot_of[row] < slot_count
 		):
-			cell = clampi(y, 0, max_y) / tile * cols + clampi(x, 0, max_x) / tile
+			# World.cell_of of the clamped point, inlined (the clamp keeps the tile in the map).
+			var cx: int = clampi(x, 0, max_x)
+			var cy: int = clampi(y, 0, max_y)
+			if cx % tile == 0 and cx * 2 > side_x:
+				cx -= 1
+			if cy % tile == 0 and cy * 2 > side_y:
+				cy -= 1
+			cell = cy / tile * cols + cx / tile
 			if (
 				(next_of[row] == -1 or (tick + ids[row]) % period == 0)
 				and slots[slot_of[row]].complete
@@ -446,14 +471,30 @@ static func integrate(world: World) -> void:
 			continue
 		var new_x: int = clampi(x + step_x, 0, max_x)
 		var new_y: int = clampi(y + step_y, 0, max_y)
+		# The tile of the new point by World.cell_of, inlined: the tile before a border past the
+		# middle of the map.
+		var new_column: int = new_x
+		var new_line: int = new_y
+		if new_column % tile == 0 and new_column * 2 > side_x:
+			new_column -= 1
+		if new_line % tile == 0 and new_line * 2 > side_y:
+			new_line -= 1
+		new_column /= tile
+		new_line /= tile
 		if cells > 0:
 			var base: int = classes[type] * cells
-			if cost[base + (new_y / tile) * cols + new_x / tile] == 0:
-				var own_column: int = clampi(x, 0, max_x) / tile
-				var own_line: int = clampi(y, 0, max_y) / tile
-				if cost[base + own_line * cols + new_x / tile] != 0:
+			if cost[base + new_line * cols + new_column] == 0:
+				var own_column: int = clampi(x, 0, max_x)
+				var own_line: int = clampi(y, 0, max_y)
+				if own_column % tile == 0 and own_column * 2 > side_x:
+					own_column -= 1
+				if own_line % tile == 0 and own_line * 2 > side_y:
+					own_line -= 1
+				own_column /= tile
+				own_line /= tile
+				if cost[base + own_line * cols + new_column] != 0:
 					new_y = y
-				elif cost[base + (new_y / tile) * cols + own_column] != 0:
+				elif cost[base + new_line * cols + own_column] != 0:
 					new_x = x
 				else:
 					new_x = x
@@ -463,6 +504,16 @@ static func integrate(world: World) -> void:
 		pos_x[row] = new_x
 		pos_y[row] = new_y
 		if cell >= 0 and mode == World.NavMode.FIELD:
-			var entered: int = new_y / tile * cols + new_x / tile
+			# The tile of the point the step ended at (after a slide the point is the old one, which
+			# may be off the map, so the tile is clamped), by the same border rule.
+			var end_x: int = new_x
+			var end_y: int = new_y
+			if end_x % tile == 0 and end_x * 2 > side_x:
+				end_x -= 1
+			if end_y % tile == 0 and end_y * 2 > side_y:
+				end_y -= 1
+			var entered: int = (
+				clampi(end_y / tile, 0, last_line) * cols + clampi(end_x / tile, 0, cols - 1)
+			)
 			if entered != cell and slots[slot_of[row]].complete:
 				_refresh_next(world, slots, slot_of, next_of, row, entered, classes[type])

@@ -82,7 +82,9 @@ func test_units_never_enter_a_footprint_and_no_building_moves_in_900_ticks(
 			near = _units_at_a_wall(world, fixed)
 	assert_array([hq, turret, plant]).is_equal([1, 2, 3])
 	assert_int(world.unit_count()).is_equal(27)
-	assert_int(near).override_failure_message("units at the walls").is_greater(5)
+	# Measured 5 under ADR 0033 (P195d2: the slot ties go another way, so the crowd presses on the
+	# walls in other places); the bound was "more than 5" before. The crowd still reaches the walls.
+	assert_int(near).override_failure_message("units at the walls").is_greater_equal(5)
 
 
 ## How many mobile units stand within half a radius of a building's footprint edge (they pushed up

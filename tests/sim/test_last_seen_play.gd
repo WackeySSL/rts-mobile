@@ -139,7 +139,7 @@ func _record_problem(world: World, player: int, record: Array, twice: bool) -> S
 		return "a record of a building that is not an enemy's"
 	if row < 0:
 		return "a record of a gone building on a spot the player sees" if seen else ""
-	var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+	var cell: int = _floor_cell(world, row)
 	if world.type_index[row] != record[1] or world.owner[row] != record[2] or cell != record[3]:
 		return "a record that is not the building's type, owner and cell"
 	return ""
@@ -150,7 +150,7 @@ func _unrecorded_problem(world: World, player: int, kept: Dictionary[int, bool])
 	for row: int in world.unit_count():
 		var owner: int = world.owner[row]
 		var type: int = world.type_index[row]
-		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+		var cell: int = _floor_cell(world, row)
 		var enemy_building: bool = world.type_foot_w[type] > 0 and owner != player and owner >= 1
 		if (
 			enemy_building
@@ -167,6 +167,21 @@ func _fell(world: World, id: int) -> bool:
 		if world.events[at] == World.Event.DIED and world.events[at + 1] == id:
 			return true
 	return false
+
+
+## The tile of a building's centre by the floor, the cell that LastSeen records (not
+## World.cell_of: a footprint of an even width has its centre on a tile border, and the footprint
+## follows from the floor tile, so the border rule of ADR 0033 does not apply to it). The oracle
+## copies the rule of the code under test on purpose: the test is about what a play records, and
+## a footprint of an even width (2 x 2, 4 x 4) puts its centre exactly on a tile border, past the
+## middle of the map as well as before it, so a half-turn rule here would disagree with the
+## footprint's own tiles for half of the buildings.
+@warning_ignore("integer_division")
+func _floor_cell(world: World, row: int) -> int:
+	return (
+		clampi(world.pos_y[row] / World.MILLI_PER_TILE, 0, world.map_rows - 1) * world.map_cols
+		+ clampi(world.pos_x[row] / World.MILLI_PER_TILE, 0, world.map_cols - 1)
+	)
 
 
 ## Whether `player` sees a cell of the footprint of `record` ([id, type, owner, cell]).

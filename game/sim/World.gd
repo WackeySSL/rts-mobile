@@ -733,7 +733,9 @@ func prepare() -> void:
 	prepared = true
 
 
-## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point outside
+## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point on a tile
+## border past the middle of the map is in the tile before it (`FixedMath.centre_side`, ADR 0033),
+## any other point in the tile that holds it. A point outside
 ## the map gives the nearest edge cell, so the result is never outside the map (negative values
 ## divide toward zero and clamp to 0). With no map it is 0. The INTEGRATE kernel has a C++ twin of
 ## this (core/integrate.cpp, Pass::cell_of); a change here edits both and passes the kernel's tests
@@ -742,8 +744,12 @@ func prepare() -> void:
 func cell_of(x: int, y: int) -> int:
 	if map_cols == 0:
 		return 0
-	var column: int = clampi(x / MILLI_PER_TILE, 0, map_cols - 1)
-	var row: int = clampi(y / MILLI_PER_TILE, 0, map_rows - 1)
+	var column: int = clampi(
+		FixedMath.centre_side(x, map_cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, map_cols - 1
+	)
+	var row: int = clampi(
+		FixedMath.centre_side(y, map_rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, map_rows - 1
+	)
 	return row * map_cols + column
 
 

@@ -137,6 +137,8 @@ static func run(world: World) -> void:
 	var fog_lines: int = fog.rows
 	var fog_cells: int = fog.cells
 	var fog_players: int = fog.player_count
+	var fog_w: int = fog_cols * TILE
+	var fog_h: int = fog_lines * TILE
 	var fogged: bool = (
 		fog_cols >= 1
 		and fog_lines >= 1
@@ -155,9 +157,17 @@ static func run(world: World) -> void:
 			if at < count and ids[at] == locked and owners[at] != own and owners[at] != 0:
 				var in_sight: bool = veil < 0
 				if not in_sight:
+					# The cell by `FixedMath.centre_side` (a point on a tile border in the far half of the
+					# map reads the tile before it), inlined over the aliased sizes.
+					var fx: int = pos_x[at]
+					var fy: int = pos_y[at]
+					if fx % TILE == 0 and fx * 2 > fog_w:
+						fx -= 1
+					if fy % TILE == 0 and fy * 2 > fog_h:
+						fy -= 1
 					var lock_cell: int = (
-						clampi(pos_y[at] / TILE, 0, fog_lines - 1) * fog_cols
-						+ clampi(pos_x[at] / TILE, 0, fog_cols - 1)
+						clampi(fy / TILE, 0, fog_lines - 1) * fog_cols
+						+ clampi(fx / TILE, 0, fog_cols - 1)
 					)
 					in_sight = seen[veil + lock_cell] > 0
 				if in_sight:
@@ -199,9 +209,17 @@ static func run(world: World) -> void:
 				):
 					var held_seen: bool = veil < 0
 					if not held_seen:
+						# The cell by `FixedMath.centre_side` (a point on a tile border in the far half of the
+						# map reads the tile before it), inlined over the aliased sizes.
+						var fx: int = pos_x[at]
+						var fy: int = pos_y[at]
+						if fx % TILE == 0 and fx * 2 > fog_w:
+							fx -= 1
+						if fy % TILE == 0 and fy * 2 > fog_h:
+							fy -= 1
 						var held_cell: int = (
-							clampi(pos_y[at] / TILE, 0, fog_lines - 1) * fog_cols
-							+ clampi(pos_x[at] / TILE, 0, fog_cols - 1)
+							clampi(fy / TILE, 0, fog_lines - 1) * fog_cols
+							+ clampi(fx / TILE, 0, fog_cols - 1)
 						)
 						held_seen = seen[veil + held_cell] > 0
 					if held_seen:
@@ -238,9 +256,17 @@ static func run(world: World) -> void:
 					if percent <= 0:
 						continue
 					if veil >= 0:
+						# The cell by `FixedMath.centre_side` (a point on a tile border in the far half of the
+						# map reads the tile before it), inlined over the aliased sizes.
+						var fx: int = pos_x[other]
+						var fy: int = pos_y[other]
+						if fx % TILE == 0 and fx * 2 > fog_w:
+							fx -= 1
+						if fy % TILE == 0 and fy * 2 > fog_h:
+							fy -= 1
 						var other_cell: int = (
-							clampi(pos_y[other] / TILE, 0, fog_lines - 1) * fog_cols
-							+ clampi(pos_x[other] / TILE, 0, fog_cols - 1)
+							clampi(fy / TILE, 0, fog_lines - 1) * fog_cols
+							+ clampi(fx / TILE, 0, fog_cols - 1)
 						)
 						if seen[veil + other_cell] <= 0:
 							continue
@@ -281,7 +307,10 @@ static func sees(world: World, player: int, x: int, y: int) -> bool:
 		or cells / cols != lines
 	):
 		return true
-	var cell: int = clampi(y / TILE, 0, lines - 1) * cols + clampi(x / TILE, 0, cols - 1)
+	var cell: int = (
+		clampi(FixedMath.centre_side(y, lines * TILE) / TILE, 0, lines - 1) * cols
+		+ clampi(FixedMath.centre_side(x, cols * TILE) / TILE, 0, cols - 1)
+	)
 	return fog.visible[(player - 1) * cells + cell] > 0
 
 

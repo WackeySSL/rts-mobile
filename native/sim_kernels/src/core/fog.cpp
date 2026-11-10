@@ -2,6 +2,8 @@
 // game/sim/FogGrid.gd: see fog.h. MIT.
 #include "fog.h"
 
+#include "fixed_math.h"
+
 namespace fog {
 
 namespace {
@@ -116,7 +118,7 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 		if (player < 1 || player > grid.player_count || (rules.tick - player + 1) % period != 0) {
 			continue;
 		}
-		const int64_t cell = clamp(rows.pos_y.get(row) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(rows.pos_x.get(row) / MILLI_PER_TILE, 0, grid.cols - 1);
+		const int64_t cell = clamp(fixed_math::centre_side(rows.pos_y.get(row), grid.rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(fixed_math::centre_side(rows.pos_x.get(row), grid.cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.cols - 1);
 		const int64_t old = rows.fog_cell.get(row);
 		if (cell == old) {
 			continue;

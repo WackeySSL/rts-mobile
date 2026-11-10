@@ -292,8 +292,11 @@ func _sample(
 		var id: int = ids[row]
 		if x >= RIDGE_FROM_X and x < RIDGE_TO_X:
 			run.in_ridge += 1
-			ridge_row[id] = y / 1000
-			if not GAP_OF_ROW.has(y / 1000):
+			# The tile row by the rule of World.cell_of (a unit exactly on a row border past the
+			# middle of the map is in the row before it, ADR 0033), not by a floor.
+			var tile_row: int = world.cell_of(x, y) / world.map_cols
+			ridge_row[id] = tile_row
+			if not GAP_OF_ROW.has(tile_row):
 				run.off_gap += 1
 		# A unit that changed sides went through the ridge's columns in between (a tick moves a
 		# unit far less than their 2000 milli), so the last row it was seen there is its gap.

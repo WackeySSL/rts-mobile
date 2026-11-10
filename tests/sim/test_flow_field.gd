@@ -160,8 +160,10 @@ func test_scrub_is_foot_ground_and_an_enclosed_cell_stays_unreached() -> void:
 
 
 ## -1 at the goal, outside the map and before completion; a goal outside the map completes at
-## once. In the last field (2,2) reaches the goal through (2,1) = 5 or (1,2) = 7, both 30: 5 wins.
-func _best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell(impl: int) -> void:
+## once. In the last field (2,2) reaches the goal through (2,1) = 5 or (1,2) = 7, both 30 and aimed
+## alike at the goal: the larger cross product wins, 7 (the lower cell, 5, won before the
+## goal-aimed tie-break).
+func _best_neighbour_is_minus_one_at_the_ends_and_ties_go_by_the_goal(impl: int) -> void:
 	var field: FlowField = _integrate(impl, _open(4, 4), 1, 1)
 	for cell: int in [5, -1, 16, 17, 1000, -100]:
 		assert_int(field.best_neighbour(cell)).is_equal(-1)
@@ -185,11 +187,11 @@ func _best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell(impl
 			assert_array(got + [pending.best_neighbour(5)]).is_equal([true, 0, 36, -1])
 	var tie: FlowField = _integrate(impl, PackedStringArray(["...", ".#.", "..."]), 0, 0)
 	assert_array([_at(tie, 3, 2, 1), _at(tie, 3, 1, 2)]).is_equal([30, 30])
-	assert_int(tie.best_neighbour(8)).is_equal(5)
+	assert_int(tie.best_neighbour(8)).is_equal(7)
 
 
-func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell() -> void:
-	_under_both(_best_neighbour_is_minus_one_at_the_ends_and_ties_go_to_the_lower_cell)
+func test_best_neighbour_is_minus_one_at_the_ends_and_ties_go_by_the_goal() -> void:
+	_under_both(_best_neighbour_is_minus_one_at_the_ends_and_ties_go_by_the_goal)
 
 
 @warning_ignore("integer_division")

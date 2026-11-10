@@ -437,6 +437,61 @@ func test_run_writes_only_the_target_and_engagement_columns_and_the_work_count(
 	assert_array(world.stats).is_equal(stats)
 
 
+## The vision rule reads the cell of an enemy on a tile border by `FixedMath.centre_side` (ADR
+## 0033): in the far half of the map the tile before the border, so a fog edge on the border splits
+## what the floor rule would see. A 30 x 12 map, player 1's block dark but for one cell, an enemy of
+## player 2 on the border x = 20000 (the columns 19 | 20) or y = 8000 (the lines 7 | 8) and a rifle
+## squad of player 1 three tiles from it or less. The four consumers of the rule, each with the cell
+## before the border seen and the cell after it seen (with the other dark): a new lock of an ATTACK,
+## a held target (kept, which costs no candidate, or dropped by the rule and not found again by the
+## scan), and a scan candidate.
+func test_the_cell_of_an_enemy_on_a_far_half_border_is_the_one_before_it(
+	impl: int, _test_parameters := _both()
+) -> void:
+	# The enemy, the subject, the cell the rule reads, the cell beside it. The first two are in the
+	# far half (the cell before the border); the last two are ON the centre line of the map (x =
+	# 15000 is the middle of 30 columns, y = 6000 the middle of 12 lines), which is not the far
+	# half, so the tile after the border is read.
+	var cases: Array[Array] = [
+		[Vector2i(20000, 6500), Vector2i(17500, 6500), 6 * 30 + 19, 6 * 30 + 20],
+		[Vector2i(15500, 8000), Vector2i(15500, 5500), 7 * 30 + 15, 8 * 30 + 15],
+		[Vector2i(15000, 5500), Vector2i(12500, 5500), 5 * 30 + 15, 5 * 30 + 14],
+		[Vector2i(5500, 6000), Vector2i(5500, 3500), 6 * 30 + 5, 5 * 30 + 5],
+	]
+	for item: Array in cases:
+		var enemy_at: Vector2i = item[0]
+		var subject_at: Vector2i = item[1]
+		for seen_cell: int in [item[2], item[3]]:
+			var before: bool = seen_cell == item[2]  # The cell the rule reads is the seen one.
+			for mode: String in ["scan", "held", "lock"]:
+				var label: String = "%s, %s, cell %d" % [item[0], mode, seen_cell]
+				var world: World = _in(Rig.data_world(30, 12), impl)
+				world.add_unit(1, RIFLE, subject_at.x, subject_at.y)
+				world.add_unit(2, RIFLE, enemy_at.x, enemy_at.y)
+				world.prepare()
+				world.fog.visible.fill(0)
+				world.fog.visible[seen_cell] = 1
+				if mode == "held":
+					world.target[0] = 2
+				elif mode == "lock":
+					world.order[0] = ATTACK
+					world.order_target[0] = 2
+				world.tick = Rig.due_tick_for(world, 1)
+				Rig.acquire(world)
+				var candidates: int = world.stats[World.Stat.TARGET_CANDIDATES]
+				assert_int(world.target[0]).override_failure_message(label).is_equal(
+					2 if before else 0
+				)
+				if mode == "held":
+					# A kept target is no scan: the rule alone decides it (the scan reads the same
+					# cell, so the target would be the same without it).
+					assert_bool(candidates == 0).override_failure_message(label).is_equal(before)
+				elif mode == "lock":
+					assert_int(world.order[0]).override_failure_message(label).is_equal(
+						ATTACK if before else ATTACK_MOVE
+					)
+
+
 ## A weapon's percents with `chosen` at 60 and the other three armour classes at 20.
 func _column(chosen: int) -> Array[int]:
 	var percents: Array[int] = [20, 20, 20, 20]

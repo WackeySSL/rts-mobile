@@ -570,6 +570,34 @@ func test_rows_added_after_prepare_are_stamped_at_their_players_turn() -> void:
 	_assert_reached(rig.tally(), BORN_FLOORS, "born")
 
 
+## Rows that stand on tile borders, before and past the middle of the map and on its far edges, are
+## stamped in the tile on the map centre's side (FixedMath.centre_side, ADR 0033) by the twin and by
+## the kernel alike: rows added at border points after prepare take their players' turn and stamp,
+## and then every row walks to another border point and stamps again.
+func test_rows_on_tile_borders_are_stamped_in_the_centre_side_tile_by_both_versions() -> void:
+	var members: Dictionary = {&"fog_period_ticks": 1}
+	var rig: RefCounted = _rig(Worlds.field.bind(24, 17, 2, [3000, 1000], [], members))
+	var script: Dictionary = {}
+	for tick: int in 12:
+		var x: int = (tick * 2000) % 25000
+		var y: int = (tick * 3000) % 18000
+		script[tick] = [Orders.add(1 + tick % 2, tick % 2, x, y)]
+	for tick: int in range(12, 24):
+		var entries: Array = []
+		for unit: int in 12:
+			entries.append(Orders.move(unit + 1, (unit * 5000 + tick * 1000) % 25000, 12000))
+		script[tick] = entries
+	assert_str(rig.run(26, Orders.scripted.bind(script))).is_empty()
+	_assert_whole(rig, "borders")
+	# A row on a border past the middle is in the tile before it: the middle of the map is
+	# (12000, 8500), so (20000, 15000) is in (19, 14) and (12000, 9000) in (12, 8), while
+	# (12000, 8000), before the middle, stays in the tile after the border, (12, 8).
+	var world: World = Worlds.field(
+		24, 17, 2, [3000], [[1, 0, 20000, 15000], [1, 0, 12000, 9000], [1, 0, 12000, 8000]]
+	)
+	assert_array(world.fog_cell).is_equal([14 * 24 + 19, 8 * 24 + 12, 8 * 24 + 12])
+
+
 ## The cells the phase covers are added to what the tick has counted so far, also when the
 ## tick counted some already.
 func test_the_cells_covered_are_added_to_a_count_the_tick_already_holds() -> void:

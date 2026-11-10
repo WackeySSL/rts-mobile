@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## FixedMath.line_clear (P37a fix 1). The tile rules are in test_formation_tiles on square maps, so
 ## a mix-up of columns and rows in the tile lookups needs these: every case here runs on a wide
 ## map (12 x 6) or a tall one (6 x 12). A tile of the map is read from the lattice point by the
-## rule of World.cell_of (a point on a tile's left or top edge is in it), and a goal must be a
+## rule of World.cell_of (a point on a tile border is in the tile on the map centre's side, ADR
+## 0033), and a goal must be a
 ## point from which every class of the group has a clear line inside its own tile.
 
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -13,17 +14,19 @@ const TRACKED: int = World.MoveClass.TRACKED
 const TILE: int = World.MILLI_PER_TILE
 
 
-## A target on rock moves to the first open tile in ring order on a wide map, for rock at the right
-## edge, the bottom edge and the top right corner (a clamp by the wrong dimension, or a lookup that
-## reads the wrong row, gives another goal).
-func test_a_target_on_rock_moves_to_the_first_open_tile_on_a_wide_map() -> void:
+## A target on rock moves to the centre of the nearest open tile of the first ring that has one on a
+## wide map (an equal distance: the tile further along the unit's way to the target, which is down
+## and right from the unit at (500, 500)), for rock at the right edge, the bottom edge and the top
+## right corner (a clamp by the wrong dimension, or a lookup that reads the wrong row, gives another
+## goal).
+func test_a_target_on_rock_moves_to_the_nearest_open_tile_on_a_wide_map() -> void:
 	var cases: Array[Array] = [
 		# the rock tiles, the target, the goal of a lone unit
-		[[[9, 4]], Vector2i(9500, 4500), Vector2i(8500, 3500)],
+		[[[9, 4]], Vector2i(9500, 4500), Vector2i(10500, 4500)],
 		# On the bottom edge: the target (0, 6000) is clamped to (400, 5600), in tile (0, 5).
-		[[[0, 5]], Vector2i(0, 6000), Vector2i(500, 4500)],
+		[[[0, 5]], Vector2i(0, 6000), Vector2i(1500, 5500)],
 		# On the far right edge: (12000, 0) is clamped to (11600, 400), in tile (11, 0).
-		[[[11, 0]], Vector2i(12000, 0), Vector2i(10500, 500)],
+		[[[11, 0]], Vector2i(12000, 0), Vector2i(11500, 1500)],
 		# An open tile keeps the target. Read with a stride of 6 instead of 12, tile (11, 3) would
 		# be (5, 2).
 		[[[5, 2]], Vector2i(11500, 3500), Vector2i(11500, 3500)],
@@ -33,25 +36,25 @@ func test_a_target_on_rock_moves_to_the_first_open_tile_on_a_wide_map() -> void:
 		var goal: Vector2i = _lone(GridWorld.grass(12, 6, rock), case[1], [FOOT])
 		assert_that(goal).override_failure_message(str(case)).is_equal(case[2])
 	# The bottom half of the map is rock: the ring of the target (3, 5) in the bottom row has a row
-	# below the map, and it is no tile. The first open tile is in row 2, three rings up.
+	# below the map, and it is no tile. The nearest open tile is the one in row 2, three rings up.
 	var half_rock: PackedStringArray = GridWorld.grass(12, 6)
 	for y: int in range(3, 6):
 		half_rock[y] = "#".repeat(12)
-	assert_that(_lone(half_rock, Vector2i(3500, 5500), [FOOT])).is_equal(Vector2i(500, 2500))
+	assert_that(_lone(half_rock, Vector2i(3500, 5500), [FOOT])).is_equal(Vector2i(3500, 2500))
 
 
 ## The same on a tall map, with the cases turned over: a rock at the bottom edge (clamped by the
 ## row count), a ring that reaches past the right edge of the map before an open tile, and a ring
 ## that is all rock in the rows of the lower half.
-func test_a_target_on_rock_moves_to_the_first_open_tile_on_a_tall_map() -> void:
+func test_a_target_on_rock_moves_to_the_nearest_open_tile_on_a_tall_map() -> void:
 	var cases: Array[Array] = [
-		[[[4, 9]], Vector2i(4500, 9500), Vector2i(3500, 8500)],
-		[[[0, 11]], Vector2i(0, 12000), Vector2i(500, 10500)],
-		[[[5, 0]], Vector2i(6000, 0), Vector2i(4500, 500)],
+		[[[4, 9]], Vector2i(4500, 9500), Vector2i(4500, 10500)],
+		[[[0, 11]], Vector2i(0, 12000), Vector2i(1500, 11500)],
+		[[[5, 0]], Vector2i(6000, 0), Vector2i(5500, 1500)],
 		# Read with a stride of 12 instead of 6, tile (5, 3) would be (5, 6).
 		[[[5, 6]], Vector2i(5500, 3500), Vector2i(5500, 3500)],
-		# Tile (6, 0), right of the map, is no tile: the first open one is (4, 1), not (6, 0).
-		[[[5, 0], [4, 0]], Vector2i(6000, 0), Vector2i(4500, 1500)],
+		# Tile (6, 0), right of the map, is no tile: the nearest open one is (5, 1), not (6, 0).
+		[[[5, 0], [4, 0]], Vector2i(6000, 0), Vector2i(5500, 1500)],
 		# Ring 1 is all rock except (3, 9), in a row below the number of columns.
 		[
 			[[2, 8], [1, 7], [2, 7], [3, 7], [1, 8], [3, 8], [1, 9], [2, 9]],
@@ -179,10 +182,10 @@ func test_the_vehicle_classes_read_their_own_tiles() -> void:
 	# the unit classes of the group, the target, the goal of its first unit
 	var cases: Array[Array] = [
 		[[WHEELED], wheels_tile, wheels_tile],
-		[[TRACKED], wheels_tile, Vector2i(2500, 2500)],
+		[[TRACKED], wheels_tile, Vector2i(2500, 3500)],
 		[[TRACKED], tracks_tile, tracks_tile],
-		[[WHEELED], tracks_tile, Vector2i(4500, 2500)],
-		[[WHEELED, TRACKED], wheels_tile, Vector2i(2500, 2500)],
+		[[WHEELED], tracks_tile, Vector2i(4500, 3500)],
+		[[WHEELED, TRACKED], wheels_tile, Vector2i(2500, 3500)],
 		[[FOOT], tracks_tile, tracks_tile],
 	]
 	for case: Array in cases:
@@ -257,10 +260,16 @@ func test_the_goals_equal_the_definition_on_wide_and_tall_maps() -> void:
 			var point: Vector2i = Vector2i(
 				clampi(target.x, low.x, high.x), clampi(target.y, low.y, high.y)
 			)
-			var centre: Vector2i = _definition_centre(rows, classes, point, low, high)
+			# The group's way to the point: the point * count - the sum of the positions.
+			var way: Vector2i = point * count
+			for member: int in group:
+				way -= Vector2i(world.pos_x[member], world.pos_y[member])
+			var centre: Vector2i = _definition_centre(rows, classes, point, low, high, way)
 			moved += 1 if centre != point else 0
+			# The slots' approach is the same sum taken to the group's centre, which may have moved.
+			var approach: Vector2i = way + (centre - point) * count
 			var slots: Array[Vector2i] = _definition_slots(
-				rows, classes, count, centre, spacing, low, high
+				rows, classes, count, centre, spacing, low, high, approach
 			)
 			skipped += 1 if slots.size() < count else 0
 			var expected: Array[int] = []
@@ -277,9 +286,7 @@ func test_the_goals_equal_the_definition_on_wide_and_tall_maps() -> void:
 				)
 			for slot: Vector2i in slots:
 				for move_class: int in classes:
-					var tile: Vector2i = Vector2i(
-						mini(slot.x / TILE, shape.x - 1), mini(slot.y / TILE, shape.y - 1)
-					)
+					var tile: Vector2i = _tile_of(slot, shape)
 					var from: Vector2i = tile * TILE + Vector2i(TILE / 2, TILE / 2)
 					var reached: bool = (
 						FixedMath.line_clear(world, slot.x, slot.y, slot.x, slot.y, move_class)
@@ -355,12 +362,21 @@ func _open(rows: PackedStringArray, classes: Array[int], x: int, y: int) -> bool
 	return true
 
 
-## The tile of a point (World.cell_of: the far edge of the map is in the last tile) is open.
+## The tile of a point (World.cell_of: the far edge of the map is in the last tile, and a point on
+## a tile border past the middle of the map is in the tile before it) is open.
 @warning_ignore("integer_division")
 func _open_at(rows: PackedStringArray, classes: Array[int], point: Vector2i) -> bool:
-	return _open(
-		rows, classes, mini(point.x / TILE, len(rows[0]) - 1), mini(point.y / TILE, rows.size() - 1)
-	)
+	var tile: Vector2i = _tile_of(point, Vector2i(len(rows[0]), rows.size()))
+	return _open(rows, classes, tile.x, tile.y)
+
+
+## The tile of `point` on a map of `shape` tiles by the rule of FixedMath.centre_side: a coordinate
+## on a border past the middle of the map belongs to the tile before the border.
+@warning_ignore("integer_division")
+func _tile_of(point: Vector2i, shape: Vector2i) -> Vector2i:
+	var x: int = point.x - 1 if point.x % TILE == 0 and point.x * 2 > shape.x * TILE else point.x
+	var y: int = point.y - 1 if point.y % TILE == 0 and point.y * 2 > shape.y * TILE else point.y
+	return Vector2i(mini(x / TILE, shape.x - 1), mini(y / TILE, shape.y - 1))
 
 
 func _in_box(point: Vector2i, radius: int, width: int, height: int) -> bool:
@@ -372,20 +388,27 @@ func _in_box(point: Vector2i, radius: int, width: int, height: int) -> bool:
 	)
 
 
-## The target of a group by the definition (ADR 0008 section 2): the point itself on an open tile,
-## otherwise the centre of the first open tile whose centre is in the box, in rings around the
-## tile of the point (ring, then row, then column), or the point when there is none.
+## The target of a group by the definition (ADR 0008 section 2, ADR 0033): the point itself on an
+## open tile, otherwise the centre of the open tile in the nearest ring around the tile of the point
+## that has one, whose centre is in the box: the nearest to the point, an equal distance to the one
+## further along `way` (the dot product of its offset from the point with `way`), then to the one
+## with the larger cross product (offset.x * way.y - offset.y * way.x). The point when there is
+## none.
 @warning_ignore("integer_division")
 func _definition_centre(
-	rows: PackedStringArray, classes: Array[int], point: Vector2i, low: Vector2i, high: Vector2i
+	rows: PackedStringArray,
+	classes: Array[int],
+	point: Vector2i,
+	low: Vector2i,
+	high: Vector2i,
+	way: Vector2i
 ) -> Vector2i:
 	var cols: int = len(rows[0])
-	var tile: Vector2i = Vector2i(
-		mini(point.x / TILE, cols - 1), mini(point.y / TILE, rows.size() - 1)
-	)
+	var tile: Vector2i = _tile_of(point, Vector2i(cols, rows.size()))
 	if _open(rows, classes, tile.x, tile.y):
 		return point
 	for ring: int in range(1, maxi(cols, rows.size())):
+		var found: Array[Vector2i] = []
 		for j: int in range(-ring, ring + 1):
 			for i: int in range(-ring, ring + 1):
 				var x: int = tile.x + i
@@ -406,13 +429,32 @@ func _definition_centre(
 					and centre.y >= low.y
 					and centre.y <= high.y
 				):
-					return centre
+					found.append(centre)
+		if not found.is_empty():
+			found.sort_custom(
+				func(left: Vector2i, right: Vector2i) -> bool:
+					return _closer(left - point, right - point, way)
+			)
+			return found[0]
 	return point
 
 
-## The first `count` slots by the definition (ADR 0003 section 4, ADR 0008 section 2): every lattice
-## point centre + spacing * (i, j) in the box on an open tile, nearest first by squared lattice
-## distance, then by ring, then row, then column.
+## Whether the offset `left` comes before `right`: the smaller squared length, then the larger dot
+## product with `way`, then the larger cross product with it.
+func _closer(left: Vector2i, right: Vector2i, way: Vector2i) -> bool:
+	if left.length_squared() != right.length_squared():
+		return left.length_squared() < right.length_squared()
+	var left_dot: int = left.x * way.x + left.y * way.y
+	var right_dot: int = right.x * way.x + right.y * way.y
+	if left_dot != right_dot:
+		return left_dot > right_dot
+	return left.x * way.y - left.y * way.x > right.x * way.y - right.y * way.x
+
+
+## The first `count` slots by the definition (ADR 0003 section 4, ADR 0008 section 2, ADR 0033):
+## every lattice point centre + spacing * (i, j) in the box on an open tile, nearest first by
+## squared lattice distance, then by the larger dot product of (i, j) with `way`, then by the larger
+## cross product, then (for a zero `way`) by ring, then row, then column.
 @warning_ignore("integer_division")
 func _definition_slots(
 	rows: PackedStringArray,
@@ -421,10 +463,13 @@ func _definition_slots(
 	centre: Vector2i,
 	spacing: int,
 	low: Vector2i,
-	high: Vector2i
+	high: Vector2i,
+	way: Vector2i
 ) -> Array[Vector2i]:
 	var reach: int = maxi(high.x - low.x, high.y - low.y) / spacing + 1
 	var by_key: Dictionary[int, Vector2i] = {}
+	var offsets: Dictionary[int, Vector2i] = {}
+	var tails: Dictionary[int, int] = {}
 	for j: int in range(-reach, reach + 1):
 		for i: int in range(-reach, reach + 1):
 			var point: Vector2i = centre + Vector2i(i, j) * spacing
@@ -433,10 +478,28 @@ func _definition_slots(
 			if not _open_at(rows, classes, point):
 				continue
 			var ring: int = maxi(absi(i), absi(j))
-			var key: int = (((i * i + j * j) * 256 + ring) * 256 + j + reach) * 256 + i + reach
+			var tail: int = (ring * 256 + j + reach) * 256 + i + reach
+			var key: int = tail * 1024 + (i * i + j * j)
 			by_key[key] = point
+			offsets[key] = Vector2i(i, j)
+			tails[key] = tail
 	var keys: Array = by_key.keys()
-	keys.sort()
+	keys.sort_custom(
+		func(left: int, right: int) -> bool:
+			var left_at: Vector2i = offsets[left]
+			var right_at: Vector2i = offsets[right]
+			if left_at.length_squared() != right_at.length_squared():
+				return left_at.length_squared() < right_at.length_squared()
+			var left_dot: int = left_at.x * way.x + left_at.y * way.y
+			var right_dot: int = right_at.x * way.x + right_at.y * way.y
+			if left_dot != right_dot:
+				return left_dot > right_dot
+			var left_cross: int = left_at.x * way.y - left_at.y * way.x
+			var right_cross: int = right_at.x * way.y - right_at.y * way.x
+			if left_cross != right_cross:
+				return left_cross > right_cross
+			return tails[left] < tails[right]
+	)
 	var slots: Array[Vector2i] = []
 	for key: int in keys:
 		if slots.size() == count:

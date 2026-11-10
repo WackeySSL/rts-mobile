@@ -21,10 +21,13 @@ const COLS: int = 12
 const ROWS: int = 8
 
 
-## A unit at (4900, 4900) on a 12 x 8 map steps (+100, +100) into tile (5, 5). With only that tile
-## blocked the x move alone is taken (5000, 4900) though the y move alone is open too; with (5, 4)
+## A unit at (4950, 4950) on a 12 x 8 map steps (+100, +100) into tile (5, 5). With only that tile
+## blocked the x move alone is taken (5050, 4950) though the y move alone is open too; with (5, 4)
 ## blocked as well the y move alone; with both blocked it stays; with the destination open it
-## takes the whole step. Each case is a list of the rock tiles and the position that follows.
+## takes the whole step. The unit starts off a tile border: a border point past the middle of the
+## map belongs to the tile before it (FixedMath.centre_side), which these cases would then have to
+## read as another tile (the case on the border is in test_half_turn_rules). Each case is a list of
+## the rock tiles and the position that follows.
 ## Only the destination is tested (ADR 0008 section 4), so with both orthogonal neighbours of an
 ## open destination blocked the unit still takes the diagonal step between them: the flow field and
 ## `line_clear` call that corner cutting and forbid it. The last case pins the approximation (ADR
@@ -33,20 +36,20 @@ func test_the_slide_tries_the_x_move_then_the_y_move_then_stays(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var cases: Array[Array] = [
-		[[], Vector2i(5000, 5000)],
-		[[[5, 5]], Vector2i(5000, 4900)],
-		[[[5, 5], [5, 4]], Vector2i(4900, 5000)],
-		[[[5, 5], [4, 5]], Vector2i(5000, 4900)],
-		[[[5, 5], [5, 4], [4, 5]], Vector2i(4900, 4900)],
+		[[], Vector2i(5050, 5050)],
+		[[[5, 5]], Vector2i(5050, 4950)],
+		[[[5, 5], [5, 4]], Vector2i(4950, 5050)],
+		[[[5, 5], [4, 5]], Vector2i(5050, 4950)],
+		[[[5, 5], [5, 4], [4, 5]], Vector2i(4950, 4950)],
 		# Rock beside the path, not on it, changes nothing.
-		[[[6, 6], [3, 3]], Vector2i(5000, 5000)],
+		[[[6, 6], [3, 3]], Vector2i(5050, 5050)],
 		# Rock on both sides of the corner and an open destination: the unit squeezes through.
-		[[[5, 4], [4, 5]], Vector2i(5000, 5000)],
+		[[[5, 4], [4, 5]], Vector2i(5050, 5050)],
 	]
 	for case: Array in cases:
 		var rock: Array[Vector2i] = GridWorld.tiles(case[0])
 		var world: World = _in(GridWorld.from_rows(GridWorld.grass(COLS, ROWS, rock)), impl)
-		world.add_unit(1, 0, 4900, 4900)
+		world.add_unit(1, 0, 4950, 4950)
 		world.intent_x[0] = 100
 		world.intent_y[0] = 100
 		Movement.integrate(world)
@@ -308,21 +311,21 @@ func test_a_tall_map_clamps_y_to_its_height(impl: int, _test_parameters := _both
 	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([1000, 11999])
 
 
-## The slide reads the unit's own row on a tall map: a unit at (3900, 9900), below y = 8000 (the
+## The slide reads the unit's own row on a tall map: a unit at (3950, 9950), below y = 8000 (the
 ## map's width), steps (+100, +100) into rock tile (4, 10). The x move alone ends in rock (4, 9)
 ## and the y move alone in open (3, 10), so only the y part is taken. If the own row were bounded
 ## by the map's width it would read row 7, find open ground there and take the x part instead.
 func test_a_tall_map_slide_reads_the_units_own_row(impl: int, _test_parameters := _both()) -> void:
 	var rock: Array[Vector2i] = GridWorld.tiles([[4, 10], [4, 9]])
 	var world: World = _in(GridWorld.from_rows(GridWorld.grass(8, 12, rock)), impl)
-	world.add_unit(1, 0, 3900, 9900)
+	world.add_unit(1, 0, 3950, 9950)
 	world.intent_x[0] = 100
 	world.intent_y[0] = 100
 	Movement.integrate(world)
-	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([3900, 10000])
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([3950, 10050])
 
 
-## The slide reads the unit's own column on a wide map (12 x 8 tiles): a unit at (9900, 3900), east
+## The slide reads the unit's own column on a wide map (12 x 8 tiles): a unit at (9950, 3950), east
 ## of x = 8000 (the map's height), steps (+100, +100) into rock tile (10, 4); the x move alone ends
 ## in rock (10, 3) and the y move alone in rock (9, 4), so it stays. If the own column were bounded
 ## by the map's height it would read column 7, find open ground there and take the y part.
@@ -331,11 +334,11 @@ func test_a_wide_map_slide_reads_the_units_own_column(
 ) -> void:
 	var rock: Array[Vector2i] = GridWorld.tiles([[10, 4], [10, 3], [9, 4]])
 	var world: World = _in(GridWorld.from_rows(GridWorld.grass(12, 8, rock)), impl)
-	world.add_unit(1, 0, 9900, 3900)
+	world.add_unit(1, 0, 9950, 3950)
 	world.intent_x[0] = 100
 	world.intent_y[0] = 100
 	Movement.integrate(world)
-	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([9900, 3900])
+	assert_array([world.pos_x[0], world.pos_y[0]]).is_equal([9950, 3950])
 
 
 ## A World with the one tank type table and no map yet: the test sets a size and adds the units

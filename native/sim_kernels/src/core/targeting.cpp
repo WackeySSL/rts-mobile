@@ -94,7 +94,7 @@ int64_t Pass::veil_of(int64_t owner) const {
 // Targeting.sees, inlined by the twin's loops: whether the cell that holds (x, y) (the nearest edge cell for a point off the
 // map; `/` truncates toward zero as in GDScript) is covered by a sight disc in the block at `veil`, which is 0 or more.
 bool Pass::seen(int64_t veil, int64_t x, int64_t y) const {
-	const int64_t cell = clamp(y / TILE, 0, fog_.rows - 1) * fog_.cols + clamp(x / TILE, 0, fog_.cols - 1);
+	const int64_t cell = clamp(fixed_math::centre_side(y, fog_.rows * TILE) / TILE, 0, fog_.rows - 1) * fog_.cols + clamp(fixed_math::centre_side(x, fog_.cols * TILE) / TILE, 0, fog_.cols - 1);
 	return fog_.visible.get(veil + cell) > 0;
 }
 

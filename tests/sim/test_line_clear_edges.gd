@@ -47,14 +47,16 @@ func _clear(world: World, a: Vector2i, b: Vector2i, move_class: int = TRACKED) -
 	return forward
 
 
-## The diagonals of the map end exactly on its far corner (5000, 5000) or start on its other
-## ones. They cross the corners (1000, 1000) to (4000, 4000) (or x + y = 5000), and each crossing
-## touches the four tiles around it: 13 tiles, among them (1, 0) and (0, 1) beside the first
-## corner and (4, 3) and (3, 4) beside the last. A far edge pulled in by one milli (a clamp to
-## cols * 1000 - 1, on either axis) tilts the segment off the corners and drops the tiles beside
-## them.
+## The far edge of the map belongs to the last tile (World.cell_of) and, as any tile border past the
+## middle of the map, to the tile before it (FixedMath.centre_side: an end on such a border is one
+## milli inside that tile). The falling diagonal from (0, 0) to the far corner pulls in both axes
+## alike, so it keeps its slope and its corners: it crosses (1000, 1000) to (4000, 4000), and each
+## crossing touches the four tiles around it, 13 tiles, among them (1, 0) and (0, 1) beside the
+## first corner and (4, 3) and (3, 4) beside the last. The rising diagonal from (0, 5000) to
+## (5000, 0) pulls in one axis at each end: it becomes x + y = 4999, a milli off every corner, and
+## touches only the 9 tiles that it passes through, none of those beside the corners.
 func test_a_diagonal_that_ends_on_the_far_corner_keeps_its_slope() -> void:
-	# From the top left corner to the far corner: both ends of the clamp are in play.
+	# From the top left corner to the far corner: both axes are pulled in alike.
 	var falling: Array[Vector2i] = [
 		Vector2i(0, 0),
 		Vector2i(1, 0),
@@ -78,19 +80,16 @@ func test_a_diagonal_that_ends_on_the_far_corner_keeps_its_slope() -> void:
 	assert_bool(FixedMath.line_clear(beside, 0, 0, FAR, FAR, TRACKED)).is_false()
 	assert_bool(FixedMath.line_clear(beside, FAR, FAR, 0, 0, TRACKED)).is_false()
 	# From the bottom left corner to the top right one: the segment starts on the far edge of y and
-	# ends on the far edge of x. Rock only at (1, 4), beside the corner (1000, 4000), blocks it.
+	# ends on the far edge of x, so it is x + y = 4999 and touches the 9 tiles it passes through.
+	# Rock only at (1, 4), beside the corner (1000, 4000), no longer blocks it.
 	var rising: Array[Vector2i] = [
 		Vector2i(0, 4),
-		Vector2i(1, 4),
 		Vector2i(0, 3),
 		Vector2i(1, 3),
-		Vector2i(2, 3),
 		Vector2i(1, 2),
 		Vector2i(2, 2),
-		Vector2i(3, 2),
 		Vector2i(2, 1),
 		Vector2i(3, 1),
-		Vector2i(4, 1),
 		Vector2i(3, 0),
 		Vector2i(4, 0),
 	]
@@ -98,29 +97,33 @@ func test_a_diagonal_that_ends_on_the_far_corner_keeps_its_slope() -> void:
 		rising
 	)
 	var below: World = GridWorld.from_rows(GridWorld.grass(SIDE, SIDE, [Vector2i(1, 4)]))
-	assert_bool(FixedMath.line_clear(below, 0, FAR, FAR, 0, TRACKED)).is_false()
-	assert_bool(FixedMath.line_clear(below, FAR, 0, 0, FAR, TRACKED)).is_false()
+	assert_bool(FixedMath.line_clear(below, 0, FAR, FAR, 0, TRACKED)).is_true()
+	assert_bool(FixedMath.line_clear(below, FAR, 0, 0, FAR, TRACKED)).is_true()
+	var on_path: World = GridWorld.from_rows(GridWorld.grass(SIDE, SIDE, [Vector2i(0, 3)]))
+	assert_bool(FixedMath.line_clear(on_path, 0, FAR, FAR, 0, TRACKED)).is_false()
 
 
 ## The same on a slope that is not a corner to corner diagonal: a segment from the top left corner
 ## to the middle of the far edge of x (1 over 2) and to the middle of the far edge of y (2 over 1).
-## Each crosses two corners, and the tiles beside them are touched.
+## The end on the far edge is pulled in by one milli on that axis, so the slope is a hair off 1 over
+## 2 (or 2 over 1): it passes beside the two corners instead of through them and touches the tiles
+## it crosses and no more (7 tiles, not 9).
 func test_a_segment_that_ends_on_a_far_edge_keeps_its_slope() -> void:
 	var half: Array[Vector2i] = GridWorld.tiles(
-		[[0, 0], [1, 0], [2, 0], [1, 1], [2, 1], [3, 1], [4, 1], [3, 2], [4, 2]]
+		[[0, 0], [1, 0], [1, 1], [2, 1], [3, 1], [3, 2], [4, 2]]
 	)
 	assert_array(_blockers(Vector2i(0, 0), Vector2i(FAR, FAR / 2))).contains_exactly_in_any_order(
 		half
 	)
 	var steep: Array[Vector2i] = GridWorld.tiles(
-		[[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4]]
+		[[0, 0], [0, 1], [1, 1], [1, 2], [1, 3], [2, 3], [2, 4]]
 	)
 	assert_array(_blockers(Vector2i(0, 0), Vector2i(FAR / 2, FAR))).contains_exactly_in_any_order(
 		steep
 	)
-	# From the bottom left corner: the start is on the far edge of y.
+	# From the bottom left corner: the start is on the far edge of y, the end on the far edge of x.
 	var rising: Array[Vector2i] = GridWorld.tiles(
-		[[0, 4], [1, 3], [1, 4], [2, 3], [2, 4], [3, 2], [3, 3], [4, 2], [4, 3]]
+		[[0, 4], [1, 3], [1, 4], [2, 3], [3, 2], [3, 3], [4, 2]]
 	)
 	assert_array(_blockers(Vector2i(0, FAR), Vector2i(FAR, FAR / 2))).contains_exactly_in_any_order(
 		rising

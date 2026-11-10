@@ -41,16 +41,22 @@ const UNITS: Array[Array] = [[1, 30500, 10500, 0], [1, 39500, 19500, 1], [2, 500
 ## 3000 is the tiles with dx^2 + dy^2 <= 9 from the unit's own tile.
 const SPOTS: Array[Array] = [
 	# The gun's row: the tiles 27 to 33 along it, past the short side (20) of the map, are in its disc.
+	# A point on a tile border past the middle of the map is in the tile before it (ADR 0033,
+	# FixedMath.centre_side), so 27000 is in tile 26 and 34000 still in tile 33.
 	[1, 26999, 10500, false],
-	[1, 27000, 10500, true],
+	[1, 27000, 10500, false],
+	[1, 27001, 10500, true],
 	[1, 33999, 10500, true],
-	[1, 34000, 10500, false],
+	[1, 34000, 10500, true],
+	[1, 34001, 10500, false],
 	# The scout's disc in the corner: 36 to 39 along its row, and 16 to 19 across along its column.
 	[1, 35999, 19500, false],
-	[1, 36000, 19500, true],
+	[1, 36000, 19500, false],
+	[1, 36001, 19500, true],
 	[1, 39999, 19500, true],
 	[1, 39500, 15999, false],
-	[1, 39500, 16000, true],
+	[1, 39500, 16000, false],
+	[1, 39500, 16001, true],
 	# Off the map, the nearest edge cell: past the long side, the short side, and both.
 	[1, 99000, 19500, true],
 	[1, 39500, 99000, true],

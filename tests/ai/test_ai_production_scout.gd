@@ -9,8 +9,9 @@ const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 ## The first tick of a Normal match (seed 1, fossil against renew) at which player 1's scout moves:
 ## the economy's reserve takes most of the income for the build order. The refinery goes to the
 ## slot nearest the ore (P195b), docks and exits face the map centre (P195c-1) and the explored rule
-## is gone (P195c-3); the value was found by running the match on the combined tree.
-const SCOUT_MOVE_TICK: int = 4495
+## is gone (P195c-3) and the half-turn ties move where the units stand (P195d-2: 4495 -> 4420); the
+## value was found by running the match on the combined tree.
+const SCOUT_MOVE_TICK: int = 4420
 const MATCH_TICKS: int = 6500
 
 # --- The scout ---------------------------------------------------------------------------------

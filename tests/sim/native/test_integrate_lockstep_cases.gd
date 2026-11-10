@@ -13,10 +13,10 @@ extends GdUnitTestSuite
 ## apart (scrub, wheeled-only, tracked-only); a group target that turns to rock (the blocked key); a
 ## closed room that the field cannot reach (unreachable goals); a cache of two slots shared by four
 ## groups; ATTACK units on moving targets (the re-key); opposite corners of the largest map; exact
-## ties (the scan order of best_neighbour, the arrival range, the re-key distance); and the edges of
-## the numbers (a negative tick and the remainder of a negative sum, an order none of the sim's, a
-## field and a cache smaller than the map, a map with no width, positions at the top of the int32
-## range, rule ints at their limits).
+## ties (the goal-aimed tie-break of best_neighbour, the arrival range, the re-key distance); and
+## the edges of the numbers (a negative tick and the remainder of a negative sum, an order none of
+## the sim's, a field and a cache smaller than the map, a map with no width, positions at the top of
+## the int32 range, rule ints at their limits).
 
 const LockstepRig: GDScript = preload("res://tests/sim/support/lockstep_rig.gd")
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
@@ -98,7 +98,11 @@ func test_a_goal_the_field_cannot_reach_ends_the_order_of_the_tanks_that_wait_fo
 	var rig: RefCounted = LockstepRig.new().setup(_room_world)
 	assert_array(rig.problems).is_empty()
 	assert_str(rig.run(400, _room_orders)).is_empty()
-	_assert_reached(rig, {&"field": 1000, &"named": 200, &"no_next": 300, &"ended": 12})
+	# Floors re-measured after the half-turn ties (ADR 0033): the room run counts 978 field lookups
+	# (floor was 1000). The file's rule (header): a case counts what it reached so that it cannot
+	# pass by never meeting its rule, so a floor sits just under the count (950, about 3% below) and
+	# a rule that stops being reached shows at once.
+	_assert_reached(rig, {&"field": 950, &"named": 150, &"no_next": 300, &"ended": 12})
 	var twin: World = rig.worlds[0]
 	for row: int in twin.unit_count():
 		assert_int(twin.order[row]).is_equal(IDLE)
@@ -129,7 +133,8 @@ func test_attack_units_on_moving_targets_rekey_their_fields() -> void:
 	for _tick: int in 700:
 		assert_str(rig.step(_chase_orders)).is_empty()
 		assert_array(_tables(rig.worlds[1])).is_equal(_tables(rig.worlds[0]))
-	_assert_reached(rig, {&"field": 1000, &"named": 800, &"rekeys": 6, &"recycles": 1})
+	# After the half-turn ties (ADR 0033) the chase counts 4 re-keys (the floor was 6).
+	_assert_reached(rig, {&"field": 1000, &"named": 800, &"rekeys": 3, &"recycles": 1})
 
 
 ## Units in the four corners of the largest map (64 x 64), each sent to the opposite corner. Open,
@@ -164,15 +169,15 @@ func test_units_in_opposite_corners_of_the_largest_map() -> void:
 
 ## best_neighbour on a 9 x 9 map with a rock pillar on each diagonal neighbour of the goal (4, 4):
 ## a unit on every open tile looks up its next tile in one pass. A unit in a corner of the map has
-## two neighbours of the same cost and the scan order NW, N, NE, W, E, SW, S, SE decides: (2, 2)
-## takes (3, 2), the east one before the south one, (6, 2) takes (5, 2), (2, 6) takes (2, 5) and
-## (6, 6) takes (6, 5).
-func test_exact_ties_between_neighbours_go_by_the_scan_order_on_every_tile() -> void:
+## two neighbours of the same cost and the cross product with the goal decides (equal dot
+## products): (2, 2) takes (3, 2), (6, 2) takes (6, 3), (6, 6) takes (5, 6) and (2, 6) takes
+## (2, 5), the same turn of the pattern at each corner.
+func test_exact_ties_between_neighbours_go_by_the_goal_on_every_tile() -> void:
 	var pair: Array[World] = _pair(_pillar_world)
 	_integrate_all(pair)
 	_assert_same(pair)
 	for world: World in pair:
-		for tile: Array in [[2, 2, 21], [6, 2, 23], [2, 6, 47], [6, 6, 51]]:
+		for tile: Array in [[2, 2, 21], [6, 2, 33], [2, 6, 47], [6, 6, 59]]:
 			var row: int = _row_at(world, Vector2i(tile[0], tile[1]))
 			var label: String = "tile (%d, %d)" % [tile[0], tile[1]]
 			assert_int(world.nav_next[row]).override_failure_message(label).is_equal(tile[2])
@@ -184,14 +189,14 @@ func test_exact_ties_between_neighbours_go_by_the_scan_order_on_every_tile() -> 
 ## The same sweep on a 7 x 7 map where the four orthogonal neighbours of the goal (3, 3) cost 14 and
 ## the rest 10: every neighbour of the goal then costs exactly 14, the diagonal onto grass
 ## (10 x 14 / 10) as much as the orthogonal onto the dear tile. The tile (3, 1) has three
-## neighbours of that cost (SW, S, SE) and takes the first in the scan, (2, 2).
+## neighbours of that cost (SW, S, SE), equally aimed, and takes SE, (4, 2), by the cross product.
 func test_exact_ties_between_a_diagonal_and_an_orthogonal_cost() -> void:
 	var pair: Array[World] = _pair(_tie_cost_world)
 	_integrate_all(pair)
 	_assert_same(pair)
 	for world: World in pair:
 		assert_int(world.nav_next[_row_at(world, Vector2i(2, 2))]).is_equal(3 + 3 * 7)
-		assert_int(world.nav_next[_row_at(world, Vector2i(3, 1))]).is_equal(2 + 2 * 7)
+		assert_int(world.nav_next[_row_at(world, Vector2i(3, 1))]).is_equal(4 + 2 * 7)
 		assert_int(world.nav_next.count(NO_NEXT)).is_equal(1)
 
 

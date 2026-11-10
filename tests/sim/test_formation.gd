@@ -28,9 +28,12 @@ func test_thirty_units_take_the_thirty_nearest_lattice_points() -> void:
 	var rows: PackedInt32Array = _add_block(_world, 30, 6, 8500, 18500, 1500, 0)
 	Formation.assign(_world, rows, 30500, 21500)
 	var offsets: Array[Vector2i] = _offsets(rows, Vector2i(30500, 21500))
-	# 29 lattice points have i*i + j*j <= 9. The 30th is the first one at 10 in generation order.
+	# 29 lattice points have i*i + j*j <= 9. The 30th is one of the eight at 10, the one furthest
+	# along the group's approach, here (547 500, 0) (30 * target - the sum of the positions): (3, 1)
+	# and (3, -1) share the largest offset along it, and (3, -1) has the larger one across it.
 	assert_int(_within(offsets, 9)).is_equal(29)
-	assert_array(offsets).contains([Vector2i(-1, -3)])
+	assert_array(offsets).contains([Vector2i(3, -1)])
+	assert_array(offsets).not_contains([Vector2i(-1, -3)])
 	for a: int in rows.size():
 		for b: int in range(a + 1, rows.size()):
 			var gap: Vector2i = _goal(_world, a) - _goal(_world, b)
@@ -92,8 +95,10 @@ func test_a_thin_map_limits_the_inset_to_half_the_map_on_each_axis() -> void:
 	assert_that(_goal(thin, 2)).is_equal(Vector2i(MAP - RADIUS - 2 * SPACING, 300))
 
 
-## Slot order is centre, (0,-1), (-1,0). Id 2 is nearest the target, id 3 is nearer the second
-## slot than id 1 is (a tie would go to id 1). Id 4 is not in the group and keeps its goal.
+## Slot order is centre, (-1,0), (0,-1): the two ring-1 slots tie on distance, and the group's
+## approach, 3 * target - the sum of the positions = (-500, -500), puts (-1,0) first (the same share
+## along it, the larger one across it). Id 2 is nearest the target, id 3 is nearer the second slot
+## than id 1 is. Id 4 is not in the group and keeps its goal.
 func test_the_nearest_unit_takes_the_centre_slot_and_the_rest_follow_greedily() -> void:
 	_world.add_unit(1, 0, 13500, 10000)
 	_world.add_unit(1, 0, 10000, 10500)
@@ -101,8 +106,8 @@ func test_the_nearest_unit_takes_the_centre_slot_and_the_rest_follow_greedily() 
 	_world.add_unit(1, 0, 20000, 20000)
 	Formation.assign(_world, PackedInt32Array([0, 1, 2]), 10000, 10000)
 	assert_that(_goal(_world, 1)).is_equal(Vector2i(10000, 10000))
-	assert_that(_goal(_world, 2)).is_equal(Vector2i(10000, 8800))
-	assert_that(_goal(_world, 0)).is_equal(Vector2i(8800, 10000))
+	assert_that(_goal(_world, 2)).is_equal(Vector2i(8800, 10000))
+	assert_that(_goal(_world, 0)).is_equal(Vector2i(10000, 8800))
 	assert_that(_goal(_world, 3)).is_equal(Vector2i(20000, 20000))
 
 

@@ -65,6 +65,9 @@ const CONTROLS_MASKS: Array[int] = [Rig.ONLY, Rig.ONLY, Rig.WITH_PORTED, Rig.ALL
 ## 4,714 flips_off, 2,279 explored_new, 10,304 listed, 175 relisted, 2,460 version_flips, 6,436
 ## quiet_stamps, 98 deaths, 98 deaths_stamped, 29 death_on_turn, 117 clipped, 103 clip_w, the rest
 ## unchanged.
+## With the half-turn border rule (ADR 0033, P195d-2) the rows are stamped in other cells: 65
+## clipped, 22 clip_w, 43 clip_n (floors were 68 and 58); the controls run counts 1 death_on_turn
+## (floor 2).
 const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 17000,
 	&"stays": 14000,
@@ -83,8 +86,8 @@ const ARENA_FLOORS: Dictionary[StringName, int] = {
 	&"deaths": 65,
 	&"deaths_stamped": 65,
 	&"death_on_turn": 19,
-	&"clipped": 68,
-	&"clip_w": 58,
+	&"clipped": 44,
+	&"clip_w": 14,
 	&"clip_n": 9
 }
 ## The arena under random waves, measured on 5984880: 34,588 turns, 28,429 stays, 6,159 restamps,
@@ -143,7 +146,7 @@ const CONTROLS_FLOORS: Dictionary[StringName, int] = {
 	&"quiet_stamps": 4700,
 	&"deaths": 6,
 	&"deaths_stamped": 6,
-	&"death_on_turn": 2,
+	&"death_on_turn": 1,
 	&"clipped": 260,
 	&"clip_w": 210,
 	&"clip_e": 18,
@@ -159,6 +162,8 @@ const CONTROLS_FLOORS: Dictionary[StringName, int] = {
 ## 4,910 flips_on, 3,682 flips_off, 2,102 explored_new, 8,397 listed, 195 relisted, 2,096
 ## version_flips, 6,982 quiet_stamps, 96 deaths, 96 deaths_stamped, 26 death_on_turn, 88 clipped, 88
 ## clip_w.
+## With the half-turn border rule (P195d-2) the run clips 12 times, all clip_n (clip_w was 80 and
+## is 0, so the floor moves to clip_n).
 const CHANGED_FLOORS: Dictionary[StringName, int] = {
 	&"turns": 12000,
 	&"stays": 10000,
@@ -177,8 +182,8 @@ const CHANGED_FLOORS: Dictionary[StringName, int] = {
 	&"deaths": 64,
 	&"deaths_stamped": 64,
 	&"death_on_turn": 16,
-	&"clipped": 53,
-	&"clip_w": 53
+	&"clipped": 8,
+	&"clip_n": 8
 }
 ## The arena under random walkers, measured on 5984880: 16,032 turns, 3,596 stays, 12,236 restamps,
 ## 12,236 unstamps, 2,303,958 covered, 821,005 overlap_stamps, 821,667 overlap_unstamps, 335,165

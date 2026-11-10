@@ -304,14 +304,24 @@ func index_of(id: int) -> int:
 	return -1
 
 
-## The cell of the point (x, y) in milli-tiles, by World.cell_of's formula: clamped into the map,
-## so a point outside it gives the nearest edge cell; 0 with no map.
+## The cell of the point (x, y) in milli-tiles, by World.cell_of's formula (ADR 0033): a point on a
+## tile border past the middle of the map is in the tile before it (`FixedMath.centre_side`), as
+## `Targeting.sees` reads it. Clamped into the map, so a point outside it gives the nearest edge
+## cell; 0 with no map. LastSeen's ghost cell is a floor and is not this.
 @warning_ignore("integer_division")
 func cell_of(x: int, y: int) -> int:
 	if map_cols == 0:
 		return 0
-	var column: int = clampi(x / World.MILLI_PER_TILE, 0, map_cols - 1)
-	var row: int = clampi(y / World.MILLI_PER_TILE, 0, map_rows - 1)
+	var column: int = clampi(
+		FixedMath.centre_side(x, map_cols * World.MILLI_PER_TILE) / World.MILLI_PER_TILE,
+		0,
+		map_cols - 1
+	)
+	var row: int = clampi(
+		FixedMath.centre_side(y, map_rows * World.MILLI_PER_TILE) / World.MILLI_PER_TILE,
+		0,
+		map_rows - 1
+	)
 	return row * map_cols + column
 
 

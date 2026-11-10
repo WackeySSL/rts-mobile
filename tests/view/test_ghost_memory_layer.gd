@@ -174,9 +174,12 @@ func test_a_building_out_of_sight_is_drawn_where_its_footprint_centre_is() -> vo
 		var snap: MatchSnapshot = _runner.snapshot
 		var row: int = snap.index_of(id)
 		assert_that(Vector2i(snap.pos_x[row], snap.pos_y[row])).is_equal(CENTRES[at])
-		assert_int(snap.cell_of(snap.pos_x[row], snap.pos_y[row])).is_equal(
-			snap.ghost_cell[Ghosts.cap_of(snap) + at]
+		# LastSeen's cell is a floor (ADR 0033 keeps its encoding), not snap.cell_of's centre rule.
+		var floor_cell: int = (
+			(snap.pos_y[row] / World.MILLI_PER_TILE) * snap.map_cols
+			+ snap.pos_x[row] / World.MILLI_PER_TILE
 		)
+		assert_int(floor_cell).is_equal(snap.ghost_cell[Ghosts.cap_of(snap) + at])
 
 
 func test_a_ghost_is_the_live_buildings_body_on_the_same_atlas_region() -> void:
