@@ -54,7 +54,7 @@ func test_after_30_ticks_every_snapshot_array_equals_its_world_array() -> void:
 	assert_array(sizes).is_equal([149, 149, 149])
 
 
-## The nine World lists of ADR 0012 section 3 and ADR 0017 section 6, DERIVED_ARRAYS included. No
+## The World lists of ADR 0012 section 3 and ADR 0017 section 6, DERIVED_ARRAYS included. No
 ## NOT_COPIED name is a snapshot property, so a derived list cannot slip in as a stale copy, and
 ## every COPIED_SCALARS name is an int of the snapshot and of the World.
 func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> void:
@@ -505,7 +505,7 @@ func _put_projectile(slot: int, id: int, x: int, y: int) -> void:
 	_world.proj_y[slot] = y
 
 
-## The names of the World's nine shape lists, in list order.
+## The names of the World's shape lists, in list order.
 func _shape_names() -> Array[StringName]:
 	var names: Array[StringName] = []
 	names.append_array(World.ROW_ARRAYS)

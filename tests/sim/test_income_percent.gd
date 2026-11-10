@@ -44,6 +44,21 @@ func test_every_player_is_at_100_unless_a_level_says_otherwise() -> void:
 	assert_array(early.income_percent).is_equal([100, 100, RAISED])
 
 
+## On a prepared world the array is fitted to player_count + 1 and stays so: a player above
+## player_count, and the neutral player 0, change nothing (so defs_hash does not move either); a
+## negative percent is 0.
+func test_set_income_on_a_prepared_world_keeps_the_array_and_the_hash() -> void:
+	var world: World = _trip_world()
+	var before: int = world.defs_hash()
+	WorldLoad.set_income(world, 3, RAISED)
+	WorldLoad.set_income(world, 0, RAISED)
+	WorldLoad.set_income(world, -1, RAISED)
+	assert_array(world.income_percent).is_equal([100, 100, 100])
+	assert_int(world.defs_hash()).is_equal(before)
+	WorldLoad.set_income(world, 2, -50)
+	assert_array(world.income_percent).is_equal([100, 100, 0])
+
+
 func test_at_100_the_unload_and_the_state_are_what_they_were() -> void:
 	var plain: World = _trip_world()
 	var explicit: World = _trip_world()
@@ -90,6 +105,23 @@ func test_defs_hash_follows_the_setup_and_the_state_hash_does_not() -> void:
 	assert_int(same.defs_hash()).is_equal(raised.defs_hash())
 
 
+## The unload takes the floor of cargo * percent / 100 each time, the last, partial load included:
+## 25 at 105 is 26 (26.25), 25 at 110 is 27 (27.5, not 28), 10 at 105 is 10 (10.5, not 11), 10 at
+## 120 is 12. `stat_harvested` counts the cargo whatever the credits.
+func test_the_unload_pays_the_floor_of_each_load_times_the_percent() -> void:
+	var expected: Dictionary[int, Array] = {
+		105: [26, 26, 10], 110: [27, 27, 11], RAISED: [30, 30, 12]
+	}
+	for percent: int in expected:
+		var world: World = _trip_world()
+		WorldLoad.set_income(world, 1, percent)
+		var paid: Array[int] = _payments(world, 60)
+		assert_array(paid).override_failure_message("percent %d" % percent).is_equal(
+			expected[percent]
+		)
+		assert_int(world.stat_harvested[1]).is_equal(60)
+
+
 func test_a_replay_at_120_replays_and_at_100_reports_defs_differ() -> void:
 	var recorded: World = MatchScript.world(7)
 	WorldLoad.set_income(recorded, 1, RAISED)
@@ -119,18 +151,25 @@ func test_a_format_1_replay_is_refused() -> void:
 
 
 ## The balance harness puts each level file's `income_percent` on its seat, before the loop records
-## the setup; a dummy seat keeps 100. (The shipped files all say 100 until P183b, so the values are
-## read from the files, not pinned.)
-func test_the_harness_seats_the_income_percent_of_the_level_files() -> void:
-	var easy: AiDifficultyDef = load("res://data/ai/difficulty/easy.tres") as AiDifficultyDef
-	var hard: AiDifficultyDef = load("res://data/ai/difficulty/hard.tres") as AiDifficultyDef
+## the setup; a dummy seat keeps 100. The shipped files all say 100 until P183b, so the test writes
+## a level file at 120 into a temporary folder and points the harness at it.
+func test_the_harness_seats_the_income_percent_of_a_level_file() -> void:
+	var dir: String = "user://p173_levels"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var raised: AiDifficultyDef = AiDifficultyDef.new()
+	raised.income_percent = RAISED
+	assert_int(ResourceSaver.save(raised, dir + "/raised.tres")).is_equal(OK)
 	var world: World = Smoke.world_of(1)
-	var seats: Array[String] = ["easy", "hard"]
-	Smoke.seat_income(world, seats)
-	assert_array(world.income_percent).is_equal([100, easy.income_percent, hard.income_percent])
-	var dummy: World = Smoke.world_of(1)
-	var with_dummy: Array[String] = ["dummy", "hard"]
-	Smoke.seat_income(dummy, with_dummy)
-	assert_array(dummy.income_percent).is_equal([100, 100, hard.income_percent])
+	var seats: Array[String] = ["dummy", "raised"]
+	Smoke.seat_income(world, seats, dir)
+	assert_array(world.income_percent).is_equal([100, 100, RAISED])
 	var loop: MatchLoop = Smoke.loop_of(world, 1)
-	assert_array(loop.replay.income_percent).is_equal(world.income_percent)
+	assert_array(loop.replay.income_percent).is_equal([100, 100, RAISED])
+	DirAccess.remove_absolute(dir + "/raised.tres")
+	DirAccess.remove_absolute(dir)
+	# The shipped files keep 100 (P183b changes that), seated as they are read.
+	var easy: AiDifficultyDef = load("res://data/ai/difficulty/easy.tres") as AiDifficultyDef
+	var shipped: World = Smoke.world_of(1)
+	var easy_seat: Array[String] = ["easy"]
+	Smoke.seat_income(shipped, easy_seat)
+	assert_array(shipped.income_percent).is_equal([100, easy.income_percent, 100])

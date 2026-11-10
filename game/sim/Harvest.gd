@@ -24,7 +24,7 @@ extends RefCounted
 ## none, and that is tested on the raw data).
 
 ## The divisor of `income_percent`.
-const PERCENT: int = 100
+const PERCENT: int = WorldLoad.PERCENT
 
 ## ECONOMY: the ore grows back, then each harvester steps once. Ore: on a tick with
 ## `tick % ore_regrow_ticks == 0` every cell below `ore_cell_max` gains 1.
@@ -39,8 +39,10 @@ const PERCENT: int = 100
 ##   `dock_reach_milli` of the dock turns to UNLOAD, farther it is given again.
 ## - UNLOAD: on ticks with `(tick + id) % unload_ticks_per_ore == 0` it takes `credits_per_ore` of
 ##   its cargo: the owner's credits get it times the owner's `income_percent` / 100 (integer
-##   division, P173) and `stat_harvested` the cargo taken; empty, it goes back to its cell. It
-##   needs no refinery once it has docked: one destroyed meanwhile does not stop the unloading.
+##   division, P173: exact when `credits_per_ore` times the percent is a multiple of 100, else the
+##   cents are dropped at each unload) and `stat_harvested` the cargo taken; empty, it goes back to
+##   its cell. It needs no refinery once it has docked: one destroyed meanwhile does not stop the
+##   unloading.
 ## - IDLE: on a tick with `(tick + id) % harvest_resume_ticks == 0` a harvester whose order has
 ##   ended goes back to work (`_resume`); 0 turns that off. A harvester still walking waits.
 ## The loop aliases what it reads once; the rest (a scan, an order, a refinery choice) is event

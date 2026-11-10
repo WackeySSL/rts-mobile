@@ -122,6 +122,24 @@ func test_the_runner_seats_the_income_percent_of_each_level() -> void:
 	assert_array(plain.income_percent).is_equal([100, 100, 100])
 
 
+## The same through start(), with the default `first_opponent` 2: the computer player 2 gets its
+## level's 120 in the world and in the replay header, the human player 1 stays at 100.
+func test_start_seats_the_income_percent_in_the_world_and_the_replay() -> void:
+	var raised: AiDifficultyDef = AiDifficultyDef.new()
+	raised.income_percent = 120
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = DummyStart.scenario()
+	runner.match_seed = SEED
+	runner.tick_mode = SYNC
+	runner.opponents = [FOSSIL]
+	runner.opponent_levels = [raised]
+	runner.start()
+	_runners.append(runner)
+	assert_int(runner.first_opponent).is_equal(2)
+	assert_array(runner._world.income_percent).is_equal([100, 100, 120])
+	assert_array(runner._loop.replay.income_percent).is_equal([100, 100, 120])
+
+
 ## `first_opponent` 1 seats entry 0 on player 1 and entry 1 on player 2, each with its own stream;
 ## the default seats entry 0 on player 2, as before.
 func test_first_opponent_seats_the_entries_from_that_player() -> void:
@@ -243,6 +261,7 @@ func test_the_dummys_commands_are_in_the_replay_and_it_replays_without_the_ai() 
 			types[record[TYPE]] = types.get(record[TYPE], 0) + 1
 	assert_bool(types.has(Command.Type.QUEUE) and types.has(Command.Type.PLACE)).is_true()
 	var replayed: World = _start_world()
+	loop.replay.apply_setup(replayed)
 	assert_int(Replay.play(loop.replay, replayed, world.tick)).is_equal(Replay.PLAY_MATCHED)
 	assert_array([replayed.tick, replayed.state_hash()]).is_equal([TICKS, world.state_hash()])
 

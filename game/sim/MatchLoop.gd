@@ -6,7 +6,8 @@ extends RefCounted
 ## commands, stamps tick and sequence, records every command in the replay, calls Sim.step and
 ## adds a checkpoint every Replay.CHECKPOINT_PERIOD ticks. Pure sim code: no Node, no clock.
 
-## The match's log. Replay.begin(scenario_path, seed, defs_hash) made it; the caller finishes it.
+## The match's log. Replay.begin(scenario_path, seed, defs_hash, income_percent) made it; the
+## caller finishes it.
 var replay: Replay
 ## The state hash of the last checkpoint, 0 until the first one. The tick-0 state has no
 ## checkpoint: a checkpoint is the hash after a tick, and none has run yet.

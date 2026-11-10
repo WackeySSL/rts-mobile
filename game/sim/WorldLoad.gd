@@ -318,12 +318,17 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.construction_sites_max = rules.construction_sites_max
 
 
-## Sets `World.income_percent` of `player` (1 or more), the percent of `credits_per_ore` that
-## player's unloads pay (a level's `income_percent`, set at load before the first step). Entries
-## before it are PERCENT; prepare() keeps what is set and drops a player above player_count.
+## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
+## pay (a level's `income_percent`, set at load before the first step); `percent` is clamped to 0
+## or more. Player 0 is the neutral player and is refused, and so is a player above player_count on
+## a prepared world (its array is fitted already: it would grow and move defs_hash). Before
+## prepare() the array grows to `player`, and prepare() keeps what is set (size_match_state fits it
+## to player_count + 1, dropping an entry above that). Entries before `player` are PERCENT.
 static func set_income(world: World, player: int, percent: int) -> void:
+	if player < 1 or (world.prepared and player > world.player_count):
+		return
 	size_income(world, maxi(player + 1, world.income_percent.size()))
-	world.income_percent[player] = percent
+	world.income_percent[player] = maxi(percent, 0)
 
 
 ## Fits `income_percent` to `players` entries: the values set stay, a new entry is PERCENT.

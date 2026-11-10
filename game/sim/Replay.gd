@@ -4,7 +4,9 @@ extends RefCounted
 ## command in stamping order and a checkpoint hash every CHECKPOINT_PERIOD ticks. The sim is a pure
 ## function of these. Pure sim code: no Node, no clock and no file access (the runner saves and
 ## loads files). A replay is valid only for the code and data that recorded it. `play` runs it
-## again through MatchLoop and finds where it stops matching.
+## again through MatchLoop and finds where it stops matching. Call `apply_setup` on the fresh world
+## before `play`: the income percents are match setup, not in the scenario, so a world left at 100
+## replays a match recorded at another value as PLAY_DEFS_DIFFER.
 
 ## 2 since P173: the header holds `income_percent`. A format 1 file is refused.
 const FORMAT: int = 2
@@ -76,7 +78,7 @@ static func begin(
 
 ## Sets the income percents of this replay on `world`, a fresh world of its scenario, before
 ## `play` (which prepares it and compares defs_hash). A world left at another value is refused by
-## `play` as PLAY_DEFS_DIFFER.
+## `play` as PLAY_DEFS_DIFFER; every replay site calls this first.
 func apply_setup(world: World) -> void:
 	for player: int in range(1, income_percent.size()):
 		WorldLoad.set_income(world, player, income_percent[player])

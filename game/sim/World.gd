@@ -994,7 +994,7 @@ static func hash_hex(h: int) -> String:
 	return WorldHash.hash_hex(h)
 
 
-## The hash of the type and weapon tables, their ids and the rule ints: what a replay needs to see
-## that it runs on other data. Call it on a prepared world, because prepare() pads the type tables.
+## The hash of the type and weapon tables, their ids, the rule ints and SETUP_ARRAYS: what a replay
+## needs to see that it runs on other data. Call it on a prepared world (prepare() pads the tables).
 func defs_hash() -> int:
 	return WorldHash.defs_hash(self)
