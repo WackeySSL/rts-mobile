@@ -71,6 +71,9 @@ func test_lumen_accord_against_the_derrick_computer_at_hard() -> void:
 func test_the_full_matches_drop_no_command_and_the_computer_played() -> void:
 	for faction: String in FACTIONS:
 		var played: Match.Played = Match.played(faction)
+		assert_object(played).append_failure_message(faction).is_not_null()
+		if played == null:
+			continue
 		var world: World = played.world
 		assert_int(world.dropped_commands).append_failure_message(faction).is_equal(0)
 		var stopped: bool = world.match_end_tick > 0 or world.tick == Match.MAX_TICKS
@@ -86,8 +89,12 @@ func test_the_full_matches_drop_no_command_and_the_computer_played() -> void:
 ## Both sides played: the log holds the scripted player's Commands and the computer's.
 func test_the_full_matches_log_both_sides() -> void:
 	for faction: String in FACTIONS:
+		var played: Match.Played = Match.played(faction)
+		assert_object(played).append_failure_message(faction).is_not_null()
+		if played == null:
+			continue
 		var seen: Dictionary[int, bool] = {}
-		for command: Command in SkirmishMatch.Played.log_commands(Match.played(faction).replay):
+		for command: Command in SkirmishMatch.Played.log_commands(played.replay):
 			seen[command.player_id] = true
 		for player: int in [1, 2]:
 			var who: String = "%s: player %d" % [faction, player]
@@ -101,17 +108,22 @@ func test_the_full_matches_log_both_sides() -> void:
 func test_the_full_matches_replay_to_their_checkpoints() -> void:
 	for faction: String in FACTIONS:
 		var played: Match.Played = Match.played(faction)
+		assert_object(played).append_failure_message(faction).is_not_null()
+		if played == null:
+			continue
 		var replay: Replay = played.replay
 		var count: int = replay.final_tick / Replay.CHECKPOINT_PERIOD
 		assert_int(count).append_failure_message(faction).is_greater(0)
 		assert_int(replay.checkpoint_ticks.size()).append_failure_message(faction).is_equal(count)
-		for index: int in count:
+		for index: int in mini(count, replay.checkpoint_ticks.size()):
 			assert_int(replay.checkpoint_ticks[index]).append_failure_message(faction).is_equal(
 				(index + 1) * Replay.CHECKPOINT_PERIOD
 			)
 		var bytes: PackedByteArray = replay.to_bytes()
 		var loaded: Replay = Replay.from_bytes(bytes)
 		assert_object(loaded).append_failure_message(faction).is_not_null()
+		if loaded == null:
+			continue
 		assert_str(loaded.scenario_path).append_failure_message(faction).is_equal(
 			Match.ROUTES[faction]["scenario"]
 		)
@@ -121,12 +133,17 @@ func test_the_full_matches_replay_to_their_checkpoints() -> void:
 		(
 			assert_int(result)
 			. append_failure_message(
-				"%s: first checkpoint that differs: tick %d" % [faction, result]
+				(
+					"%s: Replay.play returned %d (-1 matched, a tick is the first checkpoint that differs)"
+					% [faction, result]
+				)
 			)
 			. is_equal(Replay.PLAY_MATCHED)
 		)
 		assert_int(fresh.tick).append_failure_message(faction).is_equal(played.world.tick)
-		assert_int(fresh.state_hash()).append_failure_message(faction).is_equal(loaded.final_hash)
+		# state_hash() must run before StateDiff.first: it refreshes the map digest that StateDiff reads.
+		var final_hash: int = fresh.state_hash()
+		assert_int(final_hash).append_failure_message(faction).is_equal(loaded.final_hash)
 		assert_str(StateDiff.first(fresh, played.world)).append_failure_message(faction).is_empty()
 
 
