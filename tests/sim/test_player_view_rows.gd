@@ -57,6 +57,65 @@ func _merge(first: PackedInt32Array, second: PackedInt32Array) -> Array[int]:
 	return rows
 
 
+## The bulk columns (plan row P198) hold, at every own and seen row, what the row getters answer.
+func test_the_column_arrays_agree_with_the_getters_at_every_own_and_seen_row() -> void:
+	var world: World = ViewWorlds.crafted()
+	for player: int in [1, 2]:
+		var view: PlayerView = PlayerView.of(world, player)
+		var rows: Array[int] = _merge(view.own_rows, view.seen_rows)
+		assert_bool(rows.is_empty()).is_false()
+		for row: int in rows:
+			var pos: Vector2i = view.row_pos(row)
+			var columns: Array[PackedInt32Array] = view.columns()
+			assert_int(columns.size()).is_equal(PlayerView.Column.size())
+			var got: Array[int] = []
+			for column: PackedInt32Array in columns:
+				got.append(column[row])
+			var want: Array[int] = [
+				view.row_id(row),
+				view.row_owner(row),
+				view.row_type(row),
+				pos.x,
+				pos.y,
+				view.row_hp(row),
+				view.row_build_left(row),
+			]
+			assert_array(got).append_failure_message("player %d row %d" % [player, row]).is_equal(
+				want
+			)
+
+
+## `columns()` hands out copies (plan row P198): a write through one reaches neither the World, nor
+## the getters of the view, nor a later view.
+func test_a_write_through_the_columns_reaches_neither_the_world_nor_the_getters() -> void:
+	var world: World = ViewWorlds.crafted()
+	var view: PlayerView = PlayerView.of(world, 1)
+	var live: Array[PackedInt32Array] = [
+		world.unit_id,
+		world.owner,
+		world.type_index,
+		world.pos_x,
+		world.pos_y,
+		world.hp,
+		world.build_left
+	]
+	var kept: Array[PackedInt32Array] = []
+	for column: PackedInt32Array in live:
+		kept.append(column.duplicate())
+	var row: int = view.own_rows[0]
+	var answers: Array[int] = _answers(view, row)
+	var columns: Array[PackedInt32Array] = view.columns()
+	for column: PackedInt32Array in columns:
+		for at: int in column.size():
+			column[at] = 987654
+	for index: int in live.size():
+		assert_array(live[index]).append_failure_message("column %d" % index).is_equal(kept[index])
+	assert_array(_answers(view, row)).is_equal(answers)
+	var fresh: PlayerView = PlayerView.of(world, 1)
+	for index: int in live.size():
+		assert_array(fresh.columns()[index]).is_equal(kept[index])
+
+
 func test_player_one_owns_three_rows_and_sees_three_of_the_others() -> void:
 	var world: World = ViewWorlds.crafted()
 	var view: PlayerView = PlayerView.of(world, 1)

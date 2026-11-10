@@ -56,13 +56,20 @@ extends RefCounted
 ## so an array the view takes from the World without copying is the World's own and live: it shows
 ## the World's later writes, and a write through it would be the World's. So nothing a caller can
 ## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
-## and last-seen records, the type tables, the type ids); the row columns and the placement input,
-## which a think reads a few rows of and so are not worth a copy of the table, are aliases behind an
-## underscore, read only by the getters below and written by nothing. A view is made, read and
-## dropped within one think, never kept across a tick: its aliases follow the World, its lists and
+## and last-seen records, the type tables, the type ids, and the seven arrays of `columns()`); the
+## row columns and the placement input, which a think reads a few rows of and so are not worth a
+## copy of the table, are aliases behind an underscore, read only by the getters below and written
+## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
+## costs seven reference counts a view; it is one copy per view, shared by every manager of a think,
+## and a write through it never reaches the World. A view, or a column taken from one, held across
+## a tick would make the World fork a whole array on its next write: a view is made, read and
+## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
 ## slices do not, and a row index is good only for the tick it was made on (the table compacts when
-## a row dies). The per-row getters are for event cadence, a few reads per row of a think, not a
-## per-tick loop.
+## a row dies). The per-row getters are for event cadence, not a per-tick loop.
+##
+## Hidden rows (plan row P198): `columns()` holds every row of the World. A caller indexes it only
+## with a row of `own_rows` or `seen_rows` or a `row_of()` answer of 0 or more, as the getters do;
+## tests enforce it (tests/ai/test_ai_poisoned_view.gd, the scan in tests/project).
 
 ## The World's enums the AI names, re-exported with the World's values (a test pins each pair), so
 ## that `game/ai` never names `World`: the production tabs, the harvest modes of a harvester row
@@ -79,6 +86,8 @@ enum HarvestMode {
 	RETURN = World.HarvestMode.RETURN,
 	UNLOAD = World.HarvestMode.UNLOAD,
 }
+## The arrays of `columns()`.
+enum Column { ID, OWNER, TYPE, X, Y, HP, BUILD_LEFT }
 enum Order {
 	IDLE = World.Order.IDLE,
 	ATTACK_MOVE = World.Order.ATTACK_MOVE,
@@ -202,6 +211,7 @@ var _home: PackedInt32Array = PackedInt32Array()
 var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
+var _public: Array[PackedInt32Array] = []
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
 ## that make a type a refinery.
 var _type_ids: Array[StringName] = []
@@ -235,6 +245,15 @@ func row_of(id: int) -> int:
 	if at < _ids.size() and _ids[at] == id and _level(at) != _HIDDEN:
 		return at
 	return MISSING
+
+
+## The row columns as whole arrays, indexed by `Column` (plan row P198), for a manager's loop that
+## would otherwise call `row_id`, `row_type`... five times a row. One copy per view, shared by every
+## manager of a think; a write never reaches the World. Index only with a row of `own_rows` or
+## `seen_rows` or a `row_of()` answer >= 0, where they hold what the `row_*` reads give; the oracle
+## test enforces that no caller reads any other row (one the player cannot see).
+func columns() -> Array[PackedInt32Array]:
+	return _public
 
 
 ## The public columns of an own or a seen row: its id, owner (0 is neutral), type index, position
@@ -414,11 +433,13 @@ func _take_weapon_tables(world: World) -> void:
 		if weapon < 0 or weapon >= ranges.size():
 			continue
 		made_range[type] = ranges[weapon]
-		made_min[type] = _entry(min_ranges, weapon)
-		for armour: int in ARMOUR_CLASSES:
-			made_percent[type * ARMOUR_CLASSES + armour] = _entry(
-				percents, weapon * ARMOUR_CLASSES + armour
-			)
+		if weapon < min_ranges.size():
+			made_min[type] = min_ranges[weapon]
+		# `_entry` written out: the tables are rebuilt on every view.
+		var from: int = weapon * ARMOUR_CLASSES
+		var to: int = type * ARMOUR_CLASSES
+		for armour: int in mini(ARMOUR_CLASSES, percents.size() - from):
+			made_percent[to + armour] = percents[from + armour]
 	type_range = made_range
 	type_min_range = made_min
 	type_vs_armour = made_percent
@@ -532,18 +553,34 @@ func _take_rows(world: World) -> void:
 		if not is_seen:
 			var px: int = xs[row]
 			var py: int = ys[row]
-			if px % MILLI_PER_TILE == 0 and px * 2 > width:
+			if px * 2 > width and px % MILLI_PER_TILE == 0:
 				px -= 1
-			if py % MILLI_PER_TILE == 0 and py * 2 > height:
+			if py * 2 > height and py % MILLI_PER_TILE == 0:
 				py -= 1
-			var cell: int = (
-				clampi(py / MILLI_PER_TILE, 0, lines - 1) * cols
-				+ clampi(px / MILLI_PER_TILE, 0, cols - 1)
-			)
-			is_seen = visible[block + cell] > 0
+			# `clampi` written out: this loop runs once a row of the World, on every think.
+			var cell_col: int = px / MILLI_PER_TILE
+			if cell_col < 0:
+				cell_col = 0
+			elif cell_col >= cols:
+				cell_col = cols - 1
+			var cell_line: int = py / MILLI_PER_TILE
+			if cell_line < 0:
+				cell_line = 0
+			elif cell_line >= lines:
+				cell_line = lines - 1
+			is_seen = visible[block + cell_line * cols + cell_col] > 0
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
+	_public = [
+		_ids.duplicate(),
+		_owner.duplicate(),
+		_type.duplicate(),
+		_pos_x.duplicate(),
+		_pos_y.duplicate(),
+		_hp.duplicate(),
+		_build_left.duplicate(),
+	]
 	_shown = shown
 	own_rows = own
 	seen_rows = seen

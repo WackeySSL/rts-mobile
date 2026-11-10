@@ -26,3 +26,5 @@ func think(view: PlayerView, runner: Object, world: World) -> void:
 	var world_px: int = view.tick
 	# World, runner.world and runner.loop in a comment are not code
 	var s: String = "World runner.world runner.probe"
+	var raw_hp: int = view._hp[0]
+	var all_x: PackedInt32Array = view.columns()[3]

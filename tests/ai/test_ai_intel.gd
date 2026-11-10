@@ -42,6 +42,71 @@ func test_the_sector_map_counts_own_and_seen_value_in_one_pass_each() -> void:
 	assert_array(_memory.sector_enemy).is_equal(again)
 
 
+## The column reads of `refresh` (plan row P198) give what the row getters give: the sector maps,
+## the building, unit and seen lists and the home tile, on hurt rows of both sides and a row at the
+## map's edge.
+func test_the_refresh_equals_the_one_the_row_getters_give() -> void:
+	AiRig.give(_world, 2, "barracks", 10, 10)
+	var tank: int = AiRig.add_unit_of(_world, 2, "heavy_tank", 9500, 9500)
+	var edge: int = AiRig.add_unit_of(_world, 2, "rifle_squad", 39900, 39900)
+	var own_tank: int = AiRig.add_unit_of(_world, 1, "heavy_tank", 20500, 4500)
+	AiRig.add_unit_of(_world, 1, "rifle_squad", 100, 100)
+	_settle()
+	_world.fog.visible.fill(1)
+	for hurt: int in [tank, own_tank]:
+		_world.hp[_row(hurt)] = _world.hp[_row(hurt)] / 3
+	var view: PlayerView = _view()
+	assert_bool(view.seen_rows.has(view.row_of(edge))).is_true()
+	_intel.refresh(view, _memory)
+	var own: PackedInt32Array = PackedInt32Array()
+	own.resize(_memory.sector_own.size())
+	var enemy: PackedInt32Array = own.duplicate()
+	var sites: Array[int] = []
+	var units: Array[int] = []
+	var home: Vector2i = Vector2i(-1, -1)
+	var hq: int = view.type_index_of(_intel.hq_type)
+	var scout: int = view.type_index_of(_intel.scout_type)
+	for row: int in view.own_rows:
+		var at: Vector2i = AiIntel._tile(view.row_pos(row))
+		own[_intel.sector_at(at.x, at.y)] += AiIntel.value_of(view, row)
+		var type: int = view.row_type(row)
+		if view.type_foot_w[type] > 0:
+			sites.append_array([view.row_id(row), view.row_pos(row).x, view.row_pos(row).y])
+			if type == hq and home.x < 0:
+				home = at
+		elif DummyDefence.is_combat(view, type) and type != scout:
+			units.append_array([view.row_id(row), view.row_hp(row)])
+	var seen_units: Array[int] = []
+	var seen_sites: Array[int] = []
+	for row: int in view.seen_rows:
+		if view.row_owner(row) <= 0:
+			continue
+		var at: Vector2i = AiIntel._tile(view.row_pos(row))
+		enemy[_intel.sector_at(at.x, at.y)] += AiIntel.value_of(view, row)
+		if DummyDefence.is_combat(view, view.row_type(row)):
+			seen_units.append(view.row_id(row))
+		elif view.type_foot_w[view.row_type(row)] > 0:
+			seen_sites.append(view.row_id(row))
+	assert_array(_memory.sector_own).is_equal(own)
+	assert_array(_memory.sector_enemy).is_equal(enemy)
+	var got_sites: Array[int] = []
+	for at: int in _memory.site_id.size():
+		got_sites.append_array([_memory.site_id[at], _memory.site_x[at], _memory.site_y[at]])
+	var got_units: Array[int] = []
+	for at: int in _memory.unit_id.size():
+		got_units.append_array([_memory.unit_id[at], _memory.unit_hp[at]])
+	assert_array(got_sites).is_equal(sites)
+	assert_array(got_units).is_equal(units)
+	assert_array(_memory.seen_unit_id).is_equal(seen_units)
+	assert_array(_memory.seen_site_id).is_equal(seen_sites)
+	assert_array([_memory.home_x, _memory.home_y]).is_equal([home.x, home.y])
+	assert_bool(not units.is_empty() and not seen_units.is_empty() and home.x >= 0).is_true()
+	# The own tank is hurt: its hp is the memory's, not the type's.
+	assert_int(_memory.unit_hp[_memory.unit_id.find(own_tank)]).is_less(
+		view.type_max_hp[_type("heavy_tank")]
+	)
+
+
 func test_a_hurt_row_counts_its_hit_points_share_of_its_cost() -> void:
 	var enemy: int = AiRig.add_unit_of(_world, 2, "heavy_tank", 9500, 9500)
 	_settle()

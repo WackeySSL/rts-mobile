@@ -173,13 +173,10 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 	_x.clear()
 	_y.clear()
 	_value.clear()
-	for id: int in memory.seen_site_id:
-		_take(view, memory, view.row_of(id), producers_only)
+	_take_list(view, memory, memory.seen_site_id, producers_only)
 	if not producers_only:
-		for id: int in memory.seen_unit_id:
-			_take(view, memory, view.row_of(id), false)
-		for id: int in memory.seen_mobile_id:
-			_take(view, memory, view.row_of(id), false)
+		_take_list(view, memory, memory.seen_unit_id, false)
+		_take_list(view, memory, memory.seen_mobile_id, false)
 	for record: int in view.ghost_count:
 		if _x.size() >= _tests_max:
 			return
@@ -194,18 +191,42 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 		_add(pos.x, pos.y, view.type_cost[type])
 
 
-func _take(view: PlayerView, memory: AiMemory, row: int, producers_only: bool) -> void:
-	if row < 0 or _x.size() >= _tests_max:
-		return
-	var type: int = view.row_type(row)
-	if view.row_owner(row) <= 0 or view.row_owner(row) == view.player:
-		return
-	if not _known(view, memory, type):
-		return
-	if producers_only and not AiIntel.is_producer(view, type):
-		return
-	var pos: Vector2i = view.row_pos(row)
-	_add(pos.x, pos.y, AiIntel.value_of(view, row))
+## Adds the seen rows of `list` (ids) that the AI may act on, until `_tests_max` things are held:
+## an enemy row of a type whose first sighting is `reaction_ticks` old, a producer when
+## `producers_only`. Columns once a row, the value from `AiIntel.value_at` (P198).
+func _take_list(
+	view: PlayerView, memory: AiMemory, list: PackedInt32Array, producers_only: bool
+) -> void:
+	var columns: Array[PackedInt32Array] = view.columns()
+	var owners: PackedInt32Array = columns[PlayerView.Column.OWNER]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
+	var produces: PackedInt32Array = view.type_produces
+	var first: PackedInt32Array = memory.seen_first_tick
+	for id: int in list:
+		if _x.size() >= _tests_max:
+			return
+		var row: int = view.row_of(id)
+		if row < 0:
+			continue
+		var owner: int = owners[row]
+		if owner <= 0 or owner == view.player:
+			continue
+		var type: int = types[row]
+		if type < 0 or type >= first.size():
+			continue
+		var seen_tick: int = first[type]
+		if seen_tick == AiMemory.NONE or view.tick - seen_tick < _reaction:
+			continue
+		if producers_only:
+			var tab: int = produces[type] if type < produces.size() else -1
+			if tab < 0 or tab >= PlayerView.TABS:
+				continue
+		_x.append(xs[row])
+		_y.append(ys[row])
+		_value.append(AiIntel.value_at(view, type, hps[row]))
 
 
 func _add(x: int, y: int, value: int) -> void:
@@ -286,11 +307,16 @@ func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Ve
 			continue
 		if tests + count > _tests_max:
 			break
+		# The `count` tests of this anchor, counted at once (the cap check above holds for all).
 		var sum: int = 0
+		var anchor_x: int = _x[anchor]
+		var anchor_y: int = _y[anchor]
 		for other: int in count:
-			tests += 1
-			if not _far(_x[other], _y[other], _x[anchor], _y[anchor], reach):
+			var dx: int = _x[other] - anchor_x
+			var dy: int = _y[other] - anchor_y
+			if dx * dx + dy * dy <= reach:
 				sum += _value[other]
+		tests += count
 		if sum > best_sum:
 			best_sum = sum
 			best = Vector2i(_x[anchor], _y[anchor])
@@ -325,12 +351,20 @@ func _sector_value(view: PlayerView, memory: AiMemory, x: int, y: int) -> int:
 ## 1 when no own row or goal of the pre-filter is within `reach` of the anchor, 0 when one is, and
 ## -1 when the cap on counted tests ends the check first.
 func _clear(anchor: int, reach: int) -> int:
+	# `tests` ends where the one-at-a-time loop's did: at `at` on the cap, at `at + 1` on a hit.
+	var anchor_x: int = _x[anchor]
+	var anchor_y: int = _y[anchor]
+	var room: int = _tests_max - tests
 	for at: int in _bx.size():
-		if tests >= _tests_max:
+		if at >= room:
+			tests += at
 			return -1
-		tests += 1
-		if not _far(_bx[at], _by[at], _x[anchor], _y[anchor], reach):
+		var dx: int = _bx[at] - anchor_x
+		var dy: int = _by[at] - anchor_y
+		if dx * dx + dy * dy <= reach:
+			tests += at + 1
 			return 0
+	tests += _bx.size()
 	return 1
 
 

@@ -411,6 +411,37 @@ Note (2026-11-10, P26bm, the lead; the Phase 4 gate):
   the AI's think time, not checkpoint hashing. Michael said yes in chat on 2026-11-10 ("Ja, kør
   AI-optimeringen"). The gate passed with this read; P198 runs after it.
 
+Note (2026-11-10, P198, cheaper reads; changes no accepted text above):
+- **Where the time went** (per-stage CI means on an experiment branch, `perf_ai` workload, run
+  42848948951 on a slow VM): the ARMY slot. The view cost 61 us, `AiIntel.refresh` 398,
+  `AiArmy.run` 276, the whole ECONOMY slot (economy and production) 117 and the intel run and
+  strikes 141. The cost was calls, not rows: each row went through `row_type`, `row_pos`,
+  `row_id`, `row_hp` and `value_of`, a dozen GDScript calls, and each threat or strike test was a
+  function call. The phone ratio is the one the P26bm note above gives (about 18.5), not the gate's
+  `ci_ratio_p95` 5.9.
+- **The remedy is cheaper reads, GDScript only; no cap and no slot moved.**
+  `PlayerView.columns()` hands out copies of the row columns (index them only at visible rows, ADR
+  0020 section 1's note of this date); the managers' passes index them through locals; the threat,
+  strike and wave-ratio searches count their tests in a local and a unit's or an anchor's at once;
+  `AiArmy._join` and `_unseen_hit` walk two ascending lists instead of a bsearch a unit. **No
+  decision changes:** the `perf_ai` state hash `cbe70a78d01ee7c1` (run 42859084281, as main's run
+  42816856270), its peaks and every balance match are main's, per seed.
+- **Result** (CI `WATCH ai think` p95): 278 us (run 42859084281) and 473 us (run 42859139046)
+  against main's 505 us (run 42859146551) and 810 us (run 42859090560) in the same hours: 0.55 to
+  0.58 of main. After the review round (head 00b4bdfb, run 42867700421, hash `cbe70a78d01ee7c1`)
+  401 us against main's 882 us in its paired run 42867706193 (its log line was read while that run
+  was still going): 0.45. A runner's `p95_us` moves by up to 60 % from one VM to the next, so
+  compare two commits only on runs of the same hour. At about 18.5 that is **about 5.2-5.5 ms on
+  the phone, which misses P198's target of about 2 ms: the target stays open**, as do the 0.15 ms
+  CI target and the 1.0 ms phone watch value above. The stage means after the first cut were
+  refresh 63 us, army 168, view 44, economy 37, production 18, intel 30, strikes 13: the view and the ARMY slot's sum
+  (view, refresh, army) are what is left, so that slot is still two to three times the ECONOMY and
+  INTEL slots. What would meet the target is a change of behaviour or interface, not of reads:
+  five slots on period 3 (which also moves `AiArmy`'s inputs a think earlier), a view built only as
+  far as a slot needs, the static type tables shared between the views of a match. `AiArmy.gd` is
+  at the 1000-line lint limit and `PlayerView` at its 20 public methods, so the next row splits
+  them first (for example `_threat`, `_near` and `_value_in` into a reads helper).
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
@@ -554,6 +585,14 @@ think a rupture may follow a blackout, but nothing may follow a rupture). The ty
 rows, warned lists and caps are as listed; `type_vs_armour` is indexed `type * 4 + class`, read
 through the type's weapon (`PlayerView.ARMOUR_CLASSES` is 4, pinned to `World.Armour`).
 `type_sight` is in milli-tiles.
+
+Note (2026-11-10, P198; changes no accepted text above): "nothing hidden" and "stays read-only" now
+have one reading more. `PlayerView.columns()` exposes the id, owner, type, position, hp and
+`build_left` columns of every World row, hidden rows included, as copies (copy on write; a write
+never reaches the World). A manager indexes them only at rows of `own_rows`, `seen_rows` or a
+`row_of()` answer of 0 or more, the rows whose values the getters give. The poisoned-view oracle
+(`tests/ai/test_ai_poisoned_view.gd`) and the scan in `tests/project/test_view_reads_snapshot.gd`
+enforce it; ADR 0020 section 1 has the same note.
 
 ### 8. Difficulty is parameters; the AI never sees more than its side
 - One code path for all three levels; only `AiDifficultyDef` differs. A test runs the same seed at
