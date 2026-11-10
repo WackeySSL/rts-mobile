@@ -47,6 +47,9 @@ var focus_fire: bool = false
 ## think); over the match RALLY Commands, defence and return orders sent, and orders refused for
 ## want of keys.
 var tests: int = 0
+## TEMP profiling: summed usec per stage of `run` (join, stage, step_back, threat, unseen, rest).
+var prof_sum: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+var prof_runs: int = 0
 var rallies: int = 0
 var defences: int = 0
 var returns: int = 0
@@ -117,11 +120,23 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	_threat_on = false
 	if memory.squads_max < 1:
 		return
+	var t0: int = Time.get_ticks_usec()
 	_join(memory)
+	var t1: int = Time.get_ticks_usec()
 	_stage(view, memory, out)
+	var t2: int = Time.get_ticks_usec()
 	_step_back(view, memory, out)
+	var t3: int = Time.get_ticks_usec()
 	var threat: int = _threat(view, memory)
+	var t4: int = Time.get_ticks_usec()
 	_unseen_hit(view, memory, out, threat < 0 and memory.threat_first_tick == AiMemory.NONE)
+	var t5: int = Time.get_ticks_usec()
+	prof_sum[0] += t1 - t0
+	prof_sum[1] += t2 - t1
+	prof_sum[2] += t3 - t2
+	prof_sum[3] += t4 - t3
+	prof_sum[4] += t5 - t4
+	prof_runs += 1
 	if threat < 0:
 		memory.threat_first_tick = AiMemory.NONE
 		memory.squad_focus[HOME] = AiMemory.NONE
@@ -139,7 +154,9 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 				_defend(view, memory, out, _threat_at)
 	# After the threat and the return, so a launch reads this think's threat and the return cannot
 	# replace the new wave's army key.
+	var t6: int = Time.get_ticks_usec()
 	_wave(view, memory, rng, out)
+	prof_sum[5] += Time.get_ticks_usec() - t6
 
 
 ## A unit keeps its squad, a new one joins the home squad (pending in `_fresh`), a dead one goes.
