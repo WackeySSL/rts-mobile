@@ -545,7 +545,7 @@ func _opponent_controllers() -> Array[AiController]:
 
 ## Gives each computer player of an OpponentDef the `income_percent` of its level (a missing or null
 ## level is Normal's script default), before MatchLoop.create records the setup. A plain AiDef (the
-## dummy) and a human keep World.PERCENT.
+## dummy) and a human keep WorldLoad.PERCENT.
 func _seat_income(target: World) -> void:
 	for index: int in opponents.size():
 		if not opponents[index] is OpponentDef:
@@ -554,7 +554,7 @@ func _seat_income(target: World) -> void:
 			opponent_levels[index] if index < opponent_levels.size() else null
 		)
 		if level != null:
-			target.set_income_percent(first_opponent + index, level.income_percent)
+			WorldLoad.set_income(target, first_opponent + index, level.income_percent)
 
 
 ## Takes the job's `done` token in a try_wait() loop with 1 ms steps (ADR 0012 section 1). At the

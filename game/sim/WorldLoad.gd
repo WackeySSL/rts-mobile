@@ -8,6 +8,9 @@ extends RefCounted
 ## World.gd's own, moved (P109 moved copy_rules and size_match_state, with no change), and ADR 0007
 ## section 2 and ADR 0017 section 3 keep every column, list and rule int in World itself.
 
+## The percent of an unchanged income, and the divisor of every percent: a human's income.
+const PERCENT: int = 100
+
 
 ## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
 ## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
@@ -315,12 +318,20 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.construction_sites_max = rules.construction_sites_max
 
 
+## Sets `World.income_percent` of `player` (1 or more), the percent of `credits_per_ore` that
+## player's unloads pay (a level's `income_percent`, set at load before the first step). Entries
+## before it are PERCENT; prepare() keeps what is set and drops a player above player_count.
+static func set_income(world: World, player: int, percent: int) -> void:
+	size_income(world, maxi(player + 1, world.income_percent.size()))
+	world.income_percent[player] = percent
+
+
 ## Fits `income_percent` to `players` entries: the values set stay, a new entry is PERCENT.
 static func size_income(world: World, players: int) -> void:
 	var had: int = world.income_percent.size()
 	world.income_percent.resize(players)
 	for player: int in range(had, players):
-		world.income_percent[player] = World.PERCENT
+		world.income_percent[player] = PERCENT
 
 
 ## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player

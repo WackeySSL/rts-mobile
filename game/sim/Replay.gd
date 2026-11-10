@@ -79,7 +79,7 @@ static func begin(
 ## `play` as PLAY_DEFS_DIFFER.
 func apply_setup(world: World) -> void:
 	for player: int in range(1, income_percent.size()):
-		world.set_income_percent(player, income_percent[player])
+		WorldLoad.set_income(world, player, income_percent[player])
 
 
 ## Appends `command`, not null, as Command.encode writes it. MatchLoop calls it after stamping and

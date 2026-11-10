@@ -54,9 +54,9 @@ static func hash_hex(h: int) -> String:
 	return bytes.hex_encode()
 
 
-## The hash of the type and weapon tables, their ids, the faction ids, the rule ints and the SETUP_ARRAYS: what a
-## replay needs to see that it runs on other data. Call it on a prepared world, because prepare()
-## pads the type tables.
+## The hash of the type and weapon tables, their ids, the faction ids, the rule ints and the
+## SETUP_ARRAYS: what a replay needs to see that it runs on other data. Call it on a prepared
+## world, because prepare() pads the type tables.
 static func defs_hash(world: World) -> int:
 	var ctx: HashingContext = _start_hash()
 	var tag: int = 0

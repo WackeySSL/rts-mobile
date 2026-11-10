@@ -152,14 +152,14 @@ static func world_of(match_seed: int, path: String = FLATS) -> World:
 
 
 ## Gives player 1, 2, ... the `income_percent` of the level's file, as MatchRunner does for an
-## OpponentDef (the dummy keeps World.PERCENT). Before `loop_of`, which records it in the replay.
+## OpponentDef (the dummy keeps 100). Before `loop_of`, which records it in the replay.
 static func seat_income(world: World, levels: Array[String]) -> void:
 	for index: int in levels.size():
 		if levels[index] != LEVEL_DUMMY:
 			var level: AiDifficultyDef = (
 				load("res://data/ai/difficulty/%s.tres" % levels[index]) as AiDifficultyDef
 			)
-			world.set_income_percent(index + 1, level.income_percent)
+			WorldLoad.set_income(world, index + 1, level.income_percent)
 
 
 ## The loop of `world`, which `world_of(match_seed, path)` made: it records the scenario, seed and

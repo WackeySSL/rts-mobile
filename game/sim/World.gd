@@ -216,12 +216,8 @@ const MAP_ARRAYS: Array[StringName] = [
 ]
 ## Per-row working space, max_rows entries each, rewritten every tick. Not state.
 const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
-## The match setup per player (P173; index 0 is neutral): the income percent a tanker's unload
-## pays at. Set at load (`set_income_percent`), fixed for the match, so not in the state hash, but
-## inside `defs_hash`: a replay recorded at one setup is refused at another.
+## Match setup per player (P173): not in the state hash, in `defs_hash`; WorldLoad.set_income.
 const SETUP_ARRAYS: Array[StringName] = [&"income_percent"]
-## The percent of an unchanged income, and the divisor of every percent: a human's income.
-const PERCENT: int = 100
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
@@ -572,8 +568,6 @@ var stat_built: PackedInt32Array = PackedInt32Array()
 var stat_lost_units: PackedInt32Array = PackedInt32Array()
 var stat_lost_buildings: PackedInt32Array = PackedInt32Array()
 var stat_harvested: PackedInt32Array = PackedInt32Array()
-## Per player, from SETUP_ARRAYS: the percent of `credits_per_ore` an unload pays. PERCENT unless
-## `set_income_percent` says otherwise; prepare() keeps the values set before it.
 var income_percent: PackedInt32Array = PackedInt32Array()
 ## Per player and tab (index `player * TABS + tab`): the items in the queue, the progress of its
 ## head in hundredths of a tick, and the rally point in milli-tiles (-1 = none).
@@ -660,14 +654,6 @@ func _init() -> void:
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	return WorldLoad.from_scenario(scenario, rng)
-
-
-## Sets the income percent of `player` (1 or more), growing the list with PERCENT entries as needed.
-## A level's `income_percent` goes in here at load, before the first step; a player above
-## player_count when prepare() runs is dropped by it.
-func set_income_percent(player: int, percent: int) -> void:
-	WorldLoad.size_income(self, maxi(player + 1, income_percent.size()))
-	income_percent[player] = percent
 
 
 func unit_count() -> int:

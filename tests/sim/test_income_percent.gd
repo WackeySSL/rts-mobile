@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 
 const Worlds: GDScript = preload("res://tests/sim/support/harvest_worlds.gd")
 const MatchScript: GDScript = preload("res://tests/sim/support/match_script.gd")
+const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 
 const UNLOAD: int = World.HarvestMode.UNLOAD
 const DOCK_AT: Vector2i = Vector2i(3500, 5500)
@@ -34,28 +35,28 @@ func _payments(world: World, cargo: int) -> Array[int]:
 func test_every_player_is_at_100_unless_a_level_says_otherwise() -> void:
 	var world: World = _trip_world()
 	assert_array(world.income_percent).is_equal([100, 100, 100])
-	world.set_income_percent(2, RAISED)
+	WorldLoad.set_income(world, 2, RAISED)
 	assert_array(world.income_percent).is_equal([100, 100, RAISED])
 	world.prepare()  # Keeps what was set, and sizes by player_count.
 	assert_array(world.income_percent).is_equal([100, 100, RAISED])
 	var early: World = World.new()
-	early.set_income_percent(2, RAISED)  # Set before prepare(), when player_count is still 0.
+	WorldLoad.set_income(early, 2, RAISED)  # Before prepare(): player_count is 0.
 	assert_array(early.income_percent).is_equal([100, 100, RAISED])
 
 
 func test_at_100_the_unload_and_the_state_are_what_they_were() -> void:
 	var plain: World = _trip_world()
-	var set: World = _trip_world()
-	set.set_income_percent(1, World.PERCENT)
-	assert_int(set.state_hash()).is_equal(plain.state_hash())
+	var explicit: World = _trip_world()
+	WorldLoad.set_income(explicit, 1, WorldLoad.PERCENT)
+	assert_int(explicit.state_hash()).is_equal(plain.state_hash())
 	assert_array(_payments(plain, 60)).is_equal([25, 25, 10])  # The shipped 25 per ore.
-	assert_array(_payments(set, 60)).is_equal([25, 25, 10])
-	assert_int(set.state_hash()).is_equal(plain.state_hash())
+	assert_array(_payments(explicit, 60)).is_equal([25, 25, 10])
+	assert_int(explicit.state_hash()).is_equal(plain.state_hash())
 
 
 func test_at_120_a_crafted_unload_pays_ore_times_value_times_120_over_100() -> void:
 	var world: World = _trip_world()
-	world.set_income_percent(1, RAISED)
+	WorldLoad.set_income(world, 1, RAISED)
 	var ore: int = 4
 	var cargo: int = ore * world.credits_per_ore
 	var start: int = world.credits[1]
@@ -66,7 +67,7 @@ func test_at_120_a_crafted_unload_pays_ore_times_value_times_120_over_100() -> v
 	# The counted harvest is the ore's value, not the bonus, and player 2 is at 100.
 	assert_int(world.stat_harvested[1]).is_equal(cargo)
 	var other: World = _trip_world()
-	other.set_income_percent(1, RAISED)
+	WorldLoad.set_income(other, 1, RAISED)
 	var id: int = Worlds.add_harvester(other, 2, DOCK_AT.x, DOCK_AT.y, UNLOAD, 0, 1, 25)
 	assert_int(id).is_greater(0)
 	var before: int = other.credits[2]
@@ -77,22 +78,22 @@ func test_at_120_a_crafted_unload_pays_ore_times_value_times_120_over_100() -> v
 func test_defs_hash_follows_the_setup_and_the_state_hash_does_not() -> void:
 	var base: World = _trip_world()
 	var raised: World = _trip_world()
-	raised.set_income_percent(1, RAISED)
+	WorldLoad.set_income(raised, 1, RAISED)
 	assert_int(raised.defs_hash()).is_not_equal(base.defs_hash())
 	assert_int(raised.state_hash()).is_equal(base.state_hash())
 	var other_player: World = _trip_world()
-	other_player.set_income_percent(2, RAISED)
+	WorldLoad.set_income(other_player, 2, RAISED)
 	assert_int(other_player.defs_hash()).is_not_equal(base.defs_hash())
 	assert_int(other_player.defs_hash()).is_not_equal(raised.defs_hash())
 	var same: World = _trip_world()
-	same.set_income_percent(1, RAISED)
+	WorldLoad.set_income(same, 1, RAISED)
 	assert_int(same.defs_hash()).is_equal(raised.defs_hash())
 
 
 func test_a_replay_at_120_replays_and_at_100_reports_defs_differ() -> void:
 	var recorded: World = MatchScript.world(7)
-	recorded.set_income_percent(1, RAISED)
-	recorded.set_income_percent(2, RAISED)
+	WorldLoad.set_income(recorded, 1, RAISED)
+	WorldLoad.set_income(recorded, 2, RAISED)
 	var loop: MatchLoop = MatchScript.loop(recorded, 7)
 	MatchScript.play(recorded, loop, 90)
 	loop.replay.finish(recorded)
@@ -115,3 +116,21 @@ func test_a_format_1_replay_is_refused() -> void:
 	assert_object(Replay.from_bytes(var_to_bytes(data))).is_null()
 	data.erase("income_percent")  # A real format 1 file has no such key.
 	assert_object(Replay.from_bytes(var_to_bytes(data))).is_null()
+
+
+## The balance harness puts each level file's `income_percent` on its seat, before the loop records
+## the setup; a dummy seat keeps 100. (The shipped files all say 100 until P183b, so the values are
+## read from the files, not pinned.)
+func test_the_harness_seats_the_income_percent_of_the_level_files() -> void:
+	var easy: AiDifficultyDef = load("res://data/ai/difficulty/easy.tres") as AiDifficultyDef
+	var hard: AiDifficultyDef = load("res://data/ai/difficulty/hard.tres") as AiDifficultyDef
+	var world: World = Smoke.world_of(1)
+	var seats: Array[String] = ["easy", "hard"]
+	Smoke.seat_income(world, seats)
+	assert_array(world.income_percent).is_equal([100, easy.income_percent, hard.income_percent])
+	var dummy: World = Smoke.world_of(1)
+	var with_dummy: Array[String] = ["dummy", "hard"]
+	Smoke.seat_income(dummy, with_dummy)
+	assert_array(dummy.income_percent).is_equal([100, 100, hard.income_percent])
+	var loop: MatchLoop = Smoke.loop_of(world, 1)
+	assert_array(loop.replay.income_percent).is_equal(world.income_percent)

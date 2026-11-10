@@ -82,7 +82,7 @@ func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> v
 				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
 				assert_bool(typed).override_failure_message(label).is_true()
 				checked += 1
-	assert_int(checked).is_equal(24)
+	assert_int(checked).is_equal(25)
 
 
 ## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the

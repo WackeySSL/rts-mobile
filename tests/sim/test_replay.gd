@@ -405,7 +405,16 @@ func test_from_bytes_never_makes_objects() -> void:
 
 func _keys() -> Array[String]:
 	var keys: Array[String] = ["format", "scenario", "seed", "defs_hash"]
-	keys.append_array(["income_percent", "commands", "checkpoint_ticks", "checkpoint_hashes", "final_tick", "final_hash"])
+	keys.append_array(
+		[
+			"income_percent",
+			"commands",
+			"checkpoint_ticks",
+			"checkpoint_hashes",
+			"final_tick",
+			"final_hash"
+		]
+	)
 	return keys
 
 
