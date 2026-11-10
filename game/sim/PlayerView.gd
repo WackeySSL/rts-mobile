@@ -56,13 +56,20 @@ extends RefCounted
 ## so an array the view takes from the World without copying is the World's own and live: it shows
 ## the World's later writes, and a write through it would be the World's. So nothing a caller can
 ## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
-## and last-seen records, the type tables, the type ids); the row columns and the placement input,
-## which a think reads a few rows of and so are not worth a copy of the table, are aliases behind an
-## underscore, read only by the getters below and written by nothing. A view is made, read and
-## dropped within one think, never kept across a tick: its aliases follow the World, its lists and
-## slices do not, and a row index is good only for the tick it was made on (the table compacts when
-## a row dies). The per-row getters are for event cadence, a few reads per row of a think, not a
-## per-tick loop.
+## and last-seen records, the type tables, the type ids, and the seven arrays of `columns()`); the
+## row columns and the placement input, which a think reads a few rows of and so are not worth a
+## copy of the table, are aliases behind an underscore, read only by the getters below and written
+## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
+## costs seven reference counts a view, and a write through it forks into the caller's copy. A view,
+## or a column taken from one, held across a tick would make the World fork a whole array on its
+## next write: a view is made, read and dropped within one think, never kept across a tick; its
+## aliases follow the World, its lists and slices do not, and a row index is good only for the tick
+## it was made on (the table compacts when a row dies). The per-row getters are for event cadence,
+## a few reads per row of a think, not a per-tick loop.
+##
+## Hidden rows (plan row P198): `columns()` holds every row of the World. A caller indexes it only
+## with a row of `own_rows` or `seen_rows` or a `row_of()` answer of 0 or more, as the getters do;
+## tests enforce it (tests/ai/test_ai_poisoned_view.gd, the scan in tests/project).
 
 ## The World's enums the AI names, re-exported with the World's values (a test pins each pair), so
 ## that `game/ai` never names `World`: the production tabs, the harvest modes of a harvester row
@@ -204,6 +211,7 @@ var _home: PackedInt32Array = PackedInt32Array()
 var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
+var _public: Array[PackedInt32Array] = []
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
 ## that make a type a refinery.
 var _type_ids: Array[StringName] = []
@@ -239,14 +247,13 @@ func row_of(id: int) -> int:
 	return MISSING
 
 
-## The row columns as whole arrays, indexed by `Column` (plan row P198), for a manager's loop
-## that would otherwise call `row_id`, `row_type`, `row_pos`... five times a row: index them only
-## with a row of `own_rows` or `seen_rows`, where they hold what the `row_*` reads give. An index
-## past those two lists names a row the player cannot see, and what it holds is not the player's
-## to read; no caller may use one. The arrays are the World's own, not copies (a packed array is
-## shared by reference), so a write would change the World: no caller writes one.
+## The row columns as whole arrays, indexed by `Column` (plan row P198), for a manager's loop that
+## would otherwise call `row_id`, `row_type`, `row_pos`... five times a row. Copies (copy on write:
+## a write goes to the caller's copy, never to the World); index only with a row of `own_rows` or
+## `seen_rows` or a `row_of()` answer >= 0, where they hold what the `row_*` reads give; any other
+## row is one the player cannot see, and the oracle test enforces that no caller reads one.
 func columns() -> Array[PackedInt32Array]:
-	return [_ids, _owner, _type, _pos_x, _pos_y, _hp, _build_left]
+	return _public
 
 
 ## The public columns of an own or a seen row: its id, owner (0 is neutral), type index, position
@@ -565,6 +572,15 @@ func _take_rows(world: World) -> void:
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
+	_public = [
+		_ids.duplicate(),
+		_owner.duplicate(),
+		_type.duplicate(),
+		_pos_x.duplicate(),
+		_pos_y.duplicate(),
+		_hp.duplicate(),
+		_build_left.duplicate(),
+	]
 	_shown = shown
 	own_rows = own
 	seen_rows = seen

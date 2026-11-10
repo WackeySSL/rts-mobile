@@ -244,7 +244,6 @@ func _threat(view: PlayerView, memory: AiMemory) -> int:
 	var least: int = defend_radius * defend_radius + 1
 	if not _box(memory):
 		return found
-	# Locals, and a unit's tests counted at once: the cap ends the search where it did.
 	var site_xs: PackedInt32Array = memory.site_x
 	var site_ys: PackedInt32Array = memory.site_y
 	var sites: int = memory.site_id.size()
@@ -712,8 +711,9 @@ func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
 ## buildings when `sites`), one test each past the box, until the cap.
 func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
 	var found: int = 0
-	var xs: PackedInt32Array = view.columns()[PlayerView.Column.X]
-	var ys: PackedInt32Array = view.columns()[PlayerView.Column.Y]
+	var columns: Array[PackedInt32Array] = view.columns()
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
 	var radius: int = defend_radius
 	var used: int = tests
 	for id: int in list:

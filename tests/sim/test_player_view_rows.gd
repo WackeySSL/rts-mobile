@@ -85,6 +85,37 @@ func test_the_column_arrays_agree_with_the_getters_at_every_own_and_seen_row() -
 			)
 
 
+## `columns()` hands out copies (plan row P198): a write through one reaches neither the World, nor
+## the getters of the view, nor a later view.
+func test_a_write_through_the_columns_reaches_neither_the_world_nor_the_getters() -> void:
+	var world: World = ViewWorlds.crafted()
+	var view: PlayerView = PlayerView.of(world, 1)
+	var live: Array[PackedInt32Array] = [
+		world.unit_id,
+		world.owner,
+		world.type_index,
+		world.pos_x,
+		world.pos_y,
+		world.hp,
+		world.build_left
+	]
+	var kept: Array[PackedInt32Array] = []
+	for column: PackedInt32Array in live:
+		kept.append(column.duplicate())
+	var row: int = view.own_rows[0]
+	var answers: Array[int] = _answers(view, row)
+	var columns: Array[PackedInt32Array] = view.columns()
+	for column: PackedInt32Array in columns:
+		for at: int in column.size():
+			column[at] = 987654
+	for index: int in live.size():
+		assert_array(live[index]).append_failure_message("column %d" % index).is_equal(kept[index])
+	assert_array(_answers(view, row)).is_equal(answers)
+	var fresh: PlayerView = PlayerView.of(world, 1)
+	for index: int in live.size():
+		assert_array(fresh.columns()[index]).is_equal(kept[index])
+
+
 func test_player_one_owns_three_rows_and_sees_three_of_the_others() -> void:
 	var world: World = ViewWorlds.crafted()
 	var view: PlayerView = PlayerView.of(world, 1)

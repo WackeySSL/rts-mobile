@@ -113,6 +113,19 @@ as accepted), on `game/sim/PlayerView.gd`:
   the World's values (a test pins each pair). P77 adds the last-seen records (`ghost_*` copies,
   `ghost_of`, `ghost_pos`).
 
+Note (2026-11-10, P198; changes no accepted text above): `PlayerView.columns()` hands the AI the
+row columns (id, owner, type, x, y, hp, `build_left`) as whole arrays, for loops that would call
+the getters five times a row. They are **copies** (copy on write: a write goes to the caller's
+copy, never to the World), made once per view. They hold **every** row of the World, the hidden
+ones too, so the rule above now rests on the caller: index them only with a row of `own_rows` or
+`seen_rows` or a `row_of()` answer of 0 or more, where they hold what the getters give. Two tests
+enforce it: `tests/ai/test_ai_poisoned_view.gd` plays the first ticks of `perf_ai` on views whose
+hidden rows are poisoned and asserts the same Commands and state hash as the clean run, and
+`tests/project/test_view_reads_snapshot.gd` lists the scripts of `game/ai` that may call
+`columns()` and bans any `view._` member in `game/ai`. A view, or a column taken from one, is
+dropped within its think: held across a tick it would make the World fork a whole array on its
+next write.
+
 ### 2. `AiController` and the driver
 - `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with
   `player_id`, `think_period` and `think_offset` ints and

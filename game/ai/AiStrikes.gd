@@ -194,7 +194,6 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 ## Adds the seen rows of `list` (ids) that the AI may act on, until `_tests_max` things are held:
 ## an enemy row of a type whose first sighting is `reaction_ticks` old, a producer when
 ## `producers_only`. The columns are read once a row, `value_of` written out (plan row P198).
-@warning_ignore("integer_division")
 func _take_list(
 	view: PlayerView, memory: AiMemory, list: PackedInt32Array, producers_only: bool
 ) -> void:
@@ -204,8 +203,6 @@ func _take_list(
 	var xs: PackedInt32Array = columns[PlayerView.Column.X]
 	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
 	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
-	var costs: PackedInt32Array = view.type_cost
-	var max_hps: PackedInt32Array = view.type_max_hp
 	var produces: PackedInt32Array = view.type_produces
 	var first: PackedInt32Array = memory.seen_first_tick
 	for id: int in list:
@@ -227,14 +224,9 @@ func _take_list(
 			var tab: int = produces[type] if type < produces.size() else -1
 			if tab < 0 or tab >= PlayerView.TABS:
 				continue
-		var cost: int = costs[type] if type < costs.size() else 0
-		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
-		var value: int = cost
-		if max_hp > 0:
-			value = cost * clampi(hps[row], 0, max_hp) / max_hp
 		_x.append(xs[row])
 		_y.append(ys[row])
-		_value.append(value)
+		_value.append(AiIntel.value_at(view, type, hps[row]))
 
 
 func _add(x: int, y: int, value: int) -> void:
@@ -359,6 +351,7 @@ func _sector_value(view: PlayerView, memory: AiMemory, x: int, y: int) -> int:
 ## 1 when no own row or goal of the pre-filter is within `reach` of the anchor, 0 when one is, and
 ## -1 when the cap on counted tests ends the check first.
 func _clear(anchor: int, reach: int) -> int:
+	# `tests` ends where the one-at-a-time loop's did: at `at` on the cap, at `at + 1` on a hit.
 	var anchor_x: int = _x[anchor]
 	var anchor_y: int = _y[anchor]
 	var room: int = _tests_max - tests

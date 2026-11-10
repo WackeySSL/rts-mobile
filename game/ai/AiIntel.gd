@@ -99,8 +99,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
 	var hq_id: int = NO_ID
-	# The passes read the view's columns and the type tables through locals, once a row, with the
-	# arithmetic of `_tile`, `sector_at` and `value_of` inlined (P198); the results are theirs.
+	# Columns and tables through locals, `_tile`, `sector_at` and `value_of` inlined (P198).
 	var columns: Array[PackedInt32Array] = view.columns()
 	var ids: PackedInt32Array = columns[PlayerView.Column.ID]
 	var owners: PackedInt32Array = columns[PlayerView.Column.OWNER]
@@ -124,13 +123,13 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		var pos_y: int = ys[row]
 		var at_col: int = mini(maxi(pos_x, 0) / per, col_last)
 		var at_line: int = mini(maxi(pos_y, 0) / per, line_last)
-		var cost: int = costs[type] if type < costs.size() else 0
-		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
+		var cost: int = costs[type] if type >= 0 and type < costs.size() else 0
+		var max_hp: int = max_hps[type] if type >= 0 and type < max_hps.size() else 0
 		var value: int = cost
 		if max_hp > 0:
 			value = cost * clampi(hps[row], 0, max_hp) / max_hp
 		memory.sector_own[at_line / side * across + at_col / side] += value
-		if foot_w[type] > 0:
+		if type >= 0 and type < foot_w.size() and foot_w[type] > 0:
 			var id: int = ids[row]
 			memory.site_id.append(id)
 			memory.site_x.append(pos_x)
@@ -149,15 +148,15 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 		var type: int = types[row]
 		var at_col: int = mini(maxi(xs[row], 0) / per, col_last)
 		var at_line: int = mini(maxi(ys[row], 0) / per, line_last)
-		var cost: int = costs[type] if type < costs.size() else 0
-		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
+		var cost: int = costs[type] if type >= 0 and type < costs.size() else 0
+		var max_hp: int = max_hps[type] if type >= 0 and type < max_hps.size() else 0
 		var value: int = cost
 		if max_hp > 0:
 			value = cost * clampi(hps[row], 0, max_hp) / max_hp
 		memory.sector_enemy[at_line / side * across + at_col / side] += value
 		if combat[type] != 0:
 			memory.seen_unit_id.append(ids[row])
-		elif foot_w[type] > 0:
+		elif type >= 0 and type < foot_w.size() and foot_w[type] > 0:
 			memory.seen_site_id.append(ids[row])
 	for record: int in view.ghost_count:
 		if not remembered(view, record):
@@ -188,7 +187,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	for row: int in view.own_rows:
 		var type: int = types[row]
 		var id: int = ids[row]
-		if foot_w[type] <= 0:
+		if type < 0 or type >= foot_w.size() or foot_w[type] <= 0:
 			memory.own_mobile_id.append(id)
 		if type == hq and id < hq_id:
 			hq_id = id
@@ -239,9 +238,9 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 		var type: int = types[row]
 		_counts[type] += 1
 		_seen_now[type] += 1
-		if _combat[type] == 0 and foot_w[type] <= 0:
+		if _combat[type] == 0 and (type < 0 or type >= foot_w.size() or foot_w[type] <= 0):
 			memory.seen_mobile_id.append(ids[row])
-		var tab: int = produces[type] if type < produces.size() else -1
+		var tab: int = produces[type] if type >= 0 and type < produces.size() else -1
 		if tab >= 0 and tab < PlayerView.TABS:
 			_offer(_tile(view.row_pos(row)), ids[row], from)
 	for record: int in view.ghost_count:

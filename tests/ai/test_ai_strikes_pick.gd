@@ -26,6 +26,24 @@ func test_the_point_of_most_value_wins_over_the_richest_thing() -> void:
 	assert_array(_target()).is_equal([MIXED_POINT.x, MIXED_POINT.y])
 
 
+func test_a_hurt_thing_counts_its_hit_points_share_in_the_value() -> void:
+	# The same Derrick as the first case, but the three buildings of the 2,100 point are at half
+	# their hit points (1,050): the lone factory (1,800) is now the point of most value.
+	_arm_strikes("normal", 1, "fossil", 1000)
+	_enemy_building("vehicle_factory", 30, 30)
+	for hurt: int in [
+		_enemy_building("refinery", 8, 24),
+		_enemy_building("barracks", 11, 24),
+		_enemy_building("power_plant", 8, 27)
+	]:
+		var row: int = _row_in_world(hurt)
+		_world.hp[row] = _world.hp[row] / 2
+	_see_all()
+	_fire(READY)
+	_fire(KNOWN)
+	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+
+
 func test_seen_tankers_count_in_the_value() -> void:
 	# The cluster is 2,200 without tankers; the refinery is 1,400 and with two tankers 3,800.
 	_cluster()

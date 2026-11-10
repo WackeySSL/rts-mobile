@@ -65,6 +65,23 @@ const TOKEN: String = (
 	+ r"#[^\n]*"
 )
 
+## A private member of the view read from game/ai (`view._hp`, `view. _shown`): the getters and the
+## lists are the AI's way in (plan row P198).
+const VIEW_PRIVATE: String = r"\bview\.[\s\\]*_\w"
+## A call of `columns()`, which hands out every row of the World, hidden ones too: the AI indexes it
+## only at rows it may see. The call sites are listed in `COLUMNS_SITES`.
+const COLUMNS_CALL: String = r"\.columns\(\)"
+## The scripts of game/ai that call `columns()` and how often (plan row P198). A new call fails the
+## test until a reviewer has read it against the rule and added it here; the poisoned-view oracle
+## of tests/ai/test_ai_poisoned_view.gd is what proves the rule holds for them.
+const COLUMNS_SITES: Dictionary[String, int] = {
+	"res://game/ai/AiArmy.gd": 2,
+	"res://game/ai/AiEconomy.gd": 1,
+	"res://game/ai/AiIntel.gd": 3,
+	"res://game/ai/AiProduction.gd": 1,
+	"res://game/ai/AiStrikes.gd": 1,
+}
+
 ## Source text that VIEW_MEMBER must flag: the four reads of the plan, a chain that gdformat wraps,
 ## a read before a comment and one inside an expression.
 const VIEW_FLAGGED: Array[String] = [
@@ -195,6 +212,11 @@ const AI_RULES: Array[Dictionary] = [
 		"advice": "a World held in a member outlives its think; read the match through PlayerView",
 		"lines": [7, 8],
 	},
+	{
+		"pattern": VIEW_PRIVATE,
+		"advice": "read the view through its getters and lists, not through a member behind `_`",
+		"lines": [29],
+	},
 ]
 
 var _token: RegEx
@@ -278,6 +300,27 @@ func test_the_ai_rules_flag_exactly_the_lines_of_a_controller_that_breaks_them()
 		for hit: String in _scan_files([BREAKING_FIXTURE], pattern):
 			lines.append(int(hit.split(":")[2]))
 		assert_array(lines).override_failure_message(pattern).is_equal(rule["lines"])
+
+
+## `columns()` is called only where COLUMNS_SITES says, and the pattern flags the fixture's call.
+func test_columns_is_called_only_from_the_listed_scripts() -> void:
+	var seen: Dictionary[String, int] = {}
+	for hit: String in _scan_dir(AI_DIR, COLUMNS_CALL):
+		var place: String = hit.get_slice(": ", 0)
+		var path: String = place.substr(0, place.rfind(":"))
+		seen[path] = seen.get(path, 0) + 1
+	(
+		assert_dict(seen)
+		. override_failure_message(
+			"columns() outside the listed call sites: %s (see COLUMNS_SITES)" % str(seen)
+		)
+		. is_equal(COLUMNS_SITES)
+	)
+	var flagged: Array[int] = []
+	for hit: String in _scan_files([BREAKING_FIXTURE], COLUMNS_CALL):
+		flagged.append(int(hit.split(":")[2]))
+	assert_array(flagged).is_equal([30])
+	assert_array(_scan_files([CONTROLLER_FIXTURE], COLUMNS_CALL)).is_empty()
 
 
 ## A controller that reads the match through PlayerView, names Placement.Reason and keeps the words

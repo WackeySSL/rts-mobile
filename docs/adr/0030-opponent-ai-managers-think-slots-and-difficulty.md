@@ -397,34 +397,34 @@ Note (2026-11-09, P26bj docs; lead decisions from balance run 1 and the wave-8 r
   545 us, `est_phone_p95_ms` 2.673, against the 1.0 ms watch value and the 0.15 ms CI target
   above. The lead raised it with Michael on 2026-11-09; no remedy from "Over budget" is chosen yet.
 
-Note (2026-11-10, P198; lead decision after the Perf AI card of the Pixel 9a, issue #398):
-- **The card read `ai_think_p95_ms` 9.25-9.48 against the 1.0 watch value**, `sim_p95_ms` 12.1-12.6
-  against Michael's 10 ms trigger and `job_minus_step_p95_cp_ms` 3.1-3.4, so the overshoot is the AI.
-  CI's `WATCH ai think` for the same workload read `p95_us=507`: the AI is about **18.6 times**
-  slower on the phone than on the runner, not the gate's `ci_ratio_p95` 5.9 that `est_phone_p95_ms`
-  uses. Read CI's `p95_us` at 18.6, not at 5.9, until the card says otherwise. A runner's `p95_us`
-  moves by up to 60 % from one VM to the next (main read 505, 507 and 810); compare two commits only
-  on runs of the same hour, or by the per-stage means of one run.
-- **Where the time went** (per-stage CI means on an experiment branch, `perf_ai` workload, one run):
-  the ARMY slot. The view cost 61 us, `AiIntel.refresh` 398, `AiArmy.run` 276, the whole ECONOMY slot
-  (economy and production) 117 and the intel run and strikes 141. The cost was calls, not rows: each
-  row went through `row_type`, `row_pos`, `row_id`, `row_hp` and `value_of`, a dozen GDScript calls,
-  and each threat or strike test was a function call.
+Note (2026-11-10, P198, cheaper reads; changes no accepted text above):
+- **Where the time went** (per-stage CI means on an experiment branch, `perf_ai` workload, run
+  42848948951 on a slow VM): the ARMY slot. The view cost 61 us, `AiIntel.refresh` 398,
+  `AiArmy.run` 276, the whole ECONOMY slot (economy and production) 117 and the intel run and
+  strikes 141. The cost was calls, not rows: each row went through `row_type`, `row_pos`,
+  `row_id`, `row_hp` and `value_of`, a dozen GDScript calls, and each threat or strike test was a
+  function call. The phone ratio is the one the P26bm note above gives (about 18.5), not the gate's
+  `ci_ratio_p95` 5.9.
 - **The remedy is cheaper reads, GDScript only; no cap and no slot moved.**
-  `PlayerView.columns()` hands out the row columns (read only at rows of `own_rows` and
-  `seen_rows`); the managers' passes index them through locals; the threat, strike and wave-ratio
-  searches count their tests in a local and a unit's or an anchor's at once; `AiArmy._join` and
-  `_unseen_hit` walk two ascending lists instead of a bsearch a unit. **No decision changes:** the
-  `perf_ai` state hash (`cbe70a78d01ee7c1`), its peaks and every balance match are main's, per seed.
-- **Result** (CI `WATCH ai think` p95): 278 and 473 us against main's 505 and 810 on the same hours,
-  0.55 to 0.58 of main (about 5.2 ms on the phone at 18.6, was 9.4). The step-1 stage means were
-  refresh 63 us, army 168, view 44, economy 37, production 18, intel 30, strikes 13: the view and the
-  ARMY slot's sum (view, refresh, army) are what is left, so the slot is still two to three times
-  the ECONOMY and INTEL slots. **The 0.15 ms CI target and the 1.0 ms phone watch value are not
-  met.** What would meet them is a change of behaviour or interface, not of reads, and is for the
-  lead: five slots on period 3 (the plan above), which also moves `AiArmy`'s inputs a think earlier;
-  a view built only as far as a slot needs; the static type tables shared between the views of a
-  match instead of copied.
+  `PlayerView.columns()` hands out copies of the row columns (index them only at visible rows, ADR
+  0020 section 1's note of this date); the managers' passes index them through locals; the threat,
+  strike and wave-ratio searches count their tests in a local and a unit's or an anchor's at once;
+  `AiArmy._join` and `_unseen_hit` walk two ascending lists instead of a bsearch a unit. **No
+  decision changes:** the `perf_ai` state hash `cbe70a78d01ee7c1` (run 42859084281, as main's run
+  42816856270), its peaks and every balance match are main's, per seed.
+- **Result** (CI `WATCH ai think` p95): 278 us (run 42859084281) and 473 us (run 42859139046)
+  against main's 505 us (run 42859146551) and 810 us (run 42859090560) in the same hours: 0.55 to
+  0.58 of main. A runner's `p95_us` moves by up to 60 % from one VM to the next, so compare two
+  commits only on runs of the same hour. At about 18.5 that is **about 5.2 ms on the phone, which
+  misses P198's target of about 2 ms: the target stays open**, as do the 0.15 ms CI target and the
+  1.0 ms phone watch value above. The stage means after the first cut were refresh 63 us, army
+  168, view 44, economy 37, production 18, intel 30, strikes 13: the view and the ARMY slot's sum
+  (view, refresh, army) are what is left, so that slot is still two to three times the ECONOMY and
+  INTEL slots. What would meet the target is a change of behaviour or interface, not of reads:
+  five slots on period 3 (which also moves `AiArmy`'s inputs a think earlier), a view built only as
+  far as a slot needs, the static type tables shared between the views of a match. `AiArmy.gd` is
+  at the 1000-line lint limit and `PlayerView` at its 20 public methods, so the next row splits
+  them first (for example `_threat`, `_near` and `_value_in` into a reads helper).
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
@@ -569,6 +569,14 @@ think a rupture may follow a blackout, but nothing may follow a rupture). The ty
 rows, warned lists and caps are as listed; `type_vs_armour` is indexed `type * 4 + class`, read
 through the type's weapon (`PlayerView.ARMOUR_CLASSES` is 4, pinned to `World.Armour`).
 `type_sight` is in milli-tiles.
+
+Note (2026-11-10, P198; changes no accepted text above): "nothing hidden" and "stays read-only" now
+have one reading more. `PlayerView.columns()` exposes the id, owner, type, position, hp and
+`build_left` columns of every World row, hidden rows included, as copies (copy on write; a write
+never reaches the World). A manager indexes them only at rows of `own_rows`, `seen_rows` or a
+`row_of()` answer of 0 or more, the rows whose values the getters give. The poisoned-view oracle
+(`tests/ai/test_ai_poisoned_view.gd`) and the scan in `tests/project/test_view_reads_snapshot.gd`
+enforce it; ADR 0020 section 1 has the same note.
 
 ### 8. Difficulty is parameters; the AI never sees more than its side
 - One code path for all three levels; only `AiDifficultyDef` differs. A test runs the same seed at
