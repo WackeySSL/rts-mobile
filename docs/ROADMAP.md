@@ -61,8 +61,8 @@ Tick a box in the PR that meets the criterion.
   Michael, 2026-11-06) and an open issue labelled `balance`; first report in `docs/balance/`
 - [ ] Gate: Normal wins 40-60% against the mirror AI over 100 matches, every unit type is used
   (Michael, 2026-11-10: "no match lasts over 15 minutes" moved to Phase 4b's balance run, where
-  building health and armour are tuned with the new units; P196 and P197 found the long matches
-  come from the siege, not from the AI's logic alone)
+  Hard and the number balance are tuned once with the new units; P196 and P197 found the long
+  matches come from the late all-in and the slow siege, which the AI's logic alone did not fix)
 
 ## Phase 4b: Air and ground support (before launch)
 Michael, 2026-11-09: ADR 0036 (air, anti-air, satellite, research, transports, drone squads) and ADR
@@ -96,7 +96,7 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   on Normal and Hard (satellite included); the fairness suite proves it headless
 - [ ] The balance run (seeds 1-100) passes the ADR 0031 gate thresholds with the new units: 26 unit
   types, each built in at least 50 of 100 matches; no Normal-Normal match lasts over 15 minutes
-  (moved from Phase 4's gate, Michael 2026-11-10); Easy, Normal and Hard in that order
+  (moved from Phase 4's gate, Michael, 2026-11-10); Hard beats Normal and Normal beats Easy
 - [ ] Performance: 150 units at 60 fps on the reference phone with aircraft (`perf_air`) and with
   mines and repairers (`perf_bases`), draw calls within the forecast
 - [ ] Gate: the ADR 0031 gate run on held-out seeds passes with all 26 unit types, and on Michael's

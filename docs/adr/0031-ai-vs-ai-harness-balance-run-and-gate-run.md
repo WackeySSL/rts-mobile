@@ -535,3 +535,9 @@ record what was decided.
    - A (chosen): play Normal to the end as each side; Easy and Hard may end with Surrender once you
      have the feel (after about 5 minutes).
    - B (not chosen): all six to the end.
+
+Note (2026-11-10, P26bl, the lead): Michael moved "no match lasts over 15 minutes" from Phase 4's
+gate to Phase 4b's balance run on 2026-11-10. At Phase 4's gate, §6's check 3 (no timeout, longest
+match at most 13 500 ticks) is read and reported but not judged; the gate issue records the waiver.
+`balance-summary.sh --gate` stays as it is. The ladder's order (Hard beats Normal) is also read
+there and judged in Phase 4b, because Hard is tuned in that run.
