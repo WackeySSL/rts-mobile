@@ -243,7 +243,8 @@ func row_of(id: int) -> int:
 ## that would otherwise call `row_id`, `row_type`, `row_pos`... five times a row: index them only
 ## with a row of `own_rows` or `seen_rows`, where they hold what the `row_*` reads give. An index
 ## past those two lists names a row the player cannot see, and what it holds is not the player's
-## to read; no caller may use one. The arrays are the World's own and are never written.
+## to read; no caller may use one. The arrays are the World's own, not copies (a packed array is
+## shared by reference), so a write would change the World: no caller writes one.
 func columns() -> Array[PackedInt32Array]:
 	return [_ids, _owner, _type, _pos_x, _pos_y, _hp, _build_left]
 
