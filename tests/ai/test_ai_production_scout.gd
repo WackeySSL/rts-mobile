@@ -10,9 +10,12 @@ const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 ## the economy's reserve takes most of the income for the build order. The refinery goes to the
 ## slot nearest the ore (P195b), docks and exits face the map centre (P195c-1) and the explored rule
 ## is gone (P195c-3) and the half-turn ties move where the units stand (P195d-2: 4495 -> 4420); the
-## value was found by running the match on the combined tree.
-const SCOUT_MOVE_TICK: int = 4420
-const MATCH_TICKS: int = 6500
+## value was found by running the match on the combined tree. P192b: the standard order drops the
+## 2500-credit strike building, the reserve frees earlier (4420 -> 3745), and the second scout
+## (one interval later, about tick 6445) would now fall inside 6500 ticks, so the match is cut to
+## 6000 to keep "scouts once".
+const SCOUT_MOVE_TICK: int = 3745
+const MATCH_TICKS: int = 6000
 
 # --- The scout ---------------------------------------------------------------------------------
 
