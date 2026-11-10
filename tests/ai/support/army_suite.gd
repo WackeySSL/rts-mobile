@@ -36,6 +36,9 @@ func _plain(level: String) -> AiDifficultyDef:
 	var plain: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
 	plain.unit_retreat_hp_percent = 0
 	plain.focus_fire = 0
+	# P197 owns the siege and the press (tests/ai/test_ai_army_siege.gd).
+	plain.press_percent = 0
+	plain.siege_focus = 0
 	return plain
 
 

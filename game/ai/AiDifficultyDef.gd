@@ -32,6 +32,13 @@ extends Resource
 ## this percent of its own. 0 = never.
 @export var retreat_percent: int = 40
 @export var retreat_ratio_percent: int = 200
+## Press (P197): a wave worth at least this percent of the seen enemy value near it is ahead. It
+## does not retreat for loss of value, and when it stands at an enemy producer the all-in comes
+## early (a decisive push). 0 = never.
+@export var press_percent: int = 150
+## Whether a wave at the enemy's base focuses its finished producers (the buildings that decide the
+## match) once nothing armed stands near it (0 or 1).
+@export var siege_focus: int = 1
 ## Unit control: a unit under this percent of its hp steps back (0 = never), and groups focus the
 ## weakest seen enemy in reach (0 or 1).
 @export var unit_retreat_hp_percent: int = 0

@@ -40,6 +40,9 @@ var shift_tiles: int = 0
 ## whether groups focus the weakest enemy in reach.
 var unit_retreat_hp: int = 0
 var focus_fire: bool = false
+## The press percent (0 = never) and whether a wave at the enemy base focuses its producers (P197).
+var press: int = 0
+var siege: bool = false
 
 ## Counted for the suites: tests of the last run: the threat search's, the home focus search's, the
 ## wave's ratio read, the recall's read and the wave focus search's (they all share the cap of
@@ -62,6 +65,12 @@ var shifts: int = 0
 ## Over the match: units stepped back on their own and focus-fire `ATTACK` orders sent.
 var stepbacks: int = 0
 var focuses: int = 0
+
+## Whether a wave stood ahead at an enemy producer: the all-in has come early, for good (`_press`).
+var _pressed: bool = false
+## This think's seen enemy value near the wave (`_foes`), valid while `_foes_tick` is the tick.
+var _foes_value: int = 0
+var _foes_tick: int = -1
 
 ## Joiners no order has named yet (ascending), and scratch lists kept between runs.
 var _fresh: PackedInt32Array = PackedInt32Array()
@@ -109,11 +118,14 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
 	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
 	army.focus_fire = level.focus_fire > 0
+	army.press = maxi(level.press_percent, 0)
+	army.siege = level.siege_focus > 0
 	return army
 
 
 func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
 	tests = 0
+	_foes_tick = -1
 	_threat_on = false
 	if memory.squads_max < 1:
 		return
@@ -537,6 +549,8 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 	var all_in: bool = _all_in(view)
 	if memory.squad_role[WAVE] != AiMemory.NONE:
 		_tally(view, memory)
+		if not all_in and press > 0 and memory.squad_state[WAVE] == AiMemory.SquadState.WAVE:
+			all_in = AiSiege.press(self, view, memory)
 		var retreating: bool = memory.squad_state[WAVE] == AiMemory.SquadState.RETREAT
 		if _wave_units > 0 and not retreating:
 			_fight(view, memory, out, all_in)
@@ -551,7 +565,7 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 
 ## Whether the all-in tick has come (0: never).
 func _all_in(view: PlayerView) -> bool:
-	return all_in_tick > 0 and view.tick >= all_in_tick
+	return _pressed or (all_in_tick > 0 and view.tick >= all_in_tick)
 
 
 ## Whether the all-in overrides the defence this think: it has come and the wave logic can run (a
@@ -589,7 +603,9 @@ func _wave_holds_army(memory: AiMemory) -> bool:
 func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: bool) -> void:
 	if not all_in and _pull_back(view, memory, out):
 		return
-	var focused: bool = focus_fire and _focus(view, memory, out, WAVE)
+	var focused: bool = (
+		AiSiege.siege(self, view, memory, out) or (focus_fire and _focus(view, memory, out, WAVE))
+	)
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
 	var target: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	var wave: PackedInt32Array = _members(memory, true, WAVE)
@@ -624,8 +640,12 @@ func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool
 		retreat_percent > 0
 		and _wave_value * 100 < memory.squad_launch_value[WAVE] * retreat_percent
 	)
+	# A wave that is ahead of the enemy near it keeps fighting (P197): the loss of value alone is no
+	# reason to walk home and start the next wave from nothing.
+	if weak and press > 0 and _wave_value * 100 >= AiSiege.foes(self, view, memory) * press:
+		weak = false
 	if not weak and retreat_ratio > 0:
-		weak = _near(view, memory, _wave_at) * 100 > _wave_value * retreat_ratio
+		weak = AiSiege.foes(self, view, memory) * 100 > _wave_value * retreat_ratio
 		# The recall: a threat at the base that outweighs the home squad calls the wave home, to
 		# defend (not a retreat).
 		if (
