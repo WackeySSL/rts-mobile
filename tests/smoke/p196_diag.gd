@@ -18,6 +18,9 @@ static var seed_now: int = 0
 static var _prev_wave: Array = [{}, {}, {}]
 static var _prev_lost: Array[int] = [0, 0, 0]
 static var _prev_turret: Array[int] = [0, 0, 0]
+## Deaths of a player's combat units since the last sample by zone: enemy turret zone, enemy base,
+## field, own base.
+static var _deaths: Array = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 
 
 static func reset(match_seed: int) -> void:
@@ -25,6 +28,39 @@ static func reset(match_seed: int) -> void:
 	_prev_wave = [{}, {}, {}]
 	_prev_lost = [0, 0, 0]
 	_prev_turret = [0, 0, 0]
+	_deaths = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+
+
+static func after(world: World) -> void:
+	var events: PackedInt32Array = world.events
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] != World.Event.DIED:
+			continue
+		var type: int = events[at + 4]
+		var owner: int = events[at + 5]
+		if owner < 1 or owner > 2 or world.type_foot_w[type] > 0 or world.type_weapon[type] < 0:
+			continue
+		var x: int = events[at + 2] / 1000
+		var y: int = events[at + 3] / 1000
+		var zone: int = 2
+		var near_enemy: bool = false
+		var near_own: bool = false
+		for row: int in world.unit_count():
+			var other: int = world.type_index[row]
+			if world.type_foot_w[other] <= 0 or world.owner[row] <= 0:
+				continue
+			var gap: int = maxi(absi(world.pos_x[row] / 1000 - x), absi(world.pos_y[row] / 1000 - y))
+			if world.owner[row] != owner:
+				if gap <= 8 and world.type_weapon[other] >= 0 and world.build_left[row] == 0:
+					zone = 0
+					break
+				if gap <= 10:
+					near_enemy = true
+			elif gap <= 10:
+				near_own = true
+		if zone != 0:
+			zone = 1 if near_enemy else (3 if near_own else 2)
+		_deaths[owner][zone] += 1
 
 
 static func sample(world: World, controllers: Array[AiController], counter: SmokeCount) -> void:
@@ -126,6 +162,7 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 	# The target and what stands there.
 	var target: String = "none"
 	var dist_to: int = -1
+	var front: String = "-"
 	if memory.base_x != AiMemory.NONE:
 		var kind: String = "empty"
 		for row: int in world.unit_count():
@@ -137,6 +174,30 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 				break
 		target = "%d,%d:%s" % [memory.base_x, memory.base_y, kind]
 		dist_to = absi(wcx - memory.base_x) + absi(wcy - memory.base_y)
+		var ds: Array[int] = []
+		var mine_near: int = 0
+		var foes_near: int = 0
+		var guns_near: int = 0
+		for row: int in world.unit_count():
+			var other: int = world.type_index[row]
+			var gap: int = maxi(absi(world.pos_x[row] / 1000 - memory.base_x), absi(world.pos_y[row] / 1000 - memory.base_y))
+			if world.owner[row] <= 0 or world.type_weapon[other] < 0:
+				continue
+			if world.type_foot_w[other] > 0:
+				if world.owner[row] != player and gap <= 12 and world.build_left[row] == 0:
+					guns_near += 1
+				continue
+			if world.owner[row] == player:
+				if gap <= 12:
+					mine_near += 1
+				if wave_ids.has(world.unit_id[row]):
+					ds.append(gap)
+			elif gap <= 12:
+				foes_near += 1
+		ds.sort()
+		if not ds.is_empty():
+			front = "%d/%d/%d" % [ds[0], ds[ds.size() / 2], ds[ds.size() - 1]]
+		front += " n%d e%d g%d" % [mine_near, foes_near, guns_near]
 	var known: int = 0
 	for type: int in memory.seen_count.size():
 		if type < world.type_ids.size() and _is_producer(world, type):
@@ -151,13 +212,15 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 		if key.contains("defence"):
 			turret += int(counter.kills[other][key])
 	var out: String = (
-		"u%d i%d a%d m%d k%d w%d %s c%d,%d sp%d far%d nw%d/%d tg%s d%d P%d EP%d kp%d wc%d L%d T%d"
+		"u%d i%d a%d m%d k%d w%d %s c%d,%d sp%d far%d nw%d/%d tg%s d%d fq%s P%d EP%d kp%d wc%d L%d T%d D%d/%d/%d/%d"
 		% [
 			units, idle, amove, move, attack, in_wave, state, cx, cy, spread, far, joined, joined_dist,
-			target, dist_to, own_prod, enemy_prod, known, ai.waves,
+			target, dist_to, front, own_prod, enemy_prod, known, ai.waves,
 			lost - _prev_lost[player], turret - _prev_turret[player],
+			_deaths[player][0], _deaths[player][1], _deaths[player][2], _deaths[player][3],
 		]
 	)
 	_prev_lost[player] = lost
 	_prev_turret[player] = turret
+	_deaths[player] = [0, 0, 0, 0]
 	return out
