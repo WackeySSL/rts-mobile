@@ -332,3 +332,69 @@ convention. Two seats can never both own a building there, so it adds no seat bi
 P195e: a dock covered by the owner's own building never unloads (`Harvest._dock` does not walk the
 ring); either the dock walks the ring like `tile_from`, or Placement refuses a footprint on an own
 dock or exit tile. Turned docks make this easier to hit.
+
+Note (2026-11-10, the lead, P26bk; row P195d-2): P195b, P195c-1 and P195c-3 merged together as #391.
+On their combined tree, §8's sets gave the top seat 650 (fossil-mirror), 750 (renew-mirror) and
+655 per-mille (cross), so §8 was not met. P195d's diagnosis found the rest of the edge in the sim:
+- experiments A to K and a mirror-divergence probe (`tests/ai/probe_mirror_divergence.gd` on
+  `claude/p195d-probe`, not merged);
+- the bisect runs KA, KB and KD found world-fixed tie-breaks and tile borders, not the player
+  index.
+
+Row P195d-2 (gameplay-dev) makes four rules half-turn equivariant. Rules 1 and 4 change in the
+GDScript twin and the kernels in lockstep; rules 2 and 3 have no kernel and are GDScript only:
+1. **Tile border (`FixedMath.centre_side`).** A coordinate exactly on a tile border past the middle
+   of the map gives up 1 milli, so its tile is the one on the centre's side; a half turn then maps
+   a point's tile to its image's tile.
+   - Users: `World.cell_of`, Movement, Targeting (lock, keep, scan, `sees`), FogUpdate,
+     Formation (the slot tile and the open-centre target tile), `PlayerView._take_rows` (the AI's
+     copy of `sees`), `MatchSnapshot.cell_of` (the view's cell, which the picker uses to tell
+     whether the sim would accept an ATTACK), the line_clear segment ends, and the kernels
+     `integrate.cpp`, `targeting.cpp` and `fog.cpp`.
+   - LastSeen keeps the plain floor: an even footprint is anchored on a tile corner and its set is
+     already equivariant.
+2. **Formation.** Equal slot distances and equal-distance units go by the larger dot, then the
+   larger cross product, with the group's approach (`centre*count - sum(positions)`). The
+   open-centre ring search ties by `way = point*count - sum(positions)` the same way, in 64-bit
+   ints. A zero vector falls back to generation order and the lower id.
+3. **`Harvest._scan`.** Equal distance goes to the cell further toward the map centre, then the
+   larger cross; at the exact centre, list order.
+4. **Flow `best_neighbour`.** Equal-cost lower neighbours go by the larger dot of the step with
+   (goal - cell), then the larger cross; with no `goal_cell` set, the NW..SE order stays. The
+   integrate kernel reads `goal_cell`.
+
+Limits, recorded and not fixed here:
+- The rules are equivariant under a half turn, not a reflection: the cross product flips under a
+  mirror. Skirmish maps must stay half turns (Kestrel Flats is one).
+- On an even-sized map both centre lines are tile borders. A point with x or y on a centre line
+  takes the +x/+y tile, the only fixed choice left in the border rule (a "pinwheel" tie, which
+  picks by the other coordinate's side, would leave only the exact centre point).
+- line_clear shifts only ends on a far border, which tilts the segment. An exact interior corner can
+  then be missed and a corner-touching tile dropped; on 10 x 10, (2000, 1000)-(8000, 4000) drops
+  tile (4, 1).
+- Other world-fixed rules of the same kind remain, for follow-up row P195f:
+  - Separation (twin and kernel): its 3 x 3 scan starts at the north-west and counts only the
+    first `separation_neighbours`; its bucket cell is a plain floor; and a coincident pair pushes
+    the lower id toward -x;
+  - the edge clamps to [0, W - 1] (Movement, `integrate.cpp`, WorldLoad, Strike, Outcome): the half
+    turn of 0 is W, so a unit at the east or south edge rests 1 milli further in;
+  - the AI's own floors (AiArmy, AiStrikes, AiIntel);
+  - the centre-line "pinwheel" tie above.
+
+Hashes (§5, exception 3) re-pinned by P195d-2: perf arena final `7bcb20994df10b28` ->
+`17f7a83c4d492c4c`, base arena final `4f1b4973efe6377c` -> `c84764064abfb27c`; twin and kernel
+agree.
+
+§8's acceptance, judged on branch runs (`custom`, Normal-Normal, 40 matches per mirror, which is
+§8's pooled 40) of P195d-2's head:
+- before review (`bd7bc2e`): fossil-mirror 450 (seeds 1-40) and 488 (seeds 41-80), pooled 469;
+  renew-mirror 550 (seeds 1-40); cross 535 (seeds 1-100).
+- Fossil-mirror with the spawns swapped (seeds 1-40): the top-left seat, now player 2, gets 513.
+  Of the decided matches player 1 wins 478. Neither the corner nor the index keeps an edge.
+- After review (`1994a20`; the later round-2 fixes touch only the view and the tests): fossil-mirror
+  488 (seeds 1-40), renew-mirror 575 (seeds 1-40), cross 545 (seeds 1-100). §8 is met.
+- The balance run on `main` after the merge confirms it; the lead reads it on the `balance` issue.
+
+The faction edge is separate and is P192's to tune: in cross on `1994a20`, fossil won 54 of the 57
+decided matches. Many timeouts are lopsided, with the loser down to 0-1 units and 3-5 buildings, so
+the winning AI does not finish the match.
