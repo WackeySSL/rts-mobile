@@ -165,7 +165,8 @@ func _take_census(view: PlayerView) -> bool:
 	_surplus = view.power_made - view.power_used
 	var producing: int = 0
 	var hq_seen: bool = false
-	var type_col: PackedInt32Array = view.column_type()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var type_col: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
 	for row: int in view.own_rows:
 		var type: int = type_col[row]

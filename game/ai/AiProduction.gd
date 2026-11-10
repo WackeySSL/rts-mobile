@@ -162,7 +162,8 @@ func _take_census(view: PlayerView) -> bool:
 	_producers.resize(PlayerView.TABS)
 	_producers.fill(0)
 	_units = 0
-	var types: PackedInt32Array = view.column_type()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
 	for row: int in view.own_rows:
 		var type: int = types[row]

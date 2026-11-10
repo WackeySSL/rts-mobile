@@ -101,12 +101,13 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	var hq_id: int = NO_ID
 	# The passes read the view's columns and the type tables through locals, once a row, with the
 	# arithmetic of `_tile`, `sector_at` and `value_of` inlined (P198); the results are theirs.
-	var ids: PackedInt32Array = view.column_id()
-	var owners: PackedInt32Array = view.column_owner()
-	var types: PackedInt32Array = view.column_type()
-	var xs: PackedInt32Array = view.column_x()
-	var ys: PackedInt32Array = view.column_y()
-	var hps: PackedInt32Array = view.column_hp()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var ids: PackedInt32Array = columns[PlayerView.Column.ID]
+	var owners: PackedInt32Array = columns[PlayerView.Column.OWNER]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
 	var foot_w: PackedInt32Array = view.type_foot_w
 	var costs: PackedInt32Array = view.type_cost
 	var max_hps: PackedInt32Array = view.type_max_hp
@@ -179,8 +180,9 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	var hq: int = view.type_index_of(hq_type)
 	var scout: int = view.type_index_of(scout_type)
 	memory.own_mobile_id.clear()
-	var ids: PackedInt32Array = view.column_id()
-	var types: PackedInt32Array = view.column_type()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var ids: PackedInt32Array = columns[PlayerView.Column.ID]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
 	passes += 1
 	for row: int in view.own_rows:
@@ -224,9 +226,10 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 	_best_id = 0
 	memory.seen_mobile_id.clear()
 	var from: Vector2i = home if home.x >= 0 else Vector2i(view.map_cols / 2, view.map_rows / 2)
-	var ids: PackedInt32Array = view.column_id()
-	var owners: PackedInt32Array = view.column_owner()
-	var types: PackedInt32Array = view.column_type()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var ids: PackedInt32Array = columns[PlayerView.Column.ID]
+	var owners: PackedInt32Array = columns[PlayerView.Column.OWNER]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
 	var produces: PackedInt32Array = view.type_produces
 	passes += 1

@@ -79,6 +79,8 @@ enum HarvestMode {
 	RETURN = World.HarvestMode.RETURN,
 	UNLOAD = World.HarvestMode.UNLOAD,
 }
+## The arrays of `columns()`.
+enum Column { ID, OWNER, TYPE, X, Y, HP, BUILD_LEFT }
 enum Order {
 	IDLE = World.Order.IDLE,
 	ATTACK_MOVE = World.Order.ATTACK_MOVE,
@@ -237,37 +239,13 @@ func row_of(id: int) -> int:
 	return MISSING
 
 
-## The row columns as whole arrays (plan row P198), for a manager's loop that would otherwise call
-## `row_id`, `row_type`, `row_pos`... five times a row: index them only with a row of `own_rows` or
-## `seen_rows`, which hold the same values the `row_*` reads give. An index past those two lists
-## names a row the player cannot see, and what it holds is not the player's to read; no caller may
-## use one. The arrays are the World's own and must not be written.
-func column_id() -> PackedInt32Array:
-	return _ids
-
-
-func column_owner() -> PackedInt32Array:
-	return _owner
-
-
-func column_type() -> PackedInt32Array:
-	return _type
-
-
-func column_x() -> PackedInt32Array:
-	return _pos_x
-
-
-func column_y() -> PackedInt32Array:
-	return _pos_y
-
-
-func column_hp() -> PackedInt32Array:
-	return _hp
-
-
-func column_build_left() -> PackedInt32Array:
-	return _build_left
+## The row columns as whole arrays, indexed by `Column` (plan row P198), for a manager's loop
+## that would otherwise call `row_id`, `row_type`, `row_pos`... five times a row: index them only
+## with a row of `own_rows` or `seen_rows`, where they hold what the `row_*` reads give. An index
+## past those two lists names a row the player cannot see, and what it holds is not the player's
+## to read; no caller may use one. The arrays are the World's own and are never written.
+func columns() -> Array[PackedInt32Array]:
+	return [_ids, _owner, _type, _pos_x, _pos_y, _hp, _build_left]
 
 
 ## The public columns of an own or a seen row: its id, owner (0 is neutral), type index, position

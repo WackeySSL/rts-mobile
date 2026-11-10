@@ -198,11 +198,12 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 func _take_list(
 	view: PlayerView, memory: AiMemory, list: PackedInt32Array, producers_only: bool
 ) -> void:
-	var owners: PackedInt32Array = view.column_owner()
-	var types: PackedInt32Array = view.column_type()
-	var xs: PackedInt32Array = view.column_x()
-	var ys: PackedInt32Array = view.column_y()
-	var hps: PackedInt32Array = view.column_hp()
+	var columns: Array[PackedInt32Array] = view.columns()
+	var owners: PackedInt32Array = columns[PlayerView.Column.OWNER]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
 	var costs: PackedInt32Array = view.type_cost
 	var max_hps: PackedInt32Array = view.type_max_hp
 	var produces: PackedInt32Array = view.type_produces
