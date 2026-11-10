@@ -448,16 +448,21 @@ func test_run_writes_only_the_target_and_engagement_columns_and_the_work_count(
 func test_the_cell_of_an_enemy_on_a_far_half_border_is_the_one_before_it(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	# The enemy, the subject, the cell before the border, the cell after it.
+	# The enemy, the subject, the cell the rule reads, the cell beside it. The first two are in the
+	# far half (the cell before the border); the last two are ON the centre line of the map (x =
+	# 15000 is the middle of 30 columns, y = 6000 the middle of 12 lines), which is not the far
+	# half, so the tile after the border is read.
 	var cases: Array[Array] = [
 		[Vector2i(20000, 6500), Vector2i(17500, 6500), 6 * 30 + 19, 6 * 30 + 20],
 		[Vector2i(15500, 8000), Vector2i(15500, 5500), 7 * 30 + 15, 8 * 30 + 15],
+		[Vector2i(15000, 5500), Vector2i(12500, 5500), 5 * 30 + 15, 5 * 30 + 14],
+		[Vector2i(5500, 6000), Vector2i(5500, 3500), 6 * 30 + 5, 5 * 30 + 5],
 	]
 	for item: Array in cases:
 		var enemy_at: Vector2i = item[0]
 		var subject_at: Vector2i = item[1]
 		for seen_cell: int in [item[2], item[3]]:
-			var before: bool = seen_cell == item[2]
+			var before: bool = seen_cell == item[2]  # The cell the rule reads is the seen one.
 			for mode: String in ["scan", "held", "lock"]:
 				var label: String = "%s, %s, cell %d" % [item[0], mode, seen_cell]
 				var world: World = _in(Rig.data_world(30, 12), impl)
