@@ -2,9 +2,9 @@ extends GdUnitTestSuite
 ## The opponent AI's data (plan row P175, ADR 0030 section 6): the three difficulty files, the two
 ## `OpponentDef` files and the six build orders in `data/ai/`. The numbers are pinned as the ADR
 ## states them, every type id is a type of the def's own faction with its requirement before it,
-## each build order can be built in order, the weak tier has no radar and no strike building, the
-## ignored inherited fields of `AiDef` are at their defaults, and the script defaults equal the
-## files (Normal's, the fossil file's).
+## each build order can be built in order, the weak tier has no radar, only the strong tier has a
+## strike building, the ignored inherited fields of `AiDef` are at their defaults, and the script
+## defaults equal the files (Normal's, the fossil file's).
 
 const Rig: GDScript = preload("res://tests/ai/support/opponent_rig.gd")
 const FACTION_PATHS: Dictionary[String, String] = {
@@ -169,7 +169,7 @@ func test_each_tier_has_one_build_order_buildable_in_order(
 			earlier.append(id)
 
 
-func test_the_weak_tier_has_no_radar_and_no_strike_building_and_no_artillery(
+func test_only_the_strong_tier_has_the_strike_and_only_the_weak_tier_has_no_radar(
 	faction: String, _test_parameters := _factions()
 ) -> void:
 	var def: OpponentDef = Rig.def_of(faction)
@@ -179,9 +179,12 @@ func test_the_weak_tier_has_no_radar_and_no_strike_building_and_no_artillery(
 	assert_int(def.role_weight(0, OpponentDef.Role.ARTILLERY)).is_equal(0)
 	# The artillery needs the radar, so a tier that builds it may draw it.
 	assert_str(String(_unit(def.artillery_type).requires.type_id)).is_equal(String(radar))
+	# P192b: the standard tier keeps the radar (the artillery needs it) but drops the strike
+	# building, 2500 credits fired about 0.1 times a match; the strong tier keeps both.
 	for tier: int in [1, 2]:
 		var steps: Array[StringName] = def.build_orders[tier].steps
-		assert_array(steps).contains([radar, def.strike_type])
+		assert_array(steps).contains([radar])
+		assert_int(steps.count(def.strike_type)).is_equal(1 if tier == 2 else 0)
 		assert_int(def.role_weight(tier, OpponentDef.Role.ARTILLERY)).is_greater(0)
 
 
