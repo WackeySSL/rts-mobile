@@ -216,6 +216,8 @@ const MAP_ARRAYS: Array[StringName] = [
 ]
 ## Per-row working space, max_rows entries each, rewritten every tick. Not state.
 const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
+## Match setup per player (P173): not in the state hash, in `defs_hash`; WorldLoad.set_income.
+const SETUP_ARRAYS: Array[StringName] = [&"income_percent"]
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
@@ -566,6 +568,7 @@ var stat_built: PackedInt32Array = PackedInt32Array()
 var stat_lost_units: PackedInt32Array = PackedInt32Array()
 var stat_lost_buildings: PackedInt32Array = PackedInt32Array()
 var stat_harvested: PackedInt32Array = PackedInt32Array()
+var income_percent: PackedInt32Array = PackedInt32Array()
 ## Per player and tab (index `player * TABS + tab`): the items in the queue, the progress of its
 ## head in hundredths of a tick, and the rally point in milli-tiles (-1 = none).
 var queue_count: PackedInt32Array = PackedInt32Array()
@@ -991,7 +994,7 @@ static func hash_hex(h: int) -> String:
 	return WorldHash.hash_hex(h)
 
 
-## The hash of the type and weapon tables, their ids and the rule ints: what a replay needs to see
-## that it runs on other data. Call it on a prepared world, because prepare() pads the type tables.
+## The hash of the type and weapon tables, their ids, the rule ints and SETUP_ARRAYS: what a replay
+## needs to see that it runs on other data. Call it on a prepared world (prepare() pads the tables).
 func defs_hash() -> int:
 	return WorldHash.defs_hash(self)
