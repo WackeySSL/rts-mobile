@@ -219,23 +219,38 @@ var _dock_x: PackedInt32Array = PackedInt32Array()
 var _dock_y: PackedInt32Array = PackedInt32Array()
 ## What `Placement.reason` and `is_explored` read: its arrays are aliases too; it keeps no World.
 var _input: PlacementInput = null
+var _prof_weapon: int = 0
+var _prof_pub: int = 0
+static var prof: Array[PackedFloat64Array] = [PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array()]
 
 
 ## The view of `player` on `world` as it stands. One pass over the rows (`_take_rows`) and a few
 ## slices of the player's own state; nothing is written to the World.
 static func of(world: World, player: int) -> PlayerView:
+	var t0: int = Time.get_ticks_usec()
 	var view: PlayerView = PlayerView.new()
 	view.player = player
 	view.tick = world.tick
 	view.map_cols = world.map_cols
+	var t1: int = Time.get_ticks_usec()
 	view.ore_cells = world.ore_cell.duplicate()
 	view.map_rows = world.map_rows
+	var t2: int = Time.get_ticks_usec()
 	view._input = PlacementInput.of_world(world)
+	var t3: int = Time.get_ticks_usec()
 	view._take_tables(world)
+	var t4: int = Time.get_ticks_usec()
 	view._take_player(world)
+	var t5: int = Time.get_ticks_usec()
 	view._take_ghosts(world)
+	var t6: int = Time.get_ticks_usec()
 	view._take_warned(world)
+	var t7: int = Time.get_ticks_usec()
 	view._take_rows(world)
+	var t8: int = Time.get_ticks_usec()
+	var d: Array[int] = [t1 - t0, t2 - t1, t3 - t2, t4 - t3, t5 - t4, t6 - t5, t7 - t6, t8 - t7, t8 - t0, view._prof_weapon, view._prof_pub]
+	for i: int in d.size():
+		prof[i].append(float(d[i]))
 	return view
 
 
@@ -412,7 +427,9 @@ func _take_tables(world: World) -> void:
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
+	var w0: int = Time.get_ticks_usec()
 	_take_weapon_tables(world)
+	_prof_weapon = Time.get_ticks_usec() - w0
 
 
 ## `type_range`, `type_min_range` and `type_vs_armour`, read through each type's weapon.
@@ -572,6 +589,7 @@ func _take_rows(world: World) -> void:
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
+	var p0: int = Time.get_ticks_usec()
 	_public = [
 		_ids.duplicate(),
 		_owner.duplicate(),
@@ -581,6 +599,7 @@ func _take_rows(world: World) -> void:
 		_hp.duplicate(),
 		_build_left.duplicate(),
 	]
+	_prof_pub = Time.get_ticks_usec() - p0
 	_shown = shown
 	own_rows = own
 	seen_rows = seen

@@ -52,6 +52,8 @@ var _runs: Array[AiRun] = []
 
 
 func before() -> void:
+	for each: PackedFloat64Array in PlayerView.prof:
+		each.clear()
 	for _run: int in RUNS:
 		var run: AiRun = AiRun.new()
 		run.play()
@@ -63,6 +65,7 @@ func before() -> void:
 	print(AiRun.think_line(p95_us, max_us, first.impl, first.thinks, gate.ci_ratio_p95))
 	print(AiRun.flow_line(first.flow_full_ticks, World.hash_hex(first.final_hash)))
 	print(AiRun.peaks_line(first.peaks))
+	_print_view_prof()
 
 
 ## The runs play the whole 900 ticks (no match end), every Command passes the sim's validation, and
@@ -197,3 +200,13 @@ func _peak_values(run: AiRun) -> Array[int]:
 	for name: String in run.peaks:
 		values.append(run.peaks[name])
 	return values
+
+
+func _print_view_prof() -> void:
+	var names: Array[String] = ["new", "ore", "input", "tables", "player", "ghosts", "warned", "rows", "total", "weapon_in_tables", "public_in_rows"]
+	for i: int in names.size():
+		var all: PackedFloat64Array = PlayerView.prof[i]
+		var t: float = 0.0
+		for v: float in all:
+			t += v
+		print("WATCH ai viewprof %s n=%d p95=%.1f mean=%.2f" % [names[i], all.size(), AiRun.p95_of(all), t / maxf(1.0, float(all.size()))])
