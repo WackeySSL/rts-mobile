@@ -42,6 +42,33 @@ func test_the_sector_map_counts_own_and_seen_value_in_one_pass_each() -> void:
 	assert_array(_memory.sector_enemy).is_equal(again)
 
 
+## The column reads of `refresh` (plan row P198) give the map the row getters give, on rows that
+## are hurt, on the map's edge and outside the first sector.
+func test_the_sector_map_equals_the_one_the_row_getters_give() -> void:
+	AiRig.give(_world, 2, "barracks", 10, 10)
+	var tank: int = AiRig.add_unit_of(_world, 2, "heavy_tank", 9500, 9500)
+	AiRig.add_unit_of(_world, 2, "rifle_squad", 39900, 39900)
+	AiRig.add_unit_of(_world, 1, "heavy_tank", 20500, 4500)
+	AiRig.add_unit_of(_world, 1, "rifle_squad", 100, 100)
+	_settle()
+	_world.hp[_row(tank)] = _world.hp[_row(tank)] / 3
+	var view: PlayerView = _view()
+	_intel.refresh(view, _memory)
+	var own: PackedInt32Array = PackedInt32Array()
+	own.resize(_memory.sector_own.size())
+	var enemy: PackedInt32Array = own.duplicate()
+	for row: int in view.own_rows:
+		var at: Vector2i = AiIntel._tile(view.row_pos(row))
+		own[_intel.sector_at(at.x, at.y)] += AiIntel.value_of(view, row)
+	for row: int in view.seen_rows:
+		if view.row_owner(row) <= 0:
+			continue
+		var at: Vector2i = AiIntel._tile(view.row_pos(row))
+		enemy[_intel.sector_at(at.x, at.y)] += AiIntel.value_of(view, row)
+	assert_array(_memory.sector_own).is_equal(own)
+	assert_array(_memory.sector_enemy).is_equal(enemy)
+
+
 func test_a_hurt_row_counts_its_hit_points_share_of_its_cost() -> void:
 	var enemy: int = AiRig.add_unit_of(_world, 2, "heavy_tank", 9500, 9500)
 	_settle()
