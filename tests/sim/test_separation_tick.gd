@@ -78,7 +78,8 @@ const BACK_TICKS: int = 405
 ## of ADR 0033 the crossing run is back at 3003. The two groups' slots overlap (the points are 2000
 ## apart), the pairing of units and slots differs, and tank 23 (goal 800 from its point) is blocked
 ## by the other group on its way, and the stall rule ends its order at (28330, 26555), 3700 short
-## of its goal. The bound is the measured maximum rounded up to 4720.
+## of its goal. The bound stays 4720, which was rounded up from 4712, the maximum measured earlier in
+## this row; the 4676 above sits under it, so the bound was not moved.
 const GROUP_CENTRE_BOUND: int = 4720
 
 
