@@ -321,6 +321,12 @@ func test_seen_follows_the_far_half_border_rule_at_a_fog_edge() -> void:
 		Vector4i(6500, 12000, 12 * 30 + 6, 0),
 		Vector4i(10000, 3500, 3 * 30 + 10, 1),
 		Vector4i(12500, 8000, 7 * 30 + 12, 0),
+		# On the centre lines x = 15000 (30 columns) and y = 10000 (20 lines), which are not past
+		# the middle: the tile after the border is the read one, so the cell before it is not.
+		Vector4i(15000, 5500, 5 * 30 + 15, 1),
+		Vector4i(15000, 2500, 2 * 30 + 14, 0),
+		Vector4i(2500, 10000, 10 * 30 + 2, 1),
+		Vector4i(4500, 10000, 9 * 30 + 4, 0),
 	]
 	var rows: Array[int] = []
 	for entry: Vector4i in cases:

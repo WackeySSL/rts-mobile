@@ -79,10 +79,13 @@ func test_an_enemy_on_a_far_half_border_is_seen_by_the_cell_before_it_in_both_ve
 	var cases: Array[Array] = [
 		[Vector2i(20000, 10500), Vector2i(17500, 10500), 10 * SQUARE + 19, 10 * SQUARE + 20],
 		[Vector2i(10500, 20000), Vector2i(10500, 17500), 19 * SQUARE + 10, 20 * SQUARE + 10],
+		# On the centre line x = 15000 (not past the middle): the tile after the border is the read
+		# one, so the cell read is the column 15 and the cell beside it, the column 14, is not.
+		[Vector2i(15000, 10500), Vector2i(12500, 10500), 10 * SQUARE + 15, 10 * SQUARE + 14],
 	]
 	for item: Array in cases:
 		for seen_cell: int in [item[2], item[3]]:
-			var before: bool = seen_cell == item[2]
+			var before: bool = seen_cell == item[2]  # The cell the rule reads is the seen one.
 			for mode: String in ["scan", "held", "lock"]:
 				var label: String = "%s, %s, cell %d" % [item[0], mode, seen_cell]
 				var build: Callable = _border.bind(item[1], item[0], seen_cell, mode)
