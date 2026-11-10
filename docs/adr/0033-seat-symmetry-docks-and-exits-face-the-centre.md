@@ -388,6 +388,9 @@ agree.
   renew-mirror 550; cross 535;
 - fossil-mirror with the spawns swapped: 513 for the top-left seat (player 2), 478 for player 1 of
   the decided matches, so neither the corner nor the index keeps an edge;
-- after review (`1994a20`): FINAL_NUMBERS.
+- after review (`1994a20`; the later round-2 fixes touch only the view and tests): fossil-mirror
+  488, renew-mirror 575, cross 545. §8 is met.
 
-The faction edge is separate and is P192's to tune: in cross, fossil won 59 matches and renew 4.
+The faction edge is separate and is P192's to tune: in cross on `1994a20`, fossil won 54 of the 57
+decided matches. Many timeouts are lopsided, with the loser down to 0-1 units and 3-5 buildings, so
+the winning AI does not finish the match.
