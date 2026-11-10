@@ -354,9 +354,9 @@ GDScript twin and the kernels in lockstep; rules 2 and 3 have no kernel and are 
    - LastSeen keeps the plain floor: an even footprint is anchored on a tile corner and its set is
      already equivariant.
 2. **Formation.** Equal slot distances and equal-distance units go by the larger dot, then the
-   larger cross product, with the group's approach (`centre*count - sum(positions)`). The open-centre ring
-   search ties by `way = point*count - sum(positions)` the same way, in 64-bit ints. A zero vector
-   falls back to generation order and the lower id.
+   larger cross product, with the group's approach (`centre*count - sum(positions)`). The
+   open-centre ring search ties by `way = point*count - sum(positions)` the same way, in 64-bit
+   ints. A zero vector falls back to generation order and the lower id.
 3. **`Harvest._scan`.** Equal distance goes to the cell further toward the map centre, then the
    larger cross; at the exact centre, list order.
 4. **Flow `best_neighbour`.** Equal-cost lower neighbours go by the larger dot of the step with
