@@ -6,4 +6,4 @@
 script = ExtResource("1_order")
 id = &"fossil_standard"
 tier = 1
-steps = Array[StringName]([&"power_plant", &"refinery", &"barracks", &"power_plant", &"vehicle_factory", &"fossil_radar", &"defence_turret", &"power_plant", &"defence_turret"])
+steps = Array[StringName]([&"power_plant", &"refinery", &"barracks", &"power_plant", &"vehicle_factory", &"fossil_radar", &"defence_turret", &"power_plant"])
