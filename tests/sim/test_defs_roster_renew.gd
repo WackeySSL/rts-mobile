@@ -43,11 +43,13 @@ const SAME_FIELDS: Array[String] = [
 ]
 ## Where the table says the Lumen Accord differs: the Derrick League file, the Lumen Accord file,
 ## the field and the sign of (Lumen value minus Derrick value). Cheaper, weaker, faster, tougher.
+## P192a: Linemen now have the Rig Hands' 100 hp (sign 0), their edge is speed; the other Lumen
+## units stay weaker.
 const CHARACTER: Array[Array] = [
 	["power_plant", "renew_power", "cost", -1],
 	["power_plant", "renew_power", "power", -1],
 	["rifle_squad", "renew_rifle", "speed", 1],
-	["rifle_squad", "renew_rifle", "max_hp", -1],
+	["rifle_squad", "renew_rifle", "max_hp", 0],
 	["light_tank", "renew_scout", "speed", 1],
 	["light_tank", "renew_scout", "max_hp", -1],
 	["heavy_tank", "renew_tank", "speed", 1],
@@ -204,9 +206,9 @@ func test_the_six_unit_files_hold_their_body_stats() -> void:
 	# id, display_name, speed, radius, selection_radius, formation_spacing, max_hp, armour (0
 	# infantry, 1 light, 2 heavy), move_class (0 foot, 2 tracked: one field per goal for a mixed
 	# group), sight_range, acquire_range. The Fuel Runner is unarmed, so it acquires nothing;
-	# Linemen 80 hp, Swift 220, Torque 520, Arcline 160 (ADR 0023 section 7).
+	# Linemen 100 hp (P192a tuning, was 80), Swift 220, Torque 520, Arcline 160 (ADR 0023 section 7).
 	var expected: Array = [
-		["renew_rifle", "Linemen", 73, 300, 350, 900, 80, 0, 0, 6000, 5000],
+		["renew_rifle", "Linemen", 73, 300, 350, 900, 100, 0, 0, 6000, 5000],
 		["renew_rocket", "Breakers", 60, 300, 350, 900, 90, 0, 0, 6000, 6000],
 		["renew_scout", "Swift", 147, 400, 500, 1200, 220, 1, 2, 7000, 5500],
 		["renew_tank", "Torque", 93, 450, 500, 1300, 520, 2, 2, 7000, 5500],
@@ -355,9 +357,9 @@ func test_each_role_mirrors_the_derrick_leagues_in_everything_but_the_numbers_th
 
 
 ## Fast, precise and fragile (ADR 0023 section 7, docs/GDD.md): where the table makes the Lumen
-## Accord differ it goes the stated way, and no Lumen unit is slower or tougher than its twin. The
-## directions are read from the Derrick League's files, so a balance change keeps the faction's
-## character as long as it keeps the sign.
+## Accord differ it goes the stated way (Linemen: equal hp since P192a), and no Lumen unit is
+## slower or tougher than its twin. The directions are read from the Derrick League's files, so a
+## balance change keeps the faction's character as long as it keeps the sign.
 func test_the_lumen_accord_differs_from_the_derrick_league_the_way_the_adr_says() -> void:
 	for row: Array in CHARACTER:
 		var fossil: UnitDef = _unit(row[0])
