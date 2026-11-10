@@ -93,10 +93,11 @@ const COPIED: Array[StringName] = [
 	&"power_used",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
-## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS and DERIVED_ARRAYS: the sim's working state,
-## which no view reads. With COPIED it covers those nine lists exactly once (a coverage test), so a
-## new World array fails until it is classified. `terrain_cost` is here (the view needs `terrain`,
-## `terrain_ids` and `move_cost`), and so are the derived `building_rows` and `harvester_rows`
+## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS and SETUP_ARRAYS: the sim's
+## working state, which no view reads. With COPIED it covers those ten lists exactly once (a
+## coverage test), so a new World array fails until it is classified. `terrain_cost` is here (the
+## view needs `terrain`, `terrain_ids` and `move_cost`), and so are the derived `building_rows` and
+## `harvester_rows`
 ## (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view finds buildings by
 ## `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
@@ -132,6 +133,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"terrain_cost",
 	&"building_rows",
 	&"harvester_rows",
+	&"income_percent",
 ]
 ## The World ints the snapshot carries besides its header: the end of the match (ADR 0018 section
 ## 7; 0 while it runs), the two rule ints Placement.reason reads (PlacementInput) and the two the

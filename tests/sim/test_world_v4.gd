@@ -35,7 +35,7 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 	var lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
 	lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
-	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS])
+	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
 	var found: int = 0
 	for list: Array in lists:
 		if list.has(&"build_left"):
