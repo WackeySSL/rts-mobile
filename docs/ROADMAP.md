@@ -59,10 +59,12 @@ Tick a box in the PR that meets the criterion.
 - [x] `run-sim-smoke.sh` runs real headless AI-vs-AI matches with seeds and writes the report JSON
 - [x] `balance.yml` (runs after merges that change AI or balance data and on demand, not on a schedule;
   Michael, 2026-11-06) and an open issue labelled `balance`; first report in `docs/balance/`
-- [ ] Gate: Normal wins 40-60% against the mirror AI over 100 matches, every unit type is used
+- [x] Gate: Normal wins 40-60% against the mirror AI over 100 matches, every unit type is used
   (Michael, 2026-11-10: "no match lasts over 15 minutes" moved to Phase 4b's balance run, where
   Hard and the number balance are tuned once with the new units; P196 and P197 found the long
   matches come from the late all-in and the slow siege, which the AI's logic alone did not fix)
+  (passed, Michael, 2026-11-10, issue #398; gate run 42816894821, report
+  `docs/balance/2026-11-10-gate.md`)
 
 ## Phase 4b: Air and ground support (before launch)
 Michael, 2026-11-09: ADR 0036 (air, anti-air, satellite, research, transports, drone squads) and ADR

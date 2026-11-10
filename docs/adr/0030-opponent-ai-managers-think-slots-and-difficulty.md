@@ -397,6 +397,17 @@ Note (2026-11-09, P26bj docs; lead decisions from balance run 1 and the wave-8 r
   545 us, `est_phone_p95_ms` 2.673, against the 1.0 ms watch value and the 0.15 ms CI target
   above. The lead raised it with Michael on 2026-11-09; no remedy from "Over budget" is chosen yet.
 
+Note (2026-11-10, P26bm, the lead; the Phase 4 gate):
+- **The phone read** (Michael's Pixel 9a, three Perf AI runs on `main` 688ef32, issue #398):
+  `ai_think_p95_ms` 9.25-9.48 against the 1.0 ms watch; `sim_p95_ms` 12.1-12.6, over Michael's
+  10 ms revisit trigger and under the 13.3 ms verdict; `job_minus_step_p95_cp_ms` 3.1-3.4, under its
+  5 ms trigger (no think on a checkpoint tick, as above). CI's `WATCH ai think` p95 on the same
+  commit was 507 us, so AI code ran about 18.6 times slower on the phone than on CI, where the
+  estimate assumed about 5.9 (`est_phone_p95_ms` 2.991).
+- **The remedy:** Michael chose "Over budget"'s levers on 2026-11-10 (plan row P198: more slots,
+  smaller caps, cheaper sector reads, in GDScript), not P66/P66b, which stay deferred. The gate
+  passed with this read; P198 runs after it.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
