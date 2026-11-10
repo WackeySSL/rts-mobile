@@ -19,8 +19,8 @@ var _orders: ScenarioOrders
 ## The commands of one tick, reused. Empty between two steps.
 var _commands: Array[Command] = []
 
-## A loop for the match of `world`. It records `scenario_path`, `seed` and the world's defs_hash
-## (ADR 0007 section 8) in its replay. `seed` is only recorded: the caller made the world's
+## A loop for the match of `world`. It records `scenario_path`, `seed`, the world's defs_hash
+## (ADR 0007 section 8) and its income percents (P173) in its replay. `seed` is only recorded: the caller made the world's
 ## DetRandom from it. A null `scenario` yields no scenario orders; Replay.play uses that, because
 ## its log already holds the orders the scenario gave. The parameters keep the contract's names.
 @warning_ignore("shadowed_global_identifier")
@@ -29,7 +29,7 @@ static func create(
 ) -> MatchLoop:
 	var loop: MatchLoop = MatchLoop.new()
 	world.prepare()
-	loop.replay = Replay.begin(scenario_path, seed, world.defs_hash())
+	loop.replay = Replay.begin(scenario_path, seed, world.defs_hash(), world.income_percent.duplicate())
 	loop._orders = ScenarioOrders.create(scenario)
 	return loop
 

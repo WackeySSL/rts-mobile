@@ -517,6 +517,7 @@ func _shape_names() -> Array[StringName]:
 	names.append_array(World.ORE_ARRAYS)
 	names.append_array(World.GHOST_ARRAYS)
 	names.append_array(World.DERIVED_ARRAYS)
+	names.append_array(World.SETUP_ARRAYS)
 	return names
 
 

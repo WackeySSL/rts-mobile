@@ -91,10 +91,11 @@ const COPIED: Array[StringName] = [
 	&"ghost_count",
 	&"power_made",
 	&"power_used",
+	&"income_percent",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
-## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS and DERIVED_ARRAYS: the sim's working state,
-## which no view reads. With COPIED it covers those nine lists exactly once (a coverage test), so a
+## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS and SETUP_ARRAYS: the sim's working state,
+## which no view reads. With COPIED it covers those ten lists exactly once (a coverage test), so a
 ## new World array fails until it is classified. `terrain_cost` is here (the view needs `terrain`,
 ## `terrain_ids` and `move_cost`), and so are the derived `building_rows` and `harvester_rows`
 ## (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view finds buildings by

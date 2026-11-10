@@ -315,6 +315,14 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.construction_sites_max = rules.construction_sites_max
 
 
+## Fits `income_percent` to `players` entries: the values set stay, a new entry is PERCENT.
+static func size_income(world: World, players: int) -> void:
+	var had: int = world.income_percent.size()
+	world.income_percent.resize(players)
+	for player: int in range(had, players):
+		world.income_percent[player] = World.PERCENT
+
+
 ## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
 ## count and the rule ints, so that no later row moves the hash through a start value: credits at
 ## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
@@ -324,6 +332,7 @@ static func size_match_state(world: World) -> void:
 	var players: int = world.player_count + 1
 	var queues: int = players * World.TABS
 	var ghosts: int = players * world.ghost_cap
+	size_income(world, players)
 	world.credits.resize(players)
 	for player: int in range(1, players):
 		world.credits[player] = world.start_credits

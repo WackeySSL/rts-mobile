@@ -34,8 +34,9 @@ extends RefCounted
 ##   becomes `credits_per_ore` of cargo; a full load goes to RETURN, an empty cell to SEEK.
 ## - RETURN: its refinery (`home`, else `_choose`), the order to the dock; an ended order within
 ##   `dock_reach_milli` of the dock turns to UNLOAD, farther it is given again.
-## - UNLOAD: on ticks with `(tick + id) % unload_ticks_per_ore == 0` it pays `credits_per_ore` of
-##   its cargo to its owner and to `stat_harvested`; empty, it goes back to its cell. It needs no
+## - UNLOAD: on ticks with `(tick + id) % unload_ticks_per_ore == 0` it takes `credits_per_ore` of
+##   its cargo: the owner's credits get it times the owner's `income_percent` / 100 (integer
+##   division, P173) and `stat_harvested` the cargo taken; empty, it goes back to its cell. It needs no
 ##   refinery once it has docked: one destroyed meanwhile does not stop the unloading.
 ## - IDLE: on a tick with `(tick + id) % harvest_resume_ticks == 0` a harvester whose order has
 ##   ended goes back to work (`_resume`); 0 turns that off. A harvester still walking waits.
@@ -69,6 +70,7 @@ static func run(world: World) -> void:
 	var tick: int = world.tick
 	var cols: int = world.map_cols
 	var value: int = world.credits_per_ore
+	var income: PackedInt32Array = world.income_percent
 	var per_ore: int = maxi(world.harvest_ticks_per_ore, 1)
 	var per_unload: int = maxi(world.unload_ticks_per_ore, 1)
 	var retry: int = maxi(world.harvest_retry_ticks, 1)
@@ -131,7 +133,7 @@ static func run(world: World) -> void:
 				continue
 			var paid: int = mini(value, cargos[row])
 			cargos[row] -= paid
-			credits[owners[row]] += paid
+			credits[owners[row]] += paid * income[owners[row]] / World.PERCENT
 			harvested[owners[row]] += paid
 			if cargos[row] <= 0:
 				modes[row] = World.HarvestMode.SEEK

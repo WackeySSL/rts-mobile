@@ -42,7 +42,7 @@ func test_every_new_array_is_in_exactly_one_shape_list() -> void:
 	var lists: Array = [World.ROW_ARRAYS, World.TYPE_ARRAYS, World.WEAPON_ARRAYS]
 	lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
-	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS])
+	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
 	var names: Array[StringName] = []
 	names.append_array(ROW_COLUMNS)
 	names.append_array(PLAYER_COLUMNS)

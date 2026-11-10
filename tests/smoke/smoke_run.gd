@@ -83,6 +83,7 @@ static func play(
 static func start(match_seed: int, kind: String, levels: Array[String]) -> Dictionary:
 	var path: String = scenario_path(kind, match_seed)
 	var world: World = world_of(match_seed, path)
+	seat_income(world, levels)
 	var problems: Array[String] = attach_impl(world)
 	if not problems.is_empty():
 		push_error("run-sim-smoke: the native library is wrong: %s" % "; ".join(problems))
@@ -148,6 +149,17 @@ static func attach_impl(world: World, impl: String = "") -> Array[String]:
 static func world_of(match_seed: int, path: String = FLATS) -> World:
 	var scenario: ScenarioDef = load(path) as ScenarioDef
 	return World.from_scenario(scenario, DetRandom.create(match_seed, DetRandom.STREAM_SIM))
+
+
+## Gives player 1, 2, ... the `income_percent` of the level's file, as MatchRunner does for an
+## OpponentDef (the dummy keeps World.PERCENT). Before `loop_of`, which records it in the replay.
+static func seat_income(world: World, levels: Array[String]) -> void:
+	for index: int in levels.size():
+		if levels[index] != LEVEL_DUMMY:
+			var level: AiDifficultyDef = (
+				load("res://data/ai/difficulty/%s.tres" % levels[index]) as AiDifficultyDef
+			)
+			world.set_income_percent(index + 1, level.income_percent)
 
 
 ## The loop of `world`, which `world_of(match_seed, path)` made: it records the scenario, seed and

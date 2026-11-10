@@ -273,6 +273,7 @@ func start() -> void:
 	_world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
 	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
 	_use_impl(_world, kernels, OS.get_name())
+	_seat_income(_world)
 	_job.controllers = _opponent_controllers()
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	_loop = MatchLoop.create(scenario, scenario_path, match_seed, _world)
@@ -540,6 +541,20 @@ func _opponent_controllers() -> Array[AiController]:
 		var rng: DetRandom = DetRng.create(match_seed, DetRandom.STREAM_AI_BASE + player)
 		built.append(AiFactory.create(def, level, player, rng))
 	return built
+
+
+## Gives each computer player of an OpponentDef the `income_percent` of its level (a missing or null
+## level is Normal's script default), before MatchLoop.create records the setup. A plain AiDef (the
+## dummy) and a human keep World.PERCENT.
+func _seat_income(target: World) -> void:
+	for index: int in opponents.size():
+		if not opponents[index] is OpponentDef:
+			continue
+		var level: AiDifficultyDef = (
+			opponent_levels[index] if index < opponent_levels.size() else null
+		)
+		if level != null:
+			target.set_income_percent(first_opponent + index, level.income_percent)
 
 
 ## Takes the job's `done` token in a try_wait() loop with 1 ms steps (ADR 0012 section 1). At the

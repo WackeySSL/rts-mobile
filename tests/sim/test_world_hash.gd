@@ -172,6 +172,7 @@ func test_changing_an_unhashed_member_leaves_the_hash_unchanged() -> void:
 	var baseline: int = world.state_hash()
 	var unhashed: Array = World.UNHASHED_SCALARS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
 	unhashed.append_array(World.SCRATCH_ARRAYS + World.RUNTIME_ARRAYS + World.DERIVED_ARRAYS)
+	unhashed.append_array(World.SETUP_ARRAYS)
 	var targets: Array[Array] = _helpers(world)
 	targets.append([world, "world", [], unhashed])
 	for target: Array in targets:
