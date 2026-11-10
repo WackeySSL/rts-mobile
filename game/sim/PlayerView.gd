@@ -426,11 +426,13 @@ func _take_weapon_tables(world: World) -> void:
 		if weapon < 0 or weapon >= ranges.size():
 			continue
 		made_range[type] = ranges[weapon]
-		made_min[type] = _entry(min_ranges, weapon)
-		for armour: int in ARMOUR_CLASSES:
-			made_percent[type * ARMOUR_CLASSES + armour] = _entry(
-				percents, weapon * ARMOUR_CLASSES + armour
-			)
+		if weapon < min_ranges.size():
+			made_min[type] = min_ranges[weapon]
+		# `_entry` written out: the tables are rebuilt on every view.
+		var from: int = weapon * ARMOUR_CLASSES
+		var to: int = type * ARMOUR_CLASSES
+		for armour: int in mini(ARMOUR_CLASSES, percents.size() - from):
+			made_percent[to + armour] = percents[from + armour]
 	type_range = made_range
 	type_min_range = made_min
 	type_vs_armour = made_percent

@@ -350,12 +350,11 @@ func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: 
 		var units: PackedInt32Array = memory.unit_id
 		var hp_ids: PackedInt32Array = memory.hp_id
 		var hps: PackedInt32Array = memory.unit_hp
-		var squads: PackedInt32Array = memory.member_squad
 		var listed: int = hp_ids.size()
 		var withdrawn: bool = not memory.withdrawn_id.is_empty()
 		var walk: int = 0
 		for at: int in units.size():
-			if squads[at] != HOME:
+			if memory.member_squad[at] != HOME:
 				continue
 			var id: int = units[at]
 			if withdrawn and _withdrawn(memory, id):
@@ -713,25 +712,26 @@ func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
 ## buildings when `sites`), one test each past the box, until the cap.
 func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
 	var found: int = 0
-	var columns: Array[PackedInt32Array] = view.columns()
-	var xs: PackedInt32Array = columns[PlayerView.Column.X]
-	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
-	var reach: int = defend_radius * defend_radius
+	var xs: PackedInt32Array = view.columns()[PlayerView.Column.X]
+	var ys: PackedInt32Array = view.columns()[PlayerView.Column.Y]
+	var radius: int = defend_radius
+	var used: int = tests
 	for id: int in list:
-		if tests >= tests_max:
+		if used >= tests_max:
 			break
 		var row: int = view.row_of(id)
 		if row < 0:
 			continue
 		var gap_x: int = xs[row] - centre.x
 		var gap_y: int = ys[row] - centre.y
-		if absi(gap_x) > defend_radius or absi(gap_y) > defend_radius:
+		if gap_x > radius or gap_x < -radius or gap_y > radius or gap_y < -radius:
 			continue
 		if sites and not _armed(view, row):
 			continue
-		tests += 1
-		if gap_x * gap_x + gap_y * gap_y <= reach:
+		used += 1
+		if gap_x * gap_x + gap_y * gap_y <= radius * radius:
 			found += AiIntel.value_of(view, row)
+	tests = used
 	return found
 
 
