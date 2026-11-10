@@ -25,4 +25,4 @@ focus_fire = 1
 counter_percent = 60
 uses_strike = 1
 commands_per_think_max = 12
-income_percent = 100
+income_percent = 120
