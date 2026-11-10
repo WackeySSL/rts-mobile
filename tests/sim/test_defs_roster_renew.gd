@@ -204,9 +204,9 @@ func test_the_six_unit_files_hold_their_body_stats() -> void:
 	# id, display_name, speed, radius, selection_radius, formation_spacing, max_hp, armour (0
 	# infantry, 1 light, 2 heavy), move_class (0 foot, 2 tracked: one field per goal for a mixed
 	# group), sight_range, acquire_range. The Fuel Runner is unarmed, so it acquires nothing;
-	# Linemen 80 hp, Swift 220, Torque 520, Arcline 160 (ADR 0023 section 7).
+	# Linemen 70 hp (P192a tuning, was 80), Swift 220, Torque 520, Arcline 160 (ADR 0023 section 7).
 	var expected: Array = [
-		["renew_rifle", "Linemen", 73, 300, 350, 900, 80, 0, 0, 6000, 5000],
+		["renew_rifle", "Linemen", 73, 300, 350, 900, 70, 0, 0, 6000, 5000],
 		["renew_rocket", "Breakers", 60, 300, 350, 900, 90, 0, 0, 6000, 6000],
 		["renew_scout", "Swift", 147, 400, 500, 1200, 220, 1, 2, 7000, 5500],
 		["renew_tank", "Torque", 93, 450, 500, 1300, 520, 2, 2, 7000, 5500],
