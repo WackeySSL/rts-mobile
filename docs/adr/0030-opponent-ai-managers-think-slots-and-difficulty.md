@@ -442,6 +442,31 @@ Note (2026-11-10, P198, cheaper reads; changes no accepted text above):
   at the 1000-line lint limit and `PlayerView` at its 20 public methods, so the next row splits
   them first (for example `_threat`, `_near` and `_value_in` into a reads helper).
 
+Note (2026-11-10, P26bn, the lead; Michael's answers in chat the same day): **the phone after
+P198, and what binds.**
+- **The phone read** (Michael's Pixel 9a, three Perf AI runs on the perf APK of `main` a27803bd):
+  `ai_think_p95_ms` 5.94, 5.87 and 6.03 (mean 5.95, 0.63 of the gate's 9.40); `sim_p95_ms` 9.87,
+  9.85 and 9.93, under Michael's 10 ms trigger by 0.07-0.15 ms (the gate read 12.1-12.6);
+  `job_minus_step_p95_cp_ms` 3.07-3.34; every verdict passes, 0 hitches, about 60 fps, and the
+  hash `cbe70a78d01ee7c1` with `self_check` `match` on all three. CI's `WATCH ai think` p95 on the
+  same commit was 390 us (run 42901639565), so the phone read about 15.3 times CI, where the gate
+  read about 18.5: the ratio moves with the runner as much as the CI value does.
+- **What binds now** (Michael, 2026-11-10, "ja til 2"): the 1.0 ms watch value and the 0.15 ms CI
+  target above no longer bind; at the measured ratio GDScript cannot reach them. The binding phone
+  check is Michael's revisit trigger, `sim_p95_ms` at or below 10 ms on every Perf AI card, with the
+  AI in it; `ai_think_p95_ms` is read, not judged. A card over 10 ms goes back to Michael with the
+  AI's and the sim's share of the job, and he picks the remedy (an AI-side row under "Over budget"
+  or P66/P66b). On CI, P189c's `[ai] p95_us` ratchet (1.5 times the worst of 11 runs, after P198c)
+  keeps the AI's cost from growing unnoticed.
+- **Five slots (P198b) is not merged** (Michael, 2026-11-10): period 3 with five slots cut the CI
+  p95 only to 0.78 of P198's (391 us against 503, runs 42895222413 and 42895227397), built the view
+  five times a round instead of three, moved `AiArmy`'s inputs a think earlier and moved the
+  balance (cross faction 535/465, Easy 469 per-mille over 80 matches). The branch
+  `claude/p198b-five-slots` (68ae4858) stays as a reference.
+- **Next lever: P198c** (Michael, 2026-11-10, "ja til 1"): the match's fixed type tables built once
+  and shared, read-only, by every view, so a think stops rebuilding them. No decision changes; its
+  own note records the result.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
