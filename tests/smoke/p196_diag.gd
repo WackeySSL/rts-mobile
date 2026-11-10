@@ -213,8 +213,8 @@ static func _side(world: World, ai: OpponentAi, counter: SmokeCount) -> String:
 			turret += int(counter.kills[other][key])
 	var army: AiArmy = ai.army
 	var extra: String = (
-		" G%d,%d/%d,%d fo%d sg%d rc%d pr%s"
-		% [memory.squad_goal_x[1], memory.squad_goal_y[1], memory.staging_x, memory.staging_y, army.retreats, army.focuses, army.recalls, str(army._pressed)]
+		" G%d,%d/%d,%d fo%d sg%d rc%d pr%s gi%d gat%d,%d fr%d,%d"
+		% [memory.squad_goal_x[1], memory.squad_goal_y[1], memory.staging_x, memory.staging_y, army.retreats, army.focuses, army.recalls, str(army._pressed), army._gather_in, army._gather_at.x, army._gather_at.y, army._wave_front.x / 1000, army._wave_front.y / 1000]
 	)
 	var out: String = (
 		"u%d i%d a%d m%d k%d w%d %s c%d,%d sp%d far%d nw%d/%d tg%s d%d fq%s P%d EP%d kp%d wc%d L%d T%d D%d/%d/%d/%d"
