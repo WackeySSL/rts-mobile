@@ -103,6 +103,25 @@ func test_an_opponent_def_builds_opponent_ai_at_its_level_and_a_missing_level_is
 	assert_array(normal).is_equal([&"normal", &"normal", &"normal"])
 
 
+## The runner puts each OpponentDef's level `income_percent` on its player (P173): a missing level
+## and a plain AiDef keep 100.
+func test_the_runner_seats_the_income_percent_of_each_level() -> void:
+	var raised: AiDifficultyDef = AiDifficultyDef.new()
+	raised.income_percent = 120
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = DummyStart.scenario()
+	runner.opponents = [FOSSIL, DummyStart.dummy_def()]
+	runner.first_opponent = 1
+	runner.opponent_levels = [raised, raised]
+	var world: World = World.from_scenario(runner.scenario)
+	runner._seat_income(world)
+	assert_array(world.income_percent).is_equal([100, 120, 100])
+	runner.opponent_levels = []  # A missing level is Normal's script default, 100.
+	var plain: World = World.from_scenario(runner.scenario)
+	runner._seat_income(plain)
+	assert_array(plain.income_percent).is_equal([100, 100, 100])
+
+
 ## `first_opponent` 1 seats entry 0 on player 1 and entry 1 on player 2, each with its own stream;
 ## the default seats entry 0 on player 2, as before.
 func test_first_opponent_seats_the_entries_from_that_player() -> void:
