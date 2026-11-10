@@ -26,6 +26,8 @@ var last_slot: int = -1
 var slot_thinks: PackedInt32Array = PackedInt32Array([0, 0, 0])
 ## Commands cut because a think sent more than the level allows.
 var commands_cut: int = 0
+## TEMP profiling (experiment branch only): usec per stage.
+var prof: Array[PackedFloat64Array] = [PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array()]
 ## The economy manager (P176), slot ECONOMY.
 var economy: AiEconomy = null
 ## The production manager (P178), slot ECONOMY after the economy.
@@ -100,26 +102,38 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 
 ## Slot 0: P176 adds `AiEconomy`, P178 `AiProduction`.
 func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
+	var t0: int = Time.get_ticks_usec()
 	economy.run(view, memory, rng, out)
 	work += economy.passes
+	var t1: int = Time.get_ticks_usec()
 	production.run(view, memory, rng, out)
 	work += production.passes
+	prof[0].append(t1 - t0)
+	prof[1].append(Time.get_ticks_usec() - t1)
 
 
 ## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
 func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
+	var t0: int = Time.get_ticks_usec()
 	intel.refresh(view, memory)
 	work += intel.passes
+	var t1: int = Time.get_ticks_usec()
 	army.run(view, memory, rng, out)
+	prof[2].append(t1 - t0)
+	prof[3].append(Time.get_ticks_usec() - t1)
 	waves = army.waves
 	retreats = army.retreats
 
 
 ## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.
 func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
+	var t0: int = Time.get_ticks_usec()
 	intel.run(view, memory, rng, out)
 	work += intel.passes
 	scouts = intel.scouts
+	var t1: int = Time.get_ticks_usec()
 	striker.run(view, memory, rng, out)
 	work += striker.passes
+	prof[4].append(t1 - t0)
+	prof[5].append(Time.get_ticks_usec() - t1)
 	strikes = striker.strikes
