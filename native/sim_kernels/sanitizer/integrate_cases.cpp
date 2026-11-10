@@ -426,15 +426,18 @@ void random_scenes(Tally &tally) {
 	}
 }
 
-// Every tile of an open 9 x 9 map costs 10 and the one field has its goal at the middle, so that the cost ties between
-// neighbours that best_neighbour breaks by the dot and cross products toward the goal (the half-turn rule); the same
-// field with no goal cell takes the first of the eight in order. A unit on every tile follows the field, so the refresh of
-// `nav_next` asks best_neighbour for each cell.
+// Every tile of a 9 x 9 map costs 10 but the rock at (4, 3), and the one field has its goal at (4, 2) just above it. On
+// open ground a cell has one best neighbour nearly everywhere (the tie branch is reached in a few cells only), but
+// the rock splits the field behind it: seven cells have two neighbours of the same cost, west and east of the rock,
+// and best_neighbour breaks those by the dot and cross products toward the goal (the half-turn rule); the same
+// field with no goal cell takes the first of the eight in order. A unit on every tile follows the field, so the refresh
+// of `nav_next` asks best_neighbour for each cell.
 void tied_field(Tally &tally) {
 	Stream stream = { 5 };
-	const int64_t cols = 9, rows = 9, cells = cols * rows, goal = 4 * cols + 4;
+	const int64_t cols = 9, rows = 9, cells = cols * rows, goal = 2 * cols + 4;
 	State state = make_scene(stream, cols, rows, 1, cells, BIG);
 	std::fill(state.move_cost.begin(), state.move_cost.end(), static_cast<uint8_t>(10));
+	state.move_cost[static_cast<size_t>(3 * cols + 4)] = 0;
 	const size_t padded = static_cast<size_t>((cols + flow::PAD) * (rows + flow::PAD));
 	SlotData data;
 	data.cost.assign(padded, static_cast<int32_t>(flow::UNREACHED));
@@ -467,7 +470,7 @@ void tied_field(Tally &tally) {
 		state.pos_x[at] = static_cast<int32_t>(row % cols * 1000 + 500);
 		state.pos_y[at] = static_cast<int32_t>(row / cols * 1000 + 500);
 		state.goal_x[at] = 4500;
-		state.goal_y[at] = 4500;
+		state.goal_y[at] = 2500;
 		state.group_cell[at] = -1;
 		state.order[at] = static_cast<int32_t>(ORDER_MOVE);
 		state.nav_mode[at] = static_cast<int32_t>(NAV_FIELD);
