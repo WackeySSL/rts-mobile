@@ -428,11 +428,13 @@ Note (2026-11-10, P198, cheaper reads; changes no accepted text above):
   42816856270), its peaks and every balance match are main's, per seed.
 - **Result** (CI `WATCH ai think` p95): 278 us (run 42859084281) and 473 us (run 42859139046)
   against main's 505 us (run 42859146551) and 810 us (run 42859090560) in the same hours: 0.55 to
-  0.58 of main. A runner's `p95_us` moves by up to 60 % from one VM to the next, so compare two
-  commits only on runs of the same hour. At about 18.5 that is **about 5.2 ms on the phone, which
-  misses P198's target of about 2 ms: the target stays open**, as do the 0.15 ms CI target and the
-  1.0 ms phone watch value above. The stage means after the first cut were refresh 63 us, army
-  168, view 44, economy 37, production 18, intel 30, strikes 13: the view and the ARMY slot's sum
+  0.58 of main. After the review round (head 00b4bdfb, run 42867700421, hash `cbe70a78d01ee7c1`)
+  401 us against main's 882 us in its paired run 42867706193 (its log line was read while that run
+  was still going): 0.45. A runner's `p95_us` moves by up to 60 % from one VM to the next, so
+  compare two commits only on runs of the same hour. At about 18.5 that is **about 5.2-5.5 ms on
+  the phone, which misses P198's target of about 2 ms: the target stays open**, as do the 0.15 ms
+  CI target and the 1.0 ms phone watch value above. The stage means after the first cut were
+  refresh 63 us, army 168, view 44, economy 37, production 18, intel 30, strikes 13: the view and the ARMY slot's sum
   (view, refresh, army) are what is left, so that slot is still two to three times the ECONOMY and
   INTEL slots. What would meet the target is a change of behaviour or interface, not of reads:
   five slots on period 3 (which also moves `AiArmy`'s inputs a think earlier), a view built only as

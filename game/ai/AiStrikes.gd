@@ -193,7 +193,7 @@ func _gather(view: PlayerView, memory: AiMemory, producers_only: bool) -> void:
 
 ## Adds the seen rows of `list` (ids) that the AI may act on, until `_tests_max` things are held:
 ## an enemy row of a type whose first sighting is `reaction_ticks` old, a producer when
-## `producers_only`. The columns are read once a row, `value_of` written out (plan row P198).
+## `producers_only`. Columns once a row, the value from `AiIntel.value_at` (P198).
 func _take_list(
 	view: PlayerView, memory: AiMemory, list: PackedInt32Array, producers_only: bool
 ) -> void:

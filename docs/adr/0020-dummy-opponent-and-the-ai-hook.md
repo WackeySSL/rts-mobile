@@ -115,8 +115,8 @@ as accepted), on `game/sim/PlayerView.gd`:
 
 Note (2026-11-10, P198; changes no accepted text above): `PlayerView.columns()` hands the AI the
 row columns (id, owner, type, x, y, hp, `build_left`) as whole arrays, for loops that would call
-the getters five times a row. They are **copies** (copy on write: a write goes to the caller's
-copy, never to the World), made once per view. They hold **every** row of the World, the hidden
+the getters five times a row. They are **copies** (copy on write: one copy per view, shared by
+every manager of a think; a write never reaches the World), made once per view. They hold **every** row of the World, the hidden
 ones too, so the rule above now rests on the caller: index them only with a row of `own_rows` or
 `seen_rows` or a `row_of()` answer of 0 or more, where they hold what the getters give. Two tests
 enforce it: `tests/ai/test_ai_poisoned_view.gd` plays the first ticks of `perf_ai` on views whose

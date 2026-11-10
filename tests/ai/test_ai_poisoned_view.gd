@@ -30,6 +30,9 @@ class Result:
 	var poisoned_rows: int = 0
 	var problems: Array[String] = []
 	var contact: bool = false
+	var enemy_rows: int = 0
+	var waves: int = 0
+	var strike_tests: int = 0
 
 
 func test_poisoned_hidden_rows_change_neither_the_commands_nor_the_state() -> void:
@@ -41,6 +44,11 @@ func test_poisoned_hidden_rows_change_neither_the_commands_nor_the_state() -> vo
 	# The poison was there to be read: hidden rows existed in the views.
 	assert_int(poisoned.poisoned_rows).is_greater(0)
 	assert_bool(clean.contact).is_true()
+	# The sites that read other managers' rows were reached: a wave (`_tally`, `_value_in`) and a
+	# strike search (`_take_list`), and the views held enemy rows that the fog hides.
+	assert_int(clean.waves).is_greater(0)
+	assert_int(clean.strike_tests).is_greater(0)
+	assert_int(clean.enemy_rows).is_greater(0)
 	assert_int(clean.encoded.size()).is_greater(0)
 	assert_array(poisoned.encoded).is_equal(clean.encoded)
 	assert_int(poisoned.final_hash).is_equal(clean.final_hash)
@@ -92,10 +100,15 @@ func _play(poison: bool) -> Result:
 				continue
 			var view: PlayerView = PlayerView.of(world, ai.player_id)
 			var before: int = world.state_hash()
+			if not poison:
+				result.enemy_rows += _hidden_enemies(view)
 			if poison:
 				result.poisoned_rows += _poison(view)
 			ai.think(view, commands)
 			result.thinks += 1
+			var opponent: OpponentAi = ai as OpponentAi
+			result.waves = maxi(result.waves, opponent.army.waves)
+			result.strike_tests = maxi(result.strike_tests, opponent.striker.tests)
 			result.contact = result.contact or (ai as OpponentAi).memory.seen_unit_id.size() > 0
 			if poison:
 				_judge(world, view, before, tick, result)
@@ -117,7 +130,19 @@ func _poison(view: PlayerView) -> int:
 		hidden += 1
 		for column: int in columns.size():
 			columns[column][row] = POISON_TYPE if column == PlayerView.Column.TYPE else -1
+	# One more poisoned row past the end, so an index of -1 (a dropped `row < 0` guard) reads it.
+	for column: int in columns.size():
+		columns[column].append(POISON_TYPE if column == PlayerView.Column.TYPE else -1)
 	return hidden
+
+
+## How many rows of the view are hidden and belong to another player.
+func _hidden_enemies(view: PlayerView) -> int:
+	var found: int = 0
+	for row: int in view._shown.size():
+		if view._shown[row] == 0 and view._owner[row] > 0 and view._owner[row] != view.player:
+			found += 1
+	return found
 
 
 ## After a think: the visible entries of the copies still hold the World's values, and the World is

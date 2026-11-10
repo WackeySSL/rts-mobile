@@ -238,7 +238,7 @@ func _producers(view: PlayerView, memory: AiMemory) -> PackedInt32Array:
 
 
 ## The most pressing threat's row, -1 for none: a seen enemy combat unit within the radius of an
-## own building, at most `tests_max` unit-by-building tests a run.
+## own building, at most `tests_max` tests a run (a unit's counted at once, ending where it did).
 func _threat(view: PlayerView, memory: AiMemory) -> int:
 	var found: int = -1
 	var least: int = defend_radius * defend_radius + 1

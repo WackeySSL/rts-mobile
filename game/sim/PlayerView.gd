@@ -60,12 +60,12 @@ extends RefCounted
 ## row columns and the placement input, which a think reads a few rows of and so are not worth a
 ## copy of the table, are aliases behind an underscore, read only by the getters below and written
 ## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
-## costs seven reference counts a view, and a write through it forks into the caller's copy. A view,
-## or a column taken from one, held across a tick would make the World fork a whole array on its
-## next write: a view is made, read and dropped within one think, never kept across a tick; its
-## aliases follow the World, its lists and slices do not, and a row index is good only for the tick
-## it was made on (the table compacts when a row dies). The per-row getters are for event cadence,
-## a few reads per row of a think, not a per-tick loop.
+## costs seven reference counts a view; it is one copy per view, shared by every manager of a think,
+## and a write through it never reaches the World. A view, or a column taken from one, held across
+## a tick would make the World fork a whole array on its next write: a view is made, read and
+## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
+## slices do not, and a row index is good only for the tick it was made on (the table compacts when
+## a row dies). The per-row getters are for event cadence, not a per-tick loop.
 ##
 ## Hidden rows (plan row P198): `columns()` holds every row of the World. A caller indexes it only
 ## with a row of `own_rows` or `seen_rows` or a `row_of()` answer of 0 or more, as the getters do;
@@ -248,10 +248,10 @@ func row_of(id: int) -> int:
 
 
 ## The row columns as whole arrays, indexed by `Column` (plan row P198), for a manager's loop that
-## would otherwise call `row_id`, `row_type`, `row_pos`... five times a row. Copies (copy on write:
-## a write goes to the caller's copy, never to the World); index only with a row of `own_rows` or
-## `seen_rows` or a `row_of()` answer >= 0, where they hold what the `row_*` reads give; any other
-## row is one the player cannot see, and the oracle test enforces that no caller reads one.
+## would otherwise call `row_id`, `row_type`... five times a row. One copy per view, shared by every
+## manager of a think; a write never reaches the World. Index only with a row of `own_rows` or
+## `seen_rows` or a `row_of()` answer >= 0, where they hold what the `row_*` reads give; the oracle
+## test enforces that no caller reads any other row (one the player cannot see).
 func columns() -> Array[PackedInt32Array]:
 	return _public
 
