@@ -388,6 +388,7 @@ static func integrate(world: World) -> void:
 	# The sides of the map, for the border rule of `FixedMath.centre_side` (inlined below).
 	var side_x: int = cols * tile
 	var side_y: int = world.map_rows * tile
+	var last_line: int = world.map_rows - 1
 	var period: int = maxi(world.line_check_period_ticks, 1)
 	var tick: int = world.tick
 	var stall_ticks: int = world.stall_ticks
@@ -503,14 +504,16 @@ static func integrate(world: World) -> void:
 		pos_x[row] = new_x
 		pos_y[row] = new_y
 		if cell >= 0 and mode == World.NavMode.FIELD:
-			# The tile of the point the step ended at (after a slide the point is not the new one
-			# above), by the same border rule.
+			# The tile of the point the step ended at (after a slide the point is the old one, which
+			# may be off the map, so the tile is clamped), by the same border rule.
 			var end_x: int = new_x
 			var end_y: int = new_y
 			if end_x % tile == 0 and end_x * 2 > side_x:
 				end_x -= 1
 			if end_y % tile == 0 and end_y * 2 > side_y:
 				end_y -= 1
-			var entered: int = end_y / tile * cols + end_x / tile
+			var entered: int = (
+				clampi(end_y / tile, 0, last_line) * cols + clampi(end_x / tile, 0, cols - 1)
+			)
 			if entered != cell and slots[slot_of[row]].complete:
 				_refresh_next(world, slots, slot_of, next_of, row, entered, classes[type])
