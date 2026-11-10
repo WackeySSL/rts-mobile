@@ -408,6 +408,22 @@ static func _player(
 			sum_y += world.pos_y[row] / 1000
 			if world.order[row] == World.Order.IDLE:
 				idle += 1
+	var oa: OpponentAi = controller as OpponentAi
+	if oa != null:
+		diag += (
+			" | ai waves %d retreats %d recalls %d defences %d returns %d scouts %d strikes %d stepbacks %d roles %s"
+			% [
+				oa.army.waves,
+				oa.army.retreats,
+				oa.army.recalls,
+				oa.army.defences,
+				oa.army.returns,
+				controller.scouts,
+				controller.strikes,
+				oa.army.stepbacks,
+				str(oa.production.role_queued),
+			]
+		)
 	if units > 0:
 		diag += " | units idle %d of %d centre %d,%d" % [idle, units, sum_x / units, sum_y / units]
 	var data: Dictionary = {
