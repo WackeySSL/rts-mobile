@@ -814,6 +814,7 @@ func _restage(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool:
 ## Sums the home squad's value (`_home_value`, and `_ready_value` without the withdrawn units) and
 ## the wave's value, and the wave's centre, units and idle units, over
 ## the members (a loop over the memory's list, not the view's rows).
+@warning_ignore("integer_division")
 func _tally(view: PlayerView, memory: AiMemory) -> void:
 	_home_value = 0
 	_ready_value = 0
@@ -821,19 +822,37 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 	_wave_units = 0
 	_wave_idle = 0
 	var sum: Vector2i = Vector2i.ZERO
-	for at: int in memory.member_id.size():
-		var row: int = view.row_of(memory.member_id[at])
+	# Locals for the arrays read once a member, `value_of` written out (plan row P198).
+	var columns: Array[PackedInt32Array] = view.columns()
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
+	var hps: PackedInt32Array = columns[PlayerView.Column.HP]
+	var xs: PackedInt32Array = columns[PlayerView.Column.X]
+	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var costs: PackedInt32Array = view.type_cost
+	var max_hps: PackedInt32Array = view.type_max_hp
+	var member_ids: PackedInt32Array = memory.member_id
+	var squads: PackedInt32Array = memory.member_squad
+	for at: int in member_ids.size():
+		var squad: int = squads[at]
+		if squad != HOME and squad != WAVE:
+			continue
+		var row: int = view.row_of(member_ids[at])
 		if row < 0:
 			continue
-		if memory.member_squad[at] == HOME:
-			var value: int = AiIntel.value_of(view, row)
+		var type: int = types[row]
+		var cost: int = costs[type] if type < costs.size() else 0
+		var max_hp: int = max_hps[type] if type < max_hps.size() else 0
+		var value: int = cost
+		if max_hp > 0:
+			value = cost * clampi(hps[row], 0, max_hp) / max_hp
+		if squad == HOME:
 			_home_value += value
-			if not _withdrawn(memory, memory.member_id[at]):
+			if not _withdrawn(memory, member_ids[at]):
 				_ready_value += value
-		elif memory.member_squad[at] == WAVE:
-			_wave_value += AiIntel.value_of(view, row)
+		else:
+			_wave_value += value
 			_wave_units += 1
-			sum += view.row_pos(row)
+			sum += Vector2i(xs[row], ys[row])
 			if view.row_order(row) == PlayerView.Order.IDLE:
 				_wave_idle += 1
 	if _wave_units > 0:
