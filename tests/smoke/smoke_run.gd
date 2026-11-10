@@ -24,6 +24,7 @@ extends RefCounted
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
+const P196: GDScript = preload("res://tests/smoke/p196_diag.gd")
 
 const FLATS: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const FLATS_MIRRORED: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
@@ -66,6 +67,7 @@ static func play(
 	drops: Dictionary[int, int] = {}
 ) -> Dictionary:
 	var match_setup: Dictionary = start(match_seed, kind, levels)
+	P196.reset(match_seed)
 	var world: World = match_setup["world"]
 	var counter: SmokeCount = match_setup["counter"]
 	var controllers: Array[AiController] = match_setup["controllers"]
@@ -236,6 +238,7 @@ static func run(
 		commands.clear()
 		if counter != null:
 			counter.after_step(world)
+			P196.sample(world, controllers, counter)
 
 
 ## How a match ended: a winner is a "victory", an end without one a "draw", no end a "timeout".
