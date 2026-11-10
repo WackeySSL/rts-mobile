@@ -47,7 +47,7 @@ static func siege(army: AiArmy, view: PlayerView, memory: AiMemory, out: Array[C
 	if (
 		best >= 0
 		and armed_near(army, view, memory, army._wave_front)
-		and not ahead(army, view, memory)
+		and true
 	):
 		best = -1
 	var kept: int = memory.squad_focus[AiArmy.WAVE]
