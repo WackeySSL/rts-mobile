@@ -102,7 +102,7 @@ const _LEVELS: Dictionary[String, Array] = {
 		24,
 		1800,
 		75,
-		25
+		50
 	],
 	"hard":
 	[
@@ -132,7 +132,7 @@ const _LEVELS: Dictionary[String, Array] = {
 		24,
 		1500,
 		75,
-		20
+		40
 	],
 }
 

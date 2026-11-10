@@ -270,3 +270,26 @@ func test_a_foe_far_from_the_front_does_not_stop_the_siege() -> void:
 	_see_all()
 	_think(LAUNCH + 15)
 	assert_int(_of(Command.Type.ATTACK).size()).is_equal(1)
+
+
+func test_a_wave_far_ahead_sieges_through_a_few_armed_foes() -> void:
+	_pressing(150, 1)
+	var barracks: int = _siege_scene()
+	# A rifle squad (100) near the front against a wave of 2200: far ahead, so the producer comes
+	# first.
+	_enemy("rifle_squad", TANK_AT.x, TANK_AT.y)
+	_see_all()
+	_think(LAUNCH + 15)
+	var sent: Array[Command] = _of(Command.Type.ATTACK)
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].target_id).is_equal(barracks)
+
+
+func test_a_wave_that_is_not_ahead_fights_the_armed_foes_first() -> void:
+	_pressing(150, 1)
+	_siege_scene()
+	_enemy("heavy_tank", TANK_AT.x, TANK_AT.y)
+	_enemy("heavy_tank", TANK_AT.x, TANK_AT.y + 500)
+	_see_all()
+	_think(LAUNCH + 15)
+	assert_array(_of(Command.Type.ATTACK)).is_empty()
