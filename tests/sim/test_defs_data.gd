@@ -29,6 +29,12 @@ const TRACKED: int = 2
 const RING_CORNER_MILLI: int = 2829
 ## Phase 3 is a two-player game (ADR 0018 section 9 sizes the caps for it).
 const PLAYERS: int = 2
+## The bounds that widen by themselves when P232 grows World.MoveClass and TABS and P233 adds the
+## Reveal kind to Strike.Kind (ADR 0036 sections 2 and 4): until then air data is rejected.
+const TABS: int = World.TABS
+
+var _classes: int = World.MoveClass.size()
+var _kinds: int = Strike.Kind.values().max()
 
 
 func test_unit_files_hold_the_adr_0009_starting_stats() -> void:
@@ -172,7 +178,7 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 		["radius", [1, 500], [0, 501], "radius is not in 1..500"],
 		["speed", [0, 2], [-1, 1], "speed is neither 0 nor at least 2"],
 		["armour", [0, 3], [-1, 4], "armour is not an armour class"],
-		["move_class", [0, 2], [-1, 3], "move_class is not a movement class"],
+		["move_class", [0, _classes - 1], [-1, _classes], "move_class is not a movement class"],
 		["acquire_range", [5000, 6000], [6001], "acquire_range is above sight_range"],
 		["weapon:range", [4000, 5000], [5001], "weapon range is above acquire_range"],
 		["weapon:damage", [1], [0], "damage is below 1"],
@@ -294,7 +300,7 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 	var rows: Array = [
 		["cost", [0, 1], [-1], "cost is negative"],
 		["build_ticks", [0, 1], [-1], "build_ticks is negative"],
-		["tab", [-1, 0, 2], [-2, 3], "tab is not -1..2"],
+		["tab", [-1, 0, TABS - 1], [-2, TABS], "tab is not a production tab"],
 		["harvest_capacity", [0, 25, 500], [-25, 1, 510], "harvest_capacity is not a multiple"],
 		["speed", [0], [2], "speed is not 0"],
 		["radius", [0], [1], "radius is not 0"],
@@ -306,8 +312,8 @@ func test_the_phase_3_unit_and_building_rules_accept_their_edge_values_and_repor
 			foot
 		],
 		["footprint", [], [Vector2i(1, 2), Vector2i(2, 1), Vector2i(3, 1), Vector2i(2, 3)], square],
-		["produces", [-1, 0, 2], [-2, 3], "produces is not -1..2"],
-		["strike_kind", [0, 1, 2], [-1, 3], "strike_kind is not 0..2"],
+		["produces", [-1, 0, TABS - 1], [-2, TABS], "produces is not a production tab"],
+		["strike_kind", [0, 1, _kinds], [-1, _kinds + 1], "strike_kind is not a strike kind"],
 	]
 	# The four strike numbers (P109) share one rule: none is negative.
 	for number: String in ["charge_ticks", "strike_radius", "strike_delay", "strike_ticks"]:
@@ -646,7 +652,7 @@ func _unit_problems(file: String, unit: UnitDef) -> PackedStringArray:
 		"radius is not in 1..500": unit.speed > 0 and (unit.radius < 1 or unit.radius > 500),
 		"speed is neither 0 nor at least 2": unit.speed < 0 or unit.speed == 1,
 		"armour is not an armour class": unit.armour < 0 or unit.armour > 3,
-		"move_class is not a movement class": unit.move_class < 0 or unit.move_class > 2,
+		"move_class is not a movement class": unit.move_class < 0 or unit.move_class >= _classes,
 		"acquire_range is above sight_range": unit.acquire_range > unit.sight_range,
 	}
 	var weapon: WeaponDef = unit.weapon
@@ -708,7 +714,7 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 		# ADR 0026 section 2: a site never passes through completion with no build time.
 		"a Structures type has build_ticks below 1":
 		unit.tab == World.Tab.STRUCTURES and unit.build_ticks < 1,
-		"tab is not -1..2": unit.tab < -1 or unit.tab > 2,
+		"tab is not a production tab": unit.tab < -1 or unit.tab >= TABS,
 		"harvest_capacity is not a multiple":
 		unit.harvest_capacity < 0 or unit.harvest_capacity % rules.credits_per_ore != 0,
 		"requires is the unit itself": unit.requires == unit,
@@ -726,8 +732,12 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 		)
 		# ADR 0023 section 7: every footprint is square (the iso art draws one diamond per building).
 		broken["footprint is not square"] = building.footprint.x != building.footprint.y
-		broken["produces is not -1..2"] = building.produces < -1 or building.produces > 2
-		broken["strike_kind is not 0..2"] = building.strike_kind < 0 or building.strike_kind > 2
+		broken["produces is not a production tab"] = (
+			building.produces < -1 or building.produces >= TABS
+		)
+		broken["strike_kind is not a strike kind"] = (
+			building.strike_kind < 0 or building.strike_kind > _kinds
+		)
 		broken["a strike number is negative"] = (
 			mini(
 				mini(building.charge_ticks, building.strike_radius),
@@ -787,7 +797,8 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 
 ## True when `unit` is a building with a strike (BuildingDef.strike_kind above 0).
 func _is_strike_building(unit: UnitDef) -> bool:
-	return unit is BuildingDef and (unit as BuildingDef).strike_kind > 0
+	var kinds: Array[int] = [Strike.Kind.RUPTURE, Strike.Kind.BLACKOUT]
+	return unit is BuildingDef and (unit as BuildingDef).strike_kind in kinds
 
 
 ## Where unit k of a block starts before jitter (the SpawnDef rule), in milli-tiles.

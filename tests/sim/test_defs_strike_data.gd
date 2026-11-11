@@ -18,6 +18,8 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const RUPTURE: int = Strike.Kind.RUPTURE
 const BLACKOUT: int = Strike.Kind.BLACKOUT
 ## The kind of strike each faction has, by faction id: no two share one.
+## A faction's one strike is a rupture or a blackout; a Reveal building (kind 3) is not it.
+const STRIKE_KINDS: Array[int] = [RUPTURE, BLACKOUT]
 const KINDS: Dictionary[String, int] = {"fossil": RUPTURE, "renew": BLACKOUT}
 
 
@@ -84,7 +86,7 @@ func test_no_unit_fires_the_strike_weapon_and_no_other_file_has_a_strike() -> vo
 		var building: BuildingDef = unit as BuildingDef
 		if building == null:
 			continue
-		if building.strike_kind > 0:
+		if building.strike_kind in STRIKE_KINDS:
 			struck.append(file.get_basename())
 			continue
 		assert_array(_numbers(building)).override_failure_message(file).is_equal([0, 0, 0, 0, 0])
@@ -189,7 +191,7 @@ func _strike_problems(faction: FactionDef, kind: int) -> PackedStringArray:
 	var found: Array[BuildingDef] = []
 	for member: UnitDef in faction.roster:
 		var building: BuildingDef = member as BuildingDef
-		if building != null and building.strike_kind > 0:
+		if building != null and building.strike_kind in STRIKE_KINDS:
 			found.append(building)
 	if found.size() != 1:
 		problems.append("%s: %d strike types, not 1" % [faction.id, found.size()])
@@ -246,7 +248,7 @@ func _strike_ids(faction: FactionDef) -> Array[String]:
 	var ids: Array[String] = []
 	for member: UnitDef in faction.roster:
 		var building: BuildingDef = member as BuildingDef
-		if building != null and building.strike_kind > 0:
+		if building != null and building.strike_kind in STRIKE_KINDS:
 			ids.append(String(building.type_id))
 	return ids
 

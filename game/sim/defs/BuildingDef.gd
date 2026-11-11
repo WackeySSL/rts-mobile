@@ -38,31 +38,3 @@ var produces: int = -1
 ## footprint origin each, inside the footprint. 0 pads = not an airfield.
 @export var pads: int = 0
 @export var pad_offsets: Array[Vector2i] = []
-
-
-## The data-test rules of this building, one message per fault; empty = valid. `max_flight_spacing`
-## is the largest `formation_spacing` of any FLIGHT type: pads must lie at least that far apart
-## (milli-tiles), or waiting aircraft drift out of repair reach.
-func validate_building(max_flight_spacing: int) -> PackedStringArray:
-	var out: PackedStringArray = validate()
-	var tag: String = String(type_id)
-	if pads < 0 or pad_offsets.size() != pads:
-		out.append("%s: pads %d does not match %d pad_offsets" % [tag, pads, pad_offsets.size()])
-	if pads == 0 and repair_classes != 0 and repair_slots < 1:
-		out.append("%s: repair_slots 0 is only for a type with pads" % tag)
-	for i: int in pad_offsets.size():
-		var a: Vector2i = pad_offsets[i]
-		if a.x < 0 or a.y < 0 or a.x >= footprint.x or a.y >= footprint.y:
-			out.append("%s: pad %d lies outside the footprint" % [tag, i])
-		for j: int in range(i + 1, pad_offsets.size()):
-			var d: Vector2i = pad_offsets[j] - a
-			if (d.x * d.x + d.y * d.y) * 1000000 < max_flight_spacing * max_flight_spacing:
-				out.append("%s: pads %d and %d closer than %d" % [tag, i, j, max_flight_spacing])
-	if strike_kind < 0 or strike_kind > 3:
-		out.append("%s: strike_kind %d outside 0..3" % [tag, strike_kind])
-	if (
-		strike_kind == 3
-		and (strike_ticks != 0 or strike_radius != 0 or strike_delay != 0 or strike_weapon != null)
-	):
-		out.append("%s: a Reveal building has no strike_ticks, radius, delay or weapon" % tag)
-	return out

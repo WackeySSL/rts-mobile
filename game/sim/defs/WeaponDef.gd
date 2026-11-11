@@ -18,11 +18,3 @@ extends Resource
 ## The layers the weapon may hit (ADR 0036 section 2): GROUND 1, AIR 2, LOW_AIR 4. The default is 1,
 ## so every shipped weapon keeps its meaning. A data test allows 1..7.
 @export_flags("Ground:1", "Air:2", "Low air:4") var targets: int = 1
-
-
-## The data-test rules of this weapon, one message per fault; empty = valid.
-func validate() -> PackedStringArray:
-	var out: PackedStringArray = PackedStringArray()
-	if targets < 1 or targets > 7:
-		out.append("%s: targets %d outside 1..7" % [String(id), targets])
-	return out

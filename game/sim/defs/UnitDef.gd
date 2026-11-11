@@ -59,29 +59,3 @@ var tab: int = -1
 @export var repair_reach_milli: int = 0
 @export var repair_slots: int = 0
 @export var repair_seek_milli: int = 0
-
-
-## The data-test rules of this type, one message per fault; empty = valid.
-func validate() -> PackedStringArray:
-	var out: PackedStringArray = PackedStringArray()
-	var tag: String = String(type_id)
-	if move_class < 0 or move_class > 3:
-		out.append("%s: move_class %d outside 0..3" % [tag, move_class])
-	if move_class != 3 and (low_flying or ammo != 0 or rearm_ticks != 0):
-		out.append("%s: low_flying, ammo and rearm_ticks are AIR only" % tag)
-	if ammo < 0 or rearm_ticks < 0 or (ammo > 0 and rearm_ticks < 1):
-		out.append("%s: ammo %d needs rearm_ticks >= 1 (got %d)" % [tag, ammo, rearm_ticks])
-	if repair_classes < 0 or repair_classes > 15:
-		out.append("%s: repair_classes %d outside 0..15" % [tag, repair_classes])
-	if repair_classes != 0:
-		if repair_hp < 1 or repair_period_ticks < 1:
-			out.append("%s: the repair role needs repair_hp and repair_period_ticks >= 1" % tag)
-		if repair_cost_percent < 0 or repair_cost_percent > 100:
-			out.append("%s: repair_cost_percent %d outside 0..100" % [tag, repair_cost_percent])
-		if repair_reach_milli < 500:
-			out.append("%s: repair_reach_milli %d under 500" % [tag, repair_reach_milli])
-		if repair_slots < 0 or repair_slots > 8:
-			out.append("%s: repair_slots %d outside 0..8" % [tag, repair_slots])
-		if repair_seek_milli < 0:
-			out.append("%s: repair_seek_milli is negative" % tag)
-	return out
