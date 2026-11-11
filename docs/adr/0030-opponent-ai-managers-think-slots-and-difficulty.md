@@ -217,6 +217,8 @@ layers are ai-dev.md's:
 Note (2026-11-10, P198b, five slots on period 3; changes no accepted text above; Michael approved
 the row in chat: "ja til P198b"). The first lever of "Over budget" in section 4, GDScript only.
 
+(2026-11-11) Taken up again by Michael after P198c showed no measurable phone gain; balance shifts accepted until Phase 4b's balance run.
+
 *Design* (written before the code):
 - **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless. ECONOMY
   runs `AiEconomy`; PRODUCTION `AiProduction`; REFRESH `AiIntel.refresh`; ARMY `AiArmy`; INTEL
