@@ -485,29 +485,29 @@ accepted text above):
   derivation out of `PlayerView`) holds `duplicate()`s of the World's per-type arrays, the type
   ids and the dock offsets. The first `PlayerView.of` of a World builds it and keeps it in
   `World.type_tables`, a non-state member (`NON_STATE_MEMBERS`; never hashed, never read by the
-  sim, null in a new World, so a new match never shares one); every later view takes its arrays
-  by reference under the same names (`view.type_cost`...), with no copy and no weapon rebuild. The
-  cache sits on the World because every caller of `PlayerView.of` (the tick job, the headless
-  loops, the smoke run, `perf_ai`, the Perf AI route, the tests) already passes it, and there is no
-  `static var` in `game/sim`. A shape check (type count) rebuilds it for a hand-built World that
-  gains types after a view. **The hazard:** GDScript shares a packed array by reference, so a write
-  through a view's table reaches the holder and every later view of the match (never the World or
-  another match). Guards: `AI_RULES` entries in `tests/project/test_view_reads_snapshot.gd` flag
-  an assignment, an in-place call or any naming of the holder in `game/ai` (a table copied into a
-  local is not followed), and the `perf_ai` run (`AiRun`) fails if the holder differs from the
-  World's tables after its 900 ticks. Two older assertions that said a write to a view's table
-  stays out of a later view of the same World (`test_player_view_state`, `test_player_view_v2`)
-  now say it stays out of the World and of other matches. The members that `of` always assigns
-  lost their initializers (a typed member starts empty), and `_take_rows` fills its lists by index.
+  sim, null in a new World, so a new match never shares one). Every later view takes a
+  `duplicate()` of each holder array under the same names (`view.type_cost`...): the World's
+  copies and the weapon-table rebuild are made once a match, and **nothing aliases**, so ADR 0020
+  section 1's "every public field is a copy" holds. (A first build shared the holder's arrays with
+  the views by reference, which saves about 1 us more a view, but GDScript shares a packed array
+  by assignment, so a write through a view's table would have reached every later view; it was
+  dropped for that.) The cache sits on the World because every caller of `PlayerView.of` (the tick
+  job, the headless loops, the smoke run, `perf_ai`, the Perf AI route, the tests) already passes
+  it, and there is no `static var` in `game/sim`. A type-count shape check rebuilds it for a
+  hand-built World that gains types after a view. Extra guards: `AI_RULES` entries in
+  `tests/project/test_view_reads_snapshot.gd` flag a write to a `view.type_*` table or any naming
+  of the holder in `game/ai`, and the `perf_ai` run (`AiRun`) fails if the holder differs from the
+  World's tables after its 900 ticks. The members that `of` always assigns lost their
+  initializers (a typed member starts empty), and `_take_rows` fills its lists by index.
 - **Result.** No decision changes: the `perf_ai` hash `cbe70a78d01ee7c1`, perf `17f7a83c4d492c4c`
-  and bases `c84764064abfb27c` are main's (run 42965718796, head a2e9538, whose only failure was a
-  line length in a test, fixed after). Per view on the same build, a probe branch (run
-  42965704532; the old probe on another VM read the placement input, untouched, at 7.8 against
-  5.9 here, so scale the old numbers by 0.76): `new()` 10.1, the tables 3.3, the rows 30.2, 55.5 in
-  all, about 12 us a view saved. `WATCH ai think` p95 385 us against main's 480 in the same hour
-  (run 42965707967): 0.80, though a runner's p95 moves by up to 60 % from one VM to the next, so
-  the per-view figure is the firmer one. The CI-side saving is about 12 us a think, not the 35 us
-  aimed at: the 25 field assignments and a 60-member object cost more than the arithmetic said.
+  and bases `c84764064abfb27c` are main's (verify GREEN on run 42970491811, head 50e8318). Per view
+  on the built branch (probe branch run 42970488248, a faster VM: its untouched placement input
+  reads 4.3 against 7.8 in the first probe, so scale the old numbers by 0.55): `new()` 6.4, the
+  tables 3.1, the rows 21.4, 39.6 in all against 89.7 (49.6 scaled): about 10 us, 20 %, a view.
+  `WATCH ai think` p95 on the clean branch 383 us (run 42970491811) against main's 549 (run
+  42970494958) in the same hour: 0.70, though a runner's p95 moves by up to 60 % from one VM to
+  the next, so the per-view figure is the firmer one. The saving is about 10 us a think, not the
+  35 us aimed at: a 60-member object and 24 table copies still cost.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
