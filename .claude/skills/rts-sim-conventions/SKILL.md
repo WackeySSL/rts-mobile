@@ -318,8 +318,10 @@ bursty phase whose per-active-tick cost sets a headroom value. `COMMANDS`, `REMO
 
 **Dispatch (§3).**
 - `World.kernels` (null = GDScript) and `World.native_phases` (one bit per `SimProbe.Phase`, in
-  `UNHASHED_SCALARS`); `kernels` is the one entry of `World.NON_STATE_MEMBERS`, which the
-  coverage test, the hash walk and the reachability walk skip. The choice is never hashed.
+  `UNHASHED_SCALARS`); `World.NON_STATE_MEMBERS` holds `kernels` and (P198c, 2026-11-11)
+  `type_tables`, `PlayerView`'s per-match cache of the type tables, which the first view of a
+  prepared World writes on the job's thread. The coverage test and the hash walk skip both; the
+  reachability walk keeps `kernels` as a leaf and walks the cache. Neither is ever hashed.
 - The dispatch is the first line of the phase's entry (`FlowCache.run(world, budget)` for FLOW,
   the module's `run(world)` or `Movement.integrate` for the others):
   `if ((world.native_phases >> SimProbe.Phase.X) & 1) == 1: world.kernels.x(world[, int]); return`.
