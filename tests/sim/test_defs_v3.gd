@@ -39,7 +39,7 @@ func test_unit_def_defaults_are_not_buildable_and_not_a_harvester() -> void:
 	assert_int(unit.harvest_capacity).is_equal(0)
 
 
-func test_unit_def_gains_exactly_its_five_fields_and_they_are_stored() -> void:
+func test_unit_def_gains_exactly_its_production_and_air_fields_and_they_are_stored() -> void:
 	var plain: Array[String] = _own_fields(Resource.new(), UnitDef.new())
 	assert_bool(plain.has("type_id")).is_true()  # The Phase 2 fields are still there.
 	assert_array(plain.slice(plain.size() - UNIT_FIELDS.size() - AIR_FIELDS.size())).is_equal(
@@ -69,7 +69,7 @@ func test_building_def_is_a_unit_def_with_a_one_tile_footprint_and_nothing_else_
 	assert_array([building.cost, building.tab, building.harvest_capacity]).is_equal([0, -1, 0])
 
 
-func test_building_def_adds_exactly_its_twelve_fields_to_a_unit_def() -> void:
+func test_building_def_adds_exactly_its_own_fields_to_a_unit_def() -> void:
 	assert_array(_own_fields(UnitDef.new(), BuildingDef.new())).is_equal(
 		BUILDING_FIELDS + STRIKE_FIELDS + PAD_FIELDS
 	)
