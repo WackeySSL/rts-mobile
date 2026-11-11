@@ -56,14 +56,12 @@ extends RefCounted
 ## so an array the view takes from the World without copying is the World's own and live: it shows
 ## the World's later writes, and a write through it would be the World's. So nothing a caller can
 ## reach is an alias of the World. Every public field is a copy (the two lists, the slices of the
-## player's state and last-seen records and the seven arrays of `columns()`), except the type tables
-## (plan row P198c): those are the arrays of the match's `TypeTables` holder, shared by every view
-## of the match and copies of the World's, so a write through one would reach every later view
-## (never the World), and nothing writes one. The row columns and the placement input, which a think
-## reads a few rows of and so are not worth a copy of the table, are aliases behind an underscore,
-## read only by the getters below and written by nothing. A copy of a packed array shares its
-## storage until one side writes, so `columns()` costs seven reference counts a view; it is one copy
-## per view, shared by every manager of a think,
+## player's state and last-seen records, the seven arrays of `columns()` and the type tables, which
+## are copies of the arrays of the match's `TypeTables` holder, plan row P198c); the row columns and
+## the placement input, which a think reads a few rows of and so are not worth a copy of the table,
+## are aliases behind an underscore, read only by the getters below and written by nothing. A copy
+## of a packed array shares its storage until one side writes, so `columns()` costs seven reference
+## counts a view; it is one copy per view, shared by every manager of a think,
 ## and a write through it never reaches the World. A view, or a column taken from one, held across
 ## a tick would make the World fork a whole array on its next write: a view is made, read and
 ## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
@@ -391,12 +389,12 @@ func ghost_pos(record: int) -> Vector2i:
 	)
 
 
-## The type tables, the type ids and the dock offsets, shared with every view of the match
-## (plan row P198c): the World's `type_tables` holder, built by the first view of the match and kept
-## on the World, outside its state (`World.NON_STATE_MEMBERS`). The view's `type_*` fields are the
-## holder's arrays, by reference and without a copy (see `TypeTables`): a write through one reaches
-## the holder and so every later view of the match, never the World. The two rule caps are ints,
-## read each time.
+## The type tables, copied from the match's holder (plan row P198c): the World's `type_tables`,
+## built by the first view of the match and kept on the World, outside its state
+## (`World.NON_STATE_MEMBERS`). The holder saves the 21 copies of the World's tables and the weapon
+## derivation once a match; each view still takes its own `duplicate()` of every array, so a write
+## through a view's table reaches neither the holder, the World nor another view. The two rule caps
+## are ints, read each time.
 func _take_tables(world: World) -> void:
 	var tables: TypeTables = world.type_tables
 	# The shape check is for a hand-built World that gets more types, or is prepared, after a view.
@@ -408,27 +406,27 @@ func _take_tables(world: World) -> void:
 		tables = TypeTables.of(world)
 		world.type_tables = tables
 	_tables = tables
-	type_cost = tables.cost
-	type_tab = tables.tab
-	type_requires = tables.requires
-	type_produces = tables.produces
-	type_foot_w = tables.foot_w
-	type_foot_h = tables.foot_h
-	type_speed = tables.speed
-	type_weapon = tables.weapon
-	type_harvest = tables.harvest
-	type_power = tables.power
-	type_build_ticks = tables.build_ticks
-	type_max_hp = tables.max_hp
-	type_armour = tables.armour
-	type_sight = tables.sight
-	type_faction = tables.faction
-	type_strike_kind = tables.strike_kind
-	type_strike_radius = tables.strike_radius
-	type_charge_ticks = tables.charge_ticks
-	type_range = tables.weapon_range
-	type_min_range = tables.weapon_min_range
-	type_vs_armour = tables.vs_armour
+	type_cost = tables.cost.duplicate()
+	type_tab = tables.tab.duplicate()
+	type_requires = tables.requires.duplicate()
+	type_produces = tables.produces.duplicate()
+	type_foot_w = tables.foot_w.duplicate()
+	type_foot_h = tables.foot_h.duplicate()
+	type_speed = tables.speed.duplicate()
+	type_weapon = tables.weapon.duplicate()
+	type_harvest = tables.harvest.duplicate()
+	type_power = tables.power.duplicate()
+	type_build_ticks = tables.build_ticks.duplicate()
+	type_max_hp = tables.max_hp.duplicate()
+	type_armour = tables.armour.duplicate()
+	type_sight = tables.sight.duplicate()
+	type_faction = tables.faction.duplicate()
+	type_strike_kind = tables.strike_kind.duplicate()
+	type_strike_radius = tables.strike_radius.duplicate()
+	type_charge_ticks = tables.charge_ticks.duplicate()
+	type_range = tables.weapon_range.duplicate()
+	type_min_range = tables.weapon_min_range.duplicate()
+	type_vs_armour = tables.vs_armour.duplicate()
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
 

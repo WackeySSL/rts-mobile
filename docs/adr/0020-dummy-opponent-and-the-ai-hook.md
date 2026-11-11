@@ -126,14 +126,15 @@ hidden rows are poisoned and asserts the same Commands and state hash as the cle
 dropped within its think: held across a tick it would make the World fork a whole array on its
 next write.
 
-Note (2026-11-11, P198c; changes no accepted text above): the view's `type_*` tables are no longer
-copies made per view. The first view of a World builds a `TypeTables` holder (copies of the World's
-tables) and keeps it in `World.type_tables`, a non-state member (`NON_STATE_MEMBERS`, never
-hashed); every later view of that World takes the holder's arrays by reference. A packed array is
-shared by reference in GDScript, so a write through a view's table would reach the holder and every
-later view of the match, never the World or another match; nothing in `game/ai` writes one (a scan
-in `tests/project/test_view_reads_snapshot.gd`) and the AI perf run checks the holder against the
-World's tables after its 900 ticks. ADR 0030 section 4's P198c note has the design and the result.
+Note (2026-11-11, P198c; changes no accepted text above): the view's `type_*` tables are still
+copies, and nothing aliases. The first view of a World builds a `TypeTables` holder (copies of the
+World's tables, the weapon-derived ones included) and keeps it in `World.type_tables`, a non-state
+member (`NON_STATE_MEMBERS`, never hashed); every view of that World takes a `duplicate()` of each
+of its arrays, so the World's copies and the weapon derivation are made once a match, not once a
+think. A write through a view's table reaches neither the holder, the World nor another view. A
+scan in `tests/project/test_view_reads_snapshot.gd` (a write to `view.type_*` in `game/ai`) and a
+check of the holder after the AI perf run are extra guards. ADR 0030 section 4's P198c note has
+the design and the result.
 
 ### 2. `AiController` and the driver
 - `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with

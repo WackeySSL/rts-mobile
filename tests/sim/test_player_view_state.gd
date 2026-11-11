@@ -264,7 +264,7 @@ func test_the_constants_are_the_worlds() -> void:
 	assert_int(PlayerView.Tab.size()).is_equal(World.TABS)
 
 
-func test_the_type_tables_are_the_worlds_and_a_write_never_reaches_the_world() -> void:
+func test_the_type_tables_are_the_worlds_and_a_write_stays_in_the_view() -> void:
 	var world: World = PlaceRig.world()
 	var view: PlayerView = PlayerView.of(world, 1)
 	assert_array(Array(view.type_cost)).is_equal(Array(world.type_cost))
@@ -279,12 +279,12 @@ func test_the_type_tables_are_the_worlds_and_a_write_never_reaches_the_world() -
 	assert_array(Array(view.type_power)).is_equal(Array(world.type_power))
 	assert_array(Array(view.type_build_ticks)).is_equal(Array(world.type_build_ticks))
 	# GDScript passes a packed array by reference, so a table that the view only aliased would be
-	# the World's: this write must land in the match's own holder (plan row P198c: the views of a
-	# match share it, tests/sim/test_player_view_tables.gd), never in the World.
+	# the World's: this write must land in the view's own copy.
 	var cost: int = world.type_cost[0]
 	view.type_cost[0] = cost + 12345
 	assert_int(world.type_cost[0]).is_equal(cost)
 	assert_int(view.type_cost[0]).is_equal(cost + 12345)
+	assert_int(PlayerView.of(world, 1).type_cost[0]).is_equal(cost)
 
 
 ## The ore cells are the map's static ore terrain, the same for either player (public like the map),

@@ -86,11 +86,11 @@ const COLUMNS_SITES: Dictionary[String, int] = {
 }
 
 ## A write to a type table of the view from game/ai (plan row P198c): an assignment (`=`, `+=`...)
-## to `view.type_*`, with or without an index. The view's tables are the arrays of the match's
-## shared holder, by reference, so one write would reach every later view of the match. A
+## to `view.type_*`, with or without an index. The view's tables are its own copies, so such a write
+## would reach nothing else, but it is a bug in an AI that only reads the rules: an extra guard. A
 ## comparison (`==`, `<=`, `!=`) is a read. A table taken into a local
 ## (`var costs: PackedInt32Array = view.type_cost`) is an alias the scan does not follow, which is
-## why the AI perf run checks the holder against the World at its end.
+## fine: it is a copy too.
 const TYPE_WRITE: String = (
 	r"\bview\.[\s\\]*type_\w+(?:[\s\\]*\[[^\]]*\])?[\s\\]*" + r"(?:[-+*/%&|^]|<<|>>)?=(?!=)"
 )
@@ -240,12 +240,12 @@ const AI_RULES: Array[Dictionary] = [
 	},
 	{
 		"pattern": TYPE_WRITE,
-		"advice": "the view's type tables are the match's shared arrays: read them, never assign",
+		"advice": "the view's type tables are rules, not state: read them, never assign",
 		"lines": [31, 32, 36],
 	},
 	{
 		"pattern": TYPE_MUTATE,
-		"advice": "the view's type tables are the match's shared arrays: never change one in place",
+		"advice": "the view's type tables are rules, not state: never change one in place",
 		"lines": [33, 34],
 	},
 	{

@@ -151,8 +151,8 @@ func play() -> void:
 	_check_tables(world)
 
 
-## The views of the match shared one `TypeTables` holder (plan row P198c); after 900 ticks of both
-## AIs it must still hold the World's tables, so no think wrote through a view's table.
+## The views of the match took their tables from one `TypeTables` holder (plan row P198c); after 900
+## ticks of both AIs it must still hold the World's tables (an extra guard: the views hold copies).
 func _check_tables(world: World) -> void:
 	var held: TypeTables = world.type_tables
 	if held == null:

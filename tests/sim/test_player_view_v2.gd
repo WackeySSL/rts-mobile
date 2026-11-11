@@ -46,24 +46,21 @@ func test_each_new_table_is_a_copy_of_the_worlds() -> void:
 		var before: PackedInt32Array = table.duplicate()
 		for at: int in table.size():
 			table[at] += 1000
-		# The write lands in the match's shared holder (plan row P198c) and in no World array.
+		# The write lands in the view's own array and in no World array.
 		var again: PackedInt32Array = view.get(field)
 		assert_int(again[0]).override_failure_message(String(field)).is_equal(table[0])
 		assert_int(table[0]).is_equal(before[0] + 1000)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_max_hp)).is_equal(max_hp)
-	# The holder is the match's, so the views of this World now share the writes above; the view of
-	# another match, made from its own World, holds that World's tables.
-	var other: World = StrikeWorlds.world()
-	var fresh: PlayerView = PlayerView.of(other, 1)
-	assert_array(Array(fresh.type_max_hp)).is_equal(Array(other.type_max_hp))
-	assert_array(Array(fresh.type_armour)).is_equal(Array(other.type_armour))
-	assert_array(Array(fresh.type_sight)).is_equal(Array(other.type_sight))
-	assert_array(Array(fresh.type_faction)).is_equal(Array(other.type_faction))
-	assert_array(Array(fresh.type_strike_kind)).is_equal(Array(other.type_strike_kind))
-	assert_array(Array(fresh.type_strike_radius)).is_equal(Array(other.type_strike_radius))
-	assert_array(Array(fresh.type_charge_ticks)).is_equal(Array(other.type_charge_ticks))
+	var fresh: PlayerView = PlayerView.of(world, 1)
+	assert_array(Array(fresh.type_max_hp)).is_equal(Array(world.type_max_hp))
+	assert_array(Array(fresh.type_armour)).is_equal(Array(world.type_armour))
+	assert_array(Array(fresh.type_sight)).is_equal(Array(world.type_sight))
+	assert_array(Array(fresh.type_faction)).is_equal(Array(world.type_faction))
+	assert_array(Array(fresh.type_strike_kind)).is_equal(Array(world.type_strike_kind))
+	assert_array(Array(fresh.type_strike_radius)).is_equal(Array(world.type_strike_radius))
+	assert_array(Array(fresh.type_charge_ticks)).is_equal(Array(world.type_charge_ticks))
 	assert_int(fresh.type_range.size()).is_equal(types)
 	assert_int(fresh.type_min_range.size()).is_equal(types)
 	assert_int(fresh.type_vs_armour.size()).is_equal(types * PlayerView.ARMOUR_CLASSES)
