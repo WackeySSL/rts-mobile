@@ -524,26 +524,37 @@ func _take_rows(world: World) -> void:
 	var block: int = (player - 1) * cells
 	var width: int = cols * MILLI_PER_TILE
 	var height: int = lines * MILLI_PER_TILE
+	# `width` and `height` are multiples of 1000, so half of each is exact.
+	var half_width: int = width / 2
+	var half_height: int = height / 2
 	var owners: PackedInt32Array = _owner
 	var xs: PackedInt32Array = _pos_x
 	var ys: PackedInt32Array = _pos_y
 	var count: int = _ids.size()
 	var shown: PackedByteArray = PackedByteArray()
 	shown.resize(count)
+	# The lists are filled by index into arrays of the table's size and cut to their length last: an
+	# index write is cheaper than an `append` call, and a hidden row writes nothing (`shown` starts
+	# at `_HIDDEN`, 0).
 	var own: PackedInt32Array = PackedInt32Array()
 	var seen: PackedInt32Array = PackedInt32Array()
+	own.resize(count)
+	seen.resize(count)
+	var owned: int = 0
+	var seen_count: int = 0
 	for row: int in count:
 		if owners[row] == player:
-			own.append(row)
+			own[owned] = row
+			owned += 1
 			shown[row] = _OWN
 			continue
 		var is_seen: bool = sees_all
 		if not is_seen:
 			var px: int = xs[row]
 			var py: int = ys[row]
-			if px * 2 > width and px % MILLI_PER_TILE == 0:
+			if px > half_width and px % MILLI_PER_TILE == 0:
 				px -= 1
-			if py * 2 > height and py % MILLI_PER_TILE == 0:
+			if py > half_height and py % MILLI_PER_TILE == 0:
 				py -= 1
 			# `clampi` written out: this loop runs once a row of the World, on every think.
 			var cell_col: int = px / MILLI_PER_TILE
@@ -558,8 +569,11 @@ func _take_rows(world: World) -> void:
 				cell_line = lines - 1
 			is_seen = visible[block + cell_line * cols + cell_col] > 0
 		if is_seen:
-			seen.append(row)
+			seen[seen_count] = row
+			seen_count += 1
 			shown[row] = _SEEN
+	own.resize(owned)
+	seen.resize(seen_count)
 	_public = [
 		_ids.duplicate(),
 		_owner.duplicate(),
