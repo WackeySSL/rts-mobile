@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
-## The one pass of `PlayerView._take_rows` against a plain reference pass (plan row P198c). On random
-## Worlds with a real fog, rows on tile borders and rows off the map, for every player (the neutral
-## 0 and one past the fog's players see all), the two lists, the level of each row (own, seen,
-## hidden, as the getters answer it) and the seven columns are exactly what a row-by-row reading of
-## the World gives. The reference is written for clarity: it owns a row when the owner is the
-## player, and sees another owner's row by `Targeting.sees`, the rule that the pass inlines.
+## The one pass of `PlayerView._take_rows` against a plain reference pass (plan row P198c). On
+## random Worlds with a real fog, rows on tile borders and rows off the map, for every player (the
+## neutral 0 and one past the fog's players see all), the two lists, the level of each row (own,
+## seen, hidden, as the getters answer it) and the seven columns are exactly what a row-by-row
+## reading of the World gives. The reference is written for clarity: it owns a row when the owner
+## is the player, and sees another owner's row by `Targeting.sees`, the rule that the pass inlines.
 
 const TargetingWorlds: GDScript = preload("res://tests/sim/support/targeting_worlds.gd")
 const ViewWorlds: GDScript = preload("res://tests/sim/support/view_worlds.gd")
