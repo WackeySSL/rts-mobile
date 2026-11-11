@@ -13,8 +13,23 @@ const BUILDING_FIELDS: Array[String] = [
 const STRIKE_FIELDS: Array[String] = [
 	"strike_kind", "charge_ticks", "strike_radius", "strike_delay", "strike_ticks", "strike_weapon"
 ]
-const TAB_HINT: String = "None:-1,Structures:0,Infantry:1,Vehicles:2"
-const STRIKE_HINT: String = "None:0,Rupture:1,Blackout:2"
+## What P231 added after them (ADR 0036 section 2, ADR 0037 section 2): the air and repair-role
+## fields of UnitDef and the pads of BuildingDef (pinned in test_defs_air).
+const AIR_FIELDS: Array[String] = [
+	"low_flying",
+	"ammo",
+	"rearm_ticks",
+	"repair_classes",
+	"repair_hp",
+	"repair_period_ticks",
+	"repair_cost_percent",
+	"repair_reach_milli",
+	"repair_slots",
+	"repair_seek_milli",
+]
+const PAD_FIELDS: Array[String] = ["pads", "pad_offsets"]
+const TAB_HINT: String = "None:-1,Structures:0,Infantry:1,Vehicles:2,Flight:3,Research:4"
+const STRIKE_HINT: String = "None:0,Rupture:1,Blackout:2,Reveal:3"
 
 
 func test_unit_def_defaults_are_not_buildable_and_not_a_harvester() -> void:
@@ -27,7 +42,9 @@ func test_unit_def_defaults_are_not_buildable_and_not_a_harvester() -> void:
 func test_unit_def_gains_exactly_its_five_fields_and_they_are_stored() -> void:
 	var plain: Array[String] = _own_fields(Resource.new(), UnitDef.new())
 	assert_bool(plain.has("type_id")).is_true()  # The Phase 2 fields are still there.
-	assert_array(plain.slice(plain.size() - UNIT_FIELDS.size())).is_equal(UNIT_FIELDS)
+	assert_array(plain.slice(plain.size() - UNIT_FIELDS.size() - AIR_FIELDS.size())).is_equal(
+		UNIT_FIELDS + AIR_FIELDS
+	)
 	var types: Dictionary[String, int] = {}
 	for info: Dictionary in UnitDef.new().get_property_list():
 		types[String(info["name"])] = int(info["type"])
@@ -54,7 +71,7 @@ func test_building_def_is_a_unit_def_with_a_one_tile_footprint_and_nothing_else_
 
 func test_building_def_adds_exactly_its_twelve_fields_to_a_unit_def() -> void:
 	assert_array(_own_fields(UnitDef.new(), BuildingDef.new())).is_equal(
-		BUILDING_FIELDS + STRIKE_FIELDS
+		BUILDING_FIELDS + STRIKE_FIELDS + PAD_FIELDS
 	)
 	var types: Dictionary[String, int] = {}
 	for info: Dictionary in BuildingDef.new().get_property_list():
