@@ -222,17 +222,17 @@ after P198c showed no measurable phone gain (P26bo, section 4); balance shifts a
 **What this note supersedes**, each place changing no other text; the accepted text stays as
 written and as dated, and this note and `OpponentAi` are what holds:
 - section 2's heading and bullets above: period 5, three slots, the slot formula with
-  `think_offset`, "slot 0, 1, 2" and the dummy's offset formula `think_offset = posmod(-(think_tick +
-  p - 2), 5)`, and "as a side effect no two players think on the same tick" (true for players 1 and
-  2 only; players 3 and 4 share ticks with 1 and 2, below);
+  `think_offset`, "slot 0, 1, 2" and the dummy's offset formula `think_offset = posmod(-(think_tick
+  + p - 2), 5)`, and "as a side effect no two players think on the same tick" (true for players 1
+  and 2 only; players 3 and 4 share ticks with 1 and 2, below);
 - section 4's "the two AIs think on 6 of every 15 ticks" (now 10: each AI thinks on 5);
 - section 6's "`think_period` (5 in these files)" (3; `think_tick` stays 6, read as the residue of
   player 1);
 - the Consequences' "spread over three ticks of fifteen" (five);
 - ADR 0020's status note of 2026-11-06 (period 5, three slots), which gets a pointer here;
 - the P26bf status note's and the P26bf note's "production counts the economy's QUEUEs of the same
-  think" and "Production in the ECONOMY slot counts the economy's unit QUEUEs of the same think": the
-  economy's QUEUEs are in the view production reads 3 ticks later, and `out` holds none of them;
+  think" and "Production in the ECONOMY slot counts the economy's unit QUEUEs of the same think":
+  the economy's QUEUEs are in the view production reads 3 ticks later, and `out` holds none of them;
 - section 4's "Commands: at most `commands_per_think_max` per think" (one budget a round for ECONOMY
   and PRODUCTION; ARMY and INTEL each have their own, REFRESH sends nothing);
 - the P26bf note's "the ARMY slot's two passes ... the slot's `work` stays 3" (the two passes are
@@ -243,44 +243,45 @@ written and as dated, and this note and `OpponentAi` are what holds:
   ARMY slot one think later).
 
 *Design* (written before the code):
-- **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless. ECONOMY
-  runs `AiEconomy`; PRODUCTION `AiProduction`; REFRESH `AiIntel.refresh`; ARMY `AiArmy`; INTEL
-  `AiIntel.run` then `AiStrikes`. The cyclic order of the managers is the one of the three slots (intel
-  run and strikes, economy, production, refresh, army), so the gaps change: the refresh and the army
-  are 3 ticks apart, not in one think, and production reads the view of its own slot, 3 ticks after
-  the economy's, with the economy's QUEUEs already taken from the credits. Every manager still runs once per 15 ticks, none slower, so
-  `reaction_ticks` and the placement spiral's resume across thinks mean what they did.
+- **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless.
+  ECONOMY runs `AiEconomy`; PRODUCTION `AiProduction`; REFRESH `AiIntel.refresh`; ARMY `AiArmy`;
+  INTEL `AiIntel.run` then `AiStrikes`. The cyclic order of the managers is the one of the three
+  slots (intel run and strikes, economy, production, refresh, army), so the gaps change: the refresh
+  and the army are 3 ticks apart, not in one think, and production reads the view of its own slot, 3
+  ticks after the economy's, with the economy's QUEUEs already taken from the credits. Every manager
+  still runs once per 15 ticks, none slower, so `reaction_ticks` and the placement spiral's resume
+  across thinks mean what they did.
 - **Cost per slot** (CI microseconds after P198's step 1, view about 45 in every slot): ECONOMY 37 +
   45, PRODUCTION 18 + 45, REFRESH 63 + 45, ARMY 100 + 45, INTEL (intel run 30, strikes 13) 43 + 45.
   The ARMY slot is no longer the sum of view, refresh and army (208) but view and army (145), and it
   alone sets the p95: the other four slots are 63 to 108.
-- **Checkpoint.** A checkpoint hashes in the step that starts at `tick % 15 == 14`, and 14 mod 3 is 2,
-  so a think may fall on residues 0 and 1 only: two lanes. Player p takes lane `(p - 1) % 2`, residue
-  `(think_tick + lane) % 3` with `think_tick` 6 kept in the data (6 mod 3 is lane 0's residue; the
-  formula is no longer the dummy's, because that one would put player 3 on residue 2). Player 1 thinks
-  on ticks 0, 3, 6 ..., player 2 on 1, 4, 7 ...: **no two players share a tick in a 1v1**, and neither
-  hits residue 2. A data test pins players 1 to 4 on residues 0 and 1.
+- **Checkpoint.** A checkpoint hashes in the step that starts at `tick % 15 == 14`, and 14 mod 3 is
+  2, so a think may fall on residues 0 and 1 only: two lanes. Player p takes lane `(p - 1) % 2`,
+  residue `(think_tick + lane) % 3` with `think_tick` 6 kept in the data (6 mod 3 is lane 0's
+  residue; the formula is no longer the dummy's, because that one would put player 3 on residue 2).
+  Player 1 thinks on ticks 0, 3, 6 ..., player 2 on 1, 4, 7 ...: **no two players share a tick in a
+  1v1**, and neither hits residue 2. A data test pins players 1 to 4 on residues 0 and 1.
 - **Three and four players.** Player 3 shares player 1's ticks and player 4 player 2's (only two
   residues are free), and a later lane runs its slots two places on (`slot_shift` 2): two players on
   one tick always run different slots, never ARMY with ARMY or REFRESH with ARMY, and the driver's
   rule (ascending player order, one fresh view each) is unchanged. The worst shared tick adds one
-  ECONOMY-class slot to the ARMY slot of the other; a 3 to 4 player match is not in the perf workload
-  (two AIs) and has no gate of its own.
+  ECONOMY-class slot to the ARMY slot of the other; a 3 to 4 player match is not in the perf
+  workload (two AIs) and has no gate of its own.
 - **The credit reserve is the hold alone.** P26be's rule (`reserve_credits` = what the economy
   queued plus what it keeps credits for) was built for one shared view. Production now reads the
   credits 3 ticks later, after the sim took the queued costs, so `AiEconomy` sets the reserve to
   the hold only (`test_opponent_cadence` pins it; `test_ai_economy`'s expectations follow). Left as
   it was, production would have underspent by the economy's queued costs every round.
 - **The command budget stays one per old slot.** `commands_per_think_max` is Easy's "slow hands"
-  (section 6: 3). With economy and production in separate thinks a reset on every think would
-  have let Easy send 3 + 3 a round, loosening it. So ECONOMY resets `memory.commands_left` and
-  PRODUCTION spends what is left; ARMY and INTEL (with the strikes) each reset their own; REFRESH
-  sends nothing. This was restored for fidelity to the three-slot rule, not for balance: Easy's
-  results are the same per-mille with or without it, so it does not bind in real Easy play. The state
-  is an `AiMemory` int, deterministic. `test_opponent_cadence` pins at
-  most 3 across the ECONOMY and PRODUCTION thinks of one round for Easy.
-- **What the managers read from an earlier slot.** The army reads the sector map, the own and seen id
-  lists and the home squad's hp that REFRESH wrote 3 ticks before (INTEL and the strikes 6, the
+  (section 6: 3). With economy and production in separate thinks a reset on every think would have
+  let Easy send 3 + 3 a round, loosening it. So ECONOMY resets `memory.commands_left` and PRODUCTION
+  spends what is left; ARMY and INTEL (with the strikes) each reset their own; REFRESH sends
+  nothing. This was restored for fidelity to the three-slot rule, not for balance: Easy's results
+  are the same per-mille with or without it, so it does not bind in real Easy play. The state is an
+  `AiMemory` int, deterministic. `test_opponent_cadence` pins at most 3 across the ECONOMY and
+  PRODUCTION thinks of one round for Easy.
+- **What the managers read from an earlier slot.** The army reads the sector map, the own and seen
+  id lists and the home squad's hp that REFRESH wrote 3 ticks before (INTEL and the strikes 6, the
   economy and production 9 and 12; they read memory and the fresh view as before). Only the army
   acts on a unit id, so `AiArmy._order` now leaves out an id that is no longer in its view and sends
   no order for none, counting them in `army.stale_ids`: without that, an order for a lone unit that
@@ -290,44 +291,51 @@ written and as dated, and this note and `OpponentAi` are what holds:
   and the ARMY think after it, where only the unit cap does.
 - **The view.** It cannot be built "only as far as the slot needs" inside this row: what a slot can
   skip (the ghosts, the warned strikes, the weapon tables) is small, and the ARMY slot, which sets
-  the p95, reads the type tables, the weapon tables, the rally points and the rows. What would cut it
-  is sharing the static type tables between the views of a match (a COW assignment, not 22
+  the p95, reads the type tables, the weapon tables, the rally points and the rows. What would cut
+  it is sharing the static type tables between the views of a match (a COW assignment, not 22
   `duplicate()` calls and the weapon loop), which needs a holder that is not a `PlayerView`
   (`PlayerView` is at its 20 public methods). Not done here.
 - **Size.** `AiArmy.gd` is at the 1000-line limit: the helper `_armed` moved to `AiIntel.is_armed`
   to make room for the live-id filter. The split the P198 note asks for (the reads into a helper) is
   still the next row's.
 
-*Result* (P198b; head fad02dad, merged with main d35f1b40):
-- **Timing, CI `WATCH ai think` p95**, paired in the same hour: 246 us (run 43045011708, head
-  0b6084de) against main's 396 us (run 43045016861): 0.62; and, on the head of the review round,
-  290 us (run 43054120432) against main's 456 us (run 43054125881): 0.64. **The 110 us target is out
-  of reach with five slots alone.** Per-slot means (`WATCH ai slots`, view included), run 43045011708:
-  ECONOMY 91, PRODUCTION 79, REFRESH 116, ARMY 200, INTEL 100 us; run 43054120432: 107, 90, 144,
-  232, 117 us. The view alone is about 80 to 90 us on those runners (PRODUCTION's own work is 18),
-  so even a free ARMY slot would sit near 90 us. An earlier pair on 7de1679b (run 42895222413 against
-  P198's 42895227397) read 391 against 503 us, 0.78, on a slower runner.
+*Result* (P198b; head e4cbe5b6, merged with main d35f1b40):
+- **Timing, CI `WATCH ai think` p95**, branch against main in the same hour: 246 us (run
+  43045011708) against 396 us (43045016861), 0.62; 290 us (43054120432) against 456 us
+  (43054125881), 0.64; and on the head of review round 2, 410 us (43064793477) against 457 us
+  (43064799547), 0.90, on a runner where the branch's slots read slow (per-slot means 157, 134,
+  200, 348, 174 us). A runner's p95 moves by tens of per cent between VMs, so the ratio is 0.6 to
+  0.9. **The 110 us target is out of reach with five slots alone.** Per-slot means (`WATCH ai
+  slots`, view included), run 43045011708: ECONOMY 91, PRODUCTION 79, REFRESH 116, ARMY 200, INTEL
+  100 us; run 43054120432: 107, 90, 144, 232, 117 us. The view alone is about 80 to 90 us on the
+  faster runners, so even a free ARMY slot would sit near 90 us. An earlier pair on 7de1679b (run
+  42895222413 against 42895227397) read 391 against 503 us, 0.78.
 - **What is left.** The ARMY slot (about 100 to 140 us of its own) could split in two (six slots
   on period 3, or ten on period 2); the view's copies are P198c's, closed unmerged for no measured
   phone gain (P26bo, section 4). Neither is planned here.
-- **Balance** (custom runs on head fad02dad; P198's values in brackets): cross 100, run 43054082646:
-  faction 535/465 (500/500), seat 585/415 (560); fossil-mirror 40, 43054089718: seat 463 (513);
-  renew-mirror 40, 43054096135: seat 375 (463), outside 400-600; easy,normal seeds 1-40,
-  43054101495: Easy 475 (437.5), and seeds 41-80, 43054108074: 463, so 469 over 80 against about 450;
-  hard,normal 40, 43054114462: Hard 113 (information only). Cross, the mirrors and Easy equal the
-  runs on 7de1679b per-mille, so the shared budget and the dead-id fixes moved no Normal or Easy
-  decision on these seeds (Hard's did move: 138 to 113). 40-match samples have a standard error
-  near 80 per-mille; the renew-mirror seat was 538 on seeds 41-80 (run 42898523369, head
-  7de1679b). Medians are 14.0-14.8 minutes with 5 to 43 timeouts (cross: 43 of 100): the
-  15-minute target is not met; no tuning was done here (Phase 4b).
+- **Balance** (custom runs on head e4cbe5b6, which has the reserve fix; P198's values in brackets):
+  cross 100, run 43064759310: faction 580/420 (500/500), seat 500/500 (560); fossil-mirror 40,
+  43064765778: seat 750 (513), outside 400-600, and seeds 41-80, 43065367406: 700; renew-mirror 40,
+  43064771806: seat 413 (463); easy,normal seeds 1-40, 43064777335: Easy 463, and seeds 41-80,
+  43064782175: 400, so 431 over 80 (437.5 for 40 on P198); hard,normal 40, 43064787986: Hard 100
+  (information only). Before the reserve fix (head fad02dad) the same sets read cross 535/465 and
+  585/415, fossil-mirror 463, renew-mirror 375, Easy 475 and 463, Hard 113. **The fossil-mirror seat
+  at 750 and 700 over two samples of 40 is a shift of more than a reshuffle** (a 40-match sample
+  has a standard error near 80 per-mille): the reserve fix changed decisions, so Phase 4b's balance
+  run should look at seat 1 in the Derrick mirror first. No tuning was done here.
+- **Match length.** Normal runs: medians 14.1 to 14.9 minutes with 9 to 46 timeouts (cross: 46 of
+  100); Easy against Normal 13.1 and 13.4 minutes (7 and 8 timeouts); Hard against Normal 13.5
+  (6). The 15-minute target is not met at any level.
 - **Goldens.** The `perf_ai` state hash moves `cbe70a78d01ee7c1` -> `f54da93bf8d7b60d` and did not
-  move again in the review round; no test or data file pins it (only these notes and the perf card
-  print it). The perf arena and base arena goldens and `TICK_0_SEED_1` are untouched. Pins moved:
-  the scout's move tick 3745 -> 3747 (`test_ai_production_scout.gd`), the Perf AI card's thinks in
-  30 ticks 12 -> 20. The perf workload's contact ticks moved (scouts 42 and 43, enemy unit seen 66
-  and 67, waves 309 and 310, player 1's strike tests from 117, its first enemy building seen at
-  801; was 40/36, 50/61, 305, 740, 115), documented in `test_ai_perf.gd`. On the phone the card
-  counts about 5/3 of P198's `ai_thinks` and prints the hash `f54da93bf8d7b60d`, which is no fault.
+  move again with the reserve fix or the review rounds; `flow_full_ticks` on `perf_ai` is 298 (main
+  267). No test or data file pins the hash. The perf arena and base arena goldens and
+  `TICK_0_SEED_1` are untouched. Pins moved: the scout's move tick 3745 -> 3732
+  (`test_ai_production_scout.gd`: 3747 with five slots alone, 3732 with the reserve fix), the Perf
+  AI card's thinks in 30 ticks 12 -> 20. The perf workload's contact ticks moved (scouts 42 and 43,
+  enemy unit seen 66 and 67, waves 309 and 310, player 1's strike tests from 117, its first enemy
+  building seen at 801; was 40/36, 50/61, 305, 740, 115), documented in `test_ai_perf.gd`. On the
+  phone the card counts about 5/3 of P198's `ai_thinks` and prints the hash `f54da93bf8d7b60d`,
+  which is no fault.
 
 ### 3. State: `AiMemory`, ints only, ids never rows
 - `AiMemory` (`game/ai/AiMemory.gd`) holds everything a controller keeps between thinks, as ints
