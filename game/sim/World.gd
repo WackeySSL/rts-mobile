@@ -326,8 +326,8 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"construct_refund_percent",
 	&"construction_sites_max"
 ]
-## The members that are not state (ADR 0013 section 3), skipped by the coverage test, the hash and
-## the reachability walk: `kernels` (the native kernels or null), `type_tables` (the views' cache).
+## Not state (ADR 0013 section 3): `kernels` (native kernels or null) and `type_tables` (the views'
+## cache). The coverage test and the hash skip both, the reachability walk only `kernels`.
 const NON_STATE_MEMBERS: Array[StringName] = [&"kernels", &"type_tables"]
 var tick: int = 0
 ## Map size in milli-tiles.

@@ -127,7 +127,7 @@ dropped within its think: held across a tick it would make the World fork a whol
 next write.
 
 Note (2026-11-11, P198c; changes no accepted text above): the view's `type_*` tables are still
-copies, and nothing aliases. The first view of a World builds a `TypeTables` holder (copies of the
+copies, and nothing aliases. The first view of a prepared World builds a `TypeTables` holder (copies of the
 World's tables, the weapon-derived ones included) and keeps it in `World.type_tables`, a non-state
 member (`NON_STATE_MEMBERS`, never hashed); every view of that World takes a `duplicate()` of each
 of its arrays, so the World's copies and the weapon derivation are made once a match, not once a

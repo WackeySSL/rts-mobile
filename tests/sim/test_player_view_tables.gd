@@ -138,10 +138,13 @@ func test_a_write_to_the_world_after_the_first_view_reaches_no_table_of_the_hold
 			continue
 		var before: int = held.get(field)[0]
 		table[0] = before + 9
+		assert_int(world.get("type_" + field)[0]).override_failure_message(field).is_equal(
+			before + 9
+		)
 		assert_int(held.get(field)[0]).override_failure_message(field).is_equal(before)
 		checked += 1
-	# The 18 tables of the World that the holder copies as they are; the three weapon tables are
-	# derived, the ids are not an int table.
+	# The 20 tables of the World that the holder copies as they are (the 18 and the two docks); the
+	# three weapon tables are derived, the ids are not an int table.
 	assert_int(checked).is_equal(Check.fields().size() - 4)
 
 

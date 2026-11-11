@@ -14,7 +14,8 @@ test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is
 `UNHASHED_SCALARS` entry, so the choice of implementation is never hashed.
 
 Status note (2026-11-11, P198c): `World.NON_STATE_MEMBERS` has a second entry, `type_tables`, so
-"the one member" above reads "one of two". It is the cache of the player views' type tables: pure
+"the one member" above reads "one of two", and "P38j2's reachability walk skip" holds only for
+`kernels`: the walk walks the holder's fields. It is the cache of the player views' type tables: pure
 data (a `RefCounted` of packed arrays and type ids, no Node, no Resource), never hashed, never read
 by the sim, filled by the first `PlayerView.of` of a prepared World, which runs inside the tick
 job. That differs from `kernels`, which is attached before the job: the write is made by sim code,

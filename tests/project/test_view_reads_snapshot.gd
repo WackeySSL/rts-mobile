@@ -26,8 +26,9 @@ extends GdUnitTestSuite
 ##   inside a file passes; a column handed to another function is read there unseen; and
 ##   `VIEW_PRIVATE` matches only a variable named `view`, so `v._hp[row] = 0` passes;
 ## - for the type tables (plan row P198c, an extra guard: the view's tables are copies): a receiver
-##   not named `view` (`v.type_cost[0] = 5`), `view.set("type_cost", ...)`, and a table taken into a
-##   local and written there. None of these can reach the holder or the World.
+##   not named `view` (`v.type_cost[0] = 5`), `view.set("type_cost", ...)`, an index nested two deep
+##   (`view.type_cost[a[b[c]]] = 5`), and a table taken into a local and written there. None of
+##   these can reach the holder or the World.
 ## Every rule has fixtures that it must flag and fixtures that it must leave alone, so a scan that
 ## matches nothing fails, and the folders must still hold the scripts the scan is about. game/ai
 ## may be empty, so its rules also run through the function that scans a folder on two fixture

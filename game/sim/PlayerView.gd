@@ -5,8 +5,8 @@ extends RefCounted
 ## other reader play by the player's rules. `PlayerView.of(world, player)` makes one, once per
 ## think, inside the tick job (ADR 0020 section 3: on the worker in WORKER, inline in SYNC). It
 ## reads the World and writes only `world.type_tables`, a non-state cache that the first view of a
-## World fills, so call it only on the thread that owns the World (the tick job's); it keeps no
-## reference to the World.
+## prepared World fills, so call it only on the thread that owns the World (the tick job's); it
+## keeps no reference to the World.
 ##
 ## What it gives:
 ## - `own_rows`: the rows with `owner == player`, and `seen_rows`: the rows of any other owner (an

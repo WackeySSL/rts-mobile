@@ -1050,11 +1050,11 @@ Note (2026-11-11, P198c; changes no accepted text above): `World.NON_STATE_MEMBE
 entries. Beside `kernels` it lists `type_tables`, the cache of the player views' type tables (a
 `RefCounted` of packed arrays and type ids, pure data). It is not state: never hashed, never read
 by a phase or a kernel, and null in a new World. Unlike `kernels`, which is attached before any
-job (§3's "callers attach both after `prepare()`"), the holder is written by sim code: the first
-`PlayerView.of` of a prepared World, inside the tick job, on the thread that owns the World. The
-sentences of this ADR that call `kernels` "the one member" (the ADR 0007 list above, §6's
-reachability walk and the plan list of §14) read "one of two"; the reachability walk walks the
-holder's fields, as it does any member but `kernels`.
+job, the holder is written by sim code: the first `PlayerView.of` of a prepared World, inside the
+tick job, on the thread that owns the World. §3's sentences that "skip exactly the members of that
+list" and "a test pins that it holds only `kernels`", and the ADR 0007 list above that calls
+`kernels` "the one member", now read "one of two"; the coverage test and the hash skip both, and
+the reachability walk skips only `kernels` and walks the holder's fields.
 
 ### 4. Determinism rules for C++
 - **Language and types:**

@@ -197,6 +197,9 @@ func test_nothing_reachable_from_a_job_is_a_node_or_a_resource() -> void:
 	assert_array(_engine_objects(job, visited)).is_empty()
 	assert_bool(visited.has(job.snapshot.fog.get_instance_id())).is_true()
 	assert_bool(visited.has(dummy.get_instance_id())).is_true()
+	# The run's think made the views' holder, and the walk reaches it like any member (plan row P198c,
+	# unlike the kernels).
+	assert_bool(visited.has(job.world.type_tables.get_instance_id())).is_true()
 	var holding: SimProbe = HoldingProbe.new()
 	step.target = holding
 	var node: Node = auto_free(Node.new())
