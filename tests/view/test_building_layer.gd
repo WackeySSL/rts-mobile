@@ -154,7 +154,7 @@ func test_the_cast_shadow_is_a_sprite_of_the_decal_layer_at_the_footprint_centre
 		assert_int(decals.z_index + shadow.z_index).is_less(WorldSort.Z_SORT)
 
 
-func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void:
+func test_every_sprite_of_a_building_is_on_its_atlas_page_in_white() -> void:
 	_open()
 	var atlas: IsoAtlas = _layer.world_sort.atlas
 	var sprites: Array[Node] = _layer.world_sort.find_children("*", "Sprite2D", true, false)

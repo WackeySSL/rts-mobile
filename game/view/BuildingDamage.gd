@@ -140,7 +140,6 @@ static func dress_ghost(
 		child.centered = false
 		parent.add_child(child)
 		parent.move_child(child, 0)
-	child.texture = sort.atlas.texture()
 	var texels: Vector2 = sort.texels(sheet, PARTS[k - 1])
 	var want: Vector2 = Vector2(WorldSort.ART_SCALE / texels.x, WorldSort.ART_SCALE / texels.y)
 	child.scale = Vector2(want.x / parent.scale.x, want.y / parent.scale.y)

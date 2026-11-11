@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## the `reader` seam, pins the colour step (each player's triad exactly where the key triad was and
 ## nothing else changed), the gutters, the sharing of a frame no key colour touches and the player
 ## index of `region`; crafted canvases pin the scale rule (`fit_scale`) end to end; the real
-## blockouts of both factions pin the page (one, at most 4096 a side, for two players) and that the
+## blockouts of both factions pin the pages (two, at most 4096 a side, for two players) and that the
 ## engine rasterises every frame to the size the rule counts on. Read from `image()` (a bake with
 ## `keep_image`), never the texture. The push_error paths (a player without valid art, a frame
 ## without text) are not tested on purpose: they print "ERROR:" even when a test asserts them,
@@ -45,9 +45,16 @@ func test_a_triad_that_holds_other_key_colours_is_baked_in_one_pass() -> void:
 func test_a_gutter_round_each_region_repeats_its_edge_and_no_two_cells_touch() -> void:
 	var sheet: IsoSheetDef = _sheet(&"crafted", &"fossil", SMALL)
 	var atlas: IsoAtlas = _bake([sheet], [_art(KEY, KEY), _art(KEY, ARKTISK)])
-	var image: Image = atlas.image()
-	var rects: Array[Rect2i] = _rects(atlas, [&"hull", &"shadow"], 2)
-	assert_array(rects).has_size(3)  # Two hulls and the one shadow they share.
+	# The hulls are on the sorted page, the one shadow they share on the other (P237).
+	var hulls: Array[Rect2i] = _rects(atlas, [&"hull"], 2)
+	var shadows: Array[Rect2i] = _rects(atlas, [&"shadow"], 2)
+	assert_array(hulls).has_size(2)
+	assert_array(shadows).has_size(1)
+	_assert_gutters(atlas.image(IsoAtlas.PAGE_SORTED), hulls)
+	_assert_gutters(atlas.image(IsoAtlas.PAGE_UNSORTED), shadows)
+
+
+func _assert_gutters(image: Image, rects: Array[Rect2i]) -> void:
 	for rect: Rect2i in rects:
 		for y: int in rect.size.y:
 			var left: Color = image.get_pixel(rect.position.x, rect.position.y + y)
@@ -134,6 +141,35 @@ func test_a_bake_that_would_not_fit_is_rasterised_at_the_lowered_scale() -> void
 	)
 
 
+## P237: one scale fits both pages, the lowest of each page's `fit_scale`. A tall page 2 (64 shadow
+## frames of 1000 x 500 px, 16 shelves of 504 at scale 1) beside a tiny page 1 alone lowers it.
+func test_a_page_two_that_does_not_fit_lowers_the_scale_for_both_pages() -> void:
+	var sheet: IsoSheetDef = _sheet(&"tall", &"fossil", SMALL)
+	sheet.counts = PackedInt32Array([1, 16])
+	sheet.frames = PackedInt32Array([1, 4])
+	sheet.sizes = PackedInt32Array([SMALL.x, SMALL.y, 1000, 500])
+	var players: Array[IsoPlayerArt] = [_art(KEY, KEY)]
+	var big: String = HEAD % [1000, 500] + _block(0, 1000, 500, "#000000") + "</svg>"
+	var small: Callable = _reader(SMALL)
+	var reader: Callable = func(path: String) -> String:
+		return big if path.contains("_shadow") else small.call(path)
+	var shadows: Array[Vector2i] = []
+	shadows.resize(64)
+	shadows.fill(Vector2i(1000, 500))
+	var want: float = IsoAtlas.fit_scale(shadows, 1.0)
+	assert_float(want).is_less(1.0)
+	assert_int(IsoAtlas.planned_page([sheet], players, 1.0, reader).y).is_less(64)  # Page 1 is tiny.
+	var atlas: IsoAtlas = IsoAtlas.build([sheet], players, 1.0, true, reader)
+	assert_float(atlas.bake_scale()).is_equal(want)
+	for page: int in IsoAtlas.PAGES:
+		assert_int(atlas.page_px(page).x).is_equal(IsoAtlas.PAGE_MAX_PX)
+		assert_int(atlas.page_px(page).y).is_between(1, IsoAtlas.PAGE_MAX_PX)
+	# The planner and the bake agree page by page at the scale the bake kept.
+	for page: int in IsoAtlas.PAGES:
+		var planned: Vector2i = IsoAtlas.planned_page([sheet], players, want, reader, page)
+		assert_that(planned).is_equal(atlas.page_px(page))
+
+
 func test_the_real_blockouts_of_both_factions_with_two_players_fit_one_page_at_full_scale() -> void:
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
 	var atlas: IsoAtlas = IsoAtlas.build(sheets, _real_players(), 1.0)
@@ -148,6 +184,10 @@ func test_the_real_blockouts_of_both_factions_with_two_players_fit_one_page_at_f
 	# The page budget test (P137) plans the page from the files: it is this page, canvases of every
 	# size packed in the order of the bake.
 	assert_that(IsoAtlas.planned_page(sheets, _real_players(), 1.0)).is_equal(atlas.page_px())
+	var planned2: Vector2i = IsoAtlas.planned_page(
+		sheets, _real_players(), 1.0, Callable(), IsoAtlas.PAGE_UNSORTED
+	)
+	assert_that(planned2).is_equal(atlas.page_px(IsoAtlas.PAGE_UNSORTED))
 
 
 func test_every_real_frame_comes_out_of_the_engine_at_the_size_the_rule_counts() -> void:

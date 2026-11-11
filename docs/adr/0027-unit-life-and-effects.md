@@ -234,6 +234,9 @@ layers' worst moment inside §9's 0.56 ms (ADR 0029 §10).
   match (Derrick League and Lumen Accord in their key triads) at `bake_scale` 1.0 is at most
   **3584** px tall (7/8 of 4096), leaving 512 rows for later types; mirror matches are smaller. A set
   that would pass it is cut (fewer frames, tighter crops) before any bake scale drops.
+  (Note of 2026-11-11, P237: the cast shadows now lie on a second page with the same budget, and
+  this page is the sorted world's; ADR 0036 section 15's P237 note says how, and that Michael allows
+  3840 on the sorted page only when a row needs it.)
   `tests/view/test_iso_atlas_budget.gd` (P137) computes the page with `IsoAtlas.page_size` (no
   raster) from the committed sheets and pins it.
 - **Estimates** (two replicas of `RuntimeAtlas.layout` over the committed sheets, the architect's

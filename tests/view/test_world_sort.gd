@@ -188,6 +188,26 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 	assert_object(_layer.rig(0).get_node("Ring").texture).is_not_same(atlas.texture())
 
 
+## P237: a rig that leaves the sort lets go of the match's pages (a pool keeps rigs across matches,
+## and each page is up to 16 MiB of texture); a Ring has its own texture and keeps it.
+func test_releasing_a_rig_drops_its_atlas_textures_and_keeps_a_rings_own() -> void:
+	_open_units(2)
+	_layer.set_selected(PackedInt32Array([1]))
+	var rig: Node2D = _layer.rig(0)
+	var hull: Sprite2D = rig.get_node("Hull")
+	var shadow: Sprite2D = rig.get_node("Shadow")
+	var ring: Sprite2D = rig.get_node("Ring")
+	assert_object(hull.texture).is_not_null()
+	assert_object(shadow.texture).is_not_null()
+	assert_object(ring.texture).is_not_null()
+	_layer.world_sort.release(rig)
+	auto_free(rig)
+	assert_object(rig.get_parent()).is_null()
+	assert_object(hull.texture).is_null()
+	assert_object(shadow.texture).is_null()
+	assert_object(ring.texture).is_not_null()
+
+
 func test_players_take_their_factions_from_the_scenario_and_the_triads_by_their_number() -> void:
 	var scenario: ScenarioDef = _scenario(
 		[_spawn(1, "light_tank", 5, 5), _spawn(2, "renew_tank", 8, 5)]

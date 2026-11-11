@@ -3,7 +3,7 @@ extends "res://game/view/art_gallery_iso.gd"
 ## page's list, buttons and title, over the building models only. One building at a time stands on
 ## the iso ground with a tank of its faction in front of it and one behind it, at the camera zoom
 ## levels 1, 0.75 and 1.5 in the two triads Signal and Arktisk, the scene on grass left and on sand
-## right. It draws what a match draws: the frames come from the one atlas `IsoAtlas` bakes for the
+## right. It draws what a match draws: the frames come from the atlas `IsoAtlas` bakes for the
 ## two players (the faction's key triad replaced by the player's), a sprite is a region of it at
 ## `0.5 / bake_scale` times the zoom, the rigs are children of one y-sorted node (a thing south of
 ## another is drawn after it, as `WorldSort` does) and the cast shadows lie under every body. A
@@ -338,7 +338,7 @@ func _damage_sprite(sheet: IsoSheetDef, stage: int, zoom: float, triad: int) -> 
 	var part: StringName = BuildingDamage.PARTS[stage - 1]
 	var sprite: Sprite2D = Sprite2D.new()
 	sprite.name = "Damage"
-	sprite.texture = atlas.texture()
+	sprite.texture = atlas.texture_for(part)
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.region_rect = Rect2(atlas.region(sheet.art_id, part, -1, triad))
@@ -356,7 +356,7 @@ func _anim_sprite(sheet: IsoSheetDef, zoom: float, triad: int) -> Sprite2D:
 	play.frame_ms = maxi(sheet.anim_ms, 1)
 	var sprite: Sprite2D = Sprite2D.new()
 	sprite.name = "Anim"
-	sprite.texture = atlas.texture()
+	sprite.texture = atlas.texture_for(&"anim")
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.region_rect = Rect2(atlas.frame_region(play.base, 0))

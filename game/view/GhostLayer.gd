@@ -231,19 +231,21 @@ func _sprite() -> void:
 	var ground: Vector2i = placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
 	var fade: Color = Color(1.0, 1.0, 1.0, SPRITE_ALPHA)
-	var texture: Texture2D = world_sort.atlas.texture()
+	var atlas: IsoAtlas = world_sort.atlas
 	draw_texture_rect_region(
-		texture, Rect2(centre - _sprite_origin, _sprite_size), Rect2(_region), fade
+		atlas.texture_for(PART), Rect2(centre - _sprite_origin, _sprite_size), Rect2(_region), fade
 	)
 	last_parts = 1
 	if _anim.has_area():
 		last_anim = Rect2(centre + _anim_origin, _anim_size)
 		last_anim_tint = fade
-		draw_texture_rect_region(texture, last_anim, Rect2(_anim), last_anim_tint)
+		draw_texture_rect_region(
+			atlas.texture_for(BuildingAnims.ANIM), last_anim, Rect2(_anim), last_anim_tint
+		)
 		last_parts += 1
 	if _head.has_area():
 		last_head = Rect2(centre + _head_origin, _head_size)
-		draw_texture_rect_region(texture, last_head, Rect2(_head), fade)
+		draw_texture_rect_region(atlas.texture_for(HEAD), last_head, Rect2(_head), fade)
 		last_parts += 1
 
 

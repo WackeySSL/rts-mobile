@@ -15,6 +15,7 @@ extends GdUnitTestSuite
 ## (the layers keep one counter for all of them).
 ## What is judged is counted, never timed. The numbers are printed as `LIFE BUDGET` lines.
 
+const SortedTextures: GDScript = preload("res://tests/view/support/sorted_textures.gd")
 const PATH: String = "res://data/scenarios/perf_bases.tres"
 const LIFE_DATA: String = "res://data/life_settings.tres"
 const SEED: int = 42
@@ -753,23 +754,10 @@ func _rings_of(air: AirFx) -> Array[FxRing]:
 
 func _collect_textures() -> void:
 	var atlas: Texture2D = _sort.atlas.texture()
-	var sorted: Array[Texture2D] = _textures_under(_sort)
+	var sorted: Array[Texture2D] = SortedTextures.textures(_sort)
 	_sorted_textures = sorted.size()
 	_sorted_is_atlas = sorted.size() == 1 and sorted[0] == atlas
 	_atlas_unchanged = atlas == _start_texture
-
-
-# The distinct textures of the sprites under `node`, the rigs' Shadow (z 2, page 2, P237) left out.
-func _textures_under(node: Node) -> Array[Texture2D]:
-	var found: Array[Texture2D] = []
-	var stack: Array[Node] = [node]
-	while not stack.is_empty():
-		var at: Node = stack.pop_back()
-		var sprite: Sprite2D = at as Sprite2D if at.name != &"Shadow" else null
-		if sprite != null and sprite.texture != null and not found.has(sprite.texture):
-			found.append(sprite.texture)
-		stack.append_array(at.get_children())
-	return found
 
 
 # Compares what each layer planned in the last frame with what the engine painted.

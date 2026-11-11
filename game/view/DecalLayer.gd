@@ -2,8 +2,8 @@ class_name DecalLayer
 extends Node2D
 ## The ground decals at z 1 (ADR 0023 section 2, plan P115): under the unit shadows (2), the rings
 ## (3) and the fog (4), so a unit standing in front of a building stands on its cast shadow. It
-## holds the building shadows, sprites that are regions of the match's one atlas (so all of them are
-## one draw call), and the craters that destroyed buildings leave, sprites of one texture
+## holds the building shadows, sprites that are regions of the atlas's unsorted page (P237; all of
+## them are one draw call), and the craters that destroyed buildings leave, sprites of one texture
 ## (`crater_texture`, `decals/crater.svg`, a second call and only once a crater exists). The
 ## shadows are children of `Shadows` and the craters of `Craters`, in that order, so a shadow that
 ## is added later never splits the craters' batch. The layer draws nothing itself and does no work

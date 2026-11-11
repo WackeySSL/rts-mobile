@@ -214,11 +214,23 @@ func frame_count_at(base_index: int) -> int:
 	return atlas.frame_count_at(base_index)
 
 
+## Takes `node` out of the sort and lets go of the match's pages: its sprites drawing from the atlas
+## lose their texture (a Ring keeps its own), so a pooled rig holds no old page; a take dresses it.
+func release(node: Node2D) -> void:
+	remove_child(node)
+	for child: Node in node.get_children():
+		var sprite: Sprite2D = child as Sprite2D
+		if sprite != null and sprite.texture != null and sprite.texture in atlas.textures():
+			sprite.texture = null
+
+
 ## Shows frame `frame` of the group at `base_index` (`base_of`) on `sprite`: a table read, so a
-## frame change builds no string. The sprite hides when there is no such frame.
+## frame change builds no string, and the texture of the region's page. The sprite hides when
+## there is no such frame.
 func show_base(sprite: Sprite2D, base_index: int, frame: int) -> void:
 	var region: Rect2i = atlas.frame_region(base_index, frame)
 	sprite.visible = region.has_area()
+	sprite.texture = atlas.texture_at(base_index)  # The region's own page.
 	sprite.region_rect = Rect2(region)
 
 

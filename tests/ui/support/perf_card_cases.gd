@@ -22,6 +22,7 @@ static func hud_of(case_name: String) -> PerfHud:
 	hud.os_name = "Linux"
 	hud.atlas_bake_ms = 12.5
 	hud.atlas_page = "4096x2258 at 1.000"
+	hud.atlas_page2 = "4096x1040"
 	match case_name:
 		"passing_units":
 			Rig.run(hud)

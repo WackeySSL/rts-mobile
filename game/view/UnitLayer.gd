@@ -570,7 +570,7 @@ func _drop_rig(old: int) -> void:
 ## has stays, hidden, for the next unit of the rig.
 func _pool_rig(node: Node2D) -> void:
 	var rig: Rig = node as Rig
-	world_sort.remove_child(rig)
+	world_sort.release(rig)
 	if rig.damage != null and rig.damage.queued:
 		rig.damage.queued = false
 		_damage_queue.erase(rig)

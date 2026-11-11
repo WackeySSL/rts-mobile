@@ -63,7 +63,6 @@ static func dress_ghost(
 		child.region_enabled = true
 		child.centered = false
 		parent.add_child(child)
-	child.texture = world_sort.atlas.texture()  # Every dress: a re-bake makes a new page.
 	# The parent is dressed for its body, so the child's scale undoes that and sizes by its own
 	# raster: its drawn size and top-left are the live Anim's (`WorldSort.dress`).
 	var texels: Vector2 = world_sort.texels(sheet, ANIM)

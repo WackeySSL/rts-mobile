@@ -195,7 +195,9 @@ func test_the_report_carries_the_atlas_bake_and_the_card_the_draw_call_forecast(
 		+ "worst, plus the HUD (no verdict)"
 	)
 	assert_array(Array(lines)).contains([forecast])
-	assert_array(Array(lines)).contains(["atlas bake 0.0 ms | page none (no verdict)"])
+	assert_array(Array(lines)).contains(
+		["atlas bake 0.0 ms | page none | page 2 none (no verdict)"]
+	)
 	var other: Node2D = _open(PerfHud.ARENA_UNITS)
 	for line: String in other.hud.card_lines():
 		assert_str(line).not_contains("forecast")

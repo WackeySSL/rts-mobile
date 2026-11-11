@@ -507,7 +507,7 @@ func _dress_patch(entry: Entry, sheet: IsoSheetDef) -> void:
 	entry.patch.visible = false
 	entry.body_base = world_sort.base_of(sheet, BODY, NO_FRAME, entry.owner_id)
 	entry.patch_bases = BuildingDamage.bases_of(world_sort, sheet, entry.owner_id)
-	entry.patch.texture = world_sort.atlas.texture()
+	entry.patch.texture = world_sort.atlas.texture_for(BuildingDamage.PARTS[0])
 	entry.patch.region_enabled = true
 	entry.patch.centered = false
 	entry.node.add_child(entry.patch)

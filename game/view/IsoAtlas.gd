@@ -2,9 +2,10 @@ class_name IsoAtlas
 extends RefCounted
 ## The per-match atlas of the sorted world (ADR 0023 sections 2 and 5, plan P113): the frames of
 ## every player's faction, recoloured to the player's triad (`IsoPlayerArt.recolour`), rasterised
-## with `Image.load_svg_from_string` and packed by `RuntimeAtlas` into one page (`texture()`), so
-## every sorted sprite batches into one call. `build` is for the main thread at match start.
-## The page is 4096 px wide and at most 4096 tall, cells packed tallest raster first (canvas height
+## with `Image.load_svg_from_string` and packed by `RuntimeAtlas` into pages (`texture(page)`): the
+## y-sorted world is page `PAGE_SORTED`, one texture, so every sorted sprite batches into one call.
+## `build` is for the main thread at match start.
+## Each page is 4096 px wide and at most 4096 tall, cells packed tallest raster first (canvas height
 ## times `part_factor`). The bake scale is the largest `bake_scale * SCALE_STEP ^ k` (k = 0, 1,
 ## 2, ...), not below MIN_SCALE, whose page fits; the engine rounds a raster per axis, so a
 ## sprite draws its region at `0.5 / texels` per axis, `texels = raster_size / canvas` (see
@@ -13,12 +14,14 @@ extends RefCounted
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
 ## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
-## Two pages (P237, ADR 0036 section 15): the y-sorted world's frames lie on page 1, so that every
-## sorted sprite batches into one call; the cast shadows (part `shadow`, units' and buildings')
-## are drawn in unsorted layers (the decal layer at z 1, the rigs' shadow children at z 2) and lie
-## on page 2, which frees about 900 rows of page 1 and later takes the flyers. `page_of(part)` says
-## which page a part is on and `texture_for(part)` gives its texture; `texture()` is page 1. Region
-## keys do not change, and one scale fits both pages.
+## Two pages (P237, ADR 0036 section 15): the y-sorted world's frames lie on `PAGE_SORTED`; the cast
+## shadows (part `shadow`, units' and buildings') are drawn in unsorted layers (the decal layer at
+## z 1, the rigs' shadow children at z 2) and lie on `PAGE_UNSORTED`, which frees about 900 rows of
+## the sorted page and later takes the flyers. A region lies in the texels of ITS page: take the
+## texture with `texture_at(base)` (what `WorldSort.show_base` does) or `texture_for(part)`, never
+## `texture()` for a part that may be on the other page. `page_of(part)` is keyed by the part only
+## (P243 re-keys it for the flyers' hulls). Region keys do not change, and one scale fits both pages
+## (the lower of the two `fit_scale` answers).
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
 ## packed table, a group of `frame_count` entries per (player, art id, part, direction), frame 0
@@ -34,8 +37,12 @@ const MIN_SCALE: float = 0.25
 ## path and not through the index; the file may not exist yet (row P160), and then there is none.
 const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
-## The parts of page 2 (unsorted layers only; ADR 0036 section 15's page rule).
-const PAGE_TWO_PARTS: Array[StringName] = [&"shadow"]
+## The pages: the y-sorted world's, and the unsorted layers' (ADR 0036 section 15's page rule).
+const PAGE_SORTED: int = 0
+const PAGE_UNSORTED: int = 1
+const PAGES: int = 2
+## The parts of `PAGE_UNSORTED`: only parts drawn outside the y-sort.
+const UNSORTED_PARTS: Array[StringName] = [&"shadow"]
 
 ## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
 ## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
@@ -58,8 +65,8 @@ const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
 static var _keys_built: int = 0
 
-var _atlas: RuntimeAtlas = RuntimeAtlas.new()
-var _atlas2: RuntimeAtlas = RuntimeAtlas.new()  ## Page 2: the shadows.
+var _pages: Array[RuntimeAtlas] = [RuntimeAtlas.new(), RuntimeAtlas.new()]  ## By page.
+var _table_page: PackedByteArray = PackedByteArray()  ## Parallel to `_table`: the entry's page.
 var _index: Dictionary[StringName, int] = {}  ## Frame group key -> its base in `_table`.
 var _table: Array[Rect2i] = []  ## One region per baked frame, a group's frames side by side.
 var _spans: PackedInt32Array = PackedInt32Array()  ## Parallel to `_table`: frames at a base.
@@ -112,48 +119,34 @@ static func build(
 	var started: int = Time.get_ticks_usec()
 	var atlas: IsoAtlas = IsoAtlas.new()
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var order: Array[StringName] = _packing_order(plan, 0)
-	var order2: Array[StringName] = _packing_order(plan, 1)
-	var scale: float = _fit_pages(plan, order, order2, bake_scale)
-	if scale > 0.0 and not order.is_empty():
-		atlas._bake(plan, order, order2, scale, keep_image)
+	var scale: float = _fit_pages(plan, bake_scale)
+	if scale > 0.0 and not _packing_order(plan, PAGE_SORTED).is_empty():
+		atlas._bake(plan, scale, keep_image)
 	atlas._bake_usec = Time.get_ticks_usec() - started
 	return atlas
 
 
-## The page a bake of `sheets` for `players` takes at `scale` itself (no scale is lowered), found
-## from the frame files alone: nothing is rasterised. Damage patches count at `part_factor`.
-## `tests/view/test_iso_atlas_budget.gd` pins
-## the page budget of ADR 0027 section 4 with it.
+## Page `page` (`PAGE_SORTED` unless given) of a bake of `sheets` for `players` at `scale` itself
+## (no scale is lowered), found from the frame files alone: nothing is rasterised. Damage patches
+## count at `part_factor`. (0, 0) for a page past the first that has no frame.
+## `tests/view/test_iso_atlas_budget.gd` pins the page budget of ADR 0027 section 4 with it.
 static func planned_page(
 	sheets: Array[IsoSheetDef],
 	players: Array[IsoPlayerArt],
 	scale: float,
-	reader: Callable = Callable()
+	reader: Callable = Callable(),
+	page: int = PAGE_SORTED
 ) -> Vector2i:
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var order: Array[StringName] = _packing_order(plan, 0)
-	return page_size(_canvases(plan, order), scale, _factors(plan, order))
-
-
-## The size of page 2 (the shadows) a bake would take at `scale`, as `planned_page` finds it;
-## (0, 0) when no frame is a page 2 frame.
-static func planned_page2(
-	sheets: Array[IsoSheetDef],
-	players: Array[IsoPlayerArt],
-	scale: float,
-	reader: Callable = Callable()
-) -> Vector2i:
-	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var order: Array[StringName] = _packing_order(plan, 1)
-	if order.is_empty():
+	var order: Array[StringName] = _packing_order(plan, page)
+	if order.is_empty() and page != PAGE_SORTED:
 		return Vector2i.ZERO
 	return page_size(_canvases(plan, order), scale, _factors(plan, order))
 
 
-## Which page `part` is on: 1 for the parts of `PAGE_TWO_PARTS`, else 0 (the sorted world's page).
+## Which page `part` is on: `PAGE_UNSORTED` for the parts of `UNSORTED_PARTS`, else `PAGE_SORTED`.
 static func page_of(part: StringName) -> int:
-	return 1 if part in PAGE_TWO_PARTS else 0
+	return PAGE_UNSORTED if part in UNSORTED_PARTS else PAGE_SORTED
 
 
 ## The texels per px of the 2x art a canvas of `canvas` px really has at `scale`, per axis: the
@@ -184,24 +177,14 @@ static func page_size(
 	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places)
 
 
-## The scale a bake gets when both pages must fit (page 2 may be empty).
-static func _fit_pages(
-	plan: Plan, order: Array[StringName], order2: Array[StringName], requested: float
-) -> float:
-	var canvases: Array[Vector2i] = _canvases(plan, order)
-	var factors: Array[float] = _factors(plan, order)
-	var canvases2: Array[Vector2i] = _canvases(plan, order2)
-	var factors2: Array[float] = _factors(plan, order2)
+## The scale a bake gets when every page must fit: the lowest of `fit_scale` of each page (an empty
+## page fits at the requested scale), so the rule the tests pin is the one a match runs.
+static func _fit_pages(plan: Plan, requested: float) -> float:
 	var scale: float = requested
-	while scale >= MIN_SCALE:
-		var page: Vector2i = page_size(canvases, scale, factors)
-		var page2: Vector2i = (
-			page_size(canvases2, scale, factors2) if not order2.is_empty() else Vector2i.ZERO
-		)
-		if page.y <= PAGE_MAX_PX and page2.y <= PAGE_MAX_PX and page.x <= PAGE_MAX_PX:
-			return scale
-		scale *= SCALE_STEP
-	return 0.0
+	for page: int in PAGES:
+		var order: Array[StringName] = _packing_order(plan, page)
+		scale = minf(scale, fit_scale(_canvases(plan, order), requested, _factors(plan, order)))
+	return scale
 
 
 ## The scale a bake of `canvases` gets when `requested`: see the class comment. 0.0 when none.
@@ -270,30 +253,37 @@ func frame_region(base_index: int, frame: int) -> Rect2i:
 	return _table[base_index + frame]
 
 
-## The one page every region lies on; null for an empty atlas.
-func texture() -> ImageTexture:
-	return _atlas.texture()
+## The texture of page `page` (`PAGE_SORTED` unless given); null for a page with no frame. A region
+## lies in the texels of its own page: see the class comment.
+func texture(page: int = PAGE_SORTED) -> ImageTexture:
+	return _pages[page].texture()
 
 
-## The texture of the page `part` is on (`page_of`): page 2's for a shadow; null when it has none.
+## The texture of the page `part` is on (`page_of`).
 func texture_for(part: StringName) -> ImageTexture:
-	return _atlas2.texture() if page_of(part) == 1 else _atlas.texture()
+	return texture(page_of(part))
 
 
-## Page 2's size in texels, (0, 0) for none.
-func page2_px() -> Vector2i:
-	var page: ImageTexture = _atlas2.texture()
-	return Vector2i(page.get_size()) if page != null else Vector2i.ZERO
+## The texture of the page the frame group at `base_index` (see `base`) is on: what a sprite showing
+## a region of that group must draw from. The sorted page's for no base (-1).
+func texture_at(base_index: int) -> ImageTexture:
+	if base_index < 0 or base_index >= _table_page.size():
+		return texture()
+	return texture(_table_page[base_index])
 
 
-## The CPU-side page 2, for tests: empty unless `build` got `keep_image`.
-func image2() -> Image:
-	return _atlas2.image()
+## The textures of the pages that have a frame.
+func textures() -> Array[Texture2D]:
+	var found: Array[Texture2D] = []
+	for page: int in PAGES:
+		if texture(page) != null:
+			found.append(texture(page))
+	return found
 
 
-## The CPU-side page, for tests: empty unless `build` got `keep_image`.
-func image() -> Image:
-	return _atlas.image()
+## The CPU-side page `page`, for tests: empty unless `build` got `keep_image`.
+func image(page: int = PAGE_SORTED) -> Image:
+	return _pages[page].image()
 
 
 ## The scale the match got, 0.0 for an empty atlas.
@@ -301,10 +291,10 @@ func bake_scale() -> float:
 	return _scale
 
 
-## The size of the page in texels, (0, 0) for an empty atlas.
-func page_px() -> Vector2i:
-	var page: ImageTexture = _atlas.texture()
-	return Vector2i(page.get_size()) if page != null else Vector2i.ZERO
+## The size of page `page` in texels, (0, 0) for a page with no frame.
+func page_px(page: int = PAGE_SORTED) -> Vector2i:
+	var texture_of: ImageTexture = texture(page)
+	return Vector2i(texture_of.get_size()) if texture_of != null else Vector2i.ZERO
 
 
 ## How long `build` took, ms (the phone card's `atlas_bake_ms`).
@@ -313,14 +303,23 @@ func bake_ms() -> float:
 
 
 func is_empty() -> bool:
-	return _atlas.texture() == null
+	return texture() == null
 
 
-## The bake in one console line, `atlas_bake_ms 312.4 | page 4096x2682 at 1.000` (the perf arena
-## prints the same shape), for the log of CI and the console of the web preview.
+## The pages' sizes as one text, `4096x2659 + 4096x1040`: the pages in order, those with a frame
+## only. "none" for an empty atlas.
+func pages_text() -> String:
+	var sizes: Array[String] = []
+	for page: int in PAGES:
+		if texture(page) != null:
+			sizes.append("%dx%d" % [page_px(page).x, page_px(page).y])
+	return " + ".join(sizes) if not sizes.is_empty() else "none"
+
+
+## The bake in one console line, `atlas_bake_ms 312.4 | page 4096x2659 + 4096x1040 at 1.000` (the
+## perf arena prints the same shape), for the log of CI and the console of the web preview.
 func report() -> String:
-	var page: Vector2i = page_px()
-	var shape: String = "none" if is_empty() else "%dx%d at %.3f" % [page.x, page.y, _scale]
+	var shape: String = "none" if is_empty() else "%s at %.3f" % [pages_text(), _scale]
 	return "atlas_bake_ms %.1f | page %s" % [bake_ms(), shape]
 
 
@@ -415,16 +414,16 @@ static func _canvases(plan: Plan, order: Array[StringName]) -> Array[Vector2i]:
 	return canvases
 
 
-## Rasterises the slots in `order` at `scale` and packs them; every frame gets its slot's region.
-func _bake(
-	plan: Plan, order: Array[StringName], order2: Array[StringName], scale: float, keep_image: bool
-) -> void:
-	_atlas = RuntimeAtlas.build_images(_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image)
-	if not order2.is_empty():
-		_atlas2 = RuntimeAtlas.build_images(
-			_rasterise(plan, order2, scale), PAGE_MAX_PX, keep_image
-		)
-	_scale = scale if _atlas.texture() != null else 0.0
+## Rasterises every page's slots at `scale` and packs them; every frame gets its slot's region and
+## its page (`_table_page`).
+func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
+	for page: int in PAGES:
+		var order: Array[StringName] = _packing_order(plan, page)
+		if not order.is_empty():
+			_pages[page] = RuntimeAtlas.build_images(
+				_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image
+			)
+	_scale = scale if texture() != null else 0.0
 	var at: int = 0
 	for group: int in plan.keys.size():
 		var span: int = plan.spans[group]
@@ -432,13 +431,14 @@ func _bake(
 		for frame: int in span:
 			_spans.append(span if frame == 0 else 0)
 			var slot: StringName = plan.slots[at + frame]
-			var on_two: bool = slot != &"" and page_of(plan.parts[slot]) == 1
-			_table.append((_atlas2 if on_two else _atlas).region(slot))
+			var page: int = page_of(plan.parts[slot]) if slot != &"" else PAGE_SORTED
+			_table_page.append(page)
+			_table.append(_pages[page].region(slot))
 		at += span
 
 
 ## The slots of `order` rasterised at `scale` (a failed one is null, which RuntimeAtlas reports).
-func _rasterise(
+static func _rasterise(
 	plan: Plan, order: Array[StringName], scale: float
 ) -> Dictionary[StringName, Image]:
 	var images: Dictionary[StringName, Image] = {}
