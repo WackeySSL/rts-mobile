@@ -172,7 +172,7 @@ const HUD_GLYPHS: Array[String] = [
 const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
 ## The build menu's own glyphs (ADR 0024): the Build button's, and the pin, pinned and not.
 const MENU_GLYPHS: Array[String] = ["glyph_menu_open", "glyph_pin", "glyph_pin_off"]
-## The Hud page's rows (STYLE.md, "Icons and glyphs"): the sixteen glyphs of ADR 0025, 0026 and 0037, by
+## The Hud page's rows (STYLE.md): the sixteen glyphs of ADR 0025, 0026 and 0037 by
 ## the part of the HUD that uses them, then the existing glyphs they stand beside, at 48 dp.
 const HUD_V2_ROWS: Dictionary[String, Array] = {
 	"Bar":
