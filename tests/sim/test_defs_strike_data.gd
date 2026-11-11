@@ -203,8 +203,8 @@ func test_the_strike_checks_report_each_weapon_stat_that_breaks_a_rule() -> void
 ## One text per broken rule of the strike data of `faction` for its `kind`: exactly one building in
 ## the roster with a strike kind of 1 or 2 (a Reveal building is none), of that kind; the numbers
 ## the kind reads above 0 (the charge and the radius, and a rupture's warning and weapon, or a
-## blackout's length) and the others 0 (a blackout holds no weapon); and the weapon with damage, four percents in 0..200, no
-## range, minimum range or flight, and an id equal to its file name.
+## blackout's length) and the others 0 (a blackout holds no weapon); and the weapon with damage,
+## four percents in 0..200, no range, minimum range or flight, and an id equal to its file name.
 func _strike_problems(faction: FactionDef, kind: int) -> PackedStringArray:
 	var problems: PackedStringArray = PackedStringArray()
 	var found: Array[BuildingDef] = []
