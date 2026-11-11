@@ -132,7 +132,8 @@ func test_the_refusals_are_dropped_and_counted() -> void:
 	_assert_dropped("site", Command.sell(1, Rig.OWN_SITE))
 	_assert_dropped("enemy site", Command.sell(1, Rig.ENEMY_SITE))
 	_assert_dropped("unit", Command.sell(1, 8))
-	_assert_dropped("enemy building", Command.sell(1, _id(made, "renew_hq", 2)))
+	_assert_dropped("enemy building", Command.sell(1, _id(made, "power_plant", 2)))
+	_assert_dropped("enemy headquarters", Command.sell(1, _id(made, "renew_hq", 2)))
 	_assert_dropped("unknown id", Command.sell(1, 999))
 	var payload: Command = Command.sell(1, plant)
 	payload.payload = PackedInt32Array([1])
@@ -155,7 +156,10 @@ func test_a_sale_keeps_the_queue_and_its_paid_items() -> void:
 	var credits: int = made.credits[1]
 	Rig.step(made, [Command.sell(1, _id(made, "barracks"))])
 	assert_int(made.queue_count[1 * World.TABS + tab]).is_equal(count)
-	assert_int(made.credits[1]).is_greater_equal(credits)  # No refund of the queue.
+	# Exactly the building's refund: nothing for the queue.
+	assert_int(made.credits[1]).is_equal(
+		credits + _expected(made, "barracks", _full_barracks_hp(made))
+	)
 
 
 ## The last production building: HQ gone, then the barracks sold, and the player loses.
@@ -228,7 +232,8 @@ func test_a_sold_turret_fires_nothing_in_its_last_tick() -> void:
 			break
 	assert_int(first_shot).is_greater(-1)
 	var sold: World = _turret_world()
-	SiteRig.run(sold, first_shot)
+	SiteRig.run(sold, first_shot - sold.tick)
+	assert_int(sold.tick).is_equal(first_shot)
 	SiteRig.step(sold, [Command.sell(1, turret)])
 	assert_int(_shots_of(sold, turret)).is_equal(0)
 	assert_int(sold.index_of(turret)).is_equal(-1)
@@ -272,9 +277,15 @@ func test_a_sale_and_a_mend_replay_to_the_same_hash() -> void:
 		at = Command.decode(data, at, decoded)
 		types.append(decoded.type)
 	assert_array(types).is_equal([Command.Type.MEND, Command.Type.SELL])
+	assert_int(made.dropped_commands).is_equal(0)
+	assert_int(made.hp[made.index_of(plant)]).is_greater(
+		SiteRig.hit_points(made, "power_plant") - 100
+	)
 	assert_int(made.index_of(barracks)).is_equal(-1)
 	var played: World = _replay_world()
-	assert_int(Replay.play(loop.replay, played, made.tick)).is_equal(Replay.PLAY_MATCHED)
+	assert_int(Replay.play(Replay.from_bytes(loop.replay.to_bytes()), played, made.tick)).is_equal(
+		Replay.PLAY_MATCHED
+	)
 	assert_int(played.state_hash()).is_equal(loop.replay.final_hash)
 
 

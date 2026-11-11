@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## Building repair (plan row P271, ADR 0037 section 4): `MEND` 18 writes an own complete building's
 ## `cargo` (1 on, 0 off). `Mend.run` (ECONOMY, after `Harvest.run`) lets a mending building act on
-## ticks with `(tick + id) % mend_period_ticks == 0`: it gains `mend_hp` (not above the maximum)
-## and the owner pays `ceil(price * gained * mend_cost_percent / (100 * max hp))`; with too few
-## credits nothing happens; at full health the switch goes back to 0; a Headquarters (price 0)
-## mends free; a blackout does not stop it. The rule ints default to inert, `PlayerView.row_mend`
-## is own-only, and the state hash of the perf arena does not move. Worlds are `site_rig.gd`'s (ids
-## 1 to 5: the Headquarters, a Power Plant, a Barracks and a Refinery of player 1, an enemy
-## Headquarters); the rule ints are set by hand to ADR 0037's starting values.
+## ticks with `(tick + id) % mend_period_ticks == 0`: it gains `mend_hp` (not above the maximum) and
+## the owner pays `ceil(price * gained * mend_cost_percent / (100 * max hp))`; with too few credits
+## nothing happens; at full health the switch goes back to 0; a Headquarters (price 0) mends free; a
+## blackout does not stop it. The rule ints default to inert, `PlayerView.row_mend` is own-only, and
+## the state hash of the perf_bases arena does not move. Worlds are `site_rig.gd`'s (ids 1 to 5: the
+## Headquarters, a Power Plant, a Barracks and a Refinery of player 1, an enemy Headquarters); the
+## rule ints are set by hand to ADR 0037's starting values.
 
 const SiteRig: GDScript = preload("res://tests/sim/support/site_rig.gd")
 const BASES_PATH: String = "res://data/scenarios/perf_bases.tres"

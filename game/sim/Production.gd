@@ -257,9 +257,8 @@ static func apply_cancel_build(world: World, command: Command) -> bool:
 
 ## SELL (ADR 0037 section 3): `target_id` is an own complete building with a price (the
 ## Headquarters, price 0, a site and a unit are refused), and the payload is empty. The owner gets
-## `sale_refund` at once, the row's hit points fall to
-## 0 and `build_left` becomes `SOLD`; REMOVE takes the row out in the same tick. Queues and rally
-## points are per player and tab and stay.
+## `sale_refund` at once, the row's hit points fall to 0 and `build_left` becomes `SOLD`; REMOVE
+## takes the row out in the same tick. Queues and rally points are per player and tab and stay.
 @warning_ignore("integer_division")
 static func apply_sell(world: World, command: Command) -> bool:
 	var row: int = world.index_of(command.target_id)

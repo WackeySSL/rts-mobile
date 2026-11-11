@@ -50,13 +50,13 @@ static func run(world: World) -> void:
 	for row: int in world.building_rows:
 		if switches[row] != 1 or pending[row] != 0 or (tick + ids[row]) % period != 0:
 			continue
+		var player: int = owners[row]
+		if player < defeated.size() and defeated[player] != 0:
+			continue
 		var top: int = maxi(tops[types[row]], 1)
 		var gained: int = mini(gain, top - life[row])
 		if gained <= 0:
 			switches[row] = 0
-			continue
-		var player: int = owners[row]
-		if player < defeated.size() and defeated[player] > 0:
 			continue
 		var cost: int = (costs[types[row]] * gained * percent + 100 * top - 1) / (100 * top)
 		if player < 1 or player >= credits.size() or credits[player] < cost:
