@@ -581,6 +581,12 @@ Note (2026-11-11, P26bo, the lead; Michael in chat the same day, "Luk P198c, og 
   over 80 matches against the band's 450) are accepted until Phase 4b's balance run tunes the
   numbers. The P26bn note's "P198b is not merged" no longer holds; P189c's ratchet follows P198b.
   It merges only after Michael's three Perf AI runs on its APK (the rule of P26bn's plan note).
+- **After its review round** (head 57b16065): ECONOMY and PRODUCTION share one command budget per
+  round, as the three slots had it, and the army skips members that died since REFRESH. The
+  balance runs on that code (cross, both mirrors, Easy over 80 matches) are per-mille the same as
+  before, Easy 469 included, so the five slots, not the budget, move Easy; only Hard moved (138 to
+  113, read, not judged). Paired timing: 290 us against main's 456 us (runs 43054120432 and
+  43054125881), 0.64.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
