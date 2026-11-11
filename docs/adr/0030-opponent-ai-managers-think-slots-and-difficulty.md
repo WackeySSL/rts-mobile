@@ -279,36 +279,36 @@ written and as dated, and this note and `OpponentAi` are what holds:
   to make room for the live-id filter. The split the P198 note asks for (the reads into a helper) is
   still the next row's.
 
-*Result* (P198b; head 7de1679b, merged with main a27803bd):
-- **Timing, CI `WATCH ai think` p95**, same hour, same tree but for this row: 391 us (run 42895222413,
-  branch `claude/p198b-exp-1`) against 503 us for P198 (run 42895227397; main a27803bd has P198's
-  tree): 0.78. **The 110 us target is out of reach with five slots alone.** Per-slot means (new
-  `WATCH ai slots` line, view included): ECONOMY 148, PRODUCTION 127, REFRESH 191, ARMY 320, INTEL 163
-  us. The view alone is about 100 us on that runner, above what P198's note estimated: PRODUCTION
-  (18 us of manager) costs 127. So even a free ARMY slot would sit at about 127 us.
-- **What the next lever costs.** (1) The view: 22 `duplicate()` calls and the weapon loop
-  dominate every slot. Aliasing the type tables is not allowed: GDScript packed arrays are shared by
-  reference, so a manager's write would reach the World (tried, `test_player_view_state` rejects it).
-  It needs a shared, read-only tables holder built once per match, handed to `PlayerView.of`: one new
-  class, a change to `of`, and its oracle tests (about 80 lines). (2) The ARMY slot (about 200 us of
-  its own): a split of `AiArmy` into two slots (threat and defence; wave and staging) on period 3
-  makes it six slots, or period 2 with ten. Both are plan rows of their own; (1) first, as it lowers
-  every slot.
-- **Balance** (custom runs on this head, seeds 1-100 or 1-40; P198 in brackets): cross 100, run
-  42895232851: faction 535/465 (500/500), seat 585/415 (560); fossil-mirror 40, 42895238001: seat 463
-  (513); renew-mirror 40, 42895243634: seat 375 (463), **outside 400-600**, and a second sample on
-  seeds 41-80, 42898523369: 538; easy,normal 40, 42895248764: Easy 475 (437.5), **above about 450**,
-  second sample on seeds 41-80, 42898528600: 463; hard,normal 40, 42895254425: Hard 138 (information
-  only). Pooled over 80 matches the renew-mirror seat is 456 and Easy 469. 40-match samples have a
-  standard error near 80 per-mille, so none of these moves is separable from the reshuffle of every
-  decision by a tick; Easy's 469 is the one to watch. Medians are 14.0-14.8 minutes with 6 to 15
-  timeouts of 40 (the flow cache full in 526-1337 ticks of the mirrors): the 15-minute target is not
-  met, as before this row for the mirrors; no tuning was done here.
-- **Goldens.** The `perf_ai` state hash moves `cbe70a78d01ee7c1` -> `f54da93bf8d7b60d` (decisions
-  shift by ticks); no test or data file pins it (only these notes and the perf card print it), so
-  nothing to re-pin. The perf arena and base arena goldens and `TICK_0_SEED_1` are untouched. Pins
-  moved: the scout's move tick 3745 -> 3747 (`test_ai_production_scout.gd`), the Perf AI card's
-  thinks in 30 ticks 12 -> 20.
+*Result* (P198b; head fad02dad, merged with main d35f1b40):
+- **Timing, CI `WATCH ai think` p95**, paired in the same hour: 246 us (run 43045011708, head
+  0b6084de) against main's 396 us (run 43045016861): 0.62; and, on the head of the review round,
+  290 us (run 43054120432) against main's 456 us (run 43054125881): 0.64. **The 110 us target is out
+  of reach with five slots alone.** Per-slot means (`WATCH ai slots`, view included), run 43045011708:
+  ECONOMY 91, PRODUCTION 79, REFRESH 116, ARMY 200, INTEL 100 us; run 43054120432: 107, 90, 144,
+  232, 117 us. The view alone is about 80 to 90 us on those runners (PRODUCTION's own work is 18),
+  so even a free ARMY slot would sit near 90 us. An earlier pair on 7de1679b (run 42895222413 against
+  P198's 42895227397) read 391 against 503 us, 0.78, on a slower runner.
+- **What is left.** The ARMY slot (about 100 to 140 us of its own) could split in two (six slots
+  on period 3, or ten on period 2); the view's copies are P198c's, closed unmerged for no measured
+  phone gain (P26bo, section 4). Neither is planned here.
+- **Balance** (custom runs on head fad02dad; P198's values in brackets): cross 100, run 43054082646:
+  faction 535/465 (500/500), seat 585/415 (560); fossil-mirror 40, 43054089718: seat 463 (513);
+  renew-mirror 40, 43054096135: seat 375 (463), outside 400-600; easy,normal seeds 1-40,
+  43054101495: Easy 475 (437.5), and seeds 41-80, 43054108074: 463, so 469 over 80 against about 450;
+  hard,normal 40, 43054114462: Hard 113 (information only). Cross, the mirrors and Easy equal the
+  runs on 7de1679b per-mille, so the shared budget and the dead-id fixes moved no Normal or Easy
+  decision on these seeds (Hard's did move: 138 to 113). 40-match samples have a standard error
+  near 80 per-mille; the renew-mirror seat was 538 on seeds 41-80 (run 42898523369, head
+  7de1679b). Medians are 14.0-14.8 minutes with 5 to 43 timeouts (cross: 43 of 100): the
+  15-minute target is not met; no tuning was done here (Phase 4b).
+- **Goldens.** The `perf_ai` state hash moves `cbe70a78d01ee7c1` -> `f54da93bf8d7b60d` and did not
+  move again in the review round; no test or data file pins it (only these notes and the perf card
+  print it). The perf arena and base arena goldens and `TICK_0_SEED_1` are untouched. Pins moved:
+  the scout's move tick 3745 -> 3747 (`test_ai_production_scout.gd`), the Perf AI card's thinks in
+  30 ticks 12 -> 20. The perf workload's contact ticks moved (scouts 42 and 43, enemy unit seen 66
+  and 67, waves 309 and 310, player 1's strike tests from 117, its first enemy building seen at
+  801; was 40/36, 50/61, 305, 740, 115), documented in `test_ai_perf.gd`. On the phone the card
+  counts about 5/3 of P198's `ai_thinks` and prints the hash `f54da93bf8d7b60d`, which is no fault.
 
 ### 3. State: `AiMemory`, ints only, ids never rows
 - `AiMemory` (`game/ai/AiMemory.gd`) holds everything a controller keeps between thinks, as ints
