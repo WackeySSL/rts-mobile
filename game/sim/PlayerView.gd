@@ -110,7 +110,7 @@ const _SEEN: int = 2
 ## The largest id a column of the World can hold (its ids are 32-bit ints, counted up from 1).
 const _MAX_ID: int = 0x7FFFFFFF
 ## The armour classes of `World.Armour` (a test pins them equal), the width of `type_vs_armour`.
-const ARMOUR_CLASSES: int = 4
+const ARMOUR_CLASSES: int = TypeTables.ARMOUR_CLASSES
 
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
@@ -386,63 +386,36 @@ func ghost_pos(record: int) -> Vector2i:
 	)
 
 
-## Copies of the World's type tables and type ids (a dozen entries each, so a caller that writes
-## one writes its own), the two rule caps and the weapon tables.
+## The type tables, the type ids and the dock offsets, from `TypeTables.of` (copies, so a caller
+## that writes one writes its own), and the two rule caps.
 func _take_tables(world: World) -> void:
-	type_cost = world.type_cost.duplicate()
-	type_tab = world.type_tab.duplicate()
-	type_requires = world.type_requires.duplicate()
-	type_produces = world.type_produces.duplicate()
-	type_foot_w = world.type_foot_w.duplicate()
-	type_foot_h = world.type_foot_h.duplicate()
-	type_speed = world.type_speed.duplicate()
-	type_weapon = world.type_weapon.duplicate()
-	type_harvest = world.type_harvest.duplicate()
-	type_power = world.type_power.duplicate()
-	type_build_ticks = world.type_build_ticks.duplicate()
-	_dock_x = world.type_dock_x.duplicate()
-	_dock_y = world.type_dock_y.duplicate()
-	_type_ids = world.type_ids.duplicate()
-	type_max_hp = world.type_max_hp.duplicate()
-	type_armour = world.type_armour.duplicate()
-	type_sight = world.type_sight.duplicate()
-	type_faction = world.type_faction.duplicate()
-	type_strike_kind = world.type_strike_kind.duplicate()
-	type_strike_radius = world.type_strike_radius.duplicate()
-	type_charge_ticks = world.type_charge_ticks.duplicate()
+	var tables: TypeTables = TypeTables.of(world)
+	type_cost = tables.cost
+	type_tab = tables.tab
+	type_requires = tables.requires
+	type_produces = tables.produces
+	type_foot_w = tables.foot_w
+	type_foot_h = tables.foot_h
+	type_speed = tables.speed
+	type_weapon = tables.weapon
+	type_harvest = tables.harvest
+	type_power = tables.power
+	type_build_ticks = tables.build_ticks
+	_dock_x = tables.dock_x
+	_dock_y = tables.dock_y
+	_type_ids = tables.ids
+	type_max_hp = tables.max_hp
+	type_armour = tables.armour
+	type_sight = tables.sight
+	type_faction = tables.faction
+	type_strike_kind = tables.strike_kind
+	type_strike_radius = tables.strike_radius
+	type_charge_ticks = tables.charge_ticks
+	type_range = tables.weapon_range
+	type_min_range = tables.weapon_min_range
+	type_vs_armour = tables.vs_armour
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
-	_take_weapon_tables(world)
-
-
-## `type_range`, `type_min_range` and `type_vs_armour`, read through each type's weapon.
-func _take_weapon_tables(world: World) -> void:
-	var weapons: PackedInt32Array = world.type_weapon
-	var ranges: PackedInt32Array = world.weapon_range
-	var min_ranges: PackedInt32Array = world.weapon_min_range
-	var percents: PackedInt32Array = world.weapon_vs_armour
-	var types: int = weapons.size()
-	var made_range: PackedInt32Array = PackedInt32Array()
-	var made_min: PackedInt32Array = PackedInt32Array()
-	var made_percent: PackedInt32Array = PackedInt32Array()
-	made_range.resize(types)
-	made_min.resize(types)
-	made_percent.resize(types * ARMOUR_CLASSES)
-	for type: int in types:
-		var weapon: int = weapons[type]
-		if weapon < 0 or weapon >= ranges.size():
-			continue
-		made_range[type] = ranges[weapon]
-		if weapon < min_ranges.size():
-			made_min[type] = min_ranges[weapon]
-		# `_entry` written out: the tables are rebuilt on every view.
-		var from: int = weapon * ARMOUR_CLASSES
-		var to: int = type * ARMOUR_CLASSES
-		for armour: int in mini(ARMOUR_CLASSES, percents.size() - from):
-			made_percent[to + armour] = percents[from + armour]
-	type_range = made_range
-	type_min_range = made_min
-	type_vs_armour = made_percent
 
 
 ## The pending ruptures: one entry for each player past 0 whose `strike_tick` is set.
