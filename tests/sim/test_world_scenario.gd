@@ -75,7 +75,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 
 func test_the_rules_come_from_the_scenario_else_the_defaults_and_size_the_fixed_arrays() -> void:
 	var fields: Array[String] = _rule_fields()
-	assert_int(fields.size()).is_equal(36)
+	assert_int(fields.size()).is_equal(40)
 	var defaults: RulesDef = RulesDef.new()
 	var rules: RulesDef = RulesDef.new()
 	for i: int in fields.size():

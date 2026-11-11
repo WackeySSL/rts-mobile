@@ -5,8 +5,9 @@ extends RefCounted
 ## tick that equals `tick`, in `compare` order. PLACE, QUEUE, CANCEL, RALLY and HARVEST (10-14) are
 ## the Phase 3 economy and production commands, SUPERWEAPON (15) fires a strike building (ADR 0023
 ## section 10), CANCEL_BUILD (16) cancels a construction site (ADR 0026 section 6) and SURRENDER
-## (20) is the first match-level one (ADR 0017 section 4); 17-19 and 21-29 stay reserved. Every
-## type without a branch in Sim.step is dropped as unknown.
+## (20) is the first match-level one (ADR 0017 section 4); SELL (17) and MEND (18) are the building
+## sale and repair (ADR 0037 sections 3 and 4); 19 and 21-29 stay reserved. Every type without a
+## branch in Sim.step is dropped as unknown.
 
 enum Type {
 	NONE = 0,
@@ -21,6 +22,8 @@ enum Type {
 	HARVEST = 14,
 	SUPERWEAPON = 15,
 	CANCEL_BUILD = 16,
+	SELL = 17,
+	MEND = 18,
 	SURRENDER = 20,
 }
 
@@ -50,10 +53,11 @@ var unit_ids: PackedInt32Array = PackedInt32Array()
 var target_x: int = 0
 var target_y: int = 0
 ## The unit an ATTACK goes after, the production building a RALLY sets, the strike building a
-## SUPERWEAPON fires or the site a CANCEL_BUILD cancels, 0 = none.
+## SUPERWEAPON fires, the site a CANCEL_BUILD cancels or the building a SELL or MEND names, 0 =
+## none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
-## `[type_index]` or empty (ADR 0026), empty for every other type.
+## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, empty for every other type.
 var payload: PackedInt32Array = PackedInt32Array()
 
 ## An attack-move order. Every factory copies the ids it is given (a command changes hands once,
@@ -161,6 +165,25 @@ static func superweapon(player_id: int, building_id: int, target_x: int, target_
 static func cancel_build(player_id: int, building_id: int) -> Command:
 	var command: Command = _of(Type.CANCEL_BUILD, player_id, PackedInt32Array())
 	command.target_id = building_id
+	return command
+
+
+## Sell the own complete building `building_id` for part of its price (ADR 0037 section 3). The
+## payload is empty.
+@warning_ignore("shadowed_variable")
+static func sell(player_id: int, building_id: int) -> Command:
+	var command: Command = _of(Type.SELL, player_id, PackedInt32Array())
+	command.target_id = building_id
+	return command
+
+
+## Switch the repair of the own complete building `building_id` on or off (ADR 0037 section 4); the
+## payload is [1] or [0].
+@warning_ignore("shadowed_variable")
+static func mend(player_id: int, building_id: int, on: bool) -> Command:
+	var command: Command = _of(Type.MEND, player_id, PackedInt32Array())
+	command.target_id = building_id
+	command.payload = PackedInt32Array([1 if on else 0])
 	return command
 
 

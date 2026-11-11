@@ -1,3 +1,4 @@
+# gdlint: ignore=max-public-methods
 class_name PlayerView
 extends RefCounted
 ## One player's legal view of a World (ADR 0020 section 1, plan row P78): what that player may know
@@ -210,6 +211,7 @@ var _harvest_mode: PackedInt32Array = PackedInt32Array()
 var _home: PackedInt32Array = PackedInt32Array()
 var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
+var _cargo: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
 var _public: Array[PackedInt32Array] = []
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
@@ -313,6 +315,12 @@ func row_ready_tick(row: int) -> int:
 
 func row_offline_until(row: int) -> int:
 	return _offline_until[row] if _level(row) == _OWN else MISSING
+
+
+## Whether an own building's repair switch is on (`Mend`, ADR 0037 section 4: the row's `cargo`),
+## 1 or 0; MISSING for a row that is not the player's own, so an enemy's switch is never read.
+func row_mend(row: int) -> int:
+	return _cargo[row] if _level(row) == _OWN else MISSING
 
 
 ## Whether the head of the STRUCTURES queue is built and waits for a PLACE: the condition
@@ -520,6 +528,7 @@ func _take_rows(world: World) -> void:
 	_home = world.home
 	_ready_tick = world.ready_tick
 	_offline_until = world.offline_until
+	_cargo = world.cargo
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows

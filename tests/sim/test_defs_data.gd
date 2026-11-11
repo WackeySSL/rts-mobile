@@ -80,8 +80,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_the_frozen_file(
-) -> void:
+func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -121,6 +120,11 @@ func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_t
 		"construct_start_hp_percent": 10,
 		"construct_refund_percent": 75,
 		"construction_sites_max": 1,
+		# Building sale and repair (ADR 0037 sections 3 and 4): inert defaults.
+		"sell_refund_percent": 0,
+		"mend_hp": 0,
+		"mend_period_ticks": 15,
+		"mend_cost_percent": 30,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()

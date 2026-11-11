@@ -316,6 +316,10 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.construct_start_hp_percent = rules.construct_start_hp_percent
 	world.construct_refund_percent = rules.construct_refund_percent
 	world.construction_sites_max = rules.construction_sites_max
+	world.sell_refund_percent = rules.sell_refund_percent
+	world.mend_hp = rules.mend_hp
+	world.mend_period_ticks = rules.mend_period_ticks
+	world.mend_cost_percent = rules.mend_cost_percent
 
 
 ## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads

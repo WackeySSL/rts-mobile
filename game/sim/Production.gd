@@ -44,6 +44,11 @@ const PROGRESS_PER_TICK: int = 100
 ## its tiles and its reach until REMOVE (`_sites_of`).
 const CANCELLED: int = -1
 
+## The `build_left` of a building that SELL sold (ADR 0037 section 3): hit points 0, gone in the
+## REMOVE of the same tick with DIED flag 3 (`Removal.died_flag`), no loss counted. -2 is
+## `Removal.BOARDED`.
+const SOLD: int = -3
+
 ## Where in a DIED record (`World.remove_dead`) the cancel flag is: 1 for a row whose `build_left`
 ## was `CANCELLED`, 0 for every other death. The view reads it to draw no wreck or crater.
 const DIED_CANCEL_FLAG_AT: int = 6
@@ -246,6 +251,31 @@ static func apply_cancel_build(world: World, command: Command) -> bool:
 	world.credits[player] += refund(price, world.construct_refund_percent)
 	world.hp[row] = 0
 	world.build_left[row] = CANCELLED
+	return true
+
+
+## SELL (ADR 0037 section 3): `target_id` is an own complete building with a price (the
+## Headquarters, price 0, a site and a unit are refused), and the payload is empty. The owner gets
+## `floor(price * sell_refund_percent * hp / (100 * max_hp))` at once, the row's hit points fall to
+## 0 and `build_left` becomes `SOLD`; REMOVE takes the row out in the same tick. Queues and rally
+## points are per player and tab and stay.
+@warning_ignore("integer_division")
+static func apply_sell(world: World, command: Command) -> bool:
+	var row: int = world.index_of(command.target_id)
+	var player: int = command.player_id
+	if not command.payload.is_empty() or row < 0 or world.owner[row] != player:
+		return false
+	var type: int = world.type_index[row]
+	if type >= world.type_foot_w.size() or world.type_foot_w[type] <= 0:
+		return false
+	var price: int = world.type_cost[type]
+	if world.build_left[row] != 0 or world.hp[row] <= 0 or price <= 0:
+		return false
+	var top: int = maxi(world.type_max_hp[type], 1)
+	var kept: int = mini(world.hp[row], top)
+	world.credits[player] += price * world.sell_refund_percent * kept / (100 * top)
+	world.hp[row] = 0
+	world.build_left[row] = SOLD
 	return true
 
 
