@@ -56,6 +56,9 @@ var _marks: RuntimeAtlas = null  ## Made when the first ghost is drawn.
 var _was_on: bool = false
 var _cells: Array[Vector2i] = []
 var _region: Rect2i = Rect2i()  ## The body's region on the atlas; empty without art.
+var _texture: Texture2D = null  ## The page of `_region` (`IsoAtlas.texture_at`).
+var _anim_texture: Texture2D = null  ## The page of `_anim`.
+var _head_texture: Texture2D = null  ## The page of `_head`.
 var _rise: float = 0.0
 var _sprite_origin: Vector2 = Vector2.ZERO  ## The sprite's origin in its picture, world px.
 var _sprite_size: Vector2 = Vector2.ZERO  ## The picture's size, world px.
@@ -124,7 +127,9 @@ func refresh() -> void:
 func _read_sprite(sheet: IsoSheetDef) -> void:
 	var atlas: IsoAtlas = world_sort.atlas
 	var slot: int = world_sort.slot_of(runner.scenario.local_player)
-	_region = atlas.region(sheet.art_id, PART, BuildingLayer.NO_FRAME, slot)
+	var base: int = atlas.base(sheet.art_id, PART, BuildingLayer.NO_FRAME, slot)
+	_region = atlas.frame_region(base, 0)
+	_texture = atlas.texture_at(base)
 	if not _region.has_area():
 		return
 	var per_px: float = WorldSort.ART_SCALE / atlas.bake_scale()
@@ -132,12 +137,18 @@ func _read_sprite(sheet: IsoSheetDef) -> void:
 	_sprite_size = Vector2(_region.size) * per_px
 	_rise = _sprite_origin.y
 	if sheet.has_part(BuildingAnims.ANIM):
-		_anim = atlas.region(sheet.art_id, BuildingAnims.ANIM, BuildingLayer.NO_FRAME, slot)
+		var anim_base: int = atlas.base(
+			sheet.art_id, BuildingAnims.ANIM, BuildingLayer.NO_FRAME, slot
+		)
+		_anim = atlas.frame_region(anim_base, 0)
+		_anim_texture = atlas.texture_at(anim_base)
 		_anim_origin = -Vector2(sheet.origin(BuildingAnims.ANIM)) * WorldSort.ART_SCALE
 		_anim_size = Vector2(_anim.size) * per_px
 		_rise = maxf(_rise, -_anim_origin.y)
 	if sheet.has_part(HEAD):
-		_head = atlas.region(sheet.art_id, HEAD, UnitLayer.D_EAST, slot)
+		var head_base: int = atlas.base(sheet.art_id, HEAD, UnitLayer.D_EAST, slot)
+		_head = atlas.frame_region(head_base, 0)
+		_head_texture = atlas.texture_at(head_base)
 		var mount: Vector2 = sheet.mount(UnitLayer.D_EAST) - Vector2(sheet.origin(HEAD))
 		_head_origin = mount * WorldSort.ART_SCALE
 		_head_size = Vector2(_head.size) * per_px
@@ -231,21 +242,18 @@ func _sprite() -> void:
 	var ground: Vector2i = placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
 	var fade: Color = Color(1.0, 1.0, 1.0, SPRITE_ALPHA)
-	var atlas: IsoAtlas = world_sort.atlas
 	draw_texture_rect_region(
-		atlas.texture_for(PART), Rect2(centre - _sprite_origin, _sprite_size), Rect2(_region), fade
+		_texture, Rect2(centre - _sprite_origin, _sprite_size), Rect2(_region), fade
 	)
 	last_parts = 1
 	if _anim.has_area():
 		last_anim = Rect2(centre + _anim_origin, _anim_size)
 		last_anim_tint = fade
-		draw_texture_rect_region(
-			atlas.texture_for(BuildingAnims.ANIM), last_anim, Rect2(_anim), last_anim_tint
-		)
+		draw_texture_rect_region(_anim_texture, last_anim, Rect2(_anim), last_anim_tint)
 		last_parts += 1
 	if _head.has_area():
 		last_head = Rect2(centre + _head_origin, _head_size)
-		draw_texture_rect_region(atlas.texture_for(HEAD), last_head, Rect2(_head), fade)
+		draw_texture_rect_region(_head_texture, last_head, Rect2(_head), fade)
 		last_parts += 1
 
 

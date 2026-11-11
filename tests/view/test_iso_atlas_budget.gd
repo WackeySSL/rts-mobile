@@ -21,10 +21,10 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## (`IsoAtlas.PAGE_UNSORTED`): page 1 (the y-sorted world, the budget below) went from 3550, 3008
 ## and 3140 to the pins that follow, and page 2 holds the shadows (1040 rows in the cross-faction
 ## match). **Re-pin rule:** an art row that adds frames with a shadow (P236, P239b, P245, P245b,
-## P249, P266, P279, P280, P291, P292, the polish rows P203 and P204, the flyers) moves both
-## `TODAY_*` and `TODAY2_*` in its own PR; P202 (it drops `dmg1`, a page-1 part) moves `TODAY_*`
-## only. Both pages keep the 3584 budget; a page that passes it stops the row (ADR 0036 section 15's
-## note: Michael allows 3840 on page 1 only when a row needs it).
+## P249, P266, P279, P280, P291, P292, the flyers) moves both `TODAY_*` and `TODAY2_*` in its own
+## PR; the polish rows P203 and P204 move `TODAY2_*` (and `TODAY_*` only if a model changes);
+## P202 (it drops `dmg1`, a page-1 part) moves `TODAY_*` only. Both pages keep the 3584 budget;
+## a page past it stops the row (ADR 0036 section 15: Michael allows 3840 on page 1 only if needed).
 const TODAY_CROSS: int = 2659
 const TODAY_MIRROR_DERRICK: int = 2542
 const TODAY_MIRROR_LUMEN: int = 2650
@@ -80,7 +80,9 @@ func test_the_derrick_league_mirror_page_is_within_the_budget() -> void:
 	var second: Vector2i = _page(players, IsoAtlas.PAGE_UNSORTED)
 	_assert_within_budget("mirror Derrick page 2", second)
 	_assert_today("mirror Derrick page 2", second, TODAY2_MIRROR_DERRICK)
-	_assert_within_budget("mirror Derrick page 2 in other triads", _page(others, 1))
+	_assert_within_budget(
+		"mirror Derrick page 2 in other triads", _page(others, IsoAtlas.PAGE_UNSORTED)
+	)
 
 
 func test_the_lumen_accord_mirror_page_is_within_the_budget() -> void:

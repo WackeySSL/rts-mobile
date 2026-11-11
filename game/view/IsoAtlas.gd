@@ -65,13 +65,20 @@ const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
 static var _keys_built: int = 0
 
-var _pages: Array[RuntimeAtlas] = [RuntimeAtlas.new(), RuntimeAtlas.new()]  ## By page.
+var _pages: Array[RuntimeAtlas] = []  ## By page; filled in `_init`.
+var _page_textures: Array[ImageTexture] = []  ## By page, set at the bake: one lookup per frame.
 var _table_page: PackedByteArray = PackedByteArray()  ## Parallel to `_table`: the entry's page.
 var _index: Dictionary[StringName, int] = {}  ## Frame group key -> its base in `_table`.
 var _table: Array[Rect2i] = []  ## One region per baked frame, a group's frames side by side.
 var _spans: PackedInt32Array = PackedInt32Array()  ## Parallel to `_table`: frames at a base.
 var _scale: float = 0.0
 var _bake_usec: int = 0
+
+
+func _init() -> void:
+	for page: int in PAGES:
+		_pages.append(RuntimeAtlas.new())
+		_page_textures.append(null)
 
 
 ## Every sheet of `res://assets/art/iso/index.tres`, as P99b wrote them; empty, with an error,
@@ -269,7 +276,7 @@ func texture_for(part: StringName) -> ImageTexture:
 func texture_at(base_index: int) -> ImageTexture:
 	if base_index < 0 or base_index >= _table_page.size():
 		return texture()
-	return texture(_table_page[base_index])
+	return _page_textures[_table_page[base_index]]
 
 
 ## The textures of the pages that have a frame.
@@ -424,6 +431,8 @@ func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
 				_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image
 			)
 	_scale = scale if texture() != null else 0.0
+	for page: int in PAGES:
+		_page_textures[page] = texture(page)
 	var at: int = 0
 	for group: int in plan.keys.size():
 		var span: int = plan.spans[group]

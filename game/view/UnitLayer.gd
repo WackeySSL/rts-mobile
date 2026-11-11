@@ -2,7 +2,7 @@ class_name UnitLayer
 extends Node2D
 ## Draws every unit of the runner's published snapshot as a rig: a Node2D in the `WorldSort` with
 ## the Sprite2D children Shadow, Hull and, for a type with turret art, Turret, regions of the
-## match's one atlas in white (ADR 0023 section 2: the team colour is in the atlas). It
+## match's atlas in white (ADR 0023 section 2: the team colour is in the atlas). It
 ## only reads `runner.snapshot` (ADR 0012 section 3), afresh in every entry point and never kept
 ## between them: each frame a rig stands at prev + (cur - prev) * runner.alpha() in px, projected
 ## by `IsoProjection` (ADR 0023 section 1), and the hull turns toward the last direction the unit

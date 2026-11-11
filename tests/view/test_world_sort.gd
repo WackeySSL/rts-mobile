@@ -189,7 +189,7 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 
 
 ## P237: a rig that leaves the sort lets go of the match's pages (a pool keeps rigs across matches,
-## and each page is up to 16 MiB of texture); a Ring has its own texture and keeps it.
+## and a page is up to 64 MiB of texture); a Ring has its own texture and keeps it.
 func test_releasing_a_rig_drops_its_atlas_textures_and_keeps_a_rings_own() -> void:
 	_open_units(2)
 	_layer.set_selected(PackedInt32Array([1]))
@@ -200,6 +200,12 @@ func test_releasing_a_rig_drops_its_atlas_textures_and_keeps_a_rings_own() -> vo
 	assert_object(hull.texture).is_not_null()
 	assert_object(shadow.texture).is_not_null()
 	assert_object(ring.texture).is_not_null()
+	# A new match bakes its atlas before the old rigs are pooled: the textures are not the new
+	# atlas's, and are let go all the same.
+	var key: PackedStringArray = ArtPalette.KEYS[&"fossil"]
+	var arts: Array[IsoPlayerArt] = [IsoPlayerArt.make(&"fossil", key, WorldSort.TRIADS[3])]
+	_layer.world_sort.atlas = IsoAtlas.build(IsoAtlas.load_sheets(), arts, 0.25)
+	assert_object(hull.texture).is_not_same(_layer.world_sort.atlas.texture())
 	_layer.world_sort.release(rig)
 	auto_free(rig)
 	assert_object(rig.get_parent()).is_null()

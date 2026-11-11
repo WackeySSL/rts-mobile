@@ -619,17 +619,20 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   at 16 directions; (3) is not accepted, so the bake scale stays at 1.0. If a later row still does
   not fit at 3,840, it returns to the lead for other options, such as moving more parts to page 2 or
   a third page.
-  **Re-pin rule.** Every art row with shadow frames (P236, P239b, P245, P245b, P249, P266, P279,
-  P280, P291, P292, the polish rows P203 and P204, the flyers) moves both `TODAY_*` and `TODAY2_*` in
-  `tests/view/test_iso_atlas_budget.gd` in its own PR; P202 moves `TODAY_*` only.
+  **Re-pin rule.** Every art row with a model and its shadow frames (P236, P239b, P245, P245b, P249,
+  P266, P279, P280, P291, P292, the flyers) moves both `TODAY_*` and `TODAY2_*` in
+  `tests/view/test_iso_atlas_budget.gd` in its own PR; the polish rows P203 and P204 move `TODAY2_*`
+  (and `TODAY_*` only if a model changes); P202 moves `TODAY_*` only.
   **Forecast and check.** Page 2 grows with the flyers (about 220 rows), the new buildings' and
   units' shadows and P204's per-player unit shadows (about +630): about 2,400 rows, 38 MiB. With the
   sorted page that is about 94 MiB of textures at the end; the phone check is P243's (the perf card
   now prints both pages, `atlas_page` and `atlas_page2`).
   **`page_of` is keyed by the part only.** The flyers' `hull` belongs on page 2, which that key
   cannot say; P243 re-keys it (by category or by sheet and part). A sprite's texture follows its
-  region (`texture_at(base)` in `WorldSort.show_base`), so a part moved between pages needs no layer
-  edit.
+  region (`texture_at(base)`: `WorldSort.show_base`, `GhostLayer`), so a part moved within
+  `UNSORTED_PARTS` needs no layer edit. The sites that still pair by `texture_for(part)` with a
+  region of that part (`WorldSort.dress`, `BuildingLayer`'s patch, the gallery) are replaced by
+  P243's sheet-keyed flyer pages.
 
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military

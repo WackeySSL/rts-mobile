@@ -61,7 +61,7 @@ func test_everything_a_dressed_rig_draws_at_the_sorted_z_is_an_atlas_sprite() ->
 				continue  # The allowed exception, see the header.
 			if item is UnitLayer.Ring:
 				rings += 1
-			if _resolved_z(item) != WorldSort.Z_SORT:
+			if SortedTextures.resolved_z(item) != WorldSort.Z_SORT:
 				continue
 			if item.name == &"Hull":
 				hulls += 1
@@ -101,7 +101,7 @@ func test_the_cargo_bar_draws_at_the_bars_z_outside_the_sort() -> void:
 	var bars: Array[TankerCargo] = _cargo_bars()
 	assert_int(bars.size()).is_equal(TANKERS)
 	for bar: TankerCargo in bars:
-		assert_int(_resolved_z(bar)).is_equal(WorldSort.Z_BARS)
+		assert_int(SortedTextures.resolved_z(bar)).is_equal(WorldSort.Z_BARS)
 
 
 func _cargo_bars() -> Array[TankerCargo]:
@@ -111,19 +111,6 @@ func _cargo_bars() -> Array[TankerCargo]:
 		if bar != null:
 			bars.append(bar)
 	return bars
-
-
-## The z Godot draws `item` at: its own, plus its parents' while it is relative.
-static func _resolved_z(item: CanvasItem) -> int:
-	var z: int = 0
-	var node: Node = item
-	while node is CanvasItem:
-		var canvas: CanvasItem = node as CanvasItem
-		z += canvas.z_index
-		if not canvas.z_as_relative:
-			break
-		node = node.get_parent()
-	return z
 
 
 static func _canvas_items(root: Node) -> Array[CanvasItem]:

@@ -114,7 +114,7 @@ func test_the_default_bake_gives_the_card_both_factions_and_the_world_its_own_at
 	assert_int(drawn.page_px().x * drawn.page_px().y).is_less(card_area)
 
 
-func test_the_match_start_draws_from_the_world_atlas_and_the_card_keeps_its_own() -> void:
+func test_the_match_start_draws_from_the_world_atlas_and_the_card_keeps_none() -> void:
 	var arena: Node2D = Rig.make(_calls)
 	_arenas.append(arena)
 	arena.atlas_source = arena._bake_atlas  # The real bake, as the scene runs it.

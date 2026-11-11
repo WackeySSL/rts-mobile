@@ -424,7 +424,8 @@ to a second page (`IsoAtlas.PAGE_UNSORTED`). What that changes here:
 - **Q3 and the risk below:** "the one texture page" is two pages now. P203 and P204 spend page 2,
   which has about 2,544 rows free, so Q3 is no longer likely to be needed; its answer A (shadows at
   75 %) stays the fallback for page 2.
-- P204's per-player shadows double only the unit share of page 2 (about 628 rows), not page 1.
+- P204's per-player shadows double only the unit share of page 2 (about 628 vehicle rows and 66
+  infantry rows), not page 1.
 
 ## Risks
 - **Page budget.** (Superseded by the P237 note above: shadows are on page 2, 1040 of 3584 rows;
