@@ -24,13 +24,15 @@ var goal_keys_max: int = 0
 var unit_cap: int = 0
 
 ## The Commands this think may still send. `OpponentAi.think` sets it to the level's
-## `commands_per_think_max` before the managers run. Every manager checks `can_send` BEFORE it
-## appends a Command and before it records "sent" in this memory or in a counter, then calls
-## `spent`; so the cut after the think (`commands_cut`) stays 0.
+## `commands_per_think_max` before the managers run, except in the PRODUCTION slot, which spends
+## what the ECONOMY think before it left (one budget a round for the two, P198b). Every manager
+## checks `can_send` BEFORE it appends a Command and before it records "sent" in this memory or in a
+## counter, then calls `spent`; so the cut after the think (`commands_cut`) stays 0.
 var commands_left: int = 0
-## The credits production must leave this think (writer: AiEconomy, P176; reader: AiProduction,
-## P178, which spends `maxi(view.credits - reserve_credits, 0)`): what the economy queued in it plus
-## the price of the structure or tanker it keeps credits for. 0 = none.
+## The credits production must leave (writer: AiEconomy, P176; reader: AiProduction, P178, which
+## spends `maxi(view.credits - reserve_credits, 0)` on the view of its own slot, 3 ticks after the
+## economy's): the price of the structure or tanker the economy keeps credits for; what it queued
+## is already out of the credits by then (P198b). 0 = none.
 var reserve_credits: int = 0
 
 ## Army: the staging point and the enemy base estimate, in tiles, (NONE, NONE) when not set.

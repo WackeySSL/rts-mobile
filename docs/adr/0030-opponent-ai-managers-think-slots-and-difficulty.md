@@ -229,14 +229,26 @@ written and as dated, and this note and `OpponentAi` are what holds:
 - section 6's "`think_period` (5 in these files)" (3; `think_tick` stays 6, read as the residue of
   player 1);
 - the Consequences' "spread over three ticks of fifteen" (five);
-- ADR 0020's status note of 2026-11-06 (period 5, three slots), which gets a pointer here.
+- ADR 0020's status note of 2026-11-06 (period 5, three slots), which gets a pointer here;
+- the P26bf status note's and the P26bf note's "production counts the economy's QUEUEs of the same
+  think" and "Production in the ECONOMY slot counts the economy's unit QUEUEs of the same think": the
+  economy's QUEUEs are in the view production reads 3 ticks later, and `out` holds none of them;
+- section 4's "Commands: at most `commands_per_think_max` per think" (one budget a round for ECONOMY
+  and PRODUCTION; ARMY and INTEL each have their own, REFRESH sends nothing);
+- the P26bf note's "the ARMY slot's two passes ... the slot's `work` stays 3" (the two passes are
+  the REFRESH slot's; ARMY's `work` is 1);
+- the P26be note's reserve rule (item 1, "both managers read the same view"): the reserve is the
+  economy's hold alone, no longer what it queued plus the hold (below);
+- section 3's "the hp each own unit had at the last ARMY slot" (the lists are REFRESH's, read by the
+  ARMY slot one think later).
 
 *Design* (written before the code):
 - **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless. ECONOMY
   runs `AiEconomy`; PRODUCTION `AiProduction`; REFRESH `AiIntel.refresh`; ARMY `AiArmy`; INTEL
   `AiIntel.run` then `AiStrikes`. The cyclic order of the managers is the one of the three slots (intel
-  run and strikes, economy, production, refresh, army), so only the gaps change: the refresh and the
-  army are 3 ticks apart, not in one think. Every manager still runs once per 15 ticks, none slower, so
+  run and strikes, economy, production, refresh, army), so the gaps change: the refresh and the army
+  are 3 ticks apart, not in one think, and production reads the view of its own slot, 3 ticks after
+  the economy's, with the economy's QUEUEs already taken from the credits. Every manager still runs once per 15 ticks, none slower, so
   `reaction_ticks` and the placement spiral's resume across thinks mean what they did.
 - **Cost per slot** (CI microseconds after P198's step 1, view about 45 in every slot): ECONOMY 37 +
   45, PRODUCTION 18 + 45, REFRESH 63 + 45, ARMY 100 + 45, INTEL (intel run 30, strikes 13) 43 + 45.
@@ -254,11 +266,18 @@ written and as dated, and this note and `OpponentAi` are what holds:
   rule (ascending player order, one fresh view each) is unchanged. The worst shared tick adds one
   ECONOMY-class slot to the ARMY slot of the other; a 3 to 4 player match is not in the perf workload
   (two AIs) and has no gate of its own.
+- **The credit reserve is the hold alone.** P26be's rule (`reserve_credits` = what the economy
+  queued plus what it keeps credits for) was built for one shared view. Production now reads the
+  credits 3 ticks later, after the sim took the queued costs, so `AiEconomy` sets the reserve to
+  the hold only (`test_opponent_cadence` pins it; `test_ai_economy`'s expectations follow). Left as
+  it was, production would have underspent by the economy's queued costs every round.
 - **The command budget stays one per old slot.** `commands_per_think_max` is Easy's "slow hands"
   (section 6: 3). With economy and production in separate thinks a reset on every think would
   have let Easy send 3 + 3 a round, loosening it. So ECONOMY resets `memory.commands_left` and
   PRODUCTION spends what is left; ARMY and INTEL (with the strikes) each reset their own; REFRESH
-  sends nothing. The state is an `AiMemory` int, deterministic. `test_opponent_cadence` pins at
+  sends nothing. This was restored for fidelity to the three-slot rule, not for balance: Easy's
+  results are the same per-mille with or without it, so it does not bind in real Easy play. The state
+  is an `AiMemory` int, deterministic. `test_opponent_cadence` pins at
   most 3 across the ECONOMY and PRODUCTION thinks of one round for Easy.
 - **What the managers read from an earlier slot.** The army reads the sector map, the own and seen id
   lists and the home squad's hp that REFRESH wrote 3 ticks before (INTEL and the strikes 6, the

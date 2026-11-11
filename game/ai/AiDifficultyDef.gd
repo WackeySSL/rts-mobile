@@ -40,7 +40,8 @@ extends Resource
 @export var counter_percent: int = 30
 ## Whether the level builds and fires its side's superweapon (0 or 1).
 @export var uses_strike: int = 1
-## The most Commands one think sends: Easy's slow hands.
+## The most Commands a think sends, the economy and production sharing one budget a round (P198b):
+## Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
 @export var income_percent: int = 100

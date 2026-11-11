@@ -43,7 +43,12 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)
 		# Ids the army left out of an order because the unit died since the REFRESH before it.
-		print("WATCH ai stale player=%d stale_ids=%d" % [ai.player_id, ai.army.stale_ids])
+		print(
+			(
+				"WATCH ai stale match=hard-mirror seed=%d ticks=%d player=%d stale_ids=%d"
+				% [SEED, TICKS, ai.player_id, ai.army.stale_ids]
+			)
+		)
 	# The control ran: the fights of 13 500 ticks hold orders of both kinds (seed 1).
 	assert_int(ais[0].army.stepbacks + ais[1].army.stepbacks).is_greater(0)
 	assert_int(ais[0].army.focuses + ais[1].army.focuses).is_greater(0)

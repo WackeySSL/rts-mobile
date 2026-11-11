@@ -58,8 +58,7 @@ func test_easy_sends_at_most_its_cap_across_the_economy_and_production_thinks_of
 	var ai: OpponentAi = Rig.opponent("fossil", "easy", 1, 1)
 	assert_int(ai.commands_per_think_max).is_equal(3)
 	var economy: int = 0
-	var rounds_at_cap: int = 0
-	var production_sent: int = 0
+	var both: int = 0
 	for _tick: int in 3000:
 		var tick: int = world.tick
 		var sent: Array[Command] = AiRig.tick(world, loop, [ai])
@@ -70,10 +69,42 @@ func test_easy_sends_at_most_its_cap_across_the_economy_and_production_thinks_of
 				economy = sent.size()
 			OpponentAi.Slot.PRODUCTION:
 				assert_int(economy + sent.size()).is_less_equal(3)
-				production_sent += sent.size()
-				rounds_at_cap += 1 if economy + sent.size() == 3 else 0
+				# PRODUCTION spent from the budget the ECONOMY think left, not from a fresh one.
+				assert_int(ai.memory.commands_left).is_equal(maxi(3 - economy - sent.size(), 0))
+				both += 1 if economy > 0 and not sent.is_empty() else 0
 			_:
 				assert_int(sent.size()).is_less_equal(3)
-	# Both managers wanted to send and the shared budget did bind in some round.
-	assert_int(production_sent).is_greater(0)
-	assert_int(rounds_at_cap).is_greater(0)
+	# Some round had both managers send.
+	assert_int(both).is_greater(0)
+
+
+## The economy's reserve is what it keeps credits for, not what it queued (P198b): production thinks
+## 3 ticks later, when the sim has taken the queued costs from the credits, so counting them again
+## would leave production short. The first ECONOMY think queues the plant and keeps the refinery's
+## price; the PRODUCTION think after it sees the credits less the plant and must leave that price.
+func test_the_reserve_after_an_economy_think_is_the_hold_alone() -> void:
+	var world: World = FactionRig.start("fossil", "renew")
+	AiRig.give(world, 1, "barracks", 12, 2)
+	Power.run(world)
+	world.credits[1] = 3000
+	var loop: MatchLoop = AiRig.loop_of(world)
+	var ai: OpponentAi = Rig.opponent("fossil", "normal", 1, 1)
+	var sent: Array[Command] = AiRig.tick(world, loop, [ai])
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ECONOMY)
+	var plant: int = AiRig.type_of(world, "power_plant")
+	assert_array(sent.map(func(c: Command) -> int: return c.payload[0])).is_equal([plant])
+	var refinery: int = AiRig.type_of(world, "refinery")
+	assert_int(ai.memory.reserve_credits).is_equal(world.type_cost[refinery])
+	# The plant's cost has left the credits by the PRODUCTION think 3 ticks later: production's
+	# budget is those credits less the refinery's price, nothing more.
+	AiRig.tick(world, loop, [ai])
+	AiRig.tick(world, loop, [ai])
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_int(view.credits).is_less_equal(3000 - world.type_cost[plant] + 200)
+	var queued: Array[Command] = []
+	ai.memory.commands_left = 8
+	ai.production.run(view, ai.memory, ai.rng, queued)
+	var spent: int = 0
+	for command: Command in queued:
+		spent += world.type_cost[command.payload[0]]
+	assert_int(ai.production._budget + spent).is_equal(view.credits - world.type_cost[refinery])

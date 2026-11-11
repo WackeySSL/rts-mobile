@@ -14,8 +14,9 @@ const NoArmy: GDScript = preload("res://tests/ai/support/no_army.gd")
 ## 2500-credit strike building, the reserve frees earlier (4420 -> 3745), and the second scout
 ## (one interval later, about tick 6445) would now fall inside 6500 ticks, so the match is cut to
 ## 6000 to keep "scouts once". P198b: five slots on period 3 move the think that sends the scout two
-## ticks later (3745 -> 3747: production and the intel run now think on their own ticks).
-const SCOUT_MOVE_TICK: int = 3747
+## ticks later (3745 -> 3747: production and the intel run now think on their own ticks), and the
+## reserve fix (production no longer leaves the economy's queued costs twice) moves it to 3732.
+const SCOUT_MOVE_TICK: int = 3732
 const MATCH_TICKS: int = 6000
 
 # --- The scout ---------------------------------------------------------------------------------

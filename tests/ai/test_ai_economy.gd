@@ -43,10 +43,9 @@ func test_a_step_waits_for_its_requirement_and_is_not_skipped() -> void:
 	# The plant is the first step; the refinery needs a finished plant, so the order waits for it
 	# (it does not go on to the barracks) and the credits of the refinery are kept.
 	assert_array(_queued_ids(first, world)).is_equal(["power_plant"])
-	# The refinery's price is kept besides the plant's own spend.
-	assert_int(memory.reserve_credits).is_equal(
-		_cost(world, "power_plant") + _cost(world, "refinery")
-	)
+	# The refinery's price is kept; the plant's own spend is not (the sim takes it before production
+	# thinks, P198b).
+	assert_int(memory.reserve_credits).is_equal(_cost(world, "refinery"))
 	# Applied, the plant is owned-or-queued: the next think wants the refinery, still waiting.
 	AiRig.step(world, AiRig.loop_of(world), first)
 	assert_array(_queued_ids(_run(economy, memory, world), world)).is_empty()
@@ -153,7 +152,7 @@ func test_the_reserve_is_what_the_economy_queued_plus_the_price_it_keeps() -> vo
 	assert_int(memory.reserve_credits).is_equal(_cost(world, "power_plant"))
 	# With a finished plant, money pays the refinery and the barracks (queued: 1,800); the next
 	# step, a second plant, waits for the queue's room while the head is being built, and 300 is
-	# kept for it. Production must leave 1,800 + 300, so nothing is left for it.
+	# kept for it. Production must leave the 300; the 1,800 leave the credits in the sim's step.
 	world = _start()
 	AiRig.give(world, 1, "power_plant", 10, 2)
 	Power.run(world)
@@ -161,8 +160,9 @@ func test_the_reserve_is_what_the_economy_queued_plus_the_price_it_keeps() -> vo
 	assert_array(_queued_ids(sent, world)).is_equal(["refinery", "barracks"])
 	var view: PlayerView = PlayerView.of(world, 1)
 	var queued: int = _cost(world, "refinery") + _cost(world, "barracks")
-	assert_int(memory.reserve_credits).is_equal(queued + plant)
-	assert_int(view.credits - memory.reserve_credits).is_equal(2000 - 1800 - 300)
+	# The reserve is the plant's price alone; the queued costs leave the credits in the sim's step.
+	assert_int(memory.reserve_credits).is_equal(plant)
+	assert_int(view.credits - queued - memory.reserve_credits).is_equal(2000 - 1800 - 300)
 
 
 func test_a_tanker_that_waits_for_money_keeps_its_price() -> void:
@@ -172,11 +172,11 @@ func test_a_tanker_that_waits_for_money_keeps_its_price() -> void:
 	var sent: Array[Command] = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(sent).is_empty()
 	assert_int(memory.reserve_credits).is_equal(_cost(world, "harvester"))
-	# With money for one tanker: it is queued and counts in the reserve, besides the second's price.
+	# With money for one tanker: it is queued, and the second's price is kept.
 	world.credits[1] = _cost(world, "harvester") + 300
 	sent = _run(_economy("fossil", "normal"), memory, world)
 	assert_array(_queued_ids(sent, world)).is_equal(["harvester"])
-	assert_int(memory.reserve_credits).is_equal(2 * _cost(world, "harvester"))
+	assert_int(memory.reserve_credits).is_equal(_cost(world, "harvester"))
 
 
 func test_a_full_queue_keeps_credits_for_the_next_structure_only_while_its_head_builds() -> void:

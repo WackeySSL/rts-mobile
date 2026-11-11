@@ -7,7 +7,7 @@ extends RefCounted
 ## - counts this player's unit QUEUEs already in `out` toward the queue room and the unit cap (none
 ##   from the economy since P198b: its tankers are in the view by now, and `out` starts empty);
 ## - spends at most `maxi(view.credits - memory.reserve_credits, 0)`: the economy already queued
-##   and keeps credits for its next structure or tanker (its QUEUEs apply before this think);
+##   keeps credits for (its next structure or tanker; what it queued is out of the credits already);
 ## - while `memory.scout_wanted` is set and no unit of that type waits in its queue or lives
 ##   (intel's field is from the INTEL slot before, so a scout that spawned since still shows),
 ##   queues one scout ahead of the draw (at most one a think, counted toward the queue's room); a

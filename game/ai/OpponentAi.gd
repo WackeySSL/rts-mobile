@@ -4,7 +4,8 @@ extends AiController
 ## this one, five managers (economy, production, intel, army, strikes) that read the `PlayerView` of
 ## the think and write Commands to the think's list. This row is the skeleton: the slot of every
 ## think, the difficulty and def copied into ints, the memory, the counters, and the cap on the
-## Commands of a think. A manager row adds its call to its slot's function below and nothing else.
+## Commands of a think (one budget a round for ECONOMY and PRODUCTION). A manager row adds its call
+## to its slot's function below and nothing else.
 ##
 ## A think happens every `think_period` (3) ticks and runs one of five slots, chosen from the tick
 ## alone: `(tick / think_period + slot_shift) % SLOTS`. Slot ECONOMY runs the economy, PRODUCTION

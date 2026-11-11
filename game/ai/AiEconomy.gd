@@ -7,9 +7,10 @@ extends RefCounted
 ## `_place` (a built head on a free slot of `PlacementSpiral`, a defence nearest the staging point),
 ## `_queue` (the next wish while a queue has room: a tanker, a step of the tier's order, then the
 ## loop; a consumer that would leave the surplus under `power_margin` gets a plant first).
-## `AiMemory.reserve_credits` is what production must leave this think: what this run queued plus
-## the price of the structure or tanker it keeps credits for (it waits for money, for room while the
-## queue's head is still being built, or for its queued requirement). Production spends
+## `AiMemory.reserve_credits` is what production must leave: the price of the structure or tanker
+## this run keeps credits for (it waits for money, for room while the queue's head is still being
+## built, or for its queued requirement). What this run queued is not in it: production thinks 3
+## ticks later (P198b), when the sim has taken those costs from `view.credits`. Production spends
 ## `maxi(view.credits - reserve_credits, 0)`. Every Command checks `can_send`, then `spent`.
 
 ## The faction index that matches no type (a roster without the Headquarters).
@@ -112,7 +113,7 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	if _head_ready:
 		_place(view, memory, out)
 	_queue(view, memory, out)
-	memory.reserve_credits = _spent + _hold
+	memory.reserve_credits = _hold
 
 
 ## The types as indexes of the view's roster, once. A step the roster lacks, or no tab builds, is
