@@ -16,7 +16,7 @@ func test_unit_def_defaults_are_an_unarmed_unit_that_does_not_spawn_dead() -> vo
 func test_armour_and_move_class_are_enum_exports_in_enum_order() -> void:
 	var unit: UnitDef = UnitDef.new()
 	assert_str(_enum_hint(unit, "armour")).is_equal("Infantry,Light,Heavy,Building")
-	assert_str(_enum_hint(unit, "move_class")).is_equal("Foot,Wheeled,Tracked")
+	assert_str(_enum_hint(unit, "move_class")).is_equal("Foot,Wheeled,Tracked,Air")
 
 
 func test_weapon_def_defaults_deal_full_damage_to_every_armour_class() -> void:
