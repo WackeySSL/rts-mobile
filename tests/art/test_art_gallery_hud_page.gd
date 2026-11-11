@@ -84,7 +84,7 @@ func test_each_row_shows_its_glyphs_at_48_dp_with_their_tints_and_names() -> voi
 				. is_equal_approx(rect.get_rect().get_center().x, 0.5)
 			)
 			shown += 1
-	assert_int(shown).is_equal(14 + 8)
+	assert_int(shown).is_equal(16 + 8)
 
 
 func test_the_fourteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
@@ -185,8 +185,8 @@ func test_the_hud_page_fits_and_keeps_clear_of_the_buttons_at_three_sizes() -> v
 				if box.grow(-0.5).intersects(other.grow(-0.5)):
 					problems.append("%s overlaps %s" % [thing.get_path(), other])
 			seen.append(box)
-		# 22 glyphs at 48 dp with their 22 names, 14 + 14 small glyphs, two swatches and the line.
-		assert_int(seen.size()).override_failure_message(str(base)).is_equal(22 * 2 + 28 + 2 + 1)
+		# 24 glyphs at 48 dp with their 24 names, 16 + 16 small glyphs, two swatches and the line.
+		assert_int(seen.size()).override_failure_message(str(base)).is_equal(24 * 2 + 32 + 2 + 1)
 		assert_array(problems).override_failure_message(str(base)).is_empty()
 		gallery.get_parent().free()
 

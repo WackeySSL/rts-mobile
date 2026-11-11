@@ -1291,7 +1291,7 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_low_power_map` | #FF8A1F |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
-| `glyph_menu_open`, `glyph_pin` and the other thirteen glyphs of the corner HUD (below) | none (white) |
+| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell` and the other thirteen glyphs of the corner HUD (below) | none (white) |
 
 The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
 button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
@@ -1312,6 +1312,16 @@ By the part of the HUD that uses them:
   (placement's X, the strike's and ADR 0026's Cancel), nor `glyph_offline`'s slash across a picture,
   and the ring is the game's own, not another game's icon. `glyph_stop`, the Stop order: a square in
   a ring.
+- **Building and repair orders (P273, ADR 0037):** `glyph_repair`, the wrench, for the Mend switch of an
+  own building (its word is "MEND") and for the Repair order of a vehicle building (its word is "Repair"),
+  one glyph for both because the verb is one; `glyph_sell`, the Sell order. Both are plain HUD glyphs on
+  the dark panel and untinted, white with the edge grey under it and a shade on the lower right
+  facets; neither has a seat. The wrench is one open-ended spanner on a rising diagonal, drawn here from
+  a round head with a square-bottomed slot, not copied from another game's repair icon. The Sell glyph
+  is a price tag with a coin on it, so it is not `glyph_credits` (a stack of coins seen from the side:
+  that one says "money you hold", this one "a sale"), and has no arrow, so it cannot be read as an
+  "unload" or an "exit". A wrench over an own mending building on the map needs a map copy on the
+  seat, like `glyph_low_power_map`; it is not drawn yet (P272 asks for it, the seat rules above apply).
 - **Group column:** `glyph_all_army`, a soldier in front of a small tank (the button selects every
   own unit that can fight, vehicles included, so it shows an infantryman and a vehicle, not three
   soldiers), and `glyph_plus`, the save-as-group button.
@@ -1410,6 +1420,8 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_vibration.svg` | An upright phone with a grey screen and a round button, a pair of curved shake marks bulging away from each side of it. |
 | `glyph_alert.svg` | A round white disc with a dark rim, one dark exclamation mark in it, a tapered bar over a round dot. |
 | `glyph_all_army.svg` | A soldier from the chest up under a grey half-dome helmet, in front of a small side-on tank with a sloped hull, a boxy turret and one barrel to the right. |
+| `glyph_repair.svg` | One open-ended spanner on a rising diagonal, a round head at the upper right with a deep square-bottomed slot cut into its end, a straight handle ending in a round tail with a dark hole. |
+| `glyph_sell.svg` | A price tag tilted up to the left, a long pentagon with its point at the upper left and a dark hole near the point, a round grey coin with a white ring and a diamond set on its body. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
 The line names the symbol. Each of the ten map glyphs (the six reasons, offline, low power, the construction
@@ -2304,12 +2316,12 @@ hidden, so the Units page is as it was.
   and 1.5 and the crater. It is where Michael judges the joins (no line between equal tiles), the lake of full oil
   and the contrast of the crust on his phone.
 - **Hud** (the seventh page, plan row P118g, built by `art_gallery.gd`) is the HUD panel's backdrop
-  (#0F141C) over the whole page, with rows centred: `Bar` (Deselect, Stop, All army, Plus) and
+  (#0F141C) over the whole page, with rows centred: `Bar` (Deselect, Stop, All army, Plus, Repair, Sell) and
   `Pause` (Menu, Resume, Restart, Surrender, Exit, Vibration), each no wider than the 992 px between
   the corner buttons at 1280 wide, then on one line `Panels` (Collapse, Chevron, Alert, Construct)
   and `Beside`, eight glyphs they stand next to (Build, the pin and the pin off, the check mark, the
   cross, the warning triangle, the coin and the bolt), each at 48 dp with its name under it and
-  tinted as the HUD tints it. Then `Small32` and `Small24`, the fourteen new glyphs again at 32 and
+  tinted as the HUD tints it. Then `Small32` and `Small24`, the sixteen new glyphs again at 32 and
   24 dp (the smallest sizes of a HUD glyph), and `Sites`: the Derrick League's Heavy Yard on grass
   and the Lumen Accord's Motor Hall on sand at zoom 1, each with the construction badge and the
   offline glyph side by side over its body at 32 dp, and a line that says so. A glyph is a
@@ -2600,3 +2612,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.27 (P158a, art-director, ADR 0029 sections 3 to 5 and 11): the Derrick League's eight buildings in three damage stages (`dmg1` SKADET, `dmg2` KRITISK: `broken` walls, `rod` rebar and beams, `interior` dark rooms, a `petals` flower on the sphere, bent and toppled steel; 2 to 4 typed damage points, `anim_kritisk`, emitter groups), 16 patch frames, the gallery's Stage button for three stages, the page 3266 to 3402 and 2702 to 3008 ("Damage stages" under "Generated art"); the intact bodies, shadows and cards are byte for byte as before. |
 | 2026-11-04 | v1.28 (P158b, art-director, ADR 0029 sections 3 to 5): the eight Lumen Accord buildings gain `dmg1` and `dmg2` from their models (blown panes, soot, scorch patches, collapsed parts with `interior`, `slab`, `rebar`, `beam`, `broken` and `petals`), 2 to 3 typed damage points each, `anim_kritisk` on the five with an `anim`, the refinery's steam emitters in groups; shadows and cards unchanged ("The Lumen Accord's buildings (P104)"). |
 | 2026-11-06 | v1.29 (P120k, ADR 0032): six display names are shorter so every requirement fits the locked card's sash on one line: Cracking Plant is Oil Works, Synthesis Works is Fuel Works, Motor Works is Motor Hall, Relay Tower is Relay Post, Blackout Array is Dusk Array and Roustabouts is Rig Hands. The guide's text uses the new names; the rows above keep the names of their day. No art id, file or frame changed. |
+| 2026-11-11 | v1.30 (P273, art-director, ADR 0037 sections 3 and 4): `glyph_repair.svg` (an open-ended spanner on a rising diagonal; the Mend switch and the Repair order share it) and `glyph_sell.svg` (a price tag with a coin on it, not the coin stack of `glyph_credits`), two plain white HUD glyphs on the command bar row of the gallery's Hud page, no seat and no tint. At 32 px in greyscale the wrench is 36.5 from the nearest HUD glyph (the star) and the tag 34.0 (the Resume triangle), both over the 29 bar. A map copy of the wrench for an own mending building is not drawn yet (P272). |

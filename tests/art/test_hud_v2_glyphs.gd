@@ -18,6 +18,8 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_stop",
 	"glyph_all_army",
 	"glyph_plus",
+	"glyph_repair",
+	"glyph_sell",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
@@ -65,7 +67,7 @@ func test_the_fourteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_fil
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
 		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(14)
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(16)  # 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273).
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
@@ -118,6 +120,27 @@ func test_the_stop_glyph_is_a_square_in_a_ring_with_a_gap() -> void:
 	_assert_ink(image, [Vector2i(111, 64), Vector2i(17, 64), Vector2i(64, 111)], true)
 	_assert_ink(image, [Vector2i(64, 36), Vector2i(36, 64), Vector2i(8, 8)], false)
 	_assert_ink(image, [Vector2i(120, 120), Vector2i(120, 8), Vector2i(8, 120)], false)
+
+
+## ADR 0037 (P273): the wrench is one spanner on a rising diagonal. Its handle is light, the hole in
+## its tail (lower left) is dark, the slot in its head (upper right) is clear to the canvas, and the
+## upper left and lower right corners are empty.
+func test_the_repair_glyph_is_a_spanner_with_a_slot_in_its_head_and_a_hole_in_its_tail() -> void:
+	var image: Image = _image("glyph_repair")
+	_assert_light(image, [Vector2i(60, 68)])
+	_assert_dark(image, [Vector2i(38, 90)])
+	_assert_ink(image, [Vector2i(96, 32), Vector2i(8, 8), Vector2i(120, 120)], false)
+	_assert_ink(image, [Vector2i(80, 48), Vector2i(26, 102)], true)
+
+
+## ADR 0037 (P273): the tag is a long pentagon with a punched hole near its point and a coin on its
+## body (a grey face, a light diamond at its centre); it is not the credits glyph's coin stack.
+func test_the_sell_glyph_is_a_price_tag_with_a_hole_and_a_coin() -> void:
+	var image: Image = _image("glyph_sell")
+	_assert_light(image, [Vector2i(68, 47), Vector2i(78, 71)])
+	_assert_dark(image, [Vector2i(42, 54)])
+	_assert_ink(image, [Vector2i(8, 8), Vector2i(120, 120), Vector2i(8, 120)], false)
+	assert_float(_difference("glyph_sell", "glyph_credits")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
 
 
 ## The chevron points right (the code turns it for the other directions): the row through its tip

@@ -1,0 +1,22 @@
+<!-- Repair glyph: white and grey only, tinted at run time (the Mend switch of an own building and the Repair order of a vehicle building). -->
+<!-- Shape: one open-ended spanner on a rising diagonal, a round head at the upper right with a deep square-bottomed slot cut into its end, a straight handle ending in a round tail with a dark hole. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="rotate(45 64 64)">
+    <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+    <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+      <path d="M55 10.5 V30 A9 9 0 0 0 73 30 V10.5 A27 27 0 0 1 76 60.7 V100 H52 V60.7 A27 27 0 0 1 55 10.5 Z"/>
+      <circle cx="64" cy="101" r="17"/>
+    </g>
+    <!-- body: the lit plane, so white -->
+    <g fill="#FFFFFF">
+      <path d="M55 10.5 V30 A9 9 0 0 0 73 30 V10.5 A27 27 0 0 1 76 60.7 V100 H52 V60.7 A27 27 0 0 1 55 10.5 Z"/>
+      <circle cx="64" cy="101" r="17"/>
+    </g>
+    <!-- shade on the lower right facets: the right flank of the handle, a crescent on the tail, the head's lower right -->
+    <path d="M68 62 H76 V100 H68 Z" fill="#BFBFBF"/>
+    <path d="M71.5 112 A17 17 0 0 0 81 101 A17 17 0 0 1 64 118 A17 17 0 0 0 71.5 112 Z" fill="#BFBFBF"/>
+    <path d="M85 42 A27 27 0 0 1 76 60.7 L68 62 A24 24 0 0 0 82 46 Z" fill="#BFBFBF"/>
+    <!-- the hole in the tail, dark -->
+    <circle cx="64" cy="101" r="7" fill="#4D4D4D"/>
+  </g>
+</svg>
