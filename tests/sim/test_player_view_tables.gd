@@ -148,6 +148,75 @@ func test_a_write_to_the_world_after_the_first_view_reaches_no_table_of_the_hold
 	assert_int(checked).is_equal(Check.fields().size() - 4)
 
 
+## Each view table is its own World table, not a neighbour: a World whose tables hold distinct
+## numbers per table and per type (and a footprint that is not square) is read through a view, and
+## every `type_*` field must equal its World table element by element. The three weapon tables are
+## read through each type's weapon: the expected values are worked out here, per type.
+func test_every_view_table_equals_its_own_world_table_on_distinct_numbers() -> void:
+	var world: World = ViewWorlds.crafted()
+	var types: int = world.type_ids.size()
+	var weapons: int = world.weapon_range.size()
+	var number: int = 0
+	var direct: Array[String] = []
+	for field: String in Check.fields():
+		var table: Variant = world.get("type_" + field)
+		if not table is PackedInt32Array or field == "weapon":
+			continue
+		number += 1
+		for type: int in table.size():
+			table[type] = 1000 * number + 7 * type + 3
+		direct.append(field)
+	for type: int in types:
+		world.type_weapon[type] = type % (weapons + 1) - 1
+	world.weapon_range.resize(weapons)
+	world.weapon_min_range.resize(weapons)
+	world.weapon_vs_armour.resize(weapons * PlayerView.ARMOUR_CLASSES)
+	for weapon: int in weapons:
+		world.weapon_range[weapon] = 50000 + 11 * weapon
+		world.weapon_min_range[weapon] = 60000 + 13 * weapon
+	for at: int in world.weapon_vs_armour.size():
+		world.weapon_vs_armour[at] = 70000 + 17 * at
+	world.type_tables = null
+	var view: PlayerView = PlayerView.of(world, 1)
+	# No two direct tables hold the same numbers, so a table read from its neighbour shows.
+	assert_bool(direct.size() > 15).is_true()
+	for first: int in direct.size():
+		for second: int in range(first + 1, direct.size()):
+			var one: PackedInt32Array = world.get("type_" + direct[first])
+			var two: PackedInt32Array = world.get("type_" + direct[second])
+			assert_bool(one == two).override_failure_message(direct[first]).is_false()
+	for name: String in Check.view_tables():
+		var got: PackedInt32Array = view.get(name)
+		var want: PackedInt32Array = PackedInt32Array()
+		match name:
+			"type_range", "type_min_range", "type_vs_armour":
+				want = _derived(world, name)
+			_:
+				want = world.get(name)
+		assert_int(want.size()).override_failure_message(name).is_greater(1)
+		assert_array(got).override_failure_message(name).is_equal(want)
+
+
+## The weapon-derived table `name` of `world`, type by type through the type's weapon (0 for none).
+func _derived(world: World, name: String) -> PackedInt32Array:
+	var width: int = PlayerView.ARMOUR_CLASSES if name == "type_vs_armour" else 1
+	var made: PackedInt32Array = PackedInt32Array()
+	made.resize(world.type_ids.size() * width)
+	for type: int in world.type_ids.size():
+		var weapon: int = world.type_weapon[type]
+		if weapon < 0:
+			continue
+		for at: int in width:
+			match name:
+				"type_range":
+					made[type] = world.weapon_range[weapon]
+				"type_min_range":
+					made[type] = world.weapon_min_range[weapon]
+				_:
+					made[type * width + at] = world.weapon_vs_armour[weapon * width + at]
+	return made
+
+
 ## A World whose type count changes after a view gets a fresh holder with the new count in every
 ## table. Each table of the view holds one entry more.
 func test_a_world_that_gains_a_type_after_a_view_gets_a_fresh_holder() -> void:
