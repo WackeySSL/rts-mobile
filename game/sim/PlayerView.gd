@@ -229,19 +229,34 @@ var _input: PlacementInput
 ## The view of `player` on `world` as it stands. One pass over the rows (`_take_rows`) and a few
 ## slices of the player's own state; nothing is written to the World.
 static func of(world: World, player: int) -> PlayerView:
+	var t0: int = Time.get_ticks_usec()
 	var view: PlayerView = PlayerView.new()
 	view.player = player
 	view.tick = world.tick
 	view.map_cols = world.map_cols
+	var t1: int = Time.get_ticks_usec()
 	view.ore_cells = world.ore_cell.duplicate()
 	view.map_rows = world.map_rows
+	var t2: int = Time.get_ticks_usec()
 	view._input = PlacementInput.of_world(world)
+	var t3: int = Time.get_ticks_usec()
 	view._take_tables(world)
+	var t4: int = Time.get_ticks_usec()
 	view._take_player(world)
+	var t5: int = Time.get_ticks_usec()
 	view._take_ghosts(world)
+	var t6: int = Time.get_ticks_usec()
 	view._take_warned(world)
+	var t7: int = Time.get_ticks_usec()
 	view._take_rows(world)
+	var t8: int = Time.get_ticks_usec()
+	var d: Array[int] = [t1 - t0, t2 - t1, t3 - t2, t4 - t3, t5 - t4, t6 - t5, t7 - t6, t8 - t7, t8 - t0]
+	for i: int in d.size():
+		prof[i].append(float(d[i]))
 	return view
+
+
+static var prof: Array[PackedFloat64Array] = [PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array(), PackedFloat64Array()]
 
 
 ## The row of unit `id`, or MISSING when no row of the player's view has that id.
