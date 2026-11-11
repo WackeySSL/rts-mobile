@@ -3,8 +3,10 @@ extends GdUnitTestSuite
 ## defs (the two computers, their six build orders and the three levels; the dummies are not AI
 ## workload). `tests/perf/test_ai_perf.gd` and the Perf AI route play these files. A tuning row on
 ## `data/ai/` does not touch these copies; refreshing them is a deliberate row that restarts the
-## `[ai]` calibration. So no test here compares a copy's numbers with its shipped original: the
-## first tuning row would break it. What is pinned is the file set, the schema (the script), that a
+## `[ai]` calibration. P198b is such a row for `think_period` (5 to 3: the copies follow the five
+## slots, since the workload must time the code that ships). So no test here compares a copy's
+## numbers with its shipped original: the first tuning row would break it. What is pinned is the
+## file set, the schema (the script), that a
 ## copy reaches only frozen files, and the early-contact values of the frozen Normal level.
 
 const AiRun: GDScript = preload("res://tests/perf/support/ai_perf_run.gd")

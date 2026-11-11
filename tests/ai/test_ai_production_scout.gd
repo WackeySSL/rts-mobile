@@ -135,9 +135,9 @@ func test_a_living_scout_with_the_field_still_set_gets_no_second_scout() -> void
 
 
 func test_a_scout_finishing_between_two_thinks_gets_no_second_scout_in_any_phase() -> void:
-	# Intel clears the field in its own slot; production reads a stale one for up to 5 ticks. A
-	# light tank waits at the vehicle head `phase` ticks short of done, and production runs every
-	# tick over the spawn with the field kept set.
+	# Intel clears the field in its own slot; production reads a stale one for up to 6 ticks (INTEL,
+	# ECONOMY, PRODUCTION). A light tank waits at the vehicle head `phase` ticks short of done, and
+	# production runs every tick over the spawn with the field kept set.
 	var scout: int = -1
 	for phase: int in 15:
 		var world: World = _world(RICH, true)

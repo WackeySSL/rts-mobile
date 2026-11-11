@@ -284,7 +284,9 @@ func test_players_1_to_4_think_on_residues_0_and_1_and_never_on_a_checkpoint_tic
 	faction: String, _test_parameters := _factions()
 ) -> void:
 	var def: OpponentDef = Rig.def_of(faction)
+	# The preconditions of `OpponentAi.create`'s lane formula.
 	assert_int(Replay.CHECKPOINT_PERIOD % def.think_period).is_equal(0)
+	assert_int(def.think_tick % def.think_period).is_equal(0)
 	for player: int in [1, 2, 3, 4]:
 		var ai: OpponentAi = Rig.opponent(faction, "normal", player)
 		for tick: int in 30:

@@ -26,7 +26,6 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 	for _tick: int in TICKS:
 		if world.match_end_tick > 0:
 			break
-		var thought: int = world.tick
 		AiRig.tick(world, loop, ais)
 		for ai: OpponentAi in ais:
 			assert_int(ai.memory.goal_keys()).is_less_equal(ai.memory.goal_keys_max)
@@ -34,18 +33,17 @@ func test_a_hard_mirror_match_drops_no_command_and_keeps_every_bound() -> void:
 			assert_int(ai.memory.goal_keys_of(AiMemory.Owner.STAGING)).is_less_equal(2)
 			assert_int(ai.commands_cut).is_equal(0)
 			assert_int(ai.army.tests).is_less_equal(cap)
-			# The army prunes the list against the lists of the REFRESH slot before it (P198b), so
-			# the bound holds after the ARMY slot's think and, between a refresh and it, only the
-			# unit cap does.
+			# Only REFRESH writes `unit_id` and only ARMY `withdrawn_id` (which prunes it against the
+			# lists of the REFRESH before it, P198b): the strict bound fails only from a REFRESH think
+			# until the next ARMY think, the unit cap holds always.
 			assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_cap)
-			if (
-				(thought + ai.think_offset) % ai.think_period == 0
-				and ai.last_slot == OpponentAi.Slot.ARMY
-			):
+			if ai.last_slot != OpponentAi.Slot.REFRESH:
 				assert_int(ai.memory.withdrawn_id.size()).is_less_equal(ai.memory.unit_id.size())
 	assert_int(world.dropped_commands).is_equal(0)
 	for ai: OpponentAi in ais:
 		assert_int(ai.work_max).is_less_equal(3)
+		# Ids the army left out of an order because the unit died since the REFRESH before it.
+		print("WATCH ai stale player=%d stale_ids=%d" % [ai.player_id, ai.army.stale_ids])
 	# The control ran: the fights of 13 500 ticks hold orders of both kinds (seed 1).
 	assert_int(ais[0].army.stepbacks + ais[1].army.stepbacks).is_greater(0)
 	assert_int(ais[0].army.focuses + ais[1].army.focuses).is_greater(0)

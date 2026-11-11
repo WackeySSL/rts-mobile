@@ -10,7 +10,8 @@ const CLUSTER_POINT: Vector2i = Vector2i(31500, 31500)
 ## The far barracks the wave's goal may point at.
 const FAR_POINT: Vector2i = Vector2i(7000, 29000)
 ## The wave numbers of the integration case: the first tick and strength (a Lumen Accord tank and
-## the two starting rifle squads: 1000 + 100 + 100); the first ARMY slot is tick 5, 15 ticks apart.
+## the two starting rifle squads: 1000 + 100 + 100); the suite drives its ARMY thinks by hand
+## from tick 5, 15 ticks apart.
 const WAVE_TICK: int = 100
 const WAVE_STRENGTH: int = 1200
 const LAUNCH: int = 110

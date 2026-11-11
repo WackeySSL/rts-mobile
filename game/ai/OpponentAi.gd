@@ -61,8 +61,10 @@ static func create(
 	ai.player_id = player_id
 	ai.rng = rng
 	ai.think_period = maxi(def.think_period, 1)
-	# A checkpoint tick leaves `think_period - 1` residues free; a player takes the residue of its
-	# lane, and a player past the first lane runs its slots `LANE_SHIFT` places on (P198b).
+	# Preconditions, pinned by a data test: the period divides 15 and `think_tick % think_period` is
+	# 0 (so residue `think_period - 1`, the checkpoint's, is the one left out). A checkpoint tick
+	# leaves `think_period - 1` residues free; a player takes the residue of its lane, and a player
+	# past the first lane runs its slots `LANE_SHIFT` places on (P198b).
 	var lanes: int = maxi(ai.think_period - 1, 1)
 	ai.think_offset = posmod(-(def.think_tick + posmod(player_id - 1, lanes)), ai.think_period)
 	ai.slot_shift = maxi(player_id - 1, 0) / lanes * LANE_SHIFT
@@ -88,9 +90,13 @@ func slot_of(tick: int) -> int:
 func think(view: PlayerView, out: Array[Command]) -> void:
 	var before: int = out.size()
 	work = 1
-	memory.commands_left = commands_per_think_max
-	memory.unit_cap = view.unit_cap
 	last_slot = slot_of(view.tick)
+	# One budget a round for the economy and the production, as before the five slots (Easy's "slow
+	# hands", ADR 0030 section 6): ECONOMY resets it and PRODUCTION spends what is left. ARMY and
+	# INTEL (with the strikes) have their own; REFRESH sends nothing.
+	if last_slot != Slot.PRODUCTION:
+		memory.commands_left = commands_per_think_max
+	memory.unit_cap = view.unit_cap
 	slot_thinks[last_slot] += 1
 	match last_slot:
 		Slot.ECONOMY:

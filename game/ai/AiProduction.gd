@@ -1,13 +1,13 @@
 class_name AiProduction
 extends RefCounted
-## The opponent's production manager (ADR 0030 sections 1, 4, 5 and 6, plan row P178), slot ECONOMY
-## after the economy, on the same view. It keeps both unit queues (infantry and vehicles) at
-## `queue_target` with units of the army's roles. It reads the match only through the `PlayerView`
-## and `AiMemory`, copies its def and level into ints and keeps no Resource. A run:
-## - counts this player's unit QUEUEs already in `out` (the economy's tankers of this think, which
-##   the view does not show) toward the queue room and the unit cap;
+## The opponent's production manager (ADR 0030 sections 1, 4, 5 and 6, plan row P178), slot
+## PRODUCTION, one think (3 ticks) after the economy's. It keeps both unit queues (infantry and
+## vehicles) at `queue_target` with units of the army's roles. It reads the match only through the
+## `PlayerView` and `AiMemory`, copies its def and level into ints and keeps no Resource. A run:
+## - counts this player's unit QUEUEs already in `out` toward the queue room and the unit cap (none
+##   from the economy since P198b: its tankers are in the view by now, and `out` starts empty);
 ## - spends at most `maxi(view.credits - memory.reserve_credits, 0)`: the economy already queued
-##   and keeps credits for its next structure or tanker, and its QUEUEs apply first;
+##   and keeps credits for its next structure or tanker (its QUEUEs apply before this think);
 ## - while `memory.scout_wanted` is set and no unit of that type waits in its queue or lives
 ##   (intel's field is from the INTEL slot before, so a scout that spawned since still shows),
 ##   queues one scout ahead of the draw (at most one a think, counted toward the queue's room); a
@@ -118,7 +118,7 @@ func _resolve(view: PlayerView) -> void:
 		_vehicle_types.append(view.type_index_of(id))
 
 
-## `_added` from the unit QUEUEs of this player already in `out` (this think's, from the economy).
+## `_added` from the unit QUEUEs of this player already in `out` (this think's own).
 func _count_sent(view: PlayerView, out: Array[Command]) -> void:
 	_added.resize(PlayerView.TABS)
 	_added.fill(0)

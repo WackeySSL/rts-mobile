@@ -32,6 +32,7 @@ extends Resource
 @export var defend_radius_tiles: int = 12
 @export var guard_offset_tiles: Vector2i = Vector2i(2, 2)
 ## Ticks between two thinks, and the tick of the period (tick % think_period) at which the first
-## player of the ADR's numbering (player 2) thinks; each later player thinks one tick after.
+## player of the ADR's numbering (player 2) thinks; each later player thinks one tick after. The
+## opponent AI reads `think_tick` as the residue of player 1 instead (see `OpponentAi`).
 @export var think_period: int = 15
 @export var think_tick: int = 7

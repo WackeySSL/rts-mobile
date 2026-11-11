@@ -93,7 +93,8 @@ func test_an_own_unit_made_since_the_last_refresh_is_in_the_check() -> void:
 	_fire(READY)
 	_fire(KNOWN - 5)
 	AiRig.add_unit_of(_world, 1, "heavy_tank", 32500, 31500)
-	# The INTEL slot, the ARMY slot's lists five ticks old: the new tank still keeps its point clear.
+	# The INTEL slot on the REFRESH slot's lists (5 ticks old here, 6 in the controller): the new
+	# tank still keeps its point clear.
 	_fire(KNOWN, 8, false)
 	assert_array(_target()).is_equal([BARRACKS_POINT.x, BARRACKS_POINT.y])
 

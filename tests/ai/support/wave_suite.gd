@@ -1,7 +1,8 @@
 extends "res://tests/ai/support/army_suite.gd"
 ## The base of the wave suites (plan row P180): the army suite's World with the army made on a copy
 ## of Normal's level that holds the suite's own wave numbers, so a tuning row of `data/ai/` cannot
-## move them. The first ARMY slot is tick 5 and the slots are 15 ticks apart. Not a test suite.
+## move them. Its ARMY thinks are driven by hand: the first is tick 5, 15 ticks apart (the
+## controller's own come 3 ticks after a REFRESH, P198b). Not a test suite.
 
 ## The suite's wave numbers: first tick, first strength (a heavy tank and the two starting rifle
 ## squads: 1000 + 100 + 100), growth in percent, all-in tick, and the two retreat tests.

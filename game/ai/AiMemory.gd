@@ -85,8 +85,8 @@ var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
 ## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
 ## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
-## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
-## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
+## but the scout type, and seen enemy combat units; ids ascending, rebuilt every REFRESH slot.
+## Bounds: `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
 var home_x: int = NONE
 var home_y: int = NONE
 var site_id: PackedInt32Array = PackedInt32Array()
@@ -110,8 +110,9 @@ var sector_side: int = 0
 var sector_cols: int = 0
 ## Strikes: the wave count the Dusk Array last fired for (0: none; the first wave makes it 1).
 var strike_wave: int = 0
-## The hp each own unit had at the last ARMY slot ("hit by something unseen"), ids ascending. A unit
-## whose squad's shift was not sent keeps its older value, so the hit is found again.
+## The hp each own unit had at the last ARMY slot, from the REFRESH one think before ("hit by
+## something unseen"), ids ascending. A unit whose squad's shift was not sent keeps its older value,
+## so the hit is found again.
 var hp_id: PackedInt32Array = PackedInt32Array()
 var hp_value: PackedInt32Array = PackedInt32Array()
 ## Hard's unit control (P180b): the own units that stepped back on their own and are still under

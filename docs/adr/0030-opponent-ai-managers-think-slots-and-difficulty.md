@@ -214,10 +214,22 @@ layers are ai-dev.md's:
   it is `reaction_ticks` old in `AiMemory`. With the slot cadence the shortest reaction is one
   slot round (15 ticks).
 
-Note (2026-11-10, P198b, five slots on period 3; changes no accepted text above; Michael approved
-the row in chat: "ja til P198b"). The first lever of "Over budget" in section 4, GDScript only.
+Note (2026-11-10, P198b, five slots on period 3; Michael approved the row in chat: "ja til P198b").
+The first lever of "Over budget" in section 4, GDScript only. (2026-11-11) Taken up again by Michael
+after P198c showed no measurable phone gain (P26bo, section 4); balance shifts accepted until Phase
+4b's balance run.
 
-(2026-11-11) Taken up again by Michael after P198c showed no measurable phone gain; balance shifts accepted until Phase 4b's balance run.
+**What this note supersedes**, each place changing no other text; the accepted text stays as
+written and as dated, and this note and `OpponentAi` are what holds:
+- section 2's heading and bullets above: period 5, three slots, the slot formula with
+  `think_offset`, "slot 0, 1, 2" and the dummy's offset formula `think_offset = posmod(-(think_tick +
+  p - 2), 5)`, and "as a side effect no two players think on the same tick" (true for players 1 and
+  2 only; players 3 and 4 share ticks with 1 and 2, below);
+- section 4's "the two AIs think on 6 of every 15 ticks" (now 10: each AI thinks on 5);
+- section 6's "`think_period` (5 in these files)" (3; `think_tick` stays 6, read as the residue of
+  player 1);
+- the Consequences' "spread over three ticks of fifteen" (five);
+- ADR 0020's status note of 2026-11-06 (period 5, three slots), which gets a pointer here.
 
 *Design* (written before the code):
 - **Cadence.** `think_period` 3, five slots, `slot = (tick / 3 + slot_shift) % 5`, stateless. ECONOMY
@@ -242,14 +254,21 @@ the row in chat: "ja til P198b"). The first lever of "Over budget" in section 4,
   rule (ascending player order, one fresh view each) is unchanged. The worst shared tick adds one
   ECONOMY-class slot to the ARMY slot of the other; a 3 to 4 player match is not in the perf workload
   (two AIs) and has no gate of its own.
+- **The command budget stays one per old slot.** `commands_per_think_max` is Easy's "slow hands"
+  (section 6: 3). With economy and production in separate thinks a reset on every think would
+  have let Easy send 3 + 3 a round, loosening it. So ECONOMY resets `memory.commands_left` and
+  PRODUCTION spends what is left; ARMY and INTEL (with the strikes) each reset their own; REFRESH
+  sends nothing. The state is an `AiMemory` int, deterministic. `test_opponent_cadence` pins at
+  most 3 across the ECONOMY and PRODUCTION thinks of one round for Easy.
 - **What the managers read from an earlier slot.** The army reads the sector map, the own and seen id
   lists and the home squad's hp that REFRESH wrote 3 ticks before (INTEL and the strikes 6, the
   economy and production 9 and 12; they read memory and the fresh view as before). Only the army
   acts on a unit id, so `AiArmy._order` now leaves out an id that is no longer in its view and sends
-  no order for none: without that, an order for a lone unit that died in those 3 ticks was dropped by
-  the sim (12 drops in a 5 400 tick Hard mirror, found by the economy suite's drop check). The
-  step-back list's bound against the id lists now holds after an ARMY think and, between a refresh
-  and it, against the unit cap.
+  no order for none, counting them in `army.stale_ids`: without that, an order for a lone unit that
+  died in those 3 ticks was dropped by the sim (12 drops in a 5 400 tick Hard mirror, found by the
+  economy suite's drop check). Hard's focus centre and step-back skip a dead member the same way.
+  The step-back list's bound against the id lists holds on every tick but between a REFRESH think
+  and the ARMY think after it, where only the unit cap does.
 - **The view.** It cannot be built "only as far as the slot needs" inside this row: what a slot can
   skip (the ghosts, the warned strikes, the weapon tables) is small, and the ARMY slot, which sets
   the p95, reads the type tables, the weapon tables, the rally points and the rows. What would cut it

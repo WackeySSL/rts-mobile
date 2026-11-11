@@ -5,13 +5,12 @@ extends RefCounted
 ## `defend_radius_tiles` of a building after `reaction_ticks`, and the `MOVE` back; the waves (a
 ## second squad, WAVE, launched from the home squad, pulled back with a `MOVE` and rejoined, or
 ## recalled into the home squad when a threat at the base outweighs it); the unseen-hit response
-## (`_unseen_hit`, P179b); Hard's unit control (`_step_back`, `_focus`). It makes no pass over the
-## view's rows: `AiIntel.refresh` fills the lists it walks. Goal keys: the defence, the shift, a
-## wave and a focus `ATTACK` are owner ARMY (one goal cell at a time, the last order's), the rally,
-## return, retreat and step-back owner STAGING; both precede the scout, which yields at the cap (its
-## order in flight keeps its cell until the leg ends). An order is all or nothing: budget and keys
-## first, no memory change if refused. From `all_in_tick` the all-in overrides the defence
-## (`_all_in_wave`).
+## (`_unseen_hit`); Hard's unit control (`_step_back`, `_focus`). No pass over the view's rows: the
+## lists it walks are `AiIntel.refresh`'s, from the REFRESH slot 3 ticks before. Goal keys: the
+## defence, the shift, a wave and a focus `ATTACK` are owner ARMY (one goal cell at a time), the
+## rally, return, retreat and step-back owner STAGING; both precede the scout, which yields at the
+## cap. An order is all or nothing: budget and keys first, no memory change if refused. From
+## `all_in_tick` the all-in overrides the defence (`_all_in_wave`).
 
 ## The home squad's index and role code.
 const HOME: int = 0
@@ -42,10 +41,9 @@ var unit_retreat_hp: int = 0
 var focus_fire: bool = false
 
 ## Counted for the suites: tests of the last run: the threat search's, the home focus search's, the
-## wave's ratio read, the recall's read and the wave focus search's (they all share the cap of
-## `tests_max`, in that order, so an earlier one that uses it up leaves the later ones blind that
-## think); over the match RALLY Commands, defence and return orders sent, and orders refused for
-## want of keys.
+## wave's ratio read, the recall's read and the wave focus search's (they share the cap of
+## `tests_max`, in that order, so an earlier one that uses it up blinds the later ones); over the
+## match RALLY Commands, defence and return orders sent, and orders refused for want of keys.
 var tests: int = 0
 var rallies: int = 0
 var defences: int = 0
@@ -59,9 +57,11 @@ var recalls: int = 0
 ## The unseen-hit tests of the last run (at most `tests_max`) and the shifts sent over the match.
 var hit_tests: int = 0
 var shifts: int = 0
-## Over the match: units stepped back on their own and focus-fire `ATTACK` orders sent.
+## Over the match: units stepped back on their own, focus-fire `ATTACK` orders sent, and ids
+## `_order` left out because the unit died since the last REFRESH slot (P198b).
 var stepbacks: int = 0
 var focuses: int = 0
+var stale_ids: int = 0
 
 ## Joiners no order has named yet (ascending), and scratch lists kept between runs.
 var _fresh: PackedInt32Array = PackedInt32Array()
@@ -333,14 +333,13 @@ func _return(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 ## home unit (not one that stepped back) that lost hp since the last run, while no seen enemy
 ## combat unit or building was within its weapon range, makes the squad's goal move `shift_tiles`
 ## toward the base estimate (the point mirror of the Headquarters without one): an army order, all
-## or nothing. The shifted goal
-## is a probe, held while `home_shifted` is set (see `_probing`); further hits do not move it, but
-## after the return to the staging point a new hit shifts again, out and back, never creeping. Only
-## while no threat stands and none stood at the last run (`calm`; the squad fought it, and a foe
-## it killed is gone from the view). The hp of the home units is kept for the next run when no
-## order went (no budget, no keys), so the hit is found again; a unit whose range test ran into
-## the test cap counts as covered. `unit_id` and `member_id` are the same list after `_join`, so
-## an index of one is the other's.
+## or nothing. The shifted goal is a probe, held while `home_shifted` is set (see `_probing`);
+## further hits do not move it, but after the return to the staging point a new hit shifts again,
+## out and back, never creeping. Only while no threat stands and none stood at the last run
+## (`calm`; the squad fought it, and a foe it killed is gone from the view). The hp of the home
+## units is kept for the next run when no order went (no budget, no keys), so the hit is found
+## again; a unit whose range test ran into the test cap counts as covered. `unit_id` and
+## `member_id` are the same list after `_join`, so an index of one is the other's.
 func _unseen_hit(view: PlayerView, memory: AiMemory, out: Array[Command], calm: bool) -> void:
 	hit_tests = 0
 	var refused: bool = false
@@ -508,7 +507,8 @@ func _members(
 
 ## One `ATTACK_MOVE` (army owner; an `ATTACK` on `target` when that is set) or `MOVE` (staging
 ## owner) of `ids` to `goal` (`at` in milli-tiles; `unit_cap` is under `Command.MAX_UNITS`). False,
-## nothing changed, without budget or keys.
+## nothing changed, without budget or keys: none left, no living id (the dead are left out and
+## counted in `stale_ids`), a dead `target`, or no keys.
 func _order(
 	view: PlayerView,
 	memory: AiMemory,
@@ -521,8 +521,6 @@ func _order(
 ) -> bool:
 	if not memory.can_send():
 		return false
-	# The lists are from the last REFRESH slot, one think (3 ticks) old: a unit that died since is
-	# left out, and an order for none is not sent (P198b).
 	var classes: int = 0
 	var alive: PackedInt32Array = PackedInt32Array()
 	for id: int in ids:
@@ -530,18 +528,18 @@ func _order(
 		if row >= 0:
 			alive.append(id)
 			classes |= 1 << AiMemory.class_of(view, view.row_type(row))
+	stale_ids += ids.size() - alive.size()
 	if alive.is_empty() or (target != AiMemory.NONE and view.row_of(target) < 0):
 		return false
-	ids = alive
 	if not _hold(memory, owner, goal, classes):
 		starved += 1
 		return false
 	if owner == AiMemory.Owner.ARMY and target != AiMemory.NONE:
-		out.append(Command.attack(view.player, ids.duplicate(), target))
+		out.append(Command.attack(view.player, alive, target))
 	elif owner == AiMemory.Owner.ARMY:
-		out.append(Command.attack_move(view.player, ids.duplicate(), at.x, at.y))
+		out.append(Command.attack_move(view.player, alive, at.x, at.y))
 	else:
-		out.append(Command.move(view.player, ids.duplicate(), at.x, at.y))
+		out.append(Command.move(view.player, alive, at.x, at.y))
 	memory.spent()
 	return true
 
@@ -905,7 +903,10 @@ func _step_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void
 	_kept.clear()
 	for at: int in memory.unit_id.size():
 		var id: int = memory.unit_id[at]
-		var max_hp: int = view.type_max_hp[view.row_type(view.row_of(id))]
+		var type: int = view.row_type(view.row_of(id))
+		if type < 0:
+			continue
+		var max_hp: int = view.type_max_hp[type]
 		if max_hp <= 0 or memory.unit_hp[at] * 100 >= max_hp * unit_retreat_hp:
 			continue
 		if _withdrawn(memory, id):
@@ -932,25 +933,26 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 
 
 ## Hard's focus fire for `squad`: the weakest seen enemy combat unit (fewest hp, the lowest id on a
-## tie) within the defence radius of the group's centre, at most `tests_max` tests a run (shared
-## with the threat search). The group gets one `ATTACK` on it when it is a new target (the home
-## squad also when a unit joined since); the target's tile is the squad's goal and the army goal.
-## The key books the target's tile at order time: the sim re-keys each unit's `ATTACK` field toward
-## the moving target, so for a few ticks two cells may be live while the books hold the order-time
-## tile. The tests share the cap with the reads that ran first (see `tests`); a search the cap cut
-## off before any candidate keeps a living target as the candidate (a joiner still gets the order).
-## True while a target is in reach (sent, held or refused: the group's own order waits), false when
-## none is, which also forgets the old target.
+## tie) within the defence radius of the centre of its living members, at most `tests_max` tests a
+## run (shared, see `tests`; a search the cap cut off keeps a living target). The group gets one
+## `ATTACK` on it when it is a new target (the home squad also when a unit joined since); the
+## target's tile is the squad's goal and the army goal, booked at order time (the sim re-keys each
+## `ATTACK` toward the moving target). True while a target is in reach (sent, held or refused: the
+## group's own order waits), false when none is, which also forgets the old target.
 func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
 	_capped = false
 	var sum: Vector2i = Vector2i.ZERO
 	var members: PackedInt32Array = _members(memory, true, squad)
+	var living: int = 0
 	for id: int in members:
-		sum += view.row_pos(view.row_of(id))
+		var row: int = view.row_of(id)
+		if row >= 0:
+			sum += view.row_pos(row)
+			living += 1
 	var best: int = -1
-	if not members.is_empty():
+	if living > 0:
 		@warning_ignore("integer_division")
-		best = _weakest(view, memory, sum / members.size())
+		best = _weakest(view, memory, sum / living)
 	var kept: int = memory.squad_focus[squad]
 	if best < 0 and _capped and kept != AiMemory.NONE:
 		best = view.row_of(kept)

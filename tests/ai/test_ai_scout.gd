@@ -253,10 +253,18 @@ func test_the_controller_sends_the_scout_from_the_intel_slot_and_counts_it() -> 
 	_world.tick = 1800
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ECONOMY)
+	_world.tick = 1803
+	ai.think(PlayerView.of(_world, 1), sent)
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.PRODUCTION)
+	assert_int(_moves_in(sent)).is_equal(0)
 	_world.tick = 1806
 	ai.think(PlayerView.of(_world, 1), sent)
 	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.REFRESH)
 	assert_int(ai.work).is_equal(3)
+	assert_int(_moves_in(sent)).is_equal(0)
+	_world.tick = 1809
+	ai.think(PlayerView.of(_world, 1), sent)
+	assert_int(ai.last_slot).is_equal(OpponentAi.Slot.ARMY)
 	assert_int(_moves_in(sent)).is_equal(0)
 	_world.tick = 1812
 	ai.think(PlayerView.of(_world, 1), sent)

@@ -52,6 +52,8 @@ above stays as accepted and as dated):
   three slots, so each of its managers thinks once per 15 ticks and players 1 to 4 never think on
   a checkpoint tick. `MatchRunner` gains `first_opponent` (default 2; 1 seats a computer player on
   player 1 too) and `opponent_levels`, and builds controllers through `AiFactory` (plan row P182).
+  (2026-11-11) Superseded for the cadence: `think_period` 3 and five slots, see ADR 0030 section
+  2's P198b note.
   The dummy keeps period 15 and its tick.
 - **§4:** the dummy stays as the test opponent and the balance run's yardstick (a lead decision in
   ADR 0030); the Skirmish routes play `OpponentAi` from plan row P183 on.

@@ -5,7 +5,7 @@ extends RefCounted
 ## (`tests/smoke/smoke_run.gd`). The controllers are made as `MatchRunner._opponent_controllers`
 ## makes them (`AiFactory.create`, stream `STREAM_AI_BASE + player`). It keeps the time of every
 ## think (report only), the lines of the counted bounds that a think broke (deterministic), the
-## peak of every judged counter and the state hash at every checkpoint. It also builds the three
+## peak of every judged counter and the state hash at every checkpoint. It also builds the four
 ## report-only lines, so the suite and its pin of their heads share one source. Not a test suite.
 
 const SmokeRun: GDScript = preload("res://tests/smoke/smoke_run.gd")
@@ -30,6 +30,10 @@ const THINK_HEAD: String = "WATCH ai think"
 const FLOW_HEAD: String = "WATCH ai flow"
 const PEAKS_HEAD: String = "WATCH ai peaks"
 const SLOTS_HEAD: String = "WATCH ai slots"
+## The keys of that line, in `OpponentAi.Slot` order.
+const SLOT_KEYS: Array[String] = [
+	"economy_us", "production_us", "refresh_us", "army_us", "intel_us"
+]
 
 ## The microseconds of each call of `think_all` that made a think (the view of the think included,
 ## as the snapshot's `think_usec` is), in tick order.
@@ -92,8 +96,8 @@ static func think_line(
 	return PerfReport.sub_line(THINK_HEAD, values, false)
 
 
-## `WATCH ai slots mean_us=<slot 0..4>` over `runs`: the mean think time of each slot (the view
-## included), pooled over all the runs' thinks, in `OpponentAi.Slot` order (P198b).
+## `WATCH ai slots economy_us= production_us= refresh_us= army_us= intel_us=` over `runs`: the mean
+## think time of each slot (the view included), pooled over all the runs' thinks (P198b).
 static func slots_line(runs: Array) -> String:
 	var values: Dictionary = {}
 	for slot: int in OpponentAi.SLOTS:
@@ -102,7 +106,7 @@ static func slots_line(runs: Array) -> String:
 		for run: Variant in runs:
 			spent += run.slot_usec[slot]
 			count += run.slot_thinks[slot]
-		values["slot%d_us" % slot] = spent / float(maxi(count, 1))
+		values[SLOT_KEYS[slot]] = spent / float(maxi(count, 1))
 	return PerfReport.sub_line(SLOTS_HEAD, values, false)
 
 

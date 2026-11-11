@@ -6,11 +6,11 @@ extends RefCounted
 ## `MOVE` for the one scout. A hidden enemy row never enters the memory: the passes below walk
 ## `own_rows`, `seen_rows` and the view's ghosts, nothing else.
 ##
-## `refresh` (ARMY slot) rebuilds the sector map, one pass over the own rows and one over the seen
-## rows. `run` (INTEL slot) keeps the sightings and the base estimate, again two passes (`passes`
-## counts them at each loop head), and steers the scout. Sectors are squares of `sector_tiles`,
-## grown only when the map would need more than `sectors_max` of them. Draws come from the
-## controller's stream, one per scout pick and only among sectors at an equal distance.
+## `refresh` (REFRESH slot) rebuilds the sector map, one pass over the own rows and one over the
+## seen rows. `run` (INTEL slot) keeps the sightings and the base estimate, again two passes
+## (`passes` counts them at each loop head), and steers the scout. Sectors are squares of
+## `sector_tiles`, grown only when the map would need more than `sectors_max` of them. Draws come
+## from the controller's stream, one per scout pick and only among sectors at an equal distance.
 
 ## The move classes the scout's goal key names (`World.MoveClass`). The class of a type is its tab's
 ## (vehicles tracked, the rest on foot); a data test pins that for every roster.
