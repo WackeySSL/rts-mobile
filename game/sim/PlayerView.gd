@@ -4,7 +4,9 @@ extends RefCounted
 ## and may ask, in one pure object, so the AI (`game/ai`, which never names the World) and any
 ## other reader play by the player's rules. `PlayerView.of(world, player)` makes one, once per
 ## think, inside the tick job (ADR 0020 section 3: on the worker in WORKER, inline in SYNC). It
-## reads the World and writes nothing, and keeps no reference to it.
+## reads the World and writes only `world.type_tables`, a non-state cache that the first view of a
+## World fills, so call it only on the thread that owns the World (the tick job's); it keeps no
+## reference to the World.
 ##
 ## What it gives:
 ## - `own_rows`: the rows with `owner == player`, and `seen_rows`: the rows of any other owner (an
@@ -115,7 +117,7 @@ const ARMOUR_CLASSES: int = TypeTables.ARMOUR_CLASSES
 
 ## Members that `of` always assigns carry no initializer (plan row P198c): a typed member starts as
 ## its type's empty value (0, false, null, an empty array) anyway, and an initializer would run code
-## in `new()` for a value that `of` replaces at once. One is kept where `of` may not assign it.
+## in `new()` for a value that `of` replaces at once, or leaves at that value.
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
 var player: int
@@ -139,23 +141,21 @@ var seen_rows: PackedInt32Array
 ## head's progress in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick). `rally_x` and
 ## `rally_y` are the tab's rally point in milli-tiles, -1 for none. Copies, one entry per tab.
 var queue_slots: int
-var queue_count: PackedInt32Array = PackedInt32Array()
-var queue_progress: PackedInt32Array = PackedInt32Array()
-var queue_type: PackedInt32Array = PackedInt32Array()
-var rally_x: PackedInt32Array = PackedInt32Array()
-var rally_y: PackedInt32Array = PackedInt32Array()
+var queue_count: PackedInt32Array
+var queue_progress: PackedInt32Array
+var queue_type: PackedInt32Array
+var rally_x: PackedInt32Array
+var rally_y: PackedInt32Array
 ## The player's last-seen records: how many, and the four columns, one entry per record, in the
 ## order of the World's block (`LastSeen`). Copies; a column is as long as `ghost_count`.
 var ghost_count: int
-var ghost_id: PackedInt32Array = PackedInt32Array()
-var ghost_type: PackedInt32Array = PackedInt32Array()
-var ghost_owner: PackedInt32Array = PackedInt32Array()
-var ghost_cell: PackedInt32Array = PackedInt32Array()
-## Copies of the World's type tables, one entry per type index (its names and meanings): a cost in
-## credits, the tab a type is built on and the type it requires (-1 for none), the tab a building
-## produces (-1), the footprint in tiles (0 for a unit), the speed in milli-tiles a tick (0 for a
-## building), the weapon index (-1 for none), a harvester's cargo capacity (0), the power a
-## building makes (positive) or uses (negative), and the ticks a type takes to build.
+var ghost_id: PackedInt32Array
+var ghost_type: PackedInt32Array
+var ghost_owner: PackedInt32Array
+var ghost_cell: PackedInt32Array
+## The type tables, one entry per type index (`type_vs_armour`: per type and armour class): copies
+## of the arrays of the match's `TypeTables` holder, where each is documented under its name without
+## the `type_` (`type_range` and `type_min_range` are its `weapon_range` and `weapon_min_range`).
 var type_cost: PackedInt32Array
 var type_tab: PackedInt32Array
 var type_requires: PackedInt32Array
@@ -167,11 +167,6 @@ var type_weapon: PackedInt32Array
 var type_harvest: PackedInt32Array
 var type_power: PackedInt32Array
 var type_build_ticks: PackedInt32Array
-## More type tables (P172), copies, one entry per type index: hit points, the armour class
-## (`World.Armour`), the type's weapon range and minimum range in milli-tiles (0 for a type
-## without a weapon), sight in milli-tiles as the World keeps it (the radius of the fog's disc), the
-## faction (an index into the World's faction ids, -1 for none), the strike kind (0 none, 1
-## rupture, 2 blackout), its radius in milli-tiles and its charge in ticks.
 var type_max_hp: PackedInt32Array
 var type_armour: PackedInt32Array
 var type_range: PackedInt32Array
@@ -181,8 +176,6 @@ var type_faction: PackedInt32Array
 var type_strike_kind: PackedInt32Array
 var type_strike_radius: PackedInt32Array
 var type_charge_ticks: PackedInt32Array
-## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
-## a type without a weapon.
 var type_vs_armour: PackedInt32Array
 ## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
 ## milli-tiles and the landing tick, one entry per player that has one, ascending player.
@@ -225,7 +218,8 @@ var _input: PlacementInput
 
 
 ## The view of `player` on `world` as it stands. One pass over the rows (`_take_rows`) and a few
-## slices of the player's own state; nothing is written to the World.
+## slices of the player's own state; the only write to the World is the first view's fill of
+## `world.type_tables` (see `_take_tables`), so call it on the thread that owns the World.
 static func of(world: World, player: int) -> PlayerView:
 	var view: PlayerView = PlayerView.new()
 	view.player = player
@@ -390,21 +384,19 @@ func ghost_pos(record: int) -> Vector2i:
 
 
 ## The type tables, copied from the match's holder (plan row P198c): the World's `type_tables`,
-## built by the first view of the match and kept on the World, outside its state
-## (`World.NON_STATE_MEMBERS`). The holder saves the 21 copies of the World's tables and the weapon
-## derivation once a match; each view still takes its own `duplicate()` of every array, so a write
-## through a view's table reaches neither the holder, the World nor another view. The two rule caps
-## are ints, read each time.
+## built by the first view of the match once the World is prepared and kept on the World, outside
+## its state (`World.NON_STATE_MEMBERS`). The holder saves the 21 copies of the World's tables and
+## the weapon derivation once a match; each view still takes its own `duplicate()` of every array,
+## so a write through a view's table reaches neither the holder, the World nor another view. The
+## tables are fixed once `World.prepare()` has run, so the holder is kept only for a prepared World
+## (an unprepared one gets a fresh holder each view) and rebuilt when the type count changes. The
+## two rule caps are ints, read each time.
 func _take_tables(world: World) -> void:
 	var tables: TypeTables = world.type_tables
-	# The shape check is for a hand-built World that gets more types, or is prepared, after a view.
-	if (
-		tables == null
-		or tables.ids.size() != world.type_ids.size()
-		or tables.cost.size() != world.type_cost.size()
-	):
+	if tables == null or tables.ids.size() != world.type_ids.size():
 		tables = TypeTables.of(world)
-		world.type_tables = tables
+		if world.prepared:
+			world.type_tables = tables
 	_tables = tables
 	type_cost = tables.cost.duplicate()
 	type_tab = tables.tab.duplicate()

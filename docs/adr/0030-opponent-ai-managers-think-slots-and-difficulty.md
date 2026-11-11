@@ -493,21 +493,21 @@ accepted text above):
   by assignment, so a write through a view's table would have reached every later view; it was
   dropped for that.) The cache sits on the World because every caller of `PlayerView.of` (the tick
   job, the headless loops, the smoke run, `perf_ai`, the Perf AI route, the tests) already passes
-  it, and there is no `static var` in `game/sim`. A type-count shape check rebuilds it for a
-  hand-built World that gains types after a view. Extra guards: `AI_RULES` entries in
+  it, and there is no `static var` in `game/sim`. It is kept only for a prepared World (the tables
+  are fixed after `prepare()`) and rebuilt when the type count changes. Extra guards: `AI_RULES` entries in
   `tests/project/test_view_reads_snapshot.gd` flag a write to a `view.type_*` table or any naming
   of the holder in `game/ai`, and the `perf_ai` run (`AiRun`) fails if the holder differs from the
   World's tables after its 900 ticks. The members that `of` always assigns lost their
   initializers (a typed member starts empty), and `_take_rows` fills its lists by index.
 - **Result.** No decision changes: the `perf_ai` hash `cbe70a78d01ee7c1`, perf `17f7a83c4d492c4c`
   and bases `c84764064abfb27c` are main's (verify GREEN on run 42970491811, head 50e8318). Per view
-  on the built branch (probe branch run 42970488248, a faster VM: its untouched placement input
+  on the built branch (probe branch `claude/p198c-exp-3`, 9af7acbe, run 42970488248, a faster VM and red by design, since the probe reads the clock inside `game/sim`: its untouched placement input
   reads 4.3 against 7.8 in the first probe, so scale the old numbers by 0.55): `new()` 6.4, the
   tables 3.1, the rows 21.4, 39.6 in all against 89.7 (49.6 scaled): about 10 us, 20 %, a view.
   `WATCH ai think` p95 on the clean branch 383 us (run 42970491811) against main's 549 (run
   42970494958) in the same hour: 0.70, though a runner's p95 moves by up to 60 % from one VM to
   the next, so the per-view figure is the firmer one. The saving is about 10 us a think, not the
-  35 us aimed at: a 60-member object and 24 table copies still cost.
+  35 us aimed at: a 65-member object and 21 table copies a view still cost.
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
@@ -660,6 +660,13 @@ never reaches the World). A manager indexes them only at rows of `own_rows`, `se
 `row_of()` answer of 0 or more, the rows whose values the getters give. The poisoned-view oracle
 (`tests/ai/test_ai_poisoned_view.gd`) and the scan in `tests/project/test_view_reads_snapshot.gd`
 enforce it; ADR 0020 section 1 has the same note.
+
+Note (2026-11-11, P198c; changes no accepted text above): "`PlayerView` stays read-only" reads, from
+now on, "writes nothing the sim reads or hashes". `PlayerView.of` writes one thing to the World:
+`world.type_tables`, a non-state cache of the type tables (`NON_STATE_MEMBERS`), filled by the
+first view of a prepared World. Call `of` only on the thread that owns the World, the tick job's
+(ADR 0020 section 3), as the AI driver does; the same rule that kept a view inside its think now
+also keeps that write off any other thread. No hash moves.
 
 ### 8. Difficulty is parameters; the AI never sees more than its side
 - One code path for all three levels; only `AiDifficultyDef` differs. A test runs the same seed at

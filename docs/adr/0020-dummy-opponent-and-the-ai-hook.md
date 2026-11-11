@@ -133,8 +133,10 @@ member (`NON_STATE_MEMBERS`, never hashed); every view of that World takes a `du
 of its arrays, so the World's copies and the weapon derivation are made once a match, not once a
 think. A write through a view's table reaches neither the holder, the World nor another view. A
 scan in `tests/project/test_view_reads_snapshot.gd` (a write to `view.type_*` in `game/ai`) and a
-check of the holder after the AI perf run are extra guards. ADR 0030 section 4's P198c note has
-the design and the result.
+check of the holder after the AI perf run are extra guards. `PlayerView.of` therefore reads the
+World and writes only `world.type_tables`, a non-state cache, on the first view of a prepared
+World: call it only on the thread that owns the World (the tick job's). ADR 0030 section 4's
+P198c note has the design and the result.
 
 ### 2. `AiController` and the driver
 - `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with

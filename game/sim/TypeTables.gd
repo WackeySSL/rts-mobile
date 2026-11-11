@@ -12,6 +12,11 @@ extends RefCounted
 ## neither, nor another view. As extra guards, `tests/project/test_view_reads_snapshot.gd` scans
 ## game/ai for a write to a view's table or a mention of the holder, and the AI perf run checks the
 ## holder against the World's tables after its 900 ticks.
+##
+## Lifetime: the World keeps the holder in `World.type_tables` (not state, never hashed), built by
+## the first view of a prepared World. The tables are fixed once `World.prepare()` has run, so a
+## holder is not refreshed when the World's tables change; a test that writes a table after a view
+## must set `world.type_tables = null` (a change in the type count does rebuild it).
 
 ## The armour classes of `World.Armour` (a test pins them equal), the width of `vs_armour`.
 const ARMOUR_CLASSES: int = 4
@@ -101,7 +106,6 @@ func _take_weapon_tables(world: World) -> void:
 		made_range[type] = ranges[index]
 		if index < min_ranges.size():
 			made_min[type] = min_ranges[index]
-		# `_entry` written out: this loop runs once a type of the match.
 		var from: int = index * ARMOUR_CLASSES
 		var to: int = type * ARMOUR_CLASSES
 		for klass: int in mini(ARMOUR_CLASSES, percents.size() - from):

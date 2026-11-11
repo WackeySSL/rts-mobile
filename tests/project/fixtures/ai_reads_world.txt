@@ -37,3 +37,6 @@ func think(view: PlayerView, runner: Object, world: World) -> void:
 		2
 	] = 3
 	var read_only: bool = view.type_cost[0] == 5 and view.type_foot_w[1] <= 2 and view.type_max_hp[0] != 1
+	view.type_cost[ids[i]] = 5
+	view.type_power[0] **= 2
+	view.type_speed.erase(5)

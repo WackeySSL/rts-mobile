@@ -13,6 +13,15 @@ Status note (2026-10-12): §8 superseded in part by ADR 0013 §3 (accepted 2026-
 test, the hash walk and P38j2's reachability walk skip. `World.native_phases` is an
 `UNHASHED_SCALARS` entry, so the choice of implementation is never hashed.
 
+Status note (2026-11-11, P198c): `World.NON_STATE_MEMBERS` has a second entry, `type_tables`, so
+"the one member" above reads "one of two". It is the cache of the player views' type tables: pure
+data (a `RefCounted` of packed arrays and type ids, no Node, no Resource), never hashed, never read
+by the sim, filled by the first `PlayerView.of` of a prepared World, which runs inside the tick
+job. That differs from `kernels`, which is attached before the job: the write is made by sim code,
+on the thread that owns the World (the job's), and only that thread may call `PlayerView.of`. It
+is safe because nothing hashed or read by a phase depends on it, and a new World (a new match)
+starts with none. ADR 0030 section 4's P198c note has the design.
+
 Status note (2026-10-13, P26j): §4 carries a dated status note on how the merged P31a (#62) runs
 steps 0, 1 and 11 (`prepare()`, the clear of `events` and `stats`, and `remove_dead()`).
 

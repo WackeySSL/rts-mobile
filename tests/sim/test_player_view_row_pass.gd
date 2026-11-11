@@ -8,23 +8,45 @@ extends GdUnitTestSuite
 
 const TargetingWorlds: GDScript = preload("res://tests/sim/support/targeting_worlds.gd")
 const ViewWorlds: GDScript = preload("res://tests/sim/support/view_worlds.gd")
+const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 ## Positions that sit on or next to tile borders and off the map, on the 30 x 20 map of
-## `short_sighted`: the far-half border rule and the clamp both apply.
-const EDGES: Array[int] = [
+## `short_sighted`: the far-half border rule (the middle is x 15000 and y 10000) and the clamp both
+## apply.
+const X_EDGES: Array[int] = [
 	-500, 0, 999, 1000, 14999, 15000, 15001, 19000, 20000, 29000, 30000, 31000
 ]
+const Y_EDGES: Array[int] = [-500, 0, 999, 1000, 9999, 10000, 10001, 15000, 19000, 20000, 21000]
 
 
 ## A World of 60 random rows plus a neutral row, a row on each border value and rows off the map.
 func _world(salt: int) -> World:
 	var world: World = TargetingWorlds.short_sighted(salt, 30)
+	_add_rows(world, salt, 2)
+	return world
+
+
+## The same on a map with four players (and so four blocks of the fog), the rows spread over them.
+func _world4(salt: int) -> World:
+	var gun: UnitDef = Rig.unit(&"gun_a", 3000, 5000, 4000, 0, [100, 40, 100, 100])
+	var world: World = Rig.world_of([gun], 30, 20, false, 4)
+	var rng: DetRandom = DetRandom.create(salt, 199)
+	for _row: int in 80:
+		world.add_unit(1 + rng.next_int(4), 0, rng.next_int(30000), rng.next_int(20000))
+	TargetingWorlds.stamp_fog(world)
+	_add_rows(world, salt, 4)
+	return world
+
+
+## Random neutral rows and one row on every pair of border values, owned by 0 to `players`.
+func _add_rows(world: World, salt: int, players: int) -> void:
 	var rng: DetRandom = DetRandom.create(salt, 198)
 	for _row: int in 12:
-		world.add_unit(0, rng.next_int(2), rng.next_int(30000), rng.next_int(20000))
-	for x: int in EDGES:
-		for y: int in EDGES:
-			world.add_unit(rng.next_int(3), rng.next_int(2), x, y)
-	return world
+		world.add_unit(
+			0, rng.next_int(world.type_ids.size()), rng.next_int(30000), rng.next_int(20000)
+		)
+	for x: int in X_EDGES:
+		for y: int in Y_EDGES:
+			world.add_unit(rng.next_int(players + 1), rng.next_int(world.type_ids.size()), x, y)
 
 
 ## The rows `player` owns and the rows of other owners it sees, ascending, by the plain rule.
@@ -81,6 +103,15 @@ func test_the_pass_gives_the_reference_lists_levels_and_columns_on_random_worlds
 		var view: PlayerView = PlayerView.of(world, 1)
 		assert_bool(view.own_rows.size() > 0 and view.seen_rows.size() > 0).is_true()
 		assert_bool(view.own_rows.size() + view.seen_rows.size() < world.unit_count()).is_true()
+
+
+func test_the_pass_gives_the_reference_for_every_seat_of_a_four_player_world() -> void:
+	var world: World = _world4(8)
+	for player: int in [0, 1, 2, 3, 4, 5]:
+		_check(world, player, "four players, player %d" % player)
+	var view: PlayerView = PlayerView.of(world, 4)
+	assert_bool(view.own_rows.size() > 0 and view.seen_rows.size() > 0).is_true()
+	assert_bool(view.own_rows.size() + view.seen_rows.size() < world.unit_count()).is_true()
 
 
 func test_the_pass_gives_the_reference_on_the_crafted_world_and_an_empty_one() -> void:

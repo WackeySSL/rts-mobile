@@ -1046,6 +1046,16 @@ absorbs next to the C++ phases.
   fog after every tick). The device side is unchanged and open: a small `game/core` follow-up
   that compares the `FogGrid` arrays when FOG is in the mask would close it; no decision here.
 
+Note (2026-11-11, P198c; changes no accepted text above): `World.NON_STATE_MEMBERS` now has two
+entries. Beside `kernels` it lists `type_tables`, the cache of the player views' type tables (a
+`RefCounted` of packed arrays and type ids, pure data). It is not state: never hashed, never read
+by a phase or a kernel, and null in a new World. Unlike `kernels`, which is attached before any
+job (§3's "callers attach both after `prepare()`"), the holder is written by sim code: the first
+`PlayerView.of` of a prepared World, inside the tick job, on the thread that owns the World. The
+sentences of this ADR that call `kernels` "the one member" (the ADR 0007 list above, §6's
+reachability walk and the plan list of §14) read "one of two"; the reachability walk walks the
+holder's fields, as it does any member but `kernels`.
+
 ### 4. Determinism rules for C++
 - **Language and types:**
   - C++17;

@@ -361,7 +361,7 @@ var fog: FogGrid = FogGrid.new()
 var flow: FlowCache = FlowCache.new()
 var sep_grid: SpatialGrid = SpatialGrid.new()
 var target_grid: SpatialGrid = SpatialGrid.new()
-## ADR 0007 section 2's one bool check: in no shape list (not an int or a Packed*Array), not hashed.
+## ADR 0007 section 2's bool check: no shape list holds it; unhashed, it follows from the helpers.
 var prepared: bool = false
 ## The native kernels (an untyped Object, so no script names the class; null = the GDScript phases)
 ## and one bit per SimProbe.Phase that runs in them. A phase entry starts with
@@ -369,8 +369,8 @@ var prepared: bool = false
 ## Neither is hashed (ADR 0013 section 3); callers attach both after prepare().
 var kernels: Object = null
 var native_phases: int = 0
-var type_tables: TypeTables = null  # The views' shared tables (P198c): a cache, never hashed.
-
+## The views' type tables, kept by the first view of a prepared World (P198c); a cache, not hashed.
+var type_tables: TypeTables = null
 ## Rule ints, copied from RulesDef under the same names by _init(). The sim reads these and never
 ## the Resource.
 var retarget_period_ticks: int = 0

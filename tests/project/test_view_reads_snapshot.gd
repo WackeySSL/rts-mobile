@@ -24,7 +24,10 @@ extends GdUnitTestSuite
 ## - a World, loop, replay or probe that reaches the view through another object's property;
 ## - for `columns()` (plan row P198): the count is per script, not per function, so a call moved
 ##   inside a file passes; a column handed to another function is read there unseen; and
-##   `VIEW_PRIVATE` matches only a variable named `view`, so `v._hp[row] = 0` passes.
+##   `VIEW_PRIVATE` matches only a variable named `view`, so `v._hp[row] = 0` passes;
+## - for the type tables (plan row P198c, an extra guard: the view's tables are copies): a receiver
+##   not named `view` (`v.type_cost[0] = 5`), `view.set("type_cost", ...)`, and a table taken into a
+##   local and written there. None of these can reach the holder or the World.
 ## Every rule has fixtures that it must flag and fixtures that it must leave alone, so a scan that
 ## matches nothing fails, and the folders must still hold the scripts the scan is about. game/ai
 ## may be empty, so its rules also run through the function that scans a folder on two fixture
@@ -92,12 +95,13 @@ const COLUMNS_SITES: Dictionary[String, int] = {
 ## (`var costs: PackedInt32Array = view.type_cost`) is an alias the scan does not follow, which is
 ## fine: it is a copy too.
 const TYPE_WRITE: String = (
-	r"\bview\.[\s\\]*type_\w+(?:[\s\\]*\[[^\]]*\])?[\s\\]*" + r"(?:[-+*/%&|^]|<<|>>)?=(?!=)"
+	r"\bview\.[\s\\]*type_\w+(?:[\s\\]*\[(?:[^\[\]]|\[[^\]]*\])*\])?[\s\\]*"
+	+ r"(?:\*\*|[-+*/%&|^]|<<|>>)?=(?!=)"
 )
 ## A call that changes a type table of the view in place.
 const TYPE_MUTATE: String = (
-	r"\bview\.[\s\\]*type_\w+[\s\\]*\.[\s\\]*"
-	+ r"(?:set|fill|resize|append|append_array|insert|remove_at|push_back|clear|sort|reverse|swap)\b"
+	r"\bview\.[\s\\]*type_\w+[\s\\]*\.[\s\\]*(?:set|fill|resize|append|append_array|insert|"
+	+ r"remove_at|erase|push_back|push_front|clear|sort|reverse|swap)\b"
 )
 ## The holder itself, which game/ai never names: `TypeTables`, the World's `type_tables` and the
 ## view's `_tables`.
@@ -241,12 +245,12 @@ const AI_RULES: Array[Dictionary] = [
 	{
 		"pattern": TYPE_WRITE,
 		"advice": "the view's type tables are rules, not state: read them, never assign",
-		"lines": [31, 32, 36],
+		"lines": [31, 32, 36, 40, 41],
 	},
 	{
 		"pattern": TYPE_MUTATE,
 		"advice": "the view's type tables are rules, not state: never change one in place",
-		"lines": [33, 34],
+		"lines": [33, 34, 42],
 	},
 	{
 		"pattern": TYPE_HOLDER,
@@ -327,7 +331,7 @@ func test_each_member_rule_flags_its_fixtures_and_spares_the_clean_ones() -> voi
 			)
 
 
-## The three rules of game/ai flag the lines of BREAKING_FIXTURE that AI_RULES lists, and no other,
+## The rules of game/ai flag the lines of BREAKING_FIXTURE that AI_RULES lists, and no other,
 ## through the function that scans a folder. `.world` is among them: game/ai has no allowance.
 func test_the_ai_rules_flag_exactly_the_lines_of_a_controller_that_breaks_them() -> void:
 	for rule: Dictionary in AI_RULES:

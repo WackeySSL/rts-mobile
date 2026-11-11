@@ -418,8 +418,9 @@ func _type_name(property: Dictionary) -> String:
 
 ## Every Node or Resource reachable from `root` through script variables and Array and Dictionary
 ## keys and values, as "path: class". `visited` gets each object walked (instance id to path), so
-## a cycle ends there. A World's NON_STATE_MEMBERS (the kernels, a RefCounted) are leaves: checked,
-## never walked.
+## a cycle ends there. A World's `kernels` (a native RefCounted) is a leaf: checked, never walked.
+## Its other non-state member, the views' `type_tables` holder, is walked like any member (plan row
+## P198c), so an engine object added to it is found.
 func _engine_objects(root: Object, visited: Dictionary) -> Array[String]:
 	var found: Array[String] = []
 	_walk(root, "job", visited, found)
@@ -446,7 +447,7 @@ func _walk(value: Variant, path: String, visited: Dictionary, found: Array[Strin
 			visited[object.get_instance_id()] = path
 			var leaves: Array[StringName] = []
 			if object is World:
-				leaves = World.NON_STATE_MEMBERS
+				leaves = [&"kernels"]
 			for property: Dictionary in object.get_property_list():
 				if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
 					continue

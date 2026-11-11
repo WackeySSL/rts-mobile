@@ -9,30 +9,32 @@ extends GdUnitTestSuite
 
 const ViewWorlds: GDScript = preload("res://tests/sim/support/view_worlds.gd")
 const Check: GDScript = preload("res://tests/sim/support/type_tables_check.gd")
-## The view's public type tables, by name.
-const VIEW_TABLES: Array[String] = [
-	"type_cost",
-	"type_tab",
-	"type_requires",
-	"type_produces",
-	"type_foot_w",
-	"type_foot_h",
-	"type_speed",
-	"type_weapon",
-	"type_harvest",
-	"type_power",
-	"type_build_ticks",
-	"type_max_hp",
-	"type_armour",
-	"type_range",
-	"type_min_range",
-	"type_sight",
-	"type_faction",
-	"type_strike_kind",
-	"type_strike_radius",
-	"type_charge_ticks",
-	"type_vs_armour",
-]
+
+
+## The view's public type tables, by name, from the script's own variables.
+func _view_tables() -> Array[String]:
+	return Check.view_tables()
+
+
+## A hand-built World with three types and only some of the type tables filled, not prepared:
+## `prepare()` pads the rest to the type count.
+func _unprepared() -> World:
+	var world: World = World.new()
+	world.map_w = 8000
+	world.map_h = 8000
+	world.player_count = 2
+	world.type_ids = [&"a", &"b", &"c"]
+	world.type_cost = PackedInt32Array([10, 20, 30])
+	world.type_speed = PackedInt32Array([0, 100, 100])
+	return world
+
+
+## One more type in every per-type table of `world`, and its id.
+func _add_type(world: World) -> void:
+	world.type_ids.append(&"late")
+	for name: StringName in World.TYPE_ARRAYS:
+		var table: Variant = world.get(name)
+		table.resize(table.size() + 1)
 
 
 func test_a_world_has_no_holder_until_its_first_view_and_every_view_then_shares_it() -> void:
@@ -65,33 +67,22 @@ func test_the_holder_holds_the_worlds_tables_and_the_view_fields_are_copies_of_i
 	var view: PlayerView = PlayerView.of(world, 1)
 	assert_array(Check.differences(world.type_tables, TypeTables.of(world))).is_empty()
 	var held: TypeTables = world.type_tables
-	var wanted: Array[PackedInt32Array] = [
-		held.cost,
-		held.tab,
-		held.requires,
-		held.produces,
-		held.foot_w,
-		held.foot_h,
-		held.speed,
-		held.weapon,
-		held.harvest,
-		held.power,
-		held.build_ticks,
-		held.max_hp,
-		held.armour,
-		held.weapon_range,
-		held.weapon_min_range,
-		held.sight,
-		held.faction,
-		held.strike_kind,
-		held.strike_radius,
-		held.charge_ticks,
-		held.vs_armour,
-	]
-	for at: int in VIEW_TABLES.size():
-		var table: PackedInt32Array = view.get(VIEW_TABLES[at])
-		assert_array(table).override_failure_message(VIEW_TABLES[at]).is_equal(wanted[at])
-		assert_bool(table.is_empty()).override_failure_message(VIEW_TABLES[at]).is_false()
+	var tables: Array[String] = _view_tables()
+	# Every holder table has a view table and the reverse: three fields more (docks, ids), which the
+	# view reads through `type_index_of` and `is_refinery`.
+	assert_int(tables.size() + 3).is_equal(Check.fields().size())
+	assert_int(tables.size()).is_equal(21)
+	for name: String in tables:
+		var field: String = Check.holder_field(name)
+		assert_bool(Check.fields().has(field)).override_failure_message(name).is_true()
+		var table: PackedInt32Array = view.get(name)
+		var source: PackedInt32Array = held.get(field)
+		assert_array(table).override_failure_message(name).is_equal(source)
+		assert_bool(table.is_empty()).override_failure_message(name).is_false()
+		# A copy of the holder's array, not the array: a write moves only the view's.
+		table[0] += 1
+		assert_bool(table == source).override_failure_message(name).is_false()
+		table[0] -= 1
 	assert_int(view.unit_cap).is_equal(world.unit_cap)
 
 
@@ -108,7 +99,7 @@ func test_a_write_through_a_views_tables_reaches_no_fresh_view_holder_world_or_m
 	var world_hash: int = world.state_hash()
 	var view: PlayerView = PlayerView.of(world, 1)
 	var held: TypeTables = world.type_tables
-	for name: String in VIEW_TABLES:
+	for name: String in _view_tables():
 		var table: PackedInt32Array = view.get(name)
 		table[0] = table[0] + 12345
 	view.type_cost.fill(-5)
@@ -122,7 +113,7 @@ func test_a_write_through_a_views_tables_reaches_no_fresh_view_holder_world_or_m
 	assert_int(world.state_hash()).is_equal(world_hash)
 	var fresh: PlayerView = PlayerView.of(world, 2)
 	assert_object(world.type_tables).is_same(held)
-	for name: String in VIEW_TABLES:
+	for name: String in _view_tables():
 		var got: PackedInt32Array = fresh.get(name)
 		assert_bool(got.size() > 1).override_failure_message(name).is_true()
 	assert_array(fresh.type_cost).is_equal(kept.cost)
@@ -133,23 +124,64 @@ func test_a_write_through_a_views_tables_reaches_no_fresh_view_holder_world_or_m
 	assert_array(other_view.type_cost).is_equal(other_kept.cost)
 
 
-func test_a_write_to_the_world_after_the_first_view_is_not_seen_by_the_holder_alone() -> void:
-	# The tables are fixed once a match runs; the holder is a copy, so the World's own write does
-	# not move it (and a later view that builds a fresh holder would see the write).
+## The holder is a copy of every table of the World: a write to the World after the first view
+## reaches none of them (the tables are fixed once a match runs; a test that writes one clears
+## `world.type_tables`).
+func test_a_write_to_the_world_after_the_first_view_reaches_no_table_of_the_holder() -> void:
 	var world: World = ViewWorlds.crafted()
-	var before: int = PlayerView.of(world, 1).type_cost[0]
-	world.type_cost[0] = before + 9
-	assert_int(world.type_tables.cost[0]).is_equal(before)
+	PlayerView.of(world, 1)
+	var held: TypeTables = world.type_tables
+	var checked: int = 0
+	for field: String in Check.fields():
+		var table: Variant = world.get("type_" + field)
+		if not table is PackedInt32Array or table.is_empty():
+			continue
+		var before: int = held.get(field)[0]
+		table[0] = before + 9
+		assert_int(held.get(field)[0]).override_failure_message(field).is_equal(before)
+		checked += 1
+	# The 18 tables of the World that the holder copies as they are; the three weapon tables are
+	# derived, the ids are not an int table.
+	assert_int(checked).is_equal(Check.fields().size() - 4)
 
 
+## A World whose type count changes after a view gets a fresh holder with the new count in every
+## table. Each table of the view holds one entry more.
 func test_a_world_that_gains_a_type_after_a_view_gets_a_fresh_holder() -> void:
 	var world: World = ViewWorlds.crafted()
 	var old: TypeTables = PlayerView.of(world, 1)._tables
-	world.type_ids.append(&"late")
-	world.type_cost.append(5)
+	var types: int = world.type_ids.size()
+	_add_type(world)
+	assert_int(world.type_cost.size()).is_equal(types + 1)
 	var view: PlayerView = PlayerView.of(world, 1)
 	assert_object(view._tables).is_not_same(old)
-	assert_int(view.type_cost.size()).is_equal(world.type_cost.size())
+	assert_object(world.type_tables).is_same(view._tables)
+	for name: String in _view_tables():
+		var table: PackedInt32Array = view.get(name)
+		var per: int = PlayerView.ARMOUR_CLASSES if name == "type_vs_armour" else 1
+		assert_int(table.size()).override_failure_message(name).is_equal((types + 1) * per)
+
+
+## An unprepared World gets a throwaway holder, so the tables that `prepare()` pads afterwards are
+## read fresh: the second view holds every table at the full type count.
+func test_an_unprepared_world_is_not_cached_and_reads_the_padded_tables_once_prepared() -> void:
+	var world: World = _unprepared()
+	var types: int = world.type_ids.size()
+	var early: PlayerView = PlayerView.of(world, 1)
+	assert_object(world.type_tables).is_null()
+	var short: int = 0
+	for name: String in _view_tables():
+		var table: PackedInt32Array = early.get(name)
+		short += 1 if table.size() < types else 0
+	# The case is real only if some table was short before `prepare()`.
+	assert_bool(short > 0).is_true()
+	world.prepare()
+	var view: PlayerView = PlayerView.of(world, 1)
+	assert_object(world.type_tables).is_not_null()
+	for name: String in _view_tables():
+		var table: PackedInt32Array = view.get(name)
+		var per: int = PlayerView.ARMOUR_CLASSES if name == "type_vs_armour" else 1
+		assert_int(table.size()).override_failure_message(name).is_equal(types * per)
 
 
 func test_building_the_holder_does_not_touch_the_state_hash() -> void:

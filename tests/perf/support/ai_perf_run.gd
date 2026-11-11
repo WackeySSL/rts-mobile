@@ -50,6 +50,9 @@ var final_hash: int = 0
 var dropped_commands: int = 0
 var match_end_tick: int = 0
 var controllers: Array[AiController] = []
+## The holder of the match's type tables as the first think left it (plan row P198c); the match must
+## still hold that same object at its end.
+var first_tables: TypeTables = null
 ## The implementation the sim ran with: "native" or "gdscript" (the AI is GDScript in both).
 var impl: String = ""
 ## The most seen enemy units that each controller's memory held at once, in controller order.
@@ -138,6 +141,8 @@ func play() -> void:
 		if thought > 0:
 			think_usec.append(float(spent))
 			thinks += thought
+			if first_tables == null:
+				first_tables = world.type_tables
 			most_in_a_tick = maxi(most_in_a_tick, thought)
 			_check(world, before, commands.size())
 		loop.step(world, commands)
@@ -152,12 +157,15 @@ func play() -> void:
 
 
 ## The views of the match took their tables from one `TypeTables` holder (plan row P198c); after 900
-## ticks of both AIs it must still hold the World's tables (an extra guard: the views hold copies).
+## ticks of both AIs it must be the holder the first think left, and still hold the World's tables
+## (an extra guard: the views hold copies).
 func _check_tables(world: World) -> void:
 	var held: TypeTables = world.type_tables
-	if held == null:
+	if held == null or first_tables == null:
 		_fail("type tables: the match made no holder")
 		return
+	if held != first_tables:
+		_fail("type tables: the match built more than one holder")
 	for field: String in TablesCheck.differences(held, TypeTables.of(world)):
 		_fail("type tables: %s of the shared holder no longer equals the World's" % field)
 
