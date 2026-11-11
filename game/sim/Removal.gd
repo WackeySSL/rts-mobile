@@ -9,6 +9,10 @@ const DIED_FLAG_AT: int = Production.DIED_CANCEL_FLAG_AT
 ## The `build_left` of a row that boarded a carrier (ADR 0036 section 8, `Carry.BOARDED` from P262):
 ## no loss, no wreck. Listed here until `Carry.gd` exists.
 const BOARDED: int = -2
+## The flags `died_flag` gives (the seventh int of a DIED record); view readers compare with these.
+const FLAG_CANCELLED: int = 1
+const FLAG_BOARDED: int = 2
+const FLAG_SOLD: int = 3
 
 
 ## The DIED flag of a row whose `build_left` is `pending` (ADR 0037 section 2):
@@ -17,11 +21,11 @@ const BOARDED: int = -2
 static func died_flag(pending: int) -> int:
 	match pending:
 		Production.CANCELLED:
-			return 1
+			return FLAG_CANCELLED
 		BOARDED:
-			return 2
+			return FLAG_BOARDED
 		Production.SOLD:
-			return 3
+			return FLAG_SOLD
 	return 0
 
 
@@ -58,14 +62,15 @@ static func run(world: World) -> void:
 	var stamped: PackedInt32Array = world.fog_cell
 	var pending: PackedInt32Array = world.build_left
 	var pad: int = world.type_sight.size()
-	var has_fog: bool = world.fog.cells > 0
+	var fog: FogGrid = world.fog
+	var has_fog: bool = fog.cells > 0
 	for row: int in range(first, count):
 		if alive[row] <= 0:
 			world.write_unit_event(at, World.Event.DIED, row)
 			events[at + DIED_FLAG_AT] = died_flag(pending[row])
 			at += World.EVENT_STRIDE
 			if has_fog and stamped[row] >= 0:
-				world.fog.stamp(owners[row], stamped[row], mini(types[row], pad), -1)
+				fog.stamp(owners[row], stamped[row], mini(types[row], pad), -1)
 	# hp is the test for every column, so it goes last.
 	for column_name: StringName in World.ROW_ARRAYS:
 		if column_name != &"hp":

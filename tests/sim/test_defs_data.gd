@@ -245,6 +245,10 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 			"construct_refund_percent is not in 0..100"
 		],
 		["construction_sites_max", [0, 1, 2], [-1], "construction_sites_max is negative"],
+		["sell_refund_percent", [0, 100], [-1, 101], "sell_refund_percent is not in 0..100"],
+		["mend_hp", [0, 10], [-1], "a mend rule is negative"],
+		["mend_period_ticks", [0, 15], [-1], "a mend rule is negative"],
+		["mend_cost_percent", [0, 30], [-1], "a mend rule is negative"],
 		["harvest_reach_milli", [0], [-1], "a reach is negative"],
 		["dock_reach_milli", [0], [-1], "a reach is negative"],
 		["harvest_pick_milli", [0], [-1], "a reach is negative"],
@@ -761,6 +765,10 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 		"construct_refund_percent is not in 0..100":
 		rules.construct_refund_percent < 0 or rules.construct_refund_percent > 100,
 		"construction_sites_max is negative": rules.construction_sites_max < 0,
+		"sell_refund_percent is not in 0..100":
+		rules.sell_refund_percent < 0 or rules.sell_refund_percent > 100,
+		"a mend rule is negative":
+		mini(mini(rules.mend_hp, rules.mend_period_ticks), rules.mend_cost_percent) < 0,
 		"a reach is negative":
 		(
 			mini(

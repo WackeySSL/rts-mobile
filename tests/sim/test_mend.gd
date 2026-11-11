@@ -10,7 +10,7 @@ extends GdUnitTestSuite
 ## Headquarters); the rule ints are set by hand to ADR 0037's starting values.
 
 const SiteRig: GDScript = preload("res://tests/sim/support/site_rig.gd")
-const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
+const BASES_PATH: String = "res://data/scenarios/perf_bases.tres"
 const HP: int = 10
 const PERIOD: int = 15
 const PERCENT: int = 30
@@ -241,20 +241,95 @@ func test_the_view_reads_only_the_own_switch() -> void:
 
 
 ## The state hash does not see the rule ints, and no building of the arena has its switch on, so
-## setting every sale and mend int leaves the hash where it was for 60 ticks (`defs_hash` moves).
-func test_the_state_hash_is_neutral_to_the_new_rules() -> void:
-	var plain: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
-	var tuned: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
+## setting every sale and mend int leaves the hash where it was. The arena is `perf_bases`: it has
+## buildings (hurt by hand: nothing shoots them in 150 ticks) and harvesters whose `cargo` (the
+## column the switch shares) is above 0, so `Mend.run` has rows to read and must leave every one
+## alone.
+func test_the_state_hash_is_neutral_to_the_new_rules_on_an_arena_with_buildings() -> void:
+	var scenario: ScenarioDef = load(BASES_PATH) as ScenarioDef
+	var plain: World = World.from_scenario(scenario, DetRandom.create(42, DetRandom.STREAM_SIM))
+	var tuned: World = World.from_scenario(scenario, DetRandom.create(42, DetRandom.STREAM_SIM))
 	tuned.sell_refund_percent = 50
 	tuned.mend_hp = HP
 	tuned.mend_period_ticks = PERIOD
 	tuned.mend_cost_percent = PERCENT
 	assert_int(tuned.defs_hash()).is_not_equal(plain.defs_hash())
+	for world: World in [plain, tuned]:
+		for row: int in world.unit_count():  # Nothing shoots a building here: hurt them by hand.
+			if world.type_foot_w[world.type_index[row]] > 0:
+				world.hp[row] -= 50
+	var plain_loop: MatchLoop = MatchLoop.create(scenario, BASES_PATH, 42, plain)
+	var tuned_loop: MatchLoop = MatchLoop.create(scenario, BASES_PATH, 42, tuned)
 	var none: Array[Command] = []
-	for _tick: int in 60:
-		Sim.step(plain, none)
-		Sim.step(tuned, none)
-	assert_int(tuned.state_hash()).is_equal(plain.state_hash())
+	var loaded: bool = false
+	var damaged: bool = false
+	for _tick: int in 150:
+		plain_loop.step(plain, none)
+		tuned_loop.step(tuned, none)
+		assert_int(tuned.state_hash()).is_equal(plain.state_hash())
+		for row: int in tuned.unit_count():
+			var type: int = tuned.type_index[row]
+			if tuned.type_foot_w[type] > 0:
+				damaged = damaged or tuned.hp[row] < tuned.type_max_hp[type]
+				assert_int(tuned.cargo[row]).is_equal(0)  # Nobody switched a mend on.
+			else:
+				loaded = loaded or tuned.cargo[row] > 0
+	assert_int(tuned.building_rows.size()).is_greater(0)
+	assert_bool(loaded).is_true()
+	assert_bool(damaged).is_true()
 	assert_array(World.RULE_SCALARS.slice(-4)).is_equal(
 		[&"sell_refund_percent", &"mend_hp", &"mend_period_ticks", &"mend_cost_percent"]
 	)
+	assert_array(World.UNHASHED_SCALARS.slice(-4)).is_equal(World.RULE_SCALARS.slice(-4))
+
+
+func test_the_step_price_is_the_exact_boundary_for_the_credits() -> void:
+	var made: World = _world()
+	var row: int = _hurt(made, PLANT, 100)
+	var hp: int = made.hp[row]
+	var price: int = _price(made, row, HP)
+	assert_int(price).is_greater(0)
+	made.credits[1] = price - 1
+	SiteRig.run(made, PERIOD)
+	assert_array([made.hp[row], made.credits[1]]).is_equal([hp, price - 1])
+	made.credits[1] = price
+	SiteRig.run(made, PERIOD)
+	assert_array([made.hp[row], made.credits[1]]).is_equal([hp + HP, 0])
+
+
+func test_a_headquarters_mends_free_with_no_credits() -> void:
+	var made: World = _world()
+	var row: int = _hurt(made, HQ, 100)
+	var hp: int = made.hp[row]
+	made.credits[1] = 0
+	SiteRig.run(made, PERIOD)
+	assert_array([made.hp[row], made.credits[1]]).is_equal([hp + HP, 0])
+
+
+func test_a_period_of_0_with_hit_points_set_mends_nothing_and_does_not_divide_by_it() -> void:
+	var made: World = _world()
+	made.mend_period_ticks = 0
+	var row: int = _hurt(made, PLANT, 100)
+	var hp: int = made.hp[row]
+	SiteRig.run(made, 2 * PERIOD)
+	assert_array([made.hp[row], made.cargo[row]]).is_equal([hp, 1])
+
+
+func test_a_defeated_players_buildings_do_not_mend() -> void:
+	var made: World = _world()
+	var row: int = _hurt(made, PLANT, 100)
+	var hp: int = made.hp[row]
+	made.defeated_tick[1] = 1
+	var credits: int = made.credits[1]
+	SiteRig.run(made, 2 * PERIOD)
+	assert_array([made.hp[row], made.credits[1]]).is_equal([hp, credits])
+
+
+## `cargo` is a harvester's load, not a switch: `row_mend` answers MISSING for a row with no
+## footprint.
+func test_the_view_answers_missing_for_a_row_that_is_not_a_building() -> void:
+	var made: World = _world()
+	var unit: int = made.add_unit(1, SiteRig.type_of(made, "harvester"), 3500, 11500)
+	made.cargo[made.index_of(unit)] = 500
+	var view: PlayerView = PlayerView.of(made, 1)
+	assert_int(view.row_mend(view.row_of(unit))).is_equal(PlayerView.MISSING)

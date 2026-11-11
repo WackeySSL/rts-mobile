@@ -3,12 +3,13 @@ extends RefCounted
 ## Building repair (ADR 0037 section 4). The switch is the building row's `cargo` (0 or 1; buildings
 ## never carry cargo, so this is a documented reuse). `run` is ECONOMY after `Harvest.run`: each
 ## mending building acts on ticks with `(tick + id) % mend_period_ticks == 0`, so the work is
-## staggered by id. A step gains `mend_hp` (not above the maximum) and costs the owner
-## `ceil(price * gained * mend_cost_percent / (100 * max_hp))`; with too few credits nothing happens
-## that period. At full health the switch goes back to 0. It mends while blacked out, on low power
-## and under fire, and a Headquarters (price 0) mends free. The rule ints are the World's; with
-## `mend_hp` or `mend_period_ticks` at 0 (the inert defaults) nothing mends. One pass over the
-## derived building list, aliased arrays, no allocation.
+## staggered by id. A step gains `mend_hp` (not above the maximum) and costs the owner `ceil(price *
+## gained * mend_cost_percent / (100 * max_hp))`; with too few credits nothing happens that period.
+## At full health the switch goes back to 0. A defeated player's buildings do not mend, as its
+## queues do not advance (`Production.run`; ADR 0037 is silent on it). It mends while blacked out,
+## on low power and under fire, and a Headquarters (price 0) mends free. The rule ints are the
+## World's; with `mend_hp` or `mend_period_ticks` at 0 (the inert defaults) nothing mends. One pass
+## over the derived building list, aliased arrays, no allocation.
 
 
 ## MEND: `target_id` is an own complete building (a footprint, `build_left` 0) and the payload is
@@ -45,6 +46,7 @@ static func run(world: World) -> void:
 	var tops: PackedInt32Array = world.type_max_hp
 	var costs: PackedInt32Array = world.type_cost
 	var credits: PackedInt32Array = world.credits
+	var defeated: PackedInt32Array = world.defeated_tick
 	for row: int in world.building_rows:
 		if switches[row] != 1 or pending[row] != 0 or (tick + ids[row]) % period != 0:
 			continue
@@ -54,6 +56,8 @@ static func run(world: World) -> void:
 			switches[row] = 0
 			continue
 		var player: int = owners[row]
+		if player < defeated.size() and defeated[player] > 0:
+			continue
 		var cost: int = (costs[types[row]] * gained * percent + 100 * top - 1) / (100 * top)
 		if player < 1 or player >= credits.size() or credits[player] < cost:
 			continue

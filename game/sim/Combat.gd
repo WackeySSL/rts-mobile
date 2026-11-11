@@ -238,7 +238,7 @@ static func fire(world: World) -> void:
 		var side: int = owners[row]
 		if type < footprints and type_foot[type] > 0:
 			if offline[row] > stamp or sites[row] != 0:
-				continue  # Blacked out or not complete (a site, or a cancelled one, build_left -1).
+				continue  # Blacked out or not complete (a site, a cancelled or a sold one).
 			if side < players and power_used[side] > power_made[side]:
 				continue  # Offline: the target stays, the shot waits for power.
 		var at: int = ids.bsearch(held)

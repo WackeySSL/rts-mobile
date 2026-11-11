@@ -17,6 +17,8 @@ const PERCENT: int = 50
 func _world() -> World:
 	var made: World = Rig.world()
 	made.sell_refund_percent = PERCENT
+	# A priced, complete building of player 2 (the Headquarters of either side costs 0).
+	made.add_building(2, SiteRig.type_of(made, "power_plant"), 20, 2)
 	return made
 
 
@@ -174,3 +176,112 @@ func test_two_runs_of_one_script_hash_alike() -> void:
 		SiteRig.run(made, 20)
 		hashes.append(made.state_hash())
 	assert_int(hashes[0]).is_equal(hashes[1])
+
+
+## The queue test's barracks was at full health.
+func _full_barracks_hp(made: World) -> int:
+	return SiteRig.hit_points(made, "barracks")
+
+
+func test_sale_refund_clamps_and_matches_the_formula() -> void:
+	assert_int(Production.sale_refund(200, 50, 100, 100)).is_equal(100)
+	assert_int(Production.sale_refund(200, 50, 1, 100)).is_equal(1)
+	assert_int(Production.sale_refund(200, 50, 50, 100)).is_equal(50)
+	assert_int(Production.sale_refund(200, 50, 500, 100)).is_equal(100)  # hp held to max.
+	assert_int(Production.sale_refund(200, 50, -5, 100)).is_equal(0)
+	assert_int(Production.sale_refund(200, 50, 10, 0)).is_equal(100)  # max_hp held to 1, hp to 1.
+	assert_int(Production.sale_refund(200, 0, 100, 100)).is_equal(0)
+	assert_int(Production.sale_refund(7, 50, 99, 100)).is_equal(3)  # Floor.
+
+
+## A sold row never held a site slot: with one site allowed, a SELL and a PLACE of one tick place.
+func test_a_sale_and_a_place_of_one_tick_both_work_with_one_site_allowed() -> void:
+	var made: World = SiteRig.world()
+	made.sell_refund_percent = PERCENT
+	made.construction_sites_max = 1
+	var sell: Command = Command.sell(1, _id(made, "refinery"))
+	var place: Command = SiteRig.place(made, "power_plant", SiteRig.SPOT)
+	sell.sequence = 0
+	place.sequence = 1
+	Rig.step(made, [sell, place])
+	assert_int(made.dropped_commands).is_equal(0)
+	assert_int(SiteRig.sites(made).size()).is_equal(1)
+	# A cancelled row still holds its slot (the P128b rule is unchanged).
+	var cancel: World = Rig.world()
+	cancel.construction_sites_max = 1
+	var again: Command = SiteRig.place(cancel, "barracks", SiteRig.WIDE)
+	Rig.step(cancel, [Command.cancel_build(1, Rig.OWN_SITE), again])
+	assert_int(cancel.dropped_commands).is_equal(1)
+
+
+## A turret that fires in a tick fires nothing in the tick it is sold (FIRE runs before REMOVE and
+## skips a row with `build_left` not 0).
+func test_a_sold_turret_fires_nothing_in_its_last_tick() -> void:
+	var first_shot: int = -1
+	var control: World = _turret_world()
+	var turret: int = _id(control, "defence_turret")
+	for _tick: int in 60:
+		var tick: int = control.tick
+		SiteRig.step(control)
+		if _shots_of(control, turret) > 0:
+			first_shot = tick
+			break
+	assert_int(first_shot).is_greater(-1)
+	var sold: World = _turret_world()
+	SiteRig.run(sold, first_shot)
+	SiteRig.step(sold, [Command.sell(1, turret)])
+	assert_int(_shots_of(sold, turret)).is_equal(0)
+	assert_int(sold.index_of(turret)).is_equal(-1)
+
+
+func _turret_world() -> World:
+	var made: World = _world()
+	made.add_building(1, SiteRig.type_of(made, "defence_turret"), 8, 8)
+	made.add_unit(2, SiteRig.type_of(made, "rifle_squad"), 12500, 9500)
+	return made
+
+
+func _shots_of(made: World, shooter: int) -> int:
+	var found: int = 0
+	for at: int in range(0, made.events.size(), World.EVENT_STRIDE):
+		if made.events[at] == World.Event.SHOT and made.events[at + 1] == shooter:
+			found += 1
+	return found
+
+
+## SELL and MEND go through MatchLoop (stamped and recorded), are encoded in the log, decoded by
+## Replay.play and give the checkpoints and the final hash again.
+func test_a_sale_and_a_mend_replay_to_the_same_hash() -> void:
+	var made: World = _replay_world()
+	var loop: MatchLoop = MatchLoop.create(null, "", 1, made)
+	var plant: int = _id(made, "power_plant")
+	var barracks: int = _id(made, "barracks")
+	for tick: int in range(made.tick, 45):
+		var queued: Array[Command] = []
+		if tick == 2:
+			queued.append(Command.mend(1, plant, true))
+		if tick == 20:
+			queued.append(Command.sell(1, barracks))
+		loop.step(made, queued)
+	loop.replay.finish(made)
+	var types: Array[int] = []
+	var data: PackedInt32Array = loop.replay.commands
+	var at: int = 0
+	while at < data.size():
+		var decoded: Command = Command.new()
+		at = Command.decode(data, at, decoded)
+		types.append(decoded.type)
+	assert_array(types).is_equal([Command.Type.MEND, Command.Type.SELL])
+	assert_int(made.index_of(barracks)).is_equal(-1)
+	var played: World = _replay_world()
+	assert_int(Replay.play(loop.replay, played, made.tick)).is_equal(Replay.PLAY_MATCHED)
+	assert_int(played.state_hash()).is_equal(loop.replay.final_hash)
+
+
+func _replay_world() -> World:
+	var made: World = _world()
+	made.mend_hp = 10
+	made.mend_period_ticks = 15
+	made.mend_cost_percent = 30
+	made.hp[made.index_of(_id(made, "power_plant"))] -= 100
+	return made

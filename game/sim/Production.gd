@@ -49,8 +49,9 @@ const CANCELLED: int = -1
 ## `Removal.BOARDED`.
 const SOLD: int = -3
 
-## Where in a DIED record (`World.remove_dead`) the cancel flag is: 1 for a row whose `build_left`
-## was `CANCELLED`, 0 for every other death. The view reads it to draw no wreck or crater.
+## Where in a DIED record (`World.remove_dead`) the flag is: 1 for a row whose `build_left` was
+## `CANCELLED`, 2 for `Removal.BOARDED`, 3 for `SOLD`, 0 for every other death
+## (`Removal.died_flag`). The view reads it to draw no wreck or crater.
 const DIED_CANCEL_FLAG_AT: int = 6
 
 ## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
@@ -256,7 +257,7 @@ static func apply_cancel_build(world: World, command: Command) -> bool:
 
 ## SELL (ADR 0037 section 3): `target_id` is an own complete building with a price (the
 ## Headquarters, price 0, a site and a unit are refused), and the payload is empty. The owner gets
-## `floor(price * sell_refund_percent * hp / (100 * max_hp))` at once, the row's hit points fall to
+## `sale_refund` at once, the row's hit points fall to
 ## 0 and `build_left` becomes `SOLD`; REMOVE takes the row out in the same tick. Queues and rally
 ## points are per player and tab and stay.
 @warning_ignore("integer_division")
@@ -271,12 +272,21 @@ static func apply_sell(world: World, command: Command) -> bool:
 	var price: int = world.type_cost[type]
 	if world.build_left[row] != 0 or world.hp[row] <= 0 or price <= 0:
 		return false
-	var top: int = maxi(world.type_max_hp[type], 1)
-	var kept: int = mini(world.hp[row], top)
-	world.credits[player] += price * world.sell_refund_percent * kept / (100 * top)
+	world.credits[player] += sale_refund(
+		price, world.sell_refund_percent, world.hp[row], world.type_max_hp[type]
+	)
 	world.hp[row] = 0
 	world.build_left[row] = SOLD
 	return true
+
+
+## What a sale pays (ADR 0037 section 3): `floor(price * percent * hp / (100 * max_hp))`, with `hp`
+## held to `max_hp` and `max_hp` to at least 1. The sim's math, which the Sell button's "+N" label
+## shares (`sell_refund_percent` of the snapshot).
+@warning_ignore("integer_division")
+static func sale_refund(price: int, percent: int, hp: int, max_hp: int) -> int:
+	var top: int = maxi(max_hp, 1)
+	return price * percent * clampi(hp, 0, top) / (100 * top)
 
 
 ## What a cancel gives back: `percent` of `cost`, in integers (truncated). The sim's math, which the
@@ -286,18 +296,20 @@ static func refund(cost: int, percent: int) -> int:
 	return cost * percent / 100
 
 
-## How many sites `player` has: building rows with `build_left` not 0, the sites under way and the
-## cancelled rows that REMOVE has not taken out yet (-1). A cancelled row keeps its slot until it
-## leaves, as it keeps its tiles, its building-cap place and its reach (`Placement`), so a
-## CANCEL_BUILD and a PLACE of one tick cannot move a site across the map. The derived building list
-## is brought up to date first. Event cadence.
+## How many sites `player` has: building rows with `build_left` above 0, the sites under way, and
+## the cancelled rows that REMOVE has not taken out yet (-1). A cancelled row keeps its slot until
+## it leaves, as it keeps its tiles, its building-cap place and its reach (`Placement`), so a
+## CANCEL_BUILD and a PLACE of one tick cannot move a site across the map. A sold row (`SOLD`) never
+## held a slot, so a SELL and a PLACE of one tick both work. The derived building list is brought up
+## to date first. Event cadence.
 static func _sites_of(world: World, player: int) -> int:
 	Buildings.rebuild_lists(world)
 	var owners: PackedInt32Array = world.owner
 	var pending: PackedInt32Array = world.build_left
 	var count: int = 0
 	for row: int in world.building_rows:
-		if owners[row] == player and pending[row] != 0:
+		var site: bool = pending[row] > 0 or pending[row] == CANCELLED
+		if owners[row] == player and site:
 			count += 1
 	return count
 

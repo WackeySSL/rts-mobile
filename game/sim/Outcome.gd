@@ -28,7 +28,8 @@ extends RefCounted
 ## decision of 2026-10-26: every real match sets it at load through its scenario buildings, while
 ## the perf arena and a World of units only never do, so their `players` section and golden hashes
 ## stay as they were). Neutral rows (owner 0) count for nobody. A site that CANCEL_BUILD cancelled
-## (`build_left` -1, hit points 0 until REMOVE) is no loss: the owner chose it and got its refund.
+## (`build_left` -1, hit points 0 until REMOVE) and a building that SELL sold (`build_left` -3) are
+## no loss: the owner chose it and got its refund.
 
 
 ## The defeat and victory check, after the queues. No end yet, one pass over the players ascending
