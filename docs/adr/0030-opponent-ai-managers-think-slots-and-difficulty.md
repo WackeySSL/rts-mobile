@@ -473,39 +473,43 @@ open"); no other accepted text.
   own note records the result.
 
 Note (2026-11-11, P26bp, the lead; Michael's answers in chat the same day): **P198c and P198b on the
-phone; the AI-time work stops here.**
+phone; the AI-time work stops here.** It changes P26bn's "after P198c" (P189c's 11 runs come from
+`main` after P198) and its "Next lever"; no accepted text.
 - **P198c is closed unmerged** (#403; "Luk P198c"). It builds the type tables once a match, slims
   `PlayerView.new()` and fills the row lists by index. Three Perf AI runs on its APK (run
   42979530576) read `ai_think_p95_ms` 5.77, 6.16 and 5.79 (mean 5.91 against P198's 5.95) and
-  `sim_p95_ms` 9.79, 10.22 and 10.05 (mean 10.02 against 9.88). The difference is inside the phone's
+  `sim_p95_ms` 9.79, 10.23 and 10.05 (mean 10.02 against 9.88; two of the three over 10 ms). The
+  difference is inside the phone's
   run-to-run spread of about 0.2 ms, which does not pay for 419 production lines and a second
   non-state World member. The branch `claude/p198c-shared-type-tables` (e00b5c1f) stays.
-- **P198b is parked again** ("Ja til at parkere P198b og starte Phase 4b"). It was taken up on the
-  same day (option A), and its reviews found three behaviour faults of the shorter cadence, all
-  fixed on its branch:
+- **P198b is parked again** ("Ja til at parkere P198b og starte Phase 4b?"; the lead reads it as a
+  yes). It was taken up on the same day ("Luk P198c, og kør A med P198b": A was the lead's option to
+  take it up again), and its reviews found three behaviour faults of the shorter cadence, all fixed
+  on its branch:
   - Hard's focus centred on dead members.
   - Economy and production no longer shared Easy's command cap.
   - The credit reserve counted the economy's queued costs twice, because production now reads a
     later view.
 
   After the fixes, three Perf AI runs on its APK (run 43064793477, `perf_ai` hash
-  `f54da93bf8d7b60d`) read `ai_think_p95_ms` 4.63, 4.69 and 4.76, about 1.2 ms under P198, but
-  `sim_p95_ms` only 9.46, 9.80 and 9.96. With five slots the two AIs think on 10 of every 15 ticks
-  instead of 6, so the job's p95 keeps an AI slot on top of the step on most ticks. The binding
-  number moved by about 0.2 ms.
+  `f54da93bf8d7b60d`) read `ai_think_p95_ms` 4.63, 4.69 and 4.76 (mean 4.69), about 1.3 ms under
+  P198, but `sim_p95_ms` only 9.46, 9.80 and 9.96 (mean 9.74 against 9.88). With five slots the two
+  AIs think on 10 of every 15 ticks instead of 6, so more of the step's slow ticks carry a think
+  (the lead's reading). The binding number moved by about 0.14 ms on the mean, inside the same
+  run-to-run spread.
 
-  Its balance run also showed a seat edge in the fossil mirror: the top seat won 750 and 700
-  per-mille on seeds 1-40 and 41-80 (runs 43064765778 and 43065367406), against ADR 0033 §8's
-  400-600.
+  Its balance run also showed a seat edge in the fossil mirror: the bottom seat won 750 and 700
+  per-mille (the top seat 250 and 300) on seeds 1-40 and 41-80 (runs 43064765778 and 43065367406),
+  against ADR 0033 §8's 400-600.
 
   The branch `claude/p198b-five-slots` (29457471) keeps the fixes, the notes and the run ids. A row
   that takes five slots up again starts there and owns that seat edge.
 - **What stands:** P198 (#401) on `main`. Michael's phone reads `sim_p95_ms` 9.85-9.93 with it, so
   the trigger (P26bn's note) has almost no margin.
-- **Next steps:** the Perf AI rule of P26bn's plan note covers Phase 4b's rows. A card clearly over
-  the trigger goes back to Michael, and the next lever is no longer a cheaper GDScript read: it is
-  an ADR for the AI's hot loops in C++ (ADR 0013's port rule, which §4 above keeps closed for AI
-  code), or another remedy he picks.
+- **Next steps:** the Perf AI rule of P26bn's plan note covers Phase 4b's rows. A card over the
+  trigger goes back to Michael with the AI's and the sim's share. The levers left are "Over
+  budget"'s smaller caps, P66/P66b, or a new ADR that opens ADR 0013 §1 and CLAUDE.md's Stack line
+  to the AI's hot loops (the lead's reading; Michael picks).
 
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
