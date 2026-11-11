@@ -162,7 +162,7 @@ func mid_colour(owner_id: int) -> Color:
 ## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
 ## A damage patch (`dmg1`, `dmg2`) is sized by `IsoAtlas.part_scale`: `dress` handles it by name.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
-	sprite.texture = atlas.texture()
+	sprite.texture = atlas.texture_for(part)
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.modulate = Color.WHITE

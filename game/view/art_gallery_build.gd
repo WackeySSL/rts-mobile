@@ -286,7 +286,7 @@ func _scene_rig(
 		var frame: int = hull_dir if part in [&"shadow", &"hull"] else dir
 		var sprite: Sprite2D = Sprite2D.new()
 		sprite.name = String(part).capitalize()
-		sprite.texture = atlas.texture()
+		sprite.texture = atlas.texture_for(part)
 		sprite.region_enabled = true
 		sprite.centered = false
 		sprite.region_rect = Rect2(atlas.region(sheet.art_id, part, frame, triad))

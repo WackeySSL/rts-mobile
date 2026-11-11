@@ -759,13 +759,13 @@ func _collect_textures() -> void:
 	_atlas_unchanged = atlas == _start_texture
 
 
-# The distinct textures of the sprites under `node`.
+# The distinct textures of the sprites under `node`, the rigs' Shadow (z 2, page 2, P237) left out.
 func _textures_under(node: Node) -> Array[Texture2D]:
 	var found: Array[Texture2D] = []
 	var stack: Array[Node] = [node]
 	while not stack.is_empty():
 		var at: Node = stack.pop_back()
-		var sprite: Sprite2D = at as Sprite2D
+		var sprite: Sprite2D = at as Sprite2D if at.name != &"Shadow" else null
 		if sprite != null and sprite.texture != null and not found.has(sprite.texture):
 			found.append(sprite.texture)
 		stack.append_array(at.get_children())

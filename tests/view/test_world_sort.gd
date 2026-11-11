@@ -176,7 +176,9 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 	assert_int(sprites.size()).is_equal(8 * 2 + turrets)
 	for sprite: Sprite2D in sprites:
 		var why: String = "%s of %s" % [sprite.name, sprite.get_parent().name]
-		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture())
+		# A shadow is on page 2 (P237), every other sprite of the sorted world on page 1.
+		var page: StringName = &"shadow" if String(sprite.name).begins_with("Shadow") else &"hull"
+		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture_for(page))
 		assert_that(sprite.modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_that(sprite.self_modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_object(sprite.material).override_failure_message(why).is_null()

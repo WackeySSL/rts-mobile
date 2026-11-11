@@ -71,7 +71,7 @@ func test_one_rig_per_unit_with_shadow_hull_and_turret_on_the_atlas_in_draw_orde
 		var slot: int = 0 if row < 30 else 1
 		for part: StringName in [&"shadow", &"hull", &"turret"]:
 			var sprite: Sprite2D = _rig(row).get_node(String(part).capitalize())
-			assert_object(sprite.texture).is_same(atlas.texture())
+			assert_object(sprite.texture).is_same(atlas.texture_for(part))
 			assert_bool(sprite.region_enabled).is_true()
 			assert_that(sprite.modulate).is_equal(Color.WHITE)
 			assert_bool(sprite.centered).is_false()

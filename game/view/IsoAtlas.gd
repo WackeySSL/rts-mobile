@@ -13,6 +13,12 @@ extends RefCounted
 ## A frame no key colour touches (a shadow) is baked once and shared by the players of a faction.
 ## A sheet of faction `neutral` is collected for every player, so each of its frames is one slot.
 ## The CPU page is dropped after the upload unless `keep_image` is set (tests read it).
+## Two pages (P237, ADR 0036 section 15): the y-sorted world's frames lie on page 1, so that every
+## sorted sprite batches into one call; the cast shadows (part `shadow`, units' and buildings')
+## are drawn in unsorted layers (the decal layer at z 1, the rigs' shadow children at z 2) and lie
+## on page 2, which frees about 900 rows of page 1 and later takes the flyers. `page_of(part)` says
+## which page a part is on and `texture_for(part)` gives its texture; `texture()` is page 1. Region
+## keys do not change, and one scale fits both pages.
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
 ## packed table, a group of `frame_count` entries per (player, art id, part, direction), frame 0
@@ -28,6 +34,8 @@ const MIN_SCALE: float = 0.25
 ## path and not through the index; the file may not exist yet (row P160), and then there is none.
 const NEUTRAL_SHEET: String = "res://assets/art/svg/damage/damage_sheet.tres"
 const NEUTRAL: StringName = &"neutral"  ## The faction of a sheet every player's atlas carries.
+## The parts of page 2 (unsorted layers only; ADR 0036 section 15's page rule).
+const PAGE_TWO_PARTS: Array[StringName] = [&"shadow"]
 
 ## The damage patches (`dmg1`, `dmg2`, ADR 0028 section 3, amended 2026-11-03) are rasterised at
 ## `bake_scale * DAMAGE_SCALE` so that their large frames keep the page in its budget; every other
@@ -51,6 +59,7 @@ const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 static var _keys_built: int = 0
 
 var _atlas: RuntimeAtlas = RuntimeAtlas.new()
+var _atlas2: RuntimeAtlas = RuntimeAtlas.new()  ## Page 2: the shadows.
 var _index: Dictionary[StringName, int] = {}  ## Frame group key -> its base in `_table`.
 var _table: Array[Rect2i] = []  ## One region per baked frame, a group's frames side by side.
 var _spans: PackedInt32Array = PackedInt32Array()  ## Parallel to `_table`: frames at a base.
@@ -103,10 +112,11 @@ static func build(
 	var started: int = Time.get_ticks_usec()
 	var atlas: IsoAtlas = IsoAtlas.new()
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var order: Array[StringName] = _packing_order(plan)
-	var scale: float = fit_scale(_canvases(plan, order), bake_scale, _factors(plan, order))
+	var order: Array[StringName] = _packing_order(plan, 0)
+	var order2: Array[StringName] = _packing_order(plan, 1)
+	var scale: float = _fit_pages(plan, order, order2, bake_scale)
 	if scale > 0.0 and not order.is_empty():
-		atlas._bake(plan, order, scale, keep_image)
+		atlas._bake(plan, order, order2, scale, keep_image)
 	atlas._bake_usec = Time.get_ticks_usec() - started
 	return atlas
 
@@ -122,8 +132,28 @@ static func planned_page(
 	reader: Callable = Callable()
 ) -> Vector2i:
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var order: Array[StringName] = _packing_order(plan)
+	var order: Array[StringName] = _packing_order(plan, 0)
 	return page_size(_canvases(plan, order), scale, _factors(plan, order))
+
+
+## The size of page 2 (the shadows) a bake would take at `scale`, as `planned_page` finds it;
+## (0, 0) when no frame is a page 2 frame.
+static func planned_page2(
+	sheets: Array[IsoSheetDef],
+	players: Array[IsoPlayerArt],
+	scale: float,
+	reader: Callable = Callable()
+) -> Vector2i:
+	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
+	var order: Array[StringName] = _packing_order(plan, 1)
+	if order.is_empty():
+		return Vector2i.ZERO
+	return page_size(_canvases(plan, order), scale, _factors(plan, order))
+
+
+## Which page `part` is on: 1 for the parts of `PAGE_TWO_PARTS`, else 0 (the sorted world's page).
+static func page_of(part: StringName) -> int:
+	return 1 if part in PAGE_TWO_PARTS else 0
 
 
 ## The texels per px of the 2x art a canvas of `canvas` px really has at `scale`, per axis: the
@@ -152,6 +182,26 @@ static func page_size(
 		cells.append(RuntimeAtlas.cell_size(raster_size(canvases[at], scale * factor)))
 	var places: Array[Vector2i] = []
 	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places)
+
+
+## The scale a bake gets when both pages must fit (page 2 may be empty).
+static func _fit_pages(
+	plan: Plan, order: Array[StringName], order2: Array[StringName], requested: float
+) -> float:
+	var canvases: Array[Vector2i] = _canvases(plan, order)
+	var factors: Array[float] = _factors(plan, order)
+	var canvases2: Array[Vector2i] = _canvases(plan, order2)
+	var factors2: Array[float] = _factors(plan, order2)
+	var scale: float = requested
+	while scale >= MIN_SCALE:
+		var page: Vector2i = page_size(canvases, scale, factors)
+		var page2: Vector2i = (
+			page_size(canvases2, scale, factors2) if not order2.is_empty() else Vector2i.ZERO
+		)
+		if page.y <= PAGE_MAX_PX and page2.y <= PAGE_MAX_PX and page.x <= PAGE_MAX_PX:
+			return scale
+		scale *= SCALE_STEP
+	return 0.0
 
 
 ## The scale a bake of `canvases` gets when `requested`: see the class comment. 0.0 when none.
@@ -223,6 +273,22 @@ func frame_region(base_index: int, frame: int) -> Rect2i:
 ## The one page every region lies on; null for an empty atlas.
 func texture() -> ImageTexture:
 	return _atlas.texture()
+
+
+## The texture of the page `part` is on (`page_of`): page 2's for a shadow; null when it has none.
+func texture_for(part: StringName) -> ImageTexture:
+	return _atlas2.texture() if page_of(part) == 1 else _atlas.texture()
+
+
+## Page 2's size in texels, (0, 0) for none.
+func page2_px() -> Vector2i:
+	var page: ImageTexture = _atlas2.texture()
+	return Vector2i(page.get_size()) if page != null else Vector2i.ZERO
+
+
+## The CPU-side page 2, for tests: empty unless `build` got `keep_image`.
+func image2() -> Image:
+	return _atlas2.image()
 
 
 ## The CPU-side page, for tests: empty unless `build` got `keep_image`.
@@ -320,11 +386,12 @@ static func _collect_sheet(
 
 
 ## The slots of `plan`, tallest raster first (ties by name): the order `RuntimeAtlas.layout`
-## packs them.
-static func _packing_order(plan: Plan) -> Array[StringName]:
+## packs them, for page `page` (`page_of`).
+static func _packing_order(plan: Plan, page: int) -> Array[StringName]:
 	var order: Array[StringName] = []
 	for slot: StringName in plan.sizes:
-		order.append(slot)
+		if page_of(plan.parts[slot]) == page:
+			order.append(slot)
 	order.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
 			var ha: float = plan.sizes[a].y * part_factor(plan.parts[a])
@@ -349,17 +416,14 @@ static func _canvases(plan: Plan, order: Array[StringName]) -> Array[Vector2i]:
 
 
 ## Rasterises the slots in `order` at `scale` and packs them; every frame gets its slot's region.
-func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool) -> void:
-	var images: Dictionary[StringName, Image] = {}
-	for slot: StringName in order:
-		var image: Image = Image.new()
-		if (
-			image.load_svg_from_string(plan.texts[slot], scale * part_factor(plan.parts[slot]))
-			!= OK
-		):
-			image = null  # RuntimeAtlas reports it by name.
-		images[slot] = image
-	_atlas = RuntimeAtlas.build_images(images, PAGE_MAX_PX, keep_image)
+func _bake(
+	plan: Plan, order: Array[StringName], order2: Array[StringName], scale: float, keep_image: bool
+) -> void:
+	_atlas = RuntimeAtlas.build_images(_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image)
+	if not order2.is_empty():
+		_atlas2 = RuntimeAtlas.build_images(
+			_rasterise(plan, order2, scale), PAGE_MAX_PX, keep_image
+		)
 	_scale = scale if _atlas.texture() != null else 0.0
 	var at: int = 0
 	for group: int in plan.keys.size():
@@ -367,8 +431,26 @@ func _bake(plan: Plan, order: Array[StringName], scale: float, keep_image: bool)
 		_index[plan.keys[group]] = _table.size()
 		for frame: int in span:
 			_spans.append(span if frame == 0 else 0)
-			_table.append(_atlas.region(plan.slots[at + frame]))
+			var slot: StringName = plan.slots[at + frame]
+			var on_two: bool = slot != &"" and page_of(plan.parts[slot]) == 1
+			_table.append((_atlas2 if on_two else _atlas).region(slot))
 		at += span
+
+
+## The slots of `order` rasterised at `scale` (a failed one is null, which RuntimeAtlas reports).
+func _rasterise(
+	plan: Plan, order: Array[StringName], scale: float
+) -> Dictionary[StringName, Image]:
+	var images: Dictionary[StringName, Image] = {}
+	for slot: StringName in order:
+		var image: Image = Image.new()
+		if (
+			image.load_svg_from_string(plan.texts[slot], scale * part_factor(plan.parts[slot]))
+			!= OK
+		):
+			image = null
+		images[slot] = image
+	return images
 
 
 ## The frames of one build: slot (a baked frame) -> its SVG text and its canvas in 2x art px, and

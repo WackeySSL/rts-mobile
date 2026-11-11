@@ -76,6 +76,25 @@ func test_everything_a_dressed_rig_draws_at_the_sorted_z_is_an_atlas_sprite() ->
 	assert_int(_cargo_bars().size()).is_equal(TANKERS)
 
 
+## P237 (ADR 0036 section 15): the shadows are on page 2, drawn at z 2 (the rigs') and z 1 (the
+## decal layer's), outside the sort, so the sorted world stays one call on page 1 and the shadows
+## are one more call on page 2: two textures, the same count as before the split (the shadows drew
+## at their own z then, between the decals and the rings, and after the ground's own call).
+func test_every_rig_shadow_is_on_page_two_at_z_two_and_never_in_the_sort() -> void:
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	var page2: Texture2D = atlas.texture_for(&"shadow")
+	assert_object(page2).is_not_null()
+	assert_object(page2).is_not_same(atlas.texture())
+	var shadows: int = 0
+	for row: int in _runner.snapshot.unit_count():
+		var sprite: Sprite2D = _layer.rig(row).get_node("Shadow")
+		assert_object(sprite.texture).is_same(page2)
+		assert_int(_resolved_z(sprite)).is_equal(WorldSort.Z_SHADOW)
+		assert_int(WorldSort.Z_SHADOW).is_not_equal(WorldSort.Z_SORT)
+		shadows += 1
+	assert_int(shadows).is_equal(UNITS.size())
+
+
 func test_the_cargo_bar_draws_at_the_bars_z_outside_the_sort() -> void:
 	var bars: Array[TankerCargo] = _cargo_bars()
 	assert_int(bars.size()).is_equal(TANKERS)

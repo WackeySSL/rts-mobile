@@ -17,9 +17,16 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## triads) and 3558 for Karmin and Kobolt (`OTHER_TRIADS_PX` allows that); a mirror page can
 ## differ too: Derrick's is 3008 for the default match and other triads alike (the slot names, which
 ## break ties between frames of one height, order the shelves).
-const TODAY_CROSS: int = 3550
-const TODAY_MIRROR_DERRICK: int = 3008
-const TODAY_MIRROR_LUMEN: int = 3140
+## P237 (ADR 0036 section 15, option a) moved every cast shadow, units' and buildings', to page 2:
+## page 1 (the y-sorted world, the budget below) went from 3550, 3008 and 3140 to the pins that
+## follow, and page 2 holds the shadows (1040 rows in the cross-faction match). The plan's later
+## rows (flyers, polish P203 and P204) grow page 2 and update `TODAY2_*` in their own PRs.
+const TODAY_CROSS: int = 2659
+const TODAY_MIRROR_DERRICK: int = 2542
+const TODAY_MIRROR_LUMEN: int = 2650
+const TODAY2_CROSS: int = 1040
+const TODAY2_MIRROR_DERRICK: int = 566
+const TODAY2_MIRROR_LUMEN: int = 622
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
@@ -66,6 +73,45 @@ func test_the_lumen_accord_mirror_page_is_within_the_budget() -> void:
 	var page: Vector2i = _page(players)
 	_assert_within_budget("mirror Lumen", page)
 	_assert_today("mirror Lumen", page, TODAY_MIRROR_LUMEN)
+
+
+## Page 2 holds only the unsorted layers' frames (ADR 0036 section 15's page rule): the shadows. Its
+## budget is the same 7/8 of a page, and the sum of both pages is what the phone's texture memory
+## holds (RGBA8, 16 KiB a row).
+func test_page_two_holds_the_shadows_and_stays_within_its_budget() -> void:
+	var players: Array[IsoPlayerArt] = [_key_art(&"fossil"), _key_art(&"renew")]
+	var page2: Vector2i = _page2(players)
+	print("atlas page 2 cross-faction at bake scale 1.0: %dx%d" % [page2.x, page2.y])
+	assert_int(page2.x).is_equal(IsoAtlas.PAGE_MAX_PX)
+	assert_int(page2.y).is_between(1, BUDGET_PX)
+	assert_int(page2.y).is_equal(TODAY2_CROSS)
+	var mirror: Array[IsoPlayerArt] = [_art(&"fossil", 0), _art(&"fossil", 1)]
+	assert_int(_page2(mirror).y).is_equal(TODAY2_MIRROR_DERRICK)
+	var lumen: Array[IsoPlayerArt] = [_art(&"renew", 0), _art(&"renew", 1)]
+	assert_int(_page2(lumen).y).is_equal(TODAY2_MIRROR_LUMEN)
+	# Before the split one page held both: 3550 rows for the cross-faction match (P237's probe).
+	assert_int(_page(players).y + page2.y).is_greater_equal(3550)
+
+
+func test_only_shadows_are_on_page_two() -> void:
+	assert_int(IsoAtlas.page_of(&"shadow")).is_equal(1)
+	for part: StringName in [
+		&"hull", &"turret", &"head", &"walk", &"idle", &"anim", &"dmg1", &"dmg2"
+	]:
+		assert_int(IsoAtlas.page_of(part)).override_failure_message(part).is_equal(0)
+
+
+func test_a_built_atlas_has_two_textures_and_a_shadow_region_on_the_second() -> void:
+	var players: Array[IsoPlayerArt] = [_key_art(&"fossil")]
+	var atlas: IsoAtlas = IsoAtlas.build(IsoAtlas.load_sheets(), players, 0.25)
+	assert_bool(atlas.is_empty()).is_false()
+	assert_object(atlas.texture_for(&"shadow")).is_not_null()
+	assert_object(atlas.texture_for(&"shadow")).is_not_same(atlas.texture())
+	assert_object(atlas.texture_for(&"hull")).is_same(atlas.texture())
+	assert_int(atlas.page2_px().x).is_equal(IsoAtlas.PAGE_MAX_PX)
+	var shadow: Rect2i = atlas.region(&"barracks", &"shadow", -1, 0)
+	assert_bool(shadow.has_area()).is_true()
+	assert_int(shadow.end.y).is_less_equal(atlas.page2_px().y)
 
 
 func test_a_set_of_frames_past_the_budget_is_seen() -> void:
@@ -135,6 +181,14 @@ func _with_giant(faction: StringName) -> Array[IsoSheetDef]:
 	var sheets: Array[IsoSheetDef] = IsoAtlas.load_sheets()
 	sheets.append(sheet)
 	return sheets
+
+
+## Page 2 of the committed sheets for `players` at bake scale 1.0 (the shadows).
+func _page2(players: Array[IsoPlayerArt]) -> Vector2i:
+	var reader: Callable = Callable()
+	if IsoAtlas.load_neutral_sheet(IsoAtlas.NEUTRAL_SHEET) == null:
+		reader = _giant_reader(NEUTRAL_FRAME, CRAFTED_ROOT)
+	return IsoAtlas.planned_page2(_page_sheets(), players, 1.0, reader)
 
 
 ## The page of the committed sheets for `players` at bake scale 1.0, nothing lowered.
