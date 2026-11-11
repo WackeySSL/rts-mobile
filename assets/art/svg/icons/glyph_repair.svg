@@ -1,5 +1,5 @@
 <!-- Repair glyph: white and grey only, tinted at run time (the Mend switch of an own building and the Repair order of a vehicle building). -->
-<!-- Shape: one open-ended spanner on a rising diagonal, a round head at the upper right with a deep square-bottomed slot cut into its end, a straight handle ending in a round tail with a dark hole. -->
+<!-- Shape: one open-ended spanner on a rising diagonal, a round head at the upper right with a deep round-bottomed slot cut into its end, a straight handle ending in a round tail with a dark hole. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <g transform="rotate(45 64 64)">
     <!-- edge: the union of the parts, 4 px wide, drawn under them -->

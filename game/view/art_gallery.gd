@@ -26,12 +26,12 @@ extends Control
 ## STYLE.md ("Ghosts") on the iso barracks, the one that does not fit with its reason glyph. Icons
 ## (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their size in
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
-## Hud (`_add_hud_page`, plan row P118g, ADR 0025 and 0026) shows the fourteen glyphs of the corner
-## HUD at 48 dp with their names, the glyphs they sit beside, all fourteen at 32 and 24 dp, and each
-## faction's vehicle factory with the construction badge and the offline glyph over it. Life
-## (`_add_life_page`, `art_gallery_life.gd`, plan row P135, ADR 0027) shows the two life atlases and
-## every sprite of them at the three camera zooms on grass and sand. The pages after Units are built
-## in code and start hidden.
+## Hud (`_add_hud_page`, plan row P118g, ADR 0025, 0026 and 0037) shows the sixteen glyphs of the
+## corner HUD at 48 dp with their names, the glyphs they sit beside, all sixteen at 32 and 24 dp,
+## and each faction's vehicle factory with the construction badge and the offline glyph over it.
+## Life (`_add_life_page`, `art_gallery_life.gd`, plan row P135, ADR 0027) shows the two life
+## atlases and every sprite of them at the three camera zooms on grass and sand. The pages after
+## Units are built in code and start hidden.
 ##
 ## To add a unit: its model goes under `assets/art/models/` (STYLE.md "Generated art") and its art
 ## id into `ROSTER_IDS` (Derrick League) or `ACCORD_IDS` (Lumen Accord). A building goes into the
@@ -216,6 +216,7 @@ const MAP_GLYPHS: Array[String] = [
 	"glyph_reason_cap",
 	"glyph_offline",
 	"glyph_low_power_map",
+	"glyph_repair_map",
 	"glyph_construct",
 ]
 const ARROW_GLYPH: String = "glyph_under_attack"  ## At least 48 dp on screen (ADR 0019 section 5).
@@ -224,6 +225,8 @@ const ITEM_ICON_DP: float = 64.0
 const TAB_ICON_DP: float = 48.0
 const HUD_GLYPH_DP: float = 48.0
 const MAP_GLYPH_DP: float = 32.0
+## The map glyphs fill two lines of this many, so that a line fits a half of the page at 1280.
+const MAP_GLYPH_COLUMNS: int = 5
 ## The Hud page's two smaller sizes, in dp: a glyph in a 48 dp button's corner and the smallest.
 const HUD_SMALL_DP: Array[float] = [32.0, 24.0]
 const ICON_GAP_PX: float = 10.0
@@ -255,6 +258,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_reason_cap": Color("E5484D"),
 	"glyph_offline": Color("F5A524"),
 	"glyph_low_power_map": Color("FF8A1F"),
+	"glyph_repair_map": Color("30A46C"),
 	"glyph_under_attack": Color("E5484D"),
 }
 ## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
@@ -263,7 +267,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 ## arrow and the rally flags. Rows under the corner buttons, which cover 24 to 144 px from the top
 ## and from the left or right edge.
 const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
-const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [152.0, 250.0], "Sand": [24.0, 132.0]}
+const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [128.0, 262.0], "Sand": [24.0, 160.0]}
 const FLAG_GAP_PX: float = 24.0
 ## The Hud page, in base px from the top of the page: the four 48 dp rows with a name under each
 ## glyph (the last two share one line, their centres `HUD_ROW_CENTRES` from the page's middle, the
@@ -794,7 +798,7 @@ func _add_icons_page() -> void:
 		var ground: ColorRect = _icons_half(_icons_page, ground_name, colour, anchors)
 		var tops: Array = MAP_ROW_TOPS[ground_name]
 		var glyphs: Control = _pixel_row(ground, "MapGlyphs", tops[0])
-		_icon_grid(glyphs, MAP_GLYPHS, MAP_GLYPH_DP, MAP_GLYPHS.size())
+		_icon_grid(glyphs, MAP_GLYPHS, MAP_GLYPH_DP, MAP_GLYPH_COLUMNS)
 		_add_flag_row(_pixel_row(ground, "Flags", tops[1]))
 
 
@@ -813,7 +817,7 @@ func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2
 
 
 ## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
-## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the fourteen new glyphs again at
+## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the sixteen new glyphs again at
 ## each of `HUD_SMALL_DP`, and each faction's vehicle factory with the construction badge and the
 ## offline glyph over it, where a site's badge is seen. Every row is centred, so the page fits at
 ## any base width from 1280.

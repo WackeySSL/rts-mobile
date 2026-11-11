@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## The Hud page of the art gallery (plan row P118g, STYLE.md "Gallery"): the fourteen glyphs of the
-## corner HUD at 48 dp with their names, the glyphs they stand beside, the fourteen again at 32 and
+## The Hud page of the art gallery (plan row P118g, STYLE.md "Gallery"): the sixteen glyphs of the
+## corner HUD at 48 dp with their names, the glyphs they stand beside, the sixteen again at 32 and
 ## 24 dp, and each faction's vehicle factory with the construction badge and the offline glyph over
 ## it, all on the HUD panel's backdrop, laid out to fit at the three base sizes of the gallery. The
 ## glyph files are in test_icon_art.gd and test_hud_v2_glyphs.gd, the other pages in
@@ -52,7 +52,7 @@ func test_the_hud_page_is_one_dark_panel_with_its_rows_in_order() -> void:
 	assert_array(panel.get_children().map(_node_name)).is_equal(ROW_NAMES)
 
 
-## The fourteen new glyphs by the part of the HUD that uses them, then the eight they stand beside:
+## The sixteen new glyphs by the part of the HUD that uses them, then the eight they stand beside:
 ## rows of the same names as `HUD_V2_ROWS`, each glyph a square `TextureRect` of 48 dp with the tint
 ## the HUD gives it and its name under it.
 func test_each_row_shows_its_glyphs_at_48_dp_with_their_tints_and_names() -> void:
@@ -87,7 +87,7 @@ func test_each_row_shows_its_glyphs_at_48_dp_with_their_tints_and_names() -> voi
 	assert_int(shown).is_equal(16 + 8)
 
 
-func test_the_fourteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
+func test_the_sixteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
 	var gallery: Control = await _open_gallery()
 	var panel: Node = gallery.get_node("HudPage/Hud")
 	var fresh: Array[String] = []
@@ -141,7 +141,7 @@ func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 
 
 ## Only the glyph that says a state has a tint of its own: the stalled queue's "!" in the neutral
-## grey of a tab at rest. The other thirteen are white and the plate behind them says the rest.
+## grey of a tab at rest. The other fifteen are white and the plate behind them says the rest.
 func test_only_the_alert_glyph_of_the_new_ones_has_a_tint() -> void:
 	var tinted: Array[String] = []
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
