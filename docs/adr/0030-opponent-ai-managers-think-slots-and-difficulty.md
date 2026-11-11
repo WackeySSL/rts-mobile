@@ -549,6 +549,20 @@ open"); no other accepted text.
   and shared, read-only, by every view, so a think stops rebuilding them. No decision changes; its
   own note records the result.
 
+Note (2026-11-11, P26bo, the lead; Michael in chat the same day, "Luk P198c, og kør A med P198b"):
+- **P198c is closed unmerged** (#403). On Michael's Pixel 9a, three Perf AI runs on its perf APK
+  (run 42979530576) read `ai_think_p95_ms` 5.77, 6.16 and 5.79 (mean 5.91, against P198's 5.95)
+  and `sim_p95_ms` 9.79, 10.22 and 10.05 (mean 10.02, against 9.88): no gain beyond the phone's
+  run-to-run spread of about 0.2 ms, for 419 production lines and a second non-state World member.
+  Two of the three runs went over the 10 ms trigger, so the card went back to Michael (P26bn's
+  note above). The branch `claude/p198c-shared-type-tables` (e00b5c1f) stays as a reference.
+- **P198b is taken up again** (Michael chose the lead's option A): five slots on period 3 is the one
+  lever left with a measured effect. Its paired run on `main` d35f1b40's code: 246 us against
+  main's 396 us (runs 43045011708 and 43045016861), 0.62. Its balance shifts (Easy 469 per-mille
+  over 80 matches against the band's 450) are accepted until Phase 4b's balance run tunes the
+  numbers. The P26bn note's "P198b is not merged" no longer holds; P189c's ratchet follows P198b.
+  It merges only after Michael's three Perf AI runs on its APK (the rule of P26bn's plan note).
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
