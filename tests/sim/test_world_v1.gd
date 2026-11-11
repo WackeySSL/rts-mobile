@@ -322,8 +322,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_int(ints.size()).is_equal(56)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
-	# objects and the bool `prepared`. The two non-state members, the kernels and the views' type tables, are skipped by name, so
-	# any other object member still fails here (ADR 0013 section 3).
+	# objects and the bool `prepared`. The two non-state members, the kernels and the views' type
+	# tables, are skipped by name, so any other object member still fails here (ADR 0013 section 3).
 	assert_array(World.NON_STATE_MEMBERS).is_equal([&"kernels", &"type_tables"])
 	assert_array(skipped).is_equal(["kernels", "type_tables"])
 	var byte_tables: Array[String] = ["type_names", "terrain", "move_cost", "terrain_cost"]
