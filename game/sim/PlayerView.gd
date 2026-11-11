@@ -115,29 +115,32 @@ const _MAX_ID: int = 0x7FFFFFFF
 ## The armour classes of `World.Armour` (a test pins them equal), the width of `type_vs_armour`.
 const ARMOUR_CLASSES: int = TypeTables.ARMOUR_CLASSES
 
+## Members that `of` always assigns carry no initializer (plan row P198c): a typed member starts as
+## its type's empty value (0, false, null, an empty array) anyway, and an initializer would run code
+## in `new()` for a value that `of` replaces at once. One is kept where `of` may not assign it.
 ## The player the view is for, the World's tick it was made on, and the map's size in tiles. A cell
 ## is `tile_row * map_cols + tile_col`, as `World.cell_of`.
-var player: int = 0
-var tick: int = 0
-var map_cols: int = 0
-var map_rows: int = 0
+var player: int
+var tick: int
+var map_cols: int
+var map_rows: int
 ## The map's ore cells as `tile_row * map_cols + tile_col`: their places are static terrain, whether
 ## the player has seen them is not (the AI keeps to `is_explored` cells); the ore left is not here.
-var ore_cells: PackedInt32Array = PackedInt32Array()
+var ore_cells: PackedInt32Array
 ## The player's credits, and its power: the totals of the buildings' `type_power` (made is the
 ## positive entries, used the negative ones as positive numbers) and whether it is on low power.
-var credits: int = 0
-var power_made: int = 0
-var power_used: int = 0
-var low_power: bool = false
+var credits: int
+var power_made: int
+var power_used: int
+var low_power: bool
 ## The rows the player owns, and the rows of other owners that it sees: ascending World rows.
-var own_rows: PackedInt32Array = PackedInt32Array()
-var seen_rows: PackedInt32Array = PackedInt32Array()
+var own_rows: PackedInt32Array
+var seen_rows: PackedInt32Array
 ## The player's queues: `queue_slots` places per tab, `queue_count[tab]` of them in use with the
 ## head first in `queue_type[tab * queue_slots]` (-1 in a free place), and `queue_progress[tab]` the
 ## head's progress in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick). `rally_x` and
 ## `rally_y` are the tab's rally point in milli-tiles, -1 for none. Copies, one entry per tab.
-var queue_slots: int = 0
+var queue_slots: int
 var queue_count: PackedInt32Array = PackedInt32Array()
 var queue_progress: PackedInt32Array = PackedInt32Array()
 var queue_type: PackedInt32Array = PackedInt32Array()
@@ -145,7 +148,7 @@ var rally_x: PackedInt32Array = PackedInt32Array()
 var rally_y: PackedInt32Array = PackedInt32Array()
 ## The player's last-seen records: how many, and the four columns, one entry per record, in the
 ## order of the World's block (`LastSeen`). Copies; a column is as long as `ghost_count`.
-var ghost_count: int = 0
+var ghost_count: int
 var ghost_id: PackedInt32Array = PackedInt32Array()
 var ghost_type: PackedInt32Array = PackedInt32Array()
 var ghost_owner: PackedInt32Array = PackedInt32Array()
@@ -155,72 +158,72 @@ var ghost_cell: PackedInt32Array = PackedInt32Array()
 ## produces (-1), the footprint in tiles (0 for a unit), the speed in milli-tiles a tick (0 for a
 ## building), the weapon index (-1 for none), a harvester's cargo capacity (0), the power a
 ## building makes (positive) or uses (negative), and the ticks a type takes to build.
-var type_cost: PackedInt32Array = PackedInt32Array()
-var type_tab: PackedInt32Array = PackedInt32Array()
-var type_requires: PackedInt32Array = PackedInt32Array()
-var type_produces: PackedInt32Array = PackedInt32Array()
-var type_foot_w: PackedInt32Array = PackedInt32Array()
-var type_foot_h: PackedInt32Array = PackedInt32Array()
-var type_speed: PackedInt32Array = PackedInt32Array()
-var type_weapon: PackedInt32Array = PackedInt32Array()
-var type_harvest: PackedInt32Array = PackedInt32Array()
-var type_power: PackedInt32Array = PackedInt32Array()
-var type_build_ticks: PackedInt32Array = PackedInt32Array()
+var type_cost: PackedInt32Array
+var type_tab: PackedInt32Array
+var type_requires: PackedInt32Array
+var type_produces: PackedInt32Array
+var type_foot_w: PackedInt32Array
+var type_foot_h: PackedInt32Array
+var type_speed: PackedInt32Array
+var type_weapon: PackedInt32Array
+var type_harvest: PackedInt32Array
+var type_power: PackedInt32Array
+var type_build_ticks: PackedInt32Array
 ## More type tables (P172), copies, one entry per type index: hit points, the armour class
 ## (`World.Armour`), the type's weapon range and minimum range in milli-tiles (0 for a type
 ## without a weapon), sight in milli-tiles as the World keeps it (the radius of the fog's disc), the
 ## faction (an index into the World's faction ids, -1 for none), the strike kind (0 none, 1
 ## rupture, 2 blackout), its radius in milli-tiles and its charge in ticks.
-var type_max_hp: PackedInt32Array = PackedInt32Array()
-var type_armour: PackedInt32Array = PackedInt32Array()
-var type_range: PackedInt32Array = PackedInt32Array()
-var type_min_range: PackedInt32Array = PackedInt32Array()
-var type_sight: PackedInt32Array = PackedInt32Array()
-var type_faction: PackedInt32Array = PackedInt32Array()
-var type_strike_kind: PackedInt32Array = PackedInt32Array()
-var type_strike_radius: PackedInt32Array = PackedInt32Array()
-var type_charge_ticks: PackedInt32Array = PackedInt32Array()
+var type_max_hp: PackedInt32Array
+var type_armour: PackedInt32Array
+var type_range: PackedInt32Array
+var type_min_range: PackedInt32Array
+var type_sight: PackedInt32Array
+var type_faction: PackedInt32Array
+var type_strike_kind: PackedInt32Array
+var type_strike_radius: PackedInt32Array
+var type_charge_ticks: PackedInt32Array
 ## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
 ## a type without a weapon.
-var type_vs_armour: PackedInt32Array = PackedInt32Array()
+var type_vs_armour: PackedInt32Array
 ## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
 ## milli-tiles and the landing tick, one entry per player that has one, ascending player.
-var warned_x: PackedInt32Array = PackedInt32Array()
-var warned_y: PackedInt32Array = PackedInt32Array()
-var warned_tick: PackedInt32Array = PackedInt32Array()
+var warned_x: PackedInt32Array
+var warned_y: PackedInt32Array
+var warned_tick: PackedInt32Array
 ## The viewing player's own pending rupture: its landing tick, 0 when none is pending. Own state
 ## only; no other player's tick is ever copied here (theirs are in the `warned_*` lists). Test it
 ## for 0 and never compare it with a stamp: the sim drops a SUPERWEAPON while it is set, one stamped
 ## at the landing tick itself included (COMMANDS runs before FIRE clears it). A blackout never sets
 ## it, so a rupture may follow a blackout in the same think, but nothing may follow a rupture.
-var own_strike_tick: int = 0
+var own_strike_tick: int
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
 ## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
-var unit_cap: int = 0
-var building_cap: int = 0
+var unit_cap: int
+var building_cap: int
 
 ## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
-var _ids: PackedInt32Array = PackedInt32Array()
-var _owner: PackedInt32Array = PackedInt32Array()
-var _type: PackedInt32Array = PackedInt32Array()
-var _pos_x: PackedInt32Array = PackedInt32Array()
-var _pos_y: PackedInt32Array = PackedInt32Array()
-var _hp: PackedInt32Array = PackedInt32Array()
-var _build_left: PackedInt32Array = PackedInt32Array()
-var _order: PackedInt32Array = PackedInt32Array()
-var _harvest_mode: PackedInt32Array = PackedInt32Array()
-var _home: PackedInt32Array = PackedInt32Array()
-var _ready_tick: PackedInt32Array = PackedInt32Array()
-var _offline_until: PackedInt32Array = PackedInt32Array()
-var _shown: PackedByteArray = PackedByteArray()
-var _public: Array[PackedInt32Array] = []
+var _ids: PackedInt32Array
+var _owner: PackedInt32Array
+var _type: PackedInt32Array
+var _pos_x: PackedInt32Array
+var _pos_y: PackedInt32Array
+var _hp: PackedInt32Array
+var _build_left: PackedInt32Array
+var _order: PackedInt32Array
+var _harvest_mode: PackedInt32Array
+var _home: PackedInt32Array
+var _ready_tick: PackedInt32Array
+var _offline_until: PackedInt32Array
+var _shown: PackedByteArray
+var _public: Array[PackedInt32Array]
 ## The match's type tables (plan row P198c): the holder that the `type_*` fields above came from,
 ## which also has the type ids and the dock offsets that make a type a refinery. Shared by every
 ## view of the match; read only here, and never handed out.
-var _tables: TypeTables = null
+var _tables: TypeTables
 ## What `Placement.reason` and `is_explored` read: its arrays are aliases too; it keeps no World.
-var _input: PlacementInput = null
+var _input: PlacementInput
 
 
 ## The view of `player` on `world` as it stands. One pass over the rows (`_take_rows`) and a few
