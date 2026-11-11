@@ -240,9 +240,8 @@ of which about 120 are C++.
     `data/input_settings.tres`. The Sell button keeps its place and a fixed width, so "+N" never
     shifts it.
   - Note (2026-11-11, P273): the Sell glyph is a price tag with a coin on it, not a bare coin: a bare
-    coin sits too close to `glyph_credits` and the Draw and Alert discs, and the tag avoids a "$", which
-    is text. The map copy of the Mend wrench for an own mending building (section 4) is `glyph_repair_map`,
-    drawn in P273 (STYLE.md v1.30).
+    coin would sit too close to `glyph_credits` and the Draw and Alert discs, and the tag avoids a "$",
+    which is text.
 - **AI.** Never sells (the managers have no rule that gains from it).
 - **Size.** Sim ~90, view and UI ~160.
 
@@ -267,6 +266,8 @@ of which about 120 are C++.
   `cargo` holds enemy buildings' switches too (view data; the AI never reads the snapshot), so the
   view draws the glyph for own buildings only, and a view test pins that an enemy's switch draws
   nothing. `PlayerView.row_mend(row)` is own-only.
+  - Note (2026-11-11, P273): the wrench over an own mending building is `glyph_repair_map`, the
+    wrench on the map seat tinted #30A46C (STYLE.md v1.30); the plain `glyph_repair` is the HUD's.
 - **Touch.** Own building selected: a **`MEND`** order (wrench glyph, the word "MEND"), lit while
   mending; a tap toggles. It is a different word from the units' Repair button (§5).
 - **AI.** `AiEconomy` (Normal and Hard) switches it on for a building under

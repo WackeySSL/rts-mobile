@@ -1353,8 +1353,8 @@ canvas edge, a two-line header with the shape line, untinted on the dark panel, 
   is text. Its ink is centred on the canvas.
 - `glyph_repair_map`, the wrench over an own building that is being mended (ADR 0037 section 4,
   drawn like the offline glyph's pass): the same spanner scaled to 0.8 on the dark seat of "Map
-  glyphs sit on a seat" below, tinted green #30A46C, the colour of "power is fine", the state that
-  mending restores; it is the eleventh map glyph. The HUD glyph stays plain on the panel.
+  glyphs sit on a seat" below, tinted green #30A46C, the ok green and the fill of an own health bar,
+  which mending refills; it is the eleventh map glyph. The HUD glyph stays plain on the panel.
 
 Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64 dp tile (ADR 0015
 section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
@@ -1477,13 +1477,15 @@ at its foot, a doorway with an arrow, a phone between shake marks, two arrows me
 and a disc with a bar and a dot; the construction badge, one of the eleven map glyphs, reads as a
 crane on a plate.
 
-P273's two glyphs (greys only, nothing within 2 px of the edge, ink centred on the canvas) read at
+P273's two glyphs (greys only, nothing within 2 px of the edge; the tag's ink box is centred on the canvas, the wrench's, box centre
+(66.0, 62.1), only along its own axis) read at
 32 px as one spanner on a diagonal and a tilted tag with a round coin on it. Nearest HUD glyph at
 32 px in greyscale, the same measure and the 29 bar: the wrench is 36.5 from the star
 (`glyph_victory`) and 37.9 from the power bolt; the tag is 34.7 from `glyph_credits` (the coin
 stack, its nearest), 35.0 from the Resume triangle and 36.0 from the star. `tests/art` keeps the
 tag at 29 or more from the coin stack. The wrench's map copy sits on the seat with the other map
-glyphs and is held to their bounds (the pair difference, the stand-out from every ground, the seat).
+glyphs and is held to their bounds (the pair difference, the stand-out from every ground, the seat). Tinted green, its plate is luminance 37 and its rim 123, like the danger red's (36 and
+120): the rim is only 4 under grass_b (127), so on grass the dark plate carries the badge.
 
 The eleven map glyphs are never seen plain on the HUD, so they are checked as they are seen: tinted
 (the construction badge is white, untinted), over
@@ -2317,8 +2319,9 @@ hidden, so the Units page is as it was.
   tab icons at 48 dp, the eleven item icons on their tiles at 64 dp (four to a line), the six HUD
   glyphs at 48 dp, and on the last line the three result emblems and the build menu's three glyphs
   (`GlyphMenuOpen`, `GlyphPin`, `GlyphPinOff`) side by side at 48 dp, each tinted as the HUD tints
-  it (see "Icons and glyphs"). The right half is grass above and sand below, each with the eight
-  map glyphs at 32 dp, the under-attack arrow at 48 dp and the two rally flags in team A and team B
+  it (see "Icons and glyphs"). The right half is grass above and sand below, each with the ten
+  map glyphs at 32 dp in two lines of five (`MAP_GLYPH_COLUMNS`), grass's first line beside the page
+  button, the under-attack arrow at 48 dp and the two rally flags in team A and team B
   at scale 1. Every icon is a `TextureRect` named by its file in PascalCase (`TabInfantry`,
   `ItemHeavyTank`, `GlyphReasonTooFar`); a flag is a rig `Node2D` (`RallyInfantryA`) with `Hull` and
   `Team`. All of it sits clear of the two corner buttons, which cover 24 to 144 px from the top and

@@ -144,7 +144,7 @@ func test_the_sell_glyph_is_a_price_tag_with_a_hole_and_a_coin() -> void:
 	_assert_light(image, [Vector2i(65, 45), Vector2i(80, 54)])
 	_assert_dark(image, [Vector2i(37, 48)])
 	# the coin: its dark rim on either side of the diamond, and the tag's point
-	_assert_dark(image, [Vector2i(57, 57), Vector2i(93, 74)])
+	_assert_dark(image, [Vector2i(56, 57), Vector2i(92, 74)])
 	_assert_ink(image, [Vector2i(19, 40)], true)
 	_assert_ink(image, [Vector2i(8, 8), Vector2i(120, 120), Vector2i(8, 120)], false)
 	assert_float(_difference("glyph_sell", "glyph_credits")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)

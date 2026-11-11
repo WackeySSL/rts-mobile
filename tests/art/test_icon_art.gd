@@ -8,8 +8,7 @@ extends GdUnitTestSuite
 ## layer each, with the foot of the pole at the canvas centre. The gallery pages that show them are
 ## in test_art_gallery_icon_pages.gd. The sixteen glyphs of the corner HUD (plan rows P118g and
 ## P273) are in the same lists, so every rule here covers them; their own margins and shapes are
-## pinned in
-## test_hud_v2_glyphs.gd and the Hud page that shows them in test_art_gallery_hud_page.gd.
+## pinned in test_hud_v2_glyphs.gd and the Hud page that shows them in test_art_gallery_hud_page.gd.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
@@ -406,7 +405,7 @@ func test_the_style_guide_names_every_icon_and_flag_file_and_the_tints_the_galle
 	assert_str(section).contains("Map glyphs sit on a seat")
 
 
-## The six placement reasons' glyphs and the other two glyphs of the map.
+## The six placement reasons' glyphs and the other five glyphs of the map.
 func _map_glyphs() -> Array[String]:
 	var icons: Array[String] = []
 	for reason: String in REASONS:

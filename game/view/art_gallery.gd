@@ -264,8 +264,9 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 ## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
 ## tabs, the item tiles, the HUD glyphs, and on the last line the result emblems and the build
 ## menu's glyphs side by side; the grass and sand strips (right) each hold the map glyphs, then the
-## arrow and the rally flags. Rows under the corner buttons, which cover 24 to 144 px from the top
-## and from the left or right edge.
+## arrow and the rally flags. Grass's glyphs start beside the page button (24 to 144 px from the
+## top and from the right edge), the sand's at the top of its half. The map glyphs fill two lines
+## of five and the right half is full: an 11th map glyph needs a third line or a split of the page.
 const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
 const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [128.0, 262.0], "Sand": [24.0, 160.0]}
 const FLAG_GAP_PX: float = 24.0
