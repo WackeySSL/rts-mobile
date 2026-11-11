@@ -135,6 +135,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | --- | --- | --- | --- | --- |
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
 | P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P271b | GD (D) | (2026-11-12, P26bq) Data: ADR 0037's starting values in `data/rules.tres`, `sell_refund_percent` 50, `mend_hp` 10, `mend_period_ticks` 15, `mend_cost_percent` 30 (P271 ships them inert at 0/0/15/30); the data test's pins follow. Moves no state hash; starts `balance.yml` | data | P271 |
 | P273 | ART | Glyphs `glyph_repair` (wrench) and `glyph_sell`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
 | P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274 |
@@ -287,3 +288,19 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 9. **Balance runs and the gate.** P275 (after wave 1) and P255 with P284 (part 1 and wave 2, 18
    types) are interim tuning runs. The Phase 4b gate is P268 with P297: 26 types, ADR 0031's gate
    run on held-out seeds, then Michael's phone.
+
+
+Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
+- **Order.** P271 (SELL and MEND) merges before P232: it moves `remove_dead` and `_compact` out
+  of `World.gd` into a new `game/sim/Removal.gd` (World.gd 1000 -> 960 lines), so P232 starts on
+  that `World.gd`. `Removal.gd` joins lane S's files. P263 replaces P271's placeholder
+  `Removal.BOARDED` (-2) with `Carry.BOARDED`.
+- **Data.** P271 ships the four rule ints inert; row P271b (wave 1 above) writes ADR 0037's
+  starting values before P272's phone check and P275.
+- **`PlayerView`'s public methods.** P271 kept it at gdlint's 20 by making the unused
+  `row_harvest_mode` private (ADR 0020 §1's note). No file in `game/` lifts a gdlint limit with a
+  pragma, and none will. A row that needs a 21st public method first does a pure-move split of
+  one group of reads (its own commit, callers in `game/ai` coordinated by the lead); new reads
+  that can be public fields or the `columns()` copies use those instead.
+- **Follow-up.** `GhostMemoryLayer`'s hidden pool sprites keep an old atlas page after a new match
+  (pre-existing; P237 fixed the unit rigs). A view row that touches that layer clears them.

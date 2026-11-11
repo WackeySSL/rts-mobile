@@ -462,3 +462,21 @@ pick-order bullet.**
   another of its type; a lone one by a box only. With units selected, a tap on an enemy that none
   of them can hit does nothing: a short shake, and the selection is kept.
 ```
+
+
+Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
+- **P232.**
+  - It starts after P271 (ADR 0037's SELL and MEND) has merged. P271 moves `remove_dead` into
+    `game/sim/Removal.gd`, so P232 works on a `World.gd` of 960 lines.
+  - Its type tables include one for `pad_offsets` beside `type_pads`, because P241 spawns over a
+    pad.
+  - P231 put the def rules in `tests/sim/support/air_rules.gd` and
+    `tests/sim/test_defs_data_air.gd`. The ranges in `test_defs_data.gd` read `World.MoveClass.size()`, `World.TABS` and `Strike.Kind`,
+    so P232 and P233 widen them by growing the enums, with no test edit.
+- **P262.** It declares the 1.2 carry fields `carry_slots` and `carry_classes` on the defs, with a
+  data test. No earlier row does this.
+- **Atlas.** P237 put every shadow on page 2 (ADR 0036 §15's note). Every art row with shadows
+  re-pins `TODAY2_*` in `tests/view/test_iso_atlas_budget.gd`, and P243 re-keys `page_of` for the
+  flyers' hulls.
+- **`PlayerView`'s public methods.** The rule is the one in the ground-support plan's P26bq note:
+  no pragma, and a pure-move split comes before a 21st public method.
