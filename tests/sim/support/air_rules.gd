@@ -5,10 +5,15 @@ extends RefCounted
 ## yet, so they hold vacuously until the air data of P233 and later ships. The ranges of
 ## move_class, tab, produces and strike_kind stay in test_defs_data, read from the World enums.
 
+## World.MoveClass.AIR from P232.
 const AIR: int = 3
+## 1 << AIR: the AIR bit of a move-class mask (ADR 0036 section 2).
 const AIR_BIT: int = 8
+## World.Tab.FLIGHT from P232.
 const FLIGHT: int = 3
+## World.Tab.RESEARCH from P232.
 const RESEARCH: int = 4
+## Strike.Kind.REVEAL from P233.
 const REVEAL: int = 3
 const MAX_PERCENT: int = 400
 const MAX_SLOTS: int = 8
@@ -68,6 +73,17 @@ static func fine_airfield() -> BuildingDef:
 	return field
 
 
+## An upgrade of the faction "fossil" that breaks no rule: +100 percent damage dealt, needs a
+## building, changes one aircraft with ammo.
+static func fine_upgrade() -> UpgradeDef:
+	var up: UpgradeDef = UpgradeDef.new()
+	up.id = &"better_bombs"
+	up.faction = &"fossil"
+	up.requires = BuildingDef.new()
+	up.applies_to = [fine_air()] as Array[UnitDef]
+	return up
+
+
 ## One text per broken air or repair-role rule of a unit or building file; empty when fine.
 static func air_problems(file: String, unit: UnitDef) -> PackedStringArray:
 	var pads: int = 0
@@ -77,6 +93,8 @@ static func air_problems(file: String, unit: UnitDef) -> PackedStringArray:
 	var role: bool = unit.repair_classes != 0 or pads > 0
 	var broken: Dictionary[String, bool] = {
 		"low_flying is for AIR only": unit.low_flying and unit.move_class != AIR,
+		# ADR 0036 section 9: a drone squad has no ammo and no pad.
+		"a low-flying type has ammo": unit.low_flying and unit.ammo != 0,
 		"ammo is for AIR only": unit.ammo != 0 and unit.move_class != AIR,
 		"rearm_ticks is for AIR only": unit.rearm_ticks != 0 and unit.move_class != AIR,
 		"ammo is negative": unit.ammo < 0,
@@ -177,7 +195,7 @@ static func upgrade_problems(
 ## The rules that span files. The 400 % bound is per modifier, so (a choice, P246's combination is
 ## then a plain product of one value each) at most one upgrade changes one stat of one type of a
 ## faction. Upgrade ids may not equal type ids: research items become types, and World merges equal
-## ids. A type on Research is a fault in _air_problems.
+## ids. A type on Research is a fault in air_problems.
 static func upgrade_catalog_problems(
 	units: Array[UnitDef], factions: Array[FactionDef]
 ) -> PackedStringArray:
@@ -200,12 +218,3 @@ static func upgrade_catalog_problems(
 					)
 				changed[key] = String(up.id)
 	return problems
-
-
-static func fine_upgrade() -> UpgradeDef:
-	var up: UpgradeDef = UpgradeDef.new()
-	up.id = &"better_bombs"
-	up.faction = &"fossil"
-	up.requires = BuildingDef.new()
-	up.applies_to = [fine_air()] as Array[UnitDef]
-	return up

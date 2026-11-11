@@ -19,6 +19,9 @@ const RUPTURE: int = Strike.Kind.RUPTURE
 const BLACKOUT: int = Strike.Kind.BLACKOUT
 ## The kind of strike each faction has, by faction id: no two share one.
 ## A faction's one strike is a rupture or a blackout; a Reveal building (kind 3) is not it.
+## Strike.Kind.REVEAL from P233 (ADR 0036): the satellite is no superweapon of this kind, and its
+## rules are tests/sim/support/air_rules.gd's.
+const REVEAL: int = 3
 const STRIKE_KINDS: Array[int] = [RUPTURE, BLACKOUT]
 const KINDS: Dictionary[String, int] = {"fossil": RUPTURE, "renew": BLACKOUT}
 
@@ -73,8 +76,9 @@ func test_the_rupture_weapon_file_holds_its_starting_stats() -> void:
 
 ## A strike weapon is nobody's gun: no unit or building file holds it as its `weapon` (the only way
 ## Combat and Targeting reach a weapon), and no gun has its id (the World merges weapons by id, the
-## first winning). Every file but the two strike buildings has no strike at all: kind 0, the numbers
-## 0 and no weapon, so a strike cannot hide in another roster entry.
+## first winning). Every file but the two strike buildings (and a Reveal building, whose rules are
+## air_rules.gd's) has no strike at all: kind 0, the numbers 0 and no weapon, so a strike
+## cannot hide in another roster entry.
 func test_no_unit_fires_the_strike_weapon_and_no_other_file_has_a_strike() -> void:
 	var weapon_id: StringName = &"fossil_rupture"
 	var struck: Array[String] = []
@@ -85,6 +89,8 @@ func test_no_unit_fires_the_strike_weapon_and_no_other_file_has_a_strike() -> vo
 			assert_bool(unit.weapon.id == weapon_id).override_failure_message(file).is_false()
 		var building: BuildingDef = unit as BuildingDef
 		if building == null:
+			continue
+		if building.strike_kind == REVEAL:
 			continue
 		if building.strike_kind in STRIKE_KINDS:
 			struck.append(file.get_basename())
@@ -151,6 +157,19 @@ func test_the_strike_checks_report_the_kind_the_count_and_each_number_that_break
 		assert_array(got).override_failure_message(row[0]).is_equal([row[2]])
 
 
+## A Reveal building (kind 3, ADR 0036) is not the faction's one strike: it is not counted.
+func test_a_reveal_building_is_not_counted_as_the_factions_strike() -> void:
+	var sat: BuildingDef = BuildingDef.new()
+	sat.type_id = &"sat"
+	sat.strike_kind = REVEAL
+	sat.charge_ticks = 2700
+	assert_array(_strike_problems(_faction([_bore(), sat]), RUPTURE)).is_empty()
+	assert_array(_strike_ids(_faction([_bore(), sat]))).is_equal(["bore"])
+	assert_array(_strike_problems(_faction([sat]), RUPTURE)).is_equal(
+		["alpha: 0 strike types, not 1"]
+	)
+
+
 func test_the_strike_checks_report_each_weapon_stat_that_breaks_a_rule() -> void:
 	var rows: Array = [
 		["damage", 0, "bore: strike weapon damage is below 1"],
@@ -182,8 +201,8 @@ func test_the_strike_checks_report_each_weapon_stat_that_breaks_a_rule() -> void
 
 
 ## One text per broken rule of the strike data of `faction` for its `kind`: exactly one building in
-## the roster with a strike kind above 0, of that kind; the numbers the kind reads above 0 (the
-## charge and the radius, and a rupture's warning and weapon, or a blackout's length) and the
+## the roster with a strike kind of 1 or 2 (a Reveal building is none), of that kind; the numbers
+## the kind reads above 0 (the charge and the radius, and a rupture's warning and weapon, or a blackout's length) and the
 ## others 0 (a blackout holds no weapon); and the weapon with damage, four percents in 0..200, no
 ## range, minimum range or flight, and an id equal to its file name.
 func _strike_problems(faction: FactionDef, kind: int) -> PackedStringArray:
@@ -243,7 +262,7 @@ func _weapon_problems(name: String, weapon: WeaponDef) -> PackedStringArray:
 	return problems
 
 
-## The ids of the faction's roster entries that have a strike kind, in roster order.
+## The ids of the faction's roster entries that have a rupture or blackout kind, in roster order.
 func _strike_ids(faction: FactionDef) -> Array[String]:
 	var ids: Array[String] = []
 	for member: UnitDef in faction.roster:

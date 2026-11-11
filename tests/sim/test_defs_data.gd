@@ -3,6 +3,9 @@ extends GdUnitTestSuite
 ## every unit file keeps, and the link from every scenario to its rules file (the frozen
 ## data/dev/arena/rules.tres for the three pinned scenarios, data/rules.tres for the rest). The perf
 ## arena map and scenario (P27c, ADR 0011 section 4) are pinned here too.
+## The air, repair-role and upgrade rules (P231) are in tests/sim/support/air_rules.gd and
+## test_defs_data_air.gd: a new def rule of that kind goes there, and the range of move_class, tab,
+## produces and strike_kind stays here, read from the World enums.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
@@ -795,10 +798,11 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 	return problems
 
 
-## True when `unit` is a building with a strike (BuildingDef.strike_kind above 0).
+## True when `unit` is a building with a strike (BuildingDef.strike_kind above 0), not just 1..2:
+## Strike.gd gives every kind above NONE a ready tick and WorldLoad ages it, so a scenario may
+## pre-charge a Reveal building too. Only the faction's strike count uses kinds 1..2.
 func _is_strike_building(unit: UnitDef) -> bool:
-	var kinds: Array[int] = [Strike.Kind.RUPTURE, Strike.Kind.BLACKOUT]
-	return unit is BuildingDef and (unit as BuildingDef).strike_kind in kinds
+	return unit is BuildingDef and (unit as BuildingDef).strike_kind > 0
 
 
 ## Where unit k of a block starts before jitter (the SpawnDef rule), in milli-tiles.

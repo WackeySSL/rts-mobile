@@ -29,6 +29,7 @@ func test_the_air_only_fields_are_refused_on_a_ground_type_one_field_at_a_time()
 			. is_equal(row[2])
 		)
 		var air: UnitDef = Rules.fine_air()
+		air.ammo = 0 if row[0] == "low_flying" else air.ammo
 		air.set(row[0], row[1])
 		(
 			assert_array(Rules.air_problems("tank.tres", air))
@@ -36,6 +37,19 @@ func test_the_air_only_fields_are_refused_on_a_ground_type_one_field_at_a_time()
 			. is_empty()
 		)
 	assert_array(Rules.air_problems("tank.tres", Rules.fine_unit())).is_empty()
+
+
+## ADR 0036 section 9: a drone squad has no ammo and no pad. (ADR 0036 does not say that ammo above
+## 0 needs the FLIGHT tab, so that rule is not made.)
+func test_a_low_flying_type_has_no_ammo() -> void:
+	var drone: UnitDef = Rules.fine_air()
+	drone.low_flying = true
+	assert_array(Rules.air_problems("drone.tres", drone)).is_equal(
+		["drone.tres: a low-flying type has ammo"]
+	)
+	drone.ammo = 0
+	drone.rearm_ticks = 0
+	assert_array(Rules.air_problems("drone.tres", drone)).is_empty()
 
 
 func test_the_air_and_repair_role_rules_accept_their_edge_values_and_report_the_next() -> void:
@@ -103,7 +117,7 @@ func test_the_air_and_repair_role_rules_accept_their_edge_values_and_report_the_
 		[
 			Callable(Rules, "fine_healer"),
 			"tab",
-			[-1, 0],
+			[-1, 0, Rules.FLIGHT],
 			[Rules.RESEARCH],
 			["no type is on the Research tab"]
 		],
@@ -180,6 +194,12 @@ func test_the_building_air_rules_accept_their_edge_values_and_report_the_next() 
 	twin.pad_offsets = [Vector2i(1, 1), Vector2i(1, 1)] as Array[Vector2i]
 	assert_array(Rules.air_problems("field.tres", twin)).is_equal(
 		["field.tres: two pads share a tile"]
+	)
+	# The other half of "produces FLIGHT if and only if pads": a FLIGHT producer with no pads.
+	var hangar: BuildingDef = Rules.fine_building()
+	hangar.produces = Rules.FLIGHT
+	assert_array(Rules.air_problems("depot.tres", hangar)).is_equal(
+		["depot.tres: produces FLIGHT and having pads differ"]
 	)
 	# A ground repair building (a Weld Shed) has no pads and needs 1-8 slots.
 	var shed: BuildingDef = Rules.fine_building()
@@ -304,6 +324,15 @@ func test_an_upgrade_id_may_not_be_a_type_id_and_one_stat_of_a_type_has_one_upgr
 	)
 	second.stat = UpgradeDef.Stat.DAMAGE_TAKEN  # Another stat of the same type is allowed.
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_empty()
+	# The key has the faction: another faction may change the same stat of the same type.
+	var other: FactionDef = FactionDef.new()
+	other.id = &"renew"
+	var third: UpgradeDef = Rules.fine_upgrade()
+	third.id = &"renew_bombs"
+	third.applies_to = [jet] as Array[UnitDef]
+	other.upgrades = [third] as Array[UpgradeDef]
+	var both: Array[FactionDef] = [faction, other]
+	assert_array(Rules.upgrade_catalog_problems(jets, both)).is_empty()
 	first.id = jet.type_id
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_equal(
 		["tank: upgrade id is also a type id"]
@@ -349,6 +378,7 @@ func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 	# A Rules.FLIGHT type needs an airfield, and a research building needs something to research.
 	assert_bool(flight_types == 0 or field_count > 0).is_true()
 	assert_bool(research_producers == 0 or upgrade_count > 0).is_true()
+	assert_int(FileScan.list_files(WEAPONS_DIR, ".tres").size()).is_greater(0)
 	for file: String in FileScan.list_files(WEAPONS_DIR, ".tres"):
 		var weapon: WeaponDef = load(file)
 		(
