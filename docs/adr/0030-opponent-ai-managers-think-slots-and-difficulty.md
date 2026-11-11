@@ -472,6 +472,43 @@ open"); no other accepted text.
   and shared, read-only, by every view, so a think stops rebuilding them. No decision changes; its
   own note records the result.
 
+Note (2026-11-11, P198c, shared type tables; Michael: "Byg kombineret version nu"; changes no
+accepted text above):
+- **Where a view's time went** (mean microseconds of the 1080 views of the `perf_ai` workload, the
+  probe branch `claude/p198c-exp-1`, run 42910980931): `PlayerView.new()` 16.7, the row pass 43.7,
+  the type tables 12.9 (8.4 of it the weapon-derived tables, rebuilt every view), the placement
+  input 7.8, the player's state 4.5, ghosts 2.0, warned lists 1.5, ore cells 0.7; 89.7 in all (the
+  probe's own clock reads included). The tables alone were 14 % of the view, under the third that
+  the row set as the bar for building; the lead and Michael chose the combined version, which also
+  trims `new()` and the row pass.
+- **The design.** `TypeTables` (`game/sim/TypeTables.gd`, a pure move of the tables and the weapon
+  derivation out of `PlayerView`) holds `duplicate()`s of the World's per-type arrays, the type
+  ids and the dock offsets. The first `PlayerView.of` of a World builds it and keeps it in
+  `World.type_tables`, a non-state member (`NON_STATE_MEMBERS`; never hashed, never read by the
+  sim, null in a new World, so a new match never shares one); every later view takes its arrays
+  by reference under the same names (`view.type_cost`...), with no copy and no weapon rebuild. The
+  cache sits on the World because every caller of `PlayerView.of` (the tick job, the headless
+  loops, the smoke run, `perf_ai`, the Perf AI route, the tests) already passes it, and there is no
+  `static var` in `game/sim`. A shape check (type count) rebuilds it for a hand-built World that
+  gains types after a view. **The hazard:** GDScript shares a packed array by reference, so a write
+  through a view's table reaches the holder and every later view of the match (never the World or
+  another match). Guards: `AI_RULES` entries in `tests/project/test_view_reads_snapshot.gd` flag
+  an assignment, an in-place call or any naming of the holder in `game/ai` (a table copied into a
+  local is not followed), and the `perf_ai` run (`AiRun`) fails if the holder differs from the
+  World's tables after its 900 ticks. Two older assertions that said a write to a view's table
+  stays out of a later view of the same World (`test_player_view_state`, `test_player_view_v2`)
+  now say it stays out of the World and of other matches. The members that `of` always assigns
+  lost their initializers (a typed member starts empty), and `_take_rows` fills its lists by index.
+- **Result.** No decision changes: the `perf_ai` hash `cbe70a78d01ee7c1`, perf `17f7a83c4d492c4c`
+  and bases `c84764064abfb27c` are main's (run 42965718796, head a2e9538, whose only failure was a
+  line length in a test, fixed after). Per view on the same build, a probe branch (run
+  42965704532; the old probe on another VM read the placement input, untouched, at 7.8 against
+  5.9 here, so scale the old numbers by 0.76): `new()` 10.1, the tables 3.3, the rows 30.2, 55.5 in
+  all, about 12 us a view saved. `WATCH ai think` p95 385 us against main's 480 in the same hour
+  (run 42965707967): 0.80, though a runner's p95 moves by up to 60 % from one VM to the next, so
+  the per-view figure is the firmer one. The CI-side saving is about 12 us a think, not the 35 us
+  aimed at: the 25 field assignments and a 60-member object cost more than the arithmetic said.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
