@@ -11,6 +11,7 @@ extends RefCounted
 const SmokeRun: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
+const TablesCheck: GDScript = preload("res://tests/sim/support/type_tables_check.gd")
 
 const PATH: String = "res://data/scenarios/perf_ai.tres"
 ## The frozen AI defs of `data/dev/arena/ai/` (plan row P189b): the same files the Perf AI route
@@ -147,6 +148,18 @@ func play() -> void:
 	final_hash = world.state_hash()
 	dropped_commands = world.dropped_commands
 	match_end_tick = world.match_end_tick
+	_check_tables(world)
+
+
+## The views of the match shared one `TypeTables` holder (plan row P198c); after 900 ticks of both
+## AIs it must still hold the World's tables, so no think wrote through a view's table.
+func _check_tables(world: World) -> void:
+	var held: TypeTables = world.type_tables
+	if held == null:
+		_fail("type tables: the match made no holder")
+		return
+	for field: String in TablesCheck.differences(held, TypeTables.of(world)):
+		_fail("type tables: %s of the shared holder no longer equals the World's" % field)
 
 
 ## Judges the think that just ran, for each controller that thought this tick, against the bounds

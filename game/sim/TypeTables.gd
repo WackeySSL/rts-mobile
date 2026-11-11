@@ -7,9 +7,11 @@ extends RefCounted
 ## Pure: no Node, no clock, no World kept; `of` reads the World and writes nothing.
 ##
 ## Aliasing (ADR 0012 section 2): every array is a `duplicate()` of the World's, so it is the
-## holder's own and never the World's. A view that takes one shares its storage with the holder
-## until one side writes, and then the writer forks its own copy: a write through a view's table
-## cannot reach the World or the holder.
+## holder's own and never the World's. GDScript passes a packed array by reference, so a view's
+## `type_*` field IS the holder's array, with no copy: a write through it is a write to the holder,
+## seen by every later view of the match (never by the World or another match). Nothing may write
+## one: `tests/project/test_view_reads_snapshot.gd` scans game/ai for it, and the AI perf run checks
+## the holder against the World's tables after its 900 ticks.
 
 ## The armour classes of `World.Armour` (a test pins them equal), the width of `vs_armour`.
 const ARMOUR_CLASSES: int = 4

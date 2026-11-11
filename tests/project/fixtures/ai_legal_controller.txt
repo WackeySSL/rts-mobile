@@ -62,3 +62,13 @@ func _place(view: PlayerView, out: Array[Command]) -> void:
 		if reason == Placement.Reason.OK:
 			out.append(Command.place(player_id, step.x, step.y))
 			return
+
+
+## The type tables are read, never written (plan row P198c): reads, comparisons and a local copy.
+func _reads_tables(view: PlayerView) -> int:
+	var costs: PackedInt32Array = view.type_cost
+	var own: PackedInt32Array = view.type_range.duplicate()
+	own[0] = costs[0] + view.type_cost[1]
+	var same: bool = view.type_cost[0] == 5 or view.type_tab[1] != 2 or view.type_speed[0] >= 1
+	var label: String = "view.type_cost[0] = 5; TypeTables; type_tables; view.type_range.fill(0)"
+	return own[0] + (1 if same else 0) + len(label)  # view.type_cost[0] = 7, TypeTables

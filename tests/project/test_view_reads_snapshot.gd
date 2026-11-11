@@ -85,6 +85,24 @@ const COLUMNS_SITES: Dictionary[String, int] = {
 	"res://game/ai/AiStrikes.gd": 1,
 }
 
+## A write to a type table of the view from game/ai (plan row P198c): an assignment (`=`, `+=`...)
+## to `view.type_*`, with or without an index. The view's tables are the arrays of the match's
+## shared holder, by reference, so one write would reach every later view of the match. A
+## comparison (`==`, `<=`, `!=`) is a read. A table taken into a local
+## (`var costs: PackedInt32Array = view.type_cost`) is an alias the scan does not follow, which is
+## why the AI perf run checks the holder against the World at its end.
+const TYPE_WRITE: String = (
+	r"\bview\.[\s\\]*type_\w+(?:[\s\\]*\[[^\]]*\])?[\s\\]*" + r"(?:[-+*/%&|^]|<<|>>)?=(?!=)"
+)
+## A call that changes a type table of the view in place.
+const TYPE_MUTATE: String = (
+	r"\bview\.[\s\\]*type_\w+[\s\\]*\.[\s\\]*"
+	+ r"(?:set|fill|resize|append|append_array|insert|remove_at|push_back|clear|sort|reverse|swap)\b"
+)
+## The holder itself, which game/ai never names: `TypeTables`, the World's `type_tables` and the
+## view's `_tables`.
+const TYPE_HOLDER: String = r"\bTypeTables\b|\btype_tables\b|\b_tables\b"
+
 ## Source text that VIEW_MEMBER must flag: the four reads of the plan, a chain that gdformat wraps,
 ## a read before a comment and one inside an expression.
 const VIEW_FLAGGED: Array[String] = [
@@ -219,6 +237,21 @@ const AI_RULES: Array[Dictionary] = [
 		"pattern": VIEW_PRIVATE,
 		"advice": "read the view through its getters and lists, not through a member behind `_`",
 		"lines": [29],
+	},
+	{
+		"pattern": TYPE_WRITE,
+		"advice": "the view's type tables are the match's shared arrays: read them, never assign",
+		"lines": [31, 32, 36],
+	},
+	{
+		"pattern": TYPE_MUTATE,
+		"advice": "the view's type tables are the match's shared arrays: never change one in place",
+		"lines": [33, 34],
+	},
+	{
+		"pattern": TYPE_HOLDER,
+		"advice": "the holder of the type tables is the view's own; game/ai reads `view.type_*`",
+		"lines": [35],
 	},
 ]
 

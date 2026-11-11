@@ -28,3 +28,12 @@ func think(view: PlayerView, runner: Object, world: World) -> void:
 	var s: String = "World runner.world runner.probe"
 	var raw_hp: int = view._hp[0]
 	var all_x: PackedInt32Array = view.columns()[3]
+	view.type_cost[0] = 5
+	view.type_tab[1] += 2
+	view.type_range.fill(0)
+	view.type_vs_armour.resize(1)
+	var held: TypeTables = view.get("x")
+	view.type_speed[
+		2
+	] = 3
+	var read_only: bool = view.type_cost[0] == 5 and view.type_foot_w[1] <= 2 and view.type_max_hp[0] != 1

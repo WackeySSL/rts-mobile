@@ -55,12 +55,15 @@ extends RefCounted
 ## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
 ## so an array the view takes from the World without copying is the World's own and live: it shows
 ## the World's later writes, and a write through it would be the World's. So nothing a caller can
-## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
-## and last-seen records, the type tables, the type ids, and the seven arrays of `columns()`); the
-## row columns and the placement input, which a think reads a few rows of and so are not worth a
-## copy of the table, are aliases behind an underscore, read only by the getters below and written
-## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
-## costs seven reference counts a view; it is one copy per view, shared by every manager of a think,
+## reach is an alias of the World. Every public field is a copy (the two lists, the slices of the
+## player's state and last-seen records and the seven arrays of `columns()`), except the type tables
+## (plan row P198c): those are the arrays of the match's `TypeTables` holder, shared by every view
+## of the match and copies of the World's, so a write through one would reach every later view
+## (never the World), and nothing writes one. The row columns and the placement input, which a think
+## reads a few rows of and so are not worth a copy of the table, are aliases behind an underscore,
+## read only by the getters below and written by nothing. A copy of a packed array shares its
+## storage until one side writes, so `columns()` costs seven reference counts a view; it is one copy
+## per view, shared by every manager of a think,
 ## and a write through it never reaches the World. A view, or a column taken from one, held across
 ## a tick would make the World fork a whole array on its next write: a view is made, read and
 ## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
@@ -212,11 +215,10 @@ var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
 var _public: Array[PackedInt32Array] = []
-## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
-## that make a type a refinery.
-var _type_ids: Array[StringName] = []
-var _dock_x: PackedInt32Array = PackedInt32Array()
-var _dock_y: PackedInt32Array = PackedInt32Array()
+## The match's type tables (plan row P198c): the holder that the `type_*` fields above came from,
+## which also has the type ids and the dock offsets that make a type a refinery. Shared by every
+## view of the match; read only here, and never handed out.
+var _tables: TypeTables = null
 ## What `Placement.reason` and `is_explored` read: its arrays are aliases too; it keeps no World.
 var _input: PlacementInput = null
 
@@ -348,13 +350,13 @@ func placement(type_index: int, col: int, row: int) -> int:
 
 ## The type index of the type id `id` (`&"refinery"`), MISSING when the roster has none.
 func type_index_of(id: StringName) -> int:
-	return _type_ids.find(id)
+	return _tables.ids.find(id)
 
 
 ## Whether `type` is a refinery: a building type whose dock is not (0, 0), the tile that harvesters
 ## unload at (`Harvest` asks the same). False for a type outside the table.
 func is_refinery(type: int) -> bool:
-	return _entry(_dock_x, type) != 0 or _entry(_dock_y, type) != 0
+	return _entry(_tables.dock_x, type) != 0 or _entry(_tables.dock_y, type) != 0
 
 
 ## The record of the building `id` in the player's memory, MISSING when it has none (an id is a
@@ -386,10 +388,23 @@ func ghost_pos(record: int) -> Vector2i:
 	)
 
 
-## The type tables, the type ids and the dock offsets, from `TypeTables.of` (copies, so a caller
-## that writes one writes its own), and the two rule caps.
+## The type tables, the type ids and the dock offsets, shared with every view of the match
+## (plan row P198c): the World's `type_tables` holder, built by the first view of the match and kept
+## on the World, outside its state (`World.NON_STATE_MEMBERS`). The view's `type_*` fields are the
+## holder's arrays, by reference and without a copy (see `TypeTables`): a write through one reaches
+## the holder and so every later view of the match, never the World. The two rule caps are ints,
+## read each time.
 func _take_tables(world: World) -> void:
-	var tables: TypeTables = TypeTables.of(world)
+	var tables: TypeTables = world.type_tables
+	# The shape check is for a hand-built World that gets more types, or is prepared, after a view.
+	if (
+		tables == null
+		or tables.ids.size() != world.type_ids.size()
+		or tables.cost.size() != world.type_cost.size()
+	):
+		tables = TypeTables.of(world)
+		world.type_tables = tables
+	_tables = tables
 	type_cost = tables.cost
 	type_tab = tables.tab
 	type_requires = tables.requires
@@ -401,9 +416,6 @@ func _take_tables(world: World) -> void:
 	type_harvest = tables.harvest
 	type_power = tables.power
 	type_build_ticks = tables.build_ticks
-	_dock_x = tables.dock_x
-	_dock_y = tables.dock_y
-	_type_ids = tables.ids
 	type_max_hp = tables.max_hp
 	type_armour = tables.armour
 	type_sight = tables.sight

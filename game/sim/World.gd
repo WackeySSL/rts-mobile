@@ -326,9 +326,9 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"construct_refund_percent",
 	&"construction_sites_max"
 ]
-## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
-## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
-const NON_STATE_MEMBERS: Array[StringName] = [&"kernels"]
+## The members that are not state (ADR 0013 section 3), skipped by the coverage test, the hash and
+## the reachability walk: `kernels` (the native kernels or null), `type_tables` (the views' cache).
+const NON_STATE_MEMBERS: Array[StringName] = [&"kernels", &"type_tables"]
 var tick: int = 0
 ## Map size in milli-tiles.
 var map_w: int = 0
@@ -361,8 +361,7 @@ var fog: FogGrid = FogGrid.new()
 var flow: FlowCache = FlowCache.new()
 var sep_grid: SpatialGrid = SpatialGrid.new()
 var target_grid: SpatialGrid = SpatialGrid.new()
-## ADR 0007 section 2's one bool check. A bool is neither an int nor a Packed*Array, so no shape
-## list holds it and the coverage walk skips it. Not hashed: it follows from the helpers.
+## ADR 0007 section 2's one bool check: in no shape list (not an int or a Packed*Array), not hashed.
 var prepared: bool = false
 ## The native kernels (an untyped Object, so no script names the class; null = the GDScript phases)
 ## and one bit per SimProbe.Phase that runs in them. A phase entry starts with
@@ -370,6 +369,7 @@ var prepared: bool = false
 ## Neither is hashed (ADR 0013 section 3); callers attach both after prepare().
 var kernels: Object = null
 var native_phases: int = 0
+var type_tables: TypeTables = null  # The views' shared tables (P198c): a cache, never hashed.
 
 ## Rule ints, copied from RulesDef under the same names by _init(). The sim reads these and never
 ## the Resource.
