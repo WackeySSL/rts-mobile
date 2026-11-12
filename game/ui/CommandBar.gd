@@ -313,7 +313,10 @@ func _order(id: StringName) -> void:
 		&"mend":
 			var snap: MatchSnapshot = runner.snapshot
 			var row: int = BuildingOrders.target(snap, controller.selection.selected, _local())
-			if row >= 0:
+			if (
+				row >= 0
+				and (BuildingOrders.mending(snap, row) or BuildingOrders.can_mend(snap, row))
+			):
 				controller.mend(not BuildingOrders.mending(snap, row))
 		&"sell":
 			_sell_pressed()
@@ -516,6 +519,7 @@ func _sync_mend(snap: MatchSnapshot, row: int) -> void:
 	var mend: Button = _buttons[&"mend"]
 	var on: bool = BuildingOrders.mending(snap, row)
 	mend.set_pressed_no_signal(on)
+	mend.disabled = not on and not BuildingOrders.can_mend(snap, row)  # Dimmed at full health.
 	_paint(mend, LIT_CAPTION if on else CAPTION)
 
 

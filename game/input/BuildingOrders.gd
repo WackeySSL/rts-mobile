@@ -28,6 +28,11 @@ static func mending(snap: MatchSnapshot, row: int) -> bool:
 	return snap.cargo[row] == 1
 
 
+## Whether switching the repair on can do anything: the building is below full health.
+static func can_mend(snap: MatchSnapshot, row: int) -> bool:
+	return snap.hp[row] < snap.type_max_hp[snap.type_index[row]]
+
+
 ## What a sale of the building in `row` pays now.
 static func refund(snap: MatchSnapshot, row: int) -> int:
 	var type: int = snap.type_index[row]

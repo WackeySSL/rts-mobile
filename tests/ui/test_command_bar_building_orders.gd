@@ -128,6 +128,14 @@ func test_mend_sends_one_mend_on_then_off_by_the_switch_the_snapshot_shows_and_b
 	await _select([BORE])
 	var snap: MatchSnapshot = _runner.snapshot
 	var row: int = snap.index_of(BORE)
+	# At full health with the switch off the button stays in place, dimmed and not tappable.
+	assert_bool(_bar.order_button(&"mend").visible).is_true()
+	assert_bool(_bar.order_button(&"mend").disabled).is_true()
+	_tap(_bar.order_button(&"mend"))
+	assert_int(_sent.size()).is_equal(0)
+	snap.hp[row] = snap.type_max_hp[snap.type_index[row]] - 1
+	await _tick()
+	assert_bool(_bar.order_button(&"mend").disabled).is_false()
 	assert_bool(_bar.order_button(&"mend").button_pressed).is_false()
 	_tap(_bar.order_button(&"mend"))
 	assert_int(_sent.size()).is_equal(1)
