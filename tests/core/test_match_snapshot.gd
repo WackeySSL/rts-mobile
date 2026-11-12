@@ -108,6 +108,7 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 				&"building_cap",
 				&"construct_refund_percent",
 				&"construction_sites_max",
+				&"sell_refund_percent",
 			]
 		)
 	)
@@ -554,3 +555,15 @@ func _scribble(world: World, snap: MatchSnapshot, cell: int) -> Array[StringName
 		if world.get(name) == snap.get(name):
 			same.append(name)
 	return same
+
+
+## ADR 0037 section 3 (P271): the sale percent reaches the view for the Sell "+N" label, and a later
+## write to the World does not reach a published snapshot.
+func test_the_sale_percent_is_copied() -> void:
+	_play(2)
+	_world.sell_refund_percent = 50
+	var snap: MatchSnapshot = _capture(null, 1)
+	assert_int(snap.sell_refund_percent).is_equal(50)
+	_world.sell_refund_percent = 10
+	assert_int(snap.sell_refund_percent).is_equal(50)
+	assert_int(_capture(null, 2).sell_refund_percent).is_equal(10)

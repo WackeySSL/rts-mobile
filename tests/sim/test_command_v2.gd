@@ -14,6 +14,8 @@ func test_the_phase_3_types_have_the_ids_of_the_adr() -> void:
 	expected.merge({"PLACE": 10, "QUEUE": 11, "CANCEL": 12, "RALLY": 13, "HARVEST": 14})
 	expected["SUPERWEAPON"] = 15
 	expected["CANCEL_BUILD"] = 16
+	expected["SELL"] = 17  # P271, ADR 0037 sections 3 and 4.
+	expected["MEND"] = 18
 	expected["SURRENDER"] = 20
 	assert_dict(Command.Type).is_equal(expected)
 

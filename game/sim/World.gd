@@ -274,6 +274,10 @@ const RULE_SCALARS: Array[StringName] = [
 	&"construct_start_hp_percent",
 	&"construct_refund_percent",
 	&"construction_sites_max",
+	&"sell_refund_percent",
+	&"mend_hp",
+	&"mend_period_ticks",
+	&"mend_cost_percent",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -324,7 +328,11 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"ghost_cap",
 	&"construct_start_hp_percent",
 	&"construct_refund_percent",
-	&"construction_sites_max"
+	&"construction_sites_max",
+	&"sell_refund_percent",
+	&"mend_hp",
+	&"mend_period_ticks",
+	&"mend_cost_percent"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -413,6 +421,14 @@ var ghost_cap: int = 0
 var construct_start_hp_percent: int = 0
 var construct_refund_percent: int = 0
 var construction_sites_max: int = 0
+## Building sale and repair (ADR 0037 sections 3 and 4): the share of its price a sale pays at full
+## health, the hit points a mending building gains per step, the steps' period in ticks and the
+## share of the price of the hit points gained that a step costs. A hand-built World takes the
+## RulesDef defaults (`World._init`), which are inert: no refund and no mend.
+var sell_refund_percent: int = 0
+var mend_hp: int = 0
+var mend_period_ticks: int = 0
+var mend_cost_percent: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -851,11 +867,11 @@ func footprint_origin(row: int) -> Vector2i:
 func _push_unit_event(kind: int, row: int) -> void:
 	var at: int = events.size()
 	events.resize(at + EVENT_STRIDE)  # The last two ints of the record stay 0.
-	_write_unit_event(at, kind, row)
+	write_unit_event(at, kind, row)
 
 
 ## Writes the SPAWNED or DIED record of row `row` at `events[at]`, which is already sized.
-func _write_unit_event(at: int, kind: int, row: int) -> void:
+func write_unit_event(at: int, kind: int, row: int) -> void:
 	events[at] = kind
 	events[at + 1] = unit_id[row]
 	events[at + 2] = pos_x[row]
@@ -864,54 +880,10 @@ func _write_unit_event(at: int, kind: int, row: int) -> void:
 	events[at + 5] = owner[row]
 
 
-## Removes every row with hp of 0 or less (ADR 0007 section 3): a DIED record per dead row, in row
-## order, and its fog unstamped, then a stable compaction of every ROW_ARRAYS column, so the rows
-## stay ascending by id. It bumps rows_version once and adds the rows that changed place to
-## stats[ROWS_COMPACTED]. The records of a building that dies in sight go before the rows do
-## (`LastSeen.forget_dead`, P77b). A cancelled site's record (`Production.CANCELLED`) has 1 in its
-## seventh int (ADR 0026 section 6). A tick without a death costs one scan. It prepares the world
-## first (O(1) once prepared), so a hand-built world works: stats is sized by prepare().
+## Removes every row with hp of 0 or less: a DIED record per dead row, then a stable compaction of
+## every ROW_ARRAYS column (`Removal.run`, which has the rules; ADR 0007 section 3).
 func remove_dead() -> void:
-	prepare()
-	var count: int = unit_id.size()
-	var alive: PackedInt32Array = hp
-	var first: int = 0
-	while first < count and alive[first] > 0:
-		first += 1
-	if first == count:
-		return
-	Buildings.unblock_dead(self)  # Before the compaction: the origin comes from the position.
-	Outcome.count_losses(self)  # Likewise: the owner and the type of a dying row (ADR 0018 s. 7).
-	LastSeen.forget_dead(self, first)  # Likewise: the fog is still the sight the building fell in.
-	var dead: int = 0
-	for row: int in range(first, count):
-		if alive[row] <= 0:
-			dead += 1
-	# One resize for all the records, then the writes: the loops allocate nothing. A stamped row's
-	# vision ends here (ADR 0010 section 1); `explored` stays.
-	var at: int = events.size()
-	events.resize(at + dead * EVENT_STRIDE)  # The eighth int stays 0, the seventh is the cancel flag.
-	var owners: PackedInt32Array = owner
-	var types: PackedInt32Array = type_index
-	var stamped: PackedInt32Array = fog_cell
-	var pending: PackedInt32Array = build_left
-	var pad: int = type_sight.size()
-	var has_fog: bool = fog.cells > 0
-	for row: int in range(first, count):
-		if alive[row] <= 0:
-			_write_unit_event(at, Event.DIED, row)
-			events[at + Production.DIED_CANCEL_FLAG_AT] = int(pending[row] == Production.CANCELLED)
-			at += EVENT_STRIDE
-			if has_fog and stamped[row] >= 0:
-				fog.stamp(owners[row], stamped[row], mini(types[row], pad), -1)
-	# hp is the test for every column, so it goes last.
-	for column_name: StringName in ROW_ARRAYS:
-		if column_name != &"hp":
-			var column: PackedInt32Array = get(column_name)
-			_compact(column, alive, first, count)
-	_compact(alive, alive, first, count)
-	stats[Stat.ROWS_COMPACTED] += count - first - dead
-	rows_version += 1
+	Removal.run(self)
 
 
 ## One sight mask per type, in type order, so a mask id is the type index (two types of equal sight
@@ -951,18 +923,6 @@ func _reset_projectile_slots() -> void:
 	for i: int in slots:
 		stack[i] = slots - 1 - i
 	proj_free_top = slots
-
-
-## Moves the entries of `col` whose `alive` is above 0 down over the dead ones, in order, and cuts
-## it to the survivors. Rows before `first`, the first dead row, stay. `alive` may be `col` itself:
-## a write never reaches a row still to be read.
-static func _compact(col: PackedInt32Array, alive: PackedInt32Array, first: int, end: int) -> void:
-	var to: int = first
-	for row: int in range(first + 1, end):
-		if alive[row] > 0:
-			col[to] = col[row]
-			to += 1
-	col.resize(to)
 
 
 ## Appends `value` to `table` until it has `size` entries.

@@ -145,6 +145,7 @@ const COPIED_SCALARS: Array[StringName] = [
 	&"building_cap",
 	&"construct_refund_percent",
 	&"construction_sites_max",
+	&"sell_refund_percent",
 ]
 ## The World's Array[StringName] id lists, in no World shape list (ADR 0012's amendment). Each is
 ## copied by duplicate(): a shallow copy of a few immutable StringNames.
@@ -277,6 +278,8 @@ var building_cap: int = 0
 ## how many sites a player builds at once.
 var construct_refund_percent: int = 0
 var construction_sites_max: int = 0
+## The share of its price a sale pays at full health (ADR 0037 section 3): the Sell "+N" label.
+var sell_refund_percent: int = 0
 
 ## This tick's events (World.EVENT_STRIDE ints each) and work counts (World.Stat).
 var events: PackedInt32Array = PackedInt32Array()
@@ -371,6 +374,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	building_cap = world.building_cap
 	construct_refund_percent = world.construct_refund_percent
 	construction_sites_max = world.construction_sites_max
+	sell_refund_percent = world.sell_refund_percent
 	unit_id = world.unit_id.duplicate()
 	owner = world.owner.duplicate()
 	type_index = world.type_index.duplicate()

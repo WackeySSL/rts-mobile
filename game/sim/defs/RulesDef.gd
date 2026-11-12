@@ -72,3 +72,13 @@ extends Resource
 @export var construct_start_hp_percent: int = 10
 @export var construct_refund_percent: int = 75
 @export var construction_sites_max: int = 1
+
+## Building sale and repair (ADR 0037 sections 3 and 4). Inert at these defaults: a sale pays
+## nothing and a mend gains no hit points, so a scenario that sets none of them plays as before. A
+## sale pays `sell_refund_percent` of the price at full health (less at lower hp), a mending
+## building gains `mend_hp` every `mend_period_ticks` (staggered by id) for `mend_cost_percent` of
+## the price of the hit points gained.
+@export var sell_refund_percent: int = 0
+@export var mend_hp: int = 0
+@export var mend_period_ticks: int = 15
+@export var mend_cost_percent: int = 30

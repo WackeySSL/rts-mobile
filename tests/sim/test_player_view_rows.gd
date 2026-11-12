@@ -33,7 +33,7 @@ func _answers(view: PlayerView, row: int) -> Array[int]:
 		pos.y,
 		view.row_hp(row),
 		view.row_order(row),
-		view.row_harvest_mode(row),
+		view._row_harvest_mode(row),
 		view.row_home(row),
 	]
 
@@ -200,16 +200,16 @@ func test_the_own_columns_are_answered_for_own_rows_only() -> void:
 	world.home[theirs] = 42
 	var first: PlayerView = PlayerView.of(world, 1)
 	assert_int(first.row_order(mine)).is_equal(PlayerView.Order.ATTACK_MOVE)
-	assert_int(first.row_harvest_mode(mine)).is_equal(PlayerView.HarvestMode.RETURN)
+	assert_int(first._row_harvest_mode(mine)).is_equal(PlayerView.HarvestMode.RETURN)
 	assert_int(first.row_home(mine)).is_equal(41)
 	# Player 1 sees the enemy harvester, but only its public columns.
 	assert_int(first.row_id(theirs)).is_equal(ViewWorlds.NEAR_HARVESTER)
 	assert_int(first.row_order(theirs)).is_equal(MISSING)
-	assert_int(first.row_harvest_mode(theirs)).is_equal(MISSING)
+	assert_int(first._row_harvest_mode(theirs)).is_equal(MISSING)
 	assert_int(first.row_home(theirs)).is_equal(MISSING)
 	var second: PlayerView = PlayerView.of(world, 2)
 	assert_int(second.row_order(theirs)).is_equal(PlayerView.Order.MOVE)
-	assert_int(second.row_harvest_mode(theirs)).is_equal(PlayerView.HarvestMode.MINE)
+	assert_int(second._row_harvest_mode(theirs)).is_equal(PlayerView.HarvestMode.MINE)
 	assert_int(second.row_home(theirs)).is_equal(42)
 	assert_int(second.row_order(mine)).is_equal(MISSING)
 

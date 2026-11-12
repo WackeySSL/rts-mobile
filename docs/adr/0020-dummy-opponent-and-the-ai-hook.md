@@ -126,6 +126,12 @@ hidden rows are poisoned and asserts the same Commands and state hash as the cle
 dropped within its think: held across a tick it would make the World fork a whole array on its
 next write.
 
+Note (2026-11-11, P271; changes no accepted text above): `row_harvest_mode` is private
+(`_row_harvest_mode`) from P271. No code in `game/` called it, and `PlayerView` sat at gdlint's 20
+public methods, so the new own-only getter `row_mend` (ADR 0037 section 4) needed the room. A row
+that wants the getter back must free another slot. The own columns now public are `row_order`,
+`row_home` and `row_mend`.
+
 ### 2. `AiController` and the driver
 - `game/ai/AiController.gd` (ai-dev): `class_name AiController extends RefCounted`, with
   `player_id`, `think_period` and `think_offset` ints and

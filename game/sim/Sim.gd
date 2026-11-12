@@ -20,16 +20,16 @@ const MILLI_PER_TILE: int = 1000
 ## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
 ## dead rows leave and their vision ends (REMOVE), the players whose turn it is move
 ## their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin` emptied their
-## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`), the queues advance and the
-## match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the last-seen records
-## update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of those five modules
-## `Power.run` rebuilds the derived row lists (P71) and sums the power made and used per player
-## (P74), `Harvest.run` runs the ore and the harvest loop (P75), `Production.run` advances the
-## queues, the structures' too, at `low_power_percent` of the rate on low power (P73, P73b, P74),
-## and `Outcome.run` defeats a player that lost its last producer and ends the match (P76);
-## `LastSeen.run` keeps each player's last-seen building records on that player's fog turn (P77).
-## A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section 4); it
-## never sees the World.
+## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Mend.run`), the queues
+## advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the
+## last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of
+## those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and
+## used per player (P74), `Harvest.run` runs the ore and the harvest loop (P75), `Production.run`
+## advances the queues, the structures' too, at `low_power_percent` of the rate on low power (P73,
+## P73b, P74), and `Outcome.run` defeats a player that lost its last producer and ends the match
+## (P76); `LastSeen.run` keeps each player's last-seen building records on that player's fog turn
+## (P77). A probe gets `begin()` first and a `mark` after each phase that exists (ADR 0007 section
+## 4); it never sees the World.
 static func step(world: World, commands: Array[Command], probe: SimProbe = null) -> void:
 	if probe != null:
 		probe.begin()
@@ -85,6 +85,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 		probe.mark(SimProbe.Phase.FOG)
 	Power.run(world)
 	Harvest.run(world)
+	Mend.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)
 	Production.run(world)
@@ -99,7 +100,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 5-9, 17-19, 21-29, anything else) is dropped as unknown before any id rule runs.
+## branch (NONE, 5-9, 19, 21-29, anything else) is dropped as unknown before any id rule runs.
 ## The Phase 3 types (ADR 0017 section 4) also need a player who is not defeated. Once the match has
 ## ended (`match_end_tick` above 0, P76) every command of any type is dropped. Each `_apply_*` and
 ## each module's `apply_*` is the ADR's per-type validation: it checks the ids through the shared
@@ -135,6 +136,10 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _playing(world, command) and Strike.apply_superweapon(world, command)
 			Command.Type.CANCEL_BUILD:
 				applied = _playing(world, command) and Production.apply_cancel_build(world, command)
+			Command.Type.SELL:
+				applied = _playing(world, command) and Production.apply_sell(world, command)
+			Command.Type.MEND:
+				applied = _playing(world, command) and Mend.apply_mend(world, command)
 			Command.Type.SURRENDER:
 				applied = _playing(world, command) and Outcome.apply_surrender(world, command)
 	if not applied:

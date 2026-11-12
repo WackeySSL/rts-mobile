@@ -46,10 +46,10 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 
 ## The three rule ints end RULE_SCALARS (so `defs_hash` sees them) and UNHASHED_SCALARS (so the
 ## state hash does not), in RulesDef's order, with the file's values, in a hand-built World too.
-func test_the_three_rule_ints_end_both_scalar_lists_and_equal_the_file() -> void:
+func test_the_three_rule_ints_sit_before_the_sale_ints_in_both_lists_and_equal_the_file() -> void:
 	var names: Array[StringName] = RULES.keys()
-	assert_array(World.RULE_SCALARS.slice(-3)).is_equal(names)
-	assert_array(World.UNHASHED_SCALARS.slice(-3)).is_equal(names)
+	assert_array(World.RULE_SCALARS.slice(-7, -4)).is_equal(names)
+	assert_array(World.UNHASHED_SCALARS.slice(-7, -4)).is_equal(names)
 	assert_bool(World.HASHED_SCALARS.has(&"construct_start_hp_percent")).is_false()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	var made: World = World.new()

@@ -89,8 +89,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_the_frozen_file(
-) -> void:
+func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -130,6 +129,11 @@ func test_rules_file_holds_the_thirty_six_starting_ints_and_the_defaults_equal_t
 		"construct_start_hp_percent": 10,
 		"construct_refund_percent": 75,
 		"construction_sites_max": 1,
+		# Building sale and repair (ADR 0037 sections 3 and 4): inert defaults.
+		"sell_refund_percent": 0,
+		"mend_hp": 0,
+		"mend_period_ticks": 15,
+		"mend_cost_percent": 30,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -250,6 +254,10 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 			"construct_refund_percent is not in 0..100"
 		],
 		["construction_sites_max", [0, 1, 2], [-1], "construction_sites_max is negative"],
+		["sell_refund_percent", [0, 100], [-1, 101], "sell_refund_percent is not in 0..100"],
+		["mend_hp", [0, 10], [-1], "a mend rule is negative"],
+		["mend_period_ticks", [0, 15], [-1], "a mend rule is negative"],
+		["mend_cost_percent", [0, 30], [-1], "a mend rule is negative"],
 		["harvest_reach_milli", [0], [-1], "a reach is negative"],
 		["dock_reach_milli", [0], [-1], "a reach is negative"],
 		["harvest_pick_milli", [0], [-1], "a reach is negative"],
@@ -770,6 +778,10 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 		"construct_refund_percent is not in 0..100":
 		rules.construct_refund_percent < 0 or rules.construct_refund_percent > 100,
 		"construction_sites_max is negative": rules.construction_sites_max < 0,
+		"sell_refund_percent is not in 0..100":
+		rules.sell_refund_percent < 0 or rules.sell_refund_percent > 100,
+		"a mend rule is negative":
+		mini(mini(rules.mend_hp, rules.mend_period_ticks), rules.mend_cost_percent) < 0,
 		"a reach is negative":
 		(
 			mini(
