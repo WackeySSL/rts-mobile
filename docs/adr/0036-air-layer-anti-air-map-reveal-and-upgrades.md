@@ -660,6 +660,22 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   `UNSORTED_PARTS` needs no layer edit. The sites that still pair by `texture_for(part)` with a
   region of that part (`WorldSort.dress`, `BuildingLayer`'s patch, the gallery) are replaced by
   P243's sheet-keyed flyer pages.
+- **P236 note (2026-11-12, P26br, the lead; changes no accepted text above).** The space centres
+  (P236) cost more than the estimate above. Page 1 grew by 334 rows on the cross-faction page
+  (2,659 -> 2,993) and by 336 and 260 on the Derrick and Lumen mirrors (2,878 and 2,910); page 2 grew
+  by 76 (1,040 -> 1,116). The estimate allowed about 152-220 rows per building pair. Room on page 1
+  against 3,584 is now 591 rows (cross), 706 and 674 (mirrors). On today's sheets P202 frees about
+  141, 102 and 128 rows (cross 2,852, mirrors 2,776 and 2,782), so the cross page stays the tightest.
+  The forecast depends on what the later art rows really cost:
+  - If the three remaining ADR 0036 buildings (P239b, P245b, P249) cost what P236 did (about 334
+    rows a pair), page 1 fills at the second or third of them, even at 3,840: with P202,
+    2,852 + 3 x 334 = 3,854.
+  - At the estimate's high case (about 660 for the three) and without P202, it passes 3,840 around
+    P280 (2,993 + 660 + 105 + 135 = 3,893).
+  So P202 merges before the next of P239b, P245b and P249, and the lead puts the next lever (more
+  parts on page 2, or a third page) to Michael before that row starts, not when a row fails. P245
+  merges after P243 has re-keyed `page_of`; before that the fighter and bomber hulls would bake on
+  page 1 (about +100 rows).
 
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
@@ -688,6 +704,13 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
 
   The drawer tab is not called "Air".
 - **Candidates.** Two per item per faction, listed in the GDD section. Michael picks (question 1).
+- **Note (2026-11-12, P26br, the lead; changes no accepted text above).** Like every chosen name,
+  the space centres' names from the GDD, Skyrig (Derrick League) and Zenith (Lumen Accord), go to
+  Phase 7's trademark search (ROADMAP Phase 7). "Zenith" is a common word and a much-registered
+  mark, so it is checked first. P236's art review found no RTS building or unit of either name and
+  no look from the list above. RA's GPS Satellite (a whole-map reveal launched as a rocket) is the
+  known precedent for the Reveal. Its name, dish and dome are refused above, and the Reveal's look
+  (P235's sweep) is not a rocket launch either, although both models carry a `launch` emitter.
 
 ## Consequences
 - **Gains:**
@@ -703,7 +726,8 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   - `TABS` 5.
   - A second atlas page or a smaller damage bake.
   - About 38 rows, about 6,900 production lines (about 5,190 for 1.1 and 1,670 for 1.2) plus
-    about 175-250 C++, and 16 generated models (the plan's size estimate).
+    about 175-250 C++, and 16 generated models (the plan's size estimate; 39 rows with P232c,
+    2026-11-12, P26br).
   - 20 unit types for ADR 0031's check 4 instead of 12 (16 after 1.1, 20 after 1.2: per faction
     two aircraft, then a transport and a drone squad), and longer balance runs.
 - **Risks:**
