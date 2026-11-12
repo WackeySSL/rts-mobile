@@ -166,6 +166,8 @@ func count() -> void:
 	var weapon_range: PackedInt32Array = world.weapon_range
 	var weapon_min_range: PackedInt32Array = world.weapon_min_range
 	var weapon_vs: PackedInt32Array = world.weapon_vs_armour
+	var weapon_hits: PackedInt32Array = world.weapon_targets
+	var layer_bit: PackedInt32Array = world.type_layer_bit
 	var grid: SpatialGrid = world.target_grid
 	var heads: PackedInt32Array = grid.head
 	var links: PackedInt32Array = grid.next
@@ -186,8 +188,18 @@ func count() -> void:
 		if order == ATTACK:
 			var locked: int = _order_targets[row]
 			var at: int = ids.bsearch(locked)
+			var lock_weapon: int = type_weapon[types[row]]
+			# The layer test of P238: an unarmed type has no mask and locks any enemy.
 			var enemy: bool = (
-				at < rows and ids[at] == locked and owners[at] != owners[row] and owners[at] != 0
+				at < rows
+				and ids[at] == locked
+				and owners[at] != owners[row]
+				and owners[at] != 0
+				and (
+					lock_weapon < 0
+					or lock_weapon >= weapon_range.size()
+					or (weapon_hits[lock_weapon] & layer_bit[types[at]]) != 0
+				)
 			)
 			if enemy and _sees(owners[row], pos_x[at], pos_y[at]):
 				tally[&"locked"] += 1
@@ -219,6 +231,7 @@ func count() -> void:
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
+		var hits: int = weapon_hits[weapon]
 		var own: int = owners[row]
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
@@ -229,7 +242,12 @@ func count() -> void:
 				var held_y: int = pos_y[at] - y
 				var held_d2: int = held_x * held_x + held_y * held_y
 				var held_percent: int = weapon_vs[vs_base + type_armour[types[at]]]
-				if held_d2 <= reach2 and held_d2 >= min2 and held_percent > 0:
+				if (
+					held_d2 <= reach2
+					and held_d2 >= min2
+					and held_percent > 0
+					and (hits & layer_bit[types[at]]) != 0
+				):
 					if _sees(own, pos_x[at], pos_y[at]):
 						tally[&"kept"] += 1
 						continue
@@ -266,6 +284,7 @@ func count() -> void:
 							and d2 <= reach2
 							and d2 >= min2
 							and percent > 0
+							and (hits & layer_bit[types[other]]) != 0
 						)
 						if in_reach and not _sees(own, other_x, other_y):
 							tally[&"unseen"] += 1

@@ -62,7 +62,9 @@ const TILE: int = World.MILLI_PER_TILE
 ##   of sight, the order becomes `ATTACK_MOVE` to the goal it left, which is where the target last
 ##   stood in sight: the row's `order_target` is cleared, and the row goes on as an attack-moving
 ##   row from this tick (in this same pass it scans if it is due on this tick, else on its next due
-##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2.
+##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2. A
+##   target on a layer the row's weapon cannot hit (P238) breaks the lock the same way; an unarmed
+##   type has no mask and locks any enemy.
 ## - `MOVE` rows acquire nothing and drop a target they held, every tick (a moving unit does not
 ##   fire).
 ## - An `ATTACK_MOVE` or `IDLE` row with a weapon is due when `(tick + id) % retarget_period_ticks`
@@ -77,7 +79,9 @@ const TILE: int = World.MILLI_PER_TILE
 ##   the grid, as the grid's own rebuild puts a point in a cell), itself excepted, and counts them
 ##   in `stats[TARGET_CANDIDATES]` (3 x 3 to 4 x 4 cells with the shipped ranges, fewer at an
 ##   edge). A candidate is an enemy (an owner that is neither the row's own nor 0) with
-##   `min_range^2 <= d2 <= reach^2` and a damage percent above 0 against its armour. The best has
+##   `min_range^2 <= d2 <= reach^2`, a damage percent above 0 against its armour and a layer its
+##   weapon can hit (P238, ADR 0036 section 5: `weapon_targets & type_layer_bit` is not 0, tested
+##   after the percent and before the sight; a held target must pass it too). The best has
 ##   the highest percent, then the smallest `d2`, then the lowest row (rows ascend with the id). The
 ##   grid is visited cell by cell, not in id order, so the id tie-break is explicit. No candidate
 ##   writes 0. A candidate must also be seen (P46b, above): the test comes last, after the damage
@@ -114,6 +118,8 @@ static func run(world: World) -> void:
 	var weapon_range: PackedInt32Array = world.weapon_range
 	var weapon_min_range: PackedInt32Array = world.weapon_min_range
 	var weapon_vs: PackedInt32Array = world.weapon_vs_armour
+	var weapon_hits: PackedInt32Array = world.weapon_targets
+	var layer_bit: PackedInt32Array = world.type_layer_bit
 	var heads: PackedInt32Array = grid.head
 	var links: PackedInt32Array = grid.next
 	var lines: int = grid.rows
@@ -154,7 +160,18 @@ static func run(world: World) -> void:
 		if order == ATTACK:
 			var locked: int = order_targets[row]
 			var at: int = ids.bsearch(locked)
-			if at < count and ids[at] == locked and owners[at] != own and owners[at] != 0:
+			var lock_weapon: int = type_weapon[types[row]]
+			if (
+				at < count
+				and ids[at] == locked
+				and owners[at] != own
+				and owners[at] != 0
+				and (
+					lock_weapon < 0
+					or lock_weapon >= weapons
+					or (weapon_hits[lock_weapon] & layer_bit[types[at]]) != 0
+				)
+			):
 				var in_sight: bool = veil < 0
 				if not in_sight:
 					# The cell by `FixedMath.centre_side` (a point on a tile border in the far half of the
@@ -193,6 +210,7 @@ static func run(world: World) -> void:
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
+		var hits: int = weapon_hits[weapon]
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
 		var held: int = targets[row]
@@ -206,6 +224,7 @@ static func run(world: World) -> void:
 					held_d2 <= reach2
 					and held_d2 >= min2
 					and weapon_vs[vs_base + type_armour[types[at]]] > 0
+					and (hits & layer_bit[types[at]]) != 0
 				):
 					var held_seen: bool = veil < 0
 					if not held_seen:
@@ -253,7 +272,7 @@ static func run(world: World) -> void:
 					if d2 > reach2 or d2 < min2:
 						continue
 					var percent: int = weapon_vs[vs_base + type_armour[types[other]]]
-					if percent <= 0:
+					if percent <= 0 or (hits & layer_bit[types[other]]) == 0:
 						continue
 					if veil >= 0:
 						# The cell by `FixedMath.centre_side` (a point on a tile border in the far half of the

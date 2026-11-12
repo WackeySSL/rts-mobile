@@ -10,3 +10,4 @@ damage = 50
 cooldown_ticks = 45
 projectile_speed = 300
 vs_armour = PackedInt32Array(20, 100, 100, 80)
+targets = 7

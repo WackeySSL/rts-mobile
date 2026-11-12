@@ -9,3 +9,4 @@ range = 4000
 damage = 12
 cooldown_ticks = 15
 vs_armour = PackedInt32Array(100, 10, 5, 5)
+targets = 5

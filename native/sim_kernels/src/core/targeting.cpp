@@ -117,6 +117,8 @@ int64_t Pass::acquire() {
 	const ArrayView<const int32_t> weapon_range = weapons_.range;
 	const ArrayView<const int32_t> weapon_min_range = weapons_.min_range;
 	const ArrayView<const int32_t> weapon_vs = weapons_.vs_armour;
+	const ArrayView<const int32_t> weapon_hits = weapons_.targets;
+	const ArrayView<const int32_t> layer_bit = types_.layer_bit;
 	const ArrayView<const int32_t> heads = grid_.head;
 	const ArrayView<const int32_t> links = grid_.next;
 	const int64_t cols = grid_.cols;
@@ -137,7 +139,10 @@ int64_t Pass::acquire() {
 		if (order == ATTACK) {
 			const int64_t locked = order_targets.get(row);
 			const int64_t at = bsearch(ids, locked);
-			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0) {
+			const int64_t lock_weapon = type_weapon.get(types.get(row));
+			// An unarmed type (no weapon index, or one past the tables) has no mask and locks any enemy (P238).
+			const bool lock_hits = lock_weapon < 0 || lock_weapon >= weapons || (weapon_hits.get(lock_weapon) & layer_bit.get(types.get(at))) != 0;
+			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0 && lock_hits) {
 				if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
 					targets.set(row, locked);
 					if (type_speed.get(types.get(at)) > 0) {
@@ -168,6 +173,7 @@ int64_t Pass::acquire() {
 		const int64_t reach2 = reach * reach;
 		const int64_t min2 = weapon_min_range.get(weapon) * weapon_min_range.get(weapon);
 		const int64_t vs_base = weapon * ARMOUR_CLASSES;
+		const int64_t hits = weapon_hits.get(weapon);
 		const int64_t x = pos_x.get(row);
 		const int64_t y = pos_y.get(row);
 		const int64_t held = targets.get(row);
@@ -177,7 +183,7 @@ int64_t Pass::acquire() {
 				const int64_t held_x = pos_x.get(at) - x;
 				const int64_t held_y = pos_y.get(at) - y;
 				const int64_t held_d2 = held_x * held_x + held_y * held_y;
-				if (held_d2 <= reach2 && held_d2 >= min2 && weapon_vs.get(vs_base + type_armour.get(types.get(at))) > 0) {
+				if (held_d2 <= reach2 && held_d2 >= min2 && weapon_vs.get(vs_base + type_armour.get(types.get(at))) > 0 && (hits & layer_bit.get(types.get(at))) != 0) {
 					if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
 						continue;
 					}
@@ -217,7 +223,7 @@ int64_t Pass::acquire() {
 						continue;
 					}
 					const int64_t percent = weapon_vs.get(vs_base + type_armour.get(types.get(other)));
-					if (percent <= 0) {
+					if (percent <= 0 || (hits & layer_bit.get(types.get(other))) == 0) {
 						continue;
 					}
 					if (veil >= 0 && !seen(veil, pos_x.get(other), pos_y.get(other))) {
