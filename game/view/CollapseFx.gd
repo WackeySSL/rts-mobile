@@ -10,7 +10,8 @@ extends RefCounted
 ## (eight at once get five dust puffs each). A puff is born only in the view rect `AirFx` passes
 ## (a collapse runs whether or not it is on screen). `reduced` keeps the flash, the fire and the
 ## dust and drops the debris. At most `collapse_max` collapses run at once; a new one over the cap
-## takes the oldest's place. Allocates nothing after `read`. View only.
+## takes the oldest's place. A sold building's collapse is `quiet`: dust only, no flash, no fire
+## and no debris (ADR 0037 section 3). Allocates nothing after `read`. View only.
 
 enum Style { FLASH, FIRE, DUST, DEBRIS }  ## Debris styles follow: `Style.DEBRIS + direction`.
 const KINDS: Array[StringName] = [&"hit_flash", &"fire", &"dust_cloud", &"chip"]
@@ -58,6 +59,7 @@ var _debris: PackedByteArray = PackedByteArray()
 var _dust_born: PackedByteArray = PackedByteArray()
 var _burst: PackedByteArray = PackedByteArray()  ## 1 once the flash and fire were born.
 var _chips: PackedByteArray = PackedByteArray()  ## 1 once the debris was born.
+var _quiet: PackedByteArray = PackedByteArray()  ## 1 for a sale's collapse: dust only.
 
 
 func _init() -> void:
@@ -101,7 +103,9 @@ func count() -> int:
 ## Starts the particles of building `id`'s collapse: `centre` is its footprint centre (world px),
 ## `rise` the height of its picture above it, `foot` its side in tiles, `tick` the DIED tick. Over
 ## the cap it takes the place of the oldest collapse, whose puffs live out.
-func start(id: int, centre: Vector2, rise: float, foot: int, tick: int) -> void:
+func start(
+	id: int, centre: Vector2, rise: float, foot: int, tick: int, quiet: bool = false
+) -> void:
 	if _cap == 0:
 		return
 	var slot: int = 0  # A free slot, else the oldest's.
@@ -120,7 +124,9 @@ func start(id: int, centre: Vector2, rise: float, foot: int, tick: int) -> void:
 	_foot[slot] = clampi(foot, 1, 255)
 	_pending[slot] = 1
 	_dust_born[slot] = 0
-	_burst[slot] = 0
+	# A cheap skip of `_burn`; `_split` also gives a sale no flash or fire.
+	_burst[slot] = 1 if quiet else 0
+	_quiet[slot] = 1 if quiet else 0
 	_chips[slot] = 0
 
 
@@ -174,13 +180,14 @@ func _split(life: LifeSettings) -> void:
 		var left: int = share
 		_dust[slot] = mini(life.collapse_dust_puffs, left)
 		left -= _dust[slot]
-		_flash[slot] = mini(1, left)
+		var quiet: bool = _quiet[slot] == 1  # A sale: dust only, no flash, fire or debris.
+		_flash[slot] = 0 if quiet else mini(1, left)
 		left -= _flash[slot]
 		var want: int = fires[0] + LifeClock.pick(_id[slot], SALT_COUNT, fires[1] - fires[0] + 1)
-		_fire[slot] = mini(want, left)
+		_fire[slot] = 0 if quiet else mini(want, left)
 		left -= _fire[slot]
 		want = chips[0] + LifeClock.pick(_id[slot], SALT_COUNT + 1, chips[1] - chips[0] + 1)
-		_debris[slot] = 0 if life.reduced else mini(want, left)
+		_debris[slot] = 0 if (life.reduced or quiet) else mini(want, left)
 
 
 # Cuts the unborn dust and debris of the running collapse in `slot` to what is left of `share`
@@ -279,6 +286,8 @@ func _resize(want: int) -> void:
 	_burst.fill(0)
 	_chips.resize(want)
 	_chips.fill(0)
+	_quiet.resize(want)
+	_quiet.fill(0)
 	_seq.resize(want)
 	_seq.fill(0)
 	_id.resize(want)
