@@ -561,7 +561,7 @@ func _drop(entry: Entry, snap: MatchSnapshot) -> void:
 		_selected.remove_at(chosen)
 	_entries.erase(entry.id)
 	if entry.shown:
-		_collapse.adopt(entry, snap.tick, entry.site, BuildingCollapse.died_flag(snap, entry.id))
+		_collapse.adopt(entry, snap.tick, entry.site, BuildingCollapse.cancelled(snap, entry.id))
 		return
 	if entry.shadow != null:
 		decals.remove_shadow(entry.shadow)

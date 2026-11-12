@@ -8,11 +8,9 @@ extends RefCounted
 ## rise; at `collapse_hide_ms` the node is hidden and the cast shadow removed; at `collapse_end_ms`
 ## the node is freed. The crater is laid at the DIED, scaled by `crater_scale_milli` of the
 ## building's type, and stays; the smoke and embers over it (P148's crater source) start at the end,
-## unless the building was a site. The puffs are `CollapseFx`'s, in `AirFx`. The DIED flag
-## (`Removal.died_flag`, ADR 0037 section 3) says which: a cancelled site (1) plays nothing and
-## leaves no crater; a sold building (3) packs up, the sink and the dust with no flash, no fire, no
-## crater and no crater smoke; any other death plays it all. A building that was not shown is not
-## handed over at all.
+## unless the building was a site. The puffs are `CollapseFx`'s, in `AirFx`. A
+## cancelled site plays nothing and leaves no crater. A building that was not shown is not handed
+## over at all.
 ## The sprite writes are timed, so `advance` spends them first in the buildings' share of a frame:
 ## 2 at the start, 4 a sink step (body and patch, region and offset) and 2 at the hide, 28 in all.
 ## A step that does not fit waits for the next frame and then writes the step of that moment, a
@@ -58,13 +56,10 @@ func setup(sort: WorldSort, decals: DecalLayer) -> void:
 ## Takes over `entry`, a shown building that left the rows in tick `died_tick`. The layer has
 ## already dropped it from its tables and the selection; its shadow is still in the decal layer.
 @warning_ignore("integer_division")
-func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, flag: int) -> void:
+func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, cancelled: bool) -> void:
 	_make_if_resized(maxi(life.collapse_max, 0))
-	if flag == Removal.FLAG_CANCELLED:
+	if cancelled:
 		_free(entry)
-		return
-	if flag == Removal.FLAG_SOLD:  # The pack-up: no crater, no crater smoke, no flash.
-		_begin(entry, died_tick, true)
 		return
 	var type_scale: int = life.crater_scale_milli.get(entry.type_id, 1000)
 	var radius: int = entry.foot * BuildingLayer.CRATER_MILLI_PER_TILE * type_scale / 1000
@@ -75,13 +70,7 @@ func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, flag: int
 		air.add_crater_source(
 			entry.id, entry.node.position, entry.type, entry.tiles, entry.owner_id, from
 		)
-	_begin(entry, died_tick, false)
-
-
-# Starts the sequence of `entry` in a slot (`quiet`: no flash and no fire, a sale); with no
-# sequence the node is freed (the crater and its smoke, if any, stand).
-func _begin(entry: BuildingLayer.Entry, died_tick: int, quiet: bool) -> void:
-	if _cap == 0:
+	if _cap == 0:  # No sequence, but the crater and its smoke stand.
 		_free(entry)
 		return
 	if _n == _cap:
@@ -106,9 +95,7 @@ func _begin(entry: BuildingLayer.Entry, died_tick: int, quiet: bool) -> void:
 		var body_foot: float = _drawn_bottom(entry.body) if entry.body != null else 0.0
 		_patch_room[slot] = maxf(body_foot - _drawn_bottom(entry.patch), 0.0)
 	if air != null:
-		air.collapses().start(
-			entry.id, entry.node.position, entry.rise, entry.foot, died_tick, quiet
-		)
+		air.collapses().start(entry.id, entry.node.position, entry.rise, entry.foot, died_tick)
 
 
 ## Whether any collapse runs.
@@ -163,14 +150,13 @@ func clear() -> void:
 		_end(_order[0])
 
 
-## The flag of the DIED of building `id` in `snap`'s events (`Removal.FLAG_*`), 0 for a death with
-## no flag and for no DIED at all. Callers compare it with the value they mean, never with `!= 0`.
-static func died_flag(snap: MatchSnapshot, id: int) -> int:
+## Whether `snap`'s events hold the DIED of building `id` with the cancel flag set.
+static func cancelled(snap: MatchSnapshot, id: int) -> bool:
 	var events: PackedInt32Array = snap.events
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
 		if events[at] == World.Event.DIED and events[at + 1] == id:
-			return events[at + Production.DIED_CANCEL_FLAG_AT]
-	return 0
+			return events[at + Production.DIED_CANCEL_FLAG_AT] != 0
+	return false
 
 
 # Writes the start and the hide of the collapse in `slot` when due `t` ms after the DIED and they

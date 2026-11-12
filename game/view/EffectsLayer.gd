@@ -411,11 +411,8 @@ func _add_impact(snap: MatchSnapshot, at: int, now: int) -> void:
 ## infantry, a building too) and a fade for infantry, centred on the middle of the unit's frame.
 func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
-	match events[at + Production.DIED_CANCEL_FLAG_AT]:
-		Removal.FLAG_CANCELLED, Removal.FLAG_BOARDED:
-			return  # A cancelled site plays nothing (ADR 0029 section 8, P165); nor does a boarding.
-		Removal.FLAG_SOLD:
-			return  # A sale packs up (`BuildingCollapse`): no burst (ADR 0037 section 3).
+	if events[at + Production.DIED_CANCEL_FLAG_AT] != 0:
+		return  # A cancelled site plays nothing (ADR 0029 section 8, P165).
 	var own: bool = events[at + 5] == FogLayer.local_player_of(runner)
 	if not (own or _seen(snap, events[at + 2], events[at + 3])):
 		return

@@ -161,7 +161,7 @@ func test_a_shown_building_that_dies_goes_to_the_collapse_and_is_freed_with_its_
 	_runner.world.hp[_runner.world.index_of(1)] = 0
 	_runner.run_ticks(1)
 	_layer._process(0.0)
-	assert_array(_calls(spy)).is_equal([[1, _runner.snapshot.tick, false, 0]])
+	assert_array(_calls(spy)).is_equal([[1, _runner.snapshot.tick, false, false]])
 	assert_int(_layer.decals.crater_count()).is_equal(1)
 	assert_int(_sort.get_child_count()).is_equal(nodes)  # The collapse keeps the node until 900 ms.
 	assert_object(_layer.building(1)).is_null()
@@ -186,9 +186,9 @@ func test_a_site_that_dies_is_handed_over_as_a_site_and_a_cancel_as_cancelled() 
 	assert_int(_calls(spy).size()).is_equal(2)
 	assert_array(_calls(spy)[0].slice(0, 1)).is_equal([1])
 	assert_bool(_calls(spy)[0][2]).is_true()
-	assert_int(_calls(spy)[0][3]).is_equal(0)
+	assert_bool(_calls(spy)[0][3]).is_false()
 	assert_bool(_calls(spy)[1][2]).is_false()
-	assert_int(_calls(spy)[1][3]).is_equal(Removal.FLAG_CANCELLED)
+	assert_bool(_calls(spy)[1][3]).is_true()
 
 
 func test_a_hidden_building_that_dies_is_freed_without_the_hook_or_a_crater() -> void:
