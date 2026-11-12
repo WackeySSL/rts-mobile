@@ -31,8 +31,8 @@ const SLOTS: int = 8
 ## kernel_fog.cpp gets or sets (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose
 ## its bit, type_sight stays because the pad mask is the size of that table). P232 (ADR 0036
 ## section 13) declared `type_layer_bit` for TARGETING and SEPARATION and `weapon_targets` for
-## TARGETING, which no kernel reads yet (P238 and P240 do): TARGETING's list is 43 and
-## SEPARATION's 21.
+## TARGETING, which TARGETING reads since P238 and SEPARATION reads (`type_layer_bit`) from P240:
+## TARGETING's list is 43 and SEPARATION's 21.
 const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 43, 5: 21, 6: 50, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1

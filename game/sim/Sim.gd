@@ -164,15 +164,22 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target, when the target is an enemy their
-## player sees (`_enemy_target`). The goal of a mobile target is `Targeting.run`'s, every tick; a
-## target that stands still gets its goal here (`Buildings.aim`: a building's approach point, ADR
-## 0017 section 1), and a unit with no passable ring tile around a building is left out.
+## ATTACK: the armed valid units whose weapon can hit the target's layer (`_rows_that_can_hit`,
+## P238) take the order and the target, when the target is an enemy their player sees
+## (`_enemy_target`); when no row is left the command is dropped and counted. The goal of a mobile
+## target is `Targeting.run`'s, every tick; a target that stands still gets its goal here
+## (`Buildings.aim`: a building's approach point, ADR 0017 section 1), and a unit with no passable
+## ring tile around a building is left out.
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
-	var rows: PackedInt32Array = _own_rows(world, command, true)
-	rows = Buildings.aim(world, rows, world.index_of(command.target_id))
+	var target_row: int = world.index_of(command.target_id)
+	var rows: PackedInt32Array = _rows_that_can_hit(
+		world, _own_rows(world, command, true), target_row
+	)
+	if rows.is_empty():
+		return false
+	rows = Buildings.aim(world, rows, target_row)
 	if rows.is_empty():
 		return false
 	var orders: PackedInt32Array = world.order
@@ -184,6 +191,25 @@ static func _apply_attack(world: World, command: Command) -> bool:
 		group_of[row] = -1
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	return true
+
+
+## The rows whose weapon can hit the target's layer (`weapon_targets & type_layer_bit`, ADR 0036
+## section 5, P238), ascending as given. A row whose weapon index is past the weapon tables is
+## unarmed (see `_own_rows`) and has no mask, so it stays, as `Targeting` locks it.
+static func _rows_that_can_hit(
+	world: World, rows: PackedInt32Array, target_row: int
+) -> PackedInt32Array:
+	var layer: int = world.type_layer_bit[world.type_index[target_row]]
+	var hits: PackedInt32Array = world.weapon_targets
+	var armed: int = world.weapon_range.size()
+	var types: PackedInt32Array = world.type_index
+	var weapons: PackedInt32Array = world.type_weapon
+	var kept: PackedInt32Array = PackedInt32Array()
+	for row: int in rows:
+		var weapon: int = weapons[types[row]]
+		if weapon >= armed or (hits[weapon] & layer) != 0:
+			kept.append(row)
+	return kept
 
 
 ## STOP: the valid units go idle where they stand, with no target and no flow field; the harvesters

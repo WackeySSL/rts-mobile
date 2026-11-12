@@ -261,6 +261,8 @@ func test_the_constants_are_the_worlds() -> void:
 	assert_array(PlayerView.HarvestMode.values()).is_equal(World.HarvestMode.values())
 	assert_array(PlayerView.Order.keys()).is_equal(World.Order.keys())
 	assert_array(PlayerView.Order.values()).is_equal(World.Order.values())
+	assert_array(PlayerView.Layer.keys()).is_equal(World.Layer.keys())
+	assert_array(PlayerView.Layer.values()).is_equal(World.Layer.values())
 	assert_int(PlayerView.Tab.size()).is_equal(World.TABS)
 
 

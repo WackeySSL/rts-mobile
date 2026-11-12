@@ -31,6 +31,7 @@ constexpr int64_t GROUND_CLASSES = 3; // World.GROUND_CLASSES: the classes that 
 constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size(): the ground classes and the open AIR plane (format 6)
 constexpr int64_t NAV_COUNT = 5; // World.NavMode.size()
 constexpr int64_t ARMOUR_COUNT = 4; // World.Armour.size()
+constexpr int32_t LAYER_GROUND = 1, LAYER_AIR = 2; // World.Layer (LOW_AIR is 4)
 
 // The World members and the targeting grid that SimKernels::targeting reads and writes.
 struct State {
@@ -38,7 +39,7 @@ struct State {
 	int64_t map_cols = 0, map_rows = 0;
 	int64_t cols = 0, rows = 0, cell_milli = 4000;
 	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall;
-	std::vector<int32_t> speed, armour, acquire, weapon, move_class, range, min_range, vs_armour;
+	std::vector<int32_t> speed, armour, acquire, weapon, move_class, layer_bit, range, min_range, vs_armour, targets;
 	std::vector<uint8_t> move_cost;
 	std::vector<int32_t> head, next;
 	targeting::Fog fog; // the sides and the player count of World.fog; `visible` is the vector below
@@ -92,10 +93,12 @@ targeting::Counts call(State &state) {
 	types.acquire = cview(state.acquire);
 	types.weapon = cview(state.weapon);
 	types.move_class = cview(state.move_class);
+	types.layer_bit = cview(state.layer_bit);
 	targeting::Weapons weapons;
 	weapons.range = cview(state.range);
 	weapons.min_range = cview(state.min_range);
 	weapons.vs_armour = cview(state.vs_armour);
+	weapons.targets = cview(state.targets);
 	targeting::Grid grid;
 	grid.cols = state.cols;
 	grid.rows = state.rows;
@@ -176,6 +179,9 @@ State from_dump(const Dump &dump) {
 	for (const auto &column : columns) {
 		(state.*column.column) = dump.ints(column.name);
 	}
+	// The layer tables (P238) are in the dumps of format 6 on; an older dump gets ground masks, like a padded weapon.
+	state.layer_bit = dump.has_ints("world.type_layer_bit") ? dump.ints("world.type_layer_bit") : std::vector<int32_t>(state.armour.size(), LAYER_GROUND);
+	state.targets = dump.has_ints("world.weapon_targets") ? dump.ints("world.weapon_targets") : std::vector<int32_t>(state.range.size(), LAYER_GROUND);
 	state.move_cost = dump.bytes("world.move_cost");
 	state.visible = dump.ints("fog.visible");
 	state.fog.cols = dump.scalar("fog.cols");
@@ -197,10 +203,10 @@ State from_dump(const Dump &dump) {
 		}
 	}
 	const size_t types = state.armour.size();
-	if (state.speed.size() != types || state.acquire.size() != types || state.weapon.size() != types || state.move_class.size() != types) {
+	if (state.speed.size() != types || state.acquire.size() != types || state.weapon.size() != types || state.move_class.size() != types || state.layer_bit.size() != types) {
 		throw std::runtime_error("a type table of the dump does not have one entry per type");
 	}
-	if (state.min_range.size() != state.range.size() || state.vs_armour.size() != state.range.size() * static_cast<size_t>(ARMOUR_COUNT)) {
+	if (state.min_range.size() != state.range.size() || state.targets.size() != state.range.size() || state.vs_armour.size() != state.range.size() * static_cast<size_t>(ARMOUR_COUNT)) {
 		throw std::runtime_error("a weapon table of the dump does not have one entry per weapon (four percents each)");
 	}
 	if (static_cast<int64_t>(state.move_cost.size()) != (dump.format >= 6 ? MOVE_CLASSES : GROUND_CLASSES) * state.map_cols * state.map_rows) {
@@ -285,6 +291,14 @@ void on_dump(const Dump &dump, Tally &tally) {
 		std::fill(state.weapon.begin(), state.weapon.end(), weapon);
 		play(state, tally, "weapons");
 	}
+	// Every weapon mask in each of the ways it can be: none, the air layers only, every bit, and bits no layer has.
+	for (const int32_t mask : { 0, 2, 7, INT32_MAX, -1, INT32_MIN }) {
+		State state = base;
+		state.rules.retarget_period_ticks = 1;
+		state.rules.line_check_period_ticks = 1;
+		std::fill(state.targets.begin(), state.targets.end(), mask);
+		play(state, tally, "weapon masks");
+	}
 	for (const int64_t side : { int64_t(500), int64_t(3000), int64_t(7000), int64_t(64000) }) {
 		State state = regridded(base, side);
 		state.rules.retarget_period_ticks = 1;
@@ -337,7 +351,9 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
 	state.acquire = { 5000, 5500, 6000, 3000 };
 	state.weapon = { 0, 1, 2, -1 };
 	state.move_class = { 0, 1, 2, 3 };
+	state.layer_bit = { LAYER_GROUND, LAYER_GROUND, LAYER_GROUND, LAYER_AIR }; // the AIR type is an aircraft
 	state.range = { 4000, 5000, 4500 };
+	state.targets = { LAYER_GROUND, LAYER_GROUND, LAYER_GROUND | LAYER_AIR }; // weapon 2 may also hit aircraft
 	state.min_range = { 0, 1000, 2000 };
 	state.vs_armour = { 100, 10, 0, 40, 20, 100, 50, 0, 70, 60, 80, 100 };
 	state.head.assign(static_cast<size_t>(state.cols * state.rows), -1);
@@ -436,6 +452,8 @@ void range_edges(Tally &tally) {
 	corners.acquire = { static_cast<int32_t>(TOP) };
 	corners.weapon = { 0 };
 	corners.move_class = { 0 };
+	corners.layer_bit = { LAYER_GROUND };
+	corners.targets = { LAYER_GROUND };
 	corners.range = { static_cast<int32_t>(TOP) };
 	corners.min_range = { static_cast<int32_t>(EDGE) };
 	corners.vs_armour = { 100, 100, 100, 100 };
@@ -505,6 +523,10 @@ void hostile_references(Tally &tally) {
 			state.armour[type] = hostile[(type + 2 * shift) % std::size(hostile)];
 			state.speed[type] = hostile[(type + 6 * shift) % std::size(hostile)];
 			state.move_class[type] = hostile[(type + 4 * shift) % std::size(hostile)];
+			state.layer_bit[type] = hostile[(type + 7 * shift) % std::size(hostile)];
+		}
+		for (size_t weapon = 0; weapon < state.targets.size(); weapon++) {
+			state.targets[weapon] = hostile[(weapon + 3 * shift) % std::size(hostile)];
 		}
 		rebuild(state);
 		for (size_t cell = 0; cell < state.head.size(); cell += 3) {
@@ -639,9 +661,52 @@ void attack_goals(Tally &tally) {
 	}
 }
 
+// The refusal path of the layer test (P238, ADR 0036 section 5): a ground-only weapon (type 0, weapon 0) in range of an
+// aircraft (type 3, layer AIR) does not keep a lock on it, while the same weapon on a ground unit acquires it, and a weapon
+// whose mask holds AIR (type 2, weapon 2) takes the aircraft. The targets stand 2000 from the shooters, in sight of both. The
+// first run checks the lock refusal (row 5) and these picks; a second run with every mask 0 checks the acquisition refusal:
+// nothing is taken. The answer needs no second implementation.
+void layer_refusal(Tally &tally) {
+	Stream stream = { 23 };
+	State state = make_scene(stream, 12, 8, 0);
+	state.visible.assign(state.visible.size(), 1); // every cell is seen
+	state.rules = { 0, 1, 1 }; // every row is on its turn
+	state.weapon = { 0, 1, 2, -1 };
+	// Rows 1 and 2: player 1's ground-only gun (type 0) and its anti-air gun (type 2). Row 3: a ground unit (type 0), row 4:
+	// an aircraft (type 3) of player 2, both 2000 from the shooters. Rows 1 and 2 are idle, so they acquire.
+	add_row(state, 1, 0, 1500, 1500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	add_row(state, 1, 2, 1500, 5500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	add_row(state, 2, 0, 3500, 1500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	add_row(state, 2, 3, 3500, 5500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
+	// Row 5: an ATTACK lock of a ground-only gun on the aircraft, which the lock must drop.
+	add_row(state, 1, 0, 1500, 5700, 0, 0, static_cast<int32_t>(ORDER_ATTACK), 4);
+	state.next.assign(state.unit_id.size() + 8, -1);
+	play(state, tally, "layer refusal");
+	if (state.target[0] != 3) {
+		throw Finding("targeting: layer refusal: a ground gun did not take the ground unit");
+	}
+	if (state.target[1] != 4) {
+		throw Finding("targeting: layer refusal: a gun that may hit the AIR layer did not take the aircraft");
+	}
+	if (state.target[4] == 4) {
+		throw Finding("targeting: layer refusal: a ground gun kept a lock on an aircraft");
+	}
+	// With every mask 0 nothing can be hit at all.
+	State none = state;
+	std::fill(none.targets.begin(), none.targets.end(), 0);
+	std::fill(none.target.begin(), none.target.end(), 0);
+	play(none, tally, "layer refusal, no masks");
+	for (const int32_t held : none.target) {
+		if (held != 0) {
+			throw Finding("targeting: layer refusal: a weapon with an empty mask took a target");
+		}
+	}
+}
+
 void crafted(Tally &tally) {
 	random_scenes(tally);
 	attack_goals(tally);
+	layer_refusal(tally);
 	no_cells(tally);
 	range_edges(tally);
 	hostile_references(tally);

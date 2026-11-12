@@ -21,9 +21,10 @@ extends SceneTree
 ##   u8 kind ('S' one int64, 'I' int32 array, 'B' byte array), u16 name length, name (ASCII),
 ##   u64 count (1 for 'S'), payload (count int64, int32 or bytes).
 ## Format 6 (P232, ADR 0036) changes no record name: `world.move_cost` holds four lists (foot,
-## wheeled, tracked and the open AIR plane) and `flow.classes` is 4. `type_layer_bit` and
-## `weapon_targets` are in the kernels' checked table but no kernel reads them yet, so nothing is
-## dumped for them.
+## wheeled, tracked and the open AIR plane) and `flow.classes` is 4. P238 (ADR 0036 section 5):
+## TARGETING reads `type_layer_bit` and `weapon_targets`, so they are dumped as the records
+## world.type_layer_bit and world.weapon_targets (I); the harness reads a dump without them as
+## ground masks.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)
@@ -52,7 +53,8 @@ extends SceneTree
 ## _write_targeting:
 ##   world.retarget_period_ticks, target.cols, target.rows, target.cell_milli (S);
 ##   world.owner, .order_target, .target, .type_armour, .type_acquire, .type_weapon,
-##   .weapon_range, .weapon_min_range, .weapon_vs_armour, target.head, target.next (I). The
+##   .weapon_range, .weapon_min_range, .weapon_vs_armour, .type_layer_bit, .weapon_targets,
+##   target.head, target.next (I). The
 ##   target.* records are a grid built afresh from the dumped positions, as the sep.* ones are.
 ##
 ## The FOG kernel (P46n) reads the unit_id, owner, type_index, pos_x, pos_y and tick records of the
@@ -122,7 +124,9 @@ const TARGETING_COLUMNS: Array[StringName] = [
 	&"type_weapon",
 	&"weapon_range",
 	&"weapon_min_range",
-	&"weapon_vs_armour"
+	&"weapon_vs_armour",
+	&"type_layer_bit",
+	&"weapon_targets"
 ]
 ## The FogGrid members that the FOG kernel reads or writes: its sizes, and its Packed int32 arrays
 ## (the visible counts, the version, the dirty lists and the masks).

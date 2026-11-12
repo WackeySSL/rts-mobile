@@ -76,12 +76,14 @@ extends RefCounted
 ## (`strike_tick` 0; the point stays, for the view's crater) and every row whose position is within
 ## the radius of the point, own rows and neutral ones included, by squared distance and in ascending
 ## row order, loses the weapon's damage times its percent against the row's armour, like a shot
-## (`Combat.fire`: at least 1, none when the percent is 0). The rows only lose `hp` here and die at
-## this tick's REMOVE, exactly as a row killed by a shot: `FogUpdate.begin` has run, so the unstamp
-## lands in the owner's dirty list of this tick, ECONOMY's `Power.run` sums power without them,
-## PRODUCTION's `Outcome.run` sees a ruptured producer gone, so its kills count for defeat on the
-## same tick, and no ruptured row takes part in the next tick. A rupture in the air is not recalled
-## by the loss of its building, a surrender or a defeat of its player.
+## (`Combat.fire`: at least 1, none when the percent is 0); a row on a layer the strike
+## weapon cannot hit (`weapon_targets & type_layer_bit`, P238: the shipped rupture is ground only,
+## so air and low air rows are skipped); the blackout is unchanged. The rows only lose `hp` here
+## and die at this tick's REMOVE, exactly as a row killed by a shot: `FogUpdate.begin` has run, so
+## the unstamp lands in the owner's dirty list of this tick, ECONOMY's `Power.run` sums power
+## without them, PRODUCTION's `Outcome.run` sees a ruptured producer gone, so its kills count for
+## defeat on the same tick, and no ruptured row takes part in the next tick. A pending rupture is
+## not recalled by the loss of its building, a surrender or a defeat of its player.
 ##
 ## Which strike: the pending strike stores no type (ADR 0023 section 10's layout), so the landing
 ## reads the radius and the weapon from `rupture_type`, the first type of kind RUPTURE. The shipped
@@ -212,7 +214,7 @@ static func _land(world: World, player: int) -> void:
 	if type < 0:
 		return
 	var weapon: int = world.type_strike_weapon[type]
-	if weapon < 0 or weapon >= world.weapon_damage.size():
+	if weapon < 0 or weapon >= world.weapon_damage.size() or weapon >= world.weapon_targets.size():
 		return
 	var radius: int = world.type_strike_radius[type]
 	var reach: int = radius * radius
@@ -224,11 +226,15 @@ static func _land(world: World, player: int) -> void:
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
 	var hit_points: PackedInt32Array = world.hp
+	var layer_bit: PackedInt32Array = world.type_layer_bit
+	var hits: int = world.weapon_targets[weapon]
 	for row: int in hit_points.size():
 		var dx: int = pos_x[row] - point_x
 		var dy: int = pos_y[row] - point_y
 		if dx * dx + dy * dy > reach:
 			continue
+		if (hits & layer_bit[types[row]]) == 0:
+			continue  # The strike weapon's layers (ADR 0036 section 5: ground only, so air is skipped).
 		var percent: int = percent_of[percents + armour_of[types[row]]]
 		if percent > 0:
 			hit_points[row] -= maxi(1, damage * percent / Combat.PERCENT)

@@ -12,7 +12,8 @@
 // tests/sim/test_fog_rules_shapes.gd (wide and tall maps); lockstep (P41n2, P46b): test_targeting_lockstep.gd (the arena, random
 // waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the weapon roster, 64 x 64 maps, the empty grid), _cases.gd
 // (ties on a lattice, fallbacks, seeded random states, the vision cases) and _fog.gd (fogs whose sides do not make their cells, the
-// fog's player count, a layout other than the map's) in tests/sim/native/. MIT.
+// fog's player count, a layout other than the map's) in tests/sim/native/; aircraft rows and every weapon mask (P238):
+// test_targeting_lockstep_layers.gd there and tests/sim/test_target_layers.gd under both implementations. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -55,6 +56,8 @@ void SimKernels::targeting(Object *world) const {
 	const Borrowed<const int32_t> weapon_range = access.read_i32(world, ID_WORLD_weapon_range);
 	const Borrowed<const int32_t> weapon_min_range = access.read_i32(world, ID_WORLD_weapon_min_range);
 	const Borrowed<const int32_t> weapon_vs_armour = access.read_i32(world, ID_WORLD_weapon_vs_armour);
+	const Borrowed<const int32_t> type_layer_bit = access.read_i32(world, ID_WORLD_type_layer_bit);
+	const Borrowed<const int32_t> weapon_targets = access.read_i32(world, ID_WORLD_weapon_targets);
 	const Borrowed<const uint8_t> move_cost = access.read_bytes(world, ID_WORLD_move_cost);
 	const Borrowed<const int32_t> head = access.read_i32(grid, ID_TARGET_head);
 	const Borrowed<const int32_t> next = access.read_i32(grid, ID_TARGET_next);
@@ -95,10 +98,12 @@ void SimKernels::targeting(Object *world) const {
 	types.acquire = type_acquire.view;
 	types.weapon = type_weapon.view;
 	types.move_class = type_move_class.view;
+	types.layer_bit = type_layer_bit.view;
 	targeting::Weapons weapons;
 	weapons.range = weapon_range.view;
 	weapons.min_range = weapon_min_range.view;
 	weapons.vs_armour = weapon_vs_armour.view;
+	weapons.targets = weapon_targets.view;
 	targeting::Grid cells;
 	cells.cols = access.int_in(grid, ID_TARGET_cols);
 	cells.rows = access.int_in(grid, ID_TARGET_rows);

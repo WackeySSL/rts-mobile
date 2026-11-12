@@ -12,6 +12,9 @@
 // float. Rule values come in through `Rules`, `Types`, `Weapons`, the grid and the fog, read from the World by the bind layer.
 // The grid is the one the GDScript rebuild wrote this tick (SpatialGrid, `head` per cell and `next` per row): the pass never
 // rebuilds it.
+// Layers (P238, ADR 0036 section 5): a weapon may hit a row when `weapon_targets & type_layer_bit` is not 0. The test comes in the
+// scan after the damage percent and before the sight, on a held target beside its percent, and in the ATTACK lock, where a lock on
+// a row the weapon cannot hit falls back to ATTACK_MOVE like an unseen one; an unarmed type has no mask and locks any enemy.
 // Twin: game/sim/Targeting.gd (run, sees, _engage) and game/sim/Movement.gd (reset_row), in the twin's row order, so that the
 // full state matches after every call. Tests: tests/sim/test_targeting*.gd and test_engagement*.gd under both implementations,
 // tests/sim/test_fog_rules.gd (the vision rule), tests/sim/native/test_targeting_kernel.gd (the names, the in-place writes, the
@@ -20,7 +23,8 @@
 // told apart) and test_targeting_kernel_lines.gd (line_clear); the lockstep of P41n2 (the 900-tick arena, random waves, the
 // controls_test seeds, changed rules, the cadences, the weapon roster, 64 x 64 maps, the empty grid, ties on a lattice,
 // fallbacks and seeded random states): tests/sim/native/test_targeting_lockstep.gd, _rules.gd and _cases.gd; the vision rule of
-// P46b on fogs that configure() never makes, the fog's player count and a layout other than the map's: _fog.gd. MIT.
+// P46b on fogs that configure() never makes, the fog's player count and a layout other than the map's: _fog.gd; aircraft rows and every weapon mask (P238, ADR 0036 section 5): tests/sim/test_target_layers.gd under both
+// implementations and tests/sim/native/test_targeting_lockstep_layers.gd. MIT.
 //
 // Range. The pass is exact in int64 while the positions stay within 10^9 milli-tiles of the origin in both axes (a million
 // tiles; a map is a few hundred), so that d2 = dx*dx + dy*dy of any two units stays below 2^63 (at most 8 * 10^18), and while
@@ -48,15 +52,17 @@ struct Rows {
 };
 
 // The per-type tables (World.type_*): the speed (a target of speed 0 keeps the goal an ATTACK gave the row: P71b), the armour
-// class, the acquire range, the weapon index (negative for none) and the movement class.
+// class, the acquire range, the weapon index (negative for none), the movement class and the layer bit (World.Layer: 1 ground,
+// 2 air, 4 low air; P238).
 struct Types {
-	ArrayView<const int32_t> speed, armour, acquire, weapon, move_class;
+	ArrayView<const int32_t> speed, armour, acquire, weapon, move_class, layer_bit;
 };
 
 // The weapon tables (World.weapon_*): the range and minimum range per weapon, and four percents per weapon, one for each
-// armour class.
+// armour class, and the layer mask of each weapon (`targets`: it may hit a row when `targets & layer_bit` is not 0; P238, ADR 0036
+// section 5).
 struct Weapons {
-	ArrayView<const int32_t> range, min_range, vs_armour;
+	ArrayView<const int32_t> range, min_range, vs_armour, targets;
 };
 
 // World.target_grid as the pass reads it: cells per row and rows of cells, the side of a cell in milli-tiles, `head` per cell

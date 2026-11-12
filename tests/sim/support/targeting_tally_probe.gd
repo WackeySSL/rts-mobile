@@ -18,9 +18,11 @@ extends SimProbe
 ## to both Targeting versions (a unit acts only on an enemy that its player sees) is in count() too,
 ## worked out through FogGrid.is_visible and World.cell_of and not through Targeting.sees or the
 ## kernel's lookup; a probe that left it out would get a different pick wherever the rule changes
-## one, and the mismatch names the row. The mismatch check does not see a rule that changes no pick
-## in the cases that run, so the tallies `unseen`, `sight_lost` and `sight_drops` count the times
-## the rule refused something, and the suites hold them above a floor.
+## one, and the mismatch names the row. The layer test of P238 (a weapon hits a row when
+## `weapon_targets & type_layer_bit` is not 0) is in count() as well, for a candidate, a held target
+## and the ATTACK lock (an unarmed type has no mask). The mismatch check does not see a rule that
+## changes no pick in the cases that run, so the tallies `unseen`, `sight_lost` and `sight_drops`
+## count the times the rule refused something, and the suites hold them above a floor.
 
 ## The names of the counts (each starts at 0); see count() for what each one holds.
 const NAMES: Array[StringName] = [
@@ -119,18 +121,18 @@ func before() -> void:
 
 ## Adds one TARGETING phase of `world` (before() taken, the phase run) to `tally`. ticks: phases;
 ## rows: rows in the table. Acquisition: locked: ATTACK rows that locked their target; fallbacks:
-## ATTACK rows whose target is gone, no enemy or not seen, which fell back to ATTACK_MOVE; dropped:
-## rows of
+## ATTACK rows whose target is gone, no enemy, on a layer the weapon cannot hit or not seen, which
+## fell back to ATTACK_MOVE; dropped: rows of
 ## another order (MOVE) that held a target; unarmed: rows on their turn whose weapon index is out of
 ## the tables; due: rows that scan or keep (an armed ATTACK_MOVE or IDLE row on its turn); kept: of
 ## those, rows that kept their target; scans: the others (on a grid with cells); found and empty:
 ## scans that took a target or none; looks: rows looked at (the phase's own count); cands: of those,
-## enemies in range with a damage percent above 0 that the row's player sees; unseen: enemies in
-## range with a damage percent that the player does not see (refused for that alone); sight_lost:
-## of the fallbacks, ATTACK rows whose target is an enemy that exists but is not seen; sight_drops:
-## due rows whose held target is an enemy in reach with a damage percent that is not seen (they
-## scan instead of keeping it); nearer_wins: a candidate that beat the best so
-## far by a smaller distance at the same percent; farther_wins: by a better percent from farther
+## enemies in range with a damage percent above 0 on a layer the weapon hits that the row's player
+## sees; unseen: enemies in range with a damage percent that the player does not see (refused for
+## that alone); sight_lost: of the fallbacks, ATTACK rows whose target is an enemy that exists but
+## is not seen; sight_drops: due rows whose held target is an enemy in reach with a damage percent
+## that is not seen (they scan instead of keeping it); nearer_wins: a candidate that beat the best
+## so far by a smaller distance at the same percent; farther_wins: by a better percent from farther
 ## away; ties: a candidate at the same percent and the same squared distance as the best so far
 ## (the lower row wins; a candidate at a lower percent is no tie, whatever its distance); tie_swaps:
 ## of those, ones where the lower row was met after the higher one (the grid is not visited in row
@@ -166,6 +168,8 @@ func count() -> void:
 	var weapon_range: PackedInt32Array = world.weapon_range
 	var weapon_min_range: PackedInt32Array = world.weapon_min_range
 	var weapon_vs: PackedInt32Array = world.weapon_vs_armour
+	var weapon_hits: PackedInt32Array = world.weapon_targets
+	var layer_bit: PackedInt32Array = world.type_layer_bit
 	var grid: SpatialGrid = world.target_grid
 	var heads: PackedInt32Array = grid.head
 	var links: PackedInt32Array = grid.next
@@ -186,8 +190,18 @@ func count() -> void:
 		if order == ATTACK:
 			var locked: int = _order_targets[row]
 			var at: int = ids.bsearch(locked)
+			var lock_weapon: int = type_weapon[types[row]]
+			# The layer test of P238: an unarmed type has no mask and locks any enemy.
 			var enemy: bool = (
-				at < rows and ids[at] == locked and owners[at] != owners[row] and owners[at] != 0
+				at < rows
+				and ids[at] == locked
+				and owners[at] != owners[row]
+				and owners[at] != 0
+				and (
+					lock_weapon < 0
+					or lock_weapon >= weapon_range.size()
+					or (weapon_hits[lock_weapon] & layer_bit[types[at]]) != 0
+				)
 			)
 			if enemy and _sees(owners[row], pos_x[at], pos_y[at]):
 				tally[&"locked"] += 1
@@ -219,6 +233,7 @@ func count() -> void:
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
+		var hits: int = weapon_hits[weapon]
 		var own: int = owners[row]
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
@@ -229,7 +244,12 @@ func count() -> void:
 				var held_y: int = pos_y[at] - y
 				var held_d2: int = held_x * held_x + held_y * held_y
 				var held_percent: int = weapon_vs[vs_base + type_armour[types[at]]]
-				if held_d2 <= reach2 and held_d2 >= min2 and held_percent > 0:
+				if (
+					held_d2 <= reach2
+					and held_d2 >= min2
+					and held_percent > 0
+					and (hits & layer_bit[types[at]]) != 0
+				):
 					if _sees(own, pos_x[at], pos_y[at]):
 						tally[&"kept"] += 1
 						continue
@@ -266,6 +286,7 @@ func count() -> void:
 							and d2 <= reach2
 							and d2 >= min2
 							and percent > 0
+							and (hits & layer_bit[types[other]]) != 0
 						)
 						if in_reach and not _sees(own, other_x, other_y):
 							tally[&"unseen"] += 1
