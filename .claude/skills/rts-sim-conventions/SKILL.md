@@ -54,9 +54,8 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `Strike.apply_superweapon` from P110), ADR 0026 §6 `CANCEL_BUILD` 16 (P128b;
   `Production.apply_cancel_build`: an own row with `build_left` above 0, the refund and the cancel
   mark in COMMANDS), ADR 0037 §3 and §4 `SELL` 17 and `MEND` 18 (P271; `Production.apply_sell`,
-  `Mend.apply_mend`); `Sim._apply` gates each on an undefeated player
-  (`_playing`), and each stays dropped and counted until its row (P73-P76) fills its module's
-  `apply_*`. From P76 on, every Command is dropped once `match_end_tick` is above 0.
+  `Mend.apply_mend`). `Sim._apply` gates each on an undefeated player (`_playing`). From P76 on,
+  every Command is dropped once `match_end_tick` is above 0.
 - `MatchLoop` stamps tick and sequence and records the command; it is the only tick driver
   (runner, replays, perf test, headless matches).
 - Input and AI never touch entities directly.
