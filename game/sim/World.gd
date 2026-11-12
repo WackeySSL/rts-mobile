@@ -258,7 +258,7 @@ const GHOST_ARRAYS: Array[StringName] = [
 ## State that follows from the hashed state (ADR 0016), rebuilt when `rows_version` moves and in
 ## no hash section: the power totals per player and the ascending rows of buildings and harvesters.
 const DERIVED_ARRAYS: Array[StringName] = [
-	&"power_made", &"power_used", &"building_rows", &"harvester_rows", &"reveal_stamped"
+	&"power_made", &"power_used", &"building_rows", &"harvester_rows"
 ]
 ## The tile grid: the terrain index per cell, the move cost per class and cell, the cost per
 ## terrain and class that set_terrain copies into it, the buildable flag per terrain and the
@@ -693,9 +693,6 @@ var strike_tick: PackedInt32Array = PackedInt32Array()
 var reveal_site: PackedInt32Array = PackedInt32Array()
 var reveal: PackedInt32Array = PackedInt32Array()
 var upgrades: PackedInt32Array = PackedInt32Array()
-## Derived, per player (index 0 unused): 1 while the sweep's +1 is in `fog.visible` (`reveal` is 1),
-## else 0. `Reveal.run` keeps it, `WorldLoad.stamp_fog` rebuilds it (ADR 0036 section 11).
-var reveal_stamped: PackedInt32Array = PackedInt32Array()
 ## The ore units left, one per `ore_cell` entry.
 var ore_amount: PackedInt32Array = PackedInt32Array()
 ## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per

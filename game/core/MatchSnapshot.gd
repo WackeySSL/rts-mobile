@@ -126,7 +126,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"upgrade_types",
 	&"reveal_site",
 	&"reveal",
-	&"reveal_stamped",
 	&"upgrades",
 	&"goal_x",
 	&"goal_y",

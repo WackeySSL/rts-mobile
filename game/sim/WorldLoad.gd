@@ -432,7 +432,6 @@ static func size_match_state(world: World) -> void:
 	world.strike_tick.resize(players)
 	world.reveal_site.resize(players)
 	world.reveal.resize(players)
-	world.reveal_stamped.resize(players)
 	world.upgrades.resize(players)
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
@@ -536,12 +535,13 @@ static func stamp_fog(world: World) -> void:
 			var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 			fog.stamp(player, cell, mini(types[row], pad), 1)
 			stamped[row] = cell
-	# A sweep that stands (ADR 0036 section 11): its +1 is derived from the hashed `reveal`.
+	# A sweep that stands (ADR 0036 section 11): its +1 and its flag come from the hashed `reveal`
+	# alone, for every player, so a rebuild never depends on derived state.
 	var sweeps: PackedInt32Array = world.reveal
-	for player: int in range(1, mini(sweeps.size(), world.player_count + 1)):
-		if sweeps[player] == 1 and world.reveal_stamped[player] == 0:
+	for player: int in range(1, mini(sweeps.size(), fog.player_count + 1)):
+		fog.revealed[player - 1] = 0
+		if sweeps[player] == Reveal.State.ON:
 			fog.reveal(player, 1)
-			world.reveal_stamped[player] = 1
 
 
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()

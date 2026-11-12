@@ -1,7 +1,8 @@
 class_name Strike
 extends RefCounted
-## Superweapons (ADR 0023 section 10, plan rows P110 and P111): the charge of a strike building, the
-## SUPERWEAPON command, the Deep Bore's rupture and the Dusk Array's blackout.
+## Superweapons (ADR 0023 section 10, plan rows P110 and P111, and P233): the charge of a strike
+## building, the SUPERWEAPON command, the Deep Bore's rupture, the Dusk Array's blackout and the
+## space centre's map sweep (ADR 0036 section 11).
 ##
 ## Ticks. "Stamp" is `world.tick + 1`, the tick the step in progress produces (the stamp
 ## `defeated_tick` and `match_end_tick` carry). A command is applied in the step of its own `tick`.
@@ -35,20 +36,21 @@ extends RefCounted
 ## A REVEAL building (the space centre, ADR 0036 section 11) is also dropped while the player's
 ## `reveal_site` is set (one sweep per player; a second space centre is a spare) and while the
 ## player is on low power (`Power.is_low`, as `Reveal.run` reads it). A valid one sets
-## `reveal_site` to the building's id and `reveal` to 1, keeps `ready_tick` (one charge, no
-## recharge) and writes `[STRIKE, building id, 0, 0, 3, owner, 0, 0]`: no point, no landing.
-## `Reveal.run` stamps it in REMOVE.
+## `reveal_site` to the building's id and `reveal` to `Reveal.State.ON`, keeps `ready_tick` (one
+## charge, no recharge) and writes `[STRIKE, building id, 0, 0, 3, owner, 0, 0]`: no point, no
+## landing. `Reveal.run` stamps it in REMOVE.
 ##
-## A valid command clamps its point to the map as RALLY clamps its point (so that the squared
-## distances stay small and the point fits its int32 column) and sets the building's `ready_tick`
-## to stamp + `type_charge_ticks`. A RUPTURE then writes the player's pending strike,
+## A valid RUPTURE or BLACKOUT clamps its point to the map as RALLY clamps its point (so that the
+## squared distances stay small and the point fits its int32 column) and sets the building's
+## `ready_tick` to stamp + `type_charge_ticks`. A RUPTURE then writes the player's pending strike,
 ## `strike_tick = stamp + type_strike_delay` (a delay of 0 lands in the same step, right after
 ## FIRE's shots). A BLACKOUT works at once, in the apply itself: see below.
 ##
-## The STRIKE event (ADR 0027 section 7). A valid command, of either kind, also appends one record
+## The STRIKE event (ADR 0027 section 7). A valid command, of any kind, also appends one record
 ## to `events`, last of its apply: `[STRIKE, the building's id, point x, point y, kind, owner,
 ## landing tick, 0]`. The point is the clamped one the sim uses, `kind` is `Kind`, the landing tick
-## is the rupture's `strike_tick` and 0 for a blackout (it keeps no point and no landing). A dropped
+## is the rupture's `strike_tick` and 0 for a blackout and a sweep (they keep no landing; a REVEAL
+## record has point 0, 0). A dropped
 ## command writes none. The record sits in COMMANDS, in command order, so before this step's
 ## IMPACT, SHOT and DIED records. The view reads it for the launch and the fall of the strike; it is
 ## not state, so no hash covers it. No kernel writes events in COMMANDS.
@@ -158,7 +160,7 @@ static func _sweep(world: World, player: int, row: int) -> bool:
 	if world.reveal_site[player] != 0 or Power.is_low(world, player):
 		return false
 	world.reveal_site[player] = world.unit_id[row]
-	world.reveal[player] = 1
+	world.reveal[player] = Reveal.State.ON
 	_push_event(world, row, 0, 0, Kind.REVEAL, 0)
 	return true
 

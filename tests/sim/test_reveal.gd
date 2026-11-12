@@ -26,13 +26,19 @@ func _ready_world(impl: int) -> World:
 	return world
 
 
+## The player's stamp flag of the fog (`FogGrid.revealed`).
+func _flag(world: World, player: int) -> int:
+	return world.fog.revealed[player - 1]
+
+
 func _unexplored(world: World, player: int) -> int:
 	var base: int = (player - 1) * world.fog.cells
 	return world.fog.explored.slice(base, base + world.fog.cells).count(0)
 
 
-func test_the_kind_is_three() -> void:
+func test_the_kind_is_three_and_the_states_are_zero_one_two() -> void:
 	assert_int(Strike.Kind.REVEAL).is_equal(3)
+	assert_array([Reveal.State.OFF, Reveal.State.ON, Reveal.State.PAUSED]).is_equal([0, 1, 2])
 
 
 func test_a_sweep_turns_the_fog_off_for_its_owner_only(
@@ -45,17 +51,15 @@ func test_a_sweep_turns_the_fog_off_for_its_owner_only(
 	var other: PackedInt32Array = world.fog.visible.slice(world.fog.cells)
 	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
 	assert_int(world.dropped_commands).is_equal(0)
-	assert_array([world.reveal_site[1], world.reveal[1], world.reveal_stamped[1]]).is_equal(
+	assert_array([world.reveal_site[1], world.reveal[1], _flag(world, 1)]).is_equal(
 		[Reveals.SPACE_A, 1, 1]
 	)
-	assert_array([world.reveal_site[2], world.reveal[2], world.reveal_stamped[2]]).is_equal(
-		[0, 0, 0]
-	)
+	assert_array([world.reveal_site[2], world.reveal[2], _flag(world, 2)]).is_equal([0, 0, 0])
 	var own: PackedInt32Array = world.fog.visible.slice(0, world.fog.cells)
 	assert_int(own.count(0)).is_equal(0)
 	assert_int(_unexplored(world, 1)).is_equal(0)
 	assert_str(Derivation.mismatch(world)).is_empty()
-	assert_bool(world.fog.visible.slice(world.fog.cells) == other).is_true()
+	assert_array(Array(world.fog.visible.slice(world.fog.cells))).is_equal(Array(other))
 	# One charge, no recharge: the building keeps its ready tick, and no strike is pending.
 	assert_int(world.ready_tick[row]).is_equal(ready)
 	assert_int(world.strike_tick[1]).is_equal(0)
@@ -134,9 +138,7 @@ func test_destroying_the_site_ends_the_sweep_and_a_spare_may_fire(
 		assert_str(Derivation.mismatch(world)).is_empty()
 	world.hp[world.index_of(Reveals.SPACE_A)] = 0
 	Reveals.step(world)
-	assert_array([world.reveal_site[1], world.reveal[1], world.reveal_stamped[1]]).is_equal(
-		[0, 0, 0]
-	)
+	assert_array([world.reveal_site[1], world.reveal[1], _flag(world, 1)]).is_equal([0, 0, 0])
 	assert_str(Derivation.mismatch(world)).is_empty()
 	assert_int(world.fog.visible.slice(0, world.fog.cells).count(0)).is_greater(0)
 	assert_int(_unexplored(world, 1)).is_equal(0)
@@ -169,7 +171,7 @@ func test_a_blackout_pauses_the_sweep_and_it_resumes_by_itself(
 	for _i: int in 110:
 		var want: int = 2 if world.offline_until[row] > world.tick else 1
 		assert_int(world.reveal[1]).is_equal(want)
-		assert_int(world.reveal_stamped[1]).is_equal(1 if want == 1 else 0)
+		assert_int(_flag(world, 1)).is_equal(1 if want == 1 else 0)
 		assert_str(Derivation.mismatch(world)).is_empty()
 		assert_int(PlayerView.of(world, 2).reveal_state[1]).is_equal(want)
 		seen[want] = seen.get(want, 0) + 1
@@ -219,7 +221,7 @@ func test_low_power_pauses_the_sweep_and_drops_a_fire(
 		var want: int = 2 if low else 1
 		seen[want] = seen.get(want, 0) + 1
 		assert_int(world.reveal[1]).is_equal(want)
-		assert_int(world.reveal_stamped[1]).is_equal(1 if want == 1 else 0)
+		assert_int(_flag(world, 1)).is_equal(1 if want == 1 else 0)
 		assert_str(Derivation.mismatch(world)).is_empty()
 	assert_int(seen.get(2, 0)).is_greater(0)
 	assert_int(seen.get(1, 0)).is_greater(0)
@@ -250,9 +252,8 @@ func test_a_rebuild_across_a_pause_equals_the_live_fog(
 				)
 			Reveals.step(each, commands)
 		assert_array(world.hash_parts()).is_equal(twin.hash_parts())
-		if at % 10 == 9 or at == 5:
-			states[world.reveal[1]] = states.get(world.reveal[1], 0) + 1
-			assert_array(_rebuilt(world)).is_equal(Array(world.fog.visible))
+		states[world.reveal[1]] = states.get(world.reveal[1], 0) + 1
+		assert_array(_rebuilt(world)).is_equal(Array(world.fog.visible))
 	assert_bool(states.has(1) and states.has(2)).is_true()
 	world.hp[world.index_of(Reveals.SPACE_A)] = 0
 	Reveals.step(world)
@@ -260,44 +261,51 @@ func test_a_rebuild_across_a_pause_equals_the_live_fog(
 	assert_array(_rebuilt(world)).is_equal(Array(world.fog.visible))
 
 
-## `visible` as a fresh World would stamp it: a copy of the fog reset and `WorldLoad.stamp_fog` run
-## again over the rows and the `reveal` of the World, which is what `prepare` does. The World is
-## left as it was.
+## `visible` as a fresh World would stamp it: a new fog grid and `WorldLoad.stamp_fog` run again
+## over the rows and the `reveal` of the World, which is what `prepare` does, with the flag it
+## wrote checked against `reveal`. The World is left as it was.
 func _rebuilt(world: World) -> Array:
 	var live: FogGrid = world.fog
-	var kept_stamps: PackedInt32Array = world.reveal_stamped.duplicate()
 	var kept_cells: PackedInt32Array = world.fog_cell.duplicate()
 	var fresh: FogGrid = FogGrid.new()
 	fresh.configure(live.cols, live.rows, live.player_count)
 	world.fog = fresh
-	world.reveal_stamped.fill(0)
 	WorldLoad.stamp_fog(world)
+	for player: int in range(1, world.reveal.size()):
+		var want: int = 1 if world.reveal[player] == Reveal.State.ON else 0
+		assert_int(fresh.revealed[player - 1]).is_equal(want)
 	var rebuilt: Array = Array(fresh.visible)
 	world.fog = live
-	world.reveal_stamped = kept_stamps
 	world.fog_cell = kept_cells
 	return rebuilt
 
 
 func test_reveal_state_is_public_and_a_copy() -> void:
 	var world: World = _ready_world(SimImpls.Impl.GDSCRIPT)
-	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_B)])
 	var view: PlayerView = PlayerView.of(world, 2)
 	assert_int(view.reveal_state.size()).is_equal(3)
 	assert_array(Array(view.reveal_state)).is_equal([0, 1, 0])
 	assert_int(PlayerView.of(world, 1).reveal_state[1]).is_equal(1)
-	world.reveal[1] = 2
+	world.reveal[1] = Reveal.State.PAUSED
 	assert_int(view.reveal_state[1]).is_equal(1)
+	assert_int(PlayerView.of(world, 2).reveal_state[1]).is_equal(2)
 
 
-func test_the_derived_stamp_is_out_of_the_hash_and_the_snapshot() -> void:
-	assert_bool(World.DERIVED_ARRAYS.has(&"reveal_stamped")).is_true()
+func test_the_flag_is_fog_state_out_of_the_hash_and_copied_with_the_fog() -> void:
+	assert_bool(FogGrid.UNHASHED.has(&"revealed")).is_true()
 	var world: World = _ready_world(SimImpls.Impl.GDSCRIPT)
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
+	var copy: FogGrid = FogGrid.new()
+	world.fog.copy_into(copy)
+	assert_array(Array(copy.revealed)).is_equal([1, 0])
+	copy.revealed[0] = 0
+	assert_int(_flag(world, 1)).is_equal(1)
 	var before: PackedInt64Array = world.hash_parts()
-	world.reveal_stamped[1] = 1
+	world.fog.revealed[0] = 0
 	assert_array(world.hash_parts()).is_equal(before)
-	world.reveal_stamped[1] = 0
-	world.reveal[1] = 1
+	world.fog.revealed[0] = 1
+	world.reveal[1] = Reveal.State.OFF
 	assert_array(world.hash_parts()).is_not_equal(before)
 
 
@@ -306,5 +314,60 @@ func test_a_world_without_a_sweep_runs_the_step_unchanged() -> void:
 	for _i: int in 30:
 		Reveals.step(world)
 	assert_array(Array(world.reveal)).is_equal([0, 0, 0])
-	assert_array(Array(world.reveal_stamped)).is_equal([0, 0, 0])
+	assert_array(Array(world.fog.revealed)).is_equal([0, 0])
+	assert_str(Derivation.mismatch(world)).is_empty()
+
+
+## The last player's sweep (the AI's in a 1v1): player 2 fires its own space centre and the state,
+## the flag and the counts follow, as player 1's did; player 1 is untouched.
+func test_the_last_players_sweep_is_stamped_too(impl: int, _test_parameters := _both()) -> void:
+	var world: World = Reveals.world()
+	assert_array(SimImpls.use(world, impl)).is_empty()
+	while world.tick < Reveals.fire_tick(world, Reveals.SPACE_2):
+		Reveals.step(world)
+	assert_int(_unexplored(world, 2)).is_greater(0)
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_2, 2)])
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_array([world.reveal_site[2], world.reveal[2], _flag(world, 2)]).is_equal(
+		[Reveals.SPACE_2, 1, 1]
+	)
+	assert_array([world.reveal_site[1], world.reveal[1], _flag(world, 1)]).is_equal([0, 0, 0])
+	assert_int(world.fog.visible.slice(world.fog.cells).count(0)).is_equal(0)
+	assert_int(_unexplored(world, 2)).is_equal(0)
+	assert_str(Derivation.mismatch(world)).is_empty()
+	world.hp[world.index_of(Reveals.SPACE_2)] = 0
+	Reveals.step(world)
+	assert_array([world.reveal_site[2], world.reveal[2], _flag(world, 2)]).is_equal([0, 0, 0])
+	assert_str(Derivation.mismatch(world)).is_empty()
+
+
+## The drop and end rules of kind 3, each on its own: a blacked-out centre and one under
+## construction cannot fire, a sale of the site ends the sweep, and damage that leaves the site
+## standing changes nothing.
+func test_a_blacked_out_or_unfinished_centre_cannot_fire() -> void:
+	var world: World = _ready_world(SimImpls.Impl.GDSCRIPT)
+	Reveals.step(world, [Reveals.fire(Reveals.ARRAY_2, 2, Reveals.OVER_A)])
+	assert_int(world.offline_until[world.index_of(Reveals.SPACE_A)]).is_greater(world.tick)
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
+	assert_array([world.dropped_commands, world.reveal[1]]).is_equal([1, 0])
+	world.build_left[world.index_of(Reveals.SPACE_B)] = 100
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_B)])
+	assert_array([world.dropped_commands, world.reveal[1]]).is_equal([2, 0])
+	assert_int(world.events.size()).is_equal(0)
+
+
+func test_selling_the_site_ends_the_sweep_and_damage_does_not() -> void:
+	var world: World = _ready_world(SimImpls.Impl.GDSCRIPT)
+	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
+	var row: int = world.index_of(Reveals.SPACE_A)
+	world.hp[row] -= world.hp[row] / 2
+	Reveals.step(world)
+	Reveals.step(world)
+	assert_array([world.reveal[1], _flag(world, 1)]).is_equal([1, 1])
+	Reveals.step(world, [Command.sell(1, Reveals.SPACE_A)])
+	for _i: int in 3:
+		Reveals.step(world)
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_int(world.index_of(Reveals.SPACE_A)).is_equal(-1)
+	assert_array([world.reveal_site[1], world.reveal[1], _flag(world, 1)]).is_equal([0, 0, 0])
 	assert_str(Derivation.mismatch(world)).is_empty()

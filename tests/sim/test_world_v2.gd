@@ -61,9 +61,7 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	assert_array(World.ORE_ARRAYS).is_equal(["ore_amount"])
 	var ghosts: Array[String] = ["ghost_id", "ghost_type", "ghost_owner", "ghost_cell"]
 	assert_array(World.GHOST_ARRAYS).is_equal(ghosts + ["ghost_count"])
-	var derived: Array[String] = [
-		"power_made", "power_used", "building_rows", "harvester_rows", "reveal_stamped"
-	]
+	var derived: Array[String] = ["power_made", "power_used", "building_rows", "harvester_rows"]
 	assert_array(World.DERIVED_ARRAYS).is_equal(derived)
 	assert_array(World.HASHED_SCALARS.slice(-2)).is_equal(["match_end_tick", "winner"])
 	var sections: PackedStringArray = World.hash_section_names()

@@ -9,7 +9,12 @@ extends RefCounted
 ## (6, 2)), its rupture building `BORE` (charge 40, at (10, 2)), its headquarters `HQ_1` at (2, 8),
 ## its power plant `PLANT` (100 made) at (6, 8) and its blackout building `ARRAY_1` (charge 30) at
 ## (14, 8); player 2's headquarters `HQ_2` at (24, 14) and its blackout building `ARRAY_2` (charge
-## 30, radius 4000, 90 ticks) at (24, 2). `drain()` adds a building of player 1 that uses 200
+## 30, radius 4000, 90 ticks) at (24, 2) and its own space centre `SPACE_2` (charge 40) at (14, 2).
+## `armed_world()` adds player 1's tank `TANK` (sight 2 tiles, acquire 6, range 5, at (20.5, 9.5))
+## and player 2's sturdy unit `DUMMY` at (24.5, 9.5): 4 tiles from the tank, outside the sight of
+## every player 1 row, and with no player 2 building within 7 tiles of the tank, so only a sweep
+## shows it.
+## `drain()` adds a building of player 1 that uses 200
 ## power, which puts it on low power from the end of the step that follows.
 
 const TargetingRig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
@@ -24,6 +29,9 @@ const PLANT: int = 5
 const ARRAY_1: int = 6
 const HQ_2: int = 7
 const ARRAY_2: int = 8
+const SPACE_2: int = 9
+const TANK: int = 10
+const DUMMY: int = 11
 ## A point 2 tiles from the centre of SPACE_A and 6 from SPACE_B: ARRAY_2's blackout there takes
 ## SPACE_A offline and leaves SPACE_B.
 const OVER_A: Vector2i = Vector2i(1500, 3500)
@@ -36,7 +44,9 @@ static func world() -> World:
 		_building("hq", 3, 0, 0),
 		_building("plant", 3, 0, 0),
 		_building("array", 3, 30, 2),
-		_building("drain", 1, 0, 0)
+		_building("drain", 1, 0, 0),
+		TargetingRig.unit(&"tank", 2000, 6000, 5000, 0, [100, 100, 100, 100]),
+		_sturdy(TargetingRig.unit(&"dummy", 1000, 0, 0, 0, []))
 	]
 	units[2].produces = World.Tab.STRUCTURES
 	units[3].power = 100
@@ -54,6 +64,16 @@ static func world() -> World:
 	made.add_building(1, type_of(made, "array"), 14, 8)
 	made.add_building(2, type_of(made, "hq"), 24, 14)
 	made.add_building(2, type_of(made, "array"), 24, 2)
+	made.add_building(2, type_of(made, "space"), 14, 2)
+	Strikes.stamp(made)
+	return made
+
+
+## `world()` and the two units of the targeting cases (see the header), stamped.
+static func armed_world() -> World:
+	var made: World = world()
+	made.add_unit(1, type_of(made, "tank"), 20500, 9500)
+	made.add_unit(2, type_of(made, "dummy"), 24500, 9500)
 	Strikes.stamp(made)
 	return made
 
@@ -87,6 +107,7 @@ static func _building(id: String, size: int, charge: int, kind: int) -> Building
 	var def: BuildingDef = BuildingDef.new()
 	def.type_id = StringName(id)
 	def.max_hp = 2000
+	def.cost = 100
 	def.armour = World.Armour.BUILDING
 	def.footprint = Vector2i(size, size)
 	def.sight_range = 4000
@@ -98,4 +119,9 @@ static func _building(id: String, size: int, charge: int, kind: int) -> Building
 		weapon.damage = 10
 		weapon.vs_armour = PackedInt32Array([100, 100, 100, 100])
 		def.strike_weapon = weapon
+	return def
+
+
+static func _sturdy(def: UnitDef) -> UnitDef:
+	def.max_hp = 100000
 	return def
