@@ -215,7 +215,7 @@ func test_the_attack_filter_runs_before_aim_so_an_excluded_row_keeps_its_goal() 
 ## built World may name one): ATTACK accepts it on a jet, which no mask can refuse.
 func test_attack_by_a_type_whose_weapon_is_past_the_tables_takes_the_order() -> void:
 	var world: World = _in(Layers.empty(), SimImpls.Impl.GDSCRIPT)
-	world.type_weapon[Layers.GUN] = world.weapon_range.size() + 1
+	world.type_weapon[Layers.GUN] = world.weapon_range.size()
 	var blind: int = world.add_unit(1, Layers.GUN, 4000, 6000)
 	var jet: int = world.add_unit(2, Layers.JET, 6000, 6500)
 	world.prepare()
@@ -286,6 +286,25 @@ func test_the_rupture_skips_air_and_low_air_rows() -> void:
 				flyer_hp
 			)
 	assert_array(lost).is_equal([lost[0], lost[0], lost[0]])
+
+
+## The rupture reads its own weapon's mask, not a fixed one: with the strike weapon at GROUND | AIR
+## (3), an AIR rifle loses hit points and a LOW_AIR one keeps them.
+func test_the_rupture_reads_the_mask_of_its_own_weapon() -> void:
+	var lost: Dictionary[int, int] = {}
+	for layer: int in [Layers.AIR, Layers.LOW_AIR]:
+		var world: World = Strikes.world()
+		var weapon: int = world.type_strike_weapon[Strikes.type_of(world, "bore")]
+		world.weapon_targets[weapon] = Layers.GROUND | Layers.AIR
+		world.type_layer_bit[Strikes.type_of(world, "rifle")] = layer
+		Strikes.run_to(world, Strikes.fire_tick(world, Strikes.BORE_A))
+		var flyer: int = Strikes.add(world, 2, "rifle", Strikes.POINT.x, Strikes.POINT.y)
+		var before: int = Strikes.hp_of(world, flyer)
+		Strikes.step(world, [Strikes.fire(Strikes.BORE_A)])
+		Strikes.run_to(world, world.strike_tick[1])
+		lost[layer] = before - Strikes.hp_of(world, flyer)
+	assert_int(lost[Layers.AIR]).is_greater(0)
+	assert_int(lost[Layers.LOW_AIR]).is_equal(0)
 
 
 func _in(world: World, impl: int) -> World:

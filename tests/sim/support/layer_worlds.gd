@@ -25,7 +25,7 @@ const AIR: int = World.Layer.AIR
 const LOW_AIR: int = World.Layer.LOW_AIR
 
 
-## The eight types. Every weapon reaches 4000 and the types acquire at 5000 and see 6000, so that
+## The nine types. Every weapon reaches 4000 and the types acquire at 5000 and see 6000, so that
 ## a pair within 4000 is in reach of both the idle and the attack-moving rule. The percents differ
 ## per weapon (flak has 0 against infantry), so that the percent test and the layer test are told
 ## apart.

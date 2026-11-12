@@ -269,9 +269,9 @@ Note (2026-11-12, P238): as built. It changes no accepted text.
   `targets` once: `fossil_rupture.tres` stays at 1, so air and low air rows are skipped.
 - **PlayerView** re-exports `World.Layer` as `PlayerView.Layer` (a test pins the pair), so the AI
   names the bits without naming `World`.
-- **For P240's lockstep.** A ground row can lock a low-air drone squad that hovers over rock; its
+- **Requirement for P240.** A ground row can lock a low-air drone squad that hovers over rock; its
   class has no next step there, so it stops (`Movement._refresh_next`) and fires once in range.
-  P240's INTEGRATE and FLOW lockstep with aircraft includes that case.
+  P240's lockstep must include a ground row locking a LOW_AIR drone over rock.
 
 ### 6. Airfields: ammo, reloading and repair (`Air.run`, ECONOMY, GDScript only)
 - **The aircraft cap.** A FLIGHT QUEUE is valid while living aircraft plus queued FLIGHT items are

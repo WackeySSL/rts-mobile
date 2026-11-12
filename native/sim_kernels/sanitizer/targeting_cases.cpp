@@ -662,9 +662,10 @@ void attack_goals(Tally &tally) {
 }
 
 // The refusal path of the layer test (P238, ADR 0036 section 5): a ground-only weapon (type 0, weapon 0) in range of an
-// aircraft (type 3, layer AIR) neither acquires it nor keeps a lock on it, while the same weapon in range of a ground
-// unit does, and a weapon whose mask holds AIR (type 2, weapon 2) takes the aircraft. Both shooters are
-// in sight of the same two targets; the answer needs no second implementation.
+// aircraft (type 3, layer AIR) does not keep a lock on it, while the same weapon on a ground unit acquires it, and a weapon
+// whose mask holds AIR (type 2, weapon 2) takes the aircraft. The targets stand 2000 from the shooters, in sight of both. The
+// first run checks the lock refusal (row 5) and these picks; a second run with every mask 0 checks the acquisition refusal:
+// nothing is taken. The answer needs no second implementation.
 void layer_refusal(Tally &tally) {
 	Stream stream = { 23 };
 	State state = make_scene(stream, 12, 8, 0);
@@ -672,7 +673,7 @@ void layer_refusal(Tally &tally) {
 	state.rules = { 0, 1, 1 }; // every row is on its turn
 	state.weapon = { 0, 1, 2, -1 };
 	// Rows 1 and 2: player 1's ground-only gun (type 0) and its anti-air gun (type 2). Row 3: a ground unit (type 0), row 4:
-	// an aircraft (type 3) of player 2, both 1000 from the shooters. Rows 1 and 2 are idle, so they acquire.
+	// an aircraft (type 3) of player 2, both 2000 from the shooters. Rows 1 and 2 are idle, so they acquire.
 	add_row(state, 1, 0, 1500, 1500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
 	add_row(state, 1, 2, 1500, 5500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);
 	add_row(state, 2, 0, 3500, 1500, 0, 0, static_cast<int32_t>(ORDER_IDLE), 0);

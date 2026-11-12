@@ -68,7 +68,7 @@ extends RefCounted
 ## row order, loses the weapon's damage times its percent against the row's armour, like a shot
 ## (`Combat.fire`: at least 1, none when the percent is 0); a row on a layer the strike
 ## weapon cannot hit (`weapon_targets & type_layer_bit`, P238: the shipped rupture is ground only,
-## so air and low air rows are skipped), the blackout is unchanged. The rows only lose `hp` here
+## so air and low air rows are skipped); the blackout is unchanged. The rows only lose `hp` here
 ## and die at this tick's REMOVE, exactly as a row killed by a shot: `FogUpdate.begin` has run, so
 ## the unstamp lands in the owner's dirty list of this tick, ECONOMY's `Power.run` sums power
 ## without them, PRODUCTION's `Outcome.run` sees a ruptured producer gone, so its kills count for
@@ -189,7 +189,7 @@ static func _land(world: World, player: int) -> void:
 	if type < 0:
 		return
 	var weapon: int = world.type_strike_weapon[type]
-	if weapon < 0 or weapon >= world.weapon_damage.size():
+	if weapon < 0 or weapon >= world.weapon_targets.size():
 		return
 	var radius: int = world.type_strike_radius[type]
 	var reach: int = radius * radius
