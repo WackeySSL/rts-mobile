@@ -66,12 +66,13 @@ extends RefCounted
 ## (`strike_tick` 0; the point stays, for the view's crater) and every row whose position is within
 ## the radius of the point, own rows and neutral ones included, by squared distance and in ascending
 ## row order, loses the weapon's damage times its percent against the row's armour, like a shot
-## (`Combat.fire`: at least 1, none when the percent is 0); a row on the air or low air layer
-## (`type_layer_bit`, P238) is skipped, the blackout is unchanged. The rows only lose `hp` here
+## (`Combat.fire`: at least 1, none when the percent is 0); a row on a layer the strike
+## weapon cannot hit (`weapon_targets & type_layer_bit`, P238: the shipped rupture is ground only,
+## so air and low air rows are skipped), the blackout is unchanged. The rows only lose `hp` here
 ## and die at this tick's REMOVE, exactly as a row killed by a shot: `FogUpdate.begin` has run, so
 ## the unstamp lands in the owner's dirty list of this tick, ECONOMY's `Power.run` sums power
 ## without them, PRODUCTION's `Outcome.run` sees a ruptured producer gone, so its kills count for
-## defeat on the same tick, and no ruptured row takes part in the next tick. A rupture in the air is
+## defeat on the same tick, and no ruptured row takes part in the next tick. A pending rupture is
 ## not recalled by the loss of its building, a surrender or a defeat of its player.
 ##
 ## Which strike: the pending strike stores no type (ADR 0023 section 10's layout), so the landing
@@ -85,8 +86,6 @@ extends RefCounted
 
 ## The strike kinds, as `type_strike_kind` and BuildingDef.strike_kind hold them.
 enum Kind { NONE = 0, RUPTURE = 1, BLACKOUT = 2 }
-## The layer bits the rupture does not hit (ADR 0036 section 5).
-const FLYING: int = World.Layer.AIR | World.Layer.LOW_AIR
 
 
 ## Starts the charge of the new building row `row`: `ready_tick` is the stamp plus its type's
@@ -203,13 +202,14 @@ static func _land(world: World, player: int) -> void:
 	var pos_y: PackedInt32Array = world.pos_y
 	var hit_points: PackedInt32Array = world.hp
 	var layer_bit: PackedInt32Array = world.type_layer_bit
+	var hits: int = world.weapon_targets[weapon]
 	for row: int in hit_points.size():
 		var dx: int = pos_x[row] - point_x
 		var dy: int = pos_y[row] - point_y
 		if dx * dx + dy * dy > reach:
 			continue
-		if (layer_bit[types[row]] & FLYING) != 0:
-			continue  # The rupture skips air and low air (ADR 0036 section 5).
+		if (hits & layer_bit[types[row]]) == 0:
+			continue  # The strike weapon's layers (ADR 0036 section 5: ground only, so air is skipped).
 		var percent: int = percent_of[percents + armour_of[types[row]]]
 		if percent > 0:
 			hit_points[row] -= maxi(1, damage * percent / Combat.PERCENT)

@@ -13,7 +13,9 @@ extends RefCounted
 ## - the unit fires when its cooldown is 0 after that, its type names a weapon (an index of 0 or
 ##   more inside the weapon tables, the "armed" of `Targeting`: a hand-built World may name a weapon
 ##   it has no table for, which is unarmed), and its `target` is a unit that still has a row, is an
-##   enemy (an owner that is neither its own nor 0) and stands at `min_range^2 <= d2 <= range^2`.
+##   enemy (an owner that is neither its own nor 0), stands on a layer its weapon can hit
+##   (`weapon_targets & type_layer_bit` is not 0, P238: otherwise no shot, and the cooldown and the
+##   held target are left alone) and stands at `min_range^2 <= d2 <= range^2`.
 ##   The unit does not have to be in `HOLD`: a chasing unit fires on the first tick it is in range.
 ##   It fires on that first tick, and then every `cooldown_ticks`, because the cooldown is set to
 ##   `cooldown_ticks` by a shot and counts down on each of the following ticks;

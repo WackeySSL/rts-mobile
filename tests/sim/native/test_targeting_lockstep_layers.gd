@@ -11,8 +11,8 @@ extends GdUnitTestSuite
 ##   hit, and the cases reached are counted, so that a state set that never met the rule fails.
 ## - 16 seeded fields stepped 90 ticks under random waves (the tally probe holds the phase to the
 ##   rule on the twin's side, which now includes the layer test).
-## - A jet and a drone that fly over a ground fight: ATTACK locks on air that a gun cannot hit
-##   fall back, and the flak and the rocket take the air.
+## - 24 crafted two-row pairs (six shooters against four marks, flyers among them), run 30 ticks
+##   with an ATTACK order on the mark: the lock falls back or holds as the mask says.
 ## The floors are measured on the twin and set at about two thirds of the figure, rounded down;
 ## the measurements are beside each one.
 
@@ -117,9 +117,9 @@ func test_fields_of_aircraft_and_ground_rows_match_under_random_waves() -> void:
 	assert_int(total[&"locked"]).is_greater(FLOOR_RUN_LOCKED)
 
 
-## Crafted: a jet and a drone over a ground fight, one row of each mask beside them, in a revealed
-## world of two rows per case, run for 30 ticks with an ATTACK order on the flyer: the lock falls
-## back or holds as the mask says, in both implementations.
+## Crafted: a revealed world of two rows per case (a shooter and a mark, 7000 apart), run for 30
+## ticks with an ATTACK order on the mark: the lock falls back or holds as the mask says, and the
+## two implementations agree after every tick.
 func test_attack_locks_on_flyers_match_for_every_mask() -> void:
 	for shooter: int in [
 		Layers.GUN, Layers.ROCKET, Layers.RIFLE, Layers.FLAK, Layers.JET, Layers.SCOUT

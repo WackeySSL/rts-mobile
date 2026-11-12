@@ -23,7 +23,8 @@
 // told apart) and test_targeting_kernel_lines.gd (line_clear); the lockstep of P41n2 (the 900-tick arena, random waves, the
 // controls_test seeds, changed rules, the cadences, the weapon roster, 64 x 64 maps, the empty grid, ties on a lattice,
 // fallbacks and seeded random states): tests/sim/native/test_targeting_lockstep.gd, _rules.gd and _cases.gd; the vision rule of
-// P46b on fogs that configure() never makes, the fog's player count and a layout other than the map's: _fog.gd. MIT.
+// P46b on fogs that configure() never makes, the fog's player count and a layout other than the map's: _fog.gd; aircraft rows and every weapon mask (P238, ADR 0036 section 5): tests/sim/test_target_layers.gd under both
+// implementations and tests/sim/native/test_targeting_lockstep_layers.gd. MIT.
 //
 // Range. The pass is exact in int64 while the positions stay within 10^9 milli-tiles of the origin in both axes (a million
 // tiles; a map is a few hundred), so that d2 = dx*dx + dy*dy of any two units stays below 2^63 (at most 8 * 10^18), and while

@@ -162,16 +162,22 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 	return true
 
 
-## ATTACK: the armed valid units take the order and the target, when the target is an enemy their
-## player sees (`_enemy_target`). The goal of a mobile target is `Targeting.run`'s, every tick; a
-## target that stands still gets its goal here (`Buildings.aim`: a building's approach point, ADR
-## 0017 section 1), and a unit with no passable ring tile around a building is left out.
+## ATTACK: the armed valid units whose weapon can hit the target's layer (`_rows_that_can_hit`,
+## P238) take the order and the target, when the target is an enemy their player sees
+## (`_enemy_target`); when no row is left the command is dropped and counted. The goal of a mobile
+## target is `Targeting.run`'s, every tick; a target that stands still gets its goal here
+## (`Buildings.aim`: a building's approach point, ADR 0017 section 1), and a unit with no passable
+## ring tile around a building is left out.
 static func _apply_attack(world: World, command: Command) -> bool:
 	if not _enemy_target(world, command):
 		return false
-	var rows: PackedInt32Array = _own_rows(world, command, true)
-	rows = _rows_that_can_hit(world, rows, world.index_of(command.target_id))
-	rows = Buildings.aim(world, rows, world.index_of(command.target_id))
+	var target_row: int = world.index_of(command.target_id)
+	var rows: PackedInt32Array = _rows_that_can_hit(
+		world, _own_rows(world, command, true), target_row
+	)
+	if rows.is_empty():
+		return false
+	rows = Buildings.aim(world, rows, target_row)
 	if rows.is_empty():
 		return false
 	var orders: PackedInt32Array = world.order
@@ -193,12 +199,13 @@ static func _rows_that_can_hit(
 ) -> PackedInt32Array:
 	var layer: int = world.type_layer_bit[world.type_index[target_row]]
 	var hits: PackedInt32Array = world.weapon_targets
+	var armed: int = world.weapon_range.size()
 	var types: PackedInt32Array = world.type_index
 	var weapons: PackedInt32Array = world.type_weapon
 	var kept: PackedInt32Array = PackedInt32Array()
 	for row: int in rows:
 		var weapon: int = weapons[types[row]]
-		if weapon >= hits.size() or (hits[weapon] & layer) != 0:
+		if weapon >= armed or (hits[weapon] & layer) != 0:
 			kept.append(row)
 	return kept
 

@@ -91,6 +91,13 @@ enum HarvestMode {
 }
 ## The arrays of `columns()`.
 enum Column { ID, OWNER, TYPE, X, Y, HP, BUILD_LEFT }
+## The layer bits of `type_layer_bit` and `weapon_targets` (P238): a weapon may hit a row when
+## `weapon_targets & type_layer_bit` is not 0.
+enum Layer {
+	GROUND = World.Layer.GROUND,
+	AIR = World.Layer.AIR,
+	LOW_AIR = World.Layer.LOW_AIR,
+}
 enum Order {
 	IDLE = World.Order.IDLE,
 	ATTACK_MOVE = World.Order.ATTACK_MOVE,

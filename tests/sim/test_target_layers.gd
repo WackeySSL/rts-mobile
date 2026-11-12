@@ -49,35 +49,39 @@ func test_an_idle_unit_takes_only_a_row_on_a_layer_its_weapon_hits(
 
 
 ## The masks the ADR starts with, as the shipped data holds them: the rocket 7, the rifle 5, the
-## Redoubt 5 and every other weapon ground.
+## Redoubt 5 and every other weapon file in data/weapons ground (a new file fails until it is
+## listed here with its mask).
 func test_the_shipped_weapon_masks_are_the_adr_starting_masks() -> void:
 	var masks: Dictionary[String, int] = {
 		"rocket": 7,
 		"breaker_rocket": 7,
 		"rifle": 5,
 		"redoubt_gun": 5,
-		"arcline_gun": 1,
-		"artillery_gun": 1,
-		"heavy_cannon": 1,
-		"tank_cannon": 1,
-		"turret_gun": 1,
-		"fossil_rupture": 1,
 	}
-	for id: String in masks:
-		var weapon: WeaponDef = load("res://data/weapons/%s.tres" % id) as WeaponDef
-		assert_int(weapon.targets).override_failure_message(id).is_equal(masks[id])
+	var files: PackedStringArray = DirAccess.get_files_at("res://data/weapons")
+	var seen: int = 0
+	for file: String in files:
+		if not file.ends_with(".tres"):
+			continue
+		var id: String = file.get_basename()
+		var weapon: WeaponDef = load("res://data/weapons/%s" % file) as WeaponDef
+		# Every other weapon is ground only, until its row lists another mask here.
+		assert_int(weapon.targets).override_failure_message(id).is_equal(masks.get(id, 1))
+		seen += 1
+	assert_int(seen).is_greater(9)
 
 
 ## A nearer mark, and one the weapon would hurt more, on a layer it cannot hit does not take the
 ## target from a farther ground mark: the layer test is part of what makes a candidate.
-func test_an_unhittable_row_is_no_candidate_even_when_nearer_and_better() -> void:
-	for impl: int in SimImpls.IMPLS:
-		var world: World = _in(Layers.duel(Layers.GUN, Layers.GUN, 3500), impl)
-		world.add_unit(2, Layers.JET, 4500, 6000)  # id 3, nearer than the gun at 7500.
-		assert_int(Rig.target_of(world, 1)).is_equal(2)
-		var rocket: World = _in(Layers.duel(Layers.ROCKET, Layers.GUN, 3500), impl)
-		rocket.add_unit(2, Layers.JET, 4500, 6000)
-		assert_int(Rig.target_of(rocket, 1)).override_failure_message("mask 7").is_equal(3)
+func test_an_unhittable_row_is_no_candidate_even_when_nearer_and_better(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _in(Layers.duel(Layers.GUN, Layers.GUN, 3500), impl)
+	world.add_unit(2, Layers.JET, 4500, 6000)  # id 3, nearer than the gun at 7500.
+	assert_int(Rig.target_of(world, 1)).override_failure_message("mask 1").is_equal(2)
+	var rocket: World = _in(Layers.duel(Layers.ROCKET, Layers.GUN, 3500), impl)
+	rocket.add_unit(2, Layers.JET, 4500, 6000)
+	assert_int(Rig.target_of(rocket, 1)).override_failure_message("mask 7").is_equal(3)
 
 
 ## A held target that stands on a layer the weapon cannot hit is let go on the unit's turn and
@@ -125,14 +129,17 @@ func test_an_attack_lock_on_an_unhittable_row_falls_back_to_attack_move(
 		assert_int(world.order[0]).override_failure_message(label).is_equal(
 			ATTACK if item[2] else ATTACK_MOVE
 		)
-		assert_int(world.order_target[0]).is_equal(2 if item[2] else 0)
-		assert_int(world.target[0]).is_equal(2 if item[2] else 0)
+		assert_int(world.order_target[0]).override_failure_message(label).is_equal(
+			2 if item[2] else 0
+		)
+		assert_int(world.target[0]).override_failure_message(label).is_equal(2 if item[2] else 0)
 		if not item[2]:
 			assert_array([world.goal_x[0], world.goal_y[0]]).is_equal([9999, 6001])
 
 
-## An unarmed type has no mask: its ATTACK lock holds on a jet as on any enemy (an ATTACK command
-## accepts such a unit, and it steers at the target for good).
+## An unarmed type has no mask: its ATTACK lock holds on a jet as on any enemy. This is hand-built
+## state (no command gives ATTACK to a type with weapon -1; `test_attack_by_a_type_whose_weapon_is_
+## past_the_tables...` is the reachable path).
 func test_an_unarmed_attack_lock_holds_on_any_layer(impl: int, _test_parameters := _both()) -> void:
 	for mark: int in [Layers.GUN, Layers.JET, Layers.DRONE]:
 		var world: World = _in(Layers.duel(Layers.SCOUT, mark, 6000), impl)
@@ -144,9 +151,10 @@ func test_an_unarmed_attack_lock_holds_on_any_layer(impl: int, _test_parameters 
 		assert_int(world.target[0]).is_equal(2)
 
 
-## ATTACK drops a row whose weapon cannot hit the target's layer, and keeps the others: a gun
-## (mask 1) and a flak unit (6) sent at a jet leave the flak unit with the order; when nobody can
-## hit the target the command is dropped and counted; a ground target takes the gun as before.
+## ATTACK drops a row whose weapon cannot hit the target's layer, and keeps the others, in both
+## directions: a gun (mask 1) and a flak unit (6) sent at a jet leave the flak unit with the order;
+## sent at a tank, the gun takes it and the flak unit does not (and keeps its ATTACK on the jet);
+## when nobody can hit the target the command is dropped and counted.
 func test_attack_keeps_only_the_rows_that_can_hit_the_target() -> void:
 	var world: World = _in(Layers.empty(), SimImpls.Impl.GDSCRIPT)
 	var gun: int = world.add_unit(1, Layers.GUN, 4000, 6000)
@@ -167,35 +175,95 @@ func test_attack_keeps_only_the_rows_that_can_hit_the_target() -> void:
 	Sim.step(world, [_stamped(Command.attack(1, PackedInt32Array([gun]), tank), world)])
 	assert_int(world.order[world.index_of(gun)]).is_equal(ATTACK)
 	assert_int(world.dropped_commands).is_equal(before + 1)
+	# The flak unit cannot hit the tank: dropped and counted, and its ATTACK on the jet stays.
+	Sim.step(world, [_stamped(Command.attack(1, PackedInt32Array([flak]), tank), world)])
+	assert_int(world.dropped_commands).is_equal(before + 2)
+	assert_int(world.order[world.index_of(flak)]).is_equal(ATTACK)
+	assert_int(world.order_target[world.index_of(flak)]).is_equal(jet)
+	# A mixed selection at the tank: only the gun takes the order.
+	Sim.step(world, [_stamped(Command.stop(1, PackedInt32Array([gun, flak])), world)])
+	Sim.step(world, [_stamped(Command.attack(1, PackedInt32Array([gun, flak]), tank), world)])
+	assert_int(world.order[world.index_of(gun)]).is_equal(ATTACK)
+	assert_int(world.order_target[world.index_of(gun)]).is_equal(tank)
+	assert_int(world.order[world.index_of(flak)]).is_not_equal(ATTACK)
+	assert_int(world.dropped_commands).is_equal(before + 2)
 
 
-## The Combat.fire guard: a gun that holds a jet as its target (written by hand) fires nothing,
-## the jet keeps its hit points and no SHOT is recorded; a rocket (mask 7) hits it; the same gun
-## shoots a ground row.
+## The filter runs before `Buildings.aim`: a jet (mask 2) on a MOVE, sent with a gun at a speed-0
+## enemy, is left out of the order and keeps its goal and its order (aim writes the goal of every
+## row it is given); the gun takes the ATTACK and the command is not dropped.
+func test_the_attack_filter_runs_before_aim_so_an_excluded_row_keeps_its_goal() -> void:
+	var world: World = _in(Layers.empty(), SimImpls.Impl.GDSCRIPT)
+	var gun: int = world.add_unit(1, Layers.GUN, 4000, 6000)
+	var jet: int = world.add_unit(1, Layers.JET, 4000, 7000)
+	var post: int = world.add_unit(2, Layers.POST, 7000, 6000)
+	world.prepare()
+	Rig.reveal(world)
+	Sim.step(world, [_stamped(Command.move(1, PackedInt32Array([jet]), 2500, 2500), world)])
+	var row: int = world.index_of(jet)
+	assert_int(world.order[row]).is_equal(World.Order.MOVE)
+	var goal: Array[int] = [world.goal_x[row], world.goal_y[row]]
+	var before: int = world.dropped_commands
+	Sim.step(world, [_stamped(Command.attack(1, PackedInt32Array([gun, jet]), post), world)])
+	assert_int(world.order[world.index_of(gun)]).is_equal(ATTACK)
+	assert_int(world.order[row]).is_equal(World.Order.MOVE)
+	assert_array([world.goal_x[row], world.goal_y[row]]).is_equal(goal)
+	assert_int(world.dropped_commands).is_equal(before)
+
+
+## A type whose weapon index is past the weapon tables is unarmed here as in Targeting (a hand-
+## built World may name one): ATTACK accepts it on a jet, which no mask can refuse.
+func test_attack_by_a_type_whose_weapon_is_past_the_tables_takes_the_order() -> void:
+	var world: World = _in(Layers.empty(), SimImpls.Impl.GDSCRIPT)
+	world.type_weapon[Layers.GUN] = world.weapon_range.size() + 1
+	var blind: int = world.add_unit(1, Layers.GUN, 4000, 6000)
+	var jet: int = world.add_unit(2, Layers.JET, 6000, 6500)
+	world.prepare()
+	Rig.reveal(world)
+	var before: int = world.dropped_commands
+	Sim.step(world, [_stamped(Command.attack(1, PackedInt32Array([blind]), jet), world)])
+	assert_int(world.order[world.index_of(blind)]).is_equal(ATTACK)
+	assert_int(world.dropped_commands).is_equal(before)
+
+
+## The Combat.fire guard, in both directions and for every layer: a shooter that holds (by hand) a
+## row on a layer its weapon cannot hit fires nothing (no SHOT, hit points and cooldown as they
+## were), whichever the layer and whichever the shooter's own; the controls hit the layer they can.
+## Flak against the drone is not a case (its percent against infantry is 0).
 func test_combat_fire_will_not_shoot_a_layer_the_weapon_cannot_hit() -> void:
-	var world: World = Layers.duel(Layers.GUN, Layers.JET)
-	var jet_hp: int = world.hp[1]
-	world.events.clear()  # The spawns of the two rows.
-	world.target[0] = 2
-	Combat.fire(world)
-	assert_int(world.hp[1]).is_equal(jet_hp)
-	assert_array(world.events).is_empty()
-	assert_int(world.cooldown[0]).is_equal(0)
-	var rocket: World = Layers.duel(Layers.ROCKET, Layers.JET)
-	rocket.events.clear()
-	rocket.target[0] = 2
-	Combat.fire(rocket)
-	assert_int(rocket.events.size()).is_greater(0)
-	var ground: World = Layers.duel(Layers.GUN, Layers.GUN)
-	ground.events.clear()
-	ground.target[0] = 2
-	Combat.fire(ground)
-	assert_int(ground.events.size()).is_greater(0)
+	var refused: Array[Array] = [
+		[Layers.GUN, Layers.JET],
+		[Layers.GUN, Layers.DRONE],
+		[Layers.FLAK, Layers.GUN],
+		[Layers.JET, Layers.GUN],
+	]
+	var fires: Array[Array] = [
+		[Layers.ROCKET, Layers.JET],
+		[Layers.RIFLE, Layers.DRONE],
+		[Layers.FLAK, Layers.JET],
+		[Layers.GUN, Layers.GUN],
+	]
+	for item: Array in refused + fires:
+		var world: World = Layers.duel(item[0], item[1])
+		var hp: int = world.hp[1]
+		world.events.clear()  # The spawns of the two rows.
+		world.target[0] = 2
+		Combat.fire(world)
+		var label: String = str(item)
+		if refused.has(item):
+			assert_int(world.hp[1]).override_failure_message(label).is_equal(hp)
+			assert_array(world.events).override_failure_message(label).is_empty()
+			assert_int(world.cooldown[0]).override_failure_message(label).is_equal(0)
+		else:
+			assert_int(world.events.size()).override_failure_message(label).is_greater(0)
+			assert_int(world.cooldown[0]).override_failure_message(label).is_greater(0)
 
 
 ## The rupture skips a row on the air or the low air layer (here a rifle type moved to each layer)
-## and hits the ground row beside it at the same point, with the same damage as before.
+## and hits the ground row beside it at the same point. A row on the ground layer takes the same
+## damage whichever layer the other row is on.
 func test_the_rupture_skips_air_and_low_air_rows() -> void:
+	var lost: Array[int] = []
 	for layer: int in [Layers.AIR, Layers.LOW_AIR, Layers.GROUND]:
 		var world: World = Strikes.world()
 		world.type_layer_bit[Strikes.type_of(world, "rifle")] = layer
@@ -208,6 +276,7 @@ func test_the_rupture_skips_air_and_low_air_rows() -> void:
 		Strikes.run_to(world, world.strike_tick[1])
 		var label: String = "layer %d" % layer
 		assert_int(Strikes.hp_of(world, walker)).override_failure_message(label).is_less(walker_hp)
+		lost.append(walker_hp - Strikes.hp_of(world, walker))
 		if layer == Layers.GROUND:
 			assert_int(Strikes.hp_of(world, flyer)).override_failure_message(label).is_less(
 				flyer_hp
@@ -216,6 +285,7 @@ func test_the_rupture_skips_air_and_low_air_rows() -> void:
 			assert_int(Strikes.hp_of(world, flyer)).override_failure_message(label).is_equal(
 				flyer_hp
 			)
+	assert_array(lost).is_equal([lost[0], lost[0], lost[0]])
 
 
 func _in(world: World, impl: int) -> World:

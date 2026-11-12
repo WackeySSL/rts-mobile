@@ -255,6 +255,24 @@ Note (2026-11-12, P232; named exception 23): the shapes as built. It changes no 
   So bombers beat buildings and tanks. Anti-air, rockets and fighters beat bombers. Fighters lose
   to anti-air. Drone squads cross cliffs, but rifles and rockets answer them.
 
+Note (2026-11-12, P238): as built. It changes no accepted text.
+- **Unarmed types have no mask.** An ATTACK lock by a type with no weapon index (-1) or one past
+  the weapon tables holds on any layer. `Sim._rows_that_can_hit` keeps a row whose weapon index is
+  past the tables, and a weapon -1 row never gets ATTACK (`_own_rows` armed).
+- **When it is tested.** A held target is re-tested on the row's turn, with its range and percent;
+  the ATTACK lock is re-tested every tick.
+- **The ATTACK filter** runs before `Buildings.aim`, so an excluded row keeps its goal and its
+  order. When no row is left the command is dropped and counted.
+- **The fire re-test** in `Combat.fire` comes after the enemy test and before range. A refused
+  shot records no SHOT and leaves the cooldown and the held target alone.
+- **The rupture skip** is in `Strike._land` (not `Strike.run`) and reads the strike weapon's
+  `targets` once: `fossil_rupture.tres` stays at 1, so air and low air rows are skipped.
+- **PlayerView** re-exports `World.Layer` as `PlayerView.Layer` (a test pins the pair), so the AI
+  names the bits without naming `World`.
+- **For P240's lockstep.** A ground row can lock a low-air drone squad that hovers over rock; its
+  class has no next step there, so it stops (`Movement._refresh_next`) and fires once in range.
+  P240's INTEGRATE and FLOW lockstep with aircraft includes that case.
+
 ### 6. Airfields: ammo, reloading and repair (`Air.run`, ECONOMY, GDScript only)
 - **The aircraft cap.** A FLIGHT QUEUE is valid while living aircraft plus queued FLIGHT items are
   below the sum of `type_pads` of the player's complete airfields. A finished aircraft spawns over

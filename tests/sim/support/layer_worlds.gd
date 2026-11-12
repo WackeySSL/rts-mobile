@@ -3,9 +3,9 @@ extends RefCounted
 ##
 ## The roster has every mask of the ADR once, aircraft among the targets and among the shooters:
 ## 0 gun (mask 1), 1 rocket (7), 2 rifle (5), 3 flak (6), 4 jet (AIR, mask 2), 5 bomber (AIR,
-## mask 1), 6 drone (low AIR, mask 1), 7 scout (no weapon). `field` scatters random rows of them
-## with random orders, locks and held targets for the lockstep, `duel` is the two-row world of the
-## rule tests.
+## mask 1), 6 drone (low AIR, mask 1), 7 scout (no weapon), 8 post (no weapon, speed 0). `field`
+## scatters random rows of them with random orders, locks and held targets for the lockstep, `duel`
+## is the two-row world of the rule tests.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const Worlds: GDScript = preload("res://tests/sim/support/targeting_worlds.gd")
@@ -17,7 +17,9 @@ const JET: int = 4
 const BOMBER: int = 5
 const DRONE: int = 6
 const SCOUT: int = 7
+## The types `field` draws from; POST (index 8) is a speed-0 mark that only the cases add.
 const TYPES: int = 8
+const POST: int = 8
 const GROUND: int = World.Layer.GROUND
 const AIR: int = World.Layer.AIR
 const LOW_AIR: int = World.Layer.LOW_AIR
@@ -37,7 +39,9 @@ static func roster() -> Array[UnitDef]:
 		_armed(&"bomber", 1, [100, 100, 100, 100], World.Armour.HEAVY),
 		_armed(&"drone", 1, [100, 50, 50, 50], World.Armour.INFANTRY),
 		Rig.unit(&"scout", 6000, 5000, 0, 0, []),
+		Rig.unit(&"post", 6000, 5000, 0, 0, []),
 	]
+	units[POST].speed = 0
 	units[JET].move_class = World.MoveClass.AIR
 	units[BOMBER].move_class = World.MoveClass.AIR
 	units[DRONE].move_class = World.MoveClass.AIR
@@ -45,7 +49,7 @@ static func roster() -> Array[UnitDef]:
 	return units
 
 
-## A revealed 20 x 12 World of the roster with `players` players: nothing on it yet.
+## A 20 x 12 World of the roster with two players: nothing on it yet.
 static func empty(revealed: bool = true) -> World:
 	return Rig.world_of(roster(), 20, 12, revealed)
 

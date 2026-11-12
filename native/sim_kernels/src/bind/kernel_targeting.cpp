@@ -12,7 +12,8 @@
 // tests/sim/test_fog_rules_shapes.gd (wide and tall maps); lockstep (P41n2, P46b): test_targeting_lockstep.gd (the arena, random
 // waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the weapon roster, 64 x 64 maps, the empty grid), _cases.gd
 // (ties on a lattice, fallbacks, seeded random states, the vision cases) and _fog.gd (fogs whose sides do not make their cells, the
-// fog's player count, a layout other than the map's) in tests/sim/native/. MIT.
+// fog's player count, a layout other than the map's) in tests/sim/native/; aircraft rows and every weapon mask (P238):
+// test_targeting_lockstep_layers.gd there and tests/sim/test_target_layers.gd under both implementations. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>

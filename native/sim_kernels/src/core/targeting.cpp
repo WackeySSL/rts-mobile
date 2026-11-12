@@ -141,8 +141,7 @@ int64_t Pass::acquire() {
 			const int64_t at = bsearch(ids, locked);
 			const int64_t lock_weapon = type_weapon.get(types.get(row));
 			// An unarmed type (no weapon index, or one past the tables) has no mask and locks any enemy (P238).
-			const bool lock_hits = lock_weapon < 0 || lock_weapon >= weapons || (weapon_hits.get(lock_weapon) & layer_bit.get(types.get(at))) != 0;
-			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0 && lock_hits) {
+			if (at < count && ids.get(at) == locked && owners.get(at) != own && owners.get(at) != 0 && (lock_weapon < 0 || lock_weapon >= weapons || (weapon_hits.get(lock_weapon) & layer_bit.get(types.get(at))) != 0)) {
 				if (veil < 0 || seen(veil, pos_x.get(at), pos_y.get(at))) {
 					targets.set(row, locked);
 					if (type_speed.get(types.get(at)) > 0) {
