@@ -45,6 +45,7 @@
 [ext_resource type="Script" path="res://game/ui/BuildButton.gd" id="44_build_button"]
 [ext_resource type="Script" path="res://game/ui/PauseMenu.gd" id="90_pause"]
 [ext_resource type="Script" path="res://game/ui/ResultScreen.gd" id="90_result"]
+[ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="91_confirm"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -258,7 +259,7 @@ feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 build_button = NodePath("../BuildButton")
 
-[node name="CommandBar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "safe_area", "placement", "strike_aim", "build_button", "building_layer")]
+[node name="CommandBar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "safe_area", "placement", "strike_aim", "build_button", "building_layer", "sell_card")]
 mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("15_command_bar")
@@ -270,6 +271,7 @@ placement = NodePath("../../PlacementController")
 strike_aim = NodePath("../../StrikeAim")
 build_button = NodePath("../BuildButton")
 building_layer = NodePath("../../BuildingLayer")
+sell_card = NodePath("../SellCard")
 
 [node name="AttackCues" type="Node" parent="Hud" node_paths=PackedStringArray("runner", "camera", "feed")]
 script = ExtResource("44_attack_cues")
@@ -367,6 +369,17 @@ runner = NodePath("../../MatchRunner")
 controller = NodePath("../../PlayerController")
 feed = NodePath("../HudStateFeed")
 pill = NodePath("../EconomyPill")
+
+[node name="SellCard" type="Control" parent="Hud"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("16_theme")
+script = ExtResource("91_confirm")
+question = "SELLING IT LOSES THE MATCH"
+detail = "It is your last building that makes units."
+yes_text = "SELL"
+no_text = "KEEP"
+dismiss_outside = true
 
 [node name="ResultScreen" type="Control" parent="Hud" node_paths=PackedStringArray("runner")]
 anchor_right = 1.0

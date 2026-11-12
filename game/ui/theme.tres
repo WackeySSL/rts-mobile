@@ -43,7 +43,7 @@
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, EnemyHealth, PerfCard, SidebarTab,
 ; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner,
-; ItemCaption, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
+; ItemCaption, ItemCaptionWarn, ItemCaptionOn, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
 ; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
 ; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
@@ -587,6 +587,10 @@ ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
 ItemCaption/base_type = &"Label"
 ItemCaption/colors/font_color = Color(1, 1, 1, 1)
 ItemCaption/font_sizes/font_size = 14
+ItemCaptionOn/base_type = &"ItemCaption"
+ItemCaptionOn/colors/font_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+ItemCaptionWarn/base_type = &"ItemCaption"
+ItemCaptionWarn/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
 ItemSash/base_type = &"Label"
 ItemSash/colors/band = Color(0.85098039, 0.87843137, 0.90980392, 1)
 ItemSash/colors/edge = Color(0.06, 0.08, 0.11, 1)

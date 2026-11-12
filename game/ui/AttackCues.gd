@@ -94,7 +94,7 @@ func scan(snap: MatchSnapshot, player: int, view: Rect2) -> bool:
 		var ground: Vector2i = Vector2i.ZERO
 		if kind == World.Event.DIED:
 			if events[at + 5] != player or events[at + Production.DIED_CANCEL_FLAG_AT] != 0:
-				continue  # Not ours, or a cancelled site (the player's own doing).
+				continue  # Not ours, a cancelled site or a sale (the player's own doing).
 			type = events[at + 4]
 			ground = Vector2i(events[at + 2], events[at + 3])
 		elif kind == World.Event.SHOT or kind == World.Event.IMPACT:

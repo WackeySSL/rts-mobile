@@ -45,3 +45,8 @@ extends Resource
 @export var attack_cue_ms: int = 4000
 @export var attack_cue_area_tiles: int = 12
 @export var drawer_swipe_dp: float = 48.0  ## A drag past this toward its edge closes the drawer.
+## The command bar's two-tap Sell (ADR 0037 section 3, P272): the first tap arms, and the second
+## sends one SELL only from `sell_arm_min_ms` to before `sell_confirm_ms` after it. A second tap
+## sooner is ignored and keeps the arm; a late one arms again. Never a hold.
+@export var sell_arm_min_ms: int = 400
+@export var sell_confirm_ms: int = 3000
