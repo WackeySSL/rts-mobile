@@ -878,43 +878,7 @@ func set_terrain(cell: int, terrain_index: int) -> void:
 ## contract's names, so they shadow the arrays of the same name.
 @warning_ignore("shadowed_variable")
 func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
-	if prepared and (owner > player_count or unit_id.size() >= max_rows):
-		spawn_refused += 1
-		return 0
-	var id: int = next_id
-	next_id += 1
-	unit_id.append(id)
-	self.owner.append(owner)
-	self.type_index.append(type_index)
-	pos_x.append(x)
-	pos_y.append(y)
-	goal_x.append(x)
-	goal_y.append(y)
-	group_cell.append(-1)
-	order.append(Order.IDLE)
-	hp.append(maxi(type_max_hp[type_index], 1) if type_index < type_max_hp.size() else 1)
-	order_target.append(0)
-	target.append(0)
-	cooldown.append(0)
-	nav_mode.append(NavMode.NONE)
-	field.append(-1)
-	nav_cell.append(-1)
-	nav_next.append(-1)
-	best_dist.append(0x3FFFFFFF)  # No distance yet; equals FlowField.UNREACHED.
-	stall.append(0)
-	fog_cell.append(-1)
-	harvest_mode.append(HarvestMode.IDLE)
-	cargo.append(0)
-	harvest_slot.append(-1)
-	home.append(0)
-	ready_tick.append(0)
-	offline_until.append(0)
-	build_left.append(0)
-	ammo.append(type_ammo[type_index] if type_index < type_ammo.size() else 0)
-	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
-	rows_version += 1
-	player_count = maxi(player_count, owner)
-	return id
+	return WorldRows.add_unit(self, owner, type_index, x, y)
 
 
 ## Appends a building with its top-left tile at (origin_col, origin_row); 0 when refused. It blocks
@@ -931,19 +895,12 @@ func footprint_origin(row: int) -> Vector2i:
 
 ## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.
 func _push_unit_event(kind: int, row: int) -> void:
-	var at: int = events.size()
-	events.resize(at + EVENT_STRIDE)  # The last two ints of the record stay 0.
-	write_unit_event(at, kind, row)
+	WorldRows.push_unit_event(self, kind, row)
 
 
 ## Writes the SPAWNED or DIED record of row `row` at `events[at]`, which is already sized.
 func write_unit_event(at: int, kind: int, row: int) -> void:
-	events[at] = kind
-	events[at + 1] = unit_id[row]
-	events[at + 2] = pos_x[row]
-	events[at + 3] = pos_y[row]
-	events[at + 4] = type_index[row]
-	events[at + 5] = owner[row]
+	WorldRows.write_unit_event(self, at, kind, row)
 
 
 ## Removes every row with hp of 0 or less: a DIED record per dead row, then a stable compaction of
