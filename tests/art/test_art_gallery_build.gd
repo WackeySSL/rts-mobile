@@ -37,6 +37,8 @@ const SCENES: Array[Array] = [
 const ARMED: Array[String] = ["defence_turret", "renew_defence"]
 ## The buildings with an `anim` part (P143).
 const ANIMATED: Array[String] = [
+	"fossil_space",
+	"renew_space",
 	"fossil_radar",
 	"fossil_strike",
 	"power_plant",
@@ -276,7 +278,8 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 	var staged: int = 0
 	for id: String in _building_ids():
 		var sheet: IsoSheetDef = index.sheet(StringName(id))
-		if not sheet.has_part(&"dmg1"):
+		# A sheet with a KRITISK patch only (ADR 0034: the space centres) is staged too.
+		if BuildingDamage.picture(sheet, 2) == 0:
 			page.get_node("Next").pressed.emit()
 			continue
 		staged += 1
@@ -285,23 +288,27 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 		for stage: int in [1, 2]:
 			button.pressed.emit()
 			assert_str(button.text).is_equal(page.STAGE_NAMES[stage])
+			var picture: int = BuildingDamage.picture(sheet, stage)
 			var patches: Array[Node] = page.find_children("Damage", "Sprite2D", true, false)
-			assert_int(patches.size()).override_failure_message(id).is_equal(2 * SECTIONS.size())
+			# SKADET of a sheet without `dmg1` shows the intact picture: no patch.
+			assert_int(patches.size()).override_failure_message(id).is_equal(
+				2 * SECTIONS.size() if picture > 0 else 0
+			)
 			# The `Anim` child runs at SKADET and at KRITISK only where the sheet says so.
 			var anims: int = page.find_children("Anim", "Sprite2D", true, false).size()
-			var runs: bool = sheet.has_part(&"anim") and (stage == 1 or sheet.anim_kritisk)
+			var runs: bool = sheet.has_part(&"anim") and (picture != 2 or sheet.anim_kritisk)
 			assert_int(anims).override_failure_message("%s stage %d" % [id, stage]).is_equal(
 				2 * SECTIONS.size() if runs else 0
 			)
 			if id in ARMED:
 				_check_heads(page, sheet, stage)
 			for patch: Sprite2D in patches:
-				_check_patch(page, patch, sheet, stage)
+				_check_patch(page, patch, sheet, picture)
 		button.pressed.emit()  # Intact again.
 		assert_str(button.text).is_equal(page.STAGE_NAMES[0])
 		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
 		page.get_node("Next").pressed.emit()
-	assert_int(staged).is_equal(16)  # Both factions' eight (P158a, P158b).
+	assert_int(staged).is_equal(18)  # Both factions' eight (P158a, P158b) and the space centres.
 
 
 ## The body of a stage is trimmed at the integer ceil of the cut in texels, with the clip on, also

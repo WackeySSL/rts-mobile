@@ -25,21 +25,23 @@ const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 ## canvas (w, h) and its cut row. Run `bash scripts/gen-art.sh` and read the sheets when the art
 ## changes on purpose.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"fossil_space": [384, 438, 246, 392, 198, 88, 272, 158, 186, 209],
-	&"renew_space": [384, 410, 218, 410, 194, 142, 230, 306, 212, 285],
+	&"fossil_space": [384, 438, 246, 392, 198, 88, 272, 378, 368, 392],
+	&"renew_space": [384, 410, 218, 410, 194, 142, 230, 378, 296, 367],
 }
 ## The lift: frames, `anim_ms`, how far up it goes in tiles, the group it moves, the height it rests
 ## at (the top of a primitive under it) and the height of the member above it (the Skyrig's beam,
 ## the Zenith's crown), which it never reaches.
 const LIFT: Dictionary[StringName, Array] = {
 	&"fossil_space": [16, 150, 1.55, &"lift", 0.48, 3.32],
-	&"renew_space": [12, 200, 1.4, &"lift", 0.72, 3.3],
+	&"renew_space": [12, 200, 1.4, &"lift", 0.82, 3.3],
 }
 const MAX_STEP: float = 0.37  ## Tiles a lift moves between two frames at most (14 px at zoom 1).
 const HEIGHT_BAND: Vector2 = Vector2(80.0, 150.0)  ## Spec 05, a superweapon building.
 const SHARE: Dictionary[StringName, Vector2] = {
 	&"fossil": Vector2(0.07, 0.13), &"renew": Vector2(0.065, 0.125)
 }
+const SUPPORT: String = "res://tests/art/artgen_v5_support.gd"
+const REST_GAP: float = 0.12  ## Tiles: a fallen piece touches what holds it within this.
 const MAX_OVERLAP: float = 0.8  ## Against every other building at 32 px, intersection over union.
 const OPEN_MEAN: float = 0.25  ## The Skyrig's members cover this share of their box at most.
 
@@ -136,8 +138,8 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 		assert_int(shadow.x - sheet.anchor(&"shadow").x).is_greater_equal(
 			hull.x - sheet.anchor(&"hull").x
 		)
-		# The patch is the top of the body, so it ends well above the body's foot.
-		assert_int(sheet.cuts[1]).is_less(hull.y - 96)
+		# The patch reaches its cut row and the overlap under it, inside the body's canvas.
+		assert_int(sheet.cuts[1] + 4).is_less_equal(hull.y)
 
 
 func test_each_space_centre_is_as_tall_as_spec_05_says_with_its_lift_at_rest() -> void:
@@ -415,13 +417,6 @@ func test_the_kritisk_pictures_break_the_top_of_each_tower() -> void:
 	assert_bool(_ink(zen_intact, Vector3(-0.2, -0.2, 3.43))).is_true()
 	assert_bool(_ink(zen_broken, Vector3(-0.2, -0.2, 3.43))).is_false()  # The crown came down.
 	assert_bool(_ink(zen_broken, Vector3(-0.2, -0.2, 1.7))).is_true()  # The lower tower stands.
-	# Both stage-2 pictures are patches of the body's top and not its whole (the page's rows).
-	for id: StringName in IDS:
-		var sheet: IsoSheetDef = _index.sheet(id)
-		var patch: Vector2i = sheet.frame_size(&"dmg2")
-		assert_int(patch.y).override_failure_message("%s" % id).is_less(
-			sheet.frame_size(&"hull").y / 2 + 10
-		)
 
 
 func test_each_default_view_reads_apart_from_every_other_building_at_32_px_in_greyscale() -> void:
@@ -525,6 +520,60 @@ func test_the_style_guide_names_the_two_space_centres_their_lifts_and_the_rules(
 		"Spec 05",
 	]:
 		assert_str(flat).override_failure_message(line).contains(line)
+
+
+## What KRITISK moves comes to rest on something that stays: every primitive a stage-2 pose shifts
+## or turns touches (within `REST_GAP`) a primitive of the stage that no pose moved, so no piece of
+## debris floats and none hangs in the air beside the tower.
+func test_kritisk_debris_rests_on_a_surface() -> void:
+	for id: StringName in IDS:
+		var model: ArtModel = _model(id)
+		var intact: Dictionary[int, AABB] = {}
+		for prim: ArtPrim in model.primitives(&"hull"):
+			if prim.damage == 0:
+				intact[prim.key()] = prim.aabb()
+		var fixed: Array[AABB] = []
+		var moved: Array[ArtPrim] = []
+		for prim: ArtPrim in model.damage_prims(2):
+			if intact.has(prim.key()) and not prim.aabb().is_equal_approx(intact[prim.key()]):
+				moved.append(prim)
+			else:
+				fixed.append(prim.aabb())
+		assert_int(moved.size()).override_failure_message("%s moves nothing" % id).is_greater(0)
+		# A moved piece may hang on another moved piece (the beam carries its hoist head), so the
+		# held ones grow until no more piece joins.
+		var held: Array[AABB] = fixed.duplicate()
+		var floating: Array[ArtPrim] = moved.duplicate()
+		var joined: bool = true
+		while joined:
+			joined = false
+			for prim: ArtPrim in floating.duplicate():
+				for box: AABB in held:
+					if box.grow(REST_GAP).intersects(prim.aabb()):
+						held.append(prim.aabb())
+						floating.erase(prim)
+						joined = true
+						break
+		for prim: ArtPrim in floating:
+			(
+				assert_bool(false)
+				. override_failure_message("%s: %s floats in the air" % [id, prim.line])
+				. is_true()
+			)
+
+
+## The KRITISK picture keeps a share of its team colour in the band the other buildings pass
+## (`SHARE_BANDS[1]`). SKADET has no picture of its own here (ADR 0034), so only stage 2 is read.
+func test_the_kritisk_picture_keeps_its_team_colour_in_the_band() -> void:
+	var support: GDScript = load(SUPPORT) as GDScript
+	var band: Vector2 = support.SHARE_BANDS[1]
+	for id: StringName in IDS:
+		var share: float = support.key_share(_model(id), 2)
+		(
+			assert_float(share)
+			. override_failure_message("%s stage 2 key share %.2f, not in %s" % [id, share, band])
+			. is_between(band.x, band.y)
+		)
 
 
 func _model(id: StringName) -> ArtModel:

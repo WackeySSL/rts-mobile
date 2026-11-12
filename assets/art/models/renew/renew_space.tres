@@ -8,7 +8,7 @@ art_id = &"renew_space"
 faction = &"renew"
 category = &"bld"
 footprint = 3
-silhouette = "A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar riding up and down the shaft on a team-lit ring, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings."
+silhouette = "A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar of graphite panels in a titanium frame riding up and down the shaft, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings."
 prims = PackedStringArray(
 "box hull graphite 0 0 0 2.92 2.92 0.06",
 "prism hull ceramic 0 0 0.06 2.5 2.5 0.1 sides=12",
@@ -27,10 +27,10 @@ prims = PackedStringArray(
 "prism hull graphite -0.2 -0.2 3.3 0.62 0.62 0.1 sides=6 group=up",
 "prism hull glass -0.2 -0.2 3.4 0.52 0.52 0.16 sides=6 group=glassband",
 "prism hull ceramic -0.2 -0.2 3.56 0.6 0.6 0.06 sides=6 group=up",
-"box hull ceramic 0.35 -0.2 0.5 0.5 0.1 0.22 group=fins",
-"box hull ceramic -0.75 -0.2 0.5 0.5 0.1 0.22 group=fins",
-"box hull ceramic -0.2 0.35 0.5 0.1 0.5 0.22 group=fins",
-"box hull ceramic -0.2 -0.75 0.5 0.1 0.5 0.22 group=fins",
+"box hull ceramic 0.35 -0.2 0.5 0.5 0.1 0.32 group=fins",
+"box hull ceramic -0.75 -0.2 0.5 0.5 0.1 0.32 group=fins",
+"box hull ceramic -0.2 0.35 0.5 0.1 0.5 0.32 group=fins",
+"box hull ceramic -0.2 -0.75 0.5 0.1 0.5 0.32 group=fins",
 "box hull titanium 0.18 -0.2 0.5 0.16 0.06 0.62",
 "box hull titanium -0.58 -0.2 0.5 0.16 0.06 0.62",
 "prism hull ceramic 0.8 0.78 0.06 0.9 0.9 0.34 sides=6 group=house",
@@ -39,21 +39,23 @@ prims = PackedStringArray(
 "prism hull ceramic 0.8 0.78 0.4 0.98 0.98 0.08 sides=6 group=houselid",
 "box hull mint 0.95 1.22 0.18 0.06 0.04 0.07 group=house",
 "prism hull ceramic -0.95 0.95 0.06 0.4 0.4 0.2 sides=6 group=tanks",
-"prism hull team -0.95 0.95 0.26 0.46 0.46 0.2 sides=6 group=tanks",
+"prism hull team -0.95 0.95 0.26 0.46 0.46 0.2 sides=6 group=tankring",
 "prism hull ceramic -0.95 0.95 0.46 0.4 0.4 0.22 sides=6 group=tanks",
 "prism hull ceramic -0.95 0.95 0.68 0.34 0.34 0.1 sides=6 group=tanks",
 "prism hull ceramic -0.4 1.1 0.06 0.4 0.4 0.2 sides=6 group=tanks",
-"prism hull team -0.4 1.1 0.26 0.46 0.46 0.2 sides=6 group=tanks",
+"prism hull team -0.4 1.1 0.26 0.46 0.46 0.2 sides=6 group=tankring",
 "prism hull ceramic -0.4 1.1 0.46 0.4 0.4 0.22 sides=6 group=tanks",
 "prism hull ceramic -0.4 1.1 0.68 0.34 0.34 0.1 sides=6 group=tanks",
 "rod hull titanium -0.95 0.95 0.2 -0.4 1.1 0.2 4",
 "box hull mint 0.4 -0.9 0.16 0.07 0.07 0.05",
 "box hull mint -0.9 -0.5 0.16 0.07 0.07 0.05",
-"prism anim team -0.2 -0.2 0.72 0.76 0.76 0.1 sides=12 group=lift",
-"prism anim graphite -0.2 -0.2 0.82 1.36 1.36 0.08 sides=6 group=lift",
-"prism anim bluegrey -0.2 -0.2 0.9 1.22 1.22 0.03 sides=6 group=lift",
+"prism anim bluegrey -0.2 -0.2 0.82 1.36 1.36 0.08 sides=6 group=lift",
+"prism anim graphite -0.2 -0.2 0.9 1.2 1.2 0.03 sides=6 group=lift",
+"box anim bluegrey 0.2 -0.2 0.93 0.05 1.0 0.02 group=lift",
+"box anim bluegrey -0.6 -0.2 0.93 0.05 1.0 0.02 group=lift",
+"box anim bluegrey -0.2 0.2 0.93 0.8 0.05 0.02 group=lift",
+"box anim bluegrey -0.2 -0.6 0.93 0.8 0.05 0.02 group=lift",
 "prism anim ceramic -0.2 -0.2 0.93 0.6 0.6 0.14 sides=12 group=lift",
-"prism anim mint -0.2 -0.2 0.72 0.14 0.14 0.05 sides=6 group=lift",
 "box anim mint 0.4 -0.2 0.93 0.07 0.07 0.05 group=lift",
 "box anim mint -0.8 -0.2 0.93 0.07 0.07 0.05 group=lift",
 "broken hull ceramic -0.2 -0.2 2.4 0.44 0.44 0.3 teeth=6 low=0.3 damage=2 group=k2",
@@ -73,11 +75,14 @@ poses = PackedStringArray(
 "anim 9 lift shift 0 0 0.519",
 "anim 10 lift shift 0 0 0.205",
 "anim 11 lift shift 0 0 0.024",
-"dmg2 0 up turn y 85 -0.2 -0.2 2.4",
-"dmg2 0 up shift 0.3 0.45 -1.1",
-"dmg2 0 glassband turn y 85 -0.2 -0.2 2.4",
-"dmg2 0 glassband shift 0.3 0.45 -1.1",
-"dmg2 0 glassband blow 100"
+"dmg2 0 up turn x 85 -0.2 -0.2 2.4",
+"dmg2 0 up shift -0.9 0.6 -1.94",
+"dmg2 0 glassband turn x 85 -0.2 -0.2 2.4",
+"dmg2 0 glassband shift -0.9 0.6 -1.94",
+"dmg2 0 glassband blow 100",
+"dmg2 0 housetm char 100",
+"dmg2 0 plinthband char 100",
+"dmg2 0 tankring char 100"
 )
 anim_ms = 200
 emitters = PackedStringArray(

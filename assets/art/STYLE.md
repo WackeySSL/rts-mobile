@@ -74,12 +74,6 @@ face (see "Wedge faces" under "Generated art"), and the eight models that used `
 stand-in for it use `slope=1`. The "Modelling notes" of both factions' units and of the Lumen
 Accord's buildings no longer warn about the bug; their frames and item cards are regenerated.
 
-**v1.31 (Phase 4b, P236)** adds the models of the space centre of both factions, the Skyrig
-(`fossil_space`, an open launch gantry with a satellite capsule on a rail lift) and the Zenith
-(`renew_space`, a round white tower with a solar collar on a lift), each with a KRITISK picture and no
-SKADET picture (ADR 0034), "The space centres" under "Buildings" says how, and the Build and Iso pages
-list them.
-
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -1036,7 +1030,8 @@ which is the wall with the door.
 
 | Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
 | --- | --- | --- | --- |
-| `renew_hq` | Grid Hub | 3x3 | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. |
+| `renew_hq` | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
+| Grid Hub | 3x3 | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. |
 | `renew_power` | Wind Park | 2x2 | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. |
 | `renew_refinery` | Fuel Works | 3x3 | Three upright glass reaction cylinders of three heights with ceramic caps and wide team rings, joined by titanium pipes to a low white process hall with a wide team band, a skylight, two hexagonal vent drums and a dark dock mouth between two rails in the middle of its front wall, with mint guide lights across the apron. |
 | `renew_barracks` | Crew Hall | 2x2 | A long low white hall with a glass window band under a wide team band and a flat white lid with three dark solar panels, a taller hexagonal rotunda rising behind its left end with a glass band, a team ring and a glass lantern, a dark door under a team lintel and a mint light in the hall's east front column and a slim signal pole with a mint lamp beside the door. |
@@ -1165,82 +1160,99 @@ which is the wall with the door.
 
 ### The space centres (P236)
 Plan row P236 (ADR 0036 section 11, the Reveal superweapon; section 15, the atlas pages): the models of
-the space centre for both factions, the Derrick League's **Skyrig** and the Lumen Accord's **Zenith**
-(names and looks from the GDD: a launch tower built like a drilling derrick, and a white tower with a
-solar collar). Each is a 3 x 3 building with a body, a lift as its `anim` part, a KRITISK picture and
-a cast shadow. The building's data (`.tres`, rosters, requires) is P234's; the art id of a sheet must
-equal the `BuildingDef.type_id` for `WorldSort` to bake it, so P234 names its types `fossil_space` and
+the space centre for both factions, the Derrick League's **Skyrig** and the Lumen Accord's **Zenith**.
+Each is a 3 x 3 building with a body, a lift as its `anim` part, a KRITISK picture and a cast shadow.
+The building's data (`.tres`, rosters, requires) is P234's; the art id of a sheet must equal the
+`BuildingDef.type_id` for `WorldSort` to bake it, so P234 names its types `fossil_space` and
 `renew_space` (as `fossil_radar` and `renew_radar`). What the building does is not drawn: the sweep
 has no end, so its state is the HUD's (P235) and the model shows the same picture whether the sweep
 is on, paused or not yet fired. Each is placed from primitives in
 `assets/art/models/<faction>/<id>.tres`, so a change is a change of the model and a run of
 `bash scripts/gen-art.sh`.
+- **Two readings of the GDD.** The GDD's looks section says "The space centre is a launch tower built
+  like a drilling derrick" (Derrick League) and "The space centre is a white spire with a solar
+  collar" (Lumen Accord). The Deep Bore already is the Derrick League's open drilling derrick, so a
+  second derrick pyramid would read as it; the Skyrig is therefore a goalpost gantry (two lattice
+  posts and a hoist beam, still built of derrick steel and rungs) with the capsule it lifts. "Palette
+  per faction" bans a solid spire (a column that tapers to a point and carries a light or a team cap),
+  so the Zenith is a round stepped tower with a flat lid and no tip light: a white tower with a solar
+  collar. Both are judged on the phone ("Open points for Michael"); the GDD's words are Michael's and
+  stay as they are until he answers.
 
 | Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
 | --- | --- | --- | --- |
 | `fossil_space` | Skyrig | 3x3 | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. |
-| `renew_space` | Zenith | 3x3 | A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar riding up and down the shaft on a team-lit ring, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings. |
+| `renew_space` | Zenith | 3x3 | A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar of graphite panels in a titanium frame riding up and down the shaft, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings. |
 
 - **The lift is the animation.** The `anim` part is one group, `lift`, that moves straight up and
   down (`shift 0 0 dz`, no turn): the Skyrig's satellite capsule in its cradle climbs the rails of the
   gantry from the launch pad to just under the hoist beam, the Zenith's solar collar rides up the
   shaft from the fins at its foot to the middle of the tower. The Skyrig has 16 frames at 150 ms
-  (2.4 s a loop), the Zenith 12 at 200 ms (2.4 s). A loop is one rise and one fall on a cosine; the
-  frames of the fall are sampled half a step after those of the rise, so no two frames are the same
-  picture (a mirrored loop would bake every frame twice). Frame 0 is the lift at rest, standing on a
-  member of the body (the pad, the fins); no step is above 0.37 tile (14 px at zoom 1); at the top the
-  lift stays under the beam (3.32 tiles) or the crown (3.3 tiles). The lift runs always: it is not a
-  state, as the Signal Mast's panel is not. At KRITISK `anim_kritisk` is `hide`: the gantry's rails
-  are gone and the shaft is broken, so nothing carries it.
-- **No SKADET picture (ADR 0034).** Neither model has a `dmg1` pose, so there is no `dmg1` frame: a building
-  under two thirds of its health keeps its intact picture and shows only the smoke and fire of that
-  stage (`AirFx`). The sheets have the parts `hull`, `anim`, `dmg2` and `shadow`, and their `cuts`
-  begin with 0. `damage=1` primitives are not used.
+  (2.4 s a loop, steps up to 0.30 tile), the Zenith 12 at 200 ms (2.4 s, steps up to 0.36 tile, 14 px
+  at zoom 1, so it runs at 5 frames a second: the row budget came first, more frames would cost more rows). A loop is one rise and one fall on a cosine; the frames of the fall are sampled
+  half a step after those of the rise, so no two frames are the same picture (a mirrored loop would
+  bake every frame twice). Frame 0 is the lift at rest, standing on a member of the body (the pad,
+  the fins); no step is above 0.37 tile; at the top the lift stays under the beam (3.32 tiles) or the
+  crown (3.3 tiles). The lift runs always: it is not a state, as the Signal Mast's panel is not. At
+  KRITISK `anim_kritisk` is `hide`: the gantry's rails are gone and the shaft is broken, so nothing
+  carries it.
+- **No SKADET picture (ADR 0034).** Neither model has a `dmg1` pose, so there is no `dmg1` frame: a
+  building under two thirds of its health keeps its intact picture and shows only the smoke and fire
+  of that stage (`AirFx`). The sheets have the parts `hull`, `anim`, `dmg2` and `shadow`, and their
+  `cuts` begin with 0. `damage=1` primitives are not used.
 - **Canvas and anchor** (px at 2x; the height in px at zoom 1 against Spec 05's band of 80 to 150, the
   superweapon's, and the team share of the default view with the lift at rest), which `tests/art`
-  pins. The body's anchor is the back corner of the footprint (Spec 03); the lift has a canvas
-  of its own, anchored at the footprint's centre, and so has the KRITISK patch (the top of the body
-  down to its cut row, anchored as the body).
+  pins. The body's anchor is the back corner of the footprint (Spec 03); the lift has a canvas of its
+  own, anchored at the footprint's centre, and so has the KRITISK patch (the top of the body down to
+  its cut row, anchored as the body).
 
 | Type id | Hull canvas | Anchor | Shadow canvas | Lift canvas | KRITISK patch (cut row) | Height | Team share, % |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `fossil_space` | 384 x 438 | (192, 246) | 392 x 198 | 88 x 272 | 158 x 186 (209) | 143 | 9.5 |
-| `renew_space` | 384 x 410 | (192, 218) | 410 x 194 | 142 x 230 | 306 x 212 (285) | 142 | 7.9 |
+| `fossil_space` | 384 x 438 | (192, 246) | 392 x 198 | 88 x 272 | 378 x 368 (392) | 143 | 9.8 |
+| `renew_space` | 384 x 410 | (192, 218) | 410 x 194 | 142 x 230 | 378 x 296 (367) | 142 | 7.9 |
 
 - **The Skyrig is an open gantry.** A goalpost of two lattice posts (two legs each, rungs and
-  diagonals between them) and a heavy steel hoist beam with a dark housing and a warm lamp, standing
-  at the back of the deck. The satellite capsule rides between the posts on two thin rails that run
-  from a launch pad to the beam; the pod is an olive drum with a team band and a short nose cone in a
-  dark cradle. In front stand a flat control bunker under a rust roof with a wide team band and three
-  olive gas bottles with team rings, joined to the pad by a pipe. It is open (its members cover about
-  a seventh of the box they stand in between the deck and the beam, 0.15 on average, and
-  `tests/art` pins at most 0.25), and a solid spire is not allowed (no spire, "Palette per faction").
+  diagonals between them, team brackets on the legs) and a heavy steel hoist beam with a dark housing
+  and a warm lamp, standing at the back of the deck. The satellite capsule rides between the posts on
+  two thin rails that run from a launch pad to the beam; the pod is an olive drum cut by a team band
+  (a band stands between two wall segments, "Drawing rules") under a short nose cone, in a dark cradle.
+  In front stand a flat control bunker under a rust roof with a wide team band and three olive gas
+  bottles with team rings, joined to the pad by a pipe. It is open (its members cover about a seventh
+  of the box they stand in between the deck and the beam, 0.15 on average, and `tests/art` pins at
+  most 0.25), and a solid spire is not allowed (no spire, "Palette per faction").
 - **The Zenith is a plain round tower.** Three stepped round drums, each cut by a team ring, on a
   graphite plinth with a team ring, four low white buttress fins, a flat graphite and glass crown
   under a white lid. It tapers by steps, never to a point, it has no four-sided prism and no lamp or
   team cap at its tip (the tip is a lid 0.06 tile thick); "Palette per faction" bans the spire that
-  is another game's tower, and `tests/art` pins all four. The collar is a flat dark hexagon of solar
-  panels (a blue-grey face on graphite) a tile and a third wide with mint lights at two corners, a
-  white hub and a team ring under it; it is the one wide member, so the tower reads as a tower with a
-  collar and not as a dish. A low white hexagonal control house and two small tanks stand in front,
-  as the Lumen Accord's refinery's do.
+  is another game's tower, and `tests/art` pins all four. The collar is a flat hexagon a tile and a
+  third wide, built as solar panels: a titanium frame round a dark graphite panel face crossed by
+  four blue-grey mullions, a white hub on the shaft and two mint lights on the hexagon's flats at
+  +x and -x. It is the one wide member, so the tower reads as a tower with a collar and not as a dish.
+  The glass band under the lid stays for now: a pale band under a lid is also what a lighthouse has,
+  and whether the Zenith reads as one is for the phone ("Open points for Michael"). A low white
+  hexagonal control house and two small tanks stand in front, as the Lumen Accord's refinery's do.
 - **Team colour** is about 8 to 10 % of a default view (the pins are 7 to 13 % and 6.5 to 12.5 %,
   in every frame of the lift): the Skyrig's deck band, its bunker band, the posts' brackets and the
-  rings on the bottles and the pod; the Zenith's four rings (plinth, three on the shaft), the rings of
-  the tanks, the house band and the collar's under-ring. No roof is a team plate (`test_artgen_plates.gd`).
+  rings on the bottles and on the pod; the Zenith's four rings (plinth, three on the shaft), the rings
+  of the tanks and the house band. No roof is a team plate (`test_artgen_plates.gd`).
 - **KRITISK.** The Skyrig loses the top half of its right post (its rails go, the pieces left
-  bend), its beam sags to that side with a char on it, and the left post stands. The Zenith's upper
-  drum and its crown snap off and lie across the plinth, the glass band blown, a jagged stump on
-  the lower tower. Both pictures are patches of the body's upper part only (the cut rows above),
-  not of its foot, which keeps the page rows low; the 2 to 4 typed damage points sit on the bunker,
-  a bottle and a post (the Skyrig) and on the house, the shaft and a tank (the Zenith).
+  bend), its beam sags to that side, charred, and the left post stands; the deck band, the bunker band
+  and the bottles' rings are charred (the key share of the stage is 0.32 of the intact one, band 0.20
+  to 0.50). The Zenith's upper drum and its crown snap off and lie on the base disk behind-left of the
+  tower, resting on it, the glass band blown, with a jagged stump on the lower tower; the plinth ring,
+  the house band and the tanks' rings are charred (0.46). Debris rests on a surface: every piece a
+  stage-2 pose moves touches something that stays or a piece that touches it (`tests/art` pins it).
+  The patches reach low, down to the front of each body, which costs 14 to 32 rows over a patch of
+  the top alone; the 2 to 4 typed damage points sit on the bunker, a bottle and a post (the Skyrig)
+  and on the house, the shaft and a tank (the Zenith).
 - **The launch point.** Both models name a `launch` emitter above the tower (the Skyrig's beam, the
   Zenith's crown), which the strike effects use for a building with a strike; the Reveal has no aim, so
-  the effects row of the sweep chooses what to show (P235 and P272 own that).
+  the effects row of the sweep chooses what to show (P235 and P272 own that). The sweep is no rocket:
+  no rocket rises from a gantry or a silo (STYLE "Building life").
 - **Page rows** (P236, ADR 0036 section 15; the pins are in `tests/view/test_iso_atlas_budget.gd`):
-  page 1 gains 316 rows on the cross-faction page (2659 to 2975), 304 on the Derrick League's mirror
-  (2542 to 2846) and 328 on the Lumen Accord's (2650 to 2978); page 2 gains 76, 4 and 12 rows (1040
-  to 1116, 566 to 570, 622 to 634). That leaves 609, 738 and 606 rows on page 1. Packed alone, the two
+  page 1 gains 334 rows on the cross-faction page (2659 to 2993), 336 on the Derrick League's mirror
+  (2542 to 2878) and 260 on the Lumen Accord's (2650 to 2910); page 2 gains 76, 4 and 12 rows (1040
+  to 1116, 566 to 570, 622 to 634). That leaves 591, 706 and 674 rows on page 1. Packed alone, the two
   are 605 rows on page 1 and 202 on page 2 and take 42 ms to bake (desktop, bake scale 1.0), about 45
   ms of a bake of about 1 s.
 - **Readability.** Each default view is identifiable at 32 px in greyscale (a body and a spread of
@@ -1249,10 +1261,10 @@ is on, paused or not yet fired. Each is placed from primitives in
   Mast: a tall thin tower on a plate), and the pin is 0.8. The Skyrig is a wide frame with a
   capsule, the Zenith one slim column with a wide collar.
 - **Judge it in the gallery.** The Build page lists them with the other buildings, in the order of the
-  model files (the Derrick League's nine, then the Lumen Accord's nine) with a tank in front and behind, at zoom 1, 0.75
-  and 1.5 in the Signal and the Arktisk triad on grass and sand; the lift plays on its clock, and the
-  Stage button shows KRITISK (and, for these two, the intact picture at SKADET). The Iso page shows
-  the frames and the item cards.
+  model files (the Derrick League's nine, then the Lumen Accord's nine) with a tank in front and
+  behind, at zoom 1, 0.75 and 1.5 in the Signal and the Arktisk triad on grass and sand; the lift
+  plays on its clock, and the Stage button shows KRITISK (and, for these two, the intact picture at
+  SKADET). The Iso page shows the frames and the item cards.
 
 
 ## Ore
@@ -1651,6 +1663,7 @@ in doubt, choose a plainer real-world form.
 | Relay Post | A low white hexagonal relay house with a glass band and a wide team band beside a slim titanium pole with team rings that carries three upright hexagonal phased-array faces, each a blue-grey panel in a team-coloured frame, turned alternately to the front and to the side. | `iso/renew/bld/renew_radar_{hull,shadow}.svg`, 256 wide |
 | Rail Battery | A squat white hexagonal plinth with a team band carrying a low hexagonal gun head with a team ring and one long thin titanium rail barrel in a white sleeve with three graphite coil collars and a muzzle ring. | `iso/renew/bld/renew_defence_{hull,shadow}.svg`, `renew_defence_head_d00..d15.svg`, 128 wide |
 | Dusk Array | An open square frame of four tall white hexagonal columns with two team rings each and graphite caps, joined at their tops by a ring of graphite bars with a team light strip and a mint node under each bar, standing round a hexagonal capacitor core of stacked white drums with a team band, a glass ring and a mint cap. | `iso/renew/bld/renew_strike_{hull,shadow}.svg`, 384 wide |
+| Zenith | A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar of graphite panels in a titanium frame riding up and down the shaft, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings. | `iso/renew/bld/renew_space_{hull,shadow}.svg`, 384 wide, the lift `renew_space_anim_f<K>.svg`, 12 frames, 142x230 |
 | Infantry rally flag | A slim metal pole standing up from a round foot plate with a small triangular pennant, over a round ring on the ground. | `flags/rally_infantry_{hull,team}.svg`, 128x128 |
 | Vehicles rally flag | A slim metal pole standing up from a square foot plate with a wide notched swallowtail banner, over a square frame on the ground. | `flags/rally_vehicles_{hull,team}.svg`, 128x128 |
 | Tab, item and glyph icons | Three tab pictograms, eleven build tile icons and thirty-eight glyphs, one silhouette each. | `icons/<kind>_<name>.svg`, 128x128, import scale 1.0, see "Icons and glyphs" |
@@ -1749,6 +1762,16 @@ house beside a thin mast with three plates, the squat plinth with a long rail an
 frame round a core. Compared pair by pair on their silhouettes (intersection over union of the 32
 px masks) the largest overlap is 0.80 (Grid Hub and Crew Hall) and the smallest 0.41 (Fuel
 Works and Relay Post).
+
+Space centre results (P236, `tests/art/test_space_centres.gd`, the default view at zoom 1 with the lift
+at rest, alpha above 0.95 for the share): the team share is 9.8 % (Skyrig) and 7.9 % (Zenith), 9.7 to
+9.9 % and 7.8 to 8.6 % over the frames of the lift. The hull frames are 18.0 KB (Skyrig) and 19.3 KB
+(Zenith), under the 28 KB limit. The two default views were scaled to 32 px for their longest side in
+greyscale: the tall open frame with a capsule in it over a banded deck, and the slim white column
+with a wide dark collar. Compared with the other 17 buildings on their silhouettes (intersection over
+union of the 32 px masks) the largest overlap is 0.64 for the Skyrig (the Zenith) and 0.75 for the
+Zenith (the Signal Mast),. The Skyrig's members cover 15 %
+of their box on average. KRITISK keeps 0.32 (Skyrig) and 0.46 (Zenith) of the team colour.
 
 ## Feedback markers (new)
 The target flash, the attack-move marker, the long-press anchor and the box are drawn in code
@@ -2632,6 +2655,18 @@ Renaming a unit or a unit type is a data change, not a reskin.
   (6) the dock and the exits: the Fuel Works' mouth, the Motor Hall's door and the Crew Hall's
   door are on the left-front wall, in the cells the data names; (7) the tank in front of and behind
   each building: it is the Torque of P102 (`renew_tank`) in its default view, `d10`.
+- **P236, for Michael on the phone (Dev, Art gallery, button at the top right: Build, then `>` to the
+  end of each faction's list):** (1) the two readings of the GDD: the Skyrig is a goalpost gantry
+  with a capsule and not a second derrick (the Deep Bore is the derrick), the Zenith a round white
+  tower with a flat lid and a solar collar and not a spire (the "No spire" rule bans a solid column
+  with a light at its tip); does each read as a space centre at zoom 0.75 and 1, and should the GDD's
+  words change ("a white tower with a solar collar")? (2) whether the Zenith reads as a lighthouse
+  (white tower, coloured bands, a glass band under a lid): if so the glass band goes; (3) the lifts:
+  the Skyrig's capsule (16 frames, steps up to 0.30 tile) and the Zenith's collar (12 frames at 200
+  ms, steps up to 0.36 tile, 14 px at zoom 1), whether the collar looks jerky; 16 frames would
+  cost more rows on page 1; (4) KRITISK (the Stage button; SKADET shows the intact
+  picture, ADR 0034): the Skyrig's broken right post and sagging beam, the Zenith's toppled top;
+  (5) the team marks (8 to 10 %), and that no roof is a team plate.
 - P101 (Phase 3), please judge on the phone (Dev, Art gallery, the first page: Units, then Iso) the
   six Derrick League units: the silhouettes of "Derrick League units", their team marks (7 to 11 %
   of a unit, as bands, rings and stripes) in both triads on both grounds, how the Flarejack looks
@@ -2734,4 +2769,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.28 (P158b, art-director, ADR 0029 sections 3 to 5): the eight Lumen Accord buildings gain `dmg1` and `dmg2` from their models (blown panes, soot, scorch patches, collapsed parts with `interior`, `slab`, `rebar`, `beam`, `broken` and `petals`), 2 to 3 typed damage points each, `anim_kritisk` on the five with an `anim`, the refinery's steam emitters in groups; shadows and cards unchanged ("The Lumen Accord's buildings (P104)"). |
 | 2026-11-06 | v1.29 (P120k, ADR 0032): six display names are shorter so every requirement fits the locked card's sash on one line: Cracking Plant is Oil Works, Synthesis Works is Fuel Works, Motor Works is Motor Hall, Relay Tower is Relay Post, Blackout Array is Dusk Array and Roustabouts is Rig Hands. The guide's text uses the new names; the rows above keep the names of their day. No art id, file or frame changed. |
 | 2026-11-11 | v1.30 (P273, art-director, ADR 0037 sections 3 and 4): `glyph_repair.svg` (an open-ended spanner on a rising diagonal; the Mend switch and the Repair order share it) and `glyph_sell.svg` (a price tag with a coin on it, not the coin stack of `glyph_credits`), two plain white HUD glyphs on the command bar row of the gallery's Hud page, no seat and no tint. At 32 px in greyscale the wrench is 36.5 from the nearest HUD glyph (the star) and the tag 34.7 (`glyph_credits`; at the first scale of 0.88 it was 34.0 from the Resume triangle, and the scale became 0.9 to keep the one-decimal rule, with the ink re-centred), both over the 29 bar. The seated map copy `glyph_repair_map.svg` (the wrench at 0.8 on the offline plate, tinted #30A46C, the eleventh map glyph) is drawn in the same row; the gallery's map strips now hold their glyphs in two lines of five. |
-| 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings"), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2975, 2846 and 2978 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture whose debris rests on a surface and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings", the two readings of the GDD, the Catalogue rows, the readability results and an open point), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2993, 2878 and 2910 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

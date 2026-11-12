@@ -22,8 +22,10 @@ const BUILDINGS: Dictionary[StringName, Array] = {
 	&"renew_barracks": [2, 600, 180.0],
 }
 ## The two lifts of the space centres (P236, STYLE.md "The space centres"): art id, frames,
-## `anim_ms`. A lift is a shift up and down, not a turn, so `BUILDINGS`' loop tests (which read
-## the angle of a turn) do not apply; tests/art/test_space_centres.gd pins the shift.
+## `anim_ms`. A lift is a shift up and down, not a turn, so the tests of `BUILDINGS` that read the
+## angle of a turn (the loop closing, the cut margin, the team share per turn) do not take it;
+## the ones that only need an `anim` part (its place in the sheet, the shadow, the body) do, and
+## tests/art/test_space_centres.gd pins the shift.
 const LIFTS: Dictionary[StringName, Array] = {
 	&"fossil_space": [16, 150],
 	&"renew_space": [12, 200],
@@ -192,7 +194,7 @@ func test_a_loop_closes_one_step_after_its_last_frame_is_the_first() -> void:
 
 
 func test_the_moving_element_is_not_in_the_body_and_stays_at_rest_in_the_shadow() -> void:
-	for id: StringName in BUILDINGS:
+	for id: StringName in BUILDINGS.keys() + LIFTS.keys():
 		var model: ArtModel = _model(id)
 		var anim: Array[ArtPrim] = model.primitives(&"anim")
 		assert_bool(anim.is_empty()).override_failure_message(String(id)).is_false()
