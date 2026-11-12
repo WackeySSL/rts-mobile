@@ -38,8 +38,8 @@ func test_the_air_pad_and_repair_columns_are_copied_per_type() -> void:
 	assert_array(world.type_repair_period).is_equal([1, 1, 1, 15])
 	assert_array(world.type_repair_cost_percent).is_equal([0, 0, 0, 40])
 	assert_array(world.type_repair_reach).is_equal([0, 0, 0, 1500])
-	assert_array(world.type_repair_slots).is_equal([0, 0, 0, 0])
-	assert_array(world.type_repair_seek).is_equal([0, 0, 0, 0])
+	assert_array(world.type_repair_slots).is_equal([0, 0, 0, 2])
+	assert_array(world.type_repair_seek).is_equal([0, 0, 0, 4000])
 	# The pad offsets sit in their own list, from `type_pad_first`: the depot's two pads, in order.
 	assert_array(world.pad_offset_x).is_equal([0, 2])
 	assert_array(world.pad_offset_y).is_equal([0, 1])
@@ -97,6 +97,7 @@ func test_upgrades_load_once_by_id_in_faction_order_with_their_types() -> void:
 		_upgrade(&"bombs", UpgradeDef.Stat.DAMAGE_DEALT, 120, [scenario.roster[1]])
 	)
 	faction.upgrades.append(null)
+	faction.upgrades.append(_upgrade(&"holes", 0, 105, [null, scenario.roster[0]]))
 	faction.upgrades.append(_upgrade(&"bombs", 1, 50, []))  # The same id again: the first wins.
 	var twin: FactionDef = FactionDef.new()
 	twin.id = &"renew"
@@ -105,12 +106,13 @@ func test_upgrades_load_once_by_id_in_faction_order_with_their_types() -> void:
 	scenario.factions.append(faction)
 	scenario.factions.append(twin)
 	var world: World = World.from_scenario(scenario)
-	assert_array(world.upgrade_ids).is_equal([&"bombs", &"racks"])
-	assert_array(world.upgrade_stat).is_equal([0, 2])
-	assert_array(world.upgrade_value).is_equal([120, 2])
-	assert_array(world.upgrade_type_first).is_equal([0, 1])
-	assert_array(world.upgrade_type_count).is_equal([1, 2])
-	assert_array(world.upgrade_types).is_equal([1, 0, 1])  # Type indexes: the jet, then both.
+	assert_array(world.upgrade_ids).is_equal([&"bombs", &"holes", &"racks"])
+	assert_array(world.upgrade_stat).is_equal([0, 0, 2])
+	assert_array(world.upgrade_value).is_equal([120, 105, 2])
+	assert_array(world.upgrade_type_first).is_equal([0, 1, 2])
+	# A null entry names no type and is not counted: "holes" changes the tank alone.
+	assert_array(world.upgrade_type_count).is_equal([1, 1, 2])
+	assert_array(world.upgrade_types).is_equal([1, 0, 0, 1])  # The jet; the tank; both.
 	for player: int in range(1, world.player_count + 1):
 		assert_int(world.upgrades[player]).is_equal(0)
 
@@ -144,7 +146,7 @@ func test_the_air_plane_is_open_over_rock_and_the_ground_planes_are_not() -> voi
 	var world: World = World.from_scenario(_scenario())
 	var cells: int = world.map_cols * world.map_rows
 	assert_int(world.move_cost.size()).is_equal(4 * cells)
-	assert_int(world.terrain_cost.size()).is_equal(2 * World.GROUND_CLASSES)  # Two terrains.
+	assert_int(world.terrain_cost.size()).is_equal(6)  # Two terrains of three ground classes.
 	var wall: int = 4  # Column 4 of row 0.
 	assert_array(Worlds.costs_at(world, wall)).is_equal([0, 0, 0])
 	assert_int(Worlds.air_cost_at(world, wall)).is_equal(10)
@@ -322,6 +324,8 @@ func _depot(id: StringName, pads: Array[Vector2i]) -> BuildingDef:
 	depot.repair_period_ticks = 15
 	depot.repair_cost_percent = 40
 	depot.repair_reach_milli = 1500
+	depot.repair_slots = 2
+	depot.repair_seek_milli = 4000
 	return depot
 
 

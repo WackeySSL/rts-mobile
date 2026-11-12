@@ -46,7 +46,7 @@ func _reason(world: World, row: int) -> int:
 	var input: PlacementInput = PlacementInput.of_world(world)
 	var type: int = world.type_index[row]
 	var origin: Vector2i = world.footprint_origin(row)
-	var classes: int = World.MoveClass.size()
+	var classes: int = World.GROUND_CLASSES  # The stride of terrain_cost.
 	var cells: int = world.map_cols * world.map_rows
 	var costs: PackedByteArray = world.move_cost.duplicate()
 	for y: int in range(origin.y, origin.y + world.type_foot_h[type]):

@@ -28,9 +28,14 @@ func test_the_layout_version_and_the_new_arrays_are_the_contract() -> void:
 	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
 	# build_left (P128) and ammo (P232) follow the row columns, reveal_site, reveal and upgrades the
 	# player arrays, and the thirteen air and repair tables (P232) the type tables.
-	assert_array(World.ROW_ARRAYS.slice(-4, -2)).is_equal(ROW_COLUMNS)
-	assert_array(World.PLAYER_ARRAYS.slice(-6, -3)).is_equal(PLAYER_COLUMNS)
-	assert_array(World.TYPE_ARRAYS.slice(-19, -13)).is_equal(TYPE_COLUMNS)
+	for pair: Array in [
+		[World.ROW_ARRAYS, ROW_COLUMNS],
+		[World.PLAYER_ARRAYS, PLAYER_COLUMNS],
+		[World.TYPE_ARRAYS, TYPE_COLUMNS],
+	]:
+		var at: int = pair[0].find(pair[1][0])  # Found by name, so a later row moves nothing here.
+		assert_int(at).is_greater_equal(0)
+		assert_array(pair[0].slice(at, at + pair[1].size())).is_equal(pair[1])
 	var tail: Array[String] = ["ready_tick", "offline_until", "build_left", "ammo", "projectiles"]
 	tail.append_array(["fog", "players", "ore", "ghosts"])
 	assert_array(World.hash_section_names().slice(-9)).is_equal(tail)

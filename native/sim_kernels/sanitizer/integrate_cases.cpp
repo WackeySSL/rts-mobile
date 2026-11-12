@@ -24,6 +24,8 @@ namespace {
 
 constexpr int64_t BIG = 1000000000; // a budget that finishes any field of a map this harness builds
 constexpr int64_t BUCKET_COUNT = flow::BUCKETS;
+constexpr int64_t GROUND_CLASSES = 3; // World.GROUND_CLASSES: the classes that have a terrain cost
+constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size(): the ground classes and the open AIR plane (format 6)
 constexpr int64_t NAV_DIRECT = 1, NAV_FIELD = 2; // World.NavMode
 constexpr int64_t ORDER_ATTACK_MOVE = 1, ORDER_MOVE = 2, ORDER_ATTACK = 3; // World.Order
 // The slots the pass keeps an answer for: the value bits of an int64_t, a slot's bit being a shift by 0 to 62. It is
@@ -329,7 +331,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 	State state;
 	state.cols = cols;
 	state.rows = rows;
-	state.classes = 4;
+	state.classes = MOVE_CLASSES;
 	const int64_t cells = cols * rows;
 	state.rules.map_cols = cols;
 	state.rules.map_rows = rows;
@@ -341,7 +343,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 	state.rules.stall_ticks = 6;
 	state.rules.stall_range_spacings = 2;
 	state.rules.attack_rekey_milli = 2500;
-	for (int64_t cls = 0; cls < 3; cls++) {
+	for (int64_t cls = 0; cls < GROUND_CLASSES; cls++) {
 		for (int64_t cell = 0; cell < cells; cell++) {
 			state.move_cost.push_back(static_cast<uint8_t>(stream.next(rock_in) == 0 ? 0 : 10 + stream.next(4) * 10));
 		}

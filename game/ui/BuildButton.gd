@@ -80,6 +80,8 @@ func _ready() -> void:
 	flat = true
 	focus_mode = Control.FOCUS_NONE
 	_glyph = load(ICON)
+	_before_count.resize(World.TABS)  # Every tab, the ones the drawer does not list included.
+	_before_done.resize(World.TABS)
 	pressed.connect(func() -> void: feed.state.open(HudState.Unfold.DRAWER))
 	_chip.pressed.connect(func() -> void: sidebar.show_ready())
 	feed.state.changed.connect(_on_changed)
@@ -140,8 +142,6 @@ func refresh(snap: MatchSnapshot) -> void:
 	var player: int = -1 if runner.scenario == null else runner.scenario.local_player
 	var slots: int = BuildSidebar._queue_slots(snap)
 	var key: Vector2i = Vector2i(snap.match_serial, snap.tick)
-	_before_count.resize(World.TABS)  # Every tab, the ones the drawer does not list included.
-	_before_done.resize(World.TABS)
 	var compare: bool = key != _compared
 	if compare and key.x != _compared.x:  # A new match: nothing to compare with yet.
 		_before_count.fill(0)

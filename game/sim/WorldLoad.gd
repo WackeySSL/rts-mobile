@@ -3,10 +3,13 @@ extends RefCounted
 ## The scenario loader of a World, split out of World.gd (P70c) so that file stays under gdlint's
 ## 1,000 lines. Pure static helpers: they read the scenario, the map and the definitions passed in
 ## and write the World passed in, and they keep nothing. World.from_scenario() is a thin wrapper
-## over from_scenario() here, World.prepare() calls derive_open_grass() and size_match_state(), and
-## World._init() calls copy_rules(), so no caller names this class. No rule lives here: the code is
-## World.gd's own, moved (P109 moved copy_rules and size_match_state, with no change), and ADR 0007
-## section 2 and ADR 0017 section 3 keep every column, list and rule int in World itself.
+## over from_scenario() here, World.prepare() calls derive_open_grass(), size_match_state(),
+## pad_types(), stamp_fog() and reset_projectile_slots(), and World._init() calls copy_rules(), so
+## no caller names this class. The code is World.gd's own, moved (P109 moved copy_rules and
+## size_match_state, P232 pad_types, stamp_fog and reset_projectile_slots, with no change) or the
+## copy of a definition into a table (the loader, with the layer bit derived from the move class and
+## `low_flying`); ADR 0007 section 2 and ADR 0017 section 3 keep every column, list and rule int in
+## World itself.
 
 ## The percent of an unchanged income, and the divisor of every percent: a human's income.
 const PERCENT: int = 100
@@ -259,9 +262,11 @@ static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
 	world.upgrade_stat.append(upgrade.stat)
 	world.upgrade_value.append(upgrade.value)
 	world.upgrade_type_first.append(world.upgrade_types.size())
-	world.upgrade_type_count.append(upgrade.applies_to.size())
+	var first: int = world.upgrade_types.size()
 	for unit: UnitDef in upgrade.applies_to:
-		world.upgrade_types.append(_type_for(world, unit) if unit != null else World.TYPE_PAD_NONE)
+		if unit != null:  # A null entry names no type: it is left out of the count too.
+			world.upgrade_types.append(_type_for(world, unit))
+	world.upgrade_type_count.append(world.upgrade_types.size() - first)
 
 
 ## Appends the six strike table entries of a type (ADR 0023 section 10): a BuildingDef's exports,
@@ -440,18 +445,17 @@ static func size_match_state(world: World) -> void:
 
 ## Gives every type table one entry per type, with the World.TYPE_PAD_* values, because Phase 1 code
 ## appends only the four Phase 1 tables (World.prepare calls it). The tables of the air and repair
-## columns pad with 0, the layer bit with GROUND and `type_upgrade` with -1; `type_pad_first` (0)
-## names no pad, because `type_pads` is 0. Of the weapon tables only `weapon_targets` is padded (to
-## the weapon count, with GROUND, the WeaponDef default): a weapon of a scenario exists only through
-## `_weapon_for`, which appends all of them, and a test that builds one by hand names no mask.
+## columns pad with 0 (the repair period with 1, UnitDef's default), the layer bit with GROUND and
+## `type_upgrade` with -1; `type_pad_first` (0) names no pad, because `type_pads` is 0. Of the
+## weapon tables only `weapon_targets` is padded (to the weapon count, with GROUND, the WeaponDef
+## default): a weapon of a scenario exists only through `_weapon_for`, which appends all of them,
+## and a test that builds one by hand names no mask.
 static func pad_types(world: World, types: int) -> void:
 	for table: PackedInt32Array in [
 		world.type_speed,
 		world.type_radius,
 		world.type_selection_radius,
 		world.type_spacing,
-		world.type_sight,
-		world.type_acquire,
 		world.type_foot_w,
 		world.type_foot_h,
 		world.type_cost,
@@ -473,7 +477,6 @@ static func pad_types(world: World, types: int) -> void:
 		world.type_pad_first,
 		world.type_repair_classes,
 		world.type_repair_hp,
-		world.type_repair_period,
 		world.type_repair_cost_percent,
 		world.type_repair_reach,
 		world.type_repair_slots,
@@ -483,11 +486,13 @@ static func pad_types(world: World, types: int) -> void:
 	_pad(world.type_max_hp, types, World.TYPE_PAD_MAX_HP)
 	_pad(world.type_armour, types, World.TYPE_PAD_ARMOUR)
 	_pad(world.type_move_class, types, World.TYPE_PAD_MOVE_CLASS)
+	_pad(world.type_sight, types, World.TYPE_PAD_SIGHT)
+	_pad(world.type_acquire, types, World.TYPE_PAD_ACQUIRE)
+	_pad(world.type_weapon, types, World.TYPE_PAD_WEAPON)
 	_pad(world.type_layer_bit, types, World.TYPE_PAD_LAYER)
-	# A hand-built weapon (its range appended without a mask) hits the ground only, as the default.
-	_pad(world.weapon_targets, world.weapon_range.size(), World.TYPE_PAD_LAYER)
+	_pad(world.type_repair_period, types, World.TYPE_PAD_REPAIR_PERIOD)
+	_pad(world.weapon_targets, world.weapon_range.size(), World.WEAPON_PAD_TARGETS)
 	for table: PackedInt32Array in [
-		world.type_weapon,
 		world.type_tab,
 		world.type_requires,
 		world.type_produces,

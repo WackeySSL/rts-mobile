@@ -173,6 +173,32 @@ ADR 0037's P286 re-pins once more on format 7 (exception 25).
   `type_upgrade >= 0`) that WorldLoad makes from each `UpgradeDef`. The queue, the payment, the
   progress, the cancel refund and `requires` are reused.
 
+Note (2026-11-12, P232; named exception 23): the shapes as built. It changes no accepted text.
+- **Pad offsets.** Beside `type_pads`, the type table `type_pad_first` indexes the flat rule lists
+  `PAD_ARRAYS` (`pad_offset_x`, `pad_offset_y`): entries `type_pad_first[t]` to
+  `type_pad_first[t] + type_pads[t] - 1` are the tile offsets of type `t`'s pads from the footprint
+  origin.
+- **Upgrades.** The tables are `UPGRADE_ARRAYS`: `upgrade_stat`, `upgrade_value`,
+  `upgrade_type_first` and `upgrade_type_count` (one entry per upgrade) and the flat `upgrade_types`
+  (type indexes), with the id list `upgrade_ids` beside them. WorldLoad reads the listed factions'
+  `upgrades` after every type, once per id (the first wins), and skips a null `applies_to` entry
+  (it is not counted). At most `World.UPGRADES_MAX` = 30 are kept: `upgrades` holds one bit per
+  upgrade in an int32, and 30 (bits 0 to 29) keeps the mask positive. A data test over the shipped
+  factions holds the ids non-empty, unique per def and at most 30. The lists are rules:
+  `defs_hash` takes the pad lists and the upgrade lists after the type tables and before the weapon
+  tables, and `upgrade_ids` after the faction ids; none is in the state hash.
+- **Other tables.** The repair role is seven type tables (`type_repair_classes`, `_hp`, `_period`,
+  `_cost_percent`, `_reach`, `_slots`, `_seek`); a padded type has period 1 (UnitDef's default) and
+  the rest 0. The layer bits are `World.Layer` (GROUND 1, AIR 2, LOW_AIR 4); a padded type and a
+  hand-built weapon (`weapon_targets` padded) are GROUND.
+- **Not added.** The derived row of the table (`reveal_stamped`, `air_rows`, `mod_dealt`,
+  `mod_taken`, `mod_ammo`) is left to the rows with the rule that rebuilds each one: P233, P241 and
+  P246. Each joins `DERIVED_ARRAYS` and `MatchSnapshot.NOT_COPIED` then. This is hash-neutral,
+  because derived arrays are not hashed.
+- **Re-pin.** `TICK_0_SEED_1` `a9e33d0d17b232fe` -> `781a749381ea2eb2`; perf arena final
+  `17f7a83c4d492c4c` -> `4512f2002ed89f5c`; base arena final `c84764064abfb27c` ->
+  `58681a6fcaf74db6`. Twin and kernel agree; no row, rule or run moved.
+
 ### 4. The air layer: movement
 - **The AIR move class has an open cost plane.** It is structure, not balance: no terrain has an
   air cost. A new constant `World.GROUND_CLASSES = 3` bounds every loop over terrain costs, and

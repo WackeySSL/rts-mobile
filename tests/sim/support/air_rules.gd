@@ -193,7 +193,9 @@ static func upgrade_problems(
 ## The rules that span files. The 400 % bound is per modifier, so (a choice, P246's combination is
 ## then a plain product of one value each) at most one upgrade changes one stat of one type of a
 ## faction. Upgrade ids may not equal type ids: research items become types, and World merges equal
-## ids. A type on Research is a fault in air_problems.
+## ids. A type on Research is a fault in air_problems. The World keeps one bit per upgrade id in an
+## int32 (`World.UPGRADES_MAX`) and the first def of an id wins, so every id is non-empty, no id is
+## on two different defs, and the distinct ids of all factions are at most UPGRADES_MAX.
 static func upgrade_catalog_problems(
 	units: Array[UnitDef], factions: Array[FactionDef]
 ) -> PackedStringArray:
@@ -202,8 +204,14 @@ static func upgrade_catalog_problems(
 	for unit: UnitDef in units:
 		type_ids[String(unit.type_id)] = true
 	var changed: Dictionary[String, String] = {}
+	var owner_of: Dictionary[String, UpgradeDef] = {}
 	for faction: FactionDef in factions:
 		for up: UpgradeDef in faction.upgrades:
+			if String(up.id).is_empty():
+				problems.append("an upgrade has an empty id")
+			elif owner_of.has(String(up.id)) and owner_of[String(up.id)] != up:
+				problems.append("%s: upgrade id is on two defs" % up.id)
+			owner_of[String(up.id)] = up
 			if type_ids.has(String(up.id)):
 				problems.append("%s: upgrade id is also a type id" % up.id)
 			for type: UnitDef in up.applies_to:
@@ -215,4 +223,6 @@ static func upgrade_catalog_problems(
 						"%s and %s change one stat of %s" % [changed[key], up.id, type.type_id]
 					)
 				changed[key] = String(up.id)
+	if owner_of.size() > World.UPGRADES_MAX:
+		problems.append("%d upgrade ids, more than %d" % [owner_of.size(), World.UPGRADES_MAX])
 	return problems

@@ -27,7 +27,8 @@ namespace {
 constexpr int64_t EDGE = 1000000000; // the range of positions that core/targeting.h records
 constexpr int64_t TOP = 2000000000; // a reach of 2 * EDGE, which still fits an int32 element
 constexpr int64_t ORDER_IDLE = 0, ORDER_ATTACK_MOVE = 1, ORDER_MOVE = 2, ORDER_ATTACK = 3; // World.Order
-constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size(): foot, wheeled, tracked and the open AIR plane (format 6)
+constexpr int64_t GROUND_CLASSES = 3; // World.GROUND_CLASSES: the classes that have a terrain cost
+constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size(): the ground classes and the open AIR plane (format 6)
 constexpr int64_t NAV_COUNT = 5; // World.NavMode.size()
 constexpr int64_t ARMOUR_COUNT = 4; // World.Armour.size()
 
@@ -202,7 +203,7 @@ State from_dump(const Dump &dump) {
 	if (state.min_range.size() != state.range.size() || state.vs_armour.size() != state.range.size() * static_cast<size_t>(ARMOUR_COUNT)) {
 		throw std::runtime_error("a weapon table of the dump does not have one entry per weapon (four percents each)");
 	}
-	if (static_cast<int64_t>(state.move_cost.size()) != MOVE_CLASSES * state.map_cols * state.map_rows) {
+	if (static_cast<int64_t>(state.move_cost.size()) != (dump.format >= 6 ? MOVE_CLASSES : GROUND_CLASSES) * state.map_cols * state.map_rows) {
 		throw std::runtime_error("the move costs of the dump are not one list of the map's cells per move class");
 	}
 	if (static_cast<int64_t>(state.visible.size()) != state.fog.player_count * state.fog.cells) {
@@ -328,7 +329,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
 	state.rows = (rows * 1000 + state.cell_milli - 1) / state.cell_milli;
 	state.rules = { stream.next(40), 5, 5 };
 	state.move_cost.assign(static_cast<size_t>(MOVE_CLASSES * cols * rows), 10);
-	for (size_t at = 0; at < static_cast<size_t>(3 * cols * rows); at++) { // The ground planes; the AIR plane stays open.
+	for (size_t at = 0; at < static_cast<size_t>(GROUND_CLASSES * cols * rows); at++) { // The ground planes; the AIR plane stays open.
 		state.move_cost[at] = stream.next(4) == 0 ? 0 : 10;
 	}
 	state.speed = { 120, 0, 61, 0 };

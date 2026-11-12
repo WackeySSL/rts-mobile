@@ -186,7 +186,7 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_upgrade": [-1, -1, -1],
 		&"type_repair_classes": [0, 0, 0],
 		&"type_repair_hp": [0, 0, 0],
-		&"type_repair_period": [0, 0, 0],
+		&"type_repair_period": [1, 1, 1],  # Padded with UnitDef's default.
 		&"type_repair_cost_percent": [0, 0, 0],
 		&"type_repair_reach": [0, 0, 0],
 		&"type_repair_slots": [0, 0, 0],

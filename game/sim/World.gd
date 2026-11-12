@@ -51,7 +51,8 @@ const TABS: int = 5
 ## The move classes with a terrain cost (`TerrainDef.cost`, `terrain_cost`, ADR 0036 section 4):
 ## every loop over terrain costs ends here. The AIR plane of `move_cost` is GRASS_COST everywhere.
 const GROUND_CLASSES: int = 3
-## Most upgrades in a match: `upgrades` holds one bit per `upgrade_ids` entry in an int32.
+## Most upgrades in a match: `upgrades` holds one bit per `upgrade_ids` entry in an int32, and bit
+## 31 is the sign bit, so 30 (bits 0 to 29) keeps every mask positive and every `1 << index` safe.
 const UPGRADES_MAX: int = 30
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
@@ -74,6 +75,11 @@ const TYPE_PAD_ACQUIRE: int = 0
 const TYPE_PAD_WEAPON: int = -1
 ## A padded type is a ground row (layer bit GROUND).
 const TYPE_PAD_LAYER: int = Layer.GROUND
+## A padded type has no repair role, and its period is UnitDef's default (1), so a reader that
+## divides by it never divides by 0.
+const TYPE_PAD_REPAIR_PERIOD: int = 1
+## A hand-built weapon (no mask named) hits the ground only, as WeaponDef's default does.
+const WEAPON_PAD_TARGETS: int = Layer.GROUND
 ## For the four Phase 1 tables (speed, radius, selection radius, spacing), and for the Phase 3
 ## tables whose pad is 0: footprint, cost, build ticks, power, cargo capacity, dock and exit.
 const TYPE_PAD_V0: int = 0
@@ -778,8 +784,9 @@ func index_of(id: int) -> int:
 ## max_projectiles, sizes the player, ore and ghost state at its start values
 ## (WorldLoad.size_match_state), and derives open grass from map_w and map_h when no map is loaded.
 ## Last it configures the helpers, once, because configure() re-creates their arrays, stamps the fog
-## of the rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
-## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
+## of the rows that exist (WorldLoad.stamp_fog) and caches the map digest of the hash. Idempotent
+## through `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before
+## it.
 func prepare() -> void:
 	if prepared:
 		return
@@ -843,14 +850,13 @@ func is_passable(cell: int, move_class: int) -> bool:
 	return move_cost[move_class * cells + cell] > 0
 
 
-## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost
-## for each ground class (the AIR plane stays open), and bumps map_version, also when the terrain is
-## the same. A cell outside the map,
-## an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown terrain index (one whose
-## `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as the load made it. Any
-## other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable` or `ore_cell` must
-## bump map_version itself, because the map digest of the hash follows map_version alone
-## (WorldHash.map_digest).
+## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost for
+## each ground class (the AIR plane stays open), and bumps map_version, also when the terrain is the
+## same. A cell outside the map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown
+## terrain index (one whose `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as
+## the load made it. Any other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable`
+## or `ore_cell` must bump map_version itself, because the map digest of the hash follows
+## map_version alone (WorldHash.map_digest).
 func set_terrain(cell: int, terrain_index: int) -> void:
 	var classes: int = GROUND_CLASSES
 	var cells: int = map_cols * map_rows
