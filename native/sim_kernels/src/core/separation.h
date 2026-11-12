@@ -37,9 +37,10 @@ struct Rows {
 	ArrayView<int32_t> push_x, push_y;
 };
 
-// The per-type radius table (World.type_radius).
+// The per-type tables: the radius (World.type_radius) and the layer bit (World.type_layer_bit, P240: only rows with the same bit
+// are neighbours).
 struct Types {
-	ArrayView<const int32_t> radius;
+	ArrayView<const int32_t> radius, layer_bit;
 };
 
 // World.sep_grid as the pass reads it: cells per row and rows of cells, the side of a cell in milli-tiles, `head` per cell

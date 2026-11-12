@@ -33,6 +33,7 @@ void SimKernels::separation(Object *world) const {
 	const Borrowed<const int32_t> unit_id = access.read_i32(world, ID_WORLD_unit_id);
 	const Borrowed<const int32_t> type_index = access.read_i32(world, ID_WORLD_type_index);
 	const Borrowed<const int32_t> type_radius = access.read_i32(world, ID_WORLD_type_radius);
+	const Borrowed<const int32_t> type_layer_bit = access.read_i32(world, ID_WORLD_type_layer_bit);
 	const Borrowed<const int32_t> pos_x = access.read_i32(world, ID_WORLD_pos_x);
 	const Borrowed<const int32_t> pos_y = access.read_i32(world, ID_WORLD_pos_y);
 	const Borrowed<const int32_t> intent_x = access.read_i32(world, ID_WORLD_intent_x);
@@ -54,6 +55,7 @@ void SimKernels::separation(Object *world) const {
 	rows.push_y = push_y.view;
 	separation::Types types;
 	types.radius = type_radius.view;
+	types.layer_bit = type_layer_bit.view;
 	separation::Grid cells;
 	cells.cols = access.int_in(grid, ID_SEP_cols);
 	cells.rows = access.int_in(grid, ID_SEP_rows);

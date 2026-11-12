@@ -49,15 +49,13 @@ const SEPARATION_NAMES: Array[String] = [
 	"WORLD.push_y",
 	"WORLD.stats",
 	"WORLD.type_radius",
+	"WORLD.type_layer_bit",
 	"SEP.cols",
 	"SEP.rows",
 	"SEP.cell_milli",
 	"SEP.head",
 	"SEP.next"
 ]
-
-## Names the table lists for SEPARATION that kernel_separation.cpp does not get yet (P232).
-const DECLARED_UNREAD: Array[String] = ["WORLD.type_layer_bit"]
 
 
 ## The list of the table is SEPARATION_NAMES, and kernel_separation.cpp names those and no other: a
@@ -72,9 +70,7 @@ func test_separation_gets_and_sets_exactly_the_names_of_its_list() -> void:
 		for token: String in found.get_string(3).split("|"):
 			if token.strip_edges() in ["PH_S", "PH_ALL"]:
 				names.append("%s.%s" % [found.get_string(1), found.get_string(2)])
-	# `type_layer_bit` is in the checked table since P232 (ADR 0036 section 13) and the kernel does not
-	# read it yet: P240's same-layer test moves it into SEPARATION_NAMES.
-	assert_array(names).contains_exactly_in_any_order(SEPARATION_NAMES + DECLARED_UNREAD)
+	assert_array(names).contains_exactly_in_any_order(SEPARATION_NAMES)
 	var used: Array[String] = []
 	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|SEP)_(\\w+)")
 	for found: RegExMatch in ids.search_all(FileAccess.get_file_as_string(SOURCE)):

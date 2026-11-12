@@ -39,7 +39,10 @@ const PAIR_DENOMINATOR: int = 2
 ## a larger push.
 ##
 ## A pair push is split between the two units: each takes its own share of it while it scans
-## the other. Units in the same state take 50% each; an idle unit next to a moving one takes
+## the other. Only rows of the same layer (`type_layer_bit`, P240, ADR 0036 section 4) count as
+## neighbours: aircraft spread among themselves, drone squads among themselves, and neither pushes
+## tanks; a row of another layer is skipped before it is looked at (so it costs no scan and no
+## `SEP_PAIRS`). Units in the same state take 50% each; an idle unit next to a moving one takes
 ## `separation_idle_share` percent and the moving one the rest, so moving units shoulder through
 ## idle ones. Each share is truncated toward zero. A unit's summed push is clamped to
 ## `separation_push_max` per axis. Each unit sums its own neighbours, so the caps can leave the
@@ -57,6 +60,7 @@ static func run(world: World) -> void:
 		return
 	var types: PackedInt32Array = world.type_index
 	var radii: PackedInt32Array = world.type_radius
+	var layers: PackedInt32Array = world.type_layer_bit
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
 	var intent_x: PackedInt32Array = world.intent_x
@@ -86,6 +90,7 @@ static func run(world: World) -> void:
 		var x: int = pos_x[row]
 		var y: int = pos_y[row]
 		var radius: int = radii[types[row]]
+		var layer: int = layers[types[row]]
 		var moving: bool = intent_x[row] != 0 or intent_y[row] != 0
 		var column: int = clampi(x / side, 0, cols - 1)
 		var line: int = clampi(y / side, 0, lines - 1)
@@ -105,7 +110,9 @@ static func run(world: World) -> void:
 			while next != -1 and looked < scan_cap and hits < hit_cap:
 				var other: int = next
 				next = links[other]
-				if other == row:
+				# Per layer (P240, ADR 0036 section 4): a row of another layer is no pair, so it is not
+				# looked at, counted or pushed by.
+				if other == row or layers[types[other]] != layer:
 					continue
 				looked += 1
 				var dx: int = x - pos_x[other]
