@@ -24,5 +24,7 @@ unit_retreat_hp_percent = 30
 focus_fire = 1
 counter_percent = 60
 uses_strike = 1
+mend_below_percent = 70
+mend_floor = 250
 commands_per_think_max = 12
 income_percent = 100

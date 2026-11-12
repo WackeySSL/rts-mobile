@@ -34,15 +34,65 @@ const _LEVEL_FIELDS: Array[String] = [
 	"focus_fire",
 	"counter_percent",
 	"uses_strike",
+	"mend_below_percent",
+	"mend_floor",
 	"commands_per_think_max",
 	"income_percent",
 ]
 const _LEVELS: Dictionary[String, Array] = {
-	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 3, 100],
+	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
 	"normal":
-	[1, 30, 2, 2, 1, 2, 1800, 2700, 4050, 4000, 25, 300, 10800, 40, 200, 0, 0, 30, 1, 8, 100],
+	[
+		1,
+		30,
+		2,
+		2,
+		1,
+		2,
+		1800,
+		2700,
+		4050,
+		4000,
+		25,
+		300,
+		10800,
+		40,
+		200,
+		0,
+		0,
+		30,
+		1,
+		50,
+		400,
+		8,
+		100
+	],
 	"hard":
-	[2, 15, 2, 2, 2, 3, 1350, 1800, 3600, 5000, 30, 150, 9900, 50, 150, 30, 1, 60, 1, 12, 100],
+	[
+		2,
+		15,
+		2,
+		2,
+		2,
+		3,
+		1350,
+		1800,
+		3600,
+		5000,
+		30,
+		150,
+		9900,
+		50,
+		150,
+		30,
+		1,
+		60,
+		1,
+		70,
+		250,
+		12,
+		100
+	],
 }
 
 
@@ -67,7 +117,11 @@ func test_easy_never_uses_the_strike_and_no_level_gets_a_money_bonus() -> void:
 
 
 func test_the_script_defaults_of_a_level_are_normals_file() -> void:
-	_assert_defaults_equal(AiDifficultyDef.new(), Rig.level_of("normal"), [])
+	# The mend fields default to off (P274), so the frozen arena's level files, which name neither,
+	# play as they did; Normal's file turns it on.
+	_assert_defaults_equal(
+		AiDifficultyDef.new(), Rig.level_of("normal"), ["mend_below_percent", "mend_floor"]
+	)
 
 
 func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:

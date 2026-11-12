@@ -40,6 +40,13 @@ extends Resource
 @export var counter_percent: int = 30
 ## Whether the level builds and fires its side's superweapon (0 or 1).
 @export var uses_strike: int = 1
+## Building repair (ADR 0037 section 4, plan row P274): `AiEconomy` switches a building's `MEND` on
+## when its hp is under `mend_below_percent` of the maximum (0 = never mends; the script default, so
+## the frozen arena defs stay as they were) while the credits left after this think's queueing stay
+## at or above `mend_floor`. A mending building is switched off while the credits are under half of
+## the floor. Values are credits; Easy mends nothing.
+@export var mend_below_percent: int = 0
+@export var mend_floor: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
