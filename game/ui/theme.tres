@@ -602,7 +602,8 @@ ItemCaption/font_sizes/font_size = 14
 ItemCaptionDim/base_type = &"ItemCaption"
 ItemCaptionDim/colors/font_color = Color(0.46, 0.5, 0.55, 1)
 ItemCaptionOn/base_type = &"ItemCaption"
-ItemCaptionOn/colors/font_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
+; The ok token #6EDC5F (HudTokens/ok): 7.4:1 on the lit plate; the plate's edge keeps the darker green.
+ItemCaptionOn/colors/font_color = Color(0.43137255, 0.8627451, 0.37254902, 1)
 ItemCaptionWarn/base_type = &"ItemCaption"
 ItemCaptionWarn/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
 ItemCaptionWarn/font_sizes/font_size = 18

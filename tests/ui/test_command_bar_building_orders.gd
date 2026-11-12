@@ -64,7 +64,7 @@ func test_no_building_order_for_an_enemy_building_a_unit_a_site_and_the_headquar
 	assert_bool(_bar.order_button(&"mend").is_visible_in_tree()).is_true()
 	assert_bool(_bar.order_button(&"sell").is_visible_in_tree()).is_false()  # Price 0.
 	var snap: MatchSnapshot = _runner.snapshot
-	snap.build_left[snap.index_of(BORE)] = 30  # A site: cancelled from the drawer instead.
+	snap.build_left[snap.index_of(BORE)] = 30  # A site shows neither order.
 	await _select([BORE])
 	assert_bool(_bar.order_button(&"mend").is_visible_in_tree()).is_false()
 	assert_bool(_bar.order_button(&"sell").is_visible_in_tree()).is_false()
@@ -182,7 +182,11 @@ func test_a_hold_after_the_arming_tap_sells_nothing_and_disarms() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
 	await _select([BORE])
 	_tap(_bar.order_button(&"sell"))
-	_rest(_bar.order_button(&"sell"), 300, 2500)
+	_rest(
+		_bar.order_button(&"sell"),
+		_controller.settings.sell_arm_min_ms + 100,
+		_controller.settings.sell_arm_min_ms + 2300
+	)
 	await _tick()
 	assert_int(_sent.size()).is_equal(0)
 	assert_str(_word(&"sell").text).is_equal("SELL")
@@ -339,7 +343,7 @@ func test_a_tap_outside_the_card_or_a_turn_of_the_phone_closes_it_with_nothing_s
 	await await_idle_frame()
 	var card: ConfirmDialog = _card()
 	assert_bool(card.visible).is_true()
-	var panel: Rect2 = (card.column.get_parent() as Control).get_global_rect()
+	var panel: Rect2 = card.panel.get_global_rect()
 	var outside: Vector2 = Vector2(panel.position.x * 0.5, panel.get_center().y)
 	assert_bool(panel.has_point(outside)).is_false()
 	TouchEvents.press(get_viewport(), 0, outside)
@@ -381,3 +385,21 @@ func test_a_turn_of_the_phone_disarms_sell() -> void:
 	await await_idle_frame()
 	assert_str(_word(&"sell").text).is_equal("SELL")
 	assert_int(_sent.size()).is_equal(0)
+
+
+## The window runs out while the finger of the second tap is down (press at +2.9 s, release at
+## +3.05 s): the arm does not lapse under it, and the tap sells.
+func test_the_arm_does_not_lapse_under_a_second_tap_that_is_down() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
+	await _select([BORE])
+	_tap(_bar.order_button(&"sell"))
+	var start: int = _now
+	var at: Vector2 = _bar.order_button(&"sell").get_global_rect().get_center()
+	_now = start + _controller.settings.sell_confirm_ms - 100
+	TouchEvents.press(get_viewport(), 0, at)
+	_now = start + _controller.settings.sell_confirm_ms + 50
+	await await_idle_frame()  # A real frame while the finger is down.
+	assert_str(_word(&"sell").text).is_not_equal("SELL")
+	TouchEvents.release(get_viewport(), 0, at)
+	assert_int(_sent.size()).is_equal(1)
+	assert_int(_sent[0].type).is_equal(Command.Type.SELL)

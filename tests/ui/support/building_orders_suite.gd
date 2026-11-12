@@ -16,7 +16,6 @@ const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
-const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const BORE: int = 1
 const TANK: int = 2
 const ENEMY_HQ: int = 3

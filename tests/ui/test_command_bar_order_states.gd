@@ -76,6 +76,15 @@ func test_the_sell_button_is_wide_enough_for_the_widest_refund_with_its_padding(
 	var need: float = text_px + 2.0 * UiScale.dp(CommandBar.SELL_PAD_DP)
 	assert_float(_bar.order_button(&"sell").size.x).is_greater_equal(need - TOLERANCE_PX)
 	assert_int(px).is_greater_equal(18)  # The armed number is 18 sp or more.
+	# A turn re-widens it for the new dp.
+	get_window().size = ScreenSizes.PORTRAIT[0]
+	await await_idle_frame()
+	await await_idle_frame()
+	font = word.get_theme_font(&"font", CommandBar.WARN_CAPTION)
+	px = word.get_theme_font_size(&"font_size", CommandBar.WARN_CAPTION)
+	text_px = font.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+	need = text_px + 2.0 * UiScale.dp(CommandBar.SELL_PAD_DP)
+	assert_float(_bar.order_button(&"sell").size.x).is_greater_equal(need - TOLERANCE_PX)
 
 
 ## With the second barracks a site, the first is the last producer: the card asks.

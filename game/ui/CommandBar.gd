@@ -10,7 +10,7 @@ extends Control
 ## button never shrinks below 56 dp.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
-## (whether it shows, and its state); `_sync_toggle` and `_fix_width` serve a lit order and a
+## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
 ## button with a changing word. There is no Attack button (ADR 0025 answer 4).
 ## The bar is view and input state: Deselect sends no Command (`PlayerController.deselect`), Stop
 ## sends one STOP (`PlayerController.stop`). Mend (a toggle, lit while the building mends, one MEND)
@@ -93,6 +93,7 @@ var _wide: Dictionary[StringName, Array] = {}  ## Order id -> [caption, widest w
 var _widest_serial: int = -1  ## match_serial the Sell width was worked out for.
 var _refund_shown: int = -1  ## The refund the armed Sell shows, -1 when it shows "SELL".
 var _down_ms: int = 0  ## When the finger last went down on Sell.
+var _sell_down_now: bool = false  ## A finger is down on Sell: its arm does not lapse under it.
 var _card_id: int = -1  ## The building the question card asked about, -1 for none.
 var _portrait: bool = false  ## The window's orientation at the last resize.
 
@@ -262,7 +263,8 @@ func _ready() -> void:
 	for order: Dictionary in ORDERS:
 		_add_order(order)
 	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
-	_buttons[&"sell"].button_down.connect(func() -> void: _down_ms = int(clock.call()))
+	_buttons[&"sell"].button_down.connect(_sell_down)
+	_buttons[&"sell"].button_up.connect(func() -> void: _sell_down_now = false)
 	if sell_card != null:
 		sell_card.confirmed.connect(_sell_confirmed)
 		runner.match_ended.connect(func(_winner: int) -> void: sell_card.close())
@@ -333,6 +335,11 @@ func _order(id: StringName) -> void:
 			_sell_pressed()
 
 
+func _sell_down() -> void:
+	_down_ms = int(clock.call())
+	_sell_down_now = true
+
+
 ## The Sell button, on release: a contact of `long_press_ms` or more is a hold and disarms; a tap
 ## arms, or sends (or asks first, for the last producer).
 func _sell_pressed() -> void:
@@ -356,6 +363,7 @@ func _sell_pressed() -> void:
 		else:
 			controller.sell()
 	_sync_sell(snap, row)
+	set_process(_needs_process())
 
 
 ## The card's Sell: only for the building it asked about.
@@ -377,7 +385,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _arm.expired(int(clock.call()), controller.settings.sell_confirm_ms):
+	if not _sell_down_now and _arm.expired(int(clock.call()), controller.settings.sell_confirm_ms):
 		_disarm()
 
 
@@ -469,8 +477,8 @@ func _apply_dp() -> void:
 	for button: Button in [_clear] + _buttons.values():
 		var icon: Control = button.get_node("Face/Glyph")
 		icon.custom_minimum_size = UiScale.dp_vec(GLYPH_DP, GLYPH_DP)
-	for button: Button in _buttons.values():
-		_fix_width(button)
+	for id: StringName in _buttons:
+		_fix_width(id)
 	place()
 
 
@@ -591,7 +599,7 @@ func _sync_sell(snap: MatchSnapshot, row: int) -> void:
 		_widest_serial = snap.match_serial
 		var digits: int = str(BuildingOrders.widest_refund(snap)).length()
 		_wide[&"sell"] = [WARN_CAPTION, "+" + "8".repeat(digits)]  # 8 is the widest digit.
-		_fix_width(sell)
+		_fix_width(&"sell")
 
 
 ## Gives the button's word the caption variation `variation` and its glyph the word's colour, so
@@ -605,9 +613,10 @@ func _paint(button: Button, variation: StringName) -> void:
 
 ## The button is as wide as its widest word needs (`_wide`: the caption it is set in and the word),
 ## never under the order least, so a changing word never shifts it or its neighbours.
-func _fix_width(button: Button) -> void:
+func _fix_width(id: StringName) -> void:
+	var button: Button = _buttons[id]
 	var width: float = UiScale.dp(ORDER_DP.x)
-	var wide: Array = _wide.get(StringName(button.name.to_lower()), [])
+	var wide: Array = _wide.get(id, [])
 	if not wide.is_empty():
 		var word: Label = button.get_node("Face/Word")
 		var font: Font = word.get_theme_font(&"font", wide[0])
