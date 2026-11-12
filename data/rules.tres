@@ -40,3 +40,7 @@ ghost_cap = 40
 construct_start_hp_percent = 10
 construct_refund_percent = 75
 construction_sites_max = 1
+sell_refund_percent = 50
+mend_hp = 10
+mend_period_ticks = 15
+mend_cost_percent = 30
