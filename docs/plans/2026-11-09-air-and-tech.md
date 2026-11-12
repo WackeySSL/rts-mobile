@@ -174,7 +174,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | --- | --- | --- | --- | --- |
 | P230 | LEAD | **Done 2026-11-09** (with P270b, one commit on `claude/p230-phase4b-acceptance`): both ADRs accepted, ADR 0036 §11 rewritten for answer 3 B, the dated notes, the GDD sections, ROADMAP Phase 4b, the merge-order section and the skill draft below; the skill itself waits for Michael's yes. Acceptance docs: Michael's answers and names in ADR 0036 and the GDD; dated notes in ADRs 0007, 0008, 0009, 0010, 0013, 0016, 0017, 0018, 0023, 0027, 0030 and 0031; a ROADMAP section per update (or Phase 4b if version 1); the GDD "Not in version 1" line per question 2. The `touch-ui-rules` amendment (ADR 0036 §12: the Home, Board and Unload buttons and their aims) **needs Michael's explicit yes**, asked with the acceptance; the lead edits the skill only after it | docs | Michael's answers; the Phase 4 gate |
 | P231 | GD | Defs: `MoveClass` Air, `low_flying`, `ammo`, `rearm_ticks`, `WeaponDef.targets`, `pads` and `pad_offsets`, the repair role, `strike_kind` 3, `UpgradeDef`, `FactionDef.upgrades`, the Tab enum in exports; data tests (ranges, AIR-only fields, pad spacing at least the largest FLIGHT `formation_spacing`, `repair_reach_milli` at least 500, upgrade modifiers at most 400 %). `TerrainDef.cost` keeps 3 entries. Hash-neutral: World copies nothing yet | 150 | P230 |
-| P232 | GD + QA | World v6: the columns and tables of ADR 0036 §3 (1.1 part); `type_layer_bit`; the AIR plane with `World.GROUND_CLASSES` at the four sites of ADR 0036 §4 (`WorldLoad.gd:141` and the loader's AIR fill, `World.set_terrain`, `Buildings._write_cost`) plus the check of the other `MoveClass.size()` uses; `TABS` 5 (PlayerView slices, Production indexing; the drawer still lists three tabs); `MOVE_CLASSES` 4 in `world_access.h:54`, `fixed_math.cpp:9` and `integrate.cpp:14`; the X-list rows of `type_layer_bit` (TARGETING and SEPARATION flags) and `weapon_targets` (TARGETING) declared once in `world_access.h`; `type_layer_bit` and `weapon_targets` in `PlayerView` and `MatchSnapshot`'s field lists; WorldLoad, WorldHash, `STATE_FORMAT` 6, one re-pin (exception 23). QA: the sanitizer cases and `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h` gain 6, and `NativeKernels.self_check` is re-checked for the new sizes and classes. Split trigger (over ~400): P232b takes `TABS` 5 with PlayerView and Production indexing | 380 (C++ ~20) | P231 |
+| P232 | GD + QA | World v6: the columns and tables of ADR 0036 §3 (1.1 part); `type_layer_bit`; the AIR plane with `World.GROUND_CLASSES` at the four sites of ADR 0036 §4 (`WorldLoad.gd:141` and the loader's AIR fill, `World.set_terrain`, `Buildings._write_cost`) plus the check of the other `MoveClass.size()` uses; `TABS` 5 (PlayerView slices, Production indexing; the drawer still lists three tabs); `MOVE_CLASSES` 4 in `world_access.h:54`, `fixed_math.cpp:9` and `integrate.cpp:14`; the X-list rows of `type_layer_bit` (TARGETING and SEPARATION flags) and `weapon_targets` (TARGETING) declared once in `world_access.h`; `type_layer_bit` and `weapon_targets` in `PlayerView` and `MatchSnapshot`'s field lists; WorldLoad, WorldHash, `STATE_FORMAT` 6, one re-pin (exception 23). QA: the sanitizer cases and `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h` gain 6, and `NativeKernels.self_check` is re-checked for the new sizes and classes. Split trigger (over ~400): P232b takes `TABS` 5 with PlayerView and Production indexing | 380 (C++ ~20) | P231; P271 (2026-11-12, P26bq) |
 | P233 | GD | Reveal (as amended 2026-11-09, P230, answer 3 B): `FogGrid.reveal`, `Reveal.run` in REMOVE (per player with `reveal_site` set: `index_of` the site, 0 when it is gone, else `reveal` 1 when it is online and the player is not low on power, 2 when paused; no row pass), the `prepare()` stamp on `reveal == 1` (ADR 0036 §11), SUPERWEAPON on a REVEAL building dropped while `reveal_site` is set or while its owner is on low power (fix 1, 2026-11-09), strike kind 3 in `Strike.apply_superweapon` with the REVEAL branch before the pending-rupture test (`Strike.gd:112`) and a test that fires a sweep while a rupture is pending, the STRIKE record of kind 3 (`[5, id, 0, 0, 3, owner, 0, 0]`), `PlayerView.reveal_state`; pause and resume cases (blackout, low power), a rebuild test across a pause; a FOG lockstep case | 250 | P232 |
 | P234 | GD | Space centre data, both factions (`.tres`, rosters, requires Radar, one charge of 2,700 and no sweep timer: `strike_ticks` 0, answer 3 B, dated 2026-11-09); name width test; HOW_TO_PLAY Superweapon rows (Teach) | 80 | P233, P230 |
 | P235 | TUX | Reveal HUD: the strike button's no-aim variant (tap, check mark), the warning badge and line, the fog fade (`reveal_fade_ms`); six layout sizes. (2026-11-09, answer 3 B) The enemy's indicator badge from `reveal_state`: lit while on, dimmed with a pause mark while paused, gone at 0, placed in ADR 0025's corners; the owner's strike button shows on or paused; the fade runs both ways on a pause and a resume. (Fix 1, 2026-11-09) On low power the satellite's strike button dims and shows the reason (the low-power glyph), because the sim refuses the SUPERWEAPON then | 300 | P234 |
@@ -224,7 +224,8 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 - **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order.
 - **I (AI):** P250 -> P251 and P252.
 - **Q:** P253 and P254, then the lead's P255 and P256.
-- **Critical path for 1.1** (to the last row before the gate): P230 -> P231 -> P232 -> P238 ->
+- **Critical path for 1.1** (to the last row before the gate; 2026-11-12, P26bq: P271 merges
+  before P232): P230 -> P231 -> P232 -> P238 ->
   P241, then two branches of equal length, P241b -> P242 and P246 -> P247, then P250 -> P251 ->
   P255. That is 10 rows on the path plus the tuning rounds.
   - P254 runs beside P250 and P251 (it needs P242 and P247).
@@ -462,3 +463,27 @@ pick-order bullet.**
   another of its type; a lone one by a box only. With units selected, a tap on an enemy that none
   of them can hit does nothing: a short shake, and the selection is kept.
 ```
+
+## Notes
+
+Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
+- **P232.**
+  - It starts after P271 (ADR 0037's SELL and MEND) has merged; this adds to "Merge order of the
+    shared rows" (the ground-support plan's P26bq note). P271 moves `remove_dead`'s body and
+    `_compact` into `game/sim/Removal.gd`, so P232 works on a `World.gd` of 960 lines.
+  - Its type tables include one for `pad_offsets` beside `type_pads` (this adds to ADR 0036 §3's
+    type row), because P241 spawns over a pad.
+  - P231 put the def rules in `tests/sim/support/air_rules.gd` and
+    `tests/sim/test_defs_data_air.gd`. The ranges in `test_defs_data.gd` read
+    `World.MoveClass.size()`, `World.TABS` and `Strike.Kind`, so they widen when P232 and P233
+    grow the enums. P232 points `air_rules.gd`'s placeholders `AIR`, `FLIGHT` and `RESEARCH` at
+    `World.MoveClass.AIR` and `World.Tab.*`, and P233 points `REVEAL` at `Strike.Kind.REVEAL`.
+- **P262.** It declares the 1.2 carry fields `carry_slots` and `carry_classes` on the defs, with a
+  data test. No earlier row does this.
+- **P263.** It replaces P271's placeholder `Removal.BOARDED` (-2) with `Carry.BOARDED`.
+- **Atlas.** P237 put every shadow on page 2 (ADR 0036 §15's note). Every art row with shadows
+  re-pins `TODAY_*` and `TODAY2_*` in `tests/view/test_iso_atlas_budget.gd` (P202 only
+  `TODAY_*`), and P243 re-keys `page_of` for the flyers' hulls.
+- **`PlayerView`'s public methods.** The lead's rule is the one in the ground-support plan's P26bq
+  note: no pragma; a pure-move split comes before a 21st public method; own-only reads stay
+  getters.

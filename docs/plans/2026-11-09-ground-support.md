@@ -134,10 +134,11 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
-| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P271b | GD | (2026-11-12, P26bq) Data: ADR 0037's starting values in `data/rules.tres`, `sell_refund_percent` 50, `mend_hp` 10, `mend_period_ticks` 15, `mend_cost_percent` 30 (P271 ships them inert at 0/0/15/30); the data test's pins follow. Moves no state hash; starts `balance.yml` | data | P271 |
+| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes); P271b for the phone step (2026-11-12, P26bq) |
 | P273 | ART | Glyphs `glyph_repair` (wrench) and `glyph_sell`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
-| P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274 |
+| P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274, P271b (2026-11-12, P26bq) |
 
 ### Wave 2 (repair buildings and medics)
 | Row | Owner | What | Size | Depends |
@@ -161,7 +162,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P288 | GD | `MineMemory.gd` (forget; remember by detectors x mines on the fog turn, counted), sweeping (`carry_mode` 3), `PlayerView.own_mines`/`known_mines`, the snapshot's own and known lists | 250 | P287 |
 | P289 | GD | (2026-11-09, merge order 5: after ADR 0036's `Carry.gd`) `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
 | P290 | GD | Data: Bunk Wagon, Linecar, Shot Truck, Seeder, shot charge and pulse seed weapons, detect on Flarejack and Swift, `hold_types` defaults; name width test; HOW_TO_PLAY Units, Orders, Fog rows (Teach: Board, Unload, Mine, hidden mines) | data | P288, P289 |
-| P291 | ART | Bunk Wagon and Linecar (16 directions, or 8 per P237's page result), item cards, page pins | art | P237 |
+| P291 | ART | Bunk Wagon and Linecar (16 directions; P237 and Michael, 2026-11-11), item cards, page pins | art | P237 |
 | P292 | ART | Shot Truck and Seeder (as P291), mine marks per faction (own, known), `glyph_mine`, `glyph_hold`, item cards | art | P237 |
 | P293 | TUX | `MineLayer` (z 3 after `DecalLayer`, own and known marks, dimmed records, unarmed half alpha, one `_draw`), blast fx and scorch where seen; draw-call guard +1 | 220 | P288, P290, P291, P292 |
 | P294 | TUX | The **Mine** button with "n/cap" and `MineAim` (tap, ring, check mark, X, turn cancels); a check that ADR 0036's Board and Unload (P265) take a ground carrier (data only); six sizes | 150 | P293, P265 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
@@ -176,11 +177,13 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 ### Lanes and order
 - **S (GD):** P271 -> P276 -> P277; then P285 -> P286 (after P262) -> P287 -> P288; P298 after
   P286 beside P287; P289 after P263b.
-- **D (GD data):** P278 after P277; P290 after P288 and P289.
+- **D (GD data):** P271b after P271 (2026-11-12, P26bq); P278 after P277; P290 after P288 and
+  P289.
 - **T (TUX):** P272 -> P282 -> P281; then P293 -> P294 -> P299.
 - **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order.
 - **I (AI):** P274; P283; P295, P295b and P300.
-- **Critical paths.** Wave 1: P270b -> P271 -> P272 -> P275. Wave 2: P276 -> P277 -> P278 ->
+- **Critical paths.** Wave 1: P270b -> P271 -> P272 -> P275 (2026-11-12, P26bq: P271b beside
+  P272, before P272's phone step and P275). Wave 2: P276 -> P277 -> P278 ->
   P283 -> P284. Wave 3: P285 -> P286 -> P287 -> P288 -> P290 -> P295 -> P296 -> P297, with P262
   before P286.
 
@@ -193,7 +196,8 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | A | `tools/artgen/**`, `assets/art/**`, STYLE.md own sections |
 | I | `game/ai/**`, `data/ai/**` |
 
-Shared with ADR 0036's rows: `Carry.gd` (P262-P263b first, then P289), `World.gd` (P232, P262,
+Shared with ADR 0036's rows: `Carry.gd` (P262-P263b first, then P289), `Removal.gd` (2026-11-12,
+P26bq: P271, then P263, then P289), `World.gd` (P232, P262,
 then P286), `world_access.h` (P232, then P298), `Targeting.gd` (P238, then P298),
 `EffectsLayer.gd` and `BuildingCollapse.gd` (P265 and P272: the first makes the flag a match),
 `CommandBar.gd` (P244, P265, P272, P282, P294, P299), `PlayerView.gd`. The lead keeps one open
@@ -229,10 +233,10 @@ row per file. The order is in "Merge order of the shared rows" below (2026-11-09
 ## Size estimate (all before launch)
 | Wave | Rows | Production lines | C++ | Models |
 | --- | --- | --- | --- | --- |
-| 1 | 5 (P271-P275) | about 550 | 0 | 0 (2 glyphs) |
+| 1 | 6 (P271-P275, P271b) | about 550 | 0 | 0 (3 glyphs) |
 | 2 | 9 (P276-P284) | about 840 | 0 | 4 |
 | 3 | 17 (P285-P300, P295b) | about 2,100 | about 120 | 4 (+ marks, 2 glyphs) |
-| Total | 31 | about 3,490 | about 120 | 8 |
+| Total | 32 | about 3,490 | about 120 | 8 |
 
 Tests come on top, about 1.5 times the production lines, as in Phases 3 and 4.
 
@@ -287,3 +291,27 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 9. **Balance runs and the gate.** P275 (after wave 1) and P255 with P284 (part 1 and wave 2, 18
    types) are interim tuning runs. The Phase 4b gate is P268 with P297: 26 types, ADR 0031's gate
    run on held-out seeds, then Michael's phone.
+
+Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
+- **Order** (adds to "Merge order of the shared rows"; its item 1 is unchanged, wave 1 still
+  needs no air row): P271 (SELL and MEND) merges before P232. It moves `remove_dead`'s body (now
+  `Removal.run`) and `_compact` out of `World.gd` into a new `game/sim/Removal.gd` (World.gd 1000
+  -> 960 lines), so P232 starts on that `World.gd`. `Removal.gd` joins lane S's files. P263
+  replaces P271's placeholder `Removal.BOARDED` (-2) with `Carry.BOARDED`.
+- **Data.** P271 ships the four rule ints inert; row P271b (wave 1 above) writes ADR 0037's
+  starting values (ADR 0037: "starting value 50"; "starting 10", "(15)", "(30)") before P272's
+  phone step and P275.
+- **Lead decision** (2026-11-12; not Michael's, not a reviewer's) on `PlayerView`'s public
+  methods. P271 kept it at gdlint's 20 by making the unused `row_harvest_mode` private (ADR 0020
+  §1's note). No row of either Phase 4b plan lifts a gdlint limit with a pragma. A row that needs a
+  21st public method first does a pure-move split of one group of reads, in its own commit, with
+  the callers in `game/ai` coordinated by the lead (as ADR 0030 §4's P198 note asks). A new read
+  may be a public field or a `columns()` copy only for data every player may know (the type
+  tables, the public columns id, owner, type, pos, hp, build_left); an own-only read stays a
+  getter that answers MISSING for other rows (ADR 0020 §1, ADR 0030 §7).
+- **Atlas** (as the air plan's note): P237 put every shadow on page 2. The art rows P279, P280,
+  P291 and P292 re-pin `TODAY_*` and `TODAY2_*` in `tests/view/test_iso_atlas_budget.gd`. They
+  stay at 16 directions, and page 1's budget rises to 3,840 only if a row needs it (Michael,
+  2026-11-11, ADR 0036 §15's P237 note).
+- **Follow-up.** `GhostMemoryLayer`'s hidden pool sprites keep an old atlas page after a new match
+  (pre-existing; P237 fixed the unit rigs). A view row that touches that layer clears them.
