@@ -19,7 +19,7 @@ extends Resource
 ## At least 1 by default, so a definition built in a test never spawns dead.
 @export var max_hp: int = 1
 @export_enum("Infantry", "Light", "Heavy", "Building") var armour: int = 0
-@export_enum("Foot", "Wheeled", "Tracked") var move_class: int = 0
+@export_enum("Foot", "Wheeled", "Tracked", "Air") var move_class: int = 0
 ## How far the unit sees (fog), and how far an attack-moving unit looks for a target. Milli-tiles.
 @export var sight_range: int = 0
 @export var acquire_range: int = 0
@@ -31,9 +31,31 @@ extends Resource
 @export var cost: int = 0
 @export var build_ticks: int = 0
 ## The sidebar tab that builds this type: -1 none, else a World.Tab (0 Structures, 1 Infantry,
-## 2 Vehicles).
-@export_enum("None:-1", "Structures:0", "Infantry:1", "Vehicles:2") var tab: int = -1
+## 2 Vehicles, 3 Flight, 4 Research; ADR 0036 section 2).
+@export_enum("None:-1", "Structures:0", "Infantry:1", "Vehicles:2", "Flight:3", "Research:4")
+var tab: int = -1
 ## The type the player must own a building of before this one can be queued. Null = none.
 @export var requires: UnitDef
 ## Cargo capacity in credits. 0 = not a harvester; else a multiple of RulesDef.credits_per_ore.
 @export var harvest_capacity: int = 0
+
+## Air (ADR 0036 section 2), AIR only, a data test. A low-flying row (a drone squad) is hit by the
+## LOW_AIR weapon bit. `ammo` is the shots before a return (0 = no limit) and `rearm_ticks` the
+## ticks to refill from 0 on a pad.
+@export var low_flying: bool = false
+@export var ammo: int = 0
+@export var rearm_ticks: int = 0
+
+## The repair role (ADR 0036 section 2, ADR 0037 section 2); a building or a squad may hold it.
+## `repair_classes` is a move-class bit mask (FOOT 1, WHEELED 2, TRACKED 4, AIR 8), 0 = no role.
+## `repair_hp` is gained per `repair_period_ticks`, `repair_cost_percent` is the share of the unit's
+## cost a repair from 0 to full costs, `repair_reach_milli` the service reach, `repair_slots` the
+## rows served per turn (1-8, or 0 only with pads) and `repair_seek_milli` the reach in which an
+## idle mobile row walks to a hurt one (0 = never).
+@export var repair_classes: int = 0
+@export var repair_hp: int = 0
+@export var repair_period_ticks: int = 1
+@export var repair_cost_percent: int = 0
+@export var repair_reach_milli: int = 0
+@export var repair_slots: int = 0
+@export var repair_seek_milli: int = 0
