@@ -50,8 +50,9 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 ## state hash does not), in RulesDef's order, with the file's values, in a hand-built World too.
 func test_the_three_rule_ints_sit_before_the_sale_ints_in_both_lists_and_equal_the_file() -> void:
 	var names: Array[StringName] = RULES.keys()
-	assert_array(World.RULE_SCALARS.slice(-8, -5)).is_equal(names)
-	assert_array(World.UNHASHED_SCALARS.slice(-8, -5)).is_equal(names)
+	for list: Array[StringName] in [World.RULE_SCALARS, World.UNHASHED_SCALARS]:
+		var at: int = list.find(names[0])  # Found by name: later rules move nothing here.
+		assert_array(list.slice(at, at + names.size())).is_equal(names)
 	assert_bool(World.HASHED_SCALARS.has(&"construct_start_hp_percent")).is_false()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	var made: World = World.new()

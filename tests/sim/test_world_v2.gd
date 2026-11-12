@@ -82,10 +82,11 @@ func test_the_eighteen_phase_3_rule_ints_follow_max_rows_and_equal_the_file() ->
 		names.append(StringName(rule_name))
 	var at: int = World.RULE_SCALARS.find(&"max_rows") + 1
 	assert_array(World.RULE_SCALARS.slice(at, at + names.size())).is_equal(names)
-	# The three rules of place-first construction (P128, test_world_v4) and the four of sale and
-	# repair (P271, test_mend) and `passenger_cap` (P262) come after them.
-	assert_array(World.UNHASHED_SCALARS.slice(-names.size() - 8, -8)).is_equal(names)
-	assert_int(World.RULE_SCALARS.size()).is_equal(41)
+	# UNHASHED_SCALARS repeats them in the same order (later rules follow, pinned by their rows).
+	var unhashed_at: int = World.UNHASHED_SCALARS.find(&"max_rows") + 1
+	assert_array(World.UNHASHED_SCALARS.slice(unhashed_at, unhashed_at + names.size())).is_equal(
+		names
+	)
 	var world: World = World.new()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	for rule_name: String in PHASE_3_RULES:

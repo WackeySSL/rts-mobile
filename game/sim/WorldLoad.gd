@@ -403,11 +403,11 @@ static func size_income(world: World, players: int) -> void:
 		world.income_percent[player] = PERCENT
 
 
-## Sizes the player, ore and ghost state at its start values (ADR 0017 section 3), from the player
-## count and the rule ints, so that no later row moves the hash through a start value: credits at
-## start_credits for players 1..player_count, rally points and queue slots at -1 (none), every ore
-## cell at ore_start, the rest 0 (the pending strikes, none). Entry 0 of a per-player array is the
-## neutral player.
+## Sizes the player, ore, ghost and passenger state at its start values (ADR 0017 section 3), from
+## the player count and the rule ints, so that no later row moves the hash through a start value:
+## credits at start_credits for players 1..player_count, rally points and queue slots at -1 (none),
+## every ore cell at ore_start, the rest 0 (the pending strikes, none; the passenger table free).
+## Entry 0 of a per-player array is the neutral player.
 static func size_match_state(world: World) -> void:
 	var players: int = world.player_count + 1
 	var queues: int = players * World.TABS

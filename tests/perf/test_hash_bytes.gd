@@ -96,8 +96,8 @@ func test_the_checkpoints_carry_the_golden_hashes_of_the_gate_file() -> void:
 ## the walk over the stream finds the header block, the map digest, one block per row column, the
 ## live slots and the used free stack, one block per FogGrid.HASHED array, one per PLAYER_ARRAYS
 ## and ORE_ARRAYS array, the counts and the live records of the ghosts and the live passenger
-## records, in section order, each
-## with the size that its array has, and ends exactly at the end of the stream.
+## records, in section order, each with the size that its array has, and ends exactly at the end
+## of the stream.
 func test_the_count_is_the_blocks_of_the_shape_lists_with_a_header_each() -> void:
 	var bytes: PackedByteArray = HashBytes.stream(_world)
 	var names: PackedStringArray = World.hash_section_names()

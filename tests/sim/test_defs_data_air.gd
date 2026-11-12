@@ -50,11 +50,14 @@ func test_the_carrier_fields_are_a_pair_and_buildings_carry_nothing() -> void:
 		var edge: UnitDef = Rules.fine_carrier()
 		edge.carry_classes = mask
 		assert_array(Rules.air_problems("t.tres", edge)).is_empty()
-	var wide: UnitDef = Rules.fine_carrier()
-	wide.carry_classes = 16
-	assert_array(Rules.air_problems("t.tres", wide)).is_equal(
-		["t.tres: carry_classes is not a move-class mask 0..15"]
-	)
+	for mask: int in [-1, 16]:
+		var wide: UnitDef = Rules.fine_carrier()
+		wide.carry_classes = mask
+		(
+			assert_array(Rules.air_problems("t.tres", wide))
+			. override_failure_message(str(mask))
+			. is_equal(["t.tres: carry_classes is not a move-class mask 0..15"])
+		)
 	assert_array(Rules.air_problems("t.tres", Rules.fine_carrier())).is_empty()
 	var slots_only: UnitDef = Rules.fine_unit()
 	slots_only.carry_slots = 2

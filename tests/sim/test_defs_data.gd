@@ -89,7 +89,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
+func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -270,6 +270,7 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["unit_cap", [], [-1], "a cap is negative"],
 		["ghost_cap", [0], [-1], "a cap is negative"],
 		["passenger_cap", [0, 150], [-1], "a cap is negative"],
+		["passenger_cap", [], [149], "passenger_cap is below the players' unit_cap"],
 	]
 	for row: Array in rows:
 		for value: int in row[1] + row[2]:
@@ -801,7 +802,11 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			< 0
 		),
 		"unit_cap and building_cap of 2 players do not fit max_rows":
+		# Passengers count toward unit_cap (ADR 0036 section 8), so the table must hold every squad
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
+		# the players could have aboard. 0 (no carriers) is exempt.
+		"passenger_cap is below the players' unit_cap":
+		rules.passenger_cap > 0 and rules.passenger_cap < PLAYERS * rules.unit_cap,
 	}
 	for divisor: String in [
 		"credits_per_ore",

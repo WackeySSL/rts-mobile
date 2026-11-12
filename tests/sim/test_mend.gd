@@ -277,11 +277,12 @@ func test_the_state_hash_is_neutral_to_the_new_rules_on_an_arena_with_buildings(
 	assert_int(tuned.building_rows.size()).is_greater(0)
 	assert_bool(loaded).is_true()
 	assert_bool(damaged).is_true()
-	# `passenger_cap` (P262) follows them.
-	assert_array(World.RULE_SCALARS.slice(-5, -1)).is_equal(
-		[&"sell_refund_percent", &"mend_hp", &"mend_period_ticks", &"mend_cost_percent"]
-	)
-	assert_array(World.UNHASHED_SCALARS.slice(-5, -1)).is_equal(World.RULE_SCALARS.slice(-5, -1))
+	var sale: Array[StringName] = [
+		&"sell_refund_percent", &"mend_hp", &"mend_period_ticks", &"mend_cost_percent"
+	]
+	for list: Array[StringName] in [World.RULE_SCALARS, World.UNHASHED_SCALARS]:
+		var at: int = list.find(&"sell_refund_percent")  # Found by name: later rules move nothing.
+		assert_array(list.slice(at, at + sale.size())).is_equal(sale)
 
 
 func test_the_step_price_is_the_exact_boundary_for_the_credits() -> void:

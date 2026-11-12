@@ -21,7 +21,7 @@ func test_a_move_row_keeps_its_order_target_through_targeting(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var world: World = _world()
-	assert_array(SimImpls.use(world, impl)).is_empty()
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.TARGETING)).is_empty()
 	var squad: int = world.add_unit(1, 0, 2500, 2500)
 	var enemy: int = world.add_unit(2, 0, 4500, 2500)
 	var carrier: int = world.add_unit(1, 0, 20500, 2500)
@@ -42,6 +42,29 @@ func test_a_move_row_keeps_its_order_target_through_targeting(
 		assert_int(world.target[row]).override_failure_message(message).is_equal(0)
 	# The control: the same phase did find the enemy for an idle row, so the world is live.
 	assert_int(world.target[world.index_of(watcher)]).is_equal(enemy)
+
+
+## The squad arrives (the MOVE ends and the row goes IDLE) with an enemy in range: TARGETING then
+## acquires it, and still leaves `order_target`, the carrier a boarding squad is bound for.
+func test_an_arrived_row_keeps_its_order_target_while_it_acquires(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var world: World = _world()
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.TARGETING)).is_empty()
+	var squad: int = world.add_unit(1, 0, 2500, 2500)
+	var enemy: int = world.add_unit(2, 0, 7500, 2500)
+	var carrier: int = world.add_unit(1, 0, 4500, 4500)
+	var order: Command = Command.move(1, PackedInt32Array([squad]), 4500, 2500)  # Two tiles.
+	order.tick = world.tick
+	var first: Array[Command] = [order]
+	Sim.step(world, first)
+	world.order_target[world.index_of(squad)] = carrier
+	for _tick: int in TICKS:
+		Sim.step(world, [])
+	var row: int = world.index_of(squad)
+	assert_int(world.order[row]).is_equal(World.Order.IDLE)
+	assert_int(world.order_target[row]).is_equal(carrier)
+	assert_int(world.target[row]).is_equal(enemy)
 
 
 ## An armed type 0 (range 6 tiles, a slow shell), players 1 and 2, a 24 x 6 map of grass.

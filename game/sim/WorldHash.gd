@@ -14,9 +14,10 @@ extends RefCounted
 ## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
 ## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
 ## used free stack, FogGrid.HASHED (the explored bytes: the visible counts are derived from the
-## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays and the live ghost
-## records. The DERIVED_ARRAYS and the type tables stay out. A hand-built world hashes before
-## prepare() too (empty helpers and map), to another value than after it.
+## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays, the live ghost
+## records and the live passenger records. The DERIVED_ARRAYS and the type tables stay out. A
+## hand-built world hashes before prepare() too (empty helpers and map), to another value than
+## after it.
 static func state_hash(world: World) -> int:
 	var ctx: HashingContext = _start_hash()
 	for section: int in World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS:
@@ -180,15 +181,18 @@ static func _feed_ghosts(ctx: HashingContext, world: World, section: int) -> voi
 ## The live passenger records (ADR 0036 section 8): record `i` below `pass_count` holds its five
 ## fields in PASSENGER_ARRAYS order, records ascending. A slot at or above the count is not state;
 ## the count itself is the hashed scalar `pass_count` of the header. A count outside the table is
-## read as the table's size, so a hand-made value never reads past it.
+## clamped to 0..the size of the shortest column, so a hand-made value never reads past it.
 static func _feed_passengers(ctx: HashingContext, world: World, section: int) -> void:
-	var count: int = clampi(world.pass_count, 0, world.pass_id.size())
+	var columns: Array[PackedInt32Array] = []
+	var count: int = maxi(world.pass_count, 0)
+	for column_name: StringName in World.PASSENGER_ARRAYS:
+		columns.append(world.get(column_name))
+		count = mini(count, columns[-1].size())
 	var live: PackedInt32Array = PackedInt32Array()
-	live.resize(count * World.PASSENGER_ARRAYS.size())  # One resize, then writes.
+	live.resize(count * columns.size())  # One resize, then writes.
 	var at: int = 0
 	for record: int in count:
-		for column_name: StringName in World.PASSENGER_ARRAYS:
-			var column: PackedInt32Array = world.get(column_name)
+		for column: PackedInt32Array in columns:
 			live[at] = column[record]
 			at += 1
 	_feed(ctx, section, live.to_byte_array())

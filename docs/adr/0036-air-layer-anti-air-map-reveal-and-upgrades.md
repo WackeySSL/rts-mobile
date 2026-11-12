@@ -200,14 +200,15 @@ Note (2026-11-12, P232; named exception 23): the shapes as built. It changes no 
   `17f7a83c4d492c4c` -> `4512f2002ed89f5c`; base arena final `c84764064abfb27c` ->
   `58681a6fcaf74db6`. Twin and kernel agree; no row, rule or run moved.
 
-Note (2026-11-12, P262; named exception 24): the carriers' layout as built. It changes no accepted
-text.
+Note (2026-11-12, P262; named exception 24): the carriers' layout as built. It refines the table
+row of the passengers above (`pass_count` is a header scalar, the records are in the section
+`passengers`, and `passenger_cap` is in `defs_hash`) and changes no other accepted text.
 - **State.** `STATE_FORMAT` 7. The row column `carry_mode` follows `ammo` (0 for every row). The
   passenger table is `World.PASSENGER_ARRAYS` (`pass_carrier`, `pass_id`, `pass_type`, `pass_hp`,
   `pass_owner`), `passenger_cap` entries each, all free at load; the live count `pass_count` is a
   hashed scalar in the header (`HASHED_SCALARS`), and the new last hash section `passengers` feeds
   the live records only (record by record, the five fields in list order), so `HASH_OTHER_SECTIONS`
-  is 8. A count outside the table reads as the table's size in the hash.
+  is 8. A count outside the table is clamped to 0 and the table's size in the hash.
 - **Rules.** `RulesDef.passenger_cap` (default 0, inert; `data/rules.tres` 150, the two players'
   `unit_cap`) is a rule int. `UnitDef.carry_slots` and `carry_classes` fill the type tables
   `type_carry_slots` and `type_carry_classes` (0 for a padded type); a data test holds them to a
@@ -215,9 +216,18 @@ text.
   `unload_reach_tiles` come with `Carry.gd`.
 - **`World.insert_row(id, owner, type_index, hp, x, y)`** (body in `WorldRows.gd`) returns the new
   row, or -1 with no change at `max_rows`, for `hp` below 1, an owner outside 1 to `player_count`,
-  an unknown type or an id in use. It writes no event and leaves `next_id`, `spawn_refused` and
-  `player_count` alone, bumps `rows_version`, and starts the row as `add_unit` does (idle,
-  `fog_cell` -1, `ammo` of its type, `carry_mode` 0).
+  an unknown type, an id in use, an id below 1 (0 means "none") or an id not below `next_id` (never
+  issued; `add_unit` would issue it again). It writes no event and leaves `next_id`,
+  `spawn_refused` and `player_count` alone, bumps `rows_version`, and starts the row as `add_unit`
+  does (idle, `fog_cell` -1, `ammo` of its type, `carry_mode` 0). Rows at and above the returned
+  row move up by one. The derived lists `building_rows` and `harvester_rows` stay stale until
+  `Buildings.rebuild_lists` (`Power.run` calls it at the start of ECONOMY), so a caller in a later
+  phase rebuilds them itself.
+- **Data rule.** `passenger_cap` is 0 or at least the players' `unit_cap` (passengers count toward
+  it), so the table cannot overflow.
+- **Re-pin.** `TICK_0_SEED_1` `781a749381ea2eb2` -> `dd094805d77cbf7b`; perf arena final
+  `4512f2002ed89f5c` -> `8ffe4168214d0fa4`; base arena final `58681a6fcaf74db6` ->
+  `57a2fbfa38637bc4`. Twin and kernel agree; no row, rule or run moved.
 - **MOVE and `order_target`.** The check of §8 passed: in TARGETING (twin and kernel) only an
   ATTACK row reads or writes `order_target`, so LOAD's MOVE row keeps it and the BOARD fallback is
   not needed. `test_targeting_move_order_target` pins it under both implementations.

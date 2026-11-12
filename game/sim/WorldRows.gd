@@ -2,11 +2,12 @@ class_name WorldRows
 extends RefCounted
 ## The row writers of a World, split out of World.gd (P232c) so that file keeps room under gdlint's
 ## 1,000 lines. Pure static helpers: they write the World passed in and keep nothing.
-## `World.add_unit`, `World._push_unit_event` and `World.write_unit_event` are one-line delegates
-## to the functions of the same names here, so no caller names this class. The code is World.gd's
-## own, moved with no change. This is the home of every other function that appends or inserts a
-## row (P262's `World.insert_row` is one more delegate to here); ADR 0007 section 2 keeps every
-## column, list and rule int in World itself.
+## `World.add_unit`, `World._push_unit_event`, `World.write_unit_event` and (P262)
+## `World.insert_row` are one-line delegates to the functions of the same names here, so no caller
+## names this class.
+## The first three are World.gd's own code, moved (P262 only split add_unit's column writes into
+## `_append_columns`, which insert_row shares). This is the home of every other function that
+## appends or inserts a row; ADR 0007 section 2 keeps every column, list and rule int in World.
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
@@ -33,15 +34,22 @@ static func add_unit(world: World, owner: int, type_index: int, x: int, y: int) 
 ## stay ascending by id, and returns its row (ADR 0036 section 8; Carry.run calls it in ECONOMY,
 ## at event cadence: O(rows x columns)). It returns -1 and changes nothing when the table already
 ## holds `max_rows` rows (the squad then stays aboard), when `hp` is below 1 (REMOVE would take the
-## row at once), when `owner` is not a player 1..player_count, when `type_index` is not a type or
-## when a row already has `id`. It bumps `rows_version`, writes no event and does not touch
-## `next_id`, `spawn_refused` or `player_count`: the id is the one the squad always had.
+## row at once), when `owner` is not a player 1..player_count, when `type_index` is not a type, when
+## `id` is below 1 (0 means "none") or not below `next_id` (an id never issued, which add_unit would
+## issue again) or when a row already has `id`. It bumps `rows_version`, writes no event and does
+## not touch `next_id`, `spawn_refused` or `player_count`.
+## Rows at and above the returned row move up by one, so a caller holding row indexes must re-read
+## them. The derived lists `building_rows` and `harvester_rows` stay stale until
+## `Buildings.rebuild_lists`: a caller in a phase after `Power.run` (which rebuilds them at the
+## start of ECONOMY) must rebuild them itself.
 static func insert_row(
 	world: World, id: int, owner: int, type_index: int, hp: int, x: int, y: int
 ) -> int:
 	if (
 		world.unit_id.size() >= world.max_rows
 		or hp < 1
+		or id < 1
+		or id >= world.next_id
 		or owner < 1
 		or owner > world.player_count
 		or type_index < 0

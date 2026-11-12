@@ -28,7 +28,7 @@ func test_weapon_def_defaults_deal_full_damage_to_every_armour_class() -> void:
 	assert_array(weapon.vs_armour).is_equal([100, 100, 100, 100])
 
 
-func test_rules_def_has_exactly_the_forty_starting_ints() -> void:
+func test_rules_def_has_exactly_the_41_starting_ints() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,

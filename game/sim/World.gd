@@ -283,7 +283,8 @@ const SETUP_ARRAYS: Array[StringName] = [&"income_percent"]
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
 ## The int properties in the state hash, in hash order: the header ints, then map_version (the map
-## grid goes in as a cached digest), then the match end. rng.state() follows them.
+## grid goes in as a cached digest), then the match end and the passenger count. rng.state()
+## follows them.
 const HASHED_SCALARS: Array[StringName] = [
 	&"tick",
 	&"next_id",
@@ -807,7 +808,7 @@ func index_of(id: int) -> int:
 ## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
 ## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
 ## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles, sizes the player, ore and ghost state at its start values
+## max_projectiles, sizes the player, ore, ghost and passenger state at its start values
 ## (WorldLoad.size_match_state), and derives open grass from map_w and map_h when no map is loaded.
 ## Last it configures the helpers, once, because configure() re-creates their arrays, stamps the fog
 ## of the rows that exist (WorldLoad.stamp_fog) and caches the map digest of the hash. Idempotent
@@ -954,8 +955,8 @@ func hash_parts() -> PackedInt64Array:
 	return WorldHash.hash_parts(self)
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts"
-## (WorldHash.hash_section_names has what each section feeds).
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts",
+## "passengers" (WorldHash.hash_section_names has what each section feeds).
 static func hash_section_names() -> PackedStringArray:
 	return WorldHash.hash_section_names()
 

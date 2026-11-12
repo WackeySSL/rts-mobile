@@ -3,10 +3,10 @@ extends RefCounted
 ## stream is rebuilt here from the shape lists (World.hash_section_names(), HASHED_SCALARS,
 ## PROJECTILE_ARRAYS, MAP_ARRAYS, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS, the ghost records
 ## of GHOST_ARRAYS and the passenger records of PASSENGER_ARRAYS) and not by calling the World's
-## feed code, so a
-## test can feed it to its own SHA-256 and compare the result with state_hash(): the count is
-## exact exactly when the two values are equal. Each block is a 16-byte header (the section's
-## index and the byte count, two little-endian int64) and its bytes, in the order of the sections.
+## feed code, so a test can feed it to its own SHA-256 and compare the result with state_hash():
+## the count is exact exactly when the two values are equal. Each block is a 16-byte header (the
+## section's index and the byte count, two little-endian int64) and its bytes, in the order of the
+## sections.
 ## A change of the hash layout that goes through those lists (P65 narrows FogGrid.HASHED) is
 ## followed on its own. Pure: no clock, no World writes. Not a test suite.
 
