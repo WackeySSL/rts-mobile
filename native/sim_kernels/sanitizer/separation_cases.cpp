@@ -5,9 +5,11 @@
 // scenes. Sanitizers judge memory and undefined behaviour, not answers: the pushes of the rules are the gdUnit4 suites'
 // (test_separation*.gd, test_separation_kernel*.gd and the lockstep of P39n2), and only what needs no second
 // implementation is checked here (no push past the cap, nothing written past the rows, a grid with no cells gives
-// nothing), and the layers (P240: rows of another layer are skipped before the look is counted: a mixed-layer scene is looked at
-// less than the same scene on one layer, hostile layer bits and a table shorter than the types). The build has no -fwrapv, so the ranges that core/separation.h records are run at their edges: positions of
-// 10^9, the largest reach and the largest divisor of the data's radii. Plain C++17, no Godot header. MIT.
+// nothing), and the layers (P240: rows of another layer are skipped before the look is counted: a mixed-layer scene is looked
+// at less than the same scene on one layer, hostile layer bits and a table shorter than the types; the gdUnit4 suites are
+// tests/sim/test_separation_layers.gd and tests/sim/native/test_air_movement_lockstep.gd). The build has no -fwrapv, so the
+// ranges that core/separation.h records are run at their edges: positions of 10^9, the largest reach and the largest divisor
+// of the data's radii. Plain C++17, no Godot header. MIT.
 // Twin: bind/kernel_separation.cpp (call() below is the same separation::run, with the arrays of the World replaced by
 // vectors). A change to that call edits call() in the same PR.
 #include <algorithm>
@@ -434,6 +436,9 @@ void layers(Tally &tally) {
 	if (fewer >= all) {
 		throw Finding("separation: layers: the skip of another layer's rows looked at " + std::to_string(fewer) + " rows, not fewer than " + std::to_string(all));
 	}
+	if (all <= 0 || fewer <= 0) {
+		throw Finding("separation: layers: the scenes were not looked at");
+	}
 	tally.runs += 2;
 	tally.work += all + fewer;
 	const int32_t hostile[] = { 0, -1, 3, 8, INT32_MAX, INT32_MIN, 6, LAYER_AIR };
@@ -445,7 +450,7 @@ void layers(Tally &tally) {
 		play(state, tally, "hostile layers");
 	}
 	State short_table = mixed; // a layer table shorter than the types: the missing bits read 0
-	short_table.layer_bit.resize(1);
+	short_table.layer_bit = std::vector<int32_t>{ LAYER_GROUND };
 	play(short_table, tally, "short layer table");
 }
 

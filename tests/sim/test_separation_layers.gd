@@ -80,8 +80,8 @@ func test_two_pairs_on_one_point_push_only_within_their_layer(
 
 ## A row of another layer is not looked at, so it uses no scan: with `separation_scan` 1, two tanks
 ## and two jets on one point still pair within their layer (each row looks at its one mate, 4
-## looks), where a scan that counted the rows of the other layer would stop every row but the first
-## on a row it skips.
+## looks), where a scan that counted the rows of the other layer would stop the two jets (rows 2 and
+## 3) on a tank they skip, with no push at all.
 func test_rows_of_another_layer_use_no_scan(impl: int, _test_parameters := _both()) -> void:
 	var world: World = _stack([AIR, AIR, GROUND, GROUND], impl)
 	world.separation_scan = 1

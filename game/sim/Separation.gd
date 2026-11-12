@@ -3,8 +3,8 @@ extends RefCounted
 ## The SEPARATION phase (ADR 0007 section 4 step 7, ADR 0008 section 4): every unit is pushed
 ## away from the units of its layer that it overlaps. `run` reads the positions, the type radii, the
 ## layer bits (`type_layer_bit`), the intents (a unit is "moving" when its intent is not 0) and
-## `world.sep_grid`, which the caller has rebuilt
-## from this tick's positions (the GRIDS phase, P39b): `run` never rebuilds a grid. It writes
+## `world.sep_grid`, which the caller has rebuilt from this tick's positions (the GRIDS phase,
+## P39b): `run` never rebuilds a grid. It writes
 ## `push_x` and `push_y` of every row, 0 for a unit with no neighbour in reach, and adds the
 ## units it looked at to `stats[SEP_PAIRS]`. It moves nothing: `Movement.integrate` adds the
 ## push to the intent. The pushes are Jacobi style, all computed from the positions at the start

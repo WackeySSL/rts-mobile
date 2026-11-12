@@ -8,7 +8,8 @@
 // (cell_of, is_passable, which integrate.cpp copies), in the twin's row order, so that the full state matches after every
 // call. Tests: tests/sim/test_movement*.gd under both implementations, tests/sim/native/test_integrate_kernel.gd and the lockstep
 // in test_integrate_lockstep.gd, test_integrate_lockstep_cases.gd and test_integrate_lockstep_off_map.gd (same folder); aircraft
-// over rock, water and a footprint, and a ground row locking a drone over rock (P240): test_air_movement_lockstep.gd (same folder). MIT.
+// over rock, a column closed to tracked rows ('w') and a footprint, and a ground row locking a drone over rock (P240):
+// test_air_movement_lockstep.gd (same folder). MIT.
 #pragma once
 
 #include <cstdint>
