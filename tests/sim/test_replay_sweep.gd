@@ -4,8 +4,10 @@ extends GdUnitTestSuite
 ## Array for the Lumen Accord, both fully charged by `charge_elapsed_ticks`, with the plants that
 ## keep the Skyrig off low power. The match is recorded on the C++ kernels: player 1 fires the
 ## sweep, player 2 blacks the space centre out. `Replay.play` then runs the log on the GDScript
-## twin, on a world made from the replay's own scenario path and seed, to a checkpoint inside the
-## sweep (on), one inside the pause and one after it. At each the world equals the recording by
+## twin, on a world made from `PATH` and `SEED` (the replay's own, asserted equal), to a checkpoint
+## inside the sweep (on) and two inside the pause (the blackout lasts 450 ticks). A light tank of
+## player 1 is moved after the sweep starts, so the FOG kernel stamps under it; the live run is
+## held to the row rebuild at each checkpoint. At each the world equals the recording by
 ## the checkpoint hash, `reveal` and the fog's whole-map flag are as recorded, `visible` is the
 ## rebuild of the rows (`fog_derivation.gd`), and a rebuild of `visible` from the hashed state
 ## (`WorldLoad.stamp_fog`, as the live code does it for a fresh World) gives the same counts.
@@ -16,12 +18,13 @@ const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const PATH: String = "res://data/scenarios/dev_sweep.tres"
 const SEED: int = 42
 ## The command of tick FIRE fires the sweep, the command of tick BLACK blacks the space centre out.
-## Checkpoints come every 15 ticks: 30 is inside the sweep, 60 inside the pause, 75 after the
-## blackout's start by 35 ticks (the blackout lasts `strike_ticks` of the Dusk Array, 450).
+## Checkpoints come every 15 ticks: 30 is inside the sweep, 60 and 75 inside the pause (the
+## blackout lasts `strike_ticks` of the Dusk Array, 450). The tank moves two tiles at FIRE + 1.
 const FIRE: int = 10
 const BLACK: int = 40
 const CHECKS: Array[int] = [30, 60, 75]
 ## The middle of the space centre's 3x3 footprint at tile (4, 14), in milli-tiles.
+const TANK_TO: Vector2i = Vector2i(10500, 20500)
 const OVER_SPACE: Vector2i = Vector2i(5500, 15500)
 
 
@@ -59,7 +62,20 @@ func test_replay_to_a_checkpoint_inside_a_sweep_and_inside_its_pause_matches_the
 	var loop: MatchLoop = MatchLoop.create(scenario, PATH, SEED, live)
 	var site: int = _id(live, &"fossil_space", 1)
 	var array: int = _id(live, &"renew_strike", 2)
-	assert_array([site, array]).not_contains([0])
+	var tank: int = _id(live, &"light_tank", 1)
+	assert_array([site, array, tank]).not_contains([0])
+	for building: int in [site, array]:
+		var ready: int = live.ready_tick[live.index_of(building)]
+		(
+			assert_int(ready)
+			. override_failure_message(
+				(
+					"the charge of row %d is not spent: raise charge_elapsed_ticks in dev_sweep.tres"
+					% building
+				)
+			)
+			. is_less_equal(1)
+		)
 	var states: Dictionary[int, PackedInt32Array] = {}
 	while live.tick < CHECKS[-1]:
 		var commands: Array[Command] = []
@@ -67,8 +83,13 @@ func test_replay_to_a_checkpoint_inside_a_sweep_and_inside_its_pause_matches_the
 			commands.append(Command.superweapon(1, site, 0, 0))
 		if live.tick == BLACK:
 			commands.append(Command.superweapon(2, array, OVER_SPACE.x, OVER_SPACE.y))
+		if live.tick == FIRE + 1:
+			commands.append(Command.move(1, PackedInt32Array([tank]), TANK_TO.x, TANK_TO.y))
 		loop.step(live, commands)
 		states[live.tick] = live.reveal.duplicate()
+		if live.tick in CHECKS:
+			var problem: String = Derivation.mismatch(live)
+			assert_str(problem).override_failure_message("live, tick %d" % live.tick).is_empty()
 	assert_int(live.dropped_commands).is_equal(0)
 	# The live run is what the case claims: on inside the sweep, paused inside the blackout, and
 	# the blackout (450 ticks) still on at the last checkpoint.
@@ -77,6 +98,7 @@ func test_replay_to_a_checkpoint_inside_a_sweep_and_inside_its_pause_matches_the
 	)
 	loop.replay.finish(live)
 	var replay: Replay = loop.replay
+	assert_array([replay.scenario_path, replay.seed]).is_equal([PATH, SEED])
 	for until: int in CHECKS:
 		var fresh: World = _world(SimImpls.Impl.GDSCRIPT)
 		replay.apply_setup(fresh)
@@ -91,9 +113,10 @@ func test_replay_to_a_checkpoint_inside_a_sweep_and_inside_its_pause_matches_the
 		var at: int = replay.checkpoint_ticks.find(until)
 		assert_int(at).is_greater(-1)
 		assert_int(fresh.state_hash()).is_equal(replay.checkpoint_hashes[at])
-		assert_str(Derivation.mismatch(fresh)).override_failure_message(label).is_empty()
-		var visible: PackedInt32Array = fresh.fog.visible.duplicate()
-		assert_array(_rebuilt_visible(fresh)).override_failure_message(label).is_equal(visible)
 		if until == CHECKS[-1]:
 			assert_int(fresh.state_hash()).is_equal(replay.final_hash)
 			assert_str(HashReport.mismatch(fresh, live)).is_empty()
+		assert_str(Derivation.mismatch(fresh)).override_failure_message(label).is_empty()
+		# Last: the rebuild replaces the fog and rewrites the hashed `fog_cell`.
+		var visible: PackedInt32Array = fresh.fog.visible.duplicate()
+		assert_array(_rebuilt_visible(fresh)).override_failure_message(label).is_equal(visible)

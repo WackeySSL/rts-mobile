@@ -3,9 +3,9 @@ extends GdUnitTestSuite
 ## buildings (the space centre's numbers are test_defs_space_centre's), six units and the two
 ## weapons of its own as literals (the ADR's starting numbers, marked P: proposals for Phase 4's
 ## balance runs), the rules that span its files (the requirement chains, the free Fuel Runner, the
-## dock and exit cells, the tabs) and how it differs from the
-## Derrick League: only where the ADR's table says so. test_defs_roster pins the Derrick League's
-## files the same way. The rules every file obeys and the faction rules are test_defs_data's and
+## dock and exit cells, the tabs) and how it differs from the Derrick
+## League: only where the ADR's table says so. test_defs_roster pins the Derrick League's files the
+## same way. The rules every file obeys and the faction rules are test_defs_data's and
 ## test_defs_factions_data's, which run over these files too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
