@@ -74,6 +74,12 @@ face (see "Wedge faces" under "Generated art"), and the eight models that used `
 stand-in for it use `slope=1`. The "Modelling notes" of both factions' units and of the Lumen
 Accord's buildings no longer warn about the bug; their frames and item cards are regenerated.
 
+**v1.31 (Phase 4b, P236)** adds the models of the space centre of both factions, the Skyrig
+(`fossil_space`, an open launch gantry with a satellite capsule on a rail lift) and the Zenith
+(`renew_space`, a round white tower with a solar collar on a lift), each with a KRITISK picture and no
+SKADET picture (ADR 0034), "The space centres" under "Buildings" says how, and the Build and Iso pages
+list them.
+
 ## Look
 **Since ADR 0023 (Michael 2026-10-26) everything on the map is drawn in the isometric 2:1 view, flat
 shaded with three tones per face and one light from the north-west; see "Projection", "Light" and
@@ -1156,6 +1162,98 @@ which is the wall with the door.
   wall and the scorch patch that brings the key share into 55-85 % reaches it. KRITISK cuts: 280,
   187, 273, 240, 217, 350, 108 and 80 (headquarters, barracks, factory, refinery, power, strike,
   radar, defence), none at the foot.
+
+### The space centres (P236)
+Plan row P236 (ADR 0036 section 11, the Reveal superweapon; section 15, the atlas pages): the models of
+the space centre for both factions, the Derrick League's **Skyrig** and the Lumen Accord's **Zenith**
+(names and looks from the GDD: a launch tower built like a drilling derrick, and a white tower with a
+solar collar). Each is a 3 x 3 building with a body, a lift as its `anim` part, a KRITISK picture and
+a cast shadow. The building's data (`.tres`, rosters, requires) is P234's; the art id of a sheet must
+equal the `BuildingDef.type_id` for `WorldSort` to bake it, so P234 names its types `fossil_space` and
+`renew_space` (as `fossil_radar` and `renew_radar`). What the building does is not drawn: the sweep
+has no end, so its state is the HUD's (P235) and the model shows the same picture whether the sweep
+is on, paused or not yet fired. Each is placed from primitives in
+`assets/art/models/<faction>/<id>.tres`, so a change is a change of the model and a run of
+`bash scripts/gen-art.sh`.
+
+| Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
+| --- | --- | --- | --- |
+| `fossil_space` | Skyrig | 3x3 | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. |
+| `renew_space` | Zenith | 3x3 | A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar riding up and down the shaft on a team-lit ring, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings. |
+
+- **The lift is the animation.** The `anim` part is one group, `lift`, that moves straight up and
+  down (`shift 0 0 dz`, no turn): the Skyrig's satellite capsule in its cradle climbs the rails of the
+  gantry from the launch pad to just under the hoist beam, the Zenith's solar collar rides up the
+  shaft from the fins at its foot to the middle of the tower. The Skyrig has 16 frames at 150 ms
+  (2.4 s a loop), the Zenith 12 at 200 ms (2.4 s). A loop is one rise and one fall on a cosine; the
+  frames of the fall are sampled half a step after those of the rise, so no two frames are the same
+  picture (a mirrored loop would bake every frame twice). Frame 0 is the lift at rest, standing on a
+  member of the body (the pad, the fins); no step is above 0.37 tile (14 px at zoom 1); at the top the
+  lift stays under the beam (3.32 tiles) or the crown (3.3 tiles). The lift runs always: it is not a
+  state, as the Signal Mast's panel is not. At KRITISK `anim_kritisk` is `hide`: the gantry's rails
+  are gone and the shaft is broken, so nothing carries it.
+- **No SKADET picture (ADR 0034).** Neither model has a `dmg1` pose, so there is no `dmg1` frame: a building
+  under two thirds of its health keeps its intact picture and shows only the smoke and fire of that
+  stage (`AirFx`). The sheets have the parts `hull`, `anim`, `dmg2` and `shadow`, and their `cuts`
+  begin with 0. `damage=1` primitives are not used.
+- **Canvas and anchor** (px at 2x; the height in px at zoom 1 against Spec 05's band of 80 to 150, the
+  superweapon's, and the team share of the default view with the lift at rest), which `tests/art`
+  pins. The body's anchor is the back corner of the footprint (Spec 03); the lift has a canvas
+  of its own, anchored at the footprint's centre, and so has the KRITISK patch (the top of the body
+  down to its cut row, anchored as the body).
+
+| Type id | Hull canvas | Anchor | Shadow canvas | Lift canvas | KRITISK patch (cut row) | Height | Team share, % |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `fossil_space` | 384 x 438 | (192, 246) | 392 x 198 | 88 x 272 | 158 x 186 (209) | 143 | 9.5 |
+| `renew_space` | 384 x 410 | (192, 218) | 410 x 194 | 142 x 230 | 306 x 212 (285) | 142 | 7.9 |
+
+- **The Skyrig is an open gantry.** A goalpost of two lattice posts (two legs each, rungs and
+  diagonals between them) and a heavy steel hoist beam with a dark housing and a warm lamp, standing
+  at the back of the deck. The satellite capsule rides between the posts on two thin rails that run
+  from a launch pad to the beam; the pod is an olive drum with a team band and a short nose cone in a
+  dark cradle. In front stand a flat control bunker under a rust roof with a wide team band and three
+  olive gas bottles with team rings, joined to the pad by a pipe. It is open (its members cover about
+  a seventh of the box they stand in between the deck and the beam, 0.15 on average, and
+  `tests/art` pins at most 0.25), and a solid spire is not allowed (no spire, "Palette per faction").
+- **The Zenith is a plain round tower.** Three stepped round drums, each cut by a team ring, on a
+  graphite plinth with a team ring, four low white buttress fins, a flat graphite and glass crown
+  under a white lid. It tapers by steps, never to a point, it has no four-sided prism and no lamp or
+  team cap at its tip (the tip is a lid 0.06 tile thick); "Palette per faction" bans the spire that
+  is another game's tower, and `tests/art` pins all four. The collar is a flat dark hexagon of solar
+  panels (a blue-grey face on graphite) a tile and a third wide with mint lights at two corners, a
+  white hub and a team ring under it; it is the one wide member, so the tower reads as a tower with a
+  collar and not as a dish. A low white hexagonal control house and two small tanks stand in front,
+  as the Lumen Accord's refinery's do.
+- **Team colour** is about 8 to 10 % of a default view (the pins are 7 to 13 % and 6.5 to 12.5 %,
+  in every frame of the lift): the Skyrig's deck band, its bunker band, the posts' brackets and the
+  rings on the bottles and the pod; the Zenith's four rings (plinth, three on the shaft), the rings of
+  the tanks, the house band and the collar's under-ring. No roof is a team plate (`test_artgen_plates.gd`).
+- **KRITISK.** The Skyrig loses the top half of its right post (its rails go, the pieces left
+  bend), its beam sags to that side with a char on it, and the left post stands. The Zenith's upper
+  drum and its crown snap off and lie across the plinth, the glass band blown, a jagged stump on
+  the lower tower. Both pictures are patches of the body's upper part only (the cut rows above),
+  not of its foot, which keeps the page rows low; the 2 to 4 typed damage points sit on the bunker,
+  a bottle and a post (the Skyrig) and on the house, the shaft and a tank (the Zenith).
+- **The launch point.** Both models name a `launch` emitter above the tower (the Skyrig's beam, the
+  Zenith's crown), which the strike effects use for a building with a strike; the Reveal has no aim, so
+  the effects row of the sweep chooses what to show (P235 and P272 own that).
+- **Page rows** (P236, ADR 0036 section 15; the pins are in `tests/view/test_iso_atlas_budget.gd`):
+  page 1 gains 316 rows on the cross-faction page (2659 to 2975), 304 on the Derrick League's mirror
+  (2542 to 2846) and 328 on the Lumen Accord's (2650 to 2978); page 2 gains 76, 4 and 12 rows (1040
+  to 1116, 566 to 570, 622 to 634). That leaves 609, 738 and 606 rows on page 1. Packed alone, the two
+  are 605 rows on page 1 and 202 on page 2 and take 42 ms to bake (desktop, bake scale 1.0), about 45
+  ms of a bake of about 1 s.
+- **Readability.** Each default view is identifiable at 32 px in greyscale (a body and a spread of
+  tones, `test_artgen_readability.gd`) and reads apart from the other 17 buildings: the largest
+  overlap with any of them is 0.64 for the Skyrig (the Zenith) and 0.75 for the Zenith (the Signal
+  Mast: a tall thin tower on a plate), and the pin is 0.8. The Skyrig is a wide frame with a
+  capsule, the Zenith one slim column with a wide collar.
+- **Judge it in the gallery.** The Build page lists them with the other buildings, in the order of the
+  model files (the Derrick League's nine, then the Lumen Accord's nine) with a tank in front and behind, at zoom 1, 0.75
+  and 1.5 in the Signal and the Arktisk triad on grass and sand; the lift plays on its clock, and the
+  Stage button shows KRITISK (and, for these two, the intact picture at SKADET). The Iso page shows
+  the frames and the item cards.
+
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -2291,8 +2389,8 @@ hidden, so the Units page is as it was.
   scrub went with the unit files in P101; the Iso page shows a type's selection ellipse and every
   direction.)
 - **Build** (plan row P103, `game/view/art_gallery_build.gd`) shows one building at a time, a list to
-  scroll (drag it), with `<` and `>` for the previous and the next of the 16 building models (the
-  Derrick League's eight, then the Lumen Accord's eight), the faction's emblem (tinted in its key
+  scroll (drag it), with `<` and `>` for the previous and the next of the 18 building models (the
+  Derrick League's nine, then the Lumen Accord's nine), the faction's emblem (tinted in its key
   colour) and the
   item card at the top right (the Iso page's list, buttons and card, left of the page button) and a
   section for each camera zoom (1, 0.75 and 1.5, the zoom levels of `data/input_settings.tres`) and each triad (Signal, Arktisk), grass on the left and sand
@@ -2636,3 +2734,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-04 | v1.28 (P158b, art-director, ADR 0029 sections 3 to 5): the eight Lumen Accord buildings gain `dmg1` and `dmg2` from their models (blown panes, soot, scorch patches, collapsed parts with `interior`, `slab`, `rebar`, `beam`, `broken` and `petals`), 2 to 3 typed damage points each, `anim_kritisk` on the five with an `anim`, the refinery's steam emitters in groups; shadows and cards unchanged ("The Lumen Accord's buildings (P104)"). |
 | 2026-11-06 | v1.29 (P120k, ADR 0032): six display names are shorter so every requirement fits the locked card's sash on one line: Cracking Plant is Oil Works, Synthesis Works is Fuel Works, Motor Works is Motor Hall, Relay Tower is Relay Post, Blackout Array is Dusk Array and Roustabouts is Rig Hands. The guide's text uses the new names; the rows above keep the names of their day. No art id, file or frame changed. |
 | 2026-11-11 | v1.30 (P273, art-director, ADR 0037 sections 3 and 4): `glyph_repair.svg` (an open-ended spanner on a rising diagonal; the Mend switch and the Repair order share it) and `glyph_sell.svg` (a price tag with a coin on it, not the coin stack of `glyph_credits`), two plain white HUD glyphs on the command bar row of the gallery's Hud page, no seat and no tint. At 32 px in greyscale the wrench is 36.5 from the nearest HUD glyph (the star) and the tag 34.7 (`glyph_credits`; at the first scale of 0.88 it was 34.0 from the Resume triangle, and the scale became 0.9 to keep the one-decimal rule, with the ink re-centred), both over the 29 bar. The seated map copy `glyph_repair_map.svg` (the wrench at 0.8 on the offline plate, tinted #30A46C, the eleventh map glyph) is drawn in the same row; the gallery's map strips now hold their glyphs in two lines of five. |
+| 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings"), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2975, 2846 and 2978 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

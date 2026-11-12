@@ -21,6 +21,13 @@ const BUILDINGS: Dictionary[StringName, Array] = {
 	&"renew_hq": [2, 600, 180.0],
 	&"renew_barracks": [2, 600, 180.0],
 }
+## The two lifts of the space centres (P236, STYLE.md "The space centres"): art id, frames,
+## `anim_ms`. A lift is a shift up and down, not a turn, so `BUILDINGS`' loop tests (which read
+## the angle of a turn) do not apply; tests/art/test_space_centres.gd pins the shift.
+const LIFTS: Dictionary[StringName, Array] = {
+	&"fossil_space": [16, 150],
+	&"renew_space": [12, 200],
+}
 ## What a turned face may be from a light cut, in shade (P139's margin, 0.016). The two hexagonal
 ## sets cannot reach it: a hexagon's slanted faces cross the cut of the top level at two angles of
 ## a turn, 96 degrees apart, and a lattice of 22.5 (or 15) degrees cannot miss both by more than a
@@ -44,12 +51,14 @@ const EMITTERS: Dictionary[StringName, Array] = {
 	&"defence_turret": [&"damage", &"dmg_spark"],
 	&"fossil_radar": [&"damage", &"dmg_spark"],
 	&"fossil_strike": [&"launch", &"damage", &"dmg_spark"],
+	&"fossil_space": [&"damage", &"dmg_gas", &"dmg_spark", &"launch"],
 	&"headquarters": [&"smoke", &"damage", &"damage", &"dmg_spark"],
 	&"power_plant": [&"smoke", &"smoke", &"damage", &"damage", &"dmg_spark"],
 	&"refinery": [&"steam", &"flame", &"dmg_gas", &"dmg_gas", &"damage"],
 	&"vehicle_factory": [&"damage", &"dmg_spark"],
 	&"renew_refinery": [&"steam", &"steam", &"damage", &"dmg_gas"],
 	&"renew_strike": [&"launch", &"damage", &"dmg_spark"],
+	&"renew_space": [&"damage", &"dmg_spark", &"dmg_gas", &"launch"],
 	# P158b: the Lumen Accord's damage points (ADR 0029 section 5).
 	&"renew_hq": [&"damage", &"dmg_spark"],
 	&"renew_barracks": [&"damage", &"dmg_spark"],
@@ -84,7 +93,7 @@ func test_exactly_the_eight_buildings_have_an_anim_part_with_the_frames_and_time
 		if model.category != &"bld":
 			assert_int(model.pose_frames(&"anim")).override_failure_message(path).is_equal(0)
 			continue
-		var want: Array = BUILDINGS.get(model.art_id, [0, 0, 0.0])
+		var want: Array = BUILDINGS.get(model.art_id, LIFTS.get(model.art_id, [0, 0, 0.0]))
 		var frames: int = want[0]
 		assert_int(model.pose_frames(&"anim")).override_failure_message(path).is_equal(frames)
 		assert_int(model.anim_ms).override_failure_message(path).is_equal(want[1])
@@ -106,9 +115,10 @@ func test_exactly_the_eight_buildings_have_an_anim_part_with_the_frames_and_time
 			var file: String = sheet.path(&"anim", -1, frame)
 			assert_str(file).ends_with("%s_anim_f%d.svg" % [model.art_id, frame])
 			assert_bool(FileAccess.file_exists(file)).override_failure_message(file).is_true()
-		assert_bool(frames in [2, 4, 6, 16]).is_true()
+		assert_bool(frames in [2, 4, 6, 12, 16]).is_true()
 	seen.sort()
 	var names: Array = BUILDINGS.keys().map(func(id: StringName) -> String: return String(id))
+	names.append_array(LIFTS.keys().map(func(id: StringName) -> String: return String(id)))
 	names.sort()
 	assert_array(seen).is_equal(names)
 

@@ -25,12 +25,19 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## PR; the polish rows P203 and P204 move `TODAY2_*` (and `TODAY_*` only if a model changes);
 ## P202 (it drops `dmg1`, a page-1 part) moves `TODAY_*` only. Both pages keep the 3584 budget;
 ## a page past it stops the row (ADR 0036 section 15: Michael allows 3840 on page 1 only if needed).
-const TODAY_CROSS: int = 2659
-const TODAY_MIRROR_DERRICK: int = 2542
-const TODAY_MIRROR_LUMEN: int = 2650
-const TODAY2_CROSS: int = 1040
-const TODAY2_MIRROR_DERRICK: int = 566
-const TODAY2_MIRROR_LUMEN: int = 622
+## P236 (the two space centres, Skyrig and Zenith: a 384 px hull each, a lift of 16 and 12 frames,
+## a KRITISK patch and a shadow, no `dmg1`, ADR 0034) moved page 1 from 2659, 2542 and 2650 to the
+## pins below (+316, +304, +328 rows) and page 2 from 1040, 566 and 622 (+76, +4, +12). The two
+## buildings packed alone are 605 rows on page 1 and 202 on page 2: they share shelves with what
+## was there.
+## What page 1 has left against the 3584 budget is 609 rows on the cross-faction page, 738 on the
+## Derrick League mirror and 606 on the Lumen Accord mirror.
+const TODAY_CROSS: int = 2975  ## P236: 2659 + 316 (two hulls, two lifts, two patches).
+const TODAY_MIRROR_DERRICK: int = 2846  ## P236: 2542 + 304 (the Skyrig, once per player).
+const TODAY_MIRROR_LUMEN: int = 2978  ## P236: 2650 + 328 (the Zenith, once per player).
+const TODAY2_CROSS: int = 1116  ## P236: 1040 + 76 (two shadows, 392 x 198 and 410 x 194).
+const TODAY2_MIRROR_DERRICK: int = 570  ## P236: 566 + 4 (the Skyrig's shadow fits a shelf).
+const TODAY2_MIRROR_LUMEN: int = 634  ## P236: 622 + 12 (the Zenith's shadow).
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
