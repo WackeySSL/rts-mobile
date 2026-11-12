@@ -9,8 +9,14 @@ extends RefCounted
 ## loop; a consumer that would leave the surplus under `power_margin` gets a plant first).
 ## `AiMemory.reserve_credits` is what production must leave this think: what this run queued plus
 ## the price of the structure or tanker it keeps credits for (it waits for money, for room while the
-## queue's head is still being built, or for its queued requirement). Production spends
-## `maxi(view.credits - reserve_credits, 0)`. Every Command checks `can_send`, then `spent`.
+## queue's head is still being built, or for its queued requirement). `mend` (ADR 0037 section 4,
+## plan row P274) is called by `OpponentAi` after `AiProduction.run`, so it spends only what is left
+## of the think's Command budget: it switches `MEND` on for a damaged own building while the credits
+## left after the think's spending and the economy's hold are above `mend_floor` (a building of
+## price 0, the Headquarters, goes on whatever they are). It never switches off: `Mend.run` skips a
+## period it cannot pay and ends the repair at full hp. The census pass picks the candidates.
+## Production spends `maxi(view.credits - reserve_credits, 0)`. Every Command checks `can_send`,
+## then `spent`.
 
 ## The faction index that matches no type (a roster without the Headquarters).
 const _NO_FACTION: int = -2
@@ -72,6 +78,11 @@ var _anchor: Vector2i = Vector2i(-1, -1)
 var _hold: int = 0
 var _spent: int = 0
 var _head_ready: bool = false
+## Building repair: the level's thresholds (`mend_below_percent` 0 = never), and the rows the census
+## found this run: complete buildings under the threshold with the switch off, ascending by row.
+var _mend_below: int = 0
+var _mend_floor: int = 0
+var _mend_on: PackedInt32Array = PackedInt32Array()
 
 
 ## An economy for `player_id` on `def` at `level`, which it copies and does not keep.
@@ -95,6 +106,8 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._refineries_max = level.refineries_max
 	economy._factories_max = level.factories_max
 	economy._defences_max = level.defences_max
+	economy._mend_below = maxi(level.mend_below_percent, 0)
+	economy._mend_floor = maxi(level.mend_floor, 0)
 	economy._spiral = PlacementSpiral.cells(def.spiral_slots)
 	return economy
 
@@ -104,6 +117,7 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	placement_tries = 0
 	_hold = 0
 	_spent = 0
+	_mend_on.clear()
 	_resolve(view)
 	if not _take_census(view):
 		memory.reserve_credits = 0
@@ -167,6 +181,9 @@ func _take_census(view: PlayerView) -> bool:
 	var hq_seen: bool = false
 	var columns: Array[PackedInt32Array] = view.columns()
 	var type_col: PackedInt32Array = columns[PlayerView.Column.TYPE]
+	var hp_col: PackedInt32Array = columns[PlayerView.Column.HP]
+	var left_col: PackedInt32Array = columns[PlayerView.Column.BUILD_LEFT]
+	var max_hp: PackedInt32Array = view.type_max_hp
 	var foot_w: PackedInt32Array = view.type_foot_w
 	for row: int in view.own_rows:
 		var type: int = type_col[row]
@@ -176,6 +193,9 @@ func _take_census(view: PlayerView) -> bool:
 			_units += 1
 			continue
 		_buildings += 1
+		if _mend_below > 0 and left_col[row] == 0 and hp_col[row] < max_hp[type]:
+			if hp_col[row] * 100 < max_hp[type] * _mend_below and view.row_mend(row) == 0:
+				_mend_on.append(row)
 		var at: Vector2i = view.row_pos(row)
 		if (type == _hq_type and not hq_seen) or _anchor.x < 0:
 			hq_seen = hq_seen or type == _hq_type
@@ -338,6 +358,22 @@ func _nearest_first(view: PlayerView, head: int, aim: Vector2i, slots: int) -> P
 	for key: int in keys:
 		order.append(key % slots)
 	return order
+
+
+## MEND on for the damaged buildings the census found, while the Command budget lasts. Called after
+## `AiProduction.run` with the credits it queued (`production_spent`), also when `run` found nothing
+## to do. The credits left are production's own measure, `credits - reserve_credits`, less what
+## production spent; they must be strictly above the floor (ADR 0037 section 4, "above"). A building
+## that costs nothing (the Headquarters mends free) goes on whatever they are.
+func mend(view: PlayerView, memory: AiMemory, out: Array[Command], production_spent: int) -> void:
+	var left: int = view.credits - memory.reserve_credits - production_spent
+	for row: int in _mend_on:
+		if left <= _mend_floor and view.type_cost[view.row_type(row)] > 0:
+			continue
+		if not memory.can_send():
+			return
+		memory.spent()
+		out.append(Command.mend(_player, view.row_id(row), true))
 
 
 ## QUEUE for each wish in turn while one can be queued and paid.

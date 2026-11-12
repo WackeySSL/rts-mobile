@@ -31,6 +31,8 @@ var passes: int = 0
 ## Units queued over the match, the scouts among them.
 var queued: int = 0
 var scouts_queued: int = 0
+## The credits the QUEUEs of the last run cost (`AiEconomy.mend` measures the credits left by it).
+var spent_credits: int = 0
 ## Units queued per role over the match (`OpponentDef.Role`).
 var role_queued: PackedInt32Array = PackedInt32Array()
 
@@ -85,6 +87,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 
 func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
 	passes = 0
+	spent_credits = 0
 	_resolve(view)
 	if view.queue_count.size() < PlayerView.TABS:
 		return
@@ -261,6 +264,7 @@ func _queueable(view: PlayerView, type: int, priced: bool) -> bool:
 func _send(view: PlayerView, memory: AiMemory, out: Array[Command], type: int) -> void:
 	memory.spent()
 	_budget -= view.type_cost[type]
+	spent_credits += view.type_cost[type]
 	_added[view.type_tab[type]] += 1
 	queued += 1
 	out.append(Command.queue(_player, type))

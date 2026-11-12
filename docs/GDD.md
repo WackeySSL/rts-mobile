@@ -128,6 +128,7 @@ shows the last known buildings.
 - Hard: better economy and unit control. No extra vision. No income bonus at first: a 20% income
   bonus comes only if Hard proves not hard enough against Normal (ADR 0030, Michael's answer of
   2026-11-06).
+- Building repair: Normal and Hard mend damaged buildings; Easy never does (ADR 0037).
 - The satellite: Normal and Hard build the space centre and fire the sweep by the same rules as
   the player, as soon as it is charged; Easy builds none (ADR 0036, Michael's answer 4 A).
 

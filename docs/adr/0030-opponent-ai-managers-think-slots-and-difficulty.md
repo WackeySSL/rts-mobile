@@ -545,7 +545,15 @@ is one of these fields.
   | `counter_percent` | 0 | 30 | 60 | how far the mix shifts toward counters of what was seen |
   | `uses_strike` | 0 | 1 | 1 | answer 2 A |
   | `commands_per_think_max` | 3 | 8 | 12 | Easy's slow hands |
+  | `mend_below_percent` | 0 (never) | 50 | 70 | P274: `MEND` on for a building under this percent of its max hp (ADR 0037 section 4) |
+  | `mend_floor` | 0 | 400 | 250 | P274: credits that must stay above it after the think's spending (a building of price 0 ignores it) |
   | `income_percent` | 100 | 100 | 100 (120 only if question 1's trigger fires, answer C) | §8 |
+
+  Note (2026-11-12, P274; changes no accepted text above): the two mend rows are added. Their script
+  defaults are 0 (off), not Normal's values, so "the data tests pin script defaults equal to the
+  files" has this one exception: the frozen arena files (`data/dev/arena/ai/difficulty/`) name
+  neither field and must play as before (default-off, as P271's rules). A data test names the two
+  fields, pins their defaults and asserts Normal's file differs.
 
 - **`OpponentDef extends AiDef`** (`game/ai/OpponentDef.gd`; `data/ai/opponent_fossil.tres`,
   `opponent_renew.tres`): one per faction.

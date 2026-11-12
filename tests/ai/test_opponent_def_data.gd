@@ -13,7 +13,11 @@ const FACTION_PATHS: Dictionary[String, String] = {
 const UNIT_DIR: String = "res://data/units/"
 const FROZEN_UNIT_DIR: String = "res://data/dev/arena/units/"
 const TIER_NAMES: Array[String] = ["weak", "standard", "strong"]
-## ADR 0030 section 6's table: per level, in the field order of `_LEVEL_FIELDS`.
+## The fields that are off by default, with their script defaults (P274): the frozen arena's level
+## files name none of them, so they play as before; the shipped files turn them on.
+const _OFF_BY_DEFAULT: Dictionary[String, int] = {"mend_below_percent": 0, "mend_floor": 0}
+## ADR 0030 section 6's table (its two mend rows from P274, ADR 0037 section 4): per level, in the
+## field order of `_LEVEL_FIELDS`.
 const _LEVEL_FIELDS: Array[String] = [
 	"build_order_tier",
 	"reaction_ticks",
@@ -34,15 +38,65 @@ const _LEVEL_FIELDS: Array[String] = [
 	"focus_fire",
 	"counter_percent",
 	"uses_strike",
+	"mend_below_percent",
+	"mend_floor",
 	"commands_per_think_max",
 	"income_percent",
 ]
 const _LEVELS: Dictionary[String, Array] = {
-	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 3, 100],
+	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
 	"normal":
-	[1, 30, 2, 2, 1, 2, 1800, 2700, 4050, 4000, 25, 300, 10800, 40, 200, 0, 0, 30, 1, 8, 100],
+	[
+		1,
+		30,
+		2,
+		2,
+		1,
+		2,
+		1800,
+		2700,
+		4050,
+		4000,
+		25,
+		300,
+		10800,
+		40,
+		200,
+		0,
+		0,
+		30,
+		1,
+		50,
+		400,
+		8,
+		100
+	],
 	"hard":
-	[2, 15, 2, 2, 2, 3, 1350, 1800, 3600, 5000, 30, 150, 9900, 50, 150, 30, 1, 60, 1, 12, 100],
+	[
+		2,
+		15,
+		2,
+		2,
+		2,
+		3,
+		1350,
+		1800,
+		3600,
+		5000,
+		30,
+		150,
+		9900,
+		50,
+		150,
+		30,
+		1,
+		60,
+		1,
+		70,
+		250,
+		12,
+		100
+	],
 }
 
 
@@ -67,7 +121,21 @@ func test_easy_never_uses_the_strike_and_no_level_gets_a_money_bonus() -> void:
 
 
 func test_the_script_defaults_of_a_level_are_normals_file() -> void:
-	_assert_defaults_equal(AiDifficultyDef.new(), Rig.level_of("normal"), [])
+	var skip: Array[String] = []
+	skip.assign(_OFF_BY_DEFAULT.keys())
+	_assert_defaults_equal(AiDifficultyDef.new(), Rig.level_of("normal"), skip)
+
+
+func test_the_off_by_default_fields_default_off_and_normals_file_turns_them_on() -> void:
+	var fresh: AiDifficultyDef = AiDifficultyDef.new()
+	var normal: AiDifficultyDef = Rig.level_of("normal")
+	for field: String in _OFF_BY_DEFAULT:
+		assert_int(fresh.get(field)).is_equal(_OFF_BY_DEFAULT[field])
+		(
+			assert_bool(normal.get(field) != _OFF_BY_DEFAULT[field])
+			. override_failure_message("Normal's %s equals its default" % field)
+			. is_true()
+		)
 
 
 func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:

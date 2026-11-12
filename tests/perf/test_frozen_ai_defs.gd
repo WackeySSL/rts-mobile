@@ -73,6 +73,16 @@ func test_the_frozen_normal_level_keeps_its_early_contact_values() -> void:
 	assert_int(level.wave_jitter_ticks).is_equal(0)
 
 
+## Frozen arenas never mend (ADR 0037 section 11): every frozen level leaves the mend switch off, so
+## `perf_ai`'s hash and workload stay as they were.
+func test_every_frozen_level_has_mending_off() -> void:
+	for level: String in ["easy", "normal", "hard"]:
+		var def: AiDifficultyDef = (
+			load(FROZEN_DIR + "difficulty/%s.tres" % level) as AiDifficultyDef
+		)
+		assert_int(def.mend_below_percent).override_failure_message(level).is_equal(0)
+
+
 func _relative(paths: Array[String], dir: String) -> Array[String]:
 	var out: Array[String] = []
 	for path: String in paths:

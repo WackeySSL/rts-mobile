@@ -544,8 +544,9 @@ func _opponent_controllers() -> Array[AiController]:
 
 
 ## Gives each computer player of an OpponentDef the `income_percent` of its level (a missing or null
-## level is `AiDifficultyDef.new()`, Normal's script default, as OpponentAi takes it), before
-## MatchLoop.create records the setup. A plain AiDef (the dummy) and a human keep WorldLoad.PERCENT.
+## level is `AiDifficultyDef.new()`, Normal's script default but for the mend fields, as OpponentAi
+## takes it), before MatchLoop.create records the setup. A plain AiDef (the dummy) and a human keep
+## WorldLoad.PERCENT.
 func _seat_income(target: World) -> void:
 	for index: int in opponents.size():
 		if not opponents[index] is OpponentDef:
