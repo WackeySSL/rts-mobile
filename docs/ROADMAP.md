@@ -142,5 +142,5 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
 ## Phase 7: Release
 - [ ] `release.yml` (workflow_dispatch with a version input) tags `main` and calls the Android and iOS workflows as reusable workflows
 - [ ] `ios-testflight.yml` with the iOS AdMob plugin and an App Store Connect API key
-- [ ] Trademark search for the name (ADR 0006) and logo; English store texts and screenshots in `docs/store/`
+- [ ] Trademark search for the name (ADR 0006), the logo and the unit and building names ADR 0036 §16 sends to it (so far Skyrig and Zenith); English store texts and screenshots in `docs/store/`
 - [ ] Gate: live on Google Play and an approved TestFlight build

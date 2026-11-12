@@ -633,6 +633,17 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   `UNSORTED_PARTS` needs no layer edit. The sites that still pair by `texture_for(part)` with a
   region of that part (`WorldSort.dress`, `BuildingLayer`'s patch, the gallery) are replaced by
   P243's sheet-keyed flyer pages.
+- **P236 note (2026-11-12, P26br, the lead; changes no accepted text above).** The space centres
+  (P236) cost more than the estimate above. Page 1 grew by 334 rows on the cross-faction page
+  (2,659 -> 2,993) and by 336 and 260 on the Derrick and Lumen mirrors (2,878 and 2,910); page 2 grew
+  by 76 (1,040 -> 1,116). The estimate allowed about 152-220 rows per building pair. Room on page 1
+  against 3,584 is now 591 rows (cross), 706 and 674 (mirrors). P202 frees about 140 rows on the
+  cross page but only about 106 and 66 on the mirrors, so after P202 the Lumen mirror is the tightest
+  page. Scaled to P236's real cost, page 1 runs out at 3,584 around P279-P280 (ADR 0037's wave 2),
+  or at the third remaining ADR 0036 building in the high case; at 3,840 it runs out in wave 3
+  (P291-P292) in every case. So the lead puts the next lever (more parts on page 2, or a third page)
+  to Michael before P279 starts, not when a row fails. P245 merges after P243 has re-keyed `page_of`;
+  before that the fighter and bomber hulls would bake on page 1 (about +100 rows).
 
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
@@ -661,6 +672,13 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
 
   The drawer tab is not called "Air".
 - **Candidates.** Two per item per faction, listed in the GDD section. Michael picks (question 1).
+- **Note (2026-11-12, P26br, the lead).** The space centres' names from the GDD, Skyrig (Derrick
+  League) and Zenith (Lumen Accord), go to Phase 7's trademark search (ROADMAP Phase 7). "Zenith" is
+  a common word and a much-registered mark, so it is checked first. P236's art review found no RTS
+  building or unit of either name and no look from the list above. RA's GPS Satellite (a whole-map
+  reveal launched as a rocket) is the known precedent for the Reveal: besides its name, dish and dome,
+  the Reveal's sweep effect (P235, P252) is not a rocket launch, although both models carry a
+  `launch` emitter.
 
 ## Consequences
 - **Gains:**

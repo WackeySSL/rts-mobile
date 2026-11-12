@@ -136,9 +136,10 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
 | P271b | GD | (2026-11-12, P26bq) Data: ADR 0037's starting values in `data/rules.tres`, `sell_refund_percent` 50, `mend_hp` 10, `mend_period_ticks` 15, `mend_cost_percent` 30 (P271 ships them inert at 0/0/15/30); the data test's pins follow. Moves no state hash; starts `balance.yml` | data | P271 |
 | P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes); P271b for the phone step (2026-11-12, P26bq) |
+| P272b | TUX | (2026-11-12, P26br) The view half of P272, split for size: the map wrench over own mending buildings (`HealthBarLayer`), the DIED-flag readers (`EffectsLayer`, `BuildingCollapse`: 1 and 2 nothing, 3 the pack-up) and the quiet pack-up (`CollapseFx`: dust only) | 115 | P271 |
 | P273 | ART | Glyphs `glyph_repair` (wrench), `glyph_sell` and the seated map copy `glyph_repair_map`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
-| P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274, P271b (2026-11-12, P26bq) |
+| P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274, P271b (2026-11-12, P26bq); P272b (2026-11-12, P26br) |
 
 ### Wave 2 (repair buildings and medics)
 | Row | Owner | What | Size | Depends |
@@ -179,7 +180,8 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
   P286 beside P287; P289 after P263b.
 - **D (GD data):** P271b after P271 (2026-11-12, P26bq); P278 after P277; P290 after P288 and
   P289.
-- **T (TUX):** P272 -> P282 -> P281; then P293 -> P294 -> P299.
+- **T (TUX):** P272 -> P282 -> P281; then P293 -> P294 -> P299. (2026-11-12, P26br) P272b
+  beside P272 (no shared file); it merges first.
 - **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order.
 - **I (AI):** P274; P283; P295, P295b and P300.
 - **Critical paths.** Wave 1: P270b -> P271 -> P272 -> P275 (2026-11-12, P26bq: P271b beside
@@ -315,3 +317,23 @@ Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
   2026-11-11, ADR 0036 §15's P237 note).
 - **Follow-up.** `GhostMemoryLayer`'s hidden pool sprites keep an old atlas page after a new match
   (pre-existing; P237 fixed the unit rigs). A view row that touches that layer clears them.
+
+Note (2026-11-12, P26br, the lead; from the reviews of P272, P272b and P274):
+- **P272 split for size** (CLAUDE.md's ~400 lines).
+  - P272 keeps the orders UI: `game/input` (`BuildingOrders`, `SellArm`), `CommandBar`,
+    `ConfirmDialog`, `scenes/main.tscn`'s `SellCard`, the timings in `data/input_settings.tres`
+    and the HOW_TO_PLAY rows.
+  - Row P272b takes the view: the wrench, the DIED-flag readers and the pack-up.
+  - Merge order: P271b, P272b, P272. P272's HOW_TO_PLAY rows describe P272b's look.
+  - After review, P272 ends at about 450 production lines including comments (about 300 without),
+    over the limit because of review asks (hold timing, the card's lifetime, the bar's generic
+    order dispatch). The lead accepts it rather than split it a second time.
+- **P272b and P265.** Both DIED-flag readers send flag 2 (boarded) down flag 1's path (nothing)
+  until P265 decides its look (step 6 of the merge order).
+- **P274 as built** (the dated notes in ADR 0037 §4 and ADR 0030 §6, in P274's PR):
+  - The AI only switches MEND on, after `AiProduction`.
+  - It does so when credits, after the think's spending and the economy's hold, are strictly above
+    `mend_floor`; the Headquarters mends free.
+  - Easy never mends. Normal is 50 % and 400, Hard 70 % and 250 until P275 tunes them.
+  - The frozen `perf_ai` levels stay inert (script defaults 0), so the Perf AI card times the guard
+    only. The live path is first measured in P275.
