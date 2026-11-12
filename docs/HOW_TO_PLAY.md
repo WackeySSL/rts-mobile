@@ -167,6 +167,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Play against Easy, Normal or Hard | The computer sees only what its units see and plays by your rules. Easy reacts slowly, builds a smaller base and attacks in small groups; Normal sends a scout early, mixes its army and attacks in waves that grow; Hard builds faster and reacts sooner | yes |
 | Attack the computer's base | It calls its army home to defend | |
+| Damage the computer's buildings | On Normal and Hard the computer repairs a building that is badly damaged (Hard sooner), for credits, when it has money to spare; you see its health bar rise. Easy never repairs | |
 | Beat back a wave | On Normal and Hard, a group that has lost too much pulls back home and comes again with the next wave; Hard also pulls single damaged units back and fires at your weakest unit first | |
 
 ## Winning

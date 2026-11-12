@@ -19,9 +19,9 @@ extends GdUnitTestSuite
 ## where one built in the match needs 600 build and 4 500 charge ticks; player 2's Dusk Array is
 ## never tested, as it fires on a seen producer and player 2 sees no enemy building), the Commands
 ## and every slot. What stays 0: `hit_tests` (no calm home unit is hit), `withdrawn_id` (Normal's
-## `unit_retreat_hp_percent` is 0), `seen_mobile_id` (no enemy tanker seen) and `commands_cut`
-## (capped at 0); their bounds hold on silence, and the manager suites and
-## P188's matches pin them on crafted Worlds. Only the counters this workload moves are asserted
+## `unit_retreat_hp_percent` is 0), `seen_mobile_id` (no enemy tanker seen), MEND (the frozen level
+## has `mend_below_percent` 0) and `commands_cut` (capped at 0); their bounds hold on silence, and
+## the manager suites and P188's matches pin them on crafted Worlds. Only the counters this workload moves are asserted
 ## live (`LIVE`, and `CONTACT` for the ones that need the enemy seen).
 ##
 ## What is only printed (report only; the `[ai]` budget value is row P189c's, after 11 CI runs on

@@ -272,6 +272,15 @@ of which about 120 are C++.
   mending; a tap toggles. It is a different word from the units' Repair button (§5).
 - **AI.** `AiEconomy` (Normal and Hard) switches it on for a building under
   `mend_below_percent` while credits stay above `mend_floor` (both in `AiDifficultyDef`).
+  - Note (2026-11-12, P274; changes no accepted text above): the AI only switches `MEND` **on**; it
+    never switches off, because `Mend.run` skips a period it cannot pay and ends the repair at full
+    hp. It goes on when hp is under `mend_below_percent` percent of the maximum and the credits left
+    after the whole think's spending (`credits - reserve_credits`, less what production queued: the
+    quantity production itself spends) are strictly above `mend_floor`; a building that costs 0 (the
+    Headquarters) goes on whatever they are. The Commands are sent after `AiProduction.run`, so they
+    take only the budget production left. Values (ADR 0030 section 6's table): Easy 0 / 0 (never),
+    Normal 50 / 400, Hard 70 / 250. The fields default to 0, an exception to "defaults equal the
+    files" (ADR 0030 section 6).
 - **Size.** Sim ~110, view and UI ~110, AI ~80.
 
 ### 5. Repairing vehicles: a building per faction (Michael's item 2)

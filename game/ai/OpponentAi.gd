@@ -43,7 +43,7 @@ var tier: int = 0
 var commands_per_think_max: int = 0
 
 ## A controller for `player_id` on `def` at `level`, which it copies and does not keep. A null level
-## plays as the script defaults, which are Normal's.
+## plays as the script defaults, which are Normal's but for the mend fields (0: it never mends).
 @warning_ignore("shadowed_variable")
 static func create(
 	def: OpponentDef, level: AiDifficultyDef, player_id: int, rng: DetRandom
@@ -104,6 +104,8 @@ func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 	work += economy.passes
 	production.run(view, memory, rng, out)
 	work += production.passes
+	# Last, so mending takes only the Commands that production left (plan row P274).
+	economy.mend(view, memory, out, production.spent_credits)
 
 
 ## Slot 1: P177 adds the intel refresh, P179 `AiArmy`.
