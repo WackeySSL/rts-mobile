@@ -223,7 +223,7 @@ search checks them.
   - The transport is a glider-like wing on two tilting fans.
   - The drone squad is soldiers on light kite-wing drones.
   - The anti-air is a glass needle on a turning ring.
-  - The space centre is a white spire with a solar collar.
+  - The space centre is a white tower with a solar collar (Michael, 2026-11-12: tower, not spire).
 - **Looks we never use:** no tandem twin-rotor transport, no jet-pack infantry and no dish uplink.
   Those belong to other games.
 
