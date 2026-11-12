@@ -1,23 +1,25 @@
 extends GdUnitTestSuite
-## The fourteen glyphs of the corner HUD (plan row P118g, ADR 0025 and ADR 0026). What
+## The sixteen glyphs of the corner HUD (plan rows P118g and P273, ADRs 0025, 0026 and 0037). What
 ## tests/art/test_icon_art.gd asks of every glyph (a 128 px canvas, greys only, nothing in the outer
 ## 2 px, a shape line, readable apart at 32 px in greyscale) it asks of these too, as they are in
-## its lists: thirteen in its HUD group and `glyph_construct`, which is drawn over a building on the
+## its lists: fifteen in its HUD group and `glyph_construct`, which is drawn over a building on the
 ## map, in its map group with the seat that keeps it apart from the ground. This suite adds the
-## margin the thirteen keep from every other glyph of the HUD group and the shape each of the
-## fourteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
+## margin the fifteen keep from every other glyph of the HUD group and the shape each of the
+## sixteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
 ## cross, the pennant into a white flag, the collapse arrows outward, the chevron off its centre or
 ## the crane mast into an aerial.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const HUD_BACKDROP: Color = Color("0F141C")
-## The fourteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
+## The sixteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
 const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_deselect",
 	"glyph_stop",
 	"glyph_all_army",
 	"glyph_plus",
+	"glyph_repair",
+	"glyph_sell",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
@@ -29,7 +31,7 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_alert",
 	"glyph_construct",
 ]
-## The one of the fourteen that is a map glyph, on a seat (test_icon_art.gd's map group).
+## The one of the sixteen that is a map glyph, on a seat (test_icon_art.gd's map group).
 const MAP_GLYPH: String = "glyph_construct"
 ## The glyphs of the HUD group that were there before: the two result and build menu sets, the
 ## credits, the power and the requirement and placement glyphs.
@@ -60,27 +62,27 @@ const LIGHT_MIN: float = 0.7
 const DARK_MAX: float = 0.4
 
 
-func test_the_fourteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
+func test_the_sixteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
 	var rows: Array[String] = []
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
 		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(14)
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(16)  # 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273).
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
 	assert_bool(Gallery.HUD_SITE_BADGES.has(MAP_GLYPH)).is_true()
 
 
-func test_each_hud_glyph_of_the_thirteen_is_at_least_29_from_every_other_at_32_px() -> void:
-	var thirteen: Array[String] = HUD_V2_GLYPHS.filter(
+func test_each_hud_glyph_of_the_fifteen_is_at_least_29_from_every_other_at_32_px() -> void:
+	var fifteen: Array[String] = HUD_V2_GLYPHS.filter(
 		func(icon: String) -> bool: return icon != MAP_GLYPH
 	)
 	var group: Array[String] = []
 	group.append_array(OLD_HUD_GLYPHS)
-	group.append_array(thirteen)
+	group.append_array(fifteen)
 	var problems: Array[String] = []
-	for icon: String in thirteen:
+	for icon: String in fifteen:
 		for other: String in group:
 			if other != icon and _difference(icon, other) < HUD_V2_DIFFERENCE_MIN:
 				problems.append("%s against %s" % [icon, other])
@@ -118,6 +120,34 @@ func test_the_stop_glyph_is_a_square_in_a_ring_with_a_gap() -> void:
 	_assert_ink(image, [Vector2i(111, 64), Vector2i(17, 64), Vector2i(64, 111)], true)
 	_assert_ink(image, [Vector2i(64, 36), Vector2i(36, 64), Vector2i(8, 8)], false)
 	_assert_ink(image, [Vector2i(120, 120), Vector2i(120, 8), Vector2i(8, 120)], false)
+
+
+## ADR 0037 (P273): the wrench is one spanner on a rising diagonal. Its handle is light, the hole in
+## its tail (lower left) is dark, the slot in its head (upper right) is clear to the canvas, and the
+## upper left and lower right corners are empty.
+func test_the_repair_glyph_is_a_spanner_with_a_slot_in_its_head_and_a_hole_in_its_tail() -> void:
+	var image: Image = _image("glyph_repair")
+	_assert_light(image, [Vector2i(60, 68)])
+	_assert_dark(image, [Vector2i(38, 90)])
+	_assert_ink(image, [Vector2i(96, 32), Vector2i(8, 8), Vector2i(120, 120)], false)
+	_assert_ink(image, [Vector2i(80, 48), Vector2i(26, 102)], true)
+	# the head is wider than the handle: the sides of the head are ink, the space beside the handle
+	# is clear
+	_assert_ink(image, [Vector2i(67, 27), Vector2i(101, 61)], true)
+	_assert_ink(image, [Vector2i(34, 60), Vector2i(68, 94)], false)
+
+
+## ADR 0037 (P273): the tag is a long pentagon with a punched hole near its point and a coin on its
+## body (a grey face, a light diamond at its centre); it is not the credits glyph's coin stack.
+func test_the_sell_glyph_is_a_price_tag_with_a_hole_and_a_coin() -> void:
+	var image: Image = _image("glyph_sell")
+	_assert_light(image, [Vector2i(65, 45), Vector2i(80, 54)])
+	_assert_dark(image, [Vector2i(37, 48)])
+	# the coin: its dark rim on either side of the diamond, and the tag's point
+	_assert_dark(image, [Vector2i(56, 57), Vector2i(92, 74)])
+	_assert_ink(image, [Vector2i(19, 40)], true)
+	_assert_ink(image, [Vector2i(8, 8), Vector2i(120, 120), Vector2i(8, 120)], false)
+	assert_float(_difference("glyph_sell", "glyph_credits")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
 
 
 ## The chevron points right (the code turns it for the other directions): the row through its tip

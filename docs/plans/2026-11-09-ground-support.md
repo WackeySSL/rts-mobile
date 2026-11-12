@@ -85,7 +85,7 @@ updates, ADR 0037 §15); auto-paths round known mines; mines on the radar; anyth
   `OpponentDef` (`hold_types`), `AiDifficultyDef`, the build orders.
 - **`data/`:** 8 new types and 2 mine weapons, rosters, `rules.tres`, AI data; frozen arenas
   (`data/dev/arena/`) untouched.
-- **`tools/artgen/`, `assets/`:** 8 models, 2 x 2 mine marks, a drone fx, 4 glyphs, 8 item cards.
+- **`tools/artgen/`, `assets/`:** 8 models, 2 x 2 mine marks, a drone fx, 5 glyphs, 8 item cards.
 - **`docs/`:** HOW_TO_PLAY rows in each player-facing row; GDD, ROADMAP (a Phase 4b section for
   the block, with ADR 0036's) and the `touch-ui-rules` text in P270b.
 
@@ -136,7 +136,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
 | P271b | GD | (2026-11-12, P26bq) Data: ADR 0037's starting values in `data/rules.tres`, `sell_refund_percent` 50, `mend_hp` 10, `mend_period_ticks` 15, `mend_cost_percent` 30 (P271 ships them inert at 0/0/15/30); the data test's pins follow. Moves no state hash; starts `balance.yml` | data | P271 |
 | P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes); P271b for the phone step (2026-11-12, P26bq) |
-| P273 | ART | Glyphs `glyph_repair` (wrench) and `glyph_sell`; STYLE.md glyph rows | SVG | P270b |
+| P273 | ART | Glyphs `glyph_repair` (wrench), `glyph_sell` and the seated map copy `glyph_repair_map`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
 | P275 | LEAD | Balance run after P274, phone check (sell and mend upright and sideways) | docs | P272, P274, P271b (2026-11-12, P26bq) |
 

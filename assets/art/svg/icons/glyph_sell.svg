@@ -1,0 +1,18 @@
+<!-- Sell glyph: white and grey only, tinted at run time (the Sell order of an own building on the command bar). -->
+<!-- Shape: a price tag tilted up to the left, a long pentagon with its point at the upper left and a dark hole near the point, a round grey coin with a white ring and a white diamond set on its body. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="translate(60 59) rotate(25) scale(0.9) translate(-64 -64)">
+    <!-- edge under the tag, 4 px wide -->
+    <path d="M8 64 L36 34 H116 V94 H36 Z" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round"/>
+    <!-- tag body: the lit plane, so white -->
+    <path d="M8 64 L36 34 H116 V94 H36 Z" fill="#FFFFFF"/>
+    <!-- shade along the lower edge and the right end -->
+    <path d="M108 34 H116 V94 H36 V84 H108 Z" fill="#BFBFBF"/>
+    <!-- the hole near the point, dark -->
+    <circle cx="36" cy="64" r="7" fill="#4D4D4D"/>
+    <!-- the coin: a grey disc with a white ring -->
+    <circle cx="82" cy="64" r="22" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4"/>
+    <circle cx="82" cy="64" r="15" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <path d="M82 54 L91 64 L82 74 L73 64 Z" fill="#FFFFFF"/>
+  </g>
+</svg>
