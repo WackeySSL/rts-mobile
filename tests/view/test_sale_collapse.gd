@@ -117,7 +117,7 @@ func test_four_sales_in_one_tick_stay_inside_the_ring_with_dust_only() -> void:
 	var seen: Dictionary = _seen(16)
 	assert_int(seen.size()).is_less_equal(40)
 	var styles: Dictionary = _styles(seen)
-	assert_int(styles.get(CollapseFx.Style.DUST, 0)).is_greater(0)
+	assert_int(styles.get(CollapseFx.Style.DUST, 0)).is_equal(4 * _life.collapse_dust_puffs)
 	for style: int in styles:
 		assert_int(style).is_equal(CollapseFx.Style.DUST)  # No flash, fire or debris.
 

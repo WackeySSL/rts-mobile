@@ -81,6 +81,7 @@ func test_an_own_building_with_the_switch_on_wears_the_green_wrench_over_its_pla
 	assert_str(_bars.glyph_texture(0).resource_path).is_equal(WRENCH_ART)
 	assert_that(_bars.glyph_tint(0)).is_equal(_bars.mend_color)
 	var unit: float = UiScale.base_px_per_dp() / _camera.zoom.x
+	_frame()  # A second plan of the same frame state gives the same place.
 	var rect: Rect2 = _bars.glyph_rect(0)
 	assert_float(rect.size.x).is_equal_approx(32.0 * unit, 0.01)
 	var rise: float = (
@@ -157,3 +158,12 @@ func test_the_wrench_follows_the_power_glyphs_and_stands_higher_over_a_building_
 			)
 			assert_float(rect.position.y).is_equal_approx(defence.position.y - step, 0.01)
 	assert_int(found).is_equal(1)
+	# The mark is cleared each plan: with power back, two frames later, the defence's wrench stands at
+	# the plain place, where its offline glyph stood.
+	snap.power_used[PLAYER] = 50
+	_frame()
+	_frame()
+	assert_int(_bars.glyph_count()).is_equal(2)  # Only the two wrenches.
+	for at: int in 2:
+		if is_equal_approx(_bars.glyph_rect(at).get_center().x, defence.get_center().x):
+			assert_float(_bars.glyph_rect(at).position.y).is_equal_approx(defence.position.y, 0.01)

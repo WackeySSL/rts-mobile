@@ -36,7 +36,7 @@ func after_test() -> void:
 
 func _died(flag: int) -> void:
 	var events: PackedInt32Array = Rig.died(PLACE, _building)
-	events[Production.DIED_CANCEL_FLAG_AT] = flag
+	events[Removal.DIED_FLAG_AT] = flag
 	_runner.snapshot.events = events
 	_runner.ticked.emit(_runner.snapshot.tick)
 	_layer._process(0.0)

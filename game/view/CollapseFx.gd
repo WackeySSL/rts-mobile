@@ -59,7 +59,7 @@ var _debris: PackedByteArray = PackedByteArray()
 var _dust_born: PackedByteArray = PackedByteArray()
 var _burst: PackedByteArray = PackedByteArray()  ## 1 once the flash and fire were born.
 var _chips: PackedByteArray = PackedByteArray()  ## 1 once the debris was born.
-var _quiet: PackedByteArray = PackedByteArray()  ## 1 for a sale's collapse: no flash, no fire.
+var _quiet: PackedByteArray = PackedByteArray()  ## 1 for a sale's collapse: dust only.
 
 
 func _init() -> void:
@@ -124,7 +124,8 @@ func start(
 	_foot[slot] = clampi(foot, 1, 255)
 	_pending[slot] = 1
 	_dust_born[slot] = 0
-	_burst[slot] = 1 if quiet else 0  # Born already: the flash and the fire are skipped.
+	# A cheap skip of `_burn`; `_split` also gives a sale no flash or fire.
+	_burst[slot] = 1 if quiet else 0
 	_quiet[slot] = 1 if quiet else 0
 	_chips[slot] = 0
 

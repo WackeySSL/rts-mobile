@@ -158,8 +158,7 @@ func drawn_count() -> int:
 
 
 ## The glyphs planned for the last frame (offline, low-power, then wrenches), how many the last
-## `_draw` painted, and glyph
-## `index`'s square in world px (layer coordinates).
+## `_draw` painted, and glyph `index`'s square in world px (layer coordinates).
 func glyph_count() -> int:
 	return _glyphs
 
@@ -358,7 +357,7 @@ func _plan() -> void:
 ## Plans the glyphs: the power glyphs (`_plan_power_glyphs`), then the wrenches. `_marked` is
 ## cleared first: a row that holds a glyph is marked, so its wrench stands one glyph higher.
 func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
-	if _marked.size() != snap.unit_id.size():
+	if _marked.size() < snap.unit_id.size():
 		_marked.resize(snap.unit_id.size())
 	_marked.fill(0)
 	_plan_power_glyphs(snap, unit, local_player)
@@ -366,11 +365,6 @@ func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 	_plan_mend_glyphs(snap, unit, local_player)
 
 
-## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
-## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap. While
-## the local player uses more power than it makes (`power_used` over `power_made` of the snapshot),
-## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
-## place, after the offline ones. A switched-off building uses none, so it never has both.
 ## Plans the wrench of each own complete building whose repair switch is on, after the power glyphs.
 ## An enemy building's switch is not read. A building that wears a power glyph already gets its
 ## wrench one glyph higher.
@@ -396,6 +390,11 @@ func _plan_mend_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> v
 			_put_glyph(snap, row, rise, true)
 
 
+## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
+## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap. While
+## the local player uses more power than it makes (`power_used` over `power_made` of the snapshot),
+## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
+## place, after the offline ones. A switched-off building uses none, so it never has both.
 func _plan_power_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 	_glyph_side = GLYPH_DP * unit
 	_offline_glyphs = 0

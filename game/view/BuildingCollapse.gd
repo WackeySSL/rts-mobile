@@ -10,8 +10,9 @@ extends RefCounted
 ## building's type, and stays; the smoke and embers over it (P148's crater source) start at the end,
 ## unless the building was a site. The puffs are `CollapseFx`'s, in `AirFx`. The DIED flag
 ## (`Removal.died_flag`, ADR 0037 section 3) says which: a cancelled site (1) plays nothing and
-## leaves no crater; a sold building (3) packs up, the sink and the dust with no flash, no fire, no
-## crater and no crater smoke; any other death plays it all. A building that was not shown is not
+## leaves no crater, and so does a boarding (2, until P265 decides); a sold building (3) packs up,
+## the sink and the dust with no flash, no fire, no debris, no crater and no crater smoke; any
+## other death plays it all. A building that was not shown is not
 ## handed over at all.
 ## The sprite writes are timed, so `advance` spends them first in the buildings' share of a frame:
 ## 2 at the start, 4 a sink step (body and patch, region and offset) and 2 at the hide, 28 in all.
@@ -65,7 +66,7 @@ func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, flag: int
 	if flag == Removal.FLAG_CANCELLED or flag == Removal.FLAG_BOARDED:
 		_free(entry)
 		return
-	if flag == Removal.FLAG_SOLD:  # The pack-up: no crater, no crater smoke, no flash.
+	if flag == Removal.FLAG_SOLD:  # The pack-up: no crater, no crater smoke, no flash or debris.
 		_begin(entry, died_tick, true)
 		return
 	var type_scale: int = life.crater_scale_milli.get(entry.type_id, 1000)
@@ -80,7 +81,7 @@ func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, flag: int
 	_begin(entry, died_tick, false)
 
 
-# Starts the sequence of `entry` in a slot (`quiet`: no flash and no fire, a sale); with no
+# Starts the sequence of `entry` in a slot (`quiet`: dust only, a sale); with no
 # sequence the node is freed (the crater and its smoke, if any, stand).
 func _begin(entry: BuildingLayer.Entry, died_tick: int, quiet: bool) -> void:
 	if _cap == 0:
