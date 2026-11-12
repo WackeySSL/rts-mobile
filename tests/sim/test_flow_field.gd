@@ -178,7 +178,10 @@ func _best_neighbour_is_minus_one_at_the_ends_and_ties_go_by_the_goal(impl: int)
 	assert_array([pending.complete, pending.best_neighbour(0)]).is_equal([false, -1])
 	# A key that cannot be integrated completes at once, all UNREACHED: after a finished field or
 	# in the middle of one. The goal is off the map, or the class is negative or not in `costs`.
-	for key: Vector2i in [Vector2i(16, FOOT), Vector2i(-1, FOOT), Vector2i(0, 3), Vector2i(0, -1)]:
+	var past: int = World.MoveClass.size()
+	for key: Vector2i in [
+		Vector2i(16, FOOT), Vector2i(-1, FOOT), Vector2i(0, past), Vector2i(0, -1)
+	]:
 		for slice: int in [3, BIG]:
 			pending.begin(5, FOOT, open, 4, 4)
 			pending.advance(slice)
@@ -353,7 +356,7 @@ func test_a_map_of_another_size_ends_complete_even_for_the_same_key() -> void:
 func _the_slowest_ground_stays_inside_the_bucket_ring(impl: int) -> void:
 	assert_array([UNREACHED, FlowField.BUCKETS > 357]).is_equal([0x3FFFFFFF, true])
 	var slow: PackedByteArray = PackedByteArray()
-	slow.resize(27)  # Three classes of nine cells.
+	slow.resize(World.MoveClass.size() * 9)  # Every class, nine cells each.
 	slow.fill(255)
 	var rig: RefCounted = _rig(impl, _open(3, 3))
 	var field: FlowField = rig.field(rig.acquire(0, FOOT, 0, 1))
