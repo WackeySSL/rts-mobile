@@ -71,6 +71,8 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_repair_reach": [0, 0, 0],
 		&"type_repair_slots": [0, 0, 0],
 		&"type_repair_seek": [0, 0, 0],
+		&"type_carry_slots": [0, 0, 0],
+		&"type_carry_classes": [0, 0, 0],
 		&"weapon_targets": [1, 1, 1],
 		&"weapon_range": [4500, 4000, 5000],
 		&"weapon_min_range": [0, 0, 0],
@@ -89,7 +91,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 
 func test_the_rules_come_from_the_scenario_else_the_defaults_and_size_the_fixed_arrays() -> void:
 	var fields: Array[String] = _rule_fields()
-	assert_int(fields.size()).is_equal(40)
+	assert_int(fields.size()).is_equal(41)
 	var defaults: RulesDef = RulesDef.new()
 	var rules: RulesDef = RulesDef.new()
 	for i: int in fields.size():

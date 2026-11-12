@@ -134,6 +134,8 @@ func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_fr
 		"mend_hp": 10,
 		"mend_period_ticks": 15,
 		"mend_cost_percent": 30,
+		# Carriers (ADR 0036 section 3, P262): the table holds the 2 x unit_cap squads at most.
+		"passenger_cap": 150,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -267,6 +269,7 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["max_rows", [230, 256], [229], fit],
 		["unit_cap", [], [-1], "a cap is negative"],
 		["ghost_cap", [0], [-1], "a cap is negative"],
+		["passenger_cap", [0, 150], [-1], "a cap is negative"],
 	]
 	for row: Array in rows:
 		for value: int in row[1] + row[2]:
@@ -790,7 +793,13 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			)
 			< 0
 		),
-		"a cap is negative": mini(mini(rules.unit_cap, rules.building_cap), rules.ghost_cap) < 0,
+		"a cap is negative":
+		(
+			mini(
+				mini(rules.unit_cap, rules.building_cap), mini(rules.ghost_cap, rules.passenger_cap)
+			)
+			< 0
+		),
 		"unit_cap and building_cap of 2 players do not fit max_rows":
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
 	}

@@ -226,7 +226,7 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 
 ## Appends the air and repair entries of a type (ADR 0036 sections 2 and 3): the layer bit derived
 ## from the move class and `low_flying`, the ammo, the pads and their offsets (a BuildingDef's), the
-## upgrade a research item gives (-1: P246 makes those types) and the repair role.
+## upgrade a research item gives (-1: P246 makes those types), the repair role and the carrier role.
 static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void:
 	var layer: int = World.Layer.GROUND
 	if unit.move_class == World.MoveClass.AIR:
@@ -248,6 +248,8 @@ static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void
 	world.type_repair_reach.append(unit.repair_reach_milli)
 	world.type_repair_slots.append(unit.repair_slots)
 	world.type_repair_seek.append(unit.repair_seek_milli)
+	world.type_carry_slots.append(unit.carry_slots)
+	world.type_carry_classes.append(unit.carry_classes)
 
 
 ## Appends an upgrade (ADR 0036 sections 2 and 3) once per id, up to World.UPGRADES_MAX: its stat
@@ -377,6 +379,7 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.mend_hp = rules.mend_hp
 	world.mend_period_ticks = rules.mend_period_ticks
 	world.mend_cost_percent = rules.mend_cost_percent
+	world.passenger_cap = rules.passenger_cap
 
 
 ## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
@@ -433,6 +436,9 @@ static func size_match_state(world: World) -> void:
 	world.reveal_site.resize(players)
 	world.reveal.resize(players)
 	world.upgrades.resize(players)
+	for column_name: StringName in World.PASSENGER_ARRAYS:  # The passenger table: all slots free.
+		var column: PackedInt32Array = world.get(column_name)
+		column.resize(world.passenger_cap)
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
 	world.ghost_id.resize(ghosts)
@@ -482,6 +488,8 @@ static func pad_types(world: World, types: int) -> void:
 		world.type_repair_reach,
 		world.type_repair_slots,
 		world.type_repair_seek,
+		world.type_carry_slots,
+		world.type_carry_classes,
 	]:
 		_pad(table, types, World.TYPE_PAD_V0)
 	_pad(world.type_max_hp, types, World.TYPE_PAD_MAX_HP)

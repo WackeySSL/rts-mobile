@@ -62,6 +62,7 @@ const RULES: Dictionary[String, int] = {
 	"mend_hp": 0,
 	"mend_period_ticks": 15,
 	"mend_cost_percent": 30,
+	"passenger_cap": 0,
 }
 
 
@@ -90,7 +91,7 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	# exception 10): the strike columns joined it. 5 since P128 (ADR 0026 section 10, exception 10):
 	# the construction column `build_left` joined it. 6 since P232 (ADR 0036 section 3, exception 23):
 	# the air and tech state joined it, and TABS and the move classes grew.
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 6])
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 7])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
@@ -102,7 +103,7 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	for info: Dictionary in defaults.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(40)
+	assert_int(fields.size()).is_equal(41)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -191,6 +192,8 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_repair_reach": [0, 0, 0],
 		&"type_repair_slots": [0, 0, 0],
 		&"type_repair_seek": [0, 0, 0],
+		&"type_carry_slots": [0, 0, 0],
+		&"type_carry_classes": [0, 0, 0],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -230,6 +233,7 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"offline_until": [0],
 		&"build_left": [0],
 		&"ammo": [0],
+		&"carry_mode": [0],
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -313,7 +317,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	assert_array(World.RUNTIME_ARRAYS).is_equal(["events", "stats"])
 	var hashed: Array[String] = ["tick", "next_id", "next_projectile_id", "dropped_commands"]
 	hashed.append_array(["projectile_overflow", "spawn_refused", "player_count", "proj_free_top"])
-	hashed.append_array(["map_version", "match_end_tick", "winner"])
+	hashed.append_array(["map_version", "match_end_tick", "winner", "pass_count"])
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
 	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
 	unhashed.append_array(["flow_cells_per_tick", "native_phases"])  # The mask is never state (P54).
@@ -325,7 +329,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	array_lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	array_lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	array_lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
-	array_lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS])
+	array_lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS, World.PASSENGER_ARRAYS])
 	var scalar_lists: Array = [World.HASHED_SCALARS, World.UNHASHED_SCALARS]
 	var packed: Array[String] = []
 	var ints: Array[String] = []
@@ -347,8 +351,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(137)
-	assert_int(ints.size()).is_equal(60)
+	assert_int(packed.size()).is_equal(145)
+	assert_int(ints.size()).is_equal(62)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so

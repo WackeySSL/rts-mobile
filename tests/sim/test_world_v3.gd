@@ -25,7 +25,7 @@ const TYPE_COLUMNS: Array[StringName] = [
 
 
 func test_the_layout_version_and_the_new_arrays_are_the_contract() -> void:
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 8])
 	# build_left (P128) and ammo (P232) follow the row columns, reveal_site, reveal and upgrades the
 	# player arrays, and the thirteen air and repair tables (P232) the type tables.
 	for pair: Array in [
@@ -36,9 +36,9 @@ func test_the_layout_version_and_the_new_arrays_are_the_contract() -> void:
 		var at: int = pair[0].find(pair[1][0])  # Found by name, so a later row moves nothing here.
 		assert_int(at).is_greater_equal(0)
 		assert_array(pair[0].slice(at, at + pair[1].size())).is_equal(pair[1])
-	var tail: Array[String] = ["ready_tick", "offline_until", "build_left", "ammo", "projectiles"]
-	tail.append_array(["fog", "players", "ore", "ghosts"])
-	assert_array(World.hash_section_names().slice(-9)).is_equal(tail)
+	var tail: Array[String] = ["ready_tick", "offline_until", "build_left", "ammo", "carry_mode"]
+	tail.append_array(["projectiles", "fog", "players", "ore", "ghosts", "passengers"])
+	assert_array(World.hash_section_names().slice(-11)).is_equal(tail)
 	assert_int(World.hash_section_names().size()).is_equal(
 		World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS
 	)
@@ -50,7 +50,7 @@ func test_every_new_array_is_in_exactly_one_shape_list() -> void:
 	lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
-	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS])
+	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS, World.PASSENGER_ARRAYS])
 	var names: Array[StringName] = []
 	names.append_array(ROW_COLUMNS)
 	names.append_array(PLAYER_COLUMNS)

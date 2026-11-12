@@ -39,6 +39,41 @@ func test_the_air_only_fields_are_refused_on_a_ground_type_one_field_at_a_time()
 	assert_array(Rules.air_problems("tank.tres", Rules.fine_unit())).is_empty()
 
 
+## ADR 0036 sections 2 and 8 (P262): the carrier fields, both sides of every boundary.
+func test_the_carrier_fields_are_a_pair_and_buildings_carry_nothing() -> void:
+	var negative: UnitDef = Rules.fine_carrier()
+	negative.carry_slots = -1
+	assert_array(Rules.air_problems("t.tres", negative)).is_equal(
+		["t.tres: carry_slots is negative", "t.tres: carry_classes needs carry_slots"]
+	)
+	for mask: int in [1, 15]:  # The edges of a move-class mask pass, 16 does not.
+		var edge: UnitDef = Rules.fine_carrier()
+		edge.carry_classes = mask
+		assert_array(Rules.air_problems("t.tres", edge)).is_empty()
+	var wide: UnitDef = Rules.fine_carrier()
+	wide.carry_classes = 16
+	assert_array(Rules.air_problems("t.tres", wide)).is_equal(
+		["t.tres: carry_classes is not a move-class mask 0..15"]
+	)
+	assert_array(Rules.air_problems("t.tres", Rules.fine_carrier())).is_empty()
+	var slots_only: UnitDef = Rules.fine_unit()
+	slots_only.carry_slots = 2
+	assert_array(Rules.air_problems("t.tres", slots_only)).is_equal(
+		["t.tres: carry_slots needs carry_classes"]
+	)
+	var classes_only: UnitDef = Rules.fine_unit()
+	classes_only.carry_classes = 1
+	assert_array(Rules.air_problems("t.tres", classes_only)).is_equal(
+		["t.tres: carry_classes needs carry_slots"]
+	)
+	var bunker: BuildingDef = Rules.fine_building()
+	bunker.carry_slots = 2
+	bunker.carry_classes = 1
+	assert_array(Rules.air_problems("t.tres", bunker)).is_equal(
+		["t.tres: a building carries squads"]
+	)
+
+
 ## ADR 0036 section 9: a drone squad has no ammo and no pad. (ADR 0036 does not say that ammo above
 ## 0 needs the FLIGHT tab, so that rule is not made.)
 func test_a_low_flying_type_has_no_ammo() -> void:

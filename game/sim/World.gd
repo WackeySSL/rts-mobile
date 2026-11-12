@@ -60,10 +60,11 @@ const UPGRADES_MAX: int = 30
 ## strike state joined it (ADR 0023 section 10): two row columns and three player arrays. 5: the
 ## construction work left joined it (ADR 0026): the row column `build_left`. 6: the air and tech
 ## state joined it (ADR 0036 section 3): the row column `ammo`, three player arrays, and `TABS` 5.
-const STATE_FORMAT: int = 6
-## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore
-## and ghosts.
-const HASH_OTHER_SECTIONS: int = 7
+## 7: the carriers' state joined it (ADR 0036 sections 3 and 8): `carry_mode`, the passenger table.
+const STATE_FORMAT: int = 7
+## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore,
+## ghosts and passengers.
+const HASH_OTHER_SECTIONS: int = 8
 
 ## What prepare() fills a type table with for a type that has no entry. A padded type cannot
 ## fire, sees only its own tile and counts as tracked. These are not balance numbers.
@@ -135,6 +136,7 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"offline_until",
 	&"build_left",
 	&"ammo",
+	&"carry_mode",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -183,6 +185,8 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_repair_reach",
 	&"type_repair_slots",
 	&"type_repair_seek",
+	&"type_carry_slots",
+	&"type_carry_classes",
 ]
 ## The landing pad offsets (ADR 0036 section 3, a pad_offsets table beside `type_pads`): entries
 ## `type_pad_first[type]` to `+ type_pads[type]` of both lists are the tile offsets, from the
@@ -247,6 +251,11 @@ const PLAYER_ARRAYS: Array[StringName] = [
 	&"reveal",
 	&"upgrades",
 ]
+## The boarded squads (ADR 0036 section 8): record `i` is entry `i` of the five arrays, live below
+## `pass_count`, `passenger_cap` entries each. Hashed, live records only, in `passengers`.
+const PASSENGER_ARRAYS: Array[StringName] = [
+	&"pass_carrier", &"pass_id", &"pass_type", &"pass_hp", &"pass_owner"
+]
 ## The ore left in each ore cell, one entry per `ore_cell` entry. Hashed, in the section `ore`.
 const ORE_ARRAYS: Array[StringName] = [&"ore_amount"]
 ## The last-seen building records (ADR 0017 section 3): record `i` of player `p` is entry
@@ -287,6 +296,7 @@ const HASHED_SCALARS: Array[StringName] = [
 	&"map_version",
 	&"match_end_tick",
 	&"winner",
+	&"pass_count",
 ]
 ## The rule ints, copied from RulesDef under the same names. defs_hash() covers them.
 const RULE_SCALARS: Array[StringName] = [
@@ -330,6 +340,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mend_hp",
 	&"mend_period_ticks",
 	&"mend_cost_percent",
+	&"passenger_cap",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -384,7 +395,8 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"sell_refund_percent",
 	&"mend_hp",
 	&"mend_period_ticks",
-	&"mend_cost_percent"
+	&"mend_cost_percent",
+	&"passenger_cap"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -481,6 +493,8 @@ var sell_refund_percent: int = 0
 var mend_hp: int = 0
 var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
+## The size of the passenger table (ADR 0036 section 3).
+var passenger_cap: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -560,6 +574,9 @@ var type_repair_cost_percent: PackedInt32Array = PackedInt32Array()
 var type_repair_reach: PackedInt32Array = PackedInt32Array()
 var type_repair_slots: PackedInt32Array = PackedInt32Array()
 var type_repair_seek: PackedInt32Array = PackedInt32Array()
+## The carrier role (ADR 0036 section 2): squads held (0 = none), the move-class mask aboard.
+var type_carry_slots: PackedInt32Array = PackedInt32Array()
+var type_carry_classes: PackedInt32Array = PackedInt32Array()
 var pad_offset_x: PackedInt32Array = PackedInt32Array()
 var pad_offset_y: PackedInt32Array = PackedInt32Array()
 ## Per upgrade, in the order of the listed factions' `upgrades` (at most UPGRADES_MAX): the id, the
@@ -661,6 +678,8 @@ var offline_until: PackedInt32Array = PackedInt32Array()
 var build_left: PackedInt32Array = PackedInt32Array()
 ## Shots left of a row whose type has `type_ammo` above 0 (ADR 0036 section 6); 0 for every other.
 var ammo: PackedInt32Array = PackedInt32Array()
+## 0 = none, 1 = a carrier that unloads on arrival (ADR 0036 section 8); 0 for every other row.
+var carry_mode: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
 ## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
@@ -693,6 +712,13 @@ var strike_tick: PackedInt32Array = PackedInt32Array()
 var reveal_site: PackedInt32Array = PackedInt32Array()
 var reveal: PackedInt32Array = PackedInt32Array()
 var upgrades: PackedInt32Array = PackedInt32Array()
+## The passenger table (PASSENGER_ARRAYS): per record the carrier id, squad id, type, hp, owner.
+var pass_count: int = 0
+var pass_carrier: PackedInt32Array = PackedInt32Array()
+var pass_id: PackedInt32Array = PackedInt32Array()
+var pass_type: PackedInt32Array = PackedInt32Array()
+var pass_hp: PackedInt32Array = PackedInt32Array()
+var pass_owner: PackedInt32Array = PackedInt32Array()
 ## The ore units left, one per `ore_cell` entry.
 var ore_amount: PackedInt32Array = PackedInt32Array()
 ## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per
@@ -879,6 +905,13 @@ func set_terrain(cell: int, terrain_index: int) -> void:
 @warning_ignore("shadowed_variable")
 func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	return WorldRows.add_unit(self, owner, type_index, x, y)
+
+
+## Inserts an idle row with an old `id` in id order and returns its row, or -1 and no change
+## (WorldRows.insert_row has the rule; ADR 0036 section 8).
+@warning_ignore("shadowed_variable")
+func insert_row(id: int, owner: int, type_index: int, hp: int, x: int, y: int) -> int:
+	return WorldRows.insert_row(self, id, owner, type_index, hp, x, y)
 
 
 ## Appends a building with its top-left tile at (origin_col, origin_row); 0 when refused. It blocks

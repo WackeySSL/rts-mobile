@@ -21,14 +21,15 @@ const RULES: Dictionary[StringName, int] = {
 
 
 func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
-	assert_int(World.ROW_ARRAYS.size()).is_equal(28)  # `ammo` (P232) follows build_left.
-	assert_array(World.ROW_ARRAYS.slice(-4)).is_equal(
-		[&"ready_tick", &"offline_until", &"build_left", &"ammo"]
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 8])
+	# `ammo` (P232) and `carry_mode` (P262) follow build_left.
+	assert_int(World.ROW_ARRAYS.size()).is_equal(29)
+	assert_array(World.ROW_ARRAYS.slice(-5)).is_equal(
+		[&"ready_tick", &"offline_until", &"build_left", &"ammo", &"carry_mode"]
 	)
 	var names: PackedStringArray = World.hash_section_names()
-	assert_array(names.slice(-6)).is_equal(
-		["ammo", "projectiles", "fog", "players", "ore", "ghosts"]
+	assert_array(names.slice(-7)).is_equal(
+		["carry_mode", "projectiles", "fog", "players", "ore", "ghosts", "passengers"]
 	)
 	assert_int(names.size()).is_equal(World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS)
 	# One shape list, and an int32 table of the World.
@@ -36,7 +37,7 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 	lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
-	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS])
+	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS, World.PASSENGER_ARRAYS])
 	var found: int = 0
 	for list: Array in lists:
 		if list.has(&"build_left"):
@@ -49,8 +50,8 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 ## state hash does not), in RulesDef's order, with the file's values, in a hand-built World too.
 func test_the_three_rule_ints_sit_before_the_sale_ints_in_both_lists_and_equal_the_file() -> void:
 	var names: Array[StringName] = RULES.keys()
-	assert_array(World.RULE_SCALARS.slice(-7, -4)).is_equal(names)
-	assert_array(World.UNHASHED_SCALARS.slice(-7, -4)).is_equal(names)
+	assert_array(World.RULE_SCALARS.slice(-8, -5)).is_equal(names)
+	assert_array(World.UNHASHED_SCALARS.slice(-8, -5)).is_equal(names)
 	assert_bool(World.HASHED_SCALARS.has(&"construct_start_hp_percent")).is_false()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	var made: World = World.new()
