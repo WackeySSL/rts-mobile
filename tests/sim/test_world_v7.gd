@@ -25,8 +25,10 @@ func test_the_layout_version_the_lists_and_the_section_are_the_contract() -> voi
 		[&"pass_carrier", &"pass_id", &"pass_type", &"pass_hp", &"pass_owner"]
 	)
 	assert_bool(World.HASHED_SCALARS.has(&"pass_count")).is_true()
-	assert_bool(World.RULE_SCALARS.has(&"passenger_cap")).is_true()
-	assert_bool(World.UNHASHED_SCALARS.has(&"passenger_cap")).is_true()
+	for list: Array[StringName] in [World.RULE_SCALARS, World.UNHASHED_SCALARS]:
+		var cap_at: int = list.find(&"passenger_cap")
+		assert_int(cap_at).is_greater(0)
+		assert_int(cap_at).is_equal(list.find(&"mend_cost_percent") + 1)
 	assert_array(World.hash_section_names().slice(-2)).is_equal(["ghosts", "passengers"])
 
 

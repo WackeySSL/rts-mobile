@@ -40,8 +40,8 @@ static func add_unit(world: World, owner: int, type_index: int, x: int, y: int) 
 ## not touch `next_id`, `spawn_refused` or `player_count`.
 ## Rows at and above the returned row move up by one, so a caller holding row indexes must re-read
 ## them. The derived lists `building_rows` and `harvester_rows` stay stale until
-## `Buildings.rebuild_lists`: a caller in a phase after `Power.run` (which rebuilds them at the
-## start of ECONOMY) must rebuild them itself.
+## `Buildings.rebuild_lists`: a caller after `Power.run` (which rebuilds them at the start of
+## ECONOMY; `Carry.run` is one) rebuilds them itself.
 static func insert_row(
 	world: World, id: int, owner: int, type_index: int, hp: int, x: int, y: int
 ) -> int:

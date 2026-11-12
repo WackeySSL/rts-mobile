@@ -223,6 +223,18 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 	)
 
 
+## The passenger table follows unit_cap: at 80 it must hold 160.
+func test_the_passenger_table_must_hold_both_players_unit_caps() -> void:
+	var rules: RulesDef = RulesDef.new()
+	rules.unit_cap = 80
+	rules.passenger_cap = 160
+	assert_array(_rule_problems(rules)).is_empty()
+	rules.passenger_cap = 159
+	assert_array(_rule_problems(rules)).is_equal(
+		["rules: passenger_cap is below the players' unit_cap"]
+	)
+
+
 func test_the_rules_file_keeps_the_phase_3_numbers_in_bounds() -> void:
 	assert_array(_rule_problems(load(RULES_PATH))).is_empty()
 
@@ -768,7 +780,9 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 
 
 ## One text per broken Phase 3 rule of a RulesDef; empty when the numbers are fine. The divisors
-## are at least 1 because the sim takes a tick number modulo them.
+## are at least 1 because the sim takes a tick number modulo them. Passengers count toward unit_cap
+## (ADR 0036 section 8), so a passenger table (0 = no carriers, exempt) must hold every squad the
+## players could have aboard: at least PLAYERS * unit_cap.
 func _rule_problems(rules: RulesDef) -> PackedStringArray:
 	var broken: Dictionary[String, bool] = {
 		"start_credits is negative": rules.start_credits < 0,
@@ -802,9 +816,7 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			< 0
 		),
 		"unit_cap and building_cap of 2 players do not fit max_rows":
-		# Passengers count toward unit_cap (ADR 0036 section 8), so the table must hold every squad
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
-		# the players could have aboard. 0 (no carriers) is exempt.
 		"passenger_cap is below the players' unit_cap":
 		rules.passenger_cap > 0 and rules.passenger_cap < PLAYERS * rules.unit_cap,
 	}
