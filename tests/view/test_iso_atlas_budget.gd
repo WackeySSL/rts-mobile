@@ -33,7 +33,8 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## 706 on the Derrick League mirror and 674 on the Lumen Accord mirror.
 const TODAY_CROSS: int = 2993  ## P236: 2659 + 334 (two hulls, two lifts, two patches).
 const TODAY_MIRROR_DERRICK: int = 2878  ## P236: 2542 + 336 (the Skyrig, once per player).
-const TODAY_MIRROR_LUMEN: int = 2910  ## P236: 2650 + 260 (the Zenith, its lift and patch, once per player).
+## P236: 2650 + 260 (the Zenith, its lift and patch, once per player).
+const TODAY_MIRROR_LUMEN: int = 2910
 ## Page 2 (shadows only): no key colour in a shadow, so one slot for both players, and each shadow
 ## fits the free width of shelf 1; only the trailing shelf grows.
 const TODAY2_CROSS: int = 1116  ## P236: 1040 + 76 (the Zenith's shadow opens a taller shelf 2).
