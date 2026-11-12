@@ -83,6 +83,23 @@ func test_an_own_building_with_the_switch_on_wears_the_green_wrench_over_its_pla
 	var unit: float = UiScale.base_px_per_dp() / _camera.zoom.x
 	var rect: Rect2 = _bars.glyph_rect(0)
 	assert_float(rect.size.x).is_equal_approx(32.0 * unit, 0.01)
+	var rise: float = (
+		(
+			HealthBarLayer.GAP_DP
+			+ HealthBarLayer.HEIGHT_DP
+			+ HealthBarLayer.GLYPH_GAP_DP
+			+ HealthBarLayer.GLYPH_DP
+		)
+		* unit
+	)
+	assert_float(rect.position.y).is_equal_approx(
+		(
+			IsoProjection.ground_to_px(_runner.snapshot.pos_x[2], _runner.snapshot.pos_y[2]).y
+			- _buildings.bar_lift_px(2)
+			- rise
+		),
+		0.01
+	)
 	assert_float(rect.get_center().x).is_equal_approx(_buildings.building(_id(2)).position.x, 0.01)
 	_runner.snapshot.cargo[2] = 0
 	_frame()
@@ -133,5 +150,10 @@ func test_the_wrench_follows_the_power_glyphs_and_stands_higher_over_a_building_
 		var rect: Rect2 = _bars.glyph_rect(at)
 		if is_equal_approx(rect.get_center().x, defence.get_center().x):
 			found += 1
-			assert_float(rect.position.y).is_less(defence.position.y - defence.size.y + 0.5)
+			# One glyph (the side and its gap) higher than the offline glyph under it.
+			var step: float = (
+				defence.size.y
+				+ HealthBarLayer.GLYPH_GAP_DP * defence.size.y / HealthBarLayer.GLYPH_DP
+			)
+			assert_float(rect.position.y).is_equal_approx(defence.position.y - step, 0.01)
 	assert_int(found).is_equal(1)

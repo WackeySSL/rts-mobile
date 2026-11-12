@@ -104,6 +104,7 @@ var _drawn: int = 0  ## Rects the last _draw painted.
 var _glyph_at: PackedFloat32Array = PackedFloat32Array()  ## Top-left x, y of glyph `i` at 2i.
 var _glyphs: int = 0
 var _offline_glyphs: int = 0  ## The first glyphs are offline ones, then low-power ones.
+var _marked: PackedByteArray = PackedByteArray()  ## 1 for a row that holds a glyph this frame.
 var _power_glyphs: int = 0  ## The glyphs before the wrenches, which come last.
 var _glyph_side: float = 0.0  ## World px, the same for every glyph of the frame.
 var _drawn_glyphs: int = 0
@@ -156,7 +157,8 @@ func drawn_count() -> int:
 	return _drawn
 
 
-## The offline glyphs planned for the last frame, how many the last `_draw` painted, and glyph
+## The glyphs planned for the last frame (offline, low-power, then wrenches), how many the last
+## `_draw` painted, and glyph
 ## `index`'s square in world px (layer coordinates).
 func glyph_count() -> int:
 	return _glyphs
@@ -166,7 +168,8 @@ func drawn_glyphs() -> int:
 	return _drawn_glyphs
 
 
-## How many of the planned glyphs are offline ones; the rest (low power, P89) follow them.
+## How many of the planned glyphs are offline ones; low-power ones (P89) follow them, then the
+## wrenches (P272b).
 func offline_glyph_count() -> int:
 	return _offline_glyphs
 
@@ -352,17 +355,22 @@ func _plan() -> void:
 	_plan_glyphs(snap, unit, local_player)
 
 
-## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
-## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap. While
-## the local player uses more power than it makes (`power_used` over `power_made` of the snapshot),
-## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
-## place, after the offline ones. A switched-off building uses none, so it never has both.
+## Plans the glyphs: the power glyphs (`_plan_power_glyphs`), then the wrenches. `_marked` is
+## cleared first: a row that holds a glyph is marked, so its wrench stands one glyph higher.
 func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
+	if _marked.size() != snap.unit_id.size():
+		_marked.resize(snap.unit_id.size())
+	_marked.fill(0)
 	_plan_power_glyphs(snap, unit, local_player)
 	_power_glyphs = _glyphs
 	_plan_mend_glyphs(snap, unit, local_player)
 
 
+## Plans the offline glyph of each shown building a blackout has switched off: its bottom edge
+## stands GLYPH_GAP_DP over the top of the bar's place, so a bar and a glyph never overlap. While
+## the local player uses more power than it makes (`power_used` over `power_made` of the snapshot),
+## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
+## place, after the offline ones. A switched-off building uses none, so it never has both.
 ## Plans the wrench of each own complete building whose repair switch is on, after the power glyphs.
 ## An enemy building's switch is not read. A building that wears a power glyph already gets its
 ## wrench one glyph higher.
@@ -375,13 +383,14 @@ func _plan_mend_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> v
 	var types: PackedInt32Array = snap.type_index
 	var pending: PackedInt32Array = snap.build_left
 	var foot: PackedInt32Array = snap.type_foot_w
+	var life: PackedInt32Array = snap.hp
 	for row: int in switches.size():
 		if (
-			switches[row] == 1
-			and owners[row] == local_player
+			owners[row] == local_player  # First: an enemy's switch is never read.
+			and switches[row] == 1
 			and foot[types[row]] > 0
 			and pending[row] == 0
-			and snap.hp[row] > 0
+			and life[row] > 0
 			and building_layer.is_shown(row)
 		):
 			_put_glyph(snap, row, rise, true)
@@ -434,21 +443,16 @@ func _plan_power_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> 
 
 
 ## Appends the glyph square of building `row`, `rise` over its footprint centre's ground point.
-## With `stack` it stands one glyph higher for each glyph already at that place.
+## With `stack` it stands one glyph higher when the row already holds a glyph.
 func _put_glyph(snap: MatchSnapshot, row: int, rise: float, stack: bool = false) -> void:
 	if _glyph_at.size() < _glyphs * 2 + 2:
 		_glyph_at.resize(_glyph_at.size() + 16)
 	var place: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 	var left: float = place.x - 0.5 * _glyph_side
 	var top: float = place.y - building_layer.bar_lift_px(row) - rise
-	if stack:
-		var step: float = _glyph_side + GLYPH_GAP_DP * _glyph_side / GLYPH_DP
-		for other: int in _glyphs:
-			if (
-				is_equal_approx(_glyph_at[other * 2], left)
-				and is_equal_approx(_glyph_at[other * 2 + 1], top)
-			):
-				top -= step
+	if stack and _marked[row] == 1:  # Another glyph of this very building stands there.
+		top -= _glyph_side + GLYPH_GAP_DP * _glyph_side / GLYPH_DP
+	_marked[row] = 1
 	_glyph_at[_glyphs * 2] = left
 	_glyph_at[_glyphs * 2 + 1] = top
 	_glyphs += 1

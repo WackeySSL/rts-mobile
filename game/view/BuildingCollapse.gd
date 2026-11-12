@@ -60,7 +60,9 @@ func setup(sort: WorldSort, decals: DecalLayer) -> void:
 @warning_ignore("integer_division")
 func adopt(entry: BuildingLayer.Entry, died_tick: int, was_site: bool, flag: int) -> void:
 	_make_if_resized(maxi(life.collapse_max, 0))
-	if flag == Removal.FLAG_CANCELLED:
+	# Flag 2 (a boarding) is for units, so no building has it yet; it plays nothing like 1 until
+	# P265 decides what a boarding looks like.
+	if flag == Removal.FLAG_CANCELLED or flag == Removal.FLAG_BOARDED:
 		_free(entry)
 		return
 	if flag == Removal.FLAG_SOLD:  # The pack-up: no crater, no crater smoke, no flash.
@@ -169,7 +171,7 @@ static func died_flag(snap: MatchSnapshot, id: int) -> int:
 	var events: PackedInt32Array = snap.events
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
 		if events[at] == World.Event.DIED and events[at + 1] == id:
-			return events[at + Production.DIED_CANCEL_FLAG_AT]
+			return events[at + Removal.DIED_FLAG_AT]
 	return 0
 
 
