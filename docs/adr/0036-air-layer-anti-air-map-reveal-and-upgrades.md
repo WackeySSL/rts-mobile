@@ -184,13 +184,14 @@ Note (2026-11-12, P232; named exception 23): the shapes as built. It changes no 
   `upgrades` after every type, once per id (the first wins), and skips a null `applies_to` entry
   (it is not counted). At most `World.UPGRADES_MAX` = 30 are kept: `upgrades` holds one bit per
   upgrade in an int32, and 30 (bits 0 to 29) keeps the mask positive. A data test over the shipped
-  factions holds the ids non-empty, unique per def and at most 30. The lists are rules:
+  factions holds the ids non-empty, an id on one def only (the same def in two factions counts once) and at most 30. The lists are rules:
   `defs_hash` takes the pad lists and the upgrade lists after the type tables and before the weapon
   tables, and `upgrade_ids` after the faction ids; none is in the state hash.
 - **Other tables.** The repair role is seven type tables (`type_repair_classes`, `_hp`, `_period`,
   `_cost_percent`, `_reach`, `_slots`, `_seek`); a padded type has period 1 (UnitDef's default) and
   the rest 0. The layer bits are `World.Layer` (GROUND 1, AIR 2, LOW_AIR 4); a padded type and a
   hand-built weapon (`weapon_targets` padded) are GROUND.
+- **RALLY.** INFANTRY and VEHICLES only; FLIGHT and RESEARCH are dropped and counted; P241 decides FLIGHT.
 - **Not added.** The derived row of the table (`reveal_stamped`, `air_rows`, `mod_dealt`,
   `mod_taken`, `mod_ammo`) is left to the rows with the rule that rebuilds each one: P233, P241 and
   P246. Each joins `DERIVED_ARRAYS` and `MatchSnapshot.NOT_COPIED` then. This is hash-neutral,

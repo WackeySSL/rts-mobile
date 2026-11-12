@@ -27,6 +27,23 @@ func test_the_layer_bit_follows_the_move_class_and_low_flying() -> void:
 	assert_array(bare.type_layer_bit).is_equal([World.Layer.GROUND])
 
 
+## A hand-built World with more types than definitions (and a weapon with no mask) is padded by
+## prepare() with the named pad values, whatever test_world_v1 pins.
+func test_prepare_pads_the_air_tables_of_a_hand_built_world_with_the_named_values() -> void:
+	var world: World = World.new()
+	for id: StringName in [&"a", &"b"]:
+		world.type_ids.append(id)
+	world.weapon_range.append(4000)
+	world.prepare()
+	assert_array(world.type_repair_period).is_equal(
+		[World.TYPE_PAD_REPAIR_PERIOD, World.TYPE_PAD_REPAIR_PERIOD]
+	)
+	assert_array(world.type_pad_first).is_equal([0, 0])
+	assert_array(world.type_pads).is_equal([0, 0])
+	assert_array(world.type_layer_bit).is_equal([World.Layer.GROUND, World.Layer.GROUND])
+	assert_array(world.weapon_targets).is_equal([World.Layer.GROUND])
+
+
 func test_the_air_pad_and_repair_columns_are_copied_per_type() -> void:
 	var world: World = World.from_scenario(_scenario())
 	assert_array(world.type_ammo).is_equal([0, 6, 0, 0])

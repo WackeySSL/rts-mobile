@@ -6,7 +6,8 @@ extends RefCounted
 ## over from_scenario() here, World.prepare() calls derive_open_grass(), size_match_state(),
 ## pad_types(), stamp_fog() and reset_projectile_slots(), and World._init() calls copy_rules(), so
 ## no caller names this class. The code is World.gd's own, moved (P109 moved copy_rules and
-## size_match_state, P232 pad_types, stamp_fog and reset_projectile_slots, with no change) or the
+## size_match_state, P232 stamp_fog and reset_projectile_slots, with no change; P232 pad_types too,
+## but it pads the sight, acquire, weapon and repair period tables by named constants) or the
 ## copy of a definition into a table (the loader, with the layer bit derived from the move class and
 ## `low_flying`); ADR 0007 section 2 and ADR 0017 section 3 keep every column, list and rule int in
 ## World itself.
@@ -261,8 +262,8 @@ static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
 	world.upgrade_ids.append(upgrade.id)
 	world.upgrade_stat.append(upgrade.stat)
 	world.upgrade_value.append(upgrade.value)
-	world.upgrade_type_first.append(world.upgrade_types.size())
 	var first: int = world.upgrade_types.size()
+	world.upgrade_type_first.append(first)
 	for unit: UnitDef in upgrade.applies_to:
 		if unit != null:  # A null entry names no type: it is left out of the count too.
 			world.upgrade_types.append(_type_for(world, unit))

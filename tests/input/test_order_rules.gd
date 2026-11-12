@@ -70,6 +70,17 @@ func test_a_box_of_tankers_alone_keeps_them_and_an_empty_box_stays_empty() -> vo
 	assert_array(OrderRules.box_selection(null, PackedInt32Array())).is_empty()
 
 
+## FLIGHT and RESEARCH buildings (TABS 5, P232) are no rally target: the sim refuses them too.
+func test_a_building_of_the_flight_or_research_tab_is_no_rally_target() -> void:
+	var type: int = _snap.type_index[_snap.index_of(BARRACKS)]
+	var kept: int = _snap.type_produces[type]
+	for tab: int in [World.Tab.FLIGHT, World.Tab.RESEARCH]:
+		_snap.type_produces[type] = tab
+		assert_int(OrderRules.rally_building(_snap, PackedInt32Array([BARRACKS]), 1)).is_equal(0)
+	_snap.type_produces[type] = kept
+	assert_int(OrderRules.rally_building(_snap, PackedInt32Array([BARRACKS]), 1)).is_equal(BARRACKS)
+
+
 func test_only_tankers_is_true_for_a_selection_of_tankers_and_nothing_else() -> void:
 	assert_bool(OrderRules.only_tankers(_snap, PackedInt32Array([TANKER]))).is_true()
 	assert_bool(OrderRules.only_tankers(_snap, PackedInt32Array([TANKER, ENEMY_TANKER]))).is_true()

@@ -727,7 +727,7 @@ func _pillar_world() -> World:
 
 
 ## A 7 x 7 map with the four orthogonal neighbours of the goal (3, 3) made to cost 14 on every
-## class.
+## ground class.
 func _tie_cost_world() -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(7, 7), [TRACKED])
 	for move_class: int in World.GROUND_CLASSES:  # The stride of terrain_cost.
