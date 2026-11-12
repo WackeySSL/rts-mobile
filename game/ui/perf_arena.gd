@@ -31,9 +31,10 @@ extends Node2D
 ## Two atlases are baked once in `_ready`, before the card's preflight and so outside every timed
 ## window (plans P113 and P114). The sorted world draws from the first: the art of the scenario's
 ## three types for each of its two players, scale 1; the match start finds it there and keeps it.
-## The card and one console line (`atlas_bake_ms`, `atlas_page`, `atlas_page2`) describe the second, P113's
-## report-only bake: every sheet of both factions, each player in its faction's key triad, which is
-## what a real two-faction match start bakes (ADR 0023 section 2), whatever this scenario spawns.
+## The card and one console line (`atlas_bake_ms`, `atlas_page`, `atlas_page2`) describe the
+## second, P113's report-only bake: every sheet of both factions, each player in its faction's key
+## triad, which is what a real two-faction match start bakes (ADR 0023 section 2), whatever this
+## scenario spawns.
 ## Two scenarios (plan P93c): the seed-42 arena above, and the base arena (`arena_kind` bases, set
 ## by the dev menu's "Perf bases" through `DevRoutes.open_perf_bases` before the scene enters the
 ## tree), P80's `perf_bases.tres` on the same card machinery; the card then checks the run against
