@@ -171,7 +171,7 @@ func test_a_blackout_pauses_the_sweep_and_it_resumes_by_itself(
 		assert_int(world.reveal[1]).is_equal(want)
 		assert_int(world.reveal_stamped[1]).is_equal(1 if want == 1 else 0)
 		assert_str(Derivation.mismatch(world)).is_empty()
-		assert_int(PlayerView.of(world, 2).reveal_state(1)).is_equal(want)
+		assert_int(PlayerView.of(world, 2).reveal_state[1]).is_equal(want)
 		seen[want] = seen.get(want, 0) + 1
 		assert_int(_unexplored(world, 1)).is_equal(0)
 		assert_int(world.ghost_count[1]).is_greater_equal(ghosts)
@@ -283,13 +283,11 @@ func test_reveal_state_is_public_and_a_copy() -> void:
 	var world: World = _ready_world(SimImpls.Impl.GDSCRIPT)
 	Reveals.step(world, [Reveals.fire(Reveals.SPACE_A)])
 	var view: PlayerView = PlayerView.of(world, 2)
-	assert_array([view.reveal_state(1), view.reveal_state(2), view.reveal_state(0)]).is_equal(
-		[1, 0, 0]
-	)
-	assert_array([view.reveal_state(-1), view.reveal_state(9)]).is_equal([0, 0])
-	assert_int(PlayerView.of(world, 1).reveal_state(1)).is_equal(1)
+	assert_int(view.reveal_state.size()).is_equal(3)
+	assert_array(Array(view.reveal_state)).is_equal([0, 1, 0])
+	assert_int(PlayerView.of(world, 1).reveal_state[1]).is_equal(1)
 	world.reveal[1] = 2
-	assert_int(view.reveal_state(1)).is_equal(1)
+	assert_int(view.reveal_state[1]).is_equal(1)
 
 
 func test_the_derived_stamp_is_out_of_the_hash_and_the_snapshot() -> void:

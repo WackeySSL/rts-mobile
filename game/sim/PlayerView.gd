@@ -1,4 +1,3 @@
-# gdlint: disable=max-public-methods
 class_name PlayerView
 extends RefCounted
 ## One player's legal view of a World (ADR 0020 section 1, plan row P78): what that player may know
@@ -49,7 +48,7 @@ extends RefCounted
 ##   player; the owner is not listed), the player's own pending landing tick `own_strike_tick`
 ##   (0 = none; own state only, so the AI can obey ADR 0030 section 1's "not while the player's
 ##   rupture is pending") and the rule caps `unit_cap` and `building_cap`; and, from P233, every
-##   player's map sweep through `reveal_state(player)` (0 off, 1 on, 2 paused: public, ADR 0036
+##   player's map sweep as the field `reveal_state` (0 off, 1 on, 2 paused: public, ADR 0036
 ##   section 11). No enemy order, cargo,
 ##   charge, credits or queue is exposed.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
@@ -203,6 +202,11 @@ var warned_tick: PackedInt32Array = PackedInt32Array()
 ## at the landing tick itself included (COMMANDS runs before FIRE clears it). A blackout never sets
 ## it, so a rupture may follow a blackout in the same think, but nothing may follow a rupture.
 var own_strike_tick: int = 0
+## Every player's map sweep, one entry per player (index 0 is neutral): 0 no sweep, 1 on, 2 paused
+## (a blackout on the space centre, or its owner on low power; ADR 0036 section 11). Public
+## knowledge for every player, because the enemy sees the warning and the indicator. A copy. A
+## caller indexes it by player and checks the size itself (a hand-built World may leave it empty).
+var reveal_state: PackedInt32Array = PackedInt32Array()
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
 ## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
 var unit_cap: int = 0
@@ -224,8 +228,6 @@ var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
 var _cargo: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
-## Every player's sweep state, as `reveal_state` reads it (a copy; entry 0 is neutral).
-var _reveal: PackedInt32Array = PackedInt32Array()
 var _public: Array[PackedInt32Array] = []
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
 ## that make a type a refinery.
@@ -250,16 +252,9 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_player(world)
 	view._take_ghosts(world)
 	view._take_warned(world)
-	view._reveal = world.reveal.duplicate()
+	view.reveal_state = world.reveal.duplicate()
 	view._take_rows(world)
 	return view
-
-
-## The state of `player`'s map sweep: 0 off, 1 on, 2 paused (a blackout on the space centre, or the
-## owner on low power). Public for every player (ADR 0036 section 11), so the AI and the HUD's
-## indicator read it; a player outside the World's arrays reads 0.
-func reveal_state(of_player: int) -> int:
-	return _entry(_reveal, of_player)
 
 
 ## The row of unit `id`, or MISSING when no row of the player's view has that id.
