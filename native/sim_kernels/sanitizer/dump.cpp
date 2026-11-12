@@ -113,6 +113,11 @@ int64_t Dump::scalar(const std::string &name) const {
 	return value;
 }
 
+bool Dump::has_ints(const std::string &name) const {
+	const auto found = records_.find(name);
+	return found != records_.end() && found->second.kind == 'I';
+}
+
 std::vector<int32_t> Dump::ints(const std::string &name) const {
 	const Record &record = find(name, 'I');
 	std::vector<int32_t> values(record.count);

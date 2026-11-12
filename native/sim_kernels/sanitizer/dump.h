@@ -19,8 +19,9 @@
 // joined the hash; the dump holds the same records as 1 to 4 (no kernel reads it), so all stay known. 6 (P232, ADR 0036
 // section 3, plan exception 23): the air and tech state joined the hash and move_cost gained the open AIR plane, so the
 // dump's world.move_cost holds four planes and flow.classes is 4; type_layer_bit and weapon_targets are in the checked
-// table but no kernel reads them yet (P238 and P240 do), so the dump holds the same record names as 1 to 5 and all stay
-// known.
+// table. P238 (ADR 0036 section 5): TARGETING reads them, so the dump of format 6 on also holds the records
+// world.type_layer_bit and weapon_targets; a dump without them (any older format) is read with ground masks, so all
+// numbers stay known.
 inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6 };
 
 class Dump {
@@ -37,6 +38,9 @@ public:
 	// A record by name. Each throws std::runtime_error when the dump has no such record of that kind.
 	int64_t scalar(const std::string &name) const;
 	std::vector<int32_t> ints(const std::string &name) const;
+	// Whether the dump holds an int32 array of that name (the layer tables of P238 are in dumps of format 6 on; an older
+	// dump has none, and the loader gives it ground masks).
+	bool has_ints(const std::string &name) const;
 	std::vector<uint8_t> bytes(const std::string &name) const;
 
 private:
