@@ -18,3 +18,5 @@ extends Resource
 @export var key_triad: PackedStringArray = PackedStringArray()
 ## Every unit and building type of the faction, which the scenario registers after its spawns.
 @export var roster: Array[UnitDef] = []
+## The faction's research items (ADR 0036 section 2), each one level.
+@export var upgrades: Array[UpgradeDef] = []

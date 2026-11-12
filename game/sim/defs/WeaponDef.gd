@@ -15,3 +15,6 @@ extends Resource
 ## Percent of `damage` dealt per armour class, in UnitDef.armour order: infantry, light, heavy,
 ## building. 100 = full damage.
 @export var vs_armour: PackedInt32Array = PackedInt32Array([100, 100, 100, 100])
+## The layers the weapon may hit (ADR 0036 section 2): GROUND 1, AIR 2, LOW_AIR 4. The default is 1,
+## so every shipped weapon keeps its meaning. A data test allows 1..7.
+@export_flags("Ground:1", "Air:2", "Low air:4") var targets: int = 1
