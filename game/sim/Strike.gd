@@ -189,7 +189,7 @@ static func _land(world: World, player: int) -> void:
 	if type < 0:
 		return
 	var weapon: int = world.type_strike_weapon[type]
-	if weapon < 0 or weapon >= world.weapon_targets.size():
+	if weapon < 0 or weapon >= world.weapon_damage.size() or weapon >= world.weapon_targets.size():
 		return
 	var radius: int = world.type_strike_radius[type]
 	var reach: int = radius * radius
