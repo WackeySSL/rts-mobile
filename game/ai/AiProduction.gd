@@ -30,9 +30,9 @@ const _ROLES: int = OpponentDef.ROLES
 var passes: int = 0
 ## Units queued over the match, the scouts among them.
 var queued: int = 0
+var scouts_queued: int = 0
 ## The credits the QUEUEs of the last run cost (`AiEconomy.mend` measures the credits left by it).
 var spent_credits: int = 0
-var scouts_queued: int = 0
 ## Units queued per role over the match (`OpponentDef.Role`).
 var role_queued: PackedInt32Array = PackedInt32Array()
 

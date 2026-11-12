@@ -48,7 +48,7 @@ func test_a_hundred_percent_mends_any_damage_but_not_a_full_building() -> void:
 
 
 func test_a_level_of_percent_0_never_mends_even_at_1_hp() -> void:
-	var world: World = _world_with_plant(0)
+	var world: World = _world_with_plant(RICH)
 	world.hp[_plant(world)] = 1
 	assert_int(_mends(_think(world, _level(0, 0)).out).size()).is_equal(0)
 	assert_int(_mends(_think(world, Rig.level_of("easy")).out).size()).is_equal(0)
@@ -154,6 +154,8 @@ func test_mends_use_only_the_budget_production_left() -> void:
 	var clean: Dictionary = _opponent_think(_world_of_five(false), level)
 	var others: int = clean.out.size()
 	assert_int(others).is_greater(0)
+	# The barracks gives production something to queue, so the order of the calls is pinned.
+	assert_int(clean.ai.production.queued).is_greater(0)
 	assert_int(_mends(clean.out).size()).is_equal(0)
 	# Room for two more Commands: production's QUEUEs are the clean run's, the mends are the two.
 	level.commands_per_think_max = others + 2
@@ -161,20 +163,19 @@ func test_mends_use_only_the_budget_production_left() -> void:
 	assert_int(_mends(hurt.out).size()).is_equal(2)
 	assert_array(_queue_types(hurt.out)).is_equal(_queue_types(clean.out))
 	assert_int(hurt.out.size()).is_equal(others + 2)
+	assert_int(hurt.ai.commands_cut).is_equal(0)
 	# With the full budget of Normal the five buildings may take what production left, no more.
 	level.commands_per_think_max = 8
 	var wide: Dictionary = _opponent_think(_world_of_five(true), level)
 	assert_array(_queue_types(wide.out)).is_equal(_queue_types(clean.out))
-	assert_int(wide.out.size()).is_less_equal(8)
+	assert_int(wide.ai.commands_cut).is_equal(0)
 
 
 func test_a_base_with_no_producer_left_still_mends() -> void:
 	var world: World = _world_with_plant(RICH)
 	var plant: int = _plant(world)
-	world.hp[plant] = _below(world, plant)
 	var loop: MatchLoop = AiRig.loop_of(world)
-	for id: StringName in [&"headquarters"]:
-		AiRig.kill(world, loop, AiRig.row_of(world, 1, String(id)))
+	AiRig.kill(world, loop, AiRig.row_of(world, 1, "headquarters"))
 	assert_int(AiRig.row_of(world, 1, "headquarters")).is_equal(-1)
 	var plant_row: int = AiRig.row_of(world, 1, "power_plant")
 	assert_int(plant_row).is_greater_equal(0)
@@ -220,15 +221,13 @@ func test_the_level_files_hold_usable_mend_values() -> void:
 	for level: String in Rig.LEVELS:
 		var def: AiDifficultyDef = Rig.level_of(level)
 		(
-			assert_bool(def.mend_below_percent >= 0 and def.mend_below_percent <= 100)
+			assert_bool(_in_range(def.mend_below_percent, def.mend_floor))
 			. override_failure_message(
-				"%s: mend_below_percent %d" % [level, def.mend_below_percent]
+				(
+					"%s: mend_below_percent %d, mend_floor %d"
+					% [level, def.mend_below_percent, def.mend_floor]
+				)
 			)
-			. is_true()
-		)
-		(
-			assert_bool(def.mend_floor >= 0)
-			. override_failure_message("%s: mend_floor %d" % [level, def.mend_floor])
 			. is_true()
 		)
 	assert_int(Rig.level_of("easy").mend_below_percent).is_equal(0)
@@ -263,6 +262,7 @@ func _world_of_five(hurt: bool) -> World:
 	var world: World = _world_with_plant(RICH)
 	for at: int in 4:
 		AiRig.give(world, 1, "power_plant", 4 + at * 4, 24)
+	AiRig.give(world, 1, "barracks", 20, 10)
 	for row: int in world.unit_count():
 		if world.owner[row] == 1 and world.type_foot_w[world.type_index[row]] > 0:
 			if hurt and world.type_cost[world.type_index[row]] > 0:
@@ -338,7 +338,7 @@ func _opponent_think(world: World, level: AiDifficultyDef) -> Dictionary:
 		view.tick += 1
 	var out: Array[Command] = []
 	ai.think(view, out)
-	return {"out": out}
+	return {"out": out, "ai": ai}
 
 
 func _queue_types(sent: Array[Command]) -> Array[int]:

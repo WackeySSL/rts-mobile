@@ -7,12 +7,13 @@ extends AiController
 ## Commands of a think. A manager row adds its call to its slot's function below and nothing else.
 ##
 ## A think happens every `think_period` (5) ticks and runs one of three slots, chosen from the tick
-## alone: `((tick + think_offset) / think_period) % SLOTS`. Slot ECONOMY runs economy then
-## production, slot ARMY the intel refresh then the army, slot INTEL intel then strikes, so every
-## manager runs once a second and a think carries a third of the AI. The offset puts player `p` on
-## `tick % 5 == (p + 4) % 5`, never on 4: a checkpoint hashes in the step that starts at
-## `tick % 15 == 14` and no think falls there (players 1 to 4). Like every controller it reads the
-## match only through the view, uses no clock, and draws only from `rng`.
+## alone: `((tick + think_offset) / think_period) % SLOTS`. Slot ECONOMY runs economy, then
+## production, then the economy's mend (P274), slot ARMY the intel refresh then the army, slot
+## INTEL intel then strikes, so every manager runs once a second and a think carries a third of the
+## AI. The offset puts player `p` on `tick % 5 == (p + 4) % 5`, never on 4: a
+## checkpoint hashes in the step that starts at `tick % 15 == 14` and no think falls there (players
+## 1 to 4). Like every controller it reads the match only through the view, uses no clock, and
+## draws only from `rng`.
 
 enum Slot { ECONOMY, ARMY, INTEL }
 const SLOTS: int = 3
@@ -98,7 +99,7 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 	work_max = maxi(work_max, work)
 
 
-## Slot 0: P176 adds `AiEconomy`, P178 `AiProduction`.
+## Slot 0: P176 adds `AiEconomy`, P178 `AiProduction`, then the economy's mend (P274).
 func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 	economy.run(view, memory, rng, out)
 	work += economy.passes
