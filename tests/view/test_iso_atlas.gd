@@ -234,8 +234,8 @@ func test_the_index_loads_every_sheet_of_both_factions() -> void:
 		per_faction[sheet.faction] += 1
 		var first: int = sheet.directions(&"hull")[0]
 		assert_bool(FileAccess.file_exists(sheet.path(&"hull", first))).is_true()
-	assert_int(per_faction[&"fossil"]).is_equal(14)
-	assert_int(per_faction[&"renew"]).is_equal(14)
+	assert_int(per_faction[&"fossil"]).is_equal(15)  # 14 + the Skyrig (P236).
+	assert_int(per_faction[&"renew"]).is_equal(15)  # 14 + the Zenith (P236).
 
 
 func test_every_direction_of_a_part_holds_its_own_frame_for_each_player() -> void:
@@ -463,5 +463,7 @@ func _assert_every_frame_has_its_rasterised_size(
 	# The 480 frames of the blockouts, the squads' poses (P139): 2 factions x 2 squads x 8
 	# directions x (4 walk + 2 idle) frames, and the buildings' `anim` frames (P143): 16 + 16 + 6 +
 	# 4 + 4 + 4 + 2 + 2, and the damage patches of P158a (the Derrick League) and P158b (the Lumen
-	# Accord): 2 factions x 8 buildings x 2 stages = 32 frames.
-	assert_int(frames).is_equal(480 + 192 + 54 + 32)
+	# Accord): 2 factions x 8 buildings x 2 stages = 32 frames, and the two space centres (P236):
+	# the Skyrig's hull, 16 lift frames, KRITISK patch and shadow, the Zenith's hull, 12 lift
+	# frames, patch and shadow (no SKADET patch, ADR 0034) = 19 + 15 = 34 frames.
+	assert_int(frames).is_equal(480 + 192 + 54 + 32 + 34)

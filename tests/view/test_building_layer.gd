@@ -166,7 +166,7 @@ func test_every_sprite_of_a_building_is_on_its_atlas_page_in_white() -> void:
 			_runner.snapshot.type_ids[_runner.snapshot.type_index[row]]
 		)
 		animated += 1 if sheet.has_part(&"anim") else 0
-		patched += 1 if sheet.has_part(&"dmg1") else 0
+		patched += 1 if BuildingDamage.picture(sheet, 2) > 0 else 0
 	assert_int(animated).is_greater(0)
 	assert_int(sprites.size()).is_equal(5 + 5 + 2 + animated + patched)
 	for node: Node in sprites:
@@ -352,7 +352,7 @@ func _child_names(node: Node) -> Array:
 ## element (P144), and its Head last if `head`.
 func _parts(sheet: IsoSheetDef, head: bool) -> Array[StringName]:
 	var names: Array[StringName] = [&"Body"]
-	if sheet.has_part(&"dmg1"):  # The damage patch (P158b), a sibling after the body.
+	if BuildingDamage.picture(sheet, 2) > 0:  # The damage patch (P158b), a sibling after the body.
 		names.append(&"Damage")
 	if sheet.has_part(&"anim"):
 		names.append(&"Anim")

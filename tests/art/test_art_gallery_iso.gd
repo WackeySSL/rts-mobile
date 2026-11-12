@@ -76,7 +76,7 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(28)
+	assert_int(seen.size()).is_equal(30)  # 28 + the two space centres (P236)
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()

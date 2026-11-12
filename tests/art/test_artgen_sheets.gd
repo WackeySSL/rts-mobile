@@ -30,7 +30,7 @@ func test_the_index_lists_every_type_of_both_factions_once_sorted_by_art_id() ->
 	for path: String in ArtGen.model_paths():
 		want.append(String((load(path) as ArtModel).art_id))
 	want.sort()
-	assert_int(want.size()).is_equal(28)
+	assert_int(want.size()).is_equal(30)  # 28 + the two space centres (P236)
 	assert_array(found).is_equal(want)
 	assert_object(_index.sheet(&"heavy_tank")).is_same(_index.sheets[found.find("heavy_tank")])
 	assert_object(_index.sheet(&"no_such_type")).is_null()

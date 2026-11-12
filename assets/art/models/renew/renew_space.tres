@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_space"
+faction = &"renew"
+category = &"bld"
+footprint = 3
+silhouette = "A tall slim white round tower in three stepped drums cut by team rings on a graphite plinth with a team ring, four low white buttress fins at its foot and a flat graphite and glass crown under a white lid, a wide hexagonal dark solar collar of graphite panels in a titanium frame riding up and down the shaft, a low white hexagonal control house with a team band and a mint light, and two small white tanks with team rings."
+prims = PackedStringArray(
+"box hull graphite 0 0 0 2.92 2.92 0.06",
+"prism hull ceramic 0 0 0.06 2.5 2.5 0.1 sides=12",
+"prism hull graphite -0.2 -0.2 0.16 1.4 1.4 0.14 sides=12",
+"prism hull team -0.2 -0.2 0.3 1.46 1.46 0.12 sides=12 group=plinthband",
+"prism hull graphite -0.2 -0.2 0.42 1.3 1.3 0.08 sides=12",
+"prism hull ceramic -0.2 -0.2 0.5 0.74 0.74 0.45 sides=12 group=s1",
+"prism hull team -0.2 -0.2 0.95 0.86 0.86 0.26 sides=12",
+"prism hull ceramic -0.2 -0.2 1.21 0.74 0.74 0.19 sides=12 group=s1",
+"prism hull ceramic -0.2 -0.2 1.4 0.58 0.58 0.5 sides=12 group=s2",
+"prism hull team -0.2 -0.2 1.9 0.7 0.7 0.22 sides=12",
+"prism hull ceramic -0.2 -0.2 2.12 0.58 0.58 0.28 sides=12 group=s2",
+"prism hull ceramic -0.2 -0.2 2.4 0.46 0.46 0.4 sides=12 group=up",
+"prism hull team -0.2 -0.2 2.8 0.58 0.58 0.2 sides=12 group=up",
+"prism hull ceramic -0.2 -0.2 3.0 0.46 0.46 0.3 sides=12 group=up",
+"prism hull graphite -0.2 -0.2 3.3 0.62 0.62 0.1 sides=6 group=up",
+"prism hull glass -0.2 -0.2 3.4 0.52 0.52 0.16 sides=6 group=glassband",
+"prism hull ceramic -0.2 -0.2 3.56 0.6 0.6 0.06 sides=6 group=up",
+"box hull ceramic 0.35 -0.2 0.5 0.5 0.1 0.32 group=fins",
+"box hull ceramic -0.75 -0.2 0.5 0.5 0.1 0.32 group=fins",
+"box hull ceramic -0.2 0.35 0.5 0.1 0.5 0.32 group=fins",
+"box hull ceramic -0.2 -0.75 0.5 0.1 0.5 0.32 group=fins",
+"box hull titanium 0.18 -0.2 0.5 0.16 0.06 0.62",
+"box hull titanium -0.58 -0.2 0.5 0.16 0.06 0.62",
+"prism hull ceramic 0.8 0.78 0.06 0.9 0.9 0.34 sides=6 group=house",
+"prism hull glass 0.8 0.78 0.2 0.94 0.94 0.1 sides=6 group=house",
+"prism hull team 0.8 0.78 0.3 0.96 0.96 0.1 sides=6 group=housetm",
+"prism hull ceramic 0.8 0.78 0.4 0.98 0.98 0.08 sides=6 group=houselid",
+"box hull mint 0.95 1.22 0.18 0.06 0.04 0.07 group=house",
+"prism hull ceramic -0.95 0.95 0.06 0.4 0.4 0.2 sides=6 group=tanks",
+"prism hull team -0.95 0.95 0.26 0.46 0.46 0.2 sides=6 group=tankring",
+"prism hull ceramic -0.95 0.95 0.46 0.4 0.4 0.22 sides=6 group=tanks",
+"prism hull ceramic -0.95 0.95 0.68 0.34 0.34 0.1 sides=6 group=tanks",
+"prism hull ceramic -0.4 1.1 0.06 0.4 0.4 0.2 sides=6 group=tanks",
+"prism hull team -0.4 1.1 0.26 0.46 0.46 0.2 sides=6 group=tankring",
+"prism hull ceramic -0.4 1.1 0.46 0.4 0.4 0.22 sides=6 group=tanks",
+"prism hull ceramic -0.4 1.1 0.68 0.34 0.34 0.1 sides=6 group=tanks",
+"rod hull titanium -0.95 0.95 0.2 -0.4 1.1 0.2 4",
+"box hull mint 0.4 -0.9 0.16 0.07 0.07 0.05",
+"box hull mint -0.9 -0.5 0.16 0.07 0.07 0.05",
+"prism anim bluegrey -0.2 -0.2 0.82 1.36 1.36 0.08 sides=6 group=lift",
+"prism anim graphite -0.2 -0.2 0.9 1.2 1.2 0.03 sides=6 group=lift",
+"box anim bluegrey 0.2 -0.2 0.93 0.05 1.0 0.02 group=lift",
+"box anim bluegrey -0.6 -0.2 0.93 0.05 1.0 0.02 group=lift",
+"box anim bluegrey -0.2 0.2 0.93 0.8 0.05 0.02 group=lift",
+"box anim bluegrey -0.2 -0.6 0.93 0.8 0.05 0.02 group=lift",
+"prism anim ceramic -0.2 -0.2 0.93 0.6 0.6 0.14 sides=12 group=lift",
+"box anim mint 0.4 -0.2 0.93 0.07 0.07 0.05 group=lift",
+"box anim mint -0.8 -0.2 0.93 0.07 0.07 0.05 group=lift",
+"broken hull ceramic -0.2 -0.2 2.4 0.44 0.44 0.3 teeth=6 low=0.3 damage=2 group=k2",
+"rod hull rebar -0.2 -0.1 1.9 -0.2 -0.1 2.3 3 bend=30 damage=2 group=k2",
+"rod hull beam -0.3 -0.3 1.9 -0.3 -0.3 2.2 3 bend=-35 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"anim 12",
+"anim 1 lift shift 0 0 0.094",
+"anim 2 lift shift 0 0 0.350",
+"anim 3 lift shift 0 0 0.700",
+"anim 4 lift shift 0 0 1.050",
+"anim 5 lift shift 0 0 1.306",
+"anim 6 lift shift 0 0 1.400",
+"anim 7 lift shift 0 0 1.195",
+"anim 8 lift shift 0 0 0.881",
+"anim 9 lift shift 0 0 0.519",
+"anim 10 lift shift 0 0 0.205",
+"anim 11 lift shift 0 0 0.024",
+"dmg2 0 up turn x 85 -0.2 -0.2 2.4",
+"dmg2 0 up shift -0.9 0.6 -1.94",
+"dmg2 0 glassband turn x 85 -0.2 -0.2 2.4",
+"dmg2 0 glassband shift -0.9 0.6 -1.94",
+"dmg2 0 glassband blow 100",
+"dmg2 0 housetm char 100",
+"dmg2 0 plinthband char 100",
+"dmg2 0 tankring char 100"
+)
+anim_ms = 200
+emitters = PackedStringArray(
+"damage 0.8 0.78 0.46",
+"dmg_spark -0.2 -0.2 1.2",
+"dmg_gas -0.95 0.95 0.5",
+"launch -0.2 -0.2 3.64"
+)
+anim_kritisk = &"hide"

@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/barracks_sheet.tres" id="s_barracks"]
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/defence_turret_sheet.tres" id="s_defence_turret"]
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/fossil_radar_sheet.tres" id="s_fossil_radar"]
+[ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/fossil_space_sheet.tres" id="s_fossil_space"]
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/fossil_strike_sheet.tres" id="s_fossil_strike"]
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/veh/harvester_sheet.tres" id="s_harvester"]
 [ext_resource type="Resource" path="res://assets/art/iso/fossil/bld/headquarters_sheet.tres" id="s_headquarters"]
@@ -25,6 +26,7 @@
 [ext_resource type="Resource" path="res://assets/art/iso/renew/inf/renew_rifle_sheet.tres" id="s_renew_rifle"]
 [ext_resource type="Resource" path="res://assets/art/iso/renew/inf/renew_rocket_sheet.tres" id="s_renew_rocket"]
 [ext_resource type="Resource" path="res://assets/art/iso/renew/veh/renew_scout_sheet.tres" id="s_renew_scout"]
+[ext_resource type="Resource" path="res://assets/art/iso/renew/bld/renew_space_sheet.tres" id="s_renew_space"]
 [ext_resource type="Resource" path="res://assets/art/iso/renew/bld/renew_strike_sheet.tres" id="s_renew_strike"]
 [ext_resource type="Resource" path="res://assets/art/iso/renew/veh/renew_tank_sheet.tres" id="s_renew_tank"]
 [ext_resource type="Resource" path="res://assets/art/iso/renew/veh/renew_tanker_sheet.tres" id="s_renew_tanker"]
@@ -34,4 +36,4 @@
 
 [resource]
 script = ExtResource("0_script")
-sheets = Array[ExtResource("1_sheet")]([ExtResource("s_artillery"), ExtResource("s_barracks"), ExtResource("s_defence_turret"), ExtResource("s_fossil_radar"), ExtResource("s_fossil_strike"), ExtResource("s_harvester"), ExtResource("s_headquarters"), ExtResource("s_heavy_tank"), ExtResource("s_light_tank"), ExtResource("s_power_plant"), ExtResource("s_refinery"), ExtResource("s_renew_artillery"), ExtResource("s_renew_barracks"), ExtResource("s_renew_defence"), ExtResource("s_renew_factory"), ExtResource("s_renew_hq"), ExtResource("s_renew_power"), ExtResource("s_renew_radar"), ExtResource("s_renew_refinery"), ExtResource("s_renew_rifle"), ExtResource("s_renew_rocket"), ExtResource("s_renew_scout"), ExtResource("s_renew_strike"), ExtResource("s_renew_tank"), ExtResource("s_renew_tanker"), ExtResource("s_rifle_squad"), ExtResource("s_rocket_squad"), ExtResource("s_vehicle_factory")])
+sheets = Array[ExtResource("1_sheet")]([ExtResource("s_artillery"), ExtResource("s_barracks"), ExtResource("s_defence_turret"), ExtResource("s_fossil_radar"), ExtResource("s_fossil_space"), ExtResource("s_fossil_strike"), ExtResource("s_harvester"), ExtResource("s_headquarters"), ExtResource("s_heavy_tank"), ExtResource("s_light_tank"), ExtResource("s_power_plant"), ExtResource("s_refinery"), ExtResource("s_renew_artillery"), ExtResource("s_renew_barracks"), ExtResource("s_renew_defence"), ExtResource("s_renew_factory"), ExtResource("s_renew_hq"), ExtResource("s_renew_power"), ExtResource("s_renew_radar"), ExtResource("s_renew_refinery"), ExtResource("s_renew_rifle"), ExtResource("s_renew_rocket"), ExtResource("s_renew_scout"), ExtResource("s_renew_space"), ExtResource("s_renew_strike"), ExtResource("s_renew_tank"), ExtResource("s_renew_tanker"), ExtResource("s_rifle_squad"), ExtResource("s_rocket_squad"), ExtResource("s_vehicle_factory")])
