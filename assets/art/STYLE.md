@@ -1175,8 +1175,9 @@ is on, paused or not yet fired. Each is placed from primitives in
   posts and a hoist beam, still built of derrick steel and rungs) with the capsule it lifts. "Palette
   per faction" bans a solid spire (a column that tapers to a point and carries a light or a team cap),
   so the Zenith is a round stepped tower with a flat lid and no tip light: a white tower with a solar
-  collar. Both are judged on the phone ("Open points for Michael"); the GDD's words are Michael's and
-  stay as they are until he answers.
+  collar. Both are judged on the phone ("Open points for Michael"). Michael's answer for the Zenith
+  (2026-11-12): the GDD now says "a white tower with a solar collar"; the Skyrig's derrick words
+  stay as they are.
 
 | Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
 | --- | --- | --- | --- |
@@ -2660,7 +2661,8 @@ Renaming a unit or a unit type is a data change, not a reskin.
   with a capsule and not a second derrick (the Deep Bore is the derrick), the Zenith a round white
   tower with a flat lid and a solar collar and not a spire (the "No spire" rule bans a solid column
   with a light at its tip); does each read as a space centre at zoom 0.75 and 1, and should the GDD's
-  words change ("a white tower with a solar collar")? (2) whether the Zenith reads as a lighthouse
+  words change ("a white tower with a solar collar")? (Michael, 2026-11-12: yes, "tower"; the GDD
+  is changed.) (2) whether the Zenith reads as a lighthouse
   (white tower, coloured bands, a glass band under a lid): if so the glass band goes; (3) the lifts:
   the Skyrig's capsule (16 frames, steps up to 0.30 tile) and the Zenith's collar (12 frames at 200
   ms, steps up to 0.36 tile, 14 px at zoom 1), whether the collar looks jerky; 16 frames would
