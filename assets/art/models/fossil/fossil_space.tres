@@ -51,15 +51,15 @@ prims = PackedStringArray(
 "box hull iron 0.8 -0.29 0.34 0.34 0.02 0.28 group=bunker",
 "box hull lamp 1.28 -0.65 0.62 0.02 0.08 0.08 group=bunker",
 "prism hull olive 0.55 0.6 0.34 0.36 0.36 0.2 sides=8 group=bottles",
-"prism hull team 0.55 0.6 0.54 0.4 0.4 0.2 sides=8 group=bottles",
+"prism hull team 0.55 0.6 0.54 0.4 0.4 0.2 sides=8 group=bottlering",
 "prism hull olive 0.55 0.6 0.74 0.36 0.36 0.14 sides=8 group=bottles",
 "prism hull olive 0.55 0.6 0.88 0.2 0.2 0.1 sides=8 taper=0.6 group=bottles",
 "prism hull olive 1.0 0.9 0.34 0.36 0.36 0.2 sides=8 group=bottles",
-"prism hull team 1.0 0.9 0.54 0.4 0.4 0.2 sides=8 group=bottles",
+"prism hull team 1.0 0.9 0.54 0.4 0.4 0.2 sides=8 group=bottlering",
 "prism hull olive 1.0 0.9 0.74 0.36 0.36 0.14 sides=8 group=bottles",
 "prism hull olive 1.0 0.9 0.88 0.2 0.2 0.1 sides=8 taper=0.6 group=bottles",
 "prism hull olive 0.55 1.1 0.34 0.36 0.36 0.2 sides=8 group=bottles",
-"prism hull team 0.55 1.1 0.54 0.4 0.4 0.2 sides=8 group=bottles",
+"prism hull team 0.55 1.1 0.54 0.4 0.4 0.2 sides=8 group=bottlering",
 "prism hull olive 0.55 1.1 0.74 0.36 0.36 0.14 sides=8 group=bottles",
 "prism hull olive 0.55 1.1 0.88 0.2 0.2 0.1 sides=8 taper=0.6 group=bottles",
 "rod hull iron 0.55 0.6 0.5 -0.4 0.3 0.4 3",
@@ -100,7 +100,7 @@ poses = PackedStringArray(
 "dmg2 0 beam char 40",
 "dmg2 0 deckband char 100",
 "dmg2 0 bunkerband char 100",
-"dmg2 0 bottles char 100"
+"dmg2 0 bottlering char 100"
 )
 anim_ms = 150
 emitters = PackedStringArray(

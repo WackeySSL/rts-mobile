@@ -41,6 +41,7 @@ const SHARE: Dictionary[StringName, Vector2] = {
 	&"fossil": Vector2(0.07, 0.13), &"renew": Vector2(0.065, 0.125)
 }
 const SUPPORT: String = "res://tests/art/artgen_v5_support.gd"
+const REST_PENETRATION: float = 0.05  ## Tiles a fallen piece may sink into what holds it.
 const REST_GAP: float = 0.12  ## Tiles: a fallen piece touches what holds it within this.
 const MAX_OVERLAP: float = 0.8  ## Against every other building at 32 px, intersection over union.
 const OPEN_MEAN: float = 0.25  ## The Skyrig's members cover this share of their box at most.
@@ -522,44 +523,89 @@ func test_the_style_guide_names_the_two_space_centres_their_lifts_and_the_rules(
 		assert_str(flat).override_failure_message(line).contains(line)
 
 
-## What KRITISK moves comes to rest on something that stays: every primitive a stage-2 pose shifts
-## or turns touches (within `REST_GAP`) a primitive of the stage that no pose moved, so no piece of
-## debris floats and none hangs in the air beside the tower.
+## What KRITISK moves comes to rest on something that stays (`_rest_problems`), for both models.
 func test_kritisk_debris_rests_on_a_surface() -> void:
 	for id: StringName in IDS:
-		var model: ArtModel = _model(id)
-		var intact: Dictionary[int, AABB] = {}
-		for prim: ArtPrim in model.primitives(&"hull"):
-			if prim.damage == 0:
-				intact[prim.key()] = prim.aabb()
-		var fixed: Array[AABB] = []
-		var moved: Array[ArtPrim] = []
-		for prim: ArtPrim in model.damage_prims(2):
-			if intact.has(prim.key()) and not prim.aabb().is_equal_approx(intact[prim.key()]):
-				moved.append(prim)
-			else:
-				fixed.append(prim.aabb())
-		assert_int(moved.size()).override_failure_message("%s moves nothing" % id).is_greater(0)
-		# A moved piece may hang on another moved piece (the beam carries its hoist head), so the
-		# held ones grow until no more piece joins.
-		var held: Array[AABB] = fixed.duplicate()
-		var floating: Array[ArtPrim] = moved.duplicate()
-		var joined: bool = true
-		while joined:
-			joined = false
-			for prim: ArtPrim in floating.duplicate():
-				for box: AABB in held:
-					if box.grow(REST_GAP).intersects(prim.aabb()):
-						held.append(prim.aabb())
-						floating.erase(prim)
-						joined = true
-						break
-		for prim: ArtPrim in floating:
-			(
-				assert_bool(false)
-				. override_failure_message("%s: %s floats in the air" % [id, prim.line])
-				. is_true()
+		var problems: Array[String] = _rest_problems(_model(id))
+		assert_array(problems).override_failure_message("%s: %s" % [id, problems]).is_empty()
+
+
+## The rule finds the Zenith's pose of the first review round (the top lay at about z 1.05 with
+## nothing under it), so the test above would have stopped it; the final pose passes it.
+func test_the_rest_rule_stops_a_piece_that_floats_beside_the_tower() -> void:
+	var floating: ArtModel = _model(&"renew_space").duplicate() as ArtModel
+	var poses: PackedStringArray = PackedStringArray()
+	for line: String in floating.poses:
+		poses.append(
+			line.replace("up turn x 85", "up turn y 85").replace(
+				"shift -0.9 0.6 -1.94", "shift 0.3 0.45 -1.1"
 			)
+		)
+	assert_bool(poses == floating.poses).is_false()
+	floating.poses = poses
+	var problems: Array[String] = _rest_problems(floating)
+	assert_array(problems).override_failure_message("a floating pose passes").is_not_empty()
+	assert_array(_rest_problems(_model(&"renew_space"))).is_empty()
+
+
+## What is wrong with the pieces a stage-2 pose moves, one text per moved group. A group that
+## shifts or turns must have its lowest point within `REST_GAP` above (or at most a hand's width
+## into) the top of a box no pose moved that it overlaps in x and y: it lies on it. A group that
+## only turns hangs from its hinge: the pivot lies in (or within `REST_GAP` of) a box that stays.
+func _rest_problems(model: ArtModel) -> Array[String]:
+	var found: Array[String] = []
+	var intact: Dictionary[int, AABB] = {}
+	for prim: ArtPrim in model.primitives(&"hull"):
+		if prim.damage == 0:
+			intact[prim.key()] = prim.aabb()
+	var fixed: Array[AABB] = []
+	var groups: Dictionary[StringName, Array] = {}
+	for prim: ArtPrim in model.damage_prims(2):
+		if intact.has(prim.key()) and not prim.aabb().is_equal_approx(intact[prim.key()]):
+			if not groups.has(prim.group):
+				groups[prim.group] = []
+			groups[prim.group].append(prim.aabb())
+		else:
+			fixed.append(prim.aabb())
+	if groups.is_empty():
+		found.append("nothing moves")
+	for group: StringName in groups:
+		var moves: Array[ArtMove] = []
+		for move: ArtMove in model.pose_moves(&"dmg2", 0):
+			if move.group == group:
+				moves.append(move)
+		var turns_only: bool = not moves.is_empty()
+		for move: ArtMove in moves:
+			turns_only = turns_only and move.kind == &"turn"
+		var held: bool = false
+		if turns_only:
+			for move: ArtMove in moves:
+				for box: AABB in fixed:
+					held = held or box.grow(REST_GAP).has_point(move.pivot)
+		else:
+			var lowest: AABB = groups[group][0]
+			for box: AABB in groups[group]:
+				if box.position.z < lowest.position.z:
+					lowest = box
+			for box: AABB in fixed:
+				var top: float = box.end.z
+				var overlaps: bool = (
+					box.position.x < lowest.end.x
+					and box.end.x > lowest.position.x
+					and box.position.y < lowest.end.y
+					and box.end.y > lowest.position.y
+				)
+				held = (
+					held
+					or (
+						overlaps
+						and lowest.position.z - top <= REST_GAP
+						and top - lowest.position.z <= REST_PENETRATION
+					)
+				)
+		if not held:
+			found.append("group %s does not rest on anything" % group)
+	return found
 
 
 ## The KRITISK picture keeps a share of its team colour in the band the other buildings pass

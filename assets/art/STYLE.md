@@ -1030,8 +1030,7 @@ which is the wall with the door.
 
 | Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
 | --- | --- | --- | --- |
-| `renew_hq` | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
-| Grid Hub | 3x3 | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. |
+| `renew_hq` | Grid Hub | 3x3 | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. |
 | `renew_power` | Wind Park | 2x2 | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. |
 | `renew_refinery` | Fuel Works | 3x3 | Three upright glass reaction cylinders of three heights with ceramic caps and wide team rings, joined by titanium pipes to a low white process hall with a wide team band, a skylight, two hexagonal vent drums and a dark dock mouth between two rails in the middle of its front wall, with mint guide lights across the apron. |
 | `renew_barracks` | Crew Hall | 2x2 | A long low white hall with a glass window band under a wide team band and a flat white lid with three dark solar panels, a taller hexagonal rotunda rising behind its left end with a glass band, a team ring and a glass lantern, a dark door under a team lintel and a mint light in the hall's east front column and a slim signal pole with a mint lamp beside the door. |
@@ -1225,7 +1224,7 @@ is on, paused or not yet fired. Each is placed from primitives in
   under a white lid. It tapers by steps, never to a point, it has no four-sided prism and no lamp or
   team cap at its tip (the tip is a lid 0.06 tile thick); "Palette per faction" bans the spire that
   is another game's tower, and `tests/art` pins all four. The collar is a flat hexagon a tile and a
-  third wide, built as solar panels: a titanium frame round a dark graphite panel face crossed by
+  third wide, built as solar panels: a blue-grey frame round a dark graphite panel face crossed by
   four blue-grey mullions, a white hub on the shaft and two mint lights on the hexagon's flats at
   +x and -x. It is the one wide member, so the tower reads as a tower with a collar and not as a dish.
   The glass band under the lid stays for now: a pale band under a lid is also what a lighthouse has,
@@ -1253,7 +1252,7 @@ is on, paused or not yet fired. Each is placed from primitives in
   page 1 gains 334 rows on the cross-faction page (2659 to 2993), 336 on the Derrick League's mirror
   (2542 to 2878) and 260 on the Lumen Accord's (2650 to 2910); page 2 gains 76, 4 and 12 rows (1040
   to 1116, 566 to 570, 622 to 634). That leaves 591, 706 and 674 rows on page 1. Packed alone, the two
-  are 605 rows on page 1 and 202 on page 2 and take 42 ms to bake (desktop, bake scale 1.0), about 45
+  are 676 rows on page 1 and 202 on page 2 and take 63 to 70 ms to bake (desktop, bake scale 1.0), about 45
   ms of a bake of about 1 s.
 - **Readability.** Each default view is identifiable at 32 px in greyscale (a body and a spread of
   tones, `test_artgen_readability.gd`) and reads apart from the other 17 buildings: the largest
@@ -1655,6 +1654,7 @@ in doubt, choose a plainer real-world form.
 | Signal Mast | A squat concrete control bunker beside an open steel lattice mast on four stepped legs with team girders, carrying a slatted antenna panel and a thin whip. | `iso/fossil/bld/fossil_radar_{hull,shadow}.svg`, 256 wide |
 | Redoubt | A squat poured-concrete bunker with a team band and a short whip aerial, carrying an octagonal gun head with a team ring and one short thick barrel in a vented sleeve with a muzzle brake. | `iso/fossil/bld/defence_turret_{hull,shadow}.svg`, `defence_turret_head_d00..d15.svg`, 128 wide |
 | Deep Bore | An open steel drilling derrick of four stepped lattice tiers on four concrete footings, a heavy drill string through a crown block over a dark well, a doghouse before it and a team band round its platform. | `iso/fossil/bld/fossil_strike_{hull,shadow}.svg`, 384 wide |
+| Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
 | Fuel Works | Three upright glass reaction cylinders of three heights with ceramic caps and wide team rings, joined by titanium pipes to a low white process hall with a wide team band, a skylight, two hexagonal vent drums and a dark dock mouth between two rails in the middle of its front wall, with mint guide lights across the apron. | `iso/renew/bld/renew_refinery_{hull,shadow}.svg`, 384 wide |
@@ -1770,7 +1770,7 @@ at rest, alpha above 0.95 for the share): the team share is 9.8 % (Skyrig) and 7
 greyscale: the tall open frame with a capsule in it over a banded deck, and the slim white column
 with a wide dark collar. Compared with the other 17 buildings on their silhouettes (intersection over
 union of the 32 px masks) the largest overlap is 0.64 for the Skyrig (the Zenith) and 0.75 for the
-Zenith (the Signal Mast),. The Skyrig's members cover 15 %
+Zenith (the Signal Mast). The Skyrig's members cover 15 %
 of their box on average. KRITISK keeps 0.32 (Skyrig) and 0.46 (Zenith) of the team colour.
 
 ## Feedback markers (new)
