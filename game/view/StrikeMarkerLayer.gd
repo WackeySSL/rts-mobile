@@ -41,7 +41,7 @@ func _init() -> void:
 
 ## Redraws while there is anything to show, and once more when the last of it goes.
 func _process(_delta: float) -> void:
-	var any: bool = aim != null and aim.active and aim.has_point
+	var any: bool = aim != null and aim.active and aim.has_point and not aim.reveal
 	for landing: int in _landings():
 		any = any or landing != 0
 	if not any:
@@ -56,7 +56,7 @@ func _draw() -> void:
 		return
 	draws += 1
 	var unit: float = UiScale.base_px_per_dp() / get_canvas_transform().get_scale().x
-	if aim != null and aim.active and aim.has_point:
+	if aim != null and aim.active and aim.has_point and not aim.reveal:
 		_zone(IsoProjection.ground_to_px(aim.point.x, aim.point.y), aim.radius, true, unit)
 	var snap: MatchSnapshot = runner.snapshot
 	var landings: PackedInt32Array = snap.strike_tick  # Aliased once: no property read per row.

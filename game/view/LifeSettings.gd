@@ -83,6 +83,12 @@ extends Resource
 @export var net_land_ms: int = 600
 @export var strike_slots: int = 8
 
+## The satellite sweep (P235): the fog fades over `reveal_fade_ms` when the local player's own sweep
+## begins, pauses or resumes (both ways, the same time), and the warning line of an enemy's sweep
+## stays `reveal_warn_ms`.
+@export var reveal_fade_ms: int = 600
+@export var reveal_warn_ms: int = 5000
+
 ## Building animations (P144): the rate of an own building's animation while the local player's
 ## power is short (1.0 is the full rate).
 @export var low_power_rate: float = 0.5

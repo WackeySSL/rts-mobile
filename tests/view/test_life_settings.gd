@@ -33,6 +33,8 @@ const SCALARS: Dictionary[StringName, Variant] = {
 	&"fall_ms": 600,
 	&"net_land_ms": 600,
 	&"strike_slots": 8,
+	&"reveal_fade_ms": 600,
+	&"reveal_warn_ms": 5000,
 	&"low_power_rate": 0.5,
 	&"emit_rise_px": 24.0,
 	&"emit_drift_px": 6.0,

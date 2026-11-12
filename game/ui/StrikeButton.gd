@@ -13,12 +13,19 @@ const FOOT_DP: float = 10.0  ## The foot's distance from the plate's edge.
 const VARIATION: StringName = &"StrikeButton"
 const RING_POINTS: int = 64
 const NUDGE_S: float = 0.06
+const DIM_ALPHA: float = 0.4  ## The card's alpha while the strike is refused or the sweep paused.
+const GLYPH_DP: float = 32.0
+const MARK_DP: float = 22.0  ## The sweep mark in the plate's top corner (the pause mark's size).
+const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_low_power.svg"
 
 var fires: bool = false  ## The strike can fire.
 var charge: float = 0.0  ## The ring's share, 0 to 1.
 var nudges: int = 0
+var sweep: int = 0  ## The owner's sweep (0 none, 1 on, 2 paused), drawn as a mark on the plate.
+var low_power: bool = false  ## Dimmed, with the low-power glyph: the sim refuses the sweep now.
 
 var _card: Texture2D = null
+var _glyph: Texture2D = preload(GLYPH_ART)
 var _time: Label = Label.new()
 var _banner: Label = Label.new()
 
@@ -54,14 +61,35 @@ func _draw() -> void:
 	var middle: Vector2 = size * 0.5
 	var width: float = UiScale.dp(RING_DP)
 	var reach: float = minf(size.x, size.y) * 0.5 - width * 0.5
+	var dim: bool = low_power or sweep == 2
 	if _card != null:
 		var half: Vector2 = Vector2.ONE * UiScale.dp(CARD_DP) * 0.5
-		draw_texture_rect(_card, Rect2(middle - half, half * 2.0), false)
+		var shade: Color = Color(1.0, 1.0, 1.0, DIM_ALPHA if dim else 1.0)
+		draw_texture_rect(_card, Rect2(middle - half, half * 2.0), false, shade)
+	if low_power:
+		var span: Vector2 = Vector2.ONE * UiScale.dp(GLYPH_DP)
+		draw_texture_rect(_glyph, Rect2(middle - span * 0.5, span), false)
+	if sweep != 0:
+		_draw_sweep(reach)
 	var track: Color = get_theme_color(&"ring_track", VARIATION)
 	draw_arc(middle, reach, 0.0, TAU, RING_POINTS, track, width, true)
 	if charge > 0.0:
 		var fill: Color = get_theme_color(&"ring_ready" if fires else &"ring_charge", VARIATION)
 		draw_arc(middle, reach, -PI * 0.5, -PI * 0.5 + TAU * charge, RING_POINTS, fill, width, true)
+
+
+## The sweep mark in the plate's top left corner, clear of the foot: the satellite, and over it the
+## pause mark while paused.
+func _draw_sweep(reach: float) -> void:
+	var side: float = UiScale.dp(MARK_DP)
+	var spot: Rect2 = Rect2(Vector2.ONE * (reach * 0.12), Vector2.ONE * side)
+	var ok: Color = get_theme_color(&"ok", SweepMark.TOKENS)
+	var text: Color = get_theme_color(&"text", SweepMark.TOKENS)
+	SweepMark.satellite(self, spot, ok if sweep == 1 else text)
+	if sweep == 2:
+		var plate: Color = get_theme_color(&"panel", SweepMark.TOKENS)
+		var at: Rect2 = Rect2(spot.position + spot.size * 0.45, spot.size * 0.6)
+		SweepMark.pause(self, at, text, plate)
 
 
 func _notification(what: int) -> void:
@@ -76,12 +104,29 @@ func show_state(
 	card: Texture2D, can_fire: bool, share: float, seconds: int, hint: bool = false
 ) -> void:
 	_card = card
+	sweep = 0
+	low_power = false
 	_banner.text = "Tap map" if hint else "Ready"
 	fires = can_fire
 	charge = clampf(share, 0.0, 1.0)
 	_time.text = "%d:%02d" % [seconds / 60, seconds % 60]
 	_time.visible = not can_fire
 	_banner.visible = can_fire
+	queue_redraw()
+
+
+## The mark of the sweep and the low-power state, drawn with the card; `foot` replaces the foot's
+## text ("On" or "Paused" while the button shows a sweep that stands), "" keeps it. Call after
+## `show_state`.
+func show_mark(sweep_state: int, low: bool, foot: String = "") -> void:
+	sweep = sweep_state
+	low_power = low
+	if foot != "":
+		_banner.text = foot
+		_banner.visible = true
+		_time.visible = false
+	elif low:  # The glyph and the dim say it; a "0:00" would not.
+		_time.visible = false
 	queue_redraw()
 
 

@@ -4,7 +4,9 @@ extends HBoxContainer
 ## charge ring while the local player owns a strike building and, while the player aims, the check
 ## mark and the X before it. A tap on the ready button starts the aim (its foot asks "Tap map" until
 ## a point is placed) and a tap on the pressed one ends it; the check mark (dimmed until a point is
-## placed) sends the one SUPERWEAPON, the X cancels.
+## placed) sends the one SUPERWEAPON, the X cancels. A sweep (a REVEAL space centre, P235) has no
+## point: the check mark is lit at once and nothing on the map is tapped; while the sweep stands the
+## button shows it, "On" or "Paused", and on low power it dims with the low-power glyph.
 ## Placed by `HudCorners.place` (ADR 0025 section 10, plan P120c): the button stands 8 dp above
 ## BUILD at its 72 dp, the check mark and the X to its left, in both orientations; the parent is
 ## the Hud, and this node takes the rect that holds the button and, while aiming, the row, on
@@ -84,6 +86,10 @@ func _show() -> void:
 	var seconds: int = ceili(float(aim.wait) / Sim.TICK_RATE)
 	var hint: bool = aim.active and not aim.has_point
 	_strike.show_state(_card, aim.building_id != 0, aim.share, seconds, hint)
+	var foot: String = ""
+	if aim.sweep_bound:  # The sweep stands: its state is the button's foot, with the mark.
+		foot = "On" if aim.sweep == Reveal.State.ON else "Paused"
+	_strike.show_mark(aim.sweep, aim.low_power, foot)
 	_strike.set_pressed_no_signal(aim.active)
 	_confirm.visible = aim.active
 	_confirm.disabled = not aim.has_point

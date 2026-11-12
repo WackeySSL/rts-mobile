@@ -46,6 +46,7 @@
 [ext_resource type="Script" path="res://game/ui/PauseMenu.gd" id="90_pause"]
 [ext_resource type="Script" path="res://game/ui/ResultScreen.gd" id="90_result"]
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="91_confirm"]
+[ext_resource type="Script" path="res://game/ui/RevealBadge.gd" id="92_reveal_badge"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -290,6 +291,17 @@ safe_area = NodePath("../SafeArea")
 pill = NodePath("../EconomyPill")
 group_column = NodePath("../GroupColumn")
 build_button = NodePath("../BuildButton")
+
+[node name="RevealBadge" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "aim", "feed", "safe_area", "build_button", "group_column")]
+mouse_filter = 2
+theme = ExtResource("16_theme")
+script = ExtResource("92_reveal_badge")
+runner = NodePath("../../MatchRunner")
+aim = NodePath("../../StrikeAim")
+feed = NodePath("../HudStateFeed")
+safe_area = NodePath("../SafeArea")
+build_button = NodePath("../BuildButton")
+group_column = NodePath("../GroupColumn")
 
 [node name="EconomyCard" type="PanelContainer" parent="Hud"]
 visible = false
