@@ -175,7 +175,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P230 | LEAD | **Done 2026-11-09** (with P270b, one commit on `claude/p230-phase4b-acceptance`): both ADRs accepted, ADR 0036 §11 rewritten for answer 3 B, the dated notes, the GDD sections, ROADMAP Phase 4b, the merge-order section and the skill draft below; the skill itself waits for Michael's yes. Acceptance docs: Michael's answers and names in ADR 0036 and the GDD; dated notes in ADRs 0007, 0008, 0009, 0010, 0013, 0016, 0017, 0018, 0023, 0027, 0030 and 0031; a ROADMAP section per update (or Phase 4b if version 1); the GDD "Not in version 1" line per question 2. The `touch-ui-rules` amendment (ADR 0036 §12: the Home, Board and Unload buttons and their aims) **needs Michael's explicit yes**, asked with the acceptance; the lead edits the skill only after it | docs | Michael's answers; the Phase 4 gate |
 | P231 | GD | Defs: `MoveClass` Air, `low_flying`, `ammo`, `rearm_ticks`, `WeaponDef.targets`, `pads` and `pad_offsets`, the repair role, `strike_kind` 3, `UpgradeDef`, `FactionDef.upgrades`, the Tab enum in exports; data tests (ranges, AIR-only fields, pad spacing at least the largest FLIGHT `formation_spacing`, `repair_reach_milli` at least 500, upgrade modifiers at most 400 %). `TerrainDef.cost` keeps 3 entries. Hash-neutral: World copies nothing yet | 150 | P230 |
 | P232 | GD + QA | World v6: the columns and tables of ADR 0036 §3 (1.1 part); `type_layer_bit`; the AIR plane with `World.GROUND_CLASSES` at the four sites of ADR 0036 §4 (`WorldLoad.gd:141` and the loader's AIR fill, `World.set_terrain`, `Buildings._write_cost`) plus the check of the other `MoveClass.size()` uses; `TABS` 5 (PlayerView slices, Production indexing; the drawer still lists three tabs); `MOVE_CLASSES` 4 in `world_access.h:54`, `fixed_math.cpp:9` and `integrate.cpp:14`; the X-list rows of `type_layer_bit` (TARGETING and SEPARATION flags) and `weapon_targets` (TARGETING) declared once in `world_access.h`; `type_layer_bit` and `weapon_targets` in `PlayerView` and `MatchSnapshot`'s field lists; WorldLoad, WorldHash, `STATE_FORMAT` 6, one re-pin (exception 23). QA: the sanitizer cases and `KNOWN_FORMATS` in `native/sim_kernels/sanitizer/dump.h` gain 6, and `NativeKernels.self_check` is re-checked for the new sizes and classes. Split trigger (over ~400): P232b takes `TABS` 5 with PlayerView and Production indexing | 380 (C++ ~20) | P231; P271 (2026-11-12, P26bq) |
-| P232c | GD | (2026-11-12, P26br) Pure move: `add_unit`, `add_building`, `footprint_origin`, `_push_unit_event` and `write_unit_event` (about 75 lines) from `World.gd` (981 of gdlint's 1000 after P232) into `game/sim/WorldRows.gd`, where P262's `insert_row` lands. No rule changes, hash-neutral, no re-pin | 0 (move) | P232 |
+| P232c | GD | (2026-11-12, P26br) Pure move: the bodies of `add_unit`, `_push_unit_event` and `write_unit_event` from `World.gd` (981 of gdlint's 1000 after P232) into `game/sim/WorldRows.gd`, about 55 lines net. `World` keeps one-line delegates under the names the code and the ADRs call, and P262's `World.insert_row` is such a delegate to `WorldRows`. No rule changes, hash-neutral, no re-pin | 0 (move) | P232 |
 | P233 | GD | Reveal (as amended 2026-11-09, P230, answer 3 B): `FogGrid.reveal`, `Reveal.run` in REMOVE (per player with `reveal_site` set: `index_of` the site, 0 when it is gone, else `reveal` 1 when it is online and the player is not low on power, 2 when paused; no row pass), the `prepare()` stamp on `reveal == 1` (ADR 0036 §11), SUPERWEAPON on a REVEAL building dropped while `reveal_site` is set or while its owner is on low power (fix 1, 2026-11-09), strike kind 3 in `Strike.apply_superweapon` with the REVEAL branch before the pending-rupture test (`Strike.gd:112`) and a test that fires a sweep while a rupture is pending, the STRIKE record of kind 3 (`[5, id, 0, 0, 3, owner, 0, 0]`), `PlayerView.reveal_state`; pause and resume cases (blackout, low power), a rebuild test across a pause; a FOG lockstep case | 250 | P232 |
 | P234 | GD | Space centre data, both factions (`.tres`, rosters, requires Radar, one charge of 2,700 and no sweep timer: `strike_ticks` 0, answer 3 B, dated 2026-11-09); name width test; HOW_TO_PLAY Superweapon rows (Teach) | 80 | P233, P230 |
 | P235 | TUX | Reveal HUD: the strike button's no-aim variant (tap, check mark), the warning badge and line, the fog fade (`reveal_fade_ms`); six layout sizes. (2026-11-09, answer 3 B) The enemy's indicator badge from `reveal_state`: lit while on, dimmed with a pause mark while paused, gone at 0, placed in ADR 0025's corners; the owner's strike button shows on or paused; the fade runs both ways on a pause and a resume. (Fix 1, 2026-11-09) On low power the satellite's strike button dims and shows the reason (the low-power glyph), because the sim refuses the SUPERWEAPON then | 300 | P234 |
@@ -185,12 +185,12 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P239 | GD | Anti-air data, both factions (building, weapon mask 6, requires Barracks); HOW_TO_PLAY Combat rows | 80 | P238, P230 |
 | P239b | ART | Anti-air models, both factions (turret head, 16 directions) | art | P237 |
 | P240 | GD | Air movement: SEPARATION same-layer test (twin and kernel, reading P232's `type_layer_bit`), INTEGRATE and FLOW lockstep cases with aircraft, `ProductionSpawn` spawn over a pad, `Buildings` ground planes only (checked) | 200 (C++ ~40) | P232 |
-| P241 | GD | Airfield rules: the FLIGHT cap at QUEUE, spawn over a pad, home and re-home, `air_rows`, ammo in `Combat.fire`, `Air.run` return and reload. Split trigger (over ~400): P241c takes `Air.run`'s return and reload | 350 | P238, P240 |
+| P241 | GD | Airfield rules: the FLIGHT cap at QUEUE, spawn over a pad, home and re-home, `air_rows`, ammo in `Combat.fire`, `Air.run` return and reload. Split trigger (over ~400): P241c takes `Air.run`'s return and reload | 350 | P238, P240; P232c (2026-11-12, P26br) |
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
 | P242 | GD | Airfield, fighter and bomber data, both factions (`.tres`, weapons, rosters); HOW_TO_PLAY Units, Orders and Buildings rows (Teach: go home, reload) | 120 | P241b, P230 |
 | P243 | GD | View: `AirLayer` z 20, shadows z 2, `fly_px`, bob, death fall, enemy flyers only where seen, page 2; draw-call guard +2. Split trigger (over ~400): P243b takes the bob and the death fall | 350 | P237, P242 |
 | P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
-| P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow) | art | P237 |
+| P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow) | art | P237; P243 (2026-11-12, P26br: its `page_of` re-key first) |
 | P245b | ART | Airfield models, both factions (pads, damage stages) | art | P237 |
 | P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241 |
 | P247 | GD | Engineering centre data and four UpgradeDefs (per question 5); HOW_TO_PLAY Build menu rows | 100 | P246, P230 |
@@ -207,7 +207,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 ### Part 2, was update 1.2
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
-| P262 | GD + QA | World v7: the passenger table, `carry_mode`, carrier type tables, `World.insert_row` (id order, `rows_version` bump, refusal at `max_rows`), `STATE_FORMAT` 7, one re-pin (exception 24); `KNOWN_FORMATS` gains 7 and the sanitizer cases with it; the check that TARGETING leaves a MOVE row's `order_target` alone (else ADR 0036 §8's BOARD fallback, a TARGETING edit). Split trigger (over ~400): P262b takes `insert_row` | 350 | P232 (2026-11-09: "1.1 shipped" no longer applies; the ground design is reconciled; re-pins in the order 23, 24, 25) |
+| P262 | GD + QA | World v7: the passenger table, `carry_mode`, carrier type tables, `World.insert_row` (id order, `rows_version` bump, refusal at `max_rows`), `STATE_FORMAT` 7, one re-pin (exception 24); `KNOWN_FORMATS` gains 7 and the sanitizer cases with it; the check that TARGETING leaves a MOVE row's `order_target` alone (else ADR 0036 §8's BOARD fallback, a TARGETING edit). Split trigger (over ~400): P262b takes `insert_row` | 350 | P232 (2026-11-09: "1.1 shipped" no longer applies; the ground design is reconciled; re-pins in the order 23, 24, 25); P232c (2026-11-12, P26br) |
 | P263 | GD | `Carry.gd`: LOAD (5), boarding in REMOVE (`hp` 0 with `build_left` = `Carry.BOARDED`, DIED flag 2 at index 6, `count_losses` skips it), passengers in `unit_cap` | 300 | P262 |
 | P263b | GD | UNLOAD (6), unloading in ECONOMY (ring search, `insert_row` refusal keeps the squad aboard, `UNLOADED` event), the carrier's death | 250 | P263 |
 | P264 | GD | Transport and drone squad data, both factions (drone squads `low_flying`, INFANTRY tab, requires the airfield); HOW_TO_PLAY rows (Teach: load and unload) | 120 | P263b, P230 |
@@ -223,7 +223,8 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 - **D (GD data):** P234 after P233, P239 after P238, P242 after P241b, P247 after P246.
 - **V (GD view):** P243 after P237 and P242.
 - **T (TUX):** P235 -> P244 -> P248.
-- **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order.
+- **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order. (2026-11-12, P26br)
+  P245 after P243; P202 (visual polish) before the next of P239b, P245b and P249.
 - **I (AI):** P250 -> P251 and P252.
 - **Q:** P253 and P254, then the lead's P255 and P256.
 - **Critical path for 1.1** (to the last row before the gate; 2026-11-12, P26bq: P271 merges
@@ -251,9 +252,9 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 ## Size estimate
 | | Rows | Production lines | C++ | Generated models |
 | --- | --- | --- | --- | --- |
-| 1.1 | 30 (P230-P256, plus P239b, P241b and P245b; the b and c parts only on their split triggers) | about 5,190 (the sum of the rows) | about 180 | 12 (4 buildings x 2 factions + 2 aircraft x 2) |
+| 1.1 | 31 (P230-P256, plus P239b, P241b and P245b, and P232c (2026-11-12, P26br); the other b and c parts only on their split triggers) | about 5,190 (the sum of the rows) | about 180 | 12 (4 buildings x 2 factions + 2 aircraft x 2) |
 | 1.2 | 8 (P262-P268 with P263b) | about 1,670 (the sum of the rows) | 0 (one TARGETING edit if P262's check fails) | 4 |
-| Total | 38 | about 6,900 | about 180-250 | 16 |
+| Total | 39 | about 6,900 | about 180-250 | 16 |
 
 Split triggers sit on every row of 350 or more: P232, P241, P243, P244, P246, P250, P251, P262 and
 P265. A split adds a row, not lines.
@@ -303,7 +304,8 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 1. **Start.** After the Phase 4 gate, P231 (defs), P237 (the page probe) and ADR 0037's wave 1
    (P271, P273, P274) may start at once. Wave 1 needs no air row.
 2. **Art.** P237 merges before any art row of either plan: P236, P239b, P245, P245b, P249, P266,
-   P279, P280, P291 and P292.
+   P279, P280, P291 and P292. (2026-11-12, P26br) P245 also waits for P243's `page_of` re-key, and
+   P202 merges before the next of P239b, P245b and P249 (ADR 0036 §15's P236 note).
 3. **Layouts and re-pins, in this order:** P232 (format 6, exception 23), then P262 (format 7,
    exception 24), then P286 (format 7, exception 25). No other row re-pins a golden.
 4. **The repair role.** P231 declares it on `UnitDef` with `repair_slots` and `repair_seek_milli`
@@ -314,6 +316,7 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
    first; ADR 0037 §2's option of the ground carrier first is not taken.
 6. **The DIED-flag readers.** The first of P272 and P265 to land turns `EffectsLayer._add_death`
    and `BuildingCollapse.cancelled` into a match on the flag; P272 (wave 1) is expected first.
+   (2026-11-12, P26br) P272b, P272's view half, does it.
 7. **`Targeting.gd` and `world_access.h`.** P232 declares the X-list rows, P238 adds the layer
    test, then P298 adds `stance`.
 8. **`CommandBar.gd`.** P272, P244, P282, P265, P294 and P299, one open at a time, in the order
@@ -490,7 +493,7 @@ Note (2026-11-12, P26bq, the lead; from the reviews of the first Phase 4b rows):
   note: no pragma; a pure-move split comes before a 21st public method; own-only reads stay
   getters.
 
-Note (2026-11-12, P26br, the lead; from the reviews of P232, P236 and their mutation run):
+Note (2026-11-12, P26br, the lead; from the reviews of P232 and P236 and P232's mutation run):
 - **P232 as built.** The list shapes (`PAD_ARRAYS`, `UPGRADE_ARRAYS`, `UPGRADES_MAX` 30) are in
   ADR 0036 §3's P232 note.
   - RALLY is bounded at `Tab.VEHICLES`: a RALLY on FLIGHT or RESEARCH is dropped and counted.
@@ -505,10 +508,10 @@ Note (2026-11-12, P26br, the lead; from the reviews of P232, P236 and their muta
     whole, under the size limit outside its pure moves.
 - **`World.gd`'s budget.** 981 of gdlint's 1000 lines after P232, and the pragma is banned
   (`test_world_split`). P233 (about 5), P241 (about 4) and P246 (about 8) fit; P262 (about 50)
-  does not. Hence row P232c above.
+  does not. Hence row P232c above, which P241 and P262 now depend on.
 - **P238, P240, P250.**
   - `PlayerView` has no mirror of `World.Layer`, and the AI may not name `World`. P238 or P240 adds
-    one, within the `PlayerView` rule of the P26bq note above.
+    one (P238 first, as the first reader), within the `PlayerView` rule of the P26bq note above.
   - A hand-built AIR type in the test `GridWorld` keeps `type_layer_bit` GROUND, because
     `GridWorld` sets `type_move_class` after `prepare()`. A test that builds an aircraft by hand
     sets the bit itself.
@@ -519,10 +522,12 @@ Note (2026-11-12, P26br, the lead; from the reviews of P232, P236 and their muta
     count moves.
   - Add a test that each one's art footprint equals its data footprint (`test_fossil_buildings`
     covers only its eight).
-- **P235 and P252.** The sweep effect is not a rocket launch (ADR 0036 §16's P26br note). Both
-  models carry a `launch` emitter. A strike effect keyed to `launch` does not fire for the Reveal,
-  which has no aim.
-- **P245** merges after P243 has re-keyed `page_of` (ADR 0036 §15's P236 note). This adds to step 2
-  of "Merge order of the shared rows".
-- **Atlas.** P236 cost 334 rows on page 1's cross-faction page, and page 1 has 591 left. The
-  forecast and the lever the lead puts to Michael before P279 are in ADR 0036 §15's P236 note.
+- **P235.** The Reveal's look is not a rocket launch (ADR 0036 §16's P26br note), although both
+  models carry a `launch` emitter. Today a kind-3 strike plays no strike effect at all
+  (`StrikeFx._add_strike` returns for any kind but 1 and 2); P235 owns its look.
+- **P245** merges after P243 has re-keyed `page_of` (ADR 0036 §15's P236 note; its Depends and step
+  2 of "Merge order of the shared rows" say so).
+- **Atlas.** P236 cost 334 rows on page 1's cross-faction page, and page 1 has 591 left. If the
+  next buildings cost the same, page 1 fills at the second or third of P239b, P245b and P249, even
+  at 3,840. So P202 merges before the next of them, and the lead puts the next lever to Michael
+  before that row starts (ADR 0036 §15's P236 note).

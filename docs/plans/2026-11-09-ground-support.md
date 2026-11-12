@@ -135,7 +135,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | --- | --- | --- | --- | --- |
 | P271 | GD | `SELL` 17 and `MEND` 18: factories, `Sim` branches, `SOLD` -3 and `remove_dead`'s flag mapping (-1 -> 1, -2 -> 2, -3 -> 3), `Outcome` skips `SOLD`, `Mend.gd` (staggered, priced, stops at full), `RulesDef` fields (inert defaults), `PlayerView.row_mend`; state-hash-neutral test | 200 | P270b, the Phase 4 gate |
 | P271b | GD | (2026-11-12, P26bq) Data: ADR 0037's starting values in `data/rules.tres`, `sell_refund_percent` 50, `mend_hp` 10, `mend_period_ticks` 15, `mend_cost_percent` 30 (P271 ships them inert at 0/0/15/30); the data test's pins follow. Moves no state hash; starts `balance.yml` | data | P271 |
-| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) | 270 | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes); P271b for the phone step (2026-11-12, P26bq) |
+| P272 | TUX | Building orders: **Mend** toggle and two-tap **Sell** with "+N", the question card for the last producer; wrench glyph for own buildings only (a view test with an enemy switch on); `EffectsLayer` and `BuildingCollapse` match the DIED flag (1 nothing, 3 the pack-up: no flash, no crater); `sell_confirm_ms` and (fix 1, 2026-11-09) `sell_arm_min_ms`, the fixed-width Sell button; HOW_TO_PLAY Buildings rows (Teach) (2026-11-12, P26br: the wrench, the DIED-flag readers and their view tests moved to P272b) | 270 (about 450 as built, 2026-11-12) | P271, P273 (2026-11-09: the skill text is accepted and applied, Michael's yes); P271b for the phone step (2026-11-12, P26bq); P272b (2026-11-12, P26br) |
 | P272b | TUX | (2026-11-12, P26br) The view half of P272, split for size: the map wrench over own mending buildings (`HealthBarLayer`), the DIED-flag readers (`EffectsLayer`, `BuildingCollapse`: 1 and 2 nothing, 3 the pack-up) and the quiet pack-up (`CollapseFx`: dust only) | 115 | P271 |
 | P273 | ART | Glyphs `glyph_repair` (wrench), `glyph_sell` and the seated map copy `glyph_repair_map`; STYLE.md glyph rows | SVG | P270b |
 | P274 | AI | `AiEconomy` mends below `mend_below_percent` above `mend_floor` (Normal, Hard) | 80 | P271 |
@@ -194,14 +194,14 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | --- | --- |
 | S | `game/sim/{Command,Sim,World,WorldLoad,WorldHash,Buildings,Outcome,Strike,Targeting,PlayerView,Mend,Repair,Mines,MineMemory,Carry}.gd`, `game/sim/defs/*.gd`, `game/core/MatchSnapshot.gd`, `native/sim_kernels/src/core/targeting.cpp`, `native/sim_kernels/src/bind/{kernel_targeting.cpp,world_access.h}` |
 | D | `data/units/*`, `data/weapons/*`, `data/factions/*`, `data/rules.tres` |
-| T | `game/view/{EffectsLayer,BuildingCollapse,RepairFx,MineLayer}.gd`, the glyph pass file, `scenes/main.tscn` (the `MineLayer` node), `game/ui/CommandBar.gd`, `game/input/{OrderRules,MineAim,PlayerController}.gd`, `data/input_settings.tres` |
+| T | `game/view/{EffectsLayer,BuildingCollapse,RepairFx,MineLayer,HealthBarLayer,CollapseFx}.gd` (the last two: P272b, 2026-11-12, P26br), the glyph pass file, `scenes/main.tscn` (the `MineLayer` node), `game/ui/CommandBar.gd`, `game/input/{OrderRules,MineAim,PlayerController}.gd`, `data/input_settings.tres` |
 | A | `tools/artgen/**`, `assets/art/**`, STYLE.md own sections |
 | I | `game/ai/**`, `data/ai/**` |
 
 Shared with ADR 0036's rows: `Carry.gd` (P262-P263b first, then P289), `Removal.gd` (2026-11-12,
 P26bq: P271, then P263, then P289), `World.gd` (P232, P262,
 then P286), `world_access.h` (P232, then P298), `Targeting.gd` (P238, then P298),
-`EffectsLayer.gd` and `BuildingCollapse.gd` (P265 and P272: the first makes the flag a match),
+`EffectsLayer.gd` and `BuildingCollapse.gd` (P265 and P272, since 2026-11-12 P272b: the first makes the flag a match),
 `CommandBar.gd` (P244, P265, P272, P282, P294, P299), `PlayerView.gd`. The lead keeps one open
 row per file. The order is in "Merge order of the shared rows" below (2026-11-09).
 
@@ -209,8 +209,9 @@ row per file. The order is in "Merge order of the shared rows" below (2026-11-09
 - **P271:** ADR 0037 §3 and §4 cases pass; the state hash of the perf arena and `TICK_0_SEED_1`
   unchanged; no allocation in `Mend.run` (the existing guard).
 - **P272:** a resting thumb never sells; the second tap after `sell_confirm_ms` re-arms; the last
-  producer asks the question card; an enemy's mend switch draws no wrench; six sizes; phone: sell
-  a Turbine Hall at half health, credits rise by about a quarter of its price.
+  producer asks the question card; an enemy's mend switch draws no wrench (P272b, 2026-11-12,
+  P26br); six sizes; phone: sell a Turbine Hall at half health, credits rise by about a quarter of
+  its price.
 - **P276/P277:** the shared contract test passes with ADR 0036's airfield cases; `Air.run` and
   `Repair.run` never serve one row; reach covers every ring point (data test); `REPAIR_CHECKS`
   at most `ceil(R / period) * rows` per tick.
@@ -235,10 +236,10 @@ row per file. The order is in "Merge order of the shared rows" below (2026-11-09
 ## Size estimate (all before launch)
 | Wave | Rows | Production lines | C++ | Models |
 | --- | --- | --- | --- | --- |
-| 1 | 6 (P271-P275, P271b) | about 550 | 0 | 0 (3 glyphs) |
+| 1 | 7 (P271-P275, P271b, P272b) | about 850 (as built, 2026-11-12, P26br) | 0 | 0 (3 glyphs) |
 | 2 | 9 (P276-P284) | about 840 | 0 | 4 |
 | 3 | 17 (P285-P300, P295b) | about 2,100 | about 120 | 4 (+ marks, 2 glyphs) |
-| Total | 32 | about 3,490 | about 120 | 8 |
+| Total | 33 | about 3,790 | about 120 | 8 |
 
 Tests come on top, about 1.5 times the production lines, as in Phases 3 and 4.
 
@@ -274,7 +275,8 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
 1. **Start.** After the Phase 4 gate, P231 (defs), P237 (the page probe) and ADR 0037's wave 1
    (P271, P273, P274) may start at once. Wave 1 needs no air row.
 2. **Art.** P237 merges before any art row of either plan: P236, P239b, P245, P245b, P249, P266,
-   P279, P280, P291 and P292.
+   P279, P280, P291 and P292. (2026-11-12, P26br) P245 also waits for P243's `page_of` re-key, and
+   P202 merges before the next of P239b, P245b and P249 (ADR 0036 §15's P236 note).
 3. **Layouts and re-pins, in this order:** P232 (format 6, exception 23), then P262 (format 7,
    exception 24), then P286 (format 7, exception 25). No other row re-pins a golden.
 4. **The repair role.** P231 declares it on `UnitDef` with `repair_slots` and `repair_seek_milli`
@@ -285,6 +287,7 @@ and of ADR 0037 §2 with one order. The lead keeps one open row per shared file.
    first; ADR 0037 §2's option of the ground carrier first is not taken.
 6. **The DIED-flag readers.** The first of P272 and P265 to land turns `EffectsLayer._add_death`
    and `BuildingCollapse.cancelled` into a match on the flag; P272 (wave 1) is expected first.
+   (2026-11-12, P26br) P272b, P272's view half, does it.
 7. **`Targeting.gd` and `world_access.h`.** P232 declares the X-list rows, P238 adds the layer
    test, then P298 adds `stance`.
 8. **`CommandBar.gd`.** P272, P244, P282, P265, P294 and P299, one open at a time, in the order
@@ -333,7 +336,7 @@ Note (2026-11-12, P26br, the lead; from the reviews of P272, P272b and P274):
 - **P274 as built** (the dated notes in ADR 0037 §4 and ADR 0030 §6, in P274's PR):
   - The AI only switches MEND on, after `AiProduction`.
   - It does so when credits, after the think's spending and the economy's hold, are strictly above
-    `mend_floor`; the Headquarters mends free.
+    `mend_floor`, and it switches the Headquarters on at any credits (it mends free, ADR 0037 §4).
   - Easy never mends. Normal is 50 % and 400, Hard 70 % and 250 until P275 tunes them.
   - The frozen `perf_ai` levels stay inert (script defaults 0), so the Perf AI card times the guard
-    only. The live path is first measured in P275.
+    only. No card times the live path yet; P275's balance run is the first that plays it.
