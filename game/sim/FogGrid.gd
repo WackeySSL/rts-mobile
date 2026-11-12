@@ -148,6 +148,48 @@ func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 		version[block] += 1
 
 
+## Adds `delta` (+1 stamps, -1 unstamps) to the visible count of every cell of the player's block:
+## the map reveal (ADR 0036 section 11, P233), the whole-map twin of `stamp`. A cell left visible
+## turns explored, a flip is a count crossing 0 and is listed and counted as `stamp` does it.
+## GDScript only: the FOG kernel adds and removes discs to the same counts, so it needs no
+## knowledge of it.
+## `player` must be valid. It allocates nothing.
+func reveal(player: int, delta: int) -> void:
+	var block: int = player - 1
+	var base: int = block * cells
+	var counts: PackedInt32Array = visible
+	var seen: PackedByteArray = explored
+	var marks: PackedByteArray = listed
+	var list: PackedInt32Array = dirty
+	var list_at: int = block * dirty_capacity
+	var capacity: int = dirty_capacity
+	var used: int = dirty_count[block]
+	var flipped: bool = false
+	var overflowed: bool = false
+	for at: int in cells:
+		var before: int = counts[base + at]
+		var after: int = before + delta
+		counts[base + at] = after
+		if after > 0:
+			seen[base + at] = 1
+		if (before > 0) == (after > 0):
+			continue
+		flipped = true
+		if marks[base + at] != 0:
+			continue
+		if used < capacity:
+			list[list_at + used] = at
+			used += 1
+			marks[base + at] = 1
+		else:
+			overflowed = true
+	dirty_count[block] = used
+	if overflowed:
+		dirty_full[block] = 1
+	if flipped:
+		version[block] += 1
+
+
 func is_visible(player: int, cell: int) -> bool:
 	return visible[(player - 1) * cells + cell] > 0
 

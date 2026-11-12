@@ -18,7 +18,8 @@ const MILLI_PER_TILE: int = 1000
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
 ## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
-## dead rows leave and their vision ends (REMOVE), the players whose turn it is move
+## dead rows leave and their vision ends, then a space centre's sweep follows its
+## building (REMOVE: `Reveal.run`, P233), the players whose turn it is move
 ## their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin` emptied their
 ## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Mend.run`), the queues
 ## advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the
@@ -78,6 +79,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
 	world.remove_dead()
+	Reveal.run(world)  # The space centre's sweep follows its building (ADR 0036 section 11).
 	if probe != null:
 		probe.mark(SimProbe.Phase.REMOVE)
 	FogUpdate.run(world)

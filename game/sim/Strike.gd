@@ -22,15 +22,23 @@ extends RefCounted
 ## command once the match has ended, are dropped before it). Valid when all of these hold, else
 ## dropped and counted:
 ## - the payload is empty;
-## - the player has no rupture pending (its `strike_tick` is 0): one pending strike per player is
-##   all the state there is, so a further SUPERWEAPON of any kind waits for the landing (lead
-##   decision of 2026-10-26, an ADR 0023 section 10 note);
-## - `target_id` is a row of the player's own whose type is a strike building (kind RUPTURE or
-##   BLACKOUT);
+## - `target_id` is a row of the player's own whose type is a strike building (kind RUPTURE,
+##   BLACKOUT or REVEAL);
+## - for a RUPTURE or a BLACKOUT, the player has no rupture pending (its `strike_tick` is 0): one
+##   pending strike per player is all the state there is, so a further SUPERWEAPON of those kinds
+##   waits for the landing (lead decision of 2026-10-26, an ADR 0023 section 10 note). A REVEAL
+##   building is neither blocked by a pending rupture nor blocks one (ADR 0036 section 11);
 ## - it has charged (the stamp is `ready_tick` or more) and is not offline (`offline_until` is
 ##   not above the stamp: a blacked-out building is back at that stamp), and is complete
 ##   (`build_left` is 0, not above and not -1: a site charges from its completion,
 ##   `Production._build_sites`).
+## A REVEAL building (the space centre, ADR 0036 section 11) is also dropped while the player's
+## `reveal_site` is set (one sweep per player; a second space centre is a spare) and while the
+## player is on low power (`Power.is_low`, as `Reveal.run` reads it). A valid one sets
+## `reveal_site` to the building's id and `reveal` to 1, keeps `ready_tick` (one charge, no
+## recharge) and writes `[STRIKE, building id, 0, 0, 3, owner, 0, 0]`: no point, no landing.
+## `Reveal.run` stamps it in REMOVE.
+##
 ## A valid command clamps its point to the map as RALLY clamps its point (so that the squared
 ## distances stay small and the point fits its int32 column) and sets the building's `ready_tick`
 ## to stamp + `type_charge_ticks`. A RUPTURE then writes the player's pending strike,
@@ -83,7 +91,7 @@ extends RefCounted
 ## number from the type and weapon tables. No kernel mirrors it (ADR 0023 section 10).
 
 ## The strike kinds, as `type_strike_kind` and BuildingDef.strike_kind hold them.
-enum Kind { NONE = 0, RUPTURE = 1, BLACKOUT = 2 }
+enum Kind { NONE = 0, RUPTURE = 1, BLACKOUT = 2, REVEAL = 3 }
 
 
 ## Starts the charge of the new building row `row`: `ready_tick` is the stamp plus its type's
@@ -109,7 +117,7 @@ static func age_charge(world: World, row: int, ticks: int) -> void:
 static func apply_superweapon(world: World, command: Command) -> bool:
 	var player: int = command.player_id
 	var pending: PackedInt32Array = world.strike_tick
-	if not command.payload.is_empty() or player >= pending.size() or pending[player] != 0:
+	if not command.payload.is_empty() or player >= pending.size():
 		return false
 	var row: int = world.index_of(command.target_id)
 	if row < 0 or world.owner[row] != player:
@@ -123,7 +131,9 @@ static func apply_superweapon(world: World, command: Command) -> bool:
 	if world.build_left[row] != 0:
 		return false  # Not complete (ADR 0026): a site's ready_tick is 0; a cancelled one has -1.
 	var kind: int = world.type_strike_kind[type]
-	if kind != Kind.RUPTURE and kind != Kind.BLACKOUT:
+	if kind == Kind.REVEAL:  # Before the pending-rupture test: a sweep is never blocked by one.
+		return _sweep(world, player, row)
+	if (kind != Kind.RUPTURE and kind != Kind.BLACKOUT) or pending[player] != 0:
 		return false
 	var point_x: int = clampi(command.target_x, 0, maxi(world.map_w - 1, 0))
 	var point_y: int = clampi(command.target_y, 0, maxi(world.map_h - 1, 0))
@@ -137,6 +147,19 @@ static func apply_superweapon(world: World, command: Command) -> bool:
 		_black_out(world, player, type, point_x, point_y)
 	world.ready_tick[row] = stamp + world.type_charge_ticks[type]
 	_push_event(world, row, point_x, point_y, kind, landing)
+	return true
+
+
+## The sweep of the REVEAL building row `row` (see the header): dropped while a sweep stands or the
+## player is on low power, else it records the site and turns the sweep on.
+static func _sweep(world: World, player: int, row: int) -> bool:
+	if player >= world.reveal_site.size() or player >= world.reveal.size():
+		return false
+	if world.reveal_site[player] != 0 or Power.is_low(world, player):
+		return false
+	world.reveal_site[player] = world.unit_id[row]
+	world.reveal[player] = 1
+	_push_event(world, row, 0, 0, Kind.REVEAL, 0)
 	return true
 
 

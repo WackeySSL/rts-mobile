@@ -12,7 +12,9 @@ extends RefCounted
 ## World.type_sight for the row's type, and World.TYPE_PAD_SIGHT for a type with no entry (the pad
 ## mask). A row with no stamped cell, and a row of the neutral player or past player_count, has no
 ## disc. A grid whose sides do not make its cells has no fog (the phase does nothing there), so a
-## caller keeps this out of such a World. Pure: it reads the World and writes nothing. Not a test
+## caller keeps this out of such a World. A player whose `reveal` is 1 (a map sweep that is on, ADR
+## 0036 section 11, P233) adds 1 to every cell of its block, a paused or ended sweep adds nothing.
+## Pure: it reads the World and writes nothing. Not a test
 ## suite.
 
 const TILE: int = World.MILLI_PER_TILE
@@ -46,6 +48,10 @@ static func rebuild(world: World) -> PackedInt32Array:
 				var dx: int = (x - centre_x) * TILE
 				if dx * dx + dy * dy <= squared:
 					counts[base + y * cols + x] += 1
+	for player: int in range(1, mini(world.reveal.size(), fog.player_count + 1)):
+		if world.reveal[player] == 1:
+			for at: int in fog.cells:
+				counts[(player - 1) * fog.cells + at] += 1
 	return counts
 
 

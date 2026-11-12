@@ -432,6 +432,7 @@ static func size_match_state(world: World) -> void:
 	world.strike_tick.resize(players)
 	world.reveal_site.resize(players)
 	world.reveal.resize(players)
+	world.reveal_stamped.resize(players)
 	world.upgrades.resize(players)
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
@@ -516,8 +517,8 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 ## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
 ## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
 ## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
-## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
-## `stats`. World.prepare calls it.
+## includes it (ADR 0010 section 1), then the sweep of each player whose `reveal` is 1 (P233). No
+## map, no cells: nothing is stamped. It counts nothing in `stats`. World.prepare calls it.
 static func stamp_fog(world: World) -> void:
 	var fog: FogGrid = world.fog
 	for sight: int in world.type_sight:
@@ -535,6 +536,12 @@ static func stamp_fog(world: World) -> void:
 			var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 			fog.stamp(player, cell, mini(types[row], pad), 1)
 			stamped[row] = cell
+	# A sweep that stands (ADR 0036 section 11): its +1 is derived from the hashed `reveal`.
+	var sweeps: PackedInt32Array = world.reveal
+	for player: int in range(1, mini(sweeps.size(), world.player_count + 1)):
+		if sweeps[player] == 1 and world.reveal_stamped[player] == 0:
+			fog.reveal(player, 1)
+			world.reveal_stamped[player] = 1
 
 
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
