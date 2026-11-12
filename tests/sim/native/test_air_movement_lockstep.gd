@@ -19,14 +19,25 @@ const BuildingWorlds: GDScript = preload("res://tests/sim/support/building_world
 const GridWorld: GDScript = preload("res://tests/sim/support/grid_world.gd")
 const COLS: int = 30
 const ROWS: int = 16
-## The wall of rock: columns 11 to 13, rows 0 to 12 (the gap is rows 13 to 15).
+## The wall of rock: columns 11 to 13, rows 0 to 12 (the gap is rows 13 to 15), and the water.
 const WALL_FIRST: int = 11
 const WALL_LAST: int = 13
+## A column of 'w' (open to foot and wheeled rows, closed to the tracked ones: the stand-in for
+## water) beside the rock, in the same rows. The gun is the tracked row; the other walkers are foot.
+const WATER: int = 14
 const WALL_ROWS: int = 13
 const BLOCK: int = 9
+## Floors, about two thirds of the twin's tally, measured: the crossing (400 ticks) skipped 5,678
+## rows of another layer, had 1,862 overlaps and 84 pairs of a mover and an idle row; the scatter
+## run
+## (60 ticks after the first phase) 2,013 overlaps and 13,792 skipped rows.
+const FLOOR_CROSSING_OTHER: int = 3700
+const FLOOR_CROSSING_HITS: int = 1200
+const FLOOR_CROSSING_MIXED: int = 50
+const FLOOR_SCATTER_HITS: int = 1300
+const FLOOR_SCATTER_OTHER: int = 9000
 const MOVE_TICKS: int = 400
 const DUEL_TICKS: int = 200
-const NO_NEXT: int = -2
 
 
 ## The roster, a 2 x 2 building of player 2 at tiles (18, 6) and the wall. `rifle_range` is the
@@ -35,6 +46,7 @@ const NO_NEXT: int = -2
 func _world(rifle_range: int = 4000, drone_armed: bool = true) -> World:
 	var units: Array[UnitDef] = Layers.roster()
 	units[Layers.RIFLE].weapon.range = rifle_range
+	units[Layers.GUN].move_class = World.MoveClass.TRACKED
 	if not drone_armed:
 		units[Layers.DRONE].weapon = null
 		units[Layers.DRONE].max_hp = 100000
@@ -44,6 +56,8 @@ func _world(rifle_range: int = 4000, drone_armed: bool = true) -> World:
 	for column: int in range(WALL_FIRST, WALL_LAST + 1):
 		for line: int in WALL_ROWS:
 			world.set_terrain(line * COLS + column, GridWorld.GROUND.find("#"))
+	for line: int in WALL_ROWS:
+		world.set_terrain(line * COLS + WATER, GridWorld.GROUND.find("w"))
 	world.terrain_buildable = PackedByteArray(BuildingWorlds.BUILDABLE)
 	world.add_building(2, BLOCK, 18, 6)
 	return world
@@ -76,10 +90,10 @@ func _pile() -> World:
 
 ## One rifle (ground, mask 5) of player 1 at tile (4, 6) and one drone (LOW_AIR) of player 2
 ## hovering at (12500, 6500), over the rock of the wall; the rifle is ordered to attack it.
-func _duel(rifle_range: int) -> World:
+func _duel(rifle_range: int, drone_at: Vector2i = Vector2i(12500, 6500)) -> World:
 	var world: World = _world(rifle_range, false)
 	world.add_unit(1, Layers.RIFLE, 4500, 6500)
-	world.add_unit(2, Layers.DRONE, 12500, 6500)
+	world.add_unit(2, Layers.DRONE, drone_at.x, drone_at.y)
 	return world
 
 
@@ -155,11 +169,15 @@ func test_separation_pairs_only_rows_of_one_layer() -> void:
 		assert_int(world.push_y[lone_jet]).is_equal(0)
 		var found: String = rig.run(60, _scatter)
 		assert_str(found).override_failure_message("mask %d" % mask).is_empty()
+		assert_int(rig.tally()[&"hits"]).is_greater(FLOOR_SCATTER_HITS)
+		assert_int(rig.tally()[&"other_layer"]).is_greater(FLOOR_SCATTER_OTHER)
 
 
-## Aircraft over a wall of rock and a footprint, the ground rows round it: the same ten orders
-## on both sides. The twin's aircraft never ask for a flow field and reach the goal; the lockstep
-## holds the kernels to every position, goal, mode, field slot and the flow cache after each tick.
+## Aircraft over rock, water and a footprint, the ground rows round them: the same orders on both
+## sides. The twin's aircraft never ask for a flow field and reach the goal, while each ground row
+## has one at some tick and never stands on the wall; the lockstep holds the kernels to every
+## position, goal, mode, field slot and the flow cache after each tick. The floors are about two
+## thirds of the twin's tally (see the figures at the assertions).
 func test_aircraft_cross_rock_and_a_footprint_in_a_straight_line() -> void:
 	for mask: int in [Rig.WITH_INTEGRATE, Rig.ALL]:
 		var rig: RefCounted = Rig.new().setup(_crossing, mask)
@@ -173,10 +191,22 @@ func test_aircraft_cross_rock_and_a_footprint_in_a_straight_line() -> void:
 		var lead: int = flyers[0]
 		var crossed_rock: bool = false
 		var crossed_footprint: bool = false
+		var asked: Dictionary[int, bool] = {}
 		for _tick: int in MOVE_TICKS:
 			assert_str(rig.step(_send_all)).is_empty()
 			for row: int in flyers:
 				assert_int(world.field[row]).override_failure_message("flyer %d" % row).is_equal(-1)
+			for row: int in walkers:
+				var on_x: int = world.pos_x[row] / World.MILLI_PER_TILE
+				var on_y: int = world.pos_y[row] / World.MILLI_PER_TILE
+				var closed_to: int = WATER if world.type_index[row] == Layers.GUN else WALL_LAST
+				var on_wall: bool = on_x >= WALL_FIRST and on_x <= closed_to and on_y < WALL_ROWS
+				(
+					assert_bool(on_wall)
+					. override_failure_message("walker %d on the wall" % row)
+					. is_false()
+				)
+				asked[row] = asked.get(row, false) or world.field[row] >= 0
 			var tile_x: int = world.pos_x[lead] / World.MILLI_PER_TILE
 			var tile_y: int = world.pos_y[lead] / World.MILLI_PER_TILE
 			crossed_rock = crossed_rock or (tile_x == 12 and tile_y == 6)
@@ -186,20 +216,46 @@ func test_aircraft_cross_rock_and_a_footprint_in_a_straight_line() -> void:
 		for row: int in flyers:
 			assert_int(world.order[row]).is_equal(World.Order.IDLE)
 			assert_int(absi(world.pos_x[row] - 26500)).is_less(2000)
-		# The ground rows walked round the wall by the gap: they stand east of it.
+		# The ground rows walked round the wall by the gap, by a flow field: they stand east of it.
 		for row: int in walkers:
+			(
+				assert_bool(asked[row])
+				. override_failure_message("walker %d had no field" % row)
+				. is_true()
+			)
 			assert_int(world.pos_x[row]).is_greater((WALL_LAST + 1) * World.MILLI_PER_TILE)
+		var tally: Dictionary[StringName, int] = rig.tally()
+		assert_int(tally[&"other_layer"]).is_greater(FLOOR_CROSSING_OTHER)
+		assert_int(tally[&"hits"]).is_greater(FLOOR_CROSSING_HITS)
+		assert_int(tally[&"mixed"]).is_greater(FLOOR_CROSSING_MIXED)
 
 
-## A ground rifle ordered to attack a drone that hovers over the rock. The drone's tile is the
-## goal key and it is blocked for the rifle, so the field names no next step: the rifle holds at
-## the rock (it never enters it), and fires only when the drone is in its range.
-## - A reach of 1500: the rifle stops at the wall, 2,000 and more from the drone, and never fires.
-## - A reach of 2500: it fires and the drone loses hit points.
-## In both the kernels agree with the twin after every tick.
+## A ground rifle ordered to attack a drone that hovers over rock (P238's requirement, ADR 0036
+## section 5). In every case the rifle never enters the wall and keeps its ATTACK order; the
+## kernels agree with the twin after every tick.
+## - The drone over the middle column (12500, 6500): all eight tiles round its own are rock, so the
+##   field reaches no ground west of the wall and the rifle walks straight to the face, then the
+##   slide stops it. A reach of 1500 never gets the drone in range (it stops 1,501 away), 2500 does.
+## - The drone over the first rock column (11400, 6700): the field reaches the tile west of it,
+##   whose next step is the key, blocked for the rifle, so `Movement.NO_NEXT` (twin `_refresh_next`,
+##   kernel the same). A reach of 300 and one of 420 hold at the face and never fire; 430 stops at
+##   the face and fires; 1000 stops for range in tile (10, 6), in range, and fires.
 func test_a_ground_row_locking_a_drone_over_rock_stops_at_the_rock() -> void:
-	for reach: int in [1500, 2500]:
-		var rig: RefCounted = Rig.new().setup(_duel.bind(reach), Rig.ALL)
+	var middle: Vector2i = Vector2i(12500, 6500)
+	var first: Vector2i = Vector2i(11400, 6700)
+	# [reach, where the drone hovers, whether the rifle fires, whether it holds on NO_NEXT]
+	var cases: Array = [
+		[1500, middle, false, true],
+		[2500, middle, true, false],
+		[300, first, false, true],
+		[420, first, false, true],
+		[430, first, true, false],
+		[1000, first, true, false],
+	]
+	for found: Array in cases:
+		var reach: int = found[0]
+		var label: String = "reach %d, drone %s" % [reach, found[1]]
+		var rig: RefCounted = Rig.new().setup(_duel.bind(reach, found[1]), Rig.ALL)
 		assert_array(rig.problems).is_empty()
 		var world: World = rig.worlds[0]
 		var held: bool = false
@@ -207,16 +263,15 @@ func test_a_ground_row_locking_a_drone_over_rock_stops_at_the_rock() -> void:
 		var drone: int = _drone_row(world)
 		var max_hp: int = world.hp[drone]
 		for _tick: int in DUEL_TICKS:
-			(
-				assert_str(rig.step(_attack_drone))
-				. override_failure_message("reach %d" % reach)
-				. is_empty()
-			)
-			held = held or world.nav_next[shooter] == NO_NEXT
+			assert_str(rig.step(_attack_drone)).override_failure_message(label).is_empty()
+			held = held or world.nav_next[shooter] == Movement.NO_NEXT
 			assert_int(world.pos_x[shooter]).is_less(WALL_FIRST * World.MILLI_PER_TILE)
-		assert_int(world.order[shooter]).is_equal(World.Order.ATTACK)
-		if reach == 1500:
-			assert_bool(held).override_failure_message("never held").is_true()
-			assert_int(world.hp[drone]).is_equal(max_hp)
-		else:
-			assert_int(world.hp[drone]).is_less(max_hp)
+		assert_int(world.order[shooter]).override_failure_message(label).is_equal(
+			World.Order.ATTACK
+		)
+		assert_bool(world.hp[drone] < max_hp).override_failure_message(label).is_equal(found[2])
+		if found[3]:
+			assert_bool(held).override_failure_message("never held: " + label).is_true()
+		if found[1] == first and found[0] >= 420:
+			# At the face, in tile (10, 6): the rock of column 11 is the next tile.
+			assert_int(world.pos_x[shooter] / World.MILLI_PER_TILE).is_equal(WALL_FIRST - 1)

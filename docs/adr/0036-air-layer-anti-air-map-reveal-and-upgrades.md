@@ -231,6 +231,20 @@ Note (2026-11-12, P232; named exception 23): the shapes as built. It changes no 
 - **Altitude is view-only.** Range, sight and pick tests use the ground point. The view draws high
   air `fly_px` up and low air `low_fly_px` up (art data), with shadows (§15).
 
+Note (2026-11-12, P240): as built. It changes no accepted text, but it moves a bound.
+- **Skip before the look.** `Separation.run` and its kernel skip a row of another layer before
+  `looked += 1`. That row counts toward neither `separation_scan` nor `SEP_PAIRS`, so a stack of
+  aircraft cannot use up a tank's scan.
+- **The bound.** ADR 0008's "separation is bounded by `separation_scan` x units" and ADR 0011's
+  "separation pairs at most `separation_scan` x units" now cover looks only. The walk past rows of
+  other layers is bounded by the rows of the 3x3 block and is not counted. `perf_air` (P253)
+  measures it, and its counted bound should include the tally probe's `other_layer`. No new
+  `World.Stat`.
+- **Buildings.** `Buildings._write_cost` writes the ground planes only. That was checked, and the
+  crossing case of `tests/sim/native/test_air_movement_lockstep.gd` pins it (a jet flies over a
+  footprint with no flow field).
+- **Pad spawn is P241's** (section 6: home, pad rank, `air_rows`).
+
 ### 5. Target layers
 - **The rule.** A weapon may hit a row when `weapon_targets & type_layer_bit[type]` is not 0.
   Buildings are ground.

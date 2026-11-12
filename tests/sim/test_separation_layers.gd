@@ -15,7 +15,7 @@ const POINT: Vector2i = Vector2i(5000, 4000)
 
 
 ## A map of 20 x 8 tiles with one type per layer bit of `layers` (type k has bit `layers[k]`) and a
-## row of each type on `POINT`, in type order.
+## row of each type on `POINT`, in reverse type order (row r has type n - 1 - r).
 func _stack(layers: Array[int], impl: int) -> World:
 	var kinds: Array = []
 	kinds.resize(layers.size())
@@ -23,6 +23,9 @@ func _stack(layers: Array[int], impl: int) -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(20, 8), kinds)
 	for kind: int in layers.size():
 		world.type_layer_bit[kind] = layers[kind]
+	# The rows are added in reverse type order, so that row r has type n - 1 - r and a slip that
+	# indexes the layer table by row instead of by type changes the answer.
+	for kind: int in range(layers.size() - 1, -1, -1):
 		world.add_unit(1, kind, POINT.x, POINT.y)
 	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.SEPARATION)).is_empty()
 	return world
@@ -69,6 +72,21 @@ func test_two_pairs_on_one_point_push_only_within_their_layer(
 ) -> void:
 	var world: World = _stack([GROUND, AIR, GROUND, AIR], impl)
 	Rig.separate(world)
+	# The rows are jet, tank, jet, tank (the types are added in reverse).
 	assert_array([world.push_x[0], world.push_x[2]]).is_equal([-30, 30])
 	assert_array([world.push_x[1], world.push_x[3]]).is_equal([-30, 30])
+	assert_int(world.stats[World.Stat.SEP_PAIRS]).is_equal(4)
+
+
+## A row of another layer is not looked at, so it uses no scan: with `separation_scan` 1, two tanks
+## and two jets on one point still pair within their layer (each row looks at its one mate, 4
+## looks), where a scan that counted the rows of the other layer would stop every row but the first
+## on a row it skips.
+func test_rows_of_another_layer_use_no_scan(impl: int, _test_parameters := _both()) -> void:
+	var world: World = _stack([AIR, AIR, GROUND, GROUND], impl)
+	world.separation_scan = 1
+	Rig.separate(world)
+	# The rows are tank, tank, jet, jet.
+	assert_array([world.push_x[0], world.push_x[1]]).is_equal([-30, 30])
+	assert_array([world.push_x[2], world.push_x[3]]).is_equal([-30, 30])
 	assert_int(world.stats[World.Stat.SEP_PAIRS]).is_equal(4)

@@ -1,8 +1,9 @@
 class_name Separation
 extends RefCounted
 ## The SEPARATION phase (ADR 0007 section 4 step 7, ADR 0008 section 4): every unit is pushed
-## away from the units it overlaps. `run` reads the positions, the type radii, the intents (a
-## unit is "moving" when its intent is not 0) and `world.sep_grid`, which the caller has rebuilt
+## away from the units of its layer that it overlaps. `run` reads the positions, the type radii, the
+## layer bits (`type_layer_bit`), the intents (a unit is "moving" when its intent is not 0) and
+## `world.sep_grid`, which the caller has rebuilt
 ## from this tick's positions (the GRIDS phase, P39b): `run` never rebuilds a grid. It writes
 ## `push_x` and `push_y` of every row, 0 for a unit with no neighbour in reach, and adds the
 ## units it looked at to `stats[SEP_PAIRS]`. It moves nothing: `Movement.integrate` adds the
@@ -27,8 +28,14 @@ const EQUAL_SHARE: int = 50
 const PAIR_DENOMINATOR: int = 2
 
 ## For each unit in id order, scans the 3x3 cells around its own, row by row, each cell's list
-## in ascending id order. It looks at most at `separation_scan` other units and uses the first
-## `separation_neighbours` that overlap (`d2 < R * R`, `R` the sum of the two radii).
+## in ascending id order. It looks at most at `separation_scan` other units of its layer and uses
+## the first `separation_neighbours` that overlap (`d2 < R * R`, `R` the sum of the two radii). Only
+## rows with the same `type_layer_bit` are neighbours (P240, ADR 0036 section 4): aircraft spread
+## among themselves, drone squads among themselves, and neither pushes tanks. A row of another layer
+## is skipped before it is looked at, so it counts toward neither `separation_scan` nor
+## `SEP_PAIRS`: a stack of aircraft must not use up a tank's scan. The scan cap therefore bounds
+## the looks only; the walk past rows of other layers is bounded by the rows of the 3x3 block and is
+## not counted (perf_air, P253, measures it).
 ##
 ## The pair push is sqrt-free: `(dx, dy) * (R*R - d2) / (2 * R*R)`, truncated toward zero per
 ## axis, with (dx, dy) from the other unit to this one. It is weak when the units nearly
@@ -39,10 +46,7 @@ const PAIR_DENOMINATOR: int = 2
 ## a larger push.
 ##
 ## A pair push is split between the two units: each takes its own share of it while it scans
-## the other. Only rows of the same layer (`type_layer_bit`, P240, ADR 0036 section 4) count as
-## neighbours: aircraft spread among themselves, drone squads among themselves, and neither pushes
-## tanks; a row of another layer is skipped before it is looked at (so it costs no scan and no
-## `SEP_PAIRS`). Units in the same state take 50% each; an idle unit next to a moving one takes
+## the other. Units in the same state take 50% each; an idle unit next to a moving one takes
 ## `separation_idle_share` percent and the moving one the rest, so moving units shoulder through
 ## idle ones. Each share is truncated toward zero. A unit's summed push is clamped to
 ## `separation_push_max` per axis. Each unit sums its own neighbours, so the caps can leave the

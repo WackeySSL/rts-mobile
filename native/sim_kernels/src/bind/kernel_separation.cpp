@@ -2,9 +2,10 @@
 // units it overlaps, in place over the arrays of the World and over the separation grid that the GDScript rebuild wrote this
 // tick (World.sep_grid: the GRIDS phase rebuilds it, this kernel never does). The rules are core/separation.h's, a mirror of
 // Separation.gd; this file borrows the arrays once on entry and adds the units looked at to stats[SEP_PAIRS] on exit.
-// Twin: game/sim/Separation.gd (run). Tests: tests/sim/test_separation*.gd under both implementations and
-// tests/sim/native/test_separation_kernel.gd; lockstep (P39n2): test_separation_lockstep.gd (the arena), _cases.gd (crafted crowds)
-// and _random.gd (seeded random states) in tests/sim/native/. MIT.
+// Twin: game/sim/Separation.gd (run). Tests: tests/sim/test_separation*.gd under both implementations (P240: test_separation_layers.gd,
+// the same-layer test) and tests/sim/native/test_separation_kernel.gd; lockstep (P39n2): test_separation_lockstep.gd (the arena),
+// _cases.gd (crafted crowds) and _random.gd (seeded random states) in tests/sim/native/, and (P240) test_air_movement_lockstep.gd
+// there (stacked aircraft, drone squads and tanks). MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
