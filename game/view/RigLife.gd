@@ -127,8 +127,9 @@ class Idle:
 ## The pose a squad rig's Hull shows (P142): one of the POSE_ constants, the base of the sheet part
 ## for the hull's direction (`WorldSort.base_of`) and the frame within it, so a frame change is a
 ## table read. `dress` fills what the sheet says, once per dressing: the Hull's offset in each pose
-## (the poses' anchors differ by a pixel or two, and `show_base` writes only the region), the frames
-## of each and the travel that one walk frame takes. `quarter` 0 means a rig with no poses.
+## (the poses' anchors differ by a pixel or two, and `show_base` writes the region, not the
+## offset), the frames of each and the travel that one walk frame takes. `quarter` 0 means a rig
+## with no poses.
 class Pose:
 	extends RefCounted
 

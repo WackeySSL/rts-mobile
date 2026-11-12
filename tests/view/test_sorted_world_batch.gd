@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## `Marker`, the dev fallback of a type with no art (every real type has art), which the walk skips.
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
+const SortedTextures: GDScript = preload("res://tests/view/support/sorted_textures.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 ## A squad, a tank and a tanker of each faction, with their owner (player 1 fossil, 2 renew).
 const UNITS: Array[Array] = [
@@ -60,7 +61,7 @@ func test_everything_a_dressed_rig_draws_at_the_sorted_z_is_an_atlas_sprite() ->
 				continue  # The allowed exception, see the header.
 			if item is UnitLayer.Ring:
 				rings += 1
-			if _resolved_z(item) != WorldSort.Z_SORT:
+			if SortedTextures.resolved_z(item) != WorldSort.Z_SORT:
 				continue
 			if item.name == &"Hull":
 				hulls += 1
@@ -76,11 +77,31 @@ func test_everything_a_dressed_rig_draws_at_the_sorted_z_is_an_atlas_sprite() ->
 	assert_int(_cargo_bars().size()).is_equal(TANKERS)
 
 
+## P237 (ADR 0036 section 15): the shadows are on page 2, drawn at z 2 (the rigs') outside the sort,
+## so the sorted world stays one call on page 1 and the shadows are one more call on page 2. No
+## sprite that draws from page 2 resolves to the sort's z, whatever its name.
+func test_every_rig_shadow_is_on_page_two_at_z_two_and_no_page_two_sprite_is_in_the_sort() -> void:
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	var page2: Texture2D = atlas.texture(IsoAtlas.PAGE_UNSORTED)
+	assert_object(page2).is_not_null()
+	assert_object(page2).is_not_same(atlas.texture())
+	assert_int(WorldSort.Z_SHADOW).is_not_equal(WorldSort.Z_SORT)
+	var shadows: int = 0
+	for row: int in _runner.snapshot.unit_count():
+		var sprite: Sprite2D = _layer.rig(row).get_node("Shadow")
+		assert_object(sprite.texture).is_same(page2)
+		assert_int(SortedTextures.resolved_z(sprite)).is_equal(WorldSort.Z_SHADOW)
+		shadows += 1
+	assert_int(shadows).is_equal(UNITS.size())
+	for sprite: Sprite2D in SortedTextures.sprites(_layer.world_sort):
+		assert_object(sprite.texture).is_not_same(page2)
+
+
 func test_the_cargo_bar_draws_at_the_bars_z_outside_the_sort() -> void:
 	var bars: Array[TankerCargo] = _cargo_bars()
 	assert_int(bars.size()).is_equal(TANKERS)
 	for bar: TankerCargo in bars:
-		assert_int(_resolved_z(bar)).is_equal(WorldSort.Z_BARS)
+		assert_int(SortedTextures.resolved_z(bar)).is_equal(WorldSort.Z_BARS)
 
 
 func _cargo_bars() -> Array[TankerCargo]:
@@ -90,19 +111,6 @@ func _cargo_bars() -> Array[TankerCargo]:
 		if bar != null:
 			bars.append(bar)
 	return bars
-
-
-## The z Godot draws `item` at: its own, plus its parents' while it is relative.
-static func _resolved_z(item: CanvasItem) -> int:
-	var z: int = 0
-	var node: Node = item
-	while node is CanvasItem:
-		var canvas: CanvasItem = node as CanvasItem
-		z += canvas.z_index
-		if not canvas.z_as_relative:
-			break
-		node = node.get_parent()
-	return z
 
 
 static func _canvas_items(root: Node) -> Array[CanvasItem]:

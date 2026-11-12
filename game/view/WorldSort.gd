@@ -162,7 +162,7 @@ func mid_colour(owner_id: int) -> Color:
 ## its shadow), a turret's or head's pivot. Frames come from `show_frame`.
 ## A damage patch (`dmg1`, `dmg2`) is sized by `IsoAtlas.part_scale`: `dress` handles it by name.
 func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
-	sprite.texture = atlas.texture()
+	sprite.texture = atlas.texture_for(part)
 	sprite.region_enabled = true
 	sprite.centered = false
 	sprite.modulate = Color.WHITE
@@ -214,11 +214,28 @@ func frame_count_at(base_index: int) -> int:
 	return atlas.frame_count_at(base_index)
 
 
+## Takes `node` out of the sort and lets go of the match's pages: every descendant sprite that shows
+## a region (the atlas's, whichever bake it is from; Scar and Loose under a Hull too) loses its
+## texture, so a pooled rig holds no old page. A Ring has no region and keeps its own texture; a
+## take dresses the rig again.
+func release(node: Node2D) -> void:
+	remove_child(node)
+	var stack: Array[Node] = node.get_children()
+	while not stack.is_empty():
+		var at: Node = stack.pop_back()
+		var sprite: Sprite2D = at as Sprite2D
+		if sprite != null and sprite.region_enabled:
+			sprite.texture = null
+		stack.append_array(at.get_children())
+
+
 ## Shows frame `frame` of the group at `base_index` (`base_of`) on `sprite`: a table read, so a
-## frame change builds no string. The sprite hides when there is no such frame.
+## frame change builds no string, and the texture of the region's page. The sprite hides when
+## there is no such frame.
 func show_base(sprite: Sprite2D, base_index: int, frame: int) -> void:
 	var region: Rect2i = atlas.frame_region(base_index, frame)
 	sprite.visible = region.has_area()
+	sprite.texture = atlas.texture_at(base_index)  # The region's own page.
 	sprite.region_rect = Rect2(region)
 
 

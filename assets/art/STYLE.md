@@ -145,7 +145,9 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
   directions, and the hull's anchor; a building's is anchored at the same back corner (its canvas
   is at least the footprint wide, the shadow may reach past the east corner). No shadow inside a
   hull, turret or building frame. The view draws them at z 2 for units and in the `DecalLayer`
-  (z 1) for buildings (ADR 0023 section 2).
+  (z 1) for buildings (ADR 0023 section 2). **Shadow frames bake onto the atlas's second page**
+  (P237, ADR 0036 section 15), not the sorted world's; P204's key colour in them makes per-player
+  slots there, which `TODAY2_*` in `test_iso_atlas_budget.gd` pins.
 - **Team colour** is 4 to 17 % of the pixels of a default view in the blockouts (`tests/art` pins
   3 to 20 %); the art rows aim at 8 to 12 %: bands, cranes, stripes, light strips and lamps seen
   from above, never a large plate. A band is a slab slightly larger than the wall it wraps and

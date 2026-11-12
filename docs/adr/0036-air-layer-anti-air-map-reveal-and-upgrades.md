@@ -586,6 +586,54 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   It reports rows, bake time and texture memory: page 2 is up to 64 MiB of RGBA8 at 4,096 x
   4,096, about 22 MiB at 1,400 rows. Michael chooses if (a) is not enough.
 
+- **P237 note (2026-11-11, art-director; changes no accepted text above).** Measured on the committed
+  sheets, cross-faction match, bake 1.0, desktop (the phone read 1,276 ms for the base arena before):
+
+  | Group on page 1 (alone) | Rows | MiB RGBA8 | Bake ms |
+  | --- | --- | --- | --- |
+  | Building body (hull, head, anim) | 958 | 15.0 | 138 |
+  | Building `dmg1` / `dmg2` | 202 / 268 | 3.2 / 4.2 | 31 / 46 |
+  | Building shadows | 382 | 6.0 | 21 |
+  | Vehicle body / shadows | 1,022 / 628 | 16.0 / 9.8 | 312 / 80 |
+  | Infantry body / shadows | 468 / 66 | 7.3 / 1.0 | 476 / 15 |
+  | Neutral scars | 44 | 0.7 | 2 |
+
+  Groups packed alone add up to more than the real page. Before: one page of 3,550 rows (55.5 MiB,
+  bake about 1.1 s). **Option (a) is chosen** (the lead, 2026-11-11) and built by P237: every cast
+  shadow, units' and buildings', is on page 2 (`IsoAtlas.PAGE_UNSORTED`; `page_of`, `texture_for`,
+  `texture_at`). Page 1 is now 2,659 rows (41.5 MiB; mirrors 2,542 and 2,650), page 2 is 1,040 rows
+  (16.2 MiB; mirrors 566 and 622), 57.8 MiB together. Both pages keep the 3,584 budget (ADR 0027
+  section 4). Draw calls: the shadows draw at z 1 and z 2, outside the sort, and were their own calls
+  before with the fog drawn; compare `draw_calls_p95` across the split in the perf arena's mode
+  "all" only (without fog or rings the shadows may have merged into the sorted batch, +1 call). Option
+  (c) is already ADR 0034's rule (P202 drops `dmg1`, 142 rows). Option (b) was skipped:
+  `DAMAGE_SCALE` 0.5 saves only about 48 rows.
+  Room on page 1 against the 3,584 budget: 925 rows now, about 1,064 after P202. The demand estimate
+  of ADR 0036's four buildings (about 610-880 rows without shadows and `dmg1`) plus ADR 0037's
+  ground set (about 240 in wave 2 and 245-490 in wave 3) is about 1,095-1,610, so the capacity
+  question was put to Michael, with three ways out: (1) 8 directions for the four new ground
+  vehicles, (2) a page-1 budget of 3,840 rows, (3) bake scale 0.875.
+  **Michael's answer (2026-11-11):** "Ja til 2 kun hvis nødvendigt" ("Yes to 2, only if necessary").
+  Read by the lead: (2) the page-1 budget may go from 3,584 to 3,840 rows, only when a later art row
+  actually needs it (P237 does not raise it); (1) is not accepted, so the new ground vehicles stay
+  at 16 directions; (3) is not accepted, so the bake scale stays at 1.0. If a later row still does
+  not fit at 3,840, it returns to the lead for other options, such as moving more parts to page 2 or
+  a third page.
+  **Re-pin rule.** Every art row with a model and its shadow frames (P236, P239b, P245, P245b, P249,
+  P266, P279, P280, P291, P292, the flyers) moves both `TODAY_*` and `TODAY2_*` in
+  `tests/view/test_iso_atlas_budget.gd` in its own PR; the polish rows P203 and P204 move `TODAY2_*`
+  (and `TODAY_*` only if a model changes); P202 moves `TODAY_*` only.
+  **Forecast and check.** Page 2 grows with the flyers (about 220 rows), the new buildings' and
+  units' shadows and P204's per-player unit shadows (about +630): about 2,400 rows, 38 MiB. With the
+  sorted page that is about 94 MiB of textures at the end; the phone check is P243's (the perf card
+  now prints both pages, `atlas_page` and `atlas_page2`).
+  **`page_of` is keyed by the part only.** The flyers' `hull` belongs on page 2, which that key
+  cannot say; P243 re-keys it (by category or by sheet and part). A sprite's texture follows its
+  region (`texture_at(base)`: `WorldSort.show_base`, `GhostLayer`), so a part moved within
+  `UNSORTED_PARTS` needs no layer edit. The sites that still pair by `texture_for(part)` with a
+  region of that part (`WorldSort.dress`, `BuildingLayer`'s patch, the gallery) are replaced by
+  P243's sheet-keyed flyer pages.
+
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
   aircraft, vehicles and programmes, from the architect's knowledge. "No known hit" is not a

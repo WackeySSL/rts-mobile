@@ -31,9 +31,10 @@ extends Node2D
 ## Two atlases are baked once in `_ready`, before the card's preflight and so outside every timed
 ## window (plans P113 and P114). The sorted world draws from the first: the art of the scenario's
 ## three types for each of its two players, scale 1; the match start finds it there and keeps it.
-## The card and one console line (`atlas_bake_ms`, `atlas_page`) describe the second, P113's
-## report-only bake: every sheet of both factions, each player in its faction's key triad, which is
-## what a real two-faction match start bakes (ADR 0023 section 2), whatever this scenario spawns.
+## The card and one console line (`atlas_bake_ms`, `atlas_page`, `atlas_page2`) describe the
+## second, P113's report-only bake: every sheet of both factions, each player in its faction's key
+## triad, which is what a real two-faction match start bakes (ADR 0023 section 2), whatever this
+## scenario spawns.
 ## Two scenarios (plan P93c): the seed-42 arena above, and the base arena (`arena_kind` bases, set
 ## by the dev menu's "Perf bases" through `DevRoutes.open_perf_bases` before the scene enters the
 ## tree), P80's `perf_bases.tres` on the same card machinery; the card then checks the run against
@@ -113,7 +114,6 @@ var orientation_sink: Callable = DisplayServer.screen_set_orientation
 ## Bakes the atlases and returns the card's (a test replaces it with a stub: the real bake
 ## rasterises every frame).
 var atlas_source: Callable = _bake_atlas
-var atlas: IsoAtlas = null  ## The card's atlas, report-only; the drawing one is `world_sort.atlas`.
 var layer_mode: String = MODE_ALL
 
 var _wait_left: int = 0  ## Frames the first run may still wait for landscape; 0: not waiting.
@@ -390,12 +390,17 @@ static func _report_players(sheets: Array[IsoSheetDef]) -> Array[IsoPlayerArt]:
 	return players
 
 
-## Bakes the atlas and gives the card its numbers (and the console its one line).
+## Bakes the atlas and gives the card its numbers (and the console its one line). The card's atlas
+## is report-only and is not kept: its pages are uploaded textures that nothing draws from.
 func _report_atlas() -> void:
-	atlas = atlas_source.call()
-	var page: Vector2i = atlas.page_px()
-	hud.atlas_bake_ms = atlas.bake_ms()
+	var baked: IsoAtlas = atlas_source.call()
+	var page: Vector2i = baked.page_px()
+	var second: Vector2i = baked.page_px(IsoAtlas.PAGE_UNSORTED)
+	hud.atlas_bake_ms = baked.bake_ms()
 	hud.atlas_page = "none"
-	if not atlas.is_empty():
-		hud.atlas_page = "%dx%d at %.3f" % [page.x, page.y, atlas.bake_scale()]
-		print("atlas_bake_ms %.1f | page %s" % [hud.atlas_bake_ms, hud.atlas_page])
+	hud.atlas_page2 = "none"
+	if not baked.is_empty():
+		hud.atlas_page = "%dx%d at %.3f" % [page.x, page.y, baked.bake_scale()]
+		if second != Vector2i.ZERO:
+			hud.atlas_page2 = "%dx%d" % [second.x, second.y]
+		print(baked.report())

@@ -9,10 +9,11 @@ extends RefCounted
 ## for each squad with poses, and `turn` when a hull turns. Only a rig inside the view rect is
 ## written; `reduced` keeps both poses.
 ## The Hull draws the standing `hull` frame, a `walk` frame or an `idle` frame of the same atlas
-## page. Their anchors differ by a pixel or two and `WorldSort.show_base` writes only the region, so
-## a change of pose writes the sprite's offset too (`RigLife.Pose.offsets`, read from the sheet when
-## the rig is dressed). The three bases for the hull's direction are resolved when the rig is
-## dressed and when it turns, so a change of pose or frame is a table read and builds no string key.
+## page. Their anchors differ by a pixel or two and `WorldSort.show_base` writes the region and
+## the texture, not the offset, so a change of pose writes the sprite's offset too
+## (`RigLife.Pose.offsets`, read from the sheet when the rig is dressed). The three bases for the
+## hull's direction are resolved when the rig is dressed and when it turns, so a change of pose or
+## frame is a table read and builds no string key.
 
 var world_sort: WorldSort  ## The sorted world whose atlas the Hull draws from.
 var rig_life: RigLife  ## Its `writes` counts the sprite writes of the poses.

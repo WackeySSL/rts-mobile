@@ -332,11 +332,14 @@ func test_the_bake_reports_atlas_bake_ms_in_one_line() -> void:
 	var sheet: IsoSheetDef = _squad_sheet()
 	var atlas: IsoAtlas = IsoAtlas.build([sheet], [_art(KEY, KEY)], 1.0, false, _reader([]))
 	var line: RegEx = RegEx.create_from_string(
-		"^atlas_bake_ms \\d+\\.\\d \\| page 4096x\\d+ at 1\\.000$"
+		"^atlas_bake_ms \\d+\\.\\d \\| page 4096x\\d+ \\+ 4096x\\d+ at 1\\.000$"
 	)
 	assert_object(line.search(atlas.report())).is_not_null()
 	assert_str(atlas.report()).is_equal(
-		"atlas_bake_ms %.1f | page %dx%d at 1.000" % [atlas.bake_ms(), 4096, atlas.page_px().y]
+		(
+			"atlas_bake_ms %.1f | page %dx%d + %dx%d at 1.000"
+			% [atlas.bake_ms(), 4096, atlas.page_px().y, 4096, atlas.page_px(1).y]
+		)
 	)
 	assert_str(IsoAtlas.new().report()).ends_with("| page none")
 

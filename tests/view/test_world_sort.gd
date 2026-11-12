@@ -176,7 +176,9 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 	assert_int(sprites.size()).is_equal(8 * 2 + turrets)
 	for sprite: Sprite2D in sprites:
 		var why: String = "%s of %s" % [sprite.name, sprite.get_parent().name]
-		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture())
+		# A shadow is on page 2 (P237), every other sprite of the sorted world on page 1.
+		var page: StringName = &"shadow" if String(sprite.name).begins_with("Shadow") else &"hull"
+		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture_for(page))
 		assert_that(sprite.modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_that(sprite.self_modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_object(sprite.material).override_failure_message(why).is_null()
@@ -184,6 +186,32 @@ func test_every_sorted_sprite_is_on_the_atlas_texture_in_white_whatever_the_mix(
 		assert_bool(sprite.region_rect.has_area()).override_failure_message(why).is_true()
 		assert_bool(sprite.region_enabled).override_failure_message(why).is_true()
 	assert_object(_layer.rig(0).get_node("Ring").texture).is_not_same(atlas.texture())
+
+
+## P237: a rig that leaves the sort lets go of the match's pages (a pool keeps rigs across matches,
+## and a page is up to 64 MiB of texture); a Ring has its own texture and keeps it.
+func test_releasing_a_rig_drops_its_atlas_textures_and_keeps_a_rings_own() -> void:
+	_open_units(2)
+	_layer.set_selected(PackedInt32Array([1]))
+	var rig: Node2D = _layer.rig(0)
+	var hull: Sprite2D = rig.get_node("Hull")
+	var shadow: Sprite2D = rig.get_node("Shadow")
+	var ring: Sprite2D = rig.get_node("Ring")
+	assert_object(hull.texture).is_not_null()
+	assert_object(shadow.texture).is_not_null()
+	assert_object(ring.texture).is_not_null()
+	# A new match bakes its atlas before the old rigs are pooled: the textures are not the new
+	# atlas's, and are let go all the same.
+	var key: PackedStringArray = ArtPalette.KEYS[&"fossil"]
+	var arts: Array[IsoPlayerArt] = [IsoPlayerArt.make(&"fossil", key, WorldSort.TRIADS[3])]
+	_layer.world_sort.atlas = IsoAtlas.build(IsoAtlas.load_sheets(), arts, 0.25)
+	assert_object(hull.texture).is_not_same(_layer.world_sort.atlas.texture())
+	_layer.world_sort.release(rig)
+	auto_free(rig)
+	assert_object(rig.get_parent()).is_null()
+	assert_object(hull.texture).is_null()
+	assert_object(shadow.texture).is_null()
+	assert_object(ring.texture).is_not_null()
 
 
 func test_players_take_their_factions_from_the_scenario_and_the_triads_by_their_number() -> void:

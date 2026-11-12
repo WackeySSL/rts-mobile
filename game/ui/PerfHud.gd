@@ -71,6 +71,7 @@ var arena_kind: String = ARENA_UNITS
 var zoom: float = 1.0
 var atlas_bake_ms: float = 0.0  ## P113, report-only: the scene's atlas bake (0: none) ...
 var atlas_page: String = "none"  ## ... and its page, "4096x2258 at 1.000"; `restart()` keeps both.
+var atlas_page2: String = "none"  ## The unsorted page (P237), "4096x1040"; kept like the others.
 ## Seams: clock (us), ref_step (one reference run), refresh_source (the panel rate in Hz, -1
 ## headless), max_fps_source, burst_step (the kept second half of a burst, in us), render_source
 ## (the viewport's render CPU time of the frame just drawn, in ms: 0 headless) and calls_source
@@ -574,6 +575,7 @@ func summary() -> Dictionary:
 		"arena": arena_kind,
 		"atlas_bake_ms": atlas_bake_ms,
 		"atlas_page": atlas_page,
+		"atlas_page2": atlas_page2,
 		"screen": "%dx%d" % [screen.x, screen.y],
 		"zoom": zoom,
 		"model": OS.get_model_name(),

@@ -104,7 +104,12 @@ const CARD_ROWS: Array = [
 		"job_minus_step_p95_cp_ms",
 		"job_minus_step_p95_noncp_ms",
 	],
-	["atlas bake %.1f ms | page %s (no verdict)", "atlas_bake_ms", "atlas_page"],
+	[
+		"atlas bake %.1f ms | page %s | page 2 %s (no verdict)",
+		"atlas_bake_ms",
+		"atlas_page",
+		"atlas_page2",
+	],
 	["%s | %s | %s | screen %s | zoom %.2f", "model", "os", "engine", "screen", "zoom"],
 	["last hash %s | units alive %d", "hash_hex", "alive"],
 ]

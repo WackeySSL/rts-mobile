@@ -139,7 +139,7 @@ func test_the_cast_shadow_is_a_sprite_of_the_decal_layer_at_the_footprint_centre
 		var shadow: Sprite2D = Rig.shadow(_layer, id)
 		var slot: int = _layer.world_sort.slot_of(snap.owner[row])
 		assert_object(shadow.get_parent().get_parent()).is_same(decals)
-		assert_object(shadow.texture).is_same(atlas.texture())
+		assert_object(shadow.texture).is_same(atlas.texture_for(&"shadow"))  # Page 2 (P237).
 		assert_that(Rect2i(shadow.region_rect)).is_equal(atlas.region(art_id, &"shadow", -1, slot))
 		assert_bool(shadow.region_rect.has_area()).is_true()
 		assert_that(shadow.position).is_equal(_layer.building(id).position)
@@ -154,7 +154,7 @@ func test_the_cast_shadow_is_a_sprite_of_the_decal_layer_at_the_footprint_centre
 		assert_int(decals.z_index + shadow.z_index).is_less(WorldSort.Z_SORT)
 
 
-func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void:
+func test_every_sprite_of_a_building_is_on_its_atlas_page_in_white() -> void:
 	_open()
 	var atlas: IsoAtlas = _layer.world_sort.atlas
 	var sprites: Array[Node] = _layer.world_sort.find_children("*", "Sprite2D", true, false)
@@ -172,7 +172,8 @@ func test_every_sprite_of_a_building_is_on_the_one_atlas_page_in_white() -> void
 	for node: Node in sprites:
 		var sprite: Sprite2D = node
 		var why: String = "%s of %s" % [sprite.name, sprite.get_parent().name]
-		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture())
+		var page: StringName = &"shadow" if String(sprite.name).begins_with("Shadow") else &"hull"
+		assert_object(sprite.texture).override_failure_message(why).is_same(atlas.texture_for(page))
 		assert_that(sprite.modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_that(sprite.self_modulate).override_failure_message(why).is_equal(Color.WHITE)
 		assert_object(sprite.material).override_failure_message(why).is_null()

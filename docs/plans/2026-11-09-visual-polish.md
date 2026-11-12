@@ -411,9 +411,26 @@ on P215.
    recommended). B: draw the pads as separate small pictures (one more draw call and 150 more
    nodes).
 
+## P237 note (2026-11-11; changes no row and no accepted text above)
+ADR 0036's P237 moved every cast shadow, units' and buildings', from the sorted world's atlas page
+to a second page (`IsoAtlas.PAGE_UNSORTED`). What that changes here:
+- **Line 41 (proposal 1)** now reads: shadows are baked once per faction on **page 2**, not "the
+  sorted world's page"; the page rows they add are page 2's. The cross-faction pages are 2659
+  (sorted) and 1040 (shadows) of 3584 each, so about 925 rows are free on the sorted page and about
+  2,544 on page 2.
+- **Lane A's pins:** P202 re-pins `TODAY_*` only (it drops `dmg1`, a sorted-page part); P203 and
+  P204 re-pin `TODAY2_*` (their shadow frames) and `TODAY_*` only if a model changes. The "pages
+  within 3584" check of both rows is per page.
+- **Q3 and the risk below:** "the one texture page" is two pages now. P203 and P204 spend page 2,
+  which has about 2,544 rows free, so Q3 is no longer likely to be needed; its answer A (shadows at
+  75 %) stays the fallback for page 2.
+- P204's per-player shadows double only the unit share of page 2 (about 628 vehicle rows and 66
+  infantry rows), not page 1.
+
 ## Risks
-- **Page budget.** Cross page 3550 of 3584 today; P202 frees about 100 rows before P203 and P204
-  spend them. Lane A's order (P202 first) is the mitigation; Q3 is the fallback.
+- **Page budget.** (Superseded by the P237 note above: shadows are on page 2, 1040 of 3584 rows;
+  the sorted page is 2659.) Cross page 3550 of 3584 before P237; P202 frees about 100 rows before
+  P203 and P204 spend them. Lane A's order (P202 first) is the mitigation; Q3 is the fallback.
 - **The grid comes back.** Variants or transition pieces with a tone change at a cell edge read as
   a grid (Michael removed the rim for that). P209/P211's base-to-edge tests and the "pieces only
   between different terrains" test guard it; Michael's phone check decides.

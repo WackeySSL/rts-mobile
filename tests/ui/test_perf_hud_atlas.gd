@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## value of them changes a verdict or the gate.
 
 const Rig: GDScript = preload("res://tests/ui/support/perf_hud_rig.gd")
-const ROW: String = "atlas bake %.1f ms | page %s (no verdict)"
+const ROW: String = "atlas bake %.1f ms | page %s | page 2 %s (no verdict)"
 
 
 func test_a_scene_that_bakes_no_atlas_reads_zero_and_none() -> void:
@@ -14,7 +14,7 @@ func test_a_scene_that_bakes_no_atlas_reads_zero_and_none() -> void:
 	var s: Dictionary = hud.summary()
 	assert_float(s["atlas_bake_ms"]).is_equal(0.0)
 	assert_str(s["atlas_page"]).is_equal("none")
-	assert_array(Array(hud.card_lines())).contains([ROW % [0.0, "none"]])
+	assert_array(Array(hud.card_lines())).contains([ROW % [0.0, "none", "none"]])
 
 
 func test_the_bake_time_and_the_page_reach_the_summary_the_card_and_the_copy_report() -> void:
@@ -23,11 +23,15 @@ func test_the_bake_time_and_the_page_reach_the_summary_the_card_and_the_copy_rep
 	hud.clipboard_sink = func(text: String) -> void: sent.append(text)
 	hud.atlas_bake_ms = 312.46
 	hud.atlas_page = "4096x2258 at 1.000"
+	hud.atlas_page2 = "4096x1040"
 	Rig.run(hud)
 	var s: Dictionary = hud.summary()
 	assert_float(s["atlas_bake_ms"]).is_equal(312.46)
 	assert_str(s["atlas_page"]).is_equal("4096x2258 at 1.000")
-	assert_array(Array(hud.card_lines())).contains([ROW % [312.46, "4096x2258 at 1.000"]])
+	assert_str(s["atlas_page2"]).is_equal("4096x1040")
+	assert_array(Array(hud.card_lines())).contains(
+		[ROW % [312.46, "4096x2258 at 1.000", "4096x1040"]]
+	)
 	hud.copy_report()
 	var json: JSON = JSON.new()
 	assert_int(json.parse(sent[0])).is_equal(OK)

@@ -46,18 +46,19 @@ func test_ready_bakes_the_atlas_before_the_preflight_and_hands_the_card_its_numb
 		)
 		. is_true()
 	)
-	assert_object(arena.atlas).is_same(baked[0])
 	var page: Vector2i = baked[0].page_px()
+	var second: Vector2i = baked[0].page_px(IsoAtlas.PAGE_UNSORTED)
 	assert_float(arena.hud.atlas_bake_ms).is_equal(baked[0].bake_ms())
 	assert_str(arena.hud.atlas_page).is_equal("%dx%d at 0.500" % [page.x, page.y])
 	assert_bool(page.x > 0 and page.y > 0).is_true()
+	assert_bool(second.y > 0).is_true()  # The headquarters has a shadow: page 2 is reported.
+	assert_str(arena.hud.atlas_page2).is_equal("%dx%d" % [second.x, second.y])
 
 
 func test_an_arena_that_bakes_nothing_reports_none() -> void:
 	var arena: Node2D = Rig.open(self, _calls)
 	_arenas.append(arena)
-	assert_object(arena.atlas).is_not_null()
-	assert_bool(arena.atlas.is_empty()).is_true()
+	assert_str(arena.hud.atlas_page2).is_equal("none")
 	assert_float(arena.hud.atlas_bake_ms).is_equal(0.0)
 	assert_str(arena.hud.atlas_page).is_equal("none")
 
@@ -113,24 +114,19 @@ func test_the_default_bake_gives_the_card_both_factions_and_the_world_its_own_at
 	assert_int(drawn.page_px().x * drawn.page_px().y).is_less(card_area)
 
 
-func test_the_match_start_draws_from_the_world_atlas_and_the_card_keeps_its_own() -> void:
+func test_the_match_start_draws_from_the_world_atlas_and_the_card_keeps_none() -> void:
 	var arena: Node2D = Rig.make(_calls)
 	_arenas.append(arena)
 	arena.atlas_source = arena._bake_atlas  # The real bake, as the scene runs it.
 	add_child(arena)
-	var card: IsoAtlas = arena.atlas
 	var drawn: IsoAtlas = arena.world_sort.atlas
-	assert_bool(card.is_empty()).is_false()
 	assert_bool(drawn.is_empty()).is_false()
-	assert_object(drawn).is_not_same(card)
-	assert_str(arena.hud.atlas_page).is_equal(
-		"%dx%d at %.3f" % [card.page_px().x, card.page_px().y, card.bake_scale()]
-	)
-	assert_float(arena.hud.atlas_bake_ms).is_equal(card.bake_ms())
+	assert_str(arena.hud.atlas_page).starts_with("4096x")  # The card's own numbers, no atlas kept.
+	assert_str(arena.hud.atlas_page2).starts_with("4096x")
+	assert_float(arena.hud.atlas_bake_ms).is_greater(0.0)
 	arena.unit_layer._process(0.0)  # The first frame of the match: its rigs are dressed.
 	assert_object(arena.world_sort.atlas).is_same(drawn)  # Nothing is baked in the timed window.
 	assert_int(arena.unit_layer.rig_count()).is_equal(150)
 	var hull: Sprite2D = arena.unit_layer.rig(0).get_node("Hull")
 	assert_object(hull.texture).is_same(drawn.texture())
-	assert_object(hull.texture).is_not_same(card.texture())
 	assert_that(hull.modulate).is_equal(Color.WHITE)

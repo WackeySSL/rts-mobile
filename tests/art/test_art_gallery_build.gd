@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## The Build page of the art gallery (plan rows P103 and P104, ADR 0023 sections 2 and 5): one
 ## building at a time on the iso ground with a tank of its faction in front of it and one behind
 ## it, at the camera zoom levels 1, 0.75 and 1.5 in the two triads, grass on the left and sand on
-## the right. The frames are the one atlas `IsoAtlas` bakes for the two players, the rigs hang under
-## one y-sorted node, the cast shadows lie under every body, and a defence's head faces the tank in
-## front of it, for the Derrick League's eight buildings and the Lumen Accord's. The buildings
+## the right. The frames are the atlas `IsoAtlas` bakes for the two players (the shadows on its
+## second page), the rigs hang under one y-sorted node, the cast shadows lie under every body, and
+## a defence's head faces the tank in front of it, for the Derrick League's eight buildings and the
+## Lumen Accord's. The buildings
 ## themselves are pinned in test_fossil_buildings.gd and test_renew_buildings.gd.
 
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
@@ -516,7 +517,7 @@ func _check_rig(
 		assert_that(sprite.region_rect).override_failure_message(message).is_equal(Rect2(region))
 		assert_bool(sprite.region_enabled).is_true()
 		assert_bool(sprite.centered).is_false()
-		assert_object(sprite.texture).is_same(atlas.texture())
+		assert_object(sprite.texture).is_same(atlas.texture_for(part))  # A shadow: page 2.
 		assert_vector(sprite.scale).override_failure_message(message).is_equal_approx(
 			Vector2.ONE * scale_px, Vector2.ONE * 0.0001
 		)
