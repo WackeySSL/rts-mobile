@@ -78,12 +78,13 @@ extends RefCounted
 ## row order, loses the weapon's damage times its percent against the row's armour, like a shot
 ## (`Combat.fire`: at least 1, none when the percent is 0); a row on a layer the strike
 ## weapon cannot hit (`weapon_targets & type_layer_bit`, P238: the shipped rupture is ground only,
-## so air and low air rows are skipped); the blackout is unchanged. The rows only lose `hp` here
-## and die at this tick's REMOVE, exactly as a row killed by a shot: `FogUpdate.begin` has run, so
-## the unstamp lands in the owner's dirty list of this tick, ECONOMY's `Power.run` sums power
-## without them, PRODUCTION's `Outcome.run` sees a ruptured producer gone, so its kills count for
-## defeat on the same tick, and no ruptured row takes part in the next tick. A pending rupture is
-## not recalled by the loss of its building, a surrender or a defeat of its player.
+## so air and low air rows are skipped) loses nothing; the blackout and the sweep are unchanged.
+## The rows only lose `hp` here and die at this tick's REMOVE, exactly as a row killed by a shot:
+## `FogUpdate.begin` has run, so the unstamp lands in the owner's dirty list of this tick,
+## ECONOMY's `Power.run` sums power without them, PRODUCTION's `Outcome.run` sees a ruptured
+## producer gone, so its kills count for defeat on the same tick, and no ruptured row takes part
+## in the next tick. A pending rupture is not recalled by the loss of its building, a surrender
+## or a defeat of its player.
 ##
 ## Which strike: the pending strike stores no type (ADR 0023 section 10's layout), so the landing
 ## reads the radius and the weapon from `rupture_type`, the first type of kind RUPTURE. The shipped

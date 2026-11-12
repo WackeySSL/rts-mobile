@@ -36,6 +36,7 @@ func test_the_data_holds_the_eight_buildings_and_the_six_units() -> void:
 		"fossil_radar",
 		"defence_turret",
 		"fossil_strike",
+		"fossil_space",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -48,7 +49,7 @@ func test_the_data_holds_the_eight_buildings_and_the_six_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 8)
+			id in wanted.slice(0, 9)
 		)
 
 
@@ -415,6 +416,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			"barracks",
 			"defence_turret",
 			"fossil_radar",
+			"fossil_space",
 			"fossil_strike",
 			"power_plant",
 			"refinery",

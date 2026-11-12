@@ -52,7 +52,8 @@ extends RefCounted
 ##   section 11). No enemy order, cargo, charge, credits or queue is exposed.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
-##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`, `ARMOUR_CLASSES`).
+##   (`Tab`, `HarvestMode`, `Order`, `Layer`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`,
+##   `ARMOUR_CLASSES`).
 ##
 ## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
 ## so an array the view takes from the World without copying is the World's own and live: it shows
@@ -178,7 +179,7 @@ var type_build_ticks: PackedInt32Array = PackedInt32Array()
 ## (`World.Armour`), the type's weapon range and minimum range in milli-tiles (0 for a type
 ## without a weapon), sight in milli-tiles as the World keeps it (the radius of the fog's disc), the
 ## faction (an index into the World's faction ids, -1 for none), the strike kind (0 none, 1
-## rupture, 2 blackout), its radius in milli-tiles and its charge in ticks.
+## rupture, 2 blackout, 3 sweep), its radius in milli-tiles and its charge in ticks.
 var type_max_hp: PackedInt32Array = PackedInt32Array()
 var type_armour: PackedInt32Array = PackedInt32Array()
 var type_range: PackedInt32Array = PackedInt32Array()

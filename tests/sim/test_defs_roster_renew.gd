@@ -68,6 +68,7 @@ func test_the_faction_file_lists_the_eight_buildings_and_the_six_units_in_the_ad
 		"renew_radar",
 		"renew_defence",
 		"renew_strike",
+		"renew_space",
 		"renew_rifle",
 		"renew_rocket",
 		"renew_scout",
@@ -82,7 +83,7 @@ func test_the_faction_file_lists_the_eight_buildings_and_the_six_units_in_the_ad
 	assert_array(listed).is_equal(wanted)
 	for at: int in wanted.size():
 		var member: UnitDef = faction.roster[at]
-		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 8)
+		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 9)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
 	# The files that name the faction are those fourteen and no other.
@@ -477,6 +478,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 				"renew_power",
 				"renew_radar",
 				"renew_refinery",
+				"renew_space",
 				"renew_strike",
 			]
 		)
