@@ -21,8 +21,8 @@ extends GdUnitTestSuite
 ## and every slot. What stays 0: `hit_tests` (no calm home unit is hit), `withdrawn_id` (Normal's
 ## `unit_retreat_hp_percent` is 0), `seen_mobile_id` (no enemy tanker seen), MEND (the frozen level
 ## has `mend_below_percent` 0) and `commands_cut` (capped at 0); their bounds hold on silence, and
-## the manager suites and P188's matches pin them on crafted Worlds. Only the counters this workload moves are asserted
-## live (`LIVE`, and `CONTACT` for the ones that need the enemy seen).
+## the manager suites and P188's matches pin them on crafted Worlds. Only the counters this
+## workload moves are asserted live (`LIVE`, and `CONTACT` for the ones that need the enemy seen).
 ##
 ## What is only printed (report only; the `[ai]` budget value is row P189c's, after 11 CI runs on
 ## main):
