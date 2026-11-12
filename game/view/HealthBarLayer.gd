@@ -32,6 +32,10 @@ extends Node2D
 ## low-power map
 ## glyph (`glyph_low_power_map.svg`, tinted `low_power_color`), planned after the offline ones at
 ## the same place; nothing is dimmed.
+## An own complete building whose repair switch is on (`Mend`, ADR 0037 section 4, P272: `cargo` of
+## a row with a footprint) wears the wrench (`glyph_repair_map.svg`, green), planned last. It stands
+## at the same place, one glyph higher where another glyph holds it. Only the local player's: an
+## enemy building's switch is never read, so it shows no wrench.
 ##
 ## A bar is sized in dp, so it looks the same at every zoom: world px per dp is the base px per dp
 ## over the camera zoom. It is centred on its unit's projected ground point (`IsoProjection`, ADR
@@ -64,6 +68,7 @@ const FRAME_RECTS: int = 16  ## Two arms for each of four corners, each as an ou
 ## tinted with its seat) and its gap over the bar's place.
 const GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_offline.svg")
 const LOW_GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_low_power_map.svg")
+const MEND_GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_repair_map.svg")
 const GLYPH_DP: int = 32
 const GLYPH_GAP_DP: int = 1
 
@@ -80,6 +85,7 @@ const GLYPH_GAP_DP: int = 1
 @export var glyph_color: Color = Color("F5A524")  ## The offline glyph's tint (STYLE.md, warning).
 ## The low-power map glyph's tint (STYLE.md's tint table; the gallery's `GLYPH_TINTS` has it too).
 @export var low_power_color: Color = Color("FF8A1F")
+@export var mend_color: Color = Color("30A46C")  ## The wrench's tint (the gallery's table too).
 
 var _dp_px: float = 1.0  ## Base px per dp, read when the window changes.
 ## Rect `i` of the frame: x, y, width and height in world px at 4i, and its colour. `_bars` holds
@@ -97,7 +103,8 @@ var _none: PackedInt32Array = PackedInt32Array()  ## The selected buildings when
 var _drawn: int = 0  ## Rects the last _draw painted.
 var _glyph_at: PackedFloat32Array = PackedFloat32Array()  ## Top-left x, y of glyph `i` at 2i.
 var _glyphs: int = 0
-var _offline_glyphs: int = 0  ## The first glyphs are offline ones, the rest low-power ones.
+var _offline_glyphs: int = 0  ## The first glyphs are offline ones, then low-power ones.
+var _power_glyphs: int = 0  ## The glyphs before the wrenches, which come last.
 var _glyph_side: float = 0.0  ## World px, the same for every glyph of the frame.
 var _drawn_glyphs: int = 0
 ## The shapes, own and enemy for each class (index class + enemy x CLASS_WIDTH_DP.size()), made
@@ -165,13 +172,17 @@ func offline_glyph_count() -> int:
 
 
 ## Glyph `index`'s art and tint: the offline glyph in amber, then the low-power one in orange
-## (#FF8A1F).
+## (#FF8A1F), then the wrench in green.
 func glyph_texture(index: int) -> Texture2D:
-	return GLYPH if index < _offline_glyphs else LOW_GLYPH
+	if index < _offline_glyphs:
+		return GLYPH
+	return LOW_GLYPH if index < _power_glyphs else MEND_GLYPH
 
 
 func glyph_tint(index: int) -> Color:
-	return glyph_color if index < _offline_glyphs else low_power_color
+	if index < _offline_glyphs:
+		return glyph_color
+	return low_power_color if index < _power_glyphs else mend_color
 
 
 func glyph_rect(index: int) -> Rect2:
@@ -347,6 +358,36 @@ func _plan() -> void:
 ## every own building that uses power (`PowerConsumers`) gets the low-power glyph at the same
 ## place, after the offline ones. A switched-off building uses none, so it never has both.
 func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
+	_plan_power_glyphs(snap, unit, local_player)
+	_power_glyphs = _glyphs
+	_plan_mend_glyphs(snap, unit, local_player)
+
+
+## Plans the wrench of each own complete building whose repair switch is on, after the power glyphs.
+## An enemy building's switch is not read. A building that wears a power glyph already gets its
+## wrench one glyph higher.
+func _plan_mend_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
+	if building_layer == null:
+		return
+	var rise: float = (GAP_DP + HEIGHT_DP + GLYPH_GAP_DP + GLYPH_DP) * unit
+	var owners: PackedInt32Array = snap.owner
+	var switches: PackedInt32Array = snap.cargo
+	var types: PackedInt32Array = snap.type_index
+	var pending: PackedInt32Array = snap.build_left
+	var foot: PackedInt32Array = snap.type_foot_w
+	for row: int in switches.size():
+		if (
+			switches[row] == 1
+			and owners[row] == local_player
+			and foot[types[row]] > 0
+			and pending[row] == 0
+			and snap.hp[row] > 0
+			and building_layer.is_shown(row)
+		):
+			_put_glyph(snap, row, rise, true)
+
+
+func _plan_power_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 	_glyph_side = GLYPH_DP * unit
 	_offline_glyphs = 0
 	if building_layer == null:
@@ -393,12 +434,23 @@ func _plan_glyphs(snap: MatchSnapshot, unit: float, local_player: int) -> void:
 
 
 ## Appends the glyph square of building `row`, `rise` over its footprint centre's ground point.
-func _put_glyph(snap: MatchSnapshot, row: int, rise: float) -> void:
+## With `stack` it stands one glyph higher for each glyph already at that place.
+func _put_glyph(snap: MatchSnapshot, row: int, rise: float, stack: bool = false) -> void:
 	if _glyph_at.size() < _glyphs * 2 + 2:
 		_glyph_at.resize(_glyph_at.size() + 16)
 	var place: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
-	_glyph_at[_glyphs * 2] = place.x - 0.5 * _glyph_side
-	_glyph_at[_glyphs * 2 + 1] = place.y - building_layer.bar_lift_px(row) - rise
+	var left: float = place.x - 0.5 * _glyph_side
+	var top: float = place.y - building_layer.bar_lift_px(row) - rise
+	if stack:
+		var step: float = _glyph_side + GLYPH_GAP_DP * _glyph_side / GLYPH_DP
+		for other: int in _glyphs:
+			if (
+				is_equal_approx(_glyph_at[other * 2], left)
+				and is_equal_approx(_glyph_at[other * 2 + 1], top)
+			):
+				top -= step
+	_glyph_at[_glyphs * 2] = left
+	_glyph_at[_glyphs * 2 + 1] = top
 	_glyphs += 1
 
 
