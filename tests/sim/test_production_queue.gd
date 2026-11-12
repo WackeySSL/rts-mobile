@@ -129,7 +129,7 @@ func test_only_buildable_types_can_be_queued() -> void:
 	assert_bool(Production.apply_queue(world, none)).is_false()
 	assert_bool(Production.apply_queue(world, two)).is_false()
 	assert_int(world.credits[1]).is_equal(2000)
-	assert_array(world.queue_count).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0])
+	assert_array(world.queue_count).is_equal([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])  # 3 x 5
 
 
 ## P73b opens the STRUCTURES tab: a structure pays and joins the structures queue, and only a

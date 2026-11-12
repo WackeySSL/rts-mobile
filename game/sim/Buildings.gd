@@ -254,12 +254,13 @@ static func _entry(table: PackedInt32Array, type: int, missing: int) -> int:
 	return table[type] if type >= 0 and type < table.size() else missing
 
 
-## Writes the cost of the width x height tiles from (col, line): 0 for every class, or with
+## Writes the cost of the width x height tiles from (col, line): 0 for every ground class, or with
 ## `restore` what `set_terrain` writes for the tile's terrain (none for a terrain with no cost row).
+## The AIR plane is left open (ADR 0036 section 4), so an aircraft never slides off a building.
 static func _write_cost(
 	world: World, col: int, line: int, width: int, height: int, restore: bool
 ) -> void:
-	var classes: int = World.MoveClass.size()
+	var classes: int = World.GROUND_CLASSES
 	var cols: int = world.map_cols
 	var cells: int = cols * world.map_rows
 	var kinds: PackedByteArray = world.terrain

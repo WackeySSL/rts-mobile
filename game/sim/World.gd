@@ -10,13 +10,18 @@ extends RefCounted
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
-enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2 }
+## AIR (ADR 0036 section 2) has no terrain cost: its plane of `move_cost` is open.
+enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2, AIR = 3 }
+## The layer bits of `type_layer_bit` and `weapon_targets` (ADR 0036 sections 3 and 5): a weapon may
+## hit a row when `weapon_targets & type_layer_bit` is not 0.
+enum Layer { GROUND = 1, AIR = 2, LOW_AIR = 4 }
 ## The kinds of `events` (ADR 0007 section 10). STRIKE (ADR 0027 section 7) is `[5, building id, x,
 ## y, Strike.Kind, owner, landing tick or 0, 0]`, written by an accepted SUPERWEAPON.
 enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4, STRIKE = 5 }
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
-## The production tabs (ADR 0017 section 3): a queue, a rally point and a buildable type's `tab`.
-enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2 }
+## The production tabs (ADR 0017 section 3, ADR 0036 section 2): a queue, a rally point and a
+## buildable type's `tab`. FLIGHT is the airfield's and RESEARCH the engineering centre's.
+enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2, FLIGHT = 3, RESEARCH = 4 }
 ## What a harvester is doing (ADR 0018 section 3); IDLE is under the player's control.
 enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
 ## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
@@ -42,13 +47,20 @@ const TILE_CENTRE: int = 500
 ## Ints per record in `events`.
 const EVENT_STRIDE: int = 8
 ## The production tabs: the second index of the per-tab arrays is `player * TABS + tab`.
-const TABS: int = 3
+const TABS: int = 5
+## The move classes with a terrain cost (`TerrainDef.cost`, `terrain_cost`, ADR 0036 section 4):
+## every loop over terrain costs ends here. The AIR plane of `move_cost` is GRASS_COST everywhere.
+const GROUND_CLASSES: int = 3
+## Most upgrades in a match: `upgrades` holds one bit per `upgrade_ids` entry in an int32, and bit
+## 31 is the sign bit, so 30 (bits 0 to 29) keeps every mask positive and every `1 << index` safe.
+const UPGRADES_MAX: int = 30
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
 ## columns, the sections players, ore and ghosts, and the scalars match_end_tick and winner. 4: the
 ## strike state joined it (ADR 0023 section 10): two row columns and three player arrays. 5: the
-## construction work left joined it (ADR 0026): the row column `build_left`.
-const STATE_FORMAT: int = 5
+## construction work left joined it (ADR 0026): the row column `build_left`. 6: the air and tech
+## state joined it (ADR 0036 section 3): the row column `ammo`, three player arrays, and `TABS` 5.
+const STATE_FORMAT: int = 6
 ## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore
 ## and ghosts.
 const HASH_OTHER_SECTIONS: int = 7
@@ -61,6 +73,13 @@ const TYPE_PAD_MOVE_CLASS: int = MoveClass.TRACKED
 const TYPE_PAD_SIGHT: int = 0
 const TYPE_PAD_ACQUIRE: int = 0
 const TYPE_PAD_WEAPON: int = -1
+## A padded type is a ground row (layer bit GROUND).
+const TYPE_PAD_LAYER: int = Layer.GROUND
+## A padded type has no repair role, and its period is UnitDef's default (1), so a reader that
+## divides by it never divides by 0.
+const TYPE_PAD_REPAIR_PERIOD: int = 1
+## A hand-built weapon (no mask named) hits the ground only, as WeaponDef's default does.
+const WEAPON_PAD_TARGETS: int = Layer.GROUND
 ## For the four Phase 1 tables (speed, radius, selection radius, spacing), and for the Phase 3
 ## tables whose pad is 0: footprint, cost, build ticks, power, cargo capacity, dock and exit.
 const TYPE_PAD_V0: int = 0
@@ -115,6 +134,7 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"ready_tick",
 	&"offline_until",
 	&"build_left",
+	&"ammo",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -150,6 +170,33 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_strike_delay",
 	&"type_strike_ticks",
 	&"type_strike_weapon",
+	&"type_layer_bit",
+	&"type_ammo",
+	&"type_rearm_ticks",
+	&"type_pads",
+	&"type_pad_first",
+	&"type_upgrade",
+	&"type_repair_classes",
+	&"type_repair_hp",
+	&"type_repair_period",
+	&"type_repair_cost_percent",
+	&"type_repair_reach",
+	&"type_repair_slots",
+	&"type_repair_seek",
+]
+## The landing pad offsets (ADR 0036 section 3, a pad_offsets table beside `type_pads`): entries
+## `type_pad_first[type]` to `+ type_pads[type]` of both lists are the tile offsets, from the
+## footprint origin, of a type's pads. In `defs_hash` after the type and weapon tables.
+const PAD_ARRAYS: Array[StringName] = [&"pad_offset_x", &"pad_offset_y"]
+## The upgrade tables (ADR 0036 sections 2 and 3), one entry per `upgrade_ids` entry except the flat
+## `upgrade_types`, whose entries `upgrade_type_first[u]` to `+ upgrade_type_count[u]` are the type
+## indexes upgrade `u` changes. In `defs_hash` after the pad offsets.
+const UPGRADE_ARRAYS: Array[StringName] = [
+	&"upgrade_stat",
+	&"upgrade_value",
+	&"upgrade_type_first",
+	&"upgrade_type_count",
+	&"upgrade_types",
 ]
 ## The weapon tables, one entry per weapon (weapon_vs_armour has four).
 const WEAPON_ARRAYS: Array[StringName] = [
@@ -159,6 +206,7 @@ const WEAPON_ARRAYS: Array[StringName] = [
 	&"weapon_cooldown",
 	&"weapon_projectile_speed",
 	&"weapon_vs_armour",
+	&"weapon_targets",
 ]
 ## The projectile slots, max_projectiles entries each. proj_free is the stack of free slots.
 const PROJECTILE_ARRAYS: Array[StringName] = [
@@ -176,7 +224,8 @@ const PROJECTILE_ARRAYS: Array[StringName] = [
 ## The per-player state (ADR 0017 section 3), sized by prepare(): the first seven have an entry per
 ## player (index 0 is neutral and unused), the next four one per player and tab (`player * TABS +
 ## tab`), `queue_type` one per queue slot (`(player * TABS + tab) * queue_slots + slot`) and the
-## last three (the pending strike, P109) one per player again. Hashed, one block per array, in the
+## next three (the pending strike, P109) and the last three (`reveal_site`, `reveal` and `upgrades`,
+## ADR 0036 section 3) one per player again. Hashed, one block per array, in the
 ## section `players`.
 const PLAYER_ARRAYS: Array[StringName] = [
 	&"credits",
@@ -194,6 +243,9 @@ const PLAYER_ARRAYS: Array[StringName] = [
 	&"strike_x",
 	&"strike_y",
 	&"strike_tick",
+	&"reveal_site",
+	&"reveal",
+	&"upgrades",
 ]
 ## The ore left in each ore cell, one entry per `ore_cell` entry. Hashed, in the section `ore`.
 const ORE_ARRAYS: Array[StringName] = [&"ore_amount"]
@@ -487,6 +539,37 @@ var type_strike_radius: PackedInt32Array = PackedInt32Array()
 var type_strike_delay: PackedInt32Array = PackedInt32Array()
 var type_strike_ticks: PackedInt32Array = PackedInt32Array()
 var type_strike_weapon: PackedInt32Array = PackedInt32Array()
+## The air and repair columns (ADR 0036 sections 2 and 3), from UnitDef and BuildingDef. The layer
+## bit is derived at load: GROUND (a land unit or a building), AIR, or LOW_AIR for a low-flying air
+## row. `type_ammo` 0 = no limit, and a row starts with that many shots in `ammo`;
+## `type_rearm_ticks` refills it from 0; `type_pads` pads from `type_pad_first` in PAD_ARRAYS;
+## `type_upgrade` is the upgrade a research item gives, -1 for every other type. The repair role:
+## the move-class mask it serves (0 = none), the hit points per period, the period, the share of
+## the unit's cost a full repair costs, the reach, the rows served per turn and the seek reach of
+## a mobile holder.
+var type_layer_bit: PackedInt32Array = PackedInt32Array()
+var type_ammo: PackedInt32Array = PackedInt32Array()
+var type_rearm_ticks: PackedInt32Array = PackedInt32Array()
+var type_pads: PackedInt32Array = PackedInt32Array()
+var type_pad_first: PackedInt32Array = PackedInt32Array()
+var type_upgrade: PackedInt32Array = PackedInt32Array()
+var type_repair_classes: PackedInt32Array = PackedInt32Array()
+var type_repair_hp: PackedInt32Array = PackedInt32Array()
+var type_repair_period: PackedInt32Array = PackedInt32Array()
+var type_repair_cost_percent: PackedInt32Array = PackedInt32Array()
+var type_repair_reach: PackedInt32Array = PackedInt32Array()
+var type_repair_slots: PackedInt32Array = PackedInt32Array()
+var type_repair_seek: PackedInt32Array = PackedInt32Array()
+var pad_offset_x: PackedInt32Array = PackedInt32Array()
+var pad_offset_y: PackedInt32Array = PackedInt32Array()
+## Per upgrade, in the order of the listed factions' `upgrades` (at most UPGRADES_MAX): the id, the
+## stat (`UpgradeDef.Stat`), the value (a percent, or shots for AMMO) and the types it changes.
+var upgrade_ids: Array[StringName] = []
+var upgrade_stat: PackedInt32Array = PackedInt32Array()
+var upgrade_value: PackedInt32Array = PackedInt32Array()
+var upgrade_type_first: PackedInt32Array = PackedInt32Array()
+var upgrade_type_count: PackedInt32Array = PackedInt32Array()
+var upgrade_types: PackedInt32Array = PackedInt32Array()
 
 ## Per weapon, in the order of first appearance in the unit types. The index is `type_weapon`.
 var weapon_ids: Array[StringName] = []
@@ -501,6 +584,8 @@ var weapon_cooldown: PackedInt32Array = PackedInt32Array()
 var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
 ## Percents 0..200, four per weapon: entry `weapon * 4 + Armour`.
 var weapon_vs_armour: PackedInt32Array = PackedInt32Array()
+## The layers a weapon may hit (a Layer mask, 1..7), one per weapon.
+var weapon_targets: PackedInt32Array = PackedInt32Array()
 
 ## The tile grid. Columns and rows are tiles, 0 until a map is loaded or prepare() derives open
 ## grass, at most 64 in Phase 2.
@@ -512,10 +597,11 @@ var map_version: int = 0
 var terrain_ids: Array[StringName] = []
 ## Per cell (`(y / 1000) * map_cols + x / 1000`): an index into terrain_ids, 0..255.
 var terrain: PackedByteArray = PackedByteArray()
-## Entry `class * cells + cell`, 3 classes: 0 = blocked, 10 = normal, up to 40 (ADR 0008).
+## Entry `class * cells + cell`, 4 classes (the AIR plane is GRASS_COST everywhere, ADR 0036 section
+## 4): 0 = blocked, 10 = normal, up to 40 (ADR 0008).
 var move_cost: PackedByteArray = PackedByteArray()
-## Entry `terrain * 3 + class` for each terrain index: the numbers move_cost holds, 0 = blocked,
-## up to 40 (MapDef.validate keeps them in 0..40). Open grass has the one terrain 0. Only
+## Entry `terrain * GROUND_CLASSES + class` for each terrain index: the numbers move_cost holds, 0 =
+## blocked, up to 40 (MapDef.validate keeps them in 0..40). Open grass has the one terrain 0. Only
 ## from_scenario and prepare() write it, so it is constant during a match.
 var terrain_cost: PackedByteArray = PackedByteArray()
 ## Entry `terrain`: 1 if a building may stand on that terrain (TerrainDef.buildable), else 0. Only
@@ -573,6 +659,8 @@ var offline_until: PackedInt32Array = PackedInt32Array()
 ## The construction work left, in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick): 0 =
 ## complete, above 0 = a site, -1 = cancelled until REMOVE; Production writes it (ADR 0026 s. 1, 6).
 var build_left: PackedInt32Array = PackedInt32Array()
+## Shots left of a row whose type has `type_ammo` above 0 (ADR 0036 section 6); 0 for every other.
+var ammo: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
 ## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
@@ -599,6 +687,12 @@ var queue_type: PackedInt32Array = PackedInt32Array()
 var strike_x: PackedInt32Array = PackedInt32Array()
 var strike_y: PackedInt32Array = PackedInt32Array()
 var strike_tick: PackedInt32Array = PackedInt32Array()
+## Per player (index 0 unused): the id of the space centre whose sweep stands (0 = none), the
+## sweep's state (0 off, 1 on, 2 paused) and the researched upgrades, one bit per `upgrade_ids`
+## entry (ADR 0036 sections 10 and 11).
+var reveal_site: PackedInt32Array = PackedInt32Array()
+var reveal: PackedInt32Array = PackedInt32Array()
+var upgrades: PackedInt32Array = PackedInt32Array()
 ## The ore units left, one per `ore_cell` entry.
 var ore_amount: PackedInt32Array = PackedInt32Array()
 ## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per
@@ -690,43 +784,14 @@ func index_of(id: int) -> int:
 ## max_projectiles, sizes the player, ore and ghost state at its start values
 ## (WorldLoad.size_match_state), and derives open grass from map_w and map_h when no map is loaded.
 ## Last it configures the helpers, once, because configure() re-creates their arrays, stamps the fog
-## of the rows that exist (_stamp_fog) and caches the map digest of the hash. Idempotent through
-## `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before it.
+## of the rows that exist (WorldLoad.stamp_fog) and caches the map digest of the hash. Idempotent
+## through `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before
+## it.
 func prepare() -> void:
 	if prepared:
 		return
 	var types: int = type_ids.size()
-	_pad(type_speed, types, TYPE_PAD_V0)
-	_pad(type_radius, types, TYPE_PAD_V0)
-	_pad(type_selection_radius, types, TYPE_PAD_V0)
-	_pad(type_spacing, types, TYPE_PAD_V0)
-	_pad(type_max_hp, types, TYPE_PAD_MAX_HP)
-	_pad(type_armour, types, TYPE_PAD_ARMOUR)
-	_pad(type_move_class, types, TYPE_PAD_MOVE_CLASS)
-	_pad(type_sight, types, TYPE_PAD_SIGHT)
-	_pad(type_acquire, types, TYPE_PAD_ACQUIRE)
-	_pad(type_weapon, types, TYPE_PAD_WEAPON)
-	_pad(type_foot_w, types, TYPE_PAD_V0)
-	_pad(type_foot_h, types, TYPE_PAD_V0)
-	_pad(type_cost, types, TYPE_PAD_V0)
-	_pad(type_build_ticks, types, TYPE_PAD_V0)
-	_pad(type_tab, types, TYPE_PAD_NONE)
-	_pad(type_requires, types, TYPE_PAD_NONE)
-	_pad(type_produces, types, TYPE_PAD_NONE)
-	_pad(type_power, types, TYPE_PAD_V0)
-	_pad(type_harvest, types, TYPE_PAD_V0)
-	_pad(type_free_unit, types, TYPE_PAD_NONE)
-	_pad(type_dock_x, types, TYPE_PAD_V0)
-	_pad(type_dock_y, types, TYPE_PAD_V0)
-	_pad(type_exit_x, types, TYPE_PAD_V0)
-	_pad(type_exit_y, types, TYPE_PAD_V0)
-	_pad(type_faction, types, TYPE_PAD_NONE)
-	_pad(type_strike_kind, types, TYPE_PAD_V0)
-	_pad(type_charge_ticks, types, TYPE_PAD_V0)
-	_pad(type_strike_radius, types, TYPE_PAD_V0)
-	_pad(type_strike_delay, types, TYPE_PAD_V0)
-	_pad(type_strike_ticks, types, TYPE_PAD_V0)
-	_pad(type_strike_weapon, types, TYPE_PAD_NONE)
+	WorldLoad.pad_types(self, types)
 	var ids: Array[StringName] = type_ids
 	var names: PackedStringArray = type_names
 	for i: int in range(names.size(), types):
@@ -738,12 +803,12 @@ func prepare() -> void:
 	push_y.resize(max_rows)
 	stats.resize(Stat.size())
 	if proj_id.size() != max_projectiles:
-		_reset_projectile_slots()
+		WorldLoad.reset_projectile_slots(self)
 	if map_cols == 0:
 		WorldLoad.derive_open_grass(self)
 	WorldLoad.size_match_state(self)
 	fog.configure(map_cols, map_rows, player_count)
-	_stamp_fog()
+	WorldLoad.stamp_fog(self)
 	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
 	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
 	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
@@ -785,15 +850,15 @@ func is_passable(cell: int, move_class: int) -> bool:
 	return move_cost[move_class * cells + cell] > 0
 
 
-## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost
-## for each class, and bumps map_version, also when the terrain is the same. A cell outside the
-## map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown terrain index (one whose
-## `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as the load made it. Any
-## other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable` or `ore_cell` must
-## bump map_version itself, because the map digest of the hash follows map_version alone
-## (WorldHash.map_digest).
+## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost for
+## each ground class (the AIR plane stays open), and bumps map_version, also when the terrain is the
+## same. A cell outside the map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown
+## terrain index (one whose `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as
+## the load made it. Any other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable`
+## or `ore_cell` must bump map_version itself, because the map digest of the hash follows
+## map_version alone (WorldHash.map_digest).
 func set_terrain(cell: int, terrain_index: int) -> void:
-	var classes: int = MoveClass.size()
+	var classes: int = GROUND_CLASSES
 	var cells: int = map_cols * map_rows
 	if cell < 0 or cell >= cells or terrain_index < 0 or terrain_index > TERRAIN_INDEX_MAX:
 		return
@@ -845,6 +910,7 @@ func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	ready_tick.append(0)
 	offline_until.append(0)
 	build_left.append(0)
+	ammo.append(type_ammo[type_index] if type_index < type_ammo.size() else 0)
 	_push_unit_event(Event.SPAWNED, unit_id.size() - 1)
 	rows_version += 1
 	player_count = maxi(player_count, owner)
@@ -886,51 +952,6 @@ func remove_dead() -> void:
 	Removal.run(self)
 
 
-## One sight mask per type, in type order, so a mask id is the type index (two types of equal sight
-## repeat their mask), and the pad mask of TYPE_PAD_SIGHT after them, id `type_sight.size()`, for a
-## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
-## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
-## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
-## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
-## `stats`.
-func _stamp_fog() -> void:
-	for sight: int in type_sight:
-		fog.add_mask(sight)
-	fog.add_mask(TYPE_PAD_SIGHT)
-	if fog.cells == 0:
-		return
-	var pad: int = type_sight.size()
-	var owners: PackedInt32Array = owner
-	var types: PackedInt32Array = type_index
-	var stamped: PackedInt32Array = fog_cell
-	for row: int in owners.size():
-		var player: int = owners[row]
-		if player >= 1 and player <= player_count:
-			var cell: int = cell_of(pos_x[row], pos_y[row])
-			fog.stamp(player, cell, mini(types[row], pad), 1)
-			stamped[row] = cell
-
-
-## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
-## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
-func _reset_projectile_slots() -> void:
-	var slots: int = max_projectiles
-	for column_name: StringName in PROJECTILE_ARRAYS:
-		var column: PackedInt32Array = get(column_name)
-		column.clear()
-		column.resize(slots)
-	var stack: PackedInt32Array = proj_free
-	for i: int in slots:
-		stack[i] = slots - 1 - i
-	proj_free_top = slots
-
-
-## Appends `value` to `table` until it has `size` entries.
-static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
-	for _i: int in range(table.size(), size):
-		table.append(value)
-
-
 ## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(). The walk
 ## is WorldHash.state_hash().
 func state_hash() -> int:
@@ -954,7 +975,7 @@ static func hash_hex(h: int) -> String:
 	return WorldHash.hash_hex(h)
 
 
-## The hash of the type and weapon tables, their ids, the rule ints and SETUP_ARRAYS: what a replay
-## needs to see that it runs on other data. Call it on a prepared world (prepare() pads the tables).
+## The definitions hash (WorldHash.defs_hash has the rule): what a replay needs to see that it runs
+## on other data. Call it on a prepared world (prepare() pads the tables).
 func defs_hash() -> int:
 	return WorldHash.defs_hash(self)

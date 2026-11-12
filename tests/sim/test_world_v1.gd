@@ -12,12 +12,14 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const MAP: int = 48000
 ## A 4 x 3 map of grass '.', scrub '^', hills 'h' and rock '#' (terrain 0 to 3, costs foot,
 ## wheeled, tracked: 10 10 10, 10 0 0, 25 15 40, 0 0 0). Its terrain per cell, and its costs per
-## class (move_cost holds the three lists one after the other).
+## class (move_cost holds the four lists one after the other, the AIR plane last).
 const TILES: Array[String] = ["..^h", "h#^.", "#..h"]
 const TILE_TERRAIN: Array[int] = [0, 0, 1, 2, 2, 3, 1, 0, 3, 0, 0, 2]
 const TILE_FOOT: Array[int] = [10, 10, 10, 25, 25, 0, 10, 10, 0, 10, 10, 25]
 const TILE_WHEELED: Array[int] = [10, 10, 0, 15, 15, 0, 0, 10, 0, 10, 10, 15]
 const TILE_TRACKED: Array[int] = [10, 10, 0, 40, 40, 0, 0, 10, 0, 10, 10, 40]
+## The AIR plane (P232, ADR 0036 section 4): open grass cost everywhere, whatever the terrain.
+const TILE_AIR: Array[int] = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 const TERRAIN_COSTS: Array[int] = [10, 10, 10, 10, 0, 0, 25, 15, 40, 0, 0, 0]
 ## flow_cells_per_tick is left out: it moves in P27f, and test_defs pins it in RulesDef.
 const RULES: Dictionary[String, int] = {
@@ -70,7 +72,13 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_dict(World.Stat).is_equal(stat)
 	assert_dict(World.Order).is_equal({"IDLE": 0, "ATTACK_MOVE": 1, "MOVE": 2, "ATTACK": 3})
 	assert_dict(World.Armour).is_equal({"INFANTRY": 0, "LIGHT": 1, "HEAVY": 2, "BUILDING": 3})
-	assert_dict(World.MoveClass).is_equal({"FOOT": 0, "WHEELED": 1, "TRACKED": 2})
+	assert_dict(World.MoveClass).is_equal({"FOOT": 0, "WHEELED": 1, "TRACKED": 2, "AIR": 3})
+	assert_dict(World.Layer).is_equal({"GROUND": 1, "AIR": 2, "LOW_AIR": 4})
+	var tab: Dictionary = {
+		"STRUCTURES": 0, "INFANTRY": 1, "VEHICLES": 2, "FLIGHT": 3, "RESEARCH": 4
+	}
+	assert_dict(World.Tab).is_equal(tab)
+	assert_array([World.TABS, World.GROUND_CLASSES, World.UPGRADES_MAX]).is_equal([5, 3, 30])
 	# STRIKE joined with P133 (ADR 0027 section 7, an ADR 0007 section 10 note): events are not state.
 	assert_dict(World.Event).is_equal(
 		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5}
@@ -80,8 +88,9 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	# 2 since P65 (ADR 0016, exception 10): fog.visible left the state hash. 3 since P70 (ADR 0017
 	# section 7, exception 10): Phase 3's state joined it. 4 since P109 (ADR 0023 section 10,
 	# exception 10): the strike columns joined it. 5 since P128 (ADR 0026 section 10, exception 10):
-	# the construction column `build_left` joined it.
-	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 5])
+	# the construction column `build_left` joined it. 6 since P232 (ADR 0036 section 3, exception 23):
+	# the air and tech state joined it, and TABS and the move classes grew.
+	assert_array([World.EVENT_STRIDE, World.STATE_FORMAT]).is_equal([8, 6])
 
 
 ## A Phase 1-shaped world: the rule ints and the stream exist, player_count follows the owners
@@ -169,6 +178,19 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_strike_delay": [0, 0, 0],
 		&"type_strike_ticks": [0, 0, 0],
 		&"type_strike_weapon": [-1, -1, -1],
+		&"type_layer_bit": [1, 1, 1],
+		&"type_ammo": [0, 0, 0],
+		&"type_rearm_ticks": [0, 0, 0],
+		&"type_pads": [0, 0, 0],
+		&"type_pad_first": [0, 0, 0],
+		&"type_upgrade": [-1, -1, -1],
+		&"type_repair_classes": [0, 0, 0],
+		&"type_repair_hp": [0, 0, 0],
+		&"type_repair_period": [1, 1, 1],  # Padded with UnitDef's default.
+		&"type_repair_cost_percent": [0, 0, 0],
+		&"type_repair_reach": [0, 0, 0],
+		&"type_repair_slots": [0, 0, 0],
+		&"type_repair_seek": [0, 0, 0],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -207,6 +229,7 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"ready_tick": [0],
 		&"offline_until": [0],
 		&"build_left": [0],
+		&"ammo": [0],
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -279,6 +302,7 @@ func test_the_phase_1_shaped_world_steps_ten_ticks_without_an_explicit_prepare()
 func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var weapons: Array[String] = ["weapon_range", "weapon_min_range", "weapon_damage"]
 	weapons.append_array(["weapon_cooldown", "weapon_projectile_speed", "weapon_vs_armour"])
+	weapons.append("weapon_targets")
 	assert_array(World.WEAPON_ARRAYS).is_equal(weapons)
 	var slots: Array[String] = ["proj_id", "proj_owner", "proj_weapon", "proj_target", "proj_x"]
 	slots.append_array(["proj_y", "proj_aim_x", "proj_aim_y", "proj_ticks", "proj_free"])
@@ -301,6 +325,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	array_lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	array_lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	array_lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
+	array_lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS])
 	var scalar_lists: Array = [World.HASHED_SCALARS, World.UNHASHED_SCALARS]
 	var packed: Array[String] = []
 	var ints: Array[String] = []
@@ -322,7 +347,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(112)
+	assert_int(packed.size()).is_equal(137)
 	assert_int(ints.size()).is_equal(60)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
@@ -334,6 +359,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	byte_tables.append("terrain_buildable")
 	assert_array(not_int32).contains_exactly_in_any_order(byte_tables)
 	var unlisted: Array[String] = ["type_ids", "weapon_ids", "terrain_ids", "rng", "prepared"]
+	unlisted.append("upgrade_ids")
 	unlisted.append_array(["fog", "flow", "sep_grid", "target_grid", "faction_ids"])
 	assert_array(others).contains_exactly_in_any_order(unlisted)
 	_assert_listed_once(packed, array_lists)
@@ -450,7 +476,7 @@ func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles
 		assert_array([world.map_cols, world.map_rows]).is_equal([size[2], size[3]])
 		assert_array([world.terrain.size(), world.terrain.count(0)]).is_equal([cells, cells])
 		assert_array([world.move_cost.size(), world.move_cost.count(10)]).is_equal(
-			[3 * cells, 3 * cells]
+			[4 * cells, 4 * cells]
 		)
 		assert_array(world.terrain_cost).is_equal([10, 10, 10])
 		assert_array(world.terrain_ids).is_equal([&"grass"])
@@ -460,7 +486,7 @@ func test_prepare_derives_open_grass_from_the_map_size_rounded_up_to_whole_tiles
 	var kept: World = _open_world(3000, 2000)
 	kept.move_cost[7] = 0
 	kept.prepare()
-	assert_array([kept.move_cost[7], kept.move_cost.size()]).is_equal([0, 18])
+	assert_array([kept.move_cost[7], kept.move_cost.size()]).is_equal([0, 24])
 
 
 ## Besides grass, scrub (foot only), hills (every class, cost above 10) and rock, the map has a
@@ -480,9 +506,11 @@ func test_is_passable_is_true_without_a_map_and_reads_the_cost_of_the_class_with
 		assert_str(_classes(world, cell)).override_failure_message(str(cell)).is_equal(
 			expected[cell]
 		)
-	# A class that does not exist is blocked, and so is a cell past a narrow map.
+	# A class that does not exist is blocked, and so is a cell past a narrow map. The AIR plane is
+	# open over rock too (cell 5).
 	assert_bool(world.is_passable(3, -1)).is_false()
-	assert_bool(world.is_passable(3, 3)).is_false()
+	assert_bool(world.is_passable(3, 4)).is_false()
+	assert_bool(world.is_passable(5, World.MoveClass.AIR)).is_true()
 	assert_bool(_open_world(2000, 1000).is_passable(2, 0)).is_false()
 
 
@@ -494,7 +522,7 @@ func test_from_scenario_copies_the_map_size_terrain_indexes_and_costs_per_class(
 	assert_array([world.map_cols, world.map_rows]).is_equal([4, 3])
 	assert_array([world.map_w, world.map_h, world.map_version]).is_equal([4000, 3000, 0])
 	assert_array(world.terrain).is_equal(TILE_TERRAIN)
-	assert_array(world.move_cost).is_equal(TILE_FOOT + TILE_WHEELED + TILE_TRACKED)
+	assert_array(world.move_cost).is_equal(TILE_FOOT + TILE_WHEELED + TILE_TRACKED + TILE_AIR)
 	assert_array(world.terrain_cost).is_equal(TERRAIN_COSTS)
 	# A terrain whose symbol is not one character fits no tile, but it keeps its index and costs.
 	var odd: ScenarioDef = _tile_scenario()
@@ -511,7 +539,7 @@ func test_from_scenario_without_a_usable_map_is_open_grass_of_the_scenario_size(
 	no_map.map = null
 	var controls: World = World.from_scenario(no_map)
 	assert_array([controls.map_cols, controls.map_rows, controls.map_w]).is_equal([48, 48, MAP])
-	assert_array([controls.terrain.count(0), controls.move_cost.count(10)]).is_equal([2304, 6912])
+	assert_array([controls.terrain.count(0), controls.move_cost.count(10)]).is_equal([2304, 9216])
 	var bad_symbol: ScenarioDef = _tile_scenario()
 	bad_symbol.map.rows[1] = "h?^."
 	var no_terrain: ScenarioDef = _tile_scenario()
@@ -523,7 +551,7 @@ func test_from_scenario_without_a_usable_map_is_open_grass_of_the_scenario_size(
 		var world: World = World.from_scenario(scenario)
 		assert_array([world.map_cols, world.map_rows]).is_equal([5, 2])
 		assert_array([world.map_w, world.map_h]).is_equal([5000, 2000])
-		assert_array([world.terrain.count(0), world.move_cost.count(10)]).is_equal([10, 30])
+		assert_array([world.terrain.count(0), world.move_cost.count(10)]).is_equal([10, 40])
 		assert_array(world.terrain_cost).is_equal([10, 10, 10])
 
 
@@ -534,7 +562,7 @@ func test_the_perf_arena_map_is_loaded_into_the_world() -> void:
 	var world: World = World.from_scenario(load(ARENA_PATH) as ScenarioDef)
 	var size: Array[int] = [world.map_cols, world.map_rows, world.map_w, world.map_h]
 	assert_array(size).is_equal([64, 64, 64000, 64000])
-	assert_array([world.terrain.size(), world.move_cost.size()]).is_equal([4096, 12288])
+	assert_array([world.terrain.size(), world.move_cost.size()]).is_equal([4096, 16384])
 	var costs: Array[int] = [10, 10, 10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0]
 	assert_array(world.terrain_cost).is_equal(costs + [10, 10, 10])  # The sixth terrain is ore.
 	# x, y (a tile centre), terrain, the classes that can stand there
@@ -556,9 +584,9 @@ func test_set_terrain_rewrites_the_cell_and_its_costs_and_bumps_map_version() ->
 	var world: World = World.from_scenario(_tile_scenario())
 	world.set_terrain(0, 3)
 	var terrain: Array[int] = TILE_TERRAIN.duplicate()
-	var costs: Array[int] = TILE_FOOT + TILE_WHEELED + TILE_TRACKED
+	var costs: Array[int] = TILE_FOOT + TILE_WHEELED + TILE_TRACKED + TILE_AIR
 	terrain[0] = 3
-	for block: int in 3:
+	for block: int in 3:  # The ground blocks only: the AIR plane stays open.
 		costs[block * 12] = 0
 	assert_array(world.terrain).is_equal(terrain)
 	assert_array(world.move_cost).is_equal(costs)
@@ -603,7 +631,7 @@ func test_prepare_sizes_the_helpers_from_the_map_the_players_and_the_rules() -> 
 	assert_bool(world.prepared).is_true()
 	assert_array([world.fog.cols, world.fog.rows, world.fog.player_count]).is_equal([6, 3, 2])
 	assert_int(world.fog.visible.size()).is_equal(36)
-	assert_array([world.flow.cols, world.flow.rows, world.flow.classes]).is_equal([6, 3, 3])
+	assert_array([world.flow.cols, world.flow.rows, world.flow.classes]).is_equal([6, 3, 4])
 	assert_array([world.flow.fields.size(), world.flow.fields[2].cost.size()]).is_equal([3, 40])
 	var sep: SpatialGrid = world.sep_grid
 	assert_array([sep.cols, sep.rows, sep.cell_milli, sep.next.size()]).is_equal([6, 3, 1000, 7])

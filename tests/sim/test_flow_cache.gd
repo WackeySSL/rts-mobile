@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## FlowCache (ADR 0008 section 3, plan P30b) on an 8 x 8 map (64 cells, a padded field of 100
-## entries) with 3 move classes. Every number is a literal. The cases that recount or advance run
-## under both implementations (ADR 0013 section 3, plan P30n): a FlowRig drives them through
-## FlowCache.run, in GDScript and in C++; the cases of the other methods run on a FlowCache.
+## entries) with every move class of the World (World.MoveClass.size()). Every other number is a
+## literal. The cases that recount or advance run under both implementations (ADR 0013 section 3,
+## plan P30n): a FlowRig drives them through FlowCache.run, in GDScript and in C++; the cases of
+## the other methods run on a FlowCache.
 
 const FlowRig: GDScript = preload("res://tests/sim/support/flow_rig.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -11,22 +12,25 @@ const TRACKED: int = World.MoveClass.TRACKED
 const UNREACHED: int = FlowField.UNREACHED
 const BIG: int = 100000
 const CELLS: int = 64
+## The move classes of the World, counted from the enum (not a literal; an enum has no const size).
+var classes: int = World.MoveClass.size()
+var last_class: int = World.MoveClass.size() - 1
 
 
 ## The World's `move_cost`: 10 for every class, 0 on the `rock` cells.
 func _costs(rock: Array[int] = []) -> PackedByteArray:
 	var costs: PackedByteArray = PackedByteArray()
-	costs.resize(3 * CELLS)
+	costs.resize(classes * CELLS)
 	costs.fill(10)
 	for cell: int in rock:
-		for move_class: int in 3:
+		for move_class: int in classes:
 			costs[move_class * CELLS + cell] = 0
 	return costs
 
 
 func _cache(slots: int) -> FlowCache:
 	var cache: FlowCache = FlowCache.new()
-	cache.configure(8, 8, 3, slots)
+	cache.configure(8, 8, classes, slots)
 	return cache
 
 
@@ -75,8 +79,10 @@ func test_the_same_key_shares_a_slot_and_any_other_key_takes_its_own() -> void:
 	assert_int(cache.acquire(5, TRACKED, 0, 6)).is_equal(1)
 	assert_int(cache.acquire(5, FOOT, 1, 7)).is_equal(3)
 	assert_array(cache.last_used).is_equal([2, 6, 4, 7, 0])
-	# A goal off the map and a class that is none of the three give -1 and take no slot.
-	for key: Vector2i in [Vector2i(-1, 0), Vector2i(CELLS, 0), Vector2i(5, -1), Vector2i(5, 3)]:
+	# A goal off the map and a class past the World's give -1 and take no slot.
+	for key: Vector2i in [
+		Vector2i(-1, 0), Vector2i(CELLS, 0), Vector2i(5, -1), Vector2i(5, classes)
+	]:
 		assert_int(cache.acquire(key.x, key.y, 0, 8)).is_equal(-1)
 	assert_int(cache.acquire(CELLS - 1, FOOT, 0, 8)).is_equal(4)
 
@@ -162,13 +168,13 @@ func test_advance_serves_one_field_at_a_time_in_request_order() -> void:
 	_under_both(_advance_serves_one_field_at_a_time_in_request_order)
 
 
-## A key the costs cannot integrate (class 2 against costs of two classes) completes at once with
-## everything UNREACHED, and the same call goes on to the next field.
+## A key the costs cannot integrate (the last class against costs one class short) completes at
+## once with everything UNREACHED, and the same call goes on to the next field.
 func test_a_key_the_costs_cannot_integrate_completes_at_once_and_does_not_stall_advance() -> void:
 	var cache: FlowCache = _cache(2)
-	cache.acquire(5, TRACKED, 0, 1)
+	cache.acquire(5, last_class, 0, 1)
 	cache.acquire(7, FOOT, 0, 1)
-	var two_classes: PackedByteArray = _costs().slice(0, 2 * CELLS)
+	var two_classes: PackedByteArray = _costs().slice(0, last_class * CELLS)
 	assert_int(cache.advance(two_classes, 100)).is_equal(64)
 	assert_bool(cache.field(0).complete).is_true()
 	assert_int(cache.field(0).cost.count(UNREACHED)).is_equal(100)
@@ -184,7 +190,7 @@ func _invalidate_re_integrates_referenced_slots_and_drops_the_others(impl: int) 
 	var cache: RefCounted = _rig(impl, 4)
 	for slot: int in 4:
 		cache.acquire([0, 63, 7, 56][slot], FOOT, 0, [9, 3, 8, 7][slot])
-	cache.advance(_costs(), 3 * CELLS + 10)
+	cache.advance(_costs(), classes * CELLS + 10)
 	cache.recount(PackedInt32Array([2, 3]), 2)
 	var old: PackedInt32Array = cache.field(2).cost.duplicate()
 	var rock: PackedByteArray = _costs([3, 11, 19, 27, 35, 43, 51])
@@ -392,7 +398,7 @@ func _a_map_with_more_columns_than_rows_is_bounded_and_integrated_with_both(impl
 	assert_array([cache.acquire(23, FOOT, 0, 1), cache.acquire(24, FOOT, 0, 1)]).is_equal([0, -1])
 	assert_int(cache.acquire(0, TRACKED, 0, 1)).is_equal(1)
 	var costs: PackedByteArray = PackedByteArray()
-	costs.resize(3 * 24)
+	costs.resize(classes * 24)
 	costs.fill(10)
 	costs[8] = 0
 	costs[9] = 0
@@ -429,7 +435,7 @@ func test_configure_sizes_every_slot_and_resets_the_cache() -> void:
 	assert_array([cache.fields.size(), cache.field(2).cost.size()]).is_equal([3, 36])
 	assert_array([cache.acquire(16, 0, 0, 1), cache.acquire(3, TRACKED, 0, 1)]).is_equal([-1, -1])
 	for slots: int in [0, -2]:
-		cache.configure(8, 8, 3, slots)
+		cache.configure(8, 8, classes, slots)
 		cache.recount(PackedInt32Array([0, 1]), 2)
 		assert_array([cache.acquire(0, 0, 0, 1), cache.advance(_costs(), 9)]).is_equal([-1, 0])
 		assert_array([cache.refs(0), cache.field(0)]).is_equal([0, null])
@@ -445,16 +451,16 @@ func _no_array_changes_size_or_identity_after_configure(impl: int) -> void:
 	var field_sizes: Array = [100, 100, 100, 512, 100, 100]
 	var sizes: Array = [2, 2, 2, 2, 2, 2, 2] + field_sizes + field_sizes
 	assert_array(before.map(size_of)).is_equal(sizes)
-	# Costs of two classes make a key of the third unusable; a World has all three.
-	var short_costs: PackedByteArray = _costs().slice(0, 2 * CELLS)
+	# Costs one class short make a key of the last class unusable; a World has every class.
+	var short_costs: PackedByteArray = _costs().slice(0, last_class * CELLS)
 	if impl == SimImpls.Impl.NATIVE:
 		short_costs = _costs()
 	for version: int in 3:
 		var costs: PackedByteArray = _costs([version + 1, 20])
 		for step: int in 6:
-			cache.acquire((version * 7 + step * 5) % CELLS, step % 3, version, step)
+			cache.acquire((version * 7 + step * 5) % CELLS, step % classes, version, step)
 			cache.recount(PackedInt32Array([0, step % 2]), 2)
-			cache.advance(short_costs if step % 3 == 2 else costs, 30 * step)
+			cache.advance(short_costs if step % classes == last_class else costs, 30 * step)
 		cache.invalidate(version + 1)
 		cache.advance(costs, BIG)
 	var after: Array = _arrays(cache)

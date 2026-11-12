@@ -63,7 +63,10 @@ static func run(world: World) -> void:
 ## VEHICLES (ADR 0018 section 6; the Headquarters produces STRUCTURES, whose items are placed and
 ## never leave for a point, so it is refused), and carries no payload. The point is clamped to the
 ## map, 0 up to the last milli-tile of each axis, because a stored value below 0 means "no rally
-## point" to ProductionSpawn. Anything else is dropped and counted by the caller.
+## point" to ProductionSpawn. Anything else is dropped and counted by the caller. FLIGHT and
+## RESEARCH (TABS 5, P232) are refused too: a research item leaves for no point, and an aircraft
+## spawns over a pad (ADR 0036 section 6); P241 may widen the bound to FLIGHT if that section wants
+## a rally.
 static func apply_rally(world: World, command: Command) -> bool:
 	if not command.payload.is_empty():
 		return false
@@ -76,7 +79,7 @@ static func apply_rally(world: World, command: Command) -> bool:
 		return false
 	var tab: int = produces[type]
 	var queue: int = command.player_id * World.TABS + tab
-	if tab < World.Tab.INFANTRY or tab >= World.TABS or queue >= world.rally_x.size():
+	if tab < World.Tab.INFANTRY or tab > World.Tab.VEHICLES or queue >= world.rally_x.size():
 		return false
 	world.rally_x[queue] = clampi(command.target_x, 0, maxi(world.map_w - 1, 0))
 	world.rally_y[queue] = clampi(command.target_y, 0, maxi(world.map_h - 1, 0))

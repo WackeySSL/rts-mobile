@@ -24,6 +24,8 @@ namespace {
 
 constexpr int64_t BIG = 1000000000; // a budget that finishes any field of a map this harness builds
 constexpr int64_t BUCKET_COUNT = flow::BUCKETS;
+constexpr int64_t GROUND_CLASSES = 3; // World.GROUND_CLASSES: the classes that have a terrain cost
+constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size(): the ground classes and the open AIR plane (format 6)
 constexpr int64_t NAV_DIRECT = 1, NAV_FIELD = 2; // World.NavMode
 constexpr int64_t ORDER_ATTACK_MOVE = 1, ORDER_MOVE = 2, ORDER_ATTACK = 3; // World.Order
 // The slots the pass keeps an answer for: the value bits of an int64_t, a slot's bit being a shift by 0 to 62. It is
@@ -323,13 +325,13 @@ struct Stream {
 	}
 };
 
-// A scene: a map of `cols` x `rows` tiles with about one tile in `rock_in` blocked for some class, the three move
-// classes with a type each, `slots` fields integrated to completion (every other one still pending) and `units` rows.
+// A scene: a map of `cols` x `rows` tiles with about one tile in `rock_in` blocked for some ground class and the open
+// AIR plane (World.MoveClass, format 6), the four move classes with a type each, `slots` fields integrated to completion (every other one still pending) and `units` rows.
 State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int64_t units, int64_t rock_in) {
 	State state;
 	state.cols = cols;
 	state.rows = rows;
-	state.classes = 3;
+	state.classes = MOVE_CLASSES;
 	const int64_t cells = cols * rows;
 	state.rules.map_cols = cols;
 	state.rules.map_rows = rows;
@@ -341,14 +343,15 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 	state.rules.stall_ticks = 6;
 	state.rules.stall_range_spacings = 2;
 	state.rules.attack_rekey_milli = 2500;
-	for (int64_t cls = 0; cls < 3; cls++) {
+	for (int64_t cls = 0; cls < GROUND_CLASSES; cls++) {
 		for (int64_t cell = 0; cell < cells; cell++) {
 			state.move_cost.push_back(static_cast<uint8_t>(stream.next(rock_in) == 0 ? 0 : 10 + stream.next(4) * 10));
 		}
 	}
-	state.type_speed = { 120, 61, 0 };
-	state.type_spacing = { 1200, 1000, 900 };
-	state.type_move_class = { 0, 1, 2 };
+	state.move_cost.insert(state.move_cost.end(), static_cast<size_t>(cells), 10); // The AIR plane: grass everywhere.
+	state.type_speed = { 120, 61, 0, 90 };
+	state.type_spacing = { 1200, 1000, 900, 1100 };
+	state.type_move_class = { 0, 1, 2, 3 };
 	const size_t padded = static_cast<size_t>((cols + flow::PAD) * (rows + flow::PAD));
 	for (int64_t slot = 0; slot < slots; slot++) {
 		const int64_t goal = stream.next(cells);
@@ -392,7 +395,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 	}
 	for (int64_t row = 0; row < units; row++) {
 		state.unit_id.push_back(static_cast<int32_t>(row + 1));
-		state.type_index.push_back(static_cast<int32_t>(stream.next(3)));
+		state.type_index.push_back(static_cast<int32_t>(stream.next(4)));
 		state.pos_x.push_back(static_cast<int32_t>(stream.next(cols * 1000)));
 		state.pos_y.push_back(static_cast<int32_t>(stream.next(rows * 1000)));
 		state.goal_x.push_back(static_cast<int32_t>(stream.next(cols * 1000)));

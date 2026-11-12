@@ -1,18 +1,16 @@
 extends RefCounted
 ## The air, repair-role and upgrade data rules of P231 (ADR 0036 section 2, ADR 0037 section 2),
 ## one text per broken rule, and the builders of the defs that break none. test_defs_data_air pins
-## them on built defs and holds every shipped file to them. The World copies none of these fields
-## yet, so they hold vacuously until the air data of P233 and later ships. The ranges of
-## move_class, tab, produces and strike_kind stay in test_defs_data, read from the World enums.
+## them on built defs and holds every shipped file to them. The World copies these fields since
+## P232 (test_world_v6); the shipped data holds none until the air data of P233 and later ships.
+## The constants read the World's enums; `REVEAL` follows with P233. The ranges of move_class, tab,
+## produces and strike_kind stay in test_defs_data, read from the World enums.
 
-## World.MoveClass.AIR from P232.
-const AIR: int = 3
+const AIR: int = World.MoveClass.AIR
 ## 1 << AIR: the AIR bit of a move-class mask (ADR 0036 section 2).
-const AIR_BIT: int = 8
-## World.Tab.FLIGHT from P232.
-const FLIGHT: int = 3
-## World.Tab.RESEARCH from P232.
-const RESEARCH: int = 4
+const AIR_BIT: int = 1 << AIR
+const FLIGHT: int = World.Tab.FLIGHT
+const RESEARCH: int = World.Tab.RESEARCH
 ## Strike.Kind.REVEAL from P233.
 const REVEAL: int = 3
 const MAX_PERCENT: int = 400
@@ -195,7 +193,9 @@ static func upgrade_problems(
 ## The rules that span files. The 400 % bound is per modifier, so (a choice, P246's combination is
 ## then a plain product of one value each) at most one upgrade changes one stat of one type of a
 ## faction. Upgrade ids may not equal type ids: research items become types, and World merges equal
-## ids. A type on Research is a fault in air_problems.
+## ids. A type on Research is a fault in air_problems. The World keeps one bit per upgrade id in an
+## int32 (`World.UPGRADES_MAX`) and the first def of an id wins, so every id is non-empty, no id is
+## on two different defs, and the distinct ids of all factions are at most UPGRADES_MAX.
 static func upgrade_catalog_problems(
 	units: Array[UnitDef], factions: Array[FactionDef]
 ) -> PackedStringArray:
@@ -204,8 +204,14 @@ static func upgrade_catalog_problems(
 	for unit: UnitDef in units:
 		type_ids[String(unit.type_id)] = true
 	var changed: Dictionary[String, String] = {}
+	var owner_of: Dictionary[String, UpgradeDef] = {}
 	for faction: FactionDef in factions:
 		for up: UpgradeDef in faction.upgrades:
+			if String(up.id).is_empty():
+				problems.append("an upgrade has an empty id")
+			elif owner_of.has(String(up.id)) and owner_of[String(up.id)] != up:
+				problems.append("%s: upgrade id is on two defs" % up.id)
+			owner_of[String(up.id)] = up
 			if type_ids.has(String(up.id)):
 				problems.append("%s: upgrade id is also a type id" % up.id)
 			for type: UnitDef in up.applies_to:
@@ -217,4 +223,6 @@ static func upgrade_catalog_problems(
 						"%s and %s change one stat of %s" % [changed[key], up.id, type.type_id]
 					)
 				changed[key] = String(up.id)
+	if owner_of.size() > World.UPGRADES_MAX:
+		problems.append("%d upgrade ids, more than %d" % [owner_of.size(), World.UPGRADES_MAX])
 	return problems

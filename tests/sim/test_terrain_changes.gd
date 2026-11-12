@@ -39,7 +39,7 @@ func test_set_terrain_refuses_an_index_that_a_byte_cannot_hold() -> void:
 	world.map_w = 3000
 	world.map_h = 1000
 	world.prepare()
-	var classes: int = World.MoveClass.size()
+	var classes: int = World.GROUND_CLASSES  # The stride of terrain_cost.
 	world.terrain_cost = PackedByteArray()
 	world.terrain_cost.resize(300 * classes)
 	world.terrain_cost.fill(World.GRASS_COST)
@@ -65,7 +65,7 @@ func test_set_terrain_refuses_an_index_that_a_byte_cannot_hold() -> void:
 func test_a_scenario_world_keeps_ids_costs_and_cell_bytes_in_one_table() -> void:
 	for path: String in [SCENARIO_PATH, ARENA_PATH]:
 		var world: World = World.from_scenario(load(path) as ScenarioDef)
-		var classes: int = World.MoveClass.size()
+		var classes: int = World.GROUND_CLASSES  # The stride of terrain_cost.
 		assert_int(world.terrain_ids.size()).is_equal(6)
 		assert_int(world.terrain_cost.size()).is_equal(world.terrain_ids.size() * classes)
 		assert_int(world.terrain.size()).is_equal(world.map_cols * world.map_rows)

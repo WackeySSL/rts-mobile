@@ -113,10 +113,10 @@ func test_the_queues_are_the_players_own_one_entry_per_tab() -> void:
 	# player 2 one rifleman, and nobody has a vehicle.
 	var first: PlayerView = PlayerView.of(world, 1)
 	var rifle: int = Worlds.type_of(world, "rifle_squad")
-	assert_array(Array(first.queue_count)).is_equal([1, 2, 0])
+	assert_array(Array(first.queue_count)).is_equal([1, 2, 0, 0, 0])  # Five tabs since P232.
 	assert_int(first.queue_type[INFANTRY * world.queue_slots]).is_equal(rifle)
 	assert_int(first.queue_type[INFANTRY * world.queue_slots + 2]).is_equal(-1)
-	assert_array(Array(PlayerView.of(world, 2).queue_count)).is_equal([0, 1, 0])
+	assert_array(Array(PlayerView.of(world, 2).queue_count)).is_equal([0, 1, 0, 0, 0])
 	assert_int(first.queue_progress[STRUCTURES]).is_greater(0)
 
 
@@ -173,11 +173,11 @@ func test_rally_points_are_the_players_own_per_tab() -> void:
 	world.rally_x[queue] = 7500
 	world.rally_y[queue] = 3500
 	var view: PlayerView = PlayerView.of(world, 1)
-	assert_array(Array(view.rally_x)).is_equal([-1, 7500, -1])
-	assert_array(Array(view.rally_y)).is_equal([-1, 3500, -1])
+	assert_array(Array(view.rally_x)).is_equal([-1, 7500, -1, -1, -1])
+	assert_array(Array(view.rally_y)).is_equal([-1, 3500, -1, -1, -1])
 	var second: PlayerView = PlayerView.of(world, 2)
-	assert_array(Array(second.rally_x)).is_equal([-1, -1, -1])
-	assert_array(Array(second.rally_y)).is_equal([-1, -1, -1])
+	assert_array(Array(second.rally_x)).is_equal([-1, -1, -1, -1, -1])
+	assert_array(Array(second.rally_y)).is_equal([-1, -1, -1, -1, -1])
 
 
 func test_a_cell_is_explored_by_the_players_own_block() -> void:
@@ -326,8 +326,9 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 			assert_int(changed[0]).override_failure_message(String(field)).is_equal(table[0])
 	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its
 	# last-seen records and eleven type tables, ten more type tables and the three warned lists
-	# (`own_strike_tick` is an int).
-	assert_int(touched).is_equal(36)
+	# (`own_strike_tick` is an int), and the two layer tables of P232 (`type_layer_bit` and
+	# `weapon_targets`).
+	assert_int(touched).is_equal(38)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))

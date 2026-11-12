@@ -17,7 +17,7 @@ const NONE: Array[int] = [-1, -1, -1, -1, -1, -1]
 ## The rally points of `player` tab by tab, as x and y of STRUCTURES, of INFANTRY and of VEHICLES.
 func _points(world: World, player: int) -> Array[int]:
 	var found: Array[int] = []
-	for tab: int in World.TABS:
+	for tab: int in World.Tab.VEHICLES + 1:  # The drawer's three tabs; FLIGHT and RESEARCH hold none.
 		found.append(world.rally_x[Rig.queue_of(player, tab)])
 		found.append(world.rally_y[Rig.queue_of(player, tab)])
 	return found
@@ -35,6 +35,26 @@ func test_a_barracks_and_a_vehicle_factory_set_the_rally_point_of_their_own_tab(
 	assert_array(_points(world, 2)).is_equal([-1, -1, 5500, 6500, -1, -1])
 	assert_array(_points(world, 1)).is_equal([-1, -1, 15500, 9500, 20500, 12500])
 	assert_int(world.dropped_commands).is_equal(0)
+
+
+## FLIGHT and RESEARCH (TABS 5, P232) take no rally point: a building that produces either has its
+## RALLY dropped and counted, and every rally point of those two tabs stays -1.
+func test_a_building_of_the_flight_or_research_tab_takes_no_rally_point() -> void:
+	var world: World = Rig.base()
+	var barracks: int = world.type_index[world.index_of(Rig.BARRACKS)]
+	var dropped: int = 0
+	for tab: int in [World.Tab.FLIGHT, World.Tab.RESEARCH]:
+		world.type_produces[barracks] = tab
+		Rig.step(world, [Command.rally(1, Rig.BARRACKS, 15500, 9500)])
+		dropped += 1
+		assert_int(world.dropped_commands).override_failure_message("tab %d" % tab).is_equal(
+			dropped
+		)
+		assert_int(world.rally_x[Rig.queue_of(1, tab)]).is_equal(-1)
+		assert_int(world.rally_y[Rig.queue_of(1, tab)]).is_equal(-1)
+	world.type_produces[barracks] = World.Tab.INFANTRY
+	Rig.step(world, [Command.rally(1, Rig.BARRACKS, 15500, 9500)])
+	assert_int(world.rally_x[Rig.queue_of(1, World.Tab.INFANTRY)]).is_equal(15500)
 
 
 ## Two RALLYs of one tick apply in command order (tick, player, sequence), not in list order: the

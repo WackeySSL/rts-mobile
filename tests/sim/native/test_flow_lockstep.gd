@@ -74,7 +74,7 @@ func test_keys_the_costs_cannot_integrate_match() -> void:
 		for slot: int in 5:
 			world.flow.acquire(100 + slot * 900, slot % 3, 0, 1)
 		world.flow.key_goal[1] = world.map_cols * world.map_rows
-		world.flow.key_class[2] = 3
+		world.flow.key_class[2] = 4  # AIR is class 3 since P232: the first class without a list.
 		world.flow.key_class[3] = -1
 		world.flow.key_goal[4] = -1
 		FlowCache.run(world, 100000)

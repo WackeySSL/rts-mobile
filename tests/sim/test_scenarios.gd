@@ -148,10 +148,13 @@ func test_the_ridge_is_rock_on_every_row_but_the_gap_rows() -> void:
 	var wrong: Array[Vector2i] = []
 	for y: int in world.map_rows:
 		for x: int in range(RIDGE_FROM_X / 1000, RIDGE_TO_X / 1000):
-			for move_class: int in World.MoveClass.size():
+			for move_class: int in World.GROUND_CLASSES:
 				var open: bool = world.is_passable(y * world.map_cols + x, move_class)
 				if open != GAP_OF_ROW.has(y):
 					wrong.append(Vector2i(x, y))
+			# The AIR plane is open over the rock (ADR 0036 section 4).
+			if not world.is_passable(y * world.map_cols + x, World.MoveClass.AIR):
+				wrong.append(Vector2i(x, y))
 	assert_array(wrong).is_empty()
 
 

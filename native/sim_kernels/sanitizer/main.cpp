@@ -52,6 +52,15 @@ std::vector<std::string> dump_files(const std::string &argument) {
 // The reader on a dump built in memory with records of every kind, empty arrays among them (a kernel whose input is
 // empty at a dump tick, say an event list, writes one), and on a dump that stops inside a record.
 void check_reader() {
+	for (const uint32_t format : KNOWN_FORMATS) { // Every layout the harness knows, the newest included.
+		std::vector<uint8_t> header_only = { 'R', 'T', 'S', 'D' };
+		const uint32_t fields[] = { format, 1 };
+		const uint8_t *first = reinterpret_cast<const uint8_t *>(fields);
+		header_only.insert(header_only.end(), first, first + sizeof(fields));
+		if (Dump::parse(header_only, "header only").format != format) {
+			throw Finding("the dump reader did not take a format that KNOWN_FORMATS lists");
+		}
+	}
 	std::vector<uint8_t> bytes = { 'R', 'T', 'S', 'D' };
 	const auto put = [&bytes](const void *from, size_t size) {
 		const uint8_t *first = static_cast<const uint8_t *>(from);

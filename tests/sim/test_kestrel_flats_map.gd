@@ -49,7 +49,7 @@ func _closed(world: World, rects: Array[Rect2i]) -> PackedByteArray:
 	for rect: Rect2i in rects:
 		for y: int in range(rect.position.y, rect.end.y):
 			for x: int in range(rect.position.x, rect.end.x):
-				for move_class: int in World.MoveClass.size():
+				for move_class: int in World.GROUND_CLASSES:
 					costs[move_class * cells + _cell(Vector2i(x, y))] = 0
 	return costs
 
@@ -195,7 +195,7 @@ func test_every_base_reaches_every_ore_field_and_the_other_base_for_every_class(
 	# Not vacuous: a field that cannot reach, because rock stands on the way, says so.
 	var shut: PackedByteArray = world.move_cost.duplicate()
 	for y: int in Rig.SIZE:
-		for move_class: int in World.MoveClass.size():
+		for move_class: int in World.GROUND_CLASSES:
 			shut[move_class * cells + _cell(Vector2i(30, y))] = 0
 	var cut: FlowField = Rig.field(world, starts[0], FOOT, shut)
 	assert_bool(Rig.reaches(cut, Rig.SIZE, starts[1])).is_false()
@@ -237,7 +237,7 @@ func test_a_contested_field_is_behind_two_vehicle_chokepoints_and_a_foot_only_ga
 		for y: int in range(rect.position.y, rect.end.y):
 			for x: int in range(rect.position.x, rect.end.x):
 				var costs: Array[int] = []
-				for move_class: int in World.MoveClass.size():
+				for move_class: int in World.GROUND_CLASSES:
 					costs.append(
 						world.move_cost[
 							move_class * world.map_cols * world.map_rows + _cell(Vector2i(x, y))

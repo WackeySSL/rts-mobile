@@ -91,7 +91,7 @@ func test_derive_open_grass_rounds_up_and_leaves_no_map_for_an_empty_size() -> v
 	WorldLoad.derive_open_grass(world)
 	assert_array([world.map_cols, world.map_rows]).is_equal([4, 3])
 	assert_int(world.terrain.size()).is_equal(12)
-	assert_int(world.move_cost.size()).is_equal(36)
+	assert_int(world.move_cost.size()).is_equal(48)  # Four planes, the AIR one open (P232).
 	assert_array(world.terrain_ids).is_equal([World.GRASS_ID])
 	assert_array(world.terrain_cost).is_equal([10, 10, 10])
 	var flat: World = World.new()

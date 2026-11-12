@@ -66,8 +66,8 @@ var mark_drawn: bool = false  ## The last draw had the "!" disc.
 var _glyph: Texture2D = null
 var _chip_type: int = -1  ## The type whose card the chip shows.
 var _compared: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last compared.
-var _before_count: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## By tab, at that snapshot:
-var _before_done: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## items and the head's progress.
+var _before_count: PackedInt32Array = PackedInt32Array()  ## By tab, at that snapshot:
+var _before_done: PackedInt32Array = PackedInt32Array()  ## items and the head's progress.
 var _seen: Vector2i = Vector2i(-1, -1)  ## Serial and tick of the snapshot last read.
 var _side: StringName = FALLBACK_SIDE  ## The local player's faction id.
 var _strike_owned: bool = false  ## The strike button showed when the chip was last placed.
@@ -80,6 +80,8 @@ func _ready() -> void:
 	flat = true
 	focus_mode = Control.FOCUS_NONE
 	_glyph = load(ICON)
+	_before_count.resize(World.TABS)  # Every tab, the ones the drawer does not list included.
+	_before_done.resize(World.TABS)
 	pressed.connect(func() -> void: feed.state.open(HudState.Unfold.DRAWER))
 	_chip.pressed.connect(func() -> void: sidebar.show_ready())
 	feed.state.changed.connect(_on_changed)

@@ -81,7 +81,7 @@ func test_a_tile_of_another_faction_is_never_shown_in_any_tab_at_any_size() -> v
 		await await_idle_frame()
 		for faction: int in [FOSSIL, RENEW]:
 			_publish(_world(faction, ["headquarters"]), faction)
-			for tab: int in World.TABS:
+			for tab: int in BuildSidebar.TAB_NAMES.size():  # The drawer lists three tabs (P232).
 				_sidebar.select_tab(tab)
 				for node: Node in _grid().get_children():
 					var tile: ItemTile = node as ItemTile
@@ -140,7 +140,7 @@ func _world(hq: int, own: Array) -> World:
 ## The ids of the visible tiles of each tab, in the grid's order.
 func _seen() -> Array[Array]:
 	var seen: Array[Array] = []
-	for tab: int in World.TABS:
+	for tab: int in BuildSidebar.TAB_NAMES.size():  # The drawer lists three tabs (P232).
 		_sidebar.select_tab(tab)
 		var ids: Array[String] = []
 		for node: Node in _grid().get_children():

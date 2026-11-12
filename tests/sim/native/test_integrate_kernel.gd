@@ -355,10 +355,11 @@ func test_acquire_matches_the_whole_key_and_takes_a_free_slot_before_evicting() 
 	assert_str(StateDiff.first(held[0], held[1])).is_empty()
 
 
-## A move class that no cache has (3 and -1) gets no field from acquire(): the unit that asks for
-## its own goal's tile keeps the group's field and its NO_NEXT, and nothing is requested.
+## A move class that no cache has (4 and -1; AIR is class 3 since P232) gets no field from
+## acquire(): the unit that asks for its own goal's tile keeps the group's field and its NO_NEXT,
+## and nothing is requested.
 func test_a_move_class_the_cache_does_not_have_gets_no_field() -> void:
-	for move_class: int in [3, -1]:
+	for move_class: int in [4, -1]:
 		var pair: Array[World] = _pair(_key_world.bind(true))
 		for world: World in pair:
 			world.type_move_class[0] = move_class

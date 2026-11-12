@@ -20,6 +20,10 @@ extends SceneTree
 ##   "RTSD", u32 World.STATE_FORMAT, u32 tick, then records until the end of the file:
 ##   u8 kind ('S' one int64, 'I' int32 array, 'B' byte array), u16 name length, name (ASCII),
 ##   u64 count (1 for 'S'), payload (count int64, int32 or bytes).
+## Format 6 (P232, ADR 0036) changes no record name: `world.move_cost` holds four lists (foot,
+## wheeled, tracked and the open AIR plane) and `flow.classes` is 4. `type_layer_bit` and
+## `weapon_targets` are in the kernels' checked table but no kernel reads them yet, so nothing is
+## dumped for them.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)

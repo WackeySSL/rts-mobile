@@ -79,6 +79,8 @@ enum Tab {
 	STRUCTURES = World.Tab.STRUCTURES,
 	INFANTRY = World.Tab.INFANTRY,
 	VEHICLES = World.Tab.VEHICLES,
+	FLIGHT = World.Tab.FLIGHT,
+	RESEARCH = World.Tab.RESEARCH,
 }
 enum HarvestMode {
 	IDLE = World.HarvestMode.IDLE,
@@ -181,6 +183,12 @@ var type_charge_ticks: PackedInt32Array = PackedInt32Array()
 ## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
 ## a type without a weapon.
 var type_vs_armour: PackedInt32Array = PackedInt32Array()
+## The air layer (ADR 0036 sections 3 and 5), copies of the World's rule tables, which no fog hides:
+## each type's layer bit (`World.Layer`: 1 ground, 2 air, 4 low air) and, by weapon index (through
+## `type_weapon`), the layers a weapon may hit. A weapon may hit a row when `weapon_targets &
+## type_layer_bit` is not 0.
+var type_layer_bit: PackedInt32Array = PackedInt32Array()
+var weapon_targets: PackedInt32Array = PackedInt32Array()
 ## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
 ## milli-tiles and the landing tick, one entry per player that has one, ascending player.
 var warned_x: PackedInt32Array = PackedInt32Array()
@@ -421,6 +429,8 @@ func _take_tables(world: World) -> void:
 	type_strike_kind = world.type_strike_kind.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_charge_ticks = world.type_charge_ticks.duplicate()
+	type_layer_bit = world.type_layer_bit.duplicate()
+	weapon_targets = world.weapon_targets.duplicate()
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
 	_take_weapon_tables(world)

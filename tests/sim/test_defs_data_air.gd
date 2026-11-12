@@ -339,6 +339,45 @@ func test_an_upgrade_id_may_not_be_a_type_id_and_one_stat_of_a_type_has_one_upgr
 	)
 
 
+## The catalog rules of the World's upgrade bits: ids are non-empty, an id is on one def only (the
+## same def in two factions is one id), and no more than World.UPGRADES_MAX distinct ids.
+func test_upgrade_ids_are_non_empty_unique_and_at_most_the_bit_count() -> void:
+	var jet: UnitDef = Rules.fine_upgrade().applies_to[0]
+	var jets: Array[UnitDef] = [jet]
+	var faction: FactionDef = FactionDef.new()
+	faction.id = &"fossil"
+	var first: UpgradeDef = Rules.fine_upgrade()
+	var again: UpgradeDef = Rules.fine_upgrade()  # Another def with the same id.
+	faction.upgrades = [first] as Array[UpgradeDef]
+	var all: Array[FactionDef] = [faction]
+	var twin: FactionDef = FactionDef.new()  # The same def in a second faction: still one id.
+	twin.id = &"renew"
+	twin.upgrades = [first] as Array[UpgradeDef]
+	(
+		assert_array(Rules.upgrade_catalog_problems(jets, [faction, twin] as Array[FactionDef]))
+		. is_empty()
+	)
+	faction.upgrades = [first, again] as Array[UpgradeDef]
+	assert_array(Rules.upgrade_catalog_problems(jets, all)).contains(
+		["better_bombs: upgrade id is on two defs"]
+	)
+	again.id = &""
+	assert_array(Rules.upgrade_catalog_problems(jets, all)).contains(["an upgrade has an empty id"])
+	var many: Array[UpgradeDef] = []
+	for count: int in World.UPGRADES_MAX + 1:
+		var up: UpgradeDef = Rules.fine_upgrade()
+		up.id = StringName("up%d" % count)
+		up.stat = UpgradeDef.Stat.DAMAGE_TAKEN  # No stat clash with the jet's other upgrades.
+		up.applies_to = [] as Array[UnitDef]
+		many.append(up)
+	faction.upgrades = many.slice(0, World.UPGRADES_MAX) as Array[UpgradeDef]
+	assert_array(Rules.upgrade_catalog_problems(jets, all)).is_empty()  # Exactly the most.
+	faction.upgrades = many
+	assert_array(Rules.upgrade_catalog_problems(jets, all)).is_equal(
+		["31 upgrade ids, more than 30"]
+	)
+
+
 func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):

@@ -67,8 +67,9 @@ const TALLY_REACHED: Array[StringName] = [
 ]
 ## The orders and navigation modes a random unit draws from, with FIELD and ATTACK twice or more
 ## (an order of 4 is none of the orders the sim knows).
-## Three move classes, and two the cache does not have (3 and -1), whose units have a speed of 0.
-const SOUP_CLASSES: Array[int] = [TRACKED, FOOT, WHEELED, 3, -1]
+## Three move classes, and two the cache does not have (4 and -1: AIR is class 3 since P232), whose
+## units have a speed of 0.
+const SOUP_CLASSES: Array[int] = [TRACKED, FOOT, WHEELED, 4, -1]
 const SOUP_ORDERS: Array[int] = [0, 1, 2, 3, 3, 3, 2, 4]
 const SOUP_MODES: Array[int] = [2, 2, 2, 1, 1, 0, 3, 4]
 ## The characters of GridWorld.GROUND that a random map is made of: grass most of the time.

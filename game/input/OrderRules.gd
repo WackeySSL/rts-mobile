@@ -47,7 +47,8 @@ static func only_tankers(snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
 
 ## The id of the building a ground tap gives a rally point: the selection is that one building,
 ## `player`'s own, and it produces infantry or vehicles. 0 for any other selection, a Headquarters
-## included (it produces structures, which are placed, so the sim refuses its rally: `Outcome`).
+## included (it produces structures, which are placed, so the sim refuses its rally: `Outcome`), and
+## a building of the FLIGHT or RESEARCH tab (the sim refuses those too).
 static func rally_building(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -> int:
 	if snap == null or ids.size() != 1:
 		return 0
@@ -55,7 +56,7 @@ static func rally_building(snap: MatchSnapshot, ids: PackedInt32Array, player: i
 	if row < 0 or snap.owner[row] != player:
 		return 0
 	var tab: int = produced_tab(snap, snap.type_index[row])
-	return ids[0] if tab >= World.Tab.INFANTRY and tab < World.TABS else 0
+	return ids[0] if tab >= World.Tab.INFANTRY and tab <= World.Tab.VEHICLES else 0
 
 
 ## The tab that type `type` produces (a `World.Tab`), -1 for a type that produces nothing.

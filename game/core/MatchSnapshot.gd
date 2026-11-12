@@ -58,7 +58,9 @@ const COPIED: Array[StringName] = [
 	&"type_strike_kind",
 	&"type_charge_ticks",
 	&"type_strike_radius",
+	&"type_layer_bit",
 	&"weapon_projectile_speed",
+	&"weapon_targets",
 	&"proj_id",
 	&"proj_owner",
 	&"proj_weapon",
@@ -93,14 +95,38 @@ const COPIED: Array[StringName] = [
 	&"power_used",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
-## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS and SETUP_ARRAYS: the sim's
-## working state, which no view reads. With COPIED it covers those ten lists exactly once (a
-## coverage test), so a new World array fails until it is classified. `terrain_cost` is here (the
-## view needs `terrain`, `terrain_ids` and `move_cost`), and so are the derived `building_rows` and
-## `harvester_rows`
-## (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view finds buildings by
-## `type_foot_w` and harvesters by `type_harvest`).
+## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS and
+## UPGRADE_ARRAYS: the sim's working state, which no view reads. With COPIED it covers those twelve
+## lists exactly once (a coverage test), so a new World array fails until it is classified. The air
+## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit` and
+## `weapon_targets`, which the view and input read (ADR 0036 section 14). `terrain_cost` is here
+## (the view needs `terrain`, `terrain_ids` and `move_cost`), and so are the derived `building_rows`
+## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
+## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
+	&"ammo",
+	&"type_ammo",
+	&"type_rearm_ticks",
+	&"type_pads",
+	&"type_pad_first",
+	&"type_upgrade",
+	&"type_repair_classes",
+	&"type_repair_hp",
+	&"type_repair_period",
+	&"type_repair_cost_percent",
+	&"type_repair_reach",
+	&"type_repair_slots",
+	&"type_repair_seek",
+	&"pad_offset_x",
+	&"pad_offset_y",
+	&"upgrade_stat",
+	&"upgrade_value",
+	&"upgrade_type_first",
+	&"upgrade_type_count",
+	&"upgrade_types",
+	&"reveal_site",
+	&"reveal",
+	&"upgrades",
 	&"goal_x",
 	&"goal_y",
 	&"group_cell",
@@ -215,6 +241,10 @@ var type_faction: PackedInt32Array = PackedInt32Array()
 var type_strike_kind: PackedInt32Array = PackedInt32Array()
 var type_charge_ticks: PackedInt32Array = PackedInt32Array()
 var type_strike_radius: PackedInt32Array = PackedInt32Array()
+## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
+## may hit, for the view and input (ADR 0036 section 5).
+var type_layer_bit: PackedInt32Array = PackedInt32Array()
+var weapon_targets: PackedInt32Array = PackedInt32Array()
 var weapon_ids: Array[StringName] = []
 var faction_ids: Array[StringName] = []
 var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
@@ -415,6 +445,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_strike_kind = world.type_strike_kind.duplicate()
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
+	type_layer_bit = world.type_layer_bit.duplicate()
+	weapon_targets = world.weapon_targets.duplicate()
 	weapon_projectile_speed = world.weapon_projectile_speed.duplicate()
 	proj_id = world.proj_id.duplicate()
 	proj_owner = world.proj_owner.duplicate()

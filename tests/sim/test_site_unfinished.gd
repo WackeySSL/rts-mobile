@@ -47,14 +47,17 @@ func test_a_site_is_no_producer_and_the_queue_is_dropped_without_a_complete_one(
 	assert_int(Production.producer_row(made, 1, INFANTRY)).is_equal(-1)
 	var credits: int = made.credits[1]
 	SiteRig.step(made, [Command.queue(1, rifle)])
-	assert_array([made.dropped_commands, made.credits[1], made.queue_count[3 + INFANTRY]]).is_equal(
-		[1, credits, 0]
+	(
+		assert_array(
+			[made.dropped_commands, made.credits[1], made.queue_count[World.TABS + INFANTRY]]
+		)
+		. is_equal([1, credits, 0])
 	)
 	# A complete barracks with a higher id is the producer, though the site comes first.
 	var second: int = made.add_building(1, barracks, 14, 14)
 	assert_int(Production.producer_row(made, 1, INFANTRY)).is_equal(_row(made, second))
 	SiteRig.step(made, [Command.queue(1, rifle)])
-	assert_int(made.queue_count[3 + INFANTRY]).is_equal(1)
+	assert_int(made.queue_count[World.TABS + INFANTRY]).is_equal(1)
 	# The STRUCTURES tab: a Headquarters that is a site starts no queue either.
 	SiteRig.unfinish(made, _row(made, SiteRig.HQ))
 	assert_int(Production.producer_row(made, 1, STRUCTURES)).is_equal(-1)
@@ -70,7 +73,7 @@ func test_a_queue_waits_while_its_only_producer_is_a_site() -> void:
 	var rifle: int = SiteRig.type_of(made, "rifle_squad")
 	SiteRig.step(made, [Command.queue(1, rifle)])
 	SiteRig.run(made, 4)
-	var queue: int = 3 + INFANTRY
+	var queue: int = World.TABS + INFANTRY
 	var progress: int = made.queue_progress[queue]
 	assert_int(progress).is_equal(5 * Production.PROGRESS_PER_TICK)
 	SiteRig.unfinish(made, _row(made, SiteRig.BARRACKS))
@@ -92,7 +95,9 @@ func test_a_site_meets_no_requirement() -> void:
 	assert_array([made.dropped_commands, made.credits[1]]).is_equal([1, credits])
 	made.build_left[_row(made, SiteRig.PLANT)] = 0
 	SiteRig.step(made, [Command.queue(1, barracks)])
-	assert_array([made.dropped_commands, made.queue_count[3 + STRUCTURES]]).is_equal([1, 1])
+	assert_array([made.dropped_commands, made.queue_count[World.TABS + STRUCTURES]]).is_equal(
+		[1, 1]
+	)
 
 
 ## A site keeps its target (TARGETING is unchanged) but fires nothing; the same turret, complete,
