@@ -5,8 +5,7 @@ extends GdUnitTestSuite
 ## that starts, is paused by a blackout, resumes, ends with the death of its building, and the last
 ## player's (3) sweep that stands to the end, over walkers that move and are born, at the cadence
 ## of 1 and of 3, with FOG alone native and with every phase the library has. After every tick the
-## rig
-## compares the state hash and the full state (the fog, the `revealed` flags and the dirty
+## rig compares the state hash and the full state (the fog, the `revealed` flags and the dirty
 ## lists included), and rebuilds `visible` from the rows and `reveal` (fog_derivation.gd).
 
 const Rig: GDScript = preload("res://tests/sim/support/fog_lockstep_rig.gd")

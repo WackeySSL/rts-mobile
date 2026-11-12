@@ -517,7 +517,9 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 ## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
 ## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
 ## includes it (ADR 0010 section 1), then the sweep of each player whose `reveal` is 1 (P233). No
-## map, no cells: nothing is stamped. It counts nothing in `stats`. World.prepare calls it.
+## map, no cells: nothing is stamped. It counts nothing in `stats`. World.prepare calls it. It
+## expects a freshly configured fog and clears each player's `revealed` flag anyway, so a call on a
+## reused fog stays correct.
 static func stamp_fog(world: World) -> void:
 	var fog: FogGrid = world.fog
 	for sight: int in world.type_sight:

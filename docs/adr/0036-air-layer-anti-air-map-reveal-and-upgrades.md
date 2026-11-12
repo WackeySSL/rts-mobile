@@ -491,8 +491,8 @@ options as they were asked.
 
 Note (2026-11-12, P233): as built. It changes no accepted rule.
 - `PlayerView.reveal_state` is a typed `PackedInt32Array` field, a copy of `World.reveal` indexed by
-  player (entry 0 is neutral), not a method: a new per-player fact is a field, and the 20-method
-  limit of `PlayerView` stands. A caller checks the size itself. `Reveal.State` is `OFF` 0, `ON` 1,
+  player (entry 0 is neutral), not a method: a new per-player fact is a field, and gdlint's
+  limit of 20 public methods on `PlayerView` stands. A caller checks the size itself. `Reveal.State` is `OFF` 0, `ON` 1,
   `PAUSED` 2.
 - The stamp is GDScript in REMOVE: `Reveal.run` sits inside the REMOVE mark, after `remove_dead` and
   before `FogUpdate.run`. The FOG and TARGETING kernels and `world_access.h` are untouched, because
@@ -510,7 +510,10 @@ Note (2026-11-12, P233): as built. It changes no accepted rule.
 - "After a replay to a checkpoint inside a sweep, on and paused" is met by a twin run compared with
   `hash_parts` after every step, and a rebuild of `visible` from the hashed state compared with the
   live fog after every step across the pause, plus a `prepare()` of a World that holds a standing
-  sweep of each player. No replay path needs data before P234.
+  sweep of each player. A replay through a sweep (`Replay.play` to a checkpoint inside one) needs
+  P234's space-centre data, because no shipped scenario has a space centre before it; P234 owns
+  that case, and it lands with the plan's Determinism replay test.
+- Where sections 3 and 11 say `reveal_stamped[p]`, read `fog.revealed[p - 1]` (P233).
 - P235 must move `reveal` and `reveal_site` from `MatchSnapshot.NOT_COPIED` to COPIED: the view reads
   only the snapshot, so the badge needs `reveal` and the owner's strike button needs `reveal_site`.
 

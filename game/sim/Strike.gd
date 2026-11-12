@@ -50,10 +50,10 @@ extends RefCounted
 ## to `events`, last of its apply: `[STRIKE, the building's id, point x, point y, kind, owner,
 ## landing tick, 0]`. The point is the clamped one the sim uses, `kind` is `Kind`, the landing tick
 ## is the rupture's `strike_tick` and 0 for a blackout and a sweep (they keep no landing; a REVEAL
-## record has point 0, 0). A dropped
-## command writes none. The record sits in COMMANDS, in command order, so before this step's
-## IMPACT, SHOT and DIED records. The view reads it for the launch and the fall of the strike; it is
-## not state, so no hash covers it. No kernel writes events in COMMANDS.
+## record has point 0, 0). A dropped command writes none. The record sits in COMMANDS, in command
+## order, so before this step's IMPACT, SHOT and DIED records. The view reads it for the launch
+## and the fall of the strike; it is not state, so no hash covers it. No kernel writes events in
+## COMMANDS.
 ##
 ## The blackout (`_black_out`, P111). In the command's apply, so in COMMANDS and at once, one pass
 ## over the building rows in ascending row order: every building not owned by the firing player

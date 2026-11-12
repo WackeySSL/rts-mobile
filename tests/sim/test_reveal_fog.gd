@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## `prepare()` of a World that holds a standing sweep, a rebuild across a low-power pause, and the
 ## claim that no kernel and no reader needs a further change: an armed unit acquires an enemy that
 ## only the sweep shows, loses it while the sweep is paused, and `PlayerView.seen_rows` follows.
-## The rig is `reveal_worlds.gd`; the cases run in the GDScript phases and in the C++ kernels.
+## The rigs are `reveal_worlds.gd` and `fog_worlds.gd`; the cases run in the GDScript phases and in
+## the C++ kernels.
 
 const Reveals: GDScript = preload("res://tests/sim/support/reveal_worlds.gd")
 const Derivation: GDScript = preload("res://tests/sim/support/fog_derivation.gd")
@@ -38,7 +39,8 @@ func _step_dirty(world: World, commands: Array = []) -> Array:
 ## The flips of a sweep that turns on, pauses and resumes on the owner's own fog turn stay in its
 ## dirty list: `Reveal.run` comes after `FogUpdate.begin`, which empties the list on that turn. The
 ## whole map flips, so the block overflows and the view redraws all of it. At the period of 1 every
-## step is the owner's turn; at the shipped 3 the three steps below are chosen on it.
+## step is the owner's turn; at the shipped 3 the fire and the blackout are chosen on it, and the
+## resume lands on it too because the rig's 90-tick blackout is a multiple of 3.
 func test_the_flips_of_a_sweep_reach_the_owners_dirty_list_on_its_turn(
 	impl: int, _test_parameters := _both()
 ) -> void:

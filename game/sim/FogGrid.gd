@@ -58,9 +58,9 @@ var dirty_full: PackedInt32Array = PackedInt32Array()
 ## 1 while the cell is in the player's dirty list, same layout as visible: a cell is listed once.
 var listed: PackedByteArray = PackedByteArray()
 ## Per player (index `player - 1`), 1 while the whole-block +1 of `reveal()` is in `visible`, else
-## 0.
-## `reveal()` sets it (+1) and clears it (-1), `configure()` zeroes it and `WorldLoad.stamp_fog`
-## sets it from the hashed `reveal`. Only GDScript reads it: no kernel does (ADR 0036 section 11).
+## 0. `reveal()` sets it (+1) and clears it (-1), `configure()` zeroes it and
+## `WorldLoad.stamp_fog` sets it from the hashed `reveal`. Only GDScript reads it: no kernel does
+## (ADR 0036 section 11).
 var revealed: PackedInt32Array = PackedInt32Array()
 ## Per mask: where its rows start in mask_half, and how many rows it reaches above and below
 ## its centre. mask_half holds each row's half-width in tiles, from dy = -radius down.

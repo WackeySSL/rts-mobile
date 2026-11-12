@@ -13,9 +13,8 @@ extends RefCounted
 ## `armed_world()` adds player 1's tank `TANK` (sight 2 tiles, acquire 6, range 5, at (20.5, 9.5))
 ## and player 2's sturdy unit `DUMMY` at (24.5, 9.5): 4 tiles from the tank, outside the sight of
 ## every player 1 row, and with no player 2 building within 7 tiles of the tank, so only a sweep
-## shows it.
-## `drain()` adds a building of player 1 that uses 200
-## power, which puts it on low power from the end of the step that follows.
+## shows it. `drain()` adds a building of player 1 that uses 200 power, which puts it on low power
+## from the end of the step that follows.
 
 const TargetingRig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
