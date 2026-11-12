@@ -12,7 +12,10 @@ const FILES: Dictionary[String, Array] = {
 }
 
 
-func test_each_faction_lists_one_space_centre_with_the_adr_numbers() -> void:
+## The numbers of the GDD table and ADR 0036 section 11. The hit points (1500), build time (600),
+## sight (5000) and armour class (3) are in no ADR: they are copied from the strike buildings, the
+## same tier, footprint and power, as starting values for the balance run.
+func test_each_faction_lists_one_space_centre_with_the_gdd_and_copied_numbers() -> void:
 	for id: String in FILES:
 		var def: BuildingDef = load("res://data/units/%s.tres" % id) as BuildingDef
 		assert_object(def).override_failure_message(id).is_not_null()
@@ -20,17 +23,29 @@ func test_each_faction_lists_one_space_centre_with_the_adr_numbers() -> void:
 		assert_str(String(def.faction)).is_equal(FILES[id][0])
 		assert_str(def.display_name).is_equal(FILES[id][1])
 		assert_str(String(def.requires.type_id)).is_equal(FILES[id][2])
+		# GDD: size, cost, power, requires.
+		assert_array([def.footprint, def.cost, def.power, def.tab]).is_equal(
+			[Vector2i(3, 3), 2000, -60, World.Tab.STRUCTURES]
+		)
+		# Copied from the strike buildings.
 		(
 			assert_array(
-				[def.footprint, def.cost, def.power, def.tab, def.speed, def.radius, def.max_hp]
+				[def.max_hp, def.armour, def.build_ticks, def.sight_range, def.acquire_range]
 			)
-			. is_equal([Vector2i(3, 3), 2000, -60, World.Tab.STRUCTURES, 0, 0, 1500])
+			. is_equal([1500, 3, 600, 5000, 0])
 		)
+		assert_array([def.speed, def.radius, def.produces]).is_equal([0, 0, -1])
+		assert_object(def.weapon).is_null()
 		assert_array([def.strike_kind, def.charge_ticks]).is_equal([Strike.Kind.REVEAL, 2700])
 		assert_array([def.strike_radius, def.strike_delay, def.strike_ticks]).is_equal([0, 0, 0])
 		assert_object(def.strike_weapon).is_null()
 		var faction: FactionDef = load("res://data/factions/%s.tres" % FILES[id][0])
 		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
+		var revealing: int = 0
+		for member: UnitDef in faction.roster:
+			if member is BuildingDef and (member as BuildingDef).strike_kind == Strike.Kind.REVEAL:
+				revealing += 1
+		assert_int(revealing).override_failure_message(id).is_equal(1)
 
 
 ## The art's footprint is the data's, and the art id is the type id (WorldSort bakes by it).

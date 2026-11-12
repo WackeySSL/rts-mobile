@@ -75,8 +75,8 @@ extends RefCounted
 ## tests enforce it (tests/ai/test_ai_poisoned_view.gd, the scan in tests/project).
 
 ## The World's enums the AI names, re-exported with the World's values (a test pins each pair), so
-## that `game/ai` never names `World`: the production tabs, the harvest modes of a harvester row
-## and the orders of a row.
+## that `game/ai` never names `World`: the production tabs, the harvest modes of a harvester row,
+## the orders of a row and the layer bits of a type and a weapon.
 enum Tab {
 	STRUCTURES = World.Tab.STRUCTURES,
 	INFANTRY = World.Tab.INFANTRY,

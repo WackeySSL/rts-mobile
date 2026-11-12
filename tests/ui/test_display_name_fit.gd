@@ -26,8 +26,8 @@ func test_every_display_name_fits_the_caption_and_every_requirement_fits_the_sas
 	assert_array(misfits).override_failure_message("\n".join(misfits)).is_empty()
 
 
-## The space centres' names (P234) are in the checked set, and Skyrig and Zenith fit a sash too:
-## each is the `requires` of nothing but is a name a card may show, so it is measured as a caption.
+## The space centres' names (P234) are in the checked set. Nothing requires a space centre, so
+## neither name shows on a sash: both are measured as captions only.
 func test_the_space_centres_are_in_the_checked_names() -> void:
 	var names: Dictionary[String, String] = DisplayNames.all()
 	assert_str(names.get("fossil_space", "")).is_equal("Skyrig")

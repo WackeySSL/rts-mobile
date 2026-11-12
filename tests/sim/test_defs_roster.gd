@@ -1,12 +1,13 @@
 extends GdUnitTestSuite
 ## The Phase 3 roster (plan rows P72 and P107, ADR 0018 sections 8 and 9, ADR 0023 section 7,
-## docs/GDD.md): the eight Derrick League buildings, the six units and the four weapons of the
+## docs/GDD.md): the nine Derrick League buildings (P234 added the space centre, whose numbers are
+## test_defs_space_centre's), the six units and the four weapons of the
 ## roster as literals, and the rules that span files: the requirement chains, the free tanker, the
 ## dock and exit cells. A type's art is pinned in tests/art from P99 on. The rules every single file
 ## obeys (a building has speed 0, radius 0 and armour Building; a mobile unit has a radius in
 ## 1..500; a weapon reaches the ring corner; a footprint is square) and the faction rules are
 ## test_defs_data's and test_defs_factions_data's, which run them over these files too. The unit
-## files hold the Lumen Accord's fourteen as well (P108): the cases here that walk the files take
+## files hold the Lumen Accord's fifteen as well (P108): the cases here that walk the files take
 ## the Derrick League's by their faction, and test_defs_roster_renew holds the other roster to the
 ## same rules.
 
@@ -23,7 +24,7 @@ const INFANTRY: int = 1
 const VEHICLES: int = 2
 
 
-func test_the_data_holds_the_eight_buildings_and_the_six_units() -> void:
+func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
