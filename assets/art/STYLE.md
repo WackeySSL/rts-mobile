@@ -1168,16 +1168,16 @@ has no end, so its state is the HUD's (P235) and the model shows the same pictur
 is on, paused or not yet fired. Each is placed from primitives in
 `assets/art/models/<faction>/<id>.tres`, so a change is a change of the model and a run of
 `bash scripts/gen-art.sh`.
-- **Two readings of the GDD.** The GDD's looks section says "The space centre is a launch tower built
+- **Two readings of the GDD.** The GDD's looks section said "The space centre is a launch tower built
   like a drilling derrick" (Derrick League) and "The space centre is a white spire with a solar
   collar" (Lumen Accord). The Deep Bore already is the Derrick League's open drilling derrick, so a
   second derrick pyramid would read as it; the Skyrig is therefore a goalpost gantry (two lattice
   posts and a hoist beam, still built of derrick steel and rungs) with the capsule it lifts. "Palette
   per faction" bans a solid spire (a column that tapers to a point and carries a light or a team cap),
   so the Zenith is a round stepped tower with a flat lid and no tip light: a white tower with a solar
-  collar. Both are judged on the phone ("Open points for Michael"). Michael's answer for the Zenith
-  (2026-11-12): the GDD now says "a white tower with a solar collar"; the Skyrig's derrick words
-  stay as they are.
+  collar. Both are judged on the phone ("Open points for Michael"). Michael chose "tower" for the
+  Zenith on 2026-11-12, so the GDD now says "a white tower with a solar collar". The GDD's Derrick
+  League line is his and stays as it is until he answers.
 
 | Type id | Name | Footprint | Silhouette (the model's `silhouette` line) |
 | --- | --- | --- | --- |
@@ -2662,13 +2662,13 @@ Renaming a unit or a unit type is a data change, not a reskin.
   tower with a flat lid and a solar collar and not a spire (the "No spire" rule bans a solid column
   with a light at its tip); does each read as a space centre at zoom 0.75 and 1, and should the GDD's
   words change ("a white tower with a solar collar")? (Michael, 2026-11-12: yes, "tower"; the GDD
-  is changed.) (2) whether the Zenith reads as a lighthouse
-  (white tower, coloured bands, a glass band under a lid): if so the glass band goes; (3) the lifts:
-  the Skyrig's capsule (16 frames, steps up to 0.30 tile) and the Zenith's collar (12 frames at 200
-  ms, steps up to 0.36 tile, 14 px at zoom 1), whether the collar looks jerky; 16 frames would
-  cost more rows on page 1; (4) KRITISK (the Stage button; SKADET shows the intact
-  picture, ADR 0034): the Skyrig's broken right post and sagging beam, the Zenith's toppled top;
-  (5) the team marks (8 to 10 %), and that no roof is a team plate.
+  now says so.) (2) whether the Zenith reads as a lighthouse (white tower, coloured bands, a glass
+  band under a lid): if so the glass band goes; (3) the lifts: the Skyrig's capsule (16 frames,
+  steps up to 0.30 tile) and the Zenith's collar (12 frames at 200 ms, steps up to 0.36 tile, 14 px
+  at zoom 1), whether the collar looks jerky; 16 frames would cost more rows on page 1; (4) KRITISK
+  (the Stage button; SKADET shows the intact picture, ADR 0034): the Skyrig's broken right post and
+  sagging beam, the Zenith's toppled top; (5) the team marks (8 to 10 %), and that no roof is a
+  team plate.
 - P101 (Phase 3), please judge on the phone (Dev, Art gallery, the first page: Units, then Iso) the
   six Derrick League units: the silhouettes of "Derrick League units", their team marks (7 to 11 %
   of a unit, as bands, rings and stripes) in both triads on both grounds, how the Flarejack looks

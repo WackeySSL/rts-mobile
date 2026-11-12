@@ -109,8 +109,7 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `tick += 1`. LastSeen also drops records in `REMOVE`: `World.remove_dead` (its body is
   `Removal.run`, P271) calls `LastSeen.forget_dead` before its compaction, for a building that
   dies while a player sees a cell of its footprint (P77b), and those checks count in
-  `MEMORY_CHECKS`. Loops go players,
-  tabs, rows by id and ore cells ascending; no Phase 3 rule draws
+  `MEMORY_CHECKS`. Loops go players, tabs, rows by id and ore cells ascending; no Phase 3 rule draws
   a random number. A building placed complete in COMMANDS of tick t (the old path) counts for power
   in t's ECONOMY; a place-first site counts from the end of the PRODUCTION step that completes it;
   a produced unit enters the grids in t+1.
