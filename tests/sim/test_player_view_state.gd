@@ -327,8 +327,8 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 	# The ore cells (static terrain, P195b), two lists, five slices of the player's state, four of its
 	# last-seen records and eleven type tables, ten more type tables and the three warned lists
 	# (`own_strike_tick` is an int), and the two layer tables of P232 (`type_layer_bit` and
-	# `weapon_targets`).
-	assert_int(touched).is_equal(38)
+	# `weapon_targets`), and `reveal_state` of P233.
+	assert_int(touched).is_equal(39)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))

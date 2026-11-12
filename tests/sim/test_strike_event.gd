@@ -256,7 +256,7 @@ func test_the_guards_of_apply_superweapon_write_no_event() -> void:
 	assert_bool(Strike.apply_superweapon(short, Strikes.fire(Strikes.BORE_A))).is_false()
 	var odd: World = Strikes.world()
 	Strikes.run_to(odd, Strikes.fire_tick(odd, Strikes.BORE_A))
-	odd.type_strike_kind[Strikes.type_of(odd, "bore")] = 3
+	odd.type_strike_kind[Strikes.type_of(odd, "bore")] = 4  # Kind 3 is REVEAL (P233); 4 is unknown.
 	assert_bool(Strike.apply_superweapon(odd, Strikes.fire(Strikes.BORE_A))).is_false()
 	for each: World in [world, short, odd]:
 		assert_array(Array(each.events)).is_empty()

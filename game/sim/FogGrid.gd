@@ -26,6 +26,7 @@ const UNHASHED: Array[StringName] = [
 	&"dirty_count",
 	&"dirty_full",
 	&"listed",
+	&"revealed",
 	&"mask_start",
 	&"mask_radius",
 	&"mask_half",
@@ -39,9 +40,11 @@ var player_count: int = 0
 ## Entries in one player's dirty block: a quarter of the cells (ADR 0010 section 1).
 var dirty_capacity: int = 0
 
-## The number of sight discs covering each cell, at (player - 1) * cells + cell. Derived state, not
-## hashed (ADR 0016): it equals the discs of the player's rows (owner, type_index and fog_cell,
-## which are hashed) stamped at their cells, and a test rebuilds it from them.
+## The number of sight discs covering each cell, at (player - 1) * cells + cell, plus 1 on every
+## cell of the player's block while its map sweep is stamped (`revealed`, ADR 0036 section 11).
+## Derived state, not hashed (ADR 0016): it equals the discs of the player's rows (owner,
+## type_index and fog_cell, which are hashed) stamped at their cells and the sweep of the player
+## whose `reveal` is 1 (hashed), and a test rebuilds it from them.
 var visible: PackedInt32Array = PackedInt32Array()
 ## 1 once any disc of the player has covered the cell, same layout. Never cleared.
 var explored: PackedByteArray = PackedByteArray()
@@ -54,6 +57,11 @@ var dirty_count: PackedInt32Array = PackedInt32Array()
 var dirty_full: PackedInt32Array = PackedInt32Array()
 ## 1 while the cell is in the player's dirty list, same layout as visible: a cell is listed once.
 var listed: PackedByteArray = PackedByteArray()
+## Per player (index `player - 1`), 1 while the whole-block +1 of `reveal()` is in `visible`, else
+## 0. `reveal()` sets it (+1) and clears it (-1), `configure()` zeroes it and
+## `WorldLoad.stamp_fog` sets it from the hashed `reveal`. Only GDScript reads it: no kernel does
+## (ADR 0036 section 11).
+var revealed: PackedInt32Array = PackedInt32Array()
 ## Per mask: where its rows start in mask_half, and how many rows it reaches above and below
 ## its centre. mask_half holds each row's half-width in tiles, from dy = -radius down.
 var mask_start: PackedInt32Array = PackedInt32Array()
@@ -74,6 +82,7 @@ func configure(cols: int, rows: int, player_count: int) -> void:
 	explored.resize(player_count * cells)
 	listed = explored.duplicate()
 	version = _zeros(player_count)
+	revealed = _zeros(player_count)
 	dirty = _zeros(player_count * dirty_capacity)
 	dirty_count = _zeros(player_count)
 	dirty_full = _zeros(player_count)
@@ -99,8 +108,9 @@ func add_mask(sight_milli: int) -> int:
 ## flips goes into the player's dirty block once per update, however often it flips (so a
 ## re-stamp lists the cells of both discs when the old one is unstamped first, and only the
 ## cells that change when the new one is stamped first); a cell that finds the block full sets
-## its flag instead. The version grows by one if any cell flipped. `cell` must be in the map,
-## `player` and `mask` valid. It allocates nothing.
+## its flag instead. The version grows by one if any cell flipped. `reveal` repeats this flip and
+## list rule over the whole block; a change to it here edits `reveal` too. `cell` must be in the
+## map, `player` and `mask` valid. It allocates nothing.
 @warning_ignore("integer_division")
 func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 	var block: int = player - 1
@@ -141,6 +151,50 @@ func stamp(player: int, cell: int, mask: int, delta: int) -> void:
 				marks[base + at] = 1
 			else:
 				overflowed = true
+	dirty_count[block] = used
+	if overflowed:
+		dirty_full[block] = 1
+	if flipped:
+		version[block] += 1
+
+
+## Adds `delta` (+1 stamps, -1 unstamps) to the visible count of every cell of the player's block:
+## the map reveal (ADR 0036 section 11, P233), the whole-map twin of `stamp`. A cell left visible
+## turns explored, a flip is a count crossing 0 and is listed and counted as `stamp` does it.
+## GDScript only: the FOG kernel adds and removes discs to the same counts, so it needs no
+## knowledge of it.
+## It sets the player's `revealed` flag for a +1 and clears it for a -1. `player` must be valid. It
+## allocates nothing.
+func reveal(player: int, delta: int) -> void:
+	var block: int = player - 1
+	revealed[block] = 1 if delta > 0 else 0
+	var base: int = block * cells
+	var counts: PackedInt32Array = visible
+	var seen: PackedByteArray = explored
+	var marks: PackedByteArray = listed
+	var list: PackedInt32Array = dirty
+	var list_at: int = block * dirty_capacity
+	var capacity: int = dirty_capacity
+	var used: int = dirty_count[block]
+	var flipped: bool = false
+	var overflowed: bool = false
+	for at: int in cells:
+		var before: int = counts[base + at]
+		var after: int = before + delta
+		counts[base + at] = after
+		if after > 0:
+			seen[base + at] = 1
+		if (before > 0) == (after > 0):
+			continue
+		flipped = true
+		if marks[base + at] != 0:
+			continue
+		if used < capacity:
+			list[list_at + used] = at
+			used += 1
+			marks[base + at] = 1
+		else:
+			overflowed = true
 	dirty_count[block] = used
 	if overflowed:
 		dirty_full[block] = 1
@@ -203,6 +257,7 @@ func copy_into(dst: FogGrid) -> void:
 	dst.dirty_count = dirty_count.duplicate()
 	dst.dirty_full = dirty_full.duplicate()
 	dst.listed = listed.duplicate()
+	dst.revealed = revealed.duplicate()
 	dst.mask_start = mask_start.duplicate()
 	dst.mask_radius = mask_radius.duplicate()
 	dst.mask_half = mask_half.duplicate()

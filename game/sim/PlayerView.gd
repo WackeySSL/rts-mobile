@@ -47,8 +47,9 @@ extends RefCounted
 ##   (`warned_x`, `warned_y`, `warned_tick`, one entry per player with a rupture pending, ascending
 ##   player; the owner is not listed), the player's own pending landing tick `own_strike_tick`
 ##   (0 = none; own state only, so the AI can obey ADR 0030 section 1's "not while the player's
-##   rupture is pending") and the rule caps `unit_cap` and `building_cap`. No enemy order, cargo,
-##   charge, credits or queue is exposed.
+##   rupture is pending") and the rule caps `unit_cap` and `building_cap`; and, from P233, every
+##   player's map sweep as the field `reveal_state` (0 off, 1 on, 2 paused: public, ADR 0036
+##   section 11). No enemy order, cargo, charge, credits or queue is exposed.
 ## - The rules, which no fog hides: the type tables the AI reads (`type_cost`, `type_tab`, ...),
 ##   `type_index_of(id)`, `is_refinery(type)`, and the World's constants it needs, re-exported
 ##   (`Tab`, `HarvestMode`, `Order`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`, `ARMOUR_CLASSES`).
@@ -196,10 +197,17 @@ var warned_y: PackedInt32Array = PackedInt32Array()
 var warned_tick: PackedInt32Array = PackedInt32Array()
 ## The viewing player's own pending rupture: its landing tick, 0 when none is pending. Own state
 ## only; no other player's tick is ever copied here (theirs are in the `warned_*` lists). Test it
-## for 0 and never compare it with a stamp: the sim drops a SUPERWEAPON while it is set, one stamped
-## at the landing tick itself included (COMMANDS runs before FIRE clears it). A blackout never sets
-## it, so a rupture may follow a blackout in the same think, but nothing may follow a rupture.
+## for 0 and never compare it with a stamp: the sim drops a RUPTURE or BLACKOUT SUPERWEAPON while it
+## is set, one stamped at the landing tick itself included (COMMANDS runs before FIRE clears it). A
+## blackout never sets it, so a rupture may follow a blackout in the same think; only a sweep (ADR
+## 0036 section 11) may follow a rupture.
 var own_strike_tick: int = 0
+## Every player's map sweep, one entry per player (index 0 is neutral), a `Reveal.State`: 0 no
+## sweep, 1 on, 2 paused (a blackout on the space centre, or its owner on low power; ADR 0036
+## section 11). Public knowledge for every player, because the enemy sees the warning and the
+## indicator. A copy. A caller indexes it by player and checks the size itself (a hand-built World
+## may leave it empty).
+var reveal_state: PackedInt32Array = PackedInt32Array()
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
 ## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
 var unit_cap: int = 0
@@ -245,6 +253,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_player(world)
 	view._take_ghosts(world)
 	view._take_warned(world)
+	view.reveal_state = world.reveal.duplicate()
 	view._take_rows(world)
 	return view
 

@@ -516,8 +516,10 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 ## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
 ## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
 ## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
-## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
-## `stats`. World.prepare calls it.
+## includes it (ADR 0010 section 1), then the sweep of each player whose `reveal` is 1 (P233). No
+## map, no cells: nothing is stamped. It counts nothing in `stats`. World.prepare calls it. It
+## expects a freshly configured fog and clears each player's `revealed` flag anyway, so a call on a
+## reused fog stays correct.
 static func stamp_fog(world: World) -> void:
 	var fog: FogGrid = world.fog
 	for sight: int in world.type_sight:
@@ -535,6 +537,13 @@ static func stamp_fog(world: World) -> void:
 			var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 			fog.stamp(player, cell, mini(types[row], pad), 1)
 			stamped[row] = cell
+	# A sweep that stands (ADR 0036 section 11): its +1 and its flag come from the hashed `reveal`
+	# alone, for every player, so a rebuild never depends on derived state.
+	var sweeps: PackedInt32Array = world.reveal
+	for player: int in range(1, mini(sweeps.size(), fog.player_count + 1)):
+		fog.revealed[player - 1] = 0
+		if sweeps[player] == Reveal.State.ON:
+			fog.reveal(player, 1)
 
 
 ## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
