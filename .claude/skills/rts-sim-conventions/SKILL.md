@@ -48,12 +48,13 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   target point in milli-tiles and no payload.
 - Applied at the start of their tick in (tick, player_id, sequence) order. Invalid commands are
   dropped and counted; they never crash the sim.
-- Validation is per type (`match command.type`). Unknown and reserved types (5-9, 17-19, 21-29)
+- Validation is per type (`match command.type`). Unknown and reserved types (5-9, 19, 21-29)
   are dropped as unknown. ADR 0017 §4 fixes `PLACE` 10, `QUEUE` 11, `CANCEL` 12, `RALLY` 13,
   `HARVEST` 14 and `SURRENDER` 20 (P70b), ADR 0023 §10 `SUPERWEAPON` 15 (P109; applied by
   `Strike.apply_superweapon` from P110), ADR 0026 §6 `CANCEL_BUILD` 16 (P128b;
   `Production.apply_cancel_build`: an own row with `build_left` above 0, the refund and the cancel
-  mark in COMMANDS); `Sim._apply` gates each on an undefeated player
+  mark in COMMANDS), ADR 0037 §3 and §4 `SELL` 17 and `MEND` 18 (P271; `Production.apply_sell`,
+  `Mend.apply_mend`); `Sim._apply` gates each on an undefeated player
   (`_playing`), and each stays dropped and counted until its row (P73-P76) fills its module's
   `apply_*`. From P76 on, every Command is dropped once `match_end_tick` is above 0.
 - `MatchLoop` stamps tick and sequence and records the command; it is the only tick driver

@@ -531,3 +531,28 @@ Note (2026-11-12, P26br, the lead; from the reviews of P232 and P236 and P232's 
   next buildings cost the same, page 1 fills at the second or third of P239b, P245b and P249, even
   at 3,840. So P202 merges before the next of them, and the lead puts the next lever to Michael
   before that row starts (ADR 0036 §15's P236 note).
+
+Note (2026-11-12, P26bt, the lead; from the reviews of P232c, P233 and P238 and their interaction review):
+- **`PlayerView`.** It stays at gdlint's limit of 20 public methods, with no pragma. A new
+  per-player or per-match fact is a typed field, not a method (P233's `reveal_state`). P238 added
+  `PlayerView.Layer`, so the P26br bullet above that says there is no Layer mirror is done.
+- **P234.** It owns the replay-through-a-sweep test (P233's note in ADR 0036 §11): `Replay.play`
+  to a checkpoint inside a standing sweep and one inside a pause, equal to the live run. It also
+  fixes the verbless clause in `Strike.gd`'s header and adds "3 sweep" and `Layer` to the doc lists
+  in `PlayerView.gd`.
+- **P235.** It moves `reveal` and `reveal_site` from `MatchSnapshot.NOT_COPIED` to the copied list:
+  the badge reads `reveal`, and the owner's strike button needs `reveal_site` to show on or paused.
+- **P241.** It adds the tests that pin the sweep and the target layers together (the P233 and P238
+  interaction review), under both implementations:
+  - With the sweep on, a ground gun takes a ground target and never an aircraft; an anti-air
+    weapon (mask 6) takes the aircraft; a pause drops it.
+  - A ground gun's ATTACK on an aircraft that only the sweep shows is dropped and counted (it
+    passes `_enemy_target` and fails `_rows_that_can_hit`).
+  - A real rupture that destroys the space centre ends the sweep in the same step, and an AIR row
+    at the strike point keeps its hp.
+- **P242.** `HOW_TO_PLAY`'s rupture row ("everything inside the ring ... takes damage") turns false
+  once aircraft ship: the rupture hits ground rows only. P242, the first row with aircraft data,
+  rewrites it.
+- **The next sim row that edits `Power.gd` or `Harvest.gd`.** Their headers still call them the
+  first and second "half" of ECONOMY; since P271 `Mend.run` is the third step, so the word is
+  "step".

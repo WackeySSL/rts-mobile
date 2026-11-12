@@ -513,7 +513,8 @@ Note (2026-11-12, P233): as built. It changes no accepted rule.
   limit of 20 public methods on `PlayerView` stands. A caller checks the size itself. `Reveal.State` is `OFF` 0, `ON` 1,
   `PAUSED` 2.
 - The stamp is GDScript in REMOVE: `Reveal.run` sits inside the REMOVE mark, after `remove_dead` and
-  before `FogUpdate.run`. The FOG and TARGETING kernels and `world_access.h` are untouched, because
+  before `FogUpdate.run`. The sweep needs no change to the FOG or TARGETING kernel or to
+  `world_access.h` (P238's layer test, §5, is separate and reads no sweep state), because
   the FOG phase only adds and removes discs to the `visible` counts and never rebuilds them, so the
   whole-map +1 survives every stamp, unstamp and kernel call, and TARGETING reads `visible` as it
   stands. A lockstep case and an armed-unit case pin it.
