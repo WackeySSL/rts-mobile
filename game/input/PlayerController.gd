@@ -133,9 +133,41 @@ func stop() -> bool:
 	if not _units_selected():
 		return false
 	command_sink.call(Command.stop(_local_player(), selection.selected))
+	_buzz()
+	return true
+
+
+## The command bar's Mend (ADR 0037 section 4): one MEND for the one own complete building selected,
+## its repair switched on or off, with the light buzz. False when the selection is anything else.
+func mend(on: bool) -> bool:
+	var row: int = _order_row()
+	if row < 0:
+		return false
+	command_sink.call(Command.mend(_local_player(), runner.snapshot.unit_id[row], on))
+	_buzz()
+	return true
+
+
+## The command bar's Sell, its second tap (`SellArm`): one SELL for the one own complete building
+## selected that has a price, with the buzz. False for any other selection. The sim refuses the
+## Headquarters and a site as well.
+func sell() -> bool:
+	var row: int = _order_row()
+	if row < 0 or not BuildingOrders.can_sell(runner.snapshot, row):
+		return false
+	command_sink.call(Command.sell(_local_player(), runner.snapshot.unit_id[row]))
+	_buzz()
+	return true
+
+
+## The row of the one own complete building selected, -1 for any other selection.
+func _order_row() -> int:
+	return BuildingOrders.target(runner.snapshot, selection.selected, _local_player())
+
+
+func _buzz() -> void:
 	if HudPrefs.vibrates(settings):
 		vibrate.call(settings.haptic_ms)
-	return true
 
 
 ## Whether the selection is own units (not nothing, not a building): what Stop is for.
@@ -155,8 +187,7 @@ func assign_group(slot: int) -> void:
 		return
 	selection.assign_group(slot)
 	_show_groups()
-	if HudPrefs.vibrates(settings):
-		vibrate.call(settings.haptic_ms)
+	_buzz()
 
 
 ## "+": stores the selected units in the lowest free group, with the buzz. Nothing when all groups
@@ -218,8 +249,7 @@ func _building_ground_tap(pos: Vector2) -> void:
 	var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
 	command_sink.call(Command.rally(_local_player(), building, ground.x, ground.y))
 	rally_ordered.emit(OrderRules.rally_tab(runner.snapshot, building), ground.x, ground.y)
-	if HudPrefs.vibrates(settings):
-		vibrate.call(settings.haptic_ms)
+	_buzz()
 
 
 ## Selects building `id` alone. The model does not fire for the building that is the selection
@@ -332,8 +362,7 @@ func move_selected_to(ground: Vector2i) -> bool:
 	if aiming or placing or not _units_selected():
 		return false
 	_move(ground.x, ground.y)
-	if HudPrefs.vibrates(settings):
-		vibrate.call(settings.haptic_ms)
+	_buzz()
 	return true
 
 

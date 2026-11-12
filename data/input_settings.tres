@@ -30,3 +30,5 @@ attack_toast_ms = 4000
 attack_cue_ms = 4000
 attack_cue_area_tiles = 12
 drawer_swipe_dp = 48.0
+sell_arm_min_ms = 400
+sell_confirm_ms = 3000

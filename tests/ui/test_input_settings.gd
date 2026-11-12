@@ -36,6 +36,8 @@ func _table() -> Dictionary[String, Variant]:
 		"attack_cue_ms": 4000,
 		"attack_cue_area_tiles": 12,
 		"drawer_swipe_dp": 48.0,
+		"sell_arm_min_ms": 400,
+		"sell_confirm_ms": 3000,
 	}
 
 
@@ -56,6 +58,18 @@ func test_zoom_levels_are_strictly_ascending_with_1_0_among_them_and_the_start_i
 		assert_float(levels[i]).is_greater(levels[i - 1])
 	assert_int(levels.find(1.0)).is_greater_equal(0)
 	assert_float(levels[settings.zoom_start_index]).is_equal(1.0)
+
+
+## The two-tap Sell's timing hangs together (ADR 0037 section 3): the gap from the first release to
+## the second press is at least a double-tap's (`double_tap_ms`), so a double-tap never sells, and
+## under the window; a contact of `long_press_ms` is a hold, so a tap (shorter than it) fits inside
+## the window, which is longer than a hold.
+func test_the_sell_timing_keeps_a_double_tap_from_selling_and_a_tap_inside_the_window() -> void:
+	for settings: InputSettings in [InputSettings.new(), load("res://data/input_settings.tres")]:
+		assert_int(settings.double_tap_ms).is_less_equal(settings.sell_arm_min_ms)
+		assert_int(settings.sell_arm_min_ms).is_less(settings.sell_confirm_ms)
+		assert_int(settings.long_press_ms).is_greater(0)
+		assert_int(settings.long_press_ms).is_less(settings.sell_confirm_ms)
 
 
 func _assert_table(settings: InputSettings) -> void:
