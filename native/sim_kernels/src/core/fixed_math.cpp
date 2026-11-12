@@ -6,7 +6,7 @@ namespace fixed_math {
 namespace {
 
 constexpr int64_t MILLI_PER_TILE = 1000; // World.MILLI_PER_TILE
-constexpr int64_t MOVE_CLASSES = 3; // World.MoveClass.size()
+constexpr int64_t MOVE_CLASSES = 4; // World.MoveClass.size()
 
 // GDScript's clampi, mini and maxi: the lower bound of a clamp is tested first, as in Godot's CLAMP.
 int64_t clamp(int64_t value, int64_t low, int64_t high) {

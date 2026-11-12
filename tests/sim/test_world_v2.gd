@@ -33,11 +33,13 @@ const PHASE_3_RULES: Dictionary[String, int] = {
 
 
 func test_the_tabs_and_harvest_modes_are_the_contract() -> void:
-	assert_dict(World.Tab).is_equal({"STRUCTURES": 0, "INFANTRY": 1, "VEHICLES": 2})
+	var tabs: Dictionary = {"STRUCTURES": 0, "INFANTRY": 1, "VEHICLES": 2}
+	tabs.merge({"FLIGHT": 3, "RESEARCH": 4})  # P232 (ADR 0036 section 2).
+	assert_dict(World.Tab).is_equal(tabs)
 	assert_int(World.TABS).is_equal(World.Tab.size())
 	var modes: Dictionary = {"IDLE": 0, "SEEK": 1, "MINE": 2, "RETURN": 3, "UNLOAD": 4}
 	assert_dict(World.HarvestMode).is_equal(modes)
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([5, 7])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
 
 
 ## The lists that Phase 3 declares at once (ADR 0017 section 3), by name and in order. The other
@@ -54,6 +56,7 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	players.append_array(["stat_lost_units", "stat_lost_buildings", "stat_harvested"])
 	players.append_array(["queue_count", "queue_progress", "rally_x", "rally_y", "queue_type"])
 	players.append_array(["strike_x", "strike_y", "strike_tick"])  # P109 (test_world_v3).
+	players.append_array(["reveal_site", "reveal", "upgrades"])  # P232 (test_world_v6).
 	assert_array(World.PLAYER_ARRAYS).is_equal(players)
 	assert_array(World.ORE_ARRAYS).is_equal(["ore_amount"])
 	var ghosts: Array[String] = ["ghost_id", "ghost_type", "ghost_owner", "ghost_cell"]
@@ -144,16 +147,16 @@ func test_prepare_sizes_the_player_state_at_its_start_values() -> void:
 		&"power_used"
 	]:
 		assert_array(world.get(column)).override_failure_message(column).is_equal([0, 0, 0])
-	for column: StringName in [&"queue_count", &"queue_progress"]:  # Player and tab: 3 x 3.
-		assert_array(world.get(column)).override_failure_message(column).is_equal(
-			[0, 0, 0, 0, 0, 0, 0, 0, 0]
-		)
+	var zeros: Array[int] = []
+	zeros.resize(15)
+	for column: StringName in [&"queue_count", &"queue_progress"]:  # Player and tab: 3 x 5.
+		assert_array(world.get(column)).override_failure_message(column).is_equal(zeros)
 	var minus: Array[int] = []
-	minus.resize(9)
+	minus.resize(15)
 	minus.fill(-1)
 	assert_array(world.rally_x).is_equal(minus)
 	assert_array(world.rally_y).is_equal(minus)
-	minus.resize(18)  # Player, tab and queue slot: 3 x 3 x 2.
+	minus.resize(30)  # Player, tab and queue slot: 3 x 5 x 2.
 	minus.fill(-1)
 	assert_array(world.queue_type).is_equal(minus)
 	for column: StringName in [&"ghost_id", &"ghost_type", &"ghost_owner", &"ghost_cell"]:
@@ -171,13 +174,13 @@ func test_the_player_arrays_follow_the_player_count_at_prepare() -> void:
 	var world: World = World.new()
 	world.prepare()
 	assert_array(world.credits).is_equal([0])
-	assert_int(world.queue_type.size()).is_equal(15)  # 1 x 3 x 5.
+	assert_int(world.queue_type.size()).is_equal(25)  # 1 x 5 x 5.
 	assert_int(world.ghost_id.size()).is_equal(40)
 	var late: World = World.new()
 	late.add_unit(3, 0, 1000, 1000)
 	late.prepare()
 	assert_array(late.credits).is_equal([0, 2000, 2000, 2000])
-	assert_array([late.rally_x.size(), late.queue_type.size()]).is_equal([12, 60])
+	assert_array([late.rally_x.size(), late.queue_type.size()]).is_equal([20, 100])
 
 
 ## The ore terrain's cells are listed ascending at load and each starts at ore_start units; the

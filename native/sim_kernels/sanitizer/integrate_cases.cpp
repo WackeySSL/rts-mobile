@@ -323,13 +323,13 @@ struct Stream {
 	}
 };
 
-// A scene: a map of `cols` x `rows` tiles with about one tile in `rock_in` blocked for some class, the three move
-// classes with a type each, `slots` fields integrated to completion (every other one still pending) and `units` rows.
+// A scene: a map of `cols` x `rows` tiles with about one tile in `rock_in` blocked for some ground class and the open
+// AIR plane (World.MoveClass, format 6), the four move classes with a type each, `slots` fields integrated to completion (every other one still pending) and `units` rows.
 State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int64_t units, int64_t rock_in) {
 	State state;
 	state.cols = cols;
 	state.rows = rows;
-	state.classes = 3;
+	state.classes = 4;
 	const int64_t cells = cols * rows;
 	state.rules.map_cols = cols;
 	state.rules.map_rows = rows;
@@ -346,9 +346,10 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 			state.move_cost.push_back(static_cast<uint8_t>(stream.next(rock_in) == 0 ? 0 : 10 + stream.next(4) * 10));
 		}
 	}
-	state.type_speed = { 120, 61, 0 };
-	state.type_spacing = { 1200, 1000, 900 };
-	state.type_move_class = { 0, 1, 2 };
+	state.move_cost.insert(state.move_cost.end(), static_cast<size_t>(cells), 10); // The AIR plane: grass everywhere.
+	state.type_speed = { 120, 61, 0, 90 };
+	state.type_spacing = { 1200, 1000, 900, 1100 };
+	state.type_move_class = { 0, 1, 2, 3 };
 	const size_t padded = static_cast<size_t>((cols + flow::PAD) * (rows + flow::PAD));
 	for (int64_t slot = 0; slot < slots; slot++) {
 		const int64_t goal = stream.next(cells);
@@ -392,7 +393,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t slots, int6
 	}
 	for (int64_t row = 0; row < units; row++) {
 		state.unit_id.push_back(static_cast<int32_t>(row + 1));
-		state.type_index.push_back(static_cast<int32_t>(stream.next(3)));
+		state.type_index.push_back(static_cast<int32_t>(stream.next(4)));
 		state.pos_x.push_back(static_cast<int32_t>(stream.next(cols * 1000)));
 		state.pos_y.push_back(static_cast<int32_t>(stream.next(rows * 1000)));
 		state.goal_x.push_back(static_cast<int32_t>(stream.next(cols * 1000)));

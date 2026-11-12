@@ -19,7 +19,7 @@ const FLOW_SOURCE: String = "res://native/sim_kernels/src/bind/kernel_flow.cpp"
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
-## The names in each list, 107 in the table (a port adds names here, so a dropped or added name
+## The names in each list, 109 in the table (a port adds names here, so a dropped or added name
 ## shows in a diff). INTEGRATE's 50 are the names kernel_integrate.cpp gets or sets (P37n) and
 ## SEPARATION's 20 those of kernel_separation.cpp (P39n; it was 28, with the eight that Separation
 ## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
@@ -29,8 +29,11 @@ const SLOTS: int = 8
 ## cols, rows, cells, player_count and visible; since P71b it is 41: a lock on a target that stands
 ## still keeps the row's goal, so the kernel reads type_speed again. FOG's 25 are the names
 ## kernel_fog.cpp gets or sets (P46n; it was 29: max_rows, map_cols, map_rows and type_speed lose
-## its bit, type_sight stays because the pad mask is the size of that table).
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 41, 5: 20, 6: 50, 10: 25}
+## its bit, type_sight stays because the pad mask is the size of that table). P232 (ADR 0036
+## section 13) declared `type_layer_bit` for TARGETING and SEPARATION and `weapon_targets` for
+## TARGETING, which no kernel reads yet (P238 and P240 do): TARGETING's list is 43 and
+## SEPARATION's 21.
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 43, 5: 21, 6: 50, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -117,6 +120,8 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.type_acquire": [3],
 	"WORLD.type_armour": [3],
 	"WORLD.type_move_class": [3, 6],
+	"WORLD.type_layer_bit": [3, 5],
+	"WORLD.weapon_targets": [3],
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],
 	"SLOT.goal_cell": [1, 6],
@@ -276,7 +281,7 @@ func test_check_world_rejects_an_unprepared_world_and_leaves_it_unchanged() -> v
 func test_every_list_is_not_empty_and_every_name_exists_with_its_type() -> void:
 	var world: World = _arena()
 	var table: Array[Dictionary] = _table()
-	assert_int(table.size()).is_equal(107)
+	assert_int(table.size()).is_equal(109)
 	for phase: int in PHASES:
 		var size: int = _listed(table, phase).size()
 		assert_int(size).override_failure_message("phase %d" % phase).is_equal(LIST_SIZES[phase])
@@ -694,7 +699,7 @@ func _rule_length(world: World, rule: String) -> int:
 		"TYPES": world.type_speed.size(),
 		"WEAPONS": world.weapon_range.size(),
 		"ARMOURS": 4 * world.weapon_range.size(),
-		"COSTS": 3 * cells,
+		"COSTS": 4 * cells,  # World.MoveClass.size(): the AIR plane is the fourth.
 		"SLOTS": world.flow_cache_size,
 		"PADDED": padded,
 		"BUCKETS": 512,
@@ -777,4 +782,5 @@ func _lists(owner: String) -> Array:
 	world_lists += World.PROJECTILE_ARRAYS + World.MAP_ARRAYS + World.SCRATCH_ARRAYS
 	world_lists += World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS
 	world_lists += World.DERIVED_ARRAYS + World.SETUP_ARRAYS
+	world_lists += World.PAD_ARRAYS + World.UPGRADE_ARRAYS
 	return world_lists + World.RUNTIME_ARRAYS + World.HASHED_SCALARS + World.UNHASHED_SCALARS

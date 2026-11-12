@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## compares on a stride of 2 or more (at any offset), at the checkpoints or at the end only misses
 ## one of them.
 
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const HEADER: String = "res://native/sim_kernels/src/bind/sim_kernels.h"
 const SEED: int = 42
@@ -161,6 +162,18 @@ func test_the_arena_matches_for_60_ticks_on_the_phases_of_the_library() -> void:
 	assert_bool(NativeKernels.self_check(_arena(), SEED, TICKS, kernels, mask)).is_true()
 
 
+## The sizes and classes of format 6 (P232, ADR 0036 sections 4 and 13): a world of four move
+## classes with aircraft that fly over a wall of rock, which no ground unit crosses, matches the
+## twins on the library's kernels after every tick, FLOW's cache configured with four classes.
+func test_the_self_check_matches_with_four_move_classes_and_aircraft_over_rock() -> void:
+	var kernels: Object = SimImpls.create_kernels()
+	assert_object(kernels).is_not_null()
+	var scenario: ScenarioDef = _air_scenario()
+	assert_int(World.from_scenario(scenario).flow.classes).is_equal(4)
+	var mask: int = kernels.phases()
+	assert_bool(NativeKernels.self_check(scenario, SEED, 120, kernels, mask)).is_true()
+
+
 ## The mutated kernel, on each bit of the mask in turn: the World it runs differs after the first
 ## tick, and the check stops there, having called that phase's kernel once and no other.
 func test_a_kernel_that_moves_a_unit_instead_of_its_phase_is_a_mismatch(
@@ -255,6 +268,44 @@ func _ported_phases() -> Array[int]:
 ## them World.tick is 23 and 24, which the checkpoint period does not divide).
 func _blip_ticks() -> Array[Array]:
 	return [[0], [22], [23], [TICKS - 1]]
+
+
+## A 12 x 3 map with a wall on column 4, a tank and a jet (AIR) of player 1 beside it on the west,
+## both ordered to the east edge at tick 0.
+func _air_scenario() -> ScenarioDef:
+	var grass: TerrainDef = TerrainDef.new()
+	grass.symbol = "."
+	var rock: TerrainDef = TerrainDef.new()
+	rock.symbol = "#"
+	rock.cost = PackedInt32Array([0, 0, 0])
+	var terrains: TerrainSetDef = TerrainSetDef.new()
+	terrains.terrains.append_array([grass, rock] as Array[TerrainDef])
+	var map: MapDef = MapDef.new()
+	map.rows = PackedStringArray(["....#.......", "....#.......", "....#......."])
+	map.terrain = terrains
+	var scenario: ScenarioDef = ScenarioDef.new()
+	scenario.map = map
+	scenario.player_count = 1
+	for kind: int in [World.MoveClass.TRACKED, World.MoveClass.AIR]:
+		var unit: UnitDef = UnitDef.new()
+		unit.type_id = &"tank" if kind == World.MoveClass.TRACKED else &"jet"
+		unit.speed = 100
+		unit.radius = 300
+		unit.sight_range = 3000
+		unit.max_hp = 100
+		unit.move_class = kind
+		var spawn: SpawnDef = SpawnDef.new()
+		spawn.owner = 1
+		spawn.unit = unit
+		spawn.count = 1
+		spawn.origin_tile = Vector2i(1, 0 if kind == World.MoveClass.TRACKED else 2)
+		scenario.spawns.append(spawn)
+	var order: OrderDef = OrderDef.new()
+	order.player = 1
+	order.type = Command.Type.MOVE
+	order.target_tile = Vector2i(11, 1)
+	scenario.orders.append(order)
+	return scenario
 
 
 func _arena() -> ScenarioDef:

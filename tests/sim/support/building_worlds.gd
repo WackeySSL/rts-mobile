@@ -64,13 +64,19 @@ static func type_of(world: World, id: String) -> int:
 	return world.type_ids.find(StringName(id))
 
 
-## The cost of `cell` for each move class, as an array.
+## The cost of `cell` for each ground move class (foot, wheeled, tracked), as an array. The AIR
+## plane is open everywhere (ADR 0036 section 4): `air_cost_at` reads it.
 static func costs_at(world: World, cell: int) -> Array[int]:
 	var cells: int = world.map_cols * world.map_rows
 	var found: Array[int] = []
-	for move_class: int in World.MoveClass.size():
+	for move_class: int in World.GROUND_CLASSES:
 		found.append(world.move_cost[move_class * cells + cell])
 	return found
+
+
+## The cost of `cell` in the AIR plane.
+static func air_cost_at(world: World, cell: int) -> int:
+	return world.move_cost[World.MoveClass.AIR * world.map_cols * world.map_rows + cell]
 
 
 ## Two small bases on 28 x 16 tiles for the lockstep runs: a wall of rock on column 13 with a gap in

@@ -76,6 +76,11 @@ static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World
 		for unit: UnitDef in faction.roster:
 			if unit != null:
 				_type_for(world, unit)
+	# Then the upgrades of the listed factions, after every type they may change (ADR 0036 section 2).
+	for faction: FactionDef in scenario.factions:
+		if faction != null:
+			for upgrade: UpgradeDef in faction.upgrades:
+				_upgrade_for(world, upgrade)
 	world.prepare()
 	world.events.clear()
 	return world
@@ -108,11 +113,10 @@ static func derive_open_grass(world: World) -> void:
 		world.map_cols = 0
 		world.map_rows = 0
 	var cells: int = world.map_cols * world.map_rows
-	var classes: int = World.MoveClass.size()
 	world.terrain.resize(cells)
-	world.move_cost.resize(classes * cells)
+	world.move_cost.resize(World.MoveClass.size() * cells)
 	world.move_cost.fill(World.GRASS_COST)
-	world.terrain_cost.resize(classes)
+	world.terrain_cost.resize(World.GROUND_CLASSES)
 	world.terrain_cost.fill(World.GRASS_COST)
 	world.terrain_ids.resize(1)  # In place, so a later prepare() allocates nothing.
 	world.terrain_ids[0] = World.GRASS_ID
@@ -127,7 +131,7 @@ static func derive_open_grass(world: World) -> void:
 static func _load_map(world: World, map: MapDef) -> void:
 	var defs: Array[TerrainDef] = map.terrain.terrains
 	var rows: PackedStringArray = map.rows
-	var classes: int = World.MoveClass.size()
+	var classes: int = World.GROUND_CLASSES  # The stride of terrain_cost; AIR has no terrain cost.
 	var index_of_symbol: Dictionary[int, int] = {}
 	world.terrain_cost.resize(defs.size() * classes)
 	world.terrain_buildable.resize(defs.size())
@@ -149,7 +153,8 @@ static func _load_map(world: World, map: MapDef) -> void:
 	world.map_h = size.y * World.MILLI_PER_TILE
 	var cells: int = size.x * size.y
 	world.terrain.resize(cells)
-	world.move_cost.resize(classes * cells)
+	world.move_cost.resize(World.MoveClass.size() * cells)
+	world.move_cost.fill(World.GRASS_COST)  # The AIR plane; the ground planes follow below.
 	var kind_at: PackedByteArray = world.terrain
 	var costs: PackedByteArray = world.terrain_cost
 	var cost_at: PackedByteArray = world.move_cost
@@ -205,6 +210,7 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	world.type_exit_x.append(building.exit.x if building != null else World.TYPE_PAD_V0)
 	world.type_exit_y.append(building.exit.y if building != null else World.TYPE_PAD_V0)
 	_strike_for(world, building)
+	_air_for(world, unit, building)
 	# The other types last, so that this type is complete before they are read.
 	var index: int = world.type_ids.size() - 1
 	if unit.requires != null:
@@ -212,6 +218,50 @@ static func _type_for(world: World, unit: UnitDef) -> int:
 	if building != null and building.free_unit != null:
 		world.type_free_unit[index] = _type_for(world, building.free_unit)
 	return index
+
+
+## Appends the air and repair entries of a type (ADR 0036 sections 2 and 3): the layer bit derived
+## from the move class and `low_flying`, the ammo, the pads and their offsets (a BuildingDef's), the
+## upgrade a research item gives (-1: P246 makes those types) and the repair role.
+static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void:
+	var layer: int = World.Layer.GROUND
+	if unit.move_class == World.MoveClass.AIR:
+		layer = World.Layer.LOW_AIR if unit.low_flying else World.Layer.AIR
+	world.type_layer_bit.append(layer)
+	world.type_ammo.append(unit.ammo)
+	world.type_rearm_ticks.append(unit.rearm_ticks)
+	world.type_pads.append(building.pads if building != null else World.TYPE_PAD_V0)
+	world.type_pad_first.append(world.pad_offset_x.size())
+	if building != null:
+		for offset: Vector2i in building.pad_offsets:
+			world.pad_offset_x.append(offset.x)
+			world.pad_offset_y.append(offset.y)
+	world.type_upgrade.append(World.TYPE_PAD_NONE)
+	world.type_repair_classes.append(unit.repair_classes)
+	world.type_repair_hp.append(unit.repair_hp)
+	world.type_repair_period.append(unit.repair_period_ticks)
+	world.type_repair_cost_percent.append(unit.repair_cost_percent)
+	world.type_repair_reach.append(unit.repair_reach_milli)
+	world.type_repair_slots.append(unit.repair_slots)
+	world.type_repair_seek.append(unit.repair_seek_milli)
+
+
+## Appends an upgrade (ADR 0036 sections 2 and 3) once per id, up to World.UPGRADES_MAX: its stat
+## and value, and the type indexes it changes, flat in `upgrade_types` from `upgrade_type_first`.
+static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
+	if (
+		upgrade == null
+		or world.upgrade_ids.has(upgrade.id)
+		or world.upgrade_ids.size() >= World.UPGRADES_MAX
+	):
+		return
+	world.upgrade_ids.append(upgrade.id)
+	world.upgrade_stat.append(upgrade.stat)
+	world.upgrade_value.append(upgrade.value)
+	world.upgrade_type_first.append(world.upgrade_types.size())
+	world.upgrade_type_count.append(upgrade.applies_to.size())
+	for unit: UnitDef in upgrade.applies_to:
+		world.upgrade_types.append(_type_for(world, unit) if unit != null else World.TYPE_PAD_NONE)
 
 
 ## Appends the six strike table entries of a type (ADR 0023 section 10): a BuildingDef's exports,
@@ -259,6 +309,7 @@ static func _weapon_for(world: World, weapon: WeaponDef) -> int:
 	world.weapon_projectile_speed.append(weapon.projectile_speed)
 	for armour: int in World.Armour.size():
 		world.weapon_vs_armour.append(weapon.vs_armour[armour])
+	world.weapon_targets.append(weapon.targets)
 	return world.weapon_ids.size() - 1
 
 
@@ -373,6 +424,9 @@ static func size_match_state(world: World) -> void:
 	world.strike_x.resize(players)
 	world.strike_y.resize(players)
 	world.strike_tick.resize(players)
+	world.reveal_site.resize(players)
+	world.reveal.resize(players)
+	world.upgrades.resize(players)
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
 	world.ghost_id.resize(ghosts)
@@ -382,3 +436,110 @@ static func size_match_state(world: World) -> void:
 	world.ghost_count.resize(players)
 	world.power_made.resize(players)
 	world.power_used.resize(players)
+
+
+## Gives every type table one entry per type, with the World.TYPE_PAD_* values, because Phase 1 code
+## appends only the four Phase 1 tables (World.prepare calls it). The tables of the air and repair
+## columns pad with 0, the layer bit with GROUND and `type_upgrade` with -1; `type_pad_first` (0)
+## names no pad, because `type_pads` is 0. Of the weapon tables only `weapon_targets` is padded (to
+## the weapon count, with GROUND, the WeaponDef default): a weapon of a scenario exists only through
+## `_weapon_for`, which appends all of them, and a test that builds one by hand names no mask.
+static func pad_types(world: World, types: int) -> void:
+	for table: PackedInt32Array in [
+		world.type_speed,
+		world.type_radius,
+		world.type_selection_radius,
+		world.type_spacing,
+		world.type_sight,
+		world.type_acquire,
+		world.type_foot_w,
+		world.type_foot_h,
+		world.type_cost,
+		world.type_build_ticks,
+		world.type_power,
+		world.type_harvest,
+		world.type_dock_x,
+		world.type_dock_y,
+		world.type_exit_x,
+		world.type_exit_y,
+		world.type_strike_kind,
+		world.type_charge_ticks,
+		world.type_strike_radius,
+		world.type_strike_delay,
+		world.type_strike_ticks,
+		world.type_ammo,
+		world.type_rearm_ticks,
+		world.type_pads,
+		world.type_pad_first,
+		world.type_repair_classes,
+		world.type_repair_hp,
+		world.type_repair_period,
+		world.type_repair_cost_percent,
+		world.type_repair_reach,
+		world.type_repair_slots,
+		world.type_repair_seek,
+	]:
+		_pad(table, types, World.TYPE_PAD_V0)
+	_pad(world.type_max_hp, types, World.TYPE_PAD_MAX_HP)
+	_pad(world.type_armour, types, World.TYPE_PAD_ARMOUR)
+	_pad(world.type_move_class, types, World.TYPE_PAD_MOVE_CLASS)
+	_pad(world.type_layer_bit, types, World.TYPE_PAD_LAYER)
+	# A hand-built weapon (its range appended without a mask) hits the ground only, as the default.
+	_pad(world.weapon_targets, world.weapon_range.size(), World.TYPE_PAD_LAYER)
+	for table: PackedInt32Array in [
+		world.type_weapon,
+		world.type_tab,
+		world.type_requires,
+		world.type_produces,
+		world.type_free_unit,
+		world.type_faction,
+		world.type_strike_weapon,
+		world.type_upgrade,
+	]:
+		_pad(table, types, World.TYPE_PAD_NONE)
+
+
+## Appends `value` to `table` until it has `size` entries.
+static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
+	for _i: int in range(table.size(), size):
+		table.append(value)
+
+
+## One sight mask per type, in type order, so a mask id is the type index (two types of equal sight
+## repeat their mask), and the pad mask of TYPE_PAD_SIGHT after them, id `type_sight.size()`, for a
+## row whose type has no entry (the fog code takes the smaller of the type index and that id, so a
+## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
+## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
+## includes it (ADR 0010 section 1). No map, no cells: nothing is stamped. It counts nothing in
+## `stats`. World.prepare calls it.
+static func stamp_fog(world: World) -> void:
+	var fog: FogGrid = world.fog
+	for sight: int in world.type_sight:
+		fog.add_mask(sight)
+	fog.add_mask(World.TYPE_PAD_SIGHT)
+	if fog.cells == 0:
+		return
+	var pad: int = world.type_sight.size()
+	var owners: PackedInt32Array = world.owner
+	var types: PackedInt32Array = world.type_index
+	var stamped: PackedInt32Array = world.fog_cell
+	for row: int in owners.size():
+		var player: int = owners[row]
+		if player >= 1 and player <= world.player_count:
+			var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+			fog.stamp(player, cell, mini(types[row], pad), 1)
+			stamped[row] = cell
+
+
+## Sizes every projectile slot array to max_projectiles, all slots free. Only the first prepare()
+## calls it (the sizes match afterwards). Changing max_projectiles after prepare() is not supported.
+static func reset_projectile_slots(world: World) -> void:
+	var slots: int = world.max_projectiles
+	for column_name: StringName in World.PROJECTILE_ARRAYS:
+		var column: PackedInt32Array = world.get(column_name)
+		column.clear()
+		column.resize(slots)
+	var stack: PackedInt32Array = world.proj_free
+	for i: int in slots:
+		stack[i] = slots - 1 - i
+	world.proj_free_top = slots

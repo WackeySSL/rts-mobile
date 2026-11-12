@@ -27,14 +27,21 @@ median_tolerance_pct = 2.0
 refresh_tolerance_pct = 1.0
 ref_iterations = 1000
 ref_burst_ms = 400
-; Re-pinned for P195d-2 (ADR 0033: half-turn equivariant tie-breaks and tile borders). The comment sits above
+; Re-pinned for P232 (named exception 23: STATE_FORMAT 6, ADR 0036 section 3): the row column `ammo`, the player
+; arrays reveal_site, reveal and upgrades, TABS 5 and the open AIR plane of move_cost joined the hashed layout, so every
+; hash moves while no row, rule or run changes. Twin and kernel end on the same hashes.
+; Before: 7d6cf98040d40575 b5249826ac486717 df49d0196902cd3c 4aa6d536ab5008c4 658e6196840a0c20 17f7a83c4d492c4c
+; (Re-pin history) Re-pinned for P195d-2 (ADR 0033: half-turn equivariant tie-breaks and tile borders). The comment sits above
 ; the ticks line because the golden-hash test wants the ticks and hex lines adjacent. Twin and kernel end on the same hashes.
 ; Before: 2baccf2e02ff4fe9 ef55b512f8edda8a 577336276303caec fb50cf870d8180eb 9028a733228b6091 7bcb20994df10b28
 golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-golden_hex = PackedStringArray("7d6cf98040d40575", "b5249826ac486717", "df49d0196902cd3c", "4aa6d536ab5008c4", "658e6196840a0c20", "17f7a83c4d492c4c")
-; Re-pinned for P195d-2 (ADR 0033: half-turn equivariant tie-breaks and tile borders), on top of exception 3
+golden_hex = PackedStringArray("43f73b614de0d894", "f915fd028e0003d8", "4ac4b178cb6a629d", "54d5ae1f8fd046bd", "b43388ca66bf423a", "4512f2002ed89f5c")
+; Re-pinned for P232 (named exception 23: STATE_FORMAT 6, ADR 0036 section 3), the same reason as the arena's above.
+; Twin and kernel end on the same hashes.
+; Before: fa063b35ac71111d 71c72435fd61775d b204b30812ff5703 dbc4dd06951ca0e8 d1ef50332c5904a0 c84764064abfb27c
+; (Re-pin history) Re-pinned for P195d-2 (ADR 0033: half-turn equivariant tie-breaks and tile borders), on top of exception 3
 ; (docks and exits face the map centre). The comment sits above the ticks line because the golden-hash test wants the
 ; ticks and hex lines adjacent. Twin and kernel end on the same hashes.
 ; Before: feb5d0302777e816 360f08cb64612295 4fa7bcadcc63d38e ce6037ef45537892 26d040f75b5d0364 4f1b4973efe6377c
 bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-bases_golden_hex = PackedStringArray("fa063b35ac71111d", "71c72435fd61775d", "b204b30812ff5703", "dbc4dd06951ca0e8", "d1ef50332c5904a0", "c84764064abfb27c")
+bases_golden_hex = PackedStringArray("543bdd691b272336", "c2ca2c1dd57c48b4", "f3518667ad95553f", "74ea67cb95f4e409", "b428701b11c14f06", "58681a6fcaf74db6")

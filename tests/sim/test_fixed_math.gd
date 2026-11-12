@@ -277,7 +277,7 @@ func test_line_clear_without_a_map_is_true_and_a_missing_class_is_false() -> voi
 	var bare: World = World.new()
 	assert_bool(FixedMath.line_clear(bare, 0, 0, 900, 900, TRACKED)).is_true()
 	var world: World = _map([Vector2i(2, 2)])
-	for bad_class: int in [-1, 3, 99]:
+	for bad_class: int in [-1, 4, 99]:  # AIR is class 3 since P232.
 		assert_bool(FixedMath.line_clear(world, 500, 500, 600, 500, bad_class)).is_false()
 
 

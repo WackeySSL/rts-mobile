@@ -160,5 +160,7 @@ func test_a_base_queues_its_own_factions_power_plant_rifle_and_tank() -> void:
 			var label: String = "%s player %d" % [path, player]
 			assert_int(world.dropped_commands).override_failure_message(label).is_equal(0)
 			assert_int(world.credits[player]).is_equal(RICH - cost)
-			for tab: int in World.TABS:
+			for tab: int in World.Tab.VEHICLES + 1:  # One item on each of the three drawer tabs.
 				assert_int(ProdRig.items(world, player, tab).size()).is_equal(1)
+			for tab: int in range(World.Tab.VEHICLES + 1, World.TABS):  # FLIGHT and RESEARCH: none.
+				assert_int(ProdRig.items(world, player, tab).size()).is_equal(0)

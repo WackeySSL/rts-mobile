@@ -17,7 +17,7 @@ const NONE: Array[int] = [-1, -1, -1, -1, -1, -1]
 ## The rally points of `player` tab by tab, as x and y of STRUCTURES, of INFANTRY and of VEHICLES.
 func _points(world: World, player: int) -> Array[int]:
 	var found: Array[int] = []
-	for tab: int in World.TABS:
+	for tab: int in World.Tab.VEHICLES + 1:  # The drawer's three tabs; FLIGHT and RESEARCH hold none.
 		found.append(world.rally_x[Rig.queue_of(player, tab)])
 		found.append(world.rally_y[Rig.queue_of(player, tab)])
 	return found

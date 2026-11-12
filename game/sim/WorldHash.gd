@@ -54,13 +54,16 @@ static func hash_hex(h: int) -> String:
 	return bytes.hex_encode()
 
 
-## The hash of the type and weapon tables, their ids, the faction ids, the rule ints and the
-## SETUP_ARRAYS: what a replay needs to see that it runs on other data. Call it on a prepared
+## The hash of the type, pad offset, upgrade and weapon tables, their ids (the upgrade ids too), the
+## faction ids, the rule ints and the SETUP_ARRAYS: what a replay needs to see that it runs on other
+## data. Call it on a prepared
 ## world, because prepare() pads the type tables.
 static func defs_hash(world: World) -> int:
 	var ctx: HashingContext = _start_hash()
 	var tag: int = 0
-	for table_name: StringName in World.TYPE_ARRAYS + World.WEAPON_ARRAYS:
+	for table_name: StringName in (
+		World.TYPE_ARRAYS + World.PAD_ARRAYS + World.UPGRADE_ARRAYS + World.WEAPON_ARRAYS
+	):
 		_feed(ctx, tag, _bytes_of(world.get(table_name)))
 		tag += 1
 	var rules: PackedInt64Array = PackedInt64Array()
@@ -70,9 +73,10 @@ static func defs_hash(world: World) -> int:
 	_feed(ctx, tag + 1, PackedStringArray(world.type_ids).to_byte_array())
 	_feed(ctx, tag + 2, PackedStringArray(world.weapon_ids).to_byte_array())
 	_feed(ctx, tag + 3, PackedStringArray(world.faction_ids).to_byte_array())
+	_feed(ctx, tag + 4, PackedStringArray(world.upgrade_ids).to_byte_array())
 	for setup_name: StringName in World.SETUP_ARRAYS:
 		tag += 1
-		_feed(ctx, tag + 3, _bytes_of(world.get(setup_name)))
+		_feed(ctx, tag + 4, _bytes_of(world.get(setup_name)))
 	return ctx.finish().decode_s64(0)
 
 

@@ -1,18 +1,16 @@
 extends RefCounted
 ## The air, repair-role and upgrade data rules of P231 (ADR 0036 section 2, ADR 0037 section 2),
 ## one text per broken rule, and the builders of the defs that break none. test_defs_data_air pins
-## them on built defs and holds every shipped file to them. The World copies none of these fields
-## yet, so they hold vacuously until the air data of P233 and later ships. The ranges of
-## move_class, tab, produces and strike_kind stay in test_defs_data, read from the World enums.
+## them on built defs and holds every shipped file to them. The World copies these fields since
+## P232 (test_world_v6); the shipped data holds none until the air data of P233 and later ships.
+## The constants read the World's enums; `REVEAL` follows with P233. The ranges of move_class, tab,
+## produces and strike_kind stay in test_defs_data, read from the World enums.
 
-## World.MoveClass.AIR from P232.
-const AIR: int = 3
+const AIR: int = World.MoveClass.AIR
 ## 1 << AIR: the AIR bit of a move-class mask (ADR 0036 section 2).
-const AIR_BIT: int = 8
-## World.Tab.FLIGHT from P232.
-const FLIGHT: int = 3
-## World.Tab.RESEARCH from P232.
-const RESEARCH: int = 4
+const AIR_BIT: int = 1 << AIR
+const FLIGHT: int = World.Tab.FLIGHT
+const RESEARCH: int = World.Tab.RESEARCH
 ## Strike.Kind.REVEAL from P233.
 const REVEAL: int = 3
 const MAX_PERCENT: int = 400

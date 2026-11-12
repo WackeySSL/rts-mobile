@@ -16,8 +16,12 @@
 // dump holds the same records as 1 and 2 (no kernel reads the new state), so both stay known. 4 (P109, ADR 0023
 // section 10, plan exception 10): the strike columns joined the hash; the dump holds the same records as 1 to 3 (no
 // kernel reads them), so all stay known. 5 (P128, ADR 0026 section 10, plan exception 10): the row column build_left
-// joined the hash; the dump holds the same records as 1 to 4 (no kernel reads it), so all stay known.
-inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5 };
+// joined the hash; the dump holds the same records as 1 to 4 (no kernel reads it), so all stay known. 6 (P232, ADR 0036
+// section 3, plan exception 23): the air and tech state joined the hash and move_cost gained the open AIR plane, so the
+// dump's world.move_cost holds four planes and flow.classes is 4; type_layer_bit and weapon_targets are in the checked
+// table but no kernel reads them yet (P238 and P240 do), so the dump holds the same record names as 1 to 5 and all stay
+// known.
+inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6 };
 
 class Dump {
 public:

@@ -27,8 +27,13 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## header, the new row section and the five sections after the rows (projectiles, fog, players, ore,
 ## ghosts: a block carries its section index as its tag, and that moved by one) changed, and the
 ## digest changed from 27f335e9bd1439ee; no row, rule or run moved (every row is complete, so the
-## new column is all zeros).
-const TICK_0_SEED_1: String = "a9e33d0d17b232fe"
+## new column is all zeros). P232 (ADR 0036 section 3, exception 23): STATE_FORMAT became 6, the
+## row column "ammo" and the player arrays reveal_site, reveal and upgrades joined the hash, and
+## TABS grew from 3 to 5 (the per-tab player arrays are longer), so the header, the new row
+## section, the five sections after the rows and the "players" section changed, and the map digest
+## moved with the fourth (open AIR) plane of move_cost; the digest changed from a9e33d0d17b232fe
+## (no row, rule or run moved: every new value is 0 or the start value).
+const TICK_0_SEED_1: String = "781a749381ea2eb2"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -82,7 +87,7 @@ func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> v
 				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
 				assert_bool(typed).override_failure_message(label).is_true()
 				checked += 1
-	assert_int(checked).is_equal(25)
+	assert_int(checked).is_equal(27)  # PAD_ARRAYS and UPGRADE_ARRAYS joined with P232.
 
 
 ## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the
@@ -171,6 +176,7 @@ func test_changing_an_unhashed_member_leaves_the_hash_unchanged() -> void:
 	var world: World = _world()
 	var baseline: int = world.state_hash()
 	var unhashed: Array = World.UNHASHED_SCALARS + World.TYPE_ARRAYS + World.WEAPON_ARRAYS
+	unhashed.append_array(World.PAD_ARRAYS + World.UPGRADE_ARRAYS)
 	unhashed.append_array(World.SCRATCH_ARRAYS + World.RUNTIME_ARRAYS + World.DERIVED_ARRAYS)
 	unhashed.append_array(World.SETUP_ARRAYS)
 	var targets: Array[Array] = _helpers(world)
@@ -238,10 +244,10 @@ func test_hash_hex_is_sixteen_lower_case_digits_least_significant_byte_first() -
 func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
-	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "projectiles"]
-	tail.append_array(["fog", "players", "ore", "ghosts"])
+	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "ammo"]
+	tail.append_array(["projectiles", "fog", "players", "ore", "ghosts"])
 	assert_array(names.slice(25)).is_equal(tail)
-	assert_array(names.slice(2, 29)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(2, 30)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

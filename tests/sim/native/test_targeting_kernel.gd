@@ -85,6 +85,9 @@ const TARGETING_NAMES: Array[String] = [
 	"FOG.visible"
 ]
 
+## Names the table lists for TARGETING that kernel_targeting.cpp does not get yet (P232).
+const DECLARED_UNREAD: Array[String] = ["WORLD.type_layer_bit", "WORLD.weapon_targets"]
+
 
 ## The list of the table is TARGETING_NAMES, and kernel_targeting.cpp names those and no other: a
 ## name it fetched outside the list would reach the engine without check_world's type test.
@@ -98,7 +101,9 @@ func test_targeting_gets_and_sets_exactly_the_names_of_its_list() -> void:
 		for token: String in found.get_string(3).split("|"):
 			if token.strip_edges() in ["PH_T", "PH_ALL"]:
 				names.append("%s.%s" % [found.get_string(1), found.get_string(2)])
-	assert_array(names).contains_exactly_in_any_order(TARGETING_NAMES)
+	# `type_layer_bit` and `weapon_targets` are in the checked table since P232 (ADR 0036 section 13)
+	# and no kernel reads them yet: P238's layer test moves them into TARGETING_NAMES.
+	assert_array(names).contains_exactly_in_any_order(TARGETING_NAMES + DECLARED_UNREAD)
 	var used: Array[String] = []
 	var ids: RegEx = RegEx.create_from_string("\\bID_(WORLD|TARGET|FOG)_(\\w+)")
 	for found: RegExMatch in ids.search_all(FileAccess.get_file_as_string(SOURCE)):

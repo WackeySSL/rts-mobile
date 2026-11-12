@@ -21,14 +21,14 @@ const RULES: Dictionary[StringName, int] = {
 
 
 func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([5, 7])
-	assert_int(World.ROW_ARRAYS.size()).is_equal(27)
-	assert_array(World.ROW_ARRAYS.slice(-3)).is_equal(
-		[&"ready_tick", &"offline_until", &"build_left"]
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
+	assert_int(World.ROW_ARRAYS.size()).is_equal(28)  # `ammo` (P232) follows build_left.
+	assert_array(World.ROW_ARRAYS.slice(-4)).is_equal(
+		[&"ready_tick", &"offline_until", &"build_left", &"ammo"]
 	)
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(-6)).is_equal(
-		["build_left", "projectiles", "fog", "players", "ore", "ghosts"]
+		["ammo", "projectiles", "fog", "players", "ore", "ghosts"]
 	)
 	assert_int(names.size()).is_equal(World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS)
 	# One shape list, and an int32 table of the World.
@@ -36,6 +36,7 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 	lists.append_array([World.PROJECTILE_ARRAYS, World.MAP_ARRAYS, World.SCRATCH_ARRAYS])
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
+	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS])
 	var found: int = 0
 	for list: Array in lists:
 		if list.has(&"build_left"):
