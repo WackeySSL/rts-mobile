@@ -43,7 +43,7 @@
 ; one here. An entry that stays in base px is listed in metadata/base_px by its path in this file.
 ; Type variations (DevButton, NumberLabel, SelectionPanel, EnemyHealth, PerfCard, SidebarTab,
 ; PowerBar, PowerBarLow, PowerNumber, PowerNumberLow, ItemTile, ItemCost, ItemCostLow, ItemBanner,
-; ItemCaption, ItemCaptionWarn, ItemCaptionOn, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
+; ItemCaption, ItemCaptionWarn, ItemCaptionOn, ItemCaptionDim, OrderLit, ItemSash, StrikeButton, StrikeConfirm, BuildButton, ReadyBadge, HudPanel, CapsButton,
 ; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
 ; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
@@ -204,6 +204,18 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.3, 0.3, 0.3, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_order_lit"]
+bg_color = Color(0.09, 0.22, 0.16, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
@@ -587,10 +599,21 @@ ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
 ItemCaption/base_type = &"Label"
 ItemCaption/colors/font_color = Color(1, 1, 1, 1)
 ItemCaption/font_sizes/font_size = 14
+ItemCaptionDim/base_type = &"ItemCaption"
+ItemCaptionDim/colors/font_color = Color(0.46, 0.5, 0.55, 1)
 ItemCaptionOn/base_type = &"ItemCaption"
 ItemCaptionOn/colors/font_color = Color(0.18823529, 0.64313725, 0.42352941, 1)
 ItemCaptionWarn/base_type = &"ItemCaption"
 ItemCaptionWarn/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
+ItemCaptionWarn/font_sizes/font_size = 18
+; A lit order button (the command bar's Mend while the building mends): a filled green plate with a thick edge, a cue
+; that is not colour alone.
+OrderLit/base_type = &"Button"
+OrderLit/styles/disabled = SubResource("StyleBoxFlat_order_lit")
+OrderLit/styles/hover = SubResource("StyleBoxFlat_order_lit")
+OrderLit/styles/hover_pressed = SubResource("StyleBoxFlat_order_lit")
+OrderLit/styles/normal = SubResource("StyleBoxFlat_order_lit")
+OrderLit/styles/pressed = SubResource("StyleBoxFlat_order_lit")
 ItemSash/base_type = &"Label"
 ItemSash/colors/band = Color(0.85098039, 0.87843137, 0.90980392, 1)
 ItemSash/colors/edge = Color(0.06, 0.08, 0.11, 1)

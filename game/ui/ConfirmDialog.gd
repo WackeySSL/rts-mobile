@@ -38,8 +38,7 @@ func _input(event: InputEvent) -> void:
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
 	if not dismiss_outside or not visible or touch == null or not touch.pressed:
 		return
-	var panel: Control = column.get_parent() as Control
-	if panel != null and not panel.get_global_rect().has_point(touch.position):
+	if not panel.get_global_rect().has_point(touch.position):
 		get_viewport().set_input_as_handled()
 		_answer(false)
 

@@ -1,63 +1,10 @@
-extends GdUnitTestSuite
+extends "res://tests/ui/support/building_orders_suite.gd"
 ## The command bar's building orders (plan P272, ADR 0037 sections 3, 4 and 9) in the main scene at
-## the six sizes of ScreenSizes.ALL: Mend and Sell show for one own complete building only (never
-## for an enemy building, a unit or a site; the Headquarters has no Sell); Mend is a toggle that
-## sends one MEND; Sell is a two-tap order that arms on the first tap ("+N" from
-## `Production.sale_refund`, amber), sends one SELL on a second tap between `sell_arm_min_ms` and
-## `sell_confirm_ms`, and is disarmed by any other touch, the window running out or a turn of the
-## phone; a resting thumb never sells; the last producer asks on the question card. The tests set
-## their own rules on the snapshot (`sell_refund_percent`), not the shipped ones.
-## Player 1 has a Deep Bore (id 1), a light tank (2), a barracks (4), a second barracks (5, when
-## `SECOND`) and a Headquarters (6, when `HQ`); player 2 has the Headquarters 3.
-
-const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
-const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
-const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
-const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const BORE: int = 1
-const TANK: int = 2
-const ENEMY_HQ: int = 3
-const BARRACKS: int = 4
-const SPARE: int = 5
-const OWN_HQ: int = 6
-const BASE: Array[Array] = [
-	[1, "fossil_strike", 6, 6],
-	[1, "light_tank", 14, 14],
-	[2, "renew_hq", 20, 20],
-	[1, "barracks", 10, 10],
-]
-const SECOND: Array = [1, "barracks", 10, 16]
-const HQ: Array = [1, "headquarters", 24, 6]
-const PERCENT: int = 50
-const TOLERANCE_PX: float = 0.5
-
-var _window_size_before: Vector2i
-var _main: Node2D
-var _controller: PlayerController
-var _runner: MatchRunner
-var _bar: CommandBar
-var _sent: Array[Command] = []
-var _now: int = 10000
-var _buzzes: Array[int] = []
-
-
-func before() -> void:
-	_window_size_before = get_window().size
-
-
-func after() -> void:
-	get_window().size = _window_size_before
-
-
-func before_test() -> void:
-	MenuRig.begin()
-
-
-func after_test() -> void:
-	MenuRig.end()
-	UiScale.clear_override()
-	CommandQueue.clear()
+## the six sizes of ScreenSizes.ALL: Mend and Sell show for one own complete building only; Mend is
+## a toggle that sends one MEND; Sell is a two-tap order: it arms on the first tap ("+N" from
+## `Production.sale_refund`, amber), sends one SELL on a second tap between `sell_arm_min_ms` (from
+## the first release) and `sell_confirm_ms`, and is disarmed by any other touch, the window running
+## out or a turn; a hold is no tap. Fixture: support/building_orders_suite.gd.
 
 
 func test_mend_and_sell_show_for_one_own_building_at_every_size_in_reach_of_a_thumb() -> void:
@@ -219,22 +166,54 @@ func test_a_second_tap_before_the_minimum_is_ignored_and_keeps_the_arm() -> void
 	assert_int(_sent.size()).is_equal(1)
 
 
-## A resting thumb: the button presses on release only, however long the finger stays down, so a
-## hold arms at most and never sells; a tap after the window re-arms and sells nothing.
-func test_a_resting_thumb_never_sells_and_a_tap_after_the_window_arms_again() -> void:
+## A resting thumb is no tap: a contact of `long_press_ms` or more never arms and never sells.
+func test_a_resting_thumb_never_arms_and_never_sells() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
 	await _select([BORE])
-	var at: Vector2 = _bar.order_button(&"sell").get_global_rect().get_center()
-	TouchEvents.press(get_viewport(), 0, at)
-	_now += 10 * _controller.settings.sell_confirm_ms  # A long rest.
-	TouchEvents.release(get_viewport(), 0, at)
+	_rest(_bar.order_button(&"sell"), 0, 10 * _controller.settings.sell_confirm_ms)
 	await _tick()
 	assert_int(_sent.size()).is_equal(0)
-	assert_str(_word(&"sell").text).is_not_equal("SELL")  # Armed by that one tap.
-	_now += _controller.settings.sell_confirm_ms  # The window ran out.
+	assert_str(_word(&"sell").text).is_equal("SELL")  # Not armed by a hold.
+
+
+## Arm, then the thumb settles on the button 0.3 s later and lifts at 2.5 s: the hold sells nothing
+## and disarms.
+func test_a_hold_after_the_arming_tap_sells_nothing_and_disarms() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
+	await _select([BORE])
+	_tap(_bar.order_button(&"sell"))
+	_rest(_bar.order_button(&"sell"), 300, 2500)
+	await _tick()
+	assert_int(_sent.size()).is_equal(0)
+	assert_str(_word(&"sell").text).is_equal("SELL")
+	_now += _controller.settings.sell_arm_min_ms
+	_tap(_bar.order_button(&"sell"))  # Disarmed: this one only arms.
+	assert_int(_sent.size()).is_equal(0)
+
+
+## A slow double-tap: release 0, press 250 ms, release 420 ms. The gap runs from the first release
+## to the second press, so it is under `sell_arm_min_ms`: nothing is sold and the arm stays.
+func test_a_slow_double_tap_never_sells() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
+	await _select([BORE])
+	_tap(_bar.order_button(&"sell"))
+	_rest(_bar.order_button(&"sell"), 250, 420)
+	await _tick()
+	assert_int(_sent.size()).is_equal(0)
+	assert_str(_word(&"sell").text).is_not_equal("SELL")  # Still armed by the first tap.
+	_now += _controller.settings.sell_arm_min_ms  # A second tap far enough from the release sells.
+	_tap(_bar.order_button(&"sell"))
+	assert_int(_sent.size()).is_equal(1)
+
+
+func test_a_tap_after_the_window_arms_again_and_sells_nothing() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], [SECOND])
+	await _select([BORE])
+	_tap(_bar.order_button(&"sell"))
+	_now += _controller.settings.sell_confirm_ms
 	_tap(_bar.order_button(&"sell"))
 	await _tick()
-	assert_int(_sent.size()).is_equal(0)  # The second tap after `sell_confirm_ms` re-arms.
+	assert_int(_sent.size()).is_equal(0)
 	assert_str(_word(&"sell").text).is_not_equal("SELL")
 	_now += _controller.settings.sell_arm_min_ms
 	_tap(_bar.order_button(&"sell"))
@@ -247,8 +226,9 @@ func test_the_window_running_out_disarms_and_so_does_any_other_touch() -> void:
 	_tap(_bar.order_button(&"sell"))
 	await _tick()
 	assert_str(_word(&"sell").text).is_not_equal("SELL")
+	assert_bool(_bar.is_processing()).is_true()  # The window is watched while Sell is armed.
 	_now += _controller.settings.sell_confirm_ms
-	_bar._process(0.0)  # The frame that sees the window out.
+	await await_idle_frame()  # A real frame sees the window out.
 	assert_str(_word(&"sell").text).is_equal("SELL")
 	assert_bool(_bar.is_processing()).is_false()
 	_tap(_bar.order_button(&"sell"))
@@ -401,68 +381,3 @@ func test_a_turn_of_the_phone_disarms_sell() -> void:
 	await await_idle_frame()
 	assert_str(_word(&"sell").text).is_equal("SELL")
 	assert_int(_sent.size()).is_equal(0)
-
-
-func _row(id: int) -> int:
-	return _runner.snapshot.index_of(id)
-
-
-func _x(id: StringName) -> float:
-	return _bar.order_button(id).get_global_rect().position.x
-
-
-func _word(id: StringName) -> Label:
-	return _bar.order_button(id).get_node("Face/Word") as Label
-
-
-func _card() -> ConfirmDialog:
-	return _main.get_node("Hud").find_child("SellCard", true, false) as ConfirmDialog
-
-
-func _select(ids: Array) -> void:
-	_controller.selection.set_ids(PackedInt32Array(ids))
-	await await_idle_frame()
-	await await_idle_frame()
-
-
-## A tick's worth of publishing: the bar fills from the snapshot the test has written.
-func _tick() -> void:
-	_runner.ticked.emit(_runner.snapshot.tick)
-	await await_idle_frame()
-
-
-## A tap on the middle of a control, with the touch events a finger sends.
-func _tap(control: Control) -> void:
-	var at: Vector2 = control.get_global_rect().get_center()
-	TouchEvents.press(get_viewport(), 0, at)
-	TouchEvents.release(get_viewport(), 0, at)
-
-
-## A new scene at `size`, its match paused, the Commands caught, the clock the test's.
-func _open(size: Vector2i, extra: Array) -> void:
-	if _main != null and is_instance_valid(_main):
-		remove_child(_main)
-		_main.free()
-	UiScale.clear_override()
-	get_window().size = size
-	await await_idle_frame()
-	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
-	var spawns: Array[SpawnDef] = []
-	for entry: Array in BASE + extra:
-		spawns.append(Rig.spawn(entry[0], entry[1], entry[2], entry[3]))
-	var scenario: ScenarioDef = Rig.scenario(spawns)
-	_runner = _main.get_node("MatchRunner") as MatchRunner
-	_runner.scenario = scenario
-	_runner.paused = true
-	add_child(_main)
-	await await_idle_frame()
-	_controller = _main.get_node("PlayerController")
-	_bar = _main.get_node("Hud").find_child("CommandBar", true, false) as CommandBar
-	_sent.clear()
-	_buzzes.clear()
-	_now = 10000
-	_controller.command_sink = func(command: Command) -> void: _sent.append(command)
-	_controller.vibrate = func(ms: int) -> void: _buzzes.append(ms)
-	_bar.clock = func() -> int: return _now
-	_runner.snapshot.sell_refund_percent = PERCENT  # The test's own rules, not the shipped ones.
-	await await_idle_frame()

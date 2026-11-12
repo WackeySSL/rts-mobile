@@ -10,6 +10,7 @@ const GAP_DP: float = 12.0
 const BUTTON_DP: Vector2 = Vector2(136.0, 64.0)
 
 var column: VBoxContainer
+var panel: PanelContainer  ## The plate that holds `column`.
 
 
 func _ready() -> void:
@@ -30,7 +31,7 @@ func _ready() -> void:
 	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	centre.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.add_child(centre)
-	var panel: PanelContainer = PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.theme_type_variation = &"HudPanel"
 	centre.add_child(panel)
 	panel.add_child(column)

@@ -17,7 +17,7 @@ func before_test() -> void:
 
 
 func _press(id: int, now: int) -> SellArm.Result:
-	return _arm.press(id, now, MIN_MS, CONFIRM_MS)
+	return _arm.press(id, now, now, MIN_MS, CONFIRM_MS)  # A tap with no length.
 
 
 func test_the_first_press_arms_and_the_second_after_the_minimum_sends() -> void:
@@ -69,3 +69,25 @@ func test_the_window_running_out_and_a_disarm_clear_the_arm() -> void:
 	assert_bool(_arm.is_armed()).is_false()
 	assert_bool(_arm.expired(99999, CONFIRM_MS)).is_false()
 	assert_int(_press(A, 1000 + MIN_MS + 1)).is_equal(SellArm.Result.ARMED)  # Never SEND after it.
+
+
+## The gap `sell_arm_min_ms` guards runs from the arming tap's release to the next tap's press.
+func test_the_gap_is_measured_from_the_release_of_the_first_tap_to_the_press_of_the_second(
+) -> void:
+	assert_int(_arm.press(A, 1000, 1100, MIN_MS, CONFIRM_MS)).is_equal(SellArm.Result.ARMED)
+	assert_int(_arm.armed_at).is_equal(1100)  # The release.
+	# A slow double-tap: press 2 at 250 ms after the release, however long its contact.
+	assert_int(_arm.press(A, 1350, 1700, MIN_MS, CONFIRM_MS)).is_equal(SellArm.Result.IGNORED)
+	assert_int(_arm.press(A, 1100 + MIN_MS, 1100 + MIN_MS + 50, MIN_MS, CONFIRM_MS)).is_equal(
+		SellArm.Result.SEND
+	)
+
+
+## The window runs from the release too: a press at `confirm_ms` after it arms again.
+func test_the_window_runs_from_the_release() -> void:
+	_arm.press(A, 1000, 1200, MIN_MS, CONFIRM_MS)
+	assert_bool(_arm.expired(1200 + CONFIRM_MS - 1, CONFIRM_MS)).is_false()
+	(
+		assert_int(_arm.press(A, 1200 + CONFIRM_MS, 1200 + CONFIRM_MS + 10, MIN_MS, CONFIRM_MS))
+		. is_equal(SellArm.Result.ARMED)
+	)

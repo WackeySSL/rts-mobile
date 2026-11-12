@@ -5,19 +5,24 @@ extends Control
 ## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" or a
 ## building's name, its health; then a "+N" chip for the types left out; an enemy building's chip
 ## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
-## in its top edge) and the orders the game has, from `ORDERS` (Stop, for units; a building has
-## none, an own complete building: Mend and Sell). Orders that do not fit scroll sideways inside the
-## bar, a button never shrinks below 56 dp.
-## A row that adds an order adds an `ORDERS` entry, its glyph and its HOW_TO_PLAY line. There is no
-## Attack button (ADR 0025 answer 4).
+## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
+## one own complete building (Mend, Sell). Orders that do not fit scroll sideways inside the bar, a
+## button never shrinks below 56 dp.
+## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
+## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
+## (whether it shows, and its state); `_sync_toggle` and `_fix_width` serve a lit order and a
+## button with a changing word. There is no Attack button (ADR 0025 answer 4).
 ## The bar is view and input state: Deselect sends no Command (`PlayerController.deselect`), Stop
 ## sends one STOP (`PlayerController.stop`). Mend (a toggle, lit while the building mends, one MEND)
 ## and Sell show for one own complete building (`BuildingOrders.target`; Sell only for one with a
-## price). Sell is a two-tap order (`SellArm`, P272): the first tap arms it (amber, "+N", the refund
-## now, `Production.sale_refund`), the second one sends one SELL between `sell_arm_min_ms` and
-## `sell_confirm_ms`. Any other touch, a turn of the phone or the window running out disarms it.
-## The player's last production building asks first on the question card ("Selling it loses the
-## match", Keep or Sell). The Sell button keeps a fixed width sized for the widest "+N".
+## price); Mend is dimmed and does nothing at full health with the switch off. Sell is a two-tap
+## order (`SellArm`, P272): the first tap arms it (amber, "+N", the refund now,
+## `Production.sale_refund`), the second one, pressed from `sell_arm_min_ms` after the first's
+## release and before `sell_confirm_ms`, sends one SELL. A contact of `long_press_ms` or more is a
+## hold, no tap: it disarms and sends nothing. Any other touch, a turn of the phone or the window
+## running out disarms it. The player's last production building asks first on the question card
+## ("Selling it loses the match", Keep or Sell), which closes with its building, the match end,
+## a tap outside or a turn. The Sell button keeps a fixed width sized for the widest "+N".
 ## Its slot (shown or not) follows the selection, except while placement or the strike aim run: it
 ## keeps the slot it had when the mode began, as an empty plate when the selection empties, and its
 ## width, so nothing beside it moves under the thumb (ADR 0025 section 1). The slot and the bar's
@@ -41,15 +46,17 @@ const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
-## The orders, in the bar's order: id, glyph, word, and whether it is for units.
+## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units" or &"building".
 const ORDERS: Array[Dictionary] = [
-	{"id": &"stop", "glyph": "stop", "label": "STOP", "units": true},
-	{"id": &"mend", "glyph": "repair", "label": "MEND", "units": false},
-	{"id": &"sell", "glyph": "sell", "label": "SELL", "units": false},
+	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
+	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
+	{"id": &"sell", "glyph": "sell", "label": "SELL", "for": &"building"},
 ]
-const WARN_CAPTION: StringName = &"ItemCaptionWarn"  ## The armed Sell's amber "+N".
-const LIT_CAPTION: StringName = &"ItemCaptionOn"  ## A lit Mend's green word and wrench.
-const SELL_PAD_DP: float = 8.0  ## Either side of the widest "+N" on the Sell button.
+const WARN_CAPTION: StringName = &"ItemCaptionWarn"  ## The armed Sell's amber "+N" (18 sp).
+const LIT_CAPTION: StringName = &"ItemCaptionOn"  ## A lit order's green word and glyph.
+const DIM_CAPTION: StringName = &"ItemCaptionDim"  ## A disabled order's grey word and glyph.
+const LIT_PLATE: StringName = &"OrderLit"  ## A lit toggle's plate: filled, with a thick edge.
+const SELL_PAD_DP: float = 8.0  ## Either side of a button's widest word.
 
 @export var runner: MatchRunner
 @export var controller: PlayerController
@@ -82,7 +89,11 @@ var _slot: bool = false  ## The bar holds its place (shown or an empty plate).
 var _publish_queued: bool = false
 var _published: float = 0.0  ## The content width last told to the state, dp.
 var _arm: SellArm = SellArm.new()
-var _sell_widest: int = -1  ## The widest "+N" the Sell button was sized for.
+var _wide: Dictionary[StringName, Array] = {}  ## Order id -> [caption, widest word].
+var _widest_serial: int = -1  ## match_serial the Sell width was worked out for.
+var _refund_shown: int = -1  ## The refund the armed Sell shows, -1 when it shows "SELL".
+var _down_ms: int = 0  ## When the finger last went down on Sell.
+var _card_id: int = -1  ## The building the question card asked about, -1 for none.
 var _portrait: bool = false  ## The window's orientation at the last resize.
 
 
@@ -250,10 +261,12 @@ func _ready() -> void:
 	_row.add_child(_scroll)
 	for order: Dictionary in ORDERS:
 		_add_order(order)
-	(_buttons[&"mend"] as Button).toggle_mode = true  # Lit (pressed) while the building mends.
+	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
+	_buttons[&"sell"].button_down.connect(func() -> void: _down_ms = int(clock.call()))
 	if sell_card != null:
-		sell_card.confirmed.connect(func() -> void: controller.sell())
-	set_process(false)  # Only while Sell is armed, for the window running out.
+		sell_card.confirmed.connect(_sell_confirmed)
+		runner.match_ended.connect(func(_winner: int) -> void: sell_card.close())
+	set_process(false)  # Only while an order runs a timer (`_needs_process`).
 	_clear.pressed.connect(func() -> void: controller.deselect())
 	controller.selection_changed.connect(_on_selection)
 	runner.ticked.connect(_on_ticked)
@@ -313,31 +326,44 @@ func _order(id: StringName) -> void:
 		&"mend":
 			var snap: MatchSnapshot = runner.snapshot
 			var row: int = BuildingOrders.target(snap, controller.selection.selected, _local())
-			if (
-				row >= 0
-				and (BuildingOrders.mending(snap, row) or BuildingOrders.can_mend(snap, row))
-			):
-				controller.mend(not BuildingOrders.mending(snap, row))
+			var on: bool = row >= 0 and BuildingOrders.mending(snap, row)
+			if row >= 0 and (on or BuildingOrders.can_mend(snap, row)):
+				controller.mend(not on)
 		&"sell":
 			_sell_pressed()
 
 
-## The Sell button: the first tap arms, the second sends (or asks first, for the last producer).
+## The Sell button, on release: a contact of `long_press_ms` or more is a hold and disarms; a tap
+## arms, or sends (or asks first, for the last producer).
 func _sell_pressed() -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	var row: int = BuildingOrders.target(snap, controller.selection.selected, _local())
 	if row < 0 or not BuildingOrders.can_sell(snap, row):
 		return
+	var now: int = int(clock.call())
 	var settings: InputSettings = controller.settings
+	if now - _down_ms >= settings.long_press_ms:
+		_disarm()  # A resting thumb is no tap: it never arms and never sells.
+		return
+	var id: int = snap.unit_id[row]
 	var result: SellArm.Result = _arm.press(
-		snap.unit_id[row], int(clock.call()), settings.sell_arm_min_ms, settings.sell_confirm_ms
+		id, _down_ms, now, settings.sell_arm_min_ms, settings.sell_confirm_ms
 	)
 	if result == SellArm.Result.SEND:
 		if sell_card != null and BuildingOrders.is_last_producer(snap, row, _local()):
+			_card_id = id
 			sell_card.open()  # Only its Sell sends; Keep, a tap outside or a turn closes it.
 		else:
 			controller.sell()
 	_sync_sell(snap, row)
+
+
+## The card's Sell: only for the building it asked about.
+func _sell_confirmed() -> void:
+	var row: int = BuildingOrders.target(runner.snapshot, controller.selection.selected, _local())
+	if row >= 0 and runner.snapshot.unit_id[row] == _card_id:
+		controller.sell()
+	_card_id = -1
 
 
 ## Any other touch disarms Sell: a press that is not on the Sell button. The event goes on.
@@ -364,6 +390,7 @@ func _on_turn() -> void:
 	_disarm()
 	if sell_card != null:
 		sell_card.close()
+		_card_id = -1
 
 
 func _disarm() -> void:
@@ -442,7 +469,8 @@ func _apply_dp() -> void:
 	for button: Button in [_clear] + _buttons.values():
 		var icon: Control = button.get_node("Face/Glyph")
 		icon.custom_minimum_size = UiScale.dp_vec(GLYPH_DP, GLYPH_DP)
-	_size_sell()
+	for button: Button in _buttons.values():
+		_fix_width(button)
 	place()
 
 
@@ -482,15 +510,7 @@ func _fill(ids: PackedInt32Array) -> void:
 				group.fogged = true
 	var local: int = _local()
 	var row: int = BuildingOrders.target(snap, ids, local)
-	for order: Dictionary in ORDERS:
-		_buttons[order["id"]].visible = _shows(order, units and not groups.is_empty(), snap, row)
-	if row >= 0:
-		_sync_mend(snap, row)
-	if row >= 0 and BuildingOrders.can_sell(snap, row):
-		_sync_sell(snap, row)
-	elif _arm.is_armed():
-		_arm.disarm()  # The selection moved off the building: nothing is armed any more.
-		set_process(false)
+	_sync_orders(snap, units and not groups.is_empty(), row)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
 	var index: int = 0
@@ -504,42 +524,74 @@ func _fill(ids: PackedInt32Array) -> void:
 		_fit_chips()
 
 
-## Whether order `order` shows: a unit order for a unit selection (`units_ok`), a building order for
-## one own complete building (`row`), Sell only for one with a price.
-static func _shows(order: Dictionary, units_ok: bool, snap: MatchSnapshot, row: int) -> bool:
-	if order["units"]:
-		return units_ok
-	if row < 0:
-		return false
-	return order["id"] != &"sell" or BuildingOrders.can_sell(snap, row)
+## Shows each order that acts on the selection (`units_ok` for a unit order, `row` the one own
+## complete building for a building order) and brings its state up to date.
+func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int) -> void:
+	for order: Dictionary in ORDERS:
+		var id: StringName = order["id"]
+		var shown: bool = units_ok
+		if order["for"] == &"building":
+			shown = row >= 0 and _building_order(id, snap, row)
+		_buttons[id].visible = shown
+	if not _buttons[&"sell"].visible:
+		_arm.disarm()  # The selection moved off the building: nothing is armed any more.
+		_refund_shown = -1
+		(_buttons[&"sell"].get_node("Face/Word") as Label).text = "SELL"
+	var card_stale: bool = row < 0 or snap == null or snap.unit_id[row] != _card_id
+	if sell_card != null and sell_card.visible and card_stale:
+		sell_card.close()  # Its building left the selection: the question is void.
+	set_process(_needs_process())
 
 
-## Mend is lit (pressed, the wrench green) while the building's switch is on.
-func _sync_mend(snap: MatchSnapshot, row: int) -> void:
-	var mend: Button = _buttons[&"mend"]
-	var on: bool = BuildingOrders.mending(snap, row)
-	mend.set_pressed_no_signal(on)
-	mend.disabled = not on and not BuildingOrders.can_mend(snap, row)  # Dimmed at full health.
-	_paint(mend, LIT_CAPTION if on else CAPTION)
+## Whether building order `id` shows for the building in `row`, and its button's state.
+func _building_order(id: StringName, snap: MatchSnapshot, row: int) -> bool:
+	match id:
+		&"mend":
+			var on: bool = BuildingOrders.mending(snap, row)
+			_sync_toggle(_buttons[id], on, on or BuildingOrders.can_mend(snap, row))
+			return true
+		&"sell":
+			if not BuildingOrders.can_sell(snap, row):
+				return false
+			_sync_sell(snap, row)
+			return true
+	return false
 
 
-## Sell shows "SELL", or while armed for this building amber "+N", the refund now. The fixed width
-## is sized for the widest "+N" first.
+## Whether a frame has work: the armed Sell's window runs out.
+func _needs_process() -> bool:
+	return _arm.is_armed()
+
+
+## A toggle order: lit (pressed, the green plate) when `on`, dimmed and not tappable when not
+## `enabled`; the word and glyph take the theme's colour for the state.
+func _sync_toggle(button: Button, on: bool, enabled: bool) -> void:
+	button.set_pressed_no_signal(on)
+	button.disabled = not enabled
+	var plate: StringName = LIT_PLATE if on else &""
+	if button.theme_type_variation != plate:
+		button.theme_type_variation = plate
+	_paint(button, LIT_CAPTION if on else (CAPTION if enabled else DIM_CAPTION))
+
+
+## Sell shows "SELL", or while armed for this building amber "+N", the refund now (formatted when
+## it changes). Its width is worked out once per match, for the widest "+N".
 func _sync_sell(snap: MatchSnapshot, row: int) -> void:
 	var sell: Button = _buttons[&"sell"]
 	var armed: bool = _arm.target == snap.unit_id[row]
 	if not armed:
 		_arm.disarm()
-	set_process(armed)
 	var word: Label = sell.get_node("Face/Word")
-	var text: String = "+%d" % BuildingOrders.refund(snap, row) if armed else "SELL"
-	if word.text != text:
-		word.text = text
+	var refund: int = BuildingOrders.refund(snap, row) if armed else -1
+	if refund != _refund_shown:
+		_refund_shown = refund
+		word.text = "+%d" % refund if armed else "SELL"
 	_paint(sell, WARN_CAPTION if armed else CAPTION)
-	var widest: int = BuildingOrders.widest_refund(snap)
-	if widest != _sell_widest:
-		_sell_widest = widest
-		_size_sell()
+	if snap.match_serial != _widest_serial:
+		_widest_serial = snap.match_serial
+		var digits: int = str(BuildingOrders.widest_refund(snap)).length()
+		_wide[&"sell"] = [WARN_CAPTION, "+" + "8".repeat(digits)]  # 8 is the widest digit.
+		_fix_width(sell)
 
 
 ## Gives the button's word the caption variation `variation` and its glyph the word's colour, so
@@ -551,20 +603,18 @@ func _paint(button: Button, variation: StringName) -> void:
 	(button.get_node("Face/Glyph") as TextureRect).modulate = word.get_theme_color(&"font_color")
 
 
-## The Sell button is as wide as the widest "+N" needs (never under the order least), whatever it
-## shows, so the refund never shifts it or its neighbours.
-func _size_sell() -> void:
-	var sell: Button = _buttons[&"sell"]
+## The button is as wide as its widest word needs (`_wide`: the caption it is set in and the word),
+## never under the order least, so a changing word never shifts it or its neighbours.
+func _fix_width(button: Button) -> void:
 	var width: float = UiScale.dp(ORDER_DP.x)
-	if _sell_widest >= 0:
-		var word: Label = sell.get_node("Face/Word")
-		var font: Font = word.get_theme_font(&"font")
-		var px: int = word.get_theme_font_size(&"font_size")
-		var text_px: float = (
-			font.get_string_size("+%d" % _sell_widest, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
-		)
+	var wide: Array = _wide.get(StringName(button.name.to_lower()), [])
+	if not wide.is_empty():
+		var word: Label = button.get_node("Face/Word")
+		var font: Font = word.get_theme_font(&"font", wide[0])
+		var px: int = word.get_theme_font_size(&"font_size", wide[0])
+		var text_px: float = font.get_string_size(wide[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 		width = maxf(width, ceilf(text_px) + 2.0 * UiScale.dp(SELL_PAD_DP))
-	sell.custom_minimum_size.x = width
+	button.custom_minimum_size.x = width
 
 
 ## Shows the chips that fit in the bar's room (while placement or the strike aim run: in the width
