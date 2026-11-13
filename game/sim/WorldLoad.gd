@@ -386,6 +386,7 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.mend_period_ticks = rules.mend_period_ticks
 	world.mend_cost_percent = rules.mend_cost_percent
 	world.passenger_cap = rules.passenger_cap
+	world.load_reach_milli = rules.load_reach_milli
 	world.mine_cap = rules.mine_cap
 	world.mine_lay_ticks = rules.mine_lay_ticks
 	world.mine_arm_ticks = rules.mine_arm_ticks

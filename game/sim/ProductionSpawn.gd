@@ -8,9 +8,10 @@ extends RefCounted
 
 ## Spawns one finished unit of `type` for `player` at the exit of `producer` (a building row) and
 ## returns true, or returns false and changes nothing but `stats` when it has to wait: `max_rows`
-## rows exist, the player has `unit_cap` mobile rows (type speed above 0, harvesters among them) or
-## no exit tile is free. The holds are tested before the walk, so a held unit counts no
-## `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`. The new row gets its
+## rows exist, the player has `unit_cap` mobile rows (type speed above 0, harvesters among them, and
+## its squads aboard carriers) or no exit tile is free. The holds are tested before the walk, so a
+## held unit counts no `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`.
+## The new row gets its
 ## first order (`_start`).
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
 	var kind: int = world.type_index[producer]
@@ -61,7 +62,8 @@ static func _spawn_from(
 	return true
 
 
-## How many rows of `player` can move (their type's speed is above 0): what `unit_cap` counts.
+## How many rows of `player` can move (their type's speed is above 0) and how many of its squads
+## are aboard a carrier: what `unit_cap` counts.
 static func mobile_rows(world: World, player: int) -> int:
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
@@ -70,7 +72,7 @@ static func mobile_rows(world: World, player: int) -> int:
 	for row: int in owners.size():
 		if owners[row] == player and speeds[types[row]] > 0:
 			count += 1
-	return count
+	return count + Carry.passengers_of(world, player)  # The squads aboard count too (ADR 0036 s. 8).
 
 
 ## The tile where a unit of `move_class` appears at building row `producer`: the exit tile (the

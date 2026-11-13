@@ -348,6 +348,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mend_period_ticks",
 	&"mend_cost_percent",
 	&"passenger_cap",
+	&"load_reach_milli",
 	&"mine_cap",
 	&"mine_lay_ticks",
 	&"mine_arm_ticks",
@@ -409,6 +410,7 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mend_period_ticks",
 	&"mend_cost_percent",
 	&"passenger_cap",
+	&"load_reach_milli",
 	&"mine_cap",
 	&"mine_lay_ticks",
 	&"mine_arm_ticks",
@@ -512,6 +514,8 @@ var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
 ## The size of the passenger table (ADR 0036 section 3).
 var passenger_cap: int = 0
+## How near a squad boards its carrier, in milli-tiles (`Carry.board`).
+var load_reach_milli: int = 0
 ## Mines (ADR 0037 section 8): the per-player cap, the lay, arm and sweep ticks and the record cap.
 var mine_cap: int = 0
 var mine_lay_ticks: int = 0

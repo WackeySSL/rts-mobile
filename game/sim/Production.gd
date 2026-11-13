@@ -46,11 +46,11 @@ const CANCELLED: int = -1
 
 ## The `build_left` of a building that SELL sold (ADR 0037 section 3): hit points 0, gone in the
 ## REMOVE of the same tick with DIED flag 3 (`Removal.died_flag`), no loss counted. -2 is
-## `Removal.BOARDED`.
+## `Carry.BOARDED`.
 const SOLD: int = -3
 
 ## Where in a DIED record (`World.remove_dead`) the flag is: 1 for a row whose `build_left` was
-## `CANCELLED`, 2 for `Removal.BOARDED`, 3 for `SOLD`, 0 for every other death
+## `CANCELLED`, 2 for `Carry.BOARDED`, 3 for `SOLD`, 0 for every other death
 ## (`Removal.died_flag`). The view reads it to draw no wreck or crater.
 const DIED_CANCEL_FLAG_AT: int = 6
 
