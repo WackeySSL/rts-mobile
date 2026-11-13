@@ -291,7 +291,7 @@ func test_a_medic_with_a_pending_order_target_does_not_seek() -> void:
 	var world: World = _world()
 	var medic: int = _add(world, 1, "medic", 12000, 3000)
 	_add(world, 1, "squad", 14000, 3000, 40)
-	world.order_target[medic] = 99  # A LOAD mark: the medic waits for its carrier.
+	world.order_target[medic] = 2  # A LOAD mark (the unit exists): the medic waits for its carrier.
 	_step(world, 2)
 	assert_int(world.order[medic]).is_equal(World.Order.IDLE)
 
@@ -303,3 +303,38 @@ func test_a_row_that_moved_this_tick_is_judged_at_its_new_place() -> void:
 	Worlds.step(world, [Command.move(1, sent, 3000, 3000)])
 	assert_bool(world.pos_x[tank] < 5700).is_true()
 	assert_int(world.hp[tank]).is_equal(80)
+
+
+func test_a_medic_whose_carrier_is_gone_seeks_again() -> void:
+	var world: World = _world()
+	var medic: int = _add(world, 1, "medic", 12000, 3000)
+	_add(world, 1, "squad", 14000, 3000, 40)
+	var carrier: int = _add(world, 1, "tank", 20000, 12000)
+	world.order_target[medic] = world.unit_id[carrier]
+	_step(world, 2)
+	assert_int(world.order[medic]).is_equal(World.Order.IDLE)
+	world.hp[carrier] = 0  # The carrier dies; REMOVE drops its row.
+	_step(world, 15)
+	assert_int(world.order[medic]).is_equal(World.Order.MOVE)
+
+
+func test_a_repairer_of_owner_zero_repairs_nothing_and_pays_nothing() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, 1, "tank", 4000, 3000, 50)
+	world.owner[tank] = 0
+	world.owner[world.index_of(1)] = 0
+	var before: int = world.credits[0]
+	_step(world)
+	assert_array([world.hp[tank], world.credits[0], world.credits[1]]).is_equal([50, before, 1000])
+
+
+func test_a_world_with_a_small_scratch_clamps_the_slots_and_still_repairs() -> void:
+	var world: World = _world()
+	var one: int = _add(world, 1, "tank", 4000, 3000, 50)
+	var two: int = _add(world, 1, "tank", 4000, 3500, 50)
+	world.type_repair_slots[world.type_index[world.index_of(1)]] = 8
+	world.push_x.resize(1)
+	world.push_y.resize(1)
+	Buildings.rebuild_lists(world)  # Only the rule runs: the rest of a tick needs the scratch.
+	Repair.run(world)
+	assert_array([world.hp[one], world.hp[two]]).is_equal([80, 50])

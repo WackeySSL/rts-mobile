@@ -24,7 +24,7 @@ const MILLI_PER_TILE: int = 1000
 ## is move their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin`
 ## emptied their
 ## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Carry.run`,
-## `Mend.run`), the
+## `Repair.run`, `Mend.run`), the
 ## queues advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`),
 ## the last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts.
 ## Of those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and

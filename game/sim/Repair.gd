@@ -18,8 +18,9 @@ extends RefCounted
 ##   written per repaired row, for the airfield's repair too (`Air._service`).
 ## - A building acts only complete and not blacked out (low power does not stop it); a defeated
 ##   owner's repairers act not at all (as `Mend.run`).
-## - A medic (mobile, `repair_seek_milli` above 0) that is IDLE with no hurt row in reach takes a
-##   MOVE to the most hurt candidate within the seek reach; a player's order wins.
+## - A medic (mobile, `repair_seek_milli` above 0) that is IDLE, has no order target (or one whose
+##   unit is gone: a pending LOAD keeps its mark until the carrier dies) and no hurt row in reach
+##   takes a MOVE to the most hurt candidate within the seek reach; a player's order wins.
 ## `stats[REPAIR_CHECKS]` counts the rows examined. No allocation but the one-row array of an order.
 
 ## The rows one repairer serves in one turn at most (ADR 0037 section 2: 1-8).
@@ -157,7 +158,7 @@ static func run(world: World) -> void:
 			kept == 0
 			and seek_row >= 0
 			and orders[row] == World.Order.IDLE
-			and order_target[row] == 0
+			and (order_target[row] == 0 or world.index_of(order_target[row]) < 0)
 		):
 			var one: PackedInt32Array = PackedInt32Array([row])  # alloc-ok
 			Formation.assign(world, one, xs[seek_row], ys[seek_row])
