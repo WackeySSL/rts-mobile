@@ -108,7 +108,7 @@ const TERRAIN_INDEX_MAX: int = 255
 const SEP_CELL_MILLI: int = MILLI_PER_TILE
 const TARGET_CELL_MILLI: int = 4 * MILLI_PER_TILE
 
-## The shape lists (WorldShape, P287a): same constants, same order; the doc blocks are there.
+# The shape lists (WorldShape, P287a): same contents and order, read-only; the doc blocks are there.
 const ROW_ARRAYS: Array[StringName] = WorldShape.ROW_ARRAYS
 const TYPE_ARRAYS: Array[StringName] = WorldShape.TYPE_ARRAYS
 const PAD_ARRAYS: Array[StringName] = WorldShape.PAD_ARRAYS

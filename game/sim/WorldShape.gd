@@ -3,9 +3,9 @@ extends RefCounted
 ## The shape lists of a World (ADR 0007 section 8, ADR 0013 section 3), split out of World.gd
 ## (P287a) so that file keeps room under gdlint's line limit. Pure data: the names of every array
 ## and scalar a World declares, grouped by what the state hash, the defs hash and the coverage
-## walks do with them. World.gd re-exports each one under the same name (`World.ROW_ARRAYS` is
-## `WorldShape.ROW_ARRAYS`, the same constant), so no caller changes. The lists, their order and
-## their contents are exactly World's own, moved.
+## walks do with them. World.gd re-exports each one under the same name (`World.ROW_ARRAYS` has
+## the same contents as `WorldShape.ROW_ARRAYS`, read-only), so no caller
+## changes. The lists, their order and their contents are exactly World's own, moved.
 
 ## The per-unit columns, in this order.
 const ROW_ARRAYS: Array[StringName] = [
