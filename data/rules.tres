@@ -45,3 +45,4 @@ mend_hp = 10
 mend_period_ticks = 15
 mend_cost_percent = 30
 passenger_cap = 150
+load_reach_milli = 3000

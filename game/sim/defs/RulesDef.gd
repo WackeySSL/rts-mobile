@@ -86,3 +86,6 @@ extends Resource
 ## Carriers (ADR 0036 sections 3 and 8): the size of the passenger table, the squads aboard carriers
 ## at most. Inert at 0: no squad can board, so a scenario that sets none plays as before.
 @export var passenger_cap: int = 0
+## How near a squad must be to its carrier to board, in milli-tiles (ADR 0036 section 8). Inert at
+## 0: nothing is within reach.
+@export var load_reach_milli: int = 0

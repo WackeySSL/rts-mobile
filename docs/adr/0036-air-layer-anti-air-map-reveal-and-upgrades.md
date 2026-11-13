@@ -430,6 +430,28 @@ Note (2026-11-12, P238): as built. It changes no accepted text.
   - The Lumen Accord's is fast and LIGHT and carries 2.
   - Both are unarmed, high air (layer 2) and FLIGHT items, and they count toward pads.
 
+Note (2026-11-13, P263): loading as built. It refines §8 and changes no accepted text.
+- **LOAD** is `Command.Type.LOAD` (5), factory `Command.board(player, squads, carrier)`; the rule is
+  `Carry.apply_load`. The valid squads are the lowest ids, up to the carrier's free slots
+  (`type_carry_slots` less the squads aboard), whose move class bit is in `type_carry_classes`.
+  Carrier and squads get MOVE in formation round G (`Formation.assign`), the carrier with
+  `carry_mode` 0 and `order_target` 0, each squad with `order_target` = the carrier's id.
+- **The mark.** A squad boards when its order is MOVE or IDLE (not ATTACK or ATTACK_MOVE) and its
+  `order_target` names an own, living, complete carrier with a free slot within `load_reach_milli`.
+  A plain MOVE or ATTACK_MOVE takes the mark off (`Carry.release`, one line in `Sim._apply_point`),
+  and only a mark that names an own row: an ATTACK's names an enemy, so no frozen run changes. A
+  carrier with no slot free clears the mark of the squad that finds it full.
+- **Rules.** `load_reach_milli` is a rule int (`RulesDef`, default 0 = inert, `data/rules.tres`
+  3000), in `defs_hash` and out of the state hash. `unload_reach_tiles` comes with P263b.
+- **Unit cap.** `ProductionSpawn.mobile_rows` adds the squads aboard (`Carry.passengers_of`).
+- **FOOT only.** A squad must be a mobile FOOT type with its bit in the mask (`Carry._boards`), so
+  a carrier never boards a carrier and a harvester never boards. A new order to a carrier (MOVE,
+  ATTACK_MOVE, STOP) clears the marks that name it.
+- **Not in P263.** A ground carrier that cannot reach G in FOOT-only scrub (lens A's S3) goes to
+  the ground-carrier row.
+- **Pins.** `Carry.BOARDED` replaces `Removal.BOARDED`. No golden moved: the frozen arenas have
+  `passenger_cap` 0, so `Carry.board` returns at once.
+
 ### 9. Drone squads (release 1.2 recommended)
 - **A drone squad is an air unit.** It is not ground infantry that hops. A hop needs a new movement
   mode with terrain checks inside the INTEGRATE kernel. The AIR class with `low_flying` costs no

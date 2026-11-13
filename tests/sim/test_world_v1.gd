@@ -63,6 +63,7 @@ const RULES: Dictionary[String, int] = {
 	"mend_period_ticks": 15,
 	"mend_cost_percent": 30,
 	"passenger_cap": 0,
+	"load_reach_milli": 0,
 }
 
 
@@ -103,7 +104,7 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	for info: Dictionary in defaults.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(41)
+	assert_int(fields.size()).is_equal(42)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -352,7 +353,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 		else:
 			others.append(column)
 	assert_int(packed.size()).is_equal(145)
-	assert_int(ints.size()).is_equal(62)
+	assert_int(ints.size()).is_equal(63)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so
