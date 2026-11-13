@@ -100,7 +100,12 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   `build_left != 0`); every "is it complete" test reads `== 0`
   or `!= 0`), and the three
   rule ints `construct_start_hp_percent`, `construct_refund_percent` and `construction_sites_max`
-  are in `RULE_SCALARS`, so in `defs_hash`. The power totals and the building and harvester lists
+  are in `RULE_SCALARS`, so in `defs_hash`. `STATE_FORMAT` 6 (ADR 0036 §3, P232, exception 23)
+  adds the row column `ammo`, the player arrays `reveal_site`, `reveal` and `upgrades`, and
+  `TABS` 5. `STATE_FORMAT` 7 (ADR 0036 §3 and §8, P262, exception 24) adds the row column
+  `carry_mode`, the header scalar `pass_count` and the passenger table (`PASSENGER_ARRAYS`,
+  `passenger_cap` records, live below `pass_count`), hashed in its own section `passengers`
+  (`HASH_OTHER_SECTIONS` 8). The power totals and the building and harvester lists
   are derived, rebuilt when `rows_version` moves, out of the hash, with a rebuild test at every
   checkpoint; a PRODUCTION step that completes a site ends with `Power.run` again, so the totals
   still equal a rebuild. `move_cost` stays in the map digest.
