@@ -63,8 +63,9 @@ supersedes §3's "inside the tick job". The job builds each due controller's `Pl
 T, and the controllers think on their own thread (inline in `SYNC`). Their Commands enter step T+1
 after the human's and are stamped T+1. The job waits for a late batch, so `SYNC` and `WORKER` give
 the same hash. §3's other rules stand: the order after the human's, the record, `Replay.play`
-without AI, the scans, and one path for the phone and every headless driver. §1's aliases end
-with plan row P302: a view holds copies only. Rows P301-P304b. No accepted text changed.
+without AI, the scans, and one path for the phone and every driver that stands for it (the
+`tests/ai` rigs keep lag 0, ADR 0038 §6); §5's zero drops hold at lag 0. §1's aliases end with
+plan row P302: a view holds copies only. Rows P301-P304b. No accepted text changed.
 
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only

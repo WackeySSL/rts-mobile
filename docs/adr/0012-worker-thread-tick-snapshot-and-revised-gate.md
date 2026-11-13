@@ -95,6 +95,12 @@ Status note (2026-10-26, P26ai docs): §3 carries a dated status note: the `game
 applied (P78q), and a packed array is shared by reference across assignment, so a view-like object
 copies what a caller can reach (P78). No accepted text changed.
 
+Status note (2026-11-13, P26bw docs; ADR 0038 accepted 2026-11-13): the P68b notes on §1 and §2
+read through ADR 0038. The job builds each due controller's `PlayerView` at tick N. The
+controllers think on an AI thread in `WORKER` (inline in `SYNC`), and their Commands are stamped
+N+1, not N. `SYNC` and `WORKER` still give the same hash, because the job waits for a late batch.
+No accepted text changed.
+
 ## Context
 The Phase 2 plan (P26s) says that a contract the phone probe contradicts changes through a new ADR
 before P34 starts. The probe ran on 2026-10-12. The full reports are comments on PR #35.
