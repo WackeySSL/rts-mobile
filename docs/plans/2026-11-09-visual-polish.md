@@ -135,8 +135,8 @@ reserved; P200b is the lead's.
 
 P200b note (2026-11-13, the lead): dated notes placed in ADR 0029 (top, §3, §4, §5, §10), ADR
 0028 (top, §3), ADR 0023 (top, §2, §5), ADR 0010 (top, §2), ADR 0027 (top, §3, pointer in §9), ADR 0034
-and ADR 0035, and the GDD's damage row and fog line; the svg-art-style text waits for Michael's
-yes (last section).
+and ADR 0035, and the GDD's damage row and fog line; the svg-art-style text (last section) is
+applied to the skill, all at once (Michael, 2026-11-13).
 
 Groups (what can run at once; each group needs the rows of the groups before it only where Depends
 says so): group 1 = P202, P205, P208, P209, P210, P213 (six lanes; if the lead's verify queue is
@@ -456,9 +456,10 @@ to a second page (`IsoAtlas.PAGE_UNSORTED`). What that changes here:
   edge P216).
 
 ## svg-art-style text for Michael's yes (P200b)
-File: `.claude/skills/svg-art-style/SKILL.md`. Not applied: a skill change needs Michael's yes.
-Apply the damage line with or after P202, and the rest when the row named in each line merges (or
-all at once, if Michael prefers). The frontmatter `description` stays as it is.
+File: `.claude/skills/svg-art-style/SKILL.md`. **Applied in P200b, all six at once (Michael,
+2026-11-13: "Ja alt på en gang").** The text below is the record of what was added.
+The rows named in the lines (P202-P206, P209, P211, P213) build what the lines describe; until
+they merge, the skill states the target. The frontmatter `description` stays as it is.
 
 1. **Drawing rules, "Cast shadows" bullet (lines 68-70).** Replace it with:
    > - Cast shadows are separate frames: every volume projected onto the ground away from the
