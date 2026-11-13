@@ -92,6 +92,14 @@ func _check_stage(id: int, stage: int) -> void:
 	)
 
 
+## SKADET draws the intact picture (ADR 0034): the whole body, no patch shown.
+func _check_intact(id: int) -> void:
+	var body: Sprite2D = _body(id)
+	assert_that(body.region_rect).is_equal(Rect2(_region(&"hull")))
+	assert_bool(body.region_filter_clip_enabled).is_false()
+	assert_bool(_patch(id).visible).is_false()
+
+
 func _centre_camera(id: int) -> void:
 	_camera.position = _layer.building(id).position
 

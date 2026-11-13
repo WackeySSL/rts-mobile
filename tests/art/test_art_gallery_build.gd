@@ -290,7 +290,7 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 			assert_str(button.text).is_equal(page.STAGE_NAMES[stage])
 			var picture: int = BuildingDamage.picture(sheet, stage)
 			var patches: Array[Node] = page.find_children("Damage", "Sprite2D", true, false)
-			# SKADET of a sheet without `dmg1` shows the intact picture: no patch.
+			# SKADET shows the intact picture: no patch.
 			assert_int(patches.size()).override_failure_message(id).is_equal(
 				2 * SECTIONS.size() if picture > 0 else 0
 			)

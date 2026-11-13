@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
 ## The view's names of the damage patches and the generator's are one list (plan P158a, ADR 0029):
 ## `tools/artgen` may not reference `game/view`, so each keeps its literal and this test pins them.
-## There is no third picture (the ruin is dropped), so both lists stay `[dmg1, dmg2]` and both
-## patches are baked at `IsoAtlas.DAMAGE_SCALE`.
+## There is no third picture (the ruin is dropped), so both lists stay `[dmg1, dmg2]` (`dmg1` names
+## stage 1, which has no picture, ADR 0034) and both patches are baked at `IsoAtlas.DAMAGE_SCALE`.
 
 
 func test_the_views_damage_parts_are_the_generators() -> void:

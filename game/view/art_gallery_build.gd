@@ -12,8 +12,9 @@ extends "res://game/view/art_gallery_iso.gd"
 ## left of the item card. A building with an `anim` part gets an `Anim` sprite after its `Hull` that
 ## plays the part's frames, one every `anim_ms`, written only when the frame changes (P143; the game
 ## draws it with P144). The Stage button steps the buildings through their damage stages (P158a,
-## ADR 0029): intact, SKADET (under 67 %) and KRITISK (under 34 %). A stage shows the body from
-## its cut row down, with the stage's patch (`Damage`) over it, as the game does (P159): the `Anim`
+## ADR 0029): intact, SKADET (under 67 %, the intact picture, ADR 0034) and KRITISK (under 34 %).
+## KRITISK shows the body from its cut row down, with its patch (`Damage`) over it, as the game
+## does (P159): the `Anim`
 ## runs at SKADET and at KRITISK where the sheet's `anim_kritisk` says so, and a defence's `Head`
 ## stays. Built on first show; view-only.
 

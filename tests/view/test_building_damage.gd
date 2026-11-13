@@ -70,9 +70,9 @@ func test_a_building_crossing_a_line_shows_the_trimmed_body_and_its_patch() -> v
 	_hit(1, 67)
 	assert_bool(_patch(1).visible).is_false()  # Exactly 67 % is intact.
 	_hit(1, 66)
-	_check_stage(1, 1)
+	_check_intact(1)  # SKADET draws the intact picture (ADR 0034).
 	_hit(1, 34)
-	_check_stage(1, 1)  # 34 % exactly is still SKADET.
+	_check_intact(1)  # 34 % exactly is still SKADET.
 	_hit(1, 33)
 	_check_stage(1, 2)
 	assert_that(node.position).is_equal(at)
@@ -116,8 +116,8 @@ func test_the_patch_overlaps_the_trimmed_body_strictly_at_every_bake_scale() -> 
 	for scale: float in SCALES:
 		_open(_pair(), {}, scale)
 		assert_float(_sort.atlas.bake_scale()).is_equal(scale)
-		for stage: int in [1, 2]:
-			_hit(1, 66 if stage == 1 else 10)
+		for stage: int in [2]:  # SKADET has no patch.
+			_hit(1, 10)
 			var body: Sprite2D = _body(1)
 			var patch: Sprite2D = _patch(1)
 			var bottom: float = (patch.offset.y + patch.region_rect.size.y) * patch.scale.y
@@ -137,10 +137,10 @@ func test_an_odd_canvas_at_the_lowest_scale_has_no_overlap_the_reason_for_the_ge
 ) -> void:
 	var extras: Dictionary = {
 		"cuts": PackedInt32Array([97, 97]),
-		"sizes": {&"hull": Vector2i(100, 101), &"dmg1": Vector2i(100, 101)},
+		"sizes": {&"hull": Vector2i(100, 101), &"dmg2": Vector2i(100, 101)},
 	}
 	_open(_pair(), extras, IsoAtlas.MIN_SCALE)
-	_hit(1, 66)
+	_hit(1, 10)
 	var body: Sprite2D = _body(1)
 	var patch: Sprite2D = _patch(1)
 	var bottom: float = (patch.offset.y + patch.region_rect.size.y) * patch.scale.y
@@ -158,5 +158,33 @@ func test_a_body_is_not_trimmed_where_its_patch_has_no_region() -> void:
 		assert_float(_body(1).offset.y).is_equal_approx(
 			-float(_def.origin(&"hull").y) * per_px.y, 0.001
 		)
-	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 1)
+	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 2)
 	assert_bool(_body(1).region_filter_clip_enabled).is_true()  # With its patch it is cut.
+
+
+# --- SKADET draws the intact picture (ADR 0034) ---
+
+
+func test_picture_is_intact_at_skadet_for_every_building_sheet_and_the_crafted_one() -> void:
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	var sheets: Array[IsoSheetDef] = [Dmg.sheet()]
+	for sheet: IsoSheetDef in index.sheets:
+		if sheet.category == &"bld":
+			sheets.append(sheet)
+	assert_int(sheets.size()).is_greater(1)
+	for sheet: IsoSheetDef in sheets:
+		var note: String = String(sheet.art_id)
+		assert_int(BuildingDamage.picture(sheet, 0)).override_failure_message(note).is_equal(0)
+		assert_int(BuildingDamage.picture(sheet, 1)).override_failure_message(note).is_equal(0)
+		var kritisk: int = 2 if sheet.has_part(&"dmg2") and sheet.cuts.size() >= 2 else 0
+		assert_int(BuildingDamage.picture(sheet, 2)).override_failure_message(note).is_equal(
+			kritisk
+		)
+
+
+func test_bases_of_reads_only_the_kritisk_patch() -> void:
+	_open(_pair())
+	var bases: PackedInt32Array = BuildingDamage.bases_of(_sort, _def, 1)
+	assert_int(bases.size()).is_equal(2)
+	assert_int(bases[0]).is_equal(-1)  # SKADET: no patch, `dmg1` is not read even where it exists.
+	assert_int(bases[1]).is_greater_equal(0)
