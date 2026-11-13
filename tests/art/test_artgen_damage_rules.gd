@@ -60,11 +60,8 @@ func _vehicle(emitters: Array) -> ArtModel:
 
 func test_a_stage_never_reorders_the_primitives_it_leaves_alone() -> void:
 	for prims: Array in REORDERS:
-		var model: ArtModel = _building(prims, ["dmg1 0 c hide", "dmg2 0 c hide"])
+		var model: ArtModel = _building(prims, ["dmg2 0 c hide"])
 		assert_array(Array(model.problems())).is_empty()
-		assert_int(_rows_below_cut_differ(model, 1)).override_failure_message(str(prims)).is_equal(
-			0
-		)
 		assert_int(_rows_below_cut_differ(model, 2)).override_failure_message(str(prims)).is_equal(
 			0
 		)
@@ -74,12 +71,12 @@ func test_the_cut_covers_where_a_swapped_pair_overlaps() -> void:
 	# Each crafted body has a pair of untouched primitives that the stage's greedy order draws the
 	# other way round; the cut is lowered to where the two overlap, and no further.
 	for prims: Array in REORDERS:
-		var model: ArtModel = _building(prims, ["dmg1 0 c hide", "dmg2 0 c hide"])
-		assert_int(model.damage_swaps(1).size()).is_equal(1)
-		var reach: Dictionary = ArtGen.damage_reach(model, 1)
+		var model: ArtModel = _building(prims, ["dmg2 0 c hide"])
+		assert_int(model.damage_swaps(2).size()).is_equal(1)
+		var reach: Dictionary = ArtGen.damage_reach(model, 2)
 		assert_object(reach["swap"]).is_not_null()
 		var changed: float = -INF
-		for pair: Array in model.damage_changes(1):
+		for pair: Array in model.damage_changes(2):
 			for prim: ArtPrim in pair:
 				if prim != null:
 					var one: Array[ArtPrim] = [prim]
@@ -87,7 +84,7 @@ func test_the_cut_covers_where_a_swapped_pair_overlaps() -> void:
 					changed = maxf(changed, ArtRender.bounds(polys).end.y)
 		assert_float(reach["low"]).is_greater(changed + 10.0)
 		var body: ArtGen.Layout = ArtGen.all_shots(model)[&"hull"].layout
-		assert_int(ArtGen.damage_cut(model, 1, body)).is_equal(
+		assert_int(ArtGen.damage_cut(model, 2, body)).is_equal(
 			ceili(float(reach["low"]) + 1.0) + body.origin.y
 		)
 
@@ -101,7 +98,7 @@ func test_a_debris_primitive_is_drawn_behind_what_stands_in_front_of_it() -> voi
 	model.prims = barracks.prims + PackedStringArray([debris])
 	# The barracks carries its own 2-4 damage points since P158a, with ink at both stages.
 	assert_array(Array(model.problems())).is_empty()
-	var posed: Array[ArtPrim] = model.damage_prims(1)
+	var posed: Array[ArtPrim] = model.damage_prims(2)
 	var order: Array[int] = ArtRender.draw_order(posed, 0.0)
 	var mine: int = -1
 	for i: int in posed.size():
@@ -120,12 +117,11 @@ func test_a_debris_primitive_is_drawn_behind_what_stands_in_front_of_it() -> voi
 	assert_int(in_front).is_greater(0)
 	# The stage is the greedy render itself, and below its cut the intact body.
 	var want: Array[ArtRender.Poly] = ArtRender.render(posed, 0.0, &"fossil")
-	var got: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 1)
+	var got: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 2)
 	assert_int(got.size()).is_equal(want.size())
 	for i: int in got.size():
 		assert_array(Array(got[i].points)).is_equal(Array(want[i].points))
 		assert_str(got[i].fill).is_equal(want[i].fill)
-	assert_int(_rows_below_cut_differ(model, 1)).is_equal(0)
 	assert_int(_rows_below_cut_differ(model, 2)).is_equal(0)
 
 
@@ -157,9 +153,9 @@ func test_random_small_bodies_are_intact_below_their_cut() -> void:
 				% [rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5)]
 			)
 		)
-		var poses: Array = ["dmg1 0 c hide", "dmg2 0 c hide"]
+		var poses: Array = ["dmg2 0 c hide"]
 		if n % 3 == 1:
-			poses = ["dmg1 0 c shift 0 0 0.2", "dmg2 0 c shift 0.1 0 0.3"]
+			poses = ["dmg2 0 c shift 0.1 0 0.3"]
 		elif n % 3 == 2:
 			lines.append(
 				(
@@ -171,12 +167,11 @@ func test_random_small_bodies_are_intact_below_their_cut() -> void:
 		if not model.problems().is_empty():
 			continue  # the change reaches the foot of the body: refused, not generated
 		tested += 1
-		for stage: int in [1, 2]:
-			(
-				assert_int(_rows_below_cut_differ(model, stage))
-				. override_failure_message("%s stage %d" % [str(lines), stage])
-				. is_equal(0)
-			)
+		(
+			assert_int(_rows_below_cut_differ(model, 2))
+			. override_failure_message("%s stage 2" % str(lines))
+			. is_equal(0)
+		)
 	assert_int(tested).is_greater(15)
 
 
@@ -199,31 +194,19 @@ func test_a_change_that_does_not_fit_the_body_is_refused() -> void:
 	# primitive and its line (the first line of the model is 1).
 	var foot: String = "box hull iron 0.9 0.9 0 0.3 0.3 0.1 damage=1"
 	var problems: PackedStringArray = _building(body + [foot], []).problems()
-	assert_int(problems.size()).is_equal(2)  # `damage=1` shows in both stages
-	for text: String in problems:
-		assert_str(text).contains("`%s` (line 2) reaches below the body" % foot)
-	assert_str(problems[0]).contains("dmg1:")
-	assert_str(problems[1]).contains("dmg2:")
+	assert_int(problems.size()).is_equal(1)  # `damage=1` shows in stage 2; stage 1 has no picture
+	assert_str(problems[0]).contains("`%s` (line 2) reaches below the body" % foot)
+	assert_str(problems[0]).contains("dmg2:")
 	# Wholly above the body's canvas: its cut would read as "no patch".
 	var roof: String = "box hull iron 0 0 3 0.3 0.3 0.1 damage=1"
 	problems = _building(body + [roof], []).problems()
-	assert_int(problems.size()).is_equal(2)
-	for text: String in problems:
-		assert_str(text).contains("`%s` (line 2) is above the canvas of the body" % roof)
+	assert_int(problems.size()).is_equal(1)
+	assert_str(problems[0]).contains("`%s` (line 2) is above the canvas of the body" % roof)
 	# A move that sets the lowest row: the message names the pose line too.
 	var moved: String = "box hull iron 0.5 0.5 0 0.2 0.2 0.1 group=g"
-	problems = (
-		_building(body + [moved], ["dmg1 0 g shift 0.4 0.4 0", "dmg2 0 g shift 0.4 0.4 0"])
-		. problems()
-	)
-	assert_int(problems.size()).is_equal(2)
-	assert_str(problems[0]).contains("`%s` (line 2) moved by `dmg1 0 g shift 0.4 0.4 0`" % moved)
-	assert_str(problems[1]).contains("moved by `dmg2 0 g shift 0.4 0.4 0`")
-	# A move that changes nothing at its stage.
-	var late: String = "box hull iron 0 0 1 0.3 0.3 0.1 damage=2 group=g"
-	problems = _building(body + [late], ["dmg1 0 g hide"]).problems()
+	problems = _building(body + [moved], ["dmg2 0 g shift 0.4 0.4 0"]).problems()
 	assert_int(problems.size()).is_equal(1)
-	assert_str(problems[0]).contains("dmg1 changes nothing")
+	assert_str(problems[0]).contains("`%s` (line 2) moved by `dmg2 0 g shift 0.4 0.4 0`" % moved)
 	# What fits is fine.
 	var fine: ArtModel = _building(body + ["box hull iron 0 0 1 0.3 0.3 0.1 damage=1"], [])
 	assert_array(Array(fine.problems())).is_empty()
@@ -239,21 +222,19 @@ func test_the_overlap_may_end_exactly_at_the_foot_of_the_canvas() -> void:
 		[body, "box hull iron 0.75 0.859375 0 0.25 0.25 0.1 damage=1"], []
 	)
 	var layout: ArtGen.Layout = ArtGen.all_shots(fits)[&"hull"].layout
-	assert_int(ArtGen.damage_cut(fits, 1, layout)).is_equal(layout.size.y - ArtGen.CUT_OVERLAP_PX)
+	assert_int(ArtGen.damage_cut(fits, 2, layout)).is_equal(layout.size.y - ArtGen.CUT_OVERLAP_PX)
 	assert_array(Array(fits.problems())).is_empty()
-	assert_int(ArtGen.damage_cut(shut, 1, layout)).is_equal(
+	assert_int(ArtGen.damage_cut(shut, 2, layout)).is_equal(
 		layout.size.y - ArtGen.CUT_OVERLAP_PX + 1
 	)
 	var problems: PackedStringArray = shut.problems()
-	assert_int(problems.size()).is_equal(2)
+	assert_int(problems.size()).is_equal(1)
 	assert_str(problems[0]).contains("reaches below the body (cut row 193, canvas 196 rows)")
 
 
 func test_a_stage_that_changes_nothing_has_no_patch_and_no_huge_canvas() -> void:
 	# Unvalidated (`all_shots` does not call `problems`): the stage is skipped, not drawn.
-	var model: ArtModel = _building(
-		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 damage=2 group=g"], ["dmg1 0 g hide"]
-	)
+	var model: ArtModel = _building([BODY, "box hull iron 0 0 1 0.3 0.3 0.1 damage=2 group=g"], [])
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	assert_bool(shots.has(&"dmg1")).is_false()
 	assert_bool(shots.has(&"dmg2")).is_true()
@@ -335,28 +316,25 @@ func test_the_damage_and_hang_counts_are_refused() -> void:
 
 
 func test_a_stage_exists_when_a_primitive_of_an_earlier_stage_appears_in_it() -> void:
-	# Only a `damage=1` primitive, no move: stage 1 shows it, and so does stage 2.
+	# Only a `damage=1` primitive, no move: stage 2 shows it; stage 1 has no picture (ADR 0034).
 	var model: ArtModel = _building([BODY, "box hull iron 0 0 1 0.3 0.3 0.1 damage=1"], [])
-	assert_array(model.damage_parts()).is_equal([&"dmg1", &"dmg2"])
+	assert_array(model.damage_parts()).is_equal([&"dmg2"])
 	var sheet: IsoSheetDef = ArtSheet.of(model, ArtGen.all_shots(model))
-	assert_int(sheet.cuts[0]).is_greater(0)
-	assert_int(sheet.cuts[1]).is_equal(sheet.cuts[0])
+	assert_int(sheet.cuts[0]).is_equal(0)
+	assert_int(sheet.cuts[1]).is_greater(0)
 	# A `damage=2` primitive is stage 2 alone.
 	var late: ArtModel = _building([BODY, "box hull iron 0 0 1 0.3 0.3 0.1 damage=2"], [])
 	assert_array(late.damage_parts()).is_equal([&"dmg2"])
 
 
-func test_a_building_has_both_stages_or_stage_2_alone() -> void:
+func test_a_building_has_stage_2_alone_and_a_dmg1_pose_is_refused() -> void:
 	var both: ArtModel = _building(
 		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide", "dmg2 0 g hide"]
 	)
-	assert_array(Array(both.problems())).is_empty()
-	var first: ArtModel = _building(
-		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide"]
-	)
-	var problems: PackedStringArray = first.problems()
+	var problems: PackedStringArray = both.problems()
 	assert_int(problems.size()).is_equal(1)
-	assert_str(problems[0]).contains("dmg1 without dmg2")
+	assert_str(problems[0]).contains("SKADET has no picture")
+	assert_array(both.damage_parts()).is_equal([&"dmg2"])
 	var second: ArtModel = _building(
 		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg2 0 g hide"]
 	)
@@ -365,7 +343,7 @@ func test_a_building_has_both_stages_or_stage_2_alone() -> void:
 
 func test_the_cuts_and_the_patch_anchors_survive_a_loaded_sheet() -> void:
 	var model: ArtModel = _building(
-		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide", "dmg2 0 g char 80"]
+		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg2 0 g char 80"]
 	)
 	var sheet: IsoSheetDef = ArtSheet.of(model, ArtGen.all_shots(model))
 	var path: String = "user://p156_roundtrip_sheet.tres"
@@ -375,8 +353,8 @@ func test_the_cuts_and_the_patch_anchors_survive_a_loaded_sheet() -> void:
 	var loaded: IsoSheetDef = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	assert_object(loaded).is_not_null()
 	assert_array(Array(loaded.cuts)).is_equal(Array(sheet.cuts))
-	assert_array(Array(loaded.parts)).is_equal(["hull", "dmg1", "dmg2", "shadow"])
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	assert_array(Array(loaded.parts)).is_equal(["hull", "dmg2", "shadow"])
+	for part: StringName in [&"dmg2"]:
 		assert_vector(Vector2(loaded.anchor(part))).is_equal(Vector2(sheet.anchor(part)))
 		assert_vector(Vector2(loaded.frame_size(part))).is_equal(Vector2(sheet.frame_size(part)))
 		assert_vector(Vector2(loaded.origin(part))).is_equal(Vector2(sheet.origin(part)))
@@ -410,10 +388,10 @@ func test_char_never_enters_a_key_band() -> void:
 
 func test_the_origin_and_anchor_of_a_patch_follow_the_body() -> void:
 	var model: ArtModel = _building(
-		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg1 0 g hide", "dmg2 0 g hide"]
+		[BODY, "box hull iron 0 0 1 0.3 0.3 0.1 group=g"], ["dmg2 0 g hide"]
 	)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in model.damage_parts():
 		var layout: ArtGen.Layout = shots[part].layout
 		assert_int(layout.origin.y - layout.anchor.y).is_equal(32 * model.footprint)
 		# The patch ends above the ground point: the origin lies below its canvas.

@@ -47,16 +47,16 @@ func test_two_to_four_typed_damage_points_pass_and_one_and_five_are_refused() ->
 		assert_str(_problems(_with(pair))).is_equal("")
 
 
-func test_a_point_below_the_cut_or_without_ink_in_dmg1_or_dmg2_is_refused() -> void:
-	# Below dmg1's cut: on the intact body, off any SKADET break.
+func test_a_point_without_ink_in_the_intact_picture_or_dmg2_is_refused() -> void:
+	# SKADET shows the intact picture (ADR 0034), so a point low on the body is fine.
 	var low: Array[String] = ["damage 0.2 0.2 1.0", "damage 0.5 0.5 0.05"]
-	assert_str(_problems(_with(low))).contains("below dmg1's cut")
+	assert_str(_problems(_with(low))).is_equal("")
 	# High in the air: no ink in either stage.
 	var air: Array[String] = ["damage 0.2 0.2 1.0", "dmg_gas 0.2 0.2 3.0"]
 	var problems: String = _problems(_with(air))
 	assert_str(problems).contains("no ink under it at stage 1")
 	assert_str(problems).contains("no ink under it at stage 2")
-	# Ink in dmg1 but not in dmg2: the tall stack is hidden by dmg2.
+	# Ink in the intact picture but not in dmg2: the tall stack is hidden by dmg2.
 	var stack_model: ArtModel = Support.building(
 		[TALL_STACK],
 		Support.POSES + ["dmg2 0 tall hide"],
@@ -65,7 +65,7 @@ func test_a_point_below_the_cut_or_without_ink_in_dmg1_or_dmg2_is_refused() -> v
 	var stack: String = _problems(stack_model)
 	assert_str(stack).contains("no ink under it at stage 2")
 	assert_str(stack).not_contains("at stage 1")
-	# Ink in dmg2 but not in dmg1: the mast is drawn from dmg2 on.
+	# Ink in dmg2 but not in the intact picture: the mast is drawn from dmg2 on.
 	var mast_model: ArtModel = Support.building(
 		[MAST], Support.POSES, ["damage 0.2 0.2 1.0", "dmg_gas 0.0 -0.6 2.0"]
 	)
@@ -91,7 +91,7 @@ func test_an_ambient_emitter_needs_ink_at_each_stage_it_emits_at() -> void:
 		points + ["smoke 0.5 -0.2 2.2 group=tall"]
 	)
 	assert_str(_problems(named)).is_equal("")
-	# A group that dmg1 moves is quiet from stage 1, and needs ink at no stage.
+	# A group that dmg2 moves is quiet from stage 2, and needs ink at the stages before it.
 	var moved: ArtModel = _with(points + ["steam -0.4 -0.4 1.8 group=tower"])
 	assert_str(_problems(moved)).is_equal("")
 	# A group no hull primitive has is refused.
@@ -110,8 +110,8 @@ func test_emitter_quiet_is_the_first_stage_that_moves_or_hides_the_group() -> vo
 	var emitters: Array = (
 		points
 		+ [
-			"smoke 0.4 0.4 1.4 group=stack",  # dmg2 hides it, dmg1 only chars it
-			"steam -0.4 -0.4 1.8 group=tower",  # dmg1 shifts it
+			"smoke 0.4 0.4 1.4 group=stack",  # dmg2 hides it
+			"steam -0.4 -0.4 1.8 group=tower",  # dmg2 turns it
 			"flame 0.2 0.0 1.0",  # no group
 			"smoke 0.0 0.0 1.0 group=body",  # no stage touches it
 		]
@@ -119,15 +119,15 @@ func test_emitter_quiet_is_the_first_stage_that_moves_or_hides_the_group() -> vo
 	var model: ArtModel = _with(emitters)
 	assert_str(_problems(model)).is_equal("")
 	assert_int(ArtDamage.quiet(model, &"stack")).is_equal(2)
-	assert_int(ArtDamage.quiet(model, &"tower")).is_equal(1)
+	assert_int(ArtDamage.quiet(model, &"tower")).is_equal(2)
 	assert_int(ArtDamage.quiet(model, &"")).is_equal(0)
 	assert_int(ArtDamage.quiet(model, &"body")).is_equal(0)
 	var sheet: IsoSheetDef = ArtSheet.of(model, ArtGen.all_shots(model))
 	assert_array(Array(sheet.emitters)).is_equal(
 		["damage", "dmg_spark", "smoke", "steam", "flame", "smoke"]
 	)
-	assert_array(Array(sheet.emitter_quiet)).is_equal([0, 0, 2, 1, 0, 0])
-	assert_str(ArtSheet.text(sheet)).contains("emitter_quiet = PackedInt32Array(0, 0, 2, 1, 0, 0)")
+	assert_array(Array(sheet.emitter_quiet)).is_equal([0, 0, 2, 2, 0, 0])
+	assert_str(ArtSheet.text(sheet)).contains("emitter_quiet = PackedInt32Array(0, 0, 2, 2, 0, 0)")
 	# A sheet whose emitters never go quiet writes no `emitter_quiet`.
 	var calm: ArtModel = _with(points + ["flame 0.2 0.0 1.0"])
 	var calm_sheet: IsoSheetDef = ArtSheet.of(calm, ArtGen.all_shots(calm))
@@ -139,7 +139,7 @@ func test_emitter_quiet_is_the_first_stage_that_moves_or_hides_the_group() -> vo
 	file.store_string(ArtSheet.text(sheet))
 	file.close()
 	var loaded: IsoSheetDef = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
-	assert_array(Array(loaded.emitter_quiet)).is_equal([0, 0, 2, 1, 0, 0])
+	assert_array(Array(loaded.emitter_quiet)).is_equal([0, 0, 2, 2, 0, 0])
 	DirAccess.remove_absolute(path)
 
 
@@ -213,7 +213,7 @@ func test_vehicles_and_squads_keep_their_counts() -> void:
 				"box hull concrete 0 0 0 1.6 1.6 1.0 group=g",
 				"box hull steel 0.2 0.2 1.0 0.3 0.3 0.3 group=cap",
 			],
-			["dmg1 0 cap shift 0 0 -0.05", "dmg2 0 cap hide"],
+			["dmg2 0 cap hide"],
 			["damage -0.3 -0.3 1.0", "damage -0.5 0.1 1.0"]
 		)
 	)
@@ -241,24 +241,20 @@ func test_vehicles_and_squads_keep_their_counts() -> void:
 func test_the_key_share_passes_the_crafted_model_and_fails_one_outside_the_bands() -> void:
 	var model: ArtModel = Support.building()
 	assert_array(Array(model.problems())).is_empty()
-	var shares: Array[float] = []
-	for stage: int in range(1, 3):
-		shares.append(Support.key_share(model, stage))
-		var band: Vector2 = Support.SHARE_BANDS[stage - 1]
-		assert_float(shares[stage - 1]).override_failure_message("stage %d" % stage).is_between(
-			band.x, band.y
-		)
+	var band: Vector2 = Support.SHARE_BANDS[1]  # KRITISK; SKADET has no picture (ADR 0034)
+	assert_float(Support.key_share(model, 2)).is_between(band.x, band.y)
 	assert_array(Array(Support.share_problems(model))).is_empty()
 	# The bands are ADR 0029's.
 	assert_array(Support.SHARE_BANDS).is_equal([Vector2(0.55, 0.85), Vector2(0.20, 0.50)])
-	# SKADET that keeps all its team paint (100 %) fails.
+	# KRITISK that keeps all its team paint (100 %) fails.
 	var poses: Array[String] = Support.POSES.duplicate()
-	poses.erase("dmg1 0 t1 char 100")
+	poses.erase("dmg2 0 t1 char 100")
+	poses.erase("dmg2 0 t3 char 100")
+	poses.erase("dmg2 0 t2 hide")
 	var wrong: ArtModel = Support.with_prims(Support.PRIMS, poses, Support.EMITTERS, true)
 	assert_array(Array(wrong.problems())).is_empty()
 	var found: String = "\n".join(Support.share_problems(wrong))
-	assert_str(found).contains("stage 1")
-	assert_str(found).not_contains("stage 2")
+	assert_str(found).contains("stage 2")
 
 
 func test_the_counts_and_the_ink_tests_hold_for_a_building_with_poses() -> void:
@@ -267,7 +263,7 @@ func test_the_counts_and_the_ink_tests_hold_for_a_building_with_poses() -> void:
 		"box hull steel 0.2 0.2 1.0 0.3 0.3 0.3 group=cap",
 		MAST,
 	]
-	var poses: Array[String] = ["dmg1 0 cap shift 0 0 -0.05", "dmg2 0 cap hide"]
+	var poses: Array[String] = ["dmg2 0 cap hide"]
 	var good: Array[String] = ["damage -0.3 -0.3 1.0", "dmg_spark -0.5 0.1 1.0"]
 	assert_str(_problems(Support.with_prims(prims, poses, good))).is_equal("")
 	assert_str(_problems(Support.with_prims(prims, poses, []))).contains("2 to 4 damage points")
@@ -313,13 +309,13 @@ func test_a_blow_changes_only_the_panes_it_takes() -> void:
 		"box hull titanium 0.5 0.5 0.4 0.3 0.3 0.4 group=cap",
 	]
 	var points: Array[String] = ["damage -0.6 -0.4 0.4", "dmg_spark -0.3 -0.5 0.4"]
-	var poses: Array[String] = ["dmg1 0 facade blow 50", "dmg2 0 cap hide"]
+	var poses: Array[String] = ["dmg2 0 facade blow 50"]
 	var model: ArtModel = Support.with_prims(prims, poses, points)
 	model.faction = &"renew"
 	assert_str(_problems(model)).is_equal("")
 	# One pane is blown; the other pane and the sill frame are not changes.
 	var changed: int = 0
-	for pair: Array in model.damage_changes(1):
+	for pair: Array in model.damage_changes(2):
 		changed += 1
 		assert_str(pair[1].material).is_equal("hole")
 	assert_int(changed).is_equal(1)
@@ -329,11 +325,9 @@ func test_a_blow_changes_only_the_panes_it_takes() -> void:
 	var other: ArtModel = Support.with_prims(sill_less, poses, points)
 	other.faction = &"renew"
 	var body: ArtGen.Layout = ArtGen.all_shots(model)[&"hull"].layout
-	assert_int(ArtGen.damage_cut(model, 1, body)).is_equal(ArtGen.damage_cut(other, 1, body))
+	assert_int(ArtGen.damage_cut(model, 2, body)).is_equal(ArtGen.damage_cut(other, 2, body))
 	# A blow that takes no pane changes nothing, so the stage is refused.
 	for percent: int in [0, 10]:
-		var none: ArtModel = Support.with_prims(
-			prims, ["dmg1 0 facade blow %d" % percent, "dmg2 0 cap hide"], points
-		)
+		var none: ArtModel = Support.with_prims(prims, ["dmg2 0 facade blow %d" % percent], points)
 		none.faction = &"renew"
-		assert_str(_problems(none)).contains("dmg1 changes nothing")
+		assert_str(_problems(none)).contains("dmg2 changes nothing")

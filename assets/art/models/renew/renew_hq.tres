@@ -62,12 +62,6 @@ prims = PackedStringArray(
 poses = PackedStringArray(
 "anim 2",
 "anim 1 beacon turn z 90 -0.3 -0.3 0",
-"dmg1 0 gl_up blow 100",
-"dmg1 0 lid_up shift 0.09 0.06 0",
-"dmg1 0 tb_up char 100",
-"dmg1 0 c_up1 char 55",
-"dmg1 0 tb_up2 char 100",
-"dmg1 0 c_up2 char 35",
 "dmg2 0 gl_up hide",
 "dmg2 0 c_up1 hide",
 "dmg2 0 tb_up hide",

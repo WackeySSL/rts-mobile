@@ -136,8 +136,9 @@ func test_a_building_has_one_view_and_a_cast_shadow_and_the_rail_battery_has_16_
 			# The moving element (P143) is a part of its own, between the body and the shadow.
 			parts.insert(parts.size() - 1, "anim")
 			counts.insert(counts.size() - 1, 1)
-		# P158b: the two damage patches (ADR 0029) sit between the moving element and the shadow.
-		for patch: String in ["dmg1", "dmg2"]:
+		# P158b: the KRITISK patch (ADR 0029; no SKADET patch, ADR 0034) sits between the moving
+		# element and the shadow.
+		for patch: String in ["dmg2"]:
 			parts.insert(parts.size() - 1, patch)
 			counts.insert(counts.size() - 1, 1)
 		assert_array(Array(sheet.parts)).override_failure_message("%s" % id).is_equal(parts)

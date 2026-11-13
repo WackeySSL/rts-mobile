@@ -707,6 +707,14 @@ adds (the body, the shadow and the card do not move).
   lance and the Dusk Array's net will start.
 
 ### Damage stages (P158a)
+**P202 (ADR 0034, Michael 2026-11-09): SKADET has no picture.** The generator writes no `dmg1` frame
+and refuses a model with a `dmg1` pose ("SKADET has no picture"); a building has one damage
+picture, `<type_id>_dmg2.svg`. `ArtModel.DAMAGE_PARTS` stays `[dmg1, dmg2]` as a stage-to-part
+table (index stage - 1), `damage_parts()` lists `dmg2` alone, the sheet's `parts` have no `dmg1` and
+its `cuts` keep two entries (the first 0). The ink test reads the intact picture for stage 1, and an
+ambient emitter's `emitter_quiet` is 0 or 2. The paragraphs below describe the stage-1 picture as
+it was before P202; the `dmg2` frames are byte for byte as before.
+
 Plan row P158a gives the Derrick League's eight buildings their two damage stages (ADR 0029 sections
 3 to 5 and 11; the Lumen Accord's eight follow the same rules since P158b, their notes under "The Lumen
 Accord's buildings"). **SKADET** (`dmg1`, under 67 %) is small
@@ -2772,3 +2780,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-06 | v1.29 (P120k, ADR 0032): six display names are shorter so every requirement fits the locked card's sash on one line: Cracking Plant is Oil Works, Synthesis Works is Fuel Works, Motor Works is Motor Hall, Relay Tower is Relay Post, Blackout Array is Dusk Array and Roustabouts is Rig Hands. The guide's text uses the new names; the rows above keep the names of their day. No art id, file or frame changed. |
 | 2026-11-11 | v1.30 (P273, art-director, ADR 0037 sections 3 and 4): `glyph_repair.svg` (an open-ended spanner on a rising diagonal; the Mend switch and the Repair order share it) and `glyph_sell.svg` (a price tag with a coin on it, not the coin stack of `glyph_credits`), two plain white HUD glyphs on the command bar row of the gallery's Hud page, no seat and no tint. At 32 px in greyscale the wrench is 36.5 from the nearest HUD glyph (the star) and the tag 34.7 (`glyph_credits`; at the first scale of 0.88 it was 34.0 from the Resume triangle, and the scale became 0.9 to keep the one-decimal rule, with the ink re-centred), both over the 29 bar. The seated map copy `glyph_repair_map.svg` (the wrench at 0.8 on the offline plate, tinted #30A46C, the eleventh map glyph) is drawn in the same row; the gallery's map strips now hold their glyphs in two lines of five. |
 | 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture whose debris rests on a surface and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings", the two readings of the GDD, the Catalogue rows, the readability results and an open point), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2993, 2878 and 2910 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-13 | v1.32 (P202, art-director, ADR 0034 section 4): the generator writes no `dmg1` frame and refuses a `dmg1` pose; the 16 `_dmg1.svg` files and their sheet parts go, `dmg2` frames are byte for byte as before; the stage tables and `cuts` keep two entries ("Damage stages (P158a)"). |

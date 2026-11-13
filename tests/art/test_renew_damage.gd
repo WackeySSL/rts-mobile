@@ -31,12 +31,10 @@ func _model(id: StringName) -> ArtModel:
 func test_each_building_has_both_patches_and_a_sound_model() -> void:
 	for id: StringName in IDS:
 		var model: ArtModel = _model(id)
-		assert_array(model.damage_parts()).override_failure_message(String(id)).is_equal(
-			[&"dmg1", &"dmg2"]
-		)
+		assert_array(model.damage_parts()).override_failure_message(String(id)).is_equal([&"dmg2"])
 		assert_array(Array(model.problems())).override_failure_message(String(id)).is_empty()
 		var sheet: IsoSheetDef = _index.sheet(id)
-		assert_bool(sheet.has_part(&"dmg1") and sheet.has_part(&"dmg2")).is_true()
+		assert_bool(sheet.has_part(&"dmg2") and not sheet.has_part(&"dmg1")).is_true()
 		assert_int(sheet.cuts.size()).is_equal(2)
 		# No ruin picture.
 		assert_bool(sheet.has_part(&"ruin")).is_false()
@@ -75,7 +73,7 @@ func test_the_refinery_steam_emitters_name_their_groups_and_go_quiet_at_the_stag
 ) -> void:
 	var sheet: IsoSheetDef = _index.sheet(&"renew_refinery")
 	assert_array(Array(sheet.emitters).slice(0, 2)).is_equal(["steam", "steam"])
-	assert_array(Array(sheet.emitter_quiet).slice(0, 2)).is_equal([1, 2])
+	assert_array(Array(sheet.emitter_quiet).slice(0, 2)).is_equal([2, 2])
 
 
 func test_the_collapse_shows_its_inside_and_no_stage_reaches_the_foot() -> void:

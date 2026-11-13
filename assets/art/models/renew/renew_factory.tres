@@ -65,10 +65,6 @@ prims = PackedStringArray(
 "broken hull interior 1.4 0.0 0.5 0.04 1.9 0.5 teeth=6 low=0.4 damage=2"
 )
 poses = PackedStringArray(
-"dmg1 0 glass blow 67",
-"dmg1 0 rail char 100",
-"dmg1 0 vent2 turn z 20 0 -0.5 2.22",
-"dmg1 0 lid char 30",
 "dmg2 0 glass hide",
 "dmg2 0 lid hide",
 "dmg2 0 rail hide",
