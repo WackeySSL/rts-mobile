@@ -938,9 +938,8 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   page 1 (about +100 rows).
 - **P26bw note (2026-11-13, the lead; Michael's choice the same day; changes no accepted text
   above).** The lever of the P236 note is chosen: **option c1, trim the empty margins of the
-  directional frames** (vehicles, infantry, turret heads). Michael's answer reached this note as the
-  lead relayed it, "option c1"; the lead adds his verbatim chat words, with an English gloss, if
-  they say more. Each such frame is packed as its drawn box plus 1 px, with a per-frame sprite
+  directional frames** (vehicles, infantry, turret heads). Michael picked "Trim empty margins
+  (Recommended)" from the lead's two-question card. Each such frame is packed as its drawn box plus 1 px, with a per-frame sprite
   offset. Buildings, their damage cuts and page 2 stay as they are.
   - **Why.** A 16-direction frame keeps a canvas big enough for its longest rotation, so most
     directions are mostly empty. The trim frees 686, 649 and 715 rows of page 1 now (cross page,

@@ -8,8 +8,8 @@ on every phone, in the tests and in the web preview. The computer reacts 67 ms l
 a tap on the screen takes.
 
 Status: **accepted, 2026-11-13** (Michael chose option 3 of the architect's AI lever memo in chat
-the same day). His answer reached this ADR as the lead relayed it, "option 3"; the lead adds his
-verbatim chat words, with an English gloss, if they say more. Written by the architect on branch
+the same day). He picked "AI on its own thread (Recommended)" from the lead's two-question card.
+Written by the architect on branch
 `claude/p26bw-levers` (base `main` at 99e1c6bd), with the plan rows P301-P304 and P304b in
 `docs/plans/2026-11-09-air-and-tech.md`.
 
