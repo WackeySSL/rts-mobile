@@ -122,3 +122,69 @@ func test_the_eject_is_deterministic() -> void:
 	_kill_carrier(one)
 	_kill_carrier(two)
 	assert_int(one.state_hash()).is_equal(two.state_hash())
+
+
+func test_the_unloaded_record_and_the_new_row_are_complete() -> void:
+	var world: World = _loaded(50)
+	_kill_carrier(world)
+	var records: Array = []
+	var at: int = 0
+	while at < world.events.size():
+		if world.events[at] == World.Event.UNLOADED:
+			records.append(Array(world.events.slice(at, at + World.EVENT_STRIDE)))
+		at += World.EVENT_STRIDE
+	assert_array(records[0]).is_equal([6, 1, 15500, 1500, Rig.RIFLE, 1, CARRIER, 0])
+	assert_array(records[1]).is_equal([6, 2, 15500, 2500, Rig.RIFLE, 1, CARRIER, 0])
+	# The fog stamps a new row later in the same tick; right after `perish` it has none.
+	var direct: World = _loaded(50)
+	direct.hp[direct.index_of(CARRIER)] = 0
+	Carry.perish(direct)
+	assert_int(direct.fog_cell[direct.index_of(1)]).is_equal(-1)
+	assert_int(direct.fog_cell[direct.index_of(2)]).is_equal(-1)
+
+
+func test_a_hundred_percent_keeps_the_hp() -> void:
+	var world: World = _loaded(100)
+	_kill_carrier(world)
+	assert_array([world.hp[world.index_of(1)], world.hp[world.index_of(2)]]).is_equal([100, 60])
+
+
+func test_the_unit_cap_count_is_unchanged_by_an_eject_and_drops_by_the_losses() -> void:
+	var placed: World = _loaded(50)
+	var before: int = ProductionSpawn.mobile_rows(placed, 1)
+	_kill_carrier(placed)
+	assert_int(ProductionSpawn.mobile_rows(placed, 1)).is_equal(before - 1)  # Only the carrier.
+	var fenced: World = _loaded(50, _fenced([]))
+	var start: int = ProductionSpawn.mobile_rows(fenced, 1)
+	_kill_carrier(fenced)
+	assert_int(ProductionSpawn.mobile_rows(fenced, 1)).is_equal(start - 3)  # Carrier, two squads.
+
+
+func test_a_carrier_in_unload_mode_that_dies_ejects_at_its_percent() -> void:
+	var world: World = _loaded(50)
+	world.carry_mode[world.index_of(CARRIER)] = 1
+	_kill_carrier(world)
+	assert_array([world.hp[world.index_of(1)], world.hp[world.index_of(2)]]).is_equal([50, 30])
+	assert_int(_count(world, World.Event.UNLOADED)).is_equal(2)
+
+
+func test_two_carriers_dying_on_one_tick_each_eject_their_own_squads() -> void:
+	var world: World = _loaded(50)
+	world.type_carry_eject_percent[Rig.TRUCK] = 50
+	world.add_unit(1, Rig.TRUCK, 4500, 4500)  # Carrier 7.
+	Rig.aboard(world, 3, 7)
+	world.hp[world.index_of(CARRIER)] = 0
+	world.hp[world.index_of(7)] = 0
+	Rig.step(world)
+	assert_int(world.pass_count).is_equal(0)
+	for id: int in [1, 2, 3]:
+		assert_bool(world.index_of(id) >= 0).override_failure_message("squad %d" % id).is_true()
+	assert_int(world.hp[world.index_of(3)]).is_equal(50)
+	assert_int(world.pos_x[world.index_of(3)] / 1000).is_less(6)  # Round carrier 7.
+	var carriers: Array = []
+	var at: int = 0
+	while at < world.events.size():
+		if world.events[at] == World.Event.UNLOADED:
+			carriers.append(world.events[at + 6])
+		at += World.EVENT_STRIDE
+	assert_array(carriers).is_equal([CARRIER, CARRIER, 7])

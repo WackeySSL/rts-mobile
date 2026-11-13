@@ -17,13 +17,16 @@ extends RefCounted
 ## `unload_reach_tiles` away, each at the cell centre with order IDLE and an `UNLOADED` event
 ## (kind 6: id, x, y, type, owner, carrier id at index 6). A squad with no cell, or refused by
 ## `World.insert_row`, stays aboard with its record. `perish`, in the REMOVE mark after `board`,
-## kills the squads of a carrier that dies with it (ADR 0036 section 8), after ejecting
-## `type_carry_eject_percent` of each one's hp onto the same ring walk (ADR 0037 section 7).
+## first ejects the squads of a carrier that dies, with `type_carry_eject_percent` of their hp, onto
+## the same ring walk (ADR 0037 section 7), then kills the ones left (ADR 0036 section 8).
 
 ## The `build_left` of a row that boarded a carrier: `hp` 0 as well, so REMOVE takes the row out in
 ## the same tick with DIED flag 2 (`Removal.died_flag`) and counts no loss (`Outcome.count_losses`).
 ## A mobile row's `build_left` is 0 otherwise.
 const BOARDED: int = -2
+
+## The scale of `type_carry_eject_percent`; an unload gives each squad back all of it.
+const PERCENT: int = 100
 
 ## Where an `UNLOADED` record holds the carrier's id (`[6, id, x, y, type, owner, carrier, 0]`).
 const UNLOADED_CARRIER_AT: int = 6
@@ -201,7 +204,7 @@ static func run(world: World) -> void:
 			and world.hp[row] > 0
 		):
 			var id: int = world.unit_id[row]
-			_unload(world, id, 100)
+			_unload(world, id, PERCENT)
 			world.carry_mode[world.index_of(id)] = 0
 			row = world.index_of(id)
 		row += 1
@@ -210,35 +213,31 @@ static func run(world: World) -> void:
 
 ## The REMOVE mark, after `board` and before `World.remove_dead`: a carrier whose `hp` is 0 or less
 ## and whose type has `type_carry_eject_percent` above 0 first ejects its squads (`_unload` with
-## that percent: `UNLOADED` events, rows inserted, the derived lists rebuilt). The squads that are
-## still aboard a dead carrier then die with it (ADR 0036 section 8). Each gets a DIED record
+## that percent: `UNLOADED` events, rows inserted; `remove_dead` compacts and bumps `rows_version`
+## in this same tick, so the derived lists are rebuilt before anything reads them). The squads that
+## are still aboard a dead carrier then die with it (ADR 0036 section 8). Each gets a DIED record
 ## (flag 0) at the carrier's point and counts as a lost unit as `Outcome.count_losses` counts one;
-## its record leaves the table, the others keep their order. One resize of the event list, no other
-## allocation.
+## its record leaves the table, the others keep their order. An eject allocates at event cadence
+## (`insert_row`'s columns, the event list); a tick with no dying carrier does a pass over the table
+## and nothing else.
 static func perish(world: World) -> void:
-	if world.pass_count <= 0:
+	if _dying(world) == 0:
 		return
-	var ejected: bool = false
+	var life: PackedInt32Array = world.hp
+	var types: PackedInt32Array = world.type_index
+	var shares: PackedInt32Array = world.type_carry_eject_percent
 	var row: int = 0
 	while row < world.unit_id.size() and world.pass_count > 0:
 		var percent: int = 0
-		if world.hp[row] <= 0 and world.type_index[row] < world.type_carry_eject_percent.size():
-			percent = world.type_carry_eject_percent[world.type_index[row]]
+		if life[row] <= 0 and types[row] < shares.size():
+			percent = shares[types[row]]
 		if percent > 0 and aboard(world, world.unit_id[row]) > 0:
 			var id: int = world.unit_id[row]
-			var before: int = world.pass_count
 			_unload(world, id, percent)
-			ejected = ejected or world.pass_count != before
 			row = world.index_of(id)  # The inserts moved the rows above them.
 		row += 1
-	if ejected:
-		Buildings.rebuild_lists(world)
 	var count: int = mini(world.pass_count, world.pass_id.size())
-	var dying: int = 0
-	for at: int in count:
-		var carrier: int = world.index_of(world.pass_carrier[at])
-		if carrier >= 0 and world.hp[carrier] <= 0:
-			dying += 1
+	var dying: int = _dying(world)
 	if dying == 0:
 		return
 	var events: PackedInt32Array = world.events
@@ -274,6 +273,16 @@ static func perish(world: World) -> void:
 	world.pass_count = kept
 
 
+## How many records of the table belong to a carrier whose `hp` is 0 or less.
+static func _dying(world: World) -> int:
+	var dying: int = 0
+	for at: int in mini(world.pass_count, world.pass_id.size()):
+		var carrier: int = world.index_of(world.pass_carrier[at])
+		if carrier >= 0 and world.hp[carrier] <= 0:
+			dying += 1
+	return dying
+
+
 ## How many squads are aboard the carrier `carrier_id` (a pass over the live records).
 static func aboard(world: World, carrier_id: int) -> int:
 	var count: int = 0
@@ -293,7 +302,8 @@ static func passengers_of(world: World, player: int) -> int:
 	return count
 
 
-## Unloads the squads aboard carrier `carrier_id` (mode 1, stopped), in table order. A ring walk
+## Unloads the squads aboard carrier `carrier_id` (mode 1, stopped; `perish` also calls it for a
+## dead carrier, with its eject percent), in table order. A ring walk
 ## round the carrier's tile (`World.cell_of`), ring 1 up to `unload_reach_tiles`, each ring
 ## clockwise from its top-left corner turned by the carrier's facing (`Buildings.facing`: the side
 ## towards the map centre, so a half turn of the map mirrors the cells, ADR 0033), gives each squad
@@ -346,7 +356,7 @@ static func _unload(world: World, carrier_id: int, percent: int) -> void:
 			world.pass_id[at],
 			world.pass_owner[at],
 			world.pass_type[at],
-			maxi(1, world.pass_hp[at] * percent / 100),
+			maxi(1, world.pass_hp[at] * percent / PERCENT),
 			found.x * World.MILLI_PER_TILE + World.TILE_CENTRE,
 			found.y * World.MILLI_PER_TILE + World.TILE_CENTRE
 		)

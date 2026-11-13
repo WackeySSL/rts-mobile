@@ -544,7 +544,7 @@ accepted text.
 - **The carrier's death** is `Carry.perish`, in the REMOVE mark after `Carry.board` and before
   `remove_dead`. Every record aboard a carrier with `hp` 0 gets a DIED record (flag 0) at the
   carrier's point and counts as a lost unit as `Outcome.count_losses` counts one (the player must
-  have had a producer); the table closes up in order. `carry_eject_percent` is not read yet (P289).
+  have had a producer); the table closes up in order. (2026-11-13, P289: `carry_eject_percent` is read here, ADR 0037 section 7: a dead carrier ejects first and writes its `UNLOADED` records in REMOVE, before that tick's DIED records.)
 - **Pins.** No golden moved: the frozen arenas have `passenger_cap` 0. `World.gd` gained two lines.
 
 ### 9. Drone squads (release 1.2 recommended)

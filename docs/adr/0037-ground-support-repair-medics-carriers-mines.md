@@ -402,6 +402,12 @@ of which about 120 are C++.
   (`ride_squads`), drives the wave, and unloads at `ride_unload_tiles` from the target; this
   shares ADR 0036's drop code (P267). Easy builds none.
 - **Size.** Sim ~100 (eject), view ~0 (ADR 0036's), AI ~150.
+- **Note (2026-11-13, P289).** `Carry.perish` ejects before it kills: a dead carrier of a type
+  with `type_carry_eject_percent` above 0 runs `Carry._unload` with that percent (the same turned
+  ring walk; each squad comes back with `max(1, hp * percent / 100)`), then the existing death
+  path takes the squads still aboard (no free cell, or `insert_row` refused) as lost. An unload
+  passes 100. An eject writes its `UNLOADED` records in REMOVE, before that tick's DIED records.
+  The data checks add "carry_eject_percent on an aircraft" to `mine_rules.gd`. No deviation.
 
 ### 8. Mines (Michael's item 4)
 - **Laying.** `LAY_MINE` (8): unit ids = own rows with `type_mine_weapon >= 0`; a target point.
@@ -777,10 +783,3 @@ later; the names as listed. The questions stand below as they were asked.
      purpose: each side's carrier sounds like its own crews.
    - B: as A, but Ironbox for the Bunk Wagon and Lightcar for the Linecar (no echo).
    - Or name the ones to change.
-
-### As built (P289)
-`Carry.perish` ejects before it kills: a dead carrier of a type with `type_carry_eject_percent`
-above 0 runs `Carry._unload` with that percent (the same turned ring walk and `UNLOADED` event;
-each squad comes back with `max(1, hp * percent / 100)`), then the existing death path takes the
-squads still aboard (no free cell, or `insert_row` refused) as lost. An unload passes 100. The
-data checks add "carry_eject_percent on an aircraft" to `mine_rules.gd`. No deviation.
