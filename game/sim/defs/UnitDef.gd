@@ -64,3 +64,13 @@ var tab: int = -1
 ## a move-class bit mask of who may board (FOOT 1, WHEELED 2, TRACKED 4, AIR 8; transports take 1).
 @export var carry_slots: int = 0
 @export var carry_classes: int = 0
+
+## Ground support (ADR 0037 sections 7 and 8). `carry_eject_percent`: the share of its hit points a
+## passenger keeps when its carrier dies (0 = passengers die with it). `mine_weapon`: the weapon of
+## the mine a layer lays (null = no layer), `mine_cost` its price in credits, `mine_aware` a row
+## that never triggers a mine, `detect_milli` the reach in which the type finds enemy mines.
+@export var carry_eject_percent: int = 0
+@export var mine_weapon: WeaponDef
+@export var mine_cost: int = 0
+@export var mine_aware: bool = false
+@export var detect_milli: int = 0

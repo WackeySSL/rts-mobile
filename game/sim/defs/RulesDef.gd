@@ -86,3 +86,11 @@ extends Resource
 ## Carriers (ADR 0036 sections 3 and 8): the size of the passenger table, the squads aboard carriers
 ## at most. Inert at 0: no squad can board, so a scenario that sets none plays as before.
 @export var passenger_cap: int = 0
+
+## Mines (ADR 0037 section 8). Inert at `mine_cap` 0: no mine can be laid. Per player: the most laid
+## mines; ticks to lay one, to arm it and to sweep one; the most enemy mines a player records.
+@export var mine_cap: int = 0
+@export var mine_lay_ticks: int = 22
+@export var mine_arm_ticks: int = 15
+@export var sweep_ticks: int = 30
+@export var mine_known_cap: int = 24

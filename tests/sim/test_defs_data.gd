@@ -136,6 +136,12 @@ func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_froze
 		"mend_cost_percent": 30,
 		# Carriers (ADR 0036 section 3, P262): the table holds the 2 x unit_cap squads at most.
 		"passenger_cap": 150,
+		# Mines (ADR 0037 section 8): the starting values, inert until a type lays one (P285).
+		"mine_cap": 12,
+		"mine_lay_ticks": 22,
+		"mine_arm_ticks": 15,
+		"sweep_ticks": 30,
+		"mine_known_cap": 24,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -283,6 +289,11 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["ghost_cap", [0], [-1], "a cap is negative"],
 		["passenger_cap", [0, 150], [-1], "a cap is negative"],
 		["passenger_cap", [], [149], "passenger_cap is below the players' unit_cap"],
+		["mine_cap", [0, 12], [-1], "a mine rule is negative"],
+		["mine_arm_ticks", [0, 15], [-1], "a mine rule is negative"],
+		["sweep_ticks", [0, 30], [-1], "a mine rule is negative"],
+		["mine_known_cap", [0, 24], [-1], "a mine rule is negative"],
+		["mine_lay_ticks", [1, 22], [0], "mine_lay_ticks is below 1"],
 	]
 	for row: Array in rows:
 		for value: int in row[1] + row[2]:
@@ -815,6 +826,15 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			)
 			< 0
 		),
+		"a mine rule is negative":
+		(
+			mini(
+				mini(rules.mine_cap, rules.mine_arm_ticks),
+				mini(rules.mine_known_cap, rules.sweep_ticks)
+			)
+			< 0
+		),
+		"mine_lay_ticks is below 1": rules.mine_lay_ticks < 1,
 		"unit_cap and building_cap of 2 players do not fit max_rows":
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
 		"passenger_cap is below the players' unit_cap":

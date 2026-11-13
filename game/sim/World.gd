@@ -187,6 +187,11 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_repair_seek",
 	&"type_carry_slots",
 	&"type_carry_classes",
+	&"type_carry_eject_percent",
+	&"type_mine_weapon",
+	&"type_mine_cost",
+	&"type_mine_aware",
+	&"type_detect_milli",
 ]
 ## The landing pad offsets (ADR 0036 section 3, a pad_offsets table beside `type_pads`): entries
 ## `type_pad_first[type]` to `+ type_pads[type]` of both lists are the tile offsets, from the
@@ -211,6 +216,7 @@ const WEAPON_ARRAYS: Array[StringName] = [
 	&"weapon_projectile_speed",
 	&"weapon_vs_armour",
 	&"weapon_targets",
+	&"weapon_blast_milli",
 ]
 ## The projectile slots, max_projectiles entries each. proj_free is the stack of free slots.
 const PROJECTILE_ARRAYS: Array[StringName] = [
@@ -342,6 +348,11 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mend_period_ticks",
 	&"mend_cost_percent",
 	&"passenger_cap",
+	&"mine_cap",
+	&"mine_lay_ticks",
+	&"mine_arm_ticks",
+	&"sweep_ticks",
+	&"mine_known_cap",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -397,7 +408,12 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mend_hp",
 	&"mend_period_ticks",
 	&"mend_cost_percent",
-	&"passenger_cap"
+	&"passenger_cap",
+	&"mine_cap",
+	&"mine_lay_ticks",
+	&"mine_arm_ticks",
+	&"sweep_ticks",
+	&"mine_known_cap"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -496,6 +512,11 @@ var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
 ## The size of the passenger table (ADR 0036 section 3).
 var passenger_cap: int = 0
+var mine_cap: int = 0
+var mine_lay_ticks: int = 22
+var mine_arm_ticks: int = 15
+var sweep_ticks: int = 30
+var mine_known_cap: int = 24
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -578,6 +599,13 @@ var type_repair_seek: PackedInt32Array = PackedInt32Array()
 ## The carrier role (ADR 0036 section 2): squads held (0 = none), the move-class mask aboard.
 var type_carry_slots: PackedInt32Array = PackedInt32Array()
 var type_carry_classes: PackedInt32Array = PackedInt32Array()
+## The ground support (ADR 0037 sections 7 and 8): the percent of hp passengers leave a dead carrier
+## with, the mine weapon index (-1 = none), its price, the mine-aware flag and the detect reach.
+var type_carry_eject_percent: PackedInt32Array = PackedInt32Array()
+var type_mine_weapon: PackedInt32Array = PackedInt32Array()
+var type_mine_cost: PackedInt32Array = PackedInt32Array()
+var type_mine_aware: PackedInt32Array = PackedInt32Array()
+var type_detect_milli: PackedInt32Array = PackedInt32Array()
 var pad_offset_x: PackedInt32Array = PackedInt32Array()
 var pad_offset_y: PackedInt32Array = PackedInt32Array()
 ## Per upgrade, in the order of the listed factions' `upgrades` (at most UPGRADES_MAX): the id, the
@@ -604,6 +632,8 @@ var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
 var weapon_vs_armour: PackedInt32Array = PackedInt32Array()
 ## The layers a weapon may hit (a Layer mask, 1..7), one per weapon.
 var weapon_targets: PackedInt32Array = PackedInt32Array()
+## Milli-tiles: a mine weapon's blast radius (0 for every other weapon).
+var weapon_blast_milli: PackedInt32Array = PackedInt32Array()
 
 ## The tile grid. Columns and rows are tiles, 0 until a map is loaded or prepare() derives open
 ## grass, at most 64 in Phase 2.
@@ -877,25 +907,10 @@ func is_passable(cell: int, move_class: int) -> bool:
 	return move_cost[move_class * cells + cell] > 0
 
 
-## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost for
-## each ground class (the AIR plane stays open), and bumps map_version, also when the terrain is the
-## same. A cell outside the map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown
-## terrain index (one whose `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as
-## the load made it. Any other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable`
-## or `ore_cell` must bump map_version itself, because the map digest of the hash follows
-## map_version alone (WorldHash.map_digest).
+## Makes `cell` the terrain `terrain_index` and bumps map_version (WorldLoad.set_terrain has the
+## rule: bounds, the ore cells it leaves, and why map_version must move with any other writer).
 func set_terrain(cell: int, terrain_index: int) -> void:
-	var classes: int = GROUND_CLASSES
-	var cells: int = map_cols * map_rows
-	if cell < 0 or cell >= cells or terrain_index < 0 or terrain_index > TERRAIN_INDEX_MAX:
-		return
-	if (terrain_index + 1) * classes > terrain_cost.size():
-		return
-	terrain[cell] = terrain_index
-	for move_class: int in classes:
-		move_cost[move_class * cells + cell] = terrain_cost[terrain_index * classes + move_class]
-	map_version += 1
-	flow.invalidate(map_version)  # Before any acquire() under the new version.
+	WorldLoad.set_terrain(self, cell, terrain_index)
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)

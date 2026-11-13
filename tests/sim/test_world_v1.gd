@@ -63,6 +63,11 @@ const RULES: Dictionary[String, int] = {
 	"mend_period_ticks": 15,
 	"mend_cost_percent": 30,
 	"passenger_cap": 0,
+	"mine_cap": 0,
+	"mine_lay_ticks": 22,
+	"mine_arm_ticks": 15,
+	"sweep_ticks": 30,
+	"mine_known_cap": 24,
 }
 
 
@@ -103,7 +108,7 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	for info: Dictionary in defaults.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(41)
+	assert_int(fields.size()).is_equal(46)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -194,6 +199,11 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_repair_seek": [0, 0, 0],
 		&"type_carry_slots": [0, 0, 0],
 		&"type_carry_classes": [0, 0, 0],
+		&"type_carry_eject_percent": [0, 0, 0],
+		&"type_mine_weapon": [-1, -1, -1],
+		&"type_mine_cost": [0, 0, 0],
+		&"type_mine_aware": [0, 0, 0],
+		&"type_detect_milli": [0, 0, 0],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -306,7 +316,7 @@ func test_the_phase_1_shaped_world_steps_ten_ticks_without_an_explicit_prepare()
 func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var weapons: Array[String] = ["weapon_range", "weapon_min_range", "weapon_damage"]
 	weapons.append_array(["weapon_cooldown", "weapon_projectile_speed", "weapon_vs_armour"])
-	weapons.append("weapon_targets")
+	weapons.append_array(["weapon_targets", "weapon_blast_milli"])
 	assert_array(World.WEAPON_ARRAYS).is_equal(weapons)
 	var slots: Array[String] = ["proj_id", "proj_owner", "proj_weapon", "proj_target", "proj_x"]
 	slots.append_array(["proj_y", "proj_aim_x", "proj_aim_y", "proj_ticks", "proj_free"])
@@ -351,8 +361,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(145)
-	assert_int(ints.size()).is_equal(62)
+	assert_int(packed.size()).is_equal(151)
+	assert_int(ints.size()).is_equal(67)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so
