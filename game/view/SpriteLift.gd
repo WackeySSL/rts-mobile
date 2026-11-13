@@ -34,6 +34,10 @@ const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"arcline_gun": 18.0,
 	&"burst_stack_gun": 30.0,
 	&"sky_needle_gun": 30.0,
+	&"torchjet_gun": 30.0,
+	&"glint_gun": 30.0,
+	&"drillhead_bombs": 30.0,
+	&"sunfall_bombs": 30.0,
 }
 const MUZZLE_DEFAULT_PX: float = 14.0
 

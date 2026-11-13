@@ -485,10 +485,7 @@ func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 	var flight_types: int = 0
 	for unit: UnitDef in units:
 		if unit.tab == Rules.FLIGHT:
-			# Only a rostered type is buildable. The transports (P264) sit unlisted until P266, and
-			# the airfield (P242) ships before that, so the guard below counts the listed ones.
-			for faction: FactionDef in factions:
-				flight_types += 1 if faction.roster.has(unit) else 0
+			flight_types += 1
 			spacing = maxi(spacing, unit.formation_spacing)
 	var field_count: int = 0
 	var research_producers: int = 0

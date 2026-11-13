@@ -61,6 +61,9 @@ func test_the_shipped_weapon_masks_are_the_adr_starting_masks() -> void:
 		"sky_needle_gun": 6,
 		"hoist_crew_gun": 1,
 		"kite_crew_gun": 1,
+		# P242: the fighters hit high air only, the bombers the ground (the default 1).
+		"torchjet_gun": 2,
+		"glint_gun": 2,
 	}
 	var files: PackedStringArray = DirAccess.get_files_at("res://data/weapons")
 	var seen: int = 0

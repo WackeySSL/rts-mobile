@@ -117,16 +117,13 @@ func test_names_fit_one_line_and_are_unique() -> void:
 		seen[shown] = true
 
 
-## Both types require the airfield (ADR 0036 sections 8 and 9). The airfield's data ships with
-## P242: until then `requires` is empty, and the day an airfield file exists it must be named.
-func test_the_airfield_is_required_once_its_file_exists() -> void:
+## Both types require their faction's airfield (ADR 0036 sections 8 and 9).
+func test_each_type_requires_its_factions_airfield() -> void:
 	for id: String in TRANSPORTS.keys() + DRONES.keys():
 		var def: UnitDef = _def(id)
-		var field: BuildingDef = _airfield(def.faction)
-		if field == null:
-			assert_object(def.requires).override_failure_message(id).is_null()  # P242 sets it.
-		else:
-			assert_object(def.requires).override_failure_message(id).is_same(field)
+		var field: BuildingDef = load("res://data/units/%s_airfield.tres" % def.faction)
+		assert_object(def.requires).override_failure_message(id).is_same(field)
+		assert_int(field.pads).is_greater(0)
 
 
 func test_not_in_a_roster_yet() -> void:
@@ -141,13 +138,3 @@ func _def(id: String) -> UnitDef:
 	var def: UnitDef = load("res://data/units/%s.tres" % id) as UnitDef
 	assert_object(def).override_failure_message(id).is_not_null()
 	return def
-
-
-func _airfield(faction: StringName) -> BuildingDef:
-	for path: String in DirAccess.get_files_at("res://data/units"):
-		if not path.ends_with(".tres"):
-			continue
-		var def: BuildingDef = load("res://data/units/%s" % path) as BuildingDef
-		if def != null and def.faction == faction and def.pads > 0:
-			return def
-	return null

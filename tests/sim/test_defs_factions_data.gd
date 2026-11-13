@@ -13,10 +13,18 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-# Defs with no roster entry yet: the anti-air (P239b) and the transports and drone squads (P266).
-const UNLISTED: Array[String] = [
+## Files with no roster entry yet: the anti-air buildings (P239b), the airfields (P245b) and the
+## fighters and bombers (P245). Each row removes its own names.
+const AIR_UNLISTED: Array[String] = [
 	"fossil_aa",
 	"renew_aa",
+	"fossil_airfield",
+	"renew_airfield",
+	"fossil_fighter",
+	"renew_fighter",
+	"fossil_bomber",
+	"renew_bomber",
+	# The transports and drone squads (P266).
 	"fossil_transport",
 	"renew_transport",
 	"fossil_drone",
@@ -449,12 +457,12 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
-## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
+## P239: no roster entry for the anti-air buildings until P239b; it removes that skip.
+## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
-		# P239b (anti-air) and P266 (transport, drone squad) bring the roster entries.
-		if path.get_file().get_basename() in UNLISTED:
+		if path.get_file().get_basename() in AIR_UNLISTED:
 			continue
 		units.append(load(path))
 	return units
