@@ -47,18 +47,19 @@ const HEIGHT_PX: Dictionary[StringName, Vector2] = {
 	&"defence_turret": Vector2(40, 60),
 }
 ## Canvas and anchor in px of the 2x art: hull width, hull height, hull anchor y, shadow width,
-## shadow height. The anchor x is half the width, the shadow's anchor is the same back corner at
-## the top of its canvas (y 0, pinned). When the art changes on purpose, run
+## shadow height, shadow anchor x and y. The anchor x is half the width, the shadow's
+## anchor is the same back corner, with
+## occlusion pad's margin (P203) above and to the west of it. When the art changes on purpose, run
 ## `bash scripts/gen-art.sh` and read the new numbers from the sheets.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"headquarters": [384, 382, 190, 384, 194],
-	&"power_plant": [256, 252, 123, 256, 130],
-	&"refinery": [384, 294, 102, 444, 194],
-	&"barracks": [256, 200, 72, 268, 130],
-	&"vehicle_factory": [384, 346, 153, 406, 196],
-	&"fossil_radar": [256, 260, 132, 298, 130],
-	&"defence_turret": [128, 130, 65, 162, 82],
-	&"fossil_strike": [384, 362, 170, 394, 198],
+	&"headquarters": [384, 382, 190, 456, 230, 228, 19],
+	&"power_plant": [256, 252, 123, 328, 166, 164, 19],
+	&"refinery": [384, 294, 102, 480, 230, 228, 19],
+	&"barracks": [256, 200, 72, 328, 166, 164, 19],
+	&"vehicle_factory": [384, 346, 153, 456, 230, 228, 19],
+	&"fossil_radar": [256, 260, 132, 334, 166, 164, 19],
+	&"defence_turret": [128, 130, 65, 200, 102, 100, 19],
+	&"fossil_strike": [384, 362, 170, 456, 230, 228, 19],
 }
 ## The Redoubt's head frames, px of the 2x art: canvas width, canvas height, pivot x, pivot y (the
 ## anchor of a head is its pivot, which the sheet's mount puts on the bunker's roof).
@@ -158,7 +159,17 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 		var hull: Vector2i = sheet.frame_size(&"hull")
 		var shadow: Vector2i = sheet.frame_size(&"shadow")
 		(
-			assert_array([hull.x, hull.y, sheet.anchor(&"hull").y, shadow.x, shadow.y])
+			assert_array(
+				[
+					hull.x,
+					hull.y,
+					sheet.anchor(&"hull").y,
+					shadow.x,
+					shadow.y,
+					sheet.anchor(&"shadow").x,
+					sheet.anchor(&"shadow").y
+				]
+			)
 			. override_failure_message("%s canvas" % id)
 			. is_equal(want)
 		)
@@ -166,10 +177,9 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 		for part: StringName in [&"hull", &"shadow"]:
 			var size: Vector2i = sheet.frame_size(part)
 			var anchor: Vector2i = sheet.anchor(part)
-			assert_int(anchor.x).override_failure_message("%s %s" % [id, part]).is_equal(64 * n)
-			if part == &"shadow":
-				# The same back corner, at the top of the shadow's own canvas.
-				assert_int(anchor.y).override_failure_message("%s shadow" % id).is_equal(0)
+			assert_int(anchor.x).override_failure_message("%s %s" % [id, part]).is_greater_equal(
+				64 * n
+			)
 			assert_vector(Vector2(sheet.origin(part) - anchor)).is_equal(Vector2(0, 32 * n))
 			assert_bool(anchor.y >= 0 and anchor.y + 64 * n <= size.y).is_true()
 			assert_bool(size.x >= 128 * n).override_failure_message("%s" % id).is_true()
