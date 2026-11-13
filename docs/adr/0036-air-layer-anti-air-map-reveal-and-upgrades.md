@@ -388,6 +388,9 @@ Note (2026-11-13, P241): as built. It changes no accepted text except the bullet
   `push_y`, which SEPARATION clears before reading), and a re-home scans `building_rows` (a failed
   scan is not repeated for the owner in the same tick). The one-row array of an order and
   `Formation.assign` allocate at event cadence only.
+- **Scratch.** `Air.run` borrows SEPARATION's scratch arrays `push_x` and `push_y`: both implementations
+  `fill(0)` them before SEPARATION writes, and nothing reads them between ECONOMY and the next
+  SEPARATION.
 - **Data rule.** Tab FLIGHT and a high-air type (AIR, not low flying) go together
   (`air_rules.gd`): the cap counts by tab, the spawn keys on the layer. `ready_tick` is a stamp
   (`tick + 1`), as `PlayerView.row_ready_tick` reads it.

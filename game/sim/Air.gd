@@ -79,8 +79,8 @@ static func pad_point(world: World, row: int, pad: int) -> Vector2i:
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var air: PackedInt32Array = world.air_rows
-	if air.is_empty():
-		return
+	if air.is_empty() or world.push_x.size() < world.unit_id.size():
+		return  # No aircraft, or a World that is not prepared (no scratch columns).
 	var totals: PackedInt32Array = world.push_x
 	var ranks: PackedInt32Array = world.push_y
 	for field: int in world.building_rows:
