@@ -933,6 +933,30 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   parts on page 2, or a third page) to Michael before that row starts, not when a row fails. P245
   merges after P243 has re-keyed `page_of`; before that the fighter and bomber hulls would bake on
   page 1 (about +100 rows).
+- **P26bw note (2026-11-13, the lead; Michael's choice the same day; changes no accepted text
+  above).** The lever of the P236 note is chosen: **option c1, trim the empty margins of the
+  directional frames** (vehicles, infantry, turret heads). Each such frame is packed as its drawn box
+  plus 1 px, with a per-frame sprite offset. Buildings, their damage cuts and page 2 stay as they are.
+  - **Why.** A 16-direction frame keeps a canvas big enough for its longest rotation, so most
+    directions are mostly empty. The trim frees 686, 649 and 715 rows of page 1 now (cross page,
+    Derrick and Lumen mirrors), costs no draw call and no sharpness, and saves about 11 MiB of
+    texture.
+  - **The forecast (page 1, cross page),** measured with the nearest existing model for each row:
+
+    | After row | P239b | P245b | P249 | P279 | P280 | P291 | P292 |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | Without a lever | 3,040 | 3,368 | 3,694 | 3,760 | 3,964 | 4,144 | 4,305 |
+    | With the trim | 2,235 | 2,545 | 2,873 | 2,963 | 3,097 | 3,213 | 3,292 |
+
+    The mirrors end at 3,249 and 2,997 with the trim. The 3,840 allowance of the P237 note stays
+    unused, as a reserve; it is the first step if P245b or P249 costs more than the space centre did.
+  - **The risk** is a unit that jumps by its trim when it turns. P306's headless test checks, for every
+    directional frame, that the drawn box on screen equals the box of the untrimmed frame.
+  - **Rows** (`docs/plans/2026-11-09-air-and-tech.md`, "Levers"): P305 (the generator writes each
+    directional frame's tight box; no pin moves) and P306 (the atlas packs the boxes; per-frame
+    offsets in `IsoSheetDef`, `IsoAtlas`, `WorldSort.dress` and `show_base`, `SquadPoses`, the head
+    sprites and the gallery; `TODAY_*` re-pinned). Both merge before P249. P239b and P245b may land
+    before or beside them, and the art lanes in flight regenerate once after P305.
 
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military

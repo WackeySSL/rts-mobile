@@ -58,6 +58,14 @@ above stays as accepted and as dated):
 - **§5 and answer 2:** `run-sim-smoke.sh` plays full AI-vs-AI matches from plan row P186 (ADR 0031).
 No accepted text changed.
 
+Status note (2026-11-13, P26bw docs; ADR 0038 accepted 2026-11-13, Michael's option 3): ADR 0038
+supersedes §3's "inside the tick job". The job builds each due controller's `PlayerView` at tick
+T, and the controllers think on their own thread (inline in `SYNC`). Their Commands enter step T+1
+after the human's and are stamped T+1. The job waits for a late batch, so `SYNC` and `WORKER` give
+the same hash. §3's other rules stand: the order after the human's, the record, `Replay.play`
+without AI, the scans, and one path for the phone and every headless driver. §1's aliases end
+with plan row P302: a view holds copies only. Rows P301-P304b. No accepted text changed.
+
 ## Context
 - CLAUDE.md rule 4: humans and AI act only through `Command` objects. Rule 3: randomness only
   through per-match `DetRandom` streams; `game/sim/DetRandom.gd` says "AI controllers use

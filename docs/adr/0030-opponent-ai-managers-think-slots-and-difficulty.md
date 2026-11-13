@@ -523,6 +523,14 @@ steps" (smaller caps, or a new ADR for the AI's hot loops in C++) goes to Michae
 is not taken up again: on the phone it moved `sim_p95_ms` by 0.14 ms (the P26bp note).
 Details are in the Phase 4 plan's P26bv note. This note changes no other text.
 
+Note (2026-11-13, P26bw, the lead; Michael chose option 3 of the architect's AI lever memo in chat
+the same day): ADR 0038 (accepted) moves the thinks off the sim job. The AI thinks on its own
+thread on a view of tick T, and its Commands land in step T+1. The cadence of §2 and the counted
+bounds of this section stay. §1's "the AI never sends a Command the sim drops" now holds at the
+tick of the view, and the `tests/ai` rigs prove it at lag 0. Runs on the shipped path allow stale
+drops up to ADR 0038 §6's bound. The per-wave Perf AI card moves to `perf_ai_4b` from plan row P304
+(ADR 0038 §7). This note changes no other text.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).

@@ -147,8 +147,8 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P276 | GD | The repair role on `UnitDef` (ADR 0036 §2 names; defs and World type tables built here if P231 and P232 have not), `repair_slots` (1-8 without pads), `repair_seek_milli`; `repair_rows`; `Repair.gd` after `Carry.run`: staggered by rank, one row scan per acting repairer (no `target_grid`), footprint-centre reach, slots order, price, `REPAIRED`, medic seek; `REPAIR_CHECKS` | 310 | P270b; P231 and P232 (2026-11-09, merge order 4: no longer "if merged"; P276 adds no defs or type tables) |
 | P277 | GD | `REPAIR` 7 to `Buildings.aim`'s approach point (built here if P241b has not, else added to it); the data test that reach covers every ring point (+500); the shared contract test's ground cases | 100 | P276; P241b (2026-11-09, merge order 4: P241b builds `REPAIR`, P277 adds the footprint-centre service point) |
 | P278 | GD | Data: Weld Shed (reach 2,700), Drone Dock, Patchers (slots 1), Menders (slots 2); name width test; HOW_TO_PLAY Units and Buildings rows (Teach: repair) | data | P277 |
-| P279 | ART | Weld Shed and Drone Dock models (body, `dmg2` at 0.75, `anim`), page pins | art | P237 |
-| P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237 |
+| P279 | ART | Weld Shed and Drone Dock models (body, `dmg2` at 0.75, `anim`), page pins | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
+| P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
 | P281 | TUX | `RepairFx`: sparks, drones out and back, medic glow, from `REPAIRED`, seen-only; ring quotas | 160 | P278, P279, P280 |
 | P282 | TUX | The **Repair** button: ground rows a building serves -> one `REPAIR` to the nearest serving building; beside ADR 0036's Home in a mixed selection, each sending its own rows; unarmed rows of an attack get `ATTACK_MOVE`; six sizes | 100 | P278 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P283 | AI | `AiProduction` (repair building after the vehicle factory, `medic_per_squads`), `AiArmy` (`REPAIR` under `repair_retreat_percent`, medics in waves with `ATTACK_MOVE`) | 170 | P278 |
@@ -159,30 +159,32 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | --- | --- | --- | --- | --- |
 | P285 | GD | Defs: `mine_weapon`, `mine_cost`, `mine_aware`, `detect_milli`, `carry_eject_percent`, `WeaponDef.blast_milli`, the mine rules (`mine_cap` 0 by default); type tables; data tests; state-hash-neutral | 100 | P270b, P231 |
 | P286 | GD + QA | The ground layout: the mine table, `next_mine_id`, the records, section `mines`, sparse `mine_at`; the `stance` row column; `STATE_FORMAT` stays 7; the sanitizer's format-7 cases regenerated; one re-pin of every golden and `TICK_0_SEED_1` (exception 25) | 190 | P285, P262; P246a (2026-11-13, P26bv) |
-| P287 | GD | `Mines.gd` 1: `LAY_MINE` 8 (Formation slots, `carry_mode` 2, every order-giving Command zeroes `carry_mode`), lay on the layer's own cell in ECONOMY with every check again at the lay tick, cost and cap, arm; mark, blast (`Strike._land`'s formula) and compact in the FIRE mark; no friendly damage, air passes, rupture clears, a placed building removes; `MINE_CHECKS`, `MINES_REFUSED` | 300 | P286 |
+| P287a | GD | (2026-11-13, P26bw) Added by the lead: a pure-move split of `World.gd` (993 -> 678 lines); the shape lists move to `game/sim/WorldShape.gd`. No behaviour, list, hash or name change; no re-pin. It merges before P287 and P298 | 0 (move) | P286 |
+| P287 | GD | `Mines.gd` 1: `LAY_MINE` 8 (Formation slots, `carry_mode` 2, every order-giving Command zeroes `carry_mode`), lay on the layer's own cell in ECONOMY with every check again at the lay tick, cost and cap, arm; mark, blast (`Strike._land`'s formula) and compact in the FIRE mark; no friendly damage, air passes, rupture clears, a placed building removes; `MINE_CHECKS`, `MINES_REFUSED` | 300 | P286; P287a (2026-11-13, P26bw) |
 | P288 | GD | `MineMemory.gd` (forget; remember by detectors x mines on the fog turn, counted), sweeping (`carry_mode` 3), `PlayerView.own_mines`/`known_mines`, the snapshot's own and known lists | 250 | P287 |
 | P289 | GD | (2026-11-09, merge order 5: after ADR 0036's `Carry.gd`) `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
 | P290 | GD | Data: Bunk Wagon, Linecar, Shot Truck, Seeder, shot charge and pulse seed weapons, detect on Flarejack and Swift, `hold_types` defaults; name width test; HOW_TO_PLAY Units, Orders, Fog rows (Teach: Board, Unload, Mine, hidden mines) | data | P288, P289 |
-| P291 | ART | Bunk Wagon and Linecar (16 directions; P237 and Michael, 2026-11-11), item cards, page pins | art | P237 |
-| P292 | ART | Shot Truck and Seeder (as P291), mine marks per faction (own, known), `glyph_mine`, `glyph_hold`, item cards | art | P237 |
+| P291 | ART | Bunk Wagon and Linecar (16 directions; P237 and Michael, 2026-11-11), item cards, page pins | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
+| P292 | ART | Shot Truck and Seeder (as P291), mine marks per faction (own, known), `glyph_mine`, `glyph_hold`, item cards | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
 | P293 | TUX | `MineLayer` (z 3 after `DecalLayer`, own and known marks, dimmed records, unarmed half alpha, one `_draw`), blast fx and scorch where seen; draw-call guard +1 | 220 | P288, P290, P291, P292 |
 | P294 | TUX | The **Mine** button with "n/cap" and `MineAim` (tap, ring, check mark, X, turn cancels); a check that ADR 0036's Board and Unload (P265) take a ground carrier (data only); six sizes | 150 | P293, P265 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P295 | AI | `AiMines` in `AiStrikes`' slot: lay on the own-half route, sweep known mines before a wave, scouts ahead on Hard; Easy none | 250 | P290 |
 | P295b | AI | Ground rides in `AiArmy` on P267's drop code: load at staging, unload at `ride_unload_tiles` | 150 | P290, P267 |
 | P296 | QA | The fairness cases (unknown mine, loaded enemy carrier, enemy mend switch, enemy stance), counted bounds on `perf_bases` with 24 mines and repairers, the replay with every new Command, harness types (26) | tests | P293-P295b, P298 |
 | P297 | LEAD | Joins ADR 0036's gate run and phone check (P268): 26 unit types; mines found, swept and blasting; ground load, unload and eject; Hold | docs | P296, P299, P300 |
-| P298 | GD | Hold position: `STANCE` 9 (factory, branch), the TARGETING twin (`Targeting.gd`) and kernel (`core/targeting.cpp`, `bind/kernel_targeting.cpp`, `stance` in `world_access.h`'s TARGETING list and in the sanitizer's format-7 dump records, which P286 left without it): weapon-range acquisition and no `CHASE` on `ATTACK_MOVE`, IDLE after a held `ATTACK`; `PlayerView.row_stance`; lockstep cases; no golden moves | 230 (C++ ~120) | P286 |
+| P298 | GD | Hold position: `STANCE` 9 (factory, branch), the TARGETING twin (`Targeting.gd`) and kernel (`core/targeting.cpp`, `bind/kernel_targeting.cpp`, `stance` in `world_access.h`'s TARGETING list and in the sanitizer's format-7 dump records, which P286 left without it): weapon-range acquisition and no `CHASE` on `ATTACK_MOVE`, IDLE after a held `ATTACK`; `PlayerView.row_stance`; lockstep cases; no golden moves | 230 (C++ ~120) | P286; P287a (2026-11-13, P26bw) |
 | P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P300 | AI | Normal and Hard set hold on `OpponentDef.hold_types` (each faction's artillery) when they join a wave | 40 | P298, P290 |
 
 ### Lanes and order
 - **S (GD):** P271 -> P276 -> P277; then P285 -> P286 (after P262) -> P287 -> P288; P298 after
-  P286 beside P287; P289 after P263b.
+  P286 beside P287; P289 after P263b. (2026-11-13, P26bw) P287a after P286, before P287 and P298.
 - **D (GD data):** P271b after P271 (2026-11-12, P26bq); P278 after P277; P290 after P288 and
   P289.
 - **T (TUX):** P272 -> P282 -> P281; then P293 -> P294 -> P299. (2026-11-12, P26br) P272b
   beside P272 (no shared file); it merges first.
-- **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order.
+- **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order. (2026-11-13, P26bw) They also wait
+  for the atlas trim (P306), and the forecast takes them after P249 (the air plan's "Levers").
 - **I (AI):** P274; P283; P295, P295b and P300.
 - **Critical paths.** Wave 1: P270b -> P271 -> P272 -> P275 (2026-11-12, P26bq: P271b beside
   P272, before P272's phone step and P275). Wave 2: P276 -> P277 -> P278 ->
@@ -350,3 +352,14 @@ Note (2026-11-13, P26bv, the lead; from merge wave 5):
   `stance` column fit.
 - **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13). The Phase 4 plan's P26bv note has the
   details.
+
+Note (2026-11-13, P26bw, the lead): the air plan's P26bw note has wave 7, the cards and Michael's two
+lever decisions (ADR 0038, and ADR 0036 §15's P26bw note). For this plan:
+- **P287a** is a new row in the wave-3 table (added by the lead): a pure-move split of `World.gd`
+  (993 -> 678 lines; the shape lists go to `WorldShape.gd`). P287 and P298 wait for it.
+- **The art rows P279, P280, P291 and P292** wait for the atlas trim (the air plan's P306). The
+  forecast with the trim leaves page 1 at 3,292 rows on the cross page after P292 (3,249 and 2,997
+  on the mirrors), under the 3,584 budget; without it, page 1 would pass 3,840 at P280.
+- **P283, P295, P295b and P300** run on ADR 0038's AI thread once P301-P303 have merged; they need
+  no change for it. A field they add to `OpponentDef` or `AiDifficultyDef` is also set in
+  `perf_ai_4b`'s frozen copies (ADR 0038 §7).

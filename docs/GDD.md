@@ -202,13 +202,28 @@ Everything below is a starting value for the balance runs. The real numbers live
 | Role | Derrick League | Lumen Accord | Cost | HP | Speed (tiles/s) | Range (tiles) | Hits | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Fighter | Torchjet | Glint | 900 | 260 | 3.0 | 5 | air | No ammo limit. Lumen: 3.6 tiles/s, 200 HP |
-| Bomber | Drillhead | Sunfall | 1 400 | 500 | 1.8 | 2.5 | ground | 2 bombs, then home to reload. Lumen: 2.2 tiles/s, 380 HP |
+| Bomber | Drillhead | Sunfall | 1 400 | 500 | 1.8 | 3 | ground | 2 bombs, then home to reload. Lumen: 2.2 tiles/s, 380 HP |
 | Transport | Skyhauler | Ferrywing | 1 000 | 600 | 1.6 | - | - | 3 squads. Lumen: 800 credits, 380 HP, 2.4 tiles/s, 2 squads |
 | Drone squad | Hoist Crew | Kite Crew | 350 | 140 | 1.4 | 4 | ground | Flies low. Lumen: 300 credits, 90 HP, 2.0 tiles/s |
 
 **Upgrades:** Heavy Bombs and Plated Hull (Derrick League), Focus Bombs and Glaze Hull (Lumen
 Accord). The names are Michael's first choices (answer 1 A, ADR 0036 §16); Phase 7's trademark
 search checks them.
+
+Note (2026-11-13, P26bw, the lead's correctness fix; Michael may object): the bomber's range is 3
+tiles, not 2.5. Its weapon `range` and its `acquire_range` are both 3.0 tiles. At 2.5, a bomber that
+attacks a 3x3 building from a diagonal stops at the corner of the approach ring, 2.83 tiles from the
+building's centre, and never drops its bombs. The data rule that every weapon reaches that corner
+(`test_defs_data.gd`) has its floor at 2.829 tiles.
+
+Note (2026-11-13, P26bw, the lead's decision from the P247 review): starting values for the
+engineering centre and its upgrades, which this section and ADR 0036 left open. They are starting
+values; P255's balance run tunes them.
+- **The engineering centre** (both factions): 900 HP, 360 build ticks (24 s), sight 5 000
+  milli-tiles (5 tiles). That is in line with today's 2x2 buildings: 800-1 000 HP and sight 5 tiles
+  for all of them, and a build of 360 ticks just above the radar's 300, for a dearer building.
+- **The four upgrades:** each costs 800 credits and takes 1 350 ticks (90 s) of research. The bomb
+  upgrade and the hull upgrade are a pair of equals, so they cost the same.
 
 **Looks, in each faction's own style**
 - **Derrick League:** riveted olive steel, gas bottles and flare-stack exhausts.
