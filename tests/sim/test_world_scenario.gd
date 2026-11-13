@@ -284,7 +284,7 @@ func test_from_scenario_ends_with_prepare_and_drops_the_spawn_events() -> void:
 		var world: World = World.from_scenario(scenario)
 		assert_array(world.events).is_empty()
 		assert_array([world.intent_x.size(), world.proj_id.size(), world.stats.size()]).is_equal(
-			[256, 512, 10]
+			[256, 512, 11]  # P276: Stat.REPAIR_CHECKS.
 		)
 	var controls: World = World.from_scenario(load(SCENARIO_PATH) as ScenarioDef)
 	assert_array([controls.unit_count(), controls.rows_version, controls.next_id]).is_equal(

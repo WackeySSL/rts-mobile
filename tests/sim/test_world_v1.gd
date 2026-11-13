@@ -364,7 +364,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(153)  # P285's 151, P241's `air_rows` and P276's `repair_rows`.
+	assert_int(packed.size()).is_equal(156)  # P285: 151, P241: air_rows, P246: 3 mod_*, P276: 1.
 	assert_int(ints.size()).is_equal(69)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper

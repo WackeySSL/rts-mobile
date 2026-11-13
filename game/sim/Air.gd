@@ -145,6 +145,8 @@ static func _service(world: World, field: int, row: int, stamp: int) -> void:
 		return
 	var type: int = world.type_index[row]
 	var cap: int = world.type_ammo[type]
+	if cap > 0:
+		cap += Upgrades.extra_ammo(world, world.owner[row], type)  # ADR 0036 section 10.
 	if cap > 0 and world.ammo[row] < cap and stamp >= world.ready_tick[row]:
 		world.ammo[row] += 1
 		world.ready_tick[row] = stamp + maxi(1, world.type_rearm_ticks[type] / cap)

@@ -4,7 +4,8 @@ extends RefCounted
 ## advance, finished units spawn at their exit and leave for the rally point, finished structures
 ## turn ready, and a structure placed first rises on the map. QUEUE pays and joins the queue of the
 ## item's tab, CANCEL refunds, `run` advances each queue's head and ProductionSpawn puts a finished
-## unit on the map. A finished structure (the
+## unit on the map. A finished research item (the RESEARCH tab, ADR 0036 section 10) spawns nothing:
+## `Upgrades.finish` sets its upgrade's bit. A finished structure (the
 ## STRUCTURES tab, plan row P73b) is not spawned: its head stops at 100 % and waits, with no state
 ## of its own ("ready" is progress at the goal), until PLACE puts it on the map or CANCEL takes it
 ## out; PLACE builds it complete through `World.add_building` and ProductionSpawn gives a refinery
@@ -56,12 +57,14 @@ const DIED_CANCEL_FLAG_AT: int = 6
 
 ## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
-## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
-## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
-## without a producer waits, and so does every queue of a defeated player, and every queue whose
-## producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
-## `world.tick + 1`): the head keeps its progress, nothing spawns, and it goes on from there at the
-## stamp that reaches `offline_until`. The loop runs over the arrays as sized, so a hand-built World
+## done unit spawns (ProductionSpawn.spawn) and leaves the queue; a done research item
+## (`Upgrades.finish`, ADR 0036 section 10) sets its upgrade's bit and spawns nothing;
+## one that cannot spawn yet waits at 100 %, and so does a done structure, until PLACE or CANCEL.
+## Players ascending, then tabs. A queue without a producer waits, and so does every queue of a
+## defeated player, and every queue whose producer is blacked out
+## (P111, ADR 0023 section 10: its `offline_until` is above the stamp, `world.tick + 1`): the head
+## keeps its progress, nothing spawns, and it goes on from there at the stamp that reaches
+## `offline_until`. The loop runs over the arrays as sized, so a hand-built World
 ## whose player_count was raised after prepare() has no queue for the late players. The
 ## construction walk (`_build_sites`) runs before the queues; a step that completed a site sums the
 ## power totals again after them.
@@ -90,7 +93,10 @@ static func run(world: World) -> void:
 		var done: int = build_ticks[head] * PROGRESS_PER_TICK
 		var step: int = Power.scaled(world, player, PROGRESS_PER_TICK)  # Less on low power.
 		progress[queue] = mini(progress[queue] + step, done)
-		if (
+		if tab == World.Tab.RESEARCH and progress[queue] >= done:
+			Upgrades.finish(world, player, head)  # Spawns nothing (ADR 0036 section 10).
+			remove_item(world, queue, 0)
+		elif (
 			tab != World.Tab.STRUCTURES
 			and progress[queue] >= done
 			and ProductionSpawn.spawn(world, player, head, producer)
@@ -105,7 +111,8 @@ static func run(world: World) -> void:
 ## type needs a tab (a structure's too), the player a producer of that tab (producer_row) whose
 ## faction may queue it (`_faction_allows`) and a row of the type's requirement (if it has one), the
 ## queue room and at least the type's cost in credits; a FLIGHT item also needs room under the
-## pad cap (`Air.cap_room`, ADR 0036 section 6).
+## pad cap (`Air.cap_room`, ADR 0036 section 6), and a research item needs its upgrade unresearched
+## and not queued (`Upgrades.queue_refused`, section 10).
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
@@ -127,6 +134,7 @@ static func apply_queue(world: World, command: Command) -> bool:
 		or world.credits[player] < cost
 		or not _owns(world, player, world.type_requires[type])
 		or (tab == World.Tab.FLIGHT and not Air.cap_room(world, player))
+		or Upgrades.queue_refused(world, player, type)
 	):
 		return false
 	world.credits[player] -= cost

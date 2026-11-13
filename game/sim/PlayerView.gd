@@ -216,6 +216,9 @@ var own_strike_tick: int = 0
 ## indicator. A copy. A caller indexes it by player and checks the size itself (a hand-built World
 ## may leave it empty).
 var reveal_state: PackedInt32Array = PackedInt32Array()
+## The viewing player's own researched upgrades, one bit per upgrade (the order of the World's
+## `upgrade_ids`; ADR 0036 section 10). Own state only: no other player's bits are copied.
+var upgrades: int = 0
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
 ## `unit_cap` counts mobile rows (`type_speed` above 0, tankers included) and the
 ## player's squads aboard carriers.
@@ -263,6 +266,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_ghosts(world)
 	view._take_warned(world)
 	view.reveal_state = world.reveal.duplicate()
+	view.upgrades = world.upgrades[player] if player < world.upgrades.size() else 0
 	view._take_rows(world)
 	return view
 
