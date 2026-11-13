@@ -180,3 +180,58 @@ static func announce(world: World, repairer: int, target: int, gained: int) -> v
 	events[at + 4] = world.unit_id[target]
 	events[at + 5] = world.owner[target]
 	events[at + 6] = gained
+
+
+## REPAIR for a ground repair building (ADR 0037 section 6, P277; the one REPAIR command, reached
+## from `Air.apply_repair` when the target has no pads): `target_id` is an own, complete, living
+## building with a footprint, no pads and a repair role. The valid units are own, living, complete,
+## mobile rows with no footprint whose move class bit is in the building's `repair_classes`; each
+## gets MOVE to its approach point (`Buildings.aim`, as ATTACK on a building does: a ring tile next
+## to the footprint, and a unit with no passable ring tile is left out). Arrived rows stand idle and
+## `run` repairs them while in reach, ordered or not. A blacked-out building still takes the order
+## (the blackout is transient); `run` repairs nothing until it is back online. With no unit taken
+## the command is dropped and counted.
+static func apply_ground(world: World, command: Command, building: int) -> bool:
+	var kind: int = world.type_index[building]
+	if (
+		command.unit_ids.size() > Command.MAX_UNITS
+		or kind >= world.type_repair_classes.size()
+		or kind >= world.type_pads.size()
+		or world.type_repair_classes[kind] == 0
+		or world.type_pads[kind] != 0
+		or world.type_foot_w[kind] <= 0
+		or world.build_left[building] != 0
+		or world.hp[building] <= 0
+	):
+		return false
+	var mask: int = world.type_repair_classes[kind]
+	var ids: PackedInt32Array = command.unit_ids.duplicate()
+	ids.sort()
+	var rows: PackedInt32Array = PackedInt32Array()
+	var previous: int = 0
+	for id: int in ids:
+		if id == previous:
+			continue
+		previous = id
+		var row: int = world.index_of(id)
+		if row < 0 or world.owner[row] != command.player_id:
+			continue
+		var type: int = world.type_index[row]
+		if (
+			world.hp[row] > 0
+			and world.build_left[row] == 0
+			and world.type_speed[type] > 0
+			and world.type_foot_w[type] <= 0
+			and (mask >> world.type_move_class[type]) & 1 == 1
+		):
+			rows.append(row)
+	rows = Buildings.aim(world, rows, building)
+	if rows.is_empty():
+		return false
+	for row: int in rows:
+		world.order[row] = World.Order.MOVE
+		world.group_cell[row] = -1
+	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
+	Harvest.release(world, rows)
+	Carry.release(world, rows)
+	return true
