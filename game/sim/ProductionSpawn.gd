@@ -8,9 +8,10 @@ extends RefCounted
 
 ## Spawns one finished unit of `type` for `player` at the exit of `producer` (a building row) and
 ## returns true, or returns false and changes nothing but `stats` when it has to wait: `max_rows`
-## rows exist, the player has `unit_cap` mobile rows (type speed above 0, harvesters among them) or
-## no exit tile is free. The holds are tested before the walk, so a held unit counts no
-## `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`. The new row gets its
+## rows exist, the player has `unit_cap` mobile rows (type speed above 0, harvesters among them, and
+## its squads aboard carriers) or no exit tile is free. The holds are tested before the walk, so a
+## held unit counts no `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`.
+## The new row gets its
 ## first order (`_start`).
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
 	var kind: int = world.type_index[producer]

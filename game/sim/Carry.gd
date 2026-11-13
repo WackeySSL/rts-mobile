@@ -7,7 +7,8 @@ extends RefCounted
 ##
 ## LOAD: the carrier and the squads all get MOVE to the lowest-id squad's point, and each squad's
 ## `order_target` is the carrier's id: "board on arrival" (`board`). A plain MOVE or ATTACK_MOVE
-## takes that mark off again (`release`); STOP clears it with the rest, ATTACK overwrites it.
+## takes that mark off again (`release`), as does a new order to the carrier; STOP clears it with
+## the rest, ATTACK overwrites it.
 
 ## The `build_left` of a row that boarded a carrier: `hp` 0 as well, so REMOVE takes the row out in
 ## the same tick with DIED flag 2 (`Removal.died_flag`) and counts no loss (`Outcome.count_losses`).
@@ -46,7 +47,7 @@ static func apply_load(world: World, command: Command) -> bool:
 		if row < 0 or row == carrier or not _usable(world, row, command.player_id):
 			continue
 		var squad_type: int = world.type_index[row]
-		if world.type_speed[squad_type] > 0 and (classes >> world.type_move_class[squad_type]) & 1:
+		if _boards(world, squad_type, classes):
 			squads.append(row)
 	if squads.is_empty():
 		return false
@@ -60,9 +61,9 @@ static func apply_load(world: World, command: Command) -> bool:
 	return true
 
 
-## A MOVE or ATTACK_MOVE on `rows` takes the "board on arrival" mark off the ones that carry it (an
-## `order_target` that names an own row; an ATTACK's names an enemy). Sim calls it with the rows it
-## accepted, as `Harvest.release`.
+## A MOVE, ATTACK_MOVE or STOP on `rows` takes the "board on arrival" mark off the ones that
+## carry it (an `order_target` that names an own row; an ATTACK's names an enemy). Sim calls it with
+## the rows it accepted, as `Harvest.release`.
 static func release(world: World, rows: PackedInt32Array) -> void:
 	var targets: PackedInt32Array = world.order_target
 	for row: int in rows:
@@ -70,6 +71,13 @@ static func release(world: World, rows: PackedInt32Array) -> void:
 			var other: int = world.index_of(targets[row])
 			if other >= 0 and world.owner[other] == world.owner[row]:
 				targets[row] = 0
+	# A carrier that gets a new order lets go of the squads that wait for it.
+	var slots: PackedInt32Array = world.type_carry_slots
+	for row: int in rows:
+		if slots[world.type_index[row]] > 0:
+			for other: int in targets.size():
+				if targets[other] == world.unit_id[row]:
+					targets[other] = 0
 
 
 ## Boarding, in the REMOVE mark after `FogUpdate.begin` and before `World.remove_dead`. A row with
@@ -115,7 +123,7 @@ static func board(world: World) -> void:
 		if (
 			dx * dx + dy * dy > reach * reach
 			or world.pass_count >= room
-			or ((world.type_carry_classes[carrier_type] >> world.type_move_class[type]) & 1) == 0
+			or not _boards(world, type, world.type_carry_classes[carrier_type])
 		):
 			continue
 		var at: int = world.pass_count
@@ -146,6 +154,17 @@ static func passengers_of(world: World, player: int) -> int:
 		if world.pass_owner[at] == player:
 			count += 1
 	return count
+
+
+## Whether a squad of `type` may board a carrier whose class mask is `classes`: a mobile FOOT type
+## whose bit is in the mask (ADR 0036 section 8). So a carrier never boards a carrier and a
+## harvester never boards, whatever the mask.
+static func _boards(world: World, type: int, classes: int) -> bool:
+	return (
+		world.type_speed[type] > 0
+		and world.type_move_class[type] == World.MoveClass.FOOT
+		and ((classes >> World.MoveClass.FOOT) & 1) == 1
+	)
 
 
 ## Whether `row` is the player's, alive and complete (a mobile row's `build_left` is 0).

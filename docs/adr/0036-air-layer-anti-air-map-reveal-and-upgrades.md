@@ -444,6 +444,11 @@ Note (2026-11-13, P263): loading as built. It refines §8 and changes no accepte
 - **Rules.** `load_reach_milli` is a rule int (`RulesDef`, default 0 = inert, `data/rules.tres`
   3000), in `defs_hash` and out of the state hash. `unload_reach_tiles` comes with P263b.
 - **Unit cap.** `ProductionSpawn.mobile_rows` adds the squads aboard (`Carry.passengers_of`).
+- **FOOT only.** A squad must be a mobile FOOT type with its bit in the mask (`Carry._boards`), so
+  a carrier never boards a carrier and a harvester never boards. A new order to a carrier (MOVE,
+  ATTACK_MOVE, STOP) clears the marks that name it.
+- **Not in P263.** A ground carrier that cannot reach G in FOOT-only scrub (lens A's S3) goes to
+  the ground-carrier row.
 - **Pins.** `Carry.BOARDED` replaces `Removal.BOARDED`. No golden moved: the frozen arenas have
   `passenger_cap` 0, so `Carry.board` returns at once.
 

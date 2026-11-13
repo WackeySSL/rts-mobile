@@ -89,7 +89,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
+func test_rules_file_holds_the_42_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
