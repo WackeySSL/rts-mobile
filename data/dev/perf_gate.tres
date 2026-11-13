@@ -27,7 +27,11 @@ median_tolerance_pct = 2.0
 refresh_tolerance_pct = 1.0
 ref_iterations = 1000
 ref_burst_ms = 400
-; Re-pinned for P262 (named exception 24: STATE_FORMAT 7, ADR 0036 sections 3 and 8): the row column `carry_mode`, the
+; Re-pinned for P286 (named exception 25: STATE_FORMAT stays 7, ADR 0037 sections 8, 11 and 15): the row column `stance`, the
+; scalars `next_mine_id` and `mine_count` and the section `mines` (the mine table and the records) joined the hashed
+; layout, so every hash moves while no row, rule or run changes. Twin and kernel end on the same hashes.
+; Before: d7fce97f1f4229d2 ff7c653cbc7be349 e5f3955277e06182 34d0829654960906 ad9eaacdcd957f66 8ffe4168214d0fa4
+; (Re-pin history) Re-pinned for P262 (named exception 24: STATE_FORMAT 7, ADR 0036 sections 3 and 8): the row column `carry_mode`, the
 ; scalar `pass_count` and the section `passengers` joined the hashed layout, so every hash moves while no row, rule or
 ; run changes. Twin and kernel end on the same hashes.
 ; Before: 43f73b614de0d894 f915fd028e0003d8 4ac4b178cb6a629d 54d5ae1f8fd046bd b43388ca66bf423a 4512f2002ed89f5c
@@ -39,8 +43,11 @@ ref_burst_ms = 400
 ; the ticks line because the golden-hash test wants the ticks and hex lines adjacent. Twin and kernel end on the same hashes.
 ; Before: 2baccf2e02ff4fe9 ef55b512f8edda8a 577336276303caec fb50cf870d8180eb 9028a733228b6091 7bcb20994df10b28
 golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-golden_hex = PackedStringArray("d7fce97f1f4229d2", "ff7c653cbc7be349", "e5f3955277e06182", "34d0829654960906", "ad9eaacdcd957f66", "8ffe4168214d0fa4")
-; Re-pinned for P262 (named exception 24: STATE_FORMAT 7, ADR 0036 sections 3 and 8), the same reason as the arena's above.
+golden_hex = PackedStringArray("3d6ee5b68fdf3aaa", "83b8672e197796e8", "239d8fdc35111c3b", "24579b30eff0005c", "52d35946449b2e47", "73862041b906657b")
+; Re-pinned for P286 (named exception 25: STATE_FORMAT stays 7, ADR 0037 sections 8, 11 and 15), the same reason as the arena's above.
+; Twin and kernel end on the same hashes.
+; Before: 7a5eb4891f611f91 349b450ff49039a4 52cd92542829c287 af85350bb23c2fa4 9cb92c90602bf261 57a2fbfa38637bc4
+; (Re-pin history) Re-pinned for P262 (named exception 24: STATE_FORMAT 7, ADR 0036 sections 3 and 8), the same reason as the arena's above.
 ; Twin and kernel end on the same hashes.
 ; Before: 543bdd691b272336 c2ca2c1dd57c48b4 f3518667ad95553f 74ea67cb95f4e409 b428701b11c14f06 58681a6fcaf74db6
 ; (Re-pin history) Re-pinned for P232 (named exception 23: STATE_FORMAT 6, ADR 0036 section 3), the same reason as the arena's above.
@@ -51,4 +58,4 @@ golden_hex = PackedStringArray("d7fce97f1f4229d2", "ff7c653cbc7be349", "e5f39552
 ; ticks and hex lines adjacent. Twin and kernel end on the same hashes.
 ; Before: feb5d0302777e816 360f08cb64612295 4fa7bcadcc63d38e ce6037ef45537892 26d040f75b5d0364 4f1b4973efe6377c
 bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-bases_golden_hex = PackedStringArray("7a5eb4891f611f91", "349b450ff49039a4", "52cd92542829c287", "af85350bb23c2fa4", "9cb92c90602bf261", "57a2fbfa38637bc4")
+bases_golden_hex = PackedStringArray("b31651bd894038b0", "66506a0dc32b4f77", "dc36d8f12e83b2c6", "f98b22aca3526511", "7c8de3ca5dfa2143", "e333de062be19dd4")

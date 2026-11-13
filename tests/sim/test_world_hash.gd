@@ -37,7 +37,11 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## and the section "passengers" joined the hash, so the header, the new row section and the six
 ## sections after the rows changed; the digest changed from 781a749381ea2eb2 (no row, rule or run
 ## moved: the new column is all zeros, the table empty).
-const TICK_0_SEED_1: String = "dd094805d77cbf7b"
+## P286 (ADR 0037 sections 8, 11 and 15, exception 25): STATE_FORMAT stays 7; the row column "stance",
+## the scalars "next_mine_id" and "mine_count" and the section "mines" joined the hash, so the header,
+## the new row section and the section after "passengers" changed; the digest changed from
+## dd094805d77cbf7b (no row, rule or run moved: the column is all zeros, the tables empty).
+const TICK_0_SEED_1: String = "4dfd1c3d7396f979"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -93,7 +97,7 @@ func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> v
 				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
 				assert_bool(typed).override_failure_message(label).is_true()
 				checked += 1
-	assert_int(checked).is_equal(28)  # PAD_, UPGRADE_ (P232) and PASSENGER_ARRAYS (P262) joined.
+	assert_int(checked).is_equal(30)  # PAD_, UPGRADE_ (P232), PASSENGER_ (P262), MINE_ and MINE_SEEN_.
 
 
 ## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the
@@ -251,10 +255,10 @@ func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
 	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "ammo"]
-	tail.append_array(["carry_mode", "projectiles", "fog", "players", "ore", "ghosts"])
-	tail.append("passengers")
+	tail.append_array(["carry_mode", "stance", "projectiles", "fog", "players", "ore", "ghosts"])
+	tail.append_array(["passengers", "mines"])
 	assert_array(names.slice(25)).is_equal(tail)
-	assert_array(names.slice(2, 31)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(2, 32)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

@@ -70,7 +70,7 @@ Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09
 `MineMemory.run` joins MEMORY after `LastSeen.run`. §5: new Command types `LOAD` 5, `UNLOAD` 6,
 `REPAIR` 7, `LAY_MINE` 8, `STANCE` 9, `SELL` 17 and `MEND` 18; 19 is reserved for `PATROL`. §8:
 `STATE_FORMAT` 6 (P232, exception 23) and 7 (P262, exception 24; P286 re-pins on 7 under
-exception 25). §10: events `UNLOADED` 6, `MINE_BLAST` 7 and `REPAIRED` 8, `STRIKE` kind 3 (the
+exception 25, as built 2026-11-13: `stance`, the mine table and records, section `mines`). §10: events `UNLOADED` 6, `MINE_BLAST` 7 and `REPAIRED` 8, `STRIKE` kind 3 (the
 satellite); `DIED`'s index 6 becomes a mapping of `build_left`: 1 cancelled (-1), 2 boarded
 (-2), 3 sold (-3), else 0, and view readers match the value they mean. No accepted text changed.
 

@@ -246,6 +246,7 @@ func test_add_unit_writes_every_column_at_its_spawn_value_and_one_spawned_record
 		&"build_left": [0],
 		&"ammo": [0],
 		&"carry_mode": [0],
+		&"stance": [0],  # P286.
 	}
 	assert_array(World.ROW_ARRAYS).is_equal(expected.keys())
 	assert_int(world.add_unit(2, 0, 3500, 4500)).is_equal(1)
@@ -330,6 +331,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	var hashed: Array[String] = ["tick", "next_id", "next_projectile_id", "dropped_commands"]
 	hashed.append_array(["projectile_overflow", "spawn_refused", "player_count", "proj_free_top"])
 	hashed.append_array(["map_version", "match_end_tick", "winner", "pass_count"])
+	hashed.append_array(["next_mine_id", "mine_count"])  # P286.
 	assert_array(World.HASHED_SCALARS).is_equal(hashed)
 	var unhashed: Array[String] = ["map_w", "map_h", "map_cols", "map_rows", "rows_version"]
 	unhashed.append_array(["flow_cells_per_tick", "native_phases"])  # The mask is never state (P54).
@@ -342,6 +344,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 	array_lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	array_lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
 	array_lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS, World.PASSENGER_ARRAYS])
+	array_lists.append_array([World.MINE_ARRAYS, World.MINE_SEEN_ARRAYS])
 	var scalar_lists: Array = [World.HASHED_SCALARS, World.UNHASHED_SCALARS]
 	var packed: Array[String] = []
 	var ints: Array[String] = []
@@ -363,8 +366,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(152)  # P285's 151 and P241's `air_rows`.
-	assert_int(ints.size()).is_equal(69)
+	assert_int(packed.size()).is_equal(163)  # P285's 152, `stance`, nine mine arrays, `mine_at`.
+	assert_int(ints.size()).is_equal(71)  # P286: `next_mine_id` and `mine_count`.
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so

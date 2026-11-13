@@ -493,6 +493,15 @@ static func size_match_state(world: World) -> void:
 	for column_name: StringName in World.PASSENGER_ARRAYS:  # The passenger table: all slots free.
 		var column: PackedInt32Array = world.get(column_name)
 		column.resize(world.passenger_cap)
+	var mine_slots: int = world.mine_cap * world.player_count  # The mine table and the records.
+	for column_name: StringName in World.MINE_ARRAYS:
+		var mine_column: PackedInt32Array = world.get(column_name)
+		mine_column.resize(mine_slots)
+	var known: int = players * world.mine_known_cap
+	for column_name: StringName in World.MINE_SEEN_ARRAYS:
+		var seen_column: PackedInt32Array = world.get(column_name)
+		seen_column.resize(players if column_name == &"mine_seen_count" else known)
+	world.mine_at.resize(world.map_cols * world.map_rows)  # Grows with zeros, sparse after that.
 	world.ore_amount.resize(world.ore_cell.size())
 	world.ore_amount.fill(world.ore_start)
 	world.ghost_id.resize(ghosts)

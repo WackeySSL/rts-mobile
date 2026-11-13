@@ -2,7 +2,8 @@ extends RefCounted
 ## The bytes that World.state_hash() feeds its digest at one checkpoint (plan P65q, ADR 0016): the
 ## stream is rebuilt here from the shape lists (World.hash_section_names(), HASHED_SCALARS,
 ## PROJECTILE_ARRAYS, MAP_ARRAYS, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS, the ghost records
-## of GHOST_ARRAYS and the passenger records of PASSENGER_ARRAYS) and not by calling the World's
+## of GHOST_ARRAYS, the passenger records of PASSENGER_ARRAYS and the mines of MINE_ARRAYS and
+## MINE_SEEN_ARRAYS) and not by calling the World's
 ## feed code, so a test can feed it to its own SHA-256 and compare the result with state_hash():
 ## the count is exact exactly when the two values are equal. Each block is a 16-byte header (the
 ## section's index and the byte count, two little-endian int64) and its bytes, in the order of the
@@ -45,6 +46,10 @@ static func stream(world: World) -> PackedByteArray:
 				_append(out, tag, _live_ghosts(world))
 			"passengers":
 				_append(out, tag, _live_passengers(world))
+			"mines":
+				_append(out, tag, _live_mines(world))
+				_append(out, tag, bytes_of(world.mine_seen_count))
+				_append(out, tag, _live_seen_mines(world))
 			_:
 				_append(out, tag, bytes_of(world.get(StringName(names[tag]))))
 	return out
@@ -118,6 +123,29 @@ static func _live_passengers(world: World) -> PackedByteArray:
 		for column_name: StringName in World.PASSENGER_ARRAYS:
 			var column: PackedInt32Array = world.get(column_name)
 			live.append(column[record])
+	return live.to_byte_array()
+
+
+## Each live mine (record `i` below mine_count): its fields in MINE_ARRAYS order.
+static func _live_mines(world: World) -> PackedByteArray:
+	var live: PackedInt32Array = PackedInt32Array()
+	for record: int in clampi(world.mine_count, 0, world.mine_id.size()):
+		for column_name: StringName in World.MINE_ARRAYS:
+			var column: PackedInt32Array = world.get(column_name)
+			live.append(column[record])
+	return live.to_byte_array()
+
+
+## Each live record of a found mine (entry `p * mine_known_cap + i`, `i` below mine_seen_count[p]):
+## its fields in MINE_SEEN_ARRAYS order without the count, players ascending.
+static func _live_seen_mines(world: World) -> PackedByteArray:
+	var live: PackedInt32Array = PackedInt32Array()
+	for player: int in world.mine_seen_count.size():
+		for record: int in world.mine_seen_count[player]:
+			for column_name: StringName in World.MINE_SEEN_ARRAYS:
+				if column_name != &"mine_seen_count":
+					var column: PackedInt32Array = world.get(column_name)
+					live.append(column[player * world.mine_known_cap + record])
 	return live.to_byte_array()
 
 

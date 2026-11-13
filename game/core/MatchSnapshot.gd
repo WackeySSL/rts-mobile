@@ -98,8 +98,9 @@ const COPIED: Array[StringName] = [
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
 ## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS,
-## UPGRADE_ARRAYS and PASSENGER_ARRAYS: the sim's working state, which no view reads (P265 copies
-## the carrier columns it draws pips from). With COPIED it covers those thirteen
+## UPGRADE_ARRAYS, PASSENGER_ARRAYS, MINE_ARRAYS and MINE_SEEN_ARRAYS: the sim's working state,
+## which no view reads (P265 copies the carrier columns it draws pips from; P290 the mines the local
+## player knows). With COPIED it covers those fifteen
 ## lists exactly once (a coverage test), so a new World array fails until it is classified. The air
 ## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
 ## `weapon_targets`, `reveal_site` and `reveal`, which the view and input read (ADR 0036 sections
@@ -110,6 +111,17 @@ const COPIED: Array[StringName] = [
 const NOT_COPIED: Array[StringName] = [
 	&"ammo",
 	&"carry_mode",
+	&"stance",
+	&"mine_id",
+	&"mine_owner",
+	&"mine_cell",
+	&"mine_weapon",
+	&"mine_armed_tick",
+	&"mine_seen_id",
+	&"mine_seen_owner",
+	&"mine_seen_cell",
+	&"mine_seen_count",
+	&"mine_at",
 	&"type_carry_slots",
 	&"type_carry_classes",
 	&"type_carry_eject_percent",

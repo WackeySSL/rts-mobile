@@ -572,6 +572,28 @@ changes `defs_hash`, which no literal pins.
   under **named exception 25** (23 is P232's, 24 P262's), or the next free number when it starts.
 - New rules in `RulesDef` have inert defaults (`mine_cap` 0 means no mine can be laid), and the
   frozen arena defs (P171) are not edited, so rule rows move no golden.
+- Note (2026-11-13, P286, as built; changes no accepted text above): `STATE_FORMAT` stays 7 and
+  `HASH_OTHER_SECTIONS` becomes 9. New hashed state: the row column `stance` (after `carry_mode`,
+  0 at spawn and in `insert_row`), the scalars `next_mine_id` (starts 1) and `mine_count` (after
+  `pass_count`), the mine table `MINE_ARRAYS` (`mine_id`, `mine_owner`, `mine_cell`,
+  `mine_weapon`, `mine_armed_tick`, `mine_cap * player_count` entries each) and the records
+  `MINE_SEEN_ARRAYS` (`mine_seen_id`, `mine_seen_owner`, `mine_seen_cell`, entry
+  `player * mine_known_cap + record`, and the per-player `mine_seen_count`), fed by the new last
+  section `mines` (live records only: the mines, then the count of each player, then its live
+  records; counts are clamped to the table). The derived `mine_at` (a cells-long array, in
+  `DERIVED_ARRAYS`, never hashed) is sized with zeros at prepare; nothing sets it before P287. No
+  rule reads any of it yet, no kernel reads `stance` yet (P298), so `world_access.h` is unchanged and
+  the sanitizer dump holds no new record: `KNOWN_FORMATS` is unchanged and the format-7 dumps are
+  generated afresh by `dump_states.gd` from the new layout.
+  - **Re-pin (named exception 25), reason: the layout moved, no row, rule or run did.**
+    `TICK_0_SEED_1` `dd094805d77cbf7b` -> `4dfd1c3d7396f979`. Perf arena `golden_hex`
+    (ticks 150..900) `d7fce97f1f4229d2 ff7c653cbc7be349 e5f3955277e06182 34d0829654960906
+    ad9eaacdcd957f66 8ffe4168214d0fa4` -> `3d6ee5b68fdf3aaa 83b8672e197796e8 239d8fdc35111c3b
+    24579b30eff0005c 52d35946449b2e47 73862041b906657b`. Base arena `bases_golden_hex`
+    `7a5eb4891f611f91 349b450ff49039a4 52cd92542829c287 af85350bb23c2fa4 9cb92c90602bf261
+    57a2fbfa38637bc4` -> `b31651bd894038b0 66506a0dc32b4f77 dc36d8f12e83b2c6 f98b22aca3526511
+    7c8de3ca5dfa2143 e333de062be19dd4`. Twin and kernels end on the same hashes; the arena
+    stats pins (test_base_arena_run and the perf stats) did not move.
 
 ### 12. Native kernels: one edit (TARGETING, for hold position)
 Every other rule here runs in COMMANDS, FIRE (after `Strike.run`), REMOVE, ECONOMY or MEMORY, all

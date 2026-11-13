@@ -39,7 +39,7 @@ func test_the_tabs_and_harvest_modes_are_the_contract() -> void:
 	assert_int(World.TABS).is_equal(World.Tab.size())
 	var modes: Dictionary = {"IDLE": 0, "SEEK": 1, "MINE": 2, "RETURN": 3, "UNLOAD": 4}
 	assert_dict(World.HarvestMode).is_equal(modes)
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 8])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 9])
 
 
 ## The lists that Phase 3 declares at once (ADR 0017 section 3), by name and in order. The other
@@ -62,14 +62,14 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	var ghosts: Array[String] = ["ghost_id", "ghost_type", "ghost_owner", "ghost_cell"]
 	assert_array(World.GHOST_ARRAYS).is_equal(ghosts + ["ghost_count"])
 	var derived: Array[String] = ["power_made", "power_used", "building_rows", "harvester_rows"]
-	derived.append("air_rows")  # P241.
+	derived.append_array(["air_rows", "mine_at"])  # P241, P286.
 	assert_array(World.DERIVED_ARRAYS).is_equal(derived)
-	assert_array(World.HASHED_SCALARS.slice(-3)).is_equal(
-		["match_end_tick", "winner", "pass_count"]
+	assert_array(World.HASHED_SCALARS.slice(-5)).is_equal(
+		["match_end_tick", "winner", "pass_count", "next_mine_id", "mine_count"]
 	)
 	var sections: PackedStringArray = World.hash_section_names()
-	assert_array(sections.slice(-6)).is_equal(
-		["projectiles", "fog", "players", "ore", "ghosts", "passengers"]
+	assert_array(sections.slice(-7)).is_equal(
+		["projectiles", "fog", "players", "ore", "ghosts", "passengers", "mines"]
 	)
 	assert_int(sections.size()).is_equal(World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS)
 
