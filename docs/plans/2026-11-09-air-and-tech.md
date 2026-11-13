@@ -182,8 +182,8 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P236 | ART | Space centre models, both factions (whole + damage stages, a lift part as the anim) | art | P237 |
 | P237 | ART | Atlas page probe and split: page 2 for unsorted layers (AirLayer, air shadows, DecalLayer, building shadows); measures rows, bake ms and texture memory; options a/b/c of ADR 0036 §15 to the lead; page pins. Coordinate with polish rows P202-P204 | 250 | P230 (may start at once) |
 | P238 | GD | Target layers: TARGETING twin and kernel (reading `weapon_targets` and `type_layer_bit` as P232 declared them; acquisition and ATTACK lock), `_apply_attack`, `Combat.fire` guard, rupture skips air; masks on rocket (7), rifle (5) and Redoubt (5) weapons; lockstep cases. Split trigger: the lockstep test as P238b if over ~1,000 changed lines | 200 (C++ ~120) | P232 |
-| P239 | GD | Anti-air data, both factions (building, weapon mask 6, requires Barracks); HOW_TO_PLAY Combat rows | 80 | P238, P230 |
-| P239b | ART | Anti-air models, both factions (turret head, 16 directions) | art | P237 |
+| P239 | GD | Anti-air data, both factions (building, weapon mask 6, requires Barracks); HOW_TO_PLAY Combat rows. (2026-11-13, P26bv) Data only: the rosters, the item cards and the HOW_TO_PLAY Combat rows move to P239b | 80 | P238, P230 |
+| P239b | ART + GD (2026-11-13, P26bv) | Anti-air models, both factions (turret head, 16 directions). (2026-11-13, P26bv) Also the roster entries and item cards, the HOW_TO_PLAY Combat rows, `test_defs_anti_air`'s flipped "not in rosters" assertion and the removed skips | art | P237 |
 | P240 | GD | Air movement: SEPARATION same-layer test (twin and kernel, reading P232's `type_layer_bit`), INTEGRATE and FLOW lockstep cases with aircraft, `ProductionSpawn` spawn over a pad, `Buildings` ground planes only (checked) | 200 (C++ ~40) | P232 |
 | P241 | GD | Airfield rules: the FLIGHT cap at QUEUE, spawn over a pad, home and re-home, `air_rows`, ammo in `Combat.fire`, `Air.run` return and reload. Split trigger (over ~400): P241c takes `Air.run`'s return and reload | 350 | P238, P240; P232c (2026-11-12, P26br) |
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
@@ -192,11 +192,12 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow) | art | P237; P243 (2026-11-12, P26br: its `page_of` re-key first) |
 | P245b | ART | Airfield models, both factions (pads, damage stages) | art | P237 |
-| P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241 |
+| P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241; P246a (2026-11-13, P26bv) |
+| P246a | GD | (2026-11-13, P26bv; added by the lead) `World.gd` split: function bodies move to the `World*` helpers behind one-line delegates; no behaviour, list, hash or name change | 0 (move) | - |
 | P247 | GD | Engineering centre data and four UpgradeDefs (per question 5); HOW_TO_PLAY Build menu rows | 100 | P246, P230 |
 | P248 | TUX | Research tab: cards, the researched mark, a locked card's sash (ADR 0032); six sizes | 200 | P247 |
 | P249 | ART | Engineering centre models, both factions | art | P237 |
-| P250 | AI | Production and Intel: build-order tiers (airfield, anti-air per seen aircraft, engineering centre, space centre on Normal and Hard), the air mix, research choice; counts of seen air and anti-air; layer-aware counter choices (`AiProduction.gd:302`, `AiArmy.gd:701`: `weapon_targets` against `type_layer_bit`). Split trigger (over ~400): P250b takes Intel's counts | 350 | P234, P239, P242, P247 |
+| P250 | AI | Production and Intel: build-order tiers (airfield, anti-air per seen aircraft, engineering centre, space centre on Normal and Hard), the air mix, research choice; counts of seen air and anti-air; layer-aware counter choices (`AiProduction.gd:302`, `AiArmy.gd:701`: `weapon_targets` against `type_layer_bit`). Split trigger (over ~400): P250b takes Intel's counts | 350 | P234, P239, P242, P247; P239b (2026-11-13, P26bv) |
 | P251 | AI | Army: bomber raids (`raid_size`, the target by value and anti-air), fighters guard and escort, REPAIR below `air_retreat_percent`. Split trigger (over ~400): P251b takes the fighters | 350 | P250 |
 | P252 | AI | Strikes (as amended 2026-11-09, P230, answers 3 B and 4 A): Normal and Hard fire the sweep as soon as it is charged (no `reveal_blind_ticks`); while an enemy's `reveal_state` is 1, move the staging point by one step and make a seen or ghost enemy space centre the first target of bomber raids and of the AI's own blackout; Easy builds none of the tech | 200 | P234, P250 |
 | P253 | GD | `perf_air`: frozen defs in `data/dev/arena/`, a scenario with 16 aircraft among 150 units, golden and counted bounds, the perf card; the lead reads ADR 0013 §1 on its `PERF` line | 200 | P242, P246 |
@@ -589,3 +590,32 @@ Note (2026-11-13, P26bu, the lead; from the reviews of P234, P235, P240 and P262
   (Michael's yes, 2026-11-13).
 - **`rts-sim-conventions`.** Its hashed-state paragraph now covers `STATE_FORMAT` 6 (P232) and 7
   (P262) (Michael's yes, 2026-11-13).
+
+Note (2026-11-13, P26bv, the lead; from merge wave 5 (#428 P263, #429 P285, #430 P241, #431 P239)):
+- **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13; the Phase 4 plan's P26bv note). Before
+  P250 starts, the lead asks Michael to choose between two AI levers: smaller caps, or the AI's hot
+  loops in C++.
+- **P239 as built.** P239 ships the anti-air buildings (Burst Stack, Sky Needle) and their mask-6
+  guns as data only. They are not in the rosters yet, because a UI test needs an item card for
+  every buildable type. **P239b** therefore also does the following:
+  - adds the roster entries and the item cards;
+  - flips `test_defs_anti_air`'s "not in rosters" assertion;
+  - removes the `fossil_aa`/`renew_aa` skips in `_own_files` (`test_defs_roster`,
+    `test_defs_roster_renew`) and in `_units` (`test_defs_factions_data`);
+  - writes the two HOW_TO_PLAY Combat rows: "the anti-air gun hits aircraft, never the ground"
+    and "who hits aircraft".
+
+  **P250 waits for P239b** (the roster entries), not only for P239. The Rows table carries these
+  changes as dated notes, with a new P246a row.
+- **P241 as built.** `Air.run` borrows SEPARATION's scratch `push_x`/`push_y` (ADR 0036's P241
+  note). The `rts-sim-conventions` skill does not say this yet. A skill line needs Michael's yes,
+  so it is on the lead's list for the next skill edit.
+- **`World.gd` is at 994 of gdlint's 1000 lines.** P246a (a lead-added row, merge wave 6) moves
+  function bodies out to the `World*` helpers. It changes no behaviour and keeps the arrays, the
+  lists and every hash. P246 and P286 wait for it.
+- **Lead follow-ups (NITs, not rows):**
+  - `MatchSnapshot.NOT_COPIED`'s comment has one short line, which needs a reflow.
+  - `RULE_SCALARS` order is not pinned: the test compares it as a set. The next row that edits the
+    list pins the order.
+  - The ground carrier cannot follow squads into FOOT-only scrub (P263's note in ADR 0036 §8).
+    The ground-carrier rows of ADR 0037 §7 take it.

@@ -158,7 +158,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
 | P285 | GD | Defs: `mine_weapon`, `mine_cost`, `mine_aware`, `detect_milli`, `carry_eject_percent`, `WeaponDef.blast_milli`, the mine rules (`mine_cap` 0 by default); type tables; data tests; state-hash-neutral | 100 | P270b, P231 |
-| P286 | GD + QA | The ground layout: the mine table, `next_mine_id`, the records, section `mines`, sparse `mine_at`; the `stance` row column; `STATE_FORMAT` stays 7; the sanitizer's format-7 cases regenerated; one re-pin of every golden and `TICK_0_SEED_1` (exception 25) | 190 | P285, P262 |
+| P286 | GD + QA | The ground layout: the mine table, `next_mine_id`, the records, section `mines`, sparse `mine_at`; the `stance` row column; `STATE_FORMAT` stays 7; the sanitizer's format-7 cases regenerated; one re-pin of every golden and `TICK_0_SEED_1` (exception 25) | 190 | P285, P262; P246a (2026-11-13, P26bv) |
 | P287 | GD | `Mines.gd` 1: `LAY_MINE` 8 (Formation slots, `carry_mode` 2, every order-giving Command zeroes `carry_mode`), lay on the layer's own cell in ECONOMY with every check again at the lay tick, cost and cap, arm; mark, blast (`Strike._land`'s formula) and compact in the FIRE mark; no friendly damage, air passes, rupture clears, a placed building removes; `MINE_CHECKS`, `MINES_REFUSED` | 300 | P286 |
 | P288 | GD | `MineMemory.gd` (forget; remember by detectors x mines on the fog turn, counted), sweeping (`carry_mode` 3), `PlayerView.own_mines`/`known_mines`, the snapshot's own and known lists | 250 | P287 |
 | P289 | GD | (2026-11-09, merge order 5: after ADR 0036's `Carry.gd`) `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
@@ -340,3 +340,13 @@ Note (2026-11-12, P26br, the lead; from the reviews of P272, P272b and P274):
   - Easy never mends. Normal is 50 % and 400, Hard 70 % and 250 until P275 tunes them.
   - The frozen `perf_ai` levels stay inert (script defaults 0), so the Perf AI card times the guard
     only. No card times the live path yet; P275's balance run is the first that plays it.
+
+Note (2026-11-13, P26bv, the lead; from merge wave 5):
+- **P285 as built (#429).** It was stacked on P263 and merged right after it (#428, #429). `data/rules.tres` sets
+  `mine_cap` to 12. That value stays inert while no type has a `mine_weapon`. The test support now
+  holds the data rules for mine weapons and for unique weapon ids.
+- **P286 waits for P246a.** P246a is a lead-added row in the air-and-tech plan's P26bv note. It
+  splits `World.gd`, which is at 994 of gdlint's 1000 lines, so that P286's mine table, records and
+  `stance` column fit.
+- **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13). The Phase 4 plan's P26bv note has the
+  details.

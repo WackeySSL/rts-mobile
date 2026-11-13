@@ -399,6 +399,27 @@ Note (2026-11-13, P241): as built. It changes no accepted text except the bullet
   implementations) and `test_sweep_layers.gd` (the sweep with the target layers, both
   implementations). No golden moved: no shipped type has ammo or pads.
 
+Note (2026-11-13, P241b): repair and `REPAIR` as built. It changes no accepted text.
+- **Where.** `Air._service` (called from `Air.run` for an aircraft within reach of its pad: reload
+  as P241 built it, then repair) and `Air.apply_repair`, which `Sim._apply` calls for
+  `Command.Type.REPAIR` (7); the factory is `Command.repair(player, unit_ids, building_id)`.
+- **Repair** is as §6 says: on ticks with `tick % repair_period_ticks == 0`, `repair_hp` up to the
+  maximum, for `ceil(cost * gained * repair_cost_percent / (100 * max_hp))`; no pay, no repair. It
+  also needs the airfield's `repair_classes` to carry the AIR bit, and an online airfield (a
+  blackout stops it, as it stops the reload). A fighter, with no ammo limit, is repaired too.
+- **`REPAIR`**: the valid aircraft are own, living, complete, in the AIR layer, with their move
+  class bit in the airfield's `repair_classes`; the lowest ids first. One already homed there keeps
+  its pad; another is re-homed while the airfield has a pad left (pads minus aircraft homed there)
+  and is skipped otherwise. Each one taken gets MOVE to the pad of its rank, as `Air.run` derives
+  it. With none taken, or a target that is not an own complete building with pads and a role, the
+  command is dropped and counted. This is the one `REPAIR` entry: P277 adds the branch for a
+  building without pads to `apply_repair`, not a second command.
+- **Not here.** The `REPAIRED` event (ADR 0037 section 2, Event 8) is P276's: it adds the event for
+  the airfield's repair too (at most one per pad per period), together with `Repair.run`. P241b writes
+  none, because no view reads it for airfields yet. A defeated owner's aircraft are not repaired.
+- **Tests.** `test_airfield_repair.gd` (the repair and its price) and `test_repair_command.gd` (the
+  command and the part of the shared contract the airfield owns). No golden moved.
+
 ### 7. The interface shared with the ground design
 - **`REPAIR = 7`:** unit ids, `target_id` = an own complete building with
   `repair_classes & class_bit(unit) != 0`.
@@ -488,7 +509,7 @@ Note (2026-11-13, P263): loading as built. It refines §8 and changes no accepte
   and only a mark that names an own row: an ATTACK's names an enemy, so no frozen run changes. A
   carrier with no slot free clears the mark of the squad that finds it full.
 - **Rules.** `load_reach_milli` is a rule int (`RulesDef`, default 0 = inert, `data/rules.tres`
-  3000), in `defs_hash` and out of the state hash. `unload_reach_tiles` comes with P263b.
+  3000), in `defs_hash` and out of the state hash. `unload_reach_tiles` came with P263b.
 - **Unit cap.** `ProductionSpawn.mobile_rows` adds the squads aboard (`Carry.passengers_of`).
 - **FOOT only.** A squad must be a mobile FOOT type with its bit in the mask (`Carry._boards`), so
   a carrier never boards a carrier and a harvester never boards. A new order to a carrier (MOVE,
@@ -497,6 +518,34 @@ Note (2026-11-13, P263): loading as built. It refines §8 and changes no accepte
   the ground-carrier row.
 - **Pins.** `Carry.BOARDED` replaces `Removal.BOARDED`. No golden moved: the frozen arenas have
   `passenger_cap` 0, so `Carry.board` returns at once.
+
+Note (2026-11-13, P263b): unloading and the carrier's death as built. It refines §8 and changes no
+accepted text.
+- **UNLOAD** is `Command.Type.UNLOAD` (6), factory `Command.unload(player, carriers, x, y)`; the rule
+  is `Carry.apply_unload`. A valid carrier is own, complete, living, mobile, of a type with
+  `type_carry_slots` above 0, and has a squad aboard; none valid drops the command. The carriers get
+  MOVE in formation round the point with `carry_mode` 1. Any later MOVE, ATTACK_MOVE, STOP, ATTACK
+  (`Sim._apply_attack`), REPAIR (`Air.apply_repair`, through `Carry.release`) or LOAD puts
+  `carry_mode` back to 0.
+- **Unloading** is `Carry.run`, in ECONOMY after `Air.run` (`Sim.step`). A mode 1 carrier whose order
+  is IDLE unloads its squads in table order. The ring walk is ring 1 up to `unload_reach_tiles`
+  (a rule int, `RulesDef`, default 0 = inert, `data/rules.tres` 2, in `defs_hash`) round the
+  carrier's tile (`World.cell_of`), the rings of `ProductionSpawn.ring_tile`, clockwise from the top-left
+  corner turned by the carrier's `Buildings.facing` (a quarter of the ring per quarter turn, so a
+  half turn of the map mirrors the cells, ADR 0033). The cursor runs on across the squads, so none shares a cell. A squad stands at
+  the cell centre, with order IDLE and `fog_cell` -1. Only FOOT-passable cells count. Every on-map
+  tile looked at adds one `Stat.EXIT_SCANNED`. A squad with no cell left, or refused by
+  `insert_row`, stays aboard and ends that carrier's unloading; mode goes back to 0 either way.
+- **`UNLOADED`** is `World.Event.UNLOADED` (6): `[6, squad id, x, y, type, owner, carrier id, 0]`.
+  It is view only and written in ECONOMY, after the DIED records of REMOVE.
+- **The lists.** `Carry.run` ends with `Buildings.rebuild_lists` (a no-op when nothing was inserted),
+  before `Mend.run` (and `Repair.run`) read `building_rows`. A test of a mend and an unload on one
+  tick runs under both implementations.
+- **The carrier's death** is `Carry.perish`, in the REMOVE mark after `Carry.board` and before
+  `remove_dead`. Every record aboard a carrier with `hp` 0 gets a DIED record (flag 0) at the
+  carrier's point and counts as a lost unit as `Outcome.count_losses` counts one (the player must
+  have had a producer); the table closes up in order. `carry_eject_percent` is not read yet (P289).
+- **Pins.** No golden moved: the frozen arenas have `passenger_cap` 0. `World.gd` gained two lines.
 
 ### 9. Drone squads (release 1.2 recommended)
 - **A drone squad is an air unit.** It is not ground infantry that hops. A hop needs a new movement

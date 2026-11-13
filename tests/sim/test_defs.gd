@@ -28,7 +28,7 @@ func test_weapon_def_defaults_deal_full_damage_to_every_armour_class() -> void:
 	assert_array(weapon.vs_armour).is_equal([100, 100, 100, 100])
 
 
-func test_rules_def_has_exactly_the_42_starting_ints() -> void:
+func test_rules_def_has_exactly_the_starting_ints() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -72,6 +72,7 @@ func test_rules_def_has_exactly_the_42_starting_ints() -> void:
 		"mend_cost_percent": 30,
 		"passenger_cap": 0,  # P262: no table, so nothing boards (inert).
 		"load_reach_milli": 0,  # P263: nothing is within reach.
+		"unload_reach_tiles": 0,  # P263b: no cell is searched.
 		"mine_cap": 0,  # P285: no mine can be laid (inert).
 		"mine_lay_ticks": 22,
 		"mine_arm_ticks": 15,
@@ -84,7 +85,7 @@ func test_rules_def_has_exactly_the_42_starting_ints() -> void:
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
 			assert_int(int(info["type"])).is_equal(TYPE_INT)
-	assert_int(fields.size()).is_equal(47)
+	assert_int(fields.size()).is_equal(48)
 	assert_array(fields).contains_exactly_in_any_order(expected.keys())
 	for field: String in expected:
 		assert_that(rules.get(field)).override_failure_message(field).is_equal(expected[field])

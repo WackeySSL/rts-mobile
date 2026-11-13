@@ -4,9 +4,10 @@ extends RefCounted
 ## stays under gdlint's 1,000 lines. Pure static helpers: they read the World passed in and keep
 ## nothing, apart from the map digest cache, which is the World's own `_map_digest` and
 ## `_map_digest_version`. World.state_hash(), hash_parts(), hash_section_names(), hash_hex() and
-## defs_hash() are thin wrappers over the functions here, and World.prepare() calls map_digest(),
-## so no caller names this class. No rule lives here: the code is World.gd's own, moved, and the
-## bytes it feeds are the same (ADR 0007 section 8, ADR 0016, ADR 0017 section 3).
+## defs_hash() are thin wrappers over the functions here, and WorldLoad.prepare_world()
+## (World.prepare()'s body, P246a) calls map_digest(), so only World and WorldLoad name this class.
+## No rule lives here: the code is World.gd's own, moved, and the bytes it feeds are the same
+## (ADR 0007 section 8, ADR 0016, ADR 0017 section 3).
 
 
 ## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(), in that
@@ -84,7 +85,8 @@ static func defs_hash(world: World) -> int:
 
 
 ## The digest of MAP_ARRAYS in list order, recomputed only when map_version has changed. The cache
-## is the World's `_map_digest` and `_map_digest_version`; World.prepare() resets the version.
+## is the World's `_map_digest` and `_map_digest_version`; World.prepare() (via
+## WorldLoad.prepare_world) resets the version.
 static func map_digest(world: World) -> int:
 	if world._map_digest_version != world.map_version:
 		var ctx: HashingContext = _start_hash()

@@ -6,9 +6,10 @@ extends RefCounted
 ## the Phase 3 economy and production commands, SUPERWEAPON (15) fires a strike building (ADR 0023
 ## section 10), CANCEL_BUILD (16) cancels a construction site (ADR 0026 section 6) and SURRENDER
 ## (20) is the first match-level one (ADR 0017 section 4); SELL (17) and MEND (18) are the building
-## sale and repair (ADR 0037 sections 3 and 4) and LOAD (5) boards a carrier (ADR 0036 section 8);
-## 6-9, 19 and 21-29 stay reserved. Every type without a
-## branch in Sim.step is dropped as unknown.
+## sale and repair (ADR 0037 sections 3 and 4); LOAD (5) boards a carrier, UNLOAD (6) puts the
+## squads down (ADR 0036 section 8) and REPAIR (7) sends units to an own building with the repair
+## role (ADR 0036 section 7); 8-9, 19 and 21-29 stay reserved. Every type without a branch in
+## Sim.step is dropped as unknown.
 
 enum Type {
 	NONE = 0,
@@ -17,6 +18,7 @@ enum Type {
 	ATTACK = 3,
 	STOP = 4,
 	LOAD = 5,
+	UNLOAD = 6,
 	PLACE = 10,
 	QUEUE = 11,
 	CANCEL = 12,
@@ -26,6 +28,7 @@ enum Type {
 	CANCEL_BUILD = 16,
 	SELL = 17,
 	MEND = 18,
+	REPAIR = 7,
 	SURRENDER = 20,
 }
 
@@ -56,7 +59,7 @@ var target_x: int = 0
 var target_y: int = 0
 ## The unit an ATTACK goes after, the production building a RALLY sets, the strike building a
 ## SUPERWEAPON fires, the site a CANCEL_BUILD cancels, the building a SELL or MEND names or the
-## carrier a LOAD boards, 0 = none.
+## carrier a LOAD boards or the airfield a REPAIR sends aircraft to, 0 = none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
 ## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, empty for every other type.
@@ -185,6 +188,27 @@ static func sell(player_id: int, building_id: int) -> Command:
 static func board(player_id: int, unit_ids: PackedInt32Array, carrier_id: int) -> Command:
 	var command: Command = _of(Type.LOAD, player_id, unit_ids)
 	command.target_id = carrier_id
+	return command
+
+
+## Unload the own carriers `unit_ids` at the point (milli-tiles) (ADR 0036 section 8): they go there
+## and put their squads down on the free cells round them. The payload is empty.
+@warning_ignore("shadowed_variable")
+static func unload(
+	player_id: int, unit_ids: PackedInt32Array, target_x: int, target_y: int
+) -> Command:
+	var command: Command = _of(Type.UNLOAD, player_id, unit_ids)
+	command.target_x = target_x
+	command.target_y = target_y
+	return command
+
+
+## Send aircraft to the own airfield `building_id` to reload and be repaired (ADR 0036 section 7).
+## The payload is empty.
+@warning_ignore("shadowed_variable")
+static func repair(player_id: int, unit_ids: PackedInt32Array, building_id: int) -> Command:
+	var command: Command = _of(Type.REPAIR, player_id, unit_ids)
+	command.target_id = building_id
 	return command
 
 
