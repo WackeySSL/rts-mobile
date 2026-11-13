@@ -597,6 +597,8 @@ Note (2026-11-13, P246): as built. It changes no accepted text except the bullet
   `mod_taken` and `mod_ammo` are per player and type. Percents compound by multiplication, ammo by
   addition. `Upgrades.rebuild` runs at the end of `prepare()` and at each completion; the tables join
   `DERIVED_ARRAYS` and `MatchSnapshot.NOT_COPIED`, unhashed, so no re-pin.
+- **Data rule (adds).** The catalog keys a damage-dealt upgrade on faction, weapon id and stat (not
+  type) and rejects an unarmed type; `rebuild` also counts an upgrade once per weapon.
 - **Not here.** No building or item card ships, so HOW_TO_PLAY gets no entry (P247).
 
 ### 11. Space centre and the satellite (map reveal)
