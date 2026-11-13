@@ -18,11 +18,13 @@ const MILLI_PER_TILE: int = 1000
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
 ## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
-## dead rows leave (REMOVE: boarding squads first, `Carry.board`) and their vision ends, then a
+## dead rows leave (REMOVE: boarding squads first, `Carry.board`, then the squads of a dead carrier,
+## `Carry.perish`) and their vision ends, then a
 ## space centre's sweep follows its building (REMOVE: `Reveal.run`, P233), the players whose turn it
 ## is move their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin`
 ## emptied their
-## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Mend.run`), the
+## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Carry.run`,
+## `Mend.run`), the
 ## queues advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`),
 ## the last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts.
 ## Of those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and
@@ -201,6 +203,7 @@ static func _apply_attack(world: World, command: Command) -> bool:
 		orders[row] = World.Order.ATTACK
 		order_target[row] = command.target_id
 		group_of[row] = -1
+		world.carry_mode[row] = 0  # An ATTACK ends a pending unload, as a MOVE does.
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	return true
 

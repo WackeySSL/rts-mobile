@@ -524,13 +524,15 @@ accepted text.
 - **UNLOAD** is `Command.Type.UNLOAD` (6), factory `Command.unload(player, carriers, x, y)`; the rule
   is `Carry.apply_unload`. A valid carrier is own, complete, living, mobile, of a type with
   `type_carry_slots` above 0, and has a squad aboard; none valid drops the command. The carriers get
-  MOVE in formation round the point with `carry_mode` 1. Any later MOVE, ATTACK_MOVE or STOP, or a
-  LOAD, puts `carry_mode` back to 0 (`Carry.release`).
+  MOVE in formation round the point with `carry_mode` 1. Any later MOVE, ATTACK_MOVE, STOP, ATTACK
+  (`Sim._apply_attack`), REPAIR (`Air.apply_repair`, through `Carry.release`) or LOAD puts
+  `carry_mode` back to 0.
 - **Unloading** is `Carry.run`, in ECONOMY after `Air.run` (`Sim.step`). A mode 1 carrier whose order
   is IDLE unloads its squads in table order. The ring walk is ring 1 up to `unload_reach_tiles`
-  (a rule int, `RulesDef`, default 0 = inert, `data/rules.tres` 2, in `defs_hash`), each ring
-  clockwise from its top-left corner (the walk of `ProductionSpawn.ring_tile`, square rings round
-  the carrier's tile). The cursor runs on across the squads, so none shares a cell. A squad stands at
+  (a rule int, `RulesDef`, default 0 = inert, `data/rules.tres` 2, in `defs_hash`) round the
+  carrier's tile (`World.cell_of`), the rings of `ProductionSpawn.ring_tile`, clockwise from the top-left
+  corner turned by the carrier's `Buildings.facing` (a quarter of the ring per quarter turn, so a
+  half turn of the map mirrors the cells, ADR 0033). The cursor runs on across the squads, so none shares a cell. A squad stands at
   the cell centre, with order IDLE and `fog_cell` -1. Only FOOT-passable cells count. Every on-map
   tile looked at adds one `Stat.EXIT_SCANNED`. A squad with no cell left, or refused by
   `insert_row`, stays aboard and ends that carrier's unloading; mode goes back to 0 either way.

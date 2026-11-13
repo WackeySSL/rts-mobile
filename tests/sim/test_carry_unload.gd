@@ -55,18 +55,12 @@ func test_the_command_has_its_number_and_a_factory() -> void:
 func test_a_bad_unload_is_dropped_and_counted() -> void:
 	var world: World = _loaded()
 	var before: int = world.dropped_commands
-	var bad: Array = [
-		[[1], 99],  # No such carrier.
-		[[1], 6],  # Not a carrier.
-		[[4], 5],  # Not a carrier (a tank).
-		[[], 5],  # No carriers.
-	]
 	Rig.step(world, _unload_command([99], 9500, 2500))
 	Rig.step(world, _unload_command([6], 9500, 2500))  # An enemy's.
 	Rig.step(world, _unload_command([4], 9500, 2500))
 	Rig.step(world, _unload_command([], 9500, 2500))
 	Rig.step(world, _unload_command([CARRIER], 9500, 2500, 2))  # Another player's carrier.
-	assert_int(world.dropped_commands - before).is_equal(bad.size() + 1)
+	assert_int(world.dropped_commands - before).is_equal(5)
 	# A carrier with nobody aboard is not given the order either.
 	var empty: World = Rig.world()
 	Rig.step(empty, _unload_command([CARRIER], 9500, 2500))
@@ -126,19 +120,155 @@ func test_the_carrier_moves_then_puts_the_squads_down_round_itself(
 	)
 
 
-func test_the_ring_walk_starts_at_the_top_left_and_counts_the_cells_it_looks_at() -> void:
-	var world: World = _loaded()
-	Rig.step(world, _unload_command([CARRIER], 14500, 2500))
-	Rig.run(world, 2)
-	assert_int(world.pass_count).is_equal(0)
-	assert_array(Array(world.events)).is_empty()  # The event list is the last tick's.
-	# Ring 1 round tile (14, 2), clockwise from (13, 1): the first two are the squads' cells.
+## Steps until the table is empty and returns the stats of that tick.
+func _unload_tick(world: World) -> int:
+	for _tick: int in 10:
+		Rig.step(world)
+		if world.pass_count == 0:
+			return world.stats[World.Stat.EXIT_SCANNED]
+	return -1
+
+
+func _tile_of(world: World, id: int) -> Vector2i:
+	var row: int = world.index_of(id)
+	return Vector2i(world.pos_x[row] / 1000, world.pos_y[row] / 1000)
+
+
+## A world with squads 1 and 2 aboard and the carrier standing at (x, y), unloading at once.
+func _unloading_at(x: int, y: int, rock: Array = []) -> World:
+	var world: World = _loaded(rock)
+	var carrier: int = world.index_of(CARRIER)
+	world.pos_x[carrier] = x
+	world.pos_y[carrier] = y
+	world.carry_mode[carrier] = 1
+	return world
+
+
+func test_the_ring_walk_is_turned_to_the_facing_and_counts_the_cells_it_looks_at() -> void:
+	# Tile (14, 2) of 24 x 6 faces WEST (one quarter turn), so ring 1, clockwise from its top-left
+	# corner (13, 1), starts a quarter ring on, at the top-right corner (15, 1), then (15, 2).
+	var world: World = _unloading_at(14500, 2500)
+	assert_int(_unload_tick(world)).is_equal(2)
 	assert_array([world.pos_x[world.index_of(1)], world.pos_y[world.index_of(1)]]).is_equal(
-		[13500, 1500]
+		[15500, 1500]
 	)
 	assert_array([world.pos_x[world.index_of(2)], world.pos_y[world.index_of(2)]]).is_equal(
-		[14500, 1500]
+		[15500, 2500]
 	)
+	# The UNLOADED record: kind, id, x, y, type, owner, carrier, 0.
+	assert_array(_unloaded(world)[1]).is_equal([6, 2, 15500, 2500, Rig.RIFLE, 1, CARRIER, 0])
+
+
+func test_the_walk_goes_on_to_ring_two_in_order() -> void:
+	# Ring 1 all rock: the cursor passes its 8 tiles, then ring 2 from (16, 0) (the WEST turn is two
+	# of the ring's 16 steps per quarter, four here): (16,0) (16,1) (16,2) (16,3) ... clockwise.
+	var rock: Array = []
+	for x: int in range(13, 16):
+		for y: int in range(1, 4):
+			if Vector2i(x, y) != Vector2i(14, 2):
+				rock.append(Vector2i(x, y))
+	var world: World = _unloading_at(14500, 2500, rock)
+	assert_int(_unload_tick(world)).is_equal(8 + 2)
+	assert_array([_tile_of(world, 1), _tile_of(world, 2)]).is_equal(
+		[Vector2i(16, 0), Vector2i(16, 1)]
+	)
+
+
+func test_the_reach_is_a_ring_count_not_one_more_or_less() -> void:
+	# Everything within the columns 11-17 is rock but the carrier's tile and (16, 4), a ring 2 tile.
+	var rock: Array = []
+	for x: int in range(11, 18):
+		for y: int in 6:
+			if Vector2i(x, y) != Vector2i(14, 2) and Vector2i(x, y) != Vector2i(16, 4):
+				rock.append(Vector2i(x, y))
+	var short: World = _unloading_at(14500, 2500, rock)
+	short.unload_reach_tiles = 1
+	Rig.step(short)  # Stays aboard.
+	assert_int(short.pass_count).is_equal(2)
+	assert_int(short.stats[World.Stat.EXIT_SCANNED]).is_equal(8)  # Ring 1 fully looked at.
+	var enough: World = _unloading_at(14500, 2500, rock)  # unload_reach_tiles 2
+	Rig.step(enough)
+	assert_int(enough.pass_count).is_equal(1)
+	assert_int(_tile_of(enough, 1).x).is_equal(16)
+	assert_int(_tile_of(enough, 1).y).is_equal(4)
+	# 8 of ring 1, then 5 of ring 2 up to (16, 4); squad 2 then finds the other 11 all rock.
+	assert_int(enough.stats[World.Stat.EXIT_SCANNED]).is_equal(24)
+	var none: World = _unloading_at(14500, 2500, rock)
+	none.unload_reach_tiles = 0
+	Rig.step(none)
+	assert_int(none.pass_count).is_equal(2)
+	assert_int(none.stats[World.Stat.EXIT_SCANNED]).is_equal(0)
+
+
+func test_at_the_map_edge_only_on_map_tiles_are_looked_at_and_used() -> void:
+	# Tile (0, 0) faces EAST (three quarter turns). Ring 1 clockwise from (-1,-1): (0,-1) (1,-1)
+	# (1,0) (1,1) (0,1) (-1,1) (-1,0) (-1,-1); the walk starts at index 6.
+	var corner: World = _unloading_at(500, 500)
+	assert_int(_unload_tick(corner)).is_equal(2)  # (1, 0) then (1, 1); off-map tiles not counted.
+	assert_array([_tile_of(corner, 1), _tile_of(corner, 2)]).is_equal(
+		[Vector2i(1, 0), Vector2i(1, 1)]
+	)
+	# Column 0, row 2: the left column of the ring is off the map.
+	var edge: World = _unloading_at(500, 2500)
+	var scanned: int = _unload_tick(edge)
+	for id: int in [1, 2]:
+		var row: int = edge.index_of(id)
+		assert_bool(edge.pos_x[row] > 0 and edge.pos_y[row] > 0).is_true()
+	assert_int(scanned).is_equal(2)
+	# The last row, the last column.
+	var far: World = _unloading_at(23500, 5500)
+	assert_int(_unload_tick(far)).is_greater(0)
+	for id: int in [1, 2]:
+		var row: int = far.index_of(id)
+		assert_bool(far.pos_x[row] < 24000 and far.pos_y[row] < 6000).is_true()
+
+
+func test_a_half_turn_of_the_carrier_mirrors_the_cells() -> void:
+	# The map is 24 x 6 tiles. The image of (x, y) milli-tiles is (24000 - x, 6000 - y); a carrier
+	# on a tile border is included, which `World.cell_of` puts in the tile before it.
+	for point: Vector2i in [
+		Vector2i(4500, 1500), Vector2i(5000, 1500), Vector2i(7500, 2000), Vector2i(500, 500)
+	]:
+		var first: World = _unloading_at(point.x, point.y)
+		var second: World = _unloading_at(24000 - point.x, 6000 - point.y)
+		_unload_tick(first)
+		_unload_tick(second)
+		for id: int in [1, 2]:
+			var mirrored: Vector2i = Vector2i(23, 5) - _tile_of(first, id)
+			(
+				assert_vector(_tile_of(second, id))
+				. override_failure_message("point %s id %d" % [point, id])
+				. is_equal(mirrored)
+			)
+
+
+func test_attack_ends_a_pending_unload() -> void:
+	var world: World = _loaded()
+	world.type_weapon[Rig.TRUCK] = 0  # Armed enough for `_own_rows` (no weapon tables: unarmed).
+	Rig.step(world, _unload_command([CARRIER], 3500, 2500))
+	assert_int(world.carry_mode[world.index_of(CARRIER)]).is_equal(1)
+	Rig.step(world, [Command.attack(1, PackedInt32Array([CARRIER]), 6)])
+	var carrier: int = world.index_of(CARRIER)
+	assert_array([world.order[carrier], world.carry_mode[carrier]]).is_equal(
+		[World.Order.ATTACK, 0]
+	)
+
+
+func test_an_attack_move_ends_a_pending_unload() -> void:
+	var world: World = _loaded()
+	Rig.step(world, _unload_command([CARRIER], 3500, 2500))
+	Rig.step(world, [Command.attack_move(1, PackedInt32Array([CARRIER]), 20500, 2500)])
+	assert_int(world.carry_mode[world.index_of(CARRIER)]).is_equal(0)
+
+
+func test_a_carrier_that_dies_on_an_unloading_tick_unloads_nothing() -> void:
+	var world: World = _unloading_at(14500, 2500)
+	world.hp[world.index_of(CARRIER)] = 0
+	Rig.step(world)
+	assert_int(world.pass_count).is_equal(0)
+	assert_array(_unloaded(world)).is_empty()
+	assert_int(world.index_of(1)).is_equal(-1)
+	assert_int(world.unit_count()).is_equal(3)  # 1, 2 gone with it; 3, 4, 6 stay.
 
 
 func test_rock_all_round_keeps_the_squads_aboard() -> void:
@@ -165,12 +295,14 @@ func test_one_free_cell_takes_one_squad_and_the_other_stays_aboard() -> void:
 		for y: int in 6:
 			if Vector2i(x, y) != Vector2i(14, 2) and Vector2i(x, y) != Vector2i(15, 3):
 				rock.append(Vector2i(x, y))
-	var world: World = _loaded(rock)
-	Rig.step(world, _unload_command([CARRIER], 14500, 2500))
-	Rig.run(world, 2)
+	var world: World = _unloading_at(14500, 2500, rock)
+	Rig.step(world)
 	assert_int(world.pass_count).is_equal(1)
 	assert_int(world.pass_id[0]).is_equal(2)
 	assert_int(world.pass_hp[0]).is_equal(60)
+	assert_array([world.pass_carrier[1], world.pass_id[1], world.pass_hp[1]]).is_equal([0, 0, 0])
+	# (15,1) (15,2) then (15,3) for squad 1; squad 2 passes the other 5 of ring 1 and all 16 of ring 2.
+	assert_int(world.stats[World.Stat.EXIT_SCANNED]).is_equal(24)
 	assert_array([world.pos_x[world.index_of(1)], world.pos_y[world.index_of(1)]]).is_equal(
 		[15500, 3500]
 	)
@@ -250,23 +382,26 @@ func test_a_carrier_that_lives_keeps_its_squads_and_the_other_carriers_squads() 
 func test_a_mend_and_an_unload_on_the_same_tick_read_the_right_building_row(
 	impl: int, _test_parameters := _both()
 ) -> void:
-	# The building is row 6 (id 7) before the unload and row 8 after it: two squads of lower id
+	# The building is row 4 (id 7) before the unload and row 6 after it: two squads of lower id
 	# are inserted above it. Without `Buildings.rebuild_lists` after the inserts, Mend would
-	# read row 6.
+	# read row 4, the carrier.
 	var world: World = GridWorld.from_rows(
 		GridWorld.grass(24, 6),
 		[
 			World.MoveClass.FOOT,
 			World.MoveClass.TRACKED,
 			World.MoveClass.WHEELED,
-			World.MoveClass.TRACKED
+			World.MoveClass.TRACKED,
+			World.MoveClass.WHEELED
 		]
 	)
 	world.player_count = 2
-	for type: int in 4:
+	for type: int in 5:
 		world.type_max_hp[type] = 100
 	world.type_carry_slots[2] = 2
 	world.type_carry_classes[2] = 1
+	world.type_harvest[4] = 100  # Type 4 is a harvester; the tank (id 4) is an aircraft.
+	world.type_layer_bit[Rig.TANK] = World.Layer.AIR
 	world.type_foot_w[3] = 1
 	world.type_foot_h[3] = 1
 	world.type_speed[3] = 0
@@ -284,6 +419,7 @@ func test_a_mend_and_an_unload_on_the_same_tick_read_the_right_building_row(
 	world.add_unit(1, Rig.TRUCK, 14500, 2500)  # 5
 	world.add_unit(2, Rig.RIFLE, 20500, 4500)  # 6
 	world.add_unit(1, 3, 8500, 4500)  # 7: the building.
+	world.add_unit(1, 4, 9500, 4500)  # 8: the harvester.
 	Rig.aboard(world, 1, CARRIER)
 	Rig.aboard(world, 2, CARRIER)
 	var building: int = world.index_of(7)
@@ -297,6 +433,15 @@ func test_a_mend_and_an_unload_on_the_same_tick_read_the_right_building_row(
 	assert_int(world.index_of(7)).is_equal(building + 2)
 	assert_int(world.hp[world.index_of(7)]).is_equal(60)
 	assert_array(Array(world.building_rows)).is_equal([building + 2])
+	# The other derived lists are current too: equal to a fresh rebuild, and not empty.
+	var harvesters: Array = Array(world.harvester_rows)
+	var air: Array = Array(world.air_rows)
+	world._lists_version = -1
+	Buildings.rebuild_lists(world)
+	assert_array(harvesters).is_equal(Array(world.harvester_rows))
+	assert_array(air).is_equal(Array(world.air_rows))
+	assert_array(harvesters).is_equal([world.index_of(8)])
+	assert_array(air).is_equal([world.index_of(4)])
 
 
 func test_two_runs_of_load_and_unload_cycles_hash_alike() -> void:

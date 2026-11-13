@@ -3,7 +3,8 @@ extends RefCounted
 ## Carriers (ADR 0036 section 8; P263 is the loading half, P263b adds UNLOAD and the unloading).
 ## A boarded squad is not a row: its id, type, hp and owner are a record of the passenger table
 ## (`pass_*`, `pass_count` live records, in boarding order), so every kernel, the grids, the fog and
-## targeting ignore it. Integers only, no allocation but the command's own row lists.
+## targeting ignore it. Integers only; the only allocation is at event cadence (the command's own
+## row lists, `insert_row`'s columns, the event list).
 ##
 ## LOAD: the carrier and the squads all get MOVE to the lowest-id squad's point, and each squad's
 ## `order_target` is the carrier's id: "board on arrival" (`board`). A plain MOVE or ATTACK_MOVE
@@ -22,6 +23,9 @@ extends RefCounted
 ## the same tick with DIED flag 2 (`Removal.died_flag`) and counts no loss (`Outcome.count_losses`).
 ## A mobile row's `build_left` is 0 otherwise.
 const BOARDED: int = -2
+
+## Where an `UNLOADED` record holds the carrier's id (`[6, id, x, y, type, owner, carrier, 0]`).
+const UNLOADED_CARRIER_AT: int = 6
 
 
 ## LOAD: `unit_ids` are the squads, `target_id` is an own carrier (a mobile row of a type with
@@ -104,9 +108,9 @@ static func apply_unload(world: World, command: Command) -> bool:
 	return true
 
 
-## A MOVE, ATTACK_MOVE or STOP on `rows` takes the "board on arrival" mark off the ones that
-## carry it (an `order_target` that names an own row; an ATTACK's names an enemy). Sim calls it with
-## the rows it accepted, as `Harvest.release`.
+## A MOVE, ATTACK_MOVE, STOP or REPAIR on `rows` takes the "board on arrival" mark off the ones that
+## carry it (an `order_target` that names an own row; an ATTACK's names an enemy) and ends a pending
+## unload (`carry_mode` 0). Sim calls it with the rows it accepted, as `Harvest.release`.
 static func release(world: World, rows: PackedInt32Array) -> void:
 	var targets: PackedInt32Array = world.order_target
 	for row: int in rows:
@@ -269,16 +273,23 @@ static func passengers_of(world: World, player: int) -> int:
 
 
 ## Unloads the squads aboard carrier `carrier_id` (mode 1, stopped), in table order. A ring walk
-## round the carrier's tile, ring 1 up to `unload_reach_tiles`, each ring clockwise from its
-## top-left corner, gives each squad the next FOOT-passable cell (every on-map tile looked at counts
-## one `Stat.EXIT_SCANNED`), so the squads never share a cell. The squad's row is inserted at the
-## cell's centre with its old id and hp (`World.insert_row`), and its record leaves the table. The
-## squads that find no cell, or that `insert_row` refuses, stay aboard with their records.
+## round the carrier's tile (`World.cell_of`), ring 1 up to `unload_reach_tiles`, each ring
+## clockwise from its top-left corner turned by the carrier's facing (`Buildings.facing`: the side
+## towards the map centre, so a half turn of the map mirrors the cells, ADR 0033), gives each squad
+## the next FOOT-passable cell. Every on-map tile looked at counts one `Stat.EXIT_SCANNED`, and the
+## squads never share a cell. The squad's row is inserted at the cell's centre with its old id and
+## hp (`World.insert_row`), and its record leaves the table. The squads that find no cell, or that
+## `insert_row` refuses, stay aboard with their records.
+@warning_ignore("integer_division")
 static func _unload(world: World, carrier_id: int) -> void:
 	var carrier: int = world.index_of(carrier_id)
-	var tile_x: int = world.pos_x[carrier] / 1000
-	var tile_y: int = world.pos_y[carrier] / 1000
-	var cols: int = world.map_cols
+	var home: int = world.cell_of(world.pos_x[carrier], world.pos_y[carrier])
+	var cols: int = maxi(world.map_cols, 1)
+	var tile_x: int = home % cols
+	var tile_y: int = home / cols
+	var turns: int = Buildings.facing(
+		world.map_cols, world.map_rows, world.pos_x[carrier], world.pos_y[carrier]
+	)
 	var lines: int = world.map_rows
 	var reach: int = world.unload_reach_tiles
 	var ring: int = 1
@@ -290,7 +301,13 @@ static func _unload(world: World, carrier_id: int) -> void:
 			continue
 		var found: Vector2i = Vector2i(-1, -1)
 		while ring <= reach and found.x < 0:
-			var tile: Vector2i = _ring_tile(tile_x, tile_y, ring, step)
+			var length: int = 8 * ring
+			var origin: Vector2i = Vector2i(tile_x - ring + 1, tile_y - ring + 1)
+			var span: Vector2i = Vector2i(2 * ring - 1, 2 * ring - 1)
+			# The walk is turned a quarter of the ring per quarter turn of the facing.
+			var tile: Vector2i = ProductionSpawn.ring_tile(
+				origin, span, (step + turns * 2 * ring) % length
+			)
 			step += 1
 			if step >= 8 * ring:
 				step = 0
@@ -307,14 +324,14 @@ static func _unload(world: World, carrier_id: int) -> void:
 			world.pass_owner[at],
 			world.pass_type[at],
 			world.pass_hp[at],
-			found.x * 1000 + 500,
-			found.y * 1000 + 500
+			found.x * World.MILLI_PER_TILE + World.TILE_CENTRE,
+			found.y * World.MILLI_PER_TILE + World.TILE_CENTRE
 		)
 		if made < 0:
 			return
 		var events: PackedInt32Array = world.events
 		WorldRows.push_unit_event(world, World.Event.UNLOADED, made)
-		events[events.size() - World.EVENT_STRIDE + Production.DIED_CANCEL_FLAG_AT] = carrier_id
+		events[events.size() - World.EVENT_STRIDE + UNLOADED_CARRIER_AT] = carrier_id
 		_drop(world, at)
 
 
@@ -329,22 +346,6 @@ static func _drop(world: World, at: int) -> void:
 	world.pass_count = last
 
 
-## Tile `step` (0 up to 8 * ring - 1) of the square ring `ring` tiles round (x, y), clockwise on
-## the screen from the top-left corner; each side holds its starting corner and not the next.
-static func _ring_tile(x: int, y: int, ring: int, step: int) -> Vector2i:
-	var side: int = 2 * ring
-	if step < side:
-		return Vector2i(x - ring + step, y - ring)
-	step -= side
-	if step < side:
-		return Vector2i(x + ring, y - ring + step)
-	step -= side
-	if step < side:
-		return Vector2i(x + ring - step, y + ring)
-	step -= side
-	return Vector2i(x - ring, y + ring - step)
-
-
 ## Whether a squad of `type` may board a carrier whose class mask is `classes`: a mobile FOOT type
 ## whose bit is in the mask (ADR 0036 section 8). So a carrier never boards a carrier and a
 ## harvester never boards, whatever the mask.
@@ -352,6 +353,7 @@ static func _boards(world: World, type: int, classes: int) -> bool:
 	return (
 		world.type_speed[type] > 0
 		and world.type_move_class[type] == World.MoveClass.FOOT
+		and world.type_carry_slots[type] <= 0  # A carrier never boards (so perish reads true deaths).
 		and ((classes >> World.MoveClass.FOOT) & 1) == 1
 	)
 
