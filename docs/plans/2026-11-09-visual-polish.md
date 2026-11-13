@@ -133,6 +133,11 @@ reserved; P200b is the lead's.
 | P218 | V1 | touch-ux-dev | view: the flash's second frame (`EffectsLayer`), impact dust in `GroundFx`'s dust ring | 120 | P206, P217 | 3 |
 | P219 | H | qa-engineer | tests: the polish guard (draw calls per layer on both scenes, the forecast of 18, page pins, grade bounds) and the base-arena card read | tests | P201-P218 | 5 |
 
+P200b note (2026-11-13, the lead): dated notes placed in ADR 0029 (top, §3, §4, §5, §10), ADR
+0028 (top, §3), ADR 0023 (top, §2, §5), ADR 0010 (top, §2), ADR 0027 (top, §3, pointer in §9), ADR 0034
+and ADR 0035, and the GDD's damage row and fog line; the svg-art-style text (last section) is
+applied to the skill, all at once (Michael, 2026-11-13).
+
 Groups (what can run at once; each group needs the rows of the groups before it only where Depends
 says so): group 1 = P202, P205, P208, P209, P210, P213 (six lanes; if the lead's verify queue is
 the limit, take P202, P205 and P213 first: P202 is Michael's early ask and frees the page, the
@@ -449,3 +454,51 @@ to a second page (`IsoAtlas.PAGE_UNSORTED`). What that changes here:
 - **Michael may reject a part on the phone** (as with the camera shake): each proposal is its own
   rows, so an answer removes it cleanly (the vignette is P214's quad, the pad is P204, the map
   edge P216).
+
+## svg-art-style text for Michael's yes (P200b)
+File: `.claude/skills/svg-art-style/SKILL.md`. **Applied in P200b, all six at once (Michael,
+2026-11-13: "Ja alt på en gang").** The text below is the record of what was added.
+The rows named in the lines (P202-P206, P209, P211, P213) build what the lines describe; until
+they merge, the skill states the target. The frontmatter `description` stays as it is.
+
+1. **Drawing rules, "Cast shadows" bullet (lines 68-70).** Replace it with:
+   > - Cast shadows are separate frames: every volume projected onto the ground away from the
+   >   light, black at 35 % opacity as one group, about 0.8 x the height long, over a soft
+   >   occlusion pad and a thin contact line round the base (stepped shapes in one `g` with group
+   >   opacity, no gradient; P203). A unit's shadow frame also holds a pad in its faction's key
+   >   triad under the hull, so it is baked per player (ADR 0035 §4, P204). No shadow inside a hull
+   >   or turret frame.
+2. **Drawing rules, "Team colour" bullet (lines 72-73).** Add at its end:
+   > The team pad under a unit is a mark on the ground in its shadow frame, not part of the model;
+   > the 8-12 % counts model frames only.
+3. **Drawing rules, "Life" bullet, last sentence (lines 77-79).** Replace "The sorted world's
+   cross-faction page stays at most 3584 px tall at bake scale 1.0
+   (`tests/view/test_iso_atlas_budget.gd`)." with:
+   > Each atlas page (the sorted world's, and page 2 with every cast shadow since P237) stays at
+   > most 3584 px tall at bake scale 1.0 (`tests/view/test_iso_atlas_budget.gd`); if the shadows
+   > pass it, they bake at 75 % (ADR 0035 §4.3).
+4. **Drawing rules, new bullets after "Life".** Add:
+   > - Damage (ADR 0029, ADR 0034): a building has one damage picture, `<type_id>_dmg2.svg`
+   >   (KRITISK, under 34 %). SKADET (under 67 %) shows the intact body; the generator refuses a
+   >   `dmg1` pose. Smoke and fire are effects, never drawn into a frame.
+   > - Effects use normal alpha only, never additive blending; a flash's bright core is in the
+   >   frame (ADR 0029 §6, ADR 0035 §6).
+   > - The selection ring (`ui/selection_ellipse_team.svg`) has an outer band in the key triad
+   >   and the white band with its dark outline inside; the view bakes it in the local player's
+   >   triad (P205, P206).
+5. **Palette, "Terrain" bullet (lines 59-61).** Add at its end:
+   > Unexplored fog is a very dark blue-grey (Michael's Q2 B, 2026-11-09), luminance at most 40
+   > (the bound is ADR 0035 §1, measured after the world grade, §3); the fog, map-edge mist and
+   > world-grade colours live in STYLE.md "Grade, fog and map edge" (P213).
+6. **Technical rules, "Import" bullet (line 103).** Replace "`assets/art/svg/ground/<terrain_id>_a.svg`
+   and `_b.svg`" with:
+   > `assets/art/svg/ground/<terrain_id>_a.svg` to `_d.svg` and the transition pieces (P209,
+   > P211; a piece lies only between two different terrains, so no rim and no grid shows)
+
+   In the same bullet (lines 101-102), drop "the selection ring" from the normal-import list:
+   replace "Ground diamonds, field stages, props, the selection ring and the UI and item" with
+   > Ground diamonds, field stages, props and the UI and item
+
+   and add at the bullet's end:
+   > `ui/selection_ellipse_team.svg` is imported as P206 sets it: a per-player text bake needs
+   > "Keep File" (ADR 0023 §2).

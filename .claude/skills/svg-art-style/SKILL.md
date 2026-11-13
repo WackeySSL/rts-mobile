@@ -58,25 +58,41 @@ buildings) stay while `BuildSidebar` reads them. New art follows this file.
   materials (saturation below 0.30) are fine at any hue.
 - Terrain: grass #5E7D4A / #6F8F57, dirt #8A6F4D, rock #6E6A66, water #2E5E7E / #3C7396: the base
   colours that `MapView` and the gallery keep (P52's cross-file facts); the iso ground diamonds and
-  the oil and gas field stages follow STYLE.md's "Fog and terrain" and "Fields".
+  the oil and gas field stages follow STYLE.md's "Fog and terrain" and "Fields". Unexplored fog
+  is a very dark blue-grey (Michael's Q2 B, 2026-11-09), luminance at most 40 (the bound is ADR 0035
+  §1, measured after the world grade, §3); the fog, map-edge mist and world-grade colours live in
+  STYLE.md "Grade, fog and map edge" (P213).
 - UI accents (UI only, never in faction art): warning #F5A524, danger #E5484D, ok #30A46C.
 
 ## Drawing rules
 - Faces are flat-shaded from the one light (Spec §02): top lightest, left side middle, right side
   darkest, a thin light edge on top edges. Edges are a dark shade of their own material, not one
   outline colour.
-- Cast shadows are separate frames: every volume projected onto the ground away from the light,
-  black at 35 % opacity as one group, about 0.8 x the height long. No shadow inside a hull or
-  turret frame.
+- Cast shadows are separate frames: every volume projected onto the ground away from the
+  light, black at 35 % opacity as one group, about 0.8 x the height long, over a soft
+  occlusion pad and a thin contact line round the base (stepped shapes in one `g` with group
+  opacity, no gradient; P203). A unit's shadow frame also holds a pad in its faction's key
+  triad under the hull, so it is baked per player (ADR 0035 §4, P204). No shadow inside a hull
+  or turret frame.
 - The silhouette must be identifiable at 32 px in greyscale. No detail thinner than 2 px at 2x.
 - Team colour covers about 8-12 % of the visible surface as bands, cranes, stripes and light
-  strips, never large team plates.
+  strips, never large team plates. The team pad under a unit is a mark on the ground in its
+  shadow frame, not part of the model; the 8-12 % counts model frames only.
 - Life (ADR 0027): poses are model poses (`walk` 4 and `idle` 2 frames per squad direction, a
   building's `anim` at most 16 frames cropped to the moving element), never edited frames; shadows
   are not posed. Life effects (`svg/fx/life_atlas.svg`, `svg/fx/strike_atlas.svg`) carry no team
-  colour: flames yellow-white (hue 46° or more), smoke and dust grey. The sorted world's
-  cross-faction page stays at most 3584 px tall at bake scale 1.0
-  (`tests/view/test_iso_atlas_budget.gd`).
+  colour: flames yellow-white (hue 46° or more), smoke and dust grey. Each atlas page (the
+  sorted world's, and page 2 with every cast shadow since P237) stays at most 3584 px tall at
+  bake scale 1.0 (`tests/view/test_iso_atlas_budget.gd`); if the shadows pass it, they bake at
+  75 % (ADR 0035 §4.3).
+- Damage (ADR 0029, ADR 0034): a building has one damage picture, `<type_id>_dmg2.svg`
+  (KRITISK, under 34 %). SKADET (under 67 %) shows the intact body; the generator refuses a
+  `dmg1` pose. Smoke and fire are effects, never drawn into a frame.
+- Effects use normal alpha only, never additive blending; a flash's bright core is in the
+  frame (ADR 0029 §6, ADR 0035 §6).
+- The selection ring (`ui/selection_ellipse_team.svg`) has an outer band in the key triad
+  and the white band with its dark outline inside; the view bakes it in the local player's
+  triad (P205, P206).
 
 ## Technical rules
 - One drawing per file with `width`, `height` and `viewBox="0 0 W H"` set to the canvas.
@@ -98,10 +114,13 @@ buildings) stay while `BuildSidebar` reads them. New art follows this file.
   `assets/art/iso/index.tres` maps each `type_id` to its sheet. Models:
   `assets/art/models/<faction>/<type_id>.tres`.
 - Import: iso frames use the "Keep File" importer (the bake reads the SVG text; commit the
-  `.import` files). Ground diamonds, field stages, props, the selection ring and the UI and item
+  `.import` files). Ground diamonds, field stages, props and the UI and item
   icons (the generated build cards included) stay normal SVG imports (scale 0.5 for 2x art):
-  `assets/art/svg/ground/<terrain_id>_a.svg` and `_b.svg`, `assets/art/svg/fields/`,
-  `assets/art/svg/icons/`, `assets/art/svg/ui/`.
+  `assets/art/svg/ground/<terrain_id>_a.svg` to `_d.svg` and the transition pieces (P209,
+  P211; a piece lies only between two different terrains, so no rim and no grid shows),
+  `assets/art/svg/fields/`, `assets/art/svg/icons/`, `assets/art/svg/ui/`.
+  `ui/selection_ellipse_team.svg` is imported as P206 sets it: a per-player text bake needs
+  "Keep File" (ADR 0023 §2).
 
 ## Originality
 Describe each silhouette in words before drawing or modelling. No recognizable designs from other

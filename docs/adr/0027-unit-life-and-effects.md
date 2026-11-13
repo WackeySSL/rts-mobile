@@ -31,6 +31,11 @@ Status note (2026-11-09, P230/P270b docs; ADRs 0036 and 0037 accepted 2026-11-09
 the satellite's sweep has no end. ADR 0037 adds events 7 (`MINE_BLAST`) and 8 (`REPAIRED`); ADR
 0036 adds 6 (`UNLOADED`). No accepted text changed.
 
+Status note (2026-11-13, P200b, the lead; ADR 0035 accepted 2026-11-09): ADR 0035 amends "ADR 0027
+§9's" forecast; the figure is in §3's "Draw calls" item, so the dated note is at the end of §3
+(18 ordinary, 19 with a strike, about 25 at worst), with a pointer at the end of §9. No accepted
+text changed.
+
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate
    rows go first.
@@ -202,6 +207,15 @@ muzzle 24 (P149), collapse 40 (P165: the collapse's flash, fire, dust and debris
 the hit flash and its chips)**, 240 quads in all, each a ring of its own (`FxRing`) in the same
 `_draw` from the same texture; when a ring is full its oldest puff goes. The sizes hold the life
 layers' worst moment inside §9's 0.56 ms (ADR 0029 §10).
+
+Status note (2026-11-13, P200b, the lead; ADR 0035 §7 accepted 2026-11-09; the text and the notes
+above stay as accepted): the forecast in "Draw calls" above (16, about 22 at the worst moment)
+becomes **18** in an ordinary moment, **19** while a strike is aimed or in flight and **about 25**
+at the worst moment: `MapEdge` and `WorldGrade` add one call each, and the health bars' tick pass
+one more at the worst moment (ADR 0035 §7; plan row P216 sets the perf card's constants). The
+status note of 2026-11-03 above (the strike net's `draw_multiline` calls) stands as it is and is
+not added into these figures. The life layers' own calls are unchanged: the polish's flash frame
+and impact dust use the existing `EffectsLayer` slot and `GroundFx`'s dust ring (ADR 0035 §6).
 
 ### 4. Art: the frame axis and the atlas budget
 - **The frame axis** (the generator, art-director): an `ArtPrim` may carry `group=<name>`; an
@@ -419,6 +433,9 @@ stay as accepted):
     reads `Time`, `randi`, `randf` or `RandomNumberGenerator` (`test_life_purity.gd`).
 - Layer effects are born only for sources inside the camera's view rect grown by one tile, so a
   big off-screen battle costs no slots.
+
+Note (2026-11-13, P200b, the lead): the draw-call forecast that ADR 0035 §7 amends is in §3
+("Draw calls"); its dated note is at the end of §3. This section's budget is unchanged.
 
 ## Consequences
 - The battlefield moves: turrets kick, squads walk and shift, buildings turn, spin, smoke and burn,

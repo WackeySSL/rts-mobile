@@ -45,6 +45,11 @@ that building is blacked out or its owner is on low power). `explored` stays 1 w
 showed it. Beside the last-seen buildings, each player keeps known-mine records, made only by a
 detector's sight (ADR 0037 §8). No accepted text changed.
 
+Status note (2026-11-13, P200b, the lead; ADR 0035 accepted 2026-11-09, Michael's answer Q2 B):
+§2 carries a dated status note: a fog texel's colour becomes the very dark blue-grey `fog_rgb`
+instead of black, with the same alphas and the same one-tile soft edge; the map's edge gets a mist
+of its own. No accepted text changed.
+
 ## Context
 ROADMAP Phase 2 asks for "fog of war (visible and explored) and its rendering". The GDD says:
 - unexplored is black;
@@ -298,6 +303,17 @@ rigs, buildings, bars and projectiles are drawn only where the local player sees
 buildings draw at z 5 in `GhostMemoryLayer` with one shared dim colour (plan row P115c). The
 tracer stays clipped to the seen tiles as the P68d note says (plan row P117b). The texture, its
 updates, `explored_alpha` and the soft edge are unchanged.
+
+Status note (2026-11-13, P200b, the lead; ADR 0035 §1 accepted 2026-11-09, Michael's answer Q2 B;
+the text and the notes above stay as accepted and as dated): "each texel is one tile of black" is
+amended. From plan row P215 on, a fog texel's colour is `fog_rgb` from `data/look_settings.tres`
+(plan row P214), a very dark cool blue-grey that art-director picks in STYLE.md "Grade, fog and
+map edge" (P213), with a luminance of at most 40 measured after the world grade's
+`CanvasModulate`. On `main` at c0bc5ba2 the texels are still black. The alphas (255 unexplored,
+`explored_alpha` 140 explored, 0 visible), the one-tile soft edge at the limit of sight, the
+hiding rules and the tracer clip are unchanged. A longer soft falloff is used only at the map's
+edge, by a separate `MapEdge` layer at z 4 after `FogLayer` (ADR 0035 §2, plan row P216). Every
+fog test that reads a texel's colour will read `fog_rgb`; the alpha tests are unchanged.
 
 ### 3. Data
 `RulesDef.fog_period_ticks` (3). `TerrainDef` has no sight effect in Phase 2. The explored alpha

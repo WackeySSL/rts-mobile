@@ -32,6 +32,9 @@ collapse at DIED that ends in today's crater (no ruin: Michael dropped it), hit 
 shake. Dated notes below in §2, §3, §4, §6, §7, §8 and §9; no accepted text changed. Where ADR 0029
 differs from this ADR, ADR 0029 wins.
 
+Status note (2026-11-13, P200b, the lead): ADR 0034 (accepted 2026-11-09) withdraws the stage-1
+patch `dmg1`; a one-line note at the end of §3. No accepted text changed.
+
 ## Context
 - **Michael, 2026-11-03** (his own answers): buildings and vehicles under 50 % hp must look as if
   they are falling apart; infantry not. Two stages: under 50 % cracks, soot and smoke; under 25 %
@@ -318,6 +321,10 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
   replaced. Ambient emitters on a group a stage breaks go quiet from that stage (`emitter_quiet`).
 - **The page** (ADR 0029 §10): the two patches at `DAMAGE_SCALE` fit (P158 measured 3476); the
   fallback is SKADET within 35 %, then tighter KRITISK patches.
+
+Note (2026-11-13, P200b, the lead; ADR 0034 accepted 2026-11-09; the text and the notes above stay
+as accepted): the stage-1 patch `dmg1` is withdrawn by ADR 0034: stage 1 will show the intact body
+once P201 and P202 merge; `dmg2` stays, and the part lists and `cuts` stay indexed by stage.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay

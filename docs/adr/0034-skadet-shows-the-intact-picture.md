@@ -11,6 +11,11 @@ b6bfe95; revised the same day after the docs lens (stage indexing kept, §3). Am
 notes that point here are drafted in the plan's section "ADR 0029 note (draft)" and are placed by
 the lead's acceptance row P200b.
 
+Status note (2026-11-13, P200b, the lead): the dated notes are placed: ADR 0029 (a status note at
+the top and notes at the end of §3, §4, §5 and §10), ADR 0028 §3, ADR 0023 §5 and the GDD's damage
+table. On `main` at c0bc5ba2 neither P201 nor P202 has merged, so the 16 `dmg1` frames are still
+shipped. No accepted text changed.
+
 ## Context
 - ADR 0029 (accepted 2026-11-04) gives a building three stages, INTAKT, SKADET and KRITISK, at the
   strict lines 67 % and 34 % (`LifeSettings.building_stage_percent`), with a picture for each: the
