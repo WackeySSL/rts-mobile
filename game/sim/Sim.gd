@@ -94,6 +94,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Harvest.run(world)
 	Air.run(world)
 	Carry.run(world)  # Unloading carriers; rebuilds the building lists after its inserts.
+	Repair.run(world)  # Ground repair buildings and medics (ADR 0037 sections 5 and 6).
 	Mend.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)

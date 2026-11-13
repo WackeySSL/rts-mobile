@@ -26,7 +26,8 @@ enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2, FLIGHT = 3, RESEARCH = 4 
 enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
 ## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
 ## candidates tested, fog cells stamped, projectile steps, rows moved by a compaction, ore cells
-## looked at, exit cells walked and last-seen checks (the last three: ADR 0017 section 3). The
+## looked at, exit cells walked and last-seen checks (ADR 0017 section 3) and the rows `Repair.run`
+## scanned (ADR 0037 section 13). The
 ## native kernels check `stats` against this size (`STAT_COUNT` in bind/world_access.h).
 enum Stat {
 	FLOW_CELLS = 0,
@@ -39,6 +40,7 @@ enum Stat {
 	ORE_SCANNED = 7,
 	EXIT_SCANNED = 8,
 	MEMORY_CHECKS = 9,
+	REPAIR_CHECKS = 10,
 }
 
 ## Same value as Sim.MILLI_PER_TILE, which P3 adds. World cannot read it from Sim (Sim reads World).
@@ -273,7 +275,7 @@ const GHOST_ARRAYS: Array[StringName] = [
 ## no hash section: the power totals per player and the ascending rows of buildings, harvesters and
 ## aircraft.
 const DERIVED_ARRAYS: Array[StringName] = [
-	&"power_made", &"power_used", &"building_rows", &"harvester_rows", &"air_rows"
+	&"power_made", &"power_used", &"building_rows", &"harvester_rows", &"air_rows", &"repair_rows"
 ]
 ## The tile grid: the terrain index per cell, the move cost per class and cell, the cost per
 ## terrain and class that set_terrain copies into it, the buildable flag per terrain and the
@@ -773,6 +775,7 @@ var power_used: PackedInt32Array = PackedInt32Array()
 var building_rows: PackedInt32Array = PackedInt32Array()
 var harvester_rows: PackedInt32Array = PackedInt32Array()
 var air_rows: PackedInt32Array = PackedInt32Array()
+var repair_rows: PackedInt32Array = PackedInt32Array()  # Role, no pads (ADR 0037 section 5).
 
 ## Projectile slots, max_projectiles entries each. Valid while proj_id is not 0.
 ## Ids come from next_projectile_id.
