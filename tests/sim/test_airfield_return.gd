@@ -78,7 +78,7 @@ func test_the_reload_gains_one_every_rearm_over_cap_ticks_and_stops_at_the_cap()
 	var gains: Array[int] = _gain_ticks(world, jet, 60)
 	assert_array(gains).is_equal([0, 10, 20])
 	assert_int(world.ammo[jet]).is_equal(Worlds.AMMO)
-	assert_int(world.ready_tick[jet]).is_equal(20 + interval)
+	assert_int(world.ready_tick[jet]).is_equal(21 + interval)  # The stamp (tick + 1) of the gain.
 
 
 func test_a_rearm_time_below_the_cap_gains_one_every_tick() -> void:
@@ -87,28 +87,35 @@ func test_a_rearm_time_below_the_cap_gains_one_every_tick() -> void:
 	world.type_rearm_ticks[world.type_index[jet]] = 2
 	world.ammo[jet] = 0
 	assert_array(_gain_ticks(world, jet, 6)).is_equal([0, 1, 2])
+	assert_int(world.ready_tick[jet]).is_equal(3 + 1)
 
 
-func test_an_aircraft_off_its_pad_or_over_the_other_pad_reloads_only_within_reach() -> void:
+## Reach is inclusive: a jet exactly `repair_reach_milli` from its pad reloads, one milli further
+## does not. The jets are held on a MOVE that never ends (speed 0), so nothing seats or moves them.
+func test_the_reload_reach_includes_its_edge_and_stops_one_milli_beyond() -> void:
+	for gap: int in [Worlds.REACH, Worlds.REACH + 1]:
+		var world: World = Worlds.world()
+		var pad: Vector2i = _pad(world)
+		var jet: int = Worlds.add_homed(world, "jet", Worlds.FIELD)
+		world.type_speed[world.type_index[jet]] = 0
+		world.pos_x[jet] = pad.x + gap
+		world.ammo[jet] = 1
+		world.order[jet] = MOVE
+		world.goal_x[jet] = 20000
+		world.goal_y[jet] = 14000
+		Worlds.run(world, 3)
+		assert_int(world.ammo[jet]).is_equal(2 if gap == Worlds.REACH else 1)
+
+
+## The second jet of a field reloads on pad 1 (rank 1), the pad it holds.
+func test_two_jets_reload_on_their_two_pads() -> void:
 	var world: World = Worlds.world()
-	var pad: Vector2i = _pad(world)
-	var near: int = Worlds.add_homed(world, "jet", Worlds.FIELD)
-	world.ammo[near] = 1
-	world.pos_x[near] = pad.x + Worlds.REACH
-	world.order[near] = MOVE  # Not empty: no return, and it stays where it is.
-	world.goal_x[near] = world.pos_x[near]
-	world.goal_y[near] = world.pos_y[near]
-	var far: int = Worlds.add(world, 1, "fighter", pad.x, pad.y)
-	world.home[far] = Worlds.FIELD
-	var out: int = Worlds.add(world, 1, "jet", pad.x + Worlds.REACH + 1, pad.y)
-	world.home[out] = Worlds.FIELD
-	world.ammo[out] = 1
-	world.order[out] = MOVE
-	world.goal_x[out] = world.pos_x[out]
-	world.goal_y[out] = world.pos_y[out]
-	Worlds.run(world, 5)
-	assert_int(world.ammo[near]).is_equal(2)
-	assert_int(world.ammo[out]).is_equal(1)
+	var one: int = Worlds.add_homed(world, "jet", Worlds.FIELD, 0)
+	var two: int = Worlds.add_homed(world, "jet", Worlds.FIELD, 1)
+	world.ammo[one] = 0
+	world.ammo[two] = 0
+	assert_array(_gain_ticks(world, two, 25)).is_equal([0, 10, 20])
+	assert_int(world.ammo[one]).is_equal(Worlds.AMMO)
 
 
 func test_an_airfield_that_is_offline_does_not_reload_and_resumes_when_back() -> void:
@@ -116,9 +123,10 @@ func test_an_airfield_that_is_offline_does_not_reload_and_resumes_when_back() ->
 	var jet: int = Worlds.add_homed(world, "jet", Worlds.FIELD)
 	world.ammo[jet] = 0
 	world.offline_until[world.index_of(Worlds.FIELD)] = 30
-	Worlds.run(world, 28)
+	# Judged at the stamp (tick + 1): the step of tick 29 is the first online one.
+	Worlds.run(world, 29)
 	assert_int(world.ammo[jet]).is_equal(0)
-	Worlds.run(world, 3)
+	Worlds.step(world)
 	assert_int(world.ammo[jet]).is_equal(1)
 
 

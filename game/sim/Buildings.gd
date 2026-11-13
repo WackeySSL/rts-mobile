@@ -211,8 +211,9 @@ static func aim(world: World, rows: PackedInt32Array, target_row: int) -> Packed
 
 
 ## Rebuilds `building_rows` (rows of a type with a footprint) and `harvester_rows` (mobile rows of
-## a type with a cargo capacity, ADR 0018 section 3), both ascending, when `rows_version` has moved
-## since the last rebuild, and says whether it did. They are derived (ADR 0016): equal to a scan of
+## a type with a cargo capacity, ADR 0018 section 3) and `air_rows` (rows of an AIR-layer type,
+## P241), all ascending, when `rows_version` has moved since the last rebuild, and says whether it
+## did. They are derived (ADR 0016): equal to a scan of
 ## the rows whenever the version is current, and in no hash section. Power.run calls it first in
 ## ECONOMY.
 static func rebuild_lists(world: World) -> bool:

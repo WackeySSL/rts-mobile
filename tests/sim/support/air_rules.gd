@@ -54,6 +54,7 @@ static func fine_air() -> UnitDef:
 	unit.move_class = AIR
 	unit.ammo = 6
 	unit.rearm_ticks = 30
+	unit.tab = FLIGHT
 	return unit
 
 
@@ -120,6 +121,9 @@ static func air_problems(file: String, unit: UnitDef) -> PackedStringArray:
 		pads > 0 and (unit.repair_slots < 0 or unit.repair_slots > MAX_SLOTS),
 		"repair_seek_milli is negative": unit.repair_seek_milli < 0,
 		"no type is on the Research tab": unit.tab == RESEARCH,
+		# P241: the FLIGHT cap keys on the tab and the pad spawn on the layer.
+		"the Flight tab and a high-air type differ":
+		(unit.tab == FLIGHT) != (unit.move_class == AIR and not unit.low_flying),
 		# ADR 0036 sections 2 and 8: a carrier has slots and classes, a non-carrier neither.
 		"carry_slots is negative": unit.carry_slots < 0,
 		"carry_classes is not a move-class mask 0..15":

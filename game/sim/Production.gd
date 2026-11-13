@@ -104,7 +104,8 @@ static func run(world: World) -> void:
 ## QUEUE `[type_index]`: true when the item joined the player's queue and its cost was paid. The
 ## type needs a tab (a structure's too), the player a producer of that tab (producer_row) whose
 ## faction may queue it (`_faction_allows`) and a row of the type's requirement (if it has one), the
-## queue room and at least the type's cost in credits.
+## queue room and at least the type's cost in credits; a FLIGHT item also needs room under the
+## pad cap (`Air.cap_room`, ADR 0036 section 6).
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
