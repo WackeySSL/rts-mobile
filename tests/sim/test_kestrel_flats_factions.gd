@@ -62,9 +62,9 @@ func test_every_roster_type_of_a_start_has_its_players_faction() -> void:
 					String(faction.id)
 				)
 				types += 1
-		# Both rosters are registered, and nothing else: sixteen types each.
-		assert_int(types).is_equal(32)
-		assert_int(world.type_ids.size()).is_equal(32)
+		# Both rosters are registered, and nothing else: fifteen types each.
+		assert_int(types).is_equal(30)
+		assert_int(world.type_ids.size()).is_equal(30)
 		assert_array(world.faction_ids).contains_exactly_in_any_order([&"fossil", &"renew"])
 
 
@@ -107,11 +107,11 @@ func test_every_buildable_type_of_the_other_faction_is_dropped_and_counted() -> 
 					var command: Command = Command.queue(player, _type(world, unit.type_id))
 					command.sequence = commands.size()
 					commands.append(command)
-			# Fifteen items: the headquarters is the one type nothing builds.
-			assert_int(commands.size()).is_equal(15)
+			# Fourteen items: the headquarters is the one type nothing builds.
+			assert_int(commands.size()).is_equal(14)
 			var label: String = "%s player %d" % [path, player]
 			ProdRig.step(world, commands)
-			assert_int(world.dropped_commands).override_failure_message(label).is_equal(15)
+			assert_int(world.dropped_commands).override_failure_message(label).is_equal(14)
 			for tab: int in World.TABS:
 				var queue: int = ProdRig.queue_of(player, tab)
 				assert_int(world.queue_count[queue]).override_failure_message(label).is_equal(0)

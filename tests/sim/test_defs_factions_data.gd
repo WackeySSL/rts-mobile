@@ -49,7 +49,6 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"defence_turret": "barracks",
 				"fossil_strike": "fossil_radar",
 				"fossil_space": "fossil_radar",
-				"fossil_aa": "barracks",
 				"artillery": "fossil_radar",
 			}
 		)
@@ -68,7 +67,6 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_defence": "renew_barracks",
 				"renew_strike": "renew_radar",
 				"renew_space": "renew_radar",
-				"renew_aa": "renew_barracks",
 				"renew_artillery": "renew_radar",
 			}
 		)
@@ -442,9 +440,12 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
+## P239: the anti-air buildings have no roster entry until P239b (art, item card); skipped here.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if path.get_file().get_basename() in ["fossil_aa", "renew_aa"]:
+			continue
 		units.append(load(path))
 	return units
 

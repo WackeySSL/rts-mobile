@@ -1,11 +1,12 @@
 extends GdUnitTestSuite
 ## The anti-air buildings' data (plan row P239, ADR 0036 sections 2 and 5, docs/GDD.md): one 1x1
 ## BuildingDef per faction, a gun with mask 6 (high and low air, no ground) behind the Barracks.
-## Its `type_id` is its art id (P239b draws it). The GDD gives the names, size, cost, power and
-## requirement; the ADR gives the mask. Hit points, build time, sight, the weapon's range, damage,
-## cooldown and armour percents are in neither: starting values for the balance run (the build time
-## and hit points follow the Redoubt's scale, the guns differ by faction as the Redoubt and the
-## Rail Battery do). What the sim does with the mask is test_targeting_layers'.
+## The roster entry comes with P239b (art, item card): neither is buildable yet. `type_id` is the
+## art id (P239b draws it). The GDD gives the names, size, cost, power and requirement; the ADR
+## gives the mask. Hit points, build time, sight, the weapon's range, damage, cooldown and armour
+## percents are in neither: starting values for the balance run (the build time and hit points
+## follow the Redoubt's scale, the guns differ by faction as the Redoubt and the Rail Battery do).
+## What the sim does with the mask is test_targeting_layers'.
 
 const FILES: Dictionary[String, Array] = {
 	"fossil_aa": ["fossil", "Burst Stack", "barracks", "burst_stack_gun", 4500, 12, 6],
@@ -37,8 +38,9 @@ func test_each_faction_lists_one_anti_air_building_with_the_gdd_numbers() -> voi
 			[FILES[id][4], FILES[id][5], FILES[id][6]]
 		)
 		assert_int(def.acquire_range).is_equal(gun.range)
+		# Not in a roster yet: the roster entry comes with P239b (art, item card).
 		var faction: FactionDef = load("res://data/factions/%s.tres" % FILES[id][0])
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
+		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
 
 
 ## ADR 0036 section 5: the mask is high and low air, and never the ground.

@@ -1,7 +1,6 @@
 extends GdUnitTestSuite
-## The Lumen Accord's roster (plan row P108, ADR 0023 sections 6, 7 and 10, docs/GDD.md): its ten
-## buildings (the space centre's and the anti-air gun's numbers are test_defs_space_centre's and
-## test_defs_anti_air's), six units and the two
+## The Lumen Accord's roster (plan row P108, ADR 0023 sections 6, 7 and 10, docs/GDD.md): its nine
+## buildings (the space centre's numbers are test_defs_space_centre's), six units and the two
 ## weapons of its own as literals (the ADR's starting numbers, marked P: proposals for Phase 4's
 ## balance runs), the rules that span its files (the requirement chains, the free Fuel Runner, the
 ## dock and exit cells, the tabs) and how it differs from the Derrick
@@ -60,7 +59,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_ten_buildings_and_the_six_units_in_the_adr_order() -> void:
+func test_the_faction_file_lists_the_nine_buildings_and_the_six_units_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -71,7 +70,6 @@ func test_the_faction_file_lists_the_ten_buildings_and_the_six_units_in_the_adr_
 		"renew_defence",
 		"renew_strike",
 		"renew_space",
-		"renew_aa",
 		"renew_rifle",
 		"renew_rocket",
 		"renew_scout",
@@ -86,10 +84,10 @@ func test_the_faction_file_lists_the_ten_buildings_and_the_six_units_in_the_adr_
 	assert_array(listed).is_equal(wanted)
 	for at: int in wanted.size():
 		var member: UnitDef = faction.roster[at]
-		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 10)
+		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 9)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those sixteen and no other.
+	# The files that name the faction are those fifteen and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())
@@ -475,7 +473,6 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 		assert_array(buildable[STRUCTURES])
 		. is_equal(
 			[
-				"renew_aa",
 				"renew_barracks",
 				"renew_defence",
 				"renew_factory",
@@ -502,9 +499,12 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
+## P239: the anti-air buildings have no roster entry until P239b (art, item card); skipped here.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if path.get_file().get_basename() == "renew_aa":
+			continue
 		if (load(path) as UnitDef).faction == FACTION:
 			found.append(path)
 	return found
