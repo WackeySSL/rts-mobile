@@ -581,6 +581,8 @@ Note (2026-11-13, P26bu, the lead; from the reviews of P234, P235, P240 and P262
   (Michael, 2026-11-13: "Én knap"). P234 (#422) and P235 (#425) merge together, so `main` never
   has a space centre that borrows the superweapon's map aim. ADR 0036 §11's P235 note records
   the rest: the warning line in place of a toast, the badge, the binding rules and the fade.
-- **The badge in the corner lists.** The row places the badge "in ADR 0025's corners", but
-  neither ADR 0025 §10's corner list nor the `touch-ui-rules` skill's Corner HUD list names it
-  yet. The skill line waits for Michael's yes. The ADR 0025 note follows with it.
+- **The badge in the corner lists.** The row places the badge "in ADR 0025's corners". The
+  `touch-ui-rules` skill's Corner HUD bullet and an ADR 0025 §10 note now name it (Michael's yes,
+  2026-11-13).
+- **`rts-sim-conventions`.** Its hashed-state paragraph now covers `STATE_FORMAT` 6 (P232) and 7
+  (P262) (Michael's yes, 2026-11-13).

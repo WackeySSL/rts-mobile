@@ -688,6 +688,13 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
   of P112 changes. The design has no superweapon; the game has, so the HUD shows it (the lead's
   rule).
 
+Note (2026-11-13, P26bu, the lead; Michael's yes to the `touch-ui-rules` line the same day): the
+enemy sweep's badge (P235, ADR 0036 §11) joins the right column. It is 48 dp, takes no touch and
+stands at the right edge, a gap above the strike button, or above BUILD. Upright it stands above
+the Ready chip when the chip stands higher. Its warning line, 160 to 220 dp, stands to its left
+and is left out when less room is free. Both hide under the drawer, the full map and the pause
+menu. `HudCorners.REVEAL` and `REVEAL_LINE` give the rects. This note changes no other text.
+
 ### 11. The pause menu
 - **Opens** on the pill's menu button; **pauses the match** (`MatchRunner.paused = true`; the sim
   only stops ticking, no Command, so replays and hashes do not see it); closes every other unfold;
