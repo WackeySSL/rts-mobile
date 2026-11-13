@@ -563,3 +563,24 @@ review):
 - **The next sim row that edits `Power.gd` or `Harvest.gd`.** Their headers, and `Power.run`'s
   comment (`Power.gd:33`), still call them the first and second "half" of ECONOMY. Since P271,
   `Mend.run` is a third step, so that row changes "half" to "step".
+
+Note (2026-11-13, P26bu, the lead; from the reviews of P234, P235, P240 and P262):
+- **The Perf AI card per wave.** From wave 4 on, the card runs three times on `main` after a wave
+  merges, not on each row before it merges (Michael, 2026-11-13; the Phase 4 plan's P26bu note).
+- **P240 as built.** P240 did not do its row's "`ProductionSpawn` spawn over a pad"; that work
+  moves to P241. A spawn on the first free pad needs `home`, the pad's rank among the living
+  aircraft with that home, and `air_rows`, and P241 adds all three (ADR 0036 §6). P241's row
+  already lists it, so P241 owns the spawn over a pad and its test.
+- **P263, from P262's reviews.** `World.insert_row` moves every row at and above the inserted row
+  up by one. `building_rows` and `harvester_rows` stay stale until `Buildings.rebuild_lists`.
+  `Power.run` calls it at the start of ECONOMY. `Carry.run` inserts later in the same phase, so
+  it calls it again after its inserts (a no-op when nothing was inserted), before `Repair.run`
+  and `Mend.run` read `building_rows`. P263 adds a test of a mend and an unload on the same tick
+  under both implementations. Otherwise Mend reads the wrong row's `cargo` as its switch.
+- **P235 as built.** The space centre and its sweep share the superweapon's one strike button
+  (Michael, 2026-11-13: "Én knap"). P234 (#422) and P235 (#425) merge together, so `main` never
+  has a space centre that borrows the superweapon's map aim. ADR 0036 §11's P235 note records
+  the rest: the warning line in place of a toast, the badge, the binding rules and the fade.
+- **The badge in the corner lists.** The row places the badge "in ADR 0025's corners", but
+  neither ADR 0025 §10's corner list nor the `touch-ui-rules` skill's Corner HUD list names it
+  yet. The skill line waits for Michael's yes. The ADR 0025 note follows with it.
