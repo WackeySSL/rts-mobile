@@ -480,6 +480,8 @@ func _buildable(view: PlayerView, type: int) -> bool:
 	var need: int = view.type_requires[type]
 	if need >= 0 and _owned[need] == 0:
 		return false
+	if tab == PlayerView.Tab.RESEARCH:
+		return true  # A research item spawns nothing, so no unit cap applies (ADR 0036 section 10).
 	var waiting: int = view.queue_count[tab] + _added[tab]
 	if tab == PlayerView.Tab.STRUCTURES:
 		return _buildings + waiting < view.building_cap

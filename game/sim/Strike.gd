@@ -228,6 +228,7 @@ static func _land(world: World, player: int) -> void:
 	var pos_y: PackedInt32Array = world.pos_y
 	var hit_points: PackedInt32Array = world.hp
 	var layer_bit: PackedInt32Array = world.type_layer_bit
+	var owners: PackedInt32Array = world.owner
 	var hits: int = world.weapon_targets[weapon]
 	for row: int in hit_points.size():
 		var dx: int = pos_x[row] - point_x
@@ -238,7 +239,8 @@ static func _land(world: World, player: int) -> void:
 			continue  # The strike weapon's layers (ADR 0036 section 5: ground only, so air is skipped).
 		var percent: int = percent_of[percents + armour_of[types[row]]]
 		if percent > 0:
-			hit_points[row] -= maxi(1, damage * percent / Combat.PERCENT)
+			var taken: int = Upgrades.taken(world, owners[row], types[row])
+			hit_points[row] -= Combat.damage(damage, percent, Combat.PERCENT, taken)
 
 
 ## The blackout of `player`'s strike building of type `type` around (point_x, point_y): every

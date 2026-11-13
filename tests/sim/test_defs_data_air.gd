@@ -380,7 +380,7 @@ func test_an_upgrade_id_may_not_be_a_type_id_and_one_stat_of_a_type_has_one_upgr
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_empty()
 	faction.upgrades = [first, second] as Array[UpgradeDef]
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_equal(
-		["better_bombs and more_bombs change one stat of tank"]
+		["better_bombs and more_bombs change one stat of gun"]
 	)
 	second.stat = UpgradeDef.Stat.DAMAGE_TAKEN  # Another stat of the same type is allowed.
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_empty()
@@ -396,6 +396,40 @@ func test_an_upgrade_id_may_not_be_a_type_id_and_one_stat_of_a_type_has_one_upgr
 	first.id = jet.type_id
 	assert_array(Rules.upgrade_catalog_problems(jets, [faction] as Array[FactionDef])).is_equal(
 		["tank: upgrade id is also a type id"]
+	)
+
+
+func test_damage_dealt_is_keyed_on_the_weapon_and_needs_an_armed_type() -> void:
+	var faction: FactionDef = FactionDef.new()
+	faction.id = &"fossil"
+	var first: UpgradeDef = Rules.fine_upgrade()
+	var tank: UnitDef = first.applies_to[0]
+	var scout: UnitDef = Rules.fine_air()
+	scout.type_id = &"scout"
+	scout.weapon = tank.weapon  # Two types on one weapon.
+	var units: Array[UnitDef] = [tank, scout]
+	var listed: Array[FactionDef] = [faction]
+	faction.upgrades = [first] as Array[UpgradeDef]
+	first.applies_to = [tank, scout] as Array[UnitDef]
+	assert_array(Rules.upgrade_catalog_problems(units, listed)).is_equal(
+		["better_bombs and better_bombs change one stat of gun"]
+	)
+	# Two upgrades on one weapon, through two different types.
+	var second: UpgradeDef = Rules.fine_upgrade()
+	second.id = &"more_bombs"
+	first.applies_to = [tank] as Array[UnitDef]
+	second.applies_to = [scout] as Array[UnitDef]
+	faction.upgrades = [first, second] as Array[UpgradeDef]
+	assert_array(Rules.upgrade_catalog_problems(units, listed)).is_equal(
+		["better_bombs and more_bombs change one stat of gun"]
+	)
+	# An unarmed type.
+	var bare: UnitDef = Rules.fine_air()
+	bare.type_id = &"bare"
+	first.applies_to = [bare] as Array[UnitDef]
+	faction.upgrades = [first] as Array[UpgradeDef]
+	assert_array(Rules.upgrade_catalog_problems([bare] as Array[UnitDef], listed)).is_equal(
+		["better_bombs: a damage-dealt upgrade applies to an unarmed type"]
 	)
 
 

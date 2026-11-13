@@ -245,19 +245,20 @@ func test_the_new_columns_move_their_own_hash_section_only() -> void:
 
 
 func test_player_view_and_snapshot_carry_the_layer_tables_as_copies() -> void:
+	# The fifth type is the research item of the played world's upgrade (ground-padded).
 	var world: World = _played_world()
 	var view: PlayerView = PlayerView.of(world, 1)
-	assert_array(view.type_layer_bit).is_equal([1, 2, 4, 1])
+	assert_array(view.type_layer_bit).is_equal([1, 2, 4, 1, 1])
 	assert_array(view.weapon_targets).is_equal([1, 6])
 	view.type_layer_bit[0] = 99
 	view.weapon_targets[0] = 99
-	assert_array(world.type_layer_bit).is_equal([1, 2, 4, 1])
+	assert_array(world.type_layer_bit).is_equal([1, 2, 4, 1, 1])
 	assert_array(world.weapon_targets).is_equal([1, 6])
 	var snap: MatchSnapshot = MatchSnapshot.new()
 	snap.capture(world, null)
-	assert_array(snap.type_layer_bit).is_equal([1, 2, 4, 1])
+	assert_array(snap.type_layer_bit).is_equal([1, 2, 4, 1, 1])
 	assert_array(snap.weapon_targets).is_equal([1, 6])
-	assert_array(PlayerView.of(world, 2).type_layer_bit).is_equal([1, 2, 4, 1])
+	assert_array(PlayerView.of(world, 2).type_layer_bit).is_equal([1, 2, 4, 1, 1])
 	assert_int(PlayerView.TABS).is_equal(5)
 	assert_int(view.queue_count.size()).is_equal(5)
 	assert_int(view.queue_type.size()).is_equal(5 * world.queue_slots)

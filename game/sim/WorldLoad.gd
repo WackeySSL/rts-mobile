@@ -240,7 +240,7 @@ static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void
 		for offset: Vector2i in building.pad_offsets:
 			world.pad_offset_x.append(offset.x)
 			world.pad_offset_y.append(offset.y)
-	world.type_upgrade.append(World.TYPE_PAD_NONE)
+	world.type_upgrade.append(World.TYPE_PAD_NONE)  # `_upgrade_for` sets a research item's.
 	world.type_repair_classes.append(unit.repair_classes)
 	world.type_repair_hp.append(unit.repair_hp)
 	world.type_repair_period.append(unit.repair_period_ticks)
@@ -266,6 +266,9 @@ static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
 		or world.upgrade_ids.size() >= World.UPGRADES_MAX
 	):
 		return
+	if world.type_ids.has(upgrade.id):
+		push_error("upgrade id %s is also a type id; skipped" % upgrade.id)
+		return
 	world.upgrade_ids.append(upgrade.id)
 	world.upgrade_stat.append(upgrade.stat)
 	world.upgrade_value.append(upgrade.value)
@@ -275,6 +278,16 @@ static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
 		if unit != null:  # A null entry names no type: it is left out of the count too.
 			world.upgrade_types.append(_type_for(world, unit))
 	world.upgrade_type_count.append(world.upgrade_types.size() - first)
+	# The research item (ADR 0036 section 3): a queue-only type of the RESEARCH tab, named by the id.
+	var item: UnitDef = UnitDef.new()
+	item.type_id = upgrade.id
+	item.display_name = upgrade.display_name
+	item.faction = upgrade.faction
+	item.cost = upgrade.cost
+	item.build_ticks = upgrade.research_ticks
+	item.tab = World.Tab.RESEARCH
+	item.requires = upgrade.requires
+	world.type_upgrade[_type_for(world, item)] = world.upgrade_ids.size() - 1
 
 
 ## Appends the six strike table entries of a type (ADR 0023 section 10): a BuildingDef's exports,
@@ -454,6 +467,7 @@ static func prepare_world(world: World) -> void:
 	world.target_grid.configure(world.map_w, world.map_h, World.TARGET_CELL_MILLI, world.max_rows)
 	world._map_digest_version = -1  # The grid may be new without a map_version bump.
 	WorldHash.map_digest(world)
+	Upgrades.rebuild(world)
 	world.prepared = true
 
 

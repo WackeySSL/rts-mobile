@@ -32,8 +32,12 @@ extends RefCounted
 ## - a shot writes `[SHOT, shooter id, shooter x, shooter y, target id, weapon, target x, target y]`
 ##   (ADR 0007 section 10, both positions read now, so a tracer can still be drawn after either unit
 ##   is removed) and sets the cooldown, and then either
-##   - hits at once (hitscan, speed 0): the target's `hp` drops by `max(1, damage * percent / 100)`,
-##     `percent` being the weapon's share against the target's armour class (0 when it is 0);
+##   - hits at once (hitscan, speed 0): the target's `hp` drops by
+##     `Combat.damage(damage, percent, dealt, taken)`,
+##     `max(1, damage * percent * dealt * taken / 1,000,000)`: `percent` is the weapon's
+##     share against the target's armour class (0 when it is 0), `dealt` the shooter's weapon
+##     modifier and `taken` the target's type modifier, each 100 without an upgrade (ADR 0036
+##     section 10);
 ##   - launches a shell (speed above 0, a slot free): the slot at `proj_free[proj_free_top - 1]`
 ##     (the top of the stack, which `prepare()` fills so that slot 0 comes first) takes the next
 ##     projectile id, the shooter's owner and weapon, the target's id, the shooter's position as its
@@ -57,7 +61,9 @@ extends RefCounted
 ##   zero) and `proj_ticks` drops by 1. The step with 1 left is the whole rest, so the shell is on
 ##   the aim point exactly when it arrives;
 ## - at 0 it arrives: a target that still has a row takes the damage of the shell's weapon (the same
-##   percent rule as a hitscan shot; a row another shell has already brought to 0 or less in this
+##   percent rule as a hitscan shot, with the modifiers read at impact: a research that finishes
+##   while the shell flies applies to it;
+##   a row another shell has already brought to 0 or less in this
 ##   tick is still hit), `[IMPACT, projectile id, x, y, target id, weapon, 0, 0]` is written (the
 ##   target id is 0 when the target was gone: the shell hits nothing and the record shows where it
 ##   came down, ADR 0007 section 10), the slot's columns are zeroed and the slot goes back on top of
@@ -76,9 +82,10 @@ extends RefCounted
 ## scalars read once before it and written once after it, no allocation apart from the event
 ## appends, rows and slots in ascending order. Every number comes from the World's weapon tables
 ## (data/). Range: positions are below 2^16, so a squared distance stays below 2^33, a step
-## `aim - pos` is below 2^16 and the damage `damage * percent` (a percent is at most 200) stays far
-## below 2^62 in an int64; `proj_ticks` is at most `max(1, ceil(longest range / slowest speed))`
-## (17 with the shipped data), and a projectile id is below 2^31 for any match.
+## `aim - pos` is below 2^16 and the product of `damage` (below 2^31), `percent` (at most 200) and
+## the two modifiers (at most 400 each, a data test) stays below 2^56 in an int64 (`damage`);
+## `proj_ticks` is at most `max(1, ceil(longest range / slowest speed))` (17 with the shipped
+## data), and a projectile id is below 2^31 for any match.
 ## The twins grow `events` once per shot and once per impact, inside their loops. A port may not
 ## (ADR 0013 section 2: one resize per appending kernel, after its loop): it records the events
 ## first and resizes once. No decision here reads `events`, and none depends on an earlier shot or
@@ -94,6 +101,18 @@ const SHOT: int = World.Event.SHOT
 const IMPACT: int = World.Event.IMPACT
 ## A percent divides by this: structure, not balance.
 const PERCENT: int = 100
+
+## The damage of one hit (ADR 0036 section 10): `base * percent * dealt * taken / 1,000,000`, at
+## least 1, in int64, and 0 when `percent` is 0 (the weapon cannot hurt the armour class). `percent`
+## is the weapon's share against the armour class, `dealt` the shooter's damage modifier and `taken`
+## the target's, each a percent (100 = none; `Upgrades`). With `dealt` = `taken` = 100 it is
+## `max(1, base * percent / 100)`, the formula before upgrades, for every int.
+@warning_ignore("integer_division")
+static func damage(base: int, percent: int, dealt: int, taken: int) -> int:
+	if percent <= 0:
+		return 0
+	return maxi(1, base * percent * dealt * taken / (PERCENT * PERCENT * PERCENT))
+
 
 ## One PROJECTILES phase over the World, as described above.
 @warning_ignore("integer_division")
@@ -119,6 +138,11 @@ static func advance_projectiles(world: World) -> void:
 	var events: PackedInt32Array = world.events
 	var free_top: int = world.proj_free_top
 	var armour_classes: int = World.Armour.size()
+	var owners: PackedInt32Array = world.owner
+	var mod_dealt: PackedInt32Array = world.mod_dealt
+	var mod_taken: PackedInt32Array = world.mod_taken
+	var weapon_count: int = weapon_damage.size()
+	var type_count: int = world.type_ids.size()
 	var count: int = ids.size()
 	var slots: int = slot_ids.size()
 	var stepped: int = 0
@@ -153,8 +177,12 @@ static func advance_projectiles(world: World) -> void:
 		var weapon: int = slot_weapon[slot]
 		if at >= 0:
 			var percent: int = weapon_vs[weapon * armour_classes + type_armour[types[at]]]
-			if percent > 0:
-				hit_points[at] -= maxi(1, weapon_damage[weapon] * percent / PERCENT)
+			hit_points[at] -= damage(
+				weapon_damage[weapon],
+				percent,
+				Upgrades.pick(mod_dealt, weapon_count, slot_owner[slot], weapon, PERCENT),
+				Upgrades.pick(mod_taken, type_count, owners[at], types[at], PERCENT)
+			)
 		# The impact's record: with the shot's append, the only array growth of the phase.
 		var end: int = events.size()
 		events.resize(end + World.EVENT_STRIDE)
@@ -229,6 +257,10 @@ static func fire(world: World) -> void:
 	var footprints: int = type_foot.size()
 	var players: int = mini(power_made.size(), power_used.size())
 	var armour_classes: int = World.Armour.size()
+	var mod_dealt: PackedInt32Array = world.mod_dealt
+	var mod_taken: PackedInt32Array = world.mod_taken
+	var weapon_count: int = weapon_damage.size()
+	var type_count: int = world.type_ids.size()
 	var count: int = ids.size()
 	for row: int in count:
 		var wait: int = cooldowns[row]
@@ -289,8 +321,12 @@ static func fire(world: World) -> void:
 			if speed > 0:
 				overflow += 1
 			var percent: int = weapon_vs[weapon * armour_classes + type_armour[types[at]]]
-			if percent > 0:
-				hit_points[at] -= maxi(1, weapon_damage[weapon] * percent / PERCENT)
+			hit_points[at] -= damage(
+				weapon_damage[weapon],
+				percent,
+				Upgrades.pick(mod_dealt, weapon_count, side, weapon, PERCENT),
+				Upgrades.pick(mod_taken, type_count, owners[at], types[at], PERCENT)
+			)
 		cooldowns[row] = weapon_cooldown[weapon]
 		if limited:
 			shots[row] -= 1
