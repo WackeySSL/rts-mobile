@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Starting values for the Phase 4b balance run (the GDD gives the range only).
+[resource]
+script = ExtResource("1_weapon")
+id = &"glint_gun"
+range = 5000
+damage = 18
+cooldown_ticks = 12
+projectile_speed = 0
+vs_armour = PackedInt32Array(100, 100, 100, 100)
+targets = 2
