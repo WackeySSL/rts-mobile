@@ -18,6 +18,7 @@ func test_the_phase_3_types_have_the_ids_of_the_adr() -> void:
 	expected["UNLOAD"] = 6  # P263b.
 	expected["SELL"] = 17  # P271, ADR 0037 sections 3 and 4.
 	expected["MEND"] = 18
+	expected["REPAIR"] = 7  # P241b, ADR 0036 section 7.
 	expected["SURRENDER"] = 20
 	assert_dict(Command.Type).is_equal(expected)
 

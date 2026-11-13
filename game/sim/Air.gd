@@ -7,8 +7,9 @@ extends RefCounted
 ## that home, so no pad is stored. A FLIGHT QUEUE is valid while the player's aircraft and queued
 ## FLIGHT items are below the pads of its complete airfields (`cap_room`); a finished aircraft
 ## spawns over a free pad (`free_pad`, used by ProductionSpawn). `run` is ECONOMY after
-## `Harvest.run`: it re-homes, seats an idle aircraft over its pad, sends an empty one to its pad
-## and reloads one on its pad. GDScript only. Cost: two passes over `air_rows` plus one over
+## `Harvest.run`: it re-homes, seats an idle aircraft over its pad, sends an empty one to its pad,
+## and reloads and repairs one on its pad (`_service`). REPAIR (`apply_repair`) sends aircraft
+## home. GDScript only. Cost: two passes over `air_rows` plus one over
 ## `building_rows` (to clear the per-airfield counts), no allocation per tick but the one-row array
 ## of an order (event cadence); a re-home scans `building_rows` (event cadence, and a failed scan
 ## is not repeated for the owner in the same tick).
@@ -73,7 +74,8 @@ static func pad_point(world: World, row: int, pad: int) -> Vector2i:
 ##   `Sim._apply_point`) when it is idle over its airfield's footprint (it was seated on the old
 ##   pad), or when its type has ammo, it has none and it is not already on a MOVE;
 ## - within reach, with its airfield not blacked out, a type with ammo gains 1 each `max(1,
-##   rearm_ticks / ammo cap)` ticks up to the cap, the next gain due at the stamp `ready_tick`.
+##   rearm_ticks / ammo cap)` ticks up to the cap, the next gain due at the stamp `ready_tick`, and
+##   a hurt aircraft is repaired and paid for (`_service`).
 ## The counts live in the scratch columns `push_x` and `push_y`, which SEPARATION clears before it
 ## reads them next tick (one count of the airfield's row each, no allocation).
 @warning_ignore("integer_division")
@@ -125,14 +127,122 @@ static func run(world: World) -> void:
 				Formation.assign(world, one, point.x, point.y)
 				world.order[row] = World.Order.MOVE
 				Movement.reset_nav(world, one, World.NavMode.DIRECT)
-		elif (
-			cap > 0
-			and world.ammo[row] < cap
-			and world.offline_until[field] <= stamp
-			and stamp >= world.ready_tick[row]
-		):
-			world.ammo[row] += 1
-			world.ready_tick[row] = stamp + maxi(1, world.type_rearm_ticks[type] / cap)
+		else:
+			_service(world, field, row, stamp)
+
+
+## An aircraft on its pad, within reach, is served by its airfield `field` (row `row`): with the
+## airfield complete (the caller's `_field_of`) and not blacked out at `stamp`, a type with ammo
+## gains 1 each `max(1, rearm_ticks / ammo cap)` ticks up to the cap (the next gain due at the
+## stamp `ready_tick`), and on ticks with `tick % repair_period_ticks == 0` its hit points rise by
+## `repair_hp` (not above the maximum) for `ceil(cost * gained * repair_cost_percent / (100 *
+## max_hp))` of the owner's credits; with too few credits nothing is repaired (ADR 0036 section
+## 6). The airfield serves the AIR class bit only, and a defeated owner's aircraft are not
+## repaired (as `Mend.run` skips them).
+@warning_ignore("integer_division")
+static func _service(world: World, field: int, row: int, stamp: int) -> void:
+	if world.offline_until[field] > stamp:
+		return
+	var type: int = world.type_index[row]
+	var cap: int = world.type_ammo[type]
+	if cap > 0 and world.ammo[row] < cap and stamp >= world.ready_tick[row]:
+		world.ammo[row] += 1
+		world.ready_tick[row] = stamp + maxi(1, world.type_rearm_ticks[type] / cap)
+	var kind: int = world.type_index[field]
+	var gain: int = world.type_repair_hp[kind]
+	var top: int = maxi(world.type_max_hp[type], 1)
+	var player: int = world.owner[row]
+	if (
+		gain <= 0
+		or world.hp[row] >= top
+		or (world.type_repair_classes[kind] >> World.MoveClass.AIR) & 1 == 0
+		or world.tick % maxi(1, world.type_repair_period[kind]) != 0
+		or player >= world.credits.size()
+		or (player < world.defeated_tick.size() and world.defeated_tick[player] != 0)
+	):
+		return
+	var gained: int = mini(gain, top - world.hp[row])
+	var percent: int = world.type_repair_cost_percent[kind]
+	var cost: int = (world.type_cost[type] * gained * percent + 100 * top - 1) / (100 * top)
+	if world.credits[player] >= cost:
+		world.credits[player] -= cost
+		world.hp[row] += gained
+
+
+## REPAIR (ADR 0036 section 7; the shared command, ADR 0037 section 2): `unit_ids` are aircraft,
+## `target_id` is an own complete airfield (a building with pads and a repair role). An aircraft is
+## valid when it is an own, living, complete aircraft (AIR layer) whose move class bit is in the
+## airfield's `repair_classes`. The valid ones, lowest id first, take a pad: one already homed at
+## the airfield keeps its pad; any other is re-homed there while the airfield has a free pad (the
+## pads of the aircraft homed at it, fewer than `pads`) and is skipped otherwise. Each one taken
+## gets MOVE to its pad (the pad of its rank, as `run` derives it) and goes idle there, where `run`
+## reloads and repairs it. With none taken the command is dropped and counted. A building with no
+## pads is not served here (P277 adds its service point to this entry).
+static func apply_repair(world: World, command: Command) -> bool:
+	if command.unit_ids.size() > Command.MAX_UNITS:
+		return false
+	var field: int = world.index_of(command.target_id)
+	if field < 0 or world.owner[field] != command.player_id or not _is_field(world, field):
+		return false
+	var kind: int = world.type_index[field]
+	if kind >= world.type_repair_classes.size() or world.type_repair_classes[kind] == 0:
+		return false
+	Buildings.rebuild_lists(world)
+	var ids: PackedInt32Array = command.unit_ids.duplicate()
+	ids.sort()
+	var taken: PackedInt32Array = PackedInt32Array()
+	var previous: int = 0
+	for id: int in ids:
+		if id == previous:
+			continue
+		previous = id
+		var row: int = world.index_of(id)
+		if row < 0 or not _can_go(world, row, command.player_id, kind):
+			continue
+		if world.home[row] != command.target_id:
+			if _homed_at(world, command.target_id) >= world.type_pads[kind]:
+				continue
+			world.home[row] = command.target_id
+		taken.append(row)
+	if taken.is_empty():
+		return false
+	var one: PackedInt32Array = PackedInt32Array([0])
+	for row: int in taken:
+		var rank: int = 0
+		for other: int in world.air_rows:
+			if other >= row:
+				break
+			rank += int(world.home[other] == command.target_id)
+		if rank >= world.type_pads[kind]:
+			continue  # More aircraft than pads (a hand-built World): as `run` does.
+		var point: Vector2i = pad_point(world, field, rank)
+		one[0] = row
+		Formation.assign(world, one, point.x, point.y)
+		world.order[row] = World.Order.MOVE
+		Movement.reset_nav(world, one, World.NavMode.DIRECT)
+	Carry.release(world, taken)
+	return true
+
+
+## Whether aircraft row `row` of `player` may be sent to an airfield of type `kind`: living,
+## complete, an AIR-layer type whose move class bit is in the airfield's `repair_classes`.
+static func _can_go(world: World, row: int, player: int, kind: int) -> bool:
+	var type: int = world.type_index[row]
+	return (
+		world.owner[row] == player
+		and world.hp[row] > 0
+		and world.build_left[row] == 0
+		and is_aircraft(world, type)
+		and (world.type_repair_classes[kind] >> world.type_move_class[type]) & 1 == 1
+	)
+
+
+## How many aircraft have the building `id` as their home.
+static func _homed_at(world: World, id: int) -> int:
+	var count: int = 0
+	for row: int in world.air_rows:
+		count += int(world.home[row] == id)
+	return count
 
 
 ## Whether aircraft row `row` is over the footprint of building row `field`.
