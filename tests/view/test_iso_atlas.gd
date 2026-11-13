@@ -462,8 +462,9 @@ func _assert_every_frame_has_its_rasterised_size(
 						frames += 1
 	# The 480 frames of the blockouts, the squads' poses (P139): 2 factions x 2 squads x 8
 	# directions x (4 walk + 2 idle) frames, and the buildings' `anim` frames (P143): 16 + 16 + 6 +
-	# 4 + 4 + 4 + 2 + 2, and the damage patches of P158a (the Derrick League) and P158b (the Lumen
-	# Accord): 2 factions x 8 buildings x 2 stages = 32 frames, and the two space centres (P236):
+	# 4 + 4 + 4 + 2 + 2, and the KRITISK patches of P158a (the Derrick League) and P158b (the Lumen
+	# Accord): 2 factions x 8 buildings x 1 stage = 16 frames (no SKADET patch, P202), and the two
+	# space centres (P236):
 	# the Skyrig's hull, 16 lift frames, KRITISK patch and shadow, the Zenith's hull, 12 lift
 	# frames, patch and shadow (no SKADET patch, ADR 0034) = 19 + 15 = 34 frames.
-	assert_int(frames).is_equal(480 + 192 + 54 + 32 + 34)
+	assert_int(frames).is_equal(480 + 192 + 54 + 16 + 34)

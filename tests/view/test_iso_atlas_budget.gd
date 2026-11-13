@@ -31,10 +31,13 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## buildings packed alone are 676 rows on page 1 and 202 on page 2: they share shelves with what
 ## was there. What page 1 has left against the 3584 budget is 591 rows on the cross-faction page,
 ## 706 on the Derrick League mirror and 674 on the Lumen Accord mirror.
-const TODAY_CROSS: int = 2993  ## P236: 2659 + 334 (two hulls, two lifts, two patches).
-const TODAY_MIRROR_DERRICK: int = 2878  ## P236: 2542 + 336 (the Skyrig, once per player).
-## P236: 2650 + 260 (the Zenith, its lift and patch, once per player).
-const TODAY_MIRROR_LUMEN: int = 2910
+## P202 (ADR 0034) dropped the 16 `dmg1` frames: page 1 went from 2993, 2878 and 2910 to the pins
+## below (-141, -102 and -128 rows); page 2 is unchanged. What page 1 has left is now 732 rows on
+## the cross-faction page, 808 on the Derrick League mirror and 802 on the Lumen Accord mirror.
+const TODAY_CROSS: int = 2852  ## P202: 2993 - 141 (P236: 2659 + 334, two hulls, lifts, patches).
+const TODAY_MIRROR_DERRICK: int = 2776  ## P202: 2878 - 102 (P236: 2542 + 336, the Skyrig).
+## P202: 2910 - 128 (P236: 2650 + 260, the Zenith, its lift and patch, once per player).
+const TODAY_MIRROR_LUMEN: int = 2782
 ## Page 2 (shadows only): no key colour in a shadow, so one slot for both players, and each shadow
 ## fits the free width of shelf 1; only the trailing shelf grows.
 const TODAY2_CROSS: int = 1116  ## P236: 1040 + 76 (the Zenith's shadow opens a taller shelf 2).
