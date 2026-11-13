@@ -447,6 +447,7 @@ func _own_files() -> Array[String]:
 				"fossil_airfield",
 				"fossil_fighter",
 				"fossil_bomber",
+				"fossil_engineering",
 				"fossil_transport",
 				"fossil_drone",
 			]

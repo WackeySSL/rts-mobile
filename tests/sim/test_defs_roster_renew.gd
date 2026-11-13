@@ -511,6 +511,7 @@ func _own_files() -> Array[String]:
 				"renew_airfield",
 				"renew_fighter",
 				"renew_bomber",
+				"renew_engineering",
 				"renew_transport",
 				"renew_drone",
 			]

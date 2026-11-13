@@ -14,7 +14,7 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
 ## Files with no roster entry yet: the anti-air buildings (P239b), the airfields (P245b) and the
-## fighters and bombers (P245). Each row removes its own names.
+## fighters and bombers (P245) and the engineering centres (P249). Each row removes its own names.
 const AIR_UNLISTED: Array[String] = [
 	"fossil_aa",
 	"renew_aa",
@@ -24,6 +24,8 @@ const AIR_UNLISTED: Array[String] = [
 	"renew_fighter",
 	"fossil_bomber",
 	"renew_bomber",
+	"fossil_engineering",
+	"renew_engineering",
 	# The transports and drone squads (P266).
 	"fossil_transport",
 	"renew_transport",
