@@ -159,7 +159,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | --- | --- | --- | --- | --- |
 | P285 | GD | Defs: `mine_weapon`, `mine_cost`, `mine_aware`, `detect_milli`, `carry_eject_percent`, `WeaponDef.blast_milli`, the mine rules (`mine_cap` 0 by default); type tables; data tests; state-hash-neutral | 100 | P270b, P231 |
 | P286 | GD + QA | The ground layout: the mine table, `next_mine_id`, the records, section `mines`, sparse `mine_at`; the `stance` row column; `STATE_FORMAT` stays 7; the sanitizer's format-7 cases regenerated; one re-pin of every golden and `TICK_0_SEED_1` (exception 25) | 190 | P285, P262; P246a (2026-11-13, P26bv) |
-| P287a | GD | (2026-11-13, P26bw) Added by the lead: a pure-move split of `World.gd` (993 -> 678 lines); the shape lists move to `game/sim/WorldShape.gd`. No behaviour, list, hash or name change; no re-pin. It merges before P287 and P298 | 0 (move) | P286 |
+| P287a | GD | (2026-11-13, P26bw; added by the lead) A pure-move split of `World.gd` (993 -> 678 lines); the shape lists move to `game/sim/WorldShape.gd`. No behaviour, list, hash or name change; no re-pin. It merges before P287 and P298 | 0 (move) | P286 |
 | P287 | GD | `Mines.gd` 1: `LAY_MINE` 8 (Formation slots, `carry_mode` 2, every order-giving Command zeroes `carry_mode`), lay on the layer's own cell in ECONOMY with every check again at the lay tick, cost and cap, arm; mark, blast (`Strike._land`'s formula) and compact in the FIRE mark; no friendly damage, air passes, rupture clears, a placed building removes; `MINE_CHECKS`, `MINES_REFUSED` | 300 | P286; P287a (2026-11-13, P26bw) |
 | P288 | GD | `MineMemory.gd` (forget; remember by detectors x mines on the fog turn, counted), sweeping (`carry_mode` 3), `PlayerView.own_mines`/`known_mines`, the snapshot's own and known lists | 250 | P287 |
 | P289 | GD | (2026-11-09, merge order 5: after ADR 0036's `Carry.gd`) `Carry` eject: `carry_eject_percent` in `Carry.board`'s place in REMOVE (ring search, hp, `UNLOADED`, no-room deaths and losses); the ground-carrier data checks | 100 | P263b, P285 |
@@ -183,8 +183,9 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
   P289.
 - **T (TUX):** P272 -> P282 -> P281; then P293 -> P294 -> P299. (2026-11-12, P26br) P272b
   beside P272 (no shared file); it merges first.
-- **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order. (2026-11-13, P26bw) They also wait
-  for the atlas trim (P306), and the forecast takes them after P249 (the air plan's "Levers").
+- **A (ART):** P273 at once; P279, P280, P291, P292 after P237, in any order. (2026-11-13, P26bw)
+  They also wait for the atlas trim (P306), and the forecast takes them after P249 (the air plan's
+  "Levers").
 - **I (AI):** P274; P283; P295, P295b and P300.
 - **Critical paths.** Wave 1: P270b -> P271 -> P272 -> P275 (2026-11-12, P26bq: P271b beside
   P272, before P272's phone step and P275). Wave 2: P276 -> P277 -> P278 ->
@@ -206,6 +207,9 @@ then P286), `world_access.h` (P232, then P298), `Targeting.gd` (P238, then P298)
 `EffectsLayer.gd` and `BuildingCollapse.gd` (P265 and P272, since 2026-11-12 P272b: the first makes the flag a match),
 `CommandBar.gd` (P244, P265, P272, P282, P294, P299), `PlayerView.gd`. The lead keeps one open
 row per file. The order is in "Merge order of the shared rows" below (2026-11-09).
+(2026-11-13, P26bw) Also shared: `World.gd` (P287a, then P287 and P298); `PlayerView.gd` (P302
+and P288, P298; a field they add is a copy, ADR 0038 §4); `MatchSnapshot.gd` (P303 and P288);
+`tools/artgen/**` (P305 before P279, P280, P291 and P292).
 
 ## Acceptance per row (short)
 - **P271:** ADR 0037 §3 and §4 cases pass; the state hash of the perf arena and `TICK_0_SEED_1`
@@ -353,8 +357,8 @@ Note (2026-11-13, P26bv, the lead; from merge wave 5):
 - **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13). The Phase 4 plan's P26bv note has the
   details.
 
-Note (2026-11-13, P26bw, the lead): the air plan's P26bw note has wave 7, the cards and Michael's two
-lever decisions (ADR 0038, and ADR 0036 §15's P26bw note). For this plan:
+Note (2026-11-13, P26bw, the lead): the air plan's P26bw note has wave 7, the cards and Michael's
+two lever decisions (ADR 0038, and ADR 0036 §15's P26bw note). For this plan:
 - **P287a** is a new row in the wave-3 table (added by the lead): a pure-move split of `World.gd`
   (993 -> 678 lines; the shape lists go to `WorldShape.gd`). P287 and P298 wait for it.
 - **The art rows P279, P280, P291 and P292** wait for the atlas trim (the air plan's P306). The
@@ -362,4 +366,4 @@ lever decisions (ADR 0038, and ADR 0036 §15's P26bw note). For this plan:
   on the mirrors), under the 3,584 budget; without it, page 1 would pass 3,840 at P280.
 - **P283, P295, P295b and P300** run on ADR 0038's AI thread once P301-P303 have merged; they need
   no change for it. A field they add to `OpponentDef` or `AiDifficultyDef` is also set in
-  `perf_ai_4b`'s frozen copies (ADR 0038 §7).
+  `perf_ai_4b`'s AI def copies in `data/dev/arena/ai_4b/` (ADR 0038 §7).

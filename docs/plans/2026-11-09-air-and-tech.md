@@ -25,7 +25,8 @@ Note (2026-11-09, after fix 1): Michael said "ja til touch-teksten". The draft a
   - P220-P229 stay unused as a buffer for the polish plan;
   - P257-P261 are kept for 1.1 splits and P269 for 1.2's.
 - **Named exceptions.** 22 is P189b's. P232 takes **23** and P262 takes **24**. The ground plan's
-  P286 takes **25** (2026-11-09, P230).
+  P286 takes **25** (2026-11-09, P230). (2026-11-13, P26bw) P301 takes **26** (ADR 0038 §8); the
+  next free one is 27.
 - **Ground design.** It meets this plan at ADR 0036 §7: Command types `LOAD = 5`, `UNLOAD = 6` and
   `REPAIR = 7`, the repair role and the carrier role. The lead reconciles the numbers before either
   ADR is accepted. Whichever release comes first builds `Carry.gd`.
@@ -183,7 +184,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P237 | ART | Atlas page probe and split: page 2 for unsorted layers (AirLayer, air shadows, DecalLayer, building shadows); measures rows, bake ms and texture memory; options a/b/c of ADR 0036 §15 to the lead; page pins. Coordinate with polish rows P202-P204 | 250 | P230 (may start at once) |
 | P238 | GD | Target layers: TARGETING twin and kernel (reading `weapon_targets` and `type_layer_bit` as P232 declared them; acquisition and ATTACK lock), `_apply_attack`, `Combat.fire` guard, rupture skips air; masks on rocket (7), rifle (5) and Redoubt (5) weapons; lockstep cases. Split trigger: the lockstep test as P238b if over ~1,000 changed lines | 200 (C++ ~120) | P232 |
 | P239 | GD | Anti-air data, both factions (building, weapon mask 6, requires Barracks); HOW_TO_PLAY Combat rows. (2026-11-13, P26bv) Data only: the rosters, the item cards and the HOW_TO_PLAY Combat rows move to P239b | 80 | P238, P230 |
-| P239b | ART + GD (2026-11-13, P26bv) | Anti-air models, both factions (turret head, 16 directions). (2026-11-13, P26bv) Also the roster entries and item cards, the HOW_TO_PLAY Combat rows, `test_defs_anti_air`'s flipped "not in rosters" assertion and the removed skips. (2026-11-13, P26bw) It may land before or beside the trim rows P305 and P306; landed before P305, its sheets are regenerated once after P305 | art | P237 |
+| P239b | ART + GD (2026-11-13, P26bv) | Anti-air models, both factions (turret head, 16 directions). (2026-11-13, P26bv) Also the roster entries and item cards, the HOW_TO_PLAY Combat rows, `test_defs_anti_air`'s flipped "not in rosters" assertion and the removed skips. (2026-11-13, P26bw) It may land before or beside the trim rows P305 and P306; if it lands first, P305's regeneration covers its sheets | art | P237 |
 | P240 | GD | Air movement: SEPARATION same-layer test (twin and kernel, reading P232's `type_layer_bit`), INTEGRATE and FLOW lockstep cases with aircraft, `ProductionSpawn` spawn over a pad, `Buildings` ground planes only (checked) | 200 (C++ ~40) | P232 |
 | P241 | GD | Airfield rules: the FLIGHT cap at QUEUE, spawn over a pad, home and re-home, `air_rows`, ammo in `Combat.fire`, `Air.run` return and reload. Split trigger (over ~400): P241c takes `Air.run`'s return and reload | 350 | P238, P240; P232c (2026-11-12, P26br) |
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
@@ -196,7 +197,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P246a | GD | (2026-11-13, P26bv; added by the lead) `World.gd` split: function bodies move to the `World*` helpers behind one-line delegates; no behaviour, list, hash or name change | 0 (move) | - |
 | P247 | GD | Engineering centre data and four UpgradeDefs (per question 5); HOW_TO_PLAY Build menu rows. (2026-11-13, P26bw) Data only, the P239 pattern: the roster entries, the item cards, `FactionDef.upgrades` and the HOW_TO_PLAY Build menu rows move to P249. Starting values (the lead, from P247's review): the GDD's note of this date | 100 | P246, P230; P242 (2026-11-13, P26bw) |
 | P248 | TUX | Research tab: cards, the researched mark, a locked card's sash (ADR 0032); six sizes. (2026-11-13, P26bw) The research card must fit the upgrade names: "Heavy Bombs" measures 86.8-90.3 dp and "Focus Bombs" 85.3-88.6 dp at `web_phone`, `web_phone_small` and `android_6in`, over the sidebar caption's 83.4-83.8 dp. P248 owns their width test and gives the card a wider caption or two lines | 200 | P247 |
-| P249 | ART | Engineering centre models, both factions. (2026-11-13, P26bw) Also, from P247: the roster entries, the item cards, `FactionDef.upgrades` and the HOW_TO_PLAY Build menu rows. `FactionDef.upgrades` is filled only after P248 (the Research tab) has merged, or research tiles would show without their cards | art | P237; (2026-11-13, P26bw) P247, P248, and the trim rows P305 and P306 |
+| P249 | ART | Engineering centre models, both factions. (2026-11-13, P26bw) Also, from P247: the roster entries, the item cards, `FactionDef.upgrades` and the HOW_TO_PLAY Build menu rows. `FactionDef.upgrades` is filled only after P248 (the Research tab) has merged, or research tiles would show without their cards | art | P237; P247, P248, P305, P306 (2026-11-13, P26bw) |
 | P250 | AI | Production and Intel: build-order tiers (airfield, anti-air per seen aircraft, engineering centre, space centre on Normal and Hard), the air mix, research choice; counts of seen air and anti-air; layer-aware counter choices (`AiProduction.gd:302`, `AiArmy.gd:701`: `weapon_targets` against `type_layer_bit`). Split trigger (over ~400): P250b takes Intel's counts | 350 | P234, P239, P242, P247; P239b (2026-11-13, P26bv); P245, P245b, P249 (2026-11-13, P26bw): the rosters come with the art rows |
 | P251 | AI | Army: bomber raids (`raid_size`, the target by value and anti-air), fighters guard and escort, REPAIR below `air_retreat_percent`. Split trigger (over ~400): P251b takes the fighters | 350 | P250; P301, P302, P303 (2026-11-13, P26bw): ADR 0038's AI thread first |
 | P252 | AI | Strikes (as amended 2026-11-09, P230, answers 3 B and 4 A): Normal and Hard fire the sweep as soon as it is charged (no `reveal_blind_ticks`); while an enemy's `reveal_state` is 1, move the staging point by one step and make a seen or ghost enemy space centre the first target of bomber raids and of the AI's own blackout; Easy builds none of the tech | 200 | P234, P250 |
@@ -225,13 +226,13 @@ free against the plans, `git log --all` and the remote branches. Exception 26 is
 
 | Row | Owner | What | Size | Depends |
 | --- | --- | --- | --- | --- |
-| P301 | GD + QA | ADR 0038 §1 in `SYNC`: the job collects the batch made from tick T-1 after the human's Commands, builds the due views before the step, thinks inline and keeps the batch for T+1; a batch collected after the end is dropped unsent; `AiDriver` gains the two halves (views, thinks) and keeps `think_all` as the lag-0 composition for the `tests/ai` rigs; a pure batch holder in `game/core`. `TickJob`, `MatchRunner` (`SYNC`), `tests/smoke/smoke_run.gd` and `tests/perf/support/ai_perf_run.gd` move onto the path. ADR 0038 §6's drop bound (1 % of a match's `commands`) in the smoke and the summary's gate check; the stale drops measured on the smoke seeds and P188's matches go in the PR. One re-pin, **exception 26** (ADR 0038 §8's list); `golden_hex`, `bases_golden_hex` and `TICK_0_SEED_1` are asserted unchanged. A `tests/core` case for the order of a human and an AI Command in one step. Then the lead's balance run on `main` (ADR 0038 §8) | 160 | ADR 0038 (this docs PR) |
+| P301 | GD + QA | ADR 0038 §1 in `SYNC`: one pure lagged tick in `AiDriver` (collect the batch made from tick T-1 after the human's Commands, build the due views before the step, think inline, keep the batch for T+1), which `TickJob.run` in `SYNC`, `tests/smoke/smoke_run.gd`, `tests/perf/support/ai_perf_run.gd` and `test_match_runner_ai.gd`'s headless loop call before `MatchLoop.step`; a batch collected after the end is dropped unsent; `MatchRunner.start()` drops a pending batch, with the restart test (ADR 0038 §1); `think_all` stays the lag-0 composition for the `tests/ai` rigs; a pure batch holder in `game/core`. ADR 0038 §6's bound (`dropped_commands > STALE_DROP_PERCENT * C / 100`, one constant in `smoke_run.gd`) in the smoke and the summary's gate check; fixed-seed suites pin their exact drops; the stale drops measured on the smoke seeds and P188's matches, Hard included, go in the PR (above half the bound: stop and report). The stamp comments (`row_ready_tick`, `AiStrikes.gd:128-130`). One re-pin, **exception 26**, closed to ADR 0038 §8's list; `golden_hex`, `bases_golden_hex` and `TICK_0_SEED_1` are asserted unchanged. A `tests/core` case for the order of a human and an AI Command in one step. Then the lead's balance run on `main` (ADR 0038 §8) | 160 | ADR 0038 (this docs PR) |
 | P302 | GD | ADR 0038 §4: `PlayerView` holds no World array. Every array is a `duplicate()` made in `PlayerView.of`, including the placement input through a copying builder beside `PlacementInput.of_world` (whose aliases stay for `Production`). The alias test: a write to every source array after `of()` changes no answer of the view. Hash-neutral, no pin moves. `PlayerView` stays within gdlint's 20 public methods (the P26bt note) | 110 | P301 |
-| P303 | GD + QA | ADR 0038 §2, §3 and §7: the AI thread in `MatchRunner` (`WORKER` only: `ai_work`/`ai_done`, joined at `stop()` and `PREDELETE` after the sim worker, `wait_idle()` waits for the batch, fallback to `SYNC`); `MatchSnapshot.ai_wait_usec`; the card's AI line gains `ai_wait_p95_ms`, `ai_wait_max_ms` and `ai_waits` (report-only; the pin test re-made). Tests: `SYNC` = `WORKER` on one seed for at least 900 ticks (equal Command logs and checkpoint hashes), a forced-wait case with a slow test controller, no `WARNING` at stop; a thread test, so 3 runs in a row before the push. Phone: Michael's card after the merge reads `ai_wait`, `work_p95_ms` (main) and `sim_p95_ms`; contention (ADR 0038 §2) shows there | 180 | P301, P302 |
-| P304 | QA | ADR 0038 §7: `perf_ai_4b`, the base arena's layout on frozen copies of the Phase 4b defs in `data/dev/arena/` (aircraft, airfields, anti-air, the engineering centre and the space centre, transports and drone squads; `perf_air`'s frozen unit defs where both need a type), each side's rows at tick 0, frozen copies of the shipped AI defs and the field-parity test; the Perf AI route and the card's arena choice; a printed hash, no golden pair. From its merge the per-wave Perf AI card runs on `perf_ai_4b` | 60 (+.tres) | P303, P242, P247, P264, P253 |
+| P303 | GD + QA (TUX reviews the card lines) | ADR 0038 §2, §3 and §7: the AI thread in `MatchRunner` (`WORKER` only: `ai_work`/`ai_done`, joined at `stop()` and `PREDELETE` after the sim worker, `wait_idle()` waits for the job, then the batch, and whoever takes `ai_done` first marks the batch done; the thinks inline on a failed start); `MatchSnapshot.ai_wait_usec`; the card's AI line gains `ai_wait_p95_ms`, `ai_wait_max_ms` and `ai_waits` (report-only; the pin test re-made). Tests: `SYNC` = `WORKER` on one seed for at least 900 ticks (equal Command logs and checkpoint hashes), a forced-wait case with a slow test controller, no `WARNING` at stop; a thread test, so 3 runs in a row before the push. Phone: Michael's card after the merge reads `ai_wait`, `work_p95_ms` (main) and `sim_p95_ms`; contention (ADR 0038 §2) shows there | 180 | P301, P302 |
+| P304 | QA (TUX reviews the route lines) | ADR 0038 §7: `perf_ai_4b`, the base arena's layout on frozen copies of the Phase 4b unit defs in `data/dev/arena/` (aircraft, airfields, anti-air, the engineering centre and the space centre, transports and drone squads; `perf_air`'s frozen unit defs where both need a type), each side's rows at tick 0; its AI defs are copies of `perf_ai`'s frozen AI defs (P189b's early scout and wave) in their own folder `data/dev/arena/ai_4b/`, with the field-name parity test against the shipped defs (`data/dev/arena/ai/` and `test_frozen_ai_defs.gd` stay as they are); the Perf AI route (`DevRoutes.gd`, `perf_arena.gd`, `tests/ui/test_perf_ai.gd`) and the card's arena choice; a printed hash, no golden pair. From its merge the per-wave Perf AI card runs on `perf_ai_4b`. It need not block P251, a deviation from the memo (ADR 0038 §8): until it merges, P251's cost shows only in `ai_wait` | 60 (+.tres) | P303, P242, P247, P264, P253 |
 | P304b | QA | `perf_ai_4b` gains the ground carriers and the minelayers (frozen copies of P290's defs) | 20 (+.tres) | P304, P290 |
 | P305 | ART | Atlas trim, part 1 (ADR 0036 §15's P26bw note): `tools/artgen/` writes, for every directional frame (vehicles, infantry, turret heads), its tight drawn box (the alpha bounds plus 1 px) into the sheet's `IsoSheetDef`, beside the untrimmed cell. The frames and the atlas are unchanged, so no page pin moves. All sheets are regenerated once; the art lanes in flight regenerate once after it merges | 100 (+ sheets) | - (may start now) |
-| P306 | ART | Atlas trim, part 2: `IsoAtlas`/`RuntimeAtlas` pack only each directional frame's box from P305 and keep a per-frame offset; `WorldSort.dress` and `show_base`, `SquadPoses`, the turret head sprites and the gallery place each sprite by that offset. Buildings, their damage cuts and page 2 stay as they are. The headless "no jump on turn" test: for every directional frame of every sheet, the drawn box on screen equals the box the untrimmed frame showed. `TODAY_*` in `test_iso_atlas_budget.gd` re-pinned (about -686 / -649 / -715 rows on the cross page and the Derrick and Lumen mirrors); `TODAY2_*` unchanged. Split trigger (over ~400): P306b takes `SquadPoses` and the gallery | 220 | P305 |
+| P306 | ART | Atlas trim, part 2: `IsoAtlas`/`RuntimeAtlas` pack only each directional frame's box from P305 and keep a per-frame offset; every site that places a directional frame by its part's `origin` or writes its region alone uses the frame's offset: `WorldSort.dress` (:174) and `show_base`, `RigLife.Pose.offsets` (`SquadPoses`), the turret heads with `BuildingLayer`'s sweep and kick, `GhostLayer`'s head, and the gallery; `texels_per_px` keeps the untrimmed `frame_size` (`WorldSort.gd:181`, `RigLife.gd:166`). Buildings, their damage cuts and page 2 stay as they are. The headless "no jump" test: for every directional frame of every sheet, the drawn box on screen equals the box the untrimmed frame showed, on a turn, a pose change (hull, walk, idle) and a sweep step. `TODAY_*` in `test_iso_atlas_budget.gd` re-pinned (about -686 / -649 / -715 rows on the cross page and the Derrick and Lumen mirrors); `TODAY2_*` unchanged. Split trigger (over ~400): P306b takes `SquadPoses` and the gallery | 220 | P305 |
 
 **The order of the art rows (the memo, 2026-11-13).**
 1. P239b now. It fits as it is (page 1 at 3,040 cross, 2,902 and 3,008 on the mirrors).
@@ -247,24 +248,29 @@ If P245b or P249 costs more than the space centre did (334 rows a pair), the 3,8
 - **S (GD):** P231 -> P232, then P233 and P238 and P240 in parallel (separate files; P238 and
   P240 touch different kernels). Then P241 -> P241b -> P246. (2026-11-12, P26br) P232c after
   P232 and before P241, alone on `World.gd` while it is open.
-- **D (GD data):** P234 after P233, P239 after P238, P242 after P241b, P247 after P246.
+- **D (GD data):** P234 after P233, P239 after P238, P242 after P241b, P247 after P246. P247 and
+  P264 after P242 (2026-11-13, P26bw).
 - **V (GD view):** P243 after P237 and P242.
 - **T (TUX):** P235 -> P244 -> P248.
 - **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order. (2026-11-12, P26br)
   P245 after P243; P202 (visual polish) before the next of P239b, P245b and P249.
 - **I (AI):** P250 -> P251 and P252.
 - **Q:** P253 and P254, then the lead's P255 and P256.
-- **L (2026-11-13, P26bw; ADR 0038):** P301 -> P302 -> P303, all before P251; P250 and P252 may
-  start now (P301-P303 touch `game/core`, `AiDriver` and `PlayerView`, not the managers). P304
-  once its data rows have merged, P304b after P290.
+- **L (2026-11-13, P26bw; ADR 0038):** P301 -> P302 -> P303, all before P251. They touch
+  `game/core`, `AiDriver` and `PlayerView`, not the managers, so P250 and P252 do not wait for
+  them. P304 once its data rows have merged, P304b after P290.
 - **A, the trim (2026-11-13, P26bw):** P305 -> P306, beside P239b and P245b, both before P249. The
   order of all art rows is in "Levers" above.
 - **Critical path for 1.1** (to the last row before the gate; 2026-11-12, P26bq: P271 merges
   before P232): P230 -> P231 -> P232 -> P238 ->
   P241, then two branches of equal length, P241b -> P242 and P246 -> P247, then P250 -> P251 ->
   P255. That is 10 rows on the path plus the tuning rounds.
-  - P254 runs beside P250 and P251 (it needs P242 and P247).
+  - P254 runs beside P250 and P251 (it needs P242 and P247; from 2026-11-13, P26bw, also P245,
+    P245b and P249).
   - P250 also waits for P234 and P239, which are off the path.
+  - (2026-11-13, P26bw) P250 now also waits for P245, P245b and P249 (the rosters). P249 waits for
+    P248 and P305 -> P306, and P251 for P301 -> P303. The lead re-reads the path when wave 8
+    merges.
 
 ## Phone checks (Michael's phone, the lead's PerfCard)
 1. **Satellite:** the sweep fades out and back in, sideways and upright, and the warning shows on
@@ -691,8 +697,9 @@ of the same day):
   number changes here; P255's run, or P267 when it builds the raid, takes it up.
 - **Michael's two decisions (2026-11-13), on the architect's lever memo:**
   - **AI: option 3.** The AI thinks on its own thread, and its Commands land at T+1. ADR 0038
-    (accepted) supersedes ADR 0020 §3's "think inside the tick job". Rows P301-P304 and P304b are in
-    "Levers" above: P301-P303 merge before P251, and P250 and P252 may start now.
+    (accepted) supersedes ADR 0020 §3's "think inside the tick job". Rows P301-P304 and P304b are
+    in "Levers" above: P301-P303 merge before P251; they touch `game/core`, `AiDriver` and
+    `PlayerView`, not the managers, so P250 and P252 do not wait for them.
   - **Atlas: option c1.** The directional frames lose their empty margins. ADR 0036 §15 has the
     P26bw note, and rows P305 and P306 are in "Levers" above. They merge before P249; P239b and
     P245b may land before or beside them. The art lanes in flight regenerate once after P305.
