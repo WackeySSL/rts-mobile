@@ -49,14 +49,16 @@ func test_an_idle_unit_takes_only_a_row_on_a_layer_its_weapon_hits(
 
 
 ## The masks the ADR starts with, as the shipped data holds them: the rocket 7, the rifle 5, the
-## Redoubt 5 and every other weapon file in data/weapons ground (a new file fails until it is
-## listed here with its mask).
+## Redoubt 5, the two anti-air guns 6 and every other weapon file in data/weapons ground (a new
+## file fails until it is listed here with its mask).
 func test_the_shipped_weapon_masks_are_the_adr_starting_masks() -> void:
 	var masks: Dictionary[String, int] = {
 		"rocket": 7,
 		"breaker_rocket": 7,
 		"rifle": 5,
 		"redoubt_gun": 5,
+		"burst_stack_gun": 6,
+		"sky_needle_gun": 6,
 	}
 	var files: PackedStringArray = DirAccess.get_files_at("res://data/weapons")
 	var seen: int = 0

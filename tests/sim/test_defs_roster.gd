@@ -202,9 +202,10 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 		assert_array(_weapon_row(id)).override_failure_message(id).is_equal(weapons[id])
 	# Every weapon file is one of the seven here, the Lumen Accord's own two (breaker_rocket and
 	# arcline_gun, test_defs_roster_renew) or the Deep Bore's rupture (fossil_rupture, P110d: no
-	# gun, test_defs_strike_data), each used by the unit or building that names it.
+	# gun, test_defs_strike_data) or the two anti-air guns (P239, test_defs_anti_air, held by
+	# BuildingDefs that have no roster entry until P239b), each used by what names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(10)
+	assert_int(files.size()).is_equal(12)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -431,9 +432,12 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
+## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if path.get_file().get_basename() == "fossil_aa":
+			continue
 		if (load(path) as UnitDef).faction == FACTION:
 			found.append(path)
 	return found

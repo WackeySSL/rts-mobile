@@ -440,9 +440,12 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
+## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if path.get_file().get_basename() in ["fossil_aa", "renew_aa"]:
+			continue
 		units.append(load(path))
 	return units
 

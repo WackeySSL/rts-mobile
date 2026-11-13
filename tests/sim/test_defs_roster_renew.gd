@@ -499,9 +499,12 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
+## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		if path.get_file().get_basename() == "renew_aa":
+			continue
 		if (load(path) as UnitDef).faction == FACTION:
 			found.append(path)
 	return found

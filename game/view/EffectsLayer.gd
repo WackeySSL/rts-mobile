@@ -112,6 +112,8 @@ const RUPTURE_LIFT: float = 0.25
 	&"breaker_rocket": 24.0,
 	&"redoubt_gun": 24.0,
 	&"arcline_gun": 24.0,
+	&"burst_stack_gun": 24.0,
+	&"sky_needle_gun": 24.0,
 }
 @export var muzzle_px: Dictionary[StringName, float] = {
 	&"tank_cannon": 31.0,
@@ -123,6 +125,8 @@ const RUPTURE_LIFT: float = 0.25
 	&"breaker_rocket": 13.0,
 	&"redoubt_gun": 13.0,
 	&"arcline_gun": 13.0,
+	&"burst_stack_gun": 13.0,
+	&"sky_needle_gun": 13.0,
 }
 @export var puff_px: Dictionary[StringName, float] = {
 	&"tank_cannon": 40.0,
@@ -133,6 +137,8 @@ const RUPTURE_LIFT: float = 0.25
 	&"breaker_rocket": 56.0,
 	&"redoubt_gun": 40.0,
 	&"arcline_gun": 40.0,
+	&"burst_stack_gun": 40.0,
+	&"sky_needle_gun": 40.0,
 }
 
 ## The frame clock in ms that effects are born and expire by. Tests replace it.
