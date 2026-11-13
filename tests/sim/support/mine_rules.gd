@@ -52,6 +52,8 @@ static func mine_problems(file: String, unit: UnitDef) -> PackedStringArray:
 		unit.carry_eject_percent < 0 or unit.carry_eject_percent > MAX_PERCENT,
 		"carry_eject_percent needs carry_slots":
 		unit.carry_eject_percent != 0 and unit.carry_slots < 1,
+		"carry_eject_percent on an aircraft":
+		unit.carry_eject_percent != 0 and unit.move_class == World.MoveClass.AIR,
 		"a mine weapon has no blast": layer and unit.mine_weapon.blast_milli < 1,
 		"a mine weapon is also the gun": layer and unit.mine_weapon == unit.weapon,
 	}
