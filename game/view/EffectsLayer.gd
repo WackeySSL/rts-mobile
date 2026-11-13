@@ -151,10 +151,6 @@ const RUPTURE_LIFT: float = 0.25
 	&"arcline_gun": 40.0,
 	&"burst_stack_gun": 40.0,
 	&"sky_needle_gun": 40.0,
-	&"torchjet_gun": 40.0,
-	&"glint_gun": 40.0,
-	&"drillhead_bombs": 40.0,
-	&"sunfall_bombs": 40.0,
 }
 
 ## The frame clock in ms that effects are born and expire by. Tests replace it.

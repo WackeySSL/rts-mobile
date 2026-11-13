@@ -317,8 +317,7 @@ func test_every_weapon_file_reaches_the_ring_corner_of_a_three_by_three_building
 	assert_int(files.size()).is_greater_equal(3)
 	var strikes: Dictionary[String, bool] = _strike_weapon_files()
 	assert_int(strikes.size()).is_greater_equal(1)
-	# A mine weapon is no gun either: range 0, it blasts where it lies (test_defs_data_mine). Nor
-	# is an aircraft's: it hovers over its target, so the bomber keeps the GDD's 2.5 tiles (P242).
+	# A mine weapon is no gun either: range 0, it blasts where it lies (test_defs_data_mine).
 	strikes.merge(_mine_weapon_files())
 	for path: String in files:
 		if strikes.has(path):
@@ -662,16 +661,13 @@ func _strike_weapon_files() -> Dictionary[String, bool]:
 	return found
 
 
-## The paths of the weapon files that a unit lays as a mine (UnitDef.mine_weapon), and of those an
-## AIR type fires.
+## The paths of the weapon files that a unit lays as a mine (UnitDef.mine_weapon).
 func _mine_weapon_files() -> Dictionary[String, bool]:
 	var found: Dictionary[String, bool] = {}
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		var unit: UnitDef = load(path)
 		if unit.mine_weapon != null:
 			found[unit.mine_weapon.resource_path] = true
-		if unit.move_class == World.MoveClass.AIR and unit.weapon != null:
-			found[unit.weapon.resource_path] = true
 	return found
 
 

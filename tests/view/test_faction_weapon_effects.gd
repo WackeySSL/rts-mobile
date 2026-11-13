@@ -33,10 +33,10 @@ const ROWS: Dictionary[StringName, Vector3] = {
 	&"sky_needle_gun": Vector3(24.0, 13.0, 40.0),
 	&"hoist_crew_gun": Vector3(16.0, 13.0, 0.0),
 	&"kite_crew_gun": Vector3(16.0, 13.0, 0.0),
-	&"torchjet_gun": Vector3(24.0, 13.0, 40.0),
-	&"glint_gun": Vector3(24.0, 13.0, 40.0),
-	&"drillhead_bombs": Vector3(24.0, 13.0, 40.0),
-	&"sunfall_bombs": Vector3(24.0, 13.0, 40.0),
+	&"torchjet_gun": Vector3(24.0, 13.0, 0.0),
+	&"glint_gun": Vector3(24.0, 13.0, 0.0),
+	&"drillhead_bombs": Vector3(24.0, 13.0, 0.0),
+	&"sunfall_bombs": Vector3(24.0, 13.0, 0.0),
 }
 const FACTION_WEAPONS: Array[StringName] = [&"breaker_rocket", &"redoubt_gun", &"arcline_gun"]
 
