@@ -137,6 +137,7 @@ func test_rules_file_holds_the_42_starting_ints_and_the_defaults_equal_the_froze
 		# Carriers (ADR 0036 section 3, P262): the table holds the 2 x unit_cap squads at most.
 		"passenger_cap": 150,
 		"load_reach_milli": 3000,
+		"unload_reach_tiles": 2,
 		# Mines (ADR 0037 section 8): the starting values, inert until a type lays one (P285).
 		"mine_cap": 12,
 		"mine_lay_ticks": 22,
@@ -282,6 +283,7 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["harvest_reach_milli", [0], [-1], "a reach is negative"],
 		["dock_reach_milli", [0], [-1], "a reach is negative"],
 		["load_reach_milli", [0, 3000], [-1], "a reach is negative"],
+		["unload_reach_tiles", [0, 2], [-1], "a reach is negative"],
 		["harvest_pick_milli", [0], [-1], "a reach is negative"],
 		["build_reach_tiles", [0], [-1], "a reach is negative"],
 		["unit_cap", [0, 88], [89], fit],
@@ -835,6 +837,7 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 				< 0
 			)
 			or rules.load_reach_milli < 0
+			or rules.unload_reach_tiles < 0
 		),
 		"a cap is negative":
 		(

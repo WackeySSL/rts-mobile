@@ -11,9 +11,9 @@ const DIED_FLAG_AT: int = 6
 
 ## Rows, by id: 1, 2 and 3 rifle squads and 4 a tank of player 1 near the left edge, 5 the carrier
 ## of player 1 at the right, 6 a rifle squad of player 2. A 24 x 6 grass map, two players.
-static func world(reach: int = REACH, cap: int = 8) -> World:
+static func world(reach: int = REACH, cap: int = 8, rock: Array = []) -> World:
 	var world: World = GridWorld.from_rows(
-		GridWorld.grass(24, 6),
+		GridWorld.grass(24, 6, rock),
 		[World.MoveClass.FOOT, World.MoveClass.TRACKED, World.MoveClass.WHEELED]
 	)
 	world.player_count = 2
@@ -23,6 +23,7 @@ static func world(reach: int = REACH, cap: int = 8) -> World:
 	world.type_carry_classes[TRUCK] = 1
 	world.passenger_cap = cap
 	world.load_reach_milli = reach
+	world.unload_reach_tiles = 2
 	world.unit_cap = 75
 	WorldLoad.size_match_state(world)  # The per-player arrays and the passenger table.
 	world.add_unit(1, RIFLE, 2500, 2500)

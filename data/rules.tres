@@ -46,6 +46,7 @@ mend_period_ticks = 15
 mend_cost_percent = 30
 passenger_cap = 150
 load_reach_milli = 3000
+unload_reach_tiles = 2
 mine_cap = 12
 mine_lay_ticks = 22
 mine_arm_ticks = 15

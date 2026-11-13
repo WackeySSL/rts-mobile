@@ -17,7 +17,7 @@ enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2, AIR = 3 }
 enum Layer { GROUND = 1, AIR = 2, LOW_AIR = 4 }
 ## The kinds of `events` (ADR 0007 section 10). STRIKE (ADR 0027 section 7) is `[5, building id, x,
 ## y, Strike.Kind, owner, landing tick or 0, 0]`, written by an accepted SUPERWEAPON.
-enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4, STRIKE = 5 }
+enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4, STRIKE = 5, UNLOADED = 6 }
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
 ## The production tabs (ADR 0017 section 3, ADR 0036 section 2): a queue, a rally point and a
 ## buildable type's `tab`. FLIGHT is the airfield's and RESEARCH the engineering centre's.
@@ -349,6 +349,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mend_cost_percent",
 	&"passenger_cap",
 	&"load_reach_milli",
+	&"unload_reach_tiles",
 	&"mine_cap",
 	&"mine_lay_ticks",
 	&"mine_arm_ticks",
@@ -411,6 +412,7 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mend_cost_percent",
 	&"passenger_cap",
 	&"load_reach_milli",
+	&"unload_reach_tiles",
 	&"mine_cap",
 	&"mine_lay_ticks",
 	&"mine_arm_ticks",
@@ -512,10 +514,10 @@ var sell_refund_percent: int = 0
 var mend_hp: int = 0
 var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
-## The size of the passenger table (ADR 0036 section 3).
+## Carriers: the passenger table size, the boarding reach (milli-tiles), the unload radius (tiles).
 var passenger_cap: int = 0
-## How near a squad boards its carrier, in milli-tiles (`Carry.board`).
 var load_reach_milli: int = 0
+var unload_reach_tiles: int = 0
 ## Mines (ADR 0037 section 8): the per-player cap, the lay, arm and sweep ticks and the record cap.
 var mine_cap: int = 0
 var mine_lay_ticks: int = 0

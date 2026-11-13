@@ -64,6 +64,7 @@ const RULES: Dictionary[String, int] = {
 	"mend_cost_percent": 30,
 	"passenger_cap": 0,
 	"load_reach_milli": 0,
+	"unload_reach_tiles": 0,
 	"mine_cap": 0,
 	"mine_lay_ticks": 22,
 	"mine_arm_ticks": 15,
@@ -88,7 +89,7 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_array([World.TABS, World.GROUND_CLASSES, World.UPGRADES_MAX]).is_equal([5, 3, 30])
 	# STRIKE joined with P133 (ADR 0027 section 7, an ADR 0007 section 10 note): events are not state.
 	assert_dict(World.Event).is_equal(
-		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5}
+		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5, "UNLOADED": 6}
 	)
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
@@ -109,7 +110,7 @@ func test_a_hand_built_world_has_the_rule_defaults_and_the_default_stream() -> v
 	for info: Dictionary in defaults.get_property_list():
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
-	assert_int(fields.size()).is_equal(47)
+	assert_int(fields.size()).is_equal(48)
 	for field: String in fields:
 		assert_that(world.get(field)).override_failure_message(field).is_equal(defaults.get(field))
 	for field: String in RULES:
@@ -363,7 +364,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 		else:
 			others.append(column)
 	assert_int(packed.size()).is_equal(152)  # P285's 151 and P241's `air_rows`.
-	assert_int(ints.size()).is_equal(68)
+	assert_int(ints.size()).is_equal(69)
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
 	# objects and the bool `prepared`. The one non-state member, the kernels, is skipped by name, so

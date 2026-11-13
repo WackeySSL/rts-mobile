@@ -75,7 +75,7 @@ func test_the_rule_scalars_are_the_rules_def_ints() -> void:
 		if (int(info.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info.type == TYPE_INT:
 			rule_ints.append(StringName(info.name))
 	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
-	assert_int(rule_ints.size()).is_equal(47)
+	assert_int(rule_ints.size()).is_equal(48)
 
 
 ## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter
