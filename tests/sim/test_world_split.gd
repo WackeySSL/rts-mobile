@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## P70c, P246a: World.gd handed its hash code to WorldHash and its scenario loader to WorldLoad and
-## kept every public name as a wrapper. These cases pin that nothing moved with the code: each wrapper
-## returns what its helper returns for the same world, a world built through the wrapper is the
+## kept every public name as a wrapper. These cases pin that nothing moved with the code:
+## each wrapper returns what its helper returns for the same world, a world built through the wrapper is the
 ## world the loader builds, the map digest cache stays the World's own, and World.gd fits gdlint
 ## without the max-file-lines pragma. The hash values themselves are pinned where they always were
 ## (test_world_hash's TICK_0_SEED_1, test_world_v2_hash, tests/perf/test_golden_hashes.gd and
