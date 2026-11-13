@@ -6,7 +6,8 @@ extends RefCounted
 ## the Phase 3 economy and production commands, SUPERWEAPON (15) fires a strike building (ADR 0023
 ## section 10), CANCEL_BUILD (16) cancels a construction site (ADR 0026 section 6) and SURRENDER
 ## (20) is the first match-level one (ADR 0017 section 4); SELL (17) and MEND (18) are the building
-## sale and repair (ADR 0037 sections 3 and 4); 19 and 21-29 stay reserved. Every type without a
+## sale and repair (ADR 0037 sections 3 and 4) and LOAD (5) boards a carrier (ADR 0036 section 8);
+## 6-9, 19 and 21-29 stay reserved. Every type without a
 ## branch in Sim.step is dropped as unknown.
 
 enum Type {
@@ -15,6 +16,7 @@ enum Type {
 	MOVE = 2,
 	ATTACK = 3,
 	STOP = 4,
+	LOAD = 5,
 	PLACE = 10,
 	QUEUE = 11,
 	CANCEL = 12,
@@ -53,8 +55,8 @@ var unit_ids: PackedInt32Array = PackedInt32Array()
 var target_x: int = 0
 var target_y: int = 0
 ## The unit an ATTACK goes after, the production building a RALLY sets, the strike building a
-## SUPERWEAPON fires, the site a CANCEL_BUILD cancels or the building a SELL or MEND names, 0 =
-## none.
+## SUPERWEAPON fires, the site a CANCEL_BUILD cancels, the building a SELL or MEND names or the
+## carrier a LOAD boards, 0 = none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
 ## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, empty for every other type.
@@ -174,6 +176,15 @@ static func cancel_build(player_id: int, building_id: int) -> Command:
 static func sell(player_id: int, building_id: int) -> Command:
 	var command: Command = _of(Type.SELL, player_id, PackedInt32Array())
 	command.target_id = building_id
+	return command
+
+
+## Board the own carrier `carrier_id` (ADR 0036 section 8): the squads and the carrier meet at the
+## lowest-id squad's point and the squads climb in. The payload is empty.
+@warning_ignore("shadowed_variable")
+static func board(player_id: int, unit_ids: PackedInt32Array, carrier_id: int) -> Command:
+	var command: Command = _of(Type.LOAD, player_id, unit_ids)
+	command.target_id = carrier_id
 	return command
 
 

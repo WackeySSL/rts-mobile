@@ -6,9 +6,6 @@ extends RefCounted
 
 ## Where in a DIED record the flag is (the seventh int); `died_flag` says what it holds.
 const DIED_FLAG_AT: int = Production.DIED_CANCEL_FLAG_AT
-## The `build_left` of a row that boarded a carrier (ADR 0036 section 8, `Carry.BOARDED` from P262):
-## no loss, no wreck. Listed here until `Carry.gd` exists.
-const BOARDED: int = -2
 ## The flags `died_flag` gives (the seventh int of a DIED record); view readers compare with these.
 const FLAG_CANCELLED: int = 1
 const FLAG_BOARDED: int = 2
@@ -16,13 +13,13 @@ const FLAG_SOLD: int = 3
 
 
 ## The DIED flag of a row whose `build_left` is `pending` (ADR 0037 section 2):
-## `Production.CANCELLED` (-1) gives 1, `BOARDED` (-2) gives 2, `Production.SOLD` (-3) gives 3 and
-## anything else 0. A reader compares the flag with the value it means, never with `!= 0`.
+## `Production.CANCELLED` (-1) gives 1, `Carry.BOARDED` (-2) gives 2, `Production.SOLD` (-3) gives
+## 3 and anything else 0. A reader compares the flag with the value it means, never with `!= 0`.
 static func died_flag(pending: int) -> int:
 	match pending:
 		Production.CANCELLED:
 			return FLAG_CANCELLED
-		BOARDED:
+		Carry.BOARDED:
 			return FLAG_BOARDED
 		Production.SOLD:
 			return FLAG_SOLD

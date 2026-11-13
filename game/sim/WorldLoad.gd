@@ -7,10 +7,10 @@ extends RefCounted
 ## pad_types(), stamp_fog() and reset_projectile_slots(), and World._init() calls copy_rules(), so
 ## no caller names this class. The code is World.gd's own, moved (P109 moved copy_rules and
 ## size_match_state, P232 stamp_fog and reset_projectile_slots, with no change; P232 pad_types too,
-## but it pads the sight, acquire, weapon and repair period tables by named constants) or the
-## copy of a definition into a table (the loader, with the layer bit derived from the move class and
-## `low_flying`); ADR 0007 section 2 and ADR 0017 section 3 keep every column, list and rule int in
-## World itself.
+## but it pads the sight, acquire, weapon and repair period tables by named constants; P285
+## set_terrain, which only tests call) or the copy of a definition into a table (the loader, with
+## the layer bit derived from the move class and `low_flying`); ADR 0007 section 2 and ADR 0017
+## section 3 keep every column, list and rule int in World itself.
 
 ## The percent of an unchanged income, and the divisor of every percent: a human's income.
 const PERCENT: int = 100
@@ -250,6 +250,11 @@ static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void
 	world.type_repair_seek.append(unit.repair_seek_milli)
 	world.type_carry_slots.append(unit.carry_slots)
 	world.type_carry_classes.append(unit.carry_classes)
+	world.type_carry_eject_percent.append(unit.carry_eject_percent)
+	world.type_mine_weapon.append(_weapon_for(world, unit.mine_weapon))
+	world.type_mine_cost.append(unit.mine_cost)
+	world.type_mine_aware.append(1 if unit.mine_aware else 0)
+	world.type_detect_milli.append(unit.detect_milli)
 
 
 ## Appends an upgrade (ADR 0036 sections 2 and 3) once per id, up to World.UPGRADES_MAX: its stat
@@ -318,6 +323,7 @@ static func _weapon_for(world: World, weapon: WeaponDef) -> int:
 	for armour: int in World.Armour.size():
 		world.weapon_vs_armour.append(weapon.vs_armour[armour])
 	world.weapon_targets.append(weapon.targets)
+	world.weapon_blast_milli.append(weapon.blast_milli)
 	return world.weapon_ids.size() - 1
 
 
@@ -380,6 +386,12 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.mend_period_ticks = rules.mend_period_ticks
 	world.mend_cost_percent = rules.mend_cost_percent
 	world.passenger_cap = rules.passenger_cap
+	world.load_reach_milli = rules.load_reach_milli
+	world.mine_cap = rules.mine_cap
+	world.mine_lay_ticks = rules.mine_lay_ticks
+	world.mine_arm_ticks = rules.mine_arm_ticks
+	world.sweep_ticks = rules.sweep_ticks
+	world.mine_known_cap = rules.mine_known_cap
 
 
 ## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
@@ -453,10 +465,11 @@ static func size_match_state(world: World) -> void:
 ## Gives every type table one entry per type, with the World.TYPE_PAD_* values, because Phase 1 code
 ## appends only the four Phase 1 tables (World.prepare calls it). The tables of the air and repair
 ## columns pad with 0 (the repair period with 1, UnitDef's default), the layer bit with GROUND and
-## `type_upgrade` with -1; `type_pad_first` (0) names no pad, because `type_pads` is 0. Of the
-## weapon tables only `weapon_targets` is padded (to the weapon count, with GROUND, the WeaponDef
-## default): a weapon of a scenario exists only through `_weapon_for`, which appends all of them,
-## and a test that builds one by hand names no mask.
+## `type_upgrade` and `type_mine_weapon` with -1; `type_pad_first` (0) names no pad, because
+## `type_pads` is 0. Of the weapon tables only `weapon_targets` (to the weapon count, with GROUND,
+## the WeaponDef default) and `weapon_blast_milli` (with 0) are padded: a weapon of a scenario
+## exists only through `_weapon_for`, which appends all of them, and a test that builds one by hand
+## names no mask.
 static func pad_types(world: World, types: int) -> void:
 	for table: PackedInt32Array in [
 		world.type_speed,
@@ -490,6 +503,10 @@ static func pad_types(world: World, types: int) -> void:
 		world.type_repair_seek,
 		world.type_carry_slots,
 		world.type_carry_classes,
+		world.type_carry_eject_percent,
+		world.type_mine_cost,
+		world.type_mine_aware,
+		world.type_detect_milli,
 	]:
 		_pad(table, types, World.TYPE_PAD_V0)
 	_pad(world.type_max_hp, types, World.TYPE_PAD_MAX_HP)
@@ -501,6 +518,7 @@ static func pad_types(world: World, types: int) -> void:
 	_pad(world.type_layer_bit, types, World.TYPE_PAD_LAYER)
 	_pad(world.type_repair_period, types, World.TYPE_PAD_REPAIR_PERIOD)
 	_pad(world.weapon_targets, world.weapon_range.size(), World.WEAPON_PAD_TARGETS)
+	_pad(world.weapon_blast_milli, world.weapon_range.size(), World.TYPE_PAD_V0)
 	for table: PackedInt32Array in [
 		world.type_tab,
 		world.type_requires,
@@ -509,6 +527,7 @@ static func pad_types(world: World, types: int) -> void:
 		world.type_faction,
 		world.type_strike_weapon,
 		world.type_upgrade,
+		world.type_mine_weapon,
 	]:
 		_pad(table, types, World.TYPE_PAD_NONE)
 
@@ -566,3 +585,26 @@ static func reset_projectile_slots(world: World) -> void:
 	for i: int in slots:
 		stack[i] = slots - 1 - i
 	world.proj_free_top = slots
+
+
+## Makes `cell` the terrain `terrain_index` (an index into terrain_ids) with that terrain's cost for
+## each ground class (the AIR plane stays open), and bumps map_version, also when the terrain is the
+## same. A cell outside the map, an index above TERRAIN_INDEX_MAX (a byte, P48) or an unknown
+## terrain index (one whose `terrain_cost` row is missing) changes nothing. It leaves `ore_cell` as
+## the load made it. Any other writer of `terrain`, `move_cost`, `terrain_cost`, `terrain_buildable`
+## or `ore_cell` must bump map_version itself, because the map digest of the hash follows
+## map_version alone (WorldHash.map_digest).
+static func set_terrain(world: World, cell: int, terrain_index: int) -> void:
+	var classes: int = World.GROUND_CLASSES
+	var cells: int = world.map_cols * world.map_rows
+	if cell < 0 or cell >= cells or terrain_index < 0 or terrain_index > World.TERRAIN_INDEX_MAX:
+		return
+	if (terrain_index + 1) * classes > world.terrain_cost.size():
+		return
+	world.terrain[cell] = terrain_index
+	for move_class: int in classes:
+		world.move_cost[move_class * cells + cell] = world.terrain_cost[
+			terrain_index * classes + move_class
+		]
+	world.map_version += 1
+	world.flow.invalidate(world.map_version)  # Before any acquire() under the new version.

@@ -29,6 +29,10 @@ const AIR_FIELDS: Array[String] = [
 ]
 ## P262 added the carrier role after them (ADR 0036 sections 2 and 8).
 const CARRY_FIELDS: Array[String] = ["carry_slots", "carry_classes"]
+## P285 added the ground support after them (ADR 0037 sections 7 and 8).
+const GROUND_FIELDS: Array[String] = [
+	"carry_eject_percent", "mine_weapon", "mine_cost", "mine_aware", "detect_milli"
+]
 const PAD_FIELDS: Array[String] = ["pads", "pad_offsets"]
 const TAB_HINT: String = "None:-1,Structures:0,Infantry:1,Vehicles:2,Flight:3,Research:4"
 const STRIKE_HINT: String = "None:0,Rupture:1,Blackout:2,Reveal:3"
@@ -44,7 +48,7 @@ func test_unit_def_defaults_are_not_buildable_and_not_a_harvester() -> void:
 func test_unit_def_gains_exactly_its_production_and_air_fields_and_they_are_stored() -> void:
 	var plain: Array[String] = _own_fields(Resource.new(), UnitDef.new())
 	assert_bool(plain.has("type_id")).is_true()  # The Phase 2 fields are still there.
-	var tail: Array[String] = UNIT_FIELDS + AIR_FIELDS + CARRY_FIELDS
+	var tail: Array[String] = UNIT_FIELDS + AIR_FIELDS + CARRY_FIELDS + GROUND_FIELDS
 	assert_array(plain.slice(plain.size() - tail.size())).is_equal(tail)
 	var types: Dictionary[String, int] = {}
 	for info: Dictionary in UnitDef.new().get_property_list():

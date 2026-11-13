@@ -18,3 +18,6 @@ extends Resource
 ## The layers the weapon may hit (ADR 0036 section 2): GROUND 1, AIR 2, LOW_AIR 4. The default is 1,
 ## so every shipped weapon keeps its meaning. A data test allows 1..7.
 @export_flags("Ground:1", "Air:2", "Low air:4") var targets: int = 1
+## A mine weapon's blast radius in milli-tiles (ADR 0037 section 8); 0 for every other weapon. A
+## data test wants it above 0 on a weapon some type lays as `mine_weapon`.
+@export var blast_milli: int = 0

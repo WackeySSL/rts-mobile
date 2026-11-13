@@ -89,7 +89,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
+func test_rules_file_holds_the_42_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -136,6 +136,13 @@ func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_froze
 		"mend_cost_percent": 30,
 		# Carriers (ADR 0036 section 3, P262): the table holds the 2 x unit_cap squads at most.
 		"passenger_cap": 150,
+		"load_reach_milli": 3000,
+		# Mines (ADR 0037 section 8): the starting values, inert until a type lays one (P285).
+		"mine_cap": 12,
+		"mine_lay_ticks": 22,
+		"mine_arm_ticks": 15,
+		"sweep_ticks": 30,
+		"mine_known_cap": 24,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -274,6 +281,7 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["mend_cost_percent", [0, 30], [-1], "a mend rule is negative"],
 		["harvest_reach_milli", [0], [-1], "a reach is negative"],
 		["dock_reach_milli", [0], [-1], "a reach is negative"],
+		["load_reach_milli", [0, 3000], [-1], "a reach is negative"],
 		["harvest_pick_milli", [0], [-1], "a reach is negative"],
 		["build_reach_tiles", [0], [-1], "a reach is negative"],
 		["unit_cap", [0, 88], [89], fit],
@@ -283,6 +291,11 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["ghost_cap", [0], [-1], "a cap is negative"],
 		["passenger_cap", [0, 150], [-1], "a cap is negative"],
 		["passenger_cap", [], [149], "passenger_cap is below the players' unit_cap"],
+		["mine_cap", [0, 12], [-1], "a mine rule is negative"],
+		["mine_arm_ticks", [0, 15], [-1], "a mine rule is negative"],
+		["sweep_ticks", [1, 30], [0], "sweep_ticks is below 1"],
+		["mine_known_cap", [0, 24], [-1], "a mine rule is negative"],
+		["mine_lay_ticks", [1, 22], [0], "mine_lay_ticks is below 1"],
 	]
 	for row: Array in rows:
 		for value: int in row[1] + row[2]:
@@ -302,6 +315,8 @@ func test_every_weapon_file_reaches_the_ring_corner_of_a_three_by_three_building
 	assert_int(files.size()).is_greater_equal(3)
 	var strikes: Dictionary[String, bool] = _strike_weapon_files()
 	assert_int(strikes.size()).is_greater_equal(1)
+	# A mine weapon is no gun either: range 0, it blasts where it lies (test_defs_data_mine).
+	strikes.merge(_mine_weapon_files())
 	for path: String in files:
 		if strikes.has(path):
 			continue
@@ -644,6 +659,16 @@ func _strike_weapon_files() -> Dictionary[String, bool]:
 	return found
 
 
+## The paths of the weapon files that a unit lays as a mine (UnitDef.mine_weapon).
+func _mine_weapon_files() -> Dictionary[String, bool]:
+	var found: Dictionary[String, bool] = {}
+	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
+		var unit: UnitDef = load(path)
+		if unit.mine_weapon != null:
+			found[unit.mine_weapon.resource_path] = true
+	return found
+
+
 ## The rules of every unit file, and the ones that span files: a type_id used once, and a weapon id
 ## that equals its file name and belongs to one file. Two units may share one weapon file. Only
 ## weapons linked from a unit are checked, as the sim reaches weapons through units alone.
@@ -802,11 +827,14 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 		mini(mini(rules.mend_hp, rules.mend_period_ticks), rules.mend_cost_percent) < 0,
 		"a reach is negative":
 		(
-			mini(
-				mini(rules.harvest_reach_milli, rules.dock_reach_milli),
-				mini(rules.harvest_pick_milli, rules.build_reach_tiles)
+			(
+				mini(
+					mini(rules.harvest_reach_milli, rules.dock_reach_milli),
+					mini(rules.harvest_pick_milli, rules.build_reach_tiles)
+				)
+				< 0
 			)
-			< 0
+			or rules.load_reach_milli < 0
 		),
 		"a cap is negative":
 		(
@@ -815,6 +843,10 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			)
 			< 0
 		),
+		"a mine rule is negative":
+		mini(mini(rules.mine_cap, rules.mine_arm_ticks), rules.mine_known_cap) < 0,
+		"mine_lay_ticks is below 1": rules.mine_lay_ticks < 1,
+		"sweep_ticks is below 1": rules.sweep_ticks < 1,
 		"unit_cap and building_cap of 2 players do not fit max_rows":
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
 		"passenger_cap is below the players' unit_cap":

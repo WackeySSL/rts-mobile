@@ -18,9 +18,10 @@ const MILLI_PER_TILE: int = 1000
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
 ## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
-## dead rows leave and their vision ends, then a space centre's sweep follows its
-## building (REMOVE: `Reveal.run`, P233), the players whose turn it is move
-## their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin` emptied their
+## dead rows leave (REMOVE: boarding squads first, `Carry.board`) and their vision ends, then a
+## space centre's sweep follows its building (REMOVE: `Reveal.run`, P233), the players whose turn it
+## is move their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin`
+## emptied their
 ## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Mend.run`), the
 ## queues advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`),
 ## the last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts.
@@ -78,6 +79,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
+	Carry.board(world)  # Boarding squads leave in this tick's REMOVE (ADR 0036 section 8).
 	world.remove_dead()
 	Reveal.run(world)  # The space centre's sweep follows its building (ADR 0036 section 11).
 	if probe != null:
@@ -103,7 +105,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 5-9, 19, 21-29, anything else) is dropped as unknown before any id rule runs.
+## branch (NONE, 6-9, 19, 21-29, anything else) is dropped as unknown before any id rule runs.
 ## The Phase 3 types (ADR 0017 section 4) also need a player who is not defeated. Once the match has
 ## ended (`match_end_tick` above 0, P76) every command of any type is dropped. Each `_apply_*` and
 ## each module's `apply_*` is the ADR's per-type validation: it checks the ids through the shared
@@ -125,6 +127,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _apply_attack(world, command)
 			Command.Type.STOP:
 				applied = _apply_stop(world, command)
+			Command.Type.LOAD:
+				applied = _playing(world, command) and Carry.apply_load(world, command)
 			Command.Type.PLACE:
 				applied = _playing(world, command) and Production.apply_place(world, command)
 			Command.Type.QUEUE:
@@ -162,6 +166,7 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 		orders[row] = order
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	Harvest.release(world, rows)
+	Carry.release(world, rows)
 	return true
 
 
@@ -236,6 +241,7 @@ static func _apply_stop(world: World, command: Command) -> bool:
 		target[row] = 0
 	Movement.reset_nav(world, rows, World.NavMode.NONE)  # Also drops the flow field.
 	Harvest.release(world, rows)
+	Carry.release(world, rows)
 	return true
 
 

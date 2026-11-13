@@ -217,7 +217,8 @@ var own_strike_tick: int = 0
 ## may leave it empty).
 var reveal_state: PackedInt32Array = PackedInt32Array()
 ## The rule caps per player. 0 allows nothing (`Placement` and `ProductionSpawn` refuse at the cap);
-## `unit_cap` counts mobile rows only (`type_speed` above 0, tankers included).
+## `unit_cap` counts mobile rows (`type_speed` above 0, tankers included) and the
+## player's squads aboard carriers.
 var unit_cap: int = 0
 var building_cap: int = 0
 
