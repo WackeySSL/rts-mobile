@@ -46,7 +46,12 @@ func _world() -> World:
 	medic.repair_slots = 1
 	medic.repair_seek_milli = 4000
 	var units: Array[UnitDef] = [
-		shed, hq, medic, _unit("tank", World.MoveClass.TRACKED, 67), _unit("squad", 0, 67)
+		shed,
+		hq,
+		medic,
+		_unit("tank", World.MoveClass.TRACKED, 67),
+		_unit("squad", 0, 67),
+		_unit("drone", World.MoveClass.AIR, 67)
 	]
 	var made: World = Rig.world_of(units, 24, 16, true, 2)
 	made.add_building(1, Worlds.type_of(made, "shed"), SHED.x, SHED.y)
@@ -71,7 +76,7 @@ func _repaired(world: World) -> Array[PackedInt32Array]:
 	var found: Array[PackedInt32Array] = []
 	var at: int = 0
 	while at < world.events.size():
-		if world.events[at] == Repair.REPAIRED:
+		if world.events[at] == World.Event.REPAIRED:
 			found.append(world.events.slice(at, at + World.EVENT_STRIDE))
 		at += World.EVENT_STRIDE
 	return found
@@ -87,7 +92,7 @@ func test_a_shed_repairs_a_hurt_tank_in_reach_on_its_turn_and_writes_repaired() 
 	assert_int(events.size()).is_equal(1)
 	var shed_id: int = world.unit_id[world.repair_rows[0]]
 	assert_array(events[0]).is_equal(
-		[Repair.REPAIRED, shed_id, 4000, 3000, world.unit_id[tank], 1, 30, 0]
+		[World.Event.REPAIRED, shed_id, 4000, 3000, world.unit_id[tank], 1, 30, 0]
 	)
 	_step(world, 14)
 	assert_int(world.hp[tank]).is_equal(80)
@@ -103,6 +108,7 @@ func test_the_slots_serve_the_most_hurt_share_first_then_the_lowest_id() -> void
 	var c: int = _add(world, 1, "tank", 4000, 2500, 60)
 	var d: int = _add(world, 1, "tank", 3500, 4000, 60)
 	_step(world)
+	assert_int(_repaired(world).size()).is_equal(2)  # At most `repair_slots` records.
 	assert_array([world.hp[a], world.hp[b], world.hp[c], world.hp[d]]).is_equal([90, 60, 60, 60])
 	_step(world, 15)
 	# Tick 15: b, c and d tie at 60 (a is at 90); the lowest two ids, b and c, are served.
@@ -146,7 +152,6 @@ func test_a_row_it_cannot_pay_for_is_skipped_and_the_next_one_is_served() -> voi
 func test_a_blackout_an_unfinished_shed_and_a_defeated_owner_stop_it() -> void:
 	var blacked: World = _world()
 	var tank: int = _add(blacked, 1, "tank", 4000, 3000, 50)
-	blacked.offline_until[blacked.repair_rows[0] if not blacked.repair_rows.is_empty() else 0] = 0
 	Buildings.rebuild_lists(blacked)
 	blacked.offline_until[blacked.repair_rows[0]] = blacked.tick + 1000
 	_step(blacked)
@@ -239,8 +244,62 @@ func test_the_airfield_writes_repaired_once_per_pad_per_period() -> void:
 	_step(world)
 	var events: Array[PackedInt32Array] = _repaired(world)
 	assert_int(events.size()).is_equal(1)
-	assert_array([events[0][0], events[0][1], events[0][4], events[0][5], events[0][6]]).is_equal(
-		[Repair.REPAIRED, Worlds.FIELD, world.unit_id[jet], 1, 10]
+	assert_array(events[0]).is_equal(
+		[
+			World.Event.REPAIRED,
+			Worlds.FIELD,
+			world.pos_x[jet],
+			world.pos_y[jet],
+			world.unit_id[jet],
+			1,
+			10,
+			0
+		]
 	)
 	_step(world)
 	assert_int(_repaired(world).size()).is_equal(0)
+
+
+func test_a_medic_leaves_buildings_alone_and_a_building_never_takes_a_squads_slot() -> void:
+	var world: World = _world()
+	var medic: int = _add(world, 1, "medic", 11000, 11500)
+	var hq: int = world.index_of(2)  # Player 1's headquarters (id 2) at tile (10, 10).
+	world.hp[hq] = 100
+	var squad: int = _add(world, 1, "squad", 11500, 10500, 50)
+	_step(world, 2)
+	assert_int(world.hp[hq]).is_equal(100)
+	assert_int(world.hp[squad]).is_equal(56)  # The one slot goes to the squad, not the building.
+	var alone: World = _world()
+	medic = _add(alone, 1, "medic", 4500, 3000)
+	var shed: int = alone.index_of(1)
+	alone.hp[shed] = 500
+	alone.hp[alone.index_of(2)] = 100
+	_step(alone, 2)
+	assert_array([alone.hp[shed], alone.hp[alone.index_of(2)]]).is_equal([500, 100])
+	assert_int(alone.order[medic]).is_equal(World.Order.IDLE)  # No seek to a building either.
+
+
+func test_a_medic_never_heals_an_air_squad() -> void:
+	var world: World = _world()
+	_add(world, 1, "medic", 12000, 3000)
+	var drone: int = _add(world, 1, "drone", 12500, 3000, 50)
+	_step(world, 2)
+	assert_int(world.hp[drone]).is_equal(50)
+
+
+func test_a_medic_with_a_pending_order_target_does_not_seek() -> void:
+	var world: World = _world()
+	var medic: int = _add(world, 1, "medic", 12000, 3000)
+	_add(world, 1, "squad", 14000, 3000, 40)
+	world.order_target[medic] = 99  # A LOAD mark: the medic waits for its carrier.
+	_step(world, 2)
+	assert_int(world.order[medic]).is_equal(World.Order.IDLE)
+
+
+func test_a_row_that_moved_this_tick_is_judged_at_its_new_place() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, 1, "tank", 5750, 3000, 50)  # 2750 out: past the reach of 2700.
+	var sent: PackedInt32Array = PackedInt32Array([world.unit_id[tank]])
+	Worlds.step(world, [Command.move(1, sent, 3000, 3000)])
+	assert_bool(world.pos_x[tank] < 5700).is_true()
+	assert_int(world.hp[tank]).is_equal(80)

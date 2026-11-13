@@ -90,7 +90,7 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_array([World.TABS, World.GROUND_CLASSES, World.UPGRADES_MAX]).is_equal([5, 3, 30])
 	# STRIKE joined with P133 (ADR 0027 section 7, an ADR 0007 section 10 note): events are not state.
 	assert_dict(World.Event).is_equal(
-		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5, "UNLOADED": 6}
+		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5, "UNLOADED": 6, "REPAIRED": 8}
 	)
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
