@@ -4,7 +4,8 @@ extends RefCounted
 ## advance, finished units spawn at their exit and leave for the rally point, finished structures
 ## turn ready, and a structure placed first rises on the map. QUEUE pays and joins the queue of the
 ## item's tab, CANCEL refunds, `run` advances each queue's head and ProductionSpawn puts a finished
-## unit on the map. A finished structure (the
+## unit on the map. A finished research item (the RESEARCH tab, ADR 0036 section 10) spawns nothing:
+## `Upgrades.finish` sets its upgrade's bit. A finished structure (the
 ## STRUCTURES tab, plan row P73b) is not spawned: its head stops at 100 % and waits, with no state
 ## of its own ("ready" is progress at the goal), until PLACE puts it on the map or CANCEL takes it
 ## out; PLACE builds it complete through `World.add_building` and ProductionSpawn gives a refinery
@@ -58,10 +59,9 @@ const DIED_CANCEL_FLAG_AT: int = 6
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
 ## done unit spawns (ProductionSpawn.spawn) and leaves the queue; a done research item
 ## (`Upgrades.finish`, ADR 0036 section 10) sets its upgrade's bit and spawns nothing;
-## one that cannot spawn yet waits at
-## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
-## without a producer waits, and so does every queue of a defeated player, and every queue whose
-## producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
+## one that cannot spawn yet waits at 100 %, and so does a done structure, until PLACE or CANCEL.
+## Players ascending, then tabs. A queue without a producer waits, and so does every queue of a
+## defeated player, and every queue whose producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
 ## `world.tick + 1`): the head keeps its progress, nothing spawns, and it goes on from there at the
 ## stamp that reaches `offline_until`. The loop runs over the arrays as sized, so a hand-built World
 ## whose player_count was raised after prepare() has no queue for the late players. The

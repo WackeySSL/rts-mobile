@@ -175,6 +175,22 @@ func test_the_readers_answer_100_outside_their_table() -> void:
 	assert_int(Upgrades.taken(world, 1, types)).is_equal(100)
 	assert_int(Upgrades.taken(world, 1, -1)).is_equal(100)
 	assert_int(Upgrades.extra_ammo(world, 9, 0)).is_equal(0)
+	# A bound per component: an index past a row's width must not spill into the next player's.
+	var tank: int = world.type_ids.find(&"tank")
+	var tank_weapon: int = world.type_weapon[tank]
+	assert_int(Upgrades.dealt(world, 0, weapons + tank_weapon)).is_equal(100)
+	assert_int(Upgrades.taken(world, 0, types + tank)).is_equal(100)
+
+
+func test_fire_with_empty_tables_deals_the_plain_damage() -> void:
+	var world: World = _world()
+	world.mod_dealt.resize(0)
+	world.mod_taken.resize(0)
+	var shooter: int = _unit(world, 1, "tank", 5000)
+	var target: int = _unit(world, 2, "tank", 6000)
+	world.target[shooter] = world.unit_id[target]
+	Combat.fire(world)
+	assert_int(100000 - world.hp[target]).is_equal(BASE)
 
 
 func test_a_rupture_applies_taken_and_dealt_stays_100() -> void:
@@ -185,6 +201,8 @@ func test_a_rupture_applies_taken_and_dealt_stays_100() -> void:
 	world.upgrades[1] = 15 & ~2  # The striker has every dealt bit: they must not count.
 	world.upgrades[2] = 2  # thick: the target takes 60 percent.
 	Upgrades.rebuild(world)
+	# A rupture that applied dealt would give 240.
+	world.mod_dealt[1 * world.weapon_damage.size() + world.type_strike_weapon[ruptor]] = 400
 	world.strike_x[1] = world.pos_x[target]
 	world.strike_y[1] = world.pos_y[target]
 	Strike._land(world, 1)
@@ -289,8 +307,10 @@ func test_two_runs_of_one_command_stream_agree_on_the_tables_and_the_hash() -> v
 
 
 ## Two players; player 1's engineering centre, player 2's headquarters, 1000 credits each. Upgrades:
-## "sharp" (bit 0: the tank's weapon deals 150 percent, and the ammo +2 is "thick"'s) and "thick"
-## (bit 1: tanks take 60 percent, plus 2 ammo).
+## "sharp" (bit 0: the weapons of the tank and the shooter deal 150 percent), "thick" (bit 1: tanks
+## take 60 percent), "racks" (bit 2: tanks hold 2 more shots) and "twin" (bit 3: the weapon the tank
+## and the scout share deals 150 percent). Sharp and twin both change `tank_gun`, which the data
+## rule forbids; this hand-built world allows it so a test can set one bit at a time.
 func _world() -> World:
 	var hq: BuildingDef = _building(&"hq", World.Tab.STRUCTURES)
 	var centre: BuildingDef = _building(&"centre", World.Tab.RESEARCH)

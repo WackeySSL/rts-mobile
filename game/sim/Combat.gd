@@ -33,8 +33,8 @@ extends RefCounted
 ##   (ADR 0007 section 10, both positions read now, so a tracer can still be drawn after either unit
 ##   is removed) and sets the cooldown, and then either
 ##   - hits at once (hitscan, speed 0): the target's `hp` drops by
-##     `Combat.damage(damage, percent, dealt,
-##     taken)`, `max(1, damage * percent * dealt * taken / 1,000,000)`: `percent` is the weapon's
+##     `Combat.damage(damage, percent, dealt, taken)`,
+##     `max(1, damage * percent * dealt * taken / 1,000,000)`: `percent` is the weapon's
 ##     share against the target's armour class (0 when it is 0), `dealt` the shooter's weapon
 ##     modifier and `taken` the target's type modifier, each 100 without an upgrade (ADR 0036
 ##     section 10);
@@ -180,8 +180,8 @@ static func advance_projectiles(world: World) -> void:
 			hit_points[at] -= damage(
 				weapon_damage[weapon],
 				percent,
-				Upgrades.pick(mod_dealt, weapon_count, slot_owner[slot], weapon, 100),
-				Upgrades.pick(mod_taken, type_count, owners[at], types[at], 100)
+				Upgrades.pick(mod_dealt, weapon_count, slot_owner[slot], weapon, PERCENT),
+				Upgrades.pick(mod_taken, type_count, owners[at], types[at], PERCENT)
 			)
 		# The impact's record: with the shot's append, the only array growth of the phase.
 		var end: int = events.size()
@@ -324,8 +324,8 @@ static func fire(world: World) -> void:
 			hit_points[at] -= damage(
 				weapon_damage[weapon],
 				percent,
-				Upgrades.pick(mod_dealt, weapon_count, side, weapon, 100),
-				Upgrades.pick(mod_taken, type_count, owners[at], types[at], 100)
+				Upgrades.pick(mod_dealt, weapon_count, side, weapon, PERCENT),
+				Upgrades.pick(mod_taken, type_count, owners[at], types[at], PERCENT)
 			)
 		cooldowns[row] = weapon_cooldown[weapon]
 		if limited:
