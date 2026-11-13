@@ -353,6 +353,36 @@ Note (2026-11-12, P238): as built. It changes no accepted text.
 - **Fighters** have ammo 0 (no limit) and return only when ordered (REPAIR, §7).
 - **Cost:** O(air rows) per tick, with no allocation.
 
+Note (2026-11-13, P241): as built. It changes no accepted text except the three bullets marked
+"adds".
+- **Where.** `game/sim/Air.gd`: `cap_room` (the QUEUE cap, called from `Production.apply_queue`),
+  `free_pad` and `pad_point` (the spawn, called from `ProductionSpawn`), `run` (ECONOMY, after
+  `Harvest.run`, before `Mend.run`). `air_rows` is rebuilt in `Buildings.rebuild_lists` with the
+  other two derived lists (one `rows_version`), and joins `DERIVED_ARRAYS` and
+  `MatchSnapshot.NOT_COPIED`. An aircraft is a row whose type's layer bit is AIR; drone squads
+  (LOW_AIR) are not in it.
+- **Pad rank** is the rank by row (ids ascend with rows) among the aircraft with that home. When an
+  earlier aircraft dies, the later ones move up one pad.
+- **Spawn (adds).** A finished aircraft takes the first free pad of the producer, and then of the
+  other complete own airfields, lowest row first, so that the cap (the pads of every complete
+  airfield) and the spawn agree. Its `home` is that airfield and it has no order: a FLIGHT item
+  takes no rally point (RALLY on FLIGHT stays dropped and counted), so it hovers over its pad.
+- **Re-homing (adds).** `Air.run` also tries a homeless aircraft (home 0) every tick, so an
+  airfield that is built or freed takes it. A home counts only while it is a living, complete
+  building of the same owner with pads.
+- **Return.** An aircraft with ammo 0 and a home, not within `repair_reach_milli` of its pad and
+  not already on a MOVE order, gets MOVE to the pad (`Formation.assign`, `Movement.reset_nav`). An
+  empty aircraft that is on a MOVE keeps its goal and is sent home when it stops.
+- **Reload (adds).** The first round is gained at once on arrival, then one each `max(1,
+  rearm_ticks / type_ammo)` ticks, the next due tick in `ready_tick` (`tick >= ready_tick`). The cap
+  is `type_ammo`; P246 adds `mod_ammo`. The airfield must be complete and not blacked out.
+- **Ammo.** `Combat.fire` skips a limited row at 0 ammo before the power and layer tests (no shot,
+  no cooldown, target kept) and spends 1 after the shot is made.
+- **Not here.** Repair (P241b); the return trigger and reload were not split to P241c.
+- **Tests.** `test_airfield.gd`, `test_airfield_return.gd` (the empty-and-return case under both
+  implementations) and `test_sweep_layers.gd` (the sweep with the target layers, both
+  implementations). No golden moved: no shipped type has ammo or pads.
+
 ### 7. The interface shared with the ground design
 - **`REPAIR = 7`:** unit ids, `target_id` = an own complete building with
   `repair_classes & class_bit(unit) != 0`.

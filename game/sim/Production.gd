@@ -125,6 +125,7 @@ static func apply_queue(world: World, command: Command) -> bool:
 		count >= world.queue_slots
 		or world.credits[player] < cost
 		or not _owns(world, player, world.type_requires[type])
+		or (tab == World.Tab.FLIGHT and not Air.cap_room(world, player))
 	):
 		return false
 	world.credits[player] -= cost

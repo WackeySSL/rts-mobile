@@ -226,8 +226,10 @@ static func rebuild_lists(world: World) -> bool:
 	var known: int = mini(widths.size(), mini(speeds.size(), cargo.size()))
 	var buildings: PackedInt32Array = world.building_rows
 	var harvesters: PackedInt32Array = world.harvester_rows
+	var air: PackedInt32Array = world.air_rows
 	buildings.clear()
 	harvesters.clear()
+	air.clear()
 	for row: int in types.size():
 		var type: int = types[row]
 		if type >= known:
@@ -236,6 +238,8 @@ static func rebuild_lists(world: World) -> bool:
 			buildings.append(row)
 		elif speeds[type] > 0 and cargo[type] > 0:
 			harvesters.append(row)
+		if Air.is_aircraft(world, type):
+			air.append(row)
 	return true
 
 

@@ -13,6 +13,8 @@ extends RefCounted
 ## `EXIT_SCANNED`, and before `add_unit`, so a wait is not a `spawn_refused`. The new row gets its
 ## first order (`_start`).
 static func spawn(world: World, player: int, type: int, producer: int) -> bool:
+	if Air.is_aircraft(world, type):
+		return _spawn_over_pad(world, player, type, producer)
 	var kind: int = world.type_index[producer]
 	var exit: Vector2i = Vector2i(world.type_exit_x[kind], world.type_exit_y[kind])
 	return _spawn_from(world, player, type, producer, Buildings.turned_at(world, producer, exit))
@@ -58,6 +60,20 @@ static func _spawn_from(
 	if id == 0:
 		return false
 	_start(world, player, type, world.unit_id.size() - 1)
+	return true
+
+
+## An aircraft (ADR 0036 section 6, `Air.free_pad`) appears over the first free pad of the
+## producer, else of another complete own airfield, with that airfield as its `home` and no order
+## (it hovers; a FLIGHT item takes no rally point). It waits, like a unit with no free exit, when
+## `max_rows` rows exist, the player has `unit_cap` mobile rows or no pad is free.
+static func _spawn_over_pad(world: World, player: int, type: int, producer: int) -> bool:
+	if world.unit_id.size() >= world.max_rows or mobile_rows(world, player) >= world.unit_cap:
+		return false
+	var pad: Vector3i = Air.free_pad(world, player, producer)
+	if pad.x < 0 or world.add_unit(player, type, pad.y, pad.z) == 0:
+		return false
+	world.home[world.unit_id.size() - 1] = world.unit_id[pad.x]
 	return true
 
 

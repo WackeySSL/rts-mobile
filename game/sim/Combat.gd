@@ -181,7 +181,8 @@ static func advance_projectiles(world: World) -> void:
 	world.stats[World.Stat.PROJ_STEPS] += stepped
 
 
-## One FIRE phase over the World, as described above.
+## One FIRE phase over the World, as described above. A row whose type has ammo (`type_ammo` above
+## 0) fires only with `ammo` above 0 and spends 1 a shot (ADR 0036 section 6, P241).
 @warning_ignore("integer_division")
 static func fire(world: World) -> void:
 	var ids: PackedInt32Array = world.unit_id
@@ -207,6 +208,8 @@ static func fire(world: World) -> void:
 	var weapon_vs: PackedInt32Array = world.weapon_vs_armour
 	var weapon_hits: PackedInt32Array = world.weapon_targets
 	var layer_bit: PackedInt32Array = world.type_layer_bit
+	var type_shots: PackedInt32Array = world.type_ammo
+	var shots: PackedInt32Array = world.ammo
 	var slot_ids: PackedInt32Array = world.proj_id
 	var slot_owner: PackedInt32Array = world.proj_owner
 	var slot_weapon: PackedInt32Array = world.proj_weapon
@@ -239,6 +242,9 @@ static func fire(world: World) -> void:
 		var weapon: int = type_weapon[type]
 		if weapon < 0 or weapon >= weapons:
 			continue
+		var limited: bool = type < type_shots.size() and type_shots[type] > 0
+		if limited and shots[row] <= 0:
+			continue  # Out of ammo (ADR 0036 section 6): the target stays, no shot, no cooldown.
 		var side: int = owners[row]
 		if type < footprints and type_foot[type] > 0:
 			if offline[row] > stamp or sites[row] != 0:
@@ -286,6 +292,8 @@ static func fire(world: World) -> void:
 			if percent > 0:
 				hit_points[at] -= maxi(1, weapon_damage[weapon] * percent / PERCENT)
 		cooldowns[row] = weapon_cooldown[weapon]
+		if limited:
+			shots[row] -= 1
 		# The shot's record: the other array this phase grows (one event append per shot).
 		var end: int = events.size()
 		events.resize(end + World.EVENT_STRIDE)
