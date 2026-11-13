@@ -440,7 +440,7 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
-## P239: the anti-air buildings have no roster entry until P239b (art, item card); skipped here.
+## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):

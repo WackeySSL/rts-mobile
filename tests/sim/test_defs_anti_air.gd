@@ -6,15 +6,18 @@ extends GdUnitTestSuite
 ## gives the mask. Hit points, build time, sight, the weapon's range, damage, cooldown and armour
 ## percents are in neither: starting values for the balance run (the build time and hit points
 ## follow the Redoubt's scale, the guns differ by faction as the Redoubt and the Rail Battery do).
-## What the sim does with the mask is test_targeting_layers'.
+## The Burst Stack trades range for damage per tick (2.4 against 1.5); the building percent of
+## vs_armour is unused, as buildings are ground. P239b removes the skips in test_defs_roster,
+## test_defs_roster_renew and test_defs_factions_data and the is_false roster check below.
+## What the sim does with the mask is test_target_layers'.
 
 const FILES: Dictionary[String, Array] = {
-	"fossil_aa": ["fossil", "Burst Stack", "barracks", "burst_stack_gun", 4500, 12, 6],
-	"renew_aa": ["renew", "Sky Needle", "renew_barracks", "sky_needle_gun", 5500, 45, 20],
+	"fossil_aa": ["fossil", "Burst Stack", "barracks", "burst_stack_gun", 4500, 12, 5],
+	"renew_aa": ["renew", "Sky Needle", "renew_barracks", "sky_needle_gun", 5500, 30, 20],
 }
 
 
-func test_each_faction_lists_one_anti_air_building_with_the_gdd_numbers() -> void:
+func test_each_faction_has_one_anti_air_file_with_the_gdd_numbers() -> void:
 	for id: String in FILES:
 		var def: BuildingDef = load("res://data/units/%s.tres" % id) as BuildingDef
 		assert_object(def).override_failure_message(id).is_not_null()
@@ -22,7 +25,7 @@ func test_each_faction_lists_one_anti_air_building_with_the_gdd_numbers() -> voi
 		assert_str(String(def.faction)).is_equal(FILES[id][0])
 		assert_str(def.display_name).is_equal(FILES[id][1])
 		assert_str(String(def.requires.type_id)).is_equal(FILES[id][2])
-		# GDD: size, cost, power, requires.
+		# GDD: size, cost, power (requires is checked above).
 		assert_array([def.footprint, def.cost, def.power, def.tab]).is_equal(
 			[Vector2i(1, 1), 700, -20, World.Tab.STRUCTURES]
 		)

@@ -17,7 +17,8 @@ const INFANTRY_BAR_PX: float = 24.0
 ## weapon whose shooter has no sheet to say (a sheet's number wins over a row).
 ## Every weapon a shipped `data/units` file references has a row (P117c); the Phase 3 faction
 ## weapons take the height of the old weapon of the same kind of shooter: the Redoubt's
-## `redoubt_gun` the turret's, `breaker_rocket` the rocket squad's, `arcline_gun` the artillery's.
+## `redoubt_gun` the turret's, `breaker_rocket` the rocket squad's, `arcline_gun` the artillery's,
+## and the anti-air guns (P239) the turret's.
 const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"tank_cannon": 14.0,
 	&"heavy_cannon": 17.0,
@@ -28,6 +29,8 @@ const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"redoubt_gun": 30.0,
 	&"breaker_rocket": 13.0,
 	&"arcline_gun": 18.0,
+	&"burst_stack_gun": 30.0,
+	&"sky_needle_gun": 30.0,
 }
 const MUZZLE_DEFAULT_PX: float = 14.0
 

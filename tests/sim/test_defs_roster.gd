@@ -432,7 +432,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P239: the anti-air buildings have no roster entry until P239b (art, item card); skipped here.
+## P239: no roster entry for the anti-air buildings until P239b; it removes this skip.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):

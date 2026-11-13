@@ -2,12 +2,13 @@
 
 [ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
 
+; Starting values for the Phase 4b balance run (ADR 0036 section 5 gives only the mask).
 [resource]
 script = ExtResource("1_weapon")
 id = &"burst_stack_gun"
 range = 4500
 damage = 12
-cooldown_ticks = 6
+cooldown_ticks = 5
 projectile_speed = 600
 vs_armour = PackedInt32Array(100, 100, 70, 100)
 targets = 6
