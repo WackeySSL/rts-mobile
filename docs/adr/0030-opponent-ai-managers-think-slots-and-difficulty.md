@@ -512,8 +512,8 @@ phone; the AI-time work stops here.** It changes P26bn's "after P198c" (P189c's 
   to the AI's hot loops (the lead's reading; Michael picks).
 
 Note (2026-11-13, P26bu, the lead; Michael's "Ja" in chat the same day): the Perf AI rule
-of P26bn's plan note now runs once per wave. The card runs three times on `main` after the wave
-merges, not on each row before it merges (`docs/plans/2026-11-06-phase-4.md`, P26bu's note).
+of P26bn's plan note now runs once per merge wave. The card runs three times on `main` after the
+wave merges, not on each row before it merges (`docs/plans/2026-11-06-phase-4.md`, P26bu's note).
 This note changes no other text.
 
 ### 5. Randomness

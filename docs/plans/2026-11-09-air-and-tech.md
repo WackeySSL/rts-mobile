@@ -565,24 +565,27 @@ review):
   `Mend.run` is a third step, so that row changes "half" to "step".
 
 Note (2026-11-13, P26bu, the lead; from the reviews of P234, P235, P240 and P262):
-- **The Perf AI card per wave.** From wave 4 on, the card runs three times on `main` after a wave
-  merges, not on each row before it merges (Michael, 2026-11-13; the Phase 4 plan's P26bu note).
+- **The Perf AI card per merge wave.** From Phase 4b's merge wave 4 (#422-#425) on, the card
+  runs three times on `main` after a merge wave, not on each row before it merges (Michael,
+  2026-11-13; the Phase 4 plan's P26bu note).
 - **P240 as built.** P240 did not do its row's "`ProductionSpawn` spawn over a pad"; that work
-  moves to P241. A spawn on the first free pad needs `home`, the pad's rank among the living
-  aircraft with that home, and `air_rows`, and P241 adds all three (ADR 0036 §6). P241's row
-  already lists it, so P241 owns the spawn over a pad and its test.
-- **P263, from P262's reviews.** `World.insert_row` moves every row at and above the inserted row
-  up by one. `building_rows` and `harvester_rows` stay stale until `Buildings.rebuild_lists`.
-  `Power.run` calls it at the start of ECONOMY. `Carry.run` inserts later in the same phase, so
-  it calls it again after its inserts (a no-op when nothing was inserted), before `Repair.run`
-  and `Mend.run` read `building_rows`. P263 adds a test of a mend and an unload on the same tick
-  under both implementations. Otherwise Mend reads the wrong row's `cargo` as its switch.
+  moves to P241. A spawn on the first free pad needs three things: an aircraft's `home`, the
+  pad's rank among the living aircraft with that home (§3), and `air_rows`. P241 sets the first,
+  derives the second and builds the third (ADR 0036 §3 and §6; §4's P240 note). P241's row
+  already lists the spawn, so P241 owns it and its test.
+- **P263b, from P262's reviews.** `World.insert_row` moves every row at and above the inserted
+  row up by one. `building_rows` and `harvester_rows` stay stale until `Buildings.rebuild_lists`.
+  `Power.run` calls it at the start of ECONOMY. P263b's unload in `Carry.run` inserts later in
+  the same phase, so `Carry.run` calls it again after its inserts (a no-op when nothing was
+  inserted), before `Repair.run` and `Mend.run` read `building_rows`. Without that call, Mend
+  reads the wrong row's `cargo` as its switch. P263b adds a test of a mend and an unload on the
+  same tick, under both implementations.
 - **P235 as built.** The space centre and its sweep share the superweapon's one strike button
   (Michael, 2026-11-13: "Én knap"). P234 (#422) and P235 (#425) merge together, so `main` never
   has a space centre that borrows the superweapon's map aim. ADR 0036 §11's P235 note records
   the rest: the warning line in place of a toast, the badge, the binding rules and the fade.
 - **The badge in the corner lists.** The row places the badge "in ADR 0025's corners". The
-  `touch-ui-rules` skill's Corner HUD bullet and an ADR 0025 §10 note now name it (Michael's yes,
-  2026-11-13).
+  `touch-ui-rules` skill's Corner HUD bullet and a note at the end of ADR 0025 §2 now name it
+  (Michael's yes, 2026-11-13).
 - **`rts-sim-conventions`.** Its hashed-state paragraph now covers `STATE_FORMAT` 6 (P232) and 7
   (P262) (Michael's yes, 2026-11-13).

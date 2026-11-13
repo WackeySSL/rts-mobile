@@ -320,6 +320,16 @@ Status note (2026-11-03, P26ar docs; P122b #296 as merged; the text and the note
   rule as "+" (§9): a resting finger never empties a group.
 - The portrait strike-aim rule above (three items in one column, the rest scroll) is as merged.
 
+Note (2026-11-13, P26bu, the lead; Michael's yes to the `touch-ui-rules` line the same day; the
+text above stands): the enemy sweep's badge (P235, ADR 0036 §11) is one more part of the table and
+of `shown` (`Shown.reveal`, `HudCorners.REVEAL`). It is 48 dp and takes no touch. It stands at the
+right edge, a gap above the strike button, or above BUILD; upright, above the Ready chip when that
+is shown. It is lit while an enemy sweep is on and dimmed with a pause mark while it is paused.
+Its warning line (`Shown.reveal_line`, `HudCorners.REVEAL_LINE`, 160 to 220 dp, left out when
+less room is free) stands to its left for `reveal_warn_ms` (5 s) after an enemy fires a sweep.
+The line's clock stops while it is covered, and the line ends with the sweep. Both hide under
+the drawer, the full map and the pause menu.
+
 ### 3. The economy pill and its detail card
 - **Content:** the menu button (48 x 48, `glyph_menu`, opens `PAUSE`), a divider, the coin and the
   credits (tabular figures, `CREDITS_DIGITS` wide as today), the bolt and the power bar (P85c's
@@ -687,13 +697,6 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
   ADR 0024 §10's last bullet) stands to its left. It rides with BUILD's portrait lift. Nothing else
   of P112 changes. The design has no superweapon; the game has, so the HUD shows it (the lead's
   rule).
-
-Note (2026-11-13, P26bu, the lead; Michael's yes to the `touch-ui-rules` line the same day): the
-enemy sweep's badge (P235, ADR 0036 §11) joins the right column. It is 48 dp, takes no touch and
-stands at the right edge, a gap above the strike button, or above BUILD. Upright it stands above
-the Ready chip when the chip stands higher. Its warning line, 160 to 220 dp, stands to its left
-and is left out when less room is free. Both hide under the drawer, the full map and the pause
-menu. `HudCorners.REVEAL` and `REVEAL_LINE` give the rects. This note changes no other text.
 
 ### 11. The pause menu
 - **Opens** on the pill's menu button; **pauses the match** (`MatchRunner.paused = true`; the sim

@@ -192,11 +192,12 @@ plan's "Interim places" say where each part stands meanwhile.
   short of BUILD. Upright keeps the same corners, with no lift (Michael, 2026-11-05); the Ready
   chip stands left of BUILD sideways and above the strike button (or BUILD) upright. The enemy
   sweep's badge (48 dp, no touch, P235) stands at the right edge a gap above the strike button
-  (or BUILD; upright the Ready chip when it stands higher), lit while an enemy sweep is on and
-  dimmed with a pause mark while it is paused. Its warning line (160 to 220 dp, left out when
-  less room is free) stands to its left after the sweep is fired. Both hide under the drawer,
-  the full map and the pause menu (Michael's yes, 2026-11-13). One function
-  places them (`HudCorners.place`), mirror-ready; ADR 0025 §2's table gives the numbers on the
+  (or BUILD; upright the Ready chip when shown), lit while an enemy sweep is on and dimmed with a
+  pause mark while it is paused. Its warning line (160 to 220 dp, left out when less room is
+  free) stands to its left for `reveal_warn_ms` (5 s) after an enemy fires a sweep; its clock
+  stops while covered and it ends with the sweep. Both hide under the drawer, the full map and
+  the pause menu (Michael's yes, 2026-11-13). One function
+  places every corner part (`HudCorners.place`), mirror-ready; ADR 0025 §2's table gives the numbers on the
   short screens. Placement and the strike aim freeze the bar's slot, so nothing moves under the
   thumb while the player places or aims.
 - One unfold at a time: the build drawer, the full map, the economy card, the pause menu. A map
