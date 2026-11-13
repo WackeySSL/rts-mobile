@@ -54,10 +54,6 @@ prims = PackedStringArray(
 "rod hull rebar -1.3 -0.9 1.3 -1.3 -0.9 1.6 3 bend=35 damage=2 group=k2"
 )
 poses = PackedStringArray(
-"dmg1 0 riser2 hide",
-"dmg1 0 riser3 hide",
-"dmg1 0 chtop turn y 18 -1.3 -0.9 1.3",
-"dmg1 0 lintel char 100",
 "dmg2 0 hall hide",
 "dmg2 0 tright hide",
 "dmg2 0 saw2 hide",

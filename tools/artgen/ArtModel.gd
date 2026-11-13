@@ -21,7 +21,9 @@ const POSE_SOURCE: Dictionary[StringName, StringName] = {
 const REST_ORDER: Array[StringName] = [&"walk", &"idle"]
 ## The damage poses of a building (ADR 0028 section 3): the body at damage stage 1 and 2, each a
 ## list of moves (`shift`, `turn`, `hide`, `char`) of the hull's groups, frame 0. Each has one frame
-## and no direction, and is a part of its own (`<id>_dmg1.svg`), a patch over the top of the body.
+## and no direction, and is a part of its own (`<id>_dmg2.svg`), a patch over the top of the body.
+## The list is a stage-to-part table (index stage - 1). `dmg1` names stage 1, SKADET, which has no
+## picture of its own (ADR 0034): a model with a `dmg1` pose is refused, no `dmg1` frame is written.
 const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 ## A hull group no damage move may touch, as the `anim` groups are not: it holds what moves.
 const SEATED_GROUP: StringName = &"mount"
@@ -99,7 +101,8 @@ func frame_parts() -> Array[StringName]:
 ## that stage or before, in the order of `DAMAGE_PARTS`.
 func damage_parts() -> Array[StringName]:
 	var found: Array[StringName] = []
-	for i: int in DAMAGE_PARTS.size():
+	# Stage 1 (SKADET) has no picture (ADR 0034), so index 0 is skipped.
+	for i: int in range(1, DAMAGE_PARTS.size()):
 		var changes: bool = not pose_moves(DAMAGE_PARTS[i], 0).is_empty()
 		for prim: ArtPrim in _hull_prims():
 			changes = changes or (prim.damage > 0 and prim.damage <= i + 1)
@@ -433,8 +436,6 @@ func _pose_problems() -> PackedStringArray:
 	if scar_milli < 0 or (scar_milli > 0 and category != &"veh"):
 		found.append("%s: scar_milli is 0 or above, and a vehicle's" % art_id)
 	var staged: Array[StringName] = damage_parts()
-	if staged.has(&"dmg1") and not staged.has(&"dmg2"):
-		found.append("%s: dmg1 without dmg2 (a building has both stages, or dmg2 alone)" % art_id)
 	found.append_array(_anim_kritisk_problems(staged))
 	var kinds: Array[StringName] = []
 	for emitter: Array in emitter_list():
@@ -502,6 +503,10 @@ func _anim_kritisk_problems(staged: Array[StringName]) -> PackedStringArray:
 ## seated (ADR 0028 section 3).
 func _damage_problems(move: ArtMove, line: String) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
+	if move.part == DAMAGE_PARTS[0]:
+		found.append(
+			"%s: SKADET has no picture, a dmg1 pose is refused (ADR 0034): %s" % [art_id, line]
+		)
 	if category != &"bld" or move.frame != 0:
 		found.append("%s: a damage pose is a building's, frame 0: %s" % [art_id, line])
 	var hull_groups: PackedStringArray = PackedStringArray()

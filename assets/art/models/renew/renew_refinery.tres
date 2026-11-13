@@ -70,13 +70,6 @@ emitters = PackedStringArray(
 "dmg_gas -0.85 -0.85 1.15"
 )
 poses = PackedStringArray(
-"dmg1 0 gl_a2 blow 100",
-"dmg1 0 gl_c2 blow 100",
-"dmg1 0 cap_b char 45",
-"dmg1 0 cap_c char 45",
-"dmg1 0 tb_a char 100",
-"dmg1 0 tb_c char 100",
-"dmg1 0 vent1 turn x 14 -0.95 0.3 0.86",
 "dmg2 0 gl_a2 hide",
 "dmg2 0 cap_a hide",
 "dmg2 0 gl_b2 hide",

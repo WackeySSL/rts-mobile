@@ -78,36 +78,34 @@ func _glasshouse(id: StringName, count: int, poses: Array[String]) -> ArtModel:
 
 
 func test_blow_turns_the_first_panes_in_the_hash_order_and_keeps_the_frames() -> void:
-	var model: ArtModel = _glasshouse(
-		&"glasshouse", 4, ["dmg1 0 panes blow 50", "dmg2 0 panes blow 100"]
-	)
+	var model: ArtModel = _glasshouse(&"glasshouse", 4, ["dmg2 0 panes blow 50"])
 	assert_array(Array(model.problems())).is_empty()
 	var order: Array[int] = ArtDamage.blow_order(model, &"panes")
 	assert_array(order).has_size(4)  # the four panes; the frames are titanium
 	assert_array(order).is_equal(ArtDamage.blow_order(model, &"panes"))  # the same on a second run
 	var first_two: Array[int] = [order[0], order[1]]
 	first_two.sort()
-	assert_array(_holes(model, 1)).is_equal(first_two)  # exactly the two first
-	assert_int(_holes(model, 2).size()).is_equal(4)
-	# The frames stay what they were, in both stages.
-	for stage: int in [1, 2]:
-		var frames: int = 0
-		for prim: ArtPrim in model.damage_prims(stage):
-			if prim.material == &"titanium":
-				frames += 1
-		assert_int(frames).is_equal(2)
+	assert_array(_holes(model, 2)).is_equal(first_two)  # exactly the two first
+	var all: ArtModel = _glasshouse(&"glasshouse", 4, ["dmg2 0 panes blow 100"])
+	assert_int(_holes(all, 2).size()).is_equal(4)
+	# The frames stay what they were.
+	var frames: int = 0
+	for prim: ArtPrim in model.damage_prims(2):
+		if prim.material == &"titanium":
+			frames += 1
+	assert_int(frames).is_equal(2)
 	# The intact picture has its panes.
 	for prim: ArtPrim in model.primitives(&"hull"):
 		assert_str(prim.material).is_not_equal("hole")
 	# The hole is drawn in the hole colour.
 	var hole: String = ArtPalette.tone(&"renew", &"hole", ArtPalette.LEFT)
-	assert_array(_fills(ArtGen.stage_polys(model, 1))).contains([hole])
+	assert_array(_fills(ArtGen.stage_polys(model, 2))).contains([hole])
 	assert_object(ArtMove.parse("dmg1 0 panes blow 101")).is_null()
 	assert_object(ArtMove.parse("walk 0 panes blow 10")).is_null()
 
 
 func test_blow_order_is_pinned_and_another_id_orders_the_panes_otherwise() -> void:
-	var poses: Array[String] = ["dmg1 0 panes blow 50", "dmg2 0 panes blow 100"]
+	var poses: Array[String] = ["dmg2 0 panes blow 100"]
 	var first: ArtModel = _glasshouse(&"glasshouse", 3, poses)
 	assert_array(ArtDamage.blow_order(first, &"panes")).is_equal(GOLDEN_THREE)
 	var second: ArtModel = _glasshouse(&"another_house", 3, poses)
@@ -117,24 +115,18 @@ func test_blow_order_is_pinned_and_another_id_orders_the_panes_otherwise() -> vo
 
 
 func test_blow_rounds_to_the_nearest_pane() -> void:
-	var three: ArtModel = _glasshouse(
-		&"glasshouse", 3, ["dmg1 0 panes blow 50", "dmg2 0 panes blow 100"]
-	)
-	assert_int(_holes(three, 1).size()).is_equal(2)  # 1.5 rounds up
-	var four: ArtModel = _glasshouse(
-		&"glasshouse", 4, ["dmg1 0 panes blow 10", "dmg2 0 panes blow 100"]
-	)
-	assert_int(_holes(four, 1).size()).is_equal(0)  # 0.4 rounds down
+	var three: ArtModel = _glasshouse(&"glasshouse", 3, ["dmg2 0 panes blow 50"])
+	assert_int(_holes(three, 2).size()).is_equal(2)  # 1.5 rounds up
+	var four: ArtModel = _glasshouse(&"glasshouse", 4, ["dmg2 0 panes blow 10"])
+	assert_int(_holes(four, 2).size()).is_equal(0)  # 0.4 rounds down
 
 
 func test_blow_needs_intact_glass_in_its_group() -> void:
-	var model: ArtModel = _glasshouse(
-		&"glasshouse", 3, ["dmg1 0 panes blow 50", "dmg2 0 panes blow 100"]
-	)
+	var model: ArtModel = _glasshouse(&"glasshouse", 3, ["dmg2 0 panes blow 100"])
 	assert_str(_problems(model)).is_equal("")
-	model.poses = PackedStringArray(["dmg1 0 panes blow 50", "dmg2 0 frame blow 100"])
+	model.poses = PackedStringArray(["dmg2 0 frame blow 100"])
 	assert_str(_problems(model)).contains("no such hull group")
-	var no_glass: ArtModel = Support.building([], Support.POSES + ["dmg1 0 stack blow 50"])
+	var no_glass: ArtModel = Support.building([], Support.POSES + ["dmg2 0 stack blow 50"])
 	assert_str(_problems(no_glass)).contains("blow needs intact glass")
 
 
@@ -147,12 +139,12 @@ func test_char_of_a_team_face_must_leave_the_key_band() -> void:
 	# Outside the band: passes, and the face takes the char colour.
 	var model: ArtModel = Support.building()
 	assert_array(Array(model.problems())).is_empty()
-	assert_array(_fills(ArtGen.stage_polys(model, 1))).contains([ArtPalette.CHAR])
+	assert_array(_fills(ArtGen.stage_polys(model, 2))).contains([ArtPalette.CHAR])
 	# Inside it: refused.
 	var half: Array[String] = Support.POSES.duplicate()
-	half[half.find("dmg1 0 t1 char 100")] = "dmg1 0 t1 char 40"
+	half[half.find("dmg2 0 t1 char 100")] = "dmg2 0 t1 char 40"
 	assert_str(_problems(Support.building([], half))).contains("stays in the key band")
 	# A char of a group that has no team face is not held to it.
 	var rust: Array[String] = Support.POSES.duplicate()
-	rust.append("dmg1 0 body char 40")
+	rust.append("dmg2 0 body char 40")
 	assert_str(_problems(Support.building([], rust))).is_equal("")

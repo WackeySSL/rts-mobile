@@ -15,21 +15,15 @@ const IDS: Array[StringName] = [
 	&"vehicle_factory",
 ]
 const MODELS: String = "res://assets/art/models/fossil/%s.tres"
-## SKADET changes the top of the body (ADR 0029 section 4 asks for its top half). Where the team
-## colour of a building sits low (the Redoubt's band, the Rigworks' crane beam, the Vehicle Works'
-## lintel, the Deep Bore's ring girders and the Oil Works' column ring) the key share of
-## SKADET needs a change that reaches further down, so the bound is 0.80 of the rows (the Redoubt
-## is at 76 %); the Barracks, the Signal Mast and the Turbine Hall keep to the half.
-const SKADET_MAX: float = 0.80
-const HALF: Array[StringName] = [&"barracks", &"fossil_radar", &"power_plant"]
+## SKADET has no picture since P202 (ADR 0034): the sheets have `dmg2` alone and `cuts[0]` is 0.
 const FOOT_TOP: float = 0.06  ## The foot slab is 0.06 tile tall.
 const KRITISK_FOOT_ROWS: int = 4  ## The overlap a patch needs above the foot of the body.
 ## The first stage that moves, turns or hides the group of each ambient emitter (0: never), parallel
 ## to the sheet's emitters, which list the ambient ones first.
 const QUIET: Dictionary[StringName, Array] = {
-	&"headquarters": [1, 0, 0, 0],
-	&"power_plant": [1, 0, 0, 0, 0],
-	&"refinery": [2, 1, 0, 0, 0],
+	&"headquarters": [2, 0, 0, 0],
+	&"power_plant": [2, 0, 0, 0, 0],
+	&"refinery": [2, 2, 0, 0, 0],
 }
 ## Which buildings with an `anim` keep it running in KRITISK (ADR 0029 section 3): the Turbine
 ## Hall's fans stand on their platform, the Signal Mast and the Deep Bore have fallen.
@@ -49,13 +43,13 @@ func test_each_building_has_both_patches_from_its_model_and_no_ruin() -> void:
 			. override_failure_message("%s: %s" % [id, "; ".join(model.problems())])
 			. is_empty()
 		)
-		assert_array(model.damage_parts()).is_equal([&"dmg1", &"dmg2"])
+		assert_array(model.damage_parts()).is_equal([&"dmg2"])
 		var sheet: IsoSheetDef = index.sheet(id)
 		var parts: Array = Array(sheet.parts)
-		assert_array(parts).override_failure_message(String(id)).contains(["dmg1", "dmg2"])
-		assert_array(parts).override_failure_message(String(id)).not_contains(["ruin"])
+		assert_array(parts).override_failure_message(String(id)).contains(["dmg2"])
+		assert_array(parts).override_failure_message(String(id)).not_contains(["ruin", "dmg1"])
 		assert_str(parts[-1]).is_equal("shadow")
-		for part: String in ["dmg1", "dmg2"]:
+		for part: String in ["dmg2"]:
 			var file: String = ArtGen.frame_path(model, StringName(part), -1)
 			assert_bool(FileAccess.file_exists(file)).override_failure_message(file).is_true()
 			assert_int(FileAccess.get_file_as_string(file).length()).is_less(28 * 1024)
@@ -69,17 +63,13 @@ func test_the_cuts_run_down_the_body_and_skadet_stays_in_the_upper_part() -> voi
 		assert_int(sheet.cuts.size()).override_failure_message(String(id)).is_equal(2)
 		var skadet: int = sheet.cuts[0]
 		var kritisk: int = sheet.cuts[1]
-		assert_int(skadet).override_failure_message(String(id)).is_greater(0)
-		# KRITISK changes more than SKADET and stops just above the foot, never at it.
+		# SKADET has no picture (ADR 0034): its cut says "nothing".
+		assert_int(skadet).override_failure_message(String(id)).is_equal(0)
+		# KRITISK stops just above the foot, never at it.
 		assert_int(kritisk).override_failure_message(String(id)).is_greater(skadet)
 		assert_int(kritisk + KRITISK_FOOT_ROWS).override_failure_message(String(id)).is_less_equal(
 			rows
 		)
-		assert_float(float(skadet) / rows).override_failure_message(String(id)).is_less_equal(
-			SKADET_MAX
-		)
-		if id in HALF:
-			assert_int(skadet * 2).override_failure_message(String(id)).is_less_equal(rows)
 
 
 ## Nothing of KRITISK but the foot slab stands on the ground: no `damage=2` primitive and no moved
@@ -219,12 +209,12 @@ func test_the_stages_follow_the_material_rules() -> void:
 	# The barracks: the team paint burns off from the top down, the ridge cap in SKADET, the eave
 	# band's rear in KRITISK.
 	var barracks: ArtModel = load(MODELS % &"barracks") as ArtModel
-	assert_array(_charred(barracks, &"dmg1")).is_equal([&"p1r"])
+	assert_array(_charred(barracks, &"dmg1")).is_empty()  # no SKADET pose (ADR 0034)
 	assert_array(_charred(barracks, &"dmg2")).contains([&"k2b"])
 	# The refinery: the flare is never hidden in pieces, it is replaced by one bent iron rod from its
 	# base at each stage; the pipe run is cut at the break; the sphere is torn open in plates.
 	var refinery: ArtModel = load(MODELS % &"refinery") as ArtModel
-	for part: StringName in [&"dmg1", &"dmg2"]:
+	for part: StringName in [&"dmg2"]:
 		var hidden: Array[StringName] = []
 		for move: ArtMove in refinery.pose_moves(part, 0):
 			if move.kind == &"hide":

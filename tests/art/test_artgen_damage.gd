@@ -24,8 +24,6 @@ const PRIMS: Array[String] = [
 const POSES: Array[String] = [
 	"anim 2",
 	"anim 1 beacon shift 0 0 0.05",
-	"dmg1 0 roof shift 0 0 -0.1",
-	"dmg1 0 stack char 60",
 	"dmg2 0 stack hide",
 	"dmg2 0 roof turn y 12 -0.4 -0.4 1.0",
 ]
@@ -85,29 +83,43 @@ func test_a_primitive_tagged_damage_is_drawn_from_its_stage_on() -> void:
 		materials.append("%s %s" % [prim.material, prim.damage])
 	assert_array(materials).contains(["iron 1", "iron 2"])
 	assert_array(materials).not_contains(["rust 0"])
-	assert_array(model.damage_parts()).is_equal([&"dmg1", &"dmg2"])
-	assert_array(model.frame_parts()).is_equal([&"hull", &"anim", &"dmg1", &"dmg2", &"shadow"])
-	assert_array(model.directions(&"dmg1")).is_equal([-1])
+	assert_array(model.damage_parts()).is_equal([&"dmg2"])  # SKADET has no picture (ADR 0034)
+	assert_array(model.frame_parts()).is_equal([&"hull", &"anim", &"dmg2", &"shadow"])
+	assert_array(model.directions(&"dmg2")).is_equal([-1])
 	assert_int(model.frames(&"dmg2")).is_equal(1)
 
 
-func test_a_pose_moves_hides_and_scorches_its_group() -> void:
+## The crafted model with a shift and a char in stage 2 (a building has no stage 1 pose, ADR 0034).
+func _moved_model() -> ArtModel:
 	var model: ArtModel = _model()
-	var roof: ArtPrim = _find(model.damage_prims(1), &"roof")
+	model.poses = PackedStringArray(
+		[
+			"anim 2",
+			"anim 1 beacon shift 0 0 0.05",
+			"dmg2 0 roof shift 0 0 -0.1",
+			"dmg2 0 stack char 60"
+		]
+	)
+	return model
+
+
+func test_a_pose_moves_hides_and_scorches_its_group() -> void:
+	var model: ArtModel = _moved_model()
+	var roof: ArtPrim = _find(model.damage_prims(2), &"roof")
 	assert_float(roof.aabb().position.z).is_equal_approx(0.9, 1e-6)  # shifted down 0.1
-	var stack: ArtPrim = _find(model.damage_prims(1), &"stack")
+	var stack: ArtPrim = _find(model.damage_prims(2), &"stack")
 	assert_float(stack.char_percent).is_equal(60.0)
-	assert_object(_find(model.damage_prims(2), &"stack")).is_null()  # hidden
-	assert_float(_find(model.damage_prims(2), &"roof").aabb().size.z).is_greater(0.25)  # turned
+	assert_object(_find(_model().damage_prims(2), &"stack")).is_null()  # hidden
+	assert_float(_find(_model().damage_prims(2), &"roof").aabb().size.z).is_greater(0.25)  # turned
 	# The intact body never sees a damage move.
 	assert_float(_find(model.primitives(&"hull"), &"roof").aabb().position.z).is_equal(1.0)
 	assert_float(_find(model.primitives(&"hull"), &"stack").char_percent).is_equal(0.0)
 
 
 func test_char_mixes_the_faces_towards_the_char_colour_and_a_flag_keeps_its_key_triad() -> void:
-	var model: ArtModel = _model()
+	var model: ArtModel = _moved_model()
 	var intact: Array[ArtRender.Poly] = ArtRender.render(model.primitives(&"hull"), 0.0, &"fossil")
-	var burnt: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 1)
+	var burnt: Array[ArtRender.Poly] = ArtGen.stage_polys(model, 2)
 	var rust_fill: String = ArtPalette.tone(&"fossil", &"rust", ArtPalette.TOP)
 	var want: String = ArtPalette.scorched(rust_fill, 60.0)
 	assert_str(want).is_not_equal(rust_fill)
@@ -126,11 +138,11 @@ func test_char_mixes_the_faces_towards_the_char_colour_and_a_flag_keeps_its_key_
 func test_the_seated_groups_may_not_be_touched() -> void:
 	var anim_named: Array[String] = ["box hull steel 0.2 0.2 1.0 0.1 0.1 0.1 group=beacon"]
 	var cases: Array[Array] = [
-		[[], "dmg1 0 mount shift 0 0 -0.1", "moving element or mount"],
+		[[], "dmg2 0 mount shift 0 0 -0.1", "moving element or mount"],
 		[[], "dmg2 0 beacon hide", "no such hull group"],
 		[anim_named, "dmg2 0 beacon hide", "moving element or mount"],
-		[[], "dmg1 0 nothing hide", "no such hull group"],
-		[[], "dmg1 1 roof hide", "frame 0"],
+		[[], "dmg2 0 nothing hide", "no such hull group"],
+		[[], "dmg2 1 roof hide", "frame 0"],
 	]
 	for found: Array in cases:
 		var extra: Array[String] = []
@@ -147,7 +159,7 @@ func test_the_seated_groups_may_not_be_touched() -> void:
 	vehicle.faction = &"fossil"
 	vehicle.category = &"veh"
 	vehicle.prims = PackedStringArray(["box hull steel 0 0 0 1 1 1 group=roof"])
-	vehicle.poses = PackedStringArray(["dmg1 0 roof hide"])
+	vehicle.poses = PackedStringArray(["dmg2 0 roof hide"])
 	var refused: String = "\n".join(vehicle.problems())
 	assert_str(refused).contains("a damage pose is a building's")
 	var turret: PackedStringArray = _model([], ["box turret steel 0 0 0 1 1 1 damage=1"]).problems()
@@ -159,7 +171,7 @@ func test_the_cut_row_is_the_lowest_row_of_what_the_stage_changes() -> void:
 	var model: ArtModel = _model()
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in _model().damage_parts():
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var low: float = -INF
 		for pair: Array in model.damage_changes(stage):
@@ -178,7 +190,7 @@ func test_the_cut_is_in_the_top_third_of_the_body() -> void:
 	polys.assign(body.polys[0])
 	var ink: Rect2 = ArtRender.bounds(polys)
 	var top: float = ink.position.y + body.layout.origin.y
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in _model().damage_parts():
 		assert_float(float(shots[part].cut)).is_less(top + ink.size.y / 3.0)
 
 
@@ -187,7 +199,7 @@ func test_below_the_cut_the_stage_picture_is_the_intact_one() -> void:
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
 	var intact: Image = _image(shots[&"hull"].polys[0], body)
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in _model().damage_parts():
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var full: Array[ArtRender.Poly] = ArtGen.stage_polys(model, stage)
 		var posed: Image = _image(full, body)
@@ -201,7 +213,7 @@ func test_the_patch_over_the_body_gives_the_stage_picture() -> void:
 	var files: Dictionary[String, String] = ArtGen.build(model)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var body: ArtGen.Layout = shots[&"hull"].layout
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	for part: StringName in _model().damage_parts():
 		var stage: int = ArtModel.DAMAGE_PARTS.find(part) + 1
 		var shot: ArtGen.Shot = shots[part]
 		var layout: ArtGen.Layout = shot.layout
@@ -244,13 +256,15 @@ func test_the_sheet_lists_the_patches_cuts_and_files() -> void:
 	var files: Dictionary[String, String] = ArtGen.build(model)
 	var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
 	var sheet: IsoSheetDef = ArtSheet.of(model, shots)
-	assert_array(Array(sheet.parts)).is_equal(["hull", "anim", "dmg1", "dmg2", "shadow"])
-	assert_array(Array(sheet.counts)).is_equal([1, 1, 1, 1, 1])
-	assert_array(Array(sheet.cuts)).is_equal([shots[&"dmg1"].cut, shots[&"dmg2"].cut])
-	assert_vector(Vector2(sheet.frame_size(&"dmg1"))).is_equal(Vector2(shots[&"dmg1"].layout.size))
+	# No `dmg1` part (ADR 0034); `cuts` keeps two entries, index stage - 1, the first 0.
+	assert_array(Array(sheet.parts)).is_equal(["hull", "anim", "dmg2", "shadow"])
+	assert_array(Array(sheet.counts)).is_equal([1, 1, 1, 1])
+	assert_array(Array(sheet.cuts)).is_equal([0, shots[&"dmg2"].cut])
+	assert_bool(files.has("res://assets/art/iso/fossil/bld/crafted_dmg1.svg")).is_false()
+	assert_vector(Vector2(sheet.frame_size(&"dmg2"))).is_equal(Vector2(shots[&"dmg2"].layout.size))
 	assert_vector(Vector2(sheet.anchor(&"dmg2"))).is_equal(Vector2(shots[&"dmg2"].layout.anchor))
-	assert_vector(Vector2(sheet.origin(&"dmg1"))).is_equal(Vector2(shots[&"dmg1"].layout.origin))
-	for part: StringName in ArtModel.DAMAGE_PARTS:
+	assert_vector(Vector2(sheet.origin(&"dmg2"))).is_equal(Vector2(shots[&"dmg2"].layout.origin))
+	for part: StringName in _model().damage_parts():
 		var path: String = "res://assets/art/iso/fossil/bld/crafted_%s.svg" % part
 		assert_str(sheet.path(part, -1)).is_equal(path)
 		assert_bool(files.has(path)).is_true()
@@ -261,6 +275,17 @@ func test_the_sheet_lists_the_patches_cuts_and_files() -> void:
 	assert_str(text).not_contains("root =")
 	assert_str(text).not_contains("scar_milli")
 	assert_dict(ArtGen.build(_model())).is_equal(files)  # a second run gives the same bytes
+
+
+func test_a_dmg1_pose_is_refused_because_skadet_has_no_picture() -> void:
+	var model: ArtModel = _model(["dmg1 0 stack char 60"])
+	var problems: PackedStringArray = model.problems()
+	assert_int(problems.size()).is_equal(1)
+	assert_str(problems[0]).contains("SKADET has no picture")
+	# The stage table keeps its two entries, so stage 2 is still `dmg2`.
+	assert_array(ArtModel.DAMAGE_PARTS).is_equal([&"dmg1", &"dmg2"])
+	assert_array(_model().damage_parts()).is_equal([&"dmg2"])
+	assert_array(Array(ArtSheet.of(_model(), ArtGen.all_shots(_model())).cuts)).has_size(2)
 
 
 func test_a_model_without_damage_has_no_patch_no_cuts_and_the_same_sheet_text() -> void:
@@ -290,29 +315,29 @@ func test_a_stage_with_nothing_to_show_has_cut_0() -> void:
 func test_each_move_alone_sets_the_cut_at_its_own_outline() -> void:
 	var cuts: Dictionary[String, int] = {}
 	for move: String in [
-		"dmg1 0 lid shift 0 0 0.2",
-		"dmg1 0 lid turn z 20 -0.4 -0.4 1.0",
-		"dmg1 0 lid hide",
-		"dmg1 0 lid char 70",
+		"dmg2 0 lid shift 0 0 0.2",
+		"dmg2 0 lid turn z 20 -0.4 -0.4 1.0",
+		"dmg2 0 lid hide",
+		"dmg2 0 lid char 70",
 	]:
 		var model: ArtModel = _model()
 		model.prims = PackedStringArray(LID)
 		model.anim_ms = 0
 		model.anim_kritisk = &""
-		model.poses = PackedStringArray([move, "dmg2 0 lid hide"])
+		model.poses = PackedStringArray([move])
 		assert_array(Array(model.problems())).override_failure_message(move).is_empty()
 		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
-		cuts[move] = shots[&"dmg1"].cut
+		cuts[move] = shots[&"dmg2"].cut
 		# The lid sits on top: every change stays above two thirds of the body's canvas.
 		assert_int(cuts[move]).override_failure_message(move).is_less(
 			shots[&"hull"].layout.size.y * 2 / 3
 		)
 	# Hide and char change the lid where it stands; their cut is the lid's own bottom.
-	assert_int(cuts["dmg1 0 lid hide"]).is_equal(cuts["dmg1 0 lid char 70"])
+	assert_int(cuts["dmg2 0 lid hide"]).is_equal(cuts["dmg2 0 lid char 70"])
 	# Lifting it leaves the old outline in the union, so the cut stays at the lid's own bottom;
 	# turning widens the outline, so it can only go lower.
-	assert_int(cuts["dmg1 0 lid shift 0 0 0.2"]).is_equal(cuts["dmg1 0 lid hide"])
-	assert_int(cuts["dmg1 0 lid turn z 20 -0.4 -0.4 1.0"]).is_greater_equal(cuts["dmg1 0 lid hide"])
+	assert_int(cuts["dmg2 0 lid shift 0 0 0.2"]).is_equal(cuts["dmg2 0 lid hide"])
+	assert_int(cuts["dmg2 0 lid turn z 20 -0.4 -0.4 1.0"]).is_greater_equal(cuts["dmg2 0 lid hide"])
 
 
 func test_the_damage_and_hang_kinds_are_emitters() -> void:

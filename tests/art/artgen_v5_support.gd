@@ -4,7 +4,8 @@ extends RefCounted
 ## buildings. Not a test suite (no GdUnitTestSuite base).
 
 ## The key-share bands of ADR 0029 section 5: the share of the intact picture's key-band pixels
-## that is still key-band at SKADET and KRITISK (the sheet's 70 % and 35 %, with room).
+## that is still key-band at SKADET and KRITISK (the sheet's 70 % and 35 %, with room). SKADET's
+## band is kept for the stage index only: it shows the intact picture now (ADR 0034).
 const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.20, 0.50)]
 const SCALE: float = 0.5  ## The 2x art at zoom 1.
 const MIN_ALPHA: float = 0.5  ## A pixel more transparent than this is not ink.
@@ -26,9 +27,6 @@ const PRIMS: Array[String] = [
 const POSES: Array[String] = [
 	"anim 2",
 	"anim 1 beacon shift 0 0 0.05",
-	"dmg1 0 tower shift 0 0 -0.1",
-	"dmg1 0 stack char 60",
-	"dmg1 0 t1 char 100",
 	"dmg2 0 stack hide",
 	"dmg2 0 t1 char 100",
 	"dmg2 0 t2 hide",
@@ -104,7 +102,8 @@ static func key_share(model: ArtModel, stage: int) -> float:
 ## passes.
 static func share_problems(model: ArtModel) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
-	for stage: int in range(1, 3):
+	# SKADET has no picture of its own (ADR 0034): only stage 2 is read.
+	for stage: int in range(2, 3):
 		var share: float = key_share(model, stage)
 		var band: Vector2 = SHARE_BANDS[stage - 1]
 		if share < band.x or share > band.y:
