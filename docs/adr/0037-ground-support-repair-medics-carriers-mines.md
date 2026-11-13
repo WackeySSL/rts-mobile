@@ -726,6 +726,24 @@ then.
 - **Hold position:** §15's cases; the lockstep cases under twins and kernels (P298).
 - **Mutation testing:** P271, P276, P287, P288 and P298 (sim rows), about 10 chosen mutants each.
 
+- **As built (P276; changes no accepted text above):**
+  - `Repair.run` (`game/sim/Repair.gd`) follows section 5 and the medic seek of section 6. The scratch
+    for the kept slots is the columns `push_x` and `push_y` (rewritten by SEPARATION, as `Air.run`
+    uses them), so no allocation. A repairer scans every row once; `REPAIR_CHECKS` counts them.
+  - **Event 8 is `World.Event.REPAIRED`.** The record is `[8, repairer id, x, y, repaired id, owner,
+    hp gained, 0]` with x, y the **repaired row's** position (where the view draws), the owner the
+    repaired row's. `Air._service` writes it too (once per pad per period).
+  - **Only rows without a footprint are served.** Buildings have move class FOOT, so a medic's mask
+    would match them; they are `Mend`'s (section 4). A medic also seeks only while IDLE with no order
+    target, so a pending LOAD keeps its mark.
+  - **Rank shifts** when a lower row is removed or inserted (a death, a sale, a boarding, an
+    unload). It stays deterministic and the per-tick bound `ceil(R / period)` holds; a turn may be
+    skipped or doubled once.
+  - `World.Stat.REPAIR_CHECKS` = 10, so `STAT_COUNT` in `world_access.h` is 11 (no kernel writes it).
+  - `REPAIR` for a building without pads is still P277's branch inside `Air.apply_repair`; one type.
+  - The seek reuses the one scan: candidates within the larger of reach and seek, the seek target the
+    most hurt (then lowest id) within seek reach, taken only when no hurt row is in reach.
+
 ## Consequences
 - **Gains:**
   - Michael's four items and two gaps with three new Commands and three shared with ADR 0036.

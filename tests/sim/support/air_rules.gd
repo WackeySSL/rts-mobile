@@ -87,7 +87,10 @@ static func fine_upgrade() -> UpgradeDef:
 	up.id = &"better_bombs"
 	up.faction = &"fossil"
 	up.requires = BuildingDef.new()
-	up.applies_to = [fine_air()] as Array[UnitDef]
+	var armed: UnitDef = fine_air()
+	armed.weapon = WeaponDef.new()
+	armed.weapon.id = &"gun"
+	up.applies_to = [armed] as Array[UnitDef]
 	return up
 
 
@@ -211,7 +214,8 @@ static func upgrade_problems(
 
 ## The rules that span files. The 400 % bound is per modifier, so (a choice, P246's combination is
 ## then a plain product of one value each) at most one upgrade changes one stat of one type of a
-## faction. Upgrade ids may not equal type ids: research items become types, and World merges equal
+## faction, and for damage dealt, of one weapon (the sim keeps `mod_dealt` per weapon).
+## Upgrade ids may not equal type ids: research items become types, and World merges equal
 ## ids. A type on Research is a fault in air_problems. The World keeps one bit per upgrade id in an
 ## int32 (`World.UPGRADES_MAX`) and the first def of an id wins, so every id is non-empty, no id is
 ## on two different defs, and the distinct ids of all factions are at most UPGRADES_MAX.
@@ -236,10 +240,20 @@ static func upgrade_catalog_problems(
 			for type: UnitDef in up.applies_to:
 				if type == null:
 					continue
-				var key: String = "%s/%s/%d" % [faction.id, type.type_id, up.stat]
+				# Damage dealt is kept per weapon (`mod_dealt`): one upgrade may list two types
+				# on one weapon only once, so the key is the weapon and a type may not repeat it.
+				var subject: String = String(type.type_id)
+				if up.stat == UpgradeDef.Stat.DAMAGE_DEALT:
+					if type.weapon == null:
+						problems.append(
+							"%s: a damage-dealt upgrade applies to an unarmed type" % up.id
+						)
+						continue
+					subject = String(type.weapon.id)
+				var key: String = "%s/%s/%d" % [faction.id, subject, up.stat]
 				if changed.has(key):
 					problems.append(
-						"%s and %s change one stat of %s" % [changed[key], up.id, type.type_id]
+						"%s and %s change one stat of %s" % [changed[key], up.id, subject]
 					)
 				changed[key] = String(up.id)
 	if owner_of.size() > World.UPGRADES_MAX:

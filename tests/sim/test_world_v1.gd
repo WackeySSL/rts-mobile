@@ -77,6 +77,7 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	var stat: Dictionary = {"FLOW_CELLS": 0, "LINE_CHECKS": 1, "SEP_PAIRS": 2}
 	stat.merge({"TARGET_CANDIDATES": 3, "FOG_CELLS": 4, "PROJ_STEPS": 5, "ROWS_COMPACTED": 6})
 	stat.merge({"ORE_SCANNED": 7, "EXIT_SCANNED": 8, "MEMORY_CHECKS": 9})
+	stat["REPAIR_CHECKS"] = 10
 	assert_dict(World.Stat).is_equal(stat)
 	assert_dict(World.Order).is_equal({"IDLE": 0, "ATTACK_MOVE": 1, "MOVE": 2, "ATTACK": 3})
 	assert_dict(World.Armour).is_equal({"INFANTRY": 0, "LIGHT": 1, "HEAVY": 2, "BUILDING": 3})
@@ -89,7 +90,7 @@ func test_the_enums_and_the_event_stride_are_the_contract() -> void:
 	assert_array([World.TABS, World.GROUND_CLASSES, World.UPGRADES_MAX]).is_equal([5, 3, 30])
 	# STRIKE joined with P133 (ADR 0027 section 7, an ADR 0007 section 10 note): events are not state.
 	assert_dict(World.Event).is_equal(
-		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5, "UNLOADED": 6}
+		{"SPAWNED": 1, "DIED": 2, "SHOT": 3, "IMPACT": 4, "STRIKE": 5, "UNLOADED": 6, "REPAIRED": 8}
 	)
 	var nav: Dictionary = {"NONE": 0, "DIRECT": 1, "FIELD": 2, "HOLD": 3, "CHASE": 4}
 	assert_dict(World.NavMode).is_equal(nav)
@@ -366,7 +367,8 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 			skipped.append(column)
 		else:
 			others.append(column)
-	assert_int(packed.size()).is_equal(163)  # P285's 152, `stance`, nine mine arrays, `mine_at`.
+	# P285's 152, P246's three mod_*, P276's repair_rows, P286's stance, nine mine arrays, mine_at.
+	assert_int(packed.size()).is_equal(167)
 	assert_int(ints.size()).is_equal(71)  # P286: `next_mine_id` and `mine_count`.
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
@@ -393,7 +395,7 @@ func test_prepare_sizes_the_fixed_capacity_arrays_and_a_second_call_keeps_them()
 	for column: StringName in World.SCRATCH_ARRAYS:
 		assert_int(world.get(column).size()).is_equal(0)
 	world.prepare()
-	assert_int(world.stats.size()).is_equal(10)
+	assert_int(world.stats.size()).is_equal(11)
 	for column: StringName in World.SCRATCH_ARRAYS:
 		assert_int(world.get(column).size()).override_failure_message(column).is_equal(256)
 	for column: StringName in World.PROJECTILE_ARRAYS:
@@ -431,7 +433,7 @@ func test_prepare_sizes_the_fixed_capacity_arrays_and_a_second_call_keeps_them()
 		var column: PackedInt32Array = small.get(column_name)
 		var wanted: int = sentinels[column_name]
 		assert_int(column[2]).override_failure_message(column_name).is_equal(wanted)
-	assert_array([small.stats[5], small.stats.size()]).is_equal([9, 10])
+	assert_array([small.stats[5], small.stats.size()]).is_equal([9, 11])
 	for column_name: StringName in World.SCRATCH_ARRAYS:
 		assert_int(small.get(column_name).size()).override_failure_message(column_name).is_equal(6)
 	for column_name: StringName in World.PROJECTILE_ARRAYS:

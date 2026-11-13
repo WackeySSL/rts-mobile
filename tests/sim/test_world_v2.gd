@@ -62,7 +62,8 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	var ghosts: Array[String] = ["ghost_id", "ghost_type", "ghost_owner", "ghost_cell"]
 	assert_array(World.GHOST_ARRAYS).is_equal(ghosts + ["ghost_count"])
 	var derived: Array[String] = ["power_made", "power_used", "building_rows", "harvester_rows"]
-	derived.append_array(["air_rows", "mine_at"])  # P241, P286.
+	derived.append_array(["air_rows", "repair_rows"])  # P241, P276.
+	derived.append_array(["mod_dealt", "mod_taken", "mod_ammo", "mine_at"])  # P246, P286.
 	assert_array(World.DERIVED_ARRAYS).is_equal(derived)
 	assert_array(World.HASHED_SCALARS.slice(-5)).is_equal(
 		["match_end_tick", "winner", "pass_count", "next_mine_id", "mine_count"]

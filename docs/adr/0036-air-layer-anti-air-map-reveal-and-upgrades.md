@@ -583,6 +583,24 @@ accepted text.
   INTEGRATE and FOG kernels and need a plan row with that cost. If FIRE or PROJECTILES is ever
   ported (ADR 0013 §1, P42n), the `mod_*` tables join that kernel's checked list.
 
+Note (2026-11-13, P246): as built. It changes no accepted text except the bullets marked "adds".
+- **Where.** `game/sim/Upgrades.gd` (`rebuild`, `finish`, `queue_refused` and the readers `dealt`,
+  `taken`, `extra_ammo`); `WorldLoad._upgrade_for` makes the research item; `Production.run` and
+  `apply_queue` call it; `Combat.damage` is read by `Combat.fire`, `Combat.advance_projectiles` and
+  `Strike._land` (the rupture: `dealt` 100, `taken` of the row); `Air._service` adds `mod_ammo` to
+  the cap; `PlayerView.upgrades` (a typed int field, own bits only).
+- **Research item (adds).** A UnitDef made at load with `type_id` = the upgrade id, the upgrade's
+  faction, cost and `research_ticks` as build time, `requires`, tab RESEARCH; `type_upgrade` is the
+  upgrade's index. It comes after the upgrade's own types, so those indexes are unchanged.
+- **Tables (adds).** `mod_dealt` is per player and **weapon** (`player * weapons + weapon`), because
+  a shell stores only its owner and weapon; two types that share one weapon share its upgrade.
+  `mod_taken` and `mod_ammo` are per player and type. Percents compound by multiplication, ammo by
+  addition. `Upgrades.rebuild` runs at the end of `prepare()` and at each completion; the tables join
+  `DERIVED_ARRAYS` and `MatchSnapshot.NOT_COPIED`, unhashed, so no re-pin.
+- **Data rule (adds).** The catalog keys a damage-dealt upgrade on faction, weapon id and stat (not
+  type) and rejects an unarmed type; `rebuild` also counts an upgrade once per weapon.
+- **Not here.** No building or item card ships, so HOW_TO_PLAY gets no entry (P247).
+
 ### 11. Space centre and the satellite (map reveal)
 Rewritten at acceptance (P230, 2026-11-09) for Michael's answer 3 B: the sweep lasts until the
 space centre is destroyed. The draft's timed sweep and its recharge are gone; question 3 keeps the
