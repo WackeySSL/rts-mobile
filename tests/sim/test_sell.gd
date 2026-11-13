@@ -107,7 +107,7 @@ func test_the_flag_mapping_is_1_2_3_and_0_for_anything_else() -> void:
 		assert_array(
 			[
 				Removal.died_flag(Production.CANCELLED),
-				Removal.died_flag(Removal.BOARDED),
+				Removal.died_flag(Carry.BOARDED),
 				Removal.died_flag(Production.SOLD),
 				Removal.died_flag(0),
 				Removal.died_flag(100),
@@ -116,7 +116,7 @@ func test_the_flag_mapping_is_1_2_3_and_0_for_anything_else() -> void:
 		)
 		. is_equal([1, 2, 3, 0, 0, 0])
 	)
-	assert_array([Production.CANCELLED, Removal.BOARDED, Production.SOLD]).is_equal([-1, -2, -3])
+	assert_array([Production.CANCELLED, Carry.BOARDED, Production.SOLD]).is_equal([-1, -2, -3])
 	# A cancelled site still gives 1 through the real REMOVE.
 	var made: World = Rig.world()
 	Rig.step(made, [Command.cancel_build(1, Rig.OWN_SITE)])

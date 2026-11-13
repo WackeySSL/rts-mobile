@@ -61,7 +61,8 @@ static func _spawn_from(
 	return true
 
 
-## How many rows of `player` can move (their type's speed is above 0): what `unit_cap` counts.
+## How many rows of `player` can move (their type's speed is above 0) and how many of its squads
+## are aboard a carrier: what `unit_cap` counts.
 static func mobile_rows(world: World, player: int) -> int:
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
@@ -70,7 +71,7 @@ static func mobile_rows(world: World, player: int) -> int:
 	for row: int in owners.size():
 		if owners[row] == player and speeds[types[row]] > 0:
 			count += 1
-	return count
+	return count + Carry.passengers_of(world, player)  # The squads aboard count too (ADR 0036 s. 8).
 
 
 ## The tile where a unit of `move_class` appears at building row `producer`: the exit tile (the

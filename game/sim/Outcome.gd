@@ -102,7 +102,8 @@ static func apply_surrender(world: World, command: Command) -> bool:
 ## a death; a row is gone after that and cannot count twice. One pass over the rows ascending, over
 ## aliased arrays, no allocation. An owner past the per-player arrays of a hand-built World, or a
 ## type past the footprint table, is a unit (or nobody) rather than an error. A cancelled site
-## (`Production.CANCELLED`) and a sold building (`Production.SOLD`) count for nobody.
+## (`Production.CANCELLED`), a sold building (`Production.SOLD`) and a squad that boarded
+## (`Carry.BOARDED`) count for nobody.
 static func count_losses(world: World) -> void:
 	var alive: PackedInt32Array = world.hp
 	var pending: PackedInt32Array = world.build_left
@@ -117,7 +118,11 @@ static func count_losses(world: World) -> void:
 		var player: int = owners[row]
 		if alive[row] > 0 or player < 1 or player >= players or had[player] != 1:
 			continue
-		if pending[row] == Production.CANCELLED or pending[row] == Production.SOLD:
+		if (
+			pending[row] == Production.CANCELLED
+			or pending[row] == Production.SOLD
+			or pending[row] == Carry.BOARDED
+		):
 			continue
 		if types[row] < widths.size() and widths[types[row]] > 0:
 			lost_buildings[player] += 1

@@ -78,6 +78,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	if probe != null:
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
+	Carry.board(world)  # Boarding squads leave in this tick's REMOVE (ADR 0036 section 8).
 	world.remove_dead()
 	Reveal.run(world)  # The space centre's sweep follows its building (ADR 0036 section 11).
 	if probe != null:
@@ -124,6 +125,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _apply_attack(world, command)
 			Command.Type.STOP:
 				applied = _apply_stop(world, command)
+			Command.Type.LOAD:
+				applied = _playing(world, command) and Carry.apply_load(world, command)
 			Command.Type.PLACE:
 				applied = _playing(world, command) and Production.apply_place(world, command)
 			Command.Type.QUEUE:
@@ -161,6 +164,7 @@ static func _apply_point(world: World, command: Command, order: int) -> bool:
 		orders[row] = order
 	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
 	Harvest.release(world, rows)
+	Carry.release(world, rows)
 	return true
 
 

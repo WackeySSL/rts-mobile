@@ -342,6 +342,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mend_period_ticks",
 	&"mend_cost_percent",
 	&"passenger_cap",
+	&"load_reach_milli",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -397,7 +398,8 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mend_hp",
 	&"mend_period_ticks",
 	&"mend_cost_percent",
-	&"passenger_cap"
+	&"passenger_cap",
+	&"load_reach_milli"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
@@ -496,6 +498,8 @@ var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
 ## The size of the passenger table (ADR 0036 section 3).
 var passenger_cap: int = 0
+## How near a squad boards its carrier, in milli-tiles (`Carry.board`).
+var load_reach_milli: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
