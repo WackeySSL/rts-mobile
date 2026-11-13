@@ -516,6 +516,13 @@ of P26bn's plan note now runs once per merge wave. The card runs three times on 
 wave merges, not on each row before it merges (`docs/plans/2026-11-06-phase-4.md`, P26bu's note).
 This note changes no other text.
 
+Note (2026-11-13, P26bv, the lead; Michael's "3" in chat the same day): the revisit trigger on
+`sim_p95_ms` (P26bn's note) rises from 10 ms to 11 ms. `job_minus_step_p95_cp_ms` keeps 5 ms.
+Wave 4's cards on `main` read 9.95, 10.01 and 10.36. The lever named in the P26bp note's "Next
+steps" (smaller caps, or a new ADR for the AI's hot loops in C++) goes to Michael before P250. P198b
+is not taken up again: on the phone it moved `sim_p95_ms` by 0.14 ms (the P26bp note).
+Details are in the Phase 4 plan's P26bv note. This note changes no other text.
+
 ### 5. Randomness
 - The only draws are from the controller's stream (`DetRandom.STREAM_AI_BASE + player`, made by
   `DetRng` in `MatchRunner` and by `DetRandom.create` in the headless harness, as today).
