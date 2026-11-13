@@ -589,3 +589,31 @@ Note (2026-11-13, P26bu, the lead; from the reviews of P234, P235, P240 and P262
   (Michael's yes, 2026-11-13).
 - **`rts-sim-conventions`.** Its hashed-state paragraph now covers `STATE_FORMAT` 6 (P232) and 7
   (P262) (Michael's yes, 2026-11-13).
+
+Note (2026-11-13, P26bv, the lead; from merge wave 5 (#428 P263, #429 P285, #430 P241, #431 P239)):
+- **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13; the Phase 4 plan's P26bv note). Before
+  P250 starts, the lead asks Michael to choose between two AI levers: smaller caps, or the AI's hot
+  loops in C++.
+- **P239 as built.** P239 ships the anti-air buildings (Burst Stack, Sky Needle) and their mask-6
+  guns as data only. They are not in the rosters yet, because a UI test needs an item card for
+  every buildable type. **P239b** therefore also does the following:
+  - adds the roster entries and the item cards;
+  - flips `test_defs_anti_air`'s "not in rosters" assertion;
+  - removes the two named skips in `test_defs_roster`, `test_defs_roster_renew` and
+    `test_defs_factions_data`;
+  - writes the two HOW_TO_PLAY Combat rows: "the anti-air gun hits aircraft, never the ground"
+    and "who hits aircraft".
+
+  **P250 waits for P239b** (the roster entries), not only for P239.
+- **P241 as built.** `Air.run` borrows SEPARATION's scratch `push_x`/`push_y` (ADR 0036's P241
+  note). The `rts-sim-conventions` skill does not say this yet. A skill line needs Michael's yes,
+  so it is on the lead's list for the next skill edit.
+- **`World.gd` is at 994 of gdlint's 1000 lines.** P246a (a lead-added row, merge wave 6) moves
+  function bodies out to the `World*` helpers. It changes no behaviour and keeps the arrays, the
+  lists and every hash. P246 and P286 wait for it.
+- **Lead follow-ups (NITs, not rows):**
+  - `MatchSnapshot.NOT_COPIED`'s comment has one short line, which needs a reflow.
+  - `RULE_SCALARS` order is not pinned: the test compares it as a set. The next row that edits the
+    list pins the order.
+  - The ground carrier cannot follow squads into FOOT-only scrub (P263's note in ADR 0036 §8).
+    The ground-carrier rows of ADR 0037 §7 take it.

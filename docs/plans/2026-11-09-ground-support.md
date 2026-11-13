@@ -340,3 +340,13 @@ Note (2026-11-12, P26br, the lead; from the reviews of P272, P272b and P274):
   - Easy never mends. Normal is 50 % and 400, Hard 70 % and 250 until P275 tunes them.
   - The frozen `perf_ai` levels stay inert (script defaults 0), so the Perf AI card times the guard
     only. No card times the live path yet; P275's balance run is the first that plays it.
+
+Note (2026-11-13, P26bv, the lead; from merge wave 5):
+- **P285 as built (#429).** It shipped the defs together with P263 (#428). `data/rules.tres` sets
+  `mine_cap` to 12. That value stays inert while no type has a `mine_weapon`. The test support now
+  holds the data rules for mine weapons and for unique weapon ids.
+- **P286 waits for P246a.** P246a is a lead-added row in the air-and-tech plan's P26bv note. It
+  splits `World.gd`, which is at 994 of gdlint's 1000 lines, so that P286's mine table, records and
+  `stance` column fit.
+- **The Perf AI trigger is now 11 ms** (Michael, 2026-11-13). The Phase 4 plan's P26bv note has the
+  details.
