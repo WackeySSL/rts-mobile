@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1_weapon")
 id = &"drillhead_bombs"
-range = 2500
+range = 3000
 damage = 120
 cooldown_ticks = 15
 projectile_speed = 0
