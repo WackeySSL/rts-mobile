@@ -69,13 +69,15 @@ func test_the_warning_line_shows_once_for_an_enemy_sweep_and_goes_with_its_time(
 		var warn: float = float(_badge.life.reveal_warn_ms)
 		_fire_event(1)  # The player's own sweep: no warning for the one who fires.
 		assert_float(_badge.line_ms).override_failure_message(why).is_equal(0.0)
+		_set_reveal([0, 0, 1])  # The sweep is on, so its warning has a reason to stay.
 		_fire_event(2)
 		assert_float(_badge.line_ms).override_failure_message(why).is_equal(warn)
 		assert_bool(_badge.visible).override_failure_message(why).is_true()
 		var line: Label = _badge.get_child(0)
 		assert_bool(line.visible).override_failure_message(why).is_true()
 		var dp: float = UiScale.base_px_per_dp()
-		assert_float(line.size.x).override_failure_message(why).is_greater_equal(152.0 * dp - 2.0)
+		var plate: float = line.size.x + 16.0 * dp  # The label is the plate minus its margins.
+		assert_float(plate).override_failure_message(why).is_greater_equal(160.0 * dp - 2.0)
 		assert_float(_badge.size.x).override_failure_message(why).is_less_equal(
 			(220.0 + 8.0 + 48.0) * dp + 2.0
 		)
@@ -92,7 +94,10 @@ func test_the_warning_line_shows_once_for_an_enemy_sweep_and_goes_with_its_time(
 		_badge.advance(warn - 1.0)
 		assert_bool(_badge.visible).override_failure_message(why).is_true()
 		_badge.advance(2.0)
-		assert_bool(_badge.visible).override_failure_message(why).is_false()  # No sweep, no line.
+		assert_float(_badge.line_ms).override_failure_message(why).is_equal(0.0)
+		assert_bool(_badge.visible).override_failure_message(why).is_true()  # The badge stays.
+		_set_reveal([0, 0, 0])
+		assert_bool(_badge.visible).override_failure_message(why).is_false()  # No sweep, no badge.
 
 
 func test_the_owners_button_has_no_aim_and_shows_on_paused_and_low_power() -> void:
@@ -116,8 +121,10 @@ func test_the_owners_button_has_no_aim_and_shows_on_paused_and_low_power() -> vo
 		# A low-power refusal: dimmed, the glyph, no aim.
 		_runner.snapshot.power_used[1] = _runner.snapshot.power_made[1] + 1
 		_aim.refresh()
-		assert_array([button.low_power, _aim.begin()]).override_failure_message(why).is_equal(
-			[true, false]
+		(
+			assert_array([button.low_power, button.dimmed(), _aim.begin()])
+			. override_failure_message(why)
+			. is_equal([true, true, false])
 		)
 		_runner.snapshot.power_used[1] = 0
 		# The sweep stands: the button shows it.
@@ -127,8 +134,10 @@ func test_the_owners_button_has_no_aim_and_shows_on_paused_and_low_power() -> vo
 			[1, "On"]
 		)
 		_set_reveal([0, 2, 0])
-		assert_array([button.sweep, _foot(button)]).override_failure_message(why).is_equal(
-			[2, "Paused"]
+		(
+			assert_array([button.sweep, _foot(button), button.dimmed()])
+			. override_failure_message(why)
+			. is_equal([2, "Paused", true])
 		)
 		assert_bool(_aim.begin()).override_failure_message(why).is_false()
 
@@ -143,7 +152,7 @@ func test_a_ready_bore_keeps_a_full_card_while_the_sweep_is_paused() -> void:
 	_set_reveal([0, 2, 0])
 	# The standing sweep never binds: the Bore does, ready, with a small mark and no dim.
 	assert_array([_aim.building_id, _aim.sweep_bound, _aim.reveal]).is_equal([BORE, false, false])
-	assert_array([button.sweep, button.bound, button.low_power, _foot(button)]).is_equal(
+	assert_array([button.sweep, button.bound, button.dimmed(), _foot(button)]).is_equal(
 		[2, false, false, "Ready"]
 	)
 	_set_reveal([0, 1, 0])
@@ -156,6 +165,7 @@ func test_the_warning_ignores_other_strikes_clears_on_a_new_match_and_waits_unde
 	for kind: int in [Strike.Kind.RUPTURE, Strike.Kind.BLACKOUT]:
 		_fire_event(2, kind)
 		assert_float(_badge.line_ms).is_equal(0.0)
+	_set_reveal([0, 0, 1])
 	_fire_event(2)
 	var warn: float = float(_badge.life.reveal_warn_ms)
 	assert_float(_badge.line_ms).is_equal(warn)
@@ -170,8 +180,7 @@ func test_the_warning_ignores_other_strikes_clears_on_a_new_match_and_waits_unde
 		assert_bool(_badge.visible).override_failure_message(str(unfold)).is_true()
 	_runner.snapshot.match_serial += 1  # A new match: the old warning is gone.
 	_runner.ticked.emit(_runner.snapshot.tick)
-	assert_float(_badge.line_ms).is_equal(0.0)
-	assert_bool(_badge.visible).is_false()
+	assert_float(_badge.line_ms).is_equal(0.0)  # Cleared by the serial, the sweep still on.
 
 
 func test_the_placement_buttons_keep_clear_of_the_badge() -> void:

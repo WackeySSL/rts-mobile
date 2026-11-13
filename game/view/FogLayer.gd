@@ -47,6 +47,8 @@ const ALPHA_BYTE: int = 3
 var usec_clock: Callable = Time.get_ticks_usec
 ## The millisecond clock that times a fade. Tests replace it.
 var msec_clock: Callable = Time.get_ticks_msec
+## The frame counter that limits a fade to one blend a frame. Tests replace it.
+var frame_clock: Callable = Engine.get_process_frames
 
 var _serial: int = -1  ## match_serial of the image.
 var _player: int = 0  ## The local player the image shows.
@@ -67,7 +69,7 @@ var _fading: bool = false
 var _fade_from: PackedByteArray = PackedByteArray()  ## The image's bytes when the fade began.
 var _goal: PackedByteArray = PackedByteArray()  ## The bytes the image is fading to.
 var _fade_start_ms: int = 0
-var _last_blend_ms: int = -1
+var _last_blend_frame: int = -1
 
 
 func _ready() -> void:
@@ -88,8 +90,10 @@ func _process(_delta: float) -> void:
 	_sync()
 	if _fading and _uploads == uploads:  # `_sync` blended it already when it uploaded.
 		var began: int = int(usec_clock.call())
+		var blended: int = _uploads
 		_blend()
-		_update_usec = int(usec_clock.call()) - began
+		if _uploads != blended:
+			_update_usec = int(usec_clock.call()) - began
 
 
 ## The local player the layers hide for: `runner.scenario.local_player`, 1 without a scenario.
@@ -229,7 +233,7 @@ func _begin_fade() -> void:
 		_goal = _bytes.duplicate()
 	_fading = true
 	_fade_from = _bytes.duplicate()
-	_last_blend_ms = -1
+	_last_blend_frame = -1
 	_fade_start_ms = int(msec_clock.call())
 
 
@@ -237,10 +241,11 @@ func _begin_fade() -> void:
 ## ends the fade on the goal. The texels' alpha bytes only: the colour bytes stay 0.
 func _blend() -> void:
 	var ms: int = maxi(life.reveal_fade_ms, 1)
-	var now: int = int(msec_clock.call())
-	if now == _last_blend_ms:  # No time passed since the last blend: the same image.
+	var frame: int = int(frame_clock.call())
+	if frame == _last_blend_frame:  # One blend and upload a frame.
 		return
-	_last_blend_ms = now
+	_last_blend_frame = frame
+	var now: int = int(msec_clock.call())
 	var share: float = clampf(float(now - _fade_start_ms) / ms, 0.0, 1.0)
 	if share >= 1.0:
 		_bytes = _goal.duplicate()

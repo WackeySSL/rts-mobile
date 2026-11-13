@@ -63,7 +63,7 @@ func _draw() -> void:
 	var middle: Vector2 = size * 0.5
 	var width: float = UiScale.dp(RING_DP)
 	var reach: float = minf(size.x, size.y) * 0.5 - width * 0.5
-	var dim: bool = low_power or (bound and sweep == Reveal.State.PAUSED)
+	var dim: bool = dimmed()
 	if _card != null:
 		var half: Vector2 = Vector2.ONE * UiScale.dp(CARD_DP) * 0.5
 		var shade: Color = Color(1.0, 1.0, 1.0, DIM_ALPHA if dim else 1.0)
@@ -78,6 +78,12 @@ func _draw() -> void:
 		draw_arc(middle, reach, -PI * 0.5, -PI * 0.5 + TAU * charge, RING_POINTS, fill, width, true)
 	if sweep != 0:
 		_draw_sweep()  # After the ring, so the ring's edge does not cut it.
+
+
+## Whether the card is drawn dim: the strike is refused for low power, or the button shows the
+## standing sweep itself and it is paused. A ready Deep Bore under a paused sweep is not dim.
+func dimmed() -> bool:
+	return low_power or (bound and sweep == Reveal.State.PAUSED)
 
 
 ## The sweep mark in the plate's top left corner, clear of the foot: the satellite, and over it the

@@ -90,6 +90,8 @@ func _on_ticked(_tick: int) -> void:
 			if events[at + 5] != player:
 				line_ms = float(life.reveal_warn_ms)
 				raised = true
+	if not raised and state_of(snap, player) == Reveal.State.OFF:
+		line_ms = 0.0  # The sweep is over: its warning does not outlive it.
 	var chip: int = 1 if build_button != null and build_button.ready_type >= 0 else 0
 	var now: Vector2i = Vector2i(state_of(snap, player), chip)
 	if raised or now != _last or fresh:

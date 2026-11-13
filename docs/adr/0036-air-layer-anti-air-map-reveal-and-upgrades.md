@@ -545,8 +545,8 @@ Note (2026-11-13, P235): as built. It changes no accepted rule.
   long as it stays pinned (the column is under the map).
 - **The badge.** 48 dp, information only (no touch), a gap above the topmost part of the right
   column (the Ready chip upright, else the strike button, else BUILD), hidden under the drawer, the
-  full map and the pause menu. The line stands left of it, 152 to 220 dp, on the `HudPanel` plate,
-  and is left out below 152 dp, where the badge shows alone. With several enemies, on beats paused.
+  full map and the pause menu. The line stands left of it, 160 to 220 dp, on the `HudPanel` plate,
+  and is left out below 160 dp, where the badge shows alone. With several enemies, on beats paused.
 - **One strike button (Michael, 2026-11-13).** A space centre whose owner's sweep stands, on or
   paused, never binds (a fired centre keeps its `ready_tick` and the sim drops the spare). A
   construction site never binds. A sweep ignores a pending rupture. A low-power refusal ranks after

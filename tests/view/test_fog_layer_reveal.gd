@@ -23,6 +23,7 @@ func before_test() -> void:
 	_fog.runner = _runner
 	_fog.life = LIFE.duplicate()
 	_fog.msec_clock = func() -> int: return _now[0]
+	_fog.frame_clock = func() -> int: return _now[0]  # Each step of the clock is a new frame.
 	add_child(_fog)
 	_fog.set_process(false)
 

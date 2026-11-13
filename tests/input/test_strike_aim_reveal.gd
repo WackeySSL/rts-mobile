@@ -198,10 +198,10 @@ func test_the_aim_stays_on_its_building_when_a_lower_id_finishes_charging() -> v
 	_world.tick += 3  # The Bore is ready now, and has the lower id.
 	_read()
 	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.BORE))).is_true()
-	_world.reveal[1] = 0  # (The probe fired a rupture; the sweep's own state is untouched.)
 	assert_array([_aim.active, _aim.building_id]).is_equal([true, Reveals.SPACE_2])
 	assert_bool(_aim.confirm()).is_true()
 	assert_int(_sent[0].target_id).is_equal(Reveals.SPACE_2)
+	assert_bool(Strike.apply_superweapon(_world, _sent[0])).is_true()  # The sim takes it.
 
 
 ## The mirror: the aimed building stops being the best, so the aim ends and sends nothing.
@@ -234,6 +234,7 @@ func test_a_blackout_aim_survives_the_centre_coming_back_from_low_power() -> voi
 	assert_array([_aim.active, _aim.has_point, _aim.reveal]).is_equal([true, true, false])
 	assert_bool(_aim.confirm()).is_true()
 	assert_array([_sent[0].target_id, _sent[0].target_x]).is_equal([Reveals.ARRAY_1, 9000])
+	assert_bool(Strike.apply_superweapon(_world, _sent[0])).is_true()
 
 
 ## Player 1 owns the enemy's late centre (id 9) and not the two early ones.

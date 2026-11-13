@@ -49,7 +49,7 @@ func test_the_badge_and_its_line_keep_the_corners_at_every_screen() -> void:
 				badge.position.y, TOLERANCE
 			)
 			assert_float(line.size.x / dp).override_failure_message(why).is_between(
-				152.0 - TOLERANCE, 220.0 + TOLERANCE
+				160.0 - TOLERANCE, 220.0 + TOLERANCE
 			)
 			# Above the topmost part of the right column.
 			var column: Array[StringName] = [HudCorners.BUILD, HudCorners.STRIKE, HudCorners.READY]
@@ -92,19 +92,19 @@ func test_nothing_shows_with_the_drawer_or_the_full_map_open_and_no_line_without
 		assert_bool(alone.has(HudCorners.REVEAL_LINE)).override_failure_message(why).is_false()
 
 
-func test_the_line_is_left_out_below_152_dp_and_kept_at_152() -> void:
+func test_the_line_is_left_out_below_160_dp_and_kept_at_160() -> void:
 	var shown: HudCorners.Shown = CornersRig.shown(_names(["reveal", "reveal_line", "strike"]), 1)
 	# One group column (56 dp), the badge (48) and two gaps (16) leave `width - 120` for the line.
-	for width: float in [271.0, 272.0, 500.0]:
+	for width: float in [279.0, 280.0, 500.0]:
 		var out: Dictionary[StringName, Rect2] = HudCorners.place(
 			Rect2(0.0, 0.0, width, 600.0), true, 1.0, false, shown
 		)
 		assert_bool(out.has(HudCorners.REVEAL)).is_true()
 		var room: float = width - 120.0
 		assert_bool(out.has(HudCorners.REVEAL_LINE)).override_failure_message(str(width)).is_equal(
-			room >= 152.0
+			room >= 160.0
 		)
-		if room >= 152.0:
+		if room >= 160.0:
 			assert_float(out[HudCorners.REVEAL_LINE].size.x).is_equal(minf(room, 220.0))
 
 

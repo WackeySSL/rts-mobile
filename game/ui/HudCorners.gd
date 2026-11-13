@@ -30,7 +30,7 @@ const READY_DP: Vector2 = Vector2(112.0, 48.0)
 const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chip) and height.
 const GROUP_DP: float = 56.0
 const REVEAL_DP: float = 48.0  ## The enemy sweep's badge (P235), a square.
-const REVEAL_LINE_DP: Vector2 = Vector2(152.0, 220.0)  ## The warning line's least and most width.
+const REVEAL_LINE_DP: Vector2 = Vector2(160.0, 220.0)  ## The warning line's least and most width.
 const TOAST_H_DP: float = 48.0
 const TOAST_W_DP: Vector2 = Vector2(280.0, 360.0)  ## At most, landscape then portrait.
 ## Least landscape width beside the pill: glyph 24, gap 6, padding and a title of about 14 letters
@@ -186,7 +186,7 @@ static func place(
 ## The enemy sweep's badge (P235): the right column's next part up, a gap above its topmost part
 ## (the Ready chip upright, else the strike button, else BUILD), right-aligned, 48 dp. Its warning
 ## line stands left of it on the same line, from a gap right of the group column (`column_end`) to a
-## gap left of the badge, at most 220 dp; where fewer than 152 dp are left the line is left out and
+## gap left of the badge, at most 220 dp; where fewer than 160 dp are left the line is left out and
 ## the badge alone shows. The full map and the drawer cover the column, so neither shows then.
 static func _reveal(
 	out: Dictionary[StringName, Rect2],

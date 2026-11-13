@@ -109,7 +109,11 @@ func refresh() -> void:
 		var left: int = maxi(charge, maxi(offline_ticks[row] - stamp, hold))
 		var refused: bool = is_reveal and short and left == 0
 		var key: int = left * 2 + (1 if refused else 0)
-		if best < 0 or key < best or (key == best and active and ids[row] == _aim_id):
+		if (
+			best < 0
+			or key < best
+			or (key == best and active and ids[row] == _aim_id and snap.match_serial == _serial)
+		):
 			best = key
 			best_id = ids[row]
 			best_type = type
