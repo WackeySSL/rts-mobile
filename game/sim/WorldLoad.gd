@@ -3,10 +3,10 @@ extends RefCounted
 ## The scenario loader of a World, split out of World.gd (P70c) so that file stays under gdlint's
 ## 1,000 lines. Pure static helpers: they read the scenario, the map and the definitions passed in
 ## and write the World passed in, and they keep nothing. World.from_scenario() is a thin wrapper
-## over from_scenario() here, World.prepare() calls derive_open_grass(), size_match_state(),
-## pad_types(), stamp_fog() and reset_projectile_slots(), and World._init() calls copy_rules(), so
-## no caller names this class. The code is World.gd's own, moved (P109 moved copy_rules and
-## size_match_state, P232 stamp_fog and reset_projectile_slots, with no change; P232 pad_types too,
+## over from_scenario() here, World.prepare() over prepare_world() (P246a moved its body), and
+## World._init() calls copy_rules(), so most callers reach this class through World. The code is
+## World.gd's own, moved (P109 moved copy_rules and size_match_state, P232 stamp_fog and
+## reset_projectile_slots, with no change; P232 pad_types too,
 ## but it pads the sight, acquire, weapon and repair period tables by named constants; P285
 ## set_terrain, which only tests call) or the copy of a definition into a table (the loader, with
 ## the layer bit derived from the move class and `low_flying`); ADR 0007 section 2 and ADR 0017
@@ -413,6 +413,47 @@ static func size_income(world: World, players: int) -> void:
 	world.income_percent.resize(players)
 	for player: int in range(had, players):
 		world.income_percent[player] = PERCENT
+
+
+## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
+## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
+## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
+## max_projectiles, sizes the player, ore, ghost and passenger state at its start values
+## (size_match_state), and derives open grass from map_w and map_h when no map is loaded. Last it
+## configures the helpers, once, because configure() re-creates their arrays, stamps the fog of the
+## rows that exist (stamp_fog) and caches the map digest of the hash. Idempotent through
+## `prepared`; World.prepare() is the wrapper and Sim.step calls it every tick. Types, players and
+## sizes are fixed before it.
+static func prepare_world(world: World) -> void:
+	if world.prepared:
+		return
+	var types: int = world.type_ids.size()
+	pad_types(world, types)
+	var ids: Array[StringName] = world.type_ids
+	var names: PackedStringArray = world.type_names
+	for i: int in range(names.size(), types):
+		names.append(String(ids[i]).capitalize())
+	# The fixed-capacity arrays. Resizing keeps the contents, so a second call is a no-op.
+	world.intent_x.resize(world.max_rows)
+	world.intent_y.resize(world.max_rows)
+	world.push_x.resize(world.max_rows)
+	world.push_y.resize(world.max_rows)
+	world.stats.resize(World.Stat.size())
+	if world.proj_id.size() != world.max_projectiles:
+		reset_projectile_slots(world)
+	if world.map_cols == 0:
+		derive_open_grass(world)
+	size_match_state(world)
+	world.fog.configure(world.map_cols, world.map_rows, world.player_count)
+	stamp_fog(world)
+	world.flow.configure(
+		world.map_cols, world.map_rows, World.MoveClass.size(), world.flow_cache_size
+	)
+	world.sep_grid.configure(world.map_w, world.map_h, World.SEP_CELL_MILLI, world.max_rows)
+	world.target_grid.configure(world.map_w, world.map_h, World.TARGET_CELL_MILLI, world.max_rows)
+	world._map_digest_version = -1  # The grid may be new without a map_version bump.
+	WorldHash.map_digest(world)
+	world.prepared = true
 
 
 ## Sizes the player, ore, ghost and passenger state at its start values (ADR 0017 section 3), from
