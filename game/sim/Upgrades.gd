@@ -4,7 +4,8 @@ extends RefCounted
 ## queue-only type that WorldLoad makes from an `UpgradeDef`; when it completes in PRODUCTION,
 ## `finish` sets the upgrade's bit in `world.upgrades[player]` and rebuilds the tables below. The
 ## tables are derived (never hashed): `rebuild` makes them from `upgrades` and the upgrade lists,
-## so `prepare()` and a restored World get the same values as a live one.
+## so `prepare()` sizes and fills them. No World is restored from a snapshot today; a loader that
+## ever does must write `upgrades` before `prepare()` or call `rebuild` (`prepare_world` runs once).
 ##
 ## - `mod_dealt`: per player and weapon (`player * weapon count + weapon`), a percent, 100 = none.
 ##   Keyed on the weapon because a shell stores only its owner and weapon (`proj_owner`,
@@ -13,7 +14,8 @@ extends RefCounted
 ## - `mod_ammo`: per player and type, the extra shots on top of `type_ammo` (0 = none).
 ##
 ## Several upgrades of one stat on one type multiply (percents) or add (ammo); the data rule keeps
-## a stat to one upgrade per type, each at most 400 %. Integers only; `rebuild` allocates nothing
+## a stat to one upgrade per type (damage dealt: per weapon), each at most 400 %. An upgrade counts
+## once per weapon, however many of its types share it. Integers only; `rebuild` allocates nothing
 ## once the tables are sized at `prepare()`; events only.
 
 ## A damage modifier of 100 percent changes nothing.
@@ -37,21 +39,30 @@ static func rebuild(world: World) -> void:
 		for up: int in world.upgrade_ids.size():
 			if (owned >> up) & 1 == 0:
 				continue
+			var stat: int = world.upgrade_stat[up]
 			var value: int = world.upgrade_value[up]
 			var first: int = world.upgrade_type_first[up]
 			for at: int in range(first, first + world.upgrade_type_count[up]):
 				var type: int = world.upgrade_types[at]
-				match world.upgrade_stat[up]:
-					UpgradeDef.Stat.DAMAGE_DEALT:
-						var weapon: int = world.type_weapon[type]
-						if weapon >= 0 and weapon < weapons:
-							var slot: int = player * weapons + weapon
-							world.mod_dealt[slot] = world.mod_dealt[slot] * value / BASE_PERCENT
-					UpgradeDef.Stat.DAMAGE_TAKEN:
-						var slot: int = player * types + type
-						world.mod_taken[slot] = world.mod_taken[slot] * value / BASE_PERCENT
-					UpgradeDef.Stat.AMMO:
-						world.mod_ammo[player * types + type] += value
+				if stat == UpgradeDef.Stat.DAMAGE_DEALT:
+					var weapon: int = world.type_weapon[type]
+					# Once per weapon and upgrade: an earlier type of this upgrade on it counts.
+					if weapon >= 0 and weapon < weapons and not _seen(world, first, at, weapon):
+						var slot: int = player * weapons + weapon
+						world.mod_dealt[slot] = world.mod_dealt[slot] * value / BASE_PERCENT
+				elif stat == UpgradeDef.Stat.DAMAGE_TAKEN:
+					var slot: int = player * types + type
+					world.mod_taken[slot] = world.mod_taken[slot] * value / BASE_PERCENT
+				elif stat == UpgradeDef.Stat.AMMO:
+					world.mod_ammo[player * types + type] += value
+
+
+## Whether an entry of `upgrade_types` from `first` up to (not including) `at` has weapon `weapon`.
+static func _seen(world: World, first: int, at: int, weapon: int) -> bool:
+	for before: int in range(first, at):
+		if world.type_weapon[world.upgrade_types[before]] == weapon:
+			return true
+	return false
 
 
 ## The upgrade a type gives (-1: not a research item).
@@ -87,19 +98,24 @@ static func finish(world: World, player: int, type: int) -> void:
 		rebuild(world)
 
 
+## The entry `index` of a per-player table of `stride` entries per player, or `none` when the
+## player or the index is outside it. The loops of FIRE and PROJECTILES pass aliased arrays.
+static func pick(table: PackedInt32Array, stride: int, player: int, index: int, none: int) -> int:
+	if player < 0 or index < 0 or index >= stride or (player + 1) * stride > table.size():
+		return none
+	return table[player * stride + index]
+
+
 ## The damage percent for shots of `weapon` fired by `player` (100 when no table covers it).
 static func dealt(world: World, player: int, weapon: int) -> int:
-	var at: int = player * world.weapon_damage.size() + weapon
-	return world.mod_dealt[at] if at >= 0 and at < world.mod_dealt.size() else BASE_PERCENT
+	return pick(world.mod_dealt, world.weapon_damage.size(), player, weapon, BASE_PERCENT)
 
 
 ## The damage percent a row of `type` owned by `player` takes (100 when no table covers it).
 static func taken(world: World, player: int, type: int) -> int:
-	var at: int = player * world.type_ids.size() + type
-	return world.mod_taken[at] if at >= 0 and at < world.mod_taken.size() else BASE_PERCENT
+	return pick(world.mod_taken, world.type_ids.size(), player, type, BASE_PERCENT)
 
 
 ## The extra ammo cap of `type` for `player` (0 when no table covers it).
 static func extra_ammo(world: World, player: int, type: int) -> int:
-	var at: int = player * world.type_ids.size() + type
-	return world.mod_ammo[at] if at >= 0 and at < world.mod_ammo.size() else 0
+	return pick(world.mod_ammo, world.type_ids.size(), player, type, 0)

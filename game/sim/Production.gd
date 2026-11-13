@@ -56,7 +56,9 @@ const DIED_CANCEL_FLAG_AT: int = 6
 
 ## One PRODUCTION step: the head of every queue that has a producer gains PROGRESS_PER_TICK, or
 ## `low_power_percent` of it on low power (every tab, STRUCTURES included), never past its goal. A
-## done unit spawns (ProductionSpawn.spawn) and leaves the queue; one that cannot spawn yet waits at
+## done unit spawns (ProductionSpawn.spawn) and leaves the queue; a done research item
+## (`Upgrades.finish`, ADR 0036 section 10) sets its upgrade's bit and spawns nothing;
+## one that cannot spawn yet waits at
 ## 100 %, and so does a done structure, until PLACE or CANCEL. Players ascending, then tabs. A queue
 ## without a producer waits, and so does every queue of a defeated player, and every queue whose
 ## producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,

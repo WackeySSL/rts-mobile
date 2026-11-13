@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## and PROJECTILES, the rupture, the ammo cap in `Air.run`), and the own bits in PlayerView.
 
 const Rig: GDScript = preload("res://tests/sim/support/targeting_rig.gd")
+const AiRig: GDScript = preload("res://tests/ai/support/opponent_rig.gd")
 const AirWorlds: GDScript = preload("res://tests/sim/support/air_worlds.gd")
 const RESEARCH_TICKS: int = 3
 const COST: int = 200
@@ -17,7 +18,7 @@ func _old(base: int, percent: int) -> int:
 
 
 func test_damage_equals_the_old_formula_at_100_and_100_on_the_edge_ints() -> void:
-	var bases: Array[int] = [0, 1, 7, 100, 99999, 2147483647, -5]
+	var bases: Array[int] = [0, 1, 7, 100, 99999, 2147483647, -5, -2147483648]
 	var percents: Array[int] = [0, 1, 50, 100, 200, -1]
 	for base: int in bases:
 		for percent: int in percents:
@@ -153,6 +154,140 @@ func test_an_ammo_upgrade_raises_the_reload_cap_of_its_owner_only() -> void:
 	assert_int(world.ammo[jet]).is_equal(AirWorlds.AMMO + 2)
 
 
+func test_two_types_on_one_weapon_in_one_upgrade_apply_it_once() -> void:
+	var world: World = _world()
+	world.upgrades[1] = 8  # twin: the tank and the scout share one weapon.
+	Upgrades.rebuild(world)
+	var weapon: int = world.type_weapon[world.type_ids.find(&"tank")]
+	assert_int(world.type_weapon[world.type_ids.find(&"scout")]).is_equal(weapon)
+	assert_int(Upgrades.dealt(world, 1, weapon)).is_equal(150)
+	assert_int(Combat.damage(10, 100, Upgrades.dealt(world, 1, weapon), 100)).is_equal(15)
+
+
+func test_the_readers_answer_100_outside_their_table() -> void:
+	var world: World = _world()
+	world.upgrades[1] = 7
+	Upgrades.rebuild(world)
+	var weapons: int = world.weapon_damage.size()
+	var types: int = world.type_ids.size()
+	assert_int(Upgrades.dealt(world, 1, -1)).is_equal(100)
+	assert_int(Upgrades.dealt(world, 1, weapons)).is_equal(100)  # Not player 2's first weapon.
+	assert_int(Upgrades.taken(world, 1, types)).is_equal(100)
+	assert_int(Upgrades.taken(world, 1, -1)).is_equal(100)
+	assert_int(Upgrades.extra_ammo(world, 9, 0)).is_equal(0)
+
+
+func test_a_rupture_applies_taken_and_dealt_stays_100() -> void:
+	var world: World = _world()
+	var ruptor: int = world.type_ids.find(&"ruptor")
+	world.add_building(1, ruptor, 14, 2)
+	var target: int = _unit(world, 2, "tank", 12000)
+	world.upgrades[1] = 15 & ~2  # The striker has every dealt bit: they must not count.
+	world.upgrades[2] = 2  # thick: the target takes 60 percent.
+	Upgrades.rebuild(world)
+	world.strike_x[1] = world.pos_x[target]
+	world.strike_y[1] = world.pos_y[target]
+	Strike._land(world, 1)
+	assert_int(100000 - world.hp[target]).is_equal(60)  # 100 * 100 percent * 60 percent.
+
+
+func test_a_research_item_is_no_unit_for_the_caps_and_the_ai() -> void:
+	var world: World = _world()
+	var item: int = world.type_ids.find(&"sharp")
+	var mobile: int = ProductionSpawn.mobile_rows(world, 1)
+	world.unit_cap = mobile  # At the cap: a unit would be refused, a research item is not.
+	assert_bool(Production.apply_queue(world, Command.queue(1, item))).is_true()
+	assert_int(ProductionSpawn.mobile_rows(world, 1)).is_equal(mobile)
+	var economy: AiEconomy = AiEconomy.create(AiRig.def_of("fossil"), AiRig.level_of("normal"), 1)
+	var view: PlayerView = PlayerView.of(world, 1)
+	economy._take_census(view)
+	assert_int(economy._units).is_equal(mobile)
+	assert_bool(economy._buildable(view, world.type_ids.find(&"twin"))).is_true()
+	for _tick: int in RESEARCH_TICKS:
+		Production.run(world)
+	assert_int(world.upgrades[1]).is_equal(1)
+	assert_int(ProductionSpawn.mobile_rows(world, 1)).is_equal(mobile)
+	assert_int(world.unit_count()).is_equal(2 + mobile)
+
+
+func test_research_waits_for_the_centre_and_a_defeated_owner_and_cancel_refunds() -> void:
+	var world: World = _world()
+	var item: int = world.type_ids.find(&"sharp")
+	var queue: int = 1 * World.TABS + World.Tab.RESEARCH
+	assert_bool(Production.apply_queue(world, Command.queue(1, item))).is_true()
+	Production.run(world)
+	world.hp[world.index_of(1)] = 0  # The centre dies.
+	world.remove_dead()
+	for _tick: int in 10:
+		Production.run(world)
+	assert_int(world.queue_progress[queue]).is_equal(Production.PROGRESS_PER_TICK)
+	assert_int(world.upgrades[1]).is_equal(0)
+	var refund_to: int = world.credits[1]
+	assert_bool(Production.apply_cancel(world, Command.new())).is_false()
+	var cancel: Command = Command.cancel(1, World.Tab.RESEARCH, 0)
+	assert_bool(Production.apply_cancel(world, cancel)).is_true()
+	assert_int(world.credits[1]).is_equal(refund_to + COST)
+	# A defeated owner's research stands still too.
+	var other: World = _world()
+	assert_bool(Production.apply_queue(other, Command.queue(1, item))).is_true()
+	other.defeated_tick[1] = 1
+	for _tick: int in 10:
+		Production.run(other)
+	assert_int(other.queue_progress[queue]).is_equal(0)
+
+
+func test_a_second_owners_aircraft_keep_the_plain_ammo_cap() -> void:
+	var world: World = AirWorlds.world()
+	var types: int = world.type_ids.size()
+	var first: int = AirWorlds.add_homed(world, "jet", AirWorlds.FIELD)
+	world.mod_ammo.resize(3 * types)
+	world.mod_ammo[1 * types + world.type_index[first]] = 2
+	var field: Vector2i = Air.pad_point(world, world.index_of(AirWorlds.FIELD), 0)
+	var second: int = AirWorlds.add(world, 2, "jet", field.x, field.y)
+	world.home[second] = AirWorlds.FIELD
+	world.ammo[first] = AirWorlds.AMMO
+	world.ammo[second] = AirWorlds.AMMO
+	Air._service(world, world.index_of(AirWorlds.FIELD), second, world.tick + 1)
+	assert_int(world.ammo[second]).is_equal(AirWorlds.AMMO)  # Player 2 has no extra shots.
+	Air._service(world, world.index_of(AirWorlds.FIELD), first, world.tick + 1)
+	assert_int(world.ammo[first]).is_equal(AirWorlds.AMMO + 1)
+
+
+## `prepare()` sizes the three tables and fills them with their neutral values (no restore path
+## exists, so this is the load path: ADR 0036 section 3's "rebuilt by `prepare()`").
+func test_prepare_sizes_the_tables_and_fills_them_neutral() -> void:
+	var world: World = _world()
+	var players: int = world.player_count + 1
+	assert_int(world.mod_dealt.size()).is_equal(players * world.weapon_damage.size())
+	assert_int(world.mod_taken.size()).is_equal(players * world.type_ids.size())
+	assert_int(world.mod_ammo.size()).is_equal(players * world.type_ids.size())
+	assert_int(world.mod_dealt.count(100)).is_equal(world.mod_dealt.size())
+	assert_int(world.mod_taken.count(100)).is_equal(world.mod_taken.size())
+	assert_int(world.mod_ammo.count(0)).is_equal(world.mod_ammo.size())
+
+
+## Two Worlds from one scenario and one command stream, a research completing mid-run: the tables
+## and the hash agree at the end, and the research took effect.
+func test_two_runs_of_one_command_stream_agree_on_the_tables_and_the_hash() -> void:
+	var worlds: Array[World] = [_world(), _world()]
+	var none: Array[Command] = []
+	for world: World in worlds:
+		var queued: Array[Command] = [
+			Command.queue(1, world.type_ids.find(&"thick")),
+			Command.queue(1, world.type_ids.find(&"racks"))
+		]
+		for command: Command in queued:
+			command.tick = world.tick
+		for tick: int in 12:
+			Sim.step(world, queued if tick == 0 else none)
+	assert_int(worlds[0].upgrades[1]).is_equal(6)
+	assert_int(worlds[0].mod_taken.count(60)).is_equal(1)
+	assert_array(worlds[1].mod_dealt).is_equal(worlds[0].mod_dealt)
+	assert_array(worlds[1].mod_taken).is_equal(worlds[0].mod_taken)
+	assert_array(worlds[1].mod_ammo).is_equal(worlds[0].mod_ammo)
+	assert_int(worlds[1].state_hash()).is_equal(worlds[0].state_hash())
+
+
 ## Two players; player 1's engineering centre, player 2's headquarters, 1000 credits each. Upgrades:
 ## "sharp" (bit 0: the tank's weapon deals 150 percent, and the ammo +2 is "thick"'s) and "thick"
 ## (bit 1: tanks take 60 percent, plus 2 ammo).
@@ -163,11 +298,20 @@ func _world() -> World:
 	tank.max_hp = 100000
 	var shooter: UnitDef = Rig.unit(&"shooter", 6000, 5000, 4000, 0, [100, 100, 100, 100])
 	shooter.weapon.projectile_speed = 500
+	var scout: UnitDef = Rig.unit(&"scout", 6000, 5000, 4000, 0, [100, 100, 100, 100])
+	scout.weapon = tank.weapon  # Two types on one weapon.
+	var ruptor: BuildingDef = _building(&"ruptor", World.Tab.STRUCTURES)
+	ruptor.strike_kind = 1
+	ruptor.strike_radius = 2000
+	ruptor.strike_weapon = WeaponDef.new()
+	ruptor.strike_weapon.id = &"rupture"
+	ruptor.strike_weapon.damage = 100
+	ruptor.strike_weapon.vs_armour = PackedInt32Array([100, 100, 100, 100])
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.map_size_tiles = Vector2i(24, 16)
 	scenario.player_count = 2
 	scenario.rules = load(Rig.RULES_PATH) as RulesDef
-	scenario.roster.assign([hq, centre, tank, shooter])
+	scenario.roster.assign([hq, centre, tank, shooter, scout, ruptor])
 	var faction: FactionDef = FactionDef.new()
 	faction.id = &"fossil"
 	faction.upgrades.append(
@@ -176,6 +320,9 @@ func _world() -> World:
 	var thick: UpgradeDef = _upgrade(&"thick", UpgradeDef.Stat.DAMAGE_TAKEN, 60, [tank], centre)
 	faction.upgrades.append(thick)
 	faction.upgrades.append(_upgrade(&"racks", UpgradeDef.Stat.AMMO, 2, [tank], centre))
+	faction.upgrades.append(
+		_upgrade(&"twin", UpgradeDef.Stat.DAMAGE_DEALT, 150, [tank, scout], centre)
+	)
 	scenario.factions.append(faction)
 	var world: World = World.from_scenario(scenario)
 	Rig.reveal(world)

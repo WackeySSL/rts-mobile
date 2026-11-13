@@ -266,6 +266,9 @@ static func _upgrade_for(world: World, upgrade: UpgradeDef) -> void:
 		or world.upgrade_ids.size() >= World.UPGRADES_MAX
 	):
 		return
+	if world.type_ids.has(upgrade.id):
+		push_error("upgrade id %s is also a type id; skipped" % upgrade.id)
+		return
 	world.upgrade_ids.append(upgrade.id)
 	world.upgrade_stat.append(upgrade.stat)
 	world.upgrade_value.append(upgrade.value)
