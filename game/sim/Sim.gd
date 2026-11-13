@@ -80,6 +80,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
 	Carry.board(world)  # Boarding squads leave in this tick's REMOVE (ADR 0036 section 8).
+	Carry.perish(world)  # The squads aboard a dying carrier die with it.
 	world.remove_dead()
 	Reveal.run(world)  # The space centre's sweep follows its building (ADR 0036 section 11).
 	if probe != null:
@@ -90,6 +91,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Power.run(world)
 	Harvest.run(world)
 	Air.run(world)
+	Carry.run(world)  # Unloading carriers; rebuilds the building lists after its inserts.
 	Mend.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)
@@ -129,6 +131,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _apply_stop(world, command)
 			Command.Type.LOAD:
 				applied = _playing(world, command) and Carry.apply_load(world, command)
+			Command.Type.UNLOAD:
+				applied = _playing(world, command) and Carry.apply_unload(world, command)
 			Command.Type.PLACE:
 				applied = _playing(world, command) and Production.apply_place(world, command)
 			Command.Type.QUEUE:

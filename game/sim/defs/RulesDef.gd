@@ -89,6 +89,9 @@ extends Resource
 ## How near a squad must be to its carrier to board, in milli-tiles (ADR 0036 section 8). Inert at
 ## 0: nothing is within reach.
 @export var load_reach_milli: int = 0
+## The radius, in tiles, of the ring an unloading carrier searches for free cells (ADR 0036 section
+## 8). Inert at 0: no cell is searched and the squads stay aboard.
+@export var unload_reach_tiles: int = 0
 
 ## Mines (ADR 0037 section 8). Inert at `mine_cap` 0: no mine can be laid. Per player: the most laid
 ## mines; ticks to lay one, to arm it and to sweep one; the most enemy mines a player records.
