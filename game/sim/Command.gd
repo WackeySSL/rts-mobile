@@ -58,7 +58,7 @@ var target_x: int = 0
 var target_y: int = 0
 ## The unit an ATTACK goes after, the production building a RALLY sets, the strike building a
 ## SUPERWEAPON fires, the site a CANCEL_BUILD cancels, the building a SELL or MEND names or the
-## carrier a LOAD boards, 0 = none.
+## carrier a LOAD boards or the airfield a REPAIR sends aircraft to, 0 = none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
 ## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, empty for every other type.

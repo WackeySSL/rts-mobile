@@ -414,8 +414,9 @@ Note (2026-11-13, P241b): repair and `REPAIR` as built. It changes no accepted t
   it. With none taken, or a target that is not an own complete building with pads and a role, the
   command is dropped and counted. This is the one `REPAIR` entry: P277 adds the branch for a
   building without pads to `apply_repair`, not a second command.
-- **Not here.** The `REPAIRED` event (ADR 0037 section 2, Event 8) is written by P276's
-  `Repair.run`; the airfield's repair writes none.
+- **Not here.** The `REPAIRED` event (ADR 0037 section 2, Event 8) is P276's: it adds the event for
+  the airfield's repair too (at most one per pad per period), together with `Repair.run`. P241b writes
+  none, because no view reads it for airfields yet. A defeated owner's aircraft are not repaired.
 - **Tests.** `test_airfield_repair.gd` (the repair and its price) and `test_repair_command.gd` (the
   command and the part of the shared contract the airfield owns). No golden moved.
 

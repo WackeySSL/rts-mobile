@@ -87,6 +87,29 @@ func test_a_repair_needs_the_pad_reach_and_an_online_complete_airfield() -> void
 		assert_int(world.hp[jet]).override_failure_message(case).is_equal(50)
 
 
+## Reach is inclusive: exactly `repair_reach_milli` from the pad is repaired, one more is not.
+func test_the_repair_reach_includes_its_edge_and_stops_one_milli_beyond() -> void:
+	for gap: int in [Worlds.REACH, Worlds.REACH + 1]:
+		var world: World = Worlds.world()
+		var jet: int = _hurt_jet(world, 50)
+		world.type_speed[world.type_index[jet]] = 0
+		world.pos_x[jet] += gap
+		world.order[jet] = World.Order.MOVE
+		world.goal_x[jet] = 20000
+		world.goal_y[jet] = 14000
+		Worlds.step(world)
+		var want: int = 60 if gap == Worlds.REACH else 50
+		assert_int(world.hp[jet]).override_failure_message(str(gap)).is_equal(want)
+
+
+func test_a_defeated_owner_is_not_repaired_or_charged() -> void:
+	var world: World = Worlds.world()
+	var jet: int = _hurt_jet(world, 50)
+	world.defeated_tick[1] = 1
+	Worlds.step(world)
+	assert_array([world.hp[jet], world.credits[1]]).is_equal([50, 1000])
+
+
 func test_a_fighter_with_no_ammo_limit_is_repaired_too() -> void:
 	var world: World = Worlds.world()
 	var fighter: int = Worlds.add_homed(world, "fighter", Worlds.FIELD)

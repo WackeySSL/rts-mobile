@@ -90,8 +90,12 @@ func test_the_command_is_dropped_and_counted_when_nothing_is_valid() -> void:
 	cases["a ground unit"] = Command.repair(1, PackedInt32Array([world.unit_id[ground]]), 1)
 	cases["a drone squad"] = Command.repair(1, PackedInt32Array([world.unit_id[drone]]), 1)
 	cases["an enemy aircraft"] = Command.repair(1, PackedInt32Array([world.unit_id[enemy]]), 1)
-	cases["an enemy airfield"] = Command.repair(2, PackedInt32Array([jet_id]), Worlds.FIELD)
-	cases["a building with no pads"] = Command.repair(2, PackedInt32Array([jet_id]), hq_id)
+	cases["an enemy airfield"] = Command.repair(
+		2, PackedInt32Array([world.unit_id[enemy]]), Worlds.FIELD
+	)
+	cases["a building with no pads"] = Command.repair(
+		2, PackedInt32Array([world.unit_id[enemy]]), hq_id
+	)
 	cases["no such building"] = Command.repair(1, PackedInt32Array([jet_id]), 999)
 	cases["no units"] = Command.repair(1, PackedInt32Array(), Worlds.FIELD)
 	cases["a unit as the target"] = Command.repair(1, PackedInt32Array([jet_id]), jet_id)
@@ -105,7 +109,9 @@ func test_the_command_is_dropped_and_counted_when_nothing_is_valid() -> void:
 		Sim.step(world, [made])
 		dropped += 1
 		assert_int(world.dropped_commands).override_failure_message(label).is_equal(dropped)
-		assert_int(world.order[jet]).override_failure_message(label).is_equal(World.Order.IDLE)
+		for row: int in [jet, enemy]:
+			var idle: int = World.Order.IDLE
+			assert_int(world.order[row]).override_failure_message(label).is_equal(idle)
 
 
 func test_an_airfield_still_under_construction_is_refused() -> void:
@@ -146,3 +152,40 @@ func test_the_command_is_replayable_and_the_same_run_gives_the_same_hash() -> vo
 		Worlds.run(world, 200)
 		hashes.append(WorldHash.state_hash(world))
 	assert_int(hashes[0]).is_equal(hashes[1])
+
+
+func test_a_defeated_player_cannot_send_aircraft_home() -> void:
+	var world: World = Worlds.world()
+	var jet: int = Worlds.add(world, 1, "jet", 14000, 9000)
+	world.defeated_tick[1] = 1
+	_repair(world, [world.unit_id[jet]], Worlds.FIELD)
+	assert_array([world.dropped_commands, world.order[jet]]).is_equal([1, World.Order.IDLE])
+
+
+func test_an_incomplete_a_dead_or_unserved_aircraft_is_skipped() -> void:
+	for case: String in ["incomplete", "dead", "class"]:
+		var world: World = Worlds.world()
+		var jet: int = Worlds.add(world, 1, "jet", 14000, 9000)
+		match case:
+			"incomplete":
+				world.build_left[jet] = 5
+			"dead":
+				world.hp[jet] = 0
+			"class":
+				world.type_move_class[world.type_index[jet]] = World.MoveClass.TRACKED
+		_repair(world, [world.unit_id[jet]], Worlds.FIELD)
+		assert_int(world.dropped_commands).override_failure_message(case).is_equal(1)
+		if case != "dead":  # A dead row is removed in the same tick.
+			var idle: int = World.Order.IDLE
+			assert_int(world.order[jet]).override_failure_message(case).is_equal(idle)
+
+
+func test_a_repeated_id_takes_one_pad_only() -> void:
+	var world: World = Worlds.world()
+	var jet: int = Worlds.add(world, 1, "jet", 14000, 9000)
+	var id: int = world.unit_id[jet]
+	_repair(world, [id, id, id], Worlds.FIELD)
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_int(Air._homed_at(world, Worlds.FIELD)).is_equal(1)
+	var pad: Vector2i = _pad(world, Worlds.FIELD, 0)
+	assert_array([world.goal_x[jet], world.goal_y[jet]]).is_equal([pad.x, pad.y])

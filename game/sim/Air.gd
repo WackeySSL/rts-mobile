@@ -7,8 +7,9 @@ extends RefCounted
 ## that home, so no pad is stored. A FLIGHT QUEUE is valid while the player's aircraft and queued
 ## FLIGHT items are below the pads of its complete airfields (`cap_room`); a finished aircraft
 ## spawns over a free pad (`free_pad`, used by ProductionSpawn). `run` is ECONOMY after
-## `Harvest.run`: it re-homes, seats an idle aircraft over its pad, sends an empty one to its pad
-## and reloads one on its pad. GDScript only. Cost: two passes over `air_rows` plus one over
+## `Harvest.run`: it re-homes, seats an idle aircraft over its pad, sends an empty one to its pad,
+## and reloads and repairs one on its pad (`_service`). REPAIR (`apply_repair`) sends aircraft
+## home. GDScript only. Cost: two passes over `air_rows` plus one over
 ## `building_rows` (to clear the per-airfield counts), no allocation per tick but the one-row array
 ## of an order (event cadence); a re-home scans `building_rows` (event cadence, and a failed scan
 ## is not repeated for the owner in the same tick).
@@ -73,7 +74,8 @@ static func pad_point(world: World, row: int, pad: int) -> Vector2i:
 ##   `Sim._apply_point`) when it is idle over its airfield's footprint (it was seated on the old
 ##   pad), or when its type has ammo, it has none and it is not already on a MOVE;
 ## - within reach, with its airfield not blacked out, a type with ammo gains 1 each `max(1,
-##   rearm_ticks / ammo cap)` ticks up to the cap, the next gain due at the stamp `ready_tick`.
+##   rearm_ticks / ammo cap)` ticks up to the cap, the next gain due at the stamp `ready_tick`, and
+##   a hurt aircraft is repaired and paid for (`_service`).
 ## The counts live in the scratch columns `push_x` and `push_y`, which SEPARATION clears before it
 ## reads them next tick (one count of the airfield's row each, no allocation).
 @warning_ignore("integer_division")
@@ -135,7 +137,8 @@ static func run(world: World) -> void:
 ## stamp `ready_tick`), and on ticks with `tick % repair_period_ticks == 0` its hit points rise by
 ## `repair_hp` (not above the maximum) for `ceil(cost * gained * repair_cost_percent / (100 *
 ## max_hp))` of the owner's credits; with too few credits nothing is repaired (ADR 0036 section
-## 6). The airfield serves the AIR class bit only.
+## 6). The airfield serves the AIR class bit only, and a defeated owner's aircraft are not
+## repaired (as `Mend.run` skips them).
 @warning_ignore("integer_division")
 static func _service(world: World, field: int, row: int, stamp: int) -> void:
 	if world.offline_until[field] > stamp:
@@ -155,6 +158,7 @@ static func _service(world: World, field: int, row: int, stamp: int) -> void:
 		or (world.type_repair_classes[kind] >> World.MoveClass.AIR) & 1 == 0
 		or world.tick % maxi(1, world.type_repair_period[kind]) != 0
 		or player >= world.credits.size()
+		or (player < world.defeated_tick.size() and world.defeated_tick[player] != 0)
 	):
 		return
 	var gained: int = mini(gain, top - world.hp[row])
@@ -209,6 +213,8 @@ static func apply_repair(world: World, command: Command) -> bool:
 			if other >= row:
 				break
 			rank += int(world.home[other] == command.target_id)
+		if rank >= world.type_pads[kind]:
+			continue  # More aircraft than pads (a hand-built World): as `run` does.
 		var point: Vector2i = pad_point(world, field, rank)
 		one[0] = row
 		Formation.assign(world, one, point.x, point.y)
