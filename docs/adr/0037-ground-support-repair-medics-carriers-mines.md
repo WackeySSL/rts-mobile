@@ -584,7 +584,8 @@ changes `defs_hash`, which no literal pins.
   `DERIVED_ARRAYS`, never hashed) is sized with zeros at prepare; nothing sets it before P287. No
   rule reads any of it yet, no kernel reads `stance` yet (P298), so `world_access.h` is unchanged and
   the sanitizer dump holds no new record: `KNOWN_FORMATS` is unchanged and the format-7 dumps are
-  generated afresh by `dump_states.gd` from the new layout.
+  generated afresh by `dump_states.gd` from the new layout. P298 adds `stance` to TARGETING's
+  records in `dump_states.gd` and the harness's targeting case together with its kernel read.
   - **Re-pin (named exception 25), reason: the layout moved, no row, rule or run did.**
     `TICK_0_SEED_1` `dd094805d77cbf7b` -> `4dfd1c3d7396f979`. Perf arena `golden_hex`
     (ticks 150..900) `d7fce97f1f4229d2 ff7c653cbc7be349 e5f3955277e06182 34d0829654960906

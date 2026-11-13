@@ -37,10 +37,10 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## and the section "passengers" joined the hash, so the header, the new row section and the six
 ## sections after the rows changed; the digest changed from 781a749381ea2eb2 (no row, rule or run
 ## moved: the new column is all zeros, the table empty).
-## P286 (ADR 0037 sections 8, 11 and 15, exception 25): STATE_FORMAT stays 7; the row column "stance",
-## the scalars "next_mine_id" and "mine_count" and the section "mines" joined the hash, so the header,
-## the new row section and the section after "passengers" changed; the digest changed from
-## dd094805d77cbf7b (no row, rule or run moved: the column is all zeros, the tables empty).
+## P286 (ADR 0037 sections 8, 11 and 15, exception 25): STATE_FORMAT stays 7; the row column
+## "stance", the scalars "next_mine_id" and "mine_count" and the section "mines" joined the hash, so
+## the header, the new row section and the section after "passengers" changed; the digest changed
+## from dd094805d77cbf7b (no row, rule or run moved: the column is all zeros, the tables empty).
 const TICK_0_SEED_1: String = "4dfd1c3d7396f979"
 
 

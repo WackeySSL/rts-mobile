@@ -140,12 +140,18 @@ static func _live_mines(world: World) -> PackedByteArray:
 ## its fields in MINE_SEEN_ARRAYS order without the count, players ascending.
 static func _live_seen_mines(world: World) -> PackedByteArray:
 	var live: PackedInt32Array = PackedInt32Array()
+	var shortest: int = world.mine_seen_id.size()
+	shortest = mini(shortest, mini(world.mine_seen_owner.size(), world.mine_seen_cell.size()))
 	for player: int in world.mine_seen_count.size():
-		for record: int in world.mine_seen_count[player]:
+		# The count is clamped to the player's block and to the shortest column, as WorldHash does.
+		for record: int in mini(maxi(world.mine_seen_count[player], 0), world.mine_known_cap):
+			var entry: int = player * world.mine_known_cap + record
+			if entry >= shortest:
+				break
 			for column_name: StringName in World.MINE_SEEN_ARRAYS:
 				if column_name != &"mine_seen_count":
 					var column: PackedInt32Array = world.get(column_name)
-					live.append(column[player * world.mine_known_cap + record])
+					live.append(column[entry])
 	return live.to_byte_array()
 
 
