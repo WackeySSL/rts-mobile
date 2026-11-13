@@ -82,15 +82,15 @@ the table lives in `data/`.
 
 ## Damage and destruction
 How a building or vehicle looks as it is shot (Michael's sheets of 2026-11-03 and his answers of
-2026-11-04; ADR 0028 and ADR 0029). It is a look only: the stages change no rule, and the hp, the
-health bar and the fight are the same with or without them. The thresholds and every time below live
-in `data/life_settings.tres`.
+2026-11-04 and 2026-11-09; ADR 0028, ADR 0029 and ADR 0034). It is a look only: the stages change
+no rule, and the hp, the health bar and the fight are the same with or without them. The thresholds
+and every time below live in `data/life_settings.tres`.
 
 Buildings show the damage in their shape, not only in their colour:
 | Stage | Hp left | Shape | Surface | Fire and smoke |
 | --- | --- | --- | --- | --- |
 | Whole | above 2/3 | whole | clean | none |
-| Damaged | 2/3 down to 1/3 | small breaks: a corner, a mast, a wing | blown panes as dark holes, soot over the breaks; the team colour starts to burn off | one fire with a weak glow, thin grey smoke; a cracked gas tank burns as a jet |
+| Damaged | 2/3 down to 1/3 | no picture of its own: it looks whole (ADR 0034) | clean | one fire with a weak glow, thin grey smoke; a cracked gas tank burns as a jet |
 | Critical | under 1/3 | a part has collapsed and the inside shows: floors, rebar, beams, dark rooms | soot over the breaks; little team colour left | fire lit from inside, thick black smoke |
 
 - **Materials break their own way:** concrete along its joints with rebar sticking out, steel bends
@@ -119,8 +119,9 @@ No freeze weapons. The Phase 3 dummy opponent never builds or fires one; Phase 4
 
 ## Maps (MVP)
 Three 2-player maps of 56x56 to 64x64 tiles. Each base has 2 safe oil or gas fields; the middle has
-2 contested fields and chokepoints. Fog of war: unexplored is black, explored but not visible
-shows the last known buildings.
+2 contested fields and chokepoints. Fog of war: unexplored is a very dark blue-grey (Michael,
+2026-11-09; ADR 0035), explored but not visible shows the last known buildings, and the map's edge
+fades into a mist.
 
 ## AI difficulty
 - Easy: slow reactions, weak build order, small attack waves.

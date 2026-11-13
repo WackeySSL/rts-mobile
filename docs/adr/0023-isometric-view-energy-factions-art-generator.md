@@ -125,6 +125,11 @@ shadows at z 2, a second atlas page for unsorted layers only, `MineLayer` at z 3
 screens of ADR 0036 §16 and ADR 0037 §14; the chosen names join Phase 7's search. No accepted
 text changed.
 
+Status note (2026-11-13, P200b, the lead; ADRs 0034 and 0035 accepted 2026-11-09): §2 carries a
+dated note for ADR 0035 (the map edge at z 4, the world grade, the Hud's layer, the draw-call
+forecast 18 / 19 / about 25); §5 carries one for ADR 0034 (the part `dmg1` withdrawn) and ADR 0035
+(key colours in unit shadow frames). No accepted text changed.
+
 ## Context
 - **Michael's canvas.** "Iron Meridian - grafisk udkast" (Claude Design) has two versions. A: a
   science alliance against an industrial bloc, violet crystals. B ("Øst/Vest"): the same mechanics
@@ -412,6 +417,23 @@ notes above stand):
   a squad, a tank and a tanker of each faction; buildings are not in it yet. Everything at the sort's z must be an atlas sprite with no material and the default filter. The
   `Marker`, the dev fallback for a type without art, is the one exception.
 
+Status note (2026-11-13, P200b, the lead; ADR 0035 accepted 2026-11-09, Michael's Q1 A and Q2 B,
+the lead's Q3 A; on `main` at c0bc5ba2, where none of these layers exists yet; the text and the
+notes above stand where ADR 0035 does not change them):
+- **The z table** will gain `MapEdge` at z 4, after `FogLayer` in the tree and under the fog's iso
+  transform: the map-edge mask and mist band, one texture, one call (ADR 0035 §2, plan row P216).
+- **The world grade** (ADR 0035 §3, plan row P214) is not a z row: a `CanvasModulate` in the world
+  canvas (each channel at least 0.90; it tints every world item, `FogLayer` and `MapEdge`
+  included, but not the clear colour) and a `WorldGrade` `CanvasLayer` at **layer 1** with one
+  full-rect gradient `TextureRect` (hidden with reduced effects). The `Hud` `CanvasLayer` moves
+  from the default layer 1 to **layer 2** in `scenes/main.tscn` and `scenes/dev/perf_arena.tscn`.
+- **"Nothing tints a sorted sprite" holds:** the `CanvasModulate` is one canvas-wide factor, not a
+  per-sprite tint, so no batch splits.
+- **Draw-call forecast** (ADR 0035 §7): 16 → **18** in an ordinary moment (+ `MapEdge` +
+  `WorldGrade`), 17 → **19** while a strike is aimed or in flight, 22 → **about 25** at the worst
+  moment (+ the health bars' tick pass). Plan row P216 will set `PerfBases.CALLS_FORECAST`,
+  `CALLS_STRIKE` and `CALLS_WORST` (16, 17, 22 on `main` today) and the card line's test.
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
@@ -588,6 +610,18 @@ dropped the ruin). A building's sheet gains `anim_kritisk` (whether the `Anim` r
 and `dmg_spark` beside `damage`. The generator gains the shapes `broken` and `rod`, the helper
 `petals`, the move `blow` and the materials `interior`, `slab`, `hole`, `rebar` and `beam` (ADR
 0029 §5).
+
+Status note (2026-11-13, P200b, the lead; ADRs 0034 and 0035 accepted 2026-11-09; the text and
+the notes above stand where they do not change them):
+- **The part `dmg1` is withdrawn** (ADR 0034): plan row P202 will stop generating it, and sheets
+  will list `dmg2` alone. `dmg1` stays the name of stage 1 in the part lists, which are indexed by
+  stage.
+- **Key colours in shadow frames** (ADR 0035 §4.1, plan row P204): a unit's shadow frame may hold a
+  pad in the faction's key triad. Such a frame is baked per player by `IsoAtlas`'s existing rule
+  (only a frame no key colour touches is shared by a faction's players). Since P237 the shadows are
+  on the second page (`IsoAtlas.PAGE_UNSORTED`), so a mirror match's page 2 grows by one faction's
+  unit shadows. The 8-12 % team share stays a rule of model frames. If a page passes 3584 rows,
+  shadow frames bake at 75 % (ADR 0035 §4.3, Q3 A).
 
 ### 6. Factions: names, look and data
 - **Names** (Michael's answer 1; screened in §13): the **Derrick League** (the oil and gas bloc;
