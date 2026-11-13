@@ -39,7 +39,8 @@ extends Node2D
 ## building that dies or leaves the rows leaves it.
 ## Damage stages (P159, ADR 0028 and 0029, `BuildingDamage`): a complete building whose hp is under
 ## `life.building_stage_percent` shows its body trimmed from the cut down and a `Damage` sibling
-## with the patch (`dmg1` SKADET, `dmg2` KRITISK) after it, before the `Anim` and `Head`; the node,
+## with the patch (`dmg2`, KRITISK only: SKADET shows the intact body, ADR 0034) after it, before
+## the `Anim` and `Head`; the node,
 ## `rise`, `frame_box`, pick shape and `bar_lift_px` do not move. A site shows none. The stages are
 ## read in `ticked` and queued, and written in the frame within `life.damage_building_writes`,
 ## oldest first; a hidden enemy building is written when it is shown again. The stage of an enemy
@@ -507,7 +508,9 @@ func _dress_patch(entry: Entry, sheet: IsoSheetDef) -> void:
 	entry.patch.visible = false
 	entry.body_base = world_sort.base_of(sheet, BODY, NO_FRAME, entry.owner_id)
 	entry.patch_bases = BuildingDamage.bases_of(world_sort, sheet, entry.owner_id)
-	entry.patch.texture = world_sort.atlas.texture_for(BuildingDamage.PARTS[0])
+	entry.patch.texture = world_sort.atlas.texture_for(
+		BuildingDamage.PARTS[BuildingDamage.KRITISK - 1]
+	)
 	entry.patch.region_enabled = true
 	entry.patch.centered = false
 	entry.node.add_child(entry.patch)

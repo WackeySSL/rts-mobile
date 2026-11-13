@@ -3,7 +3,8 @@ extends RefCounted
 ## The damage stages of a building's picture (ADR 0028 sections 2, 3 and 5, ADR 0029 sections 2, 3,
 ## 9 and 12, plan P159), kept out of `BuildingLayer`: which stage an hp is, which picture a sheet
 ## has for it, how the trimmed body and its `Damage` patch are written, and what a ghost shows.
-## All static. Stage 0 is INTAKT (the body), 1 is SKADET (`dmg1`), 2 is KRITISK (`dmg2`).
+## All static. Stage 0 is INTAKT (the body), 1 is SKADET (the intact picture too, ADR 0034: only its
+## particles tell it from 0), 2 is KRITISK (`dmg2`).
 ## The seam (ADR 0029 section 12, the `IsoAtlas.DAMAGE_SCALE` doc block): the patch is a sibling of
 ## the body at the same position and uses its whole region; the body loses its first
 ## `IsoAtlas.body_cut_row` texel rows and clips its filter; `show_body` and `trim` are the one place
@@ -11,7 +12,8 @@ extends RefCounted
 
 const PATCH: StringName = &"Damage"  ## The node name of the patch, and of a ghost's patch child.
 const PATCH_PATH: NodePath = ^"Damage"
-## The sheet part of each stage's patch: index stage - 1.
+## The sheet part of each stage's patch: index stage - 1, the generator's list (the part list stays
+## as it is). SKADET draws no patch (ADR 0034): `picture` is 0 there, nothing reads a `dmg1` region.
 const PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 const KRITISK: int = 2
 
@@ -27,12 +29,11 @@ static func stage_of(hp: int, max_hp: int, percents: PackedInt32Array) -> int:
 	return stage
 
 
-## The picture `sheet` shows for `stage`: the highest stage at or under it that has a patch and a
-## cut, 0 for a sheet without damage parts (it shows intact).
+## The picture `sheet` shows for `stage`: 0 (intact) at SKADET, KRITISK when the sheet has its patch
+## and cut, 0 for a sheet without (it shows intact). Part lists and `cuts` stay stage-indexed.
 static func picture(sheet: IsoSheetDef, stage: int) -> int:
-	for k: int in range(mini(stage, PARTS.size()), 0, -1):
-		if sheet.has_part(PARTS[k - 1]) and sheet.cuts.size() >= k:
-			return k
+	if stage >= KRITISK and sheet.has_part(PARTS[KRITISK - 1]) and sheet.cuts.size() >= KRITISK:
+		return KRITISK
 	return 0
 
 
@@ -57,7 +58,7 @@ static func cost(from: int, to: int, anim_write: bool) -> int:
 
 
 ## Shows the body frame at `body_base` and trims it for `stage`: the call that follows every frame
-## the body gets. `patch_bases` is the atlas base of `dmg1` and `dmg2` for the owner (-1: none).
+## the body gets. `patch_bases` is the atlas base of each stage's patch for the owner (-1: none).
 static func show_body(
 	sort: WorldSort,
 	sheet: IsoSheetDef,
@@ -70,12 +71,14 @@ static func show_body(
 	trim(sort, sheet, body, patch_bases, stage)
 
 
-## The atlas bases of the two patches for `owner_id`, -1 where the owner's art has none.
+## The atlas bases of the two patches for `owner_id`, -1 where the owner's art has none, and
+## always for SKADET (ADR 0034).
 static func bases_of(sort: WorldSort, sheet: IsoSheetDef, owner_id: int) -> PackedInt32Array:
 	var found: PackedInt32Array = PackedInt32Array()
-	for part: StringName in PARTS:
+	for stage: int in PARTS.size():
+		var part: StringName = PARTS[stage]
 		var base: int = -1
-		if sheet.has_part(part):
+		if stage + 1 == KRITISK and sheet.has_part(part):
 			base = sort.base_of(sheet, part, BuildingLayer.NO_FRAME, owner_id)
 		found.append(base)
 	return found

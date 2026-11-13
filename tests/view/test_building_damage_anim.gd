@@ -29,9 +29,9 @@ func test_the_anim_is_hidden_at_kritisk_when_the_sheet_says_hide_and_runs_at_ska
 	assert_bool(anim.visible).is_true()
 	_layer.camera = null  # No loop frames to count among the stage's writes.
 	var before: int = _layer.life_writes()
-	_hit(1, 10)  # KRITISK: one visibility write, on top of the stage's four (1 -> 2).
+	_hit(1, 10)  # KRITISK: one visibility write, on top of the stage's five (0 -> 2, ADR 0034).
 	assert_bool(anim.visible).is_false()
-	assert_int(_layer.life_writes() - before).is_equal(5)
+	assert_int(_layer.life_writes() - before).is_equal(6)
 	_layer.camera = _camera
 	for step: int in 40:  # The loop's frame changes do not show it again.
 		_runner.snapshot.tick = step * 3
@@ -74,19 +74,19 @@ func test_the_stage_writes_cost_5_5_and_4() -> void:
 	assert_int(BuildingDamage.cost(2, 0, true)).is_equal(4)
 	_open(_pair())
 	var start: int = _layer.life_writes()
-	_hit(1, 66)
-	assert_int(_layer.life_writes() - start).is_equal(5)
+	_hit(1, 66)  # SKADET draws the intact picture (ADR 0034): no sprite write.
+	assert_int(_layer.life_writes() - start).is_equal(0)
 	_hit(1, 10)
-	assert_int(_layer.life_writes() - start).is_equal(9)
+	assert_int(_layer.life_writes() - start).is_equal(5)
 	_hit(2, 10)
-	assert_int(_layer.life_writes() - start).is_equal(14)
+	assert_int(_layer.life_writes() - start).is_equal(10)
 
 
 func test_a_burst_of_40_buildings_is_applied_4_a_frame_oldest_first() -> void:
 	_open(_grid(40))
 	var ids: PackedInt32Array = _runner.snapshot.unit_id.duplicate()
 	for id: int in ids:
-		Dmg.set_hp(_runner, id, 66)
+		Dmg.set_hp(_runner, id, 10)
 	_runner.run_ticks(1)
 	var start: int = _layer.life_writes()
 	var shown: Dictionary[int, bool] = {}
@@ -219,7 +219,7 @@ func test_a_building_that_dies_while_queued_leaves_the_queue_with_no_stale_write
 	_open(_grid(40))
 	var ids: PackedInt32Array = _runner.snapshot.unit_id.duplicate()
 	for id: int in ids:
-		Dmg.set_hp(_runner, id, 66)
+		Dmg.set_hp(_runner, id, 10)
 	_runner.run_ticks(1)
 	var start: int = _layer.life_writes()
 	_layer._process(0.0)  # Four are written, the rest wait.

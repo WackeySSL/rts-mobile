@@ -40,9 +40,18 @@ func _look_away() -> void:
 	_ghosts._process(0.0)
 
 
+func test_a_skadet_ghost_is_the_whole_body_and_has_no_patch() -> void:
+	_remember(66, {"anim": true})  # SKADET draws the intact picture (ADR 0034).
+	var ghost: Sprite2D = _ghosts.ghost(ENEMY)
+	assert_that(ghost.region_rect).is_equal(Rect2(_region(&"hull")))
+	assert_bool(ghost.region_filter_clip_enabled).is_false()
+	var patch: Sprite2D = ghost.get_node_or_null("Damage") as Sprite2D
+	assert_bool(patch == null or not patch.visible).is_true()
+
+
 func test_a_ghost_shows_the_stage_last_seen_trimmed_with_its_patch_child_first() -> void:
-	for stage: int in [1, 2]:
-		_remember(66 if stage == 1 else 10, {"anim": true})
+	for stage: int in [2]:
+		_remember(10, {"anim": true})
 		var ghost: Sprite2D = _ghosts.ghost(ENEMY)
 		assert_object(ghost).is_not_null()
 		var full: Rect2i = _region(&"hull")
@@ -134,6 +143,6 @@ func test_dress_ghost_finds_the_anim_by_name_not_by_position() -> void:
 	_sort.dress(late, _def, &"hull")
 	_sort.show_frame(late, _def, &"hull", BuildingLayer.NO_FRAME, 2)
 	BuildingAnims.dress_ghost(late, _sort, _def, 2)
-	BuildingDamage.dress_ghost(late, _sort, _def, 2, 1)
+	BuildingDamage.dress_ghost(late, _sort, _def, 2, 2)
 	assert_str(late.get_child(0).name).is_equal("Damage")
 	assert_str(late.get_child(1).name).is_equal("Anim")
