@@ -91,6 +91,7 @@ static func run(world: World) -> void:
 		if field >= 0:
 			totals[field] += 1
 	var stamp: int = world.tick + 1  # Offline is judged at the stamp, as Production does.
+	var one: PackedInt32Array = PackedInt32Array([0])  # The one-row array of an order.
 	var no_room: int = 0  # Owners whose re-home found no free pad this tick (bit per owner).
 	for row: int in air:
 		var field: int = _field_of(world, row)
@@ -120,10 +121,10 @@ static func run(world: World) -> void:
 				seated
 				or (cap > 0 and world.ammo[row] <= 0 and world.order[row] != World.Order.MOVE)
 			):
-				var rows: PackedInt32Array = PackedInt32Array([row])
-				Formation.assign(world, rows, point.x, point.y)
+				one[0] = row
+				Formation.assign(world, one, point.x, point.y)
 				world.order[row] = World.Order.MOVE
-				Movement.reset_nav(world, rows, World.NavMode.DIRECT)
+				Movement.reset_nav(world, one, World.NavMode.DIRECT)
 		elif (
 			cap > 0
 			and world.ammo[row] < cap
