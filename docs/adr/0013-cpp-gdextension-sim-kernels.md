@@ -1046,6 +1046,20 @@ absorbs next to the C++ phases.
   fog after every tick). The device side is unchanged and open: a small `game/core` follow-up
   that compares the `FogGrid` arrays when FOG is in the mask would close it; no decision here.
 
+  Status note (2026-11-12, P26bt docs, from P232's fix of the flow tests; the text above stays as
+  accepted): a short `move_cost` table. A World always builds `move_cost` with every move class
+  (`World.MoveClass.size()` planes, four since P232). On a shorter table, FLOW's two
+  implementations differ, and both behaviours are acceptable because only a hand-built test can
+  reach them:
+  - The GDScript twin treats a key whose class has no plane as one it cannot integrate: the field
+    completes at once with every cell UNREACHED.
+  - The FLOW kernel refuses the call: the checked table (§2) wants exactly `MOVE_CLASSES` planes,
+    so it pushes an error and writes nothing. TARGETING and INTEGRATE read `move_cost` through the
+    same check and refuse it too.
+
+  So the contract is the full table. A test that hand-builds a short table runs that case on the
+  twin alone (`test_flow_cache`), and a lockstep case always passes a full one.
+
 ### 4. Determinism rules for C++
 - **Language and types:**
   - C++17;

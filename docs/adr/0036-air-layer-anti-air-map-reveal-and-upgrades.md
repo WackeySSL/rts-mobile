@@ -523,14 +523,15 @@ options as they were asked.
 
 Note (2026-11-12, P233): as built. It changes no accepted rule.
 - `PlayerView.reveal_state` is a typed `PackedInt32Array` field, a copy of `World.reveal` indexed by
-  player (entry 0 is neutral), not a method: a new per-player fact is a field, and gdlint's
-  limit of 20 public methods on `PlayerView` stands. A caller checks the size itself. `Reveal.State` is `OFF` 0, `ON` 1,
-  `PAUSED` 2.
+  player (entry 0 is neutral), not a method: a new per-player fact is a field, and gdlint's limit
+  of 20 public methods on `PlayerView` stands. A caller checks the size itself. `Reveal.State` is
+  `OFF` 0, `ON` 1, `PAUSED` 2.
 - The stamp is GDScript in REMOVE: `Reveal.run` sits inside the REMOVE mark, after `remove_dead` and
-  before `FogUpdate.run`. The FOG and TARGETING kernels and `world_access.h` are untouched, because
-  the FOG phase only adds and removes discs to the `visible` counts and never rebuilds them, so the
-  whole-map +1 survives every stamp, unstamp and kernel call, and TARGETING reads `visible` as it
-  stands. A lockstep case and an armed-unit case pin it.
+  before `FogUpdate.run`. The sweep needs no change to the FOG or TARGETING kernel or to
+  `world_access.h`, because the FOG phase only adds and removes discs to the `visible` counts and
+  never rebuilds them, so the whole-map +1 survives every stamp, unstamp and kernel call, and
+  TARGETING reads `visible` as it stands. (P238 changed the TARGETING kernel for the layer test of
+  §5, which reads no sweep state.) A lockstep case and an armed-unit case pin it.
 - There is no `reveal_stamped` array in the World and none in `DERIVED_ARRAYS` or
   `MatchSnapshot.NOT_COPIED`. The flag is `FogGrid.revealed`, per player, beside `visible`:
   `FogGrid.reveal` sets and clears it, `configure()` zeroes it, `copy_into` copies it, and
@@ -546,8 +547,9 @@ Note (2026-11-12, P233): as built. It changes no accepted rule.
   P234's space-centre data, because no shipped scenario has a space centre before it; P234 owns
   that case, and it lands with the plan's Determinism replay test.
 - Where sections 3 and 11 say `reveal_stamped[p]`, read `fog.revealed[p - 1]` (P233).
-- P235 must move `reveal` and `reveal_site` from `MatchSnapshot.NOT_COPIED` to COPIED: the view reads
-  only the snapshot, so the badge needs `reveal` and the owner's strike button needs `reveal_site`.
+- P235 must move `reveal` and `reveal_site` from `MatchSnapshot.NOT_COPIED` to COPIED: the view
+  reads only the snapshot, so the badge needs `reveal` and the owner's strike button needs
+  `reveal_site`.
 
 ### 12. Commands and touch, per unit (touch-ui-rules: 48 dp, portrait and landscape)
 | Unit | Gestures | New HUD |
