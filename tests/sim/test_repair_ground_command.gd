@@ -20,7 +20,7 @@ func _unit(id: String, move_class: int, speed: int) -> UnitDef:
 	return def
 
 
-func _world() -> World:
+func _world(hq_two: Vector2i = Vector2i(20, 12)) -> World:
 	var shed: BuildingDef = BuildingDef.new()
 	shed.type_id = &"shed"
 	shed.max_hp = 1000
@@ -58,7 +58,7 @@ func _world() -> World:
 	var made: World = Rig.world_of(units, 24, 16, true, 2)
 	made.add_building(1, Worlds.type_of(made, "shed"), SHED.x, SHED.y)
 	made.add_building(1, Worlds.type_of(made, "hq"), 10, 10)
-	made.add_building(2, Worlds.type_of(made, "hq"), 20, 12)
+	made.add_building(2, Worlds.type_of(made, "hq"), hq_two.x, hq_two.y)
 	made.credits[1] = 1000
 	return made
 
@@ -344,3 +344,45 @@ func test_a_padded_building_is_not_a_ground_target() -> void:
 	var field: int = world.index_of(Worlds.FIELD)
 	assert_bool(Repair.apply_ground(world, made, field)).is_false()
 	assert_int(world.order[ground]).is_equal(World.Order.IDLE)
+
+
+func test_a_tie_between_two_ring_tiles_goes_by_the_ring_walk_and_the_next_row_takes_the_other(
+) -> void:
+	# (9000, 3000) is 4500 from the centres of the ring tiles (4, 2) and (4, 3) alike. The shed
+	# faces EAST, so the walk (turned three quarters of the 12-tile ring) reaches (4, 2) first.
+	var world: World = _world()
+	var first: int = _add(world, 1, "tank", 9000, 3000, 50)
+	var second: int = _add(world, 1, "tank", 9000, 3000, 50)
+	_repair(world, [world.unit_id[first], world.unit_id[second]])
+	assert_array([_goal(world, first).x, _goal(world, first).y]).is_equal([4500, 2500])
+	assert_array([_goal(world, second).x, _goal(world, second).y]).is_equal([4500, 3500])
+	# (500, 2000) ties (1, 1) and (1, 2); the turned walk wraps past its start and meets (1, 2) first.
+	var west: int = _add(world, 1, "tank", 500, 2000, 50)
+	_repair(world, [world.unit_id[west]])
+	assert_array([_goal(world, west).x, _goal(world, west).y]).is_equal([1500, 2500])
+
+
+func test_two_seats_mirrored_by_a_half_turn_get_mirrored_tiles() -> void:
+	var world: World = _world(Vector2i(10, 3))
+	world.add_building(2, Worlds.type_of(world, "shed"), 20, 12)  # The half turn of (2, 2).
+	var far_shed: int = world.unit_id[world.unit_count() - 1]
+	var mine: int = _add(world, 1, "tank", 9000, 3000, 50)
+	var theirs: int = _add(world, 2, "tank", 15000, 13000, 50)  # The half turn of (9000, 3000).
+	var edge: int = _add(world, 1, "tank", 500, 2000, 50)  # A tie that wraps the turned walk.
+	var edge_far: int = _add(world, 2, "tank", 23500, 14000, 50)  # Its half turn.
+	Worlds.step(
+		world,
+		[
+			Command.repair(
+				1, PackedInt32Array([world.unit_id[mine], world.unit_id[edge]]), SHED_ID
+			),
+			Command.repair(
+				2, PackedInt32Array([world.unit_id[theirs], world.unit_id[edge_far]]), far_shed
+			)
+		]
+	)
+	assert_int(world.dropped_commands).is_equal(0)
+	for pair: Array in [[mine, theirs], [edge, edge_far]]:
+		var seen: Vector2i = _goal(world, pair[0])
+		var mirrored: Vector2i = Vector2i(24000, 16000) - _goal(world, pair[1])
+		assert_array([mirrored.x, mirrored.y]).is_equal([seen.x, seen.y])

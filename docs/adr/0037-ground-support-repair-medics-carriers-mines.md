@@ -732,7 +732,8 @@ then.
 - **Hold position:** §15's cases; the lockstep cases under twins and kernels (P298).
 - **Mutation testing:** P271, P276, P287, P288 and P298 (sim rows), about 10 chosen mutants each.
 
-- Note (2026-11-13, P277, as built; changes no accepted text above): `REPAIR` on a building
+- Note (2026-11-13, P277, as built; it changes one accepted rule, the REPAIR bullet of this section:
+  a group no longer takes `Buildings.aim`'s point row by row, see the ring tile below): `REPAIR` on a building
   without pads is `Repair.apply_ground`, reached from `Air.apply_repair` (one entry); the target
   is an own, complete, living building with a footprint, a role and no pads (so never a medic),
   and a blackout does not refuse it (ADR 0036 section 7 asks "own complete"; `run` waits). Each
