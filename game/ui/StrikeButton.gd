@@ -66,7 +66,8 @@ func _draw() -> void:
 	var dim: bool = dimmed()
 	if _card != null:
 		var half: Vector2 = Vector2.ONE * UiScale.dp(CARD_DP) * 0.5
-		var shade: Color = Color(1.0, 1.0, 1.0, DIM_ALPHA if dim else 1.0)
+		var shade: Color = get_theme_color(&"text", SweepMark.TOKENS)  # White: the card as it is.
+		shade.a = DIM_ALPHA if dim else 1.0
 		draw_texture_rect(_card, Rect2(middle - half, half * 2.0), false, shade)
 	if low_power:
 		var span: Vector2 = Vector2.ONE * UiScale.dp(GLYPH_DP)
