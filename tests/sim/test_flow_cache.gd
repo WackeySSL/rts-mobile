@@ -174,12 +174,12 @@ func test_a_key_the_costs_cannot_integrate_completes_at_once_and_does_not_stall_
 	var cache: FlowCache = _cache(2)
 	cache.acquire(5, last_class, 0, 1)
 	cache.acquire(7, FOOT, 0, 1)
-	var two_classes: PackedByteArray = _costs().slice(0, last_class * CELLS)
-	assert_int(cache.advance(two_classes, 100)).is_equal(64)
+	var short_costs: PackedByteArray = _costs().slice(0, last_class * CELLS)
+	assert_int(cache.advance(short_costs, 100)).is_equal(64)
 	assert_bool(cache.field(0).complete).is_true()
 	assert_int(cache.field(0).cost.count(UNREACHED)).is_equal(100)
-	assert_array(cache.field(1).cost).is_equal(_lone(7, FOOT, two_classes))
-	assert_int(cache.advance(two_classes, 100)).is_equal(0)
+	assert_array(cache.field(1).cost).is_equal(_lone(7, FOOT, short_costs))
+	assert_int(cache.advance(short_costs, 100)).is_equal(0)
 
 
 ## Slots 0 and 1 are unreferenced, 2 and 3 referenced. A new map version drops the first two (the

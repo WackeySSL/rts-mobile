@@ -23,7 +23,8 @@ const NAMES: Array[StringName] = [
 	&"mixed",
 	&"edge_rows",
 	&"pushed",
-	&"at_cap"
+	&"at_cap",
+	&"other_layer"
 ]
 
 var world: World
@@ -50,7 +51,8 @@ func mark(phase: int) -> void:
 ## that stopped at the cap on hits; look_capped: rows that stopped at the cap on looks; fixed: used
 ## pairs near enough to take the fixed push; same_point: of those, pairs on one point; mixed: used
 ## pairs of a moving and an idle unit; edge_rows: rows in the first or last column or line of the
-## grid; pushed: rows with a push; at_cap: rows with an axis at the push cap.
+## grid; pushed: rows with a push; at_cap: rows with an axis at the push cap; other_layer: units
+## skipped because their `type_layer_bit` differs from the row's (P240; not looked at).
 @warning_ignore("integer_division")
 static func count(world: World, into: Dictionary[StringName, int]) -> int:
 	into[&"ticks"] += 1
@@ -61,6 +63,7 @@ static func count(world: World, into: Dictionary[StringName, int]) -> int:
 	if cols == 0 or side < 1:
 		return 0
 	var radii: PackedInt32Array = world.type_radius
+	var layers: PackedInt32Array = world.type_layer_bit
 	var types: PackedInt32Array = world.type_index
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
@@ -87,7 +90,9 @@ static func count(world: World, into: Dictionary[StringName, int]) -> int:
 			var other: int = heads[scan_line * cols + scan_column]
 			while other != -1 and looked < scan_cap and hits < hit_cap:
 				var next: int = links[other]
-				if other != row:
+				if other != row and layers[types[other]] != layers[types[row]]:
+					into[&"other_layer"] += 1
+				elif other != row:
 					looked += 1
 					var dx: int = pos_x[row] - pos_x[other]
 					var dy: int = pos_y[row] - pos_y[other]

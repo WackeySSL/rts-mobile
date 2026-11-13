@@ -1,13 +1,16 @@
 // The rules of the SEPARATION kernel (ADR 0013 sections 1 and 2, plan P39n): Separation.run over views of the arrays the
-// kernel borrowed. Every unit scans the 3x3 cells of the separation grid around its own, row by row, each cell's list in
-// ascending id order; it looks at most at `scan` other units and uses the first `neighbours` that overlap it; each pair
+// kernel borrowed. Layers (P240, ADR 0036 section 4): only rows with the same `type_layer_bit` are neighbours; a row of another
+// layer is skipped before it is looked at, so it counts toward neither the scan cap nor the looks returned, and the walk ends
+// because SpatialGrid.rebuild writes acyclic lists, no longer because every step adds a look. Every unit scans the 3x3 cells of
+// the separation grid around its own, row by row, each cell's list in ascending id order; it looks at most at `scan` other units and uses the first `neighbours` that overlap it; each pair
 // gives a push (the sqrt-free formula, or the fixed push for a near-coincident pair), a share of it goes to the unit, and
 // the unit's sum is clamped. The grid is the one the GDScript rebuild wrote this tick (SpatialGrid, `head` per cell and
 // `next` per row): the pass never rebuilds it. Plain C++17, no Godot header, no float. Rule values come in through
 // `Rules`, read from the World by the bind layer.
 // Twin: game/sim/Separation.gd (run), in the twin's row order, so that the full state matches after every call. Tests:
-// tests/sim/test_separation*.gd under both implementations, tests/sim/native/test_separation_kernel.gd (crafted cases and
-// the names), and the lockstep of P39n2: test_separation_lockstep.gd, _cases.gd and _random.gd (same folder). MIT.
+// tests/sim/test_separation*.gd under both implementations (test_separation_layers.gd is P240's), tests/sim/native/
+// test_separation_kernel.gd (crafted cases and the names), and the lockstep of P39n2: test_separation_lockstep.gd, _cases.gd and
+// _random.gd (same folder), and the aircraft cases of P240: test_air_movement_lockstep.gd (same folder). MIT.
 //
 // Range (the decision of P39n, which records it and clamps nothing). The pass is exact in int64 while
 //   - the positions stay within 10^9 milli-tiles of the origin in both axes (a million tiles; a map is a few hundred), so
@@ -37,9 +40,10 @@ struct Rows {
 	ArrayView<int32_t> push_x, push_y;
 };
 
-// The per-type radius table (World.type_radius).
+// The per-type tables: the radius (World.type_radius) and the layer bit (World.type_layer_bit, P240: only rows with the same bit
+// are neighbours).
 struct Types {
-	ArrayView<const int32_t> radius;
+	ArrayView<const int32_t> radius, layer_bit;
 };
 
 // World.sep_grid as the pass reads it: cells per row and rows of cells, the side of a cell in milli-tiles, `head` per cell

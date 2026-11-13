@@ -32,6 +32,7 @@ int64_t run(const Rows &rows, const Types &types, const Grid &grid, const Rules 
 	ArrayView<int32_t> push_x = rows.push_x;
 	ArrayView<int32_t> push_y = rows.push_y;
 	const ArrayView<const int32_t> radii = types.radius;
+	const ArrayView<const int32_t> layers = types.layer_bit;
 	const ArrayView<const int32_t> heads = grid.head;
 	const ArrayView<const int32_t> links = grid.next;
 	const int64_t cols = grid.cols;
@@ -54,6 +55,7 @@ int64_t run(const Rows &rows, const Types &types, const Grid &grid, const Rules 
 		const int64_t x = pos_x.get(row);
 		const int64_t y = pos_y.get(row);
 		const int64_t radius = radii.get(type_index.get(row));
+		const int64_t layer = layers.get(type_index.get(row));
 		const bool moving = intent_x.get(row) != 0 || intent_y.get(row) != 0;
 		const int64_t column = clamp(x / side, 0, cols - 1);
 		const int64_t line = clamp(y / side, 0, lines - 1);
@@ -74,7 +76,8 @@ int64_t run(const Rows &rows, const Types &types, const Grid &grid, const Rules 
 			while (next != -1 && looked < scan_cap && hits < hit_cap) {
 				const int64_t other = next;
 				next = links.get(other);
-				if (other == row) {
+				// Per layer (Separation.gd): a row of another layer is no pair, so it is not looked at.
+				if (other == row || layers.get(type_index.get(other)) != layer) {
 					continue;
 				}
 				looked += 1;
