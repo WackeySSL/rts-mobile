@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## roster entries (art, item card) and the HOW_TO_PLAY rows come with P245b (the airfields) and P245
 ## (the aircraft), so none of them is buildable yet. `type_id` is the art id those rows draw. The
 ## GDD gives the names, size, cost, power, requirement, hit points, speed, range and ammo; the ADR
-## gives the masks. Build times, sight, the repair numbers, damage, cooldowns, armour percents,
+## gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5 stops at a ring corner).
+## Build times, sight, the repair numbers, damage, cooldowns, armour percents,
 ## rearm time and armour classes are in neither: starting values for the balance run (speeds are
 ## the GDD's tiles per second over 15 ticks). P245b removes the airfield entries and P245 the
 ## aircraft entries of test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and
@@ -18,8 +19,8 @@ const FIELDS: Dictionary[String, Array] = {
 const AIRCRAFT: Dictionary[String, Array] = {
 	"fossil_fighter": ["fossil", "Torchjet", 260, 200, 900, "torchjet_gun", 5000, 2, 0],
 	"renew_fighter": ["renew", "Glint", 200, 240, 900, "glint_gun", 5000, 2, 0],
-	"fossil_bomber": ["fossil", "Drillhead", 500, 120, 1400, "drillhead_bombs", 2500, 1, 2],
-	"renew_bomber": ["renew", "Sunfall", 380, 147, 1400, "sunfall_bombs", 2500, 1, 2],
+	"fossil_bomber": ["fossil", "Drillhead", 500, 120, 1400, "drillhead_bombs", 3000, 1, 2],
+	"renew_bomber": ["renew", "Sunfall", 380, 147, 1400, "sunfall_bombs", 3000, 1, 2],
 }
 ## ADR 0032: a name fits one line of the item card, at most about 11 characters.
 const MAX_NAME: int = 11

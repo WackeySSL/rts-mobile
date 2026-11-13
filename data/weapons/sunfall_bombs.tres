@@ -6,8 +6,8 @@
 [resource]
 script = ExtResource("1_weapon")
 id = &"sunfall_bombs"
-range = 2500
-damage = 100
+range = 3000
+damage = 120
 cooldown_ticks = 15
 projectile_speed = 0
 vs_armour = PackedInt32Array(60, 100, 100, 150)
