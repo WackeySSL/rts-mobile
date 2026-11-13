@@ -48,6 +48,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"fossil_radar": "refinery",
 				"defence_turret": "barracks",
 				"fossil_strike": "fossil_radar",
+				"fossil_space": "fossil_radar",
 				"artillery": "fossil_radar",
 			}
 		)
@@ -65,6 +66,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_radar": "renew_refinery",
 				"renew_defence": "renew_barracks",
 				"renew_strike": "renew_radar",
+				"renew_space": "renew_radar",
 				"renew_artillery": "renew_radar",
 			}
 		)

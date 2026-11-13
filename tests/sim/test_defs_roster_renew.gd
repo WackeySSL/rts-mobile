@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
-## The Lumen Accord's roster (plan row P108, ADR 0023 sections 6, 7 and 10, docs/GDD.md): its eight
-## buildings, six units and the two weapons of its own as literals (the ADR's starting numbers,
-## marked P: proposals for Phase 4's balance runs), the rules that span its files (the requirement
-## chains, the free Fuel Runner, the dock and exit cells, the tabs) and how it differs from the
-## Derrick League: only where the ADR's table says so. test_defs_roster pins the Derrick League's
-## files the same way. The rules every file obeys and the faction rules are test_defs_data's and
+## The Lumen Accord's roster (plan row P108, ADR 0023 sections 6, 7 and 10, docs/GDD.md): its nine
+## buildings (the space centre's numbers are test_defs_space_centre's), six units and the two
+## weapons of its own as literals (the ADR's starting numbers, marked P: proposals for Phase 4's
+## balance runs), the rules that span its files (the requirement chains, the free Fuel Runner, the
+## dock and exit cells, the tabs) and how it differs from the Derrick
+## League: only where the ADR's table says so. test_defs_roster pins the Derrick League's files the
+## same way. The rules every file obeys and the faction rules are test_defs_data's and
 ## test_defs_factions_data's, which run over these files too.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
@@ -58,7 +59,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_eight_buildings_and_the_six_units_in_the_adr_order() -> void:
+func test_the_faction_file_lists_the_nine_buildings_and_the_six_units_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -68,6 +69,7 @@ func test_the_faction_file_lists_the_eight_buildings_and_the_six_units_in_the_ad
 		"renew_radar",
 		"renew_defence",
 		"renew_strike",
+		"renew_space",
 		"renew_rifle",
 		"renew_rocket",
 		"renew_scout",
@@ -82,10 +84,10 @@ func test_the_faction_file_lists_the_eight_buildings_and_the_six_units_in_the_ad
 	assert_array(listed).is_equal(wanted)
 	for at: int in wanted.size():
 		var member: UnitDef = faction.roster[at]
-		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 8)
+		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 9)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those fourteen and no other.
+	# The files that name the faction are those fifteen and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())
@@ -477,6 +479,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 				"renew_power",
 				"renew_radar",
 				"renew_refinery",
+				"renew_space",
 				"renew_strike",
 			]
 		)

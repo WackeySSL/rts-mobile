@@ -23,9 +23,9 @@ var produces: int = -1
 @export var exit: Vector2i = Vector2i.ZERO
 
 ## The superweapon of a strike building (ADR 0023 section 10), all 0 and no weapon for every other
-## building: the kind (0 none, 1 rupture, 2 blackout), the ticks from placement (and from each
-## firing; for a Reveal building the one charge from completion) until it may fire, the radius
-## around the target point in milli-tiles, the rupture's warning in ticks, the blackout's length
+## building: the kind (0 none, 1 rupture, 2 blackout, 3 reveal), the ticks from completion (and
+## from each firing; a Reveal building has the one charge) until it may fire, the radius around
+## the target point in milli-tiles, the rupture's warning in ticks, the blackout's length
 ## in ticks, and the rupture's weapon (a WeaponDef, so its damage goes through the armour percents).
 @export_enum("None:0", "Rupture:1", "Blackout:2", "Reveal:3") var strike_kind: int = 0
 @export var charge_ticks: int = 0

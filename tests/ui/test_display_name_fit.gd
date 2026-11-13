@@ -26,6 +26,14 @@ func test_every_display_name_fits_the_caption_and_every_requirement_fits_the_sas
 	assert_array(misfits).override_failure_message("\n".join(misfits)).is_empty()
 
 
+## The space centres' names (P234) are in the checked set. Nothing requires a space centre, so
+## neither name shows on a sash: both are measured as captions only.
+func test_the_space_centres_are_in_the_checked_names() -> void:
+	var names: Dictionary[String, String] = DisplayNames.all()
+	assert_str(names.get("fossil_space", "")).is_equal("Skyrig")
+	assert_str(names.get("renew_space", "")).is_equal("Zenith")
+
+
 ## The names of `names` and `needed` that overrun at one profile, each as a line of the report.
 func _misfits(
 	profile_name: StringName,
