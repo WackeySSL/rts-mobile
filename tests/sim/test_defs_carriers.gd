@@ -13,10 +13,10 @@ const Rules: GDScript = preload("res://tests/sim/support/air_rules.gd")
 const AIR: int = World.MoveClass.AIR
 const FOOT_BIT: int = 1
 
-## id: [faction, name, speed, max_hp, cost, slots]
+## id: [faction, name, speed, max_hp, cost, slots, armour (ADR 0036 section 8)]
 const TRANSPORTS: Dictionary[String, Array] = {
-	"fossil_transport": ["fossil", "Skyhauler", 107, 600, 1000, 3],
-	"renew_transport": ["renew", "Ferrywing", 160, 380, 800, 2],
+	"fossil_transport": ["fossil", "Skyhauler", 107, 600, 1000, 3, World.Armour.HEAVY],
+	"renew_transport": ["renew", "Ferrywing", 160, 380, 800, 2, World.Armour.LIGHT],
 }
 ## id: [faction, name, speed, max_hp, cost, weapon id, damage]
 const DRONES: Dictionary[String, Array] = {
@@ -37,8 +37,8 @@ func test_each_faction_has_a_transport_with_the_gdd_numbers() -> void:
 		assert_array([def.speed, def.max_hp, def.cost, def.carry_slots]).is_equal(
 			[row[2], row[3], row[4], row[5]]
 		)
-		assert_array([def.move_class, def.tab, def.low_flying]).is_equal(
-			[AIR, World.Tab.FLIGHT, false]
+		assert_array([def.move_class, def.tab, def.low_flying, def.armour]).is_equal(
+			[AIR, World.Tab.FLIGHT, false, row[6]]
 		)
 		# Unarmed, and no ammo: a transport has nothing to reload.
 		assert_object(def.weapon).override_failure_message(id).is_null()

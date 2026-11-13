@@ -22,6 +22,11 @@ func test_every_vehicle_is_tracked_and_every_infantry_unit_walks() -> void:
 			if def == null:
 				continue
 			seen[def.tab] = seen.get(def.tab, 0) + 1
+			# The drone squads (P264) are AIR on the Infantry tab. `AiMemory.class_of` (reads the
+			# tab only, AiMemory.gd:161-164) must handle them before P250 or P267 lets the AI build
+			# them.
+			if def.low_flying:
+				continue
 			var expected: int = -1
 			if def.tab == World.Tab.VEHICLES:
 				expected = AiIntel.TRACKED
