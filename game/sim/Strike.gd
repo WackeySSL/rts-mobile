@@ -238,7 +238,8 @@ static func _land(world: World, player: int) -> void:
 			continue  # The strike weapon's layers (ADR 0036 section 5: ground only, so air is skipped).
 		var percent: int = percent_of[percents + armour_of[types[row]]]
 		if percent > 0:
-			hit_points[row] -= maxi(1, damage * percent / Combat.PERCENT)
+			var taken: int = Upgrades.taken(world, world.owner[row], types[row])
+			hit_points[row] -= Combat.damage(damage, percent, Combat.PERCENT, taken)
 
 
 ## The blackout of `player`'s strike building of type `type` around (point_x, point_y): every

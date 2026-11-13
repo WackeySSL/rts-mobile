@@ -90,7 +90,10 @@ static func run(world: World) -> void:
 		var done: int = build_ticks[head] * PROGRESS_PER_TICK
 		var step: int = Power.scaled(world, player, PROGRESS_PER_TICK)  # Less on low power.
 		progress[queue] = mini(progress[queue] + step, done)
-		if (
+		if tab == World.Tab.RESEARCH and progress[queue] >= done:
+			Upgrades.finish(world, player, head)  # Spawns nothing (ADR 0036 section 10).
+			remove_item(world, queue, 0)
+		elif (
 			tab != World.Tab.STRUCTURES
 			and progress[queue] >= done
 			and ProductionSpawn.spawn(world, player, head, producer)
@@ -105,7 +108,8 @@ static func run(world: World) -> void:
 ## type needs a tab (a structure's too), the player a producer of that tab (producer_row) whose
 ## faction may queue it (`_faction_allows`) and a row of the type's requirement (if it has one), the
 ## queue room and at least the type's cost in credits; a FLIGHT item also needs room under the
-## pad cap (`Air.cap_room`, ADR 0036 section 6).
+## pad cap (`Air.cap_room`, ADR 0036 section 6), and a research item needs its upgrade unresearched
+## and not queued (`Upgrades.queue_refused`, section 10).
 static func apply_queue(world: World, command: Command) -> bool:
 	if command.payload.size() != 1:
 		return false
@@ -127,6 +131,7 @@ static func apply_queue(world: World, command: Command) -> bool:
 		or world.credits[player] < cost
 		or not _owns(world, player, world.type_requires[type])
 		or (tab == World.Tab.FLIGHT and not Air.cap_room(world, player))
+		or Upgrades.queue_refused(world, player, type)
 	):
 		return false
 	world.credits[player] -= cost
