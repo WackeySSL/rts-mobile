@@ -399,6 +399,27 @@ Note (2026-11-13, P241): as built. It changes no accepted text except the bullet
   implementations) and `test_sweep_layers.gd` (the sweep with the target layers, both
   implementations). No golden moved: no shipped type has ammo or pads.
 
+Note (2026-11-13, P241b): repair and `REPAIR` as built. It changes no accepted text.
+- **Where.** `Air._service` (called from `Air.run` for an aircraft within reach of its pad: reload
+  as P241 built it, then repair) and `Air.apply_repair`, which `Sim._apply` calls for
+  `Command.Type.REPAIR` (7); the factory is `Command.repair(player, unit_ids, building_id)`.
+- **Repair** is as §6 says: on ticks with `tick % repair_period_ticks == 0`, `repair_hp` up to the
+  maximum, for `ceil(cost * gained * repair_cost_percent / (100 * max_hp))`; no pay, no repair. It
+  also needs the airfield's `repair_classes` to carry the AIR bit, and an online airfield (a
+  blackout stops it, as it stops the reload). A fighter, with no ammo limit, is repaired too.
+- **`REPAIR`**: the valid aircraft are own, living, complete, in the AIR layer, with their move
+  class bit in the airfield's `repair_classes`; the lowest ids first. One already homed there keeps
+  its pad; another is re-homed while the airfield has a pad left (pads minus aircraft homed there)
+  and is skipped otherwise. Each one taken gets MOVE to the pad of its rank, as `Air.run` derives
+  it. With none taken, or a target that is not an own complete building with pads and a role, the
+  command is dropped and counted. This is the one `REPAIR` entry: P277 adds the branch for a
+  building without pads to `apply_repair`, not a second command.
+- **Not here.** The `REPAIRED` event (ADR 0037 section 2, Event 8) is P276's: it adds the event for
+  the airfield's repair too (at most one per pad per period), together with `Repair.run`. P241b writes
+  none, because no view reads it for airfields yet. A defeated owner's aircraft are not repaired.
+- **Tests.** `test_airfield_repair.gd` (the repair and its price) and `test_repair_command.gd` (the
+  command and the part of the shared contract the airfield owns). No golden moved.
+
 ### 7. The interface shared with the ground design
 - **`REPAIR = 7`:** unit ids, `target_id` = an own complete building with
   `repair_classes & class_bit(unit) != 0`.
