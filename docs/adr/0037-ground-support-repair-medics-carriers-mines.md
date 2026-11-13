@@ -732,6 +732,15 @@ then.
 - **Hold position:** §15's cases; the lockstep cases under twins and kernels (P298).
 - **Mutation testing:** P271, P276, P287, P288 and P298 (sim rows), about 10 chosen mutants each.
 
+- Note (2026-11-13, P277, as built; changes no accepted text above): `REPAIR` on a building
+  without pads is `Repair.apply_ground`, reached from `Air.apply_repair` (one entry); the target
+  is an own, complete, living building with a footprint, a role and no pads (so never a medic),
+  and a blackout does not refuse it (ADR 0036 section 7 asks "own complete"; `run` waits). Each
+  valid unit gets the MOVE reset (`group_cell` -1, `order_target` 0, harvest and carry marks
+  released). The ring tile is the nearest passable one that no earlier row of the command took,
+  lowest id first (`Repair._spread`: ties by the ring walk of ADR 0033, `aim`'s point when all are
+  taken), because a group sent to one corner tile could stall up to two spacings off and out of
+  reach. `tests/sim/test_repair_reach.gd` holds the reach rule, read from the live ring.
 - **As built (P276; changes no accepted text above):**
   - `Repair.run` (`game/sim/Repair.gd`) follows section 5 and the medic seek of section 6. The scratch
     for the kept slots is the columns `push_x` and `push_y` (rewritten by SEPARATION, as `Air.run`

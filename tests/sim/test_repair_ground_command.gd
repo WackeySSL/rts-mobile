@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## REPAIR (7) for a ground repair building (plan row P277, ADR 0037 section 6): the valid units get
+## REPAIR (7) for a ground repair building (plan row P277, ADR 0037 section 5): the valid units get
 ## MOVE to `Buildings.aim`'s approach point, the ones the classes do not serve are skipped, and an
 ## unfinished, dead, enemy or pad-less target, or a defeated player, drops the command. Plus the
 ## ground half of the shared repair-role contract (the data test that reach covers every ring
@@ -121,7 +121,7 @@ func test_a_mixed_selection_sends_only_the_served_rows() -> void:
 	assert_int(world.order[world.index_of(SHED_ID)]).is_equal(World.Order.IDLE)
 
 
-func test_the_new_order_replaces_an_attack_and_clears_its_target() -> void:
+func test_the_new_order_replaces_an_attack_and_clears_its_target_and_group_cell() -> void:
 	var world: World = _world()
 	var tank: int = _add(world, 1, "tank", 9000, 3000, 50)
 	var foe: int = _add(world, 2, "tank", 14000, 3000)
@@ -131,6 +131,7 @@ func test_the_new_order_replaces_an_attack_and_clears_its_target() -> void:
 	_repair(world, [world.unit_id[tank]])
 	assert_int(world.order[tank]).is_equal(World.Order.MOVE)
 	assert_int(world.group_cell[tank]).is_equal(-1)
+	assert_int(world.order_target[tank]).is_equal(0)
 
 
 func test_nothing_valid_drops_the_command_and_counts_it() -> void:
@@ -140,7 +141,11 @@ func test_nothing_valid_drops_the_command_and_counts_it() -> void:
 	var tank: int = _add(world, 1, "tank", 9000, 3500, 50)
 	var foe: int = _add(world, 2, "tank", 9000, 4000, 50)
 	var hq_id: int = world.unit_id[world.index_of(2)]  # Player 1's headquarters (no role).
+	var medic: int = _add(world, 1, "medic", 20000, 14000)  # Beyond every seek reach.
 	var tank_id: PackedInt32Array = PackedInt32Array([world.unit_id[tank]])
+	cases["a medic as the target"] = Command.repair(
+		1, PackedInt32Array([world.unit_id[squad]]), world.unit_id[medic]
+	)
 	cases["only an unserved class"] = Command.repair(1, PackedInt32Array([world.unit_id[squad]]), 1)
 	cases["a building with no role"] = Command.repair(1, tank_id, hq_id)
 	cases["an enemy's unit"] = Command.repair(2, PackedInt32Array([world.unit_id[foe]]), 1)
@@ -157,7 +162,7 @@ func test_nothing_valid_drops_the_command_and_counts_it() -> void:
 		Sim.step(world, [made])
 		dropped += 1
 		assert_int(world.dropped_commands).override_failure_message(label).is_equal(dropped)
-		for row: int in [squad, tank, foe]:
+		for row: int in [squad, tank, foe, medic]:
 			assert_int(world.order[row]).override_failure_message(label).is_equal(World.Order.IDLE)
 
 
@@ -260,3 +265,82 @@ func test_air_apply_repair_still_serves_a_padded_airfield_and_never_a_ground_bui
 	Worlds.step(world, [Command.repair(1, PackedInt32Array([world.unit_id[jet]]), Worlds.FIELD)])
 	assert_int(world.dropped_commands).is_equal(0)
 	assert_int(world.home[jet]).is_equal(Worlds.FIELD)
+
+
+func test_a_group_gets_distinct_ring_tiles_and_every_row_ends_in_reach_and_repaired() -> void:
+	var world: World = _world()
+	var ids: Array = []
+	var rows: Array[int] = []
+	for at: int in 6:  # Six tanks from the far corner, all nearest the same corner tile.
+		var tank: int = _add(world, 1, "tank", 9000 + at % 3 * 600, 9000 + at / 3 * 600, 50)
+		rows.append(tank)
+		ids.append(world.unit_id[tank])
+	_repair(world, ids)
+	assert_int(world.dropped_commands).is_equal(0)
+	var seen: Dictionary = {}
+	for row: int in rows:
+		var goal: Vector2i = _goal(world, row)
+		assert_bool(seen.has(goal)).override_failure_message("shared tile %s" % goal).is_false()
+		seen[goal] = true
+		var gap: Vector2i = goal - Vector2i(3000, 3000)
+		assert_bool(gap.x * gap.x + gap.y * gap.y <= 2700 * 2700).is_true()
+	for _tick: int in 900:
+		Worlds.step(world)
+	for id: int in ids:
+		var row: int = world.index_of(id)
+		assert_int(world.hp[row]).is_equal(100)
+
+
+func test_the_lowest_id_takes_the_nearest_tile_and_the_next_the_nearest_one_left() -> void:
+	var world: World = _world()
+	var first: int = _add(world, 1, "tank", 9000, 9000, 50)
+	var second: int = _add(world, 1, "tank", 9000, 9000, 50)
+	_repair(world, [world.unit_id[second], world.unit_id[first]])
+	assert_array([_goal(world, first).x, _goal(world, first).y]).is_equal([4500, 4500])
+	assert_bool(_goal(world, second) != _goal(world, first)).is_true()
+
+
+func test_more_units_than_ring_tiles_leave_the_rest_on_the_aim_point() -> void:
+	var world: World = _world()
+	var ids: Array = []
+	for at: int in 14:  # The 2 x 2 ring holds 12 tiles.
+		ids.append(world.unit_id[_add(world, 1, "tank", 9000 + at * 10, 9000, 50)])
+	_repair(world, ids)
+	assert_int(world.dropped_commands).is_equal(0)
+	for id: int in ids:
+		assert_int(world.order[world.index_of(id)]).is_equal(World.Order.MOVE)
+
+
+func test_a_harvester_and_a_pending_load_are_released_by_repair() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, 1, "tank", 9000, 3000, 50)
+	var other: int = _add(world, 1, "tank", 15000, 3000)
+	world.type_harvest[world.type_index[tank]] = 100  # The rig's tank doubles as a harvester.
+	world.harvest_mode[tank] = World.HarvestMode.MINE
+	world.carry_mode[tank] = 1
+	world.order_target[tank] = world.unit_id[other]  # A LOAD mark on an own row.
+	_repair(world, [world.unit_id[tank]])
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_int(world.harvest_mode[tank]).is_equal(World.HarvestMode.IDLE)
+	assert_int(world.carry_mode[tank]).is_equal(0)
+	assert_int(world.order_target[tank]).is_equal(0)
+
+
+func test_a_mixed_selection_to_an_airfield_homes_the_aircraft_and_skips_the_ground_row() -> void:
+	var world: World = Worlds.world()
+	var jet: int = Worlds.add(world, 1, "jet", 14000, 9000)
+	var ground: int = Worlds.add(world, 1, "dummy", 14000, 9500)
+	var ids: Array = [world.unit_id[jet], world.unit_id[ground]]
+	_repair(world, ids, Worlds.FIELD)
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_array([world.home[jet], world.order[jet]]).is_equal([Worlds.FIELD, World.Order.MOVE])
+	assert_array([world.home[ground], world.order[ground]]).is_equal([0, World.Order.IDLE])
+
+
+func test_a_padded_building_is_not_a_ground_target() -> void:
+	var world: World = Worlds.world()
+	var ground: int = Worlds.add(world, 1, "dummy", 14000, 9500)
+	var made: Command = Command.repair(1, PackedInt32Array([world.unit_id[ground]]), Worlds.FIELD)
+	var field: int = world.index_of(Worlds.FIELD)
+	assert_bool(Repair.apply_ground(world, made, field)).is_false()
+	assert_int(world.order[ground]).is_equal(World.Order.IDLE)
