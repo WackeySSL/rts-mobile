@@ -512,11 +512,12 @@ var mend_period_ticks: int = 0
 var mend_cost_percent: int = 0
 ## The size of the passenger table (ADR 0036 section 3).
 var passenger_cap: int = 0
+## Mines (ADR 0037 section 8): the per-player cap, the lay, arm and sweep ticks and the record cap.
 var mine_cap: int = 0
-var mine_lay_ticks: int = 22
-var mine_arm_ticks: int = 15
-var sweep_ticks: int = 30
-var mine_known_cap: int = 24
+var mine_lay_ticks: int = 0
+var mine_arm_ticks: int = 0
+var sweep_ticks: int = 0
+var mine_known_cap: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -632,7 +633,7 @@ var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
 var weapon_vs_armour: PackedInt32Array = PackedInt32Array()
 ## The layers a weapon may hit (a Layer mask, 1..7), one per weapon.
 var weapon_targets: PackedInt32Array = PackedInt32Array()
-## Milli-tiles: a mine weapon's blast radius (0 for every other weapon).
+## Milli-tiles: a mine weapon's blast radius (read only for mine weapons).
 var weapon_blast_milli: PackedInt32Array = PackedInt32Array()
 
 ## The tile grid. Columns and rows are tiles, 0 until a map is loaded or prepare() derives open

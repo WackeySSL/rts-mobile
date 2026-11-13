@@ -4,6 +4,7 @@ extends RefCounted
 ## every shipped file to them. The shipped data holds no layer or ejecting carrier until P290.
 
 const MAX_PERCENT: int = 100
+const MAX_VS_PERCENT: int = 200
 
 
 ## A mobile ground unit that breaks no rule when its file is tank.tres.
@@ -63,4 +64,52 @@ static func mine_problems(file: String, unit: UnitDef) -> PackedStringArray:
 	for message: String in broken:
 		if broken[message]:
 			problems.append("%s: %s" % [file, message])
+	return problems
+
+
+## One text per broken rule of a mine weapon file (the strike-weapon pattern): damage, no range or
+## flight (a mine blasts where it lies), 4 percents in 0..200, and an id equal to its file name.
+static func mine_weapon_problems(
+	file: String, weapon: WeaponDef, weapon_path: String
+) -> PackedStringArray:
+	var percents: Array = Array(weapon.vs_armour)
+	var broken: Dictionary[String, bool] = {
+		"mine weapon damage is below 1": weapon.damage < 1,
+		"mine weapon has a range, a minimum range or a flight":
+		weapon.range != 0 or weapon.min_range != 0 or weapon.projectile_speed != 0,
+		"vs_armour is not 4 percents in 0..200":
+		(
+			percents.size() != 4
+			or (percents.size() > 0 and (percents.min() < 0 or percents.max() > MAX_VS_PERCENT))
+		),
+		"mine weapon id %s differs from its file name" % weapon.id:
+		String(weapon.id) != weapon_path.get_file().get_basename(),
+	}
+	var problems: PackedStringArray = PackedStringArray()
+	for message: String in broken:
+		if broken[message]:
+			problems.append("%s: %s" % [file, message])
+	return problems
+
+
+## The weapon-id rule across files: a weapon id belongs to one file, whether the weapon is a gun,
+## a strike weapon or a mine. World merges weapons by id (first wins), so a mine that shares an id
+## with a gun would blast with the gun's numbers, or the gun with the mine's.
+static func weapon_id_problems(units: Array) -> PackedStringArray:
+	var files: Dictionary[String, String] = {}
+	var problems: PackedStringArray = PackedStringArray()
+	for unit: UnitDef in units:
+		var weapons: Array[WeaponDef] = [unit.weapon, unit.mine_weapon]
+		var building: BuildingDef = unit as BuildingDef
+		if building != null:
+			weapons.append(building.strike_weapon)
+		for weapon: WeaponDef in weapons:
+			if weapon == null:
+				continue
+			var id: String = String(weapon.id)
+			if files.get(id, weapon.resource_path) != weapon.resource_path:
+				problems.append(
+					"%s: weapon id %s is used twice" % [unit.resource_path.get_file(), id]
+				)
+			files[id] = weapon.resource_path
 	return problems

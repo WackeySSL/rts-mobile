@@ -67,7 +67,7 @@ func test_every_helper_member_is_listed_once() -> void:
 ## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name): the
 ## 15 of Phase 2, the 18 of Phase 3 (ADR 0018 section 9), the 3 of place-first construction (ADR
 ## 0026 section 12), the 4 of building sale and repair (ADR 0037 sections 3 and 4) and the
-## passenger table size (ADR 0036 section 3), 46 in all.
+## passenger table size (ADR 0036 section 3) and the 5 mine rules (ADR 0037 section 8), 46 in all.
 func test_the_rule_scalars_are_the_rules_def_ints() -> void:
 	var rule_ints: Array[StringName] = []
 	for info: Dictionary in RulesDef.new().get_property_list():

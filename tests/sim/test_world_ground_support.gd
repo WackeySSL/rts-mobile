@@ -20,6 +20,40 @@ func test_the_tables_come_from_the_defs_and_the_mine_weapon_is_a_weapon_table_en
 	assert_array(world.weapon_damage).is_equal([80])
 
 
+func test_a_mine_after_a_gun_gets_the_next_weapon_index_and_two_layers_share_one_entry() -> void:
+	var scenario: ScenarioDef = _scenario()
+	var gun: WeaponDef = WeaponDef.new()
+	gun.id = &"rifle_gun"
+	gun.range = 4000
+	gun.damage = 30
+	scenario.roster[0].weapon = gun  # The rifle spawns first, so its gun is weapon 0.
+	var second: UnitDef = _unit(&"seeder")
+	second.mine_weapon = scenario.roster[1].mine_weapon  # The same file: one entry.
+	second.mine_cost = 50
+	scenario.roster.append(second)
+	var world: World = World.from_scenario(scenario)
+	assert_array(world.weapon_ids).is_equal([&"rifle_gun", &"shot_charge"])
+	assert_array(world.type_weapon).is_equal([0, -1, -1, -1])
+	assert_array(world.type_mine_weapon).is_equal([-1, 1, -1, 1])
+	assert_array(world.weapon_blast_milli).is_equal([0, 1000])
+	assert_array(world.weapon_damage).is_equal([30, 80])
+
+
+## Weapons merge by id and the first wins (WorldLoad._weapon_for), so a mine that shares an id with
+## a gun blasts with the gun's numbers. test_defs_data_mine's weapon_id_problems refuses that data.
+func test_a_mine_sharing_a_gun_id_merges_into_the_gun_and_the_first_definition_wins() -> void:
+	var scenario: ScenarioDef = _scenario()
+	var gun: WeaponDef = WeaponDef.new()
+	gun.id = &"shot_charge"
+	gun.range = 4000
+	gun.damage = 30
+	scenario.roster[0].weapon = gun
+	var world: World = World.from_scenario(scenario)
+	assert_array(world.weapon_ids).is_equal([&"shot_charge"])
+	assert_array(world.type_mine_weapon).is_equal([-1, 0, -1])
+	assert_array(world.weapon_blast_milli).is_equal([0])
+
+
 func test_a_hand_built_world_pads_them_to_nothing_and_a_gun_has_no_blast() -> void:
 	var bare: World = World.new()
 	bare.type_ids.append_array([&"a", &"b"])

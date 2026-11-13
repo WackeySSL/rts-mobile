@@ -7,10 +7,10 @@ extends RefCounted
 ## pad_types(), stamp_fog() and reset_projectile_slots(), and World._init() calls copy_rules(), so
 ## no caller names this class. The code is World.gd's own, moved (P109 moved copy_rules and
 ## size_match_state, P232 stamp_fog and reset_projectile_slots, with no change; P232 pad_types too,
-## but it pads the sight, acquire, weapon and repair period tables by named constants) or the
-## copy of a definition into a table (the loader, with the layer bit derived from the move class and
-## `low_flying`); ADR 0007 section 2 and ADR 0017 section 3 keep every column, list and rule int in
-## World itself.
+## but it pads the sight, acquire, weapon and repair period tables by named constants; P285
+## set_terrain, which only tests call) or the copy of a definition into a table (the loader, with
+## the layer bit derived from the move class and `low_flying`); ADR 0007 section 2 and ADR 0017
+## section 3 keep every column, list and rule int in World itself.
 
 ## The percent of an unchanged income, and the divisor of every percent: a human's income.
 const PERCENT: int = 100
@@ -464,10 +464,11 @@ static func size_match_state(world: World) -> void:
 ## Gives every type table one entry per type, with the World.TYPE_PAD_* values, because Phase 1 code
 ## appends only the four Phase 1 tables (World.prepare calls it). The tables of the air and repair
 ## columns pad with 0 (the repair period with 1, UnitDef's default), the layer bit with GROUND and
-## `type_upgrade` with -1; `type_pad_first` (0) names no pad, because `type_pads` is 0. Of the
-## weapon tables only `weapon_targets` is padded (to the weapon count, with GROUND, the WeaponDef
-## default): a weapon of a scenario exists only through `_weapon_for`, which appends all of them,
-## and a test that builds one by hand names no mask.
+## `type_upgrade` and `type_mine_weapon` with -1; `type_pad_first` (0) names no pad, because
+## `type_pads` is 0. Of the weapon tables only `weapon_targets` (to the weapon count, with GROUND,
+## the WeaponDef default) and `weapon_blast_milli` (with 0) are padded: a weapon of a scenario
+## exists only through `_weapon_for`, which appends all of them, and a test that builds one by hand
+## names no mask.
 static func pad_types(world: World, types: int) -> void:
 	for table: PackedInt32Array in [
 		world.type_speed,

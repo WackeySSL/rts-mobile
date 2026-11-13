@@ -2,12 +2,12 @@ extends GdUnitTestSuite
 ## P285 (ADR 0037 sections 7 and 8): the ground-support data rules of
 ## tests/sim/support/mine_rules.gd on built defs (one field per case, both sides of every boundary)
 ## and held against every shipped file, plus the script defaults of the new fields and rules. The
-## shipped data holds no layer or
-## ejecting carrier yet, so the shipped checks only keep every file inside the rules (and a blast
-## on every weapon some file lays as a mine, once one does).
+## shipped data holds no layer or ejecting carrier yet, so the shipped checks only keep every file
+## inside the rules (and a blast on every weapon some file lays as a mine, once one does).
 
 const Rules: GDScript = preload("res://tests/sim/support/mine_rules.gd")
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
+const FILE: String = "res://data/weapons/shot_charge.tres"
 const UNITS_DIR: String = "res://data/units"
 
 
@@ -108,10 +108,82 @@ func test_a_building_has_none_of_the_ground_support_fields() -> void:
 func test_every_shipped_unit_file_keeps_the_ground_support_rules() -> void:
 	var paths: Array[String] = FileScan.list_files(UNITS_DIR, ".tres")
 	assert_int(paths.size()).is_greater_equal(3)
+	var units: Array[UnitDef] = []
 	for path: String in paths:
 		var unit: UnitDef = load(path)
 		assert_array(Rules.mine_problems(path.get_file(), unit)).is_empty()
+		units.append(unit)
 		# A weapon laid as a mine is a file of its own, so World merges it by id like a gun.
 		if unit.mine_weapon != null:
-			assert_str(String(unit.mine_weapon.id)).is_not_empty()
 			assert_bool(unit.mine_weapon.resource_path.begins_with("res://data/weapons")).is_true()
+			(
+				assert_array(
+					Rules.mine_weapon_problems(
+						path.get_file(), unit.mine_weapon, unit.mine_weapon.resource_path
+					)
+				)
+				. is_empty()
+			)
+	assert_array(Rules.weapon_id_problems(units)).is_empty()
+
+
+func test_a_mine_weapon_file_is_held_to_the_strike_weapon_rules_one_at_a_time() -> void:
+	var fine: WeaponDef = Rules.fine_layer().mine_weapon
+	assert_array(Rules.mine_weapon_problems("w.tres", fine, FILE)).is_empty()
+	var cases: Array = [
+		["damage", 0, "mine weapon damage is below 1", 1],
+		["range", 1, "mine weapon has a range, a minimum range or a flight", 0],
+		["min_range", 1, "mine weapon has a range, a minimum range or a flight", 0],
+		["projectile_speed", 1, "mine weapon has a range, a minimum range or a flight", 0],
+	]
+	for row: Array in cases:
+		var weapon: WeaponDef = Rules.fine_layer().mine_weapon
+		var good: Variant = weapon.get(row[0])
+		weapon.set(row[0], row[1])
+		(
+			assert_array(Rules.mine_weapon_problems("w.tres", weapon, FILE))
+			. override_failure_message(row[0])
+			. is_equal(["w.tres: " + row[2]])
+		)
+		weapon.set(row[0], good)
+		assert_array(Rules.mine_weapon_problems("w.tres", weapon, FILE)).is_empty()
+	var armour: String = "w.tres: vs_armour is not 4 percents in 0..200"
+	for percents: Array in [[0, 200, 0, 200], [100, 100, 100, 100]]:
+		fine.vs_armour = PackedInt32Array(percents)
+		assert_array(Rules.mine_weapon_problems("w.tres", fine, FILE)).is_empty()
+	for percents: Array in [[1, 1, 1], [1, 1, 1, 1, 1], [100, 201, 100, 100], [-1, 100, 100, 100]]:
+		fine.vs_armour = PackedInt32Array(percents)
+		assert_array(Rules.mine_weapon_problems("w.tres", fine, FILE)).is_equal([armour])
+	fine.vs_armour = PackedInt32Array([])
+	assert_array(Rules.mine_weapon_problems("w.tres", fine, FILE)).is_equal([armour])
+	fine.vs_armour = PackedInt32Array([100, 100, 100, 100])
+	fine.id = &"gun"
+	assert_array(Rules.mine_weapon_problems("w.tres", fine, FILE)).is_equal(
+		["w.tres: mine weapon id gun differs from its file name"]
+	)
+
+
+func test_a_weapon_id_belongs_to_one_file_across_guns_strikes_and_mines() -> void:
+	var layer: UnitDef = Rules.fine_layer()
+	layer.resource_path = "res://data/units/layer.tres"
+	layer.mine_weapon.resource_path = "res://data/weapons/shot_charge.tres"
+	var rifle: UnitDef = Rules.fine_unit()
+	rifle.resource_path = "res://data/units/rifle.tres"
+	rifle.weapon = WeaponDef.new()
+	rifle.weapon.id = &"shot_charge"
+	rifle.weapon.resource_path = "res://data/weapons/rifle_gun.tres"
+	assert_array(Rules.weapon_id_problems([layer, rifle])).is_equal(
+		["rifle.tres: weapon id shot_charge is used twice"]
+	)
+	# The same file twice is one weapon, as two units may share a gun file.
+	rifle.weapon = layer.mine_weapon
+	assert_array(Rules.weapon_id_problems([layer, rifle])).is_empty()
+	# A strike weapon counts too.
+	var bore: BuildingDef = BuildingDef.new()
+	bore.resource_path = "res://data/units/bore.tres"
+	bore.strike_weapon = WeaponDef.new()
+	bore.strike_weapon.id = &"shot_charge"
+	bore.strike_weapon.resource_path = "res://data/weapons/other.tres"
+	assert_array(Rules.weapon_id_problems([layer, bore])).is_equal(
+		["bore.tres: weapon id shot_charge is used twice"]
+	)
