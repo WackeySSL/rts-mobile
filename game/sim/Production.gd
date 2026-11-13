@@ -61,9 +61,10 @@ const DIED_CANCEL_FLAG_AT: int = 6
 ## (`Upgrades.finish`, ADR 0036 section 10) sets its upgrade's bit and spawns nothing;
 ## one that cannot spawn yet waits at 100 %, and so does a done structure, until PLACE or CANCEL.
 ## Players ascending, then tabs. A queue without a producer waits, and so does every queue of a
-## defeated player, and every queue whose producer is blacked out (P111, ADR 0023 section 10: its `offline_until` is above the stamp,
-## `world.tick + 1`): the head keeps its progress, nothing spawns, and it goes on from there at the
-## stamp that reaches `offline_until`. The loop runs over the arrays as sized, so a hand-built World
+## defeated player, and every queue whose producer is blacked out
+## (P111, ADR 0023 section 10: its `offline_until` is above the stamp, `world.tick + 1`): the head
+## keeps its progress, nothing spawns, and it goes on from there at the stamp that reaches
+## `offline_until`. The loop runs over the arrays as sized, so a hand-built World
 ## whose player_count was raised after prepare() has no queue for the late players. The
 ## construction walk (`_build_sites`) runs before the queues; a step that completed a site sums the
 ## power totals again after them.
