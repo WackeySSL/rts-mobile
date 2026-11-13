@@ -6,8 +6,9 @@ extends RefCounted
 ## the Phase 3 economy and production commands, SUPERWEAPON (15) fires a strike building (ADR 0023
 ## section 10), CANCEL_BUILD (16) cancels a construction site (ADR 0026 section 6) and SURRENDER
 ## (20) is the first match-level one (ADR 0017 section 4); SELL (17) and MEND (18) are the building
-## sale and repair (ADR 0037 sections 3 and 4) and LOAD (5) boards a carrier (ADR 0036 section 8);
-## 6-9, 19 and 21-29 stay reserved. Every type without a
+## sale and repair (ADR 0037 sections 3 and 4), LOAD (5) boards a carrier (ADR 0036 section 8) and
+## REPAIR (7) sends units to an own building with the repair role (ADR 0036 section 7); 6, 8-9, 19
+## and 21-29 stay reserved. Every type without a
 ## branch in Sim.step is dropped as unknown.
 
 enum Type {
@@ -26,6 +27,7 @@ enum Type {
 	CANCEL_BUILD = 16,
 	SELL = 17,
 	MEND = 18,
+	REPAIR = 7,
 	SURRENDER = 20,
 }
 
@@ -185,6 +187,15 @@ static func sell(player_id: int, building_id: int) -> Command:
 static func board(player_id: int, unit_ids: PackedInt32Array, carrier_id: int) -> Command:
 	var command: Command = _of(Type.LOAD, player_id, unit_ids)
 	command.target_id = carrier_id
+	return command
+
+
+## Send aircraft to the own airfield `building_id` to reload and be repaired (ADR 0036 section 7).
+## The payload is empty.
+@warning_ignore("shadowed_variable")
+static func repair(player_id: int, unit_ids: PackedInt32Array, building_id: int) -> Command:
+	var command: Command = _of(Type.REPAIR, player_id, unit_ids)
+	command.target_id = building_id
 	return command
 
 
