@@ -97,8 +97,9 @@ const COPIED: Array[StringName] = [
 	&"reveal",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
-## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS and
-## UPGRADE_ARRAYS: the sim's working state, which no view reads. With COPIED it covers those twelve
+## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS,
+## UPGRADE_ARRAYS and PASSENGER_ARRAYS: the sim's working state, which no view reads (P265 copies
+## the carrier columns it draws pips from). With COPIED it covers those thirteen
 ## lists exactly once (a coverage test), so a new World array fails until it is classified. The air
 ## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
 ## `weapon_targets`, `reveal_site` and `reveal`, which the view and input read (ADR 0036 sections
@@ -108,6 +109,14 @@ const COPIED: Array[StringName] = [
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
 	&"ammo",
+	&"carry_mode",
+	&"type_carry_slots",
+	&"type_carry_classes",
+	&"pass_carrier",
+	&"pass_id",
+	&"pass_type",
+	&"pass_hp",
+	&"pass_owner",
 	&"type_ammo",
 	&"type_rearm_ticks",
 	&"type_pads",

@@ -82,3 +82,7 @@ extends Resource
 @export var mend_hp: int = 0
 @export var mend_period_ticks: int = 15
 @export var mend_cost_percent: int = 30
+
+## Carriers (ADR 0036 sections 3 and 8): the size of the passenger table, the squads aboard carriers
+## at most. Inert at 0: no squad can board, so a scenario that sets none plays as before.
+@export var passenger_cap: int = 0

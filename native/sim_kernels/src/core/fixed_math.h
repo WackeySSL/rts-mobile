@@ -31,7 +31,7 @@ inline int64_t centre_side(int64_t coord, int64_t side) {
 // over the World's `move_cost` (one list of `cols` x `rows` cells per move class) and map size. True while no map is
 // loaded (cols == 0), false for a class that does not exist. Exact in int64 while the map in milli-tiles has
 // max_x * max_y below 2^63, about 3 million tiles a side (a map is a few hundred). A cell outside `move_cost` reads 0
-// (blocked), which no World whose `move_cost` holds three lists of cols * rows cells can reach.
+// (blocked), which no World whose `move_cost` holds four lists (MOVE_CLASSES) of cols * rows cells can reach.
 bool line_clear(const ArrayView<const uint8_t> &move_cost, int64_t cols, int64_t rows, int64_t x0, int64_t y0, int64_t x1, int64_t y1, int64_t move_class);
 
 } // namespace fixed_math

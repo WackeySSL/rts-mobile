@@ -378,7 +378,7 @@ func test_the_record_is_not_part_of_the_state_hash() -> void:
 	world.events[2] = 1
 	world.events[6] = 77
 	assert_int(world.state_hash()).is_equal(hash_with)
-	assert_int(World.STATE_FORMAT).is_equal(6)  # No layout version moved with the event (6: P232).
+	assert_int(World.STATE_FORMAT).is_equal(7)  # No layout version moved with the event (7: P262).
 
 
 ## A run is the same twice and in both implementations: the same scripted match (a blackout, then

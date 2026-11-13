@@ -39,7 +39,7 @@ func test_the_tabs_and_harvest_modes_are_the_contract() -> void:
 	assert_int(World.TABS).is_equal(World.Tab.size())
 	var modes: Dictionary = {"IDLE": 0, "SEEK": 1, "MINE": 2, "RETURN": 3, "UNLOAD": 4}
 	assert_dict(World.HarvestMode).is_equal(modes)
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([6, 7])
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 8])
 
 
 ## The lists that Phase 3 declares at once (ADR 0017 section 3), by name and in order. The other
@@ -63,9 +63,13 @@ func test_the_new_arrays_are_listed_by_name_in_their_lists() -> void:
 	assert_array(World.GHOST_ARRAYS).is_equal(ghosts + ["ghost_count"])
 	var derived: Array[String] = ["power_made", "power_used", "building_rows", "harvester_rows"]
 	assert_array(World.DERIVED_ARRAYS).is_equal(derived)
-	assert_array(World.HASHED_SCALARS.slice(-2)).is_equal(["match_end_tick", "winner"])
+	assert_array(World.HASHED_SCALARS.slice(-3)).is_equal(
+		["match_end_tick", "winner", "pass_count"]
+	)
 	var sections: PackedStringArray = World.hash_section_names()
-	assert_array(sections.slice(-5)).is_equal(["projectiles", "fog", "players", "ore", "ghosts"])
+	assert_array(sections.slice(-6)).is_equal(
+		["projectiles", "fog", "players", "ore", "ghosts", "passengers"]
+	)
 	assert_int(sections.size()).is_equal(World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS)
 
 
@@ -78,10 +82,11 @@ func test_the_eighteen_phase_3_rule_ints_follow_max_rows_and_equal_the_file() ->
 		names.append(StringName(rule_name))
 	var at: int = World.RULE_SCALARS.find(&"max_rows") + 1
 	assert_array(World.RULE_SCALARS.slice(at, at + names.size())).is_equal(names)
-	# The three rules of place-first construction (P128, test_world_v4) and the four of sale and
-	# repair (P271, test_mend) come after them.
-	assert_array(World.UNHASHED_SCALARS.slice(-names.size() - 7, -7)).is_equal(names)
-	assert_int(World.RULE_SCALARS.size()).is_equal(40)
+	# UNHASHED_SCALARS repeats them in the same order (later rules follow, pinned by their rows).
+	var unhashed_at: int = World.UNHASHED_SCALARS.find(&"max_rows") + 1
+	assert_array(World.UNHASHED_SCALARS.slice(unhashed_at, unhashed_at + names.size())).is_equal(
+		names
+	)
 	var world: World = World.new()
 	var file: RulesDef = load(RULES_PATH) as RulesDef
 	for rule_name: String in PHASE_3_RULES:

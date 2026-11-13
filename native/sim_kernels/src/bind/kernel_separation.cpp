@@ -2,9 +2,10 @@
 // units it overlaps, in place over the arrays of the World and over the separation grid that the GDScript rebuild wrote this
 // tick (World.sep_grid: the GRIDS phase rebuilds it, this kernel never does). The rules are core/separation.h's, a mirror of
 // Separation.gd; this file borrows the arrays once on entry and adds the units looked at to stats[SEP_PAIRS] on exit.
-// Twin: game/sim/Separation.gd (run). Tests: tests/sim/test_separation*.gd under both implementations and
-// tests/sim/native/test_separation_kernel.gd; lockstep (P39n2): test_separation_lockstep.gd (the arena), _cases.gd (crafted crowds)
-// and _random.gd (seeded random states) in tests/sim/native/. MIT.
+// Twin: game/sim/Separation.gd (run). Tests: tests/sim/test_separation*.gd under both implementations (P240: test_separation_layers.gd,
+// the same-layer test) and tests/sim/native/test_separation_kernel.gd; lockstep (P39n2): test_separation_lockstep.gd (the arena),
+// _cases.gd (crafted crowds) and _random.gd (seeded random states) in tests/sim/native/, and (P240) test_air_movement_lockstep.gd
+// there (stacked aircraft, drone squads and tanks). MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -33,6 +34,7 @@ void SimKernels::separation(Object *world) const {
 	const Borrowed<const int32_t> unit_id = access.read_i32(world, ID_WORLD_unit_id);
 	const Borrowed<const int32_t> type_index = access.read_i32(world, ID_WORLD_type_index);
 	const Borrowed<const int32_t> type_radius = access.read_i32(world, ID_WORLD_type_radius);
+	const Borrowed<const int32_t> type_layer_bit = access.read_i32(world, ID_WORLD_type_layer_bit);
 	const Borrowed<const int32_t> pos_x = access.read_i32(world, ID_WORLD_pos_x);
 	const Borrowed<const int32_t> pos_y = access.read_i32(world, ID_WORLD_pos_y);
 	const Borrowed<const int32_t> intent_x = access.read_i32(world, ID_WORLD_intent_x);
@@ -54,6 +56,7 @@ void SimKernels::separation(Object *world) const {
 	rows.push_y = push_y.view;
 	separation::Types types;
 	types.radius = type_radius.view;
+	types.layer_bit = type_layer_bit.view;
 	separation::Grid cells;
 	cells.cols = access.int_in(grid, ID_SEP_cols);
 	cells.rows = access.int_in(grid, ID_SEP_rows);

@@ -1,11 +1,12 @@
 extends RefCounted
 ## The bytes that World.state_hash() feeds its digest at one checkpoint (plan P65q, ADR 0016): the
 ## stream is rebuilt here from the shape lists (World.hash_section_names(), HASHED_SCALARS,
-## PROJECTILE_ARRAYS, MAP_ARRAYS, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS and the ghost records
-## of GHOST_ARRAYS) and not by calling the World's feed code, so a
-## test can feed it to its own SHA-256 and compare the result with state_hash(): the count is
-## exact exactly when the two values are equal. Each block is a 16-byte header (the section's
-## index and the byte count, two little-endian int64) and its bytes, in the order of the sections.
+## PROJECTILE_ARRAYS, MAP_ARRAYS, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS, the ghost records
+## of GHOST_ARRAYS and the passenger records of PASSENGER_ARRAYS) and not by calling the World's
+## feed code, so a test can feed it to its own SHA-256 and compare the result with state_hash():
+## the count is exact exactly when the two values are equal. Each block is a 16-byte header (the
+## section's index and the byte count, two little-endian int64) and its bytes, in the order of the
+## sections.
 ## A change of the hash layout that goes through those lists (P65 narrows FogGrid.HASHED) is
 ## followed on its own. Pure: no clock, no World writes. Not a test suite.
 
@@ -42,6 +43,8 @@ static func stream(world: World) -> PackedByteArray:
 			"ghosts":
 				_append(out, tag, bytes_of(world.ghost_count))
 				_append(out, tag, _live_ghosts(world))
+			"passengers":
+				_append(out, tag, _live_passengers(world))
 			_:
 				_append(out, tag, bytes_of(world.get(StringName(names[tag]))))
 	return out
@@ -105,6 +108,16 @@ static func _live_ghosts(world: World) -> PackedByteArray:
 				if column_name != &"ghost_count":
 					var column: PackedInt32Array = world.get(column_name)
 					live.append(column[player * world.ghost_cap + record])
+	return live.to_byte_array()
+
+
+## Each live passenger record (record `i` below pass_count): its fields in PASSENGER_ARRAYS order.
+static func _live_passengers(world: World) -> PackedByteArray:
+	var live: PackedInt32Array = PackedInt32Array()
+	for record: int in clampi(world.pass_count, 0, world.pass_id.size()):
+		for column_name: StringName in World.PASSENGER_ARRAYS:
+			var column: PackedInt32Array = world.get(column_name)
+			live.append(column[record])
 	return live.to_byte_array()
 
 

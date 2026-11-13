@@ -18,8 +18,10 @@ const TICKS: int = 900
 const SEED: int = 42
 ## The value written to the columns of a shell in a World made by hand (proj_free excepted).
 const SHELL_VALUE: int = 10
-## The blocks the `ghosts` section feeds: the count of each player and the live records.
+## The blocks the `ghosts` section feeds (the count of each player and the live records) and the
+## one block of the `passengers` section (the live records of the passenger table).
 const GHOST_BLOCKS: int = 2
+const PASSENGER_BLOCKS: int = 1
 
 ## For each checkpoint, in order: its tick, the bytes fed, the digest of the rebuilt stream,
 ## World.state_hash() taken at that point and the projectile slots in use.
@@ -93,8 +95,9 @@ func test_the_checkpoints_carry_the_golden_hashes_of_the_gate_file() -> void:
 ## The count is the blocks of the shape lists, each with its 16-byte header: after the last tick,
 ## the walk over the stream finds the header block, the map digest, one block per row column, the
 ## live slots and the used free stack, one block per FogGrid.HASHED array, one per PLAYER_ARRAYS
-## and ORE_ARRAYS array, and the counts and the live records of the ghosts, in section order, each
-## with the size that its array has, and ends exactly at the end of the stream.
+## and ORE_ARRAYS array, the counts and the live records of the ghosts and the live passenger
+## records, in section order, each with the size that its array has, and ends exactly at the end
+## of the stream.
 func test_the_count_is_the_blocks_of_the_shape_lists_with_a_header_each() -> void:
 	var bytes: PackedByteArray = HashBytes.stream(_world)
 	var names: PackedStringArray = World.hash_section_names()
@@ -122,6 +125,8 @@ func test_the_count_is_the_blocks_of_the_shape_lists_with_a_header_each() -> voi
 	# The arena has no last-seen record: the counts of its players, then no live record.
 	expected.append(Vector2i(names.find("ghosts"), (_world.player_count + 1) * 4))
 	expected.append(Vector2i(names.find("ghosts"), 0))
+	# The arena boards no squad: the passenger section is one empty block.
+	expected.append(Vector2i(names.find("passengers"), 0))
 	assert_array(_blocks(bytes)).is_equal(expected)
 	var payload: int = 0
 	for block: Vector2i in expected:
@@ -196,10 +201,12 @@ func test_the_watch_line_holds_the_checkpoints_and_the_smallest_and_largest_coun
 
 
 ## The blocks of a stream, section by section: the header, the map, one per row column, the live
-## slots and the free stack, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS and the ghosts' two.
+## slots and the free stack, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS, the ghosts' two and the
+## passengers' one.
 func _block_count() -> int:
 	var count: int = 1 + 1 + World.ROW_ARRAYS.size() + 2 + FogGrid.HASHED.size()
-	return count + World.PLAYER_ARRAYS.size() + World.ORE_ARRAYS.size() + GHOST_BLOCKS
+	count += World.PLAYER_ARRAYS.size() + World.ORE_ARRAYS.size() + GHOST_BLOCKS
+	return count + PASSENGER_BLOCKS
 
 
 ## The (tag, byte count) of every block of `bytes`, read from the headers. A stream that stops in

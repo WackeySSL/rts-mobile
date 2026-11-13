@@ -21,8 +21,10 @@
 // dump's world.move_cost holds four planes and flow.classes is 4; type_layer_bit and weapon_targets are in the checked
 // table. P238 (ADR 0036 section 5): TARGETING reads them, so the dump of format 6 on also holds the records
 // world.type_layer_bit and weapon_targets; a dump without them (any older format) is read with ground masks, so all
-// numbers stay known.
-inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6 };
+// numbers stay known. 7 (P262, ADR 0036 sections 3 and 8, plan exception 24): the carriers' state joined the hash (the
+// row column carry_mode, the passenger table and its section); the dump holds the same records as 6 (no kernel reads
+// them), so all numbers stay known.
+inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6, 7 };
 
 class Dump {
 public:

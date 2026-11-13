@@ -12,6 +12,8 @@ extends GdUnitTestSuite
 ## work count, as `stats[SEP_PAIRS] +=` says); the second steps 300 of them for 12 ticks through
 ## MatchLoop, with random orders at ticks 0 and 6, so that the pushes move the units, and compares
 ## after every tick.
+## In two states of three the types sit on different layers (P240), so the same-layer test meets
+## every cap and guard.
 ## Every state is the same on the twin's side and the kernel's, and the twin takes all of them
 ## without error, so a difference is the kernel's. The tallies of the rig's probe, summed over the
 ## states, show that between them they meet every rule. The arena runs are in
@@ -35,7 +37,8 @@ const REACHED: Dictionary[StringName, int] = {
 	&"mixed": 20000,
 	&"edge_rows": 10000,
 	&"pushed": 10000,
-	&"at_cap": 3000
+	&"at_cap": 3000,
+	&"other_layer": 180000
 }
 ## What the tiny crowds must reach, summed over all of them.
 const REACHED_TINY: Dictionary[StringName, int] = {
@@ -45,8 +48,11 @@ const REACHED_TINY: Dictionary[StringName, int] = {
 	&"same_point": 500,
 	&"fixed": 10000,
 	&"hit_capped": 5000,
-	&"look_capped": 5000
+	&"look_capped": 5000,
+	&"other_layer": 140000
 }
+## The layer bits a mixed state draws from.
+const LAYERS: Array[int] = [World.Layer.GROUND, World.Layer.AIR, World.Layer.LOW_AIR]
 ## The move classes of the types, in turn.
 const CLASSES: Array[int] = [World.MoveClass.TRACKED, World.MoveClass.FOOT, World.MoveClass.WHEELED]
 const SHIPPED: Dictionary[StringName, int] = {
@@ -163,6 +169,7 @@ func _random_world(index: int) -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(cols, rows), classes)
 	for type: int in radii.size():
 		world.type_radius[type] = radii[type]
+	_mix_layers(world, index)
 	_set_rules(world, rng)
 	var spread: int = 100 + rng.next_int(cols * 500 + 1500)
 	var centre: Vector2i = Vector2i(rng.next_int(cols * 1000), rng.next_int(rows * 1000))
@@ -183,6 +190,17 @@ func _random_world(index: int) -> World:
 	return world
 
 
+## In two states of three the types get layers drawn from GROUND, AIR and LOW_AIR (P240; GridWorld
+## keeps every type GROUND), so that the same-layer test meets every cap and guard. The draws come
+## from a stream of their own, so that the states themselves are the ones they were before P240.
+func _mix_layers(world: World, index: int) -> void:
+	var rng: DetRandom = DetRandom.create(39, 30000 + index)
+	if rng.next_int(3) == 0:
+		return
+	for type: int in world.type_layer_bit.size():
+		world.type_layer_bit[type] = LAYERS[rng.next_int(LAYERS.size())]
+
+
 ## Tiny state number `index`: see test_dense_crowds_of_tiny_units_on_the_overlap_boundary_match.
 func _tiny_world(index: int) -> World:
 	var rng: DetRandom = DetRandom.create(39, 15000 + index)
@@ -194,6 +212,7 @@ func _tiny_world(index: int) -> World:
 	var world: World = GridWorld.from_rows(GridWorld.grass(2, 2), classes)
 	for type: int in radii.size():
 		world.type_radius[type] = radii[type]
+	_mix_layers(world, index)
 	var box: int = 6 + rng.next_int(25)
 	for _unit: int in 10 + rng.next_int(71):
 		var x: int = 600 + rng.next_int(box)

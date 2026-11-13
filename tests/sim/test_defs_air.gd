@@ -24,6 +24,13 @@ func test_unit_def_air_and_repair_defaults_leave_every_existing_type_unchanged()
 	assert_str(_hint_string(unit, "move_class")).is_equal("Foot,Wheeled,Tracked,Air")
 
 
+func test_unit_def_carry_defaults_leave_every_existing_type_a_non_carrier() -> void:
+	var unit: UnitDef = UnitDef.new()
+	assert_array([unit.carry_slots, unit.carry_classes]).is_equal([0, 0])
+	var types: Dictionary[String, int] = _types(unit)
+	assert_array([types["carry_slots"], types["carry_classes"]]).is_equal([TYPE_INT, TYPE_INT])
+
+
 func test_building_def_pads_default_to_none_and_the_offsets_are_typed_vector2i() -> void:
 	var building: BuildingDef = BuildingDef.new()
 	assert_int(building.pads).is_equal(0)

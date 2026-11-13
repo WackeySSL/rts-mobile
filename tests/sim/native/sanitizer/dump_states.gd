@@ -25,6 +25,8 @@ extends SceneTree
 ## TARGETING reads `type_layer_bit` and `weapon_targets`, so they are dumped as the records
 ## world.type_layer_bit and world.weapon_targets (I); the harness reads a dump without them as
 ## ground masks.
+## Format 7 (P262, ADR 0036 sections 3 and 8) changes no record name either: the row column
+## `carry_mode` and the passenger table are read by no kernel, so no record carries them.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)

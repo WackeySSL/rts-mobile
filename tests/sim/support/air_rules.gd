@@ -57,6 +57,14 @@ static func fine_air() -> UnitDef:
 	return unit
 
 
+## A transport: a mobile type that holds 3 squads of FOOT (mask bit 1).
+static func fine_carrier() -> UnitDef:
+	var unit: UnitDef = fine_unit()
+	unit.carry_slots = 3
+	unit.carry_classes = 1
+	return unit
+
+
 ## An airfield: a 3x3 building that produces FLIGHT, two pads two tiles apart, the AIR bit only.
 static func fine_airfield() -> BuildingDef:
 	var field: BuildingDef = fine_building()
@@ -112,10 +120,17 @@ static func air_problems(file: String, unit: UnitDef) -> PackedStringArray:
 		pads > 0 and (unit.repair_slots < 0 or unit.repair_slots > MAX_SLOTS),
 		"repair_seek_milli is negative": unit.repair_seek_milli < 0,
 		"no type is on the Research tab": unit.tab == RESEARCH,
+		# ADR 0036 sections 2 and 8: a carrier has slots and classes, a non-carrier neither.
+		"carry_slots is negative": unit.carry_slots < 0,
+		"carry_classes is not a move-class mask 0..15":
+		unit.carry_classes < 0 or unit.carry_classes > MASK_MAX,
+		"carry_slots needs carry_classes": unit.carry_slots > 0 and unit.carry_classes == 0,
+		"carry_classes needs carry_slots": unit.carry_classes != 0 and unit.carry_slots < 1,
 	}
 	if unit is BuildingDef:
 		var building: BuildingDef = unit
 		broken["a building has repair_seek_milli"] = building.repair_seek_milli != 0
+		broken["a building carries squads"] = building.carry_slots != 0
 		broken["pads differs from the pad_offsets count"] = (
 			building.pads != building.pad_offsets.size()
 		)

@@ -44,3 +44,4 @@ sell_refund_percent = 50
 mend_hp = 10
 mend_period_ticks = 15
 mend_cost_percent = 30
+passenger_cap = 150
