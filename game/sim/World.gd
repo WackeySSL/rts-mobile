@@ -1,8 +1,9 @@
 class_name World
 extends RefCounted
-## Simulation state (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only, in
-## milli-tiles (1 tile = 1000). Units and buildings are rows in the per-unit arrays, ascending by
-## id (a counter from 1, never reused), so an id is found by binary search. The view and input read
+## Simulation state (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only;
+## positions are milli-tiles (1 tile = 1000). Units and buildings are rows in the per-unit arrays,
+## ascending by id (a counter from 1, never reused; removal and insert_row keep the order), so an
+## id is found by binary search. The view and input read
 ## a World and never write to it. Every array and scalar is declared here and listed in one shape
 ## list; the state hash (ADR 0007 section 8) walks those lists. The hash is WorldHash, the loader
 ## WorldLoad (P70c, P246a) and the row writers WorldRows; the methods naming them are wrappers.
@@ -23,9 +24,10 @@ enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
 enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2, FLIGHT = 3, RESEARCH = 4 }
 ## What a harvester is doing (ADR 0018 section 3); IDLE is under the player's control.
 enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
-## The indexes of `stats`: flow cells, line checks, separation pairs, targeting candidates, fog
-## cells, projectile steps, rows compacted, ore cells, exit cells and last-seen checks (the last
-## three: ADR 0017 section 3). The native kernels check `stats` against this size (`STAT_COUNT`).
+## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
+## candidates tested, fog cells stamped, projectile steps, rows moved by a compaction, ore cells
+## looked at, exit cells walked and last-seen checks (the last three: ADR 0017 section 3). The
+## native kernels check `stats` against this size (`STAT_COUNT` in bind/world_access.h).
 enum Stat {
 	FLOW_CELLS = 0,
 	LINE_CHECKS = 1,
@@ -49,8 +51,8 @@ const TABS: int = 5
 ## The move classes with a terrain cost (`TerrainDef.cost`, `terrain_cost`, ADR 0036 section 4):
 ## every loop over terrain costs ends here. The AIR plane of `move_cost` is GRASS_COST everywhere.
 const GROUND_CLASSES: int = 3
-## Most upgrades in a match: `upgrades` holds one bit per entry in an int32; 30 keeps the sign bit
-## clear and every `1 << index` safe.
+## Most upgrades in a match: `upgrades` holds one bit per `upgrade_ids` entry in an int32; 30 keeps
+## the sign bit clear and every `1 << index` safe.
 const UPGRADES_MAX: int = 30
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
@@ -85,15 +87,18 @@ const TYPE_PAD_V0: int = 0
 ## strike weapon.
 const TYPE_PAD_NONE: int = -1
 ## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1); equals the
-## default TerrainDef.cost (a test pins it), because prepare() reads no Resource.
+## default TerrainDef.cost (a test pins it). A constant because prepare() may run in the tick,
+## which reads no Resource.
 const GRASS_COST: int = 10
-## The id of open grass, the one terrain of a map without a MapDef (pinned to standard.tres).
+## The id of open grass, the one terrain of a map without a MapDef (pinned to the first terrain of
+## data/terrain/standard.tres).
 const GRASS_ID: StringName = &"grass"
-## Whether open grass is buildable (1) or not (0); pinned to standard.tres like GRASS_ID.
+## Whether open grass is buildable (1) or not (0); the `buildable` flag of that first terrain.
 const GRASS_BUILDABLE: int = 1
 ## The id of the ore terrain (ADR 0018 section 2): WorldLoad lists its cells in `ore_cell`.
 const ORE_ID: StringName = &"ore"
-## The largest terrain index: `terrain` keeps one byte per cell (P48).
+## The largest terrain index: `terrain` keeps one byte per cell, so a larger index would be
+## stored as another terrain's and drawn as that one (P48).
 const TERRAIN_INDEX_MAX: int = 255
 ## The cell sides of the spatial grids (ADR 0008 section 4, ADR 0009): structural, not balance
 ## numbers, so not in RulesDef. Targeting reads `target_grid.cell_milli`, never a second 4000.
@@ -842,7 +847,8 @@ func prepare() -> void:
 
 ## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A border point past
 ## the middle of the map is in the tile before it (`FixedMath.centre_side`, ADR 0033). A point
-## outside the map gives the nearest edge cell; with no map it is 0. The INTEGRATE kernel has a
+## outside the map gives the nearest edge cell (negative values divide toward zero and clamp to 0);
+## with no map it is 0. The INTEGRATE kernel has a
 ## C++ twin (core/integrate.cpp, Pass::cell_of): a change here edits both and passes
 ## tests/sim/native/test_integrate_kernel.gd.
 @warning_ignore("integer_division")
@@ -860,7 +866,8 @@ func cell_of(x: int, y: int) -> int:
 
 ## Whether a unit of `move_class` may stand on `cell`: its cost there is above 0. True while no map
 ## is loaded, false for a cell or class that does not exist. C++ twin: core/integrate.cpp,
-## Pass::is_passable; a rule that blocks a tile beyond the terrain edits both.
+## Pass::is_passable; a rule that blocks a tile beyond the terrain edits both and passes
+## tests/sim/native/test_integrate_kernel.gd.
 func is_passable(cell: int, move_class: int) -> bool:
 	if map_cols == 0:
 		return true

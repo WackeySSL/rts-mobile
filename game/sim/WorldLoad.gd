@@ -4,8 +4,8 @@ extends RefCounted
 ## 1,000 lines. Pure static helpers: they read the scenario, the map and the definitions passed in
 ## and write the World passed in, and they keep nothing. World.from_scenario() is a thin wrapper
 ## over from_scenario() here, World.prepare() over prepare_world() (P246a moved its body), and
-## World._init() calls copy_rules(), so no caller names this class. The code is World.gd's own,
-## moved (P109 moved copy_rules and size_match_state, P232 stamp_fog and
+## World._init() calls copy_rules(), so most callers reach this class through World. The code is
+## World.gd's own, moved (P109 moved copy_rules and size_match_state, P232 stamp_fog and
 ## reset_projectile_slots, with no change; P232 pad_types too,
 ## but it pads the sight, acquire, weapon and repair period tables by named constants; P285
 ## set_terrain, which only tests call) or the copy of a definition into a table (the loader, with

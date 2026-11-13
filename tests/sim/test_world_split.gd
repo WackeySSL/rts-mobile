@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## P70c: World.gd handed its hash code to WorldHash and its scenario loader to WorldLoad and kept
-## every public name as a wrapper. These cases pin that nothing moved with the code: each wrapper
+## P70c, P246a: World.gd handed its hash code to WorldHash and its scenario loader to WorldLoad and
+## kept every public name as a wrapper. These cases pin that nothing moved with the code: each wrapper
 ## returns what its helper returns for the same world, a world built through the wrapper is the
 ## world the loader builds, the map digest cache stays the World's own, and World.gd fits gdlint
 ## without the max-file-lines pragma. The hash values themselves are pinned where they always were
@@ -81,7 +81,7 @@ func test_the_map_digest_cache_stays_in_the_world() -> void:
 	assert_int(world._map_digest_version).is_equal(world.map_version)
 
 
-## WorldLoad.derive_open_grass, which World.prepare() calls for a world without a map: whole tiles
+## WorldLoad.derive_open_grass, which prepare_world calls for a world without a map: whole tiles
 ## rounded up, one terrain (grass) and one cost per class, and no map at all for a size of 0 or
 ## less on either axis.
 func test_derive_open_grass_rounds_up_and_leaves_no_map_for_an_empty_size() -> void:
@@ -136,3 +136,15 @@ func _building_roster() -> ScenarioDef:
 	var scenario: ScenarioDef = ScenarioDef.new()
 	scenario.roster.append(refinery)
 	return scenario
+
+
+## prepare() derives the open-grass map before it sizes the ore state, so a world with no map and a
+## stale `ore_cell` list ends with one `ore_amount` entry per ore cell: none (P246a).
+func test_prepare_clears_a_stale_ore_list_before_it_sizes_the_ore_amounts() -> void:
+	var world: World = World.new()
+	world.map_w = 0
+	world.map_h = 0
+	world.ore_cell = PackedInt32Array([1, 2, 3])
+	world.prepare()
+	assert_int(world.ore_cell.size()).is_equal(0)
+	assert_int(world.ore_amount.size()).is_equal(world.ore_cell.size())
