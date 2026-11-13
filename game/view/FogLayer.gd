@@ -20,6 +20,13 @@ extends Sprite2D
 ## of a match and not from a list. The patch writes the alpha bytes of a reused array, then uploads
 ## it (`set_data` and `ImageTexture.update`).
 ##
+## The satellite sweep (P235) lifts or restores the fog of the whole map in one step. When the local
+## player's sweep begins, pauses or resumes (`snapshot.reveal` of the local player turning to or
+## from ON), the tiles do not jump: for `life.reveal_fade_ms` (data, both
+## ways alike) each texel's alpha moves from what the image showed to the new target, and the
+## per-tick patches keep writing the target meanwhile. A new match, another player or explored
+## alpha, or a gap in the ticks, ends a fade at once.
+##
 ## The CPU-side image is `image()`: tests read it, never the texture, which reads back stale after
 ## `update()`. The static helpers are the one place that decides what a player sees, for the layers
 ## that hide what the fog covers (`UnitLayer`, `ProjectileLayer`, `EffectsLayer`, and the picking of
@@ -34,9 +41,14 @@ const ALPHA_BYTE: int = 3
 @export var runner: MatchRunner
 ## The alpha of a tile that was seen and is not now (STYLE.md). One value to change by eye.
 @export var explored_alpha: int = 140
+@export var life: LifeSettings  ## `reveal_fade_ms`; the data file when unset.
 
 ## The microsecond clock that times an update. Tests replace it.
 var usec_clock: Callable = Time.get_ticks_usec
+## The millisecond clock that times a fade. Tests replace it.
+var msec_clock: Callable = Time.get_ticks_msec
+## The frame counter that limits a fade to one blend a frame. Tests replace it.
+var frame_clock: Callable = Engine.get_process_frames
 
 var _serial: int = -1  ## match_serial of the image.
 var _player: int = 0  ## The local player the image shows.
@@ -52,9 +64,17 @@ var _texture: ImageTexture = null
 var _uploads: int = 0
 var _rebuilds: int = 0
 var _update_usec: int = 0
+var _on: bool = false  ## The local player's sweep was ON at the last look.
+var _fading: bool = false
+var _fade_from: PackedByteArray = PackedByteArray()  ## The image's bytes when the fade began.
+var _goal: PackedByteArray = PackedByteArray()  ## The bytes the image is fading to.
+var _fade_start_ms: int = 0
+var _last_blend_frame: int = -1
 
 
 func _ready() -> void:
+	if life == null:
+		life = load("res://data/life_settings.tres")
 	centered = false
 	transform = IsoProjection.cell_to_px()
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -66,7 +86,14 @@ func _ready() -> void:
 ## Looks again, for a match that `start()` began since the last tick: the new match's first
 ## snapshot comes with no `ticked`.
 func _process(_delta: float) -> void:
+	var uploads: int = _uploads
 	_sync()
+	if _fading and _uploads == uploads:  # `_sync` blended it already when it uploaded.
+		var began: int = int(usec_clock.call())
+		var blended: int = _uploads
+		_blend()
+		if _uploads != blended:
+			_update_usec = int(usec_clock.call()) - began
 
 
 ## The local player the layers hide for: `runner.scenario.local_player`, 1 without a scenario.
@@ -131,10 +158,19 @@ func _sync() -> void:
 	var shade: int = clampi(explored_alpha, 0, 255)
 	var version: int = fog.version_of(player)
 	var other: bool = snap.match_serial != _serial or player != _player or shade != _shade
+	var on: bool = player < snap.reveal.size() and snap.reveal[player] == Reveal.State.ON
 	var previous_tick: int = _tick
 	_tick = snap.tick
+	var flipped: bool = on != _on
+	_on = on  # Also when no tile changed: a later patch is no flip.
+	if other:
+		_fading = false
 	if not other and version == _version:
 		return
+	if not other and flipped and snap.tick == previous_tick + 1:
+		_begin_fade()  # The sweep turned on or off in this step: the flip is in the dirty list.
+	elif other or snap.tick != previous_tick + 1:
+		_fading = false
 	var began: int = int(usec_clock.call())
 	if other or fog.dirty_overflowed(player) or snap.tick != previous_tick + 1:
 		_rebuild(fog, player, shade)
@@ -145,13 +181,17 @@ func _sync() -> void:
 	else:
 		_paint(fog, player, shade, fog.dirty_cells(player))
 	_version = version
-	_upload()
+	if _fading:
+		_blend()
+	else:
+		_upload()
 	_update_usec = int(usec_clock.call()) - began
 
 
 ## No grid to draw: no texture, and a later grid rebuilds from nothing.
 func _blank() -> void:
 	_serial = -1
+	_fading = false
 	if _texture != null:
 		texture = null
 		_texture = null
@@ -173,7 +213,7 @@ func _paint(fog: FogGrid, player: int, shade: int, cells: PackedInt32Array) -> v
 	var base: int = (player - 1) * fog.cells
 	var counts: PackedInt32Array = fog.visible
 	var seen: PackedByteArray = fog.explored
-	var bytes: PackedByteArray = _bytes
+	var bytes: PackedByteArray = _goal if _fading else _bytes
 	for cell: int in cells:
 		var alpha: int = UNEXPLORED_ALPHA
 		if seen[base + cell] != 0:
@@ -181,6 +221,47 @@ func _paint(fog: FogGrid, player: int, shade: int, cells: PackedInt32Array) -> v
 		if counts[base + cell] > 0:
 			alpha = VISIBLE_ALPHA
 		bytes[cell * BYTES_PER_TEXEL + ALPHA_BYTE] = alpha
+
+
+## Starts a fade from what the image shows now; the goal begins equal and the paints move it.
+func _begin_fade() -> void:
+	var ms: int = 0 if life == null else life.reveal_fade_ms
+	if ms <= 0 or _bytes.is_empty():
+		_fading = false
+		return
+	if not _fading:  # A fade already running keeps its goal, which every paint has kept current.
+		_goal = _bytes.duplicate()
+	_fading = true
+	_fade_from = _bytes.duplicate()
+	_last_blend_frame = -1
+	_fade_start_ms = int(msec_clock.call())
+
+
+## Writes the image between `_fade_from` and `_goal` for the time that has passed, uploads it, and
+## ends the fade on the goal. The texels' alpha bytes only: the colour bytes stay 0.
+func _blend() -> void:
+	var ms: int = maxi(life.reveal_fade_ms, 1)
+	var frame: int = int(frame_clock.call())
+	if frame == _last_blend_frame:  # One blend and upload a frame.
+		return
+	_last_blend_frame = frame
+	var now: int = int(msec_clock.call())
+	var share: float = clampf(float(now - _fade_start_ms) / ms, 0.0, 1.0)
+	if share >= 1.0:
+		_bytes = _goal.duplicate()
+		_fading = false
+	else:
+		var bytes: PackedByteArray = _bytes
+		var from: PackedByteArray = _fade_from
+		var goal: PackedByteArray = _goal
+		for at: int in range(ALPHA_BYTE, bytes.size(), BYTES_PER_TEXEL):
+			bytes[at] = from[at] + roundi((goal[at] - from[at]) * share)
+	_upload()
+
+
+## True while the image fades (tests).
+func is_fading() -> bool:
+	return _fading
 
 
 func _upload() -> void:

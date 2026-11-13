@@ -7,8 +7,9 @@ extends Resource
 ## when it is unset, so a number is reachable without a scene edit. A test that wants another value
 ## calls `duplicate()` first.
 ## The sections follow the plan's core rows: P136 owns the recoil, P138 the dust, P140 and P142 the
-## idle life of rigs, P141 the strikes, P144 the building animations and P145 the emitters. A row
-## only reads its section; the optional rows (P148 and on) append their own fields below.
+## idle life of rigs, P141 the strikes (P235's sweep fade and warning time sit in that block), P144
+## the building animations and P145 the emitters. A row only reads its section; the optional rows
+## (P148 and on) append their own fields below.
 ## The art's own numbers (`stride_milli`, `anim_ms`, `emitters`, `marks`) are in the sheets.
 
 ## Reduced effects (ADR 0027, answer 3): drops the ambient (dust, track marks, wrecks, drive rumble,
@@ -82,6 +83,12 @@ extends Resource
 @export var fall_ms: int = 600
 @export var net_land_ms: int = 600
 @export var strike_slots: int = 8
+
+## The satellite sweep (P235): the fog fades over `reveal_fade_ms` when the local player's own sweep
+## begins, pauses or resumes (both ways, the same time), and the warning line of an enemy's sweep
+## stays `reveal_warn_ms`.
+@export var reveal_fade_ms: int = 600
+@export var reveal_warn_ms: int = 5000
 
 ## Building animations (P144): the rate of an own building's animation while the local player's
 ## power is short (1.0 is the full rate).

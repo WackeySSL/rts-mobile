@@ -93,14 +93,17 @@ const COPIED: Array[StringName] = [
 	&"ghost_count",
 	&"power_made",
 	&"power_used",
+	&"reveal_site",
+	&"reveal",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
 ## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS,
 ## UPGRADE_ARRAYS and PASSENGER_ARRAYS: the sim's working state, which no view reads (P265 copies
 ## the carrier columns it draws pips from). With COPIED it covers those thirteen
 ## lists exactly once (a coverage test), so a new World array fails until it is classified. The air
-## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit` and
-## `weapon_targets`, which the view and input read (ADR 0036 section 14). `terrain_cost` is here
+## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
+## `weapon_targets`, `reveal_site` and `reveal`, which the view and input read (ADR 0036 sections
+## 11 and 14). `terrain_cost` is here
 ## (the view needs `terrain`, `terrain_ids` and `move_cost`), and so are the derived `building_rows`
 ## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
@@ -133,8 +136,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"upgrade_type_first",
 	&"upgrade_type_count",
 	&"upgrade_types",
-	&"reveal_site",
-	&"reveal",
 	&"upgrades",
 	&"goal_x",
 	&"goal_y",
@@ -310,6 +311,12 @@ var ghost_cell: PackedInt32Array = PackedInt32Array()
 var ghost_count: PackedInt32Array = PackedInt32Array()
 var power_made: PackedInt32Array = PackedInt32Array()
 var power_used: PackedInt32Array = PackedInt32Array()
+## The satellite sweep (ADR 0036 section 11), per player: the space centre that fired it (0 none)
+## and the state (0 off, 1 on, 2 paused). The enemy's badge reads `reveal`, the owner's strike
+## button `reveal_site`; the view reads only the local player's `reveal_site` and never resolves
+## another player's site to a row (fog fairness).
+var reveal_site: PackedInt32Array = PackedInt32Array()
+var reveal: PackedInt32Array = PackedInt32Array()
 ## The rule ints Placement.reason reads (RulesDef).
 var build_reach_tiles: int = 0
 var building_cap: int = 0
@@ -517,6 +524,8 @@ func _capture_players(world: World) -> void:
 	ghost_count = world.ghost_count.duplicate()
 	power_made = world.power_made.duplicate()
 	power_used = world.power_used.duplicate()
+	reveal_site = world.reveal_site.duplicate()
+	reveal = world.reveal.duplicate()
 
 
 ## target_row in one walk over the rows: each target id found by binary search over the ascending

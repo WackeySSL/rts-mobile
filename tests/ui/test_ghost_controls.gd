@@ -70,9 +70,9 @@ func test_the_node_stands_before_the_safe_area_with_the_hud_theme_and_the_old_ro
 	assert_int(_ghost.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_object(_ghost.theme).is_same((safe as Control).theme)  # The dp copy of theme.tres.
 	assert_object(_ghost.theme.get_meta(HudTheme.SOURCE_META)).is_not_null()
-	# BUILD and its Ready chip (P120, P120c), scope and map (P121), toast (P123); the Dev stack went
-	# with P124.
-	assert_array(_ghost.clear_of).has_size(10)
+	# BUILD and its Ready chip (P120, P120c), scope and map (P121), toast (P123), the enemy sweep's
+	# badge (P235); the Dev stack went with P124.
+	assert_array(_ghost.clear_of).has_size(11)
 	assert_object(_sidebar.find_child("Placement", true, false)).is_null()
 	for global: Dictionary in ProjectSettings.get_global_class_list():
 		assert_str(str(global["class"])).is_not_equal("PlacementControls")

@@ -39,6 +39,8 @@ launch_ms = 700
 fall_ms = 600
 net_land_ms = 600
 strike_slots = 8
+reveal_fade_ms = 600
+reveal_warn_ms = 5000
 low_power_rate = 0.5
 emit_ms = Dictionary[StringName, int]({
 &"flare": 500,

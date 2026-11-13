@@ -29,6 +29,8 @@ const BUILD_DP: float = 64.0
 const READY_DP: Vector2 = Vector2(112.0, 48.0)
 const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chip) and height.
 const GROUP_DP: float = 56.0
+const REVEAL_DP: float = 48.0  ## The enemy sweep's badge (P235), a square.
+const REVEAL_LINE_DP: Vector2 = Vector2(160.0, 220.0)  ## The warning line's least and most width.
 const TOAST_H_DP: float = 48.0
 const TOAST_W_DP: Vector2 = Vector2(280.0, 360.0)  ## At most, landscape then portrait.
 ## Least landscape width beside the pill: glyph 24, gap 6, padding and a title of about 14 letters
@@ -51,6 +53,8 @@ const BUILD: StringName = &"build"
 const READY: StringName = &"ready"
 const STRIKE: StringName = &"strike"
 const STRIKE_ROW: StringName = &"strike_row"  ## The check mark and the X, left of STRIKE.
+const REVEAL: StringName = &"reveal"  ## The enemy sweep's badge, a gap above the right column.
+const REVEAL_LINE: StringName = &"reveal_line"  ## Its warning line, left of the badge.
 const BAR: StringName = &"bar"
 const MAP: StringName = &"map"  ## The head and the box.
 const MAP_HEAD: StringName = &"map_head"
@@ -70,6 +74,8 @@ class Shown:
 	var ready: bool = false  ## The Ready chip (until ADR 0026's UI row).
 	var strike: bool = false  ## The strike button.
 	var aim: bool = false  ## The strike aim's check mark and X.
+	var reveal: bool = false  ## The enemy sweep's badge (P235).
+	var reveal_line: bool = false  ## And its warning line, while the warning stands.
 	var map: bool = false  ## The full map under the scope.
 	var toast: bool = false
 	var card: bool = false  ## The economy card.
@@ -165,6 +171,8 @@ static func place(
 		var next: Rect2 = strike if shown.strike else build
 		next = out[READY] if out.has(READY) and portrait else next
 		_map(out, w, portrait, next, row, column_end)
+	if shown.reveal and not shown.drawer and not shown.map:
+		_reveal(out, w, portrait, build, strike if shown.strike else Rect2(), shown, column_end)
 	if shown.toast and not shown.map:
 		out[TOAST] = _toast(w, portrait, out, open if side else Rect2(w, 0.0, 0.0, 0.0), column_end)
 	var result: Dictionary[StringName, Rect2] = {}
@@ -173,6 +181,36 @@ static func place(
 		var x: float = w - r.position.x - r.size.x if mirror else r.position.x
 		result[key] = Rect2(safe.position + Vector2(x, r.position.y) * dp, r.size * dp)
 	return result
+
+
+## The enemy sweep's badge (P235): the right column's next part up, a gap above its topmost part
+## (the Ready chip upright, else the strike button, else BUILD), right-aligned, 48 dp. Its warning
+## line stands left of it on the same line, from a gap right of the group column (`column_end`) to a
+## gap left of the badge, at most 220 dp; where fewer than 160 dp are left the line is left out and
+## the badge alone shows. The full map and the drawer cover the column, so neither shows then.
+static func _reveal(
+	out: Dictionary[StringName, Rect2],
+	w: float,
+	portrait: bool,
+	build: Rect2,
+	strike: Rect2,
+	shown: Shown,
+	column_end: float
+) -> void:
+	var top: float = build.position.y
+	if strike.size.x > 0.0:
+		top = strike.position.y
+	if portrait and out.has(READY):
+		top = minf(top, out[READY].position.y)
+	var badge: Rect2 = Rect2(w - REVEAL_DP, top - GAP_DP - REVEAL_DP, REVEAL_DP, REVEAL_DP)
+	out[REVEAL] = badge
+	if shown.reveal_line:
+		var from: float = column_end + GAP_DP if column_end > 0.0 else 0.0
+		var width: float = minf(REVEAL_LINE_DP.y, badge.position.x - GAP_DP - from)
+		if width >= REVEAL_LINE_DP.x:
+			out[REVEAL_LINE] = Rect2(
+				badge.position.x - GAP_DP - width, badge.position.y, width, REVEAL_DP
+			)
 
 
 ## The open drawer: the landscape panel at the right edge (40 % of the width, 312 to 420 dp), the

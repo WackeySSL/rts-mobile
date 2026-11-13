@@ -585,7 +585,31 @@ Note (2026-11-12, P233): as built. It changes no accepted rule.
 - Where sections 3 and 11 say `reveal_stamped[p]`, read `fog.revealed[p - 1]` (P233).
 - P235 must move `reveal` and `reveal_site` from `MatchSnapshot.NOT_COPIED` to COPIED: the view
   reads only the snapshot, so the badge needs `reveal` and the owner's strike button needs
-  `reveal_site`.
+  `reveal_site`. Done in P235.
+
+Note (2026-11-13, P235): as built. It changes no accepted rule.
+- **The warning.** There is no toast: a text line, "Enemy sweep on you", stands beside the badge for
+  `reveal_warn_ms` (5000, `data/life_settings.tres`), once per kind-3 STRIKE record of another
+  player. Its clock runs only while the badge can be seen, so a drawer, the full map or the pause
+  menu over the column holds it. Accepted gap: a pinned full map hides the badge and the line for as
+  long as it stays pinned (the column is under the map).
+- **The badge.** 48 dp, information only (no touch), a gap above the topmost part of the right
+  column (the Ready chip upright, else the strike button, else BUILD), hidden under the drawer, the
+  full map and the pause menu. The line stands left of it, 160 to 220 dp, on the `HudPanel` plate,
+  and is left out below 160 dp, where the badge shows alone. With several enemies, on beats paused.
+- **One strike button (Michael, 2026-11-13).** A space centre whose owner's sweep stands, on or
+  paused, never binds (a fired centre keeps its `ready_tick` and the sim drops the spare). A
+  construction site never binds. A sweep ignores a pending rupture. A low-power refusal ranks after
+  a ready building and before one that still charges. With no other strike building the button
+  shows the sweep, "On" or "Paused"; otherwise a satellite mark (and a pause mark) sits on the other
+  building's plate. A REVEAL building has no aim: the check mark is lit at once and the point is
+  (0, 0). While an aim is open a tie stays with the building it began on, and any other binding ends
+  the aim.
+- **The fade.** `reveal_fade_ms` (600), the same both ways: the fog fades away when the own sweep
+  starts or comes back and fades in when it pauses. It snaps on a gap in the ticks, a new match,
+  another player and a new explored alpha.
+- **The look.** The sweep's look is the fade plus the HUD; `StrikeFx` plays nothing for kind 3, and
+  the models' `launch` emitter is not wired (§16: no rocket launch).
 
 ### 12. Commands and touch, per unit (touch-ui-rules: 48 dp, portrait and landscape)
 | Unit | Gestures | New HUD |
