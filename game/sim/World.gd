@@ -1,12 +1,11 @@
 class_name World
 extends RefCounted
-## Simulation state v2 (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only.
-## Positions are milli-tiles (1 tile = 1000). Units and buildings are rows in the per-unit arrays,
-## ascending by id. Ids come from a counter that starts at 1 and are never reused. Removal keeps the
-## rows in id order, so an id is found by binary search. The view and input read a World and never
-## write to it. Every array and scalar is declared here and listed in one shape list (ADR 0007
-## section 2); the state hash (ADR 0007 section 8) walks those lists. The hash code is WorldHash and
-## the scenario loader WorldLoad (P70c); the methods of this class that name them are wrappers.
+## Simulation state (ADR 0007 section 2, ADR 0017 section 3): struct-of-arrays, integers only, in
+## milli-tiles (1 tile = 1000). Units and buildings are rows in the per-unit arrays, ascending by
+## id (a counter from 1, never reused), so an id is found by binary search. The view and input read
+## a World and never write to it. Every array and scalar is declared here and listed in one shape
+## list; the state hash (ADR 0007 section 8) walks those lists. The hash is WorldHash, the loader
+## WorldLoad (P70c, P246a) and the row writers WorldRows; the methods naming them are wrappers.
 
 enum Order { IDLE = 0, ATTACK_MOVE = 1, MOVE = 2, ATTACK = 3 }
 enum Armour { INFANTRY = 0, LIGHT = 1, HEAVY = 2, BUILDING = 3 }
@@ -24,10 +23,9 @@ enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
 enum Tab { STRUCTURES = 0, INFANTRY = 1, VEHICLES = 2, FLIGHT = 3, RESEARCH = 4 }
 ## What a harvester is doing (ADR 0018 section 3); IDLE is under the player's control.
 enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
-## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
-## candidates tested, fog cells stamped, projectile steps, rows moved by a compaction, ore cells
-## looked at, exit cells walked and last-seen checks (the last three: Phase 3, ADR 0017 section 3).
-## The native kernels check `stats` against this size (`STAT_COUNT` in bind/world_access.h).
+## The indexes of `stats`: flow cells, line checks, separation pairs, targeting candidates, fog
+## cells, projectile steps, rows compacted, ore cells, exit cells and last-seen checks (the last
+## three: ADR 0017 section 3). The native kernels check `stats` against this size (`STAT_COUNT`).
 enum Stat {
 	FLOW_CELLS = 0,
 	LINE_CHECKS = 1,
@@ -51,8 +49,8 @@ const TABS: int = 5
 ## The move classes with a terrain cost (`TerrainDef.cost`, `terrain_cost`, ADR 0036 section 4):
 ## every loop over terrain costs ends here. The AIR plane of `move_cost` is GRASS_COST everywhere.
 const GROUND_CLASSES: int = 3
-## Most upgrades in a match: `upgrades` holds one bit per `upgrade_ids` entry in an int32, and bit
-## 31 is the sign bit, so 30 (bits 0 to 29) keeps every mask positive and every `1 << index` safe.
+## Most upgrades in a match: `upgrades` holds one bit per entry in an int32; 30 keeps the sign bit
+## clear and every `1 << index` safe.
 const UPGRADES_MAX: int = 30
 ## The layout version of the hashed state. 2: fog.visible left the hash, because the rows it is
 ## derived from stay in it (ADR 0016). 3: Phase 3's state joined it (ADR 0017 section 7): four row
@@ -66,8 +64,8 @@ const STATE_FORMAT: int = 7
 ## ghosts and passengers.
 const HASH_OTHER_SECTIONS: int = 8
 
-## What prepare() fills a type table with for a type that has no entry. A padded type cannot
-## fire, sees only its own tile and counts as tracked. These are not balance numbers.
+## What prepare() fills a type table with for a type that has no entry: it cannot fire, sees only
+## its own tile and counts as tracked. Not balance numbers.
 const TYPE_PAD_MAX_HP: int = 1
 const TYPE_PAD_ARMOUR: int = Armour.INFANTRY
 const TYPE_PAD_MOVE_CLASS: int = MoveClass.TRACKED
@@ -76,8 +74,7 @@ const TYPE_PAD_ACQUIRE: int = 0
 const TYPE_PAD_WEAPON: int = -1
 ## A padded type is a ground row (layer bit GROUND).
 const TYPE_PAD_LAYER: int = Layer.GROUND
-## A padded type has no repair role, and its period is UnitDef's default (1), so a reader that
-## divides by it never divides by 0.
+## A padded type has no repair role; its period is UnitDef's default (1), so no division by 0.
 const TYPE_PAD_REPAIR_PERIOD: int = 1
 ## A hand-built weapon (no mask named) hits the ground only, as WeaponDef's default does.
 const WEAPON_PAD_TARGETS: int = Layer.GROUND
@@ -87,19 +84,16 @@ const TYPE_PAD_V0: int = 0
 ## For the Phase 3 tables whose "none" is -1: tab, requirement, produced tab, free unit, faction and
 ## strike weapon.
 const TYPE_PAD_NONE: int = -1
-## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1). It equals the
-## default TerrainDef.cost, which a test pins: prepare() may run in the tick and reads no Resource.
+## The cost of open grass for every class, 10 = normal ground (ADR 0008 section 1); equals the
+## default TerrainDef.cost (a test pins it), because prepare() reads no Resource.
 const GRASS_COST: int = 10
-## The id of open grass, the one terrain of a map without a MapDef. It equals the first terrain of
-## data/terrain/standard.tres, which a test pins.
+## The id of open grass, the one terrain of a map without a MapDef (pinned to standard.tres).
 const GRASS_ID: StringName = &"grass"
-## Whether open grass is buildable (1) or not (0), the one terrain of a map without a MapDef. It
-## equals the `buildable` flag of the first terrain of data/terrain/standard.tres (a test pins it).
+## Whether open grass is buildable (1) or not (0); pinned to standard.tres like GRASS_ID.
 const GRASS_BUILDABLE: int = 1
 ## The id of the ore terrain (ADR 0018 section 2): WorldLoad lists its cells in `ore_cell`.
 const ORE_ID: StringName = &"ore"
-## The largest terrain index. `terrain` keeps one byte per cell and the view picks its tile by it,
-## so a larger index would be stored as another terrain's and drawn as that one (P48).
+## The largest terrain index: `terrain` keeps one byte per cell (P48).
 const TERRAIN_INDEX_MAX: int = 255
 ## The cell sides of the spatial grids (ADR 0008 section 4, ADR 0009): structural, not balance
 ## numbers, so not in RulesDef. Targeting reads `target_grid.cell_milli`, never a second 4000.
@@ -821,10 +815,8 @@ func _init() -> void:
 	rng = DetRandom.create(0, DetRandom.STREAM_SIM)
 
 
-## Reads the scenario and its definitions once and returns a prepared world; a null scenario gives
-## an empty one. The rules come from `scenario.rules`, else they stay the RulesDef defaults. A null
-## `rng` keeps the default stream. WorldLoad.from_scenario has the rest of the rule: the map grid,
-## the types, the spawns and their jitter, and the dropped setup events.
+## Reads the scenario once and returns a prepared world (WorldLoad.from_scenario has the rule); a
+## null scenario gives an empty one, a null `rng` keeps the default stream.
 @warning_ignore("shadowed_variable")
 static func from_scenario(scenario: ScenarioDef, rng: DetRandom = null) -> World:
 	return WorldLoad.from_scenario(scenario, rng)
@@ -842,52 +834,17 @@ func index_of(id: int) -> int:
 	return -1
 
 
-## Gives every type table one entry per type_ids entry, with the TYPE_PAD_* values (a name is the
-## capitalised type id), because Phase 1 code appends only the four Phase 1 tables. It also sizes
-## the scratch arrays to max_rows, stats to the Stat count and the projectile slots to
-## max_projectiles, sizes the player, ore, ghost and passenger state at its start values
-## (WorldLoad.size_match_state), and derives open grass from map_w and map_h when no map is loaded.
-## Last it configures the helpers, once, because configure() re-creates their arrays, stamps the fog
-## of the rows that exist (WorldLoad.stamp_fog) and caches the map digest of the hash. Idempotent
-## through `prepared`, so Sim.step calls it every tick. Types, players and sizes are fixed before
-## it.
+## Sizes every table and helper once, idempotent through `prepared` (WorldLoad.prepare_world has
+## the rule), so Sim.step calls it every tick. Types, players and sizes are fixed before it.
 func prepare() -> void:
-	if prepared:
-		return
-	var types: int = type_ids.size()
-	WorldLoad.pad_types(self, types)
-	var ids: Array[StringName] = type_ids
-	var names: PackedStringArray = type_names
-	for i: int in range(names.size(), types):
-		names.append(String(ids[i]).capitalize())
-	# The fixed-capacity arrays. Resizing keeps the contents, so a second call is a no-op.
-	intent_x.resize(max_rows)
-	intent_y.resize(max_rows)
-	push_x.resize(max_rows)
-	push_y.resize(max_rows)
-	stats.resize(Stat.size())
-	if proj_id.size() != max_projectiles:
-		WorldLoad.reset_projectile_slots(self)
-	if map_cols == 0:
-		WorldLoad.derive_open_grass(self)
-	WorldLoad.size_match_state(self)
-	fog.configure(map_cols, map_rows, player_count)
-	WorldLoad.stamp_fog(self)
-	flow.configure(map_cols, map_rows, MoveClass.size(), flow_cache_size)
-	sep_grid.configure(map_w, map_h, SEP_CELL_MILLI, max_rows)
-	target_grid.configure(map_w, map_h, TARGET_CELL_MILLI, max_rows)
-	_map_digest_version = -1  # The grid may be new without a map_version bump.
-	WorldHash.map_digest(self)
-	prepared = true
+	WorldLoad.prepare_world(self)
 
 
-## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A point on a tile
-## border past the middle of the map is in the tile before it (`FixedMath.centre_side`, ADR 0033),
-## any other point in the tile that holds it. A point outside
-## the map gives the nearest edge cell, so the result is never outside the map (negative values
-## divide toward zero and clamp to 0). With no map it is 0. The INTEGRATE kernel has a C++ twin of
-## this (core/integrate.cpp, Pass::cell_of); a change here edits both and passes the kernel's tests
-## (tests/sim/native/test_integrate_kernel.gd).
+## The cell holding the point (x, y) in milli-tiles: `row * map_cols + column`. A border point past
+## the middle of the map is in the tile before it (`FixedMath.centre_side`, ADR 0033). A point
+## outside the map gives the nearest edge cell; with no map it is 0. The INTEGRATE kernel has a
+## C++ twin (core/integrate.cpp, Pass::cell_of): a change here edits both and passes
+## tests/sim/native/test_integrate_kernel.gd.
 @warning_ignore("integer_division")
 func cell_of(x: int, y: int) -> int:
 	if map_cols == 0:
@@ -901,10 +858,9 @@ func cell_of(x: int, y: int) -> int:
 	return row * map_cols + column
 
 
-## Whether a unit of `move_class` may stand on `cell`: its cost there is above 0. True while no
-## map is loaded, false for a cell outside the map or a class that does not exist. The INTEGRATE
-## kernel has a C++ twin of this (core/integrate.cpp, Pass::is_passable): a rule that makes more
-## than the terrain block a tile (a building) edits both and passes the kernel's tests.
+## Whether a unit of `move_class` may stand on `cell`: its cost there is above 0. True while no map
+## is loaded, false for a cell or class that does not exist. C++ twin: core/integrate.cpp,
+## Pass::is_passable; a rule that blocks a tile beyond the terrain edits both.
 func is_passable(cell: int, move_class: int) -> bool:
 	if map_cols == 0:
 		return true
@@ -914,31 +870,25 @@ func is_passable(cell: int, move_class: int) -> bool:
 	return move_cost[move_class * cells + cell] > 0
 
 
-## Makes `cell` the terrain `terrain_index` and bumps map_version (WorldLoad.set_terrain has the
-## rule: bounds, the ore cells it leaves, and why map_version must move with any other writer).
+## Makes `cell` the terrain `terrain_index` and bumps map_version (WorldLoad.set_terrain).
 func set_terrain(cell: int, terrain_index: int) -> void:
 	WorldLoad.set_terrain(self, cell, terrain_index)
 
 
-## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
-## and returns its new id. `type_index` must be an index into type_ids. It writes one SPAWNED
-## event and raises player_count to the owner. After prepare() an owner above player_count or a
-## row beyond max_rows is refused instead: 0, and spawn_refused counts it. The parameters keep the
-## contract's names, so they shadow the arrays of the same name.
+## Appends an idle unit at (x, y) and returns its new id, or 0 when refused (WorldRows.add_unit has
+## the rule). The parameters keep the contract's names, so they shadow the arrays of the same name.
 @warning_ignore("shadowed_variable")
 func add_unit(owner: int, type_index: int, x: int, y: int) -> int:
 	return WorldRows.add_unit(self, owner, type_index, x, y)
 
 
-## Inserts an idle row with an old `id` in id order and returns its row, or -1 and no change
-## (WorldRows.insert_row has the rule; ADR 0036 section 8).
+## Inserts an idle row with an old `id` in id order; its row, or -1 (WorldRows.insert_row).
 @warning_ignore("shadowed_variable")
 func insert_row(id: int, owner: int, type_index: int, hp: int, x: int, y: int) -> int:
 	return WorldRows.insert_row(self, id, owner, type_index, hp, x, y)
 
 
-## Appends a building with its top-left tile at (origin_col, origin_row); 0 when refused. It blocks
-## its tiles (Buildings.add has the rule).
+## Appends a building with its top-left tile at (origin_col, origin_row); 0 when refused.
 @warning_ignore("shadowed_variable")
 func add_building(owner: int, type_index: int, origin_col: int, origin_row: int) -> int:
 	return Buildings.add(self, owner, type_index, origin_col, origin_row)
@@ -959,26 +909,22 @@ func write_unit_event(at: int, kind: int, row: int) -> void:
 	WorldRows.write_unit_event(self, at, kind, row)
 
 
-## Removes every row with hp of 0 or less: a DIED record per dead row, then a stable compaction of
-## every ROW_ARRAYS column (`Removal.run`, which has the rules; ADR 0007 section 3).
+## Removes every row with hp of 0 or less (`Removal.run` has the rules; ADR 0007 section 3).
 func remove_dead() -> void:
 	Removal.run(self)
 
 
-## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names(). The walk
-## is WorldHash.state_hash().
+## The state hash (ADR 0007 section 8): SHA-256 over the sections of hash_section_names().
 func state_hash() -> int:
 	return WorldHash.state_hash(self)
 
 
-## One digest prefix per section, in hash_section_names() order, for the failure message of a test
-## that compares two hashes; it is not called in the tick (WorldHash.hash_parts).
+## One digest prefix per section, in hash_section_names() order; for test failure messages only.
 func hash_parts() -> PackedInt64Array:
 	return WorldHash.hash_parts(self)
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts",
-## "passengers" (WorldHash.hash_section_names has what each section feeds).
+## The section names of the hash (WorldHash.hash_section_names has what each one feeds).
 static func hash_section_names() -> PackedStringArray:
 	return WorldHash.hash_section_names()
 
@@ -988,7 +934,6 @@ static func hash_hex(h: int) -> String:
 	return WorldHash.hash_hex(h)
 
 
-## The definitions hash (WorldHash.defs_hash has the rule): what a replay needs to see that it runs
-## on other data. Call it on a prepared world (prepare() pads the tables).
+## The definitions hash (WorldHash.defs_hash has the rule); call it on a prepared world.
 func defs_hash() -> int:
 	return WorldHash.defs_hash(self)
