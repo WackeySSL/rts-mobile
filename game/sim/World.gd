@@ -271,9 +271,10 @@ const GHOST_ARRAYS: Array[StringName] = [
 	&"ghost_id", &"ghost_type", &"ghost_owner", &"ghost_cell", &"ghost_count"
 ]
 ## State that follows from the hashed state (ADR 0016), rebuilt when `rows_version` moves and in
-## no hash section: the power totals per player and the ascending rows of buildings and harvesters.
+## no hash section: the power totals per player and the ascending rows of buildings, harvesters and
+## aircraft.
 const DERIVED_ARRAYS: Array[StringName] = [
-	&"power_made", &"power_used", &"building_rows", &"harvester_rows"
+	&"power_made", &"power_used", &"building_rows", &"harvester_rows", &"air_rows"
 ]
 ## The tile grid: the terrain index per cell, the move cost per class and cell, the cost per
 ## terrain and class that set_terrain copies into it, the buildable flag per terrain and the
@@ -770,6 +771,7 @@ var power_made: PackedInt32Array = PackedInt32Array()
 var power_used: PackedInt32Array = PackedInt32Array()
 var building_rows: PackedInt32Array = PackedInt32Array()
 var harvester_rows: PackedInt32Array = PackedInt32Array()
+var air_rows: PackedInt32Array = PackedInt32Array()
 
 ## Projectile slots, max_projectiles entries each. Valid while proj_id is not 0.
 ## Ids come from next_projectile_id.

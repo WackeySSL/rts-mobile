@@ -22,10 +22,10 @@ const MILLI_PER_TILE: int = 1000
 ## space centre's sweep follows its building (REMOVE: `Reveal.run`, P233), the players whose turn it
 ## is move their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin`
 ## emptied their
-## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Mend.run`), the queues
-## advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`), the
-## last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts. Of
-## those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and
+## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Mend.run`), the
+## queues advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`),
+## the last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts.
+## Of those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and
 ## used per player (P74), `Harvest.run` runs the ore and the harvest loop (P75), `Production.run`
 ## advances the queues, the structures' too, at `low_power_percent` of the rate on low power (P73,
 ## P73b, P74), and `Outcome.run` defeats a player that lost its last producer and ends the match
@@ -89,6 +89,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 		probe.mark(SimProbe.Phase.FOG)
 	Power.run(world)
 	Harvest.run(world)
+	Air.run(world)
 	Mend.run(world)
 	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)

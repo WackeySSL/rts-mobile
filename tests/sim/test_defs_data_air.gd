@@ -30,6 +30,7 @@ func test_the_air_only_fields_are_refused_on_a_ground_type_one_field_at_a_time()
 		)
 		var air: UnitDef = Rules.fine_air()
 		air.ammo = 0 if row[0] == "low_flying" else air.ammo
+		air.tab = World.Tab.INFANTRY if row[0] == "low_flying" else air.tab
 		air.set(row[0], row[1])
 		(
 			assert_array(Rules.air_problems("tank.tres", air))
@@ -82,12 +83,33 @@ func test_the_carrier_fields_are_a_pair_and_buildings_carry_nothing() -> void:
 func test_a_low_flying_type_has_no_ammo() -> void:
 	var drone: UnitDef = Rules.fine_air()
 	drone.low_flying = true
+	drone.tab = World.Tab.INFANTRY
 	assert_array(Rules.air_problems("drone.tres", drone)).is_equal(
 		["drone.tres: a low-flying type has ammo"]
 	)
 	drone.ammo = 0
 	drone.rearm_ticks = 0
 	assert_array(Rules.air_problems("drone.tres", drone)).is_empty()
+
+
+## P241: the FLIGHT cap counts queued items by tab and the pad spawn keys on the layer, so the tab
+## Flight and a high-air type (AIR, not low flying) go together.
+func test_the_flight_tab_and_a_high_air_type_go_together() -> void:
+	var message: String = "jet.tres: the Flight tab and a high-air type differ"
+	var jet: UnitDef = Rules.fine_air()
+	assert_array(Rules.air_problems("jet.tres", jet)).is_empty()
+	jet.tab = World.Tab.VEHICLES
+	assert_array(Rules.air_problems("jet.tres", jet)).is_equal([message])
+	var tank: UnitDef = Rules.fine_unit()
+	tank.tab = World.Tab.FLIGHT
+	assert_array(Rules.air_problems("jet.tres", tank)).is_equal([message])
+	var drone: UnitDef = Rules.fine_air()
+	drone.low_flying = true
+	drone.ammo = 0
+	drone.rearm_ticks = 0
+	assert_array(Rules.air_problems("jet.tres", drone)).is_equal([message])  # Still on FLIGHT.
+	drone.tab = World.Tab.INFANTRY
+	assert_array(Rules.air_problems("jet.tres", drone)).is_empty()
 
 
 func test_the_air_and_repair_role_rules_accept_their_edge_values_and_report_the_next() -> void:
@@ -155,7 +177,7 @@ func test_the_air_and_repair_role_rules_accept_their_edge_values_and_report_the_
 		[
 			Callable(Rules, "fine_healer"),
 			"tab",
-			[-1, 0, Rules.FLIGHT],
+			[-1, 0, World.Tab.VEHICLES],
 			[Rules.RESEARCH],
 			["no type is on the Research tab"]
 		],

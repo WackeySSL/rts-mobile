@@ -175,6 +175,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"terrain_cost",
 	&"building_rows",
 	&"harvester_rows",
+	&"air_rows",
 	&"income_percent",
 ]
 ## The World ints the snapshot carries besides its header: the end of the match (ADR 0018 section
