@@ -102,6 +102,15 @@ func test_derive_open_grass_rounds_up_and_leaves_no_map_for_an_empty_size() -> v
 	assert_array([flat.map_cols, flat.map_rows, flat.terrain.size()]).is_equal([0, 0, 0])
 
 
+## World re-exports every shape list from WorldShape (P287a): the same array, so no caller moves.
+func test_world_shape_lists_are_the_worldshape_constants() -> void:
+	assert_array(World.ROW_ARRAYS).is_equal(WorldShape.ROW_ARRAYS)
+	assert_array(World.DERIVED_ARRAYS).is_equal(WorldShape.DERIVED_ARRAYS)
+	assert_array(World.UNHASHED_SCALARS).is_equal(WorldShape.UNHASHED_SCALARS)
+	assert_array(World.NON_STATE_MEMBERS).is_equal([&"kernels"])
+	assert_int(World.ROW_ARRAYS.size()).is_equal(30)
+
+
 ## World.gd is under gdlint's line limit and carries no pragma that lifts it, so the next row that
 ## adds to it sees the limit.
 func test_world_source_fits_gdlint_without_the_pragma() -> void:
