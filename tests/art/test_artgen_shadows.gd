@@ -183,25 +183,116 @@ func test_the_frame_holds_a_stepped_pad_and_a_contact_line_under_the_cast_shadow
 	assert_array(frame.slice(frame.size() - cast.size())).is_equal(cast)
 	var ground: Rect2 = ArtRender.bounds([_flat(Vector2(-0.5, -0.5), Vector2(0.5, 0.5))])
 	var line: ArtRender.Poly = frame[ArtShadow.AO_STEPS]
-	assert_str(line.fill).is_equal("none")
-	assert_str(line.stroke).is_equal(ArtShadow.COLOUR)
 	assert_vector(ArtRender.bounds([line]).position).is_equal_approx(ground.position, Vector2.ONE)
 	assert_vector(ArtRender.bounds([line]).end).is_equal_approx(ground.end, Vector2.ONE)
-	# The rings widen outward, the widest first, none past AO_REACH, and each is a black fill.
-	var last: float = INF
-	for i: int in ArtShadow.AO_STEPS:
-		var ring: Rect2 = ArtRender.bounds([frame[i]])
-		assert_float(ring.size.x).is_less_equal(last)
-		last = ring.size.x
-		assert_float(ring.size.x).is_greater_equal(ground.size.x - 0.5)
-		# AO_REACH tiles on each side is 128 x AO_REACH of screen x at most, 1.5 px for the mitre.
-		assert_float(ring.size.x).is_less_equal(
-			ground.size.x + 2.0 * ArtShadow.AO_REACH * 128.0 + 1.5
+	_assert_pad(frame.slice(0, ArtShadow.AO_STEPS), [line], "box")
+
+
+func test_every_model_has_even_rings_in_reach_and_a_contact_line_that_is_darkest() -> void:
+	for path: String in ArtGen.model_paths():
+		var model: ArtModel = load(path) as ArtModel
+		for yaw: float in [0.0, 90.0, 202.5]:
+			var found: Array[ArtRender.Poly] = ArtShadow.pad(
+				model.shadow_prims(), yaw, model.category == &"inf"
+			)
+			var rings: Array[ArtRender.Poly] = found.slice(0, ArtShadow.AO_STEPS)
+			var lines: Array[ArtRender.Poly] = found.slice(ArtShadow.AO_STEPS)
+			_assert_pad(rings, lines, "%s %s" % [path, yaw])
+
+
+## The pad's rings step evenly and stay within `AO_REACH` of the outline, and every contact line
+## is opaque, `CONTACT_PX` wide and lies inside every ring, where the rings stack darkest.
+func _assert_pad(rings: Array[ArtRender.Poly], lines: Array[ArtRender.Poly], what: String) -> void:
+	if rings.is_empty():
+		assert_int(lines.size()).override_failure_message(what).is_equal(0)
+		return
+	assert_int(rings.size()).override_failure_message(what).is_equal(ArtShadow.AO_STEPS)
+	var widths: Array[float] = []
+	var heights: Array[float] = []
+	for ring: ArtRender.Poly in rings:
+		var box: Rect2 = ArtRender.bounds([ring])
+		widths.append(box.size.x)
+		heights.append(box.size.y)
+		assert_str(ring.fill).is_equal(ArtShadow.COLOUR)
+		assert_str(ring.fill_opacity).is_equal(ArtShadow.AO_STEP_ALPHA)
+		assert_int(ring.stroke_px).is_equal(0)
+	# Widest first, and the steps are equal: the rings are one outline grown by a third each time.
+	assert_float(widths[0] - widths[1]).override_failure_message(what).is_greater(0.0)
+	assert_float(widths[0] - widths[1]).override_failure_message(what).is_equal_approx(
+		widths[1] - widths[2], 1.5
+	)
+	assert_float(heights[0] - heights[1]).override_failure_message(what).is_equal_approx(
+		heights[1] - heights[2], 1.5
+	)
+	var reach: float = ArtShadow.AO_REACH
+	var inner: Rect2 = ArtRender.bounds([rings[ArtShadow.AO_STEPS - 1]])
+	var outer: Rect2 = ArtRender.bounds([rings[0]])
+	assert_float(outer.size.x - inner.size.x).override_failure_message(what).is_less_equal(
+		reach * 128.0 * 4.0 / 3.0 + 1.5
+	)
+	assert_float(outer.size.y - inner.size.y).override_failure_message(what).is_less_equal(
+		reach * 64.0 * 4.0 / 3.0 + 1.5
+	)
+	for line: ArtRender.Poly in lines:
+		assert_str(line.fill).is_equal("none")
+		assert_str(line.stroke).is_equal(ArtShadow.COLOUR)
+		assert_int(line.stroke_px).override_failure_message(what).is_equal(ArtShadow.CONTACT_PX)
+		assert_str(line.fill_opacity).is_equal("")
+		var box: Rect2 = ArtRender.bounds([line])
+		for ring: ArtRender.Poly in rings:
+			var grown: Rect2 = ArtRender.bounds([ring])
+			assert_bool(grown.encloses(box)).override_failure_message(what).is_true()
+			for point: Vector2 in line.points:
+				assert_bool(Geometry2D.is_point_in_polygon(point, ring.points)).is_true()
+
+
+func test_a_squad_has_a_contact_line_per_figure_none_of_which_encloses_the_ground_between() -> void:
+	var model: ArtModel = load("res://assets/art/models/fossil/rifle_squad.tres") as ArtModel
+	var found: Array[ArtRender.Poly] = ArtShadow.pad(model.shadow_prims(), 0.0, true)
+	var lines: Array[ArtRender.Poly] = found.slice(ArtShadow.AO_STEPS)
+	assert_int(lines.size()).is_equal(3)
+	var whole: Array[ArtRender.Poly] = ArtShadow.pad(model.shadow_prims(), 0.0, false)
+	assert_int(whole.size()).is_equal(ArtShadow.AO_STEPS + 1)
+	var centre: Vector2 = Vector2.ZERO
+	for line: ArtRender.Poly in lines:
+		centre += ArtRender.bounds([line]).get_center() / 3.0
+		# A figure's foot print is small next to the squad's.
+		assert_float(ArtRender.bounds([line]).size.x).is_less(
+			ArtRender.bounds([whole[ArtShadow.AO_STEPS]]).size.x / 2.0
 		)
-		assert_str(frame[i].fill).is_equal(ArtShadow.COLOUR)
-		assert_str(frame[i].extra).contains("fill-opacity")
-	# Darkest at the contact line: the outline is opaque, a ring only stacks to 1 - (1 - a)^n.
-	assert_float(float(ArtShadow.AO_STEP_ALPHA)).is_less(1.0)
+	for line: ArtRender.Poly in lines:
+		assert_bool(Geometry2D.is_point_in_polygon(centre, line.points)).is_false()
+	assert_bool(Geometry2D.is_point_in_polygon(centre, whole[ArtShadow.AO_STEPS].points)).is_true()
+
+
+func test_a_vehicles_contact_line_lies_within_the_parts_that_stand_on_the_ground() -> void:
+	for id: String in ["fossil/harvester", "fossil/heavy_tank", "renew/renew_tanker"]:
+		var model: ArtModel = load("res://assets/art/models/%s.tres" % id) as ArtModel
+		var prims: Array[ArtPrim] = model.shadow_prims()
+		var low: Array[ArtPrim] = []
+		for prim: ArtPrim in prims:
+			if prim.z0 < ArtShadow.CONTACT_Z:
+				low.append(prim)
+		var base: Rect2 = ArtRender.bounds(
+			[_ground_poly(ArtShadow._ground(low, 0.0, ArtShadow.CONTACT_Z))]
+		)
+		var found: Array[ArtRender.Poly] = ArtShadow.pad(prims, 0.0)
+		var box: Rect2 = ArtRender.bounds([found[ArtShadow.AO_STEPS]])
+		assert_vector(box.position).override_failure_message(id).is_equal_approx(
+			base.position, Vector2.ONE
+		)
+		assert_vector(box.end).override_failure_message(id).is_equal_approx(base.end, Vector2.ONE)
+		# The pad's own outline (below 0.25) is wider where a nose overhangs the tracks.
+		assert_float(ArtRender.bounds([found[ArtShadow.AO_STEPS - 1]]).size.x).is_greater(
+			box.size.x
+		)
+
+
+func _ground_poly(points: Array[Vector2]) -> ArtRender.Poly:
+	var poly: ArtRender.Poly = ArtRender.Poly.new()
+	for point: Vector2 in points:
+		poly.points.append(ArtRender.project(Vector3(point.x, point.y, 0.0)))
+	return poly
 
 
 func test_a_shadow_file_is_one_group_with_no_gradient_and_the_pad_before_the_shadow() -> void:
@@ -211,6 +302,7 @@ func test_a_shadow_file_is_one_group_with_no_gradient_and_the_pad_before_the_sha
 	assert_bool(text.contains("Gradient")).is_false()
 	assert_int(text.count("fill-opacity")).is_equal(ArtShadow.AO_STEPS)
 	assert_int(text.count('stroke="#000000"')).is_equal(1)
+	assert_int(text.count('stroke-width="2" stroke-linejoin="round"')).is_equal(1)
 	assert_int(text.find("fill-opacity")).is_less(text.find('fill="#000000"/>'))
 
 

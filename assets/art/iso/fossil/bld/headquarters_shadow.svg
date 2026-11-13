@@ -4,7 +4,7 @@
 <polygon points="228,227.6 2.7,115 228,2.4 453.3,115" fill="#000000" fill-opacity="0.3"/>
 <polygon points="228,221.2 15.5,115 228,8.8 440.5,115" fill="#000000" fill-opacity="0.3"/>
 <polygon points="228,214.8 28.3,115 228,15.2 427.7,115" fill="#000000" fill-opacity="0.3"/>
-<polygon points="228,21.6 414.9,115 228,208.4 41.1,115" fill="none" stroke="#000000"/>
+<polygon points="228,21.6 414.9,115 228,208.4 41.1,115" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
 <polygon points="228,21.6 418,116.5 231.1,210 41.1,115" fill="#000000"/>
 <polygon points="224.7,36.5 378.3,113.3 256.7,174.1 103.1,97.3" fill="#000000"/>
 <polygon points="250.3,47.4 388.3,116.4 262.8,179.1 124.8,110.1" fill="#000000"/>

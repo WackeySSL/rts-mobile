@@ -22,11 +22,12 @@ const FACTION: Dictionary[StringName, StringName] = {
 ## The default view's direction of each faction (Spec 04), which only the other buildings need.
 const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 ## Hull canvas (w, h), the anchor's y, shadow canvas (w, h), lift canvas (w, h), KRITISK patch
-## canvas (w, h) and its cut row. Run `bash scripts/gen-art.sh` and read the sheets when the art
+## canvas (w, h), its cut row and the shadow's anchor (x, y). Run `bash scripts/gen-art.sh`
+## and read the sheets when the art
 ## changes on purpose.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"fossil_space": [384, 438, 246, 456, 230, 88, 272, 378, 368, 392],
-	&"renew_space": [384, 410, 218, 456, 230, 142, 230, 378, 296, 367],
+	&"fossil_space": [384, 438, 246, 456, 230, 88, 272, 378, 368, 392, 228, 19],
+	&"renew_space": [384, 410, 218, 456, 230, 142, 230, 378, 296, 367, 228, 19],
 }
 ## The lift: frames, `anim_ms`, how far up it goes in tiles, the group it moves, the height it rests
 ## at (the top of a primitive under it) and the height of the member above it (the Skyrig's beam,
@@ -117,7 +118,9 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 					lift.y,
 					patch.x,
 					patch.y,
-					sheet.cuts[1]
+					sheet.cuts[1],
+					sheet.anchor(&"shadow").x,
+					sheet.anchor(&"shadow").y
 				]
 			)
 			. override_failure_message("%s canvas" % id)

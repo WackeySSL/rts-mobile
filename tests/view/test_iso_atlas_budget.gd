@@ -38,8 +38,8 @@ const TODAY_CROSS: int = 2852  ## P202: 2993 - 141 (P236: 2659 + 334, two hulls,
 const TODAY_MIRROR_DERRICK: int = 2776  ## P202: 2878 - 102 (P236: 2542 + 336, the Skyrig).
 ## P202: 2910 - 128 (P236: 2650 + 260, the Zenith, its lift and patch, once per player).
 const TODAY_MIRROR_LUMEN: int = 2782
-## Page 2 (shadows only): no key colour in a shadow, so one slot for both players, and each shadow
-## fits the free width of shelf 1; only the trailing shelf grows.
+## Page 2 (shadows only): until P204 puts a key colour in a unit's shadow it is one slot for both
+## players, and each shadow fits the free width of shelf 1; only the trailing shelf grows.
 const TODAY2_CROSS: int = 1514  ## P203: 1116 + 398 (the pads widen every shadow frame).
 const TODAY2_MIRROR_DERRICK: int = 704  ## P203: 570 + 134 (the pads; P236: 566 + 4).
 const TODAY2_MIRROR_LUMEN: int = 814  ## P203: 634 + 180 (the pads; P236: 622 + 12).

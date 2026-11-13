@@ -12,7 +12,8 @@ const OPACITY: String = "0.35"
 const AO_REACH: float = 0.3  ## Tiles the occlusion pad reaches past the ground outline.
 const AO_STEPS: int = 3  ## Stepped rings, no gradient; the inner ones stack to the darker pad.
 const AO_STEP_ALPHA: String = "0.3"  ## Each ring's fill-opacity, inside the group's 35 %.
-const CONTACT_LINE: String = ' stroke="#000000" stroke-width="2" stroke-linejoin="round"'
+const CONTACT_PX: int = 2  ## The contact line's width (nothing thinner than 2 px at 2x).
+const CONTACT_Z: float = 0.02  ## A primitive that starts below this height stands on the ground.
 const GROUND_Z: float = 0.25  ## A primitive that starts below this height touches the ground.
 const SPHERE_POINTS: int = 16
 const COLLINEAR: float = 1e-9  ## Square tiles: a corner this close to a line is not a corner.
@@ -37,40 +38,65 @@ static func polys(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
 ## The frame of a shadow part: the occlusion pad and the contact line round the base, then the cast
 ## shadow over them (ADR 0035 section 4). The pad is `AO_STEPS` nested rings of the ground outline,
 ## each a little wider (to `AO_REACH`), each a black fill at `AO_STEP_ALPHA` so the rings stack
-## darker towards the base; the contact line is the outline itself, 2 px, opaque in the group. All
-## of it is one group with one opacity: no gradient, and no ink above the ground.
-static func frame(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
-	var out: Array[ArtRender.Poly] = pad(prims, yaw)
+## darker towards the base; the contact line is `CONTACT_PX` wide and opaque in the group. All of
+## it is one group with one opacity: no gradient, and no ink above the ground. `figures` draws one
+## contact line per figure of a squad instead of one round them all.
+static func frame(
+	prims: Array[ArtPrim], yaw: float, figures: bool = false
+) -> Array[ArtRender.Poly]:
+	var out: Array[ArtRender.Poly] = pad(prims, yaw, figures)
 	out.append_array(polys(prims, yaw))
 	return out
 
 
-## The pad rings (widest first) and the contact line of `prims` turned by `yaw`; empty for a model
-## with no ground outline.
-static func pad(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
+## The pad rings (widest first), then the contact lines, of `prims` turned by `yaw`. The pad follows
+## the outline of everything below `GROUND_Z`, so it also lies under a nose or a rifle that
+## overhangs; the contact line follows only what stands on the ground (below `CONTACT_Z`), so it
+## runs where the model touches it, round each figure of a squad when `figures` is set. Empty for a
+## model with no ground outline.
+static func pad(prims: Array[ArtPrim], yaw: float, figures: bool = false) -> Array[ArtRender.Poly]:
 	var out: Array[ArtRender.Poly] = []
-	var outline: Array[Vector2] = _hull(_ground(prims, yaw))
+	var outline: Array[Vector2] = _hull(_ground(prims, yaw, GROUND_Z))
 	if outline.size() < 3:
 		return out
 	for step: int in range(AO_STEPS, 0, -1):
 		var ring: Array[Vector2] = _grow(outline, AO_REACH * step / AO_STEPS)
 		var poly: ArtRender.Poly = _screen(ring)
 		poly.fill = COLOUR
-		poly.extra = ' fill-opacity="%s"' % AO_STEP_ALPHA
+		poly.fill_opacity = AO_STEP_ALPHA
 		out.append(poly)
-	var line: ArtRender.Poly = _screen(outline)
-	line.fill = "none"
-	line.stroke = COLOUR
-	line.extra = ""
-	out.append(line)
+	var buckets: Dictionary[String, Array] = {}
+	for prim: ArtPrim in prims:
+		var key: String = _figure(prim) if figures else ""
+		if not buckets.has(key):
+			buckets[key] = [] as Array[ArtPrim]
+		buckets[key].append(prim)
+	var keys: Array = buckets.keys()
+	keys.sort()
+	for key: String in keys:
+		var typed: Array[ArtPrim] = []
+		typed.assign(buckets[key])
+		var base: Array[Vector2] = _hull(_ground(typed, yaw, CONTACT_Z))
+		if base.size() < 3:
+			continue
+		var line: ArtRender.Poly = _screen(base)
+		line.fill = "none"
+		line.stroke = COLOUR
+		line.stroke_px = CONTACT_PX
+		out.append(line)
 	return out
 
 
-## The ground points (z ignored) of the primitives that touch the ground, in tiles.
-static func _ground(prims: Array[ArtPrim], yaw: float) -> Array[Vector2]:
+## The figure of a squad a primitive belongs to: the first letter of its group (`a_body` is a).
+static func _figure(prim: ArtPrim) -> String:
+	return String(prim.group).substr(0, 1)
+
+
+## The ground points (z ignored) of the primitives that start below `below`, in tiles.
+static func _ground(prims: Array[ArtPrim], yaw: float, below: float) -> Array[Vector2]:
 	var found: Array[Vector2] = []
 	for prim: ArtPrim in prims:
-		if prim.z0 >= GROUND_Z:
+		if prim.z0 >= below:
 			continue
 		if prim.shape == &"sphere":
 			var radius: float = prim.size.x / 2.0
@@ -93,6 +119,7 @@ static func _grow(ring: Array[Vector2], reach: float) -> Array[Vector2]:
 		PackedVector2Array(ring), reach, Geometry2D.JOIN_MITER
 	)
 	if shapes.is_empty():
+		push_error("ArtShadow: the offset of a ground outline is empty")
 		return ring
 	for point: Vector2 in shapes[0]:
 		grown.append(point)

@@ -4,7 +4,9 @@
 <polygon points="120.5,36.1 127.6,47.8 99.1,62.1 46.5,60.4 7.7,41 37.1,13.7 59.8,2.4 89.2,6.9 106.1,15.3" fill="#000000" fill-opacity="0.3"/>
 <polygon points="111.9,37.5 117.4,46.6 95.6,57.5 50.5,56 18.9,40.2 44.4,16.5 62.3,7.5 84.4,10.9 98.2,17.8" fill="#000000" fill-opacity="0.3"/>
 <polygon points="103.2,38.9 107.1,45.3 92.1,52.8 54.5,51.6 30,39.4 51.8,19.2 64.9,12.6 79.6,14.9 90.4,20.3" fill="#000000" fill-opacity="0.3"/>
-<polygon points="67.4,17.8 74.8,18.9 82.5,22.7 94.6,40.3 96.9,44 88.6,48.2 58.5,47.2 41.2,38.6 59.1,21.9" fill="none" stroke="#000000"/>
+<polygon points="51.4,37.4 60.7,42.1 56.6,44.2 47.3,39.5" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="81.5,38.4 90.8,43 86.6,45.1 77.4,40.5" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="69.4,20.8 78.6,25.4 74.5,27.5 65.2,22.9" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
 <polygon points="56.6,40 68.4,45.9 64.2,48 52.4,42.1" fill="#000000"/>
 <polygon points="51.4,37.4 63.3,43.4 59.1,45.4 47.3,39.5" fill="#000000"/>
 <polygon points="59.9,40.1 73.9,47.1 66.5,50.7 52.6,43.8" fill="#000000"/>

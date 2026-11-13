@@ -59,18 +59,19 @@ const HEIGHT_PX: Dictionary[StringName, Vector2] = {
 	&"renew_defence": Vector2(40, 60),
 }
 ## Canvas and anchor in px of the 2x art: hull width, hull height, hull anchor y, shadow width,
-## shadow height. The anchor x is half the width, the shadow's anchor is the same back corner with
+## shadow height, shadow anchor x and y. The anchor x is half the width, the shadow's
+## anchor is the same back corner, with
 ## the occlusion pad's margin (P203) above and to the west of it. When the art changes, run
 ## `bash scripts/gen-art.sh` and read the new numbers from the sheets.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"renew_hq": [384, 352, 160, 456, 230],
-	&"renew_power": [256, 236, 107, 352, 166],
-	&"renew_refinery": [384, 294, 101, 456, 230],
-	&"renew_barracks": [256, 236, 107, 328, 174],
-	&"renew_factory": [384, 332, 139, 490, 234],
-	&"renew_radar": [256, 160, 32, 328, 166],
-	&"renew_defence": [128, 104, 39, 220, 112],
-	&"renew_strike": [384, 388, 195, 516, 260],
+	&"renew_hq": [384, 352, 160, 456, 230, 228, 19],
+	&"renew_power": [256, 236, 107, 352, 166, 164, 19],
+	&"renew_refinery": [384, 294, 101, 456, 230, 228, 19],
+	&"renew_barracks": [256, 236, 107, 328, 174, 164, 19],
+	&"renew_factory": [384, 332, 139, 490, 234, 228, 19],
+	&"renew_radar": [256, 160, 32, 328, 166, 164, 19],
+	&"renew_defence": [128, 104, 39, 220, 112, 100, 19],
+	&"renew_strike": [384, 388, 195, 516, 260, 228, 19],
 }
 ## The Rail Battery's head frames, px of the 2x art: canvas width, canvas height, pivot x, pivot y
 ## (the anchor of a head is its pivot, which the sheet's mount puts on the plinth's turntable).
@@ -171,7 +172,17 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 		var hull: Vector2i = sheet.frame_size(&"hull")
 		var shadow: Vector2i = sheet.frame_size(&"shadow")
 		(
-			assert_array([hull.x, hull.y, sheet.anchor(&"hull").y, shadow.x, shadow.y])
+			assert_array(
+				[
+					hull.x,
+					hull.y,
+					sheet.anchor(&"hull").y,
+					shadow.x,
+					shadow.y,
+					sheet.anchor(&"shadow").x,
+					sheet.anchor(&"shadow").y
+				]
+			)
 			. override_failure_message("%s canvas" % id)
 			. is_equal(want)
 		)

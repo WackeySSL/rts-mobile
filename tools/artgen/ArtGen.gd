@@ -330,7 +330,7 @@ static func _shoot(model: ArtModel, part: StringName) -> Shot:
 			var prims: Array[ArtPrim] = []
 			prims.assign(posed[frame])
 			var polys: Array[ArtRender.Poly] = (
-				ArtShadow.frame(prims, turn)
+				ArtShadow.frame(prims, turn, model.category == &"inf")
 				if part == ArtModel.SHADOW
 				else ArtRender.render(prims, turn, model.faction, model.frame_rest(part))
 			)

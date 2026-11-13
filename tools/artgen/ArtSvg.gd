@@ -56,8 +56,19 @@ static func group(
 			var at: Vector2 = point * scale + origin
 			points.append("%s,%s" % [num(at.x), num(at.y)])
 		var edge: String = ' stroke="%s"' % poly.stroke if poly.stroke != "" else ""
+		var opacity: String = (
+			' fill-opacity="%s"' % poly.fill_opacity if poly.fill_opacity != "" else ""
+		)
+		var width: String = (
+			' stroke-width="%d" stroke-linejoin="round"' % poly.stroke_px
+			if poly.stroke_px > 0
+			else ""
+		)
 		lines.append(
-			'<polygon points="%s" fill="%s"%s%s/>' % [" ".join(points), poly.fill, edge, poly.extra]
+			(
+				'<polygon points="%s" fill="%s"%s%s%s/>'
+				% [" ".join(points), poly.fill, opacity, edge, width]
+			)
 		)
 	lines.append("</g>")
 	return lines
