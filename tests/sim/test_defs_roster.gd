@@ -1,13 +1,14 @@
 extends GdUnitTestSuite
 ## The Phase 3 roster (plan rows P72 and P107, ADR 0018 sections 8 and 9, ADR 0023 section 7,
-## docs/GDD.md): the nine Derrick League buildings (P234 added the space
-## centre, whose numbers are test_defs_space_centre's), the six units and the four weapons of the
+## docs/GDD.md): the ten Derrick League buildings (P234 added the space
+## centre and P239 the anti-air gun, whose numbers are test_defs_space_centre's and
+## test_defs_anti_air's), the six units and the four weapons of the
 ## roster as literals, and the rules that span files: the requirement chains, the free tanker, the
 ## dock and exit cells. A type's art is pinned in tests/art from P99 on. The rules every single file
 ## obeys (a building has speed 0, radius 0 and armour Building; a mobile unit has a radius in
 ## 1..500; a weapon reaches the ring corner; a footprint is square) and the faction rules are
 ## test_defs_data's and test_defs_factions_data's, which run them over these files too. The unit
-## files hold the Lumen Accord's fifteen as well (P108): the cases here that walk the files take
+## files hold the Lumen Accord's sixteen as well (P108): the cases here that walk the files take
 ## the Derrick League's by their faction, and test_defs_roster_renew holds the other roster to the
 ## same rules.
 
@@ -24,7 +25,7 @@ const INFANTRY: int = 1
 const VEHICLES: int = 2
 
 
-func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
+func test_the_data_holds_the_ten_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -38,6 +39,7 @@ func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
 		"defence_turret",
 		"fossil_strike",
 		"fossil_space",
+		"fossil_aa",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -50,7 +52,7 @@ func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 9)
+			id in wanted.slice(0, 10)
 		)
 
 
@@ -201,10 +203,11 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	for id: String in weapons:
 		assert_array(_weapon_row(id)).override_failure_message(id).is_equal(weapons[id])
 	# Every weapon file is one of the seven here, the Lumen Accord's own two (breaker_rocket and
-	# arcline_gun, test_defs_roster_renew) or the Deep Bore's rupture (fossil_rupture, P110d: no
-	# gun, test_defs_strike_data), each used by the unit or building that names it.
+	# arcline_gun, test_defs_roster_renew), the Deep Bore's rupture (fossil_rupture, P110d: no
+	# gun, test_defs_strike_data) or the two anti-air guns (P239, test_defs_anti_air), each used by
+	# the unit or building that names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(10)
+	assert_int(files.size()).is_equal(12)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -416,6 +419,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 		[
 			"barracks",
 			"defence_turret",
+			"fossil_aa",
 			"fossil_radar",
 			"fossil_space",
 			"fossil_strike",

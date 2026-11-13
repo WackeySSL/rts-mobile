@@ -10,6 +10,7 @@
 [ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="8_radar"]
 [ext_resource type="Resource" path="res://data/units/defence_turret.tres" id="9_defence"]
 [ext_resource type="Resource" path="res://data/units/fossil_space.tres" id="99_space"]
+[ext_resource type="Resource" path="res://data/units/fossil_aa.tres" id="98_aa"]
 [ext_resource type="Resource" path="res://data/units/fossil_strike.tres" id="10_strike"]
 [ext_resource type="Resource" path="res://data/units/rifle_squad.tres" id="11_rifle"]
 [ext_resource type="Resource" path="res://data/units/rocket_squad.tres" id="12_rocket"]
@@ -24,4 +25,4 @@ id = &"fossil"
 display_name = "Derrick League"
 emblem = &"emblem_fossil"
 key_triad = PackedStringArray("#FF9446", "#E8681F", "#B04B12")
-roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])
