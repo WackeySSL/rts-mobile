@@ -212,10 +212,10 @@ static func aim(world: World, rows: PackedInt32Array, target_row: int) -> Packed
 
 ## Rebuilds `building_rows` (rows of a type with a footprint) and `harvester_rows` (mobile rows of
 ## a type with a cargo capacity, ADR 0018 section 3) and `air_rows` (rows of an AIR-layer type,
-## P241), all ascending, when `rows_version` has moved since the last rebuild, and says whether it
-## did. They are derived (ADR 0016): equal to a scan of
-## the rows whenever the version is current, and in no hash section. Power.run calls it first in
-## ECONOMY.
+## P241) and `repair_rows` (a repair role and no pads, P276), all ascending, when `rows_version`
+## has moved since the last rebuild, and says whether it did. They are derived (ADR 0016): equal to
+## a scan of the rows whenever the version is current, and in no hash section. Power.run calls it
+## first in ECONOMY.
 static func rebuild_lists(world: World) -> bool:
 	if world._lists_version == world.rows_version:
 		return false
@@ -228,9 +228,13 @@ static func rebuild_lists(world: World) -> bool:
 	var buildings: PackedInt32Array = world.building_rows
 	var harvesters: PackedInt32Array = world.harvester_rows
 	var air: PackedInt32Array = world.air_rows
+	var repairers: PackedInt32Array = world.repair_rows
+	var roles: PackedInt32Array = world.type_repair_classes
+	var pads: PackedInt32Array = world.type_pads
 	buildings.clear()
 	harvesters.clear()
 	air.clear()
+	repairers.clear()
 	for row: int in types.size():
 		var type: int = types[row]
 		if type >= known:
@@ -241,6 +245,8 @@ static func rebuild_lists(world: World) -> bool:
 			harvesters.append(row)
 		if Air.is_aircraft(world, type):
 			air.append(row)
+		if type < roles.size() and type < pads.size() and roles[type] != 0 and pads[type] == 0:
+			repairers.append(row)
 	return true
 
 

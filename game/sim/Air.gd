@@ -169,6 +169,7 @@ static func _service(world: World, field: int, row: int, stamp: int) -> void:
 	if world.credits[player] >= cost:
 		world.credits[player] -= cost
 		world.hp[row] += gained
+		Repair.announce(world, field, row, gained)
 
 
 ## REPAIR (ADR 0036 section 7; the shared command, ADR 0037 section 2): `unit_ids` are aircraft,

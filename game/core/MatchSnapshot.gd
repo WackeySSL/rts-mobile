@@ -176,6 +176,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"building_rows",
 	&"harvester_rows",
 	&"air_rows",
+	&"repair_rows",
 	&"mod_dealt",
 	&"mod_taken",
 	&"mod_ammo",
