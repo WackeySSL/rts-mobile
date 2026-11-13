@@ -34,6 +34,18 @@ func test_the_space_centres_are_in_the_checked_names() -> void:
 	assert_str(names.get("renew_space", "")).is_equal("Zenith")
 
 
+## The engineering centres' and the four upgrades' names (P247) are in the checked set, as captions
+## (no sash: nothing requires a centre or an upgrade).
+func test_the_engineering_centres_and_upgrades_are_in_the_checked_names() -> void:
+	var names: Dictionary[String, String] = DisplayNames.all()
+	assert_str(names.get("fossil_engineering", "")).is_equal("Draft Shop")
+	assert_str(names.get("renew_engineering", "")).is_equal("Lens Works")
+	assert_str(names.get("heavy_bombs", "")).is_equal("Heavy Bombs")
+	assert_str(names.get("plated_hull", "")).is_equal("Plated Hull")
+	assert_str(names.get("focus_bombs", "")).is_equal("Focus Bombs")
+	assert_str(names.get("glaze_hull", "")).is_equal("Glaze Hull")
+
+
 ## The names of `names` and `needed` that overrun at one profile, each as a line of the report.
 func _misfits(
 	profile_name: StringName,

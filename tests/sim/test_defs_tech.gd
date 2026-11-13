@@ -7,8 +7,10 @@ extends GdUnitTestSuite
 ## removes the skips named below: a faction's upgrades would otherwise make research tiles in
 ## `BuildSidebar._build_tiles` and research types in shipped matches (`WorldLoad._upgrade_for`)
 ## before a centre can be built. The GDD gives the names, size, cost, power, requirement and the
-## two percentages. Hit points, build time, sight, armour, research costs and times are in
-## neither: starting values for the balance run (the centre follows the airfield's scale).
+## two percentages. Hit points (900), build time (360 ticks), sight (5000) and the research cost and
+## time (800 credits, 1350 ticks, equal for the bomb and the hull upgrade) are the lead's starting
+## values (P26bw), in the GDD's tech note, for P255 to tune. P249 also removes the centres from the
+## exclusion lists of test_defs_roster, test_defs_roster_renew and test_defs_factions_data.
 ## The damage-dealt upgrades are keyed on faction, weapon and stat (P246's rule), so each names the
 ## bomber's own bombs. What the sim does with them is test_upgrades'.
 
@@ -40,8 +42,8 @@ const UPGRADES: Dictionary[String, Array] = {
 		"drillhead_bombs",
 		UpgradeDef.Stat.DAMAGE_TAKEN,
 		75,
-		600,
-		1200
+		800,
+		1350
 	],
 	"focus_bombs":
 	[
@@ -64,8 +66,8 @@ const UPGRADES: Dictionary[String, Array] = {
 		"sunfall_bombs",
 		UpgradeDef.Stat.DAMAGE_TAKEN,
 		75,
-		600,
-		1200
+		800,
+		1350
 	],
 }
 ## ADR 0032: a name fits one line of the item card, at most about 11 characters.
@@ -82,7 +84,7 @@ func _upgrade(id: String) -> UpgradeDef:
 	return load("res://data/upgrades/%s.tres" % id) as UpgradeDef
 
 
-func test_each_faction_has_an_engineering_centre_with_the_gdd_numbers() -> void:
+func test_each_faction_has_an_engineering_centre_with_the_gdd_and_starting_numbers() -> void:
 	for id: String in CENTRES:
 		var def: BuildingDef = _building(id)
 		assert_object(def).override_failure_message(id).is_not_null()
@@ -90,23 +92,26 @@ func test_each_faction_has_an_engineering_centre_with_the_gdd_numbers() -> void:
 		assert_str(String(def.faction)).is_equal(CENTRES[id][0])
 		assert_str(def.display_name).is_equal(CENTRES[id][1])
 		assert_str(String(def.requires.type_id)).is_equal(CENTRES[id][2])
+		# GDD: size, cost, power. The tab is the structures drawer's.
 		assert_array([def.footprint, def.cost, def.power, def.tab]).is_equal(
 			[Vector2i(2, 2), 1200, -40, World.Tab.STRUCTURES]
 		)
 		assert_int(def.produces).is_equal(World.Tab.RESEARCH)
+		# The lead's starting values (P26bw), GDD tech note.
 		assert_array([def.max_hp, def.build_ticks, def.sight_range]).is_equal([900, 360, 5000])
 		assert_array([def.speed, def.radius, def.armour, def.strike_kind, def.pads]).is_equal(
 			[0, 0, World.Armour.BUILDING, 0, 0]
 		)
 		assert_object(def.weapon).is_null()
 		assert_array(Rules.air_problems("%s.tres" % id, def)).is_empty()
-		# Not in a roster yet: P249 (art, item card) adds the roster entry and removes the skips
-		# in test_defs_roster, test_defs_roster_renew and test_defs_factions_data.
+		# Not in a roster yet: P249 (art, item card) adds the roster entry and removes the centres
+		# from the exclusion lists in test_defs_roster, test_defs_roster_renew and
+		# test_defs_factions_data.
 		var faction: FactionDef = load("res://data/factions/%s.tres" % CENTRES[id][0])
 		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
 
 
-func test_each_upgrade_has_its_gdd_values_and_changes_its_factions_bomber() -> void:
+func test_each_upgrade_has_its_values_and_changes_its_factions_bomber() -> void:
 	assert_int(UPGRADES.size()).is_equal(4)
 	for id: String in UPGRADES:
 		var row: Array = UPGRADES[id]
@@ -116,6 +121,7 @@ func test_each_upgrade_has_its_gdd_values_and_changes_its_factions_bomber() -> v
 		assert_str(String(up.faction)).is_equal(row[0])
 		assert_str(up.display_name).is_equal(row[1])
 		assert_str(String(up.requires.type_id)).is_equal(row[2])
+		# GDD: the stat and the percent. Cost and time are the lead's starting values (P26bw).
 		assert_array([up.stat, up.value, up.cost, up.research_ticks]).is_equal(
 			[row[5], row[6], row[7], row[8]]
 		)
