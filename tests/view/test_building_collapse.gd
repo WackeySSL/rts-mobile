@@ -247,7 +247,7 @@ func _counts() -> Array:
 
 func test_the_patch_follows_the_body_down_without_a_gap_at_both_stages() -> void:
 	for scale: float in SCALES:
-		for percent: int in [50, 20]:  # SKADET, then KRITISK.
+		for percent: int in [20]:  # KRITISK: SKADET has no patch (ADR 0034).
 			_open(_pair() + [[1, 22, 4]], {}, scale)
 			var rise: float = -_body(1).get_rect().position.y * _body(1).scale.y  # The intact picture's.
 			_hit(1, percent)
@@ -279,7 +279,7 @@ func test_collapse_writes_go_before_the_stage_queue() -> void:
 	var ids: PackedInt32Array = _runner.snapshot.unit_id.duplicate()
 	var died: int = _kill([ids[0]])  # Its start is written in this frame.
 	for id: int in ids.slice(1):
-		Dmg.set_hp(_runner, id, 66)
+		Dmg.set_hp(_runner, id, 10)
 	_runner.run_ticks(1)  # 39 stage changes of 5 writes wait in the queue.
 	var before: int = _layer.life_writes()
 	_frame(died, 270.0)  # The first sink step is due.

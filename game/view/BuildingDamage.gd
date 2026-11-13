@@ -75,10 +75,10 @@ static func show_body(
 ## always for SKADET (ADR 0034).
 static func bases_of(sort: WorldSort, sheet: IsoSheetDef, owner_id: int) -> PackedInt32Array:
 	var found: PackedInt32Array = PackedInt32Array()
-	for stage: int in PARTS.size():
-		var part: StringName = PARTS[stage]
+	for i: int in PARTS.size():
+		var part: StringName = PARTS[i]
 		var base: int = -1
-		if stage + 1 == KRITISK and sheet.has_part(part):
+		if i + 1 == KRITISK and sheet.has_part(part):
 			base = sort.base_of(sheet, part, BuildingLayer.NO_FRAME, owner_id)
 		found.append(base)
 	return found

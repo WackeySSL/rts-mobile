@@ -160,3 +160,31 @@ func test_a_body_is_not_trimmed_where_its_patch_has_no_region() -> void:
 		)
 	BuildingDamage.show_body(_sort, _def, _body(1), _body_base(), _bases(), 2)
 	assert_bool(_body(1).region_filter_clip_enabled).is_true()  # With its patch it is cut.
+
+
+# --- SKADET draws the intact picture (ADR 0034) ---
+
+
+func test_picture_is_intact_at_skadet_for_every_building_sheet_and_the_crafted_one() -> void:
+	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
+	var sheets: Array[IsoSheetDef] = [Dmg.sheet()]
+	for sheet: IsoSheetDef in index.sheets:
+		if sheet.category == &"bld":
+			sheets.append(sheet)
+	assert_int(sheets.size()).is_greater(1)
+	for sheet: IsoSheetDef in sheets:
+		var note: String = String(sheet.art_id)
+		assert_int(BuildingDamage.picture(sheet, 0)).override_failure_message(note).is_equal(0)
+		assert_int(BuildingDamage.picture(sheet, 1)).override_failure_message(note).is_equal(0)
+		var kritisk: int = 2 if sheet.has_part(&"dmg2") and sheet.cuts.size() >= 2 else 0
+		assert_int(BuildingDamage.picture(sheet, 2)).override_failure_message(note).is_equal(
+			kritisk
+		)
+
+
+func test_bases_of_reads_only_the_kritisk_patch() -> void:
+	_open(_pair())
+	var bases: PackedInt32Array = BuildingDamage.bases_of(_sort, _def, 1)
+	assert_int(bases.size()).is_equal(2)
+	assert_int(bases[0]).is_equal(-1)  # SKADET: no patch, `dmg1` is not read even where it exists.
+	assert_int(bases[1]).is_greater_equal(0)

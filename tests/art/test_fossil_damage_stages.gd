@@ -254,8 +254,9 @@ func test_the_how_to_play_row_says_what_a_damaged_building_looks_like() -> void:
 		assert_str(text)
 		. contains(
 			(
-				"| A building is badly damaged | Under two thirds of its health a building shows blown "
-				+ "windows, soot and a broken corner, mast or wing; under a third part of it has "
+				"| A building is badly damaged | Under two thirds of its health a building keeps its "
+				+ "picture and only smokes and burns (see the row above); under a third it shows "
+				+ "blown windows, soot and a broken corner, mast or wing, and part of it has "
 				+ "collapsed, you can see inside, and it burns from inside. A building under "
 				+ "construction does not show it. An enemy building shows its damage only while you see "
 				+ "it; its dimmed picture in the fog shows the damage you last saw "

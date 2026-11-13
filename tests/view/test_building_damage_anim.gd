@@ -237,9 +237,10 @@ func test_a_building_that_dies_while_queued_leaves_the_queue_with_no_stale_write
 func test_a_new_match_drops_the_queue() -> void:
 	_open(_grid(40))
 	for id: int in _runner.snapshot.unit_id:
-		Dmg.set_hp(_runner, id, 66)
+		Dmg.set_hp(_runner, id, 10)
 	_runner.run_ticks(1)
 	_layer._process(0.0)
+	assert_int(_layer._stage_queue.size()).is_greater(0)
 	_runner.start()  # Another match serial: the 36 that waited belong to the old one.
 	_layer._process(0.0)
 	await await_idle_frame()

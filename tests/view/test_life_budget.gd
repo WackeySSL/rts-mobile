@@ -870,8 +870,9 @@ func test_the_damage_stage_writes_stay_in_their_shares_of_a_frame() -> void:
 	# The passes did drop the stages of buildings and vehicles: the test is not vacuous.
 	for run: Pass in [_full, _hp40, _hp20, _restore, _in_step]:
 		assert_int(run.stage_v_total).is_greater(0)
-	# A building has a picture only at KRITISK (ADR 0034): the 40 % passes write none for it.
-	for run: Pass in [_hp20, _in_step]:
+	# A building has a picture only at KRITISK (ADR 0034): a pass that reaches or leaves it writes
+	# (`_hp20`, `_restore` 2 -> 0, `_in_step`); `_full` and `_hp40` need not.
+	for run: Pass in [_hp20, _restore, _in_step]:
 		assert_int(run.stage_b_total).is_greater(0)
 	assert_int(_collapse.stage_b_total).is_greater(0)  # The collapses' writes.
 	assert_int(_vehicles).is_greater(0)
