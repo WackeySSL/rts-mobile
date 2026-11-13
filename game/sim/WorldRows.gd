@@ -2,11 +2,12 @@ class_name WorldRows
 extends RefCounted
 ## The row writers of a World, split out of World.gd (P232c) so that file keeps room under gdlint's
 ## 1,000 lines. Pure static helpers: they write the World passed in and keep nothing.
-## `World.add_unit`, `World._push_unit_event` and `World.write_unit_event` are one-line delegates
-## to the functions of the same names here, so no caller names this class. The code is World.gd's
-## own, moved with no change. This is the home of every other function that appends or inserts a
-## row (P262's `World.insert_row` is one more delegate to here); ADR 0007 section 2 keeps every
-## column, list and rule int in World itself.
+## `World.add_unit`, `World._push_unit_event`, `World.write_unit_event` and (P262)
+## `World.insert_row` are one-line delegates to the functions of the same names here, so no caller
+## names this class.
+## The first three are World.gd's own code, moved (P262 only split add_unit's column writes into
+## `_append_columns`, which insert_row shares). This is the home of every other function that
+## appends or inserts a row; ADR 0007 section 2 keeps every column, list and rule int in World.
 
 
 ## Appends an idle unit at (x, y) at its type's max hp (at least 1; 1 for a type with no entry)
@@ -19,6 +20,61 @@ static func add_unit(world: World, owner: int, type_index: int, x: int, y: int) 
 		return 0
 	var id: int = world.next_id
 	world.next_id += 1
+	var type_hp: int = 1
+	if type_index < world.type_max_hp.size():
+		type_hp = maxi(world.type_max_hp[type_index], 1)
+	_append_columns(world, id, owner, type_index, type_hp, x, y)
+	push_unit_event(world, World.Event.SPAWNED, world.unit_id.size() - 1)
+	world.rows_version += 1
+	world.player_count = maxi(world.player_count, owner)
+	return id
+
+
+## Inserts a squad that left a carrier as an idle row with its old `id` at `hp`, so that the rows
+## stay ascending by id, and returns its row (ADR 0036 section 8; Carry.run calls it in ECONOMY,
+## at event cadence: O(rows x columns)). It returns -1 and changes nothing when the table already
+## holds `max_rows` rows (the squad then stays aboard), when `hp` is below 1 (REMOVE would take the
+## row at once), when `owner` is not a player 1..player_count, when `type_index` is not a type, when
+## `id` is below 1 (0 means "none") or not below `next_id` (an id never issued, which add_unit would
+## issue again) or when a row already has `id`. It bumps `rows_version`, writes no event and does
+## not touch `next_id`, `spawn_refused` or `player_count`.
+## Rows at and above the returned row move up by one, so a caller holding row indexes must re-read
+## them. The derived lists `building_rows` and `harvester_rows` stay stale until
+## `Buildings.rebuild_lists`: a caller after `Power.run` (which rebuilds them at the start of
+## ECONOMY; `Carry.run` is one) rebuilds them itself.
+static func insert_row(
+	world: World, id: int, owner: int, type_index: int, hp: int, x: int, y: int
+) -> int:
+	if (
+		world.unit_id.size() >= world.max_rows
+		or hp < 1
+		or id < 1
+		or id >= world.next_id
+		or owner < 1
+		or owner > world.player_count
+		or type_index < 0
+		or type_index >= world.type_ids.size()
+	):
+		return -1
+	var row: int = world.unit_id.bsearch(id)
+	if row < world.unit_id.size() and world.unit_id[row] == id:
+		return -1
+	var last: int = world.unit_id.size()
+	_append_columns(world, id, owner, type_index, hp, x, y)
+	if row < last:  # Rotate the appended record down to its place, column by column.
+		for column_name: StringName in World.ROW_ARRAYS:
+			var column: PackedInt32Array = world.get(column_name)
+			column.insert(row, column[last])
+			column.resize(last + 1)
+	world.rows_version += 1
+	return row
+
+
+## Appends one idle row at (x, y) to every ROW_ARRAYS column, the start values of a new unit
+## (add_unit and insert_row share it). `type_index` may lie beyond the type tables (hand-built).
+static func _append_columns(
+	world: World, id: int, owner: int, type_index: int, hp: int, x: int, y: int
+) -> void:
 	world.unit_id.append(id)
 	world.owner.append(owner)
 	world.type_index.append(type_index)
@@ -28,9 +84,7 @@ static func add_unit(world: World, owner: int, type_index: int, x: int, y: int) 
 	world.goal_y.append(y)
 	world.group_cell.append(-1)
 	world.order.append(World.Order.IDLE)
-	world.hp.append(
-		maxi(world.type_max_hp[type_index], 1) if type_index < world.type_max_hp.size() else 1
-	)
+	world.hp.append(hp)
 	world.order_target.append(0)
 	world.target.append(0)
 	world.cooldown.append(0)
@@ -49,10 +103,7 @@ static func add_unit(world: World, owner: int, type_index: int, x: int, y: int) 
 	world.offline_until.append(0)
 	world.build_left.append(0)
 	world.ammo.append(world.type_ammo[type_index] if type_index < world.type_ammo.size() else 0)
-	push_unit_event(world, World.Event.SPAWNED, world.unit_id.size() - 1)
-	world.rows_version += 1
-	world.player_count = maxi(world.player_count, owner)
-	return id
+	world.carry_mode.append(0)
 
 
 ## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.

@@ -32,8 +32,12 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## TABS grew from 3 to 5 (the per-tab player arrays are longer), so the header, the new row
 ## section, the five sections after the rows and the "players" section changed, and the map digest
 ## moved with the fourth (open AIR) plane of move_cost; the digest changed from a9e33d0d17b232fe
-## (no row, rule or run moved: every new value is 0 or the start value).
-const TICK_0_SEED_1: String = "781a749381ea2eb2"
+## (no row, rule or run moved: every new value is 0 or the start value). P262 (ADR 0036 sections 3
+## and 8, exception 24): STATE_FORMAT became 7, the row column "carry_mode", the scalar "pass_count"
+## and the section "passengers" joined the hash, so the header, the new row section and the six
+## sections after the rows changed; the digest changed from 781a749381ea2eb2 (no row, rule or run
+## moved: the new column is all zeros, the table empty).
+const TICK_0_SEED_1: String = "dd094805d77cbf7b"
 
 
 ## Every int, bool and Packed array member of a helper, private ones too, is in HASHED or UNHASHED
@@ -62,14 +66,15 @@ func test_every_helper_member_is_listed_once() -> void:
 
 ## The rule ints defs_hash covers are the RulesDef ints (UNHASHED_SCALARS holds them by name): the
 ## 15 of Phase 2, the 18 of Phase 3 (ADR 0018 section 9), the 3 of place-first construction (ADR
-## 0026 section 12) and the 4 of building sale and repair (ADR 0037 sections 3 and 4), 40 in all.
+## 0026 section 12), the 4 of building sale and repair (ADR 0037 sections 3 and 4) and the
+## passenger table size (ADR 0036 section 3), 41 in all.
 func test_the_rule_scalars_are_the_rules_def_ints() -> void:
 	var rule_ints: Array[StringName] = []
 	for info: Dictionary in RulesDef.new().get_property_list():
 		if (int(info.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0 and info.type == TYPE_INT:
 			rule_ints.append(StringName(info.name))
 	assert_array(World.RULE_SCALARS).contains_exactly_in_any_order(rule_ints)
-	assert_int(rule_ints.size()).is_equal(40)
+	assert_int(rule_ints.size()).is_equal(41)
 
 
 ## A `+` on typed constants gives an untyped Array (Godot 4.7.2), which a typed local or parameter
@@ -87,7 +92,7 @@ func test_every_shape_scalar_and_hashed_list_is_a_typed_string_name_array() -> v
 				var typed: bool = list.is_typed() and list.get_typed_builtin() == TYPE_STRING_NAME
 				assert_bool(typed).override_failure_message(label).is_true()
 				checked += 1
-	assert_int(checked).is_equal(27)  # PAD_ARRAYS and UPGRADE_ARRAYS joined with P232.
+	assert_int(checked).is_equal(28)  # PAD_, UPGRADE_ (P232) and PASSENGER_ARRAYS (P262) joined.
 
 
 ## The literal UNHASHED lists repeat the names of STATE_ARRAYS and RULE_SCALARS; this keeps the
@@ -245,9 +250,10 @@ func test_the_sections_are_named_in_hash_order() -> void:
 	var names: PackedStringArray = World.hash_section_names()
 	assert_array(names.slice(0, 4)).is_equal(["header", "map", "unit_id", "owner"])
 	var tail: Array[String] = ["home", "ready_tick", "offline_until", "build_left", "ammo"]
-	tail.append_array(["projectiles", "fog", "players", "ore", "ghosts"])
+	tail.append_array(["carry_mode", "projectiles", "fog", "players", "ore", "ghosts"])
+	tail.append("passengers")
 	assert_array(names.slice(25)).is_equal(tail)
-	assert_array(names.slice(2, 30)).is_equal(World.ROW_ARRAYS)
+	assert_array(names.slice(2, 31)).is_equal(World.ROW_ARRAYS)
 	assert_int(_world().hash_parts().size()).is_equal(names.size())
 
 

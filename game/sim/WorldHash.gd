@@ -14,9 +14,10 @@ extends RefCounted
 ## endian); the first 8 digest bytes as a signed int64. It reads only the hashed lists: the header
 ## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
 ## used free stack, FogGrid.HASHED (the explored bytes: the visible counts are derived from the
-## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays and the live ghost
-## records. The DERIVED_ARRAYS and the type tables stay out. A hand-built world hashes before
-## prepare() too (empty helpers and map), to another value than after it.
+## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays, the live ghost
+## records and the live passenger records. The DERIVED_ARRAYS and the type tables stay out. A
+## hand-built world hashes before prepare() too (empty helpers and map), to another value than
+## after it.
 static func state_hash(world: World) -> int:
 	var ctx: HashingContext = _start_hash()
 	for section: int in World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS:
@@ -35,14 +36,17 @@ static func hash_parts(world: World) -> PackedInt64Array:
 	return parts
 
 
-## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts".
-## The "fog" section feeds FogGrid.HASHED, which is `explored` alone since STATE_FORMAT 2; the name
-## stays. "players" feeds one block per PLAYER_ARRAYS array, "ore" one per ORE_ARRAYS array and
-## "ghosts" two (_feed_ghosts); they come after "fog" since STATE_FORMAT 3.
+## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts",
+## "passengers". The "fog" section feeds FogGrid.HASHED, which is `explored` alone since
+## STATE_FORMAT 2; the name stays. "players" feeds one block per PLAYER_ARRAYS array, "ore" one per
+## ORE_ARRAYS array and "ghosts" two (_feed_ghosts); they come after "fog" since STATE_FORMAT 3.
+## "passengers" (STATE_FORMAT 7) is last: one block, the live records of the passenger table
+## (_feed_passengers).
 static func hash_section_names() -> PackedStringArray:
 	var names: PackedStringArray = PackedStringArray(["header", "map"])
 	names.append_array(PackedStringArray(World.ROW_ARRAYS))
 	names.append_array(PackedStringArray(["projectiles", "fog", "players", "ore", "ghosts"]))
+	names.append("passengers")
 	return names
 
 
@@ -115,8 +119,10 @@ static func _feed_section(ctx: HashingContext, world: World, section: int) -> vo
 	elif section == rows_end + 3:
 		for array_name: StringName in World.ORE_ARRAYS:
 			_feed(ctx, section, _bytes_of(world.get(array_name)))
-	else:
+	elif section == rows_end + 4:
 		_feed_ghosts(ctx, world, section)
+	else:
+		_feed_passengers(ctx, world, section)
 
 
 ## The live slots (index, then the fields in PROJECTILE_ARRAYS order), then the used free stack.
@@ -169,6 +175,26 @@ static func _feed_ghosts(ctx: HashingContext, world: World, section: int) -> voi
 			live[at + 3] = cells[entry]
 			at += 4
 	_feed(ctx, section, counts.to_byte_array())
+	_feed(ctx, section, live.to_byte_array())
+
+
+## The live passenger records (ADR 0036 section 8): record `i` below `pass_count` holds its five
+## fields in PASSENGER_ARRAYS order, records ascending. A slot at or above the count is not state;
+## the count itself is the hashed scalar `pass_count` of the header. A count outside the table is
+## clamped to 0..the size of the shortest column, so a hand-made value never reads past it.
+static func _feed_passengers(ctx: HashingContext, world: World, section: int) -> void:
+	var columns: Array[PackedInt32Array] = []
+	var count: int = maxi(world.pass_count, 0)
+	for column_name: StringName in World.PASSENGER_ARRAYS:
+		columns.append(world.get(column_name))
+		count = mini(count, columns[-1].size())
+	var live: PackedInt32Array = PackedInt32Array()
+	live.resize(count * columns.size())  # One resize, then writes.
+	var at: int = 0
+	for record: int in count:
+		for column: PackedInt32Array in columns:
+			live[at] = column[record]
+			at += 1
 	_feed(ctx, section, live.to_byte_array())
 
 

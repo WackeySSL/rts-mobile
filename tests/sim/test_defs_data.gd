@@ -89,7 +89,7 @@ func test_the_standard_terrain_set_is_grass_sand_scrub_rock_water_ore_in_that_or
 	)
 
 
-func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
+func test_rules_file_holds_the_41_starting_ints_and_the_defaults_equal_the_frozen_file() -> void:
 	var expected: Dictionary[String, int] = {
 		"retarget_period_ticks": 5,
 		"fog_period_ticks": 3,
@@ -134,6 +134,8 @@ func test_rules_file_holds_the_forty_starting_ints_and_the_defaults_equal_the_fr
 		"mend_hp": 10,
 		"mend_period_ticks": 15,
 		"mend_cost_percent": 30,
+		# Carriers (ADR 0036 section 3, P262): the table holds the 2 x unit_cap squads at most.
+		"passenger_cap": 150,
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
@@ -221,6 +223,18 @@ func test_every_rule_accepts_its_edge_values_and_reports_the_next_ones() -> void
 	)
 
 
+## The passenger table follows unit_cap: at 80 it must hold 160.
+func test_the_passenger_table_must_hold_both_players_unit_caps() -> void:
+	var rules: RulesDef = RulesDef.new()
+	rules.unit_cap = 80
+	rules.passenger_cap = 160
+	assert_array(_rule_problems(rules)).is_empty()
+	rules.passenger_cap = 159
+	assert_array(_rule_problems(rules)).is_equal(
+		["rules: passenger_cap is below the players' unit_cap"]
+	)
+
+
 func test_the_rules_file_keeps_the_phase_3_numbers_in_bounds() -> void:
 	assert_array(_rule_problems(load(RULES_PATH))).is_empty()
 
@@ -267,6 +281,8 @@ func test_every_phase_3_rule_accepts_its_edge_values_and_reports_the_next_ones()
 		["max_rows", [230, 256], [229], fit],
 		["unit_cap", [], [-1], "a cap is negative"],
 		["ghost_cap", [0], [-1], "a cap is negative"],
+		["passenger_cap", [0, 150], [-1], "a cap is negative"],
+		["passenger_cap", [], [149], "passenger_cap is below the players' unit_cap"],
 	]
 	for row: Array in rows:
 		for value: int in row[1] + row[2]:
@@ -764,7 +780,9 @@ func _economy_problems(file: String, unit: UnitDef, rules: RulesDef) -> PackedSt
 
 
 ## One text per broken Phase 3 rule of a RulesDef; empty when the numbers are fine. The divisors
-## are at least 1 because the sim takes a tick number modulo them.
+## are at least 1 because the sim takes a tick number modulo them. Passengers count toward unit_cap
+## (ADR 0036 section 8), so a passenger table (0 = no carriers, exempt) must hold every squad the
+## players could have aboard: at least PLAYERS * unit_cap.
 func _rule_problems(rules: RulesDef) -> PackedStringArray:
 	var broken: Dictionary[String, bool] = {
 		"start_credits is negative": rules.start_credits < 0,
@@ -790,9 +808,17 @@ func _rule_problems(rules: RulesDef) -> PackedStringArray:
 			)
 			< 0
 		),
-		"a cap is negative": mini(mini(rules.unit_cap, rules.building_cap), rules.ghost_cap) < 0,
+		"a cap is negative":
+		(
+			mini(
+				mini(rules.unit_cap, rules.building_cap), mini(rules.ghost_cap, rules.passenger_cap)
+			)
+			< 0
+		),
 		"unit_cap and building_cap of 2 players do not fit max_rows":
 		PLAYERS * (rules.unit_cap + rules.building_cap) > rules.max_rows,
+		"passenger_cap is below the players' unit_cap":
+		rules.passenger_cap > 0 and rules.passenger_cap < PLAYERS * rules.unit_cap,
 	}
 	for divisor: String in [
 		"credits_per_ore",

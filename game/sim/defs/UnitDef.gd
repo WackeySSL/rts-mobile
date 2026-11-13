@@ -59,3 +59,8 @@ var tab: int = -1
 @export var repair_reach_milli: int = 0
 @export var repair_slots: int = 0
 @export var repair_seek_milli: int = 0
+
+## The carrier role (ADR 0036 sections 2 and 8): the squads a carrier holds (0 = not a carrier) and
+## a move-class bit mask of who may board (FOOT 1, WHEELED 2, TRACKED 4, AIR 8; transports take 1).
+@export var carry_slots: int = 0
+@export var carry_classes: int = 0

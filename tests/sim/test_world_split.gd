@@ -16,8 +16,8 @@ const PRAGMA: String = "max-file-lines"
 
 
 ## Every hashing wrapper of World returns what the WorldHash function behind it returns, on a world
-## whose projectile slots and last-seen records hold live entries, so that every section feeds
-## bytes.
+## whose projectile slots and last-seen records hold live entries, so that every section but
+## `passengers` (the arena's table is empty) feeds bytes.
 func test_each_hash_wrapper_returns_what_its_helper_returns() -> void:
 	var world: World = _loaded(ARENA_PATH, 42)
 	world.proj_id[3] = 9
