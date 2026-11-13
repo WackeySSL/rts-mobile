@@ -82,10 +82,9 @@ func test_primitives_that_overlap_keep_a_polygon_each_and_one_group_makes_them_3
 	var text: String = ArtGen.build(model)["res://assets/art/iso/fossil/veh/x_shadow_d06.svg"]
 	assert_str(text).contains('<g opacity="0.35">')
 	assert_str(ArtShadow.OPACITY).is_equal("0.35")
-	assert_int(text.count("<polygon ")).is_equal(3)
+	# The three shadows have no fill-opacity of their own: only the pad's rings do (P203).
 	assert_int(text.count('fill="#000000"/>')).is_equal(3)
-	assert_bool(text.contains("stroke")).is_false()
-	assert_bool(text.contains("fill-opacity")).is_false()
+	assert_int(text.count("<g ")).is_equal(1)
 
 
 func test_a_turret_casts_from_its_mount_turned_with_the_hull() -> void:
@@ -126,13 +125,12 @@ func test_a_line_of_points_has_no_shadow_and_collinear_corners_are_dropped() -> 
 
 func test_every_unit_shadow_reaches_further_to_the_right_than_to_the_left_of_its_ground_point(
 ) -> void:
+	# The cast shadow, not the pad (which also reaches west, P203): its box leans to +gx.
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		var layout: ArtGen.Layout = ArtGen.layouts(model)[ArtModel.SHADOW]
 		if model.category != &"bld":
-			assert_int(layout.size.x - layout.anchor.x).override_failure_message(path).is_greater(
-				layout.anchor.x
-			)
+			var box: Rect2 = ArtRender.bounds(ArtShadow.polys(model.shadow_prims(), 0.0))
+			assert_float(box.end.x).override_failure_message(path).is_greater(-box.position.x)
 
 
 func test_a_shadow_has_a_frame_for_each_hull_frame_and_never_a_turn_of_its_own() -> void:
@@ -174,3 +172,55 @@ func _model(lines: Array[String]) -> ArtModel:
 	model.category = &"veh"
 	model.prims = PackedStringArray(lines)
 	return model
+
+
+func test_the_frame_holds_a_stepped_pad_and_a_contact_line_under_the_cast_shadow() -> void:
+	var prims: Array[ArtPrim] = [ArtPrim.parse("box hull steel 0 0 0 1 1 0.5")]
+	var frame: Array[ArtRender.Poly] = ArtShadow.frame(prims, 0.0)
+	var cast: Array[ArtRender.Poly] = ArtShadow.polys(prims, 0.0)
+	# AO_STEPS rings, the contact line, then the cast shadow last, over them.
+	assert_int(frame.size()).is_equal(ArtShadow.AO_STEPS + 1 + cast.size())
+	assert_array(frame.slice(frame.size() - cast.size())).is_equal(cast)
+	var ground: Rect2 = ArtRender.bounds([_flat(Vector2(-0.5, -0.5), Vector2(0.5, 0.5))])
+	var line: ArtRender.Poly = frame[ArtShadow.AO_STEPS]
+	assert_str(line.fill).is_equal("none")
+	assert_str(line.stroke).is_equal(ArtShadow.COLOUR)
+	assert_vector(ArtRender.bounds([line]).position).is_equal_approx(ground.position, Vector2.ONE)
+	assert_vector(ArtRender.bounds([line]).end).is_equal_approx(ground.end, Vector2.ONE)
+	# The rings widen outward, the widest first, none past AO_REACH, and each is a black fill.
+	var last: float = INF
+	for i: int in ArtShadow.AO_STEPS:
+		var ring: Rect2 = ArtRender.bounds([frame[i]])
+		assert_float(ring.size.x).is_less_equal(last)
+		last = ring.size.x
+		assert_float(ring.size.x).is_greater_equal(ground.size.x - 0.5)
+		# AO_REACH tiles on each side is 128 x AO_REACH of screen x at most, 1.5 px for the mitre.
+		assert_float(ring.size.x).is_less_equal(
+			ground.size.x + 2.0 * ArtShadow.AO_REACH * 128.0 + 1.5
+		)
+		assert_str(frame[i].fill).is_equal(ArtShadow.COLOUR)
+		assert_str(frame[i].extra).contains("fill-opacity")
+	# Darkest at the contact line: the outline is opaque, a ring only stacks to 1 - (1 - a)^n.
+	assert_float(float(ArtShadow.AO_STEP_ALPHA)).is_less(1.0)
+
+
+func test_a_shadow_file_is_one_group_with_no_gradient_and_the_pad_before_the_shadow() -> void:
+	var model: ArtModel = _model(["box hull steel 0 0 0 1 1 1"])
+	var text: String = ArtGen.build(model)["res://assets/art/iso/fossil/veh/x_shadow_d06.svg"]
+	assert_int(text.count("<g ")).is_equal(1)
+	assert_bool(text.contains("Gradient")).is_false()
+	assert_int(text.count("fill-opacity")).is_equal(ArtShadow.AO_STEPS)
+	assert_int(text.count('stroke="#000000"')).is_equal(1)
+	assert_int(text.find("fill-opacity")).is_less(text.find('fill="#000000"/>'))
+
+
+func test_a_primitive_that_does_not_touch_the_ground_adds_nothing_to_the_pad() -> void:
+	var prims: Array[ArtPrim] = [ArtPrim.parse("box hull steel 0 0 1 1 1 1")]
+	assert_int(ArtShadow.pad(prims, 0.0).size()).is_equal(0)
+
+
+func _flat(low: Vector2, high: Vector2) -> ArtRender.Poly:
+	var poly: ArtRender.Poly = ArtRender.Poly.new()
+	for corner: Vector2 in [low, Vector2(high.x, low.y), high, Vector2(low.x, high.y)]:
+		poly.points.append(ArtRender.project(Vector3(corner.x, corner.y, 0.0)))
+	return poly

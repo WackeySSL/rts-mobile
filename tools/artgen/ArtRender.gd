@@ -17,6 +17,7 @@ class Poly:
 	var fill: String = ""
 	var stroke: String = ""
 	var prim: int = -1
+	var extra: String = ""  ## Raw attributes after the stroke (a shadow pad's `fill-opacity`).
 
 
 const Z_PX: float = 78.38367176906169  ## 128 x sqrt(6) / 4: a tile of height at 2x.

@@ -9,6 +9,11 @@ extends RefCounted
 const REACH: float = 0.8  ## Tiles along +gx per tile of height (Spec 02: about 0.8 x the height).
 const COLOUR: String = "#000000"
 const OPACITY: String = "0.35"
+const AO_REACH: float = 0.3  ## Tiles the occlusion pad reaches past the ground outline.
+const AO_STEPS: int = 3  ## Stepped rings, no gradient; the inner ones stack to the darker pad.
+const AO_STEP_ALPHA: String = "0.3"  ## Each ring's fill-opacity, inside the group's 35 %.
+const CONTACT_LINE: String = ' stroke="#000000" stroke-width="2" stroke-linejoin="round"'
+const GROUND_Z: float = 0.25  ## A primitive that starts below this height touches the ground.
 const SPHERE_POINTS: int = 16
 const COLLINEAR: float = 1e-9  ## Square tiles: a corner this close to a line is not a corner.
 
@@ -27,6 +32,78 @@ static func polys(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
 		poly.fill = COLOUR
 		out.append(poly)
 	return out
+
+
+## The frame of a shadow part: the occlusion pad and the contact line round the base, then the cast
+## shadow over them (ADR 0035 section 4). The pad is `AO_STEPS` nested rings of the ground outline,
+## each a little wider (to `AO_REACH`), each a black fill at `AO_STEP_ALPHA` so the rings stack
+## darker towards the base; the contact line is the outline itself, 2 px, opaque in the group. All
+## of it is one group with one opacity: no gradient, and no ink above the ground.
+static func frame(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
+	var out: Array[ArtRender.Poly] = pad(prims, yaw)
+	out.append_array(polys(prims, yaw))
+	return out
+
+
+## The pad rings (widest first) and the contact line of `prims` turned by `yaw`; empty for a model
+## with no ground outline.
+static func pad(prims: Array[ArtPrim], yaw: float) -> Array[ArtRender.Poly]:
+	var out: Array[ArtRender.Poly] = []
+	var outline: Array[Vector2] = _hull(_ground(prims, yaw))
+	if outline.size() < 3:
+		return out
+	for step: int in range(AO_STEPS, 0, -1):
+		var ring: Array[Vector2] = _grow(outline, AO_REACH * step / AO_STEPS)
+		var poly: ArtRender.Poly = _screen(ring)
+		poly.fill = COLOUR
+		poly.extra = ' fill-opacity="%s"' % AO_STEP_ALPHA
+		out.append(poly)
+	var line: ArtRender.Poly = _screen(outline)
+	line.fill = "none"
+	line.stroke = COLOUR
+	line.extra = ""
+	out.append(line)
+	return out
+
+
+## The ground points (z ignored) of the primitives that touch the ground, in tiles.
+static func _ground(prims: Array[ArtPrim], yaw: float) -> Array[Vector2]:
+	var found: Array[Vector2] = []
+	for prim: ArtPrim in prims:
+		if prim.z0 >= GROUND_Z:
+			continue
+		if prim.shape == &"sphere":
+			var radius: float = prim.size.x / 2.0
+			var centre: Vector3 = ArtRender.rotate(Vector3(prim.centre.x, prim.centre.y, 0.0), yaw)
+			for i: int in SPHERE_POINTS:
+				var rim: Vector2 = ArtMesh.dir(i * 360.0 / SPHERE_POINTS)
+				found.append(Vector2(centre.x + radius * rim.x, centre.y + radius * rim.y))
+			continue
+		for face: ArtMesh.Face in ArtMesh.faces(prim):
+			for point: Vector3 in face.points:
+				var turned: Vector3 = ArtRender.rotate(point, yaw)
+				found.append(Vector2(turned.x, turned.y))
+	return found
+
+
+## `ring` (convex, any winding) pushed out by `reach` tiles, corners mitred.
+static func _grow(ring: Array[Vector2], reach: float) -> Array[Vector2]:
+	var grown: Array[Vector2] = []
+	var shapes: Array[PackedVector2Array] = Geometry2D.offset_polygon(
+		PackedVector2Array(ring), reach, Geometry2D.JOIN_MITER
+	)
+	if shapes.is_empty():
+		return ring
+	for point: Vector2 in shapes[0]:
+		grown.append(point)
+	return grown
+
+
+static func _screen(ring: Array[Vector2]) -> ArtRender.Poly:
+	var poly: ArtRender.Poly = ArtRender.Poly.new()
+	for point: Vector2 in ring:
+		poly.points.append(ArtRender.project(Vector3(point.x, point.y, 0.0)))
+	return poly
 
 
 ## The corners of `prim` turned by `yaw` and dropped onto the ground, in tiles.

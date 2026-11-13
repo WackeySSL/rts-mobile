@@ -148,6 +148,17 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
   (z 1) for buildings (ADR 0023 section 2). **Shadow frames bake onto the atlas's second page**
   (P237, ADR 0036 section 15), not the sorted world's; P204's key colour in them makes per-player
   slots there, which `TODAY2_*` in `test_iso_atlas_budget.gd` pins.
+- **Occlusion pad and contact line** (P203, ADR 0035 section 4): every generated shadow frame holds,
+  under the cast shadow and in the same `<g opacity="0.35">`, a pad of `AO_STEPS` (3) stepped rings
+  of the ground outline (the hull of the plan of every primitive that starts below 0.25 tiles),
+  each pushed out a third more, to `ArtShadow.AO_REACH` (0.3 tiles), each a black fill at
+  `fill-opacity="0.3"`, so the rings stack darker towards the base and no gradient is used; then a
+  thin contact line, the outline itself, a 2 px black stroke. The cast shadow lies over them
+  (it is opaque in the group, so the pad shows only where no shadow falls: the west, north and
+  south of the base). Darkest at the contact line. No ink goes into a hull, turret or building
+  frame, and the item cards keep their own shadow. The wellhead's hand-drawn shadow has the same
+  pad by hand (rings at 103, 106 and 109 % of its pad). Page 2 grew from 1116, 570, 634 to 1514, 704,
+  814 rows (cross-faction, Derrick League mirror, Lumen Accord mirror), within 3584.
 - **Team colour** is 4 to 17 % of the pixels of a default view in the blockouts (`tests/art` pins
   3 to 20 %); the art rows aim at 8 to 12 %: bands, cranes, stripes, light strips and lamps seen
   from above, never a large plate. A band is a slab slightly larger than the wall it wraps and
@@ -2781,3 +2792,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-11 | v1.30 (P273, art-director, ADR 0037 sections 3 and 4): `glyph_repair.svg` (an open-ended spanner on a rising diagonal; the Mend switch and the Repair order share it) and `glyph_sell.svg` (a price tag with a coin on it, not the coin stack of `glyph_credits`), two plain white HUD glyphs on the command bar row of the gallery's Hud page, no seat and no tint. At 32 px in greyscale the wrench is 36.5 from the nearest HUD glyph (the star) and the tag 34.7 (`glyph_credits`; at the first scale of 0.88 it was 34.0 from the Resume triangle, and the scale became 0.9 to keep the one-decimal rule, with the ink re-centred), both over the 29 bar. The seated map copy `glyph_repair_map.svg` (the wrench at 0.8 on the offline plate, tinted #30A46C, the eleventh map glyph) is drawn in the same row; the gallery's map strips now hold their glyphs in two lines of five. |
 | 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture whose debris rests on a surface and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings", the two readings of the GDD, the Catalogue rows, the readability results and an open point), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2993, 2878 and 2910 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-13 | v1.32 (P202, art-director, ADR 0034 section 4): the generator writes no `dmg1` frame and refuses a `dmg1` pose; the 16 `_dmg1.svg` files and their sheet parts go, `dmg2` frames are byte for byte as before; the stage tables and `cuts` keep two entries ("Damage stages (P158a)"). |
+| 2026-11-13 | v1.33 (P203, art-director, ADR 0035 section 4): every generated shadow frame gets an occlusion pad (three stepped rings, no gradient) and a contact line under the cast shadow, in the one 35 % group; the wellhead's shadow by hand; page 2 1116, 570, 634 to 1514, 704, 814 ("Light"). Non-shadow frames are byte for byte as before. |

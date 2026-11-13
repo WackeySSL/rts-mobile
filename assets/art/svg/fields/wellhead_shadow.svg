@@ -1,7 +1,11 @@
 <!-- Wellhead shadow: the cast shadow of the wellhead, black at 35 percent as one group, same anchor as the wellhead. -->
-<!-- Silhouette: The shadow of the valve tree, a long narrow wedge falling to the south-east from the pad, with a round blob at the end of each arm. -->
+<!-- Silhouette: The shadow of the valve tree, a long narrow wedge falling to the south-east from the pad, with a round blob at the end of each arm; under it a pad of three stepped rings and a contact line round the base, in the same group. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="140" height="72" viewBox="0 0 140 72">
 <g opacity="0.35" fill="#000000">
+<polygon points="1.4,30.9 55.8,3.6 115.7,33.7 61.3,60.9" fill-opacity="0.3"/>
+<polygon points="3,30.9 55.8,4.4 114.1,33.7 61.3,60.1" fill-opacity="0.3"/>
+<polygon points="4.5,31 55.9,5.2 112.6,33.6 61.2,59.3" fill-opacity="0.3"/>
+<polygon points="6.1,31 56,6 111,33.6 61.1,58.5" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
 <polygon points="6.1,31 56,6 111,33.6 61.1,58.5"/>
 <polygon points="40.5,33.6 43.3,28.4 50.8,24.6 61.1,23.3 71.4,24.6 79,28.4 83.1,30.5 85.8,35.6 83.1,40.8 75.5,44.5 65.2,45.9 54.9,44.5 50.8,42.5 43.3,38.7"/>
 <polygon points="54,35.6 55.5,32.8 59.6,30.7 65.2,30 70.8,30.7 75,32.8 91.3,41 92.8,43.8 91.3,46.6 87.2,48.7 81.6,49.4 76,48.7 55.5,38.4"/>

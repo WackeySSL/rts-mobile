@@ -25,8 +25,8 @@ const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 ## canvas (w, h) and its cut row. Run `bash scripts/gen-art.sh` and read the sheets when the art
 ## changes on purpose.
 const CANVAS: Dictionary[StringName, Array] = {
-	&"fossil_space": [384, 438, 246, 392, 198, 88, 272, 378, 368, 392],
-	&"renew_space": [384, 410, 218, 410, 194, 142, 230, 378, 296, 367],
+	&"fossil_space": [384, 438, 246, 456, 230, 88, 272, 378, 368, 392],
+	&"renew_space": [384, 410, 218, 456, 230, 142, 230, 378, 296, 367],
 }
 ## The lift: frames, `anim_ms`, how far up it goes in tiles, the group it moves, the height it rests
 ## at (the top of a primitive under it) and the height of the member above it (the Skyrig's beam,
@@ -128,8 +128,6 @@ func test_every_canvas_and_anchor_is_pinned_and_the_anchor_is_the_back_corner() 
 			var anchor: Vector2i = sheet.anchor(part)
 			if part == &"hull":
 				assert_int(anchor.x).is_equal(192)
-			if part == &"shadow":
-				assert_int(anchor.y).override_failure_message("%s shadow" % id).is_equal(0)
 			assert_vector(Vector2(sheet.origin(part) - anchor)).is_equal(Vector2(0, 96))
 			var size: Vector2i = sheet.frame_size(part)
 			assert_str(Support.svg_size(sheet.path(part, -1))).is_equal("%d %d" % [size.x, size.y])

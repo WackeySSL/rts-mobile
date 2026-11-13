@@ -56,7 +56,9 @@ static func group(
 			var at: Vector2 = point * scale + origin
 			points.append("%s,%s" % [num(at.x), num(at.y)])
 		var edge: String = ' stroke="%s"' % poly.stroke if poly.stroke != "" else ""
-		lines.append('<polygon points="%s" fill="%s"%s/>' % [" ".join(points), poly.fill, edge])
+		lines.append(
+			'<polygon points="%s" fill="%s"%s%s/>' % [" ".join(points), poly.fill, edge, poly.extra]
+		)
 	lines.append("</g>")
 	return lines
 
