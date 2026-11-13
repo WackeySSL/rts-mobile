@@ -4,26 +4,34 @@
 hands each one a copy of what it may see at tick T, and the computer thinks on a thread of its
 own while the sim goes on. Its orders take effect one tick later (67 ms), after yours. If the
 computer is ever slower than one tick, the sim waits for it, so a match plays out exactly the same
-on every phone, in the tests and in the web preview. The computer reacts 67 ms later, which is
-less than a touch takes.
+on every phone, in the tests and in the web preview. The computer reacts 67 ms later, less than
+a tap on the screen takes.
 
 Status: **accepted, 2026-11-13** (Michael chose option 3 of the architect's AI lever memo in chat
-the same day). Written by the architect on branch `claude/p26bw-levers` (base `main` at 99e1c6bd),
-with the plan rows P301-P304 and P304b in `docs/plans/2026-11-09-air-and-tech.md`.
+the same day). His answer reached this ADR as the lead relayed it, "option 3"; the lead adds his
+verbatim chat words, with an English gloss, if they say more. Written by the architect on branch
+`claude/p26bw-levers` (base `main` at 99e1c6bd), with the plan rows P301-P304 and P304b in
+`docs/plans/2026-11-09-air-and-tech.md`.
 
 Supersedes:
 - ADR 0020 §3's "where it runs: inside the tick job": that the controllers think in `TickJob.run`
   before `loop.step`, and that "the AI reads state N and its commands are stamped N, in both
   modes". The rest of ADR 0020 §3 stands: the human's Commands come first, every Command is
   stamped and recorded like a player's, `Replay.play` needs no AI, the scans of `game/ai`, and
-  every headless driver plays the same path as the phone.
+  every driver that stands for the phone (`MatchRunner`, the smoke and the harness, `perf_ai`)
+  plays the phone's path. The `tests/ai` rigs keep the lag-0 composition on purpose (§6).
 - ADR 0030 §1's sentence "**The AI never sends a Command the sim drops** (`dropped_commands` stays
   0; ADR 0031's harness fails on any)", for the runs that play the shipped path (§6 below).
 - ADR 0031's "a dropped Command fails the run" (§2's P26be note) and its gate check 5
   (`dropped_commands` is 0 in every match), for the same runs (§6).
+- ADR 0031 §1's "Loop unchanged ... ADR 0020 §3's loop", §2's exit code 1 "a dropped Command"
+  (now: drops over §6's bound) and §7's strike case "drops nothing", for the runs of §6.
+- ADR 0020 §5's "`dropped_commands` stays 0" in a dummy-vs-dummy match, for the runs of §6. At lag
+  0 it stands.
 
-Amends by dated notes (the accepted text of each stays as it is): ADR 0020 (a status note), ADR
-0030 §4 (a note on §1 and §4) and ADR 0031 (a status note on §2's P26be note and §6).
+Amends by dated notes (the accepted text of each stays as it is): ADR 0012 (a status note on its
+P68b notes), ADR 0020 (a status note on §3 and §5), ADR 0030 §4 (a note on §1 and §4), ADR 0031
+(a status note on §1, §2, §6 and §7) and ADR 0036 §14 (a note on `perf_ai_4b`).
 
 ## Context
 - **Where the time goes** (the memo of 2026-11-13, `main` 99e1c6bd). Each `OpponentAi` thinks every
@@ -86,8 +94,8 @@ this order:
 3. **Hand-off.** The job hands the views and their controllers to the AI side as one batch:
    - in `WORKER`, to the AI thread (§2), which thinks while the job goes on;
    - in `SYNC`, the job runs the thinks itself, at once, and keeps the batch for the next tick.
-4. **Step.** `loop.step` runs tick T with the list from step 1. `MatchLoop` stamps the AI's Commands
-   T and records them like a player's, as today.
+4. **Step.** `loop.step` runs tick T with the list from step 1. `MatchLoop` stamps the collected
+   batch (made from the views of T-1) with T and records it like a player's Commands, as today.
 
 So the AI's Commands made from the state at tick T enter **step T+1**, after the human's Commands of
 T+1, stamped T+1. At most one batch is in flight at any time. A tick with no controller due posts no
@@ -96,33 +104,47 @@ batch, and the next tick collects nothing.
 - **The order inside a batch** is the order of the thinks (ascending player, then list order) and,
   inside one think, the order the controller appended them. `Sim.step`'s sort by (tick, player,
   sequence) is unchanged.
-- **The end of a match.** A batch collected when `match_end_tick` is above 0 is dropped by the job
-  unsent: it is not stamped, not recorded and not counted. Nothing thinks once the match has ended,
-  as before (ADR 0020 §2's P82 note).
+- **The end of a match, and a new one.** A batch collected when `match_end_tick` is above 0 is
+  dropped by the job unsent: it is not stamped, not recorded and not counted. Nothing thinks once
+  the match has ended, as before (ADR 0020 §2's P82 note). A batch belongs to the match whose World
+  its views were built from. `MatchRunner.start()` waits for a batch in flight, as it waits for the
+  job. It then drops that batch and any kept `SYNC` batch before it builds the new World. P301 tests
+  it: a runner that ends a match with a batch pending and starts again (as `PerfHud.run_again()`
+  does) plays the second match to the first one's checkpoint hashes. A batch dropped this way was
+  already counted in its controllers' `commands`, so §6's C can hold one unsent batch per match;
+  the bound tolerates that.
 - **The think cadence is unchanged** (ADR 0030 §2): period 5, three slots, never a view on a
   checkpoint tick. The views are built on the job thread, so the rule still keeps their cost off
-  the checkpoint steps. A batch made at a residue-3 tick lands in the checkpoint step, which costs
-  only the Commands.
+  the checkpoint steps. Player 4's batch (made on `tick % 5 == 3`) can land in a checkpoint step,
+  which costs only the Commands.
 - **`AiDriver`.** `think_all` stays as the lag-0 composition (views, then thinks, appended to the
   list the caller steps at once), for the `tests/ai` rigs (§6). P301 adds the two halves the job
   calls, building the views and running the thinks of a batch, and one small pure holder of the
   batch in `game/core` (no Node, no Resource; the walk of `tests/core/test_tick_job.gd` covers it).
-  The names are P301's.
+  The names are P301's. P301 puts the lagged tick in one pure function of `AiDriver` (collect, the
+  views, the thinks inline, keep the batch). `TickJob.run` in `SYNC`, `smoke_run.gd`,
+  `ai_perf_run.gd` and `test_match_runner_ai.gd`'s headless loop all call it before
+  `MatchLoop.step`. `TickJob` in `WORKER` differs only in handing step 3 to the AI thread.
 
 ### 2. The AI thread (`WORKER` only)
-- `MatchRunner` starts one AI thread at `start()` when it resolves `WORKER` and the match has at
-  least one controller, beside the sim worker. It hands work over with two semaphores, as ADR
-  0012 §1 does for the job (`ai_work`, `ai_done`). It is joined at `stop()` and on the runner's
-  `PREDELETE`, after the sim worker. ADR 0012's thread life-cycle rules apply.
+- `MatchRunner` starts the AI thread at the first `start()` that resolves `WORKER` with at least one
+  controller, and keeps it across later `start()`s, as it keeps the sim worker. It hands work over
+  with two semaphores, as ADR 0012 §1 does for the job (`ai_work`, `ai_done`). It is joined at
+  `stop()` and on the runner's `PREDELETE`, after the sim worker. ADR 0012's thread life-cycle rules
+  apply.
 - **What it touches:** the controllers, the batch's views and the batch's Command list. It never
   reads the World, the loop, the replay, the probe or a snapshot. ADR 0020 §3's thread rules for
   `game/ai` (no Node, no autoload, no engine singleton, no clock) are unchanged.
 - **The controllers belong to the AI thread while a batch is in flight.** No other thread reads a
   controller or its `AiMemory` then. The main thread reads them only after `wait_idle()`, which
-  also waits for the batch in flight.
+  waits for the job and then for the batch in flight. Whoever takes `ai_done` first, `wait_idle()`
+  or step 1 of §1, marks the batch done in the holder. Step 1 waits on `ai_done` only for a batch
+  not marked done. P303 tests that order.
 - **`SYNC` has no AI thread:** the web (no threads), every headless run, the suites and the perf
-  harness. A `SYNC` run thinks inline in step 3 of §1. If `Thread.start()` fails, the runner falls
-  back to `SYNC` for good, as ADR 0012 does for the job.
+  harness. A `SYNC` run thinks inline in step 3 of §1. If the AI thread's `Thread.start()` fails,
+  the thinks run inline in the job for the rest of the runner's life (step 3's `SYNC` branch), on
+  the sim worker in `WORKER`. The sim worker is unaffected and the results are the same (§3). A
+  test forces the failure: one warning, equal hashes.
 - **The alias rule.** The AI thread runs GDScript beside the job and the main thread. A manager loop
   that reads `obj.prop` per row slows itself and every thread doing the same (Context). P303
   measures it on the card (§7); if it shows, a follow-up row applies `rts-sim-conventions`'
@@ -166,27 +188,36 @@ batch, and the next tick collects nothing.
 - `Replay` and its format are unchanged. The AI's Commands are recorded with the stamp they are
   applied at (T+1), so `Replay.play` needs no AI and reproduces the run. A replay recorded before
   P301 still plays to its own hashes, because its stamps are data.
-- `run-sim-smoke.sh` keeps its flags, exit codes and report schema 2 (CLAUDE.md, Commands).
+- `run-sim-smoke.sh` keeps its flags, its exit code numbers and report schema 2 (CLAUDE.md,
+  Commands); exit code 1 now means drops over §6's bound.
 
 ### 6. Dropped Commands under the one-tick lag
 A Command the AI checked against its view at T can be refused at T+1, because step T changed the
 World under it: an `ATTACK` target that died or left sight, a tile that filled, credits spent.
 The sim drops it and counts it in `dropped_commands`, as it does today for a human tap made on a
-picture that is already one tick old. The sim's rules do not change.
+picture that is already one tick old. The sim's rules do not change. A stale drop heals at the next
+think: a Command is dropped only when what it names is gone or blocked.
 - **The AI's checks keep their rule, at its own tick.** ADR 0030 §1's rule now reads: every
   Command passes the sim's checks at the tick its view was built. The `tests/ai` suites prove that
   at lag 0: their rigs keep calling `AiDriver.think_all` and `loop.step` in the same tick, and their
   `dropped_commands == 0` assertions stay as they are.
 - **The runs that play the shipped path** (the smoke, the balance and gate runs, `perf_ai`,
   `MatchRunner`, and the suites P301 moves onto the path, §8) count stale drops. A drop there
-  fails the run only above a bound: `dropped_commands` of a match at most 1 % of the sum of its
-  players' `commands` (the report's existing key; schema 2 is unchanged), rounded down. That
-  replaces ADR 0031's "a dropped Command fails the run" and its gate check 5. The smoke still exits
-  1 over the bound and prints the seed and the tick of the first drop.
+  fails the run only above a bound. A match fails when `dropped_commands > STALE_DROP_PERCENT * C /
+  100` (integer division). C is the sum of its players' `commands`, the report's existing key;
+  schema 2 is unchanged. `STALE_DROP_PERCENT` is 1, kept as one constant in
+  `tests/smoke/smoke_run.gd`, which `balance_summary.gd` reads. A match of fewer than 100 Commands
+  allows none. The summary's gate check 5 becomes "matches over the bound: 0". That replaces ADR
+  0031's "a dropped Command fails the run" and its gate check 5. Fixed-seed suites do not use the
+  bound: each pins its exact `dropped_commands` (the run is deterministic), so a new drop still
+  fails there. The smoke still exits 1 over the bound and prints the seed, the tick of the first
+  drop, and the match's drops and Commands.
 - **The bound is provisional.** P301 reports the stale drops it measured on the smoke's three seeds
-  and on P188's matches. The lead confirms the 1 % or sets another value in a dated note after the
-  balance run of §8, before the next gate run. A per-match count far above the measured rate means
-  an AI bug, not staleness.
+  and on P188's matches, Hard's included. If either rate is above half the bound, P301 stops and
+  reports to the lead before it merges. The lead also reads the stale drops per set in §8's balance
+  run, including the ladder Hard set. The lead confirms the 1 % or sets another value in a dated
+  note after the balance run of §8, before the next gate run. A per-match count far above the
+  measured rate means an AI bug, not staleness.
 
 ### 7. The card: `ai_wait`, the think and `perf_ai_4b`
 - **`ai_wait`.** `MatchSnapshot` gets `ai_wait_usec`: the time step 1 of §1 blocked on the batch
@@ -196,18 +227,23 @@ picture that is already one tick old. The sim's rules do not change.
   p95 should read 0.00. Above 0 it means the AI thread is starved or slower than a tick. The time
   waited is inside `job_usec`, so `sim_p95_ms` counts it honestly.
 - **`think_usec`** keeps its meaning for the card and for `WATCH ai think` (views plus thinks, the
-  sum wherever they ran). The card can then be compared across P303. Because the thinks run off
+  sum wherever they ran). It is stamped into the snapshot of the tick that collects the batch (T+1)
+  in both modes, so each batch counts once and `SYNC` and `WORKER` cards compare. A tick that
+  collects nothing reads 0. The card can then be compared across P303. Because the thinks run off
   the job, `sim_p95_ms` no longer contains them, only the views.
 - **`perf_ai_4b` (P304).** A second AI arena, `data/scenarios/perf_ai_4b.tres`, plays the base
-  arena's layout with frozen copies of Phase 4b's defs in `data/dev/arena/`: aircraft, airfields,
-  anti-air, the engineering centre and space centre, the transports and drone squads, and, as soon
-  as P290 has merged, the ground carriers and minelayers (P304b). Each side gets those rows at tick
-  0, as `perf_ai.tres` spawns a charged strike building, so the ARMY slot's new passes run from the
-  first think, together with the frozen copies of the shipped AI defs.
+  arena's layout with frozen copies of Phase 4b's unit defs in `data/dev/arena/`: aircraft,
+  airfields, anti-air, the engineering centre and space centre, the transports and drone squads,
+  and, as soon as P290 has merged, the ground carriers and minelayers (P304b). Each side gets those
+  rows at tick 0, as `perf_ai.tres` spawns a charged strike building, so the ARMY slot's new passes
+  run from the first think.
+  - Its AI defs are copies of `perf_ai`'s frozen AI defs (P189b's early scout and wave) in their
+    own folder, `data/dev/arena/ai_4b/`. `data/dev/arena/ai/` and `test_frozen_ai_defs.gd` stay as
+    they are.
   - It shares `perf_air`'s frozen unit defs (P253) where both need the same type.
   - Every later AI row that adds an `OpponentDef` or `AiDifficultyDef` field also sets it in the
-    frozen copies (the shipped Normal value), in the same PR. A test pins that the frozen copies
-    set every field the shipped defs set (the field names, not the values).
+    `ai_4b` copies (the shipped Normal value), in the same PR. A test compares the field names of
+    the `ai_4b` copies with the shipped defs (the names, not the values).
   - The arena has no golden pair (as `perf_ai`): its hash is printed, not pinned.
   - From P304's merge, the per-wave Perf AI card (the Phase 4 plan's P26bu note) runs on
     `perf_ai_4b`, three times, and the 11 ms and 5 ms triggers read it. `perf_ai` keeps its CI
@@ -222,9 +258,22 @@ picture that is already one tick old. The sim's rules do not change.
   - the printed `perf_ai` hash and flow line;
   - the smoke's printed hashes;
   - `test_ai_perf.gd`'s contact ticks in its header;
-  - every fixed-seed pin, or `dropped_commands` assertion, in a suite that plays through
-    `smoke_run.gd` or `ai_perf_run.gd` (`test_ai_determinism.gd`, `test_match_runner_ai.gd`,
-    `test_tick_job.gd` and any other it finds), each named in the PR.
+  - every fixed-seed pin, `dropped_commands` assertion or Command-log pin in a suite that plays a
+    computer player through `smoke_run.gd`, `ai_perf_run.gd`, `MatchRunner` or `TickJob`:
+    `tests/ai/test_ai_determinism.gd`, `tests/perf/test_ai_perf.gd`,
+    `tests/smoke/test_smoke_run.gd`, `tests/core/test_match_runner_ai.gd`,
+    `tests/core/test_tick_job.gd`, `tests/ui/test_skirmish_routes.gd`,
+    `tests/ui/test_level_choice.gd`;
+  - check 5's label and values where the summary and the smoke pin them:
+    `tests/smoke/test_balance_summary.gd`, `test_balance_summary_entry.gd`, `test_smoke_entry.gd`,
+    `fixtures/balance_summary_golden.md`, `tests/project/test_run_sim_smoke_script.gd`.
+
+  Each changed line is named in the PR. A suite outside this list that moves stops the row and goes
+  to the lead.
+
+  P301 also updates the comments that state a think's stamp (`PlayerView.gd`'s `row_ready_tick`
+  doc, "`tick + 1` for a think at `view.tick`", and `AiStrikes.gd:128-130`): at lag 1 the stamp is
+  `view.tick + 2`. The charge and offline checks are monotone, so the old `+ 1` stays safe.
 
   `golden_hex`, `bases_golden_hex` and `TICK_0_SEED_1` play no AI and must not move: P301 asserts
   them unchanged. Step 3 of "Merge order of the shared rows" (no other row re-pins a golden)
@@ -237,17 +286,22 @@ picture that is already one tick old. The sim's rules do not change.
   - A second case forces waits with a test controller in `tests/` that delays its think by more than
     one tick. It reads `ai_wait_usec` above 0 and gives the same hashes as `SYNC`.
   - It is a thread test, so it runs 3 times in a row before the push (CLAUDE.md, Token budget).
-  - The thread life cycle: no `WARNING` at stop and free, and a fallback to `SYNC` when the thread
-    cannot start.
+  - The thread life cycle: no `WARNING` at stop and free; the thinks inline on a failed start; the
+    `ai_done` order of §2; a restart with a batch pending (§1).
 - **P304 and P304b: `perf_ai_4b`** (§7), the second for the ground carriers and minelayers.
+- **Owners of the card and route lines.** P303 edits `PerfBases.AI_LINE` and the card's keys, and
+  P304 the Perf AI route (`DevRoutes.gd`, `perf_arena.gd`, `tests/ui/test_perf_ai.gd`). Those are
+  touch-ux-dev's files (P184, P185): touch-ux-dev reviews those lines in both rows.
 - **The balance run.** After P301 merges, the lead runs the balance workflow once on `main`
   (`workflow_dispatch`; P301 changes no file under `data/`). It compares the win shares and match
   lengths with the last run, which no tuning should need, and reads the stale drops for §6's bound.
   The run happens in GitHub Actions, never in a session.
 - **Order.** P301 -> P302 -> P303. P303 needs both: the thread may hold a view only once the view
-  holds no alias. P301-P303 merge before P251; P250 and P252 may start now. They touch
-  `game/core`, `AiDriver` and `PlayerView`, not the managers. P304 waits for its frozen data rows
-  (§7) and need not block P251; P304b follows P290.
+  holds no alias. P301-P303 merge before P251. They touch `game/core`, `AiDriver` and `PlayerView`,
+  not the managers, so P250 and P252 do not wait for them. P304 waits for its frozen data rows (§7)
+  and need not block P251; P304b follows P290. (This deviates from the memo, which put R4 before
+  P251: P304 waits for P253 and part 2's P264. Until it merges, P251's cost shows only in
+  `ai_wait`.)
 
 ### 9. Proof (what is proven headless)
 - Lag 0: the `tests/ai` suites, unchanged, with `dropped_commands == 0`.
@@ -272,16 +326,21 @@ picture that is already one tick old. The sim's rules do not change.
 - `game/ai`'s cost no longer adds to `sim_p95_ms` while it fits in a tick. The card's `ai_wait`
   line watches that. So ADR 0030 §4's budget per think keeps its counted bounds, but its time stops
   being the sim's p95.
+- **Phase 5's save and resume** (ADR 0030 §3's note on `AiMemory`) must also write the batch in
+  flight, or save only at a tick that collects nothing and builds no view. Otherwise a resumed match
+  applies one batch fewer than the uninterrupted run and diverges.
 - One re-pin under exception 26, no golden moves, no `STATE_FORMAT` change, no new Command, no data
-  change. ADR 0012's job, snapshot and gate are unchanged.
+  change. ADR 0012's hand-off, publish rule and gate are unchanged; the job gains §1's steps and
+  the snapshot one field (§7).
 - **CLAUDE.md.** No line changes. The Stack section stays as it is: no C++ for the AI, no new
   language. Architecture rule 4 (Commands only) and rule 3 (randomness only via `DetRandom`) hold
   unchanged. The `game/core` line ("no game rules") holds: the batch holder has no rule.
 - **Wording outside CLAUDE.md that needs Michael's yes** (the lead asks, after P303 has merged):
   - `.claude/agents/ai-dev.md`, the bullet "AI code reads the match only through `PlayerView` ...".
-    Replace "and runs inside the tick job through `AiDriver.think_all` before `loop.step` (on the
-    sim worker thread in WORKER mode)" with "and thinks on a `PlayerView` built at tick T: on its own
-    thread in WORKER mode, inline in SYNC; its Commands enter step T+1 after the human's (ADR 0038)".
+    Replace "and runs inside the tick job through `AiDriver.think_all` before `loop.step` (on
+    the sim worker thread in WORKER mode)" with "and thinks on a `PlayerView` built at tick T: on
+    its own thread in WORKER mode, inline in SYNC; its Commands enter step T+1 after the human's
+    (ADR 0038)".
   - `rts-sim-conventions`, the **AI** bullet. Replace "`AiDriver.think_all` calls the controllers
     inside the tick job before `loop.step`, so their Commands are stamped and recorded like a
     player's." with "The job builds each due controller's `PlayerView` at tick T, holding copies
@@ -289,8 +348,9 @@ picture that is already one tick old. The sim's rules do not change.
     T+1 after the human's, stamped and recorded like a player's. The job waits for a late batch, so
     `SYNC` and `WORKER` hash alike (ADR 0038)."
   - `rts-sim-conventions`, "Threading (ADR 0012 §2)". Add the bullet "- The AI thread (ADR 0038)
-    touches only the controllers, their views and the batch's Commands, never the World; the
-    alias-before-the-loop rule applies to `game/ai`'s loops too."
+    touches only the controllers, their views and the batch's Commands, never the World. New loops
+    in `game/ai` alias before the loop; existing ones are converted only by a row that the card's
+    contention calls for (ADR 0038 §2)."
 
 ## Alternatives considered
 - **1a, smaller caps:** cheap, but they cost target quality on Hard, and P251 and P267 eat the gain.
@@ -307,3 +367,5 @@ picture that is already one tick old. The sim's rules do not change.
 - **Filtering stale AI Commands before the sim:** it needs a check of the sim's rules outside
   `game/sim`, or a second view at T+1 on the job thread. The first breaks "no game rules" in
   `game/core`; the second gives back the time this ADR saves.
+- **The sim accepting a stale Command as a no-op:** a sim rule change. It would also hide bad human
+  Commands, and it would move `dropped_commands`, which the hash covers (ADR 0007 §5's P26o note).
