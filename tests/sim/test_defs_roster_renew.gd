@@ -503,7 +503,8 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
-		if path.get_file().get_basename() == "renew_aa":
+		# P239b (anti-air) and P266 (transport, drone squad) bring the roster entries.
+		if path.get_file().get_basename() in ["renew_aa", "renew_transport", "renew_drone"]:
 			continue
 		if (load(path) as UnitDef).faction == FACTION:
 			found.append(path)

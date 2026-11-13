@@ -18,13 +18,16 @@ const INFANTRY_BAR_PX: float = 24.0
 ## Every weapon a shipped `data/units` file references has a row (P117c); the Phase 3 faction
 ## weapons take the height of the old weapon of the same kind of shooter: the Redoubt's
 ## `redoubt_gun` the turret's, `breaker_rocket` the rocket squad's, `arcline_gun` the artillery's,
-## and the anti-air guns (P239) the turret's.
+## the anti-air guns (P239) the turret's
+## and the drone squads' guns (P264) the rifle squads'.
 const MUZZLE_PX: Dictionary[StringName, float] = {
 	&"tank_cannon": 14.0,
 	&"heavy_cannon": 17.0,
 	&"artillery_gun": 18.0,
 	&"rocket": 13.0,
 	&"rifle": 11.0,
+	&"hoist_crew_gun": 11.0,
+	&"kite_crew_gun": 11.0,
 	&"turret_gun": 30.0,
 	&"redoubt_gun": 30.0,
 	&"breaker_rocket": 13.0,

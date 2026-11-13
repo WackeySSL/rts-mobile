@@ -203,9 +203,11 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	# Every weapon file is one of the seven here, the Lumen Accord's own two (breaker_rocket and
 	# arcline_gun, test_defs_roster_renew) or the Deep Bore's rupture (fossil_rupture, P110d: no
 	# gun, test_defs_strike_data) or the two anti-air guns (P239, test_defs_anti_air, held by
-	# BuildingDefs that have no roster entry until P239b), each used by what names it.
+	# BuildingDefs that have no roster entry until P239b) or the two drone squads' guns (P264,
+	# test_defs_carriers, held by UnitDefs that have no roster entry until P266), each used by what
+	# names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(12)
+	assert_int(files.size()).is_equal(14)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -436,7 +438,8 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
-		if path.get_file().get_basename() == "fossil_aa":
+		# P239b (anti-air) and P266 (transport, drone squad) bring the roster entries.
+		if path.get_file().get_basename() in ["fossil_aa", "fossil_transport", "fossil_drone"]:
 			continue
 		if (load(path) as UnitDef).faction == FACTION:
 			found.append(path)

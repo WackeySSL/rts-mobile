@@ -59,6 +59,8 @@ func test_the_shipped_weapon_masks_are_the_adr_starting_masks() -> void:
 		"redoubt_gun": 5,
 		"burst_stack_gun": 6,
 		"sky_needle_gun": 6,
+		"hoist_crew_gun": 1,
+		"kite_crew_gun": 1,
 	}
 	var files: PackedStringArray = DirAccess.get_files_at("res://data/weapons")
 	var seen: int = 0

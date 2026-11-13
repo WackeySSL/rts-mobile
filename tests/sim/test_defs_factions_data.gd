@@ -13,6 +13,15 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
+# Defs with no roster entry yet: the anti-air (P239b) and the transports and drone squads (P266).
+const UNLISTED: Array[String] = [
+	"fossil_aa",
+	"renew_aa",
+	"fossil_transport",
+	"renew_transport",
+	"fossil_drone",
+	"renew_drone",
+]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0
 const TABS: int = 3
@@ -444,7 +453,8 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
-		if path.get_file().get_basename() in ["fossil_aa", "renew_aa"]:
+		# P239b (anti-air) and P266 (transport, drone squad) bring the roster entries.
+		if path.get_file().get_basename() in UNLISTED:
 			continue
 		units.append(load(path))
 	return units
