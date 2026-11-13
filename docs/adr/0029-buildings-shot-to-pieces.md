@@ -42,7 +42,8 @@ stage-to-part tables (every reader indexes them by stage) and `cuts` keeps two e
 function, the thresholds 67/34, the remembered stage of a ghost, the collapse, the hit feedback and
 the vehicles' stages are unchanged. In §3's table the SKADET row's part and patch, in §4's table the
 SKADET entries of "Silhouette", "Surfaces" and "Team colour", §4's SKADET clause of "Depth on the
-body", §5's refusal "`dmg1` without `dmg2`" (P202 will refuse any `dmg1` pose instead) and its
+body", the "In short" paragraph's "three pictures", "Decisions in short" item 3 (`dmg1` = SKADET),
+§5's refusal "`dmg1` without `dmg2`" (P202 will refuse any `dmg1` pose instead) and its
 stage-1 ink rule (now: ink in the intact picture) are replaced by ADR 0034; §10's page gains the
 freed rows. One-line notes at the end of §3, §4, §5 and §10 point here. No accepted text changed.
 
@@ -289,8 +290,10 @@ Notes (2026-11-04, P26au docs; the text above stays as accepted):
 
 Note (2026-11-13, P200b, the lead; the text and the notes above stay as accepted): ADR 0034
 replaces the table's SKADET entries of "Silhouette", "Surfaces" and "Team colour" and the SKADET
-clause of "Depth on the body": SKADET has no picture of its own (only the "Light" and "Smoke"
-entries still apply), so "each stage changes the shape more" holds between INTAKT and KRITISK.
+clause of "Depth on the body": SKADET has no picture of its own (only the "Life", "Light" and
+"Smoke" entries still apply), so "each stage changes the shape more" holds between INTAKT and
+KRITISK. The material rules' SKADET steps (the panes "first", a tank's hole) show only at KRITISK;
+a tank's gas jet at SKADET is a particle and stays (§6).
 
 ### 5. Generator v5 (`tools/artgen/`)
 Features the art needs, each one a simple 3D-to-SVG step (primitives, moves, palette, the painter's
@@ -378,7 +381,10 @@ above stays as accepted):
 Note (2026-11-13, P200b, the lead; the text and the notes above stay as accepted): ADR 0034 §4
 and §5 replace the refusal "`dmg1` without `dmg2`" (P202 will refuse any `dmg1` pose) and the
 stage-1 ink rule (a point needs ink in the intact picture and at stage 2); `emitter_quiet` 1 will
-become 2 or 0.
+become 2 or 0. The P163 note's "no real model has `dmg2` only" no longer holds (the space centres
+today, every building after P202). Its open point, no cut rule for the points, now covers every
+building; ADR 0034 does not decide it. The SKADET key share of 55-85 % ("Team faces" above) goes
+with its test (ADR 0034, Consequences).
 
 ### 6. Particles per stage (P148, reworked again)
 - **Looks** (sprites of `fx/life_atlas.svg`; new frames in §13):
@@ -635,8 +641,9 @@ holds every damage pass within the rings, `collapse_max` and `crater_sources` (t
 smoke sources over the craters, not on the craters).
 
 (2026-11-13, P200b, the lead) **The page gains the freed rows** of ADR 0034: once P202 drops the
-16 `dmg1` frames, about 100 rows of the sorted page are free on the cross-faction page and on each
-mirror page; P202 measures them and moves the `TODAY_*` pins.
+16 `dmg1` frames, about 100 rows are freed on page 1 of a cross-faction match and of each mirror
+match; P202 will measure them and move the `TODAY_*` pins. The draw-call forecast above (16, about
+22) is 18 / about 25 since ADR 0035 §7.
 
 ### 11. The seam of the trimmed body and its patch (replaces ADR 0028 §3's second amendment's open point)
 ADR 0028 §3's second amendment asked for "at least 1 texel" of overlap and named "the `floor` of the

@@ -431,7 +431,7 @@ notes above stand where ADR 0035 does not change them):
   per-sprite tint, so no batch splits.
 - **Draw-call forecast** (ADR 0035 §7): 16 → **18** in an ordinary moment (+ `MapEdge` +
   `WorldGrade`), 17 → **19** while a strike is aimed or in flight, 22 → **about 25** at the worst
-  moment (+ the health bars' tick pass). Plan row P216 will set `PerfBases.CALLS_FORECAST`,
+  moment (+ `MapEdge` + `WorldGrade` + the health bars' tick pass). Plan row P216 will set `PerfBases.CALLS_FORECAST`,
   `CALLS_STRIKE` and `CALLS_WORST` (16, 17, 22 on `main` today) and the card line's test.
 
 ### 3. Picking, selection and placement
@@ -620,7 +620,7 @@ the notes above stand where they do not change them):
   pad in the faction's key triad. Such a frame is baked per player by `IsoAtlas`'s existing rule
   (only a frame no key colour touches is shared by a faction's players). Since P237 the shadows are
   on the second page (`IsoAtlas.PAGE_UNSORTED`), so a mirror match's page 2 grows by one faction's
-  unit shadows. The 8-12 % team share stays a rule of model frames. If a page passes 3584 rows,
+  unit shadows. The 8-12 % team share stays a rule of model frames. If page 2 passes 3584 rows,
   shadow frames bake at 75 % (ADR 0035 §4.3, Q3 A).
 
 ### 6. Factions: names, look and data

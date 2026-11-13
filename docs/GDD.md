@@ -94,7 +94,7 @@ Buildings show the damage in their shape, not only in their colour:
 | Critical | under 1/3 | a part has collapsed and the inside shows: floors, rebar, beams, dark rooms | soot over the breaks; little team colour left | fire lit from inside, thick black smoke |
 
 - **Materials break their own way:** concrete along its joints with rebar sticking out, steel bends
-  and twists (never shatters), glass goes first as dark holes with the frames left, tanks and spheres
+  and twists (never shatters), glass breaks into dark holes with the frames left, tanks and spheres
   crack, burn as a jet and then tear open, masts and towers snap at one point and fall one way.
 - **Smoke and fire are effects, not drawn into the building**, so they move, and which of a
   building's points burn differs between two of the same building.

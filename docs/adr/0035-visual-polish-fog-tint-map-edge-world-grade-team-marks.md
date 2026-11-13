@@ -26,7 +26,10 @@ The dated notes are placed: ADR 0010 §2 (fog colour), ADR 0023 §2 (z table, gr
 and §5 (key colours in unit shadow frames), ADR 0027 §3 (the forecast; ADR 0027 carries it in §3's
 "Draw calls", not in §9, so §9 has only a pointer) and the GDD's fog line. On `main` at c0bc5ba2
 none of the plan's view rows has merged: the fog is still black and the forecast still 16 / 17 /
-22. No accepted text changed.
+22. Every "ADR 0027 §9" in the amends list, the Context's item 6, §7's heading and §7's first item
+reads §3 ("ADR 0027 §9's life budget" in the Context's budgets is right as it stands). The GDD line
+changed with P200b, as the plan assigns it; HOW_TO_PLAY's row still changes with P215. No accepted
+text changed.
 
 ## Context
 - **The board** (art-director, Figma "Polish proposals", 2026-11-09): 1 contact shadows and ambient

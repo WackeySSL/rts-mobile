@@ -134,7 +134,7 @@ reserved; P200b is the lead's.
 | P219 | H | qa-engineer | tests: the polish guard (draw calls per layer on both scenes, the forecast of 18, page pins, grade bounds) and the base-arena card read | tests | P201-P218 | 5 |
 
 P200b note (2026-11-13, the lead): dated notes placed in ADR 0029 (top, §3, §4, §5, §10), ADR
-0028 §3, ADR 0023 (top, §2, §5), ADR 0010 (top, §2), ADR 0027 (top, §3, pointer in §9), ADR 0034
+0028 (top, §3), ADR 0023 (top, §2, §5), ADR 0010 (top, §2), ADR 0027 (top, §3, pointer in §9), ADR 0034
 and ADR 0035, and the GDD's damage row and fog line; the svg-art-style text waits for Michael's
 yes (last section).
 
@@ -486,9 +486,18 @@ all at once, if Michael prefers). The frontmatter `description` stays as it is.
    >   and the white band with its dark outline inside; the view bakes it in the local player's
    >   triad (P205, P206).
 5. **Palette, "Terrain" bullet (lines 59-61).** Add at its end:
-   > Unexplored fog is a very dark blue-grey, luminance at most 40 (Michael, 2026-11-09); the fog,
-   > map-edge mist and world-grade colours live in STYLE.md "Grade, fog and map edge" (P213).
+   > Unexplored fog is a very dark blue-grey (Michael's Q2 B, 2026-11-09), luminance at most 40
+   > (the bound is ADR 0035 §1, measured after the world grade, §3); the fog, map-edge mist and
+   > world-grade colours live in STYLE.md "Grade, fog and map edge" (P213).
 6. **Technical rules, "Import" bullet (line 103).** Replace "`assets/art/svg/ground/<terrain_id>_a.svg`
    and `_b.svg`" with:
    > `assets/art/svg/ground/<terrain_id>_a.svg` to `_d.svg` and the transition pieces (P209,
    > P211; a piece lies only between two different terrains, so no rim and no grid shows)
+
+   In the same bullet (lines 101-102), drop "the selection ring" from the normal-import list:
+   replace "Ground diamonds, field stages, props, the selection ring and the UI and item" with
+   > Ground diamonds, field stages, props and the UI and item
+
+   and add at the bullet's end:
+   > `ui/selection_ellipse_team.svg` is imported as P206 sets it: a per-player text bake needs
+   > "Keep File" (ADR 0023 §2).

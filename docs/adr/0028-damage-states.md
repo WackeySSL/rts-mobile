@@ -323,8 +323,8 @@ Status note (2026-11-04, ADR 0029 accepted, P26as; the text above stays as accep
   fallback is SKADET within 35 %, then tighter KRITISK patches.
 
 Note (2026-11-13, P200b, the lead; ADR 0034 accepted 2026-11-09; the text and the notes above stay
-as accepted): the stage-1 patch `dmg1` is withdrawn by ADR 0034: stage 1 shows the intact body
-(P201, P202); `dmg2` stays, and the part lists and `cuts` stay indexed by stage.
+as accepted): the stage-1 patch `dmg1` is withdrawn by ADR 0034: stage 1 will show the intact body
+once P201 and P202 merge; `dmg2` stays, and the part lists and `cuts` stay indexed by stage.
 
 ### 4. Vehicle overlays
 - **Where the sprites live: on the sorted world's page, not in `fx/life_atlas.svg`.** An overlay
