@@ -11,6 +11,7 @@ static func first(a: World, b: World) -> String:
 	lists += World.PROJECTILE_ARRAYS + World.MAP_ARRAYS + World.SCRATCH_ARRAYS
 	lists += World.PLAYER_ARRAYS + World.ORE_ARRAYS + World.GHOST_ARRAYS + World.DERIVED_ARRAYS
 	lists += World.SETUP_ARRAYS + World.PAD_ARRAYS + World.UPGRADE_ARRAYS + World.PASSENGER_ARRAYS
+	lists += World.MINE_ARRAYS + World.MINE_SEEN_ARRAYS
 	lists += World.RUNTIME_ARRAYS + World.HASHED_SCALARS + World.UNHASHED_SCALARS
 	for member: StringName in lists:
 		if member != &"native_phases" and a.get(member) != b.get(member):

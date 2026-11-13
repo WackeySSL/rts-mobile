@@ -62,11 +62,12 @@ const UPGRADES_MAX: int = 30
 ## strike state joined it (ADR 0023 section 10): two row columns and three player arrays. 5: the
 ## construction work left joined it (ADR 0026): the row column `build_left`. 6: the air and tech
 ## state joined it (ADR 0036 section 3): the row column `ammo`, three player arrays, and `TABS` 5.
-## 7: the carriers' state joined it (ADR 0036 sections 3 and 8): `carry_mode`, the passenger table.
+## 7: the carriers' state joined it (ADR 0036 sections 3 and 8): `carry_mode`, the passenger table;
+## then ADR 0037's (P286): `stance`, the mines and their records (still 7: never shipped).
 const STATE_FORMAT: int = 7
 ## The hash sections that are not a ROW_ARRAYS column: header, map, projectiles, fog, players, ore,
-## ghosts and passengers.
-const HASH_OTHER_SECTIONS: int = 8
+## ghosts, passengers and mines.
+const HASH_OTHER_SECTIONS: int = 9
 
 ## What prepare() fills a type table with for a type that has no entry: it cannot fire, sees only
 ## its own tile and counts as tracked. Not balance numbers.
@@ -138,6 +139,7 @@ const ROW_ARRAYS: Array[StringName] = [
 	&"build_left",
 	&"ammo",
 	&"carry_mode",
+	&"stance",
 ]
 ## The per-type tables, one entry per type_ids entry once prepare() has run.
 const TYPE_ARRAYS: Array[StringName] = [
@@ -263,6 +265,14 @@ const PLAYER_ARRAYS: Array[StringName] = [
 const PASSENGER_ARRAYS: Array[StringName] = [
 	&"pass_carrier", &"pass_id", &"pass_type", &"pass_hp", &"pass_owner"
 ]
+## Laid mines (ADR 0037 section 8): record `i` is entry `i`, live below `mine_count`; the mines a
+## player found: entry `p * mine_known_cap + i`, live below `mine_seen_count[p]`. Hashed, `mines`.
+const MINE_ARRAYS: Array[StringName] = [
+	&"mine_id", &"mine_owner", &"mine_cell", &"mine_weapon", &"mine_armed_tick"
+]
+const MINE_SEEN_ARRAYS: Array[StringName] = [
+	&"mine_seen_id", &"mine_seen_owner", &"mine_seen_cell", &"mine_seen_count"
+]
 ## The ore left in each ore cell, one entry per `ore_cell` entry. Hashed, in the section `ore`.
 const ORE_ARRAYS: Array[StringName] = [&"ore_amount"]
 ## The last-seen building records (ADR 0017 section 3): record `i` of player `p` is entry
@@ -284,6 +294,7 @@ const DERIVED_ARRAYS: Array[StringName] = [
 	&"mod_dealt",
 	&"mod_taken",
 	&"mod_ammo",
+	&"mine_at",
 ]
 ## The tile grid: the terrain index per cell, the move cost per class and cell, the cost per
 ## terrain and class that set_terrain copies into it, the buildable flag per terrain and the
@@ -314,6 +325,8 @@ const HASHED_SCALARS: Array[StringName] = [
 	&"match_end_tick",
 	&"winner",
 	&"pass_count",
+	&"next_mine_id",
+	&"mine_count",
 ]
 ## The rule ints, copied from RulesDef under the same names. defs_hash() covers them.
 const RULE_SCALARS: Array[StringName] = [
@@ -728,6 +741,8 @@ var build_left: PackedInt32Array = PackedInt32Array()
 var ammo: PackedInt32Array = PackedInt32Array()
 ## 0 = none, 1 = a carrier that unloads on arrival (ADR 0036 section 8); 0 for every other row.
 var carry_mode: PackedInt32Array = PackedInt32Array()
+## 0 = normal, 1 = hold position (ADR 0037 section 15); 0 at spawn.
+var stance: PackedInt32Array = PackedInt32Array()
 
 ## Per player (index 0 = neutral, unused; prepare() sizes them to player_count + 1): the credits
 ## (start_credits), the tick the defeating step produced (0 = still playing), 1 once the player has
@@ -767,6 +782,18 @@ var pass_id: PackedInt32Array = PackedInt32Array()
 var pass_type: PackedInt32Array = PackedInt32Array()
 var pass_hp: PackedInt32Array = PackedInt32Array()
 var pass_owner: PackedInt32Array = PackedInt32Array()
+## The mine table and the records (MINE_ARRAYS, MINE_SEEN_ARRAYS); ids come from next_mine_id.
+var next_mine_id: int = 1
+var mine_count: int = 0
+var mine_id: PackedInt32Array = PackedInt32Array()
+var mine_owner: PackedInt32Array = PackedInt32Array()
+var mine_cell: PackedInt32Array = PackedInt32Array()
+var mine_weapon: PackedInt32Array = PackedInt32Array()
+var mine_armed_tick: PackedInt32Array = PackedInt32Array()
+var mine_seen_id: PackedInt32Array = PackedInt32Array()
+var mine_seen_owner: PackedInt32Array = PackedInt32Array()
+var mine_seen_cell: PackedInt32Array = PackedInt32Array()
+var mine_seen_count: PackedInt32Array = PackedInt32Array()
 ## The ore units left, one per `ore_cell` entry.
 var ore_amount: PackedInt32Array = PackedInt32Array()
 ## The last-seen building records, `ghost_cap` per player (see GHOST_ARRAYS), and the live count per
@@ -789,6 +816,8 @@ var repair_rows: PackedInt32Array = PackedInt32Array()  # Role, no pads (ADR 003
 var mod_dealt: PackedInt32Array = PackedInt32Array()
 var mod_taken: PackedInt32Array = PackedInt32Array()
 var mod_ammo: PackedInt32Array = PackedInt32Array()
+## Per map cell: its mine's table index + 1, 0 = none (set and cleared sparsely, never filled).
+var mine_at: PackedInt32Array = PackedInt32Array()
 
 ## Projectile slots, max_projectiles entries each. Valid while proj_id is not 0.
 ## Ids come from next_projectile_id.

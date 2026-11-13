@@ -104,6 +104,7 @@ static func _append_columns(
 	world.build_left.append(0)
 	world.ammo.append(world.type_ammo[type_index] if type_index < world.type_ammo.size() else 0)
 	world.carry_mode.append(0)
+	world.stance.append(0)
 
 
 ## Appends the `kind` record (SPAWNED) of row `row` to `events` (ADR 0007 section 10), in place.

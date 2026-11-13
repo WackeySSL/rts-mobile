@@ -21,15 +21,15 @@ const RULES: Dictionary[StringName, int] = {
 
 
 func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
-	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 8])
-	# `ammo` (P232) and `carry_mode` (P262) follow build_left.
-	assert_int(World.ROW_ARRAYS.size()).is_equal(29)
+	assert_array([World.STATE_FORMAT, World.HASH_OTHER_SECTIONS]).is_equal([7, 9])
+	# `ammo` (P232), `carry_mode` (P262) and `stance` (P286) follow build_left.
+	assert_int(World.ROW_ARRAYS.size()).is_equal(30)
 	assert_array(World.ROW_ARRAYS.slice(-5)).is_equal(
-		[&"ready_tick", &"offline_until", &"build_left", &"ammo", &"carry_mode"]
+		[&"offline_until", &"build_left", &"ammo", &"carry_mode", &"stance"]
 	)
 	var names: PackedStringArray = World.hash_section_names()
-	assert_array(names.slice(-7)).is_equal(
-		["carry_mode", "projectiles", "fog", "players", "ore", "ghosts", "passengers"]
+	assert_array(names.slice(-8)).is_equal(
+		["stance", "projectiles", "fog", "players", "ore", "ghosts", "passengers", "mines"]
 	)
 	assert_int(names.size()).is_equal(World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS)
 	# One shape list, and an int32 table of the World.
@@ -38,6 +38,7 @@ func test_the_layout_version_and_the_new_column_are_the_contract() -> void:
 	lists.append_array([World.RUNTIME_ARRAYS, World.PLAYER_ARRAYS, World.ORE_ARRAYS])
 	lists.append_array([World.GHOST_ARRAYS, World.DERIVED_ARRAYS, World.SETUP_ARRAYS])
 	lists.append_array([World.PAD_ARRAYS, World.UPGRADE_ARRAYS, World.PASSENGER_ARRAYS])
+	lists.append_array([World.MINE_ARRAYS, World.MINE_SEEN_ARRAYS])
 	var found: int = 0
 	for list: Array in lists:
 		if list.has(&"build_left"):

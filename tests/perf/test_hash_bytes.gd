@@ -19,9 +19,11 @@ const SEED: int = 42
 ## The value written to the columns of a shell in a World made by hand (proj_free excepted).
 const SHELL_VALUE: int = 10
 ## The blocks the `ghosts` section feeds (the count of each player and the live records) and the
-## one block of the `passengers` section (the live records of the passenger table).
+## one block of the `passengers` section (the live records of the passenger table), and the three
+## of the `mines` section (the live mines, the count of each player's records, the live records).
 const GHOST_BLOCKS: int = 2
 const PASSENGER_BLOCKS: int = 1
+const MINE_BLOCKS: int = 3
 
 ## For each checkpoint, in order: its tick, the bytes fed, the digest of the rebuilt stream,
 ## World.state_hash() taken at that point and the projectile slots in use.
@@ -127,6 +129,11 @@ func test_the_count_is_the_blocks_of_the_shape_lists_with_a_header_each() -> voi
 	expected.append(Vector2i(names.find("ghosts"), 0))
 	# The arena boards no squad: the passenger section is one empty block.
 	expected.append(Vector2i(names.find("passengers"), 0))
+	# No mine is laid and none found: the live mines and the live records are empty blocks, between
+	# them the record count of each player.
+	expected.append(Vector2i(names.find("mines"), 0))
+	expected.append(Vector2i(names.find("mines"), (_world.player_count + 1) * 4))
+	expected.append(Vector2i(names.find("mines"), 0))
 	assert_array(_blocks(bytes)).is_equal(expected)
 	var payload: int = 0
 	for block: Vector2i in expected:
@@ -202,11 +209,11 @@ func test_the_watch_line_holds_the_checkpoints_and_the_smallest_and_largest_coun
 
 ## The blocks of a stream, section by section: the header, the map, one per row column, the live
 ## slots and the free stack, FogGrid.HASHED, PLAYER_ARRAYS, ORE_ARRAYS, the ghosts' two and the
-## passengers' one.
+## passengers' one and the mines' three.
 func _block_count() -> int:
 	var count: int = 1 + 1 + World.ROW_ARRAYS.size() + 2 + FogGrid.HASHED.size()
 	count += World.PLAYER_ARRAYS.size() + World.ORE_ARRAYS.size() + GHOST_BLOCKS
-	return count + PASSENGER_BLOCKS
+	return count + PASSENGER_BLOCKS + MINE_BLOCKS
 
 
 ## The (tag, byte count) of every block of `bytes`, read from the headers. A stream that stops in

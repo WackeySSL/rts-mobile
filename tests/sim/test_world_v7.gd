@@ -15,7 +15,7 @@ const AIR: int = World.MoveClass.AIR
 
 func test_the_layout_version_the_lists_and_the_section_are_the_contract() -> void:
 	assert_int(World.STATE_FORMAT).is_equal(7)
-	assert_int(World.HASH_OTHER_SECTIONS).is_equal(8)
+	assert_int(World.HASH_OTHER_SECTIONS).is_equal(9)
 	# Adjacent pairs, found by name, so that a later row moves nothing here.
 	assert_int(World.ROW_ARRAYS.find(&"carry_mode")).is_equal(World.ROW_ARRAYS.find(&"ammo") + 1)
 	var slots_at: int = World.TYPE_ARRAYS.find(&"type_carry_slots")
@@ -29,7 +29,7 @@ func test_the_layout_version_the_lists_and_the_section_are_the_contract() -> voi
 		var cap_at: int = list.find(&"passenger_cap")
 		assert_int(cap_at).is_greater(0)
 		assert_int(cap_at).is_equal(list.find(&"mend_cost_percent") + 1)
-	assert_array(World.hash_section_names().slice(-2)).is_equal(["ghosts", "passengers"])
+	assert_array(World.hash_section_names().slice(-2)).is_equal(["passengers", "mines"])
 
 
 func test_the_type_tables_come_from_the_defs_and_a_padded_type_carries_nothing() -> void:

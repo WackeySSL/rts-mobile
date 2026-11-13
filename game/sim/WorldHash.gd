@@ -16,9 +16,9 @@ extends RefCounted
 ## ints and the stream, the map digest, the ROW_ARRAYS columns, the live projectile slots with the
 ## used free stack, FogGrid.HASHED (the explored bytes: the visible counts are derived from the
 ## hashed rows and not fed, ADR 0016), the PLAYER_ARRAYS and ORE_ARRAYS arrays, the live ghost
-## records and the live passenger records. The DERIVED_ARRAYS and the type tables stay out. A
-## hand-built world hashes before prepare() too (empty helpers and map), to another value than
-## after it.
+## records, the live passenger records, the live mines and their records. The DERIVED_ARRAYS and
+## the type tables stay out. A hand-built world hashes before prepare() too (empty helpers and
+## map), to another value than after it.
 static func state_hash(world: World) -> int:
 	var ctx: HashingContext = _start_hash()
 	for section: int in World.ROW_ARRAYS.size() + World.HASH_OTHER_SECTIONS:
@@ -38,16 +38,16 @@ static func hash_parts(world: World) -> PackedInt64Array:
 
 
 ## "header", "map", one name per ROW_ARRAYS entry, "projectiles", "fog", "players", "ore", "ghosts",
-## "passengers". The "fog" section feeds FogGrid.HASHED, which is `explored` alone since
+## "passengers", "mines". The "fog" section feeds FogGrid.HASHED, which is `explored` alone since
 ## STATE_FORMAT 2; the name stays. "players" feeds one block per PLAYER_ARRAYS array, "ore" one per
 ## ORE_ARRAYS array and "ghosts" two (_feed_ghosts); they come after "fog" since STATE_FORMAT 3.
-## "passengers" (STATE_FORMAT 7) is last: one block, the live records of the passenger table
-## (_feed_passengers).
+## "passengers" (STATE_FORMAT 7) is one block, the live records of the passenger table
+## (_feed_passengers); "mines" is last: the live mine table and the records (_feed_mines).
 static func hash_section_names() -> PackedStringArray:
 	var names: PackedStringArray = PackedStringArray(["header", "map"])
 	names.append_array(PackedStringArray(World.ROW_ARRAYS))
 	names.append_array(PackedStringArray(["projectiles", "fog", "players", "ore", "ghosts"]))
-	names.append("passengers")
+	names.append_array(PackedStringArray(["passengers", "mines"]))
 	return names
 
 
@@ -123,8 +123,10 @@ static func _feed_section(ctx: HashingContext, world: World, section: int) -> vo
 			_feed(ctx, section, _bytes_of(world.get(array_name)))
 	elif section == rows_end + 4:
 		_feed_ghosts(ctx, world, section)
-	else:
+	elif section == rows_end + 5:
 		_feed_passengers(ctx, world, section)
+	else:
+		_feed_mines(ctx, world, section)
 
 
 ## The live slots (index, then the fields in PROJECTILE_ARRAYS order), then the used free stack.
@@ -198,6 +200,42 @@ static func _feed_passengers(ctx: HashingContext, world: World, section: int) ->
 			live[at] = column[record]
 			at += 1
 	_feed(ctx, section, live.to_byte_array())
+
+
+## The live mines (ADR 0037 section 8): record `i` below `mine_count` holds its five fields in
+## MINE_ARRAYS order, ascending; then the count of each player's records and, players ascending, the
+## three fields of each live record (entry `p * mine_known_cap + i`). A count outside its table is
+## clamped to the shortest column, so a hand-made value never reads past it. `mine_at` is derived.
+static func _feed_mines(ctx: HashingContext, world: World, section: int) -> void:
+	var columns: Array[PackedInt32Array] = []
+	var count: int = maxi(world.mine_count, 0)
+	for column_name: StringName in World.MINE_ARRAYS:
+		columns.append(world.get(column_name))
+		count = mini(count, columns[-1].size())
+	var live: PackedInt32Array = PackedInt32Array()
+	live.resize(count * columns.size())  # One resize, then writes.
+	var at: int = 0
+	for record: int in count:
+		for column: PackedInt32Array in columns:
+			live[at] = column[record]
+			at += 1
+	_feed(ctx, section, live.to_byte_array())
+	var counts: PackedInt32Array = world.mine_seen_count
+	var ids: PackedInt32Array = world.mine_seen_id
+	var owners: PackedInt32Array = world.mine_seen_owner
+	var cells: PackedInt32Array = world.mine_seen_cell
+	var cap: int = world.mine_known_cap
+	var known: PackedInt32Array = PackedInt32Array()
+	for player: int in counts.size():
+		for record: int in mini(maxi(counts[player], 0), cap):
+			var entry: int = player * cap + record
+			if entry >= mini(ids.size(), mini(owners.size(), cells.size())):
+				break
+			known.append(ids[entry])
+			known.append(owners[entry])
+			known.append(cells[entry])
+	_feed(ctx, section, counts.to_byte_array())
+	_feed(ctx, section, known.to_byte_array())
 
 
 static func _start_hash() -> HashingContext:

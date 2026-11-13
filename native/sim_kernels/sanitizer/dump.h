@@ -23,7 +23,9 @@
 // world.type_layer_bit and weapon_targets; a dump without them (any older format) is read with ground masks, so all
 // numbers stay known. 7 (P262, ADR 0036 sections 3 and 8, plan exception 24): the carriers' state joined the hash (the
 // row column carry_mode, the passenger table and its section); the dump holds the same records as 6 (no kernel reads
-// them), so all numbers stay known.
+// them), so all numbers stay known. P286 (ADR 0037 sections 8, 11 and 15, plan exception 25) re-pinned on 7 without a new
+// number: the row column stance, the mine table and its records joined the hash, which the dump does not hold either (no
+// kernel reads them before P298), so a 7 dump keeps its records and the harness reads it as before.
 inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6, 7 };
 
 class Dump {

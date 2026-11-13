@@ -27,6 +27,9 @@ extends SceneTree
 ## ground masks.
 ## Format 7 (P262, ADR 0036 sections 3 and 8) changes no record name either: the row column
 ## `carry_mode` and the passenger table are read by no kernel, so no record carries them.
+## P286 (ADR 0037, exception 25) stayed on format 7: `stance`, the mine table and the mine records
+## are read by no kernel yet either (P298 adds `stance` to TARGETING's records), so the dump of a
+## format-7 world is generated from the new layout with the same records.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)
