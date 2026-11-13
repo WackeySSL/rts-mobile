@@ -3,8 +3,6 @@ extends RefCounted
 ## (the caption of the build card, the sash of a locked one). Not a suite.
 
 const DIR: String = "res://data/units"
-## The upgrades (P247): each is a research card's caption once P248 and P249 show it.
-const UPGRADES_DIR: String = "res://data/upgrades"
 
 
 ## Every def of the data in sorted file order: type id -> its resource.
@@ -27,12 +25,6 @@ static func all() -> Dictionary[String, String]:
 		var shown: Variant = all_defs[id].get("display_name")
 		if shown is String and not (shown as String).is_empty():
 			names[id] = shown as String
-	var files: PackedStringArray = DirAccess.get_files_at(UPGRADES_DIR)
-	files.sort()
-	for file: String in files:
-		if file.ends_with(".tres"):
-			var up: Resource = load("%s/%s" % [UPGRADES_DIR, file])
-			names[str(up.get("id"))] = str(up.get("display_name"))
 	return names
 
 
