@@ -8,7 +8,6 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/view/support/fog_rig.gd")
 const LIFE: LifeSettings = preload("res://data/life_settings.tres")
-const FADE_MS: int = 600
 const FAR: Vector2i = Vector2i(40, 40)  ## A tile of the sweep that nobody sees at tick 0.
 
 var _runner: MatchRunner
@@ -43,30 +42,26 @@ func _tick(state: int, seen: bool, rebuild: bool = false) -> void:
 	_runner.ticked.emit(snap.tick)
 
 
-func test_the_data_file_holds_the_fade_time() -> void:
-	assert_int(LIFE.reveal_fade_ms).is_equal(FADE_MS)
-
-
 func test_a_sweep_that_begins_fades_the_fog_out_and_one_that_pauses_fades_it_back() -> void:
 	assert_int(_alpha()).is_equal(255)
 	_tick(Reveal.State.ON, true)
 	assert_bool(_fog.is_fading()).is_true()
 	assert_int(_alpha()).is_equal(255)  # Nothing jumped: the fade has not moved yet.
-	_now[0] += FADE_MS / 2
+	_now[0] += LIFE.reveal_fade_ms / 2
 	_fog._process(0.0)
 	assert_int(_alpha()).is_between(100, 160)  # About halfway from 255 to 0.
-	_now[0] += FADE_MS
+	_now[0] += LIFE.reveal_fade_ms
 	_fog._process(0.0)
 	assert_bool(_fog.is_fading()).is_false()
 	assert_int(_alpha()).is_equal(0)
 	_tick(Reveal.State.PAUSED, false)  # The pause: the whole way back, in the same time.
 	assert_bool(_fog.is_fading()).is_true()
 	assert_int(_alpha()).is_equal(0)
-	_now[0] += FADE_MS / 2
+	_now[0] += LIFE.reveal_fade_ms / 2
 	_fog._process(0.0)
 	assert_int(_alpha()).is_between(40, 100)  # Halfway from 0 to the explored 140.
 	assert_bool(_fog.is_fading()).is_true()
-	_now[0] += FADE_MS
+	_now[0] += LIFE.reveal_fade_ms
 	_fog._process(0.0)
 	assert_bool(_fog.is_fading()).is_false()
 	assert_int(_alpha()).is_equal(Rig.EXPLORED)  # Explored and not seen now.
@@ -77,7 +72,7 @@ func test_the_fade_runs_through_a_rebuild_too() -> void:
 	_tick(Reveal.State.ON, true, true)
 	assert_bool(_fog.is_fading()).is_true()
 	assert_int(_alpha()).is_equal(255)
-	_now[0] += FADE_MS * 2
+	_now[0] += LIFE.reveal_fade_ms * 2
 	_fog._process(0.0)
 	assert_array(Rig.mismatches(_fog.image(), _runner.snapshot.fog, 1)).is_empty()
 
@@ -89,7 +84,7 @@ func test_a_patch_during_the_fade_lands_on_the_goal_and_a_gap_ends_the_fade() ->
 	Rig.flip(snap, 1, [other] as Array[Vector2i], true)  # Another tile, mid-fade.
 	_runner.ticked.emit(snap.tick)
 	assert_bool(_fog.is_fading()).is_true()
-	_now[0] += FADE_MS * 2
+	_now[0] += LIFE.reveal_fade_ms * 2
 	_fog._process(0.0)
 	assert_int(_fog.image().get_pixel(other.x, other.y).a8).is_equal(0)
 	assert_int(_alpha()).is_equal(0)
@@ -105,9 +100,53 @@ func test_a_zero_fade_time_jumps_and_an_enemys_sweep_or_a_plain_flip_never_fades
 	_tick(Reveal.State.ON, true)
 	assert_bool(_fog.is_fading()).is_false()
 	assert_int(_alpha()).is_equal(0)
-	_fog.life.reveal_fade_ms = FADE_MS
+	_fog.life.reveal_fade_ms = LIFE.reveal_fade_ms
 	var snap: MatchSnapshot = _runner.snapshot
 	snap.reveal = PackedInt32Array([0, Reveal.State.ON, Reveal.State.ON])  # No flip of the local one.
 	Rig.flip(snap, 1, [Vector2i(42, 42)] as Array[Vector2i], true)
 	_runner.ticked.emit(snap.tick)
 	assert_bool(_fog.is_fading()).is_false()  # A tank walking is no sweep.
+
+
+## A second flip in the middle of a fade (the blackout comes within the fade time) keeps the goal
+## the paints made: the tile painted in the first flip is not stuck at the half-way alpha.
+func test_a_second_flip_in_the_middle_of_a_fade_keeps_the_goal() -> void:
+	var other: Vector2i = Vector2i(41, 40)
+	_tick(Reveal.State.ON, true)
+	_now[0] += LIFE.reveal_fade_ms / 2
+	_fog._process(0.0)
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.reveal = PackedInt32Array([0, Reveal.State.PAUSED, 0])
+	Rig.flip(snap, 1, [other] as Array[Vector2i], false)  # Another tile; FAR is not listed.
+	_runner.ticked.emit(snap.tick)
+	assert_bool(_fog.is_fading()).is_true()
+	_now[0] += LIFE.reveal_fade_ms * 2
+	_fog._process(0.0)
+	assert_int(_alpha()).is_equal(0)  # FAR stays seen in the grid: its goal was not reset.
+	assert_array(Rig.mismatches(_fog.image(), snap.fog, 1)).is_empty()
+
+
+## A new match in the middle of a fade ends it, even when the tick is the next one.
+func test_a_new_match_ends_the_fade_at_once() -> void:
+	_tick(Reveal.State.ON, true)
+	assert_bool(_fog.is_fading()).is_true()
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.match_serial += 1
+	snap.reveal = PackedInt32Array([0, 0, 0])
+	Rig.flip(snap, 1, [FAR] as Array[Vector2i], false)
+	_runner.ticked.emit(snap.tick)
+	assert_bool(_fog.is_fading()).is_false()
+	assert_array(Rig.mismatches(_fog.image(), snap.fog, 1)).is_empty()
+
+
+## A flip that changes no tile leaves the sweep flag current, so a later ordinary patch is no fade.
+func test_a_later_patch_after_an_unlisted_flip_is_no_fade() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.reveal = PackedInt32Array([0, Reveal.State.ON, 0])  # No version change: nothing listed.
+	snap.tick += 1
+	_runner.ticked.emit(snap.tick)
+	assert_bool(_fog.is_fading()).is_false()
+	Rig.flip(snap, 1, [FAR] as Array[Vector2i], true)  # A tank walks: the same flag as before.
+	_runner.ticked.emit(snap.tick)
+	assert_bool(_fog.is_fading()).is_false()
+	assert_int(_alpha()).is_equal(0)

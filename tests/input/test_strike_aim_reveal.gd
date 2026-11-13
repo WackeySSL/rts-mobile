@@ -88,6 +88,8 @@ func test_a_standing_sweep_never_reads_ready_and_the_deep_bore_keeps_the_button(
 	assert_bool(_aim.has_point).is_false()
 	assert_bool(_aim.confirm()).is_false()
 	assert_array(_sent).is_empty()
+	var bore: Command = Reveals.fire(Reveals.BORE)  # The sim takes the Bore where the button binds.
+	assert_bool(Strike.apply_superweapon(_world, bore)).is_true()
 
 
 func test_with_only_the_fired_centre_the_button_shows_the_sweep_and_cannot_fire() -> void:
@@ -104,10 +106,14 @@ func test_with_only_the_fired_centre_the_button_shows_the_sweep_and_cannot_fire(
 	assert_array([_aim.building_id, _aim.sweep_bound, _aim.sweep]).is_equal(
 		[0, true, Reveal.State.PAUSED]
 	)
-	_world.reveal_site[1] = 0  # The sweep is over and the centre is back, charged: ready again.
-	_world.reveal[1] = 0
+	# The fired centre is destroyed: the sim ends the sweep, and the spare is free to fire.
+	_world.hp[_world.index_of(Reveals.SPACE_A)] = 0
+	Reveals.step(_world)
+	assert_array([_world.reveal_site[1], _world.reveal[1]]).is_equal([0, 0])
 	_read()
 	assert_array([_aim.sweep, _aim.sweep_bound, _aim.reveal]).is_equal([0, false, true])
+	assert_int(_aim.building_id).is_equal(Reveals.SPACE_B)
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.SPACE_B))).is_true()
 
 
 func test_a_sweep_ignores_a_rupture_in_the_air_and_the_bore_does_not() -> void:
@@ -115,6 +121,7 @@ func test_a_sweep_ignores_a_rupture_in_the_air_and_the_bore_does_not() -> void:
 	_world.strike_tick[1] = _world.tick + 5
 	_read()
 	assert_array([_aim.building_id, _aim.reveal]).is_equal([Reveals.SPACE_A, true])
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.BORE))).is_false()
 	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.SPACE_A))).is_true()
 
 
@@ -146,3 +153,91 @@ func test_low_power_arriving_while_the_check_mark_is_lit_ends_the_aim() -> void:
 	assert_bool(_aim.active).is_false()
 	assert_bool(_aim.confirm()).is_false()
 	assert_array(_sent).is_empty()
+
+
+func test_a_refused_centre_still_ranks_before_a_charging_bore() -> void:
+	_world.owner[_world.index_of(Reveals.ARRAY_1)] = 2
+	_ready_tick()
+	Reveals.step(_world, [Reveals.fire(Reveals.BORE)])  # The Bore fires and charges for real.
+	Reveals.drain(_world, 20, 14)
+	Reveals.step(_world)
+	assert_bool(Power.is_low(_world, 1)).is_true()
+	_read()
+	var space: int = Reveals.type_of(_world, "space")
+	assert_array([_aim.type_index, _aim.low_power, _aim.building_id]).is_equal([space, true, 0])
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.BORE))).is_false()
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.SPACE_A))).is_false()
+
+
+## A site is no strike building: the sim drops its SUPERWEAPON, so the button must not say Ready.
+func test_a_construction_site_never_binds() -> void:
+	_only_space_centres()
+	_ready_tick()
+	for id: int in [Reveals.SPACE_A, Reveals.SPACE_B]:
+		_world.build_left[_world.index_of(id)] = 5
+	_read()
+	assert_array([_aim.owned, _aim.building_id]).is_equal([false, 0])
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.SPACE_A))).is_false()
+	_world.build_left[_world.index_of(Reveals.SPACE_B)] = 0  # One is finished: it binds.
+	_read()
+	assert_array([_aim.owned, _aim.building_id]).is_equal([true, Reveals.SPACE_B])
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.SPACE_B))).is_true()
+
+
+## The sweep's centre (id 9) is built after the Bore (id 3). The Bore still charges when the aim
+## opens on the centre; when it finishes, the tie must stay with the aimed centre: the check mark
+## never carries over to a Bore at the map's corner.
+func test_the_aim_stays_on_its_building_when_a_lower_id_finishes_charging() -> void:
+	_own_the_late_centre()
+	_ready_tick()
+	var bore: int = _world.index_of(Reveals.BORE)
+	_world.ready_tick[bore] = _world.tick + 1 + 3
+	_read()
+	assert_array([_aim.building_id, _aim.reveal]).is_equal([Reveals.SPACE_2, true])
+	assert_bool(_aim.begin()).is_true()
+	_world.tick += 3  # The Bore is ready now, and has the lower id.
+	_read()
+	assert_bool(Strike.apply_superweapon(_world, Reveals.fire(Reveals.BORE))).is_true()
+	_world.reveal[1] = 0  # (The probe fired a rupture; the sweep's own state is untouched.)
+	assert_array([_aim.active, _aim.building_id]).is_equal([true, Reveals.SPACE_2])
+	assert_bool(_aim.confirm()).is_true()
+	assert_int(_sent[0].target_id).is_equal(Reveals.SPACE_2)
+
+
+## The mirror: the aimed building stops being the best, so the aim ends and sends nothing.
+func test_an_aim_ends_when_another_building_would_bind() -> void:
+	_own_the_late_centre()
+	_ready_tick()
+	_world.ready_tick[_world.index_of(Reveals.BORE)] = _world.tick + 1 + 3
+	_read()
+	assert_bool(_aim.begin()).is_true()
+	_world.offline_until[_world.index_of(Reveals.SPACE_2)] = _world.tick + 1 + 9  # Blacked out.
+	_read()  # The Bore is next, but the lit check mark belongs to the centre.
+	assert_bool(_aim.active).is_false()
+	assert_bool(_aim.confirm()).is_false()
+	assert_array(_sent).is_empty()
+
+
+## A refused low-id centre hands the button to the Dusk Array; when power returns the centre wins
+## the tie again, but the open aim and its point stay the Array's.
+func test_a_blackout_aim_survives_the_centre_coming_back_from_low_power() -> void:
+	_world.owner[_world.index_of(Reveals.BORE)] = 2
+	_ready_tick()
+	Reveals.drain(_world, 20, 14)
+	Reveals.step(_world)
+	_read()
+	assert_int(_aim.building_id).is_equal(Reveals.ARRAY_1)
+	assert_bool(_aim.begin()).is_true()
+	_aim.place(Vector2i(9000, 9000))
+	_world.power_used[1] = 0  # Power is back: the centre (id 1) is ready again.
+	_read()
+	assert_array([_aim.active, _aim.has_point, _aim.reveal]).is_equal([true, true, false])
+	assert_bool(_aim.confirm()).is_true()
+	assert_array([_sent[0].target_id, _sent[0].target_x]).is_equal([Reveals.ARRAY_1, 9000])
+
+
+## Player 1 owns the enemy's late centre (id 9) and not the two early ones.
+func _own_the_late_centre() -> void:
+	for id: int in [Reveals.SPACE_A, Reveals.SPACE_B, Reveals.ARRAY_1]:
+		_world.owner[_world.index_of(id)] = 2
+	_world.owner[_world.index_of(Reveals.SPACE_2)] = 1

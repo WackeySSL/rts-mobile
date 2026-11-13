@@ -303,7 +303,9 @@ var ghost_count: PackedInt32Array = PackedInt32Array()
 var power_made: PackedInt32Array = PackedInt32Array()
 var power_used: PackedInt32Array = PackedInt32Array()
 ## The satellite sweep (ADR 0036 section 11), per player: the space centre that fired it (0 none)
-## and the state (0 off, 1 on, 2 paused). The enemy's badge and the owner's strike button read them.
+## and the state (0 off, 1 on, 2 paused). The enemy's badge reads `reveal`, the owner's strike
+## button `reveal_site`; the view reads only the local player's `reveal_site` and never resolves
+## another player's site to a row (fog fairness).
 var reveal_site: PackedInt32Array = PackedInt32Array()
 var reveal: PackedInt32Array = PackedInt32Array()
 ## The rule ints Placement.reason reads (RulesDef).

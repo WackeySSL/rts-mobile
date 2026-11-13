@@ -89,7 +89,7 @@ func _show() -> void:
 	var foot: String = ""
 	if aim.sweep_bound:  # The sweep stands: its state is the button's foot, with the mark.
 		foot = "On" if aim.sweep == Reveal.State.ON else "Paused"
-	_strike.show_mark(aim.sweep, aim.low_power, foot)
+	_strike.show_mark(aim.sweep, aim.low_power, foot, aim.sweep_bound)
 	_strike.set_pressed_no_signal(aim.active)
 	_confirm.visible = aim.active
 	_confirm.disabled = not aim.has_point

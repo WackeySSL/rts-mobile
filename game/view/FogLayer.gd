@@ -67,6 +67,7 @@ var _fading: bool = false
 var _fade_from: PackedByteArray = PackedByteArray()  ## The image's bytes when the fade began.
 var _goal: PackedByteArray = PackedByteArray()  ## The bytes the image is fading to.
 var _fade_start_ms: int = 0
+var _last_blend_ms: int = -1
 
 
 func _ready() -> void:
@@ -86,7 +87,9 @@ func _process(_delta: float) -> void:
 	var uploads: int = _uploads
 	_sync()
 	if _fading and _uploads == uploads:  # `_sync` blended it already when it uploaded.
+		var began: int = int(usec_clock.call())
 		_blend()
+		_update_usec = int(usec_clock.call()) - began
 
 
 ## The local player the layers hide for: `runner.scenario.local_player`, 1 without a scenario.
@@ -154,15 +157,16 @@ func _sync() -> void:
 	var on: bool = player < snap.reveal.size() and snap.reveal[player] == Reveal.State.ON
 	var previous_tick: int = _tick
 	_tick = snap.tick
+	var flipped: bool = on != _on
+	_on = on  # Also when no tile changed: a later patch is no flip.
 	if other:
 		_fading = false
 	if not other and version == _version:
 		return
-	if not other and on != _on and snap.tick == previous_tick + 1:
+	if not other and flipped and snap.tick == previous_tick + 1:
 		_begin_fade()  # The sweep turned on or off in this step: the flip is in the dirty list.
 	elif other or snap.tick != previous_tick + 1:
 		_fading = false
-	_on = on
 	var began: int = int(usec_clock.call())
 	if other or fog.dirty_overflowed(player) or snap.tick != previous_tick + 1:
 		_rebuild(fog, player, shade)
@@ -183,6 +187,7 @@ func _sync() -> void:
 ## No grid to draw: no texture, and a later grid rebuilds from nothing.
 func _blank() -> void:
 	_serial = -1
+	_fading = false
 	if _texture != null:
 		texture = null
 		_texture = null
@@ -220,9 +225,11 @@ func _begin_fade() -> void:
 	if ms <= 0 or _bytes.is_empty():
 		_fading = false
 		return
+	if not _fading:  # A fade already running keeps its goal, which every paint has kept current.
+		_goal = _bytes.duplicate()
 	_fading = true
 	_fade_from = _bytes.duplicate()
-	_goal = _bytes.duplicate()
+	_last_blend_ms = -1
 	_fade_start_ms = int(msec_clock.call())
 
 
@@ -230,7 +237,11 @@ func _begin_fade() -> void:
 ## ends the fade on the goal. The texels' alpha bytes only: the colour bytes stay 0.
 func _blend() -> void:
 	var ms: int = maxi(life.reveal_fade_ms, 1)
-	var share: float = clampf(float(int(msec_clock.call()) - _fade_start_ms) / ms, 0.0, 1.0)
+	var now: int = int(msec_clock.call())
+	if now == _last_blend_ms:  # No time passed since the last blend: the same image.
+		return
+	_last_blend_ms = now
+	var share: float = clampf(float(now - _fade_start_ms) / ms, 0.0, 1.0)
 	if share >= 1.0:
 		_bytes = _goal.duplicate()
 		_fading = false

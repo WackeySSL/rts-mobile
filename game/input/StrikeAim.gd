@@ -15,6 +15,9 @@ extends Node
 ##   1 (on) or 2 (paused), and `building_id` stays 0.
 ## - The sweep ignores a rupture in the air (`Strike.apply_superweapon` tests it after the kind),
 ##   and a REVEAL building is refused on low power: `low_power`, with `building_id` 0.
+## - A construction site (`build_left` not 0) is no strike building: the sim drops its SUPERWEAPON.
+## - While an aim is open, a tie stays with the building it began on, and any other binding ends
+##   the aim (never carries the point or the lit check mark to another building).
 ## - Of the rest the least wait wins, as before; a ready one wins any tie, one refused for low
 ##   power ranks just after a ready one and before any that still charges.
 ## - A REVEAL building has no aim: `begin` sets the point at once (`reveal`), so the check mark is
@@ -43,6 +46,7 @@ var point: Vector2i = Vector2i.ZERO  ## Milli-tiles, inside the map.
 var _shown: Vector4i = Vector4i(-1, -1, -1, -1)  ## Owned, building, wait and type last told.
 var _shown_flags: int = -1  ## `reveal`, `low_power`, `sweep` and `sweep_bound` last told.
 var _serial: int = -1
+var _aim_id: int = 0  ## The building the open aim began on (ties stay with it, a change ends it).
 var _portrait: bool = false  ## The window's orientation at the last resize.
 
 
@@ -87,12 +91,13 @@ func refresh() -> void:
 	var offline_ticks: PackedInt32Array = snap.offline_until
 	var kinds: PackedInt32Array = snap.type_strike_kind
 	var charges: PackedInt32Array = snap.type_charge_ticks
+	var building: PackedInt32Array = snap.build_left
 	for row: int in ids.size():
 		var type: int = types[row]
 		if owners[row] != player or type >= kinds.size():
 			continue
 		var kind: int = kinds[type]
-		if kind == Strike.Kind.NONE:
+		if kind == Strike.Kind.NONE or building[row] != 0:  # A site is no strike building yet.
 			continue
 		var is_reveal: bool = kind == Strike.Kind.REVEAL
 		if is_reveal and site != 0:  # The sim drops it: a spare waits for the sweep to end.
@@ -104,7 +109,7 @@ func refresh() -> void:
 		var left: int = maxi(charge, maxi(offline_ticks[row] - stamp, hold))
 		var refused: bool = is_reveal and short and left == 0
 		var key: int = left * 2 + (1 if refused else 0)
-		if best < 0 or key < best:
+		if best < 0 or key < best or (key == best and active and ids[row] == _aim_id):
 			best = key
 			best_id = ids[row]
 			best_type = type
@@ -126,7 +131,7 @@ func refresh() -> void:
 	share = best_share
 	wait = (best >> 1) if owned and not sweep_bound else 0
 	radius = snap.type_strike_radius[best_type] if owned else 0
-	var dropped: bool = active and (building_id == 0 or snap.match_serial != _serial)
+	var dropped: bool = active and (building_id != _aim_id or snap.match_serial != _serial)
 	_serial = snap.match_serial
 	if dropped:
 		active = false
@@ -146,6 +151,7 @@ func begin() -> bool:
 	if active or building_id == 0:
 		return false
 	active = true
+	_aim_id = building_id
 	has_point = reveal  # The sweep has no aim: the check mark is lit at once.
 	point = Vector2i.ZERO
 	changed.emit()
