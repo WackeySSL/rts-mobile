@@ -131,3 +131,19 @@ func test_a_recorded_command_log_replays_to_the_same_hash() -> void:
 	Rig.run(replayed, 119)
 	assert_int(replayed.pass_count).is_equal(2)
 	assert_int(replayed.state_hash()).is_equal(live.state_hash())
+
+
+func test_a_new_order_to_a_carrier_keeps_an_enemy_attack_lock_on_it() -> void:
+	for order: String in ["move", "attack_move", "stop"]:
+		var world: World = Rig.world()
+		world.order_target[world.index_of(6)] = 5
+		var ids: PackedInt32Array = PackedInt32Array([5])
+		var command: Command = Command.stop(1, ids)
+		if order == "move":
+			command = Command.move(1, ids, 20500, 2500)
+		elif order == "attack_move":
+			command = Command.attack_move(1, ids, 20500, 2500)
+		Rig.step(world, [command])
+		assert_int(world.order_target[world.index_of(6)]).override_failure_message(order).is_equal(
+			5
+		)

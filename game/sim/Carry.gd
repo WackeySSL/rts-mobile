@@ -76,7 +76,7 @@ static func release(world: World, rows: PackedInt32Array) -> void:
 	for row: int in rows:
 		if slots[world.type_index[row]] > 0:
 			for other: int in targets.size():
-				if targets[other] == world.unit_id[row]:
+				if targets[other] == world.unit_id[row] and world.owner[other] == world.owner[row]:
 					targets[other] = 0
 
 
