@@ -80,6 +80,16 @@ func test_each_field_is_refused_one_rule_at_a_time_and_accepted_at_its_edges() -
 	)
 
 
+func test_an_aircraft_never_ejects() -> void:
+	var flyer: UnitDef = Rules.fine_carrier()
+	flyer.move_class = World.MoveClass.AIR
+	assert_array(Rules.mine_problems("t.tres", flyer)).is_equal(
+		["t.tres: carry_eject_percent on an aircraft"]
+	)
+	flyer.carry_eject_percent = 0
+	assert_array(Rules.mine_problems("t.tres", flyer)).is_empty()
+
+
 func test_a_mine_weapon_needs_a_blast_and_is_not_the_gun() -> void:
 	var dud: UnitDef = Rules.fine_layer()
 	dud.mine_weapon.blast_milli = 0

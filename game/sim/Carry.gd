@@ -17,7 +17,8 @@ extends RefCounted
 ## `unload_reach_tiles` away, each at the cell centre with order IDLE and an `UNLOADED` event
 ## (kind 6: id, x, y, type, owner, carrier id at index 6). A squad with no cell, or refused by
 ## `World.insert_row`, stays aboard with its record. `perish`, in the REMOVE mark after `board`,
-## kills the squads of a carrier that dies with it (ADR 0036 section 8).
+## kills the squads of a carrier that dies with it (ADR 0036 section 8), after ejecting
+## `type_carry_eject_percent` of each one's hp onto the same ring walk (ADR 0037 section 7).
 
 ## The `build_left` of a row that boarded a carrier: `hp` 0 as well, so REMOVE takes the row out in
 ## the same tick with DIED flag 2 (`Removal.died_flag`) and counts no loss (`Outcome.count_losses`).
@@ -200,18 +201,38 @@ static func run(world: World) -> void:
 			and world.hp[row] > 0
 		):
 			var id: int = world.unit_id[row]
-			_unload(world, id)
+			_unload(world, id, 100)
 			world.carry_mode[world.index_of(id)] = 0
 			row = world.index_of(id)
 		row += 1
 	Buildings.rebuild_lists(world)
 
 
-## The REMOVE mark, after `board` and before `World.remove_dead`: the squads aboard a carrier whose
-## `hp` is 0 or less die with it (ADR 0036 section 8). Each gets a DIED record (flag 0) at the
-## carrier's point and counts as a lost unit as `Outcome.count_losses` counts one; its record leaves
-## the table, the others keep their order. One resize of the event list, no other allocation.
+## The REMOVE mark, after `board` and before `World.remove_dead`: a carrier whose `hp` is 0 or less
+## and whose type has `type_carry_eject_percent` above 0 first ejects its squads (`_unload` with
+## that percent: `UNLOADED` events, rows inserted, the derived lists rebuilt). The squads that are
+## still aboard a dead carrier then die with it (ADR 0036 section 8). Each gets a DIED record
+## (flag 0) at the carrier's point and counts as a lost unit as `Outcome.count_losses` counts one;
+## its record leaves the table, the others keep their order. One resize of the event list, no other
+## allocation.
 static func perish(world: World) -> void:
+	if world.pass_count <= 0:
+		return
+	var ejected: bool = false
+	var row: int = 0
+	while row < world.unit_id.size() and world.pass_count > 0:
+		var percent: int = 0
+		if world.hp[row] <= 0 and world.type_index[row] < world.type_carry_eject_percent.size():
+			percent = world.type_carry_eject_percent[world.type_index[row]]
+		if percent > 0 and aboard(world, world.unit_id[row]) > 0:
+			var id: int = world.unit_id[row]
+			var before: int = world.pass_count
+			_unload(world, id, percent)
+			ejected = ejected or world.pass_count != before
+			row = world.index_of(id)  # The inserts moved the rows above them.
+		row += 1
+	if ejected:
+		Buildings.rebuild_lists(world)
 	var count: int = mini(world.pass_count, world.pass_id.size())
 	var dying: int = 0
 	for at: int in count:
@@ -279,9 +300,11 @@ static func passengers_of(world: World, player: int) -> int:
 ## the next FOOT-passable cell. Every on-map tile looked at counts one `Stat.EXIT_SCANNED`, and the
 ## squads never share a cell. The squad's row is inserted at the cell's centre with its old id and
 ## hp (`World.insert_row`), and its record leaves the table. The squads that find no cell, or that
-## `insert_row` refuses, stay aboard with their records.
+## `insert_row` refuses, stay aboard with their records. Each squad comes back with
+## `max(1, hp * percent / 100)` hit points: 100 for an unload, `type_carry_eject_percent` for the
+## eject of a dead carrier (`perish`).
 @warning_ignore("integer_division")
-static func _unload(world: World, carrier_id: int) -> void:
+static func _unload(world: World, carrier_id: int, percent: int) -> void:
 	var carrier: int = world.index_of(carrier_id)
 	var home: int = world.cell_of(world.pos_x[carrier], world.pos_y[carrier])
 	var cols: int = maxi(world.map_cols, 1)
@@ -323,7 +346,7 @@ static func _unload(world: World, carrier_id: int) -> void:
 			world.pass_id[at],
 			world.pass_owner[at],
 			world.pass_type[at],
-			world.pass_hp[at],
+			maxi(1, world.pass_hp[at] * percent / 100),
 			found.x * World.MILLI_PER_TILE + World.TILE_CENTRE,
 			found.y * World.MILLI_PER_TILE + World.TILE_CENTRE
 		)

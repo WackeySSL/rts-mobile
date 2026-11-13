@@ -777,3 +777,10 @@ later; the names as listed. The questions stand below as they were asked.
      purpose: each side's carrier sounds like its own crews.
    - B: as A, but Ironbox for the Bunk Wagon and Lightcar for the Linecar (no echo).
    - Or name the ones to change.
+
+### As built (P289)
+`Carry.perish` ejects before it kills: a dead carrier of a type with `type_carry_eject_percent`
+above 0 runs `Carry._unload` with that percent (the same turned ring walk and `UNLOADED` event;
+each squad comes back with `max(1, hp * percent / 100)`), then the existing death path takes the
+squads still aboard (no free cell, or `insert_row` refused) as lost. An unload passes 100. The
+data checks add "carry_eject_percent on an aircraft" to `mine_rules.gd`. No deviation.
