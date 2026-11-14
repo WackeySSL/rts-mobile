@@ -207,7 +207,7 @@ func test_each_group_drop_rule_counts_once_and_the_largest_command_is_kept() -> 
 
 
 ## NONE, 8, the reserved 19 and 21-29 and others are unknown whatever their ids: also with
-## no ids, or a unit that cannot move (type 1 has speed 0). The types 5-7, 10-18 and 20 are
+## no ids, or a unit that cannot move (type 1 has speed 0). The types 5-7, 9, 10-18 and 20 are
 ## known: each has a branch and its own validation (test_sim_phases_v2, test_sell, test_mend).
 func test_an_unknown_or_reserved_type_is_dropped_whatever_the_ids_are() -> void:
 	var wrong: Array[String] = []

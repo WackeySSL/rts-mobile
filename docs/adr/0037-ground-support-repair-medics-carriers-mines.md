@@ -699,6 +699,18 @@ With every stance 0 the kernel's results are today's, so P298 moves no golden.
 Patrol and veterancy change hashed state; whichever update takes one takes its `STATE_FORMAT` bump
 then.
 
+- Note (2026-11-14, P298, as built; changes no accepted text above): `STANCE` 9 sets `stance` on own
+  rows with speed above 0 (other ids are skipped; a payload other than `[0]` or `[1]`, or no valid
+  row, drops the command and counts it; no `_playing` gate, as MOVE and STOP). No other Command
+  touches it. A squad that boards and unloads comes back at 0 (the passenger table holds no
+  stance); a held carrier keeps its own. A held row's `ATTACK` goes IDLE (goal = its position,
+  navigation `NONE`) on every lock break (the target is gone, unseen or on a layer its weapon cannot
+  hit), and then scans at weapon range in the same pass. On `ATTACK_MOVE` its reach is its weapon
+  range, and a row already in `CHASE` when held goes back to `DIRECT` on its next line-check turn.
+  `stance` is in TARGETING's checked list (44 names, 110 in the table) and a required record of the
+  format-7 sanitizer dumps. `PlayerView` gives it as the copied field `own_stance` (one entry per
+  `own_rows`), not as `row_stance` (P26bq, P26bt, ADR 0038 section 4). No golden moved.
+
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while
   -1 gives 1 and -2 gives 2; no loss counted; no power, fire or harvest from the sold row in its

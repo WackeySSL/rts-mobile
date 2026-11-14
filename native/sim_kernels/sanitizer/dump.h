@@ -26,8 +26,8 @@
 // them), so all numbers stay known. P286 (ADR 0037 sections 8, 11 and 15, plan exception 25) re-pinned on 7 without a new
 // number: the row column stance, the mine table and its records joined the hash, which the dump does not hold either (no
 // kernel reads them before P298), so a 7 dump keeps its records and the harness reads it as before. P298 (hold position)
-// adds the record world.stance (an int32 array of one entry per row) to the TARGETING records of every format; a dump
-// without it (an older checkout) is read with every stance 0.
+// adds the record world.stance (an int32 array of one entry per row) to the TARGETING records of format 7, where the harness
+// requires it (formats 1 to 6 have no such column and are read with every stance 0).
 inline constexpr uint32_t KNOWN_FORMATS[] = { 1, 2, 3, 4, 5, 6, 7 };
 
 class Dump {

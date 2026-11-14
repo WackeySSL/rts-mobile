@@ -29,7 +29,8 @@ extends SceneTree
 ## `carry_mode` and the passenger table are read by no kernel, so no record carries them.
 ## P286 (ADR 0037, exception 25) stayed on format 7: `stance`, the mine table and the mine records
 ## were read by no kernel then; P298 adds `stance` to TARGETING's records (world.stance, I), so the
-## dump of a format-7 world holds one record more and the harness reads one without it as stance 0.
+## dump of a format-7 world holds one record more, which the harness requires. The waves also send
+## STANCE to part of their group, so the dumps hold held rows.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)
@@ -245,6 +246,8 @@ func _orders_at(world: World) -> Array[Command]:
 	if not ids.is_empty():
 		var tile_x: int = (34 if west else 3) + wave * 7 % 27
 		var tile_y: int = 3 + wave * 11 % 58
+		if wave % 2 == 0:
+			orders.append(Command.stance(player, ids, true))
 		orders.append(Command.move(player, ids, tile_x * 1000 + 500, tile_y * 1000 + 500))
 	return orders
 

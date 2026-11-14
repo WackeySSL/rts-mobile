@@ -23,7 +23,8 @@ extends RefCounted
 ## else it keeps the path of its order, so units use the gaps in the rock and never press into it;
 ## an `ATTACK` unit steers at its target by the order's own navigation (the goal is the target's
 ## position) and holds at range. A unit that loses its target (or its target steps out of range)
-## resumes its path. See `_engage`.
+## resumes its path. See `_engage`. Hold position (P298): see the `stance` notes in `run` and
+## `_engage`; tests/sim/test_stance.gd and tests/sim/native/test_targeting_lockstep_hold.gd.
 ##
 ## `run` has a C++ twin, the TARGETING kernel (native/sim_kernels, core/targeting.cpp, ADR 0013
 ## section 5): it hands both passes to it when the World's mask has its bit, and a change to
@@ -66,12 +67,14 @@ const HOLD_STANCE: int = 1
 ##   row from this tick (in this same pass it scans if it is due on this tick, else on its next due
 ##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2. A
 ##   target on a layer the row's weapon cannot hit (P238) breaks the lock the same way; an unarmed
-##   type has no mask and locks any enemy.
+##   type has no mask and locks any enemy. A held row (`stance` 1, P298, ADR 0037 section 15) does
+##   not attack-move on: it goes IDLE where it stands (goal = its position, navigation `NONE`),
+##   and then scans like any idle row, at weapon range, in this same pass.
 ## - `MOVE` rows acquire nothing and drop a target they held, every tick (a moving unit does not
 ##   fire).
 ## - An `ATTACK_MOVE` or `IDLE` row with a weapon is due when `(tick + id) % retarget_period_ticks`
 ##   is 0 (a fifth of the rows each tick with the shipped 5). Its reach is the type's acquire
-##   range when attack-moving and the weapon's range when idle.
+##   range when attack-moving and the weapon's range when idle, or when held (`stance` 1).
 ## - A due row keeps its target while that unit still exists, is an enemy, is seen (P46b) and is a
 ##   candidate (below) within reach: no switching for a nearer or better one. Otherwise it scans.
 ##   The sight of a held target is tested on the row's turn, like its range, so a target that walks

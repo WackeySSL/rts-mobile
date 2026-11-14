@@ -1,6 +1,6 @@
 // The rules of the TARGETING kernel (ADR 0013 sections 1 and 2, plan P41n, P46b): Targeting.run and Targeting._engage over views of the
 // arrays the kernel borrowed, two passes over the rows in ascending id order. Acquisition: an ATTACK row locks its target (or
-// falls back to ATTACK_MOVE when that unit is gone or out of its player's sight; the lock writes the row's goal from the target's
+// falls back to ATTACK_MOVE (to IDLE where it stands, for a held row, below) when that unit is gone or out of its player's sight; the lock writes the row's goal from the target's
 // position only when the target's type has a speed above 0, so a building keeps the approach point that Sim._apply_attack gave
 // it, P71b, ADR 0017 section 1), a MOVE row drops its target, and a due
 // ATTACK_MOVE or IDLE row keeps its target or scans the cells of the targeting grid around it for the best enemy that its
@@ -8,13 +8,19 @@
 // target in weapon range holds, an attack-moving unit chases a target inside its acquire range while the line to it is clear,
 // an ATTACK unit re-tests the line to its goal on its line-check turn, and a unit whose target is gone resumes the path of its order. Every
 // mode change goes through reset_row (Movement.reset_row), which writes the six navigation columns and nothing else; the
-// engagement pass also calls it on the ATTACK re-test, which resets a DIRECT row to DIRECT. Plain C++17, no Godot header, no
+// engagement pass also calls it on the ATTACK re-test, which resets a DIRECT row to DIRECT, and acquisition calls it for the held
+// fallback below. Plain C++17, no Godot header, no
 // float. Rule values come in through `Rules`, `Types`, `Weapons`, the grid and the fog, read from the World by the bind layer.
 // The grid is the one the GDScript rebuild wrote this tick (SpatialGrid, `head` per cell and `next` per row): the pass never
 // rebuilds it.
 // Layers (P238, ADR 0036 section 5): a weapon may hit a row when `weapon_targets & type_layer_bit` is not 0. The test comes in the
 // scan after the damage percent and before the sight, on a held target beside its percent, and in the ATTACK lock, where a lock on
 // a row the weapon cannot hit falls back to ATTACK_MOVE like an unseen one; an unarmed type has no mask and locks any enemy.
+// Hold position (P298, ADR 0037 section 15): a row whose `stance` is 1 acquires on ATTACK_MOVE at its weapon range (an idle row
+// does already), never takes CHASE (a row that was chasing goes back to DIRECT in the engagement pass) and, when its ATTACK
+// lock breaks (the target is gone, unseen or on a layer the weapon cannot hit), goes IDLE where it stands (the goal is its
+// position, the navigation state NONE, `order_target` and `target` 0) instead of attack-moving on. Any other stance value
+// counts as normal. `stance` is read in acquisition (the fallback and the reach) and in engagement (the chase test) only.
 // Twin: game/sim/Targeting.gd (run, sees, _engage) and game/sim/Movement.gd (reset_row), in the twin's row order, so that the
 // full state matches after every call. Tests: tests/sim/test_targeting*.gd and test_engagement*.gd under both implementations,
 // tests/sim/test_fog_rules.gd (the vision rule), tests/sim/native/test_targeting_kernel.gd (the names, the in-place writes, the
@@ -24,7 +30,8 @@
 // controls_test seeds, changed rules, the cadences, the weapon roster, 64 x 64 maps, the empty grid, ties on a lattice,
 // fallbacks and seeded random states): tests/sim/native/test_targeting_lockstep.gd, _rules.gd and _cases.gd; the vision rule of
 // P46b on fogs that configure() never makes, the fog's player count and a layout other than the map's: _fog.gd; aircraft rows and every weapon mask (P238, ADR 0036 section 5): tests/sim/test_target_layers.gd under both
-// implementations and tests/sim/native/test_targeting_lockstep_layers.gd. MIT.
+// implementations and tests/sim/native/test_targeting_lockstep_layers.gd; hold position (P298): tests/sim/test_stance.gd and
+// tests/sim/native/test_targeting_lockstep_hold.gd. MIT.
 //
 // Range. The pass is exact in int64 while the positions stay within 10^9 milli-tiles of the origin in both axes (a million
 // tiles; a map is a few hundred), so that d2 = dx*dx + dy*dy of any two units stays below 2^63 (at most 8 * 10^18), and while

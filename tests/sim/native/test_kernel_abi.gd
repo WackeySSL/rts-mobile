@@ -121,6 +121,7 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.type_armour": [3],
 	"WORLD.type_move_class": [3, 6],
 	"WORLD.type_layer_bit": [3, 5],
+	"WORLD.stance": [3],
 	"WORLD.weapon_targets": [3],
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],

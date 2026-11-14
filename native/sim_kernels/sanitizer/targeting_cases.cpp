@@ -184,8 +184,8 @@ State from_dump(const Dump &dump) {
 	// The layer tables (P238) are in the dumps of format 6 on; an older dump gets ground masks, like a padded weapon.
 	state.layer_bit = dump.has_ints("world.type_layer_bit") ? dump.ints("world.type_layer_bit") : std::vector<int32_t>(state.armour.size(), LAYER_GROUND);
 	state.targets = dump.has_ints("world.weapon_targets") ? dump.ints("world.weapon_targets") : std::vector<int32_t>(state.range.size(), LAYER_GROUND);
-	// The stance column (P298, ADR 0037 section 15) is in the dumps that hold TARGETING's records from P298 on; an older dump holds nobody.
-	state.stance = dump.has_ints("world.stance") ? dump.ints("world.stance") : std::vector<int32_t>(state.unit_id.size(), 0);
+	// The stance column (P298, ADR 0037 section 15) is a record of format 7 on; formats 1 to 6 have no such column and hold nobody.
+	state.stance = dump.format >= 7 ? dump.ints("world.stance") : std::vector<int32_t>(state.unit_id.size(), 0);
 	state.move_cost = dump.bytes("world.move_cost");
 	state.visible = dump.ints("fog.visible");
 	state.fog.cols = dump.scalar("fog.cols");

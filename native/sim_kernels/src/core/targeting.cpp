@@ -74,9 +74,9 @@ private:
 	bool seen(int64_t veil, int64_t x, int64_t y) const;
 };
 
-// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode. Only the engagement pass calls
-// it: when a mode changes, and on the ATTACK re-test, which resets a DIRECT row to DIRECT, so (as in the twin) the call has no
-// `mode != new_mode` guard of its own.
+// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode. The engagement pass calls it
+// (when a mode changes, and on the ATTACK re-test, which resets a DIRECT row to DIRECT) and so does the held ATTACK fallback of
+// acquisition, so (as in the twin) the call has no `mode != new_mode` guard of its own.
 void Pass::reset_row(int64_t row, int64_t mode) {
 	rows_.nav_mode.set(row, mode);
 	rows_.nav_cell.set(row, -1);
