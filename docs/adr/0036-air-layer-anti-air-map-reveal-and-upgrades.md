@@ -968,6 +968,26 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
     Both merge before P249. P239b and P245b may land before or beside them, and the art lanes in
     flight regenerate once after P305.
 
+- **P243 note (2026-11-14, the air view; changes no accepted text above).**
+  - **`page_of` is re-keyed by sheet.** `IsoAtlas.page_of(part, flies = false)`: every part of a
+    sheet with a lift (`IsoSheetDef.flies()`: `fly_px` or `low_fly_px` above 0, written by the art
+    rows, P245 first) is on `PAGE_UNSORTED`; `texture_for(part)` still answers for a ground sheet,
+    and a flyer's sprites take their texture from their region (`texture_at`, which `show_base`
+    does). P245 and P266 only have to write the two fields; their hulls then bake on page 2.
+    Flyers are not trimmed by P306 (page 2 stays as it is).
+  - **The layer.** `AirLayer` (z 20, y-sorted, `scenes/main.tscn` and the perf arena) draws every row
+    whose `type_layer_bit` has AIR or LOW_AIR; `UnitLayer` makes no rig for one
+    (`WorldSort.is_rigless`). Hull `fly_px` above the ground point, shadow on the ground at z 2, an
+    enemy only on a seen tile, the bob (1.5 px, 2.4 s, a phase from the id, off with
+    `LifeSettings.reduced`) and the fall (700 ms of match time from the DIED tick, drift 1.5 tiles
+    along the heading, square sink, none for a boarding, a cancelled site or a death in the dark)
+    are view constants in `AirLayer`. The burst on the ground at the end of a fall is still
+    `EffectsLayer`'s DIED burst at the lifted point; a burst at the landing is a follow-up.
+  - **Picking and bars are not here.** A flyer is not pickable and has no ring or bar until P244
+    (it reads `AirLayer.lift_of_type` for the lifted centre).
+  - **The forecast.** The +2 (hulls at z 20, shadows at z 2) is pinned by
+    `tests/view/test_air_layer_batch.gd`. `PerfBases`' constants are P216's and stay as they are.
+
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
   aircraft, vehicles and programmes, from the architect's knowledge. "No known hit" is not a

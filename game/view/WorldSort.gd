@@ -52,6 +52,8 @@ const TRIADS: Array[Array] = [
 var atlas: IsoAtlas = IsoAtlas.new()  ## Empty until the first `bake`.
 ## Where the neutral sheet is read from; a test points it at a crafted sheet.
 var neutral_path: String = IsoAtlas.NEUTRAL_SHEET
+## Sheets baked beside the index's (a test's crafted art, as `neutral_path`); the id filter applies.
+var extra_sheets: Array[IsoSheetDef] = []
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
 var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
@@ -71,6 +73,21 @@ func _init() -> void:
 ## Whether type `type` of `snap` has a footprint: a building, which no unit rig stands for.
 static func is_building(snap: MatchSnapshot, type: int) -> bool:
 	return type >= 0 and type < snap.type_foot_w.size() and snap.type_foot_w[type] > 0
+
+
+## Whether type `type` of `snap` is an aircraft (the layer bit AIR or LOW_AIR): `AirLayer` draws its
+## rows, not a rig of the sorted world.
+static func is_flyer(snap: MatchSnapshot, type: int) -> bool:
+	return (
+		type >= 0
+		and type < snap.type_layer_bit.size()
+		and (snap.type_layer_bit[type] & (World.Layer.AIR | World.Layer.LOW_AIR)) != 0
+	)
+
+
+## Whether a row of type `type` has no rig in `UnitLayer`: a building (`BuildingLayer`) or a flyer.
+static func is_rigless(snap: MatchSnapshot, type: int) -> bool:
+	return is_building(snap, type) or is_flyer(snap, type)
 
 
 ## The index into TRIADS of the triad `player` wears: its entry of the scenario's `team_triads`,
@@ -96,7 +113,7 @@ func sync() -> void:
 func bake(scenario: ScenarioDef) -> IsoAtlas:
 	var ids: Dictionary[StringName, bool] = _art_ids(scenario)
 	var sheets: Array[IsoSheetDef] = []
-	for sheet: IsoSheetDef in IsoAtlas.load_sheets():
+	for sheet: IsoSheetDef in IsoAtlas.load_sheets() + extra_sheets:
 		if ids.has(sheet.art_id):
 			sheets.append(sheet)
 	var arts: Array[IsoPlayerArt] = _player_arts(scenario, sheets)
