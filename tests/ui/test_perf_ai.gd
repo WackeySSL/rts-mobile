@@ -146,10 +146,11 @@ func test_the_card_prints_the_ai_line_for_this_arena_only() -> void:
 		snap.think_usec = 500 if tick % 5 == 0 else 0
 		if tick == 450:
 			snap.think_usec = 2_500
+		snap.ai_wait_usec = 3_000 if tick == 450 else (1_000 if tick % 10 == 0 else 0)
 		hud.record_snapshot(snap)
 	var line: String = (
 		"ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at or below "
-		+ "1.00 ms | ai_wait_p95_ms 0.00 | ai_wait_max_ms 0.00 | ai_waits 0 (no verdict)"
+		+ "1.00 ms | ai_wait_p95_ms 1.00 | ai_wait_max_ms 3.00 | ai_waits 90 (no verdict)"
 	)
 	assert_array(Array(hud.card_lines())).contains([line])
 	for verdict: String in hud.summary()["verdicts"]:

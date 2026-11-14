@@ -8,6 +8,9 @@ extends AiController
 
 const WAIT_MSEC: int = 40
 
+## The sleep of a think, WAIT_MSEC unless a case sets another.
+var wait_msec: int = WAIT_MSEC
+
 var thinks: int = 0
 var threads: Dictionary[int, bool] = {}
 
@@ -15,5 +18,5 @@ var threads: Dictionary[int, bool] = {}
 func think(_view: PlayerView, out: Array[Command]) -> void:
 	thinks += 1
 	threads[OS.get_thread_caller_id()] = true
-	OS.delay_msec(WAIT_MSEC)
+	OS.delay_msec(wait_msec)
 	out.append(Command.stop(player_id, PackedInt32Array()))

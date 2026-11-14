@@ -244,6 +244,8 @@ var _thread: Thread
 ## retried: the thinks then run inline in the job.
 var _ai_thread: Thread
 var _ai_start_failed: bool = false
+## A test seam: an error code other than OK stands in for the result of the AI thread's start.
+var _ai_start_error: int = OK
 ## The fields behind `world`, `loop`, `replay` and `probe`. The runner itself uses only these.
 var _world: World
 var _loop: MatchLoop
@@ -269,6 +271,8 @@ func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
 		return
+	if step.y & HandOffStep.WAIT:
+		_state = HandOff.FINISHED  # The token is taken: a timeout below keeps the old match whole.
 	if not _take_ai_done(WAIT_CAP_MSEC):
 		return
 	_release_job()
@@ -330,10 +334,10 @@ func wait_idle(timeout_msec: int = WAIT_CAP_MSEC) -> bool:
 	var step: Vector2i = hand_off(_state, HandOffEvent.WAIT_IDLE)
 	if step.y & HandOffStep.WAIT and not _take_done(timeout_msec):
 		return false
-	if not _take_ai_done(timeout_msec):
-		return false
+	# The job's token is taken: the state moves on before the AI wait, so a timeout there leaves
+	# no RUNNING state without its token (the next boundary publishes the finished job).
 	_state = step.x
-	return true
+	return _take_ai_done(timeout_msec)
 
 
 ## True while a posted job's `done` token is not taken (RUNNING).
@@ -633,7 +637,9 @@ func _start_ai_thread() -> void:
 	_job.ai_work = Semaphore.new()
 	_job.ai_done = Semaphore.new()
 	_job.ai_quit = false
-	var error: int = thread.start(_job.serve_ai)
+	var error: int = _ai_start_error
+	if error == OK:
+		error = thread.start(_job.serve_ai)
 	if error != OK:
 		_ai_start_failed = true
 		_job.ai_work = null
