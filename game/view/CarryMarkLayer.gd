@@ -21,6 +21,7 @@ const POINTS: int = 32
 @export var unit_layer: UnitLayer  ## The carrier's drawn place; without it the snapshot's point.
 
 var draws: int = 0  ## Frames drawn, for the tests.
+var redraws: int = 0  ## Redraws asked for, for the tests.
 
 var _unit: PackedVector2Array = PackedVector2Array()  ## The unit circle, closed.
 var _ring: PackedVector2Array = PackedVector2Array()  ## A ring's points, reused.
@@ -62,6 +63,7 @@ func ring_centre() -> Vector2:
 func _process(_delta: float) -> void:
 	var any: bool = marks() > 0
 	if any or _drawing:
+		redraws += 1
 		queue_redraw()
 	_drawing = any
 
