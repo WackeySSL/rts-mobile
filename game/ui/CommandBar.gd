@@ -6,10 +6,10 @@ extends Control
 ## building's name, its health; then a "+N" chip for the types left out; an enemy building's chip
 ## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
 ## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
-## one own complete building (Mend, Sell); Home (P244) is for units with an own aircraft among them
-## and sends one REPAIR to each airfield the aircraft are homed at (`PlayerController.home`).
-## Orders that do not fit scroll sideways inside the bar, a
-## button never shrinks below 56 dp.
+## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
+## airfield and sends one REPAIR to each airfield the aircraft are homed at
+## (`PlayerController.home`). Orders that do not fit scroll sideways inside the bar, a button never
+## shrinks below 56 dp.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -49,7 +49,7 @@ const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the the
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
 ## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
-## with an own aircraft among them) or &"building".
+## with an aircraft that has an airfield to go to) or &"building".
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
 	{"id": &"home", "glyph": "home", "label": "HOME", "for": &"air"},
@@ -100,7 +100,8 @@ var _down_ms: int = 0  ## When the finger last went down on Sell.
 var _sell_down_now: bool = false  ## A finger is down on Sell: its arm does not lapse under it.
 var _card_id: int = -1  ## The building the question card asked about, -1 for none.
 var _portrait: bool = false  ## The window's orientation at the last resize.
-var _air: bool = false  ## An own aircraft is selected: Home shows.
+var _air: bool = false  ## A selected aircraft has an own airfield to go to: Home shows.
+var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
 ## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
@@ -525,9 +526,10 @@ func _fill(ids: PackedInt32Array) -> void:
 				group.fogged = true
 	var local: int = _local()
 	var row: int = BuildingOrders.target(snap, ids, local)
-	_air = false
-	for group: Group in groups.values():
-		_air = _air or (WorldSort.is_flyer(snap, group.type) and snap.owner[group.row] == local)
+	_fields.clear()
+	if snap != null:  # Home shows while an aircraft can go: it has an own airfield (REPAIR's rows).
+		OrderRules.home_fields(snap, ids, local, _fields)
+	_air = not _fields.is_empty()
 	_sync_orders(snap, units and not groups.is_empty(), row)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()

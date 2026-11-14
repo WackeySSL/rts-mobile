@@ -10,6 +10,7 @@ const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const AIRFIELD: int = 1
 const FIGHTER: int = 2
 
@@ -36,47 +37,53 @@ func after_test() -> void:
 
 
 func test_there_is_no_flight_tab_while_the_faction_builds_no_aircraft() -> void:
-	await _open(ScreenSizes.ALL[0], false)
-	var tab: Button = _tab()
-	assert_bool(tab.visible).is_false()
+	await _open(ScreenSizes.ALL[0], [], null)
+	assert_bool(_tab().visible).is_false()
 	assert_int(_sidebar.tab).is_equal(World.Tab.STRUCTURES)
+	# The other faction's aircraft in the match are not ours: still no tab.
+	await _open(ScreenSizes.ALL[0], ["renew_fighter"], null)
+	assert_bool(_tab().visible).is_false()
+	await _open(ScreenSizes.ALL[0], ["fossil_fighter"], null)
+	assert_bool(_tab().visible).is_true()
 
 
 func test_the_flight_tab_is_a_tab_of_the_drawer_at_every_size_and_shows_the_fighter() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, true)
-		var why: String = str(size)
+		await _open(size, ["fossil_fighter"], null)
+		await _assert_tabs(str(size))
 		var tab: Button = _tab()
-		assert_bool(tab.is_visible_in_tree()).override_failure_message(why).is_true()
-		var rect: Rect2 = tab.get_global_rect()
-		assert_float(rect.size.x).override_failure_message(why).is_greater_equal(
-			UiScale.dp(48.0) - 0.5
-		)
-		assert_float(rect.size.y).override_failure_message(why).is_greater_equal(
-			UiScale.dp(48.0) - 0.5
-		)
-		(
-			assert_bool(_sidebar.get_global_rect().encloses(rect))
-			. override_failure_message("%s %s in %s" % [why, rect, _sidebar.get_global_rect()])
-			. is_true()
-		)
-		var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 0.0)
-		assert_bool(safe.encloses(rect)).override_failure_message(why).is_true()
 		var icon: TextureRect = tab.find_child("Icon", true, false) as TextureRect
 		assert_str(icon.texture.resource_path).is_equal("res://assets/art/svg/icons/tab_flight.svg")
 		_tap(tab)
 		await await_idle_frame()
-		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.FLIGHT)
+		assert_int(_sidebar.tab).override_failure_message(str(size)).is_equal(World.Tab.FLIGHT)
 		assert_bool(tab.button_pressed).is_true()
 		var shown: Array[String] = []
 		for node: Node in _sidebar.find_children("Tile_*", "ItemTile", true, false):
 			if (node as Control).is_visible_in_tree():
 				shown.append(node.name)
-		assert_array(shown).override_failure_message(why).is_equal(["Tile_fossil_fighter"])
+		assert_array(shown).override_failure_message(str(size)).is_equal(["Tile_fossil_fighter"])
+		await _assert_tabs(str(size))  # Another tab holds the name now.
+
+
+## Four tabs on every profile (sideways, upright, the notch design): every visible tab is a 48 dp
+## target inside the drawer and the safe area, and the name it shows lies inside it: the open
+## tab's, with the others bare icons (`BuildSidebar._fit_tabs`).
+func test_four_tabs_fit_every_profile_with_their_names_inside_them() -> void:
+	var profiles: Array[UiMetrics] = []
+	profiles.append_array(UiProfiles.all().values())
+	profiles.append_array(UiProfiles.portrait().values())
+	profiles.append_array(UiProfiles.notch_design().values())
+	for metrics: UiMetrics in profiles:
+		await _open(metrics.window_size, ["fossil_fighter"], metrics)
+		for open: int in [World.Tab.STRUCTURES, World.Tab.VEHICLES, World.Tab.FLIGHT]:
+			_sidebar.select_tab(open)
+			await await_idle_frame()
+			await _assert_tabs("%s %s tab %d" % [metrics.os_name, metrics.window_size, open])
 
 
 func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:
-	await _open(ScreenSizes.ALL[3], true)
+	await _open(ScreenSizes.ALL[3], ["fossil_fighter"], null)
 	assert_int(_sidebar.tab).is_equal(World.Tab.STRUCTURES)
 	_sidebar.set_selected(PackedInt32Array([AIRFIELD]))
 	assert_int(_sidebar.tab).is_equal(World.Tab.FLIGHT)
@@ -95,23 +102,63 @@ func _tap(control: Control) -> void:
 	TouchEvents.release(get_viewport(), 0, at)
 
 
-## A new main scene at `size`, its match paused; with `air` the roster holds the fighter.
-func _open(size: Vector2i, air: bool) -> void:
+## Every visible tab: at least 48 dp each way, in the drawer and the safe area, and its name, when
+## it shows one, whole inside it; the close button in the drawer too.
+func _assert_tabs(why: String) -> void:
+	var drawer: Rect2 = _sidebar.get_global_rect()
+	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 0.0)
+	var named: int = 0
+	for node: Node in _sidebar.find_children("Tab*", "Button", true, false):
+		var tab: Button = node as Button
+		if not tab.is_visible_in_tree():
+			continue
+		var rect: Rect2 = tab.get_global_rect()
+		var at: String = "%s: %s %s in %s" % [why, tab.name, rect, drawer]
+		assert_float(rect.size.x).override_failure_message(at).is_greater_equal(
+			UiScale.dp(48.0) - 0.5
+		)
+		assert_float(rect.size.y).override_failure_message(at).is_greater_equal(
+			UiScale.dp(48.0) - 0.5
+		)
+		assert_bool(drawer.grow(0.5).encloses(rect)).override_failure_message(at).is_true()
+		assert_bool(safe.grow(0.5).encloses(rect)).override_failure_message(at).is_true()
+		var label: Label = tab.find_child("Name", true, false) as Label
+		if not label.visible:
+			continue
+		named += 1
+		var font: Font = label.get_theme_font(&"font")
+		var size: int = label.get_theme_font_size(&"font_size")
+		var wide: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, size).x
+		var plate: StyleBox = tab.get_theme_stylebox(&"normal", &"SidebarTab")
+		var room: float = rect.size.x - plate.get_margin(SIDE_LEFT) - plate.get_margin(SIDE_RIGHT)
+		(
+			assert_float(wide)
+			. override_failure_message("%s name %s wide in %s" % [at, wide, room])
+			. is_less_equal(room + 0.5)
+		)
+	assert_int(named).override_failure_message(why).is_greater(0)
+
+
+## A new main scene at `size` (under `metrics` when given), its match paused; `units` are own
+## units of the match whose types join the faction's list (an aircraft of the player's faction
+## puts the Flight tab on the drawer).
+func _open(size: Vector2i, units: Array[String], metrics: UiMetrics) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
-	UiScale.clear_override()
+	if metrics != null:
+		UiScale.set_override(metrics)
+	else:
+		UiScale.clear_override()
 	get_window().size = size
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	var spawns: Array[SpawnDef] = [Rig.spawn(1, "fossil_airfield", 8, 8)]
-	if air:  # A type in the match, in the roster or not, is a card.
-		spawns.append(Rig.spawn(1, "fossil_fighter", 12, 12))
+	for unit: String in units:
+		var owner_id: int = 2 if unit.begins_with("renew") else 1
+		spawns.append(Rig.spawn(owner_id, unit, 12, 12))
 	spawns.append(Rig.spawn(2, "renew_hq", 20, 20))
-	var scenario: ScenarioDef = Rig.scenario(spawns)
-	if air:
-		scenario.roster.append(load("res://data/units/fossil_fighter.tres") as UnitDef)
-	(_main.get_node("MatchRunner") as MatchRunner).scenario = scenario
+	(_main.get_node("MatchRunner") as MatchRunner).scenario = Rig.scenario(spawns)
 	_main.get_node("MatchRunner").paused = true
 	add_child(_main)
 	await await_idle_frame()

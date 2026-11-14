@@ -44,7 +44,6 @@ class Mark:
 
 	var born_ms: int = 0
 	var diamond: bool = false
-	var ring_px: float = 0.0  ## World px: a diamond at least this wide, to ring a footprint (P244).
 	var shake: bool = false  ## A refused tap (P244): the diamond swings sideways and settles.
 	var home: Vector2 = Vector2.ZERO  ## Where the mark was shown; a shaking one moves off it.
 	var dp_px: float = 1.0  ## Base px per dp when the mark was shown.
@@ -99,7 +98,7 @@ class Mark:
 			flash.visible = diamond
 			for corner: int in 4:  # World px: this node's scale turns them into dp.
 				flash.set_point_position(
-					corner, CORNERS[corner] * FLAT * maxf(DIAMOND_PX, ring_px) / scale.x * size
+					corner, CORNERS[corner] * FLAT * DIAMOND_PX / scale.x * size
 				)
 
 
@@ -114,12 +113,6 @@ func show_attack_move(world_px: Vector2) -> void:
 
 func show_target(world_px: Vector2) -> void:
 	_show(world_px, true)
-
-
-## The diamond of an attack on a building (P244): it rings the footprint, half `half_px` world px
-## wide at least, so a bomber's target reads as the whole building and not a point on it.
-func show_ring(world_px: Vector2, half_px: float) -> void:
-	_show(world_px, true).ring_px = half_px
 
 
 ## A tap that no selected unit can answer (an enemy none of them can hit, P244): the diamond shows
@@ -151,7 +144,6 @@ func _show(world_px: Vector2, diamond: bool) -> Mark:
 	mark.position = world_px
 	mark.home = world_px
 	mark.shake = false
-	mark.ring_px = 0.0
 	mark.dp_px = UiScale.base_px_per_dp()
 	mark.diamond = diamond
 	mark.born_ms = clock.call()

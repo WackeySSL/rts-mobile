@@ -71,6 +71,7 @@ var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_gro
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
 var _hitters: PackedInt32Array = PackedInt32Array()  ## Scratch for the rows that can hit.
+var _homing: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s aircraft of one field.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s airfields.
 
 
@@ -222,8 +223,7 @@ func _tap(pos: Vector2) -> void:
 			_attack(
 				_snap.building_ids[shape],
 				_snap.building_centres[shape],
-				_type_of(_snap.building_ids[shape]),
-				_snap.building_half[shape].x / camera.zoom.x
+				_type_of(_snap.building_ids[shape])
 			)
 		elif shape >= 0 and not hostile:
 			_select_building(_snap.building_ids[shape])
@@ -386,8 +386,7 @@ func move_selected_to(ground: Vector2i) -> bool:
 ## only if the target is still a valid enemy there. The diamond marks it where it is drawn.
 ## Only the selected units that can hit a target of type `target_type` get the order (P244, ADR 0036
 ## section 5); when none can, nothing is sent: a short shake of the mark and the selection is kept.
-## `ring_px` (a building's half footprint, world px) widens the diamond to ring it.
-func _attack(target: int, at: Vector2, target_type: int, ring_px: float = 0.0) -> void:
+func _attack(target: int, at: Vector2, target_type: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	OrderRules.hitters(snap, selection.selected, target_type, _hitters)
 	if _hitters.is_empty():
@@ -395,10 +394,7 @@ func _attack(target: int, at: Vector2, target_type: int, ring_px: float = 0.0) -
 		marker_layer.show_refused(camera.screen_to_world(at))
 		return
 	command_sink.call(Command.attack(_local_player(), _hitters.duplicate(), target))
-	if ring_px > 0.0:  # A building: the diamond rings its footprint (a bomber's target).
-		marker_layer.show_ring(camera.screen_to_world(at), ring_px)
-	else:
-		marker_layer.show_target(camera.screen_to_world(at))
+	marker_layer.show_target(camera.screen_to_world(at))
 
 
 ## The type index of unit or building `id`, -1 when it is gone.
@@ -415,12 +411,16 @@ func home() -> bool:
 	var player: int = _local_player()
 	OrderRules.home_fields(snap, selection.selected, player, _fields)
 	for field: int in _fields:
-		_hitters.clear()  # The aircraft homed at this field.
+		_homing.clear()  # The aircraft homed at this field.
 		for id: int in selection.selected:
 			var row: int = snap.index_of(id)
-			if row >= 0 and OrderRules.is_own_flyer(snap, id, player) and snap.home[row] == field:
-				_hitters.append(id)
-		command_sink.call(Command.repair(player, _hitters.duplicate(), field))
+			if (
+				row >= 0
+				and OrderRules.is_own_aircraft(snap, id, player)
+				and snap.home[row] == field
+			):
+				_homing.append(id)
+		command_sink.call(Command.repair(player, _homing.duplicate(), field))
 	if _fields.is_empty():
 		return false
 	_buzz()

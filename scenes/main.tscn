@@ -102,13 +102,14 @@ camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 decals = NodePath("../DecalLayer")
 
-[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer")]
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer")]
 z_index = 30
 z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
+air_layer = NodePath("../AirLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
@@ -412,5 +413,6 @@ runner = NodePath("../../MatchRunner")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="AirLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]

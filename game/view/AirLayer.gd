@@ -50,6 +50,8 @@ var _falling: Array[Rig] = []  ## Rigs of flyers that died in sight, oldest firs
 var _pool: Array[Rig] = []
 var _pool_root: Node2D = null
 var _made: int = 0
+var _selected: Dictionary[int, bool] = {}  ## Ids of the selected units (`set_selected`).
+var _ring_zoom: float = 0.0
 
 
 ## A flyer's rig. `hull` and `shadow` are null-free (a rig with no art hides both and shows the
@@ -72,6 +74,7 @@ class Rig:
 	var born_ms: float = -1.0  ## Match time of the DIED of a rig that falls, -1 while it flies.
 	var drift: Vector2 = Vector2.ZERO
 	var origin: Vector2 = Vector2.ZERO  ## Where the fall began.
+	var ring: UnitLayer.Ring = null  ## The selection ring on the ground, made when first selected.
 
 
 func _init() -> void:
@@ -119,6 +122,33 @@ func rigs_made() -> int:
 	return _made
 
 
+## The selection hook (wired in the scene as `UnitLayer`'s is): a selected flyer wears the ring of
+## a ground unit under its shadow, on the ground at its ground point (P244, ADR 0036 section 15).
+func set_selected(ids: PackedInt32Array) -> void:
+	_selected.clear()
+	for id: int in ids:
+		_selected[id] = true
+	for rig: Rig in _rigs:
+		_ring(rig)
+
+
+## Whether flyer `id` shows its selection ring.
+func is_ringed(id: int) -> bool:
+	var rig: Rig = _by_id.get(id)
+	return rig != null and rig.ring != null and rig.ring.visible
+
+
+## How high above its ground point the top of flyer row `row`'s frame stands: the hover and the
+## frame's own height (its sheet's `bar_lift_px`). Where a selected flyer's health bar sits.
+func bar_lift_px(row: int) -> float:
+	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap == null or row < 0 or row >= snap.type_index.size():
+		return 0.0
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+	return lift_of_type(snap, type) + SpriteLift.bar_lift_px(sheet, snap.type_armour[type])
+
+
 ## The rig of unit `id`, null for none (a flyer that is gone, a falling one, a ground unit).
 func rig_of(id: int) -> Rig:
 	return _by_id.get(id)
@@ -153,7 +183,7 @@ func fill_pick_snapshot(out: PickSnapshot, view_camera: RtsCamera, min_radius_px
 	for at: int in _rows.size():
 		var row: int = _rows[at]
 		var rig: Rig = _rigs[at]
-		if row >= count or out.ids[row] != rig.id or not rig.visible:
+		if row >= count or out.ids[row] != rig.id or not rig.visible or rig.born_ms >= 0.0:
 			continue
 		var art_px: float = (
 			IsoProjection.ellipse_px(snap.type_selection_radius[snap.type_index[row]]).x * zoom
@@ -252,6 +282,7 @@ func _new_rig(snap: MatchSnapshot, row: int) -> Rig:
 		rig.marker.queue_redraw()
 	_lift(rig, rig.lift)
 	add_child(rig)
+	_ring(rig)
 	return rig
 
 
@@ -294,6 +325,34 @@ func _turn(rig: Rig) -> void:
 		world_sort.show_frame(rig.shadow, rig.sheet, SHADOW, dir, rig.owner_id)
 
 
+## Shows or hides `rig`'s ring by the selection, making it the first time; sized by `_size_ring`.
+func _ring(rig: Rig) -> void:
+	var on: bool = _selected.has(rig.id)
+	if on and rig.ring == null:
+		rig.ring = UnitLayer.Ring.new()
+		rig.ring.name = "Ring"
+		rig.ring.texture = load(UnitLayer.RING_ART)
+		rig.ring.z_index = WorldSort.Z_RING
+		rig.ring.z_as_relative = false
+		rig.add_child(rig.ring)
+		rig.move_child(rig.ring, 1)  # After the shadow, under the hull.
+	if rig.ring != null:
+		rig.ring.visible = on
+		_ring_zoom = 0.0 if on else _ring_zoom  # A ring that shows is sized at the next frame.
+
+
+## The ring's size, as `UnitLayer._refresh_rings` works it: the selection radius and the pad, at
+## least `RING_MIN_DP` wide; a dp over the zoom is world px.
+func _size_ring(snap: MatchSnapshot, row: int, rig: Rig, unit: float) -> void:
+	var semi: Vector2 = IsoProjection.ellipse_px(
+		snap.type_selection_radius[snap.type_index[row]] + UnitLayer.RING_PAD_MILLI
+	)
+	var grow: float = maxf(1.0, UnitLayer.RING_MIN_DP * unit / semi.x)
+	rig.ring.radius = semi.x * grow
+	rig.ring.unit = unit
+	rig.ring.scale = Vector2.ONE * (semi.x * grow / UnitLayer.RING_TEX_RX_PX)
+
+
 ## Raises the hull, or the marker, `px` above the rig's ground point; the shadow stays on it.
 func _lift(rig: Rig, px: float) -> void:
 	rig.hull.position.y = -px
@@ -310,6 +369,9 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
 	var counts_at: int = (player - 1) * fog.cells
 	var bob: bool = not life.reduced and life.air_bob_ms > 0
+	var zoom: float = get_canvas_transform().get_scale().x
+	var resize: bool = zoom != _ring_zoom
+	_ring_zoom = zoom
 	for at: int in _rows.size():
 		var row: int = _rows[at]
 		var rig: Rig = _rigs[at]
@@ -322,6 +384,8 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 		var from: Vector2 = IsoProjection.ground_to_px(snap.prev_pos_x[row], snap.prev_pos_y[row])
 		var to: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 		rig.position = from.lerp(to, alpha)
+		if rig.ring != null and rig.ring.visible and resize:
+			_size_ring(snap, row, rig, UiScale.base_px_per_dp() / zoom)
 		# As `UnitLayer`: a flyer that moved under half a step in the tick keeps its heading.
 		var dx: int = snap.pos_x[row] - snap.prev_pos_x[row]
 		var dy: int = snap.pos_y[row] - snap.prev_pos_y[row]

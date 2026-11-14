@@ -144,23 +144,31 @@ static func hitters(
 			out.append(id)
 
 
-## Whether `id` is one of `player`'s aircraft (the layer bit AIR or LOW_AIR).
-static func is_own_flyer(snap: MatchSnapshot, id: int, player: int) -> bool:
+## Whether `id` is one of `player`'s aircraft that REPAIR takes: the layer bit AIR (a drone squad
+## flies low and is no REPAIR row, ADR 0036 section 6).
+static func is_own_aircraft(snap: MatchSnapshot, id: int, player: int) -> bool:
 	var row: int = snap.index_of(id)
-	return row >= 0 and snap.owner[row] == player and WorldSort.is_flyer(snap, snap.type_index[row])
+	return (
+		row >= 0
+		and snap.owner[row] == player
+		and snap.type_index[row] < snap.type_layer_bit.size()
+		and (snap.type_layer_bit[snap.type_index[row]] & World.Layer.AIR) != 0
+	)
 
 
 ## The own airfields `ids`' aircraft are homed at, ascending and without a repeat: the home of each
-## own aircraft that has one and whose building is still there. `Home` sends one REPAIR to each.
+## own aircraft that has one, whose building is still there and is the player's. `Home` sends one
+## REPAIR to each, and shows only while there is one.
 static func home_fields(
 	snap: MatchSnapshot, ids: PackedInt32Array, player: int, out: PackedInt32Array
 ) -> void:
 	out.clear()
 	for id: int in ids:
 		var row: int = snap.index_of(id)
-		if row < 0 or not is_own_flyer(snap, id, player) or row >= snap.home.size():
+		if row < 0 or not is_own_aircraft(snap, id, player) or row >= snap.home.size():
 			continue
 		var field: int = snap.home[row]
-		if field > 0 and snap.index_of(field) >= 0 and not out.has(field):
+		var at: int = snap.index_of(field) if field > 0 else -1
+		if at >= 0 and snap.owner[at] == player and not out.has(field):
 			out.append(field)
 	out.sort()

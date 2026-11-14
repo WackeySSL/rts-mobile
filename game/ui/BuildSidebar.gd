@@ -2,9 +2,9 @@ class_name BuildSidebar
 extends Control
 ## The build drawer (ADR 0025 sections 5 and 6, plan P120; it grew out of ADR 0019 section 1, ADR
 ## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
-## portrait, over the map. From the top: the handle (upright), the three tabs (an icon over the
-## name) with the close button at the row's end, and the grid of the open tab's item cards, which
-## scrolls vertically.
+## portrait, over the map. From the top: the handle (upright), the tabs, three or four (an icon
+## over the name) with the close button at the row's end, and the grid of the open tab's item
+## cards, which scrolls vertically.
 ## The economy pill stays in its corner while the drawer is open (Michael, 2026-11-05; ADR 0025's
 ## "folds under the drawer" no longer holds). It sends nothing to the sim but Commands through
 ## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on any card
@@ -60,6 +60,11 @@ const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Fli
 const FIRST_OPTIONAL_TAB: int = World.Tab.FLIGHT
 const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
 const TAB_ICON_DP: float = 22.0
+## A tab with no name shown (the crowded row, `_fit_tabs`) is this wide: the touch target's least.
+const TAB_BARE_DP: float = 48.0
+## The most tabs whose names all fit the narrowest drawer (312 dp: 280 dp of row less the close
+## button), at 14 sp with "Structures" the widest.
+const NAMED_TABS_MAX: int = 3
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0  ## The close button's least width; it is as high as the tabs.
@@ -96,6 +101,7 @@ var _chevron: TextureRect = TextureRect.new()  ## Faces the edge the drawer leav
 var _tab_row: HBoxContainer = HBoxContainer.new()
 var _tabs: Array[Button] = []
 var _tab_icons: Array[TextureRect] = []
+var _tab_names: Array[Label] = []
 var _handle: ColorRect = ColorRect.new()  ## Upright only.
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: a sliver of a row.
@@ -406,6 +412,7 @@ func _build_tabs() -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		content.add_child(label)
+		_tab_names.append(label)
 		_tab_row.add_child(button)
 		_tabs.append(button)
 		_tab_icons.append(icon)
@@ -532,20 +539,48 @@ func _show_tab() -> void:
 	var gap_px: float = roundf(GAP_DP * _dp_px)
 	card.x = maxf(card.x, floorf((width_px - (columns - 1) * gap_px) / columns) / _dp_px)
 	var shown: int = 0
+	# The rule for the optional tabs (Flight, later Research): a tab shows while the local faction's
+	# list holds an item on it (`kin`: no faction or ours), or while it is the open tab, so a
+	# selected airfield always opens its tab. Cards are locked until the producer stands, as the
+	# Vehicles tab's are. A faction with no aircraft in its list sees three tabs.
 	for index: int in range(FIRST_OPTIONAL_TAB, _tabs.size()):
-		_tabs[index].visible = index == tab  # Else only while the faction has items on it.
+		_tabs[index].visible = index == tab
 	for tile: ItemTile in _tiles:
 		var kin: bool = tile.faction < 0 or tile.faction == _faction
 		tile.visible = tile.tab == tab and kin
 		shown += 1 if tile.visible else 0
 		if kin and tile.tab >= FIRST_OPTIONAL_TAB and tile.tab < _tabs.size():
 			_tabs[tile.tab].visible = true
+	_fit_tabs()
 	var fill: int = Control.SIZE_EXPAND_FILL if shown >= columns else Control.SIZE_FILL
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)
 		tile.size_flags_horizontal = fill
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
 	_grid.columns = columns
+
+
+## The Flight tab (and later Research) shows only while the faction has items on it, so the tab
+## row holds three tabs, then four (P244). Three names fit the narrowest drawer, four do not
+## ("Structures" spilled into its neighbour on a 6-inch phone): with more than `NAMED_TABS_MAX`
+## tabs showing, only the open tab keeps its name and the others are bare icons of `TAB_BARE_DP`,
+## so every tab stays a 48 dp target and the row fits at every size.
+func _fit_tabs() -> void:
+	var shown: int = 0
+	for button: Button in _tabs:
+		shown += 1 if button.visible else 0
+	var crowded: bool = shown > NAMED_TABS_MAX
+	for index: int in _tabs.size():
+		var bare: bool = crowded and index != tab
+		_tab_names[index].visible = not bare
+		var wide: float = TAB_BARE_DP if bare else TAB_DP
+		if crowded and not bare:  # The open tab is as wide as its name and the plate's edges.
+			var plate: StyleBox = _tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION)
+			var edges: float = plate.get_margin(SIDE_LEFT) + plate.get_margin(SIDE_RIGHT)
+			wide = maxf(wide, (_tab_names[index].get_minimum_size().x + edges) / _dp_px + 1.0)
+		for child: Node in _tabs[index].get_children():
+			if child is DpMinSize:
+				(child as DpMinSize).min_dp = Vector2(wide, TAB_DP)
 
 
 ## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and

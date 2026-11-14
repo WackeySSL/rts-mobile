@@ -14,6 +14,7 @@ const Air: GDScript = preload("res://tests/view/support/air_rig.gd")
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Sized: GDScript = preload("res://tests/view/support/sized_camera.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const ZOOMS: Array[float] = [0.75, 1.0, 1.5]
 const TANK: int = 1
 const FIGHTER: int = 2
 const ENEMY_TANK: int = 3
@@ -75,26 +76,66 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_a_flyer_is_picked_at_its_lifted_centre_within_24_dp_at_every_size() -> void:
+func test_a_flyer_is_picked_at_its_lifted_centre_within_24_dp_at_every_size_and_zoom() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		_size(size)
-		var why: String = str(size)
-		var fighter: Vector2 = _hull(FIGHTER)
-		var reach: float = UiScale.dp(24.0)
-		_controller.selection.clear()
-		_tap(fighter + Vector2(reach * 0.95, 0.0))
-		assert_array(_selected()).override_failure_message(why).is_equal([FIGHTER])
-		_controller.selection.clear()
-		_tap(fighter + Vector2(0.0, -reach * 0.95))
-		assert_array(_selected()).override_failure_message(why).is_equal([FIGHTER])
-		_controller.selection.clear()
-		_tap(fighter + Vector2(reach * 1.6, 0.0))
-		assert_array(_selected()).override_failure_message(why).is_empty()
-		var snap: PickSnapshot = _snapshot()
-		var row: int = _runner.snapshot.index_of(FIGHTER)
-		assert_float(snap.radius_px[row]).override_failure_message(why).is_greater_equal(reach)
-		assert_int(snap.pickable[row]).is_equal(1)
-		assert_bool(snap.is_flyer(row)).is_true()
+		for zoom: float in ZOOMS:
+			_zoom(size, zoom)
+			_assert_radius("%s at zoom %s" % [size, zoom])
+
+
+func _assert_radius(why: String) -> void:
+	var fighter: Vector2 = _hull(FIGHTER)
+	var reach: float = UiScale.dp(24.0)
+	var snap: PickSnapshot = _snapshot()
+	var row: int = _runner.snapshot.index_of(FIGHTER)
+	assert_float(snap.radius_px[row]).override_failure_message(why).is_greater_equal(reach)
+	assert_int(snap.pickable[row]).is_equal(1)
+	assert_bool(snap.is_flyer(row)).is_true()
+	var radius: float = snap.radius_px[row]
+	_controller.selection.clear()
+	_tap(fighter + Vector2(radius * 0.95, 0.0))
+	assert_array(_selected()).override_failure_message(why).is_equal([FIGHTER])
+	_controller.selection.clear()
+	_tap(fighter + Vector2(0.0, -reach * 0.95))
+	assert_array(_selected()).override_failure_message(why).is_equal([FIGHTER])
+	_controller.selection.clear()
+	_tap(fighter + Vector2(radius * 1.2, 0.0))
+	assert_array(_selected()).override_failure_message(why).is_empty()
+
+
+func test_an_enemy_flyer_the_fog_hides_cannot_be_picked_and_a_falling_one_either() -> void:
+	_size(ScreenSizes.ALL[0])
+	_air.reveal_enemies = false
+	_units.reveal_enemies = false
+	var tiles: Array = []
+	for y: int in 32:
+		for x: int in 32:
+			if Vector2i(x, y) != Vector2i(14, 14):  # Everything but the enemy fighter's tile.
+				tiles.append(Vector2i(x, y))
+	Buildings.see(_runner.snapshot, 1, tiles)
+	_air._process(0.0)
+	var enemy: int = _runner.snapshot.index_of(ENEMY_FIGHTER)
+	var hull: Vector2 = _hull(ENEMY_FIGHTER)
+	assert_int(_snapshot().pickable[enemy]).is_equal(0)
+	_controller.selection.set_ids(PackedInt32Array([TANK]))
+	_sent.clear()
+	_tap(hull)  # No enemy there to the player: a ground tap, a MOVE.
+	assert_int(_sent[0].type).is_equal(Command.Type.MOVE)
+	Buildings.see(_runner.snapshot, 1, [Vector2i(14, 14), Vector2i(8, 8)])  # Seen now.
+	_air._process(0.0)
+	assert_int(_snapshot().pickable[enemy]).is_equal(1)
+	# The own fighter dies in sight: it falls, and a falling flyer takes no tap.
+	var snap: MatchSnapshot = _runner.snapshot
+	var events: PackedInt32Array = PackedInt32Array()
+	events.resize(World.EVENT_STRIDE)
+	events[0] = World.Event.DIED
+	events[1] = FIGHTER
+	events[2] = snap.pos_x[snap.index_of(FIGHTER)]
+	events[3] = snap.pos_y[snap.index_of(FIGHTER)]
+	snap.events = events
+	_air._on_ticked(snap.tick)
+	assert_int(_air.falling_count()).is_equal(1)
+	assert_int(_snapshot().pickable[snap.index_of(FIGHTER)]).is_equal(0)
 
 
 func test_the_flyer_wins_where_its_disc_and_the_tank_beneath_overlap_and_the_tank_stays_tappable(
@@ -163,13 +204,19 @@ func test_a_fighter_alone_taps_an_enemy_tank_it_cannot_hit_sends_nothing_and_kee
 		_size(size)
 		_sent.clear()
 		var before: int = _controller.refusals
+		for old: MoveMarkerLayer.Mark in _markers.get_children():
+			old.visible = false  # Only this tap's mark counts.
 		_controller.selection.set_ids(PackedInt32Array([FIGHTER]))
 		_tap(_ground(ENEMY_TANK))
 		var why: String = str(size)
 		assert_array(_sent).override_failure_message(why).is_empty()
 		assert_array(_selected()).override_failure_message(why).is_equal([FIGHTER])
 		assert_int(_controller.refusals).is_equal(before + 1)
-		assert_int(_markers.active_count()).is_greater(0)  # The shaking diamond.
+		assert_int(_markers.active_count()).is_greater(0)
+		var shaking: int = 0
+		for mark: MoveMarkerLayer.Mark in _markers.get_children():
+			shaking += 1 if mark.visible and mark.shake else 0
+		assert_int(shaking).override_failure_message(why).is_equal(1)  # A shaking diamond.
 
 
 func test_a_mixed_selection_attacks_with_the_rows_that_can_hit() -> void:
@@ -193,21 +240,31 @@ func test_home_sends_one_repair_to_each_airfield_the_selected_aircraft_are_homed
 	var snap: MatchSnapshot = _runner.snapshot
 	var fighter: int = snap.index_of(FIGHTER)
 	var bomber: int = snap.index_of(BOMBER)
-	snap.home[fighter] = ENEMY_TANK  # Any live row stands in for an airfield here.
+	snap.home[fighter] = TANK  # Any own row stands in for an airfield here.
 	snap.home[bomber] = TRANSPORT
 	_controller.selection.set_ids(PackedInt32Array([TANK, FIGHTER, BOMBER]))
 	assert_bool(_controller.home()).is_true()
 	assert_int(_sent.size()).is_equal(2)
 	assert_int(_sent[0].type).is_equal(Command.Type.REPAIR)
-	assert_int(_sent[0].target_id).is_equal(ENEMY_TANK)  # The airfields in ascending id order.
+	assert_int(_sent[0].target_id).is_equal(TANK)  # The airfields in ascending id order.
 	assert_array(_sent[0].unit_ids).is_equal([FIGHTER])
 	assert_int(_sent[1].target_id).is_equal(TRANSPORT)
 	assert_array(_sent[1].unit_ids).is_equal([BOMBER])
+	snap.home[bomber] = ENEMY_TANK  # An airfield that is not ours is left out.
+	_sent.clear()
+	assert_bool(_controller.home()).is_true()
+	assert_int(_sent.size()).is_equal(1)
 	_sent.clear()
 	snap.home[fighter] = 0
 	snap.home[bomber] = 0
 	assert_bool(_controller.home()).is_false()  # No airfield: left out, nothing sent.
 	assert_array(_sent).is_empty()
+
+
+## The size and the camera's zoom.
+func _zoom(size: Vector2i, zoom: float) -> void:
+	_camera.zoom = Vector2(zoom, zoom)
+	_size(size)
 
 
 ## Metrics of the size: a 420 dpi phone, stretched as the engine does in that orientation.
