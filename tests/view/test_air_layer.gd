@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 ## shadow that stays on the ground; an enemy flyer shows only on a tile the local player sees; the
 ## hull turns to where the flyer moves; a flyer that dies is gone at once and its rig is pooled. The
 ## page and the batch are test_air_layer_batch.gd's. The runner is paused and not in the tree: only
-## the calls here move time. Own fighter: unit 3 (row 2) at tile (8, 8); enemy drone: unit 4 (row 3).
+## the calls here move time. Own fighter: unit 3 (row 2) at tile (8, 8); enemy drone: unit 4
+## (row 3).
 
 const Air: GDScript = preload("res://tests/view/support/air_rig.gd")
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
