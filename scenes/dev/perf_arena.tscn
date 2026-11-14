@@ -126,12 +126,13 @@ runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 reveal_enemies = true
 
-[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
 z_index = 20
 z_as_relative = false
 script = ExtResource("93_air")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
+effects = NodePath("../EffectsLayer")
 reveal_enemies = true
 
 [node name="Camera" type="Camera2D" parent="."]

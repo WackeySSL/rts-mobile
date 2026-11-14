@@ -2,9 +2,10 @@ extends GdUnitTestSuite
 ## `AirLayer` (plan P243, ADR 0036 section 15): a flyer has no rig in `UnitLayer` and one in the air
 ## layer, whose hull is lifted by its sheet's `fly_px` (`low_fly_px` for a drone squad) over a
 ## shadow that stays on the ground; an enemy flyer shows only on a tile the local player sees; the
-## hull turns to where the flyer moves; a flyer that dies is gone at once and its rig is pooled. The
-## page and the batch are test_air_layer_batch.gd's. The runner is paused and not in the tree: only
-## the calls here move time. Own fighter: unit 3 (row 2) at tile (8, 8); enemy drone: unit 4 (row 3).
+## hover bobs on match time and holds still with reduced effects; the hull turns to where the
+## flyer moves; a flyer that dies in sight falls and its rig returns to the pool. The page and the
+## batch are test_air_layer_batch.gd's. The runner is paused and not in the tree: only the calls
+## here move time. Own fighter: unit 3 (row 2) at tile (8, 8); enemy drone: unit 4 (row 3).
 
 const Air: GDScript = preload("res://tests/view/support/air_rig.gd")
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -14,11 +15,14 @@ const DRONE_ID: int = Air.DRONE_ID
 
 var _runner: MatchRunner
 var _layer: AirLayer
+var _life: LifeSettings
 
 
 func before_test() -> void:
 	_runner = auto_free(Air.runner())
+	_life = load("res://data/life_settings.tres").duplicate()
 	_layer = auto_free(Air.layer(self, _runner))
+	_layer.life = _life
 	_see_all()
 	_render(0.0)
 
@@ -54,6 +58,8 @@ func test_the_layer_is_at_z_20_and_its_shadow_on_the_ground_at_z_2() -> void:
 
 
 func test_the_hull_stands_fly_px_above_the_ground_point_and_a_drone_squad_low_fly_px() -> void:
+	_life.reduced = true  # No bob: the lift is exact.
+	_render(0.0)
 	var fighter: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
 	var drone: AirLayer.Rig = _layer.rig_of(DRONE_ID)
 	assert_float(fighter.hull.position.y).is_equal(-float(Air.FLY_PX))
@@ -87,6 +93,42 @@ func test_an_enemy_flyer_shows_only_where_its_tile_is_seen_and_an_own_one_always
 	assert_bool(_layer.rig_of(DRONE_ID).visible).is_true()
 
 
+func test_the_hover_bobs_within_the_amplitude_on_match_time_and_reduced_holds_still() -> void:
+	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
+	var seen: Dictionary[float, bool] = {}
+	for _tick: int in 24:  # 1.6 s, most of a period.
+		_runner.run_ticks(1)
+		_see_all()
+		_render(0.0)
+		var offset: float = -rig.hull.position.y - float(Air.FLY_PX)
+		assert_float(absf(offset)).is_less_equal(_life.air_bob_px + 0.001)
+		seen[snappedf(offset, 0.01)] = true
+	assert_int(seen.size()).is_greater(4)
+	_life.reduced = true
+	_render(0.0)
+	assert_float(rig.hull.position.y).is_equal(-float(Air.FLY_PX))
+	_runner.run_ticks(3)
+	_see_all()
+	_render(0.0)
+	assert_float(rig.hull.position.y).is_equal(-float(Air.FLY_PX))
+
+
+func test_the_bob_follows_the_period_of_the_settings() -> void:
+	assert_int(_life.air_bob_ms).is_equal(2400)  # The shipped values.
+	assert_float(_life.air_bob_px).is_equal(1.5)
+	assert_int(_life.air_fall_ms).is_equal(700)
+	assert_int(_life.air_fall_drift_milli).is_equal(1500)
+	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
+	rig.phase_ms = 0
+	for _tick: int in 8:
+		_runner.run_ticks(1)
+		_see_all()
+		_render(0.0)
+		var ms: float = LifeClock.ms(_runner.snapshot, _runner.alpha())
+		var want: float = _life.air_bob_px * sin(TAU * ms / float(_life.air_bob_ms))
+		assert_float(-rig.hull.position.y - float(Air.FLY_PX)).is_equal_approx(want, 0.001)
+
+
 func test_frames_allocate_no_node_and_make_no_rig() -> void:
 	CommandQueue.submit(Command.move(1, PackedInt32Array([FIGHTER_ID]), 20000, 12000))
 	_render(0.05)
@@ -100,7 +142,35 @@ func test_frames_allocate_no_node_and_make_no_rig() -> void:
 	assert_int(_layer.rigs_made()).is_equal(made)
 
 
+func test_a_fall_ends_in_a_burst_where_it_lands_and_the_death_has_none_before() -> void:
+	var effects: EffectsLayer = auto_free(EffectsLayer.new())
+	effects.runner = _runner
+	effects.world_sort = _layer.world_sort
+	add_child(effects)
+	effects.set_process(false)
+	_layer.effects = effects
+	_see_all()
+	_render(0.0)
+	_runner.world.hp[2] = 0
+	_runner.run_ticks(1)
+	_see_all()
+	_render(0.0)
+	assert_int(effects.active_count()).is_equal(0)  # The DIED itself bursts nothing for a flyer.
+	for _tick: int in 14:
+		_runner.run_ticks(1)
+		_render(0.0)
+	assert_int(_layer.falling_count()).is_equal(0)
+	assert_int(effects.active_count()).is_equal(1)  # The landing's burst.
+
+
+func test_two_flyers_bob_out_of_step_by_their_ids() -> void:
+	var a: int = LifeClock.pick(FIGHTER_ID, AirLayer.SALT_BOB, _life.air_bob_ms)
+	assert_int(_layer.rig_of(FIGHTER_ID).phase_ms).is_equal(a)
+	assert_int(_layer.rig_of(DRONE_ID).phase_ms).is_not_equal(a)
+
+
 func test_the_hull_and_its_shadow_turn_to_where_the_flyer_moves() -> void:
+	_life.reduced = true
 	CommandQueue.submit(Command.move(1, PackedInt32Array([FIGHTER_ID]), 8000, 30000))
 	for _tick: int in 30:  # Due +y on the grid, a quarter turn from east.
 		_runner.run_ticks(1)
@@ -128,22 +198,51 @@ func test_a_hovering_flyer_keeps_its_heading() -> void:
 	assert_float(rig.heading).is_equal(1.0)
 
 
-func test_a_flyer_that_dies_loses_its_rig_to_the_pool_and_the_next_one_reuses_it() -> void:
+func test_a_flyer_that_dies_in_sight_falls_and_its_rig_goes_back_to_the_pool() -> void:
+	_life.reduced = true
 	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
 	var made: int = _layer.rigs_made()
 	_runner.world.hp[2] = 0
 	_runner.run_ticks(1)
 	_see_all()
 	_render(0.0)
+	assert_int(_layer.falling_count()).is_equal(1)
+	assert_int(_layer.rig_count()).is_equal(1)  # The drone only; the faller is not a row.
 	assert_object(_layer.rig_of(FIGHTER_ID)).is_null()
-	assert_int(_layer.rig_count()).is_equal(1)
-	assert_object(rig.get_parent()).is_not_same(_layer)
+	var low: float = -rig.hull.position.y
+	var last: float = float(Air.FLY_PX) + 1.0
+	for _tick: int in 6:
+		_runner.run_ticks(1)
+		_render(0.0)
+		var height: float = -rig.hull.position.y
+		assert_float(height).is_less(last)  # It sinks every tick...
+		last = height
+	assert_float(low).is_greater(last)
+	assert_vector(rig.position).is_not_equal(rig.origin)  # ...and drifts along its heading.
+	assert_int(_layer.falling_count()).is_equal(1)
+	for _tick: int in 6:  # Past FALL_MS (700 ms is about 10.5 ticks).
+		_runner.run_ticks(1)
+		_render(0.0)
+	assert_int(_layer.falling_count()).is_equal(0)
+	assert_object(rig.get_parent()).is_not_same(_layer)  # In the pool, no longer drawn.
 	assert_object(rig.hull.texture).is_null()
-	_runner.start()  # Another match: both flyers come back out of the pool.
-	_see_all()
+	# The next flyer takes the pooled rig; none is made.
+	_runner.world.hp[2] = 0
+	_runner.run_ticks(1)
 	_render(0.0)
-	assert_int(_layer.rig_count()).is_equal(2)
 	assert_int(_layer.rigs_made()).is_equal(made)
+
+
+func test_a_flyer_that_dies_out_of_sight_does_not_fall() -> void:
+	Buildings.see(_runner.snapshot, 1, [])
+	_render(0.0)
+	_runner.world.hp[3] = 0  # The enemy drone, in the dark.
+	_runner.run_ticks(1)
+	Buildings.see(_runner.snapshot, 1, [])
+	_render(0.0)
+	assert_int(_layer.falling_count()).is_equal(0)
+	assert_object(_layer.rig_of(DRONE_ID)).is_null()
+	assert_int(_layer.rig_count()).is_equal(1)
 
 
 func test_another_match_starts_with_the_flyers_of_the_new_one() -> void:
@@ -151,12 +250,14 @@ func test_another_match_starts_with_the_flyers_of_the_new_one() -> void:
 	_see_all()
 	_render(0.0)
 	assert_int(_layer.rig_count()).is_equal(2)
+	assert_int(_layer.falling_count()).is_equal(0)
 
 
 func test_a_flyer_without_art_is_a_marker_at_the_default_lift() -> void:
 	var fresh: MatchRunner = auto_free(Air.runner())
 	var bare: AirLayer = auto_free(AirLayer.new())
 	bare.runner = fresh
+	bare.life = _life
 	add_child(bare)
 	bare.set_process(false)
 	bare._process(0.0)
