@@ -12,8 +12,9 @@ extends Node
 ## thread (plan P38w1b); it reads the World only inside `ticked` or after wait_idle(). Once a
 ## published snapshot shows the end of the match, the runner emits `match_ended` and plays no
 ## further tick until start() (ADR 0017 section 6, ADR 0018 section 7, plan P81). The computer
-## players of `opponents` think inside each tick job, before its step and after the human's
-## commands, so their Commands are stamped and recorded like a player's (ADR 0020 section 3).
+## players of `opponents` think inside each tick job on a view of that tick, and their Commands
+## enter the next tick's step after the human's, stamped and recorded like a player's (ADR 0038
+## section 1, which supersedes ADR 0020 section 3's "think, then step in one tick").
 ## It needs the CommandQueue and DetRng autoloads, so a headless `godot -s` tool must load() this
 ## script at runtime; naming MatchRunner in the entry script does not compile.
 
@@ -257,8 +258,8 @@ func _ready() -> void:
 ## from the old match. The World runs the implementation that sim_impl resolves to on this platform
 ## (_use_impl()), and the ticks run in the mode tick_mode resolves to (resolve_mode()). The job gets
 ## the new match's controllers here, so the old ones go with the old match. A job in flight is
-## waited for and dropped first; if that wait reaches its cap, start() logs it and returns with the
-## old match.
+## waited for and dropped first, and so is the AI batch the old match left pending (ADR 0038
+## section 1); if that wait reaches its cap, start() logs it and returns with the old match.
 func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):

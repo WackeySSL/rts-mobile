@@ -25,7 +25,7 @@ var probe: SimProbe
 ## list, so run() empties it after the step: a command passed again would be applied again.
 var commands: Array[Command] = []
 ## The match's computer players (ADR 0020 sections 2 and 3), set by the runner at start(): run()
-## hands them to AiDriver.think_all before the step. A controller keeps only ints, arrays and its
+## hands them to AiDriver.lagged_tick before the step. A controller keeps only ints, arrays and its
 ## DetRandom stream, so the walk stays free of Nodes and Resources.
 var controllers: Array[AiController] = []
 ## The AI Commands made at the previous tick, waiting for this one (ADR 0038 section 1). It lives

@@ -231,7 +231,9 @@ think: a Command is dropped only when what it names is gone or blocked.
   | PLACE | credits spent between the view and the apply | 0 | 1 | 0 | stale |
   | Total (of 475, 515 and 366 Commands) | | 8 | 10 | 1 | |
 
-  16 of the 19 are expired: the subject or the target is gone, which no check at T could know. The
+  16 of the 19 are expired: the subject or the target died in the lag tick, which no check at T
+  could know (a Command that was already invalid at its view tick would count as stale; the
+  smoke subtracts the expired count of the batch's own view tick, and none of the 19 was). The
   bound is there to catch AI misbehaviour, so the bound is refined: **expired drops are not
   counted; stale drops (every other drop) must stay at or under `STALE_DROP_PERCENT`, 1 %.**
   Measured stale rate: Hard 1 of 475 (0.2 %) and 2 of 515 (0.4 %), Normal 0 of 366; so Hard is

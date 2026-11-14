@@ -241,9 +241,14 @@ static func run(
 	var commands: Array[Command] = []
 	var batch: AiBatch = AiBatch.new()
 	var expired: int = 0
+	# The expired Commands of the batch that waits for the next tick, counted against the World it
+	# was made from: they were gone at their own view tick, so they are no lag's doing and stay
+	# stale.
+	var gone_at_view: int = 0
 	while world.tick < ticks and world.match_end_tick == 0:
 		AiDriver.lagged_tick(world, controllers, commands, batch)
-		expired += expired_in(world, commands)
+		expired += expired_in(world, commands) - gone_at_view
+		gone_at_view = expired_in(world, batch.commands)
 		loop.step(world, commands)
 		commands.clear()
 		if counter != null:
@@ -253,9 +258,10 @@ static func run(
 
 ## How many of `commands` the sim must drop at the start of this tick because their subject or their
 ## target is gone: a unit order whose units are all gone (or no longer the player's), an ATTACK
-## whose target is gone (the lead's note in ADR 0038 section 6). The World is read as it stands
-## before the step, which is the state the commands are applied to. It changes nothing and keeps no
-## sim state: the count lives in the match record, outside the hash.
+## whose target is gone (the lead's note in ADR 0038 section 6). run() subtracts the ones already
+## gone at the view tick, so only a death in the lag tick is excused. The World is read as it
+## stands before the step, which is the state the commands are applied to. It changes nothing and
+## keeps no sim state: the count lives in the match record, outside the hash.
 static func expired_in(world: World, commands: Array[Command]) -> int:
 	var expired: int = 0
 	for command: Command in commands:
@@ -458,7 +464,7 @@ static func line(
 	return text
 
 
-## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.
+## The Commands the players of `record` sent (the sum of their `commands`).
 static func _sent(record: Dictionary) -> int:
 	var sent: int = 0
 	for player: Dictionary in record["players"]:
@@ -466,6 +472,7 @@ static func _sent(record: Dictionary) -> int:
 	return sent
 
 
+## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.
 static func _drop_text(drops: Dictionary[int, int], match_seed: int) -> String:
 	return ", the first in tick %d" % drops[match_seed] if drops.has(match_seed) else ""
 

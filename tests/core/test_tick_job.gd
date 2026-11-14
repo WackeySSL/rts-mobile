@@ -9,7 +9,6 @@ const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.g
 const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
-const StampProbe: GDScript = preload("res://tests/core/support/stamp_probe.gd")
 const SlowAi: GDScript = preload("res://tests/core/support/slow_ai.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42

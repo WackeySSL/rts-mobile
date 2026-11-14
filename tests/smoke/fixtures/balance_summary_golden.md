@@ -2,9 +2,9 @@
 
 Commit `abc123`, impl `native`, levels `normal,normal`, scenarios `cross`, at most 13500 ticks a match, seeds 1001-1004.
 
-| Matches | Victories | Draws | Timeouts | Dropped | Flow full (total, most) |
-| --- | --- | --- | --- | --- | --- |
-| 4 | 4 | 0 | 0 | 0 | 1, 1 |
+| Matches | Victories | Draws | Timeouts | Dropped | Expired | Stale | Flow full (total, most) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 4 | 0 | 0 | 0 | 0 | 0 | 1, 1 |
 
 ### Win shares (per-mille; a draw or a timeout counts half to each side)
 
