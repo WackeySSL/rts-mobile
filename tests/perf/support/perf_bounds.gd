@@ -42,6 +42,14 @@ const MEASURED_ORE_SCANNED: int = 72
 ## barracks, the factory and the other seat's factory each spawning in one tick (4 + 1 + 1).
 const MEASURED_EXIT_SCANNED: int = 6
 const MEASURED_MEMORY_CHECKS: int = 28
+## The maxima of this arena's own counters over the 900 ticks of the seed-42 air arena (plan P253;
+## equal under both implementations): the per-tick maxima of line_checks, target_candidates and
+## fog_cells (the aircraft see 7 tiles) and the rows that SEPARATION's walk passed for being on
+## another layer (ADR 0036 section 4, the tally probe's `other_layer`). They carry P49a's margin.
+const MEASURED_AIR_LINE_CHECKS: int = 33
+const MEASURED_AIR_TARGET_CANDIDATES: int = 2101
+const MEASURED_AIR_FOG_CELLS: int = 9936
+const MEASURED_AIR_OTHER_LAYER: int = 66
 ## The two ticks at which Performance.MEMORY_STATIC is read, and how much it may have grown between
 ## them. The arena run does not grow it: the static memory of the 900 ticks through TickJob falls
 ## by 2.5 KB with the kernels and by 63.6 KB with the GDScript twins between tick 100 and tick 900
@@ -88,6 +96,20 @@ static func base_cost_bounds() -> Dictionary[int, int]:
 		World.Stat.ORE_SCANNED: with_margin(MEASURED_ORE_SCANNED),
 		World.Stat.EXIT_SCANNED: with_margin(MEASURED_EXIT_SCANNED),
 		World.Stat.MEMORY_CHECKS: with_margin(MEASURED_MEMORY_CHECKS),
+	}
+
+
+## The air arena's version of `cost_bounds` (plan P253): the flow and separation rules as there, and
+## the three measured counters of this arena plus the margin.
+static func air_cost_bounds(
+	flow_cells_per_tick: int, separation_scan: int, units: int
+) -> Dictionary[int, int]:
+	return {
+		World.Stat.FLOW_CELLS: flow_cells_per_tick,
+		World.Stat.SEP_PAIRS: separation_scan * units,
+		World.Stat.LINE_CHECKS: with_margin(MEASURED_AIR_LINE_CHECKS),
+		World.Stat.TARGET_CANDIDATES: with_margin(MEASURED_AIR_TARGET_CANDIDATES),
+		World.Stat.FOG_CELLS: with_margin(MEASURED_AIR_FOG_CELLS),
 	}
 
 

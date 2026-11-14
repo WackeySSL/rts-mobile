@@ -170,7 +170,8 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 				. is_true()
 			)
 		assert_int(grid.get_theme_constant("h_separation")).is_equal(gap)
-		assert_int(grid.get_theme_constant("v_separation")).is_equal(gap)
+		var row_gap: int = roundi(UiScale.dp(8.0)) if size.y > size.x else gap
+		assert_int(grid.get_theme_constant("v_separation")).is_equal(row_gap)
 		assert_int(grid.columns).is_equal(1 if size.y > size.x else 3)  # The turn changes it.
 		assert_float(grid.get_global_rect().get_center().x).is_equal_approx(
 			visible_rect.get_center().x, 1.0
@@ -187,10 +188,11 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 	_close(menu)
 
 
-## The hand-over of P112d, widened by P185: nine 48 dp buttons do not fit a phone browser held
-## sideways in one column (the menu has 331 dp there), nor in two (five rows), so they stand in
-## three, and nothing scrolls at web_phone; upright there is one column, which has the height.
-func test_the_nine_buttons_stand_in_three_columns_sideways_and_in_one_upright() -> void:
+## The hand-over of P112d, widened by P185: ten 48 dp buttons do not fit a phone browser held
+## sideways in one column (the menu has 331 dp there), nor in two (five rows or more), so they
+## stand in three, and nothing scrolls at web_phone; upright there is one column, which has the
+## height (its rows are 8 dp apart, so nothing scrolls at web_phone_portrait either).
+func test_the_ten_buttons_stand_in_three_columns_sideways_and_in_one_upright() -> void:
 	for profile_name: StringName in [&"web_phone", &"android_6in", &"web_tablet", &"desktop"]:
 		var menu: Control = await _open(UiProfiles.by_name(profile_name))
 		var label: String = str(profile_name)
@@ -209,15 +211,31 @@ func test_the_nine_buttons_stand_in_three_columns_sideways_and_in_one_upright() 
 	for profile_name: StringName in [&"web_phone_portrait", &"android_6in_portrait"]:
 		var menu: Control = await _open(UiProfiles.by_name(profile_name))
 		assert_int((_control(menu, "Grid") as GridContainer).columns).is_equal(1)
+		var upright_bar: VScrollBar = (
+			(_control(menu, "Scroll") as ScrollContainer).get_v_scroll_bar()
+		)
+		assert_float(upright_bar.max_value).is_less_equal(upright_bar.page + 0.5)
 		_close(menu)
 		UiScale.clear_override()
 
 
-## `profile` shown: the title, the level label and the twelve buttons, then the checks of the plan's
-## acceptance.
+## `profile` shown: the title, the level label and the thirteen buttons, then the checks of the
+## plan's acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)
 	var safe: Rect2 = UiScale.safe_rect_base()
+	# What a finger can reach is the safe rect cut by the Scroll's clip: a button below the clip is
+	# not there, and nothing may scroll (the content fits the page) on any profile of this check.
+	var scroll: ScrollContainer = _control(menu, "Scroll") as ScrollContainer
+	var reach: Rect2 = safe.intersection(scroll.get_global_rect())
+	var bar: VScrollBar = scroll.get_v_scroll_bar()
+	(
+		assert_float(bar.max_value)
+		. override_failure_message(
+			"%s: the menu scrolls (%s of %s)" % [label, bar.page, bar.max_value]
+		)
+		. is_less_equal(bar.page + 0.5)
+	)
 	var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
 	var text_floor: int = roundi(UiScale.dp(14.0))  # 14 sp: the text of the HUD is dp.
 	var rects: Array[Rect2] = [_control(menu, "Title").get_global_rect()]
@@ -242,7 +260,11 @@ func _check_layout(profile: UiMetrics, label: String) -> void:
 			. override_failure_message(where)
 			. is_true()
 		)
-		assert_bool(safe.encloses(rect)).override_failure_message(where).is_true()
+		(
+			assert_bool(safe.encloses(rect) and reach.encloses(rect))
+			. override_failure_message(where + " clipped by " + str(reach))
+			. is_true()
+		)
 		(
 			assert_bool(button.is_visible_in_tree() and not button.disabled)
 			. override_failure_message(where)

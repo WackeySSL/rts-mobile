@@ -37,7 +37,7 @@ func test_the_pinned_scenarios_reach_only_frozen_maps_and_terrain_files() -> voi
 		var least: int = (
 			30
 			if scenario_path.ends_with("perf_bases.tres") or scenario_path.ends_with("perf_ai.tres")
-			else 1
+			else 10 if scenario_path.ends_with("perf_air.tres") else 1
 		)
 		(
 			assert_int(arena_files)

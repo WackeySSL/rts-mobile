@@ -6,12 +6,15 @@ extends Control
 ## perf air (16 aircraft, P253). When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
-## section 5): one column upright, three sideways where they fit the width (else two), so the nine
+## section 5): one column upright, three sideways where they fit the width (else two), so the ten
 ## fit a phone browser held sideways; a window too short for them scrolls. The level row is three
 ## across in both orientations, its choice named in "Level: ..." beside the title. The look is the
 ## theme's, sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
+## The gap between the rows of the one upright column: the ten buttons (48 dp each) then fit the
+## 360 x 700 phone browser without a scroll, where 12 dp left 11 dp of the last one clipped.
+const UPRIGHT_ROW_GAP_DP: float = 8.0
 ## The level buttons, in the order of the row: name shown and the file of `data/ai/difficulty/`.
 const LEVEL_NAMES: Array[String] = ["Easy", "Normal", "Hard"]
 const LEVEL_PATHS: Array[String] = [
@@ -92,8 +95,11 @@ func _apply_dp() -> void:
 	_column.add_theme_constant_override("separation", gap)
 	_level_row.add_theme_constant_override("separation", gap)
 	_grid.add_theme_constant_override("h_separation", gap)
-	_grid.add_theme_constant_override("v_separation", gap)
-	_grid.columns = 1 if HudLayout.is_portrait() else _sideways_columns(gap)
+	var upright: bool = HudLayout.is_portrait()
+	_grid.add_theme_constant_override(
+		"v_separation", roundi(UiScale.dp(UPRIGHT_ROW_GAP_DP)) if upright else gap
+	)
+	_grid.columns = 1 if upright else _sideways_columns(gap)
 
 
 ## Three columns sideways where three of the widest button and the gaps fit the room inside the

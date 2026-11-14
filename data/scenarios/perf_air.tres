@@ -6,20 +6,26 @@
 [ext_resource type="Resource" path="res://data/maps/perf_arena.tres" id="4_map"]
 [ext_resource type="Resource" path="res://data/dev/arena/rules.tres" id="5_rules"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/light_tank.tres" id="6_tank"]
-[ext_resource type="Resource" path="res://data/dev/arena/units/rifle_squad.tres" id="7_rifle"]
-[ext_resource type="Resource" path="res://data/dev/arena/units/rocket_squad.tres" id="8_rocket"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/rifle_squad.tres" id="7_rifle"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/rocket_squad.tres" id="8_rocket"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/fossil_bomber.tres" id="9_bomber"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/fossil_fighter.tres" id="10_fighter"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/fossil_airfield.tres" id="11_airfield"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/fossil_aa.tres" id="12_aa"]
 
-; perf_air (plan row P253, ADR 0013 section 1): the perf arena's two armies with 16 aircraft among 150 units: 148
-; mobile (66 ground units and 8 aircraft for each side, 4 Drillhead bombers and 4 Torchjet fighters) and one Flight
-; Yard behind each line, on frozen defs.
+; perf_air (plan row P253, ADR 0013 section 1): the perf arena's two armies with 16 aircraft among 150 units: 150
+; mobile rows (67 ground units and 8 aircraft for each side, 4 Drillhead bombers and 4 Torchjet fighters) and, beside
+; them, a Flight Yard and a Burst Stack for each side, all on frozen defs. The rifle and rocket squads and the Burst
+; Stack are the air arena's own copies (data/dev/arena/air/), which carry the layer masks, so ground fire at aircraft
+; is part of the run. Each side's 8 aircraft share the one 4-pad Flight Yard (more than its pads: a stress choice).
+; Only the Derrick League's aircraft are frozen. Orders at ticks 0, 330 and 640 send everyone to the middle, deep into
+; the other side and back, so the aircraft fly, bomb and rearm to the end of the run.
+
 [sub_resource type="Resource" id="Spawn_p1_tank"]
 script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("6_tank")
-count = 27
+count = 28
 origin_tile = Vector2i(25, 27)
 columns = 3
 jitter = 300
@@ -28,7 +34,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("7_rifle")
-count = 23
+count = 22
 origin_tile = Vector2i(22, 28)
 columns = 3
 jitter = 300
@@ -37,7 +43,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("8_rocket")
-count = 16
+count = 17
 origin_tile = Vector2i(20, 28)
 columns = 2
 jitter = 300
@@ -66,11 +72,19 @@ count = 1
 origin_tile = Vector2i(14, 26)
 columns = 1
 
+[sub_resource type="Resource" id="Spawn_p1_aa"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("12_aa")
+count = 1
+origin_tile = Vector2i(22, 21)
+columns = 1
+
 [sub_resource type="Resource" id="Spawn_p2_tank"]
 script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("6_tank")
-count = 27
+count = 28
 origin_tile = Vector2i(36, 27)
 columns = 3
 jitter = 300
@@ -79,7 +93,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("7_rifle")
-count = 23
+count = 22
 origin_tile = Vector2i(39, 28)
 columns = 3
 jitter = 300
@@ -88,7 +102,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("8_rocket")
-count = 16
+count = 17
 origin_tile = Vector2i(42, 28)
 columns = 2
 jitter = 300
@@ -117,13 +131,45 @@ count = 1
 origin_tile = Vector2i(47, 26)
 columns = 1
 
-[sub_resource type="Resource" id="Order_p1"]
+[sub_resource type="Resource" id="Spawn_p2_aa"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("12_aa")
+count = 1
+origin_tile = Vector2i(43, 21)
+columns = 1
+
+[sub_resource type="Resource" id="Order_p1_0"]
 script = ExtResource("3_order")
 player = 1
 target_tile = Vector2i(29, 32)
 
-[sub_resource type="Resource" id="Order_p2"]
+[sub_resource type="Resource" id="Order_p2_0"]
 script = ExtResource("3_order")
+player = 2
+target_tile = Vector2i(34, 32)
+
+[sub_resource type="Resource" id="Order_p1_330"]
+script = ExtResource("3_order")
+tick = 330
+player = 1
+target_tile = Vector2i(42, 30)
+
+[sub_resource type="Resource" id="Order_p2_330"]
+script = ExtResource("3_order")
+tick = 330
+player = 2
+target_tile = Vector2i(21, 30)
+
+[sub_resource type="Resource" id="Order_p1_640"]
+script = ExtResource("3_order")
+tick = 640
+player = 1
+target_tile = Vector2i(29, 32)
+
+[sub_resource type="Resource" id="Order_p2_640"]
+script = ExtResource("3_order")
+tick = 640
 player = 2
 target_tile = Vector2i(34, 32)
 
@@ -131,8 +177,8 @@ target_tile = Vector2i(34, 32)
 script = ExtResource("1_scenario")
 map_size_tiles = Vector2i(64, 64)
 camera_start_tile = Vector2i(32, 32)
-spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_tank"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_bomber"), SubResource("Spawn_p1_fighter"), SubResource("Spawn_p1_airfield"), SubResource("Spawn_p2_tank"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_bomber"), SubResource("Spawn_p2_fighter"), SubResource("Spawn_p2_airfield")])
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_tank"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_bomber"), SubResource("Spawn_p1_fighter"), SubResource("Spawn_p1_airfield"), SubResource("Spawn_p1_aa"), SubResource("Spawn_p2_tank"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_bomber"), SubResource("Spawn_p2_fighter"), SubResource("Spawn_p2_airfield"), SubResource("Spawn_p2_aa")])
 map = ExtResource("4_map")
 rules = ExtResource("5_rules")
-orders = Array[ExtResource("3_order")]([SubResource("Order_p1"), SubResource("Order_p2")])
+orders = Array[ExtResource("3_order")]([SubResource("Order_p1_0"), SubResource("Order_p2_0"), SubResource("Order_p1_330"), SubResource("Order_p2_330"), SubResource("Order_p1_640"), SubResource("Order_p2_640")])
 player_count = 2

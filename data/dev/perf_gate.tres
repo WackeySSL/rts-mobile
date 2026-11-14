@@ -60,5 +60,7 @@ golden_hex = PackedStringArray("3d6ee5b68fdf3aaa", "83b8672e197796e8", "239d8fdc
 bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
 bases_golden_hex = PackedStringArray("b31651bd894038b0", "66506a0dc32b4f77", "dc36d8f12e83b2c6", "f98b22aca3526511", "7c8de3ca5dfa2143", "e333de062be19dd4")
 ; The air arena (plan P253, ADR 0013 section 1): perf_air.tres on its frozen defs. Twin and kernel end on the same hashes.
+; Re-pinned in the same PR (round 1: the air arena's own squads and Burst Stacks, 150 mobile rows, three order waves).
+; Before: efd9c0990fc3cb8e 5c8379ef9601475f 2d672929b94f4f43 92dae49c69d078b1 a71382ecea7a44ab aa63de5e47886ada
 air_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
-air_golden_hex = PackedStringArray("efd9c0990fc3cb8e", "5c8379ef9601475f", "2d672929b94f4f43", "92dae49c69d078b1", "a71382ecea7a44ab", "aa63de5e47886ada")
+air_golden_hex = PackedStringArray("09307d3fd891ff2a", "bd53cd84f0cda28c", "9d4d424f7168fb56", "599077ae85e4ecba", "9e78aaa8b812d5ed", "f4dffe12c08cb96e")
