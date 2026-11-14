@@ -26,8 +26,8 @@ extends Control
 ## STYLE.md ("Ghosts") on the iso barracks, the one that does not fit with its reason glyph. Icons
 ## (`_add_icons_page`) shows the sidebar's tab and item icons and the HUD glyphs at their size in
 ## dp on a dark HUD panel, and the glyphs and rally flags that sit on the map on grass and sand.
-## Hud (`_add_hud_page`, plan row P118g, ADR 0025, 0026 and 0037) shows the sixteen glyphs of the
-## corner HUD at 48 dp with their names, the glyphs they sit beside, all sixteen at 32 and 24 dp,
+## Hud (`_add_hud_page`, plan row P118g, ADR 0025, 0026 and 0037) shows the eighteen glyphs of the
+## corner HUD at 48 dp with their names, the glyphs they sit beside, all eighteen at 32 and 24 dp,
 ## and each faction's vehicle factory with the construction badge and the offline glyph over it.
 ## Life (`_add_life_page`, `art_gallery_life.gd`, plan row P135, ADR 0027) shows the two life
 ## atlases and every sprite of them at the three camera zooms on grass and sand. The pages after
@@ -172,7 +172,7 @@ const HUD_GLYPHS: Array[String] = [
 const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
 ## The build menu's own glyphs (ADR 0024): the Build button's, and the pin, pinned and not.
 const MENU_GLYPHS: Array[String] = ["glyph_menu_open", "glyph_pin", "glyph_pin_off"]
-## The Hud page's rows (STYLE.md): the sixteen glyphs of ADR 0025, 0026 and 0037 by
+## The Hud page's rows (STYLE.md): the eighteen glyphs of ADR 0025, 0026 and 0037 by
 ## the part of the HUD that uses them, then the existing glyphs they stand beside, at 48 dp.
 const HUD_V2_ROWS: Dictionary[String, Array] = {
 	"Bar":
@@ -183,6 +183,8 @@ const HUD_V2_ROWS: Dictionary[String, Array] = {
 		"glyph_plus",
 		"glyph_repair",
 		"glyph_sell",
+		"glyph_board",
+		"glyph_unload",
 	],
 	"Pause":
 	[
@@ -217,6 +219,7 @@ const MAP_GLYPHS: Array[String] = [
 	"glyph_offline",
 	"glyph_low_power_map",
 	"glyph_repair_map",
+	"glyph_unload_mark",
 	"glyph_construct",
 ]
 const ARROW_GLYPH: String = "glyph_under_attack"  ## At least 48 dp on screen (ADR 0019 section 5).
@@ -226,7 +229,9 @@ const TAB_ICON_DP: float = 48.0
 const HUD_GLYPH_DP: float = 48.0
 const MAP_GLYPH_DP: float = 32.0
 ## The map glyphs fill two lines of this many, so that a line fits a half of the page at 1280.
-const MAP_GLYPH_COLUMNS: int = 5
+const MAP_GLYPH_COLUMNS: int = 6
+## Grass's first line of six (386 px) must clear the page button: it stands this far left of centre.
+const MAP_GLYPH_GRASS_SHIFT_PX: float = -48.0
 ## The Hud page's two smaller sizes, in dp: a glyph in a 48 dp button's corner and the smallest.
 const HUD_SMALL_DP: Array[float] = [32.0, 24.0]
 const ICON_GAP_PX: float = 10.0
@@ -259,6 +264,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 	"glyph_offline": Color("F5A524"),
 	"glyph_low_power_map": Color("FF8A1F"),
 	"glyph_repair_map": Color("30A46C"),
+	"glyph_unload_mark": Color("F5A524"),
 	"glyph_under_attack": Color("E5484D"),
 }
 ## Rows of the Icons page, in base px from the top of their half: the HUD panel (left) holds the
@@ -266,7 +272,7 @@ const GLYPH_TINTS: Dictionary[String, Color] = {
 ## menu's glyphs side by side; the grass and sand strips (right) each hold the map glyphs, then the
 ## arrow and the rally flags. Grass's glyphs start beside the page button (24 to 144 px from the
 ## top and from the right edge), the sand's at the top of its half. The map glyphs fill two lines
-## of five and the right half is full: an 11th map glyph needs a third line or a split of the page.
+## of six and the right half is full: a 13th map glyph needs a third line or a split of the page.
 const HUD_ROW_TOPS: Array[float] = [12.0, 152.0, 520.0, 612.0]
 const MAP_ROW_TOPS: Dictionary[String, Array] = {"Grass": [128.0, 262.0], "Sand": [24.0, 160.0]}
 const FLAG_GAP_PX: float = 24.0
@@ -798,7 +804,10 @@ func _add_icons_page() -> void:
 		var anchors: Rect2 = Rect2(0.5, 0.0 if is_grass else 0.5, 0.5, 0.5)
 		var ground: ColorRect = _icons_half(_icons_page, ground_name, colour, anchors)
 		var tops: Array = MAP_ROW_TOPS[ground_name]
-		var glyphs: Control = _pixel_row(ground, "MapGlyphs", tops[0])
+		# Grass's first line is wider than the gap to the page button: it stands left of the centre.
+		var glyphs: Control = _pixel_row(
+			ground, "MapGlyphs", tops[0], MAP_GLYPH_GRASS_SHIFT_PX if is_grass else 0.0
+		)
 		_icon_grid(glyphs, MAP_GLYPHS, MAP_GLYPH_DP, MAP_GLYPH_COLUMNS)
 		_add_flag_row(_pixel_row(ground, "Flags", tops[1]))
 
@@ -818,7 +827,7 @@ func _icons_half(page: Control, node_name: String, colour: Color, anchors: Rect2
 
 
 ## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
-## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the sixteen new glyphs again at
+## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the eighteen new glyphs again at
 ## each of `HUD_SMALL_DP`, and each faction's vehicle factory with the construction badge and the
 ## offline glyph over it, where a site's badge is seen. Every row is centred, so the page fits at
 ## any base width from 1280.

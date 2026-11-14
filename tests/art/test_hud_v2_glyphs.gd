@@ -1,18 +1,18 @@
 extends GdUnitTestSuite
-## The sixteen glyphs of the corner HUD (plan rows P118g and P273, ADRs 0025, 0026 and 0037). What
+## The eighteen glyphs of the corner HUD (plan rows P118g and P273, ADRs 0025, 0026 and 0037). What
 ## tests/art/test_icon_art.gd asks of every glyph (a 128 px canvas, greys only, nothing in the outer
 ## 2 px, a shape line, readable apart at 32 px in greyscale) it asks of these too, as they are in
-## its lists: fifteen in its HUD group and `glyph_construct`, which is drawn over a building on the
-## map, in its map group with the seat that keeps it apart from the ground. This suite adds the
-## margin the fifteen keep from every other glyph of the HUD group and the shape each of the
-## sixteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
+## its lists: seventeen in its HUD group and `glyph_construct`, which is drawn over a building on
+## the map, in its map group with the seat that keeps it apart from the ground. This suite adds the
+## margin the seventeen keep from every other glyph of the HUD group and the shape each of the
+## eighteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
 ## cross, the pennant into a white flag, the collapse arrows outward, the chevron off its centre or
 ## the crane mast into an aerial.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const HUD_BACKDROP: Color = Color("0F141C")
-## The sixteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
+## The eighteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
 const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_deselect",
 	"glyph_stop",
@@ -20,6 +20,8 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_plus",
 	"glyph_repair",
 	"glyph_sell",
+	"glyph_board",
+	"glyph_unload",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
@@ -31,7 +33,7 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_alert",
 	"glyph_construct",
 ]
-## The one of the sixteen that is a map glyph, on a seat (test_icon_art.gd's map group).
+## The one of the eighteen that is a map glyph, on a seat (test_icon_art.gd's map group).
 const MAP_GLYPH: String = "glyph_construct"
 ## The glyphs of the HUD group that were there before: the two result and build menu sets, the
 ## credits, the power and the requirement and placement glyphs.
@@ -62,27 +64,28 @@ const LIGHT_MIN: float = 0.7
 const DARK_MAX: float = 0.4
 
 
-func test_the_sixteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
+func test_the_eighteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
 	var rows: Array[String] = []
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
 		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(16)  # 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273).
+	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a).
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(18)
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
 	assert_bool(Gallery.HUD_SITE_BADGES.has(MAP_GLYPH)).is_true()
 
 
-func test_each_hud_glyph_of_the_fifteen_is_at_least_29_from_every_other_at_32_px() -> void:
-	var fifteen: Array[String] = HUD_V2_GLYPHS.filter(
+func test_each_hud_glyph_of_the_seventeen_is_at_least_29_from_every_other_at_32_px() -> void:
+	var seventeen: Array[String] = HUD_V2_GLYPHS.filter(
 		func(icon: String) -> bool: return icon != MAP_GLYPH
 	)
 	var group: Array[String] = []
 	group.append_array(OLD_HUD_GLYPHS)
-	group.append_array(fifteen)
+	group.append_array(seventeen)
 	var problems: Array[String] = []
-	for icon: String in fifteen:
+	for icon: String in seventeen:
 		for other: String in group:
 			if other != icon and _difference(icon, other) < HUD_V2_DIFFERENCE_MIN:
 				problems.append("%s against %s" % [icon, other])
@@ -148,6 +151,45 @@ func test_the_sell_glyph_is_a_price_tag_with_a_hole_and_a_coin() -> void:
 	_assert_ink(image, [Vector2i(19, 40)], true)
 	_assert_ink(image, [Vector2i(8, 8), Vector2i(120, 120), Vector2i(8, 120)], false)
 	assert_float(_difference("glyph_sell", "glyph_credits")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
+
+
+## ADR 0036 (P265a): Board is one figure at the left, a block arrow and a carrier at the right
+## with a dark doorway facing the figure; the canvas corners are empty.
+func test_the_board_glyph_is_a_figure_an_arrow_and_a_carrier_with_a_doorway() -> void:
+	var image: Image = _image("glyph_board")
+	_assert_light(image, [Vector2i(23, 40), Vector2i(23, 78)])
+	_assert_dark(image, [Vector2i(78, 70)])
+	_assert_ink(image, [Vector2i(47, 70), Vector2i(95, 80), Vector2i(23, 40)], true)
+	_assert_ink(image, [Vector2i(8, 8), Vector2i(120, 120), Vector2i(8, 120)], false)
+
+
+## ADR 0036 (P265a): Unload is the carrier at the left with a ramp down from its foot and two
+## figures side by side at the right, and no arrow: the figures' count and the ramp, not only the
+## side, tell it from Board.
+func test_the_unload_glyph_is_a_carrier_with_a_ramp_and_two_figures() -> void:
+	var image: Image = _image("glyph_unload")
+	_assert_dark(image, [Vector2i(36, 68)])
+	_assert_light(image, [Vector2i(85, 48), Vector2i(107, 48), Vector2i(64, 84)])
+	_assert_ink(image, [Vector2i(85, 70), Vector2i(107, 70), Vector2i(64, 86)], true)
+	# no arrow: the gap between the ramp and the first figure at arrow height is clear
+	_assert_ink(image, [Vector2i(66, 60), Vector2i(8, 8), Vector2i(120, 120)], false)
+	assert_float(_difference("glyph_unload", "glyph_board")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
+
+
+## ADR 0036 (P265a): the Unload point mark is two chevrons pointing straight down: ink at the lower
+## tip, the same ink either side of x = 64, and the plate between the two arms.
+func test_the_unload_mark_points_straight_down() -> void:
+	var image: Image = _image("glyph_unload_mark")
+	_assert_ink(image, [Vector2i(64, 98), Vector2i(64, 64), Vector2i(64, 38)], true)
+	for y: int in [40, 64, 90]:
+		for dx: int in [10, 26, 40]:
+			(
+				assert_bool(
+					absf(image.get_pixel(64 - dx, y).a - image.get_pixel(64 + dx, y).a) < 0.01
+				)
+				. override_failure_message("%d,%d" % [dx, y])
+				. is_true()
+			)
 
 
 ## The chevron points right (the code turns it for the other directions): the row through its tip
