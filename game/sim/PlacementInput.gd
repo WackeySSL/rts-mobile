@@ -2,9 +2,9 @@ class_name PlacementInput
 extends RefCounted
 ## What Placement.reason reads (ADR 0017 section 2), under the World's names, so the sim fills it
 ## from the World (`of_world`) and the view from its snapshot (ADR 0012 section 3: the view never
-## reads the World), and both judge by the same code. The packed arrays are aliases of the source's
-## (GDScript shares a packed array on assignment), so an input is read at once and not kept across
-## a tick. Pure data: no rule lives here.
+## reads the World), and both judge by the same code. For `of_world` the packed arrays are aliases
+## of the source's (GDScript shares a packed array on assignment), so that input is read at once and
+## not kept across a tick; `copy_of_world` copies every array. Pure data: no rule lives here.
 
 ## The map: its size in tiles, the terrain index per tile, the buildable flag per terrain index and
 ## the move cost per class and tile (class FOOT first).
