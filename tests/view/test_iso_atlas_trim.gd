@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## the origin, exactly at bake scale 1.0 and within the texels the crop rounds out to below it. A
 ## frame with no box keeps the offset `dress` writes.
 
-const TOL_TEXELS: float = 2.0  ## The floor and the ceil of the crop, and the clear ring.
+const Trim: GDScript = preload("res://tests/view/support/trim_check.gd")
+const TOL_TEXELS: float = 2.0  ## What `Trim` allows below scale 1.0.
 
 var _sort: WorldSort
 
@@ -99,24 +100,12 @@ func _assert_box(
 	tol_texels: float,
 	label: String
 ) -> void:
-	var box: Rect2i = sheet.frame_box(part, dir, frame)
-	var want: Rect2 = Rect2(
-		Vector2(box.position - sheet.origin(part)) * WorldSort.ART_SCALE,
-		Vector2(box.size) * WorldSort.ART_SCALE
-	)
-	var drawn: Rect2 = Rect2(sprite.offset * sprite.scale, sprite.region_rect.size * sprite.scale)
-	var tol: Vector2 = Vector2.ONE * tol_texels * sprite.scale  # Per axis, px of the view.
-	var message: String = "%s: drew %s, the untrimmed frame %s" % [label, drawn, want]
-	if tol_texels == 0.0:
-		assert_bool(drawn.is_equal_approx(want)).override_failure_message(message).is_true()
-		return
+	var bake: float = 1.0 if tol_texels == 0.0 else 0.5
 	(
-		assert_bool(drawn.grow_individual(0.01, 0.01, 0.01, 0.01).encloses(want))
-		. override_failure_message(message)
-		. is_true()
+		assert_str(Trim.problem(sprite, sheet, part, dir, frame, bake))
+		. override_failure_message(label)
+		. is_empty()
 	)
-	var outer: Rect2 = Rect2(want.position - tol, want.size + 2.0 * tol)
-	assert_bool(outer.grow(0.01).encloses(drawn)).override_failure_message(message).is_true()
 
 
 func _bake(scale: float) -> IsoAtlas:
@@ -131,3 +120,38 @@ func _players() -> Array[IsoPlayerArt]:
 		)
 		players.append(IsoPlayerArt.make(faction, key, key))
 	return players
+
+
+func test_a_flyers_frames_stay_untrimmed_on_page_two() -> void:
+	# Page 2 (the shadows and the flyers) is not trimmed (ADR 0036 section 15): a flyer's hull
+	# keeps its whole canvas as its region, and the page is the size it was without boxes.
+	var players: Array[IsoPlayerArt] = _players()
+	var sheets: Array[IsoSheetDef] = []
+	for sheet: IsoSheetDef in IsoAtlas.load_sheets():
+		if sheet.art_id == &"light_tank":
+			var flyer: IsoSheetDef = sheet.duplicate() as IsoSheetDef
+			flyer.fly_px = 40
+			sheets.append(flyer)
+	for sheet: IsoSheetDef in IsoAtlas.load_sheets():
+		if sheet.art_id == &"heavy_tank":  # A ground sheet: an atlas bakes only with page 1.
+			sheets.append(sheet)
+	assert_int(sheets.size()).is_equal(2)
+	var bare: Array[IsoSheetDef] = []
+	for sheet: IsoSheetDef in sheets:
+		var copy: IsoSheetDef = sheet.duplicate() as IsoSheetDef
+		copy.boxes = PackedInt32Array()
+		bare.append(copy)
+	assert_bool(sheets[0].has_boxes(&"hull")).is_true()
+	assert_bool(sheets[0].frame_box(&"hull", 0).size != sheets[0].frame_size(&"hull")).is_true()
+	var atlas: IsoAtlas = IsoAtlas.build(sheets, players, 1.0)
+	var region: Rect2i = atlas.region(&"light_tank", &"hull", 0, 0)
+	assert_that(region.size).is_equal(sheets[0].frame_size(&"hull"))
+	var sprite: Sprite2D = auto_free(Sprite2D.new())
+	_sort.atlas = atlas
+	_sort.dress(sprite, sheets[0], &"hull")
+	var dressed: Vector2 = sprite.offset
+	_sort.show_base(sprite, atlas.base(&"light_tank", &"hull", 0, 0), 0)
+	assert_vector(sprite.offset).is_equal(dressed)
+	var second: Vector2i = IsoAtlas.planned_page(sheets, players, 1.0, Callable(), 1)
+	assert_that(second).is_equal(IsoAtlas.planned_page(bare, players, 1.0, Callable(), 1))
+	assert_int(second.y).is_greater(0)

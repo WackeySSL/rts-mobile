@@ -437,7 +437,10 @@ static func _collect_sheet(
 				)
 				plan.texts[slot] = baked
 				plan.sizes[slot] = sheet.frame_size(part)
-				plan.boxes[slot] = sheet.frame_box(part, dir, frame)
+				# Only the sorted page is trimmed: page 2 (shadows, flyers) stays as it is.
+				plan.boxes[slot] = Rect2i(Vector2i.ZERO, sheet.frame_size(part))
+				if page_of(part, sheet.flies()) == PAGE_SORTED:
+					plan.boxes[slot] = sheet.frame_box(part, dir, frame)
 				plan.origins[slot] = sheet.origin(part)
 				plan.parts[slot] = part
 				plan.pages[slot] = page_of(part, sheet.flies())
