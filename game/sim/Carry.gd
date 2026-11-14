@@ -116,7 +116,8 @@ static func apply_unload(world: World, command: Command) -> bool:
 
 ## A MOVE, ATTACK_MOVE, STOP, REPAIR or LAY_MINE on `rows` takes the "board on arrival" mark off the
 ## ones that carry it (an `order_target` that names an own row; an ATTACK's names an enemy) and
-## ends a pending unload (`carry_mode` 0). Sim calls it with the rows it accepted, as `Harvest.release`.
+## ends a pending unload (`carry_mode` 0). Sim calls it with the rows it accepted, as
+## `Harvest.release`.
 static func release(world: World, rows: PackedInt32Array) -> void:
 	var targets: PackedInt32Array = world.order_target
 	for row: int in rows:
