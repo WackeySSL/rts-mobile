@@ -70,11 +70,23 @@ const ROOT: String = "res://assets/art/iso"
 ## Whether the `anim` element runs at KRITISK (its carrier stands in `dmg2`) rather than being
 ## hidden there (ADR 0029 section 3); false for a sheet without one.
 @export var anim_kritisk: bool = false
-## The tight box of every directional frame (a part with 16 or 8 directions: vehicle and squad
-## parts, their shadows, a turret or head), px of the 2x art in the part's canvas: x, y, width and
-## height per frame, the drawn box plus `ArtGen.MARGIN_PX`, so the edge and a filter seam fit.
-## Parts in file order, then direction, then frame; a part with one view has none. Read it through
-## `frame_box`. Empty on a sheet written before the trim (ADR 0036 section 15, P305).
+## The tight box of every directional frame of page 1 (a part with 16 or 8 directions, the
+## shadows excepted: they go on page 2, which has room and is not trimmed), px of the 2x art in the
+## part's canvas: x, y, width and height per frame. The box is the drawn box plus 1 clear px: the
+## polygons' bounds plus `ArtGen.MARGIN_PX` (2), of which the 2 px edge stroke takes 1. Parts in
+## file order, then direction, then frame. Read it through `frame_box`. Empty on a sheet written
+## before the trim (ADR 0036 section 15, P305).
+##
+## For P306 (the atlas packs the boxes), at raster scale `s` with integer maths, so that the pins
+## and the bake agree: `canvas` is `frame_size(part)`, `raster` is `IsoAtlas.raster_size(canvas,
+## s * part_factor)`, `x0 = b.x * raster.x / canvas.x` (floor), `x1 = min(raster.x, ceil(b.end.x *
+## raster.x / canvas.x))`, the same for y; `t = Rect2i(x0, y0, x1 - x0, y1 - y0)`, and when `raster
+## != canvas` `t = t.grow(1).intersection(Rect2i(0, 0, raster))`, which keeps the clear ring below
+## bake 1.0. Crop `t` out of the untrimmed raster, never re-render a cropped viewBox. Then
+## `per_px = Vector2(raster) / Vector2(canvas)` (`texels_per_px`, from the untrimmed size),
+## `sprite.scale = ART_SCALE / per_px`, `sprite.offset = Vector2(t.position) - Vector2(origin(part))
+## * per_px`; at bake 1.0 that is `b.position - origin`. Use the floored `t.position`, not
+## `b.position * per_px`, or each direction jitters by its own sub-texel amount.
 @export var boxes: PackedInt32Array = PackedInt32Array()
 ## The folder the frames are in. Empty is `ROOT/<faction>/<category>/`, which every generated sheet
 ## has; a hand-written sheet (the neutral damage overlays, ADR 0028 section 4) sets it.
@@ -131,19 +143,33 @@ func origin(part: StringName) -> Vector2i:
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
 
 
-## The tight box of one frame of a part in canvas px (`boxes`); the whole canvas for a part with a
-## single view or a sheet without boxes. `dir` is as in `d<NN>`, `frame` the pose frame.
+## Whether a part has boxes: several directions, and not the shadow.
+func has_boxes(part: StringName) -> bool:
+	var at: int = parts.find(String(part))
+	return at >= 0 and counts[at] > 1 and part != &"shadow"
+
+
+## The tight box of one frame of a part in canvas px (`boxes`); the whole canvas for a part without
+## boxes or a sheet without any. `dir` is as in `d<NN>`, `frame` the pose frame. A part, direction
+## or frame the sheet lacks is an error and answers the whole canvas, never another frame's box.
 func frame_box(part: StringName, dir: int, frame: int = 0) -> Rect2i:
 	var at: int = parts.find(String(part))
 	if at < 0:
+		push_error("IsoSheetDef %s has no part %s" % [art_id, part])
 		return Rect2i()
 	var whole: Rect2i = Rect2i(Vector2i.ZERO, frame_size(part))
-	if boxes.is_empty() or counts[at] <= 1:
+	if boxes.is_empty() or not has_boxes(part):
+		return whole
+	var per_part: int = frame_count(part)
+	var step: int = 16 / counts[at]
+	if dir < 0 or dir > 15 or dir % step != 0 or frame < 0 or frame >= per_part:
+		push_error("IsoSheetDef %s %s has no frame d%d f%d" % [art_id, part, dir, frame])
 		return whole
 	var first: int = 0
 	for i: int in at:
-		first += counts[i] * frame_count(StringName(parts[i])) if counts[i] > 1 else 0
-	var index: int = first + (dir / (16 / counts[at])) * frame_count(part) + frame
+		if has_boxes(StringName(parts[i])):
+			first += counts[i] * frame_count(StringName(parts[i]))
+	var index: int = first + (dir / step) * per_part + frame
 	return Rect2i(
 		boxes[4 * index], boxes[4 * index + 1], boxes[4 * index + 2], boxes[4 * index + 3]
 	)

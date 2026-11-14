@@ -93,13 +93,14 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	return sheet
 
 
-## The tight boxes of every directional frame (`IsoSheetDef.boxes`): the bounds of its polygons
-## plus the canvas margin, in canvas px, kept inside the canvas.
+## The tight boxes of every directional frame but the shadows' (`IsoSheetDef.boxes`): the bounds of
+## its polygons plus `ArtGen.MARGIN_PX`, in canvas px, kept inside the canvas. The 2 px edge stroke
+## reaches 1 px past a vertex, so the box is the alpha bounds plus 1 clear px.
 static func _boxes(shots: Dictionary[StringName, ArtGen.Shot]) -> PackedInt32Array:
 	var found: PackedInt32Array = PackedInt32Array()
 	for part: StringName in shots:
 		var shot: ArtGen.Shot = shots[part]
-		if shot.dirs.size() <= 1:
+		if shot.dirs.size() <= 1 or part == ArtModel.SHADOW:
 			continue
 		var canvas: Rect2i = Rect2i(Vector2i.ZERO, shot.layout.size)
 		for polys: Array in shot.polys:
