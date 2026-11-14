@@ -59,3 +59,6 @@ golden_hex = PackedStringArray("3d6ee5b68fdf3aaa", "83b8672e197796e8", "239d8fdc
 ; Before: feb5d0302777e816 360f08cb64612295 4fa7bcadcc63d38e ce6037ef45537892 26d040f75b5d0364 4f1b4973efe6377c
 bases_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
 bases_golden_hex = PackedStringArray("b31651bd894038b0", "66506a0dc32b4f77", "dc36d8f12e83b2c6", "f98b22aca3526511", "7c8de3ca5dfa2143", "e333de062be19dd4")
+; The air arena (plan P253, ADR 0013 section 1): perf_air.tres on its frozen defs. Twin and kernel end on the same hashes.
+air_golden_ticks = PackedInt32Array(150, 300, 450, 600, 750, 900)
+air_golden_hex = PackedStringArray("efd9c0990fc3cb8e", "5c8379ef9601475f", "2d672929b94f4f43", "92dae49c69d078b1", "a71382ecea7a44ab", "aa63de5e47886ada")

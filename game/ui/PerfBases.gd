@@ -10,8 +10,12 @@ const ARENA_UNITS: String = "arena"
 const ARENA_BASES: String = "bases"
 ## The AI arena (plan P185): `perf_ai.tres` with a computer on each player. It has no golden pair.
 const ARENA_AI: String = "ai"
+## The air arena (plan P253): `perf_air.tres`, 16 aircraft among 150 units; its pair is the gate's
+## `air_golden_*`.
+const ARENA_AIR: String = "air"
 ## The gate fields of the base arena's pair, named in a mismatch so a re-pin goes to the right one.
 const FIELDS: String = " (bases_golden_ticks, bases_golden_hex)"
+const AIR_FIELDS: String = " (air_golden_ticks, air_golden_hex)"
 ## ADR 0023 section 2's draw-call forecast of the base arena, HUD left out: 16 (14 + `GroundFx` +
 ## `AirFx`, note of 2026-11-02, P132), about 22 in the worst moment, and one more while a strike is
 ## aimed or in the air (`StrikeMarkerLayer`, note of 2026-10-30; the 2026-10-31 note adds the
@@ -45,15 +49,21 @@ static func ai_line(p95_ms: float, max_ms: float, thinks: int) -> String:
 
 
 static func ticks(gate: PerfGateDef, kind: String) -> PackedInt32Array:
+	if kind == ARENA_AIR:
+		return gate.air_golden_ticks
 	return gate.bases_golden_ticks if kind == ARENA_BASES else gate.golden_ticks
 
 
 static func hexes(gate: PerfGateDef, kind: String) -> PackedStringArray:
+	if kind == ARENA_AIR:
+		return gate.air_golden_hex
 	return gate.bases_golden_hex if kind == ARENA_BASES else gate.golden_hex
 
 
 ## What a failed golden row adds: the base arena's gate fields, nothing for the seed-42 arena.
 static func fields(kind: String) -> String:
+	if kind == ARENA_AIR:
+		return AIR_FIELDS
 	return FIELDS if kind == ARENA_BASES else ""
 
 

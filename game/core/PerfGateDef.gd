@@ -60,3 +60,8 @@ extends Resource
 ## run against them (P93c).
 @export var bases_golden_ticks: PackedInt32Array = PackedInt32Array()
 @export var bases_golden_hex: PackedStringArray = PackedStringArray()
+## The same for the air arena (plan P253, ADR 0013 section 1): the checkpoints of the seed-42 run of
+## data/scenarios/perf_air.tres, pinned in data/dev/perf_gate.tres by
+## tests/perf/test_golden_hashes.gd.
+@export var air_golden_ticks: PackedInt32Array = PackedInt32Array()
+@export var air_golden_hex: PackedStringArray = PackedStringArray()
