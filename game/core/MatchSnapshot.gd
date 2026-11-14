@@ -91,6 +91,14 @@ const COPIED: Array[StringName] = [
 	&"ghost_owner",
 	&"ghost_cell",
 	&"ghost_count",
+	&"mine_id",
+	&"mine_owner",
+	&"mine_cell",
+	&"mine_armed_tick",
+	&"mine_seen_id",
+	&"mine_seen_owner",
+	&"mine_seen_cell",
+	&"mine_seen_count",
 	&"power_made",
 	&"power_used",
 	&"reveal_site",
@@ -112,15 +120,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"ammo",
 	&"carry_mode",
 	&"stance",
-	&"mine_id",
-	&"mine_owner",
-	&"mine_cell",
 	&"mine_weapon",
-	&"mine_armed_tick",
-	&"mine_seen_id",
-	&"mine_seen_owner",
-	&"mine_seen_cell",
-	&"mine_seen_count",
 	&"mine_at",
 	&"type_carry_slots",
 	&"type_carry_classes",
@@ -205,6 +205,8 @@ const COPIED_SCALARS: Array[StringName] = [
 	&"construct_refund_percent",
 	&"construction_sites_max",
 	&"sell_refund_percent",
+	&"mine_count",
+	&"mine_known_cap",
 ]
 ## The World's Array[StringName] id lists, in no World shape list (ADR 0012's amendment). Each is
 ## copied by duplicate(): a shallow copy of a few immutable StringNames.
@@ -332,6 +334,19 @@ var ghost_type: PackedInt32Array = PackedInt32Array()
 var ghost_owner: PackedInt32Array = PackedInt32Array()
 var ghost_cell: PackedInt32Array = PackedInt32Array()
 var ghost_count: PackedInt32Array = PackedInt32Array()
+## The mines (ADR 0037 section 8; World layouts): the laid table, `mine_count` live entries, and the
+## records, `player * mine_known_cap + i` live below `mine_seen_count[player]`. The view draws the
+## local player's own (owner is the player) and its records only, and never an unknown enemy mine.
+var mine_count: int = 0
+var mine_known_cap: int = 0
+var mine_id: PackedInt32Array = PackedInt32Array()
+var mine_owner: PackedInt32Array = PackedInt32Array()
+var mine_cell: PackedInt32Array = PackedInt32Array()
+var mine_armed_tick: PackedInt32Array = PackedInt32Array()
+var mine_seen_id: PackedInt32Array = PackedInt32Array()
+var mine_seen_owner: PackedInt32Array = PackedInt32Array()
+var mine_seen_cell: PackedInt32Array = PackedInt32Array()
+var mine_seen_count: PackedInt32Array = PackedInt32Array()
 var power_made: PackedInt32Array = PackedInt32Array()
 var power_used: PackedInt32Array = PackedInt32Array()
 ## The satellite sweep (ADR 0036 section 11), per player: the space centre that fired it (0 none)
@@ -429,6 +444,35 @@ func placement_input() -> PlacementInput:
 	return input
 
 
+## The mines `player` may draw (ADR 0037 section 8; the one reader of the mine columns): its own
+## (`own_cell`, `own_armed`, the tick each arms, ascending mine id) and the ones it found
+## (`known_cell`, `known_owner`, the order of its records). A mine it has not found is in neither.
+func mines_for(player: int) -> Dictionary:
+	var own_cell: PackedInt32Array = PackedInt32Array()
+	var own_armed: PackedInt32Array = PackedInt32Array()
+	var known_cell: PackedInt32Array = PackedInt32Array()
+	var known_owner: PackedInt32Array = PackedInt32Array()
+	var live: int = mini(
+		mine_count, mini(mine_owner.size(), mini(mine_cell.size(), mine_armed_tick.size()))
+	)
+	for index: int in live:
+		if mine_owner[index] == player:
+			own_cell.append(mine_cell[index])
+			own_armed.append(mine_armed_tick[index])
+	if player >= 1 and player < mine_seen_count.size() and mine_known_cap >= 1:
+		var first: int = player * mine_known_cap
+		var count: int = clampi(mine_seen_count[player], 0, mine_known_cap)
+		if first + count <= mini(mine_seen_cell.size(), mine_seen_owner.size()):
+			known_cell = mine_seen_cell.slice(first, first + count)
+			known_owner = mine_seen_owner.slice(first, first + count)
+	return {
+		&"own_cell": own_cell,
+		&"own_armed": own_armed,
+		&"known_cell": known_cell,
+		&"known_owner": known_owner,
+	}
+
+
 ## Copies the World's tick into this snapshot, whose `match_serial` the caller has set. `previous`
 ## is the last published snapshot, or null: when it is null or of another match, prev = current,
 ## as copies (O(1)), so a test that writes this snapshot's pos_* or proj_* to set up a view case
@@ -448,6 +492,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	construct_refund_percent = world.construct_refund_percent
 	construction_sites_max = world.construction_sites_max
 	sell_refund_percent = world.sell_refund_percent
+	mine_count = world.mine_count
+	mine_known_cap = world.mine_known_cap
 	unit_id = world.unit_id.duplicate()
 	owner = world.owner.duplicate()
 	type_index = world.type_index.duplicate()
@@ -549,6 +595,14 @@ func _capture_players(world: World) -> void:
 	ghost_owner = world.ghost_owner.duplicate()
 	ghost_cell = world.ghost_cell.duplicate()
 	ghost_count = world.ghost_count.duplicate()
+	mine_id = world.mine_id.duplicate()
+	mine_owner = world.mine_owner.duplicate()
+	mine_cell = world.mine_cell.duplicate()
+	mine_armed_tick = world.mine_armed_tick.duplicate()
+	mine_seen_id = world.mine_seen_id.duplicate()
+	mine_seen_owner = world.mine_seen_owner.duplicate()
+	mine_seen_cell = world.mine_seen_cell.duplicate()
+	mine_seen_count = world.mine_seen_count.duplicate()
 	power_made = world.power_made.duplicate()
 	power_used = world.power_used.duplicate()
 	reveal_site = world.reveal_site.duplicate()
