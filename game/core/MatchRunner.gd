@@ -248,6 +248,8 @@ var _ai_start_failed: bool = false
 var _ai_start_error: int = OK
 ## The wait caps of start(), WAIT_CAP_MSEC; a test sets a small one to force a timeout.
 var _start_cap_msec: int = WAIT_CAP_MSEC
+## A test seam: where the AI-wait timeout message goes instead of push_error (unset: push_error).
+var _timeout_sink: Callable = Callable()
 ## The fields behind `world`, `loop`, `replay` and `probe`. The runner itself uses only these.
 var _world: World
 var _loop: MatchLoop
@@ -619,7 +621,13 @@ func _take_ai_done(timeout_msec: int) -> bool:
 	var until: int = Time.get_ticks_msec() + timeout_msec
 	while not _job.ai_done.try_wait():
 		if Time.get_ticks_msec() >= until:
-			push_error("MatchRunner: the AI thread did not finish within %d ms" % timeout_msec)
+			var text: String = (
+				"MatchRunner: the AI thread did not finish within %d ms" % timeout_msec
+			)
+			if _timeout_sink.is_valid():
+				_timeout_sink.call(text)
+			else:
+				push_error(text)
 			return false
 		OS.delay_msec(1)
 	_job.batch.awaiting = false

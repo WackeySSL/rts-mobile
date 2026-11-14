@@ -102,10 +102,10 @@ func test_a_wait_idle_that_times_out_on_the_ai_keeps_the_runner_ticking() -> voi
 	while not runner._job.done.try_wait():
 		OS.delay_msec(1)
 	runner._job.done.post()
-	await (
-		assert_error(func() -> void: assert_bool(runner.wait_idle(2)).is_false())
-		. is_push_error("MatchRunner: the AI thread did not finish within 2 ms")
-	)
+	var seen: Array[String] = []
+	runner._timeout_sink = func(text: String) -> void: seen.append(text)
+	assert_bool(runner.wait_idle(2)).is_false()
+	assert_array(seen).is_equal(["MatchRunner: the AI thread did not finish within 2 ms"])
 	assert_bool(runner.job_in_flight()).is_false()
 	assert_bool(runner._job.batch.awaiting).is_true()
 	var frames: int = 0
@@ -130,10 +130,10 @@ func test_a_start_that_times_out_on_the_ai_keeps_the_old_match_ticking() -> void
 		OS.delay_msec(1)
 	runner._job.done.post()
 	var serial: int = runner.match_serial
-	await (
-		assert_error(func() -> void: runner.start())
-		. is_push_error("MatchRunner: the AI thread did not finish within 2 ms")
-	)
+	var seen: Array[String] = []
+	runner._timeout_sink = func(text: String) -> void: seen.append(text)
+	runner.start()
+	assert_array(seen).is_equal(["MatchRunner: the AI thread did not finish within 2 ms"])
 	assert_int(runner.match_serial).is_equal(serial)
 	assert_bool(runner.job_in_flight()).is_false()
 	var frames: int = 0
