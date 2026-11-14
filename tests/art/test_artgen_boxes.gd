@@ -9,8 +9,6 @@ extends GdUnitTestSuite
 const SLACK_PX: int = 1
 
 var _index: IsoIndex = null
-var _lacking: Array = []
-var _got: Rect2i = Rect2i()
 
 
 func before() -> void:
@@ -88,31 +86,22 @@ func test_the_shadow_and_a_one_view_part_have_no_boxes_and_the_others_follow_in_
 	assert_object(sheet.frame_box(&"shadow", 2)).is_equal(Rect2i(0, 0, 40, 30))
 
 
-func test_frame_box_of_a_frame_the_sheet_lacks_is_an_error_and_the_whole_canvas() -> void:
+## `frame_box` reports a frame the sheet lacks with `push_error` and answers the whole canvas; the
+## test asks `has_frame`, its guard, so no error reaches the log (verify.sh fails on one).
+func test_has_frame_refuses_a_frame_the_sheet_lacks() -> void:
 	var sheet: IsoSheetDef = load("res://assets/art/iso/fossil/inf/rifle_squad_sheet.tres")
-	var hull: Rect2i = Rect2i(Vector2i.ZERO, sheet.frame_size(&"hull"))
-	var walk: Rect2i = Rect2i(Vector2i.ZERO, sheet.frame_size(&"walk"))
 	var frames: int = sheet.frame_count(&"walk")
-	var id: String = String(sheet.art_id)
 	# A squad has the even directions only; `dir` and `frame` out of range, and a part it lacks.
 	for dir: int in [1, 16, -1]:
-		_lacking = [sheet, &"hull", dir, 0]
-		await assert_error(_ask).is_push_error(
-			"IsoSheetDef %s hull has no frame d%d f0" % [id, dir]
-		)
-		assert_object(_got).is_equal(hull)
-	_lacking = [sheet, &"walk", 2, frames]
-	await assert_error(_ask).is_push_error("IsoSheetDef %s walk has no frame d2 f%d" % [id, frames])
-	assert_object(_got).is_equal(walk)
-	_lacking = [sheet, &"nope", 0, 0]
-	await assert_error(_ask).is_push_error("IsoSheetDef %s has no part nope" % id)
-	assert_object(_got).is_equal(Rect2i())
+		assert_bool(sheet.has_frame(&"hull", dir)).override_failure_message(str(dir)).is_false()
+	assert_bool(sheet.has_frame(&"hull", 0)).is_true()
+	assert_bool(sheet.has_frame(&"hull", 14)).is_true()
+	assert_bool(sheet.has_frame(&"walk", 2, frames)).is_false()
+	assert_bool(sheet.has_frame(&"walk", 2, -1)).is_false()
+	assert_bool(sheet.has_frame(&"walk", 2, frames - 1)).is_true()
+	assert_bool(sheet.has_frame(&"nope", 0)).is_false()
+	var walk: Rect2i = Rect2i(Vector2i.ZERO, sheet.frame_size(&"walk"))
 	assert_object(sheet.frame_box(&"walk", 2, frames - 1)).is_not_equal(walk)
-
-
-func _ask() -> void:
-	var sheet: IsoSheetDef = _lacking[0]
-	_got = sheet.frame_box(_lacking[1], _lacking[2], _lacking[3])
 
 
 func test_a_part_with_one_view_has_the_whole_canvas_as_its_box_and_no_entry_in_boxes() -> void:

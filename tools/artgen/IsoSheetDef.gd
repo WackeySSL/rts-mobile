@@ -149,9 +149,19 @@ func has_boxes(part: StringName) -> bool:
 	return at >= 0 and counts[at] > 1 and part != &"shadow"
 
 
+## Whether the sheet has frame `frame` of direction `dir` (as in `d<NN>`) of `part`.
+func has_frame(part: StringName, dir: int, frame: int = 0) -> bool:
+	var at: int = parts.find(String(part))
+	if at < 0:
+		return false
+	var step: int = 16 / counts[at]
+	return dir >= 0 and dir <= 15 and dir % step == 0 and frame >= 0 and frame < frame_count(part)
+
+
 ## The tight box of one frame of a part in canvas px (`boxes`); the whole canvas for a part without
 ## boxes or a sheet without any. `dir` is as in `d<NN>`, `frame` the pose frame. A part, direction
-## or frame the sheet lacks is an error and answers the whole canvas, never another frame's box.
+## or frame the sheet lacks (`has_frame` false) is an error and answers the whole canvas, never
+## another frame's box.
 func frame_box(part: StringName, dir: int, frame: int = 0) -> Rect2i:
 	var at: int = parts.find(String(part))
 	if at < 0:
@@ -160,11 +170,11 @@ func frame_box(part: StringName, dir: int, frame: int = 0) -> Rect2i:
 	var whole: Rect2i = Rect2i(Vector2i.ZERO, frame_size(part))
 	if boxes.is_empty() or not has_boxes(part):
 		return whole
-	var per_part: int = frame_count(part)
-	var step: int = 16 / counts[at]
-	if dir < 0 or dir > 15 or dir % step != 0 or frame < 0 or frame >= per_part:
+	if not has_frame(part, dir, frame):
 		push_error("IsoSheetDef %s %s has no frame d%d f%d" % [art_id, part, dir, frame])
 		return whole
+	var per_part: int = frame_count(part)
+	var step: int = 16 / counts[at]
 	var first: int = 0
 	for i: int in at:
 		if has_boxes(StringName(parts[i])):
