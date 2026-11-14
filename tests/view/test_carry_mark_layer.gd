@@ -89,13 +89,24 @@ func test_the_ring_follows_the_carrier_and_the_layer_clears_after_confirm_and_x(
 	_world.pos_x[_world.index_of(CARRIER)] += 3000
 	_read()
 	assert_vector(_layer.ring_centre()).is_not_equal(before)
+	_layer._process(0.0)
+	assert_int(_layer.redraws).is_equal(1)
 	_aim.confirm()
 	assert_int(_layer.marks()).is_equal(0)
 	assert_vector(_layer.ring_centre()).is_equal(Vector2.INF)
+	_layer._process(0.0)  # The clearing redraw: the frame after the aim ends wipes the mark.
+	assert_int(_layer.redraws).is_equal(2)
+	_layer._process(0.0)  # Then nothing more is asked for.
+	assert_int(_layer.redraws).is_equal(2)
 	_aim.toggle(CarryAim.Mode.BOARD)
 	_aim.pick_carrier(CARRIER)
+	_layer._process(0.0)
 	_aim.cancel()
 	assert_int(_layer.marks()).is_equal(0)
+	_layer._process(0.0)
+	assert_int(_layer.redraws).is_equal(4)
+	_layer._process(0.0)
+	assert_int(_layer.redraws).is_equal(4)
 
 
 func test_the_ring_stands_on_the_drawn_rig_of_the_carrier_in_the_main_scene() -> void:
