@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Frozen copy of data/weapons/rifle.tres as of 2026-11-14 (main d21b3abc). Used by perf_air only, so a tuning change to the shipped file cannot move its golden hash (ADR 0031).
+[resource]
+script = ExtResource("1_weapon")
+id = &"rifle"
+range = 4000
+damage = 12
+cooldown_ticks = 15
+vs_armour = PackedInt32Array(100, 10, 5, 5)
+targets = 5

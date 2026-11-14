@@ -12,7 +12,12 @@ const RATIO_PREFIX: String = "ci_ratio_"
 ## the `bases_` pair), which test_golden_hashes.gd (P49a, P93) checks: here they only have to pair
 ## up.
 const GOLDEN_FIELDS: Array[String] = [
-	"golden_ticks", "golden_hex", "bases_golden_ticks", "bases_golden_hex"
+	"golden_ticks",
+	"golden_hex",
+	"bases_golden_ticks",
+	"bases_golden_hex",
+	"air_golden_ticks",
+	"air_golden_hex"
 ]
 ## The ratios of the impl=native line (ADR 0013 section 15). P54r gave PerfGateDef their defaults
 ## and P38pn wrote them to the file, so a missing line would load the same numbers.
@@ -26,7 +31,9 @@ const EXEMPT_FIELDS_IN_FILE: Array[String] = [
 	"golden_ticks",
 	"golden_hex",
 	"bases_golden_ticks",
-	"bases_golden_hex"
+	"bases_golden_hex",
+	"air_golden_ticks",
+	"air_golden_hex"
 ]
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 ## A line made from known inputs, with PerfGateDef's ratios 4.4 and 5.9: 1.5 x 4.4 and 3 x 5.9.
@@ -321,6 +328,9 @@ func test_the_gate_file_holds_the_contract_values() -> void:
 	assert_int(typeof(gate.bases_golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
 	assert_int(typeof(gate.bases_golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
 	assert_int(gate.bases_golden_ticks.size()).is_equal(gate.bases_golden_hex.size())
+	assert_int(typeof(gate.air_golden_ticks)).is_equal(TYPE_PACKED_INT32_ARRAY)
+	assert_int(typeof(gate.air_golden_hex)).is_equal(TYPE_PACKED_STRING_ARRAY)
+	assert_int(gate.air_golden_ticks.size()).is_equal(gate.air_golden_hex.size())
 
 
 ## A line that is missing from the file loads as the script default, so it passes the test above,
