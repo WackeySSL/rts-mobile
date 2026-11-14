@@ -49,6 +49,7 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
 @export var building_layer: BuildingLayer  ## Without one no building can be picked.
+@export var air_layer: AirLayer  ## Without one no aircraft can be picked (P244).
 @export var camera: RtsCamera
 @export var settings: InputSettings
 @export var marker_layer: MoveMarkerLayer
@@ -58,6 +59,8 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var placement: PlacementController  ## Without one there is no placement mode.
 
 var selection: SelectionModel = SelectionModel.new()
+## Taps refused so far: an enemy none of the selected units can hit (P244). For the tests.
+var refusals: int = 0
 ## Receives each Command. Tests replace it.
 var command_sink: Callable = CommandQueue.submit
 ## Buzzes for the given ms when a group is assigned. Tests replace it.
@@ -67,6 +70,9 @@ var _snap: PickSnapshot = PickSnapshot.new()
 var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_groups`' scratch.
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
+var _hitters: PackedInt32Array = PackedInt32Array()  ## Scratch for the rows that can hit.
+var _homing: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s aircraft of one field.
+var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s airfields.
 
 
 func _init() -> void:
@@ -204,13 +210,21 @@ func _tap(pos: Vector2) -> void:
 	if hit >= 0 and _snap.owners[hit] == _local_player():
 		selection.set_ids(PackedInt32Array([_snap.ids[hit]]))
 	elif hit >= 0:  # An enemy: only picked while own units are selected.
-		_attack(_snap.ids[hit], _snap.screen_pos[hit] + Vector2(0.0, _snap.lift_of(hit)))
+		_attack(
+			_snap.ids[hit],
+			_snap.screen_pos[hit] + Vector2(0.0, _snap.lift_of(hit)),
+			_snap.type_index[hit]
+		)
 	else:
 		var min_half: float = UiScale.dp(settings.hit_radius_dp)
 		var shape: int = Picker.pick_building(_snap, pos, _local_player(), units, min_half)
 		var hostile: bool = shape >= 0 and units and _snap.building_owners[shape] != _local_player()
 		if hostile and _snap.is_targetable(shape):
-			_attack(_snap.building_ids[shape], _snap.building_centres[shape])
+			_attack(
+				_snap.building_ids[shape],
+				_snap.building_centres[shape],
+				_type_of(_snap.building_ids[shape])
+			)
 		elif shape >= 0 and not hostile:
 			_select_building(_snap.building_ids[shape])
 		elif units:
@@ -285,6 +299,8 @@ func _refresh() -> void:
 	unit_layer.fill_pick_snapshot(_snap, UiScale.dp(settings.hit_radius_dp))
 	if building_layer != null:
 		building_layer.fill_pick_snapshot(_snap, camera)
+	if air_layer != null:
+		air_layer.fill_pick_snapshot(_snap, camera, UiScale.dp(settings.hit_radius_dp))
 
 
 ## Whether the selection is units: any selection but the one building a tap on a building makes
@@ -368,9 +384,47 @@ func move_selected_to(ground: Vector2i) -> bool:
 
 ## Attack the enemy with id `target`, drawn at `at` on the screen (base px). The sim takes the order
 ## only if the target is still a valid enemy there. The diamond marks it where it is drawn.
-func _attack(target: int, at: Vector2) -> void:
-	command_sink.call(Command.attack(_local_player(), selection.selected, target))
+## Only the selected units that can hit a target of type `target_type` get the order (P244, ADR 0036
+## section 5); when none can, nothing is sent: a short shake of the mark and the selection is kept.
+func _attack(target: int, at: Vector2, target_type: int) -> void:
+	var snap: MatchSnapshot = runner.snapshot
+	OrderRules.hitters(snap, selection.selected, target_type, _hitters)
+	if _hitters.is_empty():
+		refusals += 1
+		marker_layer.show_refused(camera.screen_to_world(at))
+		return
+	command_sink.call(Command.attack(_local_player(), _hitters.duplicate(), target))
 	marker_layer.show_target(camera.screen_to_world(at))
+
+
+## The type index of unit or building `id`, -1 when it is gone.
+func _type_of(id: int) -> int:
+	var row: int = runner.snapshot.index_of(id)
+	return -1 if row < 0 else runner.snapshot.type_index[row]
+
+
+## The command bar's Home (ADR 0036 section 12): each selected own aircraft flies to its own
+## airfield's pad, one REPAIR to each airfield with its aircraft, with the buzz. An aircraft with no
+## airfield is left out; false when none is sent.
+func home() -> bool:
+	var snap: MatchSnapshot = runner.snapshot
+	var player: int = _local_player()
+	OrderRules.home_fields(snap, selection.selected, player, _fields)
+	for field: int in _fields:
+		_homing.clear()  # The aircraft homed at this field.
+		for id: int in selection.selected:
+			var row: int = snap.index_of(id)
+			if (
+				row >= 0
+				and OrderRules.is_own_aircraft(snap, id, player)
+				and snap.home[row] == field
+			):
+				_homing.append(id)
+		command_sink.call(Command.repair(player, _homing.duplicate(), field))
+	if _fields.is_empty():
+		return false
+	_buzz()
+	return true
 
 
 func _local_player() -> int:

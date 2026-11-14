@@ -22,6 +22,7 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_sell",
 	"glyph_board",
 	"glyph_unload",
+	"glyph_home",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
@@ -69,8 +70,8 @@ func test_the_eighteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_fil
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
 		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a).
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(18)
+	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a), Home (P244).
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(19)
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()

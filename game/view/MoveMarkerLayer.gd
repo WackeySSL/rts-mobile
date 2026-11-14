@@ -23,6 +23,8 @@ const DIAMOND_PX: float = 32.4
 const FLAT: Vector2 = Vector2(1.0, IsoProjection.GROUND_FLATTEN)  ## The ground's 2:1 flattening.
 const DIAMOND_START: float = 1.5  ## Times the size, easing to 1.
 const DIAMOND_MS: float = 150.0
+const SHAKE_DP: float = 8.0  ## How far a refused tap's mark swings, each way.
+const SHAKE_MS: float = 70.0  ## One swing, there and back.
 const FADE_START_MS: float = 200.0  ## Full alpha up to min(this, marker_ms / 3).
 
 @export var pool_size: int = 4
@@ -42,6 +44,8 @@ class Mark:
 
 	var born_ms: int = 0
 	var diamond: bool = false
+	var shake: bool = false  ## A refused tap (P244): the diamond swings sideways and settles.
+	var home: Vector2 = Vector2.ZERO  ## Where the mark was shown; a shaking one moves off it.
 	var dp_px: float = 1.0  ## Base px per dp when the mark was shown.
 
 	func _init() -> void:
@@ -76,6 +80,9 @@ class Mark:
 	## The size, fade and motion `age` ms after the mark was shown, at camera `zoom`.
 	func pose(age: float, marker_ms: float, zoom: float) -> void:
 		scale = Vector2.ONE * dp_px / zoom
+		if shake:
+			var left: float = clampf(1.0 - age / marker_ms, 0.0, 1.0)
+			position = home + Vector2(sin(TAU * age / SHAKE_MS) * SHAKE_DP * left * scale.x, 0.0)
 		var fade_start: float = minf(FADE_START_MS, marker_ms / 3.0)
 		self_modulate.a = clampf((marker_ms - age) / maxf(marker_ms - fade_start, 1.0), 0.0, 1.0)
 		var reach: float = lerpf(
@@ -108,6 +115,12 @@ func show_target(world_px: Vector2) -> void:
 	_show(world_px, true)
 
 
+## A tap that no selected unit can answer (an enemy none of them can hit, P244): the diamond shows
+## and shakes, and no order goes out.
+func show_refused(world_px: Vector2) -> void:
+	_show(world_px, true).shake = true
+
+
 func active_count() -> int:
 	return _marks.filter(func(mark: Mark) -> bool: return mark.visible).size()
 
@@ -122,15 +135,18 @@ func _process(_delta: float) -> void:
 			mark.visible = age < settings.marker_ms
 
 
-func _show(world_px: Vector2, diamond: bool) -> void:
+func _show(world_px: Vector2, diamond: bool) -> Mark:
 	if _next >= _marks.size():  # The pool fills once, then every mark is reused.
 		_marks.append(Mark.new())
 		add_child(_marks.back())
 	var mark: Mark = _marks[_next]
 	_next = (_next + 1) % maxi(pool_size, 1)
 	mark.position = world_px
+	mark.home = world_px
+	mark.shake = false
 	mark.dp_px = UiScale.base_px_per_dp()
 	mark.diamond = diamond
 	mark.born_ms = clock.call()
 	mark.visible = true
 	mark.pose(0.0, settings.marker_ms, get_canvas_transform().get_scale().x)
+	return mark

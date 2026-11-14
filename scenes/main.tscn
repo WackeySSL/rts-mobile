@@ -102,13 +102,14 @@ camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 decals = NodePath("../DecalLayer")
 
-[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer")]
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer")]
 z_index = 30
 z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
+air_layer = NodePath("../AirLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
@@ -180,11 +181,12 @@ world_sort = NodePath("../WorldSort")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
+air_layer = NodePath("../AirLayer")
 camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
@@ -411,5 +413,6 @@ runner = NodePath("../../MatchRunner")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="AirLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]

@@ -47,6 +47,7 @@ static func fill(
 	var out_lift: PackedFloat32Array = snap.lift_px
 	var out_radius: PackedFloat32Array = snap.radius_px
 	var out_pickable: PackedByteArray = snap.pickable
+	var out_flyer: PackedByteArray = snap.flyer
 	out_ids.resize(count)
 	out_owners.resize(count)
 	out_types.resize(count)
@@ -54,6 +55,7 @@ static func fill(
 	out_lift.resize(count)
 	out_radius.resize(count)
 	out_pickable.resize(count)
+	out_flyer.resize(count)
 	if count == 0:
 		return
 	var ids: PackedInt32Array = source.unit_id
@@ -92,6 +94,8 @@ static func fill(
 		if not seen:
 			seen = counts[counts_at + source.cell_of(pos_x[row], pos_y[row])] > 0
 		out_pickable[row] = 1 if seen and rigs[row] != null else 0
+		# A flyer has no rig here: `AirLayer.fill_pick_snapshot` lifts it and makes it pickable.
+		out_flyer[row] = 1 if rigs[row] == null and WorldSort.is_flyer(source, type) else 0
 
 
 ## Where row `row` is in world px: its rig's place, or its position for a row with no rig.

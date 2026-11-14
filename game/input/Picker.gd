@@ -11,11 +11,13 @@ const _ANY_TYPE: int = -1
 
 
 ## The snapshot index of the unit hit at `pos`, or -1. Without a selection only own units count.
-## With one, a hit enemy wins over a hit own unit. Among equals the closest centre wins, and a
-## tie goes to the lower id.
+## With one, a hit enemy wins over a hit own unit. Within one of those two ranks a hit aircraft wins
+## over a ground unit (P244: its disc is the lifted one, so a ground unit beneath stays tappable at
+## its own point). Among equals the closest centre wins, and a tie goes to the lower id.
 static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_selection: bool) -> int:
 	var best: int = -1
 	var best_enemy: bool = false
+	var best_flyer: bool = false
 	var best_d2: float = INF
 	var pickable: PackedByteArray = snap.pickable
 	var marked: int = pickable.size()  # A row from here on has no entry and is pickable.
@@ -26,12 +28,17 @@ static func pick(snap: PickSnapshot, pos: Vector2, local_player: int, has_select
 		var d2: float = snap.screen_pos[i].distance_squared_to(pos)
 		if (enemy and not has_selection) or d2 > snap.radius_px[i] * snap.radius_px[i]:
 			continue
+		var flyer: bool = snap.is_flyer(i)
 		var wins: bool = best < 0 or (enemy and not best_enemy)
 		if not wins and enemy == best_enemy:
-			wins = d2 < best_d2 or (d2 == best_d2 and snap.ids[i] < snap.ids[best])
+			if flyer != best_flyer:
+				wins = flyer
+			else:
+				wins = d2 < best_d2 or (d2 == best_d2 and snap.ids[i] < snap.ids[best])
 		if wins:
 			best = i
 			best_enemy = enemy
+			best_flyer = flyer
 			best_d2 = d2
 	return best
 
