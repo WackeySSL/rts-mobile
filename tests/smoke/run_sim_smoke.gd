@@ -8,8 +8,9 @@ extends SceneTree
 ##      [--report PATH] [--seed-start S] [--levels A,B] [--scenarios KIND] [--ticks T]
 ##      (PATH is an absolute file path; the shell script resolves it and checks the other flags)
 ## Output: lines that start with "run-sim-smoke: ": the implementation, the match lines, then either
-##   "run-sim-smoke: OK, N matches of at most T ticks, impl I, K timeouts, no dropped commands" and
-##   exit code 0, or "run-sim-smoke: FAILED, <what>" and exit code 1. Exit code 2: a bad argument.
+##   "run-sim-smoke: OK, N matches of at most T ticks, impl I, K timeouts, stale drops within the
+##   bound" and exit code 0, or "run-sim-smoke: FAILED, <what>" and exit code 1. Exit code 2: a
+##   bad argument.
 ## Godot can exit 0 after a script error, so the shell script also requires the OK line.
 ##
 ## This is a plain script and no GdUnitTestSuite on purpose, as dump_states.gd is: gdUnit4 drops a

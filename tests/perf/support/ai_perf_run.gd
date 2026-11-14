@@ -125,6 +125,7 @@ func play() -> void:
 	var counter: SmokeCount = SmokeCount.new(controllers.size())
 	counter.start(world)
 	var commands: Array[Command] = []
+	var batch: AiBatch = AiBatch.new()
 	for tick: int in TICKS:
 		for ai: AiController in controllers:
 			if (tick + ai.think_offset) % maxi(ai.think_period, 1) == 0:
@@ -132,13 +133,13 @@ func play() -> void:
 		commands.clear()
 		var before: PackedInt32Array = _commands_of()
 		var started: int = Time.get_ticks_usec()
-		var thought: int = AiDriver.think_all(world, controllers, commands)
+		var thought: int = AiDriver.lagged_tick(world, controllers, commands, batch)
 		var spent: int = Time.get_ticks_usec() - started
 		if thought > 0:
 			think_usec.append(float(spent))
 			thinks += thought
 			most_in_a_tick = maxi(most_in_a_tick, thought)
-			_check(world, before, commands.size())
+			_check(world, before, batch.commands.size())
 		loop.step(world, commands)
 		counter.after_step(world)
 	flow_full_ticks = counter.flow_full_ticks

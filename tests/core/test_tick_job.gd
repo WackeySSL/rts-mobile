@@ -9,7 +9,6 @@ const HoldingProbe: GDScript = preload("res://tests/core/support/holding_probe.g
 const CapturingSnapshot: GDScript = preload("res://tests/core/support/capturing_snapshot.gd")
 const RecordingAi: GDScript = preload("res://tests/core/support/recording_ai.gd")
 const DummyStart: GDScript = preload("res://tests/core/support/dummy_start.gd")
-const StampProbe: GDScript = preload("res://tests/core/support/stamp_probe.gd")
 const SlowAi: GDScript = preload("res://tests/core/support/slow_ai.gd")
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const SEED: int = 42
@@ -23,6 +22,7 @@ const ALLOWED_TYPES: Array[String] = [
 	"MatchSnapshot",
 	"Array[Command]",
 	"Array[AiController]",
+	"AiBatch",
 	"Semaphore",
 	"int",
 	"bool",
@@ -33,6 +33,7 @@ const CONTRACT_FIELDS: Dictionary[String, String] = {
 	"probe": "SimProbe",
 	"commands": "Array[Command]",
 	"controllers": "Array[AiController]",
+	"batch": "AiBatch",
 	"snapshot": "MatchSnapshot",
 	"previous": "MatchSnapshot",
 	"post_usec": "int",
@@ -42,6 +43,7 @@ const CONTRACT_FIELDS: Dictionary[String, String] = {
 const WORKER_FILES: Array[String] = [
 	"res://game/core/TickJob.gd",
 	"res://game/core/AiDriver.gd",
+	"res://game/core/AiBatch.gd",
 	"res://game/core/MatchSnapshot.gd",
 	"res://game/core/TimingProbe.gd",
 	"res://game/core/StepProbe.gd",
@@ -238,9 +240,11 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 	assert_bool(visited.has((ai as OpponentAi).memory.get_instance_id())).is_true()
 
 
-## think_usec is 0 on a tick where no controller thought (none seated, or none due), and on a tick
-## with a think it lies between 1 and the whole job's job_usec, which counts the thinks.
-func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> void:
+## think_usec is 0 on a tick that collects no batch (none seated, none made the tick before), and on
+## the tick that collects one it is that batch's time, at least 1 (ADR 0038 section 7): a think at
+## tick 15 reads on tick 16.
+func test_think_usec_is_zero_without_a_batch_and_the_batchs_time_on_the_tick_that_collects(
+) -> void:
 	var job: TickJob = _arena_job()
 	job.run()
 	assert_int(job.snapshot.think_usec).is_equal(0)
@@ -250,38 +254,35 @@ func test_think_usec_is_zero_without_a_think_and_within_the_job_with_one() -> vo
 	controller.think_offset = 0
 	controller.set(&"journal", [])
 	job.controllers.append(controller)
-	var thought: Array[int] = []
+	var read: Array[int] = []
 	for _step: int in 31:
 		var tick: int = job.world.tick
 		job.previous = job.snapshot
 		job.snapshot = _new_snapshot()
 		job.run()
-		if tick % 15 == 0:
-			thought.append(tick)
-			assert_int(job.snapshot.think_usec).is_between(1, job.snapshot.job_usec)
+		if tick % 15 == 1 and tick > 1:
+			read.append(tick)
+			assert_int(job.snapshot.think_usec).is_greater_equal(1)
 		else:
 			assert_int(job.snapshot.think_usec).is_equal(0)
-	assert_array(thought).is_equal([15, 30])
+	assert_array(read).is_equal([16, 31])
 
 
-## A think that takes time is counted: a controller that waits for the clock to move by
-## SlowAi.THINK_USEC makes think_usec at least that and at most job_usec.
+## A think that takes time is counted, on the tick that collects it: a controller that waits for the
+## clock to move by SlowAi.THINK_USEC makes think_usec at least that and at most the job_usec of
+## the job that ran the think; the job that made it reads 0.
 func test_think_usec_counts_a_think_that_takes_time() -> void:
 	var job: TickJob = _arena_job()
 	var slow: AiController = SlowAi.new()
 	slow.player_id = 2
 	job.controllers.append(slow)
-	var stamp: StampProbe = StampProbe.new()
-	(job.probe as StepProbe).target = stamp
 	job.run()
-	var snap: MatchSnapshot = job.snapshot
-	assert_int(snap.think_usec).is_between(SlowAi.THINK_USEC, snap.job_usec)
-	# The clock is read after the thinks and before the step: the step's probe waits WAIT_USEC in
-	# begin(), so the thinks end at least that long before begin() returns.
-	var started: int = snap.end_usec - snap.job_usec
-	assert_int(snap.think_usec).is_less_equal(
-		stamp.begin_exit_usec - StampProbe.WAIT_USEC - started
-	)
+	var made_in: int = job.snapshot.job_usec
+	assert_int(job.snapshot.think_usec).is_equal(0)
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.run()
+	assert_int(job.snapshot.think_usec).is_between(SlowAi.THINK_USEC, made_in)
 
 
 ## With about 1000 controllers seated and none due (period 2 on an odd tick) nothing thinks, and
@@ -303,10 +304,11 @@ func test_think_usec_is_zero_with_many_controllers_and_none_due() -> void:
 	assert_int(job.snapshot.think_usec).is_equal(0)
 
 
-## run() lets the controllers think on the World before the step, after the commands the list
-## holds (ADR 0020 section 3): a recording controller of player 2 that thinks on every tick sees the
-## view of tick 0 with the human's command already in the list, and its STOP is stamped tick 0 after
-## it, recorded in the replay after it, and gone from the list with it. Without controllers nothing
+## run() lets the controllers think on the World before the step and applies their Commands one
+## step later, after the human's (ADR 0038 section 1): a recording controller of player 2 that
+## thinks on every tick sees the view of tick 0 with an empty list of its own, and its STOP is
+## stamped tick 1, after the human's command of tick 1 and recorded in the replay in that order. A
+## batch made at the last think is still collected after the controllers are gone, and then nothing
 ## is added.
 func test_run_lets_the_controllers_think_before_the_step_after_the_listed_commands() -> void:
 	var job: TickJob = _arena_job()
@@ -319,18 +321,28 @@ func test_run_lets_the_controllers_think_before_the_step_after_the_listed_comman
 	job.commands.append(command)
 	job.run()
 	assert_int(journal.size()).is_equal(1)
-	# The view's player and tick, and the list's size when it thought.
-	assert_array([journal[0][1], journal[0][2], journal[0][4]]).is_equal([2, 0, 1])
+	# The view's player and tick, and the size of the list the think appended to.
+	assert_array([journal[0][1], journal[0][2], journal[0][4]]).is_equal([2, 0, 0])
 	assert_bool(job.commands.is_empty()).is_true()
-	# The arena's two scenario orders come first (sequences 0 and 1), then the human's, the AI's.
-	assert_array(_records(job.loop.replay).slice(2)).is_equal(
-		[[0, 1, 2, Command.Type.MOVE], [0, 2, 3, Command.Type.STOP]]
+	# The arena's two scenario orders come first (sequences 0 and 1), then the human's: no STOP yet.
+	assert_array(_records(job.loop.replay).slice(2)).is_equal([[0, 1, 2, Command.Type.MOVE]])
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.commands.append(Command.move(1, PackedInt32Array([1]), 30500, 20500))
+	job.run()
+	assert_array(_records(job.loop.replay).slice(3)).is_equal(
+		[[1, 1, 3, Command.Type.MOVE], [1, 2, 4, Command.Type.STOP]]
 	)
+	assert_int(journal.size()).is_equal(2)
 	job.controllers.clear()
 	job.previous = job.snapshot
 	job.snapshot = _new_snapshot()
 	job.run()
-	assert_array([journal.size(), job.loop.next_sequence]).is_equal([1, 4])
+	assert_array(_records(job.loop.replay).slice(5)).is_equal([[2, 2, 5, Command.Type.STOP]])
+	job.previous = job.snapshot
+	job.snapshot = _new_snapshot()
+	job.run()
+	assert_array([journal.size(), job.loop.next_sequence]).is_equal([2, 6])
 
 
 func test_the_worker_files_use_none_of_the_banned_names() -> void:

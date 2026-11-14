@@ -58,6 +58,10 @@ The bound is provisional until the balance run after plan row P301. §1's loop b
 §1's. Exit code 1 now means drops over the bound, and §7's strike case pins its exact drops. Flags,
 exit code numbers and report schema 2 are unchanged. No accepted text changed.
 
+Status note (2026-11-14, P301): the bound counts stale drops only, `dropped_commands` less the
+match record's `expired_commands` (a unit or target that died in the lag tick), as ADR 0038 §6's
+note of that date says. The summary adds the expired and stale totals per set.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,

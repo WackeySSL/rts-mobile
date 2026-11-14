@@ -6,8 +6,8 @@ extends RefCounted
 ##
 ## The loop is MatchRunner's without the Node: the World comes from the scenario with the sim
 ## stream of the seed, every controller is `AiFactory.create(def, level, player, DetRandom.create(
-## seed, STREAM_AI_BASE + player))`, and each tick is `AiDriver.think_all` and then
-## `MatchLoop.step` (ADR 0020 section 3), so the smoke run, the phone and the suites cannot drift.
+## seed, STREAM_AI_BASE + player))`, and each tick is `AiDriver.lagged_tick` and then
+## `MatchLoop.step` (ADR 0038 section 1), so the smoke run, the phone and the suites cannot drift.
 ## The implementation is AUTO: the native kernels when the library loads, else the GDScript twin
 ## (ADR 0013 section 3). Everything it reports is counted from the World and the controllers: no
 ## clock and no frame delta, so a seed gives the same record on every machine and every run.
@@ -15,7 +15,8 @@ extends RefCounted
 ## A match record (what play() returns) has these keys, all ints and strings so that it survives
 ## JSON: `seed`, `scenario`, `ticks` (ticks played), `end` ("victory", "draw" or "timeout"),
 ## `winner` (the player that won, 0 for none), `match_end_tick` (0 = still running),
-## `state_hash` (16 hex digits of `World.state_hash()`), `dropped_commands`, `spawn_refused`,
+## `state_hash` (16 hex digits of `World.state_hash()`), `dropped_commands`, `expired_commands` (the
+## drops whose unit or target was gone, counted outside the sim by expired_in()), `spawn_refused`,
 ## `flow_full_ticks` and `players`, one entry per player in player order. A player has `player`,
 ## `faction`, `seat`, `ai` (the AiDef id), `level`, `credits`, `units` and `buildings` (the rows
 ## alive at the end), `built`, `lost_units`, `lost_buildings`, `harvested`, `defeated_tick`, the
@@ -45,6 +46,11 @@ const TICKS: int = 13500
 ## The report's schema number. 2: the top-level `scenario` moved to `matches[].scenario`, and the
 ## run's `commit`, `impl`, `seed_start`, `levels` and `scenarios` and the per match counts joined.
 const SCHEMA: int = 2
+## ADR 0038 section 6: the AI's Commands land one tick after their view, so the sim may drop a few
+## that went stale. A match fails when its stale drops (`dropped_commands` less `expired_commands`)
+## exceed `STALE_DROP_PERCENT * C / 100` (integer division), C the sum of its players' `commands`.
+## Fixed-seed suites pin exact drops and expiries instead.
+const STALE_DROP_PERCENT: int = 1
 const IMPL_NATIVE: String = "native"
 const IMPL_GDSCRIPT: String = "gdscript"
 ## The prefix of every line the run prints: the shell script shows these lines and nothing else.
@@ -69,12 +75,14 @@ static func play(
 	var world: World = match_setup["world"]
 	var counter: SmokeCount = match_setup["counter"]
 	var controllers: Array[AiController] = match_setup["controllers"]
-	run(world, match_setup["loop"], controllers, ticks, counter)
+	var expired: int = run(world, match_setup["loop"], controllers, ticks, counter)
 	if counter.first_drop_tick >= 0:
 		drops[match_seed] = counter.first_drop_tick
-	return record_of(
+	var record: Dictionary = record_of(
 		world, match_seed, match_setup["path"], match_setup["seats"], controllers, counter
 	)
+	record["expired_commands"] = expired
+	return record
 
 
 ## The match of `match_seed` ready to run: `path`, `world` (on the implementation AUTO picks, a
@@ -219,23 +227,64 @@ static func controllers_of(
 	return controllers
 
 
-## Steps `world` through `loop` for at most `ticks` ticks, each one `AiDriver.think_all` and then
-## `MatchLoop.step`, and stops after the tick that ends the match. A `counter` (made and started by
-## the caller) reads each step.
+## Steps `world` through `loop` for at most `ticks` ticks, each one `AiDriver.lagged_tick` (the AI's
+## Commands of the tick before, then the thinks on this tick's views) and then `MatchLoop.step`
+## (ADR 0038 section 1), and stops after the tick that ends the match. A `counter` (made and started
+## by the caller) reads each step.
 static func run(
 	world: World,
 	loop: MatchLoop,
 	controllers: Array[AiController],
 	ticks: int,
 	counter: SmokeCount = null
-) -> void:
+) -> int:
 	var commands: Array[Command] = []
+	var batch: AiBatch = AiBatch.new()
+	var expired: int = 0
+	# The expired Commands of the batch that waits for the next tick, counted against the World it
+	# was made from: they were gone at their own view tick, so they are no lag's doing and stay
+	# stale.
+	var gone_at_view: int = 0
 	while world.tick < ticks and world.match_end_tick == 0:
-		AiDriver.think_all(world, controllers, commands)
+		AiDriver.lagged_tick(world, controllers, commands, batch)
+		expired += expired_in(world, commands) - gone_at_view
+		gone_at_view = expired_in(world, batch.commands)
 		loop.step(world, commands)
 		commands.clear()
 		if counter != null:
 			counter.after_step(world)
+	return expired
+
+
+## How many of `commands` the sim must drop at the start of this tick because their subject or their
+## target is gone: a unit order whose units are all gone (or no longer the player's), an ATTACK
+## whose target is gone (the lead's note in ADR 0038 section 6). run() subtracts the ones already
+## gone at the view tick, so only a death in the lag tick is excused. The World is read as it
+## stands before the step, which is the state the commands are applied to. It changes nothing and
+## keeps no sim state: the count lives in the match record, outside the hash.
+static func expired_in(world: World, commands: Array[Command]) -> int:
+	var expired: int = 0
+	for command: Command in commands:
+		if _expired(world, command):
+			expired += 1
+	return expired
+
+
+static func _expired(world: World, command: Command) -> bool:
+	match command.type:
+		Command.Type.ATTACK_MOVE, Command.Type.MOVE, Command.Type.ATTACK, Command.Type.STOP:
+			pass
+		_:
+			return false
+	if command.type == Command.Type.ATTACK and world.index_of(command.target_id) < 0:
+		return true
+	if command.unit_ids.is_empty():
+		return false
+	for id: int in command.unit_ids:
+		var row: int = world.index_of(id)
+		if row >= 0 and world.owner[row] == command.player_id:
+			return false
+	return true
 
 
 ## How a match ended: a winner is a "victory", an end without one a "draw", no end a "timeout".
@@ -316,20 +365,39 @@ static func write_report(path: String, report_data: Dictionary) -> bool:
 	return true
 
 
-## What is wrong with the `records` of a run, one text per problem. The AI never sends a Command
-## the sim drops (ADR 0020 section 5), so a dropped Command is a bug in the AI, the sim or the loop.
-## A timeout is no failure: the gate judges it (ADR 0031 section 2).
+## The drops that count against the bound: `dropped_commands` less the `expired_commands` (a match
+## record without the key, an older report, has none). An expired Command lost its unit or target
+## during the lag tick, which is harmless; every other drop is stale (ADR 0038 section 6).
+static func stale_drops(record: Dictionary) -> int:
+	return int(record["dropped_commands"]) - int(record.get("expired_commands", 0))
+
+
+## The most stale drops a match may have (ADR 0038 section 6): STALE_DROP_PERCENT of the
+## Commands its players sent, by integer division, so a match of under 100 Commands allows none.
+static func drop_limit(record: Dictionary) -> int:
+	return STALE_DROP_PERCENT * _sent(record) / 100
+
+
+## What is wrong with the `records` of a run, one text per problem. A match that dropped more than
+## drop_limit() Commands fails: the AI's Commands are one tick stale (ADR 0038 section 6), so a few
+## drops are expected and many mean an AI bug. A timeout is no failure: the gate judges it (ADR
+## 0031 section 2).
 static func failures(
 	records: Array[Dictionary], drops: Dictionary[int, int] = {}
 ) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	for record: Dictionary in records:
-		if int(record["dropped_commands"]) != 0:
-			var dropped: int = int(record["dropped_commands"])
+		var dropped: int = stale_drops(record)
+		if dropped > drop_limit(record):
 			found.append(
 				(
-					"seed %d: dropped commands %d%s"
-					% [int(record["seed"]), dropped, _drop_text(drops, int(record["seed"]))]
+					"seed %d: stale drops %d of %d%s"
+					% [
+						int(record["seed"]),
+						dropped,
+						_sent(record),
+						_drop_text(drops, int(record["seed"]))
+					]
 				)
 			)
 	return found
@@ -347,7 +415,7 @@ static func summary(
 		if record["end"] == END_TIMEOUT:
 			timeouts += 1
 	return (
-		"%sOK, %d matches of at most %d ticks, impl %s, %d timeouts, no dropped commands"
+		"%sOK, %d matches of at most %d ticks, impl %s, %d timeouts, stale drops within the bound"
 		% [PREFIX, records.size(), ticks, impl, timeouts]
 	)
 
@@ -358,7 +426,10 @@ static func line(
 ) -> String:
 	var winner: String = "none" if int(record["winner"]) == 0 else str(record["winner"])
 	var text: String = (
-		"%smatch %d of %d: seed %d, %s, %d ticks, %s, winner %s, hash %s, dropped %d%s, flow full %d"
+		(
+			"%smatch %d of %d: seed %d, %s, %d ticks, %s, winner %s, hash %s, "
+			+ "dropped %d, expired %d%s, flow full %d"
+		)
 		% [
 			PREFIX,
 			number,
@@ -370,6 +441,7 @@ static func line(
 			winner,
 			record["state_hash"],
 			record["dropped_commands"],
+			record.get("expired_commands", 0),
 			_drop_text(drops, int(record["seed"])),
 			record["flow_full_ticks"],
 		]
@@ -390,6 +462,14 @@ static func line(
 			]
 		)
 	return text
+
+
+## The Commands the players of `record` sent (the sum of their `commands`).
+static func _sent(record: Dictionary) -> int:
+	var sent: int = 0
+	for player: Dictionary in record["players"]:
+		sent += int(player["commands"])
+	return sent
 
 
 ## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.

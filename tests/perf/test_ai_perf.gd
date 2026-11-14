@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The AI's time and bounds (plan row P189, ADR 0030 section 4, ADR 0031 section 8). Two Normal
 ## `OpponentAi` play `data/scenarios/perf_ai.tres` (the base arena's layout on the frozen sim defs,
-## the frozen AI defs, below) for 900 ticks of seed 42, three times, through `AiDriver.think_all`.
+## the frozen AI defs, below) for 900 ticks of seed 42, three times, through `AiDriver.lagged_tick`
+## (ADR 0038: its Commands land one tick after its view).
 ##
 ## What is judged is deterministic and read from the controllers, never from the clock: every think
 ## stays inside the counted bounds of ADR 0030 section 4 (the passes, the Commands cut, the
@@ -12,7 +13,8 @@ extends GdUnitTestSuite
 ## eleven shipped AI defs but for Normal's early scout (tick 30) and first wave (tick 300, no
 ## jitter). The scouts leave at ticks 40 and 36, player 1 sees an enemy combat unit at tick 50 and
 ## player 2 at tick 61, both launch a wave by tick 305, and player 1 sees an enemy building only at
-## tick 740 (player 2 none), its strike tests start at tick 115.
+## tick 785 (player 2 none; read again under the lag of ADR 0038, was 800 at lag 0), its strike
+## tests start at tick 115.
 ## What it exercises, by `WATCH ai peaks`: the passes (3), the placement tries, the STAGING, ARMY
 ## and SCOUT keys, the own id lists, `seen_unit_id` and `seen_site_id`, the army's target tests, the
 ## strike tests (player 1's Deep Bore only: `perf_ai.tres` spawns each strike building charged,
@@ -26,7 +28,7 @@ extends GdUnitTestSuite
 ##
 ## What is only printed (report only; the `[ai]` budget value is row P189c's, after 11 CI runs on
 ## main):
-## - `WATCH ai think`: the time of a think (the call of `think_all` that made it, the PlayerView
+## - `WATCH ai think`: the time of a think (the call of `lagged_tick` that made it, the PlayerView
 ##   included, as the snapshot's `think_usec`), the p95 and the max, each the smallest of the runs
 ##   (as `PerfReport.best_of`), with the phone estimate at the gate's `ci_ratio_p95`. `impl=` is the
 ##   sim's implementation; the AI is GDScript in both. `thinks=` is added to ADR 0030 section 4's
@@ -43,7 +45,7 @@ const LIVE: Array[String] = [
 ]
 ## The counters that move only once the enemy is seen: the early scout and first wave of the frozen
 ## defs make contact inside the 900 ticks, so each is above 0 (P189 had them at 0). `seen_site_id`
-## first moves at tick 740 (a 160-tick margin, player 1 only) and `strike_tests` for player 1 only.
+## first moves at tick 785 (a 115-tick margin, player 1 only) and `strike_tests` for player 1 only.
 const CONTACT: Array[String] = [
 	"seen_unit_id", "seen_site_id", "army_tests", "strike_tests", "keys_army", "keys_scout"
 ]

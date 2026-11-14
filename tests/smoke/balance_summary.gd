@@ -15,6 +15,10 @@ extends SceneTree
 ## rosters from data/factions/*.tres, units being the roster's types with an Infantry or Vehicles
 ## tab.
 
+const TABLE_HEAD: String = (
+	"| Matches | Victories | Draws | Timeouts | Dropped | Expired | Stale "
+	+ "| Flow full (total, most) |"
+)
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 
 const PREFIX: String = "balance-summary: "
@@ -238,6 +242,8 @@ static func summarize(
 	var matches: Array = report["matches"]
 	var ends: Dictionary[String, int] = {}
 	var dropped: int = 0
+	var over_bound: int = 0
+	var expired: int = 0
 	var flow_total: int = 0
 	var flow_most: int = 0
 	var lengths: Array[int] = []
@@ -245,6 +251,9 @@ static func summarize(
 	for record: Dictionary in matches:
 		ends[record["end"]] = ends.get(record["end"], 0) + 1
 		dropped += int(record["dropped_commands"])
+		expired += int(record.get("expired_commands", 0))
+		if Smoke.stale_drops(record) > Smoke.drop_limit(record):
+			over_bound += 1
 		flow_total += int(record["flow_full_ticks"])
 		flow_most = maxi(flow_most, int(record["flow_full_ticks"]))
 		lengths.append(int(record["ticks"]))
@@ -256,6 +265,9 @@ static func summarize(
 		"draws": ends.get(Smoke.END_DRAW, 0),
 		"timeouts": ends.get(Smoke.END_TIMEOUT, 0),
 		"dropped_commands": dropped,
+		"expired_commands": expired,
+		"stale_commands": dropped - expired,
+		"stale_drop_matches": over_bound,
 		"flow_full_ticks": {"total": flow_total, "most_in_one": flow_most},
 		"by_seat": _shares(matches, "seat"),
 		"length_ticks":
@@ -427,7 +439,7 @@ static func _gate(summary: Dictionary, report: Dictionary) -> Dictionary:
 	var detail: String = "%s in %d of %d" % [least_type, least, count]
 	checks.append(_check("4", "least built unit type (matches)", least, half, count, detail))
 	checks.append(
-		_check("5", "dropped commands (all matches)", summary["dropped_commands"], 0, 0, "")
+		_check("5", "matches over the stale-drop bound", summary["stale_drop_matches"], 0, 0, "")
 	)
 	var need: int = (HASH_MIN_PERCENT * count + 99) / 100
 	var hashes: int = summary["distinct_final_hashes"]
@@ -544,8 +556,8 @@ static func markdown(report: Dictionary) -> String:
 		)
 	)
 	lines.append("")
-	lines.append("| Matches | Victories | Draws | Timeouts | Dropped | Flow full (total, most) |")
-	lines.append("| --- | --- | --- | --- | --- | --- |")
+	lines.append(TABLE_HEAD)
+	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
 	(
 		lines
 		. append(
@@ -556,6 +568,8 @@ static func markdown(report: Dictionary) -> String:
 					summary["draws"],
 					summary["timeouts"],
 					summary["dropped_commands"],
+					summary["expired_commands"],
+					summary["stale_commands"],
 					"%d, %d" % [flow["total"], flow["most_in_one"]],
 				]
 			)

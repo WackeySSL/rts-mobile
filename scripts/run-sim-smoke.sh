@@ -4,7 +4,8 @@
 # opponent (AiFactory: the faction's OpponentDef at a difficulty, or its dummy), seeds S to S+N-1.
 # A match ends at its end or after --ticks ticks (default 13,500 = 15 minutes of game); a match
 # still running then is a "timeout", which is not a failure. The loop is tests/smoke/smoke_run.gd
-# (AiDriver.think_all, then MatchLoop.step, as MatchRunner does), entered through
+# (AiDriver.lagged_tick, then MatchLoop.step, as MatchRunner does: the AI's Commands land one tick
+# after its view, ADR 0038), entered through
 # tests/smoke/run_sim_smoke.gd. The implementation is AUTO: native when the library loads, else the
 # GDScript reference; the run prints it and the report stores it. Balance runs (many matches) run
 # only in GitHub Actions.
@@ -25,10 +26,12 @@
 #        "local"). RUN_SIM_SMOKE_SKIP_IMPORT=1 skips the import step when the caller just ran it.
 # Output: on stdout one line "run-sim-smoke: impl ..." then "run-sim-smoke: match K of N: seed ..."
 #        per match, then the summary line "run-sim-smoke: OK, N matches of at most T ticks, impl I,
-#        K timeouts, no dropped commands" (or "run-sim-smoke: FAILED, <what>"). Godot's own output
+#        K timeouts, stale drops within the bound" (or "run-sim-smoke: FAILED, <what>"). Godot's own output
 #        goes to a log that is shown only when the run fails.
 # Exit:  0 ok
-#        1 a match failed (a dropped Command: the AI never sends one), Godot exited with an error
+#        1 a match failed (more stale drops than 1 percent of its Commands; expired drops, whose
+#          unit or target died in the lag tick, do not count, ADR 0038 section 6), Godot exited
+#          with an error
 #          or wrote SCRIPT ERROR, ERROR: or Parse Error, or the OK line is missing
 #        2 bad or unknown flag, or a value that is not valid
 #        3 Godot missing (the message names the binary and GODOT=, as export-web.sh does)

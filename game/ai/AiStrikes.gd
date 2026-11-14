@@ -125,7 +125,9 @@ func _wave_in_field(view: PlayerView, memory: AiMemory) -> bool:
 
 
 ## The id of the lowest own strike building that is complete, charged and online now (the sim's
-## test, with the stamp `tick + 1`), NONE for none.
+## test, with the stamp `tick + 1`: the lag-0 stamp; at lag 1 the Command is applied in the step
+## whose Strike stamp is `tick + 2`, and the charge and offline tests are monotone, so this stays
+## safe), NONE for none.
 func _charged_building(view: PlayerView, memory: AiMemory) -> int:
 	var stamp: int = view.tick + 1
 	for id: int in memory.site_id:
