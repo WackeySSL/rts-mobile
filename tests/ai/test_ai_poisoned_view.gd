@@ -120,7 +120,7 @@ func _play(poison: bool) -> Result:
 
 
 ## Replaces the view's seven public columns by copies in which every hidden row is poisoned; returns
-## how many rows that was. The getters keep their aliases, so `row_of` and the lists are as made.
+## how many rows that was. The getters keep their own copies, so `row_of` and the lists are as made.
 func _poison(view: PlayerView) -> int:
 	var hidden: int = 0
 	var columns: Array[PackedInt32Array] = view.columns()

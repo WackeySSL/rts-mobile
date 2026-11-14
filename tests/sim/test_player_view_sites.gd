@@ -31,16 +31,15 @@ func test_an_own_row_and_a_seen_row_answer_their_work_left() -> void:
 	assert_int(other.row_build_left(world.index_of(ViewWorlds.HQ_1))).is_equal(MISSING)
 
 
-## The view keeps an alias of the column behind its getter, as for the other rows: a site that
-## finishes after the view was made shows as the World has it (a view is made, read and dropped
-## within one think), and nothing public is an alias.
-func test_the_getter_reads_the_row_columns_and_not_a_public_array() -> void:
+## The view keeps a copy of the column behind its getter (ADR 0038 section 4): a site that
+## finishes after the view was made does not show in it, and no public array is the column.
+func test_the_getter_reads_its_own_copy_and_not_a_public_array() -> void:
 	var world: World = ViewWorlds.crafted()
 	var view: PlayerView = PlayerView.of(world, 1)
 	var row: int = view.row_of(ViewWorlds.HQ_1)
 	assert_int(view.row_build_left(row)).is_equal(0)
 	world.build_left[row] = 90
-	assert_int(view.row_build_left(row)).is_equal(90)
+	assert_int(view.row_build_left(row)).is_equal(0)
 	var properties: Array[String] = []
 	for property: Dictionary in view.get_property_list():
 		properties.append(String(property["name"]))
