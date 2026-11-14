@@ -501,17 +501,24 @@ func test_a_sheet_writes_the_frame_axis_only_when_it_has_something_to_say() -> v
 	var rover: ArtModel = _rover()
 	rover.marks = &""
 	rover.emitters = PackedStringArray()
-	var lines: PackedStringArray = ArtSheet.text(ArtSheet.of(rover, ArtGen.all_shots(rover))).split(
-		"\n"
-	)
+	var lines: PackedStringArray = _without_boxes(rover)
 	assert_bool(lines[-2].begins_with("icon = ")).is_true()
 	rover.marks = &"wheels"
-	lines = ArtSheet.text(ArtSheet.of(rover, ArtGen.all_shots(rover))).split("\n")
+	lines = _without_boxes(rover)
 	assert_str(lines[-2]).is_equal('marks = &"wheels"')
 	rover.emitters = PackedStringArray(["steam 0 0 0.5"])
-	lines = ArtSheet.text(ArtSheet.of(rover, ArtGen.all_shots(rover))).split("\n")
+	lines = _without_boxes(rover)
 	assert_bool(lines[-4].begins_with("emitters = PackedStringArray(")).is_true()
 	assert_bool(lines[-3].begins_with("emitter_points = PackedVector2Array(")).is_true()
+
+
+## The lines of a model's sheet without the trim's `boxes` (P305), which come last.
+func _without_boxes(model: ArtModel) -> PackedStringArray:
+	var kept: PackedStringArray = PackedStringArray()
+	for line: String in ArtSheet.text(ArtSheet.of(model, ArtGen.all_shots(model))).split("\n"):
+		if not line.begins_with("boxes = "):
+			kept.append(line)
+	return kept
 
 
 func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_sheet_is_as_before(

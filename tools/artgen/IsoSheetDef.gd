@@ -70,6 +70,12 @@ const ROOT: String = "res://assets/art/iso"
 ## Whether the `anim` element runs at KRITISK (its carrier stands in `dmg2`) rather than being
 ## hidden there (ADR 0029 section 3); false for a sheet without one.
 @export var anim_kritisk: bool = false
+## The tight box of every directional frame (a part with 16 or 8 directions: vehicle and squad
+## parts, their shadows, a turret or head), px of the 2x art in the part's canvas: x, y, width and
+## height per frame, the drawn box plus `ArtGen.MARGIN_PX`, so the edge and a filter seam fit.
+## Parts in file order, then direction, then frame; a part with one view has none. Read it through
+## `frame_box`. Empty on a sheet written before the trim (ADR 0036 section 15, P305).
+@export var boxes: PackedInt32Array = PackedInt32Array()
 ## The folder the frames are in. Empty is `ROOT/<faction>/<category>/`, which every generated sheet
 ## has; a hand-written sheet (the neutral damage overlays, ADR 0028 section 4) sets it.
 @export var root: String = ""
@@ -123,6 +129,24 @@ func anchor(part: StringName) -> Vector2i:
 func origin(part: StringName) -> Vector2i:
 	var body: bool = footprint > 0 and part in [&"hull", &"shadow", &"dmg1", &"dmg2"]
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
+
+
+## The tight box of one frame of a part in canvas px (`boxes`); the whole canvas for a part with a
+## single view or a sheet without boxes. `dir` is as in `d<NN>`, `frame` the pose frame.
+func frame_box(part: StringName, dir: int, frame: int = 0) -> Rect2i:
+	var at: int = parts.find(String(part))
+	if at < 0:
+		return Rect2i()
+	var whole: Rect2i = Rect2i(Vector2i.ZERO, frame_size(part))
+	if boxes.is_empty() or counts[at] <= 1:
+		return whole
+	var first: int = 0
+	for i: int in at:
+		first += counts[i] * frame_count(StringName(parts[i])) if counts[i] > 1 else 0
+	var index: int = first + (dir / (16 / counts[at])) * frame_count(part) + frame
+	return Rect2i(
+		boxes[4 * index], boxes[4 * index + 1], boxes[4 * index + 2], boxes[4 * index + 3]
+	)
 
 
 ## The directions of a part's frames, as in `d<NN>`; `[-1]` is the one view of a building body.
