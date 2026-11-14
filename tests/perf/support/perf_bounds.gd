@@ -47,7 +47,7 @@ const MEASURED_MEMORY_CHECKS: int = 28
 ## fog_cells (the aircraft see 7 tiles) and the rows that SEPARATION's walk passed for being on
 ## another layer (ADR 0036 section 4, the tally probe's `other_layer`). They carry P49a's margin.
 const MEASURED_AIR_LINE_CHECKS: int = 33
-const MEASURED_AIR_TARGET_CANDIDATES: int = 2101
+const MEASURED_AIR_TARGET_CANDIDATES: int = 2223
 const MEASURED_AIR_FOG_CELLS: int = 9936
 const MEASURED_AIR_OTHER_LAYER: int = 66
 ## The two ticks at which Performance.MEMORY_STATIC is read, and how much it may have grown between

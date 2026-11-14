@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The air arena's perf line and counted bounds (plan row P253, ADR 0013 section 1). The seed-42 run
 ## of `data/scenarios/perf_air.tres` (the perf arena's 150 mobile units, 16 of them aircraft, a
-## Flight Yard and a Burst Stack for each side, on frozen defs) is played for 900 ticks through
+## Flight Yard, a Power Plant and a Burst Stack for each side, on frozen defs) is played for 900
+## ticks through
 ## TickJob.run() in SYNC, the way test_base_arena_perf.gd plays the base arena: three runs with the
 ## GDScript phases and three with the C++ kernels attached, in the order G N G N G N, with the
 ## reference loop timed before and after. The suite prints `PERF air units=...` and `PERF air
@@ -15,7 +16,7 @@ extends GdUnitTestSuite
 ## walk passes for being on another layer (ADR 0036 section 4) stay inside their bound, measured by
 ## the tally probe on a seventh, GDScript run that ends on the same hash as the others; and the run
 ## is what the row asks for: 150 units, 16 aircraft that never rise in number, bombs dropped,
-## aircraft shots, shots from the ground at aircraft, and aircraft still at it after tick 600. The
+## aircraft shots, shots from the ground at aircraft, and the Burst Stacks firing at them. The
 ## golden hashes are test_golden_hashes.gd's (`air_golden_*` of the gate file).
 
 const PerfReport: GDScript = preload("res://tests/perf/support/perf_report.gd")
@@ -29,19 +30,33 @@ const SEED: int = 42
 const RUNS: int = 3
 const MATCH_SERIAL: int = 1
 const REF_SAMPLES: int = 20
-## The buildings that stand beside the 150 mobile rows: a Flight Yard and a Burst Stack each.
-const BUILDINGS: int = 4
+## The buildings that stand beside the 150 mobile rows: a Flight Yard, a Power Plant and a Burst
+## Stack each.
+const BUILDINGS: int = 6
 ## The run's pins, measured on the seed-42 run: the units alive after the last tick and the most
 ## projectiles in flight. `PerfBounds.load_violations` allows P49a's margin either side.
-const ALIVE_END_PIN: int = 29
-const PROJ_PEAK_PIN: int = 27
+const ALIVE_END_PIN: int = 26
+const PROJ_PEAK_PIN: int = 25
 ## The aircraft the arena starts with (8 for each side) and what the run left of them.
 const AIRCRAFT: int = 16
 const AIR_END_PIN: int = 6
-## The tick after which the aircraft must still be bombing or in a dogfight (the last is at 706).
-const BUSY_UNTIL: int = 600
+## The air activity of the seed-42 run, from the run itself (21 bombs, 197 shots of the aircraft
+## gun, 36 of the Burst Stacks, 21 of the rocket squads at aircraft): the lower bounds of the shots
+## counted are the measured count less P49a's margin, and the last bomb (tick 482) and the last
+## shot of the aircraft gun (tick 548) stand between the bounds below. The air fight ends about tick
+## 550, not at the run's end: the aircraft are dead or at their pads by then, and the ground fire at
+## them stops with them. `AA_SHOTS_MIN` is the Burst Stacks' own.
+const BOMBS_MIN: int = 15
+const AIR_SHOTS_MIN: int = 147
+const AA_SHOTS_MIN: int = 27
+const GROUND_TO_AIR_MIN: int = 15
+const LAST_BOMB_MIN: int = 450
+const LAST_BOMB_MAX: int = 520
+const LAST_AIR_GUN_MIN: int = 500
+const LAST_AIR_GUN_MAX: int = 600
 const BOMBS: StringName = &"drillhead_bombs"
 const AIR_GUN: StringName = &"torchjet_gun"
+const AA_GUN: StringName = &"burst_stack_gun"
 
 var _gate: PerfGateDef
 var _gd: Array[Run] = []
@@ -68,7 +83,9 @@ class Facts:
 	var bombs: int = 0
 	var air_shots: int = 0
 	var ground_to_air: int = 0
-	var last_air_tick: int = 0
+	var aa_shots: int = 0
+	var last_bomb_tick: int = 0
+	var last_air_gun_tick: int = 0
 	var other_layer_max: int = 0
 	var hash: int = 0
 
@@ -93,15 +110,20 @@ func before() -> void:
 	var facts: Facts = _gd_facts[0]
 	print(
 		(
-			"WATCH air aircraft=%d air_end=%d bombs=%d air_shots=%d ground_to_air=%d last_air=%d"
-			% [
-				facts.air_start,
-				facts.air_end,
-				facts.bombs,
-				facts.air_shots,
-				facts.ground_to_air,
-				facts.last_air_tick
-			]
+			"WATCH air aircraft=%d air_end=%d bombs=%d air_shots=%d aa_shots=%d ground_to_air=%d "
+			+ (
+				"last_bomb=%d last_air_gun=%d"
+				% [
+					facts.air_start,
+					facts.air_end,
+					facts.bombs,
+					facts.air_shots,
+					facts.aa_shots,
+					facts.ground_to_air,
+					facts.last_bomb_tick,
+					facts.last_air_gun_tick
+				]
+			)
 		)
 	)
 	print("WATCH air other_layer_max=%d" % _tally_facts.other_layer_max)
@@ -144,27 +166,50 @@ func test_the_air_arena_stays_inside_its_counted_bounds() -> void:
 
 
 ## What the aircraft do, the same in every run: 16 at the start and never more, the pinned number
-## left, bombs dropped, shots of the aircraft guns, shots from the ground at aircraft (the rifle,
-## rocket and Burst Stack of the air arena carry the layer masks), and a bomb or an aircraft shot
-## after tick BUSY_UNTIL.
-func test_the_aircraft_fly_bomb_fight_and_are_shot_at_to_the_end() -> void:
+## left; bombs dropped, shots of the aircraft guns, shots of the Burst Stacks and shots of the
+## rocket squads at aircraft, each at least its measured count less the margin; and the last bomb
+## and the last aircraft-gun shot inside the ticks they were last seen (the air fight ends about
+## tick 550, not at the end of the run).
+func test_the_aircraft_bomb_fight_and_are_shot_at_by_the_ground_and_the_burst_stacks() -> void:
 	var first: Facts = _gd_facts[0]
 	for facts: Facts in _gd_facts + _native_facts:
 		assert_int(facts.air_start).is_equal(AIRCRAFT)
 		assert_int(facts.air_peak).is_equal(AIRCRAFT)
 		assert_int(facts.air_end).is_equal(AIR_END_PIN)
 		(
-			assert_array([facts.bombs, facts.air_shots, facts.ground_to_air, facts.last_air_tick])
-			. is_equal([first.bombs, first.air_shots, first.ground_to_air, first.last_air_tick])
+			assert_array(
+				[
+					facts.bombs,
+					facts.air_shots,
+					facts.aa_shots,
+					facts.ground_to_air,
+					facts.last_bomb_tick,
+					facts.last_air_gun_tick
+				]
+			)
+			. is_equal(
+				[
+					first.bombs,
+					first.air_shots,
+					first.aa_shots,
+					first.ground_to_air,
+					first.last_bomb_tick,
+					first.last_air_gun_tick
+				]
+			)
 		)
-	assert_int(first.bombs).is_greater(0)
-	assert_int(first.air_shots).is_greater(0)
-	assert_int(first.ground_to_air).is_greater(0)
-	assert_int(first.last_air_tick).is_greater(BUSY_UNTIL)
+	assert_int(first.bombs).is_greater_equal(BOMBS_MIN)
+	assert_int(first.air_shots).is_greater_equal(AIR_SHOTS_MIN)
+	assert_int(first.aa_shots).is_greater_equal(AA_SHOTS_MIN)
+	assert_int(first.ground_to_air).is_greater_equal(GROUND_TO_AIR_MIN)
+	assert_int(first.last_bomb_tick).is_between(LAST_BOMB_MIN, LAST_BOMB_MAX)
+	assert_int(first.last_air_gun_tick).is_between(LAST_AIR_GUN_MIN, LAST_AIR_GUN_MAX)
+	for count: int in [BOMBS_MIN, AIR_SHOTS_MIN, AA_SHOTS_MIN, GROUND_TO_AIR_MIN]:
+		assert_int(count).is_greater(0)
 
 
 ## The `PERF air` lines have the keys of the `PERF sim` line in the same order under their own head,
-## and the native line puts `impl=native` right after it. The facts come from the air arena: 154
+## and the native line puts `impl=native` right after it. The facts come from the air arena: 156
 ## rows at tick 0 (150 mobile and the 4 buildings), 900 ticks, three runs, and the hash of the final
 ## state, the last of the gate's `air_golden_hex`. Neither is a `PERF sim` line (P51 selects those)
 ## and neither holds a newline. Without the library only the GDScript line is made.
@@ -192,7 +237,7 @@ func test_the_perf_air_lines_have_the_keys_of_perf_sim_under_their_own_head() ->
 		assert_str(native_text.get_slice("hash=", 1)).is_equal(_gate.air_golden_hex[-1])
 
 
-## The spawns are the 150 mobile units (16 aircraft of the frozen defs) and the four buildings, all
+## The spawns are the 150 mobile units (16 aircraft of the frozen defs) and the six buildings, all
 ## from `data/dev/arena/`.
 func test_the_scenario_holds_150_mobile_units_of_which_16_are_aircraft() -> void:
 	var scenario: ScenarioDef = load(ARENA_PATH) as ScenarioDef
@@ -296,17 +341,16 @@ func _count_shots(world: World, air_ids: Dictionary[int, bool], facts: Facts) ->
 	while at + World.EVENT_STRIDE <= world.events.size():
 		if world.events[at] == World.Event.SHOT:
 			var weapon: StringName = world.weapon_ids[world.events[at + 5]]
-			var busy: bool = true
 			if weapon == BOMBS:
 				facts.bombs += 1
+				facts.last_bomb_tick = world.tick
 			elif weapon == AIR_GUN:
 				facts.air_shots += 1
+				facts.last_air_gun_tick = world.tick
+			elif weapon == AA_GUN:
+				facts.aa_shots += 1
 			elif air_ids.has(world.events[at + 4]):
 				facts.ground_to_air += 1
-			else:
-				busy = false
-			if busy:
-				facts.last_air_tick = world.tick
 		at += World.EVENT_STRIDE
 
 
