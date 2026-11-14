@@ -1,6 +1,7 @@
 <!-- Board glyph: white and grey only, tinted at run time (the Board order: the selected squads go aboard a carrier). -->
 <!-- Shape: a small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four-square wheels at the right with a chamfered nose and a dark doorway cut into the side that faces the figure. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="translate(0 -6)">
   <!-- edge: the union of the parts, 4 px wide, drawn under them -->
   <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
     <circle cx="23" cy="46" r="10"/>
@@ -30,4 +31,5 @@
   <!-- the wheel hubs, dark -->
   <circle cx="86" cy="96" r="3" fill="#4D4D4D"/>
   <circle cx="106" cy="96" r="3" fill="#4D4D4D"/>
+</g>
 </svg>
