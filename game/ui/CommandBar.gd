@@ -289,7 +289,7 @@ func _ready() -> void:
 		strike_aim.changed.connect(_update_slot)
 	if carry_aim != null:
 		carry_aim.changed.connect(_on_carry_changed)
-		carry_aim.refused.connect(_shake_board)
+		carry_aim.refused.connect(_shake_order)
 	if build_button != null:
 		build_button.ready_changed.connect(place)
 	feed.state.changed.connect(_on_state_changed)
@@ -594,10 +594,11 @@ func _carry_order(id: StringName, snap: MatchSnapshot, ids: PackedInt32Array) ->
 	return shown
 
 
-## A refused Board tap: the button's face shakes sideways (the plate stays in its row).
-func _shake_board() -> void:
+## A refused tap of the open aim: that order's button face shakes sideways (the plate stays).
+func _shake_order() -> void:
 	shakes += 1
-	var face: Control = _buttons[&"board"].get_node("Face")
+	var id: StringName = &"unload" if carry_aim.mode == CarryAim.Mode.UNLOAD else &"board"
+	var face: Control = _buttons[id].get_node("Face")
 	var reach: float = UiScale.dp(SHAKE_DP)
 	var tween: Tween = create_tween()
 	for offset: float in [reach, -reach, 0.0]:

@@ -150,3 +150,39 @@ func test_the_aim_ends_when_the_selection_the_match_or_another_mode_takes_it_awa
 	strike.changed.emit()  # The strike aim begins: one mode owns the taps.
 	assert_bool(_aim.is_active()).is_false()
 	assert_array(_sent).is_empty()
+
+
+func test_an_enemys_squads_and_carriers_are_never_boarded_or_boarded_by() -> void:
+	var enemy_carrier: int = _world.add_unit(2, Rig.TRUCK, 20500, 2500)
+	_read()
+	_select([1, 2])
+	_aim.toggle(CarryAim.Mode.BOARD)
+	assert_bool(_aim.pick_carrier(enemy_carrier)).is_false()
+	assert_int(_aim.carrier_id).is_equal(0)
+	assert_int(_refused).is_equal(1)
+	_aim.cancel()
+	_world.owner[_world.index_of(CARRIER)] = 2  # No own carrier is left.
+	_read()
+	assert_bool(_aim.can_begin(CarryAim.Mode.BOARD)).is_false()
+	_world.owner[_world.index_of(CARRIER)] = 1
+	_read()
+	_select([6])  # An enemy squad.
+	assert_bool(_aim.can_begin(CarryAim.Mode.BOARD)).is_false()
+
+
+func test_the_selection_signal_ends_the_aim_with_no_manual_refresh() -> void:
+	_select([1, 2])
+	_aim.toggle(CarryAim.Mode.BOARD)
+	_select([4])
+	assert_bool(_aim.is_active()).is_false()
+
+
+func test_an_unload_aim_ends_when_its_carrier_dies() -> void:
+	Rig.aboard(_world, 1, CARRIER)
+	_read()
+	_select([CARRIER])
+	_aim.toggle(CarryAim.Mode.UNLOAD)
+	_world.hp[_world.index_of(CARRIER)] = 0
+	_world.remove_dead()
+	_read()
+	assert_bool(_aim.is_active()).is_false()
