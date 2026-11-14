@@ -229,8 +229,9 @@ const TAB_ICON_DP: float = 48.0
 const HUD_GLYPH_DP: float = 48.0
 const MAP_GLYPH_DP: float = 32.0
 ## The map glyphs fill two lines of this many, so that a line fits a half of the page at 1280.
-const MAP_GLYPH_GRASS_SHIFT_PX: float = -48.0
 const MAP_GLYPH_COLUMNS: int = 6
+## Grass's first line of six (386 px) must clear the page button: it stands this far left of centre.
+const MAP_GLYPH_GRASS_SHIFT_PX: float = -48.0
 ## The Hud page's two smaller sizes, in dp: a glyph in a 48 dp button's corner and the smallest.
 const HUD_SMALL_DP: Array[float] = [32.0, 24.0]
 const ICON_GAP_PX: float = 10.0
