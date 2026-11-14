@@ -142,3 +142,17 @@ func test_repair_and_unload_also_end_a_pending_lay() -> void:
 	carrying.carry_mode[carrying.index_of(carrier_id)] = Mines.LAYING
 	_step(carrying, [Command.unload(1, PackedInt32Array([carrier_id]), 8500, 8500)])
 	assert_int(carrying.carry_mode[carrying.index_of(carrier_id)]).is_equal(1)
+
+
+## Both coordinates are borders past the middle of the map: `World.cell_of` puts the point in the
+## tile before them, and the mark pass's inlined lookup has to agree on each axis.
+func test_a_trigger_on_a_border_past_the_middle_is_in_the_tile_before_it() -> void:
+	var world: World = _world()
+	_put(world, 1, 8, 6)
+	var tank: int = _add(world, 2, TANK, 2, 2)
+	world.pos_x[tank] = 9000
+	world.pos_y[tank] = 7000
+	assert_int(world.cell_of(9000, 7000)).is_equal(6 * COLS + 8)
+	_step(world)
+	assert_int(world.mine_count).is_equal(0)
+	assert_int(_blasts(world).size()).is_equal(1)

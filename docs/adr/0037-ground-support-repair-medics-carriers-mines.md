@@ -408,23 +408,6 @@ of which about 120 are C++.
   path takes the squads still aboard (no free cell, or `insert_row` refused) as lost. An unload
   passes 100. An eject writes its `UNLOADED` records in REMOVE, before that tick's DIED records.
   The data checks add "carry_eject_percent on an aircraft" to `mine_rules.gd`. No deviation.
-- **Note (2026-11-14, P287, as built; it changes one accepted text, step 2's "dealt = taken = 100"):**
-  - The mark is `Mines.GONE` (-1) written into `mine_armed_tick`, not a scratch byte array.
-    `Mines.run`, `clear_radius` (from `Strike._land`) and `clear_footprint` (from `Buildings.add`)
-    each compact it away in the same call, so no mark reaches the hash, the snapshot or a kernel.
-  - The blast is `Strike._land`'s since P246: `Combat.damage(damage, percent, 100, taken of the
-    row)`. Neutral rows neither trigger nor take damage; a row at 0 hp does not trigger.
-  - `MINE_CHECKS` (11) counts the rows the mark pass looks up: the eligible rows (living, mobile,
-    ground, non-neutral, not mine-aware) while a mine is armed, 0 otherwise. P288 adds only its
-    detector x mine tests, so the bound stays rows + detectors x mines. `MINES_REFUSED` is 12, so
-    `STAT_COUNT` is 13.
-  - A lay on any mine's cell is refused, an unknown enemy mine's too (P296's fairness world must
-    keep its layers off such a cell). `apply_lay` drops a command at `mine_cap` 0 and for a type
-    that is not a ground layer. `lay` has no hp guard: a dead row has left in REMOVE.
-  - `Carry.apply_load` also zeroes its squads' `carry_mode` (the order-giving rule above).
-  - The twin-and-kernel case runs the lay and blast under both implementations in
-    `test_mines_run.gd`. No golden moves.
-
 ### 8. Mines (Michael's item 4)
 - **Laying.** `LAY_MINE` (8): unit ids = own rows with `type_mine_weapon >= 0`; a target point.
   - `Formation.assign` gives each layer a slot round the point; each gets the MOVE reset with
@@ -524,6 +507,22 @@ of which about 120 are C++.
   - fairness: every target comes from own mines, records, ghosts or seen rows.
 - **Size.** Defs ~100, tables ~150, laying and blast ~300, memory and sweep ~250, view ~220, aim
   ~150, AI ~250 (§7's rides are a separate AI row of ~150).
+- **Note (2026-11-14, P287, as built; it changes one accepted text, step 2's "dealt = taken = 100"):**
+  - The mark is `Mines.GONE` (-1) written into `mine_armed_tick`, not a scratch byte array.
+    `Mines.run`, `clear_radius` (from `Strike._land`) and `clear_footprint` (from `Buildings.add`)
+    each compact it away in the same call, so no mark reaches the hash, the snapshot or a kernel.
+  - The blast is `Strike._land`'s since P246: `Combat.damage(damage, percent, 100, taken of the
+    row)`. Neutral rows neither trigger nor take damage; a row at 0 hp does not trigger.
+  - `MINE_CHECKS` (11) counts the rows the mark pass looks up: the eligible rows (living, mobile,
+    ground, non-neutral, not mine-aware) while a mine is armed, 0 otherwise. P288 adds only its
+    detector x mine tests, so the bound stays rows + detectors x mines. `MINES_REFUSED` is 12, so
+    `STAT_COUNT` is 13.
+  - A lay on any mine's cell is refused, an unknown enemy mine's too (P296's fairness world must
+    keep its layers off such a cell). `apply_lay` drops a command at `mine_cap` 0 and for a type
+    that is not a ground layer. `lay` has no hp guard: a dead row has left in REMOVE.
+  - `Carry.apply_load` also zeroes its squads' `carry_mode` (the order-giving rule above).
+  - The twin-and-kernel case runs the lay and blast under both implementations in
+    `test_mines_run.gd`. No golden moves.
 
 ### 9. Touch: how the new gestures fit (touch-ui-rules; ADR 0015)
 | Feature | Gesture | Fits the existing set because |
