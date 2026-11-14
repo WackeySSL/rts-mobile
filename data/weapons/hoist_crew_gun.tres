@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Starting values for the Phase 4b balance run: the GDD gives the Hoist Crew's range (4 tiles) and
+; ground-only aim (ADR 0036 section 9); damage and cooldown follow the rifle squads'.
+[resource]
+script = ExtResource("1_weapon")
+id = &"hoist_crew_gun"
+range = 4000
+damage = 14
+cooldown_ticks = 15
+vs_armour = PackedInt32Array(100, 10, 5, 5)
+targets = 1

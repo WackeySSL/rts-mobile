@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/units/fossil_airfield.tres" id="9_requires"]
+
+; Starting values for the Phase 4b balance run (ADR 0036 section 8 gives the roles; the GDD the
+; cost, hit points, speed and slots). It requires the airfield.
+[resource]
+script = ExtResource("1_unit")
+type_id = &"fossil_transport"
+display_name = "Skyhauler"
+faction = &"fossil"
+speed = 107
+radius = 400
+selection_radius = 500
+formation_spacing = 1200
+max_hp = 600
+armour = 2
+move_class = 3
+sight_range = 7000
+cost = 1000
+build_ticks = 450
+requires = ExtResource("9_requires")
+tab = 3
+carry_slots = 3
+carry_classes = 1

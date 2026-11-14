@@ -205,9 +205,10 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	# gun, test_defs_strike_data) or the two anti-air guns (P239, test_defs_anti_air, held by
 	# BuildingDefs that have no roster entry until P239b) or the four air weapons (P242,
 	# test_defs_air_units: the fighters' and bombers' guns, whose types have no roster entry until
-	# P245), each used by what names it.
+	# P245) or the two drone squads' guns (P264, test_defs_carriers, until P266), each used by what
+	# names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(16)
+	assert_int(files.size()).is_equal(18)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)
@@ -446,7 +447,9 @@ func _own_files() -> Array[String]:
 				"fossil_airfield",
 				"fossil_fighter",
 				"fossil_bomber",
-				"fossil_engineering"
+				"fossil_engineering",
+				"fossil_transport",
+				"fossil_drone",
 			]
 		):
 			continue

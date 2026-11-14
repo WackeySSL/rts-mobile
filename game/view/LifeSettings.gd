@@ -298,6 +298,8 @@ var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"rene
 	&"tank_cannon": 31.0,
 	&"rocket": 13.0,
 	&"rifle": 13.0,
+	&"hoist_crew_gun": 13.0,
+	&"kite_crew_gun": 13.0,
 	&"heavy_cannon": 13.0,
 	&"turret_gun": 13.0,
 	&"artillery_gun": 13.0,

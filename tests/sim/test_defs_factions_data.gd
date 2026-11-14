@@ -26,6 +26,11 @@ const AIR_UNLISTED: Array[String] = [
 	"renew_bomber",
 	"fossil_engineering",
 	"renew_engineering",
+	# The transports and drone squads (P266).
+	"fossil_transport",
+	"renew_transport",
+	"fossil_drone",
+	"renew_drone",
 ]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0
