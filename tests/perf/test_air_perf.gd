@@ -108,22 +108,23 @@ func before() -> void:
 	print(PerfReport.line(_gd_report, PerfReport.AIR_HEAD))
 	print(_native_text())
 	var facts: Facts = _gd_facts[0]
+	var watch: String = (
+		"WATCH air aircraft=%d air_end=%d bombs=%d air_shots=%d aa_shots=%d ground_to_air=%d "
+		+ "last_bomb=%d last_air_gun=%d"
+	)
 	print(
 		(
-			"WATCH air aircraft=%d air_end=%d bombs=%d air_shots=%d aa_shots=%d ground_to_air=%d "
-			+ (
-				"last_bomb=%d last_air_gun=%d"
-				% [
-					facts.air_start,
-					facts.air_end,
-					facts.bombs,
-					facts.air_shots,
-					facts.aa_shots,
-					facts.ground_to_air,
-					facts.last_bomb_tick,
-					facts.last_air_gun_tick
-				]
-			)
+			watch
+			% [
+				facts.air_start,
+				facts.air_end,
+				facts.bombs,
+				facts.air_shots,
+				facts.aa_shots,
+				facts.ground_to_air,
+				facts.last_bomb_tick,
+				facts.last_air_gun_tick
+			]
 		)
 	)
 	print("WATCH air other_layer_max=%d" % _tally_facts.other_layer_max)
