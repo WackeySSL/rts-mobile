@@ -278,7 +278,7 @@ var type_strike_radius: PackedInt32Array = PackedInt32Array()
 ## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
 ## may hit, for the view and input (ADR 0036 section 5).
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
-## The carrier tables, the move class and the passenger table's carrier column (P265: Board and Unload).
+## The carrier tables, the move class and the passenger carrier column (Board and Unload).
 var type_carry_slots: PackedInt32Array = PackedInt32Array()
 var type_carry_classes: PackedInt32Array = PackedInt32Array()
 var type_move_class: PackedInt32Array = PackedInt32Array()
