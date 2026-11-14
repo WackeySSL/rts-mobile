@@ -154,7 +154,16 @@ func card_lines() -> PackedStringArray:
 	if hud.arena_kind == PerfBases.ARENA_BASES:
 		lines.append(PerfBases.calls_line(s["draw_calls_p95"]))
 	if hud.arena_kind == PerfBases.ARENA_AI:
-		lines.append(PerfBases.ai_line(s["ai_think_p95_ms"], s["ai_think_max_ms"], s["ai_thinks"]))
+		lines.append(
+			PerfBases.ai_line(
+				s["ai_think_p95_ms"],
+				s["ai_think_max_ms"],
+				s["ai_thinks"],
+				s["ai_wait_p95_ms"],
+				s["ai_wait_max_ms"],
+				s["ai_waits"]
+			)
+		)
 	lines.append(_phase_line("phase means per tick", s["phases_ms"]))
 	lines.append(_phase_line("p95 per phase without checkpoint ticks", s["phases_p95_noncp_ms"]))
 	lines.append("GATE: %s" % (PASS if s["gate_pass"] else FAIL))

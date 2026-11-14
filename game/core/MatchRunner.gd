@@ -239,6 +239,11 @@ var _start_failed: bool = false
 var _state: int = HandOff.IDLE
 ## The worker, made for the first job posted; null until then and after the join.
 var _thread: Thread
+## The AI thread (ADR 0038 section 2): started by the first WORKER start() with a controller, kept
+## across start()s, joined after the sim worker. `_ai_start_failed` keeps a failed start from being
+## retried: the thinks then run inline in the job.
+var _ai_thread: Thread
+var _ai_start_failed: bool = false
 ## The fields behind `world`, `loop`, `replay` and `probe`. The runner itself uses only these.
 var _world: World
 var _loop: MatchLoop
@@ -264,6 +269,8 @@ func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
 		return
+	if not _take_ai_done(WAIT_CAP_MSEC):
+		return
 	_release_job()
 	_job.batch.clear()
 	_state = step.x
@@ -272,11 +279,12 @@ func start() -> void:
 	_mode = resolve_mode(tick_mode, threads, OS.has_feature("web"), headless)
 	if _start_failed:
 		_mode = TickMode.SYNC
+	_job.controllers = _opponent_controllers()
+	_start_ai_thread()
 	_world = World.from_scenario(scenario, DetRng.create(match_seed, DetRandom.STREAM_SIM))
 	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
 	_use_impl(_world, kernels, OS.get_name())
 	_seat_income(_world)
-	_job.controllers = _opponent_controllers()
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	_loop = MatchLoop.create(scenario, scenario_path, match_seed, _world)
 	_replay = _loop.replay
@@ -321,6 +329,8 @@ func run_ticks(n: int) -> void:
 func wait_idle(timeout_msec: int = WAIT_CAP_MSEC) -> bool:
 	var step: Vector2i = hand_off(_state, HandOffEvent.WAIT_IDLE)
 	if step.y & HandOffStep.WAIT and not _take_done(timeout_msec):
+		return false
+	if not _take_ai_done(timeout_msec):
 		return false
 	_state = step.x
 	return true
@@ -516,6 +526,7 @@ func _post_next() -> void:
 		if _mode != TickMode.WORKER:
 			_start_failed = true
 			push_warning("MatchRunner: no worker thread (error %d); the ticks run inline" % error)
+			_join_ai_thread()
 			_tick()
 			return
 		_thread = thread
@@ -579,18 +590,74 @@ func _take_done(timeout_msec: int) -> bool:
 ## so a runner never added to the tree is joined when it is freed. After a wait that reached its
 ## cap, the join still waits for the job, so the job's objects are never taken from under it.
 func _join_worker() -> void:
-	if _thread == null or not _thread.is_started():
+	if _thread != null and _thread.is_started():
+		var step: Vector2i = hand_off(_state, HandOffEvent.STOP)
+		if step.y & HandOffStep.WAIT:
+			_take_done(WAIT_CAP_MSEC)
+		_job.quit = true
+		_job.work.post()
+		_thread.wait_to_finish()
+		_thread = null
+		_live_workers -= 1
+		_release_job()
+		_state = step.x
+	_join_ai_thread()
+
+
+## Takes the `ai_done` token of the batch in flight, if any, and marks it done in the holder
+## (whoever takes it first does, ADR 0038 section 2), for a caller that has waited for the job.
+## False, with an error, when it did not come in `timeout_msec`.
+func _take_ai_done(timeout_msec: int) -> bool:
+	if not _job.batch.awaiting:
+		return true
+	var until: int = Time.get_ticks_msec() + timeout_msec
+	while not _job.ai_done.try_wait():
+		if Time.get_ticks_msec() >= until:
+			push_error("MatchRunner: the AI thread did not finish within %d ms" % timeout_msec)
+			return false
+		OS.delay_msec(1)
+	_job.batch.awaiting = false
+	return true
+
+
+## Starts the AI thread when this start() resolved WORKER and seats a controller, once. A failed
+## start is one warning and the thinks run inline in the job for the runner's life. A start() that
+## resolved SYNC joins a thread an earlier one started: SYNC has no AI thread.
+func _start_ai_thread() -> void:
+	if _mode != TickMode.WORKER:
+		_join_ai_thread()
 		return
-	var step: Vector2i = hand_off(_state, HandOffEvent.STOP)
-	if step.y & HandOffStep.WAIT:
-		_take_done(WAIT_CAP_MSEC)
-	_job.quit = true
-	_job.work.post()
-	_thread.wait_to_finish()
-	_thread = null
+	if _ai_thread != null or _ai_start_failed or _job.controllers.is_empty():
+		return
+	var thread: Thread = Thread.new()
+	_job.ai_work = Semaphore.new()
+	_job.ai_done = Semaphore.new()
+	_job.ai_quit = false
+	var error: int = thread.start(_job.serve_ai)
+	if error != OK:
+		_ai_start_failed = true
+		_job.ai_work = null
+		_job.ai_done = null
+		push_warning("MatchRunner: no AI thread (error %d); the thinks run inline" % error)
+		return
+	_ai_thread = thread
+	_live_workers += 1
+
+
+## Joins the AI thread, after the sim worker: takes the token of a batch in flight, then ends the
+## loop. Idempotent. The sim worker is not running a job here, so nobody else waits on the batch.
+func _join_ai_thread() -> void:
+	if _ai_thread == null:
+		return
+	_take_ai_done(WAIT_CAP_MSEC)
+	_job.ai_quit = true
+	_job.ai_work.post()
+	_ai_thread.wait_to_finish()
+	_ai_thread = null
 	_live_workers -= 1
-	_release_job()
-	_state = step.x
+	_job.ai_work = null
+	_job.ai_done = null
+	_job.batch.clear()
 
 
 ## One tick, run inline (SYNC, and run_ticks()): drain the queue, hand the job over, run it, then

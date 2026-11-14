@@ -44,6 +44,14 @@ var end_usec: int = 0
 var work: Semaphore
 var done: Semaphore
 var quit: bool = false
+## The AI thread's hand-off (ADR 0038 section 2), set by the runner only while that thread runs
+## (null in SYNC, and when its start failed: the thinks then run inline in run()). `ai_work` is
+## posted once per batch handed over, `ai_done` once per batch thought, `ai_quit` ends serve_ai().
+var ai_work: Semaphore
+var ai_done: Semaphore
+var ai_quit: bool = false
+## The microseconds step 1 of the last run() blocked on a batch in flight (ADR 0038 section 7).
+var ai_wait_usec: int = 0
 
 
 ## The worker thread's loop: wait for `work`, return once `quit` is set, run one job, post `done`.
@@ -57,6 +65,35 @@ func serve() -> void:
 		done.post()
 
 
+## The AI thread's loop: wait for `ai_work`, return once `ai_quit` is set, think the batch the job
+## handed over, post `ai_done`. It touches only the batch (the controllers, their views and the
+## Command list), never the World, the loop or a snapshot (ADR 0038 section 2).
+func serve_ai() -> void:
+	while true:
+		ai_work.wait()
+		if ai_quit:
+			return
+		var started: int = Time.get_ticks_usec()
+		AiDriver.think_turns(batch)
+		batch.usec = batch.views_usec + maxi(Time.get_ticks_usec() - started, 1)
+		ai_done.post()
+
+
+## The job's step 1 wait (ADR 0038 sections 1 and 3): takes the `ai_done` token of the batch in
+## flight, however long it takes, and marks it done. Returns the microseconds it blocked: 0 when the
+## token was ready or no batch was in flight.
+func wait_ai_done() -> int:
+	if not batch.awaiting:
+		return 0
+	var waited: int = 0
+	if not ai_done.try_wait():
+		var from_usec: int = Time.get_ticks_usec()
+		ai_done.wait()
+		waited = maxi(Time.get_ticks_usec() - from_usec, 1)
+	batch.awaiting = false
+	return waited
+
+
 ## One tick: the controllers' thinks (their Commands appended after the ones the list holds), the
 ## step, the hash of the last checkpoint, the capture, then the timings: Sim.step from the
 ## StepProbe, the TimingProbe's phases (a copy; empty without one) and the whole job, with the
@@ -64,14 +101,19 @@ func serve() -> void:
 ## a tick that collects no batch (ADR 0038 section 7).
 func run() -> void:
 	var started: int = Time.get_ticks_usec()
-	var thought: int = AiDriver.lagged_tick(world, controllers, commands, batch)
-	if thought > 0:
-		batch.usec = maxi(Time.get_ticks_usec() - started, 1)
+	ai_wait_usec = 0
+	if ai_work != null:
+		_threaded_ai()
+	else:
+		var thought: int = AiDriver.lagged_tick(world, controllers, commands, batch)
+		if thought > 0:
+			batch.usec = maxi(Time.get_ticks_usec() - started, 1)
 	loop.step(world, commands, probe)
 	commands.clear()
 	var out: MatchSnapshot = snapshot
 	out.last_hash = loop.last_hash
 	out.think_usec = batch.collected_usec
+	out.ai_wait_usec = ai_wait_usec
 	out.capture(world, previous)
 	var step_probe: StepProbe = probe as StepProbe
 	if step_probe != null:
@@ -83,3 +125,16 @@ func run() -> void:
 	end_usec = Time.get_ticks_usec()
 	out.end_usec = end_usec
 	out.job_usec = end_usec - started
+
+
+## Steps 1 to 3 of ADR 0038 section 1 with the AI thread: waits for the batch in flight (the time
+## it blocked is `ai_wait_usec`), collects it, builds this tick's views and hands them over.
+func _threaded_ai() -> void:
+	ai_wait_usec = wait_ai_done()
+	batch.collect(commands, world.match_end_tick > 0)
+	var views_from: int = Time.get_ticks_usec()
+	if AiDriver.build_views(world, controllers, batch) > 0:
+		batch.pending = true
+		batch.awaiting = true
+		batch.views_usec = maxi(Time.get_ticks_usec() - views_from, 1)
+		ai_work.post()

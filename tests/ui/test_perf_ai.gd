@@ -110,6 +110,22 @@ func test_the_keys_come_from_the_ticks_on_which_a_computer_thought() -> void:
 	assert_float(s["ai_think_p95_ms"]).is_between(19.0, 20.0)
 
 
+func test_the_ai_wait_keys_count_the_ticks_the_job_waited_on_the_batch() -> void:
+	var hud: PerfHud = auto_free(Rig.hud())
+	hud.arena_kind = PerfHud.ARENA_AI
+	Rig.pass_frames(hud)
+	# Ten waits of 1 to 10 ms among 890 ticks with none (ai_wait_usec 0, still in the p95).
+	for tick: int in range(1, 901):
+		var snap: MatchSnapshot = Rig.snapshot(tick)
+		if tick <= 10:
+			snap.ai_wait_usec = tick * 1000
+		hud.record_snapshot(snap)
+	var s: Dictionary = hud.summary()
+	assert_int(s["ai_waits"]).is_equal(10)
+	assert_float(s["ai_wait_max_ms"]).is_equal(10.0)
+	assert_float(s["ai_wait_p95_ms"]).is_equal(0.0)
+
+
 func test_a_run_without_thinks_reports_zeros_on_every_arena() -> void:
 	for kind: String in [PerfHud.ARENA_UNITS, PerfHud.ARENA_BASES, PerfHud.ARENA_AI]:
 		var hud: PerfHud = auto_free(Rig.hud())
@@ -133,7 +149,7 @@ func test_the_card_prints_the_ai_line_for_this_arena_only() -> void:
 		hud.record_snapshot(snap)
 	var line: String = (
 		"ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at or below "
-		+ "1.00 ms (no verdict)"
+		+ "1.00 ms | ai_wait_p95_ms 0.00 | ai_wait_max_ms 0.00 | ai_waits 0 (no verdict)"
 	)
 	assert_array(Array(hud.card_lines())).contains([line])
 	for verdict: String in hud.summary()["verdicts"]:
