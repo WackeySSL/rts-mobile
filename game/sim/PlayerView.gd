@@ -61,7 +61,7 @@ extends RefCounted
 ## none: every array is a `duplicate()` made in `of` (the lists, the slices of the player's state
 ## and last-seen records, the type tables, the type ids, the row columns behind the getters, the
 ## placement input of `PlacementInput.copy_of_world`, and the seven arrays of `columns()`, which
-## share the buffers of the row-column copies). A copy of a packed array shares its storage until
+## are copies of their own). A copy of a packed array shares its storage until
 ## one side writes, so a view costs reference counts, and the World forks an array on its next
 ## write to it. So a view, or a column taken from one, is made, read and dropped within one think,
 ## never kept across a tick, and a write to the World after `of` changes no answer of the view; a
@@ -623,8 +623,16 @@ func _take_rows(world: World) -> void:
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
-	# The columns() arrays share the buffers of the private copies above (a write to one forks it).
-	_public = [_ids, _owner, _type, _pos_x, _pos_y, _hp, _build_left]
+	# Separate copies: a caller's write through columns() must not reach the getters' columns.
+	_public = [
+		_ids.duplicate(),
+		_owner.duplicate(),
+		_type.duplicate(),
+		_pos_x.duplicate(),
+		_pos_y.duplicate(),
+		_hp.duplicate(),
+		_build_left.duplicate(),
+	]
 	_shown = shown
 	own_rows = own
 	own_stance = own_stances
