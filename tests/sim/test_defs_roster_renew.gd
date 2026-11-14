@@ -506,7 +506,7 @@ func _own_files() -> Array[String]:
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
-			in ["renew_aa", "renew_airfield", "renew_fighter", "renew_bomber"]
+			in ["renew_aa", "renew_airfield", "renew_fighter", "renew_bomber", "renew_engineering"]
 		):
 			continue
 		if (load(path) as UnitDef).faction == FACTION:

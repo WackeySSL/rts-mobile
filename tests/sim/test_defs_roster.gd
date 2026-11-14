@@ -441,7 +441,13 @@ func _own_files() -> Array[String]:
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
-			in ["fossil_aa", "fossil_airfield", "fossil_fighter", "fossil_bomber"]
+			in [
+				"fossil_aa",
+				"fossil_airfield",
+				"fossil_fighter",
+				"fossil_bomber",
+				"fossil_engineering"
+			]
 		):
 			continue
 		if (load(path) as UnitDef).faction == FACTION:

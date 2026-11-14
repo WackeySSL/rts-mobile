@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UpgradeDef.gd" id="1_upgrade"]
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="2_unit"]
+[ext_resource type="Resource" path="res://data/units/renew_engineering.tres" id="3_requires"]
+[ext_resource type="Resource" path="res://data/units/renew_bomber.tres" id="4_bomber"]
+
+[resource]
+script = ExtResource("1_upgrade")
+id = &"focus_bombs"
+display_name = "Focus Bombs"
+faction = &"renew"
+cost = 800
+research_ticks = 1350
+requires = ExtResource("3_requires")
+stat = 0
+value = 125
+applies_to = Array[ExtResource("2_unit")]([ExtResource("4_bomber")])

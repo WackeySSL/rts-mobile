@@ -472,6 +472,13 @@ func test_upgrade_ids_are_non_empty_unique_and_at_most_the_bit_count() -> void:
 	)
 
 
+func _in_a_roster(unit: UnitDef, factions: Array[FactionDef]) -> bool:
+	for faction: FactionDef in factions:
+		if faction.roster.has(unit):
+			return true
+	return false
+
+
 func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -495,7 +502,12 @@ func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 		var building: BuildingDef = unit as BuildingDef
 		if building == null:
 			continue
-		research_producers += 1 if building.produces == Rules.RESEARCH else 0
+		# P247: the engineering centres are in no roster and no faction lists its upgrades yet, so
+		# a research producer counts only once a roster has it (P249 fills both together).
+		# P249: keep this as the rule "a rostered research building needs listed upgrades"; it
+		# fails by itself if a centre is rostered while FactionDef.upgrades is still empty.
+		if building.produces == Rules.RESEARCH and _in_a_roster(building, factions):
+			research_producers += 1
 		if building.pads > 0:
 			field_count += 1
 			assert_array(Rules.pad_spacing_problems(file, building, spacing)).is_empty()

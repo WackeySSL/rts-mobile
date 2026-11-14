@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/fossil_airfield.tres" id="2_requires"]
+
+[resource]
+script = ExtResource("1_building")
+type_id = &"fossil_engineering"
+display_name = "Draft Shop"
+faction = &"fossil"
+max_hp = 900
+armour = 3
+sight_range = 5000
+cost = 1200
+build_ticks = 360
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(2, 2)
+power = -40
+produces = 4
