@@ -47,6 +47,9 @@
 [ext_resource type="Script" path="res://game/ui/ResultScreen.gd" id="90_result"]
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="91_confirm"]
 [ext_resource type="Script" path="res://game/ui/RevealBadge.gd" id="92_reveal_badge"]
+[ext_resource type="Script" path="res://game/input/CarryAim.gd" id="93_carry_aim"]
+[ext_resource type="Script" path="res://game/view/CarryMarkLayer.gd" id="94_carry_marks"]
+[ext_resource type="Script" path="res://game/ui/CarryControls.gd" id="95_carry_controls"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
 script = ExtResource("4_main")
@@ -171,7 +174,7 @@ world_sort = NodePath("../WorldSort")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement", "carry_aim")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
@@ -183,6 +186,21 @@ box_overlay = NodePath("../Hud/BoxOverlay")
 group_column = NodePath("../Hud/GroupColumn")
 strike_aim = NodePath("../StrikeAim")
 placement = NodePath("../PlacementController")
+carry_aim = NodePath("../CarryAim")
+
+[node name="CarryAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim")]
+script = ExtResource("93_carry_aim")
+runner = NodePath("../MatchRunner")
+controller = NodePath("../PlayerController")
+placement = NodePath("../PlacementController")
+strike_aim = NodePath("../StrikeAim")
+
+[node name="CarryMarkLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim")]
+z_index = 65
+z_as_relative = false
+script = ExtResource("94_carry_marks")
+runner = NodePath("../MatchRunner")
+aim = NodePath("../CarryAim")
 
 [node name="StrikeAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller")]
 script = ExtResource("32_aim")
@@ -233,6 +251,18 @@ script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
 clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
 
+[node name="CarryControls" type="Control" parent="Hud" node_paths=PackedStringArray("aim", "camera", "unit_layer", "controller", "clear_of")]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme = ExtResource("16_theme")
+script = ExtResource("95_carry_controls")
+aim = NodePath("../../CarryAim")
+camera = NodePath("../../Camera")
+unit_layer = NodePath("../../UnitLayer")
+controller = NodePath("../../PlayerController")
+clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
+
 [node name="SafeArea" type="MarginContainer" parent="Hud"]
 anchors_preset = 15
 anchor_right = 1.0
@@ -260,7 +290,7 @@ feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 build_button = NodePath("../BuildButton")
 
-[node name="CommandBar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "safe_area", "placement", "strike_aim", "build_button", "building_layer", "sell_card")]
+[node name="CommandBar" type="Control" parent="Hud" node_paths=PackedStringArray("runner", "controller", "feed", "safe_area", "placement", "strike_aim", "carry_aim", "build_button", "building_layer", "sell_card")]
 mouse_filter = 2
 theme = ExtResource("16_theme")
 script = ExtResource("15_command_bar")
@@ -270,6 +300,7 @@ feed = NodePath("../HudStateFeed")
 safe_area = NodePath("../SafeArea")
 placement = NodePath("../../PlacementController")
 strike_aim = NodePath("../../StrikeAim")
+carry_aim = NodePath("../../CarryAim")
 build_button = NodePath("../BuildButton")
 building_layer = NodePath("../../BuildingLayer")
 sell_card = NodePath("../SellCard")

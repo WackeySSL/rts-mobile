@@ -32,6 +32,9 @@ extends Node
 ## the building stays selected; with any other building selected, a Headquarters included, it lets
 ## go of the selection. "All army" and a box leave tankers out unless the box holds nothing else
 ## (`OrderRules`).
+## While the Board or Unload aim is open (P265, `carry_aim`) a tap on a unit picks the carrier to
+## board (anything else is refused with no Command) or a tap on the ground sets the unload point;
+## nothing is selected, ordered or boxed.
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
@@ -46,6 +49,8 @@ signal selection_changed(ids: PackedInt32Array)
 ## sent, in milli-tiles. `RallyLayer` shows the flag at once, before the sim has applied the order.
 signal rally_ordered(tab: int, x: int, y: int)
 
+const DIED_FLAG_AT: int = 6  ## The seventh int of a DIED record (`Removal.run`).
+
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
 @export var building_layer: BuildingLayer  ## Without one no building can be picked.
@@ -56,6 +61,7 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var group_column: GroupColumn
 @export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 @export var placement: PlacementController  ## Without one there is no placement mode.
+@export var carry_aim: CarryAim  ## Without one there are no Board and Unload aims.
 
 var selection: SelectionModel = SelectionModel.new()
 ## Receives each Command. Tests replace it.
@@ -67,6 +73,7 @@ var _snap: PickSnapshot = PickSnapshot.new()
 var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_groups`' scratch.
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
+var _boarded: PackedInt32Array = PackedInt32Array()  ## Scratch: the DIED records of flag 2.
 
 
 func _init() -> void:
@@ -89,6 +96,10 @@ func handle_gesture(e: GestureEvent) -> void:
 	if strike_aim != null and strike_aim.active:
 		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
 			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+		return
+	if carry_aim != null and carry_aim.is_active():
+		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
+			_carry_tap(e.position)
 		return
 	if placement != null and placement.active:
 		placement.handle_gesture(e)
@@ -175,8 +186,12 @@ func units_selected() -> bool:
 	return _units_selected()
 
 
+## Selects the squads of group `slot` that are on the map; the ones aboard a carrier join again
+## from the unload on (`_show_groups` counts only the ones on the map).
 func tap_group(slot: int) -> void:
-	selection.recall_group(slot)
+	var live: PackedInt32Array = _on_map(selection.group(slot))
+	if not live.is_empty():
+		selection.set_ids(live)
 
 
 ## Stores the selected units in group `slot` (a hold on it overwrites it), shows the count and
@@ -308,13 +323,21 @@ func _on_selection_changed() -> void:
 func _on_ticked(_tick: int) -> void:
 	var events: PackedInt32Array = runner.snapshot.events
 	_dead.clear()
+	_boarded.clear()
+	var unloaded: bool = false
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] == World.Event.DIED:
+		if events[at] == World.Event.UNLOADED:
+			unloaded = true
+		elif events[at] != World.Event.DIED:
+			continue
+		elif events[at + DIED_FLAG_AT] == Removal.FLAG_BOARDED:
+			_boarded.append(events[at + 1])  # Aboard a carrier: out of the live selection only.
+		else:
 			_dead.append(events[at + 1])
-	if _dead.is_empty():
-		return
 	selection.remove_ids(_dead)
-	_show_groups()
+	selection.drop_live(_boarded)
+	if unloaded or not _dead.is_empty() or not _boarded.is_empty():
+		_show_groups()  # A group counts the squads on the map: aboard ones leave, unloaded return.
 
 
 ## Tells the group column the counts of the groups and whether "+" can save (units are selected and
@@ -323,9 +346,33 @@ func _show_groups() -> void:
 	if group_column == null:
 		return
 	for slot: int in range(1, SelectionModel.GROUP_COUNT + 1):
-		_group_counts[slot - 1] = selection.group_size(slot)
+		_group_counts[slot - 1] = _on_map(selection.group(slot)).size()
 	var can_save: bool = selection.lowest_free_group() > 0 and _units_selected()
 	group_column.show_groups(_group_counts, can_save)
+
+
+## The ids of `ids` that are rows now: a squad aboard a carrier is not one.
+func _on_map(ids: PackedInt32Array) -> PackedInt32Array:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null:
+		return ids
+	var live: PackedInt32Array = PackedInt32Array()
+	for id: int in ids:
+		if snap.index_of(id) >= 0:
+			live.append(id)
+	return live
+
+
+## A tap with the Board or Unload aim open: Unload sets the point, Board rings the own unit tapped
+## (the aim refuses any but a carrier with a free seat; a tap on nothing or a building is refused).
+func _carry_tap(pos: Vector2) -> void:
+	if carry_aim.mode == CarryAim.Mode.UNLOAD:
+		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))
+		return
+	var hit: int = _pick(pos, true)
+	carry_aim.pick_carrier(
+		_snap.ids[hit] if hit >= 0 and _snap.owners[hit] == _local_player() else 0
+	)
 
 
 ## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in

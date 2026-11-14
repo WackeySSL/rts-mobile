@@ -7,7 +7,10 @@ extends Control
 ## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
 ## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell). Orders that do not fit scroll sideways inside the bar, a
-## button never shrinks below 56 dp.
+## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
+## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
+## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs. A carrier's
+## chip shows its seats as pips, filled for each squad aboard.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -40,15 +43,23 @@ const CLEAR_DP: Vector2 = Vector2(48.0, 64.0)
 const ORDER_DP: Vector2 = Vector2(56.0, 64.0)  ## An order button's least size.
 const GLYPH_DP: float = 28.0
 const HEALTH_DP: Vector2 = Vector2(40.0, 6.0)
+const PIP_DP: float = 8.0  ## A passenger pip: a square, filled for a squad aboard, else an outline.
+const PIP_GAP_DP: float = 3.0
+const SHAKE_DP: float = 6.0  ## How far a refused Board shakes its face, and for how long a step.
+const SHAKE_S: float = 0.05
+const PIPS_MAX: int = 8  ## The most pips a chip shows (a fleet's seats are summed).
 const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may ask of the bar.
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
-## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units" or &"building".
+## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"building",
+## &"squads" (Board) or &"carrier" (Unload).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
+	{"id": &"board", "glyph": "board", "label": "BOARD", "for": &"squads"},
+	{"id": &"unload", "glyph": "unload", "label": "UNLOAD", "for": &"carrier"},
 	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
 	{"id": &"sell", "glyph": "sell", "label": "SELL", "for": &"building"},
 ]
@@ -64,11 +75,13 @@ const SELL_PAD_DP: float = 8.0  ## Either side of a button's widest word.
 @export var safe_area: SafeAreaMargin
 @export var placement: PlacementController
 @export var strike_aim: StrikeAim
+@export var carry_aim: CarryAim  ## The Board and Unload aims; without one the two never show.
 @export var build_button: BuildButton  ## Its Ready chip narrows the landscape room.
 @export var building_layer: BuildingLayer  ## An enemy building the fog hides shows no health.
 ## The question for selling the player's last producer (the pause menu's confirm look, P272).
 @export var sell_card: ConfirmDialog
 var mirror: bool = false
+var shakes: int = 0  ## Refused Board taps shown, for the tests.
 ## Returns the time in ms. Tests replace it.
 var clock: Callable = Time.get_ticks_msec
 
@@ -105,6 +118,7 @@ class Chip:
 	var card: TextureRect = TextureRect.new()
 	var label: Label = Label.new()  ## "xN" for units, the name of a building.
 	var health: HealthBar = HealthBar.new()
+	var pips: Pips = Pips.new()  ## A carrier's seats; hidden for any other type.
 	var type: StringName = &""  ## The card's type, to load it once.
 	var enemy: bool = false
 
@@ -128,6 +142,10 @@ class Chip:
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		text.add_child(label)
+		pips.name = "Pips"
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pips.visible = false
+		text.add_child(pips)
 		health.name = "Health"
 		health.show_percentage = false
 		health.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -150,6 +168,7 @@ class Chip:
 			enemy = as_enemy
 			health.set_enemy(enemy)
 			card.queue_redraw()
+		pips.show_seats(group.seats, group.aboard, label.get_theme_color(&"font_color"))
 		health.max_value = maxf(group.max_hp, 1.0)
 		health.value = group.hp
 		health.visible = not group.fogged
@@ -168,6 +187,7 @@ class Chip:
 		custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
 		card.custom_minimum_size = UiScale.dp_vec(CARD_DP, CARD_DP)
 		health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
+		pips.apply_dp()
 		fit_label()
 
 	## The brackets of an enemy building's chip (none for any other), as `HealthBarLayer` frames a
@@ -230,6 +250,44 @@ class HealthBar:
 			draw_rect(notch, get_theme_color(&"edge", FRAME))
 
 
+## A carrier chip's seats: a row of squares, one per seat, filled for a squad aboard and hollow for
+## a free seat (the shape tells them apart, not the colour).
+class Pips:
+	extends Control
+
+	var seats: int = 0
+	var aboard: int = 0
+	var tone: Color
+
+	func show_seats(total: int, filled: int, colour: Color) -> void:
+		var shown: int = mini(total, PIPS_MAX)
+		var lit: int = mini(filled, shown)
+		if shown == seats and lit == aboard and colour == tone:
+			return
+		seats = shown
+		aboard = lit
+		tone = colour
+		visible = seats > 0
+		apply_dp()
+		queue_redraw()
+
+	func apply_dp() -> void:
+		var dp: float = UiScale.base_px_per_dp()
+		custom_minimum_size = Vector2(seats * (PIP_DP + PIP_GAP_DP) * dp, PIP_DP * dp)
+
+	func _draw() -> void:
+		var dp: float = UiScale.base_px_per_dp()
+		var side: float = PIP_DP * dp
+		for index: int in seats:
+			var box: Rect2 = Rect2(
+				Vector2(index * (PIP_DP + PIP_GAP_DP) * dp, 0.0), Vector2(side, side)
+			)
+			if index < aboard:
+				draw_rect(box, tone)
+			else:
+				draw_rect(box.grow(-dp * 0.5), tone, false, maxf(dp, 1.0))
+
+
 ## What the selection holds of one type, for `_fill`.
 class Group:
 	extends RefCounted
@@ -241,6 +299,8 @@ class Group:
 	var row: int = 0  ## The first row of the type.
 	var building: bool = false
 	var fogged: bool = false  ## A building the fog hides: its health is not told.
+	var seats: int = 0  ## A carrier type: the seats of the selected carriers, summed.
+	var aboard: int = 0  ## And the squads aboard them.
 
 
 func _ready() -> void:
@@ -263,6 +323,8 @@ func _ready() -> void:
 	for order: Dictionary in ORDERS:
 		_add_order(order)
 	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
+	_buttons[&"board"].toggle_mode = true  # Lit while its aim is open.
+	_buttons[&"unload"].toggle_mode = true
 	_buttons[&"sell"].button_down.connect(_sell_down)
 	_buttons[&"sell"].button_up.connect(func() -> void: _sell_down_now = false)
 	if sell_card != null:
@@ -276,6 +338,9 @@ func _ready() -> void:
 		placement.changed.connect(_update_slot)
 	if strike_aim != null:
 		strike_aim.changed.connect(_update_slot)
+	if carry_aim != null:
+		carry_aim.changed.connect(_on_carry_changed)
+		carry_aim.refused.connect(_shake_board)
 	if build_button != null:
 		build_button.ready_changed.connect(place)
 	feed.state.changed.connect(_on_state_changed)
@@ -325,6 +390,12 @@ func _order(id: StringName) -> void:
 	match id:
 		&"stop":
 			controller.stop()
+		&"board":
+			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.BOARD):
+				_on_carry_changed()  # A refused start must not leave the toggle lit.
+		&"unload":
+			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.UNLOAD):
+				_on_carry_changed()
 		&"mend":
 			var snap: MatchSnapshot = runner.snapshot
 			var row: int = BuildingOrders.target(snap, controller.selection.selected, _local())
@@ -512,13 +583,16 @@ func _fill(ids: PackedInt32Array) -> void:
 				group.building = WorldSort.is_building(snap, type)
 				groups[type] = group
 			group.count += 1
+			if CarryRules.is_carrier_type(snap, type):
+				group.seats += snap.type_carry_slots[type]
+				group.aboard += CarryRules.aboard(snap, id)
 			group.hp += snap.hp[row]
 			group.max_hp += snap.type_max_hp[type]
 			if group.building and building_layer != null and not building_layer.is_shown(row):
 				group.fogged = true
 	var local: int = _local()
 	var row: int = BuildingOrders.target(snap, ids, local)
-	_sync_orders(snap, units and not groups.is_empty(), row)
+	_sync_orders(snap, units and not groups.is_empty(), row, ids)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
 	var index: int = 0
@@ -534,12 +608,14 @@ func _fill(ids: PackedInt32Array) -> void:
 
 ## Shows each order that acts on the selection (`units_ok` for a unit order, `row` the one own
 ## complete building for a building order) and brings its state up to date.
-func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int) -> void:
+func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt32Array) -> void:
 	for order: Dictionary in ORDERS:
 		var id: StringName = order["id"]
 		var shown: bool = units_ok
 		if order["for"] == &"building":
 			shown = row >= 0 and _building_order(id, snap, row)
+		elif order["for"] != &"units":
+			shown = units_ok and _carry_order(id, snap, ids)
 		_buttons[id].visible = shown
 	if not _buttons[&"sell"].visible:
 		_arm.disarm()  # The selection moved off the building: nothing is armed any more.
@@ -549,6 +625,43 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int) -> void:
 	if sell_card != null and sell_card.visible and card_stale:
 		sell_card.close()  # Its building left the selection: the question is void.
 	set_process(_needs_process())
+
+
+## Whether Board or Unload shows for the selection `ids` (a carrier order needs an aim to run), and
+## its state: lit while its aim is open. Board shows for squads while the player has a carrier that
+## takes them, Unload for a loaded carrier; a lit one shows as long as its aim runs.
+func _carry_order(id: StringName, snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
+	if carry_aim == null or snap == null:
+		return false
+	var mode: CarryAim.Mode = CarryAim.Mode.BOARD if id == &"board" else CarryAim.Mode.UNLOAD
+	var on: bool = carry_aim.mode == mode
+	var player: int = _local()
+	var shown: bool = on
+	if not shown and mode == CarryAim.Mode.BOARD:
+		shown = (
+			not CarryRules.squads_in(snap, ids, player).is_empty()
+			and CarryRules.has_carrier(snap, player)
+		)
+	elif not shown:
+		shown = not CarryRules.loaded_in(snap, ids, player).is_empty()
+	_sync_toggle(_buttons[id], on, true)
+	return shown
+
+
+## A refused Board tap: the button's face shakes sideways (the plate stays in its row).
+func _shake_board() -> void:
+	shakes += 1
+	var face: Control = _buttons[&"board"].get_node("Face")
+	var reach: float = UiScale.dp(SHAKE_DP)
+	var tween: Tween = create_tween()
+	for offset: float in [reach, -reach, 0.0]:
+		tween.tween_property(face, "position:x", offset, SHAKE_S)
+
+
+## An aim opened or closed, or a ring or point moved: the lit buttons and the frozen slot follow.
+func _on_carry_changed() -> void:
+	_fill(controller.selection.selected)
+	_update_slot()
 
 
 ## Whether building order `id` shows for the building in `row`, and its button's state.
@@ -671,7 +784,9 @@ func _fit_label() -> void:
 ## The slot follows the selection, or what it was when a mode began (the freeze).
 func _update_slot() -> void:
 	var moded: bool = (
-		(placement != null and placement.active) or (strike_aim != null and strike_aim.active)
+		(placement != null and placement.active)
+		or (strike_aim != null and strike_aim.active)
+		or (carry_aim != null and carry_aim.is_active())
 	)
 	if moded and not _frozen:
 		_held = _slot  # The slot the bar has as the mode begins, not what the selection says now.
