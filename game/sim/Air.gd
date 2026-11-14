@@ -180,13 +180,15 @@ static func _service(world: World, field: int, row: int, stamp: int) -> void:
 ## pads of the aircraft homed at it, fewer than `pads`) and is skipped otherwise. Each one taken
 ## gets MOVE to its pad (the pad of its rank, as `run` derives it) and goes idle there, where `run`
 ## reloads and repairs it. With none taken the command is dropped and counted. A building with no
-## pads is not served here (P277 adds its service point to this entry).
+## pads goes to `Repair.apply_ground` (P277), the same command.
 static func apply_repair(world: World, command: Command) -> bool:
 	if command.unit_ids.size() > Command.MAX_UNITS:
 		return false
 	var field: int = world.index_of(command.target_id)
-	if field < 0 or world.owner[field] != command.player_id or not _is_field(world, field):
+	if field < 0 or world.owner[field] != command.player_id:
 		return false
+	if not _is_field(world, field):
+		return Repair.apply_ground(world, command, field)  # No pads: a ground building (P277).
 	var kind: int = world.type_index[field]
 	if kind >= world.type_repair_classes.size() or world.type_repair_classes[kind] == 0:
 		return false

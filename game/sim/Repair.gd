@@ -180,3 +180,116 @@ static func announce(world: World, repairer: int, target: int, gained: int) -> v
 	events[at + 4] = world.unit_id[target]
 	events[at + 5] = world.owner[target]
 	events[at + 6] = gained
+
+
+## REPAIR for a ground repair building (ADR 0037 section 5, P277; the one REPAIR command, reached
+## from `Air.apply_repair` when the target has no pads): `target_id` is an own, complete, living
+## building with a footprint, no pads and a repair role. The valid units are own, living, complete,
+## mobile rows with no footprint whose move class bit is in the building's `repair_classes`; each
+## gets MOVE to a ring tile next to the footprint (`Buildings.aim` leaves out a unit with no
+## passable ring tile, and `_spread` then gives each row, lowest id first, the nearest ring tile
+## that no earlier row of the command took, so a group never piles onto one corner tile and every
+## row ends in reach). Arrived rows stand idle and `run` repairs them while in reach, ordered or
+## not. A blacked-out building still takes the order (the blackout is transient); `run` repairs
+## nothing until it is back online. With no unit taken the command is dropped and counted.
+static func apply_ground(world: World, command: Command, building: int) -> bool:
+	var kind: int = world.type_index[building]
+	if (
+		command.unit_ids.size() > Command.MAX_UNITS
+		or kind >= world.type_repair_classes.size()
+		or kind >= world.type_pads.size()
+		or world.type_repair_classes[kind] == 0
+		or world.type_pads[kind] != 0
+		or world.type_foot_w[kind] <= 0
+		or world.build_left[building] != 0
+		or world.hp[building] <= 0
+	):
+		return false
+	var mask: int = world.type_repair_classes[kind]
+	var ids: PackedInt32Array = command.unit_ids.duplicate()
+	ids.sort()
+	var rows: PackedInt32Array = PackedInt32Array()
+	var previous: int = 0
+	for id: int in ids:
+		if id == previous:
+			continue
+		previous = id
+		var row: int = world.index_of(id)
+		if row < 0 or world.owner[row] != command.player_id:
+			continue
+		var type: int = world.type_index[row]
+		if (
+			world.hp[row] > 0
+			and world.build_left[row] == 0
+			and world.type_speed[type] > 0
+			and world.type_foot_w[type] <= 0
+			and (mask >> world.type_move_class[type]) & 1 == 1
+		):
+			rows.append(row)
+	rows = Buildings.aim(world, rows, building)
+	if rows.is_empty():
+		return false
+	_spread(world, rows, building)
+	for row: int in rows:
+		world.order[row] = World.Order.MOVE
+		world.order_target[row] = 0
+		world.group_cell[row] = -1
+	Movement.reset_nav(world, rows, World.NavMode.DIRECT)
+	Harvest.release(world, rows)
+	Carry.release(world, rows)
+	return true
+
+
+## Re-aims `rows` (ascending, each already given `Buildings.aim`'s point) one by one: row `i` takes
+## the passable ring tile of its move class nearest to its position, by squared distance and then
+## by the ring walk's order (ADR 0033: `ProductionSpawn.ring_tile` clockwise from the top-left,
+## shifted a quarter of the ring per quarter turn of `Buildings.facing`, so a half turn of the map
+## mirrors the walk), that no row `j < i` took. When every tile is taken the row keeps `aim`'s
+## point. Command cadence; no allocation (a taken tile is read back from the goals of earlier rows).
+@warning_ignore("integer_division")
+static func _spread(world: World, rows: PackedInt32Array, building: int) -> void:
+	var kind: int = world.type_index[building]
+	var size: Vector2i = Vector2i(world.type_foot_w[kind], world.type_foot_h[kind])
+	var origin: Vector2i = world.footprint_origin(building)
+	var length: int = ProductionSpawn.ring_length(size)
+	var shift: int = (
+		Buildings.facing(
+			world.map_cols, world.map_rows, world.pos_x[building], world.pos_y[building]
+		)
+		* length
+		/ 4
+	)
+	var cols: int = world.map_cols
+	var cells: int = cols * world.map_rows
+	var goal_x: PackedInt32Array = world.goal_x
+	var goal_y: PackedInt32Array = world.goal_y
+	for index: int in rows.size():
+		var row: int = rows[index]
+		var base: int = world.type_move_class[world.type_index[row]] * cells
+		var best_x: int = -1
+		var best_y: int = -1
+		var best_gap: int = 0
+		for step: int in length:
+			var tile: Vector2i = ProductionSpawn.ring_tile(origin, size, (shift + step) % length)
+			if tile.x < 0 or tile.y < 0 or tile.x >= cols or tile.y >= world.map_rows:
+				continue
+			if world.move_cost[base + tile.y * cols + tile.x] == 0:
+				continue
+			var at_x: int = tile.x * World.MILLI_PER_TILE + World.TILE_CENTRE
+			var at_y: int = tile.y * World.MILLI_PER_TILE + World.TILE_CENTRE
+			var free: bool = true
+			for earlier: int in index:
+				if goal_x[rows[earlier]] == at_x and goal_y[rows[earlier]] == at_y:
+					free = false
+					break
+			if not free:
+				continue
+			var dx: int = at_x - world.pos_x[row]
+			var dy: int = at_y - world.pos_y[row]
+			if best_x < 0 or dx * dx + dy * dy < best_gap:
+				best_x = at_x
+				best_y = at_y
+				best_gap = dx * dx + dy * dy
+		if best_x >= 0:
+			goal_x[row] = best_x
+			goal_y[row] = best_y
