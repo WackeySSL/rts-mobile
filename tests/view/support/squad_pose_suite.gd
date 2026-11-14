@@ -90,11 +90,20 @@ func _hull(row: int) -> Sprite2D:
 	return _rig(row).get_node("Hull") as Sprite2D
 
 
-## The offset the Hull has for `part` of the unit's sheet, as the dress and the atlas say it.
-func _offset(row: int, part: StringName) -> Vector2:
+## The offset the Hull has for `part` of the unit's sheet facing `dir`, in the frame now shown: the
+## crop of the frame's box (`IsoSheetDef.frame_box`, `IsoAtlas.trim_rect`) minus the origin in
+## texels, worked out here from the sheet, not read from the atlas table.
+func _offset(row: int, part: StringName, dir: int = UnitLayer.D_EAST) -> Vector2:
 	var snap: MatchSnapshot = _runner.snapshot
 	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
-	return -Vector2(sheet.origin(part)) * _layer.world_sort.texels(sheet, part)
+	var frame: int = clampi(_shown(row, dir).y, 0, sheet.frame_count(part) - 1)
+	var scale: float = _layer.world_sort.atlas.part_scale(part)
+	var crop: Rect2i = IsoAtlas.trim_rect(
+		sheet.frame_size(part), sheet.frame_box(part, dir, frame), scale
+	)
+	return (
+		Vector2(crop.position) - Vector2(sheet.origin(part)) * _layer.world_sort.texels(sheet, part)
+	)
 
 
 ## What the Hull of `row` shows, read back from the atlas: (pose, frame) of direction `dir`, or

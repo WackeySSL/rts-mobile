@@ -232,11 +232,16 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	assert_that(_layer.head_region()).is_equal(east)
 	assert_int(_layer.last_parts).is_equal(2)  # A defence has no moving element: body and head.
 	assert_bool(_layer.anim_region().has_area()).is_false()
-	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre.
+	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre (the
+	# box is the head's trim, so the pivot lies the box's own distance from its top left, P306).
 	var ground: Vector2i = _placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
 	var pivot: Vector2 = (
-		_layer.last_head.position + Vector2(sheet.origin(&"head")) * WorldSort.ART_SCALE
+		_layer.last_head.position
+		+ (
+			Vector2(sheet.origin(&"head") - sheet.frame_box(&"head", UnitLayer.D_EAST, 0).position)
+			* WorldSort.ART_SCALE
+		)
 	)
 	assert_vector(pivot).is_equal_approx(
 		centre + sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, Vector2.ONE * 0.01

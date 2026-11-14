@@ -210,7 +210,7 @@ func test_the_walk_keeps_its_frame_and_pose_when_the_squad_turns() -> void:
 	assert_int(pose.shown).is_equal(RigLife.POSE_WALK)
 	assert_vector(_shown(row, UnitLayer.D_EAST)).is_equal(Vector2i(-1, -1))  # Not facing east now.
 	assert_vector(_shown(row, 10)).is_equal(Vector2i(RigLife.POSE_WALK, pose.frame))
-	assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk"))
+	assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk", 10))
 
 
 func test_a_new_match_dresses_a_pooled_squad_rig_in_its_hull() -> void:

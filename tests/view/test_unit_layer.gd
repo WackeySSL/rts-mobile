@@ -100,8 +100,12 @@ func test_a_frame_is_placed_by_the_sheets_anchor_and_the_turret_at_its_mount() -
 	for part: StringName in [&"hull", &"turret", &"shadow"]:
 		var sprite: Sprite2D = rig.get_node(String(part).capitalize())
 		var anchor: Vector2 = Vector2(sheet.anchor(part))
+		# A directional frame is trimmed to its box (P306): it starts at the box, not the canvas.
+		var corner: Vector2 = Vector2.ZERO
+		if part != &"shadow":
+			corner = Vector2(sheet.frame_box(part, 6).position)
 		assert_vector(sprite.offset * sprite.scale).is_equal_approx(
-			-anchor * 0.5, Vector2(0.001, 0.001)
+			(corner - anchor) * 0.5, Vector2(0.001, 0.001)
 		)
 	var turret: Sprite2D = rig.get_node("Turret")
 	assert_vector(turret.position).is_equal_approx(sheet.mount(6) * 0.5, Vector2(0.001, 0.001))
