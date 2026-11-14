@@ -1,0 +1,35 @@
+<!-- Unload glyph: white and grey only, tinted at run time (the Unload order: a loaded carrier lets its squads out at a point). -->
+<!-- Shape: a boxy carrier on four-square wheels at the left with a chamfered nose and a dark doorway cut into its right side, a fat block arrow pointing right out of it, a small round-headed figure with square shoulders at the right. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+  <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+    <path d="M56 44 H24 L10 60 V90 H56 Z"/>
+    <circle cx="22" cy="96" r="8"/>
+    <circle cx="42" cy="96" r="8"/>
+    <path d="M60 74 H70 V64 L86 78 L70 92 V82 H60 Z"/>
+    <circle cx="105" cy="46" r="10"/>
+    <path d="M91 94 V76 Q91 62 105 62 Q119 62 119 76 V94 Z"/>
+  </g>
+  <!-- body: the lit plane, so white -->
+  <g fill="#FFFFFF">
+    <path d="M56 44 H24 L10 60 V90 H56 Z"/>
+    <circle cx="22" cy="96" r="8"/>
+    <circle cx="42" cy="96" r="8"/>
+    <path d="M60 74 H70 V64 L86 78 L70 92 V82 H60 Z"/>
+    <circle cx="105" cy="46" r="10"/>
+    <path d="M91 94 V76 Q91 62 105 62 Q119 62 119 76 V94 Z"/>
+  </g>
+  <!-- shade on the lower right facets: the carrier's lower edge and nose, the arrow's lower barb, the figure's right flank -->
+  <path d="M10 82 H56 V90 H10 Z" fill="#BFBFBF"/>
+  <path d="M24 44 L10 60 H20 L30 50 V44 Z" fill="#BFBFBF"/>
+  <path d="M70 82 V92 L86 78 L81 74 Z" fill="#BFBFBF"/>
+  <path d="M112 63 Q119 66 119 76 V94 H112 Z" fill="#BFBFBF"/>
+  <!-- the open doorway on the carrier's right side with a squad's heads showing in it, and the window, dark and white -->
+  <rect x="44" y="58" width="12" height="24" fill="#4D4D4D"/>
+  <circle cx="50" cy="66" r="3.5" fill="#FFFFFF"/>
+  <circle cx="50" cy="76" r="3.5" fill="#FFFFFF"/>
+  <rect x="22" y="52" width="14" height="12" rx="2" fill="#4D4D4D"/>
+  <!-- the wheel hubs, dark -->
+  <circle cx="22" cy="96" r="3" fill="#4D4D4D"/>
+  <circle cx="42" cy="96" r="3" fill="#4D4D4D"/>
+</svg>

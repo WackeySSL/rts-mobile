@@ -1430,9 +1430,10 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_low_power`, `glyph_offline` | #F5A524 |
 | `glyph_low_power_map` | #FF8A1F |
 | `glyph_repair_map` | #30A46C |
+| `glyph_unload_mark` | #F5A524 |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
-| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell` and the other thirteen glyphs of the corner HUD (below) | none (white) |
+| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell`, `glyph_board`, `glyph_unload` and the other thirteen glyphs of the corner HUD (below) | none (white) |
 
 The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
 button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
@@ -1491,6 +1492,16 @@ canvas edge, a two-line header with the shape line, untinted on the dark panel, 
   `glyph_credits`, a stack of coins seen from the side: that one says "money you hold", this one
   "a sale"). It has no arrow, so it cannot be read as an "unload" or an "exit", and no "$", which
   is text. Its ink is centred on the canvas.
+- `glyph_board` and `glyph_unload` (P265a, ADR 0036), the Board and Unload orders of a carrier, drawn
+  like the two above: white, grey edge, shade on the lower right facets, no seat, untinted on the
+  panel. Board is a figure walking right into a carrier whose doorway faces it; Unload is the same
+  carrier at the left, its doorway on the right with two white heads in it and a figure standing
+  outside. The carrier flips sides and the doorway carries heads in one and not in the other, so
+  the two differ by more than the arrow. Neither has the door and arrow of `glyph_exit`.
+- `glyph_unload_mark`, the chevron that marks the Unload ground point (`touch-ui-rules`): the twelfth
+  map glyph, two stacked chevrons pointing straight down on the offline glyph's plate, tinted amber
+  #F5A524 (the offline and low-power family: an order not yet carried out); it points at the
+  ground so that it cannot be taken for the right-pointing `glyph_chevron` of the drawer.
 - `glyph_repair_map`, the wrench over an own building that is being mended (ADR 0037 section 4,
   drawn like the offline glyph's pass): the same spanner scaled to 0.8 on the dark seat of "Map
   glyphs sit on a seat" below, tinted green #30A46C, the ok green and the fill of an own health bar,
@@ -1502,8 +1513,8 @@ section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, 
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
 its Hud page shows the corner HUD's sixteen at 48, 32 and 24 dp.
 
-**Map glyphs sit on a seat (new).** The eleven glyphs that are drawn over the map, the six
-`glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_repair_map`, `glyph_construct` and `glyph_under_attack`, carry their
+**Map glyphs sit on a seat (new).** The twelve glyphs that are drawn over the map, the six
+`glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_repair_map`, `glyph_unload_mark`, `glyph_construct` and `glyph_under_attack`, carry their
 own seat in the file: #4D4D4D with a 4 px white rim inside a 3 px dark edge, and the drawing scaled
 to 0.8 into it, so that no ink touches the rim. The reasons, the offline glyph, the low-power and repair map glyphs and the construction
 badge sit on a rounded plate (6 to 122 px, corner radius 22); the arrow, which the HUD turns, on a
@@ -1572,6 +1583,9 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_all_army.svg` | A soldier from the chest up under a grey half-dome helmet, in front of a small side-on tank with a sloped hull, a boxy turret and one barrel to the right. |
 | `glyph_repair.svg` | One open-ended spanner on a rising diagonal, a round head at the upper right with a deep round-bottomed slot cut into its end, a straight handle ending in a round tail with a dark hole. |
 | `glyph_sell.svg` | A price tag tilted up to the left, a long pentagon with its point at the upper left and a dark hole near the point, a round grey coin with a white ring and a diamond set on its body. |
+| `glyph_board.svg` | A small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four wheels with a chamfered nose and a dark doorway cut into the side that faces the figure. |
+| `glyph_unload.svg` | A boxy carrier on four wheels at the left with a chamfered nose and a dark doorway on its right side showing two white heads, a fat block arrow pointing right out of it, a small round-headed figure at the right. |
+| `glyph_unload_mark.svg` | Two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
 The line names the symbol. Each of the eleven map glyphs (the six reasons, offline, low power, repair, the construction
@@ -2802,3 +2816,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-12 | v1.31 (P236, art-director, ADR 0036 sections 11 and 15, ADR 0034): the Skyrig (`fossil_space`) and the Zenith (`renew_space`), the space centre of both factions, as 3 x 3 models with a lift as the `anim` part (16 and 12 frames, a shift and not a turn, no two frames alike), a KRITISK picture whose debris rests on a surface and no SKADET picture, their sheets, item cards and shadows ("The space centres" under "Buildings", the two readings of the GDD, the Catalogue rows, the readability results and an open point), the Build page and the Iso page list them by themselves (18 building models), the sorted world's page 1 2659, 2542 and 2650 to 2993, 2878 and 2910 and page 2 1040, 566 and 622 to 1116, 570 and 634 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-13 | v1.32 (P202, art-director, ADR 0034 section 4): the generator writes no `dmg1` frame and refuses a `dmg1` pose; the 16 `_dmg1.svg` files and their sheet parts go, `dmg2` frames are byte for byte as before; the stage tables and `cuts` keep two entries ("Damage stages (P158a)"). |
 | 2026-11-13 | v1.33 (P203, art-director, ADR 0035 section 4): every generated shadow frame gets an occlusion pad (three stepped rings, no gradient) and a contact line (2 px, on what touches the ground, one per soldier) under the cast shadow, in the one 35 % group; the wellhead's shadow with a short pad by hand; page 2 1116, 570, 634 to 1514, 704, 814 ("Light"). Non-shadow frames are byte for byte as before. |
+| 2026-11-14 | v1.34 (P265a, art-director, ADR 0036): `glyph_board.svg` and `glyph_unload.svg` (white HUD glyphs on the Bar row of the Hud page) and the seated map glyph `glyph_unload_mark.svg` (two down-pointing chevrons, tinted #F5A524, the twelfth map glyph); the gallery's map strips now hold their glyphs in two lines of six, the grass one set 48 px left of the centre to clear the page button. |

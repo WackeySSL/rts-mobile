@@ -1,0 +1,33 @@
+<!-- Board glyph: white and grey only, tinted at run time (the Board order: the selected squads go aboard a carrier). -->
+<!-- Shape: a small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four-square wheels at the right with a chamfered nose and a dark doorway cut into the side that faces the figure. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+  <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+    <circle cx="23" cy="46" r="10"/>
+    <path d="M9 94 V76 Q9 62 23 62 Q37 62 37 76 V94 Z"/>
+    <path d="M42 74 H52 V64 L68 78 L52 92 V82 H42 Z"/>
+    <path d="M72 44 H104 L118 60 V90 H72 Z"/>
+    <circle cx="86" cy="96" r="8"/>
+    <circle cx="106" cy="96" r="8"/>
+  </g>
+  <!-- body: the lit plane, so white -->
+  <g fill="#FFFFFF">
+    <circle cx="23" cy="46" r="10"/>
+    <path d="M9 94 V76 Q9 62 23 62 Q37 62 37 76 V94 Z"/>
+    <path d="M42 74 H52 V64 L68 78 L52 92 V82 H42 Z"/>
+    <path d="M72 44 H104 L118 60 V90 H72 Z"/>
+    <circle cx="86" cy="96" r="8"/>
+    <circle cx="106" cy="96" r="8"/>
+  </g>
+  <!-- shade on the lower right facets: the figure's right flank, the arrow's lower barb, the carrier's roof edge and lower right -->
+  <path d="M30 63 Q37 66 37 76 V94 H30 Z" fill="#BFBFBF"/>
+  <path d="M52 82 V92 L68 78 L63 74 Z" fill="#BFBFBF"/>
+  <path d="M72 82 H118 V90 H72 Z" fill="#BFBFBF"/>
+  <path d="M104 44 L118 60 H108 L98 50 V44 Z" fill="#BFBFBF"/>
+  <!-- the doorway on the carrier's near side and its window, dark -->
+  <rect x="72" y="58" width="12" height="24" fill="#4D4D4D"/>
+  <rect x="92" y="52" width="14" height="12" rx="2" fill="#4D4D4D"/>
+  <!-- the wheel hubs, dark -->
+  <circle cx="86" cy="96" r="3" fill="#4D4D4D"/>
+  <circle cx="106" cy="96" r="3" fill="#4D4D4D"/>
+</svg>

@@ -1,18 +1,18 @@
 extends GdUnitTestSuite
-## The sixteen glyphs of the corner HUD (plan rows P118g and P273, ADRs 0025, 0026 and 0037). What
+## The eighteen glyphs of the corner HUD (plan rows P118g and P273, ADRs 0025, 0026 and 0037). What
 ## tests/art/test_icon_art.gd asks of every glyph (a 128 px canvas, greys only, nothing in the outer
 ## 2 px, a shape line, readable apart at 32 px in greyscale) it asks of these too, as they are in
 ## its lists: fifteen in its HUD group and `glyph_construct`, which is drawn over a building on the
 ## map, in its map group with the seat that keeps it apart from the ground. This suite adds the
 ## margin the fifteen keep from every other glyph of the HUD group and the shape each of the
-## sixteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
+## eighteen is meant to have, so a redraw cannot turn the Deselect glyph into the padlock or the
 ## cross, the pennant into a white flag, the collapse arrows outward, the chevron off its centre or
 ## the crane mast into an aerial.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const HUD_BACKDROP: Color = Color("0F141C")
-## The sixteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
+## The eighteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
 const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_deselect",
 	"glyph_stop",
@@ -20,6 +20,8 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_plus",
 	"glyph_repair",
 	"glyph_sell",
+	"glyph_board",
+	"glyph_unload",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
@@ -31,7 +33,7 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_alert",
 	"glyph_construct",
 ]
-## The one of the sixteen that is a map glyph, on a seat (test_icon_art.gd's map group).
+## The one of the eighteen that is a map glyph, on a seat (test_icon_art.gd's map group).
 const MAP_GLYPH: String = "glyph_construct"
 ## The glyphs of the HUD group that were there before: the two result and build menu sets, the
 ## credits, the power and the requirement and placement glyphs.
@@ -62,12 +64,12 @@ const LIGHT_MIN: float = 0.7
 const DARK_MAX: float = 0.4
 
 
-func test_the_sixteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
+func test_the_eighteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
 	var rows: Array[String] = []
 	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
 		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(16)  # 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273).
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(18)  # 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a).
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()

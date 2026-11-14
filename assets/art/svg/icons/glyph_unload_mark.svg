@@ -1,0 +1,22 @@
+<!-- Unload point glyph for the map: white and grey only, tinted at run time (the ground point where a carrier will let its squads out). -->
+<!-- Shape: two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- seat: a dark plate with a white rim, so the glyph reads on grass, sand and the red ghost -->
+  <rect x="6" y="6" width="116" height="116" rx="22" fill="#4D4D4D"/>
+  <rect x="11" y="11" width="106" height="106" rx="17" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <g transform="translate(64 64) scale(0.8) translate(-64 -70)">
+    <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+    <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+      <path d="M18 22 L64 62 L110 22 V44 L64 84 L18 44 Z"/>
+      <path d="M18 56 L64 96 L110 56 V78 L64 118 L18 78 Z"/>
+    </g>
+    <!-- body: the lit plane, so white -->
+    <g fill="#FFFFFF">
+      <path d="M18 22 L64 62 L110 22 V44 L64 84 L18 44 Z"/>
+      <path d="M18 56 L64 96 L110 56 V78 L64 118 L18 78 Z"/>
+    </g>
+    <!-- shade on the lower right facets: the lower edge of each right arm -->
+    <path d="M64 75 L110 36 V44 L64 84 Z" fill="#BFBFBF"/>
+    <path d="M64 109 L110 70 V78 L64 118 Z" fill="#BFBFBF"/>
+  </g>
+</svg>
