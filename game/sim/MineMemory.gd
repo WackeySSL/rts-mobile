@@ -16,10 +16,11 @@ extends RefCounted
 ##   no record of it yet, and that lies within `type_detect_milli` of a living row of the player
 ##   (a detector: a type with a detect range above 0) gets a record, until the block is full
 ##   (`mine_known_cap`), so which mines are left out is the same in every run. A blast makes no
-##   record. The pass over the rows runs only for a mine that passes the cheap tests, and each
-##   distance test of a detector row against a mine counts one `Stat.MINE_CHECKS`, so the cost is
-##   at most detectors x mines on the player's turn, and nothing on the others.
-## `knows` is the question the sweep asks.
+##   record. One pass over the rows lists the player's living detectors (scratch column `push_x`),
+##   none: stop. Each distance test of a listed detector against a mine counts one
+##   `Stat.MINE_CHECKS`, so the cost is rows + detectors x mines on the player's turn, counted as
+##   detectors x mines, and nothing on the others.
+## `knows` is the question the sweep asks; `drop_seen` is the in-sight drop of a mine that leaves.
 
 
 ## One MEMORY phase for `world` (after `LastSeen.run`).
@@ -39,16 +40,48 @@ static func run(world: World) -> void:
 ## Whether `player` has a record of the mine `id`.
 static func knows(world: World, player: int, id: int) -> bool:
 	var cap: int = world.mine_known_cap
+	var ids: PackedInt32Array = world.mine_seen_id
 	if player < 1 or player >= world.mine_seen_count.size() or cap < 1:
 		return false
 	var first: int = player * cap
 	var count: int = mini(world.mine_seen_count[player], cap)
-	if first + count > world.mine_seen_id.size():
+	if first + count > ids.size():
 		return false
 	for record: int in count:
-		if world.mine_seen_id[first + record] == id:
+		if ids[first + record] == id:
 			return true
 	return false
+
+
+## The in-sight drop, called by `Mines._compact` for each mine leaving the table (blast, sweep,
+## rupture, building): the record of mine `id` goes from every player's block that sees `cell` in
+## the fog as it stands, so a spot watched while its mine blew is not remembered as mined, whatever
+## the next fog turn shows (`LastSeen.forget_dead`'s rule). Event cadence.
+static func drop_seen(world: World, id: int, cell: int) -> void:
+	if not _can_keep(world):
+		return
+	var cap: int = world.mine_known_cap
+	var visible: PackedInt32Array = world.fog.visible
+	var ids: PackedInt32Array = world.mine_seen_id
+	var owners: PackedInt32Array = world.mine_seen_owner
+	var cells: PackedInt32Array = world.mine_seen_cell
+	for player: int in range(1, mini(world.fog.player_count, world.mine_seen_count.size() - 1) + 1):
+		if visible[(player - 1) * world.fog.cells + cell] <= 0:
+			continue
+		var first: int = player * cap
+		var count: int = mini(world.mine_seen_count[player], cap)
+		for record: int in count:
+			if ids[first + record] != id:
+				continue
+			for at: int in range(first + record, first + count - 1):
+				ids[at] = ids[at + 1]
+				owners[at] = owners[at + 1]
+				cells[at] = cells[at + 1]
+			ids[first + count - 1] = 0
+			owners[first + count - 1] = 0
+			cells[first + count - 1] = 0
+			world.mine_seen_count[player] = count - 1
+			break
 
 
 ## Drops the records of `player` that it sees empty, closing the block up in order.
@@ -64,12 +97,13 @@ static func _forget(world: World, player: int) -> void:
 	var first: int = player * world.mine_known_cap
 	var count: int = counts[player]
 	var kept: int = 0
+	var mines: int = world.mine_count
 	for record: int in count:
 		var entry: int = first + record
 		var cell: int = cells[entry]
 		if visible[block + cell] > 0:
 			var index: int = at[cell] - 1
-			if index < 0 or index >= world.mine_count or table[index] != ids[entry]:
+			if index < 0 or index >= mines or table[index] != ids[entry]:
 				continue
 		if kept != record:
 			ids[first + kept] = ids[entry]
@@ -84,13 +118,29 @@ static func _forget(world: World, player: int) -> void:
 
 
 ## Gives `player` a record for each mine of another player that a detector of it reaches (see the
-## header); returns the distance tests made.
+## header); returns the distance tests made. One pass over the rows lists the living detectors in
+## the scratch column `push_x` (free in MEMORY; SEPARATION clears it), then the mines ascending
+## test only those, so the cost is rows + detectors x mines and the count is detectors x mines.
 @warning_ignore("integer_division")
 static func _remember(world: World, player: int) -> int:
 	var cap: int = world.mine_known_cap
 	var count: int = world.mine_seen_count[player]
 	var total: int = mini(world.mine_count, world.mine_id.size())
-	if count >= cap or total <= 0:
+	var listed: PackedInt32Array = world.push_x
+	var rows_owner: PackedInt32Array = world.owner
+	if count >= cap or total <= 0 or listed.size() < rows_owner.size():
+		return 0
+	var rows_hp: PackedInt32Array = world.hp
+	var rows_type: PackedInt32Array = world.type_index
+	var detect: PackedInt32Array = world.type_detect_milli
+	var xs: PackedInt32Array = world.pos_x
+	var ys: PackedInt32Array = world.pos_y
+	var detectors: int = 0
+	for row: int in rows_owner.size():
+		if rows_owner[row] == player and rows_hp[row] > 0 and detect[rows_type[row]] > 0:
+			listed[detectors] = row
+			detectors += 1
+	if detectors == 0:
 		return 0
 	var ids: PackedInt32Array = world.mine_seen_id
 	var owners: PackedInt32Array = world.mine_seen_owner
@@ -98,12 +148,6 @@ static func _remember(world: World, player: int) -> int:
 	var visible: PackedInt32Array = world.fog.visible
 	var block: int = (player - 1) * world.fog.cells
 	var first: int = player * cap
-	var rows_owner: PackedInt32Array = world.owner
-	var rows_hp: PackedInt32Array = world.hp
-	var rows_type: PackedInt32Array = world.type_index
-	var detect: PackedInt32Array = world.type_detect_milli
-	var xs: PackedInt32Array = world.pos_x
-	var ys: PackedInt32Array = world.pos_y
 	var mine_cells: PackedInt32Array = world.mine_cell
 	var mine_ids: PackedInt32Array = world.mine_id
 	var mine_owners: PackedInt32Array = world.mine_owner
@@ -125,10 +169,9 @@ static func _remember(world: World, player: int) -> int:
 			continue
 		var point_x: int = (cell % cols) * World.MILLI_PER_TILE + World.TILE_CENTRE
 		var point_y: int = (cell / cols) * World.MILLI_PER_TILE + World.TILE_CENTRE
-		for row: int in rows_owner.size():
+		for at: int in detectors:
+			var row: int = listed[at]
 			var reach: int = detect[rows_type[row]]
-			if rows_owner[row] != player or reach <= 0 or rows_hp[row] <= 0:
-				continue
 			checks += 1
 			var dx: int = xs[row] - point_x
 			var dy: int = ys[row] - point_y

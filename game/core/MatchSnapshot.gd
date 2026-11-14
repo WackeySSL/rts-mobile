@@ -441,6 +441,35 @@ func placement_input() -> PlacementInput:
 	return input
 
 
+## The mines `player` may draw (ADR 0037 section 8; the one reader of the mine columns): its own
+## (`own_cell`, `own_armed`, the tick each arms, ascending mine id) and the ones it found
+## (`known_cell`, `known_owner`, the order of its records). A mine it has not found is in neither.
+func mines_for(player: int) -> Dictionary:
+	var own_cell: PackedInt32Array = PackedInt32Array()
+	var own_armed: PackedInt32Array = PackedInt32Array()
+	var known_cell: PackedInt32Array = PackedInt32Array()
+	var known_owner: PackedInt32Array = PackedInt32Array()
+	var live: int = mini(
+		mine_count, mini(mine_owner.size(), mini(mine_cell.size(), mine_armed_tick.size()))
+	)
+	for index: int in live:
+		if mine_owner[index] == player:
+			own_cell.append(mine_cell[index])
+			own_armed.append(mine_armed_tick[index])
+	if player >= 1 and player < mine_seen_count.size() and mine_known_cap >= 1:
+		var first: int = player * mine_known_cap
+		var count: int = clampi(mine_seen_count[player], 0, mine_known_cap)
+		if first + count <= mini(mine_seen_cell.size(), mine_seen_owner.size()):
+			known_cell = mine_seen_cell.slice(first, first + count)
+			known_owner = mine_seen_owner.slice(first, first + count)
+	return {
+		&"own_cell": own_cell,
+		&"own_armed": own_armed,
+		&"known_cell": known_cell,
+		&"known_owner": known_owner,
+	}
+
+
 ## Copies the World's tick into this snapshot, whose `match_serial` the caller has set. `previous`
 ## is the last published snapshot, or null: when it is null or of another match, prev = current,
 ## as copies (O(1)), so a test that writes this snapshot's pos_* or proj_* to set up a view case

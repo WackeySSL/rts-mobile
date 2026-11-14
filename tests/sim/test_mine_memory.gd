@@ -6,30 +6,6 @@ extends "res://tests/sim/support/mine_suite.gd"
 ## `support/mine_suite.gd`.
 
 
-## A World where the tank (type 1) and the aware row (type 3) detect at 2,000.
-func _seeing_world(cap: int = 4) -> World:
-	var world: World = _world(cap)
-	world.type_detect_milli[TANK] = 2000
-	world.type_detect_milli[AWARE] = 3000
-	return world
-
-
-## Moves the clock to the next fog turn of `player` and runs MEMORY alone (no sim step).
-func _turn(world: World, player: int) -> void:
-	world.tick += 1
-	while (world.tick - player + 1) % world.fog_period_ticks != 0:
-		world.tick += 1
-	world.stats.fill(0)
-	MineMemory.run(world)
-
-
-func _seen(world: World, player: int) -> Array[int]:
-	var ids: Array[int] = []
-	for record: int in world.mine_seen_count[player]:
-		ids.append(world.mine_seen_id[player * world.mine_known_cap + record])
-	return ids
-
-
 func test_a_detector_within_range_of_a_seen_enemy_mine_remembers_it_and_counts_the_test() -> void:
 	var world: World = _seeing_world()
 	_add(world, 1, TANK, 5, 5)
