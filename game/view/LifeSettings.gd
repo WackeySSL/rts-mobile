@@ -306,6 +306,10 @@ var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"rene
 	&"arcline_gun": 13.0,
 	&"burst_stack_gun": 13.0,
 	&"sky_needle_gun": 13.0,
+	&"torchjet_gun": 13.0,
+	&"glint_gun": 13.0,
+	&"drillhead_bombs": 13.0,
+	&"sunfall_bombs": 13.0,
 }
 @export var muzzle_smoke_rise_px: float = 10.0
 @export var muzzle_smoke_drift_px: float = 4.0

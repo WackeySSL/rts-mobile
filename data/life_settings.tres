@@ -153,12 +153,16 @@ muzzle_reach_px = Dictionary[StringName, float]({
 &"artillery_gun": 13.0,
 &"breaker_rocket": 13.0,
 &"burst_stack_gun": 13.0,
+&"drillhead_bombs": 13.0,
+&"glint_gun": 13.0,
 &"heavy_cannon": 13.0,
 &"redoubt_gun": 13.0,
 &"rifle": 13.0,
 &"rocket": 13.0,
 &"sky_needle_gun": 13.0,
+&"sunfall_bombs": 13.0,
 &"tank_cannon": 31.0,
+&"torchjet_gun": 13.0,
 &"turret_gun": 13.0
 })
 muzzle_smoke_rise_px = 10.0
