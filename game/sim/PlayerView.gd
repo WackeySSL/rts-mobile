@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 class_name PlayerView
 extends RefCounted
 ## One player's legal view of a World (ADR 0020 section 1, plan row P78): what that player may know
@@ -14,8 +15,9 @@ extends RefCounted
 ##   take. It is only good for the tick the view was made on (the table compacts when a row dies).
 ## - Per-row getters. The public columns (`row_id`, `row_owner`, `row_type`, `row_pos`, `row_hp`,
 ##   `row_build_left`: a seen site is visible state, ADR 0026 section 8) of an own or a seen row;
-##   the own columns (`row_order`, `row_home`, and `row_mend`, an own building's repair switch, ADR
-##   0037 section 4; `_row_harvest_mode` is private, no game code reads it) of an own row only. Any
+##   the own columns (`row_order`, `row_home`, `row_mend`, an own building's repair switch, ADR
+##   0037 section 4, and `row_stance`, an own row's hold position, section 15; `_row_harvest_mode`
+##   is private, no game code reads it) of an own row only. Any
 ##   other row, a row index outside the table and an own column of an enemy row all answer MISSING
 ##   (`row_pos` as (MISSING, MISSING)), as if the row did not exist. `row_of(id)` is the way back
 ##   from an id and answers MISSING for an id the player does not see.
@@ -240,6 +242,7 @@ var _home: PackedInt32Array = PackedInt32Array()
 var _ready_tick: PackedInt32Array = PackedInt32Array()
 var _offline_until: PackedInt32Array = PackedInt32Array()
 var _cargo: PackedInt32Array = PackedInt32Array()
+var _stance: PackedInt32Array = PackedInt32Array()
 var _shown: PackedByteArray = PackedByteArray()
 var _public: Array[PackedInt32Array] = []
 ## The type ids (a copy: the World's own typed array is shared by reference), and the dock offsets
@@ -354,6 +357,12 @@ func row_mend(row: int) -> int:
 	if _level(row) != _OWN or _entry(type_foot_w, _type[row]) < 1:
 		return MISSING
 	return _cargo[row]
+
+
+## An own row's stance (ADR 0037 section 15): 0 normal, 1 hold position; MISSING for a row that is
+## not the player's own, so an enemy's stance is never read.
+func row_stance(row: int) -> int:
+	return _stance[row] if _level(row) == _OWN else MISSING
 
 
 ## Whether the head of the STRUCTURES queue is built and waits for a PLACE: the condition
@@ -564,6 +573,7 @@ func _take_rows(world: World) -> void:
 	_ready_tick = world.ready_tick
 	_offline_until = world.offline_until
 	_cargo = world.cargo
+	_stance = world.stance
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows

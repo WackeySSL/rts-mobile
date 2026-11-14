@@ -48,6 +48,7 @@ void SimKernels::targeting(Object *world) const {
 	const Borrowed<const int32_t> type_index = access.read_i32(world, ID_WORLD_type_index);
 	const Borrowed<const int32_t> pos_x = access.read_i32(world, ID_WORLD_pos_x);
 	const Borrowed<const int32_t> pos_y = access.read_i32(world, ID_WORLD_pos_y);
+	const Borrowed<const int32_t> stance = access.read_i32(world, ID_WORLD_stance);
 	const Borrowed<const int32_t> type_speed = access.read_i32(world, ID_WORLD_type_speed);
 	const Borrowed<const int32_t> type_armour = access.read_i32(world, ID_WORLD_type_armour);
 	const Borrowed<const int32_t> type_acquire = access.read_i32(world, ID_WORLD_type_acquire);
@@ -81,6 +82,7 @@ void SimKernels::targeting(Object *world) const {
 	rows.type_index = type_index.view;
 	rows.pos_x = pos_x.view;
 	rows.pos_y = pos_y.view;
+	rows.stance = stance.view;
 	rows.goal_x = goal_x.view;
 	rows.goal_y = goal_y.view;
 	rows.order = order.view;

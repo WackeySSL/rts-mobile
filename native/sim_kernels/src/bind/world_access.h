@@ -139,6 +139,7 @@ struct Entry {
 	X(WORLD, goal_y, I32, ROWS, PH_T | PH_I) \
 	X(WORLD, group_cell, I32, ROWS, PH_I) \
 	X(WORLD, order, I32, ROWS, PH_T | PH_I) \
+	X(WORLD, stance, I32, ROWS, PH_T) \
 	X(WORLD, hp, I32, ROWS, 0) \
 	X(WORLD, order_target, I32, ROWS, PH_T) \
 	X(WORLD, target, I32, ROWS, PH_T) \

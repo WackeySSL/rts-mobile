@@ -28,8 +28,8 @@ extends SceneTree
 ## Format 7 (P262, ADR 0036 sections 3 and 8) changes no record name either: the row column
 ## `carry_mode` and the passenger table are read by no kernel, so no record carries them.
 ## P286 (ADR 0037, exception 25) stayed on format 7: `stance`, the mine table and the mine records
-## are read by no kernel yet either (P298 adds `stance` to TARGETING's records), so the dump of a
-## format-7 world is generated from the new layout with the same records.
+## were read by no kernel then; P298 adds `stance` to TARGETING's records (world.stance, I), so the
+## dump of a format-7 world holds one record more and the harness reads one without it as stance 0.
 ## What a kernel needs goes in under the names below; a later kernel (P41n, P42n, P46n) adds its
 ## records in a function of its own here and its case in native/sim_kernels/sanitizer/.
 ##   world.unit_count, world.flow_cells_per_tick (S), world.field, world.move_cost (I, B)
@@ -59,7 +59,7 @@ extends SceneTree
 ##   world.retarget_period_ticks, target.cols, target.rows, target.cell_milli (S);
 ##   world.owner, .order_target, .target, .type_armour, .type_acquire, .type_weapon,
 ##   .weapon_range, .weapon_min_range, .weapon_vs_armour, .type_layer_bit, .weapon_targets,
-##   target.head, target.next (I). The
+##   .stance (P298), target.head, target.next (I). The
 ##   target.* records are a grid built afresh from the dumped positions, as the sep.* ones are.
 ##
 ## The FOG kernel (P46n) reads the unit_id, owner, type_index, pos_x, pos_y and tick records of the
@@ -131,7 +131,8 @@ const TARGETING_COLUMNS: Array[StringName] = [
 	&"weapon_min_range",
 	&"weapon_vs_armour",
 	&"type_layer_bit",
-	&"weapon_targets"
+	&"weapon_targets",
+	&"stance"
 ]
 ## The FogGrid members that the FOG kernel reads or writes: its sizes, and its Packed int32 arrays
 ## (the visible counts, the version, the dirty lists and the masks).

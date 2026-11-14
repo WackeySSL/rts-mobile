@@ -47,7 +47,7 @@ namespace targeting {
 // The per-row columns of the World that the pass reads or writes (World.ROW_ARRAYS). A row is an index in ascending id
 // order, and every column has one entry per row.
 struct Rows {
-	ArrayView<const int32_t> unit_id, owner, type_index, pos_x, pos_y;
+	ArrayView<const int32_t> unit_id, owner, type_index, pos_x, pos_y, stance;
 	ArrayView<int32_t> goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall;
 };
 

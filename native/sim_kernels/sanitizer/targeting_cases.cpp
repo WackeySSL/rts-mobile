@@ -38,7 +38,7 @@ struct State {
 	targeting::Rules rules;
 	int64_t map_cols = 0, map_rows = 0;
 	int64_t cols = 0, rows = 0, cell_milli = 4000;
-	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall;
+	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, goal_x, goal_y, order, order_target, target, nav_mode, nav_cell, field, nav_next, best_dist, stall, stance;
 	std::vector<int32_t> speed, armour, acquire, weapon, move_class, layer_bit, range, min_range, vs_armour, targets;
 	std::vector<uint8_t> move_cost;
 	std::vector<int32_t> head, next;
@@ -70,12 +70,14 @@ void rebuild(State &state) {
 
 // One call of the TARGETING kernel: the counts it adds to stats.
 targeting::Counts call(State &state) {
+	state.stance.resize(state.unit_id.size(), 0); // a hand-built scene that names no stance holds nobody (P298)
 	targeting::Rows rows;
 	rows.unit_id = cview(state.unit_id);
 	rows.owner = cview(state.owner);
 	rows.type_index = cview(state.type_index);
 	rows.pos_x = cview(state.pos_x);
 	rows.pos_y = cview(state.pos_y);
+	rows.stance = cview(state.stance);
 	rows.goal_x = view(state.goal_x);
 	rows.goal_y = view(state.goal_y);
 	rows.order = view(state.order);
@@ -182,6 +184,8 @@ State from_dump(const Dump &dump) {
 	// The layer tables (P238) are in the dumps of format 6 on; an older dump gets ground masks, like a padded weapon.
 	state.layer_bit = dump.has_ints("world.type_layer_bit") ? dump.ints("world.type_layer_bit") : std::vector<int32_t>(state.armour.size(), LAYER_GROUND);
 	state.targets = dump.has_ints("world.weapon_targets") ? dump.ints("world.weapon_targets") : std::vector<int32_t>(state.range.size(), LAYER_GROUND);
+	// The stance column (P298, ADR 0037 section 15) is in the dumps that hold TARGETING's records from P298 on; an older dump holds nobody.
+	state.stance = dump.has_ints("world.stance") ? dump.ints("world.stance") : std::vector<int32_t>(state.unit_id.size(), 0);
 	state.move_cost = dump.bytes("world.move_cost");
 	state.visible = dump.ints("fog.visible");
 	state.fog.cols = dump.scalar("fog.cols");
@@ -197,7 +201,7 @@ State from_dump(const Dump &dump) {
 	state.rules.retarget_period_ticks = dump.scalar("world.retarget_period_ticks");
 	state.rules.line_check_period_ticks = dump.scalar("world.line_check_period_ticks");
 	const size_t units = state.unit_id.size();
-	for (const std::vector<int32_t> *column : { &state.owner, &state.type_index, &state.pos_x, &state.pos_y, &state.goal_x, &state.goal_y, &state.order, &state.order_target, &state.target, &state.nav_mode, &state.nav_cell, &state.field, &state.nav_next, &state.best_dist, &state.stall }) {
+	for (const std::vector<int32_t> *column : { &state.owner, &state.type_index, &state.pos_x, &state.pos_y, &state.goal_x, &state.goal_y, &state.order, &state.order_target, &state.target, &state.nav_mode, &state.nav_cell, &state.field, &state.nav_next, &state.best_dist, &state.stall, &state.stance }) {
 		if (column->size() != units) {
 			throw std::runtime_error("a row column of the dump does not have one entry per unit");
 		}
@@ -387,6 +391,7 @@ State make_scene(Stream &stream, int64_t cols, int64_t rows, int64_t units) {
 		state.nav_next.push_back(static_cast<int32_t>(stream.next(3) - 2));
 		state.best_dist.push_back(static_cast<int32_t>(stream.next(100)));
 		state.stall.push_back(static_cast<int32_t>(stream.next(5)));
+		state.stance.push_back(row % 3 == 0 ? 1 : 0); // a third of the rows hold (P298)
 	}
 	return state;
 }
@@ -517,6 +522,7 @@ void hostile_references(Tally &tally) {
 			state.type_index[row] = hostile[(row + shift) % std::size(hostile)];
 			state.owner[row] = hostile[(row + 3 * shift) % std::size(hostile)];
 			state.order[row] = hostile[(row + 5 * shift) % std::size(hostile)];
+			state.stance[row] = hostile[(row + 2 * shift) % std::size(hostile)];
 		}
 		for (size_t type = 0; type < state.weapon.size(); type++) {
 			state.weapon[type] = hostile[(type + shift) % std::size(hostile)];
