@@ -227,7 +227,9 @@ and P288, P298; a field they add is a copy, ADR 0038 §4); `MatchSnapshot.gd` (P
   at 11 of 12 give one mine; `MINE_CHECKS` at most rows per tick plus detectors x mines on fog
   turns; 0 with no mine.
 - **P293:** an unknown enemy mine is in no snapshot list and never drawn (a test on a snapshot);
-  `MineLayer` is under `GroundFx` in the tree.
+  `MineLayer` is under `GroundFx` in the tree. (2026-11-14, P26bx; P288 keeps the snapshot
+  player-agnostic) Read "in no snapshot list" as: an unknown enemy mine is in no list `MineLayer`
+  builds and is never drawn; view code reads mines only through `MatchSnapshot.mines_for`.
 - **P295/P295b/P300:** the fairness cases (P296) pass; each new unit type is built in at least half
   of the balance run's matches.
 - **P298:** the lockstep cases pass under twin and kernel; with every stance 0 no golden moves.

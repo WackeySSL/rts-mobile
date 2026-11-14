@@ -989,6 +989,12 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   - **The forecast.** The +2 (hulls at z 20, shadows at z 2) is pinned by
     `tests/view/test_air_layer_batch.gd`. `PerfBases`' constants are P216's and stay as they are.
 
+- **P26bx note (2026-11-14, the lead; P244 as built; changes no accepted text above).** Since P244 a
+  flyer is pickable round its lifted centre, and it gets the selection ring and a health bar,
+  while selected or after a hit, at the lifted hull, hidden by fog as a ground unit's are. "The
+  bomber's attack ring" of P244's row is this selection ring, shown while it attacks; the attack
+  diamond keeps its ground size (P244's footprint widening was reverted).
+
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
   aircraft, vehicles and programmes, from the architect's knowledge. "No known hit" is not a

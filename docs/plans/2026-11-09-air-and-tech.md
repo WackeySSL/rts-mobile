@@ -190,7 +190,8 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P241b | GD | REPAIR Command (7) for the airfield role, repair on the pad and its price, the shared repair-role contract test | 180 | P241 |
 | P242 | GD | Airfield, fighter and bomber data, both factions (`.tres`, weapons, rosters); HOW_TO_PLAY Units, Orders and Buildings rows (Teach: go home, reload). (2026-11-13, P26bw) Data only, the P239 pattern: the roster entries, the item cards, the HOW_TO_PLAY rows and the rewrite of the rupture row (the P26bt note) move to P245 (fighter, bomber) and P245b (airfield). The bomber's weapon `range` and `acquire_range` are 3.0 tiles, not 2.5 (the lead's fix; the GDD's note of this date) | 120 | P241b, P230 |
 | P243 | GD | View: `AirLayer` z 20, shadows z 2, `fly_px`, bob, death fall, enemy flyers only where seen, page 2; draw-call guard +2. Split trigger (over ~400): P243b takes the bob and the death fall | 350 | P237, P242 |
-| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P307 | TUX | (2026-11-14, P26bx; added by the lead) Split `UnitLayer.gd` (1000 lines, the gdlint limit) before P244: the picking side moves to the static `UnitPick.gd`, UnitLayer delegates | 110 | P243 |
+| P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab. (2026-11-14, P26bx) "The bomber's attack ring" is the bomber's own selection ring (ADR 0036 §15); the rest of the as-built rules are in the P26bx note | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes); P307 (2026-11-14, P26bx) |
 | P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow). (2026-11-13, P26bw) Also, from P242: the fighters' and bombers' roster entries and item cards, the HOW_TO_PLAY Units and Orders rows (Teach: go home, reload), and the rewrite of HOW_TO_PLAY's rupture row (it hits ground rows only) | art | P237; P243 (2026-11-12, P26br: its `page_of` re-key first); P242 (2026-11-13, P26bw) |
 | P245b | ART | Airfield models, both factions (pads, damage stages). (2026-11-13, P26bw) Also, from P242: the airfields' roster entries and item cards and the HOW_TO_PLAY Buildings rows. It may land before or beside the trim rows P305 and P306 | art | P237; P242 (2026-11-13, P26bw) |
 | P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241; P246a (2026-11-13, P26bv) |
@@ -213,7 +214,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P263 | GD | `Carry.gd`: LOAD (5), boarding in REMOVE (`hp` 0 with `build_left` = `Carry.BOARDED`, DIED flag 2 at index 6, `count_losses` skips it), passengers in `unit_cap` | 300 | P262 |
 | P263b | GD | UNLOAD (6), unloading in ECONOMY (ring search, `insert_row` refusal keeps the squad aboard, `UNLOADED` event), the carrier's death | 250 | P263 |
 | P264 | GD | Transport and drone squad data, both factions (drone squads `low_flying`, INFANTRY tab, requires the airfield); HOW_TO_PLAY rows (Teach: load and unload). (2026-11-13, P26bw) Data only, the P239 pattern: the roster entries, the item cards and the HOW_TO_PLAY rows (Teach: load and unload) move to P266 | 120 | P263b, P230; P242 (2026-11-13, P26bw) |
-| P265 | TUX | The "Board" button and its aim (tap an own transport = LOAD), the "Unload" button and its aim (chevron, check mark, X), passenger pips on the chip; `PlayerController` skips DIED flag 2 for groups 1-3 and drops it only from the live selection, with a test that a group refills after the unload; six sizes. Split trigger (over ~400): P265b takes the controller change | 350 | P264 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P265 | TUX | The "Board" button and its aim (tap an own transport = LOAD), the "Unload" button and its aim (chevron, check mark, X), passenger pips on the chip; `PlayerController` skips DIED flag 2 for groups 1-3 and drops it only from the live selection, with a test that a group refills after the unload; six sizes. Split trigger (over ~400): P265b takes the controller change. (2026-11-14, P26bx) P265 and P265b are held for P244 and an integration change (the P26bx note) | 350 | P264 (2026-11-09: the skill text is accepted and applied, Michael's yes); P244 (2026-11-14, P26bx) |
 | P266 | ART | Transport models (16 directions) and drone squads (8 directions), both factions. (2026-11-13, P26bw) Also, from P264: the transports' and drone squads' roster entries and item cards and the HOW_TO_PLAY rows (Teach: load and unload) | art | P237; P264, P243 (2026-11-13, P26bw): the data first, and the transports' hulls go on page 2 by P243's `page_of` |
 | P267 | AI | Drops (Normal and Hard: load `drop_squads`, unload beside a seen or ghost refinery, away from seen anti-air), drone squads harass across cliffs | 300 | P264; P266 (2026-11-13, P26bw) |
 | P268 | LEAD | 1.2 harness types (20), gate run, phone check, docs. (2026-11-09) It is the **Phase 4b gate** with ADR 0037's P297: harness types 26, the ADR 0031 gate run on held-out seeds, Michael's phone check, the ROADMAP gate box | docs | P265-P267; ADR 0037's P296, P299 and P300 (P297 joins this run) |
@@ -251,7 +252,7 @@ If P245b or P249 costs more than the space centre did (334 rows a pair), the 3,8
 - **D (GD data):** P234 after P233, P239 after P238, P242 after P241b, P247 after P246. P247 and
   P264 after P242 (2026-11-13, P26bw).
 - **V (GD view):** P243 after P237 and P242.
-- **T (TUX):** P235 -> P244 -> P248.
+- **T (TUX):** P235 -> P244 -> P248. (2026-11-14, P26bx) P307 after P243 and before P244.
 - **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order. (2026-11-12, P26br)
   P245 after P243; P202 (visual polish) before the next of P239b, P245b and P249.
 - **I (AI):** P250 -> P251 and P252.
@@ -706,3 +707,40 @@ of the same day):
 - **Wording for Michael's yes** (ADR 0038's Consequences): one bullet of `.claude/agents/ai-dev.md`,
   and the AI bullet and the Threading section of `rts-sim-conventions`. The lead asks after P303 has
   merged. CLAUDE.md needs no change.
+
+Note (2026-11-14, P26bx, the lead; from the wave-10 reviews of P307, P302, P303, P288, P306, P253
+and P244):
+- **P307** (a new row above, added by the lead): `UnitLayer.gd` was at gdlint's 1000 lines, so the
+  picking side moved to the static `UnitPick.gd` before P244, with `UnitLayer` delegating.
+- **P244 as built.**
+  - "The bomber's attack ring" in the row means the bomber's own selection ring (ADR 0036 §15),
+    shown while it attacks. The generic footprint widening of the attack diamond was reverted: the
+    row did not ask for it, and it changed the feedback of tanks and squads.
+  - Flyers get the selection ring and a health bar, while selected or after a hit, at the lifted
+    hull, and hidden by fog like a ground unit's.
+  - The Flight tab shows when the faction's list holds aircraft, with its cards locked until there
+    is an airfield. A faction with no aircraft has three tabs. The names rule for four tabs is in
+    the `touch-ui-rules` drawer bullet (Michael's yes, 2026-11-14).
+  - Home shows only when a selected row can go home, so it is never a button that sends nothing.
+- **P253 as built.** The arena's frozen anti-air weapons are its own copies. Its Burst Stacks have
+  Power Plants and stand under the bomber route. Air activity ends around tick 600, and the bounds
+  pin the real values.
+- **P306 as built.** Only page 1 is trimmed. The flyers and the shadows on page 2 stay untrimmed, as
+  ADR 0036 §15's P243 note says.
+- **P288 as built.** The snapshot stays player-agnostic (ADR 0012). It has one filtering reader,
+  `MatchSnapshot.mines_for(player)`, guarded by a purity test (P288's note in ADR 0037 §8).
+  **P293's acceptance is reworded** (the ground-support plan, same date): from "an unknown enemy
+  mine is in no snapshot list" to "an unknown enemy mine is in no list `MineLayer` builds and is
+  never drawn; view code reads mines only through `mines_for`".
+- **P265 and P265b are held.** They wait for P244's raised picking (their carry tests need a flyer
+  that is pickable and has a rig) and then get an integration change: the carrier pick goes through
+  raised picking, and `CarryMarkLayer`'s ring follows the `AirLayer` rig.
+- **Lead follow-ups (not rows yet):**
+  - `ci.yml`'s `^PERF air` grep, so the line reaches the job summary, with its
+    `test_ci_workflow.gd` case: a release-engineer row, as P96 was for P93.
+  - Split `game/view/art_gallery.gd`, at exactly 1000 lines after P244, before the next gallery
+    edit; the art rows P245, P245b, P249 and P266 need it.
+  - A command-bar overflow cue (a fade at the edge) for TUX: on the 320 dp phone upright, Home sits
+    past the edge with no cue.
+  - HOW_TO_PLAY's "Tap BUILD" row says that with four tabs only the open tab shows its name; it
+    should say "where the names do not all fit", as the "Tap a tab" row and the skill do.
