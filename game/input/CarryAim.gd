@@ -12,7 +12,7 @@ extends Node
 ## placement or the strike aim begins; beginning it ends both of those (one mode owns the taps).
 
 signal changed  ## The mode, the ringed carrier or the point changed.
-signal refused  ## A Board tap that is not an own carrier with a free seat.
+signal refused  ## A tap the aim refuses: no carrier with a seat (Board), an own thing (Unload).
 
 enum Mode { NONE, BOARD, UNLOAD }
 
@@ -72,15 +72,14 @@ func toggle(want: Mode) -> bool:
 		return false
 	if not can_begin(want):
 		return false
-	var snap: MatchSnapshot = runner.snapshot
+	mode = want  # First: the command bar keeps its slot through the swap of modes.
+	carrier_id = 0
+	has_point = false
+	_serial = runner.snapshot.match_serial
 	if placement != null:
 		placement.cancel()
 	if strike_aim != null:
 		strike_aim.cancel()
-	mode = want
-	carrier_id = 0
-	has_point = false
-	_serial = snap.match_serial
 	changed.emit()
 	return true
 
@@ -98,6 +97,12 @@ func pick_carrier(id: int) -> bool:
 	carrier_id = id
 	changed.emit()
 	return true
+
+
+## A tap the aim does not take (an own unit or building during Unload): the view shakes the button.
+func refuse() -> void:
+	if mode != Mode.NONE:
+		refused.emit()
 
 
 ## Unload: sets the point to ground point `ground` (milli-tiles), held inside the map.

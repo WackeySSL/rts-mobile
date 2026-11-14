@@ -195,12 +195,13 @@ controller = NodePath("../PlayerController")
 placement = NodePath("../PlacementController")
 strike_aim = NodePath("../StrikeAim")
 
-[node name="CarryMarkLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim")]
+[node name="CarryMarkLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim", "unit_layer")]
 z_index = 65
 z_as_relative = false
 script = ExtResource("94_carry_marks")
 runner = NodePath("../MatchRunner")
 aim = NodePath("../CarryAim")
+unit_layer = NodePath("../UnitLayer")
 
 [node name="StrikeAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller")]
 script = ExtResource("32_aim")

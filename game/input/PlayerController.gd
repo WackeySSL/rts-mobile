@@ -49,8 +49,6 @@ signal selection_changed(ids: PackedInt32Array)
 ## sent, in milli-tiles. `RallyLayer` shows the flag at once, before the sim has applied the order.
 signal rally_ordered(tab: int, x: int, y: int)
 
-const DIED_FLAG_AT: int = 6  ## The seventh int of a DIED record (`Removal.run`).
-
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
 @export var building_layer: BuildingLayer  ## Without one no building can be picked.
@@ -330,7 +328,7 @@ func _on_ticked(_tick: int) -> void:
 			unloaded = true
 		elif events[at] != World.Event.DIED:
 			continue
-		elif events[at + DIED_FLAG_AT] == Removal.FLAG_BOARDED:
+		elif events[at + Removal.DIED_FLAG_AT] == Removal.FLAG_BOARDED:
 			_boarded.append(events[at + 1])  # Aboard a carrier: out of the live selection only.
 		else:
 			_dead.append(events[at + 1])
@@ -363,16 +361,39 @@ func _on_map(ids: PackedInt32Array) -> PackedInt32Array:
 	return live
 
 
-## A tap with the Board or Unload aim open: Unload sets the point, Board rings the own unit tapped
-## (the aim refuses any but a carrier with a free seat; a tap on nothing or a building is refused).
+## A tap with the Board or Unload aim open (P265). Only own units and buildings are candidates: an
+## enemy under the finger never steals the tap. Board rings the own carrier that can take squads (it
+## wins over any other own unit the tap also hits; any other tap is refused with no Command).
+## Unload refuses a tap on an own unit or building (a shake, no point) and sets the point anywhere
+## else.
 func _carry_tap(pos: Vector2) -> void:
-	if carry_aim.mode == CarryAim.Mode.UNLOAD:
-		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))
+	_refresh()
+	var snap: MatchSnapshot = runner.snapshot
+	var player: int = _local_player()
+	var carrier: int = 0  # The nearest own carrier with a free seat the tap hits.
+	var carrier_d2: float = INF
+	var own: bool = false  # An own unit or building lies under the finger.
+	for index: int in _snap.size():
+		var skip: bool = index < _snap.pickable.size() and _snap.pickable[index] == 0
+		var d2: float = _snap.screen_pos[index].distance_squared_to(pos)
+		if skip or _snap.owners[index] != player or d2 > _snap.radius_px[index] ** 2:
+			continue
+		own = true
+		var row: int = snap.index_of(_snap.ids[index])
+		if row >= 0 and d2 < carrier_d2 and CarryRules.can_take_squads(snap, row, player):
+			carrier = _snap.ids[index]
+			carrier_d2 = d2
+	if carry_aim.mode == CarryAim.Mode.BOARD:
+		carry_aim.pick_carrier(carrier)
 		return
-	var hit: int = _pick(pos, true)
-	carry_aim.pick_carrier(
-		_snap.ids[hit] if hit >= 0 and _snap.owners[hit] == _local_player() else 0
+	var shape: int = Picker.pick_building(
+		_snap, pos, player, false, UiScale.dp(settings.hit_radius_dp)
 	)
+	own = own or (shape >= 0 and _snap.building_owners[shape] == player)
+	if own:
+		carry_aim.refuse()
+	else:
+		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))
 
 
 ## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in

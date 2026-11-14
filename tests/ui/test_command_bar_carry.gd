@@ -5,7 +5,8 @@ extends GdUnitTestSuite
 ## Board, a tap on an own carrier and the check mark send one LOAD; a tap on Unload, a tap on the
 ## ground and the check mark one UNLOAD; the check mark and the X stand beside the aimed point, at
 ## least 64 dp, inside the screen and clear of the bar. Rows (player 1 the local one): rifle squads
-## 1 and 2, a Skyhauler transport 3, a light tank 4, the enemy Headquarters 5.
+## 1 and 2, a Skyhauler transport 3, a light tank 4, the enemy Headquarters 5, an enemy squad 6 and
+## an own squad 7 on the carrier's tile, the own Headquarters 8.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -15,12 +16,21 @@ const SQUAD_A: int = 1
 const SQUAD_B: int = 2
 const CARRIER: int = 3
 const TANK: int = 4
+const ENEMY_HQ: int = 5
+const ENEMY_SQUAD: int = 6  ## Stands on the carrier's tile, so its pick disc covers the carrier.
+const NEAR_SQUAD: int = 7  ## An own squad on the carrier's tile.
+const OWN_HQ: int = 8
+const CARRIER_B: int = 9  ## A second transport.
 const SPAWNS: Array[Array] = [
 	[1, "rifle_squad", 14, 14],
 	[1, "rifle_squad", 15, 14],
 	[1, "fossil_transport", 10, 20],
 	[1, "light_tank", 14, 18],
 	[2, "renew_hq", 24, 24],
+	[2, "renew_rifle", 10, 20],
+	[1, "rifle_squad", 10, 20],
+	[1, "headquarters", 3, 3],
+	[1, "fossil_transport", 12, 20],
 ]
 const GROUND: Vector2i = Vector2i(20000, 10000)  ## Milli-tiles, a tile no row stands near.
 
@@ -71,6 +81,11 @@ func test_board_shows_for_squads_while_a_carrier_stands_and_unload_for_a_loaded_
 		for id: String in ["board", "unload"]:
 			var button: Button = _order(id)
 			(
+				assert_float(minf(button.size.x, button.size.y))
+				. override_failure_message(why + " " + id)
+				. is_greater_equal(UiScale.dp(48.0) - 0.5)
+			)
+			(
 				assert_float(button.get_combined_minimum_size().x)
 				. override_failure_message(why)
 				. is_greater_equal(UiScale.dp(48.0) - 0.5)
@@ -107,6 +122,23 @@ func test_a_loaded_carriers_chip_shows_its_seats_as_pips() -> void:
 		assert_array([pips.seats, pips.aboard]).override_failure_message(why).is_equal([seats, 2])
 		await _select([TANK])
 		assert_bool(pips.visible).override_failure_message(why).is_false()
+
+
+func test_pips_count_the_selected_carriers_own_squads_and_sum_a_fleets_seats() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	var snap: MatchSnapshot = _snap()
+	var seats: int = snap.type_carry_slots[snap.type_index[snap.index_of(CARRIER)]]
+	snap.pass_carrier = PackedInt32Array([CARRIER, CARRIER, CARRIER_B])
+	snap.pass_count = 3
+	for case: Array in [
+		[[CARRIER, CARRIER_B], 2 * seats, 3], [[CARRIER], seats, 2], [[CARRIER_B], seats, 1]
+	]:
+		await _select([])
+		await _select(case[0])
+		var pips: Control = _bar.find_child("Pips", true, false)
+		assert_array([pips.seats, pips.aboard]).override_failure_message(str(case)).is_equal(
+			[case[1], case[2]]
+		)
 
 
 func test_board_then_a_carrier_then_the_check_mark_sends_one_load_and_the_x_none() -> void:
@@ -162,6 +194,76 @@ func test_unload_then_the_ground_then_the_check_mark_sends_one_unload() -> void:
 		assert_int(_sent[0].type).is_equal(Command.Type.UNLOAD)
 		assert_array(Array(_sent[0].unit_ids)).is_equal([CARRIER])
 		assert_bool(_aim.is_active()).is_false()
+
+
+func test_an_enemy_under_the_finger_does_not_steal_the_tap_on_the_own_carrier() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	var snap: MatchSnapshot = _snap()
+	Rig.see(snap, 1, [Vector2i(10, 20), Vector2i(11, 21)])
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	var at: Vector2 = _screen_of(CARRIER)
+	var pick: PickSnapshot = _pick_snapshot(at)
+	var first: int = Picker.pick(pick, at, 1, true)  # The old call: an enemy wins when it is hit.
+	assert_int(pick.ids[first]).is_equal(ENEMY_SQUAD)
+	_tap_at(at)
+	assert_int(_aim.carrier_id).is_equal(CARRIER)
+	assert_int(_bar.shakes).is_equal(0)
+
+
+func test_an_own_squad_closer_than_the_carrier_does_not_steal_the_tap_either() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	var at: Vector2 = _screen_of(NEAR_SQUAD)
+	var pick: PickSnapshot = _pick_snapshot(at)
+	var closest: int = Picker.pick(pick, at, 1, false)
+	assert_int(pick.ids[closest]).is_equal(NEAR_SQUAD)
+	_tap_at(at)
+	assert_int(_aim.carrier_id).is_equal(CARRIER)
+
+
+func test_unload_refuses_an_own_unit_or_building_and_places_the_point_on_the_ground() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	_load(CARRIER, 1)
+	await _select([CARRIER])
+	_tap(_order("unload"))
+	_tap_at(_screen_of(TANK))
+	assert_array([_bar.shakes, _aim.has_point]).is_equal([1, false])
+	var node: Node2D = (_main.get_node("BuildingLayer") as BuildingLayer).building(OWN_HQ)
+	_camera().centre_on(node.position)
+	_tap_at(_camera().world_to_screen(node.position))
+	assert_array([_bar.shakes, _aim.has_point]).is_equal([2, false])
+	_camera().centre_on(IsoProjection.ground_to_px(GROUND.x, GROUND.y))
+	_tap_at(_camera().world_to_screen(IsoProjection.ground_to_px(GROUND.x, GROUND.y)))
+	assert_array([_bar.shakes, _aim.has_point]).is_equal([2, true])
+	assert_array(_sent).is_empty()
+
+
+func test_a_turn_of_the_phone_and_a_placement_that_begins_end_the_aim() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	assert_bool(_aim.is_active()).is_true()
+	get_window().size = ScreenSizes.PORTRAIT[0]
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_aim.is_active()).is_false()
+	_tap(_order("board"))
+	assert_bool(_aim.is_active()).is_true()
+	var placement: PlacementController = _main.get_node("PlacementController")
+	var hq: int = _snap().type_index[_snap().index_of(ENEMY_HQ)]
+	assert_bool(placement.begin(hq)).is_true()
+	assert_bool(_aim.is_active()).is_false()
+	assert_array(_sent).is_empty()
+
+
+func test_the_selection_changing_ends_the_aim_through_the_signal() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	await _select([TANK])
+	assert_bool(_aim.is_active()).is_false()
 
 
 ## The check mark and the X: at least 64 dp, inside the screen, clear of the bar and of each other.
@@ -231,6 +333,32 @@ func _tap_world(row: int) -> void:
 	units.fill_pick_snapshot(pick, UiScale.dp(_controller.settings.hit_radius_dp))
 	var gesture: GestureEvent = GestureEvent.new(GestureEvent.Kind.TAP)
 	gesture.position = pick.screen_pos[row]
+	_controller.handle_gesture(gesture)
+
+
+## The picture of row id `id` on the screen, the camera put on it.
+func _screen_of(id: int) -> Vector2:
+	var snap: MatchSnapshot = _snap()
+	var row: int = snap.index_of(id)
+	_camera().centre_on(IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row]))
+	return _pick_snapshot(Vector2.ZERO).screen_pos[_pick_index(id)]
+
+
+func _pick_snapshot(_at: Vector2) -> PickSnapshot:
+	var pick: PickSnapshot = PickSnapshot.new()
+	(_main.get_node("UnitLayer") as UnitLayer).fill_pick_snapshot(
+		pick, UiScale.dp(_controller.settings.hit_radius_dp)
+	)
+	return pick
+
+
+func _pick_index(id: int) -> int:
+	return _pick_snapshot(Vector2.ZERO).ids.find(id)
+
+
+func _tap_at(at: Vector2) -> void:
+	var gesture: GestureEvent = GestureEvent.new(GestureEvent.Kind.TAP)
+	gesture.position = at
 	_controller.handle_gesture(gesture)
 
 
