@@ -214,6 +214,8 @@ static func _land(world: World, player: int) -> void:
 	var type: int = rupture_type(world)
 	if type < 0:
 		return
+	if type < world.type_strike_radius.size():
+		Mines.clear_radius(world, point_x, point_y, world.type_strike_radius[type])  # No blast.
 	var weapon: int = world.type_strike_weapon[type]
 	if weapon < 0 or weapon >= world.weapon_damage.size() or weapon >= world.weapon_targets.size():
 		return

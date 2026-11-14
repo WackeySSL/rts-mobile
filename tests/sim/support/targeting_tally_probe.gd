@@ -212,9 +212,12 @@ func count() -> void:
 				continue
 			tally[&"sight_lost"] += int(enemy)
 			tally[&"fallbacks"] += 1
-			order = ATTACK_MOVE
+			order = IDLE if world.stance[row] == 1 else ATTACK_MOVE  # P298: a held row stops.
 			held = 0
-			want_order[row] = ATTACK_MOVE
+			if order == IDLE:
+				want_goal_x[row] = pos_x[row]
+				want_goal_y[row] = pos_y[row]
+			want_order[row] = order
 			want_order_target[row] = 0
 			want_target[row] = 0
 		if order != ATTACK_MOVE and order != IDLE:
@@ -229,7 +232,9 @@ func count() -> void:
 			tally[&"unarmed"] += 1
 			continue
 		tally[&"due"] += 1
-		var reach: int = type_acquire[type] if order == ATTACK_MOVE else weapon_range[weapon]
+		var reach: int = weapon_range[weapon]
+		if order == ATTACK_MOVE and world.stance[row] != 1:
+			reach = type_acquire[type]
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
@@ -418,6 +423,8 @@ func _count_engagement() -> void:
 				tally[&"retests"] += 1
 				_count_line(row, at, classes[type], max_x, max_y)
 			continue
+		if world.stance[row] == 1:
+			continue  # P298: a held row never chases, so tests no chase line.
 		var acquire: int = type_acquire[type]
 		if d2 <= acquire * acquire:
 			checks += 1

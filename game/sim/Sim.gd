@@ -17,14 +17,15 @@ const MILLI_PER_TILE: int = 1000
 ## pushed apart (SEPARATION), the steps and pushes are integrated, shells in flight move and those
 ## that arrive hit (PROJECTILES: `Combat.advance_projectiles`), armed units with a target in range
 ## fire (FIRE: `Combat.fire`, a hitscan hit or a new shell; a defence on low power keeps its target
-## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot, P110),
+## and waits; then `Strike.run` lands a due rupture, its damage lowering `hp` like a shot,
+## P110; then `Mines.run` blasts the triggered mines),
 ## dead rows leave (REMOVE: boarding squads first, `Carry.board`, then a dead carrier's squads,
 ## ejected or killed, `Carry.perish`) and their vision ends, then a
 ## space centre's sweep follows its building (REMOVE: `Reveal.run`, P233), the players whose turn it
 ## is move their fog (FOG: `FogUpdate.run`, every `fog_period_ticks`, after `FogUpdate.begin`
 ## emptied their
 ## dirty lists), the economy runs (ECONOMY: `Power.run`, `Harvest.run`, `Air.run`, `Carry.run`,
-## `Repair.run`, `Mend.run`), the
+## `Repair.run`, `Mend.run`, `Mines.lay`), the
 ## queues advance and the match outcome is checked (PRODUCTION: `Production.run`, `Outcome.run`),
 ## the last-seen records update (MEMORY: `LastSeen.run`; ADR 0017 section 5), and the tick counts.
 ## Of those modules `Power.run` rebuilds the derived row lists (P71) and sums the power made and
@@ -78,6 +79,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 		probe.mark(SimProbe.Phase.PROJECTILES)
 	Combat.fire(world)
 	Strike.run(world)  # A due rupture lands inside the FIRE mark (ADR 0023 section 10).
+	Mines.run(world)  # Triggered mines blast (ADR 0037 section 8).
 	if probe != null:
 		probe.mark(SimProbe.Phase.FIRE)
 	FogUpdate.begin(world)
@@ -96,6 +98,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	Carry.run(world)  # Unloading carriers; rebuilds the building lists after its inserts.
 	Repair.run(world)  # Ground repair buildings and medics (ADR 0037 sections 5 and 6).
 	Mend.run(world)
+	Mines.lay(world)  # Minelayers that have arrived start and finish a lay.
 	if probe != null:
 		probe.mark(SimProbe.Phase.ECONOMY)
 	Production.run(world)
@@ -110,7 +113,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 
 ## Applies a command of the right tick by type (ADR 0007 section 5), or drops and counts it. Every
 ## type needs a player in 1..player_count and at most MAX_PAYLOAD payload ints; a type without a
-## branch (NONE, 8-9, 19, 21-29, anything else) is dropped as unknown before any id rule runs.
+## branch (NONE, 19, 21-29, anything else) is dropped as unknown before any id rule runs.
 ## The Phase 3 types (ADR 0017 section 4) also need a player who is not defeated. Once the match has
 ## ended (`match_end_tick` above 0, P76) every command of any type is dropped. Each `_apply_*` and
 ## each module's `apply_*` is the ADR's per-type validation: it checks the ids through the shared
@@ -132,6 +135,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _apply_attack(world, command)
 			Command.Type.STOP:
 				applied = _apply_stop(world, command)
+			Command.Type.STANCE:
+				applied = _apply_stance(world, command)
 			Command.Type.LOAD:
 				applied = _playing(world, command) and Carry.apply_load(world, command)
 			Command.Type.UNLOAD:
@@ -156,6 +161,8 @@ static func _apply(world: World, command: Command) -> void:
 				applied = _playing(world, command) and Mend.apply_mend(world, command)
 			Command.Type.REPAIR:
 				applied = _playing(world, command) and Air.apply_repair(world, command)
+			Command.Type.LAY_MINE:
+				applied = _playing(world, command) and Mines.apply_lay(world, command)
 			Command.Type.SURRENDER:
 				applied = _playing(world, command) and Outcome.apply_surrender(world, command)
 	if not applied:
@@ -252,6 +259,20 @@ static func _apply_stop(world: World, command: Command) -> bool:
 	Movement.reset_nav(world, rows, World.NavMode.NONE)  # Also drops the flow field.
 	Harvest.release(world, rows)
 	Carry.release(world, rows)
+	return true
+
+
+## STANCE (ADR 0037 section 15): the payload is `[0]` (normal) or `[1]` (hold position); the own
+## mobile units take it in `world.stance`. It touches no order, so a held unit still obeys every
+## order, and STOP keeps it. A command with no valid unit is dropped.
+static func _apply_stance(world: World, command: Command) -> bool:
+	if command.payload.size() != 1 or (command.payload[0] != 0 and command.payload[0] != 1):
+		return false
+	var rows: PackedInt32Array = _own_rows(world, command, false)
+	if rows.is_empty():
+		return false
+	for row: int in rows:
+		world.stance[row] = command.payload[0]
 	return true
 
 

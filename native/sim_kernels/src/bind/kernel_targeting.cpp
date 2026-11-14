@@ -13,7 +13,8 @@
 // waves, the controls_test seeds, changed rules), _rules.gd (the cadences, the weapon roster, 64 x 64 maps, the empty grid), _cases.gd
 // (ties on a lattice, fallbacks, seeded random states, the vision cases) and _fog.gd (fogs whose sides do not make their cells, the
 // fog's player count, a layout other than the map's) in tests/sim/native/; aircraft rows and every weapon mask (P238):
-// test_targeting_lockstep_layers.gd there and tests/sim/test_target_layers.gd under both implementations. MIT.
+// test_targeting_lockstep_layers.gd there and tests/sim/test_target_layers.gd under both implementations; hold position (P298, the
+// `stance` column): tests/sim/test_stance.gd and test_targeting_lockstep_hold.gd. MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -48,6 +49,7 @@ void SimKernels::targeting(Object *world) const {
 	const Borrowed<const int32_t> type_index = access.read_i32(world, ID_WORLD_type_index);
 	const Borrowed<const int32_t> pos_x = access.read_i32(world, ID_WORLD_pos_x);
 	const Borrowed<const int32_t> pos_y = access.read_i32(world, ID_WORLD_pos_y);
+	const Borrowed<const int32_t> stance = access.read_i32(world, ID_WORLD_stance);
 	const Borrowed<const int32_t> type_speed = access.read_i32(world, ID_WORLD_type_speed);
 	const Borrowed<const int32_t> type_armour = access.read_i32(world, ID_WORLD_type_armour);
 	const Borrowed<const int32_t> type_acquire = access.read_i32(world, ID_WORLD_type_acquire);
@@ -81,6 +83,7 @@ void SimKernels::targeting(Object *world) const {
 	rows.type_index = type_index.view;
 	rows.pos_x = pos_x.view;
 	rows.pos_y = pos_y.view;
+	rows.stance = stance.view;
 	rows.goal_x = goal_x.view;
 	rows.goal_y = goal_y.view;
 	rows.order = order.view;
