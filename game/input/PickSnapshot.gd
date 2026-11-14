@@ -1,10 +1,10 @@
 class_name PickSnapshot
 extends RefCounted
 ## What the Picker needs to know about every unit, on or off screen, as parallel arrays in World
-## row order (ascending id). UnitLayer.fill_pick_snapshot() fills it and resizes the arrays in
-## place, so one snapshot can be refilled every frame without allocating. A hidden enemy (one the
-## local player's fog hides, P47) is in the arrays like any other unit, but its `pickable` entry is
-## 0, so no tap and no box reaches it.
+## row order (ascending id). UnitLayer.fill_pick_snapshot() (`UnitPick.fill`) fills it and resizes
+## the arrays in place, so one snapshot can be refilled every frame without allocating. A hidden
+## enemy (one the local player's fog hides, P47) is in the arrays like any other unit, but its
+## `pickable` entry is 0, so no tap and no box reaches it.
 ## The buildings (P115b) are in their own parallel arrays: `BuildingLayer.fill_pick_snapshot()`
 ## lists the ones it shows (the ones the fog hides are left out), and no box query reads them.
 
