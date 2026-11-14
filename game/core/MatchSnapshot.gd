@@ -362,6 +362,9 @@ var phase_usec: PackedInt64Array = PackedInt64Array()
 var step_usec: int = 0
 var job_usec: int = 0
 var think_usec: int = 0
+## The time the job blocked on the AI thread's batch in this tick's step 1 (ADR 0038 section 7);
+## 0 when it was ready, when none was in flight, and always in SYNC.
+var ai_wait_usec: int = 0
 var post_usec: int = 0
 var end_usec: int = 0
 

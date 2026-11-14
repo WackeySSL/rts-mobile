@@ -31,7 +31,7 @@ const CALLS_LINE: String = (
 const AI_WATCH_MS: float = 1.0
 const AI_LINE: String = (
 	"ai_think_p95_ms %.2f | ai_think_max_ms %.2f | ai_thinks %d | watch p95 at or below %.2f ms "
-	+ "(no verdict)"
+	+ "| ai_wait_p95_ms %.2f | ai_wait_max_ms %.2f | ai_waits %d (no verdict)"
 )
 
 
@@ -40,8 +40,10 @@ static func has_golden(kind: String) -> bool:
 	return kind != ARENA_AI
 
 
-static func ai_line(p95_ms: float, max_ms: float, thinks: int) -> String:
-	return AI_LINE % [p95_ms, max_ms, thinks, AI_WATCH_MS]
+static func ai_line(
+	p95_ms: float, max_ms: float, thinks: int, wait_p95_ms: float, wait_max_ms: float, waits: int
+) -> String:
+	return AI_LINE % [p95_ms, max_ms, thinks, AI_WATCH_MS, wait_p95_ms, wait_max_ms, waits]
 
 
 static func ticks(gate: PerfGateDef, kind: String) -> PackedInt32Array:
