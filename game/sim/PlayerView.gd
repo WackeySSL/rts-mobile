@@ -56,20 +56,17 @@ extends RefCounted
 ##   (`Tab`, `HarvestMode`, `Order`, `Layer`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`,
 ##   `ARMOUR_CLASSES`).
 ##
-## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
-## so an array the view takes from the World without copying is the World's own and live: it shows
-## the World's later writes, and a write through it would be the World's. So nothing a caller can
-## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
-## and last-seen records, the type tables, the type ids, and the seven arrays of `columns()`); the
-## row columns and the placement input, which a think reads a few rows of and so are not worth a
-## copy of the table, are aliases behind an underscore, read only by the getters below and written
-## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
-## costs seven reference counts a view; it is one copy per view, shared by every manager of a think,
-## and a write through it never reaches the World. A view, or a column taken from one, held across
-## a tick would make the World fork a whole array on its next write: a view is made, read and
-## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
-## slices do not, and a row index is good only for the tick it was made on (the table compacts when
-## a row dies). The per-row getters are for event cadence, not a per-tick loop.
+## Aliasing (ADR 0012 section 2, ADR 0038 section 4): GDScript passes a packed array by reference,
+## so an array taken from the World without copying is the World's own and live. The view holds
+## none: every array is a `duplicate()` made in `of` (the lists, the slices of the player's state
+## and last-seen records, the type tables, the type ids, the row columns behind the getters, the
+## placement input of `PlacementInput.copy_of_world`, and the seven arrays of `columns()`, which
+## are copies of their own). A copy of a packed array shares its storage until
+## one side writes, so a view costs reference counts, and the World forks an array on its next
+## write to it. So a view, or a column taken from one, is made, read and dropped within one think,
+## never kept across a tick, and a write to the World after `of` changes no answer of the view; a
+## row index is good only for the tick it was made on (the table compacts when a row dies). The
+## per-row getters are for event cadence, not a per-tick loop. A new field is a copy or an int.
 ##
 ## Hidden rows (plan row P198): `columns()` holds every row of the World. A caller indexes it only
 ## with a row of `own_rows` or `seen_rows` or a `row_of()` answer of 0 or more, as the getters do;
@@ -230,7 +227,7 @@ var upgrades: int = 0
 var unit_cap: int = 0
 var building_cap: int = 0
 
-## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
+## The row columns, copies of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
 var _ids: PackedInt32Array = PackedInt32Array()
 var _owner: PackedInt32Array = PackedInt32Array()
@@ -252,7 +249,7 @@ var _public: Array[PackedInt32Array] = []
 var _type_ids: Array[StringName] = []
 var _dock_x: PackedInt32Array = PackedInt32Array()
 var _dock_y: PackedInt32Array = PackedInt32Array()
-## What `Placement.reason` and `is_explored` read: its arrays are aliases too; it keeps no World.
+## What `Placement.reason` and `is_explored` read: its arrays are copies too; it keeps no World.
 var _input: PlacementInput = null
 
 
@@ -265,7 +262,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view.map_cols = world.map_cols
 	view.ore_cells = world.ore_cell.duplicate()
 	view.map_rows = world.map_rows
-	view._input = PlacementInput.of_world(world)
+	view._input = PlacementInput.copy_of_world(world)
 	view._take_tables(world)
 	view._take_player(world)
 	view._take_ghosts(world)
@@ -550,27 +547,27 @@ func _take_ghosts(world: World) -> void:
 	ghost_cell = world.ghost_cell.slice(first, first + count)
 
 
-## The one pass over the rows: aliases the columns, then sorts each row into `own_rows`,
-## `seen_rows` or neither, in ascending order, and records which in `_shown`. A row of another owner
-## is seen when the visible count of its cell is above 0 in the player's block, as
-## `Targeting.sees` says (the rule, inlined over aliased arrays); a player the fog has no block for
-## sees every row, as there. The lists are built in locals, so that the loop reads no member, and
-## stored last.
+## The one pass over the rows: copies the columns (one `duplicate()` each), then sorts each row
+## into `own_rows`, `seen_rows` or neither, in ascending order, and records which in `_shown`. A
+## row of another owner is seen when the visible count of its cell is above 0 in the player's
+## block, as `Targeting.sees` says (the rule, inlined over the copied columns); a player the fog
+## has no block for sees every row, as there. The lists are built in locals, so that the loop
+## reads no member, and stored last.
 @warning_ignore("integer_division")
 func _take_rows(world: World) -> void:
-	_ids = world.unit_id
-	_owner = world.owner
-	_type = world.type_index
-	_pos_x = world.pos_x
-	_pos_y = world.pos_y
-	_hp = world.hp
-	_build_left = world.build_left
-	_order = world.order
-	_harvest_mode = world.harvest_mode
-	_home = world.home
-	_ready_tick = world.ready_tick
-	_offline_until = world.offline_until
-	_cargo = world.cargo
+	_ids = world.unit_id.duplicate()
+	_owner = world.owner.duplicate()
+	_type = world.type_index.duplicate()
+	_pos_x = world.pos_x.duplicate()
+	_pos_y = world.pos_y.duplicate()
+	_hp = world.hp.duplicate()
+	_build_left = world.build_left.duplicate()
+	_order = world.order.duplicate()
+	_harvest_mode = world.harvest_mode.duplicate()
+	_home = world.home.duplicate()
+	_ready_tick = world.ready_tick.duplicate()
+	_offline_until = world.offline_until.duplicate()
+	_cargo = world.cargo.duplicate()
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows
@@ -626,6 +623,7 @@ func _take_rows(world: World) -> void:
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
+	# Separate copies: a caller's write through columns() must not reach the getters' columns.
 	_public = [
 		_ids.duplicate(),
 		_owner.duplicate(),
