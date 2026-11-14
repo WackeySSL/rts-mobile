@@ -17,7 +17,16 @@ enum MoveClass { FOOT = 0, WHEELED = 1, TRACKED = 2, AIR = 3 }
 enum Layer { GROUND = 1, AIR = 2, LOW_AIR = 4 }
 ## The kinds of `events` (ADR 0007 section 10). STRIKE (ADR 0027 section 7) is `[5, building id, x,
 ## y, Strike.Kind, owner, landing tick or 0, 0]`, written by an accepted SUPERWEAPON.
-enum Event { SPAWNED = 1, DIED = 2, SHOT = 3, IMPACT = 4, STRIKE = 5, UNLOADED = 6, REPAIRED = 8 }
+enum Event {
+	SPAWNED = 1,
+	DIED = 2,
+	SHOT = 3,
+	IMPACT = 4,
+	STRIKE = 5,
+	UNLOADED = 6,
+	MINE_BLAST = 7,
+	REPAIRED = 8
+}
 enum NavMode { NONE = 0, DIRECT = 1, FIELD = 2, HOLD = 3, CHASE = 4 }
 ## The production tabs (ADR 0017 section 3, ADR 0036 section 2): a queue, a rally point and a
 ## buildable type's `tab`. FLIGHT is the airfield's and RESEARCH the engineering centre's.
@@ -27,8 +36,8 @@ enum HarvestMode { IDLE = 0, SEEK = 1, MINE = 2, RETURN = 3, UNLOAD = 4 }
 ## The indexes of `stats`: flow cells settled, line checks, separation pairs tested, targeting
 ## candidates tested, fog cells stamped, projectile steps, rows moved by a compaction, ore cells
 ## looked at, exit cells walked and last-seen checks (ADR 0017 section 3) and the rows `Repair.run`
-## scanned (ADR 0037 section 13). The native kernels check `stats` against this size
-## (`STAT_COUNT` in bind/world_access.h).
+## scanned, the rows `Mines.run` looked up and the lays refused (ADR 0037 section 13). The native
+## kernels check `stats` against this size (`STAT_COUNT` in bind/world_access.h).
 enum Stat {
 	FLOW_CELLS = 0,
 	LINE_CHECKS = 1,
@@ -41,6 +50,8 @@ enum Stat {
 	EXIT_SCANNED = 8,
 	MEMORY_CHECKS = 9,
 	REPAIR_CHECKS = 10,
+	MINE_CHECKS = 11,
+	MINES_REFUSED = 12,
 }
 
 ## Same value as Sim.MILLI_PER_TILE, which P3 adds. World cannot read it from Sim (Sim reads World).

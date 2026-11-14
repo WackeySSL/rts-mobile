@@ -73,6 +73,8 @@ static func apply_load(world: World, command: Command) -> bool:
 	_go(world, PackedInt32Array([carrier]), gx, gy, 0)
 	world.carry_mode[carrier] = 0
 	_go(world, squads, gx, gy, command.target_id)
+	for row: int in squads:
+		world.carry_mode[row] = 0  # A LOAD ends a pending lay or unload of a squad, too.
 	Harvest.release(world, squads)
 	return true
 
