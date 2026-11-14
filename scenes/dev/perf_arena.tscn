@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://game/view/MapView.gd" id="4_map"]
 [ext_resource type="Script" path="res://game/view/GroundLayer.gd" id="20_ground"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="5_units"]
+[ext_resource type="Script" path="res://game/view/AirLayer.gd" id="93_air"]
 [ext_resource type="Script" path="res://game/view/HealthBarLayer.gd" id="6_bars"]
 [ext_resource type="Script" path="res://game/view/ProjectileLayer.gd" id="7_projectiles"]
 [ext_resource type="Script" path="res://game/view/EffectsLayer.gd" id="8_effects"]
@@ -121,6 +122,14 @@ y_sort_enabled = true
 z_index = 5
 z_as_relative = false
 script = ExtResource("32_ghosts")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+reveal_enemies = true
+
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+z_index = 20
+z_as_relative = false
+script = ExtResource("93_air")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 reveal_enemies = true

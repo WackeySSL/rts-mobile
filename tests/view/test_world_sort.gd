@@ -22,6 +22,7 @@ const TABLE: Dictionary[String, int] = {
 	"FogLayer": 4,
 	"GhostMemoryLayer": 5,
 	"WorldSort": 10,
+	"AirLayer": 20,
 	"HealthBarLayer": 30,
 	"ProjectileLayer": 40,
 	"EffectsLayer": 50,

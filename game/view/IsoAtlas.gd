@@ -19,9 +19,10 @@ extends RefCounted
 ## z 1, the rigs' shadow children at z 2) and lie on `PAGE_UNSORTED`, which frees about 900 rows of
 ## the sorted page and later takes the flyers. A region lies in the texels of ITS page: take the
 ## texture with `texture_at(base)` (what `WorldSort.show_base` does) or `texture_for(part)`, never
-## `texture()` for a part that may be on the other page. `page_of(part)` is keyed by the part only
-## (P243 re-keys it for the flyers' hulls). Region keys do not change, and one scale fits both pages
-## (the lower of the two `fit_scale` answers).
+## `texture()` for a part that may be on the other page. `page_of(part, flies)` is keyed by the part
+## and by whether its sheet is an aircraft's (`IsoSheetDef.flies`, P243): every part of a flyer's
+## sheet is on the unsorted page, because `AirLayer` is not in the y-sort. Region keys do not
+## change, and one scale fits both pages (the lower of the two `fit_scale` answers).
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
 ## packed table, a group of `frame_count` entries per (player, art id, part, direction), frame 0
@@ -151,9 +152,11 @@ static func planned_page(
 	return page_size(_canvases(plan, order), scale, _factors(plan, order))
 
 
-## Which page `part` is on: `PAGE_UNSORTED` for the parts of `UNSORTED_PARTS`, else `PAGE_SORTED`.
-static func page_of(part: StringName) -> int:
-	return PAGE_UNSORTED if part in UNSORTED_PARTS else PAGE_SORTED
+## Which page `part` is on: `PAGE_UNSORTED` for the parts of `UNSORTED_PARTS` and for every part of
+## an aircraft's sheet (`flies`), else `PAGE_SORTED`. `texture_for(part)` answers for a ground
+## sheet; a sprite of a flyer takes its texture from its region (`texture_at`).
+static func page_of(part: StringName, flies: bool = false) -> int:
+	return PAGE_UNSORTED if flies or part in UNSORTED_PARTS else PAGE_SORTED
 
 
 ## The texels per px of the 2x art a canvas of `canvas` px really has at `scale`, per axis: the
@@ -388,15 +391,16 @@ static func _collect_sheet(
 				plan.texts[slot] = baked
 				plan.sizes[slot] = sheet.frame_size(part)
 				plan.parts[slot] = part
+				plan.pages[slot] = page_of(part, sheet.flies())
 				plan.slots.append(slot)
 
 
 ## The slots of `plan`, tallest raster first (ties by name): the order `RuntimeAtlas.layout`
-## packs them, for page `page` (`page_of`).
+## packs them, for page `page` (`plan.pages`).
 static func _packing_order(plan: Plan, page: int) -> Array[StringName]:
 	var order: Array[StringName] = []
 	for slot: StringName in plan.sizes:
-		if page_of(plan.parts[slot]) == page:
+		if plan.pages[slot] == page:
 			order.append(slot)
 	order.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
@@ -440,7 +444,7 @@ func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
 		for frame: int in span:
 			_spans.append(span if frame == 0 else 0)
 			var slot: StringName = plan.slots[at + frame]
-			var page: int = page_of(plan.parts[slot]) if slot != &"" else PAGE_SORTED
+			var page: int = plan.pages[slot] if slot != &"" else PAGE_SORTED
 			_table_page.append(page)
 			_table.append(_pages[page].region(slot))
 		at += span
@@ -469,6 +473,7 @@ class Plan:
 	var texts: Dictionary[StringName, String] = {}
 	var sizes: Dictionary[StringName, Vector2i] = {}
 	var parts: Dictionary[StringName, StringName] = {}  ## Slot -> the part it is a frame of.
+	var pages: Dictionary[StringName, int] = {}  ## Slot -> its page (`page_of`).
 	var keys: Array[StringName] = []
 	var spans: PackedInt32Array = PackedInt32Array()
 	var slots: Array[StringName] = []

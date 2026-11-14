@@ -41,6 +41,11 @@ const ROOT: String = "res://assets/art/iso"
 @export var bar_lift_px: int = 0
 @export var pick_lift_px: int = 0  ## Half of that: a tap picks the unit round this height.
 @export var muzzle_lift_px: int = 0  ## Where shots leave; 0 for a building without a head.
+## How far above its ground point an aircraft's hull is drawn, world px at zoom 1 (ADR 0036 section
+## 15, plan P243): `fly_px` for high air, `low_fly_px` for a low-flying drone squad. 0 for a sheet
+## that is not an aircraft's (`flies`): the whole sheet, every part, is then on the unsorted page.
+@export var fly_px: int = 0
+@export var low_fly_px: int = 0
 @export var icon: String = ""  ## The item card, a texture.
 ## A squad's ground travel per walk cycle in milli-tiles (the walk frame advances every quarter of
 ## it, ADR 0027 section 5); 0 without a `walk` part.
@@ -120,6 +125,12 @@ func path(part: StringName, dir: int, frame: int = 0) -> String:
 func frame_count(part: StringName) -> int:
 	var at: int = parts.find(String(part))
 	return frames[at] if at >= 0 and at < frames.size() else 1
+
+
+## Whether this is an aircraft's sheet: it has a lift, so `AirLayer` draws it and `IsoAtlas.page_of`
+## puts its frames on the unsorted page.
+func flies() -> bool:
+	return fly_px > 0 or low_fly_px > 0
 
 
 func has_part(part: StringName) -> bool:

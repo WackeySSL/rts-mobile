@@ -469,8 +469,8 @@ func _merge(snap: MatchSnapshot) -> void:
 				ringed.append(row)
 			old += 1
 		else:
-			var node: Node2D = null  # A building has no rig, but keeps the per-row stride.
-			if WorldSort.is_building(snap, types[row]):
+			var node: Node2D = null  # A building or a flyer has no rig, keeps the stride.
+			if WorldSort.is_rigless(snap, types[row]):
 				layers.resize(layers.size() + PARTS)
 				sheets.append(null)
 				frames.append_array([NO_FRAME, NO_FRAME])

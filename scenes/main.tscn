@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="7_runner"]
 [ext_resource type="Resource" path="res://data/scenarios/controls_test.tres" id="8_scenario"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
+[ext_resource type="Script" path="res://game/view/AirLayer.gd" id="93_air"]
 [ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
 [ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
@@ -135,6 +136,13 @@ z_index = 70
 z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
+
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+z_index = 20
+z_as_relative = false
+script = ExtResource("93_air")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="RallyLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 61

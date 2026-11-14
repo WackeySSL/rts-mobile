@@ -310,8 +310,8 @@ func _plan() -> void:
 		if building:
 			if building_layer == null or not building_layer.is_shown(row):
 				continue  # No layer to say, or the fog hides the footprint.
-		elif not unit_layer.is_shown(row):
-			continue  # A rig the fog hides has no bar either (ADR 0010 section 2).
+		elif WorldSort.is_flyer(snap, type) or not unit_layer.is_shown(row):
+			continue  # No bar for a flyer until P244; a rig the fog hides has none (ADR 0010 s2).
 		var klass: int = INFANTRY_CLASS if armours[type] == World.Armour.INFANTRY else 0
 		if building:
 			var last: int = CLASS_WIDTH_DP.size() - BUILDING_CLASS  # The largest footprint with a width.
