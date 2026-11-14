@@ -12,14 +12,10 @@ extends Node2D
 ## the ground point.
 ## - An own flyer is always drawn, an enemy one only where the local player sees its tile (the tile
 ##   of its position in the tick, `snapshot.cell_of`) or `reveal_enemies` is set.
-## - A flyer hovers and bobs (`air_bob_*`) on match time (`LifeClock`, a phase from its id);
-##   `life.reduced` turns the bob off. It turns to the direction it moves in, one frame step at a
+## - A flyer hovers (the bob is P243b's) and turns to the direction it moves in, one frame step at a
 ##   time, and keeps its heading while it hovers.
-## - A flyer that dies where it was drawn falls (`air_fall_ms` of match time from the DIED tick): it
-##   keeps its heading, drifts `air_fall_drift_milli` along it and its hull sinks to the ground on a
-##   square law; then its rig returns to the pool. Every other flag of the DIED (a boarding, a
-##   cancelled site) and a death out of sight is no fall. It bursts where it lands
-##   (`effects.burst_at`).
+## - A flyer that dies is gone at once, as a ground unit is: `EffectsLayer` bursts at its DIED point
+##   (the fall and the burst at the landing are P243b's).
 ## - A flyer whose type has no art (P245 draws it) stands in as the `UnitLayer.Marker` ellipse.
 ## Rigs are pooled; a frame sets properties only.
 
@@ -27,17 +23,12 @@ const Z_AIR: int = 20
 const HULL: StringName = &"hull"
 const SHADOW: StringName = &"shadow"
 const NO_FRAME: int = -1
-const SALT_BOB: int = 0x41
 ## What stands in for a sheet's `fly_px` and `low_fly_px`: a type with no art, or a sheet of 0.
 const DEFAULT_FLY_PX: float = 28.0
 const DEFAULT_LOW_FLY_PX: float = 12.0
-const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 @export var runner: MatchRunner
 @export var world_sort: WorldSort
-@export var life: LifeSettings  ## The bob and the fall (`air_*`).
-## Where a fall ends in its burst (the DIED burst of a flyer is this layer's, not `EffectsLayer`'s).
-@export var effects: EffectsLayer
 @export var reveal_enemies: bool = false
 @export var turn_rate: float = 12.0  ## Radians a second a hull turns, as `UnitLayer`'s.
 
@@ -46,7 +37,6 @@ var _rows_version: int = -1
 var _by_id: Dictionary[int, Rig] = {}  ## The rigs of the rows, by unit id.
 var _rows: PackedInt32Array = PackedInt32Array()  ## The snapshot rows that are flyers, ascending.
 var _rigs: Array[Rig] = []  ## The rig of `_rows[i]`.
-var _falling: Array[Rig] = []  ## Rigs of flyers that died in sight, oldest first.
 var _pool: Array[Rig] = []
 var _pool_root: Node2D = null
 var _made: int = 0
@@ -66,12 +56,8 @@ class Rig:
 	var views: int = 16  ## The hull's frames in a full turn.
 	var frame: int = NO_FRAME
 	var lift: float = 0.0  ## The height of the hover, world px at zoom 1.
-	var phase_ms: int = 0
 	var heading: float = 0.0
 	var aim: float = 0.0
-	var born_ms: float = -1.0  ## Match time of the DIED of a rig that falls, -1 while it flies.
-	var drift: Vector2 = Vector2.ZERO
-	var origin: Vector2 = Vector2.ZERO  ## Where the fall began.
 
 
 func _init() -> void:
@@ -89,19 +75,13 @@ func _ready() -> void:
 	_pool_root.name = "Pool"
 	_pool_root.visible = false
 	add_child(_pool_root)
-	if life == null:
-		life = DEFAULT_LIFE
-	if runner != null:
-		runner.ticked.connect(_on_ticked)
 	_sync()
 
 
 func _process(delta: float) -> void:
 	var snap: MatchSnapshot = _sync()
 	if snap != null:
-		var now_ms: float = LifeClock.ms(snap, runner.alpha())
-		_place(snap, now_ms, delta)
-		_fall(now_ms)
+		_place(snap, delta)
 
 
 ## The flyers that have a rig now (those falling not counted).
@@ -109,17 +89,12 @@ func rig_count() -> int:
 	return _rigs.size()
 
 
-## The flyers falling now.
-func falling_count() -> int:
-	return _falling.size()
-
-
 ## Rigs made so far, which are the pool's misses.
 func rigs_made() -> int:
 	return _made
 
 
-## The rig of unit `id`, null for none (a flyer that is gone, a falling one, a ground unit).
+## The rig of unit `id`, null for none (a flyer that is gone, a ground unit).
 func rig_of(id: int) -> Rig:
 	return _by_id.get(id)
 
@@ -158,10 +133,7 @@ func _sync() -> MatchSnapshot:
 func _clear() -> void:
 	for rig: Rig in _by_id.values():
 		_pool_rig(rig)
-	for rig: Rig in _falling:
-		_pool_rig(rig)
 	_by_id.clear()
-	_falling.clear()
 	_rows.clear()
 	_rigs.clear()
 
@@ -205,10 +177,8 @@ func _new_rig(snap: MatchSnapshot, row: int) -> Rig:
 	rig.owner_id = snap.owner[row]
 	rig.sheet = sheet if art else null
 	rig.lift = lift_of_type(snap, type)
-	rig.phase_ms = LifeClock.pick(rig.id, SALT_BOB, life.air_bob_ms)
 	rig.heading = 0.0
 	rig.aim = 0.0
-	rig.born_ms = -1.0
 	rig.frame = NO_FRAME
 	rig.hull.visible = art
 	rig.shadow.visible = art
@@ -275,14 +245,13 @@ func _lift(rig: Rig, px: float) -> void:
 
 ## Places the flyers' rigs at the point the sim interpolates to, hides an enemy on a tile the local
 ## player does not see, turns the rest to where they move, and sets the hover and the bob.
-func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
+func _place(snap: MatchSnapshot, delta: float) -> void:
 	var alpha: float = runner.alpha()
 	var step: float = turn_rate * delta
 	var player: int = FogLayer.local_player_of(runner)
 	var fog: FogGrid = snap.fog
 	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
 	var counts_at: int = (player - 1) * fog.cells
-	var bob: bool = not life.reduced and life.air_bob_ms > 0
 	for at: int in _rows.size():
 		var row: int = _rows[at]
 		var rig: Rig = _rigs[at]
@@ -305,56 +274,3 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 			var turn: float = angle_difference(rig.heading, rig.aim)
 			rig.heading = rig.aim if absf(turn) <= step else rig.heading + signf(turn) * step
 			_turn(rig)
-		var sway: float = (
-			life.air_bob_px * sin(TAU * (now_ms + rig.phase_ms) / life.air_bob_ms) if bob else 0.0
-		)
-		_lift(rig, rig.lift + sway)
-
-
-## Advances the falls on match time and pools a rig whose fall is over.
-func _fall(now_ms: float) -> void:
-	var at: int = 0
-	while at < _falling.size():
-		var rig: Rig = _falling[at]
-		var t: float = LifeClock.age_ms(now_ms, rig.born_ms) / float(maxi(life.air_fall_ms, 1))
-		if t >= 1.0:
-			_falling.remove_at(at)
-			if effects != null:
-				effects.burst_at(rig.origin + rig.drift)
-			_pool_rig(rig)
-			continue
-		rig.position = rig.origin + rig.drift * t
-		_lift(rig, rig.lift * (1.0 - t * t))
-		at += 1
-
-
-## A DIED of a flyer drawn at its last frame starts its fall; the rig leaves the rows' map, so the
-## next merge does not pool it. The tick's events are read once, here, as `EffectsLayer` reads them.
-func _on_ticked(_tick: int) -> void:
-	var snap: MatchSnapshot = runner.snapshot
-	if snap == null or snap.match_serial != _serial or _by_id.is_empty():
-		return
-	var events: PackedInt32Array = snap.events
-	var player: int = FogLayer.local_player_of(runner)
-	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] != World.Event.DIED:
-			continue
-		var rig: Rig = _by_id.get(events[at + 1])
-		var flag: int = events[at + Removal.DIED_FLAG_AT]
-		if rig == null or flag == Removal.FLAG_BOARDED or flag == Removal.FLAG_CANCELLED:
-			continue
-		var seen: bool = (
-			reveal_enemies
-			or rig.owner_id == player
-			or FogLayer.is_seen(snap, player, events[at + 2], events[at + 3])
-		)
-		if not seen or not rig.visible:
-			continue
-		_by_id.erase(rig.id)
-		rig.born_ms = LifeClock.tick_ms(snap.tick)
-		rig.origin = rig.position
-		rig.drift = IsoProjection.ground_to_px(
-			roundi(cos(rig.heading) * life.air_fall_drift_milli),
-			roundi(sin(rig.heading) * life.air_fall_drift_milli)
-		)
-		_falling.append(rig)

@@ -183,7 +183,3 @@ spark_lift_px = 16.0
 spark_rise_px = 10.0
 spark_grow = Vector2(1.0, 0.5)
 spark_alpha = 1.0
-air_bob_px = 1.5
-air_bob_ms = 2400
-air_fall_ms = 700
-air_fall_drift_milli = 1500

@@ -336,12 +336,3 @@ var crater_scale_milli: Dictionary[StringName, int] = {&"refinery": 1500, &"rene
 @export var spark_rise_px: float = 10.0
 @export var spark_grow: Vector2 = Vector2(1.0, 0.5)
 @export var spark_alpha: float = 1.0
-
-## Aircraft (P243, ADR 0036 section 15, `AirLayer`): a flyer's hover bobs `air_bob_px` up and down
-## with the period `air_bob_ms` (a 0 in either turns the bob off; `reduced` too). A flyer that dies
-## in sight falls for `air_fall_ms` of match time, drifting `air_fall_drift_milli` along its
-## heading, and bursts where it lands.
-@export var air_bob_px: float = 1.5
-@export var air_bob_ms: int = 2400
-@export var air_fall_ms: int = 700
-@export var air_fall_drift_milli: int = 1500

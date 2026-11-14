@@ -978,12 +978,10 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   - **The layer.** `AirLayer` (z 20, y-sorted, `scenes/main.tscn` and the perf arena) draws every row
     whose `type_layer_bit` has AIR or LOW_AIR; `UnitLayer` makes no rig for one
     (`WorldSort.is_rigless`). Hull `fly_px` above the ground point, shadow on the ground at z 2, an
-    enemy only on a seen tile, the bob and the fall (`LifeSettings.air_*`: 1.5 px, 2.4 s, a phase from
-    the id, off with `reduced`; 700 ms of match time, drift 1.5 tiles along the heading, square sink,
-    none for a boarding, a cancelled site or a death in the dark). A flyer's DIED burst is not
-    `EffectsLayer`'s: `AirLayer` calls `EffectsLayer.burst_at` where the fall lands, at the ground
-    point. GroundFx, PuffFx and DamageFx skip flyers until a row draws their effects at the lifted
-    point.
+    enemy only on a seen tile. Until P243b a flyer that dies is gone at once and `EffectsLayer` bursts
+    at its DIED point, as for a ground unit. P243b adds the bob and the fall (`LifeSettings.air_*`)
+    and moves the DIED burst to the landing (`EffectsLayer.burst_at`). GroundFx, PuffFx and DamageFx
+    skip flyers until a row draws their effects at the lifted point.
 - **Picking and bars are not here.** A flyer is not pickable and has no ring or bar (`HealthBarLayer` skips it) until P244
     (it reads `AirLayer.lift_of_type` for the lifted centre).
   - **The forecast.** The +2 (hulls at z 20, shadows at z 2) is pinned by

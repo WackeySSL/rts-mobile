@@ -438,8 +438,6 @@ func _add_death(snap: MatchSnapshot, at: int, now: int) -> void:
 	if not (own or _seen(snap, events[at + 2], events[at + 3])):
 		return
 	var type: int = events[at + 4]
-	if WorldSort.is_flyer(snap, type):
-		return  # A flyer falls first and bursts where it lands (`AirLayer`).
 	var armours: PackedInt32Array = snap.type_armour
 	var infantry: bool = (
 		type >= 0 and type < armours.size() and armours[type] == World.Armour.INFANTRY
@@ -470,11 +468,6 @@ static func _weapon_id(snap: MatchSnapshot, weapon: int) -> StringName:
 
 
 ## Takes the next slot of the ring, the oldest once it is full.
-## A vehicle's burst at world px `place` now: the landing of a falling flyer (`AirLayer`).
-func burst_at(place: Vector2) -> void:
-	_push(Kind.BURST, int(clock.call()), place, Vector2.ZERO, BURST_PX)
-
-
 func _push(kind: int, now: int, from: Vector2, to: Vector2, size: float) -> void:
 	var slot: int = _head
 	_head = slot + 1 if slot + 1 < _size else 0
