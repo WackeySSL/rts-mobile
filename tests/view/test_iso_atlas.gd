@@ -424,7 +424,14 @@ func _assert_directions_are_their_files(
 	for dir: int in dirs:
 		assert_bool(sheet.directions(part).has(dir)).is_true()
 		var text: String = FileAccess.get_file_as_string(sheet.path(part, dir))
-		var want: Image = _raster(player.recolour(text), scale)
+		var whole: Image = _raster(player.recolour(text), scale)
+		# A directional frame is the crop of its box out of the untrimmed raster (P306).
+		var crop: Rect2i = IsoAtlas.trim_rect(
+			sheet.frame_size(part),
+			sheet.frame_box(part, dir, 0),
+			scale * IsoAtlas.part_factor(part)
+		)
+		var want: Image = whole.get_region(crop)
 		var got: Image = atlas.image().get_region(atlas.region(sheet.art_id, part, dir, 0))
 		(
 			assert_that(got.get_data())
@@ -433,8 +440,9 @@ func _assert_directions_are_their_files(
 		)
 
 
-## Each frame of each player's faction has a region of the size the engine rasterises its canvas
-## to (`raster_size`), which is what the scale rule counted before anything was rasterised.
+## Each frame of each player's faction has a region of the size of its crop (`trim_rect`) of the
+## raster the engine makes of its canvas (`raster_size`), which is what the scale rule counted
+## before anything was rasterised.
 func _assert_every_frame_has_its_rasterised_size(
 	atlas: IsoAtlas, sheets: Array[IsoSheetDef], scale: float
 ) -> void:
@@ -446,11 +454,17 @@ func _assert_every_frame_has_its_rasterised_size(
 				continue
 			for part_name: String in sheet.parts:
 				var part: StringName = StringName(part_name)
-				var want: Vector2i = IsoAtlas.raster_size(
-					sheet.frame_size(part), scale * IsoAtlas.part_factor(part)
-				)
 				for dir: int in sheet.directions(part):
 					for frame: int in sheet.frame_count(part):
+						var want: Vector2i = (
+							IsoAtlas
+							. trim_rect(
+								sheet.frame_size(part),
+								sheet.frame_box(part, dir, frame),
+								scale * IsoAtlas.part_factor(part)
+							)
+							. size
+						)
 						var region: Rect2i = atlas.region(sheet.art_id, part, dir, player, frame)
 						(
 							assert_that(region.size)

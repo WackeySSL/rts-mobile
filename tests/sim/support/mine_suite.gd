@@ -239,3 +239,36 @@ func _scenario(world: World, hashes: PackedInt64Array = PackedInt64Array()) -> v
 		_checked(world)
 		hashes.append(world.state_hash())
 	assert_int(world.mine_count).is_equal(0)
+
+
+## A World where the tank (type 1) and the aware row (type 3) detect at 2,000.
+func _seeing_world(cap: int = 4) -> World:
+	var world: World = _world(cap)
+	world.type_detect_milli[TANK] = 2000
+	world.type_detect_milli[AWARE] = 3000
+	return world
+
+
+## Moves the clock to the next fog turn of `player` and runs MEMORY alone (no sim step).
+func _turn(world: World, player: int) -> void:
+	world.tick += 1
+	while (world.tick - player + 1) % world.fog_period_ticks != 0:
+		world.tick += 1
+	world.stats.fill(0)
+	MineMemory.run(world)
+
+
+func _seen(world: World, player: int) -> Array[int]:
+	var ids: Array[int] = []
+	for record: int in world.mine_seen_count[player]:
+		ids.append(world.mine_seen_id[player * world.mine_known_cap + record])
+	return ids
+
+
+## A record of mine `id` (a cell) in `player`'s block, as MineMemory would have written it.
+func _record(world: World, player: int, id: int, owner: int, cell: int) -> void:
+	var at: int = player * world.mine_known_cap + world.mine_seen_count[player]
+	world.mine_seen_id[at] = id
+	world.mine_seen_owner[at] = owner
+	world.mine_seen_cell[at] = cell
+	world.mine_seen_count[player] += 1

@@ -524,6 +524,28 @@ of which about 120 are C++.
   - The twin-and-kernel case runs the lay and blast under both implementations in
     `test_mines_run.gd`. No golden moves.
 
+- **Note (2026-11-14, P288, as built; it changes two accepted texts: §8's "AI reads `own_mines()` and
+  `known_mines()`" methods are six copied fields, and the snapshot is not filtered).**
+  - `MineMemory.run` (MEMORY, after `LastSeen.run`): one pass over the rows lists the player's living
+    detectors in the scratch column `push_x` (none: stop), then the mines ascending that pass the
+    cheap tests (another player's, cell visible, no record) test only those. The cost is rows +
+    detectors x mines, and `MINE_CHECKS` counts the detector x mine tests (no new stat), which is
+    §8's Bound bullet as written.
+  - `MineMemory.drop_seen`, called by `Mines._compact` for each mine that leaves (blast, sweep,
+    rupture, building), drops its record from every player block that sees the cell in the fog as it
+    stands (`LastSeen.forget_dead`'s rule), so a mine watched blowing up is not remembered.
+  - Sweeping is in `Mines.lay`'s row loop (`carry_mode` `Mines.SWEEPING` 3, GDScript only). At the
+    stamp the mine on the row's cell goes only if it is another player's and the row's player has a
+    record of it, so a push onto another cell or a new mine on the cell sweeps nothing unfound. A
+    STOP does not cancel a sweep: the idle row starts it over.
+  - `PlayerView` gains six copied fields (`own_mines`, `own_mine_id`, `own_mine_armed`,
+    `known_mines`, `known_mine_id`, `known_mine_owner`) and no method.
+  - The snapshot stays player-agnostic (ADR 0012): it copies the mine table's id, owner, cell and
+    armed columns, the four record columns, `mine_count` and `mine_known_cap`. Its one filtering
+    reader is `MatchSnapshot.mines_for(player)` (own cells and armed ticks, the player's record
+    cells and owners); a test pins that `game/view`, `game/ui` and `game/input` name no raw mine
+    column. P293's acceptance reads "an unknown enemy mine is in no list `mines_for` gives".
+
 ### 9. Touch: how the new gestures fit (touch-ui-rules; ADR 0015)
 | Feature | Gesture | Fits the existing set because |
 | --- | --- | --- |

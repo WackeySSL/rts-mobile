@@ -156,3 +156,29 @@ func test_a_trigger_on_a_border_past_the_middle_is_in_the_tile_before_it() -> vo
 	_step(world)
 	assert_int(world.mine_count).is_equal(0)
 	assert_int(_blasts(world).size()).is_equal(1)
+
+
+func test_memory_walk_sweep_and_forget_are_the_same_under_the_twin_and_the_kernels() -> void:
+	var runs: Array[PackedInt64Array] = []
+	for impl: int in SimImpls.IMPLS:
+		var world: World = _world(4)
+		world.type_detect_milli[TANK] = 2000
+		world.type_detect_milli[AWARE] = 3000
+		assert_array(SimImpls.use(world, impl)).is_empty()
+		_add(world, 1, TANK, 5, 5)
+		_add(world, 1, AWARE, 8, 5)
+		_put(world, 2, 6, 5)  # Found by the tank.
+		_put(world, 2, 8, 5)  # Found by the aware row, then swept.
+		_put(world, 2, 14, 10)  # Never found.
+		var hashes: PackedInt64Array = PackedInt64Array()
+		for _tick: int in 60:
+			_step(world)
+			hashes.append(world.state_hash())
+		_add(world, 2, TANK, 6, 5)  # Walks onto the found mine.
+		for _tick: int in 4:
+			_step(world)
+			hashes.append(world.state_hash())
+		assert_int(world.mine_count).is_less(3)
+		assert_int(world.mine_seen_count[1]).is_less(2)
+		runs.append(hashes)
+	assert_array(Array(runs[0])).is_equal(Array(runs[1]))

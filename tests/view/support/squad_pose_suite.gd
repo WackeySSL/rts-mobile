@@ -17,6 +17,7 @@ const SPEED: int = 67  ## The rifle squad's step, milli per tick.
 const QUARTER: int = 88
 const STRIDE: int = 352
 const FIRST_TICK: int = 30
+const Trim: GDScript = preload("res://tests/view/support/trim_check.gd")
 const SAMPLES: int = 4  ## Frames per tick: 60 fps over 15 Hz.
 const FAR: float = 1.0e6
 ## Where the rifle squad (id 1) shows idle frames, standing from 0 ms (test_squad_pose_life.gd's
@@ -28,9 +29,11 @@ var _layer: UnitLayer
 var _camera: RtsCamera
 var _life: LifeSettings
 var _expect: RigLife
+var _bake: float = 1.0  ## The bake scale of the layer's atlas, set before `_start`.
 
 
 func before_test() -> void:
+	_bake = 1.0
 	_runner = auto_free(_fixture())
 	_start(LifeSettings.new())
 
@@ -61,6 +64,12 @@ func _start(life: LifeSettings) -> void:
 	_layer = auto_free(UnitLayer.new())
 	_layer.runner = _runner
 	_layer.life = _life
+	if _bake != 1.0:
+		var sort: WorldSort = auto_free(WorldSort.new())
+		sort.bake_scale = _bake
+		sort.runner = _runner
+		add_child(sort)
+		_layer.world_sort = sort
 	if not is_instance_valid(_camera):
 		_camera = auto_free(RtsCamera.new())
 		add_child(_camera)
@@ -90,11 +99,32 @@ func _hull(row: int) -> Sprite2D:
 	return _rig(row).get_node("Hull") as Sprite2D
 
 
-## The offset the Hull has for `part` of the unit's sheet, as the dress and the atlas say it.
-func _offset(row: int, part: StringName) -> Vector2:
+## The offset the Hull has for `part` of the unit's sheet facing `dir`, in the frame now shown: the
+## crop of the frame's box (`IsoSheetDef.frame_box`, `IsoAtlas.trim_rect`) minus the origin in
+## texels, worked out here from the sheet, not read from the atlas table.
+func _offset(row: int, part: StringName, dir: int = UnitLayer.D_EAST) -> Vector2:
 	var snap: MatchSnapshot = _runner.snapshot
 	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
-	return -Vector2(sheet.origin(part)) * _layer.world_sort.texels(sheet, part)
+	var frame: int = clampi(_shown(row, dir).y, 0, sheet.frame_count(part) - 1)
+	var scale: float = _layer.world_sort.atlas.part_scale(part)
+	var crop: Rect2i = IsoAtlas.trim_rect(
+		sheet.frame_size(part), sheet.frame_box(part, dir, frame), scale
+	)
+	return (
+		Vector2(crop.position) - Vector2(sheet.origin(part)) * _layer.world_sort.texels(sheet, part)
+	)
+
+
+## The Hull of `row` has the offset of `part` and draws the box the untrimmed frame drew.
+func _assert_pose(row: int, part: StringName) -> void:
+	assert_vector(_hull(row).offset).is_equal(_offset(row, part))
+	var snap: MatchSnapshot = _runner.snapshot
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[snap.type_index[row]])
+	var frame: int = clampi(_shown(row).y, 0, sheet.frame_count(part) - 1)
+	var problem: String = Trim.problem(
+		_hull(row), sheet, part, UnitLayer.D_EAST, frame, _layer.world_sort.atlas.bake_scale()
+	)
+	assert_str(problem).override_failure_message(problem).is_empty()
 
 
 ## What the Hull of `row` shows, read back from the atlas: (pose, frame) of direction `dir`, or

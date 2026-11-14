@@ -192,8 +192,8 @@ func dress(sprite: Sprite2D, sheet_def: IsoSheetDef, part: StringName) -> void:
 
 
 ## The texels per px of the 2x art that `part` of `sheet_def` has on the atlas, per axis: what
-## `dress` sizes the sprite and its offset by. The pose offsets and the ghost's Anim child use it
-## too, so that all writers of one sprite agree below scale 1.0.
+## `dress` sizes the sprite and its offset by. The ghost's Anim child uses it too, so that all
+## writers of one sprite agree below scale 1.0.
 func texels(sheet_def: IsoSheetDef, part: StringName) -> Vector2:
 	return IsoAtlas.texels_per_px(sheet_def.frame_size(part), atlas.part_scale(part))
 
@@ -247,13 +247,17 @@ func release(node: Node2D) -> void:
 
 
 ## Shows frame `frame` of the group at `base_index` (`base_of`) on `sprite`: a table read, so a
-## frame change builds no string, and the texture of the region's page. The sprite hides when
-## there is no such frame.
+## frame change builds no string, the texture of the region's page and the frame's own offset (a
+## directional frame is trimmed to its box, `IsoAtlas.frame_offset`; `dress` writes the offset of
+## the whole canvas, which an untrimmed frame has too). The sprite hides when there is no such
+## frame. A caller that moves the offset (a damage cut) applies it again after this.
 func show_base(sprite: Sprite2D, base_index: int, frame: int) -> void:
 	var region: Rect2i = atlas.frame_region(base_index, frame)
 	sprite.visible = region.has_area()
 	sprite.texture = atlas.texture_at(base_index)  # The region's own page.
 	sprite.region_rect = Rect2(region)
+	if region.has_area():
+		sprite.offset = atlas.frame_offset(base_index, frame)  # A trimmed frame's own offset.
 
 
 ## Resolves every base of the neutral sheet for every player slot (the only place it builds keys),

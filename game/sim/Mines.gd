@@ -24,10 +24,15 @@ extends RefCounted
 ## is the sentinel GONE in `mine_armed_tick`, which no live mine holds and no tick outlives (the
 ## compaction drops every one). `stats[MINE_CHECKS]` counts the rows the mark pass looked up.
 ## `clear_radius` (a rupture) and `clear_footprint` (a placed building) drop mines with no blast.
+## A mine-aware row (`type_mine_aware`) idle on the cell of an enemy mine its player has a record
+## of (`MineMemory.knows`) takes SWEEPING for `sweep_ticks`, and at the stamp the mine goes with no
+## blast (`_sweep`); `MineMemory` forgets the record on the player's next look at the spot.
 ## `mine_at` holds the table index + 1 of a mine's cell and is written sparsely, never filled.
 
 ## The `carry_mode` of a layer that goes to its point and lays there (ADR 0036's UNLOAD is 1).
 const LAYING: int = 2
+## The `carry_mode` of a mine-aware row that is clearing a mine it has a record of.
+const SWEEPING: int = 3
 ## `mine_armed_tick` of a mine that is leaving the table in this call.
 const GONE: int = -1
 
@@ -71,8 +76,39 @@ static func lay(world: World) -> void:
 	var modes: PackedInt32Array = world.carry_mode
 	var orders: PackedInt32Array = world.order
 	var due: PackedInt32Array = world.ready_tick
+	var types: PackedInt32Array = world.type_index
+	var aware: PackedInt32Array = world.type_mine_aware
+	var grid: PackedInt32Array = world.mine_at
+	var xs: PackedInt32Array = world.pos_x
+	var ys: PackedInt32Array = world.pos_y
+	var any_mine: bool = world.mine_count > 0
+	var tile: int = World.MILLI_PER_TILE
+	var cols: int = world.map_cols
+	var side_x: int = cols * tile
+	var side_y: int = world.map_rows * tile
 	for row: int in world.unit_id.size():
-		if modes[row] != LAYING or orders[row] != World.Order.IDLE:
+		var mode: int = modes[row]
+		if mode == SWEEPING:
+			if orders[row] != World.Order.IDLE or stamp >= due[row]:
+				_sweep(world, row)
+			continue
+		if orders[row] != World.Order.IDLE:
+			continue
+		if mode == 0:
+			if any_mine and aware[types[row]] != 0:
+				var cx: int = xs[row]
+				var cy: int = ys[row]
+				if cx % tile == 0 and cx * 2 > side_x:
+					cx -= 1
+				if cy % tile == 0 and cy * 2 > side_y:
+					cy -= 1
+				var cell: int = (
+					clampi(cy / tile, 0, world.map_rows - 1) * cols + clampi(cx / tile, 0, cols - 1)
+				)
+				if cell < grid.size() and grid[cell] != 0:
+					_sweep_start(world, row, stamp, grid[cell] - 1)
+			continue
+		if mode != LAYING:
 			continue
 		if due[row] == 0:
 			if _allowed(world, row):
@@ -138,6 +174,39 @@ static func clear_footprint(world: World, col: int, line: int, width: int, heigh
 			gone += 1
 	if gone > 0:
 		_compact(world, count)
+
+
+## A mine-aware row that stands idle on the cell of the mine `index` (an enemy's, with a record its
+## player has) starts a sweep: `carry_mode` SWEEPING and `ready_tick` the stamp plus `sweep_ticks`.
+static func _sweep_start(world: World, row: int, stamp: int, index: int) -> void:
+	if world.sweep_ticks <= 0 or index >= world.mine_count:
+		return
+	var owner: int = world.owner[row]
+	if world.mine_owner[index] == owner or not MineMemory.knows(world, owner, world.mine_id[index]):
+		return
+	world.carry_mode[row] = SWEEPING
+	world.ready_tick[row] = stamp + world.sweep_ticks
+
+
+## One sweeping row, called when it has moved on (its order is not IDLE) or its stamp is due. The
+## mode ends either way; at the stamp, the mine on the row's cell leaves the table with no blast
+## only if it is another player's and the row's player has a record of it (a push onto another
+## cell, or a new mine laid on the cell, sweeps nothing it did not find).
+static func _sweep(world: World, row: int) -> void:
+	var moved: bool = world.order[row] != World.Order.IDLE
+	world.carry_mode[row] = 0
+	world.ready_tick[row] = 0
+	if moved:
+		return
+	var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+	var index: int = world.mine_at[cell] - 1 if cell < world.mine_at.size() else -1
+	if index < 0 or index >= world.mine_count:
+		return
+	var owner: int = world.owner[row]
+	if world.mine_owner[index] == owner or not MineMemory.knows(world, owner, world.mine_id[index]):
+		return
+	world.mine_armed_tick[index] = GONE
+	_compact(world, world.mine_count)
 
 
 ## Whether row `row` may be sent to lay for `player`.
@@ -315,6 +384,7 @@ static func _compact(world: World, count: int) -> void:
 		var cell: int = world.mine_cell[index]
 		if armed_at[index] == GONE:
 			world.mine_at[cell] = 0
+			MineMemory.drop_seen(world, world.mine_id[index], cell)
 			continue
 		if kept != index:
 			for column_name: StringName in World.MINE_ARRAYS:

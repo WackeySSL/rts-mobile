@@ -149,8 +149,9 @@ func _read_sprite(sheet: IsoSheetDef) -> void:
 		var head_base: int = atlas.base(sheet.art_id, HEAD, UnitLayer.D_EAST, slot)
 		_head = atlas.frame_region(head_base, 0)
 		_head_texture = atlas.texture_at(head_base)
-		var mount: Vector2 = sheet.mount(UnitLayer.D_EAST) - Vector2(sheet.origin(HEAD))
-		_head_origin = mount * WorldSort.ART_SCALE
+		# The head's box is trimmed: its top-left from the pivot is the frame's own offset.
+		var mount: Vector2 = sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE
+		_head_origin = mount + atlas.frame_offset(head_base, 0) * per_px
 		_head_size = Vector2(_head.size) * per_px
 
 

@@ -202,28 +202,24 @@ func test_pose_step_asks_again_only_outside_the_stretch_and_a_walk_forgets_the_s
 	assert_int(state.pose).is_equal(-1)
 
 
-func test_a_sheet_is_read_into_the_pose_with_its_offsets_frames_and_quarter_stride() -> void:
+func test_a_sheet_is_read_into_the_pose_with_its_frames_and_quarter_stride() -> void:
 	var sheet: IsoSheetDef = load(SQUAD_SHEETS[0])
 	var pose: RigLife.Pose = RigLife.Pose.new()
-	assert_bool(pose.dress(sheet, 0.5)).is_true()
+	assert_bool(pose.dress(sheet)).is_true()
 	assert_int(pose.quarter).is_equal(QUARTER)
 	assert_array(pose.frames).is_equal([1, 4, 2])
-	# The idle pose is anchored one px lower than the hull: its offset says so.
-	assert_vector(pose.offsets[RigLife.POSE_HULL]).is_equal(Vector2(-43.0, -49.0) * 0.5)
-	assert_vector(pose.offsets[RigLife.POSE_WALK]).is_equal(Vector2(-43.0, -49.0) * 0.5)
-	assert_vector(pose.offsets[RigLife.POSE_IDLE]).is_equal(Vector2(-43.0, -50.0) * 0.5)
 
 
 func test_a_stride_that_the_walk_frames_do_not_divide_gives_no_poses() -> void:
 	var sheet: IsoSheetDef = (load(SQUAD_SHEETS[0]) as IsoSheetDef).duplicate() as IsoSheetDef
 	var pose: RigLife.Pose = RigLife.Pose.new()
 	sheet.stride_milli = 350  # 350 / 4 would floor to 87 and walk the cadence 1 % fast.
-	assert_bool(pose.dress(sheet, 1.0)).is_false()
+	assert_bool(pose.dress(sheet)).is_false()
 	assert_int(pose.quarter).is_equal(0)
 	sheet.stride_milli = 0
-	assert_bool(pose.dress(sheet, 1.0)).is_false()
+	assert_bool(pose.dress(sheet)).is_false()
 	var plain: IsoSheetDef = load("res://assets/art/iso/fossil/veh/light_tank_sheet.tres")
-	assert_bool(pose.dress(plain, 1.0)).is_false()  # A vehicle has no poses.
+	assert_bool(pose.dress(plain)).is_false()  # A vehicle has no poses.
 
 
 func test_every_squad_of_both_rosters_divides_its_stride_by_its_frames() -> void:
@@ -235,4 +231,4 @@ func test_every_squad_of_both_rosters_divides_its_stride_by_its_frames() -> void
 			. override_failure_message(path)
 			. is_equal(0)
 		)
-		assert_bool(pose.dress(sheet, 1.0)).override_failure_message(path).is_true()
+		assert_bool(pose.dress(sheet)).override_failure_message(path).is_true()

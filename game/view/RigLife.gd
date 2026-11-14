@@ -126,9 +126,9 @@ class Idle:
 
 ## The pose a squad rig's Hull shows (P142): one of the POSE_ constants, the base of the sheet part
 ## for the hull's direction (`WorldSort.base_of`) and the frame within it, so a frame change is a
-## table read. `dress` fills what the sheet says, once per dressing: the Hull's offset in each pose
-## (the poses' anchors differ by a pixel or two, and `show_base` writes the region, not the
-## offset), the frames of each and the travel that one walk frame takes. `quarter` 0 means a rig
+## table read. `dress` fills what the sheet says, once per dressing: the frames of each pose and the
+## travel that one walk frame takes (the poses' anchors differ by a pixel or two and the frames are
+## trimmed; `show_base` writes each frame's own offset with its region). `quarter` 0 means a rig
 ## with no poses.
 class Pose:
 	extends RefCounted
@@ -139,7 +139,6 @@ class Pose:
 	var frame: int = 0
 	var stride: int = 0  ## `stride_milli` of the sheet: the walk table's sum stays below it.
 	var quarter: int = 0  ## Milli of travel per walk frame: `stride_milli` over the walk frames.
-	var offsets: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 	var frames: PackedInt32Array = PackedInt32Array([1, 1, 1])
 
 	## The hull standing, at `hull_base`, with no poses until `dress`.
@@ -152,20 +151,16 @@ class Pose:
 		stride = 0
 		quarter = 0
 
-	## Reads the three parts of `sheet`, an atlas at `bake_scale`. False (and no poses) for a sheet
+	## Reads the three parts of `sheet`. False (and no poses) for a sheet
 	## without a `walk` and an `idle` part, a stride, or a stride that the walk frames do not divide.
 	@warning_ignore("integer_division")
-	func dress(sheet: IsoSheetDef, bake_scale: float) -> bool:
+	func dress(sheet: IsoSheetDef) -> bool:
 		quarter = 0
 		stride = 0
 		for pose: int in POSE_PARTS.size():
 			var part: StringName = POSE_PARTS[pose]
 			if not sheet.has_part(part):
 				return false
-			var texels: Vector2 = IsoAtlas.texels_per_px(
-				sheet.frame_size(part), bake_scale * IsoAtlas.part_factor(part)
-			)
-			offsets[pose] = -Vector2(sheet.origin(part)) * texels
 			frames[pose] = sheet.frame_count(part)
 		var walk: int = frames[POSE_WALK]
 		if sheet.stride_milli <= 0 or walk < 2 or sheet.stride_milli % walk != 0:

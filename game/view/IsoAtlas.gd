@@ -23,6 +23,14 @@ extends RefCounted
 ## and by whether its sheet is an aircraft's (`IsoSheetDef.flies`, P243): every part of a flyer's
 ## sheet is on the unsorted page, because `AirLayer` is not in the y-sort. Region keys do not
 ## change, and one scale fits both pages (the lower of the two `fit_scale` answers).
+## The trim (ADR 0036 section 15, P305 and P306): a directional frame (`IsoSheetDef.has_boxes`) is
+## cropped to its tight box before it is packed, so a cell holds the drawn pixels and not the
+## canvas's empty margin; the crop is `trim_rect`, cut out of the untrimmed raster. The table keeps
+## each frame's sprite offset (`frame_offset`: the crop's top-left minus the part's origin, in
+## texels), which `WorldSort.show_base` writes with the region, so the picture does not move. A
+## frame without a box (a building's body, patches, `anim`, shadows, the neutral sheet) is its whole
+## raster and its offset is `-origin * texels`, what `WorldSort.dress` writes. `texels_per_px` keeps
+## the untrimmed canvas.
 ## The frame axis (ADR 0027 section 4): a part may have several frames per direction
 ## (`IsoSheetDef.frame_count`), each its own file and slot. The regions of all frames lie in one
 ## packed table, a group of `frame_count` entries per (player, art id, part, direction), frame 0
@@ -71,6 +79,8 @@ var _page_textures: Array[ImageTexture] = []  ## By page, set at the bake: one l
 var _table_page: PackedByteArray = PackedByteArray()  ## Parallel to `_table`: the entry's page.
 var _index: Dictionary[StringName, int] = {}  ## Frame group key -> its base in `_table`.
 var _table: Array[Rect2i] = []  ## One region per baked frame, a group's frames side by side.
+## Parallel to `_table`: the sprite offset of the frame's region, texels (`frame_offset`).
+var _offsets: PackedVector2Array = PackedVector2Array()
 var _spans: PackedInt32Array = PackedInt32Array()  ## Parallel to `_table`: frames at a base.
 var _scale: float = 0.0
 var _bake_usec: int = 0
@@ -149,7 +159,7 @@ static func planned_page(
 	var order: Array[StringName] = _packing_order(plan, page)
 	if order.is_empty() and page != PAGE_SORTED:
 		return Vector2i.ZERO
-	return page_size(_canvases(plan, order), scale, _factors(plan, order))
+	return page_size(_canvases(plan, order), scale, _factors(plan, order), _boxes(plan, order))
 
 
 ## Which page `part` is on: `PAGE_UNSORTED` for the parts of `UNSORTED_PARTS` and for every part of
@@ -168,21 +178,43 @@ static func texels_per_px(canvas: Vector2i, scale: float) -> Vector2:
 	return Vector2(raster_size(canvas, scale)) / Vector2(canvas)
 
 
+## The crop of a frame whose tight box is `box` (canvas px) out of the raster of its canvas at
+## `scale` (already times `part_factor`), in texels: the box's floor and ceil, grown by one texel
+## when the raster is not the canvas, as `IsoSheetDef.boxes` says. The whole raster for a box that
+## is the whole canvas. Integer maths, so the planned page and the bake agree.
+@warning_ignore("integer_division")
+static func trim_rect(canvas: Vector2i, box: Rect2i, scale: float) -> Rect2i:
+	var raster: Vector2i = raster_size(canvas, scale)
+	var x0: int = box.position.x * raster.x / canvas.x
+	var y0: int = box.position.y * raster.y / canvas.y
+	var x1: int = mini(raster.x, (box.end.x * raster.x + canvas.x - 1) / canvas.x)
+	var y1: int = mini(raster.y, (box.end.y * raster.y + canvas.y - 1) / canvas.y)
+	var crop: Rect2i = Rect2i(x0, y0, x1 - x0, y1 - y0)
+	if raster != canvas:
+		crop = crop.grow(1).intersection(Rect2i(Vector2i.ZERO, raster))
+	return crop
+
+
 ## The size in texels the engine rasterises a canvas of `canvas` px (2x art) to at `scale`.
 static func raster_size(canvas: Vector2i, scale: float) -> Vector2i:
 	return Vector2i(maxi(1, roundi(canvas.x * scale)), maxi(1, roundi(canvas.y * scale)))
 
 
 ## The page `canvases` (2x art px, in packing order) take at `scale`, gutters included. `factors`
-## (parallel to `canvases`, empty for all 1.0) is each canvas's `part_factor`.
+## (parallel to `canvases`, empty for all 1.0) is each canvas's `part_factor`, `boxes` (empty for
+## none) each frame's tight box, whose `trim_rect` is what the cell holds.
 static func page_size(
-	canvases: Array[Vector2i], scale: float, factors: Array[float] = []
+	canvases: Array[Vector2i], scale: float, factors: Array[float] = [], boxes: Array[Rect2i] = []
 ) -> Vector2i:
 	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
+	assert(boxes.is_empty() or boxes.size() == canvases.size(), "one box per canvas")
 	var cells: Array[Vector2i] = []
 	for at: int in canvases.size():
 		var factor: float = factors[at] if at < factors.size() else 1.0
-		cells.append(RuntimeAtlas.cell_size(raster_size(canvases[at], scale * factor)))
+		var raster: Vector2i = raster_size(canvases[at], scale * factor)
+		if at < boxes.size():
+			raster = trim_rect(canvases[at], boxes[at], scale * factor).size
+		cells.append(RuntimeAtlas.cell_size(raster))
 	var places: Array[Vector2i] = []
 	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places)
 
@@ -193,18 +225,24 @@ static func _fit_pages(plan: Plan, requested: float) -> float:
 	var scale: float = requested
 	for page: int in PAGES:
 		var order: Array[StringName] = _packing_order(plan, page)
-		scale = minf(scale, fit_scale(_canvases(plan, order), requested, _factors(plan, order)))
+		scale = minf(
+			scale,
+			fit_scale(_canvases(plan, order), requested, _factors(plan, order), _boxes(plan, order))
+		)
 	return scale
 
 
 ## The scale a bake of `canvases` gets when `requested`: see the class comment. 0.0 when none.
 static func fit_scale(
-	canvases: Array[Vector2i], requested: float, factors: Array[float] = []
+	canvases: Array[Vector2i],
+	requested: float,
+	factors: Array[float] = [],
+	boxes: Array[Rect2i] = []
 ) -> float:
 	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var scale: float = requested
 	while scale >= MIN_SCALE:
-		var page: Vector2i = page_size(canvases, scale, factors)
+		var page: Vector2i = page_size(canvases, scale, factors, boxes)
 		if page.x <= PAGE_MAX_PX and page.y <= PAGE_MAX_PX:
 			return scale
 		scale *= SCALE_STEP
@@ -261,6 +299,15 @@ func frame_region(base_index: int, frame: int) -> Rect2i:
 	if frame < 0 or frame >= frame_count_at(base_index):
 		return Rect2i()
 	return _table[base_index + frame]
+
+
+## The sprite offset of frame `frame` of the group at `base_index`, texels: the crop's top-left
+## minus the part's origin times its texels per px, so that a sprite drawing the region at `0.5 /
+## texels` lies where the whole canvas would. A table read. (0, 0) for no such frame.
+func frame_offset(base_index: int, frame: int) -> Vector2:
+	if frame < 0 or frame >= frame_count_at(base_index):
+		return Vector2.ZERO
+	return _offsets[base_index + frame]
 
 
 ## The texture of page `page` (`PAGE_SORTED` unless given); null for a page with no frame. A region
@@ -390,6 +437,11 @@ static func _collect_sheet(
 				)
 				plan.texts[slot] = baked
 				plan.sizes[slot] = sheet.frame_size(part)
+				# Only the sorted page is trimmed: page 2 (shadows, flyers) stays as it is.
+				plan.boxes[slot] = Rect2i(Vector2i.ZERO, sheet.frame_size(part))
+				if page_of(part, sheet.flies()) == PAGE_SORTED:
+					plan.boxes[slot] = sheet.frame_box(part, dir, frame)
+				plan.origins[slot] = sheet.origin(part)
 				plan.parts[slot] = part
 				plan.pages[slot] = page_of(part, sheet.flies())
 				plan.slots.append(slot)
@@ -404,8 +456,8 @@ static func _packing_order(plan: Plan, page: int) -> Array[StringName]:
 			order.append(slot)
 	order.sort_custom(
 		func(a: StringName, b: StringName) -> bool:
-			var ha: float = plan.sizes[a].y * part_factor(plan.parts[a])
-			var hb: float = plan.sizes[b].y * part_factor(plan.parts[b])
+			var ha: float = plan.boxes[a].size.y * part_factor(plan.parts[a])
+			var hb: float = plan.boxes[b].size.y * part_factor(plan.parts[b])
 			return ha > hb or (ha == hb and String(a) < String(b))
 	)
 	return order
@@ -425,6 +477,13 @@ static func _canvases(plan: Plan, order: Array[StringName]) -> Array[Vector2i]:
 	return canvases
 
 
+static func _boxes(plan: Plan, order: Array[StringName]) -> Array[Rect2i]:
+	var boxes: Array[Rect2i] = []
+	for slot: StringName in order:
+		boxes.append(plan.boxes[slot])
+	return boxes
+
+
 ## Rasterises every page's slots at `scale` and packs them; every frame gets its slot's region and
 ## its page (`_table_page`).
 func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
@@ -437,6 +496,7 @@ func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
 	_scale = scale if texture() != null else 0.0
 	for page: int in PAGES:
 		_page_textures[page] = texture(page)
+	var offsets: Dictionary[StringName, Vector2] = _slot_offsets(plan, scale)
 	var at: int = 0
 	for group: int in plan.keys.size():
 		var span: int = plan.spans[group]
@@ -447,7 +507,19 @@ func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
 			var page: int = plan.pages[slot] if slot != &"" else PAGE_SORTED
 			_table_page.append(page)
 			_table.append(_pages[page].region(slot))
+			_offsets.append(offsets.get(slot, Vector2.ZERO))
 		at += span
+
+
+## The sprite offset of every slot at `scale`: the crop's top-left minus the origin in texels.
+static func _slot_offsets(plan: Plan, scale: float) -> Dictionary[StringName, Vector2]:
+	var offsets: Dictionary[StringName, Vector2] = {}
+	for slot: StringName in plan.sizes:
+		var factor_scale: float = scale * part_factor(plan.parts[slot])
+		var crop: Rect2i = trim_rect(plan.sizes[slot], plan.boxes[slot], factor_scale)
+		var texels: Vector2 = texels_per_px(plan.sizes[slot], factor_scale)
+		offsets[slot] = Vector2(crop.position) - Vector2(plan.origins[slot]) * texels
+	return offsets
 
 
 ## The slots of `order` rasterised at `scale` (a failed one is null, which RuntimeAtlas reports).
@@ -457,11 +529,12 @@ static func _rasterise(
 	var images: Dictionary[StringName, Image] = {}
 	for slot: StringName in order:
 		var image: Image = Image.new()
-		if (
-			image.load_svg_from_string(plan.texts[slot], scale * part_factor(plan.parts[slot]))
-			!= OK
-		):
+		var factor_scale: float = scale * part_factor(plan.parts[slot])
+		if image.load_svg_from_string(plan.texts[slot], factor_scale) != OK:
 			image = null
+		elif plan.boxes[slot] != Rect2i(Vector2i.ZERO, plan.sizes[slot]):
+			# Crop out of the untrimmed raster, never a re-render of a cropped viewBox.
+			image = image.get_region(trim_rect(plan.sizes[slot], plan.boxes[slot], factor_scale))
 		images[slot] = image
 	return images
 
@@ -474,6 +547,8 @@ class Plan:
 	var sizes: Dictionary[StringName, Vector2i] = {}
 	var parts: Dictionary[StringName, StringName] = {}  ## Slot -> the part it is a frame of.
 	var pages: Dictionary[StringName, int] = {}  ## Slot -> its page (`page_of`).
+	var boxes: Dictionary[StringName, Rect2i] = {}  ## Slot -> its tight box (the canvas if none).
+	var origins: Dictionary[StringName, Vector2i] = {}  ## Slot -> `IsoSheetDef.origin` of its part.
 	var keys: Array[StringName] = []
 	var spans: PackedInt32Array = PackedInt32Array()
 	var slots: Array[StringName] = []
