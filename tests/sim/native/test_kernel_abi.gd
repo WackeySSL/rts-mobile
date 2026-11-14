@@ -19,7 +19,7 @@ const FLOW_SOURCE: String = "res://native/sim_kernels/src/bind/kernel_flow.cpp"
 const PHASES: Array[int] = [1, 3, 5, 6, 10]
 ## The slots of the flow cache (flow_cache_size).
 const SLOTS: int = 8
-## The names in each list, 109 in the table (a port adds names here, so a dropped or added name
+## The names in each list, 110 in the table (a port adds names here, so a dropped or added name
 ## shows in a diff). INTEGRATE's 50 are the names kernel_integrate.cpp gets or sets (P37n) and
 ## SEPARATION's 20 those of kernel_separation.cpp (P39n; it was 28, with the eight that Separation
 ## does not read: max_rows, map_cols, map_rows, map_w, map_h, move_cost, type_speed and
@@ -32,8 +32,8 @@ const SLOTS: int = 8
 ## its bit, type_sight stays because the pad mask is the size of that table). P232 (ADR 0036
 ## section 13) declared `type_layer_bit` for TARGETING and SEPARATION and `weapon_targets` for
 ## TARGETING, which TARGETING reads since P238 and SEPARATION reads (`type_layer_bit`) from P240:
-## TARGETING's list is 43 and SEPARATION's 21.
-const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 43, 5: 21, 6: 50, 10: 25}
+## TARGETING's list is 44 (P298: `stance`) and SEPARATION's 21.
+const LIST_SIZES: Dictionary[int, int] = {1: 26, 3: 44, 5: 21, 6: 50, 10: 25}
 ## A status is the table index of the first bad name times FAULT_COUNT, plus its fault.
 const FAULT_PHASE: int = 1
 const FAULT_OWNER: int = 2
@@ -121,6 +121,7 @@ const PHASES_OF: Dictionary[String, Array] = {
 	"WORLD.type_armour": [3],
 	"WORLD.type_move_class": [3, 6],
 	"WORLD.type_layer_bit": [3, 5],
+	"WORLD.stance": [3],
 	"WORLD.weapon_targets": [3],
 	"FLOW.requests": [6],
 	"FLOW.last_used": [6],
@@ -281,7 +282,7 @@ func test_check_world_rejects_an_unprepared_world_and_leaves_it_unchanged() -> v
 func test_every_list_is_not_empty_and_every_name_exists_with_its_type() -> void:
 	var world: World = _arena()
 	var table: Array[Dictionary] = _table()
-	assert_int(table.size()).is_equal(109)
+	assert_int(table.size()).is_equal(110)
 	for phase: int in PHASES:
 		var size: int = _listed(table, phase).size()
 		assert_int(size).override_failure_message("phase %d" % phase).is_equal(LIST_SIZES[phase])

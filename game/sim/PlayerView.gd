@@ -7,6 +7,7 @@ extends RefCounted
 ## reads the World and writes nothing, and keeps no reference to it.
 ##
 ## What it gives:
+## - `own_stance` (ADR 0037 section 15): the stance of each of `own_rows`, in step with it.
 ## - `own_rows`: the rows with `owner == player`, and `seen_rows`: the rows of any other owner (an
 ##   enemy, or the neutral 0) whose cell the player's fog shows visible now, the rule of
 ##   `Targeting.sees` (the cell holding the row, in the player's block of `fog.visible`). Both are
@@ -142,6 +143,10 @@ var low_power: bool = false
 ## The rows the player owns, and the rows of other owners that it sees: ascending World rows.
 var own_rows: PackedInt32Array = PackedInt32Array()
 var seen_rows: PackedInt32Array = PackedInt32Array()
+## The stance of each own row (ADR 0037 section 15): one entry per `own_rows` entry, in the same
+## order (find a row's at `own_rows.bsearch(row)`); 0 normal, 1 hold position. Own state only (no
+## other player's row is in it), a copy (ADR 0038 section 4).
+var own_stance: PackedInt32Array = PackedInt32Array()
 ## The player's queues: `queue_slots` places per tab, `queue_count[tab]` of them in use with the
 ## head first in `queue_type[tab * queue_slots]` (-1 in a free place), and `queue_progress[tab]` the
 ## head's progress in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick). `rally_x` and
@@ -586,11 +591,14 @@ func _take_rows(world: World) -> void:
 	var count: int = _ids.size()
 	var shown: PackedByteArray = PackedByteArray()
 	shown.resize(count)
+	var stances: PackedInt32Array = world.stance
+	var own_stances: PackedInt32Array = PackedInt32Array()
 	var own: PackedInt32Array = PackedInt32Array()
 	var seen: PackedInt32Array = PackedInt32Array()
 	for row: int in count:
 		if owners[row] == player:
 			own.append(row)
+			own_stances.append(stances[row])
 			shown[row] = _OWN
 			continue
 		var is_seen: bool = sees_all
@@ -627,6 +635,7 @@ func _take_rows(world: World) -> void:
 	]
 	_shown = shown
 	own_rows = own
+	own_stance = own_stances
 	seen_rows = seen
 
 

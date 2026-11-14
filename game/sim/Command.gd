@@ -9,8 +9,8 @@ extends RefCounted
 ## sale and repair (ADR 0037 sections 3 and 4); LOAD (5) boards a carrier, UNLOAD (6) puts the
 ## squads down (ADR 0036 section 8) and REPAIR (7) sends units to an own building with the repair
 ## role (ADR 0036 section 7); LAY_MINE (8) sends minelayers to lay a mine at a point (ADR 0037
-## section 8); 9, 19 and 21-29 stay reserved. Every type without a branch in Sim.step is dropped as
-## unknown.
+## section 8); STANCE (9) sets hold position (ADR 0037 section 15); 19 and 21-29 stay reserved.
+## Every type without a branch in Sim.step is dropped as unknown.
 
 enum Type {
 	NONE = 0,
@@ -29,6 +29,7 @@ enum Type {
 	CANCEL_BUILD = 16,
 	SELL = 17,
 	MEND = 18,
+	STANCE = 9,
 	REPAIR = 7,
 	SURRENDER = 20,
 	LAY_MINE = 8,
@@ -64,7 +65,8 @@ var target_y: int = 0
 ## carrier a LOAD boards or the airfield a REPAIR sends aircraft to, 0 = none.
 var target_id: int = 0
 ## Type-specific ints (ADR 0017 section 4): QUEUE `[type_index]`, CANCEL `[tab, slot]`, PLACE
-## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, empty for every other type.
+## `[type_index]` or empty (ADR 0026), MEND `[1]` on or `[0]` off, STANCE `[0]` normal or `[1]`
+## hold, empty for every other type.
 var payload: PackedInt32Array = PackedInt32Array()
 
 ## An attack-move order. Every factory copies the ids it is given (a command changes hands once,
@@ -233,6 +235,15 @@ static func lay_mine(
 	var command: Command = _of(Type.LAY_MINE, player_id, unit_ids)
 	command.target_x = target_x
 	command.target_y = target_y
+	return command
+
+
+## Set the stance of the own mobile `unit_ids`: normal (`hold` false) or hold position (ADR 0037
+## section 15); the payload is [0] or [1].
+@warning_ignore("shadowed_variable")
+static func stance(player_id: int, unit_ids: PackedInt32Array, hold: bool) -> Command:
+	var command: Command = _of(Type.STANCE, player_id, unit_ids)
+	command.payload = PackedInt32Array([1 if hold else 0])
 	return command
 
 
