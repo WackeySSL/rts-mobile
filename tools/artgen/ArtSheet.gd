@@ -63,6 +63,7 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 		for dir: int in model.directions(&"hull"):
 			var at: Vector2 = ArtGen.mount_px(model, 6 if dir < 0 else dir)
 			sheet.mounts.append(at.snapped(Vector2.ONE * 0.1))
+	sheet.boxes = _boxes(shots)
 	sheet.stride_milli = model.stride_milli
 	sheet.anim_ms = model.anim_ms
 	sheet.marks = model.marks
@@ -92,6 +93,29 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	return sheet
 
 
+## The tight boxes of every directional frame but the shadows' (`IsoSheetDef.boxes`): the bounds of
+## its polygons plus `ArtGen.MARGIN_PX`, in canvas px, kept inside the canvas. The 2 px edge stroke
+## reaches 1 px past a vertex, so the box is the alpha bounds plus 1 clear px.
+static func _boxes(shots: Dictionary[StringName, ArtGen.Shot]) -> PackedInt32Array:
+	var found: PackedInt32Array = PackedInt32Array()
+	for part: StringName in shots:
+		var shot: ArtGen.Shot = shots[part]
+		if shot.dirs.size() <= 1 or part == ArtModel.SHADOW:
+			continue
+		var canvas: Rect2i = Rect2i(Vector2i.ZERO, shot.layout.size)
+		for polys: Array in shot.polys:
+			var typed: Array[ArtRender.Poly] = []
+			typed.assign(polys)
+			var box: Rect2 = ArtRender.bounds(typed)
+			var low: Vector2i = Vector2i(floori(box.position.x), floori(box.position.y))
+			var high: Vector2i = Vector2i(ceili(box.end.x), ceili(box.end.y))
+			var rect: Rect2i = Rect2i(low, high - low).grow(ArtGen.MARGIN_PX)
+			rect.position += shot.layout.origin
+			rect = rect.intersection(canvas)
+			found.append_array([rect.position.x, rect.position.y, rect.size.x, rect.size.y])
+	return found
+
+
 ## The `.tres` text of a sheet, one value a line: the exports of `FIELDS` in their order
 ## (`var_to_str` writes a value as the resource text does; the mounts and the emitter points are
 ## written by hand to one decimal), then those of `LIFE_FIELDS` that the sheet has: `frames` when a
@@ -104,6 +128,9 @@ static func text(sheet: IsoSheetDef) -> String:
 	for field: StringName in LIFE_FIELDS:
 		if _has(sheet, field):
 			lines.append("%s = %s" % [field, _value(sheet, field)])
+	# The trim (P305): after the frame axis, so a sheet without directional frames is as before.
+	if not sheet.boxes.is_empty():
+		lines.append("boxes = %s" % var_to_str(sheet.boxes))
 	return "\n".join(lines) + "\n"
 
 

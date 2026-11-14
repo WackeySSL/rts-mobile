@@ -23,7 +23,8 @@ extends RefCounted
 ## else it keeps the path of its order, so units use the gaps in the rock and never press into it;
 ## an `ATTACK` unit steers at its target by the order's own navigation (the goal is the target's
 ## position) and holds at range. A unit that loses its target (or its target steps out of range)
-## resumes its path. See `_engage`.
+## resumes its path. See `_engage`. Hold position (P298): see the `stance` notes in `run` and
+## `_engage`; tests/sim/test_stance.gd and tests/sim/native/test_targeting_lockstep_hold.gd.
 ##
 ## `run` has a C++ twin, the TARGETING kernel (native/sim_kernels, core/targeting.cpp, ADR 0013
 ## section 5): it hands both passes to it when the World's mask has its bit, and a change to
@@ -50,6 +51,8 @@ const HOLD: int = World.NavMode.HOLD
 const CHASE: int = World.NavMode.CHASE
 ## Same value as World.MILLI_PER_TILE: the side of a fog cell.
 const TILE: int = World.MILLI_PER_TILE
+## The `stance` column's hold position (`Command.STANCE` payload 1, ADR 0037 section 15).
+const HOLD_STANCE: int = 1
 
 ## The acquisition pass: one pass over the rows in ascending id order, then `_engage`.
 ## - An `ATTACK` row locks its target (P41b): `target` is its `order_target` for as long as that
@@ -64,12 +67,14 @@ const TILE: int = World.MILLI_PER_TILE
 ##   row from this tick (in this same pass it scans if it is due on this tick, else on its next due
 ##   tick). The lock tests the sight on every tick, not on the row's turn. ADR 0009 section 2. A
 ##   target on a layer the row's weapon cannot hit (P238) breaks the lock the same way; an unarmed
-##   type has no mask and locks any enemy.
+##   type has no mask and locks any enemy. A held row (`stance` 1, P298, ADR 0037 section 15) does
+##   not attack-move on: it goes IDLE where it stands (goal = its position, navigation `NONE`),
+##   and then scans like any idle row, at weapon range, in this same pass.
 ## - `MOVE` rows acquire nothing and drop a target they held, every tick (a moving unit does not
 ##   fire).
 ## - An `ATTACK_MOVE` or `IDLE` row with a weapon is due when `(tick + id) % retarget_period_ticks`
 ##   is 0 (a fifth of the rows each tick with the shipped 5). Its reach is the type's acquire
-##   range when attack-moving and the weapon's range when idle.
+##   range when attack-moving and the weapon's range when idle, or when held (`stance` 1).
 ## - A due row keeps its target while that unit still exists, is an enemy, is seen (P46b) and is a
 ##   candidate (below) within reach: no switching for a nearer or better one. Otherwise it scans.
 ##   The sight of a held target is tested on the row's turn, like its range, so a target that walks
@@ -111,6 +116,7 @@ static func run(world: World) -> void:
 	var orders: PackedInt32Array = world.order
 	var order_targets: PackedInt32Array = world.order_target
 	var targets: PackedInt32Array = world.target
+	var stances: PackedInt32Array = world.stance
 	var type_speed: PackedInt32Array = world.type_speed
 	var type_armour: PackedInt32Array = world.type_armour
 	var type_acquire: PackedInt32Array = world.type_acquire
@@ -193,10 +199,19 @@ static func run(world: World) -> void:
 						goal_x[row] = pos_x[at]
 						goal_y[row] = pos_y[at]
 					continue
-			orders[row] = ATTACK_MOVE
 			order_targets[row] = 0
 			targets[row] = 0
-			order = ATTACK_MOVE
+			if stances[row] == HOLD_STANCE:
+				# Hold position (ADR 0037 section 15): a held ATTACK whose target is gone stops where
+				# it stands, as STOP leaves a unit, instead of attack-moving on.
+				orders[row] = IDLE
+				order = IDLE
+				goal_x[row] = pos_x[row]
+				goal_y[row] = pos_y[row]
+				Movement.reset_row(world, row, NONE)
+			else:
+				orders[row] = ATTACK_MOVE
+				order = ATTACK_MOVE
 		if order != ATTACK_MOVE and order != IDLE:
 			targets[row] = 0
 			continue
@@ -206,7 +221,10 @@ static func run(world: World) -> void:
 		var weapon: int = type_weapon[type]
 		if weapon < 0 or weapon >= weapons:
 			continue
-		var reach: int = type_acquire[type] if order == ATTACK_MOVE else weapon_range[weapon]
+		# An idle row, or a held one (stance 1), acquires at weapon range only.
+		var reach: int = weapon_range[weapon]
+		if order == ATTACK_MOVE and stances[row] != HOLD_STANCE:
+			reach = type_acquire[type]
 		var reach2: int = reach * reach
 		var min2: int = weapon_min_range[weapon] * weapon_min_range[weapon]
 		var vs_base: int = weapon * armour_classes
@@ -363,6 +381,8 @@ static func sees(world: World, player: int, x: int, y: int) -> bool:
 ##   (unchecked `DIRECT`, so the same tick takes the field) instead of steering into the rock for
 ##   as long as the target stays behind it. A `FIELD` unit already checks its line each time it
 ##   enters a tile. Range and the hold still measure to the target's position.
+## A held unit (`stance` 1, ADR 0037 section 15) acquires at weapon range on `ATTACK_MOVE`, never
+## takes `CHASE`, and a held `ATTACK` whose target is gone goes IDLE where it stands (`run`).
 ## An idle unit never moves. A target inside `min_range` is not in range, and no unit backs away
 ## from it (no Phase 2 weapon has a minimum range). A type without a weapon table row is unarmed
 ## here as in `run`.
@@ -378,6 +398,7 @@ static func _engage(world: World) -> void:
 	var pos_y: PackedInt32Array = world.pos_y
 	var goal_x: PackedInt32Array = world.goal_x
 	var goal_y: PackedInt32Array = world.goal_y
+	var stances: PackedInt32Array = world.stance
 	var type_acquire: PackedInt32Array = world.type_acquire
 	var type_weapon: PackedInt32Array = world.type_weapon
 	var weapon_range: PackedInt32Array = world.weapon_range
@@ -426,6 +447,10 @@ static func _engage(world: World) -> void:
 				if not FixedMath.line_clear(world, x, y, goal_x[row], goal_y[row], classes[type]):
 					Movement.reset_row(world, row, DIRECT)
 			continue
+		if stances[row] == HOLD_STANCE:
+			if mode == CHASE:  # Held while chasing: back to the path.
+				Movement.reset_row(world, row, DIRECT)
+			continue  # Hold position never chases: it walks on along its path.
 		var clear: bool = false
 		var acquire: int = type_acquire[type]
 		if d2 <= acquire * acquire:

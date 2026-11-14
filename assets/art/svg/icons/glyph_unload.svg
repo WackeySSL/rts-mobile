@@ -1,0 +1,39 @@
+<!-- Unload glyph: white and grey only, tinted at run time (the Unload order: a loaded carrier lets its squads out at a point). -->
+<!-- Shape: a boxy carrier on four-square wheels at the left with a chamfered nose and a dark doorway cut into its side, a white ramp running down from its foot to the ground and two small round-headed figures with square shoulders stepping off it, side by side, at the right; no arrow. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="translate(0 -6)">
+    <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+    <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+      <path d="M10 44 H42 L56 60 V90 H10 Z"/>
+      <circle cx="22" cy="96" r="8"/>
+      <circle cx="42" cy="96" r="8"/>
+      <path d="M56 84 L72 96 V98 H56 Z"/>
+      <circle cx="85" cy="54" r="8"/>
+      <path d="M76 98 V82 Q76 70 85 70 Q94 70 94 82 V98 Z"/>
+      <circle cx="107" cy="54" r="8"/>
+      <path d="M98 98 V82 Q98 70 107 70 Q116 70 116 82 V98 Z"/>
+    </g>
+    <!-- body: the lit plane, so white -->
+    <g fill="#FFFFFF">
+      <path d="M10 44 H42 L56 60 V90 H10 Z"/>
+      <circle cx="22" cy="96" r="8"/>
+      <circle cx="42" cy="96" r="8"/>
+      <path d="M56 84 L72 96 V98 H56 Z"/>
+      <circle cx="85" cy="54" r="8"/>
+      <path d="M76 98 V82 Q76 70 85 70 Q94 70 94 82 V98 Z"/>
+      <circle cx="107" cy="54" r="8"/>
+      <path d="M98 98 V82 Q98 70 107 70 Q116 70 116 82 V98 Z"/>
+    </g>
+    <!-- shade on the lower right facets: the carrier's lower edge and right end, the figures' right flanks -->
+    <path d="M10 82 H56 V90 H10 Z" fill="#BFBFBF"/>
+    <path d="M48 52 L56 60 V82 H48 Z" fill="#BFBFBF"/>
+    <path d="M89 71 Q94 74 94 82 V98 H89 Z" fill="#BFBFBF"/>
+    <path d="M111 71 Q116 74 116 82 V98 H111 Z" fill="#BFBFBF"/>
+    <!-- the doorway and the window of the carrier, dark -->
+    <rect x="30" y="56" width="12" height="26" fill="#4D4D4D"/>
+    <rect x="16" y="52" width="10" height="10" rx="2" fill="#4D4D4D"/>
+    <!-- the wheel hubs, dark -->
+    <circle cx="22" cy="96" r="3" fill="#4D4D4D"/>
+    <circle cx="42" cy="96" r="3" fill="#4D4D4D"/>
+  </g>
+</svg>

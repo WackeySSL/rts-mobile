@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## The ground layout (plan row P286, ADR 0037 sections 8, 11 and 15, named exception 25):
 ## STATE_FORMAT stays 7, the row column `stance`, the mine table (`mine_*`, the scalars
 ## `next_mine_id` and `mine_count`), the records of found mines (`mine_seen_*`), the section
-## `mines` and the derived `mine_at`. No rule uses them yet (Mines.gd is P287, hold position P298);
+## `mines` and the derived `mine_at`. Mines.gd (P287) now uses them, hold position (P298) not yet;
 ## this suite pins the shape and what the hash does and does not see. Numbers are literals, so no
 ## layout can agree with itself. The golden hashes are pinned in test_world_hash and
 ## tests/perf/test_golden_hashes.
