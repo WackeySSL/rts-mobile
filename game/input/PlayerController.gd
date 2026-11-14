@@ -49,6 +49,8 @@ signal selection_changed(ids: PackedInt32Array)
 ## sent, in milli-tiles. `RallyLayer` shows the flag at once, before the sim has applied the order.
 signal rally_ordered(tab: int, x: int, y: int)
 
+const DIED_FLAG_AT: int = 6  ## The seventh int of a DIED record (`Removal.run`).
+
 @export var runner: MatchRunner
 @export var unit_layer: UnitLayer
 @export var building_layer: BuildingLayer  ## Without one no building can be picked.
@@ -71,6 +73,7 @@ var _snap: PickSnapshot = PickSnapshot.new()
 var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_groups`' scratch.
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
+var _boarded: PackedInt32Array = PackedInt32Array()  ## Scratch: the DIED records of flag 2.
 
 
 func _init() -> void:
@@ -183,8 +186,12 @@ func units_selected() -> bool:
 	return _units_selected()
 
 
+## Selects the squads of group `slot` that are on the map; the ones aboard a carrier join again
+## from the unload on (`_show_groups` counts only the ones on the map).
 func tap_group(slot: int) -> void:
-	selection.recall_group(slot)
+	var live: PackedInt32Array = _on_map(selection.group(slot))
+	if not live.is_empty():
+		selection.set_ids(live)
 
 
 ## Stores the selected units in group `slot` (a hold on it overwrites it), shows the count and
@@ -316,13 +323,21 @@ func _on_selection_changed() -> void:
 func _on_ticked(_tick: int) -> void:
 	var events: PackedInt32Array = runner.snapshot.events
 	_dead.clear()
+	_boarded.clear()
+	var unloaded: bool = false
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] == World.Event.DIED:
+		if events[at] == World.Event.UNLOADED:
+			unloaded = true
+		elif events[at] != World.Event.DIED:
+			continue
+		elif events[at + DIED_FLAG_AT] == Removal.FLAG_BOARDED:
+			_boarded.append(events[at + 1])  # Aboard a carrier: out of the live selection only.
+		else:
 			_dead.append(events[at + 1])
-	if _dead.is_empty():
-		return
 	selection.remove_ids(_dead)
-	_show_groups()
+	selection.drop_live(_boarded)
+	if unloaded or not _dead.is_empty() or not _boarded.is_empty():
+		_show_groups()  # A group counts the squads on the map: aboard ones leave, unloaded return.
 
 
 ## Tells the group column the counts of the groups and whether "+" can save (units are selected and
@@ -331,9 +346,21 @@ func _show_groups() -> void:
 	if group_column == null:
 		return
 	for slot: int in range(1, SelectionModel.GROUP_COUNT + 1):
-		_group_counts[slot - 1] = selection.group_size(slot)
+		_group_counts[slot - 1] = _on_map(selection.group(slot)).size()
 	var can_save: bool = selection.lowest_free_group() > 0 and _units_selected()
 	group_column.show_groups(_group_counts, can_save)
+
+
+## The ids of `ids` that are rows now: a squad aboard a carrier is not one.
+func _on_map(ids: PackedInt32Array) -> PackedInt32Array:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null:
+		return ids
+	var live: PackedInt32Array = PackedInt32Array()
+	for id: int in ids:
+		if snap.index_of(id) >= 0:
+			live.append(id)
+	return live
 
 
 ## A tap with the Board or Unload aim open: Unload sets the point, Board rings the own unit tapped

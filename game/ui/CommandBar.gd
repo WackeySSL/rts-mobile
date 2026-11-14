@@ -9,7 +9,8 @@ extends Control
 ## one own complete building (Mend, Sell). Orders that do not fit scroll sideways inside the bar, a
 ## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
 ## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
-## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs.
+## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs. A carrier's
+## chip shows its seats as pips, filled for each squad aboard.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -42,8 +43,11 @@ const CLEAR_DP: Vector2 = Vector2(48.0, 64.0)
 const ORDER_DP: Vector2 = Vector2(56.0, 64.0)  ## An order button's least size.
 const GLYPH_DP: float = 28.0
 const HEALTH_DP: Vector2 = Vector2(40.0, 6.0)
+const PIP_DP: float = 8.0  ## A passenger pip: a square, filled for a squad aboard, else an outline.
+const PIP_GAP_DP: float = 3.0
 const SHAKE_DP: float = 6.0  ## How far a refused Board shakes its face, and for how long a step.
 const SHAKE_S: float = 0.05
+const PIPS_MAX: int = 8  ## The most pips a chip shows (a fleet's seats are summed).
 const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may ask of the bar.
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
@@ -114,6 +118,7 @@ class Chip:
 	var card: TextureRect = TextureRect.new()
 	var label: Label = Label.new()  ## "xN" for units, the name of a building.
 	var health: HealthBar = HealthBar.new()
+	var pips: Pips = Pips.new()  ## A carrier's seats; hidden for any other type.
 	var type: StringName = &""  ## The card's type, to load it once.
 	var enemy: bool = false
 
@@ -137,6 +142,10 @@ class Chip:
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		text.add_child(label)
+		pips.name = "Pips"
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pips.visible = false
+		text.add_child(pips)
 		health.name = "Health"
 		health.show_percentage = false
 		health.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -159,6 +168,7 @@ class Chip:
 			enemy = as_enemy
 			health.set_enemy(enemy)
 			card.queue_redraw()
+		pips.show_seats(group.seats, group.aboard, label.get_theme_color(&"font_color"))
 		health.max_value = maxf(group.max_hp, 1.0)
 		health.value = group.hp
 		health.visible = not group.fogged
@@ -177,6 +187,7 @@ class Chip:
 		custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
 		card.custom_minimum_size = UiScale.dp_vec(CARD_DP, CARD_DP)
 		health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
+		pips.apply_dp()
 		fit_label()
 
 	## The brackets of an enemy building's chip (none for any other), as `HealthBarLayer` frames a
@@ -239,6 +250,44 @@ class HealthBar:
 			draw_rect(notch, get_theme_color(&"edge", FRAME))
 
 
+## A carrier chip's seats: a row of squares, one per seat, filled for a squad aboard and hollow for
+## a free seat (the shape tells them apart, not the colour).
+class Pips:
+	extends Control
+
+	var seats: int = 0
+	var aboard: int = 0
+	var tone: Color
+
+	func show_seats(total: int, filled: int, colour: Color) -> void:
+		var shown: int = mini(total, PIPS_MAX)
+		var lit: int = mini(filled, shown)
+		if shown == seats and lit == aboard and colour == tone:
+			return
+		seats = shown
+		aboard = lit
+		tone = colour
+		visible = seats > 0
+		apply_dp()
+		queue_redraw()
+
+	func apply_dp() -> void:
+		var dp: float = UiScale.base_px_per_dp()
+		custom_minimum_size = Vector2(seats * (PIP_DP + PIP_GAP_DP) * dp, PIP_DP * dp)
+
+	func _draw() -> void:
+		var dp: float = UiScale.base_px_per_dp()
+		var side: float = PIP_DP * dp
+		for index: int in seats:
+			var box: Rect2 = Rect2(
+				Vector2(index * (PIP_DP + PIP_GAP_DP) * dp, 0.0), Vector2(side, side)
+			)
+			if index < aboard:
+				draw_rect(box, tone)
+			else:
+				draw_rect(box.grow(-dp * 0.5), tone, false, maxf(dp, 1.0))
+
+
 ## What the selection holds of one type, for `_fill`.
 class Group:
 	extends RefCounted
@@ -250,6 +299,8 @@ class Group:
 	var row: int = 0  ## The first row of the type.
 	var building: bool = false
 	var fogged: bool = false  ## A building the fog hides: its health is not told.
+	var seats: int = 0  ## A carrier type: the seats of the selected carriers, summed.
+	var aboard: int = 0  ## And the squads aboard them.
 
 
 func _ready() -> void:
@@ -532,6 +583,9 @@ func _fill(ids: PackedInt32Array) -> void:
 				group.building = WorldSort.is_building(snap, type)
 				groups[type] = group
 			group.count += 1
+			if CarryRules.is_carrier_type(snap, type):
+				group.seats += snap.type_carry_slots[type]
+				group.aboard += CarryRules.aboard(snap, id)
 			group.hp += snap.hp[row]
 			group.max_hp += snap.type_max_hp[type]
 			if group.building and building_layer != null and not building_layer.is_shown(row):

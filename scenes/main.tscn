@@ -48,6 +48,7 @@
 [ext_resource type="Script" path="res://game/ui/ConfirmDialog.gd" id="91_confirm"]
 [ext_resource type="Script" path="res://game/ui/RevealBadge.gd" id="92_reveal_badge"]
 [ext_resource type="Script" path="res://game/input/CarryAim.gd" id="93_carry_aim"]
+[ext_resource type="Script" path="res://game/view/CarryMarkLayer.gd" id="94_carry_marks"]
 [ext_resource type="Script" path="res://game/ui/CarryControls.gd" id="95_carry_controls"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
@@ -193,6 +194,13 @@ runner = NodePath("../MatchRunner")
 controller = NodePath("../PlayerController")
 placement = NodePath("../PlacementController")
 strike_aim = NodePath("../StrikeAim")
+
+[node name="CarryMarkLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "aim")]
+z_index = 65
+z_as_relative = false
+script = ExtResource("94_carry_marks")
+runner = NodePath("../MatchRunner")
+aim = NodePath("../CarryAim")
 
 [node name="StrikeAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller")]
 script = ExtResource("32_aim")
