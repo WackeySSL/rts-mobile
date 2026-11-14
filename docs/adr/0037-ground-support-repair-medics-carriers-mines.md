@@ -524,6 +524,15 @@ of which about 120 are C++.
   - The twin-and-kernel case runs the lay and blast under both implementations in
     `test_mines_run.gd`. No golden moves.
 
+- **Note (2026-11-14, P288, as built).** `MineMemory.run` (MEMORY, after `LastSeen.run`) loops the
+  mines (ascending id) that pass the cheap tests (enemy, cell visible, no record) and, for each,
+  the rows for a living detector in range; so the pass over the rows is per candidate mine, not one
+  pass, and `MINE_CHECKS` counts only the detector x mine distance tests (no new stat). Sweeping
+  lives in `Mines.lay`'s row loop (`carry_mode` `Mines.SWEEPING` 3, GDScript only). `PlayerView`
+  gains six copied fields, `own_mines`/`own_mine_id`/`own_mine_armed` and
+  `known_mines`/`known_mine_id`/`known_mine_owner` (no new method), and `MatchSnapshot` copies the
+  mine table's id, owner, cell and armed columns, the four record columns and `mine_count` and
+  `mine_known_cap`: the view picks the local player's own and its records, as it does for ghosts.
 ### 9. Touch: how the new gestures fit (touch-ui-rules; ADR 0015)
 | Feature | Gesture | Fits the existing set because |
 | --- | --- | --- |

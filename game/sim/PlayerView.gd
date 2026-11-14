@@ -7,6 +7,7 @@ extends RefCounted
 ## reads the World and writes nothing, and keeps no reference to it.
 ##
 ## What it gives:
+## - `own_mines` and `known_mines` (ADR 0037 section 8): the mines the player laid and found.
 ## - `own_stance` (ADR 0037 section 15): the stance of each of `own_rows`, in step with it.
 ## - `own_rows`: the rows with `owner == player`, and `seen_rows`: the rows of any other owner (an
 ##   enemy, or the neutral 0) whose cell the player's fog shows visible now, the rule of
@@ -147,6 +148,16 @@ var seen_rows: PackedInt32Array = PackedInt32Array()
 ## order (find a row's at `own_rows.bsearch(row)`); 0 normal, 1 hold position. Own state only (no
 ## other player's row is in it), a copy (ADR 0038 section 4).
 var own_stance: PackedInt32Array = PackedInt32Array()
+## The mines (ADR 0037 section 8), copies: the player's own (`own_mines` the cells, `own_mine_id`
+## and `own_mine_armed`, the tick each arms, in step, ascending mine id; no fog hides them) and the
+## ones it found (`known_mines` the cells, `known_mine_id` and `known_mine_owner` in step, the order
+## of its records in `MineMemory`). A mine it has not found is in neither list.
+var own_mines: PackedInt32Array = PackedInt32Array()
+var own_mine_id: PackedInt32Array = PackedInt32Array()
+var own_mine_armed: PackedInt32Array = PackedInt32Array()
+var known_mines: PackedInt32Array = PackedInt32Array()
+var known_mine_id: PackedInt32Array = PackedInt32Array()
+var known_mine_owner: PackedInt32Array = PackedInt32Array()
 ## The player's queues: `queue_slots` places per tab, `queue_count[tab]` of them in use with the
 ## head first in `queue_type[tab * queue_slots]` (-1 in a free place), and `queue_progress[tab]` the
 ## head's progress in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick). `rally_x` and
@@ -269,6 +280,7 @@ static func of(world: World, player: int) -> PlayerView:
 	view._take_tables(world)
 	view._take_player(world)
 	view._take_ghosts(world)
+	view._take_mines(world)
 	view._take_warned(world)
 	view.reveal_state = world.reveal.duplicate()
 	view.upgrades = world.upgrades[player] if player < world.upgrades.size() else 0
@@ -548,6 +560,36 @@ func _take_ghosts(world: World) -> void:
 	ghost_type = world.ghost_type.slice(first, first + count)
 	ghost_owner = world.ghost_owner.slice(first, first + count)
 	ghost_cell = world.ghost_cell.slice(first, first + count)
+
+
+## The player's own mines and its records of the others', as copies. A player past the World's
+## arrays (the neutral 0, a hand-built World) keeps none.
+func _take_mines(world: World) -> void:
+	var cap: int = world.mine_known_cap
+	var owners: PackedInt32Array = world.mine_owner
+	var cells: PackedInt32Array = world.mine_cell
+	var ids: PackedInt32Array = world.mine_id
+	var armed: PackedInt32Array = world.mine_armed_tick
+	var made_cell: PackedInt32Array = PackedInt32Array()
+	var made_id: PackedInt32Array = PackedInt32Array()
+	var made_armed: PackedInt32Array = PackedInt32Array()
+	for index: int in mini(world.mine_count, mini(owners.size(), mini(cells.size(), ids.size()))):
+		if owners[index] == player and index < armed.size():
+			made_cell.append(cells[index])
+			made_id.append(ids[index])
+			made_armed.append(armed[index])
+	own_mines = made_cell
+	own_mine_id = made_id
+	own_mine_armed = made_armed
+	if player < 1 or player >= world.mine_seen_count.size() or cap < 1:
+		return
+	var first: int = player * cap
+	var count: int = clampi(world.mine_seen_count[player], 0, cap)
+	if first + count > world.mine_seen_id.size():
+		return
+	known_mines = world.mine_seen_cell.slice(first, first + count)
+	known_mine_id = world.mine_seen_id.slice(first, first + count)
+	known_mine_owner = world.mine_seen_owner.slice(first, first + count)
 
 
 ## The one pass over the rows: aliases the columns, then sorts each row into `own_rows`,
