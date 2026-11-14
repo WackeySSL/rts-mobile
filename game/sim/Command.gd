@@ -8,9 +8,9 @@ extends RefCounted
 ## (20) is the first match-level one (ADR 0017 section 4); SELL (17) and MEND (18) are the building
 ## sale and repair (ADR 0037 sections 3 and 4); LOAD (5) boards a carrier, UNLOAD (6) puts the
 ## squads down (ADR 0036 section 8) and REPAIR (7) sends units to an own building with the repair
-## role (ADR 0036 section 7); STANCE (9) sets hold position (ADR 0037 section 15); 8, 19 and
-## 21-29 stay reserved. Every type without a branch in
-## Sim.step is dropped as unknown.
+## role (ADR 0036 section 7); LAY_MINE (8) sends minelayers to lay a mine at a point (ADR 0037
+## section 8); STANCE (9) sets hold position (ADR 0037 section 15); 19 and 21-29 stay reserved.
+## Every type without a branch in Sim.step is dropped as unknown.
 
 enum Type {
 	NONE = 0,
@@ -32,6 +32,7 @@ enum Type {
 	STANCE = 9,
 	REPAIR = 7,
 	SURRENDER = 20,
+	LAY_MINE = 8,
 }
 
 ## The most unit ids and payload ints a command may hold; Sim.step drops a command over either.
@@ -222,6 +223,18 @@ static func mend(player_id: int, building_id: int, on: bool) -> Command:
 	var command: Command = _of(Type.MEND, player_id, PackedInt32Array())
 	command.target_id = building_id
 	command.payload = PackedInt32Array([1 if on else 0])
+	return command
+
+
+## Send the own minelayers `unit_ids` to the point (milli-tiles) to lay one mine each on arrival
+## (ADR 0037 section 8). The payload is empty.
+@warning_ignore("shadowed_variable")
+static func lay_mine(
+	player_id: int, unit_ids: PackedInt32Array, target_x: int, target_y: int
+) -> Command:
+	var command: Command = _of(Type.LAY_MINE, player_id, unit_ids)
+	command.target_x = target_x
+	command.target_y = target_y
 	return command
 
 
