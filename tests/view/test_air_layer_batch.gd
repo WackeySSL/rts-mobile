@@ -16,7 +16,7 @@ var _layer: AirLayer
 
 
 func before_test() -> void:
-	_runner = auto_free(Air.runner())
+	_runner = auto_free(Air.runner(8))  # Sixteen flyers.
 	_layer = auto_free(Air.layer(self, _runner))
 	var tiles: Array = []
 	for y: int in 32:
@@ -43,8 +43,8 @@ func test_the_hulls_are_one_call_and_the_shadows_one_more() -> void:
 				shadows.append(sprite)
 			_:
 				fail("a flyer's sprite at z %d" % SortedTextures.resolved_z(sprite))
-	assert_int(hulls.size()).is_equal(2)  # One call at z 20, one texture...
-	assert_int(shadows.size()).is_equal(2)  # ... and one at z 2: the +2.
+	assert_int(hulls.size()).is_equal(16)  # One call at z 20, one texture...
+	assert_int(shadows.size()).is_equal(16)  # ... and one at z 2: the +2.
 	for rig: AirLayer.Rig in _rigs():
 		assert_bool(rig.marker.visible).is_false()  # No untextured draw beside them.
 
@@ -90,13 +90,22 @@ func test_the_flyers_add_nothing_to_the_sorted_page() -> void:
 	assert_int(region.end.y).is_less_equal(atlas.page_px(IsoAtlas.PAGE_UNSORTED).y)
 
 
+func test_dress_gives_a_flyers_hull_page_two_before_any_frame_is_shown() -> void:
+	var sprite: Sprite2D = auto_free(Sprite2D.new())
+	var atlas: IsoAtlas = _layer.world_sort.atlas
+	_layer.world_sort.dress(sprite, Air.sheet(Air.FIGHTER, &"fossil", true), &"hull")
+	assert_object(sprite.texture).is_same(atlas.texture(IsoAtlas.PAGE_UNSORTED))
+	_layer.world_sort.dress(sprite, IsoSheetDef.new(), &"hull")
+	assert_object(sprite.texture).is_same(atlas.texture())
+
+
 func _key() -> PackedStringArray:
 	return (load(WorldSort.FACTION_FILE % &"fossil") as FactionDef).key_triad
 
 
 func _rigs() -> Array[AirLayer.Rig]:
 	var found: Array[AirLayer.Rig] = []
-	for id: int in [Air.FIGHTER_ID, Air.DRONE_ID]:
+	for id: int in range(Air.FIGHTER_ID, Air.FIGHTER_ID + 16):
 		found.append(_layer.rig_of(id))
 	return found
 

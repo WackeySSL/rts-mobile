@@ -120,6 +120,8 @@ func build(snap: MatchSnapshot, sort: WorldSort) -> void:
 		if sheet == null:
 			continue
 		if not WorldSort.is_building(snap, type):
+			if WorldSort.is_flyer(snap, type):
+				continue  # No smoke at the ground point of a flyer.
 			if not sheet.counts.is_empty() and sheet.counts[0] == UnitLayer.DIRECTIONS:
 				_veh[type] = sheet.emitters.find(String(VEHICLE_POINT))  # Not a squad.
 			continue

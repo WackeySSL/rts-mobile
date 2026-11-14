@@ -34,15 +34,16 @@ static func sheets() -> Array[IsoSheetDef]:
 	return [sheet(FIGHTER, &"fossil", true), sheet(DRONE, &"renew", false)]
 
 
-## A runner on a scenario of the own fighter at tile (8, 8), the enemy drone at (20, 20) and a
-## tank of each player; paused, started, not in the tree.
-static func runner() -> MatchRunner:
+## A runner on a scenario of `each` own fighters from tile (8, 8), `each` enemy drones from (16, 20)
+## and a tank of each player; paused, started, not in the tree.
+static func runner(each: int = 1) -> MatchRunner:
 	var spawns: Array[SpawnDef] = [
 		Buildings.spawn(1, "light_tank", 4, 4),
 		Buildings.spawn(2, "renew_tank", 24, 24),
-		Buildings.spawn(1, String(FIGHTER), 8, 8),
-		Buildings.spawn(2, String(DRONE), 20, 20),
 	]
+	for i: int in each:  # Unit ids 3 and 4 for the first pair, then 5 and 6, and so on.
+		spawns.append(Buildings.spawn(1, String(FIGHTER), 8 + i % 8, 8 + i / 8))
+		spawns.append(Buildings.spawn(2, String(DRONE), 16 + i % 8, 20 + i / 8))
 	return Buildings.runner(Buildings.scenario(spawns))
 
 

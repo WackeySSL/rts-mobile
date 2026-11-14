@@ -80,7 +80,7 @@ func build(snap: MatchSnapshot, sort: WorldSort) -> void:
 		var found: int = -1
 		if (
 			sheet != null
-			and not WorldSort.is_building(snap, type)
+			and not WorldSort.is_rigless(snap, type)
 			and not sheet.counts.is_empty()
 			and sheet.counts[0] == UnitLayer.DIRECTIONS
 		):

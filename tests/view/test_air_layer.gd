@@ -78,10 +78,15 @@ func test_an_enemy_flyer_shows_only_where_its_tile_is_seen_and_an_own_one_always
 	_render(0.0)
 	assert_bool(_layer.rig_of(FIGHTER_ID).visible).is_true()
 	assert_bool(_layer.rig_of(DRONE_ID).visible).is_false()
-	Buildings.see(snap, 1, [Vector2i(20, 20)])  # Not the own fighter's tile now.
+	var dark: AirLayer.Rig = _layer.rig_of(DRONE_ID)
+	assert_bool(dark.hull.is_visible_in_tree()).is_false()
+	assert_bool(dark.shadow.is_visible_in_tree()).is_false()
+	Buildings.see(snap, 1, [Vector2i(16, 20)])  # Not the own fighter's tile now.
 	_render(0.0)
 	assert_bool(_layer.rig_of(FIGHTER_ID).visible).is_true()
 	assert_bool(_layer.rig_of(DRONE_ID).visible).is_true()
+	assert_bool(_layer.rig_of(DRONE_ID).hull.is_visible_in_tree()).is_true()
+	assert_bool(_layer.rig_of(DRONE_ID).shadow.is_visible_in_tree()).is_true()
 	_layer.reveal_enemies = true
 	Buildings.see(snap, 1, [])
 	_render(0.0)
@@ -96,7 +101,7 @@ func test_the_hover_bobs_within_the_amplitude_on_match_time_and_reduced_holds_st
 		_see_all()
 		_render(0.0)
 		var offset: float = -rig.hull.position.y - float(Air.FLY_PX)
-		assert_float(absf(offset)).is_less_equal(AirLayer.BOB_PX + 0.001)
+		assert_float(absf(offset)).is_less_equal(_life.air_bob_px + 0.001)
 		seen[snappedf(offset, 0.01)] = true
 	assert_int(seen.size()).is_greater(4)
 	_life.reduced = true
@@ -108,8 +113,58 @@ func test_the_hover_bobs_within_the_amplitude_on_match_time_and_reduced_holds_st
 	assert_float(rig.hull.position.y).is_equal(-float(Air.FLY_PX))
 
 
+func test_the_bob_follows_the_period_of_the_settings() -> void:
+	assert_int(_life.air_bob_ms).is_equal(2400)  # The shipped values.
+	assert_float(_life.air_bob_px).is_equal(1.5)
+	assert_int(_life.air_fall_ms).is_equal(700)
+	assert_int(_life.air_fall_drift_milli).is_equal(1500)
+	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
+	rig.phase_ms = 0
+	for _tick: int in 8:
+		_runner.run_ticks(1)
+		_see_all()
+		_render(0.0)
+		var ms: float = LifeClock.ms(_runner.snapshot, _runner.alpha())
+		var want: float = _life.air_bob_px * sin(TAU * ms / float(_life.air_bob_ms))
+		assert_float(-rig.hull.position.y - float(Air.FLY_PX)).is_equal_approx(want, 0.001)
+
+
+func test_frames_allocate_no_node_and_make_no_rig() -> void:
+	CommandQueue.submit(Command.move(1, PackedInt32Array([FIGHTER_ID]), 20000, 12000))
+	_render(0.05)
+	var nodes: float = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
+	var made: int = _layer.rigs_made()
+	for _tick: int in 60:
+		_runner.run_ticks(1)
+		_see_all()
+		_render(0.05)
+	assert_float(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)).is_equal(nodes)
+	assert_int(_layer.rigs_made()).is_equal(made)
+
+
+func test_a_fall_ends_in_a_burst_where_it_lands_and_the_death_has_none_before() -> void:
+	var effects: EffectsLayer = auto_free(EffectsLayer.new())
+	effects.runner = _runner
+	effects.world_sort = _layer.world_sort
+	add_child(effects)
+	effects.set_process(false)
+	_layer.effects = effects
+	_see_all()
+	_render(0.0)
+	_runner.world.hp[2] = 0
+	_runner.run_ticks(1)
+	_see_all()
+	_render(0.0)
+	assert_int(effects.active_count()).is_equal(0)  # The DIED itself bursts nothing for a flyer.
+	for _tick: int in 14:
+		_runner.run_ticks(1)
+		_render(0.0)
+	assert_int(_layer.falling_count()).is_equal(0)
+	assert_int(effects.active_count()).is_equal(1)  # The landing's burst.
+
+
 func test_two_flyers_bob_out_of_step_by_their_ids() -> void:
-	var a: int = LifeClock.pick(FIGHTER_ID, AirLayer.SALT_BOB, AirLayer.BOB_MS)
+	var a: int = LifeClock.pick(FIGHTER_ID, AirLayer.SALT_BOB, _life.air_bob_ms)
 	assert_int(_layer.rig_of(FIGHTER_ID).phase_ms).is_equal(a)
 	assert_int(_layer.rig_of(DRONE_ID).phase_ms).is_not_equal(a)
 

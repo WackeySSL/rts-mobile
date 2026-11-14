@@ -12,13 +12,14 @@ extends Node2D
 ## the ground point.
 ## - An own flyer is always drawn, an enemy one only where the local player sees its tile (the tile
 ##   of its position in the tick, `snapshot.cell_of`) or `reveal_enemies` is set.
-## - A flyer hovers and bobs a few px on match time (`LifeClock`, a phase from its id);
+## - A flyer hovers and bobs (`air_bob_*`) on match time (`LifeClock`, a phase from its id);
 ##   `life.reduced` turns the bob off. It turns to the direction it moves in, one frame step at a
 ##   time, and keeps its heading while it hovers.
-## - A flyer that dies where it was drawn falls (`FALL_MS` of match time from the DIED tick): it
-##   keeps its heading, drifts `FALL_DRIFT_MILLI` along it and its hull sinks to the ground on a
+## - A flyer that dies where it was drawn falls (`air_fall_ms` of match time from the DIED tick): it
+##   keeps its heading, drifts `air_fall_drift_milli` along it and its hull sinks to the ground on a
 ##   square law; then its rig returns to the pool. Every other flag of the DIED (a boarding, a
-##   cancelled site) and a death out of sight is no fall. The burst is `EffectsLayer`'s.
+##   cancelled site) and a death out of sight is no fall. It bursts where it lands
+##   (`effects.burst_at`).
 ## - A flyer whose type has no art (P245 draws it) stands in as the `UnitLayer.Marker` ellipse.
 ## Rigs are pooled; a frame sets properties only.
 
@@ -26,11 +27,7 @@ const Z_AIR: int = 20
 const HULL: StringName = &"hull"
 const SHADOW: StringName = &"shadow"
 const NO_FRAME: int = -1
-const BOB_PX: float = 1.5  ## The bob's amplitude, world px at zoom 1.
-const BOB_MS: int = 2400  ## Its period; a flyer's phase is `LifeClock.pick` of its id.
 const SALT_BOB: int = 0x41
-const FALL_MS: int = 700
-const FALL_DRIFT_MILLI: int = 1500
 ## What stands in for a sheet's `fly_px` and `low_fly_px`: a type with no art, or a sheet of 0.
 const DEFAULT_FLY_PX: float = 28.0
 const DEFAULT_LOW_FLY_PX: float = 12.0
@@ -38,7 +35,9 @@ const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 @export var runner: MatchRunner
 @export var world_sort: WorldSort
-@export var life: LifeSettings
+@export var life: LifeSettings  ## The bob and the fall (`air_*`).
+## Where a fall ends in its burst (the DIED burst of a flyer is this layer's, not `EffectsLayer`'s).
+@export var effects: EffectsLayer
 @export var reveal_enemies: bool = false
 @export var turn_rate: float = 12.0  ## Radians a second a hull turns, as `UnitLayer`'s.
 
@@ -206,7 +205,7 @@ func _new_rig(snap: MatchSnapshot, row: int) -> Rig:
 	rig.owner_id = snap.owner[row]
 	rig.sheet = sheet if art else null
 	rig.lift = lift_of_type(snap, type)
-	rig.phase_ms = LifeClock.pick(rig.id, SALT_BOB, BOB_MS)
+	rig.phase_ms = LifeClock.pick(rig.id, SALT_BOB, life.air_bob_ms)
 	rig.heading = 0.0
 	rig.aim = 0.0
 	rig.born_ms = -1.0
@@ -283,7 +282,7 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 	var fog: FogGrid = snap.fog
 	var fogged: bool = not reveal_enemies and FogLayer.covers(fog, player)
 	var counts_at: int = (player - 1) * fog.cells
-	var bob: bool = not life.reduced
+	var bob: bool = not life.reduced and life.air_bob_ms > 0
 	for at: int in _rows.size():
 		var row: int = _rows[at]
 		var rig: Rig = _rigs[at]
@@ -306,7 +305,9 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 			var turn: float = angle_difference(rig.heading, rig.aim)
 			rig.heading = rig.aim if absf(turn) <= step else rig.heading + signf(turn) * step
 			_turn(rig)
-		var sway: float = BOB_PX * sin(TAU * (now_ms + rig.phase_ms) / BOB_MS) if bob else 0.0
+		var sway: float = (
+			life.air_bob_px * sin(TAU * (now_ms + rig.phase_ms) / life.air_bob_ms) if bob else 0.0
+		)
 		_lift(rig, rig.lift + sway)
 
 
@@ -315,9 +316,11 @@ func _fall(now_ms: float) -> void:
 	var at: int = 0
 	while at < _falling.size():
 		var rig: Rig = _falling[at]
-		var t: float = LifeClock.age_ms(now_ms, rig.born_ms) / float(FALL_MS)
+		var t: float = LifeClock.age_ms(now_ms, rig.born_ms) / float(maxi(life.air_fall_ms, 1))
 		if t >= 1.0:
 			_falling.remove_at(at)
+			if effects != null:
+				effects.burst_at(rig.origin + rig.drift)
 			_pool_rig(rig)
 			continue
 		rig.position = rig.origin + rig.drift * t
@@ -351,6 +354,7 @@ func _on_ticked(_tick: int) -> void:
 		rig.born_ms = LifeClock.tick_ms(snap.tick)
 		rig.origin = rig.position
 		rig.drift = IsoProjection.ground_to_px(
-			roundi(cos(rig.heading) * FALL_DRIFT_MILLI), roundi(sin(rig.heading) * FALL_DRIFT_MILLI)
+			roundi(cos(rig.heading) * life.air_fall_drift_milli),
+			roundi(sin(rig.heading) * life.air_fall_drift_milli)
 		)
 		_falling.append(rig)
