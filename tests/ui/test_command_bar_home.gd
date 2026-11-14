@@ -119,6 +119,10 @@ func test_a_tap_on_home_sends_one_repair_per_airfield_buzzes_and_keeps_the_selec
 		await _open(size, null)
 		_home_at([FIGHTER, BOMBER], FIELD)
 		await _select([FIGHTER, BOMBER, TANK, DRONE])
+		# The scene wires the selection to the air layer: the ring of a selected aircraft.
+		var air: AirLayer = _main.get_node("AirLayer")
+		assert_bool(air.is_ringed(FIGHTER)).override_failure_message(str(size)).is_true()
+		assert_bool(air.is_ringed(DRONE)).is_true()
 		_tap(_home())
 		var why: String = str(size)
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)

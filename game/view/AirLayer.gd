@@ -138,6 +138,12 @@ func is_ringed(id: int) -> bool:
 	return rig != null and rig.ring != null and rig.ring.visible
 
 
+## Whether flyer `id` is drawn now: it has a rig (not a falling one) that the fog leaves shown.
+func is_shown(id: int) -> bool:
+	var rig: Rig = _by_id.get(id)
+	return rig != null and rig.visible
+
+
 ## How high above its ground point the top of flyer row `row`'s frame stands: the hover and the
 ## frame's own height (its sheet's `bar_lift_px`). Where a selected flyer's health bar sits.
 func bar_lift_px(row: int) -> float:

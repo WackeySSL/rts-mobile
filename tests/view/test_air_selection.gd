@@ -64,19 +64,49 @@ func test_the_ring_follows_a_flyer_that_arrives_in_the_selection_after_the_rows_
 	assert_bool(_layer.is_ringed(Air.DRONE_ID)).is_true()
 
 
-func test_a_selected_flyer_has_a_bar_above_its_hull_and_an_unselected_one_none() -> void:
+func test_a_selected_or_hit_flyer_has_a_bar_at_its_lifted_hull_like_a_ground_unit() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	Buildings.see(snap, 1, [Vector2i(8, 8)])
+	_layer._process(0.0)
+	_bars._process(0.0)
+	assert_int(_bars.bar_count()).is_equal(0)  # Neither selected nor hit.
+	_layer.set_selected(PackedInt32Array([Air.FIGHTER_ID]))
+	_layer._process(0.0)
+	_bars._process(0.0)
+	assert_int(_bars.bar_count()).is_equal(1)  # Selected.
+	assert_int(_bars.bar_row(0)).is_equal(2)
+	var rig: AirLayer.Rig = _layer.rig_of(Air.FIGHTER_ID)
+	var unit: float = UiScale.base_px_per_dp() / _bars.get_canvas_transform().get_scale().x
+	var top: float = (
+		rig.position.y
+		- _layer.bar_lift_px(2)
+		- (HealthBarLayer.GAP_DP + HealthBarLayer.HEIGHT_DP) * unit
+	)
+	var bar: Rect2 = _bars.rect_at(_bars.bar_first_rect(0))
+	# The hover is in it (a ground unit's bar would stand `lift` lower).
+	assert_float(bar.position.y).is_equal_approx(top, 4.0)
+	assert_float(_layer.bar_lift_px(2)).is_greater(rig.lift)
+	_layer.set_selected(PackedInt32Array())
 	_runner.world.hp[2] -= 5
 	_runner.run_ticks(1)
 	Buildings.see(_runner.snapshot, 1, [Vector2i(8, 8)])
 	_layer._process(0.0)
 	_bars._process(0.0)
-	assert_int(_bars.bar_count()).is_equal(0)  # Hurt, not selected: no bar for a flyer.
-	_layer.set_selected(PackedInt32Array([Air.FIGHTER_ID]))
+	assert_int(_bars.bar_count()).is_equal(1)  # Hit, not selected: the bar of a damaged unit.
+	assert_int(_bars.bar_row(0)).is_equal(2)
+
+
+func test_a_hit_enemy_flyer_the_fog_hides_shows_no_bar() -> void:
+	_layer.reveal_enemies = false
+	Buildings.see(_runner.snapshot, 1, [Vector2i(8, 8)])  # Not the drone's tile.
+	_runner.world.hp[3] -= 5
+	_runner.run_ticks(1)
+	Buildings.see(_runner.snapshot, 1, [Vector2i(8, 8)])
+	_layer._process(0.0)
+	_bars._process(0.0)
+	assert_int(_bars.bar_count()).is_equal(0)
+	assert_bool(_layer.is_shown(Air.DRONE_ID)).is_false()
+	Buildings.see(_runner.snapshot, 1, [Vector2i(8, 8), Vector2i(16, 20)])
 	_layer._process(0.0)
 	_bars._process(0.0)
 	assert_int(_bars.bar_count()).is_equal(1)
-	assert_int(_bars.bar_row(0)).is_equal(2)
-	var rig: AirLayer.Rig = _layer.rig_of(Air.FIGHTER_ID)
-	var bar: Rect2 = _bars.rect_at(_bars.bar_first_rect(0))
-	assert_float(bar.end.y).is_less(rig.position.y - rig.lift)  # Over the hull, not the ground.
-	assert_float(_layer.bar_lift_px(2)).is_greater(rig.lift)

@@ -314,8 +314,8 @@ func _plan() -> void:
 			if building_layer == null or not building_layer.is_shown(row):
 				continue  # No layer to say, or the fog hides the footprint.
 		elif WorldSort.is_flyer(snap, type):
-			if not selected:
-				continue  # A flyer's bar shows while it is selected (P244), not when it is hit.
+			if air_layer == null or not air_layer.is_shown(snap.unit_id[row]):
+				continue  # Selected or hit like a ground unit (ADR 0036 section 15), when drawn.
 		elif not unit_layer.is_shown(row):
 			continue  # A rig the fog hides has no bar (ADR 0010 section 2).
 		var klass: int = INFANTRY_CLASS if armours[type] == World.Armour.INFANTRY else 0

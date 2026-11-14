@@ -49,7 +49,7 @@ func test_there_is_no_flight_tab_while_the_faction_builds_no_aircraft() -> void:
 
 func test_the_flight_tab_is_a_tab_of_the_drawer_at_every_size_and_shows_the_fighter() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, ["fossil_fighter"], null)
+		await _open(size, ["fossil_fighter", "renew_fighter"], null)  # Both factions' aircraft.
 		await _assert_tabs(str(size))
 		var tab: Button = _tab()
 		var icon: TextureRect = tab.find_child("Icon", true, false) as TextureRect
@@ -74,12 +74,28 @@ func test_four_tabs_fit_every_profile_with_their_names_inside_them() -> void:
 	profiles.append_array(UiProfiles.all().values())
 	profiles.append_array(UiProfiles.portrait().values())
 	profiles.append_array(UiProfiles.notch_design().values())
+	profiles.append(_phone_320())  # 296 dp of safe width: the narrowest phone that is supported.
 	for metrics: UiMetrics in profiles:
 		await _open(metrics.window_size, ["fossil_fighter"], metrics)
 		for open: int in [World.Tab.STRUCTURES, World.Tab.VEHICLES, World.Tab.FLIGHT]:
 			_sidebar.select_tab(open)
 			await await_idle_frame()
 			await _assert_tabs("%s %s tab %d" % [metrics.os_name, metrics.window_size, open])
+
+
+## With room the names all show: no tab goes bare where four names fit (sideways on a 6-inch phone
+## or a tablet), and the open tab alone keeps its name where they do not.
+func test_names_show_wherever_the_row_fits_them() -> void:
+	await _open(ScreenSizes.ALL[2], ["fossil_fighter"], null)  # The tablet.
+	var bare: int = 0
+	for label: Label in _sidebar.find_children("Name", "Label", true, false):
+		bare += 0 if label.is_visible_in_tree() else 1
+	assert_int(bare).is_equal(0)
+	await _open(_phone_320().window_size, ["fossil_fighter"], _phone_320())
+	bare = 0
+	for label: Label in _sidebar.find_children("Name", "Label", true, false):
+		bare += 0 if label.is_visible_in_tree() else 1
+	assert_int(bare).is_equal(3)
 
 
 func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:
@@ -100,6 +116,13 @@ func _tap(control: Control) -> void:
 	var at: Vector2 = control.get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
+
+
+## A 320 dp wide phone held upright, as `test_command_bar_chips` builds it.
+func _phone_320() -> UiMetrics:
+	var size: Vector2i = Vector2i(320, 640)
+	var stretch: float = minf(size.x / 720.0, size.y / 1280.0)
+	return UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())
 
 
 ## Every visible tab: at least 48 dp each way, in the drawer and the safe area, and its name, when
@@ -129,14 +152,26 @@ func _assert_tabs(why: String) -> void:
 		var font: Font = label.get_theme_font(&"font")
 		var size: int = label.get_theme_font_size(&"font_size")
 		var wide: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, size).x
-		var plate: StyleBox = tab.get_theme_stylebox(&"normal", &"SidebarTab")
-		var room: float = rect.size.x - plate.get_margin(SIDE_LEFT) - plate.get_margin(SIDE_RIGHT)
+		# The content stands inside the plate's border (`_apply_dp`), so the label's own width is
+		# the room the name has, and it never reaches past the tab.
+		var room: float = label.size.x
+		(
+			assert_bool(rect.grow(0.5).encloses(label.get_global_rect()))
+			. override_failure_message(at)
+			. is_true()
+		)
 		(
 			assert_float(wide)
 			. override_failure_message("%s name %s wide in %s" % [at, wide, room])
 			. is_less_equal(room + 0.5)
 		)
 	assert_int(named).override_failure_message(why).is_greater(0)
+	var close: Rect2 = _sidebar.find_child("Close", true, false).get_global_rect()
+	var gone: String = "%s: close %s, drawer %s" % [why, close, drawer]
+	assert_bool(drawer.grow(0.5).encloses(close)).override_failure_message(gone).is_true()
+	assert_float(close.size.x).override_failure_message(gone).is_greater_equal(
+		UiScale.dp(48.0) - 0.5
+	)
 
 
 ## A new main scene at `size` (under `metrics` when given), its match paused; `units` are own

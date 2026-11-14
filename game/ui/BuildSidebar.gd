@@ -417,6 +417,7 @@ func _build_tabs() -> void:
 		_tabs.append(button)
 		_tab_icons.append(icon)
 	_build_close()
+	_stack.resized.connect(_fit_tabs)  # The room the names are measured against.
 
 
 ## The icon's tint: the open tab's white or the resting grey, from the tab's theme colours.
@@ -561,23 +562,33 @@ func _show_tab() -> void:
 
 
 ## The Flight tab (and later Research) shows only while the faction has items on it, so the tab
-## row holds three tabs, then four (P244). Three names fit the narrowest drawer, four do not
-## ("Structures" spilled into its neighbour on a 6-inch phone): with more than `NAMED_TABS_MAX`
-## tabs showing, only the open tab keeps its name and the others are bare icons of `TAB_BARE_DP`,
-## so every tab stays a 48 dp target and the row fits at every size.
+## row holds three tabs, then four (P244). Every tab shows its name while the names fit the row
+## (measured: each tab as wide as its name inside the plate's borders, the close button and the
+## gaps, against the width of the stack). When they do not (more than `NAMED_TABS_MAX` tabs on a
+## narrow drawer: "Structures" spilled into its neighbour on a 6-inch phone) only the open tab
+## keeps its name and the others are bare icons of `TAB_BARE_DP`, so every tab stays a 48 dp target.
 func _fit_tabs() -> void:
 	var shown: int = 0
-	for button: Button in _tabs:
-		shown += 1 if button.visible else 0
-	var crowded: bool = shown > NAMED_TABS_MAX
+	var names_px: float = 0.0
+	var edges: float = 0.0
+	for index: int in _tabs.size():
+		if not _tabs[index].visible:
+			continue
+		shown += 1
+		var plate: StyleBoxFlat = (
+			_tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION) as StyleBoxFlat
+		)
+		edges = plate.get_border_width(SIDE_LEFT) + plate.get_border_width(SIDE_RIGHT)
+		names_px += maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
+	var gaps: float = shown * roundi(UiScale.dp(TAB_GAP_DP))
+	var asked: float = names_px + _close.get_combined_minimum_size().x + gaps
+	var crowded: bool = shown > NAMED_TABS_MAX and (_stack.size.x <= 0.0 or asked > _stack.size.x)
 	for index: int in _tabs.size():
 		var bare: bool = crowded and index != tab
 		_tab_names[index].visible = not bare
 		var wide: float = TAB_BARE_DP if bare else TAB_DP
-		if crowded and not bare:  # The open tab is as wide as its name and the plate's edges.
-			var plate: StyleBox = _tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION)
-			var edges: float = plate.get_margin(SIDE_LEFT) + plate.get_margin(SIDE_RIGHT)
-			wide = maxf(wide, (_tab_names[index].get_minimum_size().x + edges) / _dp_px + 1.0)
+		if shown > NAMED_TABS_MAX and not bare:  # A named tab is as wide as its name in the borders.
+			wide = maxf(wide, (_tab_names[index].get_minimum_size().x + edges) / _dp_px)
 		for child: Node in _tabs[index].get_children():
 			if child is DpMinSize:
 				(child as DpMinSize).min_dp = Vector2(wide, TAB_DP)
