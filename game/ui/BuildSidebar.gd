@@ -55,7 +55,9 @@ const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"HudPanel"  ## ADR 0025 section 13: the panel token and its edge.
 const TAB_VARIATION: StringName = &"SidebarTab"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
-const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles"]
+const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Flight"]
+## The first tab that shows only while the faction has items on it (P244: Flight, the airfield's).
+const FIRST_OPTIONAL_TAB: int = World.Tab.FLIGHT
 const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
 const TAB_ICON_DP: float = 22.0
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
@@ -530,9 +532,14 @@ func _show_tab() -> void:
 	var gap_px: float = roundf(GAP_DP * _dp_px)
 	card.x = maxf(card.x, floorf((width_px - (columns - 1) * gap_px) / columns) / _dp_px)
 	var shown: int = 0
+	for index: int in range(FIRST_OPTIONAL_TAB, _tabs.size()):
+		_tabs[index].visible = index == tab  # Else only while the faction has items on it.
 	for tile: ItemTile in _tiles:
-		tile.visible = tile.tab == tab and (tile.faction < 0 or tile.faction == _faction)
+		var kin: bool = tile.faction < 0 or tile.faction == _faction
+		tile.visible = tile.tab == tab and kin
 		shown += 1 if tile.visible else 0
+		if kin and tile.tab >= FIRST_OPTIONAL_TAB and tile.tab < _tabs.size():
+			_tabs[tile.tab].visible = true
 	var fill: int = Control.SIZE_EXPAND_FILL if shown >= columns else Control.SIZE_FILL
 	for tile: ItemTile in _tiles:
 		tile.set_card(card)

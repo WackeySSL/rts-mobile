@@ -116,3 +116,51 @@ static func ore_within(snap: MatchSnapshot, at: Vector2i, pick_milli: int) -> bo
 static func _is_tanker_id(snap: MatchSnapshot, id: int) -> bool:
 	var row: int = snap.index_of(id) if snap != null else -1
 	return row >= 0 and is_tanker(snap, snap.type_index[row])
+
+
+## Whether a unit of type `type` can hit a target of type `target` (ADR 0036 section 5): its
+## weapon's
+## `weapon_targets` holds the target's layer bit, the sim's own test. An unarmed type (no weapon in
+## the tables) hits nothing. A snapshot built by hand without the layer tables hits anything, as
+## before P244.
+static func can_hit(snap: MatchSnapshot, type: int, target: int) -> bool:
+	if snap.weapon_targets.is_empty() or snap.type_layer_bit.is_empty():
+		return true
+	var weapon: int = snap.type_weapon[type] if type < snap.type_weapon.size() else -1
+	if weapon < 0 or weapon >= snap.weapon_targets.size() or target >= snap.type_layer_bit.size():
+		return false
+	return (snap.weapon_targets[weapon] & snap.type_layer_bit[target]) != 0
+
+
+## Replaces `out` with the ids of `ids` that can hit a target of type `target`, in their order. A
+## mixed selection attacks with these rows only (P244).
+static func hitters(
+	snap: MatchSnapshot, ids: PackedInt32Array, target: int, out: PackedInt32Array
+) -> void:
+	out.clear()
+	for id: int in ids:
+		var row: int = snap.index_of(id)
+		if row >= 0 and can_hit(snap, snap.type_index[row], target):
+			out.append(id)
+
+
+## Whether `id` is one of `player`'s aircraft (the layer bit AIR or LOW_AIR).
+static func is_own_flyer(snap: MatchSnapshot, id: int, player: int) -> bool:
+	var row: int = snap.index_of(id)
+	return row >= 0 and snap.owner[row] == player and WorldSort.is_flyer(snap, snap.type_index[row])
+
+
+## The own airfields `ids`' aircraft are homed at, ascending and without a repeat: the home of each
+## own aircraft that has one and whose building is still there. `Home` sends one REPAIR to each.
+static func home_fields(
+	snap: MatchSnapshot, ids: PackedInt32Array, player: int, out: PackedInt32Array
+) -> void:
+	out.clear()
+	for id: int in ids:
+		var row: int = snap.index_of(id)
+		if row < 0 or not is_own_flyer(snap, id, player) or row >= snap.home.size():
+			continue
+		var field: int = snap.home[row]
+		if field > 0 and snap.index_of(field) >= 0 and not out.has(field):
+			out.append(field)
+	out.sort()

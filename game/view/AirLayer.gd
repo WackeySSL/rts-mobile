@@ -138,6 +138,33 @@ func lift_of_type(snap: MatchSnapshot, type: int) -> float:
 	return float(px) if px > 0 else (DEFAULT_LOW_FLY_PX if low else DEFAULT_FLY_PX)
 
 
+## Lifts the flyers in `out`, the PickSnapshot `UnitLayer` filled (P244): each flyer row gets the
+## centre of its hull on the screen (the rig's ground point raised by its hover, `rig.lift`, at the
+## camera zoom), the hover as its lift, the radius `UnitPick.fill` gives a ground unit (the larger
+## of
+## `min_radius_px` and its selection ellipse) and `pickable` 1 while its rig is shown. A flyer that
+## is falling or that the fog hides stays 0. The arrays are written in place, nothing is allocated.
+func fill_pick_snapshot(out: PickSnapshot, view_camera: RtsCamera, min_radius_px: float) -> void:
+	var snap: MatchSnapshot = _sync()
+	if snap == null:
+		return
+	var zoom: float = view_camera.zoom.x
+	var count: int = out.ids.size()
+	for at: int in _rows.size():
+		var row: int = _rows[at]
+		var rig: Rig = _rigs[at]
+		if row >= count or out.ids[row] != rig.id or not rig.visible:
+			continue
+		var art_px: float = (
+			IsoProjection.ellipse_px(snap.type_selection_radius[snap.type_index[row]]).x * zoom
+		)
+		var at_hull: Vector2 = rig.global_position - Vector2(0.0, rig.lift)
+		out.screen_pos[row] = view_camera.world_to_screen(at_hull)
+		out.lift_px[row] = rig.lift * zoom
+		out.radius_px[row] = maxf(min_radius_px, art_px)
+		out.pickable[row] = 1
+
+
 ## Brings the rigs up to `runner.snapshot`: all new for another match, merged by unit id when
 ## `rows_version` moved. Returns the snapshot, null while there is none.
 func _sync() -> MatchSnapshot:
