@@ -70,6 +70,11 @@ func test_both_scenes_hold_the_z_table_of_adr_0023_with_the_sort_between_fog_and
 		assert_bool(_scene_value(state, "WorldSort", &"y_sort_enabled", false)).is_true()
 		var own: Variant = _scene_value(state, "UnitLayer", &"world_sort", null)
 		assert_that(own).is_equal(NodePath("../WorldSort"))  # The rigs stand in the scene's sort.
+		# P243b: a flyer's fall ends in a burst of the scene's effects layer, in the same sort.
+		var air_effects: Variant = _scene_value(state, "AirLayer", &"effects", null)
+		assert_that(air_effects).is_equal(NodePath("../EffectsLayer"))
+		var air_sort: Variant = _scene_value(state, "AirLayer", &"world_sort", null)
+		assert_that(air_sort).is_equal(NodePath("../WorldSort"))
 		# P115: the buildings too, their shadows in the scene's decal layer, and their bars.
 		var buildings: Variant = _scene_value(state, "BuildingLayer", &"world_sort", null)
 		assert_that(buildings).is_equal(NodePath("../WorldSort"))

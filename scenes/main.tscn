@@ -137,12 +137,13 @@ z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
 
-[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
 z_index = 20
 z_as_relative = false
 script = ExtResource("93_air")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
+effects = NodePath("../EffectsLayer")
 
 [node name="RallyLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 61
