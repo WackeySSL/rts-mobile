@@ -53,3 +53,23 @@ static func of_world(world: World) -> PlacementInput:
 	input.build_reach_tiles = world.build_reach_tiles
 	input.building_cap = world.building_cap
 	return input
+
+
+## The input of `world` as it stands, every array a copy (ADR 0038 section 4): for a reader that
+## outlives the step, as the `PlayerView`, which a thread may hold while the World moves on. One
+## `duplicate()` a field; it shares the buffer until the World's next write to it.
+static func copy_of_world(world: World) -> PlacementInput:
+	var input: PlacementInput = PlacementInput.of_world(world)
+	input.terrain = world.terrain.duplicate()
+	input.terrain_buildable = world.terrain_buildable.duplicate()
+	input.move_cost = world.move_cost.duplicate()
+	input.explored = world.fog.explored.duplicate()
+	input.owner = world.owner.duplicate()
+	input.type_index = world.type_index.duplicate()
+	input.pos_x = world.pos_x.duplicate()
+	input.pos_y = world.pos_y.duplicate()
+	input.type_speed = world.type_speed.duplicate()
+	input.type_radius = world.type_radius.duplicate()
+	input.type_foot_w = world.type_foot_w.duplicate()
+	input.type_foot_h = world.type_foot_h.duplicate()
+	return input
