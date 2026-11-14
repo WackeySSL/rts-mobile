@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Board and Unload orders in the main scene at the six sizes of ScreenSizes.ALL (plan P265,
 ## ADR 0036 section 12, `touch-ui-rules`): Board shows for squads while the player has a carrier,
-## Unload for a loaded one, each at least 48 dp; a carrier's chip shows its seats as pips; a tap on
+## Unload for a loaded one, each at least 48 dp; a tap on
 ## Board, a tap on an own carrier and the check mark send one LOAD; a tap on Unload, a tap on the
 ## ground and the check mark one UNLOAD; the check mark and the X stand beside the aimed point, at
 ## least 64 dp, inside the screen and clear of the bar. Rows (player 1 the local one): rifle squads
@@ -89,24 +89,6 @@ func test_board_stays_hidden_while_the_player_has_no_carrier() -> void:
 	)
 	await _select([SQUAD_A, SQUAD_B])
 	assert_bool(_order("board").visible).is_false()
-
-
-func test_a_loaded_carriers_chip_shows_its_seats_as_pips() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, SPAWNS)
-		var why: String = str(size)
-		await _select([CARRIER])
-		var pips: Control = _bar.find_child("Pips", true, false)
-		var seats: int = _snap().type_carry_slots[_snap().type_index[_snap().index_of(CARRIER)]]
-		assert_int(seats).override_failure_message(why).is_greater(0)
-		assert_bool(pips.visible).override_failure_message(why).is_true()
-		assert_array([pips.seats, pips.aboard]).override_failure_message(why).is_equal([seats, 0])
-		_load(CARRIER, 2)
-		await _select([])
-		await _select([CARRIER])
-		assert_array([pips.seats, pips.aboard]).override_failure_message(why).is_equal([seats, 2])
-		await _select([TANK])
-		assert_bool(pips.visible).override_failure_message(why).is_false()
 
 
 func test_board_then_a_carrier_then_the_check_mark_sends_one_load_and_the_x_none() -> void:

@@ -47,20 +47,6 @@ func remove_ids(ids: PackedInt32Array) -> void:
 		changed.emit()
 
 
-## Takes the units `ids` out of the live selection only, as when they board a carrier: groups 1-3
-## keep them, so a group holds them again after the unload. `changed` fires once, when the
-## selection lost a unit.
-func drop_live(ids: PackedInt32Array) -> void:
-	if ids.is_empty():
-		return
-	var gone: PackedInt32Array = ids.duplicate()
-	gone.sort()
-	var kept: PackedInt32Array = _without(selected, gone)
-	if kept.size() != selected.size():
-		selected = kept
-		changed.emit()
-
-
 func is_selected(id: int) -> bool:
 	var at: int = selected.bsearch(id)
 	return at < selected.size() and selected[at] == id
