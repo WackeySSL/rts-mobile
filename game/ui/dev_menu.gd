@@ -2,8 +2,8 @@ extends Control
 ## Developer menu: choose the computer's level (Easy, Normal or Hard; Normal at the start, the
 ## choice shown, plan P183), then jump to a Skirmish (one per side, plan P90), the test map, the
 ## strike test, the art gallery, the touch probe, the perf arena, the perf bases (the same scene
-## with the base arena) or the perf AI (the same scene with two computer players, plan P185) or the perf air (16 aircraft,
-## P253). When
+## with the base arena), the perf AI (the same scene with two computer players, plan P185) or the
+## perf air (16 aircraft, P253). When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
 ## section 5): one column upright, three sideways where they fit the width (else two), so the nine
