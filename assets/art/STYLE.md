@@ -1434,7 +1434,7 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_unload_mark` | #F5A524 |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
-| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell`, `glyph_board`, `glyph_unload` and the other thirteen glyphs of the corner HUD (below) | none (white) |
+| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell`, `glyph_board`, `glyph_unload`, `glyph_home` and the other thirteen glyphs of the corner HUD (below) | none (white) |
 
 The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
 button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
@@ -1542,6 +1542,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `tab_structures.svg` | A wide workshop from the front, a sawtooth roof of three teeth, a tall chimney on the right and a dark doorway. |
 | `tab_infantry.svg` | A soldier from the chest up, a round helmet with a wide brim over a grey face, on sloping shoulders. |
 | `tab_vehicles.svg` | A tank from the side, a long track pod with four grey wheels, a sloped hull, a boxy turret and one long barrel. |
+| `tab_flight.svg` | A jet from above, flying up: a slim rounded fuselage with a grey cockpit, two swept wings with grey undersides and a small tail plane. |
 | `item_power_plant.svg` | A slender banded chimney and a fat flared cooling tower with a steam puff rise behind one long olive-roofed hall with dark windows. |
 | `item_refinery.svg` | One fat round tank and two small ones stepping off to the right rise behind a wide corrugated hall, a gold-filled funnel jutting out of its front. |
 | `item_barracks.svg` | A U of three olive pitched-roof huts round a bare gravel yard that opens to the bottom, a sandbag ring in the yard. |
@@ -1592,6 +1593,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_sell.svg` | A price tag tilted up to the left, a long pentagon with its point at the upper left and a dark hole near the point, a round grey coin with a white ring and a diamond set on its body. |
 | `glyph_board.svg` | A small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four wheels with a chamfered nose and a dark doorway cut into the side that faces the figure. |
 | `glyph_unload.svg` | A boxy carrier on four wheels at the left with a chamfered nose and a dark doorway on its right side showing two white heads, a fat block arrow pointing right out of it, a small round-headed figure at the right. |
+| `glyph_home.svg` | A house: a wide pitched roof over a boxy body with a dark doorway, a grey right flank on the roof and the wall. |
 | `glyph_unload_mark.svg` | Two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
@@ -2825,3 +2827,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-13 | v1.33 (P203, art-director, ADR 0035 section 4): every generated shadow frame gets an occlusion pad (three stepped rings, no gradient) and a contact line (2 px, on what touches the ground, one per soldier) under the cast shadow, in the one 35 % group; the wellhead's shadow with a short pad by hand; page 2 1116, 570, 634 to 1514, 704, 814 ("Light"). Non-shadow frames are byte for byte as before. |
 | 2026-11-14 | v1.34 (P305, art-director, ADR 0036 section 15's P26bw note): every sheet with directional frames carries `boxes`, the tight box of each non-shadow frame (`IsoSheetDef.frame_box`); no frame changes, buildings without a head are as before. |
 | 2026-11-14 | v1.35 (P265a, art-director, ADR 0036): `glyph_board.svg` and `glyph_unload.svg` (white HUD glyphs on the Bar row of the Hud page) and the seated map glyph `glyph_unload_mark.svg` (two down-pointing chevrons, tinted #F5A524, the twelfth map glyph); the gallery's map strips now hold their glyphs in two lines of six, the grass one set 48 px left of the centre to clear the page button. |
+| 2026-11-14 | v1.36 (P244, touch-ux-dev, ADR 0036 section 12): `tab_flight.svg` (the Flight tab of the build drawer, a jet from above) and `glyph_home.svg` (the Home order of the command bar, a house), both white and grey like their groups; not on the gallery's pages yet (art-director's follow-up). |

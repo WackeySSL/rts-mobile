@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/dev/arena/weapons/drillhead_bombs.tres" id="2_weapon"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_airfield.tres" id="3_requires"]
+
+; Frozen copy of data/units/fossil_bomber.tres as of 2026-11-14 (main d21b3abc, P242). Never retuned: a tuning change to the shipped file must not move perf_air's golden hash (ADR 0031).
+[resource]
+script = ExtResource("1_unit")
+type_id = &"fossil_bomber"
+display_name = "Drillhead"
+faction = &"fossil"
+speed = 120
+radius = 400
+selection_radius = 600
+formation_spacing = 1200
+max_hp = 500
+armour = 2
+move_class = 3
+sight_range = 7000
+acquire_range = 3000
+weapon = ExtResource("2_weapon")
+cost = 1400
+build_ticks = 420
+tab = 3
+requires = ExtResource("3_requires")
+ammo = 2
+rearm_ticks = 180

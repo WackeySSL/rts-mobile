@@ -15,6 +15,9 @@ const PERF_ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
 ## The base arena of the perf arena scene (plan P93c): P80's scenario, run by the same scene and
 ## card, checked against the gate's `bases_golden_*` fields.
 const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
+## The air arena of the perf arena scene (plan P253): 16 aircraft among 150 units, checked against
+## `air_golden_*`.
+const PERF_AIR_SCENARIO: String = "res://data/scenarios/perf_air.tres"
 ## The AI arena of the perf arena scene (plan P185, ADR 0030 section 4): the two mirror bases of
 ## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair.
 const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
@@ -78,6 +81,16 @@ static func open_perf_ai(tree: SceneTree) -> Error:
 		return ERR_FILE_NOT_FOUND
 	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
 	arena.arena_kind = PerfHud.ARENA_AI
+	return tree.change_scene_to_node(arena)
+
+
+## Changes to the perf arena scene with the air arena (plan P253), as `open_perf_bases` does.
+static func open_perf_air(tree: SceneTree) -> Error:
+	if not ResourceLoader.exists(PERF_ARENA_SCENE) or not ResourceLoader.exists(PERF_AIR_SCENARIO):
+		push_error("DevRoutes: perf arena scene or air scenario not found")
+		return ERR_FILE_NOT_FOUND
+	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
+	arena.arena_kind = PerfHud.ARENA_AIR
 	return tree.change_scene_to_node(arena)
 
 

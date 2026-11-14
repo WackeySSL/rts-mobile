@@ -528,8 +528,12 @@ func _check_rig(
 		assert_vector(sprite.scale).override_failure_message(message).is_equal_approx(
 			Vector2.ONE * scale_px, Vector2.ONE * 0.0001
 		)
+		# A directional frame is trimmed to its box (P306): it starts at the box, not the canvas.
+		var corner: Vector2 = Vector2.ZERO
+		if sheet.has_boxes(part):
+			corner = Vector2(sheet.frame_box(part, frame, 0).position)
 		assert_vector(sprite.offset).override_failure_message(message).is_equal_approx(
-			-Vector2(sheet.origin(part)) * atlas.bake_scale(), Vector2.ONE * 0.01
+			(corner - Vector2(sheet.origin(part))) * atlas.bake_scale(), Vector2.ONE * 0.01
 		)
 		assert_int(sprite.z_index).override_failure_message(message).is_equal(
 			-1 if part == &"shadow" else 0

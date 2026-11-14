@@ -1,10 +1,10 @@
 class_name PickSnapshot
 extends RefCounted
 ## What the Picker needs to know about every unit, on or off screen, as parallel arrays in World
-## row order (ascending id). UnitLayer.fill_pick_snapshot() fills it and resizes the arrays in
-## place, so one snapshot can be refilled every frame without allocating. A hidden enemy (one the
-## local player's fog hides, P47) is in the arrays like any other unit, but its `pickable` entry is
-## 0, so no tap and no box reaches it.
+## row order (ascending id). UnitLayer.fill_pick_snapshot() (`UnitPick.fill`) fills it and resizes
+## the arrays in place, so one snapshot can be refilled every frame without allocating. A hidden
+## enemy (one the local player's fog hides, P47) is in the arrays like any other unit, but its
+## `pickable` entry is 0, so no tap and no box reaches it.
 ## The buildings (P115b) are in their own parallel arrays: `BuildingLayer.fill_pick_snapshot()`
 ## lists the ones it shows (the ones the fog hides are left out), and no box query reads them.
 
@@ -22,6 +22,9 @@ var radius_px: PackedFloat32Array = PackedFloat32Array()
 ## 0 for a row the Picker must skip (an enemy the fog hides), 1 for every other row. A row with no
 ## entry (`row >= pickable.size()`, as in a snapshot built by hand) is pickable.
 var pickable: PackedByteArray = PackedByteArray()
+## 1 for an aircraft (P244): its centre is the lifted one `AirLayer.fill_pick_snapshot` writes, and
+## it wins a tap against a ground unit of its pick rank. A row with no entry is a ground unit.
+var flyer: PackedByteArray = PackedByteArray()
 
 ## A building is picked on its silhouette (ADR 0023 section 3): the footprint's diamond, half
 ## `building_half` wide and high round `building_centres`, plus the rectangle between the diamond's
@@ -47,6 +50,11 @@ func size() -> int:
 ## entry (a snapshot built by hand).
 func lift_of(index: int) -> float:
 	return lift_px[index] if index < lift_px.size() else 0.0
+
+
+## Whether unit `index` is an aircraft.
+func is_flyer(index: int) -> bool:
+	return index < flyer.size() and flyer[index] != 0
 
 
 func building_count() -> int:

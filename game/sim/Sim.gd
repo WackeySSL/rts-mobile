@@ -106,6 +106,7 @@ static func step(world: World, commands: Array[Command], probe: SimProbe = null)
 	if probe != null:
 		probe.mark(SimProbe.Phase.PRODUCTION)
 	LastSeen.run(world)
+	MineMemory.run(world)  # The mines a player's detectors found (ADR 0037 section 8).
 	if probe != null:
 		probe.mark(SimProbe.Phase.MEMORY)
 	world.tick += 1

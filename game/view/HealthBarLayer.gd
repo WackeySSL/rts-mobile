@@ -73,6 +73,7 @@ const GLYPH_DP: int = 32
 const GLYPH_GAP_DP: int = 1
 
 @export var runner: MatchRunner
+@export var air_layer: AirLayer  ## Gives a selected flyer's ring and the height of its bar.
 @export var unit_layer: UnitLayer  ## Gives the selection, the hit times, the camera and the clock.
 ## Says which buildings are shown and how high their bars stand; null: no building has a bar.
 @export var building_layer: BuildingLayer
@@ -301,7 +302,9 @@ func _plan() -> void:
 	for row: int in count:
 		var hit: int = unit_layer.hit_time_ms(row)
 		var selected: bool = (
-			unit_layer.is_ringed(row) or (not chosen.is_empty() and building_layer.is_selected(row))
+			unit_layer.is_ringed(row)
+			or (not chosen.is_empty() and building_layer.is_selected(row))
+			or (air_layer != null and air_layer.is_ringed(snap.unit_id[row]))
 		)
 		if not (selected or (hit >= 0 and hit >= recent_since)):
 			continue
@@ -310,8 +313,11 @@ func _plan() -> void:
 		if building:
 			if building_layer == null or not building_layer.is_shown(row):
 				continue  # No layer to say, or the fog hides the footprint.
-		elif WorldSort.is_flyer(snap, type) or not unit_layer.is_shown(row):
-			continue  # No bar for a flyer until P244; a rig the fog hides has none (ADR 0010 s2).
+		elif WorldSort.is_flyer(snap, type):
+			if air_layer == null or not air_layer.is_shown(snap.unit_id[row]):
+				continue  # Selected or hit like a ground unit (ADR 0036 section 15), when drawn.
+		elif not unit_layer.is_shown(row):
+			continue  # A rig the fog hides has no bar (ADR 0010 section 2).
 		var klass: int = INFANTRY_CLASS if armours[type] == World.Armour.INFANTRY else 0
 		if building:
 			var last: int = CLASS_WIDTH_DP.size() - BUILDING_CLASS  # The largest footprint with a width.
@@ -327,7 +333,13 @@ func _plan() -> void:
 		)
 		var left: float = place.x - 0.5 * width * unit
 		var lift: float = (
-			building_layer.bar_lift_px(row) if building else unit_layer.bar_lift_px(row)
+			building_layer.bar_lift_px(row)
+			if building
+			else (
+				air_layer.bar_lift_px(row)
+				if WorldSort.is_flyer(snap, type)
+				else unit_layer.bar_lift_px(row)
+			)
 		)
 		var top: float = place.y - lift - (GAP_DP + HEIGHT_DP) * unit
 		_bars[_bar_count] = row
