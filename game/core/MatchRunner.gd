@@ -264,6 +264,7 @@ func start() -> void:
 	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
 		return
 	_release_job()
+	_job.batch.clear()
 	_state = step.x
 	var headless: bool = DisplayServer.get_name() == "headless"
 	var threads: bool = OS.has_feature("threads")

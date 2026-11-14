@@ -55,6 +55,6 @@ Distinct final hashes: 4.
 | 3a | timeouts | 0 | 0-0 | pass |  |
 | 3b | longest match (ticks) | 8000 | 0-13500 | pass |  |
 | 4 | least built unit type (matches) | 4 | 2-4 | pass | artillery in 4 of 4 |
-| 5 | dropped commands (all matches) | 0 | 0-0 | pass |  |
+| 5 | matches over the stale-drop bound | 0 | 0-0 | pass |  |
 | 6 | distinct final hashes | 4 | 4-4 | pass |  |
 | 7 | impl is native | 1 | 1-1 | pass | impl native |

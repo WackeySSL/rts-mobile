@@ -8,6 +8,10 @@ extends RefCounted
 ## every headless loop. So the loop stamps and records the AI's Commands like a player's, the
 ## phone and CI cannot drift, and Replay.play needs no AI. Pure: no Node, no clock, no state, and
 ## no allocation of its own: a tick makes only the PlayerViews of the controllers that think.
+##
+## think_all() is the lag-0 composition (the views and the Commands of one tick step at once), kept
+## for the tests/ai rigs. The shipped path is lagged_tick() (ADR 0038 section 1): the views of tick
+## T, the Commands in step T+1 after the human's.
 
 
 ## Lets every controller of `controllers` whose turn it is think, in ascending player order (two of
@@ -46,4 +50,19 @@ static func think_all(world: World, controllers: Array[AiController], out: Array
 		last_player = chosen.player_id
 		chosen.think(PlayerView.of(world, last_player), out)
 		thought += 1
+	return thought
+
+
+## One tick of the lagged pipeline (ADR 0038 section 1), called right before MatchLoop.step with
+## the tick's list, which holds the human's Commands: first the batch made from the views of the
+## previous tick is appended after them (dropped unsent when the match has ended), then the
+## controllers whose turn it is think on views built from `world` as it stands, and their Commands
+## are kept in `batch` for the next tick. Returns how many controllers thought. `batch.usec` is the
+## caller's to set (this stays clock-free). A thinking tick leaves `batch.pending` true.
+static func lagged_tick(
+	world: World, controllers: Array[AiController], out: Array[Command], batch: AiBatch
+) -> int:
+	batch.collect(out, world.match_end_tick > 0)
+	var thought: int = think_all(world, controllers, batch.commands)
+	batch.pending = thought > 0
 	return thought

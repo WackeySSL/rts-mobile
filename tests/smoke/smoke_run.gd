@@ -6,8 +6,8 @@ extends RefCounted
 ##
 ## The loop is MatchRunner's without the Node: the World comes from the scenario with the sim
 ## stream of the seed, every controller is `AiFactory.create(def, level, player, DetRandom.create(
-## seed, STREAM_AI_BASE + player))`, and each tick is `AiDriver.think_all` and then
-## `MatchLoop.step` (ADR 0020 section 3), so the smoke run, the phone and the suites cannot drift.
+## seed, STREAM_AI_BASE + player))`, and each tick is `AiDriver.lagged_tick` and then
+## `MatchLoop.step` (ADR 0038 section 1), so the smoke run, the phone and the suites cannot drift.
 ## The implementation is AUTO: the native kernels when the library loads, else the GDScript twin
 ## (ADR 0013 section 3). Everything it reports is counted from the World and the controllers: no
 ## clock and no frame delta, so a seed gives the same record on every machine and every run.
@@ -45,6 +45,10 @@ const TICKS: int = 13500
 ## The report's schema number. 2: the top-level `scenario` moved to `matches[].scenario`, and the
 ## run's `commit`, `impl`, `seed_start`, `levels` and `scenarios` and the per match counts joined.
 const SCHEMA: int = 2
+## ADR 0038 section 6: the AI's Commands land one tick after their view, so the sim may drop a few
+## that went stale. A match fails when `dropped_commands > STALE_DROP_PERCENT * C / 100` (integer
+## division), C the sum of its players' `commands`. Fixed-seed suites pin exact drops instead.
+const STALE_DROP_PERCENT: int = 1
 const IMPL_NATIVE: String = "native"
 const IMPL_GDSCRIPT: String = "gdscript"
 ## The prefix of every line the run prints: the shell script shows these lines and nothing else.
@@ -219,9 +223,10 @@ static func controllers_of(
 	return controllers
 
 
-## Steps `world` through `loop` for at most `ticks` ticks, each one `AiDriver.think_all` and then
-## `MatchLoop.step`, and stops after the tick that ends the match. A `counter` (made and started by
-## the caller) reads each step.
+## Steps `world` through `loop` for at most `ticks` ticks, each one `AiDriver.lagged_tick` (the AI's
+## Commands of the tick before, then the thinks on this tick's views) and then `MatchLoop.step`
+## (ADR 0038 section 1), and stops after the tick that ends the match. A `counter` (made and started
+## by the caller) reads each step.
 static func run(
 	world: World,
 	loop: MatchLoop,
@@ -230,8 +235,9 @@ static func run(
 	counter: SmokeCount = null
 ) -> void:
 	var commands: Array[Command] = []
+	var batch: AiBatch = AiBatch.new()
 	while world.tick < ticks and world.match_end_tick == 0:
-		AiDriver.think_all(world, controllers, commands)
+		AiDriver.lagged_tick(world, controllers, commands, batch)
 		loop.step(world, commands)
 		commands.clear()
 		if counter != null:
@@ -316,20 +322,32 @@ static func write_report(path: String, report_data: Dictionary) -> bool:
 	return true
 
 
-## What is wrong with the `records` of a run, one text per problem. The AI never sends a Command
-## the sim drops (ADR 0020 section 5), so a dropped Command is a bug in the AI, the sim or the loop.
-## A timeout is no failure: the gate judges it (ADR 0031 section 2).
+## The most Commands a match may have dropped (ADR 0038 section 6): STALE_DROP_PERCENT of the
+## Commands its players sent, by integer division, so a match of under 100 Commands allows none.
+static func drop_limit(record: Dictionary) -> int:
+	return STALE_DROP_PERCENT * _sent(record) / 100
+
+
+## What is wrong with the `records` of a run, one text per problem. A match that dropped more than
+## drop_limit() Commands fails: the AI's Commands are one tick stale (ADR 0038 section 6), so a few
+## drops are expected and many mean an AI bug. A timeout is no failure: the gate judges it (ADR
+## 0031 section 2).
 static func failures(
 	records: Array[Dictionary], drops: Dictionary[int, int] = {}
 ) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
 	for record: Dictionary in records:
-		if int(record["dropped_commands"]) != 0:
-			var dropped: int = int(record["dropped_commands"])
+		var dropped: int = int(record["dropped_commands"])
+		if dropped > drop_limit(record):
 			found.append(
 				(
-					"seed %d: dropped commands %d%s"
-					% [int(record["seed"]), dropped, _drop_text(drops, int(record["seed"]))]
+					"seed %d: dropped commands %d of %d%s"
+					% [
+						int(record["seed"]),
+						dropped,
+						_sent(record),
+						_drop_text(drops, int(record["seed"]))
+					]
 				)
 			)
 	return found
@@ -347,7 +365,7 @@ static func summary(
 		if record["end"] == END_TIMEOUT:
 			timeouts += 1
 	return (
-		"%sOK, %d matches of at most %d ticks, impl %s, %d timeouts, no dropped commands"
+		"%sOK, %d matches of at most %d ticks, impl %s, %d timeouts, stale drops within the bound"
 		% [PREFIX, records.size(), ticks, impl, timeouts]
 	)
 
@@ -393,6 +411,13 @@ static func line(
 
 
 ## ", the first in tick T" for a match whose first drop is in `drops`, else nothing.
+static func _sent(record: Dictionary) -> int:
+	var sent: int = 0
+	for player: Dictionary in record["players"]:
+		sent += int(player["commands"])
+	return sent
+
+
 static func _drop_text(drops: Dictionary[int, int], match_seed: int) -> String:
 	return ", the first in tick %d" % drops[match_seed] if drops.has(match_seed) else ""
 

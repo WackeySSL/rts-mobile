@@ -6,8 +6,9 @@ extends RefCounted
 ## current world, loop and StepProbe before every run or post, so a swap takes effect on the next
 ## tick.
 ##
-## Before the step it lets the match's computer players think (AiDriver.think_all, ADR 0020
-## section 3), so their Commands follow the human's in the list and are stamped and recorded alike.
+## Before the step it runs the lagged AI tick (AiDriver.lagged_tick, ADR 0038 section 1): the
+## Commands the computer players made from the views of the tick before follow the human's in the
+## list and are stamped and recorded alike, and the players due now think on views of this tick.
 ##
 ## It touches only those objects, the controllers and the PlayerViews they get, the command list and
 ## the two snapshots, and none of them is a Node or a Resource (tests/core/test_tick_job.gd walks
@@ -27,6 +28,9 @@ var commands: Array[Command] = []
 ## hands them to AiDriver.think_all before the step. A controller keeps only ints, arrays and its
 ## DetRandom stream, so the walk stays free of Nodes and Resources.
 var controllers: Array[AiController] = []
+## The AI Commands made at the previous tick, waiting for this one (ADR 0038 section 1). It lives
+## as long as the match: the runner clears it at start().
+var batch: AiBatch = AiBatch.new()
 ## The new snapshot this job fills. The runner sets its match_serial before the run, because
 ## capture() compares it with the one of `previous`, the published snapshot (or null).
 var snapshot: MatchSnapshot
@@ -56,17 +60,18 @@ func serve() -> void:
 ## One tick: the controllers' thinks (their Commands appended after the ones the list holds), the
 ## step, the hash of the last checkpoint, the capture, then the timings: Sim.step from the
 ## StepProbe, the TimingProbe's phases (a copy; empty without one) and the whole job, with the
-## thinks. `think_usec` is the time from the job's start to the end of the thinks (at least 1), 0 on
-## a tick where no controller thought.
+## thinks. `think_usec` is the time the batch collected this tick took to think (at least 1), 0 on
+## a tick that collects no batch (ADR 0038 section 7).
 func run() -> void:
 	var started: int = Time.get_ticks_usec()
-	var thought: int = AiDriver.think_all(world, controllers, commands)
-	var thought_usec: int = maxi(Time.get_ticks_usec() - started, 1) if thought > 0 else 0
+	var thought: int = AiDriver.lagged_tick(world, controllers, commands, batch)
+	if thought > 0:
+		batch.usec = maxi(Time.get_ticks_usec() - started, 1)
 	loop.step(world, commands, probe)
 	commands.clear()
 	var out: MatchSnapshot = snapshot
 	out.last_hash = loop.last_hash
-	out.think_usec = thought_usec
+	out.think_usec = batch.collected_usec
 	out.capture(world, previous)
 	var step_probe: StepProbe = probe as StepProbe
 	if step_probe != null:

@@ -181,6 +181,12 @@ func test_distinct_hashes_dropped_commands_and_flow_full_ticks() -> void:
 	var summary: Dictionary = _summary([a, b, c])
 	assert_int(summary["distinct_final_hashes"]).is_equal(2)
 	assert_int(summary["dropped_commands"]).is_equal(3)
+	# Check 5 counts the matches over ADR 0038 section 6's bound (1 percent of the players'
+	# Commands, integer division): 150 + 150 Commands allow 3 drops, a fourth fails the match.
+	var within: Dictionary = _match(1, "victory", 1, {"commands": 150, "dropped": 3})
+	var over: Dictionary = _match(3, "victory", 1, {"commands": 150, "dropped": 4})
+	assert_int(_summary([within])["stale_drop_matches"]).is_equal(0)
+	assert_int(_summary([within, over])["stale_drop_matches"]).is_equal(1)
 	assert_int(summary["flow_full_ticks"]["total"]).is_equal(14)
 	assert_int(summary["flow_full_ticks"]["most_in_one"]).is_equal(9)
 
@@ -593,6 +599,7 @@ func _match(match_seed: int, end: String, winner: int, options: Dictionary = {})
 					"seat": "top" if index == 0 else "bottom",
 					"ai": "opponent_fossil" if is_fossil else "opponent_renew",
 					"level": levels[index],
+					"commands": options.get("commands", 0),
 					"produced": {},
 					"free": {},
 					"lost": {},

@@ -236,7 +236,7 @@ func test_the_cap_ends_a_running_match_as_a_timeout() -> void:
 	assert_str(Smoke.summary(records, 45, "gdscript", Smoke.failures(records))).is_equal(
 		(
 			"run-sim-smoke: OK, 1 matches of at most 45 ticks, impl gdscript, 1 timeouts, "
-			+ "no dropped commands"
+			+ "stale drops within the bound"
 		)
 	)
 
@@ -574,14 +574,20 @@ func test_a_match_line_names_the_seed_the_end_the_hash_and_both_players() -> voi
 	assert_bool(line.contains("; player 2 opponent_renew normal: ")).is_true()
 
 
-func test_a_dropped_command_fails_the_run_and_the_report() -> void:
-	var broken: Dictionary = _records[1].duplicate()
+func test_drops_over_the_stale_bound_fail_the_run_and_the_report() -> void:
+	var broken: Dictionary = _records[1].duplicate(true)
 	broken["dropped_commands"] = 2
 	broken["seed"] = 2
+	for player: Dictionary in broken["players"]:
+		player["commands"] = 7
 	var records: Array[Dictionary] = [_records[0], broken]
 	var drops: Dictionary[int, int] = {2: 412}
+	# 14 Commands allow no drop (1 percent, integer division).
+	assert_int(Smoke.drop_limit(broken)).is_equal(0)
 	var failures: PackedStringArray = Smoke.failures(records, drops)
-	assert_array(Array(failures)).is_equal(["seed 2: dropped commands 2, the first in tick 412"])
+	assert_array(Array(failures)).is_equal(
+		["seed 2: dropped commands 2 of 14, the first in tick 412"]
+	)
 	(
 		assert_bool(
 			Smoke.line(broken, 2, 2, drops).contains("dropped 2, the first in tick 412, flow")
@@ -591,8 +597,16 @@ func test_a_dropped_command_fails_the_run_and_the_report() -> void:
 	assert_bool(Smoke.line(broken, 2, 2).contains("dropped 2, flow full")).is_true()
 	assert_str(Smoke.report(records, 2, TICKS)["status"]).is_equal("failed")
 	assert_str(Smoke.summary(records, TICKS, "gdscript", failures)).is_equal(
-		"run-sim-smoke: FAILED, seed 2: dropped commands 2, the first in tick 412"
+		"run-sim-smoke: FAILED, seed 2: dropped commands 2 of 14, the first in tick 412"
 	)
+	# 300 Commands allow 3 drops: 3 pass, 4 fail.
+	for player: Dictionary in broken["players"]:
+		player["commands"] = 150
+	broken["dropped_commands"] = 3
+	assert_int(Smoke.drop_limit(broken)).is_equal(3)
+	assert_array(Array(Smoke.failures(records, drops))).is_empty()
+	broken["dropped_commands"] = 4
+	assert_int(Smoke.failures(records, drops).size()).is_equal(1)
 
 
 ## One 8-int record of `events`: kind, then the seven ints after it.

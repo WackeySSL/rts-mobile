@@ -97,6 +97,7 @@ func _shard(folder: String, name: String, seeds: Array, levels: Array) -> String
 						"faction": ["fossil", "renew"][index],
 						"seat": ["top", "bottom"][index],
 						"level": levels[index],
+						"commands": 0,
 						"produced": {},
 						"free": {},
 						"lost": {},

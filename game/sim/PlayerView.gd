@@ -335,7 +335,9 @@ func row_home(row: int) -> int:
 
 ## The stamp from which an own strike building may fire, and the stamp until which an own building
 ## is offline after a blackout. MISSING for a row that is not the player's own. The sim compares
-## against the stamp of a Command, `tick + 1` for a think at `view.tick`: charged when
+## against the stamp of a Command: the shipped path stamps a think at `view.tick` with
+## `view.tick + 2` (ADR 0038, lag 1), the tests/ai rigs with `view.tick + 1` (lag 0). The checks
+## below use the earlier stamp, which is safe because both are monotone: charged when
 ## `view.tick + 1 >= row_ready_tick(row)`, online when `row_offline_until(row) <= view.tick + 1`.
 ## `offline_until` is never reset to 0, so do not test for `== 0`. A strike building still under
 ## construction reads `ready_tick` 0: check `row_build_left(row) == 0` as well.

@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## section 6): start() builds one controller per def of `opponents` through AiFactory (an
 ## OpponentDef gives OpponentAi at the level in `opponent_levels`, Normal's when missing; a plain
 ## AiDef the DummyAi), seated from `first_opponent` (default player 2 upward) with its player's
-## stream, and the tick job lets the controllers think before each step, on the thread that runs it.
+## stream, and the tick job runs the lagged AI tick before each step (ADR 0038: views at tick T,
+## Commands in step T+1), on the thread that runs it.
 ## The dummy match is tests/core/support/dummy_start.gd (the start of tests/ai/support/ai_rig.gd as
 ## a scenario), seed 42, player 2 the shipped dummy and player 1 idle but for one MOVE on a tick the
 ## dummy thinks: played by a SYNC runner, a WORKER runner and a headless loop that calls
@@ -21,9 +22,10 @@ const FOSSIL: AiDef = preload("res://data/ai/opponent_fossil.tres")
 ## and queues the next items of its build order. Its last think is at tick 592, and the job a
 ## WORKER runner runs ahead (tick 600 to 601) adds no Command and no checkpoint.
 const TICKS: int = 600
-## The human's MOVE: stamped on a tick the dummy of player 2 thinks on (7 + 2 - 2, ADR 0020
-## section 2), to a grass tile north-east of player 1's Headquarters.
-const HUMAN_TICK: int = 7
+## The human's MOVE: stamped on the tick after one the dummy of player 2 thinks on (7 + 2 - 2, ADR
+## 0020 section 2), so the dummy's Commands of tick 7 land in the same step, after it (ADR 0038
+## section 1). To a grass tile north-east of player 1's Headquarters.
+const HUMAN_TICK: int = 8
 const HUMAN_TARGET: Vector2i = Vector2i(10500, 4500)
 ## 60 fps frames with jitter, in seconds, used in turn (as tests/core/test_match_runner_worker.gd).
 const FRAMES: Array[float] = [0.0167, 0.0121, 0.0213, 0.0158, 0.0175, 0.0098, 0.0236, 0.0166]
@@ -237,8 +239,9 @@ func test_a_dummy_match_is_the_same_in_sync_in_worker_and_in_a_headless_loop() -
 
 
 ## The log of the dummy match (the runners' equals it, above): the human's MOVE is the one Command
-## of player 1, stamped HUMAN_TICK and logged before the dummy's Commands of that tick; every
-## Command of player 2 is stamped on its think ticks, QUEUE and PLACE among them. Replay.play on a
+## of player 1, stamped HUMAN_TICK and logged before the dummy's Commands of that tick (made from
+## the views of the tick before); every Command of player 2 is stamped on the tick after one of its
+## think ticks, QUEUE and PLACE among them. Replay.play on a
 ## fresh World of the scenario, with no AI, reaches every checkpoint and the run's final state.
 func test_the_dummys_commands_are_in_the_replay_and_it_replays_without_the_ai() -> void:
 	var world: World = _start_world()
@@ -257,13 +260,39 @@ func test_the_dummys_commands_are_in_the_replay_and_it_replays_without_the_ai() 
 	for record: Array in records:
 		if record[PLAYER] != 1:
 			assert_int(record[PLAYER]).is_equal(2)
-			assert_int((record[TICK] + dummy.think_offset) % dummy.think_period).is_equal(0)
+			assert_int((record[TICK] - 1 + dummy.think_offset) % dummy.think_period).is_equal(0)
 			types[record[TYPE]] = types.get(record[TYPE], 0) + 1
 	assert_bool(types.has(Command.Type.QUEUE) and types.has(Command.Type.PLACE)).is_true()
 	var replayed: World = _start_world()
 	loop.replay.apply_setup(replayed)
 	assert_int(Replay.play(loop.replay, replayed, world.tick)).is_equal(Replay.PLAY_MATCHED)
 	assert_array([replayed.tick, replayed.state_hash()]).is_equal([TICKS, world.state_hash()])
+
+
+## start() drops a batch pending from the old match (ADR 0038 section 1): a runner stopped right
+## after a think tick (the dummy of player 2 thinks on tick 7, so its batch is pending after 8
+## ticks) and started again plays the second match to the checkpoint hashes and the log of a fresh
+## runner, and the first match's Commands are not in it.
+func test_a_restart_drops_the_pending_batch_and_plays_the_first_matchs_checkpoints() -> void:
+	var def: AiDef = DummyStart.dummy_def()
+	var fresh: MatchRunner = _runner(SYNC, [def])
+	fresh.run_ticks(TICKS)
+	var expected: Replay = fresh.replay
+	for mode: int in [SYNC, WORKER]:
+		var runner: MatchRunner = _runner(mode, [def])
+		runner.run_ticks(8)
+		assert_bool(runner._job.batch.pending).is_true()
+		runner.start()
+		assert_bool(runner._job.batch.pending).is_false()
+		assert_array(runner._job.batch.commands).is_empty()
+		runner.run_ticks(TICKS)
+		var label: String = "mode %d" % mode
+		var replay: Replay = runner.replay
+		assert_array(replay.checkpoint_hashes).override_failure_message(label).is_equal(
+			expected.checkpoint_hashes
+		)
+		assert_array(replay.commands).override_failure_message(label).is_equal(expected.commands)
+		assert_int(runner.world.dropped_commands).is_equal(0)
 
 
 ## A started runner on the dummy start, seed 42, in `mode`, with `defs` as its opponents.
@@ -293,11 +322,12 @@ func _headless_match(world: World) -> MatchLoop:
 	var controllers: Array[AiController] = [DummyAi.create(DummyStart.dummy_def(), 2, stream)]
 	var squad: PackedInt32Array = _squad_of_player_1()
 	var queued: Array[Command] = []
+	var batch: AiBatch = AiBatch.new()
 	for _tick: int in TICKS:
 		queued.clear()
 		if world.tick == HUMAN_TICK:
 			queued.append(_human(squad))
-		AiDriver.think_all(world, controllers, queued)
+		AiDriver.lagged_tick(world, controllers, queued, batch)
 		loop.step(world, queued)
 	return loop
 
