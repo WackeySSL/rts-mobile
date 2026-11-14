@@ -567,14 +567,16 @@ func test_a_match_line_names_the_seed_the_end_the_hash_and_both_players() -> voi
 		+ "timeout, winner none, hash %s, "
 	)
 	(
-		assert_bool(line.begins_with((head + "dropped 0, flow full 0") % record["state_hash"]))
+		assert_bool(
+			line.begins_with((head + "dropped 0, expired 0, flow full 0") % record["state_hash"])
+		)
 		. is_true()
 	)
 	assert_bool(line.contains("; player 1 opponent_fossil normal: ")).is_true()
 	assert_bool(line.contains("; player 2 opponent_renew normal: ")).is_true()
 
 
-func test_drops_over_the_stale_bound_fail_the_run_and_the_report() -> void:
+func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 	var broken: Dictionary = _records[1].duplicate(true)
 	broken["dropped_commands"] = 2
 	broken["seed"] = 2
@@ -585,19 +587,19 @@ func test_drops_over_the_stale_bound_fail_the_run_and_the_report() -> void:
 	# 14 Commands allow no drop (1 percent, integer division).
 	assert_int(Smoke.drop_limit(broken)).is_equal(0)
 	var failures: PackedStringArray = Smoke.failures(records, drops)
-	assert_array(Array(failures)).is_equal(
-		["seed 2: dropped commands 2 of 14, the first in tick 412"]
-	)
+	assert_array(Array(failures)).is_equal(["seed 2: stale drops 2 of 14, the first in tick 412"])
 	(
 		assert_bool(
-			Smoke.line(broken, 2, 2, drops).contains("dropped 2, the first in tick 412, flow")
+			Smoke.line(broken, 2, 2, drops).contains(
+				"dropped 2, expired 0, the first in tick 412, flow"
+			)
 		)
 		. is_true()
 	)
-	assert_bool(Smoke.line(broken, 2, 2).contains("dropped 2, flow full")).is_true()
+	assert_bool(Smoke.line(broken, 2, 2).contains("dropped 2, expired 0, flow full")).is_true()
 	assert_str(Smoke.report(records, 2, TICKS)["status"]).is_equal("failed")
 	assert_str(Smoke.summary(records, TICKS, "gdscript", failures)).is_equal(
-		"run-sim-smoke: FAILED, seed 2: dropped commands 2 of 14, the first in tick 412"
+		"run-sim-smoke: FAILED, seed 2: stale drops 2 of 14, the first in tick 412"
 	)
 	# 300 Commands allow 3 drops: 3 pass, 4 fail.
 	for player: Dictionary in broken["players"]:
@@ -607,6 +609,31 @@ func test_drops_over_the_stale_bound_fail_the_run_and_the_report() -> void:
 	assert_array(Array(Smoke.failures(records, drops))).is_empty()
 	broken["dropped_commands"] = 4
 	assert_int(Smoke.failures(records, drops).size()).is_equal(1)
+	# Expired drops (the subject or the target died in the lag tick) do not count.
+	broken["expired_commands"] = 1
+	assert_array(Array(Smoke.failures(records, drops))).is_empty()
+	assert_int(Smoke.stale_drops(broken)).is_equal(3)
+
+
+## The fixed-seed pins of the stale drops (ADR 0038 section 6, the lead's note of 2026-11-14): the
+## full matches of the smoke's seeds 1 and 2 at Hard and seed 1 at Normal, [dropped, expired,
+## Commands sent]. Every expired drop is a unit order whose units died or an ATTACK whose target
+## died in the lag tick; the stale rest is an ATTACK no unit can hit any more, or a PLACE whose
+## credits were spent.
+func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
+	var hard: Array[String] = ["hard", "hard"]
+	var cases: Array = [[1, hard, [8, 7, 475]], [2, hard, [10, 8, 515]], [1, NORMAL, [1, 1, 366]]]
+	for fixed: Array in cases:
+		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
+		var sent: int = 0
+		for player: Dictionary in record["players"]:
+			sent += int(player["commands"])
+		(
+			assert_array([record["dropped_commands"], record["expired_commands"], sent])
+			. override_failure_message("seed %d %s" % [fixed[0], fixed[1]])
+			. is_equal(fixed[2])
+		)
+		assert_int(Smoke.stale_drops(record)).is_less_equal(Smoke.drop_limit(record))
 
 
 ## One 8-int record of `events`: kind, then the seven ints after it.

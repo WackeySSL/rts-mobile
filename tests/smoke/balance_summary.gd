@@ -246,7 +246,7 @@ static func summarize(
 	for record: Dictionary in matches:
 		ends[record["end"]] = ends.get(record["end"], 0) + 1
 		dropped += int(record["dropped_commands"])
-		if int(record["dropped_commands"]) > Smoke.drop_limit(record):
+		if Smoke.stale_drops(record) > Smoke.drop_limit(record):
 			over_bound += 1
 		flow_total += int(record["flow_full_ticks"])
 		flow_most = maxi(flow_most, int(record["flow_full_ticks"]))
