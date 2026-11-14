@@ -2,7 +2,8 @@ extends Control
 ## Developer menu: choose the computer's level (Easy, Normal or Hard; Normal at the start, the
 ## choice shown, plan P183), then jump to a Skirmish (one per side, plan P90), the test map, the
 ## strike test, the art gallery, the touch probe, the perf arena, the perf bases (the same scene
-## with the base arena) or the perf AI (the same scene with two computer players, plan P185). When
+## with the base arena) or the perf AI (the same scene with two computer players, plan P185) or the perf air (16 aircraft,
+## P253). When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
 ## section 5): one column upright, three sideways where they fit the width (else two), so the nine
@@ -36,6 +37,7 @@ var _level_index: int = START_LEVEL
 @onready var _arena_button: Button = %PerfArenaButton
 @onready var _bases_button: Button = %PerfBasesButton
 @onready var _ai_button: Button = %PerfAiButton
+@onready var _air_button: Button = %PerfAirButton
 
 
 func _ready() -> void:
@@ -53,6 +55,10 @@ func _ready() -> void:
 	_ai_button.disabled = (
 		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
 		or not ResourceLoader.exists(DevRoutes.PERF_AI_SCENARIO)
+	)
+	_air_button.disabled = (
+		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
+		or not ResourceLoader.exists(DevRoutes.PERF_AIR_SCENARIO)
 	)
 	var group: ButtonGroup = ButtonGroup.new()
 	for index: int in _levels.size():
@@ -75,6 +81,7 @@ func _ready() -> void:
 	_arena_button.pressed.connect(_on_arena_pressed)
 	_bases_button.pressed.connect(_on_bases_pressed)
 	_ai_button.pressed.connect(_on_ai_pressed)
+	_air_button.pressed.connect(_on_air_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
 
@@ -147,3 +154,7 @@ func _on_bases_pressed() -> void:
 
 func _on_ai_pressed() -> void:
 	DevRoutes.open_perf_ai(get_tree())
+
+
+func _on_air_pressed() -> void:
+	DevRoutes.open_perf_air(get_tree())

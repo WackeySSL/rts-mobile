@@ -27,7 +27,8 @@ const BUTTONS: Array[String] = [
 	"TouchProbeButton",
 	"PerfArenaButton",
 	"PerfBasesButton",
-	"PerfAiButton"
+	"PerfAiButton",
+	"PerfAirButton"
 ]
 ## Michael's phone in landscape (a cutout on the left) and the ADR's phone in portrait (a cutout at
 ## the top, the gesture bar at the bottom), as window px of the profile they are put on.
@@ -139,7 +140,8 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 			"TouchProbeButton": true,
 			"PerfArenaButton": true,
 			"PerfBasesButton": true,
-			"PerfAiButton": true
+			"PerfAiButton": true,
+			"PerfAirButton": true
 		}
 	)
 
