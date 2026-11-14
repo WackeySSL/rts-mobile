@@ -49,6 +49,15 @@ counts 26 unit types at the Phase 4b gate run: 13 per faction (today's six, the 
 transport and drone squad, the medic squad, the ground carrier and the minelayer). Each must be
 built in at least 50 of the 100 matches. No accepted text changed.
 
+Status note (2026-11-13, P26bw docs; ADR 0038 accepted 2026-11-13): with the AI's Commands one tick
+late, a Command the AI checked at tick T can go stale in step T. ADR 0038 §6 therefore replaces the
+rule that a dropped Command fails the run (§2's P26be note) and §6's check 5. A match fails only
+when `dropped_commands > STALE_DROP_PERCENT * C / 100` (integer division; C is the sum of its
+players' `commands`, and `STALE_DROP_PERCENT` is 1), and fixed-seed suites pin their exact drops.
+The bound is provisional until the balance run after plan row P301. §1's loop becomes ADR 0038
+§1's. Exit code 1 now means drops over the bound, and §7's strike case pins its exact drops. Flags,
+exit code numbers and report schema 2 are unchanged. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,
