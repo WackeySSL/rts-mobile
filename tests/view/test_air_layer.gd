@@ -163,6 +163,39 @@ func test_a_fall_ends_in_a_burst_where_it_lands_and_the_death_has_none_before() 
 	assert_int(effects.active_count()).is_equal(1)  # The landing's burst.
 
 
+func test_the_landing_burst_is_at_the_end_point_of_the_fall() -> void:
+	var effects: EffectsLayer = auto_free(EffectsLayer.new())
+	effects.runner = _runner
+	effects.world_sort = _layer.world_sort
+	add_child(effects)
+	effects.set_process(false)
+	_layer.effects = effects
+	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
+	rig.heading = 0.5
+	_see_all()
+	_render(0.0)
+	_runner.world.hp[2] = 0
+	_runner.run_ticks(1)
+	_see_all()
+	_render(0.0)
+	var want: Vector2 = (
+		rig.origin
+		+ IsoProjection.ground_to_px(
+			roundi(cos(0.5) * _life.air_fall_drift_milli),
+			roundi(sin(0.5) * _life.air_fall_drift_milli)
+		)
+	)
+	assert_vector(rig.drift).is_equal_approx(want - rig.origin, Vector2(0.01, 0.01))
+	assert_vector(rig.origin).is_not_equal(Vector2.ZERO)
+	for _tick: int in 14:
+		_runner.run_ticks(1)
+		_render(0.0)
+	var slot: int = effects._head - 1
+	var burst: Vector2 = Vector2(effects._geo[slot * 5], effects._geo[slot * 5 + 1])
+	assert_int(effects._count).is_equal(1)
+	assert_vector(burst).is_equal_approx(want, Vector2(0.01, 0.01))
+
+
 func test_two_flyers_bob_out_of_step_by_their_ids() -> void:
 	var a: int = LifeClock.pick(FIGHTER_ID, AirLayer.SALT_BOB, _life.air_bob_ms)
 	assert_int(_layer.rig_of(FIGHTER_ID).phase_ms).is_equal(a)

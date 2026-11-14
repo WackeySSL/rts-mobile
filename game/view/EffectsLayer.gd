@@ -469,12 +469,12 @@ static func _weapon_id(snap: MatchSnapshot, weapon: int) -> StringName:
 	return &""
 
 
-## Takes the next slot of the ring, the oldest once it is full.
 ## A vehicle's burst at world px `place` now: the landing of a falling flyer (`AirLayer`).
 func burst_at(place: Vector2) -> void:
 	_push(Kind.BURST, int(clock.call()), place, Vector2.ZERO, BURST_PX)
 
 
+## Takes the next slot of the ring, the oldest once it is full.
 func _push(kind: int, now: int, from: Vector2, to: Vector2, size: float) -> void:
 	var slot: int = _head
 	_head = slot + 1 if slot + 1 < _size else 0
