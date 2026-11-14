@@ -246,6 +246,8 @@ var _ai_thread: Thread
 var _ai_start_failed: bool = false
 ## A test seam: an error code other than OK stands in for the result of the AI thread's start.
 var _ai_start_error: int = OK
+## The wait caps of start(), WAIT_CAP_MSEC; a test sets a small one to force a timeout.
+var _start_cap_msec: int = WAIT_CAP_MSEC
 ## The fields behind `world`, `loop`, `replay` and `probe`. The runner itself uses only these.
 var _world: World
 var _loop: MatchLoop
@@ -269,11 +271,11 @@ func _ready() -> void:
 ## section 1); if that wait reaches its cap, start() logs it and returns with the old match.
 func start() -> void:
 	var step: Vector2i = hand_off(_state, HandOffEvent.START)
-	if step.y & HandOffStep.WAIT and not _take_done(WAIT_CAP_MSEC):
+	if step.y & HandOffStep.WAIT and not _take_done(_start_cap_msec):
 		return
 	if step.y & HandOffStep.WAIT:
 		_state = HandOff.FINISHED  # The token is taken: a timeout below keeps the old match whole.
-	if not _take_ai_done(WAIT_CAP_MSEC):
+	if not _take_ai_done(_start_cap_msec):
 		return
 	_release_job()
 	_job.batch.clear()

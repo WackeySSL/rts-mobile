@@ -117,6 +117,34 @@ func test_a_wait_idle_that_times_out_on_the_ai_keeps_the_runner_ticking() -> voi
 	assert_bool(runner.wait_idle()).is_true()
 
 
+## The same for start(): its wait on the AI times out, it logs and returns with the old match, whose
+## job token it took, so the old match keeps ticking.
+func test_a_start_that_times_out_on_the_ai_keeps_the_old_match_ticking() -> void:
+	var runner: MatchRunner = _runner(WORKER, FOSSIL)
+	var slow: AiController = _slow()
+	slow.set(&"wait_msec", 300)
+	runner._job.controllers = [slow]
+	runner._start_cap_msec = 2
+	runner._process(0.07)
+	while not runner._job.done.try_wait():
+		OS.delay_msec(1)
+	runner._job.done.post()
+	var serial: int = runner.match_serial
+	await (
+		assert_error(func() -> void: runner.start())
+		. is_push_error("MatchRunner: the AI thread did not finish within 2 ms")
+	)
+	assert_int(runner.match_serial).is_equal(serial)
+	assert_bool(runner.job_in_flight()).is_false()
+	var frames: int = 0
+	while runner.snapshot.tick < 3 and frames < 2000:
+		runner._process(0.07)
+		frames += 1
+		OS.delay_msec(2)
+	assert_int(runner.snapshot.tick).is_greater_equal(3)
+	assert_bool(runner.wait_idle()).is_true()
+
+
 func test_a_slow_think_makes_the_job_wait_and_moves_no_command() -> void:
 	var main: int = OS.get_thread_caller_id()
 	var logs: Array = []
