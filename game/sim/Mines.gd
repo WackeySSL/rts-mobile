@@ -12,7 +12,8 @@ extends RefCounted
 ## `mine_lay_ticks`; at the stamp every check runs again, then the cost is paid and the mine joins
 ## the table (`_add`, armed `mine_arm_ticks` later). A failed check at either point sets the mode
 ## to 0, pays nothing and counts `stats[MINES_REFUSED]`. Pending lays do not count toward the cap.
-## The stamp is `world.tick + 1`, as `Strike.run` and `Production` read it.
+## A dead row has left in REMOVE, before ECONOMY, so `lay` needs no hp guard. The stamp is
+## `world.tick + 1`, as `Strike.run` and `Production` read it.
 ##
 ## `run`, in FIRE after `Strike.run`, only while an armed mine exists: the mark pass lets every
 ## mobile ground row of a non-neutral player other than the owner, of a type that is not
@@ -35,8 +36,8 @@ const GONE: int = -1
 ## are skipped silently), `target_x`/`target_y` the point in milli-tiles. None valid: false, and
 ## the command is dropped and counted.
 static func apply_lay(world: World, command: Command) -> bool:
-	if command.unit_ids.size() > Command.MAX_UNITS:
-		return false
+	if command.unit_ids.size() > Command.MAX_UNITS or world.mine_cap <= 0:
+		return false  # No cap, no mine: dropped and counted.
 	var ids: PackedInt32Array = command.unit_ids.duplicate()
 	ids.sort()
 	var rows: PackedInt32Array = PackedInt32Array()
@@ -70,9 +71,8 @@ static func lay(world: World) -> void:
 	var modes: PackedInt32Array = world.carry_mode
 	var orders: PackedInt32Array = world.order
 	var due: PackedInt32Array = world.ready_tick
-	var life: PackedInt32Array = world.hp
 	for row: int in world.unit_id.size():
-		if modes[row] != LAYING or orders[row] != World.Order.IDLE or life[row] <= 0:
+		if modes[row] != LAYING or orders[row] != World.Order.IDLE:
 			continue
 		if due[row] == 0:
 			if _allowed(world, row):
@@ -87,7 +87,6 @@ static func lay(world: World) -> void:
 
 
 ## FIRE, after `Strike.run`: trigger, blast and compact (see the header).
-@warning_ignore("integer_division")
 static func run(world: World) -> void:
 	var count: int = mini(world.mine_count, world.mine_id.size())
 	var stamp: int = world.tick + 1
@@ -151,6 +150,7 @@ static func _can_lay(world: World, row: int, player: int) -> bool:
 		and type < world.type_mine_weapon.size()
 		and world.type_mine_weapon[type] >= 0
 		and world.type_speed[type] > 0
+		and (world.type_layer_bit[type] & World.Layer.GROUND) != 0
 	)
 
 
@@ -204,8 +204,11 @@ static func _add(world: World, row: int, stamp: int) -> void:
 
 
 ## The mark pass: marks (GONE) each armed mine that a trigger stands on; returns the marked count.
+## `World.cell_of` inlined (the border rule of `FixedMath.centre_side`); the stat is added once.
+@warning_ignore("integer_division")
 static func _mark(world: World, count: int, stamp: int) -> int:
 	var marked: int = 0
+	var checks: int = 0
 	var types: PackedInt32Array = world.type_index
 	var owners: PackedInt32Array = world.owner
 	var life: PackedInt32Array = world.hp
@@ -214,7 +217,14 @@ static func _mark(world: World, count: int, stamp: int) -> int:
 	var aware: PackedInt32Array = world.type_mine_aware
 	var grid: PackedInt32Array = world.mine_at
 	var armed_at: PackedInt32Array = world.mine_armed_tick
-	for row: int in world.unit_id.size():
+	var mine_owners: PackedInt32Array = world.mine_owner
+	var xs: PackedInt32Array = world.pos_x
+	var ys: PackedInt32Array = world.pos_y
+	var tile: int = World.MILLI_PER_TILE
+	var cols: int = world.map_cols
+	var side_x: int = cols * tile
+	var side_y: int = world.map_rows * tile
+	for row: int in xs.size():
 		var type: int = types[row]
 		if (
 			owners[row] == 0
@@ -224,18 +234,27 @@ static func _mark(world: World, count: int, stamp: int) -> int:
 			or aware[type] != 0
 		):
 			continue
-		var index: int = grid[world.cell_of(world.pos_x[row], world.pos_y[row])] - 1
-		world.stats[World.Stat.MINE_CHECKS] += 1
-		if index < 0 or index >= count or owners[row] == world.mine_owner[index]:
+		var cx: int = xs[row]
+		var cy: int = ys[row]
+		if cx % tile == 0 and cx * 2 > side_x:
+			cx -= 1
+		if cy % tile == 0 and cy * 2 > side_y:
+			cy -= 1
+		var cell: int = (
+			clampi(cy / tile, 0, world.map_rows - 1) * cols + clampi(cx / tile, 0, cols - 1)
+		)
+		var index: int = grid[cell] - 1
+		checks += 1
+		if index < 0 or index >= count or owners[row] == mine_owners[index]:
 			continue
 		if armed_at[index] <= stamp and armed_at[index] != GONE:
 			armed_at[index] = GONE
 			marked += 1
+	world.stats[World.Stat.MINE_CHECKS] += checks
 	return marked
 
 
 ## One mine's blast: `Strike._land`'s formula on every ground mobile row of another player.
-@warning_ignore("integer_division")
 static func _blast(world: World, index: int) -> void:
 	var weapon: int = world.mine_weapon[index]
 	var cell: int = world.mine_cell[index]
@@ -310,7 +329,6 @@ static func _compact(world: World, count: int) -> void:
 	world.mine_count = kept
 
 
-@warning_ignore("integer_division")
 static func _centre_x(world: World, cell: int) -> int:
 	return (cell % world.map_cols) * World.MILLI_PER_TILE + World.TILE_CENTRE
 
