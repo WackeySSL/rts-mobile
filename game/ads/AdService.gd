@@ -35,7 +35,9 @@ var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
 var _billing: BillingBackend = _make_billing()
-var _purchases: Purchases = Purchases.new(_billing, _settings.remove_ads_product_id)
+var _purchases: Purchases = null
+## The kind of the late run in `_late`: only a late interstitial is abandoned by Remove ads.
+var _late_kind: StringName = &""
 ## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
 var _busy: bool = false
@@ -63,12 +65,20 @@ static func _default_auto_close(display_name: String) -> bool:
 
 func _init() -> void:
 	_sync_fake()
+	_purchases = Purchases.new(_billing, _settings.remove_ads_product_id, has_remove_ads)
 	_purchases.entitlement_changed.connect(_on_entitlement_changed)
 
 
 func _ready() -> void:
 	if _backend is FakeAdBackend:
 		(_backend as FakeAdBackend).host = self
+	# Silent, no UI: retries failed acknowledges and grants pendings paid while the app was closed.
+	_restore_silently()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
+		_restore_silently()
 
 
 ## Awaitable; always finishes. True means ads may be requested. The stub emits
@@ -99,17 +109,16 @@ func has_remove_ads() -> bool:
 
 ## Awaitable. True once the entitlement is held (also when it already was). False on cancel, on
 ## PENDING (never granted), on failure and when the store sheet has not shown within
-## `fullscreen_timeout_ms` (reused as the billing timeout); once it showed the call waits for it.
+## `billing_timeout_ms`; once it showed the call waits for it.
 func purchase_remove_ads() -> bool:
-	_purchases.owned = _ledger.remove_ads
-	return await _purchases.purchase(_now_ms, _settings.fullscreen_timeout_ms)
+	return await _purchases.purchase(_now_ms, _settings.billing_timeout_ms)
 
 
-## Awaitable. True when the store lists the purchase. Its answer is the truth: a missing purchase
-## clears the entitlement (a refund); no answer (offline, timeout) keeps the cached one.
+## Awaitable. True when the entitlement stands after the store's answer. That answer is the truth:
+## a missing purchase clears the entitlement (a refund); no answer (offline, timeout) keeps the
+## cached one and returns false. Returns false at once while a purchase or another restore waits.
 func restore_purchases() -> bool:
-	_purchases.owned = _ledger.remove_ads
-	return await _purchases.restore(_now_ms, _settings.fullscreen_timeout_ms)
+	return await _purchases.restore(_now_ms, _settings.billing_timeout_ms)
 
 
 ## Internal (Phase 6 widgets). The store's localised price text for Remove ads, empty until known
@@ -213,7 +222,19 @@ func _refresh_banner() -> void:
 
 ## The entitlement changed (a purchase, a restore, a refund): the ledger follows, then the banner.
 func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
+	if has_remove_ads_now == _ledger.remove_ads:
+		return
 	_ledger.remove_ads = has_remove_ads_now
+	# A late interstitial that has not opened yet is dropped from our books; AdMob cannot recall a
+	# show it started, so it may still appear once. A late rewarded ad stays: rewards remain.
+	if (
+		has_remove_ads_now
+		and _late != null
+		and not _busy
+		and _late_kind == AdBackend.KIND_INTERSTITIAL
+	):
+		_late.abandon()
+		_late = null
 	entitlement_changed.emit(has_remove_ads_now)
 	_refresh_banner()
 
@@ -237,6 +258,7 @@ func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callabl
 		_late.abandon()
 		_late = null
 	_busy = true
+	_late_kind = kind
 	var run: FullscreenRun = FullscreenRun.new(
 		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
 	)
@@ -260,6 +282,10 @@ func _on_run_closed(placement: StringName) -> void:
 		_busy = false
 		_late = null
 	ad_closed.emit(placement)
+
+
+func _restore_silently() -> void:
+	await restore_purchases()
 
 
 func _sync_fake() -> void:
