@@ -176,6 +176,30 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P300 | AI | Normal and Hard set hold on `OpponentDef.hold_types` (each faction's artillery) when they join a wave | 40 | P298, P290 |
 
+**Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
+P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and
+**P290 writes no HOW_TO_PLAY row** (its row's "HOW_TO_PLAY Units, Orders, Fog rows" move to the rows
+below). Each row that rosters or draws a thing adds its rows, written exactly as the sim does:
+- **P291, P292:** the Units rows (carriers, minelayers), and they remove the "not on the build menu"
+  caveat by rostering the units. P291 or P266, whichever lands first, writes the Board and Unload rows
+  for both kinds of carrier. Facts the rows must keep: Board is `LOAD`, which sends the carrier and
+  the squads to the lowest-id squad's point (the carrier comes to the squads, who gather there) and
+  boards them within `load_reach_milli`; Unload drives the carrier to the point (a transport flies
+  there) and the squads get out on free ground within `unload_reach_tiles`, keeping the health
+  they had; a dying Bunk Wagon ejects its squads at `carry_eject_percent`, a Linecar's die.
+- **P293:** the sweep row (a tap on a found mark) and the Fog row for enemy mines (found by
+  `detect_milli`, the record goes when the cell is seen without the mine, blast only where seen).
+- **P294:** the Mine order row (cap, cost, arm time, own units never trigger).
+- Starting values with no source in the GDD or ADR 0037 (the balance rows record them in the GDD):
+  the minelayers' price, hit points, speed and armour class, the mines' damage and armour percents,
+  and every build time, sight and radius of the four units.
+- **The `class_of` gap.** The Linecar, the Seeder and the Shot Truck are wheeled, and
+  `AiMemory.class_of` reads the tab only (Vehicles = TRACKED), so a wave would key a TRACKED flow
+  field for them. No row fixes this yet: the first of P304b, P295 and P295b (the air plan's P304b
+  spawns these rows at tick 0) must add a copied `type_move_class` to `PlayerView` and make
+  `class_of` read it, and flip the pin `test_class_of_still_calls_the_wheeled_vehicles_tracked` in
+  `tests/ai/test_ai_move_class.gd`.
+
 ### Lanes and order
 - **S (GD):** P271 -> P276 -> P277; then P285 -> P286 (after P262) -> P287 -> P288; P298 after
   P286 beside P287; P289 after P263b. (2026-11-13, P26bw) P287a after P286, before P287 and P298.

@@ -22,6 +22,9 @@ const TIERS: int = 3
 @export var anti_vehicle_types: Array[StringName] = [&"rocket_squad"]
 @export var tank_type: StringName = &"heavy_tank"
 @export var artillery_type: StringName = &"artillery"
+## The types Normal and Hard set to hold position when they join a wave (ADR 0037 section 15): the
+## artillery, which has a minimum range and should not chase into it. A type id of this faction.
+@export var hold_types: Array[StringName] = [&"artillery"]
 @export var defence_type: StringName = &"defence_turret"
 @export var strike_type: StringName = &"fossil_strike"
 ## The weights of the draw among the roles whose type can be queued, flat: `tier * ROLES + role`.

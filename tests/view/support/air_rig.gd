@@ -1,9 +1,10 @@
 extends RefCounted
-## Fixtures of the air-view suites (plan P243). No aircraft art exists before P245, so two crafted
-## sheets of 8-direction frames in `tests/view/fixtures/air/` stand in: a high fighter of the
-## Derrick League (`fossil_fighter`, `FLY_PX`) and a low drone squad of the Lumen Accord
-## (`renew_drone`, `LOW_FLY_PX`), both with a hull and a shadow. A scenario has one of each flyer
-## beside a tank of each player, so both players have ground art. Not a test suite.
+## Fixtures of the air-view suites (plan P243). Two crafted sheets of 8-direction frames in
+## `tests/view/fixtures/air/` stand in (since P245 they replace the shipped Torchjet's, see
+## `WorldSort.extra_sheets`): a high fighter of the Derrick League (`fossil_fighter`, `FLY_PX`) and
+## a low drone squad of the Lumen Accord (`renew_drone`, `LOW_FLY_PX`), both with a hull and a
+## shadow. A scenario has one of each flyer beside a tank of each player, so both players have
+## ground art. Not a test suite.
 
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const FIXTURES: String = "res://tests/view/fixtures/air"

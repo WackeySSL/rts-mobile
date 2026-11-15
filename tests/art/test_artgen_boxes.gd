@@ -21,7 +21,8 @@ func test_a_directional_frame_has_a_box_that_holds_every_drawn_pixel_and_hugs_th
 	for sheet: IsoSheetDef in _index.sheets:
 		for part: String in sheet.parts:
 			var id: StringName = StringName(part)
-			if not sheet.has_boxes(id):
+			# An aircraft's sheet has none (page 2 is not trimmed): its frames are whole.
+			if not sheet.has_boxes(id) or sheet.flies():
 				continue
 			var canvas: Rect2i = Rect2i(Vector2i.ZERO, sheet.frame_size(id))
 			for dir: int in sheet.directions(id):

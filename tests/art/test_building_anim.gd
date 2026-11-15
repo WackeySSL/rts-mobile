@@ -52,6 +52,8 @@ const EMITTERS: Dictionary[StringName, Array] = {
 	&"barracks": [&"damage", &"dmg_spark", &"damage"],
 	&"defence_turret": [&"damage", &"dmg_spark"],
 	&"fossil_aa": [&"damage", &"dmg_spark"],
+	&"fossil_airfield": [&"damage", &"dmg_gas", &"dmg_spark"],
+	&"renew_airfield": [&"damage", &"dmg_gas", &"dmg_spark"],
 	&"renew_aa": [&"damage", &"dmg_spark"],
 	&"fossil_radar": [&"damage", &"dmg_spark"],
 	&"fossil_strike": [&"launch", &"damage", &"dmg_spark"],
@@ -337,6 +339,8 @@ func test_the_emitters_are_where_the_plan_says_and_inside_the_picture() -> void:
 		if model.category == &"veh":
 			# The exhaust, then the overlays' damage and hang points (P160, ADR 0028 section 4).
 			want = [&"exhaust", &"damage", &"hang"]
+			if model.flies():
+				want = [&"exhaust", &"damage"]  # An aircraft has no bracket to hang (P245).
 		var kinds: Array = model.emitter_list().map(func(e: Array) -> StringName: return e[0])
 		assert_array(kinds).override_failure_message(path).is_equal(want)
 		var sheet: IsoSheetDef = _index.sheet(model.art_id)
@@ -373,7 +377,10 @@ func test_every_vehicle_model_has_marks_from_its_running_gear_and_nothing_else_h
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		var sheet: IsoSheetDef = _index.sheet(model.art_id)
-		if model.category == &"veh":
+		if model.flies():
+			# An aircraft has no running gear (P245): no marks on the ground.
+			assert_str(String(model.marks)).override_failure_message(path).is_empty()
+		elif model.category == &"veh":
 			assert_str(String(model.marks)).override_failure_message(path).is_not_empty()
 			assert_bool(model.marks in ArtModel.MARKS).override_failure_message(path).is_true()
 			assert_str(String(model.marks)).override_failure_message(path).is_equal(

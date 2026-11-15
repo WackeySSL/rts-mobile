@@ -76,12 +76,32 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(32)  # 28 + space centres + anti-air
+	assert_int(seen.size()).is_equal(38)  # 28 + space centres + anti-air + airfields + aircraft
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()
 	await await_idle_frame()
 	assert_str((page.get_node("Title") as Label).text).contains("renew_tanker")
+
+
+## An aircraft's hull hovers `fly_px` above its shadow, scaled with the zoom; a ground hull does not
+## (P245).
+func test_a_flyers_hull_is_drawn_its_lift_above_its_shadow() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = _show(gallery)
+	for zoom: float in [1.0, 2.0]:
+		for id: String in ["fossil/fossil_fighter", "renew/renew_bomber", "fossil/light_tank"]:
+			var model: ArtModel = load("res://assets/art/models/%s.tres" % id) as ArtModel
+			var rig: Node2D = page._rig(model, ArtGen.layouts(model), 0, 0, zoom, "R", false)
+			auto_free(rig)
+			var hull: Sprite2D = rig.get_node("Hull")
+			var shadow: Sprite2D = rig.get_node("Shadow")
+			assert_float(hull.position.y).override_failure_message(id).is_equal(
+				-float(model.fly_px) * zoom
+			)
+			assert_float(shadow.position.y).override_failure_message(id).is_equal(0.0)
+	var fighter: ArtModel = load("res://assets/art/models/fossil/fossil_fighter.tres") as ArtModel
+	assert_int(fighter.fly_px).is_greater(0)
 
 
 func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_overlays() -> void:
@@ -93,7 +113,8 @@ func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_ov
 		var model: ArtModel = load(path) as ArtModel
 		for ground: String in ["Grass", "Sand"]:
 			var row: Node = page.get_node("Scroll/Content/%s" % ground).get_node_or_null("Damage")
-			if model.category != &"veh":
+			# A building has no Damage row, nor has an aircraft (it shows no scar, P245).
+			if model.category != &"veh" or model.flies():
 				assert_object(row).override_failure_message(path).is_null()
 				continue
 			assert_object(row).override_failure_message(path).is_not_null()
