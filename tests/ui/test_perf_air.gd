@@ -128,6 +128,34 @@ func test_the_shipped_air_arena_matches_every_checkpoint_on_the_card() -> void:
 	assert_array(s["verdicts"]).contains(["golden_hashes: PASS (MATCH, 6 checkpoints)"])
 
 
+## The acceptance of plan P253b: the air arena's run through the real view has a heavy window of
+## `heavy_frames_min` frames (4 frames a tick at 60 fps and 15 Hz, as the bases test counts them),
+## and the window needs both the flyers in the `rigs` column and `air_heavy_rigs`: with only the
+## ground rigs of `UnitLayer` (the card before P253b) it holds no frame. A scripted frame loop: no
+## real time is read, the frame's times are constants.
+func test_the_air_arena_run_has_a_heavy_window_of_heavy_frames_min() -> void:
+	var gate: PerfGateDef = load(GATE)
+	var arena: Node2D = _open(PerfHud.ARENA_AIR)
+	arena.runner.paused = true  # Only the loop's ticks run: 4 frames each.
+	var hud: PerfHud = auto_free(Rig.hud(gate))
+	hud.arena_kind = PerfHud.ARENA_AIR
+	add_child(hud)
+	hud.restart()
+	var ground_only: int = 0
+	for _tick: int in 900:
+		arena.runner.run_ticks(1)
+		for frame: int in 4:
+			await get_tree().process_frame
+			var view: Rect2 = arena.camera.visible_world_rect()
+			ground_only += int(arena.unit_layer.count_in(view) >= gate.heavy_rigs)
+			hud.record_frame(16667, 1000, 1000, 10, arena.drawn_rigs(), frame == 0, 1000, -1)
+	var s: Dictionary = hud.summary()
+	assert_int(s["drawn_rigs_max"]).is_greater_equal(gate.heavy_rigs)  # The flyers are counted.
+	assert_int(s["heavy_frames"]).is_greater_equal(gate.heavy_frames_min)
+	assert_int(s["heavy_publish_frames"]).is_greater(0)
+	assert_int(ground_only).is_equal(0)
+
+
 func _open(kind: String) -> Node2D:
 	var arena: Node2D = ArenaRig.make(_calls)
 	arena.arena_kind = kind

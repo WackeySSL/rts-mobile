@@ -7,6 +7,9 @@ extends RefCounted
 ## think (report only), the lines of the counted bounds that a think broke (deterministic), the
 ## peak of every judged counter and the state hash at every checkpoint. It also builds the three
 ## report-only lines, so the suite and its pin of their heads share one source. Not a test suite.
+## `tests/perf/test_ai_4b_perf.gd` plays Phase 4b's arena (plan row P304, ADR 0038 section 7)
+## through the same run: `scenario_path`, `opponent_paths` and `level_path` default to `perf_ai`'s
+## and are set before `play()`; its lines carry `arena=` so the one CI grep tells them apart.
 
 const SmokeRun: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
@@ -21,6 +24,15 @@ const OPPONENT_PATHS: Array[String] = [
 	"res://data/dev/arena/ai/opponent_fossil.tres", "res://data/dev/arena/ai/opponent_renew.tres"
 ]
 const LEVEL_PATH: String = "res://data/dev/arena/ai/difficulty/normal.tres"
+## Phase 4b's arena and its own frozen AI defs (plan row P304, `data/dev/arena/ai_4b/`), for the run
+## of `test_ai_4b_perf.gd` and the card's "Perf AI" route (`DevRoutes.PERF_AI_4B_*`).
+const PATH_4B: String = "res://data/scenarios/perf_ai_4b.tres"
+const OPPONENT_PATHS_4B: Array[String] = [
+	"res://data/dev/arena/ai_4b/opponent_fossil.tres",
+	"res://data/dev/arena/ai_4b/opponent_renew.tres"
+]
+const LEVEL_PATH_4B: String = "res://data/dev/arena/ai_4b/difficulty/normal.tres"
+const ARENA_4B: String = "perf_ai_4b"
 const TICKS: int = 900
 const SEED: int = 42
 ## The passes of one think: the view's own (1) and at most two more for a slot (ADR 0030 section 4).
@@ -54,7 +66,12 @@ var impl: String = ""
 ## The most seen enemy units that each controller's memory held at once, in controller order.
 var seen_peaks: PackedInt32Array = PackedInt32Array()
 
-## The frozen AI defs the controllers were made from (`OPPONENT_PATHS`).
+## What `play()` plays: the scenario, each computer's def (player 1 first) and the level of both.
+var scenario_path: String = PATH
+var opponent_paths: Array[String] = OPPONENT_PATHS
+var level_path: String = LEVEL_PATH
+
+## The frozen AI defs the controllers were made from (`opponent_paths`).
 var _defs: Array[OpponentDef] = []
 
 
@@ -74,7 +91,7 @@ static func max_of(usec: PackedFloat64Array) -> float:
 ## `WATCH ai think impl= slots= thinks= p95_us= max_us= est_phone_p95_ms=`; the estimate is the
 ## p95 in ms times `ratio`. `thinks=` is added to ADR 0030 section 4's keys.
 static func think_line(
-	p95_us: float, max_us: float, impl_name: String, count: int, ratio: float
+	p95_us: float, max_us: float, impl_name: String, count: int, ratio: float, arena: String = ""
 ) -> String:
 	var values: Dictionary = {
 		"impl": impl_name,
@@ -84,41 +101,47 @@ static func think_line(
 		"max_us": max_us,
 		"est_phone_p95_ms": p95_us / 1000.0 * ratio,
 	}
+	if not arena.is_empty():
+		values["arena"] = arena
 	return PerfReport.sub_line(THINK_HEAD, values, false)
 
 
 ## `WATCH ai flow seed= ticks= full_ticks= hash=` (P188's `WATCH ai flow` line has more keys).
-static func flow_line(full_ticks: int, hash_hex: String) -> String:
+static func flow_line(full_ticks: int, hash_hex: String, arena: String = "") -> String:
 	var values: Dictionary = {
 		"seed": SEED, "ticks": TICKS, "full_ticks": full_ticks, "hash": hash_hex
 	}
+	if not arena.is_empty():
+		values["arena"] = arena
 	return PerfReport.sub_line(FLOW_HEAD, values, false)
 
 
 ## `WATCH ai peaks name=count ...` in the order the peaks were first seen.
-static func peaks_line(counts: Dictionary[String, int]) -> String:
+static func peaks_line(counts: Dictionary[String, int], arena: String = "") -> String:
 	var values: Dictionary = {}
 	for name: String in counts:
 		values[name] = counts[name]
+	if not arena.is_empty():
+		values["arena"] = arena
 	return PerfReport.sub_line(PEAKS_HEAD, values, false)
 
 
 ## Plays the match.
 func play() -> void:
-	var world: World = SmokeRun.world_of(SEED, PATH)
+	var world: World = SmokeRun.world_of(SEED, scenario_path)
 	impl = SmokeRun.impl_name()
 	for problem: String in SmokeRun.attach_impl(world):
 		violations.append("sim impl: " + problem)
-	var loop: MatchLoop = SmokeRun.loop_of(world, SEED, PATH)
-	var level: AiDifficultyDef = load(LEVEL_PATH) as AiDifficultyDef
+	var loop: MatchLoop = SmokeRun.loop_of(world, SEED, scenario_path)
+	var level: AiDifficultyDef = load(level_path) as AiDifficultyDef
 	# This run seats no income (the printed hashes are of the 100 percent match): a frozen level that
 	# leaves 100 must be seated here, with SmokeRun.seat_income before loop_of, and re-pinned.
 	if level.income_percent != WorldLoad.PERCENT:
 		violations.append("frozen level income_percent is %d, not 100" % level.income_percent)
-	for index: int in OPPONENT_PATHS.size():
+	for index: int in opponent_paths.size():
 		var player: int = index + 1
 		var rng: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + player)
-		var def: OpponentDef = load(OPPONENT_PATHS[index]) as OpponentDef
+		var def: OpponentDef = load(opponent_paths[index]) as OpponentDef
 		_defs.append(def)
 		controllers.append(AiFactory.create(def, level, player, rng))
 		seen_peaks.append(0)

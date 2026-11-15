@@ -8,6 +8,11 @@ extends Resource
 ## The heavy window: frames that draw at least `heavy_rigs` rigs; it must hold `heavy_frames_min`.
 @export var heavy_rigs: int = 135
 @export var heavy_frames_min: int = 600
+## The air arena's heavy threshold (plan P253b): its 150 mobile rows (16 of them flyers, drawn by
+## AirLayer and counted with the others) fall to 127 by tick 150 and to about 117 by tick 200 as
+## the armies trade, so 135 is held for 124 ticks (496 frames, under `heavy_frames_min`) and 120
+## for about 180. The same 600 frames are asked for.
+@export var air_heavy_rigs: int = 120
 ## Main-thread frame work p95, normalised (ADR 0014 section 3): all heavy-window frames, and the
 ## heavy window's publish frames only.
 @export var work_p95_ms: float = 5.6

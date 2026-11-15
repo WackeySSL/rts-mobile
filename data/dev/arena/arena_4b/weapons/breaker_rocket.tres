@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Frozen copy of data/weapons/breaker_rocket.tres as of 2026-11-15 (main a2204d2f, P304, review round 1). Used by perf_ai_4b only: the shipped file with its layer mask, so a tuning change to it cannot move this arena (ADR 0038 section 7, ADR 0031).
+[resource]
+script = ExtResource("1_weapon")
+id = &"breaker_rocket"
+range = 5500
+damage = 50
+cooldown_ticks = 45
+projectile_speed = 300
+vs_armour = PackedInt32Array(20, 100, 100, 80)
+targets = 7
