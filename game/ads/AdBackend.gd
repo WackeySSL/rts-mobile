@@ -62,6 +62,8 @@ func cancel_show(_kind: StringName) -> void:
 	pass
 
 
+## AdService calls it only on a hidden to shown transition, after `initialize`. The real backend
+## must still make it idempotent (P405).
 func show_banner() -> void:
 	pass
 

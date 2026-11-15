@@ -12,6 +12,14 @@ extends Node
 ## BillingBackend (always the FakeBilling until P406b adds the Play one) and do not depend on
 ## consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
 ## resume. No plugin code and no ad IDs live here.
+##
+## For P407 (persistence): load the `ads` save section in `_init`, before `Purchases.new` and
+## before `_ready`'s restore, with SaveService ordered before AdService, so a buyer's cached
+## Remove ads is in the ledger before the first banner request. Until then a buyer sees a banner
+## until the first restore answers (tests/ads/test_ad_service_order.gd has the pending test).
+## For P405: the backend's `show_banner` must be idempotent anyway; AdService calls it only on a
+## hidden to shown transition and `hide_banner` only on a shown to hidden one, and neither before
+## `initialize`.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
@@ -44,13 +52,16 @@ var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
 var _billing: BillingBackend = _make_billing()
 var _purchases: Purchases = null
-## The kind of the late run in `_late`: only a late interstitial is abandoned by Remove ads.
-var _late_kind: StringName = &""
 ## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
 var _busy: bool = false
-## A run that timed out but whose ad may still open; see FullscreenRun.
-var _late: FullscreenRun = null
+## The run now awaited by `_run_fullscreen`, if any.
+var _active: FullscreenRun = null
+## Runs that timed out but whose ad may still open or is open; see FullscreenRun. Each leaves the
+## list at its close. A late ad that has not opened may be dropped (consent withdrawn, Remove ads),
+## never recalled: it still opens and closes, paired, and holds `_busy` while it is open.
+var _lates: Array[FullscreenRun] = []
+var _banner_shown: bool = false
 var _banner_requests: int = 0
 var _banner_height: int = 0
 var _rewarded_retry_ms: int = 0
@@ -88,10 +99,6 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	if _backend is FakeAdBackend:
-		(_backend as FakeAdBackend).host = self
-	if _billing is FakeBilling:
-		(_billing as FakeBilling).host = self
 	# Silent, no UI: retries failed acknowledges and grants pendings paid while the app was closed.
 	_restore_silently()
 
@@ -230,12 +237,17 @@ func hide_banner() -> void:
 ## emits `banner_changed` when the height changed. Consent and billing call it when theirs change.
 func _refresh_banner() -> void:
 	_sync_fake()
-	var may_show: bool = _banner_requests > 0 and _can_request_ads and not _ledger.remove_ads
+	var may_show: bool = (
+		_initialised and _banner_requests > 0 and _can_request_ads and not _ledger.remove_ads
+	)
 	var height: int = 0
 	if may_show:
-		_backend.show_banner()
+		if not _banner_shown:
+			_banner_shown = true
+			_backend.show_banner()
 		height = _backend.banner_height_dp()
-	else:
+	elif _banner_shown:
+		_banner_shown = false
 		_backend.hide_banner()
 	if height != _banner_height:
 		_banner_height = height
@@ -246,9 +258,8 @@ func _refresh_banner() -> void:
 ## banner, and announces the answer.
 func _set_can_request(allowed: bool) -> void:
 	_can_request_ads = allowed
-	if not allowed and _late != null:
-		_late.abandon()
-		_late = null
+	if not allowed:
+		_drop_unopened_lates(&"")
 	if allowed and not _initialised:
 		_initialised = true
 		_backend.initialize()
@@ -262,17 +273,12 @@ func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
 		return
 	_ledger.remove_ads = has_remove_ads_now
 	# A late interstitial that has not opened yet is dropped from our books; AdMob cannot recall a
-	# show it started, so it may still appear once. A late rewarded ad stays: rewards remain.
-	if (
-		has_remove_ads_now
-		and _late != null
-		and not _busy
-		and _late_kind == AdBackend.KIND_INTERSTITIAL
-	):
-		_late.abandon()
-		_late = null
-	entitlement_changed.emit(has_remove_ads_now)
+	# show it started, so it may still appear once, paired. A late rewarded ad stays: rewards remain.
+	if has_remove_ads_now:
+		_drop_unopened_lates(AdBackend.KIND_INTERSTITIAL)
+	# The banner first, so a handler reads the fresh `banner_height_dp()`.
 	_refresh_banner()
+	entitlement_changed.emit(has_remove_ads_now)
 
 
 func _request_rewarded_load() -> void:
@@ -291,34 +297,55 @@ func _preload_interstitial() -> void:
 		_backend.request_load(AdBackend.KIND_INTERSTITIAL)
 
 
+## Marks every late run that has not opened (of `kind`, or any kind for an empty one) as dropped.
+func _drop_unopened_lates(kind: StringName) -> void:
+	for late: FullscreenRun in _lates:
+		if not late.is_opened() and (kind.is_empty() or late.ad_kind() == kind):
+			late.drop()
+
+
 func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callable) -> bool:
-	if _late != null:
-		_late.abandon()
-		_late = null
+	# A new run of the same kind takes over the listening of an unopened late one, so one open
+	# is not announced twice; a late run of the other kind is dropped and keeps its pair.
+	for late: FullscreenRun in _lates.duplicate():
+		if late.is_opened():
+			continue
+		if late.ad_kind() == kind:
+			late.abandon()
+			_lates.erase(late)
+		else:
+			late.drop()
 	_busy = true
-	_late_kind = kind
 	var run: FullscreenRun = FullscreenRun.new(
 		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
 	)
 	run.opened.connect(_on_run_opened)
-	run.closed.connect(_on_run_closed)
+	run.closed.connect(_on_run_closed.bind(run))
+	_active = run
 	var result: bool = await run.execute()
-	_busy = false
+	_active = null
 	if run.is_late_pending():
-		_late = run
+		_lates.append(run)
+	_refresh_busy()
 	return result
 
 
+## Busy while a run is awaited or a late ad is open.
+func _refresh_busy() -> void:
+	_busy = _active != null
+	for late: FullscreenRun in _lates:
+		_busy = _busy or late.is_opened()
+
+
 func _on_run_opened(placement: StringName) -> void:
-	if _late != null:
-		_busy = true
+	_busy = true
 	ad_opened.emit(placement)
 
 
-func _on_run_closed(placement: StringName) -> void:
-	if _late != null:
-		_busy = false
-		_late = null
+func _on_run_closed(placement: StringName, run: FullscreenRun) -> void:
+	_lates.erase(run)
+	if run != _active:
+		_refresh_busy()
 	ad_closed.emit(placement)
 
 
@@ -332,8 +359,10 @@ func _sync_fake() -> void:
 		fake.auto_close = fake_auto_close
 		fake.draw_placeholders = not fake_auto_close
 		fake.strict_order = true
+		fake.host = self
 	if _billing is FakeBilling:
 		var store: FakeBilling = _billing as FakeBilling
+		store.host = self
 		store.auto_close = fake_auto_close
 		store.draw_placeholders = not fake_auto_close
 	_consent.configure_fake(fake_auto_close, self)

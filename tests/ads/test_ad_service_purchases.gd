@@ -185,12 +185,14 @@ func test_the_purchase_drops_a_late_interstitial_that_has_not_opened() -> void:
 	_h.clock_ms = service._settings.fullscreen_timeout_ms
 	await AdServiceHarness.frames(2)
 	assert_array(out).contains_exactly([false])
-	assert_bool(service._late != null).is_true()
+	assert_int(service._lates.size()).is_equal(1)
 	AdServiceHarness.billing(service).next_outcome = BillingBackend.Outcome.PURCHASED
 	await service.purchase_remove_ads()
-	assert_bool(service._late == null).is_true()
+	# AdMob cannot recall the show: it opens, but paired, and it no longer counts for the caps.
 	ad.open_late()
-	assert_array(_h.events).is_empty()
+	assert_array(_h.events).contains_exactly(["open:post_match", "close:post_match"])
+	assert_bool(service._busy).is_false()
+	assert_int(service._lates.size()).is_equal(0)
 	assert_bool(service._ledger.shown_for_current_match()).is_false()
 
 

@@ -12,7 +12,9 @@ extends RefCounted
 ## - The wait has a deadline only until the store sheet shows (or the query answers). Once the
 ##   sheet is up the call waits for its end. A result that comes after the deadline is still
 ##   applied, because the backend's signals are always connected.
-## - `restore` and `purchase` do not overlap: the second returns false while the first waits.
+## - `restore` and `purchase` do not overlap: a `restore` returns false while another call waits;
+##   a `purchase` during a restore waits for its answer first, and returns false only while another
+##   purchase waits.
 ## Pure RefCounted: the clock is passed in, so tests use a fake one. Never touched by game/sim.
 
 ## Fires when the entitlement changes from what `owned` reports, with the new state.
@@ -27,6 +29,7 @@ var _backend: BillingBackend
 var _product_id: String
 var _owned: Callable
 var _busy: bool = false
+var _restoring: bool = false
 var _sheet_open: bool = false
 var _finished: bool = false
 var _awaiting_result: bool = false
@@ -64,6 +67,12 @@ func price_text() -> String:
 func purchase(now_ms: Callable, timeout_ms: int) -> bool:
 	if _is_owned():
 		return true
+	# The silent restore (start, every resume) is not a purchase in flight: wait for its answer,
+	# which may already say owned, then go on.
+	if _restoring:
+		await _until(func() -> bool: return not _restoring, now_ms)
+		if _is_owned():
+			return true
 	if _busy:
 		return false
 	_expire_stale_result(int(now_ms.call()), timeout_ms)
@@ -94,9 +103,11 @@ func restore(now_ms: Callable, timeout_ms: int) -> bool:
 	if _busy:
 		return false
 	_busy = true
+	_restoring = true
 	var deadline: int = int(now_ms.call()) + timeout_ms
 	var answered: bool = await _await_query(now_ms, deadline)
 	_busy = false
+	_restoring = false
 	if not answered:
 		return false
 	var found: bool = false

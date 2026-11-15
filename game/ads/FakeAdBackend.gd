@@ -32,7 +32,7 @@ var host: Node = null
 ## Fake-only: `push_error` when a load, banner or show runs before `initialize`. AdService sets it.
 var strict_order: bool = false
 var initializations: int = 0
-## Every call in order: "initialize", "load:<kind>", "show:<kind>", "banner".
+## Every call in order: "initialize", "load:<kind>", "show:<kind>", "banner", "hide_banner".
 var calls: Array[String] = []
 var load_requests: Array[StringName] = []
 var shows: Array[StringName] = []
@@ -125,6 +125,7 @@ func show_banner() -> void:
 
 
 func hide_banner() -> void:
+	_note("hide_banner")
 	banner_visible = false
 	if is_instance_valid(_banner_node):
 		_banner_node.queue_free()

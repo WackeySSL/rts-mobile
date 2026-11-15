@@ -6,7 +6,10 @@ extends RefCounted
 ## A show that fails before it opens ends the run with false at once. After a timeout the run
 ## stays connected as a late listener: if the backend opens the ad anyway (AdMob cannot recall
 ## a show), the pair is still emitted, an interstitial is still noted in the ledger and a reward
-## is granted only if it comes before the close. `abandon` ends that listening.
+## is granted only if it comes before the close. `drop` (consent withdrawn, Remove ads bought,
+## ADR 0039 section 2) keeps the listening and the pair, so the game never goes on under an ad, but
+## the ad no longer counts: no ledger note, so no cap effect. A reward is kept. `abandon` ends the
+## listening for good, only for a run that a new run of the same kind replaces.
 
 signal opened(placement: StringName)
 signal closed(placement: StringName)
@@ -24,6 +27,7 @@ var _is_opened: bool = false
 var _is_closed: bool = false
 var _failed: bool = false
 var _rewarded: bool = false
+var _dropped: bool = false
 
 
 func _init(
@@ -71,7 +75,22 @@ func is_late_pending() -> bool:
 	return _timed_out and _connected and not _is_closed
 
 
-## Stops listening; used when a new call replaces a late listener.
+## The run's ad kind.
+func ad_kind() -> StringName:
+	return _kind
+
+
+## True once the ad opened (it may still be open).
+func is_opened() -> bool:
+	return _is_opened
+
+
+## The ad may still show but no longer counts: the ledger is not told, the pair and the reward stay.
+func drop() -> void:
+	_dropped = true
+
+
+## Stops listening; used when a new call of the same kind replaces a late listener.
 func abandon() -> void:
 	_disconnect()
 
@@ -113,7 +132,7 @@ func _on_opened(kind: StringName) -> void:
 	if kind != _kind or _is_opened or _failed:
 		return
 	_is_opened = true
-	if kind == AdBackend.KIND_INTERSTITIAL:
+	if kind == AdBackend.KIND_INTERSTITIAL and not _dropped:
 		_ledger.note_interstitial_shown()
 	opened.emit(placement)
 
