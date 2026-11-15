@@ -29,6 +29,7 @@ var draw_placeholders: bool = false
 ## Where the placeholders are drawn; none is drawn without one in the tree.
 var host: Node = null
 
+var initializations: int = 0
 var load_requests: Array[StringName] = []
 var shows: Array[StringName] = []
 var cancels: Array[StringName] = []
@@ -39,6 +40,10 @@ var _showing: StringName = &""
 var _opened: bool = false
 var _fullscreen_node: FakeAdPlaceholders = null
 var _banner_node: FakeAdPlaceholders = null
+
+
+func initialize() -> void:
+	initializations += 1
 
 
 func load_state(kind: StringName) -> LoadState:
