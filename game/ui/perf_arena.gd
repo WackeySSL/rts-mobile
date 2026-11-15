@@ -153,6 +153,8 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	if arena_kind == PerfHud.ARENA_BASES:
 		scenario = load(DevRoutes.PERF_BASES_SCENARIO) as ScenarioDef
+	elif arena_kind == PerfHud.ARENA_AIR:
+		scenario = load(DevRoutes.PERF_AIR_SCENARIO) as ScenarioDef
 	elif arena_kind == PerfHud.ARENA_AI:
 		scenario = load(DevRoutes.PERF_AI_SCENARIO) as ScenarioDef
 		_seat_computers()

@@ -36,6 +36,9 @@ GATE: PASS
   "ai_think_max_ms": 0.0,
   "ai_think_p95_ms": 0.0,
   "ai_thinks": 0,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "arena",
   "atlas_bake_ms": 12.5,
@@ -241,6 +244,9 @@ GATE: FAIL
   "ai_think_max_ms": 0.0,
   "ai_think_p95_ms": 0.0,
   "ai_thinks": 0,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "arena",
   "atlas_bake_ms": 12.5,
@@ -449,6 +455,9 @@ GATE: FAIL
   "ai_think_max_ms": 0.0,
   "ai_think_p95_ms": 0.0,
   "ai_thinks": 0,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "bases",
   "atlas_bake_ms": 12.5,
@@ -653,6 +662,9 @@ GATE: PASS
   "ai_think_max_ms": 0.0,
   "ai_think_p95_ms": 0.0,
   "ai_thinks": 0,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "arena",
   "atlas_bake_ms": 12.5,
@@ -860,6 +872,9 @@ GATE: FAIL
   "ai_think_max_ms": 0.0,
   "ai_think_p95_ms": 0.0,
   "ai_thinks": 0,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "arena",
   "atlas_bake_ms": 12.5,
@@ -1057,7 +1072,7 @@ p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, ot
 atlas bake 12.5 ms | page 4096x2258 at 1.000 | page 2 4096x1040 (no verdict)
 <model> | Linux | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
-ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at or below 1.00 ms (no verdict)
+ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at or below 1.00 ms | ai_wait_p95_ms 0.00 | ai_wait_max_ms 0.00 | ai_waits 0 (no verdict)
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 GATE: PASS
@@ -1065,6 +1080,9 @@ GATE: PASS
   "ai_think_max_ms": 2.5,
   "ai_think_p95_ms": 0.5,
   "ai_thinks": 180,
+  "ai_wait_max_ms": 0.0,
+  "ai_wait_p95_ms": 0.0,
+  "ai_waits": 0,
   "alive": 0,
   "arena": "ai",
   "atlas_bake_ms": 12.5,

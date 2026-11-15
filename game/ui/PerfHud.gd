@@ -60,6 +60,7 @@ const CARD_ROWS: Array = PerfCard.CARD_ROWS
 const ARENA_UNITS: String = PerfBases.ARENA_UNITS
 const ARENA_BASES: String = PerfBases.ARENA_BASES
 const ARENA_AI: String = PerfBases.ARENA_AI
+const ARENA_AIR: String = PerfBases.ARENA_AIR
 
 @export var runner: MatchRunner
 @export var gate: PerfGateDef = PerfGateDef.new()
@@ -356,6 +357,7 @@ func record_snapshot(snap: MatchSnapshot) -> void:
 			_col(&"flow").append(usec[SimProbe.Phase.FLOW] / 1000.0)
 	if snap.think_usec > 0:  # P185: a tick on which no computer player thought has no think.
 		_col(&"think").append(snap.think_usec / 1000.0)
+	_col(&"ai_wait").append(snap.ai_wait_usec / 1000.0)  # P303: every tick, 0 when none waited.
 	_alive = snap.unit_count()
 	_last_hash = snap.last_hash
 	if snap.tick % CHECKPOINT_EVERY == 0:
@@ -551,6 +553,10 @@ func summary() -> Dictionary:
 		"ai_think_p95_ms": _p(_col(&"think"), 95),
 		"ai_think_max_ms": _p(_col(&"think"), 100),
 		"ai_thinks": _col(&"think").size(),
+		# P303, report-only (ADR 0038 section 7): the job's wait on the AI thread's batch.
+		"ai_wait_p95_ms": _p(_col(&"ai_wait"), 95),
+		"ai_wait_max_ms": _p(_col(&"ai_wait"), 100),
+		"ai_waits": _count_above_zero(_col(&"ai_wait")),
 		"phases_ms": phases,
 		# ADR 0013 section 15 (printed, no verdict): the ticks that are not checkpoint ticks, and
 		# the job time beyond Sim.step on both kinds.
@@ -793,3 +799,12 @@ func _extra_slots(intervals: PackedFloat64Array, period: float) -> Array:
 		var extra: int = floori((interval - period) / slot + slots) if slot > 0.0 else 0
 		bins[clampi(extra, 0, 3)] += 1
 	return bins
+
+
+## How many entries of `values` are above 0.
+func _count_above_zero(values: PackedFloat64Array) -> int:
+	var count: int = 0
+	for value: float in values:
+		if value > 0.0:
+			count += 1
+	return count

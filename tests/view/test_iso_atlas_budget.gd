@@ -34,10 +34,13 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## P202 (ADR 0034) dropped the 16 `dmg1` frames: page 1 went from 2993, 2878 and 2910 to the pins
 ## below (-141, -102 and -128 rows); page 2 is unchanged. What page 1 has left is now 732 rows on
 ## the cross-faction page, 808 on the Derrick League mirror and 802 on the Lumen Accord mirror.
-const TODAY_CROSS: int = 2852  ## P202: 2993 - 141 (P236: 2659 + 334, two hulls, lifts, patches).
-const TODAY_MIRROR_DERRICK: int = 2776  ## P202: 2878 - 102 (P236: 2542 + 336, the Skyrig).
-## P202: 2910 - 128 (P236: 2650 + 260, the Zenith, its lift and patch, once per player).
-const TODAY_MIRROR_LUMEN: int = 2782
+## P306 (the atlas trim, option c1: a directional frame is packed as its tight box) moved page 1
+## from 2852, 2776 and 2782 to the pins below (-685, -649 and -714 rows); page 2 (shadows) is not
+## trimmed and its pins stay. Page 1 has left 1417 rows on the cross-faction page, 1457 on the
+## Derrick League mirror and 1516 on the Lumen Accord mirror.
+const TODAY_CROSS: int = 2167  ## P306: 2852 - 685 (the trim).
+const TODAY_MIRROR_DERRICK: int = 2127  ## P306: 2776 - 649 (the trim).
+const TODAY_MIRROR_LUMEN: int = 2068  ## P306: 2782 - 714 (the trim).
 ## Page 2 (shadows only): until P204 puts a key colour in a unit's shadow it is one slot for both
 ## players, and each shadow fits the free width of shelf 1; only the trailing shelf grows.
 const TODAY2_CROSS: int = 1514  ## P203: 1116 + 398 (the pads widen every shadow frame).

@@ -14,10 +14,12 @@ const STAT_KEYS: Array[String] = ["mean_ms", "p50_ms", "p95_ms", "p99_ms", "max_
 const IMPL_KEY: String = "impl"
 const IMPL_NATIVE: String = "native"
 ## The heads of the `PERF` line: the perf arena's (P38p) and the base arena's (plan P93, ADR 0021
-## section 2), whose line has the same keys. P51 selects `^PERF sim`; the job summary of P96 adds
-## `^PERF bases`.
+## section 2) and the air arena's (plan P253, ADR 0013 section 1), whose lines have the same keys.
+## P51 selects `^PERF sim`; the job summary of P96 adds `^PERF bases`; `^PERF air` is the release
+## engineer's follow-up to `ci.yml`.
 const HEAD: String = "PERF sim"
 const BASES_HEAD: String = "PERF bases"
+const AIR_HEAD: String = "PERF air"
 ## The scalar keys of the `PERF` line in print order; `stats_max=`, `phases=` and `hash=` follow.
 const LINE_KEYS: Array[String] = [
 	"units",

@@ -91,6 +91,7 @@ static func add(
 	if complete:
 		Strike.start_charge(world, world.unit_id.size() - 1)  # A strike building charges from now.
 	_write_cost(world, col, line, width, height, false)
+	Mines.clear_footprint(world, col, line, width, height)  # A placed building removes mines.
 	world.map_version += 1
 	world.flow.invalidate(world.map_version)
 	if owner >= 1 and _entry(world.type_produces, type, -1) >= 0:

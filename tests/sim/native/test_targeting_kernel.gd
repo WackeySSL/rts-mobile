@@ -55,6 +55,7 @@ const TARGETING_NAMES: Array[String] = [
 	"WORLD.goal_x",
 	"WORLD.goal_y",
 	"WORLD.order",
+	"WORLD.stance",
 	"WORLD.order_target",
 	"WORLD.target",
 	"WORLD.nav_mode",

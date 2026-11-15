@@ -292,6 +292,8 @@ func _scene_rig(
 		sprite.centered = false
 		sprite.region_rect = Rect2(atlas.region(sheet.art_id, part, frame, triad))
 		_size_sprite(sprite, sheet, part, zoom)
+		if sheet.has_boxes(part):  # A directional frame is trimmed: its own offset (P306).
+			sprite.offset = atlas.frame_offset(atlas.base(sheet.art_id, part, frame, triad), 0)
 		if part == &"shadow":
 			sprite.z_index = SHADOW_Z
 		if part in [&"turret", &"head"]:

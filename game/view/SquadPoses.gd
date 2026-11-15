@@ -9,9 +9,9 @@ extends RefCounted
 ## for each squad with poses, and `turn` when a hull turns. Only a rig inside the view rect is
 ## written; `reduced` keeps both poses.
 ## The Hull draws the standing `hull` frame, a `walk` frame or an `idle` frame of the same atlas
-## page. Their anchors differ by a pixel or two and `WorldSort.show_base` writes the region and
-## the texture, not the offset, so a change of pose writes the sprite's offset too
-## (`RigLife.Pose.offsets`, read from the sheet when the rig is dressed). The three bases for the
+## page. Their anchors differ by a pixel or two and their frames are trimmed to their boxes (P306);
+## `WorldSort.show_base` writes the region, the texture and the frame's own offset, so a change of
+## pose or frame keeps the picture where it was. The three bases for the
 ## hull's direction are resolved when the rig is dressed and when it turns, so a change of pose or
 ## frame is a table read and builds no string key.
 
@@ -41,7 +41,7 @@ func dress(pose: RigLife.Pose, sheet: IsoSheetDef, hull_base: int, owner_id: int
 	pose.reset(hull_base)
 	if sheet == null or world_sort.atlas.is_empty():
 		return
-	if not pose.dress(sheet, world_sort.atlas.bake_scale()):
+	if not pose.dress(sheet):
 		return
 	_resolve(pose, sheet, UnitLayer.D_EAST, owner_id)
 	for part: int in [RigLife.POSE_WALK, RigLife.POSE_IDLE]:
@@ -108,7 +108,6 @@ func step(
 		return
 	if want != pose.shown:
 		pose.shown = want
-		hull.offset = pose.offsets[want]
 	pose.frame = frame
 	world_sort.show_base(hull, pose.bases[want], frame)
 	rig_life.writes += 1

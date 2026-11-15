@@ -22,6 +22,7 @@ var _runner: MatchRunner
 var _camera: RtsCamera
 var _placement: PlacementController
 var _layer: GhostLayer
+var _bake: float = 1.0  ## The bake scale the next `_open` asks of the atlas.
 
 
 func before() -> void:
@@ -33,6 +34,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	_bake = 1.0
 	MenuRig.begin()
 	get_window().size = ScreenSizes.LANDSCAPE[0]
 	await await_idle_frame()
@@ -46,6 +48,7 @@ func _open(scenario: ScenarioDef, ready: StringName) -> void:
 		_main.free()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	(_main.get_node("MatchRunner") as MatchRunner).scenario = scenario
+	(_main.get_node("WorldSort") as WorldSort).bake_scale = _bake
 	add_child(_main)
 	await await_idle_frame()
 	_runner = _main.get_node("MatchRunner")
@@ -208,6 +211,16 @@ func test_a_blocked_ghost_has_the_word_and_the_glyph_at_their_dp_size_on_every_s
 ## of the head part, its pivot on the sheet's mount, drawn after the body (two parts). A plant has
 ## no head and draws one part.
 func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() -> void:
+	await _head_on_the_mount(1.0)
+
+
+## The same below full scale (P306): the head's trimmed box still puts its pivot on the mount, to
+## the texels the crop rounds out by.
+func test_a_defences_ghost_head_stays_on_the_mount_below_full_scale() -> void:
+	await _head_on_the_mount(0.875)
+
+
+func _head_on_the_mount(bake: float) -> void:
 	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
 	_placement.begin(Rig.plant(_runner.snapshot))
 	await await_idle_frame()
@@ -219,7 +232,9 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	var roster: ScenarioDef = Rig.scenario_for(
 		1, "headquarters", [["barracks", 2, 10]], ["defence_turret"]
 	)
+	_bake = bake
 	await _open(roster, &"defence_turret")
+	assert_float((_main.get_node("WorldSort") as WorldSort).atlas.bake_scale()).is_equal(bake)
 	var turret: int = _runner.snapshot.type_ids.find(&"defence_turret")
 	_camera.centre_on(IsoProjection.cell_centre_px(AT.x, AT.y))
 	assert_bool(_placement.begin(turret)).is_true()
@@ -232,14 +247,20 @@ func test_a_defences_ghost_draws_its_head_on_the_mount_and_a_plant_draws_none() 
 	assert_that(_layer.head_region()).is_equal(east)
 	assert_int(_layer.last_parts).is_equal(2)  # A defence has no moving element: body and head.
 	assert_bool(_layer.anim_region().has_area()).is_false()
-	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre.
+	# Its pivot is on the mount: the box's top left plus the pivot is the mount from the centre (the
+	# box is the head's trim, so the pivot lies the box's own distance from its top left, P306).
 	var ground: Vector2i = _placement.centre_ground()
 	var centre: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
 	var pivot: Vector2 = (
-		_layer.last_head.position + Vector2(sheet.origin(&"head")) * WorldSort.ART_SCALE
+		_layer.last_head.position
+		+ (
+			Vector2(sheet.origin(&"head") - sheet.frame_box(&"head", UnitLayer.D_EAST, 0).position)
+			* WorldSort.ART_SCALE
+		)
 	)
 	assert_vector(pivot).is_equal_approx(
-		centre + sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE, Vector2.ONE * 0.01
+		centre + sheet.mount(UnitLayer.D_EAST) * WorldSort.ART_SCALE,
+		Vector2.ONE * (0.01 if bake == 1.0 else 2.0)
 	)
 	var drawn: Vector2 = Vector2(east.size) * (WorldSort.ART_SCALE / sort.atlas.bake_scale())
 	assert_vector(_layer.last_head.size).is_equal_approx(drawn, Vector2.ONE * 0.01)

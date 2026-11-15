@@ -63,7 +63,7 @@ func test_dress_draws_every_part_over_its_canvas_at_odd_sizes_and_scales() -> vo
 			)
 
 
-func test_the_pose_offsets_and_the_ghost_anim_agree_with_dress_below_scale_1() -> void:
+func test_the_frame_offsets_and_the_ghost_anim_agree_with_dress_below_scale_1() -> void:
 	var sheet: IsoSheetDef = _sheet(
 		{&"hull": Vector2i(101, 71), &"walk": Vector2i(101, 71), &"idle": Vector2i(101, 71)}
 	)
@@ -78,12 +78,15 @@ func test_the_pose_offsets_and_the_ghost_anim_agree_with_dress_below_scale_1() -
 		var sort: WorldSort = auto_free(WorldSort.new())
 		sort.atlas = IsoAtlas.build(sheets, [_art()], scale, false, _reader(sheet, building))
 		var pose: RigLife.Pose = RigLife.Pose.new()
-		assert_bool(pose.dress(sheet, sort.atlas.bake_scale())).is_true()
+		assert_bool(pose.dress(sheet)).is_true()
 		for index: int in RigLife.POSE_PARTS.size():
 			var part: StringName = RigLife.POSE_PARTS[index]
 			var sprite: Sprite2D = auto_free(Sprite2D.new())
 			sort.dress(sprite, sheet, part)
-			assert_vector(pose.offsets[index]).is_equal_approx(sprite.offset, Vector2(1e-4, 1e-4))
+			var dressed: Vector2 = sprite.offset
+			sort.show_base(sprite, sort.base_of(sheet, part, -1, 1), 0)
+			# An untrimmed frame keeps the offset `dress` wrote, below scale 1.0 too.
+			assert_vector(sprite.offset).is_equal_approx(dressed, Vector2(1e-4, 1e-4))
 		var body: Sprite2D = auto_free(Sprite2D.new())
 		var live: Sprite2D = auto_free(Sprite2D.new())
 		sort.dress(live, building, &"anim")

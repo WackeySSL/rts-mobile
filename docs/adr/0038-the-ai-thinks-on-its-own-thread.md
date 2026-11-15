@@ -219,6 +219,34 @@ think: a Command is dropped only when what it names is gone or blocked.
   note after the balance run of §8, before the next gate run. A per-match count far above the
   measured rate means an AI bug, not staleness.
 
+- **(2026-11-14, P301, the lead's decision) Expired and stale drops.** P301 measured every drop of
+  the smoke's full matches (Hard seeds 1 and 2, Normal seed 1) at lag 1. Each drop is applied one
+  tick after its view:
+
+  | Command | Why it was dropped | Hard s1 | Hard s2 | Normal s1 | Kind |
+  | --- | --- | --- | --- | --- | --- |
+  | MOVE (one unit) | the unit died in the lag tick | 7 | 4 | 1 | expired |
+  | ATTACK | the target died in the lag tick | 0 | 4 | 0 | expired |
+  | ATTACK | the target lives, no unit of the group can hit it now | 1 | 1 | 0 | stale |
+  | PLACE | credits spent between the view and the apply | 0 | 1 | 0 | stale |
+  | Total (of 475, 515 and 366 Commands) | | 8 | 10 | 1 | |
+
+  16 of the 19 are expired: the subject or the target died in the lag tick, which no check at T
+  could know (a Command that was already invalid at its view tick would count as stale; the
+  smoke subtracts the expired count of the batch's own view tick, and none of the 19 was). The
+  bound is there to catch AI misbehaviour, so the bound is refined: **expired drops are not
+  counted; stale drops (every other drop) must stay at or under `STALE_DROP_PERCENT`, 1 %.**
+  Measured stale rate: Hard 1 of 475 (0.2 %) and 2 of 515 (0.4 %), Normal 0 of 366; so Hard is
+  at most 0.4 %. The count is made outside the sim (no hashed state, no `World.Stat`):
+  `smoke_run.gd`'s `expired_in()` reads the World before each step, for the unit orders (ATTACK_MOVE,
+  MOVE, ATTACK, STOP) whose units are all gone and the ATTACKs whose target is gone, and the match
+  record gains `expired_commands` (additive; schema 2 keeps its other keys). Stale = `dropped_commands`
+  less `expired_commands`. The smoke prints both, the summary's gate check 5 counts the matches whose
+  stale drops are over the bound, and `test_smoke_run.gd` pins the exact pairs (dropped, expired,
+  Commands: Hard seed 1 8, 7, 475; Hard seed 2 10, 8, 515; Normal seed 1 1, 1, 366). The PLACE case
+  goes to the P250 follow-up list. P188's matches (`test_ai_determinism`: Normal vs Hard, 2700 ticks,
+  and the 900-tick strike match) drop 0 on the shipped path.
+
 ### 7. The card: `ai_wait`, the think and `perf_ai_4b`
 - **`ai_wait`.** `MatchSnapshot` gets `ai_wait_usec`: the time step 1 of §1 blocked on the batch
   (0 when it was ready, when none was in flight, and always in `SYNC`). The card's report-only AI

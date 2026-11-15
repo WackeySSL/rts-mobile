@@ -177,6 +177,10 @@ func test_the_settings_have_exactly_the_fields_of_the_core_rows() -> void:
 		"collapse_fire_grow",
 		"collapse_alpha",
 		"collapse_lift_milli",
+		"air_bob_px",
+		"air_bob_ms",
+		"air_fall_ms",
+		"air_fall_drift_milli",
 		"collapse_end_ms",
 		"crater_scale_milli",
 		# P149: the puff block (its values are pinned in test_puff_fx.gd).

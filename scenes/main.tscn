@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="7_runner"]
 [ext_resource type="Resource" path="res://data/scenarios/controls_test.tres" id="8_scenario"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
+[ext_resource type="Script" path="res://game/view/AirLayer.gd" id="93_air"]
 [ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
 [ext_resource type="Script" path="res://game/ui/BoxOverlay.gd" id="12_box"]
@@ -104,13 +105,14 @@ camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
 decals = NodePath("../DecalLayer")
 
-[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer")]
+[node name="HealthBarLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer")]
 z_index = 30
 z_as_relative = false
 script = ExtResource("18_bars")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
+air_layer = NodePath("../AirLayer")
 
 [node name="ProjectileLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 40
@@ -138,6 +140,14 @@ z_index = 70
 z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
+
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
+z_index = 20
+z_as_relative = false
+script = ExtResource("93_air")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+effects = NodePath("../EffectsLayer")
 
 [node name="RallyLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 61
@@ -174,11 +184,12 @@ world_sort = NodePath("../WorldSort")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement", "carry_aim")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement", "carry_aim")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
 building_layer = NodePath("../BuildingLayer")
+air_layer = NodePath("../AirLayer")
 camera = NodePath("../Camera")
 settings = ExtResource("6_settings")
 marker_layer = NodePath("../MarkerLayer")
@@ -252,7 +263,7 @@ script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
 clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
 
-[node name="CarryControls" type="Control" parent="Hud" node_paths=PackedStringArray("aim", "camera", "unit_layer", "controller", "clear_of")]
+[node name="CarryControls" type="Control" parent="Hud" node_paths=PackedStringArray("aim", "camera", "controller", "clear_of")]
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -260,7 +271,6 @@ theme = ExtResource("16_theme")
 script = ExtResource("95_carry_controls")
 aim = NodePath("../../CarryAim")
 camera = NodePath("../../Camera")
-unit_layer = NodePath("../../UnitLayer")
 controller = NodePath("../../PlayerController")
 clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
 
@@ -434,5 +444,6 @@ runner = NodePath("../../MatchRunner")
 
 [connection signal="selection_changed" from="PlayerController" to="UnitLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="BuildingLayer" method="set_selected"]
+[connection signal="selection_changed" from="PlayerController" to="AirLayer" method="set_selected"]
 [connection signal="selection_changed" from="PlayerController" to="RallyLayer" method="set_selected"]
 [connection signal="rally_ordered" from="PlayerController" to="RallyLayer" method="show_pending"]

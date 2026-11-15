@@ -37,7 +37,7 @@ const UNLOADED_CARRIER_AT: int = 6
 ## living mobile row other than the carrier whose move class bit is in its `type_carry_classes`;
 ## the lowest ids fill the slots still free (`type_carry_slots` less the squads aboard). With none
 ## valid, or no slot free, the command is dropped and counted. The carrier cancels a pending unload
-## (`carry_mode` 0).
+## (`carry_mode` 0), and so does a squad a pending lay.
 static func apply_load(world: World, command: Command) -> bool:
 	if command.unit_ids.size() > Command.MAX_UNITS:
 		return false
@@ -73,6 +73,8 @@ static func apply_load(world: World, command: Command) -> bool:
 	_go(world, PackedInt32Array([carrier]), gx, gy, 0)
 	world.carry_mode[carrier] = 0
 	_go(world, squads, gx, gy, command.target_id)
+	for row: int in squads:
+		world.carry_mode[row] = 0  # A LOAD ends a pending lay or unload of a squad, too.
 	Harvest.release(world, squads)
 	return true
 
@@ -112,9 +114,10 @@ static func apply_unload(world: World, command: Command) -> bool:
 	return true
 
 
-## A MOVE, ATTACK_MOVE, STOP or REPAIR on `rows` takes the "board on arrival" mark off the ones that
-## carry it (an `order_target` that names an own row; an ATTACK's names an enemy) and ends a pending
-## unload (`carry_mode` 0). Sim calls it with the rows it accepted, as `Harvest.release`.
+## A MOVE, ATTACK_MOVE, STOP, REPAIR or LAY_MINE on `rows` takes the "board on arrival" mark off the
+## ones that carry it (an `order_target` that names an own row; an ATTACK's names an enemy) and
+## ends a pending unload (`carry_mode` 0). Sim calls it with the rows it accepted, as
+## `Harvest.release`.
 static func release(world: World, rows: PackedInt32Array) -> void:
 	var targets: PackedInt32Array = world.order_target
 	for row: int in rows:

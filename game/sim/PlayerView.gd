@@ -7,6 +7,8 @@ extends RefCounted
 ## reads the World and writes nothing, and keeps no reference to it.
 ##
 ## What it gives:
+## - `own_mines` and `known_mines` (ADR 0037 section 8): the mines the player laid and found.
+## - `own_stance` (ADR 0037 section 15): the stance of each of `own_rows`, in step with it.
 ## - `own_rows`: the rows with `owner == player`, and `seen_rows`: the rows of any other owner (an
 ##   enemy, or the neutral 0) whose cell the player's fog shows visible now, the rule of
 ##   `Targeting.sees` (the cell holding the row, in the player's block of `fog.visible`). Both are
@@ -55,20 +57,17 @@ extends RefCounted
 ##   (`Tab`, `HarvestMode`, `Order`, `Layer`, `TABS`, `MILLI_PER_TILE`, `TILE_CENTRE`,
 ##   `ARMOUR_CLASSES`).
 ##
-## Aliasing (ADR 0012 section 2, as `PlacementInput`): GDScript passes a packed array by reference,
-## so an array the view takes from the World without copying is the World's own and live: it shows
-## the World's later writes, and a write through it would be the World's. So nothing a caller can
-## reach is an alias. Every public field is a copy (the two lists, the slices of the player's state
-## and last-seen records, the type tables, the type ids, and the seven arrays of `columns()`); the
-## row columns and the placement input, which a think reads a few rows of and so are not worth a
-## copy of the table, are aliases behind an underscore, read only by the getters below and written
-## by nothing. A copy of a packed array shares its storage until one side writes, so `columns()`
-## costs seven reference counts a view; it is one copy per view, shared by every manager of a think,
-## and a write through it never reaches the World. A view, or a column taken from one, held across
-## a tick would make the World fork a whole array on its next write: a view is made, read and
-## dropped within one think, never kept across a tick; its aliases follow the World, its lists and
-## slices do not, and a row index is good only for the tick it was made on (the table compacts when
-## a row dies). The per-row getters are for event cadence, not a per-tick loop.
+## Aliasing (ADR 0012 section 2, ADR 0038 section 4): GDScript passes a packed array by reference,
+## so an array taken from the World without copying is the World's own and live. The view holds
+## none: every array is a `duplicate()` made in `of` (the lists, the slices of the player's state
+## and last-seen records, the type tables, the type ids, the row columns behind the getters, the
+## placement input of `PlacementInput.copy_of_world`, and the seven arrays of `columns()`, which
+## are copies of their own). A copy of a packed array shares its storage until
+## one side writes, so a view costs reference counts, and the World forks an array on its next
+## write to it. So a view, or a column taken from one, is made, read and dropped within one think,
+## never kept across a tick, and a write to the World after `of` changes no answer of the view; a
+## row index is good only for the tick it was made on (the table compacts when a row dies). The
+## per-row getters are for event cadence, not a per-tick loop. A new field is a copy or an int.
 ##
 ## Hidden rows (plan row P198): `columns()` holds every row of the World. A caller indexes it only
 ## with a row of `own_rows` or `seen_rows` or a `row_of()` answer of 0 or more, as the getters do;
@@ -142,6 +141,20 @@ var low_power: bool = false
 ## The rows the player owns, and the rows of other owners that it sees: ascending World rows.
 var own_rows: PackedInt32Array = PackedInt32Array()
 var seen_rows: PackedInt32Array = PackedInt32Array()
+## The stance of each own row (ADR 0037 section 15): one entry per `own_rows` entry, in the same
+## order (find a row's at `own_rows.bsearch(row)`); 0 normal, 1 hold position. Own state only (no
+## other player's row is in it), a copy (ADR 0038 section 4).
+var own_stance: PackedInt32Array = PackedInt32Array()
+## The mines (ADR 0037 section 8), copies: the player's own (`own_mines` the cells, `own_mine_id`
+## and `own_mine_armed`, the tick each arms, in step, ascending mine id; no fog hides them) and the
+## ones it found (`known_mines` the cells, `known_mine_id` and `known_mine_owner` in step, the order
+## of its records in `MineMemory`). A mine it has not found is in neither list.
+var own_mines: PackedInt32Array = PackedInt32Array()
+var own_mine_id: PackedInt32Array = PackedInt32Array()
+var own_mine_armed: PackedInt32Array = PackedInt32Array()
+var known_mines: PackedInt32Array = PackedInt32Array()
+var known_mine_id: PackedInt32Array = PackedInt32Array()
+var known_mine_owner: PackedInt32Array = PackedInt32Array()
 ## The player's queues: `queue_slots` places per tab, `queue_count[tab]` of them in use with the
 ## head first in `queue_type[tab * queue_slots]` (-1 in a free place), and `queue_progress[tab]` the
 ## head's progress in hundredths of a tick (`Production.PROGRESS_PER_TICK` a tick). `rally_x` and
@@ -225,7 +238,7 @@ var upgrades: int = 0
 var unit_cap: int = 0
 var building_cap: int = 0
 
-## The row columns, aliases of the World's (see the header): behind the getters, which hide the rows
+## The row columns, copies of the World's (see the header): behind the getters, which hide the rows
 ## the player does not see. `_shown` holds `_OWN`, `_SEEN` or `_HIDDEN` for each row.
 var _ids: PackedInt32Array = PackedInt32Array()
 var _owner: PackedInt32Array = PackedInt32Array()
@@ -247,7 +260,7 @@ var _public: Array[PackedInt32Array] = []
 var _type_ids: Array[StringName] = []
 var _dock_x: PackedInt32Array = PackedInt32Array()
 var _dock_y: PackedInt32Array = PackedInt32Array()
-## What `Placement.reason` and `is_explored` read: its arrays are aliases too; it keeps no World.
+## What `Placement.reason` and `is_explored` read: its arrays are copies too; it keeps no World.
 var _input: PlacementInput = null
 
 
@@ -260,10 +273,11 @@ static func of(world: World, player: int) -> PlayerView:
 	view.map_cols = world.map_cols
 	view.ore_cells = world.ore_cell.duplicate()
 	view.map_rows = world.map_rows
-	view._input = PlacementInput.of_world(world)
+	view._input = PlacementInput.copy_of_world(world)
 	view._take_tables(world)
 	view._take_player(world)
 	view._take_ghosts(world)
+	view._take_mines(world)
 	view._take_warned(world)
 	view.reveal_state = world.reveal.duplicate()
 	view.upgrades = world.upgrades[player] if player < world.upgrades.size() else 0
@@ -335,7 +349,9 @@ func row_home(row: int) -> int:
 
 ## The stamp from which an own strike building may fire, and the stamp until which an own building
 ## is offline after a blackout. MISSING for a row that is not the player's own. The sim compares
-## against the stamp of a Command, `tick + 1` for a think at `view.tick`: charged when
+## against the stamp of a Command: the shipped path applies a think of `view.tick` in the step
+## whose stamp is `view.tick + 2` (ADR 0038, lag 1), the tests/ai rigs in `view.tick + 1` (lag 0).
+## The checks below use the earlier stamp, which is safe because both are monotone: charged when
 ## `view.tick + 1 >= row_ready_tick(row)`, online when `row_offline_until(row) <= view.tick + 1`.
 ## `offline_until` is never reset to 0, so do not test for `== 0`. A strike building still under
 ## construction reads `ready_tick` 0: check `row_build_left(row) == 0` as well.
@@ -543,27 +559,57 @@ func _take_ghosts(world: World) -> void:
 	ghost_cell = world.ghost_cell.slice(first, first + count)
 
 
-## The one pass over the rows: aliases the columns, then sorts each row into `own_rows`,
-## `seen_rows` or neither, in ascending order, and records which in `_shown`. A row of another owner
-## is seen when the visible count of its cell is above 0 in the player's block, as
-## `Targeting.sees` says (the rule, inlined over aliased arrays); a player the fog has no block for
-## sees every row, as there. The lists are built in locals, so that the loop reads no member, and
-## stored last.
+## The player's own mines and its records of the others', as copies. A player past the World's
+## arrays (the neutral 0, a hand-built World) keeps none.
+func _take_mines(world: World) -> void:
+	var cap: int = world.mine_known_cap
+	var owners: PackedInt32Array = world.mine_owner
+	var cells: PackedInt32Array = world.mine_cell
+	var ids: PackedInt32Array = world.mine_id
+	var armed: PackedInt32Array = world.mine_armed_tick
+	var made_cell: PackedInt32Array = PackedInt32Array()
+	var made_id: PackedInt32Array = PackedInt32Array()
+	var made_armed: PackedInt32Array = PackedInt32Array()
+	for index: int in mini(world.mine_count, mini(owners.size(), mini(cells.size(), ids.size()))):
+		if owners[index] == player and index < armed.size():
+			made_cell.append(cells[index])
+			made_id.append(ids[index])
+			made_armed.append(armed[index])
+	own_mines = made_cell
+	own_mine_id = made_id
+	own_mine_armed = made_armed
+	if player < 1 or player >= world.mine_seen_count.size() or cap < 1:
+		return
+	var first: int = player * cap
+	var count: int = clampi(world.mine_seen_count[player], 0, cap)
+	if first + count > world.mine_seen_id.size():
+		return
+	known_mines = world.mine_seen_cell.slice(first, first + count)
+	known_mine_id = world.mine_seen_id.slice(first, first + count)
+	known_mine_owner = world.mine_seen_owner.slice(first, first + count)
+
+
+## The one pass over the rows: copies the columns (one `duplicate()` each), then sorts each row
+## into `own_rows`, `seen_rows` or neither, in ascending order, and records which in `_shown`. A
+## row of another owner is seen when the visible count of its cell is above 0 in the player's
+## block, as `Targeting.sees` says (the rule, inlined over the copied columns); a player the fog
+## has no block for sees every row, as there. The lists are built in locals, so that the loop
+## reads no member, and stored last.
 @warning_ignore("integer_division")
 func _take_rows(world: World) -> void:
-	_ids = world.unit_id
-	_owner = world.owner
-	_type = world.type_index
-	_pos_x = world.pos_x
-	_pos_y = world.pos_y
-	_hp = world.hp
-	_build_left = world.build_left
-	_order = world.order
-	_harvest_mode = world.harvest_mode
-	_home = world.home
-	_ready_tick = world.ready_tick
-	_offline_until = world.offline_until
-	_cargo = world.cargo
+	_ids = world.unit_id.duplicate()
+	_owner = world.owner.duplicate()
+	_type = world.type_index.duplicate()
+	_pos_x = world.pos_x.duplicate()
+	_pos_y = world.pos_y.duplicate()
+	_hp = world.hp.duplicate()
+	_build_left = world.build_left.duplicate()
+	_order = world.order.duplicate()
+	_harvest_mode = world.harvest_mode.duplicate()
+	_home = world.home.duplicate()
+	_ready_tick = world.ready_tick.duplicate()
+	_offline_until = world.offline_until.duplicate()
+	_cargo = world.cargo.duplicate()
 	var fog: FogGrid = world.fog
 	var cols: int = fog.cols
 	var lines: int = fog.rows
@@ -586,11 +632,14 @@ func _take_rows(world: World) -> void:
 	var count: int = _ids.size()
 	var shown: PackedByteArray = PackedByteArray()
 	shown.resize(count)
+	var stances: PackedInt32Array = world.stance
+	var own_stances: PackedInt32Array = PackedInt32Array()
 	var own: PackedInt32Array = PackedInt32Array()
 	var seen: PackedInt32Array = PackedInt32Array()
 	for row: int in count:
 		if owners[row] == player:
 			own.append(row)
+			own_stances.append(stances[row])
 			shown[row] = _OWN
 			continue
 		var is_seen: bool = sees_all
@@ -616,6 +665,7 @@ func _take_rows(world: World) -> void:
 		if is_seen:
 			seen.append(row)
 			shown[row] = _SEEN
+	# Separate copies: a caller's write through columns() must not reach the getters' columns.
 	_public = [
 		_ids.duplicate(),
 		_owner.duplicate(),
@@ -627,6 +677,7 @@ func _take_rows(world: World) -> void:
 	]
 	_shown = shown
 	own_rows = own
+	own_stance = own_stances
 	seen_rows = seen
 
 

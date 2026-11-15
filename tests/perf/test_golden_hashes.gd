@@ -30,6 +30,10 @@ const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
 const BASES_PATH: String = "res://data/scenarios/perf_bases.tres"
 ## The prefix of the base arena's gate fields: `bases_golden_ticks` and `bases_golden_hex`.
 const BASES_PREFIX: String = "bases_"
+## The air arena (plan P253): 16 aircraft among 150 units on frozen defs; its fields are
+## `air_golden_*`.
+const AIR_PATH: String = "res://data/scenarios/perf_air.tres"
+const AIR_PREFIX: String = "air_"
 const GATE_PATH: String = "res://data/dev/perf_gate.tres"
 const TICKS: int = 900
 const SEED: int = 42
@@ -93,6 +97,33 @@ func test_the_base_arena_ends_on_its_golden_hashes_under_both_implementations(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	_assert_ends_on_the_golden_hashes(impl, BASES_PATH, BASES_PREFIX)
+
+
+## The air arena (plan P253) ends every checkpoint of `air_golden_ticks`, and its last tick, on
+## `air_golden_hex`, in the GDScript twins and in the C++ kernels alike (the aircraft rules are
+## GDScript in both): the lockstep of the two implementations over a run with aircraft.
+func test_the_air_arena_ends_on_its_golden_hashes_under_both_implementations(
+	impl: int, _test_parameters := _both()
+) -> void:
+	_assert_ends_on_the_golden_hashes(impl, AIR_PATH, AIR_PREFIX)
+
+
+## The air arena's pair has the shape of the others, and none of its hashes is the perf arena's or
+## the base arena's: a scenario that fell back to another arena shows here.
+func test_the_gate_file_holds_an_air_arena_hash_every_150_ticks_none_of_the_others() -> void:
+	var gate: PerfGateDef = _gate()
+	var expected: Array[int] = []
+	for tick: int in range(GOLDEN_STEP, TICKS + 1, GOLDEN_STEP):
+		expected.append(tick)
+	assert_array(Array(gate.air_golden_ticks)).is_equal(expected)
+	assert_int(gate.air_golden_hex.size()).is_equal(expected.size())
+	var form: RegEx = RegEx.create_from_string(HEX_FORM)
+	var distinct: Dictionary[String, bool] = {}
+	for hex: String in gate.air_golden_hex:
+		assert_object(form.search(hex)).override_failure_message(hex).is_not_null()
+		assert_bool(gate.golden_hex.has(hex) or gate.bases_golden_hex.has(hex)).is_false()
+		distinct[hex] = true
+	assert_int(distinct.size()).is_equal(expected.size())
 
 
 ## The two tests above run once for each parameter set, so a `_both()` that dropped one would leave

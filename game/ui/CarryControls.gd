@@ -18,7 +18,6 @@ const POINT_DP: float = 48.0  ## The square round the unload chevron.
 
 @export var aim: CarryAim
 @export var camera: RtsCamera
-@export var unit_layer: UnitLayer
 @export var controller: PlayerController
 ## The HUD controls the buttons keep clear of (the same list as GhostControls').
 @export var clear_of: Array[Control] = []
@@ -86,7 +85,7 @@ func anchor() -> Rect2:
 			at - Vector2.ONE * (POINT_DP * 0.5 * _dp_px), Vector2.ONE * (POINT_DP * _dp_px)
 		)
 	if aim.mode == CarryAim.Mode.BOARD and aim.carrier_id != 0:
-		unit_layer.fill_pick_snapshot(_pick, UiScale.dp(controller.settings.hit_radius_dp))
+		controller.fill_pick(_pick)  # A flyer at its lifted hull (P244).
 		var at: int = _pick.ids.find(aim.carrier_id)
 		if at >= 0:
 			var half: float = maxf(_pick.radius_px[at], PICK_MIN_DP * _dp_px)
