@@ -78,3 +78,17 @@ Whether Google's SDK terms need an in-game notice is not decided here; it moves 
 The plugin stays disabled in `project.godot`, so the `Android` and `Android perf` presets export unchanged (they
 exclude `addons/admob/*`); the AAB export enables it for one run (P410b). The Web preset excludes `addons/admob/*`
 too. Upgrade only through a new ADR.
+
+### Does Google's SDK need an in-game notice? (P410b, Phase 5 item 10)
+
+**To confirm.** The Google Mobile Ads SDK terms live on developers.google.com, which the cloud session's network
+blocks (`getaddrinfo ENOTFOUND`), so the answer could not be read on 2026-11-15. Pages to read, by the person
+with access: https://developers.google.com/admob/terms (AdMob terms and the SDK's terms of use) and
+https://developers.google.com/admob/android/quick-start. Until then:
+- The plugin's own licence (Poing Studios, `addons/admob/LICENSE`, copy in `docs/licenses/poing-godot-admob-5.1.0/`)
+  goes into `THIRD_PARTY_LICENSES.txt` and the Licences screen (P410's licence lines, Phase 5).
+- Google's SDK is proprietary and arrives as a Gradle dependency (the AARs pull it from Google's Maven); no
+  licence text of it is vendored. Nothing in this repository shows that Google asks for an in-game notice.
+- The `android-aab` job prints the final manifest permissions, and the AAB's merged licence files can be listed in
+  its log once it has run; if the terms ask for a notice, add it to `scripts/export-android.sh`'s notice and the
+  Licences screen.

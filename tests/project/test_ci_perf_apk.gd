@@ -236,8 +236,13 @@ func test_preset_script_and_job_agree_on_the_perf_apk() -> void:
 		assert_str(export_path).is_equal(export_path.get_base_dir() + "/" + names[-1])
 	assert_str(config.get_value("preset.2", "export_path")).is_equal(APK_PATH)
 	var script: String = FileAccess.get_file_as_string(EXPORT_SCRIPT)
-	assert_array(_all(script, 'PRESET="([^"]+)"')).is_equal(presets)
-	assert_array(_all(script, 'APK_NAME="([^"]+)"')).is_equal(names)
+	# P410b: the script's third mode (--aab) names the fourth preset and its bundle.
+	var script_presets: Array[String] = presets.duplicate()
+	var script_names: Array[String] = names.duplicate()
+	script_presets.append(config.get_value("preset.3", "name"))
+	script_names.append(str(config.get_value("preset.3", "export_path")).get_file())
+	assert_array(_all(script, 'PRESET="([^"]+)"')).is_equal(script_presets)
+	assert_array(_all(script, 'APK_NAME="([^"]+)"')).is_equal(script_names)
 	var publish: String = FileAccess.get_file_as_string(PUBLISH_SCRIPT)
 	assert_array(_all(publish, 'APK_NAME="([^"]+)"')).is_equal(names)
 	var tags: Array[String] = ["android-dev-latest", "android-perf-release"]
