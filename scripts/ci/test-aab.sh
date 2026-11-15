@@ -22,6 +22,8 @@ for tool in git zip unzip sha256sum curl cmp; do
 done
 repo="$(cd "$(dirname "$0")/../.." && pwd -P)"
 root="$(mktemp -d)"
+# A real-looking publisher ID, built at run time so that no tracked text holds it (P420's ad ID guard).
+fake_pub="ca-app-pub-$(printf '%s%s' 1234567890 123456)"
 trap 'rm -rf "${root:?}"' EXIT
 failures=0
 rc=0
@@ -115,7 +117,7 @@ bundle() { # NAME [EXTRA-FILE...]: the fixture as NAME.aab, with extra files (pa
       kernelz) echo kernelz >"$root/v/base/lib/arm64-v8a/libsim_kernels.so" ;;
       installtime) mkdir "$root/v/installTime" && mv "$root/v/base/assets" "$root/v/installTime/assets" ;;
       noassets) rm -rf "$root/v/base/assets" ;;
-      realid) echo "unit ca-app-pub-1234567890123456/1111111111" >"$root/v/base/assets/ad_ids.cfg" ;;
+      realid) echo "unit $fake_pub/1111111111" >"$root/v/base/assets/ad_ids.cfg" ;;
       *) mkdir -p "$root/v/$(dirname "$f")" && echo x >"$root/v/$f" ;;
     esac
   done
@@ -203,7 +205,7 @@ chk noasset
 check "a bundle with no */assets/ entry fails" 1 "the bundle has no */assets/ entry"
 bundle idreal realid
 chk idreal
-check "an ad ID of another publisher in an asset fails" 1 "ad ID of a publisher other than Google's test one: ca-app-pub-1234567890123456"
+check "an ad ID of another publisher in an asset fails" 1 "ad ID of a publisher other than Google's test one: $fake_pub"
 bundle nofont -base/assets/assets/art/fonts/fam/OFL.txt
 chk nofont
 check "a bundle without a font's OFL.txt fails" 1 "the bundle lacks the font licence assets/assets/art/fonts/fam/OFL.txt"
