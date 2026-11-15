@@ -34,10 +34,12 @@ prims = PackedStringArray(
 "broken hull ceramic -0.25 -0.1 0.62 0.12 0.4 0.3 teeth=4 low=0.3 damage=2",
 "broken hull ceramic 0.0 -0.25 0.62 0.4 0.12 0.24 teeth=3 low=0.2 damage=2",
 "broken hull interior 0.34 0.0 0.2 0.04 0.4 0.28 teeth=4 low=0.5 damage=2",
+"broken hull team 0.1 0.2 0.3 0.4 0.22 0.12 teeth=3 low=0.4 damage=2",
 "rod hull titanium -0.2 -0.15 0.9 -0.1 -0.05 1.05 3 bend=35 damage=2"
 )
 poses = PackedStringArray(
 "dmg2 0 top char 60",
+"dmg2 0 band hide",
 "dmg2 0 lid hide",
 "dmg2 0 p1 hide"
 )

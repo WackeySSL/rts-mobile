@@ -38,7 +38,7 @@ prims = PackedStringArray(
 "broken hull concrete 0.32 0 0.06 0.08 0.7 0.34 teeth=5 low=0.35 damage=2 group=k2",
 "broken hull concrete 0 -0.32 0.06 0.7 0.08 0.36 teeth=4 low=0.4 damage=2 group=k2",
 "broken hull concrete -0.32 0 0.06 0.08 0.7 0.3 teeth=4 low=0.2 damage=2 group=k2",
-"broken hull team 0.36 0.16 0.3 0.1 0.3 0.12 teeth=3 low=0.3 damage=2 group=k2",
+"broken hull team 0.36 0.2 0.3 0.1 0.2 0.12 teeth=3 low=0.3 damage=2 group=k2",
 "rod hull rebar 0.32 0.1 0.36 0.32 0.1 0.66 3 bend=25 damage=2 group=k2",
 "rod hull rebar -0.32 0.2 0.3 -0.32 0.2 0.58 3 bend=-30 damage=2 group=k2"
 )

@@ -11,6 +11,7 @@ extends GdUnitTestSuite
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
 const LIFE_PATH: String = "res://data/life_settings.tres"
 const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
+const DamageSupport: GDScript = preload("res://tests/art/artgen_v5_support.gd")
 const IDS: Array[StringName] = [&"fossil_aa", &"renew_aa"]
 const FACTION: Dictionary[StringName, StringName] = {&"fossil_aa": &"fossil", &"renew_aa": &"renew"}
 const GUN: Dictionary[StringName, StringName] = {
@@ -81,6 +82,19 @@ func test_the_team_share_holds_in_every_head_direction_at_zoom_1() -> void:
 				. override_failure_message("%s d%02d: %.3f" % [id, dir, share])
 				. is_between(SHARE_WIDE.x, SHARE_WIDE.y)
 			)
+
+
+## ADR 0029 section 5: the KRITISK picture keeps 20 to 50 % of the intact picture's team colour
+## (SKADET has no picture, ADR 0034).
+func test_the_kritisk_picture_keeps_its_team_colour_in_the_band() -> void:
+	for id: StringName in IDS:
+		var model: ArtModel = load(MODEL % [FACTION[id], id]) as ArtModel
+		assert_array(Array(DamageSupport.share_problems(model))).is_empty()
+		var share: float = DamageSupport.key_share(model, 2)
+		var band: Vector2 = DamageSupport.SHARE_BANDS[1]
+		assert_float(share).override_failure_message("%s: %.2f" % [id, share]).is_between(
+			band.x, band.y
+		)
 
 
 func test_the_cast_shadow_is_one_connected_mark() -> void:

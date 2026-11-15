@@ -1315,6 +1315,7 @@ with a hull and a head that turns in 16 steps, a KRITISK picture (`dmg2`), no SK
   collars; the pedestal is square concrete against the white hexagon.
 - **Team colour.** The pedestal band and the head ring (the Burst Stack), the column band and the head
   ring (the Sky Needle); the key triad is the same for both factions as for every building.
+- **KRITISK team share.** The Burst Stack keeps 0.39 of the intact team colour (a narrow team chunk on the ruin), the Sky Needle 0.36 (its band is gone, a small remnant stays on the front), both inside ADR 0029's 20 to 50 %; `tests/art/test_anti_air_art.gd` pins it.
 - **KRITISK.** Both lose their upper body to broken walls with rebar (the Burst Stack) or a split lid
   and charred top (the Sky Needle); the head stays. Damage points sit on the ruin.
 - **Gallery.** The Build page and the Iso page list them by themselves, the Icons page shows the item cards.
