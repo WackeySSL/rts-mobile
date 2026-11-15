@@ -734,12 +734,13 @@ func _col(name: StringName) -> PackedFloat64Array:
 
 
 ## The frames to judge, as rows of the frame columns: those of the heavy window (at least
-## `heavy_rigs` rigs) or all, and those that published (1), did not (0) or either (-1).
+## `heavy_rigs` rigs, `air_heavy_rigs` there) or all, and those that published (1), did not (0) or
+## either.
 func _rows(heavy: bool, published: int) -> PackedInt32Array:
 	var rows: PackedInt32Array = PackedInt32Array()
 	var rigs: PackedFloat64Array = _col(&"rigs")
 	var flags: PackedFloat64Array = _col(&"published")
-	var heavy_rigs: int = gate.heavy_rigs
+	var heavy_rigs: int = gate.air_heavy_rigs if arena_kind == ARENA_AIR else gate.heavy_rigs
 	for i: int in rigs.size():
 		if (not heavy or rigs[i] >= heavy_rigs) and (published < 0 or flags[i] == published):
 			rows.append(i)

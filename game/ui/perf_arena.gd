@@ -81,6 +81,7 @@ const FRAME_MARGIN_PX: float = 32.0
 @export var map_view: MapView
 @export var world_sort: WorldSort  ## Draws the rigs and holds the atlas.
 @export var unit_layer: UnitLayer
+@export var air_layer: AirLayer
 @export var bar_layer: HealthBarLayer
 @export var projectile_layer: ProjectileLayer
 @export var effects_layer: EffectsLayer
@@ -314,9 +315,11 @@ func _on_view_resized() -> void:
 		_start_first_run()
 
 
-## The rows shown and inside the camera's visible world rect now (`PerfHud.rigs_source`).
+## The rows shown and inside the camera's visible world rect now (`PerfHud.rigs_source`): the
+## ground rigs of `UnitLayer` and the flyers of `AirLayer` (plan P253b), which the air arena has.
 func drawn_rigs() -> int:
-	return unit_layer.count_in(camera.visible_world_rect())
+	var view: Rect2 = camera.visible_world_rect()
+	return unit_layer.count_in(view) + air_layer.count_in(view)
 
 
 ## The fog layer's update time in us when it uploaded since the last call, else -1
