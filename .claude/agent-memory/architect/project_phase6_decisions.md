@@ -1,6 +1,6 @@
 ---
 name: project-phase6-decisions
-description: Phase 6 plan (2026-11-15, rows P400-P441) and ADRs 0039 (ads behind AdService) and 0040 (AAB, upload key, Play internal), both proposed; the Phase 5 contract
+description: Phase 6 plan (2026-11-15, rows P400-P441) and ADRs 0039 (ads behind AdService) and 0040 (AAB, upload key, Play internal), both accepted 2026-11-15 (P400b); the Phase 5 contract
 metadata:
   type: project
 ---
@@ -18,3 +18,6 @@ metadata:
 - Pitfall (review S1/S9): a job reads environment secrets only when it names the environment; a new workflow cannot be workflow_dispatched before it is on the default branch.
 - Fix 2 (2026-11-15): Michael answered all 13 questions A (Double XP result screen, +500 map select only; policy caps; 29 kr; caption no frame; no sideways/scroll pause banner; AdMob alone; Play App Signing; privacy on appcode.dk; real App ID + test units internally; 13+ / T; upload every merge; commit-count versionCode). ADRs stay proposed until the main lead merges P400 (P400b). CLAUDE.md/admob-policy/release-engineer.md texts pending Michael's separate yes to the exact text; until then internal builds use the test App ID and P414 waits. Open fact: does AppCode ApS have a Play org account.
 - Pitfall: Michael's "yes to the option" is not a "yes to the text" for CLAUDE.md, skills or agent files; keep those as drafts until he approves the wording.
+- P400b (2026-11-15, branch claude/p400b-phase6-notes on 4456e53b): ADRs 0039/0040 ACCEPTED (Michael "Ja, planen er godkendt"); dated notes in ADR 0025 §11/§12/§15/§17, 0005, 0013 (#123712), 0039 §9, 0040, hud-v2 plan (P127 withdrawn). The five draft texts moved to row P400c (Michael said "wait"); P400b closed.
+- P410 decision (Michael 2026-11-15): Poing v5.1.0 pinned + one-line typed-array patch from upstream 4dc9144 (addons/admob/PATCHES.md, hash-manifest test) until 5.1.1; own placeholder SVGs; plugin disabled in project.godot; Android/Android perf exclude addons/admob/*; App ID via project setting admob/general/android/app_id (default test ID). Split: P410b = --aab enables the plugin per run (trap restore), Android internal preset, bundletool 1.18.3, ci.yml android-aab, #123712 watch, SDK-notice question; P405/P411/P412/P414 depend on P410b.
+- Pitfall: the real App ID via a project setting must be set at export time only (P414), never in tracked project.godot, or ADR 0039 §9's ID guard trips.

@@ -6,15 +6,44 @@ Play's internal testing track, where your phone installs it from the Play Store.
 real app signing key (Play App Signing). A few steps only you can do in Play Console and AdMob come
 first; the plan lists them (M1-M11). The dev and perf APKs stay as they are.
 
-Status: **proposed, 2026-11-15**. Written by the architect (row P400, branch
-`claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
+Status: **accepted, 2026-11-15 (Michael)**. Proposed the same day, written by the architect (row
+P400, branch `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
 `docs/plans/2026-11-15-phase-6.md`. Fix 1 the same day: the lead's docs lens. **Answered by
 Michael on 2026-11-15** (in chat, through the Phase 6 lead): all A, so the plan's questions 8, 10,
 12 and 13 are decided as written below (Play App Signing with his upload key and backup; the real
 App ID with Google's test units in internal builds; an upload on every merge to `main`;
-versionCode from the commit count). The status stays proposed until the main lead accepts it when
-merging P400; P400b writes the acceptance notes. AppCode ApS already has a Play organisation
+versionCode from the commit count). The status stayed proposed until the main lead merged P400;
+P400b wrote the acceptance notes. AppCode ApS already has a Play organisation
 account (Michael, 2026-11-15; plan M1 done).
+
+Status note (2026-11-15, P400b docs; acceptance): Michael approved the plan on 2026-11-15 ("Ja,
+planen er godkendt") with every question answered A; P400 merged as #472. The dated notes listed
+under "Amends" are placed: ADR 0005 (a status note at the top) and ADR 0013's "Not covered" note
+on #123712. The `release-engineer.md` texts are now plan row **P400c**, still pending Michael's yes
+to the text (he said "wait" on 2026-11-15); where "P400b" below names those texts, read P400c. No
+decision text changed.
+
+Status note (2026-11-15, P400b docs; the AdMob plugin pin, Michael 2026-11-15):
+- Poing's godot-admob **v5.1.0** fails to load in Godot 4.7.2 because of one typed-array line in
+  `internal/exporters/base_export_plugin.gd`. Upstream master fixes it (4dc9144); no release has
+  the fix yet.
+- **Decision (Michael):** pin the stable v5.1.0 and apply that one line as a documented local
+  patch (`addons/admob/PATCHES.md`, with a hash-manifest test), removed when 5.1.1 ships (that
+  upgrade through a new ADR, §2). The plugin's third-party images are replaced by our own
+  placeholder SVGs.
+- The plugin stays **disabled** in `project.godot`. The `Android` and `Android perf` presets
+  exclude `addons/admob/*` (pinned in `test_export_presets.gd`), which settles §1's "to confirm".
+- The App ID reaches the manifest at build time through the plugin's project setting
+  `admob/general/android/app_id`, whose default is Google's test App ID (§5; ADR 0039 §9's note).
+- Google's Maven is blocked in cloud sessions, so the Gradle export is proven only in CI.
+- So P410 is split. **P410:** the pin, the Android libraries' installer, the vendored editor part
+  with the patch, the placeholders, the plugin disabled. **P410b:** `export-android.sh --aab`
+  enables the plugin for that run only (an `[editor_plugins]` append to `project.godot`, restored
+  by a trap), the Gradle template, the `Android internal` preset (§1), §4's checks with the
+  manifest read by **bundletool 1.18.3** (pinned; this settles §4's tool), the #123712 watch,
+  `ci.yml`'s `android-aab` job, and whether Google's SDK terms need an in-game notice. Where §1,
+  §2, §4 and §5 say "P410" for the Gradle export, the preset, the AAB checks or `android-aab`,
+  read P410b.
 
 Amends (dated notes in P400b, after acceptance):
 - ADR 0005's Consequences ("Phase 6 replaces this preset's signing with the release keystore and

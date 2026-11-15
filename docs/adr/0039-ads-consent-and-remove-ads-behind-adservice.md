@@ -9,13 +9,21 @@ player's first two matches and at most one per 4 minutes of play. You can watch 
 double XP or for +500 credits in the next match. Remove ads removes banners and full-screen ads;
 the by-choice offers stay.
 
-Status: **proposed, 2026-11-15**. Written by the architect (row P400, branch
-`claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
+Status: **accepted, 2026-11-15 (Michael)**. Proposed the same day, written by the architect (row
+P400, branch `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
 `docs/plans/2026-11-15-phase-6.md`. Fix 1 the same day: the lead's docs lens and the Phase 5
 session's acceptance of the interfaces (the plan's "Interfaces with Phase 5", with
 `fake_auto_close`). **Answered by Michael on 2026-11-15** (in chat, through the Phase 6 lead): all
-A, so the plan's questions 1-7, 10 and 11 are decided as written below. The status stays proposed
-until the main lead accepts it when merging P400; P400b writes the acceptance notes.
+A, so the plan's questions 1-7, 10 and 11 are decided as written below. The status stayed proposed
+until the main lead merged P400; P400b wrote the acceptance notes.
+
+Status note (2026-11-15, P400b docs; acceptance): Michael approved the plan on 2026-11-15 ("Ja,
+planen er godkendt") with every question answered A; P400 merged as #472. The dated notes listed
+under "Amends" are placed: ADR 0025 §11, §12, §15 and §17, and the hud-v2 plan's withdrawal of
+P127. The `admob-policy` and CLAUDE.md texts are now plan row **P400c**, still pending Michael's
+yes to the text (he said "wait" on 2026-11-15); where "P400b" below names those texts, read P400c.
+Until that yes the internal build keeps Google's test App ID. §9 gains a note on the App ID's
+route (P410, Michael 2026-11-15). No decision text changed.
 
 Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `docs/plans/2026-11-01-hud-v2.md` row **P127** is absorbed by this plan: the band is row P430,
@@ -205,6 +213,13 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   P410/P410b**; ADR 0040 §5).
 - A guard test fails on any `ca-app-pub-` or `pub-` ID with 16 digits in a tracked file other
   than Google's test publisher `3940256099942544` or the placeholder `0000000000000000`.
+
+Note (2026-11-15, P400b docs; P410, Michael 2026-11-15): the App ID's build-time path is the Poing
+plugin's project setting `admob/general/android/app_id` (v5.1.0, pinned with a one-line local
+patch; ADR 0040's status note of 2026-11-15). Its default is Google's test App ID, so every build
+without an override carries the test App ID. The plugin is enabled only for P410b's `--aab` run.
+P414 sets the real one from `ADMOB_APP_ID_ANDROID` for the `Android internal` export only, never
+in a tracked file (the guard above), and only after Michael's yes to the P400c text.
 
 ### 10. Save and audio
 - Phase 6 keeps its state in Phase 5's `SaveService` section `ads`: `completed_matches`,
