@@ -247,3 +247,28 @@ func test_no_spinner_node() -> void:
 		)
 		assert_bool(is_spinner).is_false()
 		stack.append_array(node.get_children())
+
+
+func test_the_relay_is_freed_after_a_cancel_and_after_a_late_reward() -> void:
+	var offer: RewardedOffer = _offer()
+	_fake().grant_reward = false
+	var relay: RewardRelay = RewardRelay.new(offer, _grant)
+	var ref: WeakRef = weakref(relay)
+	relay.run(_service, PLACEMENT, Callable())
+	relay = null
+	await AdServiceHarness.frames(3)
+	assert_bool(ref.get_ref() == null).is_true()
+	_fake().grant_reward = true
+	_fake().show_never_opens = true
+	_fake().ignore_cancel = true
+	relay = RewardRelay.new(offer, _grant)
+	ref = weakref(relay)
+	relay.run(_service, PLACEMENT, Callable())
+	relay = null
+	_h.clock_ms = _service._settings.fullscreen_timeout_ms
+	await AdServiceHarness.frames(3)
+	assert_bool(ref.get_ref() != null).is_true()
+	_fake().open_late()
+	await AdServiceHarness.frames(3)
+	assert_int(_grants).is_equal(1)
+	assert_bool(ref.get_ref() == null).is_true()

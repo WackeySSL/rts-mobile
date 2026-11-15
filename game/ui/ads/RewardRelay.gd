@@ -9,8 +9,6 @@ const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
 var _on_reward: Callable
 var _offer: WeakRef
 var _fired: bool = false
-## The relay owns itself while an ad may still pay out (a Callable does not keep it alive).
-var _keep: RewardRelay = null
 
 
 func _init(offer: RewardedOffer, on_reward: Callable) -> void:
@@ -33,18 +31,17 @@ func fire() -> void:
 		offer.granted.emit()
 
 
-## Shows the ad and calls `finished` afterwards (not when the offer was freed meanwhile). After a
-## timeout the ad may still open and pay out, so the relay stays until the service's next close.
+## Shows the ad and calls `finished` afterwards (not when the offer was freed meanwhile). The
+## callback handed to the service is a lambda that captures the relay, so the relay lives exactly
+## as long as the service's run may still call it (after a timeout the ad may still pay out) and no
+## longer: nothing holds it for itself, so nothing outlives the service.
 func run(service: AdServiceScript, ad_placement: StringName, finished: Callable) -> void:
-	_keep = self
-	await service.show_rewarded(ad_placement, fire)
-	if _fired or not is_instance_valid(service):
-		_keep = null
-	else:
-		service.ad_closed.connect(_release, CONNECT_ONE_SHOT)
+	await service.show_rewarded(ad_placement, _callback())
 	if finished.is_valid():
 		finished.call()
 
 
-func _release(_placement: StringName) -> void:
-	_keep = null
+## Built outside the coroutine: a lambda made in a function that awaits would hold its state.
+func _callback() -> Callable:
+	var relay: RewardRelay = self
+	return func() -> void: relay.fire()
