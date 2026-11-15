@@ -1,0 +1,20 @@
+---
+name: project-phase6-decisions
+description: Phase 6 plan (2026-11-15, rows P400-P441) and ADRs 0039 (ads behind AdService) and 0040 (AAB, upload key, Play internal), both proposed; the Phase 5 contract
+metadata:
+  type: project
+---
+
+- Plan docs/plans/2026-11-15-phase-6.md on base a2204d2 (branch claude/p400-phase6-plan, not committed by me). Rows: docs P400/P400b/P440/P441; lane M P401-P407 (P401 = AdService facade stub first, Phase 5 codes against it); lane R P410-P414; lane Q P420-P422; lane T P430-P434. Kinds (a) now, (b) wait for P5xx.
+- Phase 5 is a separate session (P5xx): it owns menus, Progression, SaveService (section `ads` for us), boot (awaits ensure_consent), MenuFlow (note_match_completed + maybe_show_interstitial), MatchSetup.bonus_starting_credits, AudioService (mutes on ad_opened/closed). Phase 6 plans no menus, meta stubs or save format. Contract gaps G1-G7 in the plan (G1 show/hide_banner missing from the facade; G2 take_start_credits_bonus so a granted bonus survives an app kill).
+- ADR 0039: only AdMobBackend/UmpPluginBackend name Poing, only PlayBillingBackend names BillingClient; fake mode everywhere but the `play` feature build; every awaitable has a data timeout; play time = sim ticks/15 of ended matches; banner height changes on consent/entitlement/show, not fill; pause foot upright only, destroyed on close (hidden AdView refreshes); start bonus = setup data like income_percent (P173), never a Command; P127 absorbed (P430/P432/P433).
+- ADR 0040: new preset `Android internal` (Gradle, AAB, dk.appcode.rts, feature play); debug/perf APKs stay non-Gradle; upload key in GitHub environment play-internal (main only); versionCode = 10 x commits on main + channel, NOT run_number (a called reusable workflow sees the caller's run number); manual steps M1-M11.
+- Pitfall: no Poing fact (version, API names, App ID path, banner position) is in the repo; every such fact is "to confirm in P405/P410"; billing API is in mobile-development/references/iap-and-ads.md.
+- Pitfall: data/** triggers balance.yml, so data/ads_settings.tres needs a "!data/ads_settings.tres" path negation (P412).
+- Pitfall: an ID guard test's own offline fixtures must build fake ca-app-pub IDs at run time, or the guard trips on them.
+- Fix 1 (2026-11-15, on 074547c5): Phase 5 accepted G1-G7 + typed signatures + `fake_auto_close` (true when DisplayServer is headless); contract items 1-14 in the plan. Menus place Phase 6's `AdBannerBand` (P430, enter_tree/exit_tree), facade has no show/hide; `take_start_credits_bonus() -> int` in the facade; pause foot moved to new row P435; timeouts cover only the wait before an ad/form shows, never after (never-closing test).
+- Pitfall (review M1): tests/ui/support/hud_walk.gd ad_nodes scans the whole root incl. autoloads, so any new autoload under game/ads trips it; the autoload row (P401) must carry the exemption.
+- Pitfall (review M2/S7): putting a real App ID in a non-release workflow contradicts CLAUDE.md's Monetization line; agent-file statements (release-engineer.md) also need Michael's yes, not just an ADR.
+- Pitfall (review S1/S9): a job reads environment secrets only when it names the environment; a new workflow cannot be workflow_dispatched before it is on the default branch.
+- Fix 2 (2026-11-15): Michael answered all 13 questions A (Double XP result screen, +500 map select only; policy caps; 29 kr; caption no frame; no sideways/scroll pause banner; AdMob alone; Play App Signing; privacy on appcode.dk; real App ID + test units internally; 13+ / T; upload every merge; commit-count versionCode). ADRs stay proposed until the main lead merges P400 (P400b). CLAUDE.md/admob-policy/release-engineer.md texts pending Michael's separate yes to the exact text; until then internal builds use the test App ID and P414 waits. Open fact: does AppCode ApS have a Play org account.
+- Pitfall: Michael's "yes to the option" is not a "yes to the text" for CLAUDE.md, skills or agent files; keep those as drafts until he approves the wording.
