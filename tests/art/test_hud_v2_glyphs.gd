@@ -10,6 +10,7 @@ extends GdUnitTestSuite
 ## the crane mast into an aerial.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const HUD_BACKDROP: Color = Color("0F141C")
 ## The eighteen, by the part of the HUD that uses them (the gallery's Hud page keeps the same rows).
@@ -67,15 +68,15 @@ const DARK_MAX: float = 0.4
 
 func test_the_eighteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_files() -> void:
 	var rows: Array[String] = []
-	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
-		rows.append_array(Gallery.HUD_V2_ROWS[row_name])
+	for row_name: String in IconsPage.HUD_V2_NEW_ROWS:
+		rows.append_array(IconsPage.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
 	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a), Home (P244).
 	assert_int(HUD_V2_GLYPHS.size()).is_equal(19)
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
-	assert_bool(Gallery.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
-	assert_bool(Gallery.HUD_SITE_BADGES.has(MAP_GLYPH)).is_true()
+	assert_bool(IconsPage.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
+	assert_bool(IconsPage.HUD_SITE_BADGES.has(MAP_GLYPH)).is_true()
 
 
 func test_each_hud_glyph_of_the_seventeen_is_at_least_29_from_every_other_at_32_px() -> void:

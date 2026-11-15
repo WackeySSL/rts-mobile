@@ -134,7 +134,8 @@ jobs:
       # plain note, which is no PERF line, so only the first shows.
       # P96: the two PERF lines of tests/perf/test_base_arena_perf.gd (PERF bases units= and PERF bases impl=native
       # units=), copied the same way under their own heading, after the PERF sim lines, which show as before. Report
-      # only: nothing gates on them. P190: every `WATCH ai ` line (tests/perf/test_ai_perf.gd, P189, and the
+      # only: nothing gates on them. P309: the two PERF lines of tests/perf/test_air_perf.gd (PERF air units= and
+      # PERF air impl=native units=), the same way under their own heading after the bases block. P190: every `WATCH ai ` line (tests/perf/test_ai_perf.gd, P189, and the
       # determinism suite, P188), copied the same way under their own heading after the bases block, report only. The other WATCH lines (WATCH sim hash_bytes and
       # WATCH bases hash_bytes among them) stay in the verify log; the summary copies none of them.
       - name: Job summary
@@ -163,6 +164,12 @@ jobs:
             grep -a -E '^PERF bases (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
             echo '```'
             echo
+            echo '### PERF air (the air arena, report only)'
+            echo
+            echo '```'
+            grep -a -E '^PERF air (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF air line (the air perf suite did not run)"
+            echo '```'
+            echo
             echo '### WATCH ai (the opponent AI, report-only lines)'
             echo
             echo '```'
@@ -188,6 +195,9 @@ jobs:
           echo "::endgroup::"
           echo "::group::PERF bases"
           grep -a -E '^PERF bases (units=|impl=native units=)' "$log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
+          echo "::endgroup::"
+          echo "::group::PERF air"
+          grep -a -E '^PERF air (units=|impl=native units=)' "$log" 2>/dev/null || echo "no PERF air line (the air perf suite did not run)"
           echo "::endgroup::"
           echo "::group::WATCH ai"
           grep -a -E '^WATCH ai ' "$log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"

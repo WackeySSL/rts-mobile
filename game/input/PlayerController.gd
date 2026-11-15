@@ -32,6 +32,9 @@ extends Node
 ## the building stays selected; with any other building selected, a Headquarters included, it lets
 ## go of the selection. "All army" and a box leave tankers out unless the box holds nothing else
 ## (`OrderRules`).
+## While the Board or Unload aim is open (P265, `carry_aim`) a tap on a unit picks the carrier to
+## board (anything else is refused with no Command) or a tap on the ground sets the unload point;
+## nothing is selected, ordered or boxed.
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
@@ -57,6 +60,7 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var group_column: GroupColumn
 @export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 @export var placement: PlacementController  ## Without one there is no placement mode.
+@export var carry_aim: CarryAim  ## Without one there are no Board and Unload aims.
 
 var selection: SelectionModel = SelectionModel.new()
 ## Taps refused so far: an enemy none of the selected units can hit (P244). For the tests.
@@ -70,6 +74,7 @@ var _snap: PickSnapshot = PickSnapshot.new()
 var _group_counts: PackedInt32Array = PackedInt32Array([0, 0, 0])  ## `_show_groups`' scratch.
 var _found: PackedInt32Array = PackedInt32Array()  ## Scratch for the Picker's box queries.
 var _dead: PackedInt32Array = PackedInt32Array()  ## Scratch for the ids a tick's events name.
+var _boarded: PackedInt32Array = PackedInt32Array()  ## Scratch: the DIED records of flag 2.
 var _hitters: PackedInt32Array = PackedInt32Array()  ## Scratch for the rows that can hit.
 var _homing: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s aircraft of one field.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s airfields.
@@ -95,6 +100,10 @@ func handle_gesture(e: GestureEvent) -> void:
 	if strike_aim != null and strike_aim.active:
 		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
 			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+		return
+	if carry_aim != null and carry_aim.is_active():
+		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
+			_carry_tap(e.position)
 		return
 	if placement != null and placement.active:
 		placement.handle_gesture(e)
@@ -181,8 +190,12 @@ func units_selected() -> bool:
 	return _units_selected()
 
 
+## Selects the squads of group `slot` that are on the map; the ones aboard a carrier join again
+## from the unload on (`_show_groups` counts only the ones on the map).
 func tap_group(slot: int) -> void:
-	selection.recall_group(slot)
+	var live: PackedInt32Array = _on_map(selection.group(slot))
+	if not live.is_empty():
+		selection.set_ids(live)
 
 
 ## Stores the selected units in group `slot` (a hold on it overwrites it), shows the count and
@@ -296,11 +309,23 @@ func _pick(pos: Vector2, units: bool) -> int:
 
 
 func _refresh() -> void:
-	unit_layer.fill_pick_snapshot(_snap, UiScale.dp(settings.hit_radius_dp))
+	fill_pick(_snap)
+
+
+## Fills `out` with what a tap reads: the ground units, the buildings and the flyers at their lifted
+## hulls (P244).
+func fill_pick(out: PickSnapshot) -> void:
+	fill_unit_pick(out)
 	if building_layer != null:
-		building_layer.fill_pick_snapshot(_snap, camera)
+		building_layer.fill_pick_snapshot(out, camera)
+
+
+## The units half of `fill_pick`, the ground units and the flyers, which allocates nothing: what
+## `CarryControls` reads every frame for the ringed carrier's drawn place.
+func fill_unit_pick(out: PickSnapshot) -> void:
+	unit_layer.fill_pick_snapshot(out, UiScale.dp(settings.hit_radius_dp))
 	if air_layer != null:
-		air_layer.fill_pick_snapshot(_snap, camera, UiScale.dp(settings.hit_radius_dp))
+		air_layer.fill_pick_snapshot(out, camera, UiScale.dp(settings.hit_radius_dp))
 
 
 ## Whether the selection is units: any selection but the one building a tap on a building makes
@@ -324,13 +349,21 @@ func _on_selection_changed() -> void:
 func _on_ticked(_tick: int) -> void:
 	var events: PackedInt32Array = runner.snapshot.events
 	_dead.clear()
+	_boarded.clear()
+	var unloaded: bool = false
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
-		if events[at] == World.Event.DIED:
+		if events[at] == World.Event.UNLOADED:
+			unloaded = true
+		elif events[at] != World.Event.DIED:
+			continue
+		elif events[at + Removal.DIED_FLAG_AT] == Removal.FLAG_BOARDED:
+			_boarded.append(events[at + 1])  # Aboard a carrier: out of the live selection only.
+		else:
 			_dead.append(events[at + 1])
-	if _dead.is_empty():
-		return
 	selection.remove_ids(_dead)
-	_show_groups()
+	selection.drop_live(_boarded)
+	if unloaded or not _dead.is_empty() or not _boarded.is_empty():
+		_show_groups()  # A group counts the squads on the map: aboard ones leave, unloaded return.
 
 
 ## Tells the group column the counts of the groups and whether "+" can save (units are selected and
@@ -339,9 +372,56 @@ func _show_groups() -> void:
 	if group_column == null:
 		return
 	for slot: int in range(1, SelectionModel.GROUP_COUNT + 1):
-		_group_counts[slot - 1] = selection.group_size(slot)
+		_group_counts[slot - 1] = _on_map(selection.group(slot)).size()
 	var can_save: bool = selection.lowest_free_group() > 0 and _units_selected()
 	group_column.show_groups(_group_counts, can_save)
+
+
+## The ids of `ids` that are rows now: a squad aboard a carrier is not one.
+func _on_map(ids: PackedInt32Array) -> PackedInt32Array:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	if snap == null:
+		return ids
+	var live: PackedInt32Array = PackedInt32Array()
+	for id: int in ids:
+		if snap.index_of(id) >= 0:
+			live.append(id)
+	return live
+
+
+## A tap with the Board or Unload aim open (P265). Only own units and buildings are candidates: an
+## enemy under the finger never steals the tap. Board rings the own carrier that can take squads (it
+## wins over any other own unit the tap also hits; any other tap is refused with no Command).
+## Unload refuses a tap on an own unit or building (a shake, no point) and sets the point anywhere
+## else.
+func _carry_tap(pos: Vector2) -> void:
+	_refresh()
+	var snap: MatchSnapshot = runner.snapshot
+	var player: int = _local_player()
+	var carrier: int = 0  # The nearest own carrier with a free seat the tap hits.
+	var carrier_d2: float = INF
+	var own: bool = false  # An own unit or building lies under the finger.
+	for index: int in _snap.size():
+		var skip: bool = index < _snap.pickable.size() and _snap.pickable[index] == 0
+		var d2: float = _snap.screen_pos[index].distance_squared_to(pos)
+		if skip or _snap.owners[index] != player or d2 > _snap.radius_px[index] ** 2:
+			continue
+		own = true
+		var row: int = snap.index_of(_snap.ids[index])
+		if row >= 0 and d2 < carrier_d2 and CarryRules.can_take_squads(snap, row, player):
+			carrier = _snap.ids[index]
+			carrier_d2 = d2
+	if carry_aim.mode == CarryAim.Mode.BOARD:
+		carry_aim.pick_carrier(carrier)
+		return
+	var shape: int = Picker.pick_building(
+		_snap, pos, player, false, UiScale.dp(settings.hit_radius_dp)
+	)
+	own = own or (shape >= 0 and _snap.building_owners[shape] == player)
+	if own:
+		carry_aim.refuse()
+	else:
+		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))
 
 
 ## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in

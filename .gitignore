@@ -42,3 +42,6 @@ export_credentials.cfg
 .claude/settings.local.json
 .claude/agent-memory-local/
 CLAUDE.local.md
+
+# AdMob unit IDs: written into the export by a workflow, never committed (ADR 0039 section 9)
+ad_ids.cfg

@@ -194,3 +194,12 @@ text = "Perf air"
 [node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/PerfAirButton"]
 script = ExtResource("5_dp")
 min_dp = Vector2(240, 48)
+
+[node name="PerfAiBaseButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Perf AI base"
+
+[node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/PerfAiBaseButton"]
+script = ExtResource("5_dp")
+min_dp = Vector2(240, 48)
