@@ -310,6 +310,24 @@ ADR 0037, accepted 2026-11-09 (answers 1 A, 2 A, 3 A, 4 B, 5 A). Plan:
 | Ground carrier | Bunk Wagon | Linecar | 700 (Linecar 500) | Vehicle factory | Unarmed. Bunk Wagon tracked, 700 HP, 1.0 tiles/s, 4 squads; Linecar wheeled, 320 HP, 2.0 tiles/s, 2 squads |
 | Minelayer | Shot Truck | Seeder | set in the data row (P290) | Vehicle factory, needs a radar | Unarmed, finds mines. Shot charge: 60 credits, 1-tile blast, strong against vehicles. Pulse seed: 50 credits, 1.5-tile blast, better against squads |
 
+Note (2026-11-15, P26bz, from P290's data): starting values; the balance runs tune them. The four
+units are in `data/units/` but not on the build menu until their art rows (P291, P292). Speed is in
+milli-tiles a tick (67 = 1.0 tiles/s); build time in ticks (15 a second); sight and finding reach in
+milli-tiles.
+
+| Unit | Cost | HP | Armour | Moves | Speed | Build | Sight | Other |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Bunk Wagon | 700 | 700 | heavy | tracked | 67 (1.0 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | 4 seats, squads keep 50 % on its death |
+| Linecar | 500 | 320 | light | wheeled | 133 (2.0 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | 2 seats, squads lost (0 %) |
+| Shot Truck | 500 | 450 | light | wheeled | 93 (1.4 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | shot charge 60 credits; finds mines at 3 000 (3 tiles) |
+| Seeder | 450 | 250 | light | wheeled | 147 (2.2 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | pulse seed 50 credits; finds mines at 3 000 (3 tiles) |
+
+- **The mines** (percent of damage against infantry, light, heavy, building): shot charge 160
+  damage, 50/120/120/100 %, blast 1 000; pulse seed 100 damage, 150/80/50/100 %, blast 1 500.
+- **Scout tanks** (Flarejack, Swift) find mines at 2 000.
+- **Radii** (body, selection, formation spacing): Bunk Wagon and Shot Truck 450/600/1 400,
+  Linecar and Seeder 400/500/1 200.
+
 **Looks:** the Weld Shed is an open steel shed with a crane arm and a welding flash; the Drone Dock
 a white ceramic rack of small hexagonal drones. Medics carry their side's own kit mark (an orange
 band, a mint ring), never a red cross, crescent or crystal. No passenger fires from a carrier's
