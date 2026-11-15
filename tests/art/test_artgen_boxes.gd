@@ -4,8 +4,9 @@ extends GdUnitTestSuite
 ## canvas margin, read off the frame itself; a part with one view has none and the whole canvas
 ## is its box. P306 packs the boxes and places the frames by them.
 
-## A box is the drawn pixels plus the margin of `ArtGen.MARGIN_PX`; a pixel of slack covers the
-## anti-aliased rim that a raster adds to the polygon bounds.
+## A box is the drawn pixels plus 1 clear px (`ArtSheet.BOX_CLEAR_PX`): the inked bounds are the
+## polygon bounds, grown by the 1 px edge stroke where a polygon has one (a rod has none); a pixel
+## of slack covers the anti-aliased rim that a raster adds to the polygon bounds.
 const SLACK_PX: int = 1
 
 var _index: IsoIndex = null

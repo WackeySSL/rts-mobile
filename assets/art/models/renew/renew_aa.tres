@@ -8,7 +8,7 @@ art_id = &"renew_aa"
 faction = &"renew"
 category = &"bld"
 footprint = 1
-silhouette = "A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin titanium needle leans steeply skyward, braced by a ceramic strut and threaded with three graphite coil beads."
+silhouette = "A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars."
 mount = Vector3(0, 0, 0.66)
 prims = PackedStringArray(
 "box hull graphite 0 0 0 0.92 0.92 0.06",
@@ -22,11 +22,11 @@ prims = PackedStringArray(
 "prism head team 0 0 0.2 0.48 0.48 0.08 sides=6",
 "prism head ceramic 0 0 0.28 0.4 0.4 0.08 sides=6",
 "box head mint -0.1 0 0.36 0.08 0.08 0.04",
-"rod head titanium 0 0 0.3 0.8 0 1.3 4",
+"rod head glass 0 0 0.3 0.8 0 1.3 4",
 "rod head ceramic -0.12 0 0.3 0.3 0 0.72 5",
-"sphere head graphite 0.16 0 0.44 0.12 0.12 0.12",
-"sphere head graphite 0.32 0 0.64 0.12 0.12 0.12",
-"sphere head graphite 0.48 0 0.84 0.12 0.12 0.12",
+"rod head graphite 0.144 0 0.48 0.208 0 0.56 8",
+"rod head graphite 0.304 0 0.68 0.368 0 0.76 8",
+"rod head graphite 0.464 0 0.88 0.528 0 0.96 8",
 "box hull team -0.1 0 0.3 0.5 0.74 0.12 damage=1 group=p1",
 "box hull ceramic -0.08 0 0.42 0.46 0.62 0.2 damage=1 group=p1",
 "broken hull ceramic -0.2 -0.1 0.62 0.2 0.3 0.12 teeth=3 low=0.3 damage=1 group=p1",

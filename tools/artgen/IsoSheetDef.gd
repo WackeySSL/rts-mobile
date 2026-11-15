@@ -78,7 +78,8 @@ const ROOT: String = "res://assets/art/iso"
 ## The tight box of every directional frame of page 1 (a part with 16 or 8 directions, the
 ## shadows excepted: they go on page 2, which has room and is not trimmed), px of the 2x art in the
 ## part's canvas: x, y, width and height per frame. The box is the drawn box plus 1 clear px: the
-## polygons' bounds plus `ArtGen.MARGIN_PX` (2), of which the 2 px edge stroke takes 1. Parts in
+## inked bounds (a polygon's 2 px edge stroke reaches 1 px past its points, a rod's none) plus
+## 1 clear px (`ArtSheet.BOX_CLEAR_PX`). Parts in
 ## file order, then direction, then frame. Read it through `frame_box`. Empty on a sheet written
 ## before the trim (ADR 0036 section 15, P305).
 ##

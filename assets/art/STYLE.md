@@ -228,7 +228,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   `index.tres` and in `assets/art/iso/icons/` the item cards `item_<type_id>.svg` (one folder for
   both factions, so a build tile finds its card by type id; the 12 hand-drawn `item_<id>.svg` in
   `svg/icons/` stay until P114 moves their readers). 178 shadow frames, 28 sheets, 28 cards.
-- **Tight boxes** (P305, ADR 0036 section 15): `IsoSheetDef.boxes` gives, for every frame of a part with 16 or 8 directions except the shadows (vehicle and squad hulls, walk and idle, turrets, heads), the drawn box plus 1 clear px in the part's canvas: the polygon bounds plus `ArtGen.MARGIN_PX` (2), of which the 2 px edge stroke takes 1. `frame_box(part, dir, frame)` reads it; the whole canvas for a part without boxes (one view, a shadow). Shadows stay untrimmed: they are on page 2, which has room. The frames are unchanged; P306 packs the boxes (the texel formula is in `IsoSheetDef.boxes`' comment).
+- **Tight boxes** (P305, ADR 0036 section 15): `IsoSheetDef.boxes` gives, for every frame of a part with 16 or 8 directions except the shadows (vehicle and squad hulls, walk and idle, turrets, heads), the drawn box plus 1 clear px in the part's canvas: the inked bounds (a polygon with the 2 px edge stroke reaches 1 px past its points, a rod, which has no outline, does not) plus 1 clear px (`ArtSheet.BOX_CLEAR_PX`). `frame_box(part, dir, frame)` reads it; the whole canvas for a part without boxes (one view, a shadow). Shadows stay untrimmed: they are on page 2, which has room. The frames are unchanged; P306 packs the boxes (the texel formula is in `IsoSheetDef.boxes`' comment).
 - **Sheets** (`IsoSheetDef`, a `Resource` in `tools/artgen/`; `IsoIndex` holds all of them, sorted
   by art id, `IsoIndex.sheet(art_id)`): per part the frame count (16, 8 or 1), the canvas and the
   anchor, in px of the 2x art (a unit's anchor is its ground point, a building's body and shadow
@@ -1305,14 +1305,14 @@ with a hull and a head that turns in 16 steps, a KRITISK picture (`dmg2`), no SK
 | Model | Silhouette |
 | --- | --- |
 | `fossil_aa` | A tall poured-concrete pedestal on a wide pad with a team band and a ladder stub, carrying a round drum head whose top holds a close bundle of four steel barrels slanted steeply skyward, bound by a rust collar and a team ring. |
-| `renew_aa` | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin titanium needle leans steeply skyward, braced by a ceramic strut and threaded with three graphite coil beads. |
+| `renew_aa` | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars. |
 
 - **Read as an anti-air gun, not a second Redoubt.** The Redoubt (`defence_turret`) and the Rail
   Battery (`renew_defence`) aim a barrel along the ground; these two aim up. The head carries rods
   (the barrels, the needle) that climb 0.5 to 1.0 tile above the mount, so every direction of the head
   shows a slanted line above the plinth and the silhouette is taller than the Redoubt's at 32 px.
   The Burst Stack is wide and bundled (four barrels, a rust collar), the Sky Needle one line with
-  beads; the pedestal is square concrete against the white hexagon.
+  collars; the pedestal is square concrete against the white hexagon.
 - **Team colour.** The pedestal band and the head ring (the Burst Stack), the column band and the head
   ring (the Sky Needle); the key triad is the same for both factions as for every building.
 - **KRITISK.** Both lose their upper body to broken walls with rebar (the Burst Stack) or a split lid
@@ -1731,7 +1731,7 @@ in doubt, choose a plainer real-world form.
 | Redoubt | A squat poured-concrete bunker with a team band and a short whip aerial, carrying an octagonal gun head with a team ring and one short thick barrel in a vented sleeve with a muzzle brake. | `iso/fossil/bld/defence_turret_{hull,shadow}.svg`, `defence_turret_head_d00..d15.svg`, 128 wide |
 | Deep Bore | An open steel drilling derrick of four stepped lattice tiers on four concrete footings, a heavy drill string through a crown block over a dark well, a doghouse before it and a team band round its platform. | `iso/fossil/bld/fossil_strike_{hull,shadow}.svg`, 384 wide |
 | Burst Stack | A tall poured-concrete pedestal on a wide pad with a team band and a ladder stub, carrying a round drum head whose top holds a close bundle of four steel barrels slanted steeply skyward, bound by a rust collar and a team ring. | `iso/fossil/bld/fossil_aa_{hull,shadow}.svg`, `fossil_aa_head_d00..d15.svg`, 128 wide |
-| Sky Needle | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin titanium needle leans steeply skyward, braced by a ceramic strut and threaded with three graphite coil beads. | `iso/renew/bld/renew_aa_{hull,shadow}.svg`, `renew_aa_head_d00..d15.svg`, 128 wide |
+| Sky Needle | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars. | `iso/renew/bld/renew_aa_{hull,shadow}.svg`, `renew_aa_head_d00..d15.svg`, 128 wide |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
