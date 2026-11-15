@@ -15,7 +15,9 @@ func make(consent: bool = true) -> Node:
 	var script: GDScript = load(SCRIPT_PATH) as GDScript
 	var service: Node = script.new()
 	service.fake_auto_close = true
-	service._can_request_ads = consent
+	# The editor's non-headless default requires consent; the suites script it where they need it.
+	ump(service).consent_required = false
+	service._set_can_request(consent)
 	service._now_ms = func() -> int: return clock_ms
 	service.ad_opened.connect(
 		func(placement: StringName) -> void: events.append("open:" + placement)
@@ -24,6 +26,14 @@ func make(consent: bool = true) -> Node:
 		func(placement: StringName) -> void: events.append("close:" + placement)
 	)
 	return service
+
+
+static func ump(service: Node) -> FakeUmp:
+	return service._consent.backend as FakeUmp
+
+
+static func consent_timeout_ms(service: Node) -> int:
+	return service._settings.consent_timeout_ms
 
 
 static func fake(service: Node) -> FakeAdBackend:
