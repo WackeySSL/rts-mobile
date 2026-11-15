@@ -11,8 +11,8 @@ var events: Array[String] = []
 
 
 ## A new service. Auto close is on, so a suite run from the editor does not wait for a button.
-func make(consent: bool = true) -> Node:
-	var script: GDScript = load(SCRIPT_PATH) as GDScript
+func make(consent: bool = true, script_path: String = SCRIPT_PATH) -> Node:
+	var script: GDScript = load(script_path) as GDScript
 	var service: Node = script.new()
 	service.fake_auto_close = true
 	service._can_request_ads = consent
