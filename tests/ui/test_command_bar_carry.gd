@@ -231,6 +231,28 @@ func test_an_own_squad_closer_than_the_carriers_lifted_hull_does_not_steal_the_t
 	assert_int(_bar.shakes).is_equal(0)
 
 
+func test_a_closer_own_flyer_that_cannot_take_squads_does_not_steal_the_tap() -> void:
+	var spawns: Array[Array] = SPAWNS.duplicate()
+	spawns.append([1, "fossil_fighter", 10, 21])  # Row 9: an escort a tile off.
+	await _open(ScreenSizes.LANDSCAPE[0], spawns)
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	_screen_of(CARRIER)
+	var pick: PickSnapshot = _pick_snapshot(Vector2.ZERO)
+	var carrier: int = pick.ids.find(CARRIER)
+	var escort: int = pick.ids.find(9)
+	var at: Vector2 = pick.screen_pos[carrier].lerp(pick.screen_pos[escort], 0.55)
+	assert_float(at.distance_to(pick.screen_pos[carrier])).is_less(pick.radius_px[carrier])
+	assert_float(at.distance_to(pick.screen_pos[escort])).is_less(
+		at.distance_to(pick.screen_pos[carrier])
+	)
+	var plain: int = Picker.pick(pick, at, 1, false)  # The plain own pick takes the escort.
+	assert_int(pick.ids[plain]).is_equal(9)
+	_tap_at(at)
+	assert_int(_aim.carrier_id).is_equal(CARRIER)
+	assert_int(_bar.shakes).is_equal(0)
+
+
 func test_an_enemy_flyer_over_the_carrier_does_not_steal_the_tap() -> void:
 	var spawns: Array[Array] = SPAWNS.duplicate()
 	spawns.append([2, "renew_transport", 10, 20])  # An enemy Skyhauler on the carrier's tile.
