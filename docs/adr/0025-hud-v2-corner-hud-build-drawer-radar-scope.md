@@ -738,6 +738,20 @@ its banner; they replace the text above where they say so):
   no banner until P127's row decides. It is built with the menu banners (P127's row), not in
   P124b; CLAUDE.md and `admob-policy` say so.
 
+Status note (2026-11-15, P500b; ADRs 0041-0043 accepted by Michael, 2026-11-15; the text and notes
+above stay as accepted):
+- **Toggles.** The Vibration switch's key moves with every `[hud]` key from `user://settings.cfg`
+  into section `hud` of the one save file `user://save.cfg` (ADR 0042 §1-§3); `HudPrefs` keeps its
+  API. The Sound and Music chips and a Settings button arrive with plan row P531 (ADR 0041 §2), and
+  the menu gains How to play.
+- **Exit to menu** goes to the main menu through `MenuFlow` (ADR 0043 §6), not the dev menu; the
+  Developer menu button stays in debug and `dev_menu` builds. Android's back button opens the menu
+  in a match and resumes from it (ADR 0043 §4).
+- **Coming back from the background** (Michael, 2026-11-15): the menu opens on
+  `NOTIFICATION_APPLICATION_PAUSED` and on focus out, and the match stays paused until Resume (ADR
+  0042 §5).
+- **The banner at the foot** is Phase 6's row P435 (it was P127); P531 keeps the foot free for it.
+
 ### 12. The start page (Phase 5)
 - Built by ROADMAP Phase 5's "Main menu" box, not in this wave (a decision from the roadmap, not a
   question: ADR 0019 §7 Q4 keeps
@@ -755,6 +769,13 @@ its banner; they replace the text above where they say so):
   it and 48 dp of air to the nearest button (the design's gap; stricter than admob-policy's floor
   of 16 dp, so it is kept); the "+500 starting credits"
   rewarded offer is Phase 6's. Both orientations as the boards show.
+
+Status note (2026-11-15, P500b; ADR 0043 accepted by Michael, 2026-11-15; the text above stays as
+accepted): the start page is the main menu of ADR 0043 §5 (plan row P524). The tagline is "Oil and
+gas against wind and sun. Choose your side." (Michael, 2026-11-15). Continue shows while a resumable
+match exists (ADR 0042 §6); Skirmish opens the map select, beside Tutorial, How to play and
+Settings, the rank badge and the version line. The banner sits in the `AdBannerSlot` at the foot
+with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
 
 ### 13. Look: theme, fonts and the accent
 - **Tokens** (the design's, art-director owns them in STYLE.md and `theme.tres` is the value of
@@ -803,6 +824,10 @@ its banner; they replace the text above where they say so):
   takes `mirror` and swaps left and right for every part (the pill and the scope, BUILD and the
   command bar, the group column, the drawer's side in landscape); its tests run both. No other row
   reads the flag until the switch exists.
+
+Status note (2026-11-15, P500b; Michael, 2026-11-15): the switch does not come with Phase 5's
+settings; left-handed mode comes after launch. `HudCorners.place` keeps its `mirror` parameter and
+its mirrored tests; nothing reads the flag until a later plan adds the switch.
 
 ### 15. Where the design is overruled (constraints, each with its source)
 | Design | Here | Source |
