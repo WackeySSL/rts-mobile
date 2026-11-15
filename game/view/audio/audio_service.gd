@@ -17,8 +17,8 @@ const REASON_AD: StringName = &"ad"
 const REASON_RESTORING: StringName = &"restoring"
 
 var settings: AudioSettings
-var pool: VoicePool
 
+var _pool: VoicePool
 var _steps: Dictionary[StringName, int] = {}
 var _reasons: Dictionary[StringName, bool] = {}
 var _fade: Tween
@@ -28,20 +28,20 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if settings == null:
 		settings = load(SETTINGS_PATH) as AudioSettings
-	pool = VoicePool.new()
-	pool.name = "VoicePool"
-	add_child(pool)
-	pool.setup(settings)
+	_pool = VoicePool.new()
+	_pool.name = "VoicePool"
+	add_child(_pool)
+	_pool.setup(settings)
 	set_step(BUS_MUSIC, settings.default_music_step)
 	set_step(BUS_SFX, settings.default_sfx_step)
 	set_step(BUS_UI, settings.default_ui_step)
-	# AdService is Phase 6's autoload and comes before this one; absent until then.
+	# AdService is Phase 6's autoload; hook it now if it is already in the tree, else when it
+	# appears, so the autoload order does not matter.
 	var ads: Node = get_node_or_null(^"/root/AdService")
 	if ads != null:
-		if ads.has_signal(&"ad_opened"):
-			ads.connect(&"ad_opened", add_mute_reason.bind(REASON_AD))
-		if ads.has_signal(&"ad_closed"):
-			ads.connect(&"ad_closed", clear_mute_reason.bind(REASON_AD))
+		_hook_ads(ads)
+	else:
+		get_tree().node_added.connect(_on_node_added)
 
 
 func _notification(what: int) -> void:
@@ -59,6 +59,8 @@ func set_step(bus: StringName, step: int) -> void:
 		return
 	var clamped: int = clampi(step, 0, settings.steps)
 	_steps[bus] = clamped
+	if clamped == 0:
+		_pool.stop_voices(bus)
 	AudioServer.set_bus_mute(index, clamped == 0)
 	if clamped > 0:
 		AudioServer.set_bus_volume_db(index, linear_to_db(float(clamped) / settings.steps))
@@ -110,7 +112,7 @@ func play_world(
 ) -> bool:
 	if not can_play(BUS_SFX):
 		return false
-	return pool.play_world(stream, position, cue, priority, max_voices, volume_db, pitch_scale)
+	return _pool.play_world(stream, position, cue, priority, max_voices, volume_db, pitch_scale)
 
 
 ## An interface sound, on Ui. Returns whether a voice started.
@@ -124,12 +126,44 @@ func play_ui(
 ) -> bool:
 	if not can_play(BUS_UI):
 		return false
-	return pool.play_ui(stream, cue, priority, max_voices, volume_db, pitch_scale)
+	return _pool.play_ui(stream, cue, priority, max_voices, volume_db, pitch_scale)
+
+
+## Lifts the per-tick limit when the tick loop stops.
+func end_ticking() -> void:
+	_pool.end_ticking()
+
+
+## Test-only: the voice pool, to count voices and call it directly.
+func get_pool_for_tests() -> VoicePool:
+	return _pool
 
 
 ## Starts a new sim tick's budget of world voices (`voices_per_tick`).
 func begin_tick() -> void:
-	pool.begin_tick()
+	_pool.begin_tick()
+
+
+func _hook_ads(ads: Node) -> void:
+	if ads.has_signal(&"ad_opened") and not ads.is_connected(&"ad_opened", _on_ad_opened):
+		ads.connect(&"ad_opened", _on_ad_opened)
+	if ads.has_signal(&"ad_closed") and not ads.is_connected(&"ad_closed", _on_ad_closed):
+		ads.connect(&"ad_closed", _on_ad_closed)
+
+
+func _on_node_added(node: Node) -> void:
+	if node.name == &"AdService" and node.get_parent() == get_tree().root:
+		get_tree().node_added.disconnect(_on_node_added)
+		_hook_ads(node)
+
+
+## `ad_opened` and `ad_closed` carry the placement; the mute does not need it.
+func _on_ad_opened(_placement: StringName = &"") -> void:
+	add_mute_reason(REASON_AD)
+
+
+func _on_ad_closed(_placement: StringName = &"") -> void:
+	clear_mute_reason(REASON_AD)
 
 
 func _set_reason(reason: StringName, on: bool) -> void:
@@ -139,12 +173,19 @@ func _set_reason(reason: StringName, on: bool) -> void:
 	else:
 		_reasons.erase(reason)
 	var muted: bool = is_muted()
-	if muted == was_muted:
+	# Going to the background mutes at once, also in the middle of another reason's fade.
+	var instant: bool = on and reason == REASON_BACKGROUND
+	if muted == was_muted and not instant:
 		return
-	if muted:
-		pool.stop_all()
-	_fade_master(muted, reason != REASON_BACKGROUND)
-	mute_changed.emit(muted)
+	if muted and not was_muted:
+		_pool.stop_all()
+	_fade_master(muted, not instant)
+	if muted != was_muted:
+		mute_changed.emit(muted)
+
+
+func _set_master_db(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_MASTER), db)
 
 
 func _fade_master(muted: bool, fade: bool) -> void:
@@ -152,15 +193,14 @@ func _fade_master(muted: bool, fade: bool) -> void:
 	if _fade != null:
 		_fade.kill()
 	var seconds: float = settings.fade_ms / 1000.0
+	var to_db: float = settings.mute_floor_db if muted else 0.0
 	if not fade or seconds <= 0.0 or not is_inside_tree():
 		AudioServer.set_bus_mute(index, muted)
-		AudioServer.set_bus_volume_db(index, 0.0)
+		AudioServer.set_bus_volume_db(index, to_db)
 		return
-	var from_db: float = AudioServer.get_bus_volume_db(index)
-	var to_db: float = settings.mute_floor_db if muted else 0.0
 	if not muted:
 		AudioServer.set_bus_mute(index, false)
 	_fade = create_tween()
-	_fade.tween_method(AudioServer.set_bus_volume_db.bind(index), from_db, to_db, seconds)
+	_fade.tween_method(_set_master_db, AudioServer.get_bus_volume_db(index), to_db, seconds)
 	if muted:
 		_fade.tween_callback(AudioServer.set_bus_mute.bind(index, true))

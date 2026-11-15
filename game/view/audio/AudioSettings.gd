@@ -19,7 +19,8 @@ extends Resource
 @export var voices_per_tick: int = 6
 ## Off-screen events farther than this from the view are not played (BattleSounds, P502).
 @export var hear_margin_px: float = 128.0
-## World voice reach in world px, and its attenuation exponent (AudioStreamPlayer2D).
+## World voice reach and its attenuation exponent (AudioStreamPlayer2D). The distance is measured
+## in canvas space (screen px of the base size), not in world px; the zoom check is P502's.
 @export var max_distance: float = 1400.0
 @export var attenuation: float = 1.0
 ## Same-cue events inside this window coalesce into one voice, louder by `stack_db` (P502).

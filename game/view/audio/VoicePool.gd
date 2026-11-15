@@ -4,7 +4,10 @@ extends Node
 ## made once in `setup`; no player is created or freed while playing, and a play allocates nothing.
 ## A cue has a `priority` and `max_voices`: a new sound takes a free voice, or steals the oldest
 ## voice of lower priority, or is dropped. At most `voices_per_tick` new world voices start between
-## two `begin_tick` calls (until the first call there is no per-tick limit). Which sounds may play
+## two `begin_tick` calls; once the budget is spent only a higher-priority sound may still start, by
+## stealing a lower-priority voice started in the same tick, so the budget drops by priority and not
+## by arrival. `end_ticking` lifts the limit (play outside a tick loop is never blocked; before the
+## first `begin_tick` there is none). Which sounds may play
 ## at all (mute reasons, volume steps) is `AudioService`'s decision, not the pool's.
 
 
@@ -15,6 +18,8 @@ class Slot:
 	var cue: StringName = &""
 	var priority: int = 0
 	var seq: int = 0
+	## Started since the last `begin_tick` (world voices only).
+	var fresh: bool = false
 
 
 ## Scales the world voices' `max_distance` (the camera zoom check of ADR 0041 section 3).
@@ -54,6 +59,13 @@ func setup(settings: AudioSettings) -> void:
 ## Starts a new tick's budget of world voices (BattleSounds calls it once per sim tick).
 func begin_tick() -> void:
 	_tick_left = _settings.voices_per_tick
+	for slot: Slot in _world_slots:
+		slot.fresh = false
+
+
+## Lifts the per-tick limit; the owner calls it when its tick loop stops.
+func end_ticking() -> void:
+	_tick_left = -1
 
 
 ## Plays `stream` at `position` (world px). `max_voices` 0 means only the pool limits the cue.
@@ -67,9 +79,13 @@ func play_world(
 	volume_db: float = 0.0,
 	pitch_scale: float = 1.0
 ) -> bool:
-	if stream == null or _tick_left == 0:
+	if stream == null:
 		return false
-	var index: int = _pick(_world_slots, cue, priority, max_voices)
+	var index: int = -1
+	if _tick_left == 0:
+		index = _pick_fresh_victim(cue, priority, max_voices)
+	else:
+		index = _pick(_world_slots, cue, priority, max_voices)
 	if index < 0:
 		return false
 	if _tick_left > 0:
@@ -138,6 +154,19 @@ func active_of(cue: StringName) -> int:
 	return count
 
 
+## Stops the voices that play on `bus` (Sfx: world voices, Ui: interface voices) and frees their
+## slots, for a bus that was set to step 0.
+func stop_voices(bus: StringName) -> void:
+	if bus == &"Sfx":
+		for i: int in _world.size():
+			_world[i].stop()
+			_world_slots[i].busy = false
+	elif bus == &"Ui":
+		for i: int in _ui.size():
+			_ui[i].stop()
+			_ui_slots[i].busy = false
+
+
 func stop_all() -> void:
 	for i: int in _world.size():
 		_world[i].stop()
@@ -173,12 +202,38 @@ func _pick(slots: Array[Slot], cue: StringName, priority: int, max_voices: int) 
 	return victim
 
 
+## With the tick budget spent: the lowest-priority, then oldest, voice started this tick that is of
+## lower priority than the new sound, or -1. A cue at its `max_voices` may only replace its own.
+func _pick_fresh_victim(cue: StringName, priority: int, max_voices: int) -> int:
+	var victim: int = -1
+	var same: int = 0
+	for i: int in _world_slots.size():
+		var slot: Slot = _world_slots[i]
+		if slot.busy and slot.cue == cue:
+			same += 1
+		if not slot.busy or not slot.fresh or slot.priority >= priority:
+			continue
+		if victim < 0:
+			victim = i
+			continue
+		var best: Slot = _world_slots[victim]
+		if (
+			slot.priority < best.priority
+			or (slot.priority == best.priority and slot.seq < best.seq)
+		):
+			victim = i
+	if victim >= 0 and max_voices > 0 and same >= max_voices and _world_slots[victim].cue != cue:
+		return -1
+	return victim
+
+
 func _claim(slot: Slot, cue: StringName, priority: int) -> void:
 	_seq += 1
 	slot.busy = true
 	slot.cue = cue
 	slot.priority = priority
 	slot.seq = _seq
+	slot.fresh = true
 
 
 func _count_busy(slots: Array[Slot]) -> int:

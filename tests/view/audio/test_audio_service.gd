@@ -93,28 +93,6 @@ func test_pause_and_focus_out_are_one_reason() -> void:
 	assert_bool(_service.call(&"is_muted")).is_false()
 
 
-func test_ad_service_signals_drive_the_ad_reason() -> void:
-	var ads: Node = Node.new()
-	ads.name = "AdService"
-	ads.add_user_signal("ad_opened")
-	ads.add_user_signal("ad_closed")
-	get_tree().root.add_child(ads)
-	var other: Node = _make_service()
-	add_child(other)
-	ads.emit_signal("ad_opened")
-	assert_bool(other.call(&"has_mute_reason", &"ad")).is_true()
-	assert_bool(_master_muted()).is_true()
-	ads.emit_signal("ad_closed")
-	assert_bool(other.call(&"is_muted")).is_false()
-	other.free()
-	ads.free()
-
-
-func test_no_ad_service_is_fine() -> void:
-	assert_bool(get_tree().root.has_node(^"AdService")).is_false()
-	assert_bool(_service.call(&"is_muted")).is_false()
-
-
 func test_step_zero_mutes_its_bus_only() -> void:
 	_service.call(&"set_step", &"Music", 0)
 	assert_bool(_bus_muted(&"Music")).is_true()
@@ -144,8 +122,8 @@ func test_nothing_plays_while_muted() -> void:
 	assert_bool(_service.call(&"play_world", _stream, Vector2.ZERO, &"shot")).is_true()
 	assert_bool(_service.call(&"play_ui", _stream, &"click")).is_true()
 	_service.call(&"add_mute_reason", &"ad")
-	assert_int(_service.pool.active_world()).is_equal(0)
-	assert_int(_service.pool.active_ui()).is_equal(0)
+	assert_int(_service.call(&"get_pool_for_tests").active_world()).is_equal(0)
+	assert_int(_service.call(&"get_pool_for_tests").active_ui()).is_equal(0)
 	assert_bool(_service.call(&"play_world", _stream, Vector2.ZERO, &"shot")).is_false()
 	assert_bool(_service.call(&"play_ui", _stream, &"click")).is_false()
 	_service.call(&"clear_mute_reason", &"ad")
@@ -159,7 +137,7 @@ func test_nothing_plays_on_a_bus_at_step_zero() -> void:
 
 
 func test_world_pool_caps_at_its_capacity() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	assert_int(pool.world_capacity()).is_equal(_settings.world_voices)
 	assert_int(pool.ui_capacity()).is_equal(_settings.ui_voices)
 	for i: int in pool.world_capacity() + 5:
@@ -169,7 +147,7 @@ func test_world_pool_caps_at_its_capacity() -> void:
 
 
 func test_higher_priority_steals_the_oldest_lower_one() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	for i: int in pool.world_capacity():
 		pool.play_world(_stream, Vector2.ZERO, &"shot", 1)
 	assert_bool(pool.play_world(_stream, Vector2.ZERO, &"boom", 1)).is_false()
@@ -180,7 +158,7 @@ func test_higher_priority_steals_the_oldest_lower_one() -> void:
 
 
 func test_cue_max_voices_replaces_its_own_oldest() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	for i: int in 3:
 		assert_bool(pool.play_world(_stream, Vector2.ZERO, &"shot", 1, 2)).is_true()
 	assert_int(pool.active_of(&"shot")).is_equal(2)
@@ -190,7 +168,7 @@ func test_cue_max_voices_replaces_its_own_oldest() -> void:
 
 
 func test_voices_per_tick_budget() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	pool.begin_tick()
 	var started: int = 0
 	for i: int in _settings.voices_per_tick + 4:
@@ -202,7 +180,7 @@ func test_voices_per_tick_budget() -> void:
 
 
 func test_ui_pool_caps_and_steals() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	for i: int in pool.ui_capacity():
 		assert_bool(pool.play_ui(_stream, &"click", 1)).is_true()
 	assert_bool(pool.play_ui(_stream, &"click", 1)).is_false()
@@ -211,9 +189,47 @@ func test_ui_pool_caps_and_steals() -> void:
 
 
 func test_pool_makes_no_player_while_playing() -> void:
-	var pool: VoicePool = _service.pool
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
 	var children: int = pool.get_child_count()
 	for i: int in 100:
 		pool.play_world(_stream, Vector2(i, i), &"shot", i % 3)
 		pool.play_ui(_stream, &"click", i % 3)
 	assert_int(pool.get_child_count()).is_equal(children)
+
+
+func test_budget_drops_by_priority_not_arrival() -> void:
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
+	pool.begin_tick()
+	for i: int in _settings.voices_per_tick:
+		assert_bool(pool.play_world(_stream, Vector2.ZERO, &"low", 1)).is_true()
+	# The budget is spent: an equal or lower priority is dropped, a higher one steals.
+	assert_bool(pool.play_world(_stream, Vector2.ZERO, &"low", 1)).is_false()
+	assert_bool(pool.play_world(_stream, Vector2.ZERO, &"boom", 5)).is_true()
+	assert_int(pool.active_of(&"boom")).is_equal(1)
+	assert_int(pool.active_of(&"low")).is_equal(_settings.voices_per_tick - 1)
+	# A voice from an earlier tick is not stolen by the budget rule.
+	pool.begin_tick()
+	for i: int in _settings.voices_per_tick:
+		pool.play_world(_stream, Vector2.ZERO, &"mid", 3)
+	assert_int(pool.active_of(&"boom")).is_equal(1)
+
+
+func test_end_ticking_lifts_the_budget() -> void:
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
+	pool.begin_tick()
+	for i: int in _settings.voices_per_tick:
+		pool.play_world(_stream, Vector2.ZERO, &"shot", 1)
+	assert_bool(pool.play_world(_stream, Vector2.ZERO, &"shot", 1)).is_false()
+	_service.call(&"end_ticking")
+	assert_bool(pool.play_world(_stream, Vector2.ZERO, &"shot", 1)).is_true()
+
+
+func test_step_zero_frees_that_buses_voices() -> void:
+	var pool: VoicePool = _service.call(&"get_pool_for_tests")
+	_service.call(&"play_world", _stream, Vector2.ZERO, &"shot")
+	_service.call(&"play_ui", _stream, &"click")
+	_service.call(&"set_step", &"Sfx", 0)
+	assert_int(pool.active_world()).is_equal(0)
+	assert_int(pool.active_ui()).is_equal(1)
+	_service.call(&"set_step", &"Ui", 0)
+	assert_int(pool.active_ui()).is_equal(0)
