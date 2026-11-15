@@ -24,7 +24,7 @@ Remove ads costs 29 kr; Play App Signing (Google holds the app key, Michael keep
   rights to testing tracks.
 - [ ] **M7** Internal testers list with Michael's Google account; opt in on the phone.
 - [ ] **M8** AdMob: account (AppCode ApS, payments), the Android app (not listed yet); App ID -> secret
-  `ADMOB_APP_ID_ANDROID` (`play-internal`; used only after Michael's yes to the P400b text, until then internal builds keep Google's test App ID, Decision 10); unit IDs -> `ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`,
+  `ADMOB_APP_ID_ANDROID` (`play-internal`; used only after Michael's yes to the P400c text, until then internal builds keep Google's test App ID, Decision 10); unit IDs -> `ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`,
   `ADMOB_REWARDED_ID_ANDROID` (environment `play-release`, may be set now); the phone as test device; Privacy &
   messaging: GDPR message (EEA, UK, Switzerland); maximum ad content rating T.
 - [ ] **M9** Managed product `remove_ads` at 29 kr, after a build with `BILLING` is uploaded; license testing with
