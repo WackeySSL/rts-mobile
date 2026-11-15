@@ -534,6 +534,18 @@ ellipsis" stands.
 §19's P120 row ("a padlocked card says what you need for it") gets P120j's new HOW_TO_PLAY
 wording. No other accepted text changed.
 
+Note (Michael, 2026-11-15: the close chevron leaves the tabs row, P248 review, option A). It
+replaces "The close chevron sits at the right end of the tabs row" above: with a fifth tab
+(Research) the row no longer holds four icons, the open tab's name and a 48 dp chevron on a 6-inch
+phone. The chevron is still 48 x 48 dp and still points toward the edge the drawer leaves by.
+**Upright** it is at the right end of the handle row above the tabs (the row is 48 dp high, the
+handle stays centred in it). **Sideways** it is a 48 dp handle on the panel's map-side (left) edge,
+outside the tabs row, as low as the panel's middle, in the panel's own look; the holder reaches 48
+dp further left than the panel for it. The swipe to close is unchanged (sideways any horizontal
+drag on the panel, upright a drag on the handle row or the tabs). The tab row has the whole
+width, so the names show whenever they fit; where even the open tab's name does not fit beside the
+other icons every tab shows its icon alone (measured, `BuildSidebar._fit_tabs`).
+
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
 | --- | --- | --- |

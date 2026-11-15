@@ -205,13 +205,11 @@ plan's "Interim places" say where each part stands meanwhile.
   behind all but pause, which pauses the match. A match starts with nothing unfolded.
 - The drawer: landscape a side panel from the right (40 % of the width, 312 to 420 dp), portrait a
   bottom sheet of half the height; the economy pill stays in its corner (Michael, 2026-11-05); the
-  tabs with names (Structures, Infantry, Vehicles, Flight, Research) with the close chevron at the row's end,
-  and the swipe; tabs show their names whenever the measured row fits them; when it does not, the
-  open tab keeps its name and the others show their icon only (Michael, 2026-11-14), and when even
-  that is too wide (five tabs on a 6-inch phone sideways) no tab shows a name (P248; the room is
-  measured from the drawer's rect, not the stack, `BuildSidebar._row_room`); a Research card's name
-  may take two lines, so its card is one line taller (`ItemTile.RESEARCH_LINES`), a researched one
-  shows a check seal and "Done", a queued one shakes on a tap; the card grid
+  tabs with names (Structures, Infantry, Vehicles, Flight, Research); the close chevron outside the
+  tabs row (upright at the end of the handle row, sideways a handle on the panel's map-side edge;
+  Michael, 2026-11-15) and the swipe; tabs show their names whenever the measured row fits them; when it does not, the
+  open tab keeps its name and the others show their icon only (Michael, 2026-11-14); where even the open tab's name does not
+  fit beside the others' icons, every tab shows its icon only (Michael, 2026-11-15); the card grid
   (cards at least 88 x 96 dp, as many columns as fit (two or more on every supported screen),
   stretched so a full row ends at the right edge; it scrolls on short screens).
   No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on

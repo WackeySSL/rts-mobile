@@ -56,64 +56,102 @@ func test_there_is_no_research_tab_while_the_faction_lists_no_upgrade() -> void:
 func test_five_tabs_fit_the_drawer_at_every_size_and_the_open_tab_keeps_its_name() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, true, [])
-		await _assert_tabs(str(size))
+		_assert_tabs(str(size))
 		_tap(_tab())
 		await _settle()
 		assert_int(_sidebar.tab).override_failure_message(str(size)).is_equal(World.Tab.RESEARCH)
 		assert_bool(_tab().find_child("Name", true, false).visible).is_true()
-		await _assert_tabs(str(size) + " open")
+		_assert_tabs(str(size) + " open")
+
+
+## Which names show with tab `open` open (letters of the tabs, a dot for an icon alone) on the
+## profile: every name where the row has the room; only the open tab's where it has not; none on
+## the 320 dp phone for Structures and Research, 11.6 and 3.6 dp short of room (Flight fits).
+func _expected_names(profile: StringName, open: int) -> String:
+	match profile:
+		&"web_phone_small", &"web_phone_portrait", &"notch_design":
+			return {0: "S....", 3: "...F.", 4: "....R"}[open]
+		&"phone_320":
+			return {0: ".....", 3: "...F.", 4: "....."}[open]
+	return "SIVFR"
 
 
 func test_the_tabs_fit_every_profile_with_five_tabs() -> void:
-	var profiles: Array[UiMetrics] = []
-	profiles.append_array(UiProfiles.all().values())
-	profiles.append_array(UiProfiles.portrait().values())
-	profiles.append_array(UiProfiles.notch_design().values())
-	for metrics: UiMetrics in profiles:
+	var profiles: Dictionary[StringName, UiMetrics] = {}
+	profiles.merge(UiProfiles.all())
+	profiles.merge(UiProfiles.portrait())
+	profiles.merge(UiProfiles.notch_design())
+	profiles[&"phone_320"] = _phone_320()  # 296 dp of safe width: the narrowest supported phone.
+	for profile: StringName in profiles:
+		var metrics: UiMetrics = profiles[profile]
 		await _open(metrics.window_size, true, [], metrics)
 		for open: int in [World.Tab.STRUCTURES, World.Tab.FLIGHT, World.Tab.RESEARCH]:
 			_sidebar.select_tab(open)
 			await _settle()
-			await _assert_tabs("%s %s tab %d" % [metrics.os_name, metrics.window_size, open])
+			var why: String = "%s tab %d" % [profile, open]
+			assert_str(_assert_tabs(why)).override_failure_message(why).is_equal(
+				_expected_names(profile, open)
+			)
 
 
-func test_the_cards_are_whole_inside_the_drawer_with_their_names_in_two_lines_at_most() -> void:
+func test_the_cards_are_whole_inside_the_drawer_with_their_names_whole_in_one_or_two_lines(
+) -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, true, [CENTRE])
-		_sidebar.select_tab(World.Tab.RESEARCH)
-		await _settle()
-		var items: Rect2 = (_sidebar.find_child("Items", true, false) as Control).get_global_rect()
-		var shown: Array[String] = []
-		for node: Node in _sidebar.find_children("Tile_*", "ItemTile", true, false):
-			var tile: ItemTile = node as ItemTile
-			if not tile.is_visible_in_tree():
-				continue
-			shown.append(tile.name)
-			var at: String = "%s %s: %s" % [size, tile.name, tile.get_global_rect()]
-			(
-				assert_bool(items.grow(0.5).encloses(tile.get_global_rect()))
-				. override_failure_message(at + " outside " + str(items))
-				. is_true()
-			)
-			var caption: Label = tile.find_child("Caption", true, false) as Label
-			(
-				assert_bool(tile.get_global_rect().grow(0.5).encloses(caption.get_global_rect()))
-				. override_failure_message(at + " caption out")
-				. is_true()
-			)
-			assert_int(caption.get_line_count()).override_failure_message(at).is_between(1, 2)
-			assert_int(caption.get_visible_line_count()).override_failure_message(at).is_equal(
-				caption.get_line_count()
-			)
-			var tall: float = caption.get_line_height() * caption.get_line_count()
-			assert_float(caption.size.y).override_failure_message(at + " clipped").is_greater_equal(
-				tall - 0.5
-			)
-			var wide: float = tile.find_child("Stage", true, false).size.x
-			assert_float(tile.size.x).override_failure_message(at).is_greater_equal(wide)
-		assert_array(shown).override_failure_message(str(size)).is_equal(
-			["Tile_" + HEAVY, "Tile_" + PLATED]
+		await _check_cards(size, null)
+	var phones: Array[UiMetrics] = [UiProfiles.all()[&"web_phone_small"]]
+	phones.append(UiProfiles.notch_design()[&"notch_design"])
+	phones.append(UiProfiles.notch_design()[&"notch_design_portrait"])
+	phones.append(_phone_320())
+	for metrics: UiMetrics in phones:
+		await _check_cards(metrics.window_size, metrics)
+
+
+## The Research cards at one size: inside `Items`, the caption inside the card and never trimmed:
+## two lines exactly where the name's one-line width exceeds the caption, else one.
+func _check_cards(size: Vector2i, metrics: UiMetrics) -> void:
+	await _open(size, true, [CENTRE], metrics)
+	_sidebar.select_tab(World.Tab.RESEARCH)
+	await _settle()
+	var items: Rect2 = (_sidebar.find_child("Items", true, false) as Control).get_global_rect()
+	var shown: Array[String] = []
+	for node: Node in _sidebar.find_children("Tile_*", "ItemTile", true, false):
+		var tile: ItemTile = node as ItemTile
+		if not tile.is_visible_in_tree():
+			continue
+		shown.append(tile.name)
+		var at: String = "%s %s: %s" % [size, tile.name, tile.get_global_rect()]
+		(
+			assert_bool(items.grow(0.5).encloses(tile.get_global_rect()))
+			. override_failure_message(at + " outside " + str(items))
+			. is_true()
 		)
+		var caption: Label = tile.find_child("Caption", true, false) as Label
+		(
+			assert_bool(tile.get_global_rect().grow(0.5).encloses(caption.get_global_rect()))
+			. override_failure_message(at + " caption out")
+			. is_true()
+		)
+		var font: Font = caption.get_theme_font(&"font")
+		var one_line: float = (
+			font
+			. get_string_size(
+				caption.text,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1.0,
+				caption.get_theme_font_size(&"font_size")
+			)
+			. x
+		)
+		var lines: int = 2 if one_line > caption.size.x else 1
+		assert_int(caption.get_line_count()).override_failure_message(at + " lines").is_equal(lines)
+		assert_int(caption.get_visible_line_count()).override_failure_message(at).is_equal(lines)
+		var tall: float = caption.get_line_height() * lines
+		assert_float(caption.size.y).override_failure_message(at + " clipped").is_greater_equal(
+			tall - 0.5
+		)
+	assert_array(shown).override_failure_message(str(size)).is_equal(
+		["Tile_" + HEAVY, "Tile_" + PLATED]
+	)
 
 
 func test_a_locked_card_names_the_centre_and_a_researched_card_says_done() -> void:
@@ -133,12 +171,31 @@ func test_a_locked_card_names_the_centre_and_a_researched_card_says_done() -> vo
 	await _settle()
 	assert_int(_tile(HEAVY).state).is_equal(ItemTile.State.RESEARCHED)
 	assert_str(_tile(HEAVY).word()).is_equal("Done")
-	assert_bool((_tile(HEAVY).find_child("Cost", true, false) as Control).visible).is_false()
-	assert_bool((_tile(HEAVY).find_child("Lock", true, false) as Control).visible).is_true()
+	var done: ItemTile = _tile(HEAVY)
+	assert_bool((done.find_child("Cost", true, false) as Control).visible).is_false()
+	var banner: Label = done.find_child("Banner", true, false) as Label
+	assert_bool(banner.visible).is_true()
+	assert_str(banner.text).is_equal("Done")
+	var lock: TextureRect = done.find_child("Lock", true, false) as TextureRect
+	assert_bool(lock.visible).is_true()
+	assert_str(lock.texture.resource_path).ends_with("glyph_check.svg")
+	var sash: ItemTile.Sash = done.find_child("Sash", true, false) as ItemTile.Sash
+	assert_bool(sash.visible).is_true()
+	assert_bool(sash.banded).is_false()
+	assert_bool((sash.find_child("SashText", true, false) as Control).visible).is_false()
 	assert_int(_tile(PLATED).state).is_equal(ItemTile.State.AVAILABLE)  # The other is not.
 	_tap_tile(HEAVY)
 	assert_array(_sent).is_empty()  # Done: no order, a shake.
 	assert_int(_tile(HEAVY).shakes).is_equal(1)
+	_runner.snapshot.upgrades[1] = 0  # The bit clears: an upgrade to research again.
+	_sidebar.refresh()
+	await _settle()
+	assert_int(done.state).is_equal(ItemTile.State.AVAILABLE)
+	assert_bool(banner.visible).is_false()
+	assert_bool(sash.visible).is_false()
+	assert_bool(lock.visible).is_false()
+	assert_str(lock.texture.resource_path).ends_with("glyph_lock.svg")
+	assert_bool((done.find_child("Cost", true, false) as Control).visible).is_true()
 
 
 func test_a_tap_queues_one_upgrade_and_a_queued_card_does_not_queue_again() -> void:
@@ -155,6 +212,13 @@ func test_a_tap_queues_one_upgrade_and_a_queued_card_does_not_queue_again() -> v
 	_tap_tile(PLATED)
 	assert_array(_sent).is_empty()
 	assert_int(tile.shakes).is_equal(1)
+
+
+## A 320 dp wide phone held upright, as `test_command_bar_chips` builds it.
+func _phone_320() -> UiMetrics:
+	var size: Vector2i = Vector2i(320, 640)
+	var stretch: float = minf(size.x / 720.0, size.y / 1280.0)
+	return UiMetrics.create("Linux", 96, 1.0, stretch, size, Rect2i())
 
 
 func _tab() -> Button:
@@ -180,20 +244,34 @@ func _settle() -> void:
 	await await_idle_frame()
 
 
-## Every visible tab: at least 48 dp each way, in the drawer and the safe area, its name (when
-## shown: a 6-inch phone sideways has room for icons only) whole inside it and the close
-## button in the drawer too.
-func _assert_tabs(why: String) -> void:
+## Every visible tab: at least 48 dp each way, in the holder and in the HUD safe rect (with its
+## 12 dp margin); the row's least width within `_row_room`; the name (when shown) whole inside its
+## tab; the close chevron at least 48 dp, in the safe rect, clear of the tabs and of every other
+## HUD control. Returns which names show, as "S I V F R" letters (a dot for an icon alone).
+func _assert_tabs(why: String) -> String:
 	var drawer: Rect2 = _sidebar.get_global_rect()
-	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 0.0)
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
 	var shown: int = 0
+	var rects: Array[Rect2] = []
+	var names: String = ""
+	var row: Control = _sidebar.find_child("Tabs", true, false) as Control
+	(
+		assert_float(row.get_combined_minimum_size().x)
+		. override_failure_message(
+			"%s: row %s, room %s" % [why, row.get_combined_minimum_size().x, _sidebar._row_room()]
+		)
+		. is_less_equal(_sidebar._row_room() + 0.5)
+	)
 	for node: Node in _sidebar.find_children("Tab*", "Button", true, false):
 		var tab: Button = node as Button
 		if not tab.is_visible_in_tree():
 			continue
 		shown += 1
 		var rect: Rect2 = tab.get_global_rect()
-		var at: String = "%s: %s %s in %s" % [why, tab.name, rect, drawer]
+		rects.append(rect)
+		var at: String = "%s: %s %s in %s, safe %s" % [why, tab.name, rect, drawer, safe]
 		assert_float(rect.size.x).override_failure_message(at).is_greater_equal(
 			UiScale.dp(48.0) - 0.5
 		)
@@ -203,6 +281,7 @@ func _assert_tabs(why: String) -> void:
 		assert_bool(drawer.grow(0.5).encloses(rect)).override_failure_message(at).is_true()
 		assert_bool(safe.grow(0.5).encloses(rect)).override_failure_message(at).is_true()
 		var label: Label = tab.find_child("Name", true, false) as Label
+		names += String(tab.name).substr(3, 1) if label.visible else "."
 		if not label.visible:
 			continue
 		var font: Font = label.get_theme_font(&"font")
@@ -220,12 +299,48 @@ func _assert_tabs(why: String) -> void:
 		)
 		assert_float(wide).override_failure_message(at + " name").is_less_equal(label.size.x + 0.5)
 	assert_int(shown).override_failure_message(why).is_equal(5)
-	var close: Rect2 = _sidebar.find_child("Close", true, false).get_global_rect()
-	var gone: String = "%s: close %s, drawer %s" % [why, close, drawer]
-	assert_bool(drawer.grow(0.5).encloses(close)).override_failure_message(gone).is_true()
-	assert_float(close.size.x).override_failure_message(gone).is_greater_equal(
-		UiScale.dp(48.0) - 0.5
-	)
+	_assert_close(why, safe, rects)
+	return names
+
+
+## The close chevron: 48 dp, inside the safe rect, off every tab and every other HUD control.
+func _assert_close(why: String, safe: Rect2, tabs: Array[Rect2]) -> void:
+	var close: Control = _sidebar.find_child("Close", true, false) as Control
+	var rect: Rect2 = close.get_global_rect()
+	var at: String = "%s: close %s, safe %s" % [why, rect, safe]
+	assert_bool(close.is_visible_in_tree()).override_failure_message(at).is_true()
+	assert_float(rect.size.x).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
+	assert_float(rect.size.y).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
+	assert_bool(safe.grow(0.5).encloses(rect)).override_failure_message(at).is_true()
+	for other: Rect2 in tabs:
+		assert_bool(other.intersects(rect)).override_failure_message(at + " meets a tab").is_false()
+	for node: Node in _main.get_node("Hud").find_children("*", "Control", true, false):
+		var control: Control = node as Control
+		if (
+			_sidebar.is_ancestor_of(control)
+			or control == _sidebar
+			or not control.is_visible_in_tree()
+		):
+			continue
+		if (
+			control is EconomyPill
+			or control is GroupColumn
+			or control is RadarScope
+			or control is CommandBar
+			or control is StrikeButton
+			or control is RevealBadge
+			or control is BuildButton
+			or control is AttackToast
+			or control is Minimap
+		):
+			var meets: bool = control.get_global_rect().intersects(rect)
+			(
+				assert_bool(meets)
+				. override_failure_message(
+					"%s meets %s %s" % [at, control.name, control.get_global_rect()]
+				)
+				. is_false()
+			)
 
 
 ## A new main scene at `size` (under `metrics` when given) whose sidebar reads a snapshot of a

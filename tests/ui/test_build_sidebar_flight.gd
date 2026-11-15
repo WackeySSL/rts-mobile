@@ -84,7 +84,7 @@ func test_four_tabs_fit_every_profile_with_their_names_inside_them() -> void:
 
 
 ## With room the names all show: no tab goes bare where four names fit (sideways on a 6-inch phone
-## or a tablet), and the open tab alone keeps its name where they do not.
+## or a tablet) and on the narrowest phone upright, now that the chevron is out of the row.
 func test_names_show_wherever_the_row_fits_them() -> void:
 	await _open(ScreenSizes.ALL[2], ["fossil_fighter"], null)  # The tablet.
 	var bare: int = 0
@@ -97,7 +97,7 @@ func test_names_show_wherever_the_row_fits_them() -> void:
 	for label: Label in _sidebar.find_children("Name", "Label", true, false):
 		if _tab_of(label).visible:  # The Research tab is not there: no upgrades.
 			bare += 0 if label.is_visible_in_tree() else 1
-	assert_int(bare).is_equal(3)
+	assert_int(bare).is_equal(0)  # The chevron left the row: four names fit even 296 dp.
 
 
 func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:

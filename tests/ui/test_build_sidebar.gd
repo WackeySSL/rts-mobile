@@ -82,7 +82,10 @@ func test_a_touch_on_the_sidebar_orders_nothing_and_a_touch_on_the_map_does() ->
 	_tap("TabVehicles")
 	_tap("Items")
 	_tap("Backdrop")
-	var padding: Vector2 = _sidebar.get_global_rect().position + Vector2(2.0, 2.0)
+	var padding: Vector2 = (
+		(_sidebar.find_child("Backdrop", true, false) as Control).get_global_rect().position
+		+ Vector2(2.0, 2.0)
+	)
 	TouchEvents.press(get_viewport(), 0, padding)  # The panel's own padding.
 	TouchEvents.release(get_viewport(), 0, padding)
 	assert_array(_sent).is_empty()

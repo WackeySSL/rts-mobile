@@ -3,7 +3,8 @@ extends HoldButton
 ## One build item of the sidebar (plan P85b, ADR 0019 section 1): the icon of a type on a 64 dp
 ## plate, its cost at the foot, a badge for the items of the type queued, a fill that rises over the
 ## icon with the head's progress, and a state shown by a shape and not by colour alone: a padlock
-## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY).
+## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY), a
+## check seal and a "Done" banner (RESEARCHED, a Research card's upgrade done, P248).
 ## The foot of the tile is the cost's plate, and the shapes of a state (the fill, the stripes, the
 ## padlock) fill the area above it, so none of them is ever drawn under the plate: the fill's share
 ## is a share of that area. A READY structure is paid for, so its banner takes the foot in the
@@ -60,10 +61,11 @@ const SEAL_GLYPH_DP: float = 16.0
 const FULL_WORD: String = "FULL"
 const READY_WORD: String = "Ready"
 const DONE_WORD: String = "Done"
-const CHECK_ART: String = "res://assets/art/svg/icons/glyph_check.svg"
+const CHECK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_check.svg")
 ## A Research card's name may take a second line (ADR 0032 section 2's one-line rule is for the
 ## other tabs: "Heavy Bombs" is wider than the 88 dp card's caption), so its card is this much
-## taller (P248); `test_research_card_names` pins that every upgrade name holds in two lines.
+## taller (P248); `test_every_upgrade_name_fits_the_research_card` pins that every upgrade name
+## holds in two lines.
 const RESEARCH_LINES: int = 2
 const CAPTION_LINE_DP: float = 20.0
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
@@ -73,7 +75,7 @@ const COST_LOW_VARIATION: StringName = &"ItemCostLow"
 const BANNER_VARIATION: StringName = &"ItemBanner"
 const CAPTION_VARIATION: StringName = &"ItemCaption"
 const SASH_VARIATION: StringName = &"ItemSash"
-const LOCK_ART: String = "res://assets/art/svg/icons/glyph_lock.svg"
+const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
 const SHAKE_RAD: float = 0.08
 const SHAKE_S: float = 0.05
 
@@ -205,7 +207,7 @@ func _init() -> void:
 	add_child(_fit)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_lock.texture = load(LOCK_ART)
+	_lock.texture = LOCK_ART
 	_lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_lock.set_anchors_preset(Control.PRESET_CENTER)
@@ -393,7 +395,7 @@ func _show_word() -> void:
 ## left.
 func _place_lock(named: bool) -> void:
 	var glyph: float = SEAL_GLYPH_DP if named else LOCK_DP
-	_lock.texture = load(CHECK_ART if state == State.RESEARCHED else LOCK_ART)
+	_lock.texture = CHECK_ART if state == State.RESEARCHED else LOCK_ART
 	_lock_fit.min_dp = Vector2(glyph, glyph)
 	if named:
 		var room: float = SEAL_INSET_DP + (SEAL_DP - SEAL_GLYPH_DP) / 2.0

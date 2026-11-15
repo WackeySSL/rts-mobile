@@ -34,8 +34,9 @@ func test_the_space_centres_are_in_the_checked_names() -> void:
 	assert_str(names.get("renew_space", "")).is_equal("Zenith")
 
 
-## The engineering centres' names (P247) are in the checked set, as captions (no sash: nothing
-## requires a centre). The upgrade names are `test_every_upgrade_name_fits_the_research_card`'s.
+## The engineering centres' names (P247) are in the checked set, as captions and, as defs that make
+## a tab's items (the locked Research card names its centre), on the sash. The upgrade names are
+## `test_every_upgrade_name_fits_the_research_card`'s.
 func test_the_engineering_centres_are_in_the_checked_names() -> void:
 	var names: Dictionary[String, String] = DisplayNames.all()
 	assert_str(names.get("fossil_engineering", "")).is_equal("Draft Shop")

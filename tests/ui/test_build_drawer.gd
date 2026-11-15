@@ -299,14 +299,23 @@ func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> v
 		assert_object(_sidebar.find_child("Economy", true, false)).is_null()
 		var tabs: Rect2 = _rect("Tabs")
 		var close: Rect2 = _rect("Close")
-		var last: Rect2 = _rect(TABS[TABS.size() - 1])
-		assert_float(close.position.x).override_failure_message(why).is_greater_equal(
-			last.end.x - 1.0
-		)
-		assert_float(close.end.x).override_failure_message(why).is_equal_approx(tabs.end.x, 1.0)
-		assert_float(close.position.y).override_failure_message(why).is_equal_approx(
-			tabs.position.y, 1.0
-		)
+		# Michael, 2026-11-15: the chevron is out of the tabs row: upright at the right end of the
+		# handle row above the tabs, sideways a handle on the panel's left edge.
+		assert_bool(close.intersects(tabs)).override_failure_message(why).is_false()
+		if HudLayout.is_portrait():
+			var grab: Rect2 = _rect("Grab")
+			assert_float(close.end.x).override_failure_message(why).is_equal_approx(grab.end.x, 1.0)
+			assert_float(close.end.y).override_failure_message(why).is_less_equal(
+				tabs.position.y + 1.0
+			)
+		else:
+			var panel: Rect2 = _rect("Backdrop")
+			assert_float(close.end.x).override_failure_message(why).is_equal_approx(
+				panel.position.x, 1.0
+			)
+			assert_float(close.get_center().y).override_failure_message(why).is_equal_approx(
+				panel.get_center().y, 1.0
+			)
 		assert_float(close.size.x).override_failure_message(why).is_greater_equal(
 			UiScale.dp(48.0) - TOLERANCE_PX
 		)
@@ -382,7 +391,7 @@ func test_the_slide_eases_out_ends_on_the_target_and_the_zone_follows_it() -> vo
 		var step: float = 0.016
 		for frame: int in 12:
 			_sidebar.advance(step)
-			seen.append(_sidebar.size.y if portrait else _sidebar.size.x)
+			seen.append(_sidebar.size.y if portrait else _sidebar.size.x - UiScale.dp(48.0))
 			if portrait:
 				var zone: float = HudLayout.bottom_zone_px()
 				var top: float = HudLayout.menu_top_px
