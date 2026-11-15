@@ -127,8 +127,12 @@ func test_the_ring_stands_on_the_drawn_rig_of_the_carrier_in_the_main_scene() ->
 	assert_bool(aim.toggle(CarryAim.Mode.BOARD)).is_true()
 	assert_bool(aim.pick_carrier(2)).is_true()
 	var snap: MatchSnapshot = (main.get_node("MatchRunner") as MatchRunner).snapshot
-	var rig: Node2D = (main.get_node("UnitLayer") as UnitLayer).rig(snap.index_of(2))
+	# The carrier is a flyer: its drawn place is the AirLayer's rig (P243), the ground point under
+	# its shadow like P244's selection ring, and the UnitLayer has none for it.
+	assert_object((main.get_node("UnitLayer") as UnitLayer).rig(snap.index_of(2))).is_null()
+	var rig: Node2D = (main.get_node("AirLayer") as AirLayer).rig_of(2)
 	assert_object(rig).is_not_null()
+	assert_vector(layer.ring_centre()).is_not_equal(Vector2.INF)
 	assert_vector(layer.ring_centre()).is_equal_approx(
 		layer.to_local(rig.global_position), Vector2.ONE * 0.01
 	)

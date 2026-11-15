@@ -3,9 +3,11 @@ extends Node2D
 ## What the Board and Unload aims put on the map (P265b), at z 65 with the strike's marks.
 ## Unload: the chevron (`glyph_unload_mark`, tinted amber at run time) with the tip of its lower
 ## chevron on the ground point. Board: a ring round the ringed carrier, at its drawn place (its
-## rig, `unit_layer`; the snapshot's ground point where it has none). Each keeps its size in dp
-## through any zoom, and the layer redraws only while an aim shows something and once more when it
-## goes. The unit circle is made once and the ring's points reuse one buffer (`StrikeMarkerLayer`).
+## rig: a flyer's in `air_layer`, ringed on the ground under its shadow like P244's selection ring;
+## else a ground unit's in `unit_layer`; the snapshot's ground point where it has none). Each keeps
+## its size in dp through any zoom, and the layer redraws only while an aim shows something and once
+## more when it goes. The unit circle is made once and the ring's points reuse one buffer
+## (`StrikeMarkerLayer`).
 
 const Z_CARRY: int = 65
 const ART: Texture2D = preload("res://assets/art/svg/icons/glyph_unload_mark.svg")
@@ -19,6 +21,7 @@ const POINTS: int = 32
 @export var runner: MatchRunner
 @export var aim: CarryAim
 @export var unit_layer: UnitLayer  ## The carrier's drawn place; without it the snapshot's point.
+@export var air_layer: AirLayer  ## A flyer's drawn place (every carrier is one, P243).
 
 var draws: int = 0  ## Frames drawn, for the tests.
 var redraws: int = 0  ## Redraws asked for, for the tests.
@@ -55,6 +58,8 @@ func ring_centre() -> Vector2:
 	var row: int = -1 if snap == null or aim == null else snap.index_of(aim.carrier_id)
 	if row < 0 or aim.mode != CarryAim.Mode.BOARD:
 		return Vector2.INF
+	if air_layer != null and air_layer.rig_of(aim.carrier_id) != null:
+		return to_local(air_layer.rig_of(aim.carrier_id).global_position)
 	if unit_layer != null and unit_layer.rig(row) != null:
 		return to_local(unit_layer.rig(row).global_position)
 	return IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
