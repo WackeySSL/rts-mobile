@@ -42,7 +42,9 @@ jobs:
     runs-on: ubuntu-24.04
     # The suite is about 4400 cases and verify ran 29-30 min on push runs (main 1a6209c was
     # cancelled at 29:43); 45 leaves room for growth.
-    timeout-minutes: 45
+    # Wave 12 (about 6240 cases): P245's aircraft frames put the suites at about 42 min on a PR run,
+    # and PR #486 was cancelled twice at the 45 min limit; 75 leaves room again.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
