@@ -3,12 +3,16 @@
 # Usage: bash scripts/gen-sfx.sh [--params PATH] [--check]
 #          no argument            every tools/sfxgen/params/*.tres
 #          --params PATH          one parameter file (res://... or a path from the project root)
+#          --out DIR              write under DIR instead of res://assets/audio/sfx
 #          --check                write nothing; name the WAVs that differ
 # Output: assets/audio/sfx/<family>/<id>.wav (mono, 16 bit). Deterministic: a second run writes
 #         nothing.
+# Note:   the output is byte-identical for the same parameters on one platform and Godot version
+#         (the synthesis uses the float sin and pow of the C library). --check is therefore a
+#         local tool, not a CI gate.
 # Env:    GODOT=<binary> (default: godot).
 # Exit:   0 done (--check: nothing differs), 1 invalid parameter file, write failure or Godot
-#         script error, 2 wrong argument, 3 Godot missing, 4 --check found a difference
+#         script error, 2 wrong argument or missing parameter file, 3 Godot missing, 4 --check found a difference
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 

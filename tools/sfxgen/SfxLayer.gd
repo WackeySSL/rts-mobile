@@ -37,5 +37,6 @@ func envelope(t: float) -> float:
 	else:
 		level = sustain
 	if t >= rel_start:
-		level *= 1.0 - (t - rel_start) / maxf(release, 0.000001)
+		# A release longer than the voice ramps over what is left, so the end is always 0.
+		level *= 1.0 - (t - rel_start) / maxf(length - rel_start, 0.000001)
 	return clampf(level, 0.0, 1.0)

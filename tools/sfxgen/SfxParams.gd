@@ -3,6 +3,9 @@ extends Resource
 ## The parameter file of one generated sound (`tools/sfxgen/params/<id>.tres`). `SfxSynth` turns
 ## it into a mono 16-bit WAV; the same file always gives the same bytes.
 
+const DEFAULT_ROOT: String = "res://assets/audio/sfx"
+
+## Names are [a-z0-9_]+ (they become a path).
 @export var id: StringName = &""
 ## Output goes to assets/audio/sfx/<family>/<id>.wav.
 @export var family: StringName = &"ui"
@@ -16,5 +19,6 @@ extends Resource
 @export var layers: Array[SfxLayer] = []
 
 
-func output_path() -> String:
-	return "res://assets/audio/sfx/%s/%s.wav" % [family, id]
+## Where the sound is written: <root>/<family>/<id>.wav.
+func output_path(root: String = DEFAULT_ROOT) -> String:
+	return "%s/%s/%s.wav" % [root, family, id]

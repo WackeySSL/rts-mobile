@@ -4,6 +4,10 @@ extends RefCounted
 ## 16-bit mono samples and wraps them as an `AudioStreamWAV`. Deterministic: no randi/randf, the
 ## noise comes from a local xorshift32 seeded by the parameter file.
 
+const ALLOWED_RATES: Array[int] = [22050, 44100]
+
+static var _serial: int = 0
+
 
 ## The mixed samples in [-1, 1], one float per frame.
 static func render(params: SfxParams) -> PackedFloat32Array:
@@ -61,18 +65,59 @@ static func to_stream(params: SfxParams) -> AudioStreamWAV:
 	return stream
 
 
-## The bytes of the WAV file `write` would produce (through a temporary file: Godot has no
-## in-memory WAV encoder).
-static func file_bytes(params: SfxParams) -> PackedByteArray:
-	var tmp: String = "user://sfxgen_tmp.wav"
-	to_stream(params).save_to_wav(tmp)
-	return FileAccess.get_file_as_bytes(tmp)
+## The bytes of the WAV file `save_to_wav` writes (Godot has no in-memory encoder, so it goes
+## through a uniquely named temporary file that is deleted again). Empty when that failed.
+static func wav_bytes(params: SfxParams) -> PackedByteArray:
+	_serial += 1
+	var tmp: String = "user://sfxgen_%d_%d.wav" % [Time.get_ticks_usec(), _serial]
+	var bytes: PackedByteArray = PackedByteArray()
+	if to_stream(params).save_to_wav(tmp) == OK:
+		bytes = FileAccess.get_file_as_bytes(tmp)
+	if FileAccess.file_exists(tmp):
+		DirAccess.remove_absolute(tmp)
+	return bytes
 
 
-## Writes the sound to `path` (a res:// or absolute path). Returns the Godot error code.
-static func write(params: SfxParams, path: String) -> Error:
-	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
-	return to_stream(params).save_to_wav(path)
+## Writes the WAV `bytes` to `path` (a res://, user:// or absolute path), creating folders.
+static func write_bytes(bytes: PackedByteArray, path: String) -> Error:
+	var err: Error = DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	if err != OK:
+		return err
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_buffer(bytes)
+	file.close()
+	return file.get_error()
+
+
+## What is wrong with `params`, one message per problem; empty when it can be rendered.
+static func problems(params: SfxParams) -> Array[String]:
+	var found: Array[String] = []
+	var name_check: RegEx = RegEx.create_from_string("^[a-z0-9_]+$")
+	if name_check.search(String(params.id)) == null:
+		found.append("id '%s' must match [a-z0-9_]+" % params.id)
+	if name_check.search(String(params.family)) == null:
+		found.append("family '%s' must match [a-z0-9_]+" % params.family)
+	if not ALLOWED_RATES.has(params.sample_rate):
+		found.append("sample_rate %d is not 22050 or 44100" % params.sample_rate)
+	if params.duration < 0.0:
+		found.append("duration %s is negative" % params.duration)
+	var nyquist: float = float(params.sample_rate) / 2.0
+	for i: int in params.layers.size():
+		var layer: SfxLayer = params.layers[i]
+		if layer == null:
+			found.append("layer %d is empty" % i)
+			continue
+		if layer.freq <= 0.0 or layer.freq_end <= 0.0:
+			found.append("layer %d: freq and freq_end must be above 0" % i)
+		elif layer.freq >= nyquist or layer.freq_end >= nyquist:
+			found.append("layer %d: freq and freq_end must be below %d Hz" % [i, int(nyquist)])
+		if layer.length < 0.0 or layer.start < 0.0:
+			found.append("layer %d: start and length must not be negative" % i)
+		if layer.lowpass < 0.0 or layer.highpass < 0.0:
+			found.append("layer %d: filter cut-offs must not be negative" % i)
+	return found
 
 
 static func _osc(wave: SfxLayer.Wave, phase: float, duty: float) -> float:
