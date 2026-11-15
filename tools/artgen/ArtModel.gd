@@ -78,10 +78,16 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 ## stands in `dmg2`, `hide` where it fell; empty for a model without `anim` or damage.
 @export var anim_kritisk: StringName = &""
 ## An aircraft's lift (ADR 0036 section 15, P245): how far above its ground point the hull is drawn,
-## world px at zoom 1. `fly_px` for high air; `low_fly_px` for a low-flying squad. Both 0 for a
+## world px at zoom 1. `fly_px` for high air (a vehicle's, 16 directions); `low_fly_px` for a
+## low-flying squad (an `inf` model's, 8 directions), never both. Both 0 for a
 ## model that does not fly; only a vehicle flies, with one of them.
 @export var fly_px: int = 0
 @export var low_fly_px: int = 0
+
+
+## Whether this is an aircraft's model: it has a lift (mirrors `IsoSheetDef.flies`).
+func flies() -> bool:
+	return fly_px > 0 or low_fly_px > 0
 
 
 ## The parts the model has, in file order: hull, turret, head.
@@ -456,8 +462,16 @@ func _pose_problems() -> PackedStringArray:
 			found.append(
 				"%s: an emitter names a group no hull primitive has: %s" % [art_id, emitter]
 			)
-	if fly_px < 0 or low_fly_px < 0 or ((fly_px > 0 or low_fly_px > 0) and category != &"veh"):
-		found.append("%s: fly_px and low_fly_px are 0 or above, and a vehicle's" % art_id)
+	if (
+		fly_px < 0
+		or low_fly_px < 0
+		or (fly_px > 0 and category != &"veh")
+		or (low_fly_px > 0 and category != &"inf")
+		or (fly_px > 0 and low_fly_px > 0)
+	):
+		found.append(
+			"%s: fly_px is a vehicle's and low_fly_px a squad's, 0 or above, never both" % art_id
+		)
 	if marks != &"" and (marks not in MARKS or category != &"veh"):
 		found.append("%s: marks are tracks or wheels, of a vehicle" % art_id)
 	return found

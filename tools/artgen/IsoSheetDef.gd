@@ -156,7 +156,8 @@ func origin(part: StringName) -> Vector2i:
 	return anchor(part) + (Vector2i(0, 32 * footprint) if body else Vector2i.ZERO)
 
 
-## Whether a part has boxes: several directions, and not the shadow.
+## Whether a part is trimmable: several directions, not the shadow. An aircraft's sheet writes no
+## `boxes`, so its `frame_box` is the whole canvas.
 func has_boxes(part: StringName) -> bool:
 	var at: int = parts.find(String(part))
 	return at >= 0 and counts[at] > 1 and part != &"shadow"

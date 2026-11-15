@@ -310,6 +310,34 @@ func test_a_flyer_without_art_is_a_marker_at_the_default_lift() -> void:
 	assert_float(rig.marker.position.y).is_equal_approx(-AirLayer.DEFAULT_FLY_PX, 1.5)
 
 
+## A flyer whose type has no sheet at all (the drone squad has no art until P266) is a marker too.
+## replaces the shipped one of its art id, so an odd direction is not in the atlas (P245).
+func test_an_extra_sheet_replaces_the_shipped_one_in_the_bake() -> void:
+	var fresh: MatchRunner = auto_free(Air.runner())
+	var sort: WorldSort = auto_free(WorldSort.new())
+	sort.extra_sheets = Air.sheets()
+	var atlas: IsoAtlas = sort.bake(fresh.scenario)
+	assert_object(sort.sheet(Air.FIGHTER)).is_same(sort.extra_sheets[0])
+	assert_int(atlas.base(Air.FIGHTER, &"hull", 0, 0)).is_greater_equal(0)
+	assert_int(atlas.base(Air.FIGHTER, &"hull", 1, 0)).is_equal(-1)
+
+
+## A flyer whose type has no sheet at all (the drone squad has no art until P266) is a marker too.
+func test_a_flyer_with_no_sheet_is_a_marker() -> void:
+	var fresh: MatchRunner = auto_free(Air.runner())
+	var bare: AirLayer = auto_free(AirLayer.new())
+	bare.runner = fresh
+	bare.life = _life
+	add_child(bare)
+	bare.set_process(false)
+	bare._process(0.0)
+	var rig: AirLayer.Rig = bare.rig_of(Air.DRONE_ID)
+	assert_object(rig).is_not_null()
+	assert_object(rig.sheet).is_null()
+	assert_bool(rig.marker.visible).is_true()
+	assert_bool(rig.hull.visible).is_false()
+
+
 func _see_all() -> void:
 	var tiles: Array = []
 	for y: int in 32:

@@ -68,7 +68,7 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 			var at: Vector2 = ArtGen.mount_px(model, 6 if dir < 0 else dir)
 			sheet.mounts.append(at.snapped(Vector2.ONE * 0.1))
 	# An aircraft's frames are on page 2, which is not trimmed (P306): no box is written for them.
-	if model.fly_px == 0 and model.low_fly_px == 0:
+	if not model.flies():
 		sheet.boxes = _boxes(shots)
 	sheet.stride_milli = model.stride_milli
 	sheet.anim_ms = model.anim_ms

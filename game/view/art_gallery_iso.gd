@@ -205,8 +205,10 @@ func _shows_damage(model: ArtModel) -> bool:
 	var kinds: Array[StringName] = []
 	for emitter: Array in model.emitter_list():
 		kinds.append(emitter[0])
-	var grounded: bool = model.fly_px == 0 and model.low_fly_px == 0  # An aircraft has no scar.
-	return _neutral != null and model.category == &"veh" and grounded and kinds.has(&"damage")
+	# An aircraft has no scar.
+	return (
+		_neutral != null and model.category == &"veh" and not model.flies() and kinds.has(&"damage")
+	)
 
 
 ## The Damage rows of one ground: a line of 8 per 8 directions at zoom 1, for stage 1 and then

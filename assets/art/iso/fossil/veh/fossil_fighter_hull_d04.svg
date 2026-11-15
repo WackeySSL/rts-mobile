@@ -19,6 +19,10 @@
 <polygon points="6.3,50.5 2.7,50.5 2.7,47.8 6.3,47.8" fill="#FFFFFF" stroke="#FFFFFF"/>
 <polygon points="6.3,55.3 6.3,50.7 17.2,50.7 17.2,55.3" fill="#6E5D50" stroke="#322A24"/>
 <polygon points="6.3,50.7 6.3,46.2 17.2,46.2 17.2,50.7" fill="#867162" stroke="#B6AAA1"/>
+<polygon points="105,60.6 105,59.5 106.8,59.5 106.8,60.6" fill="#100E0D" stroke="#100E0D"/>
+<polygon points="105,59.5 105,53 106.8,53 106.8,59.5" fill="#1A1715" stroke="#100E0D"/>
+<polygon points="105,53 105,44.9 106.8,44.9 106.8,53" fill="#1A1715" stroke="#100E0D"/>
+<polygon points="105,44.9 105,40.1 106.8,40.1 106.8,44.9" fill="#1A1715" stroke="#100E0D"/>
 <polygon points="18.1,62.2 18.1,60.6 85.1,60.6 85.1,62.2" fill="#5F654A" stroke="#383C2C"/>
 <polygon points="18.1,60.6 18.1,52.8 85.1,52.8 85.1,60.6" fill="#7D8562" stroke="#383C2C"/>
 <polygon points="18.1,52.8 18.1,43.3 85.1,43.3 85.1,52.8" fill="#98A278" stroke="#C1C7AE"/>

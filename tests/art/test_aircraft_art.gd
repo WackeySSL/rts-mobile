@@ -28,14 +28,9 @@ const NAMES: Dictionary[StringName, String] = {
 	&"renew_fighter": "Glint",
 	&"renew_bomber": "Sunfall",
 }
-## Zoom 1 of the 2x art: the zoom every suite measures the share at.
-const SCALE: float = 0.5
 ## The rule's band in the default view of zoom 1, and the band every other direction keeps.
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
-## The lowest a primitive of an aircraft starts, tiles: `ArtShadow.GROUND_Z`, below which a
-## primitive touches the ground and gets the pad and the contact line of a ground unit's shadow.
-const LOWEST_Z: float = 0.25
 ## The hover a sheet may ask for, world px at zoom 1: high enough to clear the shadow and the ring
 ## under it, low enough that the hull still belongs to them. `AirLayer.DEFAULT_FLY_PX` is 28.
 const FLY_PX: Vector2i = Vector2i(16, 36)
@@ -65,15 +60,31 @@ func test_a_sheet_is_a_hull_in_16_directions_and_a_shadow_with_a_lift() -> void:
 			assert_bool(sheet.has_part(part)).override_failure_message(String(part)).is_false()
 		# Page 2 is not trimmed (P306): an aircraft's sheet has no tight boxes, every frame is whole.
 		assert_int(sheet.boxes.size()).is_equal(0)
-		assert_bool(sheet.flies()).is_true()
+		assert_bool(sheet.flies()).override_failure_message(String(id)).is_true()
 		assert_int(sheet.low_fly_px).is_equal(0)
 		assert_int(sheet.fly_px).override_failure_message(String(id)).is_between(FLY_PX.x, FLY_PX.y)
 		assert_int(sheet.fly_px).is_equal(model.fly_px)
-		assert_bool(sheet.icon.ends_with("item_%s.svg" % id)).is_true()
-		assert_bool(FileAccess.file_exists(sheet.icon)).is_true()
+		(
+			assert_bool(sheet.icon.ends_with("item_%s.svg" % id))
+			. override_failure_message(String(id))
+			. is_true()
+		)
+		(
+			assert_bool(FileAccess.file_exists(sheet.icon))
+			. override_failure_message(String(id))
+			. is_true()
+		)
 		for dir: int in 16:
-			assert_bool(FileAccess.file_exists(sheet.path(&"hull", dir))).is_true()
-			assert_bool(FileAccess.file_exists(sheet.path(&"shadow", dir))).is_true()
+			(
+				assert_bool(FileAccess.file_exists(sheet.path(&"hull", dir)))
+				. override_failure_message(String(id))
+				. is_true()
+			)
+			(
+				assert_bool(FileAccess.file_exists(sheet.path(&"shadow", dir)))
+				. override_failure_message(String(id))
+				. is_true()
+			)
 
 
 func test_each_is_named_in_its_silhouette_line_and_the_bomber_is_the_bigger() -> void:
@@ -89,8 +100,8 @@ func test_each_is_named_in_its_silhouette_line_and_the_bomber_is_the_bigger() ->
 		assert_float(bomber.size.x).is_greater(fighter.size.x)
 		assert_float(bomber.size.y).is_greater(fighter.size.y)
 		# A fighter is about a tile wide and a bomber about a half again: both a unit's size.
-		assert_float(fighter.size.x * SCALE).is_between(50.0, 96.0)
-		assert_float(bomber.size.x * SCALE).is_between(76.0, 128.0)
+		assert_float(fighter.size.x * Support.SCALE).is_between(50.0, 96.0)
+		assert_float(bomber.size.x * Support.SCALE).is_between(76.0, 128.0)
 
 
 ## An aircraft hangs in the air: no primitive reaches the ground, so its cast shadow has no pad and
@@ -101,7 +112,7 @@ func test_no_primitive_of_an_aircraft_touches_the_ground() -> void:
 			(
 				assert_float(prim.aabb().position.z)
 				. override_failure_message("%s: %s" % [id, prim.line])
-				. is_greater_equal(LOWEST_Z)
+				. is_greater_equal(ArtShadow.GROUND_Z)
 			)
 
 
@@ -134,23 +145,25 @@ func test_each_has_an_exhaust_and_a_damage_point_on_its_hull() -> void:
 
 
 ## The selection ring stands on the ground under the shadow and the bar at the lifted hull: the
-## ring is no wider than the hull it belongs to, and the bar clears the hull's top at the lift.
+## ring is the size of the unit (its `selection_radius`), within the drawn hull's narrowest and
+## widest views (a fighter's hull is a little narrower than the ring in some directions, a bomber's
+## wider in others), and the bar clears the hull's top at the lift.
 func test_the_ring_on_the_ground_and_the_bar_at_the_hull_suit_the_lift() -> void:
 	for id: StringName in IDS:
 		var sheet: IsoSheetDef = _index.sheet(id)
 		var def: UnitDef = load("res://data/units/%s.tres" % id) as UnitDef
 		var ring: float = IsoProjection.ellipse_px(def.selection_radius).x * 2.0
 		var hull: Rect2 = _box(id)
-		var width: float = hull.size.x * SCALE
+		var drawn: Vector2 = _drawn_widths(id)
 		(
 			assert_float(ring)
-			. override_failure_message("%s: ring %.0f against hull %.0f" % [id, ring, width])
-			. is_between(width * 0.5, width * 1.1)
+			. override_failure_message("%s: ring %.0f against drawn %s" % [id, ring, drawn])
+			. is_between(drawn.x * 0.8, drawn.y * 1.3)
 		)
 		# The bar clears most poses of the hull (`bar_lift_px` is the top that three of four frames
 		# stay under) and the hover lifts both: the bar of `AirLayer` is `fly_px + bar_lift_px` above
 		# the ground point, the hull's top is `fly_px + top`.
-		var top: float = -hull.position.y * SCALE
+		var top: float = -hull.position.y * Support.SCALE
 		assert_int(sheet.bar_lift_px).override_failure_message(String(id)).is_between(
 			int(top * 0.7), int(top) + 4
 		)
@@ -216,6 +229,15 @@ func test_each_reads_apart_from_every_other_aircraft_at_32_px_in_greyscale() -> 
 			)
 
 
+## The narrowest and the widest drawn hull (the opaque pixels) over the 16 directions, px at zoom 1.
+func _drawn_widths(id: StringName) -> Vector2:
+	var found: Vector2 = Vector2(INF, 0.0)
+	for dir: int in 16:
+		var wide: float = float(_picture(id, dir).get_used_rect().size.x)
+		found = Vector2(minf(found.x, wide), maxf(found.y, wide))
+	return found
+
+
 func _model(id: StringName) -> ArtModel:
 	return load(MODEL % [FACTION[id], id]) as ArtModel
 
@@ -232,11 +254,13 @@ func _picture(id: StringName, dir: int) -> Image:
 	var picture: Image = Image.create_empty(
 		Support.PAGE.x, Support.PAGE.y, false, Image.FORMAT_RGBA8
 	)
-	var hull: Image = Support.raster(FileAccess.get_file_as_string(sheet.path(&"hull", dir)), SCALE)
+	var hull: Image = Support.raster(
+		FileAccess.get_file_as_string(sheet.path(&"hull", dir)), Support.SCALE
+	)
 	picture.blend_rect(
 		hull,
 		Rect2i(Vector2i.ZERO, hull.get_size()),
-		Support.GROUND_POINT - Vector2i(Vector2(sheet.origin(&"hull")) * SCALE)
+		Support.GROUND_POINT - Vector2i(Vector2(sheet.origin(&"hull")) * Support.SCALE)
 	)
 	return picture
 
