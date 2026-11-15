@@ -5,9 +5,10 @@ extends GdUnitTestSuite
 ## with the art rows P291 and P292: none is buildable yet.
 ## The GDD gives the names, the carriers' cost, hit points, speed and seats, the mines' prices and
 ## blasts and the two sweep reaches. Starting values for the balance run, with no source in the GDD
-## or the ADR: the minelayers' price, hit points and speed, the mines' damage and armour percents,
-## and every build time, sight and radius. P291 and P292 remove the skips in test_defs_roster,
-## test_defs_roster_renew and test_defs_factions_data and the is_false roster check below.
+## or the ADR: the minelayers' price, hit points, speed and armour class, the mines' damage and
+## armour percents, and every build time, sight and radius. P291 and P292 remove the skips in
+## test_defs_roster, test_defs_roster_renew and test_defs_factions_data and the is_false roster
+## check below.
 ## What the sim does with these fields is test_carry_*'s and test_mines*'s.
 
 const Rules: GDScript = preload("res://tests/sim/support/mine_rules.gd")

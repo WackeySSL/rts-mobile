@@ -6,8 +6,9 @@
 
 ; The Derrick League's minelayer (ADR 0037 section 8, GDD): unarmed, lays the shot charge for 60
 ; credits, finds mines within 3 tiles and never sets one off. It needs the radar. The GDD leaves its
-; own price, hit points and speed to this row: all of them, the build time, sight and radii are
-; starting values for the balance run (heavy and slow on the League's side). Not in the roster until
+; own price, hit points, speed and armour class to this row: all of them, the build time, sight and
+; radii are starting values for the balance run (a wheeled truck, slower and sturdier than the
+; Seeder). Not in the roster until
 ; its art (P292).
 [resource]
 script = ExtResource("1_unit")
