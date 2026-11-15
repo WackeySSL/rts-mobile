@@ -6,9 +6,10 @@ extends Node
 ## P403 fills in the ads behind these signatures: the caps (AdCaps), the counters (AdLedger, in
 ## memory until P407 saves it), the timeouts from data, the banner and the rewarded ad, all through
 ## an AdBackend. The backend is always the FakeAdBackend for now: the real one is P405, so builds
-## with the `play` feature tag keep the fake until it lands. Consent (P404) and purchases (P406)
-## are still stubs: `_can_request_ads` is false and Remove ads is the ledger's flag, so no
-## interstitial or banner shows until they set them. No plugin code and no ad IDs live here.
+## with the `play` feature tag keep the fake until it lands. Consent (P404) is still a stub:
+## `_can_request_ads` is false, so no interstitial or banner shows until it sets it. P406 fills the
+## purchase (Purchases over a BillingBackend, always the FakeBilling until P406b adds the Play
+## one): the ledger's Remove ads flag follows it. No plugin code and no ad IDs live here.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
@@ -33,6 +34,8 @@ var _can_request_ads: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
+var _billing: BillingBackend = _make_billing()
+var _purchases: Purchases = Purchases.new(_billing, _settings.remove_ads_product_id)
 ## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
 var _busy: bool = false
@@ -49,12 +52,18 @@ static func _make_backend() -> AdBackend:
 	return FakeAdBackend.new()
 
 
+## Fake everywhere until P406b adds the Play Billing backend (ADR 0039 section 8).
+static func _make_billing() -> BillingBackend:
+	return FakeBilling.new()
+
+
 static func _default_auto_close(display_name: String) -> bool:
 	return display_name == "headless"
 
 
 func _init() -> void:
 	_sync_fake()
+	_purchases.entitlement_changed.connect(_on_entitlement_changed)
 
 
 func _ready() -> void:
@@ -83,23 +92,30 @@ func show_privacy_options() -> void:
 	await null
 
 
-## Synchronous. The cached entitlement (P406 fills it).
+## Synchronous. The cached entitlement: Play's answer when it answers, else the last known one.
 func has_remove_ads() -> bool:
 	return _ledger.remove_ads
 
 
-## Awaitable. True once the entitlement is granted. The stub cannot purchase.
+## Awaitable. True once the entitlement is held (also when it already was). False on cancel, on
+## PENDING (never granted), on failure and when the store sheet has not shown within
+## `fullscreen_timeout_ms` (reused as the billing timeout); once it showed the call waits for it.
 func purchase_remove_ads() -> bool:
-	@warning_ignore("redundant_await")
-	await null
-	return false
+	_purchases.owned = _ledger.remove_ads
+	return await _purchases.purchase(_now_ms, _settings.fullscreen_timeout_ms)
 
 
-## Awaitable. True when a purchase was restored. The stub has none.
+## Awaitable. True when the store lists the purchase. Its answer is the truth: a missing purchase
+## clears the entitlement (a refund); no answer (offline, timeout) keeps the cached one.
 func restore_purchases() -> bool:
-	@warning_ignore("redundant_await")
-	await null
-	return false
+	_purchases.owned = _ledger.remove_ads
+	return await _purchases.restore(_now_ms, _settings.fullscreen_timeout_ms)
+
+
+## Internal (Phase 6 widgets). The store's localised price text for Remove ads, empty until known
+## or when billing is unavailable: the row is hidden then. Never a literal in the game.
+func remove_ads_price_text() -> String:
+	return _purchases.price_text()
 
 
 ## Synchronous. The banner's height while one may show (consent, no Remove ads, a band asked for
@@ -193,6 +209,13 @@ func _refresh_banner() -> void:
 	if height != _banner_height:
 		_banner_height = height
 		banner_changed.emit(height)
+
+
+## The entitlement changed (a purchase, a restore, a refund): the ledger follows, then the banner.
+func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
+	_ledger.remove_ads = has_remove_ads_now
+	entitlement_changed.emit(has_remove_ads_now)
+	_refresh_banner()
 
 
 func _request_rewarded_load() -> void:
