@@ -85,7 +85,7 @@ func anchor() -> Rect2:
 			at - Vector2.ONE * (POINT_DP * 0.5 * _dp_px), Vector2.ONE * (POINT_DP * _dp_px)
 		)
 	if aim.mode == CarryAim.Mode.BOARD and aim.carrier_id != 0:
-		controller.fill_pick(_pick)  # A flyer at its lifted hull (P244).
+		controller.fill_unit_pick(_pick)  # A flyer at its lifted hull (P244); no building fill.
 		var at: int = _pick.ids.find(aim.carrier_id)
 		if at >= 0:
 			var half: float = maxf(_pick.radius_px[at], PICK_MIN_DP * _dp_px)

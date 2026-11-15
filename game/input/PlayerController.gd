@@ -308,11 +308,17 @@ func _refresh() -> void:
 
 
 ## Fills `out` with what a tap reads: the ground units, the buildings and the flyers at their lifted
-## hulls (P244). The one fill the taps and the carrier controls share.
+## hulls (P244).
 func fill_pick(out: PickSnapshot) -> void:
-	unit_layer.fill_pick_snapshot(out, UiScale.dp(settings.hit_radius_dp))
+	fill_unit_pick(out)
 	if building_layer != null:
 		building_layer.fill_pick_snapshot(out, camera)
+
+
+## The units half of `fill_pick`, the ground units and the flyers, which allocates nothing: what
+## `CarryControls` reads every frame for the ringed carrier's drawn place.
+func fill_unit_pick(out: PickSnapshot) -> void:
+	unit_layer.fill_pick_snapshot(out, UiScale.dp(settings.hit_radius_dp))
 	if air_layer != null:
 		air_layer.fill_pick_snapshot(out, camera, UiScale.dp(settings.hit_radius_dp))
 
