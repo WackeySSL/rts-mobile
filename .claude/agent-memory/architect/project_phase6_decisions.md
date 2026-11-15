@@ -1,0 +1,14 @@
+---
+name: project-phase6-decisions
+description: Phase 6 plan (2026-11-15, rows P400-P441) and ADRs 0039 (ads behind AdService) and 0040 (AAB, upload key, Play internal), both proposed; the Phase 5 contract
+metadata:
+  type: project
+---
+
+- Plan docs/plans/2026-11-15-phase-6.md on base a2204d2 (branch claude/p400-phase6-plan, not committed by me). Rows: docs P400/P400b/P440/P441; lane M P401-P407 (P401 = AdService facade stub first, Phase 5 codes against it); lane R P410-P414; lane Q P420-P422; lane T P430-P434. Kinds (a) now, (b) wait for P5xx.
+- Phase 5 is a separate session (P5xx): it owns menus, Progression, SaveService (section `ads` for us), boot (awaits ensure_consent), MenuFlow (note_match_completed + maybe_show_interstitial), MatchSetup.bonus_starting_credits, AudioService (mutes on ad_opened/closed). Phase 6 plans no menus, meta stubs or save format. Contract gaps G1-G7 in the plan (G1 show/hide_banner missing from the facade; G2 take_start_credits_bonus so a granted bonus survives an app kill).
+- ADR 0039: only AdMobBackend/UmpPluginBackend name Poing, only PlayBillingBackend names BillingClient; fake mode everywhere but the `play` feature build; every awaitable has a data timeout; play time = sim ticks/15 of ended matches; banner height changes on consent/entitlement/show, not fill; pause foot upright only, destroyed on close (hidden AdView refreshes); start bonus = setup data like income_percent (P173), never a Command; P127 absorbed (P430/P432/P433).
+- ADR 0040: new preset `Android internal` (Gradle, AAB, dk.appcode.rts, feature play); debug/perf APKs stay non-Gradle; upload key in GitHub environment play-internal (main only); versionCode = 10 x commits on main + channel, NOT run_number (a called reusable workflow sees the caller's run number); manual steps M1-M11.
+- Pitfall: no Poing fact (version, API names, App ID path, banner position) is in the repo; every such fact is "to confirm in P405/P410"; billing API is in mobile-development/references/iap-and-ads.md.
+- Pitfall: data/** triggers balance.yml, so data/ads_settings.tres needs a "!data/ads_settings.tres" path negation (P412).
+- Pitfall: an ID guard test's own offline fixtures must build fake ca-app-pub IDs at run time, or the guard trips on them.
