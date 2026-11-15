@@ -8,7 +8,8 @@ first; the plan lists them (M1-M11). The dev and perf APKs stay as they are.
 
 Status: **proposed, 2026-11-15**. Written by the architect (row P400, branch
 `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
-`docs/plans/2026-11-15-phase-6.md`. Decisions for Michael: the plan's questions 8-10 and 12.
+`docs/plans/2026-11-15-phase-6.md`. Decisions for Michael: the plan's questions 8-10, 12 and 13.
+Fix 1 the same day: the lead's docs lens.
 
 Amends (dated notes in P400b, after acceptance):
 - ADR 0005's Consequences ("Phase 6 replaces this preset's signing with the release keystore and
@@ -18,8 +19,10 @@ Amends (dated notes in P400b, after acceptance):
   Michael's word.
 - ADR 0013's "Not covered" note on godotengine/godot #123712 (a 4.7.2 shutdown crash after an
   export with AdMob and gdUnit4 installed): P410 is the row that watches for it (§4).
-- `.claude/agents/release-engineer.md` says "versionCode comes from the run number"; §6 chooses
-  another source. The lead updates the agent file in a docs row if this is accepted.
+- `.claude/agents/release-engineer.md` says "sign the AAB with the release keystore from
+  secrets" (§3 signs with an upload key; Google holds the app key) and "versionCode comes from the
+  run number" (§6 chooses another source). Both lines need Michael's explicit yes (the plan's
+  question 13) before the lead changes the agent file; agents never edit it.
 
 ## Context
 - `export_presets.cfg` has `Web`, `Android` (debug, `dk.appcode.rts.dev`, non-Gradle) and
@@ -31,7 +34,8 @@ Amends (dated notes in P400b, after acceptance):
   Play apps, needs it too. `/android/build/` is already git-ignored.
 - ADR 0006 fixes the release id `dk.appcode.rts` and the title "Treadline: Offline RTS". Play locks
   the id at the first upload, internal testing included.
-- Cloud sessions cannot reach Google's Maven, so Gradle exports run in CI only.
+- Cloud sessions cannot reach Google's Maven: their proxy refuses `dl.google.com` (ADR 0005,
+  Context), which serves it. So Gradle exports run in CI only.
 
 ## Decision
 
@@ -41,7 +45,9 @@ feature `play` (ADR 0039 §2's AdMob mode), the AdMob and billing plugins on, pe
 and internet (and what the plugins merge: `AD_ID`, `BILLING`, network state; P410 lists the final
 manifest). The exclude filter is the debug preset's (never `native/*`). No keystore value in the
 file (`test_export_presets.gd` already pins that). The Web preset excludes `addons/admob/*` and
-the billing plugin's folder.
+the billing plugin's folder. With the plugins enabled in the project, `Android` and `Android perf`
+must still export unchanged (no plugin, no Gradle): **to confirm in P410**; if not, their
+`exclude_filter` gains the plugin folders, pinned in `test_export_presets.gd`.
 
 ### 2. The Gradle template and the plugins, by pin
 - CI installs Godot 4.7.2's Gradle template into `android/build/` from the export templates
@@ -54,8 +60,9 @@ the billing plugin's folder.
 
 ### 3. Play App Signing and the upload key
 - Google holds the app signing key (Play App Signing). Michael makes an **upload key** himself
-  (`keytool`, RSA 2048, store and key password the same, which Godot needs) and keeps a backup
-  offline.
+  (`keytool`, RSA 2048) and keeps a backup offline. Store and key password are the same: the
+  `mobile-development` skill (§1) says Godot's preset needs that ("keystore and key passwords must
+  currently match"); **to confirm in P412**.
 - CI holds only the upload key, in the GitHub environment `play-internal`, whose deployment rule
   allows `main` only: `ANDROID_UPLOAD_KEYSTORE_BASE64`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`,
   `ANDROID_UPLOAD_KEY_ALIAS`. The job decodes it with `umask 077` into `$RUNNER_TEMP`, passes it
@@ -71,13 +78,20 @@ A new flag; every existing flag and exit code stays. It exports `Android interna
 rule for Android 15 targets; the pinned NDK's default, to confirm); the manifest names
 `dk.appcode.rts`, no `debuggable`, the permissions of §1 and `screenOrientation` 13; no `tests/` or
 `addons/gdUnit4/` path; the licences notice; no ad unit ID other than Google's test units unless
-`--real-ad-ids` is passed (Phase 7). The log scan watches for #123712.
+`--real-ad-ids` is passed (Phase 7). The log scan watches for #123712. The AAB's manifest is in
+proto format, so the manifest checks read it with `bundletool dump manifest` (bundletool pinned by
+version and SHA-256), or with `aapt2` after a proto conversion: the tool is **to confirm in P410**.
 
 ### 5. `android-internal.yml`
 - **Triggers:** `push` to `main` of the repository itself, and `workflow_dispatch` on `main`.
-- **Job `aab`** (`contents: read`): native release library, templates, the Gradle template,
-  plugins, the AAB, the clean-tree check, the artifact (AAB and `THIRD_PARTY_LICENSES.txt`, 14
-  days), a job summary (size, SHA-256, versionCode, versionName).
+  Phase 7 adds `workflow_call` for `release.yml`. A new workflow cannot be dispatched before it is
+  on `main` (to confirm), so P412 proves the build before merge through `ci.yml`'s PR job
+  (`android-aab`, P410) or a temporary `push` trigger on `claude/p412-*` with a generated key,
+  removed before merge.
+- **Job `aab`** (`contents: read`, environment `play-internal`, because a job reads an
+  environment's secrets only when it names the environment): native release library, templates,
+  the Gradle template, plugins, the AAB, the clean-tree check, the artifact (AAB and
+  `THIRD_PARTY_LICENSES.txt`, 14 days), a job summary (size, SHA-256, versionCode, versionName).
 - **Job `upload`** (`needs: aab`, environment `play-internal`, concurrency `play-internal`, no
   cancel): uploads to the `internal` track with the service-account JSON
   (`PLAY_SERVICE_ACCOUNT_JSON`) through a third-party action pinned by commit SHA
@@ -85,8 +99,15 @@ rule for Android 15 targets; the pinned NDK's default, to confirm); the manifest
   SHA and subject. While Play still treats the app as a draft it accepts only `status: draft`
   releases, and Michael rolls them out in the console (**to confirm in P413**).
 - **Ad IDs:** Google's test ad units always. The AdMob App ID: Michael's real one from
-  `ADMOB_APP_ID_ANDROID` (question 10 A), because UMP's form and app-ads.txt need the real app.
+  `ADMOB_APP_ID_ANDROID` (question 10 A), because UMP's form and app-ads.txt are expected to need
+  the real app (**to confirm in P404/P405**). The SDK reads the App ID from the manifest, so it
+  must reach the manifest at build time (the plugin's export option or a manifest step: **to
+  confirm in P410/P410b**); `ad_ids.cfg` carries unit IDs only, and P414 depends on P410's finding.
   Real ad unit IDs come only with Phase 7's `release.yml`, through `scripts/ci/write-ad-ids.sh`.
+- **Where the secrets live:** the upload key, `PLAY_SERVICE_ACCOUNT_JSON` and
+  `ADMOB_APP_ID_ANDROID` in the environment `play-internal`; the real unit IDs
+  (`ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`, `ADMOB_REWARDED_ID_ANDROID`) in an
+  environment `play-release` that only Phase 7's `release.yml` names.
 - `tests/project/test_ci_workflow.gd` pins triggers, permissions, the environment, the
   key-delete step and that no secret is read in a `run:` line.
 - A secret that is missing fails the job with its name in the error; there is no fallback.
@@ -105,7 +126,8 @@ rule for Android 15 targets; the pinned NDK's default, to confirm); the manifest
 ### 7. `scripts/ci/write-ad-ids.sh`
 Reads `ADMOB_*` by `env:`, checks each format, writes `ad_ids.cfg` (git-ignored, packed only by
 the Play preset's include filter) and nothing else; its offline test builds its fake IDs at run
-time, so no ID literal enters the repository. In Phase 6 it writes the App ID only.
+time, so no ID literal enters the repository. It writes ad unit IDs only (the App ID takes §5's
+build-time path). In Phase 6 it is built and tested; Phase 7's `release.yml` is its first user.
 
 ### 8. Not covered
 iOS (`ios-testflight.yml`), `release.yml`, the production track and store texts: Phase 7.

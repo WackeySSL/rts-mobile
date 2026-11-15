@@ -12,3 +12,7 @@ metadata:
 - Pitfall: no Poing fact (version, API names, App ID path, banner position) is in the repo; every such fact is "to confirm in P405/P410"; billing API is in mobile-development/references/iap-and-ads.md.
 - Pitfall: data/** triggers balance.yml, so data/ads_settings.tres needs a "!data/ads_settings.tres" path negation (P412).
 - Pitfall: an ID guard test's own offline fixtures must build fake ca-app-pub IDs at run time, or the guard trips on them.
+- Fix 1 (2026-11-15, on 074547c5): Phase 5 accepted G1-G7 + typed signatures + `fake_auto_close` (true when DisplayServer is headless); contract items 1-14 in the plan. Menus place Phase 6's `AdBannerBand` (P430, enter_tree/exit_tree), facade has no show/hide; `take_start_credits_bonus() -> int` in the facade; pause foot moved to new row P435; timeouts cover only the wait before an ad/form shows, never after (never-closing test).
+- Pitfall (review M1): tests/ui/support/hud_walk.gd ad_nodes scans the whole root incl. autoloads, so any new autoload under game/ads trips it; the autoload row (P401) must carry the exemption.
+- Pitfall (review M2/S7): putting a real App ID in a non-release workflow contradicts CLAUDE.md's Monetization line; agent-file statements (release-engineer.md) also need Michael's yes, not just an ADR.
+- Pitfall (review S1/S9): a job reads environment secrets only when it names the environment; a new workflow cannot be workflow_dispatched before it is on the default branch.
