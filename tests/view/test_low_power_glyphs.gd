@@ -25,6 +25,7 @@ const CONSUMERS: Array[int] = [2, 3, 4]
 const ORDER: Array[int] = [3, 2, 4]
 const GLYPH_DP: int = 32
 const GALLERY: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const OFFLINE_ART: String = "res://assets/art/svg/icons/glyph_offline.svg"
 const LOW_ART: String = "res://assets/art/svg/icons/glyph_low_power_map.svg"
 const PLAYER: int = 1
@@ -257,7 +258,7 @@ func test_no_sprite_is_dimmed_and_the_glyph_is_painted_in_the_map_tint_from_the_
 			assert_that((node as CanvasItem).self_modulate).is_equal(Color.WHITE)
 	assert_str(HealthBarLayer.LOW_GLYPH.resource_path).is_equal(LOW_ART)
 	# The tint is STYLE.md's map tint, which the gallery's table carries (#FF8A1F).
-	assert_that(_bars.low_power_color).is_equal(GALLERY.GLYPH_TINTS["glyph_low_power_map"])
+	assert_that(_bars.low_power_color).is_equal(IconsPage.GLYPH_TINTS["glyph_low_power_map"])
 	await await_idle_frame()
 	assert_int(_bars.drawn_glyphs()).is_equal(CONSUMERS.size())
 

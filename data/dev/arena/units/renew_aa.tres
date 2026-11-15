@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/dev/arena/weapons/sky_needle_gun.tres" id="2_weapon"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_barracks.tres" id="3_requires"]
+
+; Frozen copy of data/units/renew_aa.tres as of 2026-11-15 (main a2204d2f, P304). Used by perf_ai_4b only, so a tuning change to the shipped file cannot move its hash or its workload (ADR 0038 section 7, ADR 0031).
+[resource]
+script = ExtResource("1_building")
+type_id = &"renew_aa"
+display_name = "Sky Needle"
+faction = &"renew"
+max_hp = 700
+armour = 3
+sight_range = 7000
+acquire_range = 5500
+weapon = ExtResource("2_weapon")
+cost = 700
+build_ticks = 260
+tab = 0
+requires = ExtResource("3_requires")
+power = -20
