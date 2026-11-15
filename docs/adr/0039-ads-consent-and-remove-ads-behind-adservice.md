@@ -9,13 +9,13 @@ player's first two matches and at most one per 4 minutes of play. You can watch 
 double XP or for +500 credits in the next match. Remove ads removes banners and full-screen ads;
 the by-choice offers stay.
 
-Status: **accepted, 2026-11-15 (Michael)**. Proposed the same day, written by the architect (row
-P400, branch `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
-`docs/plans/2026-11-15-phase-6.md`. Fix 1 the same day: the lead's docs lens and the Phase 5
-session's acceptance of the interfaces (the plan's "Interfaces with Phase 5", with
-`fake_auto_close`). **Answered by Michael on 2026-11-15** (in chat, through the Phase 6 lead): all
-A, so the plan's questions 1-7, 10 and 11 are decided as written below. The status stayed proposed
-until the main lead merged P400; P400b wrote the acceptance notes.
+Status: **accepted, 2026-11-15** (Michael: 1-7, 10, 11 A; "Ja, planen er godkendt"; accepted in
+docs row P400b of `docs/plans/2026-11-15-phase-6.md`, together with ADR 0040). Proposed 2026-11-15
+(architect, row P400, branch `claude/p400-phase6-plan`, base `main` at a2204d2). Fix 1 the same
+day: the lead's docs lens and the Phase 5 session's acceptance of the interfaces (the plan's
+"Interfaces with Phase 5", with `fake_auto_close`). **Answered by Michael on 2026-11-15** (in chat,
+through the Phase 6 lead): all A, so the plan's questions 1-7, 10 and 11 are decided as written
+below.
 
 Status note (2026-11-15, P400b docs; acceptance): Michael approved the plan on 2026-11-15 ("Ja,
 planen er godkendt") with every question answered A; P400 merged as #472. The dated notes listed
@@ -215,8 +215,8 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   than Google's test publisher `3940256099942544` or the placeholder `0000000000000000`.
 
 Note (2026-11-15, P400b docs; P410, Michael 2026-11-15): the App ID's build-time path is the Poing
-plugin's project setting `admob/general/android/app_id` (v5.1.0, pinned with a one-line local
-patch; ADR 0040's status note of 2026-11-15). Its default is Google's test App ID, so every build
+plugin's project setting `admob/general/android/app_id` (v5.1.0, pinned with two documented local
+patches; ADR 0040's status note of 2026-11-15). Its default is Google's test App ID, so every build
 without an override carries the test App ID. The plugin is enabled only for P410b's `--aab` run.
 P414 sets the real one from `ADMOB_APP_ID_ANDROID` for the `Android internal` export only, never
 in a tracked file (the guard above), and only after Michael's yes to the P400c text.

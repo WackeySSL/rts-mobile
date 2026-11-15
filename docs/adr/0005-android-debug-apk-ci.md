@@ -28,7 +28,7 @@ Status note (2026-11-15, P400b docs; ADR 0040, accepted 2026-11-15): §6's conse
 `main` is uploaded to Play internal testing); the PR still merges on his word. The Consequences'
 "Phase 6 replaces this preset's signing with the release keystore and switches to the Gradle
 build" no longer holds: `Android` and `Android perf` keep their non-Gradle build, signing and
-`.dev` id and exclude `addons/admob/*`; a fourth preset, `Android internal`, does the Play build
+`.dev` id and exclude `addons/admob/*` (P410's review fix); a fourth preset, `Android internal`, does the Play build
 with an upload key (ADR 0040 §1, §3). The text of §6 stays as accepted.
 
 ## Context
