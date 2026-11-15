@@ -15,6 +15,8 @@ const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licen
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
 const INSTALLER_STEP: String = "Offline test of the cloud Android installer"
 const INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android.sh"
+const PLUGIN_INSTALLER_STEP: String = "Offline test of the AdMob plugin installer"
+const PLUGIN_INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android-plugins.sh"
 const EXPORT_STEP: String = "      - name: Export debug APK"
 const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
 const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
@@ -319,9 +321,13 @@ func test_verify_job_runs_the_native_script_test() -> void:
 	assert_str(lines[step + 2].strip_edges()).is_empty()
 
 
-## P55b: the offline test of the cloud Android installer runs in the verify job, the required check.
-func test_verify_job_runs_the_cloud_installer_test() -> void:
-	_assert_step(_job(_lines("ci.yml"), "  verify:"), INSTALLER_STEP, [INSTALLER_RUN])
+## P55b: the offline test of the cloud Android installer runs in the verify job, the required check
+## (P410: so does the one of the AdMob plugin installer).
+func test_verify_job_runs_the_installer_tests() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+	_assert_step(job, INSTALLER_STEP, [INSTALLER_RUN])
+	# P410: the offline test of the AdMob plugin installer runs there too.
+	_assert_step(job, PLUGIN_INSTALLER_STEP, [PLUGIN_INSTALLER_RUN])
 
 
 ## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.

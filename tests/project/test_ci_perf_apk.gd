@@ -254,7 +254,7 @@ func test_perf_preset_keeps_dev_menu_and_native_library_and_no_signing_values() 
 	assert_str(config.get_value(section, "platform")).is_equal("Android")
 	assert_str(config.get_value(section, "custom_features")).is_equal("dev_menu")
 	var excluded: String = config.get_value(section, "exclude_filter")
-	assert_str(excluded).is_equal("tests/*, addons/gdUnit4/*")
+	assert_str(excluded).is_equal("tests/*, addons/gdUnit4/*, addons/admob/*")
 	assert_bool(config.get_value(options, "gradle_build/use_gradle_build")).is_false()
 	assert_bool(config.get_value(options, "architectures/arm64-v8a")).is_true()
 	for abi: String in ["armeabi-v7a", "x86", "x86_64"]:
