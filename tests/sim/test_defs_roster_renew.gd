@@ -79,6 +79,8 @@ func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_a
 		"renew_tank",
 		"renew_artillery",
 		"renew_tanker",
+		"renew_fighter",
+		"renew_bomber",
 	]
 	var faction: FactionDef = load(FACTION_PATH)
 	var listed: Array[String] = []
@@ -473,7 +475,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(producers[STRUCTURES]).is_equal(["renew_hq"])
 	assert_array(producers[INFANTRY]).is_equal(["renew_barracks"])
 	assert_array(producers[FLIGHT]).is_equal(["renew_airfield"])
-	assert_array(buildable[FLIGHT]).is_empty()
+	assert_array(buildable[FLIGHT]).is_equal(["renew_bomber", "renew_fighter"])  # P245.
 	assert_array(producers[VEHICLES]).is_equal(["renew_factory"])
 	(
 		assert_array(buildable[STRUCTURES])
@@ -507,15 +509,13 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
-## P242: none for the fighter and bomber (P245); it removes its skip. P245b rostered the airfield.
+## P245b rostered the airfield, P245 the fighter and the bomber.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"renew_fighter",
-				"renew_bomber",
 				"renew_engineering",
 				"renew_transport",
 				"renew_drone",

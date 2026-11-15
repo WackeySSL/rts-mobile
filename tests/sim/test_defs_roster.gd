@@ -47,6 +47,8 @@ func test_the_data_holds_the_eleven_buildings_and_the_six_units() -> void:
 		"heavy_tank",
 		"artillery",
 		"harvester",
+		"fossil_fighter",
+		"fossil_bomber",
 	]
 	assert_array(ids).contains_exactly_in_any_order(wanted)
 	for id: String in wanted:
@@ -420,7 +422,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(producers[STRUCTURES]).is_equal(["headquarters"])
 	assert_array(producers[INFANTRY]).is_equal(["barracks"])
 	assert_array(producers[FLIGHT]).is_equal(["fossil_airfield"])
-	assert_array(buildable[FLIGHT]).is_empty()
+	assert_array(buildable[FLIGHT]).is_equal(["fossil_bomber", "fossil_fighter"])  # P245.
 	assert_array(producers[VEHICLES]).is_equal(["vehicle_factory"])
 	assert_array(buildable[STRUCTURES]).is_equal(
 		[
@@ -443,15 +445,13 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P242: none for the fighter and bomber (P245); it removes its skip. P245b rostered the airfield.
+## P245b rostered the airfield, P245 the fighter and the bomber.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"fossil_fighter",
-				"fossil_bomber",
 				"fossil_engineering",
 				"fossil_transport",
 				"fossil_drone",

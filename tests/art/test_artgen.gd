@@ -29,6 +29,8 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"heavy_tank veh 0 hull,turret",
 		"artillery veh 0 hull,turret",
 		"harvester veh 0 hull",
+		"fossil_fighter veh 0 hull",
+		"fossil_bomber veh 0 hull",
 	],
 	"renew":
 	[
@@ -49,6 +51,8 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_tank veh 0 hull,turret",
 		"renew_artillery veh 0 hull,turret",
 		"renew_tanker veh 0 hull",
+		"renew_fighter veh 0 hull",
+		"renew_bomber veh 0 hull",
 	],
 }
 const MAX_FILE_BYTES: int = 28 * 1024  ## STYLE.md "Technical rules".

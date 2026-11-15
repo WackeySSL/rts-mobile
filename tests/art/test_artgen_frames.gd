@@ -558,6 +558,9 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 		for field: StringName in ArtSheet.LIFE_FIELDS:
 			if tagged and field in [&"emitters", &"emitter_points", &"marks", &"scar_milli"]:
 				continue
+			# An aircraft's sheet has its lift (P245).
+			if model.flies() and field in [&"fly_px", &"low_fly_px"]:
+				continue
 			(
 				assert_bool(committed.contains("\n%s = " % field))
 				. override_failure_message(path)
@@ -693,6 +696,9 @@ func test_a_model_with_poses_is_valid_and_each_mistake_in_them_is_named() -> voi
 			func(m: ArtModel) -> void: m.emitters = PackedStringArray(["smoke 0 0 0 0"])
 		],
 		["marks of a squad", "marks", func(m: ArtModel) -> void: m.marks = &"tracks"],
+		["a high lift on a squad", "fly_px", func(m: ArtModel) -> void: m.fly_px = 26],
+		["a negative high lift", "fly_px", func(m: ArtModel) -> void: m.fly_px = -1],
+		["a negative lift", "fly_px", func(m: ArtModel) -> void: m.low_fly_px = -1],
 	]
 	for found: Array in cases:
 		var model: ArtModel = _squad()
@@ -712,6 +718,16 @@ func test_a_model_with_poses_is_valid_and_each_mistake_in_them_is_named() -> voi
 	var rover: ArtModel = _rover()
 	rover.marks = &"treads"
 	assert_str("\n".join(rover.problems())).contains("marks")
+	rover = _rover()
+	rover.fly_px = 26
+	rover.low_fly_px = 12  # Both lifts are refused.
+	assert_str("\n".join(rover.problems())).contains("never both")
+	rover = _rover()
+	rover.low_fly_px = 12  # A low lift is a squad's, a vehicle has the high one.
+	assert_str("\n".join(rover.problems())).contains("fly_px")
+	rover = _rover()
+	rover.fly_px = 26
+	assert_str("\n".join(rover.problems())).is_empty()
 
 
 func _squad() -> ArtModel:
