@@ -40,3 +40,8 @@ func test_master_has_one_hard_limiter() -> void:
 	var master: int = AudioServer.get_bus_index(&"Master")
 	assert_int(AudioServer.get_bus_effect_count(master)).is_equal(1)
 	assert_object(AudioServer.get_bus_effect(master, 0)).is_instanceof(AudioEffectHardLimiter)
+
+
+func test_music_data_names_the_stings() -> void:
+	var s: AudioSettings = load(SETTINGS_PATH)
+	assert_array(s.sting_ids).contains_exactly([&"victory", &"defeat"])
