@@ -914,6 +914,9 @@ P245b, P245, P248 and P290):
     - P204 (per-player unit shadows) and the shadows of P249, P279, P280, P291 and P292 are in
       the forecast. They do not wait; each re-pins `TODAY2_*` and reports its page-2 rows against
       its allocation in its PR.
+- **The gate's unit types are 16 after P245.** The rosters now hold the aircraft, and
+  `balance_summary.gd`'s set check reads the rosters, not a constant; the gate needs P250's air AI
+  before it can pass (ADR 0031 §4's P26bz note).
 - **P248.** Michael's two decisions are in its row above. P248 itself carries ADR 0025 §5's note
   and the skill text.
 - **P290.** Its starting values are in the GDD's Ground support section (a note of this date;
