@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## test_art_gallery_icon_pages.gd and test_art_gallery_pages.gd.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
@@ -48,7 +49,7 @@ func test_the_hud_page_is_one_dark_panel_with_its_rows_in_order() -> void:
 	var page: Node = gallery.get_node("HudPage")
 	assert_array(page.get_children().map(_node_name)).is_equal(["Hud"])
 	var panel: ColorRect = page.get_node("Hud")
-	assert_that(panel.color).is_equal(Gallery.HUD_BACKDROP)
+	assert_that(panel.color).is_equal(IconsPage.HUD_BACKDROP)
 	assert_array(panel.get_children().map(_node_name)).is_equal(ROW_NAMES)
 
 
@@ -59,19 +60,19 @@ func test_each_row_shows_its_glyphs_at_48_dp_with_their_tints_and_names() -> voi
 	var gallery: Control = await _open_gallery()
 	var panel: Node = gallery.get_node("HudPage/Hud")
 	var shown: int = 0
-	assert_array(Gallery.HUD_V2_ROWS.keys()).is_equal(["Bar", "Pause", "Panels", "Beside"])
-	for row_name: String in Gallery.HUD_V2_ROWS:
-		var icons: Array = Gallery.HUD_V2_ROWS[row_name]
+	assert_array(IconsPage.HUD_V2_ROWS.keys()).is_equal(["Bar", "Pause", "Panels", "Beside"])
+	for row_name: String in IconsPage.HUD_V2_ROWS:
+		var icons: Array = IconsPage.HUD_V2_ROWS[row_name]
 		var row: Node = panel.get_node(row_name)
 		assert_int(row.get_child_count()).is_equal(icons.size() * 2)
 		for icon: String in icons:
 			var rect: TextureRect = row.get_node(icon.to_pascal_case())
 			assert_str(rect.texture.resource_path).ends_with("icons/%s.svg" % icon)
-			var want: float = Gallery.HUD_GLYPH_DP * PX_PER_DP
+			var want: float = IconsPage.HUD_GLYPH_DP * PX_PER_DP
 			assert_vector(rect.size).override_failure_message(icon).is_equal(Vector2.ONE * want)
 			var tint: Color = Color.WHITE
-			if Gallery.GLYPH_TINTS.has(icon):
-				tint = Gallery.GLYPH_TINTS[icon]
+			if IconsPage.GLYPH_TINTS.has(icon):
+				tint = IconsPage.GLYPH_TINTS[icon]
 			assert_that(rect.modulate).override_failure_message(icon).is_equal(tint)
 			var short: String = icon.trim_prefix("glyph_")
 			var label: Label = row.get_node("Label" + short.to_pascal_case())
@@ -91,10 +92,10 @@ func test_the_eighteen_new_glyphs_are_shown_again_at_32_and_24_dp() -> void:
 	var gallery: Control = await _open_gallery()
 	var panel: Node = gallery.get_node("HudPage/Hud")
 	var fresh: Array[String] = []
-	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
-		fresh.append_array(Gallery.HUD_V2_ROWS[row_name])
-	assert_array(Gallery.HUD_SMALL_DP).is_equal([32.0, 24.0])
-	for dp: float in Gallery.HUD_SMALL_DP:
+	for row_name: String in IconsPage.HUD_V2_NEW_ROWS:
+		fresh.append_array(IconsPage.HUD_V2_ROWS[row_name])
+	assert_array(IconsPage.HUD_SMALL_DP).is_equal([32.0, 24.0])
+	for dp: float in IconsPage.HUD_SMALL_DP:
 		var row: Node = panel.get_node("Small%d" % int(dp))
 		assert_array(row.get_children().map(_node_name)).is_equal(
 			fresh.map(func(icon: String) -> String: return icon.to_pascal_case())
@@ -117,25 +118,25 @@ func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 		"SiteFossil": Gallery.TERRAIN_COLORS[&"grass_b"],
 		"SiteRenew": Gallery.TERRAIN_COLORS[&"sand"]
 	}
-	assert_array(Gallery.HUD_SITE_BADGES).is_equal(["glyph_construct", "glyph_offline"])
+	assert_array(IconsPage.HUD_SITE_BADGES).is_equal(["glyph_construct", "glyph_offline"])
 	for swatch_name: String in grounds:
 		var swatch: ColorRect = sites.get_node(swatch_name)
 		assert_that(swatch.color).is_equal(grounds[swatch_name])
-		assert_vector(swatch.size).is_equal(Gallery.HUD_SITE_SIZE)
+		assert_vector(swatch.size).is_equal(IconsPage.HUD_SITE_SIZE)
 		assert_array(swatch.get_children().map(_node_name)).is_equal(
 			["Building", "GlyphConstruct", "GlyphOffline"]
 		)
 		var building: TextureRect = swatch.get_node("Building")
 		assert_vector(building.size).is_greater(Vector2(150, 150))
-		assert_vector(building.size).is_less(Gallery.HUD_SITE_SIZE)
+		assert_vector(building.size).is_less(IconsPage.HUD_SITE_SIZE)
 		var construct: TextureRect = swatch.get_node("GlyphConstruct")
 		var offline: TextureRect = swatch.get_node("GlyphOffline")
 		for badge: TextureRect in [construct, offline]:
-			assert_vector(badge.size).is_equal(Vector2.ONE * Gallery.MAP_GLYPH_DP * PX_PER_DP)
+			assert_vector(badge.size).is_equal(Vector2.ONE * IconsPage.MAP_GLYPH_DP * PX_PER_DP)
 			# over the building's body, inside its frame
 			assert_bool(building.get_rect().encloses(badge.get_rect())).is_true()
 		assert_that(construct.modulate).is_equal(Color.WHITE)
-		assert_that(offline.modulate).is_equal(Gallery.GLYPH_TINTS["glyph_offline"])
+		assert_that(offline.modulate).is_equal(IconsPage.GLYPH_TINTS["glyph_offline"])
 		assert_float(construct.get_rect().end.x).is_less(offline.get_rect().position.x)
 		assert_float(construct.position.y).is_equal(offline.position.y)
 
@@ -144,12 +145,12 @@ func test_each_faction_has_a_building_with_the_two_badges_over_it() -> void:
 ## grey of a tab at rest. The other seventeen are white and the plate behind them says the rest.
 func test_only_the_alert_glyph_of_the_new_ones_has_a_tint() -> void:
 	var tinted: Array[String] = []
-	for row_name: String in Gallery.HUD_V2_NEW_ROWS:
-		for icon: String in Gallery.HUD_V2_ROWS[row_name]:
-			if Gallery.GLYPH_TINTS.has(icon):
+	for row_name: String in IconsPage.HUD_V2_NEW_ROWS:
+		for icon: String in IconsPage.HUD_V2_ROWS[row_name]:
+			if IconsPage.GLYPH_TINTS.has(icon):
 				tinted.append(icon)
 	assert_array(tinted).is_equal(["glyph_alert"])
-	assert_that(Gallery.GLYPH_TINTS["glyph_alert"]).is_equal(Color("9AA5B1"))
+	assert_that(IconsPage.GLYPH_TINTS["glyph_alert"]).is_equal(Color("9AA5B1"))
 
 
 ## Everything on the page is inside it, clear of the two corner buttons and of every other glyph,

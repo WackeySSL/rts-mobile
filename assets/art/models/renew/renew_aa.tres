@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_aa"
+faction = &"renew"
+category = &"bld"
+footprint = 1
+silhouette = "A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars."
+mount = Vector3(0, 0, 0.66)
+prims = PackedStringArray(
+"box hull graphite 0 0 0 0.92 0.92 0.06",
+"prism hull ceramic 0 0 0.06 0.7 0.7 0.24 sides=6",
+"prism hull team 0 0 0.3 0.74 0.74 0.12 sides=6 group=band",
+"prism hull ceramic 0 0 0.42 0.62 0.62 0.2 sides=6 group=top",
+"prism hull graphite 0 0 0.62 0.5 0.5 0.04 sides=6 group=lid",
+"box hull mint 0 0.365 0.16 0.1 0.03 0.06",
+"prism head bluegrey 0 0 0 0.5 0.5 0.1 sides=6",
+"prism head ceramic 0 0 0.1 0.44 0.44 0.1 sides=6",
+"prism head team 0 0 0.2 0.48 0.48 0.08 sides=6",
+"prism head ceramic 0 0 0.28 0.4 0.4 0.08 sides=6",
+"box head mint -0.1 0 0.36 0.08 0.08 0.04",
+"rod head glass 0 0 0.3 0.8 0 1.3 4",
+"rod head ceramic -0.12 0 0.3 0.3 0 0.72 5",
+"rod head graphite 0.144 0 0.48 0.208 0 0.56 8",
+"rod head graphite 0.304 0 0.68 0.368 0 0.76 8",
+"rod head graphite 0.464 0 0.88 0.528 0 0.96 8",
+"box hull team -0.1 0 0.3 0.5 0.74 0.12 damage=1 group=p1",
+"box hull ceramic -0.08 0 0.42 0.46 0.62 0.2 damage=1 group=p1",
+"broken hull ceramic -0.2 -0.1 0.62 0.2 0.3 0.12 teeth=3 low=0.3 damage=1 group=p1",
+"box hull interior 0.1 0.1 0.62 0.3 0.3 0.03 damage=2",
+"broken hull ceramic -0.25 -0.1 0.62 0.12 0.4 0.3 teeth=4 low=0.3 damage=2",
+"broken hull ceramic 0.0 -0.25 0.62 0.4 0.12 0.24 teeth=3 low=0.2 damage=2",
+"broken hull interior 0.34 0.0 0.2 0.04 0.4 0.28 teeth=4 low=0.5 damage=2",
+"broken hull team 0.1 0.2 0.3 0.4 0.22 0.12 teeth=3 low=0.4 damage=2",
+"rod hull titanium -0.2 -0.15 0.9 -0.1 -0.05 1.05 3 bend=35 damage=2"
+)
+poses = PackedStringArray(
+"dmg2 0 top char 60",
+"dmg2 0 band hide",
+"dmg2 0 lid hide",
+"dmg2 0 p1 hide"
+)
+emitters = PackedStringArray(
+"damage 0.3 0.0 0.5",
+"dmg_spark 0.2 0.2 0.5"
+)

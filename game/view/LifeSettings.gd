@@ -31,6 +31,8 @@ extends Resource
 	&"artillery_gun": 5.0,
 	&"redoubt_gun": 2.5,
 	&"arcline_gun": 4.0,
+	&"burst_stack_gun": 2.0,
+	&"sky_needle_gun": 1.5,
 }
 ## The hull rock, heavy guns only. A defence has no hull to rock: its body never moves.
 @export var rock_px: Dictionary[StringName, float] = {

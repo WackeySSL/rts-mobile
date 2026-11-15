@@ -153,9 +153,10 @@ func card_lines() -> PackedStringArray:
 		lines.append(row[0] % row.slice(1).map(func(key: String) -> Variant: return s[key]))
 	if hud.arena_kind == PerfBases.ARENA_BASES:
 		lines.append(PerfBases.calls_line(s["draw_calls_p95"]))
-	if hud.arena_kind == PerfBases.ARENA_AI:
+	if PerfBases.is_ai(hud.arena_kind):
 		lines.append(
 			PerfBases.ai_line(
+				hud.arena_kind,
 				s["ai_think_p95_ms"],
 				s["ai_think_max_ms"],
 				s["ai_thinks"],

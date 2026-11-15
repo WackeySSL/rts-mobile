@@ -24,7 +24,7 @@ const INFANTRY: int = 1
 const VEHICLES: int = 2
 
 
-func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
+func test_the_data_holds_the_ten_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -38,6 +38,7 @@ func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
 		"defence_turret",
 		"fossil_strike",
 		"fossil_space",
+		"fossil_aa",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -50,7 +51,7 @@ func test_the_data_holds_the_nine_buildings_and_the_six_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 9)
+			id in wanted.slice(0, 10)
 		)
 
 
@@ -203,7 +204,7 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	# Every weapon file is one of the seven here, the Lumen Accord's own two (breaker_rocket and
 	# arcline_gun, test_defs_roster_renew) or the Deep Bore's rupture (fossil_rupture, P110d: no
 	# gun, test_defs_strike_data) or the two anti-air guns (P239, test_defs_anti_air, held by
-	# BuildingDefs that have no roster entry until P239b) or the four air weapons (P242,
+	# the Burst Stack and the Sky Needle, rostered by P239b) or the four air weapons (P242,
 	# test_defs_air_units: the fighters' and bombers' guns, whose types have no roster entry until
 	# P245) or the two drone squads' guns (P264, test_defs_carriers, until P266), each used by what
 	# names it.
@@ -420,6 +421,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 		[
 			"barracks",
 			"defence_turret",
+			"fossil_aa",
 			"fossil_radar",
 			"fossil_space",
 			"fossil_strike",
@@ -435,7 +437,6 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P239: no roster entry for the anti-air buildings until P239b; it removes that skip.
 ## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
@@ -443,7 +444,6 @@ func _own_files() -> Array[String]:
 		if (
 			path.get_file().get_basename()
 			in [
-				"fossil_aa",
 				"fossil_airfield",
 				"fossil_fighter",
 				"fossil_bomber",
