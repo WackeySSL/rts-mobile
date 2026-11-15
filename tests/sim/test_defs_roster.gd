@@ -22,9 +22,10 @@ const FACTION: StringName = &"fossil"
 const STRUCTURES: int = 0
 const INFANTRY: int = 1
 const VEHICLES: int = 2
+const FLIGHT: int = 3  ## The Flight tab, which the airfield produces (P245b).
 
 
-func test_the_data_holds_the_ten_buildings_and_the_six_units() -> void:
+func test_the_data_holds_the_eleven_buildings_and_the_six_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -39,6 +40,7 @@ func test_the_data_holds_the_ten_buildings_and_the_six_units() -> void:
 		"fossil_strike",
 		"fossil_space",
 		"fossil_aa",
+		"fossil_airfield",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -51,7 +53,7 @@ func test_the_data_holds_the_ten_buildings_and_the_six_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 10)
+			id in wanted.slice(0, 11)
 		)
 
 
@@ -348,6 +350,7 @@ func test_the_dock_and_exit_cells_are_the_middle_cell_south_of_the_footprint() -
 		["refinery", "dock", Vector2i(1, 3)],
 		["vehicle_factory", "exit", Vector2i(1, 3)],
 		["barracks", "exit", Vector2i(1, 2)],
+		["fossil_airfield", "exit", Vector2i(1, 3)],
 	]
 	var named: Dictionary[String, bool] = {}
 	for row: Array in rows:
@@ -405,8 +408,8 @@ func test_the_cell_rule_accepts_the_ring_of_a_footprint_and_reports_inside_and_b
 
 
 func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() -> void:
-	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
-	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
+	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
+	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
 	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var id: String = String(unit.type_id)
@@ -416,12 +419,15 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			buildable[unit.tab].append(id)
 	assert_array(producers[STRUCTURES]).is_equal(["headquarters"])
 	assert_array(producers[INFANTRY]).is_equal(["barracks"])
+	assert_array(producers[FLIGHT]).is_equal(["fossil_airfield"])
+	assert_array(buildable[FLIGHT]).is_empty()
 	assert_array(producers[VEHICLES]).is_equal(["vehicle_factory"])
 	assert_array(buildable[STRUCTURES]).is_equal(
 		[
 			"barracks",
 			"defence_turret",
 			"fossil_aa",
+			"fossil_airfield",
 			"fossil_radar",
 			"fossil_space",
 			"fossil_strike",
@@ -437,14 +443,13 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
+## P242: none for the fighter and bomber (P245); it removes its skip. P245b rostered the airfield.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"fossil_airfield",
 				"fossil_fighter",
 				"fossil_bomber",
 				"fossil_engineering",
