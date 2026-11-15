@@ -65,6 +65,7 @@ func test_a_close_without_the_reward_callback_grants_nothing() -> void:
 func test_a_rewarded_ad_waits_for_its_close_and_grants_at_the_callback() -> void:
 	var service: Node = _make()
 	service.fake_auto_close = false
+	add_child(service)
 	var on_reward: Callable = func() -> void: _h.events.append("grant")
 	var result: Array = AdServiceHarness.start(
 		func() -> bool: return await service.show_rewarded(REWARD_PLACEMENT, on_reward)

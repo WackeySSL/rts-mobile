@@ -74,3 +74,30 @@ func test_a_cancelled_show_cannot_open_late_unless_the_backend_ignores_the_cance
 	fake.cancel_show(AdBackend.KIND_INTERSTITIAL)
 	fake.open_late()
 	assert_array(seen).contains_exactly(["opened"])
+
+
+func test_without_auto_close_and_without_a_host_a_show_closes_as_scripted() -> void:
+	var fake: FakeAdBackend = FakeAdBackend.new()
+	fake.auto_close = false
+	fake.draw_placeholders = true
+	var seen: Array[String] = []
+	fake.opened.connect(func(_kind: StringName) -> void: seen.append("opened"))
+	fake.closed.connect(func(_kind: StringName) -> void: seen.append("closed"))
+	fake.request_load(AdBackend.KIND_INTERSTITIAL)
+	fake.show_ad(AdBackend.KIND_INTERSTITIAL)
+	assert_array(seen).contains_exactly(["opened", "closed"])
+
+
+func test_a_rewarded_and_an_interstitial_show_can_be_pending_at_once() -> void:
+	var fake: FakeAdBackend = FakeAdBackend.new()
+	fake.show_never_opens = true
+	var seen: Array[String] = []
+	fake.opened.connect(func(kind: StringName) -> void: seen.append("opened:" + kind))
+	fake.request_load(AdBackend.KIND_INTERSTITIAL)
+	fake.request_load(AdBackend.KIND_REWARDED)
+	fake.show_ad(AdBackend.KIND_INTERSTITIAL)
+	fake.show_ad(AdBackend.KIND_REWARDED)
+	fake.open_late(AdBackend.KIND_INTERSTITIAL)
+	assert_array(seen).contains_exactly(["opened:interstitial"])
+	fake.open_late()
+	assert_array(seen).contains_exactly(["opened:interstitial", "opened:rewarded"])

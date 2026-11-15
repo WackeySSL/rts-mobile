@@ -17,9 +17,7 @@ extends Node
 ## before `_ready`'s restore, with SaveService ordered before AdService, so a buyer's cached
 ## Remove ads is in the ledger before the first banner request. Until then a buyer sees a banner
 ## until the first restore answers (tests/ads/test_ad_service_order.gd has the pending test).
-## For P405: the backend's `show_banner` must be idempotent anyway; AdService calls it only on a
-## hidden to shown transition and `hide_banner` only on a shown to hidden one, and neither before
-## `initialize`.
+## For P405: see the notes on `AdBackend.show_banner`.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
@@ -54,13 +52,8 @@ var _billing: BillingBackend = _make_billing()
 var _purchases: Purchases = null
 ## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
-var _busy: bool = false
-## The run now awaited by `_run_fullscreen`, if any.
-var _active: FullscreenRun = null
-## Runs that timed out but whose ad may still open or is open; see FullscreenRun. Each leaves the
-## list at its close. A late ad that has not opened may be dropped (consent withdrawn, Remove ads),
-## never recalled: it still opens and closes, paired, and holds `_busy` while it is open.
-var _lates: Array[FullscreenRun] = []
+## The full-screen runs: the one awaited and the late ones; see FullscreenRuns.
+var _runs: FullscreenRuns = FullscreenRuns.new()
 var _banner_shown: bool = false
 var _banner_requests: int = 0
 var _banner_height: int = 0
@@ -93,6 +86,8 @@ static func _default_auto_close(display_name: String) -> bool:
 
 func _init() -> void:
 	_consent.settled.connect(_set_can_request)
+	_runs.opened.connect(ad_opened.emit)
+	_runs.closed.connect(ad_closed.emit)
 	_sync_fake()
 	_purchases = Purchases.new(_billing, _settings.remove_ads_product_id, has_remove_ads)
 	_purchases.entitlement_changed.connect(_on_entitlement_changed)
@@ -167,7 +162,7 @@ func banner_height_dp() -> int:
 ## say no, and when the ad has not opened within `fullscreen_timeout_ms` (one deadline for the
 ## load and the open); once it opened the call waits for the close.
 func maybe_show_interstitial(placement: StringName) -> bool:
-	if _busy:
+	if _runs.is_busy():
 		return false
 	_sync_fake()
 	if not AdCaps.may_show_interstitial(_settings, _ledger, placement, _can_request_ads):
@@ -213,7 +208,7 @@ func rewarded_ready(placement: StringName) -> bool:
 ## opened the call waits for the close. `on_reward` runs inside the callback, before `ad_closed`,
 ## so a grant can be saved before the close is handled (ADR 0039 section 7).
 func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> bool:
-	if _busy or not rewarded_ready(placement):
+	if _runs.is_busy() or not rewarded_ready(placement):
 		return false
 	var rewarded: bool = await _run_fullscreen(AdBackend.KIND_REWARDED, placement, on_reward)
 	_request_rewarded_load()
@@ -259,7 +254,7 @@ func _refresh_banner() -> void:
 func _set_can_request(allowed: bool) -> void:
 	_can_request_ads = allowed
 	if not allowed:
-		_drop_unopened_lates(&"")
+		_runs.cancel_unopened()
 	if allowed and not _initialised:
 		_initialised = true
 		_backend.initialize()
@@ -272,10 +267,10 @@ func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
 	if has_remove_ads_now == _ledger.remove_ads:
 		return
 	_ledger.remove_ads = has_remove_ads_now
-	# A late interstitial that has not opened yet is dropped from our books; AdMob cannot recall a
-	# show it started, so it may still appear once, paired. A late rewarded ad stays: rewards remain.
+	# An interstitial that has not opened yet is withdrawn; AdMob cannot recall a show it started,
+	# so it may still appear once, paired and counted. A rewarded ad stays: rewards remain.
 	if has_remove_ads_now:
-		_drop_unopened_lates(AdBackend.KIND_INTERSTITIAL)
+		_runs.cancel_unopened(AdBackend.KIND_INTERSTITIAL)
 	# The banner first, so a handler reads the fresh `banner_height_dp()`.
 	_refresh_banner()
 	entitlement_changed.emit(has_remove_ads_now)
@@ -297,56 +292,11 @@ func _preload_interstitial() -> void:
 		_backend.request_load(AdBackend.KIND_INTERSTITIAL)
 
 
-## Marks every late run that has not opened (of `kind`, or any kind for an empty one) as dropped.
-func _drop_unopened_lates(kind: StringName) -> void:
-	for late: FullscreenRun in _lates:
-		if not late.is_opened() and (kind.is_empty() or late.ad_kind() == kind):
-			late.drop()
-
-
 func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callable) -> bool:
-	# A new run of the same kind takes over the listening of an unopened late one, so one open
-	# is not announced twice; a late run of the other kind is dropped and keeps its pair.
-	for late: FullscreenRun in _lates.duplicate():
-		if late.is_opened():
-			continue
-		if late.ad_kind() == kind:
-			late.abandon()
-			_lates.erase(late)
-		else:
-			late.drop()
-	_busy = true
 	var run: FullscreenRun = FullscreenRun.new(
 		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
 	)
-	run.opened.connect(_on_run_opened)
-	run.closed.connect(_on_run_closed.bind(run))
-	_active = run
-	var result: bool = await run.execute()
-	_active = null
-	if run.is_late_pending():
-		_lates.append(run)
-	_refresh_busy()
-	return result
-
-
-## Busy while a run is awaited or a late ad is open.
-func _refresh_busy() -> void:
-	_busy = _active != null
-	for late: FullscreenRun in _lates:
-		_busy = _busy or late.is_opened()
-
-
-func _on_run_opened(placement: StringName) -> void:
-	_busy = true
-	ad_opened.emit(placement)
-
-
-func _on_run_closed(placement: StringName, run: FullscreenRun) -> void:
-	_lates.erase(run)
-	if run != _active:
-		_refresh_busy()
-	ad_closed.emit(placement)
+	return await _runs.start(run)
 
 
 func _restore_silently() -> void:

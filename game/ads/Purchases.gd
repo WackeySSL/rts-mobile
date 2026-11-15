@@ -67,19 +67,20 @@ func price_text() -> String:
 func purchase(now_ms: Callable, timeout_ms: int) -> bool:
 	if _is_owned():
 		return true
-	# The silent restore (start, every resume) is not a purchase in flight: wait for its answer,
-	# which may already say owned, then go on.
+	var deadline: int = int(now_ms.call()) + timeout_ms
+	# The silent restore (start, every resume) is not a purchase in flight: wait for its answer
+	# within the same deadline, which may already say owned, then go on.
 	if _restoring:
-		await _until(func() -> bool: return not _restoring, now_ms)
-		if _is_owned():
-			return true
+		if not await _until(func() -> bool: return not _restoring, now_ms, deadline):
+			return _is_owned()
+		if _is_owned() or int(now_ms.call()) >= deadline:
+			return _is_owned()
 	if _busy:
 		return false
 	_expire_stale_result(int(now_ms.call()), timeout_ms)
 	if _awaiting_result:
 		return false
 	_busy = true
-	var deadline: int = int(now_ms.call()) + timeout_ms
 	# The entitlement may have arrived while the product was loading: never launch then.
 	if await _await_product(now_ms, deadline) and not _is_owned():
 		_sheet_open = false

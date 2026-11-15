@@ -40,8 +40,9 @@ var cancels: Array[StringName] = []
 var banner_visible: bool = false
 
 var _states: Dictionary[StringName, LoadState] = {}
-var _showing: StringName = &""
-var _opened: bool = false
+## The shows asked for and not yet closed, per kind (AdMob holds one per ad object): kind to
+## whether it opened.
+var _shows: Dictionary[StringName, bool] = {}
 var _fullscreen_node: FakeAdPlaceholders = null
 var _banner_node: FakeAdPlaceholders = null
 
@@ -73,47 +74,33 @@ func show_ad(kind: StringName) -> void:
 	if show_fails:
 		show_failed.emit(kind)
 		return
-	_showing = kind
+	_shows[kind] = false
 	if not show_never_opens:
-		open_late()
+		open_late(kind)
 
 
-## Opens the pending show unless it was cancelled; then closes it per the script.
-func open_late() -> void:
-	if _showing == &"" or _opened:
-		return
-	_opened = true
-	opened.emit(_showing)
-	if show_never_closes:
-		return
-	if auto_close:
-		finish_show()
-	else:
-		_draw_fullscreen()
+## Opens the pending shows (those of `kind`, or all for an empty one) unless they were cancelled;
+## then closes them per the script.
+func open_late(kind: StringName = &"") -> void:
+	for pending: StringName in _shows.keys():
+		if (kind.is_empty() or pending == kind) and not _shows[pending]:
+			_open(pending)
 
 
 func cancel_show(kind: StringName) -> void:
 	cancels.append(kind)
 	if ignore_cancel:
 		return
-	if _showing == kind and not _opened:
-		_showing = &""
+	if _shows.has(kind) and not _shows[kind]:
+		_shows.erase(kind)
 
 
-## The Close press: the reward first when the script grants one, then `closed`.
-func finish_show() -> void:
-	if _showing == &"" or not _opened:
-		return
-	var kind: StringName = _showing
-	_showing = &""
-	_opened = false
-	_clear_fullscreen()
-	var earns: bool = kind == KIND_REWARDED and grant_reward
-	if earns and not reward_after_close:
-		reward_earned.emit(kind)
-	closed.emit(kind)
-	if earns and reward_after_close:
-		reward_earned.emit(kind)
+## The Close press: the reward first when the script grants one, then `closed`. Closes the open
+## ad of `kind`, or every open ad for an empty one.
+func finish_show(kind: StringName = &"") -> void:
+	for open_kind: StringName in _shows.keys():
+		if (kind.is_empty() or open_kind == kind) and _shows[open_kind]:
+			_close(open_kind)
 
 
 func show_banner() -> void:
@@ -136,9 +123,35 @@ func banner_height_dp() -> int:
 	return banner_height
 
 
-func _draw_fullscreen() -> void:
-	if _fullscreen_node == null and draw_placeholders and _host_ready():
-		_fullscreen_node = FakeAdPlaceholders.build_fullscreen(finish_show)
+func _open(kind: StringName) -> void:
+	_shows[kind] = true
+	opened.emit(kind)
+	if show_never_closes:
+		return
+	if auto_close:
+		_close(kind)
+	elif draw_placeholders and _host_ready():
+		_draw_fullscreen(kind)
+	else:
+		# Nothing to draw on (no host in the tree): close as scripted, so a run never waits forever.
+		_close(kind)
+
+
+func _close(kind: StringName) -> void:
+	_shows.erase(kind)
+	if _shows.values().all(func(opened_now: bool) -> bool: return not opened_now):
+		_clear_fullscreen()
+	var earns: bool = kind == KIND_REWARDED and grant_reward
+	if earns and not reward_after_close:
+		reward_earned.emit(kind)
+	closed.emit(kind)
+	if earns and reward_after_close:
+		reward_earned.emit(kind)
+
+
+func _draw_fullscreen(kind: StringName) -> void:
+	if _fullscreen_node == null:
+		_fullscreen_node = FakeAdPlaceholders.build_fullscreen(finish_show.bind(kind))
 		host.add_child(_fullscreen_node)
 
 
