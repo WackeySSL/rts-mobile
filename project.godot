@@ -20,6 +20,7 @@ config/icon="res://assets/art/svg/icon/app_icon.svg"
 DetRng="*res://game/core/det_rng_service.gd"
 CommandQueue="*res://game/core/command_queue_service.gd"
 UiOrientation="*res://game/ui/ui_orientation_service.gd"
+AdService="*res://game/ads/AdService.gd"
 
 [debug]
 
