@@ -1,14 +1,13 @@
 extends GdUnitTestSuite
 ## The anti-air buildings' data (plan row P239, ADR 0036 sections 2 and 5, docs/GDD.md): one 1x1
 ## BuildingDef per faction, a gun with mask 6 (high and low air, no ground) behind the Barracks.
-## The roster entry comes with P239b (art, item card): neither is buildable yet. `type_id` is the
-## art id (P239b draws it). The GDD gives the names, size, cost, power and requirement; the ADR
+## The roster entries and the art (P239b) make them buildable. `type_id` is the art id. The GDD gives the names, size, cost, power and requirement; the ADR
 ## gives the mask. Hit points, build time, sight, the weapon's range, damage, cooldown and armour
 ## percents are in neither: starting values for the balance run (the build time and hit points
 ## follow the Redoubt's scale, the guns differ by faction as the Redoubt and the Rail Battery do).
 ## The Burst Stack trades range for damage per tick (2.4 against 1.5); the building percent of
-## vs_armour is unused, as buildings are ground. P239b removes the skips in test_defs_roster,
-## test_defs_roster_renew and test_defs_factions_data and the is_false roster check below.
+## vs_armour is unused, as buildings are ground. P239b removed the roster skips in
+## test_defs_roster, test_defs_roster_renew and test_defs_factions_data.
 ## What the sim does with the mask is test_target_layers'.
 
 const FILES: Dictionary[String, Array] = {
@@ -41,9 +40,9 @@ func test_each_faction_has_one_anti_air_file_with_the_gdd_numbers() -> void:
 			[FILES[id][4], FILES[id][5], FILES[id][6]]
 		)
 		assert_int(def.acquire_range).is_equal(gun.range)
-		# Not in a roster yet: the roster entry comes with P239b (art, item card).
+		# In the roster since P239b (art, item card), last of the faction's list.
 		var faction: FactionDef = load("res://data/factions/%s.tres" % FILES[id][0])
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
+		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
 
 
 ## ADR 0036 section 5: the mask is high and low air, and never the ground.
@@ -61,12 +60,11 @@ func test_the_guns_hit_high_and_low_air_and_never_the_ground() -> void:
 			assert_int(gun.vs_armour[armour]).override_failure_message(id).is_greater(0)
 
 
-## The art id is the type id (WorldSort bakes by it) and the model, when P239b lands, is 1x1.
+## The art id is the type id (WorldSort bakes by it) and the model (P239b) is 1x1.
 func test_the_art_model_when_present_has_the_data_footprint() -> void:
 	for id: String in FILES:
 		var path: String = "res://assets/art/models/%s/%s.tres" % [FILES[id][0], id]
-		if not ResourceLoader.exists(path):
-			continue  # P239b's art row is not merged yet.
+		assert_bool(ResourceLoader.exists(path)).override_failure_message(path).is_true()
 		var model: ArtModel = load(path) as ArtModel
 		assert_str(String(model.art_id)).is_equal(id)
 		assert_int(model.footprint).is_equal(1)

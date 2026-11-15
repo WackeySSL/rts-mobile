@@ -93,6 +93,21 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 	return sheet
 
 
+## The bounds of what a frame draws: a polygon with an edge stroke reaches 1 px past its points, a
+## rod (no outline, P239b's barrels and needle) does not. The box adds its own clear px to these,
+## so a frame whose outermost ink is a rod hugs it as closely as one whose outermost ink is a face.
+static func _inked_bounds(polys: Array[ArtRender.Poly]) -> Rect2:
+	var box: Rect2 = Rect2()
+	var first: bool = true
+	for poly: ArtRender.Poly in polys:
+		var reach: float = 1.0 if poly.stroke != "" else 0.0
+		for point: Vector2 in poly.points:
+			var spot: Rect2 = Rect2(point - Vector2.ONE * reach, Vector2.ONE * 2.0 * reach)
+			box = spot if first else box.merge(spot)
+			first = false
+	return box
+
+
 ## The tight boxes of every directional frame but the shadows' (`IsoSheetDef.boxes`): the bounds of
 ## its polygons plus `ArtGen.MARGIN_PX`, in canvas px, kept inside the canvas. The 2 px edge stroke
 ## reaches 1 px past a vertex, so the box is the alpha bounds plus 1 clear px.
@@ -106,10 +121,10 @@ static func _boxes(shots: Dictionary[StringName, ArtGen.Shot]) -> PackedInt32Arr
 		for polys: Array in shot.polys:
 			var typed: Array[ArtRender.Poly] = []
 			typed.assign(polys)
-			var box: Rect2 = ArtRender.bounds(typed)
+			var box: Rect2 = _inked_bounds(typed)
 			var low: Vector2i = Vector2i(floori(box.position.x), floori(box.position.y))
 			var high: Vector2i = Vector2i(ceili(box.end.x), ceili(box.end.y))
-			var rect: Rect2i = Rect2i(low, high - low).grow(ArtGen.MARGIN_PX)
+			var rect: Rect2i = Rect2i(low, high - low).grow(ArtGen.MARGIN_PX - 1)
 			rect.position += shot.layout.origin
 			rect = rect.intersection(canvas)
 			found.append_array([rect.position.x, rect.position.y, rect.size.x, rect.size.y])

@@ -34,7 +34,7 @@ const SCENES: Array[Array] = [
 	["renew_defence", "renew_tank"],
 	["renew_hq", "renew_tank"],
 ]
-const ARMED: Array[String] = ["defence_turret", "renew_defence"]
+const ARMED: Array[String] = ["defence_turret", "renew_defence", "fossil_aa", "renew_aa"]
 ## The buildings with an `anim` part (P143).
 const ANIMATED: Array[String] = [
 	"fossil_space",
@@ -308,7 +308,7 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 		assert_str(button.text).is_equal(page.STAGE_NAMES[0])
 		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
 		page.get_node("Next").pressed.emit()
-	assert_int(staged).is_equal(18)  # Both factions' eight (P158a, P158b) and the space centres.
+	assert_int(staged).is_equal(20)  # Both factions' eight (P158a, P158b), the space centres and the anti-air.
 
 
 ## The body of a stage is trimmed at the integer ceil of the cut in texels, with the clip on, also

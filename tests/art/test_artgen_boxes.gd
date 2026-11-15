@@ -56,6 +56,20 @@ func test_boxes_of_a_synthetic_shot_are_the_bounds_plus_the_margin_in_canvas_px(
 	)
 
 
+func test_a_frame_whose_outermost_ink_is_a_rod_has_one_clear_px_not_two() -> void:
+	# A rod has no outline (P239b's barrels): nothing reaches past its points, so its margin is the
+	# 1 clear px alone, and an outlined face beside it keeps its stroke and the same margin.
+	var shot: ArtGen.Shot = _shot(2, 40, 30)
+	var rod: ArtRender.Poly = _poly(PackedVector2Array([Vector2(-10.3, -5.2), Vector2(10.6, 4.0)]))
+	rod.stroke = ""
+	shot.polys[0] = [rod]
+	var boxes: PackedInt32Array = ArtSheet._boxes({&"hull": shot})
+	# Bounds floor -11, -6 and ceil 11, 4; margin 1; origin (20, 15).
+	assert_array(Array(boxes).slice(0, 4)).is_equal([8, 8, 24, 12])
+	# The outlined frame is as before: the stroke's px and the clear px.
+	assert_array(Array(boxes).slice(4, 8)).is_equal([7, 7, 26, 14])
+
+
 func test_a_box_that_would_pass_the_canvas_is_clamped_to_it() -> void:
 	var shot: ArtGen.Shot = _shot(2, 30, 20)
 	shot.layout.origin = Vector2i(5, 5)
@@ -158,4 +172,5 @@ func _shot(dirs: int, width: int, height: int) -> ArtGen.Shot:
 func _poly(points: PackedVector2Array) -> ArtRender.Poly:
 	var poly: ArtRender.Poly = ArtRender.Poly.new()
 	poly.points = points
+	poly.stroke = "#000000"  # An outlined face: the stroke reaches 1 px past its points.
 	return poly
