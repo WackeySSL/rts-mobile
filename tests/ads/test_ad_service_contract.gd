@@ -28,8 +28,13 @@ const METHODS: Dictionary = {
 	"take_start_credits_bonus": [[], TYPE_INT],
 }
 ## Internal methods Phase 6's widgets may call (rewarded_ready, show_banner, ...): the exact
-## allowlist, empty until P403/P430 add theirs. Phase 5 never calls these.
-const WIDGET_METHODS: Array[String] = []
+## allowlist, P403's rewarded API and banner show and hide. Phase 5 never calls these.
+const WIDGET_METHODS: Array[String] = [
+	"rewarded_ready",
+	"show_rewarded",
+	"show_banner",
+	"hide_banner",
+]
 
 var _script: GDScript = load(SCRIPT_PATH) as GDScript
 
