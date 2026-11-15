@@ -197,7 +197,8 @@ static func build(reports: Array[Dictionary], names: Array[String], gate: bool) 
 
 
 ## The roster of each faction in `factions`: its unit types (the roster entries with an Infantry,
-## Vehicles or Flight tab), `{faction id: Array[String]}`. A faction with no readable file has an empty one.
+## Vehicles or Flight tab), `{faction id: Array[String]}`. A faction with no readable file has an
+## empty one.
 static func rosters_of(factions: Array[String]) -> Dictionary[String, Array]:
 	var rosters: Dictionary[String, Array] = {}
 	for faction: String in factions:
