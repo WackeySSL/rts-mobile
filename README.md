@@ -34,6 +34,12 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   Android SDK licences on behalf of AppCode ApS: pass it only with the owner's consent. Without the flag it
   installs nothing through sdkmanager, and stops with exit 5 when cmdline-tools, platform-tools, build-tools
   or the NDK is missing.
+- `bash scripts/export-android.sh --aab` builds the Play bundle (preset "Android internal", Gradle, package
+  `dk.appcode.rts`, the AdMob plugin enabled for that run only, Google's test App ID) into `build/android` and
+  checks it with `scripts/ci/check-aab.sh` (bundletool 1.18.3 pinned by SHA-256). CI runs it on pull requests
+  (`android-aab`, not required, a generated key, nothing uploaded). It needs the release keystore variables,
+  `bash scripts/ci/install-godot.sh --android-source` and the Android SDK; Google's Maven is blocked in cloud
+  sessions, so only CI runs it.
 - `bash scripts/export-android.sh --release` builds the perf APK of the gate into `build/android`: the release
   template with the dev menu (preset "Android perf"), signed with a key that CI generates for each run and
   checked for debuggability, the `dev_menu` feature and the release engine library. CI builds it after

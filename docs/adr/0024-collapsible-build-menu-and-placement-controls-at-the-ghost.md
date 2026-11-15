@@ -303,6 +303,14 @@ since, #253 and #254, as they were):
 - Scope: this is the project's first save file, ahead of Phase 5's, because Michael asked for the
   pin to be remembered between matches. It stays one key; no save format, no migration.
 
+Status note (2026-11-15, P500b; ADR 0042 accepted by Michael, 2026-11-15; the text above stays as
+accepted): Phase 5 takes `user://settings.cfg` over as this section foresaw. The device keeps one
+versioned save file, `user://save.cfg` (`SaveService`, ADR 0042 §1-§3); its first load moves every
+`[hud]` key of `settings.cfg` into section `hud` (migration v0) and deletes `settings.cfg` after
+the first good write. `HudPrefs` keeps its static API and its test hook and reads and writes through
+`SaveService` (plan row P510b), so `BuildSidebar` and the other callers do not change. "No save
+format, no migration" ends with that row: the file has a version, a checksum and migrations.
+
 ### 8. The slide
 - **Duration in data:** `menu_slide_ms` in `data/input_settings.tres` (`InputSettings`, beside the
   other HUD timings), 160 ms by default, eased out (cubic). 0 means no slide: the state's layout

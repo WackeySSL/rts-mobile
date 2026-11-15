@@ -1471,6 +1471,13 @@ Status note (2026-10-13, P26l docs, P55b as merged, #69), on "Sessions" and the 
 - **Not covered:** godotengine/godot #123712, a separate shutdown crash on 4.7.2 after an export
   with AdMob and gdUnit4 installed. The release-engineer watches for it when the AdMob plugin
   arrives.
+
+  Status note (2026-11-15, P400b; ADR 0040, accepted 2026-11-15): Phase 6's rows watch for it.
+  P410 vendors the AdMob plugin (v5.1.0) disabled, so its CI exports are the first with the plugin
+  in the tree but not loaded. P410b's `export-android.sh --aab` enables it for that run only, and
+  its log scan (ADR 0040 §4) watches for the crash in `ci.yml`'s `android-aab` job. P410b's
+  acceptance: not seen in 10 runs, or the finding reported with a fix row (a fix may need the
+  export to run without gdUnit4 in the tree).
 - **A checkout without the library.**
   - `build-native.sh` generates `native/sim_kernels.gdextension` (and git-ignores it and its
     `.uid`) instead of committing it.

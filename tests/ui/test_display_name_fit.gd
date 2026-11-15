@@ -44,6 +44,18 @@ func test_the_engineering_centres_are_in_the_checked_names() -> void:
 	assert_str(names.get("renew_engineering", "")).is_equal("Lens Works")
 
 
+## The ground carriers' and minelayers' names (P290) are in the checked set, as captions (no sash:
+## nothing requires them), and each is at most 10 characters (ADR 0037 section 14).
+func test_the_ground_support_units_are_in_the_checked_names() -> void:
+	var names: Dictionary[String, String] = DisplayNames.all()
+	assert_str(names.get("fossil_bunk_wagon", "")).is_equal("Bunk Wagon")
+	assert_str(names.get("renew_linecar", "")).is_equal("Linecar")
+	assert_str(names.get("fossil_shot_truck", "")).is_equal("Shot Truck")
+	assert_str(names.get("renew_seeder", "")).is_equal("Seeder")
+	for id: String in ["fossil_bunk_wagon", "renew_linecar", "fossil_shot_truck", "renew_seeder"]:
+		assert_int(names[id].length()).override_failure_message(id).is_less_equal(10)
+
+
 ## The names of `names` and `needed` that overrun at one profile, each as a line of the report.
 func _misfits(
 	profile_name: StringName,
