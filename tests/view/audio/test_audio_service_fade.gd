@@ -11,11 +11,6 @@ var _settings: AudioSettings
 
 
 func before_test() -> void:
-	# The real autoload would hook the fake AdService nodes below too and fade the shared Master
-	# bus under these tests; it stops looking for AdService here.
-	var autoload: Node = get_tree().root.get_node(^"AudioService")
-	if get_tree().node_added.is_connected(autoload._on_node_added):
-		get_tree().node_added.disconnect(autoload._on_node_added)
 	_settings = (load(SETTINGS_PATH) as AudioSettings).duplicate()
 	_settings.fade_ms = 0
 	_service = _make_service()
@@ -40,51 +35,72 @@ func _master_muted() -> bool:
 	return AudioServer.is_bus_mute(AudioServer.get_bus_index(&"Master"))
 
 
-func _fake_ad_service() -> Node:
+func _fake_ad_service(node_name: String) -> Node:
 	var ads: Node = Node.new()
-	ads.name = "AdService"
+	ads.name = node_name
 	ads.add_user_signal("ad_opened", [{"name": "placement", "type": TYPE_STRING_NAME}])
 	ads.add_user_signal("ad_closed", [{"name": "placement", "type": TYPE_STRING_NAME}])
 	return ads
 
 
-func test_ad_service_signals_drive_the_ad_reason() -> void:
-	# The service is already in the tree: AdService appears after it (any autoload order).
-	var ads: Node = _fake_ad_service()
-	get_tree().root.add_child(ads)
+## A service that looks for a root child of a test-only name, so a real /root/AdService (Phase 6)
+## is neither hooked nor disturbed.
+func _make_service_for(node_name: StringName) -> Node:
+	var service: Node = _make_service()
+	service.set("ad_service_name", node_name)
+	return service
+
+
+func test_connect_ad_service_hook_drives_the_ad_reason() -> void:
+	var ads: Node = _fake_ad_service("FakeAds")
+	add_child(ads)
+	_service.call(&"connect_ad_service", ads)
+	_service.call(&"connect_ad_service", ads)
+	assert_int(ads.get_signal_connection_list("ad_opened").size()).is_equal(1)
 	ads.emit_signal("ad_opened", &"post_match")
 	assert_bool(_service.call(&"has_mute_reason", &"ad")).is_true()
 	assert_bool(_master_muted()).is_true()
 	ads.emit_signal("ad_closed", &"post_match")
 	assert_bool(_service.call(&"is_muted")).is_false()
 	assert_bool(_master_muted()).is_false()
+	ads.emit_signal("ad_opened", &"menu")
+	_service.call(&"disconnect_ad_service", ads)
+	assert_bool(_service.call(&"is_muted")).is_false()
+	ads.emit_signal("ad_opened", &"menu")
+	assert_bool(_service.call(&"is_muted")).is_false()
+
+
+func test_ad_service_added_after_the_service_is_hooked_lazily() -> void:
+	var service: Node = _make_service_for(&"FakeAdsLazy")
+	add_child(service)
+	var ads: Node = _fake_ad_service("FakeAdsLazy")
+	get_tree().root.add_child(ads)
+	ads.emit_signal("ad_opened", &"menu")
+	assert_bool(service.call(&"has_mute_reason", &"ad")).is_true()
+	ads.emit_signal("ad_closed", &"menu")
+	assert_bool(service.call(&"is_muted")).is_false()
+	service.free()
 	ads.free()
 
 
 func test_ad_service_already_in_the_tree_is_hooked_at_ready() -> void:
-	var ads: Node = _fake_ad_service()
+	var ads: Node = _fake_ad_service("FakeAdsReady")
 	get_tree().root.add_child(ads)
-	var other: Node = _make_service()
-	add_child(other)
+	var service: Node = _make_service_for(&"FakeAdsReady")
+	add_child(service)
 	ads.emit_signal("ad_opened", &"menu")
-	assert_bool(other.call(&"has_mute_reason", &"ad")).is_true()
+	assert_bool(service.call(&"has_mute_reason", &"ad")).is_true()
 	ads.emit_signal("ad_closed", &"menu")
-	assert_bool(other.call(&"is_muted")).is_false()
-	other.free()
-	ads.free()
-
-
-func test_ad_service_is_hooked_once() -> void:
-	var ads: Node = _fake_ad_service()
-	get_tree().root.add_child(ads)
-	# Another node named like it elsewhere does not matter; the signal is connected once.
-	assert_int(ads.get_signal_connection_list("ad_opened").size()).is_equal(1)
+	assert_bool(service.call(&"is_muted")).is_false()
+	service.free()
 	ads.free()
 
 
 func test_no_ad_service_is_fine() -> void:
-	assert_bool(get_tree().root.has_node(^"AdService")).is_false()
-	assert_bool(_service.call(&"is_muted")).is_false()
+	var service: Node = _make_service_for(&"FakeAdsNever")
+	add_child(service)
+	assert_bool(service.call(&"is_muted")).is_false()
+	service.free()
 
 
 func test_background_mutes_at_once_in_the_middle_of_a_fade() -> void:

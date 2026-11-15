@@ -17,6 +17,10 @@ const REASON_AD: StringName = &"ad"
 const REASON_RESTORING: StringName = &"restoring"
 
 var settings: AudioSettings
+## The root child whose `ad_opened` and `ad_closed` signals mute the sound (Phase 6's autoload).
+## Set it before the service enters the tree; tests use another name, so a real AdService is
+## left alone.
+var ad_service_name: StringName = &"AdService"
 
 var _pool: VoicePool
 var _steps: Dictionary[StringName, int] = {}
@@ -37,9 +41,9 @@ func _ready() -> void:
 	set_step(BUS_UI, settings.default_ui_step)
 	# AdService is Phase 6's autoload; hook it now if it is already in the tree, else when it
 	# appears, so the autoload order does not matter.
-	var ads: Node = get_node_or_null(^"/root/AdService")
+	var ads: Node = get_tree().root.get_node_or_null(NodePath(ad_service_name))
 	if ads != null:
-		_hook_ads(ads)
+		connect_ad_service(ads)
 	else:
 		get_tree().node_added.connect(_on_node_added)
 
@@ -144,17 +148,27 @@ func begin_tick() -> void:
 	_pool.begin_tick()
 
 
-func _hook_ads(ads: Node) -> void:
+## Mutes while `ads` reports an ad open (`ad_opened(placement)`, `ad_closed(placement)`).
+## Idempotent.
+func connect_ad_service(ads: Node) -> void:
 	if ads.has_signal(&"ad_opened") and not ads.is_connected(&"ad_opened", _on_ad_opened):
 		ads.connect(&"ad_opened", _on_ad_opened)
 	if ads.has_signal(&"ad_closed") and not ads.is_connected(&"ad_closed", _on_ad_closed):
 		ads.connect(&"ad_closed", _on_ad_closed)
 
 
+func disconnect_ad_service(ads: Node) -> void:
+	if ads.has_signal(&"ad_opened") and ads.is_connected(&"ad_opened", _on_ad_opened):
+		ads.disconnect(&"ad_opened", _on_ad_opened)
+	if ads.has_signal(&"ad_closed") and ads.is_connected(&"ad_closed", _on_ad_closed):
+		ads.disconnect(&"ad_closed", _on_ad_closed)
+	clear_mute_reason(REASON_AD)
+
+
 func _on_node_added(node: Node) -> void:
-	if node.name == &"AdService" and node.get_parent() == get_tree().root:
+	if node.name == ad_service_name and node.get_parent() == get_tree().root:
 		get_tree().node_added.disconnect(_on_node_added)
-		_hook_ads(node)
+		connect_ad_service(node)
 
 
 ## `ad_opened` and `ad_closed` carry the placement; the mute does not need it.
