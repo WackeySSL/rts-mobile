@@ -58,6 +58,19 @@ func test_a_step_of_under_half_a_step_is_no_walk_and_half_a_step_is() -> void:
 
 
 func test_the_offset_goes_with_the_region_in_both_directions_for_both_factions() -> void:
+	_offsets_follow_the_poses()
+
+
+## The same in an atlas baked at 0.875 (P306): the crop rounds out, and every pose still draws the
+## box its untrimmed frame drew.
+func test_the_poses_draw_their_untrimmed_boxes_below_full_scale() -> void:
+	_bake = 0.875
+	_restart(LifeSettings.new())
+	assert_float(_layer.world_sort.atlas.bake_scale()).is_equal(0.875)
+	_offsets_follow_the_poses()
+
+
+func _offsets_follow_the_poses() -> void:
 	_layer.reveal_enemies = true  # The Lumen Accord squad is far off, in the fog.
 	var base: int = 0
 	for id: int in [RIFLE, ENEMY]:
@@ -70,21 +83,21 @@ func test_the_offset_goes_with_the_region_in_both_directions_for_both_factions()
 		assert_vector(Vector2(sheet.origin(&"idle"))).is_not_equal(Vector2(sheet.origin(&"hull")))
 		_walk(row, 2, speed, 0, base)
 		assert_int(_shown(row).x).is_equal(RigLife.POSE_WALK)
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk"))
+		_assert_pose(row, &"walk")
 		_still(row, FIRST_TICK + base + 2, 0.0)  # It stands, and idles in its first window.
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"hull"))
+		_assert_pose(row, &"hull")
 		var window: int = _first_window(id)
 		_at_ms(float(window) + 100.5)
 		assert_int(_shown(row).x).is_equal(RigLife.POSE_IDLE)
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"idle"))
+		_assert_pose(row, &"idle")
 		_at_ms(float(window) + 700.5)  # Past the window of 600 ms: the hull again.
 		assert_vector(_shown(row)).is_equal(Vector2i(RigLife.POSE_HULL, 0))
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"hull"))
+		_assert_pose(row, &"hull")
 		base += 600
 		_walk(row, 2, speed, 0, base)
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk"))
+		_assert_pose(row, &"walk")
 		_still(row, FIRST_TICK + base + 2, 0.0)
-		assert_vector(_hull(row).offset).is_equal(_offset(row, &"hull"))
+		_assert_pose(row, &"hull")
 		base += 600
 
 
@@ -210,7 +223,7 @@ func test_the_walk_keeps_its_frame_and_pose_when_the_squad_turns() -> void:
 	assert_int(pose.shown).is_equal(RigLife.POSE_WALK)
 	assert_vector(_shown(row, UnitLayer.D_EAST)).is_equal(Vector2i(-1, -1))  # Not facing east now.
 	assert_vector(_shown(row, 10)).is_equal(Vector2i(RigLife.POSE_WALK, pose.frame))
-	assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk"))
+	assert_vector(_hull(row).offset).is_equal(_offset(row, &"walk", 10))
 
 
 func test_a_new_match_dresses_a_pooled_squad_rig_in_its_hull() -> void:

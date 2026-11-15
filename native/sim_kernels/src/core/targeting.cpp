@@ -17,6 +17,7 @@ constexpr int64_t DIRECT = 1; // Targeting.DIRECT (World.NavMode.DIRECT)
 constexpr int64_t HOLD = 3; // Targeting.HOLD (World.NavMode.HOLD)
 constexpr int64_t CHASE = 4; // Targeting.CHASE (World.NavMode.CHASE)
 constexpr int64_t ARMOUR_CLASSES = 4; // World.Armour.size()
+constexpr int64_t HOLD_STANCE = 1; // Targeting.HOLD_STANCE (Command.STANCE payload 1)
 constexpr int64_t TILE = 1000; // Targeting.TILE (World.MILLI_PER_TILE): the side of a fog cell
 
 // GDScript's clampi: the lower bound is tested first, as in Godot's CLAMP.
@@ -73,9 +74,9 @@ private:
 	bool seen(int64_t veil, int64_t x, int64_t y) const;
 };
 
-// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode. Only the engagement pass calls
-// it: when a mode changes, and on the ATTACK re-test, which resets a DIRECT row to DIRECT, so (as in the twin) the call has no
-// `mode != new_mode` guard of its own.
+// Movement.reset_row: the navigation state combat gives a unit when it changes the unit's mode. The engagement pass calls it
+// (when a mode changes, and on the ATTACK re-test, which resets a DIRECT row to DIRECT) and so does the held ATTACK fallback of
+// acquisition, so (as in the twin) the call has no `mode != new_mode` guard of its own.
 void Pass::reset_row(int64_t row, int64_t mode) {
 	rows_.nav_mode.set(row, mode);
 	rows_.nav_cell.set(row, -1);
@@ -110,6 +111,7 @@ int64_t Pass::acquire() {
 	ArrayView<int32_t> orders = rows_.order;
 	ArrayView<int32_t> order_targets = rows_.order_target;
 	ArrayView<int32_t> targets = rows_.target;
+	const ArrayView<const int32_t> stances = rows_.stance;
 	const ArrayView<const int32_t> type_speed = types_.speed;
 	const ArrayView<const int32_t> type_armour = types_.armour;
 	const ArrayView<const int32_t> type_acquire = types_.acquire;
@@ -151,10 +153,19 @@ int64_t Pass::acquire() {
 					continue;
 				}
 			}
-			orders.set(row, ATTACK_MOVE);
 			order_targets.set(row, 0);
 			targets.set(row, 0);
-			order = ATTACK_MOVE;
+			if (stances.get(row) == HOLD_STANCE) {
+				// Hold position (ADR 0037 section 15): a held ATTACK whose target is gone stops where it stands.
+				orders.set(row, IDLE);
+				order = IDLE;
+				goal_x.set(row, pos_x.get(row));
+				goal_y.set(row, pos_y.get(row));
+				reset_row(row, NONE);
+			} else {
+				orders.set(row, ATTACK_MOVE);
+				order = ATTACK_MOVE;
+			}
 		}
 		if (order != ATTACK_MOVE && order != IDLE) {
 			targets.set(row, 0);
@@ -168,7 +179,8 @@ int64_t Pass::acquire() {
 		if (weapon < 0 || weapon >= weapons) {
 			continue;
 		}
-		const int64_t reach = order == ATTACK_MOVE ? type_acquire.get(type) : weapon_range.get(weapon);
+		// An idle row, or a held one (stance 1), acquires at weapon range only.
+		const int64_t reach = order == ATTACK_MOVE && stances.get(row) != HOLD_STANCE ? type_acquire.get(type) : weapon_range.get(weapon);
 		const int64_t reach2 = reach * reach;
 		const int64_t min2 = weapon_min_range.get(weapon) * weapon_min_range.get(weapon);
 		const int64_t vs_base = weapon * ARMOUR_CLASSES;
@@ -254,6 +266,7 @@ int64_t Pass::engage() {
 	const ArrayView<const int32_t> pos_y = rows_.pos_y;
 	const ArrayView<int32_t> goal_x = rows_.goal_x;
 	const ArrayView<int32_t> goal_y = rows_.goal_y;
+	const ArrayView<const int32_t> stances = rows_.stance;
 	const ArrayView<const int32_t> type_acquire = types_.acquire;
 	const ArrayView<const int32_t> type_weapon = types_.weapon;
 	const ArrayView<const int32_t> weapon_range = weapons_.range;
@@ -313,6 +326,12 @@ int64_t Pass::engage() {
 				}
 			}
 			continue;
+		}
+		if (stances.get(row) == HOLD_STANCE) {
+			if (mode == CHASE) {
+				reset_row(row, DIRECT); // Held while chasing: back to the path.
+			}
+			continue; // Hold position never chases: it walks on along its path.
 		}
 		bool clear = false;
 		const int64_t acquire_range = type_acquire.get(type);

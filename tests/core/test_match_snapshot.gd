@@ -110,6 +110,8 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 				&"construction_sites_max",
 				&"sell_refund_percent",
 				&"pass_count",
+				&"mine_count",
+				&"mine_known_cap",
 			]
 		)
 	)

@@ -408,7 +408,6 @@ of which about 120 are C++.
   path takes the squads still aboard (no free cell, or `insert_row` refused) as lost. An unload
   passes 100. An eject writes its `UNLOADED` records in REMOVE, before that tick's DIED records.
   The data checks add "carry_eject_percent on an aircraft" to `mine_rules.gd`. No deviation.
-
 ### 8. Mines (Michael's item 4)
 - **Laying.** `LAY_MINE` (8): unit ids = own rows with `type_mine_weapon >= 0`; a target point.
   - `Formation.assign` gives each layer a slot round the point; each gets the MOVE reset with
@@ -508,6 +507,44 @@ of which about 120 are C++.
   - fairness: every target comes from own mines, records, ghosts or seen rows.
 - **Size.** Defs ~100, tables ~150, laying and blast ~300, memory and sweep ~250, view ~220, aim
   ~150, AI ~250 (§7's rides are a separate AI row of ~150).
+- **Note (2026-11-14, P287, as built; it changes one accepted text, step 2's "dealt = taken = 100"):**
+  - The mark is `Mines.GONE` (-1) written into `mine_armed_tick`, not a scratch byte array.
+    `Mines.run`, `clear_radius` (from `Strike._land`) and `clear_footprint` (from `Buildings.add`)
+    each compact it away in the same call, so no mark reaches the hash, the snapshot or a kernel.
+  - The blast is `Strike._land`'s since P246: `Combat.damage(damage, percent, 100, taken of the
+    row)`. Neutral rows neither trigger nor take damage; a row at 0 hp does not trigger.
+  - `MINE_CHECKS` (11) counts the rows the mark pass looks up: the eligible rows (living, mobile,
+    ground, non-neutral, not mine-aware) while a mine is armed, 0 otherwise. P288 adds only its
+    detector x mine tests, so the bound stays rows + detectors x mines. `MINES_REFUSED` is 12, so
+    `STAT_COUNT` is 13.
+  - A lay on any mine's cell is refused, an unknown enemy mine's too (P296's fairness world must
+    keep its layers off such a cell). `apply_lay` drops a command at `mine_cap` 0 and for a type
+    that is not a ground layer. `lay` has no hp guard: a dead row has left in REMOVE.
+  - `Carry.apply_load` also zeroes its squads' `carry_mode` (the order-giving rule above).
+  - The twin-and-kernel case runs the lay and blast under both implementations in
+    `test_mines_run.gd`. No golden moves.
+
+- **Note (2026-11-14, P288, as built; it changes two accepted texts: §8's "AI reads `own_mines()` and
+  `known_mines()`" methods are six copied fields, and the snapshot is not filtered).**
+  - `MineMemory.run` (MEMORY, after `LastSeen.run`): one pass over the rows lists the player's living
+    detectors in the scratch column `push_x` (none: stop), then the mines ascending that pass the
+    cheap tests (another player's, cell visible, no record) test only those. The cost is rows +
+    detectors x mines, and `MINE_CHECKS` counts the detector x mine tests (no new stat), which is
+    §8's Bound bullet as written.
+  - `MineMemory.drop_seen`, called by `Mines._compact` for each mine that leaves (blast, sweep,
+    rupture, building), drops its record from every player block that sees the cell in the fog as it
+    stands (`LastSeen.forget_dead`'s rule), so a mine watched blowing up is not remembered.
+  - Sweeping is in `Mines.lay`'s row loop (`carry_mode` `Mines.SWEEPING` 3, GDScript only). At the
+    stamp the mine on the row's cell goes only if it is another player's and the row's player has a
+    record of it, so a push onto another cell or a new mine on the cell sweeps nothing unfound. A
+    STOP does not cancel a sweep: the idle row starts it over.
+  - `PlayerView` gains six copied fields (`own_mines`, `own_mine_id`, `own_mine_armed`,
+    `known_mines`, `known_mine_id`, `known_mine_owner`) and no method.
+  - The snapshot stays player-agnostic (ADR 0012): it copies the mine table's id, owner, cell and
+    armed columns, the four record columns, `mine_count` and `mine_known_cap`. Its one filtering
+    reader is `MatchSnapshot.mines_for(player)` (own cells and armed ticks, the player's record
+    cells and owners); a test pins that `game/view`, `game/ui` and `game/input` name no raw mine
+    column. P293's acceptance reads "an unknown enemy mine is in no list `mines_for` gives".
 
 ### 9. Touch: how the new gestures fit (touch-ui-rules; ADR 0015)
 | Feature | Gesture | Fits the existing set because |
@@ -698,6 +735,18 @@ With every stance 0 the kernel's results are today's, so P298 moves no golden.
 
 Patrol and veterancy change hashed state; whichever update takes one takes its `STATE_FORMAT` bump
 then.
+
+- Note (2026-11-14, P298, as built; changes no accepted text above): `STANCE` 9 sets `stance` on own
+  rows with speed above 0 (other ids are skipped; a payload other than `[0]` or `[1]`, or no valid
+  row, drops the command and counts it; no `_playing` gate, as MOVE and STOP). No other Command
+  touches it. A squad that boards and unloads comes back at 0 (the passenger table holds no
+  stance); a held carrier keeps its own. A held row's `ATTACK` goes IDLE (goal = its position,
+  navigation `NONE`) on every lock break (the target is gone, unseen or on a layer its weapon cannot
+  hit), and then scans at weapon range in the same pass. On `ATTACK_MOVE` its reach is its weapon
+  range, and a row already in `CHASE` when held goes back to `DIRECT` on its next line-check turn.
+  `stance` is in TARGETING's checked list (44 names, 110 in the table) and a required record of the
+  format-7 sanitizer dumps. `PlayerView` gives it as the copied field `own_stance` (one entry per
+  `own_rows`), not as `row_stance` (P26bq, P26bt, ADR 0038 section 4). No golden moved.
 
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while

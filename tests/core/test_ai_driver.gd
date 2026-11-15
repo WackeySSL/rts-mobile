@@ -137,6 +137,79 @@ func test_think_all_returns_the_number_of_controllers_that_thought() -> void:
 	assert_int(AiDriver.think_all(world, controllers, out)).is_equal(0)
 
 
+## lagged_tick (ADR 0038 section 1): the Commands of the thinks of tick T are kept, and the call of
+## tick T+1 appends them after the human's, then lets the controllers due at T+1 think on the view
+## of T+1. Nothing is lost, doubled or reordered: the order is the human's, the batch's in think
+## order.
+func test_lagged_tick_applies_the_batch_of_the_tick_before_after_the_humans_commands() -> void:
+	var world: World = Rig.start()
+	var controllers: Array[AiController] = [_recorder("b", 2, 15, 0), _recorder("a", 1, 15, 0)]
+	var batch: AiBatch = AiBatch.new()
+	var out: Array[Command] = []
+	world.tick = 30
+	assert_int(AiDriver.lagged_tick(world, controllers, out, batch)).is_equal(2)
+	assert_array(out).is_empty()
+	assert_bool(batch.pending).is_true()
+	assert_array(batch.commands.map(func(c: Command) -> int: return c.player_id)).is_equal([1, 2])
+	world.tick = 31
+	var human: Command = Command.move(1, PackedInt32Array([2]), 10500, 4500)
+	out.append(human)
+	assert_int(AiDriver.lagged_tick(world, controllers, out, batch)).is_equal(0)
+	var senders: Array[int] = []
+	for command: Command in out:
+		senders.append(command.player_id)
+	assert_array(senders).is_equal([1, 1, 2])
+	assert_bool(is_same(out[0], human)).is_true()
+	assert_bool(batch.pending).is_false()
+	assert_array(batch.commands).is_empty()
+	# The views were of tick 30, the one tick the controllers were due.
+	assert_array(_journal.map(func(record: Array) -> int: return record[TICK])).is_equal([30, 30])
+	# A tick with nothing pending and nobody due collects nothing.
+	world.tick = 32
+	out.clear()
+	AiDriver.lagged_tick(world, controllers, out, batch)
+	assert_array(out).is_empty()
+
+
+## A batch collected after the end of the match is dropped unsent, and nothing thinks.
+func test_lagged_tick_drops_a_batch_collected_after_the_end() -> void:
+	var world: World = Rig.start()
+	var controllers: Array[AiController] = [_recorder("a", 1, 15, 0)]
+	var batch: AiBatch = AiBatch.new()
+	var out: Array[Command] = []
+	world.tick = 30
+	AiDriver.lagged_tick(world, controllers, out, batch)
+	assert_bool(batch.pending).is_true()
+	world.tick = 31
+	world.match_end_tick = 30
+	world.winner = 1
+	assert_int(AiDriver.lagged_tick(world, controllers, out, batch)).is_equal(0)
+	assert_array(out).is_empty()
+	assert_bool(batch.pending).is_false()
+	assert_array(batch.commands).is_empty()
+	assert_int(_journal.size()).is_equal(1)
+
+
+## clear() drops a pending batch, with its time, and collect() reports the time of the batch it
+## took (0 when it took none).
+func test_the_batch_clears_and_reports_the_time_of_the_batch_it_collected() -> void:
+	var batch: AiBatch = AiBatch.new()
+	var out: Array[Command] = []
+	batch.commands.append(Command.stop(1, PackedInt32Array()))
+	batch.pending = true
+	batch.usec = 40
+	assert_int(batch.collect(out, false)).is_equal(1)
+	assert_array([batch.collected_usec, batch.usec, batch.pending]).is_equal([40, 0, false])
+	assert_int(batch.collect(out, false)).is_equal(0)
+	assert_int(batch.collected_usec).is_equal(0)
+	batch.commands.append(Command.stop(1, PackedInt32Array()))
+	batch.pending = true
+	batch.clear()
+	assert_array([batch.commands.size(), batch.pending]).is_equal([0, false])
+	assert_int(batch.collect(out, false)).is_equal(0)
+	assert_int(out.size()).is_equal(1)
+
+
 ## A recording controller of `player` with `label`, `period` and `offset`, on the case's journal.
 func _recorder(label: String, player: int, period: int, offset: int) -> AiController:
 	var controller: AiController = RecordingAi.new()

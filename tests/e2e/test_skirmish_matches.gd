@@ -27,8 +27,9 @@ const PLAYER_TYPES: Array[int] = [
 	Command.Type.SUPERWEAPON,
 ]
 const DUMMY_TYPES: Array[int] = [Command.Type.QUEUE, Command.Type.PLACE, Command.Type.ATTACK_MOVE]
-## The dummy thinks on `tick % 15 == 7` as player 2 (ADR 0020 section 2).
-const DUMMY_TICK: int = 7
+## The dummy thinks on `tick % 15 == 7` as player 2 (ADR 0020 section 2), and its Commands land
+## one tick later, at 8 (ADR 0038 section 1, exception 26).
+const DUMMY_TICK: int = 8
 
 
 func before() -> void:

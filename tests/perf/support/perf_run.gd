@@ -71,6 +71,24 @@ func bound_lines(alive_pin: int, proj_pin: int) -> Array[String]:
 	return lines
 
 
+## The air arena's version of bound_lines (plan P253): its own measured counter bounds, and a unit
+## count that leaves out the `buildings` that stand beside the 150 mobile rows. The memory growth is
+## judged as there. Empty when the run is inside them.
+func air_bound_lines(alive_pin: int, proj_pin: int, buildings: int) -> Array[String]:
+	var bounds: Dictionary[int, int] = PerfBounds.air_cost_bounds(flow_budget, sep_scan, units)
+	var lines: Array[String] = PerfBounds.cost_violations(stats_max, bounds)
+	for stat: int in bounds:
+		if stats_max[stat] <= 0:
+			lines.append("%s reads 0" % PerfReport.stat_names()[stat])
+	lines.append_array(
+		PerfBounds.load_violations(
+			units - buildings, overflow, alive_end, proj_peak, alive_pin, proj_pin
+		)
+	)
+	lines.append_array(PerfBounds.memory_violations(memory_first, memory_last, OS.is_debug_build()))
+	return lines
+
+
 ## The base arena's version of bound_lines (plan P93): the Phase 3 counters above their bounds, or
 ## reading 0 (a counter that never moves is not live). The arena has no unit count, projectile pin
 ## or memory bound of the perf arena's kind. Empty when the run is inside them.

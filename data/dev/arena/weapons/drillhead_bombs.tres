@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Starting values for the Phase 4b balance run (the GDD gives the range only).
+; Frozen copy of data/weapons/drillhead_bombs.tres as of 2026-11-14 (main d21b3abc, P242). Never retuned: a tuning change to the shipped file must not move perf_air's golden hash (ADR 0031).
+[resource]
+script = ExtResource("1_weapon")
+id = &"drillhead_bombs"
+range = 3000
+damage = 120
+cooldown_ticks = 15
+projectile_speed = 0
+vs_armour = PackedInt32Array(60, 100, 100, 150)
+targets = 1

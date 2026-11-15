@@ -142,7 +142,7 @@ func test_the_build_menu_shows_only_the_players_own_side_in_each_route() -> void
 		sidebar.refresh()
 		var snap: MatchSnapshot = runner.snapshot
 		var shown: int = 0
-		for tab: int in BuildSidebar.TAB_NAMES.size():  # The drawer lists three tabs (P232).
+		for tab: int in World.Tab.FLIGHT:  # The tabs every roster fills; Flight waits for P245.
 			sidebar.select_tab(tab)
 			var grid: GridContainer = sidebar.find_children("*", "GridContainer", true, false)[0]
 			for tile: Node in grid.get_children():

@@ -207,8 +207,12 @@ func _on_ticked(_tick: int) -> void:
 	var ids: PackedInt32Array = snap.unit_id
 	for row: int in ids.size():
 		var type: int = types[row]
-		if speeds[type] <= 0 or armours[type] == World.Armour.INFANTRY:
-			continue  # A building or a squad.
+		if (
+			speeds[type] <= 0
+			or armours[type] == World.Armour.INFANTRY
+			or WorldSort.is_flyer(snap, type)
+		):
+			continue  # A building, a squad or a flyer (no dust in the air).
 		var dx: int = cur_x[row] - prev_x[row]
 		var dy: int = cur_y[row] - prev_y[row]
 		var moved: int = dx * dx + dy * dy

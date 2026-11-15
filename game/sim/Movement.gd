@@ -63,8 +63,9 @@ static func reset_nav(world: World, rows: PackedInt32Array, mode: int) -> void:
 
 
 ## The navigation state combat gives unit `row` when it changes the unit's mode (P41b,
-## `Targeting._engage`): `mode` (`HOLD` at weapon range, `CHASE` on a clear line to the target,
-## `DIRECT` when the unit resumes the path of its order, `NONE` for an idle unit), a line to the
+## `Targeting._engage`; P298: also the held ATTACK fallback of `Targeting.run`): `mode` (`HOLD` at
+## weapon range, `CHASE` on a clear line to the target, `DIRECT` when the unit resumes the path of
+## its order, `NONE` for an idle unit), a line to the
 ## goal that is not checked yet (`nav_cell` -1), no field (nothing releases a slot by hand: the
 ## cache recounts its references from the `field` column), no next tile and a fresh stall count:
 ## what `reset_nav` gives a new order, for one row. `order`, `goal` and `group_cell` stay, so a

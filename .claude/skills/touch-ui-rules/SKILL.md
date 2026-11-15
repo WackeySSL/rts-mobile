@@ -205,9 +205,11 @@ plan's "Interim places" say where each part stands meanwhile.
   behind all but pause, which pauses the match. A match starts with nothing unfolded.
 - The drawer: landscape a side panel from the right (40 % of the width, 312 to 420 dp), portrait a
   bottom sheet of half the height; the economy pill stays in its corner (Michael, 2026-11-05); the
-  tabs with names (Structures, Infantry, Vehicles) with the close chevron at the row's end, and the
-  swipe; the card grid (cards at least 88 x 96 dp, as many columns as fit (two or more on every
-  supported screen), stretched so a full row ends at the right edge; it scrolls on short screens).
+  tabs with names (Structures, Infantry, Vehicles, Flight) with the close chevron at the row's end,
+  and the swipe; tabs show their names whenever the measured row fits them; when it does not, the
+  open tab keeps its name and the others show their icon only (Michael, 2026-11-14); the card grid
+  (cards at least 88 x 96 dp, as many columns as fit (two or more on every supported screen),
+  stretched so a full row ends at the right edge; it scrolls on short screens).
   No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on
   BUILD and on a producer's selection (its tab); never on its own after a placement (Michael,
   2026-11-05).

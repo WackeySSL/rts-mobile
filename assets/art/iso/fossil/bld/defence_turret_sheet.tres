@@ -21,3 +21,4 @@ icon = "res://assets/art/iso/icons/item_defence_turret.svg"
 emitters = PackedStringArray("damage", "dmg_spark")
 emitter_points = PackedVector2Array(0, -21.3, 0, -56.7)
 cuts = PackedInt32Array(0, 121)
+boxes = PackedInt32Array(42, 0, 52, 64, 40, 2, 62, 63, 42, 8, 79, 56, 40, 13, 93, 52, 42, 14, 94, 50, 40, 12, 93, 53, 42, 10, 79, 63, 40, 10, 62, 70, 42, 11, 52, 71, 34, 10, 62, 70, 15, 10, 79, 63, 3, 12, 93, 53, 0, 14, 94, 50, 3, 13, 93, 52, 15, 8, 79, 56, 34, 2, 62, 63)

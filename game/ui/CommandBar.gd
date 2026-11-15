@@ -6,8 +6,10 @@ extends Control
 ## building's name, its health; then a "+N" chip for the types left out; an enemy building's chip
 ## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
 ## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
-## one own complete building (Mend, Sell). Orders that do not fit scroll sideways inside the bar, a
-## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
+## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
+## airfield and sends one REPAIR to each airfield the aircraft are homed at
+## (`PlayerController.home`). Orders that do not fit scroll sideways inside the bar, a button never
+## shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
 ## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
 ## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
@@ -50,10 +52,12 @@ const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
-## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"building",
-## &"squads" (Board) or &"carrier" (Unload).
+## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
+## with an aircraft that has an airfield to go to), &"building", &"squads" (Board) or &"carrier"
+## (Unload).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
+	{"id": &"home", "glyph": "home", "label": "HOME", "for": &"air"},
 	{"id": &"board", "glyph": "board", "label": "BOARD", "for": &"squads"},
 	{"id": &"unload", "glyph": "unload", "label": "UNLOAD", "for": &"carrier"},
 	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
@@ -105,6 +109,8 @@ var _down_ms: int = 0  ## When the finger last went down on Sell.
 var _sell_down_now: bool = false  ## A finger is down on Sell: its arm does not lapse under it.
 var _card_id: int = -1  ## The building the question card asked about, -1 for none.
 var _portrait: bool = false  ## The window's orientation at the last resize.
+var _air: bool = false  ## A selected aircraft has an own airfield to go to: Home shows.
+var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
 ## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
@@ -339,6 +345,8 @@ func _order(id: StringName) -> void:
 	match id:
 		&"stop":
 			controller.stop()
+		&"home":
+			controller.home()
 		&"board":
 			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.BOARD):
 				_on_carry_changed()  # A refused start must not leave the toggle lit.
@@ -538,6 +546,10 @@ func _fill(ids: PackedInt32Array) -> void:
 				group.fogged = true
 	var local: int = _local()
 	var row: int = BuildingOrders.target(snap, ids, local)
+	_fields.clear()
+	if snap != null:  # Home shows while an aircraft can go: it has an own airfield (REPAIR's rows).
+		OrderRules.home_fields(snap, ids, local, _fields)
+	_air = not _fields.is_empty()
 	_sync_orders(snap, units and not groups.is_empty(), row, ids)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
@@ -557,10 +569,10 @@ func _fill(ids: PackedInt32Array) -> void:
 func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt32Array) -> void:
 	for order: Dictionary in ORDERS:
 		var id: StringName = order["id"]
-		var shown: bool = units_ok
+		var shown: bool = units_ok and (_air or order["for"] != &"air")
 		if order["for"] == &"building":
 			shown = row >= 0 and _building_order(id, snap, row)
-		elif order["for"] != &"units":
+		elif order["for"] == &"squads" or order["for"] == &"carrier":
 			shown = units_ok and _carry_order(id, snap, ids)
 		_buttons[id].visible = shown
 	if not _buttons[&"sell"].visible:

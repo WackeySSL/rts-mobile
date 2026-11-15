@@ -117,7 +117,10 @@ func test_a_defence_has_a_head_at_the_sheets_mount_and_no_other_building_has_one
 		assert_that(Rect2i(head.region_rect)).is_equal(atlas.region(art_id, &"head", 6, slot))
 		assert_int(Rig.head_frame(_layer, id)).is_equal(6)  # d06 faces grid east.
 		# Its pivot is the sprite's origin: the anchor of the head canvas, whatever the bake scale.
-		var anchor: Vector2 = Vector2(sheet.anchor(&"head"))
+		# A head is trimmed to its box (P306), which starts where the box does.
+		var anchor: Vector2 = Vector2(
+			sheet.anchor(&"head") - sheet.frame_box(&"head", 6, 0).position
+		)
 		assert_vector(head.offset + anchor * atlas.bake_scale()).is_equal_approx(
 			Vector2.ZERO, Vector2(0.01, 0.01)
 		)

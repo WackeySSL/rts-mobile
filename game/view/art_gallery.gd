@@ -147,7 +147,7 @@ const GHOST_REASON_GLYPH: String = "glyph_reason_occupied"
 ## glyph on the map 32 dp, at the 6-inch phone's 1.75 base px per dp.
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const FLAG_ART: String = "res://assets/art/svg/flags/%s_%s.svg"
-const TAB_ICONS: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles"]
+const TAB_ICONS: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles", "tab_flight"]
 const ITEM_ICONS: Array[String] = [
 	"item_power_plant",
 	"item_refinery",
@@ -185,6 +185,7 @@ const HUD_V2_ROWS: Dictionary[String, Array] = {
 		"glyph_sell",
 		"glyph_board",
 		"glyph_unload",
+		"glyph_home",
 	],
 	"Pause":
 	[
@@ -244,6 +245,7 @@ const TILE_MARGIN_PX: float = 4.0
 const GLYPH_TINTS: Dictionary[String, Color] = {
 	"tab_infantry": Color("9AA5B1"),
 	"tab_vehicles": Color("9AA5B1"),
+	"tab_flight": Color("9AA5B1"),
 	"glyph_credits": Color("F2B705"),
 	"glyph_power": Color("30A46C"),
 	"glyph_low_power": Color("F5A524"),
@@ -784,7 +786,11 @@ func _pixel_row(ground: Control, row_name: String, top: float, centre: float = 0
 func _add_icons_page() -> void:
 	_icons_page = _page_root("IconsPage")
 	var hud: ColorRect = _icons_half(_icons_page, "Hud", HUD_BACKDROP, Rect2(0.0, 0.0, 0.5, 1.0))
-	_icon_grid(_pixel_row(hud, "Tabs", HUD_ROW_TOPS[0]), TAB_ICONS, TAB_ICON_DP, TAB_ICONS.size())
+	# Four tabs: the row stands a half step right of the centre, clear of the page button.
+	var tab_row: Control = _pixel_row(
+		hud, "Tabs", HUD_ROW_TOPS[0], (TAB_ICON_DP * PX_PER_DP + ICON_GAP_PX) / 2.0
+	)
+	_icon_grid(tab_row, TAB_ICONS, TAB_ICON_DP, TAB_ICONS.size())
 	_icon_grid(
 		_pixel_row(hud, "Items", HUD_ROW_TOPS[1]), ITEM_ICONS, ITEM_ICON_DP, ITEM_COLUMNS, true
 	)
