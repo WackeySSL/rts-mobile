@@ -21,6 +21,8 @@ Android first.
 4. Deterministic simulation separated from presentation: 15 Hz fixed tick, integer fixed-point
    state, seeded DetRng, every action as a Command, state hash and replays.
 5. Code under MIT; the game's name and logo are reserved by AppCode ApS.
+   Note (2026-11-15): ADR 0046 (accepted 2026-11-15) also reserves the game's own art, audio and
+   model data (all rights reserved, AppCode ApS); the code stays MIT.
 
 ## Consequences
 - AI-vs-AI balance runs, replays and determinism tests are cheap, and online multiplayer stays

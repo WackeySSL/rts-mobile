@@ -176,6 +176,9 @@ rts-mobile Android ${BUILD_LABEL} build: third-party licences
 rts-mobile's own code is licensed under the MIT licence: see the file LICENSE in the
 source repository.
 
+rts-mobile's own art, audio and model data are Copyright (c) 2026 AppCode ApS, all rights
+reserved: see the file assets/LICENSE.md in the source repository (ADR 0046).
+
 This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is
 licensed under the MIT licence and bundles third-party components under their own
 licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged.

@@ -300,6 +300,13 @@ if cmp -s <(tail -n +2 "$root/ok/build/web/THIRD_PARTY_LICENSES.txt") \
 else
   fail "the web and Android notices differ after their header line"
 fi
+# ADR 0046: the notice names the all-rights-reserved notice of the game's own assets.
+if grep -Fq "reserved: see the file assets/LICENSE.md in the source repository (ADR 0046)." \
+  "$root/ok/build/web/THIRD_PARTY_LICENSES.txt" && [ -s "$repo/assets/LICENSE.md" ]; then
+  pass "the notice names assets/LICENSE.md, which exists"
+else
+  fail "the notice does not name assets/LICENSE.md, or assets/LICENSE.md is missing"
+fi
 
 # (2b) ADR 0013 section 10: the checks ran on the right files. The stubs logged each call with the content of its
 # file (kernels, libcxx or so): the library as the APK packs it (never the built copy) first and the APK's

@@ -19,3 +19,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Scope: the MIT licence above covers the source code of this repository. The game's own art,
+audio and model data under `assets/` (and the store graphics in `docs/store/`) are
+Copyright (c) 2026 AppCode ApS, all rights reserved, as set out in `assets/LICENSE.md`
+(from 2026-11-15; earlier published versions remain under MIT). Third-party files keep the
+licences listed in `assets/CREDITS.md`. The game's name and logo are reserved by AppCode ApS.
