@@ -27,6 +27,10 @@ func test_every_vehicle_is_tracked_and_every_infantry_unit_walks() -> void:
 			# them.
 			if def.low_flying:
 				continue
+			# The Linecar and the Seeder (P290) are wheeled (ADR 0037 sections 7 and 8). Nothing builds
+			# them before P295, which must teach `AiMemory.class_of` that tab no longer means TRACKED.
+			if def.move_class == World.MoveClass.WHEELED:
+				continue
 			var expected: int = -1
 			if def.tab == World.Tab.VEHICLES:
 				expected = AiIntel.TRACKED

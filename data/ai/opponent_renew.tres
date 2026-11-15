@@ -21,6 +21,7 @@ anti_infantry_type = &"renew_rifle"
 anti_vehicle_types = Array[StringName]([&"renew_rocket"])
 tank_type = &"renew_tank"
 artillery_type = &"renew_artillery"
+hold_types = Array[StringName]([&"renew_artillery"])
 defence_type = &"renew_defence"
 strike_type = &"renew_strike"
 role_weights = PackedInt32Array(50, 40, 10, 0, 35, 30, 25, 10, 20, 25, 35, 20)

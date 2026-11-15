@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+[ext_resource type="Resource" path="res://data/weapons/shot_charge.tres" id="2_mine"]
+[ext_resource type="Resource" path="res://data/units/fossil_radar.tres" id="3_requires"]
+
+; The Derrick League's minelayer (ADR 0037 section 8, GDD): unarmed, lays the shot charge for 60
+; credits, finds mines within 3 tiles and never sets one off. It needs the radar. The GDD leaves its
+; own price, hit points and speed to this row: all of them, the build time, sight and radii are
+; starting values for the balance run (heavy and slow on the League's side). Not in the roster until
+; its art (P292).
+[resource]
+script = ExtResource("1_unit")
+type_id = &"fossil_shot_truck"
+display_name = "Shot Truck"
+faction = &"fossil"
+speed = 93
+radius = 450
+selection_radius = 600
+formation_spacing = 1400
+max_hp = 450
+armour = 1
+move_class = 1
+sight_range = 6000
+cost = 500
+build_ticks = 300
+tab = 2
+requires = ExtResource("3_requires")
+mine_weapon = ExtResource("2_mine")
+mine_cost = 60
+mine_aware = true
+detect_milli = 3000
