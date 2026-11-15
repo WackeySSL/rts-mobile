@@ -738,6 +738,13 @@ its banner; they replace the text above where they say so):
   no banner until P127's row decides. It is built with the menu banners (P127's row), not in
   P124b; CLAUDE.md and `admob-policy` say so.
 
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): P127's open point is decided
+(Michael's answer 5 A, ADR 0039 §6): **sideways, and whenever the menu scrolls, no banner.**
+Upright, where the foot is free, the foot holds Phase 6's `AdBannerBand` (row P430) at least 16 dp
+below the Vibration chip while the menu is open; it is shown on open and destroyed on close. Row
+P435 builds it; P127 is withdrawn. `admob-policy`'s pause cell follows in plan row P400c, pending
+Michael's yes to the text.
+
 ### 12. The start page (Phase 5)
 - Built by ROADMAP Phase 5's "Main menu" box, not in this wave (a decision from the roadmap, not a
   question: ADR 0019 §7 Q4 keeps
@@ -755,6 +762,12 @@ its banner; they replace the text above where they say so):
   it and 48 dp of air to the nearest button (the design's gap; stricter than admob-policy's floor
   of 16 dp, so it is kept); the "+500 starting credits"
   rewarded offer is Phase 6's. Both orientations as the boards show.
+
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): `AdService` exists from Phase 6's
+row P401 on. The start page's banner is P430's `AdBannerBand`, placed by Phase 5's menu, with
+`start_banner_gap_dp` (48) of air and the "Advertisement" caption without a frame (ADR 0039 §4,
+§5; answer 4 A). The "+500 starting credits" offer is on map select only, not on the start page
+(answer 1 A; row P433).
 
 ### 13. Look: theme, fonts and the accent
 - **Tokens** (the design's, art-director owns them in STYLE.md and `theme.tres` is the value of
@@ -830,6 +843,12 @@ Note (2026-11-05, P26ax docs): the row "Banner on the pause menu and the end scr
 the end screen only. Michael allows the pause menu's banner (§11's note of 2026-11-05), so its
 "Here" cell's "pause" no longer holds.
 
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): Michael's answers of 2026-11-15 keep
+the rows "Interstitial at most one per 3 min" (answer 2 A: the caps stand, now in
+`data/ads_settings.tres`) and "Rewarded 'double reward' on the end screen" (answer 1 A: Double XP
+on the result screen, row P432). The pause menu's banner is upright only (§11's note of
+2026-11-15); the end screen still shows none.
+
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
   the right edge that stacks the radar, the credits, the power bar and a grid of build icons, always
@@ -882,6 +901,12 @@ Note (2026-11-05, P26ax docs): the drawer has no queue row any more (§5's note 
   `paused` and a scripted run with HUD actions ends with the same state hash as without them
   (P62's method); no ad node in the battle scene; the font files, OFL texts and CREDITS rows exist,
   `theme.tres` is the only reference to them.
+
+Note (2026-11-15, P400b docs; ADR 0039 §6, accepted 2026-11-15): "no ad node in the battle scene"
+now reads "no ad node in the battle scene but the pause menu's `AdBannerBand`, which holds no
+banner while the menu is closed". The scene-tree scan (`tests/ui/support/hud_walk.gd`) exempts the
+autoload node `/root/AdService` alone, which holds no banner child (P401), and allows the band
+under `PauseMenu` (P435); the old cases stay for the closed menu.
 
 ### 18. What this amends, and the proposed `touch-ui-rules` text
 Nothing is superseded whole; on acceptance the lead's docs row P26ap adds dated status notes (the
