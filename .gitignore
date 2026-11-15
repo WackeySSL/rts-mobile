@@ -25,6 +25,14 @@ export_credentials.cfg
 /native/sim_kernels/.sconsign*.dblite
 /native/sim_kernels/src/**/*.os
 
+# AdMob plugin (P410): the Android part is fetched by scripts/ci/install-android-plugins.sh, the Gradle
+# template is installed by scripts/ci/install-gradle-template.sh (/android/build/ above), override.cfg is
+# written by export-android.sh --aab for the run only
+/addons/admob/android/
+/addons/admob/ios/
+/addons/admob/downloads/
+/override.cfg
+
 # OS and editors
 .DS_Store
 .idea/

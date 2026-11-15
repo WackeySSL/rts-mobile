@@ -40,3 +40,26 @@ the 236 `*.gd.uid` and 8 `*.png.import` files that are committed next to the sou
 - `addons/gdUnit4` does not pass `gdformat` or `gdlint`, so `scripts/verify.sh` checks only
   `game`, `tests` and `scenes`.
 - Upgrade only through a new ADR.
+
+## Poing Studios AdMob plugin
+
+| Field | Value |
+| --- | --- |
+| Name | godot-admob-plugin (AdMob for Godot, Android and iOS) |
+| Version | 5.1.0 |
+| Tag | `v5.1.0` |
+| Tag commit | `615974e9f66921a54e3c71c33db0856bdbf19d13` |
+| Source | https://github.com/poingstudios/godot-admob-plugin |
+| Licence | MIT, Copyright (c) 2020-present Poing Studios (`addons/admob/LICENSE`, `docs/licenses/poing-godot-admob-5.1.0/LICENSE.txt`) |
+| Location | `addons/admob/` (editor part, vendored); `addons/admob/android/` (Android libraries, fetched, git-ignored) |
+| Used for | the ads behind `game/ads/AdService.gd` (ADR 0039); the `Android internal` AAB (ADR 0040) |
+
+The editor part is a minimal vendoring of the release asset `poing-godot-admob-v5.1.0.zip` (SHA-256
+`8c53ff52719edf6a81cc7d32a9cdaad2d9e11693c85faca25008a1c19355726f`) with two local patches, described in
+`addons/admob/PATCHES.md`: the Godot 4.7.2 static initializer, and our own placeholder SVGs instead of five upstream
+images. `tests/project/test_admob_vendor.gd` pins the SHA-256 of every vendored file. The Android libraries come from
+`android-template-v4.7.2.zip` of the same tag through `scripts/ci/install-android-plugins.sh` (SHA-256 pinned); the
+Gradle build pulls the Google Mobile Ads SDK 1.4.0 from Google's Maven.
+
+The plugin stays disabled in `project.godot`, so the `Android` and `Android perf` presets export unchanged; the AAB
+export enables it for one run (P410b). The Web preset excludes `addons/admob/*`. Upgrade only through a new ADR.

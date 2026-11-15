@@ -63,7 +63,7 @@ func test_web_preset_excludes_native() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, native/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*"
 	)
 
 

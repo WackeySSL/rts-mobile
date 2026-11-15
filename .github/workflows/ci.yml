@@ -74,6 +74,11 @@ jobs:
       - name: Offline test of the cloud Android installer
         run: bash scripts/ci/test-install-android.sh
 
+      # The AdMob plugin's Android libraries are fetched by pin (P410): the SHA-256 refusal, the extraction and
+      # the iOS marker, offline, against a fixture archive.
+      - name: Offline test of the AdMob plugin installer
+        run: bash scripts/ci/test-install-android-plugins.sh
+
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
         run: |
