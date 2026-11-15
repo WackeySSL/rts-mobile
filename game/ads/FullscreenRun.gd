@@ -119,7 +119,7 @@ func _on_opened(kind: StringName) -> void:
 
 
 func _on_reward_earned(kind: StringName) -> void:
-	if kind != _kind or not _is_opened or _is_closed:
+	if kind != _kind or not _is_opened or _is_closed or _rewarded:
 		return
 	_rewarded = true
 	if _on_reward.is_valid():

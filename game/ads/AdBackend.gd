@@ -38,6 +38,11 @@ static func is_admob_mode(
 	return os_name == "Android" and not in_editor and has_plugin and has_play_tag
 
 
+## Initialises the SDK. AdService calls it once, and only after consent says ads may be requested.
+func initialize() -> void:
+	pass
+
+
 func load_state(_kind: StringName) -> LoadState:
 	return LoadState.FAILED
 
