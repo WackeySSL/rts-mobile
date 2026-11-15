@@ -1,15 +1,15 @@
 extends GdUnitTestSuite
 ## The airfield, fighter and bomber data (plan row P242, ADR 0036 sections 2, 5 and 6, docs/GDD.md):
 ## one airfield, one fighter and one bomber per faction, with their guns. They are data only: the
-## roster entries (art, item card) and the HOW_TO_PLAY rows come with P245b (the airfields) and P245
-## (the aircraft), so none of them is buildable yet. `type_id` is the art id those rows draw. The
-## GDD gives the names, size, cost, power, requirement, hit points, speed, range and ammo; the ADR
-## gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5 stops at a ring corner).
-## Build times, sight, the repair numbers, damage, cooldowns, armour percents,
-## rearm time and armour classes are in neither: starting values for the balance run (speeds are
-## the GDD's tiles per second over 15 ticks). P245b removes the airfield entries and P245 the
-## aircraft entries of test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and
-## flips the is_false roster checks below. What the sim does with the data is test_airfield's.
+## roster entries (art, item card) and the HOW_TO_PLAY rows of the airfields came with P245b and
+## those of the aircraft come with P245, so the aircraft are not buildable yet. `type_id` is the art
+## id those rows draw. The GDD gives the names, size, cost, power, requirement, hit points, speed,
+## range and ammo; the ADR gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5
+## stops at a ring corner). Build times, sight, the repair numbers, damage, cooldowns, armour
+## percents, rearm time and armour classes are in neither: starting values for the balance run
+## (speeds are the GDD's tiles per second over 15 ticks). P245 removes the aircraft entries of
+## test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and flips the is_false
+## roster checks below. What the sim does with the data is test_airfield's.
 
 const FIELDS: Dictionary[String, Array] = {
 	"fossil_airfield": ["fossil", "Flight Yard", "fossil_radar"],
@@ -69,9 +69,9 @@ func test_each_faction_has_an_airfield_with_the_gdd_numbers() -> void:
 		)
 		# The exit is south of the 3x3 footprint, as the Heavy Yard's.
 		assert_object(def.exit).is_equal(Vector2i(1, 3))
-		# Not in a roster yet: the roster entry comes with P245b (art, item card).
+		# P245b: the airfield is in its faction's roster (art, item card).
 		var faction: FactionDef = load("res://data/factions/%s.tres" % FIELDS[id][0])
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
+		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
 
 
 ## ADR 0036 section 6: the cap counts the pads, so four pads on four different tiles, each at

@@ -566,7 +566,8 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 		assert_str(ArtSheet.text(fresh)).override_failure_message(path).is_equal(committed)
 	# The four squads (P139), the eight animated buildings (P143) and the buildings with damage
 	# stages (P158a: the Derrick League's eight; P158b: the Lumen Accord's eight) and the two space
-	# centres (P236: a lift and a KRITISK picture) are the models with a pose.
+	# centres (P236: a lift and a KRITISK picture), the anti-air and the airfields (a KRITISK picture)
+	# are the models with a pose.
 	posed.sort()
 	(
 		assert_array(posed)
@@ -575,6 +576,7 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 				"barracks",
 				"defence_turret",
 				"fossil_aa",
+				"fossil_airfield",
 				"fossil_radar",
 				"fossil_space",
 				"fossil_strike",
@@ -582,6 +584,7 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 				"power_plant",
 				"refinery",
 				"renew_aa",
+				"renew_airfield",
 				"renew_barracks",
 				"renew_defence",
 				"renew_factory",
