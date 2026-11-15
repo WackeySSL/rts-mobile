@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://game/ui/ads/RewardedOffer.gd" id="1_offer"]
+[ext_resource type="Script" path="res://game/ui/DpMinSize.gd" id="2_dp"]
+
+[node name="RewardedOffer" type="VBoxContainer"]
+visible = false
+script = ExtResource("1_offer")
+
+[node name="OfferButton" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="DpMinSize" type="Node" parent="OfferButton"]
+script = ExtResource("2_dp")
