@@ -4,13 +4,12 @@ extends GdUnitTestSuite
 ## roster entries (art, item card) and the HOW_TO_PLAY rows of the airfields came with P245b and
 ## those of the aircraft come with P245, so the aircraft are not buildable yet. `type_id` is the art
 ## id those rows draw. The GDD gives the names, size, cost, power, requirement, hit points, speed,
-## range and ammo; the ADR
-## gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5 stops at a ring corner).
-## Build times, sight, the repair numbers, damage, cooldowns, armour percents,
-## rearm time and armour classes are in neither: starting values for the balance run (speeds are
-## the GDD's tiles per second over 15 ticks). P245 removes the
-## aircraft entries of test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and
-## flips the is_false roster checks below. What the sim does with the data is test_airfield's.
+## range and ammo; the ADR gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5
+## stops at a ring corner). Build times, sight, the repair numbers, damage, cooldowns, armour
+## percents, rearm time and armour classes are in neither: starting values for the balance run
+## (speeds are the GDD's tiles per second over 15 ticks). P245 removes the aircraft entries of
+## test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and flips the is_false
+## roster checks below. What the sim does with the data is test_airfield's.
 
 const FIELDS: Dictionary[String, Array] = {
 	"fossil_airfield": ["fossil", "Flight Yard", "fossil_radar"],

@@ -90,7 +90,7 @@ func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_a
 		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 11)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those sixteen and no other.
+	# The files that name the faction are those seventeen and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())

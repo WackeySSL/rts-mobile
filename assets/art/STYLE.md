@@ -1318,7 +1318,7 @@ with a hull and a head that turns in 16 steps, a KRITISK picture (`dmg2`), no SK
 - **KRITISK team share.** The Burst Stack keeps 0.39 of the intact team colour (a narrow team chunk on the ruin), the Sky Needle 0.36 (its band is gone, a small remnant stays on the front), both inside ADR 0029's 20 to 50 %; `tests/art/test_anti_air_art.gd` pins it.
 - **KRITISK.** Both lose their upper body to broken walls with rebar (the Burst Stack) or a split lid
   and charred top (the Sky Needle); the head stays. Damage points sit on the ruin.
-- **Gallery.** The Build page and the Iso page list them by themselves, the Icons page shows the item cards.
+- **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
 
 
 ### The airfields (P245b)
@@ -1326,11 +1326,11 @@ with a hull and a head that turns in 16 steps, a KRITISK picture (`dmg2`), no SK
 The airfield of both factions (ADR 0036 sections 2 and 15, docs/GDD.md): the Derrick League's **Flight Yard**
 (`fossil_airfield`) and the Lumen Accord's **Glide Deck** (`renew_airfield`), each a 3 x 3 model with a hull, a
 KRITISK picture (`dmg2`), no SKADET picture (ADR 0034), no moving element, a cast shadow and an item card. They
-follow the anti-air building in each faction's roster (Structures tab, after the Radar, the GDD's requirement).
+follow the anti-air building in each faction's roster (Structures tab; each needs the faction's radar, the GDD's requirement).
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_airfield` | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a lamp cab at its edge, beside two olive fuel drums with team rings. |
+| `fossil_airfield` | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a team-banded lamp cab at its edge, beside two olive fuel drums with team rings. |
 | `renew_airfield` | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. |
 
 - **Four pads are the point.** `BuildingDef.pad_offsets` puts the pads on the four corner cells of the footprint,
@@ -1344,16 +1344,17 @@ follow the anti-air building in each faction's roster (Structures tab, after the
   slim white pylon with a flat-lidded glass cab (no tip light, no spire) and two white battery cabinets with team
   stripes, all on a graphite plinth deck.
 - **Team colour.** The pad rings, the hangar and cab bands (Flight Yard), the terminal band, pylon ring and cabinet
-  stripes (Glide Deck). Team share of the default view at zoom 1: 10.7 % (Flight Yard) and 11.0 % (Glide Deck), in the
+  stripes (Glide Deck). Team share of the default view at zoom 1: 8.8 % (Flight Yard) and 10.2 % (Glide Deck), in the
   rule's 8 to 12 %; no team primitive is a roof plate (`test_artgen_plates.gd`).
-- **KRITISK.** The hangar roof and walls and the mast are blown away to broken stubs with rebar, the terminal and the
-  pylon likewise; the deck and the four pads stay. Two diagonal pads and the bands char to black, so the picture
-  keeps 0.36 (Flight Yard) and 0.42 (Glide Deck) of the intact team colour, inside ADR 0029's 20 to 50 %
+- **KRITISK.** The hangar or terminal and its mast or pylon are broken down to stubs with rebar (the hangar's team
+  band and the mast's go with their walls, a fallen cab and beam lie beside the Flight Yard's stub); the deck and
+  the four pads stay. Two diagonal pads and the remaining bands char to black, so the picture
+  keeps 0.42 (Flight Yard) and 0.39 (Glide Deck) of the intact team colour, inside ADR 0029's 20 to 50 %
   (`test_airfield_art.gd`). The damage points sit on the ruins.
-- **Canvas.** Hull 384 x 208 (anchor y 15) and 384 x 212 (anchor y 20), KRITISK patch 382 x 194 and 378 x 182, shadow
-  458 x 232 and 448 x 226, in 2x px. Page 1 of the atlas grows by 64, 86 and 71 rows (cross-faction, Derrick League
-  mirror, Lumen Accord mirror: 2316, 2258, 2238) and page 2 by 0, 2 and 0 (1514, 782, 814).
-- **Gallery.** The Build page and the Iso page list them by themselves, the Icons page shows the item cards.
+- **Canvas.** Hull 384 x 206 (anchor y 15) and 384 x 212 (anchor y 20), KRITISK patch 382 x 194 and 378 x 182, shadow
+  458 x 232 and 448 x 226, in 2x px. Page 1 of the atlas grows by 62, 86 and 71 rows (cross-faction, Derrick League
+  mirror, Lumen Accord mirror: 2314, 2258, 2238) and page 2 by 0, 2 and 0 (1514, 782, 814).
+- **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -1767,7 +1768,7 @@ in doubt, choose a plainer real-world form.
 | Deep Bore | An open steel drilling derrick of four stepped lattice tiers on four concrete footings, a heavy drill string through a crown block over a dark well, a doghouse before it and a team band round its platform. | `iso/fossil/bld/fossil_strike_{hull,shadow}.svg`, 384 wide |
 | Burst Stack | A tall poured-concrete pedestal on a wide pad with a team band and a ladder stub, carrying a round drum head whose top holds a close bundle of four steel barrels slanted steeply skyward, bound by a rust collar and a team ring. | `iso/fossil/bld/fossil_aa_{hull,shadow}.svg`, `fossil_aa_head_d00..d15.svg`, 128 wide |
 | Sky Needle | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars. | `iso/renew/bld/renew_aa_{hull,shadow}.svg`, `renew_aa_head_d00..d15.svg`, 128 wide |
-| Flight Yard | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a lamp cab at its edge, beside two olive fuel drums with team rings. | `iso/fossil/bld/fossil_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
+| Flight Yard | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a team-banded lamp cab at its edge, beside two olive fuel drums with team rings. | `iso/fossil/bld/fossil_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Glide Deck | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. | `iso/renew/bld/renew_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
@@ -2893,4 +2894,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-14 | v1.35 (P265a, art-director, ADR 0036): `glyph_board.svg` and `glyph_unload.svg` (white HUD glyphs on the Bar row of the Hud page) and the seated map glyph `glyph_unload_mark.svg` (two down-pointing chevrons, tinted #F5A524, the twelfth map glyph); the gallery's map strips now hold their glyphs in two lines of six, the grass one set 48 px left of the centre to clear the page button. |
 | 2026-11-14 | v1.36 (P244, touch-ux-dev, ADR 0036 section 12): `tab_flight.svg` (the Flight tab of the build drawer, a jet from above) and `glyph_home.svg` (the Home order of the command bar, a house), both white and grey like their groups; not on the gallery's pages yet (art-director's follow-up). |
 | 2026-11-15 | v1.37 (P239b, art-director, ADR 0036 sections 2 and 5): the Burst Stack (`fossil_aa`) and the Sky Needle (`renew_aa`), the anti-air building of both factions, as 1 x 1 models with a head in 16 directions (barrels and a needle that climb skyward), a KRITISK picture and no SKADET picture, their sheets, item cards and shadows ("The anti-air buildings" under "Buildings", the Catalogue rows); the generator's tight boxes treat an unoutlined rod as reaching no further than its points (one clear px, not two); the Build and Iso pages list them by themselves (20 building models); the sorted world's page 1 2167, 2127 and 2068 to 2252, 2172 and 2167 and page 2 1514, 704 and 814 to 1514, 780 and 814 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
-| 2026-11-15 | v1.38 (P245b, art-director, ADR 0036 sections 2 and 15): the Flight Yard (`fossil_airfield`) and the Glide Deck (`renew_airfield`), the airfield of both factions, as 3 x 3 models with four team-ringed landing pads on the cells of `pad_offsets`, a KRITISK picture and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the anti-air building ("The airfields" under "Buildings", Catalogue rows), the sorted world's page 1 2252, 2172 and 2167 to 2316, 2258 and 2238 and page 2 780 to 782 on the Derrick League mirror. |
+| 2026-11-15 | v1.38 (P245b, art-director, ADR 0036 sections 2 and 15): the Flight Yard (`fossil_airfield`) and the Glide Deck (`renew_airfield`), the airfield of both factions, as 3 x 3 models with four team-ringed landing pads on the cells of `pad_offsets`, a KRITISK picture and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the anti-air building ("The airfields" under "Buildings", Catalogue rows), the sorted world's page 1 2252, 2172 and 2167 to 2314, 2258 and 2238 and page 2 780 to 782 on the Derrick League mirror. |
