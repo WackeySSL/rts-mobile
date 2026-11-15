@@ -422,11 +422,14 @@ while IFS= read -r f; do
   [ -n "$f" ] && ! doc_file "$f" && holders="$holders [$f]"
 done < <(files_naming "$accept")
 assert "install: the flag stands in no automatic path (the whole tree is searched)${holders:+, found in:$holders}" test -z "$holders"
-# names_installer: stdin holds a call of the cloud installer. Its offline test and the AdMob plugin installer
-# (scripts/ci/install-android-plugins.sh, P410) only share the name's prefix, so both are stripped first.
-names_installer() { sed 's/test-install-android//g; s/install-android-plugins//g' | grep -F install-android | grep -Ev '^[[:space:]]*#|(die|echo|printf)[[:space:]]' || true; }
+# names_installer: stdin holds a call of the cloud installer. Its offline test, the AdMob plugin installer
+# (scripts/ci/install-android-plugins.sh, P410) and Godot's --install-android-build-template flag (P410c) only share
+# the name's prefix, so they are stripped first.
+names_installer() { sed 's/test-install-android//g; s/install-android-plugins//g; s/install-android-build-template//g' | grep -F install-android | grep -Ev '^[[:space:]]*#|(die|echo|printf)[[:space:]]' || true; }
 assert "install: a line naming only install-android-plugins.sh is no call of the installer" \
   test -z "$(printf 'bash scripts/ci/install-android-plugins.sh\n' | names_installer)"
+assert "install: Godot's --install-android-build-template flag is no call of the installer" \
+  test -z "$(printf 'godot --headless --install-android-build-template --export-release x\n' | names_installer)"
 assert "install: a line naming install-android.sh still is a call of the installer" \
   test -n "$(printf 'bash scripts/cloud/install-android.sh\n' | names_installer)"
 callers=""
