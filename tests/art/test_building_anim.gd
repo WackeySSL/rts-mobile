@@ -51,6 +51,8 @@ const MIN_FACING: float = 0.12  ## A face seen at a sliver is not judged (as in 
 const EMITTERS: Dictionary[StringName, Array] = {
 	&"barracks": [&"damage", &"dmg_spark", &"damage"],
 	&"defence_turret": [&"damage", &"dmg_spark"],
+	&"fossil_aa": [&"damage", &"dmg_spark"],
+	&"renew_aa": [&"damage", &"dmg_spark"],
 	&"fossil_radar": [&"damage", &"dmg_spark"],
 	&"fossil_strike": [&"launch", &"damage", &"dmg_spark"],
 	&"fossil_space": [&"damage", &"dmg_gas", &"dmg_spark", &"launch"],
