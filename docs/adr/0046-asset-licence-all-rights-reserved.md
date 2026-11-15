@@ -37,8 +37,10 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
      parameter files when they live under `assets/`;
    - the store graphics drawn for this game (`docs/store/*.png`), which `assets/CREDITS.md` lists
      as own work.
-   The notice and scope are in `assets/LICENSE.md`; the root `LICENSE` keeps the MIT text
-   byte-identical and adds a scope paragraph after it.
+   The notice and scope are in `assets/LICENSE.md`. The root `LICENSE` stays the unchanged MIT
+   text, so GitHub and licence scanners keep reading it as MIT; the scope (code MIT, assets in
+   `assets/LICENSE.md`, third parties in CREDITS, name and logo reserved) is in the root
+   `NOTICE.md`.
 3. **Third-party files keep their own licences.** Every row of `assets/CREDITS.md` whose author is
    not AppCode ApS (the SIL OFL fonts, the Godot logo under CC BY 4.0, any CC0 or CC-BY entry)
    is outside item 2.

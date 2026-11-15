@@ -42,7 +42,7 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   `bash scripts/ci/install-godot.sh --android-release`.
 
 ## Licence
-- Code: MIT, see [LICENSE](LICENSE).
+- Code: MIT, see [LICENSE](LICENSE); what it covers and what it does not is in [NOTICE.md](NOTICE.md).
 - Assets: the game's own art, audio and model data (everything authored in this repository under
   `assets/`, and the store graphics in `docs/store/`) are Copyright (c) 2026 AppCode ApS, all
   rights reserved, from 2026-11-15; see [assets/LICENSE.md](assets/LICENSE.md) and ADR 0046.
