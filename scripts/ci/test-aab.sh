@@ -60,7 +60,13 @@ case "$*" in
   *) echo 'openjdk version "17.0.12" 2024-07-16' >&2 ;;
 esac
 STUB
-chmod +x "$root/bin/jarsigner" "$root/bin/java"
+cat >"$root/bin/readelf" <<'STUB'
+#!/usr/bin/env bash
+# Stand-in for GNU readelf -W -x .text FILE: the fixture's "code" is its first line, the rest is debug info.
+echo "readelf $*" >>"${STUB_LOG:-/dev/null}"
+head -n 1 "${@: -1}"
+STUB
+chmod +x "$root/bin/jarsigner" "$root/bin/java" "$root/bin/readelf"
 cat >"$root/manifest.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -98,13 +104,13 @@ real_sha="$(sed -n 's/^BT_SHA256="\(.*\)"$/\1/p' "$repo/scripts/ci/check-aab.sh"
 [ "$real_sha" = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29" ] &&
   echo "ok: check-aab.sh pins bundletool 1.18.3 by its SHA-256" || { echo "FAIL: the bundletool pin is not 1.18.3's SHA-256" >&2; failures=$((failures + 1)); }
 
-mkdir -p "$root/aab/base/lib/arm64-v8a" "$root/aab/base/assets/scenes" "$root/aab/base/manifest" "$root/aab/base/assets/assets/art/fonts/fam"
-echo ofl >"$root/aab/base/assets/assets/art/fonts/fam/OFL.txt"
-echo "banner ca-app-pub-3940256099942544/6300978111 is Google's test unit" >"$root/aab/base/assets/ids.txt"
+mkdir -p "$root/aab/base/lib/arm64-v8a" "$root/aab/assetPackInstallTime/assets/scenes" "$root/aab/base/manifest" "$root/aab/assetPackInstallTime/assets/assets/art/fonts/fam"
+echo ofl >"$root/aab/assetPackInstallTime/assets/assets/art/fonts/fam/OFL.txt"
+echo "banner ca-app-pub-3940256099942544/6300978111 is Google's test unit" >"$root/aab/assetPackInstallTime/assets/ids.txt"
 echo engine >"$root/aab/base/lib/arm64-v8a/libgodot_android.so"
 echo kernels >"$root/aab/base/lib/arm64-v8a/libsim_kernels.so"
 echo libcxx >"$root/aab/base/lib/arm64-v8a/libc++_shared.so"
-echo remap >"$root/aab/base/assets/scenes/main.tscn.remap"
+echo remap >"$root/aab/assetPackInstallTime/assets/scenes/main.tscn.remap"
 echo proto >"$root/aab/base/manifest/AndroidManifest.xml"
 mkdir -p "$root/built"
 echo kernels >"$root/built/libsim_kernels.so"
@@ -115,9 +121,10 @@ bundle() { # NAME [EXTRA-FILE...]: the fixture as NAME.aab, with extra files (pa
     case "$f" in
       -*) rm -f "$root/v/${f#-}" ;;
       kernelz) echo kernelz >"$root/v/base/lib/arm64-v8a/libsim_kernels.so" ;;
-      installtime) mkdir "$root/v/installTime" && mv "$root/v/base/assets" "$root/v/installTime/assets" ;;
-      noassets) rm -rf "$root/v/base/assets" ;;
-      realid) echo "unit $fake_pub/1111111111" >"$root/v/base/assets/ad_ids.cfg" ;;
+      baseassets) mv "$root/v/assetPackInstallTime/assets" "$root/v/base/assets" && rmdir "$root/v/assetPackInstallTime" ;;
+      stripped) printf 'kernels\nsymbols stripped by Gradle\n' >"$root/v/base/lib/arm64-v8a/libsim_kernels.so" ;;
+      noassets) rm -rf "$root/v/assetPackInstallTime/assets" "$root/v/base/assets" ;;
+      realid) echo "unit $fake_pub/1111111111" >"$root/v/assetPackInstallTime/assets/ad_ids.cfg" ;;
       *) mkdir -p "$root/v/$(dirname "$f")" && echo x >"$root/v/$f" ;;
     esac
   done
@@ -188,28 +195,31 @@ check "a bundle without the engine library fails" 1 "the bundle lacks base/lib/a
 bundle abi base/lib/x86_64/libgodot_android.so
 chk abi
 check "a library for another ABI fails" 1 "libraries for other ABIs"
-bundle gdunit base/assets/addons/gdUnit4/plugin.cfg
+bundle gdunit assetPackInstallTime/assets/addons/gdUnit4/plugin.cfg
 chk gdunit
-check "a gdUnit4 path fails" 1 "the bundle holds test files: base/assets/addons/gdUnit4/plugin.cfg"
-bundle tests base/assets/tests/sim/test_x.gd
+check "a gdUnit4 path fails" 1 "the bundle holds test files: assetPackInstallTime/assets/addons/gdUnit4/plugin.cfg"
+bundle tests assetPackInstallTime/assets/tests/sim/test_x.gd
 chk tests
 check "a tests/ path fails" 1 "the bundle holds test files"
-bundle noscene -base/assets/scenes/main.tscn.remap
+bundle noscene -assetPackInstallTime/assets/scenes/main.tscn.remap
 chk noscene
-check "a bundle without the boot scene fails" 1 "the bundle lacks assets/scenes/main.tscn.remap in base/ or installTime/"
-bundle instt installtime
-chk instt
-check "project files in installTime/assets pass" 0 "check-aab: OK"
+check "a bundle without the boot scene fails" 1 "the bundle lacks assets/scenes/main.tscn.remap in base/ or assetPackInstallTime/"
+bundle inbase baseassets
+chk inbase
+check "project files in base/assets pass too" 0 "check-aab: OK"
+bundle strip stripped
+chk strip
+check "a packed kernels library Gradle stripped (same .text) passes" 0 "check-aab: OK"
 bundle noasset noassets
 chk noasset
 check "a bundle with no */assets/ entry fails" 1 "the bundle has no */assets/ entry"
 bundle idreal realid
 chk idreal
 check "an ad ID of another publisher in an asset fails" 1 "ad ID of a publisher other than Google's test one: $fake_pub"
-bundle nofont -base/assets/assets/art/fonts/fam/OFL.txt
+bundle nofont -assetPackInstallTime/assets/assets/art/fonts/fam/OFL.txt
 chk nofont
 check "a bundle without a font's OFL.txt fails" 1 "the bundle lacks the font licence assets/assets/art/fonts/fam/OFL.txt"
-bundle two -base/lib/arm64-v8a/libc++_shared.so base/assets/tests/x.gd
+bundle two -base/lib/arm64-v8a/libc++_shared.so assetPackInstallTime/assets/tests/x.gd
 chk two
 check "two faults: the first is reported" 1 "the bundle lacks base/lib/arm64-v8a/libc++_shared.so"
 check "two faults: the second is reported too" 1 "the bundle holds test files"

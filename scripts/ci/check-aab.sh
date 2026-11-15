@@ -37,7 +37,7 @@ TEST_PUBLISHER="3940256099942544"
 ABI_DIR="base/lib/arm64-v8a"
 
 bin_dir="${JAVA_HOME:+$JAVA_HOME/bin/}"
-for tool in unzip sha256sum cmp "${bin_dir}java" "${bin_dir}jarsigner"; do
+for tool in unzip sha256sum "${READELF:-readelf}" "${bin_dir}java" "${bin_dir}jarsigner"; do
   command -v "$tool" >/dev/null 2>&1 || die 3 "$(basename "$tool") is missing (JAVA_HOME='${JAVA_HOME:-}')"
 done
 [ -s "$aab" ] || die 1 "$aab is missing or empty"
@@ -65,8 +65,9 @@ verify="$("${bin_dir}jarsigner" -verify "$aab" 2>&1)" || problem "jarsigner -ver
 grep -q 'jar verified' <<<"$verify" || problem "jarsigner -verify does not say 'jar verified': $(tail -n 1 <<<"$verify")"
 
 listing="$(unzip -Z1 "$aab")" || die 1 "$aab is not a zip file"
-# Godot may put the project files in the install-time asset pack (installTime/assets/...) instead of base/assets/
-# (to confirm): any pack's assets/ folder counts, and the first CI run prints what is there.
+# Godot 4.7.2's Gradle AAB puts the project files in the install-time asset pack, assetPackInstallTime/assets/
+# (seen in PR #481's android-aab run); base/assets/ is accepted too. Any pack's assets/ folder counts for the
+# "no tests" and "no ad ID" scans, and the run prints the first entries.
 assets="$(grep -E '^[^/]+/assets/' <<<"$listing" || true)"
 echo "check-aab: asset entries ($(grep -c . <<<"$assets" || true)), first ones:"
 head -n 8 <<<"$assets"
@@ -75,7 +76,7 @@ native_name="$(basename "$native")"
 for name in "$ABI_DIR/libgodot_android.so" "$ABI_DIR/$native_name" "$ABI_DIR/libc++_shared.so"; do
   grep -Fxq -- "$name" <<<"$listing" || problem "the bundle lacks $name (its lib/ entries: $(grep '^base/lib/' <<<"$listing" | tr '\n' ' '))"
 done
-grep -Eq '^(base|installTime)/assets/scenes/main\.tscn\.remap$' <<<"$listing" || problem "the bundle lacks assets/scenes/main.tscn.remap in base/ or installTime/"
+grep -Eq '^(base|assetPackInstallTime)/assets/scenes/main\.tscn\.remap$' <<<"$listing" || problem "the bundle lacks assets/scenes/main.tscn.remap in base/ or assetPackInstallTime/"
 other_abis="$(grep '^base/lib/' <<<"$listing" | grep -v "^$ABI_DIR/" || true)"
 [ -z "$other_abis" ] || problem "the bundle holds libraries for other ABIs (arm64-v8a only): $(head -n 3 <<<"$other_abis" | tr '\n' ' ')"
 test_files="$(grep -E '^[^/]+/assets/(tests|addons/gdUnit4)/' <<<"$listing" || true)"
@@ -83,14 +84,19 @@ test_files="$(grep -E '^[^/]+/assets/(tests|addons/gdUnit4)/' <<<"$listing" || t
 # The OFL.txt of every font folder travels in the bundle (the preset's include_filter, P118b).
 fonts_list="$(bash scripts/ci/font-notice.sh --list)" || die 1 "a font licence text is missing (scripts/ci/font-notice.sh says which)"
 while IFS= read -r ofl; do
-  grep -Fxq -e "base/assets/$ofl" -e "installTime/assets/$ofl" <<<"$listing" || problem "the bundle lacks the font licence assets/$ofl"
+  grep -Fxq -e "base/assets/$ofl" -e "assetPackInstallTime/assets/$ofl" <<<"$listing" || problem "the bundle lacks the font licence assets/$ofl"
 done <<<"$fonts_list"
 
 mkdir -p "$tmp/lib"
 unzip -q "$aab" "$ABI_DIR/*" -d "$tmp/lib" 2>/dev/null || true
 if [ -s "$tmp/lib/$ABI_DIR/$native_name" ]; then
-  cmp -s "$tmp/lib/$ABI_DIR/$native_name" "$native" ||
-    problem "the bundle's $native_name is not the library CI built ($native): sha256 $(sha256sum <"$tmp/lib/$ABI_DIR/$native_name" | cut -d' ' -f1), built $(sha256sum <"$native" | cut -d' ' -f1)"
+  # Gradle strips debug symbols from the packed copy (stripDebugSymbols), so the bytes differ from the build; the
+  # code does not. Compare the .text section (GNU readelf reads an aarch64 ELF on any host).
+  text_sha() { "${READELF:-readelf}" -W -x .text "$1" 2>/dev/null | sha256sum | cut -d' ' -f1; }
+  packed_text="$(text_sha "$tmp/lib/$ABI_DIR/$native_name")"
+  built_text="$(text_sha "$native")"
+  [ "$packed_text" = "$built_text" ] ||
+    problem "the bundle's $native_name is not the library CI built ($native): .text sha256 $packed_text, built $built_text"
   if [ -s "$tmp/lib/$ABI_DIR/libc++_shared.so" ]; then
     bash scripts/ci/check-android-elf.sh check "$tmp/lib/$ABI_DIR/$native_name" "$tmp/lib/$ABI_DIR/libc++_shared.so" ||
       problem "the packed $native_name fails the ELF checks above"
