@@ -103,17 +103,20 @@ const COPIED: Array[StringName] = [
 	&"power_used",
 	&"reveal_site",
 	&"reveal",
+	&"type_carry_slots",
+	&"type_carry_classes",
+	&"type_move_class",
+	&"pass_carrier",
 ]
 ## Every other array of the World's ROW_ARRAYS, TYPE_ARRAYS, WEAPON_ARRAYS, PROJECTILE_ARRAYS,
 ## MAP_ARRAYS, PLAYER_ARRAYS, ORE_ARRAYS, GHOST_ARRAYS, DERIVED_ARRAYS, SETUP_ARRAYS, PAD_ARRAYS,
 ## UPGRADE_ARRAYS, PASSENGER_ARRAYS, MINE_ARRAYS and MINE_SEEN_ARRAYS: the sim's working state,
-## which no view reads (P265 copies the carrier columns it draws pips from; P290 the mines the local
-## player knows). With COPIED it covers those fifteen
-## lists exactly once (a coverage test), so a new World array fails until it is classified. The air
-## and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
+## which no view reads (P290 copies the mines the local player knows). With COPIED it covers those
+## fifteen lists exactly once (a coverage test), so a new World array fails until it is classified.
+## The air and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
 ## `weapon_targets`, `reveal_site` and `reveal`, which the view and input read (ADR 0036 sections
-## 11 and 14). `terrain_cost` is here
-## (the view needs `terrain`, `terrain_ids` and `move_cost`), and so are the derived `building_rows`
+## 11 and 14). `terrain_cost` is here (the view needs `terrain`, `terrain_ids` and `move_cost`),
+## and so are the derived `building_rows`
 ## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
@@ -122,15 +125,12 @@ const NOT_COPIED: Array[StringName] = [
 	&"stance",
 	&"mine_weapon",
 	&"mine_at",
-	&"type_carry_slots",
-	&"type_carry_classes",
 	&"type_carry_eject_percent",
 	&"type_mine_weapon",
 	&"type_mine_cost",
 	&"type_mine_aware",
 	&"type_detect_milli",
 	&"weapon_blast_milli",
-	&"pass_carrier",
 	&"pass_id",
 	&"pass_type",
 	&"pass_hp",
@@ -168,7 +168,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"stall",
 	&"fog_cell",
 	&"type_spacing",
-	&"type_move_class",
 	&"type_sight",
 	&"type_acquire",
 	&"type_strike_delay",
@@ -205,6 +204,7 @@ const COPIED_SCALARS: Array[StringName] = [
 	&"construct_refund_percent",
 	&"construction_sites_max",
 	&"sell_refund_percent",
+	&"pass_count",
 	&"mine_count",
 	&"mine_known_cap",
 ]
@@ -279,6 +279,11 @@ var type_strike_radius: PackedInt32Array = PackedInt32Array()
 ## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
 ## may hit, for the view and input (ADR 0036 section 5).
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
+## The carrier tables, the move class and the passenger carrier column (Board and Unload).
+var type_carry_slots: PackedInt32Array = PackedInt32Array()
+var type_carry_classes: PackedInt32Array = PackedInt32Array()
+var type_move_class: PackedInt32Array = PackedInt32Array()
+var pass_carrier: PackedInt32Array = PackedInt32Array()
 var weapon_targets: PackedInt32Array = PackedInt32Array()
 var weapon_ids: Array[StringName] = []
 var faction_ids: Array[StringName] = []
@@ -364,6 +369,7 @@ var construct_refund_percent: int = 0
 var construction_sites_max: int = 0
 ## The share of its price a sale pays at full health (ADR 0037 section 3): the Sell "+N" label.
 var sell_refund_percent: int = 0
+var pass_count: int = 0  ## Squads aboard a carrier: the live records of `pass_carrier`.
 
 ## This tick's events (World.EVENT_STRIDE ints each) and work counts (World.Stat).
 var events: PackedInt32Array = PackedInt32Array()
@@ -492,6 +498,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	construct_refund_percent = world.construct_refund_percent
 	construction_sites_max = world.construction_sites_max
 	sell_refund_percent = world.sell_refund_percent
+	pass_count = world.pass_count
 	mine_count = world.mine_count
 	mine_known_cap = world.mine_known_cap
 	unit_id = world.unit_id.duplicate()
@@ -535,6 +542,10 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
+	type_carry_slots = world.type_carry_slots.duplicate()
+	type_carry_classes = world.type_carry_classes.duplicate()
+	type_move_class = world.type_move_class.duplicate()
+	pass_carrier = world.pass_carrier.duplicate()
 	weapon_targets = world.weapon_targets.duplicate()
 	weapon_projectile_speed = world.weapon_projectile_speed.duplicate()
 	proj_id = world.proj_id.duplicate()
