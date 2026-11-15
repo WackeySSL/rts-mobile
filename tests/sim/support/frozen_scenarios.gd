@@ -11,4 +11,5 @@ const SCENARIOS: Array[String] = [
 	"res://data/scenarios/controls_test.tres",
 	"res://data/scenarios/perf_ai.tres",
 	"res://data/scenarios/perf_air.tres",
+	"res://data/scenarios/perf_ai_4b.tres",
 ]

@@ -60,6 +60,7 @@ const CARD_ROWS: Array = PerfCard.CARD_ROWS
 const ARENA_UNITS: String = PerfBases.ARENA_UNITS
 const ARENA_BASES: String = PerfBases.ARENA_BASES
 const ARENA_AI: String = PerfBases.ARENA_AI
+const ARENA_AI_4B: String = PerfBases.ARENA_AI_4B
 const ARENA_AIR: String = PerfBases.ARENA_AIR
 
 @export var runner: MatchRunner

@@ -19,7 +19,8 @@ const PERF_BASES_SCENARIO: String = "res://data/scenarios/perf_bases.tres"
 ## `air_golden_*`.
 const PERF_AIR_SCENARIO: String = "res://data/scenarios/perf_air.tres"
 ## The AI arena of the perf arena scene (plan P185, ADR 0030 section 4): the two mirror bases of
-## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair.
+## `perf_ai.tres` on frozen defs, a Normal `OpponentAi` on each player, no golden pair. The "Perf AI
+## base" route (plan P304; the "Perf AI" route plays `perf_ai_4b` below).
 const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
 ## The computers of that arena play the frozen AI defs with early contact (plan P189b: an early
 ## scout and first wave), the same files as `tests/perf/support/ai_perf_run.gd`, so the card
@@ -27,6 +28,15 @@ const PERF_AI_SCENARIO: String = "res://data/scenarios/perf_ai.tres"
 const PERF_AI_FOSSIL: String = "res://data/dev/arena/ai/opponent_fossil.tres"
 const PERF_AI_RENEW: String = "res://data/dev/arena/ai/opponent_renew.tres"
 const PERF_AI_LEVEL: String = "res://data/dev/arena/ai/difficulty/normal.tres"
+## The Phase 4b AI arena (plan P304, ADR 0038 section 7): `perf_ai_4b.tres`, the same layout with
+## frozen copies of Phase 4b's defs (aircraft, airfields, anti-air, the engineering and space
+## centres, transports, drone squads) at tick 0, and its own frozen copies of the AI defs. From P304
+## the "Perf AI" route and its per-wave card play this arena; `perf_ai` stays on the "Perf AI base"
+## route and in its CI suite.
+const PERF_AI_4B_SCENARIO: String = "res://data/scenarios/perf_ai_4b.tres"
+const PERF_AI_4B_FOSSIL: String = "res://data/dev/arena/ai_4b/opponent_fossil.tres"
+const PERF_AI_4B_RENEW: String = "res://data/dev/arena/ai_4b/opponent_renew.tres"
+const PERF_AI_4B_LEVEL: String = "res://data/dev/arena/ai_4b/difficulty/normal.tres"
 ## The "Strike test" scenario (plan P112d): the local player owns a Deep Bore and a Dusk Array
 ## with a short charge, facing a still enemy base, so the phone preview can fire both strikes.
 const STRIKE_TEST_SCENARIO: String = "res://data/scenarios/dev_strikes.tres"
@@ -71,16 +81,18 @@ static func open_perf_bases(tree: SceneTree) -> Error:
 
 ## Changes to the perf arena scene with the AI arena (plan P185): like `open_perf_bases`, with
 ## `PerfArena.arena_kind` set before the scene enters the tree; the scene seats the two computer
-## players. Reports a missing scene or scenario with push_error instead of crashing.
-static func open_perf_ai(tree: SceneTree) -> Error:
+## players. The arena is Phase 4b's `perf_ai_4b` (plan P304), the per-wave card's; `four_b` false
+## opens `perf_ai`. Reports a missing scene or scenario with push_error instead of crashing.
+static func open_perf_ai(tree: SceneTree, four_b: bool = true) -> Error:
 	if not ResourceLoader.exists(PERF_ARENA_SCENE):
 		push_error("DevRoutes: scene not found: %s" % PERF_ARENA_SCENE)
 		return ERR_FILE_NOT_FOUND
-	if not ResourceLoader.exists(PERF_AI_SCENARIO):
-		push_error("DevRoutes: scenario not found: %s" % PERF_AI_SCENARIO)
+	var scenario: String = PERF_AI_4B_SCENARIO if four_b else PERF_AI_SCENARIO
+	if not ResourceLoader.exists(scenario):
+		push_error("DevRoutes: scenario not found: %s" % scenario)
 		return ERR_FILE_NOT_FOUND
 	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
-	arena.arena_kind = PerfHud.ARENA_AI
+	arena.arena_kind = PerfHud.ARENA_AI_4B if four_b else PerfHud.ARENA_AI
 	return tree.change_scene_to_node(arena)
 
 
