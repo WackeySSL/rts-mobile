@@ -8,16 +8,27 @@ loading. A tap skips the motion; with reduced effects it is a plain fade. The me
 screens: Android's back button closes the top one, and on the main menu it asks whether to quit.
 One service, `MenuFlow`, starts matches and brings you back, with Phase 6's ad steps in between.
 
-Status: **proposed, 2026-11-15 (awaiting Michael).** Written by the architect on branch
+Status: **accepted, 2026-11-15 (Michael: "Ja til anbefaling", yes to every recommendation of
+the plan's questions).** Written by the architect on branch
 `claude/p500-phase5-plan` (base `main` at a2204d2f) with the plan
 `docs/plans/2026-11-15-phase-5.md` (rows P519-P536). Michael's intro direction of 2026-11-15
 replaces the earlier "3-5 s animated title". Questions 6, 10, 14 and 16 of the plan are this ADR's.
 The Phase 6 parts (consent at boot, the banner band, the offers, the post-match interstitial) are
 agreed with Phase 6 (2026-11-15; the plan's "Interfaces with Phase 6").
 
-Amends by dated notes at acceptance (P500b): ADR 0019 §7 (the preview opens on the boot scene, not
+Amends by dated notes (written in P500b): ADR 0019 §7 (the preview opens on the boot scene, not
 the controls test, from P533), ADR 0025 §11 (Exit to menu goes to the main menu) and §12 (the start
 page as §5 builds it).
+
+## Michael's answers (2026-11-15)
+- **Question 6, splash:** the app icon alone on its background colour, no AppCode ApS mark;
+  `min_ms` 600, `max_ms` 3,000; a tap skips the motion (§1, §2).
+- **Question 10, the match-start wait:** a still "deploying" card before the bake (P536, in scope).
+- **Question 11, left-handed mode:** after launch (not in Settings, §5).
+- **Question 12, translations:** the new screens use `tr()` keys with an English table; the HUD
+  is converted in a later row.
+- **Question 14, back on the main menu:** "Quit Treadline?" (§4).
+- **Question 16, the tagline:** "Oil and gas against wind and sun. Choose your side." (§5).
 
 ## Context
 - `project.godot`: `run/main_scene` is `scenes/main.tscn` (a match on the test map); no
@@ -46,7 +57,7 @@ page as §5 builds it).
 the exact 4.7.2 key names are checked in P533) shows a PNG rendered from `app_icon.svg`, centred on
 the icon's own background colour, with no Godot logo. The same image is the web build's loading
 image. Art-director renders it in P520 (own work, a CREDITS row); the Godot logo row of CREDITS
-goes once nothing shows it. No AppCode ApS mark unless Michael supplies an owned logo (question 6).
+goes once nothing shows it. No AppCode ApS mark (Michael, question 6).
 
 ### 2. The intro: the tank drives while loading
 - `scenes/boot.tscn` (the main scene from P533) with `IntroPlayer` (`game/view/intro/`, outside the
@@ -72,7 +83,8 @@ goes once nothing shows it. No AppCode ApS mark unless Michael supplies an owned
   still icon to the menu.
 - Both orientations at the six sizes (the icon centred on the short side). A `boot_ms` console line
   (first frame to menu ready) for the phone and the web console; no timing run in a session.
-- The match-start bake is a separate wait; question 10 (a still "deploying" card before it, P536).
+- The match-start bake is a separate wait: a still "deploying" card shows before it (P536;
+  Michael, question 10).
 
 ### 3. Screens and the stack
 - `scenes/menu/menu.tscn`: a root Control with a `HudTheme` node and the theme, the backdrop, and
@@ -166,7 +178,7 @@ free.
   it.
 - The preview opens on the intro and the main menu from P533; the dev menu stays one tap deeper.
 - Every scene change goes through `MenuFlow`, which is where Phase 6 hooks its post-match steps.
-- The intro cannot mask the match-start bake (a per-match cost); question 10 decides that wait.
+- The intro cannot mask the match-start bake (a per-match cost); P536's still card covers that wait.
 
 ## Alternatives considered
 - **A fixed 3-5 s animated title** (the first direction). Replaced by Michael on 2026-11-15: never

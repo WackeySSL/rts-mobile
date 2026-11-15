@@ -1,18 +1,25 @@
 # ADR 0045: Commander rank, XP and unlocks
 
 **In short, for Michael:** each finished match gives XP: more for a win, more on a harder level, a
-little per minute up to a cap. XP raises your commander rank. Recommended: rank 2 opens map 2, rank 3
+little per minute up to a cap. XP raises your commander rank. As you chose: rank 2 opens map 2, rank 3
 opens Hard and rank 4 opens map 3, all within about five matches; each rank also gives a title and
 an insignia. Nothing needs an ad: Phase 6's Double XP offer only speeds it up. Headquarters skins
 wait until after launch, because the art page is nearly full.
 
-Status: **proposed, 2026-11-15 (awaiting Michael).** Written by the architect on branch
+Status: **accepted, 2026-11-15 (Michael: "Ja til anbefaling", yes to every recommendation of
+the plan's questions).** Written by the architect on branch
 `claude/p500-phase5-plan` (base `main` at a2204d2f) with the plan
 `docs/plans/2026-11-15-phase-5.md` (rows P511, P524, P525, P532). Questions 4 and 15 of the plan
 are this ADR's. The `Progression` interface is agreed with Phase 6 (2026-11-15).
 
-Amends by a dated note at acceptance (P500b): the GDD's "Meta progression" (skins after launch, per
-question 4).
+Amends by a dated note (written in P500b): the GDD's "Meta progression" (skins after launch,
+question 4 A).
+
+## Michael's answers (2026-11-15)
+- **Question 4, unlocks:** option A: map 2 at rank 2, Hard at rank 3, map 3 at rank 4, titles and
+  insignia per rank; Headquarters skins after launch (§4).
+- **Question 15, XP rules:** win, loss and draw XP by level, a capped per-minute bonus, surrender
+  counts as a loss, an abandoned match gives nothing, each lesson pays once (§2).
 
 ## Context
 - GDD: "Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard difficulty,

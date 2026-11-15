@@ -9,14 +9,24 @@ one. The game goes quiet when it goes to the background or an ad opens, and the 
 one piece to the next. Every sound file is CC0, CC-BY or made by a script in this repository, each
 with a line in `assets/CREDITS.md`.
 
-Status: **proposed, 2026-11-15 (awaiting Michael).** Written by the architect on branch
+Status: **accepted, 2026-11-15 (Michael: "Ja til anbefaling", yes to every recommendation of
+the plan's questions).** Written by the architect on branch
 `claude/p500-phase5-plan` (base `main` at a2204d2f) with the plan
 `docs/plans/2026-11-15-phase-5.md` (rows P501-P509, P535). Questions 1, 8 and 9 of the plan are
 this ADR's.
 
-Amends by dated notes at acceptance (P500b; the accepted texts stay): ADR 0025 §11 (the pause
+Amends by dated notes (written in P500b; the accepted texts stay): ADR 0025 §11 (the pause
 menu's Sound and Music chips come from P531), ADR 0027 §8 (no change of `reduced`; sounds are not
 "life" effects).
+
+## Michael's answers (2026-11-15)
+- **Question 1, music mood:** menu calm synth pads with a slow pulse (about 90 BPM); battle driving
+  percussion and a bass figure (110-120 BPM), no lead melody; victory and defeat as two short
+  stings (6-10 s), rising and falling (§5).
+- **Question 8, haptics:** one on/off Vibration switch; strengths per event stay in
+  `data/input_settings.tres` (§8).
+- **Question 9, CC-BY credits:** yes, a Credits part in the Licences screen lists every CC-BY file,
+  and the CC0 ones as a courtesy (§7, ADR 0043 §7).
 
 ## Context
 - `assets/audio/` is empty. GDD: "short radio chirps and mechanical sounds instead of voice acting,

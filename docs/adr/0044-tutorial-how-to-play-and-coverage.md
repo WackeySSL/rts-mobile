@@ -8,10 +8,16 @@ from the menu. The How to play screen explains every entry of `docs/HOW_TO_PLAY.
 A test checks that every entry has its How to play text and that every Teach entry is in a lesson,
 so a feature added later without either fails the build.
 
-Status: **proposed, 2026-11-15 (awaiting Michael).** Written by the architect on branch
+Status: **accepted, 2026-11-15 (Michael: "Ja til anbefaling", yes to every recommendation of
+the plan's questions).** Written by the architect on branch
 `claude/p500-phase5-plan` (base `main` at a2204d2f) with the plan
 `docs/plans/2026-11-15-phase-5.md` (rows P527, P528, P530, P540-P545, P560). Questions 2 and 3 of
 the plan are this ADR's.
+
+## Michael's answers (2026-11-15)
+- **Question 2, narrator:** text-only coach cards with a radio chirp, no voice (§2).
+- **Question 3, the tutorial's shape:** option A, Basics (about 3 minutes, first launch) plus three
+  drills (§1), with the ROADMAP rewording that P500b applies (the plan's P500b gives the text).
 
 ## Context
 - `docs/HOW_TO_PLAY.md` has 108 rows in 19 sections today, 51 marked Teach; Phase 4b adds
@@ -30,14 +36,14 @@ the plan are this ADR's.
 ### 1. Lessons
 - **Basics** (about 3 minutes, first launch): camera, select, move, box select, attack, build and
   place, power, harvest, train, groups, win. **Drills** (about 1 minute each): superweapon and the
-  satellite; aircraft, Home and carriers; repair, sale, mines and Hold (question 3, option A). Every
-  Teach row is in at least one lesson.
+  satellite; aircraft, Home and carriers; repair, sale, mines and Hold (question 3, option A,
+  Michael's choice). Every Teach row is in at least one lesson.
 - **This changes the ROADMAP's meaning.** ROADMAP Phase 5 asks for one tutorial of about 3 minutes
   that includes every Teach entry. Option A keeps the 3 minutes for the first-launch lesson only;
   with the drills the whole tutorial is about 6 minutes, and the Teach entries of Phase 4b are
-  taught in the drills, which a player may never open. If Michael picks A, P500b rewords the
-  ROADMAP line (the plan's P500b gives the text) with his yes; the gate (P560) then tests Basics
-  with a new player and the drills by the bot run and the coverage test.
+  taught in the drills, which a player may never open. Michael picked A on 2026-11-15, with the
+  rewording; P500b applies it to the ROADMAP line (the plan's P500b gives the text). The gate
+  (P560) then tests Basics with a new player and the drills by the bot run and the coverage test.
 - A lesson is a match of its own scenario (`data/scenarios/tutorial_*.tres` on a small
   `data/maps/tutorial_*.tres`) with a fixed seed, the local player and `TutorialAi`. It is never
   resumed after a kill (ADR 0042 §6); it restarts.
@@ -67,7 +73,7 @@ the plan are this ADR's.
 - Opened from the main menu, Settings and the pause menu (P531). Sections as in `HOW_TO_PLAY.md`;
   each row's player text.
 - The player text is hand-written data, `data/help/how_to_play.tres` (`HelpDef`: per row id a
-  title and a body, in English via translation keys if question 12 says yes), not generated from the
+  title and a body, in English through translation keys, question 12), not generated from the
   Markdown: the Markdown stays the developers' list, with data names and file paths.
 
 ### 4. Ids

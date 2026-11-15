@@ -12,16 +12,23 @@ frozen copy of the whole battle would load at once, but it would need every piec
 of the computer's memory written and read back, and one forgotten piece would quietly change the
 match; replaying is exact by construction.
 
-Status: **proposed, 2026-11-15 (awaiting Michael).** Written by the architect on branch
+Status: **accepted, 2026-11-15 (Michael: "Ja til anbefaling", yes to every recommendation of
+the plan's questions).** Written by the architect on branch
 `claude/p500-phase5-plan` (base `main` at a2204d2f) with the plan
 `docs/plans/2026-11-15-phase-5.md` (rows P510-P516, P531). Questions 7 and 13 of the plan are this
 ADR's. The section layout and `get_section`/`set_section` are agreed with Phase 6 (2026-11-15).
 
-Amends by dated notes at acceptance (P500b): ADR 0007 §9 ("Storage": the resume file is the one
+Amends by dated notes (written in P500b): ADR 0007 §9 ("Storage": the resume file is the one
 stored log; `user://replays/` stays out of scope) and its Consequences ("a Phase 5 save must store
 the flow-cache state or rebuild it at load": not needed, the restore replays from tick 0, so a
 resumed game is bit-identical); ADR 0024 §7 and ADR 0025 §11 (`settings.cfg` is taken over by the
 save file); ADR 0027 §8 (the reduced switch is stored in section `settings`).
+
+## Michael's answers (2026-11-15)
+- **Question 7, resume at launch:** yes, by replaying the log (option A, §6), with the 15 s trigger
+  for a snapshot design measured on his phone.
+- **Question 13, back from the background:** the match stays paused under the pause menu until
+  Resume (§5).
 
 ## Context
 - Today one file exists: `user://settings.cfg`, `[hud] haptics`, through `HudPrefs` (static, no
