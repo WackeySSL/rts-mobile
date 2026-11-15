@@ -133,6 +133,13 @@ func test_the_ring_stands_on_the_drawn_rig_of_the_carrier_in_the_main_scene() ->
 	var rig: Node2D = (main.get_node("AirLayer") as AirLayer).rig_of(2)
 	assert_object(rig).is_not_null()
 	assert_vector(layer.ring_centre()).is_not_equal(Vector2.INF)
+	rig.position += Vector2(24.0, 0.0)  # Off the snapshot point, as an interpolated flyer is.
 	assert_vector(layer.ring_centre()).is_equal_approx(
 		layer.to_local(rig.global_position), Vector2.ONE * 0.01
+	)
+	# Without the flyer's rig the ring falls back to the snapshot's ground point.
+	layer.air_layer = null
+	var row: int = snap.index_of(2)
+	assert_vector(layer.ring_centre()).is_equal_approx(
+		IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row]), Vector2.ONE * 0.01
 	)
