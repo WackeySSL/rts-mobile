@@ -17,7 +17,9 @@ const ICON_DIR: String = "res://assets/art/svg/icons"
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const FLAG_ART: String = "res://assets/art/svg/flags/%s_%s.svg"
 const STYLE_PATH: String = "res://assets/art/STYLE.md"
-const TABS: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles", "tab_flight"]
+const TABS: Array[String] = [
+	"tab_structures", "tab_infantry", "tab_vehicles", "tab_flight", "tab_research"
+]
 ## One item icon per buildable type, named by type id (P72); the Headquarters is not buildable.
 const ITEMS: Array[String] = [
 	"item_power_plant",
@@ -169,7 +171,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(59)
+	assert_int(found.size()).is_equal(60)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -228,7 +230,7 @@ func test_every_new_svg_names_its_shape_in_one_line_and_item_icons_and_flags_use
 			if not PALETTE.has(found.get_string().to_upper()):
 				problems.append("%s uses %s" % [path, found.get_string()])
 	assert_array(problems).is_empty()
-	assert_int(paths.size()).is_equal(61)
+	assert_int(paths.size()).is_equal(62)
 
 
 ## The outer 2 px of the 128 px canvas (1 px of a 64 px raster) hold no ink, so an icon never

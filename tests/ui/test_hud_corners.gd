@@ -242,7 +242,8 @@ func test_a_narrow_room_beside_the_panel_narrows_the_pill_and_sends_the_toast_do
 	var shown: HudCorners.Shown = _shown(["drawer", "toast"], 1)
 	var out: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 500.0, 280.0), false, shown)
 	assert_float(out[HudCorners.PILL].end.x).is_equal(180.0)  # Panel at 188: a gap short of it.
-	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 64.0, 116.0, 48.0))
+	# A gap short of the panel's 48 dp close handle too (P248): 116 less 48.
+	_assert_rect(out[HudCorners.TOAST], Rect2(64.0, 64.0, 68.0, 48.0))
 	out = _place(Rect2(0.0, 0.0, 900.0, 280.0), false, shown)  # Panel at 540: room for both.
 	assert_float(out[HudCorners.TOAST].position.y).is_equal(0.0)
 	assert_bool(out[HudCorners.TOAST].intersects(out[HudCorners.PILL])).is_false()

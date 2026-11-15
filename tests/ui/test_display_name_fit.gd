@@ -34,10 +34,9 @@ func test_the_space_centres_are_in_the_checked_names() -> void:
 	assert_str(names.get("renew_space", "")).is_equal("Zenith")
 
 
-## The engineering centres' names (P247) are in the checked set, as captions (no sash: nothing
-## requires a centre). Upgrade names (Heavy Bombs 86.8-90.3 dp, Focus Bombs 85.3-88.6 dp at
-## web_phone/web_phone_small/android_6in) are checked by P248 against the research card's caption;
-## they overrun the 83.4-83.8 dp sidebar caption.
+## The engineering centres' names (P247) are in the checked set, as captions and, as defs that make
+## a tab's items (the locked Research card names its centre), on the sash. The upgrade names are
+## `test_every_upgrade_name_fits_the_research_card`'s.
 func test_the_engineering_centres_are_in_the_checked_names() -> void:
 	var names: Dictionary[String, String] = DisplayNames.all()
 	assert_str(names.get("fossil_engineering", "")).is_equal("Draft Shop")
@@ -54,6 +53,58 @@ func test_the_ground_support_units_are_in_the_checked_names() -> void:
 	assert_str(names.get("renew_seeder", "")).is_equal("Seeder")
 	for id: String in ["fossil_bunk_wagon", "renew_linecar", "fossil_shot_truck", "renew_seeder"]:
 		assert_int(names[id].length()).override_failure_message(id).is_less_equal(10)
+
+
+## The upgrade names (P248): the Research card's caption takes two lines
+## (`ItemTile.RESEARCH_LINES`),
+## so each name breaks between words into at most two lines, each whole in the card's caption room,
+## at every profile. "Heavy Bombs" (86.8-90.3 dp) and "Focus Bombs" (85.3-88.6 dp at web_phone,
+## web_phone_small and android_6in) are wider than the one-line room (83.4-83.8 dp): the test
+## pins that, so the second line stays needed and a change of the card or the theme shows here.
+func test_every_upgrade_name_fits_the_research_card() -> void:
+	var names: PackedStringArray = PackedStringArray()
+	var files: PackedStringArray = DirAccess.get_files_at("res://data/upgrades")
+	files.sort()
+	for file: String in files:
+		if file.ends_with(".tres"):
+			names.append((load("res://data/upgrades/" + file) as UpgradeDef).display_name)
+	assert_int(names.size()).is_greater_equal(4)
+	var misfits: PackedStringArray = PackedStringArray()
+	var overruns: int = 0
+	for profile: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profile:
+			UiScale.set_override(profile[profile_name])
+			var theme: Theme = HudTheme.scaled(HudThemes.source(), UiScale.base_px_per_dp())
+			var card: Vector2 = UiScale.dp_vec(ItemTile.CARD_DP.x, ItemTile.CARD_DP.y).floor()
+			var frame: StyleBoxFlat = (
+				theme.get_stylebox(&"normal", ItemTile.VARIATION) as StyleBoxFlat
+			)
+			var room: float = card.x - frame.border_width_left - frame.border_width_right
+			var font: Font = theme.get_font(&"font", ItemTile.CAPTION_VARIATION)
+			var size: int = theme.get_font_size(&"font_size", ItemTile.CAPTION_VARIATION)
+			for shown: String in names:
+				var paragraph: TextParagraph = TextParagraph.new()
+				paragraph.add_string(shown, font, size)
+				paragraph.width = room
+				overruns += 1 if _width(theme, ItemTile.CAPTION_VARIATION, shown) > room else 0
+				var widest: float = 0.0
+				for line: int in paragraph.get_line_count():
+					widest = maxf(widest, paragraph.get_line_size(line).x)
+				if paragraph.get_line_count() > ItemTile.RESEARCH_LINES or widest > room:
+					misfits.append(
+						(
+							'"%s" takes %d lines, %.1f dp wide, room %.1f dp, at %s'
+							% [
+								shown,
+								paragraph.get_line_count(),
+								widest / UiScale.dp(1.0),
+								room / UiScale.dp(1.0),
+								profile_name
+							]
+						)
+					)
+	assert_array(misfits).override_failure_message("\n".join(misfits)).is_empty()
+	assert_int(overruns).is_greater(0)  # The second line is needed somewhere.
 
 
 ## The names of `names` and `needed` that overrun at one profile, each as a line of the report.
