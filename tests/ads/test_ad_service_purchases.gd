@@ -192,3 +192,17 @@ func test_the_purchase_drops_a_late_interstitial_that_has_not_opened() -> void:
 	ad.open_late()
 	assert_array(_h.events).is_empty()
 	assert_bool(service._ledger.shown_for_current_match()).is_false()
+
+
+func test_the_facade_drives_the_fake_sheet_when_auto_close_is_off() -> void:
+	var service: Node = _service()
+	add_child(service)
+	service.fake_auto_close = false
+	var out: Array = AdServiceHarness.start(service.purchase_remove_ads)
+	await AdServiceHarness.frames(2)
+	assert_array(out).is_empty()
+	var layer: Node = service.get_node("FakeTestPurchase")
+	(layer.find_child("Buy", true, false) as Button).pressed.emit()
+	await AdServiceHarness.frames(2)
+	assert_array(out).contains_exactly([true])
+	assert_bool(service.has_remove_ads()).is_true()

@@ -72,6 +72,8 @@ func _init() -> void:
 func _ready() -> void:
 	if _backend is FakeAdBackend:
 		(_backend as FakeAdBackend).host = self
+	if _billing is FakeBilling:
+		(_billing as FakeBilling).host = self
 	# Silent, no UI: retries failed acknowledges and grants pendings paid while the app was closed.
 	_restore_silently()
 
@@ -111,6 +113,7 @@ func has_remove_ads() -> bool:
 ## PENDING (never granted), on failure and when the store sheet has not shown within
 ## `billing_timeout_ms`; once it showed the call waits for it.
 func purchase_remove_ads() -> bool:
+	_sync_fake()
 	return await _purchases.purchase(_now_ms, _settings.billing_timeout_ms)
 
 
@@ -118,6 +121,7 @@ func purchase_remove_ads() -> bool:
 ## a missing purchase clears the entitlement (a refund); no answer (offline, timeout) keeps the
 ## cached one and returns false. Returns false at once while a purchase or another restore waits.
 func restore_purchases() -> bool:
+	_sync_fake()
 	return await _purchases.restore(_now_ms, _settings.billing_timeout_ms)
 
 
@@ -293,3 +297,7 @@ func _sync_fake() -> void:
 		var fake: FakeAdBackend = _backend as FakeAdBackend
 		fake.auto_close = fake_auto_close
 		fake.draw_placeholders = not fake_auto_close
+	if _billing is FakeBilling:
+		var store: FakeBilling = _billing as FakeBilling
+		store.auto_close = fake_auto_close
+		store.draw_placeholders = not fake_auto_close
