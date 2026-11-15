@@ -303,6 +303,13 @@ Note (2026-11-07, P26bf docs, from the reviews of P187):
 - `by_faction` is left out of a same-faction set. A faction whose roster is missing, does not
   load or holds no unit type, or a type in two rosters, fails the summary (`FAILED`, exit 1).
 
+Note (2026-11-15, P26bz; P245): the gate's unit types are the rosters' unit types (those with an
+Infantry, Vehicles or Flight tab): twelve when this was written, 16 since P245 put the aircraft in
+the rosters. The set check (`balance_summary.gd`'s `_set_check`) reads the rosters instead of a
+constant. Michael's answer A ("every unit type is used") applies to all of them, so the gate needs
+P250's air AI before it can pass. The "twelve" of answer 2 in the acceptance note and in the
+questions is the count of that day.
+
 ### 5. The balance run (`balance.yml`, release-engineer, P190)
 - **What it is:** a development tool that runs on GitHub's machines, like the CI that checks every
   pull request; players never see it, and the game stays offline with no server.

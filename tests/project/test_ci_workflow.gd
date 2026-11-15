@@ -11,10 +11,14 @@ const RELEASE_IF: String = (
 )
 const PERF_RELEASE_JOB: String = "  android-perf-release:"
 const ANDROID_JOB: String = "  android-debug-apk:"
+const AAB_STEP: String = "Offline test of the AAB export and its checks"
+const AAB_RUN: String = "run: bash scripts/ci/test-aab.sh"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
 const INSTALLER_STEP: String = "Offline test of the cloud Android installer"
 const INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android.sh"
+const PLUGIN_INSTALLER_STEP: String = "Offline test of the AdMob plugin installer"
+const PLUGIN_INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android-plugins.sh"
 const EXPORT_STEP: String = "      - name: Export debug APK"
 const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
 const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
@@ -91,6 +95,17 @@ const BASES_GREP: String = (
 	+ "' "
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
+)
+## P309: after the bases block, the same step copies the two PERF lines of the air arena
+## (tests/perf/test_air_perf.gd) under a heading of their own. Report only.
+const AIR_HEADING: String = "echo '### PERF air (the air arena, report only)'"
+const AIR_PATTERN: String = "^PERF air (units=|impl=native units=)"
+const AIR_GREP: String = (
+	"grep -a -E '"
+	+ AIR_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no PERF air line (the air perf suite did not run)"'
 )
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
@@ -223,8 +238,8 @@ func test_release_job_runs_only_on_a_push_to_main() -> void:
 	assert_str(lines[job + 2]).is_equal(RELEASE_IF)
 
 
-## Only the two release jobs hold contents: write: android-dev-release, then android-perf-release
-## (P51r), whose other rules tests/project/test_ci_perf_apk.gd pins.
+## Only the two release jobs hold contents: write: android-dev-release, then
+## android-perf-release (P51r), whose other rules tests/project/test_ci_perf_apk.gd pins.
 func test_only_the_two_release_jobs_can_write_contents() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	var job: int = lines.find(RELEASE_JOB)
@@ -308,9 +323,15 @@ func test_verify_job_runs_the_native_script_test() -> void:
 	assert_str(lines[step + 2].strip_edges()).is_empty()
 
 
-## P55b: the offline test of the cloud Android installer runs in the verify job, the required check.
-func test_verify_job_runs_the_cloud_installer_test() -> void:
-	_assert_step(_job(_lines("ci.yml"), "  verify:"), INSTALLER_STEP, [INSTALLER_RUN])
+## P55b: the offline test of the cloud Android installer runs in the verify job, the required check
+## (P410: so does the one of the AdMob plugin installer).
+func test_verify_job_runs_the_installer_tests() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+	_assert_step(job, INSTALLER_STEP, [INSTALLER_RUN])
+	# P410: the offline test of the AdMob plugin installer runs there too.
+	_assert_step(job, PLUGIN_INSTALLER_STEP, [PLUGIN_INSTALLER_RUN])
+	# P410c: so does the offline test of the AAB export and its checks.
+	_assert_step(job, AAB_STEP, [AAB_RUN])
 
 
 ## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.
@@ -358,6 +379,7 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	for line: String in skipped:
 		assert_bool(_perf_selected(line)).is_false()
 	_assert_perf_bases_summary(step)
+	_assert_perf_air_summary(step)
 	_assert_watch_ai_summary(step)
 	_assert_log_lines_step(job)
 	_assert_verify_prints_smoke_seconds()
@@ -740,12 +762,42 @@ func _assert_perf_bases_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
 
 
+## P309: the same step copies the two `PERF air` lines under a heading of their own after the
+## `PERF bases` block. The other PERF selectors reach no air line, nor this one theirs.
+func _assert_perf_air_summary(step: Array) -> void:
+	assert_array(step).contains([AIR_HEADING, AIR_GREP])
+	var heading: int = step.find(AIR_HEADING)
+	assert_int(heading).is_greater(step.find(BASES_GREP))
+	assert_int(step.find(AIR_GREP)).is_greater(heading)
+	var air_lines: Array[String] = [
+		"PERF air units=120 ticks=900 runs=3 mean_ms=0.900 hash=a294900896cc6438",
+		"PERF air impl=native units=120 ticks=900 runs=3 mean_ms=0.300 hash=a294900896cc6438",
+	]
+	for line: String in air_lines:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_true()
+		assert_bool(_perf_selected(line)).is_false()
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+	var other_lines: Array[String] = [
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		"PERF bases units=178 ticks=900 runs=3 mean_ms=1.250 hash=a294900896cc6438",
+	]
+	for line: String in other_lines:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
+	var skipped: Array[String] = [
+		"perf: no PERF air impl=native line, the SimKernels library is not loaded",
+		"WATCH air hash_bytes checkpoints=60",
+		" PERF air units=120 ticks=900",
+	]
+	for line: String in skipped:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
+
+
 ## P190: the same step copies every `WATCH ai ` line, under a heading of their own after the
 ## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
 func _assert_watch_ai_summary(step: Array) -> void:
 	assert_array(step).contains([WATCH_AI_HEADING, WATCH_AI_GREP])
 	var heading: int = step.find(WATCH_AI_HEADING)
-	assert_int(heading).is_greater(step.find(BASES_GREP))
+	assert_int(heading).is_greater(step.find(AIR_GREP))
 	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
 	var shown: Array[String] = [
 		"WATCH ai think impl=native slots=3 thinks=360 p95_us=412 max_us=900 est_phone_p95_ms=1.2",
@@ -786,7 +838,10 @@ func _assert_log_lines_step(job: PackedStringArray) -> void:
 		'echo "::endgroup::"',
 	]
 	var groups: Dictionary = {
-		"PERF sim": PERF_GREP, "PERF bases": BASES_GREP, "WATCH ai": WATCH_AI_GREP
+		"PERF sim": PERF_GREP,
+		"PERF bases": BASES_GREP,
+		"PERF air": AIR_GREP,
+		"WATCH ai": WATCH_AI_GREP
 	}
 	for group: String in groups:
 		var grep: String = groups[group]

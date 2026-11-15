@@ -36,7 +36,11 @@ func test_the_pinned_scenarios_reach_only_frozen_maps_and_terrain_files() -> voi
 		# The walk must not pass on nothing: a scenario takes rules, units, weapons and factions.
 		var least: int = (
 			30
-			if scenario_path.ends_with("perf_bases.tres") or scenario_path.ends_with("perf_ai.tres")
+			if (
+				scenario_path.ends_with("perf_bases.tres")
+				or scenario_path.ends_with("perf_ai.tres")
+				or scenario_path.ends_with("perf_ai_4b.tres")
+			)
 			else 10 if scenario_path.ends_with("perf_air.tres") else 1
 		)
 		(

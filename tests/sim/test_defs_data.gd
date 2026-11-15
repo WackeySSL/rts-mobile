@@ -15,6 +15,8 @@ const WEAPONS_DIR: String = "res://data/weapons"
 const FROZEN_RULES_PATH: String = "res://data/dev/arena/rules.tres"
 const FROZEN_SCENARIOS: Array[String] = Frozen.SCENARIOS
 const RULES_PATH: String = "res://data/rules.tres"
+## `perf_ai_4b` plays its own frozen copy (P304): the frozen rules plus today's carry values.
+const ARENA_4B_RULES_PATH: String = "res://data/dev/arena/arena_4b/rules.tres"
 const TERRAIN_PATH: String = "res://data/terrain/standard.tres"
 const ARENA_MAP_PATH: String = "res://data/maps/perf_arena.tres"
 const ARENA_PATH: String = "res://data/scenarios/perf_arena.tres"
@@ -427,6 +429,8 @@ func test_every_scenario_file_sets_the_shared_rules_resource_and_has_a_valid_map
 		)
 		# The pinned scenarios play the frozen copy (P171), the rest the shipped file.
 		var expected: String = FROZEN_RULES_PATH if path in FROZEN_SCENARIOS else RULES_PATH
+		if path.ends_with("perf_ai_4b.tres"):
+			expected = ARENA_4B_RULES_PATH
 		assert_str(rules_path).override_failure_message(path).is_equal(expected)
 		if scenario.map != null:
 			assert_array(scenario.map.validate()).override_failure_message(path).is_empty()

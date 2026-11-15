@@ -12,11 +12,14 @@ extends GdUnitTestSuite
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const ICON_DIR: String = "res://assets/art/svg/icons"
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const FLAG_ART: String = "res://assets/art/svg/flags/%s_%s.svg"
 const STYLE_PATH: String = "res://assets/art/STYLE.md"
-const TABS: Array[String] = ["tab_structures", "tab_infantry", "tab_vehicles", "tab_flight"]
+const TABS: Array[String] = [
+	"tab_structures", "tab_infantry", "tab_vehicles", "tab_flight", "tab_research"
+]
 ## One item icon per buildable type, named by type id (P72); the Headquarters is not buildable.
 const ITEMS: Array[String] = [
 	"item_power_plant",
@@ -168,7 +171,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(59)
+	assert_int(found.size()).is_equal(60)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -227,7 +230,7 @@ func test_every_new_svg_names_its_shape_in_one_line_and_item_icons_and_flags_use
 			if not PALETTE.has(found.get_string().to_upper()):
 				problems.append("%s uses %s" % [path, found.get_string()])
 	assert_array(problems).is_empty()
-	assert_int(paths.size()).is_equal(61)
+	assert_int(paths.size()).is_equal(62)
 
 
 ## The outer 2 px of the 128 px canvas (1 px of a 64 px raster) hold no ink, so an icon never
@@ -400,8 +403,8 @@ func test_the_style_guide_names_every_icon_and_flag_file_and_the_tints_the_galle
 	var start: int = style.find("## Icons and glyphs")
 	assert_int(start).is_greater(-1)
 	var section: String = style.substr(start, style.find("\n## ", start + 1) - start)
-	for icon: String in Gallery.GLYPH_TINTS:
-		var tint: String = "#" + (Gallery.GLYPH_TINTS[icon] as Color).to_html(false).to_upper()
+	for icon: String in IconsPage.GLYPH_TINTS:
+		var tint: String = "#" + (IconsPage.GLYPH_TINTS[icon] as Color).to_html(false).to_upper()
 		assert_str(section).override_failure_message(icon + " " + tint).contains(tint)
 		assert_array(_all_icons()).override_failure_message(icon).contains([icon])
 	assert_str(section).contains("Import scale 1.0 (new)")
@@ -477,7 +480,7 @@ func _grey_at_32(
 	icon: String, ground: Color = HUD_BACKDROP, tinted: bool = false
 ) -> PackedFloat32Array:
 	var image: Image = _raster_32(icon)
-	var tint: Color = Gallery.GLYPH_TINTS.get(icon, Color.WHITE) if tinted else Color.WHITE
+	var tint: Color = IconsPage.GLYPH_TINTS.get(icon, Color.WHITE) if tinted else Color.WHITE
 	var grey: PackedFloat32Array = PackedFloat32Array()
 	for y: int in image.get_height():
 		for x: int in image.get_width():
@@ -490,7 +493,7 @@ func _grey_at_32(
 ## that of `ground` by more than MAP_CONTRAST_LUMINANCE.
 func _standing_out(icon: String, ground: Color) -> float:
 	var image: Image = _raster_32(icon)
-	var tint: Color = Gallery.GLYPH_TINTS.get(icon, Color.WHITE)
+	var tint: Color = IconsPage.GLYPH_TINTS.get(icon, Color.WHITE)
 	var ink: int = 0
 	var apart: int = 0
 	for y: int in image.get_height():

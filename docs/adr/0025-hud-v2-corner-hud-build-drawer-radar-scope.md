@@ -534,6 +534,18 @@ ellipsis" stands.
 §19's P120 row ("a padlocked card says what you need for it") gets P120j's new HOW_TO_PLAY
 wording. No other accepted text changed.
 
+Note (Michael, 2026-11-15: the close chevron leaves the tabs row, P248 review, option A). It
+replaces "The close chevron sits at the right end of the tabs row" above: with a fifth tab
+(Research) the row no longer holds four icons, the open tab's name and a 48 dp chevron on a 6-inch
+phone. The chevron is still 48 x 48 dp and still points toward the edge the drawer leaves by.
+**Upright** it is at the right end of the handle row above the tabs (the row is 48 dp high, the
+handle stays centred in it). **Sideways** it is a 48 dp handle on the panel's map-side (left) edge,
+outside the tabs row, as low as the panel's middle, in the panel's own look; the holder reaches 48
+dp further left than the panel for it. The swipe to close is unchanged (sideways any horizontal
+drag on the panel, upright a drag on the handle row or the tabs). The tab row has the whole
+width, so the names show whenever they fit; where even the open tab's name does not fit beside the
+other icons every tab shows its icon alone (measured, `BuildSidebar._fit_tabs`).
+
 ### 6. What this does to ADR 0024's parts
 | Part (ADR 0024) | Here | Why |
 | --- | --- | --- |
@@ -738,6 +750,27 @@ its banner; they replace the text above where they say so):
   no banner until P127's row decides. It is built with the menu banners (P127's row), not in
   P124b; CLAUDE.md and `admob-policy` say so.
 
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): P127's open point is decided
+(Michael's answer 5 A, ADR 0039 §6): **sideways, and whenever the menu scrolls, no banner.**
+Upright, where the foot is free, the foot holds Phase 6's `AdBannerBand` (row P430) at least 16 dp
+below the Vibration chip while the menu is open; it is shown on open and destroyed on close. Row
+P435 builds it; P127 is withdrawn. `admob-policy`'s pause cell follows in plan row P400c, pending
+Michael's yes to the text.
+
+Status note (2026-11-15, P500b; ADRs 0041-0043 accepted by Michael, 2026-11-15; the text and notes
+above stay as accepted):
+- **Toggles.** The Vibration switch's key moves with every `[hud]` key from `user://settings.cfg`
+  into section `hud` of the one save file `user://save.cfg` (ADR 0042 §1-§3); `HudPrefs` keeps its
+  API. The Sound and Music chips and a Settings button arrive with plan row P531 (ADR 0041 §2), and
+  the menu gains How to play.
+- **Exit to menu** goes to the main menu through `MenuFlow` (ADR 0043 §6), not the dev menu; the
+  Developer menu button stays in debug and `dev_menu` builds. Android's back button opens the menu
+  in a match and resumes from it (ADR 0043 §4).
+- **Coming back from the background** (Michael, 2026-11-15): the menu opens on
+  `NOTIFICATION_APPLICATION_PAUSED` and on focus out, and the match stays paused until Resume (ADR
+  0042 §5).
+- **The banner at the foot** is Phase 6's row P435 (it was P127); P531 keeps the foot free for it.
+
 ### 12. The start page (Phase 5)
 - Built by ROADMAP Phase 5's "Main menu" box, not in this wave (a decision from the roadmap, not a
   question: ADR 0019 §7 Q4 keeps
@@ -755,6 +788,19 @@ its banner; they replace the text above where they say so):
   it and 48 dp of air to the nearest button (the design's gap; stricter than admob-policy's floor
   of 16 dp, so it is kept); the "+500 starting credits"
   rewarded offer is Phase 6's. Both orientations as the boards show.
+
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): `AdService` exists from Phase 6's
+row P401 on. The start page's banner is P430's `AdBannerBand`, placed by Phase 5's menu, with
+`start_banner_gap_dp` (48) of air and the "Advertisement" caption without a frame (ADR 0039 §4,
+§5; answer 4 A). The "+500 starting credits" offer is on map select only, not on the start page
+(answer 1 A; row P433).
+
+Status note (2026-11-15, P500b; ADR 0043 accepted by Michael, 2026-11-15; the text above stays as
+accepted): the start page is the main menu of ADR 0043 §5 (plan row P524). The tagline is "Oil and
+gas against wind and sun. Choose your side." (Michael, 2026-11-15). Continue shows while a resumable
+match exists (ADR 0042 §6); Skirmish opens the map select, beside Tutorial, How to play and
+Settings, the rank badge and the version line. The banner sits in the `AdBannerSlot` at the foot
+with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
 
 ### 13. Look: theme, fonts and the accent
 - **Tokens** (the design's, art-director owns them in STYLE.md and `theme.tres` is the value of
@@ -804,6 +850,10 @@ its banner; they replace the text above where they say so):
   command bar, the group column, the drawer's side in landscape); its tests run both. No other row
   reads the flag until the switch exists.
 
+Status note (2026-11-15, P500b; Michael, 2026-11-15): the switch does not come with Phase 5's
+settings; left-handed mode comes after launch. `HudCorners.place` keeps its `mirror` parameter and
+its mirrored tests; nothing reads the flag until a later plan adds the switch.
+
 ### 15. Where the design is overruled (constraints, each with its source)
 | Design | Here | Source |
 | --- | --- | --- |
@@ -829,6 +879,12 @@ The design's swipe to close the drawer and its 48 dp gap round a menu banner are
 Note (2026-11-05, P26ax docs): the row "Banner on the pause menu and the end screen" now holds for
 the end screen only. Michael allows the pause menu's banner (§11's note of 2026-11-05), so its
 "Here" cell's "pause" no longer holds.
+
+Note (2026-11-15, P400b docs; ADR 0039, accepted 2026-11-15): Michael's answers of 2026-11-15 keep
+the rows "Interstitial at most one per 3 min" (answer 2 A: the caps stand, now in
+`data/ads_settings.tres`) and "Rewarded 'double reward' on the end screen" (answer 1 A: Double XP
+on the result screen, row P432). The pause menu's banner is upright only (§11's note of
+2026-11-15); the end screen still shows none.
 
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
@@ -882,6 +938,12 @@ Note (2026-11-05, P26ax docs): the drawer has no queue row any more (§5's note 
   `paused` and a scripted run with HUD actions ends with the same state hash as without them
   (P62's method); no ad node in the battle scene; the font files, OFL texts and CREDITS rows exist,
   `theme.tres` is the only reference to them.
+
+Note (2026-11-15, P400b docs; ADR 0039 §6, accepted 2026-11-15): "no ad node in the battle scene"
+now reads "no ad node in the battle scene but the pause menu's `AdBannerBand`, which holds no
+banner while the menu is closed". The scene-tree scan (`tests/ui/support/hud_walk.gd`) exempts the
+autoload node `/root/AdService` alone, which holds no banner child (P401), and allows the band
+under `PauseMenu` (P435); the old cases stay for the closed menu.
 
 ### 18. What this amends, and the proposed `touch-ui-rules` text
 Nothing is superseded whole; on acceptance the lead's docs row P26ap adds dated status notes (the

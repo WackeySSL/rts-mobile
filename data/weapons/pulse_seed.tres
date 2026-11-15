@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; The Seeder's mine (ADR 0037 section 8, GDD): the blast radius is the GDD's (1.5 tiles). The damage
+; ("less" than the shot charge's) and the percents ("better against squads") are starting values for
+; the balance run. Range and cooldown are unused: a mine is not fired.
+[resource]
+script = ExtResource("1_weapon")
+id = &"pulse_seed"
+damage = 100
+vs_armour = PackedInt32Array(150, 80, 50, 100)
+blast_milli = 1500

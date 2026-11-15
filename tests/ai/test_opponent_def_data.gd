@@ -401,6 +401,7 @@ func _all_types(def: OpponentDef) -> Array[StringName]:
 		def.strike_type
 	]
 	ids.append_array(def.anti_vehicle_types)
+	ids.append_array(def.hold_types)
 	for order: AiBuildOrderDef in def.build_orders:
 		ids.append_array(order.steps)
 	return ids

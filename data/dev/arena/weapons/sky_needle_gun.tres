@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; Starting values for the Phase 4b balance run (ADR 0036 section 5 gives only the mask).
+; Frozen copy of data/weapons/sky_needle_gun.tres as of 2026-11-15 (main a2204d2f, P304). Used by perf_ai_4b only, so a tuning change to the shipped file cannot move its hash or its workload (ADR 0038 section 7, ADR 0031).
+[resource]
+script = ExtResource("1_weapon")
+id = &"sky_needle_gun"
+range = 5500
+damage = 30
+cooldown_ticks = 20
+projectile_speed = 600
+vs_armour = PackedInt32Array(100, 100, 70, 100)
+targets = 6
