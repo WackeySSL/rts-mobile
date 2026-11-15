@@ -92,6 +92,17 @@ const BASES_GREP: String = (
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
 )
+## P309: after the bases block, the same step copies the two PERF lines of the air arena
+## (tests/perf/test_air_perf.gd) under a heading of their own. Report only.
+const AIR_HEADING: String = "echo '### PERF air (the air arena, report only)'"
+const AIR_PATTERN: String = "^PERF air (units=|impl=native units=)"
+const AIR_GREP: String = (
+	"grep -a -E '"
+	+ AIR_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no PERF air line (the air perf suite did not run)"'
+)
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
 const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI, report-only lines)'"
@@ -358,6 +369,7 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	for line: String in skipped:
 		assert_bool(_perf_selected(line)).is_false()
 	_assert_perf_bases_summary(step)
+	_assert_perf_air_summary(step)
 	_assert_watch_ai_summary(step)
 	_assert_log_lines_step(job)
 	_assert_verify_prints_smoke_seconds()
@@ -740,12 +752,42 @@ func _assert_perf_bases_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
 
 
+## P309: the same step copies the two `PERF air` lines under a heading of their own after the
+## `PERF bases` block. The other PERF selectors reach no air line, nor this one theirs.
+func _assert_perf_air_summary(step: Array) -> void:
+	assert_array(step).contains([AIR_HEADING, AIR_GREP])
+	var heading: int = step.find(AIR_HEADING)
+	assert_int(heading).is_greater(step.find(BASES_GREP))
+	assert_int(step.find(AIR_GREP)).is_greater(heading)
+	var air_lines: Array[String] = [
+		"PERF air units=120 ticks=900 runs=3 mean_ms=0.900 hash=a294900896cc6438",
+		"PERF air impl=native units=120 ticks=900 runs=3 mean_ms=0.300 hash=a294900896cc6438",
+	]
+	for line: String in air_lines:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_true()
+		assert_bool(_perf_selected(line)).is_false()
+		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
+	var other_lines: Array[String] = [
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		"PERF bases units=178 ticks=900 runs=3 mean_ms=1.250 hash=a294900896cc6438",
+	]
+	for line: String in other_lines:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
+	var skipped: Array[String] = [
+		"perf: no PERF air impl=native line, the SimKernels library is not loaded",
+		"WATCH air hash_bytes checkpoints=60",
+		" PERF air units=120 ticks=900",
+	]
+	for line: String in skipped:
+		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
+
+
 ## P190: the same step copies every `WATCH ai ` line, under a heading of their own after the
 ## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
 func _assert_watch_ai_summary(step: Array) -> void:
 	assert_array(step).contains([WATCH_AI_HEADING, WATCH_AI_GREP])
 	var heading: int = step.find(WATCH_AI_HEADING)
-	assert_int(heading).is_greater(step.find(BASES_GREP))
+	assert_int(heading).is_greater(step.find(AIR_GREP))
 	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
 	var shown: Array[String] = [
 		"WATCH ai think impl=native slots=3 thinks=360 p95_us=412 max_us=900 est_phone_p95_ms=1.2",
@@ -786,7 +828,10 @@ func _assert_log_lines_step(job: PackedStringArray) -> void:
 		'echo "::endgroup::"',
 	]
 	var groups: Dictionary = {
-		"PERF sim": PERF_GREP, "PERF bases": BASES_GREP, "WATCH ai": WATCH_AI_GREP
+		"PERF sim": PERF_GREP,
+		"PERF bases": BASES_GREP,
+		"PERF air": AIR_GREP,
+		"WATCH ai": WATCH_AI_GREP
 	}
 	for group: String in groups:
 		var grep: String = groups[group]
