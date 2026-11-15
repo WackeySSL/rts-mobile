@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The anti-air buildings' data (plan row P239, ADR 0036 sections 2 and 5, docs/GDD.md): one 1x1
 ## BuildingDef per faction, a gun with mask 6 (high and low air, no ground) behind the Barracks.
-## The roster entries and the art (P239b) make them buildable. `type_id` is the art id. The GDD gives the names, size, cost, power and requirement; the ADR
+## The roster entries and the art (P239b) make them buildable. `type_id` is the art id. The GDD
+## gives the names, size, cost, power and requirement; the ADR
 ## gives the mask. Hit points, build time, sight, the weapon's range, damage, cooldown and armour
 ## percents are in neither: starting values for the balance run (the build time and hit points
 ## follow the Redoubt's scale, the guns differ by faction as the Redoubt and the Rail Battery do).

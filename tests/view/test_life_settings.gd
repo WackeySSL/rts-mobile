@@ -79,6 +79,8 @@ const RECOIL: Dictionary[StringName, float] = {
 	&"artillery_gun": 5.0,
 	&"redoubt_gun": 2.5,
 	&"arcline_gun": 4.0,
+	&"burst_stack_gun": 2.0,
+	&"sky_needle_gun": 1.5,
 }
 const ROCK: Dictionary[StringName, float] = {
 	&"heavy_cannon": 1.0,
@@ -254,7 +256,7 @@ func test_every_weapon_a_turreted_vehicle_or_a_defence_fires_has_a_recoil_row() 
 		var note: String = "%s fires %s" % [unit.type_id, unit.weapon.id]
 		assert_bool(file.recoil_px.has(unit.weapon.id)).override_failure_message(note).is_true()
 		assert_float(file.recoil_px[unit.weapon.id]).override_failure_message(note).is_greater(0.0)
-	assert_int(found).is_equal(8)  # 4 tanks and 2 artillery pieces, and the 2 defences.
+	assert_int(found).is_equal(10)  # 4 tanks, 2 artillery, 2 defences, 2 anti-air.
 
 
 func test_the_simulation_and_the_ai_know_nothing_of_the_life_numbers() -> void:
