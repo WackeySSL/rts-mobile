@@ -28,7 +28,8 @@ const BUTTONS: Array[String] = [
 	"PerfArenaButton",
 	"PerfBasesButton",
 	"PerfAiButton",
-	"PerfAirButton"
+	"PerfAirButton",
+	"PerfAiBaseButton"
 ]
 ## Michael's phone in landscape (a cutout on the left) and the ADR's phone in portrait (a cutout at
 ## the top, the gesture bar at the bottom), as window px of the profile they are put on.
@@ -141,7 +142,8 @@ func test_a_window_too_short_for_the_column_scrolls_to_every_button() -> void:
 			"PerfArenaButton": true,
 			"PerfBasesButton": true,
 			"PerfAiButton": true,
-			"PerfAirButton": true
+			"PerfAirButton": true,
+			"PerfAiBaseButton": true
 		}
 	)
 
@@ -170,7 +172,7 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 				. is_true()
 			)
 		assert_int(grid.get_theme_constant("h_separation")).is_equal(gap)
-		var row_gap: int = roundi(UiScale.dp(8.0)) if size.y > size.x else gap
+		var row_gap: int = roundi(UiScale.dp(4.0)) if size.y > size.x else gap
 		assert_int(grid.get_theme_constant("v_separation")).is_equal(row_gap)
 		assert_int(grid.columns).is_equal(1 if size.y > size.x else 3)  # The turn changes it.
 		assert_float(grid.get_global_rect().get_center().x).is_equal_approx(
@@ -188,11 +190,11 @@ func test_the_menu_follows_a_turn_of_the_window() -> void:
 	_close(menu)
 
 
-## The hand-over of P112d, widened by P185: ten 48 dp buttons do not fit a phone browser held
-## sideways in one column (the menu has 331 dp there), nor in two (five rows or more), so they
-## stand in three, and nothing scrolls at web_phone; upright there is one column, which has the
-## height (its rows are 8 dp apart, so nothing scrolls at web_phone_portrait either).
-func test_the_ten_buttons_stand_in_three_columns_sideways_and_in_one_upright() -> void:
+## The hand-over of P112d, widened by P185 and P304: eleven 48 dp buttons do not fit a phone browser
+## held sideways in one column (the menu has 331 dp there), nor in two (six rows), so they stand in
+## three, and nothing scrolls at web_phone; upright there is one column, which has the height (its
+## rows are 4 dp apart, so nothing scrolls at web_phone_portrait either).
+func test_the_eleven_buttons_stand_in_three_columns_sideways_and_in_one_upright() -> void:
 	for profile_name: StringName in [&"web_phone", &"android_6in", &"web_tablet", &"desktop"]:
 		var menu: Control = await _open(UiProfiles.by_name(profile_name))
 		var label: String = str(profile_name)
@@ -219,7 +221,7 @@ func test_the_ten_buttons_stand_in_three_columns_sideways_and_in_one_upright() -
 		UiScale.clear_override()
 
 
-## `profile` shown: the title, the level label and the thirteen buttons, then the checks of the
+## `profile` shown: the title, the level label and the fourteen buttons, then the checks of the
 ## plan's acceptance.
 func _check_layout(profile: UiMetrics, label: String) -> void:
 	var menu: Control = await _open(profile)

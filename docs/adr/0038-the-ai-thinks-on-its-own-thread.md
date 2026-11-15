@@ -276,6 +276,10 @@ think: a Command is dropped only when what it names is gone or blocked.
   - From P304's merge, the per-wave Perf AI card (the Phase 4 plan's P26bu note) runs on
     `perf_ai_4b`, three times, and the 11 ms and 5 ms triggers read it. `perf_ai` keeps its CI
     suite and its printed hash. The lead may run both arenas.
+  - (2026-11-15, P26by) As built by P304: the card's arena key is `ai_4b`; the printed hash is
+    `75530630f4b19f95`, with no golden pair; the dev menu's "Perf AI base" keeps the old arena,
+    `perf_ai` (key `ai`), hash `025ff6707ff86ba0`; the per-wave Perf AI card runs on `perf_ai_4b`
+    from P304's merge. The triggers on the 4b cards: the air plan's P26by note.
 
 ### 8. Rows, re-pins and the balance run
 - **P301: orders at T+1, in `SYNC`, with the re-pin.** The pipeline of §1 and the batch holder;

@@ -8,8 +8,10 @@ reduced = false
 recoil_px = Dictionary[StringName, float]({
 &"arcline_gun": 4.0,
 &"artillery_gun": 5.0,
+&"burst_stack_gun": 2.0,
 &"heavy_cannon": 4.0,
 &"redoubt_gun": 2.5,
+&"sky_needle_gun": 1.5,
 &"tank_cannon": 3.0,
 &"turret_gun": 2.5
 })

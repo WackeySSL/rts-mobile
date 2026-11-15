@@ -112,6 +112,16 @@ func rig_count() -> int:
 	return _rigs.size()
 
 
+## The flyer rigs shown and inside `view` (world px) now: what the perf card counts as drawn, with
+## `UnitLayer.count_in` (falling flyers are not counted, as dying ground rigs are not).
+func count_in(view: Rect2) -> int:
+	var count: int = 0
+	for rig: Rig in _rigs:
+		if rig != null and rig.visible and view.has_point(rig.position):
+			count += 1
+	return count
+
+
 ## The flyers falling now.
 func falling_count() -> int:
 	return _falling.size()

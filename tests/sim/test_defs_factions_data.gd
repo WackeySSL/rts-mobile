@@ -13,11 +13,9 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the anti-air buildings (P239b), the airfields (P245b) and the
+## Files with no roster entry yet: the airfields (P245b) and the
 ## fighters and bombers (P245) and the engineering centres (P249). Each row removes its own names.
 const AIR_UNLISTED: Array[String] = [
-	"fossil_aa",
-	"renew_aa",
 	"fossil_airfield",
 	"renew_airfield",
 	"fossil_fighter",
@@ -68,6 +66,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"defence_turret": "barracks",
 				"fossil_strike": "fossil_radar",
 				"fossil_space": "fossil_radar",
+				"fossil_aa": "barracks",
 				"artillery": "fossil_radar",
 			}
 		)
@@ -86,6 +85,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_defence": "renew_barracks",
 				"renew_strike": "renew_radar",
 				"renew_space": "renew_radar",
+				"renew_aa": "renew_barracks",
 				"renew_artillery": "renew_radar",
 			}
 		)
@@ -459,7 +459,6 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
-## P239: no roster entry for the anti-air buildings until P239b; it removes that skip.
 ## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
