@@ -422,10 +422,17 @@ while IFS= read -r f; do
   [ -n "$f" ] && ! doc_file "$f" && holders="$holders [$f]"
 done < <(files_naming "$accept")
 assert "install: the flag stands in no automatic path (the whole tree is searched)${holders:+, found in:$holders}" test -z "$holders"
+# names_installer: stdin holds a call of the cloud installer. Its offline test and the AdMob plugin installer
+# (scripts/ci/install-android-plugins.sh, P410) only share the name's prefix, so both are stripped first.
+names_installer() { sed 's/test-install-android//g; s/install-android-plugins//g' | grep -F install-android | grep -Ev '^[[:space:]]*#|(die|echo|printf)[[:space:]]' || true; }
+assert "install: a line naming only install-android-plugins.sh is no call of the installer" \
+  test -z "$(printf 'bash scripts/ci/install-android-plugins.sh\n' | names_installer)"
+assert "install: a line naming install-android.sh still is a call of the installer" \
+  test -n "$(printf 'bash scripts/cloud/install-android.sh\n' | names_installer)"
 callers=""
 while IFS= read -r f; do
   [ -n "$f" ] && ! doc_file "$f" || continue
-  if [ -n "$(sed 's/test-install-android//g' "$repo/$f" | grep -F install-android | grep -Ev '^[[:space:]]*#|(die|echo|printf)[[:space:]]' || true)" ]; then callers="$callers [$f]"; fi
+  if [ -n "$(names_installer <"$repo/$f")" ]; then callers="$callers [$f]"; fi
 done < <(files_naming install-android)
 assert "install: no other file calls the installer (setup.sh, a hook, settings.json, verify.sh, CI, the scripts)${callers:+, found in:$callers}" test -z "$callers"
 
