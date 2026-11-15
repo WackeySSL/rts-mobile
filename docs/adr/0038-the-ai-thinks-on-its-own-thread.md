@@ -280,6 +280,11 @@ think: a Command is dropped only when what it names is gone or blocked.
     `75530630f4b19f95`, with no golden pair; the dev menu's "Perf AI base" keeps the old arena,
     `perf_ai` (key `ai`), hash `025ff6707ff86ba0`; the per-wave Perf AI card runs on `perf_ai_4b`
     from P304's merge. The triggers on the 4b cards: the air plan's P26by note.
+  - (2026-11-15, P26bz; Michael) The triggers on the `perf_ai_4b` cards replace the old arena's
+    11 ms and 5 ms: `job_p95_ms` (the card's `sim_p95_ms` row) 11.5 ms,
+    `job_minus_step_p95_cp_ms` 5.0 ms and `view_p95_ms` 11.0 ms. When 2 of the 3 cards of a wave
+    exceed a trigger, the lead stops and finds the cause before the next wave merges. The
+    baseline (three cards on `main` 4456e53b, Pixel 9a) is in the air plan's P26bz note.
 
 ### 8. Rows, re-pins and the balance run
 - **P301: orders at T+1, in `SYNC`, with the re-pin.** The pipeline of §1 and the batch holder;

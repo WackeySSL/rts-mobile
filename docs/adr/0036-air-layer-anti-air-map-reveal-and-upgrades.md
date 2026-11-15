@@ -997,6 +997,16 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   (so while it attacks); the attack diamond keeps its fixed size (P244's widening of it to a
   building's footprint was reverted).
 
+- **P26bz note (2026-11-15, the lead; P245 as measured; changes no accepted text above).** Page 2
+  costs about 4 times the estimate of the frames table above. The four aircraft (P245) add 472 rows
+  to the cross-faction page, against about 115 for the fighters and bombers, because the atlas
+  stores the art at 2x and a hull has a slot per player (it carries the team colour). Page 2 is now
+  1,986 rows on the cross page and 1,094 and 1,198 on the Derrick and Lumen mirrors, of 3,584.
+  The forecast for the end of the plan is about 3,200-3,300 rows on the cross page, above the
+  P237 note's 2,400, because P266's transports and drone squads will cost alike. So page 2 gets
+  its own budget before P266 starts (the air plan's P26bz note). P245b (airfields) left page 2 as
+  it was (+0, +2, +0) and moved page 1 to 2,314, 2,258 and 2,238 rows.
+
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
   aircraft, vehicles and programmes, from the architect's knowledge. "No known hit" is not a
