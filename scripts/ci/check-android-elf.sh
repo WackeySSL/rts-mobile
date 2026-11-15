@@ -4,6 +4,7 @@
 # export-android.sh extracts the files from the APK, test-android-elf.sh runs it on fixtures.
 # Usage: bash scripts/ci/check-android-elf.sh check [--machine NAME] [--entry-symbol NAME] LIBRARY LIBCXX
 #        bash scripts/ci/check-android-elf.sh describe FILE...
+#        bash scripts/ci/check-android-elf.sh align FILE...
 #   check     LIBRARY is our library, LIBCXX the APK's libc++_shared.so. Every failing check is reported,
 #             then the exit is 1: the machine (default AArch64) and a shared object; NEEDED only system
 #             libraries or libc++_shared.so (required when LIBRARY uses a libc++ symbol); the entry symbol
@@ -14,6 +15,8 @@
 #             __emutls_get_address (emulated TLS below API 29): the names the template's libc++_shared.so
 #             exports besides C++ mangled ones, less its compiler-rt helper __muloti4, which is not counted.
 #   describe  prints the .note.android.ident strings and the PT_LOAD alignment of each FILE.
+#   align     exit 1 unless every PT_LOAD of every FILE has p_align 0x4000 or more (P410b: every library of an AAB,
+#             Play's 16 KB page rule for Android 15 targets; the engine's and the plugins' too, not only ours).
 # Env:   READELF, NM override the tools; default llvm-readelf and llvm-nm of $ANDROID_NDK_ROOT, else binutils.
 # Exit:  0 ok, 1 a check failed, 2 usage error, 3 tool missing.
 set -euo pipefail
@@ -56,6 +59,26 @@ if [ "$mode" = describe ]; then
   exit 0
 fi
 
+if [ "$mode" = align ]; then
+  [ $# -ge 1 ] || die 2 "align needs at least one file"
+  bad=0
+  for file in "$@"; do
+    aligns="$(load_aligns "$file")"
+    small=""
+    for a in $aligns; do [ $((a)) -ge "$MIN_ALIGN" ] || small="$small $a"; done
+    if [ -z "$aligns" ]; then
+      echo "check-android-elf: FAIL $(basename "$file"): has no PT_LOAD segment" >&2
+      bad=1
+    elif [ -n "$small" ]; then
+      echo "check-android-elf: FAIL $(basename "$file"): PT_LOAD align '$aligns' is below 0x4000 (16 KB pages)" >&2
+      bad=1
+    fi
+  done
+  [ "$bad" -eq 0 ] || exit 1
+  echo "check-android-elf: OK $# file(s) with every PT_LOAD p_align 0x4000 or more"
+  exit 0
+fi
+
 machine="AArch64"
 entry="$(sed -n 's/^ENTRY_SYMBOL="\(.*\)"$/\1/p' "$ROOT/scripts/build-native.sh")"
 while [ "$mode" = check ] && [ $# -gt 0 ]; do
@@ -68,7 +91,7 @@ while [ "$mode" = check ] && [ $# -gt 0 ]; do
     *) break ;;
   esac
 done
-[ "$mode" = check ] && [ $# -eq 2 ] || die 2 "usage: check [--machine NAME] [--entry-symbol NAME] LIBRARY LIBCXX | describe FILE..."
+[ "$mode" = check ] && [ $# -eq 2 ] || die 2 "usage: check [--machine NAME] [--entry-symbol NAME] LIBRARY LIBCXX | describe FILE... | align FILE..."
 [ -n "$entry" ] || die 2 "scripts/build-native.sh has no ENTRY_SYMBOL line"
 lib="$1"
 libcxx="$2"

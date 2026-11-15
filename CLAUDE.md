@@ -92,7 +92,11 @@ the release workflow. UMP consent before any ad request. Details: skill `admob-p
 - Never copy code from EA's C&C source release or OpenRA. They are GPL and would force the whole
   project to GPL.
 - Assets: only SVG authored in this repo (by hand or by `tools/artgen/`), or CC0/CC-BY with
-  an entry in `assets/CREDITS.md`. Fonts may also be under SIL OFL 1.1, shipped with their
+  an entry in `assets/CREDITS.md`. Own SVG, model data and audio are © AppCode ApS, all rights
+  reserved (Michael, 2026-11-15; ADR 0046); the code stays MIT. AppCode ApS's own brand files
+  (wordmark, mark), supplied by Michael, are allowed unmodified; they are the company's trademark
+  and © AppCode ApS, all rights reserved (Michael, 2026-11-15).
+  Fonts may also be under SIL OFL 1.1, shipped with their
   license text and listed in `assets/CREDITS.md` (Michael, 2026-11-01; ADR 0025 §13). No
   asset-store packs, no AI images from outside tools, no web images.
 - Vector art we draw ourselves in Figma and export as SVG or PNG into this repo counts as our own

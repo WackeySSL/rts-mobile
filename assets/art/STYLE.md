@@ -314,6 +314,9 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   (the frames are in `assets/art/iso/<faction>/<category>/`), set only by the hand-written neutral
   sheet of the damage overlays (P160), where it is the folder its frames are in.
   `tests/art/test_artgen_damage.gd` and `test_artgen_damage_rules.gd` pin it on crafted models.
+  **Aircraft** (P245): the model fields `fly_px` and `low_fly_px` (`fly_px` a vehicle's, `low_fly_px` a squad's, 0 or above, never both, both 0 for a model that
+  does not fly) go to the same fields of the sheet, written after `anim_kritisk` when they are not 0; a sheet
+  that has one has no `boxes` (page 2 is not trimmed). See "The aircraft" under "Generated art".
   **Generator v5a** (P163, ADR 0029 section 5), all of it on crafted models in
   `tests/art/test_artgen_v5_materials.gd` and `test_artgen_v5_points.gd`:
   - **Materials**, the same in both factions and outside both key bands: `interior` (the dark
@@ -462,6 +465,58 @@ frames itself. It lists and loads the models and uses the generator's classes at
 dev menu is on in the web preview and the debug APK, so no export preset may exclude `tools/` or
 `assets/art/models/` until `IsoAtlas` replaces those reads (`test_art_gallery_iso.gd` pins it, with
 the sheets, the index and the cards the bake and the page read).
+
+### The aircraft (P245)
+
+The fighter and the bomber of both factions (ADR 0036 sections 2, 5 and 15, docs/GDD.md "Looks"): the Derrick
+League's **Torchjet** (`fossil_fighter`) and **Drillhead** (`fossil_bomber`), the Lumen Accord's **Glint**
+(`renew_fighter`) and **Sunfall** (`renew_bomber`). Each is a `veh` model with a hull in 16 directions, a cast
+shadow and an item card, no turret, no damage picture (a unit shows none; smoke and fire are effects) and one new
+model field, `fly_px` (the sheet's `fly_px`): how far above its ground point `AirLayer` draws the hull, world px at
+zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), which is the Flight tab.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_fighter` | A stubby delta of olive steel built from stepped slabs, a fat body down its middle with one big intake, a dark open mouth in a rust lip at the nose, a dark canopy slab on top, a single tall wedge tail fin with a team stripe and a short rust flare stack with a warm lamp at the tail. |
+| `fossil_bomber` | A fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip. |
+| `renew_fighter` | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. |
+| `renew_bomber` | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. |
+
+- **The GDD's looks, as drawn.** "A stubby delta with one big intake", "a fat twin-boom lifting body with a drill-bit
+  nose", "a slim forward-swept wing with a glass canopy" and "a wide solar-topped flying wing". A delta and a swept
+  wing are stepped slabs: a primitive is axis-aligned and a prism's ring cannot be turned in the plan, so a plan that
+  slopes is built from boxes stepped along the sweep (the stairs are the style, as the wedge's top is).
+- **Hovering.** No primitive of an aircraft starts below 0.25 tile (`ArtShadow.GROUND_Z`), so its shadow frame has
+  neither the occlusion pad nor the contact line of a ground unit: it is the cast shadow alone, one connected mark
+  in every direction, and the hull is drawn `fly_px` above it. `fly_px` is 26 for a fighter and 22 for a bomber (a
+  bomber is the heavier and the larger, `AirLayer.DEFAULT_FLY_PX` is 28). Nothing small and high stands off a hull
+  (a lamp 0.8 tile up would drop its shadow far from the body and read as a separate speck), so the lamps sit on
+  the flare stack and the fins, low.
+- **Ring and bar.** The selection ring (a 0.6 tile radius, 54 x 27 px at zoom 1) stands on the ground under the
+  shadow. The hull canvases are 57, 62, 81 and 91 px wide, but the drawn hulls (the opaque pixels, over the 16
+  directions) are 41 to 54 (Torchjet), 48 to 57 (Glint), 59 to 78 (Drillhead) and 50 to 91 px (Sunfall): the
+  ring is a little wider than a fighter in most views, as a ground unit's ring is a little wider than its hull,
+  and a bomber spreads past it (`test_aircraft_art.gd` holds the ring between 0.8 times the narrowest and 1.3
+  times the widest view). The bar stands `bar_lift_px` above the lifted hull (40, 45, 35 and 41 px of picture, plus
+  `fly_px`).
+- **Team colour.** Always on the top faces (wing and tip slabs, the fin, the dorsal bands), never on a side that
+  turns away: the team share changes little as the aircraft turns. Share of the default view at zoom 1: 9.0 %
+  (Torchjet), 9.4 % (Drillhead), 11.1 % (Glint) and 10.6 % (Sunfall), in the rule's 8 to 12 %; in every direction
+  7.4 to 15.5 % (`tests/art/test_aircraft_art.gd` holds 5 to 16 %).
+- **Canvas.** Hull 114 x 92, 162 x 106, 124 x 76 and 182 x 108 px, shadow 124 x 66, 176 x 90, 126 x 66 and 190 x 98,
+  in 2x px. An aircraft's sheet has **no tight boxes** (`boxes` is empty): every frame of a flyer is on page 2, which
+  is not trimmed (P306). Page 1 of the atlas does not move (2314, 2258, 2238); page 2 grows by 472, 312 and 384 rows
+  (cross-faction, Derrick League mirror, Lumen Accord mirror: 1986, 1094, 1198).
+  That is about four times ADR 0036 section 15's estimate of about 115 rows for the two fighters and two
+  bombers: the atlas stores the 2x art at bake 1.0, and the estimate's cells were 1x px. Page 2 has 1598, 2490 and
+  2386 rows left of the 3584 budget; a refreshed forecast for the cross-faction page is about 3200 to 3300 rows
+  after P266 (about +420), P204 (about +630) and the remaining building shadows. `perf_air` and `perf_ai_4b` use
+  the shipped type ids, so they now bake these frames: their `atlas_page2`, texture MiB and bake ms are larger by
+  design, not a regression.
+- **Emitters.** An `exhaust` at the tail and a `damage` point on the hull; no `hang` and no scar (`scar_milli` 0): a
+  flyer does not use the neutral overlays, and the Iso page's Damage rows skip it.
+- **Gallery.** The Iso page lists them by themselves and draws each hull `fly_px` above its shadow; the Icons page
+  shows the item cards.
 
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
@@ -1318,8 +1373,43 @@ with a hull and a head that turns in 16 steps, a KRITISK picture (`dmg2`), no SK
 - **KRITISK team share.** The Burst Stack keeps 0.39 of the intact team colour (a narrow team chunk on the ruin), the Sky Needle 0.36 (its band is gone, a small remnant stays on the front), both inside ADR 0029's 20 to 50 %; `tests/art/test_anti_air_art.gd` pins it.
 - **KRITISK.** Both lose their upper body to broken walls with rebar (the Burst Stack) or a split lid
   and charred top (the Sky Needle); the head stays. Damage points sit on the ruin.
-- **Gallery.** The Build page and the Iso page list them by themselves, the Icons page shows the item cards.
+- **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
 
+
+### The airfields (P245b)
+
+The airfield of both factions (ADR 0036 sections 2 and 15, docs/GDD.md): the Derrick League's **Flight Yard**
+(`fossil_airfield`) and the Lumen Accord's **Glide Deck** (`renew_airfield`), each a 3 x 3 model with a hull, a
+KRITISK picture (`dmg2`), no SKADET picture (ADR 0034), no moving element, a cast shadow and an item card. They
+follow the anti-air building in each faction's roster (Structures tab; each needs the faction's radar, the GDD's requirement).
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_airfield` | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a team-banded lamp cab at its edge, beside two olive fuel drums with team rings. |
+| `renew_airfield` | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. |
+
+- **Four pads are the point.** `BuildingDef.pad_offsets` puts the pads on the four corner cells of the footprint,
+  so each model has one flat pad at the centre of each corner cell, ringed in team colour (the group `padring`;
+  `tests/art/test_airfield_art.gd` pins the four centres against the data). The Flight Yard's pads are concrete
+  squares in an iron frame with a lamp cross; the Glide Deck's are round white discs on a titanium rim with a mint
+  lamp. A pad is flat (0.1 to 0.2 tile), so an aircraft that stands on it hides nothing of the building.
+- **What stands between the pads.** The Flight Yard has a long low concrete hangar under a rust roof with a wide team
+  band between two wall segments, an open four-legged steel mast with a team-banded lamp cab, and two olive fuel
+  drums with team rings. The Glide Deck has a low white hexagonal terminal with a glass ribbon and a team band, one
+  slim white pylon with a flat-lidded glass cab (no tip light, no spire) and two white battery cabinets with team
+  stripes, all on a graphite plinth deck.
+- **Team colour.** The pad rings, the hangar and cab bands (Flight Yard), the terminal band, pylon ring and cabinet
+  stripes (Glide Deck). Team share of the default view at zoom 1: 8.8 % (Flight Yard) and 10.2 % (Glide Deck), in the
+  rule's 8 to 12 %; no team primitive is a roof plate (`test_artgen_plates.gd`).
+- **KRITISK.** The hangar or terminal and its mast or pylon are broken down to stubs with rebar (the hangar's team
+  band and the mast's go with their walls, a fallen cab and beam lie beside the Flight Yard's stub); the deck and
+  the four pads stay. Two diagonal pads and the remaining bands char to black, so the picture
+  keeps 0.42 (Flight Yard) and 0.39 (Glide Deck) of the intact team colour, inside ADR 0029's 20 to 50 %
+  (`test_airfield_art.gd`). The damage points sit on the ruins.
+- **Canvas.** Hull 384 x 206 (anchor y 15) and 384 x 212 (anchor y 20), KRITISK patch 382 x 194 and 378 x 182, shadow
+  458 x 232 and 448 x 226, in 2x px. Page 1 of the atlas grows by 62, 86 and 71 rows (cross-faction, Derrick League
+  mirror, Lumen Accord mirror: 2314, 2258, 2238) and page 2 by 0, 2 and 0 (1514, 782, 814).
+- **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
 
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
@@ -1568,6 +1658,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `tab_infantry.svg` | A soldier from the chest up, a round helmet with a wide brim over a grey face, on sloping shoulders. |
 | `tab_vehicles.svg` | A tank from the side, a long track pod with four grey wheels, a sloped hull, a boxy turret and one long barrel. |
 | `tab_flight.svg` | A jet from above, flying up: a slim rounded fuselage with a grey cockpit, two swept wings with grey undersides and a small tail plane. |
+| `tab_research.svg` | A laboratory flask from the front: a narrow rounded neck with a lip, a wide conical body, grey liquid with two bubbles. |
 | `item_power_plant.svg` | A slender banded chimney and a fat flared cooling tower with a steam puff rise behind one long olive-roofed hall with dark windows. |
 | `item_refinery.svg` | One fat round tank and two small ones stepping off to the right rise behind a wide corrugated hall, a gold-filled funnel jutting out of its front. |
 | `item_barracks.svg` | A U of three olive pitched-roof huts round a bare gravel yard that opens to the bottom, a sandbag ring in the yard. |
@@ -1723,6 +1814,10 @@ in doubt, choose a plainer real-world form.
 | Torque (`renew_tank`) | A long low blue-grey hull with a sloping nose on one long continuous dark track a side with a row of titanium road wheels, white side skirts over the tracks under a team stripe, dark roof patches and a hexagonal turret on a team ring carrying one long dark rail barrel with a block at its muzzle. | `iso/renew/veh/renew_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 162x96 |
 | Arcline (`renew_artillery`) | A long white four-wheeled carrier with a short glass-fronted cab and a team band, two stabiliser feet at the tail and, on a hexagonal turntable between two white cheek plates, a slim rail raised in four steps towards the front. | `iso/renew/veh/renew_artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 162x106 |
 | Fuel Runner (`renew_tanker`) | A quick white four-wheeled tanker with a glass-fronted cab and a team band, a mint light bar on the nose and a long round glass tank in white cradle ribs with two team rings, white hexagonal end caps and a dark hatch dome on top. | `iso/renew/veh/renew_tanker_hull_d<NN>.svg`, 16 frames, 174x130, no turret |
+| Torchjet (`fossil_fighter`) | A stubby delta of olive steel built from stepped slabs, a fat body down its middle with one big intake, a dark open mouth in a rust lip at the nose, a dark canopy slab on top, a single tall wedge tail fin with a team stripe and a short rust flare stack with a warm lamp at the tail. | `iso/fossil/veh/fossil_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 114x92, hovers `fly_px` 26 |
+| Drillhead (`fossil_bomber`) | A fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip. | `iso/fossil/veh/fossil_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 162x106, hovers `fly_px` 22 |
+| Glint (`renew_fighter`) | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. | `iso/renew/veh/renew_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 124x76, hovers `fly_px` 26 |
+| Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |
@@ -1733,6 +1828,8 @@ in doubt, choose a plainer real-world form.
 | Deep Bore | An open steel drilling derrick of four stepped lattice tiers on four concrete footings, a heavy drill string through a crown block over a dark well, a doghouse before it and a team band round its platform. | `iso/fossil/bld/fossil_strike_{hull,shadow}.svg`, 384 wide |
 | Burst Stack | A tall poured-concrete pedestal on a wide pad with a team band and a ladder stub, carrying a round drum head whose top holds a close bundle of four steel barrels slanted steeply skyward, bound by a rust collar and a team ring. | `iso/fossil/bld/fossil_aa_{hull,shadow}.svg`, `fossil_aa_head_d00..d15.svg`, 128 wide |
 | Sky Needle | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars. | `iso/renew/bld/renew_aa_{hull,shadow}.svg`, `renew_aa_head_d00..d15.svg`, 128 wide |
+| Flight Yard | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a team-banded lamp cab at its edge, beside two olive fuel drums with team rings. | `iso/fossil/bld/fossil_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
+| Glide Deck | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. | `iso/renew/bld/renew_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
@@ -2857,3 +2954,6 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-14 | v1.35 (P265a, art-director, ADR 0036): `glyph_board.svg` and `glyph_unload.svg` (white HUD glyphs on the Bar row of the Hud page) and the seated map glyph `glyph_unload_mark.svg` (two down-pointing chevrons, tinted #F5A524, the twelfth map glyph); the gallery's map strips now hold their glyphs in two lines of six, the grass one set 48 px left of the centre to clear the page button. |
 | 2026-11-14 | v1.36 (P244, touch-ux-dev, ADR 0036 section 12): `tab_flight.svg` (the Flight tab of the build drawer, a jet from above) and `glyph_home.svg` (the Home order of the command bar, a house), both white and grey like their groups; not on the gallery's pages yet (art-director's follow-up). |
 | 2026-11-15 | v1.37 (P239b, art-director, ADR 0036 sections 2 and 5): the Burst Stack (`fossil_aa`) and the Sky Needle (`renew_aa`), the anti-air building of both factions, as 1 x 1 models with a head in 16 directions (barrels and a needle that climb skyward), a KRITISK picture and no SKADET picture, their sheets, item cards and shadows ("The anti-air buildings" under "Buildings", the Catalogue rows); the generator's tight boxes treat an unoutlined rod as reaching no further than its points (one clear px, not two); the Build and Iso pages list them by themselves (20 building models); the sorted world's page 1 2167, 2127 and 2068 to 2252, 2172 and 2167 and page 2 1514, 704 and 814 to 1514, 780 and 814 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-15 | v1.38 (P245b, art-director, ADR 0036 sections 2 and 15): the Flight Yard (`fossil_airfield`) and the Glide Deck (`renew_airfield`), the airfield of both factions, as 3 x 3 models with four team-ringed landing pads on the cells of `pad_offsets`, a KRITISK picture and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the anti-air building ("The airfields" under "Buildings", Catalogue rows), the sorted world's page 1 2252, 2172 and 2167 to 2314, 2258 and 2238 and page 2 780 to 782 on the Derrick League mirror. |
+| 2026-11-15 | v1.39 (P245, art-director, ADR 0036 sections 2, 5 and 15): the Torchjet (`fossil_fighter`), Drillhead (`fossil_bomber`), Glint (`renew_fighter`) and Sunfall (`renew_bomber`), the fighter and the bomber of both factions, as `veh` models with a 16-direction hull, a cast shadow, an item card and a lift (`fly_px` 26 and 22), the new model fields `fly_px` and `low_fly_px`, no tight boxes on an aircraft's sheet, their roster entries after the tanker (the Flight tab), the Iso page drawing a flyer's hull above its shadow ("The aircraft" under "Generated art", Catalogue rows), page 2 of the atlas 1514, 782 and 814 to 1986, 1094 and 1198 (page 1 unchanged). |
+| 2026-11-15 | v1.40 (P248, touch-ux-dev): `tab_research.svg` (the Research tab of the build drawer, a flask), white and grey like its group; not on the gallery's pages yet (art-director's follow-up). |

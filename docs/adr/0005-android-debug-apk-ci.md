@@ -23,6 +23,14 @@ the project setting (`sensor_landscape`)" and the Amendment (P18)'s manifest val
 setting; P64 sets it to 6 (`sensor`), which Godot 4.7.2 writes as `screenOrientation` 13
 (`fullUser`), and changes the check to 13.
 
+Status note (2026-11-15, P400b docs; ADR 0040, accepted 2026-11-15): §6's consent rule applies to
+`android-internal.yml`, and Michael gave it on 2026-11-15 (Phase 6 answer 12 A: every merge to
+`main` is uploaded to Play internal testing); the PR still merges on his word. The Consequences'
+"Phase 6 replaces this preset's signing with the release keystore and switches to the Gradle
+build" no longer holds: `Android` and `Android perf` keep their non-Gradle build, signing and
+`.dev` id and exclude `addons/admob/*` (P410's review fix); a fourth preset, `Android internal`, does the Play build
+with an upload key (ADR 0040 §1, §3). The text of §6 stays as accepted.
+
 ## Context
 Phase 1 asks for "Android debug APK as a CI artifact for testing on a real device". The web
 preview (ADR 0002 §9) must keep working, so Michael can compare touch in the phone browser

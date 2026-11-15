@@ -4,6 +4,8 @@ name: CI
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
+# "android-aab" (P410c) follows verify on pull requests and exports the Play bundle with a generated key, nothing
+# uploaded; it is not a required check.
 # "android-perf-apk" (P51r) follows verify on a push to main and on a manual run and exports the release-template perf
 # APK of the gate, and on a push to main "android-perf-release" publishes it as the rolling pre-release
 # android-perf-release.
@@ -42,7 +44,9 @@ jobs:
     runs-on: ubuntu-24.04
     # The suite is about 4400 cases and verify ran 29-30 min on push runs (main 1a6209c was
     # cancelled at 29:43); 45 leaves room for growth.
-    timeout-minutes: 45
+    # Wave 12 (about 6240 cases): P245's aircraft frames put the suites at about 42 min on a PR run,
+    # and PR #486 was cancelled twice at the 45 min limit; 75 leaves room again.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -73,6 +77,14 @@ jobs:
       # second run that downloads nothing.
       - name: Offline test of the cloud Android installer
         run: bash scripts/ci/test-install-android.sh
+
+      # The AdMob plugin's Android libraries are fetched by pin (P410): the SHA-256 refusal, the extraction and
+      # the iOS marker, offline, against a fixture archive.
+      - name: Offline test of the AdMob plugin installer
+        run: bash scripts/ci/test-install-android-plugins.sh
+
+      - name: Offline test of the AAB export and its checks
+        run: bash scripts/ci/test-aab.sh
 
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
@@ -606,6 +618,111 @@ jobs:
             build/android/THIRD_PARTY_LICENSES.txt
           if-no-files-found: error
           retention-days: 14
+
+  # P410c (ADR 0040 section 4): the Play bundle on pull requests, signed with a key generated for the run, nothing
+  # uploaded and no secret read. Not a required check. Google's Maven is blocked in cloud sessions, so this is the only
+  # proof of the Gradle export. The caches are restored only (a PR ref must not push main's caches out); warming them
+  # on main is a follow-up.
+  android-aab:
+    needs: verify
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select JDK 17
+        run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Install the Android NDK (install-ndk.sh)
+        run: bash scripts/ci/install-ndk.sh
+
+      - name: Install the native toolchain (SCons, binutils)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get install -y --no-install-recommends binutils
+
+      - name: Read the native cache keys
+        id: native-keys
+        run: |
+          host="$(bash scripts/build-native.sh --print-cache-key)"
+          android_release="$(bash scripts/build-native.sh --platform android --arch arm64 --target template_release --print-cache-key)"
+          { echo "host=$host"; echo "android_release=$android_release"; } >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache (host library)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.host }}
+
+      - name: Cache godot-cpp and the SCons object cache (Android template_release)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-keys.outputs.android_release }}
+
+      - name: Build the host library (linux, template_debug)
+        run: bash scripts/build-native.sh
+
+      - name: Build the Android library (arm64, template_release)
+        run: bash scripts/build-native.sh --platform android --arch arm64 --target template_release
+
+      - name: Cache Godot editor and export templates (web and the Gradle template)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-android-source-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor, web templates and the Gradle build template)
+        run: bash scripts/ci/install-godot.sh --android-source
+
+      - name: Cache Gradle
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ env.GODOT_VERSION }}-${{ hashFiles('scripts/ci/install-android-plugins.sh', 'scripts/ci/install-godot.sh') }}
+
+      # The key is made for this run, in RUNNER_TEMP, and deleted below. keytool reads the password from the
+      # environment, so it is on no command line.
+      - name: Export the Play bundle (generated key, nothing uploaded)
+        run: |
+          umask 077
+          keystore="$RUNNER_TEMP/aab-check.keystore"
+          AAB_KEY_PASSWORD="$(openssl rand -hex 16)"
+          echo "::add-mask::$AAB_KEY_PASSWORD"
+          export AAB_KEY_PASSWORD
+          keytool -genkeypair -keystore "$keystore" -alias aabcheck -keyalg RSA -keysize 2048 \
+            -validity 2 -storepass:env AAB_KEY_PASSWORD -keypass:env AAB_KEY_PASSWORD -dname "CN=rts-mobile aab check"
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$keystore" \
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER="aabcheck" \
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$AAB_KEY_PASSWORD" \
+          bash scripts/export-android.sh --aab
+
+      # What Gradle was asked for (the plugin writes it into android/build); the resolved version is in the Gradle log.
+      - name: Log the Google Mobile Ads SDK version
+        if: always()
+        run: grep -rhn "play-services-ads\|user-messaging-platform" android/build --include='*.gradle' | head -n 5 || true
+
+      - name: Clean-tree check
+        if: success()
+        run: |
+          out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/export changed the tree"; echo "$out"; exit 1; }
+
+      - name: Delete the generated keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/aab-check.keystore"
 
   # ADR 0005 section 6: the rolling pre-release android-dev-latest gives one stable phone URL. Only a
   # push to main reaches it (never a pull request, a fork or a manual run), after android-debug-apk

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="AudioSettings" format=3]
+
+[ext_resource type="Script" path="res://game/view/audio/AudioSettings.gd" id="1_audio"]
+
+[resource]
+script = ExtResource("1_audio")
+steps = 10
+default_music_step = 7
+default_sfx_step = 10
+default_ui_step = 10
+world_voices = 16
+ui_voices = 4
+voices_per_tick = 6
+hear_margin_px = 128.0
+max_distance = 1400.0
+attenuation = 1.0
+cooldown_ms = 80
+stack_db = 2.0
+crossfade_ms = 1500
+duck_db = 6.0
+duck_ms = 600
+fade_ms = 150
+mute_floor_db = -80.0

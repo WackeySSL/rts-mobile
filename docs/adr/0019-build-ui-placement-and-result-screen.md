@@ -325,6 +325,12 @@ A dev route "Skirmish" loads the battle scene with the skirmish scenario and the
 player 2 (ADR 0020). The preview's main scene keeps the controls-test scenario until Phase 5's main
 menu (question 4), so the Phase 1 and 2 scene suites keep their scenario.
 
+Status note (2026-11-15, P500b; ADR 0043 accepted by Michael, 2026-11-15; the text above stays as
+accepted): from plan row P533 the project's main scene is `scenes/boot.tscn` (the intro, then the
+main menu), so the preview opens on the main menu and a match starts from the map select through
+`MenuFlow`. The scene suites load `scenes/main.tscn` directly and keep their scenario; the dev
+routes stay, one tap deeper (Settings -> Developer, and the pause menu).
+
 ## Consequences
 - Placement adds a mode to the gesture map; the ghost drag is the only new gesture, and it lives
   only in that mode.

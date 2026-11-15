@@ -43,6 +43,8 @@ const MAP_BOX_PORTRAIT_DP: Vector2 = Vector2(260.0, 130.0)
 const CARD_W_DP: float = 280.0
 const DRAWER_DP: Vector2 = Vector2(312.0, 420.0)  ## The landscape panel's width, least and most.
 const DRAWER_SHARE: float = 0.4
+## The close handle that stands left of the open side panel (BuildSidebar.CLOSE_DP), dp.
+const CLOSE_DP: float = 48.0
 const SHEET_SHARE: float = 0.5
 const SHEET_LEAST_DP: float = 312.0
 
@@ -258,7 +260,9 @@ static func _toast(
 	if right - left < TOAST_LEAST_DP:
 		var start: float = column_end + GAP_DP if column_end > 0.0 else 0.0
 		var top: float = SCOPE_DP + GAP_DP
-		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, edge - start), 0.0), TOAST_H_DP)
+		# The open panel's close handle (a CLOSE_DP strip left of it) is a part: a gap short of it.
+		var end: float = edge - (CLOSE_DP if open.size.x > 0.0 else 0.0)
+		return Rect2(start, top, maxf(minf(TOAST_W_DP.x, end - start), 0.0), TOAST_H_DP)
 	var width: float = minf(TOAST_W_DP.x, right - left)
 	return Rect2(left + (right - left - width) * 0.5, 0.0, width, TOAST_H_DP)
 

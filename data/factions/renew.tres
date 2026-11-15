@@ -18,6 +18,9 @@
 [ext_resource type="Resource" path="res://data/units/renew_artillery.tres" id="15_artillery"]
 [ext_resource type="Resource" path="res://data/units/renew_tanker.tres" id="16_tanker"]
 [ext_resource type="Resource" path="res://data/units/renew_aa.tres" id="98_aa"]
+[ext_resource type="Resource" path="res://data/units/renew_airfield.tres" id="97_airfield"]
+[ext_resource type="Resource" path="res://data/units/renew_fighter.tres" id="96_fighter"]
+[ext_resource type="Resource" path="res://data/units/renew_bomber.tres" id="95_bomber"]
 
 [resource]
 script = ExtResource("1_faction")
@@ -25,4 +28,4 @@ id = &"renew"
 display_name = "Lumen Accord"
 emblem = &"emblem_renew"
 key_triad = PackedStringArray("#62D6EE", "#1FA6C8", "#137C99")
-roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber")])
