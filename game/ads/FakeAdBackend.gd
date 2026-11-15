@@ -1,10 +1,11 @@
 class_name FakeAdBackend
 extends AdBackend
 ## The fake ad backend: editor, tests, web preview and every build without the real plugin
-## (ADR 0039 section 2). Scriptable: fill or no fill, a load that never answers, a show that never
-## opens, a show that never closes, reward granted or not. With `auto_close` a show opens and
-## closes in the same call; without it a "Test ad" placeholder is drawn on `host` and the show
-## ends when its Close is pressed (or `finish_show` is called). Reaches no network and no plugin.
+## (ADR 0039 section 2). Scriptable: fill or no fill, a load that never answers, a show that fails,
+## never opens (until `open_late`) or never closes, reward granted or not. With `auto_close` a
+## show opens and closes in the same call; without it a "Test ad" placeholder is drawn on `host`
+## and the show ends when its Close is pressed (or `finish_show` is called). Reaches no network
+## and no plugin.
 
 ## Standard anchored banner height; the real backend reports the SDK's own.
 const DEFAULT_BANNER_HEIGHT_DP: int = 50
@@ -12,23 +13,32 @@ const DEFAULT_BANNER_HEIGHT_DP: int = 50
 ## Scripts for tests. A fill of false answers a load with FAILED at once.
 var fill: bool = true
 var load_never_answers: bool = false
+var show_fails: bool = false
 var show_never_opens: bool = false
 var show_never_closes: bool = false
-## Whether the rewarded ad earns its reward before it closes.
+## A backend that cannot recall a show (AdMob): `cancel_show` does nothing.
+var ignore_cancel: bool = false
+## Whether the rewarded ad earns its reward, and whether it comes after the close.
 var grant_reward: bool = true
+var reward_after_close: bool = false
 var banner_height: int = DEFAULT_BANNER_HEIGHT_DP
+## Fake-only: a show closes at once. Set by AdService from `fake_auto_close`.
+var auto_close: bool = true
+## Fake-only: draw the "Test ad" placeholders on `host`.
+var draw_placeholders: bool = false
 ## Where the placeholders are drawn; none is drawn without one in the tree.
 var host: Node = null
 
 var load_requests: Array[StringName] = []
 var shows: Array[StringName] = []
+var cancels: Array[StringName] = []
 var banner_visible: bool = false
 
-var _states: Dictionary = {}
+var _states: Dictionary[StringName, LoadState] = {}
 var _showing: StringName = &""
 var _opened: bool = false
-var _fullscreen_node: CanvasLayer = null
-var _banner_node: CanvasLayer = null
+var _fullscreen_node: FakeAdPlaceholders = null
+var _banner_node: FakeAdPlaceholders = null
 
 
 func load_state(kind: StringName) -> LoadState:
@@ -43,16 +53,25 @@ func request_load(kind: StringName) -> void:
 		_states[kind] = LoadState.READY if fill else LoadState.FAILED
 
 
-func show_ad(kind: StringName, auto_close: bool) -> void:
+func show_ad(kind: StringName) -> void:
 	if load_state(kind) != LoadState.READY:
 		return
 	_states[kind] = LoadState.IDLE
 	shows.append(kind)
-	if show_never_opens:
+	if show_fails:
+		show_failed.emit(kind)
 		return
 	_showing = kind
+	if not show_never_opens:
+		open_late()
+
+
+## Opens the pending show unless it was cancelled; then closes it per the script.
+func open_late() -> void:
+	if _showing == &"" or _opened:
+		return
 	_opened = true
-	opened.emit(kind)
+	opened.emit(_showing)
 	if show_never_closes:
 		return
 	if auto_close:
@@ -62,6 +81,9 @@ func show_ad(kind: StringName, auto_close: bool) -> void:
 
 
 func cancel_show(kind: StringName) -> void:
+	cancels.append(kind)
+	if ignore_cancel:
+		return
 	if _showing == kind and not _opened:
 		_showing = &""
 
@@ -74,23 +96,26 @@ func finish_show() -> void:
 	_showing = &""
 	_opened = false
 	_clear_fullscreen()
-	if kind == KIND_REWARDED and grant_reward:
+	var earns: bool = kind == KIND_REWARDED and grant_reward
+	if earns and not reward_after_close:
 		reward_earned.emit(kind)
 	closed.emit(kind)
+	if earns and reward_after_close:
+		reward_earned.emit(kind)
 
 
-func show_banner(draw_placeholder: bool) -> void:
+func show_banner() -> void:
 	banner_visible = true
-	if draw_placeholder and _banner_node == null and _host_ready():
+	if draw_placeholders and _banner_node == null and _host_ready():
 		_banner_node = FakeAdPlaceholders.build_banner(banner_height)
 		host.add_child(_banner_node)
 
 
 func hide_banner() -> void:
 	banner_visible = false
-	if _banner_node != null:
+	if is_instance_valid(_banner_node):
 		_banner_node.queue_free()
-		_banner_node = null
+	_banner_node = null
 
 
 func banner_height_dp() -> int:
@@ -98,15 +123,15 @@ func banner_height_dp() -> int:
 
 
 func _draw_fullscreen() -> void:
-	if _fullscreen_node == null and _host_ready():
+	if _fullscreen_node == null and draw_placeholders and _host_ready():
 		_fullscreen_node = FakeAdPlaceholders.build_fullscreen(finish_show)
 		host.add_child(_fullscreen_node)
 
 
 func _clear_fullscreen() -> void:
-	if _fullscreen_node != null:
+	if is_instance_valid(_fullscreen_node):
 		_fullscreen_node.queue_free()
-		_fullscreen_node = null
+	_fullscreen_node = null
 
 
 func _host_ready() -> bool:

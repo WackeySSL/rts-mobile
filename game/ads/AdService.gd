@@ -25,7 +25,7 @@ signal ad_closed(placement: StringName)
 
 ## True: fake full-screen ads and fake flows close at once (gdUnit4, headless). False: the fake
 ## placeholders wait for their Close button and the fake flows for their buttons (P403 on).
-## Tests may set it.
+## Tests may set it; the fake backend follows at the next call.
 var fake_auto_close: bool = _default_auto_close(DisplayServer.get_name())
 
 ## Consent's answer (P404 sets it): whether ads may be requested at all.
@@ -33,25 +33,33 @@ var _can_request_ads: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
-## Milliseconds clock for the pre-show timeouts; tests replace it with a fake one.
+## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
 var _busy: bool = false
-var _banner_wanted: bool = false
+## A run that timed out but whose ad may still open; see FullscreenRun.
+var _late: FullscreenRun = null
+var _banner_requests: int = 0
 var _banner_height: int = 0
+var _rewarded_retry_ms: int = 0
 
 
-## Fake everywhere until P405 adds the AdMob backend (ADR 0039 section 2).
+## Fake everywhere until P405 adds the AdMob backend and wires `AdBackend.is_admob_mode` here
+## (ADR 0039 section 2); `play` builds keep the fake until then.
 static func _make_backend() -> AdBackend:
 	return FakeAdBackend.new()
+
+
+static func _default_auto_close(display_name: String) -> bool:
+	return display_name == "headless"
+
+
+func _init() -> void:
+	_sync_fake()
 
 
 func _ready() -> void:
 	if _backend is FakeAdBackend:
 		(_backend as FakeAdBackend).host = self
-
-
-static func _default_auto_close(display_name: String) -> bool:
-	return display_name == "headless"
 
 
 ## Awaitable; always finishes. True means ads may be requested. The stub emits
@@ -75,9 +83,9 @@ func show_privacy_options() -> void:
 	await null
 
 
-## Synchronous.
+## Synchronous. The cached entitlement (P406 fills it).
 func has_remove_ads() -> bool:
-	return false
+	return _ledger.remove_ads
 
 
 ## Awaitable. True once the entitlement is granted. The stub cannot purchase.
@@ -101,20 +109,24 @@ func banner_height_dp() -> int:
 
 
 ## Awaitable. True means one interstitial showed and closed. Returns false at once when the caps
-## say no, and when the ad has not opened within `fullscreen_timeout_ms`; once it opened the call
-## waits for the close.
+## say no, and when the ad has not opened within `fullscreen_timeout_ms` (one deadline for the
+## load and the open); once it opened the call waits for the close.
 func maybe_show_interstitial(placement: StringName) -> bool:
 	if _busy:
 		return false
+	_sync_fake()
 	if not AdCaps.may_show_interstitial(_settings, _ledger, placement, _can_request_ads):
 		return false
 	var shown: bool = await _run_fullscreen(AdBackend.KIND_INTERSTITIAL, placement, Callable())
+	if shown:
+		_preload_interstitial()
 	return shown
 
 
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.
 func note_match_completed(play_seconds: int) -> void:
 	_ledger.note_match_completed(play_seconds)
+	_preload_interstitial()
 
 
 ## Synchronous. The pending start-credits bonus once, then 0.
@@ -123,13 +135,20 @@ func take_start_credits_bonus() -> int:
 
 
 ## Internal (Phase 6 widgets). True when a rewarded ad is loaded and may be requested; an offer
-## shows only then, never a spinner. Asks the backend to preload one the first time.
-func rewarded_ready(_placement: StringName) -> bool:
+## shows only then, never a spinner. Asks the backend to preload one when none is loading; after
+## a failed load it asks again at most once per `banner_reload_min_ms` (that field is reused as
+## the retry interval for every ad load).
+@warning_ignore("unused_parameter")
+# gdlint: ignore=unused-argument
+func rewarded_ready(placement: StringName) -> bool:
+	_sync_fake()
 	if not _can_request_ads:
 		return false
 	var state: AdBackend.LoadState = _backend.load_state(AdBackend.KIND_REWARDED)
-	if state == AdBackend.LoadState.IDLE:
-		_backend.request_load(AdBackend.KIND_REWARDED)
+	var now: int = int(_now_ms.call())
+	var failed_and_due: bool = state == AdBackend.LoadState.FAILED and now >= _rewarded_retry_ms
+	if state == AdBackend.LoadState.IDLE or failed_and_due:
+		_request_rewarded_load()
 		state = _backend.load_state(AdBackend.KIND_REWARDED)
 	return state == AdBackend.LoadState.READY
 
@@ -143,29 +162,31 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 		return false
 	var rewarded: bool = await _run_fullscreen(AdBackend.KIND_REWARDED, placement, on_reward)
 	if _can_request_ads:
-		_backend.request_load(AdBackend.KIND_REWARDED)
+		_request_rewarded_load()
 	return rewarded
 
 
-## Internal, called by the banner band on `enter_tree`.
+## Internal, called by the banner band on `enter_tree`. Requests are counted: the banner shows
+## while at least one is open.
 func show_banner() -> void:
-	_banner_wanted = true
+	_banner_requests += 1
 	_refresh_banner()
 
 
 ## Internal, called by the banner band on `exit_tree`.
 func hide_banner() -> void:
-	_banner_wanted = false
+	_banner_requests = maxi(_banner_requests - 1, 0)
 	_refresh_banner()
 
 
-## Shows or hides the backend's banner for the current consent, entitlement and request, and
+## Shows or hides the backend's banner for the current consent, entitlement and requests, and
 ## emits `banner_changed` when the height changed. Consent and billing call it when theirs change.
 func _refresh_banner() -> void:
-	var may_show: bool = _banner_wanted and _can_request_ads and not _ledger.remove_ads
+	_sync_fake()
+	var may_show: bool = _banner_requests > 0 and _can_request_ads and not _ledger.remove_ads
 	var height: int = 0
 	if may_show:
-		_backend.show_banner(not fake_auto_close)
+		_backend.show_banner()
 		height = _backend.banner_height_dp()
 	else:
 		_backend.hide_banner()
@@ -174,97 +195,52 @@ func _refresh_banner() -> void:
 		banner_changed.emit(height)
 
 
-## One full-screen ad: loads if needed, shows, waits for it to open (timeout) and then for the
-## close (no timeout). `ad_opened` and `ad_closed` come from the backend's signals, so they pair.
+func _request_rewarded_load() -> void:
+	_backend.request_load(AdBackend.KIND_REWARDED)
+	_rewarded_retry_ms = int(_now_ms.call()) + _settings.banner_reload_min_ms
+
+
+## Loads the next interstitial ahead of need once ads may be requested at all.
+func _preload_interstitial() -> void:
+	if not _can_request_ads or _ledger.remove_ads:
+		return
+	var state: AdBackend.LoadState = _backend.load_state(AdBackend.KIND_INTERSTITIAL)
+	if state == AdBackend.LoadState.IDLE or state == AdBackend.LoadState.FAILED:
+		_backend.request_load(AdBackend.KIND_INTERSTITIAL)
+
+
 func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callable) -> bool:
+	if _late != null:
+		_late.abandon()
+		_late = null
 	_busy = true
-	var run: _FullscreenRun = _FullscreenRun.new(self, kind, placement, on_reward)
+	var run: FullscreenRun = FullscreenRun.new(
+		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
+	)
+	run.opened.connect(_on_run_opened)
+	run.closed.connect(_on_run_closed)
 	var result: bool = await run.execute()
 	_busy = false
+	if run.is_late_pending():
+		_late = run
 	return result
 
 
-func _wait_frame() -> void:
-	await (Engine.get_main_loop() as SceneTree).process_frame
+func _on_run_opened(placement: StringName) -> void:
+	if _late != null:
+		_busy = true
+	ad_opened.emit(placement)
 
 
-## Tracks one full-screen show; connects to the backend's signals for its duration.
-class _FullscreenRun:
-	extends RefCounted
+func _on_run_closed(placement: StringName) -> void:
+	if _late != null:
+		_busy = false
+		_late = null
+	ad_closed.emit(placement)
 
-	var _service: Node
-	var _backend: AdBackend
-	var _kind: StringName
-	var _placement: StringName
-	var _on_reward: Callable
-	var _active: bool = false
-	var _opened: bool = false
-	var _closed: bool = false
-	var _rewarded: bool = false
 
-	func _init(service: Node, kind: StringName, placement: StringName, on_reward: Callable) -> void:
-		_service = service
-		_backend = service._backend
-		_kind = kind
-		_placement = placement
-		_on_reward = on_reward
-
-	func execute() -> bool:
-		var deadline: int = _service._now_ms.call() + _service._settings.fullscreen_timeout_ms
-		if not await _await_loaded(deadline):
-			return false
-		_connect()
-		_backend.show_ad(_kind, _service.fake_auto_close)
-		while not _opened:
-			if _service._now_ms.call() >= deadline:
-				_backend.cancel_show(_kind)
-				_disconnect()
-				return false
-			await _service._wait_frame()
-		while not _closed:
-			await _service._wait_frame()
-		_disconnect()
-		return _rewarded if _kind == AdBackend.KIND_REWARDED else true
-
-	func _await_loaded(deadline: int) -> bool:
-		var state: AdBackend.LoadState = _backend.load_state(_kind)
-		if state != AdBackend.LoadState.READY and state != AdBackend.LoadState.LOADING:
-			_backend.request_load(_kind)
-		while _backend.load_state(_kind) == AdBackend.LoadState.LOADING:
-			if _service._now_ms.call() >= deadline:
-				return false
-			await _service._wait_frame()
-		return _backend.load_state(_kind) == AdBackend.LoadState.READY
-
-	func _connect() -> void:
-		_active = true
-		_backend.opened.connect(_on_opened)
-		_backend.reward_earned.connect(_on_reward_earned)
-		_backend.closed.connect(_on_closed)
-
-	func _disconnect() -> void:
-		_active = false
-		_backend.opened.disconnect(_on_opened)
-		_backend.reward_earned.disconnect(_on_reward_earned)
-		_backend.closed.disconnect(_on_closed)
-
-	func _on_opened(kind: StringName) -> void:
-		if not _active or kind != _kind or _opened:
-			return
-		_opened = true
-		if kind == AdBackend.KIND_INTERSTITIAL:
-			_service._ledger.note_interstitial_shown()
-		_service.ad_opened.emit(_placement)
-
-	func _on_reward_earned(kind: StringName) -> void:
-		if not _active or kind != _kind or not _opened or _closed:
-			return
-		_rewarded = true
-		if _on_reward.is_valid():
-			_on_reward.call()
-
-	func _on_closed(kind: StringName) -> void:
-		if not _active or kind != _kind or not _opened or _closed:
-			return
-		_closed = true
-		_service.ad_closed.emit(_placement)
+func _sync_fake() -> void:
+	if _backend is FakeAdBackend:
+		var fake: FakeAdBackend = _backend as FakeAdBackend
+		fake.auto_close = fake_auto_close
+		fake.draw_placeholders = not fake_auto_close

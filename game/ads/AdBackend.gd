@@ -5,6 +5,15 @@ extends RefCounted
 ## never block: a load answers through `load_state` and a show through the signals. This base is
 ## an inert backend that never fills. `FakeAdBackend` is the scriptable fake. The real backend
 ## (`AdMobBackend`, P405) is the only class that may name Poing's plugin.
+##
+## To confirm in P405:
+## - `cancel_show` is best effort. AdMob cannot recall a show it has started, so the real backend
+##   may still open the ad after the timeout. AdService listens for that late open (see
+##   `FullscreenRun`) and keeps its ledger and signals right, but it cannot stop the ad.
+## - Which thread the plugin's callbacks arrive on. Every signal below must be emitted on the main
+##   thread (deferred by the backend when the plugin calls from another).
+## - Whether the reward callback may arrive after the close. AdService grants only when it comes
+##   before the close.
 
 ## A full-screen ad opened on screen.
 signal opened(kind: StringName)
@@ -12,6 +21,8 @@ signal opened(kind: StringName)
 signal closed(kind: StringName)
 ## The SDK's reward callback: the only place a reward may be granted.
 signal reward_earned(kind: StringName)
+## A show failed before it opened (the SDK's "failed to show"); nothing is on screen.
+signal show_failed(kind: StringName)
 
 enum LoadState { IDLE, LOADING, READY, FAILED }
 
@@ -36,17 +47,17 @@ func request_load(_kind: StringName) -> void:
 	pass
 
 
-## Shows the loaded ad: `opened` then, later, `closed`. `auto_close` is a fake-only hint.
-func show_ad(_kind: StringName, _auto_close: bool) -> void:
+## Shows the loaded ad: `opened` then, later, `closed`; or `show_failed`.
+func show_ad(_kind: StringName) -> void:
 	pass
 
 
-## Withdraws a show that has not opened, so it never opens later.
+## Asks that a show that has not opened never opens (best effort, see the notes above).
 func cancel_show(_kind: StringName) -> void:
 	pass
 
 
-func show_banner(_draw_placeholder: bool) -> void:
+func show_banner() -> void:
 	pass
 
 
