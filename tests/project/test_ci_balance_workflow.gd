@@ -14,6 +14,17 @@ const BALANCE_PATHS: Array[String] = [
 	'      - "game/ai/**"',
 	'      - "game/sim/**"',
 	'      - "native/**"',
+	'      - "!data/audio_*.tres"',
+	'      - "!data/ads_settings.tres"',
+	'      - "!data/intro_settings.tres"',
+	'      - "!data/help/**"',
+	'      - "!data/meta/**"',
+	'      - "!data/tutorial/**"',
+	'      - "!data/maps/catalog.tres"',
+	'      - "!data/maps/tutorial_*"',
+	'      - "!data/scenarios/tutorial_*"',
+	'      - "!game/ai/TutorialAi.gd"',
+	'      - "!game/ai/TutorialScriptDef.gd"',
 ]
 const BALANCE_INPUTS: Array[String] = [
 	"      suite:",
@@ -80,6 +91,17 @@ func test_balance_workflow_runs_on_a_filtered_push_and_by_hand_only() -> void:
 		BALANCE_PATHS
 	)
 	assert_bool(block[paths + 1 + BALANCE_PATHS.size()].begins_with("      - ")).is_false()
+	# P509: GitHub applies a negation only to what a positive before it matched, so every
+	# negated path must come after the last positive one. Only the push trigger has paths.
+	var last_positive: int = -1
+	var first_negated: int = BALANCE_PATHS.size()
+	for i: int in BALANCE_PATHS.size():
+		if BALANCE_PATHS[i].begins_with('      - "!'):
+			first_negated = mini(first_negated, i)
+		else:
+			last_positive = i
+	assert_int(first_negated).is_greater(last_positive)
+	assert_int(first_negated).is_less(BALANCE_PATHS.size())
 	var inputs: Array[String] = []
 	for line: String in block:
 		if line.begins_with("      ") and line[6] != " ":

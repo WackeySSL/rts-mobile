@@ -76,7 +76,8 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
 - **Forks keep the MIT code.** A fork must bring its own art and audio (or use a pre-cut-over
   MIT copy, item 4).
 - **Rows and agents.** New art and audio rows in `assets/CREDITS.md` write "All rights reserved
-  (AppCode ApS)". Phase 5 texts that still call sfxgen output "own work (MIT)" (ADR 0041, ADR 0043 §7
-  and the Phase 5 plan rows P507, P508 and P529, all on `claude/p500-phase5-plan`) follow this ADR when they land.
+  (AppCode ApS)". The Phase 5 texts that merged in wave 12 got dated notes
+  in this row's merge (ADR 0041 §7's "Allowed", ADR 0043 §7) and amended rows P507, P508 and P529
+  in the Phase 5 plan.
 - **No per-file headers.** The SVGs and models carry no copyright comment; the notice lives in
   `assets/LICENSE.md`, so generator output and its golden checks do not change.

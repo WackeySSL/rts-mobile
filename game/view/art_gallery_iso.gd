@@ -205,7 +205,10 @@ func _shows_damage(model: ArtModel) -> bool:
 	var kinds: Array[StringName] = []
 	for emitter: Array in model.emitter_list():
 		kinds.append(emitter[0])
-	return _neutral != null and model.category == &"veh" and kinds.has(&"damage")
+	# An aircraft has no scar.
+	return (
+		_neutral != null and model.category == &"veh" and not model.flies() and kinds.has(&"damage")
+	)
 
 
 ## The Damage rows of one ground: a line of 8 per 8 directions at zoom 1, for stage 1 and then
@@ -302,7 +305,9 @@ func _rig(
 	rig.add_child(_sprite(model, ArtModel.SHADOW, hull_dir, layouts[&"shadow"], triad, zoom))
 	if ringed and model.category != &"bld":
 		rig.add_child(_ring(zoom))
-	rig.add_child(_sprite(model, &"hull", hull_dir, layouts[&"hull"], triad, zoom))
+	var hull: Sprite2D = _sprite(model, &"hull", hull_dir, layouts[&"hull"], triad, zoom)
+	hull.position.y = -_lift_px(model) * zoom
+	rig.add_child(hull)
 	if stage > 0:
 		_add_damage(rig, model, dir, zoom, stage)
 	for part: StringName in [&"turret", &"head"]:
@@ -312,6 +317,11 @@ func _rig(
 			top.position *= BASE_SCALE * zoom
 			rig.add_child(top)
 	return rig
+
+
+## How far an aircraft's hull hovers above its shadow, world px at zoom 1; 0 for a ground model.
+func _lift_px(model: ArtModel) -> float:
+	return float(maxi(model.fly_px, model.low_fly_px))
 
 
 ## The overlays of damage `stage` on a vehicle's rig (`Scar`, and at stage 2 `Loose`), in the order
@@ -398,6 +408,8 @@ func _box(model: ArtModel, layouts: Dictionary[StringName, ArtGen.Layout]) -> Re
 	var hull: ArtGen.Layout = layouts[&"hull"]
 	var shadow: ArtGen.Layout = layouts[&"shadow"]
 	var box: Rect2 = Rect2(-Vector2(hull.origin), Vector2(hull.size))
+	# An aircraft's hull hovers `fly_px` above its ground point (P245).
+	box.position.y -= _lift_px(model) / BASE_SCALE
 	box = box.merge(Rect2(-Vector2(shadow.origin), Vector2(shadow.size)))
 	for part: StringName in [&"turret", &"head"]:
 		if layouts.has(part):
