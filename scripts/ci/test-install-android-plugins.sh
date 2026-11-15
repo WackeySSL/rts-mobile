@@ -8,6 +8,12 @@
 # commit, Godot 4.7.2 and a 64-digit SHA-256. ci.yml runs it in the verify job.
 # Usage: bash scripts/ci/test-install-android-plugins.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
+for tool in zip unzip curl sha256sum; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "test-install-android-plugins: $tool is missing (needed by this test)" >&2
+    exit 3
+  }
+done
 repo="$(cd "$(dirname "$0")/../.." && pwd -P)"
 root="$(mktemp -d)"
 trap 'rm -rf "${root:?}"' EXIT
@@ -39,7 +45,9 @@ new_tree() { # name, sha256 the copy pins
   sed "s/^ZIP_SHA256=.*/ZIP_SHA256=\"$2\"/" "$real" >"$tree/scripts/ci/install-android-plugins.sh"
 }
 
-zip_name="$(sed -n 's/^ZIP="\(.*\)"$/\1/p' "$real" | sed 's/\${GODOT_VERSION}/4.7.2/')"
+godot_version="$(sed -n 's/^GODOT_VERSION="\(.*\)"$/\1/p' "$real")"
+# shellcheck disable=SC2016 # the ${GODOT_VERSION} to replace is literal text in the script
+zip_name="$(sed -n 's/^ZIP="\(.*\)"$/\1/p' "$real" | sed "s/\${GODOT_VERSION}/$godot_version/")"
 version="$(sed -n 's/^PLUGIN_VERSION="\(.*\)"$/\1/p' "$real")"
 mkdir -p "$root/serve" "$root/fixture/ads/libs" "$root/fixture/pubmatic"
 printf '# generated\nconst VERSION := "%s"\n' "$version" >"$root/fixture/package.gd"
@@ -47,6 +55,7 @@ printf 'extends EditorExportPlugin\n' >"$root/fixture/ads/poing_godot_admob_ads.
 for f in ads-debug ads-release core-debug core-release; do printf 'aar %s\n' "$f" >"$root/fixture/ads/libs/poing-godot-admob-$f.aar"; done
 printf 'unused mediation adapter\n' >"$root/fixture/pubmatic/x.gd"
 (cd "$root/fixture" && zip -q -r "$root/serve/$zip_name" package.gd ads pubmatic)
+cp "$root/serve/$zip_name" "$root/served.zip"
 good_sha="$(sha256sum <"$root/serve/$zip_name" | cut -d' ' -f1)"
 
 # 1. The real script's pin refuses the fixture, and extracts nothing.
@@ -90,10 +99,40 @@ check "an unknown argument is exit 2" 2 "unknown argument"
 run scripts/ci/install-android-plugins.sh --check extra
 check "an extra argument is exit 2" 2 "too many arguments"
 
-# 5. The pins of the real script.
+# 5. A download failure, a mismatch that leaves an existing install alone, and a stamp of another pin.
+new_tree nodownload "$good_sha"
+rm -rf "$root/serve"
+run scripts/ci/install-android-plugins.sh
+check "a download failure is exit 1" 1 "download of"
+assert "a failed download installs nothing" test ! -e "$tree/addons/admob/android"
+mkdir -p "$root/serve"
+cp "$root/served.zip" "$root/serve/$zip_name"
+new_tree untouched "$good_sha"
+run scripts/ci/install-android-plugins.sh
+check "the fixture installs for the untouched case" 0 "OK $version"
+printf 'keep me\n' >"$tree/addons/admob/android/bin/ads/keep.txt"
+printf 'not the pinned archive\n' >"$root/serve/$zip_name"
+sed -i "s/^ZIP_SHA256=.*/ZIP_SHA256=\"$(printf '%064d' 1)\"/" "$tree/scripts/ci/install-android-plugins.sh"
+run scripts/ci/install-android-plugins.sh
+check "a SHA-256 mismatch on an installed tree is exit 1" 1 "SHA-256 mismatch"
+assert "a mismatch leaves the existing install untouched" test -s "$tree/addons/admob/android/bin/ads/keep.txt"
+assert "a mismatch leaves the stamp untouched" grep -q "^$good_sha\$" "$tree/addons/admob/android/bin/.pin"
+cp "$root/served.zip" "$root/serve/$zip_name"
+new_tree restamped "$good_sha"
+run scripts/ci/install-android-plugins.sh
+printf '%s\n' "$(printf '%064d' 2)" >"$tree/addons/admob/android/bin/.pin"
+run scripts/ci/install-android-plugins.sh --check
+check "a stamp of another pin is not installed" 1 "not installed"
+run scripts/ci/install-android-plugins.sh
+check "a stamp of another pin is reinstalled" 0 "OK $version"
+assert "the reinstall rewrites the stamp" grep -q "^$good_sha\$" "$tree/addons/admob/android/bin/.pin"
+
+# 6. The pins of the real script.
+assert "the version is 5.1.0" grep -q '^PLUGIN_VERSION="5.1.0"$' "$real"
+# shellcheck disable=SC2016 # the ${PLUGIN_VERSION} is literal text in the script
 assert "the tag is v5.1.0" grep -q '^PLUGIN_TAG="v${PLUGIN_VERSION}"' "$real"
 assert "the commit is pinned" grep -Eq '^PLUGIN_COMMIT="[0-9a-f]{40}"$' "$real"
-assert "Godot 4.7.2 is pinned" grep -q '^GODOT_VERSION="4.7.2"$' "$real"
+assert "Godot 4.7.2 is pinned" test "$godot_version" = 4.7.2
 assert "the SHA-256 is pinned" grep -Eq '^ZIP_SHA256="[0-9a-f]{64}"$' "$real"
 
 [ "$failures" -eq 0 ] || {

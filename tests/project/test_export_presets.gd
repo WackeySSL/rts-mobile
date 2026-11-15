@@ -53,13 +53,16 @@ func test_preset_identity() -> void:
 	)
 	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature.
 	assert_str(config.get_value(SECTION, "custom_features")).is_empty()
-	# Test code and the test runner never ship. Unlike the Web preset, never native/* (ADR 0013).
-	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal("tests/*, addons/gdUnit4/*")
+	# Test code, the test runner and the AdMob plugin never ship in this non-Gradle APK (ADR 0040 §1).
+	# Unlike the Web preset, never native/* (ADR 0013).
+	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal(
+		"tests/*, addons/gdUnit4/*, addons/admob/*"
+	)
 
 
 ## ADR 0013 section 7: the web preview runs the GDScript twins and packs no .gdextension, which
 ## Godot only warns about. scripts/export-web.sh checks the pack; this catches the edit first.
-func test_web_preset_excludes_native() -> void:
+func test_web_preset_excludes_tests_native_and_addons() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(

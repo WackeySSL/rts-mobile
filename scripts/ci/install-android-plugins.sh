@@ -11,6 +11,7 @@
 # with the plugin enabled (internal/services/network/binary_installer.gd): its Android and its iOS part. The Android
 # part is in place after this script. The iOS part is not used before Phase 7, so this script writes the marker
 # addons/admob/ios/bin/package.gd (version only, no binaries) that tells the plugin it is installed.
+# A stamp (addons/admob/android/bin/.pin, the archive's SHA-256) marks an install made from this pin.
 # Usage: bash scripts/ci/install-android-plugins.sh [--check]
 #   --check  installs nothing: exit 0 when the pinned libraries are in place, exit 1 when not.
 # Env:   ANDROID_PLUGINS_BASE_URL (default: the release download URL of the tag; a file:// URL for the offline test).
@@ -44,13 +45,18 @@ case "${1:-}" in
 esac
 [ $# -le 1 ] || die 2 "too many arguments"
 
+# A stamp holds the SHA-256 of the archive the files came from, so "installed" means "installed from this pin",
+# not just "files are there" (a different version or a half-finished extraction has no matching stamp).
+STAMP="$DEST/.pin"
+
 installed() {
+  [ "$(cat "$STAMP" 2>/dev/null || true)" = "$ZIP_SHA256" ] || return 1
   [ "$(sed -n 's/^const VERSION := "\(.*\)"$/\1/p' "$DEST/package.gd" 2>/dev/null || true)" = "$PLUGIN_VERSION" ] || return 1
+  [ "$(sed -n 's/^const VERSION := "\(.*\)"$/\1/p' "$IOS_MARKER" 2>/dev/null || true)" = "$PLUGIN_VERSION" ] || return 1
   for f in ads/poing_godot_admob_ads.gd ads/libs/poing-godot-admob-ads-debug.aar ads/libs/poing-godot-admob-ads-release.aar \
     ads/libs/poing-godot-admob-core-debug.aar ads/libs/poing-godot-admob-core-release.aar; do
     [ -s "$DEST/$f" ] || return 1
   done
-  [ -s "$IOS_MARKER" ]
 }
 
 if installed; then
@@ -68,12 +74,18 @@ curl -fsSL --retry 3 --retry-delay 2 -o "$tmp/$ZIP" "$BASE_URL/$ZIP" || die 1 "d
 actual="$(sha256sum <"$tmp/$ZIP" | cut -d' ' -f1)"
 [ "$actual" = "$ZIP_SHA256" ] || die 1 "SHA-256 mismatch for $ZIP (pinned $ZIP_SHA256, got $actual; plugin $PLUGIN_TAG, commit $PLUGIN_COMMIT)"
 
-rm -rf "$DEST"
+# Only now is the existing install touched. The archive is extracted with unzip, which would follow a symlink
+# entry; that is safe only because the archive is the one pinned by SHA-256 above (it holds none).
+rm -rf "$DEST" addons/admob/ios/bin
 mkdir -p "$DEST"
-unzip -q "$tmp/$ZIP" 'package.gd' 'ads/*' -d "$DEST" || true # a missing member is caught by installed below
+# unzip exits 11 when a pattern matches no member; that case is caught by installed() below. Any other failure stops.
+unzip_rc=0
+unzip -q "$tmp/$ZIP" 'package.gd' 'ads/*' -d "$DEST" || unzip_rc=$?
+{ [ "$unzip_rc" -eq 0 ] || [ "$unzip_rc" -eq 11 ]; } || die 1 "unzip failed with exit code $unzip_rc"
 mkdir -p "$(dirname "$IOS_MARKER")"
 printf '%s\n' '# Written by scripts/ci/install-android-plugins.sh: no iOS binaries. It only stops the editor plugin' \
   '# from downloading them without a pin when a headless editor starts. iOS is Phase 7.' \
   "const VERSION := \"$PLUGIN_VERSION\"" >"$IOS_MARKER"
+printf '%s\n' "$ZIP_SHA256" >"$STAMP"
 installed || die 1 "the archive did not hold the expected files (ads/ libraries or package.gd)"
 echo "install-android-plugins: OK $PLUGIN_VERSION"

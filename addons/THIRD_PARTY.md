@@ -57,9 +57,24 @@ the 236 `*.gd.uid` and 8 `*.png.import` files that are committed next to the sou
 The editor part is a minimal vendoring of the release asset `poing-godot-admob-v5.1.0.zip` (SHA-256
 `8c53ff52719edf6a81cc7d32a9cdaad2d9e11693c85faca25008a1c19355726f`) with two local patches, described in
 `addons/admob/PATCHES.md`: the Godot 4.7.2 static initializer, and our own placeholder SVGs instead of five upstream
-images. `tests/project/test_admob_vendor.gd` pins the SHA-256 of every vendored file. The Android libraries come from
-`android-template-v4.7.2.zip` of the same tag through `scripts/ci/install-android-plugins.sh` (SHA-256 pinned); the
-Gradle build pulls the Google Mobile Ads SDK 1.4.0 from Google's Maven.
+images. `tests/project/test_admob_vendor.gd` pins the SHA-256 of every vendored file in
+`tests/project/admob_vendor_manifest.txt`, which is plain `sha256sum` output: `sha256sum -c
+tests/project/admob_vendor_manifest.txt` checks it, and this regenerates it after a deliberate change (git-ignored
+import outputs, the fetched folders, `PATCHES.md` and the placeholders are not pinned):
 
-The plugin stays disabled in `project.godot`, so the `Android` and `Android perf` presets export unchanged; the AAB
-export enables it for one run (P410b). The Web preset excludes `addons/admob/*`. Upgrade only through a new ADR.
+```bash
+find addons/admob -type f -not -path 'addons/admob/android/*' -not -path 'addons/admob/ios/*' \
+  -not -path 'addons/admob/downloads/*' -not -path addons/admob/PATCHES.md \
+  -not -path 'addons/admob/assets/placeholder_*' -not -name '*.translation' \
+  | LC_ALL=C sort | xargs sha256sum > tests/project/admob_vendor_manifest.txt
+```
+
+The Android libraries come from `android-template-v4.7.2.zip` of the same tag through
+`scripts/ci/install-android-plugins.sh` (SHA-256 pinned). The Gradle build pulls the Google Mobile Ads SDK from
+Google's Maven by the coordinates the plugin's export script names:
+`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.4.0` and `androidx.constraintlayout:constraintlayout:2.2.0`.
+Whether Google's SDK terms need an in-game notice is not decided here; it moves to P410b, which builds the AAB.
+
+The plugin stays disabled in `project.godot`, so the `Android` and `Android perf` presets export unchanged (they
+exclude `addons/admob/*`); the AAB export enables it for one run (P410b). The Web preset excludes `addons/admob/*`
+too. Upgrade only through a new ADR.
