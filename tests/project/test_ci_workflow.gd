@@ -11,6 +11,8 @@ const RELEASE_IF: String = (
 )
 const PERF_RELEASE_JOB: String = "  android-perf-release:"
 const ANDROID_JOB: String = "  android-debug-apk:"
+const AAB_STEP: String = "Offline test of the AAB export and its checks"
+const AAB_RUN: String = "run: bash scripts/ci/test-aab.sh"
 const NOTICE_TEST_STEP: String = "      - name: Offline test of the export licence notices"
 const NOTICE_TEST_RUN: String = "        run: bash scripts/ci/test-export-notices.sh"
 const INSTALLER_STEP: String = "Offline test of the cloud Android installer"
@@ -225,8 +227,8 @@ func test_release_job_runs_only_on_a_push_to_main() -> void:
 	assert_str(lines[job + 2]).is_equal(RELEASE_IF)
 
 
-## Only the two release jobs hold contents: write: android-dev-release, then android-perf-release
-## (P51r), whose other rules tests/project/test_ci_perf_apk.gd pins.
+## Only the two release jobs hold contents: write: android-dev-release, then
+## android-perf-release (P51r), whose other rules tests/project/test_ci_perf_apk.gd pins.
 func test_only_the_two_release_jobs_can_write_contents() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	var job: int = lines.find(RELEASE_JOB)
@@ -317,6 +319,8 @@ func test_verify_job_runs_the_installer_tests() -> void:
 	_assert_step(job, INSTALLER_STEP, [INSTALLER_RUN])
 	# P410: the offline test of the AdMob plugin installer runs there too.
 	_assert_step(job, PLUGIN_INSTALLER_STEP, [PLUGIN_INSTALLER_RUN])
+	# P410c: so does the offline test of the AAB export and its checks.
+	_assert_step(job, AAB_STEP, [AAB_RUN])
 
 
 ## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.
