@@ -11,9 +11,11 @@ the by-choice offers stay.
 
 Status: **proposed, 2026-11-15**. Written by the architect (row P400, branch
 `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
-`docs/plans/2026-11-15-phase-6.md`. Decisions for Michael: the plan's "Open questions for Michael"
-1-7 and 10-11. Fix 1 the same day: the lead's docs lens and the Phase 5 session's acceptance of
-the interfaces (the plan's "Interfaces with Phase 5", with `fake_auto_close`).
+`docs/plans/2026-11-15-phase-6.md`. Fix 1 the same day: the lead's docs lens and the Phase 5
+session's acceptance of the interfaces (the plan's "Interfaces with Phase 5", with
+`fake_auto_close`). **Answered by Michael on 2026-11-15** (in chat, through the Phase 6 lead): all
+A, so the plan's questions 1-7, 10 and 11 are decided as written below. The status stays proposed
+until the main lead accepts it when merging P400; P400b writes the acceptance notes.
 
 Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `docs/plans/2026-11-01-hud-v2.md` row **P127** is absorbed by this plan: the band is row P430,
@@ -27,21 +29,21 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   banner child (P401).
 - ADR 0025 §12's banner "only when Phase 6's `AdService` exists": it exists from P401 on; the start
   page keeps its 48 dp of air (§5).
-- The `admob-policy` skill's pause-menu cell ("none until P127 decides") needs a docs edit with
-  Michael's yes (P400b).
-- CLAUDE.md is unchanged unless Michael picks question 10 A (the real App ID in the
-  internal-testing build): then CLAUDE.md's Monetization line "real IDs are injected only by the
-  release workflow" and `admob-policy`'s "IDs and test mode" bullet need his explicit yes to the
-  plan's draft texts (P400b). Under 10 B nothing changes.
+- The `admob-policy` skill's pause-menu cell ("none until P127 decides") gets the plan's draft
+  text, pending Michael's yes to the text (P400b).
+- Michael chose 10 A (the real App ID in the internal-testing build), so CLAUDE.md's Monetization
+  line "real IDs are injected only by the release workflow" and `admob-policy`'s "IDs and test
+  mode" bullet change to the plan's draft texts, pending Michael's yes to the text (P400b). Until
+  then the internal build uses Google's test App ID as well.
 
 ## Context
 - `game/ads/` is empty; `game/meta/` holds only `HudPrefs.gd`. No ad, consent or billing code
   exists, and no plugin is vendored (`addons/` holds gdUnit4 only).
 - A separate Phase 5 session builds the menus, `Progression` (rank, XP), `SaveService`, the boot
-  flow, `MenuFlow` and `MatchSetup` (rows P501-P532 of `docs/plans/2026-11-15-phase-5.md`). On 2026-11-15 the two sessions agreed a contract:
-  Phase 5 calls one facade, `AdService`, places Phase 6's banner band and hosts Phase 6's widgets
-  in slots. This ADR builds on it; the plan's "Interfaces with Phase 5" holds it item by item,
-  with the typed signatures.
+  flow, `MenuFlow` and `MatchSetup` (rows P501-P532 of `docs/plans/2026-11-15-phase-5.md`). On
+  2026-11-15 the two sessions agreed a contract: Phase 5 calls one facade, `AdService`, places Phase
+  6's banner band and hosts Phase 6's widgets in slots. This ADR builds on it; the plan's
+  "Interfaces with Phase 5" holds it item by item, with the typed signatures.
 - The repository holds no fact about the Poing Studios plugin (version, API names, how the AdMob
   App ID reaches the manifest, banner positions). `mobile-development/references/iap-and-ads.md`
   documents the first-party `GodotGooglePlayBilling` plugin (`BillingClient`, its signals and
@@ -102,16 +104,16 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `is_privacy_options_required()` is UMP's answer; `show_privacy_options()` shows UMP's form and
   returns when it closes.
 - UMP's form is expected to need the real AdMob App ID with a configured GDPR message (Google's
-  sample App ID may not show it), which is why the plan's question 10 A puts the real App ID in
-  the internal build: **to confirm in P404/P405**.
+  sample App ID may not show it), which is why the internal build carries the real App ID
+  (Michael's answer 10 A): **to confirm in P404/P405**.
 - Debug builds set UMP's debug geography to EEA for registered test devices; the device hash
   comes from a local git-ignored file, never from the repository (**to confirm** the plugin's
   call in P404/P405).
-- The game is not child-directed. The maximum ad content rating is set in the AdMob console
-  (question 11).
+- The game is not child-directed: Play's target audience is 13 and over (not the Families
+  programme), and the maximum ad content rating in the AdMob console is T (answer 11 A).
 
 ### 4. Caps and placements (`data/ads_settings.tres`)
-| Field | Start value | Rule |
+| Field | Value (answer 2 A for the caps) | Rule |
 | --- | --- | --- |
 | `interstitial_free_matches` | 2 | none in a player's first 2 completed matches |
 | `interstitial_min_play_s` | 240 | at least 4 minutes of play since the last one |
@@ -149,8 +151,8 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   `banner_changed`.
 - A banner sits in that bottom band of the safe rect, the full width, with at least
   `banner_gap_dp` (16) to any control above it, never beside, between or over controls; the start
-  page uses `start_banner_gap_dp` (48, ADR 0025 §12). The band says "Advertisement" in small type
-  above the banner if Michael chooses it (question 4).
+  page uses `start_banner_gap_dp` (48, ADR 0025 §12). The band shows a small "Advertisement"
+  caption above the banner in the theme's text colour, with no frame (answer 4 A).
 - After a turn the banner is destroyed and loaded again at the new width (ADR 0015 §5's open
   point), at most once per `banner_reload_min_ms`; until then the band is empty.
 - Whether Poing's banner takes a custom position or only screen top/bottom is **to confirm in
@@ -160,13 +162,15 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 ### 6. The pause menu's foot (P127 decided)
 - Upright, where the foot is free (below the Vibration chip, with 16 dp to it), the foot holds the
   band while the menu is open.
-- **Sideways, and whenever the menu scrolls: no banner** (question 5, recommendation A). Sideways
+- **Sideways, and whenever the menu scrolls: no banner** (Michael's answer 5 A). Sideways
   the button column reaches the safe bottom, so a banner would sit beside controls.
 - The banner is shown when the menu opens and **destroyed** when it closes. No banner object
   exists in battle while the menu is closed: a hidden banner still refreshes and costs network
   and CPU during play.
 
 ### 7. Rewards enter meta and the match only through Phase 5's paths
+- **Where** (Michael's answer 1 A): Double XP on the result screen; "+500 credits next match" on
+  map select only; no offer on the main menu or settings. One offer per screen.
 - **Double XP:** in the reward callback the widget calls `Progression.apply_bonus(award_id,
   reward_xp_multiplier)`, which applies once per award and persists before it returns.
 - **+500 starting credits:** in the reward callback `AdLedger` records one pending bonus (capped
@@ -179,9 +183,11 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   a cheat path for multiplayer. Computer players, the smoke and the harness never get it.
 
 ### 8. Remove ads
-- One non-consumable product (`remove_ads_product_id`). Purchase: query the product, launch, and
-  on `PURCHASED` (never `PENDING`) acknowledge, record the entitlement, save, emit
-  `entitlement_changed`. Banners are destroyed and interstitials stop; rewarded offers stay.
+- One non-consumable product (`remove_ads_product_id`) at **29 kr** (Michael's answer 3 A; set in
+  Play Console, and the game shows Play's localised price text, never a literal). Purchase: query
+  the product, launch, and on `PURCHASED` (never `PENDING`) acknowledge, record the entitlement,
+  save, emit `entitlement_changed`. Banners are destroyed and interstitials stop; rewarded offers
+  stay.
 - `restore_purchases()` (the "Restore purchases" row) queries Play. Play's answer is the truth when
   it answers; offline, the cached entitlement stands; a successful query without the purchase clears
   the cache (a refund).
@@ -220,7 +226,7 @@ Michael's phone (plan P422).
 
 ### 12. AdMob alone
 No mediation and no other ad network in Phase 6: AdMob alone first, measured with AdMob's
-reports, then decided (`admob-policy`, "Store setup"; question 7).
+reports, then decided (`admob-policy`, "Store setup"; Michael's answer 7 A).
 
 ## Consequences
 - Phase 5 codes against a stub from P401 on, so neither session waits for the other's internals.
@@ -234,5 +240,6 @@ reports, then decided (`admob-policy`, "Store setup"; question 7).
 - **UI calling the plugin directly:** rejected; no fake mode, no caps in one place, untestable.
 - **Starting credits by a Command at tick 0:** rejected (§7).
 - **A separate `user://ads.cfg`:** rejected by the Phase 5 contract (one versioned save file).
-- **A banner sideways under the pause card, or at the end of a scrolling menu:** questions 5 B and
-  5 C; not recommended (beside controls, or moving under the finger).
+- **A banner sideways under the pause card, or at the end of a scrolling menu:** options 5 B and
+  5 C, not chosen (beside controls, or moving under the finger).
+- **+500 also on the main menu, or Double XP alone:** options 1 B and 1 C, not chosen.

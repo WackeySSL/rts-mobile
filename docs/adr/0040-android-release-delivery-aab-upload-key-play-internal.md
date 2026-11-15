@@ -8,21 +8,27 @@ first; the plan lists them (M1-M11). The dev and perf APKs stay as they are.
 
 Status: **proposed, 2026-11-15**. Written by the architect (row P400, branch
 `claude/p400-phase6-plan`, base `main` at a2204d2) with the plan
-`docs/plans/2026-11-15-phase-6.md`. Decisions for Michael: the plan's questions 8-10, 12 and 13.
-Fix 1 the same day: the lead's docs lens.
+`docs/plans/2026-11-15-phase-6.md`. Fix 1 the same day: the lead's docs lens. **Answered by
+Michael on 2026-11-15** (in chat, through the Phase 6 lead): all A, so the plan's questions 8, 10,
+12 and 13 are decided as written below (Play App Signing with his upload key and backup; the real
+App ID with Google's test units in internal builds; an upload on every merge to `main`;
+versionCode from the commit count). The status stays proposed until the main lead accepts it when
+merging P400; P400b writes the acceptance notes. AppCode ApS already has a Play organisation
+account (Michael, 2026-11-15; plan M1 done).
 
 Amends (dated notes in P400b, after acceptance):
 - ADR 0005's Consequences ("Phase 6 replaces this preset's signing with the release keystore and
   switches to the Gradle build for the AdMob plugin"): the debug preset `Android` and the
   `Android perf` preset keep their non-Gradle build, signing and `.dev` id; a new preset does the
-  Play build (§1). ADR 0005 §6's consent rule applies to `android-internal.yml`: it merges only on
-  Michael's word.
+  Play build (§1). ADR 0005 §6's consent rule applies to `android-internal.yml`: Michael gave it
+  on 2026-11-15 (answer 12 A: upload every merge to `main` to internal testing); the PR still
+  merges on his word.
 - ADR 0013's "Not covered" note on godotengine/godot #123712 (a 4.7.2 shutdown crash after an
   export with AdMob and gdUnit4 installed): P410 is the row that watches for it (§4).
 - `.claude/agents/release-engineer.md` says "sign the AAB with the release keystore from
   secrets" (§3 signs with an upload key; Google holds the app key) and "versionCode comes from the
-  run number" (§6 chooses another source). Both lines need Michael's explicit yes (the plan's
-  question 13) before the lead changes the agent file; agents never edit it.
+  run number" (§6 chooses another source). Michael chose both (answer 13 A); the lead changes the
+  agent file to the plan's draft text, pending Michael's yes to the text. Agents never edit it.
 
 ## Context
 - `export_presets.cfg` has `Web`, `Android` (debug, `dk.appcode.rts.dev`, non-Gradle) and
@@ -59,8 +65,8 @@ must still export unchanged (no plugin, no Gradle): **to confirm in P410**; if n
 - Gradle's caches use `actions/cache` keyed on the template version and the plugin pins.
 
 ### 3. Play App Signing and the upload key
-- Google holds the app signing key (Play App Signing). Michael makes an **upload key** himself
-  (`keytool`, RSA 2048) and keeps a backup offline. Store and key password are the same: the
+- Google holds the app signing key (Play App Signing, answer 8 A). Michael makes an **upload key**
+  himself (`keytool`, RSA 2048) and keeps a backup offline. Store and key password are the same: the
   `mobile-development` skill (§1) says Godot's preset needs that ("keystore and key passwords must
   currently match"); **to confirm in P412**.
 - CI holds only the upload key, in the GitHub environment `play-internal`, whose deployment rule
@@ -99,11 +105,13 @@ version and SHA-256), or with `aapt2` after a proto conversion: the tool is **to
   SHA and subject. While Play still treats the app as a draft it accepts only `status: draft`
   releases, and Michael rolls them out in the console (**to confirm in P413**).
 - **Ad IDs:** Google's test ad units always. The AdMob App ID: Michael's real one from
-  `ADMOB_APP_ID_ANDROID` (question 10 A), because UMP's form and app-ads.txt are expected to need
-  the real app (**to confirm in P404/P405**). The SDK reads the App ID from the manifest, so it
-  must reach the manifest at build time (the plugin's export option or a manifest step: **to
-  confirm in P410/P410b**); `ad_ids.cfg` carries unit IDs only, and P414 depends on P410's finding.
-  Real ad unit IDs come only with Phase 7's `release.yml`, through `scripts/ci/write-ad-ids.sh`.
+  `ADMOB_APP_ID_ANDROID` (Michael's answer 10 A), because UMP's form and app-ads.txt are expected to
+  need the real app (**to confirm in P404/P405**). The SDK reads the App ID from the manifest, so it
+  must reach the manifest at build time (the plugin's export option or a manifest step: **to confirm
+  in P410/P410b**); `ad_ids.cfg` carries unit IDs only, and P414 depends on P410's finding. Real ad
+  unit IDs come only with Phase 7's `release.yml`, through `scripts/ci/write-ad-ids.sh`. Until
+  Michael's yes to the CLAUDE.md and `admob-policy` texts (plan P400b), the internal build uses
+  Google's test App ID as well.
 - **Where the secrets live:** the upload key, `PLAY_SERVICE_ACCOUNT_JSON` and
   `ADMOB_APP_ID_ANDROID` in the environment `play-internal`; the real unit IDs
   (`ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`, `ADMOB_REWARDED_ID_ANDROID`) in an
