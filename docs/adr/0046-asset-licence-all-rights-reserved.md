@@ -3,7 +3,7 @@
 **In short, for Michael:** the code stays open source under MIT. From 2026-11-15 the pictures,
 the 3D models they are drawn from, and the sounds and music made in this repository belong to
 AppCode ApS and may not be reused. Anyone can still read them in the public repository. Copies
-published before today stay MIT, because a licence cannot be taken back.
+published before this change reaches `main` stay MIT, because a licence cannot be taken back.
 
 Status: **accepted, 2026-11-15** (Michael answered "Ja" in chat the same day to the lead's
 proposal of this scope). Written by the architect on branch `claude/p26ca-asset-licence` (base
@@ -27,8 +27,8 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
    particular `game/`, `data/` (the balance `.tres`), `native/`, `scripts/`, `tests/` (including
    their small stand-in fixtures) and the generator code in `tools/artgen/` and `tools/sfxgen/`:
    they are tools.
-2. **Own assets are reserved.** "Copyright (c) 2026 AppCode ApS. All rights reserved." covers all
-   graphics and audio authored in this repository:
+2. **Own assets are reserved.** "Copyright (c) 2026 AppCode ApS. All rights reserved." covers the
+   graphics and audio authored in this repository under `assets/` and `docs/store/`:
    - every SVG, hand-drawn or generated: frames, iso sheets, icons, item cards, effects, decals,
      ground and fields (`assets/art/svg/**`, `assets/art/iso/**`);
    - the 3D model data the art generator builds them from (`assets/art/models/**`) and the other
@@ -44,8 +44,8 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
 3. **Third-party files keep their own licences.** Every row of `assets/CREDITS.md` whose author is
    not AppCode ApS (the SIL OFL fonts, the Godot logo under CC BY 4.0, any CC0 or CC-BY entry)
    is outside item 2.
-4. **Cut-over.** The reservation applies from 2026-11-15, from the commit on `main` that adds
-   `assets/LICENSE.md`. Every copy of these files published before it (in an earlier commit of
+4. **Cut-over.** The reservation applies from the commit on `main` that adds
+   `assets/LICENSE.md` (decided 2026-11-15). Every copy of these files published before it (in an earlier commit of
    the repository, or in a build made from one) stays available under MIT to whoever received
    it: a licence cannot be revoked for copies already distributed. A file changed after the
    cut-over is reserved in its new version only.
@@ -64,15 +64,17 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
   "all rights reserved" may not hold for every file. Michael will confirm with an IP lawyer; the
   notice stays in place meanwhile, and the name and logo remain the stronger protection (ADR 0001
   Consequences: trademark, store presence, update pace).
-- **Visible, not reusable (caveat 2).** The files stay in the public repository; anyone may read
-  them. The licence forbids reuse (copying, modifying, redistributing, shipping in another game),
-  not viewing.
+- **Visible, not reusable (caveat 2).** The files stay in the public repository. Anyone may view
+  them, clone or fork the repository and build and run the game for their own use, for testing and
+  for contributions; nobody may distribute them or a build that contains them, or use them in
+  another work, without written permission (`assets/LICENSE.md`). This wording is for Michael's IP
+  lawyer to confirm, together with caveat 1.
 - **Clones can be reported.** A store listing that ships our post-cut-over art or audio can be
   reported, e.g. by a Google Play copyright complaint, naming `assets/LICENSE.md` and the commit.
 - **Forks keep the MIT code.** A fork must bring its own art and audio (or use a pre-cut-over
   MIT copy, item 4).
 - **Rows and agents.** New art and audio rows in `assets/CREDITS.md` write "All rights reserved
-  (AppCode ApS)". Phase 5 texts that still call sfxgen output "own work (MIT)" (ADR 0041 and the
-  Phase 5 plan, both on `claude/p500-phase5-plan`) follow this ADR when they land.
+  (AppCode ApS)". Phase 5 texts that still call sfxgen output "own work (MIT)" (ADR 0041, ADR 0043 §7
+  and the Phase 5 plan rows P507, P508 and P529, all on `claude/p500-phase5-plan`) follow this ADR when they land.
 - **No per-file headers.** The SVGs and models carry no copyright comment; the notice lives in
   `assets/LICENSE.md`, so generator output and its golden checks do not change.
