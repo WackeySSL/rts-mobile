@@ -55,8 +55,9 @@ const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"HudPanel"  ## ADR 0025 section 13: the panel token and its edge.
 const TAB_VARIATION: StringName = &"SidebarTab"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
-const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Flight"]
-## The first tab that shows only while the faction has items on it (P244: Flight, the airfield's).
+const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Flight", "Research"]
+## The first tab that shows only while the faction has items on it (P244: Flight, the airfield's;
+## P248: Research, the engineering centre's).
 const FIRST_OPTIONAL_TAB: int = World.Tab.FLIGHT
 const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
 const TAB_ICON_DP: float = 22.0
@@ -65,6 +66,9 @@ const TAB_BARE_DP: float = 48.0
 ## The most tabs whose names all fit the narrowest drawer (312 dp: 280 dp of row less the close
 ## button), at 14 sp with "Structures" the widest.
 const NAMED_TABS_MAX: int = 3
+## Up to this many tabs the open one keeps its name however crowded the row (Michael, 2026-11-14);
+## with more (P248: five), the name goes too when it would not fit beside the others' icons.
+const OPEN_NAME_TABS_MAX: int = 4
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
 const CLOSE_DP: float = 48.0  ## The close button's least width; it is as high as the tabs.
@@ -479,6 +483,8 @@ func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) ->
 	var state: ItemTile.State = ItemTile.State.AVAILABLE
 	if head and done >= 1.0 and tile.tab == World.Tab.STRUCTURES:
 		state = ItemTile.State.READY
+	elif _researched(snap, player, type):
+		state = ItemTile.State.RESEARCHED
 	elif _producers[tile.tab] == 0 or (requires >= 0 and _owned[requires] == 0):
 		state = ItemTile.State.LOCKED
 	elif _entry(snap.credits, player) < snap.type_cost[type]:
@@ -490,6 +496,12 @@ func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) ->
 	if state == ItemTile.State.LOCKED:
 		lacks = _makers[tile.tab] if _producers[tile.tab] == 0 else requires
 	tile.set_needs(snap.type_names[lacks] if lacks >= 0 else "")
+
+
+## Whether `player` has researched the upgrade that the research item `type` gives (P248).
+static func _researched(snap: MatchSnapshot, player: int, type: int) -> bool:
+	var up: int = snap.type_upgrade[type] if type < snap.type_upgrade.size() else -1
+	return up >= 0 and (_entry(snap.upgrades, player) >> up) & 1 == 1
 
 
 ## One tile per buildable type, in the type table's order, for the snapshot's match.
@@ -540,7 +552,7 @@ func _show_tab() -> void:
 	var gap_px: float = roundf(GAP_DP * _dp_px)
 	card.x = maxf(card.x, floorf((width_px - (columns - 1) * gap_px) / columns) / _dp_px)
 	var shown: int = 0
-	# The rule for the optional tabs (Flight, later Research): a tab shows while the local faction's
+	# The rule for the optional tabs (Flight and Research): a tab shows while the local faction's
 	# list holds an item on it (`kin`: no faction or ours), or while it is the open tab, so a
 	# selected airfield always opens its tab. Cards are locked until the producer stands, as the
 	# Vehicles tab's are. A faction with no aircraft in its list sees three tabs.
@@ -555,22 +567,25 @@ func _show_tab() -> void:
 	_fit_tabs()
 	var fill: int = Control.SIZE_EXPAND_FILL if shown >= columns else Control.SIZE_FILL
 	for tile: ItemTile in _tiles:
-		tile.set_card(card)
+		tile.set_card(card, ItemTile.RESEARCH_LINES if tab == World.Tab.RESEARCH else 1)
 		tile.size_flags_horizontal = fill
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
 	_grid.columns = columns
 
 
-## The Flight tab (and later Research) shows only while the faction has items on it, so the tab
-## row holds three tabs, then four (P244). Every tab shows its name while the names fit the row
+## The Flight and Research tabs show only while the faction has items on them, so the tab
+## row holds three tabs, then four (P244), then five (P248). Every tab shows its name while the
+## names fit the row
 ## (measured: each tab as wide as its name inside the plate's borders, the close button and the
-## gaps, against the width of the stack). When they do not (more than `NAMED_TABS_MAX` tabs on a
+## gaps, against `_row_room`). When they do not (more than `NAMED_TABS_MAX` tabs on a
 ## narrow drawer: "Structures" spilled into its neighbour on a 6-inch phone) only the open tab
 ## keeps its name and the others are bare icons of `TAB_BARE_DP`, so every tab stays a 48 dp target.
 func _fit_tabs() -> void:
 	var shown: int = 0
 	var names_px: float = 0.0
+	var open_px: float = 0.0  # The open tab named, every other one bare.
 	var edges: float = 0.0
+	var bare_px: float = TAB_BARE_DP * _dp_px
 	for index: int in _tabs.size():
 		if not _tabs[index].visible:
 			continue
@@ -579,12 +594,18 @@ func _fit_tabs() -> void:
 			_tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION) as StyleBoxFlat
 		)
 		edges = plate.get_border_width(SIDE_LEFT) + plate.get_border_width(SIDE_RIGHT)
-		names_px += maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
+		var named_px: float = maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
+		names_px += named_px
+		open_px += named_px if index == tab else bare_px
 	var gaps: float = shown * roundi(UiScale.dp(TAB_GAP_DP))
-	var asked: float = names_px + _close.get_combined_minimum_size().x + gaps
-	var crowded: bool = shown > NAMED_TABS_MAX and (_stack.size.x <= 0.0 or asked > _stack.size.x)
+	var close_px: float = _close.get_combined_minimum_size().x + gaps
+	var room: float = _row_room()
+	var crowded: bool = shown > NAMED_TABS_MAX and (room <= 0.0 or names_px + close_px > room)
+	# Five tabs: when not even the open name fits beside four icons and the close button, no tab
+	# shows a name (P248; the open one is still the lighter plate with the bar).
+	var none: bool = shown > OPEN_NAME_TABS_MAX and crowded and open_px + close_px > room
 	for index: int in _tabs.size():
-		var bare: bool = crowded and index != tab
+		var bare: bool = crowded and (index != tab or none)
 		_tab_names[index].visible = not bare
 		var wide: float = TAB_BARE_DP if bare else TAB_DP
 		if shown > NAMED_TABS_MAX and not bare:  # A named tab is as wide as its name in the borders.
@@ -594,12 +615,24 @@ func _fit_tabs() -> void:
 				(child as DpMinSize).min_dp = Vector2(wide, TAB_DP)
 
 
+## The width the tab row really has, base px: the drawer's less the margins of the pad and the
+## panel, from the last `_measure`. The stack's own width is the old layout's right after a turn.
+func _row_room() -> float:
+	var panel: StyleBox = _backdrop.get_theme_stylebox(&"panel")
+	var pad: float = roundi(UiScale.dp(PAD_DP))
+	return _rect.size.x - 2.0 * pad - panel.get_margin(SIDE_LEFT) - panel.get_margin(SIDE_RIGHT)
+
+
 ## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and
 ## closes the drawer (also when a placement runs already: it restarts), any other tile shakes.
 func _on_chose(tile: ItemTile) -> void:
 	match tile.state:
 		ItemTile.State.AVAILABLE:
-			_send(Command.queue(_local_player(), tile.type_index))
+			# An upgrade queues once (the sim drops a second QUEUE): the queued card shakes.
+			if tile.tab == World.Tab.RESEARCH and tile.queued > 0:
+				tile.shake()
+			else:
+				_send(Command.queue(_local_player(), tile.type_index))
 		ItemTile.State.READY:
 			if placement != null and placement.begin(tile.type_index):
 				collapse()

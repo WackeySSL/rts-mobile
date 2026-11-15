@@ -59,6 +59,8 @@ const COPIED: Array[StringName] = [
 	&"type_charge_ticks",
 	&"type_strike_radius",
 	&"type_layer_bit",
+	&"type_upgrade",
+	&"upgrades",
 	&"weapon_projectile_speed",
 	&"weapon_targets",
 	&"proj_id",
@@ -114,9 +116,9 @@ const COPIED: Array[StringName] = [
 ## which no view reads (P290 copies the mines the local player knows). With COPIED it covers those
 ## fifteen lists exactly once (a coverage test), so a new World array fails until it is classified.
 ## The air and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
-## `weapon_targets`, `reveal_site` and `reveal`, which the view and input read (ADR 0036 sections
-## 11 and 14). `terrain_cost` is here (the view needs `terrain`, `terrain_ids` and `move_cost`),
-## and so are the derived `building_rows`
+## `weapon_targets`, `reveal_site`, `reveal`, `type_upgrade` and `upgrades`, which the view and
+## input read (ADR 0036 sections 11 and 14, P248). `terrain_cost` is here (the view needs `terrain`,
+## `terrain_ids` and `move_cost`), and so are the derived `building_rows`
 ## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
@@ -139,7 +141,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"type_rearm_ticks",
 	&"type_pads",
 	&"type_pad_first",
-	&"type_upgrade",
 	&"type_repair_classes",
 	&"type_repair_hp",
 	&"type_repair_period",
@@ -154,7 +155,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"upgrade_type_first",
 	&"upgrade_type_count",
 	&"upgrade_types",
-	&"upgrades",
 	&"goal_x",
 	&"goal_y",
 	&"group_cell",
@@ -279,6 +279,11 @@ var type_strike_radius: PackedInt32Array = PackedInt32Array()
 ## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
 ## may hit, for the view and input (ADR 0036 section 5).
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
+## The upgrade a research item gives (-1: not one) and each player's researched upgrades, one bit
+## per upgrade: the build drawer's Research tab marks a card whose bit the local player has set
+## (P248; it reads only its own entry).
+var type_upgrade: PackedInt32Array = PackedInt32Array()
+var upgrades: PackedInt32Array = PackedInt32Array()
 ## The carrier tables, the move class and the passenger carrier column (Board and Unload).
 var type_carry_slots: PackedInt32Array = PackedInt32Array()
 var type_carry_classes: PackedInt32Array = PackedInt32Array()
@@ -542,6 +547,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
+	type_upgrade = world.type_upgrade.duplicate()
+	upgrades = world.upgrades.duplicate()
 	type_carry_slots = world.type_carry_slots.duplicate()
 	type_carry_classes = world.type_carry_classes.duplicate()
 	type_move_class = world.type_move_class.duplicate()

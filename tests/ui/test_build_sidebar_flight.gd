@@ -89,12 +89,14 @@ func test_names_show_wherever_the_row_fits_them() -> void:
 	await _open(ScreenSizes.ALL[2], ["fossil_fighter"], null)  # The tablet.
 	var bare: int = 0
 	for label: Label in _sidebar.find_children("Name", "Label", true, false):
-		bare += 0 if label.is_visible_in_tree() else 1
+		if _tab_of(label).visible:  # The Research tab is not there: no upgrades.
+			bare += 0 if label.is_visible_in_tree() else 1
 	assert_int(bare).is_equal(0)
 	await _open(_phone_320().window_size, ["fossil_fighter"], _phone_320())
 	bare = 0
 	for label: Label in _sidebar.find_children("Name", "Label", true, false):
-		bare += 0 if label.is_visible_in_tree() else 1
+		if _tab_of(label).visible:  # The Research tab is not there: no upgrades.
+			bare += 0 if label.is_visible_in_tree() else 1
 	assert_int(bare).is_equal(3)
 
 
@@ -106,6 +108,11 @@ func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:
 	assert_bool(_tab().visible).is_true()
 	_sidebar.set_selected(PackedInt32Array([FIGHTER]))  # A unit leaves the open tab as it is.
 	assert_int(_sidebar.tab).is_equal(World.Tab.FLIGHT)
+
+
+## The tab button a name label belongs to.
+func _tab_of(label: Label) -> Button:
+	return label.get_parent().get_parent() as Button
 
 
 func _tab() -> Button:
