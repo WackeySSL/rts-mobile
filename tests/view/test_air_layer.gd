@@ -291,6 +291,15 @@ func test_a_flyer_without_art_is_a_marker_at_the_default_lift() -> void:
 	var bare: AirLayer = auto_free(AirLayer.new())
 	bare.runner = fresh
 	bare.life = _life
+	# The shipped Torchjet has art since P245: a sheet with no lift and no aircraft frames stands in
+	# for "no art" (the layer draws a marker for a sheet that does not fly).
+	var sort: WorldSort = WorldSort.new()
+	sort.runner = fresh
+	var unlifted: IsoSheetDef = Air.sheet(Air.FIGHTER, &"fossil", true)
+	unlifted.fly_px = 0
+	sort.extra_sheets = [unlifted]
+	bare.world_sort = sort
+	bare.add_child(sort)
 	add_child(bare)
 	bare.set_process(false)
 	bare._process(0.0)

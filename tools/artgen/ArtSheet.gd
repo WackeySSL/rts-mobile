@@ -40,6 +40,8 @@ const LIFE_FIELDS: Array[StringName] = [
 	&"scar_milli",
 	&"emitter_quiet",
 	&"anim_kritisk",
+	&"fly_px",
+	&"low_fly_px",
 	&"root"
 ]
 ## The exports written by hand to one decimal, as a `PackedVector2Array`.
@@ -65,11 +67,15 @@ static func of(model: ArtModel, shots: Dictionary[StringName, ArtGen.Shot]) -> I
 		for dir: int in model.directions(&"hull"):
 			var at: Vector2 = ArtGen.mount_px(model, 6 if dir < 0 else dir)
 			sheet.mounts.append(at.snapped(Vector2.ONE * 0.1))
-	sheet.boxes = _boxes(shots)
+	# An aircraft's frames are on page 2, which is not trimmed (P306): no box is written for them.
+	if model.fly_px == 0 and model.low_fly_px == 0:
+		sheet.boxes = _boxes(shots)
 	sheet.stride_milli = model.stride_milli
 	sheet.anim_ms = model.anim_ms
 	sheet.marks = model.marks
 	sheet.scar_milli = model.scar_milli
+	sheet.fly_px = model.fly_px
+	sheet.low_fly_px = model.low_fly_px
 	if not model.damage_parts().is_empty():
 		for part: StringName in ArtModel.DAMAGE_PARTS:
 			sheet.cuts.append(shots[part].cut if shots.has(part) else 0)

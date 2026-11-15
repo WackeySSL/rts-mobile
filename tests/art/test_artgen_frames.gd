@@ -558,6 +558,9 @@ func test_only_squads_and_eight_buildings_have_a_pose_and_every_other_committed_
 		for field: StringName in ArtSheet.LIFE_FIELDS:
 			if tagged and field in [&"emitters", &"emitter_points", &"marks", &"scar_milli"]:
 				continue
+			# An aircraft's sheet has its lift (P245).
+			if (model.fly_px > 0 or model.low_fly_px > 0) and field in [&"fly_px", &"low_fly_px"]:
+				continue
 			(
 				assert_bool(committed.contains("\n%s = " % field))
 				. override_failure_message(path)

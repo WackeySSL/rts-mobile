@@ -1,16 +1,13 @@
 extends GdUnitTestSuite
 ## The airfield, fighter and bomber data (plan row P242, ADR 0036 sections 2, 5 and 6, docs/GDD.md):
-## one airfield, one fighter and one bomber per faction, with their guns. They are data only: the
-## roster entries (art, item card) and the HOW_TO_PLAY rows of the airfields came with P245b and
-## those of the aircraft come with P245, so the aircraft are not buildable yet. `type_id` is the art
-## id those rows draw. The GDD gives the names, size, cost, power, requirement, hit points, speed,
-## range and ammo; the ADR
-## gives the masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5 stops at a ring corner).
-## Build times, sight, the repair numbers, damage, cooldowns, armour percents,
-## rearm time and armour classes are in neither: starting values for the balance run (speeds are
-## the GDD's tiles per second over 15 ticks). P245 removes the
-## aircraft entries of test_defs_roster, test_defs_roster_renew and test_defs_factions_data, and
-## flips the is_false roster checks below. What the sim does with the data is test_airfield's.
+## one airfield, one fighter and one bomber per faction, with their guns. The roster entries (art,
+## item card) and the HOW_TO_PLAY rows of the airfields came with P245b and those of the aircraft
+## with P245, so all six are buildable. `type_id` is the art id those rows draw. The GDD gives the
+## names, size, cost, power, requirement, hit points, speed, range and ammo; the ADR gives the
+## masks. The bomber range is 3 tiles (the lead, 2026-11-13: 2.5 stops at a ring corner).
+## Build times, sight, the repair numbers, damage, cooldowns, armour percents, rearm time and armour
+## classes are in neither: starting values for the balance run (speeds are the GDD's tiles per
+## second over 15 ticks). What the sim does with the data is test_airfield's.
 
 const FIELDS: Dictionary[String, Array] = {
 	"fossil_airfield": ["fossil", "Flight Yard", "fossil_radar"],
@@ -115,7 +112,8 @@ func test_each_faction_has_a_fighter_and_a_bomber_with_the_gdd_numbers() -> void
 		)
 		assert_array(Rules.air_problems(id, def)).override_failure_message(id).is_empty()
 		var faction: FactionDef = load("res://data/factions/%s.tres" % row[0])
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
+		# P245: the aircraft are in their faction's roster too (art, item card, Flight tab).
+		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
 
 
 ## ADR 0036 sections 5 and 6: a fighter hits high air only and has no ammo limit (so no rearm

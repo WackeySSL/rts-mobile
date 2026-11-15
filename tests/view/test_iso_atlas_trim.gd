@@ -81,7 +81,7 @@ func _check(atlas: IsoAtlas, tol_texels: float) -> int:
 					var dressed: Vector2 = sprite.offset
 					_sort.show_base(sprite, base, frame)
 					var label: String = "%s %s d%d f%d" % [sheet.art_id, part, dir, frame]
-					if not sheet.has_boxes(part):
+					if not sheet.has_boxes(part) or sheet.flies():
 						assert_vector(sprite.offset).override_failure_message(label).is_equal(
 							dressed
 						)

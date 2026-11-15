@@ -76,7 +76,7 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(34)  # 28 + space centres + anti-air + airfields
+	assert_int(seen.size()).is_equal(38)  # 28 + space centres + anti-air + airfields + aircraft
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()
@@ -93,7 +93,8 @@ func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_ov
 		var model: ArtModel = load(path) as ArtModel
 		for ground: String in ["Grass", "Sand"]:
 			var row: Node = page.get_node("Scroll/Content/%s" % ground).get_node_or_null("Damage")
-			if model.category != &"veh":
+			# A building has no Damage row, nor has an aircraft (it shows no scar, P245).
+			if model.category != &"veh" or model.fly_px > 0 or model.low_fly_px > 0:
 				assert_object(row).override_failure_message(path).is_null()
 				continue
 			assert_object(row).override_failure_message(path).is_not_null()

@@ -81,7 +81,8 @@ const ROOT: String = "res://assets/art/iso"
 ## inked bounds (a polygon's 2 px edge stroke reaches 1 px past its points, a rod's none) plus
 ## 1 clear px (`ArtSheet.BOX_CLEAR_PX`). Parts in
 ## file order, then direction, then frame. Read it through `frame_box`. Empty on a sheet written
-## before the trim (ADR 0036 section 15, P305).
+## before the trim (ADR 0036 section 15, P305), and on an aircraft's sheet (`flies`: its frames are
+## on page 2, which is not trimmed, so every frame is its whole canvas).
 ##
 ## For P306 (the atlas packs the boxes), at raster scale `s` with integer maths, so that the pins
 ## and the bake agree: `canvas` is `frame_size(part)`, `raster` is `IsoAtlas.raster_size(canvas,

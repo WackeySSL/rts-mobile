@@ -13,13 +13,9 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the
-## fighters and bombers (P245) and the engineering centres (P249). Each row removes its own names.
+## Files with no roster entry yet: the engineering centres (P249), the transports and the drone
+## squads (P266). Each row removes its own names (P245 rostered the fighters and bombers).
 const AIR_UNLISTED: Array[String] = [
-	"fossil_fighter",
-	"renew_fighter",
-	"fossil_bomber",
-	"renew_bomber",
 	"fossil_engineering",
 	"renew_engineering",
 	# The transports and drone squads (P266).
@@ -66,6 +62,8 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"fossil_space": "fossil_radar",
 				"fossil_aa": "barracks",
 				"fossil_airfield": "fossil_radar",
+				"fossil_bomber": "fossil_airfield",
+				"fossil_fighter": "fossil_airfield",
 				"artillery": "fossil_radar",
 			}
 		)
@@ -86,6 +84,8 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_space": "renew_radar",
 				"renew_aa": "renew_barracks",
 				"renew_airfield": "renew_radar",
+				"renew_bomber": "renew_airfield",
+				"renew_fighter": "renew_airfield",
 				"renew_artillery": "renew_radar",
 			}
 		)
