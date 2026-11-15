@@ -1,0 +1,17 @@
+---
+name: project-phase5-decisions
+description: Phase 5 plan (2026-11-15, rows P500-P560) and ADRs 0041-0045 PROPOSED (audio, save/lifecycle/resume, boot/intro/menus, tutorial coverage, rank/XP); Phase 6 interface contract
+metadata:
+  type: project
+---
+
+- P500 (2026-11-15, base a2204d2f, branch claude/p500-phase5-plan, not committed by me): plan `docs/plans/2026-11-15-phase-5.md`, rows P500-P560 (splits P517-518, P537-539, P546-549, P557-559), 12 merge waves (1-6 beside 4b, 7-12 after the 4b gate = P268+P297). ADRs 0041 audio, 0042 save+lifecycle+resume, 0043 boot/intro/menu flow, 0044 tutorial+How to play coverage, 0045 rank/XP; all proposed. 0039/0040 are Phase 6's. 17 questions for Michael.
+- Resume decision (ADR 0042 §6): replay the log, not a snapshot: main scene built off-tree, runner `restored` guard, per frame feed only the LOCAL player's logged Commands then run_ticks(1), AI regenerates (ADR 0038 SYNC=WORKER), checkpoint compare aborts. Estimate 9-34 s for 10-15 min (unverified); trigger for a snapshot ADR: >15 s for 10 min on Michael's phone. ADR 0007's Consequences already said a snapshot save is not bit-identical.
+- Save: one `user://save.cfg` ConfigFile (ints stay ints), sha256 line, tmp+rename+.bak, newer version never written, v0 = settings.cfg [hud] import; HudPrefs API kept, backend SaveService. Resume log separate `user://resume.bin` (large, per build).
+- Audio (ADR 0041): `game/view/audio/` (no new top folder), buses Master(hard limiter)/Music/Sfx/Ui, fixed pool 16+4+2, voices_per_tick 6, BattleSounds reads snapshot.events in ticked, seen-only via EffectsLayer's fog rule (no info leak), hash-based variant pick (no RNG), UI clicks via SceneTree.node_added, CommandQueue.submitted signal, mute reasons background/ad. Licences: CC0, CC-BY 3/4, tools/sfxgen output; no SA/NC/ND.
+- Intro (ADR 0043): splash = app icon PNG; IntroPlayer in `game/view/intro/` (theme scan bans modulate literals in game/ui); min 600 / max 3000 ms then still + progress line; open-out 400; tap skip; reduced = fade. Atlas bake is per match (WorldSort.bake), so the intro cannot mask it: question 10 (deploy card P536).
+- Phase 6 contract CLOSED 2026-11-15: AdService facade, typed signals/methods, `AdService.fake_auto_close` (default true headless), take_start_credits_bonus() -> MatchSetup, AdBannerSlot (P522) holds Phase 6's AdBannerBand (P421), OfferSlots P525/P532 for P433/P432, SaveService ads section P407, MenuFlow P523 for P421, mute P501 for P422, licences P529 for P410/P411, P127 pause banner moved to Phase 6, stub P401.
+- Pitfall: HOW_TO_PLAY has 108 rows / 51 Teach (grep "^| " minus headers; "|---" lines start with "|-"); ~60-65 Teach after 4b cannot fit one 3-min lesson -> Basics + drills (Q3). Rows have no ids and carry dev refs; ids column P530 after the 4b gate.
+- Pitfall: headless = dummy renderer, so "the frame equals the splash" can't be an image test; CPU SVG raster compare (Image.load_svg_from_string) works for art rows, layout tests for scenes.
+- Pitfall: data/** starts balance.yml; view/meta data paths need negations (P509) before the first Phase 5 data merge. Phase 4 gate median was 14.9 min vs Phase 5's 8-10 target: the biggest gate risk (P556).
+- Pitfall: autoload scripts declare no class_name and no class may share an autoload's name (tests/project/test_autoloads.gd); new autoloads follow `*_service.gd`.
