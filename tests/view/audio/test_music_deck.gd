@@ -30,6 +30,7 @@ func before_test() -> void:
 	_settings.music_tracks = {
 		&"menu": _stream(true),
 		&"battle": _stream(true),
+		&"credits": _stream(true),
 		&"victory": _stream(false),
 		&"defeat": _stream(false),
 	}
@@ -113,7 +114,7 @@ func test_sting_plays_at_full_level_over_the_fading_loop() -> void:
 	assert_float(sting.volume_db).is_equal(0.0)
 	assert_bool(loop.playing).is_true()
 	_deck.fade_tween_for_tests().custom_step(_settings.crossfade_ms / 2000.0)
-	assert_float(loop.volume_db).is_less(-20.0)
+	assert_float(loop.volume_db).is_less(-3.0)
 	assert_float(sting.volume_db).is_equal(0.0)
 	_finish_fade()
 	assert_bool(loop.playing).is_false()

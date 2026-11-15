@@ -31,6 +31,8 @@ extends Resource
 @export var crossfade_ms: int = 1500
 @export var duck_db: float = 6.0
 @export var duck_ms: int = 600
+## The ramp back up after the hold.
+@export var duck_release_ms: int = 100
 ## Track id -> stream (`menu`, `battle`, `victory`, `defeat`; ADR 0041 section 5). Empty until the
 ## music files exist (P506); an id without a stream is not played. Loops are flagged in the stream's
 ## import, the ids in `sting_ids` play once over a faded-out loop.
