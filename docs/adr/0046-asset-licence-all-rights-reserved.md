@@ -50,6 +50,8 @@ generated buildings, vehicles, effects, icons, store art), and audio follows in 
    it: a licence cannot be revoked for copies already distributed. A file changed after the
    cut-over is reserved in its new version only.
 5. **Name and logo** stay reserved as before (ADR 0001 §5, README).
+   AppCode ApS's own brand files (wordmark, mark), supplied by Michael, are reserved assets under
+   item 2 and also the company's trademark; they are kept unmodified (Michael, 2026-11-15).
 6. **Contributions.** Code contributions are accepted under MIT. Contributions to `assets/` are
    accepted only by written agreement with AppCode ApS.
 7. **Records.** Own-work rows of `assets/CREDITS.md` say "All rights reserved (AppCode ApS)" in
