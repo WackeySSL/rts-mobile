@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://game/ai/AiDifficultyDef.gd" id="1_level"]
 
-; Frozen copy of data/dev/arena/ai/difficulty/hard.tres as of 2026-11-15 (main a2204d2f, P304), the shipped data/ai/difficulty/hard.tres frozen by P189b with the fields later rows added. Used by perf_ai_4b only (ADR 0038 section 7).
+; Frozen copy of data/dev/arena/ai/difficulty/hard.tres as of 2026-11-15 (main a2204d2f, P304), the shipped data/ai/difficulty/hard.tres frozen by P189b, plus the mend pair at each level's own shipped value (ADR 0037 section 11; ai/ leaves it off, so here Normal and Hard mend as shipped, which the arena's mend rules make real). Used by perf_ai_4b only (ADR 0038 section 7).
 [resource]
 script = ExtResource("1_level")
 id = &"hard"

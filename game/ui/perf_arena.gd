@@ -44,7 +44,7 @@ extends Node2D
 ## below the start zoom when they need it, until they fit the view.
 ## A third scenario (plan P185, `arena_kind` ai, `DevRoutes.open_perf_ai`): two mirror bases with a
 ## Normal computer player on each, `perf_ai_4b.tres` (plan P304, Phase 4b's rows at tick 0; the
-## default) or `perf_ai.tres` (`ai_4b` false); the card adds the AI's think time (no verdict) and
+## default) or `perf_ai.tres` (arena `ai`); the card adds the AI's think time (no verdict) and
 ## has no golden comparison. Framed as the scenario says, like the seed-42 arena.
 ## The look is the theme's (`game/ui/theme.tres`): the scene sets it on the margin the controls sit
 ## in, and this script sets no colour, font or style.
@@ -90,11 +90,9 @@ const FRAME_MARGIN_PX: float = 32.0
 @export var camera: RtsCamera
 @export var hud: PerfHud
 ## `PerfHud.ARENA_UNITS` (the scene's scenario), `PerfHud.ARENA_BASES` (P80's) or
-## `PerfHud.ARENA_AI` (P174's, with its computers); both loaded in `_ready`.
+## `PerfHud.ARENA_AI` (P174's, with its computers) or `PerfHud.ARENA_AI_4B` (P304's, the same with
+## Phase 4b's rows); loaded in `_ready`.
 @export var arena_kind: String = PerfHud.ARENA_UNITS
-## For `PerfHud.ARENA_AI` (plan P304): true plays Phase 4b's `perf_ai_4b` (the per-wave card's
-## arena), false plays `perf_ai`. Set by `DevRoutes.open_perf_ai` before the scene enters the tree.
-@export var ai_4b: bool = true
 @export var back_button: Button
 @export var layers_button: Button
 ## The boxes whose gap is GAP_DP: the column of bar and card, and the bar of the two buttons.
@@ -159,8 +157,12 @@ func _ready() -> void:
 		scenario = load(DevRoutes.PERF_BASES_SCENARIO) as ScenarioDef
 	elif arena_kind == PerfHud.ARENA_AIR:
 		scenario = load(DevRoutes.PERF_AIR_SCENARIO) as ScenarioDef
-	elif arena_kind == PerfHud.ARENA_AI:
-		var path: String = DevRoutes.PERF_AI_4B_SCENARIO if ai_4b else DevRoutes.PERF_AI_SCENARIO
+	elif PerfBases.is_ai(arena_kind):
+		var path: String = (
+			DevRoutes.PERF_AI_4B_SCENARIO
+			if arena_kind == PerfHud.ARENA_AI_4B
+			else DevRoutes.PERF_AI_SCENARIO
+		)
 		scenario = load(path) as ScenarioDef
 		_seat_computers()
 	hud.arena_kind = arena_kind
@@ -186,12 +188,13 @@ func _ready() -> void:
 
 
 ## The AI arena's computers (plan P185, P189b, P304): a Normal `OpponentAi` on the frozen defs with
-## early contact on each player (the arena's own copies, `ai_4b` or not), the Derrick League's on
+## early contact on each player (the arena's own copies), the Derrick League's on
 ## player 1 (`first_opponent` 1, the view stays player 1's) and the Lumen Accord's on player 2.
 func _seat_computers() -> void:
-	var fossil: String = DevRoutes.PERF_AI_4B_FOSSIL if ai_4b else DevRoutes.PERF_AI_FOSSIL
-	var renew: String = DevRoutes.PERF_AI_4B_RENEW if ai_4b else DevRoutes.PERF_AI_RENEW
-	var level: String = DevRoutes.PERF_AI_4B_LEVEL if ai_4b else DevRoutes.PERF_AI_LEVEL
+	var four_b: bool = arena_kind == PerfHud.ARENA_AI_4B
+	var fossil: String = DevRoutes.PERF_AI_4B_FOSSIL if four_b else DevRoutes.PERF_AI_FOSSIL
+	var renew: String = DevRoutes.PERF_AI_4B_RENEW if four_b else DevRoutes.PERF_AI_RENEW
+	var level: String = DevRoutes.PERF_AI_4B_LEVEL if four_b else DevRoutes.PERF_AI_LEVEL
 	var opponents: Array[AiDef] = [load(fossil) as AiDef, load(renew) as AiDef]
 	var normal: AiDifficultyDef = load(level) as AiDifficultyDef
 	var levels: Array[AiDifficultyDef] = [normal, normal]

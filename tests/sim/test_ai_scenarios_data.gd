@@ -42,13 +42,20 @@ func test_perf_ai_loads_with_every_footprint_on_the_map() -> void:
 	assert_int(world.max_rows).is_greater(0)
 
 
-## Plan row P304: `perf_ai_4b` is `perf_ai`'s arena (map, rules, factions, size, no orders) with
-## Phase 4b's rows added, so the base spawns keep their places and every footprint fits.
+## Plan row P304: `perf_ai_4b` is `perf_ai`'s arena (map, factions, size, no orders; its own rules
+## copy) with Phase 4b's rows added, so the base spawns keep their places and every footprint fits.
 func test_perf_ai_4b_is_the_base_arena_of_perf_ai_with_phase_4b_rows_added() -> void:
 	var four: ScenarioDef = load(PERF_AI_4B) as ScenarioDef
 	var ai: ScenarioDef = load(PERF_AI) as ScenarioDef
 	assert_object(four.map).is_same(ai.map)
-	assert_object(four.rules).is_same(ai.rules)
+	# Its own frozen rules: perf_ai's with today's carry, mend, sell and mine values, so they work.
+	assert_str(four.rules.resource_path).is_equal("res://data/dev/arena/arena_4b/rules.tres")
+	assert_int(four.rules.unit_cap).is_equal(ai.rules.unit_cap)
+	assert_int(four.rules.flow_cache_size).is_equal(ai.rules.flow_cache_size)
+	assert_int(four.rules.passenger_cap).is_greater(0)
+	assert_int(four.rules.load_reach_milli).is_greater(0)
+	assert_int(four.rules.mend_hp).is_greater(0)
+	assert_int(four.rules.sell_refund_percent).is_greater(0)
 	assert_that(four.map_size_tiles).is_equal(ai.map_size_tiles)
 	assert_that(four.camera_start_tile).is_equal(ai.camera_start_tile)
 	assert_int(four.player_count).is_equal(ai.player_count)
@@ -68,6 +75,35 @@ func test_perf_ai_4b_is_the_base_arena_of_perf_ai_with_phase_4b_rows_added() -> 
 	# 75 mobile rows and 21 buildings for each side, inside the rules' row budget.
 	assert_int(world.unit_count()).is_equal(2 * (75 + 21))
 	assert_int(world.unit_count()).is_less_equal(world.max_rows)
+
+
+## Every Phase 4b type is on each side at tick 0, counted by type (a dropped Space Centre or bomber
+## fails, which a count by category would miss): a type id ends in the suffix.
+func test_every_phase_4b_type_is_on_each_side_at_tick_0() -> void:
+	var four: ScenarioDef = load(PERF_AI_4B) as ScenarioDef
+	var want: Dictionary[String, int] = {
+		"_airfield": 1,
+		"_aa": 2,
+		"_engineering": 1,
+		"_space": 1,
+		"_bomber": 2,
+		"_fighter": 2,
+		"_transport": 2,
+		"_drone": 4,
+	}
+	for owner: int in [1, 2]:
+		for suffix: String in want:
+			(
+				assert_int(_count_of(four, owner, suffix))
+				. override_failure_message("player %d %s" % [owner, suffix])
+				. is_equal(want[suffix])
+			)
+	# The Space Centres start charged, so P252's sweep can fire inside the run.
+	for spawn: SpawnDef in four.spawns:
+		if String(spawn.unit.type_id).ends_with("_space"):
+			assert_int(spawn.charge_elapsed_ticks).is_greater_equal(
+				(spawn.unit as BuildingDef).charge_ticks
+			)
 
 
 func test_the_fossil_mirror_is_the_skirmish_with_player_two_swapped_to_fossil() -> void:

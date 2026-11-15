@@ -92,8 +92,7 @@ static func open_perf_ai(tree: SceneTree, four_b: bool = true) -> Error:
 		push_error("DevRoutes: scenario not found: %s" % scenario)
 		return ERR_FILE_NOT_FOUND
 	var arena: Node = (load(PERF_ARENA_SCENE) as PackedScene).instantiate()
-	arena.arena_kind = PerfHud.ARENA_AI
-	arena.ai_4b = four_b
+	arena.arena_kind = PerfHud.ARENA_AI_4B if four_b else PerfHud.ARENA_AI
 	return tree.change_scene_to_node(arena)
 
 

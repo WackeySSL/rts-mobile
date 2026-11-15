@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
 [ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="4_faction_script"]
 [ext_resource type="Resource" path="res://data/maps/perf_bases.tres" id="5_map"]
-[ext_resource type="Resource" path="res://data/dev/arena/rules.tres" id="6_rules"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/rules.tres" id="6_rules"]
 [ext_resource type="Resource" path="res://data/dev/arena/factions/fossil.tres" id="7_fossil"]
 [ext_resource type="Resource" path="res://data/dev/arena/factions/renew.tres" id="8_renew"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/headquarters.tres" id="9_headquarters"]
@@ -13,7 +13,7 @@
 [ext_resource type="Resource" path="res://data/dev/arena/units/refinery.tres" id="13_refinery"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/barracks.tres" id="14_barracks"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/vehicle_factory.tres" id="15_vehicle_factory"]
-[ext_resource type="Resource" path="res://data/dev/arena/units/defence_turret.tres" id="16_defence_turret"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/defence_turret.tres" id="16_defence_turret"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/light_tank.tres" id="17_light_tank"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/heavy_tank.tres" id="18_heavy_tank"]
 [ext_resource type="Resource" path="res://data/dev/arena/air/units/rifle_squad.tres" id="19_rifle_squad"]
@@ -29,8 +29,8 @@
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_defence.tres" id="29_renew_defence"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_scout.tres" id="30_renew_scout"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_tank.tres" id="31_renew_tank"]
-[ext_resource type="Resource" path="res://data/dev/arena/units/renew_rifle.tres" id="32_renew_rifle"]
-[ext_resource type="Resource" path="res://data/dev/arena/units/renew_rocket.tres" id="33_renew_rocket"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/renew_rifle.tres" id="32_renew_rifle"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/renew_rocket.tres" id="33_renew_rocket"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_tanker.tres" id="34_renew_tanker"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/fossil_airfield.tres" id="40_fossil_airfield"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/fossil_bomber.tres" id="41_fossil_bomber"]
@@ -50,15 +50,18 @@
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_drone.tres" id="57_renew_drone"]
 
 ; perf_ai_4b (plan row P304, ADR 0038 section 7): the AI arena of Phase 4b. It plays perf_ai's layout (the base arena's
-; map, rules, factions and the mirror bases on frozen defs) with each side's Phase 4b rows at tick 0, so the ARMY slot's new
-; passes run from the first think: a Flight Yard (Glide Deck), a Burst Stack (Sky Needle for the Lumen Accord), an
-; Engineering Centre, a Space Centre, two more Power Plants for them, 2 bombers, 2 fighters, 2 transports and 4 drone
-; squads. The ten mobile rows come off the light tanks (4) and the rifle squads (6), which keeps each side at the rules'
-; 75-unit cap. All on frozen copies of the Phase 4b defs in data/dev/arena/ (2026-11-15, main a2204d2f); the Derrick League's
-; aircraft, Flight Yard, Burst Stack and rifle and rocket squads are perf_air's own (data/dev/arena/air/ and units/), the
-; rest P304's. The Lumen Accord's rifle and rocket squads are the base arena's, so they do not shoot aircraft (the shipped
-; weapons' layer masks are in perf_air's copies only). No orders, no golden pair: the hash is printed, not pinned. The Perf AI
-; route plays it with the frozen AI defs of data/dev/arena/ai_4b/.
+; map and factions, the mirror bases) with each side's Phase 4b rows at tick 0, so the ARMY slot's new passes run from the
+; first think: a Flight Yard, 2 Burst Stacks (Sky Needles for the Lumen Accord), an Engineering Centre, a Space Centre
+; (charged at tick 0, its 2700 ticks, as perf_ai charges its strike building, so a sweep can fire inside the run), two more
+; Power Plants for them, 2 bombers, 2 fighters, 2 transports and 4 drone squads. The ten mobile rows come off the light
+; tanks (4) and the rifle squads (6), which keeps each side at the rules' 75-unit cap. All on frozen copies of the Phase 4b
+; defs in data/dev/arena/ (2026-11-15, main a2204d2f): the Derrick League's aircraft, Flight Yard, Burst Stack and rifle and
+; rocket squads are perf_air's own (air/ and units/), the rest P304's.
+; Own copies in data/dev/arena/arena_4b/: the rules (the base arena's frozen rules plus today's sell, mend, carry, mine and
+; sweep values, flow_cache_size 8 as perf_ai, so carriers and mending work here), and the infantry and turret units with
+; their shipped layer masks (the Lumen rifle and rocket squads and the Derrick turret shoot at aircraft as shipped, as
+; perf_air's squads do). No orders, no golden pair: the hash is printed, not pinned. The Perf AI route plays it with the
+; frozen AI defs of data/dev/arena/ai_4b/.
 
 [sub_resource type="Resource" id="Spawn_p1_hq_0"]
 script = ExtResource("2_spawn")
@@ -305,6 +308,7 @@ unit = ExtResource("45_fossil_space")
 count = 1
 origin_tile = Vector2i(1, 1)
 columns = 1
+charge_elapsed_ticks = 2700
 
 [sub_resource type="Resource" id="Spawn_p1_engineering_4b"]
 script = ExtResource("2_spawn")
@@ -377,6 +381,7 @@ unit = ExtResource("55_renew_space")
 count = 1
 origin_tile = Vector2i(50, 1)
 columns = 1
+charge_elapsed_ticks = 2700
 
 [sub_resource type="Resource" id="Spawn_p2_engineering_4b"]
 script = ExtResource("2_spawn")
