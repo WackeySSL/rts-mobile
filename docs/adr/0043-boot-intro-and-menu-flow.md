@@ -122,29 +122,38 @@ Autoload **`MenuFlow`** (`game/ui/menu/menu_flow_service.gd`): the one owner of 
   an ended match only, then `await AdService.maybe_show_interstitial(&"post_match")`, then the main
   menu (or the next lesson). Exit to menu from the pause menu: straight to the menu, no XP, no
   `note_match_completed`.
+- **Tutorial lessons are not ad matches.** A lesson (a setup with a lesson id, ADR 0044 §1) never
+  calls `AdService.take_start_credits_bonus()` (the grant stays for the next skirmish), never calls
+  `note_match_completed` and never awaits `maybe_show_interstitial`; its end goes straight to the
+  next lesson or the menu. So lessons do not count toward Phase 6's new-player ad grace or its caps.
+  Its XP is the one-time lesson award (ADR 0045 §2).
 - `continue_match()`: the restore of ADR 0042 §6. `return_to_menu(screen)`.
 
 ### 7. The Licences screen
 Exactly ROADMAP's list, plus what Phase 6 and CC-BY add: `Engine.get_license_text()`,
 `Engine.get_copyright_info()`, the full texts from `Engine.get_license_info()`; the LLVM libc++
-licence on Android (`docs/licenses/llvm-libc++/`); godot-cpp's MIT licence when the kernels'
-library is loaded (`docs/licenses/godot-cpp-4.5-stable/`); the OFL texts of Big Shoulders and Chakra
+licence on Android (`docs/licenses/llvm-libc++/`); godot-cpp's MIT licence on every build that
+contains the C++ kernels (`docs/licenses/godot-cpp-4.5-stable/`; ADR 0013 §11), whether or not the
+library loads: a build-time fact, the export feature tag `sim_kernels` that exactly the presets
+packing `native/` set (both Android presets today; Web excludes `native/*`), and the editor;
+`test_export_presets.gd` pins "tag set = `native/` packed"; the OFL texts of Big Shoulders and Chakra
 Petch (`assets/art/fonts/*/OFL.txt`); the Poing AdMob and GodotGooglePlayBilling plugin licences
 (texts from Phase 6's P410/P411); the credit lines of every CC-BY asset (question 9). Texts outside
 `assets/` are copied into `assets/licenses/` by P529 so the pack holds them (a test keeps the copies
 equal to `docs/licenses/`).
 
 ### 8. Phase 6's slots (agreed 2026-11-15)
-- `AdBannerSlot`: a Control at the foot of MainMenu, MapSelect and Settings; its height is
-  `AdService.banner_height_dp()` plus the gap, re-laid out on `banner_changed`, 0 when there is no
-  banner. Phase 6's `AdBannerBand` scene is placed inside by Phase 6 (P421); it shows on enter_tree
-  and hides on exit_tree; Phase 5 calls nothing on it.
+- `AdBannerSlot`: the one bottom container at the foot of MainMenu, MapSelect and Settings; its
+  height is `AdService.banner_height_dp()` plus the gap, re-laid out on `banner_changed`, 0 when
+  there is no banner. It hosts Phase 6's `AdBannerBand` (P430) as its only child, so no screen
+  builds a second band; the band shows on enter_tree and hides on exit_tree, and Phase 5 calls
+  nothing on it. The menu rows land with the slot empty and 0 tall; P430 fills it later.
 - `OfferSlot`: a plain Container on the result screen and on MapSelect that takes the widget's size
   and is empty when the widget hides. The widgets are Phase 6's (P432, P433).
-- The pause menu's foot banner (P127) is Phase 6's; P531 keeps the foot free.
+- The pause menu's foot banner (old P127) is Phase 6's P435; P531 keeps the foot free.
 
 ### 9. Isolation from Phase 4b
-Waves 1-6 of the plan add only new files (`game/ui/menu/`, `game/view/intro/`, `scenes/boot.tscn`,
+Waves 1-7 of the plan add only new files (`game/ui/menu/`, `game/view/intro/`, `scenes/boot.tscn`,
 `scenes/menu/`) and read `ModalFrame`, `SafeAreaMargin`, `ConfirmDialog`, `HudTheme`, `UiScale` and
 the pause menu's theme looks without editing them. The touches of shared files wait for the 4b gate:
 `PauseMenu.gd` (P531), `ResultScreen.gd` (P532), `project.godot`'s main scene and splash (P533; it

@@ -7,7 +7,7 @@ background, the match pauses, the sound goes quiet, and the game writes down the
 your orders. If Android kills the game while it is away, the main menu offers Continue: the game
 plays the match again from its start, very fast and without drawing, with your orders at the same
 moments, until it reaches the point where you left; it checks itself at every second of the match
-on the way. That takes an estimated 9-34 seconds for a 10-15 minute match, behind a progress bar. A
+on the way. That takes an estimated 10-36 seconds for a 10-15 minute match, behind a progress bar. A
 frozen copy of the whole battle would load at once, but it would need every piece of the battle and
 of the computer's memory written and read back, and one forgotten piece would quietly change the
 match; replaying is exact by construction.
@@ -57,9 +57,13 @@ save file); ADR 0027 §8 (the reduced switch is stored in section `settings`).
 1. Encode to text; prepend one line `; sha256=<hex of the rest>`.
 2. Write `save.cfg.tmp`, close it, read it back and check the hash.
 3. Rename `save.cfg` to `save.cfg.bak` (replacing the old one), then `save.cfg.tmp` to `save.cfg`.
-Load: `save.cfg` if its hash matches, else `save.cfg.bak`, else `save.cfg.tmp` if whole, else
-defaults; a file that fails is kept once as `save.cfg.bad`. Rename-over semantics on Android,
-desktop and the web's `user://` (IndexedDB-backed) are checked in P510 (unverified here).
+Load, newest first: `save.cfg.tmp` if its hash matches (a hash-valid temp is always the newest
+write: the app was killed after step 2 and before the last rename, so it may hold a paid
+`apply_bonus` that `save.cfg` lacks; the load then finishes the two renames); else `save.cfg` if its
+hash matches; else `save.cfg.bak`; else defaults. A temp whose hash fails is a write that never
+finished and is deleted; a main or backup file that fails is kept once as `save.cfg.bad`.
+Rename-over semantics on Android, desktop and the web's `user://` (IndexedDB-backed) are checked in
+P510 (unverified here).
 
 ### 3. Versions and migration
 - `meta.version` starts at 1. Migrations are ordered pure functions `v(n) -> v(n+1)` on the
@@ -96,10 +100,18 @@ resumed (the lesson restarts).
 `defs_hash`; else it is deleted with a short note). Continue opens the restore screen:
 1. The main scene is instantiated **off the tree**; its runner gets the setup, `restored = true`
    (so `_ready` does not start a second match) and `start()`.
-2. Each frame, for as many ticks as fit in `restore_slice_ms` (data, 10 ms; time is read only in
-   `game/core`): submit the **local player's** logged Commands stamped t to the queue, then
-   `run_ticks(1)`. The AI is not fed from the log; it thinks as it did, on the same views, and
-   regenerates its own Commands (ADR 0038 §1, §5).
+2. AudioService gets the mute reason `restoring` (ADR 0041 §5) until step 4. Each frame, for as
+   many ticks as fit in `restore_slice_ms` (data, 50 ms; time is read only in `game/core`): submit
+   the **local player's** logged Commands stamped t through `CommandQueue.submit_logged` (queued
+   like `submit`, but without the `submitted` signal, so no order chirp and no other listener
+   reacts), then `run_ticks(1)`. The AI is not fed from the log; it thinks as it did, on the same
+   views, and regenerates its own Commands (ADR 0038 §1, §5).
+   - **Why a 50 ms slice:** the restore screen is opaque and static (a progress bar and Cancel), so
+     the frame can spend nearly all its time on ticks; the bar still redraws about 19 times a
+     second, a Cancel tap is seen within one frame, and Android's input timeout (5 s) is far away.
+     A 10 ms slice in a 16.7 ms frame would stretch the wall time about 1.7 times; 50 ms costs
+     about 5 % (the frame's own work). The battle's frame pacing does not apply: nothing is
+     drawn.
 3. At each checkpoint tick the loop's hash must equal the log's. A mismatch stops the restore,
    deletes the file and says the match could not be restored (no XP, no penalty).
 4. At the last logged tick the scene enters the tree, paused under the pause menu. The view layers
@@ -110,18 +122,24 @@ resumed (the lesson restarts).
 bit-identical to the uninterrupted match by construction and checked on the way; it adds no second
 state format to keep in lockstep with `STATE_FORMAT` and with the AI's fields; it keeps ADR 0007's
 "the sim is a pure function of its log". **Cost:** time grows with the match. Estimate on the phone:
-1-2.5 ms per tick with the AI, so 9-23 s for 10 minutes and 14-34 s for 15 (unverified; P516 prints
-CI's ticks per second, and Michael's phone measures it).
+1-2.5 ms of CPU per tick with the AI, so 9-23 s for 10 minutes and 14-34 s for 15; with the 50 ms
+slice the wall time is about 1.05 times that: **about 10-24 s for 10 minutes and 15-36 s for 15**
+(unverified; P516 prints CI's ticks per second, and Michael's phone measures it).
 
-**Trigger for B.** If Michael's phone restores a 10-minute match in more than 15 s, a new ADR
-designs option B (below) or a hybrid; A stays the fallback and the proof.
+**Trigger for B.** If Michael's phone restores a 10-minute match in more than 15 s of wall time
+with the 50 ms slice, a new ADR designs option B (below) or a hybrid; A stays the fallback and the
+proof. The estimate's range straddles 15 s, so the phone measurement in P516's follow-up (Michael's
+PerfCard run, not a session timing) decides it early, before the menu rows depend on Continue's
+feel. Raising the slice further gains under 5 %.
 
 ### 7. Proof (headless)
-`SaveService`: the write sequence with each step interrupted (a temp left, a missing main file, a bad
-hash), newer-version read-only, v0 migration, unknown sections kept. Resume: a skirmish played to
-ticks 300 and 3,000, written, restored and played on equals the uninterrupted run at every
-checkpoint, under GDSCRIPT and AUTO and in SYNC and WORKER with the AI thread; refusals for a
-tampered log, another `defs_hash` and another app version; the main scene entering at tick N.
+`SaveService`: the write sequence with each step interrupted (a valid temp beside an older main
+file loads the temp; a valid temp with no main file; a temp with a bad hash is ignored; a bad main
+hash falls back to `.bak`), newer-version read-only, v0 migration, unknown sections kept.
+Resume: a skirmish played to ticks 300 and 3,000, written, restored and played on equals the
+uninterrupted run at every checkpoint, under GDSCRIPT and AUTO and in SYNC and WORKER with the AI
+thread; refusals for a tampered log, another `defs_hash` and another app version; the main scene
+entering at tick N; a restore starts no voice and emits no `CommandQueue.submitted`.
 
 ## Consequences
 - One file for Phase 5 and Phase 6; `settings.cfg` disappears after the first launch of the new

@@ -77,7 +77,7 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
 | --- | --- | --- |
 | `SHOT` | the weapon's fire cue (by `WeaponDef` id, built into an index table at match start) | seen only |
 | `IMPACT` | hit by weapon family and target armour | seen only |
-| `DIED` | death by move class (foot, vehicle, flyer) or the building's collapse; DIED flags 1 (cancelled) and 3 (sold) give the sale's pack-up sound or nothing (ADR 0037) | seen only |
+| `DIED` | flag 0 (killed): death by move class (foot, vehicle, flyer) or the building's collapse; flag 1 (cancelled site): nothing; flag 2 (boarded, `Carry.BOARDED`, ADR 0036/0037): the boarding clunk or nothing, **never a death cue**; flag 3 (sold): the sale's pack-up sound | seen only |
 | `STRIKE` | the launch at acceptance, the landing at its landing tick; kind 3 = the sweep's hum | own and seen; an enemy strike's warning is a UI cue |
 | `SPAWNED` | own unit ready (own rows only) | own |
 | `UNLOADED`, `REPAIRED` | door clunk, weld crackle (throttled per building) | seen only |
@@ -98,7 +98,10 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
   of main work per frame on the phone (estimate; the perf arena card shows it after P535).
 - **UI clicks:** `UiSounds` connects to `SceneTree.node_added` and hooks every `BaseButton`'s
   `pressed` (opt-out: meta `no_click`), so no HUD or menu file needs an edit.
-  `command_queue_service.gd` gains one signal, `submitted(command)`, emitted in `submit` (P503).
+  `command_queue_service.gd` gains one signal, `submitted(command)`, emitted in `submit` (P503):
+  it means "a player just gave an order". It also gains `submit_logged(command)`, the same queueing
+  without the signal, which only the Restorer uses (ADR 0042 §6), so a restore never chirps its
+  thousands of logged orders.
 
 ### 5. Music, ducking and the background
 - `MusicDeck`: two `AudioStreamPlayer`s on Music; `play_music(id)` crossfades over `crossfade_ms`
@@ -112,7 +115,9 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
   - `background`: `NOTIFICATION_APPLICATION_PAUSED` and `NOTIFICATION_APPLICATION_FOCUS_OUT` add
     it (the music's stream is also paused, so it resumes where it was); `RESUMED` and `FOCUS_IN`
     clear it;
-  - `ad`: `AdService.ad_opened` adds it, `ad_closed` clears it (agreed with Phase 6, 2026-11-15).
+  - `ad`: `AdService.ad_opened` adds it, `ad_closed` clears it (agreed with Phase 6, 2026-11-15);
+  - `restoring`: the Restorer adds it for the whole restore and clears it when the restored match
+    enters the tree (ADR 0042 §6), a second guard beside `submit_logged`.
   Each is idempotent; the order of the notifications does not matter. Explicit muting is needed
   because a browser tab keeps playing in the background, and the Android behaviour of the audio
   driver on pause is not relied on (unverified).
@@ -159,7 +164,8 @@ ADR 0042 §3), shown in Settings (question 8: one on/off switch; strengths per e
 ### 9. Proof (headless)
 The dummy audio driver headless: `AudioService` mute reasons in any order; volume steps to buses;
 `VoicePool` caps, steals and `voices_per_tick`; `BattleSounds` on scripted snapshots (seen and
-unseen events, coalescing, the fallbacks, no allocation); `MusicDeck` crossfade and stings with a
+unseen events, coalescing, the fallbacks, a DIED record with flag 2 (boarded) that plays no death cue,
+no allocation); `submit_logged` emits no `submitted`; `MusicDeck` crossfade and stings with a
 fake clock; `UiSounds` hooks a button added after it; the asset scan (P508).
 
 ## Consequences

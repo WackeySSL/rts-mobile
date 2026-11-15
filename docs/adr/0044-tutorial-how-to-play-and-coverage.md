@@ -31,7 +31,13 @@ the plan are this ADR's.
 - **Basics** (about 3 minutes, first launch): camera, select, move, box select, attack, build and
   place, power, harvest, train, groups, win. **Drills** (about 1 minute each): superweapon and the
   satellite; aircraft, Home and carriers; repair, sale, mines and Hold (question 3, option A). Every
-  Teach row is in at least one lesson; the ROADMAP's "about 3 minutes" is Basics.
+  Teach row is in at least one lesson.
+- **This changes the ROADMAP's meaning.** ROADMAP Phase 5 asks for one tutorial of about 3 minutes
+  that includes every Teach entry. Option A keeps the 3 minutes for the first-launch lesson only;
+  with the drills the whole tutorial is about 6 minutes, and the Teach entries of Phase 4b are
+  taught in the drills, which a player may never open. If Michael picks A, P500b rewords the
+  ROADMAP line (the plan's P500b gives the text) with his yes; the gate (P560) then tests Basics
+  with a new player and the drills by the bot run and the coverage test.
 - A lesson is a match of its own scenario (`data/scenarios/tutorial_*.tres` on a small
   `data/maps/tutorial_*.tres`) with a fixed seed, the local player and `TutorialAi`. It is never
   resumed after a kill (ADR 0042 §6); it restarts.
@@ -99,7 +105,7 @@ the sum of each lesson's beat budgets stays within its target (Basics 180 s).
 ## Alternatives considered
 - **One 3-minute lesson for everything** (question 3, C is a 7-minute variant). Rejected as
   recommendation: too long for a first launch, or too fast to learn.
-- **Un-marking Teach rows to How to play only** (question 3, B). Possible; it changes ROADMAP's
+- **Un-marking Teach rows to How to play only** (question 3, B). Possible; like A it changes ROADMAP's
   wording and leaves air, mines and carriers untaught.
 - **Generating help text from the Markdown.** Rejected: developer references and table prose are not
   player text.
