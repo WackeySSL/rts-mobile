@@ -153,6 +153,8 @@ Petch (`assets/art/fonts/*/OFL.txt`); the Poing AdMob and GodotGooglePlayBilling
 (texts from Phase 6's P410/P411); the credit lines of every CC-BY asset (question 9). Texts outside
 `assets/` are copied into `assets/licenses/` by P529 so the pack holds them (a test keeps the copies
 equal to `docs/licenses/`).
+Note (2026-11-15): ADR 0046 adds `assets/LICENSE.md` (the game's own art and audio, all rights
+reserved) to ROADMAP's list, so the screen shows it too.
 
 ### 8. Phase 6's slots (agreed 2026-11-15)
 - `AdBannerSlot`: the one bottom container at the foot of MainMenu, MapSelect and Settings; its

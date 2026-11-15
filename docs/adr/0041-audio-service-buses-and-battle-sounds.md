@@ -154,6 +154,9 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
   GDScript synthesiser whose parameter files are committed; its output is own work under the MIT
   licence). **Not allowed:** CC-BY-SA, any NC or ND licence, "royalty-free" or custom store
   licences, asset-store packs, sounds from games or films, AI audio from outside tools.
+  Note (2026-11-15): ADR 0046 replaces "under the MIT licence": sfxgen output under
+  `assets/audio/` is Copyright (c) 2026 AppCode ApS, all rights reserved, and its CREDITS rows say
+  "All rights reserved (AppCode ApS)"; `tools/sfxgen/` itself stays MIT.
 - **Candidate sources by licence type** (each file checked on its own page, never assumed from a
   site or a pack name): CC0 packs on Kenney and on OpenGameArt (licence filter CC0); Freesound with
   the "Creative Commons 0" filter; CC-BY on Freesound ("Attribution" filter) and OpenGameArt
