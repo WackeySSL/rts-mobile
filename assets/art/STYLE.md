@@ -2460,8 +2460,8 @@ screen, the sand half the right. A button at the top right (120x120 base px, lab
 it is on) turns the pages: **Units**, **Build**, **Ground**, **Icons**, **Iso**, **Terrain**, **Hud** and
 **Life**, and the Back button leaves from any of them. The pages after Units are built by
 `art_gallery.gd` (Build by `art_gallery_build.gd`, Iso by `art_gallery_iso.gd`, Terrain by
-`art_gallery_ground.gd`, Life by `art_gallery_life.gd`, the last four on first show) and start
-hidden, so the Units page is as it was.
+`art_gallery_ground.gd`, Life by `art_gallery_life.gd`, the last four on first show; Icons and Hud
+by `art_gallery_icons.gd`, P308) and start hidden, so the Units page is as it was.
 - **Units** (the page the gallery opens on) shows the six Derrick League units and the six Lumen
   Accord units as the generator draws them (`art_gallery_units.gd`, "Derrick League units" and "Lumen
   Accord units"). On each ground four lines of the six, in the same role order so that a column is one
@@ -2537,7 +2537,7 @@ hidden, so the Units page is as it was.
   and on a grass and a sand swatch (`Props`) the wellhead with its shadow at the camera zooms 0.75, 1
   and 1.5 and the crater. It is where Michael judges the joins (no line between equal tiles), the lake of full oil
   and the contrast of the crust on his phone.
-- **Hud** (the seventh page, plan row P118g, built by `art_gallery.gd`) is the HUD panel's backdrop
+- **Hud** (the seventh page, plan row P118g, built by `art_gallery_icons.gd`) is the HUD panel's backdrop
   (#0F141C) over the whole page, with rows centred: `Bar` (Deselect, Stop, All army, Plus, Repair, Sell, Board, Unload) and
   `Pause` (Menu, Resume, Restart, Surrender, Exit, Vibration), each no wider than the 992 px between
   the corner buttons at 1280 wide, then on one line `Panels` (Collapse, Chevron, Alert, Construct)
@@ -2575,7 +2575,8 @@ To add an asset:
 - A flag or any other multi-layer sprite is a rig `Node2D` in the group `gallery_team_a` or
   `gallery_team_b` with the layers `Hull`, `Team` and, for a gun head, `Turret`; the script tints
   `Team` and turns `Turret`, and the team colours are exported properties of the scene root.
-- An icon goes on the Icons page: add its file name to the list of its kind in `art_gallery.gd`
+- An icon goes on the Icons page: add its file name to the list of its kind in
+  `art_gallery_icons.gd`
   (`TAB_ICONS`, `ITEM_ICONS`, `HUD_GLYPHS`, `EMBLEMS`, `MENU_GLYPHS`, `MAP_GLYPHS`) and, if the HUD
   tints it, to `GLYPH_TINTS`. A glyph of the corner HUD goes into a row of `HUD_V2_ROWS` instead
   (the Hud page).
