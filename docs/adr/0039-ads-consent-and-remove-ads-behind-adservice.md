@@ -38,7 +38,7 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `game/ads/` is empty; `game/meta/` holds only `HudPrefs.gd`. No ad, consent or billing code
   exists, and no plugin is vendored (`addons/` holds gdUnit4 only).
 - A separate Phase 5 session builds the menus, `Progression` (rank, XP), `SaveService`, the boot
-  flow, `MenuFlow` and `MatchSetup` (rows P5xx). On 2026-11-15 the two sessions agreed a contract:
+  flow, `MenuFlow` and `MatchSetup` (rows P501-P532 of `docs/plans/2026-11-15-phase-5.md`). On 2026-11-15 the two sessions agreed a contract:
   Phase 5 calls one facade, `AdService`, places Phase 6's banner band and hosts Phase 6's widgets
   in slots. This ADR builds on it; the plan's "Interfaces with Phase 5" holds it item by item,
   with the typed signatures.
