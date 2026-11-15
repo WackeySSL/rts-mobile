@@ -167,7 +167,7 @@ Note (2026-11-09, after fix 1): Michael said "ja til touch-teksten". The draft a
 
 ## Rows
 Owners: GD gameplay-dev, AI ai-dev, ART art-director, TUX touch-ux-dev, QA qa-engineer, LEAD the
-lead (docs, gate runs, phone checks); (2026-11-15, P26by) REL release-engineer. Size = production
+lead (docs, gate runs, phone checks). (2026-11-15, P26by) REL release-engineer. Size = production
 lines (tests and fixtures do not count).
 Every player-facing row adds its HOW_TO_PLAY rows.
 
@@ -209,7 +209,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P309 | REL | (2026-11-15, P26by; added by the lead) `ci.yml` copies the two `PERF air` lines into the job summary under their own heading and a log group, following P96 (the `PERF bases` block), with the `test_ci_workflow.gd` case that pins it | 10 (CI config) | P253 |
 | P254 | QA | Harness: per-type counts for the new types, `reveals`, `research` and air kills by layer in the report; ADR 0031 check 4 reads the rosters (16 types); the summary | 200 | P242, P247; P245, P245b, P249 (2026-11-13, P26bw) |
 | P255 | LEAD | (2026-11-09, answer 2 A: this is part 1's interim balance run, not a gate; with ADR 0037's P284 it counts 18 types; the Phase 4b gate is P268 with P297) Balance tuning (data rows, exception 20 style) and the 1.1 gate run: Normal against the mirror 40-60 %, no match over 15 minutes, every one of the 16 types used, the median length 8-10 minutes, aircraft at most 30 % of median army spend. (2026-11-13, P26bw) Open balance item for P255 and P267: against harvester armour the drone squad's gun does about 1 damage a second, so ADR 0036 §14's harvester raid cannot work with today's numbers; no number is changed yet | data | P250-P254; P245, P245b (2026-11-13, P26bw) |
-| P256 | LEAD | Phone check with Michael (below) and the 1.1 wrap-up docs (GDD, ROADMAP ticks); (2026-11-09) part 1's interim phone check, ticking the Phase 4b boxes it meets | docs | P255, all art rows |
+| P256 | LEAD | Phone check with Michael (below) and the 1.1 wrap-up docs (GDD, ROADMAP ticks); (2026-11-09) part 1's interim phone check, ticking the Phase 4b boxes it meets | docs | P255, all art rows; P253b (2026-11-15, P26by): phone check 3 reads its card |
 
 ### Part 2, was update 1.2
 | Row | Owner | What | Size | Depends |
@@ -247,7 +247,9 @@ free against the plans, `git log --all` and the remote branches. Exception 26 is
 5. P249, then P279, P280, P291 and P292 (the ground plan).
 
 If P245b or P249 costs more than the space centre did (334 rows a pair), the 3,840 allowance
-(ADR 0036 §15's P237 note) is used before any other lever.
+(ADR 0036 §15's P237 note) is used before any other lever. (2026-11-15, P26by) P239b measured:
+page 1 went from 2,167, 2,127 and 2,068 rows (cross, Derrick and Lumen mirrors, after P306) to
+2,252, 2,172 and 2,167 (STYLE.md v1.37), the base for P245b and P249.
 
 ### Lanes and order
 - **S (GD):** P231 -> P232, then P233 and P238 and P240 in parallel (separate files; P238 and
@@ -259,7 +261,7 @@ If P245b or P249 costs more than the space centre did (334 rows a pair), the 3,8
 - **T (TUX):** P235 -> P244 -> P248. (2026-11-14, P26bx) P307 after P243 and before P244.
 - **A (ART):** P237 first, then P236, P239b, P245, P245b and P249 in any order. (2026-11-12, P26br)
   P245 after P243; P202 (visual polish) before the next of P239b, P245b and P249. (2026-11-15,
-  P26by) P308 after P244 and before P239b and the other art rows that edit the gallery.
+  P26by) P308 after P244 and before P239b.
 - **I (AI):** P250 -> P251 and P252.
 - **Q:** P253 and P254, then the lead's P255 and P256. (2026-11-15, P26by) P253b (QA) and P309
   (REL) after P253, in parallel.
@@ -768,25 +770,34 @@ the P265 integration):
     and the HOW_TO_PLAY Combat rows.
   - The shipped smoke's per-match hashes moved to `9513e873e6195b21`, `fe2669d1878d7d64` and
     `294a65d6349265e4`. The two types join the type list mid-list, so the type and weapon indexes
-    that the rows, queues, ghosts and projectiles store grew, and `WorldHash` hashes those indexes
-    (`type_ids` itself feeds only `defs_hash`). Play is identical line for line (ticks, winners,
-    counts). The lead accepted the new hashes; the perf goldens did not move.
-  - `ArtSheet._boxes` pads an unoutlined rod by 1 px, the reach of its stroke.
+    that the rows, queues, ghosts and projectiles store shifted (each later Derrick type up 1, each
+    Lumen type up 1 or 2), and `WorldHash` hashes those indexes (`type_ids` itself feeds only
+    `defs_hash`). Play is identical line for line (ticks, winners, counts). The lead accepted the
+    new hashes; the perf goldens did not move.
+  - `ArtSheet._boxes` now boxes an unoutlined rod 1 px past its points (`BOX_CLEAR_PX`; a rod has
+    no stroke to reach further), where a stroked face keeps 2 px (its stroke's 1 px reach plus the
+    clear px).
   - The team share at zoom 1 is 9.4 % (Burst Stack) and 11.0 % (Sky Needle), inside the art
-    rule's 8-12 %. KRITISK keeps 0.39 and 0.36 of it (ADR 0029 §5: 20-50 %), pinned in
-    `test_anti_air_art.gd`.
+    rule's 8-12 %. KRITISK keeps 0.39 and 0.36 of it (ADR 0029 §5: 20-50 %), both
+    inside the bands that `test_anti_air_art.gd` asserts.
 - **P304 as built.**
   - From its merge the per-wave Perf AI card runs on `perf_ai_4b`, whose card arena key is
     `ai_4b`. Its printed hash is `75530630f4b19f95` (`SYNC` = `WORKER`), with no golden pair. The
     dev menu's "Perf AI base" runs the old arena, `perf_ai` (key `ai`), hash `025ff6707ff86ba0`.
   - Carriers, mending and air-masked anti-air are live in the arena, and the Space Centres start
     charged. The `ai_4b` difficulty copies take each level's mend pair (ADR 0037 §4), so it is the
-    first frozen arena that mends; ADR 0037 §11's "frozen arenas never sell or mend" still holds
-    for the pinned arenas. Its Lumen rifle squad has the shipped 70 hp, against 80 in `perf_ai`.
+    first frozen arena whose AI defs turn mending on (its rules make it work; nothing is mended in
+    today's 900 ticks); ADR 0037 §11's "frozen arenas never sell or mend" still holds for the
+    pinned arenas. ADR 0038 §7 names "the shipped Normal value" for later fields; here Easy and
+    Hard take their own pairs (0/0 and 70/250), Normal 50/400. Its Lumen rifle squad has the
+    shipped 70 hp, against 80 in `perf_ai`.
   - The AI does not use carriers, mending or the sweep there yet (no LOAD, UNLOAD, MEND or sweep in
     900 ticks). That waits for the AI rows.
+  - `test_frozen_ai_defs.gd` (kept as is) still says "the Perf AI route" at :4 and :52. Read that
+    as the Perf AI base route.
   - The lead's Perf AI triggers, 11 ms and 5 ms, were set on the old arena. The first `perf_ai_4b`
-    cards become the new baseline, and Michael decides the triggers with the lead after them.
+    cards become the new baseline (this amends ADR 0038 §7's "the 11 ms and 5 ms triggers read
+    it"), and Michael decides the triggers after them.
 - **P265 and P265b** landed after P244, as the integration branches `claude/p265-board-unload-i`
   and `claude/p265b-carry-view-i`. The carrier pick uses P244's raised picking through
   `PlayerController.fill_pick` and its unit half `fill_unit_pick` (the ground units and the flyers,
@@ -808,38 +819,39 @@ the P265 integration):
       needs them; a header line that `art_gallery_icons.gd` is never instantiated.
     - P309: an over-long `ci.yml` comment line, and the AI comment still says "after the bases
       block".
-    - P304: stale "Perf AI plays `perf_ai`" doc lines (`ai_perf_run.gd:19-21`, `PerfBases.gd:11`,
+    - P304: stale "Perf AI plays `perf_ai`" doc lines (`ai_perf_run.gd:19-21`,
       `perf_arena.gd:45-47`, `ci.yml`'s `WATCH ai` comment); the 4b layout test compares only
-      building counts; `append_failure_message` in the field-name parity test; the scenario's
-      "a Burst Stack" header (each side has 2); the 4b suite header should record today's counted
-      facts (no LOAD, UNLOAD, MEND or sweep; the Burst Stack, Sky Needle and Redoubt fire 0 shots;
-      `seen_mobile_id` 0, `full_ticks` 174); the frozen rosters hold no 4b type, so P250's
-      production passes build nothing there; 3 x 900 ticks per verify; the card test's vacuous
-      `begins_with("ai_think")` check; "ADR 0037 section 11" in the `ai_4b` headers (§4); the dev
-      menu's 9 dp of room, "Perf AI base" next to "Perf AI", a named `open_perf_ai_base`, the
-      layout test's header and an implicit cast in `test_frozen_ai_4b_defs.gd`.
+      building counts; `append_failure_message` in the field-name parity test; the 4b suite header
+      should record today's counted facts (no LOAD, UNLOAD, MEND or sweep; the Burst Stack, Sky
+      Needle and Redoubt fire 0 shots; `seen_mobile_id` 0, `full_ticks` 174); the frozen rosters
+      hold no 4b type, so P250's production passes build nothing there; 3 x 900 ticks per verify;
+      the card test's vacuous `begins_with("ai_think")` check; "ADR 0037 section 11" in the
+      `ai_4b` headers (§4); the dev menu's 9 dp of room, "Perf AI base" next to "Perf AI", a named
+      `open_perf_ai_base`, the layout test's header and an implicit cast in
+      `test_frozen_ai_4b_defs.gd`.
     - P239b: STYLE.md's anti-air section needs a results paragraph (team share, 32 px IoU,
       KRITISK), its Gallery bullet (the Icons page lists only `ITEM_ICONS`), the d08 head's flat
       bar and the "taller than the Redoubt" line; the serrated barrel ends at d04/d12; the Sky
       Needle's floating KRITISK rod; its glass needle is faint on sand in greyscale (judge on the
       phone); the Burst Stack's 32 px IoU with the Grid Hub is 0.821, the closest pair; plain
-      tracers for the Sky Needle's FX later; the CREDITS row's originality sentence and "spheres";
-      `_inked_bounds` ignores `stroke_px`, `MARGIN_PX - 1` and `reach = 1.0` as one named
-      constant, no unit case mixes a rod and a face; stale `_boxes`/`IsoSheetDef.boxes` docs, the
-      "+76" comment in `test_iso_atlas_budget.gd`, `test_defs_anti_air`'s three comments and
-      `_share` repeating `Support.default_picture`.
+      tracers for the Sky Needle's FX later; "spheres" in the CREDITS row; `_inked_bounds` ignores
+      `stroke_px`, and no unit case mixes a rod and a face; the ragged short line "1 clear px
+      (`ArtSheet.BOX_CLEAR_PX`). Parts in" in `IsoSheetDef.gd:82`, the "+76" comment in
+      `test_iso_atlas_budget.gd`, `test_defs_anti_air`'s three comments and `_share` repeating
+      `Support.default_picture`.
     - P265 integration: the Skyhauler/Ferrywing comment and the ninth row in
       `test_command_bar_carry.gd`'s header; `test_carry_mark_layer.gd`'s header (the `AirLayer`
       rig first); `ring_centre` calls `rig_of` twice; `CommandBar.gd:12` wraps early; no Unload
       test taps an own flyer's hull; `_pick_snapshot(_at)` never reads its argument; and, for
       P266's HOW_TO_PLAY line, an Unload tap right under a hovering carrier hits its hull and is
       refused with a shake.
-    - P253 (wave 10): the scenario comments should say 8 aircraft share one 4-pad airfield and
-      both sides fly Derrick aircraft; the rifle copy's mask cannot hit AIR (all ground-to-air
-      fire is rocket squads'); the `PERF air` line mixes the two runs' counts; `AIR_END_PIN` has
-      no margin; the `perf_air` walk floor is 1; stale arena lists (`test_golden_hashes.gd`,
-      `perf_arena.gd`, `PerfBases.gd`, `dev_menu.gd`, `test_dev_menu_layout.gd`); `test_perf_air`
-      checks neither Back nor `Engine.max_fps`; two frozen copies share the `rifle_squad` and
-      `rocket_squad` type_ids; the Phase 4b counters read 0 there; the air card has no draw-call
-      forecast line, which P256's phone check 3 needs; the flyers are `Marker` ellipses until the
-      art rows.
+    - P253 (wave 10; the rest is fixed on `main`): the rifle copy's mask cannot hit AIR (all
+      ground-to-air fire is rocket squads'), which the comments should say; `AIR_END_PIN` has no
+      margin; stale arena lists (`test_golden_hashes.gd`, `perf_arena.gd:38-48`,
+      `PerfBases.gd:3-7`), the ragged "P253). When" wrap in `dev_menu.gd`, and in
+      `test_dev_menu_layout.gd` the literal dp gaps, the header and a scroll test that checks only
+      the safe rect; `test_perf_air` does not check `Engine.max_fps`; the Phase 4b counters read 0
+      there; the air card has no draw-call forecast line, which P256's phone check 3 needs; the
+      flyers are `Marker` ellipses until the art rows; seven 900-tick runs in the suite. The
+      shared `rifle_squad`/`rocket_squad` type_ids are answered: `perf_ai_4b.tres` names
+      `perf_air`'s own copies.
