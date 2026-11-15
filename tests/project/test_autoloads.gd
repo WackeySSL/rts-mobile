@@ -7,6 +7,7 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"DetRng": "res://game/core/det_rng_service.gd",
 	"CommandQueue": "res://game/core/command_queue_service.gd",
 	"UiOrientation": "res://game/ui/ui_orientation_service.gd",
+	"AudioService": "res://game/view/audio/audio_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 
