@@ -17,8 +17,8 @@ extends Node
 ## Versions: a hash-valid file without `meta.version` is read as version 0 and goes through the
 ## `_migrate` steps (0 -> 1 keeps every section; only this service writes the hash line), then is
 ## rewritten with its version. Migration v0 of the ADR is a different thing: no save file of any
-## kind, but a `settings.cfg`: its `[hud]` keys are copied into section `hud`. `settings.cfg` is
-## left in place; P510b (`HudPrefs` on this service) deletes it.
+## kind, but a `settings.cfg`: its `[hud]` keys are copied into section `hud`, and `settings.cfg`
+## is deleted after that first good write (`HudPrefs` reads this service now, not that file).
 
 ## Fires after a successful write.
 signal saved
@@ -377,10 +377,11 @@ func _take(config: ConfigFile) -> void:
 
 
 ## v0 of the ADR: no save file of any kind, but a settings.cfg beside it. Its [hud] keys are
-## copied into section `hud`. settings.cfg stays: P510b deletes it.
+## copied into section `hud`; settings.cfg is deleted once the save file is written.
 func _migrate_v0() -> void:
+	var legacy_path: String = path().get_base_dir().path_join(LEGACY_FILE)
 	var legacy: ConfigFile = ConfigFile.new()
-	if legacy.load(path().get_base_dir().path_join(LEGACY_FILE)) != OK:
+	if legacy.load(legacy_path) != OK:
 		return
 	if not legacy.has_section(LEGACY_SECTION):
 		return
@@ -389,7 +390,8 @@ func _migrate_v0() -> void:
 		values[key] = legacy.get_value(LEGACY_SECTION, key)
 	_sections[LEGACY_SECTION] = values
 	_dirty = true
-	flush()
+	if flush() == OK:
+		_remove(legacy_path)
 
 
 ## A failed file is kept once beside itself as `<name>.bad` (`save.cfg.bad`, `save.cfg.bak.bad`),

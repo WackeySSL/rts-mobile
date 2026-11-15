@@ -179,7 +179,7 @@ func test_newer_version_is_read_only_and_never_written() -> void:
 	assert_bool(FileAccess.file_exists(_main() + ".bak")).is_false()
 
 
-func test_migration_v0_copies_hud_keys_and_leaves_settings_cfg() -> void:
+func test_migration_v0_copies_hud_keys_and_deletes_settings_cfg() -> void:
 	var legacy: ConfigFile = ConfigFile.new()
 	legacy.set_value("hud", "haptics", false)
 	legacy.set_value("hud", "build_menu_pinned", true)
@@ -189,11 +189,28 @@ func test_migration_v0_copies_hud_keys_and_leaves_settings_cfg() -> void:
 		{"haptics": false, "build_menu_pinned": true}
 	)
 	assert_bool(FileAccess.file_exists(_main())).is_true()
-	# P510b deletes it, not this service.
-	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_true()
+	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_false()
 	assert_dict(_service().call("get_section", &"hud")).is_equal(
 		{"haptics": false, "build_menu_pinned": true}
 	)
+
+
+## P510b: HudPrefs reads the migrated key; a Vibration=off survives, and the old file is gone.
+func test_hud_prefs_read_a_migrated_vibration_off_and_persist() -> void:
+	var legacy: ConfigFile = ConfigFile.new()
+	legacy.set_value("hud", "haptics", false)
+	legacy.save(_dir.path_join("settings.cfg"))
+	HudPrefs.set_path_override(_main())
+	assert_bool(HudPrefs.haptics_enabled()).is_false()
+	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_false()
+	HudPrefs.set_haptics_enabled(true)
+	HudPrefs.set_path_override(_main())  # Drains, then reloads from the file.
+	assert_bool(HudPrefs.haptics_enabled()).is_true()
+	HudPrefs.set_haptics_enabled(false)
+	HudPrefs.clear_path_override()
+	HudPrefs.set_path_override(_main())
+	assert_bool(HudPrefs.haptics_enabled()).is_false()
+	HudPrefs.clear_path_override()
 
 
 func test_migration_v0_without_a_hud_section_does_nothing() -> void:
