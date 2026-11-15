@@ -73,6 +73,8 @@ func _expected_names(profile: StringName, open: int) -> String:
 			return {0: "S....", 3: "...F.", 4: "....R"}[open]
 		&"phone_320":
 			return {0: ".....", 3: "...F.", 4: "....."}[open]
+		&"android_410", &"android_440", &"android_480":
+			return "?"  # Whatever fits: the row's rounding decides (`_fit_tabs`).
 	return "SIVFR"
 
 
@@ -81,6 +83,8 @@ func test_the_tabs_fit_every_profile_with_five_tabs() -> void:
 	profiles.merge(UiProfiles.all())
 	profiles.merge(UiProfiles.portrait())
 	profiles.merge(UiProfiles.notch_design())
+	for dpi: int in [410, 440, 480]:  # The 914 x 411 dp phone at densities by android_6in's 420.
+		profiles[StringName("android_%d" % dpi)] = _phone_dp(dpi)
 	profiles[&"phone_320"] = _phone_320()  # 296 dp of safe width: the narrowest supported phone.
 	for profile: StringName in profiles:
 		var metrics: UiMetrics = profiles[profile]
@@ -89,9 +93,10 @@ func test_the_tabs_fit_every_profile_with_five_tabs() -> void:
 			_sidebar.select_tab(open)
 			await _settle()
 			var why: String = "%s tab %d" % [profile, open]
-			assert_str(_assert_tabs(why)).override_failure_message(why).is_equal(
-				_expected_names(profile, open)
-			)
+			var names: String = _assert_tabs(why)  # The row within its room is asserted there.
+			var expected: String = _expected_names(profile, open)
+			if expected != "?":
+				assert_str(names).override_failure_message(why).is_equal(expected)
 
 
 func test_the_cards_are_whole_inside_the_drawer_with_their_names_whole_in_one_or_two_lines(
@@ -214,6 +219,13 @@ func test_a_tap_queues_one_upgrade_and_a_queued_card_does_not_queue_again() -> v
 	assert_int(tile.shakes).is_equal(1)
 
 
+## The 914 x 411 dp phone sideways at `dpi` (window = dp x dpi / 160).
+func _phone_dp(dpi: int) -> UiMetrics:
+	var size: Vector2i = Vector2i(roundi(914.0 * dpi / 160.0), roundi(411.0 * dpi / 160.0))
+	var stretch: float = minf(size.x / 1280.0, size.y / 720.0)
+	return UiMetrics.create("Android", dpi, 1.0, stretch, size, Rect2i())
+
+
 ## A 320 dp wide phone held upright, as `test_command_bar_chips` builds it.
 func _phone_320() -> UiMetrics:
 	var size: Vector2i = Vector2i(320, 640)
@@ -262,7 +274,7 @@ func _assert_tabs(why: String) -> String:
 		. override_failure_message(
 			"%s: row %s, room %s" % [why, row.get_combined_minimum_size().x, _sidebar._row_room()]
 		)
-		. is_less_equal(_sidebar._row_room() + 0.5)
+		. is_less_equal(_sidebar._row_room() + 0.01)
 	)
 	for node: Node in _sidebar.find_children("Tab*", "Button", true, false):
 		var tab: Button = node as Button

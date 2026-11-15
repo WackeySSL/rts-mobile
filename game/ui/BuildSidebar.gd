@@ -69,7 +69,7 @@ const TAB_BARE_DP: float = 48.0
 const NAMED_TABS_MAX: int = 3
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
-const CLOSE_DP: float = 48.0  ## The close chevron's size, both ways.
+const CLOSE_DP: float = HudCorners.CLOSE_DP  ## The close chevron's size, both ways.
 const HANDLE_GAP_DP: float = 4.0  ## Above and below the handle.
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
@@ -613,8 +613,19 @@ func _fit_tabs() -> void:
 	# Where not even the open tab's name fits beside the others' icons, every tab shows its icon
 	# alone (the open one is still the lighter plate with the bar); measured, never by a count.
 	var none: bool = crowded and open_px + gaps > room
+	var level: int = 2 if none else (1 if crowded else 0)  # Names: all, the open one, none.
+	_set_tab_widths(level, shown, edges)
+	# The row takes each tab's width rounded up to a whole px: where that overflows the room, the
+	# next level (fewer names) is the one that fits.
+	while level < 2 and shown > NAMED_TABS_MAX and _tab_row.get_combined_minimum_size().x > room:
+		level += 1
+		_set_tab_widths(level, shown, edges)
+
+
+## Shows the names of `level` (0 all, 1 the open tab's, 2 none) and sets the tabs' widths to them.
+func _set_tab_widths(level: int, shown: int, edges: float) -> void:
 	for index: int in _tabs.size():
-		var bare: bool = crowded and (index != tab or none)
+		var bare: bool = level == 2 or (level == 1 and index != tab)
 		_tab_names[index].visible = not bare
 		var wide: float = TAB_BARE_DP if bare else TAB_DP
 		if shown > NAMED_TABS_MAX and not bare:  # A named tab is as wide as its name in the borders.
@@ -758,7 +769,6 @@ func _seat_close() -> void:
 		if _close.get_parent() != null:
 			_close.get_parent().remove_child(_close)
 		home.add_child(_close)
-	_pull_plate.visible = not _portrait
 	_chevron.rotation = PI / 2.0 if _portrait else 0.0  # Toward the edge it leaves by.
 
 
@@ -818,13 +828,20 @@ func _apply_extent(extent: float) -> void:
 		_backdrop.size = Vector2(_rect.size.x, _rect.size.y + _edge)
 		size = holder
 		_backdrop.position = Vector2(0.0, holder.y - _backdrop.size.y)
+		_close.visible = true
+		_pull_plate.visible = false
 	else:
-		var pull: float = CLOSE_DP * _dp_px  # The close handle, left of the panel.
+		# The close handle, left of the panel, only while the drawer stands fully open: a slide
+		# shows as much panel as it has moved, and the handle goes as the close starts.
+		var handled: bool = is_open() and extent >= _open_px - 0.5
+		var pull: float = CLOSE_DP * _dp_px if handled else 0.0
 		position = Vector2(_rect.end.x - extent - pull, _rect.position.y)
 		holder = Vector2(extent + _edge + pull, _rect.size.y)
 		_backdrop.size = Vector2(_rect.size.x + _edge, _rect.size.y)
 		size = holder
 		_backdrop.position = Vector2(holder.x - _backdrop.size.x, 0.0)
+		_close.visible = handled
+		_pull_plate.visible = handled
 		_close.size = Vector2(pull, pull)
 		_close.position = Vector2(0.0, (holder.y - pull) / 2.0)
 		_pull_plate.size = _close.size

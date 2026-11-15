@@ -109,7 +109,6 @@ func _expect_toast_clear_of_drawer(why: String) -> void:
 	_feed.state.open(HudState.Unfold.DRAWER)
 	await _settle()
 	var toast: Rect2 = _toast.get_global_rect()
-	# The panel: its close handle stands at mid-height, far from the toast.
 	var drawer: Rect2 = (_hud("Backdrop") as Control).get_global_rect()
 	var at: String = "%s: toast %s, drawer %s" % [why, toast, drawer]
 	var gap: float = UiScale.dp(HudCorners.GAP_DP) - 0.5
@@ -121,6 +120,9 @@ func _expect_toast_clear_of_drawer(why: String) -> void:
 	)
 	assert_float(toast.size.y).override_failure_message(at).is_greater_equal(UiScale.dp(48.0) - 0.5)
 	var parts: Array[Rect2] = [_scope.get_global_rect(), drawer, pill_node.get_global_rect()]
+	var close: Control = _hud("Close") as Control  # The panel's close handle is a part too.
+	if close.is_visible_in_tree():
+		parts.append(close.get_global_rect())
 	var build: Control = _hud("BuildButton") as Control
 	if build.is_visible_in_tree():
 		parts.append(build.get_global_rect())
