@@ -9,7 +9,7 @@ The developer is AppCode ApS, Denmark ("we"). Contact: `<contact email>`.
 
 ## What the game itself collects
 Nothing. Treadline has no account, no sign-in, no analytics of our own and no server of ours. Your progress
-(rank, unlocks, settings) is saved on your device only and is removed when you uninstall the game.
+(rank, unlocks, settings and the Remove ads entitlement) is saved on your device only and is removed when you uninstall the game.
 
 ## Third-party services
 The game uses these Google services. They process data under Google's own policies, not ours.
@@ -22,12 +22,11 @@ The game uses these Google services. They process data under Google's own polici
   We do not receive your payment details.
 
 How Google uses data from apps that use its services: https://policies.google.com/technologies/partner-sites
-(to confirm: this is the current partner-sites page).
 
 ## Consent and your choices
 Where required (for example the EEA, UK and Switzerland), the game asks for your consent before any ad request.
-You can change it at any time in the game under **Privacy options**. You can also reset or limit the advertising ID
-in your Android settings. Buying "Remove ads" stops ads (to confirm: consent and purchase records stay with Google).
+Where consent applies, you can change it at any time under **Privacy options** in the game's settings. You can also reset or limit the advertising ID
+in your Android settings. Buying "Remove ads" removes banners and full-screen ads between matches; ads you choose to watch for a reward stay available.
 
 ## Children
 The game is not directed at children. The intended audience is 13 and over. (To confirm: age wording against

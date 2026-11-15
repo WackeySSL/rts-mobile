@@ -1,7 +1,7 @@
 # Play Console and ad setup checklist (M1-M11)
 
 Steps only Michael can do, in order. Source: `docs/plans/2026-11-15-phase-6.md`. Never put secret values in
-the repo or in chat; set them with `gh secret set`.
+the repo or in chat; set them with `gh secret set NAME --env play-internal` (or `--env play-release` for the unit IDs); never as repository secrets.
 
 Decisions (Michael, 2026-11-15): target audience 13 and over (not Families); maximum ad content rating T;
 Remove ads costs 29 kr; Play App Signing (Google holds the app key, Michael keeps the upload key and a backup).
@@ -10,11 +10,13 @@ Remove ads costs 29 kr; Play App Signing (Google holds the app key, Michael keep
   EU trader declaration is filled in.
 - [ ] **M2** Create the app "Treadline: Offline RTS" (English, Game, Free, contains ads). Declarations: privacy policy
   URL (M10), ads, advertising ID use, target audience 13+, content rating questionnaire, Data safety
-  (`data-safety.md`).
-- [ ] **M3** Make the upload key (`keytool`, command in the plan) and set secrets in GitHub environment
+  (`data-safety.md`; to confirm whether it is needed before a closed or production track, Play exempts apps only on internal testing).
+- [ ] **M3** Make the upload key and set secrets in GitHub environment
   `play-internal` (deployment branch `main` only): `ANDROID_UPLOAD_KEYSTORE_BASE64`,
   `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` (value `upload`). Keep the keystore and a backup
   outside the repo.
+  `keytool -genkeypair -v -keystore treadline-upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000`
+  (store and key passwords should match; to confirm in P412).
 - [ ] **M4** Play App Signing: accept Google's app signing key at the first release.
 - [ ] **M5** First upload by hand: the AAB from the first `main` run, in Internal testing (locks `dk.appcode.rts`).
 - [ ] **M6** Google Cloud project with the Google Play Android Developer API, a service account and JSON key ->
@@ -22,7 +24,7 @@ Remove ads costs 29 kr; Play App Signing (Google holds the app key, Michael keep
   rights to testing tracks.
 - [ ] **M7** Internal testers list with Michael's Google account; opt in on the phone.
 - [ ] **M8** AdMob: account (AppCode ApS, payments), the Android app (not listed yet); App ID -> secret
-  `ADMOB_APP_ID_ANDROID` (`play-internal`); unit IDs -> `ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`,
+  `ADMOB_APP_ID_ANDROID` (`play-internal`; used only after Michael's yes to the P400b text, until then internal builds keep Google's test App ID, Decision 10); unit IDs -> `ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`,
   `ADMOB_REWARDED_ID_ANDROID` (environment `play-release`, may be set now); the phone as test device; Privacy &
   messaging: GDPR message (EEA, UK, Switzerland); maximum ad content rating T.
 - [ ] **M9** Managed product `remove_ads` at 29 kr, after a build with `BILLING` is uploaded; license testing with
