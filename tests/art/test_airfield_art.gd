@@ -16,6 +16,9 @@ const FACTION: Dictionary[StringName, StringName] = {
 	&"fossil_airfield": &"fossil", &"renew_airfield": &"renew"
 }
 const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
+## The top mark of a pad and the height of its top, which the pad's centre pixel shows.
+const MARK: Dictionary[StringName, StringName] = {&"fossil": &"lamp", &"renew": &"mint"}
+const MARK_Z: Dictionary[StringName, float] = {&"fossil": 0.13, &"renew": 0.2}
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const MAX_OVERLAP: float = 0.85
 ## The pad cells of the data, 3 x 3 with the centre of the footprint at the origin.
@@ -54,11 +57,42 @@ func test_the_four_pads_sit_on_the_pad_cells_of_the_data() -> void:
 		for prim: ArtPrim in model.primitives(&"hull"):
 			if String(prim.group).begins_with("padring"):
 				rings.append(prim.centre)
+				assert_str(String(prim.material)).override_failure_message(String(id)).is_equal(
+					"team"
+				)
 		assert_int(rings.size()).override_failure_message(String(id)).is_equal(4)
 		for cell: Vector2i in def.pad_offsets:
 			var want: Vector2 = Vector2(cell) - Vector2(1.0, 1.0)
 			assert_bool(rings.has(want)).override_failure_message("%s %s" % [id, want]).is_true()
 			assert_bool(cell in PAD_CELLS).is_true()
+
+
+## Each pad's lamp mark (the top of its centre) is seen in the default view at zoom 1: a pixel of
+## the mark's colour lies within 2 px of where the pad's centre projects, so no pad is hidden
+## behind the hangar, the drums or the terminal.
+func test_each_of_the_four_pads_shows_in_the_default_view() -> void:
+	for id: StringName in IDS:
+		var faction: StringName = FACTION[id]
+		var sheet: IsoSheetDef = _index.sheet(id)
+		var picture: Image = Support.default_picture(sheet, VIEW_DIR[faction])
+		var mark: StringName = MARK[faction]
+		var tones: Array[Color] = []
+		for level: int in 3:
+			tones.append(Color(ArtPalette.tone(faction, mark, level)))
+		for cell: Vector2i in PAD_CELLS:
+			var at: Vector2 = Vector2(cell) - Vector2(1.0, 1.0)
+			var screen: Vector2 = ArtRender.project(Vector3(at.x, at.y, MARK_Z[faction]))
+			var centre: Vector2i = Support.GROUND_POINT + Vector2i(screen * Support.SCALE)
+			var seen: bool = false
+			for dy: int in range(-2, 3):
+				for dx: int in range(-2, 3):
+					var pixel: Color = picture.get_pixel(centre.x + dx, centre.y + dy)
+					for tone: Color in tones:
+						var gap: float = (
+							absf(pixel.r - tone.r) + absf(pixel.g - tone.g) + absf(pixel.b - tone.b)
+						)
+						seen = seen or (pixel.a > 0.95 and gap < 0.1)
+			assert_bool(seen).override_failure_message("%s pad %s" % [id, cell]).is_true()
 
 
 func test_the_team_share_of_the_default_view_is_8_to_12_percent_at_zoom_1() -> void:

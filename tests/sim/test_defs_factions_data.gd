@@ -26,7 +26,9 @@ const AIR_UNLISTED: Array[String] = [
 ]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0
-const TABS: int = 3
+## The tabs every faction has one producer of (the Headquarters, the barracks, the vehicle
+## factory); the optional tabs after them (Flight, Research) have at most one.
+const REQUIRED_TABS: int = 3
 ## The map of the queue cases: a row of buildings four tiles apart leaves room for a 3x3 footprint.
 const COLS: int = 40
 const ROWS: int = 12
@@ -359,7 +361,9 @@ func _chain_problems(factions: Array[FactionDef]) -> PackedStringArray:
 	var problems: PackedStringArray = PackedStringArray()
 	for faction: FactionDef in factions:
 		var head: Array[UnitDef] = []
-		var producers: Array[int] = [0, 0, 0, 0]
+		var producers: Array[int] = []
+		producers.resize(World.TABS)
+		producers.fill(0)
 		for member: UnitDef in faction.roster:
 			var building: BuildingDef = member as BuildingDef
 			if building == null or building.produces < 0:
@@ -370,8 +374,9 @@ func _chain_problems(factions: Array[FactionDef]) -> PackedStringArray:
 		if head.size() != 1:
 			problems.append("%s: %d Headquarters, not 1" % [faction.id, head.size()])
 			continue
-		for tab: int in range(1, TABS):
-			if producers[tab] != 1:
+		for tab: int in range(1, World.TABS):
+			var ok: bool = producers[tab] == 1 if tab < REQUIRED_TABS else producers[tab] <= 1
+			if not ok:
 				problems.append(
 					"%s: %d producers of tab %d, not 1" % [faction.id, producers[tab], tab]
 				)
