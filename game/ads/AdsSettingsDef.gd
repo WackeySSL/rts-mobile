@@ -2,62 +2,99 @@ class_name AdsSettingsDef
 extends Resource
 ## Every cap, timeout, reward and gap of the ads layer (ADR 0039 section 4). The instance is
 ## `res://data/ads_settings.tres`, where all tuning happens; the defaults here are the values that
-## file holds. Never read by `game/sim`. `problems()` lists every out-of-range field, so a data
+## file holds. Never read by `game/sim`. `validate()` lists every out-of-range field, so a data
 ## test and the loaders can reject a bad file without crashing.
 
+## Where the shipped file lives.
 const PATH: String = "res://data/ads_settings.tres"
 
+const _MIN_FREE_MATCHES: int = 0
+const _MAX_FREE_MATCHES: int = 20
+const _MIN_PLAY_S: int = 0
+const _MAX_PLAY_S: int = 3600
+const _MIN_PER_MATCH: int = 1
+const _MAX_PER_MATCH: int = 1
+const _MIN_FULLSCREEN_MS: int = 1000
+const _MAX_FULLSCREEN_MS: int = 30000
+const _MIN_CONSENT_MS: int = 1000
+const _MAX_CONSENT_MS: int = 60000
+const _MIN_XP_MULT: int = 2
+const _MAX_XP_MULT: int = 4
+const _MIN_CREDITS: int = 1
+const _MAX_CREDITS: int = 5000
+const _MIN_OFFERS: int = 1
+const _MAX_OFFERS: int = 1
+const _MIN_GAP_DP: int = 16
+const _MAX_GAP_DP: int = 200
+const _MIN_RELOAD_MS: int = 1000
+const _MAX_RELOAD_MS: int = 600000
+
+static var _default: AdsSettingsDef
+
 ## None in a new player's first N completed matches.
-@export var interstitial_free_matches: int = 2
+@export_range(_MIN_FREE_MATCHES, _MAX_FREE_MATCHES) var interstitial_free_matches: int = 2
 ## At least this many seconds of play since the last interstitial.
-@export var interstitial_min_play_s: int = 240
+@export_range(_MIN_PLAY_S, _MAX_PLAY_S) var interstitial_min_play_s: int = 240
 ## At most this many interstitials per completed match.
-@export var interstitial_per_match: int = 1
+@export_range(_MIN_PER_MATCH, _MAX_PER_MATCH) var interstitial_per_match: int = 1
 ## The longest wait for a full-screen ad to open (ms).
-@export var fullscreen_timeout_ms: int = 8000
+@export_range(_MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS) var fullscreen_timeout_ms: int = 8000
 ## The longest wait for the consent info and the form to load (ms).
-@export var consent_timeout_ms: int = 10000
+@export_range(_MIN_CONSENT_MS, _MAX_CONSENT_MS) var consent_timeout_ms: int = 10000
 ## Double XP: the multiplier handed to `Progression.apply_bonus`.
-@export var reward_xp_multiplier: int = 2
+@export_range(_MIN_XP_MULT, _MAX_XP_MULT) var reward_xp_multiplier: int = 2
 ## The starting-credits reward.
-@export var reward_start_credits: int = 500
+@export_range(_MIN_CREDITS, _MAX_CREDITS) var reward_start_credits: int = 500
 ## One pending bonus, no stacking: the most the ledger holds.
-@export var start_credits_bonus_max: int = 500
+@export_range(_MIN_CREDITS, _MAX_CREDITS) var start_credits_bonus_max: int = 500
 ## One rewarded offer per screen.
-@export var rewarded_offers_per_screen: int = 1
+@export_range(_MIN_OFFERS, _MAX_OFFERS) var rewarded_offers_per_screen: int = 1
 ## The least air between a banner and any control (dp).
-@export var banner_gap_dp: int = 16
+@export_range(_MIN_GAP_DP, _MAX_GAP_DP) var banner_gap_dp: int = 16
 ## The start page's air round its banner (dp, ADR 0025 section 12).
-@export var start_banner_gap_dp: int = 48
+@export_range(_MIN_GAP_DP, _MAX_GAP_DP) var start_banner_gap_dp: int = 48
 ## A turn reloads the banner at most this often (ms).
-@export var banner_reload_min_ms: int = 30000
+@export_range(_MIN_RELOAD_MS, _MAX_RELOAD_MS) var banner_reload_min_ms: int = 30000
 ## The Play product of the Remove ads purchase.
 @export var remove_ads_product_id: String = "remove_ads"
 
 
-## Loads the shipped file; a fresh default instance when it is missing or of another type.
+## The shipped file, a shared cached instance; a test that wants another value calls duplicate()
+## first.
 static func load_default() -> AdsSettingsDef:
-	var loaded: AdsSettingsDef = load(PATH) as AdsSettingsDef
-	if loaded == null:
-		return AdsSettingsDef.new()
-	return loaded
+	# Not a preload: the file's script is this one, and a script cannot preload its own resource.
+	if _default == null:
+		_default = load(PATH) as AdsSettingsDef
+		if _default == null:
+			_default = AdsSettingsDef.new()
+	return _default
 
 
 ## One line per field out of range; empty means valid.
-func problems() -> PackedStringArray:
+func validate() -> PackedStringArray:
 	var out: PackedStringArray = PackedStringArray()
-	_check(out, "interstitial_free_matches", interstitial_free_matches, 0, 20)
-	_check(out, "interstitial_min_play_s", interstitial_min_play_s, 0, 3600)
-	_check(out, "interstitial_per_match", interstitial_per_match, 1, 1)
-	_check(out, "fullscreen_timeout_ms", fullscreen_timeout_ms, 1000, 30000)
-	_check(out, "consent_timeout_ms", consent_timeout_ms, 1000, 60000)
-	_check(out, "reward_xp_multiplier", reward_xp_multiplier, 2, 4)
-	_check(out, "reward_start_credits", reward_start_credits, 1, 5000)
-	_check(out, "start_credits_bonus_max", start_credits_bonus_max, reward_start_credits, 5000)
-	_check(out, "rewarded_offers_per_screen", rewarded_offers_per_screen, 1, 1)
-	_check(out, "banner_gap_dp", banner_gap_dp, 16, 200)
-	_check(out, "start_banner_gap_dp", start_banner_gap_dp, 16, 200)
-	_check(out, "banner_reload_min_ms", banner_reload_min_ms, 1000, 600000)
+	_check(
+		out,
+		"interstitial_free_matches",
+		interstitial_free_matches,
+		_MIN_FREE_MATCHES,
+		_MAX_FREE_MATCHES
+	)
+	_check(out, "interstitial_min_play_s", interstitial_min_play_s, _MIN_PLAY_S, _MAX_PLAY_S)
+	_check(out, "interstitial_per_match", interstitial_per_match, _MIN_PER_MATCH, _MAX_PER_MATCH)
+	_check(
+		out, "fullscreen_timeout_ms", fullscreen_timeout_ms, _MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS
+	)
+	_check(out, "consent_timeout_ms", consent_timeout_ms, _MIN_CONSENT_MS, _MAX_CONSENT_MS)
+	_check(out, "reward_xp_multiplier", reward_xp_multiplier, _MIN_XP_MULT, _MAX_XP_MULT)
+	_check(out, "reward_start_credits", reward_start_credits, _MIN_CREDITS, _MAX_CREDITS)
+	_check(
+		out, "start_credits_bonus_max", start_credits_bonus_max, reward_start_credits, _MAX_CREDITS
+	)
+	_check(out, "rewarded_offers_per_screen", rewarded_offers_per_screen, _MIN_OFFERS, _MAX_OFFERS)
+	_check(out, "banner_gap_dp", banner_gap_dp, _MIN_GAP_DP, _MAX_GAP_DP)
+	_check(out, "start_banner_gap_dp", start_banner_gap_dp, _MIN_GAP_DP, _MAX_GAP_DP)
+	_check(out, "banner_reload_min_ms", banner_reload_min_ms, _MIN_RELOAD_MS, _MAX_RELOAD_MS)
 	if remove_ads_product_id.strip_edges().is_empty():
 		out.append("remove_ads_product_id is empty")
 	return out

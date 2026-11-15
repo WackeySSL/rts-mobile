@@ -9,7 +9,7 @@ func _file() -> AdsSettingsDef:
 
 func test_the_file_loads_as_the_def() -> void:
 	assert_object(_file()).is_not_null()
-	assert_bool(AdsSettingsDef.load_default() == _file()).is_true()
+	assert_object(AdsSettingsDef.load_default()).is_same(_file())
 
 
 func test_every_field_is_pinned() -> void:
@@ -30,7 +30,7 @@ func test_every_field_is_pinned() -> void:
 
 
 func test_the_file_is_in_range() -> void:
-	assert_array(Array(_file().problems())).is_empty()
+	assert_array(Array(_file().validate())).is_empty()
 
 
 func test_out_of_range_values_are_reported() -> void:
@@ -39,4 +39,13 @@ func test_out_of_range_values_are_reported() -> void:
 	bad.banner_gap_dp = 15
 	bad.start_credits_bonus_max = 499
 	bad.remove_ads_product_id = " "
-	assert_int(bad.problems().size()).is_equal(4)
+	var messages: PackedStringArray = bad.validate()
+	assert_int(messages.size()).is_equal(4)
+	var joined: String = "\n".join(messages)
+	for field: String in [
+		"interstitial_per_match",
+		"banner_gap_dp",
+		"start_credits_bonus_max",
+		"remove_ads_product_id"
+	]:
+		assert_str(joined).override_failure_message("missing %s" % field).contains(field)

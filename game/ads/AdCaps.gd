@@ -5,6 +5,7 @@ extends RefCounted
 ## the one fact the caps cannot know, that an ad is loaded, and calls
 ## `AdLedger.note_interstitial_shown` when one showed.
 
+## The only placement an interstitial may show at: after the player taps Continue on the result.
 const PLACEMENT_POST_MATCH: StringName = &"post_match"
 
 
@@ -17,11 +18,11 @@ static func may_show_interstitial(
 	placement: StringName,
 	can_request_ads: bool,
 ) -> bool:
-	return denial(settings, ledger, placement, can_request_ads).is_empty()
+	return denial_reason(settings, ledger, placement, can_request_ads).is_empty()
 
 
 ## The reason an interstitial may not show, or an empty StringName when it may.
-static func denial(
+static func denial_reason(
 	settings: AdsSettingsDef,
 	ledger: AdLedger,
 	placement: StringName,
