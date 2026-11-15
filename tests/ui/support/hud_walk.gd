@@ -44,7 +44,7 @@ const PARTS: Array[String] = [
 	"PlaceConfirm",
 	"PlaceCancel",
 ]
-const AD_SERVICE_PATH: String = "/root/AdService"
+const AD_SERVICE_NAME: String = "AdService"
 const AD_WORDS: Array[String] = ["admob", "adservice", "banner", "interstitial", "rewarded"]
 
 
@@ -381,8 +381,9 @@ static func small_targets(main: Node2D, label: String) -> Array[String]:
 ## Whether a node of an ad plugin or of `game/ads` is in the tree of `main` or the scene tree.
 static func ad_nodes(main: Node2D) -> Array[String]:
 	var found: Array[String] = []
+	var service: Node = main.get_tree().root.get_node_or_null(AD_SERVICE_NAME)
 	for node: Node in main.get_tree().root.find_children("*", "", true, false):
-		if str(node.get_path()) == AD_SERVICE_PATH:
+		if node == service:
 			# The facade autoload (P401) is exempt alone, and must hold no child (no banner).
 			if node.get_child_count() > 0:
 				found.append("%s holds a child: %s" % [node.get_path(), node.get_child(0).name])
