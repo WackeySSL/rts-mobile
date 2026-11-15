@@ -79,8 +79,8 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var anim_kritisk: StringName = &""
 ## An aircraft's lift (ADR 0036 section 15, P245): how far above its ground point the hull is drawn,
 ## world px at zoom 1. `fly_px` for high air (a vehicle's, 16 directions); `low_fly_px` for a
-## low-flying squad (an `inf` model's, 8 directions), never both. Both 0 for a
-## model that does not fly; only a vehicle flies, with one of them.
+## low-flying squad (an `inf` model's, 8 directions), never both. Both 0 for a model that does not
+## fly.
 @export var fly_px: int = 0
 @export var low_fly_px: int = 0
 

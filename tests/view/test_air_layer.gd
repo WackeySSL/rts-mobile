@@ -310,8 +310,8 @@ func test_a_flyer_without_art_is_a_marker_at_the_default_lift() -> void:
 	assert_float(rig.marker.position.y).is_equal_approx(-AirLayer.DEFAULT_FLY_PX, 1.5)
 
 
-## A flyer whose type has no sheet at all (the drone squad has no art until P266) is a marker too.
-## replaces the shipped one of its art id, so an odd direction is not in the atlas (P245).
+## An extra sheet replaces the shipped one of its art id, so an odd direction is not in the atlas
+## (P245).
 func test_an_extra_sheet_replaces_the_shipped_one_in_the_bake() -> void:
 	var fresh: MatchRunner = auto_free(Air.runner())
 	var sort: WorldSort = auto_free(WorldSort.new())

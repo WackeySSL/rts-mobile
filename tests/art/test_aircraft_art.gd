@@ -145,9 +145,9 @@ func test_each_has_an_exhaust_and_a_damage_point_on_its_hull() -> void:
 
 
 ## The selection ring stands on the ground under the shadow and the bar at the lifted hull: the
-## ring is the size of the unit (its `selection_radius`), within the drawn hull's narrowest and
-## widest views (a fighter's hull is a little narrower than the ring in some directions, a bomber's
-## wider in others), and the bar clears the hull's top at the lift.
+## ring is the size of the unit (its `selection_radius`), between 0.8 times the narrowest and 1.3
+## times the widest drawn view (a fighter's hull is a little narrower than the ring in some
+## directions, a bomber's wider in others), and the bar clears the hull's top at the lift.
 func test_the_ring_on_the_ground_and_the_bar_at_the_hull_suit_the_lift() -> void:
 	for id: StringName in IDS:
 		var sheet: IsoSheetDef = _index.sheet(id)

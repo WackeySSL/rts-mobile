@@ -697,6 +697,7 @@ func test_a_model_with_poses_is_valid_and_each_mistake_in_them_is_named() -> voi
 		],
 		["marks of a squad", "marks", func(m: ArtModel) -> void: m.marks = &"tracks"],
 		["a high lift on a squad", "fly_px", func(m: ArtModel) -> void: m.fly_px = 26],
+		["a negative high lift", "fly_px", func(m: ArtModel) -> void: m.fly_px = -1],
 		["a negative lift", "fly_px", func(m: ArtModel) -> void: m.low_fly_px = -1],
 	]
 	for found: Array in cases:
