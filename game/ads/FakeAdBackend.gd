@@ -106,7 +106,7 @@ func finish_show(kind: StringName = &"") -> void:
 func show_banner() -> void:
 	_note("banner")
 	banner_visible = true
-	if draw_placeholders and _banner_node == null and _host_ready():
+	if fill and draw_placeholders and _banner_node == null and _host_ready():
 		_banner_node = FakeAdPlaceholders.build_banner(banner_height)
 		host.add_child(_banner_node)
 
@@ -120,7 +120,7 @@ func hide_banner() -> void:
 
 
 func banner_height_dp() -> int:
-	return banner_height
+	return banner_height if fill else 0
 
 
 func _open(kind: StringName) -> void:
