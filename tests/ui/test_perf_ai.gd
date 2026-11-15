@@ -1,7 +1,9 @@
 extends GdUnitTestSuite
 ## The "Perf AI" route and its card (plan P185, ADR 0030 section 4): the dev menu button beside
-## "Perf bases", the route into the perf arena scene on `perf_ai.tres` with a Normal `OpponentAi`
-## on each player (the frozen AI defs of P189b; `first_opponent` 1, the view stays player 1's), the
+## "Perf bases", the route into the perf arena scene on `perf_ai_4b.tres` (plan P304, ADR 0038
+## section 7) with a Normal `OpponentAi` on each player (the arena's own frozen AI defs of
+## `data/dev/arena/ai_4b/`; `first_opponent` 1, the view stays player 1's), the "Perf AI base"
+## button that plays `perf_ai.tres` with the defs of P189b as before, the
 ## card's report-only AI keys over fixed numbers (no timing is measured here), the card line only on
 ## this arena, and no golden comparison for it. The other two cards are unchanged:
 ## `test_perf_card_pin.gd` pins their text.
@@ -30,7 +32,7 @@ func after_test() -> void:
 
 
 func test_the_dev_menu_has_the_button_after_perf_bases() -> void:
-	assert_bool(ResourceLoader.exists(DevRoutes.PERF_AI_SCENARIO)).is_true()
+	assert_bool(ResourceLoader.exists(DevRoutes.PERF_AI_4B_SCENARIO)).is_true()
 	var menu: Control = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
 	add_child(menu)
 	await await_idle_frame()
@@ -57,7 +59,7 @@ func test_the_button_opens_the_perf_scene_with_the_ai_arena_and_back_returns() -
 	assert_str(arena.scene_file_path).is_equal(DevRoutes.PERF_ARENA_SCENE)
 	assert_str(arena.arena_kind).is_equal(PerfHud.ARENA_AI)
 	assert_str(arena.hud.arena_kind).is_equal(PerfHud.ARENA_AI)
-	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_SCENARIO)
+	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_4B_SCENARIO)
 	arena.find_child("BackButton", true, false).pressed.emit()
 	await await_idle_frame()
 	assert_str(tree.current_scene.scene_file_path).is_equal(DevRoutes.DEV_MENU_SCENE)
@@ -74,10 +76,10 @@ func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> vo
 	for def: AiDef in runner.opponents:
 		assert_object(def).is_instanceof(OpponentDef)
 	var paths: Array = runner.opponents.map(func(def: AiDef) -> String: return def.resource_path)
-	assert_array(paths).is_equal([DevRoutes.PERF_AI_FOSSIL, DevRoutes.PERF_AI_RENEW])
+	assert_array(paths).is_equal([DevRoutes.PERF_AI_4B_FOSSIL, DevRoutes.PERF_AI_4B_RENEW])
 	assert_int(runner.opponent_levels.size()).is_equal(2)
 	for level: AiDifficultyDef in runner.opponent_levels:
-		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_LEVEL)
+		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_4B_LEVEL)
 	assert_object(runner.scenario).is_same(arena.scenario)
 	assert_int(FogLayer.local_player_of(runner)).is_equal(1)
 	var players: Array[int] = []
@@ -85,6 +87,36 @@ func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> vo
 		assert_object(controller).is_instanceof(OpponentAi)
 		players.append(controller.player_id)
 	assert_array(players).is_equal([1, 2])
+
+
+## The base arena of the AI keeps its own button, scenario and frozen defs (plan P304): the lead
+## may run both arenas.
+func test_the_perf_ai_base_button_plays_perf_ai_on_its_own_frozen_defs() -> void:
+	var tree: SceneTree = get_tree()
+	var menu: Node = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
+	tree.root.add_child(menu)
+	tree.current_scene = menu
+	await await_idle_frame()
+	var button: Button = menu.find_child("PerfAiBaseButton", true, false)
+	assert_str(button.text).is_equal("Perf AI base")
+	assert_bool(button.disabled).is_false()
+	button.pressed.emit()
+	await await_idle_frame()
+	var arena: Node = tree.current_scene
+	assert_str(arena.scene_file_path).is_equal(DevRoutes.PERF_ARENA_SCENE)
+	assert_str(arena.arena_kind).is_equal(PerfHud.ARENA_AI)
+	assert_bool(arena.ai_4b).is_false()
+	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_SCENARIO)
+	var paths: Array = arena.runner.opponents.map(
+		func(def: AiDef) -> String: return def.resource_path
+	)
+	assert_array(paths).is_equal([DevRoutes.PERF_AI_FOSSIL, DevRoutes.PERF_AI_RENEW])
+	for level: AiDifficultyDef in arena.runner.opponent_levels:
+		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_LEVEL)
+	arena.find_child("BackButton", true, false).pressed.emit()
+	await await_idle_frame()
+	tree.current_scene.free()
+	tree.current_scene = null
 
 
 func test_the_other_arenas_seat_no_computer() -> void:

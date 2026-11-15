@@ -1,0 +1,453 @@
+[gd_resource type="Resource" script_class="ScenarioDef" format=3]
+[ext_resource type="Script" path="res://game/sim/defs/ScenarioDef.gd" id="1_scenario"]
+[ext_resource type="Script" path="res://game/sim/defs/SpawnDef.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://game/sim/defs/FactionDef.gd" id="4_faction_script"]
+[ext_resource type="Resource" path="res://data/maps/perf_bases.tres" id="5_map"]
+[ext_resource type="Resource" path="res://data/dev/arena/rules.tres" id="6_rules"]
+[ext_resource type="Resource" path="res://data/dev/arena/factions/fossil.tres" id="7_fossil"]
+[ext_resource type="Resource" path="res://data/dev/arena/factions/renew.tres" id="8_renew"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/headquarters.tres" id="9_headquarters"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/power_plant.tres" id="10_power_plant"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_radar.tres" id="11_fossil_radar"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_strike.tres" id="12_fossil_strike"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/refinery.tres" id="13_refinery"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/barracks.tres" id="14_barracks"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/vehicle_factory.tres" id="15_vehicle_factory"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/defence_turret.tres" id="16_defence_turret"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/light_tank.tres" id="17_light_tank"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/heavy_tank.tres" id="18_heavy_tank"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/rifle_squad.tres" id="19_rifle_squad"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/rocket_squad.tres" id="20_rocket_squad"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/harvester.tres" id="21_harvester"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_hq.tres" id="22_renew_hq"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_power.tres" id="23_renew_power"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_radar.tres" id="24_renew_radar"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_strike.tres" id="25_renew_strike"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_refinery.tres" id="26_renew_refinery"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_barracks.tres" id="27_renew_barracks"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_factory.tres" id="28_renew_factory"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_defence.tres" id="29_renew_defence"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_scout.tres" id="30_renew_scout"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_tank.tres" id="31_renew_tank"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_rifle.tres" id="32_renew_rifle"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_rocket.tres" id="33_renew_rocket"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_tanker.tres" id="34_renew_tanker"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_airfield.tres" id="40_fossil_airfield"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_bomber.tres" id="41_fossil_bomber"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_fighter.tres" id="42_fossil_fighter"]
+[ext_resource type="Resource" path="res://data/dev/arena/air/units/fossil_aa.tres" id="43_fossil_aa"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_engineering.tres" id="44_fossil_engineering"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_space.tres" id="45_fossil_space"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_transport.tres" id="46_fossil_transport"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/fossil_drone.tres" id="47_fossil_drone"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_airfield.tres" id="50_renew_airfield"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_bomber.tres" id="51_renew_bomber"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_fighter.tres" id="52_renew_fighter"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_aa.tres" id="53_renew_aa"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_engineering.tres" id="54_renew_engineering"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_space.tres" id="55_renew_space"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_transport.tres" id="56_renew_transport"]
+[ext_resource type="Resource" path="res://data/dev/arena/units/renew_drone.tres" id="57_renew_drone"]
+
+; perf_ai_4b (plan row P304, ADR 0038 section 7): the AI arena of Phase 4b. It plays perf_ai's layout (the base arena's
+; map, rules, factions and the mirror bases on frozen defs) with each side's Phase 4b rows at tick 0, so the ARMY slot's new
+; passes run from the first think: a Flight Yard (Glide Deck), a Burst Stack (Sky Needle for the Lumen Accord), an
+; Engineering Centre, a Space Centre, two more Power Plants for them, 2 bombers, 2 fighters, 2 transports and 4 drone
+; squads. The ten mobile rows come off the light tanks (4) and the rifle squads (6), which keeps each side at the rules'
+; 75-unit cap. All on frozen copies of the Phase 4b defs in data/dev/arena/ (2026-11-15, main a2204d2f); the Derrick League's
+; aircraft, Flight Yard, Burst Stack and rifle and rocket squads are perf_air's own (data/dev/arena/air/ and units/), the
+; rest P304's. The Lumen Accord's rifle and rocket squads are the base arena's, so they do not shoot aircraft (the shipped
+; weapons' layer masks are in perf_air's copies only). No orders, no golden pair: the hash is printed, not pinned. The Perf AI
+; route plays it with the frozen AI defs of data/dev/arena/ai_4b/.
+
+[sub_resource type="Resource" id="Spawn_p1_hq_0"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("9_headquarters")
+count = 1
+origin_tile = Vector2i(1, 6)
+
+[sub_resource type="Resource" id="Spawn_p1_power_1"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_power_plant")
+count = 2
+origin_tile = Vector2i(5, 6)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_radar_2"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("11_fossil_radar")
+count = 1
+origin_tile = Vector2i(10, 6)
+
+[sub_resource type="Resource" id="Spawn_p1_strike_3"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("12_fossil_strike")
+count = 1
+origin_tile = Vector2i(1, 10)
+charge_elapsed_ticks = 4500
+
+[sub_resource type="Resource" id="Spawn_p1_refinery_4"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("13_refinery")
+count = 1
+origin_tile = Vector2i(5, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_barracks_5"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("14_barracks")
+count = 1
+origin_tile = Vector2i(9, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_factory_6"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("15_vehicle_factory")
+count = 1
+origin_tile = Vector2i(11, 10)
+
+[sub_resource type="Resource" id="Spawn_p1_power_7"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_power_plant")
+count = 2
+origin_tile = Vector2i(5, 17)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_defence_8"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("16_defence_turret")
+count = 2
+origin_tile = Vector2i(12, 9)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_defence_9"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("16_defence_turret")
+count = 2
+origin_tile = Vector2i(12, 15)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_light"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("17_light_tank")
+count = 20
+origin_tile = Vector2i(20, 7)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_heavy"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("18_heavy_tank")
+count = 6
+origin_tile = Vector2i(20, 15)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rifle"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("19_rifle_squad")
+count = 18
+origin_tile = Vector2i(17, 8)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_rocket"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("20_rocket_squad")
+count = 17
+origin_tile = Vector2i(15, 8)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p1_tanker"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("21_harvester")
+count = 4
+origin_tile = Vector2i(5, 14)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_hq_0"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("22_renew_hq")
+count = 1
+origin_tile = Vector2i(50, 6)
+
+[sub_resource type="Resource" id="Spawn_p2_power_1"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("23_renew_power")
+count = 2
+origin_tile = Vector2i(45, 6)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_radar_2"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("24_renew_radar")
+count = 1
+origin_tile = Vector2i(42, 6)
+
+[sub_resource type="Resource" id="Spawn_p2_strike_3"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("25_renew_strike")
+count = 1
+origin_tile = Vector2i(50, 10)
+charge_elapsed_ticks = 4500
+
+[sub_resource type="Resource" id="Spawn_p2_refinery_4"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("26_renew_refinery")
+count = 1
+origin_tile = Vector2i(46, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_barracks_5"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("27_renew_barracks")
+count = 1
+origin_tile = Vector2i(43, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_factory_6"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("28_renew_factory")
+count = 1
+origin_tile = Vector2i(40, 10)
+
+[sub_resource type="Resource" id="Spawn_p2_power_7"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("23_renew_power")
+count = 2
+origin_tile = Vector2i(45, 17)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_defence_8"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("29_renew_defence")
+count = 2
+origin_tile = Vector2i(40, 9)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_defence_9"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("29_renew_defence")
+count = 2
+origin_tile = Vector2i(40, 15)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_light"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("30_renew_scout")
+count = 20
+origin_tile = Vector2i(31, 7)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_heavy"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("31_renew_tank")
+count = 6
+origin_tile = Vector2i(31, 15)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rifle"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("32_renew_rifle")
+count = 18
+origin_tile = Vector2i(34, 8)
+columns = 3
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_rocket"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("33_renew_rocket")
+count = 17
+origin_tile = Vector2i(37, 8)
+columns = 2
+jitter = 300
+
+[sub_resource type="Resource" id="Spawn_p2_tanker"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("34_renew_tanker")
+count = 4
+origin_tile = Vector2i(47, 14)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_space_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("45_fossil_space")
+count = 1
+origin_tile = Vector2i(1, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p1_engineering_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("44_fossil_engineering")
+count = 1
+origin_tile = Vector2i(5, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p1_airfield_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("40_fossil_airfield")
+count = 1
+origin_tile = Vector2i(9, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p1_aa_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("43_fossil_aa")
+count = 2
+origin_tile = Vector2i(14, 2)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_power_n_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("10_power_plant")
+count = 2
+origin_tile = Vector2i(17, 1)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_bomber_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("41_fossil_bomber")
+count = 2
+origin_tile = Vector2i(19, 4)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_fighter_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("42_fossil_fighter")
+count = 2
+origin_tile = Vector2i(21, 4)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_transport_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("46_fossil_transport")
+count = 2
+origin_tile = Vector2i(14, 19)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_drone_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("47_fossil_drone")
+count = 4
+origin_tile = Vector2i(14, 21)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_space_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("55_renew_space")
+count = 1
+origin_tile = Vector2i(50, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p2_engineering_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("54_renew_engineering")
+count = 1
+origin_tile = Vector2i(47, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p2_airfield_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("50_renew_airfield")
+count = 1
+origin_tile = Vector2i(42, 1)
+columns = 1
+
+[sub_resource type="Resource" id="Spawn_p2_aa_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("53_renew_aa")
+count = 2
+origin_tile = Vector2i(38, 2)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_power_n_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("23_renew_power")
+count = 2
+origin_tile = Vector2i(33, 1)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_bomber_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("51_renew_bomber")
+count = 2
+origin_tile = Vector2i(33, 4)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_fighter_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("52_renew_fighter")
+count = 2
+origin_tile = Vector2i(31, 4)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_transport_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("56_renew_transport")
+count = 2
+origin_tile = Vector2i(38, 19)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_drone_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("57_renew_drone")
+count = 4
+origin_tile = Vector2i(38, 21)
+columns = 2
+
+[resource]
+script = ExtResource("1_scenario")
+map_size_tiles = Vector2i(54, 24)
+camera_start_tile = Vector2i(27, 12)
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq_0"), SubResource("Spawn_p1_power_1"), SubResource("Spawn_p1_radar_2"), SubResource("Spawn_p1_strike_3"), SubResource("Spawn_p1_refinery_4"), SubResource("Spawn_p1_barracks_5"), SubResource("Spawn_p1_factory_6"), SubResource("Spawn_p1_power_7"), SubResource("Spawn_p1_defence_8"), SubResource("Spawn_p1_defence_9"), SubResource("Spawn_p1_light"), SubResource("Spawn_p1_heavy"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_tanker"), SubResource("Spawn_p1_space_4b"), SubResource("Spawn_p1_engineering_4b"), SubResource("Spawn_p1_airfield_4b"), SubResource("Spawn_p1_aa_4b"), SubResource("Spawn_p1_power_n_4b"), SubResource("Spawn_p1_bomber_4b"), SubResource("Spawn_p1_fighter_4b"), SubResource("Spawn_p1_transport_4b"), SubResource("Spawn_p1_drone_4b"), SubResource("Spawn_p2_hq_0"), SubResource("Spawn_p2_power_1"), SubResource("Spawn_p2_radar_2"), SubResource("Spawn_p2_strike_3"), SubResource("Spawn_p2_refinery_4"), SubResource("Spawn_p2_barracks_5"), SubResource("Spawn_p2_factory_6"), SubResource("Spawn_p2_power_7"), SubResource("Spawn_p2_defence_8"), SubResource("Spawn_p2_defence_9"), SubResource("Spawn_p2_light"), SubResource("Spawn_p2_heavy"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_tanker"), SubResource("Spawn_p2_space_4b"), SubResource("Spawn_p2_engineering_4b"), SubResource("Spawn_p2_airfield_4b"), SubResource("Spawn_p2_aa_4b"), SubResource("Spawn_p2_power_n_4b"), SubResource("Spawn_p2_bomber_4b"), SubResource("Spawn_p2_fighter_4b"), SubResource("Spawn_p2_transport_4b"), SubResource("Spawn_p2_drone_4b")])
+map = ExtResource("5_map")
+rules = ExtResource("6_rules")
+player_count = 2
+factions = Array[ExtResource("4_faction_script")]([null, ExtResource("7_fossil"), ExtResource("8_renew")])

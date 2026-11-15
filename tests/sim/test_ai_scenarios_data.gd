@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## the shipped defs. Data only: nothing here pins a hash, and no rule number is a literal.
 
 const PERF_AI: String = "res://data/scenarios/perf_ai.tres"
+const PERF_AI_4B: String = "res://data/scenarios/perf_ai_4b.tres"
 const PERF_BASES: String = "res://data/scenarios/perf_bases.tres"
 const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const FOSSIL_MIRROR: String = "res://data/scenarios/skirmish_kestrel_flats_fossil_mirror.tres"
@@ -39,6 +40,34 @@ func test_perf_ai_loads_with_every_footprint_on_the_map() -> void:
 	)
 	assert_int(world.spawn_refused).is_equal(0)
 	assert_int(world.max_rows).is_greater(0)
+
+
+## Plan row P304: `perf_ai_4b` is `perf_ai`'s arena (map, rules, factions, size, no orders) with
+## Phase 4b's rows added, so the base spawns keep their places and every footprint fits.
+func test_perf_ai_4b_is_the_base_arena_of_perf_ai_with_phase_4b_rows_added() -> void:
+	var four: ScenarioDef = load(PERF_AI_4B) as ScenarioDef
+	var ai: ScenarioDef = load(PERF_AI) as ScenarioDef
+	assert_object(four.map).is_same(ai.map)
+	assert_object(four.rules).is_same(ai.rules)
+	assert_that(four.map_size_tiles).is_equal(ai.map_size_tiles)
+	assert_that(four.camera_start_tile).is_equal(ai.camera_start_tile)
+	assert_int(four.player_count).is_equal(ai.player_count)
+	assert_array(four.orders).is_empty()
+	assert_int(four.factions.size()).is_equal(ai.factions.size())
+	for i: int in four.factions.size():
+		assert_object(four.factions[i]).is_same(ai.factions[i])
+	# Every building and the base arena's tanks, heavies and tankers keep their spawn.
+	for owner: int in [1, 2]:
+		for kind: String in ["headquarters", "hq", "refinery", "barracks", "factory"]:
+			assert_int(_count_of(four, owner, kind)).override_failure_message(kind).is_equal(
+				_count_of(ai, owner, kind)
+			)
+	assert_int(four.spawns.size()).is_greater(ai.spawns.size())
+	var world: World = World.from_scenario(four, DetRandom.create(SEED, DetRandom.STREAM_SIM))
+	assert_int(world.spawn_refused).is_equal(0)
+	# 75 mobile rows and 21 buildings for each side, inside the rules' row budget.
+	assert_int(world.unit_count()).is_equal(2 * (75 + 21))
+	assert_int(world.unit_count()).is_less_equal(world.max_rows)
 
 
 func test_the_fossil_mirror_is_the_skirmish_with_player_two_swapped_to_fossil() -> void:
@@ -90,6 +119,15 @@ func _assert_mirror(path: String, faction_one: StringName, faction_two: StringNa
 			assert_object(made.unit).is_same(base.unit)
 	# A mirror: both sides start with the same blocks of the same units, in the same order.
 	assert_array(_type_ids(mirror, 2)).override_failure_message(path).is_equal(_type_ids(mirror, 1))
+
+
+## The units that `owner` starts with whose type id ends in `suffix` (a spawn's count summed).
+func _count_of(scenario: ScenarioDef, owner: int, suffix: String) -> int:
+	var total: int = 0
+	for spawn: SpawnDef in scenario.spawns:
+		if spawn.owner == owner and String(spawn.unit.type_id).ends_with(suffix):
+			total += spawn.count
+	return total
 
 
 func _type_ids(scenario: ScenarioDef, owner: int) -> Array[String]:
