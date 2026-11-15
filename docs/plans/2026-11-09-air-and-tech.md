@@ -194,7 +194,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P243 | GD | View: `AirLayer` z 20, shadows z 2, `fly_px`, bob, death fall, enemy flyers only where seen, page 2; draw-call guard +2. Split trigger (over ~400): P243b takes the bob and the death fall | 350 | P237, P242 |
 | P307 | TUX | (2026-11-14, P26bx; added by the lead) Split `UnitLayer.gd` (1000 lines, the gdlint limit) before P244: the picking side moves to the static `UnitPick.gd`, `UnitLayer` delegates | 110 | P243 |
 | P244 | TUX | Touch: raised picking (a radius of at least 24 dp round the lifted centre), aircraft over ground units in the pick order with the box and double-tap fallback for a unit beneath, an unhittable enemy tap selects (fix 1, 2026-11-09: it does nothing, a short shake, the selection kept; a mixed selection attacks with the rows that can hit; the flyer wins only within one pick rank), the "Home" button (REPAIR) in the command bar, the bomber's attack ring, the Flight tab in the drawer; six sizes. Split trigger (over ~400): P244b takes the Flight tab. (2026-11-14, P26bx) "The bomber's attack ring" is the bomber's own selection ring (ADR 0036 §15); the rest of the as-built rules are in the plan's P26bx note below | 350 | P243 (2026-11-09: the skill text is accepted and applied, Michael's yes); P307 (2026-11-14, P26bx) |
-| P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow). (2026-11-13, P26bw) Also, from P242: the fighters' and bombers' roster entries and item cards, the HOW_TO_PLAY Units and Orders rows (Teach: go home, reload), and the rewrite of HOW_TO_PLAY's rupture row (it hits ground rows only). (2026-11-15, P26bz) It merges right after P245b, in the same wave, so the Flight tab is never empty on `main`; page 2 cost about 4x the estimate (the plan's P26bz note) | art | P237; P243 (2026-11-12, P26br: its `page_of` re-key first); P242 (2026-11-13, P26bw) |
+| P245 | ART | Aircraft models: fighter and bomber, both factions (16 directions, body and shadow). (2026-11-13, P26bw) Also, from P242: the fighters' and bombers' roster entries and item cards, the HOW_TO_PLAY Units and Orders rows (Teach: go home, reload), and the rewrite of HOW_TO_PLAY's rupture row (it hits ground rows only). (2026-11-15, P26bz) It merges right after P245b, in the same wave, so the Flight tab is never empty on `main`; its aircraft cost page 2 about 4x their estimate (the plan's P26bz note) | art | P237; P243 (2026-11-12, P26br: its `page_of` re-key first); P242 (2026-11-13, P26bw) |
 | P245b | ART | Airfield models, both factions (pads, damage stages). (2026-11-13, P26bw) Also, from P242: the airfields' roster entries and item cards and the HOW_TO_PLAY Buildings rows. It may land before or beside the trim rows P305 and P306. (2026-11-15, P26bz) As built, with its new smoke hashes: the plan's P26bz note below | art | P237; P242 (2026-11-13, P26bw) |
 | P246 | GD | Upgrades sim: research items from `UpgradeDef`, research completion in `Production`, `mod_*` tables, `Combat.damage` with its readers and the rewritten range note in `Combat.gd`'s header (`:76-79`), `mod_ammo` in `Air.run`, own `upgrades` in PlayerView. Split trigger (over ~400): P246b takes the readers (`Combat`, `Air.run`) | 350 | P241; P246a (2026-11-13, P26bv) |
 | P246a | GD | (2026-11-13, P26bv; added by the lead) `World.gd` split: function bodies move to the `World*` helpers behind one-line delegates; no behaviour, list, hash or name change | 0 (move) | - |
@@ -219,7 +219,7 @@ Every player-facing row adds its HOW_TO_PLAY rows.
 | P263b | GD | UNLOAD (6), unloading in ECONOMY (ring search, `insert_row` refusal keeps the squad aboard, `UNLOADED` event), the carrier's death | 250 | P263 |
 | P264 | GD | Transport and drone squad data, both factions (drone squads `low_flying`, INFANTRY tab, requires the airfield); HOW_TO_PLAY rows (Teach: load and unload). (2026-11-13, P26bw) Data only, the P239 pattern: the roster entries, the item cards and the HOW_TO_PLAY rows (Teach: load and unload) move to P266 | 120 | P263b, P230; P242 (2026-11-13, P26bw) |
 | P265 | TUX | The "Board" button and its aim (tap an own transport = LOAD), the "Unload" button and its aim (chevron, check mark, X), passenger pips on the chip; `PlayerController` skips DIED flag 2 for groups 1-3 and drops it only from the live selection, with a test that a group refills after the unload; six sizes. Split trigger (over ~400): P265b takes the controller change. (2026-11-14, P26bx) P265 and P265b are held for P244 and an integration change (the plan's P26bx note below). (2026-11-15, P26by) They landed after P244 as the integration branches (the plan's P26by note below) | 350 | P264 (2026-11-09: the skill text is accepted and applied, Michael's yes); P244 (2026-11-14, P26bx) |
-| P266 | ART | Transport models (16 directions) and drone squads (8 directions), both factions. (2026-11-13, P26bw) Also, from P264: the transports' and drone squads' roster entries and item cards and the HOW_TO_PLAY rows (Teach: load and unload) | art | P237; P264, P243 (2026-11-13, P26bw): the data first, and the transports' hulls go on page 2 by P243's `page_of`; (2026-11-15, P26bz) page 2's budget first (the plan's P26bz note) |
+| P266 | ART | Transport models (16 directions) and drone squads (8 directions), both factions. (2026-11-13, P26bw) Also, from P264: the transports' and drone squads' roster entries and item cards and the HOW_TO_PLAY rows (Teach: load and unload) | art | P237; P264, P243 (2026-11-13, P26bw): the data first, and the transports' hulls go on page 2 by P243's `page_of`; (2026-11-15, P26bz) page 2's per-row allocation first (the plan's P26bz note) |
 | P267 | AI | Drops (Normal and Hard: load `drop_squads`, unload beside a seen or ghost refinery, away from seen anti-air), drone squads harass across cliffs | 300 | P264; P266 (2026-11-13, P26bw) |
 | P268 | LEAD | 1.2 harness types (20), gate run, phone check, docs. (2026-11-09) It is the **Phase 4b gate** with ADR 0037's P297: harness types 26, the ADR 0031 gate run on held-out seeds, Michael's phone check, the ROADMAP gate box | docs | P265-P267; ADR 0037's P296, P299 and P300 (P297 joins this run) |
 
@@ -859,14 +859,18 @@ the P265 integration):
 
 Note (2026-11-15, P26bz, the lead; wave 12, the first `perf_ai_4b` cards and the wave-12 reviews of
 P245b, P245, P248 and P290):
-- **Wave 12, the code PRs in merge order:**
-  - Phase 6: P509 (the `balance.yml` paths), P401 (the AdService stub), P420 (the ad-ID guard),
-    P410, P410b and P410c (the AdMob plugin, the AAB preset, the AAB export).
-  - Phase 5: P501 (AudioService), then P507 (sfxgen). P501 is about 505 production lines and stays
-    one PR (the lead's decision): it is one concern with two review rounds, and a split would need
-    a stub pool.
-  - Phase 4b: P290, P245b, P245, P248.
-  - Docs: P400b, P500 and this row.
+- **Wave 12, in merge order (the lead):**
+  1. Docs first: P400b and P500 (with P500b). They carry the ADRs and plan rows that the code rows
+     cite: the Phase 5 rows P501, P507 and P509 depend on P500b, and P400b brings the Phase 6
+     notes for the ad and AAB rows.
+  2. Phase 5 and Phase 6 code: P509 (Phase 5: the `balance.yml` paths, before the first Phase 5
+     data merge); then Phase 6: P401 (the AdService stub), P420 (the ad-ID guard), P410, P410b
+     and P410c (the AdMob plugin, the AAB preset, the AAB export; P410c split from P410 at review,
+     Phase 6 plan); then Phase 5: P501 (AudioService) and P507 (sfxgen). P501 is about 505
+     production lines and stays one PR (the lead's decision): it is one concern with two review
+     rounds, and a split would need a stub pool.
+  3. Phase 4b: P290, P245b, P245, P248.
+  4. This row last.
 - **The `perf_ai_4b` baseline and its triggers (Michael, 2026-11-15).** Three cards on `main`
   4456e53b, Pixel 9a, the first on the 4b arena:
 
@@ -878,10 +882,16 @@ P245b, P245, P248 and P290):
 
   Every card printed the hash `75530630f4b19f95`, `gate_pass` true and 0 hitches. The triggers are
   `job_p95_ms` 11.5 ms (the card's `sim_p95_ms` row), `job_minus_step_p95_cp_ms` 5.0 ms and
-  `view_p95_ms` 11.0 ms. When 2 of the 3 cards of a wave exceed a trigger, the lead stops and finds
-  the cause before the next wave merges. They replace the old arena's triggers (`sim_p95_ms` 11 ms,
-  cp 5 ms; the P26bv and P26by notes) and are recorded in ADR 0038 §7. The P26by watch item on
-  `view_p95_ms` now reads against its trigger.
+  `view_p95_ms` 11.0 ms. When a trigger is exceeded on 2 of the 3 cards of a wave, the lead stops
+  and finds the cause before the next wave merges. They replace the old arena's triggers
+  (`sim_p95_ms` 11 ms, cp 5 ms; the P26bv and P26by notes) and are recorded in ADR 0038 §7. The
+  P26by watch item on `view_p95_ms` now reads against its trigger.
+  - **The baseline predates P245.** From wave 12 on, both perf arenas (`perf_air` and
+    `perf_ai_4b`) bake and draw the real aircraft, no longer `Marker` ellipses (P245's STYLE.md).
+    So the wave-12 cards may move `view_p95_ms`, page-2 rows and bake time by design, and the
+    printed `perf_ai_4b` hash may change with the roster growth. The wave-12 cards are the first
+    with aircraft: a trigger hit there is reported to Michael as a finding, not taken for a
+    regression.
 - **Perf air on `main` 4456e53b** (one card): the golden `b56fa7d1c3f91459` matched at all 6
   checkpoints and `gate_pass` is true (false at wave 10). `heavy_frames` is 914 (0 before), so
   P253b works. `drawn_rigs_max` is 150, `job_p95_ms` 8.14, `view_p95_ms` 9.37, 0 hitches.
@@ -897,22 +907,26 @@ P245b, P245, P248 and P290):
     | after P245 (a7b6ee51) | `7bf5ac938a35e1aa` | `943c5cd5adfbd716` | `1f2a4405168f4ffa` |
   - P245 merges right after P245b, in the same wave, so the Flight tab is never empty on `main`
     (the lead's decision).
-  - **Watch item: page 2.** P245's aircraft cost about 4 times ADR 0036 §15's estimate: +472 rows
-    on the cross page against about 115, because the atlas stores the 2x art. Page 2 is now 1,986,
-    1,094 and 1,198 of 3,584 rows (cross, Derrick and Lumen mirrors). The forecast at the end of the
-    plan is about 3,200-3,300, since P266 will cost alike. Page 2 gets a budget before P266 starts
-    (ADR 0036 §15's P26bz note).
+  - **Watch item: page 2.** P245's aircraft cost page 2 about 4 times their estimate (1,986 of
+    3,584 rows on the cross page; the cause and the forecast are in ADR 0036 §15's P26bz note).
+    Before P266 starts, the lead sets page 2's per-row allocation within its 3,584 rows.
+    - P266 (transports and drone squads, every frame on page 2) waits for the allocation.
+    - P204 (per-player unit shadows) and the shadows of P249, P279, P280, P291 and P292 are in
+      the forecast. They do not wait; each re-pins `TODAY2_*` and reports its page-2 rows against
+      its allocation in its PR.
 - **P248.** Michael's two decisions are in its row above. P248 itself carries ADR 0025 §5's note
   and the skill text.
-- **P290.** Its starting values are in the GDD's Ground support section (a note of this date).
-- **ROADMAP:** no box is ticked. No wave-12 row has merged yet, and the Performance box also needs
-  `perf_bases` with mines and repairers and the draw calls within the forecast.
+- **P290.** Its starting values are in the GDD's Ground support section (a note of this date;
+  recorded now as starting values, the balance rows update them).
+- **ROADMAP:** no box is ticked. P256 ticks the Phase 4b boxes it meets after Michael's phone check
+  (its row), and the Performance box also needs `perf_bases` with mines and repairers and the draw
+  calls within the forecast.
 - **Lead follow-ups (NITs, not rows; they continue the P26by list):**
-  - P245b, round 2 (line numbers on its branch): the hidden steel beam (STYLE.md:1350); the anchor
-    at STYLE.md:1354 reads 15 and should read 13; the Flight Yard ruin's dark inside; the Glide
-    Deck's charred lids; `renew_airfield.tres:58` puts two poses on one line; the pad test checks
-    only the centres; thin margins (overlap 0.842 against 0.85, team share 8.75 % against
-    8 %).
+  - P245b, round 2 (line numbers on its branch): the hidden steel beam
+    (`assets/art/STYLE.md:1350`); the anchor at `assets/art/STYLE.md:1354` reads 15 and should read
+    13; the Flight Yard ruin's dark inside; the Glide Deck's charred lids;
+    `assets/art/models/renew/renew_airfield.tres:58` puts two poses on one line; the pad test checks
+    only the centres; thin margins (overlap 0.842 against 0.85, team share 8.75 % against 8 %).
   - P245, A-N2: the Sunfall's team share is above 12 % in 9 of its 16 directions.
   - P248, lens A, not folded: the Research tab is empty in the dev arena; the double-tap buzz; the
     unaffordable stripes on an item already paid for; P249 must not repeat P248's "Tap an upgrade"

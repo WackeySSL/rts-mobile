@@ -302,10 +302,10 @@ milli-tiles.
 
 | Unit | Cost | HP | Armour | Moves | Speed | Build | Sight | Other |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bunk Wagon | 700 | 700 | heavy | tracked | 67 | 300 | 6 000 | 4 seats, squads keep 50 % on its death |
-| Linecar | 500 | 320 | light | wheeled | 133 | 225 | 7 000 | 2 seats, squads lost (0 %) |
-| Shot Truck | 500 | 450 | light | wheeled | 93 | 300 | 6 000 | shot charge 60 credits; finds mines at 3 000 |
-| Seeder | 450 | 250 | light | wheeled | 147 | 225 | 7 000 | pulse seed 50 credits; finds mines at 3 000 |
+| Bunk Wagon | 700 | 700 | heavy | tracked | 67 (1.0 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | 4 seats, squads keep 50 % on its death |
+| Linecar | 500 | 320 | light | wheeled | 133 (2.0 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | 2 seats, squads lost (0 %) |
+| Shot Truck | 500 | 450 | light | wheeled | 93 (1.4 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | shot charge 60 credits; finds mines at 3 000 (3 tiles) |
+| Seeder | 450 | 250 | light | wheeled | 147 (2.2 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | pulse seed 50 credits; finds mines at 3 000 (3 tiles) |
 
 - **The mines** (percent of damage against infantry, light, heavy, building): shot charge 160
   damage, 50/120/120/100 %, blast 1 000; pulse seed 100 damage, 150/80/50/100 %, blast 1 500.
