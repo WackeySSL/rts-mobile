@@ -46,6 +46,10 @@ const SAVABLE_TYPES: Array[int] = [
 ]
 const NAME_FORBIDDEN: String = '=[];"\n\r'
 
+## A test seam: where the error messages go instead of push_error (unset: push_error). A test
+## that expects an error reads it here, so the log verify.sh scans has no ERROR line.
+var error_sink: Callable = Callable()
+
 var _path_override: String = ""
 var _sections: Dictionary = {}  # String -> Dictionary
 var _unwritable: Dictionary = {}  # String -> true: kept in memory, left out of the file
@@ -131,7 +135,7 @@ func set_section(section: StringName, values: Dictionary) -> bool:
 		if problem == "":
 			problem = _value_problem(values[key], 0)
 	if problem != "":
-		push_error("SaveService: section '%s' refused: %s" % [section_name, problem])
+		_report_error("SaveService: section '%s' refused: %s" % [section_name, problem])
 		return false
 	_sections[section_name] = values.duplicate(true)
 	_unwritable.erase(section_name)
@@ -154,9 +158,11 @@ func flush() -> Error:
 		var offenders: Array[String] = _unwritable_sections()
 		for offender: String in offenders:
 			_unwritable[offender] = true
-			push_error("SaveService: section '%s' does not survive the file; not saved" % offender)
+			_report_error(
+				"SaveService: section '%s' does not survive the file; not saved" % offender
+			)
 		if offenders.is_empty():
-			push_error("SaveService: the written file failed its read-back")
+			_report_error("SaveService: the written file failed its read-back")
 		else:
 			err = _write()
 	if err == OK:
@@ -165,12 +171,19 @@ func flush() -> Error:
 	return err
 
 
+func _report_error(text: String) -> void:
+	if error_sink.is_valid():
+		error_sink.call(text)
+	else:
+		push_error(text)
+
+
 func _drain_before_switch() -> void:
 	if not _dirty or _read_only:
 		return
 	var err: Error = flush()
 	if err != OK:
-		push_error("SaveService: changes for %s were not saved (error %d)" % [path(), err])
+		_report_error("SaveService: changes for %s were not saved (error %d)" % [path(), err])
 
 
 func _name_problem(label: String) -> String:
@@ -339,7 +352,7 @@ func _load() -> void:
 		_dirty = true  # Rewritten with its version at the next flush.
 	_take(config)
 	if from_tmp and not _read_only and _install(tmp) != OK:
-		push_error("SaveService: could not finish the write of %s" % tmp)
+		_report_error("SaveService: could not finish the write of %s" % tmp)
 
 
 ## Ordered steps, one per version: step n turns a version n file into n + 1.
@@ -349,7 +362,7 @@ func _migrate(config: ConfigFile, from: int) -> void:
 			0:
 				pass  # Version 0 had no version key; its sections are already ours.
 			_:
-				push_error("SaveService: no migration from version %d" % step)
+				_report_error("SaveService: no migration from version %d" % step)
 	config.set_value(META, KEY_VERSION, VERSION)
 
 

@@ -4,19 +4,10 @@ extends GdUnitTestSuite
 
 const SCRIPT: String = "res://game/meta/save_service.gd"
 
-var _dir: String = ""
-
-
 ## The service whose first write fails its read-back.
-class FlakyService:
-	extends "res://game/meta/save_service.gd"
-	var fail_once: bool = true
+const FLAKY: GDScript = preload("res://tests/support/flaky_save_service.gd")
 
-	func _write() -> Error:
-		if fail_once:
-			fail_once = false
-			return ERR_FILE_CORRUPT
-		return super()
+var _dir: String = ""
 
 
 func before_test() -> void:
@@ -103,13 +94,12 @@ func test_unsaveable_values_are_refused_and_later_saves_still_work() -> void:
 		{"": 1},
 		{1: 1},
 	]
+	var messages: Array[String] = []
+	service.set("error_sink", func(text: String) -> void: messages.append(text))
 	for values: Dictionary in refused:
-		var accepted: Array[bool] = [true]
-		await (
-			assert_error(func() -> void: accepted[0] = service.call("set_section", &"s", values))
-			. is_push_error(_refusal(values))
-		)
-		assert_bool(accepted[0]).is_false()
+		messages.clear()
+		assert_bool(service.call("set_section", &"s", values)).is_false()
+		assert_array(messages).is_equal([_refusal(values)])
 	assert_dict(service.call("get_section", &"s")).is_empty()
 	var good: Dictionary = {
 		"b": true,
@@ -152,19 +142,19 @@ func _refusal(values: Dictionary) -> String:
 
 
 func test_a_failed_read_back_drops_only_the_offending_section() -> void:
-	var service: Node = auto_free(FlakyService.new())
+	var service: Node = auto_free(FLAKY.new())
+	var messages: Array[String] = []
+	service.set("error_sink", func(text: String) -> void: messages.append(text))
 	service.call("set_path_override", _main())
 	service.call("set_section", &"good", {"k": 1})
 	# Bypass the validation: an Object parses back as another value, and the first read-back
 	# (forced to fail here) sends the service looking for the section that does not round-trip.
 	(service.get("_sections") as Dictionary)["bad"] = {"k": RefCounted.new()}
 	service.set("_dirty", true)
-	var result: Array[int] = [-1]
-	await (
-		assert_error(func() -> void: result[0] = service.call("flush"))
-		. is_push_error("SaveService: section 'bad' does not survive the file; not saved")
+	assert_int(service.call("flush")).is_equal(OK)
+	assert_array(messages).is_equal(
+		["SaveService: section 'bad' does not survive the file; not saved"]
 	)
-	assert_int(result[0]).is_equal(OK)
 	var again: Node = _service()
 	assert_dict(again.call("get_section", &"good")).is_equal({"k": 1})
 	assert_dict(again.call("get_section", &"bad")).is_empty()
