@@ -141,9 +141,7 @@ func test_a_re_settled_banner_is_shown_on_the_backend_only_once() -> void:
 	assert_int(fake.calls.count("hide_banner")).is_equal(1)
 
 
-func test_a_hide_and_a_show_in_one_frame_make_no_backend_banner_call(
-	_do_skip := true, _skip_reason := "Pending P430: it defers the last hide_banner to idle"
-) -> void:
+func test_a_hide_and_a_show_in_one_frame_make_no_backend_banner_call() -> void:
 	var service: Node = auto_free(_h.make())
 	var fake: FakeAdBackend = AdServiceHarness.fake(service)
 	service.show_banner()
