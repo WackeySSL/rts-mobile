@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Board and Unload orders in the main scene at the six sizes of ScreenSizes.ALL (plan P265,
 ## ADR 0036 section 12, `touch-ui-rules`): Board shows for squads while the player has a carrier,
-## Unload for a loaded one, each at least 48 dp; a tap on
+## Unload for a loaded one, each at least 48 dp; a carrier's chip shows its seats as pips; a tap on
 ## Board, a tap on an own carrier and the check mark send one LOAD; a tap on Unload, a tap on the
 ## ground and the check mark one UNLOAD; the check mark and the X stand beside the aimed point, at
 ## least 64 dp, inside the screen and clear of the bar. Rows (player 1 the local one): rifle squads
@@ -20,6 +20,7 @@ const ENEMY_HQ: int = 5
 const ENEMY_SQUAD: int = 6  ## Stands on the carrier's tile, so its pick disc covers the carrier.
 const NEAR_SQUAD: int = 7  ## An own squad on the carrier's tile.
 const OWN_HQ: int = 8
+const CARRIER_B: int = 9  ## A second transport.
 const SPAWNS: Array[Array] = [
 	[1, "rifle_squad", 14, 14],
 	[1, "rifle_squad", 15, 14],
@@ -29,6 +30,7 @@ const SPAWNS: Array[Array] = [
 	[2, "renew_rifle", 10, 20],
 	[1, "rifle_squad", 10, 20],
 	[1, "headquarters", 3, 3],
+	[1, "fossil_transport", 12, 20],
 ]
 const GROUND: Vector2i = Vector2i(20000, 10000)  ## Milli-tiles, a tile no row stands near.
 
@@ -102,6 +104,41 @@ func test_board_stays_hidden_while_the_player_has_no_carrier() -> void:
 	)
 	await _select([SQUAD_A, SQUAD_B])
 	assert_bool(_order("board").visible).is_false()
+
+
+func test_a_loaded_carriers_chip_shows_its_seats_as_pips() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(size, SPAWNS)
+		var why: String = str(size)
+		await _select([CARRIER])
+		var pips: Control = _bar.find_child("Pips", true, false)
+		var seats: int = _snap().type_carry_slots[_snap().type_index[_snap().index_of(CARRIER)]]
+		assert_int(seats).override_failure_message(why).is_greater(0)
+		assert_bool(pips.visible).override_failure_message(why).is_true()
+		assert_array([pips.seats, pips.aboard]).override_failure_message(why).is_equal([seats, 0])
+		_load(CARRIER, 2)
+		await _select([])
+		await _select([CARRIER])
+		assert_array([pips.seats, pips.aboard]).override_failure_message(why).is_equal([seats, 2])
+		await _select([TANK])
+		assert_bool(pips.visible).override_failure_message(why).is_false()
+
+
+func test_pips_count_the_selected_carriers_own_squads_and_sum_a_fleets_seats() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	var snap: MatchSnapshot = _snap()
+	var seats: int = snap.type_carry_slots[snap.type_index[snap.index_of(CARRIER)]]
+	snap.pass_carrier = PackedInt32Array([CARRIER, CARRIER, CARRIER_B])
+	snap.pass_count = 3
+	for case: Array in [
+		[[CARRIER, CARRIER_B], 2 * seats, 3], [[CARRIER], seats, 2], [[CARRIER_B], seats, 1]
+	]:
+		await _select([])
+		await _select(case[0])
+		var pips: Control = _bar.find_child("Pips", true, false)
+		assert_array([pips.seats, pips.aboard]).override_failure_message(str(case)).is_equal(
+			[case[1], case[2]]
+		)
 
 
 func test_board_then_a_carrier_then_the_check_mark_sends_one_load_and_the_x_none() -> void:
