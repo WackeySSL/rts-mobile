@@ -106,6 +106,37 @@ func test_every_phase_4b_type_is_on_each_side_at_tick_0() -> void:
 			)
 
 
+## Mending and carrying work on the 4b arena: its rules enable them (a rule at 0 is inert), the
+## transports can carry and unload, and the anti-air weapons the arena's spawns shoot with keep the
+## shipped layer masks (ground 1, low flying 2, air 4: rifle 5, rocket 7, needle and Burst Stack 6).
+func test_perf_ai_4b_mends_unloads_and_shoots_at_aircraft_as_shipped() -> void:
+	var four: ScenarioDef = load(PERF_AI_4B) as ScenarioDef
+	var rules: RulesDef = four.rules
+	assert_int(rules.mend_hp).is_greater(0)
+	assert_int(rules.mend_period_ticks).is_greater(0)
+	assert_int(rules.unload_reach_tiles).is_greater(0)
+	assert_int(rules.load_reach_milli).is_greater(0)
+	assert_int(rules.passenger_cap).is_greater(0)
+	var masks: Dictionary[String, int] = {
+		"rifle_squad": 5,
+		"renew_rifle": 5,
+		"rocket_squad": 7,
+		"renew_rocket": 7,
+		"defence_turret": 5,
+		"fossil_aa": 6,
+		"renew_aa": 6,
+		"fossil_fighter": 2,
+		"renew_fighter": 2,
+	}
+	var seen: Dictionary[String, bool] = {}
+	for spawn: SpawnDef in four.spawns:
+		var id: String = String(spawn.unit.type_id)
+		if masks.has(id):
+			seen[id] = true
+			assert_int(spawn.unit.weapon.targets).override_failure_message(id).is_equal(masks[id])
+	assert_int(seen.size()).is_equal(masks.size())
+
+
 func test_the_fossil_mirror_is_the_skirmish_with_player_two_swapped_to_fossil() -> void:
 	_assert_mirror(FOSSIL_MIRROR, &"fossil", &"fossil")
 
