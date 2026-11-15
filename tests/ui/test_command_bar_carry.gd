@@ -174,16 +174,44 @@ func test_an_enemy_under_the_finger_does_not_steal_the_tap_on_the_own_carrier() 
 	assert_int(_bar.shakes).is_equal(0)
 
 
-func test_an_own_squad_closer_than_the_carrier_does_not_steal_the_tap_either() -> void:
+func test_an_own_squad_closer_than_the_carriers_lifted_hull_does_not_steal_the_tap() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
 	await _select([SQUAD_A, SQUAD_B])
 	_tap(_order("board"))
-	var at: Vector2 = _screen_of(NEAR_SQUAD)
-	var pick: PickSnapshot = _pick_snapshot(at)
-	var closest: int = Picker.pick(pick, at, 1, false)
-	assert_int(pick.ids[closest]).is_equal(NEAR_SQUAD)
+	var hull: Vector2 = _screen_of(CARRIER)
+	var pick: PickSnapshot = _pick_snapshot(Vector2.ZERO)
+	var carrier: int = pick.ids.find(CARRIER)
+	var squad: int = pick.ids.find(NEAR_SQUAD)
+	assert_bool(pick.is_flyer(carrier)).is_true()
+	assert_float(pick.lift_px[carrier]).is_greater(0.0)  # The hull stands above its ground point.
+	# A point inside both discs, nearer to the squad's centre than to the hull's.
+	var at: Vector2 = hull.lerp(pick.screen_pos[squad], 0.7)
+	assert_float(at.distance_to(hull)).is_less(pick.radius_px[carrier])
+	assert_float(at.distance_to(pick.screen_pos[squad])).is_less(at.distance_to(hull))
+	assert_float(at.distance_to(pick.screen_pos[squad])).is_less(pick.radius_px[squad])
 	_tap_at(at)
 	assert_int(_aim.carrier_id).is_equal(CARRIER)
+	assert_int(_bar.shakes).is_equal(0)
+
+
+func test_an_enemy_flyer_over_the_carrier_does_not_steal_the_tap() -> void:
+	var spawns: Array[Array] = SPAWNS.duplicate()
+	spawns.append([2, "renew_transport", 10, 20])  # An enemy Skyhauler on the carrier's tile.
+	await _open(ScreenSizes.LANDSCAPE[0], spawns)
+	Rig.see(_snap(), 1, [Vector2i(10, 20), Vector2i(11, 21)])
+	await _select([SQUAD_A, SQUAD_B])
+	_tap(_order("board"))
+	var at: Vector2 = _screen_of(CARRIER)
+	var pick: PickSnapshot = _pick_snapshot(at)
+	var first: int = Picker.pick(pick, at, 1, true)
+	assert_int(pick.owners[first]).is_equal(2)  # The old call picks an enemy aircraft.
+	assert_bool(pick.is_flyer(first)).is_true()
+	_tap_at(at)
+	assert_int(_aim.carrier_id).is_equal(CARRIER)
+	assert_int(_bar.shakes).is_equal(0)
+	# The check mark stands beside the carrier's drawn hull, not its ground point.
+	var anchor: Rect2 = _controls.anchor()
+	assert_bool(anchor.has_point(at)).is_true()
 
 
 func test_unload_refuses_an_own_unit_or_building_and_places_the_point_on_the_ground() -> void:
@@ -289,11 +317,10 @@ func _tap(control: Control) -> void:
 
 ## A map tap through the controller on the picture of row `row` (its lifted centre).
 func _tap_world(row: int) -> void:
-	var units: UnitLayer = _main.get_node("UnitLayer")
 	var pick: PickSnapshot = PickSnapshot.new()
 	var snap: MatchSnapshot = _snap()
 	_camera().centre_on(IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row]))
-	units.fill_pick_snapshot(pick, UiScale.dp(_controller.settings.hit_radius_dp))
+	_controller.fill_pick(pick)  # The lifted hull of the flyer (P244).
 	var gesture: GestureEvent = GestureEvent.new(GestureEvent.Kind.TAP)
 	gesture.position = pick.screen_pos[row]
 	_controller.handle_gesture(gesture)
@@ -309,9 +336,7 @@ func _screen_of(id: int) -> Vector2:
 
 func _pick_snapshot(_at: Vector2) -> PickSnapshot:
 	var pick: PickSnapshot = PickSnapshot.new()
-	(_main.get_node("UnitLayer") as UnitLayer).fill_pick_snapshot(
-		pick, UiScale.dp(_controller.settings.hit_radius_dp)
-	)
+	_controller.fill_pick(pick)
 	return pick
 
 

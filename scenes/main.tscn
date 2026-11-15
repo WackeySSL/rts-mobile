@@ -254,7 +254,7 @@ script = ExtResource("38_ghost_controls")
 placement = NodePath("../../PlacementController")
 clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
 
-[node name="CarryControls" type="Control" parent="Hud" node_paths=PackedStringArray("aim", "camera", "unit_layer", "controller", "clear_of")]
+[node name="CarryControls" type="Control" parent="Hud" node_paths=PackedStringArray("aim", "camera", "controller", "clear_of")]
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -262,7 +262,6 @@ theme = ExtResource("16_theme")
 script = ExtResource("95_carry_controls")
 aim = NodePath("../../CarryAim")
 camera = NodePath("../../Camera")
-unit_layer = NodePath("../../UnitLayer")
 controller = NodePath("../../PlayerController")
 clear_of = [NodePath("../GroupColumn"), NodePath("../CommandBar"), NodePath("../StrikeControls"), NodePath("../BuildButton"), NodePath("../BuildButton/ReadyChip"), NodePath("../BuildSidebar"), NodePath("../EconomyPill"), NodePath("../RadarScope"), NodePath("../RadarMap"), NodePath("../AttackToast"), NodePath("../RevealBadge")]
 
