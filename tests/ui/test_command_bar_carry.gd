@@ -233,21 +233,22 @@ func test_an_own_squad_closer_than_the_carriers_lifted_hull_does_not_steal_the_t
 
 func test_a_closer_own_flyer_that_cannot_take_squads_does_not_steal_the_tap() -> void:
 	var spawns: Array[Array] = SPAWNS.duplicate()
-	spawns.append([1, "fossil_fighter", 10, 21])  # Row 9: an escort a tile off.
+	spawns.append([1, "fossil_fighter", 10, 21])  # The last row: an escort a tile off.
+	var escort_id: int = spawns.size()
 	await _open(ScreenSizes.LANDSCAPE[0], spawns)
 	await _select([SQUAD_A, SQUAD_B])
 	_tap(_order("board"))
 	_screen_of(CARRIER)
 	var pick: PickSnapshot = _pick_snapshot(Vector2.ZERO)
 	var carrier: int = pick.ids.find(CARRIER)
-	var escort: int = pick.ids.find(9)
+	var escort: int = pick.ids.find(escort_id)
 	var at: Vector2 = pick.screen_pos[carrier].lerp(pick.screen_pos[escort], 0.55)
 	assert_float(at.distance_to(pick.screen_pos[carrier])).is_less(pick.radius_px[carrier])
 	assert_float(at.distance_to(pick.screen_pos[escort])).is_less(
 		at.distance_to(pick.screen_pos[carrier])
 	)
 	var plain: int = Picker.pick(pick, at, 1, false)  # The plain own pick takes the escort.
-	assert_int(pick.ids[plain]).is_equal(9)
+	assert_int(pick.ids[plain]).is_equal(escort_id)
 	_tap_at(at)
 	assert_int(_aim.carrier_id).is_equal(CARRIER)
 	assert_int(_bar.shakes).is_equal(0)
