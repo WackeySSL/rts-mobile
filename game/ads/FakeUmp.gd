@@ -1,32 +1,39 @@
 class_name FakeUmp
 extends ConsentBackend
 ## The fake consent backend: editor, tests, web preview and every build without the real UMP
-## plugin (ADR 0039 section 3). Scriptable: consent required or not, obtained or denied, an info
-## update that never answers, a form that never loads or never closes, and offline. With
-## `auto_close` a form closes at once with the scripted answer; without it a placeholder is drawn on
-## `host` and its buttons decide (or `dismiss` is called). Reaches no network and no plugin.
+## plugin (ADR 0039 section 3). It models UMP's status (see ConsentBackend's notes) and is
+## scriptable: consent required or not, accepted or declined, a decline that limits ads or blocks
+## them, an info update that never answers, a form that fails or never loads or never closes, a
+## show that fails, and offline. With `auto_close` a form closes at once with the scripted answer;
+## without it a placeholder is drawn on `host` and its buttons decide (or `dismiss` is called).
+## Reaches no network and no plugin.
 
 ## Scripts for tests.
 var consent_required: bool = false
 ## What a form that closes by itself answers; a placeholder's Accept and Decline override it.
 var obtained: bool = true
+## UMP's behaviour: a decline still ends OBTAINED, so ads (limited) are served. False blocks them.
+var decline_limits_ads: bool = true
 var info_never_answers: bool = false
+var form_load_fails: bool = false
 var form_never_loads: bool = false
 var form_never_closes: bool = false
+var show_fails: bool = false
 var offline: bool = false
-## Fake-only: forms close at once. Set by AdService from `fake_auto_close`.
+## Fake-only: forms close at once. Set by ConsentFlow from `fake_auto_close`.
 var auto_close: bool = true
 ## Fake-only: draw the placeholder on `host`.
 var draw_placeholders: bool = false
 var host: Node = null
 
 var info_updates: int = 0
-## The debug geography the last update was asked for.
+## The debug geography the last update was asked for (it makes the user an EEA user).
 var last_debug_eea: bool = false
 var forms_shown: int = 0
 
 var _info: Step = Step.PENDING
-var _granted: bool = false
+var _status: Status = Status.UNKNOWN
+var _eea_user: bool = false
 var _is_open: bool = false
 var _node: FakeConsentForm = null
 
@@ -36,20 +43,32 @@ func update_info(debug_eea: bool) -> void:
 	last_debug_eea = debug_eea
 	if offline:
 		_info = Step.FAILED
+	elif info_never_answers:
+		_info = Step.PENDING
 	else:
-		_info = Step.PENDING if info_never_answers else Step.DONE
+		answer_info()
+
+
+## Test hook: a pending info update answers now.
+func answer_info() -> void:
+	_info = Step.DONE
+	_eea_user = consent_required or last_debug_eea
+	if not _eea_user:
+		_status = Status.NOT_REQUIRED
+	elif _status != Status.OBTAINED:
+		_status = Status.REQUIRED
 
 
 func info_state() -> Step:
 	return _info
 
 
-func is_form_required() -> bool:
-	return _info == Step.DONE and (consent_required or last_debug_eea)
+func consent_status() -> Status:
+	return _status
 
 
 func form_state() -> Step:
-	if offline:
+	if offline or form_load_fails:
 		return Step.FAILED
 	return Step.PENDING if form_never_loads else Step.DONE
 
@@ -59,11 +78,12 @@ func show_form() -> void:
 
 
 func can_request_ads() -> bool:
-	return _info == Step.DONE and (not is_form_required() or _granted)
+	return _status == Status.NOT_REQUIRED or _status == Status.OBTAINED
 
 
+## Stays true for a returning EEA user even when no form showed this launch.
 func is_privacy_options_required() -> bool:
-	return is_form_required()
+	return _info == Step.DONE and _eea_user
 
 
 func show_privacy_options() -> void:
@@ -75,31 +95,38 @@ func dismiss(accepted: bool) -> void:
 	if not _is_open:
 		return
 	_is_open = false
-	_granted = accepted
-	_clear()
-	form_dismissed.emit()
+	_status = Status.OBTAINED if accepted or decline_limits_ads else Status.REQUIRED
+	_end()
 
 
 ## A Close press on the privacy options form: dismissed, nothing changed.
 func close_unchanged() -> void:
-	dismiss(_granted)
+	if _is_open:
+		_is_open = false
+		_end()
 
 
 func _show(with_close: bool) -> void:
+	if _is_open:
+		return
 	forms_shown += 1
+	if show_fails:
+		form_dismissed.emit()
+		return
 	_is_open = true
 	if form_never_closes:
 		return
 	if auto_close:
 		dismiss(obtained)
-	elif draw_placeholders and host != null and is_instance_valid(host) and host.is_inside_tree():
+	elif draw_placeholders and is_instance_valid(host) and host.is_inside_tree():
 		_node = FakeConsentForm.build(
 			with_close, dismiss.bind(true), dismiss.bind(false), close_unchanged
 		)
 		host.add_child(_node)
 
 
-func _clear() -> void:
+func _end() -> void:
 	if is_instance_valid(_node):
 		_node.queue_free()
 	_node = null
+	form_dismissed.emit()

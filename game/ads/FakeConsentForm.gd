@@ -28,6 +28,7 @@ static func build(
 	layer._area.name = "SafeArea"
 	layer.add_child(layer._area)
 	var center: CenterContainer = CenterContainer.new()
+	center.name = "Center"
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer._area.add_child(center)
 	var box: VBoxContainer = VBoxContainer.new()

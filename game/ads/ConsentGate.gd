@@ -4,6 +4,7 @@ extends RefCounted
 ## load, and nothing after: once the form shows the run waits for its dismissal with no timeout,
 ## so nothing proceeds under it. Offline, an error or the timeout end with false and ads stay
 ## unrequested; the run never hangs boot. When nothing is pending it finishes in the same frame.
+## Single use: make a new gate per run.
 
 var _backend: ConsentBackend
 var _now_ms: Callable
@@ -38,18 +39,21 @@ func run_privacy_options() -> void:
 	await _show(_backend.show_privacy_options)
 
 
+## Waits for `form_dismissed`, which the backend fires on every outcome (ConsentBackend).
 func _show(show: Callable) -> void:
+	_dismissed = false
 	_backend.form_dismissed.connect(_on_dismissed, CONNECT_ONE_SHOT)
 	show.call()
-	while not _dismissed:
-		await (Engine.get_main_loop() as SceneTree).process_frame
+	if not _dismissed:
+		await _backend.form_dismissed
 
 
 func _on_dismissed() -> void:
 	_dismissed = true
 
 
-## True once `state` is DONE; false on FAILED or when the deadline passes first.
+## True once `state` is DONE; false on FAILED or when the deadline passes first. Frame polling
+## lives only here, because a pending answer has no signal.
 func _until_done(deadline: int, state: Callable) -> bool:
 	while state.call() == ConsentBackend.Step.PENDING:
 		if int(_now_ms.call()) >= deadline:

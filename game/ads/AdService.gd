@@ -29,14 +29,13 @@ signal ad_closed(placement: StringName)
 ## Tests may set it; the fake backend follows at the next call.
 var fake_auto_close: bool = _default_auto_close(DisplayServer.get_name())
 
-## Fake and debug builds only: ask UMP for the EEA debug geography, so the form shows for a test
-## device (ADR 0039 section 3). Ignored in a release build with the real backend.
+## Debug builds only: ask UMP for the EEA debug geography, so the form shows for a test device
+## (ADR 0039 section 3). ConsentFlow ignores it unless `OS.is_debug_build()`.
 var debug_geography_eea: bool = false
 
 ## Consent's answer: whether ads may be requested at all. Only `_set_can_request` writes it.
 var _can_request_ads: bool = false
-var _consent: ConsentBackend = _make_consent()
-var _consent_busy: bool = false
+var _consent: ConsentFlow = ConsentFlow.new(_make_consent(not fake_auto_close), OS.is_debug_build)
 var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
@@ -57,14 +56,13 @@ static func _make_backend() -> AdBackend:
 	return FakeAdBackend.new()
 
 
-## Fake everywhere until P405 adds the UMP backend.
-static func _make_consent() -> ConsentBackend:
-	return FakeUmp.new()
-
-
-## The debug geography is honoured only in a debug build or against the fake backend.
-static func _debug_geography_allowed(is_debug: bool, is_fake: bool) -> bool:
-	return is_debug or is_fake
+## Fake everywhere until P405 adds the UMP backend. Where the fake placeholders wait for buttons
+## (the editor, the phone preview) consent is required by default, so the form can be walked;
+## headless stays "not required".
+static func _make_consent(required: bool) -> ConsentBackend:
+	var ump: FakeUmp = FakeUmp.new()
+	ump.consent_required = required
+	return ump
 
 
 static func _default_auto_close(display_name: String) -> bool:
@@ -72,52 +70,35 @@ static func _default_auto_close(display_name: String) -> bool:
 
 
 func _init() -> void:
+	_consent.settled.connect(_set_can_request)
 	_sync_fake()
 
 
 func _ready() -> void:
 	if _backend is FakeAdBackend:
 		(_backend as FakeAdBackend).host = self
-	if _consent is FakeUmp:
-		(_consent as FakeUmp).host = self
 
 
 ## Awaitable; always finishes. True means ads may be requested. Runs the consent info update and
 ## the form load within `consent_timeout_ms`, waits for the form once it shows, then sets the
-## gate and emits `consent_finished`. Offline, an error or the timeout give false. A second call
-## while one runs waits for it.
+## gate and emits `consent_finished`. Offline, an error or the timeout give false. A call while
+## a consent or privacy options flow runs waits for it.
 func ensure_consent() -> bool:
-	if _consent_busy:
-		return await consent_finished
-	_consent_busy = true
 	_sync_fake()
-	var debug_eea: bool = (
-		debug_geography_eea and _debug_geography_allowed(OS.is_debug_build(), _consent is FakeUmp)
-	)
-	var gate: ConsentGate = ConsentGate.new(
-		_consent, _now_ms, _settings.consent_timeout_ms, debug_eea
-	)
-	var granted: bool = await gate.execute()
-	_consent_busy = false
-	_set_can_request(granted)
-	return granted
+	return await _consent.run_consent(_now_ms, _settings.consent_timeout_ms, debug_geography_eea)
 
 
 ## Synchronous. UMP's answer from the last consent update.
 func is_privacy_options_required() -> bool:
-	return _consent.is_privacy_options_required()
+	return _consent.backend.is_privacy_options_required()
 
 
 ## Awaitable until UMP's privacy options form closes (no timeout once it shows). A choice that
-## changes whether ads may be requested takes effect when it closes.
+## changes whether ads may be requested takes effect when it closes. While a consent or privacy
+## options flow runs it waits for that flow and shows nothing more.
 func show_privacy_options() -> void:
-	if not _consent.is_privacy_options_required():
-		return
 	_sync_fake()
-	var gate: ConsentGate = ConsentGate.new(_consent, _now_ms, _settings.consent_timeout_ms, false)
-	await gate.run_privacy_options()
-	if _consent.can_request_ads() != _can_request_ads:
-		_set_can_request(_consent.can_request_ads())
+	await _consent.run_privacy_options(_now_ms, _settings.consent_timeout_ms)
 
 
 ## Synchronous. The cached entitlement (P406 fills it).
@@ -198,8 +179,7 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 	if _busy or not rewarded_ready(placement):
 		return false
 	var rewarded: bool = await _run_fullscreen(AdBackend.KIND_REWARDED, placement, on_reward)
-	if _can_request_ads:
-		_request_rewarded_load()
+	_request_rewarded_load()
 	return rewarded
 
 
@@ -236,6 +216,9 @@ func _refresh_banner() -> void:
 ## banner, and announces the answer.
 func _set_can_request(allowed: bool) -> void:
 	_can_request_ads = allowed
+	if not allowed and _late != null:
+		_late.abandon()
+		_late = null
 	if allowed and not _initialised:
 		_initialised = true
 		_backend.initialize()
@@ -294,7 +277,5 @@ func _sync_fake() -> void:
 		var fake: FakeAdBackend = _backend as FakeAdBackend
 		fake.auto_close = fake_auto_close
 		fake.draw_placeholders = not fake_auto_close
-	if _consent is FakeUmp:
-		var ump: FakeUmp = _consent as FakeUmp
-		ump.auto_close = fake_auto_close
-		ump.draw_placeholders = not fake_auto_close
+		fake.strict_order = true
+	_consent.configure_fake(fake_auto_close, self)

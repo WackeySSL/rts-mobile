@@ -29,7 +29,11 @@ var draw_placeholders: bool = false
 ## Where the placeholders are drawn; none is drawn without one in the tree.
 var host: Node = null
 
+## Fake-only: `push_error` when a load, banner or show runs before `initialize`. AdService sets it.
+var strict_order: bool = false
 var initializations: int = 0
+## Every call in order: "initialize", "load:<kind>", "show:<kind>", "banner".
+var calls: Array[String] = []
 var load_requests: Array[StringName] = []
 var shows: Array[StringName] = []
 var cancels: Array[StringName] = []
@@ -44,6 +48,7 @@ var _banner_node: FakeAdPlaceholders = null
 
 func initialize() -> void:
 	initializations += 1
+	calls.append("initialize")
 
 
 func load_state(kind: StringName) -> LoadState:
@@ -51,6 +56,7 @@ func load_state(kind: StringName) -> LoadState:
 
 
 func request_load(kind: StringName) -> void:
+	_note("load:" + kind)
 	load_requests.append(kind)
 	if load_never_answers:
 		_states[kind] = LoadState.LOADING
@@ -59,6 +65,7 @@ func request_load(kind: StringName) -> void:
 
 
 func show_ad(kind: StringName) -> void:
+	_note("show:" + kind)
 	if load_state(kind) != LoadState.READY:
 		return
 	_states[kind] = LoadState.IDLE
@@ -110,6 +117,7 @@ func finish_show() -> void:
 
 
 func show_banner() -> void:
+	_note("banner")
 	banner_visible = true
 	if draw_placeholders and _banner_node == null and _host_ready():
 		_banner_node = FakeAdPlaceholders.build_banner(banner_height)
@@ -141,3 +149,9 @@ func _clear_fullscreen() -> void:
 
 func _host_ready() -> bool:
 	return host != null and is_instance_valid(host) and host.is_inside_tree()
+
+
+func _note(call: String) -> void:
+	calls.append(call)
+	if strict_order and initializations == 0:
+		push_error("FakeAdBackend: %s before initialize (consent gate)" % call)
