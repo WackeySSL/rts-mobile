@@ -4,7 +4,8 @@
 extends Node
 
 ## A player just gave an order (UiSounds' acknowledgement chirp, ADR 0041 section 4). Emitted once
-## per Command by `submit`, after it is queued; never by `submit_logged`.
+## per Command by `submit`, after it is queued; never by `submit_logged`. Listeners must not modify
+## the Command.
 signal submitted(command: Command)
 
 var _commands: Array[Command] = []
