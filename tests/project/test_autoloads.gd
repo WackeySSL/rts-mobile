@@ -11,12 +11,27 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"AudioService": "res://game/view/audio/audio_service.gd",
 	"SaveService": "res://game/meta/save_service.gd",
 	"Progression": "res://game/meta/progression_service.gd",
+	"MenuFlow": "res://game/ui/menu/menu_flow_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 ## Autoloads are ready in list order, so a service must be listed after what its `_ready` reads
 ## (ADR 0039 section 10: AdService reads SaveService's `ads` section; Phase 5's Progression, when
 ## it exists, may be read by it). A dependency that is not listed is not checked.
-const MUST_PRECEDE: Dictionary = {"AdService": ["SaveService", "Progression"]}
+## MenuFlow (ADR 0043 section 6) calls AdService and Progression, so it is listed last.
+const MUST_PRECEDE: Dictionary = {
+	"AdService": ["SaveService", "Progression"],
+	"MenuFlow": ["SaveService", "Progression", "AdService"],
+}
+
+
+func test_menu_flow_is_the_last_autoload() -> void:
+	var order: Array[String] = []
+	for property: Dictionary in ProjectSettings.get_property_list():
+		var property_name: String = property["name"]
+		if property_name.begins_with("autoload/"):
+			order.append(property_name.trim_prefix("autoload/"))
+	assert_str(order[order.size() - 1]).is_equal("MenuFlow")
+	assert_int(order.find("MenuFlow")).is_greater(order.find("AdService"))
 
 
 func test_autoload_nodes_exist_with_contract_scripts() -> void:

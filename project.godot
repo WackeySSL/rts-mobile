@@ -24,6 +24,7 @@ AudioService="*res://game/view/audio/audio_service.gd"
 SaveService="*res://game/meta/save_service.gd"
 Progression="*res://game/meta/progression_service.gd"
 AdService="*res://game/ads/AdService.gd"
+MenuFlow="*res://game/ui/menu/menu_flow_service.gd"
 
 [debug]
 
