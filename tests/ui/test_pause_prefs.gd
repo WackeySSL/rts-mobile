@@ -40,17 +40,16 @@ func test_the_vibration_switch_writes_the_prefs_file() -> void:
 	_pill().menu_pressed.emit()
 	await await_idle_frame()
 	assert_str(_button("VibrationButton").text).is_equal("VIBRATION: ON")
-	var other: ConfigFile = ConfigFile.new()
-	other.set_value("audio", "volume", 7)
-	other.save(HudPrefs.path())
+	SaveService.set_section(&"audio", {"volume": 7})
 	_tap(_button("VibrationButton"))
 	assert_str(_button("VibrationButton").text).is_equal("VIBRATION: OFF")
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
+	assert_int(SaveService.flush()).is_equal(OK)
 	var file: ConfigFile = ConfigFile.new()
 	assert_int(file.load(HudPrefs.path())).is_equal(OK)
 	assert_bool(file.get_value("hud", "haptics")).is_false()
 	assert_int(file.get_value("audio", "volume")).is_equal(7)
-	assert_str(HudPrefs.path()).is_not_equal(HudPrefs.PATH)  # Not the machine's file.
+	assert_str(HudPrefs.path()).is_not_equal(SaveService.PATH)  # Not the machine's file.
 	_tap(_button("VibrationButton"))
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
 	assert_str(_button("VibrationButton").text).is_equal("VIBRATION: ON")
@@ -59,27 +58,20 @@ func test_the_vibration_switch_writes_the_prefs_file() -> void:
 ## A missing file and a key of another type mean vibration on.
 func test_the_prefs_default_to_on() -> void:
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
-	var file: ConfigFile = ConfigFile.new()
-	file.set_value("hud", "haptics", "no")
-	file.save(HudPrefs.path())
-	HudPrefs.forget_read()  # Written by hand, behind the cache.
+	SaveService.set_section(&"hud", {"haptics": "no"})
+	HudPrefs.forget_read()  # Changed behind the cache.
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
 
 
-## The file is read once, not at every buzz: a hand-written change shows after `forget_read` or a
-## new path, and a `set_haptics_enabled` shows at once.
-func test_the_prefs_file_is_read_once() -> void:
-	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Read, and cached.
-	var file: ConfigFile = ConfigFile.new()
-	file.set_value("hud", "haptics", false)
-	file.save(HudPrefs.path())
-	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Not read again.
-	HudPrefs.forget_read()
+## Nothing is cached: a direct SaveService write shows at once, and so does a path switch.
+func test_the_prefs_are_read_from_the_service_at_each_ask() -> void:
+	assert_bool(HudPrefs.haptics_enabled()).is_true()
+	SaveService.set_section(&"hud", {"haptics": false})
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
 	HudPrefs.set_haptics_enabled(true)
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
-	file.save(HudPrefs.path())  # False again, behind the cache.
-	HudPrefs.set_path_override(HudPrefs.path())  # A new path (here the same) drops the cache.
+	SaveService.set_section(&"hud", {"haptics": false})
+	HudPrefs.set_path_override(HudPrefs.path())  # Drains and reloads from the file.
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
 
 
