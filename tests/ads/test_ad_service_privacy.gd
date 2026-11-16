@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 
 const SCRIPT_PATH: String = AdServiceHarness.SCRIPT_PATH
 
-var _h: AdServiceHarness = AdServiceHarness.new()
+var _h: AdServiceHarness
 var _seen: Array[bool] = []
 
 
@@ -14,6 +14,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	_h.dispose()
 	UiScale.clear_override()
 
 

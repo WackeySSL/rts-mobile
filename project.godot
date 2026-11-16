@@ -20,10 +20,10 @@ config/icon="res://assets/art/svg/icon/app_icon.svg"
 DetRng="*res://game/core/det_rng_service.gd"
 CommandQueue="*res://game/core/command_queue_service.gd"
 UiOrientation="*res://game/ui/ui_orientation_service.gd"
-AdService="*res://game/ads/AdService.gd"
 AudioService="*res://game/view/audio/audio_service.gd"
 SaveService="*res://game/meta/save_service.gd"
 Progression="*res://game/meta/progression_service.gd"
+AdService="*res://game/ads/AdService.gd"
 
 [debug]
 

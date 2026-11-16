@@ -13,10 +13,13 @@ extends Node
 ## consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
 ## resume. No plugin code and no ad IDs live here.
 ##
-## For P407 (persistence): load the `ads` save section in `_init`, before `Purchases.new` and
-## before `_ready`'s restore, with SaveService ordered before AdService, so a buyer's cached
-## Remove ads is in the ledger before the first banner request. Until then a buyer sees a banner
-## until the first restore answers (tests/ads/test_ad_service_order.gd has the pending test).
+## Persistence (P407): the ledger is the `ads` section of SaveService. Autoloads are all created
+## before any is in the tree, so the load happens in `_ready`, not `_init`: SaveService is listed
+## before AdService in project.godot and has loaded by then. The load comes before the silent
+## restore, so a buyer's cached Remove ads is in the ledger before the first banner request. Every
+## ledger change saves; the entitlement, a shown interstitial and a start-credits grant also flush
+## at once (the app may be killed under an ad), the entitlement before `entitlement_changed` is
+## emitted. Consent is not saved (UMP keeps its own storage).
 ## For P405: see the notes on `AdBackend.show_banner`.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
@@ -32,10 +35,15 @@ signal ad_opened(placement: StringName)
 ## Fires when a full-screen ad closes, with its placement.
 signal ad_closed(placement: StringName)
 
+const SaveServiceScript: GDScript = preload("res://game/meta/save_service.gd")
+
 ## True: fake full-screen ads and fake flows close at once (gdUnit4, headless). False: the fake
 ## placeholders wait for their Close button and the fake flows for their buttons (P403 on).
 ## Tests may set it; the fake backend follows at the next call.
 var fake_auto_close: bool = _default_auto_close(DisplayServer.get_name())
+
+## Tests inject a SaveService here; null means the SaveService autoload.
+var save_service: SaveServiceScript = null
 
 ## Debug builds only: ask UMP for the EEA debug geography, so the form shows for a test device
 ## (ADR 0039 section 3). ConsentFlow ignores it unless `OS.is_debug_build()`.
@@ -47,6 +55,7 @@ var _consent: ConsentFlow = ConsentFlow.new(_make_consent(not fake_auto_close), 
 var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
+var _ledger_loaded: bool = false
 var _backend: AdBackend = _make_backend()
 var _billing: BillingBackend = _make_billing()
 var _purchases: Purchases = null
@@ -94,6 +103,9 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	_load_ledger()
+	if not _ledger_loaded:
+		push_warning("AdService: no SaveService; the ads ledger is not persisted")
 	# Silent, no UI: retries failed acknowledges and grants pendings paid while the app was closed.
 	_restore_silently()
 
@@ -176,12 +188,27 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.
 func note_match_completed(play_seconds: int) -> void:
 	_ledger.note_match_completed(play_seconds)
+	_save_ledger()
 	_preload_interstitial()
 
 
 ## Synchronous. The pending start-credits bonus once, then 0.
 func take_start_credits_bonus() -> int:
-	return _ledger.take_start_credits_bonus(_settings.start_credits_bonus_max)
+	var had_pending: bool = _ledger.pending_start_credits > 0
+	var taken: int = _ledger.take_start_credits_bonus(_settings.start_credits_bonus_max)
+	if had_pending:
+		_save_ledger()
+	return taken
+
+
+## Internal (Phase 6 widgets; P433's grant after the rewarded callback). Records the pending
+## start-credits bonus, at most `start_credits_bonus_max`, and saves it at once (ADR 0039 section
+## 7). False, and nothing changes, while a bonus is already pending.
+func grant_start_credits_bonus(amount: int) -> bool:
+	var granted: bool = _ledger.grant_start_credits_bonus(amount, _settings.start_credits_bonus_max)
+	if granted:
+		_save_ledger(true)
+	return granted
 
 
 ## Internal (Phase 6 widgets). True when a rewarded ad is loaded and may be requested; an offer
@@ -271,6 +298,7 @@ func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
 	if has_remove_ads_now == _ledger.remove_ads:
 		return
 	_ledger.remove_ads = has_remove_ads_now
+	_save_ledger(true)  # Save, then emit (ADR 0039 section 8).
 	# An interstitial that has not opened yet is withdrawn; AdMob cannot recall a show it started,
 	# so it may still appear once, paired and counted. A rewarded ad stays: rewards remain.
 	if has_remove_ads_now:
@@ -300,7 +328,44 @@ func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callabl
 	var run: FullscreenRun = FullscreenRun.new(
 		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
 	)
+	if kind == AdBackend.KIND_INTERSTITIAL:
+		run.opened.connect(_save_after_open)
 	return await _runs.start(run)
+
+
+## An interstitial that opened was noted in the ledger by the run: save it.
+func _save_after_open(_placement: StringName, _run: FullscreenRun) -> void:
+	_save_ledger(true)
+
+
+## The injected SaveService, else the autoload; null when neither is there.
+func _save_service() -> SaveServiceScript:
+	if is_instance_valid(save_service):
+		return save_service
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	return root.get_node_or_null("SaveService") as SaveServiceScript
+
+
+## Reads the `ads` section once; a missing or corrupt one gives the defaults. The ledger object
+## stays (Purchases and the runs hold it), so its fields are replaced in place.
+func _load_ledger() -> void:
+	var service: SaveServiceScript = _save_service()
+	if _ledger_loaded or service == null:
+		return
+	_ledger_loaded = true
+	_ledger.apply_dict(service.get_section(&"ads"))
+
+
+## Queues the ledger into SaveService (atomic file, one write at the frame's end), or writes it at
+## once with `now`. Does nothing before the section was read, so a fresh ledger never overwrites
+## the saved one.
+func _save_ledger(now: bool = false) -> void:
+	var service: SaveServiceScript = _save_service()
+	if service == null or not _ledger_loaded:
+		return
+	service.set_section(&"ads", _ledger.to_dict())
+	if now:
+		service.flush()
 
 
 func _restore_silently() -> void:

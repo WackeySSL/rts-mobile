@@ -13,6 +13,10 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"Progression": "res://game/meta/progression_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
+## Autoloads are ready in list order, so a service must be listed after what its `_ready` reads
+## (ADR 0039 section 10: AdService reads SaveService's `ads` section; Phase 5's Progression, when
+## it exists, may be read by it). A dependency that is not listed is not checked.
+const MUST_PRECEDE: Dictionary = {"AdService": ["SaveService", "Progression"]}
 
 
 func test_autoload_nodes_exist_with_contract_scripts() -> void:
@@ -28,6 +32,31 @@ func test_autoload_nodes_exist_with_contract_scripts() -> void:
 		var script: Script = node.get_script()
 		assert_object(script).is_not_null()
 		assert_str(script.resource_path).is_equal(SERVICE_SCRIPTS[autoload_name])
+
+
+func test_autoloads_are_listed_after_what_they_read() -> void:
+	var order: Array[String] = []
+	for property: Dictionary in ProjectSettings.get_property_list():
+		var property_name: String = property["name"]
+		if property_name.begins_with("autoload/"):
+			order.append(property_name.trim_prefix("autoload/"))
+	for autoload_name: String in MUST_PRECEDE:
+		assert_int(order.find(autoload_name)).is_greater_equal(0)
+		for dependency: String in MUST_PRECEDE[autoload_name]:
+			if order.has(dependency):
+				(
+					assert_int(order.find(autoload_name))
+					. override_failure_message(
+						"%s must be listed after %s" % [autoload_name, dependency]
+					)
+					. is_greater(order.find(dependency))
+				)
+
+
+## The real AdService read the `ads` section in `_ready` (SaveService is listed before it).
+func test_the_ad_service_autoload_loaded_its_ledger() -> void:
+	var service: Node = get_tree().root.get_node("AdService")
+	assert_bool(service._ledger_loaded).override_failure_message("`_ready` did not load").is_true()
 
 
 func test_autoload_scripts_declare_no_class_name() -> void:
