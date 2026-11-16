@@ -182,12 +182,11 @@ func test_the_consent_form_is_drawn_above_the_purchase_sheet() -> void:
 	assert_array(purchase).contains_exactly([false])
 
 
-# --- P407 pending -------------------------------------------------------------------------------
+# --- P407 ---------------------------------------------------------------------------------------
 
 
-func test_a_buyer_sees_no_banner_before_the_first_restore_answers(
-	_do_skip := true, _skip_reason := "Pending P407: the ads save section is not loaded yet"
-) -> void:
+func test_a_buyer_sees_no_banner_before_the_first_restore_answers() -> void:
+	AdServiceHarness.seed_section({"remove_ads": true})
 	var service: Node = auto_free(_h.make())
 	var billing: FakeBilling = AdServiceHarness.billing(service)
 	billing.add_owned(service._settings.remove_ads_product_id, "t1")

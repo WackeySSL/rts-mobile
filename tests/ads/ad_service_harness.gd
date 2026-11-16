@@ -6,8 +6,28 @@ extends RefCounted
 
 const SCRIPT_PATH: String = "res://game/ads/AdService.gd"
 
+const SAVE_PATH: String = "user://test_ads_save.cfg"
+
 var clock_ms: int = 0
 var events: Array[String] = []
+
+
+## Points SaveService at an empty temp file, so a suite never touches the device's save.
+func _init() -> void:
+	_save().flush()  # Pending changes of the last test go to the file we then delete.
+	for suffix: String in ["", ".tmp", ".bak", ".bad", ".bak.bad"]:
+		if FileAccess.file_exists(SAVE_PATH + suffix):
+			DirAccess.remove_absolute(SAVE_PATH + suffix)
+	_save().set_path_override(SAVE_PATH)
+
+
+static func _save() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node("SaveService")
+
+
+## Puts the `ads` section in the temp save before a service is made, as an earlier run left it.
+static func seed_section(values: Dictionary) -> void:
+	_save().set_section(&"ads", values)
 
 
 ## A new service. Auto close is on, so a suite run from the editor does not wait for a button.

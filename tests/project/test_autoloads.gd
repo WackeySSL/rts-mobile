@@ -29,6 +29,18 @@ func test_autoload_nodes_exist_with_contract_scripts() -> void:
 		assert_str(script.resource_path).is_equal(SERVICE_SCRIPTS[autoload_name])
 
 
+## ADR 0039 section 10 (P407): AdService reads the `ads` section of SaveService in `_ready`, so
+## SaveService is listed (and so ready) first.
+func test_ad_service_is_listed_after_save_service() -> void:
+	var order: Array[String] = []
+	for property: Dictionary in ProjectSettings.get_property_list():
+		var property_name: String = property["name"]
+		if property_name.begins_with("autoload/"):
+			order.append(property_name.trim_prefix("autoload/"))
+	assert_int(order.find("SaveService")).is_greater_equal(0)
+	assert_int(order.find("AdService")).is_greater(order.find("SaveService"))
+
+
 func test_autoload_scripts_declare_no_class_name() -> void:
 	for autoload_name: String in SERVICE_SCRIPTS:
 		var script: Script = load(SERVICE_SCRIPTS[autoload_name])
