@@ -5,35 +5,60 @@ extends RefCounted
 ## The caller frees the service (`auto_free`) and makes a new harness per test.
 
 const SCRIPT_PATH: String = "res://game/ads/AdService.gd"
-
-const SAVE_PATH: String = "user://test_ads_save.cfg"
+const SaveServiceScript: GDScript = preload("res://game/meta/save_service.gd")
+const SAVE_SUFFIXES: Array[String] = ["", ".tmp", ".bak", ".bad", ".bak.bad"]
 
 var clock_ms: int = 0
 var events: Array[String] = []
 
-
-## Points SaveService at an empty temp file, so a suite never touches the device's save.
-func _init() -> void:
-	_save().flush()  # Pending changes of the last test go to the file we then delete.
-	for suffix: String in ["", ".tmp", ".bak", ".bad", ".bak.bad"]:
-		if FileAccess.file_exists(SAVE_PATH + suffix):
-			DirAccess.remove_absolute(SAVE_PATH + suffix)
-	_save().set_path_override(SAVE_PATH)
+var _save_service: SaveServiceScript = null
+var _save_path: String = "user://test_ads_save_%d.cfg" % OS.get_process_id()
 
 
-static func _save() -> Node:
-	return (Engine.get_main_loop() as SceneTree).root.get_node("SaveService")
+## The harness's own SaveService on a temp file, made on first use. The `/root/SaveService`
+## autoload is never touched. It is not in the tree: tests flush it themselves.
+func save_service() -> SaveServiceScript:
+	if _save_service == null:
+		_remove_files()
+		_save_service = SaveServiceScript.new()
+		_save_service.set_path_override(_save_path)
+	return _save_service
+
+
+## The temp file's path, for a second SaveService that reads what is on disk.
+func save_path() -> String:
+	return _save_path
 
 
 ## Puts the `ads` section in the temp save before a service is made, as an earlier run left it.
-static func seed_section(values: Dictionary) -> void:
-	_save().set_section(&"ads", values)
+func seed_section(values: Dictionary) -> void:
+	assert(save_service().set_section(&"ads", values), "the section was refused")
 
 
-## A new service. Auto close is on, so a suite run from the editor does not wait for a button.
-func make(consent: bool = true) -> Node:
+## Flushes, deletes the temp files and frees the SaveService. Call it from `after_test`.
+func dispose() -> void:
+	if _save_service != null:
+		_save_service.flush()
+		_save_service.free()
+		_save_service = null
+	_remove_files()
+
+
+func _remove_files() -> void:
+	for suffix: String in SAVE_SUFFIXES:
+		if FileAccess.file_exists(_save_path + suffix):
+			DirAccess.remove_absolute(_save_path + suffix)
+
+
+## A new service with the harness's SaveService injected. Auto close is on, so a suite run from
+## the editor does not wait for a button. `load_ledger` reads the `ads` section now, as the
+## service's `_ready` would; pass false to let `add_child` do it.
+func make(consent: bool = true, load_ledger: bool = true) -> Node:
 	var script: GDScript = load(SCRIPT_PATH) as GDScript
 	var service: Node = script.new()
+	service.save_service = save_service()
+	if load_ledger:
+		service._load_ledger()
 	service.fake_auto_close = true
 	# The editor's non-headless default requires consent; the suites script it where they need it.
 	ump(service).consent_required = false

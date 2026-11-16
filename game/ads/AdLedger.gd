@@ -2,8 +2,8 @@ class_name AdLedger
 extends RefCounted
 ## The ads layer's counters (ADR 0039 sections 4, 7 and 10): completed matches, play seconds since
 ## the last interstitial, the match number of the last one, the cached Remove ads entitlement and
-## the pending start-credits bonus. Pure: no Node, no clock. `to_dict` and `from_dict` match the
-## `ads` section of Phase 5's SaveService; until P407 wires that, the ledger lives in memory.
+## the pending start-credits bonus. Pure: no Node, no clock. `to_dict` and `from_dict` are the
+## `ads` section of Phase 5's SaveService (AdService saves and loads it, P407).
 ## Tutorial lessons never call `note_match_completed`.
 
 ## Counters saturate here, so a hostile or corrupt save cannot overflow them.
@@ -77,16 +77,20 @@ func to_dict() -> Dictionary:
 ## completed count is clamped to it.
 static func from_dict(section: Variant) -> AdLedger:
 	var ledger: AdLedger = AdLedger.new()
-	if not (section is Dictionary):
-		return ledger
-	var data: Dictionary = section
-	ledger.completed_matches = _int_of(data, KEY_COMPLETED)
-	ledger.play_s_since_interstitial = _int_of(data, KEY_PLAY_S)
-	ledger.last_interstitial_match = mini(_int_of(data, KEY_LAST_MATCH), ledger.completed_matches)
-	ledger.pending_start_credits = _int_of(data, KEY_PENDING)
-	var cached: Variant = data.get(KEY_REMOVE_ADS, false)
-	ledger.remove_ads = cached is bool and cached
+	ledger.apply_dict(section)
 	return ledger
+
+
+## Replaces every field from a section, with the rules of `from_dict`. The ledger object stays,
+## so whoever holds a reference sees the loaded values.
+func apply_dict(section: Variant) -> void:
+	var data: Dictionary = section if section is Dictionary else {}
+	completed_matches = _int_of(data, KEY_COMPLETED)
+	play_s_since_interstitial = _int_of(data, KEY_PLAY_S)
+	last_interstitial_match = mini(_int_of(data, KEY_LAST_MATCH), completed_matches)
+	pending_start_credits = _int_of(data, KEY_PENDING)
+	var cached: Variant = data.get(KEY_REMOVE_ADS, false)
+	remove_ads = cached is bool and cached
 
 
 static func _int_of(data: Dictionary, key: String) -> int:

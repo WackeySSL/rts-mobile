@@ -5,13 +5,17 @@ extends GdUnitTestSuite
 ## excluding each other. Privacy options, the debug geography and the placeholder are
 ## test_ad_service_privacy.gd; the fake's model is test_consent_flow.gd.
 
-var _h: AdServiceHarness = AdServiceHarness.new()
+var _h: AdServiceHarness
 var _seen: Array[bool] = []
 
 
 func before_test() -> void:
 	_h = AdServiceHarness.new()
 	_seen = []
+
+
+func after_test() -> void:
+	_h.dispose()
 
 
 func _make() -> Node:

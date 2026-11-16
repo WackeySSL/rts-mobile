@@ -9,6 +9,10 @@ func before_test() -> void:
 	_h = AdServiceHarness.new()
 
 
+func after_test() -> void:
+	_h.dispose()
+
+
 # --- a purchase during the silent restore -------------------------------------------------------
 
 
@@ -186,14 +190,16 @@ func test_the_consent_form_is_drawn_above_the_purchase_sheet() -> void:
 
 
 func test_a_buyer_sees_no_banner_before_the_first_restore_answers() -> void:
-	AdServiceHarness.seed_section({"remove_ads": true})
-	var service: Node = auto_free(_h.make())
+	_h.seed_section({"remove_ads": true})
+	# The ledger is read by `_ready` (add_child), as in the app, not by the harness.
+	var service: Node = auto_free(_h.make(true, false))
 	var billing: FakeBilling = AdServiceHarness.billing(service)
 	billing.add_owned(service._settings.remove_ads_product_id, "t1")
 	billing.defer_queries = true
 	var heights: Array[int] = []
 	service.banner_changed.connect(func(height: int) -> void: heights.append(height))
-	service.show_banner()
 	add_child(service)
+	service.show_banner()
 	await AdServiceHarness.frames(2)
+	assert_bool(service.has_remove_ads()).is_true()
 	assert_array(heights).override_failure_message("a buyer saw a banner").is_empty()

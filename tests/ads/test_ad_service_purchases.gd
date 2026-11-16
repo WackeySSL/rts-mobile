@@ -12,6 +12,10 @@ func before_test() -> void:
 	_signals = []
 
 
+func after_test() -> void:
+	_h.dispose()
+
+
 func _service() -> Node:
 	var service: Node = auto_free(_h.make())
 	service.entitlement_changed.connect(func(has: bool) -> void: _signals.append(has))
