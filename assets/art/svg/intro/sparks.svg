@@ -1,0 +1,6 @@
+<!-- Intro layer sparks of the app icon's foreground (the sparks and the four dust streaks behind the clods), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
+<!-- Silhouette: eight tiny round sparks at both sides and four thin pointed streaks. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><clipPath id="fc"><circle cx="216" cy="216" r="143"/></clipPath></defs>
+<g clip-path="url(#fc)"><circle cx="86" cy="246" r="1.9" fill="#ffc27a"/><circle cx="102" cy="228" r="1.4" fill="#ffd9a0"/><circle cx="92" cy="268" r="1.3" fill="#ffb04a"/><circle cx="140" cy="322" r="1.6" fill="#ffc27a"/><circle cx="336" cy="262" r="1.9" fill="#c8f4ff"/><circle cx="316" cy="250" r="1.4" fill="#e0f9ff"/><circle cx="330" cy="284" r="1.3" fill="#9fe6f6"/><circle cx="292" cy="330" r="1.6" fill="#c8f4ff"/><path fill="#f3b27a" fill-opacity=".6" d="M150 313.8l-44-9.6 44 14.8z"/><path fill="#9fe6f6" fill-opacity=".6" d="M264 319.8l44-8.6-44 13.8z"/><path fill="#f3b27a" fill-opacity=".6" d="M124 291.8l-24-10.6 24 15.8z"/><path fill="#9fe6f6" fill-opacity=".6" d="M300 297.8l24-9.6-24 14.8z"/></g>
+</svg>

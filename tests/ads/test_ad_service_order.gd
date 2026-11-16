@@ -9,6 +9,10 @@ func before_test() -> void:
 	_h = AdServiceHarness.new()
 
 
+func after_test() -> void:
+	_h.dispose()
+
+
 # --- a purchase during the silent restore -------------------------------------------------------
 
 
@@ -182,19 +186,25 @@ func test_the_consent_form_is_drawn_above_the_purchase_sheet() -> void:
 	assert_array(purchase).contains_exactly([false])
 
 
-# --- P407 pending -------------------------------------------------------------------------------
+# --- P407 ---------------------------------------------------------------------------------------
 
 
-func test_a_buyer_sees_no_banner_before_the_first_restore_answers(
-	_do_skip := true, _skip_reason := "Pending P407: the ads save section is not loaded yet"
-) -> void:
-	var service: Node = auto_free(_h.make())
+func test_a_buyer_sees_no_banner_before_the_first_restore_answers() -> void:
+	_h.seed_section({"remove_ads": true})
+	# The ledger is read by `_ready` (add_child), as in the app, not by the harness.
+	var service: Node = auto_free(_h.make(true, AdServiceHarness.SCRIPT_PATH, false))
 	var billing: FakeBilling = AdServiceHarness.billing(service)
 	billing.add_owned(service._settings.remove_ads_product_id, "t1")
 	billing.defer_queries = true
 	var heights: Array[int] = []
 	service.banner_changed.connect(func(height: int) -> void: heights.append(height))
-	service.show_banner()
 	add_child(service)
+	service.show_banner()
 	await AdServiceHarness.frames(2)
+	assert_bool(service.has_remove_ads()).is_true()
+	assert_array(heights).override_failure_message("a buyer saw a banner").is_empty()
+	# Let the silent restore finish: a query that never answers leaves its coroutine, and the
+	# scripts it holds, alive at exit (the engine's "resources still in use" error).
+	billing.answer_queries()
+	await AdServiceHarness.frames(3)
 	assert_array(heights).override_failure_message("a buyer saw a banner").is_empty()

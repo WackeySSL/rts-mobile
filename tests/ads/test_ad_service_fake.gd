@@ -5,11 +5,15 @@ extends GdUnitTestSuite
 
 const POST_MATCH: StringName = &"post_match"
 
-var _h: AdServiceHarness = AdServiceHarness.new()
+var _h: AdServiceHarness
 
 
 func before_test() -> void:
 	_h = AdServiceHarness.new()
+
+
+func after_test() -> void:
+	_h.dispose()
 
 
 func _make(consent: bool = true) -> Node:

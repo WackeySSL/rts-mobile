@@ -24,6 +24,7 @@ var _window_size_before: Vector2i
 var _service: Node
 var _host: VBoxContainer
 var _above: Button
+var _harness: RefCounted
 
 
 func before() -> void:
@@ -36,6 +37,9 @@ func after() -> void:
 
 func after_test() -> void:
 	UiScale.clear_override()
+	if _harness != null:
+		_harness.dispose()
+		_harness = null
 
 
 func test_lines_up_with_the_banner_at_the_six_sizes() -> void:
@@ -270,8 +274,10 @@ func _turn(metrics: UiMetrics) -> void:
 ## A fake-mode service (placeholders drawn) and the safe-rect column that hosts the band: an
 ## expanding filler, a real Button, then the band.
 func _make_service(consent: bool = true, fill: bool = true) -> void:
-	var harness: RefCounted = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
-	_service = auto_free(harness.make(consent))
+	if _harness != null:
+		_harness.dispose()  # A test may build more than one service.
+	_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
+	_service = auto_free(_harness.make(consent))
 	_service.fake_auto_close = false
 	(_service._backend as FakeAdBackend).fill = fill
 	add_child(_service)

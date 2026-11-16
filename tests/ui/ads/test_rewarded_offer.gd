@@ -35,6 +35,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	UiScale.clear_override()
+	_h.dispose()
 
 
 func _grant() -> void:
