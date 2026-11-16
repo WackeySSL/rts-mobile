@@ -48,8 +48,12 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   `bash scripts/ci/install-godot.sh --android-release`.
 
 ## Licence
-- Code: MIT, see [LICENSE](LICENSE).
-- Assets: SVG drawn in this repository is MIT like the code; everything else is listed with its
+- Code: MIT, see [LICENSE](LICENSE);
+  what it covers and what it does not is in [NOTICE.md](NOTICE.md).
+- Assets: the game's own art, audio and model data (the SVGs, model data and audio authored in
+  this repository under `assets/`, and the store graphics in `docs/store/`) are Copyright (c) 2026
+  AppCode ApS, all rights reserved from the commit that adds [assets/LICENSE.md](assets/LICENSE.md)
+  (2026-11-15, ADR 0046). Versions published before that commit remain under MIT. Third-party files are listed with their
   licence in [assets/CREDITS.md](assets/CREDITS.md).
 - Engine: the game runs on the Godot Engine (MIT), which bundles third-party components under
   their own licences. Godot's `LICENSE.txt` and `COPYRIGHT.txt` for 4.7.2-stable are in
@@ -71,5 +75,6 @@ Status: pre-alpha. See [docs/ROADMAP.md](docs/ROADMAP.md).
   AppCode ApS.
 
 ## Contributing
-Issues and pull requests are welcome. By contributing you agree that your contribution is
-licensed under the MIT licence. The rules in [CLAUDE.md](CLAUDE.md) apply to humans too.
+Issues and pull requests are welcome. By contributing code you agree that your contribution is
+licensed under the MIT licence. Contributions to `assets/` are accepted only by written agreement
+with AppCode ApS. The rules in [CLAUDE.md](CLAUDE.md) apply to humans too.
