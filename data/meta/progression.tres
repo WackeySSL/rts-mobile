@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ProgressionDef" format=3]
+
+[ext_resource type="Script" path="res://game/meta/ProgressionDef.gd" id="1_prog"]
+
+[resource]
+script = ExtResource("1_prog")
+outcome_xp = Dictionary[StringName, int]({
+&"draw": 60,
+&"loss": 40,
+&"win": 100
+})
+level_percent = Dictionary[StringName, int]({
+&"easy": 70,
+&"hard": 140,
+&"normal": 100
+})
+xp_per_minute = 4
+minute_cap = 40
+lesson_xp = 40
+awards_kept = 8
+min_bonus_multiplier = 2
+rank_xp = PackedInt32Array(0, 100, 250, 500, 900, 1400, 2000)
+rank_titles = PackedStringArray("Recruit", "Scout", "Lancer", "Warden", "Marshal", "Strategist", "Commander")
+unlocks = Array[Dictionary]([{
+&"id": &"map_2",
+&"kind": &"map",
+&"rank": 2
+}, {
+&"id": &"hard",
+&"kind": &"level",
+&"rank": 3
+}, {
+&"id": &"map_3",
+&"kind": &"map",
+&"rank": 4
+}])
