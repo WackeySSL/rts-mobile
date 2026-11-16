@@ -18,7 +18,8 @@ extends Resource
 @export var wordmark_rect: Rect2i = Rect2i(435, 778, 154, 20)
 @export var background: Color = Color("#06080C")
 
-## Files: layers back to front (ArtIntro.order(), pinned by a test), the wordmark, the loads.
+## Files: layers back to front (ArtIntro.order(), pinned by a test), the splash PNG (the wordmark is
+## its `wordmark_rect`: the brand SVGs are never loaded at runtime), the loads.
 @export var layer_dir: String = "res://assets/art/svg/intro/"
 @export var background_layers: PackedStringArray = ["sky", "ring", "sweep", "ground"]
 @export var foreground_layers: PackedStringArray = [
@@ -36,7 +37,7 @@ extends Resource
 	"clods",
 	"sparks",
 ]
-@export var wordmark_path: String = "res://assets/art/brand/appcode_wordmark_white.svg"
+@export var splash_path: String = "res://assets/art/splash/boot_splash.png"
 @export var menu_path: String = "res://scenes/menu/menu.tscn"
 @export var load_paths: PackedStringArray = ["res://game/ui/theme.tres"]
 

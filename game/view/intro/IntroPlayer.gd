@@ -68,6 +68,14 @@ func build() -> void:
 	_bg = ColorRect.new()
 	_bg.color = settings.background
 	add_child(_bg)
+	wordmark = TextureRect.new()
+	var crop: AtlasTexture = AtlasTexture.new()
+	crop.atlas = load(settings.splash_path) as Texture2D
+	crop.region = Rect2(settings.wordmark_rect)
+	wordmark.texture = crop
+	wordmark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	wordmark.stretch_mode = TextureRect.STRETCH_SCALE
+	add_child(wordmark)  # Under the icon, so the growing icon covers it.
 	icon_box = Control.new()
 	add_child(icon_box)
 	for stem: String in settings.background_layers:
@@ -76,11 +84,6 @@ func build() -> void:
 	icon_box.add_child(tank)
 	for stem: String in settings.foreground_layers:
 		_layers[stem] = _layer(tank, stem)
-	wordmark = TextureRect.new()
-	wordmark.texture = load(settings.wordmark_path) as Texture2D
-	wordmark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	wordmark.stretch_mode = TextureRect.STRETCH_SCALE
-	add_child(wordmark)
 	line = ColorRect.new()
 	line.color = settings.line_color
 	line.visible = false
@@ -223,7 +226,7 @@ func _begin_exit(now: int) -> void:
 	var scene: PackedScene = loader.take(settings.menu_path) as PackedScene
 	if scene == null:
 		_failed = true  # Said once; the still frame and the line stay.
-		push_error("IntroPlayer: %s did not load" % settings.menu_path)
+		log_line.call("boot_error: %s did not load" % settings.menu_path)
 		phase = Phase.SETTLED
 		line.visible = true
 		return

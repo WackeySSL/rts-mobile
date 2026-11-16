@@ -10,30 +10,6 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Harness: GDScript = preload("res://tests/ads/ad_service_harness.gd")
 
 
-class FakeLoader:
-	extends IntroLoader
-	var states: Dictionary[String, IntroLoader.State] = {}
-	var requested: Array[String] = []
-	var scene: PackedScene = null
-
-	func request(path: String) -> void:
-		requested.append(path)
-		states[path] = IntroLoader.State.LOADING
-
-	func state(path: String) -> IntroLoader.State:
-		return states[path]
-
-	func progress(path: String) -> float:
-		return 1.0 if states[path] == IntroLoader.State.LOADED else 0.25
-
-	func take(_path: String) -> Resource:
-		return scene
-
-	func finish(state_now: IntroLoader.State = IntroLoader.State.LOADED) -> void:
-		for path: String in states:
-			states[path] = state_now
-
-
 class FakeConsent:
 	extends RefCounted
 	signal release
@@ -46,7 +22,7 @@ class FakeConsent:
 
 
 var _now: int = 0
-var _loader: FakeLoader
+var _loader: FakeIntroLoader
 var _consent: FakeConsent
 var _host: Control
 var _logs: Array[String] = []
@@ -56,7 +32,7 @@ var _harness: RefCounted
 func before_test() -> void:
 	_now = 0
 	_logs.clear()
-	_loader = FakeLoader.new()
+	_loader = FakeIntroLoader.new()
 	_loader.scene = load(MENU_PATH) as PackedScene
 	_consent = FakeConsent.new()
 	_host = auto_free(Control.new())
@@ -184,11 +160,9 @@ func test_a_failed_load_does_not_hang_and_leaves_the_still_frame() -> void:
 	_loader.scene = null
 	_at(player, 0)
 	assert_bool(player.is_loaded()).is_true()
-	await (
-		assert_error(func() -> void: _at(player, 700))
-		. is_push_error("IntroPlayer: %s did not load" % MENU_PATH)
-	)
-	_at(player, 800)  # No second error: the still frame and the line stay.
+	_at(player, 700)
+	_at(player, 800)  # Said once: the still frame and the line stay.
+	assert_array(_logs).is_equal(["boot_error: %s did not load" % MENU_PATH])
 	assert_int(player.phase).is_equal(IntroPlayer.Phase.SETTLED)
 	assert_bool(player.line.visible).is_true()
 	assert_array(_host.get_children()).is_empty()
