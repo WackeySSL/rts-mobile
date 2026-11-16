@@ -3,11 +3,24 @@
 # API v1 = v0 (ADR 0007 section 6): v0 is defined in ADR 0003 section 7 and Phase 2 keeps it.
 extends Node
 
+## A player just gave an order (UiSounds' acknowledgement chirp, ADR 0041 section 4). Emitted once
+## per Command by `submit`, after it is queued; never by `submit_logged`.
+signal submitted(command: Command)
+
 var _commands: Array[Command] = []
 
 
 ## Queues `command` behind the earlier ones. A null command is ignored.
 func submit(command: Command) -> void:
+	if command == null:
+		return
+	_commands.append(command)
+	submitted.emit(command)
+
+
+## The same queueing as `submit` without the signal: the Restorer's path for a logged order, so a
+## restore never chirps (ADR 0041 section 4).
+func submit_logged(command: Command) -> void:
 	if command == null:
 		return
 	_commands.append(command)
