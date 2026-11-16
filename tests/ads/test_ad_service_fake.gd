@@ -124,6 +124,7 @@ func test_with_no_fill_it_returns_false_at_once_and_shows_nothing() -> void:
 func test_without_auto_close_the_ad_waits_for_its_close() -> void:
 	var service: Node = _make()
 	service.fake_auto_close = false
+	add_child(service)
 	AdServiceHarness.play_three_matches(service)
 	var result: Array = AdServiceHarness.start(
 		func() -> bool: return await service.maybe_show_interstitial(POST_MATCH)

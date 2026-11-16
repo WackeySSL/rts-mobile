@@ -18,6 +18,7 @@ func test_every_field_is_pinned() -> void:
 	assert_int(s.interstitial_min_play_s).is_equal(240)
 	assert_int(s.interstitial_per_match).is_equal(1)
 	assert_int(s.fullscreen_timeout_ms).is_equal(8000)
+	assert_int(s.billing_timeout_ms).is_equal(8000)
 	assert_int(s.consent_timeout_ms).is_equal(10000)
 	assert_int(s.reward_xp_multiplier).is_equal(2)
 	assert_int(s.reward_start_credits).is_equal(500)
@@ -39,13 +40,15 @@ func test_out_of_range_values_are_reported() -> void:
 	bad.banner_gap_dp = 15
 	bad.start_credits_bonus_max = 499
 	bad.remove_ads_product_id = " "
+	bad.billing_timeout_ms = 999
 	var messages: PackedStringArray = bad.validate()
-	assert_int(messages.size()).is_equal(4)
+	assert_int(messages.size()).is_equal(5)
 	var joined: String = "\n".join(messages)
 	for field: String in [
 		"interstitial_per_match",
 		"banner_gap_dp",
 		"start_credits_bonus_max",
-		"remove_ads_product_id"
+		"remove_ads_product_id",
+		"billing_timeout_ms"
 	]:
 		assert_str(joined).override_failure_message("missing %s" % field).contains(field)

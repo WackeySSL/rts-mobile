@@ -65,6 +65,7 @@ func test_a_close_without_the_reward_callback_grants_nothing() -> void:
 func test_a_rewarded_ad_waits_for_its_close_and_grants_at_the_callback() -> void:
 	var service: Node = _make()
 	service.fake_auto_close = false
+	add_child(service)
 	var on_reward: Callable = func() -> void: _h.events.append("grant")
 	var result: Array = AdServiceHarness.start(
 		func() -> bool: return await service.show_rewarded(REWARD_PLACEMENT, on_reward)
@@ -161,8 +162,7 @@ func test_the_banner_signals_follow_show_hide_consent_and_remove_ads() -> void:
 	service.show_banner()
 	assert_int(service.banner_height_dp()).is_equal(0)
 	assert_array(heights).is_empty()
-	service._can_request_ads = true
-	service._refresh_banner()
+	service._set_can_request(true)
 	service._refresh_banner()
 	assert_int(service.banner_height_dp()).is_equal(FakeAdBackend.DEFAULT_BANNER_HEIGHT_DP)
 	service._ledger.remove_ads = true
@@ -171,6 +171,7 @@ func test_the_banner_signals_follow_show_hide_consent_and_remove_ads() -> void:
 	service._ledger.remove_ads = false
 	service._refresh_banner()
 	service.hide_banner()
+	await await_idle_frame()
 	assert_array(heights).contains_exactly(
 		[FakeAdBackend.DEFAULT_BANNER_HEIGHT_DP, 0, FakeAdBackend.DEFAULT_BANNER_HEIGHT_DP, 0]
 	)
@@ -184,6 +185,7 @@ func test_banner_requests_are_counted_with_a_floor_of_zero() -> void:
 	service.hide_banner()
 	assert_int(service.banner_height_dp()).is_equal(FakeAdBackend.DEFAULT_BANNER_HEIGHT_DP)
 	service.hide_banner()
+	await await_idle_frame()
 	assert_int(service.banner_height_dp()).is_equal(0)
 	service.hide_banner()
 	service.show_banner()
@@ -205,3 +207,23 @@ func test_consent_without_a_band_shows_no_banner_and_height_zero() -> void:
 	service._refresh_banner()
 	assert_int(service.banner_height_dp()).is_equal(0)
 	assert_bool(host.has_node("FakeTestBanner")).is_false()
+
+
+func test_the_reward_callback_runs_once_even_if_the_backend_rewards_twice() -> void:
+	var service: Node = auto_free(_h.make(true))
+	var fake: FakeAdBackend = AdServiceHarness.fake(service)
+	fake.show_never_closes = true
+	fake.grant_reward = false
+	var grants: Array[int] = []
+	var out: Array = AdServiceHarness.start(
+		func() -> bool:
+			service.rewarded_ready(&"x")
+			return await service.show_rewarded(&"x", func() -> void: grants.append(1))
+	)
+	await AdServiceHarness.frames(2)
+	fake.reward_earned.emit(AdBackend.KIND_REWARDED)
+	fake.reward_earned.emit(AdBackend.KIND_REWARDED)
+	fake.finish_show()
+	await AdServiceHarness.frames(2)
+	assert_array(grants).has_size(1)
+	assert_array(out).contains_exactly([true])

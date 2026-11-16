@@ -1,60 +1,53 @@
 class_name HudPrefs
 extends RefCounted
-## The player's HUD settings on the device (ADR 0025 section 11, plan P124; the file and the test
-## hook are ADR 0024 section 7's): `user://settings.cfg`, section `[hud]`, key `haptics`. Static
-## functions only, no Node, no autoload. A missing or unreadable file, or a key of another type,
-## means the default (vibration on). Phase 5's settings screen takes the file over and adds keys.
-## `vibrates` is the one gate every `vibrate` call asks.
+## The player's HUD settings on the device (ADR 0025 section 11, plan P124; ADR 0042 section 3,
+## plan P510b): section `hud`, key `haptics`, of `SaveService`'s one save file. Static functions
+## only, no Node, no autoload. A missing section, or a key of another type, means the default
+## (vibration on). Phase 5's settings screen adds keys to the same section. `vibrates` is the one
+## gate every `vibrate` call asks. A `user://settings.cfg` of an older install is moved into the
+## save by `SaveService` (migration v0) and deleted.
 
-const PATH: String = "user://settings.cfg"
-const SECTION: String = "hud"
+## The old file, read only by `SaveService`'s migration; named here for the tests.
+const PATH: String = "user://" + SaveService.LEGACY_FILE
+const SECTION: StringName = &"hud"
 const KEY_HAPTICS: String = "haptics"
 
-static var _path_override: String = ""
-## The switch as read: 1 on, 0 off, -1 not read since the last change.
-static var _haptics: int = -1
 
-
-## Tests: read and write `path` instead of the device's file.
+## Tests: read and write the save file at `path` (and its neighbours) instead of the device's.
 static func set_path_override(path: String) -> void:
-	_path_override = path
-	_haptics = -1
+	SaveService.set_path_override(path)
 
 
 static func clear_path_override() -> void:
-	_path_override = ""
-	_haptics = -1
+	SaveService.clear_path_override()
 
 
-## Forgets the value read, so the next ask reads the file again (a test that wrote it by hand).
+## Kept for the callers of the old cache: nothing is cached now, so there is nothing to forget.
 static func forget_read() -> void:
-	_haptics = -1
+	pass
 
 
+## The save file in use.
 static func path() -> String:
-	return _path_override if _path_override != "" else PATH
+	return SaveService.path()
 
 
-## Whether the Vibration switch is on (default on).
+## Whether the Vibration switch is on (default on). Read from the service's section at each ask,
+## so a direct `SaveService` write or a path switch shows at once.
 static func haptics_enabled() -> bool:
-	if _haptics < 0:  # Read once, not at every buzz.
-		var file: ConfigFile = ConfigFile.new()
-		var on: bool = true  # A missing or unreadable file, or a key of another type: on.
-		if file.load(path()) == OK:
-			var value: Variant = file.get_value(SECTION, KEY_HAPTICS, true)
-			if value is bool:
-				on = value
-		_haptics = 1 if on else 0
-	return _haptics == 1
+	var value: Variant = SaveService.get_section(SECTION).get(KEY_HAPTICS, true)
+	return not (value is bool and not value)  # Another type: on.
 
 
-## Saves the Vibration switch. The other keys of the file stay.
+## Saves the Vibration switch (written at the frame's end). The other keys of the section stay.
+## ERR_LOCKED when the save is from a newer app, ERR_INVALID_DATA when the service refuses it;
+## nothing changes then.
 static func set_haptics_enabled(on: bool) -> Error:
-	var file: ConfigFile = ConfigFile.new()
-	file.load(path())  # A missing file starts an empty one; an unreadable one is replaced.
-	file.set_value(SECTION, KEY_HAPTICS, on)
-	_haptics = 1 if on else 0
-	return file.save(path())
+	if SaveService.is_read_only():
+		return ERR_LOCKED
+	var values: Dictionary = SaveService.get_section(SECTION)
+	values[KEY_HAPTICS] = on
+	return OK if SaveService.set_section(SECTION, values) else ERR_INVALID_DATA
 
 
 ## The gate of every haptic call: the data default (`InputSettings.haptics_enabled`) and the

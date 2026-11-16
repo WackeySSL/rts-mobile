@@ -29,16 +29,27 @@ var draw_placeholders: bool = false
 ## Where the placeholders are drawn; none is drawn without one in the tree.
 var host: Node = null
 
+## Fake-only: `push_error` when a load, banner or show runs before `initialize`. AdService sets it.
+var strict_order: bool = false
+var initializations: int = 0
+## Every call in order: "initialize", "load:<kind>", "show:<kind>", "banner", "hide_banner".
+var calls: Array[String] = []
 var load_requests: Array[StringName] = []
 var shows: Array[StringName] = []
 var cancels: Array[StringName] = []
 var banner_visible: bool = false
 
 var _states: Dictionary[StringName, LoadState] = {}
-var _showing: StringName = &""
-var _opened: bool = false
+## The shows asked for and not yet closed, per kind (AdMob holds one per ad object): kind to
+## whether it opened.
+var _shows: Dictionary[StringName, bool] = {}
 var _fullscreen_node: FakeAdPlaceholders = null
 var _banner_node: FakeAdPlaceholders = null
+
+
+func initialize() -> void:
+	initializations += 1
+	calls.append("initialize")
 
 
 func load_state(kind: StringName) -> LoadState:
@@ -46,6 +57,7 @@ func load_state(kind: StringName) -> LoadState:
 
 
 func request_load(kind: StringName) -> void:
+	_note("load:" + kind)
 	load_requests.append(kind)
 	if load_never_answers:
 		_states[kind] = LoadState.LOADING
@@ -54,6 +66,7 @@ func request_load(kind: StringName) -> void:
 
 
 func show_ad(kind: StringName) -> void:
+	_note("show:" + kind)
 	if load_state(kind) != LoadState.READY:
 		return
 	_states[kind] = LoadState.IDLE
@@ -61,41 +74,73 @@ func show_ad(kind: StringName) -> void:
 	if show_fails:
 		show_failed.emit(kind)
 		return
-	_showing = kind
+	_shows[kind] = false
 	if not show_never_opens:
-		open_late()
+		open_late(kind)
 
 
-## Opens the pending show unless it was cancelled; then closes it per the script.
-func open_late() -> void:
-	if _showing == &"" or _opened:
-		return
-	_opened = true
-	opened.emit(_showing)
-	if show_never_closes:
-		return
-	if auto_close:
-		finish_show()
-	else:
-		_draw_fullscreen()
+## Opens the pending shows (those of `kind`, or all for an empty one) unless they were cancelled;
+## then closes them per the script.
+func open_late(kind: StringName = &"") -> void:
+	for pending: StringName in _shows.keys():
+		if (kind.is_empty() or pending == kind) and not _shows[pending]:
+			_open(pending)
 
 
 func cancel_show(kind: StringName) -> void:
 	cancels.append(kind)
 	if ignore_cancel:
 		return
-	if _showing == kind and not _opened:
-		_showing = &""
+	if _shows.has(kind) and not _shows[kind]:
+		_shows.erase(kind)
 
 
-## The Close press: the reward first when the script grants one, then `closed`.
-func finish_show() -> void:
-	if _showing == &"" or not _opened:
+## The Close press: the reward first when the script grants one, then `closed`. Closes the open
+## ad of `kind`, or every open ad for an empty one.
+func finish_show(kind: StringName = &"") -> void:
+	for open_kind: StringName in _shows.keys():
+		if (kind.is_empty() or open_kind == kind) and _shows[open_kind]:
+			_close(open_kind)
+
+
+func show_banner() -> void:
+	_note("banner")
+	banner_visible = true
+	if fill and draw_placeholders and _banner_node == null and _host_ready():
+		_banner_node = FakeAdPlaceholders.build_banner(banner_height)
+		host.add_child(_banner_node)
+
+
+func hide_banner() -> void:
+	_note("hide_banner")
+	banner_visible = false
+	if is_instance_valid(_banner_node):
+		_banner_node.queue_free()
+	_banner_node = null
+
+
+func banner_height_dp() -> int:
+	return banner_height if fill else 0
+
+
+func _open(kind: StringName) -> void:
+	_shows[kind] = true
+	opened.emit(kind)
+	if show_never_closes:
 		return
-	var kind: StringName = _showing
-	_showing = &""
-	_opened = false
-	_clear_fullscreen()
+	if auto_close:
+		_close(kind)
+	elif draw_placeholders and _host_ready():
+		_draw_fullscreen(kind)
+	else:
+		# Nothing to draw on (no host in the tree): close as scripted, so a run never waits forever.
+		_close(kind)
+
+
+func _close(kind: StringName) -> void:
+	_shows.erase(kind)
+	if _shows.values().all(func(opened_now: bool) -> bool: return not opened_now):
+		_clear_fullscreen()
 	var earns: bool = kind == KIND_REWARDED and grant_reward
 	if earns and not reward_after_close:
 		reward_earned.emit(kind)
@@ -104,27 +149,9 @@ func finish_show() -> void:
 		reward_earned.emit(kind)
 
 
-func show_banner() -> void:
-	banner_visible = true
-	if draw_placeholders and _banner_node == null and _host_ready():
-		_banner_node = FakeAdPlaceholders.build_banner(banner_height)
-		host.add_child(_banner_node)
-
-
-func hide_banner() -> void:
-	banner_visible = false
-	if is_instance_valid(_banner_node):
-		_banner_node.queue_free()
-	_banner_node = null
-
-
-func banner_height_dp() -> int:
-	return banner_height
-
-
-func _draw_fullscreen() -> void:
-	if _fullscreen_node == null and draw_placeholders and _host_ready():
-		_fullscreen_node = FakeAdPlaceholders.build_fullscreen(finish_show)
+func _draw_fullscreen(kind: StringName) -> void:
+	if _fullscreen_node == null:
+		_fullscreen_node = FakeAdPlaceholders.build_fullscreen(finish_show.bind(kind))
 		host.add_child(_fullscreen_node)
 
 
@@ -136,3 +163,9 @@ func _clear_fullscreen() -> void:
 
 func _host_ready() -> bool:
 	return host != null and is_instance_valid(host) and host.is_inside_tree()
+
+
+func _note(call: String) -> void:
+	calls.append(call)
+	if strict_order and initializations == 0:
+		push_error("FakeAdBackend: %s before initialize (consent gate)" % call)
