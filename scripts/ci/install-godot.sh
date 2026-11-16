@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Installs the official Godot Linux editor (x86_64; arm64 on an arm64 Linux machine, P51b) and the web
 # (no-threads) export templates, which are the same on both; --android adds more.
-# Usage: bash scripts/ci/install-godot.sh [--android] [--android-release]
+# Usage: bash scripts/ci/install-godot.sh [--android] [--android-release] [--android-source]
 #   --android          also fetch templates/android_debug.apk (127 MB, ADR 0005 section 2)
 #   --android-release  also fetch templates/android_release.apk (105 MB), the template of the perf APK (P51r)
+#   --android-source   also fetch templates/android_source.zip (214 MB), the Gradle build template that
+#                      export-android.sh --aab installs into android/build/ (P410b, ADR 0040 section 2)
 # Shared by .github/workflows/ci.yml and preview.yml. Idempotent: on an actions/cache hit it only
 # re-verifies the templates and re-links the editor. The 1.28 GB template archive is never
 # downloaded in full: the members are read with HTTP Range requests
@@ -15,12 +17,14 @@ set -euo pipefail
 
 WITH_ANDROID=0
 WITH_ANDROID_RELEASE=0
+WITH_ANDROID_SOURCE=0
 for arg in "$@"; do
   case "$arg" in
     --android) WITH_ANDROID=1 ;;
     --android-release) WITH_ANDROID_RELEASE=1 ;;
+    --android-source) WITH_ANDROID_SOURCE=1 ;;
     *)
-      echo "usage: bash scripts/ci/install-godot.sh [--android] [--android-release]" >&2
+      echo "usage: bash scripts/ci/install-godot.sh [--android] [--android-release] [--android-source]" >&2
       exit 2
       ;;
   esac
@@ -42,6 +46,9 @@ ANDROID_SUM="59e0073f0fa59f552684a861d8f4266b0b34b488a140d6657eac7dd70d1a0a0d  a
 # Same for templates/android_release.apk (104 803 333 bytes), computed on 2026-10-12 from the same .tpz by
 # scripts/ci/remote_zip.py (zip CRC checked) and read again on 2026-10-21 (P51r).
 ANDROID_RELEASE_SUM="6d1bb2cfa126a1b1c87e064a35b3cbd181bef0ec784dec1efd1d64dffa8be6cb  android_release.apk"
+# Same for templates/android_source.zip (214 418 211 bytes), computed on 2026-11-15 (P410b)
+# from the same .tpz by scripts/ci/remote_zip.py (zip CRC checked). export-android.sh --aab reads this line.
+ANDROID_SOURCE_SUM="a15416b528efb0a19a7d187e4d9f4e5336d0689144b111329fb4bd12c4447ad3  android_source.zip"
 MEMBERS="templates/version.txt templates/web_nothreads_release.zip templates/web_nothreads_debug.zip"
 if [ "$WITH_ANDROID" = 1 ]; then
   TEMPLATE_SUMS="$TEMPLATE_SUMS
@@ -52,6 +59,12 @@ if [ "$WITH_ANDROID_RELEASE" = 1 ]; then
   TEMPLATE_SUMS="$TEMPLATE_SUMS
 $ANDROID_RELEASE_SUM"
   MEMBERS="$MEMBERS templates/android_release.apk"
+fi
+
+if [ "$WITH_ANDROID_SOURCE" = 1 ]; then
+  TEMPLATE_SUMS="$TEMPLATE_SUMS
+$ANDROID_SOURCE_SUM"
+  MEMBERS="$MEMBERS templates/android_source.zip"
 fi
 
 if [ "$GODOT_VERSION" != "$PINNED_VERSION" ]; then
@@ -105,7 +118,8 @@ ln -sf "$GODOT_HOME/$BIN_NAME" "$GODOT_BIN_DIR/godot"
 # Later steps of the same job find `godot` (and pipx tools in the same dir) on PATH.
 if [ -n "${GITHUB_PATH:-}" ]; then echo "$GODOT_BIN_DIR" >> "$GITHUB_PATH"; fi
 
-# 2. Export templates (web no-threads; with --android also android_debug.apk, with --android-release android_release.apk),
+# 2. Export templates (web no-threads; with --android also android_debug.apk, with --android-release android_release.apk,
+# with --android-source android_source.zip),
 # fetched by range from the .tpz
 templates_ok() {
   [ -d "$TEMPLATES_DIR" ] || return 1

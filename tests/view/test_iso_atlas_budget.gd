@@ -38,14 +38,28 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## from 2852, 2776 and 2782 to the pins below (-685, -649 and -714 rows); page 2 (shadows) is not
 ## trimmed and its pins stay. Page 1 has left 1417 rows on the cross-faction page, 1457 on the
 ## Derrick League mirror and 1516 on the Lumen Accord mirror.
-const TODAY_CROSS: int = 2167  ## P306: 2852 - 685 (the trim).
-const TODAY_MIRROR_DERRICK: int = 2127  ## P306: 2776 - 649 (the trim).
-const TODAY_MIRROR_LUMEN: int = 2068  ## P306: 2782 - 714 (the trim).
-## Page 2 (shadows only): until P204 puts a key colour in a unit's shadow it is one slot for both
-## players, and each shadow fits the free width of shelf 1; only the trailing shelf grows.
-const TODAY2_CROSS: int = 1514  ## P203: 1116 + 398 (the pads widen every shadow frame).
-const TODAY2_MIRROR_DERRICK: int = 704  ## P203: 570 + 134 (the pads; P236: 566 + 4).
-const TODAY2_MIRROR_LUMEN: int = 814  ## P203: 634 + 180 (the pads; P236: 622 + 12).
+## P245b (the Flight Yard and the Glide Deck: 3 x 3 hull, KRITISK patch and shadow each, no head
+## frames) moved page 1 to the pins below (+62, +86 and +71 rows) and page 2 by 0, +2 and 0.
+## Page 1 has left 1270 rows on the cross-faction page, 1326 on the Derrick League mirror and 1346
+## on the Lumen Accord mirror.
+## P245 (the four aircraft: a 16-direction hull and a 16-direction shadow each, every frame of a
+## flyer on page 2, which is not trimmed) left page 1 as it was and moved page 2 from 1514, 782 and
+## 814 to the pins below (+472, +312 and +384 rows). Page 2 has left 1598 rows on the cross-faction
+## page, 2490 on the Derrick League mirror and 2386 on the Lumen Accord mirror.
+## P239b (the Burst Stack and the Sky Needle: 1 x 1 hull, 16 head frames each as boxes, a KRITISK
+## patch and a shadow) moved page 1 from 2167, 2127 and 2068 to 2252, 2172 and 2167 (+85, +45 and
+## +99 rows) and page 2 from 1514, 704 and 814 to 1514, 780 and 814 (0, +76, 0: the shadows share
+## the free width of shelf 1). Page 1 then had left 1332 rows on the cross-faction page, 1412 on the
+## Derrick League mirror and 1417 on the Lumen Accord mirror.
+const TODAY_CROSS: int = 2314  ## P245b: 2252 + 62 (P239b: 2167 + 85; P306: 2852 - 685).
+const TODAY_MIRROR_DERRICK: int = 2258  ## P245b: 2172 + 86 (P239b: 2127 + 45; P306: 2776 - 649).
+const TODAY_MIRROR_LUMEN: int = 2238  ## P245b: 2167 + 71 (P239b: 2068 + 99; P306: 2782 - 714).
+## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
+## one slot for both players, and each shadow fits the free width of shelf 1; only the trailing
+## shelf grows. An aircraft's hull carries the team colour, so it has a slot per player (P245).
+const TODAY2_CROSS: int = 1986  ## P245: 1514 + 472 (P203: 1116 + 398, the pads widen every shadow).
+const TODAY2_MIRROR_DERRICK: int = 1094  ## P245: 782 + 312 (P245b: 780 + 2; P239b: 704 + 76).
+const TODAY2_MIRROR_LUMEN: int = 1198  ## P245: 814 + 384 (P203: 634 + 180, the pads; P236: +12).
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

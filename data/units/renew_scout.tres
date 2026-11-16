@@ -21,3 +21,4 @@ weapon = ExtResource("2_weapon")
 cost = 600
 build_ticks = 225
 tab = 2
+detect_milli = 2000

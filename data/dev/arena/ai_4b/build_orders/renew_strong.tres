@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AiBuildOrderDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/AiBuildOrderDef.gd" id="1_order"]
+
+; Frozen copy of data/dev/arena/ai/build_orders/renew_strong.tres as of 2026-11-15 (main a2204d2f, P304), the shipped data/ai/build_orders/renew_strong.tres frozen by P189b with the fields later rows added. Used by perf_ai_4b only (ADR 0038 section 7).
+[resource]
+script = ExtResource("1_order")
+id = &"renew_strong"
+tier = 2
+steps = Array[StringName]([&"renew_power", &"renew_refinery", &"renew_factory", &"renew_barracks", &"renew_refinery", &"renew_power", &"renew_radar", &"renew_defence", &"renew_power", &"renew_strike", &"renew_defence"])

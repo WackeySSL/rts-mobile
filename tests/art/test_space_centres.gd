@@ -429,7 +429,7 @@ func test_each_default_view_reads_apart_from_every_other_building_at_32_px_in_gr
 			masks[model.art_id] = Support.mask_32(
 				Support.default_picture(_index.sheet(model.art_id), VIEW_DIR[model.faction])
 			)
-	assert_int(masks.size()).is_equal(18)
+	assert_int(masks.size()).is_equal(22)
 	for id: StringName in IDS:
 		var mask: Image = masks[id]
 		var ink: int = 0

@@ -299,14 +299,23 @@ func test_the_close_button_ends_the_tabs_row_and_the_cards_fill_the_width() -> v
 		assert_object(_sidebar.find_child("Economy", true, false)).is_null()
 		var tabs: Rect2 = _rect("Tabs")
 		var close: Rect2 = _rect("Close")
-		var last: Rect2 = _rect(TABS[TABS.size() - 1])
-		assert_float(close.position.x).override_failure_message(why).is_greater_equal(
-			last.end.x - 1.0
-		)
-		assert_float(close.end.x).override_failure_message(why).is_equal_approx(tabs.end.x, 1.0)
-		assert_float(close.position.y).override_failure_message(why).is_equal_approx(
-			tabs.position.y, 1.0
-		)
+		# Michael, 2026-11-15: the chevron is out of the tabs row: upright at the right end of the
+		# handle row above the tabs, sideways a handle on the panel's left edge.
+		assert_bool(close.intersects(tabs)).override_failure_message(why).is_false()
+		if HudLayout.is_portrait():
+			var grab: Rect2 = _rect("Grab")
+			assert_float(close.end.x).override_failure_message(why).is_equal_approx(grab.end.x, 1.0)
+			assert_float(close.end.y).override_failure_message(why).is_less_equal(
+				tabs.position.y + 1.0
+			)
+		else:
+			var panel: Rect2 = _rect("Backdrop")
+			assert_float(close.end.x).override_failure_message(why).is_equal_approx(
+				panel.position.x, 1.0
+			)
+			assert_float(close.get_center().y).override_failure_message(why).is_equal_approx(
+				panel.get_center().y, 1.0
+			)
 		assert_float(close.size.x).override_failure_message(why).is_greater_equal(
 			UiScale.dp(48.0) - TOLERANCE_PX
 		)
@@ -382,7 +391,16 @@ func test_the_slide_eases_out_ends_on_the_target_and_the_zone_follows_it() -> vo
 		var step: float = 0.016
 		for frame: int in 12:
 			_sidebar.advance(step)
+			var handle: bool = (_sidebar.find_child("Close", true, false) as Control).visible
 			seen.append(_sidebar.size.y if portrait else _sidebar.size.x)
+			if not portrait:
+				# The panel shows as much as it has slid; the handle strip joins only when open.
+				var full: float = _rect("Backdrop").size.x + UiScale.dp(48.0)
+				assert_bool(handle).override_failure_message("frame %d" % frame).is_equal(
+					is_equal_approx(_sidebar.size.x, full)
+				)
+				if not handle:
+					assert_float(_sidebar.size.x).is_less_equal(_rect("Backdrop").size.x + 0.5)
 			if portrait:
 				var zone: float = HudLayout.bottom_zone_px()
 				var top: float = HudLayout.menu_top_px
@@ -391,12 +409,18 @@ func test_the_slide_eases_out_ends_on_the_target_and_the_zone_follows_it() -> vo
 		for index: int in range(1, seen.size()):
 			assert_float(seen[index]).is_greater_equal(seen[index - 1])
 		var back: Rect2 = _rect("Backdrop")
-		assert_float(seen[-1]).is_equal_approx(back.size.y if portrait else back.size.x, 1.0)
+		var pull: float = 0.0 if portrait else UiScale.dp(48.0)
+		assert_float(seen[-1]).is_equal_approx(back.size.y if portrait else back.size.x + pull, 1.0)
 		assert_float(seen[0]).is_less(seen[-1] * 0.7)  # Eases out: the first steps are the longest.
 		if portrait:
 			assert_array(_told).is_not_empty()
 		else:
 			assert_array(_told).is_empty()
+		if not portrait:  # The close starts: the handle goes at once, the panel slides as moved.
+			_sidebar.collapse()
+			_sidebar.advance(step)
+			assert_bool((_sidebar.find_child("Close", true, false) as Control).visible).is_false()
+			assert_float(_sidebar.size.x).is_less(back.size.x)
 		BuildSidebar.set_slide_ms_override(0)
 
 
