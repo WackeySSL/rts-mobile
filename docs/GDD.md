@@ -122,6 +122,10 @@ Three 2-player maps of 56x56 to 64x64 tiles. Each base has 2 safe oil or gas fie
 2 contested fields and chokepoints. Fog of war: unexplored is a very dark blue-grey (Michael,
 2026-11-09; ADR 0035), explored but not visible shows the last known buildings, and the map's edge
 fades into a mist.
+- Kestrel Flats (64x64) is map 1. Map 2 is a river valley of 60x60 (sand and scrub, two crossings as
+  the chokepoints); map 3 a rocky highland of 56x56 (cliffs and narrow passes, smaller for shorter
+  matches). Both use today's terrain tiles (Michael, 2026-11-15; plan rows P550-P553). Rank opens
+  map 2 and map 3 (Meta progression).
 
 ## AI difficulty
 - Easy: slow reactions, weak build order, small attack waves.
@@ -138,6 +142,11 @@ Commander rank from XP (win, loss, difficulty bonus). Unlocks: maps, Hard diffic
 Headquarters skins; all eight team colours are open from the start. Everything can be unlocked
 without watching ads.
 Rewarded ads offer double XP after a match and +500 starting credits for the next match.
+- At launch (Michael, 2026-11-15; ADR 0045): XP by outcome and level plus a capped bonus per minute;
+  surrender counts as a loss, an abandoned match gives nothing, each tutorial lesson pays once.
+  Rank 2 opens map 2, rank 3 Hard, rank 4 map 3 (about five matches); each rank gives a title and
+  an insignia. **Headquarters skins come after launch**, not at launch (the art page is nearly
+  full). Kestrel Flats, Easy and Normal are open from the start.
 
 ## Monetization
 Rules in the `admob-policy` skill: no ads in battle but one banner at the foot of the open pause
@@ -150,6 +159,12 @@ look with one light from the north-west. Units, turrets and most buildings are s
 the in-repo generator (`tools/artgen/`) draws as SVG in every direction; team colour shows as bands
 in the player's colour.
 Audio: short radio chirps and mechanical sounds instead of voice acting, CC0 or generated.
+- At launch (Michael, 2026-11-15; ADR 0041): sound effects and music only under CC0 or CC-BY (each
+  file with an `assets/CREDITS.md` row; CC-BY credits shown in the Licences screen) or made in this
+  repository (`tools/sfxgen/`); no asset-store packs and no AI audio from outside tools. Three music
+  pieces: a calm menu loop, a driving battle loop without a lead melody, and short victory and
+  defeat stings; a composed theme later. You hear only what you can see. The tutorial is text with
+  a radio chirp, no narrator.
 
 ## Air, anti-air, engineering centre, space centre (Phase 4b, before launch)
 Michael asked for this on 2026-11-09: an airfield and aircraft, air defence, more buildings, an
@@ -294,6 +309,24 @@ ADR 0037, accepted 2026-11-09 (answers 1 A, 2 A, 3 A, 4 B, 5 A). Plan:
 | Medic squad | Patchers | Menders | 300 | Barracks | Unarmed. Patchers 110 HP, heal 1 squad; Menders 70 HP, 1.2 tiles/s, heal 2 squads in a wider reach |
 | Ground carrier | Bunk Wagon | Linecar | 700 (Linecar 500) | Vehicle factory | Unarmed. Bunk Wagon tracked, 700 HP, 1.0 tiles/s, 4 squads; Linecar wheeled, 320 HP, 2.0 tiles/s, 2 squads |
 | Minelayer | Shot Truck | Seeder | set in the data row (P290) | Vehicle factory, needs a radar | Unarmed, finds mines. Shot charge: 60 credits, 1-tile blast, strong against vehicles. Pulse seed: 50 credits, 1.5-tile blast, better against squads |
+
+Note (2026-11-15, P26bz, from P290's data): starting values; the balance runs tune them. The four
+units are in `data/units/` but not on the build menu until their art rows (P291, P292). Speed is in
+milli-tiles a tick (67 = 1.0 tiles/s); build time in ticks (15 a second); sight and finding reach in
+milli-tiles.
+
+| Unit | Cost | HP | Armour | Moves | Speed | Build | Sight | Other |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Bunk Wagon | 700 | 700 | heavy | tracked | 67 (1.0 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | 4 seats, squads keep 50 % on its death |
+| Linecar | 500 | 320 | light | wheeled | 133 (2.0 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | 2 seats, squads lost (0 %) |
+| Shot Truck | 500 | 450 | light | wheeled | 93 (1.4 tiles/s) | 300 (20 s) | 6 000 (6 tiles) | shot charge 60 credits; finds mines at 3 000 (3 tiles) |
+| Seeder | 450 | 250 | light | wheeled | 147 (2.2 tiles/s) | 225 (15 s) | 7 000 (7 tiles) | pulse seed 50 credits; finds mines at 3 000 (3 tiles) |
+
+- **The mines** (percent of damage against infantry, light, heavy, building): shot charge 160
+  damage, 50/120/120/100 %, blast 1 000; pulse seed 100 damage, 150/80/50/100 %, blast 1 500.
+- **Scout tanks** (Flarejack, Swift) find mines at 2 000.
+- **Radii** (body, selection, formation spacing): Bunk Wagon and Shot Truck 450/600/1 400,
+  Linecar and Seeder 400/500/1 200.
 
 **Looks:** the Weld Shed is an open steel shed with a crane arm and a welding flash; the Drone Dock
 a white ceramic rack of small hexagonal drones. Medics carry their side's own kit mark (an orange

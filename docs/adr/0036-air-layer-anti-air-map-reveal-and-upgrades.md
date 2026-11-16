@@ -997,6 +997,25 @@ one version each, in GDScript. The port rule (ADR 0013 §1) is read again at the
   (so while it attacks); the attack diamond keeps its fixed size (P244's widening of it to a
   building's footprint was reverted).
 
+- **P26bz note (2026-11-15, the lead; P245 as measured; changes no accepted text above).** P245's
+  aircraft cost page 2 about 4 times the frames table's estimate above: the four aircraft add 472
+  rows to the cross-faction page, against about 115 for the fighters and bombers, because the atlas
+  stores the 2x art at bake 1.0 and the estimate's cells were 1x px (four times the area; P245's
+  STYLE.md). On the cross page that is the only cause: it has one player per faction, so each hull
+  has one slot (`IsoAtlas._collect`). The per-player slots of a team-coloured hull explain only the
+  mirrors' +312 and +384. Page 2 is now 1,986 rows on the cross page and 1,094 and 1,198 on the
+  Derrick and Lumen mirrors, of 3,584.
+  - **The forecast** for the end of the plan is about 3,200-3,300 rows on the cross page (P266
+    about +420, P204 about +630 and the remaining shadows; P245's STYLE.md). That is above the P237
+    note's 2,400 because the flyers cost about 4 times their estimate and P203's pads (+398) were
+    not in it.
+  - **The allocation.** Before P266 starts, the lead sets page 2's per-row allocation within its
+    3,584 rows, as the P26bw table is for page 1; the 3,584 budget is unchanged. The rows that add
+    to page 2 are P266 (transports and drone squads, all frames), P204 (per-player unit shadows)
+    and the shadows of P249, P279, P280, P291 and P292 (the air plan's P26bz note).
+  - P245b (airfields) moved page 2 by only +0, +2 and +0 rows, and page 1 to 2,314, 2,258 and
+    2,238 rows.
+
 ### 16. Legal screen (ADR 0023 §13 extended)
 - **Method.** Names were checked against the games of ADR 0023 §13 and against real military
   aircraft, vehicles and programmes, from the architect's knowledge. "No known hit" is not a

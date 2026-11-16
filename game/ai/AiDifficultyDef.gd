@@ -3,7 +3,8 @@ extends Resource
 ## One difficulty level of the opponent AI (ADR 0030 section 6, plan row P175): the only thing that
 ## differs between Easy, Normal and Hard. One code path reads it; the script defaults are Normal's
 ## file (`data/ai/difficulty/normal.tres`, a data test pins them equal) but for the fields that are
-## off by default (`mend_below_percent`, `mend_floor`: the frozen arena files name neither). A
+## off by default (`mend_below_percent`, `mend_floor`: the `perf_ai` frozen files name neither;
+## the `perf_ai_4b` copies set each level's shipped pair, plan P304). A
 ## controller copies these into ints when it is made and keeps no Resource. Times are ticks at
 ## 15 Hz, values are credits.
 
@@ -44,7 +45,7 @@ extends Resource
 @export var uses_strike: int = 1
 ## Building repair (ADR 0037 section 4, plan row P274): `AiEconomy` switches a building's `MEND` on
 ## when its hp is under `mend_below_percent` percent of the maximum (0 = never, the script default,
-## so the frozen arena files play as before; 100 = any damage) while the credits left after the
+## so the `perf_ai` frozen files play as before; 100 = any damage) while the credits left after the
 ## think's spending and the economy's hold are above `mend_floor` (credits; a building that costs
 ## nothing goes on whatever they are). It never switches off. Easy mends nothing.
 @export var mend_below_percent: int = 0

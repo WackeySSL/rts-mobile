@@ -1,0 +1,13 @@
+<!-- Research tab glyph: white and grey only, tinted at run time (the engineering centre's build tab, shown while the faction has upgrades). -->
+<!-- Shape: a laboratory flask, a narrow rounded neck with a lip, a wide conical body, grey liquid with two bubbles. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- body and neck -->
+  <path d="M48 14 L80 14 L80 46 L116 104 C122 114 116 118 108 118 L20 118 C12 118 6 114 12 104 L48 46 Z" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- liquid -->
+  <path d="M30 82 L98 82 L113 106 C116 112 114 114 108 114 L20 114 C14 114 12 112 15 106 Z" fill="#BFBFBF"/>
+  <!-- lip -->
+  <rect x="40" y="8" width="48" height="12" rx="6" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- bubbles -->
+  <circle cx="52" cy="98" r="6" fill="#FFFFFF"/>
+  <circle cx="76" cy="92" r="4" fill="#FFFFFF"/>
+</svg>

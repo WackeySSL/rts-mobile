@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## Vehicles page and plan row P103 the oblique Buildings page with its Seam page.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
@@ -172,7 +173,7 @@ func test_the_three_ghosts_are_drawn_as_the_style_guide_says() -> void:
 		assert_vector(glyph.size).is_equal(Vector2(56, 56))
 		assert_vector(glyph.position).is_equal((diamond[0] + diamond[2]) / 2.0 - Vector2(28, 28))
 		assert_that(glyph.modulate).is_equal(Gallery.GHOST_DANGER)
-		assert_that(glyph.modulate).is_equal(Gallery.GLYPH_TINTS["glyph_reason_occupied"])
+		assert_that(glyph.modulate).is_equal(IconsPage.GLYPH_TINTS["glyph_reason_occupied"])
 		# Own building in the Signal triad of the Derrick League's frames, the last seen one in the
 		# other player's Arktisk (the bake's replacement of the key triad).
 		var own: int = _pixels_near((valid.get_node("Rig/Hull") as Sprite2D).texture, "E8681F")
