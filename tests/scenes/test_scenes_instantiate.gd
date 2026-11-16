@@ -22,6 +22,7 @@ func test_every_scene_instantiates_and_survives_a_frame() -> void:
 	]
 	assert_array(scenes).contains(required)
 	var max_fps: int = Engine.max_fps
+	var quit_on_go_back: bool = get_tree().quit_on_go_back  # The menu switches it off for good.
 	for path: String in scenes:
 		var packed: PackedScene = load(path)
 		assert_object(packed).override_failure_message("cannot load %s" % path).is_not_null()
@@ -33,3 +34,4 @@ func test_every_scene_instantiates_and_survives_a_frame() -> void:
 		remove_child(root)
 		root.free()
 		assert_int(Engine.max_fps).override_failure_message(path).is_equal(max_fps)
+		get_tree().quit_on_go_back = quit_on_go_back
