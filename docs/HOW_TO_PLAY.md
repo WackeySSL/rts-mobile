@@ -196,6 +196,12 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Tap Surrender in the pause menu | A question stands over the screen. "Keep playing" closes it and nothing happens; "Surrender" loses the match at once. Nothing is sent before you answer, and the map and the buttons behind the question do not react while it stands (a finger already on the map or the full map when it opens is let go: it orders and pans nothing, and the mouse wheel does not zoom) | |
 | The match ends | A screen covers the game with a word and a picture: VICTORY (a star), DEFEAT (a broken shield) or DRAW (an equals sign), the time the match took, and for you and for the enemy the units built, the units lost, the buildings lost and the credits harvested (the losses count only for a side that had a production building). "Play again" starts a new match of the same Skirmish against the same computer side at the same level, "Back" returns to the dev menu. The game does not go on behind the screen | |
 
+## Menus (the menu frame)
+| Action | Result | Teach |
+|---|---|---|
+| Press the phone's Back button in a menu screen | The screen closes and the one before it shows again (a slide, or a cut with Reduced effects on) | |
+| Press Back on the main menu | "Quit Treadline?" asks first; Stay (or Back again) closes the question, Quit leaves the game. The browser has no Back event: its own back button leaves the page | |
+
 ## Not yet in the game
 Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).
 
