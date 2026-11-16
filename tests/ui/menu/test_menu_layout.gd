@@ -12,6 +12,7 @@ const TOLERANCE_PX: float = 0.5
 const PORTRAIT_CUTOUT: Rect2i = Rect2i(0, 100, 1080, 2137)
 
 var _window_size_before: Vector2i
+var _quit_on_go_back_before: bool = true
 var _menu: Control
 var _stack: MenuStack
 var _screen: MenuScreen
@@ -26,7 +27,13 @@ func after() -> void:
 	get_window().size = _window_size_before
 
 
+func before_test() -> void:
+	_quit_on_go_back_before = get_tree().quit_on_go_back
+
+
 func after_test() -> void:
+	# The menu leaves it off for good (ADR 0043 section 4); this suite puts it back for the others.
+	get_tree().quit_on_go_back = _quit_on_go_back_before
 	UiScale.clear_override()
 	if _menu != null:
 		remove_child(_menu)
