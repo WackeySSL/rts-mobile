@@ -208,3 +208,8 @@ Menus and rewards get their entries when their phase ships them (ROADMAP Phases 
 | Action | Result | Teach |
 |---|---|---|
 | Gas fields | Not shown yet: every field is oil. Once a map names its gas fields, one shows a pale crust with a glowing vent instead of a black pool, with the same full, half and dry steps | |
+
+## The intro
+| Action | Result | Teach |
+|---|---|---|
+| Tap the screen (or press Back) while the game starts | The tank's motion stops at once. If the game is ready, the menu opens right away; if not, the still icon and a thin loading line stay until it is. With Reduced effects on there is no motion, only a short fade | |
