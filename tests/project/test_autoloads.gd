@@ -10,6 +10,7 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"AdService": "res://game/ads/AdService.gd",
 	"AudioService": "res://game/view/audio/audio_service.gd",
 	"SaveService": "res://game/meta/save_service.gd",
+	"Progression": "res://game/meta/progression_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 ## Autoloads are ready in list order, so a service must be listed after what its `_ready` reads
