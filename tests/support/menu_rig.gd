@@ -42,6 +42,8 @@ static func prefs_dir() -> String:
 
 
 static func _clean() -> void:
+	if not DirAccess.dir_exists_absolute(prefs_dir()):
+		return
 	for file_name: String in DirAccess.get_files_at(prefs_dir()):
 		DirAccess.remove_absolute(prefs_dir().path_join(file_name))
 	DirAccess.remove_absolute(prefs_dir())
