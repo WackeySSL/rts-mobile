@@ -15,7 +15,8 @@
 # the stubs' log, which files the checks and the description ran on. For export-android.sh --release (P51r, the perf APK of the gate) it checks the preset and
 # the template it exports with, the release keystore variables, the library entry android.release.arm64 and the
 # three checks of that mode: not debuggable, the dev_menu feature in the pack and the release template's engine
-# library. ci.yml runs it in android-debug-apk, next to the offline test of publish-dev-release.sh.
+# library, and that the notice names assets/LICENSE.md (ADR 0046). ci.yml runs it in android-debug-apk, next to
+# the offline test of publish-dev-release.sh.
 # Needs: bash, zip, unzip, strings (binutils), sha256sum.
 # Usage: bash scripts/ci/test-export-notices.sh      Exit: 0 all cases pass, 1 a case failed.
 set -euo pipefail
@@ -299,6 +300,16 @@ if cmp -s <(tail -n +2 "$root/ok/build/web/THIRD_PARTY_LICENSES.txt") \
   pass "the two notices agree after their header line"
 else
   fail "the web and Android notices differ after their header line"
+fi
+# ADR 0046: the notice names the all-rights-reserved notice of the game's own assets, both lines in full.
+web_notice="$root/ok/build/web/THIRD_PARTY_LICENSES.txt"
+if grep -Fxq "rts-mobile's own art, audio and model data are Copyright (c) 2026 AppCode ApS, all rights" \
+  "$web_notice" &&
+  grep -Fxq "reserved: see the file assets/LICENSE.md in the source repository (ADR 0046)." "$web_notice" &&
+  [ -s "$repo/assets/LICENSE.md" ]; then
+  pass "the notice holds both asset lines and names assets/LICENSE.md, which exists"
+else
+  fail "the notice lacks an asset line (ADR 0046), or assets/LICENSE.md is missing"
 fi
 
 # (2b) ADR 0013 section 10: the checks ran on the right files. The stubs logged each call with the content of its

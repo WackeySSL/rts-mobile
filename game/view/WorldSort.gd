@@ -52,7 +52,8 @@ const TRIADS: Array[Array] = [
 var atlas: IsoAtlas = IsoAtlas.new()  ## Empty until the first `bake`.
 ## Where the neutral sheet is read from; a test points it at a crafted sheet.
 var neutral_path: String = IsoAtlas.NEUTRAL_SHEET
-## Sheets baked beside the index's (a test's crafted art, as `neutral_path`); the id filter applies.
+## Sheets baked beside the index's (a test's crafted art, as `neutral_path`); the id filter applies,
+## and one replaces the index's sheet of its art id (P245: the shipped Torchjet has art now).
 var extra_sheets: Array[IsoSheetDef] = []
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
@@ -113,7 +114,13 @@ func sync() -> void:
 func bake(scenario: ScenarioDef) -> IsoAtlas:
 	var ids: Dictionary[StringName, bool] = _art_ids(scenario)
 	var sheets: Array[IsoSheetDef] = []
-	for sheet: IsoSheetDef in IsoAtlas.load_sheets() + extra_sheets:
+	var replaced: Dictionary[StringName, bool] = {}  # An extra sheet stands for the shipped one.
+	for sheet: IsoSheetDef in extra_sheets:
+		replaced[sheet.art_id] = true
+	for sheet: IsoSheetDef in IsoAtlas.load_sheets():
+		if ids.has(sheet.art_id) and not replaced.has(sheet.art_id):
+			sheets.append(sheet)
+	for sheet: IsoSheetDef in extra_sheets:
 		if ids.has(sheet.art_id):
 			sheets.append(sheet)
 	var arts: Array[IsoPlayerArt] = _player_arts(scenario, sheets)

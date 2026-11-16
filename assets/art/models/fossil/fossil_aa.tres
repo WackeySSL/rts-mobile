@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"fossil_aa"
+faction = &"fossil"
+category = &"bld"
+footprint = 1
+silhouette = "A tall poured-concrete pedestal on a wide pad with a team band and a ladder stub, carrying a round drum head whose top holds a close bundle of four steel barrels slanted steeply skyward, bound by a rust collar and a team ring."
+mount = Vector3(0, 0, 0.52)
+prims = PackedStringArray(
+"box hull concrete 0 0 0 0.92 0.92 0.06",
+"box hull concrete 0 0 0.06 0.6 0.6 0.2 group=bodyc",
+"box hull team 0 0 0.26 0.64 0.64 0.14 group=band",
+"box hull concrete 0 0 0.4 0.7 0.7 0.12 group=cap",
+"box hull iron 0.31 0 0.1 0.03 0.16 0.3 group=ladder",
+"box hull iron 0 0.36 0.08 0.34 0.04 0.1 group=stubs",
+"prism hull steel -0.3 -0.3 0.52 0.04 0.04 0.3 sides=6 group=aerial",
+"prism head olive 0 0 0 0.52 0.52 0.16 sides=10",
+"prism head team 0 0 0.16 0.55 0.55 0.1 sides=10",
+"prism head olive 0 0 0.26 0.46 0.46 0.08 sides=10",
+"box head iron -0.18 0 0.34 0.2 0.3 0.06",
+"rod head steel 0.02 -0.15 0.34 0.46 -0.15 0.86 7",
+"rod head steel 0.02 -0.05 0.34 0.46 -0.05 0.86 7",
+"rod head steel 0.02 0.05 0.34 0.46 0.05 0.86 7",
+"rod head steel 0.02 0.15 0.34 0.46 0.15 0.86 7",
+"box head rust 0.15 0 0.44 0.12 0.46 0.1",
+"rod head iron 0.34 -0.2 0.72 0.34 0.2 0.72 6",
+"box hull team -0.14 0 0.3 0.4 0.64 0.1 damage=1 group=p1",
+"box hull concrete -0.12 0 0.4 0.46 0.7 0.12 damage=1 group=p1",
+"box hull interior 0.26 0.26 0.4 0.2 0.2 0.02 damage=1 group=p1",
+"broken hull concrete 0.26 0.26 0.42 0.2 0.2 0.08 teeth=4 low=0.3 damage=1 group=p1",
+"rod hull rebar 0.2 0.3 0.42 0.2 0.3 0.78 3 bend=30 damage=1 group=p1",
+"box hull concrete 0 0 0.06 0.34 0.34 0.36 damage=2 group=k2",
+"box hull interior 0 0 0.06 0.58 0.58 0.1 damage=2 group=k2",
+"broken hull concrete 0.32 0 0.06 0.08 0.7 0.34 teeth=5 low=0.35 damage=2 group=k2",
+"broken hull concrete 0 -0.32 0.06 0.7 0.08 0.36 teeth=4 low=0.4 damage=2 group=k2",
+"broken hull concrete -0.32 0 0.06 0.08 0.7 0.3 teeth=4 low=0.2 damage=2 group=k2",
+"broken hull team 0.36 0.2 0.3 0.1 0.2 0.12 teeth=3 low=0.3 damage=2 group=k2",
+"rod hull rebar 0.32 0.1 0.36 0.32 0.1 0.66 3 bend=25 damage=2 group=k2",
+"rod hull rebar -0.32 0.2 0.3 -0.32 0.2 0.58 3 bend=-30 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"dmg2 0 bodyc hide",
+"dmg2 0 band hide",
+"dmg2 0 cap hide",
+"dmg2 0 ladder hide",
+"dmg2 0 stubs hide",
+"dmg2 0 aerial hide",
+"dmg2 0 p1 hide"
+)
+emitters = PackedStringArray(
+"damage 0.26 0.26 0.44",
+"dmg_spark 0.1 -0.28 0.3"
+)

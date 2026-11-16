@@ -2,9 +2,10 @@ class_name BuildSidebar
 extends Control
 ## The build drawer (ADR 0025 sections 5 and 6, plan P120; it grew out of ADR 0019 section 1, ADR
 ## 0023 section 12 and ADR 0024): a side panel at the right edge in landscape, a bottom sheet in
-## portrait, over the map. From the top: the handle (upright), the tabs, three or four (an icon
-## over the name) with the close button at the row's end, and the grid of the open tab's item
-## cards, which scrolls vertically.
+## portrait, over the map. From the top: the handle row (upright; the close chevron at its right
+## end), the tabs, three to five (an icon over the name), and the grid of the open tab's item
+## cards, which scrolls vertically. Sideways the close chevron is a 48 dp handle on the panel's left
+## (map-side) edge, outside the tabs row (Michael, 2026-11-15, ADR 0025 section 5).
 ## The economy pill stays in its corner while the drawer is open (Michael, 2026-11-05; ADR 0025's
 ## "folds under the drawer" no longer holds). It sends nothing to the sim but Commands through
 ## `PlayerController.command_sink`: a tap on an available card is one QUEUE, a hold on any card
@@ -55,19 +56,20 @@ const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
 const THEME_TYPE: StringName = &"HudPanel"  ## ADR 0025 section 13: the panel token and its edge.
 const TAB_VARIATION: StringName = &"SidebarTab"
 ## The tab names by `World.Tab`; the icon of a tab is `tab_<name in lower case>`.
-const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Flight"]
-## The first tab that shows only while the faction has items on it (P244: Flight, the airfield's).
+const TAB_NAMES: PackedStringArray = ["Structures", "Infantry", "Vehicles", "Flight", "Research"]
+## The first tab that shows only while the faction has items on it (P244: Flight, the airfield's;
+## P248: Research, the engineering centre's).
 const FIRST_OPTIONAL_TAB: int = World.Tab.FLIGHT
 const TAB_DP: float = 56.0  ## An icon over the name needs more than the 48 dp of a bare icon.
 const TAB_ICON_DP: float = 22.0
 ## A tab with no name shown (the crowded row, `_fit_tabs`) is this wide: the touch target's least.
 const TAB_BARE_DP: float = 48.0
-## The most tabs whose names all fit the narrowest drawer (312 dp: 280 dp of row less the close
-## button), at 14 sp with "Structures" the widest.
+## The most tabs whose names all fit the narrowest drawer (312 dp: 280 dp of row), at 14 sp with
+## "Structures" the widest; beyond it `_fit_tabs` measures.
 const NAMED_TABS_MAX: int = 3
 const NAME_VARIATION: StringName = &"ItemCaption"  ## 14 sp: "Structures" fits a tab.
 const HANDLE_DP: Vector2 = Vector2(40.0, 4.0)  ## The sheet's handle (ADR 0025 section 5).
-const CLOSE_DP: float = 48.0  ## The close button's least width; it is as high as the tabs.
+const CLOSE_DP: float = HudCorners.CLOSE_DP  ## The close chevron's size, both ways.
 const HANDLE_GAP_DP: float = 4.0  ## Above and below the handle.
 ## Beside the backdrop's own 8 dp: the 16 dp each side that three 88 dp cards need 312 dp for.
 const PAD_DP: float = 8.0
@@ -103,6 +105,9 @@ var _tabs: Array[Button] = []
 var _tab_icons: Array[TextureRect] = []
 var _tab_names: Array[Label] = []
 var _handle: ColorRect = ColorRect.new()  ## Upright only.
+var _handle_box: CenterContainer = CenterContainer.new()  ## Upright: centres the handle in its row.
+var _pull_plate: PanelContainer = PanelContainer.new()  ## Sideways: the close handle's plate.
+var _grab_spacer: Control = Control.new()  ## Upright: balances the close chevron at the far end.
 var _items: ScrollContainer = ScrollContainer.new()
 var _items_fit: DpMinSize = DpMinSize.new()  ## The least height of `_items`: a sliver of a row.
 var _makers: PackedInt32Array = PackedInt32Array()  ## The type that produces each tab, else -1.
@@ -353,17 +358,28 @@ func _build_grab() -> void:
 	_stack.add_child(_grab)
 	_handle.name = "Handle"
 	_handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_handle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_grab.add_child(_handle)
+	_grab_spacer.name = "Spacer"
+	_grab_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_min_dp(_grab_spacer, Vector2(CLOSE_DP, CLOSE_DP))
+	_grab.add_child(_grab_spacer)
+	_handle_box.name = "HandleBox"
+	_handle_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_handle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_grab.add_child(_handle_box)
+	_handle_box.add_child(_handle)
 
 
-## The close button at the tabs row's right end: a chevron toward the edge the drawer leaves by.
+## The close chevron, toward the edge the drawer leaves by: upright at the right end of the handle
+## row, sideways a handle on the panel's map-side edge (`_seat_close`), never in the tabs row.
 func _build_close() -> void:
 	_close.name = "Close"
 	_close.flat = true
+	_pull_plate.name = "PullPlate"
+	_pull_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pull_plate.theme_type_variation = THEME_TYPE
 	_close.focus_mode = Control.FOCUS_NONE
 	_close.pressed.connect(collapse)
-	_min_dp(_close, Vector2(CLOSE_DP, TAB_DP))
+	_min_dp(_close, Vector2(CLOSE_DP, CLOSE_DP))
 	_chevron.texture = load(ICON_ART % "glyph_chevron")
 	_chevron.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_chevron.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -371,7 +387,6 @@ func _build_close() -> void:
 	_chevron.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chevron.resized.connect(func() -> void: _chevron.pivot_offset = _chevron.size / 2.0)
 	_close.add_child(_chevron)
-	_tab_row.add_child(_close)
 
 
 ## The tabs: an icon over the name each (`tab_<name>`, grey at rest and white when open, from the
@@ -417,7 +432,6 @@ func _build_tabs() -> void:
 		_tabs.append(button)
 		_tab_icons.append(icon)
 	_build_close()
-	_stack.resized.connect(_fit_tabs)  # The room the names are measured against.
 
 
 ## The icon's tint: the open tab's white or the resting grey, from the tab's theme colours.
@@ -479,6 +493,8 @@ func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) ->
 	var state: ItemTile.State = ItemTile.State.AVAILABLE
 	if head and done >= 1.0 and tile.tab == World.Tab.STRUCTURES:
 		state = ItemTile.State.READY
+	elif _researched(snap, player, type):
+		state = ItemTile.State.RESEARCHED
 	elif _producers[tile.tab] == 0 or (requires >= 0 and _owned[requires] == 0):
 		state = ItemTile.State.LOCKED
 	elif _entry(snap.credits, player) < snap.type_cost[type]:
@@ -490,6 +506,12 @@ func _show_tile(tile: ItemTile, snap: MatchSnapshot, player: int, slots: int) ->
 	if state == ItemTile.State.LOCKED:
 		lacks = _makers[tile.tab] if _producers[tile.tab] == 0 else requires
 	tile.set_needs(snap.type_names[lacks] if lacks >= 0 else "")
+
+
+## Whether `player` has researched the upgrade that the research item `type` gives (P248).
+static func _researched(snap: MatchSnapshot, player: int, type: int) -> bool:
+	var up: int = snap.type_upgrade[type] if type < snap.type_upgrade.size() else -1
+	return up >= 0 and (_entry(snap.upgrades, player) >> up) & 1 == 1
 
 
 ## One tile per buildable type, in the type table's order, for the snapshot's match.
@@ -540,7 +562,7 @@ func _show_tab() -> void:
 	var gap_px: float = roundf(GAP_DP * _dp_px)
 	card.x = maxf(card.x, floorf((width_px - (columns - 1) * gap_px) / columns) / _dp_px)
 	var shown: int = 0
-	# The rule for the optional tabs (Flight, later Research): a tab shows while the local faction's
+	# The rule for the optional tabs (Flight and Research): a tab shows while the local faction's
 	# list holds an item on it (`kin`: no faction or ours), or while it is the open tab, so a
 	# selected airfield always opens its tab. Cards are locked until the producer stands, as the
 	# Vehicles tab's are. A faction with no aircraft in its list sees three tabs.
@@ -555,22 +577,25 @@ func _show_tab() -> void:
 	_fit_tabs()
 	var fill: int = Control.SIZE_EXPAND_FILL if shown >= columns else Control.SIZE_FILL
 	for tile: ItemTile in _tiles:
-		tile.set_card(card)
+		tile.set_card(card, ItemTile.RESEARCH_LINES if tab == World.Tab.RESEARCH else 1)
 		tile.size_flags_horizontal = fill
 	_items_fit.min_dp = Vector2(0.0, FIT_LEAST_DP)
 	_grid.columns = columns
 
 
-## The Flight tab (and later Research) shows only while the faction has items on it, so the tab
-## row holds three tabs, then four (P244). Every tab shows its name while the names fit the row
-## (measured: each tab as wide as its name inside the plate's borders, the close button and the
-## gaps, against the width of the stack). When they do not (more than `NAMED_TABS_MAX` tabs on a
+## The Flight and Research tabs show only while the faction has items on them, so the tab
+## row holds three tabs, then four (P244), then five (P248). Every tab shows its name while the
+## names fit the row
+## (measured: each tab as wide as its name inside the plate's borders and the gaps, against
+## `_row_room`). When they do not (more than `NAMED_TABS_MAX` tabs on a
 ## narrow drawer: "Structures" spilled into its neighbour on a 6-inch phone) only the open tab
 ## keeps its name and the others are bare icons of `TAB_BARE_DP`, so every tab stays a 48 dp target.
 func _fit_tabs() -> void:
 	var shown: int = 0
 	var names_px: float = 0.0
+	var open_px: float = 0.0  # The open tab named, every other one bare.
 	var edges: float = 0.0
+	var bare_px: float = TAB_BARE_DP * _dp_px
 	for index: int in _tabs.size():
 		if not _tabs[index].visible:
 			continue
@@ -579,12 +604,28 @@ func _fit_tabs() -> void:
 			_tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION) as StyleBoxFlat
 		)
 		edges = plate.get_border_width(SIDE_LEFT) + plate.get_border_width(SIDE_RIGHT)
-		names_px += maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
-	var gaps: float = shown * roundi(UiScale.dp(TAB_GAP_DP))
-	var asked: float = names_px + _close.get_combined_minimum_size().x + gaps
-	var crowded: bool = shown > NAMED_TABS_MAX and (_stack.size.x <= 0.0 or asked > _stack.size.x)
+		var named_px: float = maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
+		names_px += named_px
+		open_px += named_px if index == tab else bare_px
+	var gaps: float = maxi(shown - 1, 0) * roundi(UiScale.dp(TAB_GAP_DP))
+	var room: float = _row_room()
+	var crowded: bool = shown > NAMED_TABS_MAX and (room <= 0.0 or names_px + gaps > room)
+	# Where not even the open tab's name fits beside the others' icons, every tab shows its icon
+	# alone (the open one is still the lighter plate with the bar); measured, never by a count.
+	var none: bool = crowded and open_px + gaps > room
+	var level: int = 2 if none else (1 if crowded else 0)  # Names: all, the open one, none.
+	_set_tab_widths(level, shown, edges)
+	# The row takes each tab's width rounded up to a whole px: where that overflows the room, the
+	# next level (fewer names) is the one that fits.
+	while level < 2 and shown > NAMED_TABS_MAX and _tab_row.get_combined_minimum_size().x > room:
+		level += 1
+		_set_tab_widths(level, shown, edges)
+
+
+## Shows the names of `level` (0 all, 1 the open tab's, 2 none) and sets the tabs' widths to them.
+func _set_tab_widths(level: int, shown: int, edges: float) -> void:
 	for index: int in _tabs.size():
-		var bare: bool = crowded and index != tab
+		var bare: bool = level == 2 or (level == 1 and index != tab)
 		_tab_names[index].visible = not bare
 		var wide: float = TAB_BARE_DP if bare else TAB_DP
 		if shown > NAMED_TABS_MAX and not bare:  # A named tab is as wide as its name in the borders.
@@ -594,12 +635,24 @@ func _fit_tabs() -> void:
 				(child as DpMinSize).min_dp = Vector2(wide, TAB_DP)
 
 
+## The width the tab row really has, base px: the drawer's less the margins of the pad and the
+## panel, from the last `_measure`. The stack's own width is the old layout's right after a turn.
+func _row_room() -> float:
+	var panel: StyleBox = _backdrop.get_theme_stylebox(&"panel")
+	var pad: float = roundi(UiScale.dp(PAD_DP))
+	return _rect.size.x - 2.0 * pad - panel.get_margin(SIDE_LEFT) - panel.get_margin(SIDE_RIGHT)
+
+
 ## A tap: an available tile queues one item, a ready structure enters placement mode (plan P86) and
 ## closes the drawer (also when a placement runs already: it restarts), any other tile shakes.
 func _on_chose(tile: ItemTile) -> void:
 	match tile.state:
 		ItemTile.State.AVAILABLE:
-			_send(Command.queue(_local_player(), tile.type_index))
+			# An upgrade queues once (the sim drops a second QUEUE): the queued card shakes.
+			if tile.tab == World.Tab.RESEARCH and tile.queued > 0:
+				tile.shake()
+			else:
+				_send(Command.queue(_local_player(), tile.type_index))
 		ItemTile.State.READY:
 			if placement != null and placement.begin(tile.type_index):
 				collapse()
@@ -680,11 +733,11 @@ func _apply_dp() -> void:
 	_grab.visible = _portrait
 	_handle.visible = _portrait
 	_handle.custom_minimum_size = Vector2(UiScale.dp(HANDLE_DP.x), UiScale.dp(HANDLE_DP.y))
-	_grab.custom_minimum_size.y = UiScale.dp(HANDLE_DP.y + HANDLE_GAP_DP)
+	_grab.custom_minimum_size.y = UiScale.dp(CLOSE_DP)  # The chevron's row.
+	_seat_close()
 	_handle.color = _tab_tint(false)  # The resting grey of the tabs' icons.
 	for at: int in _tab_icons.size():
 		_tab_icons[at].modulate = _tab_tint(_tabs[at].button_pressed)
-	_chevron.rotation = PI / 2.0 if _portrait else 0.0  # Toward the edge it leaves by.
 	var pad: int = roundi(UiScale.dp(PAD_DP))
 	_pad.add_theme_constant_override("margin_left", pad)
 	_pad.add_theme_constant_override("margin_top", 0)
@@ -702,6 +755,21 @@ func _apply_dp() -> void:
 	_place(true)
 	if is_open():
 		state_changed.emit()  # `HudLayout.drawer_side_dp` has a new value.
+
+
+## Seats the close chevron for the orientation: upright the last child of the handle row; sideways
+## a child of the holder, at the panel's left edge and as low as its middle (the holder reaches
+## `CLOSE_DP` further left than the panel for it, `_apply_extent`), in the panel's own look.
+func _seat_close() -> void:
+	var home: Node = _grab if _portrait else self
+	if _pull_plate.get_parent() == null:
+		add_child(_pull_plate)  # Behind the handle: the panel's own look (`HudPanel`).
+	move_child(_pull_plate, 0)
+	if _close.get_parent() != home:
+		if _close.get_parent() != null:
+			_close.get_parent().remove_child(_close)
+		home.add_child(_close)
+	_chevron.rotation = PI / 2.0 if _portrait else 0.0  # Toward the edge it leaves by.
 
 
 ## Reads what the window decides, once per resize: the orientation and the dp, the drawer's rect
@@ -760,12 +828,24 @@ func _apply_extent(extent: float) -> void:
 		_backdrop.size = Vector2(_rect.size.x, _rect.size.y + _edge)
 		size = holder
 		_backdrop.position = Vector2(0.0, holder.y - _backdrop.size.y)
+		_close.visible = true
+		_pull_plate.visible = false
 	else:
-		position = Vector2(_rect.end.x - extent, _rect.position.y)
-		holder = Vector2(extent + _edge, _rect.size.y)
+		# The close handle, left of the panel, only while the drawer stands fully open: a slide
+		# shows as much panel as it has moved, and the handle goes as the close starts.
+		var handled: bool = is_open() and extent >= _open_px - 0.5
+		var pull: float = CLOSE_DP * _dp_px if handled else 0.0
+		position = Vector2(_rect.end.x - extent - pull, _rect.position.y)
+		holder = Vector2(extent + _edge + pull, _rect.size.y)
 		_backdrop.size = Vector2(_rect.size.x + _edge, _rect.size.y)
 		size = holder
 		_backdrop.position = Vector2(holder.x - _backdrop.size.x, 0.0)
+		_close.visible = handled
+		_pull_plate.visible = handled
+		_close.size = Vector2(pull, pull)
+		_close.position = Vector2(0.0, (holder.y - pull) / 2.0)
+		_pull_plate.size = _close.size
+		_pull_plate.position = _close.position
 	var zone: float = 0.0
 	var top: float = INF
 	if _portrait:

@@ -622,6 +622,14 @@ accepted):
   each tick's records as `queued` in log order, steps at most `until_tick - world.tick` ticks,
   and does not check `final_hash`; the caller compares it.
 
+Status note (2026-11-15, P500b; ADR 0042 accepted by Michael, 2026-11-15; the text above stays as
+accepted): **Storage.** Phase 5 stores one log on the device: the running match's replay in
+`user://resume.bin` (ADR 0042 §6), written when the app goes to the background and deleted when
+the match ends or is left. It is the input of a restore that replays the match from its seed, valid
+only for the same app version and `defs_hash`. `user://replays/` (a kept library of replays) stays
+out of scope. `Replay.FORMAT` 3 (plan row P512) adds the per-player `bonus_credits` setup value
+beside `income_percent`; `FORMAT` 2 files are then refused, as `FORMAT` 1 files are today.
+
 ### 10. Events
 - `World.events` holds the events of the last tick. It is cleared in phase 1 and is not state.
 - Records are `EVENT_STRIDE = 8` ints, unused fields 0:
@@ -666,3 +674,10 @@ already skips it (ADR 0025 §8's note of 2026-11-03).
 - SHA-256 relies on the engine's `HashingContext` (core, present in every official template).
   CI on x86_64 and arm64 Linux (if an official arm64 editor build exists, P51b), the Android APK
   and the web build compare golden hashes, which proves that assumption on every target.
+
+Status note (2026-11-15, P500b; ADR 0042 accepted by Michael, 2026-11-15; the text above stays as
+accepted): the Consequences' "A Phase 5 save must store the flow-cache state or rebuild it at load.
+A resumed game is then not bit-identical to a replay from tick 0" does not apply. Phase 5 saves no
+World: a restore replays the logged match from tick 0 (the local player's Commands from the log,
+the AI thinking again) and checks every checkpoint hash, so a resumed game is bit-identical to the
+uninterrupted one (ADR 0042 §6).

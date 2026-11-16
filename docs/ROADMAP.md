@@ -109,8 +109,9 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
 - [ ] Main menu, map select, settings (sound, haptics, reduced effects (ADR 0027), privacy options placeholder)
 - [ ] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
 - [ ] Sound effects (CC0 or generated) and music volume
-- [ ] Interactive tutorial of about 3 minutes that teaches how to play, including every entry marked
-  Teach in `docs/HOW_TO_PLAY.md`; it starts on first launch and can be replayed from the menu
+- [ ] An interactive tutorial that teaches how to play: a lesson of about 3 minutes that starts on
+  first launch, plus short drills, which together include every entry marked Teach in
+  `docs/HOW_TO_PLAY.md`; all can be replayed from the menu (Michael, 2026-11-15; ADR 0044 §1)
 - [ ] "How to play" screen in the main menu and the pause menu that explains every entry in
   `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win)
 - [ ] Licences screen in the menu that shows `Engine.get_license_text()`,
@@ -120,7 +121,8 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   MIT licence (`docs/licenses/godot-cpp-4.5-stable/`) on builds that contain the C++ sim kernels
   (ADR 0013 §11), and the OFL texts of the HUD's two font families, Big Shoulders and Chakra Petch
   (`assets/art/fonts/*/OFL.txt`, SIL Open Font License; ADR 0025 §13, P118b; until this screen exists
-  they ship beside every build in `THIRD_PARTY_LICENSES.txt` and in the pack), and the game's own
+  they ship beside every build in `THIRD_PARTY_LICENSES.txt` and in the pack), the notice of the
+  game's own art and audio (`assets/LICENSE.md`, all rights reserved; ADR 0046), and the game's own
   boot splash instead of Godot's default
 - [ ] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
   (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6

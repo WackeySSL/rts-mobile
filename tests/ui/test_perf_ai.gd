@@ -1,7 +1,9 @@
 extends GdUnitTestSuite
 ## The "Perf AI" route and its card (plan P185, ADR 0030 section 4): the dev menu button beside
-## "Perf bases", the route into the perf arena scene on `perf_ai.tres` with a Normal `OpponentAi`
-## on each player (the frozen AI defs of P189b; `first_opponent` 1, the view stays player 1's), the
+## "Perf bases", the route into the perf arena scene on `perf_ai_4b.tres` (plan P304, ADR 0038
+## section 7) with a Normal `OpponentAi` on each player (the arena's own frozen AI defs of
+## `data/dev/arena/ai_4b/`; `first_opponent` 1, the view stays player 1's), the "Perf AI base"
+## button that plays `perf_ai.tres` with the defs of P189b as before, the
 ## card's report-only AI keys over fixed numbers (no timing is measured here), the card line only on
 ## this arena, and no golden comparison for it. The other two cards are unchanged:
 ## `test_perf_card_pin.gd` pins their text.
@@ -30,7 +32,7 @@ func after_test() -> void:
 
 
 func test_the_dev_menu_has_the_button_after_perf_bases() -> void:
-	assert_bool(ResourceLoader.exists(DevRoutes.PERF_AI_SCENARIO)).is_true()
+	assert_bool(ResourceLoader.exists(DevRoutes.PERF_AI_4B_SCENARIO)).is_true()
 	var menu: Control = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
 	add_child(menu)
 	await await_idle_frame()
@@ -55,9 +57,10 @@ func test_the_button_opens_the_perf_scene_with_the_ai_arena_and_back_returns() -
 	await await_idle_frame()
 	var arena: Node = tree.current_scene
 	assert_str(arena.scene_file_path).is_equal(DevRoutes.PERF_ARENA_SCENE)
-	assert_str(arena.arena_kind).is_equal(PerfHud.ARENA_AI)
-	assert_str(arena.hud.arena_kind).is_equal(PerfHud.ARENA_AI)
-	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_SCENARIO)
+	assert_str(arena.arena_kind).is_equal(PerfHud.ARENA_AI_4B)
+	assert_str(arena.hud.arena_kind).is_equal(PerfHud.ARENA_AI_4B)
+	assert_str(arena.hud.summary()["arena"]).is_equal("ai_4b")
+	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_4B_SCENARIO)
 	arena.find_child("BackButton", true, false).pressed.emit()
 	await await_idle_frame()
 	assert_str(tree.current_scene.scene_file_path).is_equal(DevRoutes.DEV_MENU_SCENE)
@@ -67,17 +70,17 @@ func test_the_button_opens_the_perf_scene_with_the_ai_arena_and_back_returns() -
 
 
 func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> void:
-	var arena: Node2D = _open(PerfHud.ARENA_AI)
+	var arena: Node2D = _open(PerfHud.ARENA_AI_4B)
 	var runner: MatchRunner = arena.runner
 	assert_int(runner.first_opponent).is_equal(1)
 	assert_int(runner.opponents.size()).is_equal(2)
 	for def: AiDef in runner.opponents:
 		assert_object(def).is_instanceof(OpponentDef)
 	var paths: Array = runner.opponents.map(func(def: AiDef) -> String: return def.resource_path)
-	assert_array(paths).is_equal([DevRoutes.PERF_AI_FOSSIL, DevRoutes.PERF_AI_RENEW])
+	assert_array(paths).is_equal([DevRoutes.PERF_AI_4B_FOSSIL, DevRoutes.PERF_AI_4B_RENEW])
 	assert_int(runner.opponent_levels.size()).is_equal(2)
 	for level: AiDifficultyDef in runner.opponent_levels:
-		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_LEVEL)
+		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_4B_LEVEL)
 	assert_object(runner.scenario).is_same(arena.scenario)
 	assert_int(FogLayer.local_player_of(runner)).is_equal(1)
 	var players: Array[int] = []
@@ -85,6 +88,37 @@ func test_the_arena_seats_two_normal_opponent_ais_on_players_one_and_two() -> vo
 		assert_object(controller).is_instanceof(OpponentAi)
 		players.append(controller.player_id)
 	assert_array(players).is_equal([1, 2])
+
+
+## The base arena of the AI keeps its own button, scenario and frozen defs (plan P304): the lead
+## may run both arenas.
+func test_the_perf_ai_base_button_plays_perf_ai_on_its_own_frozen_defs() -> void:
+	var tree: SceneTree = get_tree()
+	var menu: Node = (load(DevRoutes.DEV_MENU_SCENE) as PackedScene).instantiate()
+	tree.root.add_child(menu)
+	tree.current_scene = menu
+	await await_idle_frame()
+	var button: Button = menu.find_child("PerfAiBaseButton", true, false)
+	assert_str(button.text).is_equal("Perf AI base")
+	assert_bool(button.disabled).is_false()
+	button.pressed.emit()
+	await await_idle_frame()
+	var arena: Node = tree.current_scene
+	assert_str(arena.scene_file_path).is_equal(DevRoutes.PERF_ARENA_SCENE)
+	assert_str(arena.arena_kind).is_equal(PerfHud.ARENA_AI)
+	assert_str(arena.hud.arena_kind).is_equal(PerfHud.ARENA_AI)
+	assert_str(arena.hud.summary()["arena"]).is_equal("ai")
+	assert_str(arena.scenario.resource_path).is_equal(DevRoutes.PERF_AI_SCENARIO)
+	var paths: Array = arena.runner.opponents.map(
+		func(def: AiDef) -> String: return def.resource_path
+	)
+	assert_array(paths).is_equal([DevRoutes.PERF_AI_FOSSIL, DevRoutes.PERF_AI_RENEW])
+	for level: AiDifficultyDef in arena.runner.opponent_levels:
+		assert_str(level.resource_path).is_equal(DevRoutes.PERF_AI_LEVEL)
+	arena.find_child("BackButton", true, false).pressed.emit()
+	await await_idle_frame()
+	tree.current_scene.free()
+	tree.current_scene = null
 
 
 func test_the_other_arenas_seat_no_computer() -> void:
@@ -127,7 +161,9 @@ func test_the_ai_wait_keys_count_the_ticks_the_job_waited_on_the_batch() -> void
 
 
 func test_a_run_without_thinks_reports_zeros_on_every_arena() -> void:
-	for kind: String in [PerfHud.ARENA_UNITS, PerfHud.ARENA_BASES, PerfHud.ARENA_AI]:
+	for kind: String in [
+		PerfHud.ARENA_UNITS, PerfHud.ARENA_BASES, PerfHud.ARENA_AI, PerfHud.ARENA_AI_4B
+	]:
 		var hud: PerfHud = auto_free(Rig.hud())
 		hud.arena_kind = kind
 		Rig.run(hud)
@@ -139,7 +175,7 @@ func test_a_run_without_thinks_reports_zeros_on_every_arena() -> void:
 
 func test_the_card_prints_the_ai_line_for_this_arena_only() -> void:
 	var hud: PerfHud = auto_free(Rig.hud())
-	hud.arena_kind = PerfHud.ARENA_AI
+	hud.arena_kind = PerfHud.ARENA_AI_4B
 	Rig.pass_frames(hud)
 	for tick: int in range(1, 901):
 		var snap: MatchSnapshot = Rig.snapshot(tick)
@@ -149,8 +185,8 @@ func test_the_card_prints_the_ai_line_for_this_arena_only() -> void:
 		snap.ai_wait_usec = 3_000 if tick == 450 else (1_000 if tick % 10 == 0 else 0)
 		hud.record_snapshot(snap)
 	var line: String = (
-		"ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at or below "
-		+ "1.00 ms | ai_wait_p95_ms 1.00 | ai_wait_max_ms 3.00 | ai_waits 90 (no verdict)"
+		"arena ai_4b | ai_think_p95_ms 0.50 | ai_think_max_ms 2.50 | ai_thinks 180 | watch p95 at "
+		+ "or below 1.00 ms | ai_wait_p95_ms 1.00 | ai_wait_max_ms 3.00 | ai_waits 90 (no verdict)"
 	)
 	assert_array(Array(hud.card_lines())).contains([line])
 	for verdict: String in hud.summary()["verdicts"]:
@@ -163,10 +199,25 @@ func test_the_card_prints_the_ai_line_for_this_arena_only() -> void:
 			assert_bool(text.begins_with("ai_think")).is_false()
 
 
+## Each AI arena names itself on the card's AI line, so a card cannot be read as the other's.
+func test_the_card_names_which_ai_arena_it_ran() -> void:
+	for kind: String in [PerfHud.ARENA_AI, PerfHud.ARENA_AI_4B]:
+		var hud: PerfHud = auto_free(Rig.hud())
+		hud.arena_kind = kind
+		Rig.run(hud)
+		var lines: Array = Array(hud.card_lines()).filter(
+			func(text: String) -> bool: return text.contains("| ai_think_p95_ms")
+		)
+		assert_int(lines.size()).is_equal(1)
+		assert_str(lines[0]).starts_with("arena %s | " % kind)
+		assert_bool(PerfBases.has_golden(kind)).is_false()
+	assert_str(PerfHud.ARENA_AI_4B).is_not_equal(PerfHud.ARENA_AI)
+
+
 func test_no_golden_comparison_and_the_usual_verdicts_with_the_same_thresholds() -> void:
 	var gate: PerfGateDef = PerfGateDef.new()  # No bases pair, and the arena's one never matches.
 	var ai: PerfHud = auto_free(Rig.hud(gate))
-	ai.arena_kind = PerfHud.ARENA_AI
+	ai.arena_kind = PerfHud.ARENA_AI_4B
 	Rig.pass_frames(ai)
 	for tick: int in range(1, 901):
 		var snap: MatchSnapshot = Rig.snapshot(tick)
@@ -194,7 +245,7 @@ func test_no_golden_comparison_and_the_usual_verdicts_with_the_same_thresholds()
 
 
 func test_a_started_ai_match_thinks_and_publishes_its_think_time() -> void:
-	var arena: Node2D = _open(PerfHud.ARENA_AI)
+	var arena: Node2D = _open(PerfHud.ARENA_AI_4B)
 	var runner: MatchRunner = arena.runner
 	var thinks: int = 0
 	for _i: int in 30:

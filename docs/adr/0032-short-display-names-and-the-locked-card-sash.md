@@ -83,6 +83,14 @@ the light faction brings dusk to the enemy's base; a rig hand is an oilfield tra
 - **A failing name** is fixed by a shorter name (Michael's choice, recorded in an ADR) or by a
   layout change with its own ADR; never by an ellipsis or a smaller font for one name.
 
+Note (2026-11-15, P248): the one-line rule is for the Structures, Infantry, Vehicles and Flight
+cards. A Research card's caption takes two lines (`ItemTile.RESEARCH_LINES`), broken between
+words and never cut, and the card is `ItemTile.CAPTION_LINE_DP` (20 dp) taller: "Heavy Bombs" and
+"Focus Bombs" (85 to 90 dp at `web_phone`, `web_phone_small` and `android_6in`) are wider than the
+83.4 dp caption. `tests/ui/test_display_name_fit.gd`'s
+`test_every_upgrade_name_fits_the_research_card` guards it: every upgrade name breaks into at most
+two lines, each whole in the caption's room, on every test profile.
+
 ### 3. The locked card: option A
 - **Price hidden** while locked (READY already hides it). The picture stays dimmed.
 - **The sash:** a light band (proposal: #D9E0E8 with a 1.5 dp dark edge line) rises at about 27°

@@ -13,17 +13,9 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the anti-air buildings (P239b), the airfields (P245b) and the
-## fighters and bombers (P245) and the engineering centres (P249). Each row removes its own names.
+## Files with no roster entry yet: the engineering centres (P249), the transports and the drone
+## squads (P266). Each row removes its own names (P245 rostered the fighters and bombers).
 const AIR_UNLISTED: Array[String] = [
-	"fossil_aa",
-	"renew_aa",
-	"fossil_airfield",
-	"renew_airfield",
-	"fossil_fighter",
-	"renew_fighter",
-	"fossil_bomber",
-	"renew_bomber",
 	"fossil_engineering",
 	"renew_engineering",
 	# The transports and drone squads (P266).
@@ -31,13 +23,20 @@ const AIR_UNLISTED: Array[String] = [
 	"renew_transport",
 	"fossil_drone",
 	"renew_drone",
+	# The ground carriers and minelayers (P291, P292).
+	"fossil_bunk_wagon",
+	"renew_linecar",
+	"fossil_shot_truck",
+	"renew_seeder",
 ]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0
-const TABS: int = 3
+## The tabs every faction has one producer of (the Headquarters, the barracks, the vehicle
+## factory); the optional tabs after them (Flight, Research) have at most one.
+const REQUIRED_TABS: int = 3
 ## The map of the queue cases: a row of buildings four tiles apart leaves room for a 3x3 footprint.
 const COLS: int = 40
-const ROWS: int = 8
+const ROWS: int = 12
 const PITCH: int = 4
 const PER_ROW: int = 10
 const CREDITS: int = 100000
@@ -68,6 +67,10 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"defence_turret": "barracks",
 				"fossil_strike": "fossil_radar",
 				"fossil_space": "fossil_radar",
+				"fossil_aa": "barracks",
+				"fossil_airfield": "fossil_radar",
+				"fossil_bomber": "fossil_airfield",
+				"fossil_fighter": "fossil_airfield",
 				"artillery": "fossil_radar",
 			}
 		)
@@ -86,6 +89,10 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_defence": "renew_barracks",
 				"renew_strike": "renew_radar",
 				"renew_space": "renew_radar",
+				"renew_aa": "renew_barracks",
+				"renew_airfield": "renew_radar",
+				"renew_bomber": "renew_airfield",
+				"renew_fighter": "renew_airfield",
 				"renew_artillery": "renew_radar",
 			}
 		)
@@ -359,7 +366,9 @@ func _chain_problems(factions: Array[FactionDef]) -> PackedStringArray:
 	var problems: PackedStringArray = PackedStringArray()
 	for faction: FactionDef in factions:
 		var head: Array[UnitDef] = []
-		var producers: Array[int] = [0, 0, 0]
+		var producers: Array[int] = []
+		producers.resize(World.TABS)
+		producers.fill(0)
 		for member: UnitDef in faction.roster:
 			var building: BuildingDef = member as BuildingDef
 			if building == null or building.produces < 0:
@@ -370,8 +379,9 @@ func _chain_problems(factions: Array[FactionDef]) -> PackedStringArray:
 		if head.size() != 1:
 			problems.append("%s: %d Headquarters, not 1" % [faction.id, head.size()])
 			continue
-		for tab: int in range(1, TABS):
-			if producers[tab] != 1:
+		for tab: int in range(1, World.TABS):
+			var ok: bool = producers[tab] == 1 if tab < REQUIRED_TABS else producers[tab] <= 1
+			if not ok:
 				problems.append(
 					"%s: %d producers of tab %d, not 1" % [faction.id, producers[tab], tab]
 				)
@@ -459,8 +469,7 @@ func _owned(faction: FactionDef, also: Array[FactionDef] = []) -> World:
 	return world
 
 
-## P239: no roster entry for the anti-air buildings until P239b; it removes that skip.
-## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
+## P242: none for the fighter and bomber (P245); it removes its skip. P245b rostered the airfield.
 func _units() -> Array[UnitDef]:
 	var units: Array[UnitDef] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):

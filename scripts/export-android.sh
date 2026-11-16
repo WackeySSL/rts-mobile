@@ -1,38 +1,52 @@
 #!/usr/bin/env bash
 # Export the Android debug APK (no Gradle, arm64 only, ADR 0005) and check the result. Godot exits
 # 0 after export configuration errors, so the log is scanned and the APK is inspected.
-# Usage: bash scripts/export-android.sh [--release] [--out DIR]
+# Usage: bash scripts/export-android.sh [--release | --aab] [--out DIR]
 #   --release  the perf APK of the gate instead (P51r, ADR 0012 section 4): preset "Android perf" (custom
 #              feature dev_menu), --export-release, the release template and the release keystore variables,
 #              the library entry android.release.arm64 and build/android/rts-mobile-perf-release.apk. Three
 #              more checks: aapt2 dump badging shows no application-debuggable, the pack holds the dev_menu
 #              feature and the engine library is the release template's. Nothing else changes.
+#   --aab      the Play bundle instead (P410c, ADR 0040 sections 1, 2 and 4): preset "Android internal" (Gradle build,
+#              AAB, package dk.appcode.rts, custom feature play, the AdMob plugin), --export-release, the release
+#              template's library and keystore variables, build/android/rts-mobile-internal.aab. It runs
+#              scripts/ci/install-android-plugins.sh, enables the AdMob plugin for this run only (an [editor_plugins]
+#              section appended to project.godot), installs the Gradle build template (godot
+#              --install-android-build-template over a fresh android/build, from the android_source.zip that
+#              install-godot.sh --android-source pins) and exports with the plugin's default App ID, which is Google's
+#              test App ID (never a real one). project.godot and export_presets.cfg are backed up first and put back
+#              on every exit (an EXIT trap); a diff of what the run wrote into them is printed. The APK checks give
+#              way to scripts/ci/check-aab.sh. Cannot be combined with --release.
 #   --out DIR  output directory (default: build/android), relative to the repository root and
 #              build/ or below.
 # Env:   GODOT=<binary> (default: godot). Must be version 4.7.2.stable.
 #        JAVA_HOME (JDK 17) and ANDROID_HOME (SDK with platform-tools and build-tools 36.x).
 #        GODOT_ANDROID_KEYSTORE_DEBUG_{PATH,USER,PASSWORD}: the debug keystore, all three
-#        (with --release: GODOT_ANDROID_KEYSTORE_RELEASE_{PATH,USER,PASSWORD}, a key generated for the run).
-# Needs: version.txt and android_debug.apk (--release: android_release.apk) in the Godot
-#        export_templates/4.7.2.stable folder (scripts/ci/install-godot.sh --android, or --android-release),
-#        the Android library of the export mode (entry android.debug.arm64 of native/sim_kernels.gdextension,
-#        android.release.arm64 with --release; scripts/build-native.sh --platform android --arch arm64
+#        (with --release or --aab: GODOT_ANDROID_KEYSTORE_RELEASE_{PATH,USER,PASSWORD}, a key generated for the run).
+# Needs: version.txt and android_debug.apk (--release: android_release.apk; --aab: android_source.zip) in the Godot
+#        export_templates/4.7.2.stable folder (scripts/ci/install-godot.sh --android, --android-release or
+#        --android-source), the Android library of the export mode (entry android.debug.arm64 of
+#        native/sim_kernels.gdextension, android.release.arm64 with --release or --aab; scripts/build-native.sh --platform android --arch arm64
 #        --target template_debug (template_release) builds it), docs/licenses/godot-<version>/
 #        {LICENSE,COPYRIGHT}.txt, docs/licenses/llvm-libc++/LICENSE.TXT and the godot-cpp licence that
 #        scripts/ci/godot-cpp-notice.sh prints (the licence notices written next to the APK;
 #        export-web.sh writes the same notice text, ADR 0005 section 5), the OFL.txt of every font folder
 #        under assets/art/fonts/ (scripts/ci/font-notice.sh prints them into the same notice, P118b), and
-#        readelf and nm (binutils, or the NDK's llvm tools) for scripts/ci/check-android-elf.sh.
+#        readelf and nm (binutils, or the NDK's llvm tools) for scripts/ci/check-android-elf.sh. --aab also
+#        needs the Android SDK for Gradle and unzip, jarsigner, curl (bundletool) for scripts/ci/check-aab.sh.
 # Exit:  0 ok
 #        1 export failed, an error in this run's log, a check of the APK failed (the packed library
 #          is not the bytes CI built, libc++_shared.so is missing, the ELF or libc++ symbol checks
 #          fail), the APK lacks the OFL.txt of a font folder (the preset's include_filter, P118b), or a
-#          licence notice source (a font folder's OFL.txt too) is missing or empty
+#          licence notice source (a font folder's OFL.txt too) is missing or empty; with --aab also: a check of
+#          scripts/ci/check-aab.sh failed, project.godot already has an [editor_plugins] section, or it differs from
+#          HEAD after the restore
 #        2 usage error, or --out not under build/
 #        3 Godot missing or not 4.7.2.stable
 #        4 export template, Android library, JDK 17 or Android SDK piece missing (the message names each)
 #        5 keystore variables of the export mode incomplete or the keystore file missing
-# Success prints "export-android: OK <dir>/rts-mobile-debug.apk" (rts-mobile-perf-release.apk with --release).
+# Success prints "export-android: OK <dir>/rts-mobile-debug.apk" (rts-mobile-perf-release.apk with --release,
+# rts-mobile-internal.aab with --aab).
 # A cloud session has no Android SDK and ends with exit 4 until scripts/cloud/install-android.sh has run (it
 # prints the environment and the command to use).
 # CI (the android-debug-apk job) is the test bed.
@@ -50,6 +64,8 @@ BUILD_LABEL="debug"
 PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 PACKAGE="dk.appcode.rts.dev"
 APK_NAME="rts-mobile-debug.apk"
+AAB=0
+RELEASE_FLAG=0
 NOTICE_NAME="THIRD_PARTY_LICENSES.txt"
 LICENSE_DIR="docs/licenses/godot-${GODOT_VERSION%.stable}"
 # Every APK ships the template's libc++_shared.so (LLVM libc++, Apache-2.0 WITH LLVM-exception),
@@ -71,9 +87,19 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --release)
       EXPORT_MODE="release"
+      RELEASE_FLAG=1
       PRESET="Android perf"
       BUILD_LABEL="perf (release template)"
       APK_NAME="rts-mobile-perf-release.apk"
+      shift
+      ;;
+    --aab)
+      AAB=1
+      EXPORT_MODE="release"
+      PRESET="Android internal"
+      BUILD_LABEL="internal (AAB, Gradle build, AdMob test App ID)"
+      PACKAGE="dk.appcode.rts"
+      APK_NAME="rts-mobile-internal.aab"
       shift
       ;;
     --out)
@@ -81,9 +107,10 @@ while [ $# -gt 0 ]; do
       out="${2%/}"
       shift 2
       ;;
-    *) die 2 "unknown argument '$1' (usage: bash scripts/export-android.sh [--release] [--out DIR])" ;;
+    *) die 2 "unknown argument '$1' (usage: bash scripts/export-android.sh [--release | --aab] [--out DIR])" ;;
   esac
 done
+[ "$AAB" = 0 ] || [ "$RELEASE_FLAG" = 0 ] || die 2 "--release and --aab cannot be combined"
 case "$out" in
   *..*) die 2 "--out '$out' contains '..'" ;;
   build | build/*) ;;
@@ -100,7 +127,9 @@ version="$("$GODOT" --version 2>/dev/null | head -n 1 | cut -d. -f1-4 || true)"
 # unexpected tool (ADR 0005 section 3).
 template_dir="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/${GODOT_VERSION}"
 missing=""
-for name in version.txt "android_${EXPORT_MODE}.apk"; do
+template_file="android_${EXPORT_MODE}.apk"
+[ "$AAB" = 0 ] || template_file="android_source.zip" # the Gradle build template (install-godot.sh --android-source)
+for name in version.txt "$template_file"; do
   [ -s "$template_dir/$name" ] || missing="$missing; template $template_dir/$name"
 done
 native_entry="$(sed -n "s|^android\.${EXPORT_MODE}\.arm64 = \"res://\(.*\)\"\$|\1|p" native/sim_kernels.gdextension 2>/dev/null || true)"
@@ -110,12 +139,21 @@ java_version="$("${JAVA_HOME:-/nonexistent}/bin/java" -version 2>&1 || true)"
 grep -q 'version "17\.' <<<"$java_version" || missing="$missing; JDK 17 (JAVA_HOME='${JAVA_HOME:-}')"
 [ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ] || missing="$missing; \$ANDROID_HOME/platform-tools/adb (ANDROID_HOME='${ANDROID_HOME:-}')"
 for tool in apksigner aapt2; do
+  [ "$AAB" = 0 ] || break # the bundle is signed by Gradle and read by bundletool (scripts/ci/check-aab.sh)
   found=""
   for dir in "${ANDROID_HOME:-/nonexistent}"/build-tools/36.*; do
     if [ -x "$dir/$tool" ]; then found="$dir"; fi
   done
   [ -n "$found" ] || missing="$missing; \$ANDROID_HOME/build-tools/36.*/$tool"
 done
+if [ "$AAB" = 1 ] && [ -s "$template_dir/android_source.zip" ]; then
+  # The pin lives in install-godot.sh, which verifies it when it fetches the template; checked again here, because
+  # the Gradle template is the one thing of the build that is unpacked into the project.
+  source_sum="$(sed -n 's/^ANDROID_SOURCE_SUM="\([0-9a-f]\{64\}\)  android_source\.zip"$/\1/p' scripts/ci/install-godot.sh)"
+  [ -n "$source_sum" ] || die 1 "scripts/ci/install-godot.sh has no ANDROID_SOURCE_SUM line"
+  [ "$(sha256sum <"$template_dir/android_source.zip" | cut -d' ' -f1)" = "$source_sum" ] ||
+    die 4 "$template_dir/android_source.zip is not the pinned Gradle template (bash scripts/ci/install-godot.sh --android-source)"
+fi
 [ -z "$missing" ] || die 4 "missing${missing#;}"
 
 # (3) The keystore of the export mode (all three variables, and the file). The values are never printed.
@@ -132,15 +170,74 @@ mkdir -p "$out_abs"
 : >"$ROOT/build/.gdignore"
 rm -f "$apk" "$apk.idsig" "$out_abs/$NOTICE_NAME"
 
+# One EXIT trap for the whole run: the scratch folder of the library checks, and (--aab) the two project files the
+# plugin or Godot may rewrite. They are copied into a private folder first and put back on every exit. The diff of
+# what the run wrote is printed before the restore; a restored project.godot that differs from HEAD (a clean file
+# before the run) fails the run, which a working restore only lets happen through a bug of this script.
+in_git=0
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 && in_git=1
+work=""
+bdir=""
+project_was_clean=0
+restore_files() { # idempotent
+  [ -n "$bdir" ] || return 0
+  local f rc=0
+  for f in project.godot export_presets.cfg; do
+    if ! cmp -s "$f" "$bdir/$f.run"; then
+      echo "export-android: the run rewrote $f (the AdMob plugin saves its settings into project.godot). Diff of the original against the file the run left:"
+      diff "$bdir/$f.orig" "$f" | head -n 40 || true
+    fi
+    cp -p "$bdir/$f.orig" "$f" || rc=1
+  done
+  rm -rf "$bdir"
+  bdir=""
+  if [ "$rc" = 0 ] && [ "$project_was_clean" = 1 ] && ! git diff --quiet HEAD -- project.godot export_presets.cfg; then
+    echo "export-android: project.godot or export_presets.cfg differs from HEAD after the restore" >&2
+    git diff HEAD -- project.godot export_presets.cfg | head -n 20 >&2
+    rc=1
+  fi
+  return "$rc"
+}
+cleanup() {
+  local rc=$?
+  [ -z "$work" ] || rm -rf "$work"
+  restore_files || rc=1
+  exit "$rc"
+}
+trap cleanup EXIT
+
+# (4b) --aab: the AdMob plugin, for this run only (ADR 0040 section 2). Its Android libraries are installed by pin,
+# and the plugin is enabled by an [editor_plugins] section appended to project.godot (the committed file has none, so
+# the other presets export without a plugin).
+if [ "$AAB" = 1 ]; then
+  bash scripts/ci/install-android-plugins.sh || die 1 "the AdMob plugin's Android libraries could not be installed (install-android-plugins.sh)"
+  ! grep -q '^\[editor_plugins\]' project.godot ||
+    die 1 "project.godot already has an [editor_plugins] section (the committed file has none); remove it (git checkout -- project.godot) and rerun; --aab adds it itself"
+  [ "$in_git" = 0 ] || [ -n "$(git status --porcelain -- project.godot export_presets.cfg)" ] || project_was_clean=1
+  made="$(mktemp -d)"
+  cp -p project.godot "$made/project.godot.orig" && cp -p export_presets.cfg "$made/export_presets.cfg.orig" ||
+    { rm -rf "$made"; die 1 "could not back up project.godot and export_presets.cfg"; }
+  printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/admob/plugin.cfg")\n' >>project.godot
+  cp -p project.godot "$made/project.godot.run" && cp -p export_presets.cfg "$made/export_presets.cfg.run"
+  bdir="$made" # set only now: from here the trap restores the files
+  # A stale android/build (another template version) must never be used: Godot unpacks a fresh one below.
+  rm -rf android/build android/.build_version
+fi
+
 # (5) Import (a fresh checkout has no .godot/) and export, after seeding the extension list (ADR 0013
 # section 9). The log of this run only is scanned.
 bash scripts/seed-extension-list.sh
 log="$(mktemp -t export-android.XXXXXX)"
 set +e
-{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . "--export-$EXPORT_MODE" "$PRESET" "$apk"; } 2>&1 | tee "$log"
+# --aab: Godot unpacks the Gradle template first (the switch only works together with an export option).
+export_args=()
+[ "$AAB" = 0 ] || export_args=(--install-android-build-template)
+{ "$GODOT" --headless --path . --import && "$GODOT" --headless --path . ${export_args[@]+"${export_args[@]}"} "--export-$EXPORT_MODE" "$PRESET" "$apk"; } 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 set -e
-[ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)"
+hint=""
+[ "$AAB" = 0 ] || hint=" (godotengine/godot#123712 is a 4.7.2 shutdown crash after an export with AdMob and gdUnit4 in the tree, ADR 0013: if the log ends in a crash after the bundle was written, report it)"
+[ "$status" -eq 0 ] || die 1 "Godot export failed with exit code ${status} (log: $log)${hint}"
 
 errors="$(grep -E "$PATTERN" "$log" || true)"
 allow="$(grep -v -E '^[[:space:]]*(#|$)' scripts/verify-allowlist.txt || true)"
@@ -176,6 +273,9 @@ rts-mobile Android ${BUILD_LABEL} build: third-party licences
 rts-mobile's own code is licensed under the MIT licence: see the file LICENSE in the
 source repository.
 
+rts-mobile's own art, audio and model data are Copyright (c) 2026 AppCode ApS, all rights
+reserved: see the file assets/LICENSE.md in the source repository (ADR 0046).
+
 This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is
 licensed under the MIT licence and bundles third-party components under their own
 licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged.
@@ -197,6 +297,17 @@ EOF
   cat "$LIBCXX_DIR/LICENSE.TXT"
   bash scripts/ci/godot-cpp-notice.sh # the same section export-web.sh appends (ADR 0013 section 11)
 } >"$out_abs/$NOTICE_NAME"
+
+# (6b) --aab: the bundle is checked by scripts/ci/check-aab.sh (bundletool 1.18.3, jarsigner, libraries, 16 KB
+# alignment, no test files, the manifest) and project.godot is back to its committed state before this run says OK.
+if [ "$AAB" = 1 ]; then
+  [ -s "$apk" ] || die 1 "$out/$APK_NAME is missing or empty (log: $log)"
+  restore_files || die 1 "project.godot or export_presets.cfg was not restored (see above)"
+  bash scripts/ci/check-aab.sh "$apk" "$native_entry" || die 1 "the bundle failed its checks (scripts/ci/check-aab.sh, above)"
+  rm -f "$log"
+  echo "export-android: OK $out/$APK_NAME"
+  exit 0
+fi
 
 # (7) The APK. Godot picks the build-tools version (the one that equals the target SDK, 36.0.0 on
 # the ubuntu-24.04 image). Its log names the apksigner it ran, and the checks use the same tools.
@@ -237,7 +348,6 @@ for name in "$native_packed" "$abi_dir/libc++_shared.so"; do
   grep -Fxq -- "$name" <<<"$listing" || die 1 "the APK lacks $name (its lib/ entries: $(grep '^lib/' <<<"$listing" | tr '\n' ' '))"
 done
 work="$(mktemp -d -t export-android-native.XXXXXX)"
-trap 'rm -rf "$work"' EXIT
 unzip -q "$apk" "$native_packed" "$abi_dir/libc++_shared.so" "$abi_dir/libgodot_android.so" -d "$work"
 cmp -s "$work/$native_packed" "$native_entry" ||
   die 1 "the APK's $native_packed is not the library CI built ($native_entry): sha256 $(sha256sum <"$work/$native_packed" | cut -d' ' -f1), built $(sha256sum <"$native_entry" | cut -d' ' -f1)"

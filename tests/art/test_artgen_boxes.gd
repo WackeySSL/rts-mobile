@@ -4,8 +4,9 @@ extends GdUnitTestSuite
 ## canvas margin, read off the frame itself; a part with one view has none and the whole canvas
 ## is its box. P306 packs the boxes and places the frames by them.
 
-## A box is the drawn pixels plus the margin of `ArtGen.MARGIN_PX`; a pixel of slack covers the
-## anti-aliased rim that a raster adds to the polygon bounds.
+## A box is the drawn pixels plus 1 clear px (`ArtSheet.BOX_CLEAR_PX`): the inked bounds are the
+## polygon bounds, grown by the 1 px edge stroke where a polygon has one (a rod has none); a pixel
+## of slack covers the anti-aliased rim that a raster adds to the polygon bounds.
 const SLACK_PX: int = 1
 
 var _index: IsoIndex = null
@@ -20,7 +21,8 @@ func test_a_directional_frame_has_a_box_that_holds_every_drawn_pixel_and_hugs_th
 	for sheet: IsoSheetDef in _index.sheets:
 		for part: String in sheet.parts:
 			var id: StringName = StringName(part)
-			if not sheet.has_boxes(id):
+			# An aircraft's sheet has none (page 2 is not trimmed): its frames are whole.
+			if not sheet.has_boxes(id) or sheet.flies():
 				continue
 			var canvas: Rect2i = Rect2i(Vector2i.ZERO, sheet.frame_size(id))
 			for dir: int in sheet.directions(id):
@@ -54,6 +56,20 @@ func test_boxes_of_a_synthetic_shot_are_the_bounds_plus_the_margin_in_canvas_px(
 	assert_array(Array(boxes)).is_equal(
 		[want.position.x, want.position.y, want.size.x, want.size.y, 7, 7, 26, 14]
 	)
+
+
+func test_a_frame_whose_outermost_ink_is_a_rod_has_one_clear_px_not_two() -> void:
+	# A rod has no outline (P239b's barrels): nothing reaches past its points, so its margin is the
+	# 1 clear px alone, and an outlined face beside it keeps its stroke and the same margin.
+	var shot: ArtGen.Shot = _shot(2, 40, 30)
+	var rod: ArtRender.Poly = _poly(PackedVector2Array([Vector2(-10.3, -5.2), Vector2(10.6, 4.0)]))
+	rod.stroke = ""
+	shot.polys[0] = [rod]
+	var boxes: PackedInt32Array = ArtSheet._boxes({&"hull": shot})
+	# Bounds floor -11, -6 and ceil 11, 4; margin 1; origin (20, 15).
+	assert_array(Array(boxes).slice(0, 4)).is_equal([8, 8, 24, 12])
+	# The outlined frame is as before: the stroke's px and the clear px.
+	assert_array(Array(boxes).slice(4, 8)).is_equal([7, 7, 26, 14])
 
 
 func test_a_box_that_would_pass_the_canvas_is_clamped_to_it() -> void:
@@ -158,4 +174,5 @@ func _shot(dirs: int, width: int, height: int) -> ArtGen.Shot:
 func _poly(points: PackedVector2Array) -> ArtRender.Poly:
 	var poly: ArtRender.Poly = ArtRender.Poly.new()
 	poly.points = points
+	poly.stroke = "#000000"  # An outlined face: the stroke reaches 1 px past its points.
 	return poly

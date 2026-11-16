@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_gate")
 heavy_rigs = 135
+air_heavy_rigs = 120
 heavy_frames_min = 600
 work_p95_ms = 5.6
 work_tick_p95_ms = 5.6
