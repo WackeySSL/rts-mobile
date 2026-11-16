@@ -7,12 +7,13 @@ extends Node
 ## memory until P407 saves it), the timeouts from data, the banner and the rewarded ad, all through
 ## an AdBackend. The backend is always the FakeAdBackend for now: the real one is P405, so builds
 ## with the `play` feature tag keep the fake until it lands. Consent (P404) and purchases (P406)
-## are still stubs: `_can_request_ads` is false and Remove ads is the ledger's flag, so no
-## interstitial or banner shows until they set them. No plugin code and no ad IDs live here.
+## P404 fills in consent through a ConsentBackend (FakeUmp for now, the real one is P405): the SDK
+## is initialised and any ad loaded only once `_can_request_ads` is true. Purchases (P406) are
+## still a stub: Remove ads is the ledger's flag. No plugin code and no ad IDs live here.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
-## (with false in the stub) before it returns.
+## before it returns; a privacy options choice that changes the answer emits it again.
 signal consent_finished(can_request_ads: bool)
 ## Fires when the Remove ads entitlement changes, with the new state.
 signal entitlement_changed(has_remove_ads: bool)
@@ -28,8 +29,14 @@ signal ad_closed(placement: StringName)
 ## Tests may set it; the fake backend follows at the next call.
 var fake_auto_close: bool = _default_auto_close(DisplayServer.get_name())
 
-## Consent's answer (P404 sets it): whether ads may be requested at all.
+## Debug builds only: ask UMP for the EEA debug geography, so the form shows for a test device
+## (ADR 0039 section 3). ConsentFlow ignores it unless `OS.is_debug_build()`.
+var debug_geography_eea: bool = false
+
+## Consent's answer: whether ads may be requested at all. Only `_set_can_request` writes it.
 var _can_request_ads: bool = false
+var _consent: ConsentFlow = ConsentFlow.new(_make_consent(not fake_auto_close), OS.is_debug_build)
+var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
@@ -49,11 +56,21 @@ static func _make_backend() -> AdBackend:
 	return FakeAdBackend.new()
 
 
+## Fake everywhere until P405 adds the UMP backend. Where the fake placeholders wait for buttons
+## (the editor, the phone preview) consent is required by default, so the form can be walked;
+## headless stays "not required".
+static func _make_consent(required: bool) -> ConsentBackend:
+	var ump: FakeUmp = FakeUmp.new()
+	ump.consent_required = required
+	return ump
+
+
 static func _default_auto_close(display_name: String) -> bool:
 	return display_name == "headless"
 
 
 func _init() -> void:
+	_consent.settled.connect(_set_can_request)
 	_sync_fake()
 
 
@@ -62,25 +79,26 @@ func _ready() -> void:
 		(_backend as FakeAdBackend).host = self
 
 
-## Awaitable; always finishes. True means ads may be requested. The stub emits
-## `consent_finished(false)` and returns false: no ad is ever requested in fake mode.
+## Awaitable; always finishes. True means ads may be requested. Runs the consent info update and
+## the form load within `consent_timeout_ms`, waits for the form once it shows, then sets the
+## gate and emits `consent_finished`. Offline, an error or the timeout give false. A call while
+## a consent or privacy options flow runs waits for it.
 func ensure_consent() -> bool:
-	# A real coroutine that returns in the same frame, so callers must `await` from day one.
-	@warning_ignore("redundant_await")
-	await null
-	consent_finished.emit(false)
-	return false
+	_sync_fake()
+	return await _consent.run_consent(_now_ms, _settings.consent_timeout_ms, debug_geography_eea)
 
 
-## Synchronous.
+## Synchronous. UMP's answer from the last consent update.
 func is_privacy_options_required() -> bool:
-	return false
+	return _consent.backend.is_privacy_options_required()
 
 
-## Awaitable until UMP's privacy options form closes. The stub has no form.
+## Awaitable until UMP's privacy options form closes (no timeout once it shows). A choice that
+## changes whether ads may be requested takes effect when it closes. While a consent or privacy
+## options flow runs it waits for that flow and shows nothing more.
 func show_privacy_options() -> void:
-	@warning_ignore("redundant_await")
-	await null
+	_sync_fake()
+	await _consent.run_privacy_options(_now_ms, _settings.consent_timeout_ms)
 
 
 ## Synchronous. The cached entitlement (P406 fills it).
@@ -161,8 +179,7 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 	if _busy or not rewarded_ready(placement):
 		return false
 	var rewarded: bool = await _run_fullscreen(AdBackend.KIND_REWARDED, placement, on_reward)
-	if _can_request_ads:
-		_request_rewarded_load()
+	_request_rewarded_load()
 	return rewarded
 
 
@@ -195,7 +212,23 @@ func _refresh_banner() -> void:
 		banner_changed.emit(height)
 
 
+## The one writer of the gate: initialises the SDK when ads may first be requested, tells the
+## banner, and announces the answer.
+func _set_can_request(allowed: bool) -> void:
+	_can_request_ads = allowed
+	if not allowed and _late != null:
+		_late.abandon()
+		_late = null
+	if allowed and not _initialised:
+		_initialised = true
+		_backend.initialize()
+	_refresh_banner()
+	consent_finished.emit(allowed)
+
+
 func _request_rewarded_load() -> void:
+	if not _can_request_ads:
+		return
 	_backend.request_load(AdBackend.KIND_REWARDED)
 	_rewarded_retry_ms = int(_now_ms.call()) + _settings.banner_reload_min_ms
 
@@ -244,3 +277,5 @@ func _sync_fake() -> void:
 		var fake: FakeAdBackend = _backend as FakeAdBackend
 		fake.auto_close = fake_auto_close
 		fake.draw_placeholders = not fake_auto_close
+		fake.strict_order = true
+	_consent.configure_fake(fake_auto_close, self)
