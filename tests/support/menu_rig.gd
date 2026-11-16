@@ -14,36 +14,16 @@ extends RefCounted
 ## `tests/project/test_menu_rig_scan.gd` fails on a suite that loads the main scene without calling
 ## it.
 
+const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
+
 
 ## Before each test of a suite that builds the main scene.
 static func begin() -> void:
 	BuildSidebar.set_slide_ms_override(0)
-	_clean()
-	DirAccess.make_dir_recursive_absolute(prefs_dir())
-	HudPrefs.set_path_override(prefs_path())
+	PrefsRig.begin()
 
 
 ## After each test of the same suite: no state is left for the next one.
 static func end() -> void:
 	BuildSidebar.clear_slide_ms_override()
-	HudPrefs.clear_path_override()  # Pending changes go to the temp path first.
-	_clean()
-
-
-## The save file of this process: one folder per process, so lanes that run tests on one machine at
-## the same time never share it, and the legacy `settings.cfg` looked for beside it is not the
-## device's.
-static func prefs_path() -> String:
-	return prefs_dir().path_join("save.cfg")
-
-
-static func prefs_dir() -> String:
-	return "user://test_menu_rig_%d" % OS.get_process_id()
-
-
-static func _clean() -> void:
-	if not DirAccess.dir_exists_absolute(prefs_dir()):
-		return
-	for file_name: String in DirAccess.get_files_at(prefs_dir()):
-		DirAccess.remove_absolute(prefs_dir().path_join(file_name))
-	DirAccess.remove_absolute(prefs_dir())
+	PrefsRig.end()

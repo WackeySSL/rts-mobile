@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## flush. Each test uses its own Node instance and directory, never the device's file.
 
 const SCRIPT: String = "res://game/meta/save_service.gd"
+const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 
 var _dir: String = ""
 
@@ -200,17 +201,17 @@ func test_hud_prefs_read_a_migrated_vibration_off_and_persist() -> void:
 	var legacy: ConfigFile = ConfigFile.new()
 	legacy.set_value("hud", "haptics", false)
 	legacy.save(_dir.path_join("settings.cfg"))
-	HudPrefs.set_path_override(_main())
+	PrefsRig.use(_main())
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
 	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_false()
 	HudPrefs.set_haptics_enabled(true)
-	HudPrefs.set_path_override(_main())  # Drains, then reloads from the file.
+	PrefsRig.use(_main())  # Drains, then reloads from the file.
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
 	HudPrefs.set_haptics_enabled(false)
-	HudPrefs.clear_path_override()
-	HudPrefs.set_path_override(_main())
+	PrefsRig.restore()
+	PrefsRig.use(_main())
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
-	HudPrefs.clear_path_override()
+	PrefsRig.restore()  # Never the device's path.
 
 
 func test_migration_v0_without_a_hud_section_does_nothing() -> void:
@@ -232,14 +233,37 @@ func test_no_migration_over_corrupt_save_files() -> void:
 	assert_bool(FileAccess.file_exists(_main() + ".bad")).is_true()
 
 
-func test_save_cfg_wins_over_a_stale_settings_cfg() -> void:
+## A settings.cfg beside an existing save (a build between P510 and P510b wrote it) is newer for
+## `hud`: its keys go over the section, the other keys stay, and the file is deleted.
+func test_a_settings_cfg_beside_a_save_is_taken_over_and_deleted() -> void:
 	var service: Node = _service()
-	service.call("set_section", &"hud", {"haptics": true})
+	service.call("set_section", &"hud", {"haptics": true, "build_menu_pinned": true})
+	service.call("set_section", &"progress", {"xp": 3})
 	service.call("flush")
 	var legacy: ConfigFile = ConfigFile.new()
 	legacy.set_value("hud", "haptics", false)
 	legacy.save(_dir.path_join("settings.cfg"))
-	assert_dict(_service().call("get_section", &"hud")).is_equal({"haptics": true})
+	var again: Node = _service()
+	assert_dict(again.call("get_section", &"hud")).is_equal(
+		{"haptics": false, "build_menu_pinned": true}
+	)
+	assert_dict(again.call("get_section", &"progress")).is_equal({"xp": 3})
+	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_false()
+	assert_dict(_service().call("get_section", &"hud")).is_equal(
+		{"haptics": false, "build_menu_pinned": true}
+	)
+
+
+## A legacy section that set_section refuses is not deleted: nothing was persisted.
+func test_settings_cfg_stays_when_its_hud_section_cannot_be_saved() -> void:
+	_put(_dir.path_join("settings.cfg"), "[hud]\n\nhaptics=nan\n")
+	var errors: Array[String] = []
+	var service: Node = auto_free(load(SCRIPT).new())
+	service.set("error_sink", func(text: String) -> void: errors.append(text))
+	service.call("set_path_override", _main())
+	assert_bool(FileAccess.file_exists(_dir.path_join("settings.cfg"))).is_true()
+	assert_dict(service.call("get_section", &"hud")).is_empty()
+	assert_array(errors).has_size(1)
 
 
 func test_file_without_a_version_is_migrated_and_restamped() -> void:

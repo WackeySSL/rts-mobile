@@ -63,18 +63,15 @@ func test_the_prefs_default_to_on() -> void:
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
 
 
-## The file is read once, not at every buzz: a hand-written change shows after `forget_read` or a
-## new path, and a `set_haptics_enabled` shows at once.
-func test_the_prefs_file_is_read_once() -> void:
-	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Read, and cached.
+## Nothing is cached: a direct SaveService write shows at once, and so does a path switch.
+func test_the_prefs_are_read_from_the_service_at_each_ask() -> void:
+	assert_bool(HudPrefs.haptics_enabled()).is_true()
 	SaveService.set_section(&"hud", {"haptics": false})
-	assert_bool(HudPrefs.haptics_enabled()).is_true()  # Not read again.
-	HudPrefs.forget_read()
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
 	HudPrefs.set_haptics_enabled(true)
 	assert_bool(HudPrefs.haptics_enabled()).is_true()
-	SaveService.set_section(&"hud", {"haptics": false})  # False again, behind the cache.
-	HudPrefs.set_path_override(HudPrefs.path())  # A new path (here the same) drops the cache.
+	SaveService.set_section(&"hud", {"haptics": false})
+	HudPrefs.set_path_override(HudPrefs.path())  # Drains and reloads from the file.
 	assert_bool(HudPrefs.haptics_enabled()).is_false()
 
 

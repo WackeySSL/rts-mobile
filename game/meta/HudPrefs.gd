@@ -7,29 +7,24 @@ extends RefCounted
 ## gate every `vibrate` call asks. A `user://settings.cfg` of an older install is moved into the
 ## save by `SaveService` (migration v0) and deleted.
 
-## The old file, read only by `SaveService`'s migration; kept for the tests that name it.
-const PATH: String = "user://settings.cfg"
+## The old file, read only by `SaveService`'s migration; named here for the tests.
+const PATH: String = "user://" + SaveService.LEGACY_FILE
 const SECTION: StringName = &"hud"
 const KEY_HAPTICS: String = "haptics"
-
-## The switch as read: 1 on, 0 off, -1 not read since the last change.
-static var _haptics: int = -1
 
 
 ## Tests: read and write the save file at `path` (and its neighbours) instead of the device's.
 static func set_path_override(path: String) -> void:
 	SaveService.set_path_override(path)
-	_haptics = -1
 
 
 static func clear_path_override() -> void:
 	SaveService.clear_path_override()
-	_haptics = -1
 
 
-## Forgets the value read, so the next ask reads the section again (a test that changed it).
+## Kept for the callers of the old cache: nothing is cached now, so there is nothing to forget.
 static func forget_read() -> void:
-	_haptics = -1
+	pass
 
 
 ## The save file in use.
@@ -37,19 +32,21 @@ static func path() -> String:
 	return SaveService.path()
 
 
-## Whether the Vibration switch is on (default on).
+## Whether the Vibration switch is on (default on). Read from the service's section at each ask,
+## so a direct `SaveService` write or a path switch shows at once.
 static func haptics_enabled() -> bool:
-	if _haptics < 0:  # Read once, not at every buzz.
-		var value: Variant = SaveService.get_section(SECTION).get(KEY_HAPTICS, true)
-		_haptics = 0 if value is bool and not value else 1  # Another type: on.
-	return _haptics == 1
+	var value: Variant = SaveService.get_section(SECTION).get(KEY_HAPTICS, true)
+	return not (value is bool and not value)  # Another type: on.
 
 
 ## Saves the Vibration switch (written at the frame's end). The other keys of the section stay.
+## ERR_LOCKED when the save is from a newer app, ERR_INVALID_DATA when the service refuses it;
+## nothing changes then.
 static func set_haptics_enabled(on: bool) -> Error:
+	if SaveService.is_read_only():
+		return ERR_LOCKED
 	var values: Dictionary = SaveService.get_section(SECTION)
 	values[KEY_HAPTICS] = on
-	_haptics = 1 if on else 0
 	return OK if SaveService.set_section(SECTION, values) else ERR_INVALID_DATA
 
 
