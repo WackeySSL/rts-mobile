@@ -1,0 +1,6 @@
+<!-- Intro layer ring of the app icon's background (the radar ring: the dark outer band, the lit ring, the inner ring and twelve ticks), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_background.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
+<!-- Silhouette: a thin dark circle with a pale ring inside it, a smaller ring and twelve short ticks. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><linearGradient id="rg" gradientUnits="userSpaceOnUse" x1="116" y1="0" x2="316" y2="0"><stop offset="0" stop-color="#ffd9a0"/><stop offset=".5" stop-color="#fff6e4"/><stop offset="1" stop-color="#bff2ff"/></linearGradient></defs>
+<circle cx="216" cy="202" r="100" fill="none" stroke="#07202e" stroke-width="7" stroke-opacity=".9"/><circle cx="216" cy="202" r="94.5" fill="none" stroke="url(#rg)" stroke-width="2" stroke-opacity=".9"/><circle cx="216" cy="202" r="56" fill="none" stroke="url(#rg)" stroke-width="1.4" stroke-opacity=".34"/><path fill="none" stroke="url(#rg)" stroke-width="3.6" stroke-linecap="round" d="M304 202L292 202M292.2 158L281.8 164M260 125.8L254 136.2M216 114L216 126M172 125.8L178 136.2M139.8 158L150.2 164M128 202L140 202M139.8 246L150.2 240M172 278.2L178 267.8M216 290L216 278M260 278.2L254 267.8M292.2 246L281.8 240"/>
+</svg>
