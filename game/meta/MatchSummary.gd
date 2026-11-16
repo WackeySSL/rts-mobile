@@ -37,14 +37,16 @@ static func from_snapshot(
 	summary.ticks = snapshot.tick
 	summary.local_side = side
 	summary.lesson_id = setup_lesson_id
-	if surrendered:
-		summary.outcome = OUTCOME_SURRENDER
-	elif snapshot.match_end_tick <= 0:
+	# The sim decides first: no end is abandoned even after a Surrender command, and a win stays
+	# a win.
+	if snapshot.match_end_tick <= 0:
 		summary.outcome = OUTCOME_ABANDONED
-	elif snapshot.winner == 0:
-		summary.outcome = OUTCOME_DRAW
 	elif snapshot.winner == side:
 		summary.outcome = OUTCOME_WIN
+	elif surrendered:
+		summary.outcome = OUTCOME_SURRENDER
+	elif snapshot.winner == 0:
+		summary.outcome = OUTCOME_DRAW
 	else:
 		summary.outcome = OUTCOME_LOSS
 	return summary

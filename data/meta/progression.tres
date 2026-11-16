@@ -16,7 +16,6 @@ level_percent = Dictionary[StringName, int]({
 })
 xp_per_minute = 4
 minute_cap = 40
-ticks_per_minute = 900
 lesson_xp = 40
 awards_kept = 8
 min_bonus_multiplier = 2

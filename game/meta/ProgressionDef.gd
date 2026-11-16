@@ -12,8 +12,6 @@ extends Resource
 ## Per full minute played, added on top, up to `minute_cap`.
 @export var xp_per_minute: int = 4
 @export var minute_cap: int = 40
-## Sim ticks in a minute (15 Hz, ADR 0003) for the per-minute bonus.
-@export var ticks_per_minute: int = 900
 ## One-time XP of each tutorial lesson.
 @export var lesson_xp: int = 40
 ## How many of the latest awards stay open to `apply_bonus`.
