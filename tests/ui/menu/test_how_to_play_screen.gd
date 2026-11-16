@@ -90,6 +90,76 @@ func test_back_leaves_a_section_for_the_list_and_the_list_for_the_menu_below() -
 	assert_bool(is_instance_valid(_screen)).is_false()  # Replaced by pop: the stack freed it.
 
 
+func test_headings_are_upper_case_titles_and_bodies_are_plain_labels() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _long_help(1))
+	_buttons()[0].pressed.emit()
+	await await_idle_frame()
+	await await_idle_frame()
+	var headings: Array[Label] = []
+	var bodies: Array[Label] = []
+	for child: Node in _screen.column.get_children():
+		var label: Label = child as Label
+		if label == null or label.is_queued_for_deletion():
+			continue
+		if label.theme_type_variation == &"CapsTitle":
+			headings.append(label)
+			assert_str(label.text).is_equal(label.text.to_upper())
+		else:
+			bodies.append(label)
+	assert_int(headings.size()).is_equal(2)  # The section's title and the entry's.
+	assert_int(bodies.size()).is_equal(1)
+	assert_str(String(bodies[0].theme_type_variation)).is_not_equal("CapsTitle")
+
+
+func test_a_section_has_all_sections_at_the_top_and_at_the_foot() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _long_help(3))
+	_buttons()[0].pressed.emit()
+	await await_idle_frame()
+	await await_idle_frame()
+	var buttons: Array[Button] = _buttons()
+	assert_int(buttons.size()).is_equal(2)
+	assert_str(buttons[0].text).is_equal("ALL SECTIONS")
+	assert_str(buttons[1].text).is_equal("ALL SECTIONS")
+	var heading_bottom: float = 0.0
+	for child: Node in _screen.column.get_children():
+		if child is Label and not child.is_queued_for_deletion():
+			heading_bottom = (child as Label).get_global_rect().end.y
+			break
+	assert_float(buttons[0].get_global_rect().position.y).is_greater_equal(heading_bottom - 0.5)
+	buttons[0].pressed.emit()
+	await await_idle_frame()
+	assert_object(_screen.open_section).is_null()
+
+
+func test_the_back_button_at_the_root_asks_the_quit_question() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _long_help(1))
+	_stack.pop()  # Under it the root screen.
+	await await_idle_frame()
+	_stack.replace(HowToPlayScreen.new())
+	await await_idle_frame()
+	await await_idle_frame()
+	var how_to: HowToPlayScreen = _stack.current() as HowToPlayScreen
+	assert_int(_stack.depth()).is_equal(1)
+	for child: Node in how_to.column.get_children():
+		if child is Button and (child as Button).text == "BACK":
+			(child as Button).pressed.emit()
+	await await_idle_frame()
+	assert_bool(_stack.is_asking_to_quit()).is_true()
+
+
+func test_the_real_data_fits_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size), null)
+		var label: String = str(size)
+		_assert_real_fit(label + " list")
+		_buttons()[0].pressed.emit()
+		await await_idle_frame()
+		await await_idle_frame()
+		_assert_real_fit(label + " section")
+		_close()
+		UiScale.clear_override()
+
+
 func test_the_back_button_of_the_list_pops() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _long_help(1))
 	_buttons().back().pressed.emit()
@@ -97,11 +167,16 @@ func test_the_back_button_of_the_list_pops() -> void:
 	assert_int(_stack.depth()).is_equal(1)
 
 
+## The column's width and the part of it that is on show (a long column runs on inside the scroll).
+func _column_across(column: Control) -> Rect2:
+	return column.get_global_rect().intersection(_screen.scroll.get_global_rect())
+
+
 func _assert_fits(label: String) -> void:
 	var safe: Rect2 = UiScale.safe_rect_base()
 	var column: Control = _screen.column
 	(
-		assert_bool(safe.grow(TOLERANCE_PX).encloses(column.get_global_rect()))
+		assert_bool(safe.grow(TOLERANCE_PX).encloses(_column_across(column)))
 		. override_failure_message(label)
 		. is_true()
 	)
@@ -119,6 +194,16 @@ func _assert_fits(label: String) -> void:
 			. override_failure_message(label)
 			. is_less_equal(safe.size.x + TOLERANCE_PX)
 		)
+
+
+func _assert_real_fit(label: String) -> void:
+	_assert_fits(label)
+	var safe: Rect2 = UiScale.safe_rect_base()
+	(
+		assert_bool(safe.grow(TOLERANCE_PX).encloses(_screen.scroll.get_global_rect()))
+		. override_failure_message(label + " scroll")
+		. is_true()
+	)
 
 
 func _buttons() -> Array[Button]:

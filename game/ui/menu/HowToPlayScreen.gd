@@ -7,6 +7,7 @@ extends MenuScreen
 ## Open it with `stack.push(HowToPlayScreen.new())`; it loads `DEF_PATH` itself unless `help` is set
 ## first.
 
+const HEADING_VARIATION: StringName = &"CapsTitle"
 const DEF_PATH: String = "res://data/help/how_to_play.tres"
 ## The screen's own words are English source strings: `tr()` returns one as it is until a
 ## translation table (ADR 0043 question 12) has an entry for it.
@@ -23,7 +24,20 @@ func _ready() -> void:
 	super()
 	if help == null:
 		help = load(DEF_PATH) as HelpDef
+	if help == null:
+		push_error("HowToPlayScreen: cannot load %s" % DEF_PATH)
+		help = HelpDef.new()  # An empty list, so the screen still opens and Back works.
 	_show_list()
+
+
+## The base lays the column out as wide as the short side of the safe rect, which in portrait is
+## the whole width: with the scroll bar of a long text the scroll would be wider than the safe
+## area. So the column gives the bar's width back (a short list that needs no bar loses a few px).
+func _apply() -> void:
+	super()
+	if scroll != null and column != null:
+		var bar_px: float = scroll.get_v_scroll_bar().get_combined_minimum_size().x
+		column.custom_minimum_size.x = maxf(column.custom_minimum_size.x - bar_px, 0.0)
 
 
 func on_back() -> bool:
@@ -47,6 +61,7 @@ func _show_section(section: HelpSectionDef) -> void:
 	open_section = section
 	_clear()
 	_heading(tr(section.title))
+	add_button(tr(ALL_SECTIONS), _show_list)
 	for item: HelpEntryDef in section.entries:
 		_heading(tr(item.title))
 		_body(tr(item.body))
@@ -57,7 +72,7 @@ func _show_section(section: HelpSectionDef) -> void:
 func _go_back() -> void:
 	var stack: MenuStack = get_parent() as MenuStack
 	if stack != null:
-		stack.pop()
+		stack.back()  # Like the Android Back button: at the root it asks the quit question.
 
 
 func _clear() -> void:
@@ -67,7 +82,9 @@ func _clear() -> void:
 
 
 func _heading(text: String) -> void:
-	column.add_child(_label(text))
+	var label: Label = _label(text.to_upper())
+	label.theme_type_variation = HEADING_VARIATION
+	column.add_child(label)
 
 
 func _body(text: String) -> void:

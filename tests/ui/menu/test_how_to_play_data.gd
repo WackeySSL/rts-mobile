@@ -48,8 +48,8 @@ func test_every_entry_has_an_id_a_section_and_text() -> void:
 func test_player_text_has_no_developer_reference() -> void:
 	for section: HelpSectionDef in _help.sections:
 		for entry: HelpEntryDef in section.entries:
+			var text: String = section.title + entry.title + entry.body
 			for bad: String in FORBIDDEN:
-				var text: String = section.title + entry.title + entry.body
 				(
 					assert_bool(text.contains(bad))
 					. override_failure_message("%s has '%s'" % [entry.id, bad])
