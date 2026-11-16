@@ -35,6 +35,7 @@ const WIDGET_METHODS: Dictionary = {
 	"show_banner": [[], TYPE_NIL],
 	"hide_banner": [[], TYPE_NIL],
 	"remove_ads_price_text": [[], TYPE_STRING],
+	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
 }
 
 var _script: GDScript = load(SCRIPT_PATH) as GDScript

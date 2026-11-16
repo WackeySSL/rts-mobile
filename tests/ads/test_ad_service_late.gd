@@ -20,6 +20,10 @@ func before_test() -> void:
 	_h = AdServiceHarness.new()
 
 
+func after_test() -> void:
+	_h.dispose()
+
+
 ## The rig, or null when the setup failed (the failure is reported; callers return at once).
 func _late_rig(kind: StringName) -> LateRig:
 	var rig: LateRig = LateRig.new()
