@@ -18,6 +18,7 @@ func test_data_file_holds_the_adr_numbers() -> void:
 	assert_int(s.crossfade_ms).is_equal(1500)
 	assert_float(s.duck_db).is_equal(6.0)
 	assert_int(s.fade_ms).is_equal(150)
+	assert_int(s.duck_release_ms).is_equal(100)
 	assert_int(s.steps).is_equal(10)
 
 
@@ -40,3 +41,8 @@ func test_master_has_one_hard_limiter() -> void:
 	var master: int = AudioServer.get_bus_index(&"Master")
 	assert_int(AudioServer.get_bus_effect_count(master)).is_equal(1)
 	assert_object(AudioServer.get_bus_effect(master, 0)).is_instanceof(AudioEffectHardLimiter)
+
+
+func test_music_data_names_the_stings() -> void:
+	var s: AudioSettings = load(SETTINGS_PATH)
+	assert_array(s.sting_ids).contains_exactly([&"victory", &"defeat"])

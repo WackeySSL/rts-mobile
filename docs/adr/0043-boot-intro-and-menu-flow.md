@@ -23,6 +23,14 @@ page as §5 builds it).
 ## Michael's answers (2026-11-15)
 - **Question 6, splash:** the app icon alone on its background colour, no AppCode ApS mark;
   `min_ms` 600, `max_ms` 3,000; a tap skips the motion (§1, §2).
+  Note (Michael, 2026-11-15, later the same day): the splash shows AppCode ApS's brand, which
+  replaces "no AppCode ApS mark". Michael supplied the brand SVGs (wordmark and mark, white); they
+  go in `assets/art/brand/` (plan row P520a). They carry a C2PA manifest (made with Claude at
+  Michael's request); Michael approved them unmodified as the company's trademark, © AppCode ApS,
+  all rights reserved (ADR 0046 item 5: reserved assets, kept unmodified; the CLAUDE.md exception
+  sentence comes with the main lead's P26ca). Layout: the wordmark small under the app icon (about
+  30 % of the icon's width); where that is too tall, the mark to the left of the wordmark at the
+  same height. It adds no time to the intro (§1, §2).
 - **Question 10, the match-start wait:** a still "deploying" card before the bake (P536, in scope).
 - **Question 11, left-handed mode:** after launch (not in Settings, §5).
 - **Question 12, translations:** the new screens use `tr()` keys with an English table; the HUD
@@ -58,6 +66,15 @@ the exact 4.7.2 key names are checked in P533) shows a PNG rendered from `app_ic
 the icon's own background colour, with no Godot logo. The same image is the web build's loading
 image. Art-director renders it in P520 (own work, a CREDITS row); the Godot logo row of CREDITS
 goes once nothing shows it. No AppCode ApS mark (Michael, question 6).
+
+Note (Michael, 2026-11-15; replaces "No AppCode ApS mark" above): the splash PNG also carries
+AppCode ApS's white wordmark from `assets/art/brand/` (P520a), small under the icon at about 30 %
+of the icon's width; where that is too tall, the mark to the left of the wordmark at the same
+height. One PNG serves every size, so P520 picks the lockup that fits the shortest of ADR 0015
+§6's six sizes at the splash's scale, and the intro's still frame (§2) uses the same lockup, so
+the hand-over stays invisible. The brand stays still for the whole intro and leaves with the
+open-out; it adds no time. Its CREDITS rows, and the splash PNG's, say "All rights reserved
+(AppCode ApS)" (ADR 0046 item 7).
 
 ### 2. The intro: the tank drives while loading
 - `scenes/boot.tscn` (the main scene from P533) with `IntroPlayer` (`game/view/intro/`, outside the
@@ -153,6 +170,8 @@ Petch (`assets/art/fonts/*/OFL.txt`); the Poing AdMob and GodotGooglePlayBilling
 (texts from Phase 6's P410/P411); the credit lines of every CC-BY asset (question 9). Texts outside
 `assets/` are copied into `assets/licenses/` by P529 so the pack holds them (a test keeps the copies
 equal to `docs/licenses/`).
+Note (2026-11-15): ADR 0046 adds `assets/LICENSE.md` (the game's own art and audio, all rights
+reserved) to ROADMAP's list, so the screen shows it too.
 
 ### 8. Phase 6's slots (agreed 2026-11-15)
 - `AdBannerSlot`: the one bottom container at the foot of MainMenu, MapSelect and Settings; its
@@ -162,6 +181,16 @@ equal to `docs/licenses/`).
   nothing on it. The menu rows land with the slot empty and 0 tall; P430 fills it later.
 - `OfferSlot`: a plain Container on the result screen and on MapSelect that takes the widget's size
   and is empty when the widget hides. The widgets are Phase 6's (P432, P433).
+  Note (2026-11-15, P500c; from Phase 6's P431, the `RewardedOffer` widget): "a plain Container"
+  is replaced. The slot is a `VBoxContainer` or a `CenterContainer` (its size comes from the
+  child; 0 when the child hides), never a plain `Container`. The widget's `on_reward` binds to an
+  autoload or service (e.g. `Progression.apply_bonus.bind(award_id, mult)`), never to the screen
+  node, so a grant survives the screen being freed while the ad shows. The host has
+  `game/ui/theme.tres` in scope (the CapsButton variation). One offer per screen, claimed through
+  `slot.owner`.
+- Note (2026-11-15, P500c; from Phase 6's P430, the `AdBannerBand`): the `AdBannerSlot` sits at the
+  very bottom of the safe area with no control below it, because the real AdMob banner is drawn at
+  the screen's bottom; the menu tests call P430's shared helper `is_at_safe_bottom()`.
 - The pause menu's foot banner (old P127) is Phase 6's P435; P531 keeps the foot free.
 
 ### 9. Isolation from Phase 4b

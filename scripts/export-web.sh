@@ -210,6 +210,9 @@ godot_tag="${GODOT_VERSION%.stable}-stable"
   printf '%s\n' "rts-mobile's own code is licensed under the MIT licence: see the file LICENSE in the"
   printf '%s\n' "source repository."
   printf '\n'
+  printf '%s\n' "rts-mobile's own art, audio and model data are Copyright (c) 2026 AppCode ApS, all rights"
+  printf '%s\n' "reserved: see the file assets/LICENSE.md in the source repository (ADR 0046)."
+  printf '\n'
   printf '%s\n' "This build runs on the Godot Engine ${godot_tag} (https://godotengine.org). Godot is"
   printf '%s\n' "licensed under the MIT licence and bundles third-party components under their own"
   printf '%s\n' "licences. Godot's LICENSE.txt and COPYRIGHT.txt for tag ${godot_tag} follow unchanged."
