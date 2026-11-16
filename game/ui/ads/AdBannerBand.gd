@@ -41,6 +41,8 @@ var _caption: Label
 var _bound: AdServiceScript = null
 var _height_dp: int = 0
 var _check_queued: bool = false
+## Whether this band holds one `show_banner` of the service now (one show, one hide, never two).
+var _showing: bool = false
 
 
 func _init() -> void:
@@ -65,9 +67,8 @@ func _enter_tree() -> void:
 	if _bound == null:  # A scene run without the autoload (a developer scene).
 		return
 	_bound.banner_changed.connect(_on_banner_changed)
-	_bound.show_banner()
-	_height_dp = _bound.banner_height_dp()
-	_layout()
+	if is_visible_in_tree():
+		_acquire()
 
 
 func _ready() -> void:
@@ -81,13 +82,19 @@ func _exit_tree() -> void:
 	if is_instance_valid(_bound):
 		if _bound.banner_changed.is_connected(_on_banner_changed):
 			_bound.banner_changed.disconnect(_on_banner_changed)
-		_bound.hide_banner()
+		_release()
 	_bound = null
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and _caption != null:
 		_layout()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and _bound != null and is_inside_tree():
+		# Also fires when an ancestor is shown or hidden, which the signal does not.
+		if is_visible_in_tree():
+			_acquire()
+		else:
+			_release()
 
 
 ## The banner's rect in this band's local px: the bottom `banner_height_dp()` of the band. Empty
@@ -125,7 +132,30 @@ func reserved_px() -> float:
 	return ceilf(UiScale.dp(gap_dp()) + caption + UiScale.dp(float(_height_dp)))
 
 
+## Takes the band's one show and reads the banner height. No-op while it already holds one.
+func _acquire() -> void:
+	if _showing or _bound == null:
+		return
+	_showing = true
+	_bound.show_banner()
+	_height_dp = _bound.banner_height_dp()
+	_layout()
+
+
+## Gives the show back and reserves 0 height. No-op while it holds none.
+func _release() -> void:
+	if not _showing:
+		return
+	_showing = false
+	if is_instance_valid(_bound):
+		_bound.hide_banner()
+	_height_dp = 0
+	_layout()
+
+
 func _on_banner_changed(height_dp: int) -> void:
+	if not _showing:
+		return
 	_height_dp = height_dp
 	_layout()
 
