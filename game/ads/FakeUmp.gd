@@ -123,6 +123,9 @@ func _show(with_close: bool) -> void:
 			with_close, dismiss.bind(true), dismiss.bind(false), close_unchanged
 		)
 		host.add_child(_node)
+	else:
+		# Nothing to draw on (no host in the tree): answer as scripted, like FakeBilling's sheet.
+		dismiss(obtained)
 
 
 func _end() -> void:

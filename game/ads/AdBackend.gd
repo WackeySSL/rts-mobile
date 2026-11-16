@@ -62,6 +62,9 @@ func cancel_show(_kind: StringName) -> void:
 	pass
 
 
+## AdService calls it only on a hidden to shown transition, after `initialize`, and `hide_banner`
+## only on a shown to hidden one. The real backend (P405) must still make `show_banner` idempotent,
+## and it reloads a failed banner itself, at most once per `banner_reload_min_ms`.
 func show_banner() -> void:
 	pass
 

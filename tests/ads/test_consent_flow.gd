@@ -113,3 +113,17 @@ func test_the_flow_wires_the_fake_placeholder() -> void:
 	assert_bool(ump.auto_close).is_false()
 	assert_bool(ump.draw_placeholders).is_true()
 	assert_object(ump.host).is_same(host)
+
+
+func test_a_fake_form_without_a_host_to_draw_on_answers_as_scripted() -> void:
+	var ump: FakeUmp = FakeUmp.new()
+	ump.consent_required = true
+	ump.auto_close = false
+	ump.draw_placeholders = true
+	ump.obtained = true
+	var dismissed: Array[bool] = []
+	ump.form_dismissed.connect(func() -> void: dismissed.append(true))
+	ump.update_info(false)
+	ump.show_form()
+	assert_array(dismissed).contains_exactly([true])
+	assert_bool(ump.can_request_ads()).is_true()

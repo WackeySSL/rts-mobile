@@ -172,7 +172,7 @@ func test_offline_resume_keeps_the_cache() -> void:
 	assert_array(_signals).is_empty()
 
 
-func test_the_purchase_drops_a_late_interstitial_that_has_not_opened() -> void:
+func test_a_late_interstitial_that_opens_after_the_purchase_is_paired_and_counted() -> void:
 	var service: Node = _service()
 	AdServiceHarness.play_three_matches(service)
 	var ad: FakeAdBackend = AdServiceHarness.fake(service)
@@ -185,13 +185,15 @@ func test_the_purchase_drops_a_late_interstitial_that_has_not_opened() -> void:
 	_h.clock_ms = service._settings.fullscreen_timeout_ms
 	await AdServiceHarness.frames(2)
 	assert_array(out).contains_exactly([false])
-	assert_bool(service._late != null).is_true()
+	assert_int(service._runs.late_count()).is_equal(1)
 	AdServiceHarness.billing(service).next_outcome = BillingBackend.Outcome.PURCHASED
 	await service.purchase_remove_ads()
-	assert_bool(service._late == null).is_true()
+	# AdMob cannot recall the show: it opens, paired, and counts for the caps (what the player saw).
 	ad.open_late()
-	assert_array(_h.events).is_empty()
-	assert_bool(service._ledger.shown_for_current_match()).is_false()
+	assert_array(_h.events).contains_exactly(["open:post_match", "close:post_match"])
+	assert_bool(service._runs.is_busy()).is_false()
+	assert_int(service._runs.late_count()).is_equal(0)
+	assert_bool(service._ledger.shown_for_current_match()).is_true()
 
 
 func test_the_facade_drives_the_fake_sheet_when_auto_close_is_off() -> void:
