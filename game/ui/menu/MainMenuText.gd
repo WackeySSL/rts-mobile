@@ -17,6 +17,7 @@ const RANK: StringName = &"MAIN_RANK"
 const XP: StringName = &"MAIN_XP"
 const XP_TOP: StringName = &"MAIN_XP_TOP"
 const VERSION: StringName = &"MAIN_VERSION"
+const COPYRIGHT: StringName = &"MAIN_COPYRIGHT"
 
 const ENGLISH: Dictionary[StringName, String] = {
 	TITLE: "TREADLINE",
@@ -33,6 +34,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	XP: "%d / %d XP",
 	XP_TOP: "%d XP",
 	VERSION: "v%s · © AppCode ApS",
+	COPYRIGHT: "© AppCode ApS",
 }
 
 static var _registered: bool = false

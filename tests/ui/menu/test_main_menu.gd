@@ -11,6 +11,7 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.gd")
 const TOLERANCE_PX: float = 0.5
+const VERSION_KEY: String = "application/config/version"
 
 var _window_size_before: Vector2i
 var _quit_on_go_back_before: bool = true
@@ -25,6 +26,7 @@ var _progression: Node
 var _routes: MenuRoutes
 var _resume: Array[bool] = [false]
 var _quits: Array[int] = [0]
+var _version_before: Variant
 
 
 func before() -> void:
@@ -46,12 +48,19 @@ func before_test() -> void:
 	_routes = MenuRoutes.new()
 	_resume[0] = false
 	_quits[0] = 0
+	_version_before = (
+		ProjectSettings.get_setting(VERSION_KEY)
+		if ProjectSettings.has_setting(VERSION_KEY)
+		else null
+	)
 
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
 	UiScale.clear_override()
 	_close()
+	MenuRoutes.shared.clear()
+	ProjectSettings.set_setting(VERSION_KEY, _version_before)
 	for node: Node in [_ads, _save, _progression]:
 		if is_instance_valid(node):
 			node.free()
@@ -66,6 +75,7 @@ func after_test() -> void:
 func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes() -> void:
 	_resume[0] = true
 	_routes.register(MenuRoutes.SKIRMISH, func() -> MenuScreen: return MenuScreen.new())
+	var fitting: int = 0
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(_profile_with_window(size), true)
 		var label: String = str(size)
@@ -80,8 +90,19 @@ func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes
 			. override_failure_message(label)
 			. is_true()
 		)
+		var first: Button = _buttons()[0]
 		if _main.column.get_combined_minimum_size().y <= _main.scroll.size.y:
+			fitting += 1
 			assert_bool(safe.encloses(column_rect)).override_failure_message(label).is_true()
+		else:
+			_main.scroll.ensure_control_visible(first)
+			await await_idle_frame()
+			var scroll_rect: Rect2 = _main.scroll.get_global_rect().grow(TOLERANCE_PX)
+			(
+				assert_bool(scroll_rect.encloses(first.get_global_rect()))
+				. override_failure_message(label)
+				. is_true()
+			)
 		var shown: int = 0
 		for child: Node in _main.column.get_children():
 			var button: Button = child as Button
@@ -96,6 +117,9 @@ func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes
 		assert_int(shown).override_failure_message(label).is_equal(5)
 		_close()
 		UiScale.clear_override()
+	# Every upright size fits; at least one sideways size scrolls and is checked by scrolling.
+	assert_int(fitting).is_greater_equal(ScreenSizes.PORTRAIT.size())
+	assert_int(fitting).is_less(ScreenSizes.ALL.size())
 
 
 func test_the_band_lines_up_on_the_start_page_and_the_slot_is_tall_at_the_six_sizes() -> void:
@@ -174,7 +198,7 @@ func test_back_at_the_root_asks_the_quit_question() -> void:
 	assert_int(_quits[0]).is_equal(0)
 
 
-func test_the_title_the_tagline_and_the_version_line_show() -> void:
+func test_the_title_the_sides_and_the_tagline_show() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	var texts: Array[String] = []
 	_collect(_main.column, texts)
@@ -182,17 +206,59 @@ func test_the_title_the_tagline_and_the_version_line_show() -> void:
 		["TREADLINE", "Oil and gas against wind and sun. Choose your side."]
 	)
 	assert_array(texts).contains(["DERRICK LEAGUE", "LUMEN ACCORD"])
-	var version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
-	assert_array(texts).contains(["v%s · © AppCode ApS" % version])
 
 
-func _open(profile: UiMetrics, with_banner: bool) -> void:
+## `consent`: the fake ad service has consent, so the banner shows (false: no banner).
+func test_a_route_registered_while_shown_enables_its_button() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var tutorial: Button = _main._routed.find_key(MenuRoutes.TUTORIAL) as Button
+	assert_bool(tutorial.disabled).is_true()
+	_routes.register(MenuRoutes.TUTORIAL, func() -> MenuScreen: return MenuScreen.new())
+	assert_bool(tutorial.disabled).is_false()
+	_routes.clear()
+	assert_bool(tutorial.disabled).is_true()
+
+
+func test_the_version_line_shows_the_version_or_only_the_copyright() -> void:
+	ProjectSettings.set_setting(VERSION_KEY, "1.2.3")
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var texts: Array[String] = []
+	_collect(_main.column, texts)
+	assert_array(texts).contains(["v1.2.3 · © AppCode ApS"])
+	_close()
+	ProjectSettings.set_setting(VERSION_KEY, "")
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	texts.clear()
+	_collect(_main.column, texts)
+	assert_array(texts).contains(["© AppCode ApS"])
+	assert_bool(texts.any(func(text: String) -> bool: return text.contains(" · "))).is_false()
+
+
+func test_the_xp_bar_at_the_top_rank_is_full() -> void:
+	_save.call("set_section", &"progress", {"xp": 5000})
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var top: int = int(_progression.call("max_rank"))
+	assert_str(_main._rank_label.text).contains("RANK %d" % top)
+	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.max_value)
+	assert_str(_main._xp_label.text).is_equal("5000 XP")
+
+
+func test_the_xp_bar_exactly_at_a_rank_floor_is_empty() -> void:
+	_save.call("set_section", &"progress", {"xp": 250})
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_str(_main._rank_label.text).contains("RANK 3")
+	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.min_value)
+	assert_float(_main._xp_bar.min_value).is_equal(250.0)
+
+
+func _open(profile: UiMetrics, consent: bool) -> void:
+	assert_object(profile).is_not_null()
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
 	if _harness == null:
 		_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
-		_ads = _harness.make(with_banner)
+		_ads = _harness.make(consent)
 		_ads.fake_auto_close = false  # The strip stays, so the band can be lined up with it.
 		add_child(_ads)
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
@@ -237,4 +303,5 @@ func _profile_with_window(size: Vector2i) -> UiMetrics:
 		for profile_name: StringName in profiles:
 			if profiles[profile_name].window_size == size:
 				return profiles[profile_name]
+	assert_bool(false).override_failure_message("no profile for %s" % size).is_true()
 	return null

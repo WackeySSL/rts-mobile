@@ -6,4 +6,8 @@ extends Node
 
 
 func _ready() -> void:
-	(get_node(stack_path) as MenuStack).push(MainMenu.new())
+	var stack: MenuStack = get_node_or_null(stack_path) as MenuStack
+	if stack == null:
+		push_error("MenuRoot: no MenuStack at %s (from %s)" % [stack_path, get_path()])
+		return
+	stack.push(MainMenu.new())
