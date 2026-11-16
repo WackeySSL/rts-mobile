@@ -34,6 +34,7 @@ const WIDGET_METHODS: Dictionary = {
 	"show_rewarded": [[["placement", TYPE_STRING_NAME], ["on_reward", TYPE_CALLABLE]], TYPE_BOOL],
 	"show_banner": [[], TYPE_NIL],
 	"hide_banner": [[], TYPE_NIL],
+	"banner_height_preview_dp": [[], TYPE_INT],
 	"remove_ads_price_text": [[], TYPE_STRING],
 	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
 }

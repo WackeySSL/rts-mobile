@@ -92,7 +92,7 @@ var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
 var _exit_dialog: ConfirmDialog
 var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent in.
-var _foot: SafeAreaMargin  ## The foot banner's host, freed with it; null while no band exists.
+var _foot: MarginContainer  ## The foot banner's host, freed with it; null while no band exists.
 var _band: AdBannerBand
 var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
 
@@ -126,6 +126,8 @@ func _ready() -> void:
 	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _open_dev_menu)
 	if pill != null:
 		pill.menu_pressed.connect(_on_menu_pressed)
+	for dialog: ConfirmDialog in [_restart_dialog, _surrender_dialog, _exit_dialog]:
+		dialog.visibility_changed.connect(_on_dialog_visibility)
 	feed.state.changed.connect(_on_changed)
 	runner.match_ended.connect(_on_match_ended)
 	_apply_dp()
@@ -348,20 +350,22 @@ func _restore_hud() -> void:
 	_hidden.clear()
 
 
-## Makes the band when the menu is open and upright (none sideways), then, two frames on when the
-## layout has settled, frees it again where the content leaves no room for it (it scrolls, or the
-## band would come closer than its gap to the last button).
-func _place_banner() -> void:
-	if not visible or not HudLayout.is_portrait():
+## The foot banner (P435). The band is built hidden, so it holds no show; two frames on, when the
+## layout has settled, it is shown only where the banner fits under the content (no scroll, its
+## 16 dp gap kept to the last button) and freed where it does not, so a drop never shows a banner.
+## Nothing sideways and nothing under an open confirm dialog. `hide_first` takes a shown band down
+## while a resize settles, so no banner stands unchecked; the band's own size change (a new banner
+## height) checks again without it.
+func _place_banner(hide_first: bool = true) -> void:
+	if not visible or not HudLayout.is_portrait() or _asking():
 		_drop_banner()
 		return
 	_foot_check += 1
 	var serial: int = _foot_check
 	if _band == null:
-		_foot = SafeAreaMargin.new()
+		_foot = MarginContainer.new()
 		_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_foot.name = &"Foot"
-		_foot.margin_dp = 0.0  # The band is the safe rect's last row; its own gap is the air.
 		add_child(_foot)
 		move_child(_foot, 2)  # Under the dialogs.
 		_foot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -370,15 +374,49 @@ func _place_banner() -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_foot.add_child(box)
 		_band = AdBannerBand.new()
+		_band.visible = false
 		_band.service = ad_service
 		box.add_child(_band)
-	await get_tree().process_frame
-	await get_tree().process_frame
+		_band.minimum_size_changed.connect(_place_banner.bind(false))
+	elif hide_first:
+		_band.visible = false
+	_fit_foot()
+	_check_foot.call_deferred(serial, 2)
+
+
+## Waits `frames` more frames (no await: a menu freed meanwhile just stops) and then fits the band.
+func _check_foot(serial: int, frames: int) -> void:
 	if serial != _foot_check or _band == null:
 		return
+	if frames > 0:
+		get_tree().process_frame.connect(_check_foot.bind(serial, frames - 1), CONNECT_ONE_SHOT)
+		return
 	var content_end: float = column.global_position.y + column.get_combined_minimum_size().y
-	if _band.get_global_rect().position.y < content_end - 0.5:
+	var room: float = UiScale.safe_rect_base().end.y - content_end
+	if room < _band.preview_reserved_px() - 0.5:
 		_drop_banner()
+	else:
+		_band.visible = true
+
+
+## The foot's margins: the safe rect's own sides, the bottom its own inset (not the larger of the
+## two, as SafeAreaMargin takes), as MenuScreen does, so the band lies on the safe rect's bottom.
+func _fit_foot() -> void:
+	var full: Rect2 = get_viewport().get_visible_rect()
+	var safe: Rect2 = UiScale.safe_rect_base().intersection(full)
+	var inset: Vector2i = SafeAreaMargin.inset_px(full, 0.0)
+	_foot.add_theme_constant_override("margin_left", inset.x)
+	_foot.add_theme_constant_override("margin_right", inset.x)
+	_foot.add_theme_constant_override("margin_bottom", ceili(maxf(full.end.y - safe.end.y, 0.0)))
+
+
+func _asking() -> bool:
+	return _restart_dialog.visible or _surrender_dialog.visible or _exit_dialog.visible
+
+
+func _on_dialog_visibility() -> void:
+	if visible:
+		_place_banner()
 
 
 func _drop_banner() -> void:

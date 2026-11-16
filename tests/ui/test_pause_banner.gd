@@ -9,6 +9,7 @@ const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const POLICY_GAP_DP: float = 16.0
 
 var _window_size_before: Vector2i
@@ -131,6 +132,96 @@ func test_no_fullscreen_ad_while_the_menu_is_open_and_nothing_before() -> void:
 	_close()
 	await _settle()
 	assert_array(_ad_nodes()).is_empty()
+
+
+## The foot is checked while the band is hidden: a drop never asks the service for a banner.
+func test_a_banner_that_does_not_fit_is_never_shown() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_menu().column.custom_minimum_size.y = float(get_window().size.y)  # A real overflow.
+	_menu().get_viewport().size_changed.emit()
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).is_empty()
+	assert_bool(_fake().calls.has("banner")).is_false()
+	assert_int(_service._banner_requests).is_equal(0)
+
+
+func test_no_banner_under_an_open_confirm_dialog() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	(_menu().find_child("RestartButton", true, false) as Button).pressed.emit()
+	await _settle()
+	assert_array(_bands()).is_empty()
+	assert_bool(_fake().banner_visible).is_false()
+	(_menu()._restart_dialog as ConfirmDialog).close()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	assert_bool(_fake().banner_visible).is_true()
+
+
+## A cutout at the top and a different inset at the bottom: the band lies on the safe rect's own
+## bottom, and the band raises no error.
+func test_the_band_is_on_the_safe_rect_bottom_with_an_asymmetric_safe_area() -> void:
+	var metrics: UiMetrics = UiProfiles.by_name(&"notch_design_portrait")
+	UiScale.set_override(metrics)
+	await _open(metrics.window_size)
+	UiScale.set_override(metrics)
+	var safe: Rect2 = UiScale.safe_rect_base()
+	var full: Rect2 = get_viewport().get_visible_rect()
+	assert_bool(is_equal_approx(safe.position.y, full.end.y - safe.end.y)).is_false()
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	assert_bool((_bands()[0] as AdBannerBand).is_at_safe_bottom()).is_true()
+
+
+## A later change of the banner's height (Remove ads, consent, a reload) is checked again.
+func test_a_taller_banner_that_no_longer_fits_is_dropped() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	_fake().banner_height = int(float(get_window().size.y) / UiScale.dp(1.0))  # Taller than room.
+	_service._refresh_banner()
+	await _settle()
+	assert_array(_bands()).is_empty()
+	assert_bool(_fake().banner_visible).is_false()
+
+
+func test_close_and_reopen_within_the_awaited_frames_leaves_one_band() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await await_idle_frame()
+	_close()
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	assert_int(_service._banner_requests).is_equal(1)
+
+
+func test_the_end_of_the_match_frees_the_band() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_array(_bands()).has_size(1)
+	(_main.get_node("MatchRunner") as MatchRunner).match_ended.emit(0)
+	await _settle()
+	assert_array(_bands()).is_empty()
+	assert_int(_service._banner_requests).is_equal(0)
+
+
+## Restart and Exit to menu replace the scene with the menu open: the band goes with it.
+func test_leaving_the_scene_with_the_menu_open_releases_the_banner() -> void:
+	await _open(ScreenSizes.PORTRAIT[1])
+	_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	await _settle()
+	assert_int(_service._banner_requests).is_equal(1)
+	_main.free()
+	await _settle()
+	assert_int(_service._banner_requests).is_equal(0)
+	assert_bool(_fake().banner_visible).is_false()
 
 
 func _assert_clear_of_buttons(label: String) -> void:

@@ -242,6 +242,14 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 	return rewarded
 
 
+## Internal (P435). The height a band would get if it asked now, with no request made: lets a host
+## see whether the banner fits before it shows one. 0 where none may show.
+func banner_height_preview_dp() -> int:
+	if _initialised and _can_request_ads and not _ledger.remove_ads:
+		return _backend.banner_height_dp()
+	return 0
+
+
 ## Internal, called by the banner band on `enter_tree`. Requests are counted: the banner shows
 ## while at least one is open.
 func show_banner() -> void:
