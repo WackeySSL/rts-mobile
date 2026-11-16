@@ -5,10 +5,9 @@ extends Node
 ##
 ## P403 fills in the ads behind these signatures: the caps (AdCaps), the counters (AdLedger, in
 ## memory until P407 saves it), the timeouts from data, the banner and the rewarded ad, all through
-## an AdBackend. The backend is always the FakeAdBackend for now: the real one is P405, so builds
-## with the `play` feature tag keep the fake until it lands. Consent (P404) goes through a
-## ConsentBackend (FakeUmp for now, the real one is P405): the SDK is initialised and any ad
-## loaded only once `_can_request_ads` is true. Purchases (P406) go through Purchases over a
+## an AdBackend: the AdMobBackend in AdMob mode (P405), else the FakeAdBackend. Consent (P404) goes
+## through a ConsentBackend (FakeUmp until P405b): the SDK is initialised and any ad loaded only
+## once `_can_request_ads` is true. Purchases (P406) go through Purchases over a
 ## BillingBackend (always the FakeBilling until P406b adds the Play one) and do not depend on
 ## consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
 ## resume. No plugin code and no ad IDs live here.
@@ -20,7 +19,6 @@ extends Node
 ## ledger change saves; the entitlement, a shown interstitial and a start-credits grant also flush
 ## at once (the app may be killed under an ad), the entitlement before `entitlement_changed` is
 ## emitted. Consent is not saved (UMP keeps its own storage).
-## For P405: see the notes on `AdBackend.show_banner`.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
@@ -69,13 +67,25 @@ var _banner_height: int = 0
 var _rewarded_retry_ms: int = 0
 
 
-## Fake everywhere until P405 adds the AdMob backend and wires `AdBackend.is_admob_mode` here
-## (ADR 0039 section 2); `play` builds keep the fake until then.
+## AdMob mode (ADR 0039 section 2): Android, not the editor, the plugin's singletons present and
+## the `play` feature tag. Everything else, desktop, headless, web and the dev APKs, is fake mode.
+static func _is_admob_mode() -> bool:
+	return AdBackend.is_admob_mode(
+		OS.get_name(),
+		OS.has_feature("editor"),
+		AdMobBackend.plugin_present(),
+		OS.has_feature("play")
+	)
+
+
+## The real backend in AdMob mode, else the fake. Debug builds get Google's test units (AdIds).
 static func _make_backend() -> AdBackend:
+	if _is_admob_mode():
+		return AdMobBackend.new(AdIds.load_units(OS.is_debug_build()))
 	return FakeAdBackend.new()
 
 
-## Fake everywhere until P405 adds the UMP backend. Where the fake placeholders wait for buttons
+## Fake everywhere until the UMP backend lands (P405b). Where the fake placeholders wait for buttons
 ## (the editor, the phone preview) consent is required by default, so the form can be walked;
 ## headless stays "not required".
 static func _make_consent(required: bool) -> ConsentBackend:
