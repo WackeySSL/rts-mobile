@@ -62,6 +62,8 @@ var _now_ms: Callable = Time.get_ticks_msec
 ## The full-screen runs: the one awaited and the late ones; see FullscreenRuns.
 var _runs: FullscreenRuns = FullscreenRuns.new()
 var _banner_shown: bool = false
+## The backend holds a banner view (shown or hidden) that Remove ads or lost consent must destroy.
+var _banner_alive: bool = false
 var _banner_requests: int = 0
 var _banner_height: int = 0
 var _rewarded_retry_ms: int = 0
@@ -105,6 +107,8 @@ static func _default_auto_close(display_name: String) -> bool:
 
 func _init() -> void:
 	_consent.settled.connect(_set_can_request)
+	_backend.can_request_ads = func() -> bool: return _can_request_ads
+	_backend.banner_height_changed.connect(_refresh_banner)
 	_runs.opened.connect(ad_opened.emit)
 	_runs.closed.connect(ad_closed.emit)
 	_sync_fake()
@@ -280,8 +284,14 @@ func _refresh_banner() -> void:
 	if may_show:
 		if not _banner_shown:
 			_banner_shown = true
+			_banner_alive = true
 			_backend.show_banner()
 		height = _backend.banner_height_dp()
+	elif (_ledger.remove_ads or not _can_request_ads) and _banner_alive:
+		# Remove ads or no consent: the view goes, not just out of sight (ADR 0039 section 8).
+		_banner_alive = false
+		_banner_shown = false
+		_backend.destroy_banner()
 	elif _banner_shown:
 		_banner_shown = false
 		_backend.hide_banner()

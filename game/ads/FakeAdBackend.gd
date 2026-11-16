@@ -119,6 +119,11 @@ func hide_banner() -> void:
 	_banner_node = null
 
 
+## Test hook: the banner's height is re-read, as when a real banner's load finishes.
+func notify_banner() -> void:
+	banner_height_changed.emit()
+
+
 func banner_height_dp() -> int:
 	return banner_height if fill else 0
 
