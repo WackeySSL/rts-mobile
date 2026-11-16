@@ -10,11 +10,25 @@ signal finished(menu: Node)
 
 enum Phase { DRIVE, SETTLED, OPEN, FADE, DONE }
 
+
+## Awaits the consent call away from the player, so a player freed meanwhile is never resumed.
+class ConsentWait:
+	extends RefCounted
+	var done: bool = false
+
+	func run(call: Callable) -> void:
+		if call.is_valid():
+			await call.call()
+		done = true
+
+
 @export var settings: IntroSettings = preload("res://data/intro_settings.tres")
 var clock: Callable = Time.get_ticks_msec
 var loader: IntroLoader = IntroLoader.new()
 ## Awaited while the intro plays; always finishes. Invalid means there is no ad service.
 var consent: Callable = Callable()
+## Reduced effects: a fade instead of the drive. TODO(P526): P526 stores the saved switch; the boot
+## reads it and sets this field before it adds the player to the tree.
 var reduced: bool = false
 var log_line: Callable = print
 ## Where the menu is added; null is the tree's root (then it becomes the current scene).
@@ -31,11 +45,20 @@ var _layers: Dictionary[String, TextureRect] = {}
 var _t0: int = -1
 var _exit_t0: int = 0
 var _skipped: bool = false
-var _consent_done: bool = false
+var _wait: ConsentWait = ConsentWait.new()
+var _blocker: Control = null
+var _held: Array[Resource] = []
 var _failed: bool = false
 var _menu: Control = null
 var _cover: float = 1.0
 var _line_full: float = 0.0
+
+
+func _enter_tree() -> void:
+	# TODO(P533): ADR 0043 section 4 wants application/config/quit_on_go_back = false for the whole
+	# app; the project setting comes with the row that edits project.godot. Until then the intro
+	# switches it off (as MenuStack does), so Back skips the intro and never quits the app.
+	get_tree().quit_on_go_back = false
 
 
 func _ready() -> void:
@@ -54,16 +77,25 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+	if phase == Phase.DONE:
+		return
+	var touch: bool = event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed
+	var click: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed
+	if touch or click:
 		skip()
+		get_viewport().set_input_as_handled()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and phase != Phase.DONE:
 		skip()  # ADR 0043 section 4: Back in the intro is a tap.
+		if is_inside_tree():
+			get_viewport().set_input_as_handled()
 
 
-## Makes the nodes: backdrop, the icon's layers in a box, the wordmark, the progress line.
+## Makes the nodes: backdrop, the icon's layers in a box, the wordmark, the progress line. The
+## `load()` calls are synchronous on purpose: the first frame is the still picture, so the 17 small
+## layer textures and the splash PNG must be there before it, and they are tiny imported files.
 func build() -> void:
 	_bg = ColorRect.new()
 	_bg.color = settings.background
@@ -88,15 +120,17 @@ func build() -> void:
 	line.color = settings.line_color
 	line.visible = false
 	add_child(line)
-	for child: Control in [_bg, icon_box, tank, wordmark, line]:
-		child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var parts: Array[Control] = [_bg, icon_box, tank, wordmark, line]
+	for part: Control in parts:
+		part.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rest_pose()  # Reduced effects never drive: the tank rests from the first frame.
 
 
 ## Starts the loads and the consent. The first `step` is the first frame (time 0).
 func begin() -> void:
 	for path: String in _paths():
 		loader.request(path)
-	_run_consent()
+	_wait.run(consent)
 
 
 ## The still frame for a window of `area` px (the splash PNG scaled by min side / side and
@@ -113,15 +147,15 @@ func apply_layout(area: Vector2, safe: Rect2) -> void:
 	for layer: TextureRect in _layers.values():
 		layer.size = Vector2(settings.icon_rect.size)
 		layer.scale = Vector2.ONE * fit
-		layer.position = Vector2.ZERO
 	wordmark.position = origin + Vector2(settings.wordmark_rect.position) * fit
 	wordmark.size = Vector2(settings.wordmark_rect.size) * fit
-	_cover = maxf(area.x / icon_box.size.x, area.y / icon_box.size.y) * 1.05
+	_rest_pose()
+	_cover = maxf(area.x / icon_box.size.x, area.y / icon_box.size.y) * settings.cover_margin
 	_line_full = safe.size.x * settings.line_width_ratio
 	line.size = Vector2(0.0, UiScale.dp(settings.line_dp))
 	line.position = Vector2(
 		safe.position.x + (safe.size.x - _line_full) / 2.0,
-		safe.end.y - UiScale.dp(settings.line_bottom_dp)
+		safe.end.y - UiScale.dp(settings.line_bottom_dp) - line.size.y
 	)
 
 
@@ -130,7 +164,29 @@ func apply_layout(area: Vector2, safe: Rect2) -> void:
 func skip() -> void:
 	_skipped = true
 	if phase == Phase.DRIVE:
-		phase = Phase.SETTLED
+		_settle()
+
+
+func consent_done() -> bool:
+	return _wait.done
+
+
+## The tank stops in its rest pose (a still idle) and the progress line may show.
+func _settle() -> void:
+	phase = Phase.SETTLED
+	_rest_pose()
+
+
+## Every animated part back where the still frame has it: the tank, the layers' offsets, turns,
+## pivots and alpha. Run on settling, on a new layout and when reduced effects never drive.
+func _rest_pose() -> void:
+	tank.position = Vector2.ZERO
+	tank.rotation = 0.0
+	for layer: TextureRect in _layers.values():
+		layer.position = Vector2.ZERO
+		layer.rotation = 0.0
+		layer.pivot_offset = Vector2.ZERO
+		layer.modulate.a = 1.0
 
 
 func step() -> void:
@@ -144,7 +200,7 @@ func step() -> void:
 		_advance_exit(now)
 		return
 	if phase == Phase.DRIVE and t >= settings.max_ms:
-		phase = Phase.SETTLED
+		_settle()
 	if not _failed and is_loaded() and (_skipped or t >= settings.min_ms):
 		_begin_exit(now)
 		return
@@ -156,7 +212,7 @@ func step() -> void:
 
 ## Every load and the consent are done (a failed load counts so the intro never hangs on it).
 func is_loaded() -> bool:
-	if not _consent_done:
+	if not _wait.done:
 		return false
 	for path: String in _paths():
 		if loader.state(path) == IntroLoader.State.LOADING:
@@ -166,7 +222,7 @@ func is_loaded() -> bool:
 
 ## 0..1 over the consent and every load.
 func progress() -> float:
-	var total: float = 1.0 if _consent_done else 0.0
+	var total: float = 1.0 if _wait.done else 0.0
 	var paths: Array[String] = _paths()
 	for path: String in paths:
 		var done: bool = loader.state(path) != IntroLoader.State.LOADING
@@ -179,12 +235,6 @@ func _paths() -> Array[String]:
 	for path: String in settings.load_paths:
 		found.append(path)
 	return found
-
-
-func _run_consent() -> void:
-	if consent.is_valid():
-		await consent.call()
-	_consent_done = true
 
 
 func _layer(parent: Control, stem: String) -> TextureRect:
@@ -227,15 +277,25 @@ func _begin_exit(now: int) -> void:
 	if scene == null:
 		_failed = true  # Said once; the still frame and the line stay.
 		log_line.call("boot_error: %s did not load" % settings.menu_path)
-		phase = Phase.SETTLED
+		_settle()
 		line.visible = true
 		return
 	_exit_t0 = now
 	line.visible = false
 	phase = Phase.FADE if reduced else Phase.OPEN
+	for path: String in settings.load_paths:
+		var extra: Resource = loader.take(path)
+		if extra != null:
+			_held.append(extra)  # Kept alive until the menu holds them.
 	_menu = scene.instantiate() as Control
 	_menu.modulate.a = 0.0
-	(host if host != null else get_tree().root).add_child(_menu)
+	var parent: Node = host if host != null else get_tree().root
+	parent.add_child(_menu)
+	# The faded menu must not take a touch before it is shown: a blocker stands above it.
+	_blocker = Control.new()
+	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	parent.add_child(_blocker)
+	_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _advance_exit(now: int) -> void:
@@ -254,6 +314,8 @@ func _advance_exit(now: int) -> void:
 
 func _finish(now: int) -> void:
 	phase = Phase.DONE
+	_blocker.queue_free()
+	_held.clear()
 	_menu.modulate.a = 1.0
 	log_line.call("boot_ms=%d" % (now - _t0))
 	finished.emit(_menu)

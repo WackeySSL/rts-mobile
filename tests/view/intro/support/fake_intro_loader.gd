@@ -4,6 +4,7 @@ extends IntroLoader
 
 var states: Dictionary[String, IntroLoader.State] = {}
 var requested: Array[String] = []
+var taken: Array[String] = []
 var scene: PackedScene = null
 
 
@@ -20,8 +21,9 @@ func progress(path: String) -> float:
 	return 1.0 if states[path] == IntroLoader.State.LOADED else 0.25
 
 
-func take(_path: String) -> Resource:
-	return scene
+func take(path: String) -> Resource:
+	taken.append(path)
+	return scene if path.ends_with(".tscn") else null
 
 
 func finish(state_now: IntroLoader.State = IntroLoader.State.LOADED) -> void:

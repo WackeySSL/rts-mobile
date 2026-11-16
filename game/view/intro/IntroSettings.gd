@@ -11,6 +11,9 @@ extends Resource
 @export var max_ms: int = 3000
 @export var open_ms: int = 400
 @export var fade_ms: int = 250
+## The open-out grows the icon to this much more than covers the screen, so no corner of the
+## square (or a rotated layer's edge) shows at the screen's corners.
+@export var cover_margin: float = 1.15
 
 ## The splash PNG's square and where the icon and the wordmark stand in it.
 @export var splash_side: int = 1024
