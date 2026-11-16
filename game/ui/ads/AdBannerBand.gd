@@ -82,7 +82,7 @@ func _exit_tree() -> void:
 	if is_instance_valid(_bound):
 		if _bound.banner_changed.is_connected(_on_banner_changed):
 			_bound.banner_changed.disconnect(_on_banner_changed)
-		_release()
+	_release()  # Outside the check: a band whose service died must still drop its show.
 	_bound = null
 
 

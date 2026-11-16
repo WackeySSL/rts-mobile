@@ -85,6 +85,40 @@ func test_exit_while_hidden_does_not_release_twice() -> void:
 	assert_object(other).is_not_null()
 	_host.add_child(second)  # Still hidden: no show.
 	assert_int(_service._banner_requests).is_equal(1)
+	second.visible = true
+	assert_int(_service._banner_requests).is_equal(2)
+	_host.remove_child(second)
+	assert_int(_service._banner_requests).is_equal(1)
+
+
+func test_a_canvas_layer_hidden_and_shown_moves_the_band_too() -> void:
+	_make_service()
+	var layer: CanvasLayer = auto_free(CanvasLayer.new())
+	add_child(layer)
+	var column: VBoxContainer = auto_free(VBoxContainer.new())
+	_fill_safe_rect(column)
+	layer.add_child(column)
+	var band: AdBannerBand = await _add_band(column)
+	assert_int(_service._banner_requests).is_equal(1)
+	layer.visible = false
+	assert_int(_service._banner_requests).is_equal(0)
+	_assert_collapsed(band, "layer hidden")
+	layer.visible = true
+	assert_int(_service._banner_requests).is_equal(1)
+
+
+func test_a_band_whose_service_died_takes_a_show_from_the_next_one() -> void:
+	_make_service()
+	var band: AdBannerBand = await _add_band()
+	assert_int(_service._banner_requests).is_equal(1)
+	_service.free()  # The service dies while the band still holds its show.
+	var old_host: VBoxContainer = _host
+	old_host.remove_child(band)
+	_harness.dispose()
+	_make_service()
+	band.service = _service
+	_host.add_child(band)
+	assert_int(_service._banner_requests).is_equal(1)
 
 
 func test_enter_under_a_hidden_ancestor_shows_nothing_until_it_is_shown() -> void:
