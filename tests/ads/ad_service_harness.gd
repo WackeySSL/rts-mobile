@@ -11,11 +11,13 @@ var events: Array[String] = []
 
 
 ## A new service. Auto close is on, so a suite run from the editor does not wait for a button.
-func make(consent: bool = true) -> Node:
-	var script: GDScript = load(SCRIPT_PATH) as GDScript
+func make(consent: bool = true, script_path: String = SCRIPT_PATH) -> Node:
+	var script: GDScript = load(script_path) as GDScript
 	var service: Node = script.new()
 	service.fake_auto_close = true
-	service._can_request_ads = consent
+	# The editor's non-headless default requires consent; the suites script it where they need it.
+	ump(service).consent_required = false
+	service._set_can_request(consent)
 	service._now_ms = func() -> int: return clock_ms
 	service.ad_opened.connect(
 		func(placement: StringName) -> void: events.append("open:" + placement)
@@ -26,8 +28,20 @@ func make(consent: bool = true) -> Node:
 	return service
 
 
+static func ump(service: Node) -> FakeUmp:
+	return service._consent.backend as FakeUmp
+
+
+static func consent_timeout_ms(service: Node) -> int:
+	return service._settings.consent_timeout_ms
+
+
 static func fake(service: Node) -> FakeAdBackend:
 	return service._backend as FakeAdBackend
+
+
+static func billing(service: Node) -> FakeBilling:
+	return service._billing as FakeBilling
 
 
 ## Three finished matches, 240 s in all: the first interstitial may show.

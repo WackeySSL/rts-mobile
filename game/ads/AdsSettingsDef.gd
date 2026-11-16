@@ -16,6 +16,8 @@ const _MIN_PER_MATCH: int = 1
 const _MAX_PER_MATCH: int = 1
 const _MIN_FULLSCREEN_MS: int = 1000
 const _MAX_FULLSCREEN_MS: int = 30000
+const _MIN_BILLING_MS: int = 1000
+const _MAX_BILLING_MS: int = 30000
 const _MIN_CONSENT_MS: int = 1000
 const _MAX_CONSENT_MS: int = 60000
 const _MIN_XP_MULT: int = 2
@@ -39,6 +41,8 @@ static var _default: AdsSettingsDef
 @export_range(_MIN_PER_MATCH, _MAX_PER_MATCH) var interstitial_per_match: int = 1
 ## The longest wait for a full-screen ad to open (ms).
 @export_range(_MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS) var fullscreen_timeout_ms: int = 8000
+## The longest wait for the store sheet to show, or for a restore's answer (ms).
+@export_range(_MIN_BILLING_MS, _MAX_BILLING_MS) var billing_timeout_ms: int = 8000
 ## The longest wait for the consent info and the form to load (ms).
 @export_range(_MIN_CONSENT_MS, _MAX_CONSENT_MS) var consent_timeout_ms: int = 10000
 ## Double XP: the multiplier handed to `Progression.apply_bonus`.
@@ -85,6 +89,7 @@ func validate() -> PackedStringArray:
 	_check(
 		out, "fullscreen_timeout_ms", fullscreen_timeout_ms, _MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS
 	)
+	_check(out, "billing_timeout_ms", billing_timeout_ms, _MIN_BILLING_MS, _MAX_BILLING_MS)
 	_check(out, "consent_timeout_ms", consent_timeout_ms, _MIN_CONSENT_MS, _MAX_CONSENT_MS)
 	_check(out, "reward_xp_multiplier", reward_xp_multiplier, _MIN_XP_MULT, _MAX_XP_MULT)
 	_check(out, "reward_start_credits", reward_start_credits, _MIN_CREDITS, _MAX_CREDITS)

@@ -47,7 +47,7 @@
 ; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
 ; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
-; PausePrimaryFossil, PauseDanger, PauseChip, PauseChipFossil, PauseChipOff) are set by
+; PausePrimaryFossil, PauseDanger, PauseChip, PauseChipFossil, PauseChipOff, and the ad banner band's AdCaption) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The tabs of the build sidebar get their tints from the icon colours of SidebarTab; the glyphs of
@@ -752,6 +752,9 @@ PauseCheck/styles/panel = SubResource("StyleBoxFlat_pause_check")
 PauseMuted/base_type = &"Label"
 PauseMuted/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
 PauseMuted/font_sizes/font_size = 14
+AdCaption/base_type = &"Label"
+AdCaption/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+AdCaption/font_sizes/font_size = 14
 PauseButton/base_type = &"CapsButton"
 PauseButton/styles/focus = SubResource("StyleBoxFlat_pause_focus")
 PauseButton/styles/hover = SubResource("StyleBoxFlat_pause_plate")

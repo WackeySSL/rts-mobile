@@ -17,8 +17,10 @@ extends Node
 ## Versions: a hash-valid file without `meta.version` is read as version 0 and goes through the
 ## `_migrate` steps (0 -> 1 keeps every section; only this service writes the hash line), then is
 ## rewritten with its version. Migration v0 of the ADR is a different thing: no save file of any
-## kind, but a `settings.cfg`: its `[hud]` keys are copied into section `hud`. `settings.cfg` is
-## left in place; P510b (`HudPrefs` on this service) deletes it.
+## kind, but a `settings.cfg`: its `[hud]` keys are copied into section `hud`, and `settings.cfg`
+## is deleted after that first good write (`HudPrefs` reads this service now, not that file). A
+## `settings.cfg` beside an existing save (written by a build between P510 and P510b, when only the
+## old `HudPrefs` wrote it) is newer for `hud`: its keys go over the section the same way.
 
 ## Fires after a successful write.
 signal saved
@@ -335,7 +337,7 @@ func _load() -> void:
 				_keep_bad(bak)
 	if config == null:
 		if not any_file:  # Corrupt files are not a first launch: no migration over them.
-			_migrate_v0()
+			_absorb_legacy()
 		return
 	var raw_version: Variant = config.get_value(META, KEY_VERSION, 0)
 	var version: int = raw_version if raw_version is int else 0
@@ -353,6 +355,7 @@ func _load() -> void:
 	_take(config)
 	if from_tmp and not _read_only and _install(tmp) != OK:
 		_report_error("SaveService: could not finish the write of %s" % tmp)
+	_absorb_legacy()
 
 
 ## Ordered steps, one per version: step n turns a version n file into n + 1.
@@ -376,20 +379,24 @@ func _take(config: ConfigFile) -> void:
 		_sections[section] = values
 
 
-## v0 of the ADR: no save file of any kind, but a settings.cfg beside it. Its [hud] keys are
-## copied into section `hud`. settings.cfg stays: P510b deletes it.
-func _migrate_v0() -> void:
+## A `settings.cfg` beside the save (v0 of the ADR, or a stale one from a build between P510 and
+## P510b): its [hud] keys go over section `hud` through set_section's validation. It is deleted
+## only once a flush really wrote `hud` (not when the section was refused or dropped as
+## unwritable). Nothing happens on a newer, read-only file.
+func _absorb_legacy() -> void:
+	var legacy_path: String = path().get_base_dir().path_join(LEGACY_FILE)
+	if _read_only or not FileAccess.file_exists(legacy_path):
+		return
 	var legacy: ConfigFile = ConfigFile.new()
-	if legacy.load(path().get_base_dir().path_join(LEGACY_FILE)) != OK:
+	if legacy.load(legacy_path) != OK or not legacy.has_section(LEGACY_SECTION):
 		return
-	if not legacy.has_section(LEGACY_SECTION):
-		return
-	var values: Dictionary = {}
+	var values: Dictionary = get_section(StringName(LEGACY_SECTION))
 	for key: String in legacy.get_section_keys(LEGACY_SECTION):
 		values[key] = legacy.get_value(LEGACY_SECTION, key)
-	_sections[LEGACY_SECTION] = values
-	_dirty = true
-	flush()
+	if not set_section(StringName(LEGACY_SECTION), values):
+		return
+	if flush() == OK and not _unwritable.has(LEGACY_SECTION):
+		_remove(legacy_path)
 
 
 ## A failed file is kept once beside itself as `<name>.bad` (`save.cfg.bad`, `save.cfg.bak.bad`),
