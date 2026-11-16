@@ -197,6 +197,15 @@ for flavour in gnu llvm; do
   t "--entry-symbol names another entry" 0 "exports other" "${m[@]}" --entry-symbol other "$root/noentry.so" "$cxx"
   t "every failing check is reported: the machine" 1 "is not a 'AArch64' ELF file" "$root/x86-4k.so" "$cxx"
   check "every failing check is reported: the alignment" 1 "PT_LOAD segments have p_align below 0x4000"
+  # P410b: the align mode that check-aab.sh runs on every library of the bundle.
+  run align "$root/good.so" "$root/libc.so"
+  check "align: 16 KB libraries pass" 0 "OK 2 file(s) with every PT_LOAD p_align 0x4000 or more"
+  run align "$root/good.so" "$root/mixedalign.so"
+  check "align: one PT_LOAD of 4 KB fails the run" 1 "FAIL mixedalign.so: PT_LOAD align"
+  run align "$root/notelf.so"
+  check "align: no PT_LOAD at all fails" 1 "FAIL notelf.so: has no PT_LOAD segment"
+  run align
+  check "align: no file is a usage error" 2 "align needs at least one file"
   t "a libc++ symbol that libc++_shared.so does not define" 1 "uses 1 libc++ symbol(s) that libc++_shared.so does not define, first: $unk" "${m[@]}" "$root/unknown.so" "$cxx"
   t "every libc++ symbol is checked, not the first" 1 "uses 1 libc++ symbol(s) that libc++_shared.so does not define, first: $unk" "${m[@]}" "$root/mixed.so" "$cxx"
   t "a weak reference is no import" 0 "OK weak.so: $machine shared object, exports $entry, needs nothing" "${m[@]}" "$root/weak.so" "$cxx"

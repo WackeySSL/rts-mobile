@@ -15,11 +15,23 @@ name: Balance run
 on:
   push:
     branches: [main]
+    # Negated paths come after the positives: GitHub applies a negation only to earlier matches (P509).
     paths:
       - "data/**"
       - "game/ai/**"
       - "game/sim/**"
       - "native/**"
+      - "!data/audio_*.tres"
+      - "!data/ads_settings.tres"
+      - "!data/intro_settings.tres"
+      - "!data/help/**"
+      - "!data/meta/**"
+      - "!data/tutorial/**"
+      - "!data/maps/catalog.tres"
+      - "!data/maps/tutorial_*"
+      - "!data/scenarios/tutorial_*"
+      - "!game/ai/TutorialAi.gd"
+      - "!game/ai/TutorialScriptDef.gd"
   workflow_dispatch:
     inputs:
       suite:
