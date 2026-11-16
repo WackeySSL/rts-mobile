@@ -17,6 +17,7 @@ extends ConsentBackend
 ##   shown form with `on_consent_form_dismissed(uid, error)` and the privacy options form with
 ##   `on_privacy_options_form_dismissed_listener(error)`. All connect with CONNECT_DEFERRED (main
 ##   thread) and, unlike the plugin's wrappers, before the call, so a fast answer is not missed.
+## - The signals carry no request id, so overlapping calls are counted (see `_info_outstanding`).
 ## - `update` takes {tag_for_under_age_of_consent, consent_debug_settings: {debug_geography,
 ##   test_device_hashed_ids}}; the debug geography is 0 disabled, 1 EEA, 2 not EEA.
 
@@ -36,6 +37,11 @@ var _connected: bool = false
 var _info: Step = Step.PENDING
 var _form: Step = Step.PENDING
 var _form_uid: int = -1
+## Calls whose answer has not come. The plugin's signals carry no request id, so answers are taken
+## to arrive in call order: while an older call is still unanswered, an answer is its (late) one
+## and completes nothing, and only the last outstanding call's answer completes the newest.
+var _info_outstanding: int = 0
+var _form_outstanding: int = 0
 
 
 func _init(
@@ -66,9 +72,12 @@ func update_info(debug_eea: bool) -> void:
 		return
 	_connect_signals()
 	var debug: Variant = null
-	var hash_id: String = String(_test_device_hash.call())
-	if debug_eea and not hash_id.is_empty():
+	# The local test device file is read only when the debug geography is asked for.
+	var hash_id: String = String(_test_device_hash.call()) if debug_eea else ""
+	if not hash_id.is_empty():
 		debug = {"debug_geography": GEOGRAPHY_EEA, "test_device_hashed_ids": {0: hash_id}}
+	_info_outstanding += 1
+	# Not under the age of consent: the same answer the Mobile Ads request configuration gets.
 	info.update({"tag_for_under_age_of_consent": false, "consent_debug_settings": debug})
 
 
@@ -98,6 +107,7 @@ func load_form() -> void:
 		_form = Step.FAILED
 		return
 	_connect_signals()
+	_form_outstanding += 1
 	ump.load_consent_form()
 
 
@@ -159,20 +169,35 @@ func _on(singleton: String, signal_name: String, callable: Callable) -> void:
 
 
 func _on_info_done() -> void:
-	_info = Step.DONE
+	if _answers_newest_info():
+		_info = Step.DONE
 
 
 func _on_info_failed(_error: Dictionary = {}) -> void:
-	_info = Step.FAILED
+	if _answers_newest_info():
+		_info = Step.FAILED
 
 
 func _on_form_loaded(uid: int) -> void:
-	_form_uid = uid
-	_form = Step.DONE
+	if _answers_newest_form():
+		_form_uid = uid
+		_form = Step.DONE
 
 
 func _on_form_load_failed(_error: Dictionary = {}) -> void:
-	_form = Step.FAILED
+	if _answers_newest_form():
+		_form = Step.FAILED
+
+
+## True when this answer belongs to the newest info update; an answer to an older one is dropped.
+func _answers_newest_info() -> bool:
+	_info_outstanding = maxi(_info_outstanding - 1, 0)
+	return _info_outstanding == 0
+
+
+func _answers_newest_form() -> bool:
+	_form_outstanding = maxi(_form_outstanding - 1, 0)
+	return _form_outstanding == 0
 
 
 func _on_form_dismissed(_uid: int, _error: Dictionary = {}) -> void:
