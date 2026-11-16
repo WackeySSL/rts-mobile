@@ -58,6 +58,11 @@ func _ready() -> void:
 	_apply()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_ENTER_TREE:
+		_apply()  # A screen back from under another one lays itself out for the screen it is on.
+
+
 ## Virtual. Back (the Android button, ADR 0043 section 4) asks the screen first: true means the
 ## screen used it (it closed a sub-state), false lets the stack pop.
 func on_back() -> bool:
@@ -78,20 +83,24 @@ func add_button(text: String, action: Callable) -> Button:
 	return button
 
 
-## The margins are the platform's safe-area insets, each side its own; the column is as wide as
-## the short side of the safe rect (less the gaps), so a phone held either way gets one column.
+## The margins follow `SafeAreaMargin`'s rule (each axis takes the larger inset of its two sides,
+## recomputed on a resize; the gap round the column is inside the scroll, so its own margin is 0).
+## One exception: the bottom is the safe rect's own bottom, so the slot's bottom edge lies on it
+## (the real banner is drawn there, ADR 0043 section 8). The column is as wide as the short side of
+## the safe rect inside the gaps, so a phone held either way gets one column.
 func _apply() -> void:
+	if _frame == null or not is_inside_tree():
+		return
 	var full: Rect2 = get_viewport().get_visible_rect()
+	var inset: Vector2i = SafeAreaMargin.inset_px(full, 0.0)
 	var safe: Rect2 = UiScale.safe_rect_base().intersection(full)
-	var insets: Dictionary[String, float] = {
-		"left": safe.position.x - full.position.x,
-		"top": safe.position.y - full.position.y,
-		"right": full.end.x - safe.end.x,
-		"bottom": full.end.y - safe.end.y,
-	}
+	_frame.add_theme_constant_override("margin_left", inset.x)
+	_frame.add_theme_constant_override("margin_right", inset.x)
+	_frame.add_theme_constant_override("margin_top", inset.y)
+	_frame.add_theme_constant_override("margin_bottom", ceili(maxf(full.end.y - safe.end.y, 0.0)))
 	var gap: int = roundi(UiScale.dp(GAP_DP))
-	for side: String in insets:
-		_frame.add_theme_constant_override("margin_" + side, ceili(maxf(insets[side], 0.0)))
+	for side: String in ["left", "top", "right", "bottom"]:
 		_gap.add_theme_constant_override("margin_" + side, gap)
 	column.add_theme_constant_override("separation", gap)
-	column.custom_minimum_size.x = maxf(minf(safe.size.x, safe.size.y) - 2.0 * gap, 0.0)
+	var inside: Rect2 = SafeAreaMargin.rect_inside(full, GAP_DP)
+	column.custom_minimum_size.x = maxf(minf(inside.size.x, inside.size.y), 0.0)

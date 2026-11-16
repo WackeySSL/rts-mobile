@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
 ## A menu screen and its foot slot at the six sizes of ADR 0015 section 6 (plan P522): one column
 ## on the short side inside the safe rect, buttons of 48 dp or more, the slot at the very bottom of
-## the safe area with nothing below it, 0 tall while empty, and height + gap once a band is hosted
-## and the banner changes.
+## the safe area with nothing below it, 0 tall while empty, and as tall as its band once one is
+## hosted (the band owns its height, also when it changes).
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
@@ -32,7 +32,6 @@ func after_test() -> void:
 		remove_child(_menu)
 		_menu.free()
 		_menu = null
-	AdService.banner_changed.emit(0)
 
 
 func test_the_column_and_the_slot_hold_at_the_six_sizes() -> void:
@@ -68,39 +67,41 @@ func test_the_empty_slot_is_0_tall_and_at_the_safe_bottom_at_the_six_sizes() -> 
 		var label: String = str(size)
 		assert_bool(slot.has_band()).is_false()
 		assert_float(slot.size.y).override_failure_message(label).is_equal_approx(0.0, 0.01)
-		assert_bool(AdBannerSlot.is_at_safe_bottom(slot)).override_failure_message(label).is_true()
+		assert_bool(_lines_up(slot)).override_failure_message(label).is_true()
 		_close()
 		UiScale.clear_override()
 
 
-func test_a_filled_slot_takes_height_plus_gap_and_follows_banner_changed() -> void:
+func test_a_filled_slot_is_as_tall_as_its_band_and_follows_the_bands_size() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(_profile_with_window(size))
 		var slot: AdBannerSlot = _screen.slot
 		var band: Control = Control.new()
+		band.custom_minimum_size = Vector2(0.0, UiScale.dp(66.0))
 		assert_bool(slot.host(band)).is_true()
+		await await_idle_frame()
+		await await_idle_frame()
 		var label: String = str(size)
-		AdService.banner_changed.emit(50)
-		await await_idle_frame()
-		await await_idle_frame()
-		var expected: float = UiScale.dp(50.0 + AdBannerSlot.FLOOR_GAP_DP)
-		assert_float(slot.size.y).override_failure_message(label).is_equal_approx(expected, 1.0)
-		assert_float(band.size.y).override_failure_message(label).is_equal_approx(
-			UiScale.dp(50.0), 1.0
+		assert_float(slot.size.y).override_failure_message(label).is_equal_approx(
+			UiScale.dp(66.0), 1.0
 		)
-		assert_bool(AdBannerSlot.is_at_safe_bottom(slot)).override_failure_message(label).is_true()
-		assert_bool(AdBannerSlot.is_at_safe_bottom(band)).override_failure_message(label).is_true()
+		assert_float(band.size.y).override_failure_message(label).is_equal_approx(
+			UiScale.dp(66.0), 1.0
+		)
+		assert_bool(_lines_up(slot)).override_failure_message(label).is_true()
+		assert_bool(_lines_up(band)).override_failure_message(label).is_true()
 		var scroll_end: float = _screen.scroll.get_global_rect().end.y
 		assert_float(scroll_end).override_failure_message(label).is_less_equal(
 			slot.get_global_rect().position.y + 0.5
 		)
-		AdService.banner_changed.emit(90)
+		band.custom_minimum_size = Vector2(0.0, UiScale.dp(114.0))  # The band owns its height.
 		await await_idle_frame()
 		await await_idle_frame()
 		assert_float(slot.size.y).override_failure_message(label).is_equal_approx(
-			UiScale.dp(90.0 + AdBannerSlot.FLOOR_GAP_DP), 1.0
+			UiScale.dp(114.0), 1.0
 		)
-		AdService.banner_changed.emit(0)
+		assert_bool(_lines_up(band)).override_failure_message(label).is_true()
+		band.custom_minimum_size = Vector2.ZERO
 		await await_idle_frame()
 		await await_idle_frame()
 		assert_float(slot.size.y).override_failure_message(label).is_equal_approx(0.0, 0.01)
@@ -108,40 +109,35 @@ func test_a_filled_slot_takes_height_plus_gap_and_follows_banner_changed() -> vo
 		UiScale.clear_override()
 
 
-func test_the_start_page_gap_of_48_dp_is_kept_and_16_is_the_floor() -> void:
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
-	var slot: AdBannerSlot = _screen.slot
-	slot.host(Control.new())
-	slot.gap_dp = 48.0
-	AdService.banner_changed.emit(50)
-	await await_idle_frame()
-	await await_idle_frame()
-	assert_float(slot.size.y).is_equal_approx(UiScale.dp(98.0), 1.0)
-	slot.gap_dp = 4.0
-	assert_float(slot.gap_dp).is_equal(AdBannerSlot.FLOOR_GAP_DP)
-
-
-func test_the_slot_hosts_one_band_only() -> void:
+func test_the_slot_hosts_one_band_only_and_lets_go_of_a_removed_one() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
 	var slot: AdBannerSlot = _screen.slot
 	var first: Control = Control.new()
+	first.custom_minimum_size = Vector2(0.0, UiScale.dp(50.0))
 	assert_bool(slot.host(first)).is_true()
 	var second: Control = auto_free(Control.new())
 	assert_bool(slot.host(second)).is_false()
 	assert_bool(slot.host(null)).is_false()
 	assert_int(slot.get_child_count()).is_equal(1)
+	slot.remove_child(first)
+	first.free()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(slot.has_band()).is_false()
+	assert_float(slot.size.y).is_equal_approx(0.0, 0.01)
 
 
 func test_the_slot_stays_at_the_safe_bottom_under_a_cutout_and_a_gesture_bar() -> void:
 	var portrait: UiMetrics = UiProfiles.by_name(&"android_6in_portrait")
 	await _open(UiProfiles.with_safe_area(portrait, PORTRAIT_CUTOUT))
 	var slot: AdBannerSlot = _screen.slot
-	slot.host(Control.new())
-	AdService.banner_changed.emit(50)
+	var band: Control = Control.new()
+	band.custom_minimum_size = Vector2(0.0, UiScale.dp(50.0))
+	slot.host(band)
 	await await_idle_frame()
 	await await_idle_frame()
 	var safe: Rect2 = UiScale.safe_rect_base()
-	assert_bool(AdBannerSlot.is_at_safe_bottom(slot)).is_true()
+	assert_bool(_lines_up(slot)).is_true()
 	assert_float(safe.end.y).is_less(get_window().get_visible_rect().end.y)
 	assert_float(safe.position.y).is_greater(0.0)
 	assert_bool(safe.grow(TOLERANCE_PX).encloses(_screen.column.get_global_rect())).is_true()
@@ -168,7 +164,13 @@ func _close() -> void:
 	remove_child(_menu)
 	_menu.free()
 	_menu = null
-	AdService.banner_changed.emit(0)
+
+
+## The control's bottom edge is the safe rect's bottom, within half a base px: nothing is below it.
+## TODO: replace by P430's `assert_lines_up` (tests/ui/support/ad_band_asserts.gd) after the
+## post-wave-14 main merge.
+func _lines_up(control: Control) -> bool:
+	return absf(control.get_global_rect().end.y - UiScale.safe_rect_base().end.y) <= TOLERANCE_PX
 
 
 ## The profile whose window is `size`: the landscape ones, then the portrait ones.
