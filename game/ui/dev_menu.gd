@@ -2,19 +2,21 @@ extends Control
 ## Developer menu: choose the computer's level (Easy, Normal or Hard; Normal at the start, the
 ## choice shown, plan P183), then jump to a Skirmish (one per side, plan P90), the test map, the
 ## strike test, the art gallery, the touch probe, the perf arena, the perf bases (the same scene
-## with the base arena), the perf AI (the same scene with two computer players, plan P185) or the
-## perf air (16 aircraft, P253). When
+## with the base arena), the perf AI (the same scene with two computer players, plan P185, on Phase
+## 4b's arena since P304), the perf AI base (the same on the base arena) or the perf air (16
+## aircraft, P253). When
 ## the dev menu is not enabled (a release export without the `dev_menu` feature) it opens the main
 ## scene instead. Buttons of at least 48 dp in the safe area, in either orientation (ADR 0015
-## section 5): one column upright, three sideways where they fit the width (else two), so the ten
+## section 5): one column upright, three sideways where they fit the width (else two), so the eleven
 ## fit a phone browser held sideways; a window too short for them scrolls. The level row is three
 ## across in both orientations, its choice named in "Level: ..." beside the title. The look is the
 ## theme's, sized in dp by `HudTheme`; the gap is dp here.
 
 const GAP_DP: float = 12.0
-## The gap between the rows of the one upright column: the ten buttons (48 dp each) then fit the
-## 360 x 700 phone browser without a scroll, where 12 dp left 11 dp of the last one clipped.
-const UPRIGHT_ROW_GAP_DP: float = 8.0
+## The gap between the rows of the one upright column: the eleven buttons (48 dp each) then fit the
+## 360 x 700 phone browser without a scroll (P253: 8 dp for ten, where 12 dp left 11 dp of the last
+## one clipped; P304's eleventh button needs 4 dp, the buttons staying 48 dp tall).
+const UPRIGHT_ROW_GAP_DP: float = 4.0
 ## The level buttons, in the order of the row: name shown and the file of `data/ai/difficulty/`.
 const LEVEL_NAMES: Array[String] = ["Easy", "Normal", "Hard"]
 const LEVEL_PATHS: Array[String] = [
@@ -40,6 +42,7 @@ var _level_index: int = START_LEVEL
 @onready var _arena_button: Button = %PerfArenaButton
 @onready var _bases_button: Button = %PerfBasesButton
 @onready var _ai_button: Button = %PerfAiButton
+@onready var _ai_base_button: Button = %PerfAiBaseButton
 @onready var _air_button: Button = %PerfAirButton
 
 
@@ -56,6 +59,10 @@ func _ready() -> void:
 		or not ResourceLoader.exists(DevRoutes.PERF_BASES_SCENARIO)
 	)
 	_ai_button.disabled = (
+		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
+		or not ResourceLoader.exists(DevRoutes.PERF_AI_4B_SCENARIO)
+	)
+	_ai_base_button.disabled = (
 		not ResourceLoader.exists(DevRoutes.PERF_ARENA_SCENE)
 		or not ResourceLoader.exists(DevRoutes.PERF_AI_SCENARIO)
 	)
@@ -84,6 +91,7 @@ func _ready() -> void:
 	_arena_button.pressed.connect(_on_arena_pressed)
 	_bases_button.pressed.connect(_on_bases_pressed)
 	_ai_button.pressed.connect(_on_ai_pressed)
+	_ai_base_button.pressed.connect(_on_ai_base_pressed)
 	_air_button.pressed.connect(_on_air_pressed)
 	get_viewport().size_changed.connect(_apply_dp)
 	_apply_dp()
@@ -160,6 +168,10 @@ func _on_bases_pressed() -> void:
 
 func _on_ai_pressed() -> void:
 	DevRoutes.open_perf_ai(get_tree())
+
+
+func _on_ai_base_pressed() -> void:
+	DevRoutes.open_perf_ai(get_tree(), false)
 
 
 func _on_air_pressed() -> void:

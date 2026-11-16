@@ -412,6 +412,15 @@ stay as accepted):
   above for stage 2): hidden only where the KRITISK pose has felled the carrier (`anim_kritisk`; a
   sheet without the field hides it).
 
+Status note (2026-11-15, P500b; ADRs 0042 and 0043 accepted by Michael, 2026-11-15; the text and
+notes above stay as accepted): the player's **Reduced effects** switch is in Phase 5's Settings
+(plan row P526). It is stored in section `settings` of the one save file `user://save.cfg`
+(`SaveService`, ADR 0042 §1), not in `user://settings.cfg`, and still read at match start: nobody
+writes `reduced` during a match. A change made in Settings, also when Settings is opened from the
+pause menu, takes effect with the next match. The same switch turns the intro into a plain fade
+(ADR 0043 §2) and the menu slides into cuts (ADR 0043 §3). Sounds are not life effects; `reduced`
+does not touch them (ADR 0041).
+
 ### 9. Budget and proof
 - **Work:** life costs at most 0.56 ms of main-thread work per frame on the phone card, judged by
   the card with life full and reduced (P147). Life files cannot read `Time`, so the card times the

@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="RulesDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/RulesDef.gd" id="1_rules"]
+
+; Frozen copy of data/dev/arena/rules.tres plus the rules that data/rules.tres added since (sell, mend, carry and mine, sweep), as of 2026-11-15 (main a2204d2f, P304, review round 1). Used by perf_ai_4b only; flow_cache_size stays 8 as in perf_ai, so the workloads compare. Without them the carriers, mending and mines are inert (script default 0).
+[resource]
+script = ExtResource("1_rules")
+retarget_period_ticks = 5
+fog_period_ticks = 3
+line_check_period_ticks = 5
+flow_cells_per_tick = 512
+flow_cache_size = 8
+separation_neighbours = 8
+separation_scan = 16
+separation_idle_share = 75
+separation_push_max = 60
+separation_coincident_divisor = 4
+stall_ticks = 15
+stall_range_spacings = 2
+attack_rekey_milli = 4000
+max_projectiles = 512
+max_rows = 256
+start_credits = 2000
+ore_start = 20
+ore_cell_max = 20
+ore_regrow_ticks = 150
+credits_per_ore = 25
+harvest_ticks_per_ore = 3
+unload_ticks_per_ore = 1
+harvest_reach_milli = 1200
+dock_reach_milli = 1500
+harvest_retry_ticks = 15
+harvest_resume_ticks = 75
+harvest_pick_milli = 3000
+low_power_percent = 50
+queue_slots = 5
+build_reach_tiles = 4
+unit_cap = 75
+building_cap = 40
+ghost_cap = 40
+construct_start_hp_percent = 10
+construct_refund_percent = 75
+construction_sites_max = 1
+sell_refund_percent = 50
+mend_hp = 10
+mend_period_ticks = 15
+mend_cost_percent = 30
+passenger_cap = 150
+load_reach_milli = 3000
+unload_reach_tiles = 2
+mine_cap = 12
+mine_lay_ticks = 22
+mine_arm_ticks = 15
+sweep_ticks = 30
+mine_known_cap = 24

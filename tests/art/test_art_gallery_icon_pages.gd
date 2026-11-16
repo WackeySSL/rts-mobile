@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 ## the Vehicles page with the top-down units.
 
 const Gallery: GDScript = preload("res://game/view/art_gallery.gd")
+const IconsPage: GDScript = preload("res://game/view/art_gallery_icons.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 ## The tightest 16:9 phone, a wider one and a 4:3 tablet (the sizes of test_art_assets.gd).
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
@@ -43,7 +44,7 @@ func test_the_icons_page_has_the_hud_panel_and_the_two_grounds() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Node = gallery.get_node("IconsPage")
 	assert_array(page.get_children().map(_node_name)).is_equal(["Hud", "Grass", "Sand"])
-	assert_that((page.get_node("Hud") as ColorRect).color).is_equal(Gallery.HUD_BACKDROP)
+	assert_that((page.get_node("Hud") as ColorRect).color).is_equal(IconsPage.HUD_BACKDROP)
 	assert_that((page.get_node("Grass") as ColorRect).color).is_equal(
 		Gallery.TERRAIN_COLORS[&"grass_b"]
 	)
@@ -65,11 +66,11 @@ func test_every_icon_is_shown_at_its_size_in_dp_with_its_tint_and_an_item_on_its
 	var gallery: Control = await _open_gallery()
 	var hud: Node = gallery.get_node("IconsPage/Hud")
 	var groups: Dictionary[String, Array] = {
-		"Tabs": [Gallery.TAB_ICONS, Gallery.TAB_ICON_DP],
-		"Items": [Gallery.ITEM_ICONS, Gallery.ITEM_ICON_DP],
-		"Glyphs": [Gallery.HUD_GLYPHS, Gallery.HUD_GLYPH_DP],
-		"Emblems": [Gallery.EMBLEMS, Gallery.HUD_GLYPH_DP],
-		"MenuGlyphs": [Gallery.MENU_GLYPHS, Gallery.HUD_GLYPH_DP],
+		"Tabs": [IconsPage.TAB_ICONS, IconsPage.TAB_ICON_DP],
+		"Items": [IconsPage.ITEM_ICONS, IconsPage.ITEM_ICON_DP],
+		"Glyphs": [IconsPage.HUD_GLYPHS, IconsPage.HUD_GLYPH_DP],
+		"Emblems": [IconsPage.EMBLEMS, IconsPage.HUD_GLYPH_DP],
+		"MenuGlyphs": [IconsPage.MENU_GLYPHS, IconsPage.HUD_GLYPH_DP],
 	}
 	for row_name: String in groups:
 		var icons: Array = groups[row_name][0]
@@ -79,17 +80,17 @@ func test_every_icon_is_shown_at_its_size_in_dp_with_its_tint_and_an_item_on_its
 			assert_str(rect.texture.resource_path).ends_with("icons/%s.svg" % icon)
 			assert_vector(rect.size).override_failure_message(icon).is_equal(Vector2.ONE * size_px)
 			var tint: Color = (
-				Gallery.GLYPH_TINTS[icon] if Gallery.GLYPH_TINTS.has(icon) else Color.WHITE
+				IconsPage.GLYPH_TINTS[icon] if IconsPage.GLYPH_TINTS.has(icon) else Color.WHITE
 			)
 			assert_that(rect.modulate).override_failure_message(icon).is_equal(tint)
 			var has_tile: bool = hud.get_node(row_name).has_node("Tile" + icon.to_pascal_case())
 			assert_bool(has_tile).override_failure_message(icon).is_equal(row_name == "Items")
 	var tile: ColorRect = hud.get_node("Items/TileItemRefinery")
-	assert_that(tile.color).is_equal(Gallery.TILE_BACKDROP)
+	assert_that(tile.color).is_equal(IconsPage.TILE_BACKDROP)
 	var rect: Control = hud.get_node("Items/ItemRefinery")
-	assert_that(tile.get_rect()).is_equal(rect.get_rect().grow(Gallery.TILE_MARGIN_PX))
-	assert_int(Gallery.ITEM_ICONS.size()).is_equal(11)
-	assert_float(Gallery.ITEM_ICON_DP).is_equal(64.0)
+	assert_that(tile.get_rect()).is_equal(rect.get_rect().grow(IconsPage.TILE_MARGIN_PX))
+	assert_int(IconsPage.ITEM_ICONS.size()).is_equal(11)
+	assert_float(IconsPage.ITEM_ICON_DP).is_equal(64.0)
 
 
 func test_the_map_glyphs_the_arrow_and_the_rally_flags_are_on_both_grounds() -> void:
@@ -97,11 +98,11 @@ func test_the_map_glyphs_the_arrow_and_the_rally_flags_are_on_both_grounds() -> 
 	for ground: String in ["Grass", "Sand"]:
 		var glyphs: Node = gallery.get_node("IconsPage/%s/MapGlyphs" % ground)
 		assert_array(glyphs.get_children().map(_node_name)).is_equal(
-			Gallery.MAP_GLYPHS.map(func(icon: String) -> String: return icon.to_pascal_case())
+			IconsPage.MAP_GLYPHS.map(func(icon: String) -> String: return icon.to_pascal_case())
 		)
-		for icon: String in Gallery.MAP_GLYPHS:
+		for icon: String in IconsPage.MAP_GLYPHS:
 			var rect: TextureRect = glyphs.get_node(icon.to_pascal_case())
-			assert_vector(rect.size).is_equal(Vector2.ONE * Gallery.MAP_GLYPH_DP * PX_PER_DP)
+			assert_vector(rect.size).is_equal(Vector2.ONE * IconsPage.MAP_GLYPH_DP * PX_PER_DP)
 		var flags: Node = gallery.get_node("IconsPage/%s/Flags" % ground)
 		var arrow: TextureRect = flags.get_node("GlyphUnderAttack")
 		assert_vector(arrow.size).is_greater_equal(Vector2.ONE * 48.0 * PX_PER_DP)
@@ -133,10 +134,10 @@ func test_the_map_glyphs_the_arrow_and_the_rally_flags_are_on_both_grounds() -> 
 ## UI accents and the low-power map glyph's orange; every tinted file exists.
 func test_the_glyph_tints_are_palette_colours_of_icons_that_exist() -> void:
 	var palette: PackedStringArray = ["9AA5B1", "F2B705", "30A46C", "F5A524", "E5484D", "FF8A1F"]
-	for icon: String in Gallery.GLYPH_TINTS:
-		var tint: String = (Gallery.GLYPH_TINTS[icon] as Color).to_html(false).to_upper()
+	for icon: String in IconsPage.GLYPH_TINTS:
+		var tint: String = (IconsPage.GLYPH_TINTS[icon] as Color).to_html(false).to_upper()
 		assert_bool(palette.has(tint)).override_failure_message(icon + " " + tint).is_true()
-		assert_bool(ResourceLoader.exists(Gallery.ICON_ART % icon)).is_true()
+		assert_bool(ResourceLoader.exists(IconsPage.ICON_ART % icon)).is_true()
 
 
 ## Everything on the Icons page is inside its half and clear of the two corner buttons and of every

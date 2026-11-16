@@ -1,6 +1,6 @@
 # Godot 4
 .godot/
-/android/build/
+/android/
 export/
 build/
 /reports/
@@ -25,6 +25,14 @@ export_credentials.cfg
 /native/sim_kernels/.sconsign*.dblite
 /native/sim_kernels/src/**/*.os
 
+# AdMob plugin (P410): the Android part is fetched by scripts/ci/install-android-plugins.sh; the Gradle
+# template (android/build/ and android/.build_version, ignored above) is installed by export-android.sh --aab
+# with Godot's --install-android-build-template (P410c)
+/addons/admob/android/
+/addons/admob/ios/
+/addons/admob/downloads/
+/override.cfg
+
 # OS and editors
 .DS_Store
 .idea/
@@ -34,3 +42,6 @@ export_credentials.cfg
 .claude/settings.local.json
 .claude/agent-memory-local/
 CLAUDE.local.md
+
+# AdMob unit IDs: written into the export by a workflow, never committed (ADR 0039 section 9)
+ad_ids.cfg
