@@ -220,10 +220,14 @@ func show_banner() -> void:
 	_refresh_banner()
 
 
-## Internal, called by the banner band on `exit_tree`.
+## Internal, called by the banner band on `exit_tree`. The last release takes effect at idle, so a
+## band that is reparented (out and in again within the frame) never destroys and reloads it.
 func hide_banner() -> void:
 	_banner_requests = maxi(_banner_requests - 1, 0)
-	_refresh_banner()
+	if _banner_requests == 0:
+		_refresh_banner.call_deferred()
+	else:
+		_refresh_banner()
 
 
 ## Shows or hides the backend's banner for the current consent, entitlement and requests, and
