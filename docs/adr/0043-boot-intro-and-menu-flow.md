@@ -190,7 +190,14 @@ reserved) to ROADMAP's list, so the screen shows it too.
   `slot.owner`.
 - Note (2026-11-15, P500c; from Phase 6's P430, the `AdBannerBand`): the `AdBannerSlot` sits at the
   very bottom of the safe area with no control below it, because the real AdMob banner is drawn at
-  the screen's bottom; the menu tests call P430's shared helper `is_at_safe_bottom()`.
+  the screen's bottom; the menu tests call P430's shared `assert_lines_up`
+  (`tests/ui/support/ad_band_asserts.gd`; `is_at_safe_bottom()` until 2026-11-16).
+- Note (2026-11-16, P500d; superseded by Phase 6): the first item's sizing is replaced.
+  `AdBannerBand` owns its whole height (the gap from Phase 6's ads data, the caption, the banner);
+  `AdBannerSlot` has no gap of its own, is as tall as the band's combined minimum size (0 when
+  empty), puts the band's bottom on the safe bottom and re-lays out on the band's
+  `minimum_size_changed`. `MenuStack` takes covered screens out of the tree, so a covered band
+  hides.
 - The pause menu's foot banner (old P127) is Phase 6's P435; P531 keeps the foot free.
 
 ### 9. Isolation from Phase 4b

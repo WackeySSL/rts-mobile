@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/ui/HudTheme.gd" id="1_hud_theme"]
+[ext_resource type="Script" path="res://game/ui/menu/MenuStack.gd" id="2_stack"]
+[ext_resource type="Theme" path="res://game/ui/theme.tres" id="3_theme"]
+
+[node name="Menu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HudTheme" type="Node" parent="."]
+script = ExtResource("1_hud_theme")
+
+[node name="MenuStack" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("2_stack")
+backdrop_color = Color(0.10980392, 0.12941177, 0.15294118, 1)

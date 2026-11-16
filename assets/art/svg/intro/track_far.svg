@@ -1,0 +1,6 @@
+<!-- Intro layer track_far of the app icon's foreground (the far right track's tread band and outer face without its cleats), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
+<!-- Silhouette: a long dark tread band rising to the right with a lit amber outer face. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><clipPath id="fc"><circle cx="216" cy="216" r="143"/></clipPath></defs>
+<g clip-path="url(#fc)"><path fill="#05070a" d="M171 194l4-3 14-2 98 34 12 13-1 18-21 5-12 2-90-49-4-7z"/><path fill="#202830" d="M267 227l20-4-98-34-14 2zM278 241l21-5-12-13-20 4zM277 259l21-5 1-18-21 5z"/><path fill="#906434" d="M175 191l-4 3 0 11 4 7 90 49 12-2 1-18-11-14z"/></g>
+</svg>

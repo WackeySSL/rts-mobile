@@ -1,0 +1,6 @@
+<!-- Intro layer cleats_far of the app icon's foreground (the far right track's three cleat blocks), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
+<!-- Silhouette: three stepped blocks, each a light top, a dark face and a dark end. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><clipPath id="fc"><circle cx="216" cy="216" r="143"/></clipPath></defs>
+<g clip-path="url(#fc)"><path fill="#4c5868" d="M270 262l22-5-6-1-21 5zM272 269l22-6-2-6-22 5zM272 269l-2-7-5-1 0 6z"/><path fill="#182028" d="M273 269l22-6 7-5-22 6zM280 264l22-6-4-5-22 5z"/><path fill="#282428" d="M280 264l-4-6-5 4 2 7z"/><path fill="#4c5868" d="M280 263l23-5 3-10-23 5zM283 253l23-5-6-2-22 5zM283 253l-5-2-2 7 4 5z"/><path fill="#182028" d="M283 252l23-5-2-12-23 5z"/><path fill="#282428" d="M281 240l-4 1 1 9 5 2z"/><path fill="#4c5868" d="M276 240l23-4 5-2-23 5zM281 239l23-5-6-10-23 4zM275 228l-3 5 4 7 5-1z"/><path fill="#182028" d="M275 227l22-4-8-6-22 4zM275 227l-3 5 22-4 3-5z"/><path fill="#282428" d="M267 221l-1 7 6 4 3-5z"/></g>
+</svg>
