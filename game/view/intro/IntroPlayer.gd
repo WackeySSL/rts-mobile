@@ -48,6 +48,7 @@ var _skipped: bool = false
 var _wait: ConsentWait = ConsentWait.new()
 var _blocker: Control = null
 var _held: Array[Resource] = []
+var _stacks: Array[MenuStack] = []
 var _failed: bool = false
 var _menu: Control = null
 var _cover: float = 1.0
@@ -89,8 +90,6 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and phase != Phase.DONE:
 		skip()  # ADR 0043 section 4: Back in the intro is a tap.
-		if is_inside_tree():
-			get_viewport().set_input_as_handled()
 
 
 ## Makes the nodes: backdrop, the icon's layers in a box, the wordmark, the progress line. The
@@ -289,6 +288,11 @@ func _begin_exit(now: int) -> void:
 			_held.append(extra)  # Kept alive until the menu holds them.
 	_menu = scene.instantiate() as Control
 	_menu.modulate.a = 0.0
+	# Every node gets the go-back request, so the menu's stacks ignore it until the hand-over.
+	_stacks.clear()
+	_find_stacks(_menu)
+	for stack: MenuStack in _stacks:
+		stack.back_enabled = false
 	var parent: Node = host if host != null else get_tree().root
 	parent.add_child(_menu)
 	# The faded menu must not take a touch before it is shown: a blocker stands above it.
@@ -296,6 +300,14 @@ func _begin_exit(now: int) -> void:
 	_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	parent.add_child(_blocker)
 	_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## Every MenuStack under `node`, found by type: P524's main menu wraps menu.tscn.
+func _find_stacks(node: Node) -> void:
+	if node is MenuStack:
+		_stacks.append(node as MenuStack)
+	for child: Node in node.get_children():
+		_find_stacks(child)
 
 
 func _advance_exit(now: int) -> void:
@@ -315,6 +327,9 @@ func _advance_exit(now: int) -> void:
 func _finish(now: int) -> void:
 	phase = Phase.DONE
 	_blocker.queue_free()
+	for stack: MenuStack in _stacks:
+		if is_instance_valid(stack):
+			stack.back_enabled = true
 	_held.clear()
 	_menu.modulate.a = 1.0
 	log_line.call("boot_ms=%d" % (now - _t0))

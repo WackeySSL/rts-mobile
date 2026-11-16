@@ -235,3 +235,20 @@ func test_the_production_hand_over_makes_the_menu_the_current_scene() -> void:
 	assert_bool(menu.get_parent() == get_tree().root).is_true()
 	get_tree().current_scene = previous
 	menu.free()
+
+
+func test_back_during_the_open_out_does_not_reach_the_menu() -> void:
+	var player: IntroPlayer = _rig.make(self, _size)
+	_rig.loader.finish()
+	_rig.at(player, 0)
+	_rig.at(player, 600)
+	var stack: MenuStack = _rig.host.get_child(0).get_node("MenuStack") as MenuStack
+	assert_bool(stack.back_enabled).is_false()
+	get_tree().root.propagate_notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+	_rig.at(player, 700)
+	await get_tree().process_frame  # The stack defers its back().
+	assert_bool(stack.is_asking_to_quit()).is_false()
+	_rig.at(player, 1000)
+	assert_int(player.phase).is_equal(IntroPlayer.Phase.DONE)
+	assert_bool(stack.back_enabled).is_true()
+	assert_bool(stack.is_asking_to_quit()).is_false()
