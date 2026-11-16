@@ -37,6 +37,12 @@ var next_outcome: BillingBackend.Outcome = BillingBackend.Outcome.CANCELED
 var ack_fails: bool = false
 ## The price text the store reports.
 var price: String = DEFAULT_PRICE
+## Fake-only: a sheet ends at once per `next_outcome`. Set by AdService from `fake_auto_close`.
+var auto_close: bool = true
+## Fake-only: draw the "Test purchase" sheet on `host` (when `auto_close` is false).
+var draw_placeholders: bool = false
+## Where the sheet is drawn; none is drawn without one in the tree.
+var host: Node = null
 ## The store's purchases, as the next query reports them.
 var purchases: Array[Dictionary] = []
 
@@ -52,6 +58,7 @@ var _answer: Array[Dictionary] = []
 var _pending: bool = false
 var _sheet_open: bool = false
 var _token_count: int = 0
+var _sheet_node: FakeBillingSheet = null
 
 
 func connection_state() -> BillingBackend.ConnState:
@@ -100,7 +107,9 @@ func show_late_sheet() -> void:
 		return
 	_sheet_open = true
 	sheet_shown.emit()
-	if not sheet_never_closes:
+	if not auto_close and draw_placeholders and _host_ready():
+		_draw_sheet()
+	elif not sheet_never_closes:
 		finish_sheet(next_outcome)
 
 
@@ -110,6 +119,7 @@ func finish_sheet(outcome: BillingBackend.Outcome) -> void:
 		return
 	_pending = false
 	_sheet_open = false
+	_clear_sheet()
 	var token: String = ""
 	var product_id: String = launches.back()
 	if outcome == BillingBackend.Outcome.PURCHASED or outcome == BillingBackend.Outcome.PENDING:
@@ -190,3 +200,23 @@ func _resolve_query() -> void:
 	else:
 		_query = BillingBackend.QueryState.DONE
 		_answer = _snapshot
+
+
+func _draw_sheet() -> void:
+	if _sheet_node != null:
+		return
+	var buy: Callable = finish_sheet.bind(BillingBackend.Outcome.PURCHASED)
+	var wait: Callable = finish_sheet.bind(BillingBackend.Outcome.PENDING)
+	var cancel: Callable = finish_sheet.bind(BillingBackend.Outcome.CANCELED)
+	_sheet_node = FakeBillingSheet.build(price, buy, wait, cancel)
+	host.add_child(_sheet_node)
+
+
+func _clear_sheet() -> void:
+	if is_instance_valid(_sheet_node):
+		_sheet_node.queue_free()
+	_sheet_node = null
+
+
+func _host_ready() -> bool:
+	return host != null and is_instance_valid(host) and host.is_inside_tree()
