@@ -112,24 +112,29 @@ static func open_perf_air(tree: SceneTree) -> Error:
 ## passes the old runner's, so the new match has the same opponent at the same level). The runner
 ## starts its match in its own `_ready`, so all four are set on the new scene before it enters the
 ## tree.
-## Reports a missing scenario with push_error instead of crashing.
+## `match_seed` is the old runner's on a restart (the callers pass it; 1 is the scene's default).
+## TODO(P523): a restart passes its whole MatchSetup, so the bonus, map and lesson survive it.
+## Reports a missing scenario with push_error instead of crashing, and does not change scene.
 static func open_main_with(
 	tree: SceneTree,
 	scenario_path: String,
 	opponents: Array[AiDef] = [],
 	levels: Array[AiDifficultyDef] = [],
-	first_opponent: int = MatchRunner.FIRST_OPPONENT
+	first_opponent: int = MatchRunner.FIRST_OPPONENT,
+	match_seed: int = 1
 ) -> Error:
 	var setup: MatchSetup = MatchSetup.new()
 	setup.scenario_path = scenario_path
-	setup.opponents = opponents
-	setup.opponent_levels = levels
+	setup.opponents = opponents.duplicate()
+	setup.opponent_levels = levels.duplicate()
 	setup.first_opponent = first_opponent
-	if setup.scenario() == null:
-		push_error("DevRoutes: scenario not found: %s" % scenario_path)
-		return ERR_FILE_NOT_FOUND
+	setup.match_seed = match_seed
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
-	setup.apply(main.get_node("MatchRunner"))
+	var error: Error = setup.apply(main.get_node("MatchRunner"))
+	if error != OK:
+		main.free()
+		push_error("DevRoutes: scenario not found: %s" % scenario_path)
+		return error
 	return tree.change_scene_to_node(main)
 
 

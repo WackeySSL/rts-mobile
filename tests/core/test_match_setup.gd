@@ -12,7 +12,7 @@ func _setup() -> MatchSetup:
 	setup.scenario_path = SCENARIO
 	setup.match_seed = SEED
 	setup.local_seat = 1
-	setup.local_side = 2
+	setup.local_side = 0
 	setup.opponents = [load(DevRoutes.OPPONENT_RENEW) as AiDef]
 	setup.opponent_levels = [load(DevRoutes.LEVEL_HARD) as AiDifficultyDef]
 	setup.first_opponent = 2
@@ -32,7 +32,7 @@ func test_round_trip_keeps_every_field() -> void:
 	assert_str(back.scenario_path).is_equal(SCENARIO)
 	assert_int(back.match_seed).is_equal(SEED)
 	assert_int(back.local_seat).is_equal(1)
-	assert_int(back.local_side).is_equal(2)
+	assert_int(back.local_side).is_equal(0)
 	assert_str(back.opponents[0].resource_path).is_equal(DevRoutes.OPPONENT_RENEW)
 	assert_str(back.opponent_levels[0].resource_path).is_equal(DevRoutes.LEVEL_HARD)
 	assert_int(back.first_opponent).is_equal(2)
@@ -47,6 +47,7 @@ func test_whole_floats_are_accepted_as_ints() -> void:
 	data[MatchSetup.KEY_SEED] = float(SEED)
 	data[MatchSetup.KEY_BONUS] = 500.0
 	var back: MatchSetup = MatchSetup.from_dict(data)
+	assert_object(back).is_not_null()
 	assert_int(back.match_seed).is_equal(SEED)
 	assert_int(back.bonus_starting_credits).is_equal(500)
 
@@ -59,11 +60,12 @@ func test_malformed_dictionaries_are_refused() -> void:
 		MatchSetup.KEY_VERSION: MatchSetup.VERSION + 1,
 		MatchSetup.KEY_SEED: -1,
 		MatchSetup.KEY_BONUS: -5,
-		MatchSetup.KEY_FIRST: 0,
+		MatchSetup.KEY_FIRST: 99,
 		MatchSetup.KEY_SCENARIO: "res://data/scenarios/missing.tres",
 		MatchSetup.KEY_OPPONENTS: ["res://data/ai/missing.tres"],
 		MatchSetup.KEY_LEVELS: [DevRoutes.OPPONENT_FOSSIL],
 		MatchSetup.KEY_SEAT: 1.5,
+		MatchSetup.KEY_SIDE: -1,
 		MatchSetup.KEY_MAP: 7,
 		MatchSetup.KEY_LESSON: null,
 	}
@@ -128,3 +130,76 @@ func test_bonus_is_carried_with_no_sim_effect_yet() -> void:
 	assert_int(b.world.tick).is_equal(30)
 	assert_int(b.last_hash).is_equal(a.last_hash)
 	assert_int(MatchSetup.from_dict(rich.to_dict()).bonus_starting_credits).is_equal(500)
+
+
+func test_null_entries_round_trip() -> void:
+	var fossil: AiDef = load(DevRoutes.OPPONENT_FOSSIL) as AiDef
+	var level: AiDifficultyDef = load(DevRoutes.LEVEL_EASY) as AiDifficultyDef
+	var setup: MatchSetup = _setup()
+	setup.opponents = [null, fossil]
+	setup.opponent_levels = [null, level]
+	var back: MatchSetup = MatchSetup.from_dict(setup.to_dict())
+	assert_object(back).is_not_null()
+	assert_object(back.opponents[0]).is_null()
+	assert_object(back.opponents[1]).is_same(fossil)
+	assert_object(back.opponent_levels[0]).is_null()
+	assert_object(back.opponent_levels[1]).is_same(level)
+	setup.opponents = [null]
+	setup.opponent_levels = []
+	back = MatchSetup.from_dict(setup.to_dict())
+	assert_int(back.opponents.size()).is_equal(1)
+	assert_object(back.opponents[0]).is_null()
+	var data: Dictionary = setup.to_dict()
+	data[MatchSetup.KEY_OPPONENTS] = [null]
+	assert_object(MatchSetup.from_dict(data)).is_not_null()
+
+
+func test_only_res_paths_of_the_right_type_load() -> void:
+	var keys: Array[String] = [
+		MatchSetup.KEY_SCENARIO, MatchSetup.KEY_OPPONENTS, MatchSetup.KEY_LEVELS
+	]
+	var user_path: String = "user://resume_probe.tres"
+	for key: String in keys:
+		var data: Dictionary = _setup().to_dict()
+		data[key] = user_path if key == MatchSetup.KEY_SCENARIO else [user_path]
+		assert_object(MatchSetup.from_dict(data)).is_null()
+	var wrong: Dictionary = _setup().to_dict()
+	wrong[MatchSetup.KEY_OPPONENTS] = [SCENARIO]
+	assert_object(MatchSetup.from_dict(wrong)).is_null()
+	var absolute: Dictionary = _setup().to_dict()
+	absolute[MatchSetup.KEY_SCENARIO] = ProjectSettings.globalize_path(SCENARIO)
+	assert_object(MatchSetup.from_dict(absolute)).is_null()
+
+
+func test_more_levels_than_opponents_are_refused() -> void:
+	var data: Dictionary = _setup().to_dict()
+	data[MatchSetup.KEY_LEVELS] = [DevRoutes.LEVEL_EASY, DevRoutes.LEVEL_HARD]
+	assert_object(MatchSetup.from_dict(data)).is_null()
+
+
+func test_the_scenario_cache_follows_the_path() -> void:
+	var setup: MatchSetup = _setup()
+	var first: ScenarioDef = setup.scenario()
+	assert_object(first).is_not_null()
+	setup.scenario_path = DevRoutes.SKIRMISH_LUMEN
+	assert_str(setup.scenario().resource_path).is_equal(DevRoutes.SKIRMISH_LUMEN)
+	setup.scenario_path = "res://data/scenarios/missing.tres"
+	assert_object(setup.scenario()).is_null()
+
+
+func test_apply_refuses_another_seat_or_side_and_copies_the_arrays() -> void:
+	var setup: MatchSetup = _setup()
+	var scenario: ScenarioDef = setup.scenario()
+	setup.local_seat = scenario.local_player + 1
+	var refused: MatchRunner = _runner()
+	assert_int(setup.apply(refused)).is_equal(ERR_UNAVAILABLE)
+	assert_object(refused.scenario).is_null()
+	setup.local_seat = scenario.local_player
+	setup.local_side = 1
+	assert_int(setup.apply(refused)).is_equal(ERR_UNAVAILABLE)
+	setup.local_side = 0
+	var runner: MatchRunner = _runner()
+	assert_int(setup.apply(runner)).is_equal(OK)
+	assert_bool(runner.opponents == setup.opponents).is_true()
+	runner.opponents.clear()
+	assert_int(setup.opponents.size()).is_equal(1)
