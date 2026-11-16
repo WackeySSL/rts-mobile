@@ -166,3 +166,11 @@ func test_a_refund_is_in_the_file_before_the_signal() -> void:
 	AdServiceHarness.billing(service).refund()
 	assert_bool(await service.restore_purchases()).is_false()
 	assert_array(seen).override_failure_message("saved after the signal").contains_exactly([false])
+
+
+func test_dispose_frees_the_harness_save_service_and_its_files() -> void:
+	var ref: WeakRef = weakref(_h.save_service())
+	_h.seed_section({"completed_matches": 1})
+	_h.dispose()
+	assert_object(ref.get_ref()).override_failure_message("the SaveService is alive").is_null()
+	assert_bool(FileAccess.file_exists(_h.save_path())).is_false()

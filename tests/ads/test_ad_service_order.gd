@@ -203,3 +203,8 @@ func test_a_buyer_sees_no_banner_before_the_first_restore_answers() -> void:
 	await AdServiceHarness.frames(2)
 	assert_bool(service.has_remove_ads()).is_true()
 	assert_array(heights).override_failure_message("a buyer saw a banner").is_empty()
+	# Let the silent restore finish: a query that never answers leaves its coroutine, and the
+	# scripts it holds, alive at exit (the engine's "resources still in use" error).
+	billing.answer_queries()
+	await AdServiceHarness.frames(3)
+	assert_array(heights).override_failure_message("a buyer saw a banner").is_empty()
