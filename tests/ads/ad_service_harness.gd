@@ -40,6 +40,10 @@ static func fake(service: Node) -> FakeAdBackend:
 	return service._backend as FakeAdBackend
 
 
+static func billing(service: Node) -> FakeBilling:
+	return service._billing as FakeBilling
+
+
 ## Three finished matches, 240 s in all: the first interstitial may show.
 static func play_three_matches(service: Node) -> void:
 	service.note_match_completed(100)

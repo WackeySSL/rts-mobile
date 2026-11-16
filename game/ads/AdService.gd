@@ -6,10 +6,12 @@ extends Node
 ## P403 fills in the ads behind these signatures: the caps (AdCaps), the counters (AdLedger, in
 ## memory until P407 saves it), the timeouts from data, the banner and the rewarded ad, all through
 ## an AdBackend. The backend is always the FakeAdBackend for now: the real one is P405, so builds
-## with the `play` feature tag keep the fake until it lands. Consent (P404) and purchases (P406)
-## P404 fills in consent through a ConsentBackend (FakeUmp for now, the real one is P405): the SDK
-## is initialised and any ad loaded only once `_can_request_ads` is true. Purchases (P406) are
-## still a stub: Remove ads is the ledger's flag. No plugin code and no ad IDs live here.
+## with the `play` feature tag keep the fake until it lands. Consent (P404) goes through a
+## ConsentBackend (FakeUmp for now, the real one is P405): the SDK is initialised and any ad
+## loaded only once `_can_request_ads` is true. Purchases (P406) go through Purchases over a
+## BillingBackend (always the FakeBilling until P406b adds the Play one) and do not depend on
+## consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
+## resume. No plugin code and no ad IDs live here.
 ## Never touched by game/sim. No class_name: this is an autoload (tests/project/test_autoloads.gd).
 
 ## Fires when consent is settled, with whether ads may be requested. `ensure_consent` emits it
@@ -40,6 +42,10 @@ var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
 var _ledger: AdLedger = AdLedger.new()
 var _backend: AdBackend = _make_backend()
+var _billing: BillingBackend = _make_billing()
+var _purchases: Purchases = null
+## The kind of the late run in `_late`: only a late interstitial is abandoned by Remove ads.
+var _late_kind: StringName = &""
 ## Milliseconds clock for the timeouts and retries; tests replace it with a fake one.
 var _now_ms: Callable = Time.get_ticks_msec
 var _busy: bool = false
@@ -65,6 +71,11 @@ static func _make_consent(required: bool) -> ConsentBackend:
 	return ump
 
 
+## Fake everywhere until P406b adds the Play Billing backend (ADR 0039 section 8).
+static func _make_billing() -> BillingBackend:
+	return FakeBilling.new()
+
+
 static func _default_auto_close(display_name: String) -> bool:
 	return display_name == "headless"
 
@@ -72,11 +83,20 @@ static func _default_auto_close(display_name: String) -> bool:
 func _init() -> void:
 	_consent.settled.connect(_set_can_request)
 	_sync_fake()
+	_purchases = Purchases.new(_billing, _settings.remove_ads_product_id, has_remove_ads)
+	_purchases.entitlement_changed.connect(_on_entitlement_changed)
 
 
 func _ready() -> void:
 	if _backend is FakeAdBackend:
 		(_backend as FakeAdBackend).host = self
+	# Silent, no UI: retries failed acknowledges and grants pendings paid while the app was closed.
+	_restore_silently()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
+		_restore_silently()
 
 
 ## Awaitable; always finishes. True means ads may be requested. Runs the consent info update and
@@ -101,23 +121,29 @@ func show_privacy_options() -> void:
 	await _consent.run_privacy_options(_now_ms, _settings.consent_timeout_ms)
 
 
-## Synchronous. The cached entitlement (P406 fills it).
+## Synchronous. The cached entitlement: Play's answer when it answers, else the last known one.
 func has_remove_ads() -> bool:
 	return _ledger.remove_ads
 
 
-## Awaitable. True once the entitlement is granted. The stub cannot purchase.
+## Awaitable. True once the entitlement is held (also when it already was). False on cancel, on
+## PENDING (never granted), on failure and when the store sheet has not shown within
+## `billing_timeout_ms`; once it showed the call waits for it.
 func purchase_remove_ads() -> bool:
-	@warning_ignore("redundant_await")
-	await null
-	return false
+	return await _purchases.purchase(_now_ms, _settings.billing_timeout_ms)
 
 
-## Awaitable. True when a purchase was restored. The stub has none.
+## Awaitable. True when the entitlement stands after the store's answer. That answer is the truth:
+## a missing purchase clears the entitlement (a refund); no answer (offline, timeout) keeps the
+## cached one and returns false. Returns false at once while a purchase or another restore waits.
 func restore_purchases() -> bool:
-	@warning_ignore("redundant_await")
-	await null
-	return false
+	return await _purchases.restore(_now_ms, _settings.billing_timeout_ms)
+
+
+## Internal (Phase 6 widgets). The store's localised price text for Remove ads, empty until known
+## or when billing is unavailable: the row is hidden then. Never a literal in the game.
+func remove_ads_price_text() -> String:
+	return _purchases.price_text()
 
 
 ## Synchronous. The banner's height while one may show (consent, no Remove ads, a band asked for
@@ -226,6 +252,25 @@ func _set_can_request(allowed: bool) -> void:
 	consent_finished.emit(allowed)
 
 
+## The entitlement changed (a purchase, a restore, a refund): the ledger follows, then the banner.
+func _on_entitlement_changed(has_remove_ads_now: bool) -> void:
+	if has_remove_ads_now == _ledger.remove_ads:
+		return
+	_ledger.remove_ads = has_remove_ads_now
+	# A late interstitial that has not opened yet is dropped from our books; AdMob cannot recall a
+	# show it started, so it may still appear once. A late rewarded ad stays: rewards remain.
+	if (
+		has_remove_ads_now
+		and _late != null
+		and not _busy
+		and _late_kind == AdBackend.KIND_INTERSTITIAL
+	):
+		_late.abandon()
+		_late = null
+	entitlement_changed.emit(has_remove_ads_now)
+	_refresh_banner()
+
+
 func _request_rewarded_load() -> void:
 	if not _can_request_ads:
 		return
@@ -247,6 +292,7 @@ func _run_fullscreen(kind: StringName, placement: StringName, on_reward: Callabl
 		_late.abandon()
 		_late = null
 	_busy = true
+	_late_kind = kind
 	var run: FullscreenRun = FullscreenRun.new(
 		_backend, _now_ms, _settings.fullscreen_timeout_ms, _ledger, kind, placement, on_reward
 	)
@@ -270,6 +316,10 @@ func _on_run_closed(placement: StringName) -> void:
 		_busy = false
 		_late = null
 	ad_closed.emit(placement)
+
+
+func _restore_silently() -> void:
+	await restore_purchases()
 
 
 func _sync_fake() -> void:
