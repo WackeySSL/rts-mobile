@@ -45,3 +45,4 @@ CLAUDE.local.md
 
 # AdMob unit IDs: written into the export by a workflow, never committed (ADR 0039 section 9)
 ad_ids.cfg
+consent_test_device.cfg

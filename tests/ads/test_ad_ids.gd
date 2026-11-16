@@ -3,11 +3,13 @@ extends GdUnitTestSuite
 ## fake IDs here are built at run time, so no ID literal enters the repository.
 
 const PATH: String = "user://test_ad_ids.cfg"
+const DEVICE_PATH: String = "user://test_consent_device.cfg"
 const TEST_PUBLISHER: String = "ca-app-pub-3940256099942544/"
 
 
 func after_test() -> void:
 	DirAccess.remove_absolute(PATH)
+	DirAccess.remove_absolute(DEVICE_PATH)
 
 
 func _fake(digit: String) -> String:
@@ -62,3 +64,11 @@ func test_a_missing_or_malformed_key_falls_back_for_that_key_only() -> void:
 	assert_str(ids.interstitial).is_equal(AdIds.TEST_INTERSTITIAL)
 	assert_str(ids.rewarded).is_equal(AdIds.TEST_REWARDED)
 	assert_bool(ids.uses_test_units).is_false()
+
+
+func test_the_test_device_hash_is_read_from_its_file_or_empty() -> void:
+	assert_str(AdIds.test_device_hash("user://no_such_device.cfg")).is_empty()
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.set_value("consent", "test_device_hash", " abc123 ")
+	assert_int(cfg.save(DEVICE_PATH)).is_equal(OK)
+	assert_str(AdIds.test_device_hash(DEVICE_PATH)).is_equal("abc123")

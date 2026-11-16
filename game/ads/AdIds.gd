@@ -21,6 +21,10 @@ const TEST_INTERSTITIAL: String = "ca-app-pub-3940256099942544/1033173712"
 const TEST_REWARDED: String = "ca-app-pub-3940256099942544/5224354917"
 
 const CFG_PATH: String = "res://ad_ids.cfg"
+## Debug only: the consent debug geography's test device hash, from a git-ignored local file
+## (`[consent]` `test_device_hash`). Absent means no test device.
+const TEST_DEVICE_PATH: String = "res://consent_test_device.cfg"
+
 const KIND_BANNER: StringName = &"banner"
 
 var banner: String = TEST_BANNER
@@ -59,6 +63,14 @@ func unit(kind: StringName) -> String:
 		&"rewarded":
 			return rewarded
 	return ""
+
+
+## The test device's hashed ID for the consent debug geography, or "" (no file, no key).
+static func test_device_hash(path: String = TEST_DEVICE_PATH) -> String:
+	var cfg: ConfigFile = ConfigFile.new()
+	if cfg.load(path) != OK:
+		return ""
+	return String(cfg.get_value("consent", "test_device_hash", "")).strip_edges()
 
 
 static func _unit(cfg: ConfigFile, key: String, fallback: String) -> String:
