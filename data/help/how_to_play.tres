@@ -1,0 +1,243 @@
+[gd_resource type="Resource" script_class="HelpDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/menu/HelpDef.gd" id="1_def"]
+[ext_resource type="Script" path="res://game/ui/menu/HelpSectionDef.gd" id="2_sec"]
+[ext_resource type="Script" path="res://game/ui/menu/HelpEntryDef.gd" id="3_ent"]
+
+[sub_resource type="Resource" id="e1"]
+script = ExtResource("3_ent")
+id = &"camera-pan"
+title = "Move around the map"
+body = "Drag one finger to pan. Pinch to zoom in or out."
+
+[sub_resource type="Resource" id="e2"]
+script = ExtResource("3_ent")
+id = &"camera-radar"
+title = "The radar"
+body = "Tap the round radar at the top right to open the whole map. Tap or drag on it to jump there."
+
+[sub_resource type="Resource" id="s0"]
+script = ExtResource("2_sec")
+id = &"camera"
+title = "Camera"
+entries = Array[ExtResource("3_ent")]([SubResource("e1"), SubResource("e2")])
+
+[sub_resource type="Resource" id="e3"]
+script = ExtResource("3_ent")
+id = &"turn-the-phone-rotate"
+title = "Portrait or landscape"
+body = "Hold the phone either way. The match keeps going while you turn it."
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_sec")
+id = &"turn-the-phone"
+title = "Turn the phone"
+entries = Array[ExtResource("3_ent")]([SubResource("e3")])
+
+[sub_resource type="Resource" id="e4"]
+script = ExtResource("3_ent")
+id = &"units-look"
+title = "Your units"
+body = "Each unit wears your team colour. Tap one to see what it can do."
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_sec")
+id = &"units"
+title = "Units"
+entries = Array[ExtResource("3_ent")]([SubResource("e4")])
+
+[sub_resource type="Resource" id="e5"]
+script = ExtResource("3_ent")
+id = &"buildings-look"
+title = "Your buildings"
+body = "Buildings stand on their footprint. Select one to mend or sell it."
+
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_sec")
+id = &"buildings"
+title = "Buildings"
+entries = Array[ExtResource("3_ent")]([SubResource("e5")])
+
+[sub_resource type="Resource" id="e6"]
+script = ExtResource("3_ent")
+id = &"selection-tap"
+title = "Select units"
+body = "Tap a unit to select it. Hold and drag to box select. Double-tap to select all of that type."
+
+[sub_resource type="Resource" id="s4"]
+script = ExtResource("2_sec")
+id = &"selection"
+title = "Selection"
+entries = Array[ExtResource("3_ent")]([SubResource("e6")])
+
+[sub_resource type="Resource" id="e7"]
+script = ExtResource("3_ent")
+id = &"orders-move"
+title = "Move and attack"
+body = "Tap the ground to send selected units there. Tap an enemy to attack it."
+
+[sub_resource type="Resource" id="s5"]
+script = ExtResource("2_sec")
+id = &"orders"
+title = "Orders"
+entries = Array[ExtResource("3_ent")]([SubResource("e7")])
+
+[sub_resource type="Resource" id="e8"]
+script = ExtResource("3_ent")
+id = &"combat-basics"
+title = "Fighting"
+body = "Units shoot what is in range. Keep damaged units back and mend them."
+
+[sub_resource type="Resource" id="s6"]
+script = ExtResource("2_sec")
+id = &"combat"
+title = "Combat"
+entries = Array[ExtResource("3_ent")]([SubResource("e8")])
+
+[sub_resource type="Resource" id="e9"]
+script = ExtResource("3_ent")
+id = &"terrain-basics"
+title = "The ground"
+body = "Some ground slows units down and some cannot be crossed."
+
+[sub_resource type="Resource" id="s7"]
+script = ExtResource("2_sec")
+id = &"terrain"
+title = "Terrain"
+entries = Array[ExtResource("3_ent")]([SubResource("e9")])
+
+[sub_resource type="Resource" id="e10"]
+script = ExtResource("3_ent")
+id = &"economy-credits"
+title = "Credits and power"
+body = "Tankers bring in credits from oil fields. Buildings need power to work."
+
+[sub_resource type="Resource" id="s8"]
+script = ExtResource("2_sec")
+id = &"economy"
+title = "Economy"
+entries = Array[ExtResource("3_ent")]([SubResource("e10")])
+
+[sub_resource type="Resource" id="e11"]
+script = ExtResource("3_ent")
+id = &"fog-sight"
+title = "What you can see"
+body = "You only see the ground near your own units and buildings."
+
+[sub_resource type="Resource" id="s9"]
+script = ExtResource("2_sec")
+id = &"fog"
+title = "Fog"
+entries = Array[ExtResource("3_ent")]([SubResource("e11")])
+
+[sub_resource type="Resource" id="e12"]
+script = ExtResource("3_ent")
+id = &"groups-column"
+title = "Groups"
+body = "Save the selected units as a group at the left edge. Tap the group to select it again."
+
+[sub_resource type="Resource" id="s10"]
+script = ExtResource("2_sec")
+id = &"groups"
+title = "Groups"
+entries = Array[ExtResource("3_ent")]([SubResource("e12")])
+
+[sub_resource type="Resource" id="e13"]
+script = ExtResource("3_ent")
+id = &"the-screen-in-battle-hud"
+title = "The controls"
+body = "The credits and power show at the top. The BUILD button opens the build drawer."
+
+[sub_resource type="Resource" id="s11"]
+script = ExtResource("2_sec")
+id = &"the-screen-in-battle"
+title = "The screen in battle"
+entries = Array[ExtResource("3_ent")]([SubResource("e13")])
+
+[sub_resource type="Resource" id="e14"]
+script = ExtResource("3_ent")
+id = &"pause-menu"
+title = "Pause menu"
+body = "Pause the match to change sound, read this help or surrender."
+
+[sub_resource type="Resource" id="s12"]
+script = ExtResource("2_sec")
+id = &"pause"
+title = "Pause"
+entries = Array[ExtResource("3_ent")]([SubResource("e14")])
+
+[sub_resource type="Resource" id="e15"]
+script = ExtResource("3_ent")
+id = &"build-menu-drawer"
+title = "The build drawer"
+body = "Pick a card to build. Place a building on the ground near your base."
+
+[sub_resource type="Resource" id="s13"]
+script = ExtResource("2_sec")
+id = &"build-menu"
+title = "Build menu"
+entries = Array[ExtResource("3_ent")]([SubResource("e15")])
+
+[sub_resource type="Resource" id="e16"]
+script = ExtResource("3_ent")
+id = &"superweapon-strike"
+title = "The strike"
+body = "Build the superweapon, wait for it to charge, then aim and confirm."
+
+[sub_resource type="Resource" id="s14"]
+script = ExtResource("2_sec")
+id = &"superweapon"
+title = "Superweapon"
+entries = Array[ExtResource("3_ent")]([SubResource("e16")])
+
+[sub_resource type="Resource" id="e17"]
+script = ExtResource("3_ent")
+id = &"factions-two"
+title = "Two sides"
+body = "The Derrick League and the Lumen Accord have different units and buildings."
+
+[sub_resource type="Resource" id="s15"]
+script = ExtResource("2_sec")
+id = &"factions"
+title = "Factions"
+entries = Array[ExtResource("3_ent")]([SubResource("e17")])
+
+[sub_resource type="Resource" id="e18"]
+script = ExtResource("3_ent")
+id = &"the-computer-opponent-levels"
+title = "Difficulty"
+body = "The computer plays by the same rules as you. Pick an easier level to learn."
+
+[sub_resource type="Resource" id="s16"]
+script = ExtResource("2_sec")
+id = &"the-computer-opponent"
+title = "The computer opponent"
+entries = Array[ExtResource("3_ent")]([SubResource("e18")])
+
+[sub_resource type="Resource" id="e19"]
+script = ExtResource("3_ent")
+id = &"winning-destroy"
+title = "How a match ends"
+body = "Destroy the enemy's buildings and units to win. Lose yours and you lose."
+
+[sub_resource type="Resource" id="s17"]
+script = ExtResource("2_sec")
+id = &"winning"
+title = "Winning"
+entries = Array[ExtResource("3_ent")]([SubResource("e19")])
+
+[sub_resource type="Resource" id="e20"]
+script = ExtResource("3_ent")
+id = &"menus-back"
+title = "Back"
+body = "Press the phone's Back button to close a screen."
+
+[sub_resource type="Resource" id="s18"]
+script = ExtResource("2_sec")
+id = &"menus"
+title = "Menus"
+entries = Array[ExtResource("3_ent")]([SubResource("e20")])
+
+[resource]
+script = ExtResource("1_def")
+sections = Array[ExtResource("2_sec")]([SubResource("s0"), SubResource("s1"), SubResource("s2"), SubResource("s3"), SubResource("s4"), SubResource("s5"), SubResource("s6"), SubResource("s7"), SubResource("s8"), SubResource("s9"), SubResource("s10"), SubResource("s11"), SubResource("s12"), SubResource("s13"), SubResource("s14"), SubResource("s15"), SubResource("s16"), SubResource("s17"), SubResource("s18")])

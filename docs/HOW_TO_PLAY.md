@@ -201,6 +201,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 |---|---|---|
 | Press the phone's Back button in a menu screen | The screen closes and the one before it shows again (a slide, or a cut with Reduced effects on) | |
 | Press Back on the main menu | "Quit Treadline?" asks first; Stay (or Back again) closes the question, Quit leaves the game. The browser has no Back event: its own back button leaves the page | |
+| Open How to play (on the main menu) | A list of sections, one big button each; tap one to read its entries, which scroll when they are long. "All sections" or the phone's Back button returns to the list, and Back on the list closes the screen. It works the same in portrait and in landscape and shows no ad. The text is in `data/help/how_to_play.tres` | |
 
 ## Not yet in the game
 Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).
