@@ -1,0 +1,6 @@
+<!-- Intro layer underlay of the app icon's foreground (the dark underlay of the whole tank's outline), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
+<!-- Silhouette: one dark tank-shaped patch a little larger than the tank itself. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><clipPath id="fc"><circle cx="216" cy="216" r="143"/></clipPath></defs>
+<g clip-path="url(#fc)"><path d="M180 152.5l13.5 .3 .3 4.7 21.4 3.3 4.6 2.2 1.4 4.5 9.8-.7 1 8.4 3 3.3 28.8 1 4-2.7 14.4-.3 9 4.3 9-8.6 21.6-.4 5 2 6.4 10.2 1 8.2-3.7 13.6-8.5 8.2-5.5 1-19.3-3.8-5.4-4.2-2.6-5.5-10.2 2.5-11.2-1.8-7-4.4-28.6-2.3 5.3 1.7 9.5 12 29.5 10.3 12.3-2.3 8 5.6 7 11.2-5.3 2 5.7-.8 1.8 10.8-5 13-5.8 4-23 6-7.7-1.8 .3-6.2-20-10.5-17.6 7.3-33.4 3.2 .4 8.8 4.3 4.7-1.7 10-4.6 1-1 4.5-39.2 10.2-4.5-3-.5-8 4.5-1.4-14-18.3-3.3-.5-3.2-8-9-11.8-2.2 0-17.6-25.7-2 0-2.2-21.5 1.5-3.8 16.5-1.4 .5-13.8 21.5-1.8 3.5-23.2 21.5-.8 .8-2.7z" fill="#070b10" stroke="#05080c" stroke-width="3.2" stroke-opacity=".4" stroke-linejoin="round"/></g>
+</svg>

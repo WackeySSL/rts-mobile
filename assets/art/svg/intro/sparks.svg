@@ -1,4 +1,4 @@
-<!-- Intro layer sparks of the app icon's foreground (the sparks and the four dust streaks behind the clods), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.LAYERS over icon_background.svg it gives the icon. -->
+<!-- Intro layer sparks of the app icon's foreground (the sparks and the four dust streaks behind the clods), made by tools/artgen/ArtIntro.gd (bash scripts/gen-intro.sh) from icon_foreground.svg, do not edit; painted in the order of ArtIntro.order() it gives the icon. -->
 <!-- Silhouette: eight tiny round sparks at both sides and four thin pointed streaks. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
 <defs><clipPath id="fc"><circle cx="216" cy="216" r="143"/></clipPath></defs>
