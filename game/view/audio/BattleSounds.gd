@@ -5,20 +5,44 @@ extends Node
 ## become a cue by int-indexed tables built when a match starts. STRIKE and SPAWNED are not here
 ## yet (their rows follow with the cue sets).
 ##
-## Fairness: a sound plays only where `EffectsLayer` would show the effect, by the tile of the point
-## in that tick's fog (`FogLayer.is_seen`, read-only); the death of an own unit always sounds, as
-## its effect always shows. A DIED record with flag 1 (a cancelled site) or 2 (boarded) plays
-## nothing, flag 3 (sold) the pack-up. `reveal_enemies` hears everything (the perf arena).
+## Fairness: a sound plays only where `EffectsLayer` would show the effect, by the tile of the
+## point in that tick's fog (`FogLayer.is_seen`, read-only); the death of an own unit always
+## sounds, as its effect always shows. A SHOT sounds at the shooter when its tile is seen; a
+## hitscan SHOT (projectile speed 0, which lands no IMPACT) from an unseen shooter at a seen
+## target sounds at the target, as its tracer shows then. A DIED record with flag 1 (a cancelled
+## site) or 2 (boarded) plays nothing, flag 3 (sold) the pack-up. `reveal_enemies` hears
+## everything (the perf arena).
 ##
-## A point farther than `hear_margin_px` from the view is not played. Events of one cue in a tick
-## make one voice, louder by `stack_db` for each extra one, and the cue is quiet for its
-## `cooldown_ms` after it played; the pool then caps the new voices of a tick (`voices_per_tick`).
-## The variant and the pitch come from `(event id * 31 + tick)`, no random generator. Nothing is
-## allocated per tick: the per-cue state is packed arrays made at match start.
+## A point farther than `hear_margin_px` (world px) from the view is not played. Events of one
+## cue in a tick make one voice, louder by `stack_db` for each extra one, and the cue is quiet
+## for its `cooldown_ms` after it played; the pool then caps the new voices of a tick
+## (`voices_per_tick`). The variant and the pitch come from `(event id * 31 + tick)`, no random
+## generator. Nothing is allocated per tick: the per-cue state is packed arrays made at match
+## start. The streams (file or placeholder tone) are made once per process for a table. A restart
+## (a new `match_serial`) builds the tables again, which also clears the cooldowns, and
+## `match_ended` lifts the pool's tick budget.
 
-const WEAPON_NONE: int = -1
+
+## The streams and pitch steps of one table, made once per process (`_built`).
+class Built:
+	extends RefCounted
+	var streams: Array[AudioStream] = []
+	var first: PackedInt32Array = PackedInt32Array()
+	var variants: PackedInt32Array = PackedInt32Array()
+	var pitches: PackedInt32Array = PackedInt32Array()
+	var pitch_first: PackedInt32Array = PackedInt32Array()
+	var pitch_count: PackedInt32Array = PackedInt32Array()
+
+
+const AudioServiceScript: GDScript = preload("res://game/view/audio/audio_service.gd")
+const CUES_PATH: String = "res://data/audio_cues.tres"
+const BUS: StringName = AudioServiceScript.BUS_SFX
+const NEUTRAL_PITCH: int = 1000
+const MAX_VARIANTS: int = 8
 const ID_MIX: int = 31
 const NEVER_MS: int = -(1 << 40)
+
+static var _built: Dictionary[AudioCueTable, Built] = {}
 
 @export var runner: MatchRunner
 @export var table: AudioCueTable
@@ -26,7 +50,8 @@ const NEVER_MS: int = -(1 << 40)
 @export var reveal_enemies: bool = false
 
 ## The service that plays: the `AudioService` autoload unless a test sets another node with
-## `begin_tick`, `can_play`, `play_world`, `end_ticking` and a `settings` property.
+## `begin_tick`, `can_play`, `play_world`, `end_ticking` and a `settings` property. A duck-typed
+## Node because the autoload declares no `class_name` (tests/project/test_autoloads.gd).
 var audio: Node
 ## The frame clock in ms that cooldowns run on. Tests replace it.
 var clock: Callable = Time.get_ticks_msec
@@ -45,10 +70,14 @@ var _seed: PackedInt32Array = PackedInt32Array()
 var _at: PackedVector2Array = PackedVector2Array()
 var _first: PackedInt32Array = PackedInt32Array()
 var _variants: PackedInt32Array = PackedInt32Array()
+var _pitches: PackedInt32Array = PackedInt32Array()
+var _pitch_first: PackedInt32Array = PackedInt32Array()
+var _pitch_count: PackedInt32Array = PackedInt32Array()
 var _streams: Array[AudioStream] = []
 ## Per weapon index and per type index: the cue index, or -1.
 var _shot: PackedInt32Array = PackedInt32Array()
 var _impact: PackedInt32Array = PackedInt32Array()
+var _hitscan: PackedByteArray = PackedByteArray()
 var _death: PackedInt32Array = PackedInt32Array()
 var _blast: int = -1
 var _repair: int = -1
@@ -58,19 +87,29 @@ var _sold: int = -1
 
 func _ready() -> void:
 	if table == null:
-		table = load("res://data/audio_cues.tres") as AudioCueTable
+		table = load(CUES_PATH) as AudioCueTable
+	if table == null:
+		push_error("BattleSounds: %s did not load; no battle sounds" % CUES_PATH)
+		return
 	if audio == null:
 		audio = get_node_or_null("/root/AudioService")
 	if audio != null:
 		_settings = audio.get(&"settings") as AudioSettings
 	if _settings == null:
 		_settings = load("res://data/audio_settings.tres") as AudioSettings
-	_make_streams()
+	_use_built()
 	if runner != null:
 		runner.ticked.connect(_on_ticked)
+		runner.match_ended.connect(_on_match_ended)
 
 
 func _exit_tree() -> void:
+	if audio != null:
+		audio.call(&"end_ticking")
+
+
+## The match is over: the pool's per-tick budget must not stay set.
+func _on_match_ended(_winner: int) -> void:
 	if audio != null:
 		audio.call(&"end_ticking")
 
@@ -80,7 +119,8 @@ func _on_ticked(tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
 	if snap == null or audio == null or snap.events.is_empty():
 		return
-	if not bool(audio.call(&"can_play", &"Sfx")):
+	# Muted, or the Sfx bus at step 0: nothing would play, so skip the pass (and its cooldowns).
+	if not bool(audio.call(&"can_play", BUS)):
 		return
 	if snap.match_serial != _serial:
 		_build(snap)
@@ -118,7 +158,13 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 			return
 	if cue < 0:
 		return
-	if not (own_death or reveal_enemies or FogLayer.is_seen(snap, viewer, x, y)):
+	var heard: bool = own_death or reveal_enemies or FogLayer.is_seen(snap, viewer, x, y)
+	if not heard and events[at] == World.Event.SHOT and _is_hitscan(events[at + 5]):
+		# The tracer shows when the target's tile is seen, and a hitscan shot lands no IMPACT.
+		x = events[at + 6]
+		y = events[at + 7]
+		heard = FogLayer.is_seen(snap, viewer, x, y)
+	if not heard:
 		return
 	var point: Vector2 = IsoProjection.ground_to_px(x, y)
 	if not _ear.has_point(point):
@@ -135,6 +181,10 @@ func _death_cue(events: PackedInt32Array, at: int) -> int:
 		Removal.FLAG_SOLD:
 			return _sold
 	return -1
+
+
+func _is_hitscan(weapon: int) -> bool:
+	return weapon >= 0 and weapon < _hitscan.size() and _hitscan[weapon] == 1
 
 
 func _by_weapon(cues: PackedInt32Array, weapon: int) -> int:
@@ -160,9 +210,10 @@ func _play_pending() -> void:
 			continue
 		_count[cue] = 0
 		var def: AudioCueDef = table.cues[cue]
-		var seed_of: int = _seed[cue]
-		var stream: AudioStream = _streams[_first[cue] + posmod(seed_of, _variants[cue])]
-		var pitch: int = def.pitch_steps[posmod(seed_of, def.pitch_steps.size())]
+		# The variant and the pitch step are the two digits of one number, so every pair occurs.
+		var spread: int = posmod(_seed[cue], _variants[cue] * _pitch_count[cue])
+		var stream: AudioStream = _streams[_first[cue] + spread % _variants[cue]]
+		var pitch: int = _pitches[_pitch_first[cue] + spread / _variants[cue]]
 		var stacked: float = _settings.stack_db * float(mini(events_of, def.max_stack + 1) - 1)
 		var started: bool = bool(
 			audio.call(
@@ -189,23 +240,46 @@ func _view_rect() -> Rect2:
 	return viewport.get_canvas_transform().affine_inverse() * viewport.get_visible_rect()
 
 
-## One stream per variant of every cue: the file streams, else placeholder tones. Made once.
-func _make_streams() -> void:
-	_streams.clear()
-	_first.resize(table.cues.size())
-	_variants.resize(table.cues.size())
-	for cue: int in table.cues.size():
-		var def: AudioCueDef = table.cues[cue]
-		_first[cue] = _streams.size()
-		if not def.streams.is_empty():
-			_streams.append_array(def.streams)
-			_variants[cue] = def.streams.size()
-			continue
-		var count: int = maxi(def.variants, 1)
-		for variant: int in count:
-			var hz: int = def.tone_hz + def.tone_hz * variant * 7 / 100
-			_streams.append(PlaceholderTone.make(hz, def.tone_ms, def.noise_permille))
-		_variants[cue] = count
+## The streams and pitch steps of `table`, made once per process.
+func _use_built() -> void:
+	var built: Built = _built.get(table) as Built
+	if built == null:
+		built = _make_built(table)
+		_built[table] = built
+	_streams = built.streams
+	_first = built.first
+	_variants = built.variants
+	_pitches = built.pitches
+	_pitch_first = built.pitch_first
+	_pitch_count = built.pitch_count
+
+
+## One stream per variant of every cue: the file streams (a null one skipped), else placeholder
+## tones; an empty `pitch_steps` is one neutral step.
+static func _make_built(cues: AudioCueTable) -> Built:
+	var built: Built = Built.new()
+	for def: AudioCueDef in cues.cues:
+		built.first.append(built.streams.size())
+		var files: int = 0
+		for stream: AudioStream in def.streams:
+			if stream != null:
+				built.streams.append(stream)
+				files += 1
+		if files == 0:
+			files = clampi(def.variants, 1, MAX_VARIANTS)
+			for variant: int in files:
+				var hz: int = def.tone_hz + def.tone_hz * variant * 7 / 100
+				var tone: AudioStream = PlaceholderTone.make(hz, def.tone_ms, def.noise_permille)
+				built.streams.append(tone)
+		built.variants.append(files)
+		built.pitch_first.append(built.pitches.size())
+		if def.pitch_steps.is_empty():
+			built.pitches.append(NEUTRAL_PITCH)
+			built.pitch_count.append(1)
+		else:
+			built.pitches.append_array(def.pitch_steps)
+			built.pitch_count.append(def.pitch_steps.size())
+	return built
 
 
 ## The tables of a match: cooldowns, per-cue state, and the cue of each weapon and type.
@@ -224,12 +298,14 @@ func _build(snap: MatchSnapshot) -> void:
 		_count[cue] = 0
 	_shot.resize(snap.weapon_ids.size())
 	_impact.resize(snap.weapon_ids.size())
+	_hitscan.resize(snap.weapon_ids.size())
 	for weapon: int in snap.weapon_ids.size():
 		var weapon_id: StringName = snap.weapon_ids[weapon]
 		var hitscan: bool = (
 			weapon < snap.weapon_projectile_speed.size()
 			and snap.weapon_projectile_speed[weapon] == 0
 		)
+		_hitscan[weapon] = 1 if hitscan else 0
 		var family: StringName = table.shot_hitscan if hitscan else table.shot_shell
 		_shot[weapon] = table.index_of(table.shot_cues.get(weapon_id, family))
 		_impact[weapon] = table.index_of(table.impact_cues.get(weapon_id, table.impact_default))
