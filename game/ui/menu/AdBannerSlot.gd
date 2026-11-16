@@ -21,8 +21,10 @@ func host(band: Control) -> bool:
 		return false
 	_band = band
 	add_child(band)
-	band.minimum_size_changed.connect(_relayout)
-	band.tree_exited.connect(_check_band.call_deferred)
+	if not band.minimum_size_changed.is_connected(_relayout):
+		band.minimum_size_changed.connect(_relayout)
+	if not band.tree_exited.is_connected(_on_band_exited):
+		band.tree_exited.connect(_on_band_exited)
 	_relayout()
 	return true
 
@@ -36,7 +38,7 @@ func _get_minimum_size() -> Vector2:
 
 
 func _notification(what: int) -> void:
-	if what != NOTIFICATION_SORT_CHILDREN or not has_band():
+	if what != NOTIFICATION_SORT_CHILDREN or not has_band() or _band.get_parent() != self:
 		return
 	var height: float = _band_height()
 	fit_child_in_rect(_band, Rect2(0.0, size.y - height, size.x, height))
@@ -44,6 +46,10 @@ func _notification(what: int) -> void:
 
 func _band_height() -> float:
 	return _band.get_combined_minimum_size().y if has_band() else 0.0
+
+
+func _on_band_exited() -> void:
+	_check_band.call_deferred()
 
 
 ## The band left the slot (removed or freed). A band that only left the tree with its screen is
