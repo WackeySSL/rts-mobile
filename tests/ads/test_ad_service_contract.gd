@@ -27,9 +27,14 @@ const METHODS: Dictionary = {
 	"note_match_completed": [[["play_seconds", TYPE_INT]], TYPE_NIL],
 	"take_start_credits_bonus": [[], TYPE_INT],
 }
-## Internal methods Phase 6's widgets may call (rewarded_ready, show_banner, ...): the exact
-## allowlist, empty until P403/P430 add theirs. Phase 5 never calls these.
-const WIDGET_METHODS: Array[String] = []
+## Internal methods Phase 6's widgets may call, pinned like METHODS: P403's rewarded API and
+## banner show and hide. Phase 5 never calls these.
+const WIDGET_METHODS: Dictionary = {
+	"rewarded_ready": [[["placement", TYPE_STRING_NAME]], TYPE_BOOL],
+	"show_rewarded": [[["placement", TYPE_STRING_NAME], ["on_reward", TYPE_CALLABLE]], TYPE_BOOL],
+	"show_banner": [[], TYPE_NIL],
+	"hide_banner": [[], TYPE_NIL],
+}
 
 var _script: GDScript = load(SCRIPT_PATH) as GDScript
 
@@ -56,13 +61,14 @@ func test_the_public_methods_are_exactly_the_contract_and_the_widget_allowlist()
 		var method_name: String = entry["name"]
 		if not method_name.begins_with("_"):
 			found[method_name] = entry
-	var allowed: Array = METHODS.keys() + WIDGET_METHODS
+	var every: Dictionary = METHODS.merged(WIDGET_METHODS)
+	var allowed: Array = every.keys()
 	assert_array(found.keys()).contains_exactly_in_any_order(allowed)
-	for method_name: String in METHODS:
+	for method_name: String in every:
 		var entry: Dictionary = found.get(method_name, {})
 		if entry.is_empty():
 			continue
-		var expected_args: Array = METHODS[method_name][0]
+		var expected_args: Array = every[method_name][0]
 		var args: Array = entry["args"]
 		assert_int(args.size()).override_failure_message(method_name).is_equal(expected_args.size())
 		for index: int in mini(args.size(), expected_args.size()):
@@ -75,7 +81,7 @@ func test_the_public_methods_are_exactly_the_contract_and_the_widget_allowlist()
 				expected_args[index][1]
 			)
 		var returns: Dictionary = entry["return"]
-		var expected_return: int = METHODS[method_name][1]
+		var expected_return: int = every[method_name][1]
 		assert_int(returns["type"]).override_failure_message(method_name).is_equal(expected_return)
 		if expected_return == TYPE_NIL:
 			# A typed void, not an untyped Variant return.
