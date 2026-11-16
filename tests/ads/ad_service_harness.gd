@@ -51,10 +51,13 @@ func _remove_files() -> void:
 
 
 ## A new service with the harness's SaveService injected. Auto close is on, so a suite run from
-## the editor does not wait for a button. `load_ledger` reads the `ads` section now, as the
-## service's `_ready` would; pass false to let `add_child` do it.
-func make(consent: bool = true, load_ledger: bool = true) -> Node:
-	var script: GDScript = load(SCRIPT_PATH) as GDScript
+## the editor does not wait for a button. `script_path` names a subclass of the service (P431's
+## counting service). `load_ledger` reads the `ads` section now, as the service's `_ready` would;
+## pass false to let `add_child` do it.
+func make(
+	consent: bool = true, script_path: String = SCRIPT_PATH, load_ledger: bool = true
+) -> Node:
+	var script: GDScript = load(script_path) as GDScript
 	var service: Node = script.new()
 	service.save_service = save_service()
 	if load_ledger:

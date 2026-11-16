@@ -14,7 +14,7 @@ func after_test() -> void:
 
 
 func _service(load_ledger: bool = true) -> Node:
-	return auto_free(_h.make(true, load_ledger))
+	return auto_free(_h.make(true, AdServiceHarness.SCRIPT_PATH, load_ledger))
 
 
 func _section() -> Dictionary:

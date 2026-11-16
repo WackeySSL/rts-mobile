@@ -192,7 +192,7 @@ func test_the_consent_form_is_drawn_above_the_purchase_sheet() -> void:
 func test_a_buyer_sees_no_banner_before_the_first_restore_answers() -> void:
 	_h.seed_section({"remove_ads": true})
 	# The ledger is read by `_ready` (add_child), as in the app, not by the harness.
-	var service: Node = auto_free(_h.make(true, false))
+	var service: Node = auto_free(_h.make(true, AdServiceHarness.SCRIPT_PATH, false))
 	var billing: FakeBilling = AdServiceHarness.billing(service)
 	billing.add_owned(service._settings.remove_ads_product_id, "t1")
 	billing.defer_queries = true
