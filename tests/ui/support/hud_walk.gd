@@ -388,6 +388,8 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 			if node.get_child_count() > 0:
 				found.append("%s holds a child: %s" % [node.get_path(), node.get_child(0).name])
 			continue
+		if node is AdBannerBand and _in_open_pause_menu(node):
+			continue  # P435: the one banner of the battle, at the foot of the open pause menu.
 		var script: Script = node.get_script()
 		var text: String = node.get_class().to_lower()
 		if script != null:
@@ -402,6 +404,14 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 				found.append("%s: %s" % [node.get_path(), text])
 				break
 	return found
+
+
+## Whether `node` is under a PauseMenu that is open (visible); under a closed one it is a leak.
+static func _in_open_pause_menu(node: Node) -> bool:
+	var up: Node = node.get_parent()
+	while up != null and not up is PauseMenu:
+		up = up.get_parent()
+	return up != null and (up as PauseMenu).visible
 
 
 static func size_of(main: Node2D) -> Vector2i:
