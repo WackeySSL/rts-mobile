@@ -3,14 +3,23 @@ extends RefCounted
 ## One full-screen ad, load to close (ADR 0039 section 2). One deadline covers the load wait and
 ## the wait for the ad to open, and nothing after: once it opened the run waits for the close with
 ## no timeout. It relays the backend's signals as its own `opened` and `closed`, so they pair.
-## A show that fails before it opens ends the run with false at once. After a timeout the run
-## stays connected as a late listener: if the backend opens the ad anyway (AdMob cannot recall
-## a show), the pair is still emitted, an interstitial is still noted in the ledger and a reward
-## is granted only if it comes before the close. `abandon` ends that listening.
+## A show that fails before it opens ends the run with false at once. After a timeout (or a
+## `cancel`) the run stays connected as a late listener: if the backend opens the ad anyway (AdMob
+## cannot recall a show), the pair is still emitted, an interstitial is still noted in the ledger
+## (the caps describe what the player saw) and a reward is granted only if it comes before the
+## close. `abandon` ends that listening for good; it is used only by the run that `replaces` it,
+## once that run listens itself, so one open is never announced twice and never missed.
+## The signals carry the run, never a bound Callable: a bound run would be a reference cycle.
 
-signal opened(placement: StringName)
-signal closed(placement: StringName)
+signal opened(placement: StringName, run: FullscreenRun)
+signal closed(placement: StringName, run: FullscreenRun)
+## A late run's show failed after its timeout: it stopped listening and can be forgotten.
+signal gave_up(run: FullscreenRun)
+## This run listens now and ended the unopened late run it replaces.
+signal took_over(old: FullscreenRun)
 
+## An unopened late run of the same kind that this run takes over at connect, if it connects.
+var replaces: FullscreenRun = null
 var placement: StringName
 var _backend: AdBackend
 var _now_ms: Callable
@@ -19,6 +28,8 @@ var _ledger: AdLedger
 var _kind: StringName
 var _on_reward: Callable
 var _connected: bool = false
+var _shown: bool = false
+var _cancelled: bool = false
 var _timed_out: bool = false
 var _is_opened: bool = false
 var _is_closed: bool = false
@@ -50,11 +61,13 @@ func execute() -> bool:
 	if not await _await_loaded(deadline):
 		return false
 	_connect()
+	_shown = true
 	_backend.show_ad(_kind)
 	while not _is_opened and not _failed:
-		if int(_now_ms.call()) >= deadline:
+		if _cancelled or int(_now_ms.call()) >= deadline:
 			_timed_out = true
-			_backend.cancel_show(_kind)
+			if not _cancelled:
+				_backend.cancel_show(_kind)
 			return false
 		await _next_frame()
 	if _failed:
@@ -71,7 +84,28 @@ func is_late_pending() -> bool:
 	return _timed_out and _connected and not _is_closed
 
 
-## Stops listening; used when a new call replaces a late listener.
+## The run's ad kind.
+func ad_kind() -> StringName:
+	return _kind
+
+
+## True once the ad opened (it may still be open).
+func is_opened() -> bool:
+	return _is_opened
+
+
+## Withdraws a show that has not opened (consent withdrawn, Remove ads bought). The backend may
+## not be able to recall it; the run keeps listening then and pairs a late open. A run that
+## already timed out was withdrawn then.
+func cancel() -> void:
+	if _is_opened or _cancelled or _timed_out:
+		return
+	_cancelled = true
+	if _shown:
+		_backend.cancel_show(_kind)
+
+
+## Stops listening; used by the run that replaces this late one, once that one listens.
 func abandon() -> void:
 	_disconnect()
 
@@ -81,10 +115,10 @@ func _await_loaded(deadline: int) -> bool:
 	if state != AdBackend.LoadState.READY and state != AdBackend.LoadState.LOADING:
 		_backend.request_load(_kind)
 	while _backend.load_state(_kind) == AdBackend.LoadState.LOADING:
-		if int(_now_ms.call()) >= deadline:
+		if _cancelled or int(_now_ms.call()) >= deadline:
 			return false
 		await _next_frame()
-	return _backend.load_state(_kind) == AdBackend.LoadState.READY
+	return not _cancelled and _backend.load_state(_kind) == AdBackend.LoadState.READY
 
 
 func _next_frame() -> void:
@@ -92,6 +126,11 @@ func _next_frame() -> void:
 
 
 func _connect() -> void:
+	# Hand over from the late run before this one's show, and only if that one is still unopened.
+	if replaces != null and not replaces.is_opened():
+		replaces.abandon()
+		took_over.emit(replaces)
+	replaces = null
 	_connected = true
 	_backend.opened.connect(_on_opened)
 	_backend.reward_earned.connect(_on_reward_earned)
@@ -115,11 +154,11 @@ func _on_opened(kind: StringName) -> void:
 	_is_opened = true
 	if kind == AdBackend.KIND_INTERSTITIAL:
 		_ledger.note_interstitial_shown()
-	opened.emit(placement)
+	opened.emit(placement, self)
 
 
 func _on_reward_earned(kind: StringName) -> void:
-	if kind != _kind or not _is_opened or _is_closed:
+	if kind != _kind or not _is_opened or _is_closed or _rewarded:
 		return
 	_rewarded = true
 	if _on_reward.is_valid():
@@ -130,11 +169,15 @@ func _on_closed(kind: StringName) -> void:
 	if kind != _kind or not _is_opened or _is_closed:
 		return
 	_is_closed = true
-	closed.emit(placement)
+	closed.emit(placement, self)
 	if _timed_out:
 		_disconnect()
 
 
 func _on_show_failed(kind: StringName) -> void:
-	if kind == _kind and not _is_opened:
-		_failed = true
+	if kind != _kind or _is_opened:
+		return
+	_failed = true
+	if _timed_out:
+		_disconnect()
+		gave_up.emit(self)
