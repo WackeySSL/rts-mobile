@@ -23,6 +23,9 @@ func after() -> void:
 func before_test() -> void:
 	_h = AdServiceHarness.new()
 	_service = auto_free(_h.make(true))
+	# In the tree, so the fake backend has a host: an ad left open by fake_auto_close = false
+	# stays open until the test closes it (without a host the fake closes it at once, P408).
+	add_child(_service)
 	_screen = auto_free(Control.new())
 	add_child(_screen)
 	_grants = 0
