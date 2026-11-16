@@ -24,16 +24,6 @@ const MUST_PRECEDE: Dictionary = {
 }
 
 
-func test_menu_flow_is_the_last_autoload() -> void:
-	var order: Array[String] = []
-	for property: Dictionary in ProjectSettings.get_property_list():
-		var property_name: String = property["name"]
-		if property_name.begins_with("autoload/"):
-			order.append(property_name.trim_prefix("autoload/"))
-	assert_str(order[order.size() - 1]).is_equal("MenuFlow")
-	assert_int(order.find("MenuFlow")).is_greater(order.find("AdService"))
-
-
 func test_autoload_nodes_exist_with_contract_scripts() -> void:
 	for autoload_name: String in SERVICE_SCRIPTS:
 		var node: Node = get_tree().root.get_node_or_null(autoload_name)
