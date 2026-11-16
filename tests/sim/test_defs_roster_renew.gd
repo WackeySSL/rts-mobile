@@ -19,6 +19,7 @@ const FACTION: StringName = &"renew"
 const STRUCTURES: int = 0
 const INFANTRY: int = 1
 const VEHICLES: int = 2
+const FLIGHT: int = 3  ## The Flight tab, which the airfield produces (P245b).
 ## The Derrick League file and the Lumen Accord file of each role, in the roster's order (ADR 0023
 ## section 7's table).
 const PAIRS: Array[Array] = [
@@ -59,7 +60,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_nine_buildings_and_the_six_units_in_the_adr_order() -> void:
+func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -70,12 +71,16 @@ func test_the_faction_file_lists_the_nine_buildings_and_the_six_units_in_the_adr
 		"renew_defence",
 		"renew_strike",
 		"renew_space",
+		"renew_aa",
+		"renew_airfield",
 		"renew_rifle",
 		"renew_rocket",
 		"renew_scout",
 		"renew_tank",
 		"renew_artillery",
 		"renew_tanker",
+		"renew_fighter",
+		"renew_bomber",
 	]
 	var faction: FactionDef = load(FACTION_PATH)
 	var listed: Array[String] = []
@@ -84,10 +89,10 @@ func test_the_faction_file_lists_the_nine_buildings_and_the_six_units_in_the_adr
 	assert_array(listed).is_equal(wanted)
 	for at: int in wanted.size():
 		var member: UnitDef = faction.roster[at]
-		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 9)
+		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 11)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those fifteen and no other.
+	# The files that name the faction are those seventeen and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())
@@ -430,6 +435,7 @@ func test_the_dock_and_exit_cells_are_the_middle_cell_south_of_the_footprint() -
 		["renew_refinery", "dock", Vector2i(1, 3)],
 		["renew_factory", "exit", Vector2i(1, 3)],
 		["renew_barracks", "exit", Vector2i(1, 2)],
+		["renew_airfield", "exit", Vector2i(1, 3)],
 	]
 	var named: Dictionary[String, bool] = {}
 	for row: Array in rows:
@@ -457,8 +463,8 @@ func test_the_dock_and_exit_cells_are_the_middle_cell_south_of_the_footprint() -
 
 
 func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() -> void:
-	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
-	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: []}
+	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
+	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
 	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var id: String = String(unit.type_id)
@@ -468,11 +474,15 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			buildable[unit.tab].append(id)
 	assert_array(producers[STRUCTURES]).is_equal(["renew_hq"])
 	assert_array(producers[INFANTRY]).is_equal(["renew_barracks"])
+	assert_array(producers[FLIGHT]).is_equal(["renew_airfield"])
+	assert_array(buildable[FLIGHT]).is_equal(["renew_bomber", "renew_fighter"])  # P245.
 	assert_array(producers[VEHICLES]).is_equal(["renew_factory"])
 	(
 		assert_array(buildable[STRUCTURES])
 		. is_equal(
 			[
+				"renew_aa",
+				"renew_airfield",
 				"renew_barracks",
 				"renew_defence",
 				"renew_factory",
@@ -499,21 +509,18 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
-## P239: no roster entry for the anti-air buildings until P239b; it removes that skip.
-## P242: none for the airfield (P245b) or the fighter and bomber (P245); each removes its skip.
+## P245b rostered the airfield, P245 the fighter and the bomber.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"renew_aa",
-				"renew_airfield",
-				"renew_fighter",
-				"renew_bomber",
 				"renew_engineering",
 				"renew_transport",
 				"renew_drone",
+				"renew_linecar",
+				"renew_seeder",
 			]
 		):
 			continue

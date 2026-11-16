@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_airfield"
+faction = &"renew"
+category = &"bld"
+footprint = 3
+silhouette = "A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes."
+prims = PackedStringArray(
+"box hull graphite 0 0 0 2.92 2.92 0.06",
+"box hull ceramic 0 0 0.06 2.7 2.7 0.06",
+"prism hull titanium -1 -1 0.12 1.0 1.0 0.03 sides=12",
+"prism hull team -1 -1 0.15 0.9 0.9 0.02 sides=12 group=padring2",
+"prism hull ceramic -1 -1 0.17 0.66 0.66 0.02 sides=12",
+"prism hull mint -1 -1 0.19 0.2 0.2 0.01 sides=6",
+"prism hull titanium -1 1 0.12 1.0 1.0 0.03 sides=12",
+"prism hull team -1 1 0.15 0.9 0.9 0.02 sides=12 group=padring",
+"prism hull ceramic -1 1 0.17 0.66 0.66 0.02 sides=12",
+"prism hull mint -1 1 0.19 0.2 0.2 0.01 sides=6",
+"prism hull titanium 1 -1 0.12 1.0 1.0 0.03 sides=12",
+"prism hull team 1 -1 0.15 0.9 0.9 0.02 sides=12 group=padring",
+"prism hull ceramic 1 -1 0.17 0.66 0.66 0.02 sides=12",
+"prism hull mint 1 -1 0.19 0.2 0.2 0.01 sides=6",
+"prism hull titanium 1 1 0.12 1.0 1.0 0.03 sides=12",
+"prism hull team 1 1 0.15 0.9 0.9 0.02 sides=12 group=padring2",
+"prism hull ceramic 1 1 0.17 0.66 0.66 0.02 sides=12",
+"prism hull mint 1 1 0.19 0.2 0.2 0.01 sides=6",
+"prism hull ceramic 0 0 0.12 1.0 1.0 0.14 sides=6 group=term",
+"prism hull glass 0 0 0.26 1.04 1.04 0.1 sides=6 group=term",
+"prism hull team 0 0 0.36 1.08 1.08 0.1 sides=6 group=termband",
+"prism hull ceramic 0 0 0.46 1.1 1.1 0.09 sides=6 group=term",
+"prism hull ceramic 1.1 0 0.12 0.26 0.26 0.38 sides=6 group=pylon",
+"prism hull team 1.1 0 0.5 0.34 0.34 0.12 sides=6 group=pylonband",
+"prism hull ceramic 1.1 0 0.62 0.26 0.26 0.8 sides=6 group=pylon",
+"prism hull glass 1.1 0 1.42 0.5 0.5 0.24 sides=6 group=pylon",
+"prism hull ceramic 1.1 0 1.66 0.56 0.56 0.06 sides=6 group=pylon",
+"box hull titanium 1.1 0 1.44 0.62 0.05 0.04 group=pylon",
+"box hull ceramic -1.15 -0.35 0.12 0.5 0.4 0.14 group=cells",
+"box hull team -1.15 -0.35 0.26 0.52 0.42 0.08 group=cellband",
+"box hull ceramic -1.15 -0.35 0.34 0.5 0.4 0.08 group=cells",
+"box hull ceramic -1.15 0.35 0.12 0.5 0.4 0.14 group=cells",
+"box hull team -1.15 0.35 0.26 0.52 0.42 0.08 group=cellband",
+"box hull ceramic -1.15 0.35 0.34 0.5 0.4 0.08 group=cells",
+"box hull mint -0.88 0 0.2 0.04 0.06 0.06",
+"broken hull ceramic 0 0 0.12 1.0 1.0 0.5 teeth=6 low=0.3 damage=2 group=k2",
+"rod hull rebar 0 -0.3 0.5 0 -0.3 0.95 3 bend=30 damage=2 group=k2",
+"rod hull beam 0.3 0.3 0.5 0.3 0.3 0.85 3 bend=-35 damage=2 group=k2",
+"broken hull ceramic 1.1 0 0.12 0.28 0.28 0.5 teeth=4 low=0.3 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"dmg2 0 term hide",
+"dmg2 0 pylon hide",
+"dmg2 0 termband char 100",
+"dmg2 0 pylonband char 100",
+"dmg2 0 cellband char 100","dmg2 0 padring2 char 100"
+)
+emitters = PackedStringArray(
+"damage 0 0 0.6",
+"dmg_gas -1.15 0.35 0.3",
+"dmg_spark 1.1 0 0.3"
+)

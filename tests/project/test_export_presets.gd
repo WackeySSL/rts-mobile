@@ -11,7 +11,7 @@ const OPTIONS: String = "preset.1.options"
 
 ## Plan row P98: the Android presets ("Android" and "Android perf") name the game's own icon in the
 ## three launcher icon options, and the files they name are the SVGs of assets/art/svg/icon.
-const ANDROID_PRESETS: Array[String] = ["preset.1", "preset.2"]
+const ANDROID_PRESETS: Array[String] = ["preset.1", "preset.2", "preset.3"]
 const MAIN_ICON: String = "launcher_icons/main_192x192"
 const FOREGROUND_ICON: String = "launcher_icons/adaptive_foreground_432x432"
 const BACKGROUND_ICON: String = "launcher_icons/adaptive_background_432x432"
@@ -21,12 +21,16 @@ const ICON_FILES: Dictionary[String, String] = {
 	BACKGROUND_ICON: "res://assets/art/svg/icon/icon_background.svg",
 }
 
-## Plan row P118b: every preset ("Web", "Android", "Android perf") packs the OFL.txt of each font
+## Plan row P118b (P410b: and "Android internal"): every preset packs the OFL.txt of each font
 ## folder. export_filter all_resources leaves out a .txt file, so the include_filter names them;
 ## the SIL Open Font License asks for its text with every copy of the fonts. export-web.sh and
 ## export-android.sh look for each OFL.txt in the pack or the APK, and scripts/ci/font-notice.sh
 ## puts the same texts into THIRD_PARTY_LICENSES.txt beside the build.
-const ALL_PRESETS: Array[String] = ["preset.0", "preset.1", "preset.2"]
+const ALL_PRESETS: Array[String] = ["preset.0", "preset.1", "preset.2", "preset.3"]
+
+## Plan row P410b (ADR 0040 section 1): the Play build.
+const INTERNAL: String = "preset.3"
+const INTERNAL_OPTIONS: String = "preset.3.options"
 const FONT_DIR: String = "res://assets/art/fonts"
 const OFL_NAME: String = "OFL.txt"
 ## A family folder that does not exist yet: the filter must cover it without an edit.
@@ -53,17 +57,20 @@ func test_preset_identity() -> void:
 	)
 	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature.
 	assert_str(config.get_value(SECTION, "custom_features")).is_empty()
-	# Test code and the test runner never ship. Unlike the Web preset, never native/* (ADR 0013).
-	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal("tests/*, addons/gdUnit4/*")
+	# Test code, the test runner and the AdMob plugin never ship in this non-Gradle APK (ADR 0040 §1).
+	# Unlike the Web preset, never native/* (ADR 0013).
+	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal(
+		"tests/*, addons/gdUnit4/*, addons/admob/*"
+	)
 
 
 ## ADR 0013 section 7: the web preview runs the GDScript twins and packs no .gdextension, which
 ## Godot only warns about. scripts/export-web.sh checks the pack; this catches the edit first.
-func test_web_preset_excludes_native() -> void:
+func test_web_preset_excludes_tests_native_and_addons() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, native/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*"
 	)
 
 
@@ -97,8 +104,46 @@ func test_non_gradle_arm64_only() -> void:
 
 
 func test_no_keystore_value_in_the_file() -> void:
-	for key: String in _config().get_section_keys(OPTIONS):
-		assert_bool(key.begins_with("keystore/")).is_false()
+	var config: ConfigFile = _config()
+	for section: String in ANDROID_PRESETS:
+		for key: String in config.get_section_keys(section + ".options"):
+			(
+				assert_bool(key.begins_with("keystore/"))
+				. override_failure_message("%s has the keystore option %s" % [section, key])
+				. is_false()
+			)
+
+
+## The fourth preset is the Play build: the release package id, a Gradle AAB for arm64 only, the
+## custom feature play, and the AdMob plugin left in the pack (the other presets exclude it). Test
+## code and gdUnit4 stay out, and native/* never goes (ADR 0013): the kernels library must travel
+## in the bundle. export-android.sh --aab and scripts/ci/check-aab.sh check the bundle itself.
+func test_android_internal_preset_is_the_gradle_aab_play_build() -> void:
+	var config: ConfigFile = _config()
+	assert_str(config.get_value(INTERNAL, "name")).is_equal("Android internal")
+	assert_str(config.get_value(INTERNAL, "platform")).is_equal("Android")
+	assert_str(config.get_value(INTERNAL, "custom_features")).is_equal("play")
+	assert_str(config.get_value(INTERNAL, "export_path")).is_equal(
+		"build/android/rts-mobile-internal.aab"
+	)
+	var exclude: String = config.get_value(INTERNAL, "exclude_filter")
+	assert_str(exclude).is_equal("tests/*, addons/gdUnit4/*")
+	assert_bool(_filter_matches(exclude, "res://addons/admob/admob.gd")).is_false()
+	assert_bool(_filter_matches(exclude, "res://native/sim_kernels.gdextension")).is_false()
+	assert_str(config.get_value(INTERNAL_OPTIONS, "package/unique_name")).is_equal("dk.appcode.rts")
+	assert_str(config.get_value(INTERNAL_OPTIONS, "package/name")).is_equal("Treadline")
+	assert_bool(config.get_value(INTERNAL_OPTIONS, "gradle_build/use_gradle_build")).is_true()
+	assert_int(config.get_value(INTERNAL_OPTIONS, "gradle_build/export_format")).is_equal(1)
+	assert_bool(config.get_value(INTERNAL_OPTIONS, "architectures/arm64-v8a")).is_true()
+	for abi: String in ["armeabi-v7a", "x86", "x86_64"]:
+		assert_bool(config.get_value(INTERNAL_OPTIONS, "architectures/" + abi)).is_false()
+	assert_bool(config.get_value(INTERNAL_OPTIONS, "permissions/vibrate")).is_true()
+	assert_bool(config.get_value(INTERNAL_OPTIONS, "permissions/internet")).is_true()
+	# The debug presets stay as they were: no Gradle, no plugin in the pack.
+	for section: String in ["preset.1", "preset.2"]:
+		var gradle: bool = config.get_value(section + ".options", "gradle_build/use_gradle_build")
+		assert_bool(gradle).is_false()
+		assert_str(config.get_value(section, "exclude_filter")).contains("addons/admob/*")
 
 
 func test_android_presets_name_the_three_icon_files() -> void:

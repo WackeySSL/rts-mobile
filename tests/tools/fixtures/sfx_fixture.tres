@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="SfxParams" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://tools/sfxgen/SfxParams.gd" id="1_params"]
+[ext_resource type="Script" path="res://tools/sfxgen/SfxLayer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="Resource_chirp"]
+script = ExtResource("2_layer")
+wave = 1
+freq = 600.0
+freq_end = 1200.0
+length = 0.15
+lowpass = 4000.0
+
+[sub_resource type="Resource" id="Resource_hiss"]
+script = ExtResource("2_layer")
+wave = 4
+length = 0.05
+amp = 0.2
+
+[resource]
+script = ExtResource("1_params")
+id = &"fixture_chirp"
+family = &"test"
+duration = 0.2
+seed_value = 3
+layers = Array[ExtResource("2_layer")]([SubResource("Resource_chirp"), SubResource("Resource_hiss")])

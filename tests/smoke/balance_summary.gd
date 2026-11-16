@@ -12,8 +12,8 @@ extends SceneTree
 ## Every number is an int (shares in per-mille, ratios as `_x100`), so equal inputs give the same
 ## bytes. JSON hands numbers back as floats; load_report() turns them into ints again. Per type maps
 ## of a report hold only the types that occurred (absent = 0), so the unit rows read the faction
-## rosters from data/factions/*.tres, units being the roster's types with an Infantry or Vehicles
-## tab.
+## rosters from data/factions/*.tres, units being the roster's types with an Infantry, Vehicles or
+## Flight tab.
 
 const TABLE_HEAD: String = (
 	"| Matches | Victories | Draws | Timeouts | Dropped | Expired | Stale "
@@ -47,13 +47,13 @@ const TYPE_MIN: int = 50
 const TYPE_MAX: int = 400
 const HASH_MIN_PERCENT: int = 95
 ## The gate set (section 6): 100 matches of seeds 1001-1100, or with the one rerun 200 of 1001-1200,
-## Normal against Normal on `cross`, twelve unit types. The rerun band applies at exactly 100.
+## Normal against Normal on `cross`, every unit type of both rosters (16 with the aircraft, P245).
+## The rerun band applies at exactly 100.
 const GATE_SEED_FIRST: int = 1001
 const GATE_MATCHES: int = 100
 const GATE_RERUN_MATCHES: int = 200
 const GATE_LEVELS: String = "normal,normal"
 const GATE_SCENARIOS: String = "cross"
-const GATE_TYPES: int = 12
 ## Ticks per minute (15 Hz).
 const TICKS_PER_MINUTE: int = 900
 ## The fields every shard of one set must share; `levels` is compared as an unordered pair.
@@ -196,8 +196,9 @@ static func build(reports: Array[Dictionary], names: Array[String], gate: bool) 
 	return {"report": merged}
 
 
-## The roster of each faction in `factions`: its unit types (the roster entries with an Infantry or
-## Vehicles tab), `{faction id: Array[String]}`. A faction with no readable file has an empty one.
+## The roster of each faction in `factions`: its unit types (the roster entries with an Infantry,
+## Vehicles or Flight tab), `{faction id: Array[String]}`. A faction with no readable file has an
+## empty one.
 static func rosters_of(factions: Array[String]) -> Dictionary[String, Array]:
 	var rosters: Dictionary[String, Array] = {}
 	for faction: String in factions:
@@ -286,7 +287,7 @@ static func summarize(
 		summary["by_level"] = _shares(matches, "level")
 	summary["flags"] = _flags(summary)
 	if gate:
-		summary["gate"] = _gate(summary, report)
+		summary["gate"] = _gate(summary, report, rosters)
 	return summary
 
 
@@ -419,11 +420,13 @@ static func _flags(summary: Dictionary) -> Array[String]:
 ## rerun at exactly 100 matches; the 200 together decide against 400-600, and checks 3 to 7 are
 ## judged on all of them with the same proportions (half built, 95 percent distinct). Any failing
 ## check makes the verdict `fail`, whatever order the checks come in.
-static func _gate(summary: Dictionary, report: Dictionary) -> Dictionary:
+static func _gate(
+	summary: Dictionary, report: Dictionary, rosters: Dictionary[String, Array]
+) -> Dictionary:
 	var count: int = summary["matches"]
 	var top: Dictionary = {"top": summary["by_seat"].get(Smoke.SEATS[0], 0)}
 	var checks: Array[Dictionary] = [
-		_set_check(summary, report),
+		_set_check(summary, report, rosters),
 		_share_check("1", "faction win share", summary.get("by_faction", {}), count),
 		_share_check("2", "top seat win share", top, count),
 		_check("3a", "timeouts", summary["timeouts"], 0, 0, ""),
@@ -457,7 +460,9 @@ static func _gate(summary: Dictionary, report: Dictionary) -> Dictionary:
 
 
 ## The `set` check: value 1 when the matches are a gate set, else 0, the detail naming what is not.
-static func _set_check(summary: Dictionary, report: Dictionary) -> Dictionary:
+static func _set_check(
+	summary: Dictionary, report: Dictionary, rosters: Dictionary[String, Array]
+) -> Dictionary:
 	var count: int = summary["matches"]
 	var problems: Array[String] = []
 	var seeds_ok: bool = count == GATE_MATCHES or count == GATE_RERUN_MATCHES
@@ -483,8 +488,12 @@ static func _set_check(summary: Dictionary, report: Dictionary) -> Dictionary:
 		problems.append("levels %s, not %s" % [",".join(_strings(report["levels"])), GATE_LEVELS])
 	if report["scenarios"] != GATE_SCENARIOS:
 		problems.append("scenarios %s, not %s" % [report["scenarios"], GATE_SCENARIOS])
-	if summary["types"].size() != GATE_TYPES:
-		problems.append("%d unit types, not %d" % [summary["types"].size(), GATE_TYPES])
+	# The types of the gate are the rosters' (a roster that grows is judged without a new constant).
+	var wanted: int = 0
+	for faction: String in rosters:
+		wanted += rosters[faction].size()
+	if wanted == 0 or summary["types"].size() != wanted:
+		problems.append("%d unit types, not %d" % [summary["types"].size(), wanted])
 	var detail: String = "; ".join(problems)
 	return _check("set", "a gate set", 0 if problems else 1, 1, 1, detail)
 

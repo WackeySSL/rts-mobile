@@ -8,8 +8,11 @@ extends RefCounted
 
 const ARENA_UNITS: String = "arena"
 const ARENA_BASES: String = "bases"
-## The AI arena (plan P185): `perf_ai.tres` with a computer on each player. It has no golden pair.
+## The base AI arena (plan P185): `perf_ai.tres` with a computer on each player. No golden pair.
 const ARENA_AI: String = "ai"
+## The AI arena of Phase 4b (plan P304): `perf_ai_4b.tres`, the per-wave card's. Its own key, so a
+## card names which of the two AI arenas it ran. No golden pair either.
+const ARENA_AI_4B: String = "ai_4b"
 ## The air arena (plan P253): `perf_air.tres`, 16 aircraft among 150 units; its pair is the gate's
 ## `air_golden_*`.
 const ARENA_AIR: String = "air"
@@ -34,20 +37,31 @@ const CALLS_LINE: String = (
 ## watch value the p95 is read against, printed so the phone reads it without the ADR.
 const AI_WATCH_MS: float = 1.0
 const AI_LINE: String = (
-	"ai_think_p95_ms %.2f | ai_think_max_ms %.2f | ai_thinks %d | watch p95 at or below %.2f ms "
-	+ "| ai_wait_p95_ms %.2f | ai_wait_max_ms %.2f | ai_waits %d (no verdict)"
+	"arena %s | ai_think_p95_ms %.2f | ai_think_max_ms %.2f | ai_thinks %d | watch p95 at or "
+	+ "below %.2f ms | ai_wait_p95_ms %.2f | ai_wait_max_ms %.2f | ai_waits %d (no verdict)"
 )
 
 
-## Whether the arena has a golden pair the card compares with (not the AI arena's).
+## Whether the arena has a golden pair the card compares with (not either AI arena's).
 static func has_golden(kind: String) -> bool:
-	return kind != ARENA_AI
+	return not is_ai(kind)
+
+
+## Whether `kind` is one of the two AI arenas (they share the card's AI line and have no pair).
+static func is_ai(kind: String) -> bool:
+	return kind == ARENA_AI or kind == ARENA_AI_4B
 
 
 static func ai_line(
-	p95_ms: float, max_ms: float, thinks: int, wait_p95_ms: float, wait_max_ms: float, waits: int
+	kind: String,
+	p95_ms: float,
+	max_ms: float,
+	thinks: int,
+	wait_p95_ms: float,
+	wait_max_ms: float,
+	waits: int
 ) -> String:
-	return AI_LINE % [p95_ms, max_ms, thinks, AI_WATCH_MS, wait_p95_ms, wait_max_ms, waits]
+	return AI_LINE % [kind, p95_ms, max_ms, thinks, AI_WATCH_MS, wait_p95_ms, wait_max_ms, waits]
 
 
 static func ticks(gate: PerfGateDef, kind: String) -> PackedInt32Array:

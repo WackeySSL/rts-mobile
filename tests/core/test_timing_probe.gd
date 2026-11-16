@@ -11,6 +11,7 @@ const WAIT_USEC: int = 3000
 ## native ratios (revision 15, P54r). The types count: an int field stays an int in perf_gate.tres.
 const GATE: Dictionary = {
 	"heavy_rigs": 135,
+	"air_heavy_rigs": 120,
 	"heavy_frames_min": 600,
 	"work_p95_ms": 5.6,
 	"work_tick_p95_ms": 5.6,

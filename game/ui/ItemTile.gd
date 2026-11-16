@@ -3,7 +3,8 @@ extends HoldButton
 ## One build item of the sidebar (plan P85b, ADR 0019 section 1): the icon of a type on a 64 dp
 ## plate, its cost at the foot, a badge for the items of the type queued, a fill that rises over the
 ## icon with the head's progress, and a state shown by a shape and not by colour alone: a padlock
-## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY).
+## (LOCKED), stripes (UNAFFORDABLE, FULL; the cost amber for money), a "Ready" banner (READY), a
+## check seal and a "Done" banner (RESEARCHED, a Research card's upgrade done, P248).
 ## The foot of the tile is the cost's plate, and the shapes of a state (the fill, the stripes, the
 ## padlock) fill the area above it, so none of them is ever drawn under the plate: the fill's share
 ## is a share of that area. A READY structure is paid for, so its banner takes the foot in the
@@ -32,7 +33,9 @@ signal chose  ## A tap: released before `hold_ms`, within `slop_dp`.
 signal long_pressed  ## A hold of `hold_ms`, within `slop_dp`.
 signal dragged(relative: Vector2)  ## The finger moved beyond `slop_dp`: the row follows it.
 
-enum State { AVAILABLE, LOCKED, UNAFFORDABLE, FULL, READY }
+## RESEARCHED (P248, a Research card whose upgrade is done): a check seal at the top left and the
+## word "Done" in the banner's place; the price is hidden, as under READY.
+enum State { AVAILABLE, LOCKED, UNAFFORDABLE, FULL, READY, RESEARCHED }
 
 const SIZE_DP: float = 64.0
 ## The named card: the drawer's size sideways, and upright (ADR 0025 section 5, at least).
@@ -56,6 +59,15 @@ const SEAL_DP: float = 26.0
 const SEAL_INSET_DP: float = 3.0
 const SEAL_GLYPH_DP: float = 16.0
 const FULL_WORD: String = "FULL"
+const READY_WORD: String = "Ready"
+const DONE_WORD: String = "Done"
+const CHECK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_check.svg")
+## A Research card's name may take a second line (ADR 0032 section 2's one-line rule is for the
+## other tabs: "Heavy Bombs" is wider than the 88 dp card's caption), so its card is this much
+## taller (P248); `test_every_upgrade_name_fits_the_research_card` pins that every upgrade name
+## holds in two lines.
+const RESEARCH_LINES: int = 2
+const CAPTION_LINE_DP: float = 20.0
 const STRIPE_DP: Vector2 = Vector2(14.0, 5.0)  ## The step between stripes and their width.
 const VARIATION: StringName = &"ItemTile"
 const COST_VARIATION: StringName = &"ItemCost"
@@ -63,7 +75,7 @@ const COST_LOW_VARIATION: StringName = &"ItemCostLow"
 const BANNER_VARIATION: StringName = &"ItemBanner"
 const CAPTION_VARIATION: StringName = &"ItemCaption"
 const SASH_VARIATION: StringName = &"ItemSash"
-const LOCK_ART: String = "res://assets/art/svg/icons/glyph_lock.svg"
+const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
 const SHAKE_RAD: float = 0.08
 const SHAKE_S: float = 0.05
 
@@ -120,6 +132,7 @@ class Sash:
 	var seal: Color
 	var label: Label = Label.new()
 	var centre: Vector2 = Vector2.ZERO  ## The middle of the band and of the name's box.
+	var banded: bool = true  ## False: the seal's disc alone (a researched card has no band).
 
 	func _init() -> void:
 		label.name = "SashText"
@@ -143,6 +156,20 @@ class Sash:
 		queue_redraw()
 
 	func _draw() -> void:
+		if banded:
+			_draw_band()
+		var seal_px: float = UiScale.dp(ItemTile.SEAL_DP)
+		var inset: float = UiScale.dp(ItemTile.SEAL_INSET_DP)
+		draw_circle(
+			Vector2(inset, inset) + Vector2(seal_px, seal_px) / 2.0,
+			seal_px / 2.0,
+			seal,
+			true,
+			-1.0,
+			true
+		)
+
+	func _draw_band() -> void:
 		var along: Vector2 = Vector2.from_angle(-ItemTile.SASH_RISE_RAD)
 		var across: Vector2 = along.orthogonal() * UiScale.dp(ItemTile.SASH_THICK_DP) / 2.0
 		var at: Vector2 = centre
@@ -158,16 +185,6 @@ class Sash:
 			draw_line(
 				at - reach + line, at + reach + line, edge, UiScale.dp(ItemTile.SASH_EDGE_DP), true
 			)
-		var seal_px: float = UiScale.dp(ItemTile.SEAL_DP)
-		var inset: float = UiScale.dp(ItemTile.SEAL_INSET_DP)
-		draw_circle(
-			Vector2(inset, inset) + Vector2(seal_px, seal_px) / 2.0,
-			seal_px / 2.0,
-			seal,
-			true,
-			-1.0,
-			true
-		)
 
 
 ## The longest name, in px, that the sash holds in one line on a card `card_px` wide (base px; only
@@ -190,7 +207,7 @@ func _init() -> void:
 	add_child(_fit)
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_lock.texture = load(LOCK_ART)
+	_lock.texture = LOCK_ART
 	_lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_lock.set_anchors_preset(Control.PRESET_CENTER)
@@ -207,7 +224,7 @@ func _init() -> void:
 	_sash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_sash.visible = false
 	_stage.clip_contents = true  # The band runs off the card's edges and stops there.
-	_banner.text = "Ready"
+	_banner.text = READY_WORD
 	_banner.theme_type_variation = BANNER_VARIATION
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.theme_type_variation = CAPTION_VARIATION
@@ -263,10 +280,17 @@ func art() -> Texture2D:
 	return _icon.texture
 
 
-## The card of `size_dp` with the name under its foot.
-func set_card(size_dp: Vector2) -> void:
+## The card of `size_dp` with the name under its foot, in `lines` lines (a Research card: two, the
+## card taller by the extra line; the name wraps between words and is never cut).
+func set_card(size_dp: Vector2, lines: int = 1) -> void:
 	_caption.visible = true
-	_fit.min_dp = size_dp
+	var wraps: bool = lines > 1
+	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wraps else TextServer.AUTOWRAP_OFF
+	_caption.text_overrun_behavior = (
+		TextServer.OVERRUN_NO_TRIMMING if wraps else TextServer.OVERRUN_TRIM_ELLIPSIS
+	)
+	_caption.max_lines_visible = lines if wraps else -1
+	_fit.min_dp = size_dp + Vector2(0.0, CAPTION_LINE_DP * (lines - 1))
 
 
 ## The display name of what a LOCKED card lacks (its requirement, or its producer when there is
@@ -280,6 +304,8 @@ func set_needs(display_name: String) -> void:
 
 ## The word of the state: "FULL" in the middle of the stripes, or the missing name on the sash.
 func word() -> String:
+	if state == State.RESEARCHED:
+		return DONE_WORD
 	if _sash.visible:
 		return _needs
 	return _word.text if _word.visible else ""
@@ -295,9 +321,11 @@ func show_state(new_state: State, count: int, share: float) -> void:
 	progress = share
 	var ready: bool = new_state == State.READY
 	_tint_icon()
-	_lock.visible = new_state == State.LOCKED
+	_lock.visible = new_state == State.LOCKED or new_state == State.RESEARCHED
 	_stripes.visible = new_state == State.UNAFFORDABLE or new_state == State.FULL
-	_banner.visible = ready
+	var done: bool = new_state == State.RESEARCHED
+	_banner.visible = ready or done
+	_banner.text = DONE_WORD if done else READY_WORD
 	_fill.visible = share > 0.0 and not ready
 	_fill.anchor_top = 1.0 - share
 	_badge.visible = count > 0
@@ -350,19 +378,24 @@ func _on_held() -> void:
 ## picture and the seal takes the padlock's place); else the padlock is the big centred one.
 func _show_word() -> void:
 	var named: bool = state == State.LOCKED and not _needs.is_empty()
-	_cost.visible = state != State.READY and not named
+	var done: bool = state == State.RESEARCHED
+	_cost.visible = state != State.READY and not named and not done
 	_word.visible = state == State.FULL
-	_sash.visible = named
+	_sash.visible = named or done
+	_sash.banded = named
+	_sash.label.visible = named
 	if named:
 		_sash.label.text = _needs
 		_sash.lay_out()  # A label keeps the size a longer name gave it.
-	_place_lock(named)
+	_sash.queue_redraw()
+	_place_lock(named or done)
 
 
 ## The padlock: whole and grey in the middle of the stage, or white in the seal's disc at its top
 ## left.
 func _place_lock(named: bool) -> void:
 	var glyph: float = SEAL_GLYPH_DP if named else LOCK_DP
+	_lock.texture = CHECK_ART if state == State.RESEARCHED else LOCK_ART
 	_lock_fit.min_dp = Vector2(glyph, glyph)
 	if named:
 		var room: float = SEAL_INSET_DP + (SEAL_DP - SEAL_GLYPH_DP) / 2.0
