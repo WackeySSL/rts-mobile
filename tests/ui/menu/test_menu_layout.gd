@@ -18,6 +18,7 @@ var _menu: Control
 var _stack: MenuStack
 var _screen: MenuScreen
 var _service: Node
+var _harness: RefCounted
 
 
 func before() -> void:
@@ -45,6 +46,9 @@ func after_test() -> void:
 		remove_child(_service)
 		_service.free()
 	_service = null
+	if _harness != null:
+		_harness.dispose()  # Frees the harness's own SaveService and its temp files (P407).
+		_harness = null
 
 
 func test_the_column_and_the_slot_hold_at_the_six_sizes() -> void:
@@ -216,8 +220,8 @@ func _close() -> void:
 ## A real band (P430) with the fake service injected; the service draws the "Test ad" strip.
 func _real_band() -> AdBannerBand:
 	if not is_instance_valid(_service):
-		var harness: RefCounted = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
-		_service = harness.make(true)
+		_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
+		_service = _harness.make(true)
 		_service.fake_auto_close = false  # The strip stays, so the band can be lined up with it.
 		add_child(_service)
 	var band: AdBannerBand = AdBannerBand.new()
