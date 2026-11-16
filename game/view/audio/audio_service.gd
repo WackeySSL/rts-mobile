@@ -23,6 +23,7 @@ var settings: AudioSettings
 var ad_service_name: StringName = &"AdService"
 
 var _pool: VoicePool
+var _music: MusicDeck
 var _steps: Dictionary[StringName, int] = {}
 var _reasons: Dictionary[StringName, bool] = {}
 var _fade: Tween
@@ -36,6 +37,10 @@ func _ready() -> void:
 	_pool.name = "VoicePool"
 	add_child(_pool)
 	_pool.setup(settings)
+	_music = MusicDeck.new()
+	_music.name = "MusicDeck"
+	add_child(_music)
+	_music.setup(settings, self)
 	set_step(BUS_MUSIC, settings.default_music_step)
 	set_step(BUS_SFX, settings.default_sfx_step)
 	set_step(BUS_UI, settings.default_ui_step)
@@ -131,6 +136,26 @@ func play_ui(
 	if not can_play(BUS_UI):
 		return false
 	return _pool.play_ui(stream, cue, priority, max_voices, volume_db, pitch_scale)
+
+
+## Music (ADR 0041 section 5): crossfades to track `id` (`menu`, `battle`), or plays a sting
+## (`victory`, `defeat`) over the fading loop. The same track again is a no-op. Returns whether
+## the request was taken.
+func play_music(id: StringName) -> bool:
+	return _music.play(id)
+
+
+## Lowers the music for `duck_ms` (a strike landed).
+func duck_music() -> void:
+	_music.duck()
+
+
+func stop_music() -> void:
+	_music.stop()
+
+
+func get_music_for_tests() -> MusicDeck:
+	return _music
 
 
 ## Lifts the per-tick limit when the tick loop stops.

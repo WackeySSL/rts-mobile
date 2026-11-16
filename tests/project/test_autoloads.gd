@@ -9,6 +9,7 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"UiOrientation": "res://game/ui/ui_orientation_service.gd",
 	"AdService": "res://game/ads/AdService.gd",
 	"AudioService": "res://game/view/audio/audio_service.gd",
+	"SaveService": "res://game/meta/save_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 
