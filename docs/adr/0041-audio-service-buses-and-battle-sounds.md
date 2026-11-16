@@ -120,6 +120,9 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
   first published tick, menu music with the menu.
 - **Duck:** Music goes down by `duck_db` (6) for `duck_ms` when a strike lands and while a sting
   plays, by a tween on the Music bus volume.
+  *Note (2026-11-15, P501b):* the duck lowers the two music players, not the Music bus, because
+  the bus volume belongs to the player's Music step. A sting plays at full level with the loop
+  faded out beneath it, and the duck is not applied to the sting.
 - **Mute reasons:** a set of reasons; the Master bus is muted while it is not empty, with a
   `fade_ms` (150) fade in and out:
   - `background`: `NOTIFICATION_APPLICATION_PAUSED` and `NOTIFICATION_APPLICATION_FOCUS_OUT` add
