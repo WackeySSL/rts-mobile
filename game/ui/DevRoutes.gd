@@ -120,18 +120,16 @@ static func open_main_with(
 	levels: Array[AiDifficultyDef] = [],
 	first_opponent: int = MatchRunner.FIRST_OPPONENT
 ) -> Error:
-	var scenario: ScenarioDef = (
-		load(scenario_path) as ScenarioDef if ResourceLoader.exists(scenario_path) else null
-	)
-	if scenario == null:
+	var setup: MatchSetup = MatchSetup.new()
+	setup.scenario_path = scenario_path
+	setup.opponents = opponents
+	setup.opponent_levels = levels
+	setup.first_opponent = first_opponent
+	if setup.scenario() == null:
 		push_error("DevRoutes: scenario not found: %s" % scenario_path)
 		return ERR_FILE_NOT_FOUND
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
-	var runner: MatchRunner = main.get_node("MatchRunner")
-	runner.scenario = scenario
-	runner.opponents = opponents
-	runner.opponent_levels = levels
-	runner.first_opponent = first_opponent
+	setup.apply(main.get_node("MatchRunner"))
 	return tree.change_scene_to_node(main)
 
 
