@@ -206,10 +206,15 @@ func test_a_new_match_during_the_interstitial_is_refused() -> void:
 func test_restart_after_an_end_counts_it_awaits_the_ad_and_zeroes_the_bonus() -> void:
 	_ads.pending_bonus = BONUS
 	await _flow.start_match(_setup())
+	_flow.mark_surrendered()  # A surrender plus a restart still counts the match once.
 	_surrender_local()
+	_flow.current_runner().run_ticks(1)
+	var ticks: int = _flow.last_summary().ticks
 	assert_int(await _flow.restart()).is_equal(OK)
 	assert_int(_ads.completed_calls).is_equal(1)
+	assert_int(_ads.last_seconds).is_equal(ticks / Sim.TICK_RATE)
 	assert_int(_ads.interstitial_calls).is_equal(1)
+	assert_str(_ads.last_placement).is_equal("post_match")  # AdCaps allows only this name.
 	assert_int(_ads.bonus_calls).is_equal(1)
 	assert_int(_mains.size()).is_equal(2)
 	assert_int(_flow.current_setup().bonus_starting_credits).is_equal(0)
