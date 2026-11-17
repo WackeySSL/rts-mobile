@@ -202,6 +202,7 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Press the phone's Back button in a menu screen | The screen closes and the one before it shows again (a slide, or a cut with Reduced effects on) | |
 | Press Back on the main menu | "Quit Treadline?" asks first; Stay (or Back again) closes the question, Quit leaves the game. The browser has no Back event: its own back button leaves the page | |
 | Open the game (main menu) | TREADLINE, the two sides (Derrick League and Lumen Accord) and the line "Oil and gas against wind and sun. Choose your side." show over one column of big buttons: Continue (only while a game can be resumed), Skirmish, Tutorial, How to play and Settings. A button whose screen is not built yet is greyed out. Under them are your rank with its title and a bar that fills as you earn XP (it moves when a match pays out), the version and, at the foot, the advertisement with its own empty space above it. On a short screen the column scrolls | |
+| Open How to play (the main menu's How to play button arrives with the main menu) | A list of sections, one big button each; tap one to read its entries, which scroll when they are long. "All sections" or the phone's Back button returns to the list, and Back on the list closes the screen. It works the same in portrait and in landscape and shows no ad. The text is in `data/help/how_to_play.tres` | |
 
 ## The intro
 | Action | Result | Teach |
