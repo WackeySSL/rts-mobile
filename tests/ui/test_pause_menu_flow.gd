@@ -9,6 +9,7 @@ extends GdUnitTestSuite
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
@@ -297,7 +298,12 @@ func test_the_new_controls_fit_and_are_big_enough_at_the_six_sizes() -> void:
 		await _open_menu()
 		var safe: Rect2 = UiScale.safe_rect_base()
 		for button_name: StringName in [
-			&"HelpButton", &"SettingsButton", &"SoundButton", &"MusicButton"
+			&"HelpButton",
+			&"SettingsButton",
+			&"SoundButton",
+			&"MusicButton",
+			&"ExitButton",
+			&"DevMenuButton"
 		]:
 			var button: Button = _menu.find_child(button_name, true, false) as Button
 			var label: String = "%s at %s" % [button_name, size]
@@ -312,3 +318,53 @@ func test_the_new_controls_fit_and_are_big_enough_at_the_six_sizes() -> void:
 				safe.position.x - TOLERANCE_PX
 			)
 		_state.close(HudState.Unfold.PAUSE)
+
+
+func test_the_menu_switches_quit_on_go_back_off_while_in_the_tree() -> void:
+	get_tree().quit_on_go_back = true
+	await _open_main()
+	assert_bool(get_tree().quit_on_go_back).is_false()
+
+
+func test_the_chips_read_the_audio_steps_again_when_the_settings_overlay_closes() -> void:
+	await _open_main()
+	_menu.routes = MenuRoutes.new()
+	_menu.routes.register(MenuRoutes.SETTINGS, func() -> MenuScreen: return MenuScreen.new())
+	AudioService.set_sound_step(AudioService.settings.default_sfx_step)
+	await _open_menu()
+	assert_str(_text(&"SoundButton")).is_equal("SOUND")
+	_press(&"SettingsButton")
+	await await_idle_frame()
+	AudioService.set_sound_step(0)  # The overlay's screen changes it.
+	var overlay: MenuStack = _menu.find_child("HelpOverlay", true, false) as MenuStack
+	overlay.back()
+	await await_idle_frame()
+	assert_str(_text(&"SoundButton")).is_equal("SOUND: OFF")
+
+
+## A lesson in a debug build: LEAVE TUTORIAL next to DEV MENU stays inside the safe rect on a
+## 360 dp phone upright, and the foot stays free (P435).
+func test_leave_tutorial_and_dev_menu_fit_a_360_dp_phone_upright() -> void:
+	var profile: UiMetrics = UiProfiles.by_name(&"web_phone_portrait")
+	UiScale.set_override(profile)
+	get_window().size = profile.window_size
+	await await_idle_frame()
+	await _open_main()
+	var setup: MatchSetup = MatchSetup.new()
+	setup.lesson_id = &"lesson_test"
+	_flow.setup = setup
+	await _open_menu()
+	await await_idle_frame()
+	assert_str(_text(&"ExitButton")).is_equal("LEAVE TUTORIAL")
+	var safe: Rect2 = UiScale.safe_rect_base()
+	for button_name: StringName in [&"ExitButton", &"DevMenuButton"]:
+		var rect: Rect2 = (_menu.find_child(button_name, true, false) as Control).get_global_rect()
+		(
+			assert_bool(safe.grow(TOLERANCE_PX).encloses(rect))
+			. override_failure_message("%s %s in %s" % [button_name, rect, safe])
+			. is_true()
+		)
+	var body: Control = _menu.find_child("Body", true, false) as Control
+	assert_float(safe.end.y - body.get_global_rect().end.y).is_greater_equal(
+		UiScale.dp(66.0) - TOLERANCE_PX
+	)

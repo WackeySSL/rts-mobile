@@ -83,7 +83,7 @@ var ad_service: AdServiceScript = null
 ## Tests inject fakes; null means the autoloads (MenuFlow, AudioService) and the shared routes.
 var menu_flow: Node = null
 var audio: Node = null
-var routes: MenuRoutes = MenuRoutes.shared
+var routes: MenuRoutes = null  ## Null means `MenuRoutes.shared`, read when used.
 
 var _body: BoxContainer  ## The card's column and the button column.
 var _left: VBoxContainer  ## "PAUSED" and the card.
@@ -115,6 +115,12 @@ var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent
 var _foot: MarginContainer  ## The foot banner's host, freed with it; null while no band exists.
 var _band: AdBannerBand
 var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
+
+
+func _enter_tree() -> void:
+	# Back opens this menu, so the app must not also quit on it.
+	# TODO(P533): project-wide false makes this redundant
+	get_tree().quit_on_go_back = false
 
 
 func _ready() -> void:
@@ -328,6 +334,7 @@ func _on_back() -> void:
 		return
 	if visible and _asking():
 		_close_dialogs()
+		_resume.grab_focus()
 	elif feed.state.is_open(HudState.Unfold.PAUSE):
 		_resume_pressed()
 	elif _can_open():
@@ -549,6 +556,10 @@ func _audio() -> Node:
 	return audio if audio != null else AudioService
 
 
+func _routes() -> MenuRoutes:
+	return routes if routes != null else MenuRoutes.shared
+
+
 func _flow() -> Node:
 	return menu_flow if menu_flow != null else MenuFlow
 
@@ -568,7 +579,7 @@ func _show_exit() -> void:
 	var lesson: bool = _is_lesson()
 	_exit_button.text = "LEAVE TUTORIAL" if lesson else "EXIT TO MENU"
 	_exit_dialog.question = "LEAVE TUTORIAL?" if lesson else "EXIT TO MENU?"
-	_settings.disabled = not routes.has(MenuRoutes.SETTINGS)  # TODO P526 registers the route.
+	_settings.disabled = not _routes().has(MenuRoutes.SETTINGS)  # TODO P526 registers the route.
 
 
 func _open_help() -> void:
@@ -576,8 +587,8 @@ func _open_help() -> void:
 
 
 func _open_settings() -> void:
-	if routes.has(MenuRoutes.SETTINGS):
-		_open_overlay(routes.make(MenuRoutes.SETTINGS))
+	if _routes().has(MenuRoutes.SETTINGS):
+		_open_overlay(_routes().make(MenuRoutes.SETTINGS))
 
 
 ## A one-screen detour over the menu (the banner goes while it stands): a `MenuStack` whose root
@@ -602,6 +613,7 @@ func _open_overlay(screen: MenuScreen) -> void:
 func _on_help_changed(_screen: MenuScreen) -> void:
 	if _help != null and _help.depth() < 2:
 		_close_help()
+		_show_chips()  # The Settings screen may have changed the audio steps.
 		_place_banner()
 		if visible and _resume != null:
 			_resume.grab_focus()
@@ -665,7 +677,7 @@ func _surrender() -> void:
 ## Exit to menu and Leave tutorial: no XP, no ad bookkeeping (MenuFlow.return_to_menu).
 func _exit_match() -> void:
 	if _owned():
-		await _flow().call(&"return_to_menu")
+		_flow().call(&"return_to_menu")
 		return
 	_open_dev_menu()
 
