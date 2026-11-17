@@ -1,0 +1,24 @@
+<!-- Mine glyph: white and grey only, tinted at run time (the Mine order of the command bar: the selected minelayers lay a mine). -->
+<!-- Shape: a squat round drum seen from the side and above, a flat oval lid and a dark seam round its side, with a fat block arrow pointing down at the lid from above. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="translate(0 -4)">
+  <!-- edge: the union of the parts, 4 px wide, drawn under them -->
+  <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round">
+    <path d="M22 88 V104 A42 15 0 0 0 106 104 V88 Z"/>
+    <ellipse cx="64" cy="88" rx="42" ry="15"/>
+    <path d="M50 12 H78 V40 H94 L64 70 L34 40 H50 Z"/>
+  </g>
+  <!-- body: the lit plane, so white -->
+  <g fill="#FFFFFF">
+    <path d="M22 88 V104 A42 15 0 0 0 106 104 V88 Z"/>
+    <ellipse cx="64" cy="88" rx="42" ry="15"/>
+    <path d="M50 12 H78 V40 H94 L64 70 L34 40 H50 Z"/>
+  </g>
+  <!-- shade on the lower right facets: the drum's right flank, the arrow's right barb and shaft edge -->
+  <path d="M76 90 H106 V104 A42 15 0 0 1 76 118 Z" fill="#BFBFBF"/>
+  <path d="M70 40 H94 L64 70 L64 62 Z" fill="#BFBFBF"/>
+  <path d="M72 12 H78 V40 H72 Z" fill="#BFBFBF"/>
+  <!-- the drum's seam, dark -->
+  <path d="M22 98 A42 15 0 0 0 106 98" fill="none" stroke="#4D4D4D" stroke-width="4"/>
+  </g>
+</svg>

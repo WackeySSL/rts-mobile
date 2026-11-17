@@ -1,0 +1,21 @@
+<!-- Pulse seed mark (known enemy): a mine of the Lumen Accord planted in the ground, in the faction's key triad (the bake swaps it for the player's), 144 x 96 px at 2x, ground point (72, 60). -->
+<!-- Silhouette: a flat white hexagonal plate with a team-colour ring on it, a tall white hexagonal spike rising from its middle and a mint light on the tip, inside a ring of dark dashes with a pale inner edge. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="96" viewBox="0 0 144 96">
+<g transform="scale(1.5)">
+  <!-- the notched rim of a known enemy mine: a ring of short dark dashes with a pale inner edge, no team colour -->
+  <ellipse cx="48" cy="40" rx="42" ry="21" fill="none" stroke="#3B3F39" stroke-width="4" stroke-dasharray="8 6"/>
+  <ellipse cx="48" cy="40" rx="39" ry="19.5" fill="none" stroke="#FFF1D6" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <g fill="#000000" opacity="0.35">
+    <polygon points="22,45 36,33 64,33 78,45 64,57 36,57"/>
+  </g>
+  <polygon points="20,42 34,54 62,54 76,42 76,46 62,58 34,58 20,46" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="20,42 34,30 62,30 76,42 62,54 34,54" fill="#D5DBDC" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="28,42 38,34 58,34 68,42 58,50 38,50" fill="none" stroke="#137C99" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="28,42 38,34 58,34 68,42 58,50 38,50" fill="none" stroke="#1FA6C8" stroke-width="3" stroke-linejoin="round"/>
+  <polygon points="39,41 48,15 48,47" fill="#D5DBDC" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="48,15 57,41 48,47" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="42,33 48,31 48,36 43,37" fill="#62D6EE"/>
+  <polygon points="48,31 54,33 53,37 48,36" fill="#1FA6C8"/>
+  <circle cx="48" cy="13" r="4" fill="#A8F5B0" stroke="#414A51" stroke-width="2"/>
+</g>
+</svg>

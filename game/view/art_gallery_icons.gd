@@ -54,6 +54,8 @@ const HUD_V2_ROWS: Dictionary[String, Array] = {
 		"glyph_board",
 		"glyph_unload",
 		"glyph_home",
+		"glyph_mine",
+		"glyph_hold",
 	],
 	"Pause":
 	[

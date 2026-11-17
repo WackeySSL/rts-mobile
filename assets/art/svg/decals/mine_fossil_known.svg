@@ -1,0 +1,19 @@
+<!-- Shot charge mark (known enemy): a mine of the Derrick League lying on the ground, in the faction's key triad (the bake swaps it for the player's), 144 x 96 px at 2x, ground point (72, 60). -->
+<!-- Silhouette: a squat steel can seen from above and the south-east, a dark iron rim, a short orange cap on its lid, a small contact shadow on the ground and a ring of dark dashes with a pale inner edge round it. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="96" viewBox="0 0 144 96">
+<g transform="scale(1.5)">
+  <!-- the notched rim of a known enemy mine: a ring of short dark dashes with a pale inner edge, no team colour -->
+  <ellipse cx="48" cy="40" rx="40" ry="20" fill="none" stroke="#3B3F39" stroke-width="4" stroke-dasharray="8 6"/>
+  <ellipse cx="48" cy="40" rx="37" ry="18.5" fill="none" stroke="#FFF1D6" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <g fill="#000000" opacity="0.35">
+    <ellipse cx="50" cy="44" rx="28" ry="14"/>
+  </g>
+  <path d="M24 32 V46 A24 12 0 0 0 72 46 V32 Z" fill="#6B7366" stroke="#3B3F39" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M48 44 A24 12 0 0 0 72 46 V32 H48 Z" fill="#4F564B"/>
+  <path d="M24 38 A24 12 0 0 0 72 38" fill="none" stroke="#3B3F39" stroke-width="2"/>
+  <ellipse cx="48" cy="32" rx="24" ry="12" fill="#8A9380" stroke="#3B3F39" stroke-width="2"/>
+  <path d="M36 25 V30 A12 6 0 0 0 60 30 V25 Z" fill="#E8681F" stroke="#B04B12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M48 36 A12 6 0 0 0 60 30 V25 H48 Z" fill="#B04B12"/>
+  <ellipse cx="48" cy="25" rx="12" ry="6" fill="#FF9446" stroke="#B04B12" stroke-width="2"/>
+</g>
+</svg>

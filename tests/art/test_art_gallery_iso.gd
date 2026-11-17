@@ -76,7 +76,7 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(42)  # 28 + the P236 to P291 types
+	assert_int(seen.size()).is_equal(44)  # 28 + the P236 to P292 types
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()
@@ -172,7 +172,7 @@ func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_ov
 						checked += 1
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(checked).is_equal(10 * 16 * 2)
+	assert_int(checked).is_equal(12 * 16 * 2)
 	assert_object(sheet).is_not_null()
 
 

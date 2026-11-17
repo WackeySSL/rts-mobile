@@ -33,6 +33,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"fossil_fighter veh 0 hull",
 		"fossil_bomber veh 0 hull",
 		"fossil_bunk_wagon veh 0 hull",
+		"fossil_shot_truck veh 0 hull",
 	],
 	"renew":
 	[
@@ -57,6 +58,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_fighter veh 0 hull",
 		"renew_bomber veh 0 hull",
 		"renew_linecar veh 0 hull",
+		"renew_seeder veh 0 hull",
 	],
 }
 ## The item cards of the four upgrades, drawn by hand beside the generated ones (P249).

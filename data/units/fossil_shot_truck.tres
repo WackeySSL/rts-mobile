@@ -8,8 +8,7 @@
 ; credits, finds mines within 3 tiles and never sets one off. It needs the radar. The GDD leaves its
 ; own price, hit points, speed and armour class to this row: all of them, the build time, sight and
 ; radii are starting values for the balance run (a wheeled truck, slower and sturdier than the
-; Seeder). Not in the roster until
-; its art (P292).
+; Seeder).
 [resource]
 script = ExtResource("1_unit")
 type_id = &"fossil_shot_truck"

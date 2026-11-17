@@ -311,8 +311,8 @@ ADR 0037, accepted 2026-11-09 (answers 1 A, 2 A, 3 A, 4 B, 5 A). Plan:
 | Minelayer | Shot Truck | Seeder | set in the data row (P290) | Vehicle factory, needs a radar | Unarmed, finds mines. Shot charge: 60 credits, 1-tile blast, strong against vehicles. Pulse seed: 50 credits, 1.5-tile blast, better against squads |
 
 Note (2026-11-15, P26bz, from P290's data): starting values; the balance runs tune them. The four
-units are in `data/units/`; the two carriers are on the build menu since P291, the two minelayers are
-not until their art row (P292). Speed is in
+units are in `data/units/` and on the build menu (the carriers since P291, the minelayers since P292).
+Speed is in
 milli-tiles a tick (67 = 1.0 tiles/s); build time in ticks (15 a second); sight and finding reach in
 milli-tiles.
 
