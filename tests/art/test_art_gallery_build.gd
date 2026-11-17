@@ -618,7 +618,7 @@ func _node_name(node: Node) -> String:
 
 func _assert_quit_on_go_back_restored() -> void:
 	var restored: bool = get_tree().quit_on_go_back
-	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_false()
 
 
 ## The page, shown: the page button pressed once from the Units page.

@@ -29,10 +29,11 @@ func after() -> void:
 	get_window().size = _window_size_before
 
 
-## The engine default is true. A probe that is gone restores it, or a false leaks into later suites.
+## The project setting is false (ADR 0043 section 4). A probe that is gone restores it, or a true
+## would leak into later suites.
 func before_test() -> void:
 	var restored: bool = get_tree().quit_on_go_back
-	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_false()
 
 
 ## The override is static state: leaving one behind changes every later suite.
@@ -266,7 +267,7 @@ func test_back_button_and_the_android_back_request_both_leave() -> void:
 	await await_idle_frame()
 	assert_array(calls).has_size(2)
 	remove_child(probe)
-	assert_bool(get_tree().quit_on_go_back).is_true()
+	assert_bool(get_tree().quit_on_go_back).is_false()
 
 
 func _open(profile: UiMetrics) -> Control:

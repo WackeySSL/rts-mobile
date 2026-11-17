@@ -36,7 +36,6 @@ func setup(suite: GdUnitTestSuite, menu: PackedScene, size: Vector2) -> void:
 	host.size = size
 	suite.add_child(host)
 	_quit_on_back = suite.get_tree().quit_on_go_back
-	suite.get_tree().quit_on_go_back = true
 
 
 func teardown(suite: GdUnitTestSuite) -> void:

@@ -55,13 +55,6 @@ var _cover: float = 1.0
 var _line_full: float = 0.0
 
 
-func _enter_tree() -> void:
-	# TODO(P533): ADR 0043 section 4 wants application/config/quit_on_go_back = false for the whole
-	# app; the project setting comes with the row that edits project.godot. Until then the intro
-	# switches it off (as MenuStack does), so Back skips the intro and never quits the app.
-	get_tree().quit_on_go_back = false
-
-
 func _ready() -> void:
 	if not consent.is_valid():
 		var ads: Node = get_node_or_null("/root/AdService")
