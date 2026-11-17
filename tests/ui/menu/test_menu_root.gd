@@ -61,16 +61,39 @@ func _check_defaults() -> void:
 
 
 func test_a_pending_screen_with_a_route_opens_on_top_of_the_main_menu() -> void:
-	_routes.register(&"fake", func() -> MenuScreen: return MenuScreen.new())
+	_routes.register(&"fake", MenuScreen.new)
 	await _open(false, &"fake", ScreenSizes.PORTRAIT[0])
 	assert_int(_stack.depth()).is_equal(2)
 	assert_bool(_stack.current() is MainMenu).is_false()
 
 
-func test_a_pending_screen_nobody_registered_is_dropped() -> void:
-	await _open(false, &"nothing", ScreenSizes.LANDSCAPE[0])
+func test_a_pending_screen_nobody_registered_is_dropped_with_a_warning() -> void:
+	await (
+		assert_error(func() -> void: await _open(false, &"nothing", ScreenSizes.LANDSCAPE[0]))
+		. is_push_warning("MenuRoot: no screen for the pending route nothing, dropped")
+	)
 	assert_int(_stack.depth()).is_equal(1)
 	assert_bool(_stack.current() is MainMenu).is_true()
+
+
+func test_the_pending_screen_ends_on_top_while_the_stack_slides() -> void:
+	_routes.register(&"fake", MenuScreen.new)
+	await _open(false, &"fake", ScreenSizes.LANDSCAPE[0], true)
+	await get_tree().create_timer(0.6).timeout
+	assert_int(_stack.depth()).is_equal(2)
+	assert_bool(_stack.current() is MainMenu).is_false()
+
+
+func test_a_lambda_factory_is_refused_with_a_warning() -> void:
+	(
+		assert_error(
+			func() -> void: _routes.register(&"lam", func() -> MenuScreen: return MenuScreen.new())
+		)
+		. is_push_warning("MenuRoutes: route lam needs a standard Callable (X.new), not a lambda")
+	)
+	assert_bool(_routes.has(&"lam")).is_false()
+	_routes.register(&"std", MenuScreen.new)
+	assert_bool(_routes.has(&"std")).is_true()
 
 
 func test_register_defaults_off_leaves_the_table_alone() -> void:
@@ -78,14 +101,15 @@ func test_register_defaults_off_leaves_the_table_alone() -> void:
 	assert_bool(_routes.has(MenuRoutes.HOW_TO_PLAY)).is_false()
 
 
-func _open(defaults: bool, pending: StringName, size: Vector2i) -> void:
+func _open(defaults: bool, pending: StringName, size: Vector2i, slide: bool = false) -> void:
 	var profile: UiMetrics = _profile_with_window(size)
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
 	_stack = _menu.get_node("MenuStack") as MenuStack
-	_stack.slide_ms = 0
+	if not slide:
+		_stack.slide_ms = 0
 	var root: MenuRoot = MenuRoot.new()
 	root.routes = _routes
 	root.register_defaults = defaults
