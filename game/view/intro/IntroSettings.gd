@@ -41,7 +41,7 @@ extends Resource
 	"sparks",
 ]
 @export var splash_path: String = "res://assets/art/splash/boot_splash.png"
-@export var menu_path: String = "res://scenes/menu/menu.tscn"
+@export var menu_path: String = "res://scenes/menu/main_menu.tscn"
 @export var load_paths: PackedStringArray = ["res://game/ui/theme.tres"]
 
 ## The drive, in icon px (the layers are 512 px squares).
