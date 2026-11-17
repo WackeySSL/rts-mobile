@@ -457,6 +457,8 @@ func _own_files() -> Array[String]:
 				"fossil_drone",
 				"fossil_bunk_wagon",
 				"fossil_shot_truck",
+				"fossil_weld_shed",
+				"fossil_patchers",
 			]
 		):
 			continue
