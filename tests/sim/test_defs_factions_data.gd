@@ -21,9 +21,7 @@ const AIR_UNLISTED: Array[String] = [
 	"renew_transport",
 	"fossil_drone",
 	"renew_drone",
-	# The ground carriers and minelayers (P291, P292).
-	"fossil_bunk_wagon",
-	"renew_linecar",
+	# The minelayers (P292).
 	"fossil_shot_truck",
 	"renew_seeder",
 ]

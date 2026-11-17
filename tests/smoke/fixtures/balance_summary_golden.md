@@ -23,22 +23,24 @@ Median 8.9 min, 90th percentile 8.9 min, longest 8.9 min (8000, 8000 and 8000 ti
 
 | Faction | Type | Produced | Share | Kills per 1 000 credits | Survival | Built in |
 | --- | --- | --- | --- | --- | --- | --- |
-| fossil | artillery | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | fossil_bomber | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | fossil_fighter | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | harvester | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | heavy_tank | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | light_tank | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | rifle_squad | 4 | 125 | 0.00 | 1000 | 4 |
-| fossil | rocket_squad | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_artillery | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_bomber | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_fighter | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_rifle | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_rocket | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_scout | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_tank | 4 | 125 | 0.00 | 1000 | 4 |
-| renew | renew_tanker | 4 | 125 | 0.00 | 1000 | 4 |
+| fossil | artillery | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | fossil_bomber | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | fossil_bunk_wagon | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | fossil_fighter | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | harvester | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | heavy_tank | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | light_tank | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | rifle_squad | 4 | 111 | 0.00 | 1000 | 4 |
+| fossil | rocket_squad | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_artillery | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_bomber | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_fighter | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_linecar | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_rifle | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_rocket | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_scout | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_tank | 4 | 111 | 0.00 | 1000 | 4 |
+| renew | renew_tanker | 4 | 111 | 0.00 | 1000 | 4 |
 
 Share and survival are per-mille, rounded half up; a type that never occurred shows 0.
 Kills are an estimate, credited in this order: a shot at the row in the tick it died; else an enemy rupture landing in that tick within its radius (to the strike building's type); else the row's last shooter; else nobody. Kills by structures (turrets, strike buildings) are not in the unit rows; a cancelled site is neither a loss nor a kill. Kills by free rows (the scenario's units, a refinery's tanker) count, while the credits spent count produced rows only.
