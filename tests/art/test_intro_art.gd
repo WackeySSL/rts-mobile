@@ -215,7 +215,16 @@ func test_the_brand_textures_are_never_loaded_at_runtime() -> void:
 		if path == "res://tools/artgen/ArtIntro.gd":
 			continue
 		scanned += 1
-		if FileAccess.get_file_as_string(path).contains("art/brand/"):
+		var text: String = FileAccess.get_file_as_string(path)
+		if path == "res://export_presets.cfg":
+			# An exclude_filter line may name the brand folder (it keeps it out of every pack);
+			# any other line naming it (an include, a launcher icon) is a runtime use.
+			var kept: PackedStringArray = []
+			for line: String in text.split("\n"):
+				if not line.begins_with("exclude_filter="):
+					kept.append(line)
+			text = "\n".join(kept)
+		if text.contains("art/brand/"):
 			offenders.append(path)
 	assert_int(scanned).is_greater(MIN_BRAND_SCAN_FILES)
 	assert_array(offenders).is_empty()

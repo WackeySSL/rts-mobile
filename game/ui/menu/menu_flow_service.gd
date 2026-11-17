@@ -37,7 +37,7 @@ signal match_loading(setup: MatchSetup)
 signal match_scored(summary: MatchSummary, award: XpAward)
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
-const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
+const MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
 const PLACEMENT_POST_MATCH: StringName = &"post_match"
 const SEED_BYTES: int = 4
 const DEFAULT_LEVEL: StringName = &"normal"
@@ -69,6 +69,10 @@ var _pending_screen: StringName = &""
 
 func _ready() -> void:
 	ads = AdService
+
+
+func _exit_tree() -> void:
+	MenuRoutes.shared.clear()  # The static table must not outlive the screens' scripts at exit.
 
 
 ## The running match's runner, or null outside a match.

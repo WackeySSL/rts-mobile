@@ -21,10 +21,11 @@ const FLOAT_WORD: int = 3
 
 
 func test_the_contract_numbers_and_begin() -> void:
-	assert_array([Replay.FORMAT, Replay.CHECKPOINT_PERIOD]).is_equal([2, 15])
+	assert_array([Replay.FORMAT, Replay.CHECKPOINT_PERIOD]).is_equal([3, 15])
 	assert_array(Replay.KINDS.keys()).is_equal(_keys())
 	var kinds: Array[int] = [TYPE_INT, TYPE_STRING, TYPE_INT, TYPE_INT]
-	kinds.append_array([TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT32_ARRAY])
+	kinds.append_array([TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT32_ARRAY])
+	kinds.append_array([TYPE_PACKED_INT32_ARRAY, TYPE_PACKED_INT32_ARRAY])
 	kinds.append_array([TYPE_PACKED_INT64_ARRAY, TYPE_INT, TYPE_INT])
 	assert_array(Replay.KINDS.values()).is_equal(kinds)
 	var replay: Replay = Replay.begin(SCENARIO_PATH, 42, -9)
@@ -183,7 +184,8 @@ func test_to_bytes_writes_the_documented_dictionary_and_the_same_bytes_every_tim
 	var replay: Replay = _replay()
 	var data: Dictionary = bytes_to_var(replay.to_bytes())
 	assert_array(data.keys()).is_equal(_keys())
-	assert_int(data["format"]).is_equal(2)
+	assert_int(data["format"]).is_equal(3)
+	assert_array(data["bonus_credits"]).is_equal(replay.bonus_credits)
 	assert_array(data["income_percent"]).is_equal(replay.income_percent)
 	assert_str(data["scenario"]).is_equal(SCENARIO_PATH)
 	assert_array([data["seed"], data["defs_hash"]]).is_equal([replay.seed, replay.defs_hash])
@@ -210,6 +212,7 @@ func test_to_bytes_and_from_bytes_round_trip_every_field() -> void:
 	assert_str(back.scenario_path).is_equal(SCENARIO_PATH)
 	assert_array([back.seed, back.defs_hash]).is_equal([5_000_000_000, -7_000_000_000_000])
 	assert_array(back.income_percent).is_equal([100, 100, 120])
+	assert_array(back.bonus_credits).is_equal([0, 500, 0])
 	assert_array(back.commands).is_equal(replay.commands)
 	assert_int(back.commands.size()).is_equal(2 * 14)
 	assert_array(back.checkpoint_ticks).is_equal([15, 30, 45])
@@ -226,8 +229,8 @@ func test_to_bytes_and_from_bytes_round_trip_every_field() -> void:
 
 
 func test_from_bytes_gives_null_for_a_wrong_format_or_a_missing_key() -> void:
-	assert_object(_with("format", 2)).is_not_null()
-	for format: Variant in [0, 1, 3, -1, 1 << 40, 1.0, "1", true, PackedInt32Array([1])]:
+	assert_object(_with("format", 3)).is_not_null()
+	for format: Variant in [0, 1, 2, 4, -1, 1 << 40, 1.0, "1", true, PackedInt32Array([1])]:
 		assert_object(_with("format", format)).override_failure_message(str(format)).is_null()
 	for key: String in _keys():
 		var data: Dictionary = bytes_to_var(_replay().to_bytes())
@@ -408,6 +411,7 @@ func _keys() -> Array[String]:
 	keys.append_array(
 		[
 			"income_percent",
+			"bonus_credits",
 			"commands",
 			"checkpoint_ticks",
 			"checkpoint_hashes",
@@ -439,7 +443,10 @@ func _world(ticks: int) -> World:
 ## A replay with every field set, the extremes of int32 and int64 among them.
 func _replay() -> Replay:
 	var setup: PackedInt32Array = PackedInt32Array([100, 100, 120])
-	var replay: Replay = Replay.begin(SCENARIO_PATH, 5_000_000_000, -7_000_000_000_000, setup)
+	var bonus: PackedInt32Array = PackedInt32Array([0, 500, 0])
+	var replay: Replay = Replay.begin(
+		SCENARIO_PATH, 5_000_000_000, -7_000_000_000_000, setup, bonus
+	)
 	replay.record(Samples.full(Command.Type.MOVE, 3, 1))
 	replay.record(Samples.full(Command.Type.STOP, 3, 2))
 	replay.add_checkpoint(15, 0x7FFFFFFFFFFFFFFF)
