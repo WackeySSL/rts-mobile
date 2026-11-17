@@ -56,11 +56,16 @@ func test_setting_again_replaces_the_bonus_it_does_not_stack() -> void:
 
 
 func test_before_prepare_the_bonus_is_stored_and_the_start_includes_it() -> void:
-	var world: World = _world()
+	var world: World = World.new()
+	world.start_credits = 2000
+	world.bonus_credits_max = CAP
+	world.player_count = 2
 	WorldLoad.set_bonus_credits(world, 2, 250)
+	assert_bool(world.prepared).is_false()
+	assert_array(world.bonus_credits).is_equal([0, 0, 250])
 	world.prepare()
-	assert_int(world.credits[2]).is_equal(world.start_credits + 250)
-	assert_int(world.credits[1]).is_equal(world.start_credits)
+	assert_array(world.credits).is_equal([0, 2000, 2250])
+	assert_array(world.bonus_credits).is_equal([0, 0, 250])
 
 
 func test_the_neutral_player_and_a_player_past_the_count_are_refused() -> void:
