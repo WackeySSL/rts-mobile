@@ -36,6 +36,18 @@ const OFL_NAME: String = "OFL.txt"
 ## A family folder that does not exist yet: the filter must cover it without an edit.
 const FUTURE_OFL: String = "res://assets/art/fonts/some-future-family/OFL.txt"
 
+## Plan row P529 (ADR 0043 section 7): the Licences screen shows godot-cpp's MIT text on exactly the
+## builds that contain the kernels, read from this export feature tag. Tag set = native/ packed.
+const KERNELS_TAG: String = "sim_kernels"
+const LICENCE_FILES: Array[String] = [
+	"res://assets/licenses/llvm-libc++/LICENSE.TXT",
+	"res://assets/licenses/godot-cpp-4.5-stable/LICENSE.md",
+	"res://assets/licenses/poing-godot-admob-5.1.0/LICENSE.txt",
+	"res://assets/LICENSE.md",
+	"res://assets/CREDITS.md",
+]
+const KERNELS_FILE: String = "res://native/sim_kernels.gdextension"
+
 ## The Play Store asks for a 512 px icon.
 const MIN_MAIN_ICON_PX: int = 512
 ## An adaptive layer is 108 dp at 4x.
@@ -55,8 +67,9 @@ func test_preset_identity() -> void:
 	assert_str(config.get_value(SECTION, "export_path")).is_equal(
 		"build/android/rts-mobile-debug.apk"
 	)
-	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature.
-	assert_str(config.get_value(SECTION, "custom_features")).is_empty()
+	# A debug build enables the dev menu through OS.is_debug_build(), not a custom feature; the one
+	# feature is sim_kernels (plan P529, below).
+	assert_str(config.get_value(SECTION, "custom_features")).is_equal(KERNELS_TAG)
 	# Test code, the test runner and the AdMob plugin never ship in this non-Gradle APK (ADR 0040 §1).
 	# Unlike the Web preset, never native/* (ADR 0013).
 	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal(
@@ -122,7 +135,7 @@ func test_android_internal_preset_is_the_gradle_aab_play_build() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value(INTERNAL, "name")).is_equal("Android internal")
 	assert_str(config.get_value(INTERNAL, "platform")).is_equal("Android")
-	assert_str(config.get_value(INTERNAL, "custom_features")).is_equal("play")
+	assert_str(config.get_value(INTERNAL, "custom_features")).is_equal("play," + KERNELS_TAG)
 	assert_str(config.get_value(INTERNAL, "export_path")).is_equal(
 		"build/android/rts-mobile-internal.aab"
 	)
@@ -221,6 +234,39 @@ func test_every_preset_packs_the_ofl_text_of_each_font_folder() -> void:
 				. override_failure_message(where + ": its exclude_filter '%s' removes it" % exclude)
 				. is_false()
 			)
+
+
+func test_the_sim_kernels_tag_is_set_on_exactly_the_presets_that_pack_native() -> void:
+	var config: ConfigFile = _config()
+	var tagged: int = 0
+	for section: String in ALL_PRESETS:
+		var features: PackedStringArray = (
+			String(config.get_value(section, "custom_features", "")).split(",")
+		)
+		var has_tag: bool = false
+		for feature: String in features:
+			has_tag = has_tag or feature.strip_edges() == KERNELS_TAG
+		var packs_native: bool = not _filter_matches(
+			config.get_value(section, "exclude_filter", ""), KERNELS_FILE
+		)
+		var where: String = "%s: tag %s, packs native/ %s" % [section, has_tag, packs_native]
+		assert_bool(has_tag).override_failure_message(where).is_equal(packs_native)
+		tagged += 1 if has_tag else 0
+	assert_int(tagged).is_equal(3)  # Both Android debug presets and the Play build; not Web.
+	assert_str(config.get_value("preset.0", "custom_features")).not_contains(KERNELS_TAG)
+
+
+## Plan row P529: every preset packs the licence texts the Licences screen reads (the .md and .txt
+## files need the include_filter; all_resources leaves them out).
+func test_every_preset_packs_the_licence_texts() -> void:
+	var config: ConfigFile = _config()
+	for section: String in ALL_PRESETS:
+		var include: String = config.get_value(section, "include_filter", "")
+		var exclude: String = config.get_value(section, "exclude_filter", "")
+		for path: String in LICENCE_FILES:
+			var where: String = "%s packs %s" % [section, path]
+			assert_bool(_filter_matches(include, path)).override_failure_message(where).is_true()
+			assert_bool(_filter_matches(exclude, path)).override_failure_message(where).is_false()
 
 
 ## A filter list: comma separated globs, taken from the project root unless one starts with res://
