@@ -53,7 +53,6 @@ const HUD_V2_ROWS: Dictionary[String, Array] = {
 		"glyph_sell",
 		"glyph_board",
 		"glyph_unload",
-		"glyph_home",
 		"glyph_mine",
 		"glyph_hold",
 	],
@@ -65,6 +64,7 @@ const HUD_V2_ROWS: Dictionary[String, Array] = {
 		"glyph_surrender",
 		"glyph_exit",
 		"glyph_vibration",
+		"glyph_home",
 	],
 	"Panels": ["glyph_collapse", "glyph_chevron", "glyph_alert", "glyph_construct"],
 	"Beside":
@@ -155,6 +155,8 @@ const FLAG_GAP_PX: float = 24.0
 const HUD_PAGE_ROW_TOPS: Array[float] = [16.0, 134.0, 252.0, 252.0]
 const HUD_ROW_CENTRES: Array[float] = [0.0, 0.0, -395.0, 207.0]
 const HUD_SMALL_TOPS: Array[float] = [378.0, 450.0]
+## The small rows hold 21 glyphs in one line: at 32 dp a gap under 4 px keeps them inside 1280.
+const HUD_SMALL_GAP_PX: float = 3.0
 const HUD_SITES_TOP: float = 510.0
 const HUD_CAPTION_PX: int = 16
 const HUD_CAPTION_HEIGHT_PX: float = 23.0
@@ -263,7 +265,7 @@ static func build_hud_page(host: Control, terrain: Dictionary[StringName, Color]
 	for index: int in HUD_SMALL_DP.size():
 		var dp: float = HUD_SMALL_DP[index]
 		var row: Control = pixel_row(panel, "Small%d" % int(dp), HUD_SMALL_TOPS[index])
-		_icon_grid(row, fresh, dp, fresh.size())
+		_icon_grid(row, fresh, dp, fresh.size(), false, false, HUD_SMALL_GAP_PX)
 	_add_site_row(terrain, pixel_row(panel, "Sites", HUD_SITES_TOP))
 	return page
 
@@ -318,14 +320,15 @@ static func _icon_grid(
 	dp: float,
 	columns: int,
 	tiles: bool = false,
-	captions: bool = false
+	captions: bool = false,
+	gap_px: float = ICON_GAP_PX
 ) -> void:
 	var size_px: float = dp * PX_PER_DP
 	for i: int in icons.size():
 		var line: int = floori(float(i) / float(columns))
 		var in_line: int = mini(columns, icons.size() - line * columns)
-		var x: float = (i % columns - (in_line - 1) / 2.0) * (size_px + ICON_GAP_PX) - size_px / 2.0
-		var at: Vector2 = Vector2(x, line * (size_px + ICON_GAP_PX))
+		var x: float = (i % columns - (in_line - 1) / 2.0) * (size_px + gap_px) - size_px / 2.0
+		var at: Vector2 = Vector2(x, line * (size_px + gap_px))
 		if tiles:
 			var tile: ColorRect = ColorRect.new()
 			tile.name = "Tile" + icons[i].to_pascal_case()

@@ -49,7 +49,7 @@ const Z_BODY: int = 3
 const MINE_MARK_FACTION: Dictionary[StringName, StringName] = {
 	&"fossil_shot_truck": &"fossil", &"renew_seeder": &"renew"
 }
-const MINE_MARK_ART: String = "res://assets/art/svg/decals/mine_%s_%s.svg"
+const MINE_MARK_ART: String = "res://assets/art/svg/marks/mine_%s_%s.svg"
 const MINE_MARK_KINDS: Array[String] = ["own", "known"]
 const MINE_MARK_ORIGIN_PX: Vector2 = Vector2(72.0, 60.0)
 const MINE_MARK_STEP_PX: float = 104.0

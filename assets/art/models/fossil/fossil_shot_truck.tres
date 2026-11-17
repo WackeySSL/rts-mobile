@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"fossil_shot_truck"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Shot Truck: a low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with orange caps standing beside it, and team bands down the bed rails."
+silhouette = "Shot Truck: a low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with an orange band and stud standing beside it, and team bands down the bed rails."
 prims = PackedStringArray(
 "box hull iron -0.12 0 0.08 1.5 0.4 0.08",
 "prism hull iron 0.45 -0.3 0 0.24 0.1 0.24 axis=y sides=10",
@@ -40,13 +40,17 @@ prims = PackedStringArray(
 "rod hull steel 0.04 0 0.42 -0.86 0 0.6 8",
 "rod hull iron -0.86 0 0.6 -1.02 0 0.66 4",
 "prism hull steel -0.35 -0.2 0.22 0.16 0.16 0.12 sides=10",
-"prism hull team -0.35 -0.2 0.34 0.17 0.17 0.03 sides=10",
+"prism hull team -0.35 -0.2 0.34 0.09 0.09 0.1 sides=10",
+"prism hull team -0.35 -0.2 0.26 0.18 0.18 0.035 sides=10",
 "prism hull steel -0.35 0.2 0.22 0.16 0.16 0.12 sides=10",
-"prism hull team -0.35 0.2 0.34 0.17 0.17 0.03 sides=10",
+"prism hull team -0.35 0.2 0.34 0.09 0.09 0.1 sides=10",
+"prism hull team -0.35 0.2 0.26 0.18 0.18 0.035 sides=10",
 "prism hull steel -0.6 -0.2 0.22 0.16 0.16 0.12 sides=10",
-"prism hull team -0.6 -0.2 0.34 0.17 0.17 0.03 sides=10",
+"prism hull team -0.6 -0.2 0.34 0.09 0.09 0.1 sides=10",
+"prism hull team -0.6 -0.2 0.26 0.18 0.18 0.035 sides=10",
 "prism hull steel -0.6 0.2 0.22 0.16 0.16 0.12 sides=10",
-"prism hull team -0.6 0.2 0.34 0.17 0.17 0.03 sides=10",
+"prism hull team -0.6 0.2 0.34 0.09 0.09 0.1 sides=10",
+"prism hull team -0.6 0.2 0.26 0.18 0.18 0.035 sides=10",
 "box hull rust -0.84 0 0.08 0.08 0.5 0.12"
 )
 emitters = PackedStringArray(

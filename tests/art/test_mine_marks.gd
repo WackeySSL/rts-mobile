@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## The mine marks (plan row P292, STYLE.md "The minelayers"): per faction the mark of an own mine
-## and of a known enemy mine, hand-written SVG in `assets/art/svg/decals/` (`mine_<faction>_own`,
+## and of a known enemy mine, hand-written SVG in `assets/art/svg/marks/` (`mine_<faction>_own`,
 ## `mine_<faction>_known`, the Derrick League's shot charge and the Lumen Accord's pulse seed).
 ## Each is 144 x 96 px at 2x with its ground point at (72, 60), a "Keep File" import (the
 ## match-start bake swaps the faction's key triad for the player's, as it does for the iso frames),
 ## the faction's triad present, no other colour in the faction's key band, and the known mark
 ## carries the notched rim the own one has not. P293's `MineLayer` draws them.
 
-const DIR: String = "res://assets/art/svg/decals/mine_%s_%s.svg"
+const DIR: String = "res://assets/art/svg/marks/mine_%s_%s.svg"
 const FACTIONS: Array[String] = ["fossil", "renew"]
 const KINDS: Array[String] = ["own", "known"]
 const KEYS: Dictionary[String, Array] = {
