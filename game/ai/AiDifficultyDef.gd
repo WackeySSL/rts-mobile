@@ -78,6 +78,11 @@ extends Resource
 ## frozen files play as before): 1 = `AiHold` sets the types of `OpponentDef.hold_types` to hold
 ## while they are in a wave and releases them when the wave ends. Easy uses none.
 @export var hold_in_waves: int = 0
+## Close-out (plan row P250c; off by default like the fields above, so the frozen files play as
+## before): while no enemy producer is seen or remembered and the mirror estimate has been explored,
+## `AiSweep` sends the wave to the nearest unexplored sector of the enemy half; a sector it has not
+## explored this many ticks after the pick is given up. 0 = off. Easy does not search.
+@export var sweep_hold_ticks: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).

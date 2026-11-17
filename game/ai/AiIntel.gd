@@ -31,6 +31,7 @@ var sector_tiles: int = 0
 var sectors_max: int = 0
 var scout_first_tick: int = 0
 var scout_interval_ticks: int = 0
+var sweep: AiSweep = AiSweep.new()
 
 ## The sector grid of the map last seen: tiles per side, and sectors per row and column.
 var sector_side: int = 0
@@ -69,6 +70,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	intel.scout_interval_ticks = level.scout_interval_ticks
 	intel.sector_tiles = maxi(def.sector_tiles, 1)
 	intel.sectors_max = maxi(def.sectors_max, 1)
+	intel.sweep = AiSweep.create(level)
 	return intel
 
 
@@ -206,10 +208,14 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 				pick = id
 	var found: Vector2i = _sight(view, memory, home)
 	if found.x >= 0:
+		memory.sweep_sector = AiMemory.NONE
 		memory.base_x = found.x
 		memory.base_y = found.y
 	elif home.x >= 0:
 		var mirror: Vector2i = AiMemory.mirror(home, view.map_cols, view.map_rows)
+		var search: Vector2i = sweep.target(view, memory, home, sector_side, sector_cols)
+		if search.x >= 0:
+			mirror = search
 		memory.base_x = mirror.x
 		memory.base_y = mirror.y
 	memory.scout_wanted = AiMemory.NONE
@@ -529,6 +535,8 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 	if memory.scout_picked.size() != size:
 		memory.scout_picked.resize(size)
 		memory.scout_picked.fill(AiMemory.NONE)
+	if memory.sweep_skipped.size() != size:
+		memory.sweep_skipped.resize(size)
 	var types: int = view.type_cost.size()
 	if memory.seen_count.size() != types:
 		memory.seen_count.resize(types)
