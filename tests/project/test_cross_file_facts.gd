@@ -58,11 +58,13 @@ func test_the_gallery_zoom_row_shows_the_camera_zoom_levels() -> void:
 
 
 ## Whitespace is normalised, so a re-wrapped line does not break the check.
-func test_credits_name_the_default_boot_splash_and_the_licence_file() -> void:
+func test_credits_name_the_godot_logo_row_and_the_licence_file() -> void:
 	var credits: String = FileAccess.get_file_as_string(CREDITS_PATH)
 	assert_str(credits).is_not_empty()
 	var flat: String = RegEx.create_from_string("\\s+").sub(credits, " ", true)
-	assert_str(flat).contains("the engine's default boot splash")
+	# P533: the splash is the game's own; the logo is left in the export template's monochrome layer.
+	assert_str(flat).contains("icon_monochrome.webp")
+	assert_str(flat).contains("assets/art/splash/boot_splash.png")
 	assert_str(flat).contains("THIRD_PARTY_LICENSES.txt")
 	assert_str(flat).contains("Andrea Calabró")  # CC BY: the author and the licence are the credit.
 	assert_str(flat).contains("CC BY 4.0")
