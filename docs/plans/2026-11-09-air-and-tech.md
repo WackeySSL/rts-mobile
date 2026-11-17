@@ -792,6 +792,12 @@ the P265 integration):
     pinned arenas. ADR 0038 §7 names "the shipped Normal value" for later fields; here Easy and
     Hard take their own pairs (0/0 and 70/250), Normal 50/400. Its Lumen rifle squad has the
     shipped 70 hp, against 80 in `perf_ai`.
+  - **P304b (2026-11-17, main e4be1931):** each side also starts with 2 ground carriers and 2
+    minelayers (Bunk Wagon and Shot Truck, Linecar and Seeder; frozen copies of P290's defs and
+    mines in `data/dev/arena/arena_4b/units/` and `weapons/`), 4 mobile rows a side taken off the
+    rifle squads (18 to 14), so each side stays at 75. The printed hash moves from
+    `75530630f4b19f95` to `75019d6b3818eed9` (`full_ticks` 174 to 172); no other golden moves. The
+    Perf AI cards compare against the new hash. The AI still does not load, unload or mine.
   - The AI does not use carriers, mending or the sweep there yet (no LOAD, UNLOAD, MEND or sweep in
     900 ticks). That waits for the AI rows.
   - `test_frozen_ai_defs.gd` (kept as is) still says "the Perf AI route" at :4 and :52. Read that
