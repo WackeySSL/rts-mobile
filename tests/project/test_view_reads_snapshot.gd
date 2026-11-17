@@ -78,8 +78,9 @@ const COLUMNS_CALL: String = r"\.[\s\\]*columns\b"
 ## test until a reviewer has read it against the rule and added it here; the poisoned-view oracle
 ## of tests/ai/test_ai_poisoned_view.gd is what proves the rule holds for them.
 const COLUMNS_SITES: Dictionary[String, int] = {
-	"res://game/ai/AiArmy.gd": 2,
+	"res://game/ai/AiArmy.gd": 1,
 	"res://game/ai/AiEconomy.gd": 1,
+	"res://game/ai/AiEnemyScan.gd": 1,
 	"res://game/ai/AiIntel.gd": 3,
 	"res://game/ai/AiProduction.gd": 1,
 	"res://game/ai/AiStrikes.gd": 1,

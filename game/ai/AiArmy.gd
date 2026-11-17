@@ -698,51 +698,16 @@ func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool
 ## The value of the seen enemy combat units and armed, finished buildings within the defence radius
 ## of `centre`; a row outside the box round the centre costs no test, the others one test each in
 ## `tests`, which the threat search shares: a fight at the base that used up the cap leaves the
-## ratio blind that think.
+## ratio blind that think (`AiEnemyScan.value_in`).
 func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
-	return (
-		_value_in(view, memory.seen_unit_id, centre, false)
-		+ _value_in(view, memory.seen_site_id, centre, true)
+	var units: Vector2i = AiEnemyScan.value_in(
+		view, memory.seen_unit_id, centre, defend_radius, false, tests, tests_max
 	)
-
-
-## The value of the rows of `list` within the defence radius of `centre` (only armed, finished
-## buildings when `sites`), one test each past the box, until the cap.
-func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
-	var found: int = 0
-	var columns: Array[PackedInt32Array] = view.columns()
-	var xs: PackedInt32Array = columns[PlayerView.Column.X]
-	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
-	var radius: int = defend_radius
-	var used: int = tests
-	for id: int in list:
-		if used >= tests_max:
-			break
-		var row: int = view.row_of(id)
-		if row < 0:
-			continue
-		var gap_x: int = xs[row] - centre.x
-		var gap_y: int = ys[row] - centre.y
-		if gap_x > radius or gap_x < -radius or gap_y > radius or gap_y < -radius:
-			continue
-		if sites and not _armed(view, row):
-			continue
-		used += 1
-		if gap_x * gap_x + gap_y * gap_y <= radius * radius:
-			found += AiIntel.value_of(view, row)
-	tests = used
-	return found
-
-
-## Whether the building at `row` is finished (`build_left` 0) and has a weapon.
-static func _armed(view: PlayerView, row: int) -> bool:
-	var type: int = view.row_type(row)
-	return (
-		view.row_build_left(row) == 0
-		and type >= 0
-		and type < view.type_weapon.size()
-		and view.type_weapon[type] >= 0
+	var sites: Vector2i = AiEnemyScan.value_in(
+		view, memory.seen_site_id, centre, defend_radius, true, units.y, tests_max
 	)
+	tests = sites.y
+	return units.x + sites.x
 
 
 ## Launches the next wave when the draw is made, its tick has come, no threat stands at the base
@@ -951,7 +916,12 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 	var best: int = -1
 	if not members.is_empty():
 		@warning_ignore("integer_division")
-		best = _weakest(view, memory, sum / members.size())
+		var scan: Vector3i = AiEnemyScan.weakest(
+			view, memory.seen_unit_id, sum / members.size(), defend_radius, tests, tests_max
+		)
+		best = scan.x
+		tests = scan.y
+		_capped = scan.z == 1
 	var kept: int = memory.squad_focus[squad]
 	if best < 0 and _capped and kept != AiMemory.NONE:
 		best = view.row_of(kept)
@@ -974,26 +944,3 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 		_fresh.clear()
 	focuses += 1
 	return true
-
-
-## The row of the weakest seen enemy combat unit within the defence radius of `centre`, -1 for none.
-func _weakest(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
-	var found: int = -1
-	var least: int = 0
-	for id: int in memory.seen_unit_id:
-		if tests >= tests_max:
-			_capped = true
-			break
-		var row: int = view.row_of(id)
-		if row < 0:
-			continue
-		var gap: Vector2i = view.row_pos(row) - centre
-		if absi(gap.x) > defend_radius or absi(gap.y) > defend_radius:
-			continue
-		tests += 1
-		if gap.x * gap.x + gap.y * gap.y > defend_radius * defend_radius:
-			continue
-		if found < 0 or view.row_hp(row) < least:
-			found = row
-			least = view.row_hp(row)
-	return found
