@@ -17,6 +17,9 @@ signal screen_changed(screen: MenuScreen)
 @export var backdrop_color: Color
 ## Reduced effects: every change of screen is a cut. The owner sets it (the settings screen, P526).
 var reduced: bool = false
+## False while the boot intro opens out into this menu: Back then belongs to the intro (a skip),
+## and a go-back request, which every node receives, must not reach the menu behind it.
+var back_enabled: bool = true
 ## What a yes to the quit question does; tests replace it.
 var quit_handler: Callable = _quit_app
 
@@ -58,6 +61,8 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		if not back_enabled:
+			return
 		back.call_deferred()  # Never change scenes inside a notification dispatch.
 	elif what == NOTIFICATION_PREDELETE:
 		for screen: MenuScreen in _screens:  # The covered ones are not our children: free them.
