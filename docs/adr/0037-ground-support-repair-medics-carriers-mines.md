@@ -367,6 +367,33 @@ of which about 120 are C++.
 - **AI.** `AiProduction`: `medic_per_squads` in the mix (data). `AiArmy`: medics join waves and the
   home squad and get `ATTACK_MOVE` or `MOVE`, never `ATTACK`.
 - **Size.** Sim ~60 (seek; the heal is §5's), view ~40, AI ~50.
+- **Note (2026-11-17, P283, as built; it changes three accepted texts: §5's and §6's "AiProduction and
+  AiArmy" and §10's "no new manager").**
+  - `AiRepair` is a manager of its own, run in the ARMY slot after `AiArmy.run` (`OpponentAi`): it
+    keeps `AiArmy` at gdlint's line maximum and lets P300 stack on it. It sends `REPAIR`, `MOVE` and
+    `ATTACK_MOVE` only and reads the view and the memory's lists, with no pass over the rows.
+  - The repair building is placed by `AiEconomy`: it is put into the order right after the first step
+    a vehicle tab builds on, or at its end, when the level has `repair_retreat_percent` above 0
+    (Normal and Hard). No type id is in the AI data: the building and the medic are found by role in
+    the roster (a building with repair slots that serves the vehicle classes 6; an unarmed unit with
+    slots that serves the foot class), through `PlayerView.type_repair_classes` and
+    `type_repair_slots`. A roster without them changes nothing, so the AI switches on with their art
+    (P279, P280) and no AI data change.
+  - `AiMemory.Owner` has a fourth key owner, `REPAIR`: the repair building's tile for the vehicle
+    class, held only while a sent vehicle still moves, and given up to the army at the cap
+    (`AiMemory.yield_keys`, after the scout's). The medics take no key: the army's holds the wave
+    goal. Vehicles in flight are capped to the building's repair slots, because each `REPAIR` gives
+    every vehicle its own ring tile and goal field (P277), so the cost stays inside that cap and the
+    one key.
+  - A sent vehicle that `AiArmy` takes over (the home goal moved, so it re-ordered every home
+    member, or it joined a wave) is forgotten with no order. A whole vehicle goes back to the home
+    goal. Wave members are never sent, but those of a retreating wave on Hard (`repair_wave_retreat`
+    1; ADR §5's "between waves"). A vehicle `AiArmy._step_back` withdrew is not special-cased.
+  - Medics all follow a marching wave and come home when it ends or retreats; no medic stays with the
+    home squad (the choice: a medic at home would wait for hurt squads that the army already sent to
+    fight). The levels' numbers are in `data/ai/difficulty/`: `repair_retreat_percent` 0/40/50,
+    `medic_per_squads` 0/4/3, `repair_wave_retreat` 0/0/1 (Easy, Normal, Hard); the frozen arena's
+    copies set all three to 0.
 
 ### 7. The infantry carrier on the ground (Michael's item 1)
 - **`Carry.gd` as ADR 0036 §8 builds it**: `LOAD` (5) and `UNLOAD` (6); boarded squads leave the

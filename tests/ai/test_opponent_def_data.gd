@@ -44,12 +44,13 @@ const _LEVEL_FIELDS: Array[String] = [
 	"mend_floor",
 	"repair_retreat_percent",
 	"medic_per_squads",
+	"repair_wave_retreat",
 	"commands_per_think_max",
 	"income_percent",
 ]
 const _LEVELS: Dictionary[String, Array] = {
 	"easy":
-	[0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
+	[0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
 	"normal":
 	[
 		1,
@@ -75,6 +76,7 @@ const _LEVELS: Dictionary[String, Array] = {
 		400,
 		40,
 		4,
+		0,
 		8,
 		100
 	],
@@ -103,6 +105,7 @@ const _LEVELS: Dictionary[String, Array] = {
 		250,
 		50,
 		3,
+		1,
 		12,
 		100
 	],

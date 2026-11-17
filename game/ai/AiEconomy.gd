@@ -167,7 +167,7 @@ func _resolve(view: PlayerView) -> void:
 func _add_repair_building(view: PlayerView, faction: int) -> void:
 	if not _repair_wanted:
 		return
-	var repair: int = AiRepair.repair_building_of(view, faction)
+	var repair: int = AiRepair.role_type_of(view, faction, true)
 	if repair == _NONE or _order.has(repair):
 		return
 	var at: int = _order.size()

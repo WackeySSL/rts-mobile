@@ -58,6 +58,8 @@ extends Resource
 ## (0 = none), and `AiRepair` sends the medics with each wave. Easy uses neither.
 @export var repair_retreat_percent: int = 0
 @export var medic_per_squads: int = 0
+## 1: the members of a retreating wave are sent to repair too (Hard; ADR 0037 section 5).
+@export var repair_wave_retreat: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).

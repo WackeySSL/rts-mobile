@@ -132,7 +132,8 @@ func _resolve(view: PlayerView) -> void:
 		_vehicle_types.append(view.type_index_of(id))
 	if _medic_per > 0:
 		var hq: int = view.type_index_of(_hq_id)
-		_medic = AiRepair.medic_of(view, view.type_faction[hq] if hq != _NONE else _NONE)
+		var faction: int = view.type_faction[hq] if hq != _NONE else AiRepair.NO_FACTION
+		_medic = AiRepair.role_type_of(view, faction, false)
 
 
 ## `_added` from the unit QUEUEs of this player already in `out` (this think's, from the economy).
