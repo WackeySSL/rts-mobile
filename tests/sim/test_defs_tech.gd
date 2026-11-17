@@ -4,10 +4,10 @@ extends GdUnitTestSuite
 ## and two bomber upgrades per faction, heavier bombs (+25 % damage dealt) and a tougher hull
 ## (-25 % damage taken). Data only in P247; P249 (the art row) added the roster entries and item
 ## cards, filled `FactionDef.upgrades` and wrote the HOW_TO_PLAY rows. The GDD gives the names,
-## size, cost, power, requirement and the
-## two percentages. Hit points (900), build time (360 ticks), sight (5000) and the research cost and
-## time (800 credits, 1350 ticks, equal for the bomb and the hull upgrade) are the lead's starting
-## values (P26bw), in the GDD's tech note, for P255 to tune.
+## size, cost, power, requirement and the two percentages. Hit points (900), build time (360
+## ticks), sight (5000) and the research cost and time (800 credits, 1350 ticks, equal for the
+## bomb and the hull upgrade) are the lead's starting values (P26bw), in the GDD's tech note, for
+## P255 to tune.
 ## The damage-dealt upgrades are keyed on faction, weapon and stat (P246's rule), so each names the
 ## bomber's own bombs. What the sim does with them is test_upgrades'.
 

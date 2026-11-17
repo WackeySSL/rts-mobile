@@ -17,6 +17,21 @@ const FACTION: Dictionary[StringName, StringName] = {
 const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const MAX_OVERLAP: float = 0.85
+## The four research cards are hand-written (test_artgen.gd's HAND_CARDS leaves them out of its
+## generated-file checks), so the rules of a hand-written file are pinned here.
+const CARD_DIR: String = "res://assets/art/iso/icons/item_%s.svg"
+const CARD_FACTION: Dictionary[String, StringName] = {
+	"heavy_bombs": &"fossil",
+	"plated_hull": &"fossil",
+	"focus_bombs": &"renew",
+	"glaze_hull": &"renew",
+}
+const CARD_TAGS: Array[String] = ["svg", "g", "polygon", "path", "rect", "circle"]
+const CARD_BANNED: Array[String] = [
+	"href", "<style", "<text", "<image", "<filter", "<script", "<pattern", "<foreignObject"
+]
+const CARD_MAX_BYTES: int = 28 * 1024
+const HEADER_LINES: int = 32  ## The comment, the svg tag, the plate, the grid and the corner.
 
 var _index: IsoIndex = null
 
@@ -106,3 +121,57 @@ func test_each_reads_apart_from_every_other_building_at_32_px_in_greyscale() -> 
 				. override_failure_message("%s against %s: %.2f" % [id, other, overlap])
 				. is_less(MAX_OVERLAP)
 			)
+
+
+func test_a_research_card_uses_only_the_hand_written_tags_and_stays_small() -> void:
+	var tag: RegEx = RegEx.create_from_string("<([A-Za-z]+)")
+	for id: String in CARD_FACTION:
+		var text: String = FileAccess.get_file_as_string(CARD_DIR % id)
+		assert_bool(text.length() > 0).override_failure_message(id).is_true()
+		assert_int(text.to_utf8_buffer().size()).is_less_equal(CARD_MAX_BYTES)
+		for banned: String in CARD_BANNED:
+			assert_bool(text.contains(banned)).override_failure_message(id + banned).is_false()
+		for found: RegExMatch in tag.search_all(text):
+			assert_array(CARD_TAGS).override_failure_message(id).contains([found.get_string(1)])
+		assert_bool(text.contains('viewBox="0 0 128 128"')).is_true()
+
+
+## Only the faction's own key triad may lie in its key band (ADR 0023 section 5).
+func test_a_research_card_keeps_the_key_band() -> void:
+	var colour: RegEx = RegEx.create_from_string('"(#[0-9A-Fa-f]{6})"')
+	for id: String in CARD_FACTION:
+		var faction: StringName = CARD_FACTION[id]
+		var triad: Array = ArtPalette.KEYS[faction]
+		var team: int = 0
+		for found: RegExMatch in colour.search_all(FileAccess.get_file_as_string(CARD_DIR % id)):
+			var hex: String = found.get_string(1).to_upper()
+			team += int(hex in triad)
+			if not hex in triad:
+				(
+					assert_bool(ArtPalette.in_key_band(faction, hex))
+					. override_failure_message("%s %s" % [id, hex])
+					. is_false()
+				)
+		assert_int(team).override_failure_message(id + " has no team colour").is_greater(0)
+
+
+## The plate, the grid and the corner are the generator's, byte for byte: a hand card sits in the
+## Build tab beside the generated ones.
+func test_a_research_card_has_the_generators_plate_grid_and_corner() -> void:
+	for id: String in CARD_FACTION:
+		var faction: StringName = CARD_FACTION[id]
+		var generated: PackedStringArray = (
+			FileAccess.get_file_as_string(CARD_DIR % (String(faction) + "_engineering")).split("\n")
+		)
+		var hand: PackedStringArray = FileAccess.get_file_as_string(CARD_DIR % id).split("\n")
+		for at: int in range(1, HEADER_LINES):
+			assert_str(hand[at]).override_failure_message("%s line %d" % [id, at]).is_equal(
+				generated[at]
+			)
+
+
+func test_a_research_card_is_a_texture_import() -> void:
+	for id: String in CARD_FACTION:
+		var import: String = FileAccess.get_file_as_string((CARD_DIR % id) + ".import")
+		assert_str(import).contains('importer="texture"')
+		assert_str(import).not_contains("keep")

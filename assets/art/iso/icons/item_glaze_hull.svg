@@ -31,18 +31,14 @@
 <polygon points="8,2 36,2 2,36 2,8" fill="#1FA6C8"/>
 </g>
 <!-- Shape: one hexagonal white shield on a graphite rim, a glass hexagon in its middle and a team band across it -->
-<g stroke="#2B2D28" stroke-width="2" stroke-linejoin="round">
-  <polygon points="64,16 102,38 102,86 64,108 26,86 26,38" fill="#414A51"/>
-  <polygon points="64,22 97,41 97,83 64,102 31,83 31,41" fill="#D5DBDC"/>
-  <polygon points="64,22 31,41 31,83 64,102" fill="#EEF3F4" stroke="none"/>
-  <polygon points="64,22 97,41 97,83 64,102" fill="#A5ABAC" stroke="none"/>
-  <polygon points="64,38 84,50 84,74 64,86 44,74 44,50" fill="#B4C8CF"/>
-  <polygon points="64,38 44,50 44,74 64,86" fill="#D3E5EB" stroke="none"/>
-  <polygon points="64,38 84,50 84,74 64,86" fill="#8697A0" stroke="none"/>
-  <polygon points="31,54 97,54 97,64 31,64" fill="#1FA6C8"/>
+  <polygon points="64,16 102,38 102,86 64,108 26,86 26,38" fill="#414A51" stroke="#1D2124" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="64,22 97,41 97,83 64,102 31,83 31,41" fill="#D5DBDC" stroke="#606363" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="64,22 31,41 31,83 64,102" fill="#FFFFFF" stroke="none"/>
+  <polygon points="64,22 97,41 97,83 64,102" fill="#A1A6A6" stroke="none"/>
+  <polygon points="64,38 84,50 84,74 64,86 44,74 44,50" fill="#B4C8CF" stroke="#515A5D" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="64,38 44,50 44,74 64,86" fill="#DCF4FC" stroke="none"/>
+  <polygon points="64,38 84,50 84,74 64,86" fill="#88979D" stroke="none"/>
+  <polygon points="31,54 97,54 97,64 31,64" fill="#1FA6C8" stroke="#137C99" stroke-width="2" stroke-linejoin="round"/>
   <polygon points="31,54 97,54 97,57 31,57" fill="#62D6EE" stroke="none"/>
-</g>
-<g fill="#A8F5B0" stroke="none">
-  <polygon points="56,46 60,46 58,50"/><rect x="60" y="68" width="8" height="3"/>
-</g>
+  <rect x="56" y="44" width="4" height="4" fill="#A8F5B0" stroke="none"/>
 </svg>

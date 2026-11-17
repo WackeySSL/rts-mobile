@@ -31,20 +31,18 @@
 <polygon points="8,2 36,2 2,36 2,8" fill="#1FA6C8"/>
 </g>
 <!-- Shape: one slim white bomb standing nose down with a glass nose, graphite fins and a team band, inside two team-coloured focus rings with four ticks -->
-<g fill="none" stroke="#1FA6C8" stroke-linecap="round">
-  <circle cx="64" cy="68" r="42" stroke-width="5"/>
-  <circle cx="64" cy="68" r="27" stroke-width="2.5" stroke="#62D6EE"/>
-  <path d="M64 14 V30 M64 106 V122 M10 68 H26 M102 68 H118" stroke-width="5"/>
-</g>
-<g transform="rotate(180 64 68)" stroke="#2B2D28" stroke-width="2" stroke-linejoin="round">
-  <polygon points="48,104 56,104 58,90 50,90" fill="#525D66"/>
-  <polygon points="80,104 72,104 70,90 78,90" fill="#31383D"/>
-  <path d="M52 94 V58 C52 46 58 40 64 40 C70 40 76 46 76 58 V94 Z" fill="#D5DBDC"/>
-  <path d="M52 94 V58 C52 46 58 40 64 40 V94 Z" fill="#EEF3F4" stroke="none"/>
-  <path d="M64 40 C70 40 76 46 76 58 V94 H64 Z" fill="#A5ABAC" stroke="none"/>
-  <path d="M55 50 C57 44 60 41 64 40 C68 41 71 44 73 50 Z" fill="#B4C8CF"/>
-  <rect x="52" y="64" width="24" height="8" fill="#1FA6C8"/>
-  <rect x="52" y="64" width="24" height="3" fill="#62D6EE" stroke="none"/>
-  <rect x="62" y="80" width="4" height="4" fill="#A8F5B0" stroke="none"/>
-</g>
+  <g fill="none" stroke="#1FA6C8" stroke-linecap="round">
+    <circle cx="64" cy="68" r="42" stroke-width="5"/>
+    <circle cx="64" cy="68" r="27" stroke-width="3" stroke="#62D6EE"/>
+    <path d="M64 14 V30 M64 106 V122 M10 68 H26 M102 68 H118" stroke-width="5"/>
+  </g>
+  <polygon points="44,38 52,46 52,62 44,54" fill="#4F5A63" stroke="#1D2124" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="84,38 76,46 76,62 84,54" fill="#31383D" stroke="#1D2124" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M52 44 H76 V88 C76 100 70 108 64 110 C58 108 52 100 52 88 Z" fill="#D5DBDC" stroke="#606363" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M52 44 H64 V110 C58 108 52 100 52 88 Z" fill="#FFFFFF" stroke="none"/>
+  <path d="M64 44 H76 V88 C76 100 70 108 64 110 Z" fill="#A1A6A6" stroke="none"/>
+  <path d="M53 92 C54 100 58 107 64 110 C70 107 74 100 75 92 Z" fill="#B4C8CF" stroke="#515A5D" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="52,62 76,62 76,70 52,70" fill="#1FA6C8" stroke="#137C99" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="52,62 76,62 76,65 52,65" fill="#62D6EE" stroke="none"/>
+  <rect x="60" y="76" width="4" height="4" fill="#A8F5B0" stroke="none"/>
 </svg>
