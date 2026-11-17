@@ -22,7 +22,8 @@ var _progression: Node
 var _flow: Node
 var _ads: Node
 var _harness: RefCounted
-var _catalog: MapCatalog
+var _catalog: MapCatalog  ## The real one.
+var _shown: MapCatalog  ## What the screen gets: the real one plus a locked second map.
 
 
 func before() -> void:
@@ -37,6 +38,7 @@ func before_test() -> void:
 	_progression = FakeRank.new()
 	_flow = FakeFlow.new()
 	_catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
+	_shown = _two_maps()
 
 
 func after_test() -> void:
@@ -116,14 +118,60 @@ func test_locks_follow_the_rank() -> void:
 	assert_bool(_screen._levels[&"normal"].disabled).is_false()
 	assert_bool(_screen._levels[&"hard"].disabled).is_true()
 	assert_str(_screen._levels[&"hard"].text).contains("RANK 3")
-	assert_str(String(_screen._maps[&"map_2"].theme_type_variation)).is_equal("MenuMapCardLocked")
+	assert_str(String(_screen._map_cards[&"map_2"].theme_type_variation)).is_equal(
+		"MenuMapCardLocked"
+	)
+	assert_str(String(_screen._map_cards[&"kestrel_flats"].theme_type_variation)).is_equal(
+		"MenuMapCardOn"
+	)
+	# Picked against unpicked: the side card and the level chip.
+	assert_str(String(_screen._side_cards[&"fossil"].theme_type_variation)).is_equal(
+		"MenuSideCardFossil"
+	)
+	assert_str(String(_screen._side_cards[&"renew"].theme_type_variation)).is_equal("MenuSideCard")
+	assert_str(String(_screen._levels[&"normal"].theme_type_variation)).is_equal("MenuTabOn")
+	assert_str(String(_screen._levels[&"easy"].theme_type_variation)).is_equal("MenuTab")
+	_screen._sides[&"renew"].pressed.emit()
+	assert_str(String(_screen._side_cards[&"renew"].theme_type_variation)).is_equal(
+		"MenuSideCardRenew"
+	)
+	assert_str(String(_screen._side_cards[&"fossil"].theme_type_variation)).is_equal("MenuSideCard")
 	_progression.rank_now = 3
 	_progression.xp_changed.emit()
 	assert_bool(_screen._maps[&"map_2"].disabled).is_false()
 	assert_bool(_screen._levels[&"hard"].disabled).is_false()
 	_screen._levels[&"hard"].pressed.emit()
 	assert_str(String(_screen.level)).is_equal("hard")
+	assert_str(String(_screen._levels[&"hard"].theme_type_variation)).is_equal("MenuTabOn")
+	assert_str(String(_screen._levels[&"normal"].theme_type_variation)).is_equal("MenuTab")
+	_screen._maps[&"map_2"].pressed.emit()
+	assert_str(String(_screen._map_cards[&"map_2"].theme_type_variation)).is_equal("MenuMapCardOn")
+	assert_str(String(_screen._map_cards[&"kestrel_flats"].theme_type_variation)).is_equal(
+		"MenuMapCard"
+	)
 	assert_str(_screen._levels[&"hard"].text).starts_with("> ")
+
+
+func test_a_locked_start_sends_nothing() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	_screen.level = &"hard"  # Set past the closed chip: START checks the locks itself.
+	_screen._on_start()
+	assert_int(_flow.started.size()).is_equal(0)
+	_screen.level = &"normal"
+	_screen.map_id = &"map_2"
+	_screen._on_start()
+	assert_int(_flow.started.size()).is_equal(0)
+
+
+func test_the_defaults_skip_a_locked_map_and_no_open_map_keeps_start_off() -> void:
+	_shown.entries.reverse()  # The locked map comes first.
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_str(String(_screen.map_id)).is_equal("kestrel_flats")
+	_close()
+	_shown = MapCatalog.new()  # Empty.
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_str(String(_screen.map_id)).is_empty()
+	assert_bool(_screen._start.disabled).is_true()
 
 
 func test_start_sends_one_setup_and_a_second_tap_does_nothing() -> void:
@@ -243,7 +291,7 @@ func _open(profile: UiMetrics, consent: bool, host_band: bool = true) -> void:
 	_screen = MapSelect.new()
 	_screen.progression = _progression
 	_screen.flow = _flow
-	_screen.catalog = _two_maps()
+	_screen.catalog = _shown
 	_stack.push(_screen)
 	if host_band:
 		var band: AdBannerBand = AdBannerBand.new()
@@ -277,10 +325,16 @@ func _close() -> void:
 
 func _buttons() -> Array[Button]:
 	var found: Array[Button] = []
-	for child: Node in _screen.column.get_children():
-		if child is Button and (child as Button).visible:
-			found.append(child as Button)
+	_collect_buttons(_screen.column, found)
 	return found
+
+
+func _collect_buttons(node: Node, into: Array[Button]) -> void:
+	for child: Node in node.get_children():
+		if child is Button and (child as Button).visible:
+			into.append(child as Button)
+		if child is PanelContainer or child is OfferSlot:
+			_collect_buttons(child, into)
 
 
 func _profile_with_window(size: Vector2i) -> UiMetrics:

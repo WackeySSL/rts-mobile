@@ -10,6 +10,7 @@ extends MenuScreen
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
+const SIDE_PLAIN: StringName = &"MenuSideCard"
 const OPPONENT_PATH: String = "res://data/ai/opponent_%s.tres"
 const LEVEL_PATH: String = "res://data/ai/difficulty/%s.tres"
 const KIND_MAP: StringName = &"map"
@@ -30,7 +31,7 @@ const LEVEL_TEXT: Dictionary[StringName, StringName] = {
 
 ## Tests inject these before the screen is pushed; null means the autoloads and the data file.
 var progression: ProgressionScript = null
-var flow: Node = null
+var flow: FlowScript = null
 var catalog: MapCatalog = null
 
 var map_id: StringName = &""
@@ -38,9 +39,11 @@ var side: StringName = FOSSIL
 var level: StringName = &"normal"
 
 var _progression: ProgressionScript
-var _flow: Node
+var _flow: FlowScript
 var _maps: Dictionary[StringName, Button] = {}
 var _sides: Dictionary[StringName, Button] = {}
+var _map_cards: Dictionary[StringName, PanelContainer] = {}
+var _side_cards: Dictionary[StringName, PanelContainer] = {}
 var _levels: Dictionary[StringName, Button] = {}
 var _start: Button
 var _starting: bool = false
@@ -50,24 +53,23 @@ func _ready() -> void:
 	super()
 	MapSelectText.register()
 	_progression = progression if progression != null else (Progression as ProgressionScript)
-	_flow = flow if flow != null else MenuFlow
+	_flow = flow if flow != null else (MenuFlow as FlowScript)
 	if catalog == null:
 		catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
 	_label(tr(MapSelectText.TITLE), &"CapsTitle")
 	_label(tr(MapSelectText.MAP), &"")
 	for id: StringName in catalog.map_ids():
-		_maps[id] = _choice(id, _pick_map)
+		_maps[id] = _choice(id, _pick_map, _map_cards)
 	_label(tr(MapSelectText.SIDE), &"")
 	for id: StringName in SIDES:
-		_sides[id] = _choice(id, _pick_side)
+		_sides[id] = _choice(id, _pick_side, _side_cards)
 	_label(tr(MapSelectText.LEVEL), &"")
 	for id: StringName in LEVELS:
-		_levels[id] = _choice(id, _pick_level)
+		_levels[id] = _choice(id, _pick_level, null)
 	_start = add_button(tr(MapSelectText.START), _on_start)
 	# Phase 6's rewarded offer widget plugs into this slot (P433); it lands empty and calls no ad.
 	OfferSlot.add_to(column, self)
-	if not catalog.map_ids().is_empty():
-		map_id = catalog.map_ids()[0]
+	_progression_defaults()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
 
@@ -98,8 +100,26 @@ func is_open(kind: StringName, id: StringName) -> bool:
 	return _progression.is_unlocked(kind, id)
 
 
+## The first open map (&"" when none is open or the catalog is empty) and Normal, or the first open
+## level when Normal is closed.
+func _progression_defaults() -> void:
+	for id: StringName in catalog.map_ids():
+		if is_open(KIND_MAP, id):
+			map_id = id
+			break
+	if not is_open(KIND_LEVEL, level):
+		for id: StringName in LEVELS:
+			if is_open(KIND_LEVEL, id):
+				level = id
+				break
+
+
+func _can_start() -> bool:
+	return map_id != &"" and is_open(KIND_MAP, map_id) and is_open(KIND_LEVEL, level)
+
+
 func _on_start() -> void:
-	if _starting:
+	if _starting or not _can_start():
 		return
 	var setup: MatchSetup = build_setup()
 	if setup == null:
@@ -129,28 +149,49 @@ func _pick_level(id: StringName) -> void:
 	_refresh()
 
 
-## A button of a group: the one for `id`, calling `pick` with it.
-func _choice(id: StringName, pick: Callable) -> Button:
-	return add_button("", pick.bind(id))
+## The button for `id`. With `cards` it is a flat CapsButton inside a PanelContainer card (the
+## card carries the look, kept in `cards`); without, a plain CapsButton of the column.
+func _choice(id: StringName, pick: Callable, cards: Variant) -> Button:
+	if cards == null:
+		return add_button("", pick.bind(id))
+	var card: PanelContainer = PanelContainer.new()
+	column.add_child(card)
+	var button: Button = Button.new()
+	button.theme_type_variation = &"CapsButton"
+	button.flat = true
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var floor_dp: DpMinSize = DpMinSize.new()
+	floor_dp.min_dp = BUTTON_DP
+	button.add_child(floor_dp)
+	button.pressed.connect(pick.bind(id))
+	card.add_child(button)
+	(cards as Dictionary)[id] = card
+	return button
 
 
 func _refresh() -> void:
 	if _start == null:
 		return
 	for id: StringName in _maps:
-		_show(_maps[id], catalog.title(id).to_upper(), id == map_id, KIND_MAP, id, &"MenuMapCard")
+		var open: bool = is_open(KIND_MAP, id)
+		_show(_maps[id], catalog.title(id).to_upper(), id == map_id, KIND_MAP, id)
+		_map_cards[id].theme_type_variation = (
+			&"MenuMapCardLocked"
+			if not open
+			else (&"MenuMapCardOn" if id == map_id else &"MenuMapCard")
+		)
 	for id: StringName in _sides:
-		_show(_sides[id], tr(SIDE_TEXT[id]), id == side, &"", id, SIDE_LOOK[id])
+		_show(_sides[id], tr(SIDE_TEXT[id]), id == side, &"", id)
+		_side_cards[id].theme_type_variation = SIDE_LOOK[id] if id == side else SIDE_PLAIN
 	for id: StringName in _levels:
-		_show(_levels[id], tr(LEVEL_TEXT[id]), id == level, KIND_LEVEL, id, &"CapsButton")
-	_start.disabled = _starting or not is_open(KIND_MAP, map_id) or not is_open(KIND_LEVEL, level)
+		_show(_levels[id], tr(LEVEL_TEXT[id]), id == level, KIND_LEVEL, id)
+		_levels[id].theme_type_variation = &"MenuTabOn" if id == level else &"MenuTab"
+	_start.disabled = _starting or not _can_start()
 
 
-## Sets one choice button: the word, `> ` before the chosen one, the rank on a locked one (a
-## locked card is disabled), and the card look (the "On" twin of a map when chosen).
-func _show(
-	button: Button, word: String, chosen: bool, kind: StringName, id: StringName, look: StringName
-) -> void:
+## Sets one choice button: the word, `> ` before the chosen one and the rank on a locked one (a
+## locked choice is disabled).
+func _show(button: Button, word: String, chosen: bool, kind: StringName, id: StringName) -> void:
 	var open: bool = kind == &"" or is_open(kind, id)
 	if not open:
 		word = tr(MapSelectText.LOCKED) % [word, _progression.unlock_rank(kind, id)]
@@ -158,9 +199,6 @@ func _show(
 		word = tr(MapSelectText.CHOSEN) % word
 	button.text = word
 	button.disabled = not open
-	if look == &"MenuMapCard":
-		look = &"MenuMapCardOn" if chosen else (look if open else &"MenuMapCardLocked")
-	button.theme_type_variation = look
 
 
 func _label(text: String, variation: StringName) -> Label:

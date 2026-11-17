@@ -3,7 +3,8 @@ extends Resource
 ## The maps the map select offers (ADR 0043, plan P525), in data (`data/maps/catalog.tres`).
 ## Each entry is a Dictionary: `id` (also the unlock id of ADR 0045, kind "map"), `title`, and
 ## `scenarios`, an Array of Dictionaries with `path`, `player_side` and `opponent_side` (faction
-## ids, "fossil" or "renew"): both sides and their mirrors. P550 and P552 add their maps here.
+## ids, "fossil" or "renew"): both sides and their mirrors. The mirror rows are listed for a later
+## mirror choice and cannot be reached from the screen yet. P550 and P552 add their maps here.
 
 const KEY_ID: StringName = &"id"
 const KEY_TITLE: StringName = &"title"
