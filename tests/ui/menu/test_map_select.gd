@@ -15,6 +15,7 @@ const SCREEN_SOURCE: String = "res://game/ui/menu/MapSelect.gd"
 const TOLERANCE_PX: float = 0.5
 
 var _window_size_before: Vector2i
+var _quit_on_go_back_before: bool = true
 var _menu: Control
 var _stack: MenuStack
 var _screen: MapSelect
@@ -35,6 +36,7 @@ func after() -> void:
 
 
 func before_test() -> void:
+	_quit_on_go_back_before = get_tree().quit_on_go_back
 	_progression = FakeRank.new()
 	_flow = FakeFlow.new()
 	_catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
@@ -42,6 +44,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	get_tree().quit_on_go_back = _quit_on_go_back_before
 	UiScale.clear_override()
 	_close()
 	for node: Node in [_ads, _progression, _flow]:
