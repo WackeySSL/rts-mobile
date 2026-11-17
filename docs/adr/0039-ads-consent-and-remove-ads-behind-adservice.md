@@ -25,6 +25,12 @@ yes to the text (he said "wait" on 2026-11-15); where "P400b" below names those 
 Until that yes the internal build keeps Google's test App ID. §9 gains a note on the App ID's
 route (P410, Michael 2026-11-15). No decision text changed.
 
+Status note (2026-11-17, P400d docs; P405/P405b/P435 findings): P405 (#516), P405b (#517) and
+P435 (#518) merged. Dated notes with what the merged code confirms, and where it no longer matches
+this text, are added under §1, §2, §3, §5, §6, §9 and §10. §1's widget method `price_text` is
+corrected to its name in the code, `remove_ads_price_text` (a name, not a decision). No
+decision text changed.
+
 Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `docs/plans/2026-11-01-hud-v2.md` row **P127** is absorbed by this plan: the band is row P430,
   the pause menu's foot P435, the menu banners are Phase 5's menus placing the band (§5), the
@@ -76,9 +82,16 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   names `BillingClient`.** A scan test enforces it, and that nothing in `game/sim`, `game/ai` or
   `game/core` names `AdService` or `game/ads`.
 - Phase 6's widgets (the banner band, the rewarded offers, the Remove ads rows) may call internal
-  methods (`rewarded_ready`, `show_rewarded`, `show_banner`, `hide_banner`, `price_text`). Phase 5
-  calls none of them: its menus place the band, which shows its banner on `enter_tree` and hides
-  it on `exit_tree`.
+  methods (`rewarded_ready`, `show_rewarded`, `show_banner`, `hide_banner`,
+  `remove_ads_price_text`). Phase 5 calls none of them: its menus place the band, which shows its
+  banner on `enter_tree` and hides it on `exit_tree`.
+
+Note (2026-11-17, P400d docs; P405/P405b findings): neither backend names a Poing GDScript class.
+`AdMobBackend` and `UmpPluginBackend` reach the plugin's native singletons (`PoingGodotAdMob...`,
+by name) through an injectable lookup (`Engine.get_singleton` by default, fake objects in tests),
+so they import unchanged in every build without the plugin. The plugin's native Android part is not
+vendored: the facts in the notes under §2, §3 and §5 come from the vendored v5.1.0 GDScript
+wrappers and mocks (`addons/admob`), and the device-only ones are marked.
 
 ### 2. Modes; gameplay never waits for an ad
 - **AdMob mode** only when all hold: the OS is Android, not the editor, the plugin's singleton
@@ -104,6 +117,17 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - SDK callbacks are handled on the main thread (deferred). Whether the plugin already emits there
   is **to confirm in P405**.
 
+Note (2026-11-17, P400d docs; P405 findings, Poing godot-admob v5.1.0):
+- Uids are per singleton (the interstitial and the rewarded singleton both count from 1), so
+  `AdMobBackend` keys its state by (kind, uid) and ignores a callback whose uid is not the kind's
+  current one.
+- Every plugin signal is connected with `CONNECT_DEFERRED`, so the backends' signals fire on the
+  main thread (the wrappers defer too). The thread question above is closed.
+- The reward arrives only through `on_rewarded_ad_user_earned_reward`. Signals are relayed in
+  arrival order, so a reward that arrives after the close is dropped, never granted.
+- A shown ad cannot be cancelled: `cancel_show` does nothing; AdService pairs a late open
+  (`FullscreenRun`).
+
 ### 3. Consent (UMP) before any request
 - `ensure_consent() -> bool` updates the consent info, shows Google's form when UMP says it is
   required, waits for its dismissal, and returns UMP's "can request ads" (also emitted as
@@ -119,6 +143,23 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   call in P404/P405).
 - The game is not child-directed: Play's target audience is 13 and over (not the Families
   programme), and the maximum ad content rating in the AdMob console is T (answer 11 A).
+
+Note (2026-11-17, P400d docs; P405/P405b findings):
+- The plugin's consent status enum is UNKNOWN 0, NOT_REQUIRED 1, REQUIRED 2, OBTAINED 3, not the
+  order of `ConsentBackend.Status`; `UmpPluginBackend` maps it. The plugin has no "can request
+  ads" call, so it is derived: true for NOT_REQUIRED or OBTAINED.
+- The request configuration sets max ad content rating T, not child-directed and not under the
+  age of consent; UMP's info update gets the same under-age answer (false). Its test device list
+  is empty.
+- Offline: with no network the info update fails or times out (`consent_timeout_ms`) and no ad is
+  requested for that session. There is no fallback to a stored consent (UMP's own pattern would
+  use it). Revisit only with a device finding.
+- The debug geography cannot be exercised on a device as written here and in P422: it needs a
+  debug build (`ConsentFlow` drops it otherwise), `AdService.debug_geography_eea` set (only tests
+  set it) and `res://consent_test_device.cfg`, which is debug-only and which no preset exports.
+  No AdMob-mode build is a debug build: the only one is the `Android internal` AAB, exported with
+  `--export-release`. P414 must register Michael's phone as an AdMob test device (plan M8) before
+  real units ship.
 
 ### 4. Caps and placements (`data/ads_settings.tres`)
 | Field | Value (answer 2 A for the caps) | Rule |
@@ -167,6 +208,21 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   P405**. If only the bottom, the band is at the screen's bottom and the safe-area inset lies
   under the banner, so menus reserve the inset plus the band.
 
+Note (2026-11-17, P400d docs; P405 findings):
+- `AdMobBackend` creates an anchored adaptive banner at the plugin's `AdPosition.BOTTOM` with no
+  custom position (the plugin takes one; it is not used). Its height is 0 until the native load
+  succeeds (`banner_height_changed`), and again after a failed load.
+- After a turn the banner is destroyed and created again at the new width at once; the height is
+  0 until the new one loads. `banner_reload_min_ms` gates only the reload of a failed banner (which
+  keeps its view) and, in AdService, rewarded retries, so "at most once per
+  `banner_reload_min_ms`" above does not match the code for a turn.
+- Remove ads and lost consent destroy the view (`destroy_banner`), not hide it. A full-screen ad
+  whose load fails is destroyed natively, so no-fill retries do not leak.
+- To confirm on the device (P410b's build or P422): whether a created view is visible before its
+  first `show`, the size unit (dp assumed: the adaptive size call takes a width), whether BOTTOM is
+  the screen's or the safe area's bottom, and whether the native side reuses a destroyed ad's uid
+  (a late callback of the old ad would then match the new one).
+
 ### 6. The pause menu's foot (P127 decided)
 - Upright, where the foot is free (below the Vibration chip, with 16 dp to it), the foot holds the
   band while the menu is open.
@@ -175,6 +231,16 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - The banner is shown when the menu opens and **destroyed** when it closes. No banner object
   exists in battle while the menu is closed: a hidden banner still refreshes and costs network
   and CPU during play.
+
+Note (2026-11-17, P400d docs; P435 findings): `PauseMenu` builds the band hidden (it then holds no
+show) and, two frames later when the layout has settled, shows it only if
+`AdBannerBand.preview_reserved_px()` fits under the content; otherwise it frees it. The preview
+comes from `AdService.banner_height_preview_dp()`, which makes no request. Upright only; while a
+confirm dialog is open the band is freed (placed again when the dialog closes); a resize or a turn
+checks again. On close the band node is freed, but AdService then only hides the native banner
+(`hide_banner`); it destroys it only on Remove ads or lost consent. So a hidden native view can
+exist in battle, which "No banner object exists in battle" above does not allow: a follow-up for
+the lead (destroy on the last release, or a device finding that a hidden view does not refresh).
 
 ### 7. Rewards enter meta and the match only through Phase 5's paths
 - **Where** (Michael's answer 1 A): Double XP on the result screen; "+500 credits next match" on
@@ -221,12 +287,28 @@ without an override carries the test App ID. The plugin is enabled only for P410
 P414 sets the real one from `ADMOB_APP_ID_ANDROID` for the `Android internal` export only, never
 in a tracked file (the guard above), and only after Michael's yes to the P400c text.
 
+Note (2026-11-17, P400d docs; P405 findings, for P414): `res://ad_ids.cfg` is one `[units]`
+section with the keys `banner`, `interstitial` and `rewarded`, unit IDs only; a key that does not
+match `ca-app-pub-<16 digits>/<10 digits>` falls back to its test unit. It is git-ignored and read
+only by a release build (a debug build always uses the test units). Today no build packs it: it is
+not an imported resource and no preset's `include_filter` names it. P414 must add it to the
+`Android internal` preset's `include_filter`, with a check that the bundle holds it, and widen
+`scripts/ci/check-aab.sh`, which today fails on any publisher ID but Google's test one in the
+manifest or the assets. `res://consent_test_device.cfg` (`[consent]` `test_device_hash`) is also
+git-ignored, debug-only and not exported (§3's note).
+
 ### 10. Save and audio
 - Phase 6 keeps its state in Phase 5's `SaveService` section `ads`: `completed_matches`,
   `play_s_since_interstitial`, `last_interstitial_match`, `remove_ads` (the cache),
   `pending_start_credits`. UMP keeps its own storage. Until `SaveService` lands the ledger lives
   in memory (fake mode only).
 - `ad_opened` and `ad_closed` wrap every full-screen ad; Phase 5's `AudioService` mutes on them.
+
+Note (2026-11-17, P400d docs): stale in one point. "Until `SaveService` lands the ledger lives in
+memory (fake mode only)" no longer holds: since P407 (#504) the ledger is the `ads` section of
+`SaveService`, with the five keys above, read in AdService's `_ready` (the autoload follows
+`SaveService`); the entitlement, a shown interstitial and a start-credits grant flush at once.
+Consent is not saved. The audio line matches the code.
 
 ### 11. Proof (headless)
 The facade's typed signatures and `fake_auto_close`; the caps table row by row; the reward only in
