@@ -4,11 +4,22 @@ extends GdUnitTestSuite
 ## top of the main menu when its route exists.
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 
+var _window_size_before: Vector2i
 var _quit_on_go_back_before: bool = true
 var _menu: Control
 var _stack: MenuStack
 var _routes: MenuRoutes
+
+
+func before() -> void:
+	_window_size_before = get_window().size
+
+
+func after() -> void:
+	get_window().size = _window_size_before
 
 
 func before_test() -> void:
@@ -18,6 +29,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
+	UiScale.clear_override()
 	if _menu != null:
 		remove_child(_menu)
 		_menu.free()
@@ -60,6 +72,10 @@ func test_register_defaults_off_leaves_the_table_alone() -> void:
 
 
 func _open(defaults: bool, pending: StringName) -> void:
+	var profile: UiMetrics = _profile_with_window(ScreenSizes.LANDSCAPE[0])
+	UiScale.set_override(profile)
+	get_window().size = profile.window_size
+	await await_idle_frame()
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
 	_stack = _menu.get_node("MenuStack") as MenuStack
 	_stack.slide_ms = 0
@@ -79,3 +95,10 @@ func _index_of(screen: MenuScreen, text: String) -> int:
 		if button != null and button.text == text:
 			return index
 	return -1
+
+
+func _profile_with_window(size: Vector2i) -> UiMetrics:
+	for profile_name: StringName in UiProfiles.all():
+		if UiProfiles.all()[profile_name].window_size == size:
+			return UiProfiles.all()[profile_name]
+	return null
