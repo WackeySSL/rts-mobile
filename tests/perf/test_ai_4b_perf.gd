@@ -3,10 +3,9 @@ extends GdUnitTestSuite
 ## `OpponentAi` play `data/scenarios/perf_ai_4b.tres` for 900 ticks of seed 42, three times, through
 ## `AiDriver.lagged_tick`, exactly as `test_ai_perf.gd` plays `perf_ai`: the base arena's layout
 ## with each side's Phase 4b rows at tick 0 (a Flight Yard, Burst Stacks, an Engineering Centre, a
-## Space Centre, 2 bombers, 2 fighters, 2 transports, 4 drone squads, and from P304b 2 ground
-## carriers and 2 minelayers, 75 mobile rows a side) on
-## frozen copies of the Phase 4b defs, and the arena's own frozen AI defs of
-## `data/dev/arena/ai_4b/`.
+## Space Centre, 2 bombers, 2 fighters, 2 transports, 4 drone squads and, from P304b, 2 ground
+## carriers and 2 minelayers, 75 mobile rows a side) on frozen copies of the Phase 4b defs, and the
+## arena's own frozen AI defs of `data/dev/arena/ai_4b/`.
 ##
 ## The judged things are deterministic and read from the controllers and the World, never from the
 ## clock: every think stays inside the counted bounds of ADR 0030 section 4 (the same judge as

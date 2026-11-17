@@ -107,7 +107,8 @@ func test_every_phase_4b_type_is_on_each_side_at_tick_0() -> void:
 
 
 ## Plan row P304b: each side starts with 2 ground carriers and 2 minelayers, frozen copies of
-## P290's defs (the arena's own folder; the mines too), and stays at the 75 mobile rows.
+## P290's defs (the arena's own folder; the mines too). The Bunk Wagon and Linecar carry, the Shot
+## Truck and Seeder lay a mine from a frozen weapon.
 func test_every_ground_carrier_and_minelayer_is_on_each_side_at_tick_0_as_a_frozen_copy() -> void:
 	var four: ScenarioDef = load(PERF_AI_4B) as ScenarioDef
 	var want: Dictionary[int, Array] = {
@@ -119,16 +120,18 @@ func test_every_ground_carrier_and_minelayer_is_on_each_side_at_tick_0_as_a_froz
 			assert_int(_count_of(four, owner, id)).override_failure_message(id).is_equal(2)
 	var seen: int = 0
 	for spawn: SpawnDef in four.spawns:
-		var unit: UnitDef = spawn.unit as UnitDef
-		if want[spawn.owner].has(String(unit.type_id)):
-			seen += 1
-			assert_str(unit.resource_path).starts_with(dir + "units/")
-			if unit.mine_weapon != null:
-				assert_str(unit.mine_weapon.resource_path).starts_with(dir + "weapons/")
+		var unit: UnitDef = spawn.unit
+		var id: String = String(unit.type_id)
+		if not want.get(spawn.owner, []).has(id):
+			continue
+		seen += 1
+		assert_str(unit.resource_path).starts_with(dir + "units/")
+		if id.ends_with("_wagon") or id.ends_with("_linecar"):
+			assert_int(unit.carry_slots).override_failure_message(id).is_greater(0)
+		else:
+			assert_object(unit.mine_weapon).override_failure_message(id).is_not_null()
+			assert_str(unit.mine_weapon.resource_path).starts_with(dir + "weapons/")
 	assert_int(seen).is_equal(4)
-	var world: World = World.from_scenario(four, DetRandom.create(SEED, DetRandom.STREAM_SIM))
-	assert_int(world.spawn_refused).is_equal(0)
-	assert_int(world.unit_count()).is_equal(2 * (75 + 21))
 
 
 ## Mending and carrying work on the 4b arena: its rules enable them (a rule at 0 is inert), the

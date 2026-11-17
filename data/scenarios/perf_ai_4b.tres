@@ -65,9 +65,10 @@
 ; Linecar and Seeder: frozen copies in arena_4b/units/ and arena_4b/weapons/), 4 mobile rows a side taken off the rifle squads
 ; (18 to 14), so each side stays at the 75-unit cap. The AI does not load, unload or mine with them yet.
 ; Own copies in data/dev/arena/arena_4b/: the rules (the base arena's frozen rules plus today's sell, mend, carry, mine and
-; sweep values, flow_cache_size 8 as perf_ai, so carriers and mending work here), and the infantry and turret units with
+; sweep values, flow_cache_size 8 as perf_ai, so carriers and mending work here), the infantry and turret units with
 ; their shipped layer masks (the Lumen rifle and rocket squads and the Derrick turret shoot at aircraft as shipped, as
-; perf_air's squads do). No orders, no golden pair: the hash is printed, not pinned. The Perf AI route plays it with the
+; perf_air's squads do), and P304b's four ground units (Bunk Wagon, Shot Truck, Linecar, Seeder) with the two mine
+; weapons (shot charge, pulse seed). No orders, no golden pair: the hash is printed, not pinned. The Perf AI route plays it with the
 ; frozen AI defs of data/dev/arena/ai_4b/.
 
 [sub_resource type="Resource" id="Spawn_p1_hq_0"]
