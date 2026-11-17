@@ -59,6 +59,8 @@ const COPIED: Array[StringName] = [
 	&"type_charge_ticks",
 	&"type_strike_radius",
 	&"type_layer_bit",
+	&"type_pads",
+	&"type_repair_classes",
 	&"type_upgrade",
 	&"upgrades",
 	&"weapon_projectile_speed",
@@ -116,9 +118,10 @@ const COPIED: Array[StringName] = [
 ## which no view reads (P290 copies the mines the local player knows). With COPIED it covers those
 ## fifteen lists exactly once (a coverage test), so a new World array fails until it is classified.
 ## The air and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
-## `weapon_targets`, `reveal_site`, `reveal`, `type_upgrade` and `upgrades`, which the view and
-## input read (ADR 0036 sections 11 and 14, P248). `terrain_cost` is here (the view needs `terrain`,
-## `terrain_ids` and `move_cost`), and so are the derived `building_rows`
+## `weapon_targets`, `reveal_site`, `reveal`, `type_upgrade`, `upgrades`, `type_pads` and
+## `type_repair_classes` (the command bar's Repair, P282), which the view and input read (ADR
+## 0036 sections 11 and 14, P248). `terrain_cost` is here (the view needs `terrain`, `terrain_ids`
+## and `move_cost`), and so are the derived `building_rows`
 ## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
@@ -139,9 +142,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"pass_owner",
 	&"type_ammo",
 	&"type_rearm_ticks",
-	&"type_pads",
 	&"type_pad_first",
-	&"type_repair_classes",
 	&"type_repair_hp",
 	&"type_repair_period",
 	&"type_repair_cost_percent",
@@ -280,6 +281,10 @@ var type_strike_radius: PackedInt32Array = PackedInt32Array()
 ## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
 ## may hit, for the view and input (ADR 0036 section 5).
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
+## The pads of each type (an airfield has some) and the move-class mask its repair role serves
+## (World.type_repair_classes): the command bar's Repair finds the buildings that serve a unit.
+var type_pads: PackedInt32Array = PackedInt32Array()
+var type_repair_classes: PackedInt32Array = PackedInt32Array()
 ## The upgrade a research item gives (-1: not one) and each player's researched upgrades, one bit
 ## per upgrade: the build drawer's Research tab marks a card whose bit the local player has set
 ## (P248; it reads only its own entry).
@@ -548,6 +553,8 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
+	type_pads = world.type_pads.duplicate()
+	type_repair_classes = world.type_repair_classes.duplicate()
 	type_upgrade = world.type_upgrade.duplicate()
 	upgrades = world.upgrades.duplicate()
 	type_carry_slots = world.type_carry_slots.duplicate()
