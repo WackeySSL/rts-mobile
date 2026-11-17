@@ -73,6 +73,9 @@ const SIDES: Dictionary[StringName, Dictionary] = {
 }
 const FALLBACK_SIDE: StringName = &"renew"
 
+static var _quit_on_go_back_before: bool = true
+static var _live: int = 0  ## PauseMenus in the tree.
+
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink (Surrender).
 @export var feed: HudStateFeed  ## Its `state` holds the PAUSE unfold.
@@ -107,7 +110,6 @@ var _sound: Button
 var _music: Button
 var _exit_button: Button
 var _settings: Button
-var _quit_on_go_back_before: bool = true
 var _help: MenuStack  ## The How to play overlay while it is open.
 var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
@@ -121,14 +123,19 @@ var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check
 func _enter_tree() -> void:
 	# Back opens this menu, so the app must not also quit on it.
 	# TODO(P533): project-wide false makes this redundant
-	_quit_on_go_back_before = get_tree().quit_on_go_back
+	if _live == 0:
+		_quit_on_go_back_before = get_tree().quit_on_go_back
+	_live += 1
 	get_tree().quit_on_go_back = false
 
 
-## The value goes back when the menu leaves the tree (the match scene ends; the next scene sets
-## its own: MenuStack switches it off for the menus).
+## The value goes back when the last menu leaves the tree (the match scene ends; the next scene
+## sets its own: MenuStack switches it off for the menus). Counted, because a scene freed late can
+## overlap its successor, and the second one must not record the first one's false.
 func _exit_tree() -> void:
-	get_tree().quit_on_go_back = _quit_on_go_back_before
+	_live = maxi(_live - 1, 0)
+	if _live == 0:
+		get_tree().quit_on_go_back = _quit_on_go_back_before
 
 
 func _ready() -> void:

@@ -247,7 +247,7 @@ func test_settings_is_disabled_without_a_route_and_opens_with_one() -> void:
 	await _open_menu()
 	assert_bool((_menu.find_child("SettingsButton", true, false) as Button).disabled).is_true()
 	_state.close(HudState.Unfold.PAUSE)
-	_menu.routes.register(MenuRoutes.SETTINGS, func() -> MenuScreen: return MenuScreen.new())
+	_menu.routes.register(MenuRoutes.SETTINGS, MenuScreen.new)
 	await _open_menu()
 	assert_bool((_menu.find_child("SettingsButton", true, false) as Button).disabled).is_false()
 	_press(&"SettingsButton")
@@ -329,7 +329,7 @@ func test_the_menu_switches_quit_on_go_back_off_while_in_the_tree() -> void:
 func test_the_chips_read_the_audio_steps_again_when_the_settings_overlay_closes() -> void:
 	await _open_main()
 	_menu.routes = MenuRoutes.new()
-	_menu.routes.register(MenuRoutes.SETTINGS, func() -> MenuScreen: return MenuScreen.new())
+	_menu.routes.register(MenuRoutes.SETTINGS, MenuScreen.new)
 	AudioService.set_sound_step(AudioService.settings.default_sfx_step)
 	await _open_menu()
 	assert_str(_text(&"SoundButton")).is_equal("SOUND")
