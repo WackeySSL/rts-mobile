@@ -176,7 +176,9 @@ func test_a_mine_weapon_file_is_held_to_the_strike_weapon_rules_one_at_a_time() 
 func test_a_weapon_id_belongs_to_one_file_across_guns_strikes_and_mines() -> void:
 	var layer: UnitDef = Rules.fine_layer()
 	layer.resource_path = "res://data/units/layer.tres"
-	layer.mine_weapon.resource_path = "res://data/weapons/shot_charge.tres"
+	# A path no shipped file has: the real shot_charge.tres is in the resource cache once a roster
+	# holds the Shot Truck (P292), and a second resource may not take its path.
+	layer.mine_weapon.resource_path = "res://data/weapons/test_mine_charge.tres"
 	var rifle: UnitDef = Rules.fine_unit()
 	rifle.resource_path = "res://data/units/rifle.tres"
 	rifle.weapon = WeaponDef.new()
