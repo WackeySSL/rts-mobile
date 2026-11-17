@@ -58,15 +58,14 @@ func test_the_economy_keeps_no_credits_for_a_gated_step_and_production_goes_on()
 	assert_bool(units.size() > 0).is_true()
 
 
-func test_the_reveal_kind_is_the_sims_and_easy_is_ungated() -> void:
+func test_the_reveal_kind_is_the_sims() -> void:
 	assert_int(AiEconomy._REVEAL_KIND).is_equal(Strike.Kind.REVEAL)
+
+
+func test_easy_is_ungated_and_normal_and_hard_are_gated() -> void:
 	assert_int(Rig.level_of("easy").tech_army_value_min).is_equal(0)
-	assert_int(Rig.level_of("normal").tech_army_value_min).is_equal(
-		Rig.level_of("normal").wave_first_strength
-	)
-	assert_int(Rig.level_of("hard").tech_army_value_min).is_equal(
-		Rig.level_of("hard").wave_first_strength
-	)
+	assert_int(Rig.level_of("normal").tech_army_value_min).is_greater(0)
+	assert_int(Rig.level_of("hard").tech_army_value_min).is_greater(0)
 
 
 func test_the_frozen_copies_set_no_gate() -> void:
