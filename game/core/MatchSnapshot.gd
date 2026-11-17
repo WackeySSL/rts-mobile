@@ -192,6 +192,7 @@ const NOT_COPIED: Array[StringName] = [
 	&"mod_taken",
 	&"mod_ammo",
 	&"income_percent",
+	&"bonus_credits",
 ]
 ## The World ints the snapshot carries besides its header: the end of the match (ADR 0018 section
 ## 7; 0 while it runs), the two rule ints Placement.reason reads (PlacementInput) and the two the

@@ -10,6 +10,20 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TOLERANCE_PX: float = 0.5
 const FOOT_DP: float = 50.0 + 16.0  ## The foot kept free, as the design draws it.
 const GLYPH_DP: float = 24.0
+## Not as wide as the column: the chips, and the two buttons that share a row.
+const WORD_WIDE: Array[String] = [
+	"VibrationButton",
+	"SoundButton",
+	"MusicButton",
+	"HelpButton",
+	"SettingsButton",
+	"DevMenuButton",
+	"ExitButton"
+]
+## No glyph is drawn for these yet.
+const NO_GLYPH: Array[String] = [
+	"HelpButton", "SettingsButton", "SoundButton", "MusicButton", "DevMenuButton"
+]
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -48,27 +62,36 @@ func test_the_buttons_are_one_column_in_order_with_their_looks() -> void:
 		if button.is_visible_in_tree() and body.is_ancestor_of(button):
 			names.append(str(button.name))
 			var rect: Rect2 = button.get_global_rect()
-			if button.name != &"VibrationButton":  # The chip is as wide as its words.
+			if not WORD_WIDE.has(str(button.name)):  # A chip is as wide as its words.
 				var column_rect: Rect2 = column.get_global_rect()
 				assert_float(rect.position.x).is_equal_approx(column_rect.position.x, 0.5)
 				assert_float(rect.end.x).is_equal_approx(column_rect.end.x, 0.5)
-			assert_object(button.icon).override_failure_message(button.name).is_not_null()
-			assert_int(button.get_theme_constant(&"icon_max_width")).is_greater_equal(
-				roundi(UiScale.dp(GLYPH_DP))
-			)
-	var want: Array[String] = ["ResumeButton", "RestartButton", "SurrenderButton", "ExitButton"]
+			if not NO_GLYPH.has(str(button.name)):
+				assert_object(button.icon).override_failure_message(button.name).is_not_null()
+				assert_int(button.get_theme_constant(&"icon_max_width")).is_greater_equal(
+					roundi(UiScale.dp(GLYPH_DP))
+				)
+	var want: Array[String] = [
+		"ResumeButton",
+		"RestartButton",
+		"SurrenderButton",
+		"HelpButton",
+		"SettingsButton",
+		"ExitButton"
+	]
 	if DevRoutes.is_enabled():
 		want.append("DevMenuButton")
-	want.append("VibrationButton")
+	want.append_array(["VibrationButton", "SoundButton", "MusicButton"])
 	assert_array(names).is_equal(want)
 	assert_str(_button("SurrenderButton").theme_type_variation).is_equal("PauseDanger")
 	for name: String in ["RestartButton", "ExitButton"]:
 		assert_str(_button(name).theme_type_variation).is_equal("PauseButton")
 	if DevRoutes.is_enabled():
 		assert_str(_button("DevMenuButton").theme_type_variation).is_equal("PauseButton")
-	# Sound, Music and Settings stay hidden until Phase 5.
-	for gone: String in ["SettingsButton", "SoundButton", "MusicButton"]:
-		assert_object(_menu().find_child(gone, true, false)).is_null()
+	# How to play and Settings share one row (the foot stays free); the chips follow Vibration.
+	assert_object(_button("HelpButton").get_parent()).is_equal(
+		_button("SettingsButton").get_parent()
+	)
 
 
 ## The vibration chip is the accent's while on and muted with the word OFF while off.

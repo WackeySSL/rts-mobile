@@ -1,8 +1,17 @@
+class_name MenuRoot
 extends Node
 ## Puts the main menu on the stack of `main_menu.tscn` (menu.tscn itself stays an empty stack, which
-## the stack tests rely on).
+## the stack tests rely on). It registers the routes that exist (`MenuRoutesDefaults`) before the
+## menu is pushed, so each button is live at the first show, then opens the screen `MenuFlow` was
+## asked for (a lesson's end returns to the tutorial screen), if its route is registered; a route
+## nobody registered, or one whose factory gives nothing, is dropped with a warning.
 
 @export var stack_path: NodePath = ^"../MenuStack"
+
+## Tests replace these before the node enters the tree.
+var routes: MenuRoutes = MenuRoutes.shared
+var register_defaults: bool = true
+var take_pending: Callable = func() -> StringName: return MenuFlow.take_pending_screen()
 
 
 func _ready() -> void:
@@ -10,4 +19,16 @@ func _ready() -> void:
 	if stack == null:
 		push_error("MenuRoot: no MenuStack at %s (from %s)" % [stack_path, get_path()])
 		return
-	stack.push(MainMenu.new())
+	if register_defaults:
+		MenuRoutesDefaults.register(routes)
+	var main: MainMenu = MainMenu.new()
+	main.routes = routes
+	stack.push(main)
+	var pending: StringName = take_pending.call()
+	if pending == &"":
+		return
+	var screen: MenuScreen = routes.make(pending)
+	if screen == null:
+		push_warning("MenuRoot: no screen for the pending route %s, dropped" % pending)
+		return
+	stack.push(screen)

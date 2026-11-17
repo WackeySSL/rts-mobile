@@ -74,7 +74,7 @@ func after_test() -> void:
 
 func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes() -> void:
 	_resume[0] = true
-	_routes.register(MenuRoutes.SKIRMISH, func() -> MenuScreen: return MenuScreen.new())
+	_routes.register(MenuRoutes.SKIRMISH, MenuScreen.new)
 	var fitting: int = 0
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(_profile_with_window(size), true)
@@ -179,7 +179,7 @@ func test_a_route_nobody_registered_is_disabled_and_a_registered_one_opens() -> 
 	var buttons: Array[Button] = _buttons()
 	for button: Button in buttons:
 		assert_bool(button.disabled).is_true()
-	_routes.register(MenuRoutes.SETTINGS, func() -> MenuScreen: return MenuScreen.new())
+	_routes.register(MenuRoutes.SETTINGS, MenuScreen.new)
 	_stack.push(MenuScreen.new())
 	_stack.pop()
 	await await_idle_frame()
@@ -213,7 +213,7 @@ func test_a_route_registered_while_shown_enables_its_button() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	var tutorial: Button = _main._routed.find_key(MenuRoutes.TUTORIAL) as Button
 	assert_bool(tutorial.disabled).is_true()
-	_routes.register(MenuRoutes.TUTORIAL, func() -> MenuScreen: return MenuScreen.new())
+	_routes.register(MenuRoutes.TUTORIAL, MenuScreen.new)
 	assert_bool(tutorial.disabled).is_false()
 	_routes.clear()
 	assert_bool(tutorial.disabled).is_true()

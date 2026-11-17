@@ -64,6 +64,13 @@ cat >"$root/bin/readelf" <<'STUB'
 #!/usr/bin/env bash
 # Stand-in for GNU readelf -W -x .text FILE: the fixture's "code" is its first line, the rest is debug info.
 echo "readelf $*" >>"${STUB_LOG:-/dev/null}"
+# STUB_READELF_EMPTY: "packed" reads nothing from the bundle's copy only, anything else from every file.
+case "${STUB_READELF_EMPTY:-}:${*: -1}" in
+  : | :*) ;;
+  packed:*/lib/base/lib/*) exit "${STUB_READELF_RC:-0}" ;;
+  packed:*) ;;
+  *) exit "${STUB_READELF_RC:-0}" ;;
+esac
 head -n 1 "${@: -1}"
 STUB
 chmod +x "$root/bin/jarsigner" "$root/bin/java" "$root/bin/readelf"
@@ -210,6 +217,12 @@ check "project files in base/assets pass too" 0 "check-aab: OK"
 bundle strip stripped
 chk strip
 check "a packed kernels library Gradle stripped (same .text) passes" 0 "check-aab: OK"
+chk strip STUB_READELF_EMPTY=1
+check "a library whose .text readelf cannot read fails (no empty == empty pass)" 1 "readelf read no .text"
+chk strip STUB_READELF_EMPTY=1 STUB_READELF_RC=1
+check "a readelf that fails is named, not a silent exit" 1 "readelf read no .text"
+chk strip STUB_READELF_EMPTY=packed
+check "a packed library readelf cannot read fails even when the built one reads" 1 "readelf read no .text"
 bundle noasset noassets
 chk noasset
 check "a bundle with no */assets/ entry fails" 1 "the bundle has no */assets/ entry"
