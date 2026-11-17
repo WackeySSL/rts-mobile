@@ -8,7 +8,8 @@ extends RefCounted
 ## Units that building does not serve are left out; aircraft (an airfield's Home) and rows that
 ## are buildings never count, and a building with pads is an airfield, never a Repair target.
 
-## The own repair buildings of the last `plan`, scratch (one thread; `plan` clears it).
+## The own repair buildings of the last `plan` or `any_served`, scratch (one thread; each clears
+## it).
 static var _servers: PackedInt32Array = PackedInt32Array()
 
 
@@ -72,6 +73,14 @@ static func is_served(snap: MatchSnapshot, row: int, server: int, player: int) -
 ## the bar's Repair shows (dimmed while `plan` finds nothing to send).
 static func any_served(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -> bool:
 	if snap == null or snap.type_layer_bit.is_empty() or snap.type_move_class.is_empty():
+		return false
+	var ground: bool = false
+	for id: int in ids:  # A selection-sized test first: no ground row, no scan of the snapshot.
+		var at: int = snap.index_of(id)
+		if at >= 0 and is_ground(snap, at, player):
+			ground = true
+			break
+	if not ground:
 		return false
 	_collect_servers(snap, player)
 	for id: int in ids:

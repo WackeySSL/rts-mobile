@@ -221,7 +221,7 @@ plan's "Interim places" say where each part stands meanwhile.
   (ground units that an own repair building serves), Board (squads, while the player has a
   carrier), Unload (a loaded carrier) and Mine (minelayers); for one own building Mend and Sell.
   An order shows only while it can act on part of the selection (Mend and Repair stay and dim
-  while nothing they would repair is damaged, Michael, 2026-11-17), and it sends only the rows it
+  while nothing they would repair is damaged, Mine dims at its cap; Michael, 2026-11-17), and it sends only the rows it
   serves: a mixed selection shows Home and Repair side by side, each for its own rows. Deselect
   and, for units, Stop always show. The other orders follow in the order listed above and scroll
   sideways when they do not fit; a half-cut last button, or a fade at the bar's edge, is the cue.

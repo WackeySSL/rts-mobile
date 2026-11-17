@@ -11,11 +11,11 @@ extends Control
 ## (`PlayerController.home`); Repair (P282, P282b) shows for ground units a complete own repair
 ## building serves, dimmed and not tappable while none is damaged, and sends one REPAIR to the
 ## nearest (`RepairRules`, `PlayerController.repair`), beside Home in a mixed selection. Orders
-## that do not fit scroll sideways inside the bar, a
-## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
-## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
-## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs. A carrier's
-## chip shows its seats as pips, filled for each squad aboard.
+## that do not fit scroll sideways inside the bar, a button never shrinks below 56 dp. Board
+## (squads selected, an own carrier on the map with a free seat) and Unload (a loaded carrier
+## selected) are order aims (`CarryAim`, P265): a tap starts the aim, a second tap on the lit button
+## ends it, and the slot stays frozen while it runs. A carrier's chip shows its seats as pips,
+## filled for each squad aboard.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -121,7 +121,7 @@ var _portrait: bool = false  ## The window's orientation at the last resize.
 var _air: bool = false  ## A selected aircraft has an own airfield to go to: Home shows.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 var _repair: bool = false  ## A repair building serves a selected ground unit: Repair shows.
-var _repair_lit: bool = false  ## ... and one of those units is damaged: Repair is tappable.
+var _repair_ready: bool = false  ## ... and one of those units is damaged: Repair is tappable.
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
@@ -614,8 +614,8 @@ func _fill(ids: PackedInt32Array) -> void:
 	if snap != null:  # Home shows while an aircraft can go: it has an own airfield (REPAIR's rows).
 		OrderRules.home_fields(snap, ids, local, _fields)
 	_air = not _fields.is_empty()
-	_repair_lit = snap != null and RepairRules.plan(snap, ids, local, _served) > 0
-	_repair = _repair_lit or (snap != null and RepairRules.any_served(snap, ids, local))
+	_repair_ready = snap != null and RepairRules.plan(snap, ids, local, _served) > 0
+	_repair = _repair_ready or (units and snap != null and RepairRules.any_served(snap, ids, local))
 	_sync_orders(snap, units and not groups.is_empty(), row, ids)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
@@ -644,7 +644,7 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt3
 			shown = units_ok and _carry_order(id, snap, ids)
 		_buttons[id].visible = shown
 		if order["for"] == &"repair":
-			_sync_toggle(_buttons[id], false, _repair_lit)  # Dim, like Mend at full health.
+			_sync_toggle(_buttons[id], false, _repair_ready)  # Dim, like Mend at full health.
 	if not _buttons[&"sell"].visible:
 		_arm.disarm()  # The selection moved off the building: nothing is armed any more.
 		_refund_shown = -1

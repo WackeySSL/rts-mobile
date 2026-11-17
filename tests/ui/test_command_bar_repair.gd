@@ -88,7 +88,7 @@ func test_repair_is_dim_and_sends_nothing_while_no_served_unit_is_damaged() -> v
 	_tap(_repair())
 	assert_int(_sent.size()).is_equal(0)
 	assert_int(_buzzes).is_equal(0)
-	_hurt([TANK])  # Damage lights it on the next tick's refresh.
+	_hurt([TANK])  # Damage makes it tappable again on the next tick's refresh.
 	_runner.ticked.emit(1)
 	await await_idle_frame()
 	assert_bool(_repair().disabled).is_false()
@@ -124,13 +124,13 @@ func test_repair_never_shows_where_it_would_do_nothing() -> void:
 	assert_bool(_repair().visible).is_false()
 	await _select([NEAR_SHED])  # A building is no Repair row.
 	assert_bool(_repair().visible).is_false()
+	_hurt([FIGHTER, PATCHERS])
+	await _select([FIGHTER, PATCHERS])  # Only aircraft and infantry: no served row.
+	assert_bool(_repair().visible).is_false()
 	_hurt([TANK])
 	_runner.snapshot.owner[_runner.snapshot.index_of(NEAR_SHED)] = 2
 	_runner.snapshot.owner[_runner.snapshot.index_of(FAR_SHED)] = 2
 	await _select([TANK])  # No repair building of the player's.
-	assert_bool(_repair().visible).is_false()
-	_hurt([FIGHTER])
-	await _select([FIGHTER, PATCHERS])  # Only aircraft and infantry: no served row.
 	assert_bool(_repair().visible).is_false()
 
 
