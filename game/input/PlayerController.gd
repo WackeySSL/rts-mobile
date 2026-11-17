@@ -78,7 +78,7 @@ var _boarded: PackedInt32Array = PackedInt32Array()  ## Scratch: the DIED record
 var _hitters: PackedInt32Array = PackedInt32Array()  ## Scratch for the rows that can hit.
 var _homing: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s aircraft of one field.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for `home`'s airfields.
-var _repairing: PackedInt32Array = PackedInt32Array()  ## Scratch for `repair`'s units.
+var _group: PackedInt32Array = PackedInt32Array()  ## Scratch: one Repair's or follow order's units.
 
 
 func _init() -> void:
@@ -476,13 +476,11 @@ func _attack(target: int, at: Vector2, target_type: int) -> void:
 		return
 	command_sink.call(Command.attack(_local_player(), _hitters.duplicate(), target))
 	var at_row: int = snap.index_of(target)
-	OrderRules.followers(snap, selection.selected, _repairing)
-	if at_row >= 0 and not _repairing.is_empty():  # Medics follow the army (ADR 0037 section 6).
+	OrderRules.followers(snap, selection.selected, _group)
+	if at_row >= 0 and not _group.is_empty():  # Medics follow the army (ADR 0037 section 6).
 		var player: int = _local_player()
 		command_sink.call(
-			Command.attack_move(
-				player, _repairing.duplicate(), snap.pos_x[at_row], snap.pos_y[at_row]
-			)
+			Command.attack_move(player, _group.duplicate(), snap.pos_x[at_row], snap.pos_y[at_row])
 		)
 	marker_layer.show_target(camera.screen_to_world(at))
 
@@ -522,10 +520,10 @@ func home() -> bool:
 ## serve are left out; false when none is sent.
 func repair() -> bool:
 	var player: int = _local_player()
-	var building: int = RepairRules.plan(runner.snapshot, selection.selected, player, _repairing)
+	var building: int = RepairRules.plan(runner.snapshot, selection.selected, player, _group)
 	if building <= 0:
 		return false
-	command_sink.call(Command.repair(player, _repairing.duplicate(), building))
+	command_sink.call(Command.repair(player, _group.duplicate(), building))
 	_buzz()
 	return true
 

@@ -7,6 +7,9 @@ extends RefCounted
 ## Units that building does not serve are left out; aircraft (an airfield's Home) and rows that
 ## are buildings never count, and a building with pads is an airfield, never a Repair target.
 
+## The own repair buildings of the last `plan`, scratch (one thread; `plan` clears it).
+static var _servers: PackedInt32Array = PackedInt32Array()
+
 
 ## Whether row `row` is a complete, living own repair building with no pads (a Weld Shed, a Drone
 ## Dock), that is a REPAIR target of ground units.
@@ -42,43 +45,66 @@ static func is_served(snap: MatchSnapshot, row: int, server: int, player: int) -
 	)
 
 
+## Whether row `row` is a damaged own ground unit: the part of `is_served` that no building changes.
+static func is_hurt_ground(snap: MatchSnapshot, row: int, player: int) -> bool:
+	var type: int = snap.type_index[row]
+	return (
+		snap.owner[row] == player
+		and snap.hp[row] > 0
+		and snap.hp[row] < snap.type_max_hp[type]
+		and snap.build_left[row] == 0
+		and snap.type_speed[type] > 0
+		and snap.type_foot_w[type] <= 0
+		and (snap.type_layer_bit[type] & World.Layer.AIR) == 0
+	)
+
+
 ## Replaces `out` with the ids of `ids` the nearest serving building takes and returns that
 ## building's id; 0 and an empty `out` when no building serves any of them. The nearest is by
 ## squared distance from the centre of the units some building serves, the lower id on a tie.
+## One REPAIR goes to ONE building, so the units it does not serve are left for the next tap; that
+## holds while the ground repair buildings of a side serve the same classes (a data test pins it:
+## the Weld Shed and the Drone Dock both serve classes 6). If the masks ever differ, send one REPAIR
+## per building, as `OrderRules.home_fields` and `Home` do, or a second tap would resend the first
+## group (the centre covers every served unit).
 static func plan(
 	snap: MatchSnapshot, ids: PackedInt32Array, player: int, out: PackedInt32Array
 ) -> int:
 	out.clear()
 	if snap == null or snap.type_layer_bit.is_empty() or snap.type_move_class.is_empty():
 		return 0
-	var servers: PackedInt32Array = PackedInt32Array()
+	var hurt: bool = false
+	for id: int in ids:
+		var at: int = snap.index_of(id)
+		if at >= 0 and is_hurt_ground(snap, at, player):
+			hurt = true
+			break
+	if not hurt:
+		return 0  # Nothing to repair: the common case allocates and scans nothing more.
+	_servers.clear()
 	for row: int in snap.unit_id.size():
 		if is_server(snap, row, player):
-			servers.append(row)
-	if servers.is_empty():
-		return 0
+			_servers.append(row)
 	var sum_x: int = 0
 	var sum_y: int = 0
-	var count: int = 0
-	var rows: PackedInt32Array = PackedInt32Array()
-	for id: int in ids:
+	for id: int in ids:  # `out` holds rows first, ids at the end.
 		var row: int = snap.index_of(id)
 		if row < 0 or is_server(snap, row, player):
 			continue
-		for server: int in servers:
+		for server: int in _servers:
 			if is_served(snap, row, server, player):
-				rows.append(row)
+				out.append(row)
 				sum_x += snap.pos_x[row]
 				sum_y += snap.pos_y[row]
-				count += 1
 				break
+	var count: int = out.size()
 	if count == 0:
 		return 0
 	var best: int = -1
 	var best_d2: int = 0
-	for server: int in servers:
+	for server: int in _servers:
 		var served: bool = false
-		for row: int in rows:
+		for row: int in out:
 			if is_served(snap, row, server, player):
 				served = true
 				break
@@ -94,7 +120,11 @@ static func plan(
 		):
 			best = server
 			best_d2 = d2
-	for row: int in rows:
+	var kept: int = 0
+	for at: int in count:
+		var row: int = out[at]
 		if is_served(snap, row, best, player):
-			out.append(snap.unit_id[row])
+			out[kept] = snap.unit_id[row]
+			kept += 1
+	out.resize(kept)
 	return snap.unit_id[best]

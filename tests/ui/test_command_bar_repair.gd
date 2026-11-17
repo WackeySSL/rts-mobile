@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 ## selection shows Home and Repair side by side, each sending its own rows; medics and an attack:
 ## the unarmed rows get an ATTACK_MOVE beside the hitters' ATTACK.
 ## Own: light tank 1, fighter 2, airfield 3, near Weld Shed 4, far Weld Shed 5, Patchers 6, a
-## second light tank 7 (undamaged); enemy light tank 8.
+## second light tank 7 (undamaged); enemy light tank 8; tanker 9.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -21,6 +21,7 @@ const FAR_SHED: int = 5
 const PATCHERS: int = 6
 const FIT_TANK: int = 7
 const ENEMY_TANK: int = 8
+const TANKER: int = 9
 const SPAWNS: Array[Array] = [
 	[1, "light_tank", 14, 14],
 	[1, "fossil_fighter", 10, 10],
@@ -30,6 +31,7 @@ const SPAWNS: Array[Array] = [
 	[1, "fossil_patchers", 14, 16],
 	[1, "light_tank", 15, 14],
 	[2, "light_tank", 17, 15],
+	[1, "renew_tanker", 12, 12],
 ]
 
 var _window_size_before: Vector2i
@@ -94,7 +96,7 @@ func test_repair_never_shows_where_it_would_do_nothing() -> void:
 
 
 func test_a_mixed_selection_shows_home_and_repair_each_for_its_own_rows() -> void:
-	for size: Vector2i in [ScreenSizes.ALL[1], ScreenSizes.ALL[4]]:
+	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null)
 		var why: String = str(size)
 		_hurt([TANK, FIGHTER])
@@ -102,13 +104,17 @@ func test_a_mixed_selection_shows_home_and_repair_each_for_its_own_rows() -> voi
 		await _select([TANK, FIGHTER, FIT_TANK])
 		assert_bool(_home().is_visible_in_tree()).override_failure_message(why).is_true()
 		assert_bool(_repair().is_visible_in_tree()).override_failure_message(why).is_true()
+		_assert_whole_or_cue(why, _home())
+		_assert_whole_or_cue(why, _repair())
 		_tap(_repair())
 		assert_int(_sent.size()).override_failure_message(why).is_equal(1)
+		assert_int(_sent[0].player_id).is_equal(_runner.scenario.local_player)
 		assert_int(_sent[0].type).is_equal(Command.Type.REPAIR)
 		assert_array(_sent[0].unit_ids).is_equal([TANK])
 		assert_int(_buzzes).is_equal(1)
 		_tap(_home())
 		assert_int(_sent.size()).is_equal(2)
+		assert_int(_sent[1].player_id).is_equal(_runner.scenario.local_player)
 		assert_int(_sent[1].target_id).is_equal(FIELD)
 		assert_array(_sent[1].unit_ids).is_equal([FIGHTER])
 		assert_array(_controller.selection.selected).is_equal([TANK, FIGHTER, FIT_TANK])
@@ -127,19 +133,63 @@ func test_repair_goes_to_the_nearest_serving_building_not_one_that_cannot_serve(
 	assert_int(_sent[0].target_id).is_equal(FAR_SHED)
 
 
-func test_an_attack_sends_the_unarmed_medics_an_attack_move_to_the_target() -> void:
+func test_a_tie_in_distance_goes_to_the_lower_id_and_the_centre_of_two_units_decides() -> void:
 	await _open(ScreenSizes.ALL[0], null)
+	var snap: MatchSnapshot = _runner.snapshot
+	var near: int = snap.index_of(NEAR_SHED)
+	var far: int = snap.index_of(FAR_SHED)
+	var tank: int = snap.index_of(TANK)
+	# The far shed mirrored through the tank: the same distance as the near one.
+	snap.pos_x[far] = 2 * snap.pos_x[tank] - snap.pos_x[near]
+	snap.pos_y[far] = 2 * snap.pos_y[tank] - snap.pos_y[near]
+	_hurt([TANK])
+	await _select([TANK])
+	_tap(_repair())
+	assert_int(_sent[0].target_id).is_equal(NEAR_SHED)
+	# Two units whose centre lies nearer the far shed, though one stands at the near shed.
+	_sent.clear()
+	snap.pos_x[far] = 30000
+	snap.pos_y[far] = 30000
+	snap.pos_x[tank] = snap.pos_x[near]
+	snap.pos_y[tank] = snap.pos_y[near]
+	var second: int = snap.index_of(FIT_TANK)
+	snap.pos_x[second] = 40000
+	snap.pos_y[second] = 40000
+	_hurt([FIT_TANK])
+	await _select([TANK, FIT_TANK])
+	_tap(_repair())
+	assert_int(_sent[0].target_id).is_equal(FAR_SHED)
+	assert_array(_sent[0].unit_ids).is_equal([TANK, FIT_TANK])
+
+
+func test_a_damaged_medic_is_left_out_of_repair_and_only_the_tank_is_sent() -> void:
+	await _open(ScreenSizes.ALL[0], null)
+	_hurt([TANK, PATCHERS])
 	await _select([TANK, PATCHERS])
+	_tap(_repair())
+	assert_array(_sent[0].unit_ids).is_equal([TANK])
+
+
+func test_an_attack_sends_the_unarmed_medics_an_attack_move_but_never_a_tanker() -> void:
+	await _open(ScreenSizes.ALL[0], null)
+	await _select([TANK, PATCHERS, TANKER])
 	var snap: MatchSnapshot = _runner.snapshot
 	var row: int = snap.index_of(ENEMY_TANK)
-	_controller._attack(ENEMY_TANK, Vector2(640, 360), snap.type_index[row])
+	_tap_enemy(ENEMY_TANK)
+	var player: int = _runner.scenario.local_player
 	assert_int(_sent.size()).is_equal(2)
 	assert_int(_sent[0].type).is_equal(Command.Type.ATTACK)
+	assert_int(_sent[0].player_id).is_equal(player)
 	assert_array(_sent[0].unit_ids).is_equal([TANK])
 	assert_int(_sent[1].type).is_equal(Command.Type.ATTACK_MOVE)
+	assert_int(_sent[1].player_id).is_equal(player)
 	assert_array(_sent[1].unit_ids).is_equal([PATCHERS])
 	assert_int(_sent[1].target_x).is_equal(snap.pos_x[row])
 	assert_int(_sent[1].target_y).is_equal(snap.pos_y[row])
+	_sent.clear()
+	await _select([PATCHERS])  # Medics alone: nothing can hit, nothing is ordered.
+	_tap_enemy(ENEMY_TANK)
+	assert_int(_sent.size()).is_equal(0)
 
 
 func test_repair_is_whole_or_a_cut_cue_in_the_bar_on_every_profile() -> void:
@@ -154,6 +204,18 @@ func test_repair_is_whole_or_a_cut_cue_in_the_bar_on_every_profile() -> void:
 		var why: String = "%s %s" % [metrics.os_name, metrics.window_size]
 		assert_bool(_repair().is_visible_in_tree()).override_failure_message(why).is_true()
 		_assert_whole_or_cue(why)
+
+
+## A tap on the enemy `id` where the picker draws it, through the controller's gesture entry.
+func _tap_enemy(id: int) -> void:
+	var pick: PickSnapshot = PickSnapshot.new()
+	_controller.fill_pick(pick)
+	var at: int = pick.ids.find(id)
+	assert_int(at).is_greater_equal(0)
+	var gesture: GestureEvent = GestureEvent.new()
+	gesture.kind = GestureEvent.Kind.TAP
+	gesture.position = pick.screen_pos[at] + Vector2(0.0, pick.lift_of(at))
+	_controller.handle_gesture(gesture)
 
 
 func _repair() -> Button:
@@ -173,8 +235,8 @@ func _hurt(ids: Array) -> void:
 
 ## Repair is 56 x 64 dp at least and inside the safe area; inside the order scroll, or cut by it
 ## with part of it showing (the scroll takes touches then: the rule's cue that orders go on).
-func _assert_whole_or_cue(why: String) -> void:
-	var rect: Rect2 = _repair().get_global_rect()
+func _assert_whole_or_cue(why: String, button: Button = null) -> void:
+	var rect: Rect2 = (button if button != null else _repair()).get_global_rect()
 	assert_float(rect.size.x).override_failure_message(why).is_greater_equal(UiScale.dp(56.0) - 0.5)
 	assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(64.0) - 0.5)
 	var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer

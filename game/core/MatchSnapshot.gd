@@ -122,6 +122,7 @@ const COPIED: Array[StringName] = [
 ## `type_repair_classes` (the command bar's Repair, P282), which the view and input read (ADR
 ## 0036 sections 11 and 14, P248). `terrain_cost` is here (the view needs `terrain`, `terrain_ids`
 ## and `move_cost`), and so are the derived `building_rows`
+## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
 ## finds buildings by `type_foot_w` and harvesters by `type_harvest`).
 const NOT_COPIED: Array[StringName] = [
 	&"ammo",
