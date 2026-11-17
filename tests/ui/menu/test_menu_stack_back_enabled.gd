@@ -6,7 +6,7 @@ const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 
 var _menu: Control
 var _stack: MenuStack
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 
 
 func before_test() -> void:

@@ -757,6 +757,11 @@ below the Vibration chip while the menu is open; it is shown on open and destroy
 P435 builds it; P127 is withdrawn. `admob-policy`'s pause cell follows in plan row P400c, pending
 Michael's yes to the text.
 
+Note (2026-11-17, P400e docs): Michael said yes to that text on 2026-11-17; the main lead applied it
+in row P400c, branch `claude/p400c-policy-texts`, f3dfd593 ("Adaptive banner at its foot where the
+foot is free (upright), never within 16 dp of a control; shown only while the menu is open; none
+sideways and none while the menu scrolls (ADR 0039 §6)").
+
 Status note (2026-11-15, P500b; ADRs 0041-0043 accepted by Michael, 2026-11-15; the text and notes
 above stay as accepted):
 - **Toggles.** The Vibration switch's key moves with every `[hud]` key from `user://settings.cfg`

@@ -13,7 +13,7 @@ const TOLERANCE_PX: float = 0.5
 const PORTRAIT_CUTOUT: Rect2i = Rect2i(0, 100, 1080, 2137)
 
 var _window_size_before: Vector2i
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 var _menu: Control
 var _stack: MenuStack
 var _screen: MenuScreen
@@ -73,6 +73,33 @@ func test_the_column_and_the_slot_hold_at_the_six_sizes() -> void:
 			var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
 			var button_rect: Rect2 = button.get_global_rect()
 			assert_bool(button_rect.size.y >= floor_px).override_failure_message(label).is_true()
+		_close()
+		UiScale.clear_override()
+
+
+func test_a_long_column_scrolls_inside_the_safe_rect_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size))
+		for index: int in range(40):
+			_screen.add_button("MORE %d" % index, func() -> void: pass)
+		await await_idle_frame()
+		await await_idle_frame()
+		var label: String = str(size)
+		var bar: VScrollBar = _screen.scroll.get_v_scroll_bar()
+		assert_float(bar.max_value).override_failure_message(label).is_greater(bar.page)
+		var safe: Rect2 = UiScale.safe_rect_base()
+		(
+			assert_bool(safe.grow(TOLERANCE_PX).encloses(_screen.scroll.get_global_rect()))
+			. override_failure_message(label + " scroll")
+			. is_true()
+		)
+		var column: Rect2 = _screen.column.get_global_rect()
+		assert_float(column.position.x).override_failure_message(label).is_greater_equal(
+			_screen.scroll.get_global_rect().position.x - TOLERANCE_PX
+		)
+		assert_float(column.end.x).override_failure_message(label).is_less_equal(
+			_screen.scroll.get_global_rect().end.x - bar.size.x + TOLERANCE_PX
+		)
 		_close()
 		UiScale.clear_override()
 
