@@ -61,7 +61,8 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_twelve_buildings_and_the_six_units_in_the_adr_order() -> void:
+func test_the_faction_file_lists_the_twelve_buildings_and_the_eight_units_in_the_adr_order(
+) -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -94,7 +95,7 @@ func test_the_faction_file_lists_the_twelve_buildings_and_the_six_units_in_the_a
 		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 12)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those eighteen and no other.
+	# The files that name the faction are those twenty and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())
@@ -518,7 +519,7 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
-## P245b rostered the airfield, P245 the fighter and the bomber.
+## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -529,6 +530,8 @@ func _own_files() -> Array[String]:
 				"renew_drone",
 				"renew_linecar",
 				"renew_seeder",
+				"renew_drone_dock",  # P279
+				"renew_menders",  # P280
 			]
 		):
 			continue

@@ -53,10 +53,10 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## Derrick League mirror and 1417 on the Lumen Accord mirror.
 ## P249 (the Draft Shop and the Lens Works: 2 x 2 hull, KRITISK patch and shadow each, no head
 ## frames) moved page 1 from 2314, 2258 and 2238 to the pins below (+53, +21 and +28 rows) and page
-## 2 from 1986, 1094 and 1198 (+60, +64 and +46: the cross page is the lead's allocation of 60 rows,
-## the mirrors have a slot per player). Page 1 has left 1217 rows on the cross-faction page, 1305 on
-## the Derrick League mirror and 1318 on the Lumen Accord mirror; page 2 has left 1538, 2426 and
-## 2340.
+## 2 from 1986, 1094 and 1198 to the pins below (+60, +64 and +46; the cross page's 60 rows are the
+## page-2 allocation of ADR 0036 section 15, P26bz note; the shadows are one slot for both players).
+## Page 1 has left 1217 rows on the cross-faction page, 1305 on the Derrick League mirror and
+## 1318 on the Lumen Accord mirror; page 2 has left 1538, 2426 and 2340.
 const TODAY_CROSS: int = 2367  ## P249: 2314 + 53 (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
 const TODAY_MIRROR_DERRICK: int = 2279  ## P249: 2258 + 21 (P245b: 2172 + 86; P239b: 2127 + 45).
 const TODAY_MIRROR_LUMEN: int = 2266  ## P249: 2238 + 28 (P245b: 2167 + 71; P239b: 2068 + 99).

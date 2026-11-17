@@ -9,8 +9,9 @@ extends RefCounted
 
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
-## The owners of a goal key: the staging point (rally, retreat), the army goal and the scout's way.
-enum Owner { STAGING, ARMY, SCOUT }
+## The owners of a goal key: the staging point (rally, retreat), the army goal, the scout's way and
+## the repair building's tile (`AiRepair`, P283).
+enum Owner { STAGING, ARMY, SCOUT, REPAIR }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 ## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).
@@ -121,7 +122,8 @@ var hp_value: PackedInt32Array = PackedInt32Array()
 var withdrawn_id: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
-## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
+## STAGING and ARMY and clears the SCOUT and REPAIR bits when the cap is full, AiIntel writes SCOUT,
+## AiRepair writes REPAIR: the repair building's tile, only while a sent vehicle moves). The army
 ## goal is one cell at a time: AiArmy releases its key before it adds the next. The scout's key is
 ## added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
@@ -228,6 +230,16 @@ func goal_room(owner: int) -> int:
 		if mask == 1 << owner:
 			live -= 1
 	return goal_keys_max - live
+
+
+## The army's keys win a full cache: the scout's key gives way, then the repair building's, each
+## only when its release makes room and only while the cache is still full (`AiArmy._hold`).
+func yield_keys() -> void:
+	for owner: int in [Owner.SCOUT, Owner.REPAIR]:
+		if goal_x.size() < goal_keys_max:
+			return
+		if goal_room(owner) > 0:
+			release_owner(owner)
 
 
 ## Clears `owner`'s bit of every key it uses (a key no one else uses goes).

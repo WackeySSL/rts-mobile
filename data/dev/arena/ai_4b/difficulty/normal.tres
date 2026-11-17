@@ -29,3 +29,7 @@ commands_per_think_max = 8
 income_percent = 100
 mend_below_percent = 50
 mend_floor = 400
+; Repair and medics (P283) are off in the frozen arena: its roster has neither type.
+repair_retreat_percent = 0
+medic_per_squads = 0
+repair_wave_retreat = 0

@@ -29,9 +29,12 @@ prims = PackedStringArray(
 "box hull ceramic -0.78 0.62 0.06 0.3 0.4 0.06 group=cells",
 "box hull team -0.78 0.62 0.12 0.34 0.44 0.16 group=cellband",
 "box hull ceramic -0.78 0.62 0.28 0.3 0.4 0.1 group=cells",
-"broken hull ceramic -0.3 -0.3 0.06 1.0 1.0 0.5 teeth=6 low=0.3 damage=2 group=k2",
-"rod hull rebar -0.4 -0.4 0.5 -0.4 -0.4 0.95 3 bend=30 damage=2 group=k2",
-"rod hull beam 0.0 -0.2 0.5 0.0 -0.2 0.85 3 bend=-35 damage=2 group=k2",
+"prism hull interior -0.3 -0.3 0.26 0.84 0.84 0.04 sides=16 damage=2 group=k2",
+"broken hull ceramic -0.3 -0.3 0.26 0.5 0.5 0.34 teeth=5 low=0.3 damage=2 group=k2",
+"box hull hole -0.62 0.0 0.26 0.3 0.2 0.05 damage=2 group=k2",
+"box hull hole 0.0 -0.55 0.26 0.2 0.3 0.05 damage=2 group=k2",
+"rod hull rebar -0.4 -0.4 0.3 -0.4 -0.4 0.8 3 bend=30 damage=2 group=k2",
+"rod hull beam -0.1 -0.2 0.3 -0.1 -0.2 0.7 3 bend=-35 damage=2 group=k2",
 "broken hull ceramic 0.68 0.3 0.06 0.2 0.2 0.4 teeth=4 low=0.3 damage=2 group=k2",
 "box hull ceramic 0.4 0.72 0.2 0.5 0.3 0.06 damage=2 group=k2"
 )

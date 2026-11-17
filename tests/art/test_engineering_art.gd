@@ -17,6 +17,21 @@ const FACTION: Dictionary[StringName, StringName] = {
 const VIEW_DIR: Dictionary[StringName, int] = {&"fossil": 6, &"renew": 10}
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const MAX_OVERLAP: float = 0.85
+## The four research cards are hand-written (test_artgen.gd's HAND_CARDS leaves them out of its
+## generated-file checks), so the rules of a hand-written file are pinned here.
+const CARD_DIR: String = "res://assets/art/iso/icons/item_%s.svg"
+const CARD_FACTION: Dictionary[String, StringName] = {
+	"heavy_bombs": &"fossil",
+	"plated_hull": &"fossil",
+	"focus_bombs": &"renew",
+	"glaze_hull": &"renew",
+}
+const CARD_TAGS: Array[String] = ["svg", "g", "polygon", "path", "rect", "circle"]
+const CARD_BANNED: Array[String] = [
+	"href", "<style", "<text", "<image", "<filter", "<script", "<pattern", "<foreignObject"
+]
+const CARD_MAX_BYTES: int = 28 * 1024
+const HEADER_LINES: int = 32  ## The comment, the svg tag, the plate, the grid and the corner.
 
 var _index: IsoIndex = null
 
@@ -106,3 +121,121 @@ func test_each_reads_apart_from_every_other_building_at_32_px_in_greyscale() -> 
 				. override_failure_message("%s against %s: %.2f" % [id, other, overlap])
 				. is_less(MAX_OVERLAP)
 			)
+
+
+func test_a_research_card_uses_only_the_hand_written_tags_and_stays_small() -> void:
+	var tag: RegEx = RegEx.create_from_string("<([A-Za-z]+)")
+	for id: String in CARD_FACTION:
+		var text: String = FileAccess.get_file_as_string(CARD_DIR % id)
+		assert_bool(text.length() > 0).override_failure_message(id).is_true()
+		assert_int(text.to_utf8_buffer().size()).is_less_equal(CARD_MAX_BYTES)
+		for banned: String in CARD_BANNED:
+			assert_bool(text.contains(banned)).override_failure_message(id + banned).is_false()
+		for found: RegExMatch in tag.search_all(text):
+			assert_array(CARD_TAGS).override_failure_message(id).contains([found.get_string(1)])
+		assert_bool(text.contains('viewBox="0 0 128 128"')).is_true()
+
+
+## What a hand-written card may paint (ADR 0023 section 5 and "Research cards" in STYLE.md): from
+## the first line after the plate, grid and corner, every fill and stroke is `#RRGGBB` or `none`
+## (no short hex, no name, no rgb(), no single quotes), and each colour is a tone or an edge of one
+## of the faction's `ArtPalette` materials or its key triad. Team colour is only the triad, so
+## the key band holds without a check of its own.
+func test_a_research_card_paints_only_palette_tones_and_its_key_triad() -> void:
+	for id: String in CARD_FACTION:
+		var faction: StringName = CARD_FACTION[id]
+		var lines: PackedStringArray = FileAccess.get_file_as_string(CARD_DIR % id).split("\n")
+		var picture: PackedStringArray = lines.slice(HEADER_LINES)
+		(
+			assert_array(Array(_colour_problems(faction, picture)))
+			. override_failure_message(id)
+			. is_empty()
+		)
+		var team: int = 0
+		for hex: String in ArtPalette.KEYS[faction]:
+			team += "\n".join(picture).count(hex)
+		assert_int(team).override_failure_message(id + " has no team colour").is_greater(0)
+
+
+## The checker itself bites: each of these planted colours is refused.
+func test_the_card_colour_check_refuses_a_bad_colour() -> void:
+	var good: String = '<path d="M0 0" fill="#FF9446" stroke="none"/>'
+	assert_array(Array(_colour_problems(&"fossil", PackedStringArray([good])))).is_empty()
+	for bad: String in [
+		'fill="#F94"',
+		'fill="red"',
+		'fill="rgb(255,0,0)"',
+		"fill='#FF9446'",
+		'stroke="#FF0000"',  # Not a tone: a pure red in the key band.
+		'fill="#FF9447"',  # A shade next to the triad, in the key band.
+		'fill="#123456"',  # Not a palette tone.
+		'fill="#ff9446"',  # Lower case.
+	]:
+		var line: PackedStringArray = PackedStringArray(['<path d="M0 0" %s/>' % bad])
+		(
+			assert_array(Array(_colour_problems(&"fossil", line)))
+			. override_failure_message(bad)
+			. is_not_empty()
+		)
+	# A Lumen Accord tone is not a Derrick League one.
+	var other: PackedStringArray = PackedStringArray(['<path fill="#D5DBDC"/>'])
+	assert_array(Array(_colour_problems(&"fossil", other))).is_not_empty()
+	assert_array(Array(_colour_problems(&"renew", other))).is_empty()
+
+
+## One text per fill or stroke of `lines` that is not `#RRGGBB` / `none` or not an allowed colour.
+func _colour_problems(faction: StringName, lines: PackedStringArray) -> PackedStringArray:
+	var allowed: Dictionary[String, bool] = {}
+	for hex: String in ArtPalette.KEYS[faction]:
+		allowed[hex] = true
+	for material: StringName in ArtPalette.MATERIALS[faction]:
+		for level: int in 3:
+			allowed[ArtPalette.tone(faction, material, level)] = true
+		allowed[ArtPalette.edge(faction, material, false)] = true
+		allowed[ArtPalette.edge(faction, material, true)] = true
+	var found: PackedStringArray = PackedStringArray()
+	for line: String in lines:
+		for attr: String in ["fill", "stroke"]:
+			for quote: String in ["'", '"']:
+				var start: int = 0
+				while true:
+					var at: int = line.find("%s=%s" % [attr, quote], start)
+					if at < 0:
+						break
+					start = at + 1
+					var from: int = at + attr.length() + 2
+					var value: String = line.substr(from, line.find(quote, from) - from)
+					if quote == "'":
+						found.append("single quotes: " + value)
+					elif value == "none":
+						continue
+					elif (
+						not value.is_valid_html_color()
+						or not (value.length() == 7 and value.begins_with("#"))
+					):
+						found.append("not #RRGGBB: " + value)
+					elif value != value.to_upper() or not allowed.has(value):
+						found.append("not a palette tone: " + value)
+	return found
+
+
+## The plate, the grid and the corner are the generator's, byte for byte: a hand card sits in the
+## Build tab beside the generated ones.
+func test_a_research_card_has_the_generators_plate_grid_and_corner() -> void:
+	for id: String in CARD_FACTION:
+		var faction: StringName = CARD_FACTION[id]
+		var generated: PackedStringArray = (
+			FileAccess.get_file_as_string(CARD_DIR % (String(faction) + "_engineering")).split("\n")
+		)
+		var hand: PackedStringArray = FileAccess.get_file_as_string(CARD_DIR % id).split("\n")
+		for at: int in range(1, HEADER_LINES):
+			assert_str(hand[at]).override_failure_message("%s line %d" % [id, at]).is_equal(
+				generated[at]
+			)
+
+
+func test_a_research_card_is_a_texture_import() -> void:
+	for id: String in CARD_FACTION:
+		var import: String = FileAccess.get_file_as_string((CARD_DIR % id) + ".import")
+		assert_str(import).contains('importer="texture"')
+		assert_str(import).not_contains("keep")
