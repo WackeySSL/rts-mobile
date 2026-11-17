@@ -29,6 +29,13 @@ Status note (2026-11-17, P400d docs; P405/P405b/P435 findings): P405 (#516), P40
 P435 (#518) merged. Dated notes with what the merged code confirms, and where it no longer matches
 this text, are added under §1, §2, §3, §4, §5, §6, §9 and §10. No decision text changed.
 
+Status note (2026-11-17, P400e docs; Michael's yes to the P400c texts): Michael said yes to the five
+P400c draft texts on 2026-11-17 ("men ja", in chat, through the Phase 6 lead). The main lead applied
+them word for word in row P400c, branch `claude/p400c-policy-texts` (f3dfd593). Where this ADR says
+the `admob-policy` or CLAUDE.md texts are pending Michael's yes (the status note above, the "Amends"
+list, §9's note), the yes is given: the internal build may carry the real App ID with Google's test
+units once P414 sets it. No decision text changed.
+
 Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `docs/plans/2026-11-01-hud-v2.md` row **P127** is absorbed by this plan: the band is row P430,
   the pause menu's foot P435, the menu banners are Phase 5's menus placing the band (§5), the
@@ -300,6 +307,8 @@ patches; ADR 0040's status note of 2026-11-15). Its default is Google's test App
 without an override carries the test App ID. The plugin is enabled only for P410b's `--aab` run.
 P414 sets the real one from `ADMOB_APP_ID_ANDROID` for the `Android internal` export only, never
 in a tracked file (the guard above), and only after Michael's yes to the P400c text.
+
+Note (2026-11-17, P400e docs): Michael gave that yes on 2026-11-17 (the status note at the top).
 
 Note (2026-11-17, P400d docs; P405 findings, for P414): `res://ad_ids.cfg` is one `[units]`
 section with the keys `banner`, `interstitial` and `rewarded`, unit IDs only; a key that does not
