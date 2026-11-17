@@ -257,9 +257,9 @@ func test_perf_preset_keeps_dev_menu_and_native_library_and_no_signing_values() 
 	var section: String = "preset.2"
 	var options: String = "preset.2.options"
 	assert_str(config.get_value(section, "platform")).is_equal("Android")
-	assert_str(config.get_value(section, "custom_features")).is_equal("dev_menu")
+	assert_str(config.get_value(section, "custom_features")).is_equal("dev_menu,sim_kernels")
 	var excluded: String = config.get_value(section, "exclude_filter")
-	assert_str(excluded).is_equal("tests/*, addons/gdUnit4/*, addons/admob/*")
+	assert_str(excluded).is_equal("tests/*, addons/gdUnit4/*, addons/admob/*, assets/art/brand/*")
 	assert_bool(config.get_value(options, "gradle_build/use_gradle_build")).is_false()
 	assert_bool(config.get_value(options, "architectures/arm64-v8a")).is_true()
 	for abi: String in ["armeabi-v7a", "x86", "x86_64"]:
@@ -268,7 +268,7 @@ func test_perf_preset_keeps_dev_menu_and_native_library_and_no_signing_values() 
 	assert_bool(config.get_value(options, "package/signed")).is_true()
 	for key: String in config.get_section_keys(options):
 		assert_bool(key.begins_with("keystore/")).is_false()
-	assert_str(config.get_value("preset.1", "custom_features")).is_empty()
+	assert_str(config.get_value("preset.1", "custom_features")).is_equal("sim_kernels")
 
 
 func test_install_godot_fetches_the_release_template_only_on_request() -> void:
