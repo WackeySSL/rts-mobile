@@ -23,6 +23,7 @@ const _OFF_BY_DEFAULT: Dictionary[String, int] = {
 	"aa_per_seen_aircraft": 0,
 	"aa_max": 0,
 	"research_floor": 0,
+	"tech_army_value_min": 0,
 }
 const _AIR_FIELDS: Array[String] = [
 	"aa_type", "fighter_type", "bomber_type", "air_weights", "fighter_seen_weight"

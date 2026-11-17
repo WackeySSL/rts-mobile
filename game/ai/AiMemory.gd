@@ -91,6 +91,10 @@ var seen_air: int = 0
 var seen_low_air: int = 0
 var seen_aa: int = 0
 var seen_air_peak: int = 0
+## The value of the own ground army (the home and the wave squad, `AiArmy._tally`: cost scaled by
+## hp), as of the last ARMY slot that tallied; 0 before the first wave's tick. `AiEconomy` reads it
+## for the tech gate (P250b).
+var army_value: int = 0
 ## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
 ## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
 ## but the scout type and the aircraft (P250: they join no ground squad until P251 orders them),

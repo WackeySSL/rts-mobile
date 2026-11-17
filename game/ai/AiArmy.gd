@@ -840,6 +840,7 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 			sum += view.row_pos(row)
 			if view.row_order(row) == PlayerView.Order.IDLE:
 				_wave_idle += 1
+	memory.army_value = _home_value + _wave_value
 	if _wave_units > 0:
 		@warning_ignore("integer_division")
 		_wave_at = sum / _wave_units

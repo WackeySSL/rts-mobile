@@ -69,6 +69,11 @@ extends Resource
 @export var aa_per_seen_aircraft: int = 0
 @export var aa_max: int = 0
 @export var research_floor: int = 0
+## The tech gate (plan row P250b): an order step that is a tech building (the airfield, the
+## engineering centre or the space centre, found by their role) does not start while the own army's
+## value (`AiMemory.army_value`) is under this; the steps after it wait too, the loop and the
+## anti-air wish go on. 0 = no gate.
+@export var tech_army_value_min: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
