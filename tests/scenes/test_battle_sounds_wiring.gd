@@ -2,8 +2,18 @@ extends GdUnitTestSuite
 ## P535: the battle scene and the perf arena carry a BattleSounds node wired to their runner, so
 ## the battle plays its sounds and the perf card sees their cost.
 
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const ARENA_SCENE: String = "res://scenes/dev/perf_arena.tscn"
+
+
+func before_test() -> void:
+	MenuRig.begin()
+
+
+## The slide override is static state: leaving it changes every later suite.
+func after_test() -> void:
+	MenuRig.end()
 
 
 func _sounds_of(path: String) -> BattleSounds:
