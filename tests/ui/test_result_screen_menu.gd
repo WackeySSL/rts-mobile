@@ -8,58 +8,12 @@ extends GdUnitTestSuite
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
-const MenuFlowScript = preload("res://game/ui/menu/menu_flow_service.gd")
-const ProgressionScript = preload("res://game/meta/progression_service.gd")
-const AudioServiceScript = preload("res://game/view/audio/audio_service.gd")
+const FakeFlow: GDScript = preload("res://tests/ui/support/fake_menu_flow.gd")
+const FakeProgression: GDScript = preload("res://tests/ui/support/fake_progression.gd")
+const FakeAudio: GDScript = preload("res://tests/ui/support/fake_audio.gd")
 const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const TABLE: PackedInt32Array = [0, 100, 250, 500]
-
-
-## Counts the calls; `restart` and `leave_match` wait for `release` so a second tap can be tried.
-class FakeFlow:
-	extends MenuFlowScript
-	signal release
-	var runner: MatchRunner
-	var award: XpAward
-	var restarts: int = 0
-	var leaves: int = 0
-
-	func current_runner() -> MatchRunner:
-		return runner
-
-	func last_award() -> XpAward:
-		return award
-
-	func restart() -> Error:
-		restarts += 1
-		await release
-		return OK
-
-	func leave_match(_screen: StringName = &"") -> void:
-		leaves += 1
-		await release
-
-
-class FakeProgression:
-	extends ProgressionScript
-	var total: int = 0
-
-	func xp() -> int:
-		return total
-
-	func title(rank_number: int) -> String:
-		return "Rank%d" % rank_number
-
-
-class FakeAudio:
-	extends AudioServiceScript
-	var played: Array[StringName] = []
-
-	func play_music(id: StringName) -> bool:
-		played.append(id)
-		return true
-
 
 var _window_size_before: Vector2i
 var _main: Node
