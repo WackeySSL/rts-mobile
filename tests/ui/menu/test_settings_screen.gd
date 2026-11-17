@@ -77,6 +77,7 @@ var _ads: FakeAds
 var _audio: FakeAudio
 var _dev: Array[bool] = [true]
 var _dev_opened: Array[int] = [0]
+var _in_match: Array[bool] = [false]
 var _service: Node
 var _harness: RefCounted
 
@@ -97,6 +98,7 @@ func before_test() -> void:
 	_audio = FakeAudio.new()
 	_dev[0] = true
 	_dev_opened[0] = 0
+	_in_match[0] = false
 
 
 func after_test() -> void:
@@ -311,6 +313,7 @@ func _open(profile: UiMetrics) -> void:
 	_screen.ad_service = _ads
 	_screen.audio = _audio
 	_screen.dev_enabled = func() -> bool: return _dev[0]
+	_screen.in_match = func() -> bool: return _in_match[0]
 	_screen.open_dev = func() -> void: _dev_opened[0] += 1
 	_stack.push(_screen)
 	for _frame: int in range(3):
@@ -419,3 +422,25 @@ func test_menu_flow_applies_the_saved_steps_to_the_audio_service() -> void:
 	flow.free()
 	audio.call("set_step", &"Music", music_before)
 	audio.call("set_sound_step", sound_before)
+
+
+func test_in_a_match_neither_the_privacy_row_nor_the_purchase_slot_is_built() -> void:
+	_ads.required = true
+	_in_match[0] = true
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	assert_object(_screen.privacy_button).is_null()
+	assert_object(_screen.purchase_slot).is_null()
+	assert_object(_screen.column.find_child("PurchaseSlot", false, false)).is_null()
+	assert_bool(_button("PRIVACY OPTIONS") == null).is_true()
+	assert_object(_screen.sound_slider).is_not_null()  # The plain settings stay.
+	assert_object(_button("HOW TO PLAY")).is_not_null()
+	_close()
+	_in_match[0] = false  # From the main menu both are built again.
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	assert_bool(_screen.privacy_button.visible).is_true()
+	assert_object(_screen.purchase_slot).is_not_null()
+
+
+func test_the_default_match_check_asks_the_menu_flow() -> void:
+	var screen: SettingsScreen = auto_free(SettingsScreen.new())
+	assert_bool(screen.in_match.call()).is_equal(MenuFlow.current_runner() != null)

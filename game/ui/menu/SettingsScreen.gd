@@ -9,6 +9,7 @@ extends MenuScreen
 ## Replay tutorial, How to play and Licences through `MenuRoutes` (a route nobody registered
 ## leaves its button present and disabled) and Developer (debug and `dev_menu` builds), which
 ## changes to the dev menu scene through `DevRoutes` and needs no route.
+## In battle (opened from the pause menu) no purchase slot and no privacy row (Michael, 2026-11-17).
 ## The saved volume reaches `AudioService` from `MenuFlow._ready`; the reduced switch's boot and
 ## match-start wiring: follow-up row (P526b). No Command, no sim. The foot
 ## banner slot stays empty and 0 tall until Phase 6's band.
@@ -38,6 +39,8 @@ var audio: Node = null
 var dev_enabled: Callable = DevRoutes.is_enabled
 ## Opens the dev menu scene; tests replace it.
 var open_dev: Callable = _open_dev
+## Whether a match is running (opened from the pause menu); tests replace it.
+var in_match: Callable = _in_match
 
 var purchase_slot: VBoxContainer
 var sound_slider: HSlider
@@ -47,6 +50,7 @@ var reduced_toggle: Button
 var privacy_button: Button
 var _routed: Dictionary[Button, StringName] = {}
 var _asking: bool = false
+var _built: bool = false
 
 
 func _ready() -> void:
@@ -60,27 +64,29 @@ func _ready() -> void:
 	music_slider = _slider(MUSIC, top, _initial(&"Music", MenuPrefs.music_step), _on_music)
 	vibration_toggle = _toggle(VIBRATION, HudPrefs.haptics_enabled(), _on_vibration)
 	reduced_toggle = _toggle(REDUCED, MenuPrefs.reduced_effects(), _on_reduced)
-	privacy_button = add_button(tr(PRIVACY), _ask_privacy)
-	purchase_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6).
-	purchase_slot.name = &"PurchaseSlot"
-	purchase_slot.visible = false
-	purchase_slot.child_entered_tree.connect(_watch_slot_child)
-	purchase_slot.child_exiting_tree.connect(_sync_later)
-	column.add_child(purchase_slot)
+	if not in_match.call():  # In battle neither node exists, so no widget can land there.
+		privacy_button = add_button(tr(PRIVACY), _ask_privacy)
+		purchase_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6).
+		purchase_slot.name = &"PurchaseSlot"
+		purchase_slot.visible = false
+		purchase_slot.child_entered_tree.connect(_watch_slot_child)
+		purchase_slot.child_exiting_tree.connect(_sync_later)
+		column.add_child(purchase_slot)
 	_route_button(REPLAY, MenuRoutes.TUTORIAL)
 	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
 	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
 	if dev_enabled.call():
 		add_button(tr(DEVELOPER_TEXT), func() -> void: open_dev.call())
+	_built = true
 	_listen()
 	_refresh()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_ENTER_TREE and privacy_button != null:
+	if what == NOTIFICATION_ENTER_TREE and _built:
 		_listen()  # Back from a screen: the routes may have changed.
 		_refresh()
-	elif what == NOTIFICATION_EXIT_TREE and privacy_button != null:
+	elif what == NOTIFICATION_EXIT_TREE and _built:
 		if routes.changed.is_connected(_refresh):
 			routes.changed.disconnect(_refresh)
 
@@ -93,7 +99,10 @@ func _listen() -> void:
 func _refresh() -> void:
 	for button: Button in _routed:
 		button.disabled = not routes.has(_routed[button])
-	privacy_button.visible = ad_service != null and ad_service.call("is_privacy_options_required")
+	if privacy_button != null:
+		privacy_button.visible = (
+			ad_service != null and ad_service.call("is_privacy_options_required")
+		)
 
 
 func _ask_privacy() -> void:
@@ -163,6 +172,10 @@ func _sync_slot() -> void:
 		if child is Control and (child as Control).visible:
 			any = true
 	purchase_slot.visible = any
+
+
+func _in_match() -> bool:
+	return MenuFlow.current_runner() != null
 
 
 func _open_dev() -> void:
