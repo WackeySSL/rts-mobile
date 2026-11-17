@@ -138,3 +138,59 @@ func test_a_turn_while_the_banner_is_hidden_is_handled_at_the_next_show() -> voi
 	_backend.show_banner()
 	assert_int(_set.count("create")).is_equal(2)
 	assert_int(_set.count("destroy")).is_equal(1)
+
+
+func test_turns_inside_the_reload_gap_coalesce_into_one_remake_at_its_end() -> void:
+	_backend.initialize()
+	_backend.show_banner()
+	await _load_banner()
+	_now = 1000
+	_width = 640
+	resized.emit()
+	assert_int(_set.count("create")).is_equal(2)
+	_now = 5000
+	_width = 360
+	resized.emit()
+	_width = 480
+	resized.emit()
+	assert_int(_set.count("create")).is_equal(2)
+	assert_int(_later.size()).is_equal(1)
+	assert_int(_later[0][0]).is_equal(26000)
+	_now = 30999
+	(_later[0][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(2)
+	assert_int(_later.size()).is_equal(2)
+	_now = 31000
+	(_later[1][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(3)
+	assert_int(_set.count("destroy")).is_equal(2)
+	var sizes: Array = _set.calls.filter(func(e: Array) -> bool: return e[0] == "adaptive_size")
+	assert_array(sizes.back()).is_equal(["adaptive_size", 480, AdMobBackend.S_SIZE])
+
+
+func test_a_pending_remake_does_nothing_when_the_width_is_back_or_the_banner_is_gone() -> void:
+	_backend.show_banner()
+	_now = 1000
+	_width = 640
+	resized.emit()
+	_now = 2000
+	_width = 360
+	resized.emit()
+	_width = 640
+	resized.emit()
+	_backend.destroy_banner()
+	_now = 31000
+	(_later[0][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(2)
+
+
+func test_the_preview_height_is_the_adaptive_size_before_the_first_load() -> void:
+	assert_int(_backend.banner_height_preview_dp()).is_equal(0)
+	_backend.initialize()
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)
+	assert_int(_set.count("create")).is_equal(0)
+	_backend.show_banner()
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)
+	await _load_banner()
+	assert_int(_backend.banner_height_dp()).is_equal(56)
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)

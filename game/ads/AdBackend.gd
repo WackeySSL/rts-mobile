@@ -91,3 +91,9 @@ func destroy_banner() -> void:
 ## The anchored banner's height in dp: 0 until the banner has loaded, and after a failed load.
 func banner_height_dp() -> int:
 	return 0
+
+
+## What `banner_height_dp()` will be once a banner has loaded, for a host that checks the fit before
+## it asks for one (AdService.banner_height_preview_dp). Makes no request.
+func banner_height_preview_dp() -> int:
+	return banner_height_dp()

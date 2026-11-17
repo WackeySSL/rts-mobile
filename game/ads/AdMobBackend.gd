@@ -67,6 +67,9 @@ var _banner_width: int = 0
 var _banner_height: int = 0
 var _banner_failed_ms: int = -1
 var _retry_pending: bool = false
+## The last turn's re-create (ms, -1 = none yet), and whether one is waiting for the gap to pass.
+var _turn_ms: int = -1
+var _turn_pending: bool = false
 
 
 func _init(
@@ -204,6 +207,23 @@ func destroy_banner() -> void:
 ## 0 until the banner has loaded, and again after a failed load or while it is made again.
 func banner_height_dp() -> int:
 	return _banner_height if _banner_shown and _banner_loaded else 0
+
+
+## The height the banner will have for the current width, known before it loads: the adaptive
+## size's own answer (what `_create_banner` asks for), so the pause foot's first fit check is real.
+## The loaded height once there is one. 0 without the plugin or before `initialize`.
+func banner_height_preview_dp() -> int:
+	if not _initialised:
+		return 0
+	if _banner_shown and _banner_loaded:
+		return _banner_height
+	var sizes: Object = _plugin(S_SIZE)
+	if sizes == null:
+		return 0
+	var size: Dictionary = sizes.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+		int(_width_dp.call())
+	)
+	return int(size["height"])
 
 
 func _create_banner(view: Object) -> void:
@@ -376,16 +396,33 @@ func _on_banner_failed(uid: int, _error: Dictionary = {}) -> void:
 
 
 ## The phone turned while the banner shows: the adaptive size depends on the width, so the banner
-## is destroyed and made again at the new one (its height is 0 until it loads).
+## is destroyed and made again at the new width (its height is 0 until it loads), at most once per
+## `banner_reload_min_ms`. Turns inside the gap coalesce into one re-create at the gap's end.
 func _on_resized() -> void:
+	_remake_for_turn()
+
+
+func _remake_for_turn() -> void:
 	var view: Object = _plugin(S_VIEW)
 	if view == null or _banner_uid < 0 or not _banner_shown:
 		return
 	if int(_width_dp.call()) == _banner_width:
 		return
+	var remaining: int = banner_reload_min_ms - (int(_now_ms.call()) - _turn_ms)
+	if _turn_ms >= 0 and remaining > 0:
+		if not _turn_pending:
+			_turn_pending = true
+			_later.call(remaining, _turn_due)
+		return
+	_turn_ms = int(_now_ms.call())
 	_drop_banner(view)
 	_create_banner(view)
 	banner_height_changed.emit()
+
+
+func _turn_due() -> void:
+	_turn_pending = false
+	_remake_for_turn()
 
 
 ## A shown ad is spent (or superseded): free its native object and forget it, so the next load

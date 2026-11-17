@@ -262,7 +262,7 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 ## see whether the banner fits before it shows one. 0 where none may show.
 func banner_height_preview_dp() -> int:
 	if _initialised and _can_request_ads and not _ledger.remove_ads:
-		return _backend.banner_height_dp()
+		return _backend.banner_height_preview_dp()
 	return 0
 
 
@@ -297,8 +297,9 @@ func _refresh_banner() -> void:
 			_banner_alive = true
 			_backend.show_banner()
 		height = _backend.banner_height_dp()
-	elif (_ledger.remove_ads or not _can_request_ads) and _banner_alive:
-		# Remove ads or no consent: the view goes, not just out of sight (ADR 0039 section 8).
+	elif (_ledger.remove_ads or not _can_request_ads or _banner_requests == 0) and _banner_alive:
+		# Remove ads, no consent, or the last band released (at idle, so a reparent keeps it): the
+		# view goes, not just out of sight (ADR 0039 sections 6 and 8).
 		_banner_alive = false
 		_banner_shown = false
 		_backend.destroy_banner()
