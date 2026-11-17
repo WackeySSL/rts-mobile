@@ -72,7 +72,6 @@ const SIDES: Dictionary[StringName, Dictionary] = {
 	},
 }
 const FALLBACK_SIDE: StringName = &"renew"
-const OVERLAY_BACKDROP: Color = Color(0.10980392, 0.12941177, 0.15294118, 1.0)  ## As menu.tscn.
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink (Surrender).
@@ -590,7 +589,7 @@ func _open_overlay(screen: MenuScreen) -> void:
 	_help = MenuStack.new()
 	_help.name = &"HelpOverlay"
 	_help.slide_ms = 0  # Cuts: a detour is never a slide to cancel.
-	_help.backdrop_color = OVERLAY_BACKDROP
+	_help.backdrop_color = get_theme_color(&"outline", &"BoxOverlay")  # The menu scene's own.
 	add_child(_help)  # Last child: over the foot and the dialogs.
 	_help.push(MenuScreen.new())
 	_help.screen_changed.connect(_on_help_changed)
