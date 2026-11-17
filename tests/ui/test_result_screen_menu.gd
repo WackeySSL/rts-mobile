@@ -2,8 +2,9 @@ extends GdUnitTestSuite
 ## The result screen's Phase 5 parts (plan P532, ADR 0043 sections 6 and 8, ADR 0045): the XP the
 ## match paid and the rank bar (its math at the rank edges and at the top rank), Back and Play
 ## again through `MenuFlow` (a fake counts the calls; a second tap while one runs does nothing),
-## the victory or defeat sting once (a fake audio service), and the empty `OfferSlot`. The layout
-## at the six sizes is checked with the XP block showing. The basic screen is test_result_screen's.
+## the victory or defeat sting once (a fake audio service), and the `OfferSlot` with its hidden
+## offer. The layout at the six sizes is checked with the XP block showing. The basic screen is
+## test_result_screen's.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -212,23 +213,17 @@ func test_a_refused_call_leaves_the_buttons_live_for_the_next_tap() -> void:
 	_flow.release.emit()
 
 
-func test_the_offer_slot_exists_empty_and_0_tall_until_something_is_put_in() -> void:
-	await _open(130, 30)
+func test_the_offer_slot_holds_the_hidden_double_xp_offer_and_is_0_tall() -> void:
+	await _open(130, 30)  # The fake award has no id, so nothing can be doubled.
 	MatchRig.end(_main, [2])
 	var slot: OfferSlot = _screen().find_child("OfferSlot", true, false) as OfferSlot
 	assert_object(slot).is_not_null()
 	assert_object(slot.owner).is_same(_screen())
-	assert_int(slot.get_child_count()).is_equal(0)
+	assert_int(slot.get_child_count()).is_equal(1)
+	assert_object(slot.get_child(0)).is_same(_screen().offer)
+	assert_bool(_screen().offer.visible).is_false()
 	assert_float(slot.get_combined_minimum_size().y).is_equal(0.0)
 	assert_bool(slot.is_visible_in_tree()).is_false()
-	var probe: Control = Control.new()
-	probe.custom_minimum_size = Vector2(10, 40)
-	slot.add_child(probe)
-	assert_bool(slot.visible).is_true()
-	assert_float(slot.get_combined_minimum_size().y).is_equal(40.0)
-	slot.remove_child(probe)
-	probe.free()
-	assert_bool(slot.visible).is_false()
 
 
 func test_the_layout_with_the_xp_block_fits_the_six_sizes() -> void:

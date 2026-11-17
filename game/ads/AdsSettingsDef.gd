@@ -59,6 +59,8 @@ static var _default: AdsSettingsDef
 @export_range(_MIN_GAP_DP, _MAX_GAP_DP) var start_banner_gap_dp: int = 48
 ## A turn reloads the banner at most this often (ms).
 @export_range(_MIN_RELOAD_MS, _MAX_RELOAD_MS) var banner_reload_min_ms: int = 30000
+## The Double XP offer's button text; `%d` is `reward_xp_multiplier`.
+@export var reward_xp_text: String = "Watch an ad for %dx XP"
 ## The Play product of the Remove ads purchase.
 @export var remove_ads_product_id: String = "remove_ads"
 
@@ -100,6 +102,8 @@ func validate() -> PackedStringArray:
 	_check(out, "banner_gap_dp", banner_gap_dp, _MIN_GAP_DP, _MAX_GAP_DP)
 	_check(out, "start_banner_gap_dp", start_banner_gap_dp, _MIN_GAP_DP, _MAX_GAP_DP)
 	_check(out, "banner_reload_min_ms", banner_reload_min_ms, _MIN_RELOAD_MS, _MAX_RELOAD_MS)
+	if not reward_xp_text.contains("%d"):
+		out.append("reward_xp_text lacks %d")
 	if remove_ads_product_id.strip_edges().is_empty():
 		out.append("remove_ads_product_id is empty")
 	return out
