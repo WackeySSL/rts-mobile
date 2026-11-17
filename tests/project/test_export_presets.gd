@@ -73,7 +73,7 @@ func test_preset_identity() -> void:
 	# Test code, the test runner and the AdMob plugin never ship in this non-Gradle APK (ADR 0040 §1).
 	# Unlike the Web preset, never native/* (ADR 0013).
 	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, addons/admob/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, assets/art/brand/*"
 	)
 
 
@@ -83,7 +83,7 @@ func test_web_preset_excludes_tests_native_and_addons() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*, assets/art/brand/*"
 	)
 
 
@@ -140,7 +140,7 @@ func test_android_internal_preset_is_the_gradle_aab_play_build() -> void:
 		"build/android/rts-mobile-internal.aab"
 	)
 	var exclude: String = config.get_value(INTERNAL, "exclude_filter")
-	assert_str(exclude).is_equal("tests/*, addons/gdUnit4/*")
+	assert_str(exclude).is_equal("tests/*, addons/gdUnit4/*, assets/art/brand/*")
 	assert_bool(_filter_matches(exclude, "res://addons/admob/admob.gd")).is_false()
 	assert_bool(_filter_matches(exclude, "res://native/sim_kernels.gdextension")).is_false()
 	assert_str(config.get_value(INTERNAL_OPTIONS, "package/unique_name")).is_equal("dk.appcode.rts")
@@ -254,6 +254,17 @@ func test_the_sim_kernels_tag_is_set_on_exactly_the_presets_that_pack_native() -
 		tagged += 1 if has_tag else 0
 	assert_int(tagged).is_equal(3)  # Both Android debug presets and the Play build; not Web.
 	assert_str(config.get_value("preset.0", "custom_features")).not_contains(KERNELS_TAG)
+
+
+## Follow-up of plan row P500d: nothing loads the brand SVGs at runtime (the splash is a PNG), so no
+## preset packs them; the include_filter must not bring them back either.
+func test_no_preset_packs_the_brand_svgs() -> void:
+	var config: ConfigFile = _config()
+	var brand: String = "res://assets/art/brand/appcode_mark_white.svg"
+	assert_bool(FileAccess.file_exists(brand)).is_true()
+	for section: String in ALL_PRESETS:
+		var exclude: String = config.get_value(section, "exclude_filter", "")
+		assert_bool(_filter_matches(exclude, brand)).override_failure_message(section).is_true()
 
 
 ## Plan row P529: every preset packs the licence texts the Licences screen reads (the .md and .txt
