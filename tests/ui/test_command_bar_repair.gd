@@ -1,9 +1,10 @@
 extends GdUnitTestSuite
 ## The Repair order of the command bar (plan P282, ADR 0037 section 9) in the main scene at the six
-## sizes of ScreenSizes.ALL: it shows only while a selected own ground unit is damaged and a
-## complete own repair building serves its class, at least 56 x 64 dp, and one tap sends one REPAIR
-## with the units that building serves to the nearest serving building, with no aim. A mixed
-## selection shows Home and Repair side by side, each sending its own rows; medics and an attack:
+## sizes of ScreenSizes.ALL: it shows while a complete own repair building serves a selected own
+## ground unit, dimmed and not tappable until one is damaged (P282b), at least 56 x 64 dp, and one
+## tap sends one REPAIR with the damaged units that building serves to the nearest, with no
+## aim. A mixed selection shows Home and Repair side by side, each sending its own rows; medics
+## and an attack:
 ## the unarmed rows get an ATTACK_MOVE beside the hitters' ATTACK.
 ## Own: light tank 1, fighter 2, airfield 3, near Weld Shed 4, far Weld Shed 5, Patchers 6, a
 ## second light tank 7 (undamaged); enemy light tank 8; tanker 9.
@@ -61,22 +62,57 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_repair_shows_only_for_a_damaged_unit_a_building_serves_and_is_a_full_size_order() -> void:
+func test_repair_shows_for_a_unit_a_building_serves_and_is_a_full_size_order() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null)
 		var why: String = str(size)
-		await _select([TANK])  # Undamaged: nothing to repair.
-		assert_bool(_repair().visible).override_failure_message(why).is_false()
+		await _select([TANK])  # Undamaged: shown, dimmed.
+		assert_bool(_repair().visible).override_failure_message(why).is_true()
+		assert_bool(_repair().disabled).override_failure_message(why).is_true()
 		_hurt([TANK])
 		_runner.ticked.emit(1)  # The next tick refreshes the same selection.
 		await await_idle_frame()
 		assert_bool(_repair().is_visible_in_tree()).override_failure_message(why).is_true()
+		assert_bool(_repair().disabled).override_failure_message(why).is_false()
 		assert_bool(_home().visible).is_false()
 		_assert_whole_or_cue(why)
-		await _select([FIT_TANK])
-		assert_bool(_repair().visible).override_failure_message(why).is_false()
 		await _select([])
 		assert_bool(_repair().visible).is_false()
+
+
+func test_repair_is_dim_and_sends_nothing_while_no_served_unit_is_damaged() -> void:
+	await _open(ScreenSizes.ALL[0], null)
+	await _select([TANK, FIT_TANK])
+	assert_bool(_repair().is_visible_in_tree()).is_true()
+	assert_bool(_repair().disabled).is_true()
+	_tap(_repair())
+	assert_int(_sent.size()).is_equal(0)
+	assert_int(_buzzes).is_equal(0)
+	_hurt([TANK])  # Damage lights it on the next tick's refresh.
+	_runner.ticked.emit(1)
+	await await_idle_frame()
+	assert_bool(_repair().disabled).is_false()
+	_tap(_repair())
+	assert_int(_sent.size()).is_equal(1)
+	assert_array(_sent[0].unit_ids).is_equal([TANK])
+	_sent.clear()
+	var snap: MatchSnapshot = _runner.snapshot  # Fully repaired: dim again.
+	var row: int = snap.index_of(TANK)
+	snap.hp[row] = snap.type_max_hp[snap.type_index[row]]
+	_runner.ticked.emit(2)
+	await await_idle_frame()
+	assert_bool(_repair().is_visible_in_tree()).is_true()
+	assert_bool(_repair().disabled).is_true()
+	_tap(_repair())
+	assert_int(_sent.size()).is_equal(0)
+
+
+func test_a_hurt_unit_no_building_serves_leaves_repair_dim_for_the_served_one() -> void:
+	await _open(ScreenSizes.ALL[0], null)
+	_hurt([PATCHERS])  # Medics are not served; the tank is, undamaged.
+	await _select([TANK, PATCHERS])
+	assert_bool(_repair().is_visible_in_tree()).is_true()
+	assert_bool(_repair().disabled).is_true()
 
 
 func test_repair_never_shows_where_it_would_do_nothing() -> void:
@@ -92,6 +128,9 @@ func test_repair_never_shows_where_it_would_do_nothing() -> void:
 	_runner.snapshot.owner[_runner.snapshot.index_of(NEAR_SHED)] = 2
 	_runner.snapshot.owner[_runner.snapshot.index_of(FAR_SHED)] = 2
 	await _select([TANK])  # No repair building of the player's.
+	assert_bool(_repair().visible).is_false()
+	_hurt([FIGHTER])
+	await _select([FIGHTER, PATCHERS])  # Only aircraft and infantry: no served row.
 	assert_bool(_repair().visible).is_false()
 
 

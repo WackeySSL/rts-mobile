@@ -46,7 +46,7 @@ with the phone; no UI code assumes width > height.
 | Tap Deselect at the command bar's start | Clear the selection (no Command); the bar hides, except during placement, a strike aim or an order aim (Board, Unload, Mine), when it keeps its place |
 | Tap Stop | Stop the selected units (`STOP`) |
 | Tap Home (aircraft selected) | Each selected aircraft flies to its own airfield's pad (`REPAIR`), reloads and is repaired there; no aim |
-| Tap Repair (damaged ground units selected) | They drive to the nearest own repair building that serves them (`REPAIR`) and are repaired there; no aim |
+| Tap Repair (shows for ground units an own repair building serves; dim while none is damaged) | The damaged ones drive to the nearest own repair building that serves them (`REPAIR`) and are repaired there; no aim (Michael, 2026-11-17) |
 | Tap Board, an own carrier, the check mark | The selected squads board it (`LOAD`); the carrier comes to them |
 | Tap Unload, the ground, the check mark | The selected loaded carriers go there and unload (`UNLOAD`) |
 | Tap Mine, the ground, the check mark | Each selected minelayer lays one mine round that point (`LAY_MINE`) |
@@ -137,8 +137,9 @@ until confirm.
 - **Home** (aircraft selected): one tap sends each aircraft to its own airfield's pad (`REPAIR`),
   where it reloads and is repaired for credits. An aircraft whose airfield has no free pad, or
   that has no airfield, is left out. No aim.
-- **Repair** (damaged ground units selected that a complete own repair building serves): one tap
-  sends one `REPAIR` with those units to the nearest serving building, by straight distance from
+- **Repair** (shown while a complete own repair building serves part of the selection; dimmed and
+  not tappable while none of those units is damaged, Michael, 2026-11-17): one tap
+  sends one `REPAIR` with the damaged ones to the nearest serving building, by straight distance from
   their centre. Units it does not serve are left out. No aim. Aircraft never go to a repair
   building, and medics are never a Repair target.
 - **Board** (squads selected and an own carrier on the map, air or ground): tap Board, tap an own
@@ -217,9 +218,10 @@ plan's "Interim places" say where each part stands meanwhile.
   2026-11-05).
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders
   the selection has, each at least 56 x 64 dp: for units Stop, Hold, Home (aircraft), Repair
-  (damaged ground units that an own repair building serves), Board (squads, while the player has a
+  (ground units that an own repair building serves), Board (squads, while the player has a
   carrier), Unload (a loaded carrier) and Mine (minelayers); for one own building Mend and Sell.
-  An order shows only while it can act on part of the selection, and it sends only the rows it
+  An order shows only while it can act on part of the selection (Mend and Repair stay and dim
+  while nothing they would repair is damaged, Michael, 2026-11-17), and it sends only the rows it
   serves: a mixed selection shows Home and Repair side by side, each for its own rows. Deselect
   and, for units, Stop always show. The other orders follow in the order listed above and scroll
   sideways when they do not fit; a half-cut last button, or a fade at the bar's edge, is the cue.

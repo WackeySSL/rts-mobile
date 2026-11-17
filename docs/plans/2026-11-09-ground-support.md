@@ -151,6 +151,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
 | P281 | TUX | `RepairFx`: sparks, drones out and back, medic glow, from `REPAIRED`, seen-only; ring quotas | 160 | P278, P279, P280 |
 | P282 | TUX | The **Repair** button: ground rows a building serves -> one `REPAIR` to the nearest serving building; beside ADR 0036's Home in a mixed selection, each sending its own rows; unarmed rows of an attack get `ATTACK_MOVE`; six sizes | 100 | P278 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P282b | TUX | 2026-11-17 (Michael): **Repair** stays shown but dimmed (not tappable, like Mend at full health) while no selected ground row a building serves is damaged; it lights when one is hurt. | 40 | P282 |
 | P283 | AI | `AiProduction` (repair building after the vehicle factory, `medic_per_squads`), `AiArmy` (`REPAIR` under `repair_retreat_percent`, medics in waves with `ATTACK_MOVE`) | 170 | P278 |
 | P284 | LEAD | Joins ADR 0036's gate run (P255) and phone check (P256): 18 unit types once the medics are in | docs | P281-P283 |
 

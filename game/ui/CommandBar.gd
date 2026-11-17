@@ -8,9 +8,10 @@ extends Control
 ## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
 ## airfield and sends one REPAIR to each airfield the aircraft are homed at
-## (`PlayerController.home`); Repair (P282) is for damaged ground units a complete own repair
-## building serves and sends one REPAIR to the nearest (`RepairRules`, `PlayerController.repair`),
-## beside Home in a mixed selection. Orders that do not fit scroll sideways inside the bar, a
+## (`PlayerController.home`); Repair (P282, P282b) shows for ground units a complete own repair
+## building serves, dimmed and not tappable while none is damaged, and sends one REPAIR to the
+## nearest (`RepairRules`, `PlayerController.repair`), beside Home in a mixed selection. Orders
+## that do not fit scroll sideways inside the bar, a
 ## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
 ## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
 ## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs. A carrier's
@@ -59,8 +60,8 @@ const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the the
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
 ## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
-## with an aircraft that has an airfield to go to), &"repair" (damaged ground units a repair
-## building serves), &"building", &"squads" (Board) or &"carrier"
+## with an aircraft that has an airfield to go to), &"repair" (ground units a repair building
+## serves; dim while none is damaged), &"building", &"squads" (Board) or &"carrier"
 ## (Unload).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
@@ -119,7 +120,8 @@ var _card_id: int = -1  ## The building the question card asked about, -1 for no
 var _portrait: bool = false  ## The window's orientation at the last resize.
 var _air: bool = false  ## A selected aircraft has an own airfield to go to: Home shows.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
-var _repair: bool = false  ## A repair building serves a damaged selected ground unit: Repair shows.
+var _repair: bool = false  ## A repair building serves a selected ground unit: Repair shows.
+var _repair_lit: bool = false  ## ... and one of those units is damaged: Repair is tappable.
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
@@ -612,7 +614,8 @@ func _fill(ids: PackedInt32Array) -> void:
 	if snap != null:  # Home shows while an aircraft can go: it has an own airfield (REPAIR's rows).
 		OrderRules.home_fields(snap, ids, local, _fields)
 	_air = not _fields.is_empty()
-	_repair = snap != null and RepairRules.plan(snap, ids, local, _served) > 0
+	_repair_lit = snap != null and RepairRules.plan(snap, ids, local, _served) > 0
+	_repair = _repair_lit or (snap != null and RepairRules.any_served(snap, ids, local))
 	_sync_orders(snap, units and not groups.is_empty(), row, ids)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
@@ -640,6 +643,8 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt3
 		elif order["for"] == &"squads" or order["for"] == &"carrier":
 			shown = units_ok and _carry_order(id, snap, ids)
 		_buttons[id].visible = shown
+		if order["for"] == &"repair":
+			_sync_toggle(_buttons[id], false, _repair_lit)  # Dim, like Mend at full health.
 	if not _buttons[&"sell"].visible:
 		_arm.disarm()  # The selection moved off the building: nothing is armed any more.
 		_refund_shown = -1
