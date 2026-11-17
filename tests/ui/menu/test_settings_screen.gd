@@ -76,6 +76,7 @@ var _routes: MenuRoutes
 var _ads: FakeAds
 var _audio: FakeAudio
 var _dev: Array[bool] = [true]
+var _dev_opened: Array[int] = [0]
 var _service: Node
 var _harness: RefCounted
 
@@ -95,6 +96,7 @@ func before_test() -> void:
 	_ads = FakeAds.new()
 	_audio = FakeAudio.new()
 	_dev[0] = true
+	_dev_opened[0] = 0
 
 
 func after_test() -> void:
@@ -250,12 +252,17 @@ func test_developer_shows_only_in_dev_builds() -> void:
 	_close()
 	_dev[0] = true
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
-	assert_object(_button("DEVELOPER")).is_not_null()
+	var button: Button = _button("DEVELOPER")
+	assert_object(button).is_not_null()
+	assert_bool(button.disabled).is_false()
+	assert_float(button.get_global_rect().size.y).is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
+	button.pressed.emit()
+	assert_int(_dev_opened[0]).is_equal(1)
 
 
 func test_unregistered_routes_leave_their_buttons_disabled_and_a_registered_one_opens() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
-	for text: String in ["REPLAY TUTORIAL", "LICENCES", "DEVELOPER"]:
+	for text: String in ["REPLAY TUTORIAL", "HOW TO PLAY", "LICENCES"]:
 		assert_bool(_button(text).disabled).override_failure_message(text).is_true()
 	var maker: ScreenMaker = ScreenMaker.new()  # A method, never a lambda (P524b).
 	_routes.register(SettingsScreen.LICENCES, Callable(maker, "make"))
@@ -304,6 +311,7 @@ func _open(profile: UiMetrics) -> void:
 	_screen.ad_service = _ads
 	_screen.audio = _audio
 	_screen.dev_enabled = func() -> bool: return _dev[0]
+	_screen.open_dev = func() -> void: _dev_opened[0] += 1
 	_stack.push(_screen)
 	for _frame: int in range(3):
 		await await_idle_frame()

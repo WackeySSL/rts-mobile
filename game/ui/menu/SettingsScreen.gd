@@ -4,8 +4,10 @@ extends MenuScreen
 ## `AudioService` at once), Vibration (`HudPrefs`), Reduced effects (saved in `MenuPrefs`; a match
 ## reads it at its start, never during one), Privacy options (only when the consent service says
 ## they are required; the tap awaits its form), the empty Remove ads / Restore slot (Phase 6 fills
-## it), Replay tutorial, Licences and Developer (debug and `dev_menu` builds) through `MenuRoutes`:
-## a route nobody registered leaves its button present and disabled. No Command, no sim. The foot
+## it), Replay tutorial, How to play and Licences through `MenuRoutes` (a route nobody registered
+## leaves its button present and disabled) and Developer (debug and `dev_menu` builds), which
+## changes to the dev menu scene through `DevRoutes` and needs no route.
+## TODO(P526b): boot and match-start wiring: follow-up row (P526b). No Command, no sim. The foot
 ## banner slot stays empty and 0 tall until Phase 6's band.
 
 const ROW_DP: Vector2 = Vector2(0.0, 48.0)
@@ -13,13 +15,13 @@ const TOGGLE_DP: Vector2 = Vector2(88.0, 48.0)
 const VALUE_DP: Vector2 = Vector2(32.0, 0.0)
 const LABEL_DP: Vector2 = Vector2(96.0, 0.0)
 const LICENCES: StringName = &"licences"  # P529
-const DEVELOPER: StringName = &"developer"  # The dev menu; no screen yet.
 const TITLE: String = "SETTINGS"
 const SOUND: String = "SOUND"
 const MUSIC: String = "MUSIC"
 const VIBRATION: String = "VIBRATION"
 const REDUCED: String = "REDUCED EFFECTS"
 const PRIVACY: String = "PRIVACY OPTIONS"
+const HOW_TO_PLAY: String = "HOW TO PLAY"
 const REPLAY: String = "REPLAY TUTORIAL"
 const LICENCES_TEXT: String = "LICENCES"
 const DEVELOPER_TEXT: String = "DEVELOPER"
@@ -32,6 +34,8 @@ var ad_service: Node = null
 var audio: Node = null
 ## Whether the Developer button shows.
 var dev_enabled: Callable = DevRoutes.is_enabled
+## Opens the dev menu scene; tests replace it.
+var open_dev: Callable = _open_dev
 
 var remove_ads_slot: VBoxContainer
 var sound_slider: HSlider
@@ -60,9 +64,10 @@ func _ready() -> void:
 	remove_ads_slot.visible = false
 	column.add_child(remove_ads_slot)
 	_route_button(REPLAY, MenuRoutes.TUTORIAL)
+	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
 	_route_button(LICENCES_TEXT, LICENCES)
 	if dev_enabled.call():
-		_route_button(DEVELOPER_TEXT, DEVELOPER)
+		add_button(tr(DEVELOPER_TEXT), func() -> void: open_dev.call())
 	_listen()
 	_refresh()
 
@@ -135,6 +140,10 @@ func _open(route: StringName) -> void:
 	var stack: MenuStack = get_parent() as MenuStack
 	if stack != null and routes.has(route):
 		stack.push(routes.make(route))
+
+
+func _open_dev() -> void:
+	DevRoutes.open(get_tree(), DevRoutes.DEV_MENU_SCENE)
 
 
 func _route_button(text: String, route: StringName) -> void:
