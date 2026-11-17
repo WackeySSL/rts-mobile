@@ -63,6 +63,7 @@ var _main: Node
 var _menu: PauseMenu
 var _state: HudState
 var _flow: FakeFlow
+var _quit_on_go_back_before: bool = true
 var _sound_before: int
 var _music_before: int
 var _sent: Array[Command] = []
@@ -78,12 +79,14 @@ func after() -> void:
 
 func before_test() -> void:
 	MenuRig.begin()
+	_quit_on_go_back_before = get_tree().quit_on_go_back  # The overlay's MenuStack switches it off.
 	_sound_before = AudioService.get_step(AudioService.BUS_SFX)
 	_music_before = AudioService.get_step(AudioService.BUS_MUSIC)
 	_sent.clear()
 
 
 func after_test() -> void:
+	get_tree().quit_on_go_back = _quit_on_go_back_before
 	AudioService.set_sound_step(_sound_before)
 	AudioService.set_step(AudioService.BUS_MUSIC, _music_before)
 	MenuRig.end()
