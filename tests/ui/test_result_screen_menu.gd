@@ -215,7 +215,14 @@ func test_a_refused_call_leaves_the_buttons_live_for_the_next_tap() -> void:
 
 func test_the_offer_slot_holds_the_hidden_double_xp_offer_and_is_0_tall() -> void:
 	await _open(130, 30)  # The fake award has no id, so nothing can be doubled.
+	var harness: AdServiceHarness = AdServiceHarness.new()
+	var service: Node = auto_free(harness.make(true))
+	add_child(service)
+	_screen().offer.use_service(service)
 	MatchRig.end(_main, [2])
+	assert_bool(service.rewarded_ready(&"double_xp")).is_true()  # An ad is loaded:
+	assert_str(String(_flow.award.id)).is_empty()  # the empty id is the only reason.
+	harness.dispose()
 	var slot: OfferSlot = _screen().find_child("OfferSlot", true, false) as OfferSlot
 	assert_object(slot).is_not_null()
 	assert_object(slot.owner).is_same(_screen())

@@ -14,6 +14,7 @@ var _service: Node
 var _progression: ProgressionScript
 var _screen: Control
 var _window_size_before: Vector2i
+var _clock: int = 0
 
 
 func before() -> void:
@@ -50,6 +51,7 @@ func _award() -> XpAward:
 func _offer(award: XpAward) -> DoubleXpOffer:
 	var offer: DoubleXpOffer = DoubleXpOffer.new()
 	offer.use_service(_service)
+	offer.now_ms = func() -> int: return _clock
 	_screen.add_child(offer)
 	offer.set_award(award, _progression)
 	return offer
@@ -64,6 +66,7 @@ func _fake() -> FakeAdBackend:
 
 
 func _tap(offer: DoubleXpOffer) -> void:
+	_clock += AdsSettingsDef.load_default().reward_arm_ms  # Past the arm delay.
 	_button(offer).pressed.emit()
 	await AdServiceHarness.frames(3)
 
@@ -100,7 +103,10 @@ func test_hidden_without_an_award_for_a_lesson_award_and_when_no_ad_is_loaded() 
 	var award: XpAward = _award()
 	var before_xp: int = _progression.xp()
 	offer.set_award(award, _progression)
-	assert_bool(offer.visible).is_false()
+	assert_bool(offer.is_offered()).is_false()
+	assert_bool(offer.visible).is_true()  # It only holds its space, with an invisible button.
+	assert_float(_button(offer).modulate.a).is_equal(0.0)
+	_clock += 10000
 	_button(offer).pressed.emit()  # Even a tap that gets through shows no ad and grants nothing.
 	await AdServiceHarness.frames(3)
 	assert_int(_progression.xp()).is_equal(before_xp)
@@ -162,4 +168,46 @@ func test_one_grant_per_award_id_after_a_re_show_a_late_score_or_a_second_callba
 
 func test_remove_ads_does_not_hide_the_rewarded_offer() -> void:
 	_service._ledger.remove_ads = true
-	assert_bool(_offer(_award()).visible).is_true()
+	assert_bool(_offer(_award()).is_offered()).is_true()
+
+
+func test_a_tap_inside_the_arm_delay_starts_no_ad_and_one_after_it_does() -> void:
+	var award: XpAward = _award()
+	var offer: DoubleXpOffer = _offer(award)
+	var arm: int = AdsSettingsDef.load_default().reward_arm_ms
+	_clock += arm - 1
+	_button(offer).pressed.emit()
+	await AdServiceHarness.frames(3)
+	assert_array(_h.events).is_empty()
+	assert_bool(award.bonus_applied).is_false()
+	_clock += 1
+	_button(offer).pressed.emit()
+	await AdServiceHarness.frames(3)
+	assert_array(_h.events).contains(["open:double_xp"])
+	assert_bool(award.bonus_applied).is_true()
+
+
+func test_a_0_xp_award_shows_no_offer_and_reserves_no_space() -> void:
+	var award: XpAward = XpAward.new()
+	award.id = &"zero"
+	award.base_xp = 0
+	var offer: DoubleXpOffer = _offer(award)
+	assert_bool(offer.is_offered()).is_false()
+	assert_bool(offer.visible).is_false()
+
+
+func test_the_callback_follows_the_current_award_once_the_ad_is_over() -> void:
+	var first: XpAward = _award()
+	var second: XpAward = _award()
+	var offer: DoubleXpOffer = _offer(first)
+	var before_xp: int = _progression.xp()
+	_fake().grant_reward = false  # The first ad ends with no reward.
+	_clock += 10000
+	_button(offer).pressed.emit()
+	offer.set_award(second, _progression)  # While the first ad runs.
+	await AdServiceHarness.frames(3)
+	assert_int(_progression.xp()).is_equal(before_xp)
+	_fake().grant_reward = true
+	await _tap(offer)
+	assert_bool(second.bonus_applied).is_true()
+	assert_bool(first.bonus_applied).is_false()

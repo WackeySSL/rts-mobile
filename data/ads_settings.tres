@@ -11,6 +11,7 @@ fullscreen_timeout_ms = 8000
 billing_timeout_ms = 8000
 consent_timeout_ms = 10000
 reward_xp_multiplier = 2
+reward_arm_ms = 500
 reward_xp_text = "Watch an ad for %dx XP"
 reward_start_credits = 500
 start_credits_bonus_max = 500

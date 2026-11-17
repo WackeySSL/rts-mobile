@@ -119,10 +119,10 @@ func refresh() -> void:
 		return
 	if not _screen_shown():
 		_release()
-		visible = false
+		_show(false)
 		return
 	_claim()
-	visible = _may_offer()
+	_show(_may_offer())
 
 
 ## Marks the offer as granted: hides it for good. False when it already was (a second reward of
@@ -134,6 +134,11 @@ func note_granted() -> bool:
 	visible = false
 	_timer.stop()
 	return true
+
+
+## Applies the answer of `refresh`; a host may keep the node laid out while the ad is not ready.
+func _show(on: bool) -> void:
+	visible = on
 
 
 func _may_offer() -> bool:

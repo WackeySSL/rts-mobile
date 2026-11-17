@@ -224,7 +224,7 @@ body = "Destroy the enemy's buildings and units to win. Lose yours and you lose.
 script = ExtResource("3_ent")
 id = &"winning-double-xp"
 title = "Double XP"
-body = "After a match that paid XP you may tap the offer on the result screen to watch an ad and get the same XP again. It only shows when an ad is ready, once per match, and nothing plays unless you tap."
+body = "After a match that paid XP you may tap the offer on the result screen to watch an ad that multiplies that match's XP. It only shows when an ad is ready, once per match, and nothing plays unless you tap."
 
 [sub_resource type="Resource" id="s17"]
 script = ExtResource("2_sec")
