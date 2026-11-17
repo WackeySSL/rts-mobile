@@ -203,6 +203,11 @@ help screen. Timings and sizes live in `data/`, so entries name the setting inst
 | Press Back on the main menu | "Quit Treadline?" asks first; Stay (or Back again) closes the question, Quit leaves the game. The browser has no Back event: its own back button leaves the page | |
 | Open How to play (the main menu's How to play button arrives with the main menu) | A list of sections, one big button each; tap one to read its entries, which scroll when they are long. "All sections" or the phone's Back button returns to the list, and Back on the list closes the screen. It works the same in portrait and in landscape and shows no ad. The text is in `data/help/how_to_play.tres` | |
 
+## The intro
+| Action | Result | Teach |
+|---|---|---|
+| Tap the screen (or press Back) while the game starts | The tank's motion stops at once. If the game is ready, the menu opens right away; if not, the still icon and a thin loading line stay until it is. With Reduced effects on there is no motion, only a short fade | |
+
 ## Not yet in the game
 Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).
 
