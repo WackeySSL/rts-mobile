@@ -24,10 +24,19 @@ signal reward_earned(kind: StringName)
 ## A show failed before it opened (the SDK's "failed to show"); nothing is on screen.
 signal show_failed(kind: StringName)
 
+## The banner's height may have changed: its load finished or failed, or it was laid out again for
+## a new width. AdService then asks `banner_height_dp()` again. The fake's height is immediate and
+## never emits it on its own (`FakeAdBackend.notify_banner` is the test hook).
+signal banner_height_changed
+
 enum LoadState { IDLE, LOADING, READY, FAILED }
 
 const KIND_INTERSTITIAL: StringName = &"interstitial"
 const KIND_REWARDED: StringName = &"rewarded"
+
+## AdService sets it to its consent gate. A real backend asks it before every load and starts none
+## while it answers false (a load that waited for the SDK included).
+var can_request_ads: Callable = func() -> bool: return true
 
 
 ## True only when the OS is Android, not the editor, the plugin's singleton exists and the build
@@ -73,6 +82,12 @@ func hide_banner() -> void:
 	pass
 
 
-## The anchored banner's height in dp.
+## Takes the banner view away for good (Remove ads, consent withdrawn), not just out of sight; a
+## later `show_banner` builds a new one. `hide_banner` keeps the loaded view for a quick return.
+func destroy_banner() -> void:
+	hide_banner()
+
+
+## The anchored banner's height in dp: 0 until the banner has loaded, and after a failed load.
 func banner_height_dp() -> int:
 	return 0
