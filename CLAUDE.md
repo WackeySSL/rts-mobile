@@ -83,8 +83,10 @@ Details: skill `touch-ui-rules`.
 No ad on the battle screen, except one banner at the foot of the open pause menu (Michael,
 2026-11-05), at least 16 dp from any button; no rewarded or interstitial ad on the pause menu.
 Rewarded ads only on explicit player choice. Interstitials only between matches, capped. Banners
-only in menus and at that foot. Debug builds use Google test ad IDs; real IDs are injected only by
-the release workflow. UMP consent before any ad request. Details: skill `admob-policy`.
+only in menus and at that foot. Debug builds use Google test ad IDs; the internal-testing build
+carries the real AdMob App ID with Google's test ad units; real ad unit IDs are injected only by the
+release workflow (Michael, 2026-11-17). UMP consent before any ad request. Details: skill
+`admob-policy`.
 
 ## Legal (hard)
 - No names, units, factions, art, audio, music or UI look from Command & Conquer, Red Alert or any

@@ -406,6 +406,7 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.mine_arm_ticks = rules.mine_arm_ticks
 	world.sweep_ticks = rules.sweep_ticks
 	world.mine_known_cap = rules.mine_known_cap
+	world.bonus_credits_max = rules.bonus_credits_max
 
 
 ## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
@@ -419,6 +420,28 @@ static func set_income(world: World, player: int, percent: int) -> void:
 		return
 	size_income(world, maxi(player + 1, world.income_percent.size()))
 	world.income_percent[player] = maxi(percent, 0)
+
+
+## Sets the credits a match setup adds to `player`'s start (the Phase 6 grant, plan P512): `amount`
+## is clamped to 0..`bonus_credits_max` and replaces the bonus set before. Player 0 and a player
+## above player_count on a prepared world are refused, as in set_income. Before prepare() the value
+## is only stored (size_match_state starts the player at start_credits plus it); on a prepared world
+## the change goes straight into `credits`. At 0 nothing moves, so the state hash is the same.
+## Setup only, never mid-match (rule 4: mid-match changes go through Commands): a world past tick 0
+## is left as it is.
+static func set_bonus_credits(world: World, player: int, amount: int) -> void:
+	if world.tick != 0 or player < 1 or (world.prepared and player > world.player_count):
+		return
+	size_bonus(world, maxi(player + 1, world.bonus_credits.size()))
+	var value: int = clampi(amount, 0, maxi(world.bonus_credits_max, 0))
+	if world.prepared:
+		world.credits[player] += value - world.bonus_credits[player]
+	world.bonus_credits[player] = value
+
+
+## Fits `bonus_credits` to `players` entries: the values set stay, a new entry is 0.
+static func size_bonus(world: World, players: int) -> void:
+	world.bonus_credits.resize(players)
 
 
 ## Fits `income_percent` to `players` entries: the values set stay, a new entry is PERCENT.
@@ -481,9 +504,10 @@ static func size_match_state(world: World) -> void:
 	var queues: int = players * World.TABS
 	var ghosts: int = players * world.ghost_cap
 	size_income(world, players)
+	size_bonus(world, players)
 	world.credits.resize(players)
 	for player: int in range(1, players):
-		world.credits[player] = world.start_credits
+		world.credits[player] = world.start_credits + world.bonus_credits[player]
 	world.defeated_tick.resize(players)
 	world.had_producer.resize(players)
 	world.stat_built.resize(players)

@@ -2,20 +2,35 @@ extends GdUnitTestSuite
 ## IntroPlayer (ADR 0043 section 2, plan P521): skip, Back, the drive, the open-out, the reduced
 ## fade, the blocker over the faded menu and the production hand-over, on the fakes of IntroRig.
 
-const MENU_PATH: String = "res://scenes/menu/menu.tscn"
+const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 
 var _rig: IntroRig = IntroRig.new()
 var _size: Vector2 = Vector2(ScreenSizes.ALL[0])
+var _window_size_before: Vector2i
 
 
+func before() -> void:
+	_window_size_before = get_window().size
+
+
+func after() -> void:
+	get_window().size = _window_size_before
+
+
+## The real main menu is built now: its ad band wants the window and the UI profile to agree.
 func before_test() -> void:
+	var profile: UiMetrics = _profile_with_window(Vector2i(_size))
+	UiScale.set_override(profile)
+	get_window().size = profile.window_size
 	_rig.setup(self, load(MENU_PATH) as PackedScene, _size)
 
 
 func after_test() -> void:
 	_rig.teardown(self)
+	UiScale.clear_override()
 
 
 func test_a_failed_load_does_not_hang_and_leaves_the_still_frame() -> void:
@@ -252,3 +267,11 @@ func test_back_during_the_open_out_does_not_reach_the_menu() -> void:
 	assert_int(player.phase).is_equal(IntroPlayer.Phase.DONE)
 	assert_bool(stack.back_enabled).is_true()
 	assert_bool(stack.is_asking_to_quit()).is_false()
+
+
+func _profile_with_window(size: Vector2i) -> UiMetrics:
+	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profiles:
+			if profiles[profile_name].window_size == size:
+				return profiles[profile_name]
+	return null

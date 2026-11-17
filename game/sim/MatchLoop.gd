@@ -32,7 +32,11 @@ static func create(
 	var loop: MatchLoop = MatchLoop.new()
 	world.prepare()
 	loop.replay = Replay.begin(
-		scenario_path, seed, world.defs_hash(), world.income_percent.duplicate()
+		scenario_path,
+		seed,
+		world.defs_hash(),
+		world.income_percent.duplicate(),
+		world.bonus_credits.duplicate()
 	)
 	loop._orders = ScenarioOrders.create(scenario)
 	return loop

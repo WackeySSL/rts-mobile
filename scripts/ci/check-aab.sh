@@ -92,11 +92,19 @@ unzip -q "$aab" "$ABI_DIR/*" -d "$tmp/lib" 2>/dev/null || true
 if [ -s "$tmp/lib/$ABI_DIR/$native_name" ]; then
   # Gradle strips debug symbols from the packed copy (stripDebugSymbols), so the bytes differ from the build; the
   # code does not. Compare the .text section (GNU readelf reads an aarch64 ELF on any host).
-  text_sha() { "${READELF:-readelf}" -W -x .text "$1" 2>/dev/null | sha256sum | cut -d' ' -f1; }
-  packed_text="$(text_sha "$tmp/lib/$ABI_DIR/$native_name")"
-  built_text="$(text_sha "$native")"
-  [ "$packed_text" = "$built_text" ] ||
+  # An empty dump (no .text, not an ELF, readelf failed) would compare equal to another empty one, so it fails.
+  text_sha() {
+    local dump
+    dump="$("${READELF:-readelf}" -W -x .text "$1" 2>/dev/null)" || dump=""
+    [ -n "$dump" ] && sha256sum <<<"$dump" | cut -d' ' -f1
+  }
+  packed_text="$(text_sha "$tmp/lib/$ABI_DIR/$native_name")" || packed_text=""
+  built_text="$(text_sha "$native")" || built_text=""
+  if [ -z "$packed_text" ] || [ -z "$built_text" ]; then
+    problem "readelf read no .text from the bundle's $native_name or from the built $native"
+  elif [ "$packed_text" != "$built_text" ]; then
     problem "the bundle's $native_name is not the library CI built ($native): .text sha256 $packed_text, built $built_text"
+  fi
   if [ -s "$tmp/lib/$ABI_DIR/libc++_shared.so" ]; then
     bash scripts/ci/check-android-elf.sh check "$tmp/lib/$ABI_DIR/$native_name" "$tmp/lib/$ABI_DIR/libc++_shared.so" ||
       problem "the packed $native_name fails the ELF checks above"

@@ -81,6 +81,9 @@ func test_every_frozen_level_has_mending_off() -> void:
 			load(FROZEN_DIR + "difficulty/%s.tres" % level) as AiDifficultyDef
 		)
 		assert_int(def.mend_below_percent).override_failure_message(level).is_equal(0)
+		# P283: the ground support is off in the frozen arenas too (the roster has no such type).
+		assert_int(def.repair_retreat_percent).override_failure_message(level).is_equal(0)
+		assert_int(def.medic_per_squads).override_failure_message(level).is_equal(0)
 
 
 func _relative(paths: Array[String], dir: String) -> Array[String]:

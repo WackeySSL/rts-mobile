@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
+[ext_resource type="Resource" path="res://data/units/renew_factory.tres" id="2_requires"]
+
+; The Lumen Accord's repair building (ADR 0037 section 5, GDD): 2 x 2, wheeled and tracked vehicles
+; (classes 6, no aircraft), cost 800, power -30, 4 at a time, slower, wide reach. Hit points, armour,
+; sight and build time are starting values for the balance run. Not in the roster until its art (P279).
+[resource]
+script = ExtResource("1_building")
+type_id = &"renew_drone_dock"
+display_name = "Drone Dock"
+faction = &"renew"
+max_hp = 900
+armour = 3
+sight_range = 5000
+cost = 800
+build_ticks = 240
+tab = 0
+requires = ExtResource("2_requires")
+footprint = Vector2i(2, 2)
+power = -30
+repair_classes = 6
+repair_hp = 12
+repair_period_ticks = 15
+repair_cost_percent = 35
+repair_reach_milli = 5000
+repair_slots = 4
