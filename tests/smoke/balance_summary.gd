@@ -350,7 +350,8 @@ static func _types(matches: Array, rosters: Dictionary[String, Array]) -> Dictio
 
 
 ## The air and tech block (P254): `reveals` (sweeps started, all players), `reveal_players` (the
-## players that started one), `research` (`{upgrade id: players that owned it at the end}`) and
+## player-matches that started one), `research` (`{upgrade id: player-matches that owned it at
+## the end}`) and
 ## `kills_by_layer` (`ground`, `air`, `low_air`: credited kills by the dead row's layer). A report
 ## from before these fields counts 0.
 static func _air_tech(matches: Array) -> Dictionary:
@@ -443,7 +444,8 @@ static func _flags(summary: Dictionary) -> Array[String]:
 ## The gate block (ADR 0031 section 6): `matches` and `verdict` ("pass", "rerun" or "fail") and the
 ## `checks`, each with `id`, `name`, `value`, `min`, `max` (the limits, ints), `detail` and its own
 ## verdict. `set` comes first and fails unless this is a gate set: 100 matches of seeds 1001-1100
-## or 200 of 1001-1200, Normal against Normal on `cross`, twelve unit types. Checks `3a` and `3b`
+## or 200 of 1001-1200, Normal against Normal on `cross`, every unit type of both rosters (16).
+## Checks `3a` and `3b`
 ## together are section 6's check 3. A faction or seat share of 350-399 or 601-650 asks for the one
 ## rerun at exactly 100 matches; the 200 together decide against 400-600, and checks 3 to 7 are
 ## judged on all of them with the same proportions (half built, 95 percent distinct). Any failing
@@ -686,7 +688,7 @@ static func markdown(report: Dictionary) -> String:
 	var layers: Dictionary = tech["kills_by_layer"]
 	lines.append("### Air and tech")
 	lines.append("")
-	lines.append("| Reveals | Players that revealed | Kills: ground | air | low air |")
+	lines.append("| Reveals | Player-matches that revealed | Kills: ground | air | low air |")
 	lines.append("| --- | --- | --- | --- | --- |")
 	(
 		lines
@@ -707,10 +709,14 @@ static func markdown(report: Dictionary) -> String:
 	for upgrade: String in _sorted(tech["research"].keys()):
 		owned.append("%s %d" % [upgrade, tech["research"][upgrade]])
 	lines.append(
-		"Upgrades owned at the end (players): %s." % (", ".join(owned) if owned else "none")
+		(
+			"Upgrades owned at the end (player-matches): %s." % "none"
+			if owned.is_empty()
+			else ", ".join(owned)
+		)
 	)
 	lines.append(
-		"Kills by layer are the credited kills of the rows above, by the dead row's layer."
+		"Kills by layer are all credited kills, structures included, by the dead row's layer."
 	)
 	lines.append("")
 	lines.append("### Flags")

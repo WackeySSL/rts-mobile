@@ -45,12 +45,12 @@ Kills are an estimate, credited in this order: a shot at the row in the tick it 
 
 ### Air and tech
 
-| Reveals | Players that revealed | Kills: ground | air | low air |
+| Reveals | Player-matches that revealed | Kills: ground | air | low air |
 | --- | --- | --- | --- | --- |
 | 0 | 0 | 0 | 0 | 0 |
 
-Upgrades owned at the end (players): none.
-Kills by layer are the credited kills of the rows above, by the dead row's layer.
+Upgrades owned at the end (player-matches): none.
+Kills by layer are all credited kills, structures included, by the dead row's layer.
 
 ### Flags
 

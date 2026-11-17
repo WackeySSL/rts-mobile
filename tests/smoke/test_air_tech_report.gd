@@ -42,15 +42,40 @@ func test_the_counting_reads_reveals_research_and_kills_by_layer() -> void:
 		]
 	)
 	counter.after_step(world)
-	var air_key: String = "air" if world.type_layer_bit[fighter] == World.Layer.AIR else "low_air"
-	assert_dict(counter.kills_by_layer[1]).is_equal({air_key: 1, "ground": 2})
+	assert_dict(counter.kills_by_layer[1]).is_equal({"air": 1, "ground": 2})
 	assert_int(_total(counter.kills_by_layer[1])).is_equal(_total(counter.kills[1]))
 	assert_array(counter.reveals).is_equal([0, 0, 1])
-	# Research is read from the owned bits at the end of the run.
-	world.upgrades[2] = 1
+	# A low flying row's death lands in low_air (the drone squad is not in a roster until P266, so
+	# the artillery stands in with the low-air bit), and a death with no shooter is no kill at all.
+	var drone: int = world.type_ids.find(&"artillery")
+	assert_int(drone).is_greater_equal(0)
+	world.type_layer_bit[drone] = World.Layer.LOW_AIR
+	world.tick = 3
+	world.events = _events(
+		[
+			_spawned(31, drone, 2),
+			_spawned(32, rifle, 2),
+			_record(World.Event.SHOT, 12, 0, 0, 31),
+			_record(World.Event.DIED, 31, 0, 0, drone, 2),
+		]
+	)
+	counter.after_step(world)
+	var before: int = _total(counter.kills[1])
+	world.tick = 4
+	world.events = _events([_record(World.Event.DIED, 32, 0, 0, rifle, 2)])
+	counter.after_step(world)
+	assert_dict(counter.kills_by_layer[1]).is_equal({"air": 1, "low_air": 1, "ground": 2})
+	assert_int(_total(counter.kills[1])).is_equal(before)
+	assert_int(_total(counter.kills_by_layer[1])).is_equal(before)
+	assert_int(_total(counter.lost[2])).is_equal(5)
+	# Research is read from the owned bits at the end of the run: 0b101 is upgrades 0 and 2.
+	assert_int(world.upgrade_ids.size()).is_greater_equal(3)
+	world.upgrades[2] = 0b101
 	var counts: Dictionary = counter.player_counts(world, 2)
 	assert_int(counts["reveals"]).is_equal(1)
-	assert_dict(counts["research"]).is_equal({String(world.upgrade_ids[0]): 1})
+	assert_dict(counts["research"]).is_equal(
+		{String(world.upgrade_ids[0]): 1, String(world.upgrade_ids[2]): 1}
+	)
 	assert_dict(counter.player_counts(world, 1)["research"]).is_empty()
 
 
@@ -73,7 +98,27 @@ func test_the_air_and_tech_block_sums_reveals_research_and_kills_by_layer() -> v
 	assert_str(text).contains("heavy_bombs 2, plated_hull 1")
 	# A report from before the fields counts 0.
 	var old: Dictionary = _merge([_report(_matches(2))])["report"]["summary"]["air_tech"]
-	assert_array([old["reveals"], old["research"].size()]).is_equal([0, 0])
+	assert_int(old["reveals"]).is_equal(0)
+	assert_int(old["reveal_players"]).is_equal(0)
+	assert_dict(old["research"]).is_empty()
+	assert_dict(old["kills_by_layer"]).is_equal({"ground": 0, "air": 0, "low_air": 0})
+	assert_str(Summary.markdown(_merge([_report(_matches(2))])["report"])).contains(
+		"(player-matches): none."
+	)
+
+
+## The fields after a JSON round trip (floats in the parsed text) give the same block.
+func test_the_air_and_tech_fields_survive_a_json_round_trip() -> void:
+	var matches: Array[Dictionary] = _matches(2)
+	_put(matches[0], 0, "kills_by_layer", {"ground": 3, "air": 2})
+	matches[0]["players"][0]["reveals"] = 2
+	_put(matches[1], 1, "research", {"heavy_bombs": 1})
+	var parsed: Variant = JSON.parse_string(Smoke.report_text(_report(matches)))
+	var tech: Dictionary = Summary._air_tech(parsed["matches"])
+	assert_int(tech["reveals"]).is_equal(2)
+	assert_int(tech["reveal_players"]).is_equal(1)
+	assert_dict(tech["research"]).is_equal({"heavy_bombs": 1})
+	assert_dict(tech["kills_by_layer"]).is_equal({"ground": 3, "air": 2, "low_air": 0})
 
 
 ## `count` victories of fossil on top with one player entry each side and no counts.
