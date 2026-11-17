@@ -31,7 +31,7 @@ func _ready() -> void:
 ## The column gives the scroll bar's width back, as the How to play screen does.
 func _apply() -> void:
 	super()
-	if scroll != null and column != null:
+	if scroll != null and column != null and is_inside_tree():
 		var bar_px: float = scroll.get_v_scroll_bar().get_combined_minimum_size().x
 		column.custom_minimum_size.x = maxf(column.custom_minimum_size.x - bar_px, 0.0)
 
@@ -69,7 +69,7 @@ func _chunks(text: String) -> PackedStringArray:
 	var chunks: PackedStringArray = []
 	var current: String = ""
 	for paragraph: String in text.replace("\r\n", "\n").split("\n\n"):
-		if not current.is_empty() and current.length() + paragraph.length() > CHUNK_CHARS:
+		if not current.is_empty() and current.length() + 2 + paragraph.length() > CHUNK_CHARS:
 			chunks.append(current)
 			current = ""
 		current = paragraph if current.is_empty() else current + "\n\n" + paragraph
@@ -99,6 +99,6 @@ func _heading(text: String) -> void:
 func _label(text: String) -> Label:
 	var label: Label = Label.new()
 	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label

@@ -46,12 +46,18 @@ func test_the_catalog_lists_the_engine_the_fonts_the_assets_and_the_plugins() ->
 		"Big Shoulders font",
 		"Chakra Petch font",
 		"Poing AdMob plugin",
-		"Google Play Billing plugin",
 	]:
 		assert_array(titles).contains([expected])
 	# Every text the engine reports is a row.
 	for license_name: String in Engine.get_license_info():
 		assert_array(titles).contains([license_name])
+
+
+func test_the_play_billing_row_shows_only_once_its_text_file_exists() -> void:
+	# TODO P411: when the file lands this flips; then assert the row and its text instead.
+	var file: String = LicenceCatalog.LICENCES_DIR + LicenceCatalog.PLAY_BILLING
+	var shown: bool = _titles(_catalog(false, false)).has("Google Play Billing plugin")
+	assert_bool(shown).is_equal(FileAccess.file_exists(file))
 
 
 func test_the_engine_texts_are_the_engines_own() -> void:
@@ -81,13 +87,11 @@ func test_the_build_facts_come_from_the_feature_tags_and_the_editor() -> void:
 	assert_bool(from_build.kernels).is_equal(kernels)
 
 
-func test_both_ofl_texts_and_the_poing_text_are_real_and_play_billing_is_a_placeholder() -> void:
+func test_both_ofl_texts_and_the_poing_text_are_real() -> void:
 	var rows: Array[LicenceEntry] = _catalog(false, false).build()
 	for font: String in ["Big Shoulders font", "Chakra Petch font"]:
 		assert_str(_row(rows, font).text).contains("SIL Open Font License")
 	assert_str(_row(rows, "Poing AdMob plugin").text).contains("MIT")
-	# TODO P411: this turns real when its text file lands; then the placeholder check goes.
-	assert_str(_row(rows, "Google Play Billing plugin").text).contains("not packed")
 
 
 func test_the_asset_licence_and_the_cc_by_credits() -> void:
@@ -166,6 +170,14 @@ func test_a_text_is_cut_into_chunks_that_keep_every_character() -> void:
 	var chunks: PackedStringArray = _screen._chunks(text)
 	assert_int(chunks.size()).is_equal(2)
 	assert_str("\n\n".join(chunks)).is_equal(text)
+
+
+func test_one_paragraph_longer_than_a_chunk_stays_whole_on_its_own() -> void:
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), _catalog(false, false))
+	var long_paragraph: String = "y".repeat(LicencesScreen.CHUNK_CHARS + 500)
+	var chunks: PackedStringArray = _screen._chunks("a\n\n" + long_paragraph + "\n\nb")
+	assert_int(chunks.size()).is_equal(3)
+	assert_str(chunks[1]).is_equal(long_paragraph)
 
 
 func _catalog(android: bool, kernels: bool) -> LicenceCatalog:

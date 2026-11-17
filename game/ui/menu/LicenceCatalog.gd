@@ -5,7 +5,9 @@ extends RefCounted
 ## Android, godot-cpp's MIT on every build that packs the kernels (the export feature tag
 ## `sim_kernels`, which exactly the presets packing `native/` set, and the editor), whether or not
 ## the library loads. The texts outside `assets/` are the copies under `res://assets/licenses/`
-## (a test keeps them equal to `docs/licenses/`).
+## (a test keeps them equal to `docs/licenses/`). Godot's own COPYRIGHT.txt and LICENSE.txt are
+## packed too although the screen reads the Engine API: the copies stay byte-equal (the audit
+## copy).
 
 const KERNELS_TAG: String = "sim_kernels"
 const LICENCES_DIR: String = "res://assets/licenses/"
@@ -16,7 +18,7 @@ const OFL_NAME: String = "OFL.txt"
 const LIBCXX: String = "llvm-libc++/LICENSE.TXT"
 const GODOT_CPP: String = "godot-cpp-4.5-stable/LICENSE.md"
 const POING_ADMOB: String = "poing-godot-admob-5.1.0/LICENSE.txt"
-## TODO P411: the plugin's text file lands here with Phase 6's P411; until then the entry says so.
+## TODO P411: the plugin's text file lands here with Phase 6's P411; the row shows once it exists.
 const PLAY_BILLING: String = "godot-google-play-billing/LICENSE.txt"
 const MISSING_TEXT: String = "The licence text of %s is not packed with this build yet."
 const NO_CREDITS: String = "No asset under a Creative Commons Attribution licence is listed."
@@ -36,24 +38,31 @@ static func from_build() -> LicenceCatalog:
 
 func build() -> Array[LicenceEntry]:
 	var rows: Array[LicenceEntry] = []
-	rows.append(LicenceEntry.make("Game art and audio", _read(ASSET_LICENCE, "the game's assets")))
-	rows.append(LicenceEntry.make("Asset credits (CC BY)", credit_lines(_read(CREDITS, "credits"))))
-	rows.append(LicenceEntry.make("Godot Engine", Engine.get_license_text()))
-	rows.append(LicenceEntry.make("Godot copyright", copyright_text(Engine.get_copyright_info())))
+	rows.append(
+		LicenceEntry.make(tr("Game art and audio"), _read(ASSET_LICENCE, "the game's assets"))
+	)
+	rows.append(
+		LicenceEntry.make(tr("Asset credits (CC BY)"), credit_lines(_read(CREDITS, "credits")))
+	)
+	rows.append(LicenceEntry.make(tr("Godot Engine"), Engine.get_license_text()))
+	rows.append(
+		LicenceEntry.make(tr("Godot copyright"), copyright_text(Engine.get_copyright_info()))
+	)
 	var info: Dictionary = Engine.get_license_info()
 	var names: Array = info.keys()
 	names.sort()
 	for license_name: String in names:
 		rows.append(LicenceEntry.make(license_name, str(info[license_name])))
 	if android:
-		rows.append(_packed("LLVM libc++", LIBCXX))
+		rows.append(_packed(tr("LLVM libc++"), LIBCXX))
 	if kernels:
-		rows.append(_packed("godot-cpp", GODOT_CPP))
+		rows.append(_packed(tr("godot-cpp"), GODOT_CPP))
 	for family: String in _font_folders():
-		var title: String = family.replace("-", " ").capitalize() + " font"
+		var title: String = family.replace("-", " ").capitalize() + tr(" font")
 		rows.append(LicenceEntry.make(title, _read(FONT_DIR + family + "/" + OFL_NAME, title)))
-	rows.append(_packed("Poing AdMob plugin", POING_ADMOB))
-	rows.append(_packed("Google Play Billing plugin", PLAY_BILLING))
+	rows.append(_packed(tr("Poing AdMob plugin"), POING_ADMOB))
+	if FileAccess.file_exists(LICENCES_DIR + PLAY_BILLING):
+		rows.append(_packed(tr("Google Play Billing plugin"), PLAY_BILLING))
 	return rows
 
 
@@ -72,7 +81,7 @@ func credit_lines(credits_md: String) -> String:
 		for index: int in [1, 2, 4, 3]:
 			cell_text.append(cells[index].strip_edges())
 		lines.append("\n".join(cell_text))
-	return "\n\n".join(lines) if not lines.is_empty() else NO_CREDITS
+	return "\n\n".join(lines) if not lines.is_empty() else tr(NO_CREDITS)
 
 
 ## `Engine.get_copyright_info()` as text: each component, then its parts (files, copyright and
@@ -95,7 +104,7 @@ func _packed(title: String, file: String) -> LicenceEntry:
 
 func _read(path: String, what: String) -> String:
 	if not FileAccess.file_exists(path):
-		return MISSING_TEXT % what
+		return tr(MISSING_TEXT) % what
 	return FileAccess.get_file_as_string(path)
 
 
