@@ -792,6 +792,19 @@ the P265 integration):
     pinned arenas. ADR 0038 §7 names "the shipped Normal value" for later fields; here Easy and
     Hard take their own pairs (0/0 and 70/250), Normal 50/400. Its Lumen rifle squad has the
     shipped 70 hp, against 80 in `perf_ai`.
+  - **P304b (2026-11-17, main e4be1931):** each side also starts with 2 ground carriers and 2
+    minelayers (Bunk Wagon and Shot Truck, Linecar and Seeder; frozen copies of P290's defs and
+    mines in `data/dev/arena/arena_4b/units/` and `weapons/`), 4 mobile rows a side taken off the
+    rifle squads (18 to 14), so each side stays at 75. The printed hash moves from
+    `75530630f4b19f95` to `75019d6b3818eed9` (`full_ticks` 174 to 172); no other golden moves. The
+    Perf AI cards compare against the new hash. The AI still does not load, unload or mine.
+    - The `AiMemory.class_of` / copied `type_move_class` fix (the ground-support plan's "`class_of`
+      gap") moves to P295 (the lead's decision, 2026-11-17). It breaks nothing today: all four new
+      units are unarmed and not scouts, so no flow field is keyed for them.
+    - The P26bz trigger baseline (`main` 4456e53b, cards on `75530630f4b19f95`) predates P304b. The
+      next cards run on a changed arena: 8 fewer armed rifle squads, and 8 unarmed rows that draw as
+      `Marker` ellipses until P291 and P292. A trigger hit on them is reported to Michael as a
+      finding, not taken for a regression.
   - The AI does not use carriers, mending or the sweep there yet (no LOAD, UNLOAD, MEND or sweep in
     900 ticks). That waits for the AI rows.
   - `test_frozen_ai_defs.gd` (kept as is) still says "the Perf AI route" at :4 and :52. Read that
