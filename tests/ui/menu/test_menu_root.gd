@@ -36,8 +36,16 @@ func after_test() -> void:
 		_menu = null
 
 
-func test_the_defaults_make_how_to_play_live_and_a_tap_opens_it() -> void:
-	await _open(true, &"")
+func test_the_defaults_make_how_to_play_live_and_a_tap_opens_it_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(true, &"", size)
+		_check_defaults()
+		_close()
+		_routes = MenuRoutes.new()
+		UiScale.clear_override()
+
+
+func _check_defaults() -> void:
 	assert_bool(_routes.has(MenuRoutes.HOW_TO_PLAY)).is_true()
 	assert_bool(_routes.has(MenuRoutes.SKIRMISH)).is_false()
 	assert_int(_stack.depth()).is_equal(1)
@@ -49,30 +57,29 @@ func test_the_defaults_make_how_to_play_live_and_a_tap_opens_it() -> void:
 			enabled.append(button.text)
 	assert_array(enabled).is_equal(["HOW TO PLAY"])
 	main.column.get_child(_index_of(main, "HOW TO PLAY")).emit_signal("pressed")
-	await await_idle_frame()
 	assert_object(_stack.current()).is_instanceof(HowToPlayScreen)
 
 
 func test_a_pending_screen_with_a_route_opens_on_top_of_the_main_menu() -> void:
 	_routes.register(&"fake", func() -> MenuScreen: return MenuScreen.new())
-	await _open(false, &"fake")
+	await _open(false, &"fake", ScreenSizes.PORTRAIT[0])
 	assert_int(_stack.depth()).is_equal(2)
 	assert_bool(_stack.current() is MainMenu).is_false()
 
 
 func test_a_pending_screen_nobody_registered_is_dropped() -> void:
-	await _open(false, &"nothing")
+	await _open(false, &"nothing", ScreenSizes.LANDSCAPE[0])
 	assert_int(_stack.depth()).is_equal(1)
 	assert_bool(_stack.current() is MainMenu).is_true()
 
 
 func test_register_defaults_off_leaves_the_table_alone() -> void:
-	await _open(false, &"")
+	await _open(false, &"", ScreenSizes.LANDSCAPE[0])
 	assert_bool(_routes.has(MenuRoutes.HOW_TO_PLAY)).is_false()
 
 
-func _open(defaults: bool, pending: StringName) -> void:
-	var profile: UiMetrics = _profile_with_window(ScreenSizes.LANDSCAPE[0])
+func _open(defaults: bool, pending: StringName, size: Vector2i) -> void:
+	var profile: UiMetrics = _profile_with_window(size)
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
@@ -89,6 +96,12 @@ func _open(defaults: bool, pending: StringName) -> void:
 	await await_idle_frame()
 
 
+func _close() -> void:
+	remove_child(_menu)
+	_menu.free()
+	_menu = null
+
+
 func _index_of(screen: MenuScreen, text: String) -> int:
 	for index: int in range(screen.column.get_child_count()):
 		var button: Button = screen.column.get_child(index) as Button
@@ -98,7 +111,8 @@ func _index_of(screen: MenuScreen, text: String) -> int:
 
 
 func _profile_with_window(size: Vector2i) -> UiMetrics:
-	for profile_name: StringName in UiProfiles.all():
-		if UiProfiles.all()[profile_name].window_size == size:
-			return UiProfiles.all()[profile_name]
+	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profiles:
+			if profiles[profile_name].window_size == size:
+				return profiles[profile_name]
 	return null
