@@ -88,7 +88,9 @@ func test_the_repair_key_goes_when_the_sent_vehicles_stand_still_and_not_before(
 	world.order[world.index_of(tank)] = World.Order.MOVE
 	assert_array(_repair(world, memory, repair)).is_empty()
 	assert_int(memory.goal_keys_of(AiMemory.Owner.REPAIR)).is_equal(1)
+	# It arrived (idle) and is being repaired (hp rose): the key goes and nothing is sent again.
 	world.order[world.index_of(tank)] = World.Order.IDLE
+	world.hp[world.index_of(tank)] += 30
 	assert_array(_repair(world, memory, repair)).is_empty()
 	assert_int(memory.goal_keys_of(AiMemory.Owner.REPAIR)).is_equal(0)
 
@@ -234,6 +236,8 @@ func test_a_mixed_wave_launches_and_retargets_while_a_repair_is_in_flight_at_cap
 		for command: Command in out:
 			if command.type == Command.Type.REPAIR:
 				in_flight += 1
+				# The sim would move it now: the repair is really in flight when the wave launches.
+				world.order[world.index_of(hurt)] = World.Order.MOVE
 			if command.type == Command.Type.ATTACK_MOVE and command.unit_ids.has(hurt):
 				launched.append(command)
 		assert_bool(memory.goal_keys() <= 4).is_true()
@@ -263,3 +267,134 @@ func test_a_mixed_wave_launches_and_retargets_while_a_repair_is_in_flight_at_cap
 		if command.type == Command.Type.ATTACK_MOVE:
 			moved += 1
 	assert_int(moved).is_greater(0)
+
+
+# --- Round 2: step-back, stalls, a second building, medic budget ------------------------------
+
+
+func test_a_sent_vehicle_that_is_stepped_back_is_sent_again() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, "tank", 4000, 9000, 45)
+	var memory: AiMemory = _memory()
+	var repair: AiRepair = AiRepair.create(_def(), _level(50, 0))
+	assert_int(_repair(world, memory, repair).size()).is_equal(1)
+	# Hit down to 20 on the way, Hard's step-back gives it a MOVE to the staging point (the home
+	# goal stays): it is still moving, withdrawn since it was sent.
+	world.hp[world.index_of(tank)] = 20
+	world.order[world.index_of(tank)] = World.Order.MOVE
+	memory.withdrawn_id = PackedInt32Array([tank])
+	var again: Array[Command] = _repair(world, memory, repair)
+	assert_int(again.size()).is_equal(1)
+	assert_int(again[0].type).is_equal(Command.Type.REPAIR)
+	assert_array(again[0].unit_ids).is_equal(PackedInt32Array([tank]))
+
+
+func test_a_vehicle_that_was_withdrawn_before_it_was_sent_is_not_sent_again_and_again() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, "tank", 4000, 9000, 20)
+	var memory: AiMemory = _memory()
+	memory.withdrawn_id = PackedInt32Array([tank])
+	var repair: AiRepair = AiRepair.create(_def(), _level(50, 0))
+	assert_int(_repair(world, memory, repair).size()).is_equal(1)
+	world.order[world.index_of(tank)] = World.Order.MOVE
+	for _think: int in 3:
+		assert_array(_repair(world, memory, repair)).is_empty()
+
+
+func test_a_sent_vehicle_that_stands_idle_without_a_gain_is_sent_again() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, "tank", 4000, 9000, 20)
+	var memory: AiMemory = _memory()
+	var repair: AiRepair = AiRepair.create(_def(), _level(50, 0))
+	assert_int(_repair(world, memory, repair).size()).is_equal(1)
+	# The next think only records its hp (the order may not have started), the one after finds no
+	# gain at a standstill (a defence, a focus or a restage re-ordered it, or the credits ran out).
+	assert_array(_repair(world, memory, repair)).is_empty()
+	var again: Array[Command] = _repair(world, memory, repair)
+	assert_int(again.size()).is_equal(1)
+	assert_int(again[0].type).is_equal(Command.Type.REPAIR)
+	# While its hp rises it stays put.
+	world.hp[world.index_of(tank)] = 30
+	assert_array(_repair(world, memory, repair)).is_empty()
+	world.hp[world.index_of(tank)] = 40
+	assert_array(_repair(world, memory, repair)).is_empty()
+
+
+func test_vehicles_sent_to_a_dead_building_go_to_the_one_that_stands() -> void:
+	var world: World = _world(true, true, true, false, true)
+	var tank: int = _add(world, "tank", 4000, 9000, 10)
+	var memory: AiMemory = _memory()
+	var repair: AiRepair = AiRepair.create(_def(), _level(40, 0))
+	var first: Array[Command] = _repair(world, memory, repair)
+	assert_int(first[0].target_id).is_equal(_shed_id(world))
+	var view: PlayerView = PlayerView.of(world, 1)
+	var other: int = NONE
+	for row: int in view.own_rows:
+		if (
+			view.row_type(row) == Worlds.type_of(world, "shed")
+			and view.row_id(row) != _shed_id(world)
+		):
+			other = view.row_id(row)
+	world.build_left[world.index_of(_shed_id(world))] = 1
+	var again: Array[Command] = _repair(world, memory, repair)
+	assert_int(again.size()).is_equal(1)
+	assert_int(again[0].type).is_equal(Command.Type.REPAIR)
+	assert_int(again[0].target_id).is_equal(other)
+	assert_array(again[0].unit_ids).is_equal(PackedInt32Array([tank]))
+
+
+func test_a_medic_that_got_no_order_for_lack_of_budget_follows_when_there_is_budget() -> void:
+	var world: World = _world()
+	var tank: int = _add(world, "tank", 4000, 9000)
+	var first: int = _add(world, "medic", 3000, 9000)
+	var memory: AiMemory = _memory()
+	var repair: AiRepair = AiRepair.create(_def(), _level(0, 4))
+	_fill(world, memory)
+	_launch_wave(memory, PackedInt32Array([tank]), Vector2i(20, 12))
+	var out: Array[Command] = []
+	repair.run(PlayerView.of(world, 1), memory, out)
+	assert_array(out[0].unit_ids).is_equal(PackedInt32Array([first]))
+	var second: int = _add(world, "medic", 3500, 9000)
+	_fill(world, memory)
+	_launch_wave(memory, PackedInt32Array([tank]), Vector2i(20, 12))
+	memory.commands_left = 0
+	out.clear()
+	repair.run(PlayerView.of(world, 1), memory, out)
+	assert_array(out).is_empty()
+	memory.commands_left = 99
+	repair.run(PlayerView.of(world, 1), memory, out)
+	assert_int(out.size()).is_equal(1)
+	assert_array(out[0].unit_ids).is_equal(PackedInt32Array([first, second]))
+
+
+func test_a_memory_with_one_squad_slot_has_no_wave_to_read() -> void:
+	var world: World = _world()
+	_add(world, "tank", 4000, 9000, 10)
+	_add(world, "medic", 3000, 9000)
+	var def: OpponentDef = _def()
+	def.squads_max = 1
+	var memory: AiMemory = AiMemory.create(def)
+	memory.staging_x = 8
+	memory.staging_y = 8
+	var repair: AiRepair = AiRepair.create(def, _level(40, 4))
+	_fill(world, memory)
+	memory.commands_left = 99
+	var out: Array[Command] = []
+	repair.run(PlayerView.of(world, 1), memory, out)
+	assert_int(out.size()).is_equal(1)
+	assert_int(out[0].type).is_equal(Command.Type.REPAIR)
+
+
+func test_the_cache_gives_up_the_repair_key_only_when_the_scouts_did_not_make_room() -> void:
+	var memory: AiMemory = _memory()
+	memory.add_goal_key(1, 1, AiMemory.FOOT, AiMemory.Owner.STAGING)
+	memory.add_goal_key(1, 1, AiMemory.TRACKED, AiMemory.Owner.STAGING)
+	memory.add_goal_key(5, 5, AiMemory.FOOT, AiMemory.Owner.SCOUT)
+	memory.add_goal_key(6, 6, AiMemory.TRACKED, AiMemory.Owner.REPAIR)
+	memory.yield_keys()
+	assert_int(memory.goal_keys_of(AiMemory.Owner.SCOUT)).is_equal(0)
+	assert_int(memory.goal_keys_of(AiMemory.Owner.REPAIR)).is_equal(1)
+	# Without a scout key the repair key is the one that gives way.
+	memory.add_goal_key(7, 7, AiMemory.FOOT, AiMemory.Owner.ARMY)
+	memory.yield_keys()
+	assert_int(memory.goal_keys_of(AiMemory.Owner.REPAIR)).is_equal(0)

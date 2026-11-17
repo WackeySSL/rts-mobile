@@ -43,7 +43,11 @@ func _unit(id: String, tab: int, armed: bool, cost: int) -> UnitDef:
 ## A World of 24 x 16 tiles: player 1 owns a headquarters (1, 1), a barracks (6, 1), a factory
 ## (10, 1) and, with `shed`, a shed at (3, 8); player 2 a headquarters. 100000 credits.
 func _world(
-	shed: bool = true, medic: bool = true, place: bool = true, decoys: bool = false
+	shed: bool = true,
+	medic: bool = true,
+	place: bool = true,
+	decoys: bool = false,
+	second_shed: bool = false
 ) -> World:
 	var units: Array[UnitDef] = [
 		_building("hq", World.Tab.STRUCTURES, Vector2i(3, 3), 0),
@@ -86,6 +90,8 @@ func _world(
 	made.add_building(1, Worlds.type_of(made, "factory"), 10, 1)
 	if shed and place:
 		made.add_building(1, Worlds.type_of(made, "shed"), 3, 8)
+		if second_shed:
+			made.add_building(1, Worlds.type_of(made, "shed"), 7, 8)
 	made.add_building(2, Worlds.type_of(made, "hq"), 20, 12)
 	made.credits[1] = 100000
 	return made

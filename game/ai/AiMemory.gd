@@ -10,7 +10,7 @@ extends RefCounted
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
 ## The owners of a goal key: the staging point (rally, retreat), the army goal, the scout's way and
-## the repair building and the medics' wave goal (`AiRepair`, P283).
+## the repair building's tile (`AiRepair`, P283).
 enum Owner { STAGING, ARMY, SCOUT, REPAIR }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
@@ -232,10 +232,12 @@ func goal_room(owner: int) -> int:
 	return goal_keys_max - live
 
 
-## The army's keys win a full cache: the scout's and the repair building's give way, in that order,
-## each only when its release makes room (`AiArmy._hold`).
+## The army's keys win a full cache: the scout's key gives way, then the repair building's, each
+## only when its release makes room and only while the cache is still full (`AiArmy._hold`).
 func yield_keys() -> void:
 	for owner: int in [Owner.SCOUT, Owner.REPAIR]:
+		if goal_x.size() < goal_keys_max:
+			return
 		if goal_room(owner) > 0:
 			release_owner(owner)
 

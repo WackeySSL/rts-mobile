@@ -34,8 +34,11 @@ var _medics_on: bool = false
 var _resolved: bool = false
 var _building_type: int = _NONE
 var _medic_type: int = _NONE
-## The vehicles sent to repair, their building (a row id) and the home goal when they were sent.
+## The vehicles sent to repair, their hp at the last think (-1 before the first) and whether each
+## stood withdrawn when it was sent, then their building (a row id) and the home goal then.
 var _sent: PackedInt32Array = PackedInt32Array()
+var _sent_hp: PackedInt32Array = PackedInt32Array()
+var _sent_out: PackedInt32Array = PackedInt32Array()
 var _site: int = AiMemory.NONE
 var _home: Vector2i = Vector2i(AiMemory.NONE, AiMemory.NONE)
 ## The medics last ordered to the wave goal and that goal in tiles (NONE: they are home).
@@ -91,9 +94,9 @@ static func role_type_of(view: PlayerView, faction: int, building: bool) -> int:
 
 
 func _vehicles(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
-	_forget_reordered(view, memory)
 	var site: int = _site_row(view, memory)
-	_release_done(view, memory, out, site)
+	if not _tend(view, memory, out, site):
+		return
 	if site < 0 or not memory.can_send():
 		return
 	var room: int = view.type_repair_slots[_building_type] - _sent.size()
@@ -108,57 +111,77 @@ func _vehicles(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	memory.spent()
 	_site = view.row_id(site)
 	_home = Vector2i(memory.squad_goal_x[AiArmy.HOME], memory.squad_goal_y[AiArmy.HOME])
-	_sent.append_array(hurt)
+	for id: int in hurt:
+		_sent.append(id)
+		_sent_hp.append(-1)
+		_sent_out.append(1 if _withdrawn(memory, id) else 0)
 	repairs += hurt.size()
 
 
-## Forgets, with no order, the sent vehicles that `AiArmy` has taken over: the home goal moved
-## since they were sent (it re-orders every home member then), or they are held by a wave.
-func _forget_reordered(view: PlayerView, memory: AiMemory) -> void:
+## Tends the sent vehicles. It forgets, with no order, those `AiArmy` has taken over or that stand
+## idle without a gain since the last think, so `_hurt` sends them again: the home goal moved (every
+## home member was re-ordered), a wave holds them, they were stepped back after they were sent, the
+## building they went to is gone while another stands, or they are stalled. A whole vehicle (all of
+## them without a building) goes back to the home goal with one order, and the building's key goes
+## once none moves. False, nothing changed, when that order finds no budget.
+func _tend(view: PlayerView, memory: AiMemory, out: Array[Command], site: int) -> bool:
 	if _sent.is_empty():
-		return
+		return true
 	var home: Vector2i = Vector2i(
 		memory.squad_goal_x[AiArmy.HOME], memory.squad_goal_y[AiArmy.HOME]
 	)
+	var swapped: bool = site >= 0 and view.row_id(site) != _site
+	var done: PackedInt32Array = PackedInt32Array()
 	var kept: PackedInt32Array = PackedInt32Array()
-	for id: int in _sent:
-		if view.row_of(id) >= 0 and home == _home and not _held_by_wave(memory, id):
+	var kept_hp: PackedInt32Array = PackedInt32Array()
+	var kept_out: PackedInt32Array = PackedInt32Array()
+	var moving: bool = false
+	for at: int in _sent.size():
+		var id: int = _sent[at]
+		var row: int = view.row_of(id)
+		if row < 0 or home != _home or swapped or _held_by_wave(memory, id):
+			continue
+		if _sent_out[at] == 0 and _withdrawn(memory, id):
+			continue
+		var hp: int = view.row_hp(row)
+		var idle: bool = view.row_order(row) == PlayerView.Order.IDLE
+		if site < 0 or hp >= view.type_max_hp[view.row_type(row)]:
+			done.append(id)
+		elif not (idle and hp <= _sent_hp[at]):
 			kept.append(id)
+			kept_hp.append(hp)
+			kept_out.append(_sent_out[at])
+			moving = moving or not idle
+	if not done.is_empty() and not _go_home(view, memory, out, done):
+		return false
+	returns += done.size()
 	_sent = kept
+	_sent_hp = kept_hp
+	_sent_out = kept_out
+	if not moving and memory.goal_keys_of(AiMemory.Owner.REPAIR) > 0:
+		memory.release_owner(AiMemory.Owner.REPAIR)
+	if _sent.is_empty():
+		_site = AiMemory.NONE
+	return true
+
+
+## Whether unit `id` stepped back (`AiArmy._step_back`) and is still under its percent.
+func _withdrawn(memory: AiMemory, id: int) -> bool:
+	var at: int = memory.withdrawn_id.bsearch(id)
+	return at < memory.withdrawn_id.size() and memory.withdrawn_id[at] == id
 
 
 ## Whether the wave in the field holds unit `id`: it is a member and the wave marches, or retreats
 ## on a level that does not repair its members.
 func _held_by_wave(memory: AiMemory, id: int) -> bool:
 	var at: int = memory.member_id.bsearch(id)
-	if at >= memory.member_id.size() or memory.member_id[at] != id:
+	if memory.squads_max <= AiArmy.WAVE or at >= memory.member_id.size():
 		return false
-	if memory.member_squad[at] != AiArmy.WAVE or memory.squad_role[AiArmy.WAVE] == AiMemory.NONE:
+	if memory.member_id[at] != id or memory.member_squad[at] != AiArmy.WAVE:
+		return false
+	if memory.squad_role[AiArmy.WAVE] == AiMemory.NONE:
 		return false
 	return not (_in_retreat and memory.squad_state[AiArmy.WAVE] == AiMemory.SquadState.RETREAT)
-
-
-## Sends the whole vehicles (all of them when the building is gone) back to the home goal, and
-## frees the building's key once none of the sent vehicles moves any more.
-func _release_done(view: PlayerView, memory: AiMemory, out: Array[Command], site: int) -> void:
-	var done: PackedInt32Array = PackedInt32Array()
-	var kept: PackedInt32Array = PackedInt32Array()
-	var moving: bool = false
-	for id: int in _sent:
-		var row: int = view.row_of(id)
-		if site >= 0 and view.row_hp(row) < view.type_max_hp[view.row_type(row)]:
-			kept.append(id)
-			moving = moving or view.row_order(row) != PlayerView.Order.IDLE
-		else:
-			done.append(id)
-	if not done.is_empty() and not _go_home(view, memory, out, done):
-		return
-	returns += done.size()
-	_sent = kept
-	if not moving and memory.goal_keys_of(AiMemory.Owner.REPAIR) > 0:
-		memory.release_owner(AiMemory.Owner.REPAIR)
-	if _sent.is_empty():
-		_site = AiMemory.NONE
 
 
 ## The building the vehicles use: the one in use while it stands, else the finished one of the
@@ -229,17 +252,18 @@ func _medics(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		var row: int = view.row_of(id)
 		if row >= 0 and view.row_type(row) == _medic_type:
 			medics.append(id)
-	if medics.is_empty() or not memory.can_send():
+	if medics.is_empty():
 		_medic_known = medics
+	if medics.is_empty() or not memory.can_send():
 		return
 	var wave: bool = (
 		memory.squads_max > AiArmy.WAVE
 		and memory.squad_role[AiArmy.WAVE] != AiMemory.NONE
 		and memory.squad_state[AiArmy.WAVE] == AiMemory.SquadState.WAVE
 	)
-	var goal: Vector2i = Vector2i(
-		memory.squad_goal_x[AiArmy.WAVE], memory.squad_goal_y[AiArmy.WAVE]
-	)
+	var goal: Vector2i = Vector2i(AiMemory.NONE, AiMemory.NONE)
+	if wave:
+		goal = Vector2i(memory.squad_goal_x[AiArmy.WAVE], memory.squad_goal_y[AiArmy.WAVE])
 	if wave and goal.x != AiMemory.NONE:
 		_follow(view, memory, out, medics, goal)
 	elif not wave and _medic_goal.x != AiMemory.NONE and memory.has_staging():
@@ -247,8 +271,8 @@ func _medics(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		out.append(Command.move(view.player, medics, at.x, at.y))
 		memory.spent()
 		_medic_goal = Vector2i(AiMemory.NONE, AiMemory.NONE)
+		_medic_known = medics
 		medic_orders += 1
-	_medic_known = medics
 
 
 ## The medics go to the wave's goal with `ATTACK_MOVE` (a move, they are unarmed) when the goal is
@@ -269,4 +293,5 @@ func _follow(
 	out.append(Command.attack_move(view.player, medics, at.x, at.y))
 	memory.spent()
 	_medic_goal = goal
+	_medic_known = medics
 	medic_orders += 1

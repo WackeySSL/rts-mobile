@@ -381,14 +381,19 @@ of which about 120 are C++.
     (P279, P280) and no AI data change.
   - `AiMemory.Owner` has a fourth key owner, `REPAIR`: the repair building's tile for the vehicle
     class, held only while a sent vehicle still moves, and given up to the army at the cap
-    (`AiMemory.yield_keys`, after the scout's). The medics take no key: the army's holds the wave
-    goal. Vehicles in flight are capped to the building's repair slots, because each `REPAIR` gives
+    (`AiMemory.yield_keys`, after the scout's, and only while the cache is still full). The medics
+    take no key: the army's holds the wave goal when the wave has a foot member, and a wave of
+    vehicles only leaves the medics a goal with no key (their orders are not held back by it). Vehicles in flight are capped to the building's repair slots, because each `REPAIR` gives
     every vehicle its own ring tile and goal field (P277), so the cost stays inside that cap and the
     one key.
   - A sent vehicle that `AiArmy` takes over (the home goal moved, so it re-ordered every home
     member, or it joined a wave) is forgotten with no order. A whole vehicle goes back to the home
     goal. Wave members are never sent, but those of a retreating wave on Hard (`repair_wave_retreat`
-    1; ADR §5's "between waves"). A vehicle `AiArmy._step_back` withdrew is not special-cased.
+    1; ADR §5's "between waves"). A sent vehicle is also forgotten when it is stepped back after it
+    was sent (`AiArmy._step_back` gives it a `MOVE` to the staging point and leaves the home goal),
+    when the building it was sent to is gone while another stands, and when it stands idle without a
+    gain in hp since the last think (credits ran out, or `_focus`, `_defend` or `_restage`
+    re-ordered it): `_hurt` then sends it again.
   - Medics all follow a marching wave and come home when it ends or retreats; no medic stays with the
     home squad (the choice: a medic at home would wait for hurt squads that the army already sent to
     fight). The levels' numbers are in `data/ai/difficulty/`: `repair_retreat_percent` 0/40/50,
