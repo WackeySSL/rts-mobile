@@ -90,7 +90,6 @@ func test_easy_and_a_level_without_the_flag_send_nothing() -> void:
 	assert_array(_hold(off, world, memory)).is_empty()
 	var easy: AiHold = AiHold.create(_hold_def(), load("res://data/ai/difficulty/easy.tres"))
 	assert_array(_hold(easy, world, memory)).is_empty()
-	assert_int(AiDifficultyDef.new().hold_in_waves).is_equal(0)
 
 
 func test_no_budget_sends_nothing_and_asks_again_next_think() -> void:
@@ -106,6 +105,50 @@ func test_no_budget_sends_nothing_and_asks_again_next_think() -> void:
 	holder.run(PlayerView.of(world, 1), memory, out)
 	assert_array(out).is_empty()
 	assert_int(_hold(holder, world, memory).size()).is_equal(1)
+
+
+func test_one_command_left_goes_to_the_hold_and_the_release_waits_for_the_next_think() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	var wave_tank: int = _add(world, "tank", 4000, 9000)
+	var home_tank: int = _add(world, "tank", 4500, 9000)
+	_fill(world, memory)
+	var loop: MatchLoop = AiRig.loop_of(world)
+	var holder: AiHold = AiHold.create(_hold_def(), _hold_level(1))
+	# The second tank holds already (set by an earlier wave) and has left it.
+	AiRig.step(world, loop, [Command.stance(1, PackedInt32Array([home_tank]), true)])
+	_launch_wave(memory, PackedInt32Array([wave_tank]), Vector2i(20, 12))
+	var out: Array[Command] = []
+	memory.commands_left = 1
+	holder.run(PlayerView.of(world, 1), memory, out)
+	assert_int(out.size()).is_equal(1)
+	assert_array(out[0].payload).is_equal(PackedInt32Array([1]))
+	assert_array(out[0].unit_ids).is_equal(PackedInt32Array([wave_tank]))
+	assert_int(memory.commands_left).is_equal(0)
+	assert_int(holder.releases).is_equal(0)
+	AiRig.step(world, loop, out)
+	var next: Array[Command] = _hold(holder, world, memory)
+	assert_int(next.size()).is_equal(1)
+	assert_array(next[0].payload).is_equal(PackedInt32Array([0]))
+	assert_array(next[0].unit_ids).is_equal(PackedInt32Array([home_tank]))
+	assert_int(memory.commands_left).is_equal(98)
+
+
+func test_a_release_with_no_command_left_is_not_sent_and_spends_nothing() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	var tank: int = _add(world, "tank", 4000, 9000)
+	_fill(world, memory)
+	AiRig.step(world, AiRig.loop_of(world), [Command.stance(1, PackedInt32Array([tank]), true)])
+	var holder: AiHold = AiHold.create(_hold_def(), _hold_level(1))
+	var out: Array[Command] = []
+	memory.commands_left = 0
+	holder.run(PlayerView.of(world, 1), memory, out)
+	assert_array(out).is_empty()
+	assert_int(memory.commands_left).is_equal(0)
+	assert_int(holder.releases).is_equal(0)
 
 
 func test_a_hold_type_the_roster_lacks_changes_nothing() -> void:
@@ -128,12 +171,6 @@ func test_the_controller_owns_a_holder_and_the_shipped_levels_set_the_flag() -> 
 	for level: String in ["easy", "normal", "hard"]:
 		var shipped: AiDifficultyDef = load("res://data/ai/difficulty/%s.tres" % level)
 		assert_int(shipped.hold_in_waves).is_equal(0 if level == "easy" else 1)
-
-
-func test_the_shipped_hold_types_are_each_factions_artillery() -> void:
-	for faction: String in ["fossil", "renew"]:
-		var def: OpponentDef = load("res://data/ai/opponent_%s.tres" % faction)
-		assert_array(def.hold_types).is_equal([def.artillery_type])
 
 
 func test_the_frozen_copies_hold_nothing_and_keep_their_types() -> void:

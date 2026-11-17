@@ -33,9 +33,10 @@ var economy: AiEconomy = null
 var production: AiProduction = null
 ## The army manager (P179), slot ARMY after the intel refresh.
 var army: AiArmy = null
-## The ground support manager (P283), slot ARMY after the army: repair trips and the medics.
+## The ground support manager (P283), slot ARMY after the army (army, repairer, holder): repair
+## trips and the medics.
 var repairer: AiRepair = null
-## The hold position manager (P300), slot ARMY after the army: the waves' artillery holds.
+## The hold position manager (P300), slot ARMY after the repairer: the waves' artillery holds.
 var holder: AiHold = null
 ## The superweapon manager (P181), slot INTEL after the intel run (`strikes` is the counter).
 var striker: AiStrikes = null
@@ -115,7 +116,7 @@ func _run_economy_slot(view: PlayerView, out: Array[Command]) -> void:
 	economy.mend(view, memory, out, production.spent_credits)
 
 
-## Slot 1: P177 adds the intel refresh, P179 `AiArmy`, then P283's `AiRepair`.
+## Slot 1: P177 adds the intel refresh, P179 `AiArmy`, then P283's `AiRepair`, P300's `AiHold`.
 func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.refresh(view, memory)
 	work += intel.passes

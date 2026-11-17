@@ -1,9 +1,10 @@
 class_name AiHold
 extends RefCounted
 ## Hold position for the waves' artillery (ADR 0037 section 15, plan row P300), slot ARMY after
-## `AiArmy`, on the same view and memory. A member of the wave squad whose type is in the def's
-## `hold_types` should hold (`STANCE` `[1]`: weapon-range acquisition, no chase, so the gun does not
-## walk into its minimum range); any other own combat unit that holds goes back to normal (`[0]`).
+## `AiArmy` and `AiRepair`, on the same view and memory. A member of the wave squad whose type is in
+## the def's `hold_types` should hold (`STANCE` `[1]`: weapon-range acquisition, no chase, so the
+## gun does not walk into its minimum range); any other own combat unit that holds goes back to
+## normal (`[0]`).
 ## So the release rule is the squad: a held unit is released when its wave ends (disbands, or the
 ## unit steps back), and the all-in's joiners hold the moment they join. The wish is read from the
 ## memory's squads and the view's own stance column every think, so nothing is stored between
@@ -41,7 +42,8 @@ func run(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		_is_hold.fill(0)
 		for id: StringName in _ids:
 			var type: int = view.type_index_of(id)
-			if type != PlayerView.MISSING:
+			# A row of speed 0 is no `STANCE` target (the sim drops it): never wished.
+			if type != PlayerView.MISSING and view.type_speed[type] > 0:
 				_is_hold[type] = 1
 	_set.clear()
 	_free.clear()

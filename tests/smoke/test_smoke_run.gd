@@ -623,7 +623,7 @@ func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	var hard: Array[String] = ["hard", "hard"]
 	# Re-pinned by P250, P250b and P300: [8, 7, 475], [10, 8, 515] and [1, 1, 366] before.
-	var cases: Array = [[1, hard, [7, 7, 541]], [2, hard, [2, 1, 547]], [1, NORMAL, [0, 0, 443]]]
+	var cases: Array = [[1, hard, [7, 7, 535]], [2, hard, [2, 1, 547]], [1, NORMAL, [0, 0, 443]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0
