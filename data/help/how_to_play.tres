@@ -238,6 +238,18 @@ id = &"menus"
 title = "Menus"
 entries = Array[ExtResource("3_ent")]([SubResource("e20")])
 
+[sub_resource type="Resource" id="e21"]
+script = ExtResource("3_ent")
+id = &"the-intro-skip"
+title = "Skip the intro"
+body = "Tap the screen while the game starts to stop the intro."
+
+[sub_resource type="Resource" id="s19"]
+script = ExtResource("2_sec")
+id = &"the-intro"
+title = "The intro"
+entries = Array[ExtResource("3_ent")]([SubResource("e21")])
+
 [resource]
 script = ExtResource("1_def")
-sections = Array[ExtResource("2_sec")]([SubResource("s0"), SubResource("s1"), SubResource("s2"), SubResource("s3"), SubResource("s4"), SubResource("s5"), SubResource("s6"), SubResource("s7"), SubResource("s8"), SubResource("s9"), SubResource("s10"), SubResource("s11"), SubResource("s12"), SubResource("s13"), SubResource("s14"), SubResource("s15"), SubResource("s16"), SubResource("s17"), SubResource("s18")])
+sections = Array[ExtResource("2_sec")]([SubResource("s0"), SubResource("s1"), SubResource("s2"), SubResource("s3"), SubResource("s4"), SubResource("s5"), SubResource("s6"), SubResource("s7"), SubResource("s8"), SubResource("s9"), SubResource("s10"), SubResource("s11"), SubResource("s12"), SubResource("s13"), SubResource("s14"), SubResource("s15"), SubResource("s16"), SubResource("s17"), SubResource("s18"), SubResource("s19")])
