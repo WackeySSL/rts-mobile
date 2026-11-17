@@ -34,5 +34,6 @@ aa_per_seen_aircraft = 3
 aa_max = 1
 research_floor = 0
 tech_army_value_min = 0
+hold_in_waves = 0
 commands_per_think_max = 3
 income_percent = 100

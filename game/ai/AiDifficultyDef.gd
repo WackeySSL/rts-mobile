@@ -74,6 +74,10 @@ extends Resource
 ## value (`AiMemory.army_value`) is under this; the steps after it wait too, the loop and the
 ## anti-air wish go on. 0 = no gate.
 @export var tech_army_value_min: int = 0
+## Hold position (ADR 0037 section 15, plan row P300; off by default like the fields above, so the
+## frozen files play as before): 1 = `AiHold` sets the types of `OpponentDef.hold_types` to hold
+## while they are in a wave and releases them when the wave ends. Easy uses none.
+@export var hold_in_waves: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
