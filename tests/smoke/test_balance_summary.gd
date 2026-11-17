@@ -229,7 +229,7 @@ func test_a_clean_set_has_no_flags_and_each_flag_names_what_it_found() -> void:
 	fast[3]["ticks"] = 100
 	assert_str("\n".join(_summary(fast)["flags"])).contains("median length")
 	# Exactly on a limit is no flag: shares 400 and 600, medians 7200 and 9000, type shares 50 and
-	# 400 per-mille (7, 1, 3, 3, 2, 1, 1, 1, 1 of 20), 95 distinct hashes of 100.
+	# 400 per-mille (8, 1, 3, 2, 2, 1, 1, 1, 1 of 20), 95 distinct hashes of 100.
 	assert_array(_summary(_split(10, 4))["flags"]).is_empty()
 	for edge_ticks: int in [7200, 9000]:
 		var edge: Array[Dictionary] = _balanced(4)
@@ -240,7 +240,7 @@ func test_a_clean_set_has_no_flags_and_each_flag_names_what_it_found() -> void:
 	for record: Dictionary in shares:
 		var made: Dictionary = {}
 		for index: int in 9:
-			made[_fossil[index]] = [7, 1, 3, 3, 2, 1, 1, 1, 1][index]
+			made[_fossil[index]] = [8, 1, 3, 2, 2, 1, 1, 1, 1][index]
 		_put(record, 0, "produced", made)
 	assert_array(_summary(shares)["flags"]).is_empty()
 	var hashes: Array[Dictionary] = _balanced(100)

@@ -61,8 +61,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_twelve_buildings_and_the_eight_units_in_the_adr_order(
-) -> void:
+func test_the_faction_file_lists_the_twelve_buildings_and_the_nine_units_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",

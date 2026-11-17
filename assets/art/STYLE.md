@@ -524,30 +524,30 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
 The ground carriers of both factions (ADR 0037 sections 7 and 14, docs/GDD.md): the Derrick League's **Bunk Wagon**
 (`fossil_bunk_wagon`) and the Lumen Accord's **Linecar** (`renew_linecar`). Each is a `veh` model with a hull in 16
 directions, a cast shadow and an item card, no turret, no damage picture (a unit shows none) and no lift. They follow
-the aircraft in each faction's roster (Vehicles tab). The
-minelayers (P292) are not drawn yet.
+the aircraft in each faction's roster (Vehicles tab). The minelayers (P292) are not drawn yet.
 
 | Model | Silhouette |
 | --- | --- |
 | `fossil_bunk_wagon` | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
-| `renew_linecar` | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a team band and two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. |
+| `renew_linecar` | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. |
 
 - **Apart from the neighbours.** The Bunk Wagon is a box with a hatch and no turret or gun, taller than the Bullhead and
   with a flat roof, so it never reads as a tank; the Linecar has a long glass roof and no turret, fin or rail, so it
   is neither the Swift nor the Fuel Runner (`tests/art/test_carrier_art.gd` holds each carrier's 32 px greyscale
   silhouette under 0.85 overlap with every ground vehicle of its faction and with the other carrier).
 - **Team colour.** Bunk Wagon: a band down each side, a nose band, a rear band and a roof stripe. Linecar: a band down
-  each side, a roof stripe, a nose band under the mint strip and a rear band. Team share of the default view at zoom 1:
-  9.8 % (Bunk Wagon, d06) and 9.5 % (Linecar, d10), in the rule's 8 to 12 %; in every direction 9.3 to 11.6 % and 8.2
-  to 12.9 % (`test_carrier_art.gd` holds 5 to 16 %). The first Bunk Wagon had side bands only and 1.4 % in its default view, the first Linecar a roof stripe only and 6 % in some directions.
+  each side, a wide roof stripe and a thin rear band. Team share of the default view at zoom 1: 9.8 % (Bunk Wagon,
+  d06) and 9.2 % (Linecar, d10), in the rule's 8 to 12 %; in every direction 9.3 to 11.6 % and 8.1 to 11.1 %
+  (`test_carrier_art.gd` holds 5 to 16 %). The first Bunk Wagon had side bands only and 1.4 % in its default view,
+  the first Linecar a roof stripe only and 6 % in some directions.
 - **Running gear and emitters.** `tracks` for the Bunk Wagon, `wheels` for the Linecar; an `exhaust` at the tail, a
   `damage` point on the roof and a `hang` bracket on the camera side; `scar_milli` 800 and 500.
 - **Canvas.** Hull 158 x 124 and 150 x 92, shadow 218 x 112 and 212 x 108, in 2x px. Page 1 of the atlas grows by 105,
-  128 and 75 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2472, 2407, 2341) and page 2 by 218, 106 and
-  42 (2264, 1264, 1286). A 16-direction vehicle shadow set costs about one shelf of page 2 (its frame height), which
+  128 and 75 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2472, 2407, 2341) and page 2 by
+  218, 106 and 42 (2264, 1264, 1286). A 16-direction vehicle shadow set costs about one shelf of page 2 (its frame height), which
   is the floor: ADR 0036 section 15's 60 rows for the carriers was too low; the lead's revised page-2 allocation
   (2026-11-17) is about 220 rows for P291, and a page-2 trim row follows before P204.
-- **Gallery.** The Iso page lists them by themselves; the generated item cards show on the Build page.
+- **Gallery.** The Iso page lists them by themselves and shows their item cards.
 
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
@@ -1910,7 +1910,7 @@ in doubt, choose a plainer real-world form.
 | Glint (`renew_fighter`) | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. | `iso/renew/veh/renew_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 124x76, hovers `fly_px` 26 |
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
 | Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
-| Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a team band and two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
+| Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |

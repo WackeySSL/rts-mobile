@@ -60,7 +60,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 	assert_array(listed).is_equal(wanted)
 
 
-func test_the_data_holds_the_twelve_buildings_and_the_eight_units() -> void:
+func test_the_data_holds_the_twelve_buildings_and_the_nine_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())

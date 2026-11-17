@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## is a vehicle model with a hull in 16 directions, a cast shadow and an item card, no turret and
 ## no damage picture (a unit shows none). It pins the sheet's parts, the team share at zoom 1 (the
 ## rule asks for 8 to 12 % in the default view, a wider band in the other directions), a shadow
-## that is one connected mark, and the silhouettes at 32 px in greyscale against every other
-## ground vehicle of both factions. That the bytes equal a fresh run is test_artgen.gd.
+## that is one connected mark, and the silhouettes at 32 px in greyscale against its own faction's
+## ground vehicles and the other carrier. That the bytes equal a fresh run is test_artgen.gd.
 
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
 const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
