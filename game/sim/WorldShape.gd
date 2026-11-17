@@ -203,8 +203,9 @@ const MAP_ARRAYS: Array[StringName] = [
 ]
 ## Per-row working space, max_rows entries each, rewritten every tick. Not state.
 const SCRATCH_ARRAYS: Array[StringName] = [&"intent_x", &"intent_y", &"push_x", &"push_y"]
-## Match setup per player (P173): not in the state hash, in `defs_hash`; WorldLoad.set_income.
-const SETUP_ARRAYS: Array[StringName] = [&"income_percent"]
+## Match setup per player (P173, P512): not in the state hash, in `defs_hash`;
+## WorldLoad.set_income and set_bonus_credits.
+const SETUP_ARRAYS: Array[StringName] = [&"income_percent", &"bonus_credits"]
 ## Rewritten every tick, neither hashed nor compacted.
 const RUNTIME_ARRAYS: Array[StringName] = [&"events", &"stats"]
 
@@ -277,6 +278,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"mine_arm_ticks",
 	&"sweep_ticks",
 	&"mine_known_cap",
+	&"bonus_credits_max",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -339,7 +341,8 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mine_lay_ticks",
 	&"mine_arm_ticks",
 	&"sweep_ticks",
-	&"mine_known_cap"
+	&"mine_known_cap",
+	&"bonus_credits_max"
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.
