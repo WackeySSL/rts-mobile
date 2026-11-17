@@ -6,6 +6,8 @@ extends Node2D
 @export var runner: MatchRunner
 @export var map_view: MapView
 @export var camera: RtsCamera
+@export var ui_sounds: UiSounds
+@export var attack_cues: AttackCues
 
 
 func _ready() -> void:
@@ -14,3 +16,5 @@ func _ready() -> void:
 	camera.centre_on(
 		IsoProjection.cell_centre_px(scenario.camera_start_tile.x, scenario.camera_start_tile.y)
 	)
+	ui_sounds.local_player = scenario.local_player
+	ui_sounds.connect_attack_cues(attack_cues)
