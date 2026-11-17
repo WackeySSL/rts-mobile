@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="UiSoundsDef" format=3]
+
+[ext_resource type="Script" path="res://game/view/audio/UiSoundsDef.gd" id="1_ui"]
+
+[resource]
+script = ExtResource("1_ui")
+click_db = 0.0
+click_priority = 0
+order_db = -4.0
+order_priority = 1
+alert_db = 0.0
+alert_priority = 2
+max_voices = 1
