@@ -12,6 +12,7 @@ const TUTORIAL: StringName = &"tutorial"  # P544 (TutorialScreen)
 const HOW_TO_PLAY: StringName = &"how_to_play"  # P527
 const SETTINGS: StringName = &"settings"  # P526
 const CONTINUE: StringName = &"continue"  # P515 (resume)
+const LICENCES: StringName = &"licences"  # P529 (LicencesScreen)
 
 ## The table the app uses; tests make their own with `MenuRoutes.new()`.
 static var shared: MenuRoutes = MenuRoutes.new()

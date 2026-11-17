@@ -3,18 +3,20 @@ extends MenuScreen
 ## The Settings screen (plan P526, ADR 0043 section 5): Sound and Music steps (saved, and put on
 ## `AudioService` at once), Vibration (`HudPrefs`), Reduced effects (saved in `MenuPrefs`; a match
 ## reads it at its start, never during one), Privacy options (only when the consent service says
-## they are required; the tap awaits its form), the empty Remove ads / Restore slot (Phase 6 fills
-## it), Replay tutorial, How to play and Licences through `MenuRoutes` (a route nobody registered
+## they are required; the tap awaits its form), the empty `PurchaseSlot` (Phase 6's Remove ads /
+## Restore; a VBoxContainer, not a plain Container, so it takes its child's size, and it is hidden
+## and 0 tall while no child shows),
+## Replay tutorial, How to play and Licences through `MenuRoutes` (a route nobody registered
 ## leaves its button present and disabled) and Developer (debug and `dev_menu` builds), which
 ## changes to the dev menu scene through `DevRoutes` and needs no route.
-## TODO(P526b): boot and match-start wiring: follow-up row (P526b). No Command, no sim. The foot
+## The saved volume reaches `AudioService` from `MenuFlow._ready`; the reduced switch's boot and
+## match-start wiring: follow-up row (P526b). No Command, no sim. The foot
 ## banner slot stays empty and 0 tall until Phase 6's band.
 
 const ROW_DP: Vector2 = Vector2(0.0, 48.0)
 const TOGGLE_DP: Vector2 = Vector2(88.0, 48.0)
 const VALUE_DP: Vector2 = Vector2(32.0, 0.0)
 const LABEL_DP: Vector2 = Vector2(96.0, 0.0)
-const LICENCES: StringName = &"licences"  # P529
 const TITLE: String = "SETTINGS"
 const SOUND: String = "SOUND"
 const MUSIC: String = "MUSIC"
@@ -37,7 +39,7 @@ var dev_enabled: Callable = DevRoutes.is_enabled
 ## Opens the dev menu scene; tests replace it.
 var open_dev: Callable = _open_dev
 
-var remove_ads_slot: VBoxContainer
+var purchase_slot: VBoxContainer
 var sound_slider: HSlider
 var music_slider: HSlider
 var vibration_toggle: Button
@@ -59,13 +61,15 @@ func _ready() -> void:
 	vibration_toggle = _toggle(VIBRATION, HudPrefs.haptics_enabled(), _on_vibration)
 	reduced_toggle = _toggle(REDUCED, MenuPrefs.reduced_effects(), _on_reduced)
 	privacy_button = add_button(tr(PRIVACY), _ask_privacy)
-	remove_ads_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6); hidden means 0 tall.
-	remove_ads_slot.name = &"RemoveAdsSlot"
-	remove_ads_slot.visible = false
-	column.add_child(remove_ads_slot)
+	purchase_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6).
+	purchase_slot.name = &"PurchaseSlot"
+	purchase_slot.visible = false
+	purchase_slot.child_entered_tree.connect(_watch_slot_child)
+	purchase_slot.child_exiting_tree.connect(_sync_later)
+	column.add_child(purchase_slot)
 	_route_button(REPLAY, MenuRoutes.TUTORIAL)
 	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
-	_route_button(LICENCES_TEXT, LICENCES)
+	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
 	if dev_enabled.call():
 		add_button(tr(DEVELOPER_TEXT), func() -> void: open_dev.call())
 	_listen()
@@ -140,6 +144,25 @@ func _open(route: StringName) -> void:
 	var stack: MenuStack = get_parent() as MenuStack
 	if stack != null and routes.has(route):
 		stack.push(routes.make(route))
+
+
+## The slot is hidden, so 0 tall, while no child shows (as the `OfferSlot` is).
+func _watch_slot_child(child: Node) -> void:
+	if child is Control:
+		(child as Control).visibility_changed.connect(_sync_later)
+	_sync_later()
+
+
+func _sync_later(_child: Node = null) -> void:
+	_sync_slot.call_deferred()  # A child leaving is gone from the list by then.
+
+
+func _sync_slot() -> void:
+	var any: bool = false
+	for child: Node in purchase_slot.get_children():
+		if child is Control and (child as Control).visible:
+			any = true
+	purchase_slot.visible = any
 
 
 func _open_dev() -> void:

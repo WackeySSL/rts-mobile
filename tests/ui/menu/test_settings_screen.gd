@@ -160,8 +160,8 @@ func test_rows_and_slot_hold_at_the_six_sizes() -> void:
 		assert_float(slot.get_global_rect().end.y).override_failure_message(label).is_equal_approx(
 			safe.end.y, TOLERANCE_PX
 		)
-		assert_bool(_screen.remove_ads_slot.visible).is_false()
-		assert_float(_screen.remove_ads_slot.size.y).is_equal_approx(0.0, 0.01)
+		assert_bool(_screen.purchase_slot.visible).is_false()
+		assert_float(_screen.purchase_slot.size.y).is_equal_approx(0.0, 0.01)
 		_close()
 		UiScale.clear_override()
 
@@ -265,7 +265,7 @@ func test_unregistered_routes_leave_their_buttons_disabled_and_a_registered_one_
 	for text: String in ["REPLAY TUTORIAL", "HOW TO PLAY", "LICENCES"]:
 		assert_bool(_button(text).disabled).override_failure_message(text).is_true()
 	var maker: ScreenMaker = ScreenMaker.new()  # A method, never a lambda (P524b).
-	_routes.register(SettingsScreen.LICENCES, Callable(maker, "make"))
+	_routes.register(MenuRoutes.LICENCES, Callable(maker, "make"))
 	assert_bool(_button("LICENCES").disabled).is_false()
 	assert_bool(_button("REPLAY TUTORIAL").disabled).is_true()
 	_button("LICENCES").pressed.emit()
@@ -361,3 +361,61 @@ func _profile_with_window(size: Vector2i) -> UiMetrics:
 			if profiles[profile_name].window_size == size:
 				return profiles[profile_name]
 	return null
+
+
+func test_the_purchase_slot_shows_with_a_visible_child_and_is_0_tall_without() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
+	var slot: VBoxContainer = _screen.purchase_slot
+	assert_str(String(slot.name)).is_equal("PurchaseSlot")
+	var child: Control = Control.new()
+	child.custom_minimum_size = Vector2(10.0, 60.0)
+	slot.add_child(child)
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(slot.visible).is_true()
+	assert_float(slot.size.y).is_greater_equal(60.0)
+	child.visible = false
+	await await_idle_frame()
+	assert_bool(slot.visible).is_false()
+	child.visible = true
+	await await_idle_frame()
+	assert_bool(slot.visible).is_true()
+	slot.remove_child(child)
+	child.free()
+	await await_idle_frame()
+	assert_bool(slot.visible).is_false()
+
+
+func test_saved_steps_out_of_range_are_clamped() -> void:
+	MenuPrefs.set_sound_step(15)
+	MenuPrefs.set_music_step(-2)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	assert_int(int(_screen.sound_slider.value)).is_equal(10)
+	assert_int(int(_screen.music_slider.value)).is_equal(0)
+
+
+func test_freeing_the_screen_during_the_privacy_await_is_safe() -> void:
+	_ads.required = true
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	_screen.privacy_button.pressed.emit()
+	assert_int(_ads.opened).is_equal(1)
+	_close()  # Frees the screen and its stack while the form is open.
+	_ads.release.emit()
+	await await_idle_frame()
+	assert_int(_ads.closed).is_equal(1)
+
+
+func test_menu_flow_applies_the_saved_steps_to_the_audio_service() -> void:
+	var audio: Node = get_tree().root.get_node("AudioService")
+	var music_before: int = audio.call("get_step", &"Music")
+	var sound_before: int = audio.call("get_step", &"Sfx")
+	MenuPrefs.set_music_step(3)
+	MenuPrefs.set_sound_step(4)
+	var flow: Node = (load("res://game/ui/menu/menu_flow_service.gd") as GDScript).new()
+	add_child(flow)  # Its _ready is the boot path.
+	assert_int(audio.call("get_step", &"Music")).is_equal(3)
+	assert_int(audio.call("get_step", &"Sfx")).is_equal(4)
+	remove_child(flow)
+	flow.free()
+	audio.call("set_step", &"Music", music_before)
+	audio.call("set_sound_step", sound_before)
