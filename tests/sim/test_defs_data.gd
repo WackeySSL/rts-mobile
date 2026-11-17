@@ -146,6 +146,7 @@ func test_rules_file_holds_the_42_starting_ints_and_the_defaults_equal_the_froze
 		"mine_arm_ticks": 15,
 		"sweep_ticks": 30,
 		"mine_known_cap": 24,
+		"bonus_credits_max": 500,  # P512: the Phase 6 start-credits grant.
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
