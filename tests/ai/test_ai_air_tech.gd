@@ -1,16 +1,7 @@
-extends "res://tests/ai/support/production_suite.gd"
+extends "res://tests/ai/support/air_suite.gd"
 ## The opponent's air and tech (plan row P250, ADR 0036 section 14): the intel's counts of seen
-## aircraft and anti-air, the economy's anti-air per seen aircraft, the production's research and
-## aircraft draw, the layer-aware counter choices, the shipped data and the frozen arena's defs. The
-## Worlds are the shipped fossil roster (`data/factions/`), which the frozen arena of the other AI
-## suites does not have: the airfield, the aircraft, the engineering centre and the upgrades.
-
-const FIELD_TILE: Vector2i = Vector2i(30, 12)
-const WORKS_TILE: Vector2i = Vector2i(30, 20)
-const BOMBER: String = "fossil_bomber"
-const FIGHTER: String = "fossil_fighter"
-
-# --- Intel: the counts ------------------------------------------------------------------------
+## aircraft and anti-air, the economy's anti-air per seen aircraft, the production's research
+## and aircraft draw, the shipped data and the frozen arena's defs.
 
 
 func test_intel_counts_the_aircraft_and_the_anti_air_it_sees_and_keeps_the_peak() -> void:
@@ -62,6 +53,14 @@ func test_the_view_copies_the_air_and_tech_tables() -> void:
 	# The copies are the view's own: a write to the World's table does not reach them.
 	world.type_pads[AiRig.type_of(world, "fossil_airfield")] = 9
 	assert_int(view.type_pads[AiRig.type_of(world, "fossil_airfield")]).is_equal(4)
+	var seen: Array[int] = [view.type_upgrade[0], view.upgrade_type_first[0]]
+	seen.append_array([view.upgrade_type_count[0], view.upgrade_types[0]])
+	world.type_upgrade[0] += 50
+	world.upgrade_type_first[0] += 50
+	world.upgrade_type_count[0] += 50
+	world.upgrade_types[0] += 50
+	assert_array([view.type_upgrade[0], view.upgrade_type_first[0]]).is_equal(seen.slice(0, 2))
+	assert_array([view.upgrade_type_count[0], view.upgrade_types[0]]).is_equal(seen.slice(2, 4))
 
 
 # --- Economy: anti-air per seen aircraft ------------------------------------------------------
@@ -153,8 +152,9 @@ func test_no_aircraft_without_a_free_pad() -> void:
 
 func test_the_weak_tier_draws_no_aircraft_and_the_fighter_weight_grows_with_the_aircraft_seen(
 ) -> void:
+	var base: World = _air_base()
 	var easy: Array[String] = _in_flight(
-		_run(_production("fossil", "easy"), _memory("fossil"), _air_base()), _air_base()
+		_run(_production("fossil", "easy"), _memory("fossil"), base), base
 	)
 	assert_array(easy).is_empty()
 	var plain: Dictionary[String, int] = _air_draws(0)
@@ -164,12 +164,23 @@ func test_the_weak_tier_draws_no_aircraft_and_the_fighter_weight_grows_with_the_
 	assert_int(seen[FIGHTER]).is_greater(seen[BOMBER] * 2)
 
 
-func test_a_bomber_pick_that_cannot_be_paid_is_skipped_not_swapped_for_a_fighter() -> void:
-	# The fighter is affordable, the bomber is not: the pick is by weight (70 to 30), so most
-	# thinks queue nothing; the fighter is never queued in place of a bomber.
-	var counts: Dictionary[String, int] = _air_draws(0, _cost(_air_base(), FIGHTER))
-	assert_int(counts[BOMBER]).is_equal(0)
-	assert_int(counts[FIGHTER]).is_between(20, 100)
+func test_a_pick_that_cannot_be_paid_is_held_and_its_price_kept_from_the_ground_draw() -> void:
+	# Only the bomber is in the mix (the fighter's weight is 0), so the pick is the bomber.
+	var def: OpponentDef = _def()
+	def.air_weights = PackedInt32Array([0, 0, 70, 0, 60, 0])
+	var production: AiProduction = AiProduction.create(def, _level("normal"), 1)
+	var world: World = _air_base()
+	var memory: AiMemory = _memory("fossil")
+	var bomber_cost: int = _cost(world, BOMBER)
+	world.credits[1] = bomber_cost - 200
+	# Short of the price: no aircraft, and the ground draw gets none of the credits either.
+	assert_array(_run(production, memory, world)).is_empty()
+	assert_array(_run(production, memory, world)).is_empty()
+	# Paid at last: the held bomber goes first, ahead of any ground unit.
+	world.credits[1] = RICH
+	var sent: Array[Command] = _run(production, memory, world)
+	assert_array(_in_flight(sent, world)).is_equal([BOMBER])
+	assert_int(production.air_queued).is_equal(1)
 
 
 func test_the_aircraft_waits_for_credits_and_the_unit_cap() -> void:
@@ -296,9 +307,6 @@ func test_the_focus_search_skips_a_target_the_group_cannot_hit() -> void:
 	assert_int(AiEnemyScan.weakest(view, ids, Vector2i(10000, 9500), 5000, 0, 0, 99).x).is_equal(-1)
 
 
-# --- The data ---------------------------------------------------------------------------------
-
-
 func test_the_shipped_orders_carry_the_tech_for_normal_and_hard_and_not_for_easy() -> void:
 	for faction: String in Rig.FACTIONS:
 		var orders: Array[AiBuildOrderDef] = Rig.def_of(faction).build_orders
@@ -357,105 +365,3 @@ func test_the_frozen_arena_defs_switch_the_air_and_tech_off() -> void:
 		assert_array([copy.aa_per_seen_aircraft, copy.aa_max, copy.research_floor]).is_equal(
 			[0, 0, 0]
 		)
-
-
-# --- Helpers ----------------------------------------------------------------------------------
-
-
-## The shipped fossil start (the shipped rules and both players' shipped roster), the fog open.
-func _shipped(credits: int) -> World:
-	var built: ScenarioDef = FactionRig.scenario("fossil", "fossil")
-	var listed: Array[FactionDef] = [null]
-	for _at: int in 2:
-		listed.append(load("res://data/factions/fossil.tres") as FactionDef)
-	built.factions = listed
-	built.rules = load("res://data/rules.tres") as RulesDef
-	var world: World = World.from_scenario(built)
-	AiRig.explore_all(world)
-	world.credits[1] = credits
-	return world
-
-
-## A base with the plants, the refinery, the barracks, the factory and the radar.
-func _base() -> World:
-	var world: World = _shipped(RICH)
-	for row: Array in [
-		["power_plant", 10, 2],
-		["power_plant", 13, 2],
-		["power_plant", 16, 2],
-		["refinery", 10, 10],
-		["barracks", 2, 2],
-		["vehicle_factory", 2, 12],
-		["fossil_radar", 22, 2],
-	]:
-		AiRig.give(world, 1, row[0], row[1], row[2])
-	Power.run(world)
-	return world
-
-
-## The base and a finished airfield (four pads).
-func _air_base() -> World:
-	var world: World = _base()
-	AiRig.give(world, 1, "fossil_airfield", FIELD_TILE.x, FIELD_TILE.y)
-	Power.run(world)
-	return world
-
-
-## The air base and an engineering centre.
-func _research_base() -> World:
-	var world: World = _air_base()
-	AiRig.give(world, 1, "fossil_engineering", WORKS_TILE.x, WORKS_TILE.y)
-	Power.run(world)
-	return world
-
-
-func _economy_run(economy: AiEconomy, memory: AiMemory, world: World, tries: int) -> Array[Command]:
-	var all: Array[Command] = []
-	var loop: MatchLoop = AiRig.loop_of(world)
-	for _at: int in tries:
-		memory.commands_left = 99
-		var out: Array[Command] = []
-		economy.run(PlayerView.of(world, 1), memory, _stream(), out)
-		all.append_array(out)
-		AiRig.step(world, loop, out)
-	return all
-
-
-func _ids(sent: Array[Command], world: World) -> Array[String]:
-	var found: Array[String] = []
-	for command: Command in sent:
-		if command.type == Command.Type.QUEUE:
-			found.append(String(world.type_ids[command.payload[0]]))
-	return found
-
-
-func _ids_in_tab(sent: Array[Command], world: World, tab: int) -> Array[String]:
-	var found: Array[String] = []
-	for command: Command in sent:
-		if command.type == Command.Type.QUEUE and world.type_tab[command.payload[0]] == tab:
-			found.append(String(world.type_ids[command.payload[0]]))
-	return found
-
-
-func _in_flight(sent: Array[Command], world: World) -> Array[String]:
-	return _ids_in_tab(sent, world, World.Tab.FLIGHT)
-
-
-## The aircraft of 200 first draws of one stream, with `seen` aircraft seen at once.
-func _air_draws(seen: int, credits: int = RICH) -> Dictionary[String, int]:
-	var counts: Dictionary[String, int] = {BOMBER: 0, FIGHTER: 0}
-	var stream: DetRandom = _stream()
-	var production: AiProduction = _production("fossil", "normal")
-	var memory: AiMemory = _memory("fossil")
-	memory.seen_air_peak = seen
-	var world: World = _air_base()
-	world.credits[1] = credits
-	for _at: int in 200:
-		world.queue_count.fill(0)
-		world.credits[1] = credits
-		memory.commands_left = 99
-		var out: Array[Command] = []
-		production.run(PlayerView.of(world, 1), memory, stream, out)
-		for id: String in _in_flight(out, world):
-			counts[id] += 1
-	return counts

@@ -24,6 +24,7 @@ artillery_type = &"artillery"
 hold_types = Array[StringName]([&"artillery"])
 defence_type = &"defence_turret"
 strike_type = &"fossil_strike"
+; Starting values for the Phase 4b balance run (P250), no source yet.
 aa_type = &"fossil_aa"
 fighter_type = &"fossil_fighter"
 bomber_type = &"fossil_bomber"

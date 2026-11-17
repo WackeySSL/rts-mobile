@@ -24,6 +24,7 @@ artillery_type = &"renew_artillery"
 hold_types = Array[StringName]([&"renew_artillery"])
 defence_type = &"renew_defence"
 strike_type = &"renew_strike"
+; Starting values for the Phase 4b balance run (P250), no source yet.
 aa_type = &"renew_aa"
 fighter_type = &"renew_fighter"
 bomber_type = &"renew_bomber"

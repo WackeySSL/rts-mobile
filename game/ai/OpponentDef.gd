@@ -30,14 +30,15 @@ const TIERS: int = 3
 ## The air and tech types (ADR 0036 section 14, plan row P250): the anti-air building the economy
 ## builds against seen aircraft, and the two aircraft the production draws from. An empty id or a
 ## type the roster lacks turns that part off.
-@export var aa_type: StringName = &"fossil_aa"
-@export var fighter_type: StringName = &"fossil_fighter"
-@export var bomber_type: StringName = &"fossil_bomber"
-## The weights of the aircraft draw, flat `tier * 2 + (0 bomber, 1 fighter)`: the airfield's pads
-## hold at most 4 each, and the weak tier (Easy) builds no airfield. `fighter_seen_weight` adds to
-## the fighter's weight for each enemy aircraft the AI has seen at once (its most).
-@export var air_weights: PackedInt32Array = PackedInt32Array([0, 0, 70, 30, 60, 40])
-@export var fighter_seen_weight: int = 10
+@export var aa_type: StringName = &""
+@export var fighter_type: StringName = &""
+@export var bomber_type: StringName = &""
+## The weights of the aircraft draw, flat `tier * 2 + (0 bomber, 1 fighter)`. `fighter_seen_weight`
+## adds to the fighter's weight for each enemy aircraft the AI has seen at once (its most). These
+## default to off (no type, weight 0) like the level's air fields, so a def that names none (the
+## `perf_ai` frozen files) plays as before; the shipped files set them.
+@export var air_weights: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
+@export var fighter_seen_weight: int = 0
 ## The weights of the draw among the roles whose type can be queued, flat: `tier * ROLES + role`.
 ## Artillery needs the radar, which the weak tier never builds, so its weight there is 0.
 @export var role_weights: PackedInt32Array = PackedInt32Array(

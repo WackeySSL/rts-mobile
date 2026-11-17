@@ -216,6 +216,22 @@ func test_the_home_squad_focuses_a_foe_in_reach_instead_of_the_defence_move() ->
 	assert_int(_of(Command.Type.ATTACK)[0].target_id).is_equal(strong)
 
 
+func test_the_focus_skips_an_aircraft_a_ground_only_group_cannot_hit() -> void:
+	_control(0, 1)
+	var tank: int = _enemy("heavy_tank", NEAR.x, NEAR.y)
+	var flyer: int = _enemy("light_tank", NEAR.x, NEAR.y + 500)
+	_hp(flyer, 100)
+	_settle()
+	_see_all()
+	# The light tank stands for an aircraft: the rifle squads' guns hit the ground only (P250).
+	_world.type_layer_bit[AiRig.type_of(_world, "light_tank")] = World.Layer.AIR
+	for tick: int in [5, 20, 35]:
+		_think(tick)
+	var sent: Array[Command] = _of(Command.Type.ATTACK)
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].target_id).is_equal(tank)
+
+
 func test_a_threat_out_of_the_squads_reach_is_still_met_by_the_defence_move() -> void:
 	_control(0, 1)
 	for id: int in _squads():

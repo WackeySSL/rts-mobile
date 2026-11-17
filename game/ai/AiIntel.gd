@@ -118,6 +118,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	var costs: PackedInt32Array = view.type_cost
 	var max_hps: PackedInt32Array = view.type_max_hp
 	var combat: PackedByteArray = _combat
+	var air: PackedByteArray = _air
 	var per: int = PlayerView.MILLI_PER_TILE
 	var col_last: int = maxi(_map_cols - 1, 0)
 	var line_last: int = maxi(_map_rows - 1, 0)
@@ -145,7 +146,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 				hq_id = id
 				memory.home_x = maxi(pos_x, 0) / per
 				memory.home_y = maxi(pos_y, 0) / per
-		elif combat[type] != 0 and type != scout:
+		elif combat[type] != 0 and type != scout and air[type] & AIR_BIT == 0:
 			memory.unit_id.append(ids[row])
 			memory.unit_hp.append(hps[row])
 	passes += 1
@@ -555,14 +556,7 @@ static func _air_bits(view: PlayerView, type: int) -> int:
 		bits |= AIR_BIT
 	elif layer == PlayerView.Layer.LOW_AIR:
 		bits |= LOW_BIT
-	var weapon: int = _entry(view.type_weapon, type)
-	if (
-		weapon >= 0
-		and (
-			_entry(view.weapon_targets, weapon) & (PlayerView.Layer.AIR | PlayerView.Layer.LOW_AIR)
-			!= 0
-		)
-	):
+	if AiEnemyScan.hit_mask(view, type) & (PlayerView.Layer.AIR | PlayerView.Layer.LOW_AIR) != 0:
 		bits |= AA_BIT
 	return bits
 

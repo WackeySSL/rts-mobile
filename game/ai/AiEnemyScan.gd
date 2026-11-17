@@ -5,10 +5,15 @@ extends RefCounted
 ## the army passes its test counter and cap in and takes the used count back, in the `y` of the
 ## answer, so `AiArmy.tests` stays the one counter the suites read.
 
+## Every layer bit (ground, air, low air).
+const ALL_LAYERS: int = PlayerView.Layer.GROUND | PlayerView.Layer.AIR | PlayerView.Layer.LOW_AIR
+
 
 ## The value of the rows of `list` within `radius` of `centre` (only armed, finished buildings when
 ## `sites`), one test each past the box, until the cap of `cap` tests, `used` of them spent already.
-## `x` is the value, `y` the tests used afterwards.
+## Only a row whose weapon can hit the ground counts (P250: a Burst Stack or an air-only fighter is
+## no threat to a ground wave), and it costs no test. `x` is the value, `y` the tests used
+## afterwards.
 static func value_in(
 	view: PlayerView,
 	list: PackedInt32Array,
@@ -22,11 +27,12 @@ static func value_in(
 	var columns: Array[PackedInt32Array] = view.columns()
 	var xs: PackedInt32Array = columns[PlayerView.Column.X]
 	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
+	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	for id: int in list:
 		if used >= cap:
 			break
 		var row: int = view.row_of(id)
-		if row < 0:
+		if row < 0 or hit_mask(view, types[row]) & PlayerView.Layer.GROUND == 0:
 			continue
 		var gap_x: int = xs[row] - centre.x
 		var gap_y: int = ys[row] - centre.y
@@ -52,12 +58,12 @@ static func armed(view: PlayerView, row: int) -> bool:
 
 
 ## The layers the weapon of `type` may hit (`weapon_targets`, a `PlayerView.Layer` mask): 0 for a
-## type without a weapon, the ground for a weapon the view has no mask for.
+## type without a weapon, every layer for a weapon the view has no mask for (the sim's meaning).
 static func hit_mask(view: PlayerView, type: int) -> int:
-	var weapon: int = view.type_weapon[type]
+	var weapon: int = view.type_weapon[type] if type >= 0 and type < view.type_weapon.size() else -1
 	if weapon < 0:
 		return 0
-	return view.weapon_targets[weapon] if weapon < view.weapon_targets.size() else 1
+	return view.weapon_targets[weapon] if weapon < view.weapon_targets.size() else ALL_LAYERS
 
 
 ## The row of the weakest (fewest hp, the first on a tie) unit of `list` within `radius` of

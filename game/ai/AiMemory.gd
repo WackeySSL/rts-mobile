@@ -93,7 +93,8 @@ var seen_aa: int = 0
 var seen_air_peak: int = 0
 ## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
 ## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
-## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
+## but the scout type and the aircraft (P250: they join no ground squad until P251 orders them),
+## and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
 ## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
 var home_x: int = NONE
 var home_y: int = NONE

@@ -6,4 +6,5 @@
 script = ExtResource("1_order")
 id = &"renew_strong"
 tier = 2
+; The airfield, engineering centre and space centre at the end are P250's starting values for the Phase 4b balance run.
 steps = Array[StringName]([&"renew_power", &"renew_refinery", &"renew_factory", &"renew_barracks", &"renew_refinery", &"renew_power", &"renew_radar", &"renew_defence", &"renew_power", &"renew_strike", &"renew_defence", &"renew_airfield", &"renew_engineering", &"renew_space"])

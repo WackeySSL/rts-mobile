@@ -97,6 +97,8 @@ var _budget: int = 0
 var _seen_class: int = -1
 var _seen_layer: int = PlayerView.Layer.GROUND
 var _closed_tab: int = -1
+## The aircraft drawn and not yet queued (MISSING: none), kept between runs.
+var _air_pick: int = _NONE
 
 
 ## A production manager for `player_id` on `def` at `level`, which it copies and does not keep.
@@ -257,8 +259,11 @@ func _take_census(view: PlayerView) -> bool:
 	var columns: Array[PackedInt32Array] = view.columns()
 	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
+	var lefts: PackedInt32Array = columns[PlayerView.Column.BUILD_LEFT]
 	for row: int in view.own_rows:
 		var type: int = types[row]
+		if foot_w[type] > 0 and lefts[row] != 0:
+			continue  # A site: no producer, no pad and no requirement until it is finished.
 		_owned[type] += 1
 		if foot_w[type] <= 0:
 			_units += 1
@@ -329,28 +334,38 @@ func _changes_owned(view: PlayerView, up: int) -> bool:
 
 ## One aircraft drawn from the bomber's and the fighter's weights (the fighter's grows with the
 ## most aircraft seen) while a pad is free: the aircraft and the queued ones are under the pads of
-## the airfields, the FLIGHT queue has room and the unit cap allows it; the pick is queued only when
-## the credits allow it.
+## the airfields, the FLIGHT queue has room and the unit cap allows it. The drawn pick is kept
+## (`_air_pick`) until it is queued: while the credits fall short its price is held out of the
+## ground draw's budget, so the dearer bomber is not crowded out by the cheaper fighter.
 func _queue_air(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
 	var tab: int = PlayerView.Tab.FLIGHT
 	var waiting: int = view.queue_count[tab] + _added[tab]
-	if _pads == 0 or waiting >= _room or _aircraft + waiting >= _pads or not memory.can_send():
+	if _pads == 0 or waiting >= _room or _aircraft + waiting >= _pads:
+		_air_pick = _NONE
 		return
-	var bomber: int = _air_share(view, _bomber, 0)
-	var fighter: int = _air_share(
-		view, _fighter, _fighter_seen * memory.seen_air_peak if _fighter_weight > 0 else 0
-	)
-	if bomber + fighter == 0:
+	if not memory.can_send():
 		return
-	var pick: int = _bomber if rng.next_int(bomber + fighter) < bomber else _fighter
-	if view.type_cost[pick] <= _budget:
-		_send(view, memory, out, pick)
+	if _air_pick == _NONE or _air_share(view, _air_pick, 0) == 0:
+		var bomber: int = _air_share(view, _bomber, 0)
+		var fighter: int = _air_share(
+			view, _fighter, _fighter_seen * memory.seen_air_peak if _fighter_weight > 0 else 0
+		)
+		if bomber + fighter == 0:
+			_air_pick = _NONE
+			return
+		_air_pick = _bomber if rng.next_int(bomber + fighter) < bomber else _fighter
+	var cost: int = view.type_cost[_air_pick]
+	if cost <= _budget:
+		_send(view, memory, out, _air_pick)
 		air_queued += 1
+		_air_pick = _NONE
+	else:
+		# Held until it is paid: its price stays out of the ground draw's budget, as the scout's.
+		_budget = maxi(_budget - cost, 0)
 
 
-## The draw weight of aircraft `type` (MISSING: none) with `extra` added: 0 unless it can be queued
-## but for its price, which the draw's pick is held to afterwards (so the dearer bomber is not
-## crowded out by the cheaper fighter: a pick that cannot be paid now is skipped this think).
+## The draw weight of aircraft `type` (MISSING: none) with `extra` added: 0 unless a producer
+## stands, its requirement is owned and the unit cap allows it (the price is the pick's, later).
 func _air_share(view: PlayerView, type: int, extra: int) -> int:
 	if (
 		type == _NONE
@@ -466,6 +481,7 @@ func _send(view: PlayerView, memory: AiMemory, out: Array[Command], type: int) -
 ## `reaction_ticks` ago), tallied per layer (P250: ground, air and low air each have their own
 ## classes, so aircraft never count toward a ground class), the lowest ground-first class among
 ## equals; -1 for none or no counter wanted. `_seen_layer` is the winner's layer bit.
+@warning_ignore("integer_division")
 func _most_seen_class(view: PlayerView, memory: AiMemory) -> int:
 	if _counter_percent <= 0 or memory.seen_count.size() != view.type_cost.size():
 		return -1
@@ -502,16 +518,6 @@ func _layer_of(view: PlayerView, type: int) -> int:
 	return 1 if bit == PlayerView.Layer.AIR else (2 if bit == PlayerView.Layer.LOW_AIR else 0)
 
 
-## Whether the weapon of `type` may hit the layer `bit` (a type without a weapon hits nothing; a
-## weapon the view has no mask for hits the ground).
-func _hits(view: PlayerView, type: int, bit: int) -> bool:
-	var weapon: int = view.type_weapon[type]
-	if weapon < 0:
-		return false
-	var mask: int = view.weapon_targets[weapon] if weapon < view.weapon_targets.size() else 1
-	return mask & bit != 0
-
-
 ## The role of the draw's `_types` (the unit that would be queued, MISSING for none) whose weapon
 ## does most against the class most seen and can hit its layer, the lower role among equals; -1 for
 ## none. Only a role with weight counts.
@@ -524,7 +530,7 @@ func _counter_role(view: PlayerView) -> int:
 		if (
 			_types[role] == _NONE
 			or _weights[role] <= 0
-			or not _hits(view, _types[role], _seen_layer)
+			or AiEnemyScan.hit_mask(view, _types[role]) & _seen_layer == 0
 		):
 			continue
 		var percent: int = view.type_vs_armour[
