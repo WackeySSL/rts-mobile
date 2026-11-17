@@ -187,12 +187,16 @@ func _layout() -> void:
 
 
 ## One frame after the host's layout has settled (a size change reaches the container through two
-## deferred steps): a shown band off the safe bottom is a host bug.
+## deferred steps): a shown band off the safe bottom is a host bug. A one-shot connection, not an
+## await: a band freed within that frame drops the connection instead of resuming a dead coroutine.
 func _check_bottom() -> void:
 	if not is_inside_tree():
 		_check_queued = false
 		return
-	await get_tree().process_frame
+	get_tree().process_frame.connect(_check_bottom_now, CONNECT_ONE_SHOT)
+
+
+func _check_bottom_now() -> void:
 	_check_queued = false
 	if is_inside_tree() and _height_dp > 0 and not is_at_safe_bottom():
 		push_error(
