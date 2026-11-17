@@ -20,6 +20,9 @@ extends RefCounted
 ## with the most units, the lowest class among equals). The role is chosen among those that can be
 ## queued now, by the percent of the type that would be queued; none, no shift. A level with 0
 ## (Easy) draws on the plain weights. Every Command checks `can_send`, then `spent`.
+## - then, when the level has `medic_per_squads` and the roster the medic type (P283, ADR 0037
+##   section 6), queues one medic squad per that many own armed infantry squads, counting the medics
+##   alive and queued (at most one a think, no draw: it takes one place of its tab's queue).
 ## One pass over the own rows (the census), skipped when nothing could be queued.
 
 ## A type the roster lacks.
@@ -31,6 +34,7 @@ var passes: int = 0
 ## Units queued over the match, the scouts among them.
 var queued: int = 0
 var scouts_queued: int = 0
+var medics_queued: int = 0
 ## The credits the QUEUEs of the last run cost (`AiEconomy.mend` measures the credits left by it).
 var spent_credits: int = 0
 ## Units queued per role over the match (`OpponentDef.Role`).
@@ -43,11 +47,14 @@ var _weights: PackedInt32Array = PackedInt32Array()
 var _queue_target: int = 0
 var _counter_percent: int = 0
 var _reaction_ticks: int = 0
+var _hq_id: StringName = &""
+var _medic_per: int = 0
 
 ## The types as indexes of the view's roster, found on the first run.
 var _resolved: bool = false
 var _role_types: PackedInt32Array = PackedInt32Array()
 var _vehicle_types: PackedInt32Array = PackedInt32Array()
+var _medic: int = _NONE
 
 ## Read off the view by each run, used only inside it.
 var _owned: PackedInt32Array = PackedInt32Array()
@@ -57,6 +64,7 @@ var _armour: PackedInt32Array = PackedInt32Array()
 var _types: PackedInt32Array = PackedInt32Array()
 var _shares: PackedInt32Array = PackedInt32Array()
 var _units: int = 0
+var _foot_squads: int = 0
 var _room: int = 0
 var _budget: int = 0
 var _seen_class: int = -1
@@ -82,6 +90,8 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	production._queue_target = def.queue_target
 	production._counter_percent = clampi(level.counter_percent, 0, 100)
 	production._reaction_ticks = level.reaction_ticks
+	production._hq_id = def.hq_type
+	production._medic_per = maxi(level.medic_per_squads, 0)
 	return production
 
 
@@ -104,6 +114,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	_closed_tab = -1
 	if scout != _NONE and _queue_scout(view, memory, out, scout):
 		_closed_tab = view.type_tab[scout]
+	_queue_medic(view, memory, out)
 	_seen_class = _most_seen_class(view, memory)
 	for _step: int in _room * PlayerView.TABS:
 		if not _queue_drawn(view, memory, rng, out):
@@ -119,6 +130,10 @@ func _resolve(view: PlayerView) -> void:
 		_role_types.append(view.type_index_of(id) if id != &"" else _NONE)
 	for id: StringName in _vehicle_ids:
 		_vehicle_types.append(view.type_index_of(id))
+	if _medic_per > 0:
+		var hq: int = view.type_index_of(_hq_id)
+		var faction: int = view.type_faction[hq] if hq != _NONE else AiRepair.NO_FACTION
+		_medic = AiRepair.role_type_of(view, faction, false)
 
 
 ## `_added` from the unit QUEUEs of this player already in `out` (this think's, from the economy).
@@ -165,6 +180,7 @@ func _take_census(view: PlayerView) -> bool:
 	_producers.resize(PlayerView.TABS)
 	_producers.fill(0)
 	_units = 0
+	_foot_squads = 0
 	var columns: Array[PackedInt32Array] = view.columns()
 	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
@@ -173,12 +189,36 @@ func _take_census(view: PlayerView) -> bool:
 		_owned[type] += 1
 		if foot_w[type] <= 0:
 			_units += 1
+			if _medic != _NONE and _is_foot_squad(view, type):
+				_foot_squads += 1
 			continue
 		var tab: int = view.type_produces[type]
 		if tab >= 0 and tab < PlayerView.TABS:
 			_producers[tab] += 1
 	passes = 1
 	return _producers[PlayerView.Tab.INFANTRY] + _producers[PlayerView.Tab.VEHICLES] > 0
+
+
+## Whether `type` is an armed infantry squad (the medics' count).
+func _is_foot_squad(view: PlayerView, type: int) -> bool:
+	return view.type_tab[type] == PlayerView.Tab.INFANTRY and view.type_weapon[type] >= 0
+
+
+## One medic squad when the armed infantry squads outnumber the medics (alive and queued) by
+## `medic_per_squads`, and the medic can be queued and paid now.
+func _queue_medic(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
+	if _medic == _NONE or _medic_per <= 0 or not memory.can_send():
+		return
+	var have: int = _owned[_medic]
+	var tab: int = PlayerView.Tab.INFANTRY
+	for slot: int in view.queue_count[tab]:
+		if view.queue_type[tab * view.queue_slots + slot] == _medic:
+			have += 1
+	@warning_ignore("integer_division")
+	if _foot_squads / _medic_per <= have or not _queueable(view, _medic, true):
+		return
+	_send(view, memory, out, _medic)
+	medics_queued += 1
 
 
 ## Queues the scout when it can be queued. True when the scout is held back for credits or for

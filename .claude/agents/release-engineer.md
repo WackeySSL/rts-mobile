@@ -24,8 +24,10 @@ Principles:
   special headers. One preview per PR under `pr-<number>/` on the `gh-pages` branch, with the
   link posted on the PR.
 - Android: install the Gradle build template in CI, include the Poing AdMob plugin, sign the AAB
-  with the release keystore from secrets, upload to the internal track. versionCode comes from
-  the run number, versionName from the release version.
+  with the upload key from the `play-internal` environment (Play App Signing holds the app key),
+  upload to the internal track. versionCode is 10 × the commits on `main` plus the channel
+  (ADR 0040 §6) (Michael, 2026-11-17). versionName `0.6.<commit count>` for internal builds and
+  the release version for release builds (ADR 0040 §6) (Michael, 2026-11-17).
 - iOS: macos runner, Godot Xcode export, the AdMob plugin's setup script, archive and upload with
   an App Store Connect API key.
 - Cloud sessions cannot push tags. Releases therefore start with `release.yml`

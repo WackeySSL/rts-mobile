@@ -189,7 +189,7 @@ fi
 # (4b) Licence notice: a short header, then Godot's LICENSE.txt and COPYRIGHT.txt, LLVM's libc++
 # LICENSE.TXT and godot-cpp's LICENSE.md (with its tag and commit), each unchanged. COPYRIGHT.txt
 # lists the bundled components (FreeType, HarfBuzz, Open Sans, ...) and the CC BY 4.0 notice for the
-# Godot logo that the default boot splash shows.
+# Godot logo (the splash is the game's own since P533; the notice still ships with the engine).
 for source in LICENSE.txt COPYRIGHT.txt; do
   if [ ! -s "$LICENSE_DIR/$source" ]; then
     die 1 "licence notice source $LICENSE_DIR/$source is missing or empty"

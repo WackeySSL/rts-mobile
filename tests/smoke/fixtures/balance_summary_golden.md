@@ -43,6 +43,15 @@ Median 8.9 min, 90th percentile 8.9 min, longest 8.9 min (8000, 8000 and 8000 ti
 Share and survival are per-mille, rounded half up; a type that never occurred shows 0.
 Kills are an estimate, credited in this order: a shot at the row in the tick it died; else an enemy rupture landing in that tick within its radius (to the strike building's type); else the row's last shooter; else nobody. Kills by structures (turrets, strike buildings) are not in the unit rows; a cancelled site is neither a loss nor a kill. Kills by free rows (the scenario's units, a refinery's tanker) count, while the credits spent count produced rows only.
 
+### Air and tech
+
+| Reveals | Player-matches that revealed | Kills: ground | air | low air |
+| --- | --- | --- | --- | --- |
+| 0 | 0 | 0 | 0 | 0 |
+
+Upgrades owned at the end (player-matches): none.
+Kills by layer are all credited kills, structures included, by the dead row's layer.
+
 ### Flags
 
 - the flow cache was full in 1 ticks

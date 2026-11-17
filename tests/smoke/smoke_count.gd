@@ -22,6 +22,12 @@ extends RefCounted
 ##   `Strike.rupture_type`), is credited to the strike building's type and player. The order is: a
 ##   shot at the row in its dying tick, then such a rupture, then the row's last shooter. A death
 ##   with none of them is credited to nobody.
+## - `kills_by_layer`: the credited kills by the layer of the dead row, `ground`, `air` and
+##   `low_air` (`World.Layer`), from `type_layer_bit`; its sum is the sum of `kills` (ADR 0036
+##   section 3, P254). Absent means 0.
+## - `reveals`: the accepted sweeps, the STRIKE records of kind REVEAL, per player (P254).
+## - `research` (read at the end, in player_counts): the upgrades the player owns, `{upgrade id: 1}`
+##   from the bits of `world.upgrades` (the sim has no research event, and a bit is never cleared).
 ## - `first_drop_tick`: the tick of the first step after which `dropped_commands` was above 0, -1
 ##   while none was (a harness failure names it).
 ## - Free-unit edges: a refused `spawn_free` (unit cap, no exit) in the tick of its refinery
@@ -41,6 +47,9 @@ var gifts: Array[Dictionary] = []
 var lost: Array[Dictionary] = []
 var kills: Array[Dictionary] = []
 var structures: Array[Dictionary] = []
+var kills_by_layer: Array[Dictionary] = []
+## Index p holds the sweeps player p started.
+var reveals: Array[int] = []
 ## The ticks after which every slot of the World's flow cache was referenced (ADR 0030 section 4).
 var flow_full_ticks: int = 0
 var first_drop_tick: int = -1
@@ -69,6 +78,8 @@ func _init(players: int = 0) -> void:
 		lost.append({})
 		kills.append({})
 		structures.append({})
+		kills_by_layer.append({})
+		reveals.append(0)
 
 
 ## Reads the rows the World starts with: scenario rows are free.
@@ -96,6 +107,8 @@ func after_step(world: World) -> void:
 					_shooter[events[at + 4]] = by
 					_shot_tick[events[at + 4]] = tick
 			World.Event.STRIKE:
+				if events[at + 4] == Strike.Kind.REVEAL and events[at + 5] < reveals.size():
+					reveals[events[at + 5]] += 1
 				var building: int = _meta.get(events[at + 1], -1)
 				if events[at + 6] > 0 and building >= 0:
 					_strike_landing.append(events[at + 6])
@@ -129,7 +142,21 @@ func player_counts(world: World, player: int) -> Dictionary:
 		"kills": kills[player],
 		"spent": spent,
 		"structures": structures[player],
+		"kills_by_layer": kills_by_layer[player],
+		"reveals": reveals[player],
+		"research": _research(world, player),
 	}
+
+
+## `{upgrade id: 1}` for each upgrade bit `player` holds (none for a player without a slot).
+func _research(world: World, player: int) -> Dictionary[String, int]:
+	var owned: Dictionary[String, int] = {}
+	if player >= world.upgrades.size():
+		return owned
+	for index: int in world.upgrade_ids.size():
+		if (world.upgrades[player] >> index) & 1 == 1:
+			owned[String(world.upgrade_ids[index])] = 1
+	return owned
 
 
 func _spawned(world: World, events: PackedInt32Array, at: int) -> void:
@@ -174,6 +201,7 @@ func _died(world: World, events: PackedInt32Array, at: int) -> void:
 		var killer: int = credit >> META_BITS
 		if killer < kills.size():
 			_bump(kills[killer], String(world.type_ids[credit & (META - 1)]))
+			_bump(kills_by_layer[killer], _layer_name(world.type_layer_bit[type]))
 	_meta.erase(id)
 	_shooter.erase(id)
 	_shot_tick.erase(id)
@@ -215,6 +243,13 @@ func _flow_full(flow: FlowCache) -> bool:
 		if references[slot] <= 0:
 			return false
 	return true
+
+
+## The report's name of a layer bit.
+static func _layer_name(bit: int) -> String:
+	if bit == World.Layer.AIR:
+		return "air"
+	return "low_air" if bit == World.Layer.LOW_AIR else "ground"
 
 
 func _bump(counts: Dictionary, type_id: String) -> void:

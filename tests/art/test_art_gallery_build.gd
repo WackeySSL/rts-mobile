@@ -60,6 +60,16 @@ func after() -> void:
 	_assert_quit_on_go_back_restored()
 
 
+## The gallery restores what it found, not a fixed value: a true put there is true again after it.
+func test_the_gallery_puts_back_the_quit_setting_it_found() -> void:
+	get_tree().quit_on_go_back = true
+	var gallery: Control = await _open_gallery()
+	assert_bool(get_tree().quit_on_go_back).is_false()
+	gallery.get_parent().remove_child(gallery)
+	assert_bool(get_tree().quit_on_go_back).is_true()
+	get_tree().quit_on_go_back = false
+
+
 func test_the_page_steps_through_every_building_of_both_factions_with_two_big_buttons() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
@@ -308,7 +318,7 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 		assert_str(button.text).is_equal(page.STAGE_NAMES[0])
 		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
 		page.get_node("Next").pressed.emit()
-	assert_int(staged).is_equal(22)  # Both factions' eight, space centres, anti-air, airfields.
+	assert_int(staged).is_equal(24)  # Eight, space centres, anti-air, airfields, engineering.
 
 
 ## The body of a stage is trimmed at the integer ceil of the cut in texels, with the clip on, also
@@ -618,7 +628,7 @@ func _node_name(node: Node) -> String:
 
 func _assert_quit_on_go_back_restored() -> void:
 	var restored: bool = get_tree().quit_on_go_back
-	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_false()
 
 
 ## The page, shown: the page button pressed once from the Units page.

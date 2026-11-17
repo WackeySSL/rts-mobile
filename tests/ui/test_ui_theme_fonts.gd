@@ -357,3 +357,32 @@ func _contrast(a: Color, b: Color) -> float:
 	var one: float = _luminance(a)
 	var other: float = _luminance(b)
 	return (maxf(one, other) + 0.05) / (minf(one, other) + 0.05)
+
+
+## The menu's own faces (P519): the side names share the attack title's 3 px tracking at 16 dp and
+## MenuTitle has its own variation with 8 px at 48 dp; each is listed in `base_px` and inside the
+## band of ADR 0025 section 13 on the phones.
+func test_the_menu_text_looks_hold_the_tracking_inside_the_band_on_the_phones() -> void:
+	var theme: Theme = HudThemes.source()
+	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
+	var want: Dictionary[StringName, Array] = {
+		&"SideNameRenew": [16, 3],
+		&"SideNameFossil": [16, 3],
+		&"MenuTitle": [48, 8],
+	}
+	for look: StringName in want:
+		var variation: FontVariation = theme.get_font(&"font", look) as FontVariation
+		assert_object(variation).override_failure_message(str(look)).is_not_null()
+		assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
+		assert_int(theme.get_font_size(&"font_size", look)).is_equal(want[look][0])
+		assert_int(variation.spacing_glyph).is_equal(want[look][1])
+		assert_array(kept).contains(["%s/fonts/font" % look])
+		for profile: StringName in PHONES:
+			var factor: float = UiScale.base_px_per_dp_for(UiProfiles.by_name(profile))
+			var px: int = HudTheme.scaled(theme, factor).get_font_size(&"font_size", look)
+			var share: float = float(variation.spacing_glyph) / float(px)
+			var why: String = (
+				"%s %s: %d of %d px is %.2f %%"
+				% [look, profile, variation.spacing_glyph, px, share * 100.0]
+			)
+			assert_float(share).override_failure_message(why).is_between(BAND_LOW, BAND_HIGH)
