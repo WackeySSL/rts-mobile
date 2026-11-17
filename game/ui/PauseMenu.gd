@@ -107,6 +107,7 @@ var _sound: Button
 var _music: Button
 var _exit_button: Button
 var _settings: Button
+var _quit_on_go_back_before: bool = true
 var _help: MenuStack  ## The How to play overlay while it is open.
 var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
@@ -120,7 +121,14 @@ var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check
 func _enter_tree() -> void:
 	# Back opens this menu, so the app must not also quit on it.
 	# TODO(P533): project-wide false makes this redundant
+	_quit_on_go_back_before = get_tree().quit_on_go_back
 	get_tree().quit_on_go_back = false
+
+
+## The value goes back when the menu leaves the tree (the match scene ends; the next scene sets
+## its own: MenuStack switches it off for the menus).
+func _exit_tree() -> void:
+	get_tree().quit_on_go_back = _quit_on_go_back_before
 
 
 func _ready() -> void:
