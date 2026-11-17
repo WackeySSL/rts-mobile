@@ -1,0 +1,190 @@
+[gd_resource type="Resource" script_class="AudioCueTable" format=3]
+
+[ext_resource type="Script" path="res://game/view/audio/AudioCueTable.gd" id="1_table"]
+[ext_resource type="Script" path="res://game/view/audio/AudioCueDef.gd" id="2_def"]
+
+[sub_resource type="Resource" id="cue_shot_rifle"]
+script = ExtResource("2_def")
+id = &"shot_rifle"
+volume_db = -8.0
+pitch_steps = PackedInt32Array(1000, 1050, 950)
+priority = 1
+max_voices = 4
+tone_hz = 1400
+tone_ms = 60
+noise_permille = 300
+variants = 3
+
+[sub_resource type="Resource" id="cue_shot_cannon"]
+script = ExtResource("2_def")
+id = &"shot_cannon"
+volume_db = -3.0
+pitch_steps = PackedInt32Array(1000, 970, 1030)
+priority = 3
+max_voices = 3
+tone_hz = 140
+tone_ms = 150
+noise_permille = 300
+variants = 2
+
+[sub_resource type="Resource" id="cue_shot_rocket"]
+script = ExtResource("2_def")
+id = &"shot_rocket"
+volume_db = -4.0
+pitch_steps = PackedInt32Array(1000, 960, 1040)
+priority = 3
+max_voices = 3
+tone_hz = 300
+tone_ms = 200
+noise_permille = 500
+variants = 2
+
+[sub_resource type="Resource" id="cue_shot_artillery"]
+script = ExtResource("2_def")
+id = &"shot_artillery"
+volume_db = -2.0
+pitch_steps = PackedInt32Array(1000, 950)
+priority = 3
+max_voices = 2
+tone_hz = 90
+tone_ms = 220
+noise_permille = 250
+variants = 2
+
+[sub_resource type="Resource" id="cue_impact_light"]
+script = ExtResource("2_def")
+id = &"impact_light"
+volume_db = -9.0
+pitch_steps = PackedInt32Array(1000, 1080, 920)
+priority = 1
+max_voices = 4
+tone_hz = 500
+tone_ms = 70
+noise_permille = 600
+variants = 2
+
+[sub_resource type="Resource" id="cue_impact_heavy"]
+script = ExtResource("2_def")
+id = &"impact_heavy"
+volume_db = -4.0
+pitch_steps = PackedInt32Array(1000, 950, 1050)
+priority = 2
+max_voices = 3
+tone_hz = 110
+tone_ms = 160
+noise_permille = 500
+variants = 2
+
+[sub_resource type="Resource" id="cue_death_foot"]
+script = ExtResource("2_def")
+id = &"death_foot"
+volume_db = -6.0
+pitch_steps = PackedInt32Array(1000, 1100, 900)
+priority = 2
+max_voices = 4
+tone_hz = 700
+tone_ms = 150
+noise_permille = 500
+variants = 3
+
+[sub_resource type="Resource" id="cue_death_vehicle"]
+script = ExtResource("2_def")
+id = &"death_vehicle"
+volume_db = 0.0
+pitch_steps = PackedInt32Array(1000, 950)
+priority = 4
+max_voices = 3
+tone_hz = 70
+tone_ms = 350
+noise_permille = 450
+variants = 2
+
+[sub_resource type="Resource" id="cue_death_air"]
+script = ExtResource("2_def")
+id = &"death_air"
+volume_db = -2.0
+pitch_steps = PackedInt32Array(1000, 950)
+priority = 4
+max_voices = 3
+tone_hz = 160
+tone_ms = 300
+noise_permille = 700
+variants = 2
+
+[sub_resource type="Resource" id="cue_death_building"]
+script = ExtResource("2_def")
+id = &"death_building"
+volume_db = 0.0
+pitch_steps = PackedInt32Array(1000)
+priority = 5
+max_voices = 2
+tone_hz = 55
+tone_ms = 500
+noise_permille = 600
+variants = 1
+
+[sub_resource type="Resource" id="cue_sold"]
+script = ExtResource("2_def")
+id = &"sold"
+volume_db = -4.0
+pitch_steps = PackedInt32Array(1000)
+priority = 2
+max_voices = 1
+tone_hz = 400
+tone_ms = 200
+noise_permille = 200
+variants = 1
+
+[sub_resource type="Resource" id="cue_mine_blast"]
+script = ExtResource("2_def")
+id = &"mine_blast"
+volume_db = -1.0
+pitch_steps = PackedInt32Array(1000, 950)
+priority = 4
+max_voices = 2
+tone_hz = 80
+tone_ms = 300
+noise_permille = 500
+variants = 2
+
+[sub_resource type="Resource" id="cue_repaired"]
+script = ExtResource("2_def")
+id = &"repaired"
+volume_db = -10.0
+pitch_steps = PackedInt32Array(1000)
+cooldown_ms = 400
+priority = 1
+max_voices = 1
+tone_hz = 1800
+tone_ms = 120
+noise_permille = 200
+variants = 1
+
+[sub_resource type="Resource" id="cue_unloaded"]
+script = ExtResource("2_def")
+id = &"unloaded"
+volume_db = -7.0
+pitch_steps = PackedInt32Array(1000)
+priority = 1
+max_voices = 2
+tone_hz = 250
+tone_ms = 90
+noise_permille = 100
+variants = 1
+
+[resource]
+script = ExtResource("1_table")
+cues = Array[ExtResource("2_def")]([SubResource("cue_shot_rifle"), SubResource("cue_shot_cannon"), SubResource("cue_shot_rocket"), SubResource("cue_shot_artillery"), SubResource("cue_impact_light"), SubResource("cue_impact_heavy"), SubResource("cue_death_foot"), SubResource("cue_death_vehicle"), SubResource("cue_death_air"), SubResource("cue_death_building"), SubResource("cue_sold"), SubResource("cue_mine_blast"), SubResource("cue_repaired"), SubResource("cue_unloaded")])
+shot_cues = Dictionary[StringName, StringName]({&"rifle": &"shot_rifle", &"hoist_crew_gun": &"shot_rifle", &"kite_crew_gun": &"shot_rifle", &"tank_cannon": &"shot_cannon", &"heavy_cannon": &"shot_cannon", &"turret_gun": &"shot_cannon", &"redoubt_gun": &"shot_cannon", &"rocket": &"shot_rocket", &"breaker_rocket": &"shot_rocket", &"sky_needle_gun": &"shot_rocket", &"artillery_gun": &"shot_artillery", &"arcline_gun": &"shot_artillery", &"burst_stack_gun": &"shot_artillery"})
+impact_cues = Dictionary[StringName, StringName]({&"tank_cannon": &"impact_heavy", &"heavy_cannon": &"impact_heavy", &"turret_gun": &"impact_heavy", &"redoubt_gun": &"impact_heavy", &"rocket": &"impact_heavy", &"breaker_rocket": &"impact_heavy", &"sky_needle_gun": &"impact_heavy", &"artillery_gun": &"impact_heavy", &"arcline_gun": &"impact_heavy", &"burst_stack_gun": &"impact_heavy"})
+shot_hitscan = &"shot_rifle"
+shot_shell = &"shot_cannon"
+impact_default = &"impact_light"
+mine_blast = &"mine_blast"
+repaired = &"repaired"
+unloaded = &"unloaded"
+death_foot = &"death_foot"
+death_vehicle = &"death_vehicle"
+death_air = &"death_air"
+death_building = &"death_building"
+sold = &"sold"
