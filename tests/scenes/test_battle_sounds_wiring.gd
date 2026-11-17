@@ -21,6 +21,8 @@ func _sounds_of(path: String) -> BattleSounds:
 	add_child(scene)
 	var found: Array[Node] = scene.find_children("*", "BattleSounds", true, false)
 	assert_int(found.size()).is_equal(1)
+	if found.size() != 1:
+		return null
 	return found[0] as BattleSounds
 
 
@@ -36,6 +38,7 @@ func test_perf_arena_has_battle_sounds_on_its_runner() -> void:
 	var sounds: BattleSounds = _sounds_of(ARENA_SCENE)
 	assert_object(sounds.runner).is_same(sounds.get_node(^"../MatchRunner"))
 	assert_bool(sounds.runner.ticked.is_connected(sounds._on_ticked)).is_true()
+	assert_bool(sounds.reveal_enemies).is_true()
 
 
 func test_main_scene_wires_ui_sounds_to_the_local_player_and_cues() -> void:

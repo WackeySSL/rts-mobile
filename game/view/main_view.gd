@@ -1,7 +1,8 @@
 extends Node2D
 ## Wires the main scene to its match: the camera clamps its centre into the map's diamond that
 ## MapView takes from the runner's World (the scene does not set the size), and starts on the centre
-## of the scenario's camera tile.
+## of the scenario's camera tile. It also gives UiSounds the scenario's local player and the HUD's
+## AttackCues (P535); BattleSounds wires itself through its own runner export.
 
 @export var runner: MatchRunner
 @export var map_view: MapView
