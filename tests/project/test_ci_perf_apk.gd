@@ -257,7 +257,9 @@ func test_perf_preset_keeps_dev_menu_and_native_library_and_no_signing_values() 
 	var section: String = "preset.2"
 	var options: String = "preset.2.options"
 	assert_str(config.get_value(section, "platform")).is_equal("Android")
-	assert_str(config.get_value(section, "custom_features")).is_equal("dev_menu,sim_kernels")
+	assert_str(config.get_value(section, "custom_features")).is_equal(
+		"dev_menu,sim_kernels,perf_boot"
+	)
 	var excluded: String = config.get_value(section, "exclude_filter")
 	assert_str(excluded).is_equal("tests/*, addons/gdUnit4/*, addons/admob/*, assets/art/brand/*")
 	assert_bool(config.get_value(options, "gradle_build/use_gradle_build")).is_false()
@@ -340,3 +342,19 @@ func _assert_cache(job: PackedStringArray, step_name: String, key: String) -> vo
 	var wanted: Array = ["- name: " + step_name, "with:", "path: |"]
 	wanted.append_array(["native/godot-cpp", "${{ env.SCONS_CACHE }}", key])
 	assert_array(step).contains_exactly(wanted)
+
+
+## The perf APK alone boots into the match scene (IntroPlayer checks `perf_boot`); the Web preset
+## and the other Android presets keep the boot scene and the menu.
+func test_perf_boot_is_on_the_perf_preset_and_nowhere_else() -> void:
+	var config: ConfigFile = ConfigFile.new()
+	assert_int(config.load("res://export_presets.cfg")).is_equal(OK)
+	var holders: Array[String] = []
+	for section: String in config.get_sections():
+		if config.has_section_key(section, "custom_features"):
+			var tags: PackedStringArray = (
+				(config.get_value(section, "custom_features") as String).split(",")
+			)
+			if tags.has("perf_boot"):
+				holders.append(str(config.get_value(section, "name")))
+	assert_array(holders).contains_exactly(["Android perf"])

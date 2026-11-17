@@ -270,6 +270,16 @@ func test_back_button_and_the_android_back_request_both_leave() -> void:
 	assert_bool(get_tree().quit_on_go_back).is_false()
 
 
+## The probe restores what it found, not a fixed value: a true put there is true again after it.
+func test_the_probe_puts_back_the_quit_setting_it_found() -> void:
+	get_tree().quit_on_go_back = true
+	var probe: Control = await _open(UiProfiles.by_name(ANDROID))
+	assert_bool(get_tree().quit_on_go_back).is_false()
+	remove_child(probe)
+	assert_bool(get_tree().quit_on_go_back).is_true()
+	get_tree().quit_on_go_back = false
+
+
 func _open(profile: UiMetrics) -> Control:
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size

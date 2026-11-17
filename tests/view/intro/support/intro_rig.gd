@@ -10,7 +10,7 @@ var host: Control
 var logs: Array[String] = []
 var presses: int = 0
 
-var _quit_on_back: bool = true
+var _quit_on_back: bool = false
 
 
 ## A consent that waits until `release` is emitted.

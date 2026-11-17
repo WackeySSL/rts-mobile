@@ -60,6 +60,16 @@ func after() -> void:
 	_assert_quit_on_go_back_restored()
 
 
+## The gallery restores what it found, not a fixed value: a true put there is true again after it.
+func test_the_gallery_puts_back_the_quit_setting_it_found() -> void:
+	get_tree().quit_on_go_back = true
+	var gallery: Control = await _open_gallery()
+	assert_bool(get_tree().quit_on_go_back).is_false()
+	gallery.get_parent().remove_child(gallery)
+	assert_bool(get_tree().quit_on_go_back).is_true()
+	get_tree().quit_on_go_back = false
+
+
 func test_the_page_steps_through_every_building_of_both_factions_with_two_big_buttons() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
