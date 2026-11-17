@@ -23,11 +23,21 @@ extends RefCounted
 ## - then, when the level has `medic_per_squads` and the roster the medic type (P283, ADR 0037
 ##   section 6), queues one medic squad per that many own armed infantry squads, counting the medics
 ##   alive and queued (at most one a think, no draw: it takes one place of its tab's queue).
+## - then the air and tech (ADR 0036 section 14, plan row P250), each at most one a think and none
+##   while the scout waits for credits: the next upgrade in data order that changes a unit the
+##   player owns (one at a time, while the credits left stay above `research_floor`), and one
+##   aircraft of the tier's `air_weights` (fighters weighted up by the aircraft seen) while the
+##   airfield has a free pad, from the controller's stream like the unit draw.
+## The counter role is layer-aware (P250): the armour class is tallied per layer, and only a role
+## whose weapon can hit the layer of the most seen class is a counter (`weapon_targets` against
+## `type_layer_bit`), so bombers seen do not draw tanks.
 ## One pass over the own rows (the census), skipped when nothing could be queued.
 
 ## A type the roster lacks.
 const _NONE: int = PlayerView.MISSING
 const _ROLES: int = OpponentDef.ROLES
+## The layers the armour tally keeps apart: ground, air, low air.
+const _LAYERS: int = 3
 
 ## Passes over the view's own rows the last run made (`OpponentAi` adds it to `work`).
 var passes: int = 0
@@ -35,6 +45,8 @@ var passes: int = 0
 var queued: int = 0
 var scouts_queued: int = 0
 var medics_queued: int = 0
+var air_queued: int = 0
+var research_queued: int = 0
 ## The credits the QUEUEs of the last run cost (`AiEconomy.mend` measures the credits left by it).
 var spent_credits: int = 0
 ## Units queued per role over the match (`OpponentDef.Role`).
@@ -49,12 +61,25 @@ var _counter_percent: int = 0
 var _reaction_ticks: int = 0
 var _hq_id: StringName = &""
 var _medic_per: int = 0
+var _bomber_id: StringName = &""
+var _fighter_id: StringName = &""
+## The aircraft draw's weights (bomber, fighter), the fighter's gain per aircraft seen, and the
+## research floor (0 = no research).
+var _bomber_weight: int = 0
+var _fighter_weight: int = 0
+var _fighter_seen: int = 0
+var _research_floor: int = 0
 
 ## The types as indexes of the view's roster, found on the first run.
 var _resolved: bool = false
 var _role_types: PackedInt32Array = PackedInt32Array()
 var _vehicle_types: PackedInt32Array = PackedInt32Array()
 var _medic: int = _NONE
+var _bomber: int = _NONE
+var _fighter: int = _NONE
+## The research items of the player's faction in data order, and the least a tech Command costs.
+var _research: PackedInt32Array = PackedInt32Array()
+var _cheapest_tech: int = 1 << 30
 
 ## Read off the view by each run, used only inside it.
 var _owned: PackedInt32Array = PackedInt32Array()
@@ -65,9 +90,12 @@ var _types: PackedInt32Array = PackedInt32Array()
 var _shares: PackedInt32Array = PackedInt32Array()
 var _units: int = 0
 var _foot_squads: int = 0
+var _aircraft: int = 0
+var _pads: int = 0
 var _room: int = 0
 var _budget: int = 0
 var _seen_class: int = -1
+var _seen_layer: int = PlayerView.Layer.GROUND
 var _closed_tab: int = -1
 
 
@@ -92,6 +120,12 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	production._reaction_ticks = level.reaction_ticks
 	production._hq_id = def.hq_type
 	production._medic_per = maxi(level.medic_per_squads, 0)
+	production._bomber_id = def.bomber_type
+	production._fighter_id = def.fighter_type
+	production._bomber_weight = def.air_weight(tier, false)
+	production._fighter_weight = def.air_weight(tier, true)
+	production._fighter_seen = maxi(def.fighter_seen_weight, 0)
+	production._research_floor = maxi(level.research_floor, 0)
 	return production
 
 
@@ -104,7 +138,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	_room = mini(_queue_target, view.queue_slots)
 	_count_sent(view, out)
 	var scout: int = _scout_wanted(view, memory)
-	if scout == _NONE and not _has_room(view):
+	if scout == _NONE and not _has_room(view) and not _tech_room(view, memory):
 		return
 	if not _take_census(view):
 		return
@@ -115,6 +149,9 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	if scout != _NONE and _queue_scout(view, memory, out, scout):
 		_closed_tab = view.type_tab[scout]
 	_queue_medic(view, memory, out)
+	if _closed_tab < 0:
+		_queue_research(view, memory, out)
+		_queue_air(view, memory, rng, out)
 	_seen_class = _most_seen_class(view, memory)
 	for _step: int in _room * PlayerView.TABS:
 		if not _queue_drawn(view, memory, rng, out):
@@ -134,6 +171,27 @@ func _resolve(view: PlayerView) -> void:
 		var hq: int = view.type_index_of(_hq_id)
 		var faction: int = view.type_faction[hq] if hq != _NONE else AiRepair.NO_FACTION
 		_medic = AiRepair.role_type_of(view, faction, false)
+	_resolve_tech(view)
+
+
+## The aircraft and, with a research floor, the research items of the player's faction, and the
+## least a tech Command costs (the cheap test of `_tech_room`).
+func _resolve_tech(view: PlayerView) -> void:
+	if _bomber_weight > 0 and _bomber_id != &"":
+		_bomber = view.type_index_of(_bomber_id)
+	if _fighter_weight > 0 and _fighter_id != &"":
+		_fighter = view.type_index_of(_fighter_id)
+	for type: int in [_bomber, _fighter]:
+		if type != _NONE:
+			_cheapest_tech = mini(_cheapest_tech, view.type_cost[type])
+	if _research_floor <= 0:
+		return
+	var hq: int = view.type_index_of(_hq_id)
+	var faction: int = view.type_faction[hq] if hq != _NONE else AiRepair.NO_FACTION
+	for type: int in view.type_cost.size():
+		if view.type_tab[type] == PlayerView.Tab.RESEARCH and view.type_faction[type] == faction:
+			_research.append(type)
+			_cheapest_tech = mini(_cheapest_tech, view.type_cost[type])
 
 
 ## `_added` from the unit QUEUEs of this player already in `out` (this think's, from the economy).
@@ -172,6 +230,17 @@ func _has_room(view: PlayerView) -> bool:
 	return false
 
 
+## Whether an aircraft or a research item could be queued: the credits above the economy's reserve
+## cover the cheapest and its queue has room (the pads and the producers are the census's).
+func _tech_room(view: PlayerView, memory: AiMemory) -> bool:
+	if view.credits - memory.reserve_credits < _cheapest_tech:
+		return false
+	var air: bool = (
+		(_bomber != _NONE or _fighter != _NONE) and view.queue_count[PlayerView.Tab.FLIGHT] < _room
+	)
+	return air or (not _research.is_empty() and view.queue_count[PlayerView.Tab.RESEARCH] == 0)
+
+
 ## One pass over the player's rows: the unit count and the producers of each tab. False when the
 ## player has no producer of a unit tab.
 func _take_census(view: PlayerView) -> bool:
@@ -181,6 +250,10 @@ func _take_census(view: PlayerView) -> bool:
 	_producers.fill(0)
 	_units = 0
 	_foot_squads = 0
+	_aircraft = 0
+	_pads = 0
+	var layers: PackedInt32Array = view.type_layer_bit
+	var pads: PackedInt32Array = view.type_pads
 	var columns: Array[PackedInt32Array] = view.columns()
 	var types: PackedInt32Array = columns[PlayerView.Column.TYPE]
 	var foot_w: PackedInt32Array = view.type_foot_w
@@ -191,7 +264,11 @@ func _take_census(view: PlayerView) -> bool:
 			_units += 1
 			if _medic != _NONE and _is_foot_squad(view, type):
 				_foot_squads += 1
+			if type < layers.size() and layers[type] == PlayerView.Layer.AIR:
+				_aircraft += 1
 			continue
+		if type < pads.size():
+			_pads += pads[type]
 		var tab: int = view.type_produces[type]
 		if tab >= 0 and tab < PlayerView.TABS:
 			_producers[tab] += 1
@@ -219,6 +296,77 @@ func _queue_medic(view: PlayerView, memory: AiMemory, out: Array[Command]) -> vo
 		return
 	_send(view, memory, out, _medic)
 	medics_queued += 1
+
+
+## The next research item, in data order, whose upgrade is not researched and changes a unit the
+## player owns: queued when the research queue is empty and the credits left stay above the floor.
+## The first such item that cannot be paid yet waits (later ones do not jump it).
+func _queue_research(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
+	var tab: int = PlayerView.Tab.RESEARCH
+	if _research.is_empty() or _producers[tab] == 0 or not memory.can_send():
+		return
+	if view.queue_count[tab] + _added[tab] > 0:
+		return
+	for type: int in _research:
+		var up: int = view.type_upgrade[type]
+		if up < 0 or (view.upgrades >> up) & 1 == 1 or not _changes_owned(view, up):
+			continue
+		var need: int = view.type_requires[type]
+		if (need < 0 or _owned[need] > 0) and _budget - view.type_cost[type] > _research_floor:
+			_send(view, memory, out, type)
+			research_queued += 1
+		return
+
+
+## Whether upgrade `up` changes a type the player owns a row of.
+func _changes_owned(view: PlayerView, up: int) -> bool:
+	var first: int = view.upgrade_type_first[up]
+	for at: int in range(first, first + view.upgrade_type_count[up]):
+		if _owned[view.upgrade_types[at]] > 0:
+			return true
+	return false
+
+
+## One aircraft drawn from the bomber's and the fighter's weights (the fighter's grows with the
+## most aircraft seen) while a pad is free: the aircraft and the queued ones are under the pads of
+## the airfields, the FLIGHT queue has room and the unit cap allows it; the pick is queued only when
+## the credits allow it.
+func _queue_air(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
+	var tab: int = PlayerView.Tab.FLIGHT
+	var waiting: int = view.queue_count[tab] + _added[tab]
+	if _pads == 0 or waiting >= _room or _aircraft + waiting >= _pads or not memory.can_send():
+		return
+	var bomber: int = _air_share(view, _bomber, 0)
+	var fighter: int = _air_share(
+		view, _fighter, _fighter_seen * memory.seen_air_peak if _fighter_weight > 0 else 0
+	)
+	if bomber + fighter == 0:
+		return
+	var pick: int = _bomber if rng.next_int(bomber + fighter) < bomber else _fighter
+	if view.type_cost[pick] <= _budget:
+		_send(view, memory, out, pick)
+		air_queued += 1
+
+
+## The draw weight of aircraft `type` (MISSING: none) with `extra` added: 0 unless it can be queued
+## but for its price, which the draw's pick is held to afterwards (so the dearer bomber is not
+## crowded out by the cheaper fighter: a pick that cannot be paid now is skipped this think).
+func _air_share(view: PlayerView, type: int, extra: int) -> int:
+	if (
+		type == _NONE
+		or view.type_tab[type] != PlayerView.Tab.FLIGHT
+		or _producers[view.type_tab[type]] == 0
+	):
+		return 0
+	var need: int = view.type_requires[type]
+	if need >= 0 and _owned[need] == 0:
+		return 0
+	var queued_units: int = 0
+	for other: int in [PlayerView.Tab.INFANTRY, PlayerView.Tab.VEHICLES, PlayerView.Tab.FLIGHT]:
+		queued_units += view.queue_count[other] + _added[other]
+	if _units + queued_units >= view.unit_cap:
+		return 0
+	return (_bomber_weight if type == _bomber else _fighter_weight) + extra
 
 
 ## Queues the scout when it can be queued. True when the scout is held back for credits or for
@@ -295,7 +443,11 @@ func _queueable(view: PlayerView, type: int, priced: bool) -> bool:
 	var other: int = (
 		PlayerView.Tab.INFANTRY if tab == PlayerView.Tab.VEHICLES else PlayerView.Tab.VEHICLES
 	)
-	if _units + waiting + view.queue_count[other] + _added[other] >= view.unit_cap:
+	var flight: int = PlayerView.Tab.FLIGHT
+	var others: int = (
+		view.queue_count[other] + _added[other] + view.queue_count[flight] + _added[flight]
+	)
+	if _units + waiting + others >= view.unit_cap:
 		return false
 	return not priced or view.type_cost[type] <= _budget
 
@@ -311,11 +463,13 @@ func _send(view: PlayerView, memory: AiMemory, out: Array[Command], type: int) -
 
 
 ## The armour class with the most seen units (units only, types first seen at least
-## `reaction_ticks` ago), the lowest class among equals; -1 for none or no counter wanted.
+## `reaction_ticks` ago), tallied per layer (P250: ground, air and low air each have their own
+## classes, so aircraft never count toward a ground class), the lowest ground-first class among
+## equals; -1 for none or no counter wanted. `_seen_layer` is the winner's layer bit.
 func _most_seen_class(view: PlayerView, memory: AiMemory) -> int:
 	if _counter_percent <= 0 or memory.seen_count.size() != view.type_cost.size():
 		return -1
-	_armour.resize(PlayerView.ARMOUR_CLASSES)
+	_armour.resize(PlayerView.ARMOUR_CLASSES * _LAYERS)
 	_armour.fill(0)
 	for type: int in memory.seen_count.size():
 		var first: int = memory.seen_first_tick[type]
@@ -325,26 +479,53 @@ func _most_seen_class(view: PlayerView, memory: AiMemory) -> int:
 			continue
 		var class_at: int = view.type_armour[type]
 		if class_at >= 0 and class_at < PlayerView.ARMOUR_CLASSES:
-			_armour[class_at] += memory.seen_count[type]
+			_armour[_layer_of(view, type) * PlayerView.ARMOUR_CLASSES + class_at] += (
+				memory.seen_count[type]
+			)
 	var most: int = 0
 	var seen: int = -1
-	for class_at: int in PlayerView.ARMOUR_CLASSES:
-		if _armour[class_at] > most:
-			most = _armour[class_at]
-			seen = class_at
-	return seen
+	for bucket: int in _armour.size():
+		if _armour[bucket] > most:
+			most = _armour[bucket]
+			seen = bucket
+	_seen_layer = PlayerView.Layer.GROUND
+	if seen < 0:
+		return -1
+	_seen_layer = 1 << (seen / PlayerView.ARMOUR_CLASSES)
+	return seen % PlayerView.ARMOUR_CLASSES
+
+
+## The layer index of `type` (0 ground, 1 air, 2 low air): a hand-built view without the table, or
+## a bit it does not know, reads as ground.
+func _layer_of(view: PlayerView, type: int) -> int:
+	var bit: int = view.type_layer_bit[type] if type < view.type_layer_bit.size() else 0
+	return 1 if bit == PlayerView.Layer.AIR else (2 if bit == PlayerView.Layer.LOW_AIR else 0)
+
+
+## Whether the weapon of `type` may hit the layer `bit` (a type without a weapon hits nothing; a
+## weapon the view has no mask for hits the ground).
+func _hits(view: PlayerView, type: int, bit: int) -> bool:
+	var weapon: int = view.type_weapon[type]
+	if weapon < 0:
+		return false
+	var mask: int = view.weapon_targets[weapon] if weapon < view.weapon_targets.size() else 1
+	return mask & bit != 0
 
 
 ## The role of the draw's `_types` (the unit that would be queued, MISSING for none) whose weapon
-## does most against the class most seen, the lower role among equals; -1 for none. Only a role
-## with weight counts.
+## does most against the class most seen and can hit its layer, the lower role among equals; -1 for
+## none. Only a role with weight counts.
 func _counter_role(view: PlayerView) -> int:
 	if _seen_class < 0:
 		return -1
 	var best: int = -1
 	var best_percent: int = 0
 	for role: int in _ROLES:
-		if _types[role] == _NONE or _weights[role] <= 0:
+		if (
+			_types[role] == _NONE
+			or _weights[role] <= 0
+			or not _hits(view, _types[role], _seen_layer)
+		):
 			continue
 		var percent: int = view.type_vs_armour[
 			_types[role] * PlayerView.ARMOUR_CLASSES + _seen_class

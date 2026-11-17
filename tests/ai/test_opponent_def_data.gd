@@ -16,7 +16,13 @@ const TIER_NAMES: Array[String] = ["weak", "standard", "strong"]
 ## The fields that are off by default, with their script defaults (P274): the frozen arena's level
 ## files name none of them, so they play as before; the shipped files turn them on.
 const _OFF_BY_DEFAULT: Dictionary[String, int] = {
-	"mend_below_percent": 0, "mend_floor": 0, "repair_retreat_percent": 0, "medic_per_squads": 0
+	"mend_below_percent": 0,
+	"mend_floor": 0,
+	"repair_retreat_percent": 0,
+	"medic_per_squads": 0,
+	"aa_per_seen_aircraft": 0,
+	"aa_max": 0,
+	"research_floor": 0,
 }
 ## ADR 0030 section 6's table (its two mend rows from P274, ADR 0037 section 4): per level, in the
 ## field order of `_LEVEL_FIELDS`.

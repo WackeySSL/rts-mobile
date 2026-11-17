@@ -898,8 +898,9 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 
 
 ## Hard's focus fire for `squad`: the weakest seen enemy combat unit (fewest hp, the lowest id on a
-## tie) within the defence radius of the group's centre, at most `tests_max` tests a run (shared
-## with the threat search). The group gets one `ATTACK` on it when it is a new target (the home
+## tie) that a weapon of the group can hit (`weapon_targets` against the layer, P250) within the
+## defence radius of the group's centre, at most `tests_max` tests a run (shared with the threat
+## search). The group gets one `ATTACK` on it when it is a new target (the home
 ## squad also when a unit joined since); the target's tile is the squad's goal and the army goal.
 ## The key books the target's tile at order time: the sim re-keys each unit's `ATTACK` field toward
 ## the moving target, so for a few ticks two cells may be live while the books hold the order-time
@@ -910,14 +911,17 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
 	_capped = false
 	var sum: Vector2i = Vector2i.ZERO
+	var mask: int = 0
 	var members: PackedInt32Array = _members(memory, true, squad)
 	for id: int in members:
-		sum += view.row_pos(view.row_of(id))
+		var row: int = view.row_of(id)
+		sum += view.row_pos(row)
+		mask |= AiEnemyScan.hit_mask(view, view.row_type(row))
 	var best: int = -1
 	if not members.is_empty():
 		@warning_ignore("integer_division")
 		var scan: Vector3i = AiEnemyScan.weakest(
-			view, memory.seen_unit_id, sum / members.size(), defend_radius, tests, tests_max
+			view, memory.seen_unit_id, sum / members.size(), defend_radius, mask, tests, tests_max
 		)
 		best = scan.x
 		tests = scan.y

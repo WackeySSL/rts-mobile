@@ -60,6 +60,15 @@ extends Resource
 @export var medic_per_squads: int = 0
 ## 1: the members of a retreating wave are sent to repair too (Hard; ADR 0037 section 5).
 @export var repair_wave_retreat: int = 0
+## Air and tech (ADR 0036 section 14, plan row P250; off by default like the fields above, so the
+## `perf_ai` frozen files play as before). `aa_per_seen_aircraft`: `AiEconomy` wants one anti-air
+## building per this many enemy aircraft seen at once (the most it has seen), at most `aa_max` (0 =
+## none). `research_floor`: `AiProduction` researches the next upgrade, in data order, that changes
+## a unit it owns, one at a time, while its credits left stay above this (0 = no research). Easy has
+## no engineering centre, so it never researches.
+@export var aa_per_seen_aircraft: int = 0
+@export var aa_max: int = 0
+@export var research_floor: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
