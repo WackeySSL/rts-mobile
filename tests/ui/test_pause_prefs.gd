@@ -144,8 +144,8 @@ func test_no_ad_in_the_battle_scene() -> void:
 func _ad_nodes() -> Array[Node]:
 	var found: Array[Node] = []
 	for node: Node in _main.find_children("*", "", true, false):
-		if node is DoubleXpOffer and node.get_parent().owner is ResultScreen:
-			continue  # The match result's rewarded offer (admob-policy matrix), never in the battle.
+		if _is_hidden_result_offer(node):
+			continue  # See _is_hidden_result_offer.
 		var script: Script = node.get_script()
 		if script != null and script.resource_path.contains("/ads/"):
 			found.append(node)
@@ -179,3 +179,15 @@ func _tap(control: Control) -> void:
 	var at: Vector2 = control.get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
+
+
+## The match result's rewarded offer (admob-policy matrix): its own slot under the result screen,
+## and not visible while the battle runs.
+static func _is_hidden_result_offer(node: Node) -> bool:
+	var parent: Node = node.get_parent()
+	return (
+		node is DoubleXpOffer
+		and parent is OfferSlot
+		and parent.owner is ResultScreen
+		and not (node as DoubleXpOffer).is_visible_in_tree()
+	)

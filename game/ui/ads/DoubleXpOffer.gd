@@ -13,6 +13,9 @@ extends RewardedOffer
 ## `banner_gap_dp` below it), so an ad that loads late, or the recheck timer, moves nothing. Only
 ## the grant (the player's own action) collapses it. A shown button ignores taps for
 ## `reward_arm_ms`, so a tap carried over from the match starts no ad.
+## The same holds while the screen's score is still pending (`set_award(null, source, true)`): the
+## space is reserved, so a late award that can take the bonus turns it into the offer with nothing
+## moving, and one that cannot (no id, 0 XP, applied) collapses it, where no button ever appears.
 
 const PLACEMENT: StringName = &"double_xp"
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
@@ -22,6 +25,8 @@ var now_ms: Callable = Time.get_ticks_msec
 
 var _award: XpAward = null
 var _source: ProgressionScript = null
+var _bound_source: ProgressionScript = null
+var _pending: bool = false
 var _bound_id: StringName = &""
 var _live: bool = false
 var _armed_at_ms: int = 1 << 60
@@ -42,11 +47,13 @@ func _init() -> void:
 
 
 ## Hands the offer the award of the shown match (null: none yet, a late score calls it again).
-## The same award again changes nothing; a running ad keeps its callback, and the callback follows
-## the current award once the ad is over.
-func set_award(award: XpAward, source: ProgressionScript) -> void:
+## `pending` is true while the score may still land: the space stays reserved. The same award again
+## changes nothing; a running ad keeps its callback, and the callback follows the current award
+## (or source) once the ad is over.
+func set_award(award: XpAward, source: ProgressionScript, pending: bool = false) -> void:
 	_award = award
 	_source = source
+	_pending = pending
 	_rebind()
 	refresh()
 
@@ -75,7 +82,9 @@ func is_offered() -> bool:
 func _show(on: bool) -> void:
 	var was: bool = _live
 	_live = on
-	var keeps: bool = _takes_bonus() and not _done and _claimed_scope != null
+	var keeps: bool = (
+		(_takes_bonus() or (_pending and _award == null)) and not _done and _claimed_scope != null
+	)
 	visible = on or keeps
 	_button.modulate.a = float(on)  # Not a colour: 1 while shown, 0 while it only holds space.
 	_button.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
@@ -96,9 +105,12 @@ func _on_show_finished() -> void:
 
 
 func _rebind() -> void:
-	if _busy or _award == null or _source == null or _award.id == _bound_id:
+	if _busy or _award == null or _source == null:
+		return
+	if _award.id == _bound_id and _source == _bound_source:
 		return
 	_bound_id = _award.id
+	_bound_source = _source
 	on_reward = _source.apply_bonus.bind(_award.id, settings.reward_xp_multiplier)
 
 

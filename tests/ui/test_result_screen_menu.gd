@@ -124,6 +124,7 @@ func test_the_top_rank_shows_a_full_bar_and_the_plain_total() -> void:
 func test_a_match_that_paid_no_xp_shows_no_block() -> void:
 	await _open(0, 0)
 	_flow.award = null
+	_flow.match_scored.emit(null, null)  # Scored, and it paid nothing.
 	MatchRig.end(_main, [2])
 	assert_bool(_screen().find_child("XpBox", true, false).visible).is_false()
 
@@ -179,10 +180,11 @@ func test_the_xp_shows_when_the_award_arrives_after_the_screen() -> void:
 	_flow.award = null
 	MatchRig.end(_main, [2])
 	var box: Control = _screen().find_child("XpBox", true, false)
-	assert_bool(box.visible).is_false()
+	assert_float(box.modulate.a).is_equal(0.0)  # The score is pending: only the space is held.
 	_flow.award = award
 	_flow.match_scored.emit(null, award)
 	assert_bool(box.visible).is_true()
+	assert_float(box.modulate.a).is_equal(1.0)
 	assert_str(_texts(box)[0]).is_equal("+30 XP")
 	_flow.match_scored.emit(null, award)  # A second score does not restart the fill.
 	assert_bool(box.visible).is_true()

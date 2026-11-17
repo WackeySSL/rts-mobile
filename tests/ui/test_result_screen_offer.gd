@@ -120,7 +120,8 @@ func test_the_slot_keeps_its_height_without_a_loaded_ad_and_is_0_tall_without_an
 	_main.free()
 	CommandQueue.clear()
 	AdServiceHarness.fake(_service).fill = true
-	await _open(false)  # No award.
+	await _open(false)  # Scored, and paid no award.
+	_flow.match_scored.emit(null, null)
 	MatchRig.end(_main, [2])
 	assert_bool(_slot().is_visible_in_tree()).is_false()
 	assert_float(_slot().get_combined_minimum_size().y).is_equal(0.0)
@@ -156,9 +157,11 @@ func test_a_cancel_grants_nothing_and_the_slot_stays() -> void:
 func test_a_late_award_shows_the_offer_when_the_score_lands() -> void:
 	await _open(false)
 	MatchRig.end(_main, [2])
-	assert_bool(_slot().is_visible_in_tree()).is_false()
+	assert_bool(_slot().is_visible_in_tree()).is_true()  # The score is pending: space reserved,
+	assert_bool(_screen().offer.is_offered()).is_false()  # with no button yet.
 	_flow.award = _award
 	_flow.match_scored.emit(null, _award)
+	assert_bool(_screen().offer.is_offered()).is_true()
 	assert_bool(_slot().is_visible_in_tree()).is_true()
 	_flow.match_scored.emit(null, _award)  # A second score changes nothing.
 	assert_bool(_slot().is_visible_in_tree()).is_true()
@@ -207,6 +210,44 @@ func test_a_late_award_and_then_a_late_ad_move_nothing() -> void:
 	await _let_the_ad_load()
 	assert_bool(_screen().offer.is_offered()).is_true()
 	assert_that(_again_rect()).is_equal(before)
+
+
+func test_a_score_that_pays_nothing_collapses_the_reserved_space() -> void:
+	await _open(false)
+	MatchRig.end(_main, [2])
+	assert_bool(_slot().is_visible_in_tree()).is_true()
+	_flow.match_scored.emit(null, null)  # Scored, no award (a lesson, an unscored match).
+	assert_bool(_slot().is_visible_in_tree()).is_false()
+	var lesson: XpAward = XpAward.new()  # No id: it cannot take the bonus either.
+	lesson.base_xp = 50
+	_flow.award = lesson
+	_flow.match_scored.emit(null, lesson)
+	assert_bool(_slot().is_visible_in_tree()).is_false()
+
+
+func test_a_late_score_with_an_ad_already_loaded_moves_nothing_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		get_window().size = size
+		await await_idle_frame()
+		_h.dispose()
+		_h = AdServiceHarness.new()
+		_service = auto_free(_h.make(true))
+		add_child(_service)
+		_progression.bind(_h.save_service(), null)
+		await _open(false)  # The ad is loaded; the score has not landed.
+		MatchRig.end(_main, [2])
+		_screen().settle()
+		await await_idle_frame()
+		var before: Rect2 = _again_rect()
+		assert_bool(_screen().offer.is_offered()).override_failure_message(str(size)).is_false()
+		_flow.award = _award
+		_flow.match_scored.emit(null, _award)
+		await await_idle_frame()
+		assert_bool(_screen().offer.is_offered()).override_failure_message(str(size)).is_true()
+		assert_that(_again_rect()).override_failure_message(str(size)).is_equal(before)
+		_main.free()
+		CommandQueue.clear()
+		await await_idle_frame()
 
 
 func test_the_grant_collapses_the_slot_at_once() -> void:

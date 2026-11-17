@@ -109,8 +109,31 @@ func test_hidden_without_an_award_for_a_lesson_award_and_when_no_ad_is_loaded() 
 	_clock += 10000
 	_button(offer).pressed.emit()  # Even a tap that gets through shows no ad and grants nothing.
 	await AdServiceHarness.frames(3)
+	assert_array(_h.events).is_empty()  # No ad opened: fails without the `_live` guard.
 	assert_int(_progression.xp()).is_equal(before_xp)
 	assert_bool(award.bonus_applied).is_false()
+
+
+func test_a_pending_score_holds_the_space_and_a_dead_award_collapses_it() -> void:
+	var offer: DoubleXpOffer = _offer(null)
+	offer.set_award(null, _progression, true)
+	assert_bool(offer.visible).is_true()  # Reserved, with no button.
+	assert_bool(offer.is_offered()).is_false()
+	offer.set_award(_award(), _progression)  # The award lands: the space becomes the offer.
+	assert_bool(offer.is_offered()).is_true()
+	var none: DoubleXpOffer = _offer(null)
+	none.set_award(null, _progression, true)
+	none.set_award(null, _progression)  # Scored with no award.
+	assert_bool(none.visible).is_false()
+
+
+func test_a_new_source_for_the_same_award_rebinds_the_reward_callback() -> void:
+	var award: XpAward = _award()
+	var offer: DoubleXpOffer = _offer(award)
+	var other: ProgressionScript = auto_free(ProgressionScript.new())
+	other.bind(_h.save_service(), null)
+	offer.set_award(award, other)
+	assert_object(offer.on_reward.get_object()).is_same(other)
 
 
 func test_the_bonus_is_applied_only_in_the_reward_callback_and_before_the_close() -> void:
