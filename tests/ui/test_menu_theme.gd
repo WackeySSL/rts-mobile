@@ -53,19 +53,35 @@ func test_each_button_look_is_48_dp_tall_at_the_base_scale() -> void:
 		)
 
 
-func test_the_looks_exist_with_the_bases_the_screens_rely_on() -> void:
+func test_every_look_exists_with_the_base_the_screens_rely_on() -> void:
 	var theme: Theme = HudThemes.source()
 	var bases: Dictionary[StringName, StringName] = {
+		&"MenuTitle": &"CapsBigTitle",
+		&"SideNameRenew": &"CapsTitle",
+		&"SideNameFossil": &"CapsTitle",
+		&"MenuSlider": &"HSlider",
+		&"MenuSliderFossil": &"HSlider",
+		&"MenuSideCard": &"PanelContainer",
 		&"MenuSideCardRenew": &"MenuSideCard",
 		&"MenuSideCardFossil": &"MenuSideCard",
-		&"MenuSliderFossil": &"HSlider",
-		&"MenuToggleRow": &"PanelContainer",
+		&"MenuMapCard": &"PanelContainer",
 		&"MenuMapCardOn": &"MenuMapCard",
 		&"MenuMapCardLocked": &"MenuMapCard",
+		&"MenuToggleRow": &"PanelContainer",
+		&"MenuToggle": &"CapsButton",
+		&"MenuToggleFossil": &"MenuToggle",
+		&"MenuToggleOff": &"MenuToggle",
+		&"MenuTab": &"CapsButton",
+		&"MenuTabOn": &"MenuTab",
+		&"MenuRankBadge": &"PanelContainer",
+		&"MenuRankLabel": &"CapsTitle",
 		&"MenuXpBar": &"ProgressBar",
 	}
+	for look: StringName in LABELS:
+		assert_bool(bases.has(look)).override_failure_message(str(look)).is_true()
+	for look: StringName in BUTTONS:
+		assert_bool(bases.has(look)).override_failure_message(str(look)).is_true()
 	for look: StringName in bases:
-		assert_bool(theme.get_type_list().has(look)).override_failure_message(str(look)).is_true()
 		var base: StringName = theme.get_type_variation_base(look)
 		assert_str(str(base)).override_failure_message(str(look)).is_equal(str(bases[look]))
 

@@ -1782,14 +1782,14 @@ the ground (92 and 86), and 70 to 84 % on the others, and it is 52.8 or more fro
 ten (the offline glyph) on every ground.
 
 ## Menu looks (P519, ADR 0043 section 5)
-Type variations of `game/ui/theme.tres` for the menu screens. They are the pause menu's plates (#12181D at 96 %, edge #2C383E, 8 dp corners; cards 12 dp corners and 12 dp inside) with the accent pairs of ADR 0025 section 13: the accent (#1FA6C8 Lumen Accord, #E07628 Derrick League) is an edge or a fill, the light (#62D6EE, #FFA25C) is text. The screens' opaque backdrop is #1C2127. A text look reads at 4.5:1 or more on its plate or the backdrop (`tests/ui/test_menu_theme.gd`); every Button look is at least 48 dp tall; accent never carries meaning alone (the word says ON or OFF).
+Type variations of `game/ui/theme.tres` for the menu screens. They are the pause menu's plates: the chips (toggle and tab) #12181D at 96 % (dim, the off and unpicked state: #0F1418 at 60 %), the cards, the row and the badge #0F1418 at 94 %; edge #2C383E, 8 dp corners on chips, rows and badge, 12 dp corners and 12 dp inside on cards with the accent pairs of ADR 0025 section 13: the accent (#1FA6C8 Lumen Accord, #E07628 Derrick League) is an edge or a fill, the light (#62D6EE, #FFA25C) is text. The screens' opaque backdrop is #1C2127. A text look reads at 4.5:1 or more on its plate or the backdrop (`tests/ui/test_menu_theme.gd`); every Button look is at least 48 dp tall; accent never carries meaning alone (the word says ON or OFF).
 
 | Variation (base) | Use | Look |
 | --- | --- | --- |
-| `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white |
-| `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps (the row must fit the narrowest column), the side's light |
+| `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white, own face with 8 px tracking |
+| `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps with 3 px tracking (the row must fit the narrowest column; the AttackTitle face), the side's light |
 | `MenuSideCard` (PanelContainer), `MenuSideCardRenew`, `MenuSideCardFossil` | the side choice on Map select | plate with a 1 dp edge; the picked side's card has a 2 dp accent edge |
-| `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #2C383E, the accent fill, a 40 px round thumb in the light; the row is 48 dp tall (`DpMinSize`) |
+| `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #2C383E, the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
 | `MenuToggleRow` (PanelContainer) | a Settings row: label left, toggle right | plate, 1 dp edge, 8 dp corners |
 | `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
 | `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |

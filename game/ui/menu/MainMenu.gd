@@ -1,12 +1,13 @@
 class_name MainMenu
 extends MenuScreen
 ## The main menu (ADR 0043 section 5, ADR 0025 section 12, plan P524): TREADLINE, the two sides
-## each in its accent, the tagline, Continue (only while a resume file exists), Skirmish, Tutorial,
-## How to play, Settings, the rank badge and XP bar (`Progression`), the version line and, at the
-## foot, the real `AdBannerBand` on the start page (its 48 dp of air is the band's data).
-## Every button leads through `MenuRoutes`: a route nobody registered yet leaves the button
-## present and disabled, and enables when the route is registered later. The "rank badge" is a
-## label until P519 gives it its look. It is a menu: no Command, no sim.
+## each in its accent's light (`SideNameRenew`, `SideNameFossil`), the tagline, Continue (only
+## while a resume file exists), Skirmish, Tutorial, How to play, Settings, the rank line and XP
+## bar (`Progression`; `MenuRankLabel` and `MenuXpBar`, the plate `MenuRankBadge` is for screens
+## that frame it), the version line and, at the foot, the real `AdBannerBand` on the start page
+## (its 48 dp of air is the band's data). Every button leads through `MenuRoutes`: a route nobody
+## registered yet leaves the button present and disabled, and enables when the route is
+## registered later. It is a menu: no Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
@@ -141,8 +142,9 @@ func _build_header() -> void:
 
 
 func _build_rank() -> void:
-	_rank_label = _label("", &"CapsTitle")
+	_rank_label = _label("", &"MenuRankLabel")
 	_xp_bar = ProgressBar.new()
+	_xp_bar.theme_type_variation = &"MenuXpBar"
 	_xp_bar.show_percentage = false
 	_xp_bar.custom_minimum_size.y = UiScale.dp(XP_BAR_DP)
 	column.add_child(_xp_bar)
