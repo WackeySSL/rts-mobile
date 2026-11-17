@@ -144,7 +144,7 @@ func _ready() -> void:
 		"EXIT TO MENU", "exit", _exit_dialog_open, &"ExitButton", PLAIN, _leave
 	)
 	if DevRoutes.is_enabled():
-		_add_action("DEVELOPER MENU", "menu", _open_dev_menu, &"DevMenuButton", PLAIN, _leave)
+		_add_action("DEV MENU", "", _open_dev_menu, &"DevMenuButton", PLAIN, _leave)
 	_actions.add_child(_toggles)
 	_vibration = _add_action("", "vibration", _toggle_vibration, &"VibrationButton", CHIP_LOOK)
 	_sound = _add_action("", "", _toggle_sound, &"SoundButton", CHIP_LOOK)

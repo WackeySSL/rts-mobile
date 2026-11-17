@@ -21,7 +21,9 @@ const WORD_WIDE: Array[String] = [
 	"ExitButton"
 ]
 ## No glyph is drawn for these yet.
-const NO_GLYPH: Array[String] = ["HelpButton", "SettingsButton", "SoundButton", "MusicButton"]
+const NO_GLYPH: Array[String] = [
+	"HelpButton", "SettingsButton", "SoundButton", "MusicButton", "DevMenuButton"
+]
 
 var _window_size_before: Vector2i
 var _main: Node
