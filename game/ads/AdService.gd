@@ -293,10 +293,11 @@ func _refresh_banner() -> void:
 	)
 	var height: int = 0
 	if may_show:
-		if not _banner_shown:
-			_banner_shown = true
-			_banner_alive = true
-			_backend.show_banner()
+		# Every time: the backend's show is idempotent, and a create timer that fired while no band
+		# asked leaves a wanted banner with no view and no timer until this call.
+		_banner_shown = true
+		_banner_alive = true
+		_backend.show_banner()
 		height = _backend.banner_height_dp()
 	elif (_ledger.remove_ads or not _can_request_ads or _banner_requests == 0) and _banner_alive:
 		# Remove ads, no consent, or the last band released (at idle, so a reparent keeps it): the

@@ -118,6 +118,7 @@ func test_menu_round_trips_inside_the_gap_make_one_create_and_one_at_its_end() -
 	assert_int(_creates()).is_equal(1)
 	assert_int(_set.count("destroy")).is_equal(1)
 	assert_int(_service.banner_height_dp()).is_equal(0)
+	assert_int(_later.size()).is_equal(1)
 	_now = 30000
 	for callback: Callable in _later:
 		callback.call()
@@ -141,6 +142,7 @@ func test_pause_style_hides_and_turns_inside_the_gap_make_one_create_at_its_end(
 	resized.emit()
 	await _round_trip()
 	assert_int(_creates()).is_equal(1)
+	assert_int(_later.size()).is_equal(1)
 	_now = 30000
 	for callback: Callable in _later:
 		callback.call()
@@ -193,3 +195,63 @@ func test_a_late_callback_of_a_destroyed_banner_changes_nothing() -> void:
 	view.on_ad_loaded.emit(2)
 	await get_tree().process_frame
 	assert_int(_service.banner_height_dp()).is_equal(56)
+
+
+## A create made pending: shown at 0, released and destroyed, shown again at 1000 (inside the gap).
+func _pending_create() -> void:
+	_service.show_banner()
+	await get_tree().process_frame
+	_service.hide_banner()
+	await get_tree().process_frame
+	_now = 1000
+	_service.show_banner()
+	assert_int(_later.size()).is_equal(1)
+
+
+func test_a_timer_that_fires_while_no_band_asks_is_made_good_by_the_next_show() -> void:
+	await _pending_create()
+	_service.hide_banner()
+	_now = 30000
+	for callback: Callable in _later:
+		callback.call()
+	assert_int(_creates()).is_equal(1)
+	_service.show_banner()
+	assert_int(_creates()).is_equal(2)
+	await get_tree().process_frame
+	assert_array(_alive_views()).is_equal([2])
+
+
+func test_a_timer_made_banner_reaches_a_real_height_and_announces_it() -> void:
+	var heights: Array[int] = []
+	_service.banner_changed.connect(func(height: int) -> void: heights.append(height))
+	await _pending_create()
+	_now = 30000
+	for callback: Callable in _later:
+		callback.call()
+	assert_array(_alive_views()).is_equal([2])
+	assert_int(_service.banner_height_dp()).is_equal(0)
+	_set.of(AdMobBackend.S_VIEW).on_ad_loaded.emit(2)
+	await get_tree().process_frame
+	assert_int(_service.banner_height_dp()).is_equal(56)
+	assert_array(heights).is_equal([56])
+
+
+func test_consent_lost_while_a_create_is_pending_means_no_create() -> void:
+	await _pending_create()
+	_service._set_can_request(false)
+	_now = 30000
+	for callback: Callable in _later:
+		callback.call()
+	assert_int(_creates()).is_equal(1)
+	assert_array(_alive_views()).is_empty()
+
+
+func test_remove_ads_while_a_create_is_pending_means_no_create() -> void:
+	await _pending_create()
+	_service._ledger.remove_ads = true
+	_service._refresh_banner()
+	_now = 30000
+	for callback: Callable in _later:
+		callback.call()
+	assert_int(_creates()).is_equal(1)
+	assert_array(_alive_views()).is_empty()
