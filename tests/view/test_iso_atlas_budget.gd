@@ -51,15 +51,21 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## +99 rows) and page 2 from 1514, 704 and 814 to 1514, 780 and 814 (0, +76, 0: the shadows share
 ## the free width of shelf 1). Page 1 then had left 1332 rows on the cross-faction page, 1412 on the
 ## Derrick League mirror and 1417 on the Lumen Accord mirror.
-const TODAY_CROSS: int = 2314  ## P245b: 2252 + 62 (P239b: 2167 + 85; P306: 2852 - 685).
-const TODAY_MIRROR_DERRICK: int = 2258  ## P245b: 2172 + 86 (P239b: 2127 + 45; P306: 2776 - 649).
-const TODAY_MIRROR_LUMEN: int = 2238  ## P245b: 2167 + 71 (P239b: 2068 + 99; P306: 2782 - 714).
+## P249 (the Draft Shop and the Lens Works: 2 x 2 hull, KRITISK patch and shadow each, no head
+## frames) moved page 1 from 2314, 2258 and 2238 to the pins below (+53, +21 and +28 rows) and page
+## 2 from 1986, 1094 and 1198 to the pins below (+60, +64 and +46; the cross page's 60 rows are the
+## page-2 allocation of ADR 0036 section 15, P26bz note; the shadows are one slot for both players).
+## Page 1 has left 1217 rows on the cross-faction page, 1305 on the Derrick League mirror and
+## 1318 on the Lumen Accord mirror; page 2 has left 1538, 2426 and 2340.
+const TODAY_CROSS: int = 2367  ## P249: 2314 + 53 (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
+const TODAY_MIRROR_DERRICK: int = 2279  ## P249: 2258 + 21 (P245b: 2172 + 86; P239b: 2127 + 45).
+const TODAY_MIRROR_LUMEN: int = 2266  ## P249: 2238 + 28 (P245b: 2167 + 71; P239b: 2068 + 99).
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players, and each shadow fits the free width of shelf 1; only the trailing
 ## shelf grows. An aircraft's hull carries the team colour, so it has a slot per player (P245).
-const TODAY2_CROSS: int = 1986  ## P245: 1514 + 472 (P203: 1116 + 398, the pads widen every shadow).
-const TODAY2_MIRROR_DERRICK: int = 1094  ## P245: 782 + 312 (P245b: 780 + 2; P239b: 704 + 76).
-const TODAY2_MIRROR_LUMEN: int = 1198  ## P245: 814 + 384 (P203: 634 + 180, the pads; P236: +12).
+const TODAY2_CROSS: int = 2046  ## P249: 1986 + 60 (P245: 1514 + 472; P203: 1116 + 398, the pads).
+const TODAY2_MIRROR_DERRICK: int = 1158  ## P249: 1094 + 64 (P245: 782 + 312; P245b: 780 + 2).
+const TODAY2_MIRROR_LUMEN: int = 1244  ## P249: 1198 + 46 (P245: 814 + 384; P203: 634 + 180).
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

@@ -5,7 +5,6 @@ extends Node
 ## menu is pushed, so each button is live at the first show, then opens the screen `MenuFlow` was
 ## asked for (a lesson's end returns to the tutorial screen), if its route is registered; a route
 ## nobody registered, or one whose factory gives nothing, is dropped with a warning.
-## TODO(P533): the switch row makes this scene the app's start.
 
 @export var stack_path: NodePath = ^"../MenuStack"
 

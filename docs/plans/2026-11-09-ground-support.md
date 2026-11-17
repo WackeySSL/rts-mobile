@@ -176,6 +176,22 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P300 | AI | Normal and Hard set hold on `OpponentDef.hold_types` (each faction's artillery) when they join a wave | 40 | P298, P290 |
 
+**Note (2026-11-17, P278 as built; the lead's decision after the review, as for P290).** P278 ships data
+and tests only: the Weld Shed (`fossil_weld_shed`), the Drone Dock (`renew_drone_dock`), the Patchers
+(`fossil_patchers`) and the Menders (`renew_menders`) are in `data/units/` and not in the rosters.
+- **No HOW_TO_PLAY rows here.** The roster entries, the item cards and the HOW_TO_PLAY Units and
+  Buildings rows (Teach: repair) move to P279 (Weld Shed, Drone Dock) and P280 (Patchers, Menders).
+  Those rows also drop their ids from the skip lists in `test_defs_factions_data`,
+  `test_defs_roster` and `test_defs_roster_renew` (marked `# P279` and `# P280`), and P279 splits and
+  P280 deletes `test_not_in_a_roster_yet` in `test_defs_repair_data`.
+- **P283 switches on with the rosters.** `AiProduction` and `AiArmy` pick the repair building and the
+  medic by role from the roster, so their behaviour reaches shipped matches only once P279 and P280
+  have landed.
+- Starting values with no source in the GDD or ADR 0037: the buildings' hit points (900), armour,
+  sight (5,000) and build time (300, as the radar's), the medics' build time (150), sight (6,000)
+  and radii (300, 350, 900), and the Patchers' speed (67, the Rig Hands'). The balance rows record
+  them in the GDD.
+
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and
 **P290 writes no HOW_TO_PLAY row** (its row's "HOW_TO_PLAY Units, Orders, Fog rows" move to the rows

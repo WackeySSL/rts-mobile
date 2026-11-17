@@ -48,6 +48,10 @@
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_space.tres" id="55_renew_space"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_transport.tres" id="56_renew_transport"]
 [ext_resource type="Resource" path="res://data/dev/arena/units/renew_drone.tres" id="57_renew_drone"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/fossil_bunk_wagon.tres" id="60_fossil_bunk_wagon"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/fossil_shot_truck.tres" id="61_fossil_shot_truck"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/renew_linecar.tres" id="62_renew_linecar"]
+[ext_resource type="Resource" path="res://data/dev/arena/arena_4b/units/renew_seeder.tres" id="63_renew_seeder"]
 
 ; perf_ai_4b (plan row P304, ADR 0038 section 7): the AI arena of Phase 4b. It plays perf_ai's layout (the base arena's
 ; map and factions, the mirror bases) with each side's Phase 4b rows at tick 0, so the ARMY slot's new passes run from the
@@ -57,10 +61,14 @@
 ; tanks (4) and the rifle squads (6), which keeps each side at the rules' 75-unit cap. All on frozen copies of the Phase 4b
 ; defs in data/dev/arena/ (2026-11-15, main a2204d2f): the Derrick League's aircraft, Flight Yard, Burst Stack and rifle and
 ; rocket squads are perf_air's own (air/ and units/), the rest P304's.
+; P304b (2026-11-17, main e4be1931) adds each side's ground carriers and minelayers, 2 of each (the Bunk Wagon and Shot Truck, the
+; Linecar and Seeder: frozen copies in arena_4b/units/ and arena_4b/weapons/), 4 mobile rows a side taken off the rifle squads
+; (18 to 14), so each side stays at the 75-unit cap. The AI does not load, unload or mine with them yet.
 ; Own copies in data/dev/arena/arena_4b/: the rules (the base arena's frozen rules plus today's sell, mend, carry, mine and
-; sweep values, flow_cache_size 8 as perf_ai, so carriers and mending work here), and the infantry and turret units with
+; sweep values, flow_cache_size 8 as perf_ai, so carriers and mending work here), the infantry and turret units with
 ; their shipped layer masks (the Lumen rifle and rocket squads and the Derrick turret shoot at aircraft as shipped, as
-; perf_air's squads do). No orders, no golden pair: the hash is printed, not pinned. The Perf AI route plays it with the
+; perf_air's squads do), and P304b's four ground units (Bunk Wagon, Shot Truck, Linecar, Seeder) with the two mine
+; weapons (shot charge, pulse seed). No orders, no golden pair: the hash is printed, not pinned. The Perf AI route plays it with the
 ; frozen AI defs of data/dev/arena/ai_4b/.
 
 [sub_resource type="Resource" id="Spawn_p1_hq_0"]
@@ -160,7 +168,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 1
 unit = ExtResource("19_rifle_squad")
-count = 18
+count = 14
 origin_tile = Vector2i(17, 8)
 columns = 3
 jitter = 300
@@ -279,7 +287,7 @@ jitter = 300
 script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("32_renew_rifle")
-count = 18
+count = 14
 origin_tile = Vector2i(34, 8)
 columns = 3
 jitter = 300
@@ -447,11 +455,43 @@ count = 4
 origin_tile = Vector2i(38, 21)
 columns = 2
 
+[sub_resource type="Resource" id="Spawn_p1_fossil_bunk_wagon_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("60_fossil_bunk_wagon")
+count = 2
+origin_tile = Vector2i(17, 19)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p1_fossil_shot_truck_4b"]
+script = ExtResource("2_spawn")
+owner = 1
+unit = ExtResource("61_fossil_shot_truck")
+count = 2
+origin_tile = Vector2i(17, 21)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_renew_linecar_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("62_renew_linecar")
+count = 2
+origin_tile = Vector2i(35, 19)
+columns = 2
+
+[sub_resource type="Resource" id="Spawn_p2_renew_seeder_4b"]
+script = ExtResource("2_spawn")
+owner = 2
+unit = ExtResource("63_renew_seeder")
+count = 2
+origin_tile = Vector2i(35, 21)
+columns = 2
+
 [resource]
 script = ExtResource("1_scenario")
 map_size_tiles = Vector2i(54, 24)
 camera_start_tile = Vector2i(27, 12)
-spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq_0"), SubResource("Spawn_p1_power_1"), SubResource("Spawn_p1_radar_2"), SubResource("Spawn_p1_strike_3"), SubResource("Spawn_p1_refinery_4"), SubResource("Spawn_p1_barracks_5"), SubResource("Spawn_p1_factory_6"), SubResource("Spawn_p1_power_7"), SubResource("Spawn_p1_defence_8"), SubResource("Spawn_p1_defence_9"), SubResource("Spawn_p1_light"), SubResource("Spawn_p1_heavy"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_tanker"), SubResource("Spawn_p1_space_4b"), SubResource("Spawn_p1_engineering_4b"), SubResource("Spawn_p1_airfield_4b"), SubResource("Spawn_p1_aa_4b"), SubResource("Spawn_p1_power_n_4b"), SubResource("Spawn_p1_bomber_4b"), SubResource("Spawn_p1_fighter_4b"), SubResource("Spawn_p1_transport_4b"), SubResource("Spawn_p1_drone_4b"), SubResource("Spawn_p2_hq_0"), SubResource("Spawn_p2_power_1"), SubResource("Spawn_p2_radar_2"), SubResource("Spawn_p2_strike_3"), SubResource("Spawn_p2_refinery_4"), SubResource("Spawn_p2_barracks_5"), SubResource("Spawn_p2_factory_6"), SubResource("Spawn_p2_power_7"), SubResource("Spawn_p2_defence_8"), SubResource("Spawn_p2_defence_9"), SubResource("Spawn_p2_light"), SubResource("Spawn_p2_heavy"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_tanker"), SubResource("Spawn_p2_space_4b"), SubResource("Spawn_p2_engineering_4b"), SubResource("Spawn_p2_airfield_4b"), SubResource("Spawn_p2_aa_4b"), SubResource("Spawn_p2_power_n_4b"), SubResource("Spawn_p2_bomber_4b"), SubResource("Spawn_p2_fighter_4b"), SubResource("Spawn_p2_transport_4b"), SubResource("Spawn_p2_drone_4b")])
+spawns = Array[ExtResource("2_spawn")]([SubResource("Spawn_p1_hq_0"), SubResource("Spawn_p1_power_1"), SubResource("Spawn_p1_radar_2"), SubResource("Spawn_p1_strike_3"), SubResource("Spawn_p1_refinery_4"), SubResource("Spawn_p1_barracks_5"), SubResource("Spawn_p1_factory_6"), SubResource("Spawn_p1_power_7"), SubResource("Spawn_p1_defence_8"), SubResource("Spawn_p1_defence_9"), SubResource("Spawn_p1_light"), SubResource("Spawn_p1_heavy"), SubResource("Spawn_p1_rifle"), SubResource("Spawn_p1_rocket"), SubResource("Spawn_p1_tanker"), SubResource("Spawn_p1_space_4b"), SubResource("Spawn_p1_engineering_4b"), SubResource("Spawn_p1_airfield_4b"), SubResource("Spawn_p1_aa_4b"), SubResource("Spawn_p1_power_n_4b"), SubResource("Spawn_p1_bomber_4b"), SubResource("Spawn_p1_fighter_4b"), SubResource("Spawn_p1_transport_4b"), SubResource("Spawn_p1_drone_4b"), SubResource("Spawn_p2_hq_0"), SubResource("Spawn_p2_power_1"), SubResource("Spawn_p2_radar_2"), SubResource("Spawn_p2_strike_3"), SubResource("Spawn_p2_refinery_4"), SubResource("Spawn_p2_barracks_5"), SubResource("Spawn_p2_factory_6"), SubResource("Spawn_p2_power_7"), SubResource("Spawn_p2_defence_8"), SubResource("Spawn_p2_defence_9"), SubResource("Spawn_p2_light"), SubResource("Spawn_p2_heavy"), SubResource("Spawn_p2_rifle"), SubResource("Spawn_p2_rocket"), SubResource("Spawn_p2_tanker"), SubResource("Spawn_p2_space_4b"), SubResource("Spawn_p2_engineering_4b"), SubResource("Spawn_p2_airfield_4b"), SubResource("Spawn_p2_aa_4b"), SubResource("Spawn_p2_power_n_4b"), SubResource("Spawn_p2_bomber_4b"), SubResource("Spawn_p2_fighter_4b"), SubResource("Spawn_p2_transport_4b"), SubResource("Spawn_p2_drone_4b"), SubResource("Spawn_p1_fossil_bunk_wagon_4b"), SubResource("Spawn_p1_fossil_shot_truck_4b"), SubResource("Spawn_p2_renew_linecar_4b"), SubResource("Spawn_p2_renew_seeder_4b")])
 map = ExtResource("5_map")
 rules = ExtResource("6_rules")
 player_count = 2

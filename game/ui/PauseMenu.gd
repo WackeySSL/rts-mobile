@@ -11,10 +11,19 @@ extends ModalFrame
 ## lost) and one column of full-width buttons: Resume
 ## (the accent's fill, 56 dp), Restart (the result screen's route: the same scenario, level and
 ## opponents, a new main scene; asks first), Surrender (the danger red; resumes, then sends
-## SURRENDER through the controller's sink; asks first), Exit to menu (the dev menu until Phase
-## 5's start page; asks first) and, in a debug or `dev_menu` build, the Developer menu. Under them
-## the toggle chips: Vibration only (saved by `HudPrefs`; Sound, Music and Settings come with
-## Phase 5 and stay hidden). Upright the card is above the column; sideways it is to the left.
+## SURRENDER through the controller's sink; asks first), How to play and Settings side by side
+## (one row: the foot must stay free; a `MenuStack` over the battle holds P527's screen and Back
+## returns here; Settings is the `settings` route of `MenuRoutes` when a row registered it, else
+## disabled: TODO P526), Exit to menu (asks first) and, in a debug or `dev_menu` build, the
+## Developer menu beside it. Under them the toggle chips: Vibration (saved by `HudPrefs`), Sound
+## (the Sfx and Ui buses) and Music (the `AudioService` steps: off is 0, on is the default step of
+## `AudioSettings`). Upright the card is above the column; sideways it is to the left.
+## Phase 5 (P531, ADR 0043 section 6, ADR 0042 section 5): when `MenuFlow` owns the match, Restart
+## and Exit go through it (`restart()`, `return_to_menu()`; both coroutines) and Surrender calls
+## `mark_surrendered()` before its Command; a match `DevRoutes` made keeps the dev routes. A
+## tutorial lesson's Exit reads "LEAVE TUTORIAL" and goes the same way: no ad is touched. The menu
+## opens by itself when the app pauses or loses focus, and the Android Back button opens and closes
+## it (it closes a question or the How to play overlay first); it never opens over a result.
 ## The one ad of the battle screen (Michael, 2026-11-05; ADR 0039 section 6, plan P435): P430's
 ## `AdBannerBand` at the foot of the open menu, only upright and only where the foot is free (the
 ## content does not scroll and leaves the band's room, its 16 dp gap included). It is made when the
@@ -62,6 +71,8 @@ const SIDES: Dictionary[StringName, Dictionary] = {
 		&"chip": &"PauseChipFossil"
 	},
 }
+const LIVE_META: StringName = &"pause_menus_live"  ## On the tree: PauseMenus in it.
+const QUIT_META: StringName = &"pause_menus_quit_before"  ## `quit_on_go_back` before the first.
 const FALLBACK_SIDE: StringName = &"renew"
 
 @export var runner: MatchRunner
@@ -71,11 +82,17 @@ const FALLBACK_SIDE: StringName = &"renew"
 
 ## Tests inject a service for the foot banner; null means the AdService autoload.
 var ad_service: AdServiceScript = null
+## Tests inject fakes; null means the autoloads (MenuFlow, AudioService) and the shared routes.
+var menu_flow: Node = null
+var audio: Node = null
+var routes: MenuRoutes = null  ## Null means `MenuRoutes.shared`, read when used.
 
 var _body: BoxContainer  ## The card's column and the button column.
 var _left: VBoxContainer  ## "PAUSED" and the card.
 var _actions: VBoxContainer  ## The buttons, and the toggle chips under them.
-var _toggles: HBoxContainer
+var _toggles: HFlowContainer
+var _pair: HBoxContainer  ## How to play and Settings side by side: one row of the column.
+var _leave: HBoxContainer  ## Exit, and the Developer menu beside it in a debug build.
 var _tight: Array[BoxContainer] = []  ## Spaced TIGHT_DP apart.
 var _loose: Array[BoxContainer] = []  ## Spaced GAP_DP apart.
 var _glyphed: Array[Button] = []  ## Every button with a glyph, for the dp step.
@@ -88,6 +105,11 @@ var _time: Label
 var _lost: Label
 var _resume: Button
 var _vibration: Button
+var _sound: Button
+var _music: Button
+var _exit_button: Button
+var _settings: Button
+var _help: MenuStack  ## The How to play overlay while it is open.
 var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
 var _exit_dialog: ConfirmDialog
@@ -97,13 +119,38 @@ var _band: AdBannerBand
 var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
 
 
+func _enter_tree() -> void:
+	# Back opens this menu, so the app must not also quit on it.
+	# TODO(P533): project-wide false makes this redundant
+	var tree: SceneTree = get_tree()
+	var live: int = int(tree.get_meta(LIVE_META, 0))
+	if live == 0:
+		tree.set_meta(QUIT_META, tree.quit_on_go_back)
+	tree.set_meta(LIVE_META, live + 1)
+	tree.quit_on_go_back = false
+
+
+## The value goes back when the last menu leaves the tree (the match scene ends; the next scene
+## sets its own: MenuStack switches it off for the menus). Counted, because a scene freed late can
+## overlap its successor, and the second one must not record the first one's false. (Not static
+## vars: a static in this class makes the editor import report leaked resources at exit.)
+func _exit_tree() -> void:
+	var tree: SceneTree = get_tree()
+	var live: int = maxi(int(tree.get_meta(LIVE_META, 0)) - 1, 0)
+	tree.set_meta(LIVE_META, live)
+	if live == 0:
+		tree.quit_on_go_back = bool(tree.get_meta(QUIT_META, true))
+
+
 func _ready() -> void:
 	_body = BoxContainer.new()  # Before `super()`, whose `_apply_dp` sizes them.
 	_body.name = &"Body"
 	_left = VBoxContainer.new()
 	_actions = VBoxContainer.new()
 	_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_toggles = HBoxContainer.new()
+	_toggles = HFlowContainer.new()
+	_pair = HBoxContainer.new()
+	_leave = HBoxContainer.new()
 	super()
 	_unframe()
 	column.add_child(_body)
@@ -114,16 +161,24 @@ func _ready() -> void:
 	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton", PRIMARY_LOOK)
 	_add_action("RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN)
 	_add_action("SURRENDER", "surrender", _surrender_dialog_open, &"SurrenderButton", DANGER)
-	_add_action("EXIT TO MENU", "exit", _exit_dialog_open, &"ExitButton", PLAIN)
+	_actions.add_child(_pair)
+	_add_action("HOW TO PLAY", "", _open_help, &"HelpButton", PLAIN, _pair)
+	_settings = _add_action("SETTINGS", "", _open_settings, &"SettingsButton", PLAIN, _pair)
+	_actions.add_child(_leave)
+	_exit_button = _add_action(
+		"EXIT TO MENU", "exit", _exit_dialog_open, &"ExitButton", PLAIN, _leave
+	)
 	if DevRoutes.is_enabled():
-		_add_action("DEVELOPER MENU", "menu", _open_dev_menu, &"DevMenuButton", PLAIN)
+		_add_action("DEV MENU", "", _open_dev_menu, &"DevMenuButton", PLAIN, _leave)
 	_actions.add_child(_toggles)
 	_vibration = _add_action("", "vibration", _toggle_vibration, &"VibrationButton", CHIP_LOOK)
+	_sound = _add_action("", "", _toggle_sound, &"SoundButton", CHIP_LOOK)
+	_music = _add_action("", "", _toggle_music, &"MusicButton", CHIP_LOOK)
 	_restart_dialog = _make_dialog("RESTART?", "You lose this match.", "RESTART", _restart)
 	_surrender_dialog = _make_dialog(
 		"SURRENDER?", "You lose the match at once.", "SURRENDER", _surrender
 	)
-	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _open_dev_menu)
+	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _exit_match)
 	if pill != null:
 		pill.menu_pressed.connect(_on_menu_pressed)
 	for dialog: ConfirmDialog in [_restart_dialog, _surrender_dialog, _exit_dialog]:
@@ -208,8 +263,11 @@ func _apply_dp() -> void:
 	_body.vertical = HudLayout.is_portrait()
 	var gap: int = roundi(UiScale.dp(TIGHT_DP))
 	_body.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)) * 2)
-	for box: BoxContainer in [_left, _actions, _toggles] + _tight:
+	for box: BoxContainer in [_left, _actions, _pair, _leave] + _tight:
 		box.add_theme_constant_override("separation", gap)
+	_toggles.add_theme_constant_override("h_separation", gap)
+	# A wrapped chip row (a 360 dp phone upright) keeps half the gap, so the foot stays free.
+	_toggles.add_theme_constant_override("v_separation", roundi(UiScale.dp(TIGHT_DP / 2.0)))
 	for box: BoxContainer in _loose:
 		box.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	if visible:
@@ -226,7 +284,12 @@ func _apply_dp() -> void:
 ## One button of the column (the chip of the toggle row too: `variation` PauseChip) of type
 ## variation `variation`, with the P118g glyph `glyph` in front of its word, left aligned.
 func _add_action(
-	text: String, glyph: String, action: Callable, node_name: StringName, variation: StringName
+	text: String,
+	glyph: String,
+	action: Callable,
+	node_name: StringName,
+	variation: StringName,
+	parent: Container = null
 ) -> Button:
 	var button: Button = Button.new()
 	var chip: bool = variation == CHIP_LOOK
@@ -235,11 +298,14 @@ func _add_action(
 	button.text = text
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.expand_icon = false
-	button.icon = load(GLYPH_ART % glyph) as Texture2D
+	if glyph != "":
+		button.icon = load(GLYPH_ART % glyph) as Texture2D
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if chip else Control.SIZE_EXPAND_FILL
 	_fix_size(button, Vector2(0.0, PRIMARY_DP if variation == PRIMARY_LOOK else SECONDARY_DP))
 	button.pressed.connect(action)
-	(_toggles if chip else _actions).add_child(button)
+	if parent == null:
+		parent = _toggles if chip else _actions
+	parent.add_child(button)
 	_glyphed.append(button)
 	return button
 
@@ -259,10 +325,39 @@ func _make_dialog(
 
 
 func _on_menu_pressed() -> void:
+	if _can_open():
+		feed.state.open(HudState.Unfold.PAUSE)
+
+
+## The result screen covers the HUD, and a SURRENDER is on its way: nothing opens.
+func _can_open() -> bool:
+	if runner == null or feed == null:
+		return false
 	var snap: MatchSnapshot = runner.snapshot
-	if snap != null and (snap.match_end_tick > 0 or snap.match_serial == _surrendered_in):
-		return  # The result screen covers the HUD, and a SURRENDER is on its way: nothing opens.
-	feed.state.open(HudState.Unfold.PAUSE)
+	return snap == null or (snap.match_end_tick <= 0 and snap.match_serial != _surrendered_in)
+
+
+## The app pauses or loses focus (a call, the shade, a hidden tab): the menu opens, so the match
+## stays paused under it until Resume (ADR 0042 section 5). Android's Back opens and closes it.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_on_menu_pressed()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_on_back()
+
+
+## Decided at once, before the overlay's own deferred pop runs: the overlay (the How to play
+## screen) takes Back itself; an open question closes (keep playing); then the menu toggles.
+func _on_back() -> void:
+	if _help != null or feed == null:
+		return
+	if visible and _asking():
+		_close_dialogs()
+		_resume.grab_focus()
+	elif feed.state.is_open(HudState.Unfold.PAUSE):
+		_resume_pressed()
+	elif _can_open():
+		feed.state.open(HudState.Unfold.PAUSE)
 
 
 ## PAUSE opened: pause the match and show the card. PAUSE left (Resume, a new match): unpause.
@@ -273,12 +368,14 @@ func _on_changed(previous: HudState.Unfold) -> void:
 		runner.paused = true
 		if previous != HudState.Unfold.PAUSE:
 			_fill_card()
-			_show_vibration()
+			_show_chips()
+			_show_exit()
 			_hide_hud()
 			show_over(_resume)
 			_place_banner()
 	elif previous == HudState.Unfold.PAUSE:
 		runner.paused = false
+		_close_help()
 		_drop_banner()
 		_close_dialogs()
 		_restore_hud()
@@ -410,8 +507,14 @@ func _fit_foot() -> void:
 	_foot.add_theme_constant_override("margin_bottom", ceili(maxf(full.end.y - safe.end.y, 0.0)))
 
 
+## A question or the How to play overlay stands over the foot: no banner there.
 func _asking() -> bool:
-	return _restart_dialog.visible or _surrender_dialog.visible or _exit_dialog.visible
+	return (
+		_restart_dialog.visible
+		or _surrender_dialog.visible
+		or _exit_dialog.visible
+		or _help != null
+	)
 
 
 func _on_dialog_visibility() -> void:
@@ -428,15 +531,120 @@ func _drop_banner() -> void:
 	_band = null
 
 
-func _show_vibration() -> void:
-	var on: bool = HudPrefs.haptics_enabled()
-	_vibration.text = "VIBRATION: ON" if on else "VIBRATION: OFF"
-	_vibration.theme_type_variation = SIDES[_side][&"chip"] if on else CHIP_OFF
+func _show_chips() -> void:
+	_show_chip(_vibration, "VIBRATION: ON", "VIBRATION: OFF", HudPrefs.haptics_enabled())
+	_show_chip(_sound, "SOUND", "SOUND: OFF", _step(AudioService.BUS_SFX) > 0)
+	_show_chip(_music, "MUSIC", "MUSIC: OFF", _step(AudioService.BUS_MUSIC) > 0)
+
+
+## Sound and Music read their bare word while on (the accent's colour) and "...: OFF" greyed out,
+## so the three chips share one row upright and the foot stays free.
+func _show_chip(chip: Button, on_text: String, off_text: String, on: bool) -> void:
+	chip.text = on_text if on else off_text
+	chip.theme_type_variation = SIDES[_side][&"chip"] if on else CHIP_OFF
 
 
 func _toggle_vibration() -> void:
 	HudPrefs.set_haptics_enabled(not HudPrefs.haptics_enabled())
-	_show_vibration()
+	_show_chips()
+
+
+## Sound is the Sfx and Ui buses together (the player's Sound setting, AudioService); off is step 0
+## and on is the default step of `AudioSettings`. Finer steps are the Settings screen's (P526).
+func _toggle_sound() -> void:
+	var service: Node = _audio()
+	var settings: AudioSettings = service.get(&"settings") as AudioSettings
+	var on: bool = _step(AudioService.BUS_SFX) > 0
+	service.call(&"set_sound_step", 0 if on else settings.default_sfx_step)
+	_show_chips()
+
+
+func _toggle_music() -> void:
+	var service: Node = _audio()
+	var settings: AudioSettings = service.get(&"settings") as AudioSettings
+	var on: bool = _step(AudioService.BUS_MUSIC) > 0
+	service.call(&"set_step", AudioService.BUS_MUSIC, 0 if on else settings.default_music_step)
+	_show_chips()
+
+
+func _step(bus: StringName) -> int:
+	return int(_audio().call(&"get_step", bus))
+
+
+func _audio() -> Node:
+	return audio if audio != null else AudioService
+
+
+func _routes() -> MenuRoutes:
+	return routes if routes != null else MenuRoutes.shared
+
+
+func _flow() -> Node:
+	return menu_flow if menu_flow != null else MenuFlow
+
+
+## True when MenuFlow built this match (a menu or tutorial start); a dev-route match is not its.
+func _owned() -> bool:
+	return _flow().call(&"current_runner") == runner
+
+
+func _is_lesson() -> bool:
+	var setup: MatchSetup = _flow().call(&"current_setup") as MatchSetup if _owned() else null
+	return setup != null and setup.lesson_id != &""
+
+
+## A lesson's Exit reads "LEAVE TUTORIAL" (it goes to the menu the same way: no ad is touched).
+func _show_exit() -> void:
+	var lesson: bool = _is_lesson()
+	_exit_button.text = "LEAVE TUTORIAL" if lesson else "EXIT TO MENU"
+	_exit_dialog.question = "LEAVE TUTORIAL?" if lesson else "EXIT TO MENU?"
+	_settings.disabled = not _routes().has(MenuRoutes.SETTINGS)  # TODO P526 registers the route.
+
+
+func _open_help() -> void:
+	_open_overlay(HowToPlayScreen.new())
+
+
+func _open_settings() -> void:
+	if _routes().has(MenuRoutes.SETTINGS):
+		_open_overlay(_routes().make(MenuRoutes.SETTINGS))
+
+
+## A one-screen detour over the menu (the banner goes while it stands): a `MenuStack` whose root
+## is a blank screen, so a Back that pops `screen` lands on the root and closes the overlay.
+func _open_overlay(screen: MenuScreen) -> void:
+	if _help != null or screen == null:
+		if screen != null:
+			screen.free()
+		return
+	_help = MenuStack.new()
+	_help.name = &"HelpOverlay"
+	_help.slide_ms = 0  # Cuts: a detour is never a slide to cancel.
+	_help.backdrop_color = get_theme_color(&"outline", &"BoxOverlay")  # The menu scene's own.
+	add_child(_help)  # Last child: over the foot and the dialogs.
+	_help.push(MenuScreen.new())
+	_help.screen_changed.connect(_on_help_changed)
+	_help.push(screen)
+	_place_banner()
+
+
+## Back (or the screen's BACK button) has popped to the root: the pause menu is on show again.
+func _on_help_changed(_screen: MenuScreen) -> void:
+	if _help != null and _help.depth() < 2:
+		_close_help()
+		_show_chips()  # The Settings screen may have changed the audio steps.
+		_place_banner()
+		if visible and _resume != null:
+			_resume.grab_focus()
+
+
+func _close_help() -> void:
+	if _help == null:
+		return
+	var overlay: MenuStack = _help
+	_help = null
+	remove_child(overlay)
+	overlay.queue_free()
 
 
 func _resume_pressed() -> void:
@@ -455,7 +663,14 @@ func _exit_dialog_open() -> void:
 	_exit_dialog.open()
 
 
+## Through MenuFlow when it owns the match (it handles the seed and the start-credits bonus: a
+## mid-match restart counts nothing and shows no ad); the dev path otherwise.
 func _restart() -> void:
+	if _owned():
+		var error: Error = await _flow().call(&"restart") as Error
+		if error != OK:
+			push_warning("PauseMenu: restart refused (%s)" % error_string(error))
+		return
 	DevRoutes.open_main_with(
 		get_tree(),
 		runner.scenario.resource_path,
@@ -473,7 +688,17 @@ func _surrender() -> void:
 			return  # Once per match, as P90's button was.
 		_surrendered_in = snap.match_serial
 	feed.state.close(HudState.Unfold.PAUSE)
+	if _owned():
+		_flow().call(&"mark_surrendered")  # Before the Command: the sim cannot tell it from a defeat.
 	controller.command_sink.call(Command.surrender(runner.scenario.local_player))
+
+
+## Exit to menu and Leave tutorial: no XP, no ad bookkeeping (MenuFlow.return_to_menu).
+func _exit_match() -> void:
+	if _owned():
+		_flow().call(&"return_to_menu")
+		return
+	_open_dev_menu()
 
 
 func _open_dev_menu() -> void:

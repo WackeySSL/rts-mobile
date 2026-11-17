@@ -502,10 +502,9 @@ func test_every_shipped_file_keeps_the_air_repair_and_upgrade_rules() -> void:
 		var building: BuildingDef = unit as BuildingDef
 		if building == null:
 			continue
-		# P247: the engineering centres are in no roster and no faction lists its upgrades yet, so
-		# a research producer counts only once a roster has it (P249 fills both together).
-		# P249: keep this as the rule "a rostered research building needs listed upgrades"; it
-		# fails by itself if a centre is rostered while FactionDef.upgrades is still empty.
+		# P249 rostered the engineering centres and filled FactionDef.upgrades together. The rule:
+		# a rostered research building needs listed upgrades; it fails by itself if a centre is
+		# rostered while FactionDef.upgrades is empty.
 		if building.produces == Rules.RESEARCH and _in_a_roster(building, factions):
 			research_producers += 1
 		if building.pads > 0:

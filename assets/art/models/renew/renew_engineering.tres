@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"renew_engineering"
+faction = &"renew"
+category = &"bld"
+footprint = 2
+silhouette = "A low round white workshop drum with a glass ribbon, a wide team band and a stepped lid, and beside it a long white optical bench carrying one large round glass lens in a team-coloured ring on a slim titanium pedestal."
+prims = PackedStringArray(
+"box hull graphite 0 0 0 1.92 1.92 0.06",
+"prism hull ceramic -0.3 -0.3 0.06 1.0 1.0 0.2 sides=16",
+"prism hull glass -0.3 -0.3 0.26 1.04 1.04 0.1 sides=16 group=gl",
+"prism hull team -0.3 -0.3 0.36 1.08 1.08 0.2 sides=16 group=drumband",
+"prism hull ceramic -0.3 -0.3 0.56 1.04 1.04 0.08 sides=16 group=drum",
+"prism hull titanium -0.3 -0.3 0.64 0.7 0.7 0.07 sides=16 group=drum",
+"prism hull ceramic -0.3 -0.3 0.71 0.4 0.4 0.08 sides=16 group=drum",
+"box hull mint -0.3 0.22 0.14 0.1 0.03 0.06",
+"box hull ceramic 0.3 0.72 0.06 1.1 0.3 0.06 group=bench",
+"box hull team 0.3 0.72 0.12 1.14 0.34 0.08 group=benchband",
+"box hull titanium 0.3 0.72 0.2 1.14 0.34 0.03 group=bench",
+"prism hull titanium 0.68 0.3 0.06 0.14 0.14 0.7 sides=8 group=pedestal",
+"prism hull team 0.68 0.35 0.6 0.56 0.1 0.56 sides=16 axis=y group=lensring",
+"prism hull glass 0.68 0.396 0.66 0.44 0.12 0.44 sides=16 axis=y group=lens",
+"box hull mint 0.68 0.44 0.82 0.07 0.03 0.07 group=lens",
+"box hull ceramic 0.4 0.72 0.21 0.3 0.2 0.1 group=bench",
+"box hull ceramic -0.78 0.62 0.06 0.3 0.4 0.06 group=cells",
+"box hull team -0.78 0.62 0.12 0.34 0.44 0.16 group=cellband",
+"box hull ceramic -0.78 0.62 0.28 0.3 0.4 0.1 group=cells",
+"prism hull interior -0.3 -0.3 0.26 0.84 0.84 0.04 sides=16 damage=2 group=k2",
+"broken hull ceramic -0.3 -0.3 0.26 0.5 0.5 0.34 teeth=5 low=0.3 damage=2 group=k2",
+"box hull hole -0.62 0.0 0.26 0.3 0.2 0.05 damage=2 group=k2",
+"box hull hole 0.0 -0.55 0.26 0.2 0.3 0.05 damage=2 group=k2",
+"rod hull rebar -0.4 -0.4 0.3 -0.4 -0.4 0.8 3 bend=30 damage=2 group=k2",
+"rod hull beam -0.1 -0.2 0.3 -0.1 -0.2 0.7 3 bend=-35 damage=2 group=k2",
+"broken hull ceramic 0.68 0.3 0.06 0.2 0.2 0.4 teeth=4 low=0.3 damage=2 group=k2",
+"box hull ceramic 0.4 0.72 0.2 0.5 0.3 0.06 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"dmg2 0 drum hide",
+"dmg2 0 gl hide",
+"dmg2 0 drumband hide",
+"dmg2 0 pedestal hide",
+"dmg2 0 lens hide",
+"dmg2 0 lensring hide"
+)
+emitters = PackedStringArray(
+"damage -0.3 -0.3 0.6",
+"dmg_gas -0.78 0.62 0.3",
+"dmg_spark 0.68 0.3 0.3"
+)

@@ -23,6 +23,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"fossil_space bld 3 hull",
 		"fossil_aa bld 1 hull,head",
 		"fossil_airfield bld 3 hull",
+		"fossil_engineering bld 2 hull",
 		"rifle_squad inf 0 hull",
 		"rocket_squad inf 0 hull",
 		"light_tank veh 0 hull,turret",
@@ -45,6 +46,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_space bld 3 hull",
 		"renew_aa bld 1 hull,head",
 		"renew_airfield bld 3 hull",
+		"renew_engineering bld 2 hull",
 		"renew_rifle inf 0 hull",
 		"renew_rocket inf 0 hull",
 		"renew_scout veh 0 hull,turret",
@@ -55,6 +57,10 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_bomber veh 0 hull",
 	],
 }
+## The item cards of the four upgrades, drawn by hand beside the generated ones (P249).
+const HAND_CARDS: Array[String] = [
+	"item_heavy_bombs", "item_plated_hull", "item_focus_bombs", "item_glaze_hull"
+]
 const MAX_FILE_BYTES: int = 28 * 1024  ## STYLE.md "Technical rules".
 const BAND_DEGREES: float = 20.0  ## ADR 0023 section 5: the key band's half width.
 const BAND_SATURATION: float = 0.30
@@ -168,8 +174,13 @@ func test_every_committed_frame_equals_a_fresh_run() -> void:
 
 
 func test_no_generated_file_is_committed_that_a_run_does_not_make() -> void:
-	var committed: Array[String] = _list("res://assets/art/iso", ".svg")
-	committed.append_array(_list("res://assets/art/iso", ".tres"))
+	var committed: Array[String] = []
+	for path: String in (
+		_list("res://assets/art/iso", ".svg") + _list("res://assets/art/iso", ".tres")
+	):
+		# The four research cards are hand-written (P249): no model stands behind an upgrade.
+		if not path.get_file().get_basename() in HAND_CARDS:
+			committed.append(path)
 	var generated: int = 0
 	for path: String in _fresh:
 		generated += int(not path.ends_with(".import"))
