@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## IntroPlayer (ADR 0043 section 2, plan P521): skip, Back, the drive, the open-out, the reduced
 ## fade, the blocker over the faded menu and the production hand-over, on the fakes of IntroRig.
 
-const MENU_PATH: String = "res://scenes/menu/menu.tscn"
+const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 
