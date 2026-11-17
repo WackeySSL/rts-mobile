@@ -18,8 +18,8 @@ extends RefCounted
 ##   even when no form shows this launch.
 ## - Offline: the plan returns false. UMP's pattern would use the stored consent instead; to
 ##   confirm in P405 (ADR note by the lead).
-## - The debug geography's test-device hash comes from a git-ignored local file: that reader is
-##   still to do in P405.
+## - The debug geography's test-device hash comes from a git-ignored local file
+##   (`AdIds.test_device_hash`, read by `UmpPluginBackend`).
 
 ## The form (consent or privacy options) was dismissed.
 signal form_dismissed

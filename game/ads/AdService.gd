@@ -6,10 +6,10 @@ extends Node
 ## P403 fills in the ads behind these signatures: the caps (AdCaps), the counters (AdLedger, in
 ## memory until P407 saves it), the timeouts from data, the banner and the rewarded ad, all through
 ## an AdBackend: the AdMobBackend in AdMob mode (P405), else the FakeAdBackend. Consent (P404) goes
-## through a ConsentBackend (FakeUmp until P405b): the SDK is initialised and any ad loaded only
-## once `_can_request_ads` is true. Purchases (P406) go through Purchases over a
-## BillingBackend (always the FakeBilling until P406b adds the Play one) and do not depend on
-## consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
+## through a ConsentBackend (UmpPluginBackend in AdMob mode, else FakeUmp): the SDK is initialised
+## and any ad loaded only once `_can_request_ads` is true. Purchases (P406) go through Purchases
+## over a BillingBackend (always the FakeBilling until P406b adds the Play one) and do not depend
+## on consent: the ledger's Remove ads flag follows them, and a silent restore runs on start and on
 ## resume. No plugin code and no ad IDs live here.
 ##
 ## Persistence (P407): the ledger is the `ads` section of SaveService. Autoloads are all created
@@ -75,7 +75,7 @@ static func _is_admob_mode() -> bool:
 	return AdBackend.is_admob_mode(
 		OS.get_name(),
 		OS.has_feature("editor"),
-		AdMobBackend.plugin_present(),
+		AdMobBackend.plugin_present() and UmpPluginBackend.plugin_present(),
 		OS.has_feature("play")
 	)
 
@@ -87,10 +87,12 @@ static func _make_backend() -> AdBackend:
 	return FakeAdBackend.new()
 
 
-## Fake everywhere until the UMP backend lands (P405b). Where the fake placeholders wait for buttons
+## The real UMP backend in AdMob mode, else the fake. Where the fake placeholders wait for buttons
 ## (the editor, the phone preview) consent is required by default, so the form can be walked;
 ## headless stays "not required".
 static func _make_consent(required: bool) -> ConsentBackend:
+	if _is_admob_mode():
+		return UmpPluginBackend.new()
 	var ump: FakeUmp = FakeUmp.new()
 	ump.consent_required = required
 	return ump

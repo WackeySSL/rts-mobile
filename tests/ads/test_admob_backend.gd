@@ -271,6 +271,8 @@ func test_without_the_plugin_every_call_is_safe_and_nothing_fills() -> void:
 
 func test_the_service_uses_fakes_where_the_plugin_is_missing() -> void:
 	assert_bool(AdMobBackend.plugin_present()).is_false()
+	assert_bool(UmpPluginBackend.plugin_present()).is_false()
 	var script: GDScript = load(AdServiceHarness.SCRIPT_PATH) as GDScript
 	assert_bool(script.call("_is_admob_mode")).is_false()
 	assert_object(script.call("_make_backend")).is_instanceof(FakeAdBackend)
+	assert_object(script.call("_make_consent", false)).is_instanceof(FakeUmp)
