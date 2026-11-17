@@ -27,9 +27,7 @@ route (P410, Michael 2026-11-15). No decision text changed.
 
 Status note (2026-11-17, P400d docs; P405/P405b/P435 findings): P405 (#516), P405b (#517) and
 P435 (#518) merged. Dated notes with what the merged code confirms, and where it no longer matches
-this text, are added under §1, §2, §3, §5, §6, §9 and §10. §1's widget method `price_text` is
-corrected to its name in the code, `remove_ads_price_text` (a name, not a decision). No
-decision text changed.
+this text, are added under §1, §2, §3, §4, §5, §6, §9 and §10. No decision text changed.
 
 Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
 - `docs/plans/2026-11-01-hud-v2.md` row **P127** is absorbed by this plan: the band is row P430,
@@ -82,9 +80,9 @@ Amends (dated notes in P400b, after acceptance; no accepted text is rewritten):
   names `BillingClient`.** A scan test enforces it, and that nothing in `game/sim`, `game/ai` or
   `game/core` names `AdService` or `game/ads`.
 - Phase 6's widgets (the banner band, the rewarded offers, the Remove ads rows) may call internal
-  methods (`rewarded_ready`, `show_rewarded`, `show_banner`, `hide_banner`,
-  `remove_ads_price_text`). Phase 5 calls none of them: its menus place the band, which shows its
-  banner on `enter_tree` and hides it on `exit_tree`.
+  methods (`rewarded_ready`, `show_rewarded`, `show_banner`, `hide_banner`, `price_text`). Phase 5
+  calls none of them: its menus place the band, which shows its banner on `enter_tree` and hides
+  it on `exit_tree`.
 
 Note (2026-11-17, P400d docs; P405/P405b findings): neither backend names a Poing GDScript class.
 `AdMobBackend` and `UmpPluginBackend` reach the plugin's native singletons (`PoingGodotAdMob...`,
@@ -92,6 +90,8 @@ by name) through an injectable lookup (`Engine.get_singleton` by default, fake o
 so they import unchanged in every build without the plugin. The plugin's native Android part is not
 vendored: the facts in the notes under §2, §3 and §5 come from the vendored v5.1.0 GDScript
 wrappers and mocks (`addons/admob`), and the device-only ones are marked.
+
+Note (2026-11-17, P400d docs): the widgets' `price_text` above is `remove_ads_price_text` in code.
 
 ### 2. Modes; gameplay never waits for an ad
 - **AdMob mode** only when all hold: the OS is Android, not the editor, the plugin's singleton
@@ -148,9 +148,11 @@ Note (2026-11-17, P400d docs; P405/P405b findings):
 - The plugin's consent status enum is UNKNOWN 0, NOT_REQUIRED 1, REQUIRED 2, OBTAINED 3, not the
   order of `ConsentBackend.Status`; `UmpPluginBackend` maps it. The plugin has no "can request
   ads" call, so it is derived: true for NOT_REQUIRED or OBTAINED.
-- The request configuration sets max ad content rating T, not child-directed and not under the
-  age of consent; UMP's info update gets the same under-age answer (false). Its test device list
-  is empty.
+- The Mobile Ads request configuration sets max ad content rating T, not child-directed and not
+  under the age of consent, and its test device list is empty
+  (`set_request_configuration(..., [])`). UMP's info update gets the same under-age answer
+  (false), and sends `test_device_hashed_ids` only in a debug build that has
+  `res://consent_test_device.cfg`.
 - Offline: with no network the info update fails or times out (`consent_timeout_ms`) and no ad is
   requested for that session. There is no fallback to a stored consent (UMP's own pattern would
   use it). Revisit only with a device finding.
@@ -158,8 +160,8 @@ Note (2026-11-17, P400d docs; P405/P405b findings):
   debug build (`ConsentFlow` drops it otherwise), `AdService.debug_geography_eea` set (only tests
   set it) and `res://consent_test_device.cfg`, which is debug-only and which no preset exports.
   No AdMob-mode build is a debug build: the only one is the `Android internal` AAB, exported with
-  `--export-release`. P414 must register Michael's phone as an AdMob test device (plan M8) before
-  real units ship.
+  `--export-release`. Registering Michael's phone as an AdMob test device is his manual step M8,
+  and it must be done before real units ship in Phase 7.
 
 ### 4. Caps and placements (`data/ads_settings.tres`)
 | Field | Value (answer 2 A for the caps) | Rule |
@@ -193,6 +195,13 @@ Note (2026-11-17, P400d docs; P405/P405b findings):
   consent, entitlement, show, hide and a turn (the adaptive height follows the width), not on
   fill, so a late fill does not move the layout.
 
+Note (2026-11-17, P400d docs; P405 findings): two points do not match the code. The table's
+`banner_reload_min_ms` rule ("a turn reloads at most this often"): a turn remakes the banner
+without that gap (§5's note). "Not on fill, so a late fill does not move the layout": the real
+banner's height is 0 until it has loaded, and `banner_height_changed` fires on its load and on a
+failed load (AdService then emits `banner_changed` when the height changed), so a late fill does
+move the layout.
+
 ### 5. The banner band
 - One scene, `AdBannerBand` (P430), serves every placement: Phase 5's menus and the pause foot
   place it in their bottom band and call nothing. It reserves `banner_height_dp()` plus the gap,
@@ -212,10 +221,11 @@ Note (2026-11-17, P400d docs; P405 findings):
 - `AdMobBackend` creates an anchored adaptive banner at the plugin's `AdPosition.BOTTOM` with no
   custom position (the plugin takes one; it is not used). Its height is 0 until the native load
   succeeds (`banner_height_changed`), and again after a failed load.
-- After a turn the banner is destroyed and created again at the new width at once; the height is
-  0 until the new one loads. `banner_reload_min_ms` gates only the reload of a failed banner (which
-  keeps its view) and, in AdService, rewarded retries, so "at most once per
-  `banner_reload_min_ms`" above does not match the code for a turn.
+- After a turn a shown banner is destroyed and created again at the new width at once; a hidden
+  one is remade at the next `show_banner`. The height is 0 until the new one loads.
+  `banner_reload_min_ms` gates only the reload of a failed banner (which keeps its view) and, in
+  AdService, rewarded retries, so "at most once per `banner_reload_min_ms`" above does not match
+  the code for a turn.
 - Remove ads and lost consent destroy the view (`destroy_banner`), not hide it. A full-screen ad
   whose load fails is destroyed natively, so no-fill retries do not leak.
 - To confirm on the device (P410b's build or P422): whether a created view is visible before its
@@ -239,8 +249,12 @@ comes from `AdService.banner_height_preview_dp()`, which makes no request. Uprig
 confirm dialog is open the band is freed (placed again when the dialog closes); a resize or a turn
 checks again. On close the band node is freed, but AdService then only hides the native banner
 (`hide_banner`); it destroys it only on Remove ads or lost consent. So a hidden native view can
-exist in battle, which "No banner object exists in battle" above does not allow: a follow-up for
-the lead (destroy on the last release, or a device finding that a hidden view does not refresh).
+exist in battle, which "No banner object exists in battle" above does not allow.
+In AdMob mode the first fit check is empty: `banner_height_preview_dp()` is 0 until the native
+banner has loaded, so the band is shown and the request starts. The real fit check comes only
+after the load (the band's `minimum_size_changed`), and it may then drop the band. This is a
+finding for the new fix row **P405c**, which also destroys the native banner on the last release
+and throttles turn reloads.
 
 ### 7. Rewards enter meta and the match only through Phase 5's paths
 - **Where** (Michael's answer 1 A): Double XP on the result screen; "+500 credits next match" on
@@ -290,12 +304,13 @@ in a tracked file (the guard above), and only after Michael's yes to the P400c t
 Note (2026-11-17, P400d docs; P405 findings, for P414): `res://ad_ids.cfg` is one `[units]`
 section with the keys `banner`, `interstitial` and `rewarded`, unit IDs only; a key that does not
 match `ca-app-pub-<16 digits>/<10 digits>` falls back to its test unit. It is git-ignored and read
-only by a release build (a debug build always uses the test units). Today no build packs it: it is
-not an imported resource and no preset's `include_filter` names it. P414 must add it to the
-`Android internal` preset's `include_filter`, with a check that the bundle holds it, and widen
-`scripts/ci/check-aab.sh`, which today fails on any publisher ID but Google's test one in the
-manifest or the assets. `res://consent_test_device.cfg` (`[consent]` `test_device_hash`) is also
-git-ignored, debug-only and not exported (§3's note).
+only by a release build (a debug build always uses the test units). Finding: today no preset packs
+it (every `include_filter` is the fonts' OFL path only), so the internal build carries Google's
+test units. Packing it, and the `--real-ad-ids` check, belong to Phase 7 (ADR 0040 §4 and §7,
+plan answer 10): internal builds carry the real App ID and only Google's test units. What P414
+must do is let the real App ID through `scripts/ci/check-aab.sh`, whose App ID check and
+other-publisher check both fail on it today. `res://consent_test_device.cfg` (`[consent]`
+`test_device_hash`) is also git-ignored, debug-only and not exported (§3's note).
 
 ### 10. Save and audio
 - Phase 6 keeps its state in Phase 5's `SaveService` section `ads`: `completed_matches`,
