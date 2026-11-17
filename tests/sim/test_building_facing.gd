@@ -115,7 +115,11 @@ func test_every_shipped_dock_and_exit_is_on_the_ring_of_a_square_footprint() -> 
 		var offsets: Array[Vector2i] = []
 		if world.type_dock_x[type] != 0 or world.type_dock_y[type] != 0:
 			offsets.append(Vector2i(world.type_dock_x[type], world.type_dock_y[type]))
-		if world.type_produces[type] >= World.Tab.INFANTRY:
+		# Research makes no unit, so the engineering centre has no exit (P249).
+		if (
+			world.type_produces[type] >= World.Tab.INFANTRY
+			and world.type_produces[type] != World.Tab.RESEARCH
+		):
 			offsets.append(Vector2i(world.type_exit_x[type], world.type_exit_y[type]))
 		for offset: Vector2i in offsets:
 			var label: String = "%s %s" % [world.type_names[type], offset]

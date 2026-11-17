@@ -318,7 +318,7 @@ func test_the_stage_button_shows_each_building_at_its_damage_stages() -> void:
 		assert_str(button.text).is_equal(page.STAGE_NAMES[0])
 		assert_int(page.find_children("Damage", "Sprite2D", true, false).size()).is_equal(0)
 		page.get_node("Next").pressed.emit()
-	assert_int(staged).is_equal(22)  # Both factions' eight, space centres, anti-air, airfields.
+	assert_int(staged).is_equal(24)  # Eight, space centres, anti-air, airfields, engineering.
 
 
 ## The body of a stage is trimmed at the integer ceil of the cut in texels, with the clip on, also

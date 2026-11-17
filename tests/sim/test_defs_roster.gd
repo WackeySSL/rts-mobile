@@ -23,9 +23,43 @@ const STRUCTURES: int = 0
 const INFANTRY: int = 1
 const VEHICLES: int = 2
 const FLIGHT: int = 3  ## The Flight tab, which the airfield produces (P245b).
+const RESEARCH: int = 4  ## The Research tab, which the engineering centre produces (P249).
 
 
-func test_the_data_holds_the_eleven_buildings_and_the_six_units() -> void:
+## The faction file lists the twenty types in the ADR's order (the renew file's order is pinned by
+## test_defs_roster_renew): the buildings first, the airfield and the engineering centre last of
+## them, then the infantry, the vehicles and the aircraft.
+func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
+	var wanted: Array[String] = [
+		"headquarters",
+		"power_plant",
+		"refinery",
+		"barracks",
+		"vehicle_factory",
+		"fossil_radar",
+		"defence_turret",
+		"fossil_strike",
+		"fossil_space",
+		"fossil_aa",
+		"fossil_airfield",
+		"fossil_engineering",
+		"rifle_squad",
+		"rocket_squad",
+		"light_tank",
+		"heavy_tank",
+		"artillery",
+		"harvester",
+		"fossil_fighter",
+		"fossil_bomber",
+	]
+	var faction: FactionDef = load("res://data/factions/fossil.tres")
+	var listed: Array[String] = []
+	for member: UnitDef in faction.roster:
+		listed.append(String(member.type_id))
+	assert_array(listed).is_equal(wanted)
+
+
+func test_the_data_holds_the_twelve_buildings_and_the_eight_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -41,6 +75,7 @@ func test_the_data_holds_the_eleven_buildings_and_the_six_units() -> void:
 		"fossil_space",
 		"fossil_aa",
 		"fossil_airfield",
+		"fossil_engineering",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -55,7 +90,7 @@ func test_the_data_holds_the_eleven_buildings_and_the_six_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 11)
+			id in wanted.slice(0, 12)
 		)
 
 
@@ -410,8 +445,12 @@ func test_the_cell_rule_accepts_the_ring_of_a_footprint_and_reports_inside_and_b
 
 
 func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() -> void:
-	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
-	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
+	var producers: Dictionary[int, Array] = {
+		STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: [], RESEARCH: []
+	}
+	var buildable: Dictionary[int, Array] = {
+		STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: [], RESEARCH: []
+	}
 	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var id: String = String(unit.type_id)
@@ -422,6 +461,8 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(producers[STRUCTURES]).is_equal(["headquarters"])
 	assert_array(producers[INFANTRY]).is_equal(["barracks"])
 	assert_array(producers[FLIGHT]).is_equal(["fossil_airfield"])
+	assert_array(producers[RESEARCH]).is_equal(["fossil_engineering"])
+	assert_array(buildable[RESEARCH]).is_empty()
 	assert_array(buildable[FLIGHT]).is_equal(["fossil_bomber", "fossil_fighter"])  # P245.
 	assert_array(producers[VEHICLES]).is_equal(["vehicle_factory"])
 	assert_array(buildable[STRUCTURES]).is_equal(
@@ -430,6 +471,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			"defence_turret",
 			"fossil_aa",
 			"fossil_airfield",
+			"fossil_engineering",
 			"fossil_radar",
 			"fossil_space",
 			"fossil_strike",
@@ -445,14 +487,13 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P245b rostered the airfield, P245 the fighter and the bomber.
+## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"fossil_engineering",
 				"fossil_transport",
 				"fossil_drone",
 				"fossil_bunk_wagon",

@@ -1,0 +1,64 @@
+<!-- item_plated_hull upgrade card: hand-written for plan row P249, no model behind it -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g stroke-width="2">
+<polygon points="8,2 120,2 126,8 126,120 120,126 8,126 2,120 2,8" fill="#1C2127" stroke="#2F363D"/>
+</g>
+<g>
+<polygon points="108,6 122,13 122,14.5 108,7.5" fill="#2A3036"/>
+<polygon points="76,6 122,29 122,30.5 76,7.5" fill="#2A3036"/>
+<polygon points="44,6 122,45 122,46.5 44,7.5" fill="#2A3036"/>
+<polygon points="12,6 122,61 122,62.5 12,7.5" fill="#2A3036"/>
+<polygon points="6,19 122,77 122,78.5 6,20.5" fill="#2A3036"/>
+<polygon points="6,35 122,93 122,94.5 6,36.5" fill="#2A3036"/>
+<polygon points="6,51 122,109 122,110.5 6,52.5" fill="#2A3036"/>
+<polygon points="6,67 116,122 116,123.5 6,68.5" fill="#2A3036"/>
+<polygon points="6,83 84,122 84,123.5 6,84.5" fill="#2A3036"/>
+<polygon points="6,99 52,122 52,123.5 6,100.5" fill="#2A3036"/>
+<polygon points="6,115 20,122 20,123.5 6,116.5" fill="#2A3036"/>
+<polygon points="6,13 20,6 20,7.5 6,14.5" fill="#2A3036"/>
+<polygon points="6,29 52,6 52,7.5 6,30.5" fill="#2A3036"/>
+<polygon points="6,45 84,6 84,7.5 6,46.5" fill="#2A3036"/>
+<polygon points="6,61 116,6 116,7.5 6,62.5" fill="#2A3036"/>
+<polygon points="6,77 122,19 122,20.5 6,78.5" fill="#2A3036"/>
+<polygon points="6,93 122,35 122,36.5 6,94.5" fill="#2A3036"/>
+<polygon points="6,109 122,51 122,52.5 6,110.5" fill="#2A3036"/>
+<polygon points="12,122 122,67 122,68.5 12,123.5" fill="#2A3036"/>
+<polygon points="44,122 122,83 122,84.5 44,123.5" fill="#2A3036"/>
+<polygon points="76,122 122,99 122,100.5 76,123.5" fill="#2A3036"/>
+<polygon points="108,122 122,115 122,116.5 108,123.5" fill="#2A3036"/>
+</g>
+<g>
+<polygon points="8,2 36,2 2,36 2,8" fill="#E8681F"/>
+</g>
+<!-- Shape: one steel shield with a rust double plate over its upper half, a team band across its middle, a second steel plate below it and six lamp rivets -->
+<g transform="translate(64 64) scale(0.9) translate(-64 -65)">
+  <path d="M64 18 L104 30 V62 C104 86 86 102 64 112 C42 102 24 86 24 62 V30 Z" fill="#51574D"/>
+  <path d="M64 18 L24 30 V62 C24 86 42 102 64 112 Z" fill="#828C7C"/>
+  <path d="M34 36 L64 28 L94 36 V60 H34 Z" fill="#6E5D50"/>
+  <path d="M34 36 L64 28 V60 H34 Z" fill="#867162"/>
+  <path d="M64 28 L94 36 V60 H64 Z" fill="#53463C"/>
+  <path d="M30 66 H98 V70 C98 84 84 96 64 104 C44 96 30 84 30 70 Z" fill="#6B7366"/>
+  <path d="M30 66 H64 V104 C44 96 30 84 30 70 Z" fill="#828C7C"/>
+  <polygon points="26,60 102,60 102,67 26,67" fill="#E8681F"/>
+  <polygon points="26,60 102,60 102,63 26,63" fill="#FF9446"/>
+  <circle cx="42" cy="44" r="3" fill="#FFF1D6"/>
+  <circle cx="64" cy="38" r="3" fill="#FFF1D6"/>
+  <circle cx="86" cy="44" r="3" fill="#FFF1D6"/>
+  <circle cx="44" cy="76" r="3" fill="#FFF1D6"/>
+  <circle cx="84" cy="76" r="3" fill="#FFF1D6"/>
+  <circle cx="64" cy="92" r="3" fill="#FFF1D6"/>
+</g>
+<g transform="translate(64 64) scale(0.9) translate(-64 -65)" fill="none" stroke-width="2.22" stroke-linejoin="round">
+  <path d="M64 18 L104 30 V62 C104 86 86 102 64 112 C42 102 24 86 24 62 V30 Z" stroke="#30342E"/>
+  <path d="M64 18 L24 30 V62 C24 86 42 102 64 112 Z" stroke="#30342E"/>
+  <path d="M34 36 L64 28 L94 36 V60 H34 Z" stroke="#322A24"/>
+  <path d="M30 66 H98 V70 C98 84 84 96 64 104 C44 96 30 84 30 70 Z" stroke="#30342E"/>
+  <polygon points="26,60 102,60 102,67 26,67" stroke="#B04B12"/>
+  <circle cx="42" cy="44" r="3" stroke="#736C60"/>
+  <circle cx="64" cy="38" r="3" stroke="#736C60"/>
+  <circle cx="86" cy="44" r="3" stroke="#736C60"/>
+  <circle cx="44" cy="76" r="3" stroke="#736C60"/>
+  <circle cx="84" cy="76" r="3" stroke="#736C60"/>
+  <circle cx="64" cy="92" r="3" stroke="#736C60"/>
+</g>
+</svg>
