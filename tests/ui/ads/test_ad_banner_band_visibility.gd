@@ -137,6 +137,20 @@ func test_enter_under_a_hidden_ancestor_shows_nothing_until_it_is_shown() -> voi
 	assert_int(_service._banner_requests).is_equal(0)
 
 
+func test_a_band_freed_while_its_bottom_check_waits_leaves_nothing_to_resume() -> void:
+	_make_service()
+	var band: AdBannerBand = await _add_band()
+	band._check_queued = true
+	band._check_bottom()
+	assert_bool(get_tree().process_frame.is_connected(band._check_bottom_now)).is_true()
+	_host.remove_child(band)
+	band.free()
+	# An await left pending here would log "Resumed function ... class instance is gone".
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(_service._banner_requests).is_equal(0)
+
+
 func _assert_collapsed(band: AdBannerBand, label: String) -> void:
 	# A hidden control is not laid out, so only the reserved minimum is checked.
 	assert_float(band.custom_minimum_size.y).append_failure_message(label).is_equal(0.0)

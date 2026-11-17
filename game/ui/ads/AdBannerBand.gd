@@ -18,7 +18,8 @@ extends Control
 ## A band that leaves and re-enters the tree in one frame (`reparent`) keeps the banner: AdService
 ## defers its last release to idle. After a turn the real banner is destroyed and loaded again at
 ## the new width by the backend (P405, ADR 0039 section 5); the band only follows the height it
-## reports. Never placed in the battle scene; the pause menu's foot is P435.
+## reports. Never placed in the battle scene, except at the foot of the open pause menu (P435): it
+## builds the band hidden, checks `preview_reserved_px` against its room and only then shows it.
 
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
 const CAPTION_TEXT: String = "Advertisement"
@@ -126,10 +127,19 @@ func gap_dp() -> float:
 ## The height the band reserves now, in base px, rounded up so rounding never eats the gap (0 when
 ## there is no banner).
 func reserved_px() -> float:
-	if _height_dp <= 0:
+	return _reserve_for(_height_dp)
+
+
+## What `reserved_px` would be once shown now (no request is made; 0 where no banner may show).
+func preview_reserved_px() -> float:
+	return _reserve_for(_bound.banner_height_preview_dp() if _bound != null else 0)
+
+
+func _reserve_for(height_dp: int) -> float:
+	if height_dp <= 0:
 		return 0.0
 	var caption: float = _caption.get_minimum_size().y
-	return ceilf(UiScale.dp(gap_dp()) + caption + UiScale.dp(float(_height_dp)))
+	return ceilf(UiScale.dp(gap_dp()) + caption + UiScale.dp(float(height_dp)))
 
 
 ## Takes the band's one show and reads the banner height. No-op while it already holds one.
@@ -177,12 +187,16 @@ func _layout() -> void:
 
 
 ## One frame after the host's layout has settled (a size change reaches the container through two
-## deferred steps): a shown band off the safe bottom is a host bug.
+## deferred steps): a shown band off the safe bottom is a host bug. A one-shot connection, not an
+## await: a band freed within that frame drops the connection instead of resuming a dead coroutine.
 func _check_bottom() -> void:
 	if not is_inside_tree():
 		_check_queued = false
 		return
-	await get_tree().process_frame
+	get_tree().process_frame.connect(_check_bottom_now, CONNECT_ONE_SHOT)
+
+
+func _check_bottom_now() -> void:
 	_check_queued = false
 	if is_inside_tree() and _height_dp > 0 and not is_at_safe_bottom():
 		push_error(

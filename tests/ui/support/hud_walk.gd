@@ -222,6 +222,7 @@ static func _begin_aim(suite: GdUnitTestSuite, main: Node2D) -> void:
 static func _visit(
 	suite: GdUnitTestSuite, main: Node2D, label: String, visit: Callable, turn: Turn = Turn.KEPT
 ) -> void:
+	await _foot_settles(suite, main)
 	visit.call(label, main)
 	if turn == Turn.NONE:  # The aim goes on: a turn would end it.
 		return
@@ -230,6 +231,7 @@ static func _visit(
 	var size: Vector2i = main.get_meta("size")
 	suite.get_window().size = Vector2i(size.y, size.x)
 	await frames(suite)
+	await _foot_settles(suite, main)
 	var why: String = "%s: after a turn to %s" % [label, suite.get_window().size]
 	if aiming:
 		var aim: StrikeAim = main.get_node("StrikeAim")
@@ -240,10 +242,18 @@ static func _visit(
 	visit.call(label + " turned", main)
 	suite.get_window().size = size
 	await frames(suite)
+	await _foot_settles(suite, main)
 	if not aiming:
 		suite.assert_dict(facts(main)).override_failure_message(label + ": turned back").is_equal(
 			kept
 		)
+
+
+## The pause menu's foot banner is shown a few frames after the menu opens or turns (P435).
+static func _foot_settles(suite: GdUnitTestSuite, main: Node2D) -> void:
+	if state(main).is_open(HudState.Unfold.PAUSE):
+		await frames(suite)
+		await frames(suite)
 
 
 ## What a turn keeps: the unfold and its pin, the drawer's tab, placement, the pause, the
@@ -388,6 +398,8 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 			if node.get_child_count() > 0:
 				found.append("%s holds a child: %s" % [node.get_path(), node.get_child(0).name])
 			continue
+		if node is AdBannerBand and _is_the_pause_banner(main, node as AdBannerBand):
+			continue  # P435: the one banner of the battle, at the foot of the open pause menu.
 		var script: Script = node.get_script()
 		var text: String = node.get_class().to_lower()
 		if script != null:
@@ -402,6 +414,22 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 				found.append("%s: %s" % [node.get_path(), text])
 				break
 	return found
+
+
+## P435's one exemption: exactly one band in the tree, upright, in the Foot of a PauseMenu, shown
+## and on the safe rect's bottom. Anything else (sideways, two, hidden, elsewhere) is a leak.
+static func _is_the_pause_banner(main: Node2D, band: AdBannerBand) -> bool:
+	var box: Node = band.get_parent()  # The foot's box, then the Foot, then the menu.
+	var foot: Node = null if box == null else box.get_parent()
+	var menu: Node = null if foot == null else foot.get_parent()
+	return (
+		menu is PauseMenu
+		and foot.name == &"Foot"
+		and main.get_tree().root.find_children("*", "AdBannerBand", true, false).size() == 1
+		and HudLayout.is_portrait()
+		and band.is_visible_in_tree()
+		and band.is_at_safe_bottom()
+	)
 
 
 static func size_of(main: Node2D) -> Vector2i:

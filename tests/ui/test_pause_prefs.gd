@@ -113,18 +113,41 @@ func test_no_vibrate_call_bypasses_the_gate() -> void:
 	assert_int(calls).is_greater_equal(5)
 
 
-## No ad on the pause menu or anywhere on the battle screen (admob-policy): no node of the ad
-## plugin or of `game/ads` in the scene, in the tree or in its file.
+## No ad on the battle screen (admob-policy) but the one banner at the foot of the OPEN pause menu
+## (P435): no node of the ad plugin or of `game/ads` in the scene file or, with the menu closed, in
+## the tree; open, the only one is an `AdBannerBand` under `PauseMenu`.
 func test_no_ad_in_the_battle_scene() -> void:
-	await _open()
 	var scene: String = FileAccess.get_file_as_string("res://scenes/main.tscn")
 	for word: String in ["game/ads", "AdService", "AdMob", "Admob", "Banner", "Interstitial"]:
 		assert_bool(scene.contains(word)).override_failure_message(word).is_false()
+	for size: Vector2i in [ScreenSizes.LANDSCAPE[0], ScreenSizes.PORTRAIT[0]]:
+		get_window().size = size
+		await await_idle_frame()
+		await _open()
+		assert_array(_ad_nodes()).override_failure_message(str(size)).is_empty()  # Closed.
+		for node: Node in _main.find_children("*", "", true, false):
+			assert_bool(node.get_class().to_lower().contains("admob")).is_false()
+		_pill().menu_pressed.emit()
+		for i: int in 4:
+			await await_idle_frame()
+		var found: Array[Node] = _ad_nodes()
+		for node: Node in found:
+			assert_bool(node is AdBannerBand and _menu().is_ancestor_of(node)).is_true()
+		# Exactly one upright where the foot is free, none sideways.
+		assert_int(found.size()).override_failure_message(str(size)).is_equal(
+			1 if size.y > size.x else 0
+		)
+		_main.free()
+		await await_idle_frame()
+
+
+func _ad_nodes() -> Array[Node]:
+	var found: Array[Node] = []
 	for node: Node in _main.find_children("*", "", true, false):
 		var script: Script = node.get_script()
-		var path: String = "" if script == null else script.resource_path
-		assert_bool(path.contains("/ads/")).override_failure_message(path).is_false()
-		assert_bool(node.get_class().to_lower().contains("admob")).is_false()
+		if script != null and script.resource_path.contains("/ads/"):
+			found.append(node)
+	return found
 
 
 ## A main scene on the Derrick League's Skirmish whose controller keeps its Commands in `_sent`.

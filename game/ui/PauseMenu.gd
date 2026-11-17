@@ -15,14 +15,18 @@ extends ModalFrame
 ## 5's start page; asks first) and, in a debug or `dev_menu` build, the Developer menu. Under them
 ## the toggle chips: Vibration only (saved by `HudPrefs`; Sound, Music and Settings come with
 ## Phase 5 and stay hidden). Upright the card is above the column; sideways it is to the left.
-## No ad, ever: this is the battle (admob-policy). The menu is laid out from the top and the foot
-## stays free, as Michael's design draws it (2026-11-05). No ad code is here.
+## The one ad of the battle screen (Michael, 2026-11-05; ADR 0039 section 6, plan P435): P430's
+## `AdBannerBand` at the foot of the open menu, only upright and only where the foot is free (the
+## content does not scroll and leaves the band's room, its 16 dp gap included). It is made when the
+## menu opens and freed when it closes, so no banner exists while the menu is closed; a resize or
+## a turn evaluates it again. The menu is laid out from the top. No rewarded or interstitial ad.
 ## The objective is one checklist line that stays open: the snapshot cannot tell "no enemy
 ## Headquarters" from "none built yet" and "no production building" from "none yet" without
 ## reading past the fog, and a won match closes the menu for the result screen.
 ## The result screen is later in the scene and covers this menu; the menu does not open once the
 ## match has ended.
 
+const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
@@ -65,6 +69,9 @@ const FALLBACK_SIDE: StringName = &"renew"
 @export var feed: HudStateFeed  ## Its `state` holds the PAUSE unfold.
 @export var pill: EconomyPill  ## Its menu button opens this menu.
 
+## Tests inject a service for the foot banner; null means the AdService autoload.
+var ad_service: AdServiceScript = null
+
 var _body: BoxContainer  ## The card's column and the button column.
 var _left: VBoxContainer  ## "PAUSED" and the card.
 var _actions: VBoxContainer  ## The buttons, and the toggle chips under them.
@@ -85,6 +92,9 @@ var _restart_dialog: ConfirmDialog
 var _surrender_dialog: ConfirmDialog
 var _exit_dialog: ConfirmDialog
 var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent in.
+var _foot: MarginContainer  ## The foot banner's host, freed with it; null while no band exists.
+var _band: AdBannerBand
+var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
 
 
 func _ready() -> void:
@@ -116,6 +126,8 @@ func _ready() -> void:
 	_exit_dialog = _make_dialog("EXIT TO MENU?", "You lose this match.", "EXIT", _open_dev_menu)
 	if pill != null:
 		pill.menu_pressed.connect(_on_menu_pressed)
+	for dialog: ConfirmDialog in [_restart_dialog, _surrender_dialog, _exit_dialog]:
+		dialog.visibility_changed.connect(_on_dialog_visibility)
 	feed.state.changed.connect(_on_changed)
 	runner.match_ended.connect(_on_match_ended)
 	_apply_dp()
@@ -200,6 +212,8 @@ func _apply_dp() -> void:
 		box.add_theme_constant_override("separation", gap)
 	for box: BoxContainer in _loose:
 		box.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	if visible:
+		_place_banner()  # A resize or a turn while open.
 	_left.size_flags_horizontal = (
 		Control.SIZE_EXPAND_FILL if _body.vertical else Control.SIZE_SHRINK_BEGIN
 	)
@@ -262,8 +276,10 @@ func _on_changed(previous: HudState.Unfold) -> void:
 			_show_vibration()
 			_hide_hud()
 			show_over(_resume)
+			_place_banner()
 	elif previous == HudState.Unfold.PAUSE:
 		runner.paused = false
+		_drop_banner()
 		_close_dialogs()
 		_restore_hud()
 		visible = false
@@ -332,6 +348,84 @@ func _restore_hud() -> void:
 		if is_instance_valid(control):
 			control.modulate = _hidden[control]
 	_hidden.clear()
+
+
+## The foot banner (P435). The band is built hidden, so it holds no show; two frames on, when the
+## layout has settled, it is shown only where the banner fits under the content (no scroll, its
+## 16 dp gap kept to the last button) and freed where it does not, so a drop never shows a banner.
+## Nothing sideways and nothing under an open confirm dialog. `hide_first` takes a shown band down
+## while a resize settles, so no banner stands unchecked; the band's own size change (a new banner
+## height) checks again without it.
+func _place_banner(hide_first: bool = true) -> void:
+	if not visible or not HudLayout.is_portrait() or _asking():
+		_drop_banner()
+		return
+	_foot_check += 1
+	var serial: int = _foot_check
+	if _band == null:
+		_foot = MarginContainer.new()
+		_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_foot.name = &"Foot"
+		add_child(_foot)
+		move_child(_foot, 2)  # Under the dialogs.
+		_foot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var box: VBoxContainer = VBoxContainer.new()
+		box.alignment = BoxContainer.ALIGNMENT_END
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_foot.add_child(box)
+		_band = AdBannerBand.new()
+		_band.visible = false
+		_band.service = ad_service
+		box.add_child(_band)
+		_band.minimum_size_changed.connect(_place_banner.bind(false))
+	elif hide_first:
+		_band.visible = false
+	_fit_foot()
+	_check_foot.call_deferred(serial, 2)
+
+
+## Waits `frames` more frames (no await: a menu freed meanwhile just stops) and then fits the band.
+func _check_foot(serial: int, frames: int) -> void:
+	if serial != _foot_check or _band == null:
+		return
+	if frames > 0:
+		get_tree().process_frame.connect(_check_foot.bind(serial, frames - 1), CONNECT_ONE_SHOT)
+		return
+	var content_end: float = column.global_position.y + column.get_combined_minimum_size().y
+	var room: float = UiScale.safe_rect_base().end.y - content_end
+	if room < _band.preview_reserved_px() - 0.5:
+		_drop_banner()
+	else:
+		_band.visible = true
+
+
+## The foot's margins: the safe rect's own sides, the bottom its own inset (not the larger of the
+## two, as SafeAreaMargin takes), as MenuScreen does, so the band lies on the safe rect's bottom.
+func _fit_foot() -> void:
+	var full: Rect2 = get_viewport().get_visible_rect()
+	var safe: Rect2 = UiScale.safe_rect_base().intersection(full)
+	var inset: Vector2i = SafeAreaMargin.inset_px(full, 0.0)
+	_foot.add_theme_constant_override("margin_left", inset.x)
+	_foot.add_theme_constant_override("margin_right", inset.x)
+	_foot.add_theme_constant_override("margin_bottom", ceili(maxf(full.end.y - safe.end.y, 0.0)))
+
+
+func _asking() -> bool:
+	return _restart_dialog.visible or _surrender_dialog.visible or _exit_dialog.visible
+
+
+func _on_dialog_visibility() -> void:
+	if visible:
+		_place_banner()
+
+
+func _drop_banner() -> void:
+	_foot_check += 1
+	if _foot != null:
+		remove_child(_foot)
+		_foot.free()
+	_foot = null
+	_band = null
 
 
 func _show_vibration() -> void:
