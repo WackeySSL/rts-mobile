@@ -77,7 +77,7 @@ func _show(on: bool) -> void:
 	_live = on
 	var keeps: bool = _takes_bonus() and not _done and _claimed_scope != null
 	visible = on or keeps
-	_button.modulate.a = 1.0 if on else 0.0
+	_button.modulate.a = float(on)  # Not a colour: 1 while shown, 0 while it only holds space.
 	_button.mouse_filter = Control.MOUSE_FILTER_STOP if on else Control.MOUSE_FILTER_IGNORE
 	_button.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
 	if on and not was:

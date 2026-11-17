@@ -144,6 +144,8 @@ func test_no_ad_in_the_battle_scene() -> void:
 func _ad_nodes() -> Array[Node]:
 	var found: Array[Node] = []
 	for node: Node in _main.find_children("*", "", true, false):
+		if node is DoubleXpOffer and node.get_parent().owner is ResultScreen:
+			continue  # The match result's rewarded offer (admob-policy matrix), never in the battle.
 		var script: Script = node.get_script()
 		if script != null and script.resource_path.contains("/ads/"):
 			found.append(node)

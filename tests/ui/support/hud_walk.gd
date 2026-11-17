@@ -400,6 +400,8 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 			continue
 		if node is AdBannerBand and _is_the_pause_banner(main, node as AdBannerBand):
 			continue  # P435: the one banner of the battle, at the foot of the open pause menu.
+		if node is DoubleXpOffer and node.get_parent().owner is ResultScreen:
+			continue  # The match result's rewarded offer (admob-policy matrix), never in the battle.
 		var script: Script = node.get_script()
 		var text: String = node.get_class().to_lower()
 		if script != null:
