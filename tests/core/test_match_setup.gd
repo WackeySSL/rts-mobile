@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## MatchSetup (plan P513, ADR 0042): the dictionary round trip, the refusal of malformed input, and
 ## `apply` giving the runner the state the old `DevRoutes.open_main_with` field writes gave it. The
-## bonus is carried and saved, and has no sim effect yet (plan P512).
+## bonus reaches the human seat through the runner (plan P512).
 
 const SCENARIO: String = DevRoutes.SKIRMISH_DERRICK
 const SEED: int = 4242
@@ -115,7 +115,7 @@ func test_apply_writes_the_seed_and_refuses_a_missing_scenario() -> void:
 	assert_object(untouched.scenario).is_null()
 
 
-func test_bonus_is_carried_with_no_sim_effect_yet() -> void:
+func test_the_bonus_reaches_the_human_seat_and_moves_the_hash() -> void:
 	var plain: MatchSetup = _setup()
 	plain.bonus_starting_credits = 0
 	var rich: MatchSetup = _setup()
@@ -123,12 +123,16 @@ func test_bonus_is_carried_with_no_sim_effect_yet() -> void:
 	var b: MatchRunner = _runner()
 	plain.apply(a)
 	rich.apply(b)
+	assert_array([b.bonus_credits, b.bonus_seat]).is_equal([500, 1])
 	a.start()
 	b.start()
+	assert_int(b.world.credits[1]).is_equal(a.world.credits[1] + 500)
+	assert_int(b.world.credits[2]).is_equal(a.world.credits[2])
+	assert_array(b.replay.bonus_credits).is_equal([0, 500, 0])
 	a.run_ticks(30)
 	b.run_ticks(30)
 	assert_int(b.world.tick).is_equal(30)
-	assert_int(b.last_hash).is_equal(a.last_hash)
+	assert_int(b.last_hash).is_not_equal(a.last_hash)
 	assert_int(MatchSetup.from_dict(rich.to_dict()).bonus_starting_credits).is_equal(500)
 
 

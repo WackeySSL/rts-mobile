@@ -39,8 +39,8 @@ var local_side: int = 0
 var opponents: Array[AiDef] = []
 var opponent_levels: Array[AiDifficultyDef] = []
 var first_opponent: int = MatchRunner.FIRST_OPPONENT
-## Credits added at the start by the Phase 6 offer, carried and saved here; the sim applies it from
-## plan P512 on, and nothing reads it before.
+## Credits added at the start by the Phase 6 offer, carried and saved here; `apply` hands it to the
+## runner, and the sim clamps it to `RulesDef.bonus_credits_max` (plan P512).
 var bonus_starting_credits: int = 0
 var map_id: StringName = &""
 var lesson_id: StringName = &""
@@ -70,6 +70,8 @@ func apply(runner: MatchRunner) -> Error:
 	runner.opponents = opponents.duplicate()
 	runner.opponent_levels = opponent_levels.duplicate()
 	runner.first_opponent = first_opponent
+	runner.bonus_credits = bonus_starting_credits
+	runner.bonus_seat = local_seat if local_seat != 0 else loaded.local_player
 	return OK
 
 
