@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/menu/menu.tscn" id="1_menu"]
+[ext_resource type="Script" path="res://game/ui/menu/MenuRoot.gd" id="2_root"]
+
+[node name="MainMenuRoot" instance=ExtResource("1_menu")]
+
+[node name="MenuRoot" type="Node" parent="." index="2"]
+script = ExtResource("2_root")
