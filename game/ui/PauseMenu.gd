@@ -241,7 +241,8 @@ func _apply_dp() -> void:
 	for box: BoxContainer in [_left, _actions, _pair, _leave] + _tight:
 		box.add_theme_constant_override("separation", gap)
 	_toggles.add_theme_constant_override("h_separation", gap)
-	_toggles.add_theme_constant_override("v_separation", gap)
+	# A wrapped chip row (a 360 dp phone upright) keeps half the gap, so the foot stays free.
+	_toggles.add_theme_constant_override("v_separation", roundi(UiScale.dp(TIGHT_DP / 2.0)))
 	for box: BoxContainer in _loose:
 		box.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	if visible:
