@@ -1411,6 +1411,43 @@ follow the anti-air building in each faction's roster (Structures tab; each need
   mirror, Lumen Accord mirror: 2314, 2258, 2238) and page 2 by 0, 2 and 0 (1514, 782, 814).
 - **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
 
+### The engineering centres (P249)
+
+The engineering centre of both factions (ADR 0036 sections 2, 10 and 15, docs/GDD.md): the Derrick League's **Draft Shop**
+(`fossil_engineering`) and the Lumen Accord's **Lens Works** (`renew_engineering`), each a 2 x 2 model with a hull, a
+KRITISK picture (`dmg2`), no SKADET picture (ADR 0034), no moving element, a cast shadow and an item card. They follow
+the airfield in each faction's roster (Structures tab; each needs the faction's airfield, the GDD's requirement) and
+open the Research tab of the build drawer.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_engineering` | A low concrete drafting hall under a saw-toothed rust roof with a wide team band between its wall segments, and in front of it an open steel test cradle that holds a fat olive bomb casing with team rings and a rust fin, beside a short concrete flue with a team band. |
+| `renew_engineering` | A low round white workshop drum with a glass ribbon, a wide team band and a stepped lid, and beside it a long white optical bench with a team band carrying one large round glass lens in a team-coloured ring on a slim titanium pedestal. |
+
+- **What says "research".** Both buildings carry one thing a bomber needs: the Draft Shop a bomb casing on a test
+  cradle (the upgrades are heavier bombs and a tougher hull), the Lens Works a lens on an optical bench. The
+  silhouettes share nothing with the airfields (no pads, no mast): a sawtooth roof and a tall flue against a round
+  drum and an upright lens disc.
+- **Team colour.** The hall band, the two bomb rings and the flue band (Draft Shop); the drum band, the bench band,
+  the lens ring and the cabinet band (Lens Works). Never a roof plate (`test_artgen_plates.gd`). Team share of the
+  default view at zoom 1: 10.0 % (Draft Shop) and 8.9 % (Lens Works), in the rule's 8 to 12 %
+  (`tests/art/test_engineering_art.gd`).
+- **KRITISK.** The hall or the drum is broken down to a stub with rebar (the roof, the hall band, the flue and the lens
+  with its ring and pedestal are gone, the bomb casing is charred), the foundation stays. The two bomb rings and the
+  flue band (Draft Shop), the bench band and the cabinet band (Lens Works) stay, so the picture keeps 0.30 (Draft
+  Shop) and 0.45 (Lens Works) of the intact team colour, inside ADR 0029's 20 to 50 %. The damage points sit on the
+  ruin, the flue or cabinet and the lens stub.
+- **Canvas.** Hull 256 x 168 (anchor y 40) and 256 x 156 (anchor y 31), KRITISK patch 250 x 136 and shadow 328 x 166, in px
+  (the SVG sizes; the atlas rasterises them at 2x). Page 1 of the atlas grows by 53, 21 and 28 rows (cross-faction, Derrick League
+  mirror, Lumen Accord mirror: 2367, 2279, 2266) and page 2 by 60, 64 and 46 (2046, 1158, 1244): the 60 rows of
+  the cross page are the lead's allocation for this row.
+- **The four research cards** (`item_heavy_bombs`, `item_plated_hull`, `item_focus_bombs`, `item_glaze_hull`, 128 x 128
+  beside the generated cards) are written by hand on the same plate, grid and key-colour corner: a fat olive bomb with
+  two team rings under two rising chevrons (Heavy Bombs), a steel shield with a rust plate, a team band and rivets
+  (Plated Hull), a slim white bomb inside two team focus rings (Focus Bombs) and a hexagonal white shield with a glass
+  hexagon and a team band (Glaze Hull). `test_artgen.gd` lists them as the only hand-written files under `iso/icons`.
+- **Gallery.** The Build page and the Iso page list them by themselves, the generated item cards show on the Build page.
+
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
 64 px. Each tile is dirt #8A6F4D to every edge, with speckles in the two new dirt tones and gold
@@ -1830,6 +1867,8 @@ in doubt, choose a plainer real-world form.
 | Sky Needle | A slim white hexagonal column with a team band and a mint lamp, carrying a small hexagonal head from which one very long thin glass needle leans steeply skyward, braced by a ceramic strut and ringed by three graphite collars. | `iso/renew/bld/renew_aa_{hull,shadow}.svg`, `renew_aa_head_d00..d15.svg`, 128 wide |
 | Flight Yard | A flat concrete apron with four square landing pads ringed in team orange at its corners, a long low concrete hangar under a rust roof with a wide team band between them, and a slim open steel mast with a team-banded lamp cab at its edge, beside two olive fuel drums with team rings. | `iso/fossil/bld/fossil_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Glide Deck | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. | `iso/renew/bld/renew_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
+| Draft Shop | A low concrete drafting hall under a saw-toothed rust roof with a wide team band between its wall segments, and in front of it an open steel test cradle that holds a fat olive bomb casing with team rings and a rust fin, beside a short concrete flue with a team band. | `iso/fossil/bld/fossil_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
+| Lens Works | A low round white workshop drum with a glass ribbon, a wide team band and a stepped lid, and beside it a long white optical bench with a team band carrying one large round glass lens in a team-coloured ring on a slim titanium pedestal. | `iso/renew/bld/renew_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
@@ -2958,3 +2997,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-15 | v1.39 (P245, art-director, ADR 0036 sections 2, 5 and 15): the Torchjet (`fossil_fighter`), Drillhead (`fossil_bomber`), Glint (`renew_fighter`) and Sunfall (`renew_bomber`), the fighter and the bomber of both factions, as `veh` models with a 16-direction hull, a cast shadow, an item card and a lift (`fly_px` 26 and 22), the new model fields `fly_px` and `low_fly_px`, no tight boxes on an aircraft's sheet, their roster entries after the tanker (the Flight tab), the Iso page drawing a flyer's hull above its shadow ("The aircraft" under "Generated art", Catalogue rows), page 2 of the atlas 1514, 782 and 814 to 1986, 1094 and 1198 (page 1 unchanged). |
 | 2026-11-15 | v1.40 (P248, touch-ux-dev): `tab_research.svg` (the Research tab of the build drawer, a flask), white and grey like its group; not on the gallery's pages yet (art-director's follow-up). |
 | 2026-11-16 | v1.41 (P520, art-director, ADR 0043 sections 1 and 2): the intro art. `assets/art/svg/intro/` holds seventeen layers of the app icon, generated by `bash scripts/gen-intro.sh` (`tools/artgen/ArtIntro.gd`) and never edited: `sky`, `ring`, `sweep` and `ground` from `icon_background.svg` (the ground paints over the ring's lower arc, so the ring sits between two background layers) and `shadow`, `underlay`, `track_far`, `cleats_far`, `hull`, `track_near`, `cleats_near`, `hull_deck`, `turret`, `gun`, `rim_light`, `clods` and `sparks` from `icon_foreground.svg`. `assets/art/splash/boot_splash.png` (1024 x 1024) is the icon 1:1 on `#06080C` with AppCode ApS's white wordmark at 30 % of the icon's width under it; one lockup fits all six sizes of ADR 0015 section 6 at Godot's `Keep` stretch mode, so the mark-beside-wordmark variant is not used. The brand SVGs are only rendered from, never edited or loaded at runtime. Follow-up: the intro layers and the splash are not on `scenes/dev/art_gallery.tscn` yet (shared with the 4b art rows); a later row adds a page. |
+| 2026-11-17 | v1.42 (P249, art-director, ADR 0036 sections 2, 10 and 15): the Draft Shop (`fossil_engineering`) and the Lens Works (`renew_engineering`), the engineering centre of both factions, as 2 x 2 models with a KRITISK picture and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the airfield ("The engineering centres" under "Buildings", Catalogue rows); `FactionDef.upgrades` filled; the sorted world's page 1 2314, 2258 and 2238 to 2367, 2279 and 2266 and page 2 1986, 1094 and 1198 to 2046, 1158 and 1244 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

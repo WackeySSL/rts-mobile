@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"fossil_engineering"
+faction = &"fossil"
+category = &"bld"
+footprint = 2
+silhouette = "A low concrete drafting hall under a saw-toothed rust roof with a wide team band between its wall segments, and in front of it an open steel test cradle that holds a fat olive bomb casing with team rings and a rust fin, beside a short concrete flue with a team band."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 1.92 1.92 0.06",
+"box hull concrete 0.1 -0.42 0.06 1.5 0.96 0.1 group=hall",
+"box hull team 0.1 -0.42 0.16 1.56 1.02 0.22 group=hallband",
+"box hull concrete 0.1 -0.42 0.38 1.5 0.96 0.06 group=hall",
+"wedge hull rust -0.4 -0.42 0.44 0.5 1.04 0.22 slope=1 group=roof",
+"wedge hull rust 0.1 -0.42 0.44 0.5 1.04 0.22 slope=1 group=roof",
+"wedge hull rust 0.6 -0.42 0.44 0.5 1.04 0.22 slope=1 group=roof",
+"box hull lamp 0.5 0.07 0.1 0.22 0.02 0.14",
+"box hull iron 0.5 0.07 0.06 0.3 0.02 0.04",
+"box hull concrete -0.72 0.62 0.06 0.3 0.3 0.14 group=flue",
+"box hull team -0.72 0.62 0.2 0.34 0.34 0.12 group=flueband",
+"box hull concrete -0.72 0.62 0.32 0.3 0.3 0.62 group=flue",
+"box hull iron -0.72 0.62 0.94 0.36 0.36 0.05 group=flue",
+"box hull steel -0.1 0.52 0.06 0.07 0.07 0.3 group=cradle",
+"box hull steel -0.1 0.78 0.06 0.07 0.07 0.3 group=cradle",
+"box hull steel 0.5 0.52 0.06 0.07 0.07 0.3 group=cradle",
+"box hull steel 0.5 0.78 0.06 0.07 0.07 0.3 group=cradle",
+"box hull steel -0.1 0.65 0.32 0.07 0.33 0.06 group=cradle",
+"box hull steel 0.5 0.65 0.32 0.07 0.33 0.06 group=cradle",
+"prism hull olive 0.2 0.65 0.38 0.9 0.3 0.3 sides=8 axis=x group=bomb",
+"prism hull team 0.0 0.65 0.36 0.2 0.36 0.34 sides=8 axis=x group=bombring",
+"prism hull team 0.4 0.65 0.36 0.2 0.36 0.34 sides=8 axis=x group=bombring",
+"prism hull olive 0.75 0.65 0.38 0.2 0.3 0.3 sides=8 axis=x taper=0.4 group=bomb",
+"box hull rust -0.28 0.65 0.38 0.14 0.04 0.3 group=bomb",
+"box hull rust -0.28 0.65 0.51 0.14 0.34 0.04 group=bomb",
+"broken hull concrete 0.1 -0.42 0.06 1.5 0.96 0.4 teeth=7 low=0.3 damage=2 group=k2",
+"rod hull rebar -0.2 -0.6 0.4 -0.2 -0.6 0.95 3 bend=30 damage=2 group=k2",
+"rod hull beam 0.5 -0.2 0.4 0.5 -0.2 0.8 3 bend=-35 damage=2 group=k2",
+"box hull rust 0.5 0.0 0.06 0.5 0.4 0.06 damage=2 group=k2",
+"broken hull concrete -0.72 0.62 0.06 0.3 0.3 0.4 teeth=4 low=0.3 damage=2 group=k2",
+"rod hull steel -0.1 0.52 0.06 0.5 0.9 0.16 3 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"dmg2 0 roof hide",
+"dmg2 0 hall hide",
+"dmg2 0 hallband hide",
+"dmg2 0 flue hide",
+"dmg2 0 bomb char 100"
+)
+emitters = PackedStringArray(
+"damage 0.1 -0.42 0.5",
+"dmg_gas -0.72 0.62 0.3",
+"dmg_spark 0.5 0.0 0.2"
+)

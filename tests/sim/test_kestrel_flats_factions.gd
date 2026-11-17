@@ -62,10 +62,11 @@ func test_every_roster_type_of_a_start_has_its_players_faction() -> void:
 					String(faction.id)
 				)
 				types += 1
-		# Both rosters are registered, and nothing else: nineteen types each (38; 34 before P245
-		# put the fighters and bombers in the rosters, 32 before P245b, 30 before P239b).
-		assert_int(types).is_equal(38)
-		assert_int(world.type_ids.size()).is_equal(38)
+		# Both rosters are registered, with their research types and nothing else: twenty-two types
+		# each (44: twenty roster types and the two upgrades; 38 before P249 put the engineering
+		# centres and the research in, 34 before P245, 32 before P245b, 30 before P239b).
+		assert_int(types).is_equal(40)
+		assert_int(world.type_ids.size()).is_equal(44)
 		assert_array(world.faction_ids).contains_exactly_in_any_order([&"fossil", &"renew"])
 
 
@@ -108,12 +109,13 @@ func test_every_buildable_type_of_the_other_faction_is_dropped_and_counted() -> 
 					var command: Command = Command.queue(player, _type(world, unit.type_id))
 					command.sequence = commands.size()
 					commands.append(command)
-			# Eighteen items (sixteen before P245 added the fighter and the bomber, fifteen before
+			# Nineteen items (eighteen before P249 added the engineering centre, sixteen before P245 added
+			# the fighter and the bomber, fifteen before
 			# P245b added the airfield): the headquarters is the one type nothing builds.
-			assert_int(commands.size()).is_equal(18)
+			assert_int(commands.size()).is_equal(19)
 			var label: String = "%s player %d" % [path, player]
 			ProdRig.step(world, commands)
-			assert_int(world.dropped_commands).override_failure_message(label).is_equal(18)
+			assert_int(world.dropped_commands).override_failure_message(label).is_equal(19)
 			for tab: int in World.TABS:
 				var queue: int = ProdRig.queue_of(player, tab)
 				assert_int(world.queue_count[queue]).override_failure_message(label).is_equal(0)
