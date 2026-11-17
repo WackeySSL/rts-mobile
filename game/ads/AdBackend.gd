@@ -37,6 +37,9 @@ const KIND_REWARDED: StringName = &"rewarded"
 ## AdService sets it to its consent gate. A real backend asks it before every load and starts none
 ## while it answers false (a load that waited for the SDK included).
 var can_request_ads: Callable = func() -> bool: return true
+## AdService sets it to "a band still asks for the banner". A backend makes no native banner while
+## it answers false (the window between the last release and AdService's deferred destroy).
+var banner_wanted: Callable = func() -> bool: return true
 
 
 ## True only when the OS is Android, not the editor, the plugin's singleton exists and the build
@@ -78,12 +81,15 @@ func show_banner() -> void:
 	pass
 
 
+## Out of sight, view kept. AdService no longer calls it (the last release destroys); a backend
+## keeps it so a caller may hide for a moment.
 func hide_banner() -> void:
 	pass
 
 
 ## Takes the banner view away for good (Remove ads, consent withdrawn), not just out of sight; a
-## later `show_banner` builds a new one. `hide_banner` keeps the loaded view for a quick return.
+## later `show_banner` builds a new one (at most one native create per `banner_reload_min_ms`).
+## AdService calls it on the last release at idle, so no native banner survives into battle.
 func destroy_banner() -> void:
 	hide_banner()
 

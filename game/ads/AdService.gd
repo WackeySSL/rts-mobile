@@ -110,6 +110,7 @@ static func _default_auto_close(display_name: String) -> bool:
 func _init() -> void:
 	_consent.settled.connect(_set_can_request)
 	_backend.can_request_ads = func() -> bool: return _can_request_ads
+	_backend.banner_wanted = func() -> bool: return _banner_requests > 0
 	_backend.banner_height_changed.connect(_refresh_banner)
 	_runs.opened.connect(ad_opened.emit)
 	_runs.closed.connect(ad_closed.emit)
@@ -303,9 +304,8 @@ func _refresh_banner() -> void:
 		_banner_alive = false
 		_banner_shown = false
 		_backend.destroy_banner()
-	elif _banner_shown:
-		_banner_shown = false
-		_backend.hide_banner()
+	# No hide branch: a shown banner that may not show means Remove ads, no consent or no request
+	# left, and each of those is the destroy branch above.
 	if height != _banner_height:
 		_banner_height = height
 		banner_changed.emit(height)
