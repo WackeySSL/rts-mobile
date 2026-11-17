@@ -13,7 +13,7 @@ const TOLERANCE_PX: float = 0.5
 const PORTRAIT_CUTOUT: Rect2i = Rect2i(0, 100, 1080, 2137)
 
 var _window_size_before: Vector2i
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 var _menu: Control
 var _stack: MenuStack
 var _screen: MenuScreen

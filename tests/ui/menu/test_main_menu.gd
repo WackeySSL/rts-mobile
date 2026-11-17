@@ -14,7 +14,7 @@ const TOLERANCE_PX: float = 0.5
 const VERSION_KEY: String = "application/config/version"
 
 var _window_size_before: Vector2i
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 var _dir: String = ""
 var _menu: Control
 var _stack: MenuStack
