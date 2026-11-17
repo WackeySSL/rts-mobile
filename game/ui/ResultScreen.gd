@@ -10,8 +10,8 @@ extends ModalFrame
 ## paid and the rank bar filling from the old XP to the new (a rank-up restarts the bar in the new
 ## rank, ADR 0045), and plays the victory or defeat sting once. Sideways the banner and the table
 ## stand side by side, upright one above the other.
-## The `OfferSlot` under the table is a VBoxContainer that is hidden and 0 tall while it holds
-## nothing; Phase 6 puts its widget in it. This script calls no ad.
+## The `OfferSlot` under the table (game/ui/menu/OfferSlot.gd) is hidden and 0 tall while it holds
+## no visible child; Phase 6 puts its widget in it. This script calls no ad.
 
 const MenuFlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
@@ -28,7 +28,8 @@ const STAT_NAMES: Array[String] = [
 @export var runner: MatchRunner
 ## Tests inject these before the match ends; null means the autoloads. `rank_xp` is the XP each
 ## rank starts at (from `data/meta/progression.tres` when empty).
-var flow: MenuFlowScript = null
+var flow: MenuFlowScript = null:
+	set = _set_flow
 var progression: ProgressionScript = null
 var audio: AudioServiceScript = null
 var rank_xp: PackedInt32Array = PackedInt32Array()
@@ -44,7 +45,7 @@ var _xp_shown: bool = false
 var _fill: Tween
 var _sting_played: bool = false
 var _leaving: bool = false
-var _offer_slot: VBoxContainer
+var _offer_slot: OfferSlot
 var _body: BoxContainer
 var _emblem: TextureRect
 var _title: Label
@@ -83,20 +84,15 @@ func _ready() -> void:
 	_rank_up.name = &"RankUp"
 	_rank_up.visible = false
 	_body.add_child(_grid)
-	_offer_slot = VBoxContainer.new()
-	_offer_slot.name = &"OfferSlot"
-	_offer_slot.visible = false  # Empty: no gap in the column. Phase 6's widget shows it.
-	_offer_slot.child_order_changed.connect(_offer_slot_changed)
-	column.add_child(_offer_slot)
+	_offer_slot = OfferSlot.add_to(column, self)  # Empty; Phase 6 (P432) fills it.
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
 	_again = add_button(row, "PLAY AGAIN", _play_again)
 	_again.name = &"PlayAgainButton"
 	add_button(row, "BACK", _back).name = &"BackButton"
-	flow = flow if flow != null else (MenuFlow as MenuFlowScript)
+	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
 	progression = progression if progression != null else (Progression as ProgressionScript)
 	audio = audio if audio != null else (AudioService as AudioServiceScript)
-	flow.match_scored.connect(_on_match_scored.unbind(2))
 	runner.match_ended.connect(_on_match_ended)
 	_apply_dp()
 
@@ -152,8 +148,12 @@ func _owns() -> bool:
 	return flow != null and flow.current_runner() == runner
 
 
-func _offer_slot_changed() -> void:
-	_offer_slot.visible = _offer_slot.get_child_count() > 0
+func _set_flow(value: MenuFlowScript) -> void:
+	if flow != null and flow.match_scored.is_connected(_on_match_scored):
+		flow.match_scored.disconnect(_on_match_scored)
+	flow = value
+	if flow != null:
+		flow.match_scored.connect(_on_match_scored)
 
 
 ## The victory or the defeat sting, once per ended match; a draw is not a win.
@@ -164,7 +164,10 @@ func _play_sting(result: String) -> void:
 	audio.play_music(&"victory" if result == "victory" else &"defeat")
 
 
-func _on_match_scored() -> void:
+## The award can arrive after the screen showed (a score that lands late): the block shows then.
+## TODO P432: the screen does not follow `Progression.xp_changed`, so a Double XP bonus taken while
+## it is open does not move the bar.
+func _on_match_scored(_summary: MatchSummary, _award: XpAward) -> void:
 	if visible:
 		_show_xp()
 
@@ -278,7 +281,9 @@ func _play_again() -> void:
 		)
 		return
 	_leaving = true
-	await flow.restart()
+	var error: Error = await flow.restart()
+	if error != OK:  # Refused (busy, a bad setup): the buttons stay live.
+		push_warning("ResultScreen: restart refused (%s)" % error_string(error))
 	_leaving = false
 
 

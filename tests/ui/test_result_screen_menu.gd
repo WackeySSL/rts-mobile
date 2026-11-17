@@ -162,11 +162,62 @@ func test_the_sting_plays_once_per_match_by_outcome() -> void:
 	assert_array(_audio.played).is_equal([&"defeat"])  # A draw is not a win.
 
 
+func test_the_xp_shows_when_the_score_lands_before_the_end() -> void:
+	await _open(130, 30)  # The real order on main: MenuFlow scores first, then the screen shows.
+	_flow.match_scored.emit(null, _flow.award)
+	var box: Control = _screen().find_child("XpBox", true, false)
+	assert_bool(box.visible).is_false()  # Still hidden: the match has not ended for the screen.
+	MatchRig.end(_main, [2])
+	assert_bool(box.visible).is_true()
+	assert_str(_texts(box)[0]).is_equal("+30 XP")
+
+
+func test_the_xp_shows_when_the_award_arrives_after_the_screen() -> void:
+	await _open(130, 30)
+	var award: XpAward = _flow.award
+	_flow.award = null
+	MatchRig.end(_main, [2])
+	var box: Control = _screen().find_child("XpBox", true, false)
+	assert_bool(box.visible).is_false()
+	_flow.award = award
+	_flow.match_scored.emit(null, award)
+	assert_bool(box.visible).is_true()
+	assert_str(_texts(box)[0]).is_equal("+30 XP")
+	_flow.match_scored.emit(null, award)  # A second score does not restart the fill.
+	assert_bool(box.visible).is_true()
+
+
+func test_a_refused_call_leaves_the_buttons_live_for_the_next_tap() -> void:
+	await _open(130, 30)
+	MatchRig.end(_main, [2])
+	var screen: ResultScreen = _screen()
+	var back: Button = screen.find_child("BackButton", true, false)
+	var again: Button = screen.find_child("PlayAgainButton", true, false)
+	_flow.refuse = ERR_BUSY
+	await (
+		assert_error(func() -> void: again.pressed.emit())
+		. is_push_warning("ResultScreen: restart refused (Busy)")
+	)
+	assert_int(_flow.restarts).is_equal(1)
+	back.pressed.emit()
+	await await_idle_frame()
+	assert_int(_flow.leaves).is_equal(1)
+	_flow.refuse = OK  # Both calls were refused at once, so these taps go through.
+	again.pressed.emit()
+	assert_int(_flow.restarts).is_equal(2)
+	_flow.release.emit()
+	await await_idle_frame()
+	back.pressed.emit()
+	assert_int(_flow.leaves).is_equal(2)
+	_flow.release.emit()
+
+
 func test_the_offer_slot_exists_empty_and_0_tall_until_something_is_put_in() -> void:
 	await _open(130, 30)
 	MatchRig.end(_main, [2])
-	var slot: VBoxContainer = _screen().find_child("OfferSlot", true, false) as VBoxContainer
+	var slot: OfferSlot = _screen().find_child("OfferSlot", true, false) as OfferSlot
 	assert_object(slot).is_not_null()
+	assert_object(slot.owner).is_same(_screen())
 	assert_int(slot.get_child_count()).is_equal(0)
 	assert_float(slot.get_combined_minimum_size().y).is_equal(0.0)
 	assert_bool(slot.is_visible_in_tree()).is_false()
