@@ -83,6 +83,8 @@ var _head_ready: bool = false
 var _mend_below: int = 0
 var _mend_floor: int = 0
 var _mend_on: PackedInt32Array = PackedInt32Array()
+## Whether the level uses the repair building (`repair_retreat_percent` above 0), P283.
+var _repair_wanted: bool = false
 
 
 ## An economy for `player_id` on `def` at `level`, which it copies and does not keep.
@@ -108,6 +110,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._defences_max = level.defences_max
 	economy._mend_below = maxi(level.mend_below_percent, 0)
 	economy._mend_floor = maxi(level.mend_floor, 0)
+	economy._repair_wanted = level.repair_retreat_percent > 0
 	economy._spiral = PlacementSpiral.cells(def.spiral_slots)
 	return economy
 
@@ -143,6 +146,7 @@ func _resolve(view: PlayerView) -> void:
 		if type != _NONE and view.type_tab[type] >= 0:
 			_order.append(type)
 	var faction: int = view.type_faction[_hq_type] if _hq_type != _NONE else _NO_FACTION
+	_add_repair_building(view, faction)
 	var cheapest: int = 0
 	for type: int in view.type_cost.size():
 		if view.type_tab[type] != PlayerView.Tab.STRUCTURES or view.type_foot_w[type] <= 0:
@@ -156,6 +160,22 @@ func _resolve(view: PlayerView) -> void:
 			_refinery_type = type
 		if view.type_produces[type] == PlayerView.Tab.VEHICLES and _factory_type == _NONE:
 			_factory_type = type
+
+
+## The faction's repair building (found by its role, so none before its art), put into the order
+## right after the first step a vehicle tab builds on (the vehicle factory), else at its end, once.
+func _add_repair_building(view: PlayerView, faction: int) -> void:
+	if not _repair_wanted:
+		return
+	var repair: int = AiRepair.repair_building_of(view, faction)
+	if repair == _NONE or _order.has(repair):
+		return
+	var at: int = _order.size()
+	for index: int in _order.size():
+		if view.type_produces[_order[index]] == PlayerView.Tab.VEHICLES:
+			at = index + 1
+			break
+	_order.insert(at, repair)
 
 
 ## One pass over the player's rows: the census of the header. False when there is nothing to do: the

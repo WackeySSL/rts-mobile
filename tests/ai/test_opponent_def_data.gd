@@ -15,7 +15,9 @@ const FROZEN_UNIT_DIR: String = "res://data/dev/arena/units/"
 const TIER_NAMES: Array[String] = ["weak", "standard", "strong"]
 ## The fields that are off by default, with their script defaults (P274): the frozen arena's level
 ## files name none of them, so they play as before; the shipped files turn them on.
-const _OFF_BY_DEFAULT: Dictionary[String, int] = {"mend_below_percent": 0, "mend_floor": 0}
+const _OFF_BY_DEFAULT: Dictionary[String, int] = {
+	"mend_below_percent": 0, "mend_floor": 0, "repair_retreat_percent": 0, "medic_per_squads": 0
+}
 ## ADR 0030 section 6's table (its two mend rows from P274, ADR 0037 section 4): per level, in the
 ## field order of `_LEVEL_FIELDS`.
 const _LEVEL_FIELDS: Array[String] = [
@@ -40,11 +42,14 @@ const _LEVEL_FIELDS: Array[String] = [
 	"uses_strike",
 	"mend_below_percent",
 	"mend_floor",
+	"repair_retreat_percent",
+	"medic_per_squads",
 	"commands_per_think_max",
 	"income_percent",
 ]
 const _LEVELS: Dictionary[String, Array] = {
-	"easy": [0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
+	"easy":
+	[0, 90, 1, 1, 1, 1, 0, 0, 6300, 2000, 10, 450, 12600, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 100],
 	"normal":
 	[
 		1,
@@ -68,6 +73,8 @@ const _LEVELS: Dictionary[String, Array] = {
 		1,
 		50,
 		400,
+		40,
+		4,
 		8,
 		100
 	],
@@ -94,6 +101,8 @@ const _LEVELS: Dictionary[String, Array] = {
 		1,
 		70,
 		250,
+		50,
+		3,
 		12,
 		100
 	],

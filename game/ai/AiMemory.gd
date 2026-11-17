@@ -9,8 +9,9 @@ extends RefCounted
 
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
-## The owners of a goal key: the staging point (rally, retreat), the army goal and the scout's way.
-enum Owner { STAGING, ARMY, SCOUT }
+## The owners of a goal key: the staging point (rally, retreat), the army goal, the scout's way and
+## the repair building and the medics' wave goal (`AiRepair`, P283).
+enum Owner { STAGING, ARMY, SCOUT, REPAIR }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 ## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).

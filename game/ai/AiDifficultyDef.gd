@@ -50,6 +50,14 @@ extends Resource
 ## nothing goes on whatever they are). It never switches off. Easy mends nothing.
 @export var mend_below_percent: int = 0
 @export var mend_floor: int = 0
+## Ground support (ADR 0037 sections 5 and 6, plan row P283; off by default like the mend pair, so
+## the `perf_ai` frozen files play as before). `repair_retreat_percent`: `AiRepair` sends a damaged
+## own ground vehicle that is not in a wave's fight to the repair building with `REPAIR` while its
+## hp is under this percent of the maximum (0 = never), and back to the staging point when repaired.
+## `medic_per_squads`: `AiProduction` keeps one medic squad per this many own armed infantry squads
+## (0 = none), and `AiRepair` sends the medics with each wave. Easy uses neither.
+@export var repair_retreat_percent: int = 0
+@export var medic_per_squads: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).

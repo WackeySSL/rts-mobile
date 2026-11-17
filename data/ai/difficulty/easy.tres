@@ -26,5 +26,7 @@ counter_percent = 0
 uses_strike = 0
 mend_below_percent = 0
 mend_floor = 0
+repair_retreat_percent = 0
+medic_per_squads = 0
 commands_per_think_max = 3
 income_percent = 100

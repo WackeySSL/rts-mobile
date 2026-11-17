@@ -26,5 +26,7 @@ counter_percent = 30
 uses_strike = 1
 mend_below_percent = 50
 mend_floor = 400
+repair_retreat_percent = 40
+medic_per_squads = 4
 commands_per_think_max = 8
 income_percent = 100
