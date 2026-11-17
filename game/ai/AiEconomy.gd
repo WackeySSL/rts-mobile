@@ -191,8 +191,7 @@ func _resolve(view: PlayerView) -> void:
 			_factory_type = type
 
 
-## `_tech`: a building that holds aircraft (pads) or produces the FLIGHT or RESEARCH tab, or
-## sweeps the map.
+## `_tech`: a building that produces the FLIGHT (an airfield) or RESEARCH tab, or sweeps the map.
 func _find_tech(view: PlayerView) -> void:
 	_tech.resize(view.type_cost.size())
 	for type: int in _tech.size():
@@ -201,8 +200,7 @@ func _find_tech(view: PlayerView) -> void:
 			(
 				view.type_foot_w[type] > 0
 				and (
-					view.type_pads[type] > 0
-					or tab == PlayerView.Tab.FLIGHT
+					tab == PlayerView.Tab.FLIGHT
 					or tab == PlayerView.Tab.RESEARCH
 					or view.type_strike_kind[type] == _REVEAL_KIND
 				)
