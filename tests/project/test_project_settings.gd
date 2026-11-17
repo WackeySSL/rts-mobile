@@ -78,5 +78,11 @@ func test_android_does_not_turn_touches_into_other_events() -> void:
 		assert_bool(_setting(setting_name)).is_false()
 
 
+## The version string the main menu shows (Michael, 2026-11-16). The Android export's version name
+## and code are release work and not pinned here.
+func test_the_version_string_is_beta_1() -> void:
+	assert_str(_setting("application/config/version")).is_equal("Beta 1")
+
+
 func _setting(setting_name: String) -> Variant:
 	return ProjectSettings.get_setting(setting_name)
