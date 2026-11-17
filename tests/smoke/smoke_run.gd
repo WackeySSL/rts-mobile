@@ -20,7 +20,8 @@ extends RefCounted
 ## `flow_full_ticks` and `players`, one entry per player in player order. A player has `player`,
 ## `faction`, `seat`, `ai` (the AiDef id), `level`, `credits`, `units` and `buildings` (the rows
 ## alive at the end), `built`, `lost_units`, `lost_buildings`, `harvested`, `defeated_tick`, the
-## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`) and the
+## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`), its
+## `kills_by_layer` map, `reveals` and `research` (P254; added keys, schema 2 unchanged) and the
 ## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")

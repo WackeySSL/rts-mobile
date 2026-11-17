@@ -278,6 +278,7 @@ static func summarize(
 			"max": 0 if lengths.is_empty() else lengths[-1],
 		},
 		"types": _types(matches, rosters),
+		"air_tech": _air_tech(matches),
 		"distinct_final_hashes": hashes.size(),
 	}
 	if _factions_of(matches).size() > 1:
@@ -346,6 +347,33 @@ static func _types(matches: Array, rosters: Dictionary[String, Array]) -> Dictio
 				"matches_built": sums.get("built " + type_id, 0),
 			}
 	return rows
+
+
+## The air and tech block (P254): `reveals` (sweeps started, all players), `reveal_players` (the
+## players that started one), `research` (`{upgrade id: players that owned it at the end}`) and
+## `kills_by_layer` (`ground`, `air`, `low_air`: credited kills by the dead row's layer). A report
+## from before these fields counts 0.
+static func _air_tech(matches: Array) -> Dictionary:
+	var research: Dictionary[String, int] = {}
+	var layers: Dictionary[String, int] = {"ground": 0, "air": 0, "low_air": 0}
+	var reveals: int = 0
+	var revealers: int = 0
+	for record: Dictionary in matches:
+		for player: Dictionary in record["players"]:
+			var swept: int = int(player.get("reveals", 0))
+			reveals += swept
+			revealers += 1 if swept > 0 else 0
+			for upgrade: String in player.get("research", {}):
+				research[upgrade] = research.get(upgrade, 0) + 1
+			var by_layer: Dictionary = player.get("kills_by_layer", {})
+			for layer: String in by_layer:
+				layers[layer] = layers.get(layer, 0) + int(by_layer[layer])
+	return {
+		"reveals": reveals,
+		"reveal_players": revealers,
+		"research": research,
+		"kills_by_layer": layers,
+	}
 
 
 ## The type ids of `types` in the order of the tables and flags: by faction, then id.
@@ -652,6 +680,37 @@ static func markdown(report: Dictionary) -> String:
 			+ "loss nor a kill. Kills by free rows (the scenario's units, a refinery's tanker) "
 			+ "count, while the credits spent count produced rows only."
 		)
+	)
+	lines.append("")
+	var tech: Dictionary = summary["air_tech"]
+	var layers: Dictionary = tech["kills_by_layer"]
+	lines.append("### Air and tech")
+	lines.append("")
+	lines.append("| Reveals | Players that revealed | Kills: ground | air | low air |")
+	lines.append("| --- | --- | --- | --- | --- |")
+	(
+		lines
+		. append(
+			_row(
+				[
+					tech["reveals"],
+					tech["reveal_players"],
+					layers["ground"],
+					layers["air"],
+					layers["low_air"],
+				]
+			)
+		)
+	)
+	lines.append("")
+	var owned: PackedStringArray = PackedStringArray()
+	for upgrade: String in _sorted(tech["research"].keys()):
+		owned.append("%s %d" % [upgrade, tech["research"][upgrade]])
+	lines.append(
+		"Upgrades owned at the end (players): %s." % (", ".join(owned) if owned else "none")
+	)
+	lines.append(
+		"Kills by layer are the credited kills of the rows above, by the dead row's layer."
 	)
 	lines.append("")
 	lines.append("### Flags")

@@ -49,6 +49,13 @@ counts 26 unit types at the Phase 4b gate run: 13 per faction (today's six, the 
 transport and drone squad, the medic squad, the ground carrier and the minelayer). Each must be
 built in at least 50 of the 100 matches. No accepted text changed.
 
+Status note (2026-11-17, P254 docs): each player entry gains `kills_by_layer` (credited kills by
+the dead row's layer: `ground`, `air`, `low_air`), `reveals` (accepted sweeps, STRIKE kind REVEAL)
+and `research` (`{upgrade id: 1}` for each bit of `world.upgrades` at the end), and the summary an
+`air_tech` block (`reveals`, `reveal_players`, `research` as players per upgrade, `kills_by_layer`)
+with an "Air and tech" markdown table. Keys are only added, schema 2 and every existing key are
+unchanged, and an older report counts 0. Check 4 already reads the rosters (16 types, P245).
+
 Status note (2026-11-13, P26bw docs; ADR 0038 accepted 2026-11-13): with the AI's Commands one tick
 late, a Command the AI checked at tick T can go stale in step T. ADR 0038 §6 therefore replaces the
 rule that a dropped Command fails the run (§2's P26be note) and §6's check 5. A match fails only
