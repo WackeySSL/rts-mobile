@@ -119,7 +119,7 @@ func test_each_reads_apart_from_every_other_building_at_32_px_in_greyscale() -> 
 			masks[sheet.art_id] = Support.mask_32(
 				Support.default_picture(sheet, 6 if sheet.faction == &"fossil" else 10)
 			)
-	assert_int(masks.size()).is_equal(22)
+	assert_int(masks.size()).is_equal(24)
 	for id: StringName in IDS:
 		var ink: int = 0
 		for y: int in 32:

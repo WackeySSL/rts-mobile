@@ -20,6 +20,7 @@ const STRUCTURES: int = 0
 const INFANTRY: int = 1
 const VEHICLES: int = 2
 const FLIGHT: int = 3  ## The Flight tab, which the airfield produces (P245b).
+const RESEARCH: int = 4  ## The Research tab, which the engineering centre produces (P249).
 ## The Derrick League file and the Lumen Accord file of each role, in the roster's order (ADR 0023
 ## section 7's table).
 const PAIRS: Array[Array] = [
@@ -60,7 +61,8 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_adr_order() -> void:
+func test_the_faction_file_lists_the_twelve_buildings_and_the_eight_units_in_the_adr_order(
+) -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -73,6 +75,7 @@ func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_a
 		"renew_space",
 		"renew_aa",
 		"renew_airfield",
+		"renew_engineering",
 		"renew_rifle",
 		"renew_rocket",
 		"renew_scout",
@@ -89,10 +92,10 @@ func test_the_faction_file_lists_the_eleven_buildings_and_the_six_units_in_the_a
 	assert_array(listed).is_equal(wanted)
 	for at: int in wanted.size():
 		var member: UnitDef = faction.roster[at]
-		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 11)
+		assert_bool(member is BuildingDef).override_failure_message(wanted[at]).is_equal(at < 12)
 		assert_str(member.resource_path).is_equal("%s/%s.tres" % [UNITS_DIR, wanted[at]])
 		assert_str(String(member.faction)).override_failure_message(wanted[at]).is_equal("renew")
-	# The files that name the faction are those seventeen and no other.
+	# The files that name the faction are those twenty and no other.
 	var files: Array[String] = []
 	for path: String in _own_files():
 		files.append(path.get_file().get_basename())
@@ -463,8 +466,12 @@ func test_the_dock_and_exit_cells_are_the_middle_cell_south_of_the_footprint() -
 
 
 func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() -> void:
-	var producers: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
-	var buildable: Dictionary[int, Array] = {STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: []}
+	var producers: Dictionary[int, Array] = {
+		STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: [], RESEARCH: []
+	}
+	var buildable: Dictionary[int, Array] = {
+		STRUCTURES: [], INFANTRY: [], VEHICLES: [], FLIGHT: [], RESEARCH: []
+	}
 	for path: String in _own_files():
 		var unit: UnitDef = load(path)
 		var id: String = String(unit.type_id)
@@ -475,6 +482,8 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	assert_array(producers[STRUCTURES]).is_equal(["renew_hq"])
 	assert_array(producers[INFANTRY]).is_equal(["renew_barracks"])
 	assert_array(producers[FLIGHT]).is_equal(["renew_airfield"])
+	assert_array(producers[RESEARCH]).is_equal(["renew_engineering"])
+	assert_array(buildable[RESEARCH]).is_empty()
 	assert_array(buildable[FLIGHT]).is_equal(["renew_bomber", "renew_fighter"])  # P245.
 	assert_array(producers[VEHICLES]).is_equal(["renew_factory"])
 	(
@@ -485,6 +494,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 				"renew_airfield",
 				"renew_barracks",
 				"renew_defence",
+				"renew_engineering",
 				"renew_factory",
 				"renew_power",
 				"renew_radar",
@@ -509,14 +519,13 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
-## P245b rostered the airfield, P245 the fighter and the bomber.
+## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		if (
 			path.get_file().get_basename()
 			in [
-				"renew_engineering",
 				"renew_transport",
 				"renew_drone",
 				"renew_linecar",

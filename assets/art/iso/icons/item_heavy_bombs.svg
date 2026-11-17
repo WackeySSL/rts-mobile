@@ -1,0 +1,58 @@
+<!-- item_heavy_bombs upgrade card: hand-written for plan row P249, no model behind it -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g stroke-width="2">
+<polygon points="8,2 120,2 126,8 126,120 120,126 8,126 2,120 2,8" fill="#1C2127" stroke="#2F363D"/>
+</g>
+<g>
+<polygon points="108,6 122,13 122,14.5 108,7.5" fill="#2A3036"/>
+<polygon points="76,6 122,29 122,30.5 76,7.5" fill="#2A3036"/>
+<polygon points="44,6 122,45 122,46.5 44,7.5" fill="#2A3036"/>
+<polygon points="12,6 122,61 122,62.5 12,7.5" fill="#2A3036"/>
+<polygon points="6,19 122,77 122,78.5 6,20.5" fill="#2A3036"/>
+<polygon points="6,35 122,93 122,94.5 6,36.5" fill="#2A3036"/>
+<polygon points="6,51 122,109 122,110.5 6,52.5" fill="#2A3036"/>
+<polygon points="6,67 116,122 116,123.5 6,68.5" fill="#2A3036"/>
+<polygon points="6,83 84,122 84,123.5 6,84.5" fill="#2A3036"/>
+<polygon points="6,99 52,122 52,123.5 6,100.5" fill="#2A3036"/>
+<polygon points="6,115 20,122 20,123.5 6,116.5" fill="#2A3036"/>
+<polygon points="6,13 20,6 20,7.5 6,14.5" fill="#2A3036"/>
+<polygon points="6,29 52,6 52,7.5 6,30.5" fill="#2A3036"/>
+<polygon points="6,45 84,6 84,7.5 6,46.5" fill="#2A3036"/>
+<polygon points="6,61 116,6 116,7.5 6,62.5" fill="#2A3036"/>
+<polygon points="6,77 122,19 122,20.5 6,78.5" fill="#2A3036"/>
+<polygon points="6,93 122,35 122,36.5 6,94.5" fill="#2A3036"/>
+<polygon points="6,109 122,51 122,52.5 6,110.5" fill="#2A3036"/>
+<polygon points="12,122 122,67 122,68.5 12,123.5" fill="#2A3036"/>
+<polygon points="44,122 122,83 122,84.5 44,123.5" fill="#2A3036"/>
+<polygon points="76,122 122,99 122,100.5 76,123.5" fill="#2A3036"/>
+<polygon points="108,122 122,115 122,116.5 108,123.5" fill="#2A3036"/>
+</g>
+<g>
+<polygon points="8,2 36,2 2,36 2,8" fill="#E8681F"/>
+</g>
+<!-- Shape: one fat olive bomb casing with two team rings and rust fins lying on a diagonal, nose down right, with a smaller bomb of the same kind beside it for the heavier one to be measured against -->
+<g transform="translate(78 76) rotate(30) scale(0.9) translate(-64 -74)">
+  <polygon points="20,48 40,48 46,62 28,62" fill="#867162" stroke="#322A24" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="20,100 40,100 46,86 28,86" fill="#53463C" stroke="#322A24" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" fill="#7D8562" stroke="#383C2C" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M28 60 H84 C98 60 106 63 110 68 H28 Z" fill="#98A278" stroke="none"/>
+  <path d="M28 82 H86 C100 82 108 79 111 76 C108 85 98 88 84 88 H28 Z" fill="#5F654A" stroke="none"/>
+  <path d="M52 60 H61 V88 H52 Z" fill="#E8681F" stroke="#B04B12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M52 60 H61 V66 H52 Z" fill="#FF9446" stroke="none"/>
+  <path d="M74 60 H83 V88 H74 Z" fill="#E8681F" stroke="#B04B12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M74 60 H83 V66 H74 Z" fill="#FF9446" stroke="none"/>
+  <rect x="34" y="68" width="10" height="3" fill="#FFF1D6" stroke="none"/>
+</g>
+<g transform="translate(36 100) rotate(30) scale(0.5) translate(-64 -74)">
+  <polygon points="20,48 40,48 46,62 28,62" fill="#867162" stroke="#322A24" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="20,100 40,100 46,86 28,86" fill="#53463C" stroke="#322A24" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" fill="#7D8562" stroke="#383C2C" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M28 60 H84 C98 60 106 63 110 68 H28 Z" fill="#98A278" stroke="none"/>
+  <path d="M28 82 H86 C100 82 108 79 111 76 C108 85 98 88 84 88 H28 Z" fill="#5F654A" stroke="none"/>
+  <path d="M52 60 H61 V88 H52 Z" fill="#E8681F" stroke="#B04B12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M52 60 H61 V66 H52 Z" fill="#FF9446" stroke="none"/>
+  <path d="M74 60 H83 V88 H74 Z" fill="#E8681F" stroke="#B04B12" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M74 60 H83 V66 H74 Z" fill="#FF9446" stroke="none"/>
+  <rect x="34" y="68" width="10" height="3" fill="#FFF1D6" stroke="none"/>
+</g>
+</svg>
