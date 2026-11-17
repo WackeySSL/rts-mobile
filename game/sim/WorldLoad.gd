@@ -427,8 +427,10 @@ static func set_income(world: World, player: int, percent: int) -> void:
 ## above player_count on a prepared world are refused, as in set_income. Before prepare() the value
 ## is only stored (size_match_state starts the player at start_credits plus it); on a prepared world
 ## the change goes straight into `credits`. At 0 nothing moves, so the state hash is the same.
+## Setup only, never mid-match (rule 4: mid-match changes go through Commands): a world past tick 0
+## is left as it is.
 static func set_bonus_credits(world: World, player: int, amount: int) -> void:
-	if player < 1 or (world.prepared and player > world.player_count):
+	if world.tick != 0 or player < 1 or (world.prepared and player > world.player_count):
 		return
 	size_bonus(world, maxi(player + 1, world.bonus_credits.size()))
 	var value: int = clampi(amount, 0, maxi(world.bonus_credits_max, 0))

@@ -144,9 +144,11 @@ func test_a_replay_bonus_above_the_cap_plays_clamped() -> void:
 	var replay: Replay = loop.replay
 	replay.bonus_credits[1] = CAP * 10
 	var fresh: World = _world()
+	fresh.prepare()
 	replay.apply_setup(fresh)
 	assert_int(fresh.bonus_credits[1]).is_equal(CAP)
-	assert_int(Replay.play(replay, fresh, 30)).is_not_equal(Replay.PLAY_BAD_LOG)
+	assert_int(fresh.credits[1]).is_equal(fresh.start_credits + CAP)
+	assert_int(Replay.play(replay, fresh, 30)).is_equal(Replay.PLAY_MATCHED)
 
 
 func test_a_format_2_replay_is_refused() -> void:
@@ -158,3 +160,25 @@ func test_a_format_2_replay_is_refused() -> void:
 	assert_object(Replay.from_bytes(var_to_bytes(data))).is_null()
 	data["bonus_credits"] = PackedInt32Array()
 	assert_object(Replay.from_bytes(var_to_bytes(data))).is_null()
+
+
+func test_a_call_past_tick_0_changes_neither_credits_nor_defs_hash() -> void:
+	var world: World = _world()
+	world.prepare()
+	MatchScript.play(world, MatchScript.loop(world, SEED), 15)
+	assert_bool(world.tick > 0).is_true()
+	var credits: PackedInt32Array = world.credits.duplicate()
+	var defs: int = world.defs_hash()
+	WorldLoad.set_bonus_credits(world, 1, CAP)
+	assert_array(world.credits).is_equal(credits)
+	assert_int(world.defs_hash()).is_equal(defs)
+	assert_array(world.bonus_credits).is_equal([0, 0, 0])
+
+
+func test_a_negative_cap_grants_nothing() -> void:
+	var world: World = _world()
+	world.bonus_credits_max = -10
+	world.prepare()
+	WorldLoad.set_bonus_credits(world, 1, 100)
+	assert_int(world.credits[1]).is_equal(world.start_credits)
+	assert_int(world.bonus_credits[1]).is_equal(0)

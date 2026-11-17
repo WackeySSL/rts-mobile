@@ -119,6 +119,7 @@ func test_the_bonus_reaches_the_human_seat_and_moves_the_hash() -> void:
 	var plain: MatchSetup = _setup()
 	plain.bonus_starting_credits = 0
 	var rich: MatchSetup = _setup()
+	rich.lesson_id = &""
 	var a: MatchRunner = _runner()
 	var b: MatchRunner = _runner()
 	plain.apply(a)
@@ -134,6 +135,30 @@ func test_the_bonus_reaches_the_human_seat_and_moves_the_hash() -> void:
 	assert_int(b.world.tick).is_equal(30)
 	assert_int(b.last_hash).is_not_equal(a.last_hash)
 	assert_int(MatchSetup.from_dict(rich.to_dict()).bonus_starting_credits).is_equal(500)
+
+
+func test_a_lesson_takes_no_bonus() -> void:
+	var setup: MatchSetup = _setup()
+	setup.lesson_id = &"lesson_1"
+	var runner: MatchRunner = _runner()
+	assert_int(setup.apply(runner)).is_equal(OK)
+	assert_int(runner.bonus_credits).is_equal(0)
+	assert_int(setup.bonus_starting_credits).is_equal(500)
+
+
+func test_an_ai_seat_takes_no_bonus() -> void:
+	var setup: MatchSetup = _setup()
+	setup.lesson_id = &""
+	setup.local_seat = 1
+	setup.first_opponent = 1  # AI-vs-AI: the computer plays seat 1.
+	var runner: MatchRunner = _runner()
+	assert_int(setup.apply(runner)).is_equal(OK)
+	assert_int(runner.bonus_credits).is_equal(0)
+	var human: MatchRunner = _runner()
+	var plain: MatchSetup = _setup()
+	plain.lesson_id = &""
+	assert_int(plain.apply(human)).is_equal(OK)
+	assert_int(human.bonus_credits).is_equal(500)
 
 
 func test_null_entries_round_trip() -> void:

@@ -70,9 +70,17 @@ func apply(runner: MatchRunner) -> Error:
 	runner.opponents = opponents.duplicate()
 	runner.opponent_levels = opponent_levels.duplicate()
 	runner.first_opponent = first_opponent
-	runner.bonus_credits = bonus_starting_credits
 	runner.bonus_seat = local_seat if local_seat != 0 else loaded.local_player
+	# A lesson never takes the grant, and a seat a computer plays (AI-vs-AI) never gets it.
+	var granted: bool = lesson_id == &"" and not _is_ai_seat(runner.bonus_seat)
+	runner.bonus_credits = bonus_starting_credits if granted else 0
 	return OK
+
+
+## Whether a non-null entry of `opponents` plays `seat` (entry i plays `first_opponent` + i).
+func _is_ai_seat(seat: int) -> bool:
+	var index: int = seat - first_opponent
+	return index >= 0 and index < opponents.size() and opponents[index] != null
 
 
 func to_dict() -> Dictionary:
