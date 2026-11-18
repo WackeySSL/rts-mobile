@@ -28,9 +28,9 @@ func after_test() -> void:
 	_folders.clear()
 
 
-func test_the_rosters_are_the_sixteen_unit_types_and_a_missing_roster_is_refused() -> void:
-	assert_int(_fossil.size()).is_equal(8)  # Two squads, four vehicles, a fighter and a bomber.
-	assert_int(_renew.size()).is_equal(8)
+func test_the_rosters_are_the_eighteen_unit_types_and_a_missing_roster_is_refused() -> void:
+	assert_int(_fossil.size()).is_equal(9)  # Two squads, four vehicles, a carrier, two aircraft.
+	assert_int(_renew.size()).is_equal(9)
 	# Every listed id is an Infantry, Vehicles or Flight type, never a structure.
 	for faction: String in FACTIONS:
 		var def: FactionDef = load("res://data/factions/%s.tres" % faction) as FactionDef
@@ -146,7 +146,7 @@ func test_per_type_rows_and_the_roster_fills_in_the_types_that_never_occurred() 
 	assert_int(absent["share_permille"]).is_equal(0)
 	assert_int(absent["survival_permille"]).is_equal(0)
 	assert_int(absent["matches_built"]).is_equal(0)
-	assert_int(summary["types"].size()).is_equal(16)
+	assert_int(summary["types"].size()).is_equal(18)
 	assert_bool(summary["types"].has("a_structure_type")).is_false()
 	assert_int(summary["types"][_renew[0]]["share_permille"]).is_equal(1000)
 	# Kills per 1000 credits round half up: 1 kill over 6 credits is 16666.67, so 16667.
@@ -229,7 +229,7 @@ func test_a_clean_set_has_no_flags_and_each_flag_names_what_it_found() -> void:
 	fast[3]["ticks"] = 100
 	assert_str("\n".join(_summary(fast)["flags"])).contains("median length")
 	# Exactly on a limit is no flag: shares 400 and 600, medians 7200 and 9000, type shares 50 and
-	# 400 per-mille (8, 1, 3, 3, 2, 1, 1, 1 of 20), 95 distinct hashes of 100.
+	# 400 per-mille (8, 1, 3, 2, 2, 1, 1, 1, 1 of 20), 95 distinct hashes of 100.
 	assert_array(_summary(_split(10, 4))["flags"]).is_empty()
 	for edge_ticks: int in [7200, 9000]:
 		var edge: Array[Dictionary] = _balanced(4)
@@ -239,8 +239,8 @@ func test_a_clean_set_has_no_flags_and_each_flag_names_what_it_found() -> void:
 	var shares: Array[Dictionary] = _balanced(4)
 	for record: Dictionary in shares:
 		var made: Dictionary = {}
-		for index: int in 8:
-			made[_fossil[index]] = [8, 1, 3, 3, 2, 1, 1, 1][index]
+		for index: int in 9:
+			made[_fossil[index]] = [8, 1, 3, 2, 2, 1, 1, 1, 1][index]
 		_put(record, 0, "produced", made)
 	assert_array(_summary(shares)["flags"]).is_empty()
 	var hashes: Array[Dictionary] = _balanced(100)
@@ -250,8 +250,8 @@ func test_a_clean_set_has_no_flags_and_each_flag_names_what_it_found() -> void:
 	# A type share of 49.5 per-mille rounds to 50 but is under 50: flagged. Others stay in range.
 	var under: Array[Dictionary] = _balanced(1)
 	var counts: Dictionary = {}
-	for index: int in 8:
-		counts[_fossil[index]] = [99, 300, 300, 300, 300, 300, 200, 201][index]
+	for index: int in 9:
+		counts[_fossil[index]] = [99, 300, 300, 300, 200, 300, 200, 201, 100][index]
 	_put(under[0], 0, "produced", counts)
 	var under_flags: String = "\n".join(_summary(under)["flags"])
 	assert_str(under_flags).contains("%s (fossil) is 50 per-mille" % _fossil[0])
@@ -308,8 +308,8 @@ func test_the_gate_passes_a_gate_set_and_each_check_fails_alone() -> void:
 
 
 ## The `set` check: a gate run is exactly 100 matches of seeds 1001-1100 (or 200 of 1001-1200),
-## Normal against Normal on `cross`, with every unit type of both rosters (sixteen); anything else
-## is not judged a pass.
+## Normal against Normal on `cross`, with every unit type of both rosters (eighteen, with the
+## carriers of P291); anything else is not judged a pass.
 func test_the_gate_set_check_fails_on_anything_that_is_not_a_gate_set() -> void:
 	assert_str(_verdict_of(_gate(_balanced(100)), "set")).is_equal("pass")
 	assert_str(_verdict_of(_gate(_balanced(200)), "set")).is_equal("pass")

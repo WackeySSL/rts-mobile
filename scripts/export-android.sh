@@ -369,7 +369,8 @@ if [ "$EXPORT_MODE" = release ]; then
   ! grep -Eq 'debuggable\(0x0101000f\)=.*(true|0xffffffff)' <<<"$manifest" || die 1 "the manifest is debuggable (aapt2 dump xmltree)"
   grep -qx 'assets/project.binary' <<<"$listing" || die 1 "the APK lacks assets/project.binary"
   features="$(unzip -p "$apk" assets/project.binary | strings | grep -A1 -x _custom_features || true)"
-  grep -qx dev_menu <<<"$features" || die 1 "the APK lacks the dev_menu custom feature (preset 'Android perf', custom_features)"
+  # The value is the preset's comma list (dev_menu,sim_kernels,perf_boot), so test each feature on its own line.
+  tr ',' '\n' <<<"$features" | grep -qx dev_menu || die 1 "the APK lacks the dev_menu custom feature (preset 'Android perf', custom_features)"
   unzip -p "$template_dir/android_release.apk" "$abi_dir/libgodot_android.so" | cmp -s - "$work/$abi_dir/libgodot_android.so" ||
     die 1 "the APK's libgodot_android.so is not the one of the release template ($template_dir/android_release.apk)"
   echo "export-android: release template confirmed: not debuggable, dev_menu packed, engine library is the template's"

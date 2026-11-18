@@ -341,6 +341,9 @@ of which about 120 are C++.
     Repair sends ground rows to the nearest repair building. A mixed selection shows both, and
     each sends only its own rows. Aircraft never go to a Weld Shed or a Drone Dock (bit 8 off).
   - The button is `touch-ui-rules` text and waits for Michael's yes (as ADR 0036's P244).
+  - As built (P282b, Michael, 2026-11-17), changing the section 9 sentence above ("While the
+    selection holds a damaged ground row ... shows **Repair**"): Repair shows while a complete own repair building serves
+    a selected ground row and is dimmed, not tappable, while none of those rows is damaged.
 - **AI.** `AiProduction`: the repair building in the build orders after the vehicle factory
   (Normal and Hard). `AiArmy`: a vehicle under `repair_retreat_percent` that is not in a wave's
   fight goes `REPAIR` (Normal and Hard); Hard also sends damaged wave members between waves.
