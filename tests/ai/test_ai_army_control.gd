@@ -232,6 +232,29 @@ func test_the_focus_skips_an_aircraft_a_ground_only_group_cannot_hit() -> void:
 	assert_int(sent[0].target_id).is_equal(tank)
 
 
+func test_the_wave_focus_orders_only_members_that_can_hit_the_targets_layer() -> void:
+	_control(0, 1)
+	var tank: int = _launched()
+	_to_field()
+	# The light tank stands for a low aircraft: the heavy tank's gun hits the ground only (a held
+	# gun would stand idle under a focus `ATTACK`, P300), the rifle squads' guns hit low air too.
+	var low: int = _enemy("light_tank", FIELD.x + 2000, FIELD.y)
+	_see_all()
+	_world.type_layer_bit[AiRig.type_of(_world, "light_tank")] = World.Layer.LOW_AIR
+	_world.weapon_targets[_world.type_weapon[AiRig.type_of(_world, "heavy_tank")]] = (
+		World.Layer.GROUND
+	)
+	_world.weapon_targets[_world.type_weapon[AiRig.type_of(_world, "rifle_squad")]] = (
+		World.Layer.GROUND | World.Layer.LOW_AIR
+	)
+	_think(LAUNCH + 15)
+	var sent: Array[Command] = _of(Command.Type.ATTACK)
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].target_id).is_equal(low)
+	assert_array(sent[0].unit_ids).is_equal(_squads())
+	assert_bool(sent[0].unit_ids.has(tank)).is_false()
+
+
 func test_a_threat_out_of_the_squads_reach_is_still_met_by_the_defence_move() -> void:
 	_control(0, 1)
 	for id: int in _squads():

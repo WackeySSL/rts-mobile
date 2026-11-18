@@ -783,6 +783,20 @@ then.
   format-7 sanitizer dumps. `PlayerView` gives it as the copied field `own_stance` (one entry per
   `own_rows`), not as `row_stance` (P26bq, P26bt, ADR 0038 section 4). No golden moved.
 
+- Note (2026-11-17, P300, as built; it changes §10's table row "Hold position | `AiArmy`" and §15's
+  "Normal and Hard set hold ... when they join a wave"): `AiHold` is a small manager of its own, run
+  in the ARMY slot after `AiRepair` (`OpponentAi`: `AiArmy` -> `AiRepair` -> `AiHold`), so `AiArmy`
+  stays under gdlint's line maximum. The level field `hold_in_waves` (1 on Normal and Hard, 0 on Easy
+  and on the frozen 4b copies, script default 0) switches it on. Release rule: a member of the wave
+  squad whose type is in `OpponentDef.hold_types` and that is not held gets `STANCE` `[1]`; such a
+  unit that is held and is no longer in the wave squad (the wave disbanded or was recalled, or the
+  unit stepped back) gets `[0]`. The wish is read each think from the memory's squads and
+  `PlayerView.own_stance`, so nothing is stored and a refused order is sent again. A type with speed
+  0 is skipped (the sim drops it from `STANCE`). The wave's focus `ATTACK` (Hard) goes only to
+  members whose weapon may hit the target's layer, so a held gun that cannot hit a low-air target
+  keeps its `ATTACK_MOVE` instead of standing idle (P298) for the whole focus. The smoke's expired
+  rule counts `STANCE` and `REPAIR` as unit orders (§6 of ADR 0038).
+
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while
   -1 gives 1 and -2 gives 2; no loss counted; no power, fire or harvest from the sold row in its

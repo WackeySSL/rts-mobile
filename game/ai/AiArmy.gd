@@ -953,7 +953,13 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 	if target == memory.squad_focus[squad] and not pending:
 		return true
 	var tile: Vector2i = view.row_pos(best) / PlayerView.MILLI_PER_TILE
-	if not _order(view, memory, out, members, tile, AiMemory.Owner.ARMY, _at(tile), target):
+	# Only a member that can hit the target's layer gets the `ATTACK`: a held gun that cannot would
+	# stand idle (P298) for the whole focus.
+	_hitters(view, members, best)
+	if (
+		members.is_empty()
+		or not _order(view, memory, out, members, tile, AiMemory.Owner.ARMY, _at(tile), target)
+	):
 		return true
 	memory.squad_focus[squad] = target
 	memory.squad_goal_x[squad] = tile.x
@@ -963,3 +969,17 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 		_fresh.clear()
 	focuses += 1
 	return true
+
+
+## Keeps in `ids` (in place) the units whose weapon may hit the layer of the type of row `target`.
+func _hitters(view: PlayerView, ids: PackedInt32Array, target: int) -> void:
+	var type: int = view.row_type(target)
+	var layer: int = AiEnemyScan.ALL_LAYERS
+	if type >= 0 and type < view.type_layer_bit.size():
+		layer = view.type_layer_bit[type]
+	var kept: int = 0
+	for id: int in ids:
+		if AiEnemyScan.hit_mask(view, view.row_type(view.row_of(id))) & layer != 0:
+			ids[kept] = id
+			kept += 1
+	ids.resize(kept)
