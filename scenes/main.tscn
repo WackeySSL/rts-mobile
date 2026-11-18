@@ -26,6 +26,7 @@
 [ext_resource type="Script" path="res://game/ui/BuildSidebar.gd" id="21_sidebar"]
 [ext_resource type="Script" path="res://game/view/WorldSort.gd" id="22_sort"]
 [ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
+[ext_resource type="Script" path="res://game/view/MineLayer.gd" id="140_mine_layer"]
 [ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
 [ext_resource type="Script" path="res://game/input/StrikeAim.gd" id="32_aim"]
 [ext_resource type="Script" path="res://game/view/StrikeMarkerLayer.gd" id="33_strike_layer"]
@@ -77,6 +78,13 @@ runner = NodePath("../MatchRunner")
 z_index = 1
 z_as_relative = false
 script = ExtResource("30_decals")
+
+[node name="MineLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
+z_index = 3
+z_as_relative = false
+script = ExtResource("140_mine_layer")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
 
 [node name="LifeFx" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "building_layer", "unit_layer")]
 script = ExtResource("138_life_fx")

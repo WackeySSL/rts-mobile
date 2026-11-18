@@ -62,6 +62,7 @@ const COPIED: Array[StringName] = [
 	&"type_upgrade",
 	&"upgrades",
 	&"weapon_projectile_speed",
+	&"weapon_blast_milli",
 	&"weapon_targets",
 	&"proj_id",
 	&"proj_owner",
@@ -132,7 +133,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"type_mine_cost",
 	&"type_mine_aware",
 	&"type_detect_milli",
-	&"weapon_blast_milli",
 	&"pass_id",
 	&"pass_type",
 	&"pass_hp",
@@ -293,6 +293,8 @@ var weapon_targets: PackedInt32Array = PackedInt32Array()
 var weapon_ids: Array[StringName] = []
 var faction_ids: Array[StringName] = []
 var weapon_projectile_speed: PackedInt32Array = PackedInt32Array()
+## The blast radius of each weapon, milli-tiles (a mine's weapon; 0 for the others): the blast fx.
+var weapon_blast_milli: PackedInt32Array = PackedInt32Array()
 
 ## Projectile slots (proj_id 0 = free) and the previous snapshot's slots. A slot whose `proj_id`
 ## differs from `prev_proj_id` is new in this tick.
@@ -555,6 +557,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	pass_carrier = world.pass_carrier.duplicate()
 	weapon_targets = world.weapon_targets.duplicate()
 	weapon_projectile_speed = world.weapon_projectile_speed.duplicate()
+	weapon_blast_milli = world.weapon_blast_milli.duplicate()
 	proj_id = world.proj_id.duplicate()
 	proj_owner = world.proj_owner.duplicate()
 	proj_weapon = world.proj_weapon.duplicate()
