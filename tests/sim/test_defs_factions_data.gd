@@ -72,6 +72,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"fossil_bomber": "fossil_airfield",
 				"fossil_fighter": "fossil_airfield",
 				"artillery": "fossil_radar",
+				"fossil_shot_truck": "fossil_radar",
 			}
 		)
 	)
@@ -95,6 +96,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_bomber": "renew_airfield",
 				"renew_fighter": "renew_airfield",
 				"renew_artillery": "renew_radar",
+				"renew_seeder": "renew_radar",
 			}
 		)
 	)
