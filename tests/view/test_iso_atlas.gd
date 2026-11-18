@@ -234,8 +234,8 @@ func test_the_index_loads_every_sheet_of_both_factions() -> void:
 		per_faction[sheet.faction] += 1
 		var first: int = sheet.directions(&"hull")[0]
 		assert_bool(FileAccess.file_exists(sheet.path(&"hull", first))).is_true()
-	assert_int(per_faction[&"fossil"]).is_equal(22)  # 14 + 3 + 2 aircraft, Draft Shop, Bunk Wagon, Shot Truck
-	assert_int(per_faction[&"renew"]).is_equal(22)  # 14 + 3 + 2 aircraft, Lens Works, Linecar, Seeder
+	assert_int(per_faction[&"fossil"]).is_equal(22)  # 14 + 3 + 2 aircraft + 3 more
+	assert_int(per_faction[&"renew"]).is_equal(22)  # 14 + 3 + 2 aircraft + 3 more
 
 
 func test_every_direction_of_a_part_holds_its_own_frame_for_each_player() -> void:
