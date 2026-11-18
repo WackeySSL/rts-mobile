@@ -16,8 +16,10 @@ extends ModalFrame
 ## returns here; Settings is the `settings` route of `MenuRoutes` when a row registered it, else
 ## disabled: TODO P526), Exit to menu (asks first) and, in a debug or `dev_menu` build, the
 ## Developer menu beside it. Under them the toggle chips: Vibration (saved by `HudPrefs`), Sound
-## (the Sfx and Ui buses) and Music (the `AudioService` steps: off is 0, on is the default step of
-## `AudioSettings`). Upright the card is above the column; sideways it is to the left.
+## (the Sfx and Ui buses) and Music (the `AudioService` steps: off is 0, on restores the step saved
+## in `MenuPrefs`, or the `AudioSettings` default when none is saved or it is 0; a chip mute is for
+## the session and never writes the prefs). Upright the card is above the column; sideways it is to
+## the left.
 ## Phase 5 (P531, ADR 0043 section 6, ADR 0042 section 5): when `MenuFlow` owns the match, Restart
 ## and Exit go through it (`restart()`, `return_to_menu()`; both coroutines) and Surrender calls
 ## `mark_surrendered()` before its Command; a match `DevRoutes` made keeps the dev routes. A
@@ -525,12 +527,16 @@ func _toggle_vibration() -> void:
 
 
 ## Sound is the Sfx and Ui buses together (the player's Sound setting, AudioService); off is step 0
-## and on is the default step of `AudioSettings`. Finer steps are the Settings screen's (P526).
+## and on is the step saved in `MenuPrefs` (the default step of `AudioSettings` when none is saved
+## or it is 0). The mute is for the session: it never writes the prefs, Settings does.
 func _toggle_sound() -> void:
 	var service: Node = _audio()
 	var settings: AudioSettings = service.get(&"settings") as AudioSettings
 	var on: bool = _step(AudioService.BUS_SFX) > 0
-	service.call(&"set_sound_step", 0 if on else settings.default_sfx_step)
+	service.call(
+		&"set_sound_step",
+		0 if on else _restored(MenuPrefs.sound_step(0), settings.default_sfx_step)
+	)
 	_show_chips()
 
 
@@ -538,8 +544,15 @@ func _toggle_music() -> void:
 	var service: Node = _audio()
 	var settings: AudioSettings = service.get(&"settings") as AudioSettings
 	var on: bool = _step(AudioService.BUS_MUSIC) > 0
-	service.call(&"set_step", AudioService.BUS_MUSIC, 0 if on else settings.default_music_step)
+	var step: int = _restored(MenuPrefs.music_step(0), settings.default_music_step)
+	service.call(&"set_step", AudioService.BUS_MUSIC, 0 if on else step)
 	_show_chips()
+
+
+## The saved step, or the default one where none is saved or Settings saved 0 (a chip that turns on
+## must be heard).
+func _restored(saved: int, fallback: int) -> int:
+	return saved if saved > 0 else fallback
 
 
 func _step(bus: StringName) -> int:
