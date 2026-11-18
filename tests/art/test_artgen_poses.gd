@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## The walk and idle poses of the four squads (plan row P139, ADR 0027 sections 4 and 5, STYLE.md
-## "The frame axis"): each squad of both factions has `walk` (4 frames) and `idle` (2) in its 8
+## "The frame axis") and of the two medic squads (P280, two figures each): each squad of both
+## factions has `walk` (4 frames) and `idle` (2) in its 8
 ## directions, the generator drew them from the model's pose groups (that the bytes equal a fresh
-## run is test_artgen.gd), the three figures of a frame are a frame apart in their step, the cast
+## run is test_artgen.gd), the figures of a frame are a frame apart in their step, the cast
 ## shadow is not posed, the feet stand on the ground, no pose face sits on a light cut, the colours
 ## are the faction's palette, and at its speed every squad walks 1.5 to 3.5 cycles a second from
 ## its `stride_milli`. The pictures at 32 px are in test_artgen_readability.gd, the key band in
@@ -10,6 +11,8 @@ extends GdUnitTestSuite
 ## test_art_gallery_units.gd.
 
 const SQUADS: Array[StringName] = [&"rifle_squad", &"rocket_squad", &"renew_rifle", &"renew_rocket"]
+## The two-figure medic squads (P280): the same poses, a frame apart for two figures.
+const MEDICS: Array[StringName] = [&"fossil_patchers", &"renew_menders"]
 const FIGURES: Array[String] = ["a", "b", "c"]  ## The groups of a figure are `<figure>_<limb>`.
 const LIMBS: Array[String] = ["legl", "legr", "body", "head"]
 const WALK_FRAMES: int = 4
@@ -29,7 +32,7 @@ func before() -> void:
 
 
 func test_each_squad_has_a_walk_of_4_and_an_idle_of_2_frames_in_its_8_directions() -> void:
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		assert_str(model.category).is_equal("inf")
 		assert_int(model.pose_frames(&"walk")).override_failure_message(id).is_equal(WALK_FRAMES)
@@ -57,13 +60,13 @@ func test_each_squad_has_a_walk_of_4_and_an_idle_of_2_frames_in_its_8_directions
 	# Nothing else has a walk or an idle: the buildings' `anim` is P143's.
 	for path: String in ArtGen.model_paths():
 		var other: ArtModel = load(path) as ArtModel
-		if other.art_id not in SQUADS:
+		if other.art_id not in _all():
 			for part: StringName in [&"walk", &"idle"]:
 				assert_int(other.pose_frames(part)).override_failure_message(path).is_equal(0)
 
 
 func test_every_frame_of_a_direction_is_a_picture_of_its_own() -> void:
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		for dir: int in model.directions(&"hull"):
 			var seen: Dictionary[String, String] = {}
@@ -96,13 +99,14 @@ func test_every_frame_of_a_direction_is_a_picture_of_its_own() -> void:
 ## (ADR 0027 section 5). Idle has two frames for three figures, so `a` and `c` would take the same
 ## pose every frame: `c` looks the other way (its head's angle is the opposite).
 func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var groups: Dictionary[StringName, bool] = {}
 		for prim: ArtPrim in model.primitives(&"hull"):
 			groups[prim.group] = true
+		var figures: Array[String] = _figures(id)
 		var want: Array[StringName] = []
-		for figure: String in FIGURES:
+		for figure: String in figures:
 			for limb: String in LIMBS:
 				want.append(StringName("%s_%s" % [figure, limb]))
 		want.sort()
@@ -114,34 +118,37 @@ func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
 		for part: StringName in [&"walk", &"idle"]:
 			var count: int = model.frames(part)
 			for frame: int in count:
-				for i: int in FIGURES.size():
+				for i: int in figures.size():
 					for limb: String in LIMBS:
 						var mirrored: bool = part == &"idle" and i == 2 and limb == "head"
-						var mine: String = _step(model, part, frame, "%s_%s" % [FIGURES[i], limb])
+						var mine: String = _step(model, part, frame, "%s_%s" % [figures[i], limb])
 						var lead: String = _step(
 							model, part, (frame + i) % count, "a_" + limb, mirrored
 						)
 						(
 							assert_str(mine)
 							. override_failure_message(
-								"%s %s f%d figure %s %s" % [id, part, frame, FIGURES[i], limb]
+								"%s %s f%d figure %s %s" % [id, part, frame, figures[i], limb]
 							)
 							. is_equal(lead)
 						)
-		# In an idle frame the heads of a and c look opposite ways.
+		# In an idle frame the heads of a and c look opposite ways (a and b for two figures).
+		var other: String = "%s_head" % figures[-1]
 		for frame: int in IDLE_FRAMES:
-			var here: String = _step(model, &"idle", frame, "c_head")
+			var here: String = _step(model, &"idle", frame, other)
 			assert_str(here).override_failure_message(id).is_not_equal(
 				_step(model, &"idle", frame, "a_head")
 			)
-		# In a walk frame the three figures stand in three different steps, and a figure's four
-		# frames are four different steps.
+		# In a walk frame the figures stand in as many different steps, and a figure's four frames
+		# are four different steps.
 		for frame: int in WALK_FRAMES:
 			var steps: Dictionary[String, bool] = {}
-			for figure: String in FIGURES:
+			for figure: String in figures:
 				steps[_legs(model, frame, figure)] = true
-			assert_int(steps.size()).override_failure_message("%s f%d" % [id, frame]).is_equal(3)
-		for figure: String in FIGURES:
+			assert_int(steps.size()).override_failure_message("%s f%d" % [id, frame]).is_equal(
+				figures.size()
+			)
+		for figure: String in figures:
 			var cycle: Dictionary[String, bool] = {}
 			for frame: int in WALK_FRAMES:
 				cycle[_legs(model, frame, figure)] = true
@@ -149,7 +156,7 @@ func test_the_figures_of_a_frame_are_a_frame_apart_in_their_step() -> void:
 
 
 func test_the_cast_shadow_is_not_posed_and_the_standing_frames_are_as_without_poses() -> void:
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var plain: ArtModel = model.duplicate() as ArtModel
 		plain.poses = PackedStringArray()
@@ -168,7 +175,7 @@ func test_the_cast_shadow_is_not_posed_and_the_standing_frames_are_as_without_po
 
 
 func test_the_feet_stand_on_the_ground_in_every_pose_frame() -> void:
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		for part: StringName in [&"walk", &"idle"]:
 			for frame: int in model.frames(part):
@@ -184,7 +191,7 @@ func test_the_feet_stand_on_the_ground_in_every_pose_frame() -> void:
 					var figure: String = String(prim.group).split("_")[0]
 					low[figure] = minf(low.get(figure, INF), box.position.z)
 				# Each figure has a foot on it (a walking figure's other foot may be lifted).
-				for figure: String in FIGURES:
+				for figure: String in _figures(id):
 					(
 						assert_float(low[figure])
 						. override_failure_message(
@@ -199,7 +206,7 @@ func test_the_feet_stand_on_the_ground_in_every_pose_frame() -> void:
 func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 	var checked: int = 0
 	var crossed: int = 0
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var standing: Array[ArtPrim] = model.primitives(&"hull")
 		for part: StringName in [&"walk", &"idle"]:
@@ -237,7 +244,7 @@ func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 							)
 							checked += 1
 	assert_int(checked).is_greater(4000)
-	assert_int(crossed).is_equal(48)
+	assert_int(crossed).is_equal(64)
 
 
 ## A pose frame is drawn in the order of the standing figure (`ArtRender.render` gets the standing
@@ -248,7 +255,7 @@ func test_no_turned_face_of_a_pose_sits_on_a_light_cut() -> void:
 ## every primitive that stands over it on the ground.
 func test_a_pose_frame_is_drawn_in_the_order_of_the_standing_figure() -> void:
 	var frames: int = 0
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var standing: Array[ArtPrim] = model.primitives(&"hull")
 		var shots: Dictionary[StringName, ArtGen.Shot] = ArtGen.all_shots(model)
@@ -278,7 +285,7 @@ func test_a_pose_frame_is_drawn_in_the_order_of_the_standing_figure() -> void:
 									. is_true()
 								)
 					frames += 1
-	assert_int(frames).is_equal(4 * 8 * (WALK_FRAMES + IDLE_FRAMES))
+	assert_int(frames).is_equal(6 * 8 * (WALK_FRAMES + IDLE_FRAMES))
 
 
 ## A pose changes the shade of a face and never which edge is light: the thin light edge is for the
@@ -288,7 +295,7 @@ func test_a_pose_frame_is_drawn_in_the_order_of_the_standing_figure() -> void:
 ## rest.
 func test_a_pose_never_gives_a_side_face_the_light_edge() -> void:
 	var checked: int = 0
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var standing: Array[ArtPrim] = model.primitives(&"hull")
 		var tops: Array[int] = []
@@ -328,7 +335,7 @@ func test_only_the_walk_and_idle_of_a_squad_have_a_rest() -> void:
 	tower.poses = PackedStringArray(["anim 2", "anim 1 head turn z 90 0 0 0"])
 	assert_array(tower.frame_rest(&"anim")).is_empty()
 	assert_array(tower.frame_rest(&"hull")).is_empty()
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var hull: Array[ArtPrim] = model.primitives(&"hull")
 		for part: StringName in [&"walk", &"idle"]:
@@ -342,7 +349,7 @@ func test_only_the_walk_and_idle_of_a_squad_have_a_rest() -> void:
 
 func test_the_pose_frames_use_only_the_palette_of_their_faction() -> void:
 	var colour: RegEx = RegEx.create_from_string("#[0-9A-F]{6}")
-	for id: StringName in SQUADS:
+	for id: StringName in _all():
 		var model: ArtModel = _model(id)
 		var allowed: Dictionary[String, bool] = {}
 		for hex: String in ArtPalette.KEYS[model.faction]:
@@ -406,7 +413,31 @@ func test_every_squad_of_both_rosters_walks_1_5_to_3_5_cycles_a_second_at_its_sp
 			. is_between(CYCLES_PER_SECOND.x, CYCLES_PER_SECOND.y)
 		)
 	seen.sort()
-	assert_array(seen).is_equal(["renew_rifle", "renew_rocket", "rifle_squad", "rocket_squad"])
+	(
+		assert_array(seen)
+		. is_equal(
+			[
+				"fossil_patchers",
+				"renew_menders",
+				"renew_rifle",
+				"renew_rocket",
+				"rifle_squad",
+				"rocket_squad",
+			]
+		)
+	)
+
+
+## The four squads and the two medic squads.
+func _all() -> Array[StringName]:
+	var found: Array[StringName] = SQUADS.duplicate()
+	found.append_array(MEDICS)
+	return found
+
+
+## The figures of a squad: three for the four combat squads, two for a medic squad.
+func _figures(id: StringName) -> Array[String]:
+	return FIGURES.slice(0, 2) if id in MEDICS else FIGURES
 
 
 func _model(id: StringName) -> ArtModel:

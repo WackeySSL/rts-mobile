@@ -71,13 +71,14 @@ func test_every_roster_type_of_a_start_has_its_players_faction() -> void:
 					String(faction.id)
 				)
 				types += 1
-		# Both rosters are registered with their research types and nothing else: twenty-five types
-		# each (50: twenty-three roster types and the two upgrades; 48 before P279 put the repair
+		# Both rosters are registered with their research types and nothing else: twenty-six types
+		# each (52: twenty-four roster types and the two upgrades; 50 before P280 put the medic
+		# squads in, 48 before P279 put the repair
 		# buildings in, 46 before P292 put the minelayers in, 44 before P291 put the carriers in,
 		# 38 before P249 put the engineering centres and the research in, 34 before P245, 32 before
 		# P245b, 30 before P239b).
-		assert_int(types).is_equal(50)
-		assert_int(world.type_ids.size()).is_equal(50)
+		assert_int(types).is_equal(52)
+		assert_int(world.type_ids.size()).is_equal(52)
 		assert_array(world.faction_ids).contains_exactly_in_any_order([&"fossil", &"renew"])
 
 
@@ -124,16 +125,17 @@ func test_every_buildable_type_of_the_other_faction_is_dropped_and_counted() -> 
 				var research: Command = Command.queue(player, _type(world, up.id))
 				research.sequence = commands.size()
 				commands.append(research)
-			# Twenty-four items: twenty-two roster types (the headquarters is the one type nothing
-			# builds) and two research types (twenty-three items before P279 added the repair
+			# Twenty-five items: twenty-three roster types (the headquarters is the one type nothing
+			# builds) and two research types (twenty-four items before P280 added the medic squads,
+			# twenty-three items before P279 added the repair
 			# buildings, twenty-two before P292 added the minelayers,
 			# twenty-one before P291 added the carriers, eighteen items and no research before
 			# P249, sixteen before P245 added the aircraft, fifteen before P245b added the
 			# airfield).
-			assert_int(commands.size()).is_equal(24)
+			assert_int(commands.size()).is_equal(25)
 			var label: String = "%s player %d" % [path, player]
 			ProdRig.step(world, commands)
-			assert_int(world.dropped_commands).override_failure_message(label).is_equal(24)
+			assert_int(world.dropped_commands).override_failure_message(label).is_equal(25)
 			for tab: int in World.TABS:
 				var queue: int = ProdRig.queue_of(player, tab)
 				assert_int(world.queue_count[queue]).override_failure_message(label).is_equal(0)

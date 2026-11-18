@@ -78,27 +78,33 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## the shadows fit the free width of shelf 1, under the 60 rows the plan allocated). Page 1 has
 ## left 956 rows on the cross-faction page, 1032 on the Derrick League mirror and 1082 on the Lumen
 ## Accord mirror; page 2 has left 1080, 2198 and 2176.
-## P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
+## P280 (the Patchers and the Menders: two-figure squads, an 8-direction hull, walk of 4, idle
+## of 2 and shadow each, 64 frames a sheet) moved page 1 from 2628, 2552 and 2502 to the pins
+## below (+102, +105 and +96 rows) and page 2 from 2504, 1386 and 1408 (+6, +70 and +68: the
+## shadows are small and fit the free width of shelf 1). Page 1 has left 854 rows on the
+## cross-faction page, 927 on the Derrick League mirror and 986 on the Lumen Accord mirror;
+## page 2 has left 1074, 2128 and 2108.
+## P280: 2628 + 102; P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_CROSS: int = 2628
-## P279: 2526 + 26; P292: 2407 + 119; P291: 2279 + 128; P249: 2258 + 21
+const TODAY_CROSS: int = 2730
+## P280: 2552 + 105; P279: 2526 + 26; P292: 2407 + 119; P291: 2279 + 128; P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
-const TODAY_MIRROR_DERRICK: int = 2552
-## P279: 2435 + 67; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 + 28
+const TODAY_MIRROR_DERRICK: int = 2657
+## P280: 2502 + 96; P279: 2435 + 67; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 + 28
 ## (P245b: 2167 + 71; P239b: 2068 + 99).
-const TODAY_MIRROR_LUMEN: int = 2502
+const TODAY_MIRROR_LUMEN: int = 2598
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players, and each shadow fits the free width of shelf 1; only the trailing
 ## shelf grows. An aircraft's hull carries the team colour, so it has a slot per player (P245).
-## P279: 2486 + 18; P292: 2264 + 222; P291: 2046 + 218; P249: 1986 + 60
+## P280: 2504 + 6; P279: 2486 + 18; P292: 2264 + 222; P291: 2046 + 218; P249: 1986 + 60
 ## (P245: 1514 + 472; P203: 1116 + 398, the pads).
-const TODAY2_CROSS: int = 2504
-## P279: 1386 + 0; P292: 1264 + 122; P291: 1158 + 106; P249: 1094 + 64
+const TODAY2_CROSS: int = 2510
+## P280: 1386 + 70; P279: 1386 + 0; P292: 1264 + 122; P291: 1158 + 106; P249: 1094 + 64
 ## (P245: 782 + 312; P245b: 780 + 2).
-const TODAY2_MIRROR_DERRICK: int = 1386
-## P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 + 46
+const TODAY2_MIRROR_DERRICK: int = 1456
+## P280: 1408 + 68; P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 + 46
 ## (P245: 814 + 384; P203: 634 + 180).
-const TODAY2_MIRROR_LUMEN: int = 1408
+const TODAY2_MIRROR_LUMEN: int = 1476
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

@@ -46,15 +46,16 @@ func test_the_life_page_is_the_last_of_eight_and_is_built_when_the_button_first_
 
 ## The first row after the spacer, then one for every kind of the table in the guide's order; every
 ## half of every row is its ground.
-func test_the_rows_are_the_atlases_then_every_kind_of_the_table_in_order() -> void:
+func test_the_rows_are_the_atlases_every_kind_of_the_table_in_order_and_the_drone() -> void:
 	var gallery: Control = await _open_gallery()
 	_turn_to(gallery, LIFE_PAGE)
 	var want: Array[String] = ["Spacer", "RowAtlases"]
 	for row: Dictionary in Support.table():
 		want.append("Row" + String(row["kind"]).to_pascal_case())
+	want.append("RowDrone")  # P280: the repair drone's two frames and its shadow.
 	var rows: Node = gallery.get_node("LifePage/Scroll/Rows")
 	assert_array(rows.get_children().map(_node_name)).is_equal(want)
-	assert_int(want.size()).is_equal(29)
+	assert_int(want.size()).is_equal(30)
 	for row: Node in rows.get_children():
 		assert_array(row.get_children().map(_node_name)).is_equal(["Grass", "Sand"])
 		assert_that((row.get_node("Grass") as ColorRect).color).is_equal(
@@ -128,6 +129,31 @@ func test_each_kind_shows_its_frames_at_the_three_zooms_on_both_grounds() -> voi
 	# 36 frames of the life atlas and 12 of the strike atlas, each on two grounds at three zooms.
 	assert_int(shown).is_equal(48 * 2 * 3)
 	assert_int(textures.size()).is_equal(48)
+
+
+## The drone row (P280): the two rotor-blur frames and the shadow at the three zooms on both
+## grounds, on one ground line, the label on the grass half only.
+func test_the_drone_row_shows_two_frames_and_the_shadow_at_three_zooms_on_both_grounds() -> void:
+	var gallery: Control = await _open_gallery()
+	_turn_to(gallery, LIFE_PAGE)
+	var row: Node = gallery.get_node("LifePage/Scroll/Rows/RowDrone")
+	var want: Array[Rect2i] = [DroneArt.REGIONS[0], DroneArt.REGIONS[1], DroneArt.SHADOW]
+	var tallest: float = float(DroneArt.REGIONS[0].size.y) * 1.5
+	for ground: String in ["Grass", "Sand"]:
+		var half: Node = row.get_node(ground)
+		assert_bool(half.has_node("Label")).is_equal(ground == "Grass")
+		for group_name: String in ZOOM_GROUPS:
+			var group: Node = half.get_node(group_name)
+			assert_int(group.get_child_count()).is_equal(3)
+			for index: int in 3:
+				var rect: TextureRect = group.get_node("F%d" % index)
+				var texture: AtlasTexture = rect.texture as AtlasTexture
+				assert_str(texture.atlas.resource_path).is_equal(DroneArt.ART)
+				assert_that(texture.region).is_equal(Rect2(want[index]))
+				assert_vector(rect.size).is_equal(
+					Vector2(want[index].size) * ZOOM_GROUPS[group_name]
+				)
+				assert_float(rect.position.y + rect.size.y).is_equal(tallest)
 
 
 ## Everything is inside its half, clear of the corner buttons and of the other frames and rows, at

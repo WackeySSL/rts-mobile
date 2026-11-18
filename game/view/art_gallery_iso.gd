@@ -164,6 +164,11 @@ func _fill() -> void:
 		for ground: ColorRect in grounds:
 			damage_height = _damage_section(ground, model, layouts, box, top)
 		top += damage_height
+	if model.pose_frames(&"walk") > 0:
+		var poses_height: float = 0.0
+		for ground: ColorRect in grounds:
+			poses_height = _pose_section(ground, model, layouts, box, top)
+		top += poses_height
 	if MINE_MARK_FACTION.has(model.art_id):
 		var marks_height: float = 0.0
 		for ground: ColorRect in grounds:
@@ -252,6 +257,41 @@ func _damage_section(
 			zooms.append(1.0)
 		y = _flow(row, rigs, zooms, box, y, _slot_cap(box))
 	return y
+
+
+## The poses of a squad (plan row P280): its walk frames and then its idle frames in the default
+## view at zoom 1, in the Signal triad, each on its cast shadow, one line. Returns the height it
+## took.
+func _pose_section(
+	ground: ColorRect,
+	model: ArtModel,
+	layouts: Dictionary[StringName, ArtGen.Layout],
+	box: Rect2,
+	top: float
+) -> float:
+	var row: Control = Control.new()
+	row.name = "Poses"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.anchor_left = 0.5
+	row.anchor_right = 0.5
+	row.offset_top = top
+	ground.add_child(row)
+	var title: Label = _label("Walk 0 to 3, then idle 0 and 1, in the default view", HALF_WIDTH_PX)
+	title.position.x = -HALF_WIDTH_PX / 2.0
+	row.add_child(title)
+	var rigs: Array[Node2D] = []
+	var zooms: Array[float] = []
+	for part: StringName in [&"walk", &"idle"]:
+		for frame: int in model.pose_frames(part):
+			var rig: Node2D = Node2D.new()
+			rig.name = "%s%d" % [String(part).capitalize(), frame]
+			rig.add_child(
+				_sprite(model, ArtModel.SHADOW, model.default_dir(), layouts[&"shadow"], 0, 1.0)
+			)
+			rig.add_child(_sprite(model, part, model.default_dir(), layouts[part], 0, 1.0, frame))
+			rigs.append(rig)
+			zooms.append(1.0)
+	return _flow(row, rigs, zooms, box, LABEL_PX, _slot_cap(box))
 
 
 ## The faction's two mine marks in each triad: a row of the own mark at three zooms, then the
@@ -423,12 +463,19 @@ func _overlay(part: StringName, frame: int, flip: bool, zoom: float) -> Sprite2D
 
 
 func _sprite(
-	model: ArtModel, part: StringName, dir: int, layout: ArtGen.Layout, triad: int, zoom: float
+	model: ArtModel,
+	part: StringName,
+	dir: int,
+	layout: ArtGen.Layout,
+	triad: int,
+	zoom: float,
+	frame: int = -1
 ) -> Sprite2D:
 	var scale_px: float = BASE_SCALE * zoom
-	var key: String = "%s %d %d %s" % [ArtGen.frame_path(model, part, dir), dir, triad, zoom]
+	var path: String = ArtGen.frame_path(model, part, dir, frame)
+	var key: String = "%s %d %d %s" % [path, dir, triad, zoom]
 	if not _textures.has(key):
-		var text: String = FileAccess.get_file_as_string(ArtGen.frame_path(model, part, dir))
+		var text: String = FileAccess.get_file_as_string(path)
 		for tone: int in 3:
 			text = text.replace(ArtPalette.KEYS[model.faction][tone], TRIADS[triad][tone])
 		var image: Image = Image.new()

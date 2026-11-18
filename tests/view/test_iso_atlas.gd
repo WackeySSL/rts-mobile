@@ -234,8 +234,8 @@ func test_the_index_loads_every_sheet_of_both_factions() -> void:
 		per_faction[sheet.faction] += 1
 		var first: int = sheet.directions(&"hull")[0]
 		assert_bool(FileAccess.file_exists(sheet.path(&"hull", first))).is_true()
-	assert_int(per_faction[&"fossil"]).is_equal(23)  # 14 + 3 + 2 aircraft + 4 more
-	assert_int(per_faction[&"renew"]).is_equal(23)  # 14 + 3 + 2 aircraft + 4 more
+	assert_int(per_faction[&"fossil"]).is_equal(24)  # 14 + 3 + 2 aircraft + 5 more
+	assert_int(per_faction[&"renew"]).is_equal(24)  # 14 + 3 + 2 aircraft + 5 more
 
 
 func test_every_direction_of_a_part_holds_its_own_frame_for_each_player() -> void:
@@ -487,5 +487,6 @@ func _assert_every_frame_has_its_rasterised_size(
 	# centres (P249): hull, KRITISK patch and shadow each = 2 x 3 = 6 frames, and the two ground
 	# carriers (P291): 16 hull and 16 shadow frames each = 2 x 32 = 64 frames, and the two
 	# minelayers (P292): another 64 frames, and the two repair buildings (P279): hull, 8 anim frames,
-	# KRITISK patch and shadow each = 2 x 11 = 22 frames.
-	assert_int(frames).is_equal(480 + 192 + 54 + 16 + 34 + 38 + 6 + 128 + 6 + 64 + 64 + 22)
+	# KRITISK patch and shadow each = 2 x 11 = 22 frames, and the two medic squads (P280): hull 8,
+	# walk 32, idle 16 and shadow 8 each = 2 x 64 = 128 frames.
+	assert_int(frames).is_equal(480 + 192 + 54 + 16 + 34 + 38 + 6 + 128 + 6 + 64 + 64 + 22 + 128)

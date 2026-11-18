@@ -216,6 +216,25 @@ picture, a shadow and an item card, and join the rosters after the engineering c
 - **Atlas pins** (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2582, 2526, 2435 to
   2628, 2552, 2502; page 2 2486, 1386, 1386 to 2504, 1386, 1408 (inside the 60 rows allocated).
 
+**Note (2026-11-18, P280 as built; the art-director).** The Patchers (`fossil_patchers`) and the Menders
+(`renew_menders`) are two-figure `inf` models (hull in 8 directions, walk 4, idle 2, shadow, item card) and join
+the rosters after the rocket squads (Infantry tab); the drone effect is `fx/drone_atlas.svg` (two rotor-blur
+frames and a shadow, `game/view/DroneArt.gd`, a row on the gallery's Life page).
+- **Looks.** The Patchers: stocky olive figures, one with a steel kit chest and a lamp, the other with a rust roll of
+  patch line; the Menders: lean white figures, one with a hexagonal case ringed in mint, the other with a smaller case
+  and a mint hand light. The kit marks are the faction's own (the League's team band, the Accord's mint ring), no red
+  cross, crescent or crystal (ADR 0037 section 6).
+- **Poses.** The poses are P139's, a frame apart for two figures (`test_artgen_poses.gd` runs both medic squads
+  through every squad rule, with the figure count read from the model); `stride_milli` 352 and 376.
+- **Shipped matches change.** `AiProduction` now queues medics (`medic_per_squads`) and `AiArmy` sends them with the
+  waves, so the seeded smoke matches play differently: the pinned stale and expired drops of `test_smoke_run.gd` moved
+  from [2, 2, 500], [6, 4, 527] and [0, 0, 432] to [4, 3, 604], [2, 2, 580] and [0, 0, 454] (dropped, expired, sent).
+- **HOW_TO_PLAY.** The Units rows (build a medic squad, look at a medic squad) are written here; the medics leave the
+  skip lists of `test_defs_factions_data`, `test_defs_roster` and `test_defs_roster_renew` and `test_defs_repair_data`
+  asserts that all four support types are rostered.
+- **Atlas pins** (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2628, 2552, 2502 to 2730, 2657,
+  2598; page 2 2504, 1386, 1408 to 2510, 1456, 1476 (both pages under the 3,584 budget).
+
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and
 **P290 writes no HOW_TO_PLAY row** (its row's "HOW_TO_PLAY Units, Orders, Fog rows" move to the rows

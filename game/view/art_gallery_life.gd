@@ -61,6 +61,7 @@ func _build() -> void:
 	_add_atlas_row(rows)
 	for kind: StringName in LifeRegions.ATLAS:
 		_add_kind_row(rows, kind)
+	_add_drone_row(rows)
 
 
 ## A row of two equal halves, the grass one first and the sand one second, each its ground and at
@@ -122,6 +123,36 @@ func _add_kind_row(rows: VBoxContainer, kind: StringName) -> void:
 				var box: Rect2i = LifeRegions.region(kind, frame)
 				var rect: TextureRect = _rect(_frame_texture(kind, frame), Vector2(box.size), zoom)
 				rect.name = "F%d" % frame
+				rect.position = Vector2(at, tallest - rect.size.y)
+				group.add_child(rect)
+				at += rect.size.x + FRAME_GAP_PX
+			left += at - FRAME_GAP_PX + GROUP_GAP_PX
+
+
+## The repair drone (plan row P280, `DroneArt`): its two rotor-blur frames and then its ground
+## shadow in a line at each zoom, on each ground, under the life kinds.
+func _add_drone_row(rows: VBoxContainer) -> void:
+	var atlas: Texture2D = load(DroneArt.ART) as Texture2D
+	var regions: Array[Rect2i] = DroneArt.REGIONS.duplicate()
+	regions.append(DroneArt.SHADOW)
+	var tallest: float = float(DroneArt.REGIONS[0].size.y) * _top_zoom()
+	var halves: Array[ColorRect] = _row(rows, "RowDrone", LABEL_PX + tallest + ROW_GAP_PX)
+	_label(halves[0], "drone (2) and its shadow", Vector2(GAP_PX, 0.0))
+	for half: ColorRect in halves:
+		var left: float = GAP_PX
+		for zoom: float in ZOOMS:
+			var group: Control = Control.new()
+			group.name = "Z%03d" % roundi(zoom * 100.0)
+			group.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			group.position = Vector2(left, LABEL_PX)
+			half.add_child(group)
+			var at: float = 0.0
+			for index: int in regions.size():
+				var part: AtlasTexture = AtlasTexture.new()
+				part.atlas = atlas
+				part.region = Rect2(regions[index])
+				var rect: TextureRect = _rect(part, Vector2(regions[index].size), zoom)
+				rect.name = "F%d" % index
 				rect.position = Vector2(at, tallest - rect.size.y)
 				group.add_child(rect)
 				at += rect.size.x + FRAME_GAP_PX
