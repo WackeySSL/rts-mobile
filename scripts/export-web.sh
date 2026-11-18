@@ -257,9 +257,10 @@ if ! grep -q 'const GODOT_THREADS_ENABLED = false;' "$out_abs/index.html"; then
   die 1 "the web build has thread support on, which needs COOP/COEP headers that Pages cannot send"
 fi
 # A plain grep for dev_menu would match file paths. The feature list sits behind the
-# _custom_features key in the pack's project settings. A here-string avoids a SIGPIPE under
-# pipefail when grep -q stops reading early.
-features="$(strings "$out_abs/index.pck" | grep -A1 -x _custom_features || true)"
+# _custom_features key in the pack's project settings. The key is matched as a prefix, because
+# strings joins the value's length to it when that length is a printable byte (export-android.sh).
+# A here-string avoids a SIGPIPE under pipefail when grep -q stops reading early.
+features="$(strings "$out_abs/index.pck" | grep -A1 -E '^_custom_features' || true)"
 if ! grep -qx dev_menu <<<"$features"; then
   die 1 "the pack lacks the dev_menu custom feature (preset custom_features, ADR 0002 section 6)"
 fi
