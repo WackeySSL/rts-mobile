@@ -17,7 +17,8 @@ const NUMBER_FONT_DP: float = 20.0
 const DEV_FONT_PX: int = 40  ## Base px, not dp.
 ## What the file keeps in base px: the Dev button's size and, since P118, the three tracking
 ## entries of the Big Shoulders FontVariations and, since P119, the pill word's
-## (tests/ui/test_ui_theme_fonts.gd).
+## (tests/ui/test_ui_theme_fonts.gd); P519 adds the menu title, the side names and the slider
+## thumbs.
 const BASE_PX_ENTRIES: Array[String] = [
 	"DevButton/font_sizes/font_size",
 	"CapsButton/fonts/font",
@@ -25,6 +26,15 @@ const BASE_PX_ENTRIES: Array[String] = [
 	"CapsBigTitle/fonts/font",
 	"PillWord/fonts/font",
 	"AttackTitle/fonts/font",
+	"MenuTitle/fonts/font",
+	"SideNameRenew/fonts/font",
+	"SideNameFossil/fonts/font",
+	"MenuSlider/icons/grabber",
+	"MenuSlider/icons/grabber_highlight",
+	"MenuSlider/icons/grabber_disabled",
+	"MenuSliderFossil/icons/grabber",
+	"MenuSliderFossil/icons/grabber_highlight",
+	"MenuSliderFossil/icons/grabber_disabled",
 ]
 const PAD_DP: float = 8.0
 const BACKDROP: Color = Color(0.06, 0.08, 0.11, 0.78)

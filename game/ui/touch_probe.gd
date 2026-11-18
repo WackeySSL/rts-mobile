@@ -29,7 +29,7 @@ var log_lines: PackedStringArray = []
 
 var _recognizer: GestureRecognizer = GestureRecognizer.new()
 var _events: Array[GestureEvent] = []
-var _previous_quit_on_go_back: bool = true
+var _previous_quit_on_go_back: bool = false
 
 @onready var _column: VBoxContainer = $Margin/Column
 @onready var _square_row: HBoxContainer = $Margin/Column/SquareRow
@@ -40,8 +40,9 @@ var _previous_quit_on_go_back: bool = true
 
 
 func _enter_tree() -> void:
-	# SceneTree.quit_on_go_back is true by default and would quit the app on the Android back
-	# button before the probe can leave. Switch it off while the probe is open.
+	# The project keeps quit_on_go_back off (ADR 0043 section 4), so the Android back button never
+	# quits the app before the probe can leave. Keep it off while the probe is open and put back
+	# what was found, whatever it was.
 	var tree: SceneTree = get_tree()
 	_previous_quit_on_go_back = tree.quit_on_go_back
 	tree.quit_on_go_back = false

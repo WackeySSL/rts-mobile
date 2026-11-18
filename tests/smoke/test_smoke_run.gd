@@ -66,13 +66,16 @@ const PLAYER_KEYS: Array[String] = [
 	"free",
 	"harvested",
 	"kills",
+	"kills_by_layer",
 	"level",
 	"lost",
 	"lost_buildings",
 	"lost_units",
 	"player",
 	"produced",
+	"research",
 	"retreats",
+	"reveals",
 	"scouts",
 	"seat",
 	"spent",
@@ -341,8 +344,21 @@ func test_the_counting_reads_spawns_and_free_units_from_events() -> void:
 	assert_dict(counts["spent"]).is_equal(
 		{"harvester": 2 * world.type_cost[harvester], "rifle_squad": world.type_cost[rifle]}
 	)
-	assert_array(counts.keys()).contains_exactly_in_any_order(
-		["produced", "free", "lost", "kills", "spent", "structures"]
+	(
+		assert_array(counts.keys())
+		. contains_exactly_in_any_order(
+			[
+				"produced",
+				"free",
+				"lost",
+				"kills",
+				"spent",
+				"structures",
+				"kills_by_layer",
+				"reveals",
+				"research",
+			]
+		)
 	)
 
 

@@ -16,14 +16,20 @@ extends RefCounted
 
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 
+## The pause menu and the menu stack switch `SceneTree.quit_on_go_back` off for the app; the suites
+## that build the main scene get the engine default back (test_touch_probe asserts it is true).
+static var _quit_on_go_back_before: bool = true
+
 
 ## Before each test of a suite that builds the main scene.
 static func begin() -> void:
+	_quit_on_go_back_before = (Engine.get_main_loop() as SceneTree).quit_on_go_back
 	BuildSidebar.set_slide_ms_override(0)
 	PrefsRig.begin()
 
 
 ## After each test of the same suite: no state is left for the next one.
 static func end() -> void:
+	(Engine.get_main_loop() as SceneTree).quit_on_go_back = _quit_on_go_back_before
 	BuildSidebar.clear_slide_ms_override()
 	PrefsRig.end()

@@ -110,6 +110,7 @@ static func _default_auto_close(display_name: String) -> bool:
 func _init() -> void:
 	_consent.settled.connect(_set_can_request)
 	_backend.can_request_ads = func() -> bool: return _can_request_ads
+	_backend.banner_wanted = func() -> bool: return _banner_requests > 0
 	_backend.banner_height_changed.connect(_refresh_banner)
 	_runs.opened.connect(ad_opened.emit)
 	_runs.closed.connect(ad_closed.emit)
@@ -262,7 +263,7 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 ## see whether the banner fits before it shows one. 0 where none may show.
 func banner_height_preview_dp() -> int:
 	if _initialised and _can_request_ads and not _ledger.remove_ads:
-		return _backend.banner_height_dp()
+		return _backend.banner_height_preview_dp()
 	return 0
 
 
@@ -292,19 +293,20 @@ func _refresh_banner() -> void:
 	)
 	var height: int = 0
 	if may_show:
-		if not _banner_shown:
-			_banner_shown = true
-			_banner_alive = true
-			_backend.show_banner()
+		# Every time: the backend's show is idempotent, and a create timer that fired while no band
+		# asked leaves a wanted banner with no view and no timer until this call.
+		_banner_shown = true
+		_banner_alive = true
+		_backend.show_banner()
 		height = _backend.banner_height_dp()
-	elif (_ledger.remove_ads or not _can_request_ads) and _banner_alive:
-		# Remove ads or no consent: the view goes, not just out of sight (ADR 0039 section 8).
+	elif (_ledger.remove_ads or not _can_request_ads or _banner_requests == 0) and _banner_alive:
+		# Remove ads, no consent, or the last band released (at idle, so a reparent keeps it): the
+		# view goes, not just out of sight (ADR 0039 sections 6 and 8).
 		_banner_alive = false
 		_banner_shown = false
 		_backend.destroy_banner()
-	elif _banner_shown:
-		_banner_shown = false
-		_backend.hide_banner()
+	# No hide branch: a shown banner that may not show means Remove ads, no consent or no request
+	# left, and each of those is the destroy branch above.
 	if height != _banner_height:
 		_banner_height = height
 		banner_changed.emit(height)

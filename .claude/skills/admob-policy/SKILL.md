@@ -17,7 +17,7 @@ AdMob account.
 | Screen | Banner | Interstitial | Rewarded |
 | --- | --- | --- | --- |
 | Battle screen, but the open pause menu | Never | Never | Never |
-| Pause menu (Michael, 2026-11-05) | Adaptive banner at its foot where the foot is free (upright), never within 16 dp of a control; shown only while the menu is open; sideways or wherever the menu scrolls, none until P127 decides (ADR 0025 §11's note) | Never | Never |
+| Pause menu (Michael, 2026-11-05) | Adaptive banner at its foot where the foot is free (upright), never within 16 dp of a control; shown only while the menu is open; none sideways and none while the menu scrolls (ADR 0039 §6; Michael, 2026-11-17) | Never | Never |
 | Match result | Never | After the player taps Continue, capped | Offer "Double XP" |
 | Main menu, map select, settings | Adaptive banner at the bottom, at least 16 dp from any button | Never | Offer "+500 starting credits next match" |
 | App start and loading | Never | Never | Never |
@@ -51,6 +51,8 @@ closes, and the Remove ads purchase removes it.
   equivalent). Never real IDs.
 - Release builds get real IDs injected by the release workflow from `ADMOB_*` secrets.
   Real IDs are never committed.
+- The Play internal-testing build (`android-internal.yml`) gets the real App ID from
+  `ADMOB_APP_ID_ANDROID`, never real ad units (Michael, 2026-11-17).
 - Never tap live ads on your own devices; register test devices.
 
 ## Remove ads purchase

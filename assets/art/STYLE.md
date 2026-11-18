@@ -519,6 +519,36 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
 - **Gallery.** The Iso page lists them by themselves and draws each hull `fly_px` above its shadow; the Icons page
   shows the item cards.
 
+### The ground carriers (P291)
+
+The ground carriers of both factions (ADR 0037 sections 7 and 14, docs/GDD.md): the Derrick League's **Bunk Wagon**
+(`fossil_bunk_wagon`) and the Lumen Accord's **Linecar** (`renew_linecar`). Each is a `veh` model with a hull in 16
+directions, a cast shadow and an item card, no turret, no damage picture (a unit shows none) and no lift. They follow
+the aircraft in each faction's roster (Vehicles tab). The minelayers (P292) are not drawn yet.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_bunk_wagon` | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
+| `renew_linecar` | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. |
+
+- **Apart from the neighbours.** The Bunk Wagon is a box with a hatch and no turret or gun, taller than the Bullhead and
+  with a flat roof, so it never reads as a tank; the Linecar has a long glass roof and no turret, fin or rail, so it
+  is neither the Swift nor the Fuel Runner (`tests/art/test_carrier_art.gd` holds each carrier's 32 px greyscale
+  silhouette under 0.85 overlap with every ground vehicle of its faction and with the other carrier).
+- **Team colour.** Bunk Wagon: a band down each side, a nose band, a rear band and a roof stripe. Linecar: a band down
+  each side, a wide roof stripe and a thin rear band. Team share of the default view at zoom 1: 9.8 % (Bunk Wagon,
+  d06) and 9.2 % (Linecar, d10), in the rule's 8 to 12 %; in every direction 9.3 to 11.6 % and 8.1 to 11.1 %
+  (`test_carrier_art.gd` holds 5 to 16 %). The first Bunk Wagon had side bands only and 1.4 % in its default view,
+  the first Linecar a roof stripe only and 6 % in some directions.
+- **Running gear and emitters.** `tracks` for the Bunk Wagon, `wheels` for the Linecar; an `exhaust` at the tail, a
+  `damage` point on the roof and a `hang` bracket on the camera side; `scar_milli` 800 and 500.
+- **Canvas.** Hull 158 x 124 and 150 x 92, shadow 218 x 112 and 212 x 108, in 2x px. Page 1 of the atlas grows by 105,
+  128 and 75 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2472, 2407, 2341) and page 2 by
+  218, 106 and 42 (2264, 1264, 1286). A 16-direction vehicle shadow set costs about one shelf of page 2 (its frame height), which
+  is the floor: ADR 0036 section 15's 60 rows for the carriers was too low; the lead's revised page-2 allocation
+  (2026-11-17) is about 220 rows for P291, and a page-2 trim row follows before P204.
+- **Gallery.** The Iso page lists them by themselves and shows their item cards.
+
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
 art ids (ADR 0023 sections 6 and 7), regenerated with `bash scripts/gen-art.sh`: 16 hull frames
@@ -1842,6 +1872,22 @@ construction badge is 52 % on scrub and on water, where its dark plate (77) is h
 the ground (92 and 86), and 70 to 84 % on the others, and it is 52.8 or more from the nearest of the
 ten (the offline glyph) on every ground.
 
+## Menu looks (P519, ADR 0043 section 5)
+Type variations of `game/ui/theme.tres` for the menu screens. They are the pause menu's plates: the chips (toggle and tab) #12181D at 96 % (dim, the off and unpicked state: #0F1418 at 60 %), the cards, the row and the badge #0F1418 at 94 %; edge #2C383E, 8 dp corners on chips, rows and badge, 12 dp corners and 12 dp inside on cards with the accent pairs of ADR 0025 section 13: the accent (#1FA6C8 Lumen Accord, #E07628 Derrick League) is an edge or a fill, the light (#62D6EE, #FFA25C) is text. The screens' opaque backdrop is #1C2127. A text look reads at 4.5:1 or more on its plate or the backdrop (`tests/ui/test_menu_theme.gd`); every Button look is at least 48 dp tall; accent never carries meaning alone (the word says ON or OFF).
+
+| Variation (base) | Use | Look |
+| --- | --- | --- |
+| `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white, own face with 8 px tracking |
+| `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps with 3 px tracking (the row must fit the narrowest column; the AttackTitle face), the side's light |
+| `MenuSideCard` (PanelContainer), `MenuSideCardRenew`, `MenuSideCardFossil` | the side choice on Map select | plate with a 1 dp edge; the picked side's card has a 2 dp accent edge |
+| `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #2C383E, the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
+| `MenuToggleRow` (PanelContainer) | a Settings row: label left, toggle right | plate, 1 dp edge, 8 dp corners |
+| `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
+| `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |
+| `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: 2 dp #C9D1D9 edge; locked: dim plate |
+| `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp #F2C14E edge; 22 dp text in #F2C14E |
+| `MenuXpBar` (ProgressBar) | the XP bar | #2C383E track, #F2C14E fill, 4 dp corners |
+
 ## Rally flags
 Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
 import scale 0.5, so 64 px in game, and the **foot of the pole is the canvas centre**: centre the
@@ -1879,6 +1925,8 @@ in doubt, choose a plainer real-world form.
 | Drillhead (`fossil_bomber`) | A fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip. | `iso/fossil/veh/fossil_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 162x106, hovers `fly_px` 22 |
 | Glint (`renew_fighter`) | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. | `iso/renew/veh/renew_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 124x76, hovers `fly_px` 26 |
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
+| Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
+| Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |
@@ -3021,4 +3069,6 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-15 | v1.39 (P245, art-director, ADR 0036 sections 2, 5 and 15): the Torchjet (`fossil_fighter`), Drillhead (`fossil_bomber`), Glint (`renew_fighter`) and Sunfall (`renew_bomber`), the fighter and the bomber of both factions, as `veh` models with a 16-direction hull, a cast shadow, an item card and a lift (`fly_px` 26 and 22), the new model fields `fly_px` and `low_fly_px`, no tight boxes on an aircraft's sheet, their roster entries after the tanker (the Flight tab), the Iso page drawing a flyer's hull above its shadow ("The aircraft" under "Generated art", Catalogue rows), page 2 of the atlas 1514, 782 and 814 to 1986, 1094 and 1198 (page 1 unchanged). |
 | 2026-11-15 | v1.40 (P248, touch-ux-dev): `tab_research.svg` (the Research tab of the build drawer, a flask), white and grey like its group; not on the gallery's pages yet (art-director's follow-up). |
 | 2026-11-16 | v1.41 (P520, art-director, ADR 0043 sections 1 and 2): the intro art. `assets/art/svg/intro/` holds seventeen layers of the app icon, generated by `bash scripts/gen-intro.sh` (`tools/artgen/ArtIntro.gd`) and never edited: `sky`, `ring`, `sweep` and `ground` from `icon_background.svg` (the ground paints over the ring's lower arc, so the ring sits between two background layers) and `shadow`, `underlay`, `track_far`, `cleats_far`, `hull`, `track_near`, `cleats_near`, `hull_deck`, `turret`, `gun`, `rim_light`, `clods` and `sparks` from `icon_foreground.svg`. `assets/art/splash/boot_splash.png` (1024 x 1024) is the icon 1:1 on `#06080C` with AppCode ApS's white wordmark at 30 % of the icon's width under it; one lockup fits all six sizes of ADR 0015 section 6 at Godot's `Keep` stretch mode, so the mark-beside-wordmark variant is not used. The brand SVGs are only rendered from, never edited or loaded at runtime. Follow-up: the intro layers and the splash are not on `scenes/dev/art_gallery.tscn` yet (shared with the 4b art rows); a later row adds a page. |
+| 2026-11-17 | v1.42 (P519, art-director, ADR 0043 section 5): the Menu looks section: the menu screens' type variations in `theme.tres` (title, side names and cards, slider, toggle row and chips, tab chips, map card, rank badge and label, XP bar). The main menu's side names use `SideNameRenew` and `SideNameFossil` instead of a tint. |
 | 2026-11-17 | v1.43 (P249, art-director, ADR 0036 sections 2, 10 and 15): the Draft Shop (`fossil_engineering`) and the Lens Works (`renew_engineering`), the engineering centre of both factions, as 2 x 2 models with a KRITISK picture that shows the inside and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the airfield ("The engineering centres" under "Buildings", Catalogue rows); `FactionDef.upgrades` filled; the four hand-written research cards `item_heavy_bombs`, `item_plated_hull`, `item_focus_bombs` and `item_glaze_hull` and the "Research cards" rule under "Generated item cards" (`test_artgen.gd` exempts them from its generated-file checks by name, `HAND_CARDS`; `test_engineering_art.gd` pins their tags, size, key band, plate and import); the research cards are not on the gallery's pages yet (`art_gallery.gd` is at the 1,000 line limit; art-director's follow-up); the sorted world's page 1 2314, 2258 and 2238 to 2367, 2279 and 2266 and page 2 1986, 1094 and 1198 to 2046, 1158 and 1244 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-17 | v1.44 (P291, art-director, ADR 0037 sections 7 and 14): the Bunk Wagon (`fossil_bunk_wagon`) and the Linecar (`renew_linecar`), the ground carriers, as 16-direction hull and shadow models with item cards and roster entries after the bomber ("The ground carriers" under "Units", Catalogue rows); the sorted world's page 1 2367, 2279 and 2266 to 2472, 2407 and 2341 and page 2 2046, 1158 and 1244 to 2264, 1264 and 1286 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

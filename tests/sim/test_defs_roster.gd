@@ -51,6 +51,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 		"harvester",
 		"fossil_fighter",
 		"fossil_bomber",
+		"fossil_bunk_wagon",
 	]
 	var faction: FactionDef = load("res://data/factions/fossil.tres")
 	var listed: Array[String] = []
@@ -59,7 +60,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 	assert_array(listed).is_equal(wanted)
 
 
-func test_the_data_holds_the_twelve_buildings_and_the_eight_units() -> void:
+func test_the_data_holds_the_twelve_buildings_and_the_nine_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -84,6 +85,7 @@ func test_the_data_holds_the_twelve_buildings_and_the_eight_units() -> void:
 		"harvester",
 		"fossil_fighter",
 		"fossil_bomber",
+		"fossil_bunk_wagon",
 	]
 	assert_array(ids).contains_exactly_in_any_order(wanted)
 	for id: String in wanted:
@@ -482,12 +484,13 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	)
 	assert_array(buildable[INFANTRY]).is_equal(["rifle_squad", "rocket_squad"])
 	assert_array(buildable[VEHICLES]).is_equal(
-		["artillery", "harvester", "heavy_tank", "light_tank"]
+		["artillery", "fossil_bunk_wagon", "harvester", "heavy_tank", "light_tank"]
 	)
 
 
 ## The paths of the unit files of the faction these cases read, in file order.
-## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre.
+## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre,
+## P291 the Bunk Wagon.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -496,10 +499,9 @@ func _own_files() -> Array[String]:
 			in [
 				"fossil_transport",
 				"fossil_drone",
-				"fossil_bunk_wagon",
 				"fossil_shot_truck",
-				"fossil_weld_shed",
-				"fossil_patchers",
+				"fossil_weld_shed",  # P279
+				"fossil_patchers",  # P280
 			]
 		):
 			continue
