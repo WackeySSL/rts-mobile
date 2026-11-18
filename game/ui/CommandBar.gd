@@ -174,6 +174,10 @@ class Chip:
 		var text: String = "×%d" % group.count if units else ""  # A building: its card, no name.
 		label.visible = units
 		line.vertical = not units  # A building: the health bar under its card, not beside it.
+		if units:
+			line.remove_theme_constant_override(&"separation")
+		else:
+			line.add_theme_constant_override(&"separation", 0)
 		if label.text != text:
 			label.text = text
 			fit_label()

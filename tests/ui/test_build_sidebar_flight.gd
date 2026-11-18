@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## sizes of ScreenSizes.ALL: there is none while the faction has no aircraft to build, so today's
 ## three tabs stay as they were; with a fighter in the roster it is a fourth tab of the drawer's
 ## tab size inside the drawer, a tap opens it and shows the fighter's card, and selecting an own
-## airfield (which produces on it) switches an open drawer to it (P310: it never opens a closed
-## one). Own: Derrick League airfield 1 (a complete
+## airfield (which produces on it) sets the tab, an open drawer switches and a closed one stays
+## closed (P310). Own: Derrick League airfield 1 (a complete
 ## building) and fighter 2.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -112,11 +112,10 @@ func test_selecting_an_own_airfield_in_an_open_drawer_switches_to_the_flight_tab
 
 
 ## Selecting an own producer never opens the drawer (P310): with it closed the building is only
-## selected, tab and state as they were, at both orientations; with it open the tab switches; BUILD
-## opens it. Producers: the airfield, the engineering centre, a barracks, a vehicle factory and a
-## Headquarters, each of the player's own.
-func test_selecting_an_own_producer_leaves_a_closed_drawer_closed_and_switches_an_open_one(
-) -> void:
+## selected and the tab becomes its tab; with it open the tab switches and it stays open; BUILD
+## then opens on that tab. Producers: the airfield, the engineering centre, a barracks, a vehicle
+## factory and a Headquarters, each of the player's own.
+func test_selecting_an_own_producer_sets_the_tab_and_never_opens_the_drawer() -> void:
 	var producers: Array[String] = [
 		"fossil_engineering", "barracks", "vehicle_factory", "headquarters"
 	]
@@ -128,25 +127,27 @@ func test_selecting_an_own_producer_leaves_a_closed_drawer_closed_and_switches_a
 		var ids: Array[int] = [AIRFIELD]
 		for at: int in producers.size():
 			ids.append(FIGHTER + 1 + at)
+		var build: Control = _main.get_node("Hud").find_child("BuildButton", true, false)
 		for id: int in ids:
 			var why: String = "%s id %d" % [size, id]
 			_sidebar.collapse()
-			_sidebar.select_tab(World.Tab.STRUCTURES)
+			_sidebar.select_tab(World.Tab.FLIGHT if id == FIGHTER + 1 else World.Tab.STRUCTURES)
 			await await_idle_frame()
+			var before: int = _sidebar.tab
+			controller.selection.clear()
 			controller.selection.set_ids(PackedInt32Array([id]))
 			assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
-			assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
-			_sidebar.open()
+			var produces: int = _sidebar.tab
+			if id == AIRFIELD:
+				assert_int(produces).override_failure_message(why).is_equal(World.Tab.FLIGHT)
+			_tap(build)  # BUILD opens on the tab the selection set.
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+			assert_int(_sidebar.tab).override_failure_message(why).is_equal(produces)
+			_sidebar.select_tab(before)  # Open: a producer selected switches the tab, stays open.
 			controller.selection.clear()
 			controller.selection.set_ids(PackedInt32Array([id]))
 			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-			if id == AIRFIELD:
-				assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.FLIGHT)
-		_sidebar.collapse()
-		await await_idle_frame()
-		var build: Control = _main.get_node("Hud").find_child("BuildButton", true, false)
-		_tap(build)
-		assert_bool(_sidebar.is_open()).override_failure_message(str(size)).is_true()
+			assert_int(_sidebar.tab).override_failure_message(why).is_equal(produces)
 
 
 ## The tab button a name label belongs to.

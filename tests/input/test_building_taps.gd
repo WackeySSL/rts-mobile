@@ -2,11 +2,11 @@ extends GdUnitTestSuite
 ## Taps on buildings through the real TouchInput, GestureRecognizer and PlayerController in the main
 ## scene at the six screens (ScreenSizes.ALL: 1280x720, 2400x1080 and 2048x1536, each held both
 ## ways), with a fake clock (plan P115b, ADR 0019 section 3, ADR 0023 section 3). A tap on a
-## building's picture selects it alone, the panel shows its card (no name) and the sidebar stays
-## as it is (P310); a unit at
-## the spot is picked first; the building drawn in front wins an overlap; a ground tap lets go of
-## it; an enemy building is selected for its info and gets no order, and with an own tank selected a
-## tap on it attacks when the sim would take that (the cell under its position is seen) and moves
+## building's picture selects it alone, the panel shows its card (no name), the sidebar's tab
+## becomes its tab and the drawer never opens (P310); a unit at the spot is
+## picked first; the building drawn in front wins an overlap; a ground tap lets go of it; an enemy
+## building is selected for its info and gets no order, and with an own tank selected a tap on it
+## attacks when the sim would take that (the cell under its position is seen) and moves
 ## when not. A second tap on the selected building takes the sidebar back to its tab. Buildings
 ## never join a double-tap, a box or "All army".
 ## On a 32 x 32 map, player 1 the local one: Headquarters id 1 (3x3, tiles 6-8 by 6-8, centre px
@@ -91,7 +91,7 @@ func test_a_tap_on_an_own_building_selects_it_alone_shows_its_card_and_leaves_th
 		var note: String = str(size)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
 		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
-		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.VEHICLES)
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
 		assert_array(_chip_cards()).override_failure_message(note).is_equal(["headquarters"])
 		_tap_building(BARRACKS, 0.0)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
@@ -99,12 +99,13 @@ func test_a_tap_on_an_own_building_selects_it_alone_shows_its_card_and_leaves_th
 		)
 		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
 		assert_array(_chip_cards()).override_failure_message(note).is_equal(["barracks"])
-		_sidebar.open()  # With the drawer open the tap takes it to the building's tab.
+		_sidebar.open()  # An open drawer folds on the map tap and the tab is the building's.
 		_tap_building(HQ, 0.0)
+		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
 		_tap_building(BARRACKS, 0.0)
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.INFANTRY)
-		assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
+		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
 		assert_array(_sent).override_failure_message(note).is_empty()  # Selecting orders nothing.
 
 
@@ -274,11 +275,10 @@ func test_with_an_own_tank_selected_a_tap_on_an_enemy_building_seen_only_at_its_
 		Rig.see(_runner.snapshot, 1, [Vector2i(21, 21)])  # Back to the cell under its position.
 
 
-func test_a_second_tap_on_the_selected_building_takes_an_open_sidebar_back_to_its_tab() -> void:
+func test_a_second_tap_on_the_selected_building_takes_the_sidebar_back_to_its_tab() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		var note: String = str(size)
-		_sidebar.open()
 		_tap_building(HQ, 0.0)
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
 		_sidebar.select_tab(World.Tab.VEHICLES)  # To queue a tank: the selection stays.
