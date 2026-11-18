@@ -3,8 +3,9 @@ extends RefCounted
 ## The player's Settings-screen values on the device (plan P526, ADR 0042 section 1): section
 ## `settings` of `SaveService`'s one save file, keys `sound_step`, `music_step` and `reduced`.
 ## Vibration is `HudPrefs`' (section `hud`). Static functions only. A missing key, or one of
-## another type, means the default. The boot reads `reduced_effects()` into `IntroPlayer.reduced`
-## and the volume steps through `apply_audio` once `AudioService` is up.
+## another type, means the default. `MenuFlow` reads `reduced_effects()` into the boot
+## scene's `IntroPlayer`, every `MenuStack` and, at each match start, `LifeSettings`; the volume
+## steps go through `apply_audio` once `AudioService` is up.
 
 const SECTION: StringName = &"settings"
 const KEY_SOUND: String = "sound_step"

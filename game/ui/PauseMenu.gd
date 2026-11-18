@@ -582,7 +582,10 @@ func _open_help() -> void:
 
 func _open_settings() -> void:
 	if _routes().has(MenuRoutes.SETTINGS):
-		_open_overlay(_routes().make(MenuRoutes.SETTINGS))
+		var screen: MenuScreen = _routes().make(MenuRoutes.SETTINGS)
+		if screen is SettingsScreen:  # A dev-menu match has no MenuFlow runner: say it is battle.
+			(screen as SettingsScreen).in_match = func() -> bool: return true
+		_open_overlay(screen)
 
 
 ## A one-screen detour over the menu (the banner goes while it stands): a `MenuStack` whose root
