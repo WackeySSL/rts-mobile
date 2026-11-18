@@ -1542,48 +1542,56 @@ open the Research tab of the build drawer.
 
 ### The repair buildings (P279)
 
-The repair building of both factions (ADR 0037 sections 5 and 6, docs/GDD.md): the Derrick League's **Weld Shed**
+The repair building of both factions (ADR 0037 sections 5 and 14, docs/GDD.md): the Derrick League's **Weld Shed**
 (`fossil_weld_shed`) and the Lumen Accord's **Drone Dock** (`renew_drone_dock`), each a 2 x 2 model with a hull, an
 `anim` loop of 8 frames, a KRITISK picture (`dmg2`), no SKADET picture (ADR 0034), a cast shadow and an item card.
 They follow the engineering centre in each faction's roster (Structures tab; each needs the faction's vehicle
 factory). The buildings have no pad: a vehicle stops beside the building and is repaired in place, so the art shows a
-yard, not a landing site.
+yard and a rack, not a place to land. ADR 0037 section 14 gave the loops 6 and 4 frames; both ship 8, so each loop
+closes on a whole ring or swing.
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_weld_shed` | An open steel gantry bay on four riveted posts under a low rust roof with a team fascia, a hanging welding arm on a rail that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. |
-| `renew_drone_dock` | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal landing deck with a mint-lit pad and a team rim, a small four-rotor drone hovering and circling above it, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. |
+| `fossil_weld_shed` | An open steel gantry bay on four riveted posts under a shallow steel roof on a rust rim with a team fascia, a welding arm hanging in front of the fascia that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. |
+| `renew_drone_dock` | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal deck with a team rim whose top is a rack of seven small hexagonal drone cradles with team bands, three holding a parked drone, a small four-rotor drone circling above the rack, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. |
 
 - **What says "repair".** The Weld Shed shows the act: a torch on a swinging arm with a spark cross over a service
   plate, gas bottles beside it (a workshop bay a tank could drive into). The Drone Dock shows the Lumen Accord's way,
-  small drones that do the work: a drone circles above the deck, another sits on a charging bench. Neither has pads,
-  runways or a mast, so neither reads as an airfield or a radar.
+  small drones that do the work, as the GDD has it ("a white ceramic rack of small hexagonal drones"): a honeycomb
+  rack of cradles on the deck, a drone circling above it, another on a charging bench. Neither has a pad, a ringed
+  mark or a marker light, so neither reads as an airfield (whose team-ringed pads HOW_TO_PLAY teaches), and neither
+  has a runway or a mast, so neither reads as a radar.
 - **Silhouettes against the rest.** The Weld Shed is the only open building with a flat roof held on posts (every other
-  Derrick League building is a closed hall, a mast or a drum); the Drone Dock is the only building with a wide deck on a
-  single column, so its top edge is a hexagon on a stalk where the Grid Hub's and the Relay Post's hexagons sit on the
-  ground. At 32 px in greyscale the worst overlap with any other building (both factions, default views) is 0.80
-  (Weld Shed, against the Lumen Accord's Motor Hall) and 0.74 (Drone Dock, against the Lumen Accord's Fuel Works), under the 0.85 the
-  tests allow (`tests/art/test_repair_building_art.gd`); they fill 48 % and 40 % of the 32 px square.
-- **Life (`anim`, 8 frames, `anim_ms` 110 and 160).** The Weld Shed's arm and torch swing 9 degrees to each side of the
-  rail and back while the spark cross turns a step each frame (the loop closes on frame 0); the Drone Dock's drone
-  rides a ring of 0.12 tile above the deck and rises and sinks by 0.08 tile as it goes. Both are model poses cropped to
-  the moving element (Weld Shed 50 x 86 px, Drone Dock 76 x 124 px), never edited frames; the spark and the hover light
-  are in the frame, flame-white and mint, and carry no team colour but the drone's band. `anim_kritisk` is `hide` on
+  Derrick League building is a closed hall, a mast or a drum); the Drone Dock is the only building with a wide deck on
+  a single column, so its top edge is a hexagon on a stalk where the Grid Hub's and the Relay Post's hexagons sit on
+  the ground. At 32 px in greyscale the worst overlap with any other building (both factions, default views) is 0.81
+  (Weld Shed, against the Lumen Accord's Motor Hall) and 0.75 (Drone Dock, against the Lumen Accord's Fuel Works),
+  under the 0.85 the tests allow (`tests/art/test_repair_building_art.gd`); they fill 48 % and 40 % of the 32 px
+  square.
+- **Life (`anim`, 8 frames, `anim_ms` 110 and 160).** The Weld Shed's arm and torch swing 9 degrees to each side of
+  their hanger and back while the spark cross turns between frames, and the torch stays clear of the near post at
+  every angle; the Drone Dock's drone rides a ring of 0.2 tile above the rack and rises and sinks by 0.08 tile as it
+  goes, so the step from frame 7 back to frame 0 is as long as any other (`test_repair_building_art.gd`). The moving
+  element stands in front of the body and below the fascia's lower edge ("Where an element may stand": the anim
+  sprite is drawn over the body, so it hangs where nothing nearer overlaps it). Both are model poses cropped to the
+  moving element (Weld Shed 62 x 76 px, Drone Dock 90 x 132 px), never edited frames; the spark (lamp white, a larger
+  cross and a bead, with the floor stripes in concrete and the lamp head small so it is the brightest thing on the
+  building) and the drone's hover light (mint) carry no team colour but the drone's band. `anim_kritisk` is `hide` on
   both: at KRITISK the arm and the drone are gone with their carriers.
-- **Team colour.** The roof fascia, the two post collars and the three bottle collars (Weld Shed); the pylon band, the deck
-  rim, the ring round the pad, the bench band and the drone's band (Drone Dock). Never a roof plate
-  (`test_artgen_plates.gd`). Team share of the default view at zoom 1 in every frame of the loop: 9.4 to 9.6 % (Weld
-  Shed) and 10.5 to 10.8 % (Drone Dock), in the rule's 8 to 12 %.
-- **KRITISK.** The Weld Shed's roof, rail and rear posts are gone, a front post leans, a broken rust slab, a charred
-  fascia-less frame of rebar and a fallen beam lie on the service plate over a dark `interior` floor; the bottle rack,
-  the lamp and the collars stay, so the picture keeps 0.24 of the intact team colour. The Drone Dock's deck, rim and
-  pylon are gone, a broken stub and a wrecked deck slab lie on the base round a dark `interior` pad, the antenna
-  leans, and the bench with its parked drone is untouched, so it keeps 0.38 (ADR 0029's band is 20 to 50 %). The damage
-  points sit on the plate, the bottle rack and the bench (Weld Shed: smoke, gas, spark) and on the stub, the slab and
-  the bench (Drone Dock).
+- **Team colour.** The roof fascia, the collar on each near post and the three bottle collars (Weld Shed); the pylon
+  band, the deck rim, the seven cradle bands, the bench band and the drone's band (Drone Dock). Never a roof plate
+  (`test_artgen_plates.gd`). Team share of the default view at zoom 1 in every frame of the loop: 10.3 % (Weld Shed)
+  and 9.2 to 9.4 % (Drone Dock), in the rule's 8 to 12 %.
+- **KRITISK.** The Weld Shed's roof, rail, hanger and rear posts are gone, a near post leans with its collar, a broken
+  rust slab, a rebar and a fallen beam lie on the service plate over a dark `interior` floor; the bottle rack, the
+  lamp and the crate stay, so the picture keeps 0.22 of the intact team colour. The Drone Dock's deck, rim, pylon and
+  pylon band are gone, a broken stub and a wrecked deck slab lie on the base round a dark `interior` square, the
+  antenna leans, and the bench with its parked drone is untouched, so it keeps 0.23 (ADR 0029's band is 20 to 50 %).
+  The damage points sit on the plate, the bottle rack and the rust crate (Weld Shed: smoke, gas, spark) and on the
+  stub, the slab and the bench (Drone Dock).
 - **Canvas.** Hull 256 x 200 (anchor y 72) and 256 x 180 (anchor y 51), KRITISK patch 250 x 134 and 250 x 102, shadow
-  336 x 166 and 328 x 166, in px (the SVG sizes; the atlas rasterises them at 2x). Page 1 of the atlas grows by 43, 33
-  and 58 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2625, 2559, 2493) and page 2 by 18, 0 and 22
+  336 x 166 and 328 x 166, in px (the SVG sizes; the atlas rasterises them at 2x). Page 1 of the atlas grows by 47, 26
+  and 67 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2629, 2552, 2502) and page 2 by 18, 0 and 22
   (2504, 1386, 1408), inside the page-2 allocation of 60 rows.
 - **Gallery.** The Build page and the Iso page list the two buildings by themselves (the Iso page plays the loop) and
   show their generated cards.
@@ -2036,8 +2044,8 @@ in doubt, choose a plainer real-world form.
 | Glide Deck | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. | `iso/renew/bld/renew_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Draft Shop | A low concrete drafting hall under a long barrel-vault rust roof with a wide team band between its wall segments, and in front of it an open steel test cradle that holds a fat olive bomb casing with two team rings and a rust fin, beside a squat round concrete pressure tank with a team band. | `iso/fossil/bld/fossil_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
 | Lens Works | A low round white workshop drum with a glass ribbon, a wide team band and a stepped lid, and beside it a long white optical bench with a team band carrying one large round glass lens in a team-coloured ring on a slim titanium pedestal. | `iso/renew/bld/renew_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
-| Weld Shed | An open steel gantry bay on four riveted posts under a low rust roof with a team fascia, a hanging welding arm on a rail that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. | `iso/fossil/bld/fossil_weld_shed_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
-| Drone Dock | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal landing deck with a mint-lit pad and a team rim, a small four-rotor drone hovering and circling above it, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. | `iso/renew/bld/renew_drone_dock_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
+| Weld Shed | An open steel gantry bay on four riveted posts under a shallow steel roof on a rust rim with a team fascia, a welding arm hanging in front of the fascia that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. | `iso/fossil/bld/fossil_weld_shed_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
+| Drone Dock | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal deck with a team rim whose top is a rack of seven small hexagonal drone cradles with team bands, three holding a parked drone, a small four-rotor drone circling above the rack, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. | `iso/renew/bld/renew_drone_dock_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
@@ -3169,4 +3177,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-17 | v1.43 (P249, art-director, ADR 0036 sections 2, 10 and 15): the Draft Shop (`fossil_engineering`) and the Lens Works (`renew_engineering`), the engineering centre of both factions, as 2 x 2 models with a KRITISK picture that shows the inside and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the airfield ("The engineering centres" under "Buildings", Catalogue rows); `FactionDef.upgrades` filled; the four hand-written research cards `item_heavy_bombs`, `item_plated_hull`, `item_focus_bombs` and `item_glaze_hull` and the "Research cards" rule under "Generated item cards" (`test_artgen.gd` exempts them from its generated-file checks by name, `HAND_CARDS`; `test_engineering_art.gd` pins their tags, size, key band, plate and import); the research cards are not on the gallery's pages yet (`art_gallery.gd` is at the 1,000 line limit; art-director's follow-up); the sorted world's page 1 2314, 2258 and 2238 to 2367, 2279 and 2266 and page 2 1986, 1094 and 1198 to 2046, 1158 and 1244 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-17 | v1.44 (P291, art-director, ADR 0037 sections 7 and 14): the Bunk Wagon (`fossil_bunk_wagon`) and the Linecar (`renew_linecar`), the ground carriers, as 16-direction hull and shadow models with item cards and roster entries after the bomber ("The ground carriers" under "Units", Catalogue rows); the sorted world's page 1 2367, 2279 and 2266 to 2472, 2407 and 2341 and page 2 2046, 1158 and 1244 to 2264, 1264 and 1286 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-17 | v1.45 (P292, art-director, ADR 0037 sections 8 and 14): the Shot Truck (`fossil_shot_truck`) and the Seeder (`renew_seeder`), the minelayers, as 16-direction hull and shadow models with item cards and roster entries after the carriers ("The minelayers" under "Units", Catalogue rows); the four mine marks of both factions, own and known (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`, the known with the notched rim), and the glyphs `glyph_mine` and `glyph_hold` (Bar row of the Hud page); the sorted world's page 1 2472, 2407 and 2341 to 2582, 2526 and 2435 and page 2 2264, 1264 and 1286 to 2486, 1386 and 1386 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
-| 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2625, 2559 and 2493 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2629, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

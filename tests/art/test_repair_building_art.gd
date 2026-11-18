@@ -118,3 +118,55 @@ func test_each_reads_apart_from_every_other_building_at_32_px_in_greyscale() -> 
 				. override_failure_message("%s against %s: %.2f" % [id, other, overlap])
 				. is_less(MAX_OVERLAP)
 			)
+
+
+## The loop closes (STYLE.md "The repair buildings"): after frame 7 comes frame 0 again. The Weld
+## Shed's arm swings by at most 5 degrees a frame, and the step from the last frame to the first is
+## no bigger than the steps inside the loop; the Drone Dock's drone rides 8 points of one ring (a
+## constant radius round the first frame's centre), so the step back to frame 0 is as long as any
+## other and the turn is 45 degrees.
+func test_the_arm_swings_and_the_drone_rides_a_loop_that_closes_on_frame_0() -> void:
+	var shed: ArtModel = load(MODEL % ["fossil", "fossil_weld_shed"]) as ArtModel
+	var angles: Array[float] = []
+	for frame: int in 8:
+		var angle: float = 0.0
+		for move: ArtMove in shed.pose_moves(&"anim", frame):
+			if move.group == &"arm" and move.axis == 1:
+				angle = move.degrees
+		angles.append(angle)
+	var steps: Array[float] = []
+	for frame: int in 8:
+		steps.append(absf(angles[(frame + 1) % 8] - angles[frame]))
+	assert_float(angles[0]).is_equal(0.0)
+	assert_float(steps.max()).is_less_equal(5.0)
+	assert_float(steps[7]).override_failure_message("last to first %s" % [steps]).is_equal(steps[0])
+	var dock: ArtModel = load(MODEL % ["renew", "renew_drone_dock"]) as ArtModel
+	var places: Array[Vector2] = []
+	for frame: int in 8:
+		for move: ArtMove in dock.pose_moves(&"anim", frame):
+			if move.group == &"drn":
+				places.append(Vector2(move.shift.x, move.shift.y))
+	assert_int(places.size()).is_equal(8)
+	var chord: float = places[0].distance_to(places[1])
+	for frame: int in 8:
+		assert_float(places[frame].length()).is_equal_approx(places[0].length(), 0.002)
+		assert_float(places[frame].distance_to(places[(frame + 1) % 8])).is_equal_approx(
+			chord, 0.002
+		)
+
+
+## No moving part is drawn over the body where the body should stand in front of it: every anim
+## primitive of the Weld Shed hangs below the fascia's lower edge and in front of it (STYLE.md
+## "Where an element may stand").
+func test_the_weld_sheds_arm_stays_below_the_fascia_and_in_front_of_it() -> void:
+	var shed: ArtModel = load(MODEL % ["fossil", "fossil_weld_shed"]) as ArtModel
+	var fascia: float = 99.0
+	for prim: ArtPrim in shed.primitives(&"hull"):
+		if prim.group == &"eave":
+			fascia = minf(fascia, prim.aabb().position.z)
+	assert_float(fascia).is_less(99.0)
+	for prim: ArtPrim in shed.primitives(&"anim"):
+		assert_float(prim.aabb().end.z).override_failure_message(prim.line).is_less_equal(
+			fascia - 0.1
+		)
+		assert_float(prim.aabb().position.y).override_failure_message(prim.line).is_greater(0.3)

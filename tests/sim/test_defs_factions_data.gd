@@ -13,9 +13,9 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the transports and the drone squads (P266). Each row removes its
-## own names (P245 rostered the fighters and bombers, P249 the engineering centres, P292 the
-## minelayers).
+## Files with no roster entry yet: the transports and the drone squads (P266), and the medic squads
+## (P280). Each row removes its own names (P245 rostered the fighters and bombers, P249 the
+## engineering centres, P279 the repair buildings, P292 the minelayers).
 const AIR_UNLISTED: Array[String] = [
 	# The transports and drone squads (P266).
 	"fossil_transport",

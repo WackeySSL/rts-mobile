@@ -74,19 +74,19 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## mirror; page 2 has left 1098, 2198 and 2198 (every page under the 3584 budget).
 ## P279 (the Weld Shed and the Drone Dock: 2 x 2 hull, an 8-frame `anim` loop cropped to the moving
 ## element, KRITISK patch and shadow each, no head frames) moved page 1 from 2582, 2526 and 2435
-## to the pins below (+43, +33 and +58 rows) and page 2 from 2486, 1386 and 1386 (+18, 0 and +22:
+## to the pins below (+47, +26 and +67 rows) and page 2 from 2486, 1386 and 1386 (+18, 0 and +22:
 ## the shadows fit the free width of shelf 1, under the 60 rows the plan allocated). Page 1 has
-## left 959 rows on the cross-faction page, 1025 on the Derrick League mirror and 1091 on the Lumen
+## left 955 rows on the cross-faction page, 1032 on the Derrick League mirror and 1082 on the Lumen
 ## Accord mirror; page 2 has left 1080, 2198 and 2176.
-## P279: 2582 + 43; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
+## P279: 2582 + 47; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_CROSS: int = 2625
-## P279: 2526 + 33; P292: 2407 + 119; P291: 2279 + 128; P249: 2258 + 21
+const TODAY_CROSS: int = 2629
+## P279: 2526 + 26; P292: 2407 + 119; P291: 2279 + 128; P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
-const TODAY_MIRROR_DERRICK: int = 2559
-## P279: 2435 + 58; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 + 28
+const TODAY_MIRROR_DERRICK: int = 2552
+## P279: 2435 + 67; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 + 28
 ## (P245b: 2167 + 71; P239b: 2068 + 99).
-const TODAY_MIRROR_LUMEN: int = 2493
+const TODAY_MIRROR_LUMEN: int = 2502
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players, and each shadow fits the free width of shelf 1; only the trailing
 ## shelf grows. An aircraft's hull carries the team colour, so it has a slot per player (P245).
