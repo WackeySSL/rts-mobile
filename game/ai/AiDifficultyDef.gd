@@ -84,6 +84,12 @@ extends Resource
 ## has not explored after marching this many ticks since the pick is given up. 0 = off. Easy does
 ## not search.
 @export var search_hold_ticks: int = 0
+## All-in groups (plan row P250e; off by default like the fields above, so the frozen files play as
+## before): from the all-in tick the home squad joins the wave as one group, once its value reaches
+## `all_in_group_value` or `all_in_group_ticks` have passed since its first unit waited, not one
+## unit at a time. Both 0 = every unit at once. Easy joins at once.
+@export var all_in_group_value: int = 0
+@export var all_in_group_ticks: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).

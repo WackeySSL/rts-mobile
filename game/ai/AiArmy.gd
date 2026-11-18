@@ -81,6 +81,8 @@ var _lo: Vector2i = Vector2i.ZERO
 var _hi: Vector2i = Vector2i.ZERO
 ## The unseen-hit response (`AiUnseen`, P179b), made in `create`.
 var _unseen: AiUnseen = AiUnseen.new()
+## The all-in's reinforcement groups (`AiReinforce`, P250e), made in `create`.
+var _reinforce: AiReinforce = AiReinforce.new()
 ## Scratch for the swap of the withdrawn list of `_step_back`.
 var _kept: PackedInt32Array = PackedInt32Array()
 ## The ids under the step-back percent that have not stepped back yet (`_step_back`).
@@ -107,6 +109,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army._unseen.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
 	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
 	army.focus_fire = level.focus_fire > 0
+	army._reinforce = AiReinforce.create(level)
 	return army
 
 
@@ -491,10 +494,12 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 		return
 	var home: PackedInt32Array = _members(memory, true)
 	if (
-		not home.is_empty()
+		_reinforce.ready(view.tick, _home_value, home.size())
+		and not home.is_empty()
 		and _order(view, memory, out, home, goal, AiMemory.Owner.ARMY, _at(goal))
 	):
 		_join_wave(memory, true)
+		_reinforce.sent()
 
 
 ## Whether the wave is beaten (its value is under `retreat_percent` of its launch value, or the
