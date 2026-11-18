@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 ## timed. A script error would end up in the log that scripts/verify.sh scans.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
+const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const BLUE: int = 1
@@ -18,7 +19,7 @@ const AFTER_KILL: int = 20
 const MORE: int = 30
 const SLICE_TICKS: int = 64
 const FRAME_LIMIT: int = 400
-const BASE_SIZE: Vector2i = Vector2i(1280, 720)
+const BASE_SIZE: Vector2i = ScreenSizes.LANDSCAPE[0]
 
 var _window_size_before: Vector2i
 var _clock: int = 0
