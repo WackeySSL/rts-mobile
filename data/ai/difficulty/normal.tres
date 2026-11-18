@@ -41,3 +41,6 @@ hold_in_waves = 1
 search_hold_ticks = 2700
 commands_per_think_max = 8
 income_percent = 100
+; Starting values for the Phase 4b balance run (P250d), no source yet.
+wave_spread_tiles = 8
+wave_regroup_ticks = 300

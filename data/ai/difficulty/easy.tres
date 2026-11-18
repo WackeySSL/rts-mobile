@@ -39,3 +39,5 @@ hold_in_waves = 0
 search_hold_ticks = 0
 commands_per_think_max = 3
 income_percent = 100
+wave_spread_tiles = 0
+wave_regroup_ticks = 0

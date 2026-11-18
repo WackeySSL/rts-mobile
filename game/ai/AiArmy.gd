@@ -81,6 +81,8 @@ var _lo: Vector2i = Vector2i.ZERO
 var _hi: Vector2i = Vector2i.ZERO
 ## The unseen-hit response (`AiUnseen`, P179b), made in `create`.
 var _unseen: AiUnseen = AiUnseen.new()
+## The wave's cohesion (`AiCohesion`, P250d), made in `create`.
+var _cohesion: AiCohesion = AiCohesion.new()
 ## Scratch for the swap of the withdrawn list of `_step_back`.
 var _kept: PackedInt32Array = PackedInt32Array()
 ## The ids under the step-back percent that have not stepped back yet (`_step_back`).
@@ -107,6 +109,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army._unseen.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
 	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
 	army.focus_fire = level.focus_fire > 0
+	army._cohesion = AiCohesion.create(level)
 	return army
 
 
@@ -477,6 +480,8 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	var focused: bool = focus_fire and _focus(view, memory, out, WAVE)
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
 	var target: Vector2i = Vector2i(memory.base_x, memory.base_y)
+	if not focused and not all_in and _cohesion.run(self, view, memory, out):
+		return
 	var wave: PackedInt32Array = _members(memory, true, WAVE)
 	if (
 		not focused
@@ -587,6 +592,7 @@ func _launch(
 	if not _order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, _at(goal)):
 		return
 	_join_wave(memory, all_in)
+	_cohesion.reset()
 	memory.squad_role[WAVE] = ROLE_WAVE
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
 	memory.squad_launch_value[WAVE] = value
@@ -641,6 +647,7 @@ func _disband(memory: AiMemory) -> void:
 	memory.squad_goal_y[WAVE] = AiMemory.NONE
 	memory.squad_focus[WAVE] = AiMemory.NONE
 	memory.wave_start_tick = AiMemory.NONE
+	_cohesion.reset()
 	if held:
 		memory.release_owner(AiMemory.Owner.ARMY)
 

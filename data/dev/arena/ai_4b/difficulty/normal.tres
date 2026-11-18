@@ -40,3 +40,5 @@ mend_floor = 400
 repair_retreat_percent = 0
 medic_per_squads = 0
 repair_wave_retreat = 0
+wave_spread_tiles = 0
+wave_regroup_ticks = 0

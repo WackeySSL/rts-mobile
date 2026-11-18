@@ -84,6 +84,14 @@ extends Resource
 ## has not explored after marching this many ticks since the pick is given up. 0 = off. Easy does
 ## not search.
 @export var search_hold_ticks: int = 0
+## Wave cohesion (plan row P250d; off by default like the fields above, so the frozen files play
+## as before): a wave on the march whose farthest member is more than `wave_spread_tiles` from the
+## wave's centre halts at the centre (every member gets an `ATTACK_MOVE` there) until the farthest
+## is within half of it, or `wave_regroup_ticks` pass, then marches on; after the cap it does not
+## halt again for the same span. A wave whose front has an enemy near it never halts. 0 = off. Easy
+## does not regroup.
+@export var wave_spread_tiles: int = 0
+@export var wave_regroup_ticks: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
