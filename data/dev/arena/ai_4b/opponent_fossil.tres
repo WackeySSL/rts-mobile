@@ -25,6 +25,11 @@ artillery_type = &"artillery"
 hold_types = Array[StringName]([&"artillery"])
 defence_type = &"defence_turret"
 strike_type = &"fossil_strike"
+; Mines (P295) are off in the frozen arena: no layer type named.
+mine_layer_type = &""
+mine_spacing_tiles = 4
+mine_sweep_reach_tiles = 4
+mine_scout_leg_tiles = 8
 ; Air and tech (P250) are off in the frozen arena: no type named, every weight 0.
 aa_type = &""
 fighter_type = &""
