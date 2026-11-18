@@ -419,7 +419,7 @@ func _carry_tap(pos: Vector2) -> void:
 		_snap, pos, player, false, UiScale.dp(settings.hit_radius_dp)
 	)
 	own = own or (shape >= 0 and _snap.building_owners[shape] == player)
-	if own:
+	if own and carry_aim.mode == CarryAim.Mode.UNLOAD:
 		carry_aim.refuse()
 	else:
 		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))

@@ -7,6 +7,9 @@ extends Node
 ## one UNLOAD for the selected loaded carriers. Any other tap while boarding is refused (`refused`,
 ## the view shakes) and sends nothing. It writes nothing to the sim: the Command leaves through
 ## `controller.command_sink`, exactly one per aim, and the mode ends first.
+## Mine (P294, the "MineAim"): with minelayers selected, a ground tap sets the point (a mark and the
+## blast ring show, another tap moves them); the check mark sends one LAY_MINE for the selected
+## layers. Every ground tap counts, an own unit's too.
 ## The aim ends with nothing sent on `cancel` (the X, a second tap on the button), a turn of the
 ## phone, a new match, a selection or world that no longer holds what the order serves, and when
 ## placement or the strike aim begins; beginning it ends both of those (one mode owns the taps).
@@ -14,7 +17,7 @@ extends Node
 signal changed  ## The mode, the ringed carrier or the point changed.
 signal refused  ## A tap the aim refuses: no carrier with a seat (Board), an own thing (Unload).
 
-enum Mode { NONE, BOARD, UNLOAD }
+enum Mode { NONE, BOARD, UNLOAD, MINE }
 
 @export var runner: MatchRunner
 @export var controller: PlayerController  ## The Commands' sink, the haptic and the selection.
@@ -23,7 +26,7 @@ enum Mode { NONE, BOARD, UNLOAD }
 
 var mode: Mode = Mode.NONE
 var carrier_id: int = 0  ## Board: the ringed carrier, 0 for none yet.
-var has_point: bool = false  ## Unload: a ground point is set.
+var has_point: bool = false  ## Unload and Mine: a ground point is set.
 var point: Vector2i = Vector2i.ZERO  ## Milli-tiles, inside the map.
 
 var _serial: int = -1
@@ -49,7 +52,7 @@ func is_active() -> bool:
 
 
 ## Whether `want` can start now: Board needs squads selected and a carrier with a free seat on the
-## map, Unload a loaded carrier selected.
+## map, Unload a loaded carrier selected, Mine minelayers selected while under the mine cap.
 func can_begin(want: Mode) -> bool:
 	var snap: MatchSnapshot = null if runner == null or controller == null else runner.snapshot
 	if snap == null or runner.scenario == null:
@@ -60,6 +63,11 @@ func can_begin(want: Mode) -> bool:
 		return (
 			not CarryRules.squads_in(snap, ids, player).is_empty()
 			and CarryRules.has_carrier(snap, player)
+		)
+	if want == Mode.MINE:
+		return (
+			not CarryRules.layers_in(snap, ids, player).is_empty()
+			and CarryRules.mines_laid(snap, player) < snap.mine_cap
 		)
 	return want == Mode.UNLOAD and not CarryRules.loaded_in(snap, ids, player).is_empty()
 
@@ -108,7 +116,7 @@ func refuse() -> void:
 ## Unload: sets the point to ground point `ground` (milli-tiles), held inside the map.
 func place(ground: Vector2i) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
-	if mode != Mode.UNLOAD or snap == null:
+	if (mode != Mode.UNLOAD and mode != Mode.MINE) or snap == null:
 		return
 	var far: Vector2i = Vector2i(snap.map_cols, snap.map_rows) * ViewScale.MILLI_PER_TILE
 	point = Vector2i(
@@ -118,9 +126,17 @@ func place(ground: Vector2i) -> void:
 	changed.emit()
 
 
+## Mine: the blast radius of the selected layers' mines, milli-tiles (the ring's size).
+func blast_milli() -> int:
+	var snap: MatchSnapshot = null if runner == null or controller == null else runner.snapshot
+	if snap == null:
+		return 0
+	return CarryRules.blast_of(snap, controller.selection.selected, runner.scenario.local_player)
+
+
 ## Whether the check mark can send now: a carrier is ringed, or a point is set.
 func can_confirm() -> bool:
-	return (mode == Mode.BOARD and carrier_id != 0) or (mode == Mode.UNLOAD and has_point)
+	return (mode == Mode.BOARD and carrier_id != 0) or (has_point and mode >= Mode.UNLOAD)
 
 
 ## The check mark: exactly one LOAD or UNLOAD, then the aim ends; false, with nothing sent, when
@@ -136,6 +152,11 @@ func confirm() -> bool:
 			sent = not squads.is_empty()
 			if sent:
 				controller.command_sink.call(Command.board(player, squads, carrier_id))
+		elif mode == Mode.MINE:
+			var layers: PackedInt32Array = CarryRules.layers_in(snap, ids, player)
+			sent = not layers.is_empty()
+			if sent:
+				controller.command_sink.call(Command.lay_mine(player, layers, point.x, point.y))
 		else:
 			var carriers: PackedInt32Array = CarryRules.loaded_in(snap, ids, player)
 			sent = not carriers.is_empty()
@@ -158,7 +179,8 @@ func cancel() -> void:
 
 
 ## Brings the aim up to date with the selection and the snapshot: it ends when what it serves is
-## gone (no squads, no loaded carrier, a new match), and a ringed carrier that cannot take squads
+## gone (no squads, no loaded carrier, no minelayer, a new match), and a ringed carrier that cannot
+## take squads
 ## any more loses its ring.
 func refresh() -> void:
 	if mode == Mode.NONE:
@@ -169,7 +191,10 @@ func refresh() -> void:
 		return
 	var ids: PackedInt32Array = controller.selection.selected
 	var player: int = runner.scenario.local_player
-	if mode == Mode.UNLOAD:
+	if mode == Mode.MINE:
+		if CarryRules.layers_in(snap, ids, player).is_empty():
+			cancel()
+	elif mode == Mode.UNLOAD:
 		if CarryRules.loaded_in(snap, ids, player).is_empty():
 			cancel()
 	elif CarryRules.squads_in(snap, ids, player).is_empty():

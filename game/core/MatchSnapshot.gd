@@ -110,6 +110,7 @@ const COPIED: Array[StringName] = [
 	&"reveal",
 	&"type_carry_slots",
 	&"type_carry_classes",
+	&"type_mine_weapon",
 	&"type_move_class",
 	&"pass_carrier",
 ]
@@ -120,7 +121,8 @@ const COPIED: Array[StringName] = [
 ## fifteen lists exactly once (a coverage test), so a new World array fails until it is classified.
 ## The air and tech arrays of P232 (ADR 0036 section 3) sit here except `type_layer_bit`,
 ## `weapon_targets`, `reveal_site`, `reveal`, `type_upgrade`, `upgrades`, `type_pads` and
-## `type_repair_classes` (the command bar's Repair, P282), which the view and input read (ADR
+## `type_repair_classes` (the command bar's Repair, P282) and `type_mine_weapon` (the Mine order,
+## P294), which the view and input read (ADR
 ## 0036 sections 11 and 14, P248). `terrain_cost` is here (the view needs `terrain`, `terrain_ids`
 ## and `move_cost`), and so are the derived `building_rows`
 ## and `harvester_rows` (ADR 0016: row indexes the sim rebuilds when `rows_version` moves; a view
@@ -132,7 +134,6 @@ const NOT_COPIED: Array[StringName] = [
 	&"mine_weapon",
 	&"mine_at",
 	&"type_carry_eject_percent",
-	&"type_mine_weapon",
 	&"type_mine_cost",
 	&"type_mine_aware",
 	&"type_detect_milli",
@@ -209,6 +210,7 @@ const COPIED_SCALARS: Array[StringName] = [
 	&"pass_count",
 	&"mine_count",
 	&"mine_known_cap",
+	&"mine_cap",
 ]
 ## The World's Array[StringName] id lists, in no World shape list (ADR 0012's amendment). Each is
 ## copied by duplicate(): a shallow copy of a few immutable StringNames.
@@ -293,6 +295,7 @@ var upgrades: PackedInt32Array = PackedInt32Array()
 ## The carrier tables, the move class and the passenger carrier column (Board and Unload).
 var type_carry_slots: PackedInt32Array = PackedInt32Array()
 var type_carry_classes: PackedInt32Array = PackedInt32Array()
+var type_mine_weapon: PackedInt32Array = PackedInt32Array()  ## The mine weapon index, -1 for none.
 var type_move_class: PackedInt32Array = PackedInt32Array()
 var pass_carrier: PackedInt32Array = PackedInt32Array()
 var weapon_targets: PackedInt32Array = PackedInt32Array()
@@ -357,6 +360,7 @@ var ghost_count: PackedInt32Array = PackedInt32Array()
 ## local player's own (owner is the player) and its records only, and never an unknown enemy mine.
 var mine_count: int = 0
 var mine_known_cap: int = 0
+var mine_cap: int = 0  ## The most mines a player may have laid (the Mine button's "n/cap").
 var mine_id: PackedInt32Array = PackedInt32Array()
 var mine_owner: PackedInt32Array = PackedInt32Array()
 var mine_cell: PackedInt32Array = PackedInt32Array()
@@ -514,6 +518,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	pass_count = world.pass_count
 	mine_count = world.mine_count
 	mine_known_cap = world.mine_known_cap
+	mine_cap = world.mine_cap
 	unit_id = world.unit_id.duplicate()
 	owner = world.owner.duplicate()
 	type_index = world.type_index.duplicate()
@@ -560,6 +565,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_upgrade = world.type_upgrade.duplicate()
 	upgrades = world.upgrades.duplicate()
 	type_carry_slots = world.type_carry_slots.duplicate()
+	type_mine_weapon = world.type_mine_weapon.duplicate()
 	type_carry_classes = world.type_carry_classes.duplicate()
 	type_move_class = world.type_move_class.duplicate()
 	pass_carrier = world.pass_carrier.duplicate()

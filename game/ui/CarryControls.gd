@@ -5,9 +5,10 @@ extends Control
 ## above, never below, inside the safe area and clear of the HUD), each `ACTION_DP` across. The
 ## anchor is the ringed carrier's pick square (its lifted centre, plus and minus its pick radius,
 ## at least `PICK_MIN_DP`) for Board, and a `POINT_DP` square round the chevron's ground point for
-## Unload; with no carrier ringed or no point set there is no anchor and nothing shows. The check
-## mark sends the one LOAD or UNLOAD (`CarryAim.confirm`), the X sends nothing. Read every frame
-## while an aim is open, so the buttons follow pans, pinches and the carrier as it moves.
+## Unload, and the bounding box of the blast ring round the mark for Mine; with no carrier ringed or
+## no point set there is no anchor and nothing shows. The check mark sends the one LOAD, UNLOAD or
+## LAY_MINE (`CarryAim.confirm`), the X sends nothing. Read every frame while an aim is open, so the
+## buttons follow pans, pinches and the carrier as it moves.
 ## A child of the Hud before `SafeArea`, as GhostControls is; the scene gives it the theme file.
 
 const ACTION_DP: float = GhostControls.ACTION_DP
@@ -77,6 +78,18 @@ func _process(_delta: float) -> void:
 
 ## The anchor rect on the screen (base px), empty while there is nothing to stand beside.
 func anchor() -> Rect2:
+	if aim.mode == CarryAim.Mode.MINE and aim.has_point:
+		var centre: Vector2 = IsoProjection.ground_to_px(aim.point.x, aim.point.y)
+		var reach: Vector2 = IsoProjection.ellipse_px(aim.blast_milli())
+		var corner: Vector2 = camera.world_to_screen(centre - reach)
+		var box: Rect2 = Rect2(corner, camera.world_to_screen(centre + reach) - corner)
+		var floor_px: Vector2 = Vector2.ONE * (POINT_DP * _dp_px)
+		return box.grow_individual(
+			maxf(floor_px.x - box.size.x, 0.0) * 0.5,
+			maxf(floor_px.y - box.size.y, 0.0) * 0.5,
+			maxf(floor_px.x - box.size.x, 0.0) * 0.5,
+			maxf(floor_px.y - box.size.y, 0.0) * 0.5
+		)
 	if aim.mode == CarryAim.Mode.UNLOAD and aim.has_point:
 		var at: Vector2 = camera.world_to_screen(
 			IsoProjection.ground_to_px(aim.point.x, aim.point.y)
