@@ -95,6 +95,15 @@ No personal data, nothing that leaves the device, no timestamps from the system 
 All writes are small (a few KB for the save; under 1 MB compressed for the resume file, estimated),
 well inside iOS's few seconds.
 
+Note (2026-11-18, row P409): a post-match interstitial that has not opened by `fullscreen_timeout_ms` is
+abandoned by the caller, but AdMob cannot recall a started show, so it may still open later, over the
+next battle. `MenuFlow._begin` now awaits `AdService.settle_fullscreen()` first: it returns at once when
+no interstitial is late-pending, otherwise it waits until that ad failed or closed, for at most
+`fullscreen_late_cap_ms` (20 s, `data/ads_settings.tres`). Rewarded ads are not waited for (they show
+only on the player's choice). While it waits, Play again reads "Starting..." and both result buttons
+(and START on the map select) are off. Accepted remainder: a plugin that never answers past the cap can
+still open its ad late over a match; the cap trades that rare case against a player stuck on a screen.
+
 ### 6. Resuming a match: replay the log (option A), not a snapshot
 **Write.** On `PAUSED`, `MenuFlow` (which holds the running main scene) calls `runner.wait_idle()`,
 then `ResumeStore.write(setup, runner.replay)`: `user://resume.bin`, written temp + rename, holding

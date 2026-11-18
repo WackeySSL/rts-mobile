@@ -18,6 +18,7 @@ func test_every_field_is_pinned() -> void:
 	assert_int(s.interstitial_min_play_s).is_equal(240)
 	assert_int(s.interstitial_per_match).is_equal(1)
 	assert_int(s.fullscreen_timeout_ms).is_equal(8000)
+	assert_int(s.fullscreen_late_cap_ms).is_equal(20000)
 	assert_int(s.billing_timeout_ms).is_equal(8000)
 	assert_int(s.consent_timeout_ms).is_equal(10000)
 	assert_int(s.reward_xp_multiplier).is_equal(2)
@@ -74,3 +75,10 @@ func test_the_reward_text_formats_with_exactly_one_multiplier() -> void:
 func test_the_xp_multiplier_is_one_that_apply_bonus_accepts() -> void:
 	var progression: ProgressionDef = load("res://data/meta/progression.tres") as ProgressionDef
 	assert_int(_file().reward_xp_multiplier).is_greater_equal(progression.min_bonus_multiplier)
+
+
+func test_the_late_cap_must_be_above_zero() -> void:
+	for value: int in [0, -1]:
+		var bad: AdsSettingsDef = _file().duplicate() as AdsSettingsDef
+		bad.fullscreen_late_cap_ms = value
+		assert_str("\n".join(bad.validate())).contains("fullscreen_late_cap_ms")

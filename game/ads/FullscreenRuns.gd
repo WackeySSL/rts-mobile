@@ -55,6 +55,12 @@ func late_count() -> int:
 	return _lates.size()
 
 
+## True while a late run of `kind` has not settled: its show may still open, or it is open and not
+## yet closed. A run whose show failed, or that closed, is forgotten and no longer counts.
+func has_late(kind: StringName) -> bool:
+	return _lates.any(func(run: FullscreenRun) -> bool: return run.ad_kind() == kind)
+
+
 func _on_opened(placement: StringName, _run: FullscreenRun) -> void:
 	opened.emit(placement)
 

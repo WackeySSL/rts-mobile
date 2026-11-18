@@ -187,6 +187,7 @@ func _refresh() -> void:
 		_show(_levels[id], tr(LEVEL_TEXT[id]), id == level, KIND_LEVEL, id)
 		_levels[id].theme_type_variation = &"MenuTabOn" if id == level else &"MenuTab"
 	_start.disabled = _starting or not _can_start()
+	_start.text = tr(MapSelectText.STARTING if _starting else MapSelectText.START)
 
 
 ## Sets one choice button: the word, `> ` before the chosen one and the rank on a locked one (a

@@ -202,6 +202,20 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 	return shown
 
 
+## Awaitable. Returns at once, without awaiting a frame, when no interstitial is late-pending (shown
+## by a run that timed out, and neither failed nor closed). Otherwise waits until that ad has failed
+## or has opened and closed, but at most `fullscreen_late_cap_ms` from the call. AdMob cannot recall
+## a started show, so a caller that is about to put a match on screen awaits this first: no ad opens
+## over a battle (ADR 0042 section 5). Interstitials only: a rewarded ad shows only on the player's
+## explicit choice, so it never reaches the screen unasked and is not waited for.
+func settle_fullscreen() -> void:
+	if not _runs.has_late(AdBackend.KIND_INTERSTITIAL):
+		return
+	var deadline: int = int(_now_ms.call()) + _settings.fullscreen_late_cap_ms
+	while _runs.has_late(AdBackend.KIND_INTERSTITIAL) and int(_now_ms.call()) < deadline:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+
+
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.
 func note_match_completed(play_seconds: int) -> void:
 	_ledger.note_match_completed(play_seconds)

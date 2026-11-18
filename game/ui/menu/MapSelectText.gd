@@ -8,6 +8,8 @@ const MAP: StringName = &"MAPSEL_MAP"
 const SIDE: StringName = &"MAPSEL_SIDE"
 const LEVEL: StringName = &"MAPSEL_LEVEL"
 const START: StringName = &"MAPSEL_START"
+## Shared with the result screen's Play again: shown while the next match is prepared.
+const STARTING: StringName = &"MAPSEL_STARTING"
 const LOCKED: StringName = &"MAPSEL_LOCKED"
 const CHOSEN: StringName = &"MAPSEL_CHOSEN"
 const SIDE_FOSSIL: StringName = &"MAPSEL_SIDE_FOSSIL"
@@ -22,6 +24,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	SIDE: "YOUR SIDE",
 	LEVEL: "COMPUTER LEVEL",
 	START: "START",
+	STARTING: "Starting…",
 	LOCKED: "%s  (RANK %d)",
 	CHOSEN: "> %s",
 	SIDE_FOSSIL: "DERRICK LEAGUE",

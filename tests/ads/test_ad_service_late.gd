@@ -231,3 +231,79 @@ func test_a_consent_withdrawal_withdraws_an_interstitial_that_has_not_opened() -
 	assert_array(rig.fake.cancels).contains_exactly([AdBackend.KIND_INTERSTITIAL])
 	rig.fake.open_late()
 	assert_array(_h.events).is_empty()
+
+
+# --- settle_fullscreen (P409) -------------------------------------------------------------------
+
+
+func _settle(service: Node) -> Array:
+	return AdServiceHarness.start(
+		func() -> bool:
+			await service.settle_fullscreen()
+			return true
+	)
+
+
+func test_settle_returns_at_once_with_no_run() -> void:
+	var service: Node = auto_free(_h.make())
+	assert_array(_settle(service)).is_equal([true])  # No frame was awaited.
+
+
+func test_settle_returns_at_once_after_a_normal_open_and_close() -> void:
+	var service: Node = auto_free(_h.make())
+	AdServiceHarness.play_three_matches(service)
+	assert_bool(await service.maybe_show_interstitial(POST_MATCH)).is_true()
+	assert_array(_settle(service)).is_equal([true])
+
+
+func test_settle_waits_for_a_late_interstitial_to_open_and_close() -> void:
+	var rig: LateRig = await _late_rig(AdBackend.KIND_INTERSTITIAL)
+	if rig == null:
+		return
+	rig.fake.show_never_closes = true
+	var out: Array = _settle(rig.service)
+	await AdServiceHarness.frames(3)
+	assert_array(out).is_empty()
+	rig.fake.open_late()
+	await AdServiceHarness.frames(2)
+	assert_array(out).override_failure_message("open, not closed").is_empty()
+	rig.fake.finish_show()
+	await AdServiceHarness.frames(2)
+	assert_array(out).is_equal([true])
+
+
+func test_settle_waits_for_a_late_show_failure() -> void:
+	var rig: LateRig = await _late_rig(AdBackend.KIND_INTERSTITIAL)
+	if rig == null:
+		return
+	var out: Array = _settle(rig.service)
+	await AdServiceHarness.frames(3)
+	assert_array(out).is_empty()
+	rig.fake.show_failed.emit(AdBackend.KIND_INTERSTITIAL)
+	await AdServiceHarness.frames(2)
+	assert_array(out).is_equal([true])
+
+
+func test_settle_gives_up_at_the_cap_when_the_backend_never_answers() -> void:
+	var rig: LateRig = await _late_rig(AdBackend.KIND_INTERSTITIAL)
+	if rig == null:
+		return
+	var cap: int = rig.service._settings.fullscreen_late_cap_ms
+	var start: int = _h.clock_ms
+	var out: Array = _settle(rig.service)
+	_h.clock_ms = start + cap - 1
+	await AdServiceHarness.frames(3)
+	assert_array(out).is_empty()
+	_h.clock_ms = start + cap
+	await AdServiceHarness.frames(2)
+	assert_array(out).is_equal([true])
+	assert_int(rig.service._runs.late_count()).override_failure_message("still listening").is_equal(
+		1
+	)
+
+
+func test_settle_does_not_wait_for_a_late_rewarded_ad() -> void:
+	var rig: LateRig = await _late_rig(AdBackend.KIND_REWARDED)
+	if rig == null:
+		return
+	assert_array(_settle(rig.service)).is_equal([true])

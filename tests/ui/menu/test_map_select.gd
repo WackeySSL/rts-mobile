@@ -197,6 +197,27 @@ func test_start_sends_one_setup_and_a_second_tap_does_nothing() -> void:
 	assert_int(_flow.started.size()).is_equal(1)  # Started: the screen stays closed to taps.
 
 
+func test_start_reads_starting_while_the_match_is_prepared() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.START))
+	_screen._start.pressed.emit()
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.STARTING))
+	assert_bool(_screen._start.disabled).is_true()
+	_flow.release.emit()
+	await await_idle_frame()
+
+
+func test_a_refused_start_restores_the_start_label() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	_flow.refuse = ERR_BUSY
+	await (
+		assert_error(func() -> void: _screen._start.pressed.emit())
+		. is_push_warning("MapSelect: the match did not start (Busy)")
+	)
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.START))
+	assert_bool(_screen._start.disabled).is_false()
+
+
 func test_the_other_side_plays_the_mirrored_scenario_against_the_derrick_league() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	_screen._sides[&"renew"].pressed.emit()

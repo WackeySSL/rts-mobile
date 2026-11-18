@@ -16,6 +16,7 @@ const _MIN_PER_MATCH: int = 1
 const _MAX_PER_MATCH: int = 1
 const _MIN_FULLSCREEN_MS: int = 1000
 const _MAX_FULLSCREEN_MS: int = 30000
+const _MIN_LATE_CAP_MS: int = 1
 const _MIN_BILLING_MS: int = 1000
 const _MAX_BILLING_MS: int = 30000
 const _MIN_CONSENT_MS: int = 1000
@@ -43,6 +44,9 @@ static var _default: AdsSettingsDef
 @export_range(_MIN_PER_MATCH, _MAX_PER_MATCH) var interstitial_per_match: int = 1
 ## The longest wait for a full-screen ad to open (ms).
 @export_range(_MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS) var fullscreen_timeout_ms: int = 8000
+## The longest wait for a late full-screen ad (one that timed out) to fail or close before the next
+## match is built (ms); see `AdService.settle_fullscreen`.
+@export_range(_MIN_LATE_CAP_MS, 600000) var fullscreen_late_cap_ms: int = 20000
 ## The longest wait for the store sheet to show, or for a restore's answer (ms).
 @export_range(_MIN_BILLING_MS, _MAX_BILLING_MS) var billing_timeout_ms: int = 8000
 ## The longest wait for the consent info and the form to load (ms).
@@ -96,6 +100,8 @@ func validate() -> PackedStringArray:
 	_check(
 		out, "fullscreen_timeout_ms", fullscreen_timeout_ms, _MIN_FULLSCREEN_MS, _MAX_FULLSCREEN_MS
 	)
+	if fullscreen_late_cap_ms <= 0:
+		out.append("fullscreen_late_cap_ms=%d must be > 0" % fullscreen_late_cap_ms)
 	_check(out, "billing_timeout_ms", billing_timeout_ms, _MIN_BILLING_MS, _MAX_BILLING_MS)
 	_check(out, "consent_timeout_ms", consent_timeout_ms, _MIN_CONSENT_MS, _MAX_CONSENT_MS)
 	_check(out, "reward_xp_multiplier", reward_xp_multiplier, _MIN_XP_MULT, _MAX_XP_MULT)
