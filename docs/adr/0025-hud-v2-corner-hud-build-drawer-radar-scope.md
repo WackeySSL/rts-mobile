@@ -444,6 +444,14 @@ above stand):
   (its tab; ADR 0024 Q3 A kept); after a placement that began in the drawer ends by a build or the
   X (ADR 0024 R1 kept; a strike aim leaves it closed). **Closes** on its close button, a map gesture
   (§1), a swipe, the start of placement or of a strike aim, `PAUSE`. No pin (§6).
+  (2026-11-18, P310; Michael, after a phone test) A tap that selects an own producer no longer
+  opens the drawer. The accepted text above, "on a tap that selects an own producer (its tab; ADR
+  0024 Q3 A kept)", made the drawer come up whenever he tapped a building to mend it in combat,
+  over the battle. The tap now only selects the building (Mend and Sell show in the command bar);
+  when the drawer is already open, the tap switches it to that producer's tab, and a second tap on
+  the selected producer takes it back to its tab, as before. BUILD and the Ready chip still open
+  it. The drawer a map gesture folds is remembered for that tap (`HudState.drawer_folded_by_gesture`),
+  so an open drawer stays open on the new tab.
 
 Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
 accepted):
@@ -692,7 +700,10 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
 - **Stop also works during placement and the strike aim** (a lead decision): it is a tap on the
   HUD, not on the map, and this section names no exception.
 - **The chip's label** asks for its text's width, capped at 140 dp (`CommandBar.LABEL_MAX_DP`), and
-  the bar grows with it, so a building's name is not cut to the health bar's width.
+  the bar grows with it, so a building's name is not cut to the health bar's width. (2026-11-18,
+  P310; Michael, after a phone test) A building's chip no longer shows a name, own or enemy, in
+  both orientations: its item card and its health bar only. The name was so wide upright (360 dp)
+  that it pushed Mend and Sell off the screen. The label stays for a unit type's "xN" count.
 - **A fogged enemy building** selected in the chip shows no health, as `HealthBarLayer` hides its
   bar.
 - **The bar is a plain Control.** Only the chip uses the theme variation `SelectionPanel`, which
