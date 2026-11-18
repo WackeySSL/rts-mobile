@@ -804,6 +804,22 @@ then.
   members whose weapon may hit the target's layer, so a held gun that cannot hit a low-air target
   keeps its `ATTACK_MOVE` instead of standing idle (P298) for the whole focus. The smoke's expired
   rule counts `STANCE` and `REPAIR` as unit orders (§6 of ADR 0038).
+- Note (2026-11-18, P295, as built; it changes §8's "AI" bullets): `AiMines` runs in the INTEL slot
+  after `AiStrikes` and sends `QUEUE`, `LAY_MINE` and `MOVE` only. The level fields are `mine_target`
+  (mines kept laid), `mine_layers` (layers kept) and `mine_scout_ahead` (Hard), the def's are
+  `mine_layer_type` (empty: off), `mine_spacing_tiles`, `mine_sweep_reach_tiles` and
+  `mine_scout_leg_tiles`; all default off, Easy and the frozen 4b copies set 0 (starting values, no
+  source yet). The route is the line from the own Headquarters to the base estimate (else its
+  mirror), not the ghosts. The manager queues its own layer (the roster's producer and requirement
+  standing, queue room, credits for it and one mine); a layer is on one duty at a time and is left
+  alone until it has stood idle for a lay or a sweep. Sweeps and the Hard scout legs (a leg of
+  `mine_scout_leg_tiles` past the own half, as far as three quarters of the route) wait while a wave
+  is in the field; the layer, which detects and never triggers, finds the mines the sweep clears. A
+  lay that leaves no mine (refused, or the layer found and cleared an enemy mine on it) marks its cell
+  blocked. `PlayerView` gained `type_mine_weapon`, `type_mine_cost`, `type_move_class` and the rules
+  `mine_cap`, `mine_lay_ticks` and `sweep_ticks`; `AiMemory.class_of` reads `type_move_class`
+  (the wheeled gap of the ground plan is closed) and the goal key owner `MINE` yields after the
+  scout's and the repair building's.
 
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while
