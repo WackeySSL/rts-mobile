@@ -24,4 +24,24 @@ entries = Array[Dictionary]([{
 &"player_side": &"renew"
 }],
 &"title": "Kestrel Flats"
+}, {
+&"id": &"map_2",
+&"scenarios": [{
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_river_valley.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_river_valley_mirrored.tres",
+&"player_side": &"renew"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_river_valley_fossil_mirror.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_river_valley_renew_mirror.tres",
+&"player_side": &"renew"
+}],
+&"title": "River Valley"
 }])
