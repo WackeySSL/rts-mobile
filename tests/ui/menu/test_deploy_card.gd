@@ -171,6 +171,7 @@ func test_a_good_start_through_the_real_menu_flow_clears_the_card_when_the_match
 		mains.append(main)
 		add_child(main)
 		return OK
+	flow.switch_to_menu = func() -> Error: return OK  # Never the real menu scene.
 	var card: DeployCard = _make_card(flow)
 	assert_int(await flow.start_match(_setup())).is_equal(OK)
 	await _frames(2)
