@@ -81,12 +81,17 @@ func _centre(x: int, y: int) -> Vector2:
 	return IsoProjection.ground_to_px(x * 1000 + 500, y * 1000 + 500)
 
 
-func _blast(x: int, y: int, weapon: int = 0) -> void:
+## A tick with a blast at the cell (x, y) and, for each `[owner, x, y]` of `died`, a DIED record.
+func _blast(x: int, y: int, weapon: int = 0, died: Array = []) -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	snap.tick += 1
 	snap.events = PackedInt32Array(
 		[World.Event.MINE_BLAST, 1, x * 1000 + 500, y * 1000 + 500, weapon, 2, 0, 0]
 	)
+	for unit: Array in died:
+		snap.events.append_array(
+			[World.Event.DIED, 9, unit[1] * 1000 + 500, unit[2] * 1000 + 500, 0, unit[0], 0, 0]
+		)
 	_runner.ticked.emit(snap.tick)
 	snap.events = PackedInt32Array()
 
@@ -177,16 +182,39 @@ func test_the_marks_are_in_draw_order_with_the_southern_one_last() -> void:
 	assert_vector(_layer.mark_at(2)).is_equal_approx(_centre(9, 9), TOL)
 
 
-func test_the_plan_is_not_made_again_without_a_tick_or_a_fog_change() -> void:
+func test_a_tick_that_changes_no_column_and_arms_nothing_does_not_plan_again() -> void:
 	var snap: MatchSnapshot = _runner.snapshot
-	_set_mines([[1, _cell(5, 5), snap.tick - 1]], [])
+	_set_mines([[1, _cell(5, 5), snap.tick + 4]], [])
 	_layer._process(0.0)
-	snap.mine_cell[0] = _cell(9, 9)  # Only a column moves.
+	var plans: int = _layer.plan_count()
+	var redraws: int = _layer.redraw_count()
+	assert_float(_layer.mark_alpha(0)).is_equal(0.5)
+	for _step: int in 2:  # Two ticks, still before the arming tick.
+		snap.tick += 1
+		_layer._process(0.0)
+	assert_int(_layer.plan_count()).is_equal(plans)
+	assert_int(_layer.redraw_count()).is_equal(redraws)
+	snap.tick += 1  # The arming tick: the plan is made again and the mark is at full strength.
 	_layer._process(0.0)
-	assert_vector(_layer.mark_at(0)).is_equal_approx(_centre(5, 5), TOL)
+	assert_int(_layer.plan_count()).is_equal(plans + 1)
+	assert_float(_layer.mark_alpha(0)).is_equal(1.0)
 	snap.tick += 1
 	_layer._process(0.0)
+	assert_int(_layer.plan_count()).is_equal(plans + 1)  # Nothing is left to arm.
+	snap.mine_cell = PackedInt32Array([_cell(9, 9)])  # A column changes, on no tick.
+	_layer._process(0.0)
+	assert_int(_layer.plan_count()).is_equal(plans + 2)
 	assert_vector(_layer.mark_at(0)).is_equal_approx(_centre(9, 9), TOL)
+
+
+func test_a_mine_arms_on_the_tick_of_its_armed_tick_and_not_a_tick_before() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	_set_mines([[1, _cell(5, 5), snap.tick + 2]], [])
+	_layer._process(0.0)
+	assert_float(_layer.mark_alpha(0)).is_equal(0.5)
+	snap.tick += 1  # `armed_tick == tick`.
+	_layer._process(0.0)
+	assert_float(_layer.mark_alpha(0)).is_equal(1.0)
 
 
 func test_the_local_players_own_mark_and_the_others_known_marks_are_on_one_texture() -> void:
@@ -204,24 +232,38 @@ func test_the_local_players_own_mark_and_the_others_known_marks_are_on_one_textu
 	print("mine_layer_bake_ms %.1f" % _layer.bake_ms)
 
 
-func test_a_blast_in_sight_leaves_a_scorch_as_wide_as_the_blast_scaled_down() -> void:
+func test_a_blast_in_sight_leaves_the_crater_art_at_four_fifths_of_the_blast() -> void:
 	Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
 	_blast(14, 14)
 	assert_int(_layer.scorch_count()).is_equal(1)
 	assert_vector(_layer.scorch_at(0)).is_equal_approx(_centre(14, 14), TOL)
+	var crater: Vector2 = DecalLayer.crater_art().get_size()  # The art of the scorch...
+	assert_vector(_layer.scorch_art_size()).is_equal(crater)
+	# ... at 0.8 of a blast of 1000 against the art's 1500.
+	var factor: float = MineLayer.SCORCH_SCALE * 1000.0 / DecalLayer.CRATER_ART_RADIUS_MILLI
+	assert_vector(_layer.scorch_size(0)).is_equal_approx(crater * factor, TOL)
 
 
 func test_a_blast_on_a_cell_the_player_does_not_see_leaves_nothing() -> void:
 	Rig.see(_runner.snapshot, 1, [Vector2i(1, 1)])
 	_blast(14, 14)
 	assert_int(_layer.scorch_count()).is_equal(0)
-
-
-func test_a_weapon_with_no_blast_radius_leaves_nothing() -> void:
-	_runner.snapshot.weapon_blast_milli = PackedInt32Array([0])
+	_runner.snapshot.weapon_blast_milli = PackedInt32Array([0])  # A weapon with no blast radius.
 	Rig.see(_runner.snapshot, 1, [Vector2i(14, 14)])
 	_blast(14, 14)
 	_blast(14, 14, 7)  # A weapon the table does not have.
+	assert_int(_layer.scorch_count()).is_equal(0)
+
+
+func test_a_blast_that_killed_an_own_unit_leaves_a_scorch_though_the_cell_is_dark_after() -> void:
+	# `Removal` takes the dead unit's sight in the same tick, so the fog no longer shows the cell.
+	Rig.see(_runner.snapshot, 1, [Vector2i(1, 1)])
+	_blast(14, 14, 0, [[1, 14, 14]])
+	assert_int(_layer.scorch_count()).is_equal(1)
+	_layer._scorch_born.fill(MineLayer.FREE)
+	_blast(14, 14, 0, [[2, 14, 14]])  # An enemy that died there: nothing.
+	assert_int(_layer.scorch_count()).is_equal(0)
+	_blast(20, 20, 0, [[1, 14, 14]])  # An own unit that died far from the blast: nothing.
 	assert_int(_layer.scorch_count()).is_equal(0)
 
 

@@ -349,14 +349,21 @@ func _add_ruptures(snap: MatchSnapshot, now: int) -> void:
 
 
 ## `[MINE_BLAST, mine id, x, y, weapon, owner, 0, 0]` (P293): a burst as wide as the weapon's
-## `blast_milli` at the cell, where the local player sees it, as a rupture's (ADR 0037 section 8).
+## `blast_milli` at the cell, where the local player sees it or lost a unit to it (its sight went
+## with the unit in the same tick), as a rupture's (ADR 0037 section 8).
 ## The scorch it leaves is `MineLayer`'s. A weapon with no blast radius bursts nowhere.
 func _add_mine_blast(snap: MatchSnapshot, at: int, now: int) -> void:
 	var events: PackedInt32Array = snap.events
 	var weapon: int = events[at + 4]
 	var blast: PackedInt32Array = snap.weapon_blast_milli
 	var radius: int = blast[weapon] if weapon >= 0 and weapon < blast.size() else 0
-	if radius < 1 or not _seen(snap, events[at + 2], events[at + 3]):
+	if radius < 1:
+		return
+	var player: int = FogLayer.local_player_of(runner)
+	var died: bool = MineLayer.own_unit_died_in(
+		snap, events[at + 2], events[at + 3], radius, player
+	)
+	if not (died or _seen(snap, events[at + 2], events[at + 3])):
 		return
 	var side: float = IsoProjection.ellipse_px(radius).x
 	var ground: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])

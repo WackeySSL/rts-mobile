@@ -20,9 +20,9 @@ extends Node2D
 ## of `DecalLayer`, which the scorch is. Only the local player's own mark and the others' known
 ## marks are baked. A mark is the art with its ground point (`MineMarkArt.ORIGIN_PX`) on the cell's
 ## centre.
-## The plan of the marks is made when the snapshot's tick, the local player or its fog version moves
-## (a frame compares three integers; a tick frame allocates the small lists of `mines_for`, a
-## frame between ticks nothing), in packed arrays. The scorches are a ring of `SCORCH_SLOTS` slots,
+## The plan of the marks is made when the local player, the mine columns (compared, no copy) or the
+## tick of the next own mine's arming moves, not on every tick: a tick that changes none of them
+## allocates nothing, in packed arrays. The scorches are a ring of `SCORCH_SLOTS` slots,
 ## the oldest overwritten, so a match makes no object per mine or per blast. The layer redraws only
 ## when the plan moved or a scorch is fading.
 
@@ -52,9 +52,18 @@ var _regions: Array[Rect2] = []  ## Per (owner - 1) * 2 + kind, then the scorch.
 var _owners: int = 0
 var _scorch_region: int = -1
 var _serial: int = -1
-var _tick: int = -1  ## The snapshot's tick the marks were planned for.
+var _planned: bool = false  ## The marks were planned for the match, the player and the columns.
 var _player: int = -1  ## The local player they were planned for.
-var _fog_version: int = -3  ## Its fog version.
+var _next_arm: int = 0  ## The tick the first own mine still unarmed arms at (INT_MAX for none).
+var _plans: int = 0
+## The mine columns the plan was made from (the snapshot's own arrays, shared until they change).
+var _seen_count: int = -1
+var _seen_owner: PackedInt32Array = PackedInt32Array()
+var _seen_cell: PackedInt32Array = PackedInt32Array()
+var _seen_armed: PackedInt32Array = PackedInt32Array()
+var _known_cell: PackedInt32Array = PackedInt32Array()
+var _known_owner: PackedInt32Array = PackedInt32Array()
+var _known_count: PackedInt32Array = PackedInt32Array()
 var _clock: float = 0.0  ## Match time, ms: the largest the frames have seen in this match.
 var _fading: bool = false  ## The last frame had a scorch in its fade.
 var _dirty: bool = false  ## A blast was born since the last draw.
@@ -93,11 +102,11 @@ func _process(_delta: float) -> void:
 		return
 	_follow_match(snap)
 	var player: int = FogLayer.local_player_of(runner)
-	var version: int = snap.fog.version_of(player) if FogLayer.covers(snap.fog, player) else -2
-	var moved: bool = snap.tick != _tick or version != _fog_version or player != _player
+	var moved: bool = (
+		not _planned or player != _player or snap.tick >= _next_arm or _columns_moved(snap)
+	)
 	if moved:
-		_tick = snap.tick
-		_fog_version = version
+		_planned = true
 		_player = player
 		_plan_marks(snap, player)
 	_clock = maxf(_clock, LifeClock.ms(snap, runner.alpha()))
@@ -115,7 +124,7 @@ func _draw() -> void:
 	_draws += 1
 	for slot: int in SCORCH_SLOTS:
 		if _scorch_born[slot] != FREE:
-			var scorch: Vector2 = _regions[_scorch_region].size * _scorch_size[slot]
+			var scorch: Vector2 = scorch_size(slot)
 			draw_texture_rect_region(
 				_texture,
 				Rect2(_scorch_at[slot] - scorch * 0.5, scorch),
@@ -173,6 +182,22 @@ func scorch_alpha(slot: int) -> float:
 	return clampf((SCORCH_MS - age) / SCORCH_FADE_MS, 0.0, 1.0) * SCORCH_ALPHA
 
 
+## The size (world px) the scorch in ring slot `slot` is drawn at: the crater art scaled to
+## `SCORCH_SCALE` of the blast's radius.
+func scorch_size(slot: int) -> Vector2:
+	return _regions[_scorch_region].size * _scorch_size[slot]
+
+
+## The size of the scorch's art in the atlas, texels.
+func scorch_art_size() -> Vector2:
+	return _regions[_scorch_region].size
+
+
+## How many times the marks were planned, for the tests.
+func plan_count() -> int:
+	return _plans
+
+
 ## Frames drawn and redraws asked for, for the tests.
 func draw_count() -> int:
 	return _draws
@@ -200,8 +225,7 @@ func _follow_match(snap: MatchSnapshot) -> void:
 	if snap.match_serial == _serial:
 		return
 	_serial = snap.match_serial
-	_tick = -1
-	_fog_version = -3
+	_planned = false
 	_clock = 0.0
 	_marks = 0
 	_scorch_born.fill(FREE)
@@ -251,6 +275,9 @@ func _raster(art: IsoPlayerArt, kind: String) -> Image:
 ## Makes the plan of the marks from the local player's mines: its own, then its records, south last.
 func _plan_marks(snap: MatchSnapshot, player: int) -> void:
 	_marks = 0
+	_plans += 1
+	_remember(snap)
+	_next_arm = 0x7FFFFFFF
 	if _texture == null or player < 1 or player > _owners or snap.map_cols < 1:
 		return
 	var mines: Dictionary = snap.mines_for(player)
@@ -265,13 +292,39 @@ func _plan_marks(snap: MatchSnapshot, player: int) -> void:
 		_mark_alpha.resize(count)
 	var own_region: int = (player - 1) * KINDS_PER_OWNER + OWN
 	for index: int in own_cell.size():
-		var alpha: float = 1.0 if own_armed[index] <= snap.tick else UNARMED_ALPHA
+		var armed: bool = own_armed[index] <= snap.tick
+		if not armed:
+			_next_arm = mini(_next_arm, own_armed[index])
+		var alpha: float = 1.0 if armed else UNARMED_ALPHA
 		_add_mark(own_cell[index], snap.map_cols, own_region, alpha)
 	for index: int in known_cell.size():
 		var owner: int = known_owner[index]
 		if owner >= 1 and owner <= _owners and owner != player:
 			var region: int = (owner - 1) * KINDS_PER_OWNER + KNOWN
 			_add_mark(known_cell[index], snap.map_cols, region, 1.0)
+
+
+## Whether a mine column the plan reads is not what the plan was made from.
+func _columns_moved(snap: MatchSnapshot) -> bool:
+	return (
+		snap.mine_count != _seen_count
+		or snap.mine_owner != _seen_owner
+		or snap.mine_cell != _seen_cell
+		or snap.mine_armed_tick != _seen_armed
+		or snap.mine_seen_cell != _known_cell
+		or snap.mine_seen_owner != _known_owner
+		or snap.mine_seen_count != _known_count
+	)
+
+
+func _remember(snap: MatchSnapshot) -> void:
+	_seen_count = snap.mine_count
+	_seen_owner = snap.mine_owner
+	_seen_cell = snap.mine_cell
+	_seen_armed = snap.mine_armed_tick
+	_known_cell = snap.mine_seen_cell
+	_known_owner = snap.mine_seen_owner
+	_known_count = snap.mine_seen_count
 
 
 ## Appends one mark of the cell `cell` of a map `cols` wide, in order of y (insertion), and skips a
@@ -309,6 +362,22 @@ func _on_ticked(_tick_no: int) -> void:
 			_add_scorch(snap, at, player)
 
 
+## Whether this tick's events hold a DIED record of a unit of `player` within `radius` milli-tiles
+## of (x, y): the blast that killed it was seen, though the unit's sight went with it in the same
+## tick (`Removal`), the rule of an own death in `EffectsLayer` and of `StrikeLandings.was_seen`.
+## `EffectsLayer`'s burst asks it too.
+static func own_unit_died_in(snap: MatchSnapshot, x: int, y: int, radius: int, player: int) -> bool:
+	var events: PackedInt32Array = snap.events
+	var reach: int = radius * radius
+	for at: int in range(0, events.size(), World.EVENT_STRIDE):
+		if events[at] == World.Event.DIED and events[at + 5] == player:
+			var dx: int = events[at + 2] - x
+			var dy: int = events[at + 3] - y
+			if dx * dx + dy * dy <= reach:
+				return true
+	return false
+
+
 ## The record at `at`: `[MINE_BLAST, mine id, x, y, weapon, owner, 0, 0]`. A blast on a cell the
 ## player does not see leaves nothing, and neither does a weapon with no blast radius.
 func _add_scorch(snap: MatchSnapshot, at: int, player: int) -> void:
@@ -318,7 +387,8 @@ func _add_scorch(snap: MatchSnapshot, at: int, player: int) -> void:
 	var radius: int = blast[weapon] if weapon >= 0 and weapon < blast.size() else 0
 	if _scorch_region < 0 or radius < 1 or _regions[_scorch_region].size == Vector2.ZERO:
 		return
-	if not FogLayer.is_seen(snap, player, events[at + 2], events[at + 3]):
+	var seen: bool = FogLayer.is_seen(snap, player, events[at + 2], events[at + 3])
+	if not (seen or own_unit_died_in(snap, events[at + 2], events[at + 3], radius, player)):
 		return
 	var slot: int = 0  # The first free slot, else the oldest.
 	for index: int in SCORCH_SLOTS:
