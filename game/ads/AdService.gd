@@ -202,7 +202,8 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 	return shown
 
 
-## Awaitable. Returns at once, without awaiting a frame, when no full-screen run is late (shown by
+## Awaitable. Returns at once, without awaiting a frame, when no full-screen run is active (loading or
+## shown, not yet closed) or late (shown by
 ## a run that timed out, and neither failed nor closed) or every late run is past its cap. Otherwise
 ## waits until each late ad failed or, once opened, closed (no cap: it is on screen). A late ad that
 ## never answers is waited for only until `fullscreen_late_cap_ms` after its own timeout, so one

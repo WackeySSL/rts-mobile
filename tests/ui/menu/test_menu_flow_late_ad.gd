@@ -138,6 +138,22 @@ func test_restart_builds_the_match_at_the_cap_when_the_backend_never_answers() -
 	assert_array(again).is_equal([OK])
 
 
+func test_restart_waits_for_a_rewarded_run_that_is_still_active() -> void:
+	await _ended_match()
+	AdServiceHarness.start(
+		func() -> bool: return await _ads.show_rewarded(&"double_xp", Callable())
+	)
+	await _frames(2)
+	var out: Array = AdServiceHarness.start(func() -> int: return await _flow.restart())
+	await _frames(4)
+	assert_array(out).is_empty()
+	_assert_nothing_built("rewarded run active")
+	_fake.open_late(AdBackend.KIND_REWARDED)  # Auto close.
+	await _frames(4)
+	assert_array(out).is_equal([OK])
+	assert_int(_mains.size()).is_equal(2)
+
+
 func test_start_match_after_leave_match_waits_for_the_late_ad() -> void:
 	await _ended_match()
 	var left: Array = await _wait_out_the_timeout(
