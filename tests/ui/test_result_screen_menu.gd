@@ -2,8 +2,9 @@ extends GdUnitTestSuite
 ## The result screen's Phase 5 parts (plan P532, ADR 0043 sections 6 and 8, ADR 0045): the XP the
 ## match paid and the rank bar (its math at the rank edges and at the top rank), Back and Play
 ## again through `MenuFlow` (a fake counts the calls; a second tap while one runs does nothing),
-## the victory or defeat sting once (a fake audio service), and the empty `OfferSlot`. The layout
-## at the six sizes is checked with the XP block showing. The basic screen is test_result_screen's.
+## the victory or defeat sting once (a fake audio service), and the `OfferSlot` with its hidden
+## offer. The layout at the six sizes is checked with the XP block showing. The basic screen is
+## test_result_screen's.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -123,6 +124,7 @@ func test_the_top_rank_shows_a_full_bar_and_the_plain_total() -> void:
 func test_a_match_that_paid_no_xp_shows_no_block() -> void:
 	await _open(0, 0)
 	_flow.award = null
+	_flow.match_scored.emit(null, null)  # Scored, and it paid nothing.
 	MatchRig.end(_main, [2])
 	assert_bool(_screen().find_child("XpBox", true, false).visible).is_false()
 
@@ -178,10 +180,11 @@ func test_the_xp_shows_when_the_award_arrives_after_the_screen() -> void:
 	_flow.award = null
 	MatchRig.end(_main, [2])
 	var box: Control = _screen().find_child("XpBox", true, false)
-	assert_bool(box.visible).is_false()
+	assert_float(box.modulate.a).is_equal(0.0)  # The score is pending: only the space is held.
 	_flow.award = award
 	_flow.match_scored.emit(null, award)
 	assert_bool(box.visible).is_true()
+	assert_float(box.modulate.a).is_equal(1.0)
 	assert_str(_texts(box)[0]).is_equal("+30 XP")
 	_flow.match_scored.emit(null, award)  # A second score does not restart the fill.
 	assert_bool(box.visible).is_true()
@@ -212,23 +215,24 @@ func test_a_refused_call_leaves_the_buttons_live_for_the_next_tap() -> void:
 	_flow.release.emit()
 
 
-func test_the_offer_slot_exists_empty_and_0_tall_until_something_is_put_in() -> void:
-	await _open(130, 30)
+func test_the_offer_slot_holds_the_hidden_double_xp_offer_and_is_0_tall() -> void:
+	await _open(130, 30)  # The fake award has no id, so nothing can be doubled.
+	var harness: AdServiceHarness = AdServiceHarness.new()
+	var service: Node = auto_free(harness.make(true))
+	add_child(service)
+	_screen().offer.use_service(service)
 	MatchRig.end(_main, [2])
+	assert_bool(service.rewarded_ready(&"double_xp")).is_true()  # An ad is loaded:
+	assert_str(String(_flow.award.id)).is_empty()  # the empty id is the only reason.
+	harness.dispose()
 	var slot: OfferSlot = _screen().find_child("OfferSlot", true, false) as OfferSlot
 	assert_object(slot).is_not_null()
 	assert_object(slot.owner).is_same(_screen())
-	assert_int(slot.get_child_count()).is_equal(0)
+	assert_int(slot.get_child_count()).is_equal(1)
+	assert_object(slot.get_child(0)).is_same(_screen().offer)
+	assert_bool(_screen().offer.visible).is_false()
 	assert_float(slot.get_combined_minimum_size().y).is_equal(0.0)
 	assert_bool(slot.is_visible_in_tree()).is_false()
-	var probe: Control = Control.new()
-	probe.custom_minimum_size = Vector2(10, 40)
-	slot.add_child(probe)
-	assert_bool(slot.visible).is_true()
-	assert_float(slot.get_combined_minimum_size().y).is_equal(40.0)
-	slot.remove_child(probe)
-	probe.free()
-	assert_bool(slot.visible).is_false()
 
 
 func test_the_layout_with_the_xp_block_fits_the_six_sizes() -> void:
