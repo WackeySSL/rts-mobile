@@ -54,7 +54,7 @@ var squad_focus: PackedInt32Array = PackedInt32Array()
 var member_id: PackedInt32Array = PackedInt32Array()
 var member_squad: PackedInt32Array = PackedInt32Array()
 ## 1 while the home squad's goal is an unseen-hit shift AiArmy made (a probe: held while a member it
-## named still moves, see `AiArmy._probing`), else 0. A defence, a home focus, the return, a wave's
+## named still moves, see `AiUnseen.probing`), else 0. A defence, a home focus, the return, a wave's
 ## launch and an all-in join clear it.
 var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
