@@ -7,11 +7,12 @@ extends RefCounted
 ## match the data now, is refused and deleted. Main thread only; no clock and no randomness, and
 ## nothing here is read by `game/sim`.
 ##
-## Layout: `MAGIC` (4 bytes), the header's byte count (u32 little endian), the header (JSON
-## text: format, app_version, defs_hash as a String, tick, local_player, the setup dictionary, the
-## compressed and the raw size of the body, the body's sha256), then the body: `Replay.to_bytes()`
-## compressed with zstd. The body's hash is checked before it is decompressed, so a damaged or cut
-## file is refused without the engine ever seeing it.
+## Layout: `MAGIC` (4 bytes), the header's byte count (u32 little endian), the check (32 bytes:
+## sha256 of the header bytes followed by the body), the header (ASCII JSON: format, app_version,
+## defs_hash as a String, tick, local_player, the setup dictionary, the compressed and the raw
+## size of the body), then the body: `Replay.to_bytes()` compressed with zstd. The check covers the
+## header and the body and is compared before either is parsed or decompressed, so a damaged or
+## cut file is refused without the engine ever seeing it.
 ##
 ## Who writes and deletes: `ResumeWatcher` calls `write_from` on the app pause and `delete` when
 ## the match ends, is left or replaced; the restore calls `read` and, on a failed restore,
@@ -22,9 +23,15 @@ const FILE_NAME: String = "resume.bin"
 const SECTION: StringName = &"match"
 const MAGIC: PackedByteArray = [0x52, 0x53, 0x4D, 0x31]  # "RSM1"
 const COMPRESSION: FileAccess.CompressionMode = FileAccess.COMPRESSION_ZSTD
-## Bounds for a corrupt header: the header is a few hundred bytes, the raw replay well under this.
+const CHECK_BYTES: int = 32
+const FIXED_BYTES: int = 40  ## MAGIC, the header size and the check.
+## Bounds for a corrupt file: a real one is about 15 KB for a 15-minute match.
 const MAX_HEADER_BYTES: int = 65536
-const MAX_BODY_BYTES: int = 134217728
+const MAX_BODY_BYTES: int = 16777216
+const MAX_FILE_BYTES: int = 16777216
+## How long the pause waits for each of the tick job and the AI thread (`wait_idle` can wait for
+## both): iOS gives about 5 s after the pause, so the two together stay under about 2 s.
+const PAUSE_WAIT_MSEC: int = 1000
 ## `read` argument: do not compare the data's defs_hash (a real hash is never 0).
 const ANY_DEFS_HASH: int = 0
 const K_FORMAT: String = "format"
@@ -35,12 +42,11 @@ const K_PLAYER: String = "local_player"
 const K_SETUP: String = "setup"
 const K_PACKED: String = "packed_bytes"
 const K_RAW: String = "raw_bytes"
-const K_SHA: String = "body_sha256"
 const P_TICK: String = "tick"
 const P_APP: String = "app_version"
 const P_BYTES: String = "bytes"
-const P_SHA: String = "body_sha256"
-const FIXED_BYTES: int = 8  ## MAGIC and the header size.
+const P_SHA: String = "check"
+const ASCII_MAX: int = 0x7F
 
 ## A test seam: where the refusal line goes instead of push_warning (unset: push_warning), so a
 ## test that expects a refusal does not trip the runner's warning check.
@@ -58,31 +64,38 @@ static func app_version() -> String:
 	return str(ProjectSettings.get_setting("application/config/version", ""))
 
 
-## Whether a resume file is on disk and the pointer in section `match` names it. A cheap check for
-## the main menu: the full validation (format, hash, build, data) is `read`'s.
+## Whether a resume file is on disk, the pointer in section `match` names it and the pointer's
+## build is the running one. A cheap check for the main menu: the full validation (check, format,
+## data) is `read`'s.
 static func has_file() -> bool:
 	var pointer: Dictionary = SaveService.get_section(SECTION)
-	return pointer.has(P_SHA) and FileAccess.file_exists(path())
+	return (
+		pointer.has(P_SHA)
+		and pointer.get(P_APP, "") == app_version()
+		and FileAccess.file_exists(path())
+	)
 
 
 ## Writes the file for `runner`'s running match, after the AI and the tick job are idle
-## (`wait_idle`). Nothing is written, and an existing file stays, when the runner or the setup is
-## null or has no match (ERR_UNCONFIGURED) or a job does not finish (ERR_TIMEOUT). A match that has
-## ended, or a lesson, is not resumable: the file is deleted and ERR_UNAVAILABLE comes back.
+## (`wait_idle`, at most `PAUSE_WAIT_MSEC` for each). Nothing is written, and an existing file
+## stays, when the runner or the setup is null or has no match (ERR_UNCONFIGURED) or a job does not
+## finish (ERR_TIMEOUT). A match that has ended, or a lesson, is not resumable: the file is deleted
+## and ERR_UNAVAILABLE comes back.
 static func write_from(runner: MatchRunner, setup: MatchSetup) -> Error:
 	if runner == null or setup == null:
 		return ERR_UNCONFIGURED
 	if setup.lesson_id != &"":
 		delete()
 		return ERR_UNAVAILABLE
-	if not runner.wait_idle():
+	if not runner.wait_idle(PAUSE_WAIT_MSEC):
 		_warn("ResumeStore: the match did not go idle; no resume file written")
 		return ERR_TIMEOUT
 	var world: World = runner.world
 	var replay: Replay = runner.replay
 	if world == null or replay == null:
 		return ERR_UNCONFIGURED
-	if runner.snapshot != null and runner.snapshot.match_end_tick > 0:
+	# The World, not the published snapshot: a tick the worker played is not published yet.
+	if world.match_end_tick > 0:
 		delete()
 		return ERR_UNAVAILABLE
 	return write(setup, replay, world.tick, world.defs_hash())
@@ -118,7 +131,7 @@ static func write(setup: MatchSetup, replay: Replay, tick: int, defs_hash: int) 
 		P_TICK: tick,
 		P_APP: app_version(),
 		P_BYTES: bytes.size(),
-		P_SHA: str(_header_of(bytes).get(K_SHA, "")),
+		P_SHA: bytes.slice(MAGIC.size() + 4, FIXED_BYTES).hex_encode(),
 	}
 	if not SaveService.set_section(SECTION, pointer):
 		return ERR_INVALID_DATA
@@ -134,26 +147,34 @@ static func encode(
 		return PackedByteArray()
 	var raw: PackedByteArray = replay.to_bytes()
 	var body: PackedByteArray = raw.compress(COMPRESSION)
-	var seat: int = setup.local_seat
-	var scenario: ScenarioDef = setup.scenario()
-	if seat == 0 and scenario != null:
-		seat = scenario.local_player
-	var header: Dictionary = {
+	var header: Dictionary = make_header(setup, tick, defs_hash, version, raw.size(), body.size())
+	return seal(JSON.stringify(header).to_utf8_buffer(), body)
+
+
+## The header dictionary for a file of these values. Public for the tests that damage one field.
+static func make_header(
+	setup: MatchSetup, tick: int, defs_hash: int, version: String, raw_size: int, packed_size: int
+) -> Dictionary:
+	return {
 		K_FORMAT: FORMAT,
 		K_APP: version,
 		K_DEFS: str(defs_hash),
 		K_TICK: tick,
-		K_PLAYER: seat,
+		K_PLAYER: _seat_of(setup),
 		K_SETUP: setup.to_dict(),
-		K_PACKED: body.size(),
-		K_RAW: raw.size(),
-		K_SHA: _sha(body),
+		K_PACKED: packed_size,
+		K_RAW: raw_size,
 	}
-	var text: PackedByteArray = JSON.stringify(header).to_utf8_buffer()
+
+
+## The file for these header bytes and this body, with the check computed over both. Public so a
+## test can build a file whose check is right but whose header is not.
+static func seal(header_text: PackedByteArray, body: PackedByteArray) -> PackedByteArray:
 	var out: PackedByteArray = MAGIC.duplicate()
-	out.resize(FIXED_BYTES)
-	out.encode_u32(MAGIC.size(), text.size())
-	out.append_array(text)
+	out.resize(MAGIC.size() + 4)
+	out.encode_u32(MAGIC.size(), header_text.size())
+	out.append_array(_check(header_text, body))
+	out.append_array(header_text)
 	out.append_array(body)
 	return out
 
@@ -165,7 +186,17 @@ static func encode(
 static func read(defs_hash: int = ANY_DEFS_HASH) -> ResumeData:
 	if not FileAccess.file_exists(path()):
 		return null
-	var data: ResumeData = decode(FileAccess.get_file_as_bytes(path()), app_version(), defs_hash)
+	var file: FileAccess = FileAccess.open(path(), FileAccess.READ)
+	if file == null:
+		return null
+	var length: int = file.get_length()
+	var bytes: PackedByteArray = file.get_buffer(length) if length <= MAX_FILE_BYTES else []
+	file.close()
+	var data: ResumeData = null
+	if length > MAX_FILE_BYTES:
+		_warn("ResumeStore: resume file refused (the file is too large)")
+	else:
+		data = decode(bytes, app_version(), defs_hash)
 	if data == null:
 		delete()
 	return data
@@ -173,8 +204,11 @@ static func read(defs_hash: int = ANY_DEFS_HASH) -> ResumeData:
 
 ## `read` without the file: the content of `bytes` for the build `version`, or null.
 static func decode(bytes: PackedByteArray, version: String, defs_hash: int) -> ResumeData:
-	var header: Dictionary = _header_of(bytes)
-	var problem: String = _header_problem(header, version, defs_hash)
+	var header: Dictionary = {}
+	var problem: String = _frame_problem(bytes)
+	if problem == "":
+		header = _parse_header(bytes.slice(FIXED_BYTES, FIXED_BYTES + _header_size(bytes)))
+		problem = _header_problem(header, version, defs_hash)
 	if problem == "":
 		var data: ResumeData = _body_data(header, bytes.slice(FIXED_BYTES + _header_size(bytes)))
 		if data != null:
@@ -201,33 +235,55 @@ static func _warn(text: String) -> void:
 		push_warning(text)
 
 
-static func _sha(bytes: PackedByteArray) -> String:
+static func _seat_of(setup: MatchSetup) -> int:
+	var scenario: ScenarioDef = setup.scenario()
+	if setup.local_seat == 0 and scenario != null:
+		return scenario.local_player
+	return setup.local_seat
+
+
+## The sha256 of the header bytes and then the body.
+static func _check(header_text: PackedByteArray, body: PackedByteArray) -> PackedByteArray:
 	var context: HashingContext = HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
-	context.update(bytes)
-	return context.finish().hex_encode()
+	context.update(header_text)
+	context.update(body)
+	return context.finish()
 
 
 static func _header_size(bytes: PackedByteArray) -> int:
 	return int(bytes.decode_u32(MAGIC.size()))
 
 
-## The header dictionary, or {} when the bytes are not a file of this layout.
-static func _header_of(bytes: PackedByteArray) -> Dictionary:
+## "" when the bytes have the layout and the check matches; else what is wrong.
+static func _frame_problem(bytes: PackedByteArray) -> String:
 	if bytes.size() < FIXED_BYTES or bytes.slice(0, MAGIC.size()) != MAGIC:
-		return {}
+		return "not a resume file"
 	var size: int = _header_size(bytes)
 	if size <= 0 or size > MAX_HEADER_BYTES or bytes.size() < FIXED_BYTES + size:
+		return "a cut file"
+	var stored: PackedByteArray = bytes.slice(MAGIC.size() + 4, FIXED_BYTES)
+	var header_text: PackedByteArray = bytes.slice(FIXED_BYTES, FIXED_BYTES + size)
+	if _check(header_text, bytes.slice(FIXED_BYTES + size)) != stored:
+		return "the check does not match"
+	return ""
+
+
+## The header's JSON object, or {} when it is not one. Quiet: no engine error for any bytes.
+static func _parse_header(text: PackedByteArray) -> Dictionary:
+	for byte: int in text:
+		if byte > ASCII_MAX:
+			return {}
+	var json: JSON = JSON.new()
+	if json.parse(text.get_string_from_ascii()) != OK:
 		return {}
-	var text: String = bytes.slice(FIXED_BYTES, FIXED_BYTES + size).get_string_from_utf8()
-	var parsed: Variant = JSON.parse_string(text)
-	return parsed if parsed is Dictionary else {}
+	return json.data if json.data is Dictionary else {}
 
 
 static func _header_problem(header: Dictionary, version: String, defs_hash: int) -> String:
 	if header.is_empty():
-		return "not a resume file"
-	for key: String in [K_FORMAT, K_APP, K_DEFS, K_TICK, K_PLAYER, K_SETUP, K_PACKED, K_RAW, K_SHA]:
+		return "the header is not readable"
+	for key: String in [K_FORMAT, K_APP, K_DEFS, K_TICK, K_PLAYER, K_SETUP, K_PACKED, K_RAW]:
 		if not header.has(key):
 			return "missing " + key
 	var problem: String = ""
@@ -239,13 +295,14 @@ static func _header_problem(header: Dictionary, version: String, defs_hash: int)
 		problem = "bad defs hash"
 	elif defs_hash != ANY_DEFS_HASH and int(header[K_DEFS] as String) != defs_hash:
 		problem = "the data changed"
-	elif not (header[K_SHA] is String):
-		problem = "bad body hash"
-	for key: String in [K_TICK, K_PLAYER, K_PACKED, K_RAW]:
+	for key: String in [K_TICK, K_PLAYER]:
 		if problem == "" and (not _whole(header[key]) or int(header[key]) < 0):
 			problem = "bad " + key
-	if problem == "" and int(header[K_RAW]) > MAX_BODY_BYTES:
-		problem = "body too large"
+	for key: String in [K_PACKED, K_RAW]:
+		if problem == "" and (not _whole(header[key]) or int(header[key]) <= 0):
+			problem = "bad " + key
+		elif problem == "" and int(header[key]) > MAX_BODY_BYTES:
+			problem = "body too large"
 	return problem
 
 
@@ -254,7 +311,7 @@ static func _whole(value: Variant) -> bool:
 
 
 static func _body_data(header: Dictionary, body: PackedByteArray) -> ResumeData:
-	if body.size() != int(header[K_PACKED]) or _sha(body) != header[K_SHA]:
+	if body.size() != int(header[K_PACKED]):
 		return null
 	var setup: MatchSetup = MatchSetup.from_dict(header[K_SETUP])
 	var raw_size: int = int(header[K_RAW])
@@ -269,7 +326,9 @@ static func _body_data(header: Dictionary, body: PackedByteArray) -> ResumeData:
 		last_checkpoint = replay.checkpoint_ticks[replay.checkpoint_ticks.size() - 1]
 	if replay.scenario_path != setup.scenario_path or replay.seed != setup.match_seed:
 		return null
-	if tick < last_checkpoint or replay.defs_hash != defs:
+	if replay.defs_hash != defs or int(header[K_PLAYER]) != _seat_of(setup):
+		return null
+	if tick < last_checkpoint or tick >= last_checkpoint + Replay.CHECKPOINT_PERIOD:
 		return null
 	var data: ResumeData = ResumeData.new()
 	data.setup = setup

@@ -16,6 +16,7 @@ extends Node
 var flow: Node = null
 
 var _tracked: MatchRunner = null
+var _tracked_id: int = 0  ## The instance id: a freed runner no longer compares equal to itself.
 
 
 ## Adds a watcher for `MenuFlow` to `tree`'s root; whoever owns the app start calls this once.
@@ -38,15 +39,19 @@ func bind(menu_flow: Node) -> void:
 
 
 func _process(_delta: float) -> void:
-	var current: MatchRunner = flow.current_runner() if flow != null else null
-	if current == _tracked:
+	# A Variant: a runner freed by the scene change must not trip a typed assignment.
+	var found: Variant = flow.current_runner() if flow != null else null
+	var current: MatchRunner = found if is_instance_valid(found) else null
+	var current_id: int = current.get_instance_id() if current != null else 0
+	if current_id == _tracked_id:
 		return
-	if _tracked != null:
-		# The match it followed was left, replaced or restarted.
+	if _tracked_id != 0:
+		# The match it followed was left (its runner may be freed already), replaced or restarted.
 		if is_instance_valid(_tracked) and _tracked.match_ended.is_connected(_on_match_ended):
 			_tracked.match_ended.disconnect(_on_match_ended)
 		ResumeStore.delete()
 	_tracked = current
+	_tracked_id = current_id
 	if current != null:
 		current.match_ended.connect(_on_match_ended)
 

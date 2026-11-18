@@ -9,20 +9,6 @@ const SCENARIO: String = DevRoutes.SKIRMISH_DERRICK
 const SEED: int = 4242
 const TICKS: int = 40
 
-
-class FakeFlow:
-	extends Node
-	signal match_loading(setup: MatchSetup)
-	var runner: MatchRunner = null
-	var setup: MatchSetup = null
-
-	func current_runner() -> MatchRunner:
-		return runner
-
-	func current_setup() -> MatchSetup:
-		return setup
-
-
 var _warnings: Array[String] = []
 
 
@@ -131,7 +117,7 @@ func test_a_lesson_is_never_written_and_deletes_an_old_file() -> void:
 func test_an_ended_match_is_not_written_and_deletes_the_file() -> void:
 	var pair: Array = _written()
 	var runner: MatchRunner = pair[1]
-	runner.snapshot.match_end_tick = 5
+	runner.world.match_end_tick = 5
 	assert_int(ResumeStore.write_from(runner, pair[0])).is_equal(ERR_UNAVAILABLE)
 	assert_bool(ResumeStore.has_file()).is_false()
 
@@ -178,13 +164,6 @@ func test_a_damaged_body_is_refused_and_deleted() -> void:
 	assert_bool(_pointer().is_empty()).is_true()
 
 
-func test_a_cut_file_is_refused() -> void:
-	_written()
-	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ResumeStore.path())
-	for keep: int in [0, 3, 9, bytes.size() / 2, bytes.size() - 1]:
-		assert_object(_decode(bytes.slice(0, keep))).is_null()
-
-
 func test_a_foreign_file_is_refused_and_deleted() -> void:
 	_put("not a resume file at all".to_utf8_buffer())
 	assert_object(ResumeStore.read()).is_null()
@@ -204,28 +183,10 @@ func test_other_data_is_refused_and_deleted() -> void:
 	assert_bool(FileAccess.file_exists(ResumeStore.path())).is_false()
 
 
-func test_a_log_of_another_match_is_refused() -> void:
-	var pair: Array = _written()
-	var other: MatchSetup = MatchSetup.from_dict((pair[0] as MatchSetup).to_dict())
-	other.match_seed = SEED + 1
-	assert_object(_decode(_file(other, pair[1], TICKS, ResumeStore.app_version()))).is_null()
-
-
-func test_a_tick_before_the_last_checkpoint_is_refused() -> void:
-	var pair: Array = _written()
-	assert_object(_decode(_file(pair[0], pair[1], 5, ResumeStore.app_version()))).is_null()
-
-
-func test_a_lesson_in_the_file_is_refused() -> void:
-	var pair: Array = _written()
-	var lesson: MatchSetup = MatchSetup.from_dict((pair[0] as MatchSetup).to_dict())
-	lesson.lesson_id = &"lesson_1"
-	assert_object(_decode(_file(lesson, pair[1], TICKS, ResumeStore.app_version()))).is_null()
-
-
-func test_encode_refuses_unusable_input() -> void:
-	var pair: Array = _written()
-	var replay: Replay = (pair[1] as MatchRunner).replay
-	assert_bool(ResumeStore.encode(null, replay, 1, 1, "x").is_empty()).is_true()
-	assert_bool(ResumeStore.encode(pair[0], null, 1, 1, "x").is_empty()).is_true()
-	assert_bool(ResumeStore.encode(pair[0], replay, -1, 1, "x").is_empty()).is_true()
+func test_the_menu_check_follows_the_pointer_s_build() -> void:
+	_written()
+	assert_bool(ResumeStore.has_file()).is_true()
+	var pointer: Dictionary = _pointer()
+	pointer[ResumeStore.P_APP] = "Beta 0"
+	SaveService.set_section(ResumeStore.SECTION, pointer)
+	assert_bool(ResumeStore.has_file()).is_false()

@@ -119,3 +119,15 @@ func test_a_restored_match_appearing_does_not_delete_the_file() -> void:
 	flow.runner = _runner(flow.setup)
 	watcher._process(0.0)
 	assert_bool(ResumeStore.has_file()).is_true()
+
+
+func test_a_freed_runner_counts_as_leaving_the_match() -> void:
+	var flow: FakeFlow = _flow_with_match()
+	var watcher: ResumeWatcher = _watched(flow)
+	watcher._process(0.0)
+	watcher.notification(NOTIFICATION_APPLICATION_PAUSED)
+	assert_bool(ResumeStore.has_file()).is_true()
+	flow.runner.free()  # The scene change ran after the watcher's frame; the flow still holds it.
+	watcher._process(0.0)
+	assert_bool(ResumeStore.has_file()).is_false()
+	watcher._process(0.0)
