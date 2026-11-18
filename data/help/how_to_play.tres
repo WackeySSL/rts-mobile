@@ -8,265 +8,985 @@
 script = ExtResource("3_ent")
 id = &"camera-pan"
 title = "Move around the map"
-body = "Drag one finger to pan. Pinch to zoom in or out."
+body = "Drag one finger across the screen to pan the camera."
 
 [sub_resource type="Resource" id="e2"]
 script = ExtResource("3_ent")
+id = &"camera-pinch"
+title = "Zoom"
+body = "Pinch with two fingers to zoom in or out. When you let go, the view settles on the nearest of three zoom levels."
+
+[sub_resource type="Resource" id="e3"]
+script = ExtResource("3_ent")
+id = &"camera-look-diamond"
+title = "The angle of the map"
+body = "The map is drawn at an angle, so every tile is a diamond. Drag, pinch and tap work as always. Tap the ground and your selected units go to the spot under your finger."
+
+[sub_resource type="Resource" id="e4"]
+script = ExtResource("3_ent")
+id = &"camera-map-edge"
+title = "The edge of the map"
+body = "The camera stops at the edge of the map. You can scroll the edge up to the middle of the screen, so nothing stays hidden under a button or a panel. Past the edge the screen is dark grey."
+
+[sub_resource type="Resource" id="e5"]
+script = ExtResource("3_ent")
 id = &"camera-radar"
-title = "The radar"
-body = "Tap the round radar at the top right to open the whole map. Tap or drag on it to jump there."
+title = "The radar and the full map"
+body = "The round radar at the top right shows the ground around your view. Tap it to unfold the whole map. Tap or drag on the map to jump the view there. Black ground is ground you have never seen, and dimmed ground is ground you saw before. Your units and buildings show in your colour. Enemies show only where you see them now: a cross is a unit and a rounded blob is a building. The map folds away after a few seconds. Tap the pin to keep it open, or the arrows button to fold it at once."
+
+[sub_resource type="Resource" id="e6"]
+script = ExtResource("3_ent")
+id = &"camera-hold-full-map"
+title = "Send units from the full map"
+body = "Select units, then hold one finger still on the full map. They move to that spot and the view jumps there, so you see them go. One hold is one order; lift your finger and hold again for another. A quick tap or a slide sends nothing. Tankers sent this way only drive there. To load oil, tap the field itself."
 
 [sub_resource type="Resource" id="s0"]
 script = ExtResource("2_sec")
 id = &"camera"
 title = "Camera"
-entries = Array[ExtResource("3_ent")]([SubResource("e1"), SubResource("e2")])
+entries = Array[ExtResource("3_ent")]([SubResource("e1"), SubResource("e2"), SubResource("e3"), SubResource("e4"), SubResource("e5"), SubResource("e6")])
 
-[sub_resource type="Resource" id="e3"]
+[sub_resource type="Resource" id="e7"]
 script = ExtResource("3_ent")
 id = &"turn-the-phone-rotate"
 title = "Portrait or landscape"
-body = "Hold the phone either way. The match keeps going while you turn it."
+body = "Hold the phone either way. The match keeps going while you turn it. Nothing restarts and no order is given. The buttons move to the layout of the new direction."
+
+[sub_resource type="Resource" id="e8"]
+script = ExtResource("3_ent")
+id = &"turn-the-phone-cancel-gesture"
+title = "Turning during a gesture"
+body = "If you turn the phone while a finger is on the screen, that drag, box or pinch is cancelled. No unit is selected or sent. Lift your finger and start again."
+
+[sub_resource type="Resource" id="e9"]
+script = ExtResource("3_ent")
+id = &"turn-the-phone-keep-state"
+title = "Menus stay open"
+body = "The full map and the build drawer stay open when you turn the phone. The drawer keeps its tab. A closed drawer stays closed."
+
+[sub_resource type="Resource" id="e10"]
+script = ExtResource("3_ent")
+id = &"turn-the-phone-auto-rotate-off"
+title = "Auto-rotate is off"
+body = "If auto-rotate is off in your phone's settings, the game stays the way the phone is held. The game cannot turn the screen by itself."
 
 [sub_resource type="Resource" id="s1"]
 script = ExtResource("2_sec")
 id = &"turn-the-phone"
 title = "Turn the phone"
-entries = Array[ExtResource("3_ent")]([SubResource("e3")])
+entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), SubResource("e9"), SubResource("e10")])
 
-[sub_resource type="Resource" id="e4"]
+[sub_resource type="Resource" id="e11"]
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit wears your team colour. Tap one to see what it can do."
+body = "Each unit wears your team colour and has a shadow on the ground. Tap a unit to select it. The bar at the bottom left shows what you selected."
+
+[sub_resource type="Resource" id="e12"]
+script = ExtResource("3_ent")
+id = &"units-drive-fight"
+title = "Units on the move"
+body = "Units turn to face where they drive. A tank's turret turns on its own toward its target. Infantry swing their legs as they walk and shift their weight when they stand still. A vehicle under half its health is sooty, and under a quarter it is scorched and smoking, so you can see which ones need repair. A unit lower on the screen is drawn in front of one above it."
+
+[sub_resource type="Resource" id="e13"]
+script = ExtResource("3_ent")
+id = &"units-build-aircraft"
+title = "Build an aircraft"
+body = "Open the Flight tab of the build drawer. The cards stay locked until you finish an airfield. Each airfield has four landing pads, and you can own one aircraft for each pad, so build more airfields for more aircraft. The fighter is fast and cheap and never runs out of shots. It hits aircraft, but not drone squads. The bomber is slower and tougher. It hits the ground only and carries two bombs."
+
+[sub_resource type="Resource" id="e14"]
+script = ExtResource("3_ent")
+id = &"units-look-aircraft"
+title = "Your aircraft"
+body = "An aircraft hovers above its shadow. It has a stripe in your team colour on its wings. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
+
+[sub_resource type="Resource" id="e15"]
+script = ExtResource("3_ent")
+id = &"units-build-carrier"
+title = "Build a carrier"
+body = "Carriers are built at a vehicle factory, on the Vehicles tab. A carrier has no gun. It only carries infantry squads, never vehicles. The Bunk Wagon is slow and tough and has four seats. The Linecar is fast and light and has two seats."
+
+[sub_resource type="Resource" id="e16"]
+script = ExtResource("3_ent")
+id = &"units-look-carrier"
+title = "Your carriers"
+body = "A carrier shows its seats as small squares in its card at the bottom left. A square is filled for each squad aboard. You cannot see what an enemy carrier holds."
+
+[sub_resource type="Resource" id="e17"]
+script = ExtResource("3_ent")
+id = &"units-build-minelayer"
+title = "Build a minelayer"
+body = "Minelayers are built at a vehicle factory, on the Vehicles tab, once you have a radar. A minelayer has no gun. It never sets off a mine, yours or the enemy's, and it finds hidden enemy mines close to it. Each mine it lays costs credits. The Shot Truck is slow and sturdy. The Seeder is fast and light."
+
+[sub_resource type="Resource" id="e18"]
+script = ExtResource("3_ent")
+id = &"units-look-minelayer"
+title = "Your minelayers"
+body = "The Shot Truck is a flatbed truck with a drill mast and shot cans. The Seeder is a light planter with a tall glass hopper. Both wear your team colour on their sides and cab."
 
 [sub_resource type="Resource" id="s2"]
 script = ExtResource("2_sec")
 id = &"units"
 title = "Units"
-entries = Array[ExtResource("3_ent")]([SubResource("e4")])
+entries = Array[ExtResource("3_ent")]([SubResource("e11"), SubResource("e12"), SubResource("e13"), SubResource("e14"), SubResource("e15"), SubResource("e16"), SubResource("e17"), SubResource("e18")])
 
-[sub_resource type="Resource" id="e5"]
+[sub_resource type="Resource" id="e19"]
 script = ExtResource("3_ent")
 id = &"buildings-look"
 title = "Your buildings"
-body = "Buildings stand on their footprint. Select one to mend or sell it."
+body = "Each building stands on its footprint in your team colour and has a soft shadow. Some have moving parts, such as turning antennas or spinning rotors. A unit in front of a building is drawn over it, and one behind it is hidden by it."
+
+[sub_resource type="Resource" id="e20"]
+script = ExtResource("3_ent")
+id = &"buildings-look-enemy"
+title = "Enemy buildings"
+body = "You see an enemy building only while you can see the ground it stands on. Seeing one tile of it is enough to show the whole building. Out of sight it turns into a dimmed picture."
+
+[sub_resource type="Resource" id="e21"]
+script = ExtResource("3_ent")
+id = &"buildings-burn"
+title = "A building on fire"
+body = "A damaged building smokes. Under a third of its health it burns from inside with thick black smoke. You see an enemy building's fire only while you can see the building."
+
+[sub_resource type="Resource" id="e22"]
+script = ExtResource("3_ent")
+id = &"buildings-look-fog"
+title = "Buildings in the fog"
+body = "An enemy building you saw stays on the map as a dimmed picture where you last saw it. It stays until you see that spot again. If the building is gone, the picture goes. A dimmed picture cannot be tapped, so a tap there counts as a tap on the ground."
+
+[sub_resource type="Resource" id="e23"]
+script = ExtResource("3_ent")
+id = &"buildings-hp-bar"
+title = "Health bars"
+body = "A bar shows above a building for a few seconds after each hit, and for as long as it is selected. Your bars are plain. An enemy's bar has a notch in its top edge, so you can tell them apart without colour."
+
+[sub_resource type="Resource" id="e24"]
+script = ExtResource("3_ent")
+id = &"buildings-badly-damaged"
+title = "A badly damaged building"
+body = "A building under a third of its health shows blown windows, soot and a broken corner. Part of it has collapsed. An enemy building shows its damage only while you can see it."
+
+[sub_resource type="Resource" id="e25"]
+script = ExtResource("3_ent")
+id = &"buildings-destroyed"
+title = "A destroyed building"
+body = "A destroyed building flashes and sinks in a cloud of dust. A crater with a little smoke is left behind. You see a crater only if you saw the building fall."
+
+[sub_resource type="Resource" id="e26"]
+script = ExtResource("3_ent")
+id = &"buildings-build-airfield"
+title = "Build an airfield"
+body = "An airfield is on the Structures tab. It needs a radar building first and costs credits and power. It is a deck with four landing pads. Each pad serves one aircraft, so one airfield holds four. Once it stands, the Flight tab opens. Aircraft also reload and get repaired here."
+
+[sub_resource type="Resource" id="e27"]
+script = ExtResource("3_ent")
+id = &"buildings-airfield-damaged"
+title = "A damaged airfield"
+body = "A damaged airfield smokes and burns like any building. Badly damaged, its hangar and mast are broken down, but the deck and the four pads stay."
+
+[sub_resource type="Resource" id="e28"]
+script = ExtResource("3_ent")
+id = &"buildings-build-engineering"
+title = "Build an engineering centre"
+body = "The engineering centre is on the Structures tab. It needs an airfield first. Once it stands, the Research tab opens. Each upgrade can be researched once per match."
+
+[sub_resource type="Resource" id="e29"]
+script = ExtResource("3_ent")
+id = &"buildings-engineering-damaged"
+title = "A damaged engineering centre"
+body = "A damaged engineering centre smokes and burns. Badly damaged, its hall is broken down to a stub, but the foundation stays."
+
+[sub_resource type="Resource" id="e30"]
+script = ExtResource("3_ent")
+id = &"buildings-build-repair"
+title = "Build a repair building"
+body = "A repair building is on the Structures tab. It needs a vehicle factory first. It repairs your wheeled and tracked vehicles for credits, never infantry or aircraft. Select damaged vehicles and tap Repair to send them to it. The Weld Shed repairs faster. The Drone Dock repairs slower but reaches further."
+
+[sub_resource type="Resource" id="e31"]
+script = ExtResource("3_ent")
+id = &"buildings-repair-damaged"
+title = "A damaged repair building"
+body = "A damaged repair building smokes and burns. Badly damaged, its roof and arm are down, but it keeps repairing. Only a blackout strike stops it."
+
+[sub_resource type="Resource" id="e32"]
+script = ExtResource("3_ent")
+id = &"buildings-mend"
+title = "Mend a building"
+body = "Select your own finished building and tap Mend, the wrench. The building repairs itself and you pay for it from your credits. The button lights up while it mends. It stops by itself at full health, or when you tap Mend again. It waits while you cannot pay. The Headquarters mends for free."
+
+[sub_resource type="Resource" id="e33"]
+script = ExtResource("3_ent")
+id = &"buildings-sell"
+title = "Sell a building"
+body = "Select your own finished building and tap Sell twice. The first tap shows how many credits you would get. The second tap, after a short moment, sells it. A quick double-tap never sells. Any other touch cancels the sale. You cannot sell the Headquarters."
+
+[sub_resource type="Resource" id="e34"]
+script = ExtResource("3_ent")
+id = &"buildings-sell-last"
+title = "Selling your last production building"
+body = "If your Headquarters is gone and you sell your last barracks or vehicle factory, the game asks first: Selling it loses the match. Tap Keep to stop. Tap Sell only if you want to lose."
 
 [sub_resource type="Resource" id="s3"]
 script = ExtResource("2_sec")
 id = &"buildings"
 title = "Buildings"
-entries = Array[ExtResource("3_ent")]([SubResource("e5")])
+entries = Array[ExtResource("3_ent")]([SubResource("e19"), SubResource("e20"), SubResource("e21"), SubResource("e22"), SubResource("e23"), SubResource("e24"), SubResource("e25"), SubResource("e26"), SubResource("e27"), SubResource("e28"), SubResource("e29"), SubResource("e30"), SubResource("e31"), SubResource("e32"), SubResource("e33"), SubResource("e34")])
 
-[sub_resource type="Resource" id="e6"]
+[sub_resource type="Resource" id="e35"]
 script = ExtResource("3_ent")
 id = &"selection-tap"
-title = "Select units"
-body = "Tap a unit to select it. Hold and drag to box select. Double-tap to select all of that type."
+title = "Select a unit"
+body = "Tap a unit to select only that unit. Tap anywhere on its picture, not only on the ground under its feet. Small units are easy to hit. A white oval ring on the ground shows what you selected."
+
+[sub_resource type="Resource" id="e36"]
+script = ExtResource("3_ent")
+id = &"selection-tap-building"
+title = "Select a building"
+body = "Tap your own building to select it. It gets four corner brackets and a health bar. If a unit stands at the same spot, the unit is selected instead. A Headquarters, barracks or vehicle factory also opens the build drawer on the tab it builds."
+
+[sub_resource type="Resource" id="e37"]
+script = ExtResource("3_ent")
+id = &"selection-tap-enemy-building"
+title = "Look at an enemy building"
+body = "With nothing selected, tap an enemy building you can see. An amber frame and its health bar show, and the bar at the bottom left names it. You can only look. It takes no orders."
+
+[sub_resource type="Resource" id="e38"]
+script = ExtResource("3_ent")
+id = &"selection-tap-ground"
+title = "Let go of a building"
+body = "With a building selected, tap the ground to let it go. Nothing moves. A barracks or a vehicle factory is different: the same tap sets its rally flag, and it stays selected."
+
+[sub_resource type="Resource" id="e39"]
+script = ExtResource("3_ent")
+id = &"selection-double-tap"
+title = "Select all of a kind"
+body = "Double-tap one of your units to select every unit of that type on the screen. Buildings never join a double-tap or a box."
+
+[sub_resource type="Resource" id="e40"]
+script = ExtResource("3_ent")
+id = &"selection-tap-aircraft"
+title = "Select an aircraft"
+body = "Tap the aircraft itself, not its shadow. A selected aircraft gets a ring under its shadow and a health bar above it. If a unit of yours is under it, the aircraft is picked first. To reach the unit, drag a box over it, or double-tap another unit of its type."
+
+[sub_resource type="Resource" id="e41"]
+script = ExtResource("3_ent")
+id = &"selection-box"
+title = "Select with a box"
+body = "Touch the ground and hold, then drag. A box appears, and when you let go it selects your units inside. If the box holds fighting units and tankers, the tankers are left out. A box with only tankers selects them."
+
+[sub_resource type="Resource" id="e42"]
+script = ExtResource("3_ent")
+id = &"selection-box-empty"
+title = "An empty box"
+body = "Hold and drag a box with none of your units inside, and the selection is cleared. This also lets go of a selected barracks or vehicle factory."
+
+[sub_resource type="Resource" id="e43"]
+script = ExtResource("3_ent")
+id = &"selection-chip"
+title = "What you selected"
+body = "The bar at the bottom left shows your selection. There is one card for each unit type, with its picture, how many there are and a health bar. A building shows its picture, name and health bar. Types that do not fit are counted in a +N card. The bar goes away when nothing is selected."
+
+[sub_resource type="Resource" id="e44"]
+script = ExtResource("3_ent")
+id = &"selection-deselect"
+title = "Clear the selection"
+body = "Tap CLEAR, the first button of the bar, to select nothing. It works for units and buildings, and for an enemy building you looked at. It sends no order. While you place a building or aim a strike, CLEAR stays in the bar so the buttons do not move."
+
+[sub_resource type="Resource" id="e45"]
+script = ExtResource("3_ent")
+id = &"selection-destroyed"
+title = "A selected unit is destroyed"
+body = "A destroyed unit or building leaves your selection, and the count on its card drops. The bar goes away when the last one is gone."
 
 [sub_resource type="Resource" id="s4"]
 script = ExtResource("2_sec")
 id = &"selection"
 title = "Selection"
-entries = Array[ExtResource("3_ent")]([SubResource("e6")])
+entries = Array[ExtResource("3_ent")]([SubResource("e35"), SubResource("e36"), SubResource("e37"), SubResource("e38"), SubResource("e39"), SubResource("e40"), SubResource("e41"), SubResource("e42"), SubResource("e43"), SubResource("e44"), SubResource("e45")])
 
-[sub_resource type="Resource" id="e7"]
+[sub_resource type="Resource" id="e46"]
+script = ExtResource("3_ent")
+id = &"orders-stop"
+title = "Stop"
+body = "Select units and tap Stop. They stop where they are. A tanker you stop goes back to work by itself after a few seconds. There is no Attack button. Tap the ground to move, and tap an enemy to attack."
+
+[sub_resource type="Resource" id="e47"]
+script = ExtResource("3_ent")
+id = &"orders-home"
+title = "Send aircraft home"
+body = "Select aircraft and tap Home. Each one flies to a pad of its own airfield, where it reloads and is repaired for credits. An aircraft with no free pad stays out of the order. The button shows only when an aircraft you selected has an airfield to go to. With a mixed selection, only the aircraft go."
+
+[sub_resource type="Resource" id="e48"]
+script = ExtResource("3_ent")
+id = &"orders-repair"
+title = "Repair vehicles"
+body = "Select damaged vehicles and tap Repair. They drive to the nearest repair building that serves them and are repaired there for credits. Units it cannot repair, and undamaged units, stay where they are. The button is dimmed while none of them is damaged. Aircraft and infantry never use it."
+
+[sub_resource type="Resource" id="e49"]
+script = ExtResource("3_ent")
+id = &"orders-bomber-reload"
+title = "A bomber is out of bombs"
+body = "A bomber carries two bombs. When they are gone it flies home by itself, gets a bomb back at once and the rest after a while. It waits on the pad and does not go out again until you send it. Tap an enemy to send it. If you have no airfield with a free pad, an empty bomber drops nothing."
+
+[sub_resource type="Resource" id="e50"]
 script = ExtResource("3_ent")
 id = &"orders-move"
-title = "Move and attack"
-body = "Tap the ground to send selected units there. Tap an enemy to attack it."
+title = "Move"
+body = "With units selected, tap the ground. They drive there without stopping to fight, even out of a fight. When they arrive they fire at enemies in range. Chevrons on the ground close in on the spot."
+
+[sub_resource type="Resource" id="e51"]
+script = ExtResource("3_ent")
+id = &"orders-sweep-mine"
+title = "Clear a mine"
+body = "To remove a mine you have found, select only a minelayer and tap the mine. It drives there and stands on it. After a few seconds the mine is gone, with no blast. Send the minelayer alone. Other units would set the mine off on the way."
+
+[sub_resource type="Resource" id="e52"]
+script = ExtResource("3_ent")
+id = &"orders-attack"
+title = "Attack"
+body = "With units selected, tap an enemy. They drive until they are in range, then fire until it is destroyed. A flat diamond on the ground marks the target. After the kill they go on to where it stood. To attack a building, tap anywhere on its picture while you can see the middle of it."
+
+[sub_resource type="Resource" id="e53"]
+script = ExtResource("3_ent")
+id = &"orders-attack-unreachable"
+title = "An enemy you cannot hit"
+body = "If none of your selected units can hit the enemy you tapped, nothing is ordered. The diamond shakes for a moment and your selection stays. If only some can hit it, only those attack. The rest keep doing what they were doing."
+
+[sub_resource type="Resource" id="e54"]
+script = ExtResource("3_ent")
+id = &"orders-attack-medics"
+title = "Medics and attacks"
+body = "Tap an enemy with medics selected. Armed units attack. Medics have no weapon, so they walk toward the enemy and mend hurt units on the way. They can end up under fire. A group of only medics gets no order."
+
+[sub_resource type="Resource" id="e55"]
+script = ExtResource("3_ent")
+id = &"orders-rally"
+title = "Set a rally flag"
+body = "Select a barracks or a vehicle factory, then tap the ground. A flag stands there, and a line runs to it from the building. New units leave the building and drive to the flag. Tap again to move the flag. One flag serves all your barracks and another serves all your vehicle factories. Units already built stay where they are. Tankers ignore it."
+
+[sub_resource type="Resource" id="e56"]
+script = ExtResource("3_ent")
+id = &"orders-tanker-field"
+title = "Send tankers to an oil field"
+body = "With only tankers selected, tap an oil field. They drive there and load. A tap on bare ground only moves them. A field that has run dry also only moves them. A tanker you sent away goes back to work by itself after a few seconds."
+
+[sub_resource type="Resource" id="e57"]
+script = ExtResource("3_ent")
+id = &"orders-board"
+title = "Board a carrier"
+body = "Select squads and tap BOARD. Tap one of your carriers that has a free seat, and a ring shows on it. Then tap the check mark. The carrier drives to the squads and they climb in, one seat for each squad. A loaded squad cannot shoot and does not show on the map. If you tap something else, the button shakes and nothing is sent."
+
+[sub_resource type="Resource" id="e58"]
+script = ExtResource("3_ent")
+id = &"orders-unload"
+title = "Unload a carrier"
+body = "Select a loaded carrier and tap UNLOAD. Tap the ground where you want the squads, then tap the check mark. The carrier drives there and the squads get out on free ground, with the health they had. A squad with no free spot stays aboard. If a carrier is destroyed, its squads get out hurt, or are lost with it."
 
 [sub_resource type="Resource" id="s5"]
 script = ExtResource("2_sec")
 id = &"orders"
 title = "Orders"
-entries = Array[ExtResource("3_ent")]([SubResource("e7")])
+entries = Array[ExtResource("3_ent")]([SubResource("e46"), SubResource("e47"), SubResource("e48"), SubResource("e49"), SubResource("e50"), SubResource("e51"), SubResource("e52"), SubResource("e53"), SubResource("e54"), SubResource("e55"), SubResource("e56"), SubResource("e57"), SubResource("e58")])
 
-[sub_resource type="Resource" id="e8"]
+[sub_resource type="Resource" id="e59"]
 script = ExtResource("3_ent")
 id = &"combat-basics"
 title = "Fighting"
-body = "Units shoot what is in range. Keep damaged units back and mend them."
+body = "Units shoot enemies in range on their own, until the enemy is destroyed or out of range. Units on a move order do not fire until they arrive. Keep hurt units back and repair them."
+
+[sub_resource type="Resource" id="e60"]
+script = ExtResource("3_ent")
+id = &"combat-anti-air-building"
+title = "Anti-air buildings"
+body = "An anti-air building, such as a Burst Stack or a Sky Needle, fires at enemy aircraft on its own. It shoots aircraft only and never the ground. Protect it with tanks, infantry and a ground defence. Without power it is silent."
+
+[sub_resource type="Resource" id="e61"]
+script = ExtResource("3_ent")
+id = &"combat-air-targets"
+title = "What can hit aircraft"
+body = "Only some weapons reach the air. Rocket squads and anti-air buildings hit every aircraft. Fighters hit every aircraft except drone squads. Rifles and the Redoubt hit only low-flying drone squads. Tank guns, artillery and bombers cannot hit aircraft. Tap an aircraft with a unit that cannot hit it, and nothing happens."
+
+[sub_resource type="Resource" id="e62"]
+script = ExtResource("3_ent")
+id = &"combat-keep-fighting"
+title = "After a kill"
+body = "When units finish an attack they keep fighting. They go for the next enemy in reach. When none is left, they go on to where the enemy you tapped stood."
+
+[sub_resource type="Resource" id="e63"]
+script = ExtResource("3_ent")
+id = &"combat-health-bar"
+title = "Health bars"
+body = "A bar shows above a unit that is selected or was just hurt. Your bars are plain. An enemy's bar has a notch in its top edge. You do not see bars on enemies hidden in the fog."
+
+[sub_resource type="Resource" id="e64"]
+script = ExtResource("3_ent")
+id = &"combat-under-attack"
+title = "Under attack"
+body = "When something of yours is hit out of view, a red message appears at the top. Tap it to jump the view there. A red wedge on the rim of the radar points that way, and the full map shows a ping. A hit close to the last one soon after does not raise a new message."
 
 [sub_resource type="Resource" id="s6"]
 script = ExtResource("2_sec")
 id = &"combat"
 title = "Combat"
-entries = Array[ExtResource("3_ent")]([SubResource("e8")])
+entries = Array[ExtResource("3_ent")]([SubResource("e59"), SubResource("e60"), SubResource("e61"), SubResource("e62"), SubResource("e63"), SubResource("e64")])
 
-[sub_resource type="Resource" id="e9"]
+[sub_resource type="Resource" id="e65"]
 script = ExtResource("3_ent")
 id = &"terrain-basics"
 title = "The ground"
-body = "Some ground slows units down and some cannot be crossed."
+body = "The ground is grass, sand, scrub, rock, water or dark oil-stained earth. Past the edge of the map the screen is dark grey."
+
+[sub_resource type="Resource" id="e66"]
+script = ExtResource("3_ent")
+id = &"terrain-blocked"
+title = "What blocks units"
+body = "Rock and water block all units. Scrub, the patterned ground, blocks vehicles but not infantry. A unit that cannot cross drives around to the spot you tapped."
 
 [sub_resource type="Resource" id="s7"]
 script = ExtResource("2_sec")
 id = &"terrain"
 title = "Terrain"
-entries = Array[ExtResource("3_ent")]([SubResource("e9")])
+entries = Array[ExtResource("3_ent")]([SubResource("e65"), SubResource("e66")])
 
-[sub_resource type="Resource" id="e10"]
+[sub_resource type="Resource" id="e67"]
+script = ExtResource("3_ent")
+id = &"economy-oil-field"
+title = "Oil fields"
+body = "An oil field is a patch of dark ground with a wellhead. A full field is one black pool. As tankers take oil, the pool shrinks, then turns into a cracked stain when it is dry. A field slowly fills up again."
+
+[sub_resource type="Resource" id="e68"]
 script = ExtResource("3_ent")
 id = &"economy-credits"
-title = "Credits and power"
-body = "Tankers bring in credits from oil fields. Buildings need power to work."
+title = "Tankers carry credits"
+body = "Every tanker has a small bar under it, yours and the enemy's. It is empty at first and fills with gold as the tanker loads. When it is full, the tanker drives to the refinery and unloads. Then the bar is empty again. Credits are what you spend on buildings and units. The credits and the power you have are shown in the pill at the top left."
 
 [sub_resource type="Resource" id="s8"]
 script = ExtResource("2_sec")
 id = &"economy"
 title = "Economy"
-entries = Array[ExtResource("3_ent")]([SubResource("e10")])
+entries = Array[ExtResource("3_ent")]([SubResource("e67"), SubResource("e68")])
 
-[sub_resource type="Resource" id="e11"]
+[sub_resource type="Resource" id="e69"]
 script = ExtResource("3_ent")
 id = &"fog-sight"
 title = "What you can see"
-body = "You only see the ground near your own units and buildings."
+body = "Black ground is ground you have never seen. Dimmed ground you saw before, but you do not see enemy units on it. Clear ground is seen by your units now, and the enemies on it show. Drive out to light up new ground."
+
+[sub_resource type="Resource" id="e70"]
+script = ExtResource("3_ent")
+id = &"fog-tap-hidden"
+title = "Tapping a hidden enemy"
+body = "If the fog hides an enemy, tapping near it only moves your units there. They do not attack. Once one of your units sees the enemy, the same tap attacks it."
+
+[sub_resource type="Resource" id="e71"]
+script = ExtResource("3_ent")
+id = &"fog-fight"
+title = "Fighting in the fog"
+body = "Your units attack only enemies your side can see. An enemy that slips out of sight is no longer attacked. The units you sent go on to where it was last seen."
+
+[sub_resource type="Resource" id="e72"]
+script = ExtResource("3_ent")
+id = &"fog-hidden-mine"
+title = "Hidden mines"
+body = "You cannot see an enemy mine you have not found. When an enemy unit walks onto an armed mine, it blasts every ground unit of other players nearby. Minelayers never set a mine off. A minelayer, a Flarejack or a Swift finds a hidden mine when it comes close, on ground you can see."
+
+[sub_resource type="Resource" id="e73"]
+script = ExtResource("3_ent")
+id = &"fog-find-mine"
+title = "Find a mine"
+body = "A mine you find shows as a mark in its side's colour, with a dark rim so you can tell it from yours. It stays as a dimmed mark when you look away. When you see the spot again and the mine is gone, the mark goes too."
+
+[sub_resource type="Resource" id="e74"]
+script = ExtResource("3_ent")
+id = &"fog-own-mines"
+title = "Your own mines"
+body = "Your mines always show as marks in your colours, even on ground you cannot see. A new mine is half strength until it arms. Your own units never set it off."
+
+[sub_resource type="Resource" id="e75"]
+script = ExtResource("3_ent")
+id = &"fog-mine-goes-off"
+title = "A mine goes off"
+body = "A mine that goes off where you can see shows a burst of fire and a dark scorch mark that fades after a while. You see it even if it killed one of your units. A mine that goes off where you cannot see shows nothing."
 
 [sub_resource type="Resource" id="s9"]
 script = ExtResource("2_sec")
 id = &"fog"
 title = "Fog"
-entries = Array[ExtResource("3_ent")]([SubResource("e11")])
+entries = Array[ExtResource("3_ent")]([SubResource("e69"), SubResource("e70"), SubResource("e71"), SubResource("e72"), SubResource("e73"), SubResource("e74"), SubResource("e75")])
 
-[sub_resource type="Resource" id="e12"]
+[sub_resource type="Resource" id="e76"]
+script = ExtResource("3_ent")
+id = &"groups-all"
+title = "All army"
+body = "Tap ALL at the top of the column on the left edge to select every unit of yours that can fight, anywhere on the map. Tankers and buildings are left out."
+
+[sub_resource type="Resource" id="e77"]
+script = ExtResource("3_ent")
+id = &"groups-save"
+title = "Save a group"
+body = "With units selected, tap + in the column. They are saved as the next free group, from 1 to 3. The phone buzzes and the group shows its number and its count. The + goes away when no unit is selected or all three groups are taken."
+
+[sub_resource type="Resource" id="e78"]
+script = ExtResource("3_ent")
+id = &"groups-select"
+title = "Select a group"
+body = "Tap a group in the column to select the units saved in it."
+
+[sub_resource type="Resource" id="e79"]
+script = ExtResource("3_ent")
+id = &"groups-overwrite"
+title = "Replace a group"
+body = "Hold a group, and your current selection replaces it. The phone buzzes. With nothing selected, a hold does nothing, so a resting finger never empties a group."
+
+[sub_resource type="Resource" id="e80"]
+script = ExtResource("3_ent")
+id = &"groups-destroyed"
+title = "A grouped unit is destroyed"
+body = "A destroyed unit leaves its group, and the count drops. A group with no units left leaves the column."
+
+[sub_resource type="Resource" id="e81"]
 script = ExtResource("3_ent")
 id = &"groups-column"
-title = "Groups"
-body = "Save the selected units as a group at the left edge. Tap the group to select it again."
+title = "Where the groups are"
+body = "The group column is on the left edge, under the pill. If you have more groups than fit, a second column opens to the right. Upright, it stays above the build drawer."
 
 [sub_resource type="Resource" id="s10"]
 script = ExtResource("2_sec")
 id = &"groups"
 title = "Groups"
-entries = Array[ExtResource("3_ent")]([SubResource("e12")])
+entries = Array[ExtResource("3_ent")]([SubResource("e76"), SubResource("e77"), SubResource("e78"), SubResource("e79"), SubResource("e80"), SubResource("e81")])
 
-[sub_resource type="Resource" id="e13"]
+[sub_resource type="Resource" id="e82"]
 script = ExtResource("3_ent")
 id = &"the-screen-in-battle-hud"
-title = "The controls"
-body = "The credits and power show at the top. The BUILD button opens the build drawer."
+title = "The pill"
+body = "Your credits and your power are in the pill at the top left. The menu button is at its start. Next to the coin are your credits. The bar shows the power your buildings use against the power they make."
+
+[sub_resource type="Resource" id="e83"]
+script = ExtResource("3_ent")
+id = &"the-screen-in-battle-low-power"
+title = "Low power"
+body = "When you use more power than you make, the pill turns red and says LOW POWER. Buildings that use power get an orange warning sign. Your defences are switched off. What you queue is built slower. Build more power buildings to fix it."
+
+[sub_resource type="Resource" id="e84"]
+script = ExtResource("3_ent")
+id = &"the-screen-in-battle-economy-card"
+title = "The economy card"
+body = "Tap the credits or the power in the pill to open a card. It shows your credits, your income each minute, how many tankers you have and the power you use and make. On low power it says so. The game goes on behind it. Your next touch closes it."
+
+[sub_resource type="Resource" id="e85"]
+script = ExtResource("3_ent")
+id = &"the-screen-in-battle-credits-flash"
+title = "Credits going up and down"
+body = "When you spend credits, a red minus number shows under your credits and the number counts down. When you earn credits, a green plus number shows. Changes close together add up in one chip."
 
 [sub_resource type="Resource" id="s11"]
 script = ExtResource("2_sec")
 id = &"the-screen-in-battle"
 title = "The screen in battle"
-entries = Array[ExtResource("3_ent")]([SubResource("e13")])
+entries = Array[ExtResource("3_ent")]([SubResource("e82"), SubResource("e83"), SubResource("e84"), SubResource("e85")])
 
-[sub_resource type="Resource" id="e14"]
+[sub_resource type="Resource" id="e86"]
 script = ExtResource("3_ent")
 id = &"pause-menu"
-title = "Pause menu"
-body = "Pause the match to change sound, read this help or surrender."
+title = "The pause menu"
+body = "Tap the menu button at the top left of the pill. The match pauses and a card shows the goal, the time and your units lost. The buttons are Resume, Restart, Surrender, How to play, Settings and Exit to menu. The Vibration, Sound and Music switches are under them. The menu also opens when the game goes to the background."
+
+[sub_resource type="Resource" id="e87"]
+script = ExtResource("3_ent")
+id = &"pause-resume"
+title = "Resume"
+body = "Tap Resume to close the menu and carry on where you stopped."
+
+[sub_resource type="Resource" id="e88"]
+script = ExtResource("3_ent")
+id = &"pause-confirm"
+title = "Restart, Surrender and Exit"
+body = "Each of these asks first. Keep playing closes the question and the match stays paused. Restart starts a new match with the same setup. Exit to menu goes back to the main menu, and the match is lost. Surrender loses the match at once."
+
+[sub_resource type="Resource" id="e89"]
+script = ExtResource("3_ent")
+id = &"pause-how-to-play"
+title = "Help during a match"
+body = "Tap How to play to read this help over the battle. The match stays paused. Tap Back to return to the pause menu."
+
+[sub_resource type="Resource" id="e90"]
+script = ExtResource("3_ent")
+id = &"pause-settings"
+title = "Settings during a match"
+body = "Tap Settings to open the settings over the battle, in the same way. The match stays paused."
+
+[sub_resource type="Resource" id="e91"]
+script = ExtResource("3_ent")
+id = &"pause-sound-music"
+title = "Sound and Music"
+body = "Tap Sound or Music to switch it off or on. When you switch it on again, it goes back to the volume you set in Settings. Switching off here lasts only for this session."
+
+[sub_resource type="Resource" id="e92"]
+script = ExtResource("3_ent")
+id = &"pause-vibration"
+title = "Vibration"
+body = "Tap Vibration to switch the phone's buzz off or on. The choice is kept for the next match, and while it is off no buzz of the game is felt."
+
+[sub_resource type="Resource" id="e93"]
+script = ExtResource("3_ent")
+id = &"pause-turn-phone"
+title = "Turning the phone"
+body = "If you turn the phone with the pause menu open, it stays open and the match stays paused. The menu takes the layout of the new direction."
+
+[sub_resource type="Resource" id="e94"]
+script = ExtResource("3_ent")
+id = &"pause-match-ends"
+title = "When the match ends"
+body = "The pause menu cannot open over the result screen."
 
 [sub_resource type="Resource" id="s12"]
 script = ExtResource("2_sec")
 id = &"pause"
 title = "Pause"
-entries = Array[ExtResource("3_ent")]([SubResource("e14")])
+entries = Array[ExtResource("3_ent")]([SubResource("e86"), SubResource("e87"), SubResource("e88"), SubResource("e89"), SubResource("e90"), SubResource("e91"), SubResource("e92"), SubResource("e93"), SubResource("e94")])
 
-[sub_resource type="Resource" id="e15"]
+[sub_resource type="Resource" id="e95"]
+script = ExtResource("3_ent")
+id = &"build-menu-look-screen"
+title = "Credits and power"
+body = "The pill at the top left shows your credits and your power. The power bar fills with the power your buildings use against the power they make. On a narrow screen the numbers are left out and the bar says it alone. The pill stays in place while the build drawer is open."
+
+[sub_resource type="Resource" id="e96"]
 script = ExtResource("3_ent")
 id = &"build-menu-drawer"
-title = "The build drawer"
-body = "Pick a card to build. Place a building on the ground near your base."
+title = "Open the build drawer"
+body = "Tap BUILD. The drawer slides in from the right edge, or up from the bottom when you hold the phone upright, and the game goes on behind it. It has tabs: Structures, Infantry and Vehicles. The Flight tab opens with an airfield and the Research tab with an engineering centre. Cards fill the rest of the drawer. Drag up and down to scroll them."
+
+[sub_resource type="Resource" id="e97"]
+script = ExtResource("3_ent")
+id = &"build-menu-close"
+title = "Close the drawer"
+body = "Tap the arrow, swipe the drawer back toward its edge, or touch the map. A touch on the map closes it and still does its work. Touching a tab or a card never closes it. Starting to place a building or aiming a strike closes it too."
+
+[sub_resource type="Resource" id="e98"]
+script = ExtResource("3_ent")
+id = &"build-menu-ready-chip"
+title = "A building is ready"
+body = "A Ready chip with the building's picture shows near BUILD while a finished building waits to be placed. Tap it to open the drawer with that building's card in view. A grey ring with a ! on BUILD means nothing you queued is moving, for example because the factory is gone or you have as many units as you may. Low power only slows the ring."
+
+[sub_resource type="Resource" id="e99"]
+script = ExtResource("3_ent")
+id = &"build-menu-tabs"
+title = "The tabs"
+body = "Tap a tab to open it. Structures, Infantry and Vehicles are always there. Flight and Research show when your side has aircraft or upgrades. On a narrow phone only the open tab shows its name and the others show an icon."
+
+[sub_resource type="Resource" id="e100"]
+script = ExtResource("3_ent")
+id = &"build-menu-queue-item"
+title = "Queue something"
+body = "Tap a card to queue one. You pay at once, and the picture fills while it is built. A number shows how many of it are queued. A dimmed card with a padlock means a building is missing, and the band names it. Stripes mean you cannot queue it now: you cannot pay, or its queue is full. A finished building says Ready where its price was. A tap on a locked or striped card only shakes it."
+
+[sub_resource type="Resource" id="e101"]
+script = ExtResource("3_ent")
+id = &"build-menu-cancel-item"
+title = "Cancel a queued item"
+body = "Hold a card to cancel the last one of that kind you queued. You get all your credits back and the phone buzzes once. A card with none queued does nothing, and a hold never queues. It works on every kind of card."
+
+[sub_resource type="Resource" id="e102"]
+script = ExtResource("3_ent")
+id = &"build-menu-select-producer"
+title = "Tap a building to build"
+body = "Tap your Headquarters, barracks, vehicle factory, airfield or engineering centre. It is selected and the drawer comes up on the tab it builds. If you opened another tab, tap the building again to go back to its tab."
+
+[sub_resource type="Resource" id="e103"]
+script = ExtResource("3_ent")
+id = &"build-menu-research"
+title = "Research an upgrade"
+body = "On the Research tab, tap an upgrade to queue it. You pay at once. Each upgrade can be researched once. The card fills while it is researched. When it is done it helps every unit of that kind you own, now and later. A researched upgrade shows a check mark and Done. If a building is missing, the card is crossed by a band that names it."
+
+[sub_resource type="Resource" id="e104"]
+script = ExtResource("3_ent")
+id = &"build-menu-own-side"
+title = "Only your side"
+body = "Every tab lists only the buildings and units of your own side, and those both sides share. You never see the other side's items."
+
+[sub_resource type="Resource" id="e105"]
+script = ExtResource("3_ent")
+id = &"build-menu-during-placement"
+title = "The drawer while you place"
+body = "You can tap BUILD while you place a building. The ghost stays and the cards come back. When you finish or cancel a placement, the drawer does not come back by itself. Tap BUILD for it."
+
+[sub_resource type="Resource" id="e106"]
+script = ExtResource("3_ent")
+id = &"build-menu-reach-building"
+title = "Find a finished building"
+body = "Open the drawer with BUILD and go to the Structures tab. A finished building says Ready where its price was. Tap that card to place it. You can also tap the Ready chip next to BUILD."
+
+[sub_resource type="Resource" id="e107"]
+script = ExtResource("3_ent")
+id = &"build-menu-place-start"
+title = "Place a building"
+body = "Tap a card that says Ready. A ghost of the building appears in the middle of the view, with a check mark and an X beside it. The drawer slides away. Green means it fits. Red with stripes means it does not, and the sign tells you why: it leaves the map, the ground is blocked, a unit stands there, it is too far from your buildings or you have as many buildings as you may. Tap the check mark to build. Tap the X to keep the building for later. Lifting a finger never builds anything."
+
+[sub_resource type="Resource" id="e108"]
+script = ExtResource("3_ent")
+id = &"build-menu-confirm"
+title = "Confirm the building"
+body = "Tap the check mark. The order is sent once and the check mark dims, so a second tap sends nothing. The ghost waits for a moment, then the building appears and placement ends. The drawer stays down. Tap BUILD to bring it back. While the game is paused, the order waits."
+
+[sub_resource type="Resource" id="e109"]
+script = ExtResource("3_ent")
+id = &"build-menu-blocked"
+title = "Blocked"
+body = "Sometimes the game refuses the order, for example because a unit moved onto the ground. The ghost turns red and says Blocked, and the building stays Ready. Move the ghost and tap the check mark again, or tap the X."
+
+[sub_resource type="Resource" id="e110"]
+script = ExtResource("3_ent")
+id = &"build-menu-drag-ghost"
+title = "Move the ghost"
+body = "Drag from the ghost, or from just beside it. It follows your finger and sits above it, so your finger never hides it, and it snaps to tiles. A drag that starts anywhere else pans the map. Tap the ground and the ghost jumps to that tile. Pinch and two-finger drag work as always."
+
+[sub_resource type="Resource" id="e111"]
+script = ExtResource("3_ent")
+id = &"build-menu-edge-scroll"
+title = "Scroll while you place"
+body = "Hold the dragged ghost near the edge of the screen and the map scrolls that way. The ghost keeps its place above your finger. It stops at the edge of the map, or when your finger leaves the edge or lifts."
+
+[sub_resource type="Resource" id="e112"]
+script = ExtResource("3_ent")
+id = &"build-menu-turn-phone"
+title = "Turn the phone while you place"
+body = "The ghost keeps its tile and the map keeps its centre. The check mark and the X stay beside the ghost. A drag in progress is cancelled. Turning builds nothing."
 
 [sub_resource type="Resource" id="s13"]
 script = ExtResource("2_sec")
 id = &"build-menu"
 title = "Build menu"
-entries = Array[ExtResource("3_ent")]([SubResource("e15")])
+entries = Array[ExtResource("3_ent")]([SubResource("e95"), SubResource("e96"), SubResource("e97"), SubResource("e98"), SubResource("e99"), SubResource("e100"), SubResource("e101"), SubResource("e102"), SubResource("e103"), SubResource("e104"), SubResource("e105"), SubResource("e106"), SubResource("e107"), SubResource("e108"), SubResource("e109"), SubResource("e110"), SubResource("e111"), SubResource("e112")])
 
-[sub_resource type="Resource" id="e16"]
+[sub_resource type="Resource" id="e113"]
+script = ExtResource("3_ent")
+id = &"superweapon-own"
+title = "The strike button"
+body = "When you own a Deep Bore or a Dusk Array, a round button with its picture stands above BUILD at the right edge. A ring fills while the strike charges, and the time left shows on the button. When the ring is full and green, the button says Ready."
+
+[sub_resource type="Resource" id="e114"]
+script = ExtResource("3_ent")
+id = &"superweapon-tap-charging"
+title = "Not ready yet"
+body = "Tap the button while it charges and it only gives a small nudge."
+
+[sub_resource type="Resource" id="e115"]
 script = ExtResource("3_ent")
 id = &"superweapon-strike"
-title = "The strike"
-body = "Build the superweapon, wait for it to charge, then aim and confirm."
+title = "Aim the strike"
+body = "Tap the ready button. It stays pressed and says Tap map, and a check mark and an X appear to its left. You can still drag and pinch to move the map, but nothing on the map is selected or ordered while you aim. The drawer slides away. If you were placing a building, placement ends and the building stays Ready."
+
+[sub_resource type="Resource" id="e116"]
+script = ExtResource("3_ent")
+id = &"superweapon-aim-tap"
+title = "Pick the target"
+body = "While you aim, tap the map. A ring shows where the strike will hit and how far it reaches. Tap again to move it. Tap the check mark to fire. It fires once and aiming ends. The check mark waits until you have tapped the map."
+
+[sub_resource type="Resource" id="e117"]
+script = ExtResource("3_ent")
+id = &"superweapon-aim-cancel"
+title = "Cancel the aim"
+body = "While you aim, tap the X, tap the pressed button or turn the phone. Aiming ends and nothing is fired."
+
+[sub_resource type="Resource" id="e118"]
+script = ExtResource("3_ent")
+id = &"superweapon-bore-fired"
+title = "A Deep Bore is fired"
+body = "Every player sees a red ring and a blinking warning at the target, with a white ring closing in. Move out of the ring while it closes. A lance comes down from the sky on the spot."
+
+[sub_resource type="Resource" id="e119"]
+script = ExtResource("3_ent")
+id = &"superweapon-bore-impact"
+title = "A Deep Bore lands"
+body = "When the ring has closed, a fireball bursts and the ground splits. Every unit and building on the ground inside the ring takes damage, yours too. Aircraft over the ring are not hit. A crater stays there for the rest of the match."
+
+[sub_resource type="Resource" id="e120"]
+script = ExtResource("3_ent")
+id = &"superweapon-blackout"
+title = "A Dusk Array is fired"
+body = "A blackout switches off every enemy building near the spot for a while. It does not shoot, its power counts for nothing and its queue stands still. There is no warning before it. A net of light settles on the spot where you can see it."
+
+[sub_resource type="Resource" id="e121"]
+script = ExtResource("3_ent")
+id = &"superweapon-own-satellite"
+title = "Own a space centre"
+body = "A Skyrig or a Zenith is a space centre. It needs a Signal Mast or a Relay Post. Its single charge fills from the moment it is finished. When it is full, it can fire the satellite sweep. It never charges again. A second space centre is a spare that can fire only after the first is gone."
+
+[sub_resource type="Resource" id="e122"]
+script = ExtResource("3_ent")
+id = &"superweapon-satellite-fire"
+title = "Fire the satellite sweep"
+body = "Tap the ready button of a space centre. The sweep has no target, so there is no map to tap. The check mark lights at once. Tap it to fire once. The X, a second tap on the button or turning the phone cancels it."
+
+[sub_resource type="Resource" id="e123"]
+script = ExtResource("3_ent")
+id = &"superweapon-satellite-on"
+title = "The sweep is on"
+body = "While the sweep is on, its owner sees the whole map. There is no timer. It ends when the space centre that fired it is destroyed or sold. Enemy buildings it showed stay on the map as dimmed pictures. Your strike button shows On, or Paused while the sweep is paused."
+
+[sub_resource type="Resource" id="e124"]
+script = ExtResource("3_ent")
+id = &"superweapon-satellite-pause"
+title = "The sweep pauses"
+body = "A blackout on the space centre, or low power for its owner, pauses the sweep. The owner then sees only what their own buildings and units see. It comes back by itself when the blackout ends or the power returns. A space centre cannot fire while it is switched off or the owner is low on power."
+
+[sub_resource type="Resource" id="e125"]
+script = ExtResource("3_ent")
+id = &"superweapon-enemy-sweep"
+title = "An enemy sweep"
+body = "When an enemy fires a sweep, a line says Enemy sweep on you for a few seconds. A satellite badge stays at the right edge while it is on, and is dimmed with a pause mark while it is paused. The badge only shows. It takes no touch."
+
+[sub_resource type="Resource" id="e126"]
+script = ExtResource("3_ent")
+id = &"superweapon-switched-off"
+title = "A building is switched off"
+body = "An amber bolt with a slash stands over a building while it is switched off, yours or an enemy's you can see. It goes when the building comes back on."
+
+[sub_resource type="Resource" id="e127"]
+script = ExtResource("3_ent")
+id = &"superweapon-computer"
+title = "The computer's strikes"
+body = "On Normal and Hard the computer builds its side's superweapon and fires it. The Derrick League's Deep Bore comes with the red warning ring, so move out of it. The Lumen Accord's Dusk Array comes without warning and hits your production buildings. Easy never builds one."
 
 [sub_resource type="Resource" id="s14"]
 script = ExtResource("2_sec")
 id = &"superweapon"
 title = "Superweapon"
-entries = Array[ExtResource("3_ent")]([SubResource("e16")])
+entries = Array[ExtResource("3_ent")]([SubResource("e113"), SubResource("e114"), SubResource("e115"), SubResource("e116"), SubResource("e117"), SubResource("e118"), SubResource("e119"), SubResource("e120"), SubResource("e121"), SubResource("e122"), SubResource("e123"), SubResource("e124"), SubResource("e125"), SubResource("e126"), SubResource("e127")])
 
-[sub_resource type="Resource" id="e17"]
+[sub_resource type="Resource" id="e128"]
 script = ExtResource("3_ent")
 id = &"factions-two"
 title = "Two sides"
-body = "The Derrick League and the Lumen Accord have different units and buildings."
+body = "You play one of two sides. The Derrick League runs on oil and gas and wears orange. The Lumen Accord runs on green energy and wears cyan. Each side has its own buildings and units, and your build drawer shows only yours. The computer plays the other side and wears the other colour."
 
 [sub_resource type="Resource" id="s15"]
 script = ExtResource("2_sec")
 id = &"factions"
 title = "Factions"
-entries = Array[ExtResource("3_ent")]([SubResource("e17")])
+entries = Array[ExtResource("3_ent")]([SubResource("e128")])
 
-[sub_resource type="Resource" id="e18"]
+[sub_resource type="Resource" id="e129"]
 script = ExtResource("3_ent")
 id = &"the-computer-opponent-levels"
 title = "Difficulty"
-body = "The computer plays by the same rules as you. Pick an easier level to learn."
+body = "The computer sees only what its units see and plays by your rules. Easy reacts slowly, builds a small base and attacks in small groups. Normal sends a scout early, mixes its army and attacks in waves that grow. Hard builds faster and reacts sooner. Start on Easy to learn."
+
+[sub_resource type="Resource" id="e130"]
+script = ExtResource("3_ent")
+id = &"the-computer-opponent-defend"
+title = "Attacking its base"
+body = "When you attack the computer's base, it calls its army home to defend."
+
+[sub_resource type="Resource" id="e131"]
+script = ExtResource("3_ent")
+id = &"the-computer-opponent-repair"
+title = "Repairs"
+body = "On Normal and Hard the computer repairs its damaged buildings. Easy never does."
+
+[sub_resource type="Resource" id="e132"]
+script = ExtResource("3_ent")
+id = &"the-computer-opponent-wave"
+title = "Waves"
+body = "On Normal and Hard, an attacking group that has lost too much pulls back home and comes again with the next wave. Hard also pulls back single damaged units and fires at your weakest unit first."
 
 [sub_resource type="Resource" id="s16"]
 script = ExtResource("2_sec")
 id = &"the-computer-opponent"
 title = "The computer opponent"
-entries = Array[ExtResource("3_ent")]([SubResource("e18")])
+entries = Array[ExtResource("3_ent")]([SubResource("e129"), SubResource("e130"), SubResource("e131"), SubResource("e132")])
 
-[sub_resource type="Resource" id="e19"]
+[sub_resource type="Resource" id="e133"]
 script = ExtResource("3_ent")
 id = &"winning-destroy"
 title = "How a match ends"
-body = "Destroy the enemy's buildings and units to win. Lose yours and you lose."
+body = "Destroy the enemy's Headquarters and every building that trains units or builds vehicles, and you win. If you lose all of yours, you lose. If both fall at the same moment, it is a draw."
 
-[sub_resource type="Resource" id="e2dx"]
+[sub_resource type="Resource" id="e134"]
+script = ExtResource("3_ent")
+id = &"winning-surrender"
+title = "Surrender"
+body = "Tap Surrender in the pause menu. A question appears. Keep playing closes it and nothing happens. Surrender loses the match at once. The map and the buttons behind the question do not react while it is open."
+
+[sub_resource type="Resource" id="e135"]
+script = ExtResource("3_ent")
+id = &"winning-result"
+title = "The result screen"
+body = "When the match ends, a screen shows VICTORY, DEFEAT or DRAW and the time the match took. It lists the units built, units lost, buildings lost and credits harvested, for you and the enemy. A match from the main menu also shows the XP you earned and your rank bar filling up. Play again starts a new match with the same setup. Back returns to the main menu."
+
+[sub_resource type="Resource" id="e136"]
 script = ExtResource("3_ent")
 id = &"winning-double-xp"
 title = "Double XP"
-body = "After a match that paid XP you may tap the offer on the result screen to watch an ad that multiplies that match's XP. It only shows when an ad is ready, once per match, and nothing plays unless you tap."
+body = "After a match that paid XP you may tap the offer on the result screen to watch an ad that doubles that match's XP. It only shows when an ad is ready, once per match, and nothing plays unless you tap."
 
 [sub_resource type="Resource" id="s17"]
 script = ExtResource("2_sec")
 id = &"winning"
 title = "Winning"
-entries = Array[ExtResource("3_ent")]([SubResource("e19"), SubResource("e2dx")])
+entries = Array[ExtResource("3_ent")]([SubResource("e133"), SubResource("e134"), SubResource("e135"), SubResource("e136")])
 
-[sub_resource type="Resource" id="e20"]
+[sub_resource type="Resource" id="e137"]
 script = ExtResource("3_ent")
 id = &"menus-back"
 title = "Back"
-body = "Press the phone's Back button to close a screen."
+body = "Press the phone's Back button to close a screen and return to the one before."
 
-[sub_resource type="Resource" id="e20b"]
+[sub_resource type="Resource" id="e138"]
+script = ExtResource("3_ent")
+id = &"menus-quit-ask"
+title = "Leave the game"
+body = "Press Back on the main menu and the game asks if you want to quit. Stay, or Back again, closes the question. Quit leaves the game."
+
+[sub_resource type="Resource" id="e139"]
+script = ExtResource("3_ent")
+id = &"menus-main"
+title = "The main menu"
+body = "The main menu has one column of big buttons: Continue, when a game can be resumed, then Skirmish, Tutorial, How to play and Settings. Under them are your rank and a bar that fills as you earn XP. On a short screen the column scrolls."
+
+[sub_resource type="Resource" id="e140"]
 script = ExtResource("3_ent")
 id = &"menus-skirmish"
 title = "Start a skirmish"
-body = "Tap Skirmish on the main menu, choose the map, your side and the computer's level, then tap Start. A map or level that is greyed out shows the rank that opens it."
+body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. A map or level that is greyed out shows the rank that opens it."
 
-[sub_resource type="Resource" id="e22"]
+[sub_resource type="Resource" id="e141"]
+script = ExtResource("3_ent")
+id = &"menus-how-to-play"
+title = "How to play"
+body = "Tap How to play on the main menu to see a list of sections. Tap one to read it. Long sections scroll. Tap All sections, or the phone's Back button, to return to the list."
+
+[sub_resource type="Resource" id="e142"]
 script = ExtResource("3_ent")
 id = &"menus-settings"
 title = "Settings"
-body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Your choices are kept on the phone."
+body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
+
+[sub_resource type="Resource" id="e143"]
+script = ExtResource("3_ent")
+id = &"menus-licences"
+title = "Licences"
+body = "Open Licences in Settings to see what the game is built on, such as its art, audio, engine and fonts. Tap one to read its full text. Tap All licences, or the phone's Back button, to return to the list."
 
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e22")])
+entries = Array[ExtResource("3_ent")]([SubResource("e137"), SubResource("e138"), SubResource("e139"), SubResource("e140"), SubResource("e141"), SubResource("e142"), SubResource("e143")])
 
-[sub_resource type="Resource" id="e21"]
+[sub_resource type="Resource" id="e144"]
 script = ExtResource("3_ent")
 id = &"the-intro-skip"
 title = "Skip the intro"
-body = "Tap the screen while the game starts to stop the intro."
+body = "Tap the screen while the game starts to stop the intro. If the game is ready, the menu opens right away."
 
 [sub_resource type="Resource" id="s19"]
 script = ExtResource("2_sec")
 id = &"the-intro"
 title = "The intro"
-entries = Array[ExtResource("3_ent")]([SubResource("e21")])
+entries = Array[ExtResource("3_ent")]([SubResource("e144")])
 
 [resource]
 script = ExtResource("1_def")
