@@ -12,6 +12,7 @@ var hud: HudState = null
 ## The camera: the index of the nearest zoom level and the world position its centre looks at.
 var zoom_level: int = 0
 var camera_centre: Vector2 = Vector2.ZERO
+var camera_zoom: float = 1.0
 ## The build drawer's tab (`World.Tab`).
 var drawer_tab: int = 0
 ## The type index being placed, -1 when no placement is on.
@@ -30,6 +31,7 @@ func baseline() -> TutorialContext:
 	copy.hud = hud
 	copy.zoom_level = zoom_level
 	copy.camera_centre = camera_centre
+	copy.camera_zoom = camera_zoom
 	copy.drawer_tab = drawer_tab
 	copy.placement_type = placement_type
 	copy.strike_aiming = strike_aiming

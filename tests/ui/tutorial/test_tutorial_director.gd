@@ -261,3 +261,52 @@ func test_it_reads_the_camera_the_placement_and_the_strike_aim() -> void:
 	aim.has_point = true
 	_director.advance()
 	assert_array(_ended).is_equal([&"basics"])
+
+
+func test_a_surrender_under_a_held_beat_ends_the_lesson_and_lets_the_match_tick() -> void:
+	_director.start(Lesson.lesson("basics", [Lesson.beat("read", NEXT, {"pause": true})]))
+	_director.advance()
+	# The pause menu's SURRENDER: it closes PAUSE (and unpauses), then queues the Command.
+	_hud.open(HudState.Unfold.PAUSE)
+	_hud.close(HudState.Unfold.PAUSE)
+	_runner.paused = false
+	var drained: Array[Command] = []
+	CommandQueue.submit(Command.stop(1, PackedInt32Array([1])))  # Another order: no skip.
+	assert_bool(_director.running()).is_true()
+	CommandQueue.submit(Command.surrender(1))
+	CommandQueue.drain_into(drained)
+	assert_array(_skipped).is_equal([&"basics"])
+	assert_bool(_runner.paused).is_false()
+	_director.advance()
+	assert_bool(_runner.paused).is_false()  # Nothing holds it again.
+	# And in a frame the director runs before the runner, so a re-pause lands before its tick.
+	assert_int(_director.process_priority).is_less(_runner.process_priority)
+
+
+func test_a_lesson_started_before_the_first_snapshot_adopts_its_match() -> void:
+	_runner.snapshot = null
+	_director.start(Lesson.lesson("basics", [Lesson.beat("a", NEXT, {"delay_ticks": 5})]))
+	_director.advance()
+	assert_bool(_director.running()).is_true()
+	_runner.snapshot = Lesson.snapshot(_world, 7)
+	_director.advance()
+	assert_bool(_director.running()).is_true()
+	assert_array(_skipped).is_empty()
+	_runner.snapshot = Lesson.snapshot(_world, 8)  # Another match is a skip.
+	_director.advance()
+	assert_array(_skipped).is_equal([&"basics"])
+
+
+func test_a_tick_condition_is_checked_again_only_on_a_new_snapshot() -> void:
+	var beat: TutorialBeatDef = Lesson.beat(
+		"train", TutorialConditions.Kind.OWN_AT_LEAST, {"type_id": &"rifle_squad", "count": 3}
+	)
+	_director.start(Lesson.lesson("basics", [beat]))
+	_director.advance()  # Shows.
+	_director.advance()  # Checks the snapshot: two squads.
+	Rig.add_unit_of(_world, 1, "rifle_squad", 5000, 11000)
+	_director.advance()
+	assert_array(_done).is_empty()  # The published snapshot is the same object.
+	_runner.snapshot = Lesson.snapshot(_world)
+	_director.advance()
+	assert_array(_done).is_equal([&"train"])

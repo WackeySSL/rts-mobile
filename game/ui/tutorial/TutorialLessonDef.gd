@@ -32,7 +32,7 @@ func covered_ids() -> Array[StringName]:
 
 
 ## What is wrong with the lesson, one line each (empty when nothing): no beats, a repeated or empty
-## beat id, a malformed `covers` id, a pause on a condition that needs ticks, an empty prompt key,
+## beat id, a malformed `covers` id, a pause on a beat that is not a Next beat, an empty prompt key,
 ## a control anchor without a name, budgets over the target.
 func problems() -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
@@ -48,8 +48,8 @@ func problems() -> PackedStringArray:
 			found.append("%s: no prompt key" % beat.id)
 		if beat.anchor == TutorialBeatDef.Anchor.CONTROL and beat.anchor_control == &"":
 			found.append("%s: a control anchor names no control" % beat.id)
-		if beat.pause and TutorialConditions.needs_ticks(beat.kind):
-			found.append("%s: pauses on a condition that needs ticks" % beat.id)
+		if beat.pause and beat.kind != TutorialConditions.Kind.NEXT:
+			found.append("%s: pauses on a condition that is not Next" % beat.id)
 		for row: StringName in beat.covers:
 			if pattern.search(String(row)) == null:
 				found.append("%s: covers id '%s' is not <section>-<slug>" % [beat.id, row])

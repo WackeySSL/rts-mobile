@@ -51,7 +51,7 @@ func test_problems_name_each_fault() -> void:
 	assert_str(text).contains("empty or repeated")
 	assert_str(text).contains("no prompt key")
 	assert_str(text).contains("names no control")
-	assert_str(text).contains("needs ticks")
+	assert_str(text).contains("not Next")
 	assert_str(text).contains("'Camera_Pinch' is not <section>-<slug>")
 	assert_str(text).contains("'pinch' is not <section>-<slug>")
 	assert_str(text).contains("exceed the target")
@@ -60,3 +60,14 @@ func test_problems_name_each_fault() -> void:
 func test_a_lesson_with_no_beats_is_a_problem() -> void:
 	var empty: TutorialLessonDef = Lesson.lesson("none", [])
 	assert_int(empty.problems().size()).is_equal(1)
+
+
+func test_only_a_next_beat_may_pause() -> void:
+	# A paused match never ticks: an action beat would never end or stall.
+	var lesson: TutorialLessonDef = Lesson.lesson(
+		"basics",
+		[Lesson.beat("zoom", TutorialConditions.Kind.ZOOM_LEVEL, {"pause": true, "value": 1})]
+	)
+	assert_str("\n".join(lesson.problems())).contains(
+		"zoom: pauses on a condition that is not Next"
+	)

@@ -211,3 +211,34 @@ func test_only_the_tick_driven_kinds_need_ticks() -> void:
 	assert_bool(TutorialConditions.needs_ticks(TutorialConditions.Kind.NEXT)).is_false()
 	assert_bool(TutorialConditions.needs_ticks(TutorialConditions.Kind.ZOOM_LEVEL)).is_false()
 	assert_bool(TutorialConditions.needs_ticks(TutorialConditions.Kind.SELECTED)).is_false()
+
+
+func test_group_saved_holds_with_two_units_in_the_group() -> void:
+	var world: World = Rig.start()
+	var ctx: TutorialContext = Lesson.context(world)
+	var two: TutorialBeatDef = Lesson.beat(
+		"a", TutorialConditions.Kind.GROUP_SAVED, {"value": 2, "count": 2}
+	)
+	var squads: PackedInt32Array = PackedInt32Array()
+	for row: int in world.unit_count():
+		if world.owner[row] == 1 and world.type_index[row] == Rig.type_of(world, "rifle_squad"):
+			squads.append(world.unit_id[row])
+	assert_int(squads.size()).is_equal(2)
+	ctx.selection.set_ids(squads)
+	ctx.selection.assign_group(2)
+	assert_bool(_check(two, ctx)).is_true()
+	var other: TutorialBeatDef = Lesson.beat("b", TutorialConditions.Kind.GROUP_SAVED, {"value": 3})
+	assert_bool(_check(other, ctx)).is_false()
+
+
+func test_a_pinch_about_a_point_is_no_pan() -> void:
+	var ctx: TutorialContext = Lesson.context(Rig.start())
+	var start: TutorialContext = ctx.baseline()
+	var pan: TutorialBeatDef = Lesson.beat(
+		"a", TutorialConditions.Kind.CAMERA_PANNED, {"count": 50}
+	)
+	ctx.camera_centre = Vector2(200, 0)  # A pinch moved the centre ...
+	ctx.camera_zoom = 2.0  # ... and changed the zoom.
+	assert_bool(_check(pan, ctx, start)).is_false()
+	ctx.camera_zoom = start.camera_zoom
+	assert_bool(_check(pan, ctx, start)).is_true()

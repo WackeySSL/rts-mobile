@@ -58,6 +58,14 @@ var _shown_at: int = 0
 var _gate_open: bool = true
 var _holding: bool = false
 var _start: TutorialContext = null
+var _ctx: TutorialContext = TutorialContext.new()  ## Refilled each frame, never reallocated.
+## The snapshot a tick-driven condition was last checked on: it is checked again on a new one only.
+var _checked: MatchSnapshot = null
+
+
+## Before the runner in each frame, so a re-pause lands before the runner's tick can run.
+func _init() -> void:
+	process_priority = -1000
 
 
 ## The ids of the lessons the player finished.
@@ -76,7 +84,9 @@ static func mark_done(lesson_id: StringName) -> bool:
 	if done.has(String(lesson_id)):
 		return true
 	done.append(String(lesson_id))
-	return SaveService.set_section(SECTION, {KEY_DONE: done})
+	var values: Dictionary = SaveService.get_section(SECTION)  # The other keys stay.
+	values[KEY_DONE] = done
+	return SaveService.set_section(SECTION, values)
 
 
 ## Starts `def` on the running match. A lesson that is running is dropped without a signal.
@@ -89,6 +99,8 @@ func start(def: TutorialLessonDef) -> void:
 	_gap_from = snap.tick if snap != null else 0
 	if runner != null and not runner.ticked.is_connected(_on_ticked):
 		runner.ticked.connect(_on_ticked)
+	if not CommandQueue.submitted.is_connected(_on_submitted):
+		CommandQueue.submitted.connect(_on_submitted)
 	if def == null or def.beats.is_empty():
 		lesson = null
 		return
@@ -142,6 +154,9 @@ func advance() -> void:
 	if not running():
 		return
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
+	if snap != null and _serial < 0:
+		_serial = snap.match_serial  # Started before the first snapshot: this is the match.
+		_gap_from = snap.tick
 	if snap != null and snap.match_serial != _serial:
 		skip()  # A new match began under the lesson.
 		return
@@ -149,8 +164,14 @@ func advance() -> void:
 	if _phase == Phase.GAP:
 		if _gate_open and _tick() - _gap_from >= current_beat().delay_ticks:
 			_show()
-	elif TutorialConditions.check(current, _gather(), _start):
-		_complete()
+	else:
+		var ctx: TutorialContext = _fill()
+		if TutorialConditions.needs_ticks(current.kind):
+			if snap == _checked:
+				return
+			_checked = snap
+		if TutorialConditions.check(current, ctx, _start):
+			_complete()
 
 
 func current_beat() -> TutorialBeatDef:
@@ -185,7 +206,8 @@ func _show() -> void:
 	_phase = Phase.SHOWING
 	current = current_beat()
 	_shown_at = _tick()
-	_start = _gather()
+	_start = _fill().baseline()
+	_checked = null
 	if current.pause and runner != null:
 		runner.paused = true
 		_holding = true
@@ -216,6 +238,15 @@ func _stop_quietly() -> void:
 	_start = null
 	if runner != null and runner.ticked.is_connected(_on_ticked):
 		runner.ticked.disconnect(_on_ticked)
+	if CommandQueue.submitted.is_connected(_on_submitted):
+		CommandQueue.submitted.disconnect(_on_submitted)
+
+
+## A SURRENDER from the pause menu closes PAUSE and then queues its Command: the lesson ends here,
+## before the director could pause the match again and keep the Command from ever ticking.
+func _on_submitted(command: Command) -> void:
+	if command.type == Command.Type.SURRENDER:
+		skip()
 
 
 ## Pauses again after the pause menu's Resume took the match's pause away from a held beat.
@@ -234,9 +265,9 @@ func _pause_menu_open() -> bool:
 	return hud != null and hud.is_open(HudState.Unfold.PAUSE)
 
 
-## The values the conditions read, from the nodes that were set (a missing one leaves its default).
-func _gather() -> TutorialContext:
-	var ctx: TutorialContext = TutorialContext.new()
+## Refills the one context from the nodes that were set (a missing one leaves its default).
+func _fill() -> TutorialContext:
+	var ctx: TutorialContext = _ctx
 	if runner != null:
 		ctx.snapshot = runner.snapshot
 		if runner.scenario != null:
@@ -245,12 +276,11 @@ func _gather() -> TutorialContext:
 	ctx.hud = hud
 	if camera != null:
 		ctx.zoom_level = camera.zoom_level_index()
+		ctx.camera_zoom = camera.zoom.x
 		ctx.camera_centre = camera.position
 	if sidebar != null:
 		ctx.drawer_tab = sidebar.tab
-	if placement != null and placement.active:
-		ctx.placement_type = placement.type_index
-	if strike_aim != null:
-		ctx.strike_aiming = strike_aim.active
-		ctx.strike_has_point = strike_aim.has_point
+	ctx.placement_type = placement.type_index if placement != null and placement.active else -1
+	ctx.strike_aiming = strike_aim != null and strike_aim.active
+	ctx.strike_has_point = strike_aim != null and strike_aim.has_point
 	return ctx

@@ -6,6 +6,7 @@ extends Resource
 
 ## What `anchor` points the coach mark at: nothing (a card alone), a HUD control by node name, or a
 ## world tile.
+## Append only: the values are stored in `data/tutorial/*.tres`.
 enum Anchor { NONE, CONTROL, TILE }
 
 ## Unique in its lesson; progress and tests name the beat by it.
@@ -28,7 +29,8 @@ enum Anchor { NONE, CONTROL, TILE }
 ## HOW_TO_PLAY row ids this beat teaches (`<section>-<slug>`, ADR 0044 section 4).
 @export var covers: Array[StringName] = []
 ## The match is paused from the beat's prompt until it is done (the pause menu's path,
-## `MatchRunner.paused`). Only for a beat whose condition needs no tick (`needs_ticks`).
+## `MatchRunner.paused`). Only for a read-only (`NEXT`) beat: a paused match never ticks, so a
+## beat that waits for the player's action would never end or stall.
 @export var pause: bool = false
 ## Ticks to wait after the beat before it (or after the lesson's start) before the prompt shows.
 @export var delay_ticks: int = 0

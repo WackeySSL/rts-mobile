@@ -17,7 +17,8 @@ extends RefCounted
 ## - HARVESTED: the player has harvested at least `count` credits.
 ## - ENEMY_LOSSES: the other players have lost at least `count` units and buildings together.
 ## - ZOOM_LEVEL: the camera's nearest zoom level is `value`.
-## - CAMERA_PANNED: the camera's centre moved at least `count` world px since `start`.
+## - CAMERA_PANNED: the camera's centre moved at least `count` world px since `start`, at the zoom
+##   it had then (a pinch about a point also moves the centre, and does not count).
 ## - UNFOLD_OPEN: the open `HudState.Unfold` is `value`.
 ## - DRAWER_TAB: the drawer is open on tab `value`.
 ## - PLACING: a placement of `type_id` (any when empty) is on.
@@ -25,6 +26,7 @@ extends RefCounted
 ## - STRIKE_PENDING: the player's strike is in flight.
 ## - GROUP_SAVED: control group `value` holds at least `count` units.
 ## - MATCH_WON: the match ended with the local player the winner.
+## Append only: the values are stored in `data/tutorial/*.tres`.
 enum Kind {
 	NEXT,
 	SELECTED,
@@ -70,7 +72,10 @@ static func check(beat: TutorialBeatDef, ctx: TutorialContext, start: TutorialCo
 		Kind.ZOOM_LEVEL:
 			return ctx.zoom_level == beat.value
 		Kind.CAMERA_PANNED:
-			return ctx.camera_centre.distance_to(start.camera_centre) >= float(beat.count)
+			return (
+				is_equal_approx(ctx.camera_zoom, start.camera_zoom)
+				and ctx.camera_centre.distance_to(start.camera_centre) >= float(beat.count)
+			)
 		Kind.UNFOLD_OPEN:
 			return ctx.hud != null and int(ctx.hud.current) == beat.value
 		Kind.DRAWER_TAB:
@@ -116,7 +121,8 @@ static func check(beat: TutorialBeatDef, ctx: TutorialContext, start: TutorialCo
 static func _type_of(snap: MatchSnapshot, id: StringName) -> int:
 	if id == &"":
 		return -1
-	return snap.type_ids.find(id) if snap.type_ids.has(id) else -2
+	var found: int = snap.type_ids.find(id)
+	return found if found >= 0 else -2
 
 
 static func _at(column: PackedInt32Array, player: int) -> int:
