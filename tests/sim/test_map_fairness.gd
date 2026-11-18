@@ -17,11 +17,11 @@ const CASES: Array[Dictionary] = [
 		"river_rows": [],
 	},
 	{
-		"map": "res://data/maps/river_valley.tres",
-		"stem": "res://data/scenarios/skirmish_river_valley",
+		"map": "res://data/maps/heron_fords.tres",
+		"stem": "res://data/scenarios/skirmish_heron_fords",
 		"river_rows": [28, 31],
 		"crossings": 2,
-		"crossing_width": 3,
+		"crossing_width": 5,
 	},
 ]
 
@@ -56,16 +56,25 @@ func test_the_bases_are_half_turns_of_each_other() -> void:
 				turned.append(Vector2i(size * 1000 - centre.x, size * 1000 - centre.y))
 			turned.sort_custom(_before)
 			assert_array(second).is_equal(turned)
-			# The footprints of the buildings turn into each other too.
+			# The footprints of the buildings turn into each other too, building by building.
 			var rows_1: PackedInt32Array = Rig.building_rows(world, 1)
 			var rows_2: PackedInt32Array = Rig.building_rows(world, 2)
 			assert_int(rows_1.size()).is_equal(rows_2.size())
 			assert_int(rows_1.size()).is_greater(0)
-			var type: int = world.type_index[rows_1[0]]
-			var a: Vector2i = world.footprint_origin(rows_1[0])
-			var b: Vector2i = world.footprint_origin(rows_2[0])
-			assert_int(b.x).is_equal(size - a.x - world.type_foot_w[type])
-			assert_int(b.y).is_equal(size - a.y - world.type_foot_h[type])
+			var turned_origins: Array[Vector2i] = []
+			var origins_2: Array[Vector2i] = []
+			for at: int in rows_1.size():
+				var type: int = world.type_index[rows_1[at]]
+				var a: Vector2i = world.footprint_origin(rows_1[at])
+				turned_origins.append(
+					Vector2i(
+						size - a.x - world.type_foot_w[type], size - a.y - world.type_foot_h[type]
+					)
+				)
+				origins_2.append(world.footprint_origin(rows_2[at]))
+			turned_origins.sort_custom(_before)
+			origins_2.sort_custom(_before)
+			assert_array(origins_2).is_equal(turned_origins)
 
 
 func test_the_ore_fields_mirror_in_cells_yield_and_kind() -> void:

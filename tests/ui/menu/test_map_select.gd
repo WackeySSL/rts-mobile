@@ -24,7 +24,7 @@ var _flow: Node
 var _ads: Node
 var _harness: RefCounted
 var _catalog: MapCatalog  ## The real one.
-var _shown: MapCatalog  ## What the screen gets: the real one plus a locked second map.
+var _shown: MapCatalog  ## What the screen gets: a copy of the real one (map 2 is locked).
 
 
 func before() -> void:
@@ -40,7 +40,7 @@ func before_test() -> void:
 	_progression = FakeRank.new()
 	_flow = FakeFlow.new()
 	_catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
-	_shown = _two_maps()
+	_shown = _catalog_copy()
 
 
 func after_test() -> void:
@@ -228,10 +228,10 @@ func test_a_refused_start_keeps_the_button_live() -> void:
 func test_the_catalog_lists_both_maps_and_pins_their_scenario_files() -> void:
 	assert_array(_catalog.map_ids()).is_equal([&"kestrel_flats", &"map_2"])
 	assert_str(_catalog.title(&"kestrel_flats")).is_equal("Kestrel Flats")
-	assert_str(_catalog.title(&"map_2")).is_equal("River Valley")
-	var stems: Array[String] = ["skirmish_kestrel_flats", "skirmish_river_valley"]
+	assert_str(_catalog.title(&"map_2")).is_equal("Heron Fords")
+	var stems: Array[String] = ["skirmish_kestrel_flats", "skirmish_heron_fords"]
 	var maps: Array[String] = [
-		"res://data/maps/kestrel_flats.tres", "res://data/maps/river_valley.tres"
+		"res://data/maps/kestrel_flats.tres", "res://data/maps/heron_fords.tres"
 	]
 	for index: int in 2:
 		var on_disk: Array[String] = []
@@ -317,7 +317,7 @@ func _open(profile: UiMetrics, consent: bool, host_band: bool = true) -> void:
 
 
 ## A copy of the real catalog (map 2 behind its lock), so a test may reorder it.
-func _two_maps() -> MapCatalog:
+func _catalog_copy() -> MapCatalog:
 	var catalog: MapCatalog = MapCatalog.new()
 	catalog.entries = _catalog.entries.duplicate(true)
 	return catalog

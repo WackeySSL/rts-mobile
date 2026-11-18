@@ -28,20 +28,20 @@ entries = Array[Dictionary]([{
 &"id": &"map_2",
 &"scenarios": [{
 &"opponent_side": &"renew",
-&"path": "res://data/scenarios/skirmish_river_valley.tres",
+&"path": "res://data/scenarios/skirmish_heron_fords.tres",
 &"player_side": &"fossil"
 }, {
 &"opponent_side": &"fossil",
-&"path": "res://data/scenarios/skirmish_river_valley_mirrored.tres",
+&"path": "res://data/scenarios/skirmish_heron_fords_mirrored.tres",
 &"player_side": &"renew"
 }, {
 &"opponent_side": &"fossil",
-&"path": "res://data/scenarios/skirmish_river_valley_fossil_mirror.tres",
+&"path": "res://data/scenarios/skirmish_heron_fords_fossil_mirror.tres",
 &"player_side": &"fossil"
 }, {
 &"opponent_side": &"renew",
-&"path": "res://data/scenarios/skirmish_river_valley_renew_mirror.tres",
+&"path": "res://data/scenarios/skirmish_heron_fords_renew_mirror.tres",
 &"player_side": &"renew"
 }],
-&"title": "River Valley"
+&"title": "Heron Fords"
 }])
