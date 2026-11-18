@@ -323,11 +323,11 @@ func _play_again() -> void:
 			runner.first_opponent
 		)
 		return
-	_set_leaving(true)
+	_set_leaving(true, true)
 	var error: Error = await flow.restart()
 	if error != OK:  # Refused (busy, a bad setup): the buttons come back live.
 		push_warning("ResultScreen: restart refused (%s)" % error_string(error))
-	_set_leaving(false)
+	_set_leaving(false, true)
 
 
 func _back() -> void:
@@ -336,19 +336,20 @@ func _back() -> void:
 	if not _owns():
 		DevRoutes.open(get_tree(), DevRoutes.DEV_MENU_SCENE)
 		return
-	_set_leaving(true)
+	_set_leaving(true, false)
 	await flow.leave_match()
-	_set_leaving(false)
+	_set_leaving(false, false)
 
 
 ## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
-## off and Play again reads "Starting...". Play again pins its minimum width to the one its own
-## text gave, so the row (both rects) does not move when the text changes.
-func _set_leaving(leaving: bool) -> void:
+## off; on the Play again path that button reads "STARTING…". It pins its minimum width to the one
+## its own text gave, so the row (both rects) does not move when the text changes.
+func _set_leaving(leaving: bool, again_path: bool) -> void:
 	_leaving = leaving
-	_again.custom_minimum_size.x = (
-		_again.get_combined_minimum_size().x if leaving else UiScale.dp_vec(BUTTON_DP.x, 0.0).x
-	)
-	_again.text = tr(MapSelectText.STARTING) if leaving else PLAY_AGAIN_TEXT
+	if again_path:
+		_again.custom_minimum_size.x = (
+			_again.get_combined_minimum_size().x if leaving else UiScale.dp_vec(BUTTON_DP.x, 0.0).x
+		)
+		_again.text = tr(MapSelectText.STARTING) if leaving else PLAY_AGAIN_TEXT
 	_again.disabled = leaving
 	_back_button.disabled = leaving

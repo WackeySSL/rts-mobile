@@ -78,7 +78,7 @@ func test_the_xp_multiplier_is_one_that_apply_bonus_accepts() -> void:
 
 
 func test_the_late_cap_must_be_above_zero() -> void:
-	for value: int in [0, -1]:
+	for value: int in [0, -1, 600001]:
 		var bad: AdsSettingsDef = _file().duplicate() as AdsSettingsDef
 		bad.fullscreen_late_cap_ms = value
 		assert_str("\n".join(bad.validate())).contains("fullscreen_late_cap_ms")

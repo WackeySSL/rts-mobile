@@ -202,17 +202,15 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 	return shown
 
 
-## Awaitable. Returns at once, without awaiting a frame, when no interstitial is late-pending (shown
-## by a run that timed out, and neither failed nor closed). Otherwise waits until that ad has failed
-## or has opened and closed, but at most `fullscreen_late_cap_ms` from the call. AdMob cannot recall
-## a started show, so a caller that is about to put a match on screen awaits this first: no ad opens
-## over a battle (ADR 0042 section 5). Interstitials only: a rewarded ad shows only on the player's
-## explicit choice, so it never reaches the screen unasked and is not waited for.
+## Awaitable. Returns at once, without awaiting a frame, when no full-screen run is late (shown by
+## a run that timed out, and neither failed nor closed) or every late run is past its cap. Otherwise
+## waits until each late ad failed or, once opened, closed (no cap: it is on screen). A late ad that
+## never answers is waited for only until `fullscreen_late_cap_ms` after its own timeout, so one
+## dropped show holds up no later call. AdMob cannot recall a started show, so a caller about to put
+## a match on screen awaits this first: no ad opens over a battle (ADR 0042 section 5). Both kinds
+## count: a late rewarded ad also opens unasked once the player has left its screen.
 func settle_fullscreen() -> void:
-	if not _runs.has_late(AdBackend.KIND_INTERSTITIAL):
-		return
-	var deadline: int = int(_now_ms.call()) + _settings.fullscreen_late_cap_ms
-	while _runs.has_late(AdBackend.KIND_INTERSTITIAL) and int(_now_ms.call()) < deadline:
+	while _runs.has_settling(_settings.fullscreen_late_cap_ms):
 		await (Engine.get_main_loop() as SceneTree).process_frame
 
 

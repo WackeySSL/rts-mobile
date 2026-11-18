@@ -128,6 +128,14 @@ func test_restart_builds_the_match_at_the_cap_when_the_backend_never_answers() -
 	await _frames(4)
 	assert_array(out).is_equal([OK])
 	assert_int(_mains.size()).is_equal(2)
+	# The dropped show holds up no later start: it builds in the same call.
+	_loading = 0
+	var again: Array = AdServiceHarness.start(
+		func() -> int: return await _flow.start_match(_setup())
+	)
+	assert_int(_loading).override_failure_message("second start waited").is_equal(1)
+	await _frames(3)
+	assert_array(again).is_equal([OK])
 
 
 func test_start_match_after_leave_match_waits_for_the_late_ad() -> void:

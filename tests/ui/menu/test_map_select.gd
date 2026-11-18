@@ -207,6 +207,15 @@ func test_start_reads_starting_while_the_match_is_prepared() -> void:
 	await await_idle_frame()
 
 
+func test_back_does_nothing_while_the_match_starts_and_pops_otherwise() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_bool(_screen.on_back()).is_false()
+	_screen._start.pressed.emit()
+	assert_bool(_screen.on_back()).is_true()
+	_flow.release.emit()
+	await await_idle_frame()
+
+
 func test_a_refused_start_restores_the_start_label() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	_flow.refuse = ERR_BUSY

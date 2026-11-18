@@ -24,7 +24,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	SIDE: "YOUR SIDE",
 	LEVEL: "COMPUTER LEVEL",
 	START: "START",
-	STARTING: "Starting…",
+	STARTING: "STARTING…",
 	LOCKED: "%s  (RANK %d)",
 	CHOSEN: "> %s",
 	SIDE_FOSSIL: "DERRICK LEAGUE",

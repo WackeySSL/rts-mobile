@@ -245,7 +245,8 @@ func test_both_buttons_are_off_and_play_again_reads_starting_while_the_flow_runs
 	var back_text: String = back.text
 	for tap: Button in [again, back]:
 		tap.pressed.emit()
-		assert_str(again.text).is_equal(tr(MapSelectText.STARTING))
+		var expected: String = tr(MapSelectText.STARTING) if tap == again else again_text
+		assert_str(again.text).is_equal(expected)  # Only the Play again path says "STARTING…".
 		assert_str(back.text).is_equal(back_text)
 		assert_bool(again.disabled).is_true()
 		assert_bool(back.disabled).is_true()
@@ -288,6 +289,13 @@ func test_play_again_keeps_its_rect_while_it_reads_starting_at_the_six_sizes() -
 		)
 		_flow.release.emit()
 		await await_idle_frame()
+		assert_str(again.text).is_equal("PLAY AGAIN")
+		assert_object(again.get_global_rect()).override_failure_message(str(size)).is_equal(
+			again_rect
+		)
+		assert_object(back.get_global_rect()).override_failure_message(str(size)).is_equal(
+			back_rect
+		)
 		_main.free()
 		CommandQueue.clear()
 		await await_idle_frame()

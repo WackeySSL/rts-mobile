@@ -118,6 +118,11 @@ func _can_start() -> bool:
 	return map_id != &"" and is_open(KIND_MAP, map_id) and is_open(KIND_LEVEL, level)
 
 
+## Back does nothing while the match starts: a pop would leave the flow to start it from the menu.
+func on_back() -> bool:
+	return _starting
+
+
 func _on_start() -> void:
 	if _starting or not _can_start():
 		return
