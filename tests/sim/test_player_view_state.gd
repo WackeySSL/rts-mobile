@@ -280,6 +280,12 @@ func test_the_type_tables_are_the_worlds_and_a_write_stays_in_the_view() -> void
 	assert_array(Array(view.type_harvest)).is_equal(Array(world.type_harvest))
 	assert_array(Array(view.type_power)).is_equal(Array(world.type_power))
 	assert_array(Array(view.type_build_ticks)).is_equal(Array(world.type_build_ticks))
+	assert_array(Array(view.type_mine_weapon)).is_equal(Array(world.type_mine_weapon))
+	assert_array(Array(view.type_mine_cost)).is_equal(Array(world.type_mine_cost))
+	assert_array(Array(view.type_move_class)).is_equal(Array(world.type_move_class))
+	assert_array([view.mine_cap, view.mine_lay_ticks, view.sweep_ticks]).is_equal(
+		[world.mine_cap, world.mine_lay_ticks, world.sweep_ticks]
+	)
 	# GDScript passes a packed array by reference, so a table that the view only aliased would be
 	# the World's: this write must land in the view's own copy.
 	var cost: int = world.type_cost[0]

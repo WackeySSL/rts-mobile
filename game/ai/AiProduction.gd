@@ -23,6 +23,9 @@ extends RefCounted
 ## - then, when the level has `medic_per_squads` and the roster the medic type (P283, ADR 0037
 ##   section 6), queues one medic squad per that many own armed infantry squads, counting the medics
 ##   alive and queued (at most one a think, no draw: it takes one place of its tab's queue).
+## - then the minelayer (P295, ADR 0037 section 10): after the medic and before the research and the
+##   held aircraft, one layer while fewer than the level's `mine_layers` live or wait (none with the
+##   rules' mine cap at 0), queued like the medic and paid with one mine's price on top.
 ## - then the air and tech (ADR 0036 section 14, plan row P250), each at most one a think and none
 ##   while the scout waits for credits: the next upgrade in data order that changes a unit the
 ##   player owns (one at a time, while the credits left stay above `research_floor`), and one

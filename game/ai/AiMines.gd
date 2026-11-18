@@ -48,6 +48,7 @@ var _job_until: PackedInt32Array = PackedInt32Array()
 ## the route moves) and the scout legs ordered since the last wave.
 var _blocked: PackedInt32Array = PackedInt32Array()
 var _leg_count: int = 0
+var _back_sent: bool = false
 ## The route of this run: the Headquarters tile, the step to the enemy base and its length (the
 ## larger of the two distances in tiles; under 2: no route).
 var _hx: int = 0
@@ -77,12 +78,13 @@ func run(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		return
 	var layers: PackedInt32Array = _alive(view, memory)
 	_tend(view, memory)
-	var free: int = _free_layer(view, layers)
-	if free == _NONE or not memory.can_send() or not _route(view, memory):
-		return
 	var lull: bool = not _wave_out(memory)
 	if not lull:
 		_leg_count = 0
+		_back_sent = false
+	var free: int = _free_layer(view, layers)
+	if free == _NONE or not memory.can_send() or not _route(view, memory):
+		return
 	if lull and _sweep(view, memory, out, free):
 		return
 	if _lay(view, memory, out, free):
@@ -95,11 +97,12 @@ func run(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 func _resolve(view: PlayerView) -> bool:
 	if _type == -2:
 		_type = layer_type(view, _type_id)
-	return _type != _NONE and view.mine_cap > 0
+	return _type != _NONE
 
 
 ## The index of the unarmed mobile type `id` with a mine weapon (MISSING for any other, so an armed
-## type, which `AiArmy` would also order, is never a layer). `AiProduction` uses it too.
+## type, which `AiArmy` would also order, is never a layer; and for every type while the rules' cap
+## is 0). `AiProduction` uses it too.
 static func layer_type(view: PlayerView, id: StringName) -> int:
 	var type: int = view.type_index_of(id)
 	var fit: bool = (
@@ -108,6 +111,7 @@ static func layer_type(view: PlayerView, id: StringName) -> int:
 		and view.type_mine_weapon[type] >= 0
 		and view.type_weapon[type] < 0
 		and view.type_speed[type] > 0
+		and view.mine_cap > 0
 	)
 	return type if fit else _NONE
 
@@ -274,11 +278,14 @@ func _walk(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> 
 	var back: bool = along > _len * _reach_percent / 100
 	var tile: Vector2i = _at(_len / 2 if back else along)
 	var here: Vector2i = view.row_pos(view.row_of(id)) / PlayerView.MILLI_PER_TILE
-	if back and here == tile:
+	# The way back goes once a lull and stops within a tile of the edge, which may be built on.
+	if back and (_back_sent or maxi(absi(here.x - tile.x), absi(here.y - tile.y)) <= 1):
 		return
 	if _go(view, memory, out, id, tile, false):
 		_job(id, Duty.SCOUT, tile.y * view.map_cols + tile.x)
-		if not back:
+		if back:
+			_back_sent = true
+		else:
 			_leg_count += 1
 			legs += 1
 
