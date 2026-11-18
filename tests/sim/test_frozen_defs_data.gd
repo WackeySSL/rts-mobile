@@ -98,6 +98,7 @@ func test_the_arena_spawns_use_the_frozen_tank_and_not_the_shipped_one() -> void
 ## unit keeps its shipped twin's display name, and a rename in `data/units/` updates the copy too.
 func test_a_frozen_unit_keeps_its_shipped_display_name() -> void:
 	var copies: Array[String] = FileScan.list_files(ARENA_DIR + "/units", ".tres")
+	copies.append_array(FileScan.list_files(ARENA_DIR + "/arena_4b/units", ".tres"))
 	assert_int(copies.size()).is_greater(20)
 	for copy_path: String in copies:
 		var shipped_path: String = "res://data/units/" + copy_path.get_file()

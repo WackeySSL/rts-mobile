@@ -500,6 +500,8 @@ func _own_files() -> Array[String]:
 				"fossil_transport",
 				"fossil_drone",
 				"fossil_shot_truck",
+				"fossil_weld_shed",  # P279
+				"fossil_patchers",  # P280
 			]
 		):
 			continue

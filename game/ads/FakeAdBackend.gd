@@ -104,7 +104,9 @@ func finish_show(kind: StringName = &"") -> void:
 
 
 func show_banner() -> void:
-	_note("banner")
+	# Idempotent like the real backend's: a repeat while shown is not a new call in the log.
+	if not banner_visible:
+		_note("banner")
 	banner_visible = true
 	if fill and draw_placeholders and _banner_node == null and _host_ready():
 		_banner_node = FakeAdPlaceholders.build_banner(banner_height)

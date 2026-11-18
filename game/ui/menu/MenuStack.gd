@@ -31,13 +31,6 @@ var _tween: Tween = null
 var _finish: Callable = Callable()
 
 
-func _enter_tree() -> void:
-	# TODO(P521/P533): ADR 0043 section 4 wants application/config/quit_on_go_back = false for the
-	# whole app; the project setting comes with the row that edits project.godot. Until then the
-	# first menu switches it off and nothing switches it back on.
-	get_tree().quit_on_go_back = false
-
-
 func _ready() -> void:
 	MenuText.register()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

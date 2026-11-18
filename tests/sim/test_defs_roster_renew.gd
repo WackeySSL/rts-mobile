@@ -530,6 +530,8 @@ func _own_files() -> Array[String]:
 				"renew_transport",
 				"renew_drone",
 				"renew_seeder",
+				"renew_drone_dock",  # P279
+				"renew_menders",  # P280
 			]
 		):
 			continue

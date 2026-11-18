@@ -383,4 +383,4 @@ func _has_colour(image: Image, hex: String) -> bool:
 
 func _assert_quit_on_go_back_restored() -> void:
 	var restored: bool = get_tree().quit_on_go_back
-	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_true()
+	assert_bool(restored).override_failure_message("quit_on_go_back leaked").is_false()
