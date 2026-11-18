@@ -24,7 +24,7 @@ const FakeRank: GDScript = preload("res://tests/ui/support/fake_rank_progression
 const FakeFlow: GDScript = preload("res://tests/ui/support/fake_start_flow.gd")
 const TOLERANCE_PX: float = 0.5
 const TOUCH_DP: float = 48.0
-const SETTLE_FRAMES: int = 3
+const SETTLE_FRAMES: int = 2
 const MAIN: StringName = &"main"
 const MAP_SELECT: StringName = &"map_select"
 const SETTINGS: StringName = &"settings"
@@ -33,6 +33,10 @@ const HOW_REAL_SECTION: StringName = &"how_to_play_real_section"
 const HOW_LONG_SECTION: StringName = &"how_to_play_long_section"
 const LICENCES_LIST: StringName = &"licences_list"
 const LICENCES_TEXT: StringName = &"licences_text"
+## The profiles whose column (a phone's short side) is narrower than the side row's natural width.
+const WRAPPING_PROFILES: Array[StringName] = [
+	&"web_phone", &"web_phone_small", &"web_phone_portrait", &"notch_design"
+]
 const LONG_TEXT_ROW: String = "GODOT COPYRIGHT"
 
 var _window_size_before: Vector2i
@@ -119,24 +123,37 @@ func test_a_long_licence_text_scrolls_at_every_size() -> void:
 	await _check_every_size(LICENCES_TEXT, true)
 
 
-func test_the_side_names_stay_on_one_line_where_there_is_room_and_wrap_on_a_360_dp_phone() -> void:
-	for profile_name: StringName in [
-		&"desktop", &"android_6in", &"web_tablet", &"desktop_portrait", &"android_6in_portrait"
-	]:
+func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_otherwise() -> void:
+	for profile_name: StringName in _profile_names():
 		await _open(MAIN, UiProfiles.by_name(profile_name))
-		for label: Label in _side_names():
+		var names: Array[Label] = _side_names()
+		var wraps: bool = WRAPPING_PROFILES.has(profile_name)
+		for label: Label in names:
+			var lines: int = label.get_line_count()
 			(
-				assert_int(label.get_line_count())
-				. override_failure_message("%s: %s wraps" % [profile_name, label.text])
-				. is_equal(1)
+				assert_bool(lines >= 1 and lines <= (2 if wraps else 1))
+				. override_failure_message("%s: %s on %d lines" % [profile_name, label.text, lines])
+				. is_true()
+			)
+		if wraps:
+			var wrapped: int = 0
+			for label: Label in names:
+				wrapped += 1 if label.get_line_count() == 2 else 0
+			assert_int(wrapped).override_failure_message("nothing wraps").is_greater(0)
+		else:
+			var row: Control = names[0].get_parent() as Control
+			var column: Rect2 = _screen.column.get_global_rect()
+			var left: float = row.get_child(0).get_global_rect().position.x - column.position.x
+			var right: float = column.end.x - names[1].get_global_rect().end.x
+			(
+				assert_float(absf(left - right))
+				. override_failure_message(
+					"%s: slack left %.1f, right %.1f" % [profile_name, left, right]
+				)
+				. is_less_equal(1.5)
 			)
 		_close()
 		UiScale.clear_override()
-	await _open(MAIN, UiProfiles.by_name(&"web_phone_portrait"))
-	var wrapped: int = 0
-	for label: Label in _side_names():
-		wrapped += 1 if label.get_line_count() > 1 else 0
-	assert_int(wrapped).is_greater(0)
 
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
@@ -183,7 +200,7 @@ func _check_turns(kind: StringName, must_hold: bool) -> void:
 			await await_idle_frame()
 			var kept: int = scroll.scroll_vertical
 			await _turn(to)
-			_assert_same_stack(label + " turned", screen, depth)
+			_assert_same_stack(label + " turned", screen, depth, kind)
 			var range_to: int = maxi(floori(bar.max_value - bar.page), 0)
 			var expected: int = mini(kept, range_to)
 			(
@@ -195,7 +212,7 @@ func _check_turns(kind: StringName, must_hold: bool) -> void:
 				held += 1
 			await _assert_layout(label + " turned")
 			await _turn(from)
-			_assert_same_stack(label + " turned back", screen, depth)
+			_assert_same_stack(label + " turned back", screen, depth, kind)
 			(
 				assert_int(scroll.scroll_vertical)
 				. override_failure_message(
@@ -212,24 +229,27 @@ func _check_turns(kind: StringName, must_hold: bool) -> void:
 		assert_int(held).override_failure_message(kind + " held no scroll").is_greater(0)
 
 
-func _assert_same_stack(label: String, screen: MenuScreen, depth: int) -> void:
+func _assert_same_stack(label: String, screen: MenuScreen, depth: int, kind: StringName) -> void:
 	assert_int(_stack.depth()).override_failure_message(label + " depth").is_equal(depth)
 	assert_bool(_stack.current() == screen).override_failure_message(label + " screen").is_true()
-	assert_bool(is_instance_valid(screen) and screen.is_inside_tree()).is_true()
-	if screen is HowToPlayScreen:
-		assert_bool((screen as HowToPlayScreen).open_section != null).is_equal(_section_open(label))
-	if screen is LicencesScreen:
-		assert_bool((screen as LicencesScreen).open_entry != null).is_equal(_text_open(label))
-
-
-func _section_open(label: String) -> bool:
-	return (
-		label.begins_with(String(HOW_REAL_SECTION)) or label.begins_with(String(HOW_LONG_SECTION))
+	(
+		assert_bool(is_instance_valid(screen) and screen.is_inside_tree())
+		. override_failure_message(label + " in tree")
+		. is_true()
 	)
-
-
-func _text_open(label: String) -> bool:
-	return label.begins_with(String(LICENCES_TEXT))
+	if screen is HowToPlayScreen:
+		var open: bool = kind == HOW_REAL_SECTION or kind == HOW_LONG_SECTION
+		(
+			assert_bool((screen as HowToPlayScreen).open_section != null)
+			. override_failure_message(label + " section")
+			. is_equal(open)
+		)
+	if screen is LicencesScreen:
+		(
+			assert_bool((screen as LicencesScreen).open_entry != null)
+			. override_failure_message(label + " text")
+			. is_equal(kind == LICENCES_TEXT)
+		)
 
 
 ## The layout checks on the open screen. Returns whether its content scrolls.
@@ -247,6 +267,16 @@ func _assert_layout(label: String) -> bool:
 		assert_bool(safe.grow(TOLERANCE_PX).encloses(across))
 		. override_failure_message("%s: column %s outside the safe rect %s" % [label, across, safe])
 		. is_true()
+	)
+	(
+		assert_float(column.size.x)
+		. override_failure_message(
+			(
+				"%s: column %.1f px wide, asked for %.1f"
+				% [label, column.size.x, column.custom_minimum_size.x]
+			)
+		)
+		. is_less_equal(column.custom_minimum_size.x + TOLERANCE_PX)
 	)
 	var floor_px: float = UiScale.dp(TOUCH_DP) - TOLERANCE_PX
 	var controls: Array[Control] = []
@@ -378,6 +408,7 @@ func _make_screen(kind: StringName) -> MenuScreen:
 		MAIN:
 			var main: MainMenu = MainMenu.new()
 			main.progression = _progression
+			main.resume_check = func() -> bool: return true  # Continue shows: the tallest column.
 			return main
 		MAP_SELECT:
 			var maps: MapSelect = MapSelect.new()
