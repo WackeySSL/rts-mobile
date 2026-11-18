@@ -12,6 +12,12 @@ extends Node
 ## A failed restore deletes through `ResumeStore.delete()` itself. `ResumeWatcher.install` adds one
 ## to the tree. No timing and no randomness: it reads no clock.
 
+## True while a `Restorer` plays a saved match (plan P515): the file it restores from stays (a
+## `match_loading` does not delete it) and a pause writes nothing (the runner MenuFlow holds is not
+## the restored one yet, and a partial log must never replace the full file). The Restorer sets and
+## clears it.
+static var restoring: bool = false
+
 ## The node with MenuFlow's seams: `current_runner()`, `current_setup()` and `match_loading`.
 var flow: Node = null
 
@@ -63,6 +69,8 @@ func _notification(what: int) -> void:
 
 ## Writes the file for the running match. The pause calls it; tests too.
 func write_now() -> Error:
+	if restoring:
+		return ERR_BUSY
 	if flow == null:
 		return ERR_UNCONFIGURED
 	var runner: MatchRunner = flow.current_runner()
@@ -73,7 +81,8 @@ func write_now() -> Error:
 
 
 func _on_match_loading(_setup: MatchSetup) -> void:
-	ResumeStore.delete()
+	if not restoring:
+		ResumeStore.delete()
 
 
 func _on_match_ended(_winner: int) -> void:

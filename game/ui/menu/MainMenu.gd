@@ -32,8 +32,10 @@ var routes: MenuRoutes = MenuRoutes.shared
 ## Tests inject these two before the screen is pushed; null means the autoloads.
 var progression: ProgressionScript = null
 var ad_service: AdServiceScript = null
-## Whether a resume file exists. TODO(P515): ResumeStore (ADR 0042 section 6) replaces this seam.
-var resume_check: Callable = func() -> bool: return false
+## Whether a resume file exists (ADR 0042 section 6); tests replace it.
+var resume_check: Callable = func() -> bool: return ResumeStore.has_file()
+## The notice key a failed restore left for this menu, taken once; tests replace it.
+var take_notice: Callable = func() -> StringName: return MenuFlow.take_pending_notice()
 
 var _continue: Button
 var _routed: Dictionary[Button, StringName] = {}
@@ -53,6 +55,9 @@ func _ready() -> void:
 	_route_button(MainMenuText.HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)  # P527.
 	_route_button(MainMenuText.SETTINGS, MenuRoutes.SETTINGS)  # P526.
 	_build_rank()
+	var notice: StringName = take_notice.call()
+	if notice != &"":
+		_label(tr(notice), &"PauseMuted")
 	var version: String = _version()  # No key yet (P523 adds it): only the copyright shows.
 	_label(
 		tr(MainMenuText.VERSION) % version if version != "" else tr(MainMenuText.COPYRIGHT),
