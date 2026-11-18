@@ -94,25 +94,50 @@ func test_the_ore_fields_mirror_in_cells_yield_and_kind() -> void:
 		assert_int(partners.size()).is_equal(fields.size())
 
 
-func test_the_ground_distances_to_the_fields_mirror() -> void:
+func test_the_ground_distances_from_the_real_starts_to_the_fields_mirror() -> void:
 	for spec: Dictionary in CASES:
-		var size: int = (load(spec["map"] as String) as MapDef).size_tiles().x
-		for path: String in _paths(spec):
-			var world: World = Rig.world(path)
-			var fields: Array[PackedInt32Array] = Rig.ore_fields(world)
-			var one: Vector2i = _first_tile(world, 1)
-			var two: Vector2i = Vector2i(size - 1 - one.x, size - 1 - one.y)  # Player 2's unit.
-			for move_class: int in Rig.CLASSES:
-				for index: int in fields.size():
-					var flow_a: FlowField = _flow(world, fields[index][0], move_class)
-					var flow_b: FlowField = _flow(
-						world, size * size - 1 - fields[index][0], move_class
-					)
-					assert_int(_cost(flow_a, size, one)).is_not_equal(FlowField.UNREACHED)
-					assert_int(_cost(flow_a, size, two)).is_not_equal(FlowField.UNREACHED)
-					# A seat's distance to a field is the other seat's to its partner.
-					assert_int(_cost(flow_a, size, one)).is_equal(_cost(flow_b, size, two))
-					assert_int(_cost(flow_a, size, two)).is_equal(_cost(flow_b, size, one))
+		_check_start_distances(spec)
+
+
+## The distances of each seat's own starts (every mobile unit's tile and the ring around every
+## building) to a field and to its half turn, read from the scenarios' own spawns.
+func _check_start_distances(spec: Dictionary) -> void:
+	var size: int = (load(spec["map"] as String) as MapDef).size_tiles().x
+	for path: String in _paths(spec):
+		var world: World = Rig.world(path)
+		var fields: Array[PackedInt32Array] = Rig.ore_fields(world)
+		for move_class: int in Rig.CLASSES:
+			for index: int in fields.size():
+				var flow_a: FlowField = _flow(world, fields[index][0], move_class)
+				var flow_b: FlowField = _flow(world, size * size - 1 - fields[index][0], move_class)
+				var one_to_f: Array[int] = _start_costs(world, 1, flow_a, size)
+				var two_to_partner: Array[int] = _start_costs(world, 2, flow_b, size)
+				assert_array(one_to_f).is_equal(two_to_partner)
+				assert_array(_start_costs(world, 2, flow_a, size)).is_equal(
+					_start_costs(world, 1, flow_b, size)
+				)
+				assert_int(one_to_f[one_to_f.size() - 1]).is_less(FlowField.UNREACHED)
+
+
+## The costs of `player`'s starts in `flow`, sorted: one per mobile unit (its tile) and one per
+## building (the cheapest tile of the ring around its footprint).
+@warning_ignore("integer_division")
+func _start_costs(world: World, player: int, flow: FlowField, size: int) -> Array[int]:
+	var found: Array[int] = []
+	for centre: Vector2i in _centres(world, player):
+		found.append(_cost(flow, size, Vector2i(centre.x / 1000, centre.y / 1000)))
+	for row: int in Rig.building_rows(world, player):
+		var type: int = world.type_index[row]
+		var origin: Vector2i = world.footprint_origin(row)
+		var best: int = FlowField.UNREACHED
+		for y: int in range(origin.y - 1, origin.y + world.type_foot_h[type] + 1):
+			for x: int in range(origin.x - 1, origin.x + world.type_foot_w[type] + 1):
+				if x < 0 or y < 0 or x >= size or y >= size:
+					continue
+				best = mini(best, _cost(flow, size, Vector2i(x, y)))
+		found.append(best)
+	found.sort()
+	return found
 
 
 func test_both_bases_reach_each_other_by_ground() -> void:
