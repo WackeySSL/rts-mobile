@@ -255,6 +255,32 @@ func test_settings_is_disabled_without_a_route_and_opens_with_one() -> void:
 	assert_object(_menu.find_child("HelpOverlay", true, false)).is_not_null()
 
 
+## Michael's rule (2026-11-17): Settings opened from the pause menu, in its HelpOverlay, builds
+## neither the PurchaseSlot nor the Privacy row. The rig's flow is a fake, so the real
+## `MenuFlow.current_runner()` is null here: the screen's `in_match` is forced true.
+func test_settings_from_the_pause_menu_in_battle_has_no_purchase_slot_or_privacy_row() -> void:
+	await _open_main()
+	_menu.routes = MenuRoutes.new()
+	_menu.routes.register(MenuRoutes.SETTINGS, _in_battle_settings)
+	await _open_menu()
+	_press(&"SettingsButton")
+	await await_idle_frame()
+	var overlay: MenuStack = _menu.find_child("HelpOverlay", true, false) as MenuStack
+	assert_object(overlay).is_not_null()
+	var screen: SettingsScreen = overlay.current() as SettingsScreen
+	assert_object(screen).is_not_null()
+	assert_object(screen.privacy_button).is_null()
+	assert_object(screen.purchase_slot).is_null()
+	assert_object(overlay.find_child("PurchaseSlot", true, false)).is_null()
+	assert_object(screen.find_child("PRIVACY OPTIONS", true, false)).is_null()
+
+
+func _in_battle_settings() -> MenuScreen:
+	var screen: SettingsScreen = SettingsScreen.new()
+	screen.in_match = func() -> bool: return true
+	return screen
+
+
 ## A lesson through the real MenuFlow: Leave tutorial reaches the menu and no ad method runs.
 func test_leave_tutorial_calls_no_ad_method() -> void:
 	var ads: FakeAds = auto_free(FakeAds.new())

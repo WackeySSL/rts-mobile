@@ -41,6 +41,7 @@ const MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
 const PLACEMENT_POST_MATCH: StringName = &"post_match"
 const SEED_BYTES: int = 4
 const DEFAULT_LEVEL: StringName = &"normal"
+const LIFE_SETTINGS: String = "res://data/life_settings.tres"
 
 ## The ad facade; tests swap in a fake with the same methods.
 var ads: Node = null
@@ -70,10 +71,21 @@ var _pending_screen: StringName = &""
 func _ready() -> void:
 	ads = AdService
 	MenuPrefs.apply_audio(AudioService)  # AudioService loads before SaveService (P526).
+	apply_reduced()
+	get_tree().node_added.connect(apply_reduced_to)
 
 
 func _exit_tree() -> void:
 	MenuRoutes.shared.clear()  # The static table must not outlive the screens' scripts at exit.
+
+
+## Puts the saved Reduced effects switch on the shared `LifeSettings` the match views read (they
+## all use this one cached resource). Runs at boot and before each match is built, so a change in
+## Settings reaches the next match and never one that runs (P526b).
+func apply_reduced() -> void:
+	var life: LifeSettings = load(LIFE_SETTINGS) as LifeSettings
+	if life != null:
+		life.reduced = MenuPrefs.reduced_effects()
 
 
 ## The running match's runner, or null outside a match.
@@ -219,6 +231,7 @@ func _begin(setup: MatchSetup) -> Error:
 	await loading_frame.call()
 	if serial != _serial:
 		return ERR_BUSY
+	apply_reduced()
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
 	var runner: MatchRunner = main.get_node("MatchRunner")
 	var error: Error = setup.apply(runner)
@@ -235,6 +248,15 @@ func _begin(setup: MatchSetup) -> Error:
 		_forget_match()
 		main.free()
 	return error
+
+
+## Every `IntroPlayer` and `MenuStack` that enters the tree takes the saved switch before its
+## `_ready` (a node that set `reduced` on itself stays on); any other node is left alone.
+func apply_reduced_to(node: Node) -> void:
+	if node is IntroPlayer:
+		(node as IntroPlayer).reduced = (node as IntroPlayer).reduced or MenuPrefs.reduced_effects()
+	elif node is MenuStack:
+		(node as MenuStack).reduced = (node as MenuStack).reduced or MenuPrefs.reduced_effects()
 
 
 func _on_match_ended(_winner: int) -> void:

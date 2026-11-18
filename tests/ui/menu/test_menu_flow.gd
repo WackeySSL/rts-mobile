@@ -7,6 +7,7 @@ const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const DUMMY: String = "res://data/ai/dummy_renew.tres"
 const LEVEL: String = "res://data/ai/difficulty/hard.tres"
+const LIFE_PATH: String = "res://data/life_settings.tres"
 const BONUS: int = 500
 const FIXED_SEED: int = 4242
 const FRESH_SEED: int = 777
@@ -124,6 +125,48 @@ func test_start_seeds_takes_the_bonus_once_and_emits_before_the_scene() -> void:
 	assert_object(_flow.current_setup()).is_same(setup)
 	assert_int(_flow.current_runner().match_seed).is_equal(FRESH_SEED)
 	assert_int(_ads.bonus_calls).is_equal(1)
+
+
+func test_a_match_start_puts_the_saved_reduced_switch_on_life_settings() -> void:
+	var life: LifeSettings = load(LIFE_PATH) as LifeSettings
+	var life_before: bool = life.reduced
+	MenuPrefs.set_reduced_effects(true)
+	assert_int(await _flow.start_match(_setup())).is_equal(OK)
+	assert_bool(life.reduced).is_true()
+	MenuPrefs.set_reduced_effects(false)  # A change while the match runs waits for the next one.
+	assert_bool(life.reduced).is_true()
+	assert_int(await _flow.restart()).is_equal(OK)
+	assert_bool(life.reduced).is_false()
+	life.reduced = life_before
+
+
+func test_the_saved_switch_reaches_intro_and_stack_nodes_and_life_settings() -> void:
+	var life: LifeSettings = load(LIFE_PATH) as LifeSettings
+	var life_before: bool = life.reduced
+	MenuPrefs.set_reduced_effects(true)
+	_flow.apply_reduced()
+	assert_bool(life.reduced).is_true()
+	# Not in the tree: an IntroPlayer would run the whole intro there.
+	var intro: IntroPlayer = auto_free(IntroPlayer.new())
+	var stack: MenuStack = auto_free(MenuStack.new())
+	_flow.apply_reduced_to(intro)
+	_flow.apply_reduced_to(stack)
+	assert_bool(intro.reduced).is_true()
+	assert_bool(stack.reduced).is_true()
+	var entered: MenuStack = auto_free(MenuStack.new())
+	add_child(entered)  # The boot path: node_added reaches apply_reduced_to.
+	assert_bool(entered.reduced).is_true()
+	MenuPrefs.set_reduced_effects(false)
+	_flow.apply_reduced()
+	assert_bool(life.reduced).is_false()
+	var later: IntroPlayer = auto_free(IntroPlayer.new())
+	var kept: MenuStack = auto_free(MenuStack.new())
+	kept.reduced = true  # A node that switched itself on stays on.
+	_flow.apply_reduced_to(later)
+	_flow.apply_reduced_to(kept)
+	assert_bool(later.reduced).is_false()
+	assert_bool(kept.reduced).is_true()
+	life.reduced = life_before
 
 
 func test_the_scene_is_built_a_frame_after_match_loading() -> void:

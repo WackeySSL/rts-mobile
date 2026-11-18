@@ -10,8 +10,9 @@ extends MenuScreen
 ## leaves its button present and disabled) and Developer (debug and `dev_menu` builds), which
 ## changes to the dev menu scene through `DevRoutes` and needs no route.
 ## In battle (opened from the pause menu) no purchase slot and no privacy row (Michael, 2026-11-17).
-## The saved volume reaches `AudioService` from `MenuFlow._ready`; the reduced switch's boot and
-## match-start wiring: follow-up row (P526b). No Command, no sim. The foot
+## The saved volume reaches `AudioService` from `MenuFlow._ready`; the reduced switch reaches the
+## intro, the menu stack and the next match's `LifeSettings` from `MenuFlow` (P526b). No Command,
+## no sim. The foot
 ## banner slot stays empty and 0 tall until Phase 6's band.
 
 const ROW_DP: Vector2 = Vector2(0.0, 48.0)
@@ -147,6 +148,9 @@ func _on_vibration(on: bool) -> void:
 func _on_reduced(on: bool) -> void:
 	MenuPrefs.set_reduced_effects(on)
 	_show_state(reduced_toggle)
+	var stack: MenuStack = get_parent() as MenuStack
+	if stack != null:  # The open stack follows at once; a match reads it at its next start.
+		stack.reduced = on
 
 
 func _open(route: StringName) -> void:
