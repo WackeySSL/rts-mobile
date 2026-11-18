@@ -36,6 +36,9 @@ func _level(jitter: int = 0, ratio: int = RATIO_PERCENT) -> AiDifficultyDef:
 	level.all_in_tick = ALL_IN
 	level.retreat_percent = RETREAT_PERCENT
 	level.retreat_ratio_percent = ratio
+	# The all-in joins one by one here; `test_ai_army_groups.gd` sets the group fields itself.
+	level.all_in_group_value = 0
+	level.all_in_group_ticks = 0
 	return level
 
 
