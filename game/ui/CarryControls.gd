@@ -2,9 +2,9 @@ class_name CarryControls
 extends Control
 ## The check mark and the X of the Board, Unload and Mine aims (P265, P294, `touch-ui-rules`),
 ## beside the aimed point by GhostControls' column rule (`GhostControls.place`: right of the anchor,
-## else left, else above, never below, inside the safe area and clear of the HUD), each `ACTION_DP` across. The
-## anchor is the ringed carrier's pick square (its lifted centre, plus and minus its pick radius,
-## at least `PICK_MIN_DP`) for Board, and a `POINT_DP` square round the chevron's ground point for
+## else left, else above, never below, inside the safe area and clear of the HUD), each
+## `ACTION_DP` across. The anchor is the ringed carrier's pick square (its lifted centre, plus and
+## minus its pick radius, at least `PICK_MIN_DP`) for Board, and a `POINT_DP` square round the chevron's ground point for
 ## Unload, and the bounding box of the blast ring round the mark for Mine; with no carrier ringed or
 ## no point set there is no anchor and nothing shows. The check mark sends the one LOAD, UNLOAD or
 ## LAY_MINE (`CarryAim.confirm`), the X sends nothing. Read every frame while an aim is open, so the
