@@ -310,7 +310,8 @@ func test_the_gate_passes_a_gate_set_and_each_check_fails_alone() -> void:
 
 ## The `set` check: a gate run is exactly 100 matches of seeds 1001-1100 (or 200 of 1001-1200),
 ## Normal against Normal on `cross`, with every unit type of both rosters (twenty-two, with the
-## carriers of P291, the minelayers of P292 and the medics of P280); anything else is not judged a pass.
+## carriers of P291, the minelayers of P292 and the medics of P280); anything else is not judged a
+## pass.
 func test_the_gate_set_check_fails_on_anything_that_is_not_a_gate_set() -> void:
 	assert_str(_verdict_of(_gate(_balanced(100)), "set")).is_equal("pass")
 	assert_str(_verdict_of(_gate(_balanced(200)), "set")).is_equal("pass")
