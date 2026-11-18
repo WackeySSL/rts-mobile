@@ -29,6 +29,12 @@ func _ready() -> void:
 		MenuFlow.continue_match()  # A coroutine nobody awaits: this screen is gone when it ends.
 
 
+## Back stops the restore like Cancel; the file stays.
+func on_back() -> bool:
+	MenuFlow.cancel_restore()
+	return true
+
+
 func _exit_tree() -> void:
 	if MenuFlow.restore_started.is_connected(_on_started):
 		MenuFlow.restore_started.disconnect(_on_started)

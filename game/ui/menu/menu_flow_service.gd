@@ -186,10 +186,15 @@ func restart() -> Error:
 func continue_match() -> Error:
 	if _busy:
 		return ERR_BUSY
+	var had_file: bool = FileAccess.file_exists(ResumeStore.path())
 	var data: ResumeData = ResumeStore.read()
 	if data == null:
+		if had_file:  # A refused file is deleted by `read`; the screen must not wait on it.
+			_pending_notice = MainMenuText.RESTORE_FAILED
+			_to_menu()
 		return ERR_FILE_NOT_FOUND
 	_busy = true
+	apply_reduced()
 	var main: Node = make_main.call() as Node
 	_restorer = Restorer.new()
 	add_child(_restorer)
@@ -206,6 +211,7 @@ func continue_match() -> Error:
 		_runner.match_ended.connect(_on_match_ended)
 		error = switch_to_main.call(main) as Error
 		if error == OK:
+			_open_pause_when_ready(main)
 			_restorer.hand_over(main)
 			_restorer = null
 			_busy = false
@@ -220,10 +226,28 @@ func continue_match() -> Error:
 	return error
 
 
-## The restore screen's Cancel: the file stays.
+## The restore screen's Cancel or Back: the file stays. With no restore running (the file was
+## refused) it leaves for the menu.
 func cancel_restore() -> void:
 	if _restorer != null:
 		_restorer.cancel()
+	elif not _busy:
+		_to_menu()
+
+
+## The restored match opens under the pause menu (the unfold a pause tap asks for).
+func _open_pause_when_ready(main: Node) -> void:
+	if main.is_node_ready():
+		_open_pause(main)
+	else:
+		main.ready.connect(_open_pause.bind(main), CONNECT_ONE_SHOT)
+
+
+func _open_pause(main: Node) -> void:
+	for node: Node in main.find_children("*", "PauseMenu", true, false):
+		var menu: PauseMenu = node as PauseMenu
+		if menu != null and menu.feed != null:
+			menu.feed.state.open(HudState.Unfold.PAUSE)
 
 
 ## The notice key the menu shows once (a failed restore), then &"".

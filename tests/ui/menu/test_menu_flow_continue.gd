@@ -123,3 +123,41 @@ func test_cancel_keeps_the_file_and_gives_no_notice() -> void:
 	assert_bool(ResumeStore.has_file()).is_true()
 	assert_int(_menus).is_equal(1)
 	assert_str(_flow.take_pending_notice()).is_equal("")
+
+
+func test_a_damaged_file_that_has_a_pointer_goes_back_to_the_menu_with_the_notice() -> void:
+	_file()
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ResumeStore.path())
+	bytes[bytes.size() - 1] ^= 0xFF  # The seal fails; the pointer stays.
+	var file: FileAccess = FileAccess.open(ResumeStore.path(), FileAccess.WRITE)
+	file.store_buffer(bytes)
+	file.close()
+	assert_bool(ResumeStore.has_file()).is_true()
+	ResumeStore.warning_sink = func(_text: String) -> void: pass
+	assert_int(await _flow.continue_match()).is_equal(ERR_FILE_NOT_FOUND)
+	ResumeStore.warning_sink = Callable()
+	assert_bool(ResumeStore.has_file()).is_false()
+	assert_int(_menus).is_equal(1)
+	assert_str(_flow.take_pending_notice()).is_equal(MainMenuText.RESTORE_FAILED)
+
+
+func test_cancel_with_no_restore_running_leaves_for_the_menu() -> void:
+	_flow.cancel_restore()
+	assert_int(_menus).is_equal(1)
+
+
+func test_a_restored_match_takes_the_saved_reduced_switch() -> void:
+	_file()
+	var life: LifeSettings = load("res://data/life_settings.tres") as LifeSettings
+	var before: bool = life.reduced
+	MenuPrefs.set_reduced_effects(true)
+	assert_int(await _flow.continue_match()).is_equal(OK)
+	assert_bool(life.reduced).is_true()
+	MenuPrefs.set_reduced_effects(false)
+	life.reduced = before
+
+
+func test_the_autoload_installs_the_resume_watcher() -> void:
+	var watcher: ResumeWatcher = get_tree().root.get_node_or_null("ResumeWatcher") as ResumeWatcher
+	assert_object(watcher).is_not_null()
+	assert_object(watcher.flow).is_same(MenuFlow)

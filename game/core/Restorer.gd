@@ -9,9 +9,9 @@ extends Node
 ## thinks on the same views and makes its own Commands again. At every checkpoint tick the runner's
 ## hash must equal the log's; a mismatch, a stall or another `defs_hash` ends the restore with an
 ## error. At the stored tick `finished(OK)` comes and the runner is paused: the caller puts `main`
-## in the tree and calls `hand_over(main)`, which opens the pause menu when the scene is ready and
-## drops the mute reason and the watcher flag when it has entered the tree, then the Restorer frees
-## itself. A caller that does not use the match calls `abandon()`.
+## in the tree and calls `hand_over(main)`, which drops the mute reason when it has entered the
+## tree, then the Restorer frees itself. The watcher flag ends with the finish. A caller that does
+## not use the match calls `abandon()`.
 ## Integers only; time is read here (game/core), never in `game/sim`.
 
 ## Ticks played so far of `total`, after each frame's slice.
@@ -85,13 +85,9 @@ func cancel() -> void:
 		_finish(ERR_SKIP)
 
 
-## The restored match goes to the player: the runner stays paused, the pause menu opens once the
-## scene is ready, and the mute reason and the watcher flag end when it has entered the tree.
+## The restored match goes to the player: the runner stays paused (the caller opens the pause menu)
+## and the mute reason ends when `scene` has entered the tree.
 func hand_over(scene: Node) -> void:
-	if scene.is_node_ready():
-		_open_pause(scene)
-	else:
-		scene.ready.connect(_open_pause.bind(scene), CONNECT_ONE_SHOT)
 	if scene.is_inside_tree():
 		_release()
 	else:
@@ -177,6 +173,7 @@ func _finish(result: Error) -> void:
 	CommandQueue.clear()  # A cancelled or failed restore leaves no order in the shared queue.
 	if result == OK:
 		runner.paused = true
+		ResumeWatcher.restoring = false  # Only the mute waits for the scene to enter the tree.
 	else:
 		_release()
 	progressed.emit(_done(), _data.tick)
@@ -201,11 +198,3 @@ func _release() -> void:
 
 func _audio() -> Node:
 	return audio if audio != null else AudioService
-
-
-## The pause menu of the new match opens over it (the unfold a pause tap asks for).
-func _open_pause(scene: Node) -> void:
-	for node: Node in scene.find_children("*", "PauseMenu", true, false):
-		var menu: PauseMenu = node as PauseMenu
-		if menu != null and menu.feed != null:
-			menu.feed.state.open(HudState.Unfold.PAUSE)

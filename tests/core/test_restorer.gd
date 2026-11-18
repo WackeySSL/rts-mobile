@@ -53,8 +53,10 @@ func _setup() -> MatchSetup:
 
 ## An uninterrupted match with local orders at ticks 20, 41 and 63, played to `ticks`, and the data
 ## its file reads back as.
-func _played(ticks: int) -> Array:
+func _played(ticks: int, scenario: ScenarioDef = null) -> Array:
 	var setup: MatchSetup = _setup()
+	if scenario != null:
+		setup._scenario = scenario
 	var runner: MatchRunner = auto_free(MatchRunner.new())
 	assert_int(setup.apply(runner)).is_equal(OK)
 	runner.start()
@@ -68,6 +70,14 @@ func _played(ticks: int) -> Array:
 		if order != null:
 			CommandQueue.submit(order)
 		runner.run_ticks(1)
+	if scenario != null:  # Not a file: the log's scenario path is not the setup's.
+		var made: ResumeData = ResumeData.new()
+		made.setup = setup
+		made.replay = runner.replay
+		made.tick = runner.world.tick
+		made.local_player = PLAYER
+		made.defs_hash = runner.world.defs_hash()
+		return [runner, made]
 	assert_int(ResumeStore.write_from(runner, setup)).is_equal(OK)
 	return [runner, ResumeStore.read()]
 
@@ -184,7 +194,7 @@ func test_no_order_chirp_and_the_mute_reason_is_held_until_the_scene_is_in_the_t
 	assert_int(_submitted).is_equal(0)
 	assert_bool(restorer.runner.paused).is_true()
 	assert_bool(AudioService.has_mute_reason(AudioService.REASON_RESTORING)).is_true()
-	assert_bool(ResumeWatcher.restoring).is_true()
+	assert_bool(ResumeWatcher.restoring).is_false()  # Only the mute waits.
 	restorer.hand_over(scene)
 	assert_bool(AudioService.has_mute_reason(AudioService.REASON_RESTORING)).is_true()
 	add_child(scene)
@@ -262,3 +272,22 @@ func test_only_the_local_orders_before_the_stored_tick_are_fed() -> void:
 	# The orders are at ticks 20, 41 and 63; the log ends at 40, so one is fed (the skirmish gives
 	# the local player no orders of its own to skip).
 	assert_int(restorer._local.size()).is_equal(1)
+
+
+func test_a_scenario_order_of_the_local_player_is_not_fed_twice() -> void:
+	var scenario: ScenarioDef = load(SCENARIO).duplicate() as ScenarioDef
+	var order: OrderDef = OrderDef.new()
+	order.tick = 5
+	order.player = PLAYER
+	order.target_tile = Vector2i(12, 9)
+	scenario.orders = [order]
+	var played: Array = _played(60, scenario)
+	var data: ResumeData = played[1]
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, _scene())).is_equal(OK)
+	assert_int(restorer._local.size()).is_equal(2)
+	# The moves at ticks 20 and 41; the tick 5 order is the scenario's (fed twice it would be 3).
+	assert_array(_run(restorer)).is_equal([OK])
+	assert_int(restorer.runner.world.state_hash()).is_equal(
+		(played[0] as MatchRunner).world.state_hash()
+	)
