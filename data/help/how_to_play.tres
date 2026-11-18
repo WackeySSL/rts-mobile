@@ -238,11 +238,23 @@ id = &"menus-back"
 title = "Back"
 body = "Press the phone's Back button to close a screen."
 
+[sub_resource type="Resource" id="e20b"]
+script = ExtResource("3_ent")
+id = &"menus-skirmish"
+title = "Start a skirmish"
+body = "Tap Skirmish on the main menu, choose the map, your side and the computer's level, then tap Start. A map or level that is greyed out shows the rank that opens it."
+
+[sub_resource type="Resource" id="e22"]
+script = ExtResource("3_ent")
+id = &"menus-settings"
+title = "Settings"
+body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Your choices are kept on the phone."
+
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e20")])
+entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e22")])
 
 [sub_resource type="Resource" id="e21"]
 script = ExtResource("3_ent")

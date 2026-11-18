@@ -240,6 +240,19 @@ Note (2026-11-17, P400d docs; P405 findings):
   the screen's or the safe area's bottom, and whether the native side reuses a destroyed ad's uid
   (a late callback of the old ad would then match the new one).
 
+Note (2026-11-17, P400g docs; P405c, #523): the native path now follows this section again. One
+create gap covers every create, turns included: `AdMobBackend` makes no banner within
+`banner_reload_min_ms` (30 s) of its last create. A create that must wait sets one timer for the
+rest of the gap, and makes the banner then only if a band still asks for it; meanwhile the band is
+empty (height 0). After a turn while a band asks for the banner, the old-width banner is destroyed
+at once, so no banner of the wrong width stays up, and the new one comes at the end of the gap.
+Callbacks of a destroyed banner's uid are ignored (unless the native side reuses the uid, still to
+confirm in P410b). The accepted cost: after a quick menu round trip the band can stay empty for up
+to 30 s. The P400d note above ("at most once per `banner_reload_min_ms` ... does not match the code
+for a turn") is settled, and so is the first point of the §4 P400d note ("a turn remakes the banner
+without that gap"); the §4 note's late-fill point stays true, and the device checks in the §5 P400d
+note stay open (P410b, P422).
+
 ### 6. The pause menu's foot (P127 decided)
 - Upright, where the foot is free (below the Vibration chip, with 16 dp to it), the foot holds the
   band while the menu is open.
@@ -262,6 +275,12 @@ banner has loaded, so the band is shown and the request starts. The real fit che
 after the load (the band's `minimum_size_changed`), and it may then drop the band. This is a
 finding for the new fix row **P405c**, which also destroys the native banner on the last release
 and throttles turn reloads.
+
+Note (2026-11-17, P400g docs; P405c, #523): settled. `AdService` destroys the native banner
+(`destroy_banner`) when the last band releases it, at idle (so a band reparented within the frame
+keeps it), not only on Remove ads or lost consent. So closing the pause menu leaves no native
+banner object in battle, as this section says. `banner_height_preview_dp()` now answers from the
+adaptive size before the load, so the pause foot's first fit check is real in AdMob mode too.
 
 ### 7. Rewards enter meta and the match only through Phase 5's paths
 - **Where** (Michael's answer 1 A): Double XP on the result screen; "+500 credits next match" on

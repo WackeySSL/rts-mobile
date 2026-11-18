@@ -330,8 +330,9 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 	# last-seen records and eleven type tables, ten more type tables and the three warned lists
 	# (`own_strike_tick` is an int), and the two layer tables of P232 (`type_layer_bit` and
 	# `weapon_targets`), `reveal_state` of P233, `own_stance` of P298, the six mine lists of P288
-	# and the two repair role tables of P283.
-	assert_int(touched).is_equal(48)
+	# and the two repair role tables of P283, and the five air and tech tables of P250
+	# (`type_pads`, `type_upgrade` and the three upgrade lists).
+	assert_int(touched).is_equal(53)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))

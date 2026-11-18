@@ -4,7 +4,7 @@
 
 ; The Lumen Accord's ground carrier (ADR 0037 section 7, GDD): wheeled, light, 2.0 tiles/s, 320 hp,
 ; 2 squad seats, cost 500; its squads die with it (eject 0). Build time, sight and radii are
-; starting values for the balance run. Not in the roster until its art (P291).
+; starting values for the balance run.
 [resource]
 script = ExtResource("1_unit")
 type_id = &"renew_linecar"
