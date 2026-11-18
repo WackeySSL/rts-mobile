@@ -126,13 +126,18 @@ func test_hard_sends_the_layer_ahead_past_the_own_half_and_normal_does_not() -> 
 		assert_int(out[0].target_x).is_equal(28500)
 		assert_int(out[0].target_y).is_equal(16500)
 		assert_int(miner.legs).is_equal(1)
-		# The leg went as far as three quarters of this short route: no second one, not while the
-		# layer moves and not when it stands there.
+		# The leg went as far as three quarters of this short route: no second one while the layer
+		# moves; once it stands there it goes back to the edge of the own half (17 tiles out).
 		var loop: MatchLoop = AiRig.loop_of(world)
 		AiRig.step(world, loop, out)
 		assert_array(_think(world, memory, miner)).is_empty()
 		world.order[world.index_of(layer)] = World.Order.IDLE
-		assert_array(_think(world, memory, miner)).is_empty()
+		world.pos_x[world.index_of(layer)] = 28500
+		world.pos_y[world.index_of(layer)] = 16500
+		var back: Array[Command] = _think(world, memory, miner)
+		assert_int(back.size()).is_equal(1)
+		assert_int(back[0].target_x).is_equal(20500)
+		assert_int(back[0].target_y).is_equal(12500)
 		assert_int(miner.legs).is_equal(1)
 
 
@@ -153,7 +158,7 @@ func test_easy_a_def_without_a_layer_and_the_frozen_copies_do_nothing() -> void:
 		_add(world, "layer", 5500, 3500)
 		var miner: AiMines = AiMines.create(case[0], case[1])
 		assert_array(_think(world, memory, miner)).is_empty()
-		assert_int(miner.lays + miner.sweeps + miner.legs + miner.queued).is_equal(0)
+		assert_int(miner.lays + miner.sweeps + miner.legs).is_equal(0)
 
 
 func test_the_shipped_levels_and_factions_turn_it_on_for_normal_and_hard_only() -> void:
@@ -185,34 +190,6 @@ func test_the_shipped_levels_and_factions_turn_it_on_for_normal_and_hard_only() 
 		_mine_def(), _mine_level(1, 1, 0), 1, DetRandom.create(1, DetRandom.STREAM_AI_BASE + 1)
 	)
 	assert_object(ai.miner).is_not_null()
-
-
-func test_a_layer_is_queued_when_the_factory_and_radar_stand_and_not_otherwise() -> void:
-	var fixture: Array = _fixture()
-	var world: World = fixture[0]
-	var memory: AiMemory = fixture[1]
-	var miner: AiMines = AiMines.create(_mine_def(), _mine_level(2, 1, 0))
-	var out: Array[Command] = _think(world, memory, miner)
-	assert_int(out.size()).is_equal(1)
-	assert_int(out[0].type).is_equal(Command.Type.QUEUE)
-	assert_int(out[0].payload[0]).is_equal(Worlds.type_of(world, "layer"))
-	assert_int(miner.queued).is_equal(1)
-	# Queued already: not a second one. A layer alive: none either.
-	AiRig.step(world, AiRig.loop_of(world), out)
-	assert_array(_think(world, memory, miner)).is_empty()
-	# No radar: nothing queues.
-	var bare: Array = _fixture(false)
-	(
-		assert_array(_think(bare[0], bare[1], AiMines.create(_mine_def(), _mine_level(2, 1, 0))))
-		. is_empty()
-	)
-	# Too poor for the layer and a mine.
-	var poor: Array = _fixture()
-	poor[0].credits[1] = 200
-	(
-		assert_array(_think(poor[0], poor[1], AiMines.create(_mine_def(), _mine_level(2, 1, 0))))
-		. is_empty()
-	)
 
 
 func test_a_think_without_commands_left_sends_nothing_and_keeps_the_layer_free() -> void:
@@ -254,21 +231,27 @@ func test_the_layer_goal_key_is_held_only_while_the_layer_moves() -> void:
 
 
 func test_the_same_matches_twice_lay_the_same_mines_on_the_thread_snapshot_path() -> void:
-	var first: Dictionary = _match()
-	var second: Dictionary = _match()
-	assert_int(first["laid"]).is_greater(0)
-	assert_dict(second).is_equal(first)
+	for level: String in ["normal", "hard"]:
+		var first: Dictionary = _match(level)
+		var second: Dictionary = _match(level)
+		assert_int(first["laid"]).override_failure_message(level).is_greater(0)
+		assert_dict(second).override_failure_message(level).is_equal(first)
+		assert_int(first["dropped"]).is_equal(0)
 
 
 ## An AI-vs-AI Normal match from one seed on the lagged pipeline (`AiDriver.lagged_tick`, the one
 ## the worker runs: the views are built before the step and the Commands land a tick later): the
 ## mines laid over the match and the state hash.
-func _match() -> Dictionary:
-	var levels: Array[String] = ["normal", "normal"]
+func _match(level: String) -> Dictionary:
+	var levels: Array[String] = [level, level]
 	var setup: Dictionary = Smoke.start(1, "cross", levels)
 	var world: World = setup["world"]
 	Smoke.run(world, setup["loop"], setup["controllers"], MATCH_TICKS)
-	return {"laid": world.next_mine_id, "hash": WorldHash.state_hash(world)}
+	return {
+		"laid": world.next_mine_id,
+		"hash": WorldHash.state_hash(world),
+		"dropped": world.dropped_commands
+	}
 
 
 func _fixture(radar: bool = true) -> Array:
@@ -314,6 +297,7 @@ func _mine_world(radar: bool) -> World:
 func _mine_def() -> OpponentDef:
 	var def: OpponentDef = _def()
 	def.mine_layer_type = &"layer"
+	def.mine_scout_reach_percent = 75
 	return def
 
 
@@ -345,6 +329,7 @@ func _play(
 		AiRig.step(world, loop, sent)
 		for _tick: int in 14:
 			AiRig.step(world, loop)
+	assert_int(world.dropped_commands).is_equal(0)
 	return all
 
 
@@ -371,3 +356,166 @@ func _record(world: World, player: int, owner: int, cell: Vector2i) -> void:
 	world.mine_seen_owner[at] = owner
 	world.mine_seen_cell[at] = cell.y * COLS + cell.x
 	world.mine_seen_count[player] += 1
+
+
+func test_the_cap_of_the_rules_bounds_the_mines_below_the_target() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	world.mine_cap = 2
+	var miner: AiMines = AiMines.create(_mine_def(), _mine_level(3, 1, 0))
+	_add(world, "layer", 5500, 3500)
+	_play(world, AiRig.loop_of(world), memory, miner, 30)
+	assert_int(world.mine_count).is_equal(2)
+	assert_int(miner.lays).is_equal(2)
+
+
+func test_no_mine_is_laid_past_the_own_half_whatever_the_target() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	world.mine_cap = 12
+	var miner: AiMines = AiMines.create(_mine_def(), _mine_level(12, 1, 0))
+	_add(world, "layer", 5500, 3500)
+	_play(world, AiRig.loop_of(world), memory, miner, 40)
+	# 34 tiles of route, 4 apart, its own half 17: four cells, not eight.
+	assert_int(world.mine_count).is_equal(4)
+	for at: int in world.mine_count:
+		assert_bool(world.mine_cell[at] % COLS - HOME_TILE.x <= 17).is_true()
+
+
+func test_two_layers_count_each_others_pending_lays() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	var miner: AiMines = AiMines.create(_mine_def(), _mine_level(2, 2, 0))
+	var first: int = _add(world, "layer", 5500, 3500)
+	var second: int = _add(world, "layer", 6500, 3500)
+	var loop: MatchLoop = AiRig.loop_of(world)
+	var one: Array[Command] = _think(world, memory, miner)
+	AiRig.step(world, loop, one)
+	var two: Array[Command] = _think(world, memory, miner)
+	AiRig.step(world, loop, two)
+	assert_int(one.size() + two.size()).is_equal(2)
+	assert_array(one[0].unit_ids).is_equal(PackedInt32Array([first]))
+	assert_array(two[0].unit_ids).is_equal(PackedInt32Array([second]))
+	assert_int(one[0].target_x).is_not_equal(two[0].target_x)
+	# Both lays are on their way: nothing more is due, and each moving layer holds a key.
+	assert_array(_think(world, memory, miner)).is_empty()
+	assert_int(memory.goal_keys_of(AiMemory.Owner.MINE)).is_equal(2)
+
+
+func test_the_scout_waits_while_a_wave_is_in_the_field() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	var miner: AiMines = AiMines.create(_mine_def(), _mine_level(1, 1, 1))
+	_add(world, "layer", 5500, 3500)
+	_put(world, 1, Vector2i(7, 4))
+	memory.squad_role[WAVE] = 1
+	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
+	assert_array(_think(world, memory, miner)).is_empty()
+	memory.squad_state[WAVE] = AiMemory.SquadState.HOME
+	assert_int(_think(world, memory, miner).size()).is_equal(1)
+
+
+func test_the_mine_key_is_the_last_to_yield_and_the_army_holds_a_wheeled_goal() -> void:
+	var memory: AiMemory = _memory()
+	memory.goal_keys_max = 3
+	memory.add_goal_key(1, 1, AiMemory.TRACKED, AiMemory.Owner.MINE)
+	memory.add_goal_key(2, 2, AiMemory.TRACKED, AiMemory.Owner.REPAIR)
+	memory.add_goal_key(3, 3, AiMemory.TRACKED, AiMemory.Owner.SCOUT)
+	memory.yield_keys()
+	assert_int(memory.goal_keys_of(AiMemory.Owner.SCOUT)).is_equal(0)
+	assert_int(memory.goal_keys_of(AiMemory.Owner.MINE)).is_equal(1)
+	assert_int(memory.goal_keys_of(AiMemory.Owner.REPAIR)).is_equal(1)
+	var army: AiArmy = AiArmy.create(_def(), AiDifficultyDef.new(), 1)
+	var held: AiMemory = _memory()
+	(
+		assert_bool(army._hold(held, AiMemory.Owner.ARMY, Vector2i(9, 9), 1 << AiMemory.WHEELED))
+		. is_true()
+	)
+	assert_int(held.goal_class[0]).is_equal(AiMemory.WHEELED)
+
+
+func test_a_type_that_is_no_layer_does_nothing_and_a_zero_cap_turns_it_off() -> void:
+	for id: String in ["tanker", "no_such_type"]:
+		var fixture: Array = _fixture()
+		var def: OpponentDef = _mine_def()
+		def.mine_layer_type = StringName(id)
+		_add(fixture[0], "layer", 5500, 3500)
+		var miner: AiMines = AiMines.create(def, _mine_level(2, 1, 1))
+		assert_array(_think(fixture[0], fixture[1], miner)).is_empty()
+	var capped: Array = _fixture()
+	capped[0].mine_cap = 0
+	_add(capped[0], "layer", 5500, 3500)
+	(
+		assert_array(
+			_think(capped[0], capped[1], AiMines.create(_mine_def(), _mine_level(2, 1, 1)))
+		)
+		. is_empty()
+	)
+	# An armed layer type is no layer: `AiArmy` would order it too.
+	var armed: Array = _fixture()
+	armed[0].type_weapon[Worlds.type_of(armed[0], "layer")] = 0
+	_add(armed[0], "layer", 5500, 3500)
+	(
+		assert_array(_think(armed[0], armed[1], AiMines.create(_mine_def(), _mine_level(2, 1, 1))))
+		. is_empty()
+	)
+
+
+func test_production_queues_the_layer_like_the_medic() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	var memory: AiMemory = fixture[1]
+	var production: AiProduction = _layer_production(_mine_def())
+	var sent: Array[Command] = _produce(production, world, memory)
+	assert_int(_queued(sent, world, "layer")).is_equal(1)
+	assert_int(production.layers_queued).is_equal(1)
+	# Queued already: not a second one, nor while alive.
+	AiRig.step(world, AiRig.loop_of(world), sent)
+	assert_int(_queued(_produce(production, world, memory), world, "layer")).is_equal(0)
+	# Credits the economy reserved are not spent on it.
+	var reserved: Array = _fixture()
+	reserved[1].reserve_credits = 100000
+	(
+		assert_int(
+			_queued(
+				_produce(_layer_production(_mine_def()), reserved[0], reserved[1]),
+				reserved[0],
+				"layer"
+			)
+		)
+		. is_equal(0)
+	)
+	# No radar (the requirement): none. No room in the queue: none.
+	var bare: Array = _fixture(false)
+	(
+		assert_int(
+			_queued(_produce(_layer_production(_mine_def()), bare[0], bare[1]), bare[0], "layer")
+		)
+		. is_equal(0)
+	)
+	var full: Array = _fixture()
+	var def: OpponentDef = _mine_def()
+	def.queue_target = 0
+	(
+		assert_int(_queued(_produce(_layer_production(def), full[0], full[1]), full[0], "layer"))
+		. is_equal(0)
+	)
+
+
+func test_the_unit_cap_counts_the_queued_units_for_the_layer() -> void:
+	var fixture: Array = _fixture()
+	var world: World = fixture[0]
+	world.unit_cap = 1
+	var tank: int = Worlds.type_of(world, "layer")
+	assert_int(tank).is_greater(-1)
+	AiRig.step(world, AiRig.loop_of(world), [Command.queue(1, Worlds.type_of(world, "layer"))])
+	var sent: Array[Command] = _produce(_layer_production(_mine_def()), world, fixture[1])
+	assert_int(_queued(sent, world, "layer")).is_equal(0)
+
+
+func _layer_production(def: OpponentDef) -> AiProduction:
+	return AiProduction.create(def, _mine_level(2, 1, 0), 1)

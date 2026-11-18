@@ -221,6 +221,10 @@ var type_repair_slots: PackedInt32Array = PackedInt32Array()
 ## aircraft it holds), the upgrade a research item gives (-1 for every other type) and, per upgrade,
 ## the types it changes (`upgrade_types` from `upgrade_type_first`, `upgrade_type_count` entries).
 var type_pads: PackedInt32Array = PackedInt32Array()
+var type_upgrade: PackedInt32Array = PackedInt32Array()
+var upgrade_type_first: PackedInt32Array = PackedInt32Array()
+var upgrade_type_count: PackedInt32Array = PackedInt32Array()
+var upgrade_types: PackedInt32Array = PackedInt32Array()
 ## The mine rules the AI's layer manager reads (ADR 0037 section 8, P295): per type the mine weapon
 ## index (-1: not a layer), the mine's price and the move class (`World.MoveClass`); the rules'
 ## cap per player, ticks a lay takes and ticks a sweep takes.
@@ -230,10 +234,6 @@ var type_move_class: PackedInt32Array = PackedInt32Array()
 var mine_cap: int = 0
 var mine_lay_ticks: int = 0
 var sweep_ticks: int = 0
-var type_upgrade: PackedInt32Array = PackedInt32Array()
-var upgrade_type_first: PackedInt32Array = PackedInt32Array()
-var upgrade_type_count: PackedInt32Array = PackedInt32Array()
-var upgrade_types: PackedInt32Array = PackedInt32Array()
 ## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
 ## milli-tiles and the landing tick, one entry per player that has one, ascending player.
 var warned_x: PackedInt32Array = PackedInt32Array()
@@ -495,16 +495,16 @@ func _take_tables(world: World) -> void:
 	type_repair_classes = world.type_repair_classes.duplicate()
 	type_repair_slots = world.type_repair_slots.duplicate()
 	type_pads = world.type_pads.duplicate()
+	type_upgrade = world.type_upgrade.duplicate()
+	upgrade_type_first = world.upgrade_type_first.duplicate()
+	upgrade_type_count = world.upgrade_type_count.duplicate()
+	upgrade_types = world.upgrade_types.duplicate()
 	type_mine_weapon = world.type_mine_weapon.duplicate()
 	type_mine_cost = world.type_mine_cost.duplicate()
 	type_move_class = world.type_move_class.duplicate()
 	mine_cap = world.mine_cap
 	mine_lay_ticks = world.mine_lay_ticks
 	sweep_ticks = world.sweep_ticks
-	type_upgrade = world.type_upgrade.duplicate()
-	upgrade_type_first = world.upgrade_type_first.duplicate()
-	upgrade_type_count = world.upgrade_type_count.duplicate()
-	upgrade_types = world.upgrade_types.duplicate()
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
 	_take_weapon_tables(world)

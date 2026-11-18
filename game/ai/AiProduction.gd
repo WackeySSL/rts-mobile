@@ -45,6 +45,7 @@ var passes: int = 0
 var queued: int = 0
 var scouts_queued: int = 0
 var medics_queued: int = 0
+var layers_queued: int = 0
 var air_queued: int = 0
 var research_queued: int = 0
 ## The credits the QUEUEs of the last run cost (`AiEconomy.mend` measures the credits left by it).
@@ -75,6 +76,10 @@ var _resolved: bool = false
 var _role_types: PackedInt32Array = PackedInt32Array()
 var _vehicle_types: PackedInt32Array = PackedInt32Array()
 var _medic: int = _NONE
+## The minelayer type (P295) and how many to keep: `AiMines` orders the layers this queues.
+var _layer_id: StringName = &""
+var _layer: int = _NONE
+var _layers_wanted: int = 0
 var _bomber: int = _NONE
 var _fighter: int = _NONE
 ## The research items of the player's faction in data order, and the least a tech Command costs.
@@ -122,6 +127,9 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	production._reaction_ticks = level.reaction_ticks
 	production._hq_id = def.hq_type
 	production._medic_per = maxi(level.medic_per_squads, 0)
+	if level.mine_target > 0:
+		production._layer_id = def.mine_layer_type
+		production._layers_wanted = maxi(level.mine_layers, 0)
 	production._bomber_id = def.bomber_type
 	production._fighter_id = def.fighter_type
 	production._bomber_weight = def.air_weight(tier, false)
@@ -151,6 +159,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	if scout != _NONE and _queue_scout(view, memory, out, scout):
 		_closed_tab = view.type_tab[scout]
 	_queue_medic(view, memory, out)
+	_queue_layer(view, memory, out)
 	if _closed_tab < 0:
 		_queue_research(view, memory, out)
 		_queue_air(view, memory, rng, out)
@@ -173,6 +182,8 @@ func _resolve(view: PlayerView) -> void:
 		var hq: int = view.type_index_of(_hq_id)
 		var faction: int = view.type_faction[hq] if hq != _NONE else AiRepair.NO_FACTION
 		_medic = AiRepair.role_type_of(view, faction, false)
+	if _layers_wanted > 0:
+		_layer = AiMines.layer_type(view, _layer_id)
 	_resolve_tech(view)
 
 
@@ -291,16 +302,35 @@ func _is_foot_squad(view: PlayerView, type: int) -> bool:
 func _queue_medic(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 	if _medic == _NONE or _medic_per <= 0 or not memory.can_send():
 		return
-	var have: int = _owned[_medic]
-	var tab: int = PlayerView.Tab.INFANTRY
-	for slot: int in view.queue_count[tab]:
-		if view.queue_type[tab * view.queue_slots + slot] == _medic:
-			have += 1
 	@warning_ignore("integer_division")
-	if _foot_squads / _medic_per <= have or not _queueable(view, _medic, true):
+	if _foot_squads / _medic_per <= _have(view, _medic) or not _queueable(view, _medic, true):
 		return
 	_send(view, memory, out, _medic)
 	medics_queued += 1
+
+
+## The own rows of `type` and the items of it in its queue.
+func _have(view: PlayerView, type: int) -> int:
+	var have: int = _owned[type]
+	var tab: int = view.type_tab[type]
+	for slot: int in view.queue_count[tab]:
+		if view.queue_type[tab * view.queue_slots + slot] == type:
+			have += 1
+	return have
+
+
+## One minelayer (P295, ADR 0037 section 10) while fewer than the level's `mine_layers` live or
+## wait, queued like the medic: a producer, the requirement, queue room, the unit cap and the
+## credits left (the layer and one mine) all as `_queueable` asks.
+func _queue_layer(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
+	if _layer == _NONE or _have(view, _layer) >= _layers_wanted or not memory.can_send():
+		return
+	if _budget < view.type_cost[_layer] + view.type_mine_cost[_layer]:
+		return
+	if not _queueable(view, _layer, true):
+		return
+	_send(view, memory, out, _layer)
+	layers_queued += 1
 
 
 ## The next research item, in data order, whose upgrade is not researched and changes a unit the

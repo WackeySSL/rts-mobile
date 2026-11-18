@@ -169,6 +169,7 @@ func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:
 	var skip: Array[String] = ["id", "build_orders"]
 	skip.append_array(_AIR_FIELDS)
 	skip.append("mine_layer_type")  # Off by default (P295), like the air types.
+	skip.append("mine_scout_reach_percent")
 	_assert_defaults_equal(OpponentDef.new(), Rig.def_of("fossil"), skip)
 	assert_str(String(OpponentDef.new().mine_layer_type)).is_empty()
 	var fresh: OpponentDef = OpponentDef.new()

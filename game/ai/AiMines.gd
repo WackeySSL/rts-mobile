@@ -21,15 +21,11 @@ extends RefCounted
 
 enum Duty { LAY, SWEEP, SCOUT }
 const _NONE: int = PlayerView.MISSING
-const _CELLS_MAX: int = 64
 
-## Counters for the suites: layers queued, lays, sweeps and scout legs ordered, over the match.
-var queued: int = 0
+## Counters for the suites: lays, sweeps and scout legs ordered, over the match.
 var lays: int = 0
 var sweeps: int = 0
 var legs: int = 0
-## Passes over the view's rows (always 0).
-var passes: int = 0
 
 var _target: int = 0
 var _layers_wanted: int = 0
@@ -38,6 +34,7 @@ var _type_id: StringName = &""
 var _spacing: int = 1
 var _reach: int = 0
 var _leg: int = 1
+var _reach_percent: int = 0
 ## The layer type as an index of the view's roster, found on the first run (-2: not yet; MISSING:
 ## none, which turns the manager off).
 var _type: int = -2
@@ -47,7 +44,8 @@ var _job_id: PackedInt32Array = PackedInt32Array()
 var _job_duty: PackedInt32Array = PackedInt32Array()
 var _job_cell: PackedInt32Array = PackedInt32Array()
 var _job_until: PackedInt32Array = PackedInt32Array()
-## The cells a lay did not produce a mine on, and the scout legs ordered so far.
+## The cells a lay left no mine on (the list is as long as the route has cells: it is cleared when
+## the route moves) and the scout legs ordered since the last wave.
 var _blocked: PackedInt32Array = PackedInt32Array()
 var _leg_count: int = 0
 ## The route of this run: the Headquarters tile, the step to the enemy base and its length (the
@@ -57,6 +55,7 @@ var _hy: int = 0
 var _dx: int = 0
 var _dy: int = 0
 var _len: int = 0
+var _route_was: Vector4i = Vector4i.ZERO
 
 
 ## A manager that copies what it reads of `def` and `level`.
@@ -65,7 +64,8 @@ static func create(def: OpponentDef, level: AiDifficultyDef) -> AiMines:
 	mines._type_id = def.mine_layer_type
 	mines._target = maxi(level.mine_target, 0) if def.mine_layer_type != &"" else 0
 	mines._layers_wanted = maxi(level.mine_layers, 0)
-	mines._scout = level.mine_scout_ahead > 0
+	mines._reach_percent = maxi(def.mine_scout_reach_percent, 0)
+	mines._scout = level.mine_scout_ahead > 0 and mines._reach_percent > 0
 	mines._spacing = maxi(def.mine_spacing_tiles, 1)
 	mines._reach = maxi(def.mine_sweep_reach_tiles, 0)
 	mines._leg = maxi(def.mine_scout_leg_tiles, 1)
@@ -73,17 +73,16 @@ static func create(def: OpponentDef, level: AiDifficultyDef) -> AiMines:
 
 
 func run(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
-	passes = 0
 	if _target <= 0 or _layers_wanted <= 0 or not _resolve(view):
 		return
 	var layers: PackedInt32Array = _alive(view, memory)
 	_tend(view, memory)
-	if layers.size() < _layers_wanted:
-		_build(view, memory, out, layers.size())
 	var free: int = _free_layer(view, layers)
 	if free == _NONE or not memory.can_send() or not _route(view, memory):
 		return
 	var lull: bool = not _wave_out(memory)
+	if not lull:
+		_leg_count = 0
 	if lull and _sweep(view, memory, out, free):
 		return
 	if _lay(view, memory, out, free):
@@ -95,15 +94,22 @@ func run(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 ## The layer type of the view's roster, once; MISSING without a mine weapon or a move speed.
 func _resolve(view: PlayerView) -> bool:
 	if _type == -2:
-		_type = view.type_index_of(_type_id)
-		var fit: bool = (
-			_type != _NONE
-			and _type < view.type_mine_weapon.size()
-			and view.type_mine_weapon[_type] >= 0
-			and view.type_speed[_type] > 0
-		)
-		_type = _type if fit else _NONE
-	return _type != _NONE
+		_type = layer_type(view, _type_id)
+	return _type != _NONE and view.mine_cap > 0
+
+
+## The index of the unarmed mobile type `id` with a mine weapon (MISSING for any other, so an armed
+## type, which `AiArmy` would also order, is never a layer). `AiProduction` uses it too.
+static func layer_type(view: PlayerView, id: StringName) -> int:
+	var type: int = view.type_index_of(id)
+	var fit: bool = (
+		type != _NONE
+		and type < view.type_mine_weapon.size()
+		and view.type_mine_weapon[type] >= 0
+		and view.type_weapon[type] < 0
+		and view.type_speed[type] > 0
+	)
+	return type if fit else _NONE
 
 
 ## The own live layers, ids ascending (the mobile ids `AiIntel` listed).
@@ -118,23 +124,23 @@ func _alive(view: PlayerView, memory: AiMemory) -> PackedInt32Array:
 
 ## Moves the jobs on: a layer that stands idle starts its wait (a lay or a sweep takes ticks), one
 ## whose wait is over is free again (a lay that left no mine marks its cell blocked), a dead one
-## goes. The goal key is held only while some layer still moves.
+## goes.
+@warning_ignore("integer_division")
 func _tend(view: PlayerView, memory: AiMemory) -> void:
-	var moving: bool = false
 	for at: int in range(_job_id.size() - 1, -1, -1):
 		var row: int = view.row_of(_job_id[at])
 		var done: bool = row < 0
 		if not done and _job_until[at] < 0:
 			if view.row_order(row) == PlayerView.Order.IDLE:
 				_job_until[at] = view.tick + _wait(view, _job_duty[at])
-			else:
-				moving = true
 		if not done and _job_until[at] >= 0 and view.tick >= _job_until[at]:
 			done = true
+			# A real refusal only (cell or occupancy): not for want of credits or under the cap.
 			if (
 				_job_duty[at] == Duty.LAY
 				and not view.own_mines.has(_job_cell[at])
-				and _blocked.size() < _CELLS_MAX
+				and view.credits >= view.type_mine_cost[_type]
+				and view.own_mines.size() < view.mine_cap
 			):
 				_blocked.append(_job_cell[at])
 		if done:
@@ -142,8 +148,16 @@ func _tend(view: PlayerView, memory: AiMemory) -> void:
 			_job_duty.remove_at(at)
 			_job_cell.remove_at(at)
 			_job_until.remove_at(at)
-	if not moving:
-		memory.release_owner(AiMemory.Owner.MINE)
+	# One key per moving layer, made again each think (the army's full cache may have taken them).
+	memory.release_owner(AiMemory.Owner.MINE)
+	for at: int in _job_id.size():
+		if _job_until[at] < 0:
+			memory.add_goal_key(
+				_job_cell[at] % view.map_cols,
+				_job_cell[at] / view.map_cols,
+				AiMemory.class_of(view, _type),
+				AiMemory.Owner.MINE
+			)
 
 
 ## Ticks a layer must stand on its goal before it is free: a lay or a sweep, none for a leg.
@@ -164,40 +178,9 @@ func _free_layer(view: PlayerView, layers: PackedInt32Array) -> int:
 	return _NONE
 
 
-## One layer queued when fewer than `mine_layers` live or wait, the roster's producer and
-## requirement stand finished, the queue has room, the unit cap allows it and the credits pay the
-## layer and one mine.
-func _build(view: PlayerView, memory: AiMemory, out: Array[Command], alive: int) -> void:
-	var tab: int = view.type_tab[_type]
-	if tab < 0 or tab >= PlayerView.TABS or not memory.can_send():
-		return
-	var waiting: int = view.queue_count[tab]
-	for slot: int in waiting:
-		if view.queue_type[tab * view.queue_slots + slot] == _type:
-			alive += 1
-	if alive >= _layers_wanted or waiting >= view.queue_slots:
-		return
-	if memory.own_mobile_id.size() >= view.unit_cap:
-		return
-	if view.credits < view.type_cost[_type] + view.type_mine_cost[_type]:
-		return
-	var producer: bool = false
-	var need: bool = view.type_requires[_type] < 0
-	for id: int in memory.site_id:
-		var row: int = view.row_of(id)
-		if row < 0 or view.row_build_left(row) != 0:
-			continue
-		var type: int = view.row_type(row)
-		producer = producer or view.type_produces[type] == tab
-		need = need or type == view.type_requires[_type]
-	if not (producer and need):
-		return
-	out.append(Command.queue(view.player, _type))
-	memory.spent()
-	queued += 1
-
-
 ## Whether a wave is in the field (the sweeps and the legs wait for the lull before one).
+## TODO: the fifth copy of "a wave is marching" (`AiArmy`, `AiHold`, `AiStrikes`, `AiSearch`): a
+## follow-up shares one `AiMemory` function.
 func _wave_out(memory: AiMemory) -> bool:
 	return (
 		memory.squads_max > AiArmy.WAVE
@@ -219,6 +202,10 @@ func _route(view: PlayerView, memory: AiMemory) -> bool:
 	_dx = base.x - home.x
 	_dy = base.y - home.y
 	_len = maxi(absi(_dx), absi(_dy))
+	var now: Vector4i = Vector4i(_hx, _hy, base.x, base.y)
+	if now != _route_was:
+		_route_was = now
+		_blocked.clear()
 	return _len >= 2
 
 
@@ -240,6 +227,7 @@ func _near(tile: Vector2i) -> bool:
 
 
 ## One known enemy mine near the route that no layer is on: a free layer moves onto it.
+@warning_ignore("integer_division")
 func _sweep(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> bool:
 	for at: int in view.known_mines.size():
 		var cell: int = view.known_mines[at]
@@ -256,6 +244,7 @@ func _sweep(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) ->
 
 ## One mine laid on the next free cell of the own half of the route, while the own mines and the
 ## lays on their way are under the target and the cap and a mine is paid.
+@warning_ignore("integer_division")
 func _lay(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> bool:
 	var pending: int = 0
 	for duty: int in _job_duty:
@@ -277,16 +266,21 @@ func _lay(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> b
 
 
 ## The scout layer's next leg: the route's point past the own half, a leg further each time, as far
-## as three quarters of the way.
+## as `mine_scout_reach_percent` of the route. Once the legs are done (they start again after the
+## next wave) the layer goes back to the edge of the own half.
+@warning_ignore("integer_division")
 func _walk(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> void:
 	var along: int = _len / 2 + (_leg_count + 1) * _leg
-	if along > _len * 3 / 4:
+	var back: bool = along > _len * _reach_percent / 100
+	var tile: Vector2i = _at(_len / 2 if back else along)
+	var here: Vector2i = view.row_pos(view.row_of(id)) / PlayerView.MILLI_PER_TILE
+	if back and here == tile:
 		return
-	var tile: Vector2i = _at(along)
 	if _go(view, memory, out, id, tile, false):
 		_job(id, Duty.SCOUT, tile.y * view.map_cols + tile.x)
-		_leg_count += 1
-		legs += 1
+		if not back:
+			_leg_count += 1
+			legs += 1
 
 
 ## `LAY_MINE` (`lay`) or `MOVE` of the layer to the tile's centre, after the goal key. False,
@@ -294,10 +288,7 @@ func _walk(view: PlayerView, memory: AiMemory, out: Array[Command], id: int) -> 
 func _go(
 	view: PlayerView, memory: AiMemory, out: Array[Command], id: int, tile: Vector2i, lay: bool
 ) -> bool:
-	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
-	memory.release_owner(AiMemory.Owner.MINE)
 	if not memory.add_goal_key(tile.x, tile.y, AiMemory.class_of(view, _type), AiMemory.Owner.MINE):
-		memory.goal_restore(saved)
 		return false
 	var x: int = tile.x * PlayerView.MILLI_PER_TILE + PlayerView.TILE_CENTRE
 	var y: int = tile.y * PlayerView.MILLI_PER_TILE + PlayerView.TILE_CENTRE

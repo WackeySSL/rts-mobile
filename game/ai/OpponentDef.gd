@@ -72,6 +72,8 @@ const TIERS: int = 3
 @export var mine_spacing_tiles: int = 4
 @export var mine_sweep_reach_tiles: int = 4
 @export var mine_scout_leg_tiles: int = 8
+## How far along the route the scout layer walks, in percent of it (0 = no scouting).
+@export var mine_scout_reach_percent: int = 0
 ## The least enemy value a superweapon shot must hit (credits).
 @export var strike_min_value: int = 3000
 

@@ -30,6 +30,7 @@ mine_layer_type = &""
 mine_spacing_tiles = 4
 mine_sweep_reach_tiles = 4
 mine_scout_leg_tiles = 8
+mine_scout_reach_percent = 0
 ; Air and tech (P250) are off in the frozen arena: no type named, every weight 0.
 aa_type = &""
 fighter_type = &""

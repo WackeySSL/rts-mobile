@@ -29,6 +29,7 @@ mine_layer_type = &"renew_seeder"
 mine_spacing_tiles = 4
 mine_sweep_reach_tiles = 4
 mine_scout_leg_tiles = 8
+mine_scout_reach_percent = 75
 ; Starting values for the Phase 4b balance run (P250), no source yet.
 aa_type = &"renew_aa"
 fighter_type = &"renew_fighter"
