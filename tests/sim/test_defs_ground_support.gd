@@ -2,13 +2,13 @@ extends GdUnitTestSuite
 ## The ground carriers' and minelayers' data (plan row P290, ADR 0037 sections 7, 8 and 15,
 ## docs/GDD.md): per faction one carrier and one minelayer on the Vehicles tab, the two mines, the
 ## scout tanks' detection and the artillery on each opponent's `hold_types`. The carriers' roster
-## entries came with their art (P291); the minelayers' come with P292 and are not buildable yet.
+## entries came with their art (P291), the minelayers' with theirs (P292).
 ## The GDD gives the names, the carriers' cost, hit points, speed and seats, the mines' prices and
 ## blasts and the two sweep reaches. Starting values for the balance run, with no source in the GDD
 ## or the ADR: the minelayers' price, hit points, speed and armour class, the mines' damage and
 ## armour percents, and every build time, sight and radius. P291 removed the carriers' skips in
-## test_defs_roster, test_defs_roster_renew and test_defs_factions_data; P292 removes the
-## minelayers' and the is_false roster check below.
+## test_defs_roster, test_defs_roster_renew and test_defs_factions_data; P292 removed the
+## minelayers' and turned the roster check below to is_true.
 ## What the sim does with these fields is test_carry_*'s and test_mines*'s.
 
 const Rules: GDScript = preload("res://tests/sim/support/mine_rules.gd")
@@ -158,17 +158,12 @@ func test_each_opponent_holds_its_artillery() -> void:
 	assert_array(OpponentDef.new().hold_types).is_equal([&"artillery"])
 
 
-func test_the_carriers_are_in_the_rosters_and_the_minelayers_not_yet() -> void:
-	for id: String in CARRIERS.keys():
+func test_the_carriers_and_the_minelayers_are_in_the_rosters() -> void:
+	for id: String in CARRIERS.keys() + LAYERS.keys():
 		var def: UnitDef = _def(id)
 		var faction: FactionDef = load("res://data/factions/%s.tres" % def.faction)
-		# P291 added the roster entries with the art and the item cards.
+		# P291 and P292 added the roster entries with the art and the item cards.
 		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
-	for id: String in LAYERS.keys():
-		var def: UnitDef = _def(id)
-		var faction: FactionDef = load("res://data/factions/%s.tres" % def.faction)
-		# The roster entry comes with P292 (art, item card), as the anti-air's came with P239b.
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
 
 
 func _def(id: String) -> UnitDef:

@@ -2,8 +2,8 @@ extends GdUnitTestSuite
 ## P285 (ADR 0037 sections 7 and 8): the ground-support data rules of
 ## tests/sim/support/mine_rules.gd on built defs (one field per case, both sides of every boundary)
 ## and held against every shipped file, plus the script defaults of the new fields and rules. The
-## shipped data holds no layer or ejecting carrier yet, so the shipped checks only keep every file
-## inside the rules (and a blast on every weapon some file lays as a mine, once one does).
+## shipped data holds the minelayers and the ejecting carrier since P290, so the shipped checks keep
+## every file inside the rules (and a blast on every weapon some file lays as a mine).
 
 const Rules: GDScript = preload("res://tests/sim/support/mine_rules.gd")
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
@@ -176,7 +176,9 @@ func test_a_mine_weapon_file_is_held_to_the_strike_weapon_rules_one_at_a_time() 
 func test_a_weapon_id_belongs_to_one_file_across_guns_strikes_and_mines() -> void:
 	var layer: UnitDef = Rules.fine_layer()
 	layer.resource_path = "res://data/units/layer.tres"
-	layer.mine_weapon.resource_path = "res://data/weapons/shot_charge.tres"
+	# A path no shipped file has: the real shot_charge.tres is in the resource cache once a roster
+	# holds the Shot Truck (P292), and a second resource may not take its path.
+	layer.mine_weapon.resource_path = "res://data/weapons/test_mine_charge.tres"
 	var rifle: UnitDef = Rules.fine_unit()
 	rifle.resource_path = "res://data/units/rifle.tres"
 	rifle.weapon = WeaponDef.new()

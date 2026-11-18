@@ -44,6 +44,12 @@ const RING_RADIUS_MILLI: int = 600  ## A selection radius for the rings shown he
 const Z_SHADOW: int = 1  ## Shadows, then rings, then the hulls and what sits on them.
 const Z_RING: int = 2
 const Z_BODY: int = 3
+## The minelayers also show their faction's mine marks (plan row P292, STYLE.md "The minelayers"):
+## own and known enemy, in both triads, at zoom 0.75, 1 and 1.5. The marks' ground point.
+const MINE_MARK_FACTION: Dictionary[StringName, StringName] = {
+	&"fossil_shot_truck": &"fossil", &"renew_seeder": &"renew"
+}
+const MINE_MARK_STEP_PX: float = 104.0
 const DAMAGE_STAGES: int = 2  ## The stages a vehicle is shown at.
 ## The loose part's scale on every vehicle (STYLE.md "Damage overlays"; the scar's is `scar_milli`):
 ## an alias of the view's one constant, `VehicleDamage.LOOSE_SCALE`.
@@ -158,6 +164,11 @@ func _fill() -> void:
 		for ground: ColorRect in grounds:
 			damage_height = _damage_section(ground, model, layouts, box, top)
 		top += damage_height
+	if MINE_MARK_FACTION.has(model.art_id):
+		var marks_height: float = 0.0
+		for ground: ColorRect in grounds:
+			marks_height = _mine_marks(ground, MINE_MARK_FACTION[model.art_id], top)
+		top += marks_height
 	_content.custom_minimum_size = Vector2(0.0, maxf(top, get_viewport_rect().size.y))
 
 
@@ -240,6 +251,47 @@ func _damage_section(
 			)
 			zooms.append(1.0)
 		y = _flow(row, rigs, zooms, box, y, _slot_cap(box))
+	return y
+
+
+## The faction's two mine marks in each triad: a row of the own mark at three zooms, then the
+## known enemy mark at three zooms, a line per triad. Returns the height it took.
+func _mine_marks(ground: ColorRect, faction: StringName, top: float) -> float:
+	var row: Control = Control.new()
+	row.name = "MineMarks"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.anchor_left = 0.5
+	row.anchor_right = 0.5
+	row.offset_top = top
+	ground.add_child(row)
+	var title: Label = _label("Mine marks: own, then known, at zoom 0.75 / 1 / 1.5", HALF_WIDTH_PX)
+	title.position.x = -HALF_WIDTH_PX / 2.0
+	row.add_child(title)
+	var y: float = LABEL_PX
+	for triad: int in TRIADS.size():
+		var x: float = -HALF_WIDTH_PX / 2.0 + MINE_MARK_STEP_PX / 2.0
+		for kind: String in MineMarkArt.KINDS:
+			var art: IsoPlayerArt = IsoPlayerArt.make(
+				faction,
+				PackedStringArray(ArtPalette.KEYS[faction]),
+				PackedStringArray(TRIADS[triad])
+			)
+			var text: String = art.recolour(MineMarkArt.text(faction, kind))
+			for zoom: float in ZOOMS:
+				var scale_px: float = BASE_SCALE * zoom
+				var image: Image = Image.new()
+				image.load_svg_from_string(text, scale_px)
+				var sprite: Sprite2D = Sprite2D.new()
+				sprite.name = (
+					"%s%s%d" % [TRIAD_NAMES[triad], kind.capitalize(), roundi(zoom * 100.0)]
+				)
+				sprite.texture = ImageTexture.create_from_image(image)
+				sprite.centered = false
+				sprite.offset = -MineMarkArt.ORIGIN_PX * scale_px
+				sprite.position = Vector2(x, y + MineMarkArt.ORIGIN_PX.y)
+				row.add_child(sprite)
+				x += MINE_MARK_STEP_PX
+		y += MineMarkArt.ORIGIN_PX.y * 1.6 + LINE_GAP_PX
 	return y
 
 
