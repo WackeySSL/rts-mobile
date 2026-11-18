@@ -74,6 +74,16 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 					. override_failure_message("%s %s %s" % [path, ground, row_name])
 					. is_equal(want)
 				)
+			# The minelayers also show their faction's two mine marks in both triads at three zooms
+			# (P292): 2 triads x own and known x 3 zooms = 12 sprites; no other type has the row.
+			var marks_path: String = "Scroll/Content/%s/MineMarks" % ground
+			var layer: bool = model.art_id in [&"fossil_shot_truck", &"renew_seeder"]
+			assert_bool(page.has_node(marks_path)).override_failure_message(path).is_equal(layer)
+			if layer:
+				var sprites: Array[Node] = page.get_node(marks_path).get_children().filter(
+					func(node: Node) -> bool: return node is Sprite2D
+				)
+				assert_int(sprites.size()).override_failure_message(path).is_equal(12)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
 	assert_int(seen.size()).is_equal(44)  # 28 + the P236 to P292 types

@@ -558,27 +558,27 @@ the carriers in each faction's roster (Vehicles tab); each needs its faction's r
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_shot_truck` | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with orange band and stud standing beside it, and team bands down the bed rails. |
+| `fossil_shot_truck` | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with a team-colour band and stud standing beside it, and team bands down the bed rails. |
 | `renew_seeder` | A light blue-grey four-wheeled planter with a small glass-fronted cab and a team band on its flanks, behind the cab a tall hexagonal glass hopper on a graphite frame on a team-colour flange with a white cap and a mint light, and at the tail a jointed graphite planting arm that drops a white spike towards the ground. |
 
 - **Apart from the neighbours.** The Shot Truck is a flat bed with a mast and four cans on six wheels: no drum
   (the Tanker), no crew box (the Bunk Wagon), no turret. The Seeder is taller than the Linecar and has a hopper and
   an arm where the Linecar has a long glass roof, so it is neither it nor the Swift
   (`tests/art/test_minelayer_art.gd` holds each minelayer's 32 px greyscale silhouette under 0.85 overlap with every
-  ground vehicle of its faction, the carrier and the other minelayer). Measured at the default view: Shot Truck
-  0.59 to 0.70 (against the Bullhead, the Hammerhead, the Longbarrel, the Tanker and the Bunk Wagon) and 0.41
-  against the Seeder; Seeder 0.55 to 0.77 (against the Swift, the Torque, the Arc Gun, the Fuel Runner and the
+  ground vehicle of its faction, the carrier and the other minelayer). Measured at the default view, hulls only (turrets are not blended in the test): Shot Truck
+  0.59 to 0.70 (against the Flarejack, the Bullhead, the Mortar Rig, the Tanker and the Bunk Wagon) and 0.41
+  against the Seeder; Seeder 0.55 to 0.77 (against the Swift, the Torque, the Arcline, the Fuel Runner and the
   Linecar) and 0.41 against the Shot Truck.
 - **Team colour.** Shot Truck: a band round the cab, a band down each bed rail, one across the tail of the bed
   and a band and a stud on each of the four cans (a flat orange cap on a can read as a roof plate to
   `test_artgen_plates.gd`). Seeder: a band down each side of the cab and the deck, a nose band, a rear band and a flange
-  under the hopper. Team share of the default view at zoom 1: 11.6 % (Shot Truck, d06) and 9.0 % (Seeder, d10), in
+  under the hopper. Team share of the default view at zoom 1: 11.6 % (Shot Truck, default view d06) and 9.0 % (Seeder, d10), in
   the rule's 8 to 12 %; in every direction 10.3 to 13.5 % and 5.5 to 11.8 % (`test_minelayer_art.gd` holds 5 to 16
   %). A team ring round the hopper itself was tried and dropped: the draw order put it over the hopper in several
   directions and took the share to 16 to 18 %.
 - **Running gear and emitters.** `wheels` for both; an `exhaust` at the tail, a `damage` point on the load and a
   `hang` bracket on the camera side; `scar_milli` 500.
-- **Canvas.** Hull 190 x 138 and 152 x 106 (d06), shadow 230 x 118 and 206 x 106, in 2x px. Page 1 of the atlas
+- **Canvas.** Hull 190 x 138 and 152 x 106 (the default views d06 and d10), shadow 230 x 118 and 206 x 106, in 2x px. Page 1 of the atlas
   grows by 110, 119 and 94 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2582, 2526, 2435) and
   page 2 by 222, 122 and 100 (2486, 1386, 1386); both stay under the 3584 budget.
 - **Mine marks.** Four hand-written marks, 144 x 96 px at 2x with the ground point at (72, 60), in
@@ -587,13 +587,16 @@ the carriers in each faction's roster (Vehicles tab); each needs its faction's r
   reads the text). The Derrick League's **shot charge**: a squat steel can with a dark iron rim and a short orange
   cap (key light, mid, dark) on its lid, a contact shadow under it. The Lumen Accord's **pulse seed**: a flat white
   hexagonal plate with a team ring on it, a tall white hexagonal spike with a team tag and a mint light on the tip.
+  The ground point and the canvas are the constants of `game/view/MineMarkArt.gd` (`ORIGIN_PX`, `SIZE_PX`): the mine's base
+  centre and the rim's centre both sit on it.
   The own mark is the mine alone (the view draws it at half alpha until it is armed); the known enemy mark adds the
   **notched rim**, a ring of short dark dashes with a pale inner edge in no team colour, so the cue is colour-free
   and reads on grass and sand. At zoom 1 the can is 36 px and the seed plate 42 px wide, the ring 60 and 63 px
   (`tests/art/test_mine_marks.gd`: the triad, the key band, the rim's extra ink, the ground point on the body).
 - **Gallery.** The Iso page lists the two minelayers by themselves, with their item cards, and under their
   directions a "Mine marks" line of their faction's own and known mark at zoom 0.75, 1 and 1.5 in each triad on grass
-  and sand. The Hud page shows `glyph_mine` and `glyph_hold` in its Bar row.
+  and sand. The Hud page shows `glyph_mine` and `glyph_hold` in its Bar row; `glyph_home` sits in the Pause row because a row
+  holds ten glyphs at most between the corner buttons and the Bar row now has ten.
 
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
@@ -1758,9 +1761,10 @@ canvas edge, a two-line header with the shape line, untinted on the dark panel, 
   toggle (P294 and P299 place them on the command bar), drawn like `glyph_board`: white, grey edge, shade on the lower
   right facets, no seat, untinted on the panel, ink lifted 4 to 6 px to sit centred, in the same 128 px canvas.
   Mine is a squat round drum with a dark seam round its side and a fat block arrow pointing down at its lid; Hold is a
-  crested shield (a centre peak between two low shoulders, a pointed foot) with two fat dark upright bars cut into its
-  face. They are not the cracked shield of `glyph_defeat` (a broad shield split by a crack, no bars) and not the
-  pause bars of a media button, which this game does not use; the arrow does not point right as `glyph_board`'s does.
+  peaked shield (a centre peak between two low shoulders, a pointed foot) with a dark downward stake driven into a
+  long dark ground bar in its face: a unit planted where it stands. It has no pair of upright bars, which next to the
+  Resume triangle and the Stop square would read as a media Pause. They are not the cracked shield of `glyph_defeat`
+  (a broad shield split by a crack, no stake) and the arrow does not point right as `glyph_board`'s does.
   Both are at least 29 from every glyph of the HUD group at 32 px (`test_hud_v2_glyphs.gd`).
 - `glyph_unload_mark`, the chevron that marks the Unload ground point (`touch-ui-rules`): the twelfth
   map glyph, two stacked chevrons pointing straight down on the offline glyph's plate, tinted amber
@@ -1778,7 +1782,7 @@ Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64
 section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
 48 dp, a glyph on the map 32 dp, and the under-attack arrow at least 48 dp. The gallery shows the
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
-its Hud page shows the corner HUD's eighteen at 48, 32 and 24 dp.
+its Hud page shows the corner HUD's twenty-one at 48, 32 and 24 dp.
 
 **Map glyphs sit on a seat (new).** The twelve glyphs that are drawn over the map, the six
 `glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_repair_map`, `glyph_unload_mark`, `glyph_construct` and `glyph_under_attack`, carry their
@@ -1855,7 +1859,7 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_board.svg` | A small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four wheels with a chamfered nose and a dark doorway cut into the side that faces the figure. |
 | `glyph_unload.svg` | A boxy carrier on four wheels at the left with a chamfered nose and a dark doorway on its right side showing two white heads, a fat block arrow pointing right out of it, a small round-headed figure at the right. |
 | `glyph_mine.svg` | A squat round drum seen from the side and above, a flat oval lid and a dark seam round its side, with a fat block arrow pointing down at the lid from above. |
-| `glyph_hold.svg` | A crested shield, its top edge rising to a centre peak between two low shoulders and its foot pointed, a grey shaded foot, and two fat upright bars side by side cut dark into its face. |
+| `glyph_hold.svg` | A peaked shield, its top edge rising to a centre peak between two low shoulders and its foot pointed, a grey shaded foot, and in its face a dark downward stake driven into a long dark ground bar. |
 | `glyph_home.svg` | A house: a wide pitched roof over a boxy body with a dark doorway, a grey right flank on the roof and the wall. |
 | `glyph_unload_mark.svg` | Two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
@@ -1967,9 +1971,9 @@ in doubt, choose a plainer real-world form.
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
 | Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
 | Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
-| Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with orange band and stud beside it and team bands on the cab and the bed rails. |
-| Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. |
-| Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. |
+| Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with a team-colour band and stud beside it and team bands on the cab and the bed rails. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
+| Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
+| Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. | `svg/marks/mine_<faction>_<own\|known>.svg`, 144x96, ground point (72, 60), Keep File |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |
@@ -2795,13 +2799,13 @@ by `art_gallery_icons.gd`, P308) and start hidden, so the Units page is as it wa
   the corner buttons at 1280 wide, then on one line `Panels` (Collapse, Chevron, Alert, Construct)
   and `Beside`, eight glyphs they stand next to (Build, the pin and the pin off, the check mark, the
   cross, the warning triangle, the coin and the bolt), each at 48 dp with its name under it and
-  tinted as the HUD tints it. Then `Small32` and `Small24`, the eighteen new glyphs again at 32 and
+  tinted as the HUD tints it. Then `Small32` and `Small24`, the twenty-one new glyphs again at 32 and
   24 dp (the smallest sizes of a HUD glyph), and `Sites`: the Derrick League's Heavy Yard on grass
   and the Lumen Accord's Motor Hall on sand at zoom 1, each with the construction badge and the
   offline glyph side by side over its body at 32 dp, and a line that says so. A glyph is a
   `TextureRect` named by its file in PascalCase (`GlyphDeselect`) and its name a `Label`
   (`LabelDeselect`). Everything is clear of the two corner buttons and of every other thing at
-  1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the eighteen look like
+  1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the twenty-one look like
   one family with the older glyphs, and whether the badge holds on the white ceramic of the Motor
   Hall and on the concrete of the Heavy Yard.
 - **Life** (the eighth page, plan row P135, built by `art_gallery_life.gd` on first show, "Life
@@ -3053,7 +3057,7 @@ Renaming a unit or a unit type is a data change, not a reskin.
   (172.5, 151.9, 138.0; sand 185, grass 126), so every check of `tests/art` holds ("Fields", gas
   crust). (3) The full oil lake (30 at 32 px now, nearly black) **stays**, and (4) the crater
   **stays** 3 tiles across at scale 1; neither is changed.
-- **HUD v2 glyphs (P118g, asked 2026-11-02).** The eighteen new glyphs (fourteen of P118g, two of P273, two of P265a) are on the gallery's Hud page.
+- **HUD v2 glyphs (P118g, asked 2026-11-02).** The twenty-one new glyphs (fourteen of P118g, two of P273, three of P265a and P244, two of P292) are on the gallery's Hud page.
   To judge on the phone: do they read as one family with the older glyphs; does `glyph_deselect`
   (the flat selection ring cut by a slash) say "clear the selection" and not "forbidden"; does
   `glyph_all_army` (a soldier before a tank) say "every fighting unit"; and does the crane on

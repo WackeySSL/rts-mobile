@@ -49,9 +49,6 @@ const Z_BODY: int = 3
 const MINE_MARK_FACTION: Dictionary[StringName, StringName] = {
 	&"fossil_shot_truck": &"fossil", &"renew_seeder": &"renew"
 }
-const MINE_MARK_ART: String = "res://assets/art/svg/marks/mine_%s_%s.svg"
-const MINE_MARK_KINDS: Array[String] = ["own", "known"]
-const MINE_MARK_ORIGIN_PX: Vector2 = Vector2(72.0, 60.0)
 const MINE_MARK_STEP_PX: float = 104.0
 const DAMAGE_STAGES: int = 2  ## The stages a vehicle is shown at.
 ## The loose part's scale on every vehicle (STYLE.md "Damage overlays"; the scar's is `scar_milli`):
@@ -257,8 +254,6 @@ func _damage_section(
 	return y
 
 
-## The widest slot of a direction row that keeps eight to a line and the first and last rig, which
-## reach past their slots, on the ground.
 ## The faction's two mine marks in each triad: a row of the own mark at three zooms, then the
 ## known enemy mark at three zooms, a line per triad. Returns the height it took.
 func _mine_marks(ground: ColorRect, faction: StringName, top: float) -> float:
@@ -275,10 +270,13 @@ func _mine_marks(ground: ColorRect, faction: StringName, top: float) -> float:
 	var y: float = LABEL_PX
 	for triad: int in TRIADS.size():
 		var x: float = -HALF_WIDTH_PX / 2.0 + MINE_MARK_STEP_PX / 2.0
-		for kind: String in MINE_MARK_KINDS:
-			var text: String = FileAccess.get_file_as_string(MINE_MARK_ART % [faction, kind])
-			for tone: int in 3:
-				text = text.replace(ArtPalette.KEYS[faction][tone], TRIADS[triad][tone])
+		for kind: String in MineMarkArt.KINDS:
+			var art: IsoPlayerArt = IsoPlayerArt.make(
+				faction,
+				PackedStringArray(ArtPalette.KEYS[faction]),
+				PackedStringArray(TRIADS[triad])
+			)
+			var text: String = art.recolour(MineMarkArt.text(faction, kind))
 			for zoom: float in ZOOMS:
 				var scale_px: float = BASE_SCALE * zoom
 				var image: Image = Image.new()
@@ -289,14 +287,16 @@ func _mine_marks(ground: ColorRect, faction: StringName, top: float) -> float:
 				)
 				sprite.texture = ImageTexture.create_from_image(image)
 				sprite.centered = false
-				sprite.offset = -MINE_MARK_ORIGIN_PX * scale_px
-				sprite.position = Vector2(x, y + MINE_MARK_ORIGIN_PX.y)
+				sprite.offset = -MineMarkArt.ORIGIN_PX * scale_px
+				sprite.position = Vector2(x, y + MineMarkArt.ORIGIN_PX.y)
 				row.add_child(sprite)
 				x += MINE_MARK_STEP_PX
-		y += MINE_MARK_ORIGIN_PX.y * 1.6 + LINE_GAP_PX
+		y += MineMarkArt.ORIGIN_PX.y * 1.6 + LINE_GAP_PX
 	return y
 
 
+## The widest slot of a direction row that keeps eight to a line and the first and last rig, which
+## reach past their slots, on the ground.
 func _slot_cap(box: Rect2) -> float:
 	var usable: float = (
 		HALF_WIDTH_PX - 16.0 - (PER_LINE - 1) * SLOT_GAP_PX - box.size.x * BASE_SCALE

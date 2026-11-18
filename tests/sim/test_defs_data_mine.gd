@@ -2,8 +2,8 @@ extends GdUnitTestSuite
 ## P285 (ADR 0037 sections 7 and 8): the ground-support data rules of
 ## tests/sim/support/mine_rules.gd on built defs (one field per case, both sides of every boundary)
 ## and held against every shipped file, plus the script defaults of the new fields and rules. The
-## shipped data holds no layer or ejecting carrier yet, so the shipped checks only keep every file
-## inside the rules (and a blast on every weapon some file lays as a mine, once one does).
+## shipped data holds the minelayers and the ejecting carrier since P290, so the shipped checks keep
+## every file inside the rules (and a blast on every weapon some file lays as a mine).
 
 const Rules: GDScript = preload("res://tests/sim/support/mine_rules.gd")
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")

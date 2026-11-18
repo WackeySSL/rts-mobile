@@ -182,9 +182,9 @@ func test_the_unload_glyph_is_a_carrier_with_a_ramp_and_two_figures() -> void:
 
 
 ## ADR 0037 (P292): Mine is a drum under a down arrow (arrow shaft and lid inked on the centre line,
-## the lid's rim wide, the corners empty); Hold is a shield with two dark bars and a light gap
-## between them.
-func test_the_mine_glyph_is_a_drum_under_an_arrow_and_the_hold_glyph_a_shield_with_two_bars(
+## the lid's rim wide, the corners empty); Hold is a shield with a dark downward stake over a dark
+## ground bar, no pair of bars.
+func test_the_mine_glyph_is_a_drum_under_an_arrow_and_the_hold_glyph_a_shield_with_a_stake(
 ) -> void:
 	var mine: Image = _image("glyph_mine")
 	_assert_light(mine, [Vector2i(64, 24), Vector2i(34, 88)])
@@ -195,8 +195,12 @@ func test_the_mine_glyph_is_a_drum_under_an_arrow_and_the_hold_glyph_a_shield_wi
 		mine, [Vector2i(8, 8), Vector2i(120, 8), Vector2i(8, 120), Vector2i(120, 120)], false
 	)
 	var hold: Image = _image("glyph_hold")
-	_assert_dark(hold, [Vector2i(48, 60), Vector2i(80, 60)])
-	_assert_light(hold, [Vector2i(64, 60), Vector2i(34, 40)])
+	_assert_dark(hold, [Vector2i(64, 50), Vector2i(50, 86), Vector2i(78, 86)])
+	_assert_light(hold, [Vector2i(36, 60), Vector2i(92, 60), Vector2i(34, 40)])
+	# no pair of upright bars (the media Pause): the middle of the shield above the stake's
+	# point is one dark mass, and the strip left and right of it is white at every height
+	for y: int in [48, 56, 64]:
+		_assert_light(hold, [Vector2i(30, y)])
 	_assert_ink(hold, [Vector2i(64, 100), Vector2i(64, 14)], true)
 	_assert_ink(
 		hold, [Vector2i(8, 8), Vector2i(120, 8), Vector2i(8, 120), Vector2i(120, 120)], false

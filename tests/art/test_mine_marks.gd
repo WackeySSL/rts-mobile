@@ -7,7 +7,7 @@ extends GdUnitTestSuite
 ## the faction's triad present, no other colour in the faction's key band, and the known mark
 ## carries the notched rim the own one has not. P293's `MineLayer` draws them.
 
-const DIR: String = "res://assets/art/svg/marks/mine_%s_%s.svg"
+const DIR: String = MineMarkArt.PATH
 const FACTIONS: Array[String] = ["fossil", "renew"]
 const KINDS: Array[String] = ["own", "known"]
 const KEYS: Dictionary[String, Array] = {
@@ -85,6 +85,16 @@ func test_the_known_mark_has_the_notched_rim_the_own_mark_has_not() -> void:
 		var known: String = FileAccess.get_file_as_string(DIR % [faction, "known"])
 		assert_bool(own.contains("stroke-dasharray")).is_false()
 		assert_bool(known.contains("stroke-dasharray")).is_true()
+		# The rim is colour-free (the enemy cue of ADR 0037 section 8): no dashed stroke is a key
+		# colour of either faction.
+		var dashed: RegEx = RegEx.create_from_string(
+			'<ellipse[^>]*stroke="(#[0-9A-Fa-f]{6})"[^>]*dasharray'
+		)
+		var rims: Array[RegExMatch] = dashed.search_all(known)
+		assert_int(rims.size()).is_equal(2)
+		for rim: RegExMatch in rims:
+			for key_faction: String in FACTIONS:
+				assert_bool(KEYS[key_faction].has(rim.get_string(1).to_upper())).is_false()
 		var own_ink: int = _ink(own)
 		var known_ink: int = _ink(known)
 		(
@@ -117,6 +127,23 @@ func test_the_own_marks_stand_on_the_ground_point_inside_the_canvas_and_read_at_
 			assert_int(box.end.y).override_failure_message(label).is_less(image.get_height())
 			# The ground point (72, 60) at 2x is (36, 30) at zoom 1: it is on the mark's body.
 			assert_float(image.get_pixel(36, 30).a).override_failure_message(label).is_greater(0.5)
+
+
+func test_the_known_rim_is_centred_on_the_ground_point_and_the_canvas_is_the_shared_one() -> void:
+	for faction: String in FACTIONS:
+		var known: String = FileAccess.get_file_as_string(DIR % [faction, "known"])
+		assert_str(known).contains(
+			'width="%d" height="%d"' % [MineMarkArt.SIZE_PX.x, MineMarkArt.SIZE_PX.y]
+		)
+		# The art is drawn at 1x and scaled by 1.5: the rim's centre times 1.5 is the point.
+		var centre: RegEx = RegEx.create_from_string('<ellipse cx="([0-9.]+)" cy="([0-9.]+)"')
+		var found: RegExMatch = centre.search(known)
+		(
+			assert_vector(
+				Vector2(found.get_string(1).to_float(), found.get_string(2).to_float()) * 1.5
+			)
+			. is_equal(MineMarkArt.ORIGIN_PX)
+		)
 
 
 func _raster(text: String) -> Image:

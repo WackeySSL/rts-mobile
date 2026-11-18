@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"fossil_shot_truck"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Shot Truck: a low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with an orange band and stud standing beside it, and team bands down the bed rails."
+silhouette = "Shot Truck: a low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with a team-colour band and stud standing beside it, and team bands down the bed rails."
 prims = PackedStringArray(
 "box hull iron -0.12 0 0.08 1.5 0.4 0.08",
 "prism hull iron 0.45 -0.3 0 0.24 0.1 0.24 axis=y sides=10",

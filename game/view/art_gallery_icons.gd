@@ -40,7 +40,7 @@ const HUD_GLYPHS: Array[String] = [
 const EMBLEMS: Array[String] = ["glyph_victory", "glyph_defeat", "glyph_draw"]
 ## The build menu's own glyphs (ADR 0024): the Build button's, and the pin, pinned and not.
 const MENU_GLYPHS: Array[String] = ["glyph_menu_open", "glyph_pin", "glyph_pin_off"]
-## The Hud page's rows (STYLE.md): the eighteen glyphs of ADR 0025, 0026 and 0037 by
+## The Hud page's rows (STYLE.md): the twenty-one glyphs of ADR 0025, 0026, 0036 and 0037 by
 ## the part of the HUD that uses them, then the existing glyphs they stand beside, at 48 dp.
 const HUD_V2_ROWS: Dictionary[String, Array] = {
 	"Bar":
@@ -244,7 +244,7 @@ static func _icons_half(
 
 
 ## The Hud page (plan row P118g): the HUD panel's backdrop over the whole page, the rows of
-## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the eighteen new glyphs again at
+## `HUD_V2_ROWS` at 48 dp with the name of each glyph under it, the twenty-one new glyphs again at
 ## each of `HUD_SMALL_DP`, and each faction's vehicle factory with the construction badge and the
 ## offline glyph over it, where a site's badge is seen. Every row is centred, so the page fits at
 ## any base width from 1280.
