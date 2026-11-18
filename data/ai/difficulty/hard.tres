@@ -33,5 +33,7 @@ repair_wave_retreat = 1
 aa_per_seen_aircraft = 1
 aa_max = 4
 research_floor = 250
+; Starting values for the Phase 4b balance run (P250b), no source yet.
+tech_army_value_min = 5000
 commands_per_think_max = 12
 income_percent = 100

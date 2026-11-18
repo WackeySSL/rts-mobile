@@ -118,6 +118,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	if memory.squads_max < 1:
 		return
 	_join(memory)
+	_refresh_value(view, memory)
 	_stage(view, memory, out)
 	_step_back(view, memory, out)
 	var threat: int = _threat(view, memory)
@@ -843,6 +844,20 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 	if _wave_units > 0:
 		@warning_ignore("integer_division")
 		_wave_at = sum / _wave_units
+
+
+## `memory.army_value`: the value of the members of the home and the wave squad now (cost scaled by
+## hp), on every ARMY think, whatever the launch path does (the tech gate reads it, P250b).
+func _refresh_value(view: PlayerView, memory: AiMemory) -> void:
+	var value: int = 0
+	for at: int in memory.member_id.size():
+		var squad: int = memory.member_squad[at]
+		if squad != HOME and squad != WAVE:
+			continue
+		var row: int = view.row_of(memory.member_id[at])
+		if row >= 0:
+			value += AiIntel.value_at(view, view.row_type(row), view.row_hp(row))
+	memory.army_value = value
 
 
 ## Moves every member of squad `from` to squad `to`.
