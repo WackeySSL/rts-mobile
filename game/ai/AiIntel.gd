@@ -19,6 +19,10 @@ const TRACKED: int = AiMemory.TRACKED
 
 ## The id that no row has, larger than every real id.
 const NO_ID: int = 0x7FFFFFFF
+## The bits of `_air`.
+const AIR_BIT: int = 1
+const LOW_BIT: int = 2
+const AA_BIT: int = 4
 
 ## Copied from the defs when the manager is made.
 var hq_type: StringName = &""
@@ -47,6 +51,9 @@ var _counts: PackedInt32Array = PackedInt32Array()
 var _seen_now: PackedInt32Array = PackedInt32Array()
 ## Per type, 1 when it is a combat unit (`DummyDefence.is_combat`).
 var _combat: PackedByteArray = PackedByteArray()
+## Per type, the air bits: `AIR_BIT` an aircraft, `LOW_BIT` a drone squad, `AA_BIT` a weapon that
+## hits the air layers (P250).
+var _air: PackedByteArray = PackedByteArray()
 var _best: Vector2i = Vector2i(-1, -1)
 var _best_distance: int = -1
 var _best_id: int = 0
@@ -111,6 +118,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 	var costs: PackedInt32Array = view.type_cost
 	var max_hps: PackedInt32Array = view.type_max_hp
 	var combat: PackedByteArray = _combat
+	var air: PackedByteArray = _air
 	var per: int = PlayerView.MILLI_PER_TILE
 	var col_last: int = maxi(_map_cols - 1, 0)
 	var line_last: int = maxi(_map_rows - 1, 0)
@@ -138,7 +146,7 @@ func refresh(view: PlayerView, memory: AiMemory) -> void:
 				hq_id = id
 				memory.home_x = maxi(pos_x, 0) / per
 				memory.home_y = maxi(pos_y, 0) / per
-		elif combat[type] != 0 and type != scout:
+		elif combat[type] != 0 and type != scout and air[type] & AIR_BIT == 0:
 			memory.unit_id.append(ids[row])
 			memory.unit_hp.append(hps[row])
 	passes += 1
@@ -252,14 +260,26 @@ func _sight(view: PlayerView, memory: AiMemory, home: Vector2i) -> Vector2i:
 		_counts[type] += 1
 		if is_producer(view, type):
 			_offer(_tile(view.ghost_pos(record)), view.ghost_id[record], from)
+	var air: int = 0
+	var low: int = 0
+	var anti: int = 0
 	for type: int in _counts.size():
-		if _counts[type] == 0:
+		var count: int = _counts[type]
+		if count == 0:
 			continue
+		var bits: int = _air[type]
+		air += count if bits & AIR_BIT != 0 else 0
+		low += count if bits & LOW_BIT != 0 else 0
+		anti += count if bits & AA_BIT != 0 else 0
 		memory.seen_count[type] = _counts[type]
 		if memory.seen_first_tick[type] == AiMemory.NONE:
 			memory.seen_first_tick[type] = view.tick
 		if _seen_now[type] > 0:
 			memory.seen_last_tick[type] = view.tick
+	memory.seen_air = air
+	memory.seen_low_air = low
+	memory.seen_aa = anti
+	memory.seen_air_peak = maxi(memory.seen_air_peak, air)
 	return _best
 
 
@@ -522,8 +542,23 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 		_seen_now.resize(types)
 	if _combat.size() != types:
 		_combat.resize(types)
+		_air.resize(types)
 		for type: int in types:
 			_combat[type] = 1 if DummyDefence.is_combat(view, type) else 0
+			_air[type] = _air_bits(view, type)
+
+
+## The `_air` bits of `type`: its layer and whether its weapon may hit the air layers.
+static func _air_bits(view: PlayerView, type: int) -> int:
+	var bits: int = 0
+	var layer: int = _entry(view.type_layer_bit, type)
+	if layer == PlayerView.Layer.AIR:
+		bits |= AIR_BIT
+	elif layer == PlayerView.Layer.LOW_AIR:
+		bits |= LOW_BIT
+	if AiEnemyScan.hit_mask(view, type) & (PlayerView.Layer.AIR | PlayerView.Layer.LOW_AIR) != 0:
+		bits |= AA_BIT
+	return bits
 
 
 func _blocks(side: int) -> int:

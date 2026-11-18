@@ -27,6 +27,18 @@ const TIERS: int = 3
 @export var hold_types: Array[StringName] = [&"artillery"]
 @export var defence_type: StringName = &"defence_turret"
 @export var strike_type: StringName = &"fossil_strike"
+## The air and tech types (ADR 0036 section 14, plan row P250): the anti-air building the economy
+## builds against seen aircraft, and the two aircraft the production draws from. An empty id or a
+## type the roster lacks turns that part off.
+@export var aa_type: StringName = &""
+@export var fighter_type: StringName = &""
+@export var bomber_type: StringName = &""
+## The weights of the aircraft draw, flat `tier * 2 + (0 bomber, 1 fighter)`. `fighter_seen_weight`
+## adds to the fighter's weight for each enemy aircraft the AI has seen at once (its most). These
+## default to off (no type, weight 0) like the level's air fields, so a def that names none (the
+## `perf_ai` frozen files) plays as before; the shipped files set them.
+@export var air_weights: PackedInt32Array = PackedInt32Array([0, 0, 0, 0, 0, 0])
+@export var fighter_seen_weight: int = 0
 ## The weights of the draw among the roles whose type can be queued, flat: `tier * ROLES + role`.
 ## Artillery needs the radar, which the weak tier never builds, so its weight there is 0.
 @export var role_weights: PackedInt32Array = PackedInt32Array(
@@ -59,6 +71,13 @@ const TIERS: int = 3
 func _init() -> void:
 	think_period = 5
 	think_tick = 6
+
+
+## The weight of the aircraft draw at `tier`: `fighter` picks the fighter's, else the bomber's; 0
+## outside the table.
+func air_weight(tier: int, fighter: bool) -> int:
+	var at: int = tier * 2 + (1 if fighter else 0)
+	return air_weights[at] if tier >= 0 and tier < TIERS and at < air_weights.size() else 0
 
 
 ## The weight of `role` at `tier`; 0 outside the table.

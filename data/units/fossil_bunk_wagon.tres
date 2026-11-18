@@ -4,7 +4,7 @@
 
 ; The Derrick League's ground carrier (ADR 0037 section 7, GDD): tracked, heavy, 1.0 tiles/s, 700 hp,
 ; 4 squad seats, cost 700; its squads keep half their hp when it dies. Build time, sight and radii
-; are starting values for the balance run. Not in the roster until its art (P291).
+; are starting values for the balance run.
 [resource]
 script = ExtResource("1_unit")
 type_id = &"fossil_bunk_wagon"

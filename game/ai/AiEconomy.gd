@@ -15,6 +15,13 @@ extends RefCounted
 ## left after the think's spending and the economy's hold are above `mend_floor` (a building of
 ## price 0, the Headquarters, goes on whatever they are). It never switches off: `Mend.run` skips a
 ## period it cannot pay and ends the repair at full hp. The census pass picks the candidates.
+## Anti-air (ADR 0036 section 14, plan row P250): while `AiMemory.seen_air_peak` aircraft have been
+## seen at once, a wish of the anti-air building comes first, one per `aa_per_seen_aircraft` of them
+## up to `aa_max`, whenever it can be queued (the order's own steps give way only then).
+## The tech gate (P250b): while the own army's value is under `tech_army_value_min`, the first
+## missing order step that is a tech building (found by its role: pads, a research or flight
+## producer, a map sweep) is not wished, and the steps after it wait for it; the anti-air wish and
+## the loop go on.
 ## Production spends `maxi(view.credits - reserve_credits, 0)`. Every Command checks `can_send`,
 ## then `spent`.
 
@@ -22,6 +29,8 @@ extends RefCounted
 const _NO_FACTION: int = -2
 ## A type the roster lacks.
 const _NONE: int = PlayerView.MISSING
+## `Strike.Kind.REVEAL`, the map sweep of the space centre (a test pins it).
+const _REVEAL_KIND: int = 3
 
 ## Passes over the view's own rows the last run made (`OpponentAi` adds it to `work`).
 var passes: int = 0
@@ -33,6 +42,15 @@ var _player: int = 0
 var _hq_id: StringName = &""
 var _harvester_id: StringName = &""
 var _defence_id: StringName = &""
+var _aa_id: StringName = &""
+var _aa_per: int = 0
+var _aa_max: int = 0
+var _tech_min: int = 0
+## Per type, 1 for a tech building, and the own army's value as of this run.
+var _tech: PackedByteArray = PackedByteArray()
+var _army_value: int = 0
+## The most aircraft seen at once, as of this run (`AiMemory.seen_air_peak`).
+var _air_peak: int = 0
 var _steps: Array[StringName] = []
 var _queue_target: int = 0
 var _stride: int = 1
@@ -64,6 +82,7 @@ var _defence_type: int = _NONE
 var _power_type: int = _NONE
 var _refinery_type: int = _NONE
 var _factory_type: int = _NONE
+var _aa_type: int = _NONE
 
 ## Read off the view by each run, used only inside it (`_have`: owned and queued per type).
 var _owned: PackedInt32Array = PackedInt32Array()
@@ -95,6 +114,10 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	economy._hq_id = def.hq_type
 	economy._harvester_id = def.harvester_type
 	economy._defence_id = def.defence_type
+	economy._aa_id = def.aa_type
+	economy._aa_per = maxi(level.aa_per_seen_aircraft, 0)
+	economy._aa_max = maxi(level.aa_max, 0)
+	economy._tech_min = maxi(level.tech_army_value_min, 0)
 	if tier < def.build_orders.size() and def.build_orders[tier] != null:
 		economy._steps = def.build_orders[tier].steps.duplicate()
 	if level.uses_strike == 0:
@@ -121,6 +144,8 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	_hold = 0
 	_spent = 0
 	_mend_on.clear()
+	_air_peak = memory.seen_air_peak
+	_army_value = memory.army_value
 	_resolve(view)
 	if not _take_census(view):
 		memory.reserve_credits = 0
@@ -141,6 +166,10 @@ func _resolve(view: PlayerView) -> void:
 	_hq_type = view.type_index_of(_hq_id)
 	_harvester_type = view.type_index_of(_harvester_id)
 	_defence_type = view.type_index_of(_defence_id)
+	if _aa_per > 0 and _aa_id != &"":
+		_aa_type = view.type_index_of(_aa_id)
+	if _tech_min > 0:
+		_find_tech(view)
 	for id: StringName in _steps:
 		var type: int = view.type_index_of(id)
 		if type != _NONE and view.type_tab[type] >= 0:
@@ -160,6 +189,23 @@ func _resolve(view: PlayerView) -> void:
 			_refinery_type = type
 		if view.type_produces[type] == PlayerView.Tab.VEHICLES and _factory_type == _NONE:
 			_factory_type = type
+
+
+## `_tech`: a building that produces the FLIGHT (an airfield) or RESEARCH tab, or sweeps the map.
+func _find_tech(view: PlayerView) -> void:
+	_tech.resize(view.type_cost.size())
+	for type: int in _tech.size():
+		var tab: int = view.type_produces[type]
+		_tech[type] = int(
+			(
+				view.type_foot_w[type] > 0
+				and (
+					tab == PlayerView.Tab.FLIGHT
+					or tab == PlayerView.Tab.RESEARCH
+					or view.type_strike_kind[type] == _REVEAL_KIND
+				)
+			)
+		)
 
 
 ## The faction's repair building (found by its role, so none before its art), put into the order
@@ -451,7 +497,9 @@ func _next(view: PlayerView, room: int) -> int:
 ## first need of the loop, and a power plant instead of a consumer that would leave the surplus
 ## under the margin.
 func _wanted(view: PlayerView) -> int:
-	var wish: int = _first_missing()
+	var wish: int = _aa_need(view)
+	if wish < 0:
+		wish = _first_missing()
 	if wish < 0:
 		wish = _loop_need()
 	if wish < 0:
@@ -465,6 +513,16 @@ func _wanted(view: PlayerView) -> int:
 	return wish
 
 
+## The anti-air building while fewer stand (owned or queued) than the aircraft seen call for and it
+## can be queued now, else -1 (a missing requirement leaves the order's own wish alone).
+@warning_ignore("integer_division")
+func _aa_need(view: PlayerView) -> int:
+	if _aa_type == _NONE or _air_peak <= 0:
+		return -1
+	var wanted: int = mini((_air_peak + _aa_per - 1) / _aa_per, _aa_max)
+	return _aa_type if _have[_aa_type] < wanted and _buildable(view, _aa_type) else -1
+
+
 ## The first step of the order that the player has fewer of (owned or queued) than the list has.
 func _first_missing() -> int:
 	var counted: PackedInt32Array = PackedInt32Array()
@@ -472,7 +530,8 @@ func _first_missing() -> int:
 	for type: int in _order:
 		counted[type] += 1
 		if _have[type] < counted[type]:
-			return type
+			var gated: bool = _tech_min > 0 and _tech[type] == 1 and _army_value < _tech_min
+			return -1 if gated else type
 	return -1
 
 

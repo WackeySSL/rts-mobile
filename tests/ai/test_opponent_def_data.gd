@@ -16,8 +16,19 @@ const TIER_NAMES: Array[String] = ["weak", "standard", "strong"]
 ## The fields that are off by default, with their script defaults (P274): the frozen arena's level
 ## files name none of them, so they play as before; the shipped files turn them on.
 const _OFF_BY_DEFAULT: Dictionary[String, int] = {
-	"mend_below_percent": 0, "mend_floor": 0, "repair_retreat_percent": 0, "medic_per_squads": 0
+	"mend_below_percent": 0,
+	"mend_floor": 0,
+	"repair_retreat_percent": 0,
+	"medic_per_squads": 0,
+	"aa_per_seen_aircraft": 0,
+	"aa_max": 0,
+	"research_floor": 0,
+	"tech_army_value_min": 0,
+	"hold_in_waves": 0,
 }
+const _AIR_FIELDS: Array[String] = [
+	"aa_type", "fighter_type", "bomber_type", "air_weights", "fighter_seen_weight"
+]
 ## ADR 0030 section 6's table (its two mend rows from P274, ADR 0037 section 4): per level, in the
 ## field order of `_LEVEL_FIELDS`.
 const _LEVEL_FIELDS: Array[String] = [
@@ -151,7 +162,16 @@ func test_the_off_by_default_fields_default_off_and_normals_file_turns_them_on()
 
 
 func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:
-	_assert_defaults_equal(OpponentDef.new(), Rig.def_of("fossil"), ["id", "build_orders"])
+	# The air and tech fields default off (P250), so the frozen `perf_ai` files play as before.
+	var skip: Array[String] = ["id", "build_orders"]
+	skip.append_array(_AIR_FIELDS)
+	_assert_defaults_equal(OpponentDef.new(), Rig.def_of("fossil"), skip)
+	var fresh: OpponentDef = OpponentDef.new()
+	assert_array([fresh.aa_type, fresh.fighter_type, fresh.bomber_type]).is_equal([&"", &"", &""])
+	assert_array(Array(fresh.air_weights)).is_equal([0, 0, 0, 0, 0, 0])
+	assert_int(fresh.fighter_seen_weight).is_equal(0)
+	for faction: String in Rig.FACTIONS:
+		assert_bool(Rig.def_of(faction).aa_type != &"").is_true()
 
 
 func test_the_opponent_files_hold_the_numbers_of_the_adr(
