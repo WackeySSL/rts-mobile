@@ -546,6 +546,14 @@ of which about 120 are C++.
     cells and owners); a test pins that `game/view`, `game/ui` and `game/input` name no raw mine
     column. P293's acceptance reads "an unknown enemy mine is in no list `mines_for` gives".
 
+- Note (2026-11-18, P293, as built; changes no accepted text above except where the View bullet puts
+  the burst in `MineLayer`): `MineLayer` draws the marks and the scorch in one `_draw` at z 3 (the
+  scorch is the crater art of `DecalLayer`, in the layer's own atlas with the marks), and the blast's
+  burst is `EffectsLayer`'s (z 50, a `BURST` of its ring from `MINE_BLAST`, where the local player
+  sees the cell), so it draws over the vehicle that set the mine off. A record on a cell the player
+  does not see is dimmed by the fog layer (z 4) above it, not by a tint of its own. The snapshot
+  copies `weapon_blast_milli` for both.
+
 ### 9. Touch: how the new gestures fit (touch-ui-rules; ADR 0015)
 | Feature | Gesture | Fits the existing set because |
 | --- | --- | --- |

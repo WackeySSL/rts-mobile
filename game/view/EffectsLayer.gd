@@ -319,6 +319,8 @@ func _on_ticked(_tick: int) -> void:
 			_add_impact(snap, at, now)
 		elif kind == World.Event.DIED:
 			_add_death(snap, at, now)
+		elif kind == World.Event.MINE_BLAST:
+			_add_mine_blast(snap, at, now)
 	_add_ruptures(snap, now)
 
 
@@ -344,6 +346,21 @@ func _add_ruptures(snap: MatchSnapshot, now: int) -> void:
 		_push(Kind.BURST, now, ground - Vector2(0.0, side * RUPTURE_LIFT), Vector2.ZERO, side)
 		if decals != null:
 			decals.add_crater(ground, radius)
+
+
+## `[MINE_BLAST, mine id, x, y, weapon, owner, 0, 0]` (P293): a burst as wide as the weapon's
+## `blast_milli` at the cell, where the local player sees it, as a rupture's (ADR 0037 section 8).
+## The scorch it leaves is `MineLayer`'s. A weapon with no blast radius bursts nowhere.
+func _add_mine_blast(snap: MatchSnapshot, at: int, now: int) -> void:
+	var events: PackedInt32Array = snap.events
+	var weapon: int = events[at + 4]
+	var blast: PackedInt32Array = snap.weapon_blast_milli
+	var radius: int = blast[weapon] if weapon >= 0 and weapon < blast.size() else 0
+	if radius < 1 or not _seen(snap, events[at + 2], events[at + 3]):
+		return
+	var side: float = IsoProjection.ellipse_px(radius).x
+	var ground: Vector2 = IsoProjection.ground_to_px(events[at + 2], events[at + 3])
+	_push(Kind.BURST, now, ground - Vector2(0.0, side * RUPTURE_LIFT), Vector2.ZERO, side)
 
 
 ## Whether the point (x, y), in milli-tiles, is on a tile that the fog does not hide from the

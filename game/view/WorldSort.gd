@@ -188,7 +188,7 @@ func art_count() -> int:
 
 ## The mid colour of `owner_id`'s triad, for what stands in for art that is not in the atlas.
 func mid_colour(owner_id: int) -> Color:
-	var art: IsoPlayerArt = _arts[slot_of(owner_id)] if not _arts.is_empty() else null
+	var art: IsoPlayerArt = art_of(owner_id)
 	return Color(art.triad[1]) if art != null else Color.WHITE
 
 
