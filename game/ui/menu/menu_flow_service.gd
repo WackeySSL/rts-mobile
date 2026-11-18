@@ -69,6 +69,7 @@ var _pending_screen: StringName = &""
 
 func _ready() -> void:
 	ads = AdService
+	MenuPrefs.apply_audio(AudioService)  # AudioService loads before SaveService (P526).
 
 
 func _exit_tree() -> void:

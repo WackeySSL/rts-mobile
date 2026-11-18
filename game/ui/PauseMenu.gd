@@ -598,7 +598,7 @@ func _show_exit() -> void:
 	var lesson: bool = _is_lesson()
 	_exit_button.text = "LEAVE TUTORIAL" if lesson else "EXIT TO MENU"
 	_exit_dialog.question = "LEAVE TUTORIAL?" if lesson else "EXIT TO MENU?"
-	_settings.disabled = not _routes().has(MenuRoutes.SETTINGS)  # TODO P526 registers the route.
+	_settings.disabled = not _routes().has(MenuRoutes.SETTINGS)  # P526 registers the route.
 
 
 func _open_help() -> void:
