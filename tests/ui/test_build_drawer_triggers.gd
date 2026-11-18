@@ -8,7 +8,8 @@ extends GdUnitTestSuite
 ## of placement closes it, and so does a restart of placement by a READY card tapped in a drawer
 ## opened meanwhile; the end of placement by a build, the X or the match's end leaves it closed
 ## (Michael, 2026-11-05: BUILD brings it back) and so does a strike aim; a tap on an own
-## producer opens it on its tab with no visible move; a turn and a cancel_all() keep the state; a
+## producer leaves a closed drawer closed and switches an open one to its tab (P310);
+## a turn and a cancel_all() keep the state; a
 ## new match starts closed. Player 1 has a Headquarters, two light tanks, a Heavy Yard and a
 ## Bunkhouse, and a finished structure in its queue.
 
@@ -166,9 +167,10 @@ func test_a_touch_on_a_hud_control_never_closes_the_drawer() -> void:
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
 
 
-func test_a_tap_on_an_own_producer_opens_the_drawer_on_its_tab_with_no_visible_move() -> void:
+func test_a_tap_on_an_own_producer_leaves_a_closed_drawer_closed_and_an_open_one_on_its_tab(
+) -> void:
 	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size)
+		await _open(size, null, false, false)
 		var why: String = str(size)
 		BuildSidebar.set_slide_ms_override(160)
 		var heights: Array[Vector2] = []
@@ -177,37 +179,34 @@ func test_a_tap_on_an_own_producer_opens_the_drawer_on_its_tab_with_no_visible_m
 		)
 		var zone: float = HudLayout.bottom_zone_dp
 		var top: float = HudLayout.menu_top_px
+		# Closed (a match starts so): the tap selects the building, the drawer and its tab stay.
 		_sidebar.select_tab(World.Tab.STRUCTURES)
 		_tap_building(FACTORY)
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.VEHICLES)
-		assert_int(_told).override_failure_message(why).is_equal(1)  # The tap collapsed it first.
-		_sidebar.advance(0.05)  # And any frames of a slide that did not start move nothing.
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
+		assert_array(_controller.selection.selected).is_equal(PackedInt32Array([FACTORY]))
+		_sidebar.advance(0.05)
 		await _settle()
 		assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal(zone)
 		assert_float(HudLayout.menu_top_px).override_failure_message(why).is_equal(top)
 		assert_array(heights).override_failure_message(why).is_empty()
-		_tap_building(BARRACKS)
-		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.INFANTRY)
-		assert_bool(_sidebar.is_open()).is_true()
-		# From the collapsed menu the same tap opens it, and it slides up.
+		# Open (BUILD's job): the same tap switches to the producer's tab and the drawer stays.
 		BuildSidebar.set_slide_ms_override(0)
-		_sidebar.collapse()
-		BuildSidebar.set_slide_ms_override(160)
-		var down: float = HudLayout.bottom_zone_dp
+		_sidebar.open()
 		_tap_building(FACTORY)
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
 		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.VEHICLES)
-		if HudLayout.is_portrait():
-			assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_equal(down)
-			_sidebar.advance(0.05)
-			assert_float(HudLayout.bottom_zone_dp).override_failure_message(why).is_greater(down)
-		# A unit does not: selecting one leaves the tab and the state as they are.
-		BuildSidebar.set_slide_ms_override(0)
+		_tap_building(BARRACKS)
+		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.INFANTRY)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+		# Closed again: the tap neither opens it nor moves the tab; a unit does not either.
 		_sidebar.collapse()
+		_tap_building(FACTORY)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.INFANTRY)
 		_tap(_tank_at(TANK_A))
 		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
-		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.VEHICLES)
+		assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.INFANTRY)
 
 
 func test_placement_closes_the_drawer_and_a_build_or_the_x_leaves_it_down() -> void:

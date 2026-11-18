@@ -2,7 +2,8 @@ extends GdUnitTestSuite
 ## Taps on buildings through the real TouchInput, GestureRecognizer and PlayerController in the main
 ## scene at the six screens (ScreenSizes.ALL: 1280x720, 2400x1080 and 2048x1536, each held both
 ## ways), with a fake clock (plan P115b, ADR 0019 section 3, ADR 0023 section 3). A tap on a
-## building's picture selects it alone, the panel names it and the sidebar opens its tab; a unit at
+## building's picture selects it alone, the panel shows its card (no name) and the sidebar stays
+## as it is (P310); a unit at
 ## the spot is picked first; the building drawn in front wins an overlap; a ground tap lets go of
 ## it; an enemy building is selected for its info and gets no order, and with an own tank selected a
 ## tap on it attacks when the sim would take that (the cell under its position is seen) and moves
@@ -82,21 +83,28 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_a_tap_on_an_own_building_selects_it_alone_names_it_and_opens_its_tab() -> void:
+func test_a_tap_on_an_own_building_selects_it_alone_shows_its_card_and_leaves_the_drawer() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		_sidebar.select_tab(World.Tab.VEHICLES)
 		_tap_building(HQ, 0.0)  # The footprint's centre.
 		var note: String = str(size)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal([HQ])
-		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Rigworks"])
+		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.VEHICLES)
+		assert_array(_chip_cards()).override_failure_message(note).is_equal(["headquarters"])
 		_tap_building(BARRACKS, 0.0)
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
 			[BARRACKS]
 		)
+		assert_bool(_sidebar.is_open()).override_failure_message(note).is_false()
+		assert_array(_chip_cards()).override_failure_message(note).is_equal(["barracks"])
+		_sidebar.open()  # With the drawer open the tap takes it to the building's tab.
+		_tap_building(HQ, 0.0)
+		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
+		_tap_building(BARRACKS, 0.0)
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.INFANTRY)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Bunkhouse"])
+		assert_bool(_sidebar.is_open()).override_failure_message(note).is_true()
 		assert_array(_sent).override_failure_message(note).is_empty()  # Selecting orders nothing.
 
 
@@ -219,7 +227,7 @@ func test_an_enemy_building_is_selected_for_its_info_only_where_it_is_seen() -> 
 		assert_array(_controller.selection.selected).override_failure_message(note).is_equal(
 			[ENEMY_HQ]
 		)
-		assert_array(_panel_texts()).override_failure_message(note).is_equal(["Grid Hub"])
+		assert_array(_chip_cards()).override_failure_message(note).is_equal(["renew_hq"])
 		# A ground tap lets go of it, and no order goes anywhere for a building that is not ours.
 		_tap_world(IsoProjection.cell_centre_px(GROUND_TILE.x, GROUND_TILE.y))
 		assert_array(_controller.selection.selected).override_failure_message(note).is_empty()
@@ -266,10 +274,11 @@ func test_with_an_own_tank_selected_a_tap_on_an_enemy_building_seen_only_at_its_
 		Rig.see(_runner.snapshot, 1, [Vector2i(21, 21)])  # Back to the cell under its position.
 
 
-func test_a_second_tap_on_the_selected_building_takes_the_sidebar_back_to_its_tab() -> void:
+func test_a_second_tap_on_the_selected_building_takes_an_open_sidebar_back_to_its_tab() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _show(size)
 		var note: String = str(size)
+		_sidebar.open()
 		_tap_building(HQ, 0.0)
 		assert_int(_sidebar.tab).override_failure_message(note).is_equal(World.Tab.STRUCTURES)
 		_sidebar.select_tab(World.Tab.VEHICLES)  # To queue a tank: the selection stays.
@@ -319,6 +328,7 @@ func _show(size: Vector2i) -> void:
 	await await_idle_frame()
 	_camera.zoom = Vector2.ONE
 	_controller.selection.clear()
+	_sidebar.collapse()
 	_sidebar.select_tab(World.Tab.STRUCTURES)
 	_sent.clear()
 
@@ -390,6 +400,11 @@ func _panel() -> Control:
 	return _main.get_node("Hud/CommandBar")
 
 
-## The chip's text: a building's name.
-func _panel_texts() -> Array[String]:
-	return [(_panel().find_child("Count", true, false) as Label).text]
+## The type of each visible chip's card; a building's chip has no name label (P310).
+func _chip_cards() -> Array[String]:
+	var out: Array[String] = []
+	for chip: CommandBar.Chip in _panel().find_children("Chip*", "PanelContainer", true, false):
+		if chip.visible:
+			out.append(String(chip.type))
+			assert_bool(chip.label.visible).is_false()
+	return out

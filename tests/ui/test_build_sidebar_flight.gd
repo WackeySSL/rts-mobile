@@ -3,7 +3,8 @@ extends GdUnitTestSuite
 ## sizes of ScreenSizes.ALL: there is none while the faction has no aircraft to build, so today's
 ## three tabs stay as they were; with a fighter in the roster it is a fourth tab of the drawer's
 ## tab size inside the drawer, a tap opens it and shows the fighter's card, and selecting an own
-## airfield (which produces on it) opens it too. Own: Derrick League airfield 1 (a complete
+## airfield (which produces on it) switches an open drawer to it (P310: it never opens a closed
+## one). Own: Derrick League airfield 1 (a complete
 ## building) and fighter 2.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -100,7 +101,7 @@ func test_names_show_wherever_the_row_fits_them() -> void:
 	assert_int(bare).is_equal(0)  # The chevron left the row: four names fit even 296 dp.
 
 
-func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:
+func test_selecting_an_own_airfield_in_an_open_drawer_switches_to_the_flight_tab() -> void:
 	await _open(ScreenSizes.ALL[3], ["fossil_fighter"], null)
 	assert_int(_sidebar.tab).is_equal(World.Tab.STRUCTURES)
 	_sidebar.set_selected(PackedInt32Array([AIRFIELD]))
@@ -108,6 +109,44 @@ func test_selecting_an_own_airfield_opens_the_flight_tab() -> void:
 	assert_bool(_tab().visible).is_true()
 	_sidebar.set_selected(PackedInt32Array([FIGHTER]))  # A unit leaves the open tab as it is.
 	assert_int(_sidebar.tab).is_equal(World.Tab.FLIGHT)
+
+
+## Selecting an own producer never opens the drawer (P310): with it closed the building is only
+## selected, tab and state as they were, at both orientations; with it open the tab switches; BUILD
+## opens it. Producers: the airfield, the engineering centre, a barracks, a vehicle factory and a
+## Headquarters, each of the player's own.
+func test_selecting_an_own_producer_leaves_a_closed_drawer_closed_and_switches_an_open_one(
+) -> void:
+	var producers: Array[String] = [
+		"fossil_engineering", "barracks", "vehicle_factory", "headquarters"
+	]
+	for size: Vector2i in ScreenSizes.ALL:
+		var units: Array[String] = ["fossil_fighter"]
+		units.append_array(producers)
+		await _open(size, units, null)
+		var controller: PlayerController = _main.get_node("PlayerController")
+		var ids: Array[int] = [AIRFIELD]
+		for at: int in producers.size():
+			ids.append(FIGHTER + 1 + at)
+		for id: int in ids:
+			var why: String = "%s id %d" % [size, id]
+			_sidebar.collapse()
+			_sidebar.select_tab(World.Tab.STRUCTURES)
+			await await_idle_frame()
+			controller.selection.set_ids(PackedInt32Array([id]))
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+			assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.STRUCTURES)
+			_sidebar.open()
+			controller.selection.clear()
+			controller.selection.set_ids(PackedInt32Array([id]))
+			assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
+			if id == AIRFIELD:
+				assert_int(_sidebar.tab).override_failure_message(why).is_equal(World.Tab.FLIGHT)
+		_sidebar.collapse()
+		await await_idle_frame()
+		var build: Control = _main.get_node("Hud").find_child("BuildButton", true, false)
+		_tap(build)
+		assert_bool(_sidebar.is_open()).override_failure_message(str(size)).is_true()
 
 
 ## The tab button a name label belongs to.
@@ -196,9 +235,9 @@ func _open(size: Vector2i, units: Array[String], metrics: UiMetrics) -> void:
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	var spawns: Array[SpawnDef] = [Rig.spawn(1, "fossil_airfield", 8, 8)]
-	for unit: String in units:
-		var owner_id: int = 2 if unit.begins_with("renew") else 1
-		spawns.append(Rig.spawn(owner_id, unit, 12, 12))
+	for at: int in units.size():
+		var owner_id: int = 2 if units[at].begins_with("renew") else 1
+		spawns.append(Rig.spawn(owner_id, units[at], 12 + 4 * at, 12))
 	spawns.append(Rig.spawn(2, "renew_hq", 20, 20))
 	(_main.get_node("MatchRunner") as MatchRunner).scenario = Rig.scenario(spawns)
 	_main.get_node("MatchRunner").paused = true

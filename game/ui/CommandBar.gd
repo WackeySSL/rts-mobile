@@ -2,10 +2,11 @@ class_name CommandBar
 extends Control
 ## The command bar (ADR 0025 section 9, plan P122): bottom left (upright too) while something is
 ## selected. From its start: Deselect (48 x 64 dp, `glyph_deselect` over "CLEAR"), the selection
-## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" or a
-## building's name, its health; then a "+N" chip for the types left out; an enemy building's chip
-## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
-## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
+## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" for
+## units (a building shows no name, only its card; Michael, 2026-11-18, P310), its health; then a
+## "+N" chip for the types left out; an enemy building's chip wears P115b's look: amber corner
+## brackets round its picture and an amber health bar with a notch in its top edge) and the orders
+## the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
 ## airfield and sends one REPAIR to each airfield the aircraft are homed at
 ## (`PlayerController.home`); Repair (P282, P282b) shows for ground units a complete own repair
@@ -53,7 +54,7 @@ const PIP_GAP_DP: float = 3.0
 const SHAKE_DP: float = 6.0  ## How far a refused Board shakes its face, and for how long a step.
 const SHAKE_S: float = 0.05
 const PIPS_MAX: int = 8  ## The most pips a chip shows (a fleet's seats are summed).
-const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may ask of the bar.
+const LABEL_MAX_DP: float = 140.0  ## The most a count may ask of the bar.
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
@@ -125,12 +126,12 @@ var _repair_ready: bool = false  ## ... and one of those units is damaged: Repai
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
-## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
+## One selected type: its item card, "xN" (a building: no name, only its card) and its health.
 class Chip:
 	extends PanelContainer
 
 	var card: TextureRect = TextureRect.new()
-	var label: Label = Label.new()  ## "xN" for units, the name of a building.
+	var label: Label = Label.new()  ## "xN" for units; empty and hidden for a building.
 	var health: HealthBar = HealthBar.new()
 	var pips: Pips = Pips.new()  ## A carrier's seats; hidden for any other type.
 	var type: StringName = &""  ## The card's type, to load it once.
@@ -170,7 +171,8 @@ class Chip:
 	## Writes the chip for one type; an enemy building wears P115b's look (brackets, amber bar).
 	func show_type(snap: MatchSnapshot, group: Group, as_enemy: bool) -> void:
 		var units: bool = not group.building
-		var text: String = "×%d" % group.count if units else snap.type_names[group.type]
+		var text: String = "×%d" % group.count if units else ""  # A building: its card, no name.
+		label.visible = units
 		if label.text != text:
 			label.text = text
 			fit_label()
@@ -187,8 +189,8 @@ class Chip:
 		health.value = group.hp
 		health.visible = not group.fogged
 
-	## The label asks for its text's width, at most `LABEL_MAX_DP` (a longer name is cut), so the
-	## chip and the bar grow to it instead of cutting every building name to the health bar's width.
+	## The label asks for its text's width, at most `LABEL_MAX_DP`, so the chip and the bar grow to
+	## a 3-digit count instead of cutting it to the health bar's width.
 	func fit_label() -> void:
 		var font: Font = label.get_theme_font(&"font")
 		var font_px: int = label.get_theme_font_size(&"font_size")
