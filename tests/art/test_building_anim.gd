@@ -84,6 +84,8 @@ const VEHICLES: Dictionary[StringName, StringName] = {
 	&"renew_tank": &"tracks",
 	&"renew_artillery": &"wheels",
 	&"renew_tanker": &"wheels",
+	&"fossil_bunk_wagon": &"tracks",
+	&"renew_linecar": &"wheels",
 }
 
 var _index: IsoIndex = null
@@ -404,7 +406,7 @@ func test_every_vehicle_model_has_marks_from_its_running_gear_and_nothing_else_h
 		else:
 			assert_str(String(model.marks)).override_failure_message(path).is_empty()
 	assert_int(seen).is_equal(VEHICLES.size())
-	assert_int(seen).is_equal(8)
+	assert_int(seen).is_equal(10)
 
 
 func _model(id: StringName) -> ArtModel:
