@@ -106,14 +106,14 @@ static func create(def: TutorialScriptDef, player_id: int, rng: DetRandom) -> Tu
 	return ai
 
 
-## The index of the step `step` waits for: -1 for none, NEVER (with an error) for a name that no
-## step of the script has.
+## The index of the step `step` waits for: -1 for none, NEVER for a name that no step of the script
+## has (a push_warning, not an error: verify fails on any ERROR line).
 func _resolve_after(step: TutorialStepDef) -> int:
 	if step.after_step == &"":
 		return -1
 	var found: int = _step_ids.find(step.after_step)
 	if found < 0:
-		push_error(
+		push_warning(
 			"TutorialAi: step %s waits for %s, which is no step" % [step.id, step.after_step]
 		)
 		return NEVER

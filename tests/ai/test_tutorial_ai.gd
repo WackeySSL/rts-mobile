@@ -213,7 +213,7 @@ func test_a_stop_step_fires_with_no_building_and_halts_its_units() -> void:
 	assert_int(sent[0].unit_ids.size()).is_equal(2)
 
 
-func test_an_after_step_that_names_no_step_is_an_error_and_never_fires() -> void:
+func test_an_after_step_that_names_no_step_warns_and_never_fires() -> void:
 	var def: TutorialScriptDef = TutorialScriptDef.new()
 	def.steps.append(
 		Tut.step(
@@ -226,7 +226,7 @@ func test_an_after_step_that_names_no_step_is_an_error_and_never_fires() -> void
 	var holder: Array[TutorialAi] = []
 	(
 		assert_error(func() -> void: holder.append(Tut.ai_of(def)))
-		. is_push_error("TutorialAi: step lost waits for nowhere, which is no step")
+		. is_push_warning("TutorialAi: step lost waits for nowhere, which is no step")
 	)
 	assert_array(Tut.think(Rig.start(), holder[0])).is_empty()
 	assert_int(holder[0].fired_count()).is_equal(0)
