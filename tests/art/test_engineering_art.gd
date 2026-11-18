@@ -136,23 +136,87 @@ func test_a_research_card_uses_only_the_hand_written_tags_and_stays_small() -> v
 		assert_bool(text.contains('viewBox="0 0 128 128"')).is_true()
 
 
-## Only the faction's own key triad may lie in its key band (ADR 0023 section 5).
-func test_a_research_card_keeps_the_key_band() -> void:
-	var colour: RegEx = RegEx.create_from_string('"(#[0-9A-Fa-f]{6})"')
+## What a hand-written card may paint (ADR 0023 section 5 and "Research cards" in STYLE.md): from
+## the first line after the plate, grid and corner, every fill and stroke is `#RRGGBB` or `none`
+## (no short hex, no name, no rgb(), no single quotes), and each colour is a tone or an edge of one
+## of the faction's `ArtPalette` materials or its key triad. Team colour is only the triad, so
+## the key band holds without a check of its own.
+func test_a_research_card_paints_only_palette_tones_and_its_key_triad() -> void:
 	for id: String in CARD_FACTION:
 		var faction: StringName = CARD_FACTION[id]
-		var triad: Array = ArtPalette.KEYS[faction]
+		var lines: PackedStringArray = FileAccess.get_file_as_string(CARD_DIR % id).split("\n")
+		var picture: PackedStringArray = lines.slice(HEADER_LINES)
+		(
+			assert_array(Array(_colour_problems(faction, picture)))
+			. override_failure_message(id)
+			. is_empty()
+		)
 		var team: int = 0
-		for found: RegExMatch in colour.search_all(FileAccess.get_file_as_string(CARD_DIR % id)):
-			var hex: String = found.get_string(1).to_upper()
-			team += int(hex in triad)
-			if not hex in triad:
-				(
-					assert_bool(ArtPalette.in_key_band(faction, hex))
-					. override_failure_message("%s %s" % [id, hex])
-					. is_false()
-				)
+		for hex: String in ArtPalette.KEYS[faction]:
+			team += "\n".join(picture).count(hex)
 		assert_int(team).override_failure_message(id + " has no team colour").is_greater(0)
+
+
+## The checker itself bites: each of these planted colours is refused.
+func test_the_card_colour_check_refuses_a_bad_colour() -> void:
+	var good: String = '<path d="M0 0" fill="#FF9446" stroke="none"/>'
+	assert_array(Array(_colour_problems(&"fossil", PackedStringArray([good])))).is_empty()
+	for bad: String in [
+		'fill="#F94"',
+		'fill="red"',
+		'fill="rgb(255,0,0)"',
+		"fill='#FF9446'",
+		'stroke="#FF0000"',  # Not a tone: a pure red in the key band.
+		'fill="#FF9447"',  # A shade next to the triad, in the key band.
+		'fill="#123456"',  # Not a palette tone.
+		'fill="#ff9446"',  # Lower case.
+	]:
+		var line: PackedStringArray = PackedStringArray(['<path d="M0 0" %s/>' % bad])
+		(
+			assert_array(Array(_colour_problems(&"fossil", line)))
+			. override_failure_message(bad)
+			. is_not_empty()
+		)
+	# A Lumen Accord tone is not a Derrick League one.
+	var other: PackedStringArray = PackedStringArray(['<path fill="#D5DBDC"/>'])
+	assert_array(Array(_colour_problems(&"fossil", other))).is_not_empty()
+	assert_array(Array(_colour_problems(&"renew", other))).is_empty()
+
+
+## One text per fill or stroke of `lines` that is not `#RRGGBB` / `none` or not an allowed colour.
+func _colour_problems(faction: StringName, lines: PackedStringArray) -> PackedStringArray:
+	var allowed: Dictionary[String, bool] = {}
+	for hex: String in ArtPalette.KEYS[faction]:
+		allowed[hex] = true
+	for material: StringName in ArtPalette.MATERIALS[faction]:
+		for level: int in 3:
+			allowed[ArtPalette.tone(faction, material, level)] = true
+		allowed[ArtPalette.edge(faction, material, false)] = true
+		allowed[ArtPalette.edge(faction, material, true)] = true
+	var found: PackedStringArray = PackedStringArray()
+	for line: String in lines:
+		for attr: String in ["fill", "stroke"]:
+			for quote: String in ["'", '"']:
+				var start: int = 0
+				while true:
+					var at: int = line.find("%s=%s" % [attr, quote], start)
+					if at < 0:
+						break
+					start = at + 1
+					var from: int = at + attr.length() + 2
+					var value: String = line.substr(from, line.find(quote, from) - from)
+					if quote == "'":
+						found.append("single quotes: " + value)
+					elif value == "none":
+						continue
+					elif (
+						not value.is_valid_html_color()
+						or not (value.length() == 7 and value.begins_with("#"))
+					):
+						found.append("not #RRGGBB: " + value)
+					elif value != value.to_upper() or not allowed.has(value):
+						found.append("not a palette tone: " + value)
+	return found
 
 
 ## The plate, the grid and the corner are the generator's, byte for byte: a hand card sits in the

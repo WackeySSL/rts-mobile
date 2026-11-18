@@ -27,6 +27,8 @@ Remove ads costs 29 kr; Play App Signing (Google holds the app key, Michael keep
   `ADMOB_APP_ID_ANDROID` (`play-internal`; used only after Michael's yes to the P400c text, until then internal builds keep Google's test App ID, Decision 10); unit IDs -> `ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`,
   `ADMOB_REWARDED_ID_ANDROID` (environment `play-release`, may be set now); the phone as test device; Privacy &
   messaging: GDPR message (EEA, UK, Switzerland); maximum ad content rating T.
+  (Note, 2026-11-17, P400e docs: Michael said yes to the P400c text on 2026-11-17 (row P400c, f3dfd593), so the internal build takes the real App ID
+  from `ADMOB_APP_ID_ANDROID` once P414 lands.)
 - [ ] **M9** Managed product `remove_ads` at 29 kr, after a build with `BILLING` is uploaded; license testing with
   Michael's account.
 - [ ] **M10** Host `privacy-policy.md` on appcode.dk (Michael picks the URL, for example

@@ -8,8 +8,10 @@ extends Control
 ## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
 ## airfield and sends one REPAIR to each airfield the aircraft are homed at
-## (`PlayerController.home`). Orders that do not fit scroll sideways inside the bar, a button never
-## shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
+## (`PlayerController.home`); Repair (P282) is for damaged ground units a complete own repair
+## building serves and sends one REPAIR to the nearest (`RepairRules`, `PlayerController.repair`),
+## beside Home in a mixed selection. Orders that do not fit scroll sideways inside the bar, a
+## button never shrinks below 56 dp. Board (squads selected, an own carrier on the map with a free
 ## seat) and Unload (a loaded carrier selected) are order aims (`CarryAim`, P265): a tap starts the
 ## aim, a second tap on the lit button ends it, and the slot stays frozen while it runs. A carrier's
 ## chip shows its seats as pips, filled for each squad aboard.
@@ -57,11 +59,13 @@ const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the the
 const ENEMY_BAR: StringName = &"EnemyHealth"  ## The amber health bar of an enemy building.
 const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' and notch colours.
 ## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
-## with an aircraft that has an airfield to go to), &"building", &"squads" (Board) or &"carrier"
+## with an aircraft that has an airfield to go to), &"repair" (damaged ground units a repair
+## building serves), &"building", &"squads" (Board) or &"carrier"
 ## (Unload).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
 	{"id": &"home", "glyph": "home", "label": "HOME", "for": &"air"},
+	{"id": &"repair", "glyph": "repair", "label": "REPAIR", "for": &"repair"},
 	{"id": &"board", "glyph": "board", "label": "BOARD", "for": &"squads"},
 	{"id": &"unload", "glyph": "unload", "label": "UNLOAD", "for": &"carrier"},
 	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
@@ -115,6 +119,8 @@ var _card_id: int = -1  ## The building the question card asked about, -1 for no
 var _portrait: bool = false  ## The window's orientation at the last resize.
 var _air: bool = false  ## A selected aircraft has an own airfield to go to: Home shows.
 var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
+var _repair: bool = false  ## A repair building serves a damaged selected ground unit: Repair shows.
+var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
 ## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
@@ -398,6 +404,8 @@ func _order(id: StringName) -> void:
 			controller.stop()
 		&"home":
 			controller.home()
+		&"repair":
+			controller.repair()
 		&"board":
 			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.BOARD):
 				_on_carry_changed()  # A refused start must not leave the toggle lit.
@@ -604,6 +612,7 @@ func _fill(ids: PackedInt32Array) -> void:
 	if snap != null:  # Home shows while an aircraft can go: it has an own airfield (REPAIR's rows).
 		OrderRules.home_fields(snap, ids, local, _fields)
 	_air = not _fields.is_empty()
+	_repair = snap != null and RepairRules.plan(snap, ids, local, _served) > 0
 	_sync_orders(snap, units and not groups.is_empty(), row, ids)
 	var fit: bool = groups.size() != _types
 	_types = groups.size()
@@ -624,6 +633,8 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt3
 	for order: Dictionary in ORDERS:
 		var id: StringName = order["id"]
 		var shown: bool = units_ok and (_air or order["for"] != &"air")
+		if order["for"] == &"repair":
+			shown = units_ok and _repair
 		if order["for"] == &"building":
 			shown = row >= 0 and _building_order(id, snap, row)
 		elif order["for"] == &"squads" or order["for"] == &"carrier":
