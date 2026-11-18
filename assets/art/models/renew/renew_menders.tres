@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"renew_menders"
 faction = &"renew"
 category = &"inf"
-silhouette = "Menders: two lean figures in blue-grey suits and white hexagonal helmets with a mint visor strip, one carrying a white hexagonal case on its back ringed in mint and banded in team colour, the other a smaller banded case at its hip and a slim arm held out ahead with a mint hand light at its tip, each with a team-coloured yoke across the chest."
+silhouette = "Menders: two lean figures in blue-grey suits and white hexagonal helmets with a mint visor strip, one carrying a white hexagonal case on its back ringed in mint and banded in team colour, the other a smaller banded case slung low behind it and a slim arm held out ahead with a mint hand light at its tip, each with a team-coloured yoke across the chest."
 prims = PackedStringArray(
 "box hull graphite 0.12 -0.14 0 0.06 0.06 0.16 group=a_legl",
 "box hull graphite 0.12 -0.06 0 0.06 0.06 0.16 group=a_legr",
@@ -19,10 +19,10 @@ prims = PackedStringArray(
 "box hull bluegrey 0.12 -0.2 0.285 0.05 0.04 0.05 group=a_body",
 "box hull bluegrey 0.12 0 0.17 0.05 0.04 0.05 group=a_body",
 "box hull bluegrey 0.12 0 0.285 0.05 0.04 0.05 group=a_body",
-"prism hull ceramic 0.015 -0.1 0.17 0.14 0.14 0.13 sides=6 group=a_body",
+"prism hull ceramic 0.015 -0.1 0.17 0.14 0.14 0.09 sides=6 group=a_body",
 "prism hull mint 0.015 -0.1 0.2 0.155 0.155 0.03 sides=6 group=a_body",
-"prism hull team 0.015 -0.1 0.255 0.17 0.17 0.055 sides=6 group=a_body",
-"prism hull ceramic 0.015 -0.1 0.31 0.13 0.13 0.03 sides=6 group=a_body",
+"prism hull team 0.015 -0.1 0.26 0.17 0.17 0.08 sides=6 group=a_body",
+"prism hull ceramic 0.015 -0.1 0.34 0.13 0.13 0.025 sides=6 group=a_body",
 "box hull graphite 0.12 -0.1 0.325 0.075 0.085 0.04 group=a_head",
 "prism hull ceramic 0.12 -0.1 0.365 0.12 0.12 0.075 sides=6 group=a_head",
 "box hull mint 0.175 -0.1 0.375 0.03 0.09 0.03 group=a_head",
@@ -36,10 +36,10 @@ prims = PackedStringArray(
 "box hull bluegrey -0.1 0.02 0.285 0.05 0.04 0.05 group=b_body",
 "box hull bluegrey -0.1 0.22 0.17 0.05 0.04 0.05 group=b_body",
 "box hull bluegrey -0.1 0.22 0.285 0.05 0.04 0.05 group=b_body",
-"prism hull ceramic -0.19 0.12 0.18 0.11 0.11 0.10 sides=6 group=b_body",
+"prism hull ceramic -0.19 0.12 0.18 0.11 0.11 0.07 sides=6 group=b_body",
 "prism hull mint -0.19 0.12 0.2 0.125 0.125 0.025 sides=6 group=b_body",
-"prism hull team -0.19 0.12 0.245 0.135 0.135 0.04 sides=6 group=b_body",
-"prism hull ceramic -0.19 0.12 0.285 0.1 0.1 0.025 sides=6 group=b_body",
+"prism hull team -0.19 0.12 0.25 0.135 0.135 0.06 sides=6 group=b_body",
+"prism hull ceramic -0.19 0.12 0.31 0.1 0.1 0.025 sides=6 group=b_body",
 "box hull titanium -0.01 0.22 0.26 0.16 0.04 0.04 group=b_body",
 "box hull mint 0.09 0.22 0.245 0.05 0.05 0.07 group=b_body",
 "box hull graphite -0.1 0.12 0.325 0.075 0.085 0.04 group=b_head",

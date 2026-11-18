@@ -1,14 +1,13 @@
 extends GdUnitTestSuite
 ## The walk and idle poses of the four squads (plan row P139, ADR 0027 sections 4 and 5, STYLE.md
 ## "The frame axis") and of the two medic squads (P280, two figures each): each squad of both
-## factions has `walk` (4 frames) and `idle` (2) in its 8
-## directions, the generator drew them from the model's pose groups (that the bytes equal a fresh
-## run is test_artgen.gd), the figures of a frame are a frame apart in their step, the cast
-## shadow is not posed, the feet stand on the ground, no pose face sits on a light cut, the colours
-## are the faction's palette, and at its speed every squad walks 1.5 to 3.5 cycles a second from
-## its `stride_milli`. The pictures at 32 px are in test_artgen_readability.gd, the key band in
-## test_artgen.gd, the page budget in tests/view/test_iso_atlas_budget.gd, the gallery in
-## test_art_gallery_units.gd.
+## factions has `walk` (4 frames) and `idle` (2) in its 8 directions, the generator drew them from
+## the model's pose groups (that the bytes equal a fresh run is test_artgen.gd), the figures of a
+## frame are a frame apart in their step, the cast shadow is not posed, the feet stand on the
+## ground, no pose face sits on a light cut, the colours are the faction's palette, and at its
+## speed every squad walks 1.5 to 3.5 cycles a second from its `stride_milli`. The pictures at
+## 32 px are in test_artgen_readability.gd, the key band in test_artgen.gd, the page budget in
+## tests/view/test_iso_atlas_budget.gd, the gallery in test_art_gallery_units.gd.
 
 const SQUADS: Array[StringName] = [&"rifle_squad", &"rocket_squad", &"renew_rifle", &"renew_rocket"]
 ## The two-figure medic squads (P280): the same poses, a frame apart for two figures.

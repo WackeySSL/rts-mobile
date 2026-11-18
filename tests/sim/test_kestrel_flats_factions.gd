@@ -73,10 +73,9 @@ func test_every_roster_type_of_a_start_has_its_players_faction() -> void:
 				types += 1
 		# Both rosters are registered with their research types and nothing else: twenty-six types
 		# each (52: twenty-four roster types and the two upgrades; 50 before P280 put the medic
-		# squads in, 48 before P279 put the repair
-		# buildings in, 46 before P292 put the minelayers in, 44 before P291 put the carriers in,
-		# 38 before P249 put the engineering centres and the research in, 34 before P245, 32 before
-		# P245b, 30 before P239b).
+		# squads in, 48 before P279 put the repair buildings in, 46 before P292 put the minelayers
+		# in, 44 before P291 put the carriers in, 38 before P249 put the engineering centres and
+		# the research in, 34 before P245, 32 before P245b, 30 before P239b).
 		assert_int(types).is_equal(52)
 		assert_int(world.type_ids.size()).is_equal(52)
 		assert_array(world.faction_ids).contains_exactly_in_any_order([&"fossil", &"renew"])

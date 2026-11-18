@@ -80,10 +80,10 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## Accord mirror; page 2 has left 1080, 2198 and 2176.
 ## P280 (the Patchers and the Menders: two-figure squads, an 8-direction hull, walk of 4, idle
 ## of 2 and shadow each, 64 frames a sheet) moved page 1 from 2628, 2552 and 2502 to the pins
-## below (+102, +105 and +96 rows) and page 2 from 2504, 1386 and 1408 (+6, +70 and +70: the
-## shadows are small and fit the free width of shelf 1). Page 1 has left 854 rows on the
-## cross-faction page, 927 on the Derrick League mirror and 986 on the Lumen Accord mirror;
-## page 2 has left 1074, 2128 and 2106.
+## below (+102, +105 and +96 rows) and page 2 from 2504, 1386 and 1408 (+6, +70 and +70: on the
+## cross page the shadows fit the free width of shelf 1; on both mirror pages they open a new
+## shelf, which is the +70). Page 1 has left 854 rows on the cross-faction page, 927 on the
+## Derrick League mirror and 986 on the Lumen Accord mirror; page 2 has left 1074, 2128 and 2106.
 ## P280: 2628 + 102; P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
 const TODAY_CROSS: int = 2730

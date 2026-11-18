@@ -165,10 +165,11 @@ func _fill() -> void:
 			damage_height = _damage_section(ground, model, layouts, box, top)
 		top += damage_height
 	if model.pose_frames(&"walk") > 0:
-		var poses_height: float = 0.0
-		for ground: ColorRect in grounds:
-			poses_height = _pose_section(ground, model, layouts, box, top)
-		top += poses_height
+		for triad: int in TRIADS.size():
+			var poses_height: float = 0.0
+			for ground: ColorRect in grounds:
+				poses_height = _pose_section(ground, model, layouts, box, triad, top)
+			top += poses_height
 	if MINE_MARK_FACTION.has(model.art_id):
 		var marks_height: float = 0.0
 		for ground: ColorRect in grounds:
@@ -260,23 +261,26 @@ func _damage_section(
 
 
 ## The poses of a squad (plan row P280): its walk frames and then its idle frames in the default
-## view at zoom 1, in the Signal triad, each on its cast shadow, one line. Returns the height it
-## took.
+## view at zoom 1, in one triad, each on its cast shadow, one line. Returns the height it took.
 func _pose_section(
 	ground: ColorRect,
 	model: ArtModel,
 	layouts: Dictionary[StringName, ArtGen.Layout],
 	box: Rect2,
+	triad: int,
 	top: float
 ) -> float:
 	var row: Control = Control.new()
-	row.name = "Poses"
+	row.name = "Poses" + TRIAD_NAMES[triad]
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.anchor_left = 0.5
 	row.anchor_right = 0.5
 	row.offset_top = top
 	ground.add_child(row)
-	var title: Label = _label("Walk 0 to 3, then idle 0 and 1, in the default view", HALF_WIDTH_PX)
+	var title: Label = _label(
+		"%s, walk 0 to 3, then idle 0 and 1, in the default view" % TRIAD_NAMES[triad],
+		HALF_WIDTH_PX
+	)
 	title.position.x = -HALF_WIDTH_PX / 2.0
 	row.add_child(title)
 	var rigs: Array[Node2D] = []
@@ -286,9 +290,11 @@ func _pose_section(
 			var rig: Node2D = Node2D.new()
 			rig.name = "%s%d" % [String(part).capitalize(), frame]
 			rig.add_child(
-				_sprite(model, ArtModel.SHADOW, model.default_dir(), layouts[&"shadow"], 0, 1.0)
+				_sprite(model, ArtModel.SHADOW, model.default_dir(), layouts[&"shadow"], triad, 1.0)
 			)
-			rig.add_child(_sprite(model, part, model.default_dir(), layouts[part], 0, 1.0, frame))
+			rig.add_child(
+				_sprite(model, part, model.default_dir(), layouts[part], triad, 1.0, frame)
+			)
 			rigs.append(rig)
 			zooms.append(1.0)
 	return _flow(row, rigs, zooms, box, LABEL_PX, _slot_cap(box))

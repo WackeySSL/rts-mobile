@@ -24,12 +24,12 @@ const OTHERS: Array[StringName] = [
 	&"renew_menders"
 ]
 const SHARE: Vector2 = Vector2(0.08, 0.12)
-const SHARE_WIDE: Vector2 = Vector2(0.01, 0.18)
+const SHARE_WIDE: Vector2 = Vector2(0.03, 0.17)
 const MAX_OVERLAP: float = 0.85
 const STRIDE: Dictionary[StringName, int] = {&"fossil_patchers": 352, &"renew_menders": 376}
 ## The kit marks of ADR 0037 section 6: the League's is the team band, the Accord's a mint ring.
 const MINT: Array[String] = ["#A8F5B0"]
-## Never a red cross, crescent or crystal: no red or pink fill in either model's frames.
+## Never a red cross, crescent or crystal: no red or pink fill in any frame of either model.
 const RED_HUE: float = 20.0
 
 var _index: IsoIndex = null
@@ -128,21 +128,26 @@ func test_the_kit_mark_is_the_factions_own_and_no_frame_has_a_red_cross() -> voi
 	for prim: ArtPrim in _model(&"fossil_patchers").primitives(&"hull"):
 		lamps += int(prim.material == &"lamp")
 	assert_int(lamps).is_greater(1)
+	# Every frame of both: the hull, the 4 walk and 2 idle frames, in all 8 directions.
+	var hex: RegEx = RegEx.create_from_string("#[0-9A-Fa-f]{6}")
 	for id: StringName in IDS:
 		var sheet: IsoSheetDef = _index.sheet(id)
-		var text: String = FileAccess.get_file_as_string(
-			sheet.path(&"hull", _model(id).default_dir())
-		)
-		var hex: RegEx = RegEx.create_from_string("#[0-9A-Fa-f]{6}")
-		for found: RegExMatch in hex.search_all(text):
-			var colour: Color = Color(found.get_string())
-			var degrees: float = colour.h * 360.0
-			var reddish: bool = (degrees < RED_HUE or degrees > 340.0) and colour.s > 0.5
-			(
-				assert_bool(reddish)
-				. override_failure_message("%s %s" % [id, found.get_string()])
-				. is_false()
-			)
+		for dir: int in range(0, 16, 2):
+			for frame: Array in _frames():
+				var text: String = FileAccess.get_file_as_string(
+					sheet.path(frame[0], dir, frame[1])
+				)
+				for found: RegExMatch in hex.search_all(text):
+					var colour: Color = Color(found.get_string())
+					var degrees: float = colour.h * 360.0
+					var reddish: bool = (degrees < RED_HUE or degrees > 340.0) and colour.s > 0.5
+					(
+						assert_bool(reddish)
+						. override_failure_message(
+							"%s d%02d %s%d %s" % [id, dir, frame[0], frame[1], found.get_string()]
+						)
+						. is_false()
+					)
 
 
 func test_the_cast_shadow_is_one_connected_mark_in_every_direction() -> void:
