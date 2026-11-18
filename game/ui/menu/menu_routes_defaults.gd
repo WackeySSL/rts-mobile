@@ -10,5 +10,6 @@ extends RefCounted
 ## Registers every route that has a screen today into `routes`.
 static func register(routes: MenuRoutes) -> void:
 	routes.register(MenuRoutes.HOW_TO_PLAY, HowToPlayScreen.new)
+	routes.register(MenuRoutes.SKIRMISH, MapSelect.new)
 	routes.register(MenuRoutes.SETTINGS, SettingsScreen.new)
 	routes.register(MenuRoutes.LICENCES, LicencesScreen.new)

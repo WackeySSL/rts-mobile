@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MapCatalog" format=3]
+
+[ext_resource type="Script" path="res://game/ui/menu/MapCatalog.gd" id="1_catalog"]
+
+[resource]
+script = ExtResource("1_catalog")
+entries = Array[Dictionary]([{
+&"id": &"kestrel_flats",
+&"scenarios": [{
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_kestrel_flats.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres",
+&"player_side": &"renew"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_kestrel_flats_fossil_mirror.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_kestrel_flats_renew_mirror.tres",
+&"player_side": &"renew"
+}],
+&"title": "Kestrel Flats"
+}])

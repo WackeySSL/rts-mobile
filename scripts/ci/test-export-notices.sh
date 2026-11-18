@@ -150,12 +150,13 @@ rapk() { # NAME [ENGINE-LIBRARY-BYTES [FEATURE]]: the release APK as NAME.apk
   rm "$root/r/lib/arm64-v8a/$native"
   echo kernels >"$root/r/lib/arm64-v8a/$native_release"
   echo "${2:-so}" >"$root/r/lib/arm64-v8a/libgodot_android.so"
-  printf 'project\n_custom_features\n%s\n' "${3:-dev_menu}" >"$root/r/assets/project.binary"
+  printf 'project\n_custom_features\n%s\n' "${3:-dev_menu,sim_kernels,perf_boot}" >"$root/r/assets/project.binary"
   (cd "$root/r" && zip -q -r -D "$root/$1.apk" lib assets)
 }
 rapk release
 rapk release-wrong-engine sa
 rapk release-no-feature so other
+rapk release-list-no-dev-menu so sim_kernels,perf_boot,dev_menu_x
 mkdir -p "$root/tpl/lib/arm64-v8a"
 echo so >"$root/tpl/lib/arm64-v8a/libgodot_android.so"
 (cd "$root/tpl" && zip -q -r -D "$root/android_release.apk" lib)
@@ -433,6 +434,7 @@ fi
 STUB_DEBUGGABLE=badging release_case "a debuggable badging fails" 1 "the APK is debuggable"
 STUB_DEBUGGABLE=xmltree release_case "a debuggable manifest dump fails" 1 "the manifest is debuggable"
 STUB_APK="$root/release-no-feature.apk" release_case "a pack without the dev_menu feature fails" 1 "the APK lacks the dev_menu custom feature"
+STUB_APK="$root/release-list-no-dev-menu.apk" release_case "a feature list without dev_menu fails" 1 "the APK lacks the dev_menu custom feature"
 STUB_APK="$root/release-wrong-engine.apk" release_case "an engine library that is not the release template's fails" 1 "is not the one of the release template"
 STUB_APK="$root/stub.apk" release_case "a debug-library APK fails the packed-library check" 1 "the APK lacks lib/arm64-v8a/$native_release"
 STUB_HOME="$root/home-no-release" release_case "the release template is required" 4 "android_release.apk"
