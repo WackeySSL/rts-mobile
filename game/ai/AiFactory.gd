@@ -9,6 +9,8 @@ extends RefCounted
 static func create(
 	def: AiDef, level: AiDifficultyDef, player_id: int, rng: DetRandom
 ) -> AiController:
+	if def is TutorialScriptDef:
+		return TutorialAi.create(def as TutorialScriptDef, player_id, rng)
 	var opponent: OpponentDef = def as OpponentDef
 	if opponent != null:
 		return OpponentAi.create(opponent, level, player_id, rng)
