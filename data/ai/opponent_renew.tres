@@ -24,6 +24,12 @@ artillery_type = &"renew_artillery"
 hold_types = Array[StringName]([&"renew_artillery"])
 defence_type = &"renew_defence"
 strike_type = &"renew_strike"
+; Starting values for the Phase 4b balance run (P250), no source yet.
+aa_type = &"renew_aa"
+fighter_type = &"renew_fighter"
+bomber_type = &"renew_bomber"
+air_weights = PackedInt32Array(0, 0, 70, 30, 60, 40)
+fighter_seen_weight = 10
 role_weights = PackedInt32Array(50, 40, 10, 0, 35, 30, 25, 10, 20, 25, 35, 20)
 build_orders = Array[ExtResource("2_order")]([ExtResource("3_weak"), ExtResource("4_standard"), ExtResource("5_strong")])
 power_margin = 20

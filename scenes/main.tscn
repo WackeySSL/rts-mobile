@@ -10,6 +10,8 @@
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="7_runner"]
 [ext_resource type="Resource" path="res://data/scenarios/controls_test.tres" id="8_scenario"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="9_units"]
+[ext_resource type="Script" path="res://game/view/audio/BattleSounds.gd" id="96_battle_sounds"]
+[ext_resource type="Script" path="res://game/view/audio/UiSounds.gd" id="97_ui_sounds"]
 [ext_resource type="Script" path="res://game/view/AirLayer.gd" id="93_air"]
 [ext_resource type="Script" path="res://game/input/PlayerController.gd" id="10_player"]
 [ext_resource type="Script" path="res://game/view/MoveMarkerLayer.gd" id="11_markers"]
@@ -53,11 +55,13 @@
 [ext_resource type="Script" path="res://game/view/CarryMarkLayer.gd" id="94_carry_marks"]
 [ext_resource type="Script" path="res://game/ui/CarryControls.gd" id="95_carry_controls"]
 
-[node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera")]
+[node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera", "ui_sounds", "attack_cues")]
 script = ExtResource("4_main")
 runner = NodePath("MatchRunner")
 map_view = NodePath("MapView")
 camera = NodePath("Camera")
+ui_sounds = NodePath("UiSounds")
+attack_cues = NodePath("Hud/AttackCues")
 
 [node name="MatchRunner" type="Node" parent="."]
 script = ExtResource("7_runner")
@@ -187,6 +191,13 @@ script = ExtResource("36_ghost_layer")
 runner = NodePath("../MatchRunner")
 placement = NodePath("../PlacementController")
 world_sort = NodePath("../WorldSort")
+
+[node name="BattleSounds" type="Node" parent="." node_paths=PackedStringArray("runner")]
+script = ExtResource("96_battle_sounds")
+runner = NodePath("../MatchRunner")
+
+[node name="UiSounds" type="Node" parent="."]
+script = ExtResource("97_ui_sounds")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2_cam")

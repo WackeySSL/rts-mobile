@@ -9,8 +9,9 @@ extends RefCounted
 
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
-## The owners of a goal key: the staging point (rally, retreat), the army goal and the scout's way.
-enum Owner { STAGING, ARMY, SCOUT }
+## The owners of a goal key: the staging point (rally, retreat), the army goal, the scout's way and
+## the repair building's tile (`AiRepair`, P283).
+enum Owner { STAGING, ARMY, SCOUT, REPAIR }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 ## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).
@@ -83,9 +84,20 @@ var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
 var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
+## Counted by `AiIntel.run` over the seen enemy rows and the remembered buildings (P250), as of its
+## last run: aircraft (layer AIR), drone squads (LOW_AIR) and anti-air (a weapon that hits either),
+## and the most aircraft seen at once, which `AiEconomy` sizes its anti-air buildings by.
+var seen_air: int = 0
+var seen_low_air: int = 0
+var seen_aa: int = 0
+var seen_air_peak: int = 0
+## The own army value (the home and the wave squad, cost scaled by hp), refreshed every ARMY think
+## by `AiArmy`; 0 before the first think. `AiEconomy` reads it for the tech gate (P250b).
+var army_value: int = 0
 ## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
 ## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
-## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
+## but the scout type and the aircraft (P250: they join no ground squad until P251 orders them),
+## and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
 ## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
 var home_x: int = NONE
 var home_y: int = NONE
@@ -121,7 +133,8 @@ var hp_value: PackedInt32Array = PackedInt32Array()
 var withdrawn_id: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
-## STAGING and ARMY and clears the SCOUT bit when the cap is full, AiIntel writes SCOUT). The army
+## STAGING and ARMY and clears the SCOUT and REPAIR bits when the cap is full, AiIntel writes SCOUT,
+## AiRepair writes REPAIR: the repair building's tile, only while a sent vehicle moves). The army
 ## goal is one cell at a time: AiArmy releases its key before it adds the next. The scout's key is
 ## added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
@@ -228,6 +241,16 @@ func goal_room(owner: int) -> int:
 		if mask == 1 << owner:
 			live -= 1
 	return goal_keys_max - live
+
+
+## The army's keys win a full cache: the scout's key gives way, then the repair building's, each
+## only when its release makes room and only while the cache is still full (`AiArmy._hold`).
+func yield_keys() -> void:
+	for owner: int in [Owner.SCOUT, Owner.REPAIR]:
+		if goal_x.size() < goal_keys_max:
+			return
+		if goal_room(owner) > 0:
+			release_owner(owner)
 
 
 ## Clears `owner`'s bit of every key it uses (a key no one else uses goes).

@@ -118,6 +118,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 	if memory.squads_max < 1:
 		return
 	_join(memory)
+	_refresh_value(view, memory)
 	_stage(view, memory, out)
 	_step_back(view, memory, out)
 	var threat: int = _threat(view, memory)
@@ -538,7 +539,7 @@ func _order(
 
 
 ## Makes `owner`'s keys the cells of `goal` for `classes` (a bit per move class) and those it holds
-## there; its other keys go. A full cache makes the scout yield. False, keys kept, if no room.
+## there; its other keys go. A full cache makes the scout and repair keys yield. False: no room.
 func _hold(memory: AiMemory, owner: int, goal: Vector2i, classes: int) -> bool:
 	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
 	var wanted: int = classes
@@ -556,8 +557,7 @@ func _hold(memory: AiMemory, owner: int, goal: Vector2i, classes: int) -> bool:
 			or memory.add_goal_key(goal.x, goal.y, move_class, owner)
 		):
 			continue
-		if memory.goal_room(AiMemory.Owner.SCOUT) > 0:
-			memory.release_owner(AiMemory.Owner.SCOUT)
+		memory.yield_keys()
 		if not memory.add_goal_key(goal.x, goal.y, move_class, owner):
 			memory.goal_restore(saved)
 			return false
@@ -699,51 +699,16 @@ func _pull_back(view: PlayerView, memory: AiMemory, out: Array[Command]) -> bool
 ## The value of the seen enemy combat units and armed, finished buildings within the defence radius
 ## of `centre`; a row outside the box round the centre costs no test, the others one test each in
 ## `tests`, which the threat search shares: a fight at the base that used up the cap leaves the
-## ratio blind that think.
+## ratio blind that think (`AiEnemyScan.value_in`).
 func _near(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
-	return (
-		_value_in(view, memory.seen_unit_id, centre, false)
-		+ _value_in(view, memory.seen_site_id, centre, true)
+	var units: Vector2i = AiEnemyScan.value_in(
+		view, memory.seen_unit_id, centre, defend_radius, false, tests, tests_max
 	)
-
-
-## The value of the rows of `list` within the defence radius of `centre` (only armed, finished
-## buildings when `sites`), one test each past the box, until the cap.
-func _value_in(view: PlayerView, list: PackedInt32Array, centre: Vector2i, sites: bool) -> int:
-	var found: int = 0
-	var columns: Array[PackedInt32Array] = view.columns()
-	var xs: PackedInt32Array = columns[PlayerView.Column.X]
-	var ys: PackedInt32Array = columns[PlayerView.Column.Y]
-	var radius: int = defend_radius
-	var used: int = tests
-	for id: int in list:
-		if used >= tests_max:
-			break
-		var row: int = view.row_of(id)
-		if row < 0:
-			continue
-		var gap_x: int = xs[row] - centre.x
-		var gap_y: int = ys[row] - centre.y
-		if gap_x > radius or gap_x < -radius or gap_y > radius or gap_y < -radius:
-			continue
-		if sites and not _armed(view, row):
-			continue
-		used += 1
-		if gap_x * gap_x + gap_y * gap_y <= radius * radius:
-			found += AiIntel.value_of(view, row)
-	tests = used
-	return found
-
-
-## Whether the building at `row` is finished (`build_left` 0) and has a weapon.
-static func _armed(view: PlayerView, row: int) -> bool:
-	var type: int = view.row_type(row)
-	return (
-		view.row_build_left(row) == 0
-		and type >= 0
-		and type < view.type_weapon.size()
-		and view.type_weapon[type] >= 0
+	var sites: Vector2i = AiEnemyScan.value_in(
+		view, memory.seen_site_id, centre, defend_radius, true, units.y, tests_max
 	)
+	tests = sites.y
+	return units.x + sites.x
 
 
 ## Launches the next wave when the draw is made, its tick has come, no threat stands at the base
@@ -881,6 +846,20 @@ func _tally(view: PlayerView, memory: AiMemory) -> void:
 		_wave_at = sum / _wave_units
 
 
+## `memory.army_value`: the value of the members of the home and the wave squad now (cost scaled by
+## hp), on every ARMY think, whatever the launch path does (the tech gate reads it, P250b).
+func _refresh_value(view: PlayerView, memory: AiMemory) -> void:
+	var value: int = 0
+	for at: int in memory.member_id.size():
+		var squad: int = memory.member_squad[at]
+		if squad != HOME and squad != WAVE:
+			continue
+		var row: int = view.row_of(memory.member_id[at])
+		if row >= 0:
+			value += AiIntel.value_at(view, view.row_type(row), view.row_hp(row))
+	memory.army_value = value
+
+
 ## Moves every member of squad `from` to squad `to`.
 func _assign(memory: AiMemory, from: int, to: int) -> void:
 	for at: int in memory.member_squad.size():
@@ -934,8 +913,9 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 
 
 ## Hard's focus fire for `squad`: the weakest seen enemy combat unit (fewest hp, the lowest id on a
-## tie) within the defence radius of the group's centre, at most `tests_max` tests a run (shared
-## with the threat search). The group gets one `ATTACK` on it when it is a new target (the home
+## tie) that a weapon of the group can hit (`weapon_targets` against the layer, P250) within the
+## defence radius of the group's centre, at most `tests_max` tests a run (shared with the threat
+## search). The group gets one `ATTACK` on it when it is a new target (the home
 ## squad also when a unit joined since); the target's tile is the squad's goal and the army goal.
 ## The key books the target's tile at order time: the sim re-keys each unit's `ATTACK` field toward
 ## the moving target, so for a few ticks two cells may be live while the books hold the order-time
@@ -946,13 +926,21 @@ func _withdrawn(memory: AiMemory, id: int) -> bool:
 func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int) -> bool:
 	_capped = false
 	var sum: Vector2i = Vector2i.ZERO
+	var mask: int = 0
 	var members: PackedInt32Array = _members(memory, true, squad)
 	for id: int in members:
-		sum += view.row_pos(view.row_of(id))
+		var row: int = view.row_of(id)
+		sum += view.row_pos(row)
+		mask |= AiEnemyScan.hit_mask(view, view.row_type(row))
 	var best: int = -1
 	if not members.is_empty():
 		@warning_ignore("integer_division")
-		best = _weakest(view, memory, sum / members.size())
+		var scan: Vector3i = AiEnemyScan.weakest(
+			view, memory.seen_unit_id, sum / members.size(), defend_radius, mask, tests, tests_max
+		)
+		best = scan.x
+		tests = scan.y
+		_capped = scan.z == 1
 	var kept: int = memory.squad_focus[squad]
 	if best < 0 and _capped and kept != AiMemory.NONE:
 		best = view.row_of(kept)
@@ -965,7 +953,13 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 	if target == memory.squad_focus[squad] and not pending:
 		return true
 	var tile: Vector2i = view.row_pos(best) / PlayerView.MILLI_PER_TILE
-	if not _order(view, memory, out, members, tile, AiMemory.Owner.ARMY, _at(tile), target):
+	# Only a member that can hit the target's layer gets the `ATTACK`: a held gun that cannot would
+	# stand idle (P298) for the whole focus.
+	_hitters(view, members, best)
+	if (
+		members.is_empty()
+		or not _order(view, memory, out, members, tile, AiMemory.Owner.ARMY, _at(tile), target)
+	):
 		return true
 	memory.squad_focus[squad] = target
 	memory.squad_goal_x[squad] = tile.x
@@ -977,24 +971,15 @@ func _focus(view: PlayerView, memory: AiMemory, out: Array[Command], squad: int)
 	return true
 
 
-## The row of the weakest seen enemy combat unit within the defence radius of `centre`, -1 for none.
-func _weakest(view: PlayerView, memory: AiMemory, centre: Vector2i) -> int:
-	var found: int = -1
-	var least: int = 0
-	for id: int in memory.seen_unit_id:
-		if tests >= tests_max:
-			_capped = true
-			break
-		var row: int = view.row_of(id)
-		if row < 0:
-			continue
-		var gap: Vector2i = view.row_pos(row) - centre
-		if absi(gap.x) > defend_radius or absi(gap.y) > defend_radius:
-			continue
-		tests += 1
-		if gap.x * gap.x + gap.y * gap.y > defend_radius * defend_radius:
-			continue
-		if found < 0 or view.row_hp(row) < least:
-			found = row
-			least = view.row_hp(row)
-	return found
+## Keeps in `ids` (in place) the units whose weapon may hit the layer of the type of row `target`.
+func _hitters(view: PlayerView, ids: PackedInt32Array, target: int) -> void:
+	var type: int = view.row_type(target)
+	var layer: int = AiEnemyScan.ALL_LAYERS
+	if type >= 0 and type < view.type_layer_bit.size():
+		layer = view.type_layer_bit[type]
+	var kept: int = 0
+	for id: int in ids:
+		if AiEnemyScan.hit_mask(view, view.row_type(view.row_of(id))) & layer != 0:
+			ids[kept] = id
+			kept += 1
+	ids.resize(kept)

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="UnitDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/UnitDef.gd" id="1_unit"]
+
+; The Derrick League's medic squad (ADR 0037 section 6, GDD): unarmed, heals own squads (the foot
+; class, never itself), 110 hp, 6 hp per 15 ticks, 1 squad, reach 1,500, seeks hurt squads within
+; 4,000. Cost 300 from the barracks. Speed, build time, sight and radii are starting values for the
+; balance run. Not in the roster until its art (P280).
+[resource]
+script = ExtResource("1_unit")
+type_id = &"fossil_patchers"
+display_name = "Patchers"
+faction = &"fossil"
+speed = 67
+radius = 300
+selection_radius = 350
+formation_spacing = 900
+max_hp = 110
+sight_range = 6000
+cost = 300
+build_ticks = 150
+tab = 1
+repair_classes = 1
+repair_hp = 6
+repair_period_ticks = 15
+repair_cost_percent = 0
+repair_reach_milli = 1500
+repair_slots = 1
+repair_seek_milli = 4000

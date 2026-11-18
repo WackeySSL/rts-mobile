@@ -48,6 +48,14 @@ Status note (2026-11-15, P400b docs; the AdMob plugin pin, Michael 2026-11-15):
   §2, §4 and §5 say "P410" for the Gradle export, the preset, the AAB checks or `android-aab`,
   read P410b.
 
+Status note (2026-11-17, P400e docs; Michael's yes to the P400c texts): Michael said yes to the five
+P400c draft texts on 2026-11-17 ("men ja", in chat, through the Phase 6 lead). The main lead applied
+them word for word in row P400c, branch `claude/p400c-policy-texts` (f3dfd593). Where this ADR says
+the `release-engineer.md`, CLAUDE.md or `admob-policy` texts are pending Michael's yes (the status
+note above, §5's "Ad IDs", "Amends"), the yes is given. Two agent texts still disagree with §6 (the
+`release` skill's "run number" and `release-engineer.md`'s versionName); their drafts wait for
+Michael's yes in the plan's "Draft texts". No decision text changed.
+
 Amends (dated notes in P400b, after acceptance):
 - ADR 0005's Consequences ("Phase 6 replaces this preset's signing with the release keystore and
   switches to the Gradle build for the AdMob plugin"): the debug preset `Android` and the
@@ -144,6 +152,7 @@ version and SHA-256), or with `aapt2` after a proto conversion: the tool is **to
   unit IDs come only with Phase 7's `release.yml`, through `scripts/ci/write-ad-ids.sh`. Until
   Michael's yes to the CLAUDE.md and `admob-policy` texts (plan P400b), the internal build uses
   Google's test App ID as well.
+  (Note, 2026-11-17, P400e docs: Michael gave that yes on 2026-11-17; the status note at the top.)
 - **Where the secrets live:** the upload key, `PLAY_SERVICE_ACCOUNT_JSON` and
   `ADMOB_APP_ID_ANDROID` in the environment `play-internal`; the real unit IDs
   (`ADMOB_BANNER_ID_ANDROID`, `ADMOB_INTERSTITIAL_ID_ANDROID`, `ADMOB_REWARDED_ID_ANDROID`) in an

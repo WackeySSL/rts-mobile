@@ -107,6 +107,18 @@ func test_every_upgrade_name_fits_the_research_card() -> void:
 	assert_int(overruns).is_greater(0)  # The second line is needed somewhere.
 
 
+## The repair buildings' and medic squads' names (P278) are in the checked set, as captions (nothing
+## requires them), and each is at most 10 characters (ADR 0037 section 14).
+func test_the_repair_buildings_and_medics_are_in_the_checked_names() -> void:
+	var names: Dictionary[String, String] = DisplayNames.all()
+	assert_str(names.get("fossil_weld_shed", "")).is_equal("Weld Shed")
+	assert_str(names.get("renew_drone_dock", "")).is_equal("Drone Dock")
+	assert_str(names.get("fossil_patchers", "")).is_equal("Patchers")
+	assert_str(names.get("renew_menders", "")).is_equal("Menders")
+	for id: String in ["fossil_weld_shed", "renew_drone_dock", "fossil_patchers", "renew_menders"]:
+		assert_int(names[id].length()).override_failure_message(id).is_less_equal(10)
+
+
 ## The names of `names` and `needed` that overrun at one profile, each as a line of the report.
 func _misfits(
 	profile_name: StringName,

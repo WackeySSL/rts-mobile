@@ -151,6 +151,7 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P280 | ART | Patchers and Menders (two figures, 8 directions, walk 4, idle 2), the drone fx, item cards, page pins | art | P237; P306 (2026-11-13, P26bw): the atlas trim first |
 | P281 | TUX | `RepairFx`: sparks, drones out and back, medic glow, from `REPAIRED`, seen-only; ring quotas | 160 | P278, P279, P280 |
 | P282 | TUX | The **Repair** button: ground rows a building serves -> one `REPAIR` to the nearest serving building; beside ADR 0036's Home in a mixed selection, each sending its own rows; unarmed rows of an attack get `ATTACK_MOVE`; six sizes | 100 | P278 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
+| P282b | TUX | 2026-11-17 (Michael): **Repair** stays shown but dimmed (not tappable, like Mend at full health) while no selected ground row a building serves is damaged; it is tappable again when one is hurt. | 40 | P282 |
 | P283 | AI | `AiProduction` (repair building after the vehicle factory, `medic_per_squads`), `AiArmy` (`REPAIR` under `repair_retreat_percent`, medics in waves with `ATTACK_MOVE`) | 170 | P278 |
 | P284 | LEAD | Joins ADR 0036's gate run (P255) and phone check (P256): 18 unit types once the medics are in | docs | P281-P283 |
 
@@ -175,6 +176,22 @@ skill text (asked in P270b, as ADR 0036's P244 and P265 wait for theirs).
 | P298 | GD | Hold position: `STANCE` 9 (factory, branch), the TARGETING twin (`Targeting.gd`) and kernel (`core/targeting.cpp`, `bind/kernel_targeting.cpp`, `stance` in `world_access.h`'s TARGETING list and in the sanitizer's format-7 dump records, which P286 left without it): weapon-range acquisition and no `CHASE` on `ATTACK_MOVE`, IDLE after a held `ATTACK`; `PlayerView.row_stance`; lockstep cases; no golden moves | 230 (C++ ~120) | P286; P287a (2026-11-13, P26bw) |
 | P299 | TUX | The **Hold** toggle (shield glyph, lit when all hold) and the chip's shield; HOW_TO_PLAY Orders row; six sizes | 120 | P298, P292 (2026-11-09: the skill text is accepted and applied, Michael's yes) |
 | P300 | AI | Normal and Hard set hold on `OpponentDef.hold_types` (each faction's artillery) when they join a wave | 40 | P298, P290 |
+
+**Note (2026-11-17, P278 as built; the lead's decision after the review, as for P290).** P278 ships data
+and tests only: the Weld Shed (`fossil_weld_shed`), the Drone Dock (`renew_drone_dock`), the Patchers
+(`fossil_patchers`) and the Menders (`renew_menders`) are in `data/units/` and not in the rosters.
+- **No HOW_TO_PLAY rows here.** The roster entries, the item cards and the HOW_TO_PLAY Units and
+  Buildings rows (Teach: repair) move to P279 (Weld Shed, Drone Dock) and P280 (Patchers, Menders).
+  Those rows also drop their ids from the skip lists in `test_defs_factions_data`,
+  `test_defs_roster` and `test_defs_roster_renew` (marked `# P279` and `# P280`), and P279 splits and
+  P280 deletes `test_not_in_a_roster_yet` in `test_defs_repair_data`.
+- **P283 switches on with the rosters.** `AiProduction` and `AiArmy` pick the repair building and the
+  medic by role from the roster, so their behaviour reaches shipped matches only once P279 and P280
+  have landed.
+- Starting values with no source in the GDD or ADR 0037: the buildings' hit points (900), armour,
+  sight (5,000) and build time (300, as the radar's), the medics' build time (150), sight (6,000)
+  and radii (300, 350, 900), and the Patchers' speed (67, the Rig Hands'). The balance rows record
+  them in the GDD.
 
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and

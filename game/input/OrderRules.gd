@@ -144,6 +144,26 @@ static func hitters(
 			out.append(id)
 
 
+## Replaces `out` with the ids of `ids` that follow an attack without firing (ADR 0037 section 6):
+## the unarmed mobile rows with a repair role, the medics. They get an ATTACK_MOVE to the target's
+## point beside the hitters' ATTACK. A tanker or a carrier, also unarmed, stays out: no army.
+static func followers(snap: MatchSnapshot, ids: PackedInt32Array, out: PackedInt32Array) -> void:
+	out.clear()
+	for id: int in ids:
+		var row: int = snap.index_of(id)
+		if row < 0 or snap.type_repair_classes.is_empty():
+			continue
+		var type: int = snap.type_index[row]
+		if (
+			type < snap.type_repair_classes.size()
+			and type < snap.type_weapon.size()
+			and snap.type_weapon[type] < 0
+			and snap.type_repair_classes[type] != 0
+			and snap.type_speed[type] > 0
+		):
+			out.append(id)
+
+
 ## Whether `id` is one of `player`'s aircraft that REPAIR takes: the layer bit AIR (a drone squad
 ## flies low and is no REPAIR row, ADR 0036 section 6).
 static func is_own_aircraft(snap: MatchSnapshot, id: int, player: int) -> bool:

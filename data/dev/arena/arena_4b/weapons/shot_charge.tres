@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://game/sim/defs/WeaponDef.gd" id="1_weapon"]
+
+; The Shot Truck's mine (ADR 0037 section 8, GDD): the blast radius is the GDD's (1 tile). The damage
+; ("high") and the percents ("strong against vehicles") are starting values for the balance run.
+; Range and cooldown are unused: a mine is not fired.
+; Frozen copy of data/weapons/shot_charge.tres as of 2026-11-17 (main e4be1931, P304b). Used by perf_ai_4b only, so a tuning change to the shipped file cannot move its hash or its workload (ADR 0038 section 7, ADR 0031).
+[resource]
+script = ExtResource("1_weapon")
+id = &"shot_charge"
+damage = 160
+vs_armour = PackedInt32Array(50, 120, 120, 100)
+blast_milli = 1000

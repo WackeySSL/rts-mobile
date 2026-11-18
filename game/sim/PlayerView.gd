@@ -211,6 +211,20 @@ var type_vs_armour: PackedInt32Array = PackedInt32Array()
 ## type_layer_bit` is not 0.
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
 var weapon_targets: PackedInt32Array = PackedInt32Array()
+## The repair role of each type (ADR 0036 section 2, ADR 0037 sections 5 and 6), copies of the rule
+## tables: the move classes it serves (a mask: foot 1, wheeled 2, tracked 4, air 8; 0 = no role) and
+## the rows it serves per turn. The AI finds the repair building and the medic of its faction by
+## them, so a roster without such a type changes nothing.
+var type_repair_classes: PackedInt32Array = PackedInt32Array()
+var type_repair_slots: PackedInt32Array = PackedInt32Array()
+## The air and tech tables (P250), copies of the rule tables: each type's pads (an airfield's: the
+## aircraft it holds), the upgrade a research item gives (-1 for every other type) and, per upgrade,
+## the types it changes (`upgrade_types` from `upgrade_type_first`, `upgrade_type_count` entries).
+var type_pads: PackedInt32Array = PackedInt32Array()
+var type_upgrade: PackedInt32Array = PackedInt32Array()
+var upgrade_type_first: PackedInt32Array = PackedInt32Array()
+var upgrade_type_count: PackedInt32Array = PackedInt32Array()
+var upgrade_types: PackedInt32Array = PackedInt32Array()
 ## The pending ruptures, which every player sees (ADR 0023 section 10's warning): point in
 ## milli-tiles and the landing tick, one entry per player that has one, ascending player.
 var warned_x: PackedInt32Array = PackedInt32Array()
@@ -469,6 +483,13 @@ func _take_tables(world: World) -> void:
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
 	weapon_targets = world.weapon_targets.duplicate()
+	type_repair_classes = world.type_repair_classes.duplicate()
+	type_repair_slots = world.type_repair_slots.duplicate()
+	type_pads = world.type_pads.duplicate()
+	type_upgrade = world.type_upgrade.duplicate()
+	upgrade_type_first = world.upgrade_type_first.duplicate()
+	upgrade_type_count = world.upgrade_type_count.duplicate()
+	upgrade_types = world.upgrade_types.duplicate()
 	unit_cap = world.unit_cap
 	building_cap = world.building_cap
 	_take_weapon_tables(world)

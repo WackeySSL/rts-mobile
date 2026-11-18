@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## nothing: the look is a phone check. The exits and the input are in test_intro_player_exit.gd.
 
 const SETTINGS_PATH: String = "res://data/intro_settings.tres"
-const MENU_PATH: String = "res://scenes/menu/menu.tscn"
+const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Harness: GDScript = preload("res://tests/ads/ad_service_harness.gd")
 
