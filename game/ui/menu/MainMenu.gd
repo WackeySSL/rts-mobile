@@ -1,12 +1,13 @@
 class_name MainMenu
 extends MenuScreen
 ## The main menu (ADR 0043 section 5, ADR 0025 section 12, plan P524): TREADLINE, the two sides
-## each in its accent, the tagline, Continue (only while a resume file exists), Skirmish, Tutorial,
-## How to play, Settings, the rank badge and XP bar (`Progression`), the version line and, at the
-## foot, the real `AdBannerBand` on the start page (its 48 dp of air is the band's data).
-## Every button leads through `MenuRoutes`: a route nobody registered yet leaves the button
-## present and disabled, and enables when the route is registered later. The "rank badge" is a
-## label until P519 gives it its look. It is a menu: no Command, no sim.
+## each in its accent's light (`SideNameRenew`, `SideNameFossil`), the tagline, Continue (only
+## while a resume file exists), Skirmish, Tutorial, How to play, Settings, the rank line and XP
+## bar (`Progression`; `MenuRankLabel` and `MenuXpBar`, the plate `MenuRankBadge` is for screens
+## that frame it), the version line and, at the foot, the real `AdBannerBand` on the start page
+## (its 48 dp of air is the band's data). Every button leads through `MenuRoutes`: a route nobody
+## registered yet leaves the button present and disabled, and enables when the route is
+## registered later. It is a menu: no Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
@@ -17,12 +18,12 @@ const SIDES: Array[Array] = [
 	[
 		preload("res://assets/art/svg/icons/emblem_fossil.svg"),
 		MainMenuText.SIDE_FOSSIL,
-		&"AccentFossil"
+		&"SideNameFossil"
 	],
 	[
 		preload("res://assets/art/svg/icons/emblem_renew.svg"),
 		MainMenuText.SIDE_RENEW,
-		&"AccentRenew"
+		&"SideNameRenew"
 	],
 ]
 
@@ -116,7 +117,7 @@ func _route_button(text_key: StringName, route: StringName) -> Button:
 
 
 func _build_header() -> void:
-	_label(tr(MainMenuText.TITLE), &"CapsBigTitle")
+	_label(tr(MainMenuText.TITLE), &"MenuTitle")
 	var sides: HBoxContainer = HBoxContainer.new()
 	sides.alignment = BoxContainer.ALIGNMENT_CENTER
 	sides.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
@@ -135,14 +136,15 @@ func _build_header() -> void:
 		sides.add_child(emblem)
 		var name_label: Label = Label.new()
 		name_label.text = tr(side[1] as StringName)
-		name_label.self_modulate = get_theme_color(&"accent", side[2])  # The theme scan bars an override.
+		name_label.theme_type_variation = side[2] as StringName
 		sides.add_child(name_label)
 	_label(tr(MainMenuText.TAGLINE), &"").autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func _build_rank() -> void:
-	_rank_label = _label("", &"CapsTitle")
+	_rank_label = _label("", &"MenuRankLabel")
 	_xp_bar = ProgressBar.new()
+	_xp_bar.theme_type_variation = &"MenuXpBar"
 	_xp_bar.show_percentage = false
 	_xp_bar.custom_minimum_size.y = UiScale.dp(XP_BAR_DP)
 	column.add_child(_xp_bar)

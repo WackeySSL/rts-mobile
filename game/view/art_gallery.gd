@@ -154,7 +154,7 @@ const GHOST_REASON_GLYPH: String = "glyph_reason_occupied"
 @export var explored_fog_alpha: int = 140
 
 var _turrets: Array[Sprite2D] = []
-var _previous_quit_on_go_back: bool = true
+var _previous_quit_on_go_back: bool = false
 var _page: int = 0
 var _unit_page: Array[CanvasItem] = []
 var _units: RefCounted = Units.new()  ## The generated units' textures, made once.
@@ -171,8 +171,9 @@ var _life_page: Control = null
 
 
 func _enter_tree() -> void:
-	# SceneTree.quit_on_go_back is true by default and would quit the app on the Android back
-	# button before the gallery can leave. Switch it off while the gallery is open.
+	# The project keeps quit_on_go_back off (ADR 0043 section 4), so the Android back button never
+	# quits the app before the gallery can leave. Keep it off while the gallery is open and put back
+	# what was found, whatever it was.
 	var tree: SceneTree = get_tree()
 	_previous_quit_on_go_back = tree.quit_on_go_back
 	tree.quit_on_go_back = false

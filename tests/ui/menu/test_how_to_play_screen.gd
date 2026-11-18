@@ -9,7 +9,7 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TOLERANCE_PX: float = 0.5
 
 var _window_size_before: Vector2i
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 var _menu: Control
 var _stack: MenuStack
 var _screen: HowToPlayScreen

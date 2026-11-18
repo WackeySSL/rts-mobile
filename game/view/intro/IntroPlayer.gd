@@ -10,6 +10,11 @@ signal finished(menu: Node)
 
 enum Phase { DRIVE, SETTLED, OPEN, FADE, DONE }
 
+## The perf APK (preset "Android perf" alone carries this custom feature) starts in the match scene
+## as it always did, so the gate's path (pause menu, DEVELOPER MENU, Perf) stays.
+const PERF_BOOT_FEATURE: String = "perf_boot"
+const PERF_BOOT_SCENE: String = "res://scenes/main.tscn"
+
 
 ## Awaits the consent call away from the player, so a player freed meanwhile is never resumed.
 class ConsentWait:
@@ -31,6 +36,9 @@ var consent: Callable = Callable()
 ## reads it and sets this field before it adds the player to the tree.
 var reduced: bool = false
 var log_line: Callable = print
+## `has_feature` and `change_scene` are test seams of the perf APK's start (see PERF_BOOT_FEATURE).
+var has_feature: Callable = OS.has_feature
+var change_scene: Callable = _change_scene
 ## Where the menu is added; null is the tree's root (then it becomes the current scene).
 var host: Node = null
 
@@ -55,14 +63,12 @@ var _cover: float = 1.0
 var _line_full: float = 0.0
 
 
-func _enter_tree() -> void:
-	# TODO(P533): ADR 0043 section 4 wants application/config/quit_on_go_back = false for the whole
-	# app; the project setting comes with the row that edits project.godot. Until then the intro
-	# switches it off (as MenuStack does), so Back skips the intro and never quits the app.
-	get_tree().quit_on_go_back = false
-
-
 func _ready() -> void:
+	if bool(has_feature.call(PERF_BOOT_FEATURE)):
+		phase = Phase.DONE  # No intro, no input handling: the scene is leaving.
+		set_process(false)
+		change_scene.call(PERF_BOOT_SCENE)
+		return
 	if not consent.is_valid():
 		var ads: Node = get_node_or_null("/root/AdService")
 		if ads != null:
@@ -71,6 +77,10 @@ func _ready() -> void:
 	resized.connect(func() -> void: apply_layout(size, UiScale.safe_rect_base()))
 	apply_layout(size, UiScale.safe_rect_base())
 	begin()
+
+
+func _change_scene(path: String) -> void:
+	get_tree().change_scene_to_file.call_deferred(path)
 
 
 func _process(_delta: float) -> void:

@@ -61,8 +61,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_twelve_buildings_and_the_eight_units_in_the_adr_order(
-) -> void:
+func test_the_faction_file_lists_the_twelve_buildings_and_the_nine_units_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
 		"renew_power",
@@ -84,6 +83,7 @@ func test_the_faction_file_lists_the_twelve_buildings_and_the_eight_units_in_the
 		"renew_tanker",
 		"renew_fighter",
 		"renew_bomber",
+		"renew_linecar",
 	]
 	var faction: FactionDef = load(FACTION_PATH)
 	var listed: Array[String] = []
@@ -506,7 +506,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 	)
 	assert_array(buildable[INFANTRY]).is_equal(["renew_rifle", "renew_rocket"])
 	assert_array(buildable[VEHICLES]).is_equal(
-		["renew_artillery", "renew_scout", "renew_tank", "renew_tanker"]
+		["renew_artillery", "renew_linecar", "renew_scout", "renew_tank", "renew_tanker"]
 	)
 
 
@@ -519,7 +519,8 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 
 ## The paths of the unit files that name the faction, in file order.
-## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre.
+## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre,
+## P291 the Linecar.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -528,10 +529,9 @@ func _own_files() -> Array[String]:
 			in [
 				"renew_transport",
 				"renew_drone",
-				"renew_linecar",
 				"renew_seeder",
-				"renew_drone_dock",
-				"renew_menders",
+				"renew_drone_dock",  # P279
+				"renew_menders",  # P280
 			]
 		):
 			continue

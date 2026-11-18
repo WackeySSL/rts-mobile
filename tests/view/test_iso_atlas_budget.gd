@@ -57,15 +57,31 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## page-2 allocation of ADR 0036 section 15, P26bz note; the shadows are one slot for both players).
 ## Page 1 has left 1217 rows on the cross-faction page, 1305 on the Derrick League mirror and
 ## 1318 on the Lumen Accord mirror; page 2 has left 1538, 2426 and 2340.
-const TODAY_CROSS: int = 2367  ## P249: 2314 + 53 (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_MIRROR_DERRICK: int = 2279  ## P249: 2258 + 21 (P245b: 2172 + 86; P239b: 2127 + 45).
-const TODAY_MIRROR_LUMEN: int = 2266  ## P249: 2238 + 28 (P245b: 2167 + 71; P239b: 2068 + 99).
+## P291 (the Bunk Wagon and the Linecar: a 16-direction hull and a 16-direction shadow each, the
+## hull trimmed on page 1, the shadows untrimmed on page 2) moved page 1 from 2367, 2279 and 2266 to
+## the pins below (+105, +128 and +75 rows) and page 2 from 2046, 1158 and 1244 (+218, +106 and
+## +42).
+## A 16-direction vehicle shadow set costs about one shelf (its frame height, 112 and 108 rows), so
+## the cross page's +218 is the floor, not the 60 rows ADR 0036 section 15's P26bz note allocated;
+## the lead's revised page-2 allocation (2026-11-17) is P291 about 220 rows, and a page-2 trim row
+## comes before P204 (8-direction shadows are the fallback for later rows only). Page 1 has left
+## 1112 rows on the cross-faction page, 1177 on the Derrick League mirror and 1243 on the Lumen
+## Accord mirror; page 2 has left 1320, 2320 and 2298.
+## P291: 2367 + 105; P249: 2314 + 53 (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
+const TODAY_CROSS: int = 2472
+## P291: 2279 + 128; P249: 2258 + 21 (P245b: 2172 + 86; P239b: 2127 + 45).
+const TODAY_MIRROR_DERRICK: int = 2407
+## P291: 2266 + 75; P249: 2238 + 28 (P245b: 2167 + 71; P239b: 2068 + 99).
+const TODAY_MIRROR_LUMEN: int = 2341
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players, and each shadow fits the free width of shelf 1; only the trailing
 ## shelf grows. An aircraft's hull carries the team colour, so it has a slot per player (P245).
-const TODAY2_CROSS: int = 2046  ## P249: 1986 + 60 (P245: 1514 + 472; P203: 1116 + 398, the pads).
-const TODAY2_MIRROR_DERRICK: int = 1158  ## P249: 1094 + 64 (P245: 782 + 312; P245b: 780 + 2).
-const TODAY2_MIRROR_LUMEN: int = 1244  ## P249: 1198 + 46 (P245: 814 + 384; P203: 634 + 180).
+## P291: 2046 + 218; P249: 1986 + 60 (P245: 1514 + 472; P203: 1116 + 398, the pads).
+const TODAY2_CROSS: int = 2264
+## P291: 1158 + 106; P249: 1094 + 64 (P245: 782 + 312; P245b: 780 + 2).
+const TODAY2_MIRROR_DERRICK: int = 1264
+## P291: 1244 + 42; P249: 1198 + 46 (P245: 814 + 384; P203: 634 + 180).
+const TODAY2_MIRROR_LUMEN: int = 1286
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

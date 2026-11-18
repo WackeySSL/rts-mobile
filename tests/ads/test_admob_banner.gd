@@ -81,7 +81,7 @@ func test_hide_and_show_toggle_the_same_banner() -> void:
 	assert_int(_backend.banner_height_dp()).is_equal(56)
 
 
-func test_destroy_banner_takes_the_view_away_and_a_later_show_builds_a_new_one() -> void:
+func test_destroy_banner_takes_the_view_away_and_a_later_show_waits_for_the_gap() -> void:
 	_backend.show_banner()
 	await _load_banner()
 	var uid: int = _banner_uid()
@@ -91,6 +91,11 @@ func test_destroy_banner_takes_the_view_away_and_a_later_show_builds_a_new_one()
 	_backend.destroy_banner()
 	assert_int(_set.count("destroy")).is_equal(1)
 	_backend.show_banner()
+	assert_int(_set.count("create")).is_equal(1)
+	assert_int(_later.size()).is_equal(1)
+	assert_int(_later[0][0]).is_equal(30000)
+	_now = 30000
+	(_later[0][1] as Callable).call()
 	assert_int(_set.count("create")).is_equal(2)
 
 
@@ -111,10 +116,11 @@ func test_a_failed_banner_reloads_itself_once_per_gap_even_when_the_timer_is_ear
 	assert_int(_later.size()).is_equal(2)
 
 
-func test_a_turn_while_the_banner_shows_makes_it_again_at_the_new_width() -> void:
+func test_a_turn_after_the_gap_makes_it_again_at_the_new_width() -> void:
 	_backend.show_banner()
 	await _load_banner()
 	var old_uid: int = _banner_uid()
+	_now = 40000
 	_set.of(AdMobBackend.S_SIZE).banner_size = {"width": 640, "height": 50}
 	_width = 640
 	resized.emit()
@@ -135,6 +141,74 @@ func test_a_turn_while_the_banner_is_hidden_is_handled_at_the_next_show() -> voi
 	_width = 640
 	resized.emit()
 	assert_int(_set.count("create")).is_equal(1)
+	_now = 40000
 	_backend.show_banner()
 	assert_int(_set.count("create")).is_equal(2)
 	assert_int(_set.count("destroy")).is_equal(1)
+
+
+func test_turns_inside_the_gap_take_the_banner_down_now_and_remake_it_once_at_its_end() -> void:
+	_backend.initialize()
+	_backend.show_banner()
+	await _load_banner()
+	_height_signals = 0
+	_now = 1000
+	_width = 640
+	resized.emit()
+	assert_int(_set.count("destroy")).is_equal(1)
+	assert_int(_backend.banner_height_dp()).is_equal(0)
+	assert_int(_height_signals).is_equal(1)
+	assert_int(_set.count("create")).is_equal(1)
+	_now = 5000
+	_width = 480
+	resized.emit()
+	assert_int(_set.count("create")).is_equal(1)
+	assert_int(_later.size()).is_equal(1)
+	assert_int(_later[0][0]).is_equal(29000)
+	_now = 29999
+	(_later[0][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(1)
+	assert_int(_later.size()).is_equal(2)
+	_now = 30000
+	(_later[1][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(2)
+	assert_int(_set.count("destroy")).is_equal(1)
+	var sizes: Array = _set.calls.filter(func(e: Array) -> bool: return e[0] == "adaptive_size")
+	assert_array(sizes.back()).is_equal(["adaptive_size", 480, AdMobBackend.S_SIZE])
+
+
+func test_a_pending_create_does_nothing_once_the_banner_is_no_longer_wanted() -> void:
+	_backend.show_banner()
+	_now = 1000
+	_width = 640
+	resized.emit()
+	assert_int(_later.size()).is_equal(1)
+	_backend.destroy_banner()
+	_now = 30000
+	(_later[0][1] as Callable).call()
+	assert_int(_set.count("create")).is_equal(1)
+
+
+func test_no_banner_is_made_while_the_service_has_no_request() -> void:
+	var wanted: Array[bool] = [true]
+	_backend.banner_wanted = func() -> bool: return wanted[0]
+	_backend.show_banner()
+	await _load_banner()
+	wanted[0] = false
+	_now = 40000
+	_width = 640
+	resized.emit()
+	assert_int(_set.count("create")).is_equal(1)
+	assert_int(_later.size()).is_equal(0)
+
+
+func test_the_preview_height_is_the_adaptive_size_before_the_first_load() -> void:
+	assert_int(_backend.banner_height_preview_dp()).is_equal(0)
+	_backend.initialize()
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)
+	assert_int(_set.count("create")).is_equal(0)
+	_backend.show_banner()
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)
+	await _load_banner()
+	assert_int(_backend.banner_height_dp()).is_equal(56)
+	assert_int(_backend.banner_height_preview_dp()).is_equal(56)

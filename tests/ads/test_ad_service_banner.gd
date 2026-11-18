@@ -64,12 +64,12 @@ func test_remove_ads_destroys_the_banner_view() -> void:
 	assert_int(_spy(service).calls.count("hide_banner")).is_equal(1)
 
 
-func test_remove_ads_destroys_a_banner_that_was_only_hidden() -> void:
+func test_remove_ads_after_the_last_release_destroys_nothing_twice() -> void:
 	var service: Node = _service()
 	service.show_banner()
 	service.hide_banner()
 	await get_tree().process_frame
-	assert_int(_spy(service).destroyed).is_equal(0)
+	assert_int(_spy(service).destroyed).is_equal(1)
 	AdServiceHarness.billing(service).next_outcome = BillingBackend.Outcome.PURCHASED
 	await service.purchase_remove_ads()
 	assert_int(_spy(service).destroyed).is_equal(1)
@@ -83,13 +83,30 @@ func test_losing_consent_destroys_the_banner_view() -> void:
 	assert_int(service.banner_height_dp()).is_equal(0)
 
 
-func test_a_banner_released_by_its_menu_is_only_hidden() -> void:
+func test_the_last_released_band_destroys_the_banner_view_at_idle() -> void:
 	var service: Node = _service()
+	service.show_banner()
 	service.show_banner()
 	service.hide_banner()
 	await get_tree().process_frame
 	assert_int(_spy(service).destroyed).is_equal(0)
-	assert_int(_spy(service).calls.count("hide_banner")).is_equal(1)
+	service.hide_banner()
+	assert_int(_spy(service).destroyed).is_equal(0)
+	await get_tree().process_frame
+	assert_int(_spy(service).destroyed).is_equal(1)
+	assert_int(service.banner_height_dp()).is_equal(0)
+	service.show_banner()
+	assert_int(_spy(service).calls.count("banner")).is_equal(2)
+
+
+func test_a_reparent_in_one_frame_keeps_the_banner() -> void:
+	var service: Node = _service()
+	service.show_banner()
+	service.hide_banner()
+	service.show_banner()
+	await get_tree().process_frame
+	assert_int(_spy(service).destroyed).is_equal(0)
+	assert_int(_spy(service).calls.count("banner")).is_equal(1)
 
 
 func test_the_backends_gate_follows_the_consent_answer() -> void:

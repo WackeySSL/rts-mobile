@@ -9,7 +9,8 @@ argument-hint: "[version, e.g. 0.3.0]"
 
 1. Check that `main` is green: `gh run list --branch main --limit 3`. If not, stop and report.
 2. On a new branch, set `application/config/version` in `project.godot` to `$ARGUMENTS`.
-   Do not edit the Android versionCode; CI derives it from the run number.
+   Do not edit the Android versionCode; CI derives it from the commits on `main` up to the built
+   commit (10 × the count plus the channel, ADR 0040 §6) (Michael, 2026-11-17).
 3. Add a `## [$ARGUMENTS]` section to `CHANGELOG.md` (Keep a Changelog format), written for
    players, from the PR titles merged since the previous release.
 4. Commit `release: v$ARGUMENTS`, open a PR, wait for green CI and ask Michael to merge it.
