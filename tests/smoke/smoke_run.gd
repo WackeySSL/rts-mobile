@@ -20,7 +20,8 @@ extends RefCounted
 ## `flow_full_ticks` and `players`, one entry per player in player order. A player has `player`,
 ## `faction`, `seat`, `ai` (the AiDef id), `level`, `credits`, `units` and `buildings` (the rows
 ## alive at the end), `built`, `lost_units`, `lost_buildings`, `harvested`, `defeated_tick`, the
-## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`) and the
+## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`), its
+## `kills_by_layer` map, `reveals` and `research` (P254; added keys, schema 2 unchanged) and the
 ## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -39,6 +40,16 @@ const KINDS: Array[String] = ["cross", "derrick", "lumen", "fossil-mirror", "ren
 const LEVEL_DUMMY: String = "dummy"
 const LEVELS: Array[String] = ["easy", "normal", "hard", "dummy"]
 const DEFAULT_LEVELS: Array[String] = ["normal", "normal"]
+## The unit orders whose units may die in the lag tick (ADR 0038 section 6, REPAIR from P283,
+## STANCE from P300).
+const _UNIT_ORDERS: Array[int] = [
+	Command.Type.ATTACK_MOVE,
+	Command.Type.MOVE,
+	Command.Type.ATTACK,
+	Command.Type.STOP,
+	Command.Type.STANCE,
+	Command.Type.REPAIR,
+]
 ## The seats of players 1 and 2 (the scenarios put player 1 at the top).
 const SEATS: Array[String] = ["top", "bottom"]
 ## Ticks per match: 15 minutes of game at 15 Hz, the longest a match may run (ADR 0031 section 1).
@@ -271,11 +282,8 @@ static func expired_in(world: World, commands: Array[Command]) -> int:
 
 
 static func _expired(world: World, command: Command) -> bool:
-	match command.type:
-		Command.Type.ATTACK_MOVE, Command.Type.MOVE, Command.Type.ATTACK, Command.Type.STOP:
-			pass
-		_:
-			return false
+	if not _UNIT_ORDERS.has(command.type):
+		return false
 	if command.type == Command.Type.ATTACK and world.index_of(command.target_id) < 0:
 		return true
 	if command.unit_ids.is_empty():

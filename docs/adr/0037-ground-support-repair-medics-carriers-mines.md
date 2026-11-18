@@ -341,6 +341,9 @@ of which about 120 are C++.
     Repair sends ground rows to the nearest repair building. A mixed selection shows both, and
     each sends only its own rows. Aircraft never go to a Weld Shed or a Drone Dock (bit 8 off).
   - The button is `touch-ui-rules` text and waits for Michael's yes (as ADR 0036's P244).
+  - As built (P282b, Michael, 2026-11-17), changing the section 9 sentence above ("While the
+    selection holds a damaged ground row ... shows **Repair**"): Repair shows while a complete own repair building serves
+    a selected ground row and is dimmed, not tappable, while none of those rows is damaged.
 - **AI.** `AiProduction`: the repair building in the build orders after the vehicle factory
   (Normal and Hard). `AiArmy`: a vehicle under `repair_retreat_percent` that is not in a wave's
   fight goes `REPAIR` (Normal and Hard); Hard also sends damaged wave members between waves.
@@ -779,6 +782,20 @@ then.
   `stance` is in TARGETING's checked list (44 names, 110 in the table) and a required record of the
   format-7 sanitizer dumps. `PlayerView` gives it as the copied field `own_stance` (one entry per
   `own_rows`), not as `row_stance` (P26bq, P26bt, ADR 0038 section 4). No golden moved.
+
+- Note (2026-11-17, P300, as built; it changes §10's table row "Hold position | `AiArmy`" and §15's
+  "Normal and Hard set hold ... when they join a wave"): `AiHold` is a small manager of its own, run
+  in the ARMY slot after `AiRepair` (`OpponentAi`: `AiArmy` -> `AiRepair` -> `AiHold`), so `AiArmy`
+  stays under gdlint's line maximum. The level field `hold_in_waves` (1 on Normal and Hard, 0 on Easy
+  and on the frozen 4b copies, script default 0) switches it on. Release rule: a member of the wave
+  squad whose type is in `OpponentDef.hold_types` and that is not held gets `STANCE` `[1]`; such a
+  unit that is held and is no longer in the wave squad (the wave disbanded or was recalled, or the
+  unit stepped back) gets `[0]`. The wish is read each think from the memory's squads and
+  `PlayerView.own_stance`, so nothing is stored and a refused order is sent again. A type with speed
+  0 is skipped (the sim drops it from `STANCE`). The wave's focus `ATTACK` (Hard) goes only to
+  members whose weapon may hit the target's layer, so a held gun that cannot hit a low-air target
+  keeps its `ATTACK_MOVE` instead of standing idle (P298) for the whole focus. The smoke's expired
+  rule counts `STANCE` and `REPAIR` as unit orders (§6 of ADR 0038).
 
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while

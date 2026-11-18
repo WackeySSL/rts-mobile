@@ -87,7 +87,9 @@ func add_button(text: String, action: Callable) -> Button:
 ## recomputed on a resize; the gap round the column is inside the scroll, so its own margin is 0).
 ## One exception: the bottom is the safe rect's own bottom, so the slot's bottom edge lies on it
 ## (the real banner is drawn there, ADR 0043 section 8). The column is as wide as the short side of
-## the safe rect inside the gaps, so a phone held either way gets one column.
+## the safe rect inside the gaps, so a phone held either way gets one column. The column gives the
+## vertical scroll bar's width back, so a long column that scrolls stays inside the safe rect in
+## portrait too (a short one that needs no bar is a few px narrower).
 func _apply() -> void:
 	if _frame == null or not is_inside_tree():
 		return
@@ -103,4 +105,5 @@ func _apply() -> void:
 		_gap.add_theme_constant_override("margin_" + side, gap)
 	column.add_theme_constant_override("separation", gap)
 	var inside: Rect2 = SafeAreaMargin.rect_inside(full, GAP_DP)
-	column.custom_minimum_size.x = maxf(minf(inside.size.x, inside.size.y), 0.0)
+	var bar_px: float = scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	column.custom_minimum_size.x = maxf(minf(inside.size.x, inside.size.y) - bar_px, 0.0)

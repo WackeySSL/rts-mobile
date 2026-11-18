@@ -59,6 +59,21 @@ func test_hiding_the_band_releases_its_show_and_showing_takes_it_again() -> void
 	assert_float(band.size.y).is_greater(0.0)
 
 
+func test_closing_the_last_band_destroys_the_banner_and_leaves_no_object() -> void:
+	_make_service()
+	var fake: FakeAdBackend = _service._backend as FakeAdBackend
+	var band: AdBannerBand = await _add_band()
+	assert_bool(fake.banner_visible).is_true()
+	assert_bool(_service._banner_alive).is_true()
+	band.free()
+	assert_bool(_service._banner_alive).is_true()
+	await await_idle_frame()
+	assert_bool(_service._banner_alive).is_false()
+	assert_bool(fake.banner_visible).is_false()
+	assert_bool(is_instance_valid(fake._banner_node)).is_false()
+	assert_int(_service.banner_height_dp()).is_equal(0)
+
+
 func test_an_ancestor_hidden_and_shown_moves_the_band_too() -> void:
 	_make_service()
 	var band: AdBannerBand = await _add_band()

@@ -344,6 +344,8 @@ func _pick_target(view: PlayerView, buildings: bool) -> int:
 		var type: int = view.row_type(row)
 		if view.row_owner(row) != ENEMY or (view.type_foot_w[type] > 0) != buildings:
 			continue
+		if view.type_layer_bit[type] == PlayerView.Layer.AIR:
+			continue  # An ATTACK on an aircraft is dropped for rifles; the computer builds aircraft (P250).
 		var rank: int = 0
 		if buildings and view.row_build_left(row) != 0:
 			continue

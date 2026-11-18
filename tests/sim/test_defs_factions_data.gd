@@ -15,7 +15,7 @@ const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
 ## Files with no roster entry yet: the transports and the drone squads (P266), and the medic squads
 ## (P280). Each row removes its own names (P245 rostered the fighters and bombers, P249 the
-## engineering centres, P279 the repair buildings, P292 the minelayers).
+## engineering centres, P279 the repair buildings, P291 the ground carriers, P292 the minelayers).
 const AIR_UNLISTED: Array[String] = [
 	# The transports and drone squads (P266).
 	"fossil_transport",

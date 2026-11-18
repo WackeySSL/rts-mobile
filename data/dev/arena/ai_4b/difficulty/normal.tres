@@ -25,6 +25,12 @@ unit_retreat_hp_percent = 0
 focus_fire = 0
 counter_percent = 30
 uses_strike = 1
+; Air and tech (P250) are off in the frozen arena: its AI builds none of those types.
+aa_per_seen_aircraft = 0
+aa_max = 0
+research_floor = 0
+tech_army_value_min = 0
+hold_in_waves = 0
 commands_per_think_max = 8
 income_percent = 100
 mend_below_percent = 50
