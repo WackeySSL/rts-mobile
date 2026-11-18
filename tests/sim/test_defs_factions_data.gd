@@ -22,9 +22,7 @@ const AIR_UNLISTED: Array[String] = [
 	"renew_transport",
 	"fossil_drone",
 	"renew_drone",
-	# The repair buildings and medic squads (P279, P280).
-	"fossil_weld_shed",
-	"renew_drone_dock",
+	# The medic squads (P280).
 	"fossil_patchers",
 	"renew_menders",
 ]
@@ -69,6 +67,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"fossil_aa": "barracks",
 				"fossil_airfield": "fossil_radar",
 				"fossil_engineering": "fossil_airfield",
+				"fossil_weld_shed": "vehicle_factory",
 				"fossil_bomber": "fossil_airfield",
 				"fossil_fighter": "fossil_airfield",
 				"artillery": "fossil_radar",
@@ -93,6 +92,7 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_aa": "renew_barracks",
 				"renew_airfield": "renew_radar",
 				"renew_engineering": "renew_airfield",
+				"renew_drone_dock": "renew_factory",
 				"renew_bomber": "renew_airfield",
 				"renew_fighter": "renew_airfield",
 				"renew_artillery": "renew_radar",

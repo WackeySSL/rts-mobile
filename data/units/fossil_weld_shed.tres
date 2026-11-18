@@ -5,7 +5,7 @@
 
 ; The Derrick League's repair building (ADR 0037 section 5, GDD): 2 x 2, wheeled and tracked vehicles
 ; (classes 6, no aircraft), cost 800, power -20, 2 at a time, fast, short reach. Hit points, armour,
-; sight and build time (300, as the radar) are starting values for the balance run. Not in the roster until its art (P279).
+; sight and build time (300, as the radar) are starting values for the balance run.
 [resource]
 script = ExtResource("1_building")
 type_id = &"fossil_weld_shed"

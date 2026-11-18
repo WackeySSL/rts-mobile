@@ -192,6 +192,18 @@ and tests only: the Weld Shed (`fossil_weld_shed`), the Drone Dock (`renew_drone
   and radii (300, 350, 900), and the Patchers' speed (67, the Rig Hands'). The balance rows record
   them in the GDD.
 
+**Note (2026-11-18, P279 as built; the art-director).** The Weld Shed (`fossil_weld_shed`) and the Drone Dock
+(`renew_drone_dock`) are 2 x 2 models with an 8-frame `anim` loop (a swinging welding arm and a turning spark cross; a
+drone circling above the deck), a KRITISK picture, no SKADET picture, a shadow and an item card, and join the rosters
+after the engineering centres (Structures tab). The branch stacks on P292 and carries P278, P282 and P283 (cherry-picked
+from main, which P292's base did not have yet), so the AI picks the repair building by role: it now builds one on
+Normal and Hard.
+- HOW_TO_PLAY has the Buildings rows (Teach: repair); `test_not_in_a_roster_yet` is split (the sheds are rostered,
+  the medics still not: P280 deletes the rest); the skip lists lose the two building ids.
+- Atlas pins (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2582, 2526, 2435 to 2625, 2559, 2493;
+  page 2 2486, 1386, 1386 to 2504, 1386, 1408 (inside the 60 rows allocated).
+- `LIFTS` in `test_building_anim.gd` also holds the two loops (a swing and a ring ride are not a turn by a fixed step).
+
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and
 **P290 writes no HOW_TO_PLAY row** (its row's "HOW_TO_PLAY Units, Orders, Fog rows" move to the rows
