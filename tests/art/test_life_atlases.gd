@@ -141,31 +141,27 @@ func test_every_frame_has_ink_in_a_clear_cell_and_nothing_lies_outside_the_cells
 		assert_array(problems).override_failure_message(atlas + str(problems)).is_empty()
 
 
-## The repair drone (P280) is two frames side by side: the rotor discs reach almost to the side of a
-## cell, so the side columns of each cell (not its top and bottom rows) are clear and the ink of
-## one frame ends at least `MIN_GAP_PX` before the ink of the next begins; the shadow is under it.
-func test_the_two_drone_frames_keep_clear_of_each_other_and_of_their_cell_sides() -> void:
+## The repair drone (P280): the two rotor-blur frames have the same ink box inside their cells (so
+## nothing jitters when they swap), the drone and its shadow share the anchor's x (the shadow sits
+## straight under the body), and the shadow's own ink is centred on its anchor and lies wholly
+## below the drone's ink.
+func test_the_drone_frames_have_equal_ink_boxes_and_the_shadow_sits_under_the_body() -> void:
 	var image: Image = _image("life")
-	var ink_from: Array[int] = []
-	var ink_to: Array[int] = []
+	var boxes: Array[Rect2i] = []
 	for frame: int in LifeRegions.FRAMES[&"drone"]:
 		var cell: Rect2i = LifeRegions.region(&"drone", frame)
-		var first: int = -1
-		var last: int = -1
-		for x: int in range(cell.position.x, cell.end.x):
-			for y: int in range(cell.position.y, cell.end.y):
-				if image.get_pixel(x, y).a > 0.02:
-					first = x if first < 0 else first
-					last = x
-		for y: int in range(cell.position.y, cell.end.y):
-			assert_float(image.get_pixel(cell.position.x, y).a).is_less_equal(0.02)
-			assert_float(image.get_pixel(cell.end.x - 1, y).a).is_less_equal(0.02)
-		ink_from.append(first)
-		ink_to.append(last)
-	assert_int(ink_from[1] - ink_to[0]).is_greater_equal(MIN_GAP_PX)
-	var shadow: Rect2i = LifeRegions.region(&"drone_shadow", 0)
-	assert_int(shadow.position.y - LifeRegions.region(&"drone", 0).end.y).is_greater_equal(
-		MIN_GAP_PX
+		boxes.append(_ink_box(image, cell))
+	assert_that(boxes[1]).is_equal(boxes[0])
+	assert_float(LifeRegions.ANCHOR[&"drone"].x).is_equal(LifeRegions.ANCHOR[&"drone_shadow"].x)
+	var shadow_cell: Rect2i = LifeRegions.region(&"drone_shadow", 0)
+	var shadow: Rect2i = _faint_box(image, shadow_cell)
+	var centre: Vector2 = Vector2(shadow.position) + Vector2(shadow.size) / 2.0
+	assert_float(absf(centre.x - LifeRegions.ANCHOR[&"drone_shadow"].x)).is_less_equal(1.0)
+	assert_float(absf(centre.y - LifeRegions.ANCHOR[&"drone_shadow"].y)).is_less_equal(1.0)
+	var drone_cell: Rect2i = LifeRegions.region(&"drone", 0)
+	var drone: Rect2i = _ink_box(image, drone_cell)
+	assert_int(shadow_cell.position.y + shadow.position.y).is_greater(
+		drone_cell.position.y + drone.end.y
 	)
 
 
@@ -489,3 +485,18 @@ func _luminance(colour: Color) -> float:
 
 func _image(atlas: String) -> Image:
 	return (load(ATLAS_PATHS[atlas]) as Texture2D).get_image()
+
+
+## Like `_ink_box`, in cell px, but over every pixel with any ink (alpha above 0.02): a soft shadow
+## never reaches the half alpha `_ink_box` asks for.
+func _faint_box(image: Image, cell: Rect2i) -> Rect2i:
+	var box: Rect2i = Rect2i()
+	var first: bool = true
+	for y: int in cell.size.y:
+		for x: int in cell.size.x:
+			if image.get_pixel(cell.position.x + x, cell.position.y + y).a <= 0.02:
+				continue
+			var point: Rect2i = Rect2i(Vector2i(x, y), Vector2i.ONE)
+			box = point if first else box.merge(point)
+			first = false
+	return box

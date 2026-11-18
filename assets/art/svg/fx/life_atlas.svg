@@ -85,44 +85,36 @@
 <g fill="#B8B09E" fill-opacity="0.6"><circle cx="196" cy="458" r="12.5"/><circle cx="168" cy="468" r="9"/><circle cx="232" cy="464" r="11"/><circle cx="204" cy="476" r="10.5"/><circle cx="180" cy="444" r="7.5"/><circle cx="226" cy="444" r="8.5"/></g>
 <!-- glow: seven stepped concentric discs of warm yellow at low alpha, no blur -->
 <g fill="#FFE066" fill-opacity="0.12"><circle cx="336" cy="468" r="51"/><circle cx="336" cy="468" r="44"/><circle cx="336" cy="468" r="37"/><circle cx="336" cy="468" r="30"/><circle cx="336" cy="468" r="23"/><circle cx="336" cy="468" r="16"/><circle cx="336" cy="468" r="9"/></g>
-<!-- drone: the Lumen Accord repair drone (P280) in two rotor-blur frames, a ceramic hexagonal body with a glass dome and a titanium band on four dark arms with dark rotor discs, and its ground shadow; no team colour -->
+<!-- drone: the Lumen Accord repair drone (P280) in two rotor-blur frames, a ceramic hexagonal body with a pale glass dome and a thin titanium band on four dark arms with solid dark rotor discs, and its ground shadow; no team colour -->
 <line x1="418" y1="396" x2="458" y2="416" stroke="#414A51" stroke-width="3" stroke-linecap="round"/>
 <line x1="458" y1="396" x2="418" y2="416" stroke="#414A51" stroke-width="3" stroke-linecap="round"/>
-<ellipse cx="418" cy="396" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="418" cy="396" rx="8" ry="4" fill="#414A51"/>
 <line x1="411" y1="396" x2="425" y2="396" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="418" cy="396" r="2" fill="#414A51"/>
-<ellipse cx="458" cy="396" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="458" cy="396" rx="8" ry="4" fill="#414A51"/>
 <line x1="451" y1="396" x2="465" y2="396" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="458" cy="396" r="2" fill="#414A51"/>
-<polygon points="429,406 433,401 443,401 447,406 447,410 443,415 433,415 429,410" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="429,406 433,401 443,401 447,406 443,411 433,411" fill="#D5DBDC" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="431,407 445,407 445,410 443,413 433,413 431,410" fill="#8A9398"/>
-<ellipse cx="438" cy="405" rx="4" ry="2.5" fill="#B4C8CF" stroke="#414A51" stroke-width="2"/>
-<circle cx="438" cy="412" r="2" fill="#A8F5B0"/>
-<ellipse cx="418" cy="416" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<polygon points="427,406 432,400 444,400 449,406 449,409 444,415 432,415 427,409" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="428,406 432,401 444,401 448,406 444,411 432,411" fill="#D5DBDC"/>
+<polygon points="429,412 447,412 447,413 429,413" fill="#8A9398"/>
+<ellipse cx="438" cy="406" rx="6" ry="3.5" fill="#F2F6F8" stroke="#B4C8CF" stroke-width="2"/>
+<circle cx="438" cy="414" r="1.5" fill="#A8F5B0"/>
+<ellipse cx="418" cy="416" rx="8" ry="4" fill="#414A51"/>
 <line x1="411" y1="416" x2="425" y2="416" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="418" cy="416" r="2" fill="#414A51"/>
-<ellipse cx="458" cy="416" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="458" cy="416" rx="8" ry="4" fill="#414A51"/>
 <line x1="451" y1="416" x2="465" y2="416" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="458" cy="416" r="2" fill="#414A51"/>
 <line x1="486" y1="396" x2="526" y2="416" stroke="#414A51" stroke-width="3" stroke-linecap="round"/>
 <line x1="526" y1="396" x2="486" y2="416" stroke="#414A51" stroke-width="3" stroke-linecap="round"/>
-<ellipse cx="486" cy="396" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="486" cy="396" rx="8" ry="4" fill="#414A51"/>
 <line x1="481" y1="393" x2="491" y2="399" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="486" cy="396" r="2" fill="#414A51"/>
-<ellipse cx="526" cy="396" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="526" cy="396" rx="8" ry="4" fill="#414A51"/>
 <line x1="521" y1="393" x2="531" y2="399" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="526" cy="396" r="2" fill="#414A51"/>
-<polygon points="497,406 501,401 511,401 515,406 515,410 511,415 501,415 497,410" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="497,406 501,401 511,401 515,406 511,411 501,411" fill="#D5DBDC" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="499,407 513,407 513,410 511,413 501,413 499,410" fill="#8A9398"/>
-<ellipse cx="506" cy="405" rx="4" ry="2.5" fill="#B4C8CF" stroke="#414A51" stroke-width="2"/>
-<circle cx="506" cy="412" r="2" fill="#A8F5B0"/>
-<ellipse cx="486" cy="416" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<polygon points="495,406 500,400 512,400 517,406 517,409 512,415 500,415 495,409" fill="#8A9398" stroke="#414A51" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="496,406 500,401 512,401 516,406 512,411 500,411" fill="#D5DBDC"/>
+<polygon points="497,412 515,412 515,413 497,413" fill="#8A9398"/>
+<ellipse cx="506" cy="406" rx="6" ry="3.5" fill="#F2F6F8" stroke="#B4C8CF" stroke-width="2"/>
+<circle cx="506" cy="414" r="1.5" fill="#A8F5B0"/>
+<ellipse cx="486" cy="416" rx="8" ry="4" fill="#414A51"/>
 <line x1="481" y1="413" x2="491" y2="419" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="486" cy="416" r="2" fill="#414A51"/>
-<ellipse cx="526" cy="416" rx="8" ry="4" fill="#414A51" opacity="0.55"/>
+<ellipse cx="526" cy="416" rx="8" ry="4" fill="#414A51"/>
 <line x1="521" y1="413" x2="531" y2="419" stroke="#8A9398" stroke-width="2" stroke-linecap="round"/>
-<circle cx="526" cy="416" r="2" fill="#414A51"/>
-<g fill="#1C2127" opacity="0.35"><ellipse cx="438" cy="468" rx="22" ry="10"/><ellipse cx="438" cy="468" rx="14" ry="6.5"/></g>
+<g fill="#1C2127" opacity="0.35"><ellipse cx="438" cy="468" rx="22" ry="10"/></g>
 </svg>

@@ -220,7 +220,8 @@ picture, a shadow and an item card, and join the rosters after the engineering c
 (`renew_menders`) are two-figure `inf` models (hull in 8 directions, walk 4, idle 2, shadow, item card) and join
 the rosters after the rocket squads (Infantry tab); the drone effect is two kinds of the life atlas (`drone`, two
 rotor-blur frames, and `drone_shadow` in `fx/life_atlas.svg` and `LifeRegions`, the Drone Dock's drone at the same size,
-so P281 draws it through the `AirFx` and `GroundFx` rings with no atlas of its own; two rows on the gallery's Life page).
+so the texture side is ready as one fx atlas with no extra draw call; P281 needs an `FxRing` extension (a start-to-end move
+and frame cycling) or direct region draws in `AirFx._draw`; two rows on the gallery's Life page).
 - **Looks.** The Patchers: stocky olive figures, one with a steel kit chest and a lamp, the other with a rust roll of
   patch line; the Menders: lean white figures, one with a hexagonal case ringed in mint, the other with a smaller case
   slung low behind it and a mint hand light. The kit marks are the faction's own (the League's team band, the Accord's mint ring), no red
