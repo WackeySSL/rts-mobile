@@ -77,6 +77,7 @@ func _played(ticks: int, scenario: ScenarioDef = null) -> Array:
 		made.tick = runner.world.tick
 		made.local_player = PLAYER
 		made.defs_hash = runner.world.defs_hash()
+		made.end_hash = runner.world.state_hash()
 		return [runner, made]
 	assert_int(ResumeStore.write_from(runner, setup)).is_equal(OK)
 	return [runner, ResumeStore.read()]
@@ -291,3 +292,27 @@ func test_a_scenario_order_of_the_local_player_is_not_fed_twice() -> void:
 	assert_int(restorer.runner.world.state_hash()).is_equal(
 		(played[0] as MatchRunner).world.state_hash()
 	)
+
+
+func test_a_wrong_end_hash_fails_the_restore_at_the_stored_tick() -> void:
+	# 100 is between checkpoints (90 and 105): only the end hash can catch a difference there.
+	var played: Array = _played(100)
+	var data: ResumeData = played[1]
+	assert_int(data.end_hash).is_equal((played[0] as MatchRunner).world.state_hash())
+	data.end_hash += 1
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, _scene())).is_equal(OK)
+	assert_array(_run(restorer)).is_equal([ERR_FILE_CORRUPT])
+	assert_int(restorer.runner.snapshot.tick).is_equal(100)
+	assert_bool(restorer.runner.paused).is_false()
+	assert_bool(AudioService.has_mute_reason(AudioService.REASON_RESTORING)).is_false()
+	assert_bool(ResumeWatcher.restoring).is_false()
+
+
+func test_the_end_hash_of_a_checkpoint_tick_is_checked_too() -> void:
+	var played: Array = _played(90)
+	var data: ResumeData = played[1]
+	data.end_hash += 1
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, _scene())).is_equal(OK)
+	assert_array(_run(restorer)).is_equal([ERR_FILE_CORRUPT])

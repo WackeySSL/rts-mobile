@@ -120,7 +120,8 @@ resumed (the lesson restarts).
      about 5 % (the frame's own work). The battle's frame pacing does not apply: nothing is
      drawn.
 3. At each checkpoint tick the loop's hash must equal the log's. A mismatch stops the restore,
-   deletes the file and says the match could not be restored (no XP, no penalty).
+   deletes the file and says the match could not be restored (no XP, no penalty). The header also holds the World's hash at the stored tick (`end_hash`), compared at the
+   last tick: the checkpoints stop up to 14 ticks before it.
 4. At the last logged tick the scene enters the tree, paused under the pause menu. The view layers
    start from a first snapshot at tick N (P516 proves it; wrecks and craters of the past are not
    redrawn). The new runner's own replay is the same log again, so a second background save works.

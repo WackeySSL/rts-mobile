@@ -18,3 +18,6 @@ var local_player: int = 0
 var app_version: String = ""
 ## `World.defs_hash()` of the match that wrote the file (an int64).
 var defs_hash: int = 0
+## `World.state_hash()` at `tick`, as the writer's World had it. The checkpoints stop up to 14 ticks
+## before `tick`; this one closes the gap, and the restore compares it at `tick`.
+var end_hash: int = 0
