@@ -23,13 +23,15 @@ const HUD_V2_GLYPHS: Array[String] = [
 	"glyph_sell",
 	"glyph_board",
 	"glyph_unload",
-	"glyph_home",
+	"glyph_mine",
+	"glyph_hold",
 	"glyph_menu",
 	"glyph_resume",
 	"glyph_restart",
 	"glyph_surrender",
 	"glyph_exit",
 	"glyph_vibration",
+	"glyph_home",
 	"glyph_collapse",
 	"glyph_chevron",
 	"glyph_alert",
@@ -71,8 +73,9 @@ func test_the_eighteen_glyphs_are_the_gallerys_first_three_hud_rows_and_have_fil
 	for row_name: String in IconsPage.HUD_V2_NEW_ROWS:
 		rows.append_array(IconsPage.HUD_V2_ROWS[row_name])
 	assert_array(rows).is_equal(HUD_V2_GLYPHS)
-	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a), Home (P244).
-	assert_int(HUD_V2_GLYPHS.size()).is_equal(19)
+	# 14 of ADR 0025 and 0026, 2 of ADR 0037 (P273), 2 of ADR 0036 (P265a), Home (P244),
+	# Mine and Hold (P292).
+	assert_int(HUD_V2_GLYPHS.size()).is_equal(21)
 	for icon: String in HUD_V2_GLYPHS:
 		assert_bool(ResourceLoader.exists(ICON_ART % icon)).override_failure_message(icon).is_true()
 	assert_bool(IconsPage.MAP_GLYPHS.has(MAP_GLYPH)).is_true()
@@ -176,6 +179,33 @@ func test_the_unload_glyph_is_a_carrier_with_a_ramp_and_two_figures() -> void:
 	# no arrow: the gap between the ramp and the first figure at arrow height is clear
 	_assert_ink(image, [Vector2i(66, 60), Vector2i(8, 8), Vector2i(120, 120)], false)
 	assert_float(_difference("glyph_unload", "glyph_board")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
+
+
+## ADR 0037 (P292): Mine is a drum under a down arrow (arrow shaft and lid inked on the centre line,
+## the lid's rim wide, the corners empty); Hold is a shield with a dark downward stake over a dark
+## ground bar, no pair of bars.
+func test_the_mine_glyph_is_a_drum_under_an_arrow_and_the_hold_glyph_a_shield_with_a_stake(
+) -> void:
+	var mine: Image = _image("glyph_mine")
+	_assert_light(mine, [Vector2i(64, 24), Vector2i(34, 88)])
+	_assert_ink(
+		mine, [Vector2i(64, 24), Vector2i(64, 60), Vector2i(30, 88), Vector2i(98, 88)], true
+	)
+	_assert_ink(
+		mine, [Vector2i(8, 8), Vector2i(120, 8), Vector2i(8, 120), Vector2i(120, 120)], false
+	)
+	var hold: Image = _image("glyph_hold")
+	_assert_dark(hold, [Vector2i(64, 50), Vector2i(50, 86), Vector2i(78, 86)])
+	_assert_light(hold, [Vector2i(36, 60), Vector2i(92, 60), Vector2i(34, 40)])
+	# no pair of upright bars (the media Pause): the middle of the shield above the stake's
+	# point is one dark mass, and the strip left and right of it is white at every height
+	for y: int in [48, 56, 64]:
+		_assert_light(hold, [Vector2i(30, y)])
+	_assert_ink(hold, [Vector2i(64, 100), Vector2i(64, 14)], true)
+	_assert_ink(
+		hold, [Vector2i(8, 8), Vector2i(120, 8), Vector2i(8, 120), Vector2i(120, 120)], false
+	)
+	assert_float(_difference("glyph_mine", "glyph_hold")).is_greater_equal(HUD_V2_DIFFERENCE_MIN)
 
 
 ## ADR 0036 (P265a): the Unload point mark is two chevrons pointing straight down: ink at the lower

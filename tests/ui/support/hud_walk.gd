@@ -400,6 +400,8 @@ static func ad_nodes(main: Node2D) -> Array[String]:
 			continue
 		if node is AdBannerBand and _is_the_pause_banner(main, node as AdBannerBand):
 			continue  # P435: the one banner of the battle, at the foot of the open pause menu.
+		if _is_hidden_result_offer(node):
+			continue  # See _is_hidden_result_offer.
 		var script: Script = node.get_script()
 		var text: String = node.get_class().to_lower()
 		if script != null:
@@ -484,3 +486,15 @@ static func tap_now(suite: GdUnitTestSuite, control: Control) -> void:
 static func frames(suite: GdUnitTestSuite) -> void:
 	await suite.await_idle_frame()
 	await suite.await_idle_frame()
+
+
+## The match result's rewarded offer (admob-policy matrix): its own slot under the result screen,
+## and not visible while the battle runs.
+static func _is_hidden_result_offer(node: Node) -> bool:
+	var parent: Node = node.get_parent()
+	return (
+		node is DoubleXpOffer
+		and parent is OfferSlot
+		and parent.owner is ResultScreen
+		and not (node as DoubleXpOffer).is_visible_in_tree()
+	)

@@ -48,7 +48,7 @@ const TYPE_MAX: int = 400
 const HASH_MIN_PERCENT: int = 95
 ## The gate set (section 6): 100 matches of seeds 1001-1100, or with the one rerun 200 of 1001-1200,
 ## Normal against Normal on `cross`, every unit type of both rosters (16 with the aircraft, P245;
-## 18 with the carriers, P291). The rerun band applies at exactly 100.
+## 18 with the carriers, P291; 20 with the minelayers, P292). The rerun band applies at exactly 100.
 const GATE_SEED_FIRST: int = 1001
 const GATE_MATCHES: int = 100
 const GATE_RERUN_MATCHES: int = 200

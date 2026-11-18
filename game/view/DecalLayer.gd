@@ -30,8 +30,12 @@ func _init() -> void:
 	_craters.name = "Craters"
 	add_child(_shadows)
 	add_child(_craters)
-	if ResourceLoader.exists(CRATER_ART):
-		crater_texture = load(CRATER_ART) as Texture2D
+	crater_texture = crater_art()
+
+
+## The crater art (`CRATER_ART`), null when it is not in the project. `MineLayer`'s scorch is it.
+static func crater_art() -> Texture2D:
+	return load(CRATER_ART) as Texture2D if ResourceLoader.exists(CRATER_ART) else null
 
 
 ## Takes `shadow`, a building's cast shadow, as a child of the layer.

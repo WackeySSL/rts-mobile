@@ -447,7 +447,7 @@ p95 ms without checkpoint ticks: job 10.00 | job minus step: checkpoint 2.00, ot
 atlas bake 12.5 ms | page 4096x2258 at 1.000 | page 2 4096x1040 (no verdict)
 <model> | Linux | <engine> | screen <screen> | zoom 1.00
 last hash a7bb0d0000000000 | units alive 0
-draw calls p95 40 | forecast 16, 17 while a strike is aimed or in flight, about 22 at worst, plus the HUD (no verdict)
+draw calls p95 40 | forecast 17, 18 while a strike is aimed or in flight, about 23 at worst, plus the HUD (no verdict)
 phase means per tick (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 p95 per phase without checkpoint ticks (ms): commands 0.00, flow 0.00, grids 0.00, targeting 0.00, intents 0.00, separation 0.00, integrate 0.00, projectiles 0.00, fire 0.00, remove 0.00, fog 0.00, economy 0.00, production 0.00, memory 0.00
 GATE: FAIL
