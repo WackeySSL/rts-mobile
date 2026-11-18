@@ -150,6 +150,10 @@ var opponent_levels: Array[AiDifficultyDef] = []
 ## The player of the first entry of `opponents`; FIRST_OPPONENT is the default. 1 seats entry 0 on
 ## player 1 (a computer player in the human's seat, as a headless AI-vs-AI match does).
 var first_opponent: int = FIRST_OPPONENT
+## The credits a match setup adds to the start of player `bonus_seat` (0 = nobody), clamped by the
+## sim to `RulesDef.bonus_credits_max` (plan P512; MatchSetup.apply writes both).
+var bonus_credits: int = 0
+var bonus_seat: int = 0
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
 ## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
@@ -293,6 +297,7 @@ func start() -> void:
 	var kernels: Object = null if sim_impl == SimImpl.GDSCRIPT else NativeKernels.create()
 	_use_impl(_world, kernels, OS.get_name())
 	_seat_income(_world)
+	WorldLoad.set_bonus_credits(_world, bonus_seat, bonus_credits)
 	var scenario_path: String = scenario.resource_path if scenario != null else ""
 	_loop = MatchLoop.create(scenario, scenario_path, match_seed, _world)
 	_replay = _loop.replay

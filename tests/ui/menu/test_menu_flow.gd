@@ -291,3 +291,9 @@ func test_the_real_ad_service_with_auto_close_reaches_the_menu() -> void:
 	_surrender_local()
 	await _flow.leave_match()
 	assert_int(_menus).is_equal(1)
+
+
+func test_the_menu_scene_is_the_one_the_intro_hands_over_to() -> void:
+	var settings: IntroSettings = load("res://data/intro_settings.tres") as IntroSettings
+	assert_str(MenuFlow.MENU_SCENE).is_equal(settings.menu_path)
+	assert_str(settings.menu_path).is_equal("res://scenes/menu/main_menu.tscn")

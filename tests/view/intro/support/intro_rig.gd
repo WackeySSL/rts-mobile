@@ -10,7 +10,7 @@ var host: Control
 var logs: Array[String] = []
 var presses: int = 0
 
-var _quit_on_back: bool = true
+var _quit_on_back: bool = false
 
 
 ## A consent that waits until `release` is emitted.
@@ -36,7 +36,6 @@ func setup(suite: GdUnitTestSuite, menu: PackedScene, size: Vector2) -> void:
 	host.size = size
 	suite.add_child(host)
 	_quit_on_back = suite.get_tree().quit_on_go_back
-	suite.get_tree().quit_on_go_back = true
 
 
 func teardown(suite: GdUnitTestSuite) -> void:
