@@ -1,13 +1,15 @@
 class_name RepairRules
 extends RefCounted
 ## What the command bar's Repair asks of a published snapshot (ADR 0037 sections 5 and 9, plan
-## P282). Pure statics, no Node. Repair shows for damaged own ground units that a complete own
-## repair building serves (its `repair_classes` holds the unit's move class), and one tap sends one
-## REPAIR with those units to the nearest such building, by straight distance from their centre.
+## P282, P282b). Pure statics, no Node. Repair shows while a complete own repair building serves an
+## own ground unit of the selection (its `repair_classes` holds the unit's move class), damaged or
+## not (`any_served`), and is dimmed while none of them is damaged; one tap sends one REPAIR with
+## the damaged ones to the nearest such building, by straight distance from their centre.
 ## Units that building does not serve are left out; aircraft (an airfield's Home) and rows that
 ## are buildings never count, and a building with pads is an airfield, never a Repair target.
 
-## The own repair buildings of the last `plan`, scratch (one thread; `plan` clears it).
+## The own repair buildings of the last `plan` or `any_served`, scratch (one thread; each clears
+## it).
 static var _servers: PackedInt32Array = PackedInt32Array()
 
 
@@ -27,36 +29,75 @@ static func is_server(snap: MatchSnapshot, row: int, player: int) -> bool:
 	)
 
 
-## Whether the row `row` is a damaged own ground unit that building `server` serves.
-static func is_served(snap: MatchSnapshot, row: int, server: int, player: int) -> bool:
+## Whether the row `row` is an own, living, finished ground unit (not a building, not an aircraft).
+static func is_ground(snap: MatchSnapshot, row: int, player: int) -> bool:
 	var type: int = snap.type_index[row]
 	return (
 		snap.owner[row] == player
 		and snap.hp[row] > 0
-		and snap.hp[row] < snap.type_max_hp[type]
 		and snap.build_left[row] == 0
 		and snap.type_speed[type] > 0
 		and snap.type_foot_w[type] <= 0
 		and (snap.type_layer_bit[type] & World.Layer.AIR) == 0
+	)
+
+
+## Whether the row `row` is a damaged own ground unit: the part of `is_served` no building changes.
+static func is_hurt_ground(snap: MatchSnapshot, row: int, player: int) -> bool:
+	return is_ground(snap, row, player) and snap.hp[row] < snap.type_max_hp[snap.type_index[row]]
+
+
+## Whether building `server` serves the class of the own ground unit in `row`, hurt or not.
+static func serves(snap: MatchSnapshot, row: int, server: int, player: int) -> bool:
+	return (
+		is_ground(snap, row, player)
 		and (
-			(snap.type_repair_classes[snap.type_index[server]] >> snap.type_move_class[type]) & 1
+			(
+				(
+					snap.type_repair_classes[snap.type_index[server]]
+					>> snap.type_move_class[snap.type_index[row]]
+				)
+				& 1
+			)
 			== 1
 		)
 	)
 
 
-## Whether row `row` is a damaged own ground unit: the part of `is_served` that no building changes.
-static func is_hurt_ground(snap: MatchSnapshot, row: int, player: int) -> bool:
-	var type: int = snap.type_index[row]
-	return (
-		snap.owner[row] == player
-		and snap.hp[row] > 0
-		and snap.hp[row] < snap.type_max_hp[type]
-		and snap.build_left[row] == 0
-		and snap.type_speed[type] > 0
-		and snap.type_foot_w[type] <= 0
-		and (snap.type_layer_bit[type] & World.Layer.AIR) == 0
-	)
+## Whether the row `row` is a damaged own ground unit that building `server` serves.
+static func is_served(snap: MatchSnapshot, row: int, server: int, player: int) -> bool:
+	return is_hurt_ground(snap, row, player) and serves(snap, row, server, player)
+
+
+## Whether some complete own repair building serves some own ground unit of `ids`, damaged or not:
+## the bar's Repair shows (dimmed while `plan` finds nothing to send).
+static func any_served(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -> bool:
+	if snap == null or snap.type_layer_bit.is_empty() or snap.type_move_class.is_empty():
+		return false
+	var ground: bool = false
+	for id: int in ids:  # A selection-sized test first: no ground row, no scan of the snapshot.
+		var at: int = snap.index_of(id)
+		if at >= 0 and is_ground(snap, at, player):
+			ground = true
+			break
+	if not ground:
+		return false
+	_collect_servers(snap, player)
+	for id: int in ids:
+		var row: int = snap.index_of(id)
+		if row < 0:
+			continue
+		for server: int in _servers:
+			if serves(snap, row, server, player):
+				return true
+	return false
+
+
+static func _collect_servers(snap: MatchSnapshot, player: int) -> void:
+	_servers.clear()
+	for row: int in snap.unit_id.size():
+		if is_server(snap, row, player):
+			_servers.append(row)
 
 
 ## Replaces `out` with the ids of `ids` the nearest serving building takes and returns that
@@ -81,10 +122,7 @@ static func plan(
 			break
 	if not hurt:
 		return 0  # Nothing to repair: the common case allocates and scans nothing more.
-	_servers.clear()
-	for row: int in snap.unit_id.size():
-		if is_server(snap, row, player):
-			_servers.append(row)
+	_collect_servers(snap, player)
 	var sum_x: int = 0
 	var sum_y: int = 0
 	for id: int in ids:  # `out` holds rows first, ids at the end.
