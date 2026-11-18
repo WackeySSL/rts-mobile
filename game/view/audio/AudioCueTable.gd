@@ -22,6 +22,12 @@ extends Resource
 @export var death_building: StringName = &""
 ## A sold building's pack-up (DIED flag 3).
 @export var sold: StringName = &""
+## The strikes (`World.Event.STRIKE`, `Strike.Kind`): the rupture's launch when it is accepted and
+## its landing at the landing tick, the blackout when it is fired and the sweep's hum.
+@export var strike_rupture_launch: StringName = &""
+@export var strike_rupture_land: StringName = &""
+@export var strike_blackout: StringName = &""
+@export var strike_sweep: StringName = &""
 
 
 ## The index of cue `cue_id` in `cues`, or -1.

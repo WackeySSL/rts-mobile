@@ -2,8 +2,11 @@ class_name BattleSounds
 extends Node
 ## The battle sounds (ADR 0041 section 4): one pass over `runner.snapshot.events` inside
 ## `runner.ticked`, the sim never written. SHOT, IMPACT, DIED, MINE_BLAST, REPAIRED and UNLOADED
-## become a cue by int-indexed tables built when a match starts. STRIKE and SPAWNED are not here
-## yet (their rows follow with the cue sets).
+## become a cue by int-indexed tables built when a match starts. STRIKE too: a rupture's launch
+## sounds when it is accepted and its landing at the landing tick (the pending landings wait in
+## `_land_*`, at most `MAX_LANDINGS`), a blackout when it is fired, a sweep's hum at the view's
+## centre. A strike sounds when it is the viewer's own or its point is seen (a warning of an enemy
+## strike is a UI cue). SPAWNED is not here yet.
 ##
 ## Fairness: a sound plays only where `EffectsLayer` would show the effect, by the tile of the
 ## point in that tick's fog (`FogLayer.is_seen`, read-only); the death of an own unit always
@@ -41,6 +44,8 @@ const NEUTRAL_PITCH: int = 1000
 const MAX_VARIANTS: int = 8
 const ID_MIX: int = 31
 const NEVER_MS: int = -(1 << 40)
+const MAX_LANDINGS: int = 8
+const LAND_STRIDE: int = 5
 
 static var _built: Dictionary[AudioCueTable, Built] = {}
 
@@ -83,6 +88,13 @@ var _blast: int = -1
 var _repair: int = -1
 var _unload: int = -1
 var _sold: int = -1
+var _rupture_launch: int = -1
+var _rupture_land: int = -1
+var _blackout: int = -1
+var _sweep: int = -1
+## The ruptures in the air, `LAND_STRIDE` ints each: landing tick, x, y, owner, firing building id.
+var _land_count: int = 0
+var _land: PackedInt32Array = PackedInt32Array()
 
 
 func _ready() -> void:
@@ -117,7 +129,7 @@ func _on_match_ended(_winner: int) -> void:
 ## One tick's events. A frame that plays several ticks calls this once per tick.
 func _on_ticked(tick: int) -> void:
 	var snap: MatchSnapshot = runner.snapshot
-	if snap == null or audio == null or snap.events.is_empty():
+	if snap == null or audio == null or (snap.events.is_empty() and _land_count == 0):
 		return
 	# Muted, or the Sfx bus at step 0: nothing would play, so skip the pass (and its cooldowns).
 	if not bool(audio.call(&"can_play", BUS)):
@@ -128,6 +140,7 @@ func _on_ticked(tick: int) -> void:
 	_ear = _view_rect().grow(_settings.hear_margin_px)
 	var viewer: int = FogLayer.local_player_of(runner)
 	var events: PackedInt32Array = snap.events
+	_land_due(snap, viewer)
 	for at: int in range(0, events.size(), World.EVENT_STRIDE):
 		_read(snap, events, at, viewer)
 	audio.call(&"begin_tick")
@@ -154,6 +167,9 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 		World.Event.DIED:
 			cue = _death_cue(events, at)
 			own_death = events[at + 5] == viewer
+		World.Event.STRIKE:
+			_read_strike(snap, events, at, viewer)
+			return
 		_:
 			return
 	if cue < 0:
@@ -170,6 +186,58 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 	if not _ear.has_point(point):
 		return
 	_add(cue, point, events[at + 1])
+
+
+## A STRIKE record `[STRIKE, building id, x, y, kind, owner, landing tick, 0]`.
+func _read_strike(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) -> void:
+	var own: bool = events[at + 5] == viewer
+	var x: int = events[at + 2]
+	var y: int = events[at + 3]
+	match events[at + 4]:
+		Strike.Kind.RUPTURE:
+			_hear(snap, _rupture_launch, x, y, own, events[at + 1], viewer)
+			if events[at + 6] > 0 and _land_count < MAX_LANDINGS:
+				var slot: int = _land_count * LAND_STRIDE
+				_land_count += 1
+				_land[slot] = events[at + 6]
+				_land[slot + 1] = x
+				_land[slot + 2] = y
+				_land[slot + 3] = events[at + 5]
+				_land[slot + 4] = events[at + 1]
+		Strike.Kind.BLACKOUT:
+			_hear(snap, _blackout, x, y, own, events[at + 1], viewer)
+		Strike.Kind.REVEAL:
+			# A sweep has no point: only its owner hears it, at the middle of the view.
+			if (own or reveal_enemies) and _sweep >= 0:
+				_add(_sweep, _ear.get_center(), events[at + 1])
+
+
+## Plays the landing of every rupture whose tick has come (the last one moves into its place).
+func _land_due(snap: MatchSnapshot, viewer: int) -> void:
+	var row: int = 0
+	while row < _land_count:
+		var at: int = row * LAND_STRIDE
+		if _tick < _land[at]:
+			row += 1
+			continue
+		var own: bool = _land[at + 3] == viewer
+		_hear(snap, _rupture_land, _land[at + 1], _land[at + 2], own, _land[at + 4], viewer)
+		_land_count -= 1
+		var last: int = _land_count * LAND_STRIDE
+		for k: int in LAND_STRIDE:
+			_land[at + k] = _land[last + k]
+
+
+## One event of `cue` at the world point (`x`, `y`), counted when `own` or the point is seen and
+## inside the ear.
+func _hear(snap: MatchSnapshot, cue: int, x: int, y: int, own: bool, id: int, viewer: int) -> void:
+	if cue < 0:
+		return
+	if not (own or reveal_enemies or FogLayer.is_seen(snap, viewer, x, y)):
+		return
+	var point: Vector2 = IsoProjection.ground_to_px(x, y)
+	if _ear.has_point(point):
+		_add(cue, point, id)
 
 
 ## The cue of a DIED record: none for a cancelled site or a boarding, the pack-up for a sale.
@@ -316,6 +384,12 @@ func _build(snap: MatchSnapshot) -> void:
 	_repair = table.index_of(table.repaired)
 	_unload = table.index_of(table.unloaded)
 	_sold = table.index_of(table.sold)
+	_rupture_launch = table.index_of(table.strike_rupture_launch)
+	_rupture_land = table.index_of(table.strike_rupture_land)
+	_blackout = table.index_of(table.strike_blackout)
+	_sweep = table.index_of(table.strike_sweep)
+	_land_count = 0
+	_land.resize(MAX_LANDINGS * LAND_STRIDE)
 
 
 func _death_id(snap: MatchSnapshot, type: int) -> StringName:
