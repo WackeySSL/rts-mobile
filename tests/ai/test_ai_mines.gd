@@ -224,7 +224,7 @@ func test_the_same_matches_twice_lay_the_same_mines_on_the_thread_snapshot_path(
 		var second: Dictionary = _match(level)
 		assert_int(first["laid"]).override_failure_message(level).is_greater(0)
 		assert_dict(second).override_failure_message(level).is_equal(first)
-		assert_int(first["dropped"]).is_equal(0)
+		assert_int(first["stale"]).override_failure_message(level).is_less_equal(first["limit"])
 
 
 func test_the_cap_of_the_rules_bounds_the_mines_below_the_target() -> void:

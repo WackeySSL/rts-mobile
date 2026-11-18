@@ -7,6 +7,7 @@ extends "res://tests/ai/support/support_suite.gd"
 ## requirement) of player 1 and one layer.
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
+const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
 const MATCH_TICKS: int = 6000
 const COLS: int = 40
 const LINES: int = 24
@@ -16,16 +17,24 @@ const BASE_TILE: Vector2i = Vector2i(37, 21)
 
 ## An AI-vs-AI Normal match from one seed on the lagged pipeline (`AiDriver.lagged_tick`, the one
 ## the worker runs: the views are built before the step and the Commands land a tick later): the
-## mines laid over the match and the state hash.
+## mines laid over the match, the state hash, and its stale drops with the smoke's bound for them
+## (ADR 0038 section 6: the Commands are one tick stale, so a few drops are expected).
 func _match(level: String) -> Dictionary:
 	var levels: Array[String] = [level, level]
 	var setup: Dictionary = Smoke.start(1, "cross", levels)
 	var world: World = setup["world"]
-	Smoke.run(world, setup["loop"], setup["controllers"], MATCH_TICKS)
+	var counter: SmokeCount = setup["counter"]
+	var controllers: Array[AiController] = setup["controllers"]
+	var expired: int = Smoke.run(world, setup["loop"], controllers, MATCH_TICKS, counter)
+	var record: Dictionary = Smoke.record_of(
+		world, 1, setup["path"], setup["seats"], controllers, counter
+	)
+	record["expired_commands"] = expired
 	return {
 		"laid": world.next_mine_id,
 		"hash": WorldHash.state_hash(world),
-		"dropped": world.dropped_commands
+		"stale": Smoke.stale_drops(record),
+		"limit": Smoke.drop_limit(record)
 	}
 
 
