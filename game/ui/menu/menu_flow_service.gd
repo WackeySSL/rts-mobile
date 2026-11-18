@@ -26,8 +26,9 @@ extends Node
 ## `note_match_completed` and `maybe_show_interstitial`, so lessons never count toward Phase 6's
 ## new-player ad grace or its caps.
 ## The seams of other rows, which never edit this file: `current_runner()`, `current_setup()`,
-## `match_loading`, `mark_surrendered()`, `last_award()`, `take_pending_screen()`, `take_pending_notice()`,
-## `cancel_restore()`; `continue_match()` is P515's. No game rule and no number lives here, and no Command is sent.
+## `match_loading`, `mark_surrendered()`, `last_award()`, `take_pending_screen()`,
+## `take_pending_notice()`, `cancel_restore()`; `continue_match()` is P515's. No game rule and no
+## number lives here, and no Command is sent.
 
 ## Emitted after the bonus and the seed are written and before the main scene is built; one frame
 ## is awaited after it, so a loading card is drawn.
