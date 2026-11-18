@@ -16,8 +16,10 @@ extends ModalFrame
 ## returns here; Settings is the `settings` route of `MenuRoutes` when a row registered it, else
 ## disabled: TODO P526), Exit to menu (asks first) and, in a debug or `dev_menu` build, the
 ## Developer menu beside it. Under them the toggle chips: Vibration (saved by `HudPrefs`), Sound
-## (the Sfx and Ui buses) and Music (the `AudioService` steps: off is 0, on is the default step of
-## `AudioSettings`). Upright the card is above the column; sideways it is to the left.
+## (the Sfx and Ui buses) and Music (the `AudioService` steps: off is 0, on restores the step saved
+## in `MenuPrefs`, or the `AudioSettings` default when none is saved or it is 0; a chip mute is for
+## the session and never writes the prefs). Upright the card is above the column; sideways it is to
+## the left.
 ## Phase 5 (P531, ADR 0043 section 6, ADR 0042 section 5): when `MenuFlow` owns the match, Restart
 ## and Exit go through it (`restart()`, `return_to_menu()`; both coroutines) and Surrender calls
 ## `mark_surrendered()` before its Command; a match `DevRoutes` made keeps the dev routes. A
@@ -79,12 +81,7 @@ const FALLBACK_SIDE: StringName = &"renew"
 @export var pill: EconomyPill  ## Its menu button opens this menu.
 
 ## Tests inject a service for the foot banner; null means the AdService autoload.
-var ad_service: AdServiceScript = null:
-	set(value):
-		_unwatch_ads()
-		ad_service = value
-		if is_node_ready():
-			_watch_ads()
+var ad_service: AdServiceScript = null
 ## Tests inject fakes; null means the autoloads (MenuFlow, AudioService) and the shared routes.
 var menu_flow: Node = null
 var audio: Node = null
@@ -119,8 +116,6 @@ var _exit_dialog: ConfirmDialog
 var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent in.
 var _foot: MarginContainer  ## The foot banner's host, freed with it; null while no band exists.
 var _band: AdBannerBand
-var _watched: AdServiceScript  ## The service whose ad_opened/ad_closed are read (never written).
-var _ads_open: int = 0  ## Full-screen ads open now: the app pausing for one is not the player's.
 var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
 
 
@@ -168,37 +163,6 @@ func _ready() -> void:
 	feed.state.changed.connect(_on_changed)
 	runner.match_ended.connect(_on_match_ended)
 	_apply_dp()
-	_watch_ads()
-
-
-func _exit_tree() -> void:
-	_unwatch_ads()
-
-
-## Only reads the service's signals: while a full-screen ad shows, the app pausing or losing focus
-## is the ad's doing, and the menu does not open by itself under it.
-func _watch_ads() -> void:
-	_watched = ad_service if ad_service != null else get_node_or_null("/root/AdService")
-	if _watched == null:
-		return
-	_watched.ad_opened.connect(_on_ad_opened)
-	_watched.ad_closed.connect(_on_ad_closed)
-
-
-func _unwatch_ads() -> void:
-	if _watched != null and is_instance_valid(_watched):
-		_watched.ad_opened.disconnect(_on_ad_opened)
-		_watched.ad_closed.disconnect(_on_ad_closed)
-	_watched = null
-	_ads_open = 0
-
-
-func _on_ad_opened(_placement: StringName) -> void:
-	_ads_open += 1
-
-
-func _on_ad_closed(_placement: StringName) -> void:
-	_ads_open = maxi(_ads_open - 1, 0)
 
 
 ## The frame's plate and centring go: the column sits at the top of the scroll, full width.
@@ -351,12 +315,10 @@ func _can_open() -> bool:
 
 
 ## The app pauses or loses focus (a call, the shade, a hidden tab): the menu opens, so the match
-## stays paused under it until Resume (ADR 0042 section 5), unless an ad shows. Android's Back
-## opens and closes it.
+## stays paused under it until Resume (ADR 0042 section 5). Android's Back opens and closes it.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		if _ads_open == 0:
-			_on_menu_pressed()
+		_on_menu_pressed()
 	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_on_back()
 
