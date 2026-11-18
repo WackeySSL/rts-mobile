@@ -86,7 +86,7 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				assert_int(sprites.size()).override_failure_message(path).is_equal(12)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(44)  # 28 + the P236 to P292 types
+	assert_int(seen.size()).is_equal(46)  # 28 + the P236 to P279 types
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()

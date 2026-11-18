@@ -26,9 +26,9 @@ const FLIGHT: int = 3  ## The Flight tab, which the airfield produces (P245b).
 const RESEARCH: int = 4  ## The Research tab, which the engineering centre produces (P249).
 
 
-## The faction file lists the twenty types in the ADR's order (the renew file's order is pinned by
-## test_defs_roster_renew): the buildings first, the airfield and the engineering centre last of
-## them, then the infantry, the vehicles and the aircraft.
+## The faction file lists the twenty-three types in the ADR's order (the renew file's order is
+## pinned by test_defs_roster_renew): the buildings first, the airfield, the engineering centre and
+## the Weld Shed last of them, then the infantry, the vehicles and the aircraft.
 func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 	var wanted: Array[String] = [
 		"headquarters",
@@ -43,6 +43,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 		"fossil_aa",
 		"fossil_airfield",
 		"fossil_engineering",
+		"fossil_weld_shed",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -61,7 +62,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 	assert_array(listed).is_equal(wanted)
 
 
-func test_the_data_holds_the_twelve_buildings_and_the_ten_units() -> void:
+func test_the_data_holds_the_thirteen_buildings_and_the_ten_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -78,6 +79,7 @@ func test_the_data_holds_the_twelve_buildings_and_the_ten_units() -> void:
 		"fossil_aa",
 		"fossil_airfield",
 		"fossil_engineering",
+		"fossil_weld_shed",
 		"rifle_squad",
 		"rocket_squad",
 		"light_tank",
@@ -94,7 +96,7 @@ func test_the_data_holds_the_twelve_buildings_and_the_ten_units() -> void:
 		var unit: UnitDef = _unit(id)
 		assert_str(String(unit.type_id)).is_equal(id)
 		assert_bool(unit is BuildingDef).override_failure_message(id).is_equal(
-			id in wanted.slice(0, 12)
+			id in wanted.slice(0, 13)
 		)
 
 
@@ -479,6 +481,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			"fossil_radar",
 			"fossil_space",
 			"fossil_strike",
+			"fossil_weld_shed",
 			"power_plant",
 			"refinery",
 			"vehicle_factory"
@@ -499,7 +502,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 ## The paths of the unit files of the faction these cases read, in file order.
 ## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre,
-## P291 the Bunk Wagon, P292 the Shot Truck.
+## P291 the Bunk Wagon, P292 the Shot Truck, P279 the Weld Shed.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -508,7 +511,6 @@ func _own_files() -> Array[String]:
 			in [
 				"fossil_transport",
 				"fossil_drone",
-				"fossil_weld_shed",  # P279
 				"fossil_patchers",  # P280
 			]
 		):

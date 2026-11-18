@@ -635,11 +635,12 @@ func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 ## full matches of the smoke's seeds 1 and 2 at Hard and seed 1 at Normal, [dropped, expired,
 ## Commands sent]. Every expired drop is a unit order whose units died or an ATTACK whose target
 ## died in the lag tick; the stale rest is an ATTACK no unit can hit any more, or a PLACE whose
-## credits were spent.
+## credits were spent. P279 rostered the repair buildings, so Normal and Hard now build one (P283's
+## `AiEconomy._add_repair_building`): the pins moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443].
 func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	var hard: Array[String] = ["hard", "hard"]
-	# Re-pinned by P250, P250b and P300: [8, 7, 475], [10, 8, 515] and [1, 1, 366] before.
-	var cases: Array = [[1, hard, [8, 8, 595]], [2, hard, [1, 0, 543]], [1, NORMAL, [0, 0, 443]]]
+	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]) and P279.
+	var cases: Array = [[1, hard, [2, 2, 500]], [2, hard, [6, 4, 527]], [1, NORMAL, [0, 0, 432]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0
