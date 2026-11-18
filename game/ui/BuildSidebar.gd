@@ -16,9 +16,9 @@ extends Control
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
 ## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD and
-## the Ready chip open it; a tap that selects an own producer does not (Michael, 2026-11-18, P310:
-## mending a building in combat must not open it), but with the drawer open it switches to that
-## producer's tab (`set_selected`); the end of a placement (a build, the X, the match's end) does
+## the Ready chip open it; selecting an own producer never does (Michael, 2026-11-18, P310: mending
+## a building in combat must not open it): it only sets the tab, so BUILD opens there
+## (`set_selected`); the end of a placement (a build, the X, the match's end) does
 ## not open it: the drawer stays down (Michael, 2026-11-05).
 ## Starting a placement from the drawer again (a READY card tapped while one runs) closes it, as
 ## the first start did.
@@ -313,23 +313,19 @@ func select_tab(index: int) -> void:
 
 
 ## The selection hook (ADR 0019 section 1, ADR 0024 section 6): a lone own building that produces a
-## tab opens it while the drawer is open, or was open when the tap's own map gesture folded it a
-## moment ago in the same frame (`HudState.drawer_folded_by_gesture`: the drawer then comes back on
-## that tab). A closed drawer stays closed and keeps its tab (P310). The building selection (plan
-## P84d) needs only to put the building's id in the selection; units and anything else leave the
-## open tab and the state as they are.
+## tab sets that tab and never opens or closes the drawer (P310): a tap on the map folds it as every
+## map gesture does, and BUILD then opens on the building's tab. The building selection (plan P84d)
+## needs only to put the building's id in the selection; units and anything else leave the tab and
+## the state as they are.
 func set_selected(ids: PackedInt32Array) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or ids.size() != 1:
-		return
-	if not is_open() and not feed.state.drawer_folded_by_gesture():
 		return
 	var row: int = snap.index_of(ids[0])
 	if row >= 0 and snap.owner[row] == _local_player():
 		var produces: int = snap.type_produces[snap.type_index[row]]
 		if produces >= 0 and produces < _tabs.size():
 			select_tab(produces)
-			open()
 
 
 static func _entry(values: PackedInt32Array, player: int) -> int:

@@ -1,10 +1,12 @@
 extends "res://tests/ui/support/building_orders_suite.gd"
 ## The selection chip of a building shows its item card and its health and no name (Michael,
-## 2026-11-18, P310: in portrait the name pushed Mend and Sell off the screen). Every own building
-## type of both factions in data/units is selected at the six sizes of ScreenSizes.ALL, 360 dp
-## portrait among them: the chip, the bar and Mend and Sell (Sell not for a Headquarters) stand
-## inside the safe area, the orders are at least 56 x 64 dp and none is clipped by the bar's
-## scroll. The widest state, Mend lit and Sell armed with a refund, is checked on the dearest one.
+## 2026-11-18, P310: in portrait the name pushed Mend and Sell off the screen) and stacks its health
+## bar under its card. Every own building type of both factions in data/units (26 today) is
+## selected at the six sizes of ScreenSizes.ALL and at the two real 360 dp wide phones held upright
+## (`web_phone_portrait`, `notch_design_portrait`; the six sizes run at headless density, wider in
+## dp): the chip, the bar and Mend and Sell (Sell not for a Headquarters) stand inside the safe
+## area, the orders are at least 56 x 64 dp and none is clipped or scrolled off by the bar. The
+## widest state, Mend lit and Sell armed with a refund, is checked on the dearest one.
 
 const PER_SCENE: int = 12  ## Buildings spawned in one scene, in the free band below the base.
 const PITCH: int = 5
@@ -13,14 +15,16 @@ const FIRST_ID: int = 5  ## The spawns after BASE take the ids that follow it.
 
 func test_a_buildings_chip_has_no_name_and_mend_and_sell_fit_for_every_type_at_every_size() -> void:
 	var types: Array[String] = _building_types()
-	assert_int(types.size()).is_greater(20)
-	for size: Vector2i in ScreenSizes.ALL:
+	assert_int(types.size()).is_equal(26)
+	for screen: Array in _screens():
+		var size: Vector2i = screen[0]
+		var metrics: UiMetrics = screen[1]
 		for from: int in range(0, types.size(), PER_SCENE):
 			var batch: Array[String] = types.slice(from, from + PER_SCENE)
 			var extra: Array = []
 			for at: int in batch.size():
 				extra.append([1, batch[at], 1 + PITCH * (at % 6), 23 + PITCH * (at / 6)])
-			await _open(size, extra)
+			await _open(size, extra, metrics)
 			for at: int in batch.size():
 				var why: String = "%s %s" % [size, batch[at]]
 				var id: int = FIRST_ID + at
@@ -33,8 +37,9 @@ func test_a_buildings_chip_has_no_name_and_mend_and_sell_fit_for_every_type_at_e
 
 
 func test_the_widest_orders_a_building_shows_fit_mend_lit_and_sell_armed_on_the_dearest() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		await _open(size, [[1, "fossil_space", 1, 23]])
+	for screen: Array in _screens():
+		var size: Vector2i = screen[0]
+		await _open(size, [[1, "fossil_space", 1, 23]], screen[1])
 		var snap: MatchSnapshot = _runner.snapshot
 		var id: int = FIRST_ID
 		var row: int = snap.index_of(id)
@@ -49,6 +54,17 @@ func test_the_widest_orders_a_building_shows_fit_mend_lit_and_sell_armed_on_the_
 		assert_bool(_bar.order_button(&"mend").button_pressed).is_true()
 		_assert_chip_without_name(why)
 		_assert_orders_fit(why, true)
+
+
+## [window size, metrics or null]: the six sizes, then the two 360 dp wide phones held upright.
+func _screens() -> Array[Array]:
+	var out: Array[Array] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		out.append([size, null])
+	for name: StringName in [&"web_phone_portrait", &"notch_design_portrait"]:
+		var metrics: UiMetrics = UiProfiles.by_name(name)
+		out.append([metrics.window_size, metrics])
+	return out
 
 
 ## The chip of the selected type: its card, its health, no label and no name anywhere in it.

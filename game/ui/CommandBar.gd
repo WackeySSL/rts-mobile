@@ -3,8 +3,8 @@ extends Control
 ## The command bar (ADR 0025 section 9, plan P122): bottom left (upright too) while something is
 ## selected. From its start: Deselect (48 x 64 dp, `glyph_deselect` over "CLEAR"), the selection
 ## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" for
-## units (a building shows no name, only its card; Michael, 2026-11-18, P310), its health; then a
-## "+N" chip for the types left out; an enemy building's chip wears P115b's look: amber corner
+## units (a building shows no name, its health bar under its card; Michael, 2026-11-18, P310), then
+## a "+N" chip for the types left out; an enemy building's chip wears P115b's look: amber corner
 ## brackets round its picture and an amber health bar with a notch in its top edge) and the orders
 ## the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
@@ -126,7 +126,7 @@ var _repair_ready: bool = false  ## ... and one of those units is damaged: Repai
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 
 
-## One selected type: its item card, "xN" (a building: no name, only its card) and its health.
+## One selected type: its item card, "xN" (a building: no name, the health bar under its card).
 class Chip:
 	extends PanelContainer
 
@@ -134,13 +134,13 @@ class Chip:
 	var label: Label = Label.new()  ## "xN" for units; empty and hidden for a building.
 	var health: HealthBar = HealthBar.new()
 	var pips: Pips = Pips.new()  ## A carrier's seats; hidden for any other type.
+	var line: BoxContainer = BoxContainer.new()  ## Card and text side by side; a building stacks them.
 	var type: StringName = &""  ## The card's type, to load it once.
 	var enemy: bool = false
 
 	func _init() -> void:
 		theme_type_variation = CHIP
 		mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the read-only chip is no order.
-		var line: HBoxContainer = HBoxContainer.new()
 		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.name = "Card"
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -173,6 +173,7 @@ class Chip:
 		var units: bool = not group.building
 		var text: String = "×%d" % group.count if units else ""  # A building: its card, no name.
 		label.visible = units
+		line.vertical = not units  # A building: the health bar under its card, not beside it.
 		if label.text != text:
 			label.text = text
 			fit_label()

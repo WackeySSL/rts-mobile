@@ -55,7 +55,6 @@ var _bar: bool = false  ## The command bar holds its slot (a selection, or the s
 var _bar_width: float = 0.0  ## The bar's content width in dp (landscape), 0 for its least.
 var _pinned: bool = false
 var _idle_ms: float = 0.0  ## Frame time since the full map opened or was touched.
-var _gesture_drawer: bool = false  ## The map gesture in flight folded an open drawer (P310).
 var _card_guard: bool = false  ## A touch closed the card; no first finger has gone down since.
 
 
@@ -85,13 +84,6 @@ func close(which: Unfold) -> void:
 		_switch(Unfold.NONE)
 
 
-## Whether the map gesture that began last folded an open drawer and nothing has changed the unfold
-## since: the tap that selects a producer ends in this frame, and the drawer it found open comes
-## back on that producer's tab (P310). Any other change of the unfold, or a placement, clears it.
-func drawer_folded_by_gesture() -> bool:
-	return _gesture_drawer
-
-
 ## A gesture on the map began (`TouchInput.map_gesture`).
 func map_gesture() -> void:
 	_fold_for_map()
@@ -100,7 +92,6 @@ func map_gesture() -> void:
 ## Placement or a strike aim began: it folds what a gesture on the map folds.
 func mode_started() -> void:
 	_fold_for_map()
-	_gesture_drawer = false
 
 
 ## A finger went down, on the map or on a HUD control; `first` says that no other finger was down.
@@ -135,7 +126,6 @@ func reset() -> void:
 	_current = Unfold.NONE
 	_pinned = false
 	_idle_ms = 0.0
-	_gesture_drawer = false
 	_card_guard = false
 	if moved:
 		changed.emit(previous)
@@ -168,19 +158,16 @@ func fill_bar(shown: HudCorners.Shown) -> void:
 
 
 func _fold_for_map() -> void:
-	var drawer: bool = _current == Unfold.DRAWER
 	if _current == Unfold.DRAWER or _current == Unfold.ECONOMY:
 		_switch(Unfold.NONE)
 	elif _current == Unfold.RADAR and not _pinned:
 		_switch(Unfold.NONE)
-	_gesture_drawer = drawer
 
 
 func _switch(next: Unfold) -> void:
 	_idle_ms = 0.0
 	if next == _current:
 		return
-	_gesture_drawer = false
 	var previous: Unfold = _current
 	_current = next
 	changed.emit(previous)

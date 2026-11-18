@@ -25,27 +25,6 @@ func test_a_new_state_has_nothing_unfolded_and_nothing_pinned() -> void:
 	assert_int(_state.settings.radar_close_ms).is_equal(CLOSE_MS)  # The table's value.
 
 
-## The drawer a map gesture folded is remembered for the tap's own selection (P310), until anything
-## else changes the unfold, a placement begins, or a gesture finds no drawer.
-func test_a_gesture_that_folds_the_drawer_is_remembered_until_something_else_happens() -> void:
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-	_state.open(HudState.Unfold.DRAWER)
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-	_state.map_gesture()
-	assert_bool(_state.drawer_folded_by_gesture()).is_true()
-	_state.open(HudState.Unfold.DRAWER)  # BUILD again: the memory is spent.
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-	_state.map_gesture()
-	_state.map_gesture()  # A second gesture finds it closed.
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-	_state.open(HudState.Unfold.DRAWER)
-	_state.mode_started()  # A placement is no tap on a producer.
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-	_state.open(HudState.Unfold.RADAR)
-	_state.map_gesture()
-	assert_bool(_state.drawer_folded_by_gesture()).is_false()
-
-
 func test_opening_one_unfold_closes_the_open_one_whichever_pair() -> void:
 	for first: HudState.Unfold in FOLDING:
 		for second: HudState.Unfold in FOLDING:
