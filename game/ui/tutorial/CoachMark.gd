@@ -4,9 +4,11 @@ extends Control
 ## prompt card with Next (a read-only beat only) and Skip. Presentation only: it reads the
 ## `TutorialDirector`'s signals and calls its `next()` and `skip()`, and sends no Command.
 ##
-## Input: the node, the ring and the card's panel and texts are `MOUSE_FILTER_IGNORE`, so a touch
-## anywhere but on the Next and Skip buttons goes on to what is under it, and the gesture a beat
-## asks for (a tap on the ring's unit, a drag, a pinch) is never taken. Only the two buttons stop.
+## Input: the node and the ring are `MOUSE_FILTER_IGNORE`, so a touch outside the card goes on to
+## what is under it, and the gesture a beat asks for (a tap on the ring's unit, a drag, a pinch) is
+## never taken. The card's panel is `STOP`, so a tap on the prompt is not a map tap (no stray move
+## or deselect); when `place_card` could not clear the ring the panel is `IGNORE` for that
+## placement, so the target is never blocked. Next and Skip always stop.
 ##
 ## The ring is on a HUD control found by node name under `hud_root` (`anchor_control`), or on a
 ## world tile projected through the camera (`anchor_tile`); a tile off the screen pins the ring to
@@ -61,7 +63,7 @@ func _ready() -> void:
 	add_child(_ring)
 	_card.name = "Card"
 	_card.theme_type_variation = &"PauseCard"
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_card.mouse_filter = Control.MOUSE_FILTER_STOP  # Taps on the card are not map taps.
 	add_child(_card)
 	var column: VBoxContainer = VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -210,7 +212,11 @@ func _update() -> void:
 		label.size.x = inner
 	_card.custom_minimum_size = Vector2(width, 0.0)
 	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
-	_card.position = place_card(ring, _card.size, safe, GAP_DP * dp).position
+	var placed: Rect2 = place_card(ring, _card.size, safe, GAP_DP * dp)
+	_card.position = placed.position
+	# A card that could not clear the ring lets touches through, so it never blocks the target.
+	var covers: bool = placed.intersection(ring).get_area() > EPSILON
+	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if covers else Control.MOUSE_FILTER_STOP
 	_again -= 1
 	if _again > 0:
 		_key = []

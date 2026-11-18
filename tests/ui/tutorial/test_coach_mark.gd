@@ -21,6 +21,7 @@ var _hud_root: Control
 var _target: Control
 var _camera: RtsCamera
 var _taps: int = 0
+var _map_taps: int = 0
 var _dir: String = ""
 var _window_size_before: Vector2i
 
@@ -182,7 +183,7 @@ func test_a_beat_done_hides_the_card_until_the_next_prompt() -> void:
 	assert_bool(_mark.visible).is_true()
 
 
-func test_touches_outside_the_buttons_go_through_to_the_target() -> void:
+func test_a_tap_on_the_ring_target_reaches_it_and_the_ring_and_root_ignore() -> void:
 	await _open(
 		_profile(ScreenSizes.LANDSCAPE[0]),
 		_control_beat("hit", TutorialConditions.Kind.CAMERA_PANNED)
@@ -191,23 +192,60 @@ func test_touches_outside_the_buttons_go_through_to_the_target() -> void:
 	assert_int(_mark.find_child("Ring", true, false).mouse_filter).is_equal(
 		Control.MOUSE_FILTER_IGNORE
 	)
-	assert_int(_mark.find_child("Card", true, false).mouse_filter).is_equal(
-		Control.MOUSE_FILTER_IGNORE
-	)
 	var at: Vector2 = _target.get_global_rect().get_center()
 	TouchEvents.press(get_viewport(), 0, at)
 	TouchEvents.release(get_viewport(), 0, at)
 	await await_idle_frame()
 	assert_int(_taps).is_equal(1)
-	# The card's own text lets a touch through too.
+
+
+func test_a_tap_on_the_card_body_does_not_reach_the_map() -> void:
+	await _open(
+		_profile(ScreenSizes.LANDSCAPE[0]),
+		_control_beat("hit", TutorialConditions.Kind.CAMERA_PANNED)
+	)
+	var card: Control = _mark.find_child("Card", true, false) as Control
+	assert_int(card.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
 	var on_card: Vector2 = _mark.card_rect().get_center()
-	_put_target_at(on_card)
-	await await_idle_frame()
-	_taps = 0
+	_map_taps = 0
+	var map: Control = Control.new()  # Stands in for the map under the whole HUD.
+	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	map.gui_input.connect(func(_e: InputEvent) -> void: _map_taps += 1)
+	add_child(map)
+	move_child(map, 0)
 	TouchEvents.press(get_viewport(), 0, on_card)
 	TouchEvents.release(get_viewport(), 0, on_card)
 	await await_idle_frame()
+	map.free()
+	assert_int(_map_taps).is_equal(0)
+
+
+func test_a_card_that_cannot_clear_the_ring_lets_a_tap_through_to_the_target() -> void:
+	await _open(
+		_profile(ScreenSizes.LANDSCAPE[0]),
+		_control_beat("hit", TutorialConditions.Kind.CAMERA_PANNED)
+	)
+	# A ring as wide as the safe rect leaves no room: the card overlaps it.
+	_target.size = _safe().size * 0.95
+	_target.position = _safe().position + _safe().size * 0.025
+	await await_idle_frame()
+	await await_idle_frame()
+	var card: Control = _mark.find_child("Card", true, false) as Control
+	assert_bool(_mark.card_rect().intersects(_mark.ring_rect())).is_true()
+	assert_int(card.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	var at: Vector2 = _mark.card_rect().get_center()
+	assert_bool(_target.get_global_rect().has_point(at)).is_true()
+	_taps = 0
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	await await_idle_frame()
 	assert_int(_taps).is_equal(1)
+	_put_target(Vector2(0.5, 0.5))  # Back to a small target: the card clears it and stops again.
+	_target.size = Vector2.ONE * UiScale.dp(56.0)
+	_put_target(Vector2(0.5, 0.5))
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_int(card.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
 
 
 func test_a_stalled_beat_shows_the_hint_and_a_read_only_one_does_not() -> void:
@@ -231,14 +269,12 @@ func test_reduced_effects_make_no_tween() -> void:
 	await await_idle_frame()
 	assert_bool(_mark.ring_pulsing()).is_false()
 	assert_int(get_tree().get_processed_tweens().size()).is_equal(0)
-
-
-func test_the_ring_pulses_without_reduced_effects_and_stops_when_hidden() -> void:
+	_close()
 	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
 	await await_idle_frame()
-	assert_bool(_mark.ring_pulsing()).is_true()
+	assert_bool(_mark.ring_pulsing()).is_true()  # Without reduced effects it pulses...
 	_mark.hide_mark()
-	assert_bool(_mark.ring_pulsing()).is_false()
+	assert_bool(_mark.ring_pulsing()).is_false()  # ...and stops when hidden.
 
 
 func _control_beat(id: String, kind: TutorialConditions.Kind) -> TutorialBeatDef:
