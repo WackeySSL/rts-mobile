@@ -648,14 +648,16 @@ each faction's roster (Infantry tab, built at the barracks); neither has a weapo
 
 #### Drone effect (P280)
 
-`fx/drone_atlas.svg` is the Lumen Accord's repair drone for P281's repair effect layer, 240 x 72 at 2x (120 x 36 px
-after the 0.5 import scale) with no team colour: **a small white hexagonal body with a mint light on top and in front, on
-four slim dark arms that end in pale blurred rotor discs with a spoke across each, and a soft ground shadow.** Two
-frames (the spokes turned: 40 x 36 px each, at (0, 0) and (40, 0)) alternate for the rotor blur, the shadow is at
-(80, 0); each sprite stands at the centre of its region. `game/view/DroneArt.gd` holds the table, the gallery's Life
-page shows the frames and the shadow at zoom 0.75, 1 and 1.5 on both grounds, `tests/art/test_drone_fx.gd` holds the
-cells, the ink and the colours (no key colour, no key-band hue). It is a drone that flies free: it is never drawn
-sitting on a vehicle.
+The Lumen Accord's repair drone is two kinds of the life atlas (`fx/life_atlas.svg`, "Life effects" above: `drone`,
+2 frames, and `drone_shadow`), not an atlas of its own: ADR 0037 sections 5 and 13 give the repair effects no draw
+calls of their own, so P281 draws it through the `AirFx` and `GroundFx` rings from the one life atlas. It is **the Drone
+Dock's drone** (the dock's `drn` group, `renew_drone_dock.tres`): **a ceramic hexagonal body with a titanium band and a
+glass dome under a mint light, on two crossed graphite arms that end in four dark blurred rotor discs with a spoke across
+each**, 25 px across at zoom 1 as the dock's, so it does not grow when it leaves the rack. The dock's team band is a
+titanium band here (the effect carries no team colour). Two frames alternate for the rotor blur (the spokes turned),
+the shadow is one soft ellipse group at 35 % opacity. The gallery's Life page shows the frames and the shadow like any
+kind, and `tests/art/test_life_atlases.gd` holds the cells, the ink, the colours and that neighbouring frames do not
+touch. The drone flies free: it is never drawn sitting on a vehicle.
 
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
@@ -2147,7 +2149,6 @@ in doubt, choose a plainer real-world form.
 | Crater | A dark round pit seen as a 2:1 ellipse, its north-west wall in shade, inside a ragged lit ring of thrown earth with cracks and rock chips across a wide soot stain, radius 1.5 tiles. | `decals/crater.svg`, 288x144, anchor (144, 72), see "Fields" |
 | Life atlas | Lumpy grey and white cloud puffs of three to six round lobes in three tones with a dark rim, tall single and low three-tongue yellow-white flames with a charcoal edge, small pointed sparks and low flat heaps of dust, each on its own clear cell. | `fx/life_atlas.svg`, 552x536, import scale 0.5, see "Life effects" |
 | Strike atlas | A dark auger lance of steel with a collar, four helical flights and a swept-back yellow-white burn, falling or rising; a mint teardrop seed with a trail; a flat mint hexagon of light with a dark green edge; a yellow-white and a mint flash; a flat ground ring and a shadow. | `fx/strike_atlas.svg`, 480x472, import scale 0.5, see "Life effects" |
-| Drone atlas | A small white hexagonal drone with a mint light on four slim dark arms that end in pale blurred rotor discs with a spoke across each, in two frames with the spokes turned, and a soft ground shadow. | `fx/drone_atlas.svg`, 240x72, import scale 0.5, see "Drone effect" under "The medic squads" |
 
 ## Readability check (every asset)
 1. Rasterise each layer at 32 px with `Image.load_svg_from_buffer` (scale = 32 / canvas, so 0.25 for
@@ -2369,7 +2370,8 @@ scale 0.5 like `fx/effects_atlas.svg`, so a region's numbers are px of the impor
 camera zoom 1 are world px, and the SVG is twice as large.
 - `fx/life_atlas.svg`, 552 x 536 at 2x (276 x 268 px, about 24 KB): the sprites of `GroundFx` (z 3) and
   `AirFx` (z 25), the smokes, the flames, the sparks and the dust, and (P167, ADR 0029) the hit flash,
-  chips, embers, gas jet, dust cloud and glow of the damage and hit layers.
+  chips, embers, gas jet, dust cloud and glow of the damage and hit layers, and (P280, ADR 0037 section 14)
+  the repair drone and its shadow (`drone`, `drone_shadow`) of the Drone Dock's repairs.
 - `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 10 KB): the sprites of `StrikeFx` (z 55), the
   two superweapon looks.
 
@@ -2403,6 +2405,8 @@ strips touch their region's edge at one end, below).
 | `ember` | life | 142, 164, 14, 14 | 2 | 18 | centre 7, 7 | A glowing fleck under a charcoal edge: a squat diamond, and a teardrop with a white spot; yellow with a pale core. | the ruin's embers (P148, P165) |
 | `glow` | life | 140, 206, 56, 56 | 1 | 0 | centre 28, 28 | Seven stepped concentric discs of warm yellow (#FFE066) at 0.12 alpha each, no edge and no blur, so the centre is about 0.6 and the rim thin; drawn under every fire in one pass with normal alpha. | the glow pass under fires (P148) |
 | `jet` | life | 182, 164, 40, 18 | 2 | 44 | nozzle 2, 9 | A sideways gas flame that leaves a hole to the right: blunt at the nozzle, drawn out to a tip that flicks up in one frame and down in the other, four yellow-white tones with a white heart under a charcoal edge. | the burning gas jet of a hole in a tank or sphere at SKADET (P148) |
+| `drone` | life | 204, 190, 30, 28 | 2 | 34 | centre 15, 13 | The Lumen Accord's repair drone, as the Drone Dock's: a ceramic hexagonal body with a titanium band and a glass dome under a mint light, on two crossed graphite arms with a dark blurred rotor disc at each end and a spoke across it, the spokes turned between the two frames (the rotor blur). No team colour. | the drone of the Drone Dock's repairs (P281) |
+| `drone_shadow` | life | 204, 226, 30, 16 | 1 | 0 | centre 15, 8 | A soft dark ellipse under a darker core, one group at 35 % opacity (a drone's shadow on the ground). | the drone's ground shadow (P281) |
 | `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar the burn: five narrow, straight yellow-white streaks of unequal length on flat bases that sit on the collar, swept back up the fall with no round foot, so it never reads as a torch and it hands over into `trail`. | `StrikeFx` the fall (P141) |
 | `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, a ragged spray of yellow-white tongues falling away below the collar. It is drawn on its own, not as the other turned upside down: the collar's lit band is still on top, its dark foot below, and the light still catches the upper edge of each flight. | the launch (P141) |
 | `trail` | strike | 76, 0, 16, 64 | 1 | 0 | bottom centre 8, 64 | A tapering yellow-white streak, white at its flush bottom edge and fading to nothing towards the point; a layer stretches it up the fall behind the lance. | the fall (P141) |
@@ -2466,6 +2470,8 @@ Derrick League, 169 to 213 for the Lumen Accord). Every colour of both files is 
   #FFE066 (hue 47.8) at alpha 0.12 a disc. The glow is a warm yellow with a hue above 46 degrees, clear
   of the Derrick League's band (1.6 to 45.3), so it never reads as a team colour. No filter, no blur, no
   pattern: softness is stacked alpha.
+- **Drone (P280)**, no key band: ceramic body #D5DBDC, titanium band and side #8A9398, graphite arms, rotors
+  and edges #414A51, glass dome #B4C8CF, mint light #A8F5B0, shadow #1C2127 at 35 %.
 - **Mint** (the Lumen Accord's status light, hue 127 degrees, outside both key bands): #A8F5B0 body,
   #D8FFE0 light line, #FFFFFF heart, edge #1F5C3A.
 

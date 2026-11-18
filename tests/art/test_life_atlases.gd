@@ -95,7 +95,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 			row["anchor"]
 		)
 	assert_array(kinds).is_equal(LifeRegions.ATLAS.keys())
-	assert_int(kinds.size()).is_equal(27)
+	assert_int(kinds.size()).is_equal(29)  # 27 and the repair drone's two (P280)
 	assert_dict(Support.joins()).is_equal(LifeRegions.JOIN)
 	var text: String = Support.section().replace("\n", " ")
 	for strip: StringName in LifeRegions.MAX_STRETCH:
@@ -108,7 +108,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 ## from the style guide, and the ink test below holds the SVG to the same cells.
 func test_every_frame_region_is_the_cell_the_style_guide_implies() -> void:
 	var cells: Array[Dictionary] = Support.cells()
-	assert_int(cells.size()).is_equal(48)
+	assert_int(cells.size()).is_equal(51)  # 48 and the drone's three (P280)
 	for cell: Dictionary in cells:
 		var kind: StringName = cell["kind"]
 		var label: String = "%s %d" % [kind, cell["frame"]]
@@ -139,6 +139,34 @@ func test_every_frame_has_ink_in_a_clear_cell_and_nothing_lies_outside_the_cells
 		problems.append_array(_stray_ink(image, cells, atlas))
 		problems.append_array(_close_cells(cells, atlas))
 		assert_array(problems).override_failure_message(atlas + str(problems)).is_empty()
+
+
+## The repair drone (P280) is two frames side by side: the rotor discs reach almost to the side of a
+## cell, so the side columns of each cell (not its top and bottom rows) are clear and the ink of
+## one frame ends at least `MIN_GAP_PX` before the ink of the next begins; the shadow is under it.
+func test_the_two_drone_frames_keep_clear_of_each_other_and_of_their_cell_sides() -> void:
+	var image: Image = _image("life")
+	var ink_from: Array[int] = []
+	var ink_to: Array[int] = []
+	for frame: int in LifeRegions.FRAMES[&"drone"]:
+		var cell: Rect2i = LifeRegions.region(&"drone", frame)
+		var first: int = -1
+		var last: int = -1
+		for x: int in range(cell.position.x, cell.end.x):
+			for y: int in range(cell.position.y, cell.end.y):
+				if image.get_pixel(x, y).a > 0.02:
+					first = x if first < 0 else first
+					last = x
+		for y: int in range(cell.position.y, cell.end.y):
+			assert_float(image.get_pixel(cell.position.x, y).a).is_less_equal(0.02)
+			assert_float(image.get_pixel(cell.end.x - 1, y).a).is_less_equal(0.02)
+		ink_from.append(first)
+		ink_to.append(last)
+	assert_int(ink_from[1] - ink_to[0]).is_greater_equal(MIN_GAP_PX)
+	var shadow: Rect2i = LifeRegions.region(&"drone_shadow", 0)
+	assert_int(shadow.position.y - LifeRegions.region(&"drone", 0).end.y).is_greater_equal(
+		MIN_GAP_PX
+	)
 
 
 ## ADR 0027 section 4: life effects carry no team colour. Every authored colour first, then every
