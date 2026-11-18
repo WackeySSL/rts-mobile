@@ -2,14 +2,14 @@ extends GdUnitTestSuite
 ## Fairness of the skirmish maps (plan rows P550, P552): every map is its own half turn, so the two
 ## seats get the same ground, the same ore fields (cells, yield and kind) and the same ground
 ## distances, all read from the map and the World the runner makes, never from literals. A new map
-## adds one entry to CASES and nothing else. A river map also pins its crossings: the river is
-## passable only at them, and both bases reach each other.
+## adds one entry to CASES and nothing else. A river or ridge map also pins its crossings (fords or
+## passes): the band is passable only at them, and both bases reach each other.
 
 const Rig: GDScript = preload("res://tests/sim/support/kestrel_rig.gd")
 const SCENARIO_SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
 ## Per map: the `map` path, the `stem` of its four scenario files (`<stem><suffix>.tres`) and
-## `river_rows`, the first and last row of a river across the map (empty = no river) with the
-## number of `crossings` every river row must have, each `crossing_width` tiles wide or more.
+## `river_rows`, the first and last row of a river or ridge across the map (empty = none) with the
+## number of `crossings` every such row must have, each `crossing_width` tiles wide or more.
 const CASES: Array[Dictionary] = [
 	{
 		"map": "res://data/maps/kestrel_flats.tres",
@@ -21,6 +21,13 @@ const CASES: Array[Dictionary] = [
 		"stem": "res://data/scenarios/skirmish_heron_fords",
 		"river_rows": [28, 31],
 		"crossings": 2,
+		"crossing_width": 5,
+	},
+	{
+		"map": "res://data/maps/curlew_crags.tres",
+		"stem": "res://data/scenarios/skirmish_curlew_crags",
+		"river_rows": [26, 29],
+		"crossings": 3,
 		"crossing_width": 5,
 	},
 ]

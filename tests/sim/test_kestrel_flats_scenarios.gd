@@ -16,6 +16,8 @@ const TICKS: int = 1800
 ## Heron Fords' four scenario files (plan row P550): the cheap start checks below run on them too.
 const HERON_STEM: String = "res://data/scenarios/skirmish_heron_fords"
 const HERON_SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
+## Curlew Crags' four scenario files (plan row P552), checked like Heron Fords'.
+const CURLEW_STEM: String = "res://data/scenarios/skirmish_curlew_crags"
 const FACTION_FILES: Dictionary[String, Array] = {
 	Rig.SKIRMISH_PATH: [FOSSIL_PATH, RENEW_PATH],
 	Rig.MIRRORED_PATH: [RENEW_PATH, FOSSIL_PATH],
@@ -38,11 +40,12 @@ const BLOCKS: Dictionary[String, Array] = {
 }
 
 
-## Kestrel Flats' two scenarios and Heron Fords' four.
+## Kestrel Flats' two scenarios, Heron Fords' four and Curlew Crags' four.
 func _checked_paths() -> Array[String]:
 	var found: Array[String] = Rig.PATHS.duplicate()
 	for suffix: String in HERON_SUFFIXES:
 		found.append("%s%s.tres" % [HERON_STEM, suffix])
+		found.append("%s%s.tres" % [CURLEW_STEM, suffix])
 	return found
 
 

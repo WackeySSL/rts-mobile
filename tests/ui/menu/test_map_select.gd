@@ -90,8 +90,8 @@ func test_layout_at_the_six_sizes() -> void:
 				. override_failure_message(label)
 				. is_true()
 			)
-		# Two maps, two sides, three levels and START.
-		assert_int(shown).override_failure_message(label).is_equal(8)
+		# Three maps, two sides, three levels and START.
+		assert_int(shown).override_failure_message(label).is_equal(9)
 		var band: AdBannerBand = _screen.slot.get_child(0) as AdBannerBand
 		AdBandAsserts.assert_lines_up(self, band, _ads, _screen.scroll, band.gap_dp(), label)
 		(
@@ -118,6 +118,8 @@ func test_locks_follow_the_rank() -> void:
 	assert_bool(_screen._maps[&"kestrel_flats"].disabled).is_false()
 	assert_bool(_screen._maps[&"map_2"].disabled).is_true()
 	assert_str(_screen._maps[&"map_2"].text).contains("RANK 2")
+	assert_bool(_screen._maps[&"map_3"].disabled).is_true()
+	assert_str(_screen._maps[&"map_3"].text).contains("RANK 4")
 	assert_bool(_screen._levels[&"normal"].disabled).is_false()
 	assert_bool(_screen._levels[&"hard"].disabled).is_true()
 	assert_str(_screen._levels[&"hard"].text).contains("RANK 3")
@@ -225,15 +227,20 @@ func test_a_refused_start_keeps_the_button_live() -> void:
 	_flow.release.emit()
 
 
-func test_the_catalog_lists_both_maps_and_pins_their_scenario_files() -> void:
-	assert_array(_catalog.map_ids()).is_equal([&"kestrel_flats", &"map_2"])
+func test_the_catalog_lists_all_maps_and_pins_their_scenario_files() -> void:
+	assert_array(_catalog.map_ids()).is_equal([&"kestrel_flats", &"map_2", &"map_3"])
 	assert_str(_catalog.title(&"kestrel_flats")).is_equal("Kestrel Flats")
 	assert_str(_catalog.title(&"map_2")).is_equal("Heron Fords")
-	var stems: Array[String] = ["skirmish_kestrel_flats", "skirmish_heron_fords"]
-	var maps: Array[String] = [
-		"res://data/maps/kestrel_flats.tres", "res://data/maps/heron_fords.tres"
+	assert_str(_catalog.title(&"map_3")).is_equal("Curlew Crags")
+	var stems: Array[String] = [
+		"skirmish_kestrel_flats", "skirmish_heron_fords", "skirmish_curlew_crags"
 	]
-	for index: int in 2:
+	var maps: Array[String] = [
+		"res://data/maps/kestrel_flats.tres",
+		"res://data/maps/heron_fords.tres",
+		"res://data/maps/curlew_crags.tres"
+	]
+	for index: int in 3:
 		var on_disk: Array[String] = []
 		for file_name: String in DirAccess.get_files_at("res://data/scenarios"):
 			if file_name.begins_with(stems[index]) and file_name.ends_with(".tres"):
@@ -258,6 +265,7 @@ func test_the_catalog_lists_both_maps_and_pins_their_scenario_files() -> void:
 		assert_int(combos.size()).is_equal(4)  # Both sides and their mirrors.
 	assert_str(_catalog.scenario_path(&"kestrel_flats", &"fossil", &"renew")).is_not_empty()
 	assert_str(_catalog.scenario_path(&"map_2", &"renew", &"fossil")).is_not_empty()
+	assert_str(_catalog.scenario_path(&"map_3", &"renew", &"fossil")).is_not_empty()
 	assert_str(_catalog.scenario_path(&"nowhere", &"fossil", &"renew")).is_empty()
 
 
