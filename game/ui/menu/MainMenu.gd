@@ -137,6 +137,10 @@ func _build_header() -> void:
 		var name_label: Label = Label.new()
 		name_label.text = tr(side[1] as StringName)
 		name_label.theme_type_variation = side[2] as StringName
+		# The names give way (wrap) on a narrow phone; the emblems and "vs" keep their size.
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_label.custom_minimum_size.x = 0.0
 		sides.add_child(name_label)
 	_label(tr(MainMenuText.TAGLINE), &"").autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
