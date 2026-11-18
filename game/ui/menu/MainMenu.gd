@@ -153,8 +153,9 @@ func _apply() -> void:
 		_fit_names.call_deferred()
 
 
-## Compact and centred while the row's natural width fits the column; when it does not (a phone
-## narrower than the row) the names take the room left and wrap by word. The emblems and "vs"
+## Compact and centred while the row's natural width fits the widest column the screen allows (the
+## column grows to it); when it does not (a 360 dp phone held upright) the names take the room left
+## and wrap by word. The emblems and "vs"
 ## keep their size.
 func _fit_names() -> void:
 	if _sides == null or not is_inside_tree():
@@ -169,7 +170,7 @@ func _fit_names() -> void:
 		else:
 			natural += (child as Control).get_combined_minimum_size().x
 	natural += _sides.get_theme_constant("separation") * (_sides.get_child_count() - 1)
-	var wrap: bool = natural > column.custom_minimum_size.x
+	var wrap: bool = natural > column_room_px()  # The column grows to a row that fits.
 	for label: Label in _names:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if wrap else Control.SIZE_FILL
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF

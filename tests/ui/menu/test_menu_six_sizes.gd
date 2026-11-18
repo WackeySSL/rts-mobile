@@ -33,10 +33,10 @@ const HOW_REAL_SECTION: StringName = &"how_to_play_real_section"
 const HOW_LONG_SECTION: StringName = &"how_to_play_long_section"
 const LICENCES_LIST: StringName = &"licences_list"
 const LICENCES_TEXT: StringName = &"licences_text"
-## The profiles whose column (a phone's short side) is narrower than the side row's natural width.
-const WRAPPING_PROFILES: Array[StringName] = [
-	&"web_phone", &"web_phone_small", &"web_phone_portrait", &"notch_design"
-]
+## The only profile whose safe width is narrower than the side row: its names wrap.
+const WRAPPING_PROFILE: StringName = &"web_phone_portrait"
+## Profiles whose row is wider than the asked column but fits the safe width: the column grows.
+const GROWN_PROFILES: Array[StringName] = [&"web_phone", &"web_phone_small", &"notch_design"]
 const LONG_TEXT_ROW: String = "GODOT COPYRIGHT"
 
 var _window_size_before: Vector2i
@@ -127,7 +127,7 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 	for profile_name: StringName in _profile_names():
 		await _open(MAIN, UiProfiles.by_name(profile_name))
 		var names: Array[Label] = _side_names()
-		var wraps: bool = WRAPPING_PROFILES.has(profile_name)
+		var wraps: bool = profile_name == WRAPPING_PROFILE
 		for label: Label in names:
 			var lines: int = label.get_line_count()
 			(
@@ -141,6 +141,26 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 				wrapped += 1 if label.get_line_count() == 2 else 0
 			assert_int(wrapped).override_failure_message("nothing wraps").is_greater(0)
 		else:
+			if GROWN_PROFILES.has(profile_name):
+				var grown: Rect2 = _screen.column.get_global_rect()
+				var safe: Rect2 = UiScale.safe_rect_base()
+				(
+					assert_float(grown.size.x)
+					. override_failure_message("%s: column did not grow" % profile_name)
+					. is_greater(_screen.column.custom_minimum_size.x)
+				)
+				(
+					assert_bool(
+						(
+							grown.position.x >= safe.position.x - TOLERANCE_PX
+							and grown.end.x <= safe.end.x + TOLERANCE_PX
+						)
+					)
+					. override_failure_message(
+						"%s: column %s, safe %s" % [profile_name, grown, safe]
+					)
+					. is_true()
+				)
 			var row: Control = names[0].get_parent() as Control
 			var column: Rect2 = _screen.column.get_global_rect()
 			var left: float = row.get_child(0).get_global_rect().position.x - column.position.x
@@ -268,15 +288,13 @@ func _assert_layout(label: String) -> bool:
 		. override_failure_message("%s: column %s outside the safe rect %s" % [label, across, safe])
 		. is_true()
 	)
+	var asked: float = _asked_column_px()
 	(
 		assert_float(column.size.x)
 		. override_failure_message(
-			(
-				"%s: column %.1f px wide, asked for %.1f"
-				% [label, column.size.x, column.custom_minimum_size.x]
-			)
+			"%s: column %.1f px wide, asked for %.1f" % [label, column.size.x, asked]
 		)
-		. is_less_equal(column.custom_minimum_size.x + TOLERANCE_PX)
+		. is_less_equal(asked + TOLERANCE_PX)
 	)
 	var floor_px: float = UiScale.dp(TOUCH_DP) - TOLERANCE_PX
 	var controls: Array[Control] = []
@@ -307,6 +325,17 @@ func _assert_layout(label: String) -> bool:
 				. is_false()
 			)
 	return await _assert_scroll(label, controls)
+
+
+## The column's asked width: its minimum, or on the main menu the side row's compact width where
+## that is wider (the column grows to a row that fits the safe width, never past it).
+func _asked_column_px() -> float:
+	var asked: float = _screen.column.custom_minimum_size.x
+	if _screen is MainMenu:
+		for child: Node in _screen.column.get_children():
+			if child is HBoxContainer:
+				asked = maxf(asked, (child as Control).get_combined_minimum_size().x)
+	return asked
 
 
 ## A screen taller than its scroll has a range and its foot can be brought into view; a short one
