@@ -233,7 +233,7 @@ frames and a shadow, `game/view/DroneArt.gd`, a row on the gallery's Life page).
   skip lists of `test_defs_factions_data`, `test_defs_roster` and `test_defs_roster_renew` and `test_defs_repair_data`
   asserts that all four support types are rostered.
 - **Atlas pins** (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2628, 2552, 2502 to 2730, 2657,
-  2598; page 2 2504, 1386, 1408 to 2510, 1456, 1476 (both pages under the 3,584 budget).
+  2598; page 2 2504, 1386, 1408 to 2510, 1456, 1478 (both pages under the 3,584 budget).
 
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and

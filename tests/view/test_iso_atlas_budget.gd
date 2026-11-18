@@ -80,10 +80,10 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## Accord mirror; page 2 has left 1080, 2198 and 2176.
 ## P280 (the Patchers and the Menders: two-figure squads, an 8-direction hull, walk of 4, idle
 ## of 2 and shadow each, 64 frames a sheet) moved page 1 from 2628, 2552 and 2502 to the pins
-## below (+102, +105 and +96 rows) and page 2 from 2504, 1386 and 1408 (+6, +70 and +68: the
+## below (+102, +105 and +96 rows) and page 2 from 2504, 1386 and 1408 (+6, +70 and +70: the
 ## shadows are small and fit the free width of shelf 1). Page 1 has left 854 rows on the
 ## cross-faction page, 927 on the Derrick League mirror and 986 on the Lumen Accord mirror;
-## page 2 has left 1074, 2128 and 2108.
+## page 2 has left 1074, 2128 and 2106.
 ## P280: 2628 + 102; P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
 const TODAY_CROSS: int = 2730
@@ -102,9 +102,9 @@ const TODAY2_CROSS: int = 2510
 ## P280: 1386 + 70; P279: 1386 + 0; P292: 1264 + 122; P291: 1158 + 106; P249: 1094 + 64
 ## (P245: 782 + 312; P245b: 780 + 2).
 const TODAY2_MIRROR_DERRICK: int = 1456
-## P280: 1408 + 68; P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 + 46
+## P280: 1408 + 70; P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 + 46
 ## (P245: 814 + 384; P203: 634 + 180).
-const TODAY2_MIRROR_LUMEN: int = 1476
+const TODAY2_MIRROR_LUMEN: int = 1478
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'

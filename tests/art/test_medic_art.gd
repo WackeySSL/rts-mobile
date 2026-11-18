@@ -24,7 +24,7 @@ const OTHERS: Array[StringName] = [
 	&"renew_menders"
 ]
 const SHARE: Vector2 = Vector2(0.08, 0.12)
-const SHARE_WIDE: Vector2 = Vector2(0.025, 0.18)
+const SHARE_WIDE: Vector2 = Vector2(0.01, 0.18)
 const MAX_OVERLAP: float = 0.85
 const STRIDE: Dictionary[StringName, int] = {&"fossil_patchers": 352, &"renew_menders": 376}
 ## The kit marks of ADR 0037 section 6: the League's is the team band, the Accord's a mint ring.

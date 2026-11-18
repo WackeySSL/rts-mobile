@@ -609,7 +609,7 @@ each faction's roster (Infantry tab, built at the barracks); neither has a weapo
 | Model | Silhouette |
 | --- | --- |
 | `fossil_patchers` | Two stocky figures in olive coveralls under round steel pot helmets with a warm goggle strip, one ahead with a wide steel kit chest on its back under a team-colour lid and a warm lamp, the other behind with a long rust roll of patch line across its shoulders with a team-colour cap at each end and a steel flask at its hip, a team-colour yoke across each chest. |
-| `renew_menders` | Two lean figures in blue-grey suits under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and capped in team colour, the other with a smaller case at its hip and a slim arm held out ahead with a mint hand light at its tip, a team-colour yoke across each chest. |
+| `renew_menders` | Two lean figures in blue-grey suits under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and banded in team colour, the other with a smaller banded case at its hip and a slim arm held out ahead with a mint hand light at its tip, a team-colour yoke across each chest. |
 
 - **Kit marks, no emblem.** ADR 0037 forbids a red cross, crescent or crystal (the Geneva emblems) and any look that
   borrows another game's medic: each side's kit mark is its own. The League's is the **orange team band** (the lid
@@ -620,16 +620,19 @@ each faction's roster (Infantry tab, built at the barracks); neither has a weapo
   the Rig Hands carry rifles and the Wildcatters tubes. The Patchers' big boxy chest and long roll and the Menders'
   tall white cases read at 32 px in greyscale where the combat squads' long tubes and rifles do not
   (`test_medic_art.gd` holds each medic's 32 px silhouette under 0.85 overlap with the four squads and the other
-  medic). Measured at the default view, hull only: Patchers 0.28 (Rig Hands), 0.34 (Wildcatters), 0.30 (Linemen),
-  0.38 (Breakers) and 0.80 against the Menders; Menders 0.30, 0.36, 0.29 and 0.42 against the same four. The two
+  medic). Measured at the default view, hull only: Patchers 0.29 (Rig Hands), 0.36 (Wildcatters), 0.31 (Linemen),
+  0.40 (Breakers) and 0.82 against the Menders; Menders 0.31, 0.38, 0.31 and 0.44 against the same four. The two
   medic squads are the closest pair (two figures side by side in a leader-and-follower pose); the faction colour
   tells them apart in play.
-- **Team colour.** A yoke across each chest, a team lid on the Patchers' chest and a team cap on each end of their
-  roll, and a team cap on each Mender's case. Team share at zoom 1 in the default view (d06 Patchers, d10 Menders),
-  all seven frames (hull, 4 walk, 2 idle): 8.7 to 10.9 % and 8.9 to 11.2 %, in the rule's 8 to 12 %; in every
-  direction and frame 2.7 to 16.4 % and 4.3 to 12.5 % (`test_medic_art.gd` holds 2.5 to 18 %: a yoke seen end on is
-  a thin line, as the Rig Hands' vest band is, which falls to 0.3 %). The first drafts had a chest band 0.27 tile
-  wide hidden under the upper torso (3 % in the default view, 0 % in d00) and a yoke on its own (up to 13 %).
+- **Team colour.** A yoke across each chest (a box between olive straps, so its top is covered and no team piece is a
+  roof plate, `test_artgen_plates.gd`), a team lid on the Patchers' chest and a team cap on each end of their roll,
+  and a team band round each Mender's case under a white cap. Team share at zoom 1 in the default view (d06
+  Patchers, d10 Menders), all seven frames (hull, 4 walk, 2 idle): 8.8 to 11.2 % and 8.7 to 9.9 %, in the rule's 8
+  to 12 %; in every direction and frame 3.2 to 16.1 % and 1.4 to 11.7 % (`test_medic_art.gd` holds 1 to 18 %: a
+  yoke seen end on is a thin line, as the Rig Hands' vest band is, which falls to 0.3 %). The first drafts had a
+  chest band 0.27 tile wide hidden under the upper torso (3 % in the default view, 0 % in d00), a flat team cap on
+  each case and a flat yoke with an open top (the plate rule refused both) and round bolsters whose shaded faces
+  left the exact key colours in 5 % of the view.
 - **Poses.** `stride_milli` 352 for the Patchers (legs 0.15 tile, as the Rig Hands) and 376 for the Menders (0.16, as
   the Linemen): at 67 and 80 milli-tiles a tick they walk 2.9 and 3.2 cycles a second (`test_artgen_poses.gd` holds
   every squad to 1.5 to 3.5). The angles are the windows of "Squad poses" above (36 and 10 degrees about the hip, 25
@@ -637,9 +640,9 @@ each faction's roster (Infantry tab, built at the barracks); neither has a weapo
   ground. Idle: the heads look opposite ways and each figure fidgets one foot in the other's frame, so the pair never
   stands in the same pose. No arm moves: what a figure carries moves with its body.
 - **Canvas** (2x px, width x height of the union of a part's frames): Patchers hull 72 x 62, walk 72 x 62, idle 76 x
-  62, shadow 150 x 78; Menders 58 x 60, 58 x 62, 62 x 62 and 124 x 64; at most 9.3 KB a file. Page 1 of the atlas
+  62, shadow 150 x 78; Menders 58 x 60, 58 x 62, 62 x 62 and 128 x 66; at most 11.2 KB a file. Page 1 of the atlas
   grows by 102, 105 and 96 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2730, 2657, 2598) and
-  page 2 by 6, 70 and 68 (2510, 1456, 1476); both stay under the 3584 budget.
+  page 2 by 6, 70 and 70 (2510, 1456, 1478); both stay under the 3584 budget.
 - **Gallery.** The Iso page lists them by themselves and shows their item cards and the walk and idle frames; the
   Life page has the drone below.
 
@@ -2102,7 +2105,7 @@ in doubt, choose a plainer real-world form.
 | Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with a team-colour band and stud beside it and team bands on the cab and the bed rails. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
 | Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
 | Patchers (`fossil_patchers`) | Two stocky olive figures under round steel pot helmets with a warm goggle strip, one with a wide steel kit chest and a warm lamp on its back under a team lid, the other with a long rust roll of patch line over its shoulders with a team cap at each end, a team yoke across each chest. | `iso/fossil/inf/fossil_patchers_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 72x62, from `models/fossil/fossil_patchers.tres` |
-| Menders (`renew_menders`) | Two lean blue-grey figures under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and capped in team colour, the other with a smaller case at its hip and a slim arm held out with a mint hand light, a team yoke across each chest. | `iso/renew/inf/renew_menders_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 58x60, from `models/renew/renew_menders.tres` |
+| Menders (`renew_menders`) | Two lean blue-grey figures under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and banded in team colour, the other with a smaller banded case at its hip and a slim arm held out with a mint hand light, a team yoke across each chest. | `iso/renew/inf/renew_menders_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 58x60, from `models/renew/renew_menders.tres` |
 | Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. | `svg/marks/mine_<faction>_<own\|known>.svg`, 144x96, ground point (72, 60), Keep File |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
@@ -3254,4 +3257,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-17 | v1.44 (P291, art-director, ADR 0037 sections 7 and 14): the Bunk Wagon (`fossil_bunk_wagon`) and the Linecar (`renew_linecar`), the ground carriers, as 16-direction hull and shadow models with item cards and roster entries after the bomber ("The ground carriers" under "Units", Catalogue rows); the sorted world's page 1 2367, 2279 and 2266 to 2472, 2407 and 2341 and page 2 2046, 1158 and 1244 to 2264, 1264 and 1286 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-17 | v1.45 (P292, art-director, ADR 0037 sections 8 and 14): the Shot Truck (`fossil_shot_truck`) and the Seeder (`renew_seeder`), the minelayers, as 16-direction hull and shadow models with item cards and roster entries after the carriers ("The minelayers" under "Units", Catalogue rows); the four mine marks of both factions, own and known (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`, the known with the notched rim), and the glyphs `glyph_mine` and `glyph_hold` (Bar row of the Hud page); the sorted world's page 1 2472, 2407 and 2341 to 2582, 2526 and 2435 and page 2 2264, 1264 and 1286 to 2486, 1386 and 1386 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2628, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
-| 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect `fx/drone_atlas.svg` (two rotor-blur frames and a shadow, `DroneArt`, a row on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1476 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect `fx/drone_atlas.svg` (two rotor-blur frames and a shadow, `DroneArt`, a row on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1478 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
