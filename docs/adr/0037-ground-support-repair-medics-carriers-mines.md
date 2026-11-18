@@ -341,6 +341,9 @@ of which about 120 are C++.
     Repair sends ground rows to the nearest repair building. A mixed selection shows both, and
     each sends only its own rows. Aircraft never go to a Weld Shed or a Drone Dock (bit 8 off).
   - The button is `touch-ui-rules` text and waits for Michael's yes (as ADR 0036's P244).
+  - As built (P282b, Michael, 2026-11-17), changing the section 9 sentence above ("While the
+    selection holds a damaged ground row ... shows **Repair**"): Repair shows while a complete own repair building serves
+    a selected ground row and is dimmed, not tappable, while none of those rows is damaged.
 - **AI.** `AiProduction`: the repair building in the build orders after the vehicle factory
   (Normal and Hard). `AiArmy`: a vehicle under `repair_retreat_percent` that is not in a wave's
   fight goes `REPAIR` (Normal and Hard); Hard also sends damaged wave members between waves.
@@ -367,6 +370,38 @@ of which about 120 are C++.
 - **AI.** `AiProduction`: `medic_per_squads` in the mix (data). `AiArmy`: medics join waves and the
   home squad and get `ATTACK_MOVE` or `MOVE`, never `ATTACK`.
 - **Size.** Sim ~60 (seek; the heal is §5's), view ~40, AI ~50.
+- **Note (2026-11-17, P283, as built; it changes three accepted texts: §5's and §6's "AiProduction and
+  AiArmy" and §10's "no new manager").**
+  - `AiRepair` is a manager of its own, run in the ARMY slot after `AiArmy.run` (`OpponentAi`): it
+    keeps `AiArmy` at gdlint's line maximum and lets P300 stack on it. It sends `REPAIR`, `MOVE` and
+    `ATTACK_MOVE` only and reads the view and the memory's lists, with no pass over the rows.
+  - The repair building is placed by `AiEconomy`: it is put into the order right after the first step
+    a vehicle tab builds on, or at its end, when the level has `repair_retreat_percent` above 0
+    (Normal and Hard). No type id is in the AI data: the building and the medic are found by role in
+    the roster (a building with repair slots that serves the vehicle classes 6; an unarmed unit with
+    slots that serves the foot class), through `PlayerView.type_repair_classes` and
+    `type_repair_slots`. A roster without them changes nothing, so the AI switches on with their art
+    (P279, P280) and no AI data change.
+  - `AiMemory.Owner` has a fourth key owner, `REPAIR`: the repair building's tile for the vehicle
+    class, held only while a sent vehicle still moves, and given up to the army at the cap
+    (`AiMemory.yield_keys`, after the scout's, and only while the cache is still full). The medics
+    take no key: the army's holds the wave goal when the wave has a foot member, and a wave of
+    vehicles only leaves the medics a goal with no key (their orders are not held back by it). Vehicles in flight are capped to the building's repair slots, because each `REPAIR` gives
+    every vehicle its own ring tile and goal field (P277), so the cost stays inside that cap and the
+    one key.
+  - A sent vehicle that `AiArmy` takes over (the home goal moved, so it re-ordered every home
+    member, or it joined a wave) is forgotten with no order. A whole vehicle goes back to the home
+    goal. Wave members are never sent, but those of a retreating wave on Hard (`repair_wave_retreat`
+    1; ADR §5's "between waves"). A sent vehicle is also forgotten when it is stepped back after it
+    was sent (`AiArmy._step_back` gives it a `MOVE` to the staging point and leaves the home goal),
+    when the building it was sent to is gone while another stands, and when it stands idle without a
+    gain in hp since the last think (credits ran out, or `_focus`, `_defend` or `_restage`
+    re-ordered it): `_hurt` then sends it again.
+  - Medics all follow a marching wave and come home when it ends or retreats; no medic stays with the
+    home squad (the choice: a medic at home would wait for hurt squads that the army already sent to
+    fight). The levels' numbers are in `data/ai/difficulty/`: `repair_retreat_percent` 0/40/50,
+    `medic_per_squads` 0/4/3, `repair_wave_retreat` 0/0/1 (Easy, Normal, Hard); the frozen arena's
+    copies set all three to 0.
 
 ### 7. The infantry carrier on the ground (Michael's item 1)
 - **`Carry.gd` as ADR 0036 §8 builds it**: `LOAD` (5) and `UNLOAD` (6); boarded squads leave the
@@ -747,6 +782,20 @@ then.
   `stance` is in TARGETING's checked list (44 names, 110 in the table) and a required record of the
   format-7 sanitizer dumps. `PlayerView` gives it as the copied field `own_stance` (one entry per
   `own_rows`), not as `row_stance` (P26bq, P26bt, ADR 0038 section 4). No golden moved.
+
+- Note (2026-11-17, P300, as built; it changes §10's table row "Hold position | `AiArmy`" and §15's
+  "Normal and Hard set hold ... when they join a wave"): `AiHold` is a small manager of its own, run
+  in the ARMY slot after `AiRepair` (`OpponentAi`: `AiArmy` -> `AiRepair` -> `AiHold`), so `AiArmy`
+  stays under gdlint's line maximum. The level field `hold_in_waves` (1 on Normal and Hard, 0 on Easy
+  and on the frozen 4b copies, script default 0) switches it on. Release rule: a member of the wave
+  squad whose type is in `OpponentDef.hold_types` and that is not held gets `STANCE` `[1]`; such a
+  unit that is held and is no longer in the wave squad (the wave disbanded or was recalled, or the
+  unit stepped back) gets `[0]`. The wish is read each think from the memory's squads and
+  `PlayerView.own_stance`, so nothing is stored and a refused order is sent again. A type with speed
+  0 is skipped (the sim drops it from `STANCE`). The wave's focus `ATTACK` (Hard) goes only to
+  members whose weapon may hit the target's layer, so a held gun that cannot hit a low-air target
+  keeps its `ATTACK_MOVE` instead of standing idle (P298) for the whole focus. The smoke's expired
+  rule counts `STANCE` and `REPAIR` as unit orders (§6 of ADR 0038).
 
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while

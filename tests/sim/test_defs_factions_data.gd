@@ -13,15 +13,20 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the transports and the drone squads (P266). Each row removes its
-## own names (P245 rostered the fighters and bombers, P249 the engineering centres, P292 the
-## minelayers).
+## Files with no roster entry yet: the transports and the drone squads (P266), the repair buildings
+## (P279) and the medic squads (P280). Each row removes its own names (P245 rostered the fighters
+## and bombers, P249 the engineering centres, P291 the ground carriers, P292 the minelayers).
 const AIR_UNLISTED: Array[String] = [
 	# The transports and drone squads (P266).
 	"fossil_transport",
 	"renew_transport",
 	"fossil_drone",
 	"renew_drone",
+	# The repair buildings and medic squads (P279, P280).
+	"fossil_weld_shed",
+	"renew_drone_dock",
+	"fossil_patchers",
+	"renew_menders",
 ]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0
@@ -67,7 +72,6 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"fossil_bomber": "fossil_airfield",
 				"fossil_fighter": "fossil_airfield",
 				"artillery": "fossil_radar",
-				"fossil_shot_truck": "fossil_radar",
 			}
 		)
 	)
@@ -91,7 +95,6 @@ func test_every_requires_chain_stays_in_its_faction_and_reaches_its_headquarters
 				"renew_bomber": "renew_airfield",
 				"renew_fighter": "renew_airfield",
 				"renew_artillery": "renew_radar",
-				"renew_seeder": "renew_radar",
 			}
 		)
 	)

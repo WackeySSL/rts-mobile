@@ -243,6 +243,8 @@ var mine_lay_ticks: int = 0
 var mine_arm_ticks: int = 0
 var sweep_ticks: int = 0
 var mine_known_cap: int = 0
+## The most a match setup adds to one player's start credits (RulesDef.bonus_credits_max).
+var bonus_credits_max: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
@@ -451,6 +453,9 @@ var stat_lost_units: PackedInt32Array = PackedInt32Array()
 var stat_lost_buildings: PackedInt32Array = PackedInt32Array()
 var stat_harvested: PackedInt32Array = PackedInt32Array()
 var income_percent: PackedInt32Array = PackedInt32Array()
+## Per player: the credits a match setup added to the start (WorldLoad.set_bonus_credits), 0 by
+## default. Already inside `credits`; kept so the replay records it.
+var bonus_credits: PackedInt32Array = PackedInt32Array()
 ## Per player and tab (index `player * TABS + tab`): the items in the queue, the progress of its
 ## head in hundredths of a tick, and the rally point in milli-tiles (-1 = none).
 var queue_count: PackedInt32Array = PackedInt32Array()

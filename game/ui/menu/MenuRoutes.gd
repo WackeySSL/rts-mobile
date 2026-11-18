@@ -12,6 +12,7 @@ const TUTORIAL: StringName = &"tutorial"  # P544 (TutorialScreen)
 const HOW_TO_PLAY: StringName = &"how_to_play"  # P527
 const SETTINGS: StringName = &"settings"  # P526
 const CONTINUE: StringName = &"continue"  # P515 (resume)
+const LICENCES: StringName = &"licences"  # P529 (LicencesScreen)
 
 ## The table the app uses; tests make their own with `MenuRoutes.new()`.
 static var shared: MenuRoutes = MenuRoutes.new()
@@ -19,8 +20,13 @@ static var shared: MenuRoutes = MenuRoutes.new()
 var _factories: Dictionary[StringName, Callable] = {}
 
 
-## `factory` takes no argument and returns a new `MenuScreen`.
+## `factory` takes no argument and returns a new `MenuScreen`; register `X.new`, never a lambda (a
+## lambda in the static table breaks the teardown order at exit), or it is refused with a warning.
 func register(route: StringName, factory: Callable) -> void:
+	if not factory.is_standard():
+		# A lambda or a bound Callable in the static `shared` table outlives its script at exit.
+		push_warning("MenuRoutes: route %s needs a standard Callable (X.new), not a lambda" % route)
+		return
 	_factories[route] = factory
 	changed.emit()
 

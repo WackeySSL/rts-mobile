@@ -23,8 +23,10 @@ extends AdBackend
 ## - A failed load destroys its native ad, so no-fill retries do not leak.
 ## Not confirmable without a device (to confirm in P410b's APK): whether a created banner view is
 ## visible before its first `show`, the banner's size unit (dp assumed, as the adaptive size call
-## takes a width), and uid reuse: if the native side hands out a destroyed ad's uid again, a late
-## callback from the old ad could match the new one, and nothing here can tell them apart.
+## takes a width), and uid reuse (P410b): if the native side hands out a destroyed ad's uid again, a
+## late load or fail callback from the old banner could match the new one, and nothing here can
+## tell them apart. The banner is destroyed and made again often (every menu round trip), so check
+## it first.
 
 const S_CORE: String = "PoingGodotAdMob"
 const S_INTERSTITIAL: String = "PoingGodotAdMobInterstitialAd"
@@ -67,6 +69,12 @@ var _banner_width: int = 0
 var _banner_height: int = 0
 var _banner_failed_ms: int = -1
 var _retry_pending: bool = false
+## A banner is wanted (between show_banner and hide/destroy). The last native create (ms, -1 =
+## none yet): no create comes within `banner_reload_min_ms` of it, whatever the reason; a create
+## that must wait has a timer pending and the band stays empty meanwhile.
+var _banner_wanted: bool = false
+var _create_ms: int = -1
+var _create_pending: bool = false
 
 
 func _init(
@@ -169,25 +177,26 @@ func cancel_show(_kind: StringName) -> void:
 	pass
 
 
-## Idempotent. The first call creates the anchored adaptive banner at the bottom and loads it; a
-## banner made for another width (the phone turned while it was hidden) is made again.
+## Idempotent. Creates the anchored adaptive banner at the bottom and loads it, unless the last
+## create is within the gap (then the timer does it); a banner made for another width (the phone
+## turned while it was hidden) is made again.
 func show_banner() -> void:
 	var view: Object = _plugin(S_VIEW)
 	if view == null:
 		return
 	_connect_signals()
-	if _banner_uid >= 0 and int(_width_dp.call()) != _banner_width:
-		_drop_banner(view)
-	if _banner_uid < 0:
-		_create_banner(view)
-	else:
-		if not _banner_shown:
-			view.show(_banner_uid)
+	_banner_wanted = true
+	var kept: bool = _banner_uid >= 0 and int(_width_dp.call()) == _banner_width
+	_ensure_banner()
+	if kept and not _banner_shown:
+		view.show(_banner_uid)
+	if _banner_uid >= 0:
 		_reload_banner_if_due(view)
 	_banner_shown = true
 
 
 func hide_banner() -> void:
+	_banner_wanted = false
 	var view: Object = _plugin(S_VIEW)
 	if view != null and _banner_uid >= 0 and _banner_shown:
 		view.hide(_banner_uid)
@@ -195,6 +204,7 @@ func hide_banner() -> void:
 
 
 func destroy_banner() -> void:
+	_banner_wanted = false
 	var view: Object = _plugin(S_VIEW)
 	if view != null:
 		_drop_banner(view)
@@ -206,7 +216,25 @@ func banner_height_dp() -> int:
 	return _banner_height if _banner_shown and _banner_loaded else 0
 
 
+## The height the banner will have for the current width, known before it loads: the adaptive
+## size's own answer (what `_create_banner` asks for), so the pause foot's first fit check is real.
+## The loaded height once there is one. 0 without the plugin or before `initialize`.
+func banner_height_preview_dp() -> int:
+	if not _initialised:
+		return 0
+	if _banner_shown and _banner_loaded:
+		return _banner_height
+	var sizes: Object = _plugin(S_SIZE)
+	if sizes == null:
+		return 0
+	var size: Dictionary = sizes.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+		int(_width_dp.call())
+	)
+	return int(size["height"])
+
+
 func _create_banner(view: Object) -> void:
+	_create_ms = int(_now_ms.call())
 	var size: Dictionary = {"width": 0, "height": 0}
 	var sizes: Object = _plugin(S_SIZE)
 	_banner_width = int(_width_dp.call())
@@ -375,17 +403,39 @@ func _on_banner_failed(uid: int, _error: Dictionary = {}) -> void:
 		_reload_banner_if_due(view)
 
 
-## The phone turned while the banner shows: the adaptive size depends on the width, so the banner
-## is destroyed and made again at the new one (its height is 0 until it loads).
+## The phone turned while the banner shows: the adaptive size depends on the width, so the old
+## banner goes at once (its height is 0) and a new one comes at the new width, after the gap.
 func _on_resized() -> void:
+	var was_loaded: bool = _banner_loaded
+	_ensure_banner()
+	if was_loaded != _banner_loaded:
+		banner_height_changed.emit()
+
+
+## Brings the banner in line with what is wanted: drops one of the wrong width, and makes one when
+## none exists, at most once per `banner_reload_min_ms` (else a timer comes back for the rest).
+## Does nothing while no banner is wanted, or AdService has no request (the window before its
+## deferred destroy, `banner_wanted`).
+func _ensure_banner() -> void:
 	var view: Object = _plugin(S_VIEW)
-	if view == null or _banner_uid < 0 or not _banner_shown:
+	if view == null or not _banner_wanted or not bool(banner_wanted.call()):
 		return
-	if int(_width_dp.call()) == _banner_width:
+	if _banner_uid >= 0 and int(_width_dp.call()) != _banner_width:
+		_drop_banner(view)
+	if _banner_uid >= 0:
 		return
-	_drop_banner(view)
+	var remaining: int = banner_reload_min_ms - (int(_now_ms.call()) - _create_ms)
+	if _create_ms >= 0 and remaining > 0:
+		if not _create_pending:
+			_create_pending = true
+			_later.call(remaining, _create_due)
+		return
 	_create_banner(view)
-	banner_height_changed.emit()
+
+
+func _create_due() -> void:
+	_create_pending = false
+	_ensure_banner()
 
 
 ## A shown ad is spent (or superseded): free its native object and forget it, so the next load

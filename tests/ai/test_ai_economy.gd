@@ -65,8 +65,11 @@ func test_each_tiers_order_is_queued_in_order_apart_from_the_added_plants() -> v
 				if id != plant:
 					without_power.append(id)
 			var wanted: Array[String] = []
+			var known: World = _matches[level]["world"]
 			for id: StringName in order:
-				if id != StringName(plant):
+				# The arena's frozen roster has no air or tech building (P250's steps): the economy
+				# leaves a step the roster lacks out of its order.
+				if id != StringName(plant) and known.type_ids.has(id):
 					wanted.append(String(id))
 			# The order's types come in the order's sequence (a power plant may be added before
 			# a consumer); the loop's extras (a refinery, a factory, a defence) come after it.

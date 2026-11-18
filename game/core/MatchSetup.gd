@@ -39,8 +39,8 @@ var local_side: int = 0
 var opponents: Array[AiDef] = []
 var opponent_levels: Array[AiDifficultyDef] = []
 var first_opponent: int = MatchRunner.FIRST_OPPONENT
-## Credits added at the start by the Phase 6 offer, carried and saved here; the sim applies it from
-## plan P512 on, and nothing reads it before.
+## Credits added at the start by the Phase 6 offer, carried and saved here; `apply` hands it to the
+## runner, and the sim clamps it to `RulesDef.bonus_credits_max` (plan P512).
 var bonus_starting_credits: int = 0
 var map_id: StringName = &""
 var lesson_id: StringName = &""
@@ -70,7 +70,17 @@ func apply(runner: MatchRunner) -> Error:
 	runner.opponents = opponents.duplicate()
 	runner.opponent_levels = opponent_levels.duplicate()
 	runner.first_opponent = first_opponent
+	runner.bonus_seat = local_seat if local_seat != 0 else loaded.local_player
+	# A lesson never takes the grant, and a seat a computer plays (AI-vs-AI) never gets it.
+	var granted: bool = lesson_id == &"" and not _is_ai_seat(runner.bonus_seat)
+	runner.bonus_credits = bonus_starting_credits if granted else 0
 	return OK
+
+
+## Whether a non-null entry of `opponents` plays `seat` (entry i plays `first_opponent` + i).
+func _is_ai_seat(seat: int) -> bool:
+	var index: int = seat - first_opponent
+	return index >= 0 and index < opponents.size() and opponents[index] != null
 
 
 func to_dict() -> Dictionary:

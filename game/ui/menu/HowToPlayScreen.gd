@@ -30,16 +30,6 @@ func _ready() -> void:
 	_show_list()
 
 
-## The base lays the column out as wide as the short side of the safe rect, which in portrait is
-## the whole width: with the scroll bar of a long text the scroll would be wider than the safe
-## area. So the column gives the bar's width back (a short list that needs no bar loses a few px).
-func _apply() -> void:
-	super()
-	if scroll != null and column != null:
-		var bar_px: float = scroll.get_v_scroll_bar().get_combined_minimum_size().x
-		column.custom_minimum_size.x = maxf(column.custom_minimum_size.x - bar_px, 0.0)
-
-
 func on_back() -> bool:
 	if open_section == null:
 		return false
