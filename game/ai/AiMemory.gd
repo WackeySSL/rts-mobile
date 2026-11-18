@@ -84,9 +84,17 @@ var sector_enemy: PackedInt32Array = PackedInt32Array()
 var seen_count: PackedInt32Array = PackedInt32Array()
 var seen_first_tick: PackedInt32Array = PackedInt32Array()
 var seen_last_tick: PackedInt32Array = PackedInt32Array()
+## Counted by `AiIntel.run` over the seen enemy rows and the remembered buildings (P250), as of its
+## last run: aircraft (layer AIR), drone squads (LOW_AIR) and anti-air (a weapon that hits either),
+## and the most aircraft seen at once, which `AiEconomy` sizes its anti-air buildings by.
+var seen_air: int = 0
+var seen_low_air: int = 0
+var seen_aa: int = 0
+var seen_air_peak: int = 0
 ## What `AiIntel.refresh` fills for `AiArmy` in its own and seen pass (P179; walking is no pass):
 ## the own Headquarters' tile (lowest id), own buildings (centres in milli-tiles), own combat units
-## but the scout type, and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
+## but the scout type and the aircraft (P250: they join no ground squad until P251 orders them),
+## and seen enemy combat units; ids ascending, rebuilt every ARMY slot. Bounds:
 ## `building_cap`, `unit_cap`, and for `seen_unit_id` (players - 1) x `unit_cap`.
 var home_x: int = NONE
 var home_y: int = NONE

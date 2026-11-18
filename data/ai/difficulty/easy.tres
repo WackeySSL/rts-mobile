@@ -29,5 +29,9 @@ mend_floor = 0
 repair_retreat_percent = 0
 medic_per_squads = 0
 repair_wave_retreat = 0
+; Starting values for the Phase 4b balance run (P250), no source yet.
+aa_per_seen_aircraft = 3
+aa_max = 1
+research_floor = 0
 commands_per_think_max = 3
 income_percent = 100
