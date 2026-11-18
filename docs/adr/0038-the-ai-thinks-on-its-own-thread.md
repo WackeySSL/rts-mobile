@@ -280,6 +280,9 @@ think: a Command is dropped only when what it names is gone or blocked.
     `75530630f4b19f95`, with no golden pair; the dev menu's "Perf AI base" keeps the old arena,
     `perf_ai` (key `ai`), hash `025ff6707ff86ba0`; the per-wave Perf AI card runs on `perf_ai_4b`
     from P304's merge. The triggers on the 4b cards: the air plan's P26by note.
+  - (2026-11-17, P304b) The arena gained 2 ground carriers and 2 minelayers a side (frozen copies of
+    P290's defs), 8 fewer armed rifle squads in all. The printed hash is now `75019d6b3818eed9`
+    (`full_ticks` 172), no golden pair; the next cards run on this arena.
   - (2026-11-15, P26bz; Michael) The triggers on the `perf_ai_4b` cards replace the old arena's
     11 ms and 5 ms: `job_p95_ms` (the card's `sim_p95_ms` row) 11.5 ms,
     `job_minus_step_p95_cp_ms` 5.0 ms and `view_p95_ms` 11.0 ms. When a trigger is exceeded on

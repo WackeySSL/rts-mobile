@@ -4,12 +4,13 @@ extends GdUnitTestSuite
 ## the art rows P279 (buildings) and P280 (medics): none is buildable yet.
 ## The GDD and the ADR give the names, costs, power, requirements, classes, hp per period, reach,
 ## slots and cost percents of the buildings, and the medics' hit points, speed (the Menders'),
-## reach, hp per period, slots, seek and cost. Starting values with no source: every build time,
-## sight and radius, the buildings' hit points and armour, the repair period (15 ticks, the
-## ADR's "per 15 ticks"), and the Patchers' speed (the rifle squads' 67).
+## reach, hp per period (per 15 ticks), slots, seek and cost. Starting values with no source: the
+## buildings' build time (300, as the radar), hit points, armour and sight, the medics' build time,
+## sight and radius, and the Patchers' speed (the rifle squads' 67).
 ## What the sim does with these fields is test_repair_run's and test_repair_reach's (the reach
 ## rule is held against every shipped file there).
 
+const Rules: GDScript = preload("res://tests/sim/support/air_rules.gd")
 const NAME_MAX: int = 10  ## ADR 0037 section 14: names are at most 10 characters.
 const GROUND_CLASSES: int = 6  ## WHEELED 2 + TRACKED 4: the AIR bit (8) stays off.
 const FOOT_BIT: int = 1
@@ -96,6 +97,7 @@ func test_each_faction_has_an_unarmed_foot_medic_from_the_barracks() -> void:
 			. is_equal([FOOT_BIT, row[4], 15, row[5], row[6], row[7], 0])
 		)
 		assert_object(def.weapon).override_failure_message(id).is_null()
+		assert_int(def.armour).override_failure_message(id).is_equal(World.Armour.INFANTRY)
 		assert_object(def.requires).override_failure_message(id).is_null()
 		assert_int(def.move_class).is_equal(World.MoveClass.FOOT)
 		assert_int(def.carry_slots).is_equal(0)
@@ -103,7 +105,8 @@ func test_each_faction_has_an_unarmed_foot_medic_from_the_barracks() -> void:
 
 
 ## ADR 0037 section 6: the Menders are frailer and quicker, reach further, heal more squads and
-## seek from further than the Patchers.
+## seek from further than the Patchers. "Quicker" rests on the Patchers' speed of 67, a starting
+## value (the GDD gives the Menders' 1.2 tiles/s only).
 func test_the_menders_are_frailer_and_reach_further_than_the_patchers() -> void:
 	var patchers: UnitDef = _def("fossil_patchers")
 	var menders: UnitDef = _def("renew_menders")
@@ -122,17 +125,20 @@ func test_the_data_breaks_no_repair_rule() -> void:
 			. override_failure_message(id)
 			. is_true()
 		)
-		assert_int(def.repair_slots).override_failure_message(id).is_between(1, 8)
-		assert_int(def.repair_hp).is_greater(0)
-		assert_int(def.repair_period_ticks).is_greater(0)
-		assert_int(def.repair_reach_milli).is_greater_equal(500)
-		assert_int(def.max_hp).is_greater(0)
-		assert_int(def.build_ticks).is_greater(0)
-		assert_int(def.radius).is_between(0 if def is BuildingDef else 1, 500)
-		assert_int(def.acquire_range).is_less_equal(def.sight_range)
-		assert_int(def.repair_classes & 8).override_failure_message(id).is_equal(0)
-		assert_int(def.ammo).is_equal(0)
+		assert_int(def.max_hp).override_failure_message(id).is_greater(0)
+		assert_int(def.build_ticks).override_failure_message(id).is_greater(0)
+		assert_int(def.radius).override_failure_message(id).is_between(
+			0 if def is BuildingDef else 1, 500
+		)
+		assert_int(def.acquire_range).override_failure_message(id).is_less_equal(def.sight_range)
+		assert_int(def.repair_classes & Rules.AIR_BIT).override_failure_message(id).is_equal(0)
 		assert_int(def.mine_cost).is_equal(0)
+		# The shared air and repair-role rules (P231, ADR 0037 section 2).
+		(
+			assert_array(Rules.air_problems("%s.tres" % id, def))
+			. override_failure_message(id)
+			. is_empty()
+		)
 
 
 func test_names_fit_the_limit_and_are_unique() -> void:
@@ -144,6 +150,7 @@ func test_names_fit_the_limit_and_are_unique() -> void:
 		seen[shown] = true
 
 
+## P279 splits this case (the buildings) and P280 deletes it (the medics), each rostering its own.
 func test_not_in_a_roster_yet() -> void:
 	for id: String in SHEDS.keys() + MEDICS.keys():
 		var def: UnitDef = _def(id)

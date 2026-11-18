@@ -10,7 +10,7 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 var _menu: Control
 var _stack: MenuStack
 var _quit_calls: Array[int] = [0]
-var _quit_on_go_back_before: bool = true
+var _quit_on_go_back_before: bool = false
 
 
 func before_test() -> void:
@@ -27,7 +27,7 @@ func before_test() -> void:
 func after_test() -> void:
 	remove_child(_menu)
 	_menu.free()
-	# The stack leaves quit_on_go_back off (ADR 0043 section 4); this suite puts it back for others.
+	# The project keeps quit_on_go_back off (ADR 0043 section 4); this suite puts back what it found.
 	assert_bool(get_tree().quit_on_go_back).is_false()
 	get_tree().quit_on_go_back = _quit_on_go_back_before
 

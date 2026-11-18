@@ -24,6 +24,12 @@ const LEVEL_PATHS: Array[String] = [
 ]
 const START_LEVEL: int = 1
 
+## The boot scene opens the main menu; when it is the app's start (the project's main scene), Back
+## here returns to that menu (ADR 0043 section 4). Both are seams for tests.
+const BOOT_SCENE: String = "res://scenes/boot.tscn"
+var menu_is_start: Callable = _menu_is_start
+var go_to_menu: Callable = _go_to_menu
+
 ## The chosen index of `LEVEL_NAMES` and `LEVEL_PATHS`.
 var _level_index: int = START_LEVEL
 
@@ -44,6 +50,21 @@ var _level_index: int = START_LEVEL
 @onready var _ai_button: Button = %PerfAiButton
 @onready var _ai_base_button: Button = %PerfAiBaseButton
 @onready var _air_button: Button = %PerfAirButton
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and bool(menu_is_start.call()):
+		go_to_menu.call_deferred()  # Never change scenes inside a notification dispatch.
+
+
+func _menu_is_start() -> bool:
+	return str(ProjectSettings.get_setting("application/run/main_scene", "")) == BOOT_SCENE
+
+
+func _go_to_menu() -> void:
+	var flow: Node = get_node_or_null("/root/MenuFlow")
+	if flow != null:
+		flow.call("return_to_menu")
 
 
 func _ready() -> void:

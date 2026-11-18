@@ -2,15 +2,12 @@ extends GdUnitTestSuite
 ## The engineering centres and the four upgrades (plan row P247, ADR 0036 sections 2 and 10,
 ## docs/GDD.md): one 2x2 centre per faction behind the airfield that produces the RESEARCH tab,
 ## and two bomber upgrades per faction, heavier bombs (+25 % damage dealt) and a tougher hull
-## (-25 % damage taken). Data only. P249 (the art row) adds the roster entries and item cards,
-## fills `FactionDef.upgrades` and writes the HOW_TO_PLAY rows, and flips the is_false checks and
-## removes the skips named below: a faction's upgrades would otherwise make research tiles in
-## `BuildSidebar._build_tiles` and research types in shipped matches (`WorldLoad._upgrade_for`)
-## before a centre can be built. The GDD gives the names, size, cost, power, requirement and the
-## two percentages. Hit points (900), build time (360 ticks), sight (5000) and the research cost and
-## time (800 credits, 1350 ticks, equal for the bomb and the hull upgrade) are the lead's starting
-## values (P26bw), in the GDD's tech note, for P255 to tune. P249 also removes the centres from the
-## exclusion lists of test_defs_roster, test_defs_roster_renew and test_defs_factions_data.
+## (-25 % damage taken). Data only in P247; P249 (the art row) added the roster entries and item
+## cards, filled `FactionDef.upgrades` and wrote the HOW_TO_PLAY rows. The GDD gives the names,
+## size, cost, power, requirement and the two percentages. Hit points (900), build time (360
+## ticks), sight (5000) and the research cost and time (800 credits, 1350 ticks, equal for the
+## bomb and the hull upgrade) are the lead's starting values (P26bw), in the GDD's tech note, for
+## P255 to tune.
 ## The damage-dealt upgrades are keyed on faction, weapon and stat (P246's rule), so each names the
 ## bomber's own bombs. What the sim does with them is test_upgrades'.
 
@@ -104,11 +101,9 @@ func test_each_faction_has_an_engineering_centre_with_the_gdd_and_starting_numbe
 		)
 		assert_object(def.weapon).is_null()
 		assert_array(Rules.air_problems("%s.tres" % id, def)).is_empty()
-		# Not in a roster yet: P249 (art, item card) adds the roster entry and removes the centres
-		# from the exclusion lists in test_defs_roster, test_defs_roster_renew and
-		# test_defs_factions_data.
+		# P249 rostered the centre (art, item card).
 		var faction: FactionDef = load("res://data/factions/%s.tres" % CENTRES[id][0])
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
+		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
 
 
 func test_each_upgrade_has_its_values_and_changes_its_factions_bomber() -> void:
@@ -140,7 +135,7 @@ func test_the_percentages_are_plus_and_minus_a_quarter() -> void:
 
 
 ## P246's data rule: a damage-dealt upgrade is keyed on faction, weapon and stat. The catalog of
-## the four upgrades, put on their factions here (the shipped lists stay empty until P249), has
+## the four upgrades, put on their factions here (as P249's shipped lists have them), has
 ## no clash, no repeated id and no id that is also a type id.
 func test_the_catalog_rule_holds_for_the_four_upgrades() -> void:
 	var units: Array[UnitDef] = []
@@ -165,12 +160,19 @@ func test_the_catalog_rule_holds_for_the_four_upgrades() -> void:
 	)
 
 
-## P249 fills `FactionDef.upgrades` (the research tiles and `WorldLoad._upgrade_for` read it) and
-## flips this check with the roster entry; until then no shipped match has a research type.
-func test_the_shipped_factions_list_no_upgrades_yet() -> void:
-	for faction_id: String in ["fossil", "renew"]:
+## P249 filled `FactionDef.upgrades` (the research tiles and `WorldLoad._upgrade_for` read it), two
+## per faction in the Research tab's order: the bomb upgrade, then the hull upgrade.
+func test_the_shipped_factions_list_their_two_upgrades() -> void:
+	var want: Dictionary[String, Array] = {
+		"fossil": ["heavy_bombs", "plated_hull"], "renew": ["focus_bombs", "glaze_hull"]
+	}
+	for faction_id: String in want:
 		var faction: FactionDef = load("res://data/factions/%s.tres" % faction_id)
-		assert_bool(faction.upgrades.is_empty()).override_failure_message(faction_id).is_true()
+		var ids: Array[String] = []
+		for up: UpgradeDef in faction.upgrades:
+			ids.append(String(up.id))
+			assert_str(String(up.faction)).is_equal(faction_id)
+		assert_array(ids).override_failure_message(faction_id).is_equal(want[faction_id])
 
 
 func test_the_names_fit_one_line() -> void:

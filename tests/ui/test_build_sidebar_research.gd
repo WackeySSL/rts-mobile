@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Research tab of the build drawer (plan P248, ADR 0036 section 2, ADR 0032) in the main scene
 ## at the six sizes of ScreenSizes.ALL, over a match whose Derrick League lists the two shipped
-## upgrades (`FactionDef.upgrades` is empty in the shipped data until P249): there is no tab while
+## upgrades (`FactionDef.upgrades` lists them since P249): there is no tab while
 ## the faction has no upgrade; with some it is a fifth tab inside the drawer with its name or icon
 ## (the rule of `_fit_tabs`), its cards are whole inside the drawer with their names in at most
 ## two lines and never cut, a locked card names the centre on its sash, a researched card says
