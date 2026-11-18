@@ -12,6 +12,7 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"SaveService": "res://game/meta/save_service.gd",
 	"Progression": "res://game/meta/progression_service.gd",
 	"MenuFlow": "res://game/ui/menu/menu_flow_service.gd",
+	"DeployCardService": "res://game/ui/menu/deploy_card_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 ## Autoloads are ready in list order, so a service must be listed after what its `_ready` reads
@@ -21,6 +22,7 @@ const SIM_DIR: String = "res://game/sim/"
 const MUST_PRECEDE: Dictionary = {
 	"AdService": ["SaveService", "Progression"],
 	"MenuFlow": ["SaveService", "Progression", "AdService"],
+	"DeployCardService": ["MenuFlow"],
 }
 
 
