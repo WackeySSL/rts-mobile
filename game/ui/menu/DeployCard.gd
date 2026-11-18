@@ -2,24 +2,22 @@ class_name DeployCard
 extends CanvasLayer
 ## The still card that covers the match-start bake (plan P536, Michael's answer 10 of ADR 0043):
 ## the still app icon, the word DEPLOYING and the map's name. It shows on `MenuFlow.match_loading`;
-## MenuFlow draws a frame before it builds the match, so the card is on screen while the main scene
-## is made. Nothing on it moves (no fade, no spinner), so Reduced effects has nothing to switch
-## off, and it carries no ad.
+## MenuFlow then waits two process frames (a start from a tap arrives before its frame is drawn, so
+## the first only ends the tap's own), so the card is drawn before the main scene is made. Nothing
+## on it moves (no fade, no spinner), so Reduced effects has nothing to switch off, and it carries
+## no ad.
 ##
-## It never edits MenuFlow and assumes no frame order: it only reads the signal and
-## `current_runner()`. The card goes away when a runner that did not exist at the signal stands in
-## the tree (the match is ready). If none appears within `FAIL_FRAMES` frames, the start failed (a
-## scene that could not be changed) and the card goes away too; `HARD_FRAMES` is the last word, so
-## it is never left stuck. It sits above every scene and takes every touch.
+## It assumes no frame order: it reads `match_loading`, `match_start_finished(error)` and
+## `current_runner()`. On an error the card goes away at once; on OK it goes away when a runner
+## that did not exist at the signal stands in the tree (the match is ready). `HARD_FRAMES` is the
+## last word, so it is never left stuck. It sits above every scene and takes every touch.
 
 const ICON: Texture2D = preload("res://assets/art/svg/icon/app_icon.svg")
 const THEME: Theme = preload("res://game/ui/theme.tres")
 const LAYER: int = 90
 const ICON_DP: float = 160.0
 const GAP_DP: float = 16.0
-## Frames without a new runner after which the start counts as failed. MenuFlow waits one frame
-## after the signal, so a start that works has its runner by then.
-const FAIL_FRAMES: int = 3
+## Frames after which the card goes away whatever happens (a backstop, never the normal way out).
 const HARD_FRAMES: int = 120
 
 var catalog: MapCatalog = null  ## Tests inject; null loads the catalog on first use.
@@ -31,20 +29,23 @@ var _icon: TextureRect = null
 var _map: Label = null
 var _old_runner: MatchRunner = null
 var _frames: int = 0
+var _started: bool = false  ## match_start_finished(OK) came: the runner is on its way.
 
 
 func _ready() -> void:
 	DeployCardText.register()
 	layer = LAYER
+	process_mode = Node.PROCESS_MODE_ALWAYS  # A paused tree must not freeze the backstop.
 	_build()
 	_set_shown(false)
-	get_viewport().size_changed.connect(_apply_dp)
+	get_viewport().size_changed.connect(_on_resized)
 
 
 ## Listens to `flow` (the MenuFlow autoload; a test passes its own instance).
 func attach(flow: Node) -> void:
 	_flow = flow
 	flow.match_loading.connect(_on_match_loading)
+	flow.match_start_finished.connect(_on_match_start_finished)
 
 
 ## Whether the card is on screen.
@@ -60,10 +61,20 @@ func map_name() -> String:
 func _on_match_loading(setup: MatchSetup) -> void:
 	_old_runner = _flow.current_runner()  # A restart still holds the old match until the new one.
 	_frames = 0
+	_started = false
 	_map.text = _title_of(setup)
 	_map.visible = _map.text != ""
 	_apply_dp()
 	_set_shown(true)
+
+
+func _on_match_start_finished(error: Error) -> void:
+	if not is_showing():
+		return
+	if error != OK:
+		_set_shown(false)  # The start failed: nothing is coming.
+	else:
+		_started = true
 
 
 func _process(_delta: float) -> void:
@@ -72,10 +83,8 @@ func _process(_delta: float) -> void:
 	_frames += 1
 	var runner: MatchRunner = _flow.current_runner()
 	var fresh: bool = runner != null and runner != _old_runner
-	if fresh and runner.is_inside_tree():
+	if _started and fresh and runner.is_inside_tree():
 		_set_shown(false)  # The match is ready.
-	elif not fresh and _frames >= FAIL_FRAMES:
-		_set_shown(false)  # The start failed: nothing is coming.
 	elif _frames >= HARD_FRAMES:
 		_set_shown(false)
 
@@ -85,7 +94,7 @@ func _title_of(setup: MatchSetup) -> String:
 		return ""
 	if catalog == null:
 		catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
-	return catalog.title(setup.map_id).to_upper()
+	return "" if catalog == null else catalog.title(setup.map_id).to_upper()
 
 
 func _set_shown(on: bool) -> void:
@@ -93,6 +102,11 @@ func _set_shown(on: bool) -> void:
 	set_process(on)
 	if not on:
 		_old_runner = null
+
+
+func _on_resized() -> void:
+	if is_showing():  # A hidden card is sized when it shows.
+		_apply_dp()
 
 
 func _build() -> void:

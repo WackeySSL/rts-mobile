@@ -17,6 +17,7 @@ const FLOW: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 class FakeFlow:
 	extends Node
 	signal match_loading(setup: MatchSetup)
+	signal match_start_finished(error: Error)
 	var runner: MatchRunner = null
 
 	func current_runner() -> MatchRunner:
@@ -120,6 +121,9 @@ func test_it_goes_when_the_new_match_stands_in_the_tree() -> void:
 	assert_bool(_card.is_showing()).is_true()
 	_fake.runner = _runner_in_tree()
 	await _frames(1)
+	assert_bool(_card.is_showing()).override_failure_message("hid before the start ended").is_true()
+	_fake.match_start_finished.emit(OK)
+	await _frames(1)
 	assert_bool(_card.is_showing()).is_false()
 
 
@@ -128,15 +132,28 @@ func test_a_restart_does_not_mistake_the_old_match_for_the_new_one() -> void:
 	_fake.match_loading.emit(_setup())
 	await _frames(1)
 	assert_bool(_card.is_showing()).is_true()
+	_fake.match_start_finished.emit(OK)
+	await _frames(1)
+	assert_bool(_card.is_showing()).override_failure_message("the old match ended it").is_true()
 	_fake.runner = _runner_in_tree()
 	await _frames(1)
 	assert_bool(_card.is_showing()).is_false()
 
 
-func test_it_is_never_left_stuck_when_no_match_comes() -> void:
+func test_an_error_hides_the_card_at_once() -> void:
 	_fake.match_loading.emit(_setup())
-	await _frames(DeployCard.FAIL_FRAMES + 2)
+	_fake.match_start_finished.emit(ERR_CANT_CREATE)
 	assert_bool(_card.is_showing()).is_false()
+
+
+func test_the_backstop_hides_a_card_whose_start_never_ends() -> void:
+	_fake.match_loading.emit(_setup())
+	await _frames(DeployCard.HARD_FRAMES + 2)
+	assert_bool(_card.is_showing()).is_false()
+
+
+func test_a_paused_tree_does_not_freeze_the_card() -> void:
+	assert_int(_card.process_mode).is_equal(Node.PROCESS_MODE_ALWAYS)
 
 
 func test_a_failed_start_through_the_real_menu_flow_clears_the_card() -> void:
@@ -155,7 +172,6 @@ func test_a_failed_start_through_the_real_menu_flow_clears_the_card() -> void:
 	var error: Error = await flow.start_match(_setup())
 	assert_int(error).is_equal(ERR_CANT_CREATE)
 	assert_array(shown).is_equal([true])
-	await _frames(DeployCard.FAIL_FRAMES + 2)
 	assert_bool(card.is_showing()).is_false()
 	assert_object(flow.current_runner()).is_null()
 
@@ -173,7 +189,16 @@ func test_a_good_start_through_the_real_menu_flow_clears_the_card_when_the_match
 		return OK
 	flow.switch_to_menu = func() -> Error: return OK  # Never the real menu scene.
 	var card: DeployCard = _make_card(flow)
+	var inside: Array[bool] = []  # The card while the scene is handed over and while it enters.
+	flow.switch_to_main = func(main: Node) -> Error:
+		mains.append(main)
+		inside.append(card.is_showing())
+		var runner: MatchRunner = main.get_node("MatchRunner")
+		runner.tree_entered.connect(func() -> void: inside.append(card.is_showing()))
+		add_child(main)
+		return OK
 	assert_int(await flow.start_match(_setup())).is_equal(OK)
+	assert_array(inside).is_equal([true, true])
 	await _frames(2)
 	assert_bool(card.is_showing()).is_false()
 	flow.return_to_menu()
@@ -208,7 +233,7 @@ func test_the_card_covers_the_screen_inside_the_safe_area_at_the_six_sizes() -> 
 			full.get_center().x, 2.0
 		)
 		UiScale.clear_override()
-		await _frames(DeployCard.FAIL_FRAMES + 1)  # The card clears itself: no runner comes.
+		_fake.match_start_finished.emit(ERR_CANT_CREATE)
 
 
 func test_it_takes_every_touch_and_has_no_ad_and_no_animation() -> void:
@@ -216,7 +241,10 @@ func test_it_takes_every_touch_and_has_no_ad_and_no_animation() -> void:
 	assert_int(root.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
 	assert_object(_card.find_child("*Ad*", true, false)).is_null()
 	assert_int(_card.find_children("*", "AnimationPlayer", true, false).size()).is_equal(0)
-	assert_int(_card.find_children("*", "Tween", true, false).size()).is_equal(0)
+	var tweens: int = get_tree().get_processed_tweens().size()
+	_fake.match_loading.emit(_setup())
+	await _frames(2)
+	assert_int(get_tree().get_processed_tweens().size()).is_equal(tweens)
 
 
 ## The union of the icon and the labels: the visible content of the card.
