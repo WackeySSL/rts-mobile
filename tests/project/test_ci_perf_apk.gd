@@ -207,7 +207,7 @@ func test_the_release_export_checks_debuggable_dev_menu_and_the_engine_library()
 		'aapt2" dump badging "$apk"',
 		"! grep -q 'application-debuggable' <<<\"$badging\"",
 		'debuggable\\(0x0101000f\\)=.*(true|0xffffffff)\' <<<"$manifest"',
-		'unzip -p "$apk" assets/project.binary | strings | grep -A1 -x _custom_features',
+		"unzip -p \"$apk\" assets/project.binary | strings | grep -A1 -E '^_custom_features'",
 		'<<<"$features" | grep -qx dev_menu',
 		'unzip -p "$template_dir/android_release.apk" "$abi_dir/libgodot_android.so"',
 	]

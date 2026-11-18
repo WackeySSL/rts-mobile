@@ -52,3 +52,25 @@ func test_out_of_range_values_are_reported() -> void:
 		"billing_timeout_ms"
 	]:
 		assert_str(joined).override_failure_message("missing %s" % field).contains(field)
+
+
+func test_the_arm_delay_is_pinned_and_checked() -> void:
+	assert_int(_file().reward_arm_ms).is_equal(500)
+	var bad: AdsSettingsDef = _file().duplicate() as AdsSettingsDef
+	bad.reward_arm_ms = 0
+	assert_str("\n".join(bad.validate())).contains("reward_arm_ms")
+
+
+func test_the_reward_text_formats_with_exactly_one_multiplier() -> void:
+	for text: String in ["Watch an ad", "%d and %d", "%d%%", "%s %d", "%d 100%"]:
+		var bad: AdsSettingsDef = _file().duplicate() as AdsSettingsDef
+		bad.reward_xp_text = text
+		assert_str("\n".join(bad.validate())).override_failure_message(text).contains(
+			"reward_xp_text"
+		)
+	assert_str(_file().reward_xp_text % 2).is_not_empty()
+
+
+func test_the_xp_multiplier_is_one_that_apply_bonus_accepts() -> void:
+	var progression: ProgressionDef = load("res://data/meta/progression.tres") as ProgressionDef
+	assert_int(_file().reward_xp_multiplier).is_greater_equal(progression.min_bonus_multiplier)

@@ -33,7 +33,7 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_main_scene_has_one_life_fx_between_the_decals_and_the_sort_wired_to_runner_and_camera(
+func test_main_scene_has_one_life_fx_after_the_mines_before_the_sort_wired_to_runner_and_camera(
 ) -> void:
 	var state: SceneState = (load(MAIN_SCENE) as PackedScene).get_state()
 	var names: Array[String] = []
@@ -41,7 +41,9 @@ func test_main_scene_has_one_life_fx_between_the_decals_and_the_sort_wired_to_ru
 		if str(state.get_node_path(index, true)) == ".":  # The root's own children.
 			names.append(state.get_node_name(index))
 	assert_int(names.count("LifeFx")).is_equal(1)
-	assert_int(names.find("LifeFx")).is_equal(names.find("DecalLayer") + 1)
+	# P293: the mine layer is the one node between them, so the dust draws over the marks.
+	assert_int(names.find("MineLayer")).is_equal(names.find("DecalLayer") + 1)
+	assert_int(names.find("LifeFx")).is_equal(names.find("MineLayer") + 1)
 	assert_int(names.find("WorldSort")).is_equal(names.find("LifeFx") + 1)
 	for index: int in state.get_node_count():
 		if state.get_node_name(index) != "LifeFx":

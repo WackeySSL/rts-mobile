@@ -11,7 +11,9 @@ extends ModalFrame
 ## rank, ADR 0045), and plays the victory or defeat sting once. Sideways the banner and the table
 ## stand side by side, upright one above the other.
 ## The `OfferSlot` under the table (game/ui/menu/OfferSlot.gd) is hidden and 0 tall while it holds
-## no visible child; Phase 6 puts its widget in it. This script calls no ad.
+## no visible child; its one child is the `DoubleXpOffer` (game/ui/ads/, plan P432), which owns
+## every ad call and shows only for a scored award. This script calls no ad; it hands the offer
+## the award and follows `Progression.xp_changed`, so a Double XP bonus moves the bar.
 
 const MenuFlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
@@ -33,6 +35,8 @@ var flow: MenuFlowScript = null:
 var progression: ProgressionScript = null
 var audio: AudioServiceScript = null
 var rank_xp: PackedInt32Array = PackedInt32Array()
+## The Double XP offer in the slot; tests give it their own ad backend.
+var offer: DoubleXpOffer
 
 var _xp_box: VBoxContainer
 var _gained: Label
@@ -45,7 +49,9 @@ var _xp_shown: bool = false
 var _fill: Tween
 var _sting_played: bool = false
 var _leaving: bool = false
+var _score_seen: bool = false  ## `match_scored` fired (an award, or none for this match).
 var _offer_slot: OfferSlot
+var _xp_source: ProgressionScript = null
 var _body: BoxContainer
 var _emblem: TextureRect
 var _title: Label
@@ -84,7 +90,9 @@ func _ready() -> void:
 	_rank_up.name = &"RankUp"
 	_rank_up.visible = false
 	_body.add_child(_grid)
-	_offer_slot = OfferSlot.add_to(column, self)  # Empty; Phase 6 (P432) fills it.
+	_offer_slot = OfferSlot.add_to(column, self)
+	offer = DoubleXpOffer.new()
+	_offer_slot.add_child(offer)
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
 	_again = add_button(row, "PLAY AGAIN", _play_again)
@@ -165,9 +173,8 @@ func _play_sting(result: String) -> void:
 
 
 ## The award can arrive after the screen showed (a score that lands late): the block shows then.
-## TODO P432: the screen does not follow `Progression.xp_changed`, so a Double XP bonus taken while
-## it is open does not move the bar.
 func _on_match_scored(_summary: MatchSummary, _award: XpAward) -> void:
+	_score_seen = true
 	if visible:
 		_show_xp()
 
@@ -175,12 +182,28 @@ func _on_match_scored(_summary: MatchSummary, _award: XpAward) -> void:
 ## Shows the XP of the scored match (nothing for a match that paid none) and starts the fill.
 func _show_xp() -> void:
 	var award: XpAward = flow.last_award() if _owns() else null
+	# The offer reserves its space while the screen owns the match and its score is still pending.
+	var pending: bool = (
+		award == null and _owns() and not _score_seen and flow.last_summary() == null
+	)
+	offer.set_award(award, progression, pending)
+	# The XP box holds its space too (invisible) while the score is pending, so a late award that
+	# fills it moves nothing; a score that pays nothing collapses it.
+	if not _xp_shown:
+		_xp_box.visible = pending
+		_xp_box.modulate.a = float(not pending)  # Not a colour: 0 while it only holds space.
 	if _xp_shown or award == null:
 		return
+	if _xp_source != progression:
+		if _xp_source != null:
+			_xp_source.xp_changed.disconnect(_on_xp_changed)
+		_xp_source = progression
+		_xp_source.xp_changed.connect(_on_xp_changed)
 	_xp_shown = true
 	var table: PackedInt32Array = rank_xp if not rank_xp.is_empty() else _table()
 	_xp_view = xp_view(progression.xp(), award.base_xp, table)
 	_xp_box.visible = true
+	_xp_box.modulate.a = float(_xp_box.visible)  # 1: shown.
 	_gained.text = "+%d XP" % award.base_xp
 	_rank_up.visible = false
 	_set_range(_xp_view["from_floor"], _xp_view["from_next"])
@@ -196,6 +219,22 @@ func _show_xp() -> void:
 		_fill.tween_property(_xp_bar, "value", float(_xp_view["total"]), XP_FILL_SECONDS / 2.0)
 	else:
 		_fill.tween_property(_xp_bar, "value", float(_xp_view["total"]), XP_FILL_SECONDS)
+
+
+## A bonus (Double XP) moved the total: the gain and the bar follow, settled at once.
+func _on_xp_changed() -> void:
+	if not _xp_shown or progression.xp() == _xp_view["total"]:
+		return
+	var table: PackedInt32Array = rank_xp if not rank_xp.is_empty() else _table()
+	var gained: int = progression.xp() - int(_xp_view["old"])
+	_xp_view = xp_view(progression.xp(), gained, table)
+	_gained.text = "+%d XP" % gained
+	_xp_text.text = _xp_line()
+	_set_range(_xp_view["from_floor"], _xp_view["from_next"])
+	_rank_label.text = _rank_text(_xp_view["old_rank"])
+	if _fill != null:
+		_fill.kill()
+	settle()
 
 
 ## Ends the fill at once (also what a test calls instead of waiting).

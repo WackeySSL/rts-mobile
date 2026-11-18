@@ -145,12 +145,22 @@ variant nocxx lib/arm64-v8a/libc++_shared.so
 variant nolib "lib/arm64-v8a/$native"
 # The perf APK of the release export (P51r): the release library instead of the debug one, and the project settings
 # that carry the custom features (assets/project.binary). The engine library "so" must be the release template's.
+# The _custom_features entry as Godot writes it into project.binary: the key's length and the key, then the value's
+# length, its Variant type (String, 4), the string's length, the string and its padding to 4 bytes. A 30-character list
+# has a value length of 40, the printable '(' that strings joins to the key on the real perf APK.
+pbin() { # FEATURES
+  local n=${#1} pad=$(((4 - ${#1} % 4) % 4))
+  printf 'ECFG\x01\x00\x00\x00\x10\x00\x00\x00_custom_features'
+  printf "\\x$(printf %02x $((8 + n + pad)))\\x00\\x00\\x00\\x04\\x00\\x00\\x00\\x$(printf %02x "$n")\\x00\\x00\\x00"
+  printf '%s' "$1"
+  head -c "$pad" /dev/zero
+}
 rapk() { # NAME [ENGINE-LIBRARY-BYTES [FEATURE]]: the release APK as NAME.apk
   rm -rf "$root/r" && cp -R "$root/apk" "$root/r"
   rm "$root/r/lib/arm64-v8a/$native"
   echo kernels >"$root/r/lib/arm64-v8a/$native_release"
   echo "${2:-so}" >"$root/r/lib/arm64-v8a/libgodot_android.so"
-  printf 'project\n_custom_features\n%s\n' "${3:-dev_menu,sim_kernels,perf_boot}" >"$root/r/assets/project.binary"
+  pbin "${3:-dev_menu,sim_kernels,perf_boot}" >"$root/r/assets/project.binary"
   (cd "$root/r" && zip -q -r -D "$root/$1.apk" lib assets)
 }
 rapk release

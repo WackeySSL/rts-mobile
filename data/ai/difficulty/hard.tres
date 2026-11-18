@@ -37,5 +37,7 @@ research_floor = 250
 tech_army_value_min = 5000
 ; ADR 0037 sections 10 and 15: Normal and Hard hold their artillery in waves, Easy none (P300).
 hold_in_waves = 1
+; Starting values for the Phase 4b balance run (P250c), no source yet.
+search_hold_ticks = 2700
 commands_per_think_max = 12
 income_percent = 100

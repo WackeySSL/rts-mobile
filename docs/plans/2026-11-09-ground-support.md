@@ -229,7 +229,9 @@ below). Each row that rosters or draws a thing adds its rows, written exactly as
   they had; a dying Bunk Wagon ejects its squads at `carry_eject_percent`, a Linecar's die.
 - **P293:** the sweep row (a tap on a found mark) and the Fog row for enemy mines (found by
   `detect_milli`, the record goes when the cell is seen without the mine, blast only where seen).
-- **P294:** the Mine order row (cap, cost, arm time, own units never trigger).
+- **P294:** the Mine order row (cap, cost, arm time, own units never trigger). (2026-11-18, P293) P293's
+  HOW_TO_PLAY "Look at your own mines" row already says the arm time and that own units never set a
+  mine off, so P294's row must not repeat them.
 - Starting values with no source in the GDD or ADR 0037 (the balance rows record them in the GDD):
   the minelayers' price, hit points, speed and armour class, the mines' damage and armour percents,
   and every build time, sight and radius of the four units.

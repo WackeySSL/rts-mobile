@@ -175,9 +175,20 @@ func slot_of(owner_id: int) -> int:
 	return clampi(owner_id - 1, 0, maxi(_arts.size() - 1, 0))
 
 
+## The art of `owner_id` (its faction and triad), as `slot_of` picks it; null before the first bake.
+## The mine marks bake from it (`MineLayer`).
+func art_of(owner_id: int) -> IsoPlayerArt:
+	return _arts[slot_of(owner_id)] if not _arts.is_empty() else null
+
+
+## How many players the atlas holds art for.
+func art_count() -> int:
+	return _arts.size()
+
+
 ## The mid colour of `owner_id`'s triad, for what stands in for art that is not in the atlas.
 func mid_colour(owner_id: int) -> Color:
-	var art: IsoPlayerArt = _arts[slot_of(owner_id)] if not _arts.is_empty() else null
+	var art: IsoPlayerArt = art_of(owner_id)
 	return Color(art.triad[1]) if art != null else Color.WHITE
 
 
