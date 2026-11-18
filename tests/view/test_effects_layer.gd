@@ -452,6 +452,52 @@ func _build(scenario: ScenarioDef) -> void:
 	_layer.set_process(false)
 
 
+func test_a_mine_blast_bursts_at_its_cell_only_where_the_player_sees_it() -> void:
+	# P293: the burst of `MINE_BLAST` is this layer's (so it draws over the vehicle that set the
+	# mine off), as wide as the weapon's blast and born only on a cell the local player sees.
+	_layer.reveal_enemies = false
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.weapon_blast_milli = PackedInt32Array([1000])
+	var blast: PackedInt32Array = PackedInt32Array(
+		[World.Event.MINE_BLAST, 1, 12500, 9500, 0, 2, 0, 0]
+	)
+	snap.fog.visible.fill(0)
+	_tick_with(blast)
+	assert_int(_layer.quad_count()).is_equal(0)
+	snap.fog.visible[snap.cell_of(12500, 9500)] = 1
+	_tick_with(blast)
+	assert_int(_layer.quad_count()).is_equal(1)
+	assert_vector(_layer.quad_region(0).size).is_equal(BURST.size)
+	var side: float = IsoProjection.ellipse_px(1000).x
+	assert_float(_layer.quad_rect(0).size.x).is_equal_approx(side * 0.5, 0.01)  # Grows from half.
+	# An own unit killed by it, on a cell that is dark once its sight is gone, still shows it.
+	snap.fog.visible.fill(0)
+	_layer._empty()
+	var own: PackedInt32Array = (
+		blast + PackedInt32Array([World.Event.DIED, 9, 12500, 9500, _type(&"rifle_squad"), 1, 0, 0])
+	)
+	_tick_with(own)
+	assert_int(_bursts()).is_equal(1)
+	_layer._empty()
+	var enemy: PackedInt32Array = (
+		blast + PackedInt32Array([World.Event.DIED, 9, 12500, 9500, _type(&"rifle_squad"), 2, 0, 0])
+	)
+	_tick_with(enemy)  # An enemy that died there, unseen: no burst.
+	assert_int(_bursts()).is_equal(0)
+	snap.weapon_blast_milli = PackedInt32Array([0])
+	_layer._empty()
+	_tick_with(blast)
+	assert_int(_layer.quad_count()).is_equal(0)
+
+
+## The quads of the plan that are bursts (a death adds a fade of its own).
+func _bursts() -> int:
+	var bursts: int = 0
+	for index: int in _layer.quad_count():
+		bursts += 1 if _layer.quad_region(index) == BURST else 0
+	return bursts
+
+
 ## Delivers `events` as the events of a tick, the way the runner does, then plans a frame.
 func _tick_with(events: PackedInt32Array) -> void:
 	_runner.snapshot.events = events

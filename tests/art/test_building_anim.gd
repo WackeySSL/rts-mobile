@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## The building `anim` parts, the `emitters` and the `marks` of the models (plan row P143, ADR 0027
-## section 4, STYLE.md "Building life (P143)"): the eight animated buildings of both factions play
+## section 4, STYLE.md "Building life (P143)"): the animated buildings of both factions play
 ## their frames (Signal Mast 16, Relay Post 16, Wind Park 6, Turbine Hall 4, Deep Bore 4, Dusk
-## Array 4, Grid Hub 2, Crew Hall 2), each frame is a picture of its own and the loop closes, the
+## Array 4, Grid Hub 2, Crew Hall 2, the space centres' lifts and, from P279, the repair buildings'
+## 8), each frame is a picture of its own and the loop closes, the
 ## moving element leaves the body and stays in the shadow and the card, no turned face sits on a
 ## light cut (but for the two hexagonal sets, below), the emitters sit where the plan says and every
 ## vehicle model has `marks`. That the bytes equal a fresh run is test_artgen.gd; the pictures at 32
@@ -21,14 +22,18 @@ const BUILDINGS: Dictionary[StringName, Array] = {
 	&"renew_hq": [2, 600, 180.0],
 	&"renew_barracks": [2, 600, 180.0],
 }
-## The two lifts of the space centres (P236, STYLE.md "The space centres"): art id, frames,
-## `anim_ms`. A lift is a shift up and down, not a turn, so the tests of `BUILDINGS` that read the
-## angle of a turn (the loop closing, the cut margin, the team share per turn) do not take it;
+## The loops that are not a turn of a group by a fixed step: art id, frames, `anim_ms`. The two
+## lifts of the space centres (P236, STYLE.md "The space centres") shift up and down, and the two
+## repair buildings (P279) swing an arm and ride a drone round a ring (their closure is pinned in
+## tests/art/test_repair_building_art.gd). The tests of `BUILDINGS` that read the angle of a turn
+## (the loop closing, the cut margin, the team share per turn) do not take them;
 ## the ones that only need an `anim` part (its place in the sheet, the shadow, the body) do, and
 ## tests/art/test_space_centres.gd pins the shift.
 const LIFTS: Dictionary[StringName, Array] = {
 	&"fossil_space": [16, 150],
 	&"renew_space": [12, 200],
+	&"fossil_weld_shed": [8, 110],
+	&"renew_drone_dock": [8, 160],
 }
 ## What a turned face may be from a light cut, in shade (P139's margin, 0.016). The two hexagonal
 ## sets cannot reach it: a hexagon's slanted faces cross the cut of the top level at two angles of
@@ -55,6 +60,8 @@ const EMITTERS: Dictionary[StringName, Array] = {
 	&"fossil_airfield": [&"damage", &"dmg_gas", &"dmg_spark"],
 	&"renew_airfield": [&"damage", &"dmg_gas", &"dmg_spark"],
 	&"fossil_engineering": [&"damage", &"dmg_gas", &"dmg_spark"],
+	&"fossil_weld_shed": [&"damage", &"dmg_gas", &"dmg_spark"],
+	&"renew_drone_dock": [&"damage", &"dmg_gas", &"dmg_spark"],
 	&"renew_engineering": [&"damage", &"dmg_gas", &"dmg_spark"],
 	&"renew_aa": [&"damage", &"dmg_spark"],
 	&"fossil_radar": [&"damage", &"dmg_spark"],
@@ -86,6 +93,8 @@ const VEHICLES: Dictionary[StringName, StringName] = {
 	&"renew_tanker": &"wheels",
 	&"fossil_bunk_wagon": &"tracks",
 	&"renew_linecar": &"wheels",
+	&"fossil_shot_truck": &"wheels",
+	&"renew_seeder": &"wheels",
 }
 
 var _index: IsoIndex = null
@@ -125,7 +134,7 @@ func test_exactly_the_eight_buildings_have_an_anim_part_with_the_frames_and_time
 			var file: String = sheet.path(&"anim", -1, frame)
 			assert_str(file).ends_with("%s_anim_f%d.svg" % [model.art_id, frame])
 			assert_bool(FileAccess.file_exists(file)).override_failure_message(file).is_true()
-		assert_bool(frames in [2, 4, 6, 12, 16]).is_true()
+		assert_bool(frames in [2, 4, 6, 8, 12, 16]).is_true()
 	seen.sort()
 	var names: Array = BUILDINGS.keys().map(func(id: StringName) -> String: return String(id))
 	names.append_array(LIFTS.keys().map(func(id: StringName) -> String: return String(id)))
@@ -406,7 +415,7 @@ func test_every_vehicle_model_has_marks_from_its_running_gear_and_nothing_else_h
 		else:
 			assert_str(String(model.marks)).override_failure_message(path).is_empty()
 	assert_int(seen).is_equal(VEHICLES.size())
-	assert_int(seen).is_equal(10)
+	assert_int(seen).is_equal(12)
 
 
 func _model(id: StringName) -> ArtModel:

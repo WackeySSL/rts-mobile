@@ -1,0 +1,15 @@
+<!-- Hold glyph: white and grey only, tinted at run time (the Hold stance of the command bar: the selected units keep their ground and fire only from where they stand). -->
+<!-- Shape: a peaked shield, its top edge rising to a centre peak between two low shoulders and its foot pointed, a grey shaded foot, and in its face a dark downward stake driven into a long dark ground bar. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <g transform="translate(0 -4)">
+  <!-- edge -->
+  <path d="M64 10 C78 22 94 26 106 26 V62 Q106 98 64 120 Q22 98 22 62 V26 C34 26 50 22 64 10 Z" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="8" stroke-linejoin="round"/>
+  <!-- body: the lit plane, so white -->
+  <path d="M64 10 C78 22 94 26 106 26 V62 Q106 98 64 120 Q22 98 22 62 V26 C34 26 50 22 64 10 Z" fill="#FFFFFF"/>
+  <!-- shade: the lower right foot -->
+  <path d="M106 66 Q106 98 64 120 Q84 100 88 66 Z" fill="#BFBFBF"/>
+  <!-- the stake driven into the ground bar, dark -->
+  <path d="M42 42 H86 L64 82 Z" fill="#4D4D4D" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="34" y="84" width="60" height="12" rx="4" fill="#4D4D4D"/>
+  </g>
+</svg>

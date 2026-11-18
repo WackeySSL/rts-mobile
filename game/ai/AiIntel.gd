@@ -31,6 +31,7 @@ var sector_tiles: int = 0
 var sectors_max: int = 0
 var scout_first_tick: int = 0
 var scout_interval_ticks: int = 0
+var search: AiSearch = AiSearch.new()
 
 ## The sector grid of the map last seen: tiles per side, and sectors per row and column.
 var sector_side: int = 0
@@ -69,6 +70,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	intel.scout_interval_ticks = level.scout_interval_ticks
 	intel.sector_tiles = maxi(def.sector_tiles, 1)
 	intel.sectors_max = maxi(def.sectors_max, 1)
+	intel.search = AiSearch.create(level)
 	return intel
 
 
@@ -206,10 +208,16 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 				pick = id
 	var found: Vector2i = _sight(view, memory, home)
 	if found.x >= 0:
+		memory.search_sector = AiMemory.NONE
 		memory.base_x = found.x
 		memory.base_y = found.y
 	elif home.x >= 0:
 		var mirror: Vector2i = AiMemory.mirror(home, view.map_cols, view.map_rows)
+		# `_stage`, `_shift` and `_launch` follow base_x/y, so the staging point moves toward each
+		# search goal as well (intended, P250c).
+		var goal: Vector2i = search.target(view, memory, home, self)
+		if goal.x >= 0:
+			mirror = goal
 		memory.base_x = mirror.x
 		memory.base_y = mirror.y
 	memory.scout_wanted = AiMemory.NONE
@@ -389,7 +397,7 @@ func _travel(
 	if next < 0:
 		_return(view, memory, out, home)
 		return
-	var target: Vector2i = _centre(view, next)
+	var target: Vector2i = centre_of(view, next)
 	if _go(view, memory, out, memory.scout_id, target.x, target.y):
 		memory.scout_picked[next] = view.tick
 		memory.scout_waypoint += 1
@@ -411,7 +419,7 @@ func _nearest_unexplored(view: PlayerView, memory: AiMemory, rng: DetRandom, at:
 	for sector: int in sector_count():
 		if memory.scout_picked[sector] >= memory.scout_trip_tick:
 			continue
-		var centre: Vector2i = _centre(view, sector)
+		var centre: Vector2i = centre_of(view, sector)
 		if view.is_explored(centre.y * view.map_cols + centre.x):
 			continue
 		var distance: int = _distance(centre, at)
@@ -529,6 +537,8 @@ func _fit(view: PlayerView, memory: AiMemory) -> void:
 	if memory.scout_picked.size() != size:
 		memory.scout_picked.resize(size)
 		memory.scout_picked.fill(AiMemory.NONE)
+	if memory.search_skipped.size() != size:
+		memory.search_skipped.resize(size)
 	var types: int = view.type_cost.size()
 	if memory.seen_count.size() != types:
 		memory.seen_count.resize(types)
@@ -572,7 +582,7 @@ static func _span(tiles: int, side: int) -> int:
 
 ## The centre tile of `sector`, inside the map.
 @warning_ignore("integer_division")
-func _centre(view: PlayerView, sector: int) -> Vector2i:
+func centre_of(view: PlayerView, sector: int) -> Vector2i:
 	var col: int = sector % sector_cols * sector_side + sector_side / 2
 	var line: int = sector / sector_cols * sector_side + sector_side / 2
 	return Vector2i(mini(col, view.map_cols - 1), mini(line, view.map_rows - 1))

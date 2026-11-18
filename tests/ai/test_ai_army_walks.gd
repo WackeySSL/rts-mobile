@@ -1,5 +1,5 @@
 extends "res://tests/ai/support/army_suite.gd"
-## The id-list walks of `AiArmy._join` and `_unseen_hit` (plan row P198): one pass down two
+## The id-list walks of `AiArmy._join` and `AiUnseen.run` (plan row P198): one pass down two
 ## ascending lists replaces a bsearch a unit. Pinned here against the bsearch rules they replaced
 ## (`_is_pending`, `_hp_was`, the old `_join`) on seeded random lists with deaths at the front and
 ## in the middle, new ids between known ones and a pending id that died; and `AiIntel.refresh`
@@ -96,12 +96,12 @@ func test_unseen_hit_shifts_exactly_when_the_bsearch_rules_find_a_hurt_home_unit
 		_memory.unit_hp = now
 		var expected: bool = false
 		for at: int in ids.size():
-			if _army._hp_was(_memory, ids[at]) > now[at]:
+			if AiUnseen.hp_was(_memory, ids[at]) > now[at]:
 				expected = true
 		_world.tick = FIRST + 15
 		_memory.commands_left = 8
 		_out = []
-		_army._unseen_hit(view, _memory, _out, true)
+		_army._unseen.run(_army, view, _memory, _out, true)
 		assert_int(_army.shifts).is_equal(1 if expected else 0)
 		shifted += _army.shifts
 		assert_array(_memory.hp_id).is_equal(ids)

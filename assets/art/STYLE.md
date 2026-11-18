@@ -524,7 +524,7 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
 The ground carriers of both factions (ADR 0037 sections 7 and 14, docs/GDD.md): the Derrick League's **Bunk Wagon**
 (`fossil_bunk_wagon`) and the Lumen Accord's **Linecar** (`renew_linecar`). Each is a `veh` model with a hull in 16
 directions, a cast shadow and an item card, no turret, no damage picture (a unit shows none) and no lift. They follow
-the aircraft in each faction's roster (Vehicles tab). The minelayers (P292) are not drawn yet.
+the aircraft in each faction's roster (Vehicles tab). The minelayers follow them ("The minelayers" below).
 
 | Model | Silhouette |
 | --- | --- |
@@ -548,6 +548,55 @@ the aircraft in each faction's roster (Vehicles tab). The minelayers (P292) are 
   is the floor: ADR 0036 section 15's 60 rows for the carriers was too low; the lead's revised page-2 allocation
   (2026-11-17) is about 220 rows for P291, and a page-2 trim row follows before P204.
 - **Gallery.** The Iso page lists them by themselves and shows their item cards.
+
+### The minelayers (P292)
+
+The minelayers of both factions (ADR 0037 sections 8 and 14, docs/GDD.md): the Derrick League's **Shot Truck**
+(`fossil_shot_truck`) and the Lumen Accord's **Seeder** (`renew_seeder`), built as the carriers are: a `veh` model
+with a hull in 16 directions, a cast shadow and an item card, no turret, no damage picture and no lift. They follow
+the carriers in each faction's roster (Vehicles tab); each needs its faction's radar.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_shot_truck` | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with a team-colour band and stud standing beside it, and team bands down the bed rails. |
+| `renew_seeder` | A light blue-grey four-wheeled planter with a small glass-fronted cab and a team band on its flanks, behind the cab a tall hexagonal glass hopper on a graphite frame on a team-colour flange with a white cap and a mint light, and at the tail a jointed graphite planting arm that drops a white spike towards the ground. |
+
+- **Apart from the neighbours.** The Shot Truck is a flat bed with a mast and four cans on six wheels: no drum
+  (the Tanker), no crew box (the Bunk Wagon), no turret. The Seeder is taller than the Linecar and has a hopper and
+  an arm where the Linecar has a long glass roof, so it is neither it nor the Swift
+  (`tests/art/test_minelayer_art.gd` holds each minelayer's 32 px greyscale silhouette under 0.85 overlap with every
+  ground vehicle of its faction, the carrier and the other minelayer). Measured at the default view, hulls only (turrets are not blended in the test): Shot Truck
+  0.59 to 0.70 (against the Flarejack, the Bullhead, the Mortar Rig, the Tanker and the Bunk Wagon) and 0.41
+  against the Seeder; Seeder 0.55 to 0.77 (against the Swift, the Torque, the Arcline, the Fuel Runner and the
+  Linecar) and 0.41 against the Shot Truck.
+- **Team colour.** Shot Truck: a band round the cab, a band down each bed rail, one across the tail of the bed
+  and a band and a stud on each of the four cans (a flat orange cap on a can read as a roof plate to
+  `test_artgen_plates.gd`). Seeder: a band down each side of the cab and the deck, a nose band, a rear band and a flange
+  under the hopper. Team share of the default view at zoom 1: 11.6 % (Shot Truck, default view d06) and 9.0 % (Seeder, d10), in
+  the rule's 8 to 12 %; in every direction 10.3 to 13.5 % and 5.5 to 11.8 % (`test_minelayer_art.gd` holds 5 to 16
+  %). A team ring round the hopper itself was tried and dropped: the draw order put it over the hopper in several
+  directions and took the share to 16 to 18 %.
+- **Running gear and emitters.** `wheels` for both; an `exhaust` at the tail, a `damage` point on the load and a
+  `hang` bracket on the camera side; `scar_milli` 500.
+- **Canvas.** Hull 190 x 138 and 152 x 106 (the default views d06 and d10), shadow 230 x 118 and 206 x 106, in 2x px. Page 1 of the atlas
+  grows by 110, 119 and 94 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2582, 2526, 2435) and
+  page 2 by 222, 122 and 100 (2486, 1386, 1386); both stay under the 3584 budget.
+- **Mine marks.** Four hand-written marks, 144 x 96 px at 2x with the ground point at (72, 60), in
+  `assets/art/svg/marks/` (`mine_<faction>_own.svg` and `mine_<faction>_known.svg`), "Keep File" imports: the
+  match-start bake swaps each faction's key triad for the owner's, as it does for the iso frames (P293's `MineLayer`
+  reads the text). The Derrick League's **shot charge**: a squat steel can with a dark iron rim and a short orange
+  cap (key light, mid, dark) on its lid, a contact shadow under it. The Lumen Accord's **pulse seed**: a flat white
+  hexagonal plate with a team ring on it, a tall white hexagonal spike with a team tag and a mint light on the tip.
+  The ground point and the canvas are the constants of `game/view/MineMarkArt.gd` (`ORIGIN_PX`, `SIZE_PX`): the mine's base
+  centre and the rim's centre both sit on it.
+  The own mark is the mine alone (the view draws it at half alpha until it is armed); the known enemy mark adds the
+  **notched rim**, a ring of short dark dashes with a pale inner edge in no team colour, so the cue is colour-free
+  and reads on grass and sand. At zoom 1 the can is 36 px and the seed plate 42 px wide, the ring 60 and 63 px
+  (`tests/art/test_mine_marks.gd`: the triad, the key band, the rim's extra ink, the ground point on the body).
+- **Gallery.** The Iso page lists the two minelayers by themselves, with their item cards, and under their
+  directions a "Mine marks" line of their faction's own and known mark at zoom 0.75, 1 and 1.5 in each triad on grass
+  and sand. The Hud page shows `glyph_mine` and `glyph_hold` in its Bar row; `glyph_home` sits in the Pause row because a row
+  holds ten glyphs at most between the corner buttons and the Bar row now has ten.
 
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
@@ -1491,6 +1540,62 @@ open the Research tab of the build drawer.
   four research cards are not on the gallery yet: `art_gallery.gd` is at the 1,000 lines gdlint allows, so they follow
   in a split of the gallery (art-director's follow-up, as for `tab_research.svg`).
 
+### The repair buildings (P279)
+
+The repair building of both factions (ADR 0037 sections 5 and 14, docs/GDD.md): the Derrick League's **Weld Shed**
+(`fossil_weld_shed`) and the Lumen Accord's **Drone Dock** (`renew_drone_dock`), each a 2 x 2 model with a hull, an
+`anim` loop of 8 frames, a KRITISK picture (`dmg2`), no SKADET picture (ADR 0034), a cast shadow and an item card.
+They follow the engineering centre in each faction's roster (Structures tab; each needs the faction's vehicle
+factory). The buildings have no pad: a vehicle stops beside the building and is repaired in place, so the art shows a
+yard and a rack, not a place to land. ADR 0037 section 14 gave the loops 6 and 4 frames; both ship 8, so each loop
+closes on a whole ring or swing.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_weld_shed` | An open steel gantry bay on four riveted posts under a shallow steel roof on a rust rim with a team fascia, a welding arm hanging in front of the fascia that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. |
+| `renew_drone_dock` | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal deck with a team rim whose top is a rack of seven small hexagonal drone cradles with team bands, three holding a parked drone, a small four-rotor drone circling above the rack, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. |
+
+- **What says "repair".** The Weld Shed shows the act: a torch on a swinging arm with a spark cross over a service
+  plate, gas bottles beside it (a workshop bay a tank could drive into). The Drone Dock shows the Lumen Accord's way,
+  small drones that do the work, as the GDD has it ("a white ceramic rack of small hexagonal drones"): a honeycomb
+  rack of cradles on the deck, a drone circling above it, another on a charging bench. Neither has a pad, a ringed
+  mark or a marker light, so neither reads as an airfield (whose team-ringed pads HOW_TO_PLAY teaches), and neither
+  has a runway or a mast, so neither reads as a radar.
+- **Silhouettes against the rest.** The Weld Shed is the only open building with a flat roof held on posts (every other
+  Derrick League building is a closed hall, a mast or a drum); the Drone Dock is the only building with a wide deck on
+  a single column, so its top edge is a hexagon on a stalk where the Grid Hub's and the Relay Post's hexagons sit on
+  the ground. At 32 px in greyscale the worst overlap with any other building (both factions, default views) is 0.81
+  (Weld Shed, against the Lumen Accord's Motor Hall) and 0.75 (Drone Dock, against the Lumen Accord's Fuel Works),
+  under the 0.85 the tests allow (`tests/art/test_repair_building_art.gd`); they fill 48 % and 40 % of the 32 px
+  square.
+- **Life (`anim`, 8 frames, `anim_ms` 110 and 160).** The Weld Shed's arm and torch swing 9 degrees to each side of
+  their hanger and back while the spark cross turns between frames, and the torch stays clear of the near post at
+  every angle; the Drone Dock's drone rides a ring of 0.2 tile above the rack and rises and sinks by 0.08 tile as it
+  goes, so the step from frame 7 back to frame 0 is as long as any other (`test_repair_building_art.gd`). The moving
+  element stands in front of the body and below the fascia's lower edge ("Where an element may stand": the anim
+  sprite is drawn over the body, so it hangs where nothing nearer overlaps it). Both are model poses cropped to the
+  moving element (Weld Shed 62 x 76 px, Drone Dock 90 x 132 px), never edited frames; the spark (spun at rest, then carried by the arm, so it sits at the torch tip in every frame: lamp white, a larger
+  cross and a bead, with the floor stripes in concrete and the lamp head small so it is the brightest thing on the
+  building) and the drone's hover light (mint) carry no team colour but the drone's band. `anim_kritisk` is `hide` on
+  both: at KRITISK the arm and the drone are gone with their carriers.
+- **Team colour.** The roof fascia, the collar on each near post and the three bottle collars (Weld Shed); the pylon
+  band, the deck rim, the seven cradle bands, the bench band and the drone's band (Drone Dock). Never a roof plate
+  (`test_artgen_plates.gd`). Team share of the default view at zoom 1 in every frame of the loop: 10.3 % (Weld Shed)
+  and 9.2 to 9.4 % (Drone Dock), in the rule's 8 to 12 %.
+- **KRITISK.** The Weld Shed's roof, rail, hanger and rear posts are gone, a near post leans with its collar, a broken
+  rust slab, a rebar and a fallen beam lie on the service plate over a dark `interior` floor; the bottle rack, the
+  lamp and the crate stay, so the picture keeps 0.22 of the intact team colour. The Drone Dock's deck, rim, pylon and
+  pylon band are gone, a broken stub and a wrecked deck slab lie on the base round a dark `interior` square, the
+  antenna leans, and the bench with its parked drone is untouched, so it keeps 0.23 (ADR 0029's band is 20 to 50 %).
+  The damage points sit on the plate, the bottle rack and the rust crate (Weld Shed: smoke, gas, spark) and on the
+  stub, the slab and the bench (Drone Dock).
+- **Canvas.** Hull 256 x 200 (anchor y 72) and 256 x 180 (anchor y 51), KRITISK patch 250 x 134 and 250 x 102, shadow
+  336 x 166 and 328 x 166, in px (the SVG sizes; the atlas rasterises them at 2x). Page 1 of the atlas grows by 46, 26
+  and 67 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2628, 2552, 2502) and page 2 by 18, 0 and 22
+  (2504, 1386, 1408), inside the page-2 allocation of 60 rows.
+- **Gallery.** The Build page and the Iso page list the two buildings by themselves (the Iso page plays the loop) and
+  show their generated cards.
+
 ## Ore
 Nine opaque tiles, `ore/ore_<level>[a|b].svg`, 128x128 at 2x, import scale 0.5, so one tile is
 64 px. Each tile is dirt #8A6F4D to every edge, with speckles in the two new dirt tones and gold
@@ -1640,7 +1745,7 @@ The tints the HUD gives them (the gallery's `GLYPH_TINTS` holds the same values)
 | `glyph_unload_mark` | #F5A524 |
 | `glyph_under_attack`, `glyph_cross`, `glyph_defeat`, every `glyph_reason_<reason>` | #E5484D |
 | `glyph_lock`, `glyph_draw`, `glyph_pin_off`, `glyph_alert` | #9AA5B1 |
-| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell`, `glyph_board`, `glyph_unload`, `glyph_home` and the other thirteen glyphs of the corner HUD (below) | none (white) |
+| `glyph_menu_open`, `glyph_pin`, `glyph_repair`, `glyph_sell`, `glyph_board`, `glyph_unload`, `glyph_home`, `glyph_mine`, `glyph_hold` and the other thirteen glyphs of the corner HUD (below) | none (white) |
 
 The build menu's three glyphs (ADR 0024, plan row P85g): `glyph_menu_open` is the Build button's (the
 button that opens the collapsed menu), `glyph_pin` and `glyph_pin_off` the pin toggle at the open
@@ -1708,6 +1813,15 @@ canvas edge, a two-line header with the shape line, untinted on the dark panel, 
   glyph of each is the other, over the 29 bar; the heads are 5 px at 32). Neither has the door and
   arrow of `glyph_exit`. One wheeled carrier stands for every carrier: the word on the button names
   the vehicle's role, the glyph the act.
+- `glyph_mine` and `glyph_hold` (P292, ADR 0037 sections 8 and 14), the Mine order of the layers and the Hold
+  toggle (P294 and P299 place them on the command bar), drawn like `glyph_board`: white, grey edge, shade on the lower
+  right facets, no seat, untinted on the panel, ink lifted 4 to 6 px to sit centred, in the same 128 px canvas.
+  Mine is a squat round drum with a dark seam round its side and a fat block arrow pointing down at its lid; Hold is a
+  peaked shield (a centre peak between two low shoulders, a pointed foot) with a dark downward stake driven into a
+  long dark ground bar in its face: a unit planted where it stands. It has no pair of upright bars, which next to the
+  Resume triangle and the Stop square would read as a media Pause. They are not the cracked shield of `glyph_defeat`
+  (a broad shield split by a crack, no stake) and the arrow does not point right as `glyph_board`'s does.
+  Both are at least 29 from every glyph of the HUD group at 32 px (`test_hud_v2_glyphs.gd`).
 - `glyph_unload_mark`, the chevron that marks the Unload ground point (`touch-ui-rules`): the twelfth
   map glyph, two stacked chevrons pointing straight down on the offline glyph's plate, tinted amber
   #F5A524, the attack-move marker's colour (an order to a ground point). Anchor: the point is the
@@ -1724,7 +1838,7 @@ Sizes in dp (1 dp = 1.75 base px on the 6-inch phone): an item icon fills its 64
 section 5 and ADR 0019 section 1), a tab icon 32 to 48 dp inside its 48 dp tab, a HUD glyph 24 to
 48 dp, a glyph on the map 32 dp, and the under-attack arrow at least 48 dp. The gallery shows the
 tabs at 48, the items at 64, the HUD glyphs at 48 and the map glyphs at 32 dp, and the arrow at 48;
-its Hud page shows the corner HUD's eighteen at 48, 32 and 24 dp.
+its Hud page shows the corner HUD's twenty-one at 48, 32 and 24 dp.
 
 **Map glyphs sit on a seat (new).** The twelve glyphs that are drawn over the map, the six
 `glyph_reason_<reason>`, `glyph_offline`, `glyph_low_power_map`, `glyph_repair_map`, `glyph_unload_mark`, `glyph_construct` and `glyph_under_attack`, carry their
@@ -1800,6 +1914,8 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_sell.svg` | A price tag tilted up to the left, a long pentagon with its point at the upper left and a dark hole near the point, a round grey coin with a white ring and a diamond set on its body. |
 | `glyph_board.svg` | A small round-headed figure with square shoulders at the left, a fat block arrow pointing right, a boxy carrier on four wheels with a chamfered nose and a dark doorway cut into the side that faces the figure. |
 | `glyph_unload.svg` | A boxy carrier on four wheels at the left with a chamfered nose and a dark doorway on its right side showing two white heads, a fat block arrow pointing right out of it, a small round-headed figure at the right. |
+| `glyph_mine.svg` | A squat round drum seen from the side and above, a flat oval lid and a dark seam round its side, with a fat block arrow pointing down at the lid from above. |
+| `glyph_hold.svg` | A peaked shield, its top edge rising to a centre peak between two low shoulders and its foot pointed, a grey shaded foot, and in its face a dark downward stake driven into a long dark ground bar. |
 | `glyph_home.svg` | A house: a wide pitched roof over a boxy body with a dark doorway, a grey right flank on the roof and the wall. |
 | `glyph_unload_mark.svg` | Two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
@@ -1927,6 +2043,9 @@ in doubt, choose a plainer real-world form.
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
 | Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
 | Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
+| Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with a team-colour band and stud beside it and team bands on the cab and the bed rails. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
+| Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
+| Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. | `svg/marks/mine_<faction>_<own\|known>.svg`, 144x96, ground point (72, 60), Keep File |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |
@@ -1941,6 +2060,8 @@ in doubt, choose a plainer real-world form.
 | Glide Deck | A raised graphite and white deck with four round landing discs ringed in team cyan at its corners, a low white hexagonal terminal with a glass ribbon and a team band at its centre, a slim white pylon with a flat-lidded glass cab beside it, and two white battery cabinets with team stripes. | `iso/renew/bld/renew_airfield_{hull,dmg2,shadow}.svg`, 384 wide, 3 x 3 |
 | Draft Shop | A low concrete drafting hall under a long barrel-vault rust roof with a wide team band between its wall segments, and in front of it an open steel test cradle that holds a fat olive bomb casing with two team rings and a rust fin, beside a squat round concrete pressure tank with a team band. | `iso/fossil/bld/fossil_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
 | Lens Works | A low round white workshop drum with a glass ribbon, a wide team band and a stepped lid, and beside it a long white optical bench with a team band carrying one large round glass lens in a team-coloured ring on a slim titanium pedestal. | `iso/renew/bld/renew_engineering_{hull,dmg2,shadow}.svg`, 256 wide, 2 x 2 |
+| Weld Shed | An open steel gantry bay on four riveted posts under a shallow steel roof on a rust rim with a team fascia, a welding arm hanging in front of the fascia that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post. | `iso/fossil/bld/fossil_weld_shed_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
+| Drone Dock | A tall white hexagonal pylon with a team band that carries a wide flat hexagonal deck with a team rim whose top is a rack of seven small hexagonal drone cradles with team bands, three holding a parked drone, a small four-rotor drone circling above the rack, and on the ground a low graphite charging bench with a parked drone and a slim antenna with a mint tip. | `iso/renew/bld/renew_drone_dock_{hull,anim_f<K>,dmg2,shadow}.svg`, 256 wide, 2 x 2, 8 anim frames |
 | Skyrig | A tall open steel gantry like a goalpost, two lattice posts with team brackets and a heavy hoist beam standing at the back of a concrete deck with a team band, a squat olive satellite capsule in a rail cradle between the posts, a flat control bunker under a rust roof with a wide team band and three olive gas bottles with team rings in front. | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 | `iso/fossil/bld/fossil_space_{hull,shadow}.svg`, 384 wide, the lift `fossil_space_anim_f<K>.svg`, 16 frames, 88x272 |
 | Grid Hub | A broad white hexagonal hall on a graphite plinth with a glass band under a wide team light band and a glowing team gap under its white lid, a smaller hexagonal control drum rising from its middle with its own glass ring and team band, two dark solar panels on the lower roof, three battery cabinets along its right wall, an entrance pavilion with team light posts and mint lights on its front and a slim titanium mast with a team ring, a flat hexagonal array plate and a mint lamp. | `iso/renew/bld/renew_hq_{hull,shadow}.svg`, 384 wide |
 | Wind Park | Two slim white wind turbines of different heights with four-bladed rotors whose blades thin to team-coloured tips, a team ring and a team nacelle band on each, a low transformer house with a wide team band under a white lid and a dark door, and a row of three battery cabinets with mint lights. | `iso/renew/bld/renew_power_{hull,shadow}.svg`, 256 wide |
@@ -2752,13 +2873,13 @@ by `art_gallery_icons.gd`, P308) and start hidden, so the Units page is as it wa
   the corner buttons at 1280 wide, then on one line `Panels` (Collapse, Chevron, Alert, Construct)
   and `Beside`, eight glyphs they stand next to (Build, the pin and the pin off, the check mark, the
   cross, the warning triangle, the coin and the bolt), each at 48 dp with its name under it and
-  tinted as the HUD tints it. Then `Small32` and `Small24`, the eighteen new glyphs again at 32 and
+  tinted as the HUD tints it. Then `Small32` and `Small24`, the twenty-one new glyphs again at 32 and
   24 dp (the smallest sizes of a HUD glyph), and `Sites`: the Derrick League's Heavy Yard on grass
   and the Lumen Accord's Motor Hall on sand at zoom 1, each with the construction badge and the
   offline glyph side by side over its body at 32 dp, and a line that says so. A glyph is a
   `TextureRect` named by its file in PascalCase (`GlyphDeselect`) and its name a `Label`
   (`LabelDeselect`). Everything is clear of the two corner buttons and of every other thing at
-  1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the eighteen look like
+  1280 x 720, 1600 x 720 and 1280 x 960. It is where Michael judges whether the twenty-one look like
   one family with the older glyphs, and whether the badge holds on the white ceramic of the Motor
   Hall and on the concrete of the Heavy Yard.
 - **Life** (the eighth page, plan row P135, built by `art_gallery_life.gd` on first show, "Life
@@ -3010,7 +3131,7 @@ Renaming a unit or a unit type is a data change, not a reskin.
   (172.5, 151.9, 138.0; sand 185, grass 126), so every check of `tests/art` holds ("Fields", gas
   crust). (3) The full oil lake (30 at 32 px now, nearly black) **stays**, and (4) the crater
   **stays** 3 tiles across at scale 1; neither is changed.
-- **HUD v2 glyphs (P118g, asked 2026-11-02).** The eighteen new glyphs (fourteen of P118g, two of P273, two of P265a) are on the gallery's Hud page.
+- **HUD v2 glyphs (P118g, asked 2026-11-02).** The twenty-one new glyphs (fourteen of P118g, two of P273, three of P265a and P244, two of P292) are on the gallery's Hud page.
   To judge on the phone: do they read as one family with the older glyphs; does `glyph_deselect`
   (the flat selection ring cut by a slash) say "clear the selection" and not "forbidden"; does
   `glyph_all_army` (a soldier before a tank) say "every fighting unit"; and does the crane on
@@ -3072,3 +3193,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-17 | v1.42 (P519, art-director, ADR 0043 section 5): the Menu looks section: the menu screens' type variations in `theme.tres` (title, side names and cards, slider, toggle row and chips, tab chips, map card, rank badge and label, XP bar). The main menu's side names use `SideNameRenew` and `SideNameFossil` instead of a tint. |
 | 2026-11-17 | v1.43 (P249, art-director, ADR 0036 sections 2, 10 and 15): the Draft Shop (`fossil_engineering`) and the Lens Works (`renew_engineering`), the engineering centre of both factions, as 2 x 2 models with a KRITISK picture that shows the inside and no SKADET picture, their sheets, shadows and item cards, and their roster entries after the airfield ("The engineering centres" under "Buildings", Catalogue rows); `FactionDef.upgrades` filled; the four hand-written research cards `item_heavy_bombs`, `item_plated_hull`, `item_focus_bombs` and `item_glaze_hull` and the "Research cards" rule under "Generated item cards" (`test_artgen.gd` exempts them from its generated-file checks by name, `HAND_CARDS`; `test_engineering_art.gd` pins their tags, size, key band, plate and import); the research cards are not on the gallery's pages yet (`art_gallery.gd` is at the 1,000 line limit; art-director's follow-up); the sorted world's page 1 2314, 2258 and 2238 to 2367, 2279 and 2266 and page 2 1986, 1094 and 1198 to 2046, 1158 and 1244 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-17 | v1.44 (P291, art-director, ADR 0037 sections 7 and 14): the Bunk Wagon (`fossil_bunk_wagon`) and the Linecar (`renew_linecar`), the ground carriers, as 16-direction hull and shadow models with item cards and roster entries after the bomber ("The ground carriers" under "Units", Catalogue rows); the sorted world's page 1 2367, 2279 and 2266 to 2472, 2407 and 2341 and page 2 2046, 1158 and 1244 to 2264, 1264 and 1286 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-17 | v1.45 (P292, art-director, ADR 0037 sections 8 and 14): the Shot Truck (`fossil_shot_truck`) and the Seeder (`renew_seeder`), the minelayers, as 16-direction hull and shadow models with item cards and roster entries after the carriers ("The minelayers" under "Units", Catalogue rows); the four mine marks of both factions, own and known (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`, the known with the notched rim), and the glyphs `glyph_mine` and `glyph_hold` (Bar row of the Hud page); the sorted world's page 1 2472, 2407 and 2341 to 2582, 2526 and 2435 and page 2 2264, 1264 and 1286 to 2486, 1386 and 1386 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2628, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

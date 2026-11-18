@@ -24,6 +24,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"fossil_aa bld 1 hull,head",
 		"fossil_airfield bld 3 hull",
 		"fossil_engineering bld 2 hull",
+		"fossil_weld_shed bld 2 hull",
 		"rifle_squad inf 0 hull",
 		"rocket_squad inf 0 hull",
 		"light_tank veh 0 hull,turret",
@@ -33,6 +34,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"fossil_fighter veh 0 hull",
 		"fossil_bomber veh 0 hull",
 		"fossil_bunk_wagon veh 0 hull",
+		"fossil_shot_truck veh 0 hull",
 	],
 	"renew":
 	[
@@ -48,6 +50,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_aa bld 1 hull,head",
 		"renew_airfield bld 3 hull",
 		"renew_engineering bld 2 hull",
+		"renew_drone_dock bld 2 hull",
 		"renew_rifle inf 0 hull",
 		"renew_rocket inf 0 hull",
 		"renew_scout veh 0 hull,turret",
@@ -57,6 +60,7 @@ const ROSTER: Dictionary[String, PackedStringArray] = {
 		"renew_fighter veh 0 hull",
 		"renew_bomber veh 0 hull",
 		"renew_linecar veh 0 hull",
+		"renew_seeder veh 0 hull",
 	],
 }
 ## The item cards of the four upgrades, drawn by hand beside the generated ones (P249).

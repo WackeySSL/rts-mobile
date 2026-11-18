@@ -54,7 +54,7 @@ var squad_focus: PackedInt32Array = PackedInt32Array()
 var member_id: PackedInt32Array = PackedInt32Array()
 var member_squad: PackedInt32Array = PackedInt32Array()
 ## 1 while the home squad's goal is an unseen-hit shift AiArmy made (a probe: held while a member it
-## named still moves, see `AiArmy._probing`), else 0. A defence, a home focus, the return, a wave's
+## named still moves, see `AiUnseen.probing`), else 0. A defence, a home focus, the return, a wave's
 ## launch and an all-in join clear it.
 var home_shifted: int = 0
 ## The waves launched, the tick the next may start (NONE: not drawn yet) and the first tick of the
@@ -76,6 +76,13 @@ var scout_waypoint: int = 0
 var scout_trip_tick: int = NONE
 var scout_hp: int = NONE
 var scout_picked: PackedInt32Array = PackedInt32Array()
+## The close-out search (`AiSearch`, P250c): the sector the base estimate now names (NONE: none),
+## the ticks the wave has marched since the pick, the tick of the last call, and per sector 1 once
+## it was given up (`sectors_max` entries).
+var search_sector: int = NONE
+var search_spent: int = 0
+var search_last: int = NONE
+var search_skipped: PackedInt32Array = PackedInt32Array()
 ## Set by AiIntel for AiProduction (P178): the type index of the scout it wants built (a trip is
 ## due, the key rule allows it and no unit of the type lives), NONE when not wanted.
 var scout_wanted: int = NONE
@@ -168,6 +175,7 @@ static func create(def: OpponentDef) -> AiMemory:
 	memory.sector_enemy.resize(memory.sectors_max)
 	memory.scout_picked.resize(memory.sectors_max)
 	memory.scout_picked.fill(NONE)
+	memory.search_skipped.resize(memory.sectors_max)
 	return memory
 
 

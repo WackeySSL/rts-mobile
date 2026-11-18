@@ -94,10 +94,12 @@ func _run_gate(
 	return out
 
 
-## Normal's level with the gate at `gate`, no loop wishes (a refinery, a factory, a defence).
+## Normal's level with the gate at `gate`, no loop wishes (a refinery, a factory, a defence) and
+## no repair building (P283's `_add_repair_building`, live once P279 rostered the sheds).
 func _gate_level(gate: int) -> AiDifficultyDef:
 	var level: AiDifficultyDef = Rig.level_of("normal").duplicate() as AiDifficultyDef
 	level.tech_army_value_min = gate
+	level.repair_retreat_percent = 0
 	level.refineries_max = 1
 	level.factories_max = 1
 	level.defences_max = 0

@@ -20,12 +20,14 @@
 [ext_resource type="Resource" path="res://data/units/fossil_aa.tres" id="98_aa"]
 [ext_resource type="Resource" path="res://data/units/fossil_airfield.tres" id="97_airfield"]
 [ext_resource type="Resource" path="res://data/units/fossil_engineering.tres" id="94_engineering"]
+[ext_resource type="Resource" path="res://data/units/fossil_weld_shed.tres" id="90_weld"]
 [ext_resource type="Script" path="res://game/sim/defs/UpgradeDef.gd" id="93_upgrade"]
 [ext_resource type="Resource" path="res://data/upgrades/heavy_bombs.tres" id="92_up1"]
 [ext_resource type="Resource" path="res://data/upgrades/plated_hull.tres" id="91_up2"]
 [ext_resource type="Resource" path="res://data/units/fossil_fighter.tres" id="96_fighter"]
 [ext_resource type="Resource" path="res://data/units/fossil_bomber.tres" id="95_bomber"]
 [ext_resource type="Resource" path="res://data/units/fossil_bunk_wagon.tres" id="93_bunk"]
+[ext_resource type="Resource" path="res://data/units/fossil_shot_truck.tres" id="92_shot"]
 
 [resource]
 script = ExtResource("1_faction")
@@ -33,5 +35,5 @@ id = &"fossil"
 display_name = "Derrick League"
 emblem = &"emblem_fossil"
 key_triad = PackedStringArray("#FF9446", "#E8681F", "#B04B12")
-roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("94_engineering"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber"), ExtResource("93_bunk")])
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("94_engineering"), ExtResource("90_weld"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber"), ExtResource("93_bunk"), ExtResource("92_shot")])
 upgrades = Array[ExtResource("93_upgrade")]([ExtResource("92_up1"), ExtResource("91_up2")])

@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="ArtModel" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/ArtModel.gd" id="1_model"]
+
+[resource]
+script = ExtResource("1_model")
+art_id = &"fossil_weld_shed"
+faction = &"fossil"
+category = &"bld"
+footprint = 2
+silhouette = "An open steel gantry bay on four riveted posts under a shallow steel roof on a rust rim with a team fascia, a welding arm hanging in front of the fascia that swings an arc-bright torch over a dark service plate, and in front of it a rack of three tall olive gas bottles with team collars beside a slim lamp post."
+prims = PackedStringArray(
+"box hull concrete 0 0 0 1.92 1.92 0.06",
+"box hull iron 0 -0.3 0.06 1.56 0.96 0.02",
+"box hull concrete 0 0.2 0.06 1.56 0.07 0.02",
+"box hull concrete 0 -0.8 0.06 1.56 0.07 0.02",
+"box hull steel -0.78 -0.8 0.06 0.1 0.1 0.86 group=pb",
+"box hull steel 0.78 -0.8 0.06 0.1 0.1 0.86 group=pb",
+"box hull steel -0.78 0.22 0.06 0.1 0.1 0.86 group=pf1",
+"box hull steel 0.78 0.22 0.06 0.1 0.1 0.86 group=pf2",
+"box hull team -0.78 0.22 0.38 0.15 0.15 0.12 group=pf1",
+"box hull team 0.78 0.22 0.38 0.15 0.15 0.12 group=pf2",
+"box hull iron 0 -0.29 0.8 1.6 0.1 0.1 group=rail",
+"box hull iron -0.3 0.4 0.74 0.1 0.16 0.14 group=rail",
+"box hull rust 0 -0.29 0.9 1.76 1.2 0.07 group=roof",
+"wedge hull steel 0 -0.29 0.97 1.5 1.0 0.1 slope=0.7 group=roof",
+"box hull team 0 0.33 0.88 1.8 0.05 0.16 group=eave",
+"box hull team 0.9 -0.29 0.88 0.05 1.2 0.16 group=eave",
+"box anim iron -0.3 0.46 0.36 0.06 0.06 0.38 group=arm",
+"box anim steel -0.3 0.46 0.4 0.1 0.1 0.08 group=arm",
+"box anim steel -0.17 0.46 0.34 0.3 0.06 0.06 group=arm",
+"box anim iron -0.04 0.46 0.24 0.07 0.07 0.16 group=arm",
+"rod anim lamp -0.18 0.46 0.18 0.1 0.46 0.18 4 group=arc",
+"rod anim lamp -0.04 0.46 0.06 -0.04 0.46 0.22 4 group=arc",
+"sphere anim lamp -0.04 0.46 0.13 0.1 0.1 0.1 group=arc",
+"box hull steel -0.6 0.66 0.06 0.62 0.3 0.05 group=rack",
+"prism hull olive -0.78 0.66 0.11 0.15 0.15 0.5 sides=12 group=rack",
+"prism hull olive -0.6 0.66 0.11 0.15 0.15 0.5 sides=12 group=rack",
+"prism hull olive -0.42 0.66 0.11 0.15 0.15 0.5 sides=12 group=rack",
+"prism hull team -0.78 0.66 0.46 0.17 0.17 0.07 sides=12 group=cap",
+"prism hull olive -0.78 0.66 0.61 0.12 0.12 0.05 sides=8 group=rack",
+"prism hull team -0.6 0.66 0.46 0.17 0.17 0.07 sides=12 group=cap",
+"prism hull olive -0.6 0.66 0.61 0.12 0.12 0.05 sides=8 group=rack",
+"prism hull team -0.42 0.66 0.46 0.17 0.17 0.07 sides=12 group=cap",
+"prism hull olive -0.42 0.66 0.61 0.12 0.12 0.05 sides=8 group=rack",
+"box hull iron -0.6 0.78 0.3 0.62 0.03 0.04 group=rack",
+"box hull steel 0.7 0.72 0.06 0.05 0.05 0.7",
+"box hull lamp 0.7 0.72 0.76 0.08 0.06 0.05",
+"box hull rust 0.34 0.7 0.06 0.36 0.24 0.16",
+"box hull iron 0.34 0.7 0.22 0.4 0.28 0.03",
+"broken hull rust 0 -0.29 0.06 1.5 1.0 0.28 teeth=7 low=0.25 damage=2 group=k2",
+"box hull interior 0 -0.3 0.06 1.3 0.8 0.03 damage=2 group=k2",
+"wedge hull steel 0.25 -0.1 0.09 0.7 0.5 0.3 slope=-0.9 damage=2 group=k2",
+"rod hull beam -0.6 -0.5 0.1 -0.3 -0.3 0.45 4 bend=10 damage=2 group=k2",
+"rod hull rebar 0.4 -0.6 0.1 0.25 -0.45 0.4 3 bend=-15 damage=2 group=k2",
+"box hull iron -0.2 -0.6 0.09 0.5 0.12 0.06 damage=2 group=k2"
+)
+poses = PackedStringArray(
+"anim 8",
+"anim 0 arm turn y 0 -0.3 0.46 0.74",
+"anim 1 arm turn y 5 -0.3 0.46 0.74",
+"anim 2 arm turn y 9 -0.3 0.46 0.74",
+"anim 3 arm turn y 5 -0.3 0.46 0.74",
+"anim 4 arm turn y 0 -0.3 0.46 0.74",
+"anim 5 arm turn y -5 -0.3 0.46 0.74",
+"anim 6 arm turn y -9 -0.3 0.46 0.74",
+"anim 7 arm turn y -5 -0.3 0.46 0.74",
+"anim 0 arc turn y 0 -0.04 0.46 0.18",
+"anim 0 arc turn y 0 -0.3 0.46 0.74",
+"anim 1 arc turn y 30 -0.04 0.46 0.18",
+"anim 1 arc turn y 5 -0.3 0.46 0.74",
+"anim 2 arc turn y 60 -0.04 0.46 0.18",
+"anim 2 arc turn y 9 -0.3 0.46 0.74",
+"anim 3 arc turn y 15 -0.04 0.46 0.18",
+"anim 3 arc turn y 5 -0.3 0.46 0.74",
+"anim 4 arc turn y 45 -0.04 0.46 0.18",
+"anim 4 arc turn y 0 -0.3 0.46 0.74",
+"anim 5 arc turn y 75 -0.04 0.46 0.18",
+"anim 5 arc turn y -5 -0.3 0.46 0.74",
+"anim 6 arc turn y 20 -0.04 0.46 0.18",
+"anim 6 arc turn y -9 -0.3 0.46 0.74",
+"anim 7 arc turn y 50 -0.04 0.46 0.18",
+"anim 7 arc turn y -5 -0.3 0.46 0.74",
+"dmg2 0 roof hide",
+"dmg2 0 rail hide",
+"dmg2 0 eave hide",
+"dmg2 0 pf2 turn y 14 0.78 0.22 0.06",
+"dmg2 0 pb hide"
+)
+anim_ms = 110
+emitters = PackedStringArray(
+"damage 0.0 -0.29 0.4",
+"dmg_gas -0.6 0.66 0.55",
+"dmg_spark 0.34 0.7 0.2"
+)
+anim_kritisk = &"hide"

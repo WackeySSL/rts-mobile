@@ -193,6 +193,29 @@ and tests only: the Weld Shed (`fossil_weld_shed`), the Drone Dock (`renew_drone
   and radii (300, 350, 900), and the Patchers' speed (67, the Rig Hands'). The balance rows record
   them in the GDD.
 
+**Note (2026-11-18, P279 as built; the art-director).** The Weld Shed (`fossil_weld_shed`) and the Drone
+Dock (`renew_drone_dock`) are 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture, no SKADET
+picture, a shadow and an item card, and join the rosters after the engineering centres (Structures tab).
+- **Looks.** The Weld Shed is an open gantry bay with a swinging welding arm and a gas bottle rack. The Drone
+  Dock follows the GDD ("a white ceramic rack of small hexagonal drones"): a hexagonal deck on a pylon whose
+  top is a rack of seven small hexagonal drone cradles, a drone circling above it and a charging bench. It
+  has no ringed pad and no marker light: team-ringed pads mean an airfield (HOW_TO_PLAY teaches it).
+- **ADR 0037 section 14 changes.** The section gave the loops 6 (Weld Shed) and 4 (Drone Dock) frames; both
+  ship 8, so each closes on a whole swing or ring (`test_repair_building_art.gd` pins the closure). `LIFTS`
+  in `test_building_anim.gd` holds the two loops: a swing and a ring ride are not a turn by a fixed step.
+- **Stacking.** The branch stacks on P292 and carries P278, P282 and P283 (cherry-picked from main, which
+  P292's base did not have yet), so the AI picks the repair building by role.
+- **Shipped matches change.** Normal and Hard now build a repair building
+  (`AiEconomy._add_repair_building`, found by role once rostered), so the seeded smoke matches play
+  differently: on the wave-19 combined tree (after P250, P250b and P300) the pinned stale and
+  expired drops of `test_smoke_run.gd` moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443] to
+  [2, 2, 500], [6, 4, 527] and [0, 0, 432] (dropped, expired, sent).
+- **HOW_TO_PLAY.** The Buildings rows are written here (the Repair order's Teach row is P282's); the sheds
+  leave `test_not_in_a_roster_yet` (now `test_the_sheds_are_rostered_and_the_medics_not_yet`: P280 deletes
+  the rest) and the skip lists lose the two building ids.
+- **Atlas pins** (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2582, 2526, 2435 to
+  2628, 2552, 2502; page 2 2486, 1386, 1386 to 2504, 1386, 1408 (inside the 60 rows allocated).
+
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and
 **P290 writes no HOW_TO_PLAY row** (its row's "HOW_TO_PLAY Units, Orders, Fog rows" move to the rows
@@ -206,7 +229,9 @@ below). Each row that rosters or draws a thing adds its rows, written exactly as
   they had; a dying Bunk Wagon ejects its squads at `carry_eject_percent`, a Linecar's die.
 - **P293:** the sweep row (a tap on a found mark) and the Fog row for enemy mines (found by
   `detect_milli`, the record goes when the cell is seen without the mine, blast only where seen).
-- **P294:** the Mine order row (cap, cost, arm time, own units never trigger).
+- **P294:** the Mine order row (cap, cost, arm time, own units never trigger). (2026-11-18, P293) P293's
+  HOW_TO_PLAY "Look at your own mines" row already says the arm time and that own units never set a
+  mine off, so P294's row must not repeat them.
 - Starting values with no source in the GDD or ADR 0037 (the balance rows record them in the GDD):
   the minelayers' price, hit points, speed and armour class, the mines' damage and armour percents,
   and every build time, sight and radius of the four units.

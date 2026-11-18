@@ -316,21 +316,30 @@ func test_back_opens_the_dev_menu() -> void:
 	assert_str(tree.current_scene.scene_file_path).is_equal(DevRoutes.DEV_MENU_SCENE)
 
 
-## No ad on the result screen (admob-policy): none of its scripts names an ad service, and the
-## row leaves no hook for one.
-func test_the_screen_has_no_ad_and_no_hook_for_one() -> void:
+## No banner, no interstitial and no ad call on the result screen (admob-policy), narrowed by
+## P432: the one rewarded offer is the `DoubleXpOffer` in the `OfferSlot`. The screen's scripts name
+## no ad service and no banner; only the offer's script knows the rewarded flow, and it has no
+## banner or interstitial either.
+func test_the_screen_has_no_banner_no_interstitial_and_only_the_double_xp_offer() -> void:
 	for path: String in [
 		"res://game/ui/ResultScreen.gd",
 		"res://game/ui/ModalFrame.gd",
-		"res://game/ui/ConfirmDialog.gd"
+		"res://game/ui/ConfirmDialog.gd",
+		"res://game/ui/ads/DoubleXpOffer.gd"
 	]:
 		var text: String = FileAccess.get_file_as_string(path).to_lower()
-		for word: String in ["adservice", "admob", "interstitial", "rewarded"]:
+		for word: String in [
+			"adservice", "admob", "interstitial", "adbanner", "show_banner", "show_rewarded"
+		]:
+			if path.ends_with("DoubleXpOffer.gd") and word == "adservice":
+				continue  # The base offer's typed service handle.
 			(
 				assert_bool(text.contains(word))
 				. override_failure_message("%s: %s" % [path, word])
 				. is_false()
 			)
+	var screen: String = FileAccess.get_file_as_string("res://game/ui/ResultScreen.gd")
+	assert_bool(screen.contains("DoubleXpOffer.new()")).is_true()
 
 
 ## The screen's panel, emblem and buttons inside the safe rect, the buttons at least 48 dp each way
