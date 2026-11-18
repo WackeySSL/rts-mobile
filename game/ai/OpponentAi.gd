@@ -40,6 +40,8 @@ var repairer: AiRepair = null
 var holder: AiHold = null
 ## The superweapon manager (P181), slot INTEL after the intel run (`strikes` is the counter).
 var striker: AiStrikes = null
+## The mine manager (P295), slot INTEL after the strikes: lays, sweeps and scouts with minelayers.
+var miner: AiMines = null
 
 ## The level and def, copied into ints. A manager copies the values it reads itself when it is made
 ## (plan row of ADR 0030 section 6), so only what the controller uses is here.
@@ -72,6 +74,7 @@ static func create(
 	ai.repairer = AiRepair.create(def, chosen)
 	ai.holder = AiHold.create(def, chosen)
 	ai.striker = AiStrikes.create(def, chosen, player_id)
+	ai.miner = AiMines.create(def, chosen)
 	return ai
 
 
@@ -127,7 +130,7 @@ func _run_army_slot(view: PlayerView, out: Array[Command]) -> void:
 	holder.run(view, memory, out)
 
 
-## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`.
+## Slot 2: P177 adds `AiIntel`, P181 `AiStrikes`, P295 `AiMines`.
 func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	intel.run(view, memory, rng, out)
 	work += intel.passes
@@ -135,3 +138,4 @@ func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	striker.run(view, memory, rng, out)
 	work += striker.passes
 	strikes = striker.strikes
+	miner.run(view, memory, out)

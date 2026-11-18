@@ -26,6 +26,8 @@ const _OFF_BY_DEFAULT: Dictionary[String, int] = {
 	"tech_army_value_min": 0,
 	"hold_in_waves": 0,
 	"search_hold_ticks": 0,
+	"mine_target": 0,
+	"mine_layers": 0,
 }
 const _AIR_FIELDS: Array[String] = [
 	"aa_type", "fighter_type", "bomber_type", "air_weights", "fighter_seen_weight"
@@ -166,7 +168,9 @@ func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:
 	# The air and tech fields default off (P250), so the frozen `perf_ai` files play as before.
 	var skip: Array[String] = ["id", "build_orders"]
 	skip.append_array(_AIR_FIELDS)
+	skip.append("mine_layer_type")  # Off by default (P295), like the air types.
 	_assert_defaults_equal(OpponentDef.new(), Rig.def_of("fossil"), skip)
+	assert_str(String(OpponentDef.new().mine_layer_type)).is_empty()
 	var fresh: OpponentDef = OpponentDef.new()
 	assert_array([fresh.aa_type, fresh.fighter_type, fresh.bomber_type]).is_equal([&"", &"", &""])
 	assert_array(Array(fresh.air_weights)).is_equal([0, 0, 0, 0, 0, 0])

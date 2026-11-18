@@ -64,6 +64,14 @@ const TIERS: int = 3
 ## The building slots of `PlacementSpiral` round the Headquarters that the economy asks about
 ## (ring 1 first); the search wraps round them across thinks.
 @export var spiral_slots: int = 64
+## The mines (ADR 0037 section 8, plan row P295): the faction's minelayer type (an empty id
+## turns `AiMines` off, so a def that names none, the frozen files, plays as before), the tiles
+## between two mines on the route, how far from the route a known enemy mine is still swept, and
+## the tiles between two waypoints of the scout layer.
+@export var mine_layer_type: StringName = &""
+@export var mine_spacing_tiles: int = 4
+@export var mine_sweep_reach_tiles: int = 4
+@export var mine_scout_leg_tiles: int = 8
 ## The least enemy value a superweapon shot must hit (credits).
 @export var strike_min_value: int = 3000
 
