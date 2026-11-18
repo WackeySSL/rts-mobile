@@ -207,8 +207,9 @@ picture, a shadow and an item card, and join the rosters after the engineering c
   P292's base did not have yet), so the AI picks the repair building by role.
 - **Shipped matches change.** Normal and Hard now build a repair building
   (`AiEconomy._add_repair_building`, found by role once rostered), so the seeded smoke matches play
-  differently: the pinned stale and expired drops of `test_smoke_run.gd` moved from [8, 7, 475],
-  [10, 8, 515] and [1, 1, 366] to [3, 3, 545], [7, 6, 492] and [0, 0, 405] (dropped, expired, sent).
+  differently: on the wave-19 combined tree (after P250, P250b and P300) the pinned stale and
+  expired drops of `test_smoke_run.gd` moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443] to
+  [2, 2, 500], [6, 4, 527] and [0, 0, 432] (dropped, expired, sent).
 - **HOW_TO_PLAY.** The Buildings rows are written here (the Repair order's Teach row is P282's); the sheds
   leave `test_not_in_a_roster_yet` (now `test_the_sheds_are_rostered_and_the_medics_not_yet`: P280 deletes
   the rest) and the skip lists lose the two building ids.
