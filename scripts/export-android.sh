@@ -368,8 +368,10 @@ if [ "$EXPORT_MODE" = release ]; then
   ! grep -q 'application-debuggable' <<<"$badging" || die 1 "the APK is debuggable (aapt2 dump badging shows application-debuggable)"
   ! grep -Eq 'debuggable\(0x0101000f\)=.*(true|0xffffffff)' <<<"$manifest" || die 1 "the manifest is debuggable (aapt2 dump xmltree)"
   grep -qx 'assets/project.binary' <<<"$listing" || die 1 "the APK lacks assets/project.binary"
-  features="$(unzip -p "$apk" assets/project.binary | strings | grep -A1 -x _custom_features || true)"
-  # The value is the preset's comma list (dev_menu,sim_kernels,perf_boot), so test each feature on its own line.
+  # project.binary stores the key and then the value's 4-byte length, so strings joins that length to the key when it
+  # is a printable byte (the 30-character list dev_menu,sim_kernels,perf_boot encodes as 40, '('): match the key as a
+  # prefix. The value is the preset's comma list, so test each feature on its own line.
+  features="$(unzip -p "$apk" assets/project.binary | strings | grep -A1 -E '^_custom_features' || true)"
   tr ',' '\n' <<<"$features" | grep -qx dev_menu || die 1 "the APK lacks the dev_menu custom feature (preset 'Android perf', custom_features)"
   unzip -p "$template_dir/android_release.apk" "$abi_dir/libgodot_android.so" | cmp -s - "$work/$abi_dir/libgodot_android.so" ||
     die 1 "the APK's libgodot_android.so is not the one of the release template ($template_dir/android_release.apk)"

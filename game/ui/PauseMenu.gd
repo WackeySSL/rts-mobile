@@ -71,8 +71,6 @@ const SIDES: Dictionary[StringName, Dictionary] = {
 		&"chip": &"PauseChipFossil"
 	},
 }
-const LIVE_META: StringName = &"pause_menus_live"  ## On the tree: PauseMenus in it.
-const QUIT_META: StringName = &"pause_menus_quit_before"  ## `quit_on_go_back` before the first.
 const FALLBACK_SIDE: StringName = &"renew"
 
 @export var runner: MatchRunner
@@ -117,29 +115,6 @@ var _surrendered_in: int = -1  ## match_serial of the match a SURRENDER was sent
 var _foot: MarginContainer  ## The foot banner's host, freed with it; null while no band exists.
 var _band: AdBannerBand
 var _foot_check: int = 0  ## Bumped by each placement, so an older awaited check stands down.
-
-
-func _enter_tree() -> void:
-	# Back opens this menu, so the app must not also quit on it.
-	# TODO(P533): project-wide false makes this redundant
-	var tree: SceneTree = get_tree()
-	var live: int = int(tree.get_meta(LIVE_META, 0))
-	if live == 0:
-		tree.set_meta(QUIT_META, tree.quit_on_go_back)
-	tree.set_meta(LIVE_META, live + 1)
-	tree.quit_on_go_back = false
-
-
-## The value goes back when the last menu leaves the tree (the match scene ends; the next scene
-## sets its own: MenuStack switches it off for the menus). Counted, because a scene freed late can
-## overlap its successor, and the second one must not record the first one's false. (Not static
-## vars: a static in this class makes the editor import report leaked resources at exit.)
-func _exit_tree() -> void:
-	var tree: SceneTree = get_tree()
-	var live: int = maxi(int(tree.get_meta(LIVE_META, 0)) - 1, 0)
-	tree.set_meta(LIVE_META, live)
-	if live == 0:
-		tree.quit_on_go_back = bool(tree.get_meta(QUIT_META, true))
 
 
 func _ready() -> void:

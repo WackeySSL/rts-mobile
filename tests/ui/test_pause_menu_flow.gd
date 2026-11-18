@@ -320,12 +320,6 @@ func test_the_new_controls_fit_and_are_big_enough_at_the_six_sizes() -> void:
 		_state.close(HudState.Unfold.PAUSE)
 
 
-func test_the_menu_switches_quit_on_go_back_off_while_in_the_tree() -> void:
-	get_tree().quit_on_go_back = true
-	await _open_main()
-	assert_bool(get_tree().quit_on_go_back).is_false()
-
-
 func test_the_chips_read_the_audio_steps_again_when_the_settings_overlay_closes() -> void:
 	await _open_main()
 	_menu.routes = MenuRoutes.new()

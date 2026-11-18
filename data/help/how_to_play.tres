@@ -220,11 +220,17 @@ id = &"winning-destroy"
 title = "How a match ends"
 body = "Destroy the enemy's buildings and units to win. Lose yours and you lose."
 
+[sub_resource type="Resource" id="e2dx"]
+script = ExtResource("3_ent")
+id = &"winning-double-xp"
+title = "Double XP"
+body = "After a match that paid XP you may tap the offer on the result screen to watch an ad that multiplies that match's XP. It only shows when an ad is ready, once per match, and nothing plays unless you tap."
+
 [sub_resource type="Resource" id="s17"]
 script = ExtResource("2_sec")
 id = &"winning"
 title = "Winning"
-entries = Array[ExtResource("3_ent")]([SubResource("e19")])
+entries = Array[ExtResource("3_ent")]([SubResource("e19"), SubResource("e2dx")])
 
 [sub_resource type="Resource" id="e20"]
 script = ExtResource("3_ent")
