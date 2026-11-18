@@ -41,7 +41,7 @@ const MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
 const PLACEMENT_POST_MATCH: StringName = &"post_match"
 const SEED_BYTES: int = 4
 const DEFAULT_LEVEL: StringName = &"normal"
-const LIFE_SETTINGS: String = "res://data/life_settings.tres"
+const LIFE: LifeSettings = preload("res://data/life_settings.tres")
 
 ## The ad facade; tests swap in a fake with the same methods.
 var ads: Node = null
@@ -55,6 +55,8 @@ var switch_to_menu: Callable = _switch_to_menu
 ## Returns the Signal awaited after `match_loading`; tests drive their own.
 var loading_frame: Callable = _next_frame
 
+## Held here so the cached resource the views share stays alive (a const's field is read-only).
+var _life: LifeSettings = LIFE
 var _main: Node = null
 var _runner: MatchRunner = null
 var _setup: MatchSetup = null
@@ -71,7 +73,9 @@ var _pending_screen: StringName = &""
 func _ready() -> void:
 	ads = AdService
 	MenuPrefs.apply_audio(AudioService)  # AudioService loads before SaveService (P526).
-	apply_reduced()
+	# The main scene (boot.tscn, whose root is the IntroPlayer) entered the tree before this
+	# autoload's _ready, so node_added has missed it; LifeSettings is written at a match start only.
+	apply_reduced_to(get_tree().current_scene)
 	get_tree().node_added.connect(apply_reduced_to)
 
 
@@ -80,12 +84,11 @@ func _exit_tree() -> void:
 
 
 ## Puts the saved Reduced effects switch on the shared `LifeSettings` the match views read (they
-## all use this one cached resource). Runs at boot and before each match is built, so a change in
-## Settings reaches the next match and never one that runs (P526b).
+## all use this one cached resource). Runs before each match is built, never at boot (a headless
+## run must not write the shared resource), so a change in Settings reaches the next match and
+## never one that runs (P526b).
 func apply_reduced() -> void:
-	var life: LifeSettings = load(LIFE_SETTINGS) as LifeSettings
-	if life != null:
-		life.reduced = MenuPrefs.reduced_effects()
+	_life.reduced = MenuPrefs.reduced_effects()
 
 
 ## The running match's runner, or null outside a match.
@@ -250,8 +253,9 @@ func _begin(setup: MatchSetup) -> Error:
 	return error
 
 
-## Every `IntroPlayer` and `MenuStack` that enters the tree takes the saved switch before its
-## `_ready` (a node that set `reduced` on itself stays on); any other node is left alone.
+## The boot's main scene and every `IntroPlayer` and `MenuStack` that enters the tree take the
+## saved switch before its `_ready` (a node that set `reduced` on itself stays on); any other node
+## is left alone.
 func apply_reduced_to(node: Node) -> void:
 	if node is IntroPlayer:
 		(node as IntroPlayer).reduced = (node as IntroPlayer).reduced or MenuPrefs.reduced_effects()

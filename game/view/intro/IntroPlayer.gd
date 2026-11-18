@@ -32,8 +32,8 @@ var clock: Callable = Time.get_ticks_msec
 var loader: IntroLoader = IntroLoader.new()
 ## Awaited while the intro plays; always finishes. Invalid means there is no ad service.
 var consent: Callable = Callable()
-## Reduced effects: a fade instead of the drive. TODO(P526): P526 stores the saved switch; the boot
-## reads it and sets this field before it adds the player to the tree.
+## Reduced effects: a fade instead of the drive. `MenuFlow` sets it from the saved switch before
+## this node's `_ready` (the view reads no `MenuPrefs`).
 var reduced: bool = false
 var log_line: Callable = print
 ## `has_feature` and `change_scene` are test seams of the perf APK's start (see PERF_BOOT_FEATURE).

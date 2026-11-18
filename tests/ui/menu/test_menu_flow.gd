@@ -169,6 +169,29 @@ func test_the_saved_switch_reaches_intro_and_stack_nodes_and_life_settings() -> 
 	life.reduced = life_before
 
 
+## The boot scene is in the tree before any autoload's _ready: the flow reads it as current_scene.
+func test_the_cold_start_scene_takes_the_saved_switch_and_life_settings_stay_untouched() -> void:
+	var life: LifeSettings = load(LIFE_PATH) as LifeSettings
+	var life_before: bool = life.reduced
+	life.reduced = false
+	MenuPrefs.set_reduced_effects(true)
+	var tree: SceneTree = get_tree()
+	var scene_before: Node = tree.current_scene
+	var boot: MenuStack = MenuStack.new()  # Stands for the boot scene's root.
+	tree.root.add_child(boot)
+	tree.current_scene = boot
+	var cold: Node = (_flow.get_script() as GDScript).new()
+	add_child(cold)  # Its _ready is the boot path.
+	assert_bool(boot.reduced).is_true()
+	assert_bool(life.reduced).is_false()  # Only a match start writes it.
+	tree.current_scene = scene_before
+	tree.root.remove_child(boot)
+	boot.free()
+	remove_child(cold)
+	cold.free()
+	life.reduced = life_before
+
+
 func test_the_scene_is_built_a_frame_after_match_loading() -> void:
 	var frame: Signal = get_tree().process_frame
 	_flow.loading_frame = func() -> Signal: return frame

@@ -257,11 +257,13 @@ func test_settings_is_disabled_without_a_route_and_opens_with_one() -> void:
 
 ## Michael's rule (2026-11-17): Settings opened from the pause menu, in its HelpOverlay, builds
 ## neither the PurchaseSlot nor the Privacy row. The rig's flow is a fake, so the real
-## `MenuFlow.current_runner()` is null here: the screen's `in_match` is forced true.
+## `MenuFlow.current_runner()` is null here (as in a dev-menu match): the PauseMenu itself must
+## tell the default route's screen it is in battle, so the test forces nothing.
 func test_settings_from_the_pause_menu_in_battle_has_no_purchase_slot_or_privacy_row() -> void:
 	await _open_main()
 	_menu.routes = MenuRoutes.new()
-	_menu.routes.register(MenuRoutes.SETTINGS, _in_battle_settings)
+	_menu.routes.register(MenuRoutes.SETTINGS, SettingsScreen.new)  # The default route.
+	assert_object(MenuFlow.current_runner()).is_null()
 	await _open_menu()
 	_press(&"SettingsButton")
 	await await_idle_frame()
@@ -272,13 +274,8 @@ func test_settings_from_the_pause_menu_in_battle_has_no_purchase_slot_or_privacy
 	assert_object(screen.privacy_button).is_null()
 	assert_object(screen.purchase_slot).is_null()
 	assert_object(overlay.find_child("PurchaseSlot", true, false)).is_null()
-	assert_object(screen.find_child("PRIVACY OPTIONS", true, false)).is_null()
-
-
-func _in_battle_settings() -> MenuScreen:
-	var screen: SettingsScreen = SettingsScreen.new()
-	screen.in_match = func() -> bool: return true
-	return screen
+	for button: Node in screen.find_children("*", "Button", true, false):
+		assert_str((button as Button).text).is_not_equal(SettingsScreen.PRIVACY)
 
 
 ## A lesson through the real MenuFlow: Leave tutorial reaches the menu and no ad method runs.
