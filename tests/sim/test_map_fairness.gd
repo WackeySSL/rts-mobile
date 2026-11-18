@@ -8,25 +8,26 @@ extends GdUnitTestSuite
 const Rig: GDScript = preload("res://tests/sim/support/kestrel_rig.gd")
 const SCENARIO_SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
 ## Per map: the `map` path, the `stem` of its four scenario files (`<stem><suffix>.tres`) and
-## `river_rows`, the first and last row of a river or ridge across the map (empty = none) with the
-## number of `crossings` every such row must have, each `crossing_width` tiles wide or more.
+## `band_rows`, the first and last row of a river or ridge across the map (empty = none) with the
+## number of `crossings` every such row must have, each `crossing_width` tiles wide or more (a
+## self-turned pass in the middle is an even width).
 const CASES: Array[Dictionary] = [
 	{
 		"map": "res://data/maps/kestrel_flats.tres",
 		"stem": "res://data/scenarios/skirmish_kestrel_flats",
-		"river_rows": [],
+		"band_rows": [],
 	},
 	{
 		"map": "res://data/maps/heron_fords.tres",
 		"stem": "res://data/scenarios/skirmish_heron_fords",
-		"river_rows": [28, 31],
+		"band_rows": [28, 31],
 		"crossings": 2,
 		"crossing_width": 5,
 	},
 	{
 		"map": "res://data/maps/curlew_crags.tres",
 		"stem": "res://data/scenarios/skirmish_curlew_crags",
-		"river_rows": [26, 29],
+		"band_rows": [26, 29],
 		"crossings": 3,
 		"crossing_width": 5,
 	},
@@ -173,7 +174,7 @@ func test_both_bases_reach_each_other_by_ground() -> void:
 func test_a_river_is_passable_only_at_its_crossings() -> void:
 	var checked: int = 0
 	for spec: Dictionary in CASES:
-		var span: Array = spec["river_rows"] as Array
+		var span: Array = spec["band_rows"] as Array
 		if span.is_empty():
 			continue
 		checked += 1

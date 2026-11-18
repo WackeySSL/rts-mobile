@@ -123,9 +123,10 @@ func test_locks_follow_the_rank() -> void:
 	assert_bool(_screen._levels[&"normal"].disabled).is_false()
 	assert_bool(_screen._levels[&"hard"].disabled).is_true()
 	assert_str(_screen._levels[&"hard"].text).contains("RANK 3")
-	assert_str(String(_screen._map_cards[&"map_2"].theme_type_variation)).is_equal(
-		"MenuMapCardLocked"
-	)
+	for locked: StringName in [&"map_2", &"map_3"]:
+		assert_str(String(_screen._map_cards[locked].theme_type_variation)).is_equal(
+			"MenuMapCardLocked"
+		)
 	assert_str(String(_screen._map_cards[&"kestrel_flats"].theme_type_variation)).is_equal(
 		"MenuMapCardOn"
 	)
@@ -240,7 +241,7 @@ func test_the_catalog_lists_all_maps_and_pins_their_scenario_files() -> void:
 		"res://data/maps/heron_fords.tres",
 		"res://data/maps/curlew_crags.tres"
 	]
-	for index: int in 3:
+	for index: int in stems.size():
 		var on_disk: Array[String] = []
 		for file_name: String in DirAccess.get_files_at("res://data/scenarios"):
 			if file_name.begins_with(stems[index]) and file_name.ends_with(".tres"):

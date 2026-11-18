@@ -129,6 +129,21 @@ func test_each_side_starts_with_a_headquarters_and_two_rifle_squads_of_its_facti
 			assert_int(world.credits[player]).is_equal(world.start_credits)
 
 
+func test_every_spawn_uses_its_seats_faction_on_all_checked_scenarios() -> void:
+	for path: String in _checked_paths():
+		var scenario: ScenarioDef = load(path) as ScenarioDef
+		var seats: Dictionary[int, int] = {}
+		for spawn: SpawnDef in scenario.spawns:
+			var faction: FactionDef = scenario.factions[spawn.owner]
+			assert_str(String(spawn.unit.faction)).override_failure_message(path).is_equal(
+				String(faction.id)
+			)
+			seats[spawn.owner] = spawn.count + seats.get(spawn.owner, 0)
+		# A Headquarters and two rifle squads of the seat's faction, for both seats.
+		assert_int(seats[1]).override_failure_message(path).is_equal(3)
+		assert_int(seats[2]).override_failure_message(path).is_equal(3)
+
+
 func test_the_two_sides_are_a_half_turn_of_each_other() -> void:
 	for path: String in Rig.PATHS:
 		var world: World = Rig.world(path)
