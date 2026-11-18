@@ -36,6 +36,6 @@ research_floor = 0
 ; Starting values for the Phase 4b balance run (P250b), no source yet.
 tech_army_value_min = 0
 hold_in_waves = 0
-sweep_hold_ticks = 0
+search_hold_ticks = 0
 commands_per_think_max = 3
 income_percent = 100

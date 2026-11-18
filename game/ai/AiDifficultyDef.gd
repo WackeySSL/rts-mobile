@@ -80,9 +80,10 @@ extends Resource
 @export var hold_in_waves: int = 0
 ## Close-out (plan row P250c; off by default like the fields above, so the frozen files play as
 ## before): while no enemy producer is seen or remembered and the mirror estimate has been explored,
-## `AiSweep` sends the wave to the nearest unexplored sector of the enemy half; a sector it has not
-## explored this many ticks after the pick is given up. 0 = off. Easy does not search.
-@export var sweep_hold_ticks: int = 0
+## `AiSearch` sends the wave to the nearest unexplored sector of the enemy half; a sector the wave
+## has not explored after marching this many ticks since the pick is given up. 0 = off. Easy does
+## not search.
+@export var search_hold_ticks: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
