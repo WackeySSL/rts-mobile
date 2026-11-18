@@ -212,7 +212,7 @@ picture, a shadow and an item card, and join the rosters after the engineering c
   leave `test_not_in_a_roster_yet` (now `test_the_sheds_are_rostered_and_the_medics_not_yet`: P280 deletes
   the rest) and the skip lists lose the two building ids.
 - **Atlas pins** (cross-faction, Derrick League mirror, Lumen Accord mirror): page 1 2582, 2526, 2435 to
-  2629, 2552, 2502; page 2 2486, 1386, 1386 to 2504, 1386, 1408 (inside the 60 rows allocated).
+  2628, 2552, 2502; page 2 2486, 1386, 1386 to 2504, 1386, 1408 (inside the 60 rows allocated).
 
 **Note (2026-11-15, P290 as built; the lead's decision after the review, as P26bw did for P242, P247 and
 P264).** P290 ships data and tests only: the four units and two mines are not in the rosters, and

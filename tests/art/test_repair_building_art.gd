@@ -170,3 +170,39 @@ func test_the_weld_sheds_arm_stays_below_the_fascia_and_in_front_of_it() -> void
 			fascia - 0.1
 		)
 		assert_float(prim.aabb().position.y).override_failure_message(prim.line).is_greater(0.3)
+
+
+## The spark rides the torch: in every frame the centre of its primitives is within 0.04 tile (5 px
+## at 2x) of the torch tip's bottom centre across the ground and no higher than the tip's bottom
+## (so the torch box, which is drawn over it, never hides it); the arm swings it about the torch,
+## which is why the spin is written before the swing in the model.
+func test_the_weld_sheds_spark_sits_at_the_torch_tip_in_every_frame() -> void:
+	var shed: ArtModel = load(MODEL % ["fossil", "fossil_weld_shed"]) as ArtModel
+	for frame: int in 8:
+		var torch: AABB = AABB()
+		var spark: Array[AABB] = []
+		for prim: ArtPrim in shed.frame_prims(&"anim", frame):
+			if prim.group == &"arc":
+				spark.append(prim.aabb())
+			elif prim.material == &"iron" and prim.size.z > 0.1 and prim.size.x < 0.1:
+				if prim.aabb().position.z > 0.2 and prim.aabb().position.z < 0.3:
+					torch = prim.aabb()
+		(
+			assert_float(torch.size.x)
+			. override_failure_message("no torch in frame %d" % frame)
+			. is_greater(0.0)
+		)
+		var centre: Vector3 = Vector3.ZERO
+		var top: float = 0.0
+		for box: AABB in spark:
+			centre += box.get_center() / float(spark.size())
+			top = maxf(top, box.end.z)
+		var tip: Vector3 = Vector3(torch.get_center().x, torch.get_center().y, torch.position.z)
+		var label: String = "frame %d: spark %s, torch %s" % [frame, centre, tip]
+		(
+			assert_float(Vector2(centre.x, centre.y).distance_to(Vector2(tip.x, tip.y)))
+			. override_failure_message(label)
+			. is_less_equal(0.04)
+		)
+		assert_float(top).override_failure_message(label).is_less_equal(torch.position.z + 0.02)
+		assert_float(centre.z).override_failure_message(label).is_less(torch.position.z)

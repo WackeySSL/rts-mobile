@@ -74,13 +74,13 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## mirror; page 2 has left 1098, 2198 and 2198 (every page under the 3584 budget).
 ## P279 (the Weld Shed and the Drone Dock: 2 x 2 hull, an 8-frame `anim` loop cropped to the moving
 ## element, KRITISK patch and shadow each, no head frames) moved page 1 from 2582, 2526 and 2435
-## to the pins below (+47, +26 and +67 rows) and page 2 from 2486, 1386 and 1386 (+18, 0 and +22:
+## to the pins below (+46, +26 and +67 rows) and page 2 from 2486, 1386 and 1386 (+18, 0 and +22:
 ## the shadows fit the free width of shelf 1, under the 60 rows the plan allocated). Page 1 has
-## left 955 rows on the cross-faction page, 1032 on the Derrick League mirror and 1082 on the Lumen
+## left 956 rows on the cross-faction page, 1032 on the Derrick League mirror and 1082 on the Lumen
 ## Accord mirror; page 2 has left 1080, 2198 and 2176.
-## P279: 2582 + 47; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
+## P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105; P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_CROSS: int = 2629
+const TODAY_CROSS: int = 2628
 ## P279: 2526 + 26; P292: 2407 + 119; P291: 2279 + 128; P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
 const TODAY_MIRROR_DERRICK: int = 2552
