@@ -63,36 +63,117 @@ func _strike(kind: int, at: Vector2i, owner_id: int, landing: int = 0) -> Packed
 	return PackedInt32Array([World.Event.STRIKE, 7, at.x, at.y, kind, owner_id, landing, 0])
 
 
-func test_a_rupture_launch_sounds_when_own_or_seen_and_not_in_the_dark() -> void:
+## The rupture of player 2 in the air (landing tick `landing`, 0 for none) at `at`, in the snapshot
+## the next `_deliver` shows. Sizes follow the snapshot's own players.
+func _air(landing: int, at: Vector2i = SEEN) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	snap.strike_tick = PackedInt32Array([0, 0, landing])
+	snap.strike_x = PackedInt32Array([0, 0, at.x])
+	snap.strike_y = PackedInt32Array([0, 0, at.y])
+
+
+## Sets what player 1's fog shows of the cell of `at`.
+func _light(at: Vector2i, lit: bool) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var fog: FogGrid = snap.fog
+	fog.visible[snap.cell_of(at.x, at.y)] = 1 if lit else 0
+
+
+## Puts the silo of the strike events (unit id 7, one of the tanks) at `at`.
+func _silo(at: Vector2i) -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var row: int = snap.index_of(7)
+	snap.pos_x[row] = at.x
+	snap.pos_y[row] = at.y
+
+
+func _quiet() -> void:
+	_deliver(PackedInt32Array())
+
+
+func test_a_rupture_launch_sounds_at_its_silo_when_own_or_seen() -> void:
+	_silo(SEEN)
 	_deliver(_strike(Strike.Kind.RUPTURE, DARK, 2))
-	assert_int(_spy.plays).is_equal(0)
-	_deliver(_strike(Strike.Kind.RUPTURE, SEEN, 2))
 	assert_array(_spy.cues).is_equal([LAUNCH])
-	_deliver(_strike(Strike.Kind.RUPTURE, DARK, 1))
+	assert_that(_spy.positions[0]).is_equal(IsoProjection.ground_to_px(SEEN.x, SEEN.y))
+	_silo(DARK)
+	_deliver(_strike(Strike.Kind.RUPTURE, SEEN, 2))
+	assert_int(_spy.plays).is_equal(1)
+	_deliver(_strike(Strike.Kind.RUPTURE, SEEN, 1))
 	assert_array(_spy.cues).is_equal([LAUNCH, LAUNCH])
 
 
-func test_the_landing_sounds_at_its_tick_even_in_a_tick_without_events() -> void:
-	_deliver(_strike(Strike.Kind.RUPTURE, SEEN, 2, _tick + 4))
-	assert_array(_spy.cues).is_equal([LAUNCH])
-	for _step: int in 2:
-		_deliver(PackedInt32Array())
-	assert_int(_spy.plays).is_equal(1)
-	_deliver(PackedInt32Array())
-	assert_array(_spy.cues).is_equal([LAUNCH, LAND])
-	_deliver(PackedInt32Array())
-	assert_int(_spy.plays).is_equal(2)
-
-
-func test_an_enemy_landing_in_the_dark_is_silent_and_an_own_one_sounds() -> void:
-	_deliver(_strike(Strike.Kind.RUPTURE, DARK, 2, _tick + 2))
-	_deliver(PackedInt32Array())
-	_deliver(PackedInt32Array())
+func test_the_landing_sounds_in_the_tick_it_lands_even_without_events() -> void:
+	_air(_tick + 4)
+	_quiet()
+	_quiet()
 	assert_int(_spy.plays).is_equal(0)
-	_deliver(_strike(Strike.Kind.RUPTURE, DARK, 1, _tick + 2))
-	_deliver(PackedInt32Array())
-	_deliver(PackedInt32Array())
-	assert_array(_spy.cues).is_equal([LAUNCH, LAND])
+	_air(0)
+	_quiet()
+	assert_array(_spy.cues).is_equal([LAND])
+	_quiet()
+	assert_int(_spy.plays).is_equal(1)
+
+
+func test_an_enemy_landing_that_kills_its_only_seer_still_booms() -> void:
+	_light(DARK, true)
+	_air(_tick + 4, DARK)
+	_quiet()
+	_light(DARK, false)  # The landing's own kills took the sight with them.
+	_air(0, DARK)
+	_quiet()
+	assert_array(_spy.cues).is_equal([LAND])
+
+
+func test_an_enemy_landing_in_the_dark_is_silent() -> void:
+	_air(_tick + 4, DARK)
+	_quiet()
+	_air(0, DARK)
+	_quiet()
+	assert_int(_spy.plays).is_equal(0)
+
+
+func test_a_landing_during_mute_is_dropped_not_deferred() -> void:
+	_air(_tick + 4)
+	_quiet()
+	_spy.muted = true
+	_air(0)
+	_quiet()
+	_spy.muted = false
+	_quiet()
+	_deliver(_strike(Strike.Kind.BLACKOUT, SEEN, 2))
+	assert_array(_spy.cues).is_equal([BLACKOUT])
+
+
+func test_a_rupture_already_in_the_air_at_the_first_snapshot_booms_when_it_lands() -> void:
+	_make(TABLE)  # A restored match: this node's first look finds the rupture in the air.
+	_air(_tick + 6)
+	_quiet()
+	_air(0)
+	_quiet()
+	assert_array(_spy.cues).is_equal([LAND])
+
+
+func test_a_restart_clears_the_pending_landings() -> void:
+	_air(_tick + 4)
+	_quiet()
+	_runner.snapshot.match_serial += 1
+	_air(0)
+	_quiet()
+	assert_int(_spy.plays).is_equal(0)
+
+
+func test_a_tick_with_a_landing_pending_makes_no_object() -> void:
+	_silo(SEEN)
+	var events: PackedInt32Array = _strike(Strike.Kind.RUPTURE, SEEN, 2, 99999)
+	_air(99999)
+	for _warm: int in 3:
+		_deliver(events)
+	var before: int = roundi(Performance.get_monitor(Performance.OBJECT_COUNT))
+	for _round: int in 200:
+		_deliver(events)
+	assert_int(roundi(Performance.get_monitor(Performance.OBJECT_COUNT))).is_equal(before)
+	assert_int(_spy.plays).is_greater(100)
 
 
 func test_the_blackout_and_the_sweep_follow_the_fog_gate() -> void:
