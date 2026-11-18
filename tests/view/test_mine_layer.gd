@@ -182,29 +182,32 @@ func test_the_marks_are_in_draw_order_with_the_southern_one_last() -> void:
 	assert_vector(_layer.mark_at(2)).is_equal_approx(_centre(9, 9), TOL)
 
 
-func test_a_tick_that_changes_no_column_and_arms_nothing_does_not_plan_again() -> void:
+func test_a_tick_that_leaves_the_marks_alone_does_not_redraw_and_a_change_does() -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	_set_mines([[1, _cell(5, 5), snap.tick + 4]], [])
 	_layer._process(0.0)
-	var plans: int = _layer.plan_count()
 	var redraws: int = _layer.redraw_count()
-	assert_float(_layer.mark_alpha(0)).is_equal(0.5)
 	for _step: int in 2:  # Two ticks, still before the arming tick.
 		snap.tick += 1
 		_layer._process(0.0)
-	assert_int(_layer.plan_count()).is_equal(plans)
 	assert_int(_layer.redraw_count()).is_equal(redraws)
-	snap.tick += 1  # The arming tick: the plan is made again and the mark is at full strength.
+	snap.tick += 1  # The tick the mine arms on: its alpha changes, so it is drawn again.
 	_layer._process(0.0)
-	assert_int(_layer.plan_count()).is_equal(plans + 1)
+	assert_int(_layer.redraw_count()).is_equal(redraws + 1)
 	assert_float(_layer.mark_alpha(0)).is_equal(1.0)
 	snap.tick += 1
 	_layer._process(0.0)
-	assert_int(_layer.plan_count()).is_equal(plans + 1)  # Nothing is left to arm.
-	snap.mine_cell = PackedInt32Array([_cell(9, 9)])  # A column changes, on no tick.
+	assert_int(_layer.redraw_count()).is_equal(redraws + 1)
+	# A new own mine: drawn again.
+	snap.mine_count = 2
+	snap.mine_id.append(2)
+	snap.mine_owner.append(1)
+	snap.mine_cell.append(_cell(9, 9))
+	snap.mine_armed_tick.append(snap.tick - 1)
+	snap.tick += 1
 	_layer._process(0.0)
-	assert_int(_layer.plan_count()).is_equal(plans + 2)
-	assert_vector(_layer.mark_at(0)).is_equal_approx(_centre(9, 9), TOL)
+	assert_int(_layer.mark_count()).is_equal(2)
+	assert_int(_layer.redraw_count()).is_equal(redraws + 2)
 
 
 func test_a_mine_arms_on_the_tick_of_its_armed_tick_and_not_a_tick_before() -> void:
