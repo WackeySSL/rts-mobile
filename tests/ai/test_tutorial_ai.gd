@@ -7,7 +7,7 @@ const Rig: GDScript = preload("res://tests/ai/support/ai_rig.gd")
 const Tut: GDScript = preload("res://tests/ai/support/tutorial_rig.gd")
 
 
-func test_a_tick_step_queues_its_items_once_it_can() -> void:
+func test_a_queue_step_fires_when_the_view_shows_its_items() -> void:
 	var world: World = Rig.start()
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: TutorialAi = Tut.ai_of(Tut.script_def())
@@ -20,15 +20,59 @@ func test_a_tick_step_queues_its_items_once_it_can() -> void:
 	for command: Command in sent:
 		assert_int(command.type).is_equal(Command.Type.QUEUE)
 		assert_int(command.payload[0]).is_equal(Rig.type_of(world, "rifle_squad"))
-	assert_bool(ai.has_fired(&"train")).is_true()
-	# Fired once: the next think queues nothing more.
-	assert_array(Tut.think(world, ai)).is_empty()
+	# Sent is not queued: the step is not fired, and a think that did not see the items sends again.
+	assert_bool(ai.has_fired(&"train")).is_false()
+	assert_int(Tut.think(world, ai).size()).is_equal(2)
 	Rig.step(world, loop, sent)
+	assert_int(world.dropped_commands).is_equal(0)
+	assert_array(Tut.think(world, ai)).is_empty()
+	assert_int(ai.fired_tick_of(&"train")).is_equal(world.tick)
+
+
+func test_queue_steps_of_one_think_share_the_room_of_the_queue() -> void:
+	# Probe: two TICK-0 steps of 3 squads, 5 slots: 5 are sent, not 6, and none is dropped.
+	var def: TutorialScriptDef = TutorialScriptDef.new()
+	for id: String in ["a", "b"]:
+		def.steps.append(_queue_step(id, 3))
+	var world: World = Tut.start()
+	var loop: MatchLoop = Rig.loop_of(world)
+	var ai: TutorialAi = Tut.ai_of(def)
+	var sent: Array[Command] = Tut.think(world, ai)
+	assert_int(sent.size()).is_equal(5)
+	Rig.step(world, loop, sent)
+	assert_int(world.dropped_commands).is_equal(0)
+	# The first step saw its 3 items; the second has 2 of 3 and waits for room.
+	Tut.think(world, ai)
+	assert_array([ai.has_fired(&"a"), ai.has_fired(&"b")]).is_equal([true, false])
+
+
+func test_queue_steps_of_one_think_share_the_credits() -> void:
+	# Probe: two steps of 1 squad (100 credits each) with 150 credits: one is sent, none is dropped.
+	var def: TutorialScriptDef = TutorialScriptDef.new()
+	for id: String in ["a", "b"]:
+		def.steps.append(_queue_step(id, 1))
+	var world: World = Tut.start()
+	var loop: MatchLoop = Rig.loop_of(world)
+	world.credits[Tut.PLAYER] = 150
+	var ai: TutorialAi = Tut.ai_of(def)
+	var sent: Array[Command] = Tut.think(world, ai)
+	assert_int(sent.size()).is_equal(1)
+	Rig.step(world, loop, sent)
+	assert_int(world.dropped_commands).is_equal(0)
+	Tut.think(world, ai)
+	assert_array([ai.has_fired(&"a"), ai.has_fired(&"b")]).is_equal([true, false])
+	# With credits again the second step sends its item and fires once it is seen.
+	world.credits[Tut.PLAYER] = 1000
+	sent = Tut.think(world, ai)
+	assert_int(sent.size()).is_equal(1)
+	Rig.step(world, loop, sent)
+	Tut.think(world, ai)
+	assert_bool(ai.has_fired(&"b")).is_true()
 	assert_int(world.dropped_commands).is_equal(0)
 
 
 func test_an_enemy_near_step_fires_on_a_seen_enemy_and_aims_at_it() -> void:
-	var world: World = Tut.start()
+	var world: World = Rig.start()
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: TutorialAi = Tut.ai_of(Tut.script_def())
 	Tut.think(world, ai)
@@ -48,7 +92,7 @@ func test_an_enemy_near_step_fires_on_a_seen_enemy_and_aims_at_it() -> void:
 
 
 func test_a_step_waits_for_the_step_it_follows_and_its_delay() -> void:
-	var world: World = Tut.start()
+	var world: World = Rig.start()
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: TutorialAi = Tut.ai_of(Tut.script_def())
 	Rig.add_unit_of(world, Tut.FOE, "rifle_squad", 21000, 27500)
@@ -65,7 +109,7 @@ func test_a_step_waits_for_the_step_it_follows_and_its_delay() -> void:
 	assert_int(sent[0].type).is_equal(Command.Type.MOVE)
 	# Home: the Headquarters' centre (its top-left tile is (26, 26), 3 x 3).
 	assert_array([sent[0].target_x, sent[0].target_y]).is_equal([27500, 27500])
-	assert_int(ai.fired_count()).is_equal(3)
+	assert_int(ai.fired_count()).is_equal(2)
 
 
 func test_nothing_fires_on_an_enemy_the_fog_hides() -> void:
@@ -129,28 +173,71 @@ func test_a_trigger_type_the_roster_lacks_never_holds() -> void:
 	assert_int(ai.fired_count()).is_equal(0)
 
 
-func test_credits_and_own_count_triggers_read_the_players_own_state() -> void:
+func test_credits_and_own_count_triggers_fire_when_they_hold() -> void:
+	var cases: Array[Array] = [
+		[TutorialStepDef.Trigger.CREDITS, 2000, &"", true],
+		[TutorialStepDef.Trigger.CREDITS, 2001, &"", false],
+		[TutorialStepDef.Trigger.OWN_AT_LEAST, 2, &"rifle_squad", true],
+		[TutorialStepDef.Trigger.OWN_AT_LEAST, 3, &"rifle_squad", false],
+		[TutorialStepDef.Trigger.OWN_AT_MOST, 2, &"rifle_squad", true],
+		[TutorialStepDef.Trigger.OWN_AT_MOST, 1, &"rifle_squad", false],
+		[TutorialStepDef.Trigger.OWN_AT_MOST, 0, &"light_tank", true],
+	]
+	for case: Array in cases:
+		var def: TutorialScriptDef = TutorialScriptDef.new()
+		def.steps.append(
+			Tut.step(
+				"s",
+				case[0],
+				TutorialStepDef.Action.STOP,
+				{"threshold": case[1], "trigger_type": case[2]}
+			)
+		)
+		var ai: TutorialAi = Tut.ai_of(def)
+		var sent: Array[Command] = Tut.think(Rig.start(), ai)
+		assert_bool(ai.has_fired(&"s")).override_failure_message(str(case)).is_equal(case[3])
+		assert_int(sent.size()).is_equal(1 if case[3] else 0)
+
+
+func test_a_stop_step_fires_with_no_building_and_halts_its_units() -> void:
+	var def: TutorialScriptDef = TutorialScriptDef.new()
+	def.steps.append(
+		Tut.step("halt", TutorialStepDef.Trigger.TICK, TutorialStepDef.Action.STOP, {})
+	)
+	var world: World = Rig.start()
+	var loop: MatchLoop = Rig.loop_of(world)
+	Rig.kill(world, loop, Rig.row_of(world, Tut.PLAYER, "headquarters"))
+	var sent: Array[Command] = Tut.think(world, Tut.ai_of(def))
+	assert_int(sent.size()).is_equal(1)
+	assert_int(sent[0].type).is_equal(Command.Type.STOP)
+	assert_int(sent[0].unit_ids.size()).is_equal(2)
+
+
+func test_an_after_step_that_names_no_step_is_an_error_and_never_fires() -> void:
 	var def: TutorialScriptDef = TutorialScriptDef.new()
 	def.steps.append(
 		Tut.step(
-			"rich",
-			TutorialStepDef.Trigger.CREDITS,
+			"lost",
+			TutorialStepDef.Trigger.TICK,
 			TutorialStepDef.Action.STOP,
-			{"threshold": 100000}
+			{"after_step": &"nowhere"}
 		)
 	)
-	def.steps.append(
-		Tut.step(
-			"squads_lost",
-			TutorialStepDef.Trigger.OWN_AT_MOST,
-			TutorialStepDef.Action.STOP,
-			{"threshold": 0, "trigger_type": &"rifle_squad"}
-		)
+	var holder: Array[TutorialAi] = []
+	(
+		assert_error(func() -> void: holder.append(Tut.ai_of(def)))
+		. is_push_error("TutorialAi: step lost waits for nowhere, which is no step")
 	)
-	var world: World = Tut.start()
-	var ai: TutorialAi = Tut.ai_of(def)
-	assert_array(Tut.think(world, ai)).is_empty()
-	assert_int(ai.fired_count()).is_equal(0)
+	assert_array(Tut.think(Rig.start(), holder[0])).is_empty()
+	assert_int(holder[0].fired_count()).is_equal(0)
+
+
+func test_the_step_list_is_read_only() -> void:
+	var ai: TutorialAi = Tut.ai_of(Tut.script_def())
+	assert_int(ai.step_count()).is_equal(3)
+	var ids: Array[StringName] = ai.step_ids()
+	ids.clear()
+	assert_array(ai.step_ids()).is_equal([&"train", &"wave", &"fall_back"])
 
 
 func test_an_order_step_with_no_unit_to_send_waits() -> void:
@@ -252,3 +339,12 @@ func _run() -> Array:
 func _view_pos(world: World, id: int) -> Vector2i:
 	var view: PlayerView = PlayerView.of(world, Tut.PLAYER)
 	return view.row_pos(view.row_of(id))
+
+
+func _queue_step(id: String, count: int) -> TutorialStepDef:
+	return Tut.step(
+		id,
+		TutorialStepDef.Trigger.TICK,
+		TutorialStepDef.Action.QUEUE,
+		{"action_type": &"rifle_squad", "count": count}
+	)

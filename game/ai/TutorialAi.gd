@@ -7,21 +7,38 @@ extends AiController
 ## steps are copied into ints and arrays when it is made.
 ##
 ## One think: each step that has not fired, in order, is tried. A step is due when the step it
-## names in `after_step` has fired and its delay has passed; it then fires when its trigger holds
-## and its action could be sent (a QUEUE waits for room, credits and a producer; an order waits for
-## a unit to send). A fired step never fires again. Same views in, same Commands out.
+## names in `after_step` has fired and its delay has passed (an `after_step` that names no step of
+## the script is an error and the step never fires); it then fires when its trigger holds and its
+## action could be sent. An order step (ATTACK_MOVE, MOVE) waits for a unit to send and a
+## destination, a STOP for a unit. A QUEUE step sends its items as its queue has room, the credits
+## last (one budget and one per-tab count are carried across all steps of a think, so no think
+## sends a Command the sim refuses for room or credits) and fires only when the view shows its items
+## queued or built: it counts the player's rows of the type plus its queued items, from the count at
+## the think its trigger first held, and sends the rest again on each later think until they are
+## seen. So two QUEUE steps of one type count the items of the steps before them in the script as
+## their own baseline and the later ones' as theirs: put such steps in script order, or chain them
+## with `after_step`. A fired step never fires again. Same views in, same Commands out.
 ##
-## For the director (P541, P543): `step_count`, `step_ids`, `has_fired(id)`, `fired_tick_of(id)` and
-## `fired_count()` tell which steps have played. They are plain ints written inside the think, so a
-## reader on another thread than the tick job's reads them between ticks only.
+## For the director (P541, P543): `step_count()`, `step_ids()`, `has_fired(id)`, `fired_tick_of(id)`
+## and `fired_count()` tell which steps have played. A step's tick is the tick T of the view of the
+## think that fired it; the Commands of that think are applied on T + 1 (a QUEUE step's tick is the
+## think that SAW its items, a think after the one that sent them). The fields are plain ints
+## written inside the think, which in WORKER mode runs on the tick job's thread: the main thread
+## reads the controller only after `MatchRunner.wait_idle()` (ADR 0038 section 2), never while a
+## job runs.
 
 ## The tick of a step that has not fired.
 const NOT_FIRED: int = -1
 ## A type filter that names no type of the roster: nothing matches it.
 const ABSENT: int = -2
+## The `_after` of a step that waits for a step the script lacks: it never fires.
+const NEVER: int = -2
 
-var step_ids: Array[StringName] = []
-var step_count: int = 0
+## Items the player's rows and queues hold, per type, at the think where the step's trigger first
+## held (-1 before): a QUEUE step's baseline.
+var _base: PackedInt32Array = PackedInt32Array()
+var _step_ids: Array[StringName] = []
+var _step_count: int = 0
 
 var _trigger: PackedInt32Array = PackedInt32Array()
 var _trigger_type: Array[StringName] = []
@@ -35,16 +52,21 @@ var _tile: PackedInt32Array = PackedInt32Array()
 ## Index of the step each step waits for (-1 none) and its delay in ticks.
 var _after: PackedInt32Array = PackedInt32Array()
 var _delay: PackedInt32Array = PackedInt32Array()
-## The tick each step fired at, and the items a QUEUE step has queued so far.
+## The tick each step fired at.
 var _fired: PackedInt32Array = PackedInt32Array()
-var _queued: PackedInt32Array = PackedInt32Array()
 var _hq_id: StringName = &""
 
 ## Read off the view by one think and used only inside it: the player's rows per type, its
-## producers per tab, the centres of its buildings (milli-tiles), the one orders go "home" to, and
-## the first seen row that made the step being tried hold (-1 none).
+## complete producers per tab, rows plus queued items per type, the credits not yet spent by a
+## QUEUE of this think and the items this think added per tab, the centres of its buildings
+## (milli-tiles), the one orders go "home" to, and the first seen row that made the step being tried
+## hold (-1 none).
 var _owned: PackedInt32Array = PackedInt32Array()
 var _producers: PackedInt32Array = PackedInt32Array()
+var _complete: PackedInt32Array = PackedInt32Array()
+var _have: PackedInt32Array = PackedInt32Array()
+var _added: PackedInt32Array = PackedInt32Array()
+var _budget: int = 0
 var _xs: PackedInt32Array = PackedInt32Array()
 var _ys: PackedInt32Array = PackedInt32Array()
 var _home: Vector2i = Vector2i(-1, -1)
@@ -62,7 +84,7 @@ static func create(def: TutorialScriptDef, player_id: int, rng: DetRandom) -> Tu
 	ai.think_offset = posmod(-(def.think_tick + player_id - 2), ai.think_period)
 	ai._hq_id = def.hq_type
 	for step: TutorialStepDef in def.steps:
-		ai.step_ids.append(step.id)
+		ai._step_ids.append(step.id)
 		ai._trigger.append(step.trigger)
 		ai._trigger_type.append(step.trigger_type)
 		ai._threshold.append(step.threshold)
@@ -74,13 +96,38 @@ static func create(def: TutorialScriptDef, player_id: int, rng: DetRandom) -> Tu
 		ai._tile.append(step.target_tile.x)
 		ai._tile.append(step.target_tile.y)
 		ai._delay.append(maxi(step.delay_ticks, 0))
-	ai.step_count = ai.step_ids.size()
+	ai._step_count = ai._step_ids.size()
 	for step: TutorialStepDef in def.steps:
-		ai._after.append(ai.step_ids.find(step.after_step) if step.after_step != &"" else -1)
-	ai._fired.resize(ai.step_count)
+		ai._after.append(ai._resolve_after(step))
+	ai._fired.resize(ai._step_count)
 	ai._fired.fill(NOT_FIRED)
-	ai._queued.resize(ai.step_count)
+	ai._base.resize(ai._step_count)
+	ai._base.fill(-1)
 	return ai
+
+
+## The index of the step `step` waits for: -1 for none, NEVER (with an error) for a name that no
+## step of the script has.
+func _resolve_after(step: TutorialStepDef) -> int:
+	if step.after_step == &"":
+		return -1
+	var found: int = _step_ids.find(step.after_step)
+	if found < 0:
+		push_error(
+			"TutorialAi: step %s waits for %s, which is no step" % [step.id, step.after_step]
+		)
+		return NEVER
+	return found
+
+
+## How many steps the script has.
+func step_count() -> int:
+	return _step_count
+
+
+## The step ids in script order (a copy).
+func step_ids() -> Array[StringName]:
+	return _step_ids.duplicate()
 
 
 ## Whether the step `id` has fired.
@@ -90,7 +137,7 @@ func has_fired(id: StringName) -> bool:
 
 ## The tick the step `id` fired at, NOT_FIRED for a step that has not (or that the script lacks).
 func fired_tick_of(id: StringName) -> int:
-	var index: int = step_ids.find(id)
+	var index: int = _step_ids.find(id)
 	return _fired[index] if index >= 0 else NOT_FIRED
 
 
@@ -107,7 +154,7 @@ func think(view: PlayerView, out: Array[Command]) -> void:
 	var before: int = out.size()
 	work = 1
 	if _take_census(view):
-		for index: int in step_count:
+		for index: int in _step_count:
 			if _fired[index] == NOT_FIRED and _due(index, view.tick):
 				_try(index, view, out)
 	commands += out.size() - before
@@ -121,8 +168,13 @@ func _take_census(view: PlayerView) -> bool:
 	var hq_type: int = view.type_index_of(_hq_id)
 	_owned = PackedInt32Array()
 	_owned.resize(view.type_cost.size())
+	_complete = PackedInt32Array()
+	_complete.resize(view.type_cost.size())
 	_producers = PackedInt32Array()
 	_producers.resize(PlayerView.TABS)
+	_added = PackedInt32Array()
+	_added.resize(PlayerView.TABS)
+	_budget = view.credits
 	_xs = PackedInt32Array()
 	_ys = PackedInt32Array()
 	_home = Vector2i(-1, -1)
@@ -131,8 +183,10 @@ func _take_census(view: PlayerView) -> bool:
 		var type: int = view.row_type(row)
 		_owned[type] += 1
 		var tab: int = view.type_produces[type]
-		if tab >= 0 and tab < PlayerView.TABS:
-			_producers[tab] += 1
+		if view.row_build_left(row) == 0:
+			_complete[type] += 1
+			if tab >= 0 and tab < PlayerView.TABS:
+				_producers[tab] += 1
 		if view.type_foot_w[type] > 0:
 			var at: Vector2i = view.row_pos(row)
 			_xs.append(at.x)
@@ -140,6 +194,10 @@ func _take_census(view: PlayerView) -> bool:
 			if not home_is_hq and (_home.x < 0 or type == hq_type):
 				_home = at
 				home_is_hq = type == hq_type
+	_have = _owned.duplicate()
+	for tab: int in PlayerView.TABS:
+		for slot: int in view.queue_count[tab]:
+			_have[view.queue_type[tab * view.queue_slots + slot]] += 1
 	work += 1
 	return true
 
@@ -147,6 +205,8 @@ func _take_census(view: PlayerView) -> bool:
 ## Whether the step's `after_step` has fired and its delay passed at `tick`.
 func _due(index: int, tick: int) -> bool:
 	var base: int = 0
+	if _after[index] == NEVER:
+		return false
 	if _after[index] >= 0:
 		base = _fired[_after[index]]
 		if base == NOT_FIRED:
@@ -160,13 +220,12 @@ func _try(index: int, view: PlayerView, out: Array[Command]) -> void:
 	if not _holds(index, view):
 		return
 	if _action[index] == TutorialStepDef.Action.QUEUE:
-		_queued[index] += _queue(index, view, out)
-		if _queued[index] >= maxi(_count[index], 1):
-			_fired[index] = view.tick
+		_try_queue(index, view, out)
 		return
 	var units: PackedInt32Array = _units(index, view)
 	var dest: Vector2i = _destination(index, view)
-	if units.is_empty() or dest.x < 0:
+	var stop: bool = _action[index] == TutorialStepDef.Action.STOP
+	if units.is_empty() or (dest.x < 0 and not stop):
 		return
 	for first: int in range(0, units.size(), Command.MAX_UNITS):
 		var ids: PackedInt32Array = units.slice(first, first + Command.MAX_UNITS)
@@ -251,31 +310,38 @@ func _near(at: Vector2i, radius: int) -> bool:
 	return false
 
 
-## QUEUE as many of the step's items as can be queued now; returns how many were.
-func _queue(index: int, view: PlayerView, out: Array[Command]) -> int:
+## A QUEUE step whose trigger holds: fires when the view shows `count` more items of the type (rows
+## and queued) than at its first think, else sends the rest that can be queued now.
+func _try_queue(index: int, view: PlayerView, out: Array[Command]) -> void:
 	var type: int = _type_of(_action_type[index], view)
 	if type < 0 or view.type_tab[type] < 0:
-		return 0
+		return
+	if _base[index] < 0:
+		_base[index] = _have[type]
+	var left: int = maxi(_count[index], 1) - (_have[type] - _base[index])
+	if left <= 0:
+		_fired[index] = view.tick
+		return
 	var tab: int = view.type_tab[type]
-	var budget: int = view.credits
-	var sent: int = 0
-	var left: int = maxi(_count[index], 1) - _queued[index]
-	while sent < left and _can_queue(view, type, tab, sent) and view.type_cost[type] <= budget:
-		budget -= view.type_cost[type]
+	while left > 0 and _can_queue(view, type, tab) and view.type_cost[type] <= _budget:
+		_budget -= view.type_cost[type]
+		_added[tab] += 1
+		_have[type] += 1
 		out.append(Command.queue(player_id, type))
-		sent += 1
-	return sent
+		left -= 1
 
 
 ## Whether a QUEUE of `type` would be applied but for the credits: its tab has a producer of the
-## player's and room for `already` more items, and the type's requirement is owned.
-func _can_queue(view: PlayerView, type: int, tab: int, already: int) -> bool:
+## player's (complete) and room for the items queued so far, this think's included, and a complete
+## row of the type's requirement is owned. The sim also asks the producer's faction, the pad cap and
+## research already owned or queued: a refused item is not seen next think and is sent again.
+func _can_queue(view: PlayerView, type: int, tab: int) -> bool:
 	if tab >= PlayerView.TABS or _producers[tab] == 0:
 		return false
-	if view.queue_count[tab] + already >= view.queue_slots:
+	if view.queue_count[tab] + _added[tab] >= view.queue_slots:
 		return false
 	var need: int = view.type_requires[type]
-	return need < 0 or _owned[need] > 0
+	return need < 0 or _complete[need] > 0
 
 
 ## The combat units (ids ascending) the step orders, the `count` lowest when `count` is set.
