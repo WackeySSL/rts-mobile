@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## minelayer end the aim with nothing sent; the ring's bounding box holds the check mark and the X
 ## (at least 64 dp, inside the screen, clear of the bar). The last tests are the data check of
 ## ADR 0036's Board and Unload on the two ground carriers. Rows (player 1 the local one): a Shot
-## Truck 1, a second one 2, a rifle squad 3, a Bunk Wagon 4, a Linecar 5, the enemy Headquarters 6.
+## Truck 1, a second one 2, a rifle squad 3, a Bunk Wagon 4, a Linecar 5, the enemy Headquarters 6,
+## the own Headquarters 7.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
@@ -18,6 +19,7 @@ const SQUAD: int = 3
 const WAGON: int = 4
 const LINECAR: int = 5
 const ENEMY_HQ: int = 6
+const OWN_HQ: int = 7
 const SPAWNS: Array[Array] = [
 	[1, "fossil_shot_truck", 14, 14],
 	[1, "fossil_shot_truck", 15, 14],
@@ -25,6 +27,7 @@ const SPAWNS: Array[Array] = [
 	[1, "fossil_bunk_wagon", 10, 20],
 	[1, "renew_linecar", 12, 20],
 	[2, "renew_hq", 24, 24],
+	[1, "headquarters", 3, 3],
 ]
 const GROUND: Vector2i = Vector2i(20000, 10000)  ## Milli-tiles, a tile no row stands near.
 
@@ -64,10 +67,11 @@ func test_mine_shows_for_minelayers_only_and_is_at_least_48_dp() -> void:
 		var button: Button = _order("mine")
 		assert_bool(button.is_visible_in_tree()).override_failure_message(why).is_true()
 		var least: Vector2 = button.get_combined_minimum_size()
-		(
-			assert_float(minf(button.size.x, button.size.y))
-			. override_failure_message(why)
-			. is_greater_equal(UiScale.dp(48.0) - 0.5)
+		assert_float(button.size.x).override_failure_message(why).is_greater_equal(
+			UiScale.dp(56.0) - 0.5
+		)
+		assert_float(button.size.y).override_failure_message(why).is_greater_equal(
+			UiScale.dp(64.0) - 0.5
 		)
 		assert_float(minf(least.x, least.y)).override_failure_message(why).is_greater_equal(
 			UiScale.dp(48.0) - 0.5
@@ -143,17 +147,116 @@ func test_mine_then_the_ground_then_the_check_mark_sends_one_lay_mine() -> void:
 		assert_bool(_aim.is_active()).override_failure_message(why).is_false()
 
 
-func test_another_tap_moves_the_point_even_on_an_own_unit() -> void:
+func test_an_own_unit_or_building_under_the_finger_is_refused_with_a_shake_and_no_point() -> void:
 	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
 	await _select([LAYER_A])
 	_tap(_order("mine"))
 	_tap_ground(GROUND)
 	var first: Vector2i = _aim.point
-	var own: Vector2 = _screen_of(SQUAD)
-	_tap_at(own)
-	assert_bool(_aim.point != first).is_true()
-	assert_int(_bar.shakes).is_equal(0)
+	assert_vector(Vector2(first)).is_equal_approx(Vector2(GROUND), Vector2(2.0, 2.0))
+	_tap_at(_screen_of(SQUAD))
+	assert_array([_bar.shakes, _aim.point]).is_equal([1, first])
+	var node: Node2D = (_main.get_node("BuildingLayer") as BuildingLayer).building(OWN_HQ)
+	_camera().centre_on(node.position)
+	_tap_at(_camera().world_to_screen(node.position))
+	assert_array([_bar.shakes, _aim.point]).is_equal([2, first])
+	var face: Control = _order("mine").get_node("Face")
+	await get_tree().create_timer(0.3).timeout
+	assert_float(face.position.x).is_equal_approx(0.0, 0.5)  # The shake ran on the Mine button.
 	assert_array(_sent).is_empty()
+	_tap_ground(GROUND + Vector2i(3000, 0))  # Ground still moves it.
+	assert_bool(_aim.point != first).is_true()
+
+
+func test_the_ring_anchor_follows_the_blast_radius_and_the_zoom() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([LAYER_A])
+	_tap(_order("mine"))
+	_tap_ground(GROUND)
+	_camera().zoom = Vector2(1.5, 1.5)
+	var reach: Vector2 = IsoProjection.ellipse_px(_aim.blast_milli())
+	var anchor: Rect2 = _controls.anchor()
+	var want: Vector2 = reach * 2.0 * 1.5
+	assert_float(want.x).is_greater(UiScale.dp(48.0))  # The ring, not the 48 dp floor, sets it.
+	assert_vector(anchor.size).is_equal_approx(want, Vector2(1.0, 1.0))
+
+
+func test_a_minelayer_dying_ends_the_aim() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([LAYER_A])
+	_tap(_order("mine"))
+	assert_bool(_aim.is_active()).is_true()
+	var snap: MatchSnapshot = _snap()
+	snap.hp[snap.index_of(LAYER_A)] = 0
+	(_main.get_node("MatchRunner") as MatchRunner).ticked.emit(1)
+	assert_bool(_aim.is_active()).is_false()
+	assert_array(_sent).is_empty()
+
+
+func test_reaching_the_cap_mid_aim_ends_it_and_dims_the_button() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([LAYER_A])
+	_tap(_order("mine"))
+	_tap_ground(GROUND)
+	_lay(12)
+	(_main.get_node("MatchRunner") as MatchRunner).ticked.emit(1)
+	await await_idle_frame()
+	assert_bool(_aim.is_active()).is_false()
+	assert_bool(_order("mine").disabled).is_true()
+	assert_str((_order("mine").get_node("Face/Word") as Label).text).is_equal("12/12")
+	assert_array(_sent).is_empty()
+
+
+func test_the_aims_exclude_each_other() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([LAYER_A])
+	var strike: StrikeAim = _main.get_node("StrikeAim")
+	var placement: PlacementController = _main.get_node("PlacementController")
+	strike.building_id = LAYER_A  # Any bound building lets the aim begin.
+	assert_bool(strike.begin()).is_true()
+	assert_bool(_aim.toggle(CarryAim.Mode.MINE)).is_true()
+	assert_bool(strike.active).is_false()
+	assert_bool(strike.begin()).is_true()  # A strike beginning ends Mine.
+	assert_bool(_aim.is_active()).is_false()
+	strike.cancel()
+	var hq: int = _snap().type_index[_snap().index_of(ENEMY_HQ)]
+	assert_bool(placement.begin(hq)).is_true()
+	assert_bool(_aim.toggle(CarryAim.Mode.MINE)).is_true()  # Mine beginning ends a placement.
+	assert_bool(placement.active).is_false()
+
+
+func test_a_second_press_of_the_check_mark_sends_no_second_lay_mine() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], SPAWNS)
+	await _select([LAYER_A])
+	_tap(_order("mine"))
+	_tap_ground(GROUND)
+	assert_bool(_aim.confirm()).is_true()
+	assert_bool(_aim.confirm()).is_false()
+	assert_array(_sent).has_size(1)
+
+
+## A ring at each edge of the screen, the camera off-centre: the check mark and the X stay inside
+## the safe area, 64 dp, clear of the bar and of each other.
+func test_the_check_mark_and_the_x_stay_in_the_safe_area_with_the_ring_at_an_edge() -> void:
+	for size: Vector2i in ScreenSizes.PORTRAIT:
+		await _open(size, SPAWNS)
+		for edge: Vector2 in [Vector2(0.97, 0.5), Vector2(0.03, 0.5), Vector2(0.5, 0.03)]:
+			await _select([LAYER_A])
+			_tap(_order("mine"))
+			var view: Vector2 = get_viewport().get_visible_rect().size
+			var at: Vector2 = IsoProjection.ground_to_px(GROUND.x, GROUND.y)
+			_camera().centre_on(at)  # Then shifted so the point lands at `edge` of the screen.
+			_camera().position = at - (edge - Vector2(0.5, 0.5)) * view / _camera().zoom
+			_tap_at(_camera().world_to_screen(at))
+			await await_idle_frame()
+			var why: String = "%s %s" % [size, edge]
+			assert_bool(_aim.has_point).override_failure_message(why).is_true()
+			_check_buttons(why)
+			var safe: Rect2 = UiScale.safe_rect_base()
+			for node: String in ["CarryConfirm", "CarryCancel"]:
+				var rect: Rect2 = (_controls.get_node(node) as Control).get_global_rect()
+				assert_bool(safe.encloses(rect)).override_failure_message(why + node).is_true()
+			_aim.cancel()
 
 
 func test_the_x_the_second_tap_and_a_selection_without_a_minelayer_send_nothing() -> void:

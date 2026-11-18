@@ -125,6 +125,7 @@ var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 var _repair: bool = false  ## A repair building serves a selected ground unit: Repair shows.
 var _repair_ready: bool = false  ## ... and one of those units is damaged: Repair is tappable.
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
+var _mine_shown: Vector2i = Vector2i(-1, -1)  ## The "n/cap" the Mine word shows.
 
 
 ## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
@@ -691,19 +692,25 @@ func _mine_order(snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
 		return false
 	var player: int = _local()
 	var on: bool = carry_aim.mode == CarryAim.Mode.MINE
-	var laid: int = CarryRules.mines_laid(snap, player)
+	if not on and CarryRules.layers_in(snap, ids, player).is_empty():
+		return false
+	var laid: int = snap.own_mine_count(player)
 	_sync_toggle(_buttons[&"mine"], on, on or laid < snap.mine_cap)
-	var word: Label = _buttons[&"mine"].get_node("Face/Word")
-	var text: String = "%d/%d" % [laid, snap.mine_cap]
-	if word.text != text:
-		word.text = text
-	return on or not CarryRules.layers_in(snap, ids, player).is_empty()
+	var shown: Vector2i = Vector2i(laid, snap.mine_cap)
+	if shown != _mine_shown:  # The word is written when the count or the cap changes.
+		_mine_shown = shown
+		(_buttons[&"mine"].get_node("Face/Word") as Label).text = "%d/%d" % [laid, snap.mine_cap]
+	return true
 
 
 ## A refused tap of the open aim: that order's button face shakes sideways (the plate stays).
 func _shake_order() -> void:
 	shakes += 1
-	var id: StringName = &"unload" if carry_aim.mode == CarryAim.Mode.UNLOAD else &"board"
+	var id: StringName = &"board"
+	if carry_aim.mode == CarryAim.Mode.UNLOAD:
+		id = &"unload"
+	elif carry_aim.mode == CarryAim.Mode.MINE:
+		id = &"mine"
 	var face: Control = _buttons[id].get_node("Face")
 	var reach: float = UiScale.dp(SHAKE_DP)
 	var tween: Tween = create_tween()

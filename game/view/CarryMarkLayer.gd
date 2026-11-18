@@ -1,6 +1,6 @@
 class_name CarryMarkLayer
 extends Node2D
-## What the Board and Unload aims put on the map (P265b), at z 65 with the strike's marks.
+## What the Board, Unload and Mine aims put on the map (P265b), at z 65 with the strike's marks.
 ## Unload: the chevron (`glyph_unload_mark`, tinted amber at run time) with the tip of its lower
 ## chevron on the ground point. Board: a ring round the ringed carrier, at its drawn place (its
 ## rig: a flyer's in `air_layer`, ringed on the ground under its shadow like P244's selection ring;

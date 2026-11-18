@@ -196,7 +196,8 @@ const NOT_COPIED: Array[StringName] = [
 	&"income_percent",
 	&"bonus_credits",
 ]
-## The World ints the snapshot carries besides its header: the end of the match (ADR 0018 section
+## The World ints the snapshot carries besides its header (`mine_cap` is the Mine order's "n/cap"):
+## the end of the match (ADR 0018 section
 ## 7; 0 while it runs), the two rule ints Placement.reason reads (PlacementInput) and the two the
 ## construction UI reads (ADR 0026 section 10: the Cancel button's refund, the cards' busy state).
 const COPIED_SCALARS: Array[StringName] = [
@@ -465,6 +466,16 @@ func placement_input() -> PlacementInput:
 	input.build_reach_tiles = build_reach_tiles
 	input.building_cap = building_cap
 	return input
+
+
+## How many mines `player` has laid, with no allocation (the Mine button's "n").
+func own_mine_count(player: int) -> int:
+	var count: int = 0
+	var live: int = mini(mine_count, mine_owner.size())
+	for index: int in live:
+		if mine_owner[index] == player:
+			count += 1
+	return count
 
 
 ## The mines `player` may draw (ADR 0037 section 8; the one reader of the mine columns): its own

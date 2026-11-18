@@ -87,8 +87,8 @@ static func has_carrier(snap: MatchSnapshot, player: int) -> bool:
 	return false
 
 
-## The ids of `ids` that are minelayers of `player`'s (what LAY_MINE serves): own, living, complete
-## rows of a type with a mine weapon.
+## The ids of `ids` that are minelayers of `player`'s (what LAY_MINE serves, `Mines._can_lay`): own,
+## living, complete rows of a mobile ground type with a mine weapon.
 static func layers_in(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -> PackedInt32Array:
 	var out: PackedInt32Array = PackedInt32Array()
 	for id: int in ids:
@@ -100,6 +100,8 @@ static func layers_in(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -
 			and snap.build_left[row] == 0
 			and snap.type_index[row] < snap.type_mine_weapon.size()
 			and snap.type_mine_weapon[snap.type_index[row]] >= 0
+			and snap.type_speed[snap.type_index[row]] > 0
+			and (snap.type_layer_bit[snap.type_index[row]] & World.Layer.GROUND) != 0
 		):
 			out.append(id)
 	return out
@@ -107,7 +109,7 @@ static func layers_in(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -
 
 ## How many mines `player` has laid (the "n" of the Mine button's "n/cap").
 static func mines_laid(snap: MatchSnapshot, player: int) -> int:
-	return (snap.mines_for(player)[&"own_cell"] as PackedInt32Array).size()
+	return snap.own_mine_count(player)
 
 
 ## The blast radius, milli-tiles, of the widest mine the layers `ids` lay (the aim's ring).
