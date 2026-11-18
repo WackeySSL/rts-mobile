@@ -107,11 +107,7 @@ static func layers_in(snap: MatchSnapshot, ids: PackedInt32Array, player: int) -
 
 ## How many mines `player` has laid (the "n" of the Mine button's "n/cap").
 static func mines_laid(snap: MatchSnapshot, player: int) -> int:
-	var count: int = 0
-	for at: int in mini(snap.mine_count, snap.mine_owner.size()):
-		if snap.mine_owner[at] == player:
-			count += 1
-	return count
+	return (snap.mines_for(player)[&"own_cell"] as PackedInt32Array).size()
 
 
 ## The blast radius, milli-tiles, of the widest mine the layers `ids` lay (the aim's ring).

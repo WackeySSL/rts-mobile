@@ -112,6 +112,7 @@ func test_copied_and_not_copied_split_the_world_shape_lists_exactly_once() -> vo
 				&"pass_count",
 				&"mine_count",
 				&"mine_known_cap",
+				&"mine_cap",
 			]
 		)
 	)

@@ -275,8 +275,12 @@ func _lay(count: int) -> void:
 	var snap: MatchSnapshot = _snap()
 	snap.mine_count = count
 	snap.mine_owner = PackedInt32Array()
-	for _mine: int in count:
+	snap.mine_cell = PackedInt32Array()
+	snap.mine_armed_tick = PackedInt32Array()
+	for mine: int in count:
 		snap.mine_owner.append(1)
+		snap.mine_cell.append(mine)
+		snap.mine_armed_tick.append(0)
 
 
 func _select(ids: Array) -> void:
