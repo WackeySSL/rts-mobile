@@ -20,6 +20,7 @@ const REPORT_KEYS: Array[String] = [
 	"commit",
 	"impl",
 	"levels",
+	"map",
 	"matches",
 	"matches_requested",
 	"scenarios",

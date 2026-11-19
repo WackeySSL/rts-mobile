@@ -1,0 +1,101 @@
+[gd_resource type="Resource" script_class="TutorialLessonDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Resource" path="res://data/scenarios/tutorial_strikes.tres" id="3_scenario"]
+[ext_resource type="Resource" path="res://data/tutorial/strikes_enemy.tres" id="4_enemy"]
+
+[sub_resource type="Resource" id="Beat_00"]
+script = ExtResource("2_beat")
+id = &"own"
+prompt_key = &"tutorial.strikes.own"
+anchor = 1
+anchor_control = &"StrikeButton"
+covers = Array[StringName]([&"superweapon-own"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_01"]
+script = ExtResource("2_beat")
+id = &"aim"
+prompt_key = &"tutorial.strikes.aim"
+anchor = 1
+anchor_control = &"StrikeButton"
+kind = 13
+covers = Array[StringName]([&"superweapon-strike", &"superweapon-aim-tap"])
+after_ai_step = &"gather"
+budget_s = 12
+
+[sub_resource type="Resource" id="Beat_02"]
+script = ExtResource("2_beat")
+id = &"fire"
+prompt_key = &"tutorial.strikes.fire"
+anchor = 1
+anchor_control = &"StrikeConfirm"
+kind = 14
+covers = Array[StringName]([&"superweapon-bore-fired"])
+budget_s = 8
+
+[sub_resource type="Resource" id="Beat_03"]
+script = ExtResource("2_beat")
+id = &"impact"
+prompt_key = &"tutorial.strikes.impact"
+covers = Array[StringName]([&"superweapon-bore-impact"])
+delay_ticks = 45
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_04"]
+script = ExtResource("2_beat")
+id = &"off"
+prompt_key = &"tutorial.strikes.off"
+covers = Array[StringName]([&"superweapon-switched-off"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_05"]
+script = ExtResource("2_beat")
+id = &"sat"
+prompt_key = &"tutorial.strikes.sat"
+anchor = 1
+anchor_control = &"StrikeButton"
+covers = Array[StringName]([&"superweapon-own-satellite"])
+delay_ticks = 300
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_06"]
+script = ExtResource("2_beat")
+id = &"sat-fire"
+prompt_key = &"tutorial.strikes.sat-fire"
+anchor = 1
+anchor_control = &"StrikeConfirm"
+covers = Array[StringName]([&"superweapon-satellite-fire"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_07"]
+script = ExtResource("2_beat")
+id = &"sat-on"
+prompt_key = &"tutorial.strikes.sat-on"
+covers = Array[StringName]([&"superweapon-satellite-on"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_08"]
+script = ExtResource("2_beat")
+id = &"sat-pause"
+prompt_key = &"tutorial.strikes.sat-pause"
+covers = Array[StringName]([&"superweapon-satellite-pause"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_09"]
+script = ExtResource("2_beat")
+id = &"enemy-sweep"
+prompt_key = &"tutorial.strikes.enemy-sweep"
+covers = Array[StringName]([&"superweapon-enemy-sweep"])
+budget_s = 4
+
+[resource]
+script = ExtResource("1_lesson")
+id = &"strikes"
+title_key = &"tutorial.strikes.title"
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09")])
+target_s = 60
+scenario = ExtResource("3_scenario")
+enemy = ExtResource("4_enemy")
+match_seed = 2

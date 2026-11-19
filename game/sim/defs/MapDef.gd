@@ -15,6 +15,11 @@ const _COST_MAX: int = 40
 ## side or corner to corner, numbered by its lowest tile index, in the order `World.ore_cell` lists
 ## it. Empty = no kinds given.
 @export var field_kinds: PackedStringArray = PackedStringArray()
+## The map's ground look for the view only (plan row P551): a folder name under
+## `assets/art/svg/ground_looks/` whose tiles stand in for the terrain's own `a` and `b` diamonds,
+## a terrain at a time (`GroundAtlas`). WorldLoad never reads it, so no hash or digest depends on
+## it. Empty = the standard tiles.
+@export var ground_look: StringName = &""
 
 
 ## Width (the length of the first row) and height in tiles. Zero without rows.

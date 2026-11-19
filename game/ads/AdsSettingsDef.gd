@@ -71,6 +71,10 @@ static var _default: AdsSettingsDef
 @export_range(_MIN_ARM_MS, _MAX_ARM_MS) var reward_arm_ms: int = 500
 ## The Double XP offer's button text; exactly one `%d`, which is `reward_xp_multiplier`.
 @export var reward_xp_text: String = "Watch an ad for %dx XP"
+## The starting-credits offer's button text; exactly one `%d`, which is `reward_start_credits`.
+@export var reward_credits_text: String = "+%d credits next match"
+## The same button once the bonus is granted and not yet used; exactly one `%d`, the credits.
+@export var reward_credits_pending_text: String = "+%d credits ready"
 ## The Play product of the Remove ads purchase.
 @export var remove_ads_product_id: String = "remove_ads"
 
@@ -118,6 +122,10 @@ func validate() -> PackedStringArray:
 	_check(out, "reward_arm_ms", reward_arm_ms, _MIN_ARM_MS, _MAX_ARM_MS)
 	if reward_xp_text.count("%") != 1 or reward_xp_text.count("%d") != 1:
 		out.append("reward_xp_text must hold exactly one %d and no other %")
+	for text: String in [reward_credits_text, reward_credits_pending_text]:
+		if text.count("%") != 1 or text.count("%d") != 1:
+			out.append("the credits texts must hold exactly one %d and no other %")
+			break
 	if remove_ads_product_id.strip_edges().is_empty():
 		out.append("remove_ads_product_id is empty")
 	return out
