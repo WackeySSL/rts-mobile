@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
 ## IntroPlayer and the consent form (Michael, 2026-11-19: the dev APK hung at boot on the test
-## consent form, its Accept dead to a finger). While consent runs, the intro takes no tap, so the
-## form drawn above it gets every one; once consent is done, a tap skips the intro again. Taps go
-## through the viewport as a finger's do (TouchEvents), never into `_input` directly.
+## consent form, its Accept dead to a finger). A tap always stops the intro's motion; while consent
+## runs the intro does not keep the tap, so a form drawn above it gets it too. Taps go through the
+## viewport as a finger's do (TouchEvents), never into `_input` directly.
 
 const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
@@ -28,16 +28,12 @@ func before_test() -> void:
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	_rig.setup(self, load(MENU_PATH) as PackedScene, _size)
-	_ump = FakeUmp.new()
-	_ump.consent_required = true
-	_ump.auto_close = false
-	_ump.draw_placeholders = true
-	_ump.host = _rig.host
+	_ump = null
 
 
 func after_test() -> void:
-	_ump.close_unchanged()
-	_ump.dismiss(true)
+	if _ump != null:
+		_ump.close_unchanged()
 	_rig.teardown(self)
 	UiScale.clear_override()
 
@@ -51,6 +47,11 @@ func _consent_through_form() -> bool:
 
 
 func test_accept_on_the_consent_form_takes_a_finger_while_the_intro_runs() -> void:
+	_ump = FakeUmp.new()
+	_ump.consent_required = true
+	_ump.auto_close = false
+	_ump.draw_placeholders = true
+	_ump.host = _rig.host
 	var player: IntroPlayer = _rig.make(self, _size, false, false, _consent_through_form)
 	_rig.at(player, 0)
 	var accept: Button = _form_button(&"Accept")
@@ -66,12 +67,13 @@ func test_accept_on_the_consent_form_takes_a_finger_while_the_intro_runs() -> vo
 	assert_bool(player.consent_done()).is_true()
 
 
-func test_a_tap_while_consent_runs_does_not_skip_the_intro() -> void:
+func test_a_tap_while_consent_runs_still_stops_the_intro_motion() -> void:
 	var player: IntroPlayer = _rig.make(self, _size, false, true)
 	_rig.at(player, 0)
+	assert_bool(player.consent_done()).is_false()
 	assert_int(player.phase).is_equal(IntroPlayer.Phase.DRIVE)
 	_tap(_size * 0.5)
-	assert_int(player.phase).is_equal(IntroPlayer.Phase.DRIVE)
+	assert_int(player.phase).is_equal(IntroPlayer.Phase.SETTLED)
 
 
 func test_a_tap_after_consent_still_skips_the_intro() -> void:

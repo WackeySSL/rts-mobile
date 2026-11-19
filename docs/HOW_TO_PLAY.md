@@ -245,7 +245,7 @@ and never changed; when a row is deleted, add its id to `RETIRED` in
 ## The intro
 | Id | Action | Result | Teach |
 |---|---|---|---|
-| the-intro-skip | Tap the screen (or press Back) while the game starts | The tank's motion stops at once. If the game is ready, the menu opens right away; if not, the still icon and a thin loading line stay until it is. With Reduced effects on there is no motion, only a short fade. While the privacy (consent) form is open, a tap goes to the form, not the intro | |
+| the-intro-skip | Tap the screen (or press Back) while the game starts | The tank's motion stops at once. If the game is ready, the menu opens right away; if not, the still icon and a thin loading line stay until it is. With Reduced effects on there is no motion, only a short fade. While the privacy (consent) form is open, the tap also reaches the form | |
 
 ## Not yet in the game
 Menus and rewards get their entries when their phase ships them (ROADMAP Phases 5-6).
