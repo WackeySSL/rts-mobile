@@ -6,11 +6,16 @@ extends GdUnitTestSuite
 ## card does not cover that button, and neither the mark nor its ring takes a touch the button
 ## needs.
 
+const BASICS: String = "res://data/tutorial/basics.tres"
 const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd")
 const Sizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.gd")
+const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 
-var _main: Node2D
+var _main: Node
+var _service: Node
+var _harness: RefCounted
 var _window_before: Vector2i = Vector2i.ZERO
 
 
@@ -26,13 +31,16 @@ func after_test() -> void:
 		remove_child(_main)
 		_main.free()
 	_main = null
+	if _harness != null:
+		_harness.dispose()
+		_harness = null
 	CommandQueue.clear()
 	MenuRig.end()
 	get_window().size = _window_before
 
 
 func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
-	var lesson: TutorialLessonDef = load("res://data/tutorial/basics.tres") as TutorialLessonDef
+	var lesson: TutorialLessonDef = load(BASICS) as TutorialLessonDef
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	var runner: MatchRunner = _main.get_node("MatchRunner")
 	runner.scenario = lesson.scenario
@@ -107,3 +115,68 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 	director.advance()
 	assert_object(director.current).is_null()
 	director.skip()
+
+
+## The pause menu's foot holds a live banner band (the fake-mode service of the pause banner suite,
+## no ad request): the card never overlaps it and keeps the buttons' 16 dp from it. The band shows
+## upright only, so the sideways sizes show none, and the test says so.
+func test_the_card_keeps_off_the_banner_band_at_the_six_sizes() -> void:
+	var lesson: TutorialLessonDef = load(BASICS) as TutorialLessonDef
+	var resume_beat: TutorialBeatDef = null
+	for beat: TutorialBeatDef in lesson.beats:
+		if beat.id == &"resume":
+			resume_beat = beat
+	var upright: int = 0
+	for size: Vector2i in Sizes.ALL:
+		get_window().size = size
+		await await_idle_frame()
+		if _harness != null:
+			_harness.dispose()
+			remove_child(_service)
+			_service.free()
+		_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
+		_service = auto_free(_harness.make(true))
+		_service.fake_auto_close = false
+		add_child(_service)
+		_main = auto_free(await MatchRig.open(self))
+		var menu: PauseMenu = _main.get_node("Hud/PauseMenu") as PauseMenu
+		menu.ad_service = _service
+		var hud: Node = _main.get_node("Hud")
+		var runner: MatchRunner = _main.get_node("MatchRunner")
+		var director: TutorialDirector = auto_free(TutorialDirector.new())
+		director.runner = runner
+		director.hud = (hud.get_node("HudStateFeed") as HudStateFeed).state
+		var mark: CoachMark = CoachMark.new()
+		mark.director = director
+		mark.hud_root = hud
+		mark.camera = _main.get_node("Camera")
+		hud.add_child(mark)
+		_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+		director.start(Lesson.lesson("pause", [resume_beat]))
+		for _frame: int in 8:
+			await await_idle_frame()
+		var label: String = str(size)
+		var bands: Array[Node] = _main.find_children("*", "AdBannerBand", true, false)
+		var card: Rect2 = mark.card_rect()
+		assert_bool(card.has_area()).override_failure_message(label).is_true()
+		if size.y > size.x:
+			assert_array(bands).override_failure_message(label).has_size(1)
+			upright += 1
+			var band: AdBannerBand = bands[0] as AdBannerBand
+			var strip: Control = AdBandAsserts.strip_of(_service)
+			assert_bool(band.is_visible_in_tree()).override_failure_message(label).is_true()
+			var gap: float = UiScale.dp(16.0) - 0.01
+			for taken: Rect2 in [band.get_global_rect(), strip.get_global_rect()]:
+				var text: String = "%s: card %s near band %s" % [label, card, taken]
+				(
+					assert_bool(card.grow(gap).intersects(taken))
+					. override_failure_message(text)
+					. is_false()
+				)
+		else:
+			assert_array(bands).override_failure_message(label).is_empty()
+		director.skip()
+		_main.free()
+		_main = null
+		await await_idle_frame()
+	assert_int(upright).is_equal(3)

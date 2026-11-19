@@ -193,6 +193,21 @@ func test_the_fallback_prefers_a_card_whose_button_row_misses_the_ring() -> void
 	assert_bool(room.encloses(placed)).is_true()
 
 
+## Rects the card must not cover (a menu's other buttons, an ad band) are kept clear when a place
+## exists: the card goes where the blocked rect is not, and the ring stays clear too.
+func test_blocked_rects_are_kept_clear_when_a_place_exists() -> void:
+	var room: Rect2 = Rect2(0.0, 0.0, 400.0, 600.0)
+	var card: Vector2 = Vector2(300.0, 100.0)
+	var ring: Rect2 = Rect2(50.0, 200.0, 300.0, 50.0)
+	var below: Rect2 = CoachMark.place_card(ring, card, room, 8.0)
+	var blocked: Array[Rect2] = [below.grow(4.0), Rect2(0.0, 260.0, 400.0, 100.0)]
+	var placed: Rect2 = CoachMark.place_card(ring, card, room, 8.0, 0.0, blocked)
+	assert_bool(room.encloses(placed)).is_true()
+	assert_bool(placed.intersects(ring)).is_false()
+	for rect: Rect2 in blocked:
+		assert_bool(placed.intersects(rect)).is_false()
+
+
 func test_a_turn_mid_beat_at_360_dp_keeps_the_card_inside() -> void:
 	await _open(UiProfiles.by_name(&"web_phone_portrait"), _control_beat("hit", NEXT))
 	_put_target(Vector2(0.3, 0.5))

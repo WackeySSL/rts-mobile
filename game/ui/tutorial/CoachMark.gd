@@ -287,8 +287,10 @@ func _blocked_rects() -> Array[Rect2]:
 		var control: Control = node as Control
 		if control == _target or not control.is_visible_in_tree():
 			continue
-		if control is Button or control is AdBannerBand:
+		if control is Button:
 			found.append(control.get_global_rect())
+		elif control is AdBannerBand:  # Content keeps the buttons' gap from an ad (ad policy).
+			found.append(control.get_global_rect().grow(GAP_DP * _dp))
 	return found
 
 
