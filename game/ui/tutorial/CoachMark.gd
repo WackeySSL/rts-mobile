@@ -72,6 +72,7 @@ var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
 var _again: int = 0  ## Layouts still to make for the change in hand.
 var _next_find: int = 0
+var _blocked_now: Array[Rect2] = []  ## What the card was last placed clear of.
 
 
 func _ready() -> void:
@@ -199,9 +200,16 @@ static func top_row_dp(portrait: bool) -> float:
 ## row at the card's foot. The candidates, in order: below the ring, above, right, left, then the
 ## top and the bottom of `room`, each slid into `room` and taken when it clears the ring. None
 ## clearing it, the one whose button row misses the ring most, then the one that overlaps it
-## least. With no ring: the top centre of `room`.
+## least. With no ring: the top centre of `room`. `blocked` are rects the card must not cover (the
+## other buttons of a menu the ring is in): when there are any, the sides and corners of `room` are
+## tried too, and a place that clears the ring and all of them is taken first.
 static func place_card(
-	ring: Rect2, card: Vector2, room: Rect2, gap: float, row_h: float = 0.0
+	ring: Rect2,
+	card: Vector2,
+	room: Rect2,
+	gap: float,
+	row_h: float = 0.0,
+	blocked: Array[Rect2] = []
 ) -> Rect2:
 	var fit: Vector2 = card.min(room.size)
 	var top: Vector2 = Vector2(room.get_center().x - fit.x * 0.5, room.position.y)
@@ -217,6 +225,31 @@ static func place_card(
 		Vector2(across, room.position.y),
 		Vector2(across, room.end.y - fit.y),
 	]
+	if not blocked.is_empty():
+		var spread: Array[Vector2] = tries.duplicate()
+		(
+			spread
+			. append_array(
+				[
+					Vector2(room.position.x, centre.y - fit.y * 0.5),
+					Vector2(room.end.x - fit.x, centre.y - fit.y * 0.5),
+					room.position,
+					Vector2(room.end.x - fit.x, room.position.y),
+					Vector2(room.position.x, room.end.y - fit.y),
+					room.end - fit,
+				]
+			)
+		)
+		var step: float = maxf(fit.y * 0.5, 1.0)
+		for x: float in [room.position.x, across, room.end.x - fit.x]:
+			var y: float = room.position.y
+			while y <= room.end.y - fit.y + EPSILON:
+				spread.append(Vector2(x, y))
+				y += step
+		for at: Vector2 in spread:
+			var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
+			if box.intersection(ring).get_area() <= EPSILON and not _hits_any(box, blocked):
+				return box
 	var best: Rect2 = Rect2(top, fit)
 	var least_row: float = INF
 	var least: float = INF
@@ -234,6 +267,31 @@ static func place_card(
 	return best
 
 
+static func _hits_any(box: Rect2, rects: Array[Rect2]) -> bool:
+	for rect: Rect2 in rects:
+		if box.intersects(rect):
+			return true
+	return false
+
+
+## The rects the card keeps clear of: when the target is in a modal (a ModalFrame, as the pause
+## menu is), that modal's other visible buttons and its banner band.
+func _blocked_rects() -> Array[Rect2]:
+	var found: Array[Rect2] = []
+	var modal: Node = _target
+	while modal != null and not modal is ModalFrame:
+		modal = modal.get_parent()
+	if modal == null:
+		return found
+	for node: Node in modal.find_children("*", "Control", true, false):
+		var control: Control = node as Control
+		if control == _target or not control.is_visible_in_tree():
+			continue
+		if control is Button or control is AdBannerBand:
+			found.append(control.get_global_rect())
+	return found
+
+
 func _process(_delta: float) -> void:
 	_update()
 
@@ -244,11 +302,13 @@ func _update() -> void:
 		return
 	_resolve_target()
 	var ring: Rect2 = _ring_box()
+	var blocked: Array[Rect2] = _blocked_rects()
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
 	var changed: bool = (
 		_dirty
 		or ring != _ring_now
+		or blocked != _blocked_now
 		or stalled != _stalled_now
 		or can_next != _can_next_now
 		or size != _size_now
@@ -259,6 +319,7 @@ func _update() -> void:
 		_again = 2  # A label shapes its wrapped text a frame after its width changes: look twice.
 	_dirty = false
 	_ring_now = ring
+	_blocked_now = blocked
 	_stalled_now = stalled
 	_can_next_now = can_next
 	_size_now = size
@@ -283,7 +344,7 @@ func _update() -> void:
 	_card.custom_minimum_size = Vector2(width, 0.0)
 	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
 	var row_h: float = MIN_TARGET_DP * _dp + panel.get_margin(SIDE_BOTTOM)
-	var placed: Rect2 = place_card(ring, _card.size, _room, GAP_DP * _dp, row_h)
+	var placed: Rect2 = place_card(ring, _card.size, _room, GAP_DP * _dp, row_h, blocked)
 	_card.global_position = placed.position
 	# A card that could not clear the ring lets touches through, so it never blocks the target.
 	var covers: bool = placed.intersection(ring).get_area() > EPSILON

@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 ## needs.
 
 const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd")
+const Sizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 
 var _main: Node2D
@@ -15,7 +16,7 @@ var _window_before: Vector2i = Vector2i.ZERO
 
 func before_test() -> void:
 	_window_before = get_window().size
-	get_window().size = Vector2i(1280, 720)
+	get_window().size = Sizes.LANDSCAPE[0]
 	MenuRig.begin()
 	CommandQueue.clear()
 
@@ -77,6 +78,30 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 	assert_bool(resume.get_global_rect().has_point(ring.get_center())).is_true()
 	assert_bool(mark.card_rect().intersects(resume.get_global_rect())).is_false()
 	assert_int(mark.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	# At each of the six sizes the card stands clear of every other button of the menu and of the
+	# banner foot, and the dialogs (the pause menu's questions, the sell question) and the result
+	# screen are drawn above it.
+	for size: Vector2i in Sizes.ALL:
+		get_window().size = size
+		for _frame: int in 4:
+			await await_idle_frame()
+		var card: Rect2 = mark.card_rect()
+		assert_bool(card.has_area()).override_failure_message(str(size)).is_true()
+		assert_object(mark.target_control()).is_same(resume)
+		for node: Node in menu.find_children("*", "Control", true, false):
+			var control: Control = node as Control
+			var shown: bool = control.is_visible_in_tree() and not control is ConfirmDialog
+			var covered: bool = control is Button or control is AdBannerBand
+			if shown and covered and control != resume and control.get_global_rect().has_area():
+				var label: String = "%s %s under the card at %s" % [size, control.name, card]
+				(
+					assert_bool(card.intersects(control.get_global_rect()))
+					. override_failure_message(label)
+					. is_false()
+				)
+	for node: Node in hud.get_children():
+		if node is ConfirmDialog or node is ResultScreen:
+			assert_int((node as Control).z_index).is_greater(mark.z_index)
 	# Resume closes the menu and ends the beat; the match runs again.
 	feed.state.close(HudState.Unfold.PAUSE)
 	director.advance()
