@@ -52,6 +52,14 @@ const TIERS: int = 3
 ## hit by something unseen shifts its squad's goal toward it, in tiles.
 @export var staging_offset_tiles: int = 6
 @export var unseen_hit_shift_tiles: int = 4
+## The stalled wave (`AiStall`, P555b): ticks without progress that make a wave of idle units
+## stalled (0 turns the answer off, so a def that names none, the frozen files, plays as before),
+## the tiles closer to the target that count as progress, the tiles from the target that count as
+## arrived, and the percent of the wave that must stand idle.
+@export var stall_window_ticks: int = 0
+@export var stall_progress_tiles: int = 2
+@export var stall_arrive_tiles: int = 10
+@export var stall_idle_percent: int = 50
 ## The sector map: tiles per sector side and the most sectors kept.
 @export var sector_tiles: int = 8
 @export var sectors_max: int = 64
