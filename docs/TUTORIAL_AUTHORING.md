@@ -43,6 +43,17 @@ reads are on `TutorialConditions`. A few rules that the tests enforce (`test_les
   about to happen.
 - A card is named by `{type_id}` in the text, so the prompt shows the display name the card has.
 
+- A beat's target must be on screen when its card shows (the bot's run asserts no ring is missing).
+  A control that exists only in a state (a tab of the closed drawer, a command-bar button with
+  nothing selected, the check mark of an aim that has not begun) needs a step beat before it that
+  makes the state: `DRAWER_TAB` anchored on `BuildButton`, `SELECTED`, or `STRIKE_AIMED`. Where no
+  condition can make the state (the sweep's aim), anchor on the button that is there.
+- A beat that opens a modal (the pause menu holds the match, and tick time stops) is followed by
+  a beat whose card asks for the way out and whose condition is that it closed (`UNFOLD_CLOSED`
+  with the unfold): a delay in ticks does not pass while the match is held.
+- A beat that is true when it shows (a tanker that already loaded) ends by itself: give it an
+  action the player does, or show it before the thing happens.
+
 ### Anchors
 
 - `CONTROL`: a HUD node by name, looked up under the HUD root. The names the lessons use:

@@ -79,6 +79,8 @@ func _finishes(id: StringName, think_ticks: int = 0) -> Dictionary:
 	assert_bool(TutorialDirector.is_done(id)).override_failure_message(id + " not saved").is_true()
 	assert_array(result["missing"]).override_failure_message(String(id)).is_empty()
 	_assert_order(lesson, result)
+	# A beat's target is on the screen when its card shows (TUTORIAL_AUTHORING): no ring is missing.
+	assert_array(result["ringless"]).override_failure_message(String(id)).is_empty()
 	return result
 
 

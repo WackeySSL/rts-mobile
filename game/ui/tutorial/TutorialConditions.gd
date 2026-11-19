@@ -20,6 +20,8 @@ extends RefCounted
 ## - CAMERA_PANNED: the camera's centre moved at least `count` world px since `start`, at the zoom
 ##   it had then (a pinch about a point also moves the centre, and does not count).
 ## - UNFOLD_OPEN: the open `HudState.Unfold` is `value`.
+## - UNFOLD_CLOSED: the open `HudState.Unfold` is not `value` (the pause menu was closed: the card
+##   that asks for Resume ends when the match runs again).
 ## - DRAWER_TAB: the drawer is open on tab `value`.
 ## - PLACING: a placement of `type_id` (any when empty) is on.
 ## - STRIKE_AIMED: the strike aim is on with a point set.
@@ -45,6 +47,7 @@ enum Kind {
 	STRIKE_PENDING,
 	GROUP_SAVED,
 	MATCH_WON,
+	UNFOLD_CLOSED,
 }
 
 ## The kinds that only the sim's ticks can make true: a beat that pauses the match cannot use them.
@@ -78,6 +81,8 @@ static func check(beat: TutorialBeatDef, ctx: TutorialContext, start: TutorialCo
 			)
 		Kind.UNFOLD_OPEN:
 			return ctx.hud != null and int(ctx.hud.current) == beat.value
+		Kind.UNFOLD_CLOSED:
+			return ctx.hud != null and int(ctx.hud.current) != beat.value
 		Kind.DRAWER_TAB:
 			return (
 				ctx.hud != null
