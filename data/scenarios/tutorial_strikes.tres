@@ -76,7 +76,7 @@ owner = 1
 unit = ExtResource("u6_fossil_strike")
 count = 1
 origin_tile = Vector2i(14, 4)
-charge_elapsed_ticks = 4500
+charge_elapsed_ticks = 4800
 
 [sub_resource type="Resource" id="Spawn_8"]
 script = ExtResource("2_spawn")

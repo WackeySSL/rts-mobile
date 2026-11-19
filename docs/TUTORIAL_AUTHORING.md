@@ -11,7 +11,7 @@ Notes for whoever adds or changes a lesson (ADR 0044, plan rows P541-P543). The 
 | `data/tutorial/<id>_enemy.tres` | `TutorialScriptDef`: the steps the scripted opponent plays (`TutorialAi`) |
 | `data/scenarios/tutorial_<id>.tres` | The match: spawns, on `data/rules.tres` (every shipped scenario shares it) |
 | `data/maps/tutorial_*.tres` | The ground; `basics` has its own, the three drills share `tutorial_drills` |
-| `game/ui/tutorial/TutorialText.gd` | The English words: one entry per beat prompt and lesson title, by `prompt_key` |
+| `data/tutorial/text_en.tres` | The English words (`TutorialTextDef`): one string per beat prompt and lesson title, by `prompt_key`. Name a card as `{type_id}` (`{power_plant}`), never by typing its name: `TutorialText` puts in the display name from the defs |
 
 `balance.yml` ignores `data/tutorial/**`, `data/maps/tutorial_*` and `data/scenarios/tutorial_*`, so
 a lesson edit starts no balance run. Keep lessons out of the balance sets.
@@ -21,8 +21,9 @@ a lesson edit starts no balance run. Keep lessons out of the balance sets.
 One prompt and one condition. Fields are on `TutorialBeatDef`; the condition kinds and what each
 reads are on `TutorialConditions`. A few rules that the tests enforce (`test_lesson_data.gd`):
 
-- `covers` names rows of `docs/HOW_TO_PLAY.md` by id. A Teach row is covered by a beat of some lesson;
-  a row that is not in the game (the "Not yet" section) is never named.
+- `covers` names rows of `docs/HOW_TO_PLAY.md` by id; a row that is not in the game (the "Not yet"
+  section) is never named. That every Teach row is covered by some lesson is the coverage test's
+  (P545), not this suite's.
 - A beat that asks for units or buildings names a type that is in the match. A `SELECTED` or
   `UNITS_IN_AREA` beat is satisfied from the scenario's own units; a build or training beat names
   something the player's faction can build with a producer that stands (or that an earlier beat
@@ -35,6 +36,12 @@ reads are on `TutorialConditions`. A few rules that the tests enforce (`test_les
   lesson's `target_s` (Basics 180 s; a drill about a minute, up to 90 s).
 - `delay_ticks` waits in match time, so a paused match does not count. A beat that must come
   after the pause menu closes (it shows while the menu is up otherwise) gets a delay.
+- A prompt that talks about what the enemy is doing waits for it to be true: a step's tick is the
+  think that sent the order, and the order takes effect a tick later and then travels. Give the
+  beat a `delay_ticks` of the walk or flight (the poke's first hit lands about 110 ticks after its
+  step, the raid's fighter is over the base about 55 ticks after), or word the prompt as what is
+  about to happen.
+- A card is named by `{type_id}` in the text, so the prompt shows the display name the card has.
 
 ### Anchors
 

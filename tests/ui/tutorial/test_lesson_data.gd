@@ -231,14 +231,11 @@ func test_every_prompt_has_its_english_text_and_no_text_is_left_over() -> void:
 		used.append(lesson.title_key)
 		for beat: TutorialBeatDef in lesson.beats:
 			used.append(beat.prompt_key)
+	var words: Dictionary[StringName, String] = TutorialText.raw()
 	for key: StringName in used:
-		assert_bool(TutorialText.ENGLISH.has(key)).override_failure_message(String(key)).is_true()
-		(
-			assert_str(TutorialText.ENGLISH.get(key, ""))
-			. override_failure_message(String(key))
-			. is_not_empty()
-		)
-	for key: StringName in TutorialText.ENGLISH:
+		assert_bool(words.has(key)).override_failure_message(String(key)).is_true()
+		assert_str(words.get(key, "")).override_failure_message(String(key)).is_not_empty()
+	for key: StringName in words:
 		assert_bool(used.has(key)).override_failure_message("unused " + String(key)).is_true()
 
 
@@ -247,19 +244,72 @@ func test_the_director_registers_the_english_table() -> void:
 	var director: TutorialDirector = auto_free(TutorialDirector.new())
 	director.start(null)
 	var key: StringName = &"tutorial.basics.pan"
-	assert_str(TranslationServer.translate(key)).is_equal(TutorialText.ENGLISH[key])
+	assert_str(TranslationServer.translate(key)).is_equal(TutorialText.resolved()[key])
 
 
 ## A prompt is for a first-time player: no data name, file path or code in it.
 func test_prompts_hold_no_developer_reference() -> void:
-	for key: StringName in TutorialText.ENGLISH:
-		var text: String = TutorialText.ENGLISH[key]
+	var words: Dictionary[StringName, String] = TutorialText.resolved()
+	for key: StringName in words:
+		var text: String = words[key]
 		for banned: String in ["`", "data/", ".tres", "res://", "_ms", "_s "]:
 			(
 				assert_bool(text.contains(banned))
 				. override_failure_message("%s: %s" % [key, banned])
 				. is_false()
 			)
+
+
+## A prompt names a card as the player sees it (its display name), by `{type_id}` from the defs: a
+## placeholder names a unit of the lessons' faction and none is left open, and the type id read as
+## words ("Power Plant", "Rifle Squad") is no name in any prompt unless it is a display name.
+func test_prompts_name_cards_by_their_display_names() -> void:
+	var cards: Dictionary[String, String] = TutorialText.names()
+	assert_int(cards.size()).is_greater(20)
+	var shown: Dictionary[StringName, String] = TutorialText.resolved()
+	var holder: RegEx = RegEx.create_from_string("\\{([a-z_]+)\\}")
+	var real: Array[String] = cards.values()
+	for key: StringName in TutorialText.raw():
+		for hit: RegExMatch in holder.search_all(TutorialText.raw()[key]):
+			var type: String = hit.get_string(1)
+			assert_bool(cards.has(type)).override_failure_message("%s {%s}" % [key, type]).is_true()
+		(
+			assert_bool(shown[key].contains("{") or shown[key].contains("}"))
+			. override_failure_message(String(key))
+			. is_false()
+		)
+	for type: String in cards:
+		for wrong: String in [type.capitalize(), type.trim_prefix("fossil_").capitalize()]:
+			if real.has(wrong):
+				continue
+			var word: RegEx = RegEx.create_from_string("\\b%s\\b" % wrong)  # Not "Strikes".
+			for key: StringName in shown:
+				var label: String = "%s says %s, the card is %s" % [key, wrong, cards[type]]
+				(
+					assert_bool(word.search(shown[key]) != null)
+					. override_failure_message(label)
+					. is_false()
+				)
+
+
+## A strike building of a drill is ready when its drill needs it and not before: the Deep Bore has
+## its whole charge behind it with a margin, the Skyrig's is still running.
+func test_the_strikes_drill_charges_one_building_and_leaves_one_running() -> void:
+	var lesson: TutorialLessonDef = _lesson(&"strikes")
+	var ready: int = 0
+	var charging: int = 0
+	for spawn: SpawnDef in lesson.scenario.spawns:
+		if not spawn.unit is BuildingDef or spawn.owner != LOCAL:
+			continue
+		var building: BuildingDef = spawn.unit
+		if building.charge_ticks <= 0:
+			continue
+		if spawn.charge_elapsed_ticks > building.charge_ticks:
+			ready += 1  # Charged with a margin.
+		elif spawn.charge_elapsed_ticks > 0 and spawn.charge_elapsed_ticks < building.charge_ticks:
+			charging += 1
+	assert_int(ready).is_equal(1)
+	assert_int(charging).is_equal(1)
 
 
 func _lesson(id: StringName) -> TutorialLessonDef:

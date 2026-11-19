@@ -51,6 +51,7 @@ func test_the_same_gate_opens_in_sync_mode() -> void:
 	var frames: int = _play_until_shown()
 	assert_int(frames).is_less(FRAMES_MAX)
 	var ai: TutorialAi = _runner.controller_of(FOE) as TutorialAi
+	assert_int(ai.fired_tick_of(&"go")).is_greater_equal(GO_TICK)  # It did fire, on its clock.
 	assert_int(_shown[0]).is_greater_equal(ai.fired_tick_of(&"go"))
 
 

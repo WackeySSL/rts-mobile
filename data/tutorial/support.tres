@@ -45,6 +45,7 @@ budget_s = 5
 script = ExtResource("2_beat")
 id = &"poke"
 prompt_key = &"tutorial.support.poke"
+delay_ticks = 120
 after_ai_step = &"poke"
 budget_s = 4
 
