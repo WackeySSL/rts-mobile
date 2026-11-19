@@ -184,3 +184,38 @@ func test_the_privacy_placeholder_has_a_close_that_changes_nothing() -> void:
 	assert_array(out).has_size(1)
 	assert_int(service.banner_height_dp()).is_equal(FakeAdBackend.DEFAULT_BANNER_HEIGHT_DP)
 	assert_array(_seen).contains_exactly([true, true])
+
+
+func test_a_cut_privacy_run_keeps_the_gate_and_the_next_resume_re_reads_consent() -> void:
+	var service: Node = _make()
+	var ump: FakeUmp = AdServiceHarness.ump(service)
+	ump.consent_required = true
+	await service.ensure_consent()
+	assert_array(_seen).is_equal([true])
+	ump.show_never_shows = true
+	var call: Array = AdServiceHarness.start(
+		func() -> bool:
+			await service.show_privacy_options()
+			return true
+	)
+	await AdServiceHarness.frames(4)
+	assert_array(call).is_empty()
+	_h.clock_ms = AdServiceHarness.consent_timeout_ms(service)
+	await AdServiceHarness.frames(4)
+	assert_array(call).is_equal([true])
+	assert_array(_seen).is_equal([true])  # Nothing announced by the cut; the gate is as it was.
+	var updates: int = ump.info_updates
+	service.notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	await AdServiceHarness.frames(4)
+	assert_int(ump.info_updates).is_equal(updates + 1)  # Re-read on resume.
+	service.notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	await AdServiceHarness.frames(4)
+	assert_int(ump.info_updates).is_equal(updates + 1)  # Once: the mark was cleared.
+
+
+func test_focus_out_and_pause_reach_the_consent_backend() -> void:
+	var service: Node = _make()
+	var ump: FakeUmp = AdServiceHarness.ump(service)
+	service.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	service.notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	assert_int(ump.app_pauses).is_equal(2)

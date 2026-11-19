@@ -32,6 +32,7 @@ var info_updates: int = 0
 ## The debug geography the last update was asked for (it makes the user an EEA user).
 var last_debug_eea: bool = false
 var forms_shown: int = 0
+var app_pauses: int = 0
 
 var _info: Step = Step.PENDING
 var _status: Status = Status.UNKNOWN
@@ -40,6 +41,7 @@ var _is_open: bool = false
 var _node: FakeConsentForm = null
 var _held_with_close: bool = false
 var _is_held: bool = false
+var _is_late: bool = false
 
 
 func update_info(debug_eea: bool) -> void:
@@ -110,15 +112,28 @@ func close_unchanged() -> void:
 		_end()
 
 
-## Test hook: a show held by `show_never_shows` opens now (it came late).
-func show_held_form() -> void:
+func notify_app_paused() -> void:
+	app_pauses += 1
+
+
+## An SDK cannot recall a started show: the cut run's show may still open (`show_held_form`).
+func cancel_pending_show() -> void:
 	if _is_held:
 		_is_held = false
+		_is_late = true
+
+
+## Test hook: a show held by `show_never_shows` opens now (it came late).
+func show_held_form() -> void:
+	if _is_held or _is_late:
+		_is_held = false
+		_is_late = false
 		_open(_held_with_close)
 
 
 func _show(with_close: bool) -> void:
 	if _is_open or _is_held:
+		form_dismissed.emit()  # Refused: nothing new opens, and no waiting gate hangs.
 		return
 	if show_never_shows:
 		_is_held = true

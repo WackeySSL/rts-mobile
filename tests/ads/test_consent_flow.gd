@@ -122,9 +122,8 @@ func test_privacy_options_that_never_show_return_at_the_timeout_and_free_the_flo
 	await _tick()
 	await _tick()
 	assert_array(done).is_equal([true])
-	assert_array(settled).is_equal([false])  # The flow finished and is free again; no consent yet.
-	assert_int(ump.form_dismissed.get_connections().size()).is_equal(0)
-	assert_int(ump.form_shown.get_connections().size()).is_equal(0)
+	assert_array(settled).is_empty()  # A cut announces nothing: fail closed.
+	assert_bool(flow.needs_recheck).is_true()  # Cut: fail closed, the next consent run re-reads.
 	# A later consent run does not await the dead flow.
 	ump.show_never_shows = false
 	ump.show_held_form()  # The late show of the dead flow comes and closes by itself.
@@ -165,26 +164,71 @@ func test_a_privacy_options_show_that_comes_late_is_ignored_without_a_second_fin
 	clock[0] = 1000
 	await _tick()
 	await _tick()
-	assert_array(settled).has_size(1)
+	assert_array(settled).is_empty()  # A cut announces nothing.
 	ump.show_held_form()  # The late show: nobody waits for it.
 	assert_int(ump.forms_shown).is_equal(1)
 	ump.dismiss(true)  # The late close.
-	assert_array(settled).has_size(1)  # Not finished twice.
+	assert_array(settled).is_empty()  # The late close finishes nothing.
 	# The flow works again: a new run shows and finishes normally.
 	ump.show_never_shows = false
 	ump.form_never_closes = false
 	await flow.run_privacy_options(now, 1000)
 	assert_int(ump.forms_shown).is_equal(2)
-	assert_array(settled).has_size(2)
+	assert_array(settled).has_size(1)
 
 
-func test_a_failed_privacy_options_show_ends_the_wait_without_the_timeout() -> void:
+func test_a_gate_that_is_cut_tells_the_backend_and_lets_go_of_it() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.show_never_shows = true
+	var clock: Array[int] = [0]
+	var gate: ConsentGate = ConsentGate.new(ump, func() -> int: return clock[0], 1000, false)
+	var results: Array[bool] = []
+	var run: Callable = func() -> void: results.append(await gate.run_privacy_options())
+	run.call()
+	clock[0] = 1000
+	await _tick()
+	await _tick()
+	assert_array(results).is_equal([false])  # Cut.
+	assert_int(ump.form_dismissed.get_connections().size()).is_equal(0)
+	assert_int(ump.form_shown.get_connections().size()).is_equal(0)
+	ump.show_held_form()  # The show was recalled by the gate but the SDK opens it late anyway.
+	assert_int(ump.forms_shown).is_equal(1)
+
+
+func test_a_failed_privacy_options_show_is_not_a_cut_and_lets_go() -> void:
 	var ump: FakeUmp = _privacy_ump()
 	ump.show_fails = true
+	var gate: ConsentGate = ConsentGate.new(ump, _now, 1000, false)
+	assert_bool(await gate.run_privacy_options()).is_true()
+	assert_int(ump.form_dismissed.get_connections().size()).is_equal(0)
+	assert_int(ump.form_shown.get_connections().size()).is_equal(0)
+
+
+func test_a_late_open_form_stays_open_and_a_new_run_neither_takes_its_close_nor_hangs() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.show_never_shows = true
+	ump.form_never_closes = true
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
 	var flow: ConsentFlow = _flow(ump, false)
-	var frame: int = Engine.get_process_frames()
-	await flow.run_privacy_options(_now, 1000)
-	assert_int(Engine.get_process_frames()).is_equal(frame)
+	var run: Callable = func() -> void: await flow.run_privacy_options(now, 1000)
+	run.call()
+	clock[0] = 1000
+	await _tick()
+	await _tick()
+	ump.show_held_form()  # Opens late and stays open.
+	assert_int(ump.forms_shown).is_equal(1)
+	ump.show_never_shows = false
+	var second: Array[bool] = []
+	var again: Callable = func() -> void:
+		await flow.run_privacy_options(now, 1000)
+		second.append(true)
+	again.call()  # The show is refused (one form at a time): the run ends, it does not hang.
+	assert_array(second).is_equal([true])
+	assert_int(ump.forms_shown).is_equal(1)
+	assert_bool(flow.needs_recheck).is_true()  # Only a consent run clears the mark.
+	ump.dismiss(true)  # The old form's close reaches nobody.
+	assert_array(second).has_size(1)
 
 
 # --- the debug geography --------------------------------------------------------------------

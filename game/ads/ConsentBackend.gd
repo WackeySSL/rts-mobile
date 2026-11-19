@@ -23,9 +23,10 @@ extends RefCounted
 
 ## The form (consent or privacy options) was dismissed.
 signal form_dismissed
-## A form is on screen (or, for a backend that cannot observe it, was handed to the SDK). Fires
-## before `form_dismissed`. A run that waits on `show_privacy_options` gives up at its deadline
-## only while this has not fired; after it the run waits for the dismissal with no timeout.
+## A form is on screen. A real backend emits it only on a real "shown" signal or a proxy for one
+## (see `notify_app_paused`), never at hand-over. Fires before `form_dismissed`. A run that waits
+## on `show_privacy_options` gives up at its deadline only while this has not fired; after it the
+## run waits for the dismissal with no timeout.
 signal form_shown
 
 enum Step { PENDING, DONE, FAILED }
@@ -77,3 +78,15 @@ func is_privacy_options_required() -> bool:
 ## closes or fails (a failure may come without `form_shown`).
 func show_privacy_options() -> void:
 	form_dismissed.emit()
+
+
+## The app lost focus or paused (AdService forwards it): a native form may now cover the game. A
+## backend with no "shown" callback turns the first one after a privacy show into `form_shown`.
+func notify_app_paused() -> void:
+	pass
+
+
+## The run that asked for a show gave up (its deadline passed before `form_shown`). The SDK may
+## still open the form late; the backend forgets that the run is waiting for it.
+func cancel_pending_show() -> void:
+	pass

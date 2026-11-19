@@ -37,21 +37,24 @@ func execute() -> bool:
 	return _backend.can_request_ads()
 
 
-## Awaitable. Like `execute`: one deadline before the form shows (`form_shown`, or a dismissal
-## without one), then the wait for the close has no timeout. On the deadline the run returns and
-## lets go of the backend; a late show or close then reaches nobody.
-func run_privacy_options() -> void:
+## Awaitable. Like `execute`: one deadline before the form shows (`form_shown`), then the wait for
+## the close has no timeout. False when the deadline cut the run: the backend is told to forget
+## the show and the gate lets go of it, so a late show or close reaches nobody. A dismissal
+## without a show (a failed or refused show) counts as DONE: nothing is open, nothing to wait for.
+func run_privacy_options() -> bool:
 	var deadline: int = int(_now_ms.call()) + _timeout_ms
 	_dismissed = false
 	_backend.form_shown.connect(_on_shown, CONNECT_ONE_SHOT)
 	_backend.form_dismissed.connect(_on_dismissed, CONNECT_ONE_SHOT)
 	_backend.show_privacy_options()
-	if not await _until_done(deadline, _shown_state):
-		_release(_backend.form_shown, _on_shown)
-		_release(_backend.form_dismissed, _on_dismissed)
-		return
-	if not _dismissed:
+	var reached: bool = await _until_done(deadline, _shown_state)
+	if not reached:
+		_backend.cancel_pending_show()
+	elif not _dismissed:
 		await _backend.form_dismissed
+	_release(_backend.form_shown, _on_shown)
+	_release(_backend.form_dismissed, _on_dismissed)
+	return reached
 
 
 ## Waits for `form_dismissed`, which the backend fires on every outcome (ConsentBackend).
