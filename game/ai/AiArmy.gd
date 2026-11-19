@@ -118,6 +118,11 @@ func stall_attacks() -> int:
 	return _stall.attacks
 
 
+## The scout orders the stall answer sent over the match (`AiStall`).
+func stall_scouts() -> int:
+	return _stall.scouts
+
+
 ## The orders back to the target the stall answer sent over the match (`AiStall`).
 func stall_retries() -> int:
 	return _stall.retries

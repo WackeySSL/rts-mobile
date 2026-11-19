@@ -5,13 +5,16 @@ extends RefCounted
 ## or Curlew Crags; the sim steers a unit with no route straight at its goal, and it stops at the
 ## first ridge or wall). The answer is Commands from the view alone: first an `ATTACK` on the
 ## nearest enemy building the view shows (a wall is a building in the way), then, once that is
-## done and the units stand idle again, the old `ATTACK_MOVE` to the target, in turn. A wave that
+## done and the units stand idle again, the old `ATTACK_MOVE` to the target, in turn. With no
+## enemy building in view (P555c) a few units scout the nearest unexplored ground on the target's
+## side first, so the wall comes into view. A wave that
 ## still fights keeps its order and is never touched; nor is one near its target. A def whose
 ## `stall_window_ticks` is 0 (the frozen files) turns it off, so a play from them is as before.
-## The numbers are the def's. No randomness, no World.
+## The numbers are the def's. No randomness.
 
-## The counters the suites read: orders on a building and orders back to the target.
+## The counters the suites read: orders on a building, scout orders and orders back to the target.
 var attacks: int = 0
+var scouts: int = 0
 var retries: int = 0
 
 ## Copied from the def: the window (ticks), the progress that resets it, the distance from the
@@ -20,6 +23,10 @@ var _window: int = 0
 var _progress: int = 0
 var _arrive: int = 0
 var _idle_percent: int = 0
+## How many units of the wave scout when no enemy building is in view (0 = none), and the cells a
+## scout was sent to already (no cell twice, so a cell no one can enter is not tried again).
+var _scout_units: int = 0
+var _tried: PackedInt32Array = PackedInt32Array()
 ## The target the wave aims at (tiles), the nearest the wave has been to it since the last order,
 ## the tick that changed, the tick since which the idle share has held at every think (-1: not
 ## now), and whether the next answer sends the wave back to the target.
@@ -36,6 +43,7 @@ static func create(def: OpponentDef) -> AiStall:
 	stall._progress = maxi(def.stall_progress_tiles, 0) * PlayerView.MILLI_PER_TILE
 	stall._arrive = maxi(def.stall_arrive_tiles, 0) * PlayerView.MILLI_PER_TILE
 	stall._idle_percent = clampi(def.stall_idle_percent, 0, 100)
+	stall._scout_units = maxi(def.stall_scout_units, 0)
 	return stall
 
 
@@ -87,6 +95,8 @@ func run(
 		# building, and the army's key and goal stay one (`AiArmy._wave_holds_army`).
 		sent = army._order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, aim, wall)
 		attacks += 1 if sent else 0
+	elif not _retry and _scout(army, view, memory, out, ids, at, goal):
+		sent = true
 	else:
 		sent = army._order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, aim)
 		retries += 1 if sent else 0
@@ -95,6 +105,54 @@ func run(
 		_since = view.tick
 		_idle_from = -1
 	return sent
+
+
+## No enemy building is in view: the first `_scout_units` units of the wave go to the nearest cell
+## the player has not explored (the view's `is_explored`) on the target's side of the wave, and what
+## they see ends the blindness; the next answer finds the building or goes on. The key books the
+## target's cell, as the wave's goal does. True when sent.
+func _scout(
+	army: AiArmy,
+	view: PlayerView,
+	memory: AiMemory,
+	out: Array[Command],
+	ids: PackedInt32Array,
+	at: Vector2i,
+	goal: Vector2i
+) -> bool:
+	var cell: int = scout_cell(view, at, AiArmy._at(goal))
+	if _scout_units <= 0 or cell < 0:
+		return false
+	var tile: Vector2i = Vector2i(cell % view.map_cols, cell / view.map_cols)
+	var group: PackedInt32Array = PackedInt32Array()
+	for at_id: int in mini(_scout_units, ids.size()):
+		group.append(ids[at_id])
+	if not army._order(view, memory, out, group, goal, AiMemory.Owner.ARMY, AiArmy._at(tile)):
+		return false
+	_tried.append(cell)
+	scouts += 1
+	return true
+
+
+## The cell the view says is unexplored that lies nearest to `at` (milli-tiles) among those on the
+## side of `aim` (the dot product with the way to it is above 0), the lowest cell on a tie, and not
+## sent to before; -1 for none. Reads the view's `is_explored` only, never the map.
+func scout_cell(view: PlayerView, at: Vector2i, aim: Vector2i) -> int:
+	var cols: int = view.map_cols
+	var way: Vector2i = aim - at
+	var found: int = -1
+	var least: int = 0
+	for cell: int in cols * view.map_rows:
+		if view.is_explored(cell) or _tried.has(cell):
+			continue
+		var gap: Vector2i = AiArmy._at(Vector2i(cell % cols, cell / cols)) - at
+		if gap.x * way.x + gap.y * way.y <= 0:
+			continue
+		var near: int = gap.x * gap.x + gap.y * gap.y
+		if found < 0 or near < least:
+			found = cell
+			least = near
+	return found
 
 
 ## The id of the seen enemy building nearest to `at` that the view shows now, NONE for none.

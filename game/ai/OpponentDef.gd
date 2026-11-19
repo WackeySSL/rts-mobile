@@ -60,6 +60,9 @@ const TIERS: int = 3
 @export var stall_progress_tiles: int = 2
 @export var stall_arrive_tiles: int = 10
 @export var stall_idle_percent: int = 50
+## Units of a stalled wave that scout unexplored ground when no enemy building is in view (0:
+## none).
+@export var stall_scout_units: int = 2
 ## The sector map: tiles per sector side and the most sectors kept.
 @export var sector_tiles: int = 8
 @export var sectors_max: int = 64
