@@ -44,4 +44,24 @@ entries = Array[Dictionary]([{
 &"player_side": &"renew"
 }],
 &"title": "Heron Fords"
+}, {
+&"id": &"map_3",
+&"scenarios": [{
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_curlew_crags.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_curlew_crags_mirrored.tres",
+&"player_side": &"renew"
+}, {
+&"opponent_side": &"fossil",
+&"path": "res://data/scenarios/skirmish_curlew_crags_fossil_mirror.tres",
+&"player_side": &"fossil"
+}, {
+&"opponent_side": &"renew",
+&"path": "res://data/scenarios/skirmish_curlew_crags_renew_mirror.tres",
+&"player_side": &"renew"
+}],
+&"title": "Curlew Crags"
 }])

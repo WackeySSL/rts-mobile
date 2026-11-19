@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## deletes the file and goes back to the menu with a notice. Cancel keeps the file.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
+const StuckRunner: GDScript = preload("res://tests/core/support/stuck_runner.gd")
 const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const DUMMY: String = "res://data/ai/dummy_renew.tres"
 const LEVEL: String = "res://data/ai/difficulty/hard.tres"
@@ -161,3 +162,18 @@ func test_the_autoload_installs_the_resume_watcher() -> void:
 	var watcher: ResumeWatcher = get_tree().root.get_node_or_null("ResumeWatcher") as ResumeWatcher
 	assert_object(watcher).is_not_null()
 	assert_object(watcher.flow).is_same(MenuFlow)
+
+
+func test_a_restore_that_times_out_keeps_the_file_and_opens_the_menu_with_the_notice() -> void:
+	_file()
+	_flow.make_main = func() -> Node:
+		var scene: Node = Node.new()
+		var runner: MatchRunner = StuckRunner.new()
+		runner.stuck = true
+		runner.name = "MatchRunner"
+		scene.add_child(runner)
+		return scene
+	assert_int(await _flow.continue_match()).is_equal(ERR_TIMEOUT)
+	assert_bool(ResumeStore.has_file()).is_true()
+	assert_int(_menus).is_equal(1)
+	assert_str(_flow.take_pending_notice()).is_equal(MainMenuText.RESTORE_FAILED)

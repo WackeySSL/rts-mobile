@@ -9,16 +9,17 @@ extends RefCounted
 ##
 ## Layout: `MAGIC` (4 bytes), the header's byte count (u32 little endian), the check (32 bytes:
 ## sha256 of the header bytes followed by the body), the header (ASCII JSON: format, app_version,
-## defs_hash as a String, tick, local_player, the setup dictionary, the compressed and the raw
-## size of the body), then the body: `Replay.to_bytes()` compressed with zstd. The check covers the
-## header and the body and is compared before either is parsed or decompressed, so a damaged or
-## cut file is refused without the engine ever seeing it.
+## defs_hash as a String, tick, end_hash (`World.state_hash()` at `tick`, as a String; the
+## checkpoints stop up to 14 ticks short of it), local_player, the setup dictionary, the compressed
+## and the raw size of the body), then the body: `Replay.to_bytes()` compressed with zstd. The
+## check covers the header and the body and is compared before either is parsed or decompressed, so
+## a damaged or cut file is refused without the engine ever seeing it.
 ##
 ## Who writes and deletes: `ResumeWatcher` calls `write_from` on the app pause and `delete` when
 ## the match ends, is left or replaced; the restore calls `read` and, on a failed restore,
 ## `delete`. A tutorial lesson is never written (the lesson restarts).
 
-const FORMAT: int = 1
+const FORMAT: int = 2  # 2: the header holds `end_hash` (P516); format 1 files are refused.
 const FILE_NAME: String = "resume.bin"
 const SECTION: StringName = &"match"
 const MAGIC: PackedByteArray = [0x52, 0x53, 0x4D, 0x31]  # "RSM1"
@@ -38,6 +39,7 @@ const K_FORMAT: String = "format"
 const K_APP: String = "app_version"
 const K_DEFS: String = "defs_hash"
 const K_TICK: String = "tick"
+const K_END: String = "end_hash"
 const K_PLAYER: String = "local_player"
 const K_SETUP: String = "setup"
 const K_PACKED: String = "packed_bytes"
@@ -98,14 +100,17 @@ static func write_from(runner: MatchRunner, setup: MatchSetup) -> Error:
 	if world.match_end_tick > 0:
 		delete()
 		return ERR_UNAVAILABLE
-	return write(setup, replay, world.tick, world.defs_hash())
+	return write(setup, replay, world.tick, world.defs_hash(), world.state_hash())
 
 
-## Writes `setup`, `replay` (the log of the match up to `tick`, the World's tick) and the pointer.
+## Writes `setup`, `replay` (the log of the match up to `tick`, the World's tick), `end_hash` (the
+## World's `state_hash()` at that tick) and the pointer.
 ## Temp file, read back and compared, then renamed over the old file: a kill at any point leaves
 ## the old file or the new one, never a torn one. The pointer is written last.
-static func write(setup: MatchSetup, replay: Replay, tick: int, defs_hash: int) -> Error:
-	var bytes: PackedByteArray = encode(setup, replay, tick, defs_hash, app_version())
+static func write(
+	setup: MatchSetup, replay: Replay, tick: int, defs_hash: int, end_hash: int
+) -> Error:
+	var bytes: PackedByteArray = encode(setup, replay, tick, defs_hash, app_version(), end_hash)
 	if bytes.is_empty():
 		return ERR_INVALID_DATA
 	var target: String = path()
@@ -141,25 +146,34 @@ static func write(setup: MatchSetup, replay: Replay, tick: int, defs_hash: int) 
 ## The file's bytes for these inputs, with `version` as the build; empty when an input is unusable
 ## (a null, a negative tick). Public so a test can write a file as another build would.
 static func encode(
-	setup: MatchSetup, replay: Replay, tick: int, defs_hash: int, version: String
+	setup: MatchSetup, replay: Replay, tick: int, defs_hash: int, version: String, end_hash: int
 ) -> PackedByteArray:
 	if setup == null or replay == null or tick < 0:
 		return PackedByteArray()
 	var raw: PackedByteArray = replay.to_bytes()
 	var body: PackedByteArray = raw.compress(COMPRESSION)
-	var header: Dictionary = make_header(setup, tick, defs_hash, version, raw.size(), body.size())
+	var header: Dictionary = make_header(
+		setup, tick, defs_hash, version, raw.size(), body.size(), end_hash
+	)
 	return seal(JSON.stringify(header).to_utf8_buffer(), body)
 
 
 ## The header dictionary for a file of these values. Public for the tests that damage one field.
 static func make_header(
-	setup: MatchSetup, tick: int, defs_hash: int, version: String, raw_size: int, packed_size: int
+	setup: MatchSetup,
+	tick: int,
+	defs_hash: int,
+	version: String,
+	raw_size: int,
+	packed_size: int,
+	end_hash: int
 ) -> Dictionary:
 	return {
 		K_FORMAT: FORMAT,
 		K_APP: version,
 		K_DEFS: str(defs_hash),
 		K_TICK: tick,
+		K_END: str(end_hash),
 		K_PLAYER: _seat_of(setup),
 		K_SETUP: setup.to_dict(),
 		K_PACKED: packed_size,
@@ -283,7 +297,7 @@ static func _parse_header(text: PackedByteArray) -> Dictionary:
 static func _header_problem(header: Dictionary, version: String, defs_hash: int) -> String:
 	if header.is_empty():
 		return "the header is not readable"
-	for key: String in [K_FORMAT, K_APP, K_DEFS, K_TICK, K_PLAYER, K_SETUP, K_PACKED, K_RAW]:
+	for key: String in [K_FORMAT, K_APP, K_DEFS, K_TICK, K_END, K_PLAYER, K_SETUP, K_PACKED, K_RAW]:
 		if not header.has(key):
 			return "missing " + key
 	var problem: String = ""
@@ -293,6 +307,8 @@ static func _header_problem(header: Dictionary, version: String, defs_hash: int)
 		problem = "another app version"
 	elif not (header[K_DEFS] is String) or not (header[K_DEFS] as String).is_valid_int():
 		problem = "bad defs hash"
+	elif not (header[K_END] is String) or not (header[K_END] as String).is_valid_int():
+		problem = "bad end hash"
 	elif defs_hash != ANY_DEFS_HASH and int(header[K_DEFS] as String) != defs_hash:
 		problem = "the data changed"
 	for key: String in [K_TICK, K_PLAYER]:
@@ -337,4 +353,5 @@ static func _body_data(header: Dictionary, body: PackedByteArray) -> ResumeData:
 	data.local_player = int(header[K_PLAYER])
 	data.app_version = header[K_APP]
 	data.defs_hash = defs
+	data.end_hash = int(header[K_END] as String)
 	return data
