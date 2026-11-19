@@ -39,15 +39,6 @@ func scenario_path(
 	return ""
 
 
-## Every scenario path of every map.
-func all_paths() -> Array[String]:
-	var paths: Array[String] = []
-	for entry: Dictionary in entries:
-		for row: Dictionary in entry[KEY_SCENARIOS] as Array:
-			paths.append(str(row[KEY_PATH]))
-	return paths
-
-
 func _entry(map_id: StringName) -> Dictionary:
 	for entry: Dictionary in entries:
 		if entry[KEY_ID] == map_id:

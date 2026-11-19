@@ -18,6 +18,7 @@ extends ModalFrame
 const MenuFlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AudioServiceScript: GDScript = preload("res://game/view/audio/audio_service.gd")
+const PLAY_AGAIN_TEXT: String = "PLAY AGAIN"
 const XP_BAR_DP: float = 12.0
 const XP_FILL_SECONDS: float = 1.2  ## The whole fill; a rank-up gives each half its share.
 const RANK_UP_TEXT: String = "RANK UP!"
@@ -58,6 +59,7 @@ var _title: Label
 var _time: Label
 var _grid: GridContainer
 var _again: Button
+var _back_button: Button
 
 
 func _ready() -> void:
@@ -95,9 +97,11 @@ func _ready() -> void:
 	_offer_slot.add_child(offer)
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
-	_again = add_button(row, "PLAY AGAIN", _play_again)
+	MapSelectText.register()
+	_again = add_button(row, PLAY_AGAIN_TEXT, _play_again)
 	_again.name = &"PlayAgainButton"
-	add_button(row, "BACK", _back).name = &"BackButton"
+	_back_button = add_button(row, "BACK", _back)
+	_back_button.name = &"BackButton"
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
 	progression = progression if progression != null else (Progression as ProgressionScript)
 	audio = audio if audio != null else (AudioService as AudioServiceScript)
@@ -319,11 +323,11 @@ func _play_again() -> void:
 			runner.first_opponent
 		)
 		return
-	_leaving = true
+	_set_leaving(true, true)
 	var error: Error = await flow.restart()
-	if error != OK:  # Refused (busy, a bad setup): the buttons stay live.
+	if error != OK:  # Refused (busy, a bad setup): the buttons come back live.
 		push_warning("ResultScreen: restart refused (%s)" % error_string(error))
-	_leaving = false
+	_set_leaving(false, true)
 
 
 func _back() -> void:
@@ -332,6 +336,20 @@ func _back() -> void:
 	if not _owns():
 		DevRoutes.open(get_tree(), DevRoutes.DEV_MENU_SCENE)
 		return
-	_leaving = true
+	_set_leaving(true, false)
 	await flow.leave_match()
-	_leaving = false
+	_set_leaving(false, false)
+
+
+## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
+## off; on the Play again path that button reads "STARTING…". It pins its minimum width to the one
+## its own text gave, so the row (both rects) does not move when the text changes.
+func _set_leaving(leaving: bool, again_path: bool) -> void:
+	_leaving = leaving
+	if again_path:
+		_again.custom_minimum_size.x = (
+			_again.get_combined_minimum_size().x if leaving else UiScale.dp_vec(BUTTON_DP.x, 0.0).x
+		)
+		_again.text = tr(MapSelectText.STARTING) if leaving else PLAY_AGAIN_TEXT
+	_again.disabled = leaving
+	_back_button.disabled = leaving

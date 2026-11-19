@@ -28,6 +28,7 @@
 [ext_resource type="Resource" path="res://data/units/renew_bomber.tres" id="95_bomber"]
 [ext_resource type="Resource" path="res://data/units/renew_linecar.tres" id="93_line"]
 [ext_resource type="Resource" path="res://data/units/renew_seeder.tres" id="92_seed"]
+[ext_resource type="Resource" path="res://data/units/renew_menders.tres" id="89_menders"]
 
 [resource]
 script = ExtResource("1_faction")
@@ -35,5 +36,5 @@ id = &"renew"
 display_name = "Lumen Accord"
 emblem = &"emblem_renew"
 key_triad = PackedStringArray("#62D6EE", "#1FA6C8", "#137C99")
-roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("94_engineering"), ExtResource("90_dock"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber"), ExtResource("93_line"), ExtResource("92_seed")])
+roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("94_engineering"), ExtResource("90_dock"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("89_menders"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber"), ExtResource("93_line"), ExtResource("92_seed")])
 upgrades = Array[ExtResource("93_upgrade")]([ExtResource("92_up1"), ExtResource("91_up2")])
