@@ -13,6 +13,19 @@ const FAR: Vector2i = Vector2i(14500, 18500)
 const FIRST: int = 125
 const LAST: int = 400
 
+## The cells the blind cases leave unexplored: lattice cells (even columns and rows, the stride of
+## the 40 x 40 map at the shipped budget) on the target's side of the wave at `FAR`.
+const BLIND_CELLS: Array[Vector2i] = [
+	Vector2i(20, 20),
+	Vector2i(22, 20),
+	Vector2i(24, 20),
+	Vector2i(20, 22),
+	Vector2i(22, 22),
+	Vector2i(24, 22),
+	Vector2i(26, 26),
+]
+const NEXT_CELLS: Array[Vector2i] = [Vector2i(30, 30), Vector2i(32, 30), Vector2i(34, 30)]
+
 
 ## The fossil def of the suite with the stall answer on (a window of `WINDOW`).
 func _stall_def(window: int = WINDOW) -> OpponentDef:
@@ -166,3 +179,106 @@ func test_the_attack_goes_to_the_nearer_of_two_buildings_in_view() -> void:
 	assert_array(targets).is_not_empty()
 	assert_int(targets[0]).is_equal(near)
 	assert_bool(near != far).is_true()
+
+
+## A stalled wave that sees no enemy building (nothing is visible) and has `BLIND_CELLS` left to
+## explore; `scout_units` of the def's scouts.
+func _blind(scout_units: int = 2) -> PackedInt32Array:
+	var def: OpponentDef = _stall_def()
+	def.stall_scout_units = scout_units
+	var ids: PackedInt32Array = _stalled(def)
+	_hide(BLIND_CELLS)
+	return ids
+
+
+## Nothing is visible and every cell is explored but `open`.
+func _hide(open: Array[Vector2i]) -> void:
+	_world.fog.visible.fill(0)
+	_world.fog.explored.fill(1)
+	for cell: Vector2i in open:
+		_world.fog.explored[cell.y * _world.map_cols + cell.x] = 0
+
+
+## Thinks from `FIRST` for `ticks` ticks; the orders of `scouts` units (the scouts) and the other
+## ATTACK_MOVE orders (the whole wave) sent on the way, and the most tests a think had counted.
+func _orders(ticks: int, scouts: int) -> Dictionary:
+	var scouted: Array[Command] = []
+	var whole: Array[Command] = []
+	var most: int = 0
+	for tick: int in range(FIRST, FIRST + ticks, 15):
+		_think(tick)
+		most = maxi(most, _army.tests)
+		for command: Command in _of(Command.Type.ATTACK_MOVE):
+			if command.unit_ids.size() == scouts:
+				scouted.append(command)
+			else:
+				whole.append(command)
+	return {"scouted": scouted, "whole": whole, "most": most}
+
+
+func test_a_blind_wave_sends_the_capped_scouts_each_to_a_new_cell_then_the_retry() -> void:
+	_blind()
+	var sent: Dictionary = _orders(900, 2)
+	var scouted: Array[Command] = sent["scouted"]
+	var whole: Array[Command] = sent["whole"]
+	assert_int(_army.stall_scouts()).is_equal(3)
+	assert_int(scouted.size()).is_equal(3)
+	# No cell twice.
+	for at: int in scouted.size():
+		for other: int in range(at + 1, scouted.size()):
+			var same: bool = (
+				scouted[at].target_x == scouted[other].target_x
+				and scouted[at].target_y == scouted[other].target_y
+			)
+			assert_bool(same).is_false()
+	# Then the whole wave is sent back at its target.
+	assert_int(_army.stall_retries()).is_greater(0)
+	assert_array(whole).is_not_empty()
+	# The scan is counted in the think's tests: the lattice cells it looked at.
+	var stride: int = AiStall.scan_stride(_world.map_cols, _world.map_rows, 512)
+	var side: int = _lattice_side(stride)
+	assert_int(sent["most"]).is_greater_equal(side * side)
+
+
+@warning_ignore("integer_division")
+func _lattice_side(stride: int) -> int:
+	return (_world.map_cols + stride - 1) / stride
+
+
+func test_the_scout_count_starts_again_when_a_building_comes_into_view() -> void:
+	_blind()
+	_orders(900, 2)
+	assert_int(_army.stall_scouts()).is_equal(3)
+	# The enemy Headquarters comes into view: the attack. Then it is gone again and some cells are
+	# left to explore: the next stall scouts again.
+	_see_all()
+	var tick: int = FIRST + 900
+	while _army.stall_attacks() == 0 and tick < FIRST + 1800:
+		_think(tick)
+		tick += 15
+	assert_int(_army.stall_attacks()).is_greater(0)
+	_hide(NEXT_CELLS)
+	while _army.stall_scouts() == 3 and tick < FIRST + 4000:
+		_think(tick)
+		tick += 15
+	assert_int(_army.stall_scouts()).is_greater(3)
+
+
+func test_with_no_scouts_the_scan_never_runs_and_the_retry_goes() -> void:
+	_blind(0)
+	var sent: Dictionary = _orders(900, 2)
+	assert_int(_army.stall_scouts()).is_equal(0)
+	assert_int(_army.stall_retries()).is_greater(0)
+	assert_int(sent["most"]).is_less(100)
+
+
+func test_the_nearest_unexplored_cell_ties_go_to_the_lowest_cell() -> void:
+	_arm_waves(null, _stall_def())
+	_world.fog.explored.fill(1)
+	# Equal distance from the wave and both on the target's side: (24, 22) and (22, 24).
+	_world.fog.explored[22 * _world.map_cols + 24] = 0
+	_world.fog.explored[24 * _world.map_cols + 22] = 0
+	var stall: AiStall = AiStall.create(_stall_def())
+	var view: PlayerView = PlayerView.of(_world, 1)
+	var cell: int = stall.scout_cell(view, Vector2i(20500, 20500), Vector2i(40500, 40500))
+	assert_int(cell).is_equal(22 * _world.map_cols + 24)

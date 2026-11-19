@@ -27,6 +27,13 @@ var _idle_percent: int = 0
 ## scout was sent to already (no cell twice, so a cell no one can enter is not tried again).
 var _scout_units: int = 0
 var _tried: PackedInt32Array = PackedInt32Array()
+## The scout orders in a row since the wave last made progress or saw a building, the most of them
+## before the retry, and the cells one scan may look at (the army's test budget, ADR 0030).
+var _scouted: int = 0
+var _scout_max: int = 0
+var _scan_budget: int = 1
+## The cells the last scan looked at (the army counts them as tests).
+var _scanned: int = 0
 ## The target the wave aims at (tiles), the nearest the wave has been to it since the last order,
 ## the tick that changed, the tick since which the idle share has held at every think (-1: not
 ## now), and whether the next answer sends the wave back to the target.
@@ -44,6 +51,8 @@ static func create(def: OpponentDef) -> AiStall:
 	stall._arrive = maxi(def.stall_arrive_tiles, 0) * PlayerView.MILLI_PER_TILE
 	stall._idle_percent = clampi(def.stall_idle_percent, 0, 100)
 	stall._scout_units = maxi(def.stall_scout_units, 0)
+	stall._scout_max = maxi(def.stall_scout_max, 0)
+	stall._scan_budget = maxi(def.target_tests_max, 1)
 	return stall
 
 
@@ -52,6 +61,8 @@ func reset() -> void:
 	_best = -1
 	_idle_from = -1
 	_retry = false
+	_scouted = 0
+	_tried.clear()
 
 
 ## One look at the wave `ids` (`units` of them, `idle` of those without an order, centred on `at`
@@ -73,8 +84,9 @@ func run(
 	var gap: Vector2i = aim - at
 	var left: int = FixedMath.isqrt(gap.x * gap.x + gap.y * gap.y)
 	if goal != _goal:
-		_goal = goal  # A new target starts a new window.
+		_goal = goal  # A new target starts a new window, and cells whose scouts died may be tried.
 		_best = -1
+		_tried.clear()
 	# The idle share must hold at every think of the window, so a pause in a fight is no stall.
 	if idle * 100 < ids.size() * _idle_percent:
 		_idle_from = -1
@@ -83,6 +95,7 @@ func run(
 	if _best < 0 or left + _progress <= _best or left <= _arrive:
 		_best = left
 		_since = view.tick
+		_scouted = 0
 		return false
 	if _idle_from < 0 or view.tick - _since < _window or view.tick - _idle_from < _window:
 		return false
@@ -91,6 +104,7 @@ func run(
 	var sent: bool = false
 	var wall: int = AiMemory.NONE if _retry else _nearest_building(view, memory, at)
 	if wall != AiMemory.NONE:
+		_scouted = 0
 		# The key books the target's cell, as the wave's goal does: the order is an ATTACK on the
 		# building, and the army's key and goal stay one (`AiArmy._wave_holds_army`).
 		sent = army._order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, aim, wall)
@@ -109,8 +123,9 @@ func run(
 
 ## No enemy building is in view: the first `_scout_units` units of the wave go to the nearest cell
 ## the player has not explored (the view's `is_explored`) on the target's side of the wave, and what
-## they see ends the blindness; the next answer finds the building or goes on. The key books the
-## target's cell, as the wave's goal does. True when sent.
+## they see ends the blindness; the next answer finds the building or goes on. At most `_scout_max`
+## in a row, then the retry. The scan is counted in the army's tests; a refused order puts the next
+## answer a window off. The key books the target's cell, as the wave's goal does. True when sent.
 func _scout(
 	army: AiArmy,
 	view: PlayerView,
@@ -120,38 +135,60 @@ func _scout(
 	at: Vector2i,
 	goal: Vector2i
 ) -> bool:
+	if _scout_units <= 0 or _scouted >= _scout_max:
+		return false
 	var cell: int = scout_cell(view, at, AiArmy._at(goal))
-	if _scout_units <= 0 or cell < 0:
+	army.tests += _scanned
+	if cell < 0:
 		return false
 	var tile: Vector2i = Vector2i(cell % view.map_cols, cell / view.map_cols)
 	var group: PackedInt32Array = PackedInt32Array()
 	for at_id: int in mini(_scout_units, ids.size()):
 		group.append(ids[at_id])
 	if not army._order(view, memory, out, group, goal, AiMemory.Owner.ARMY, AiArmy._at(tile)):
+		_since = view.tick
 		return false
 	_tried.append(cell)
+	_scouted += 1
 	scouts += 1
 	return true
 
 
+## The stride of the lattice a scan looks at on a map `cols` x `rows`: the least one whose cells
+## number `budget` or fewer.
+@warning_ignore("integer_division")
+static func scan_stride(cols: int, rows: int, budget: int) -> int:
+	var stride: int = 1
+	while ((cols + stride - 1) / stride) * ((rows + stride - 1) / stride) > budget:
+		stride += 1
+	return stride
+
+
 ## The cell the view says is unexplored that lies nearest to `at` (milli-tiles) among those on the
 ## side of `aim` (the dot product with the way to it is above 0), the lowest cell on a tie, and not
-## sent to before; -1 for none. Reads the view's `is_explored` only, never the map.
+## sent to before; -1 for none. Looks at a lattice of at most `_scan_budget` cells (`scan_stride`),
+## counted in `_scanned`. Reads the view's `is_explored` only, never the map.
 func scout_cell(view: PlayerView, at: Vector2i, aim: Vector2i) -> int:
 	var cols: int = view.map_cols
+	var rows: int = view.map_rows
+	var stride: int = scan_stride(cols, rows, _scan_budget)
 	var way: Vector2i = aim - at
 	var found: int = -1
 	var least: int = 0
-	for cell: int in cols * view.map_rows:
-		if view.is_explored(cell) or _tried.has(cell):
-			continue
-		var gap: Vector2i = AiArmy._at(Vector2i(cell % cols, cell / cols)) - at
-		if gap.x * way.x + gap.y * way.y <= 0:
-			continue
-		var near: int = gap.x * gap.x + gap.y * gap.y
-		if found < 0 or near < least:
-			found = cell
-			least = near
+	_scanned = 0
+	for line: int in range(0, rows, stride):
+		for column: int in range(0, cols, stride):
+			_scanned += 1
+			var cell: int = line * cols + column
+			if view.is_explored(cell) or _tried.has(cell):
+				continue
+			var gap: Vector2i = AiArmy._at(Vector2i(column, line)) - at
+			if gap.x * way.x + gap.y * way.y <= 0:
+				continue
+			var near: int = gap.x * gap.x + gap.y * gap.y
+			if found < 0 or near < least:
+				found = cell
+				least = near
 	return found
 
 

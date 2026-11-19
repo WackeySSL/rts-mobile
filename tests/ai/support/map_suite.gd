@@ -43,15 +43,16 @@ var _nearest_gap: int = -1
 
 ## The World of the scenario at `path`, player 1's computer opponent on `level` and `TANKS` tanks
 ## of player 1 at (`army_x`, `army_y`) tiles. Every tile is explored unless `explored` is false (the
-## scenarios start dark; most suites judge routes, not scouting). `stall_window` 0 or more sets the
-## def's stall window (0 turns the stall answer off), -1 keeps the file's.
+## scenarios start dark; most suites judge routes, not scouting). `stall_window` and `scout_units`,
+## 0 or more, set the def's stall window (0 turns the answer off) and scouts; -1 keeps the file's.
 func _start(
 	path: String,
 	army_x: int,
 	army_y: int,
 	level: String = "normal",
 	explored: bool = true,
-	stall_window: int = -1
+	stall_window: int = -1,
+	scout_units: int = -1
 ) -> void:
 	var scenario: ScenarioDef = load(path) as ScenarioDef
 	_faction = String(scenario.factions[1].id)
@@ -63,9 +64,10 @@ func _start(
 	own.wave_first_strength = WAVE_STRENGTH
 	own.scout_first_tick = CAP * 10
 	var def: OpponentDef = Opp.def_of(_faction)
-	if stall_window >= 0:
+	if stall_window >= 0 or scout_units >= 0:
 		def = def.duplicate() as OpponentDef
-		def.stall_window_ticks = stall_window
+		def.stall_window_ticks = stall_window if stall_window >= 0 else def.stall_window_ticks
+		def.stall_scout_units = scout_units if scout_units >= 0 else def.stall_scout_units
 	_ai = OpponentAi.create(def, own, 1, DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + 1))
 	_tanks.clear()
 	_walls.clear()
