@@ -57,7 +57,7 @@ func _check_defaults() -> void:
 		var button: Button = child as Button
 		if button != null and not button.disabled:
 			enabled.append(button.text)
-	assert_array(enabled).is_equal(["CONTINUE", "SKIRMISH", "HOW TO PLAY", "SETTINGS"])
+	assert_array(enabled).is_equal(["CONTINUE", "SKIRMISH", "TUTORIAL", "HOW TO PLAY", "SETTINGS"])
 	main.column.get_child(_index_of(main, "HOW TO PLAY")).emit_signal("pressed")
 	assert_object(_stack.current()).is_instanceof(HowToPlayScreen)
 

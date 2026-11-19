@@ -687,7 +687,8 @@ func _surrender() -> void:
 ## Exit to menu and Leave tutorial: no XP, no ad bookkeeping (MenuFlow.return_to_menu).
 func _exit_match() -> void:
 	if _owned():
-		_flow().call(&"return_to_menu")
+		# A lesson's Leave tutorial lands on the Tutorial screen, where the lesson can start again.
+		_flow().call(&"return_to_menu", TutorialStart.RETURN_SCREEN if _is_lesson() else &"")
 		return
 	_open_dev_menu()
 

@@ -1020,11 +1020,23 @@ title = "Remove ads and Restore"
 body = "In Settings, tap Remove ads (the price is the store's) to remove every banner, also the one in the pause menu, and the ads between matches. The offers you choose to watch for a reward stay. Restore purchases brings back a purchase you made before, for example on a new phone. If the store answers a moment after Settings opens, the buttons appear then and the ones below move down. Neither button shows where the store cannot be reached, nor in Settings opened from the pause menu."
 
 
+[sub_resource type="Resource" id="e22t1"]
+script = ExtResource("3_ent")
+id = &"menus-tutorial"
+title = "Tutorial"
+body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself, and Skip lesson on its cards leaves it. A lesson you leave starts from the top next time."
+
+[sub_resource type="Resource" id="e22t2"]
+script = ExtResource("3_ent")
+id = &"menus-tutorial-end"
+title = "Finish or leave a lesson"
+body = "When you finish the last card, tap Skip lesson, or tap Leave tutorial in the pause menu, the Tutorial screen opens again. A lesson you finished is marked DONE."
+
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149")])
+entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149"), SubResource("e22t1"), SubResource("e22t2")])
 
 [sub_resource type="Resource" id="e150"]
 script = ExtResource("3_ent")
