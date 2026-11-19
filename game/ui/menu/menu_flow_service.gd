@@ -309,6 +309,7 @@ func _check(setup: MatchSetup) -> Error:
 
 ## The setup has passed `_check`. Emits `match_loading`, waits one frame, builds the scene.
 func _begin(setup: MatchSetup) -> Error:
+	await ads.settle_fullscreen()
 	var serial: int = _serial
 	match_loading.emit(setup)
 	await loading_frame.call()

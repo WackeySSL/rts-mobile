@@ -32,9 +32,9 @@ extends Node
 ## the building stays selected; with any other building selected, a Headquarters included, it lets
 ## go of the selection. "All army" and a box leave tankers out unless the box holds nothing else
 ## (`OrderRules`).
-## While the Board or Unload aim is open (P265, `carry_aim`) a tap on a unit picks the carrier to
-## board (anything else is refused with no Command) or a tap on the ground sets the unload point;
-## nothing is selected, ordered or boxed.
+## While the Board, Unload or Mine aim is open (P265, P294, `carry_aim`) a tap on a unit picks the
+## carrier to board (anything else is refused with no Command) or a tap on the ground sets the
+## unload or mine point (an own unit or building is refused); nothing is selected, ordered or boxed.
 ## While the strike is being aimed (P112, `strike_aim.active`) a tap places its point on the ground
 ## and no gesture does anything else: nothing is selected, ordered or boxed.
 ## While placement mode is on (P86, `placement.active`) the gestures go to `placement` alone: a tap
@@ -390,11 +390,12 @@ func _on_map(ids: PackedInt32Array) -> PackedInt32Array:
 	return live
 
 
-## A tap with the Board or Unload aim open (P265). Only own units and buildings are candidates: an
+## A tap with the Board, Unload or Mine aim open (P265, P294). Only own units and buildings are
+## candidates: an
 ## enemy under the finger never steals the tap. Board rings the own carrier that can take squads (it
 ## wins over any other own unit the tap also hits; any other tap is refused with no Command).
-## Unload refuses a tap on an own unit or building (a shake, no point) and sets the point anywhere
-## else.
+## Unload and Mine refuse a tap on an own unit or building (a shake, no point) and set the point
+## anywhere else.
 func _carry_tap(pos: Vector2) -> void:
 	_refresh()
 	var snap: MatchSnapshot = runner.snapshot
