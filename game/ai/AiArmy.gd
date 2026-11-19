@@ -118,6 +118,17 @@ func stall_attacks() -> int:
 	return _stall.attacks
 
 
+## The orders back to the target the stall answer sent over the match (`AiStall`).
+func stall_retries() -> int:
+	return _stall.retries
+
+
+## Whether the wave is in a fight: a focus target is set, or a seen enemy that can hit the ground
+## stands within the defence radius of it (the answer to a stall leaves such a wave alone).
+func wave_engaged(view: PlayerView, memory: AiMemory) -> bool:
+	return memory.squad_focus[WAVE] != AiMemory.NONE or _near(view, memory, _wave_at) > 0
+
+
 func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
 	tests = 0
 	_threat_on = false

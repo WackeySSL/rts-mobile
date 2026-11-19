@@ -20,10 +20,13 @@ var _window: int = 0
 var _progress: int = 0
 var _arrive: int = 0
 var _idle_percent: int = 0
-## The nearest the wave has been to its target since the last order, the tick that changed, and
-## whether the next answer sends the wave back to the target.
+## The target the wave aims at (tiles), the nearest the wave has been to it since the last order,
+## the tick that changed, the tick since which the idle share has held at every think (-1: not
+## now), and whether the next answer sends the wave back to the target.
+var _goal: Vector2i = Vector2i(-1, -1)
 var _best: int = -1
 var _since: int = 0
+var _idle_from: int = -1
 var _retry: bool = false
 
 
@@ -39,6 +42,7 @@ static func create(def: OpponentDef) -> AiStall:
 ## The stall state starts over (a new wave, or one that ended).
 func reset() -> void:
 	_best = -1
+	_idle_from = -1
 	_retry = false
 
 
@@ -60,19 +64,28 @@ func run(
 	var aim: Vector2i = AiArmy._at(goal)
 	var gap: Vector2i = aim - at
 	var left: int = FixedMath.isqrt(gap.x * gap.x + gap.y * gap.y)
+	if goal != _goal:
+		_goal = goal  # A new target starts a new window.
+		_best = -1
+	# The idle share must hold at every think of the window, so a pause in a fight is no stall.
+	if idle * 100 < ids.size() * _idle_percent:
+		_idle_from = -1
+	elif _idle_from < 0:
+		_idle_from = view.tick
 	if _best < 0 or left + _progress <= _best or left <= _arrive:
 		_best = left
 		_since = view.tick
 		return false
-	if view.tick - _since < _window or idle * 100 < ids.size() * _idle_percent:
+	if _idle_from < 0 or view.tick - _since < _window or view.tick - _idle_from < _window:
+		return false
+	if army.wave_engaged(view, memory):
 		return false
 	var sent: bool = false
 	var wall: int = AiMemory.NONE if _retry else _nearest_building(view, memory, at)
 	if wall != AiMemory.NONE:
-		var tile: Vector2i = view.row_pos(view.row_of(wall)) / PlayerView.MILLI_PER_TILE
-		sent = army._order(
-			view, memory, out, ids, tile, AiMemory.Owner.ARMY, AiArmy._at(tile), wall
-		)
+		# The key books the target's cell, as the wave's goal does: the order is an ATTACK on the
+		# building, and the army's key and goal stay one (`AiArmy._wave_holds_army`).
+		sent = army._order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, aim, wall)
 		attacks += 1 if sent else 0
 	else:
 		sent = army._order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, aim)
@@ -80,6 +93,7 @@ func run(
 	if sent:
 		_retry = wall != AiMemory.NONE
 		_since = view.tick
+		_idle_from = -1
 	return sent
 
 
