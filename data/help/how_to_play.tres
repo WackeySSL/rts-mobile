@@ -1030,7 +1030,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"),
 script = ExtResource("3_ent")
 id = &"the-intro-skip"
 title = "Skip the intro"
-body = "Tap the screen while the game starts to stop the intro. If the game is ready, the menu opens right away."
+body = "Tap the screen while the game starts to stop the intro. If the game is ready, the menu opens right away. While the privacy form is open, your tap also reaches the form."
 
 [sub_resource type="Resource" id="s19"]
 script = ExtResource("2_sec")
