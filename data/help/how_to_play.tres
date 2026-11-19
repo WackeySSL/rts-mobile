@@ -1006,11 +1006,25 @@ id = &"menus-licences"
 title = "Licences"
 body = "Open Licences in Settings to see what the game is built on, such as its art, audio, engine and fonts. Tap one to read its full text. Tap All licences, or the phone's Back button, to return to the list."
 
+[sub_resource type="Resource" id="e151"]
+script = ExtResource("3_ent")
+id = &"menus-start-credits"
+title = "Extra starting credits"
+body = "On the Skirmish screen, below Start, you may tap \"+500 CREDITS NEXT MATCH\" to watch an ad (Start waits until it is over). When the ad pays out (not when you close it early) the bonus waits for your next match and the button reads \"+500 CREDITS READY\"; the match you start next begins with those credits, once. It only shows when an ad is ready, nothing plays unless you tap, and it stays even if you removed the other ads."
+
+
+[sub_resource type="Resource" id="e152"]
+script = ExtResource("3_ent")
+id = &"menus-purchases"
+title = "Remove ads and Restore"
+body = "In Settings, tap Remove ads (the price is the store's) to remove every banner, also the one in the pause menu, and the ads between matches. The offers you choose to watch for a reward stay. Restore purchases brings back a purchase you made before, for example on a new phone. If the store answers a moment after Settings opens, the buttons appear then and the ones below move down. Neither button shows where the store cannot be reached, nor in Settings opened from the pause menu."
+
+
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e146"), SubResource("e147"), SubResource("e148"), SubResource("e149")])
+entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149")])
 
 [sub_resource type="Resource" id="e150"]
 script = ExtResource("3_ent")
