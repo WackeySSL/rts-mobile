@@ -107,6 +107,17 @@ const AIR_GREP: String = (
 	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
 	+ ' || echo "no PERF air line (the air perf suite did not run)"'
 )
+## P516b: after the air block, the same step copies the one `PERF restore` line of the resume
+## restore (tests/perf/test_restore_perf.gd) under a heading of its own. Report only.
+const RESTORE_HEADING: String = "echo '### PERF restore (the resume restore, report only)'"
+const RESTORE_PATTERN: String = "^PERF restore "
+const RESTORE_GREP: String = (
+	"grep -a -E '"
+	+ RESTORE_PATTERN
+	+ "' "
+	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
+	+ ' || echo "no PERF restore line (the restore perf suite did not run)"'
+)
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
 const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI, report-only lines)'"
@@ -380,6 +391,7 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 		assert_bool(_perf_selected(line)).is_false()
 	_assert_perf_bases_summary(step)
 	_assert_perf_air_summary(step)
+	_assert_perf_restore_summary(step)
 	_assert_watch_ai_summary(step)
 	_assert_log_lines_step(job)
 	_assert_verify_prints_smoke_seconds()
@@ -792,6 +804,28 @@ func _assert_perf_air_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
 
 
+## P516b: the same step copies the `PERF restore` line under a heading of its own after the
+## `PERF air` block, before the WATCH ai block. No other selector reaches it, nor this one theirs.
+func _assert_perf_restore_summary(step: Array) -> void:
+	assert_array(step).contains([RESTORE_HEADING, RESTORE_GREP])
+	var heading: int = step.find(RESTORE_HEADING)
+	assert_int(heading).is_greater(step.find(AIR_GREP))
+	assert_int(step.find(RESTORE_GREP)).is_greater(heading)
+	assert_int(step.find(WATCH_AI_HEADING)).is_greater(step.find(RESTORE_GREP))
+	var line: String = "PERF restore impl=auto ticks=3000 restore_ticks_per_s=3333.3 file_bytes=9000"
+	assert_bool(_perf_selected(line, RESTORE_PATTERN)).is_true()
+	assert_bool(_perf_selected(line)).is_false()
+	assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
+	var skipped: Array[String] = [
+		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
+		"PERF restored ticks=3000",
+		" PERF restore impl=auto ticks=3000",
+		"perf: PERF restore is not printed",
+	]
+	for other: String in skipped:
+		assert_bool(_perf_selected(other, RESTORE_PATTERN)).is_false()
+
+
 ## P190: the same step copies every `WATCH ai ` line, under a heading of their own after the
 ## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
 func _assert_watch_ai_summary(step: Array) -> void:
@@ -841,6 +875,7 @@ func _assert_log_lines_step(job: PackedStringArray) -> void:
 		"PERF sim": PERF_GREP,
 		"PERF bases": BASES_GREP,
 		"PERF air": AIR_GREP,
+		"PERF restore": RESTORE_GREP,
 		"WATCH ai": WATCH_AI_GREP
 	}
 	for group: String in groups:

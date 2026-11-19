@@ -132,7 +132,7 @@ state format to keep in lockstep with `STATE_FORMAT` and with the AI's fields; i
 "the sim is a pure function of its log". **Cost:** time grows with the match. Estimate on the phone:
 1-2.5 ms of CPU per tick with the AI, so 9-23 s for 10 minutes and 14-34 s for 15; with the 50 ms
 slice the wall time is about 1.05 times that: **about 10-24 s for 10 minutes and 15-36 s for 15**
-(unverified; P516b prints CI's ticks per second, and Michael's phone measures it).
+(unverified; P516b prints CI's ticks per second as the `PERF restore ` line of the job summary, and Michael's phone measures it).
 
 **Trigger for B.** If Michael's phone restores a 10-minute match in more than 15 s of wall time
 with the 50 ms slice, a new ADR designs option B (below) or a hybrid; A stays the fallback and the
