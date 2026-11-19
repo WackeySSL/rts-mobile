@@ -65,9 +65,17 @@ func open(consent: bool = true) -> void:
 	flow.seed_source = func() -> int: return SEED
 	flow.switch_to_main = _enter_main
 	flow.switch_to_menu = _enter_menu
-	tap_ms = Time.get_ticks_msec()
+	tap_ms = 0
 	mains.clear()
 	menus = 0
+
+
+## Completed matches as the caps count them: past `interstitial_free_matches`, with
+## `interstitial_min_play_s` of play on the last one, so the next finished match may show one.
+func make_interstitial_due() -> void:
+	for _i: int in settings.interstitial_free_matches:
+		ads.note_match_completed(0)
+	ads.note_match_completed(settings.interstitial_min_play_s)
 
 
 func close() -> void:

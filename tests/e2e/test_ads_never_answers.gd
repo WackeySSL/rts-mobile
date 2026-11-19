@@ -34,7 +34,7 @@ func _boot(script: Callable) -> IntroPlayer:
 	var ump: FakeUmp = AdServiceHarness.ump(_walk.ads)
 	ump.consent_required = true
 	script.call(ump)
-	AdServiceHarness.play_three_matches(_walk.ads)
+	_walk.make_interstitial_due()
 	var player: IntroPlayer = _rig.make(
 		self, _size, false, false, Callable(_walk.ads, "ensure_consent")
 	)
@@ -44,7 +44,7 @@ func _boot(script: Callable) -> IntroPlayer:
 
 ## A match that ended with an interstitial due, on its result screen.
 func _ended_match() -> void:
-	AdServiceHarness.play_three_matches(_walk.ads)
+	_walk.make_interstitial_due()
 	var map: MapSelect = await _walk.show_map_select()
 	await _walk.start_match(map)
 	await _walk.end_match(1)
@@ -122,7 +122,12 @@ func test_an_interstitial_that_never_opens_lets_the_player_on_at_its_timeout() -
 	await _walk.frames(6)
 	assert_int(_walk.mains.size()).is_equal(1)
 	assert_object(_walk.flow.current_runner()).is_null()
-	_walk.h.clock_ms = _timeout_ms() + _walk.settings.fullscreen_late_cap_ms
+	var cap: int = _walk.settings.fullscreen_late_cap_ms
+	_walk.h.clock_ms = _timeout_ms() + cap - 1
+	await _walk.frames(6)
+	assert_int(_walk.mains.size()).is_equal(1)  # One ms short of the cap: still held.
+	assert_object(_walk.flow.current_runner()).is_null()
+	_walk.h.clock_ms = _timeout_ms() + cap
 	await _walk.until(func() -> bool: return _walk.mains.size() == 2)
 	assert_int(_walk.mains.size()).is_equal(2)
 	assert_object(_walk.flow.current_runner()).is_not_null()
@@ -146,7 +151,12 @@ func test_a_rewarded_ad_that_never_opens_ends_at_its_timeout_and_pays_nothing() 
 	assert_bool(map.offer.is_running()).is_false()
 	assert_int(ads.pending_start_credits()).is_equal(0)
 	# Not stuck: START works once the late show is settled or past its cap.
-	_walk.h.clock_ms += _walk.settings.fullscreen_late_cap_ms
+	var cap: int = _walk.settings.fullscreen_late_cap_ms
+	_walk.h.clock_ms = _timeout_ms() + cap - 1
+	await _walk.start_match(map, false)
+	await _walk.frames(6)
+	assert_object(_walk.flow.current_runner()).is_null()  # One ms short of the cap: still held.
+	_walk.h.clock_ms = _timeout_ms() + cap
 	await _walk.start_match(map)
 	assert_object(_walk.flow.current_runner()).is_not_null()
 	assert_int(_walk.flow.current_setup().bonus_starting_credits).is_equal(0)
@@ -160,7 +170,7 @@ func test_billing_that_never_answers_returns_at_its_timeout_and_settings_can_clo
 	var rows: RemoveAdsRows = screen.remove_rows
 	# The rows showed the price; then the connection drops and the store never answers again.
 	store.connect_never_answers = true
-	store._connection = BillingBackend.ConnState.IDLE
+	store.connect_store()  # Connecting, and it never ends.
 	var timeout: int = _walk.settings.billing_timeout_ms
 	for button: Button in [rows.remove_button, rows.restore_button]:
 		assert_bool(button.visible).is_true()
@@ -190,6 +200,9 @@ func test_a_store_sheet_that_never_shows_returns_at_the_billing_timeout() -> voi
 	_walk.press(rows.remove_button)
 	await _walk.frames(4)
 	assert_bool(rows.is_busy()).is_true()
+	_walk.h.clock_ms = _walk.settings.billing_timeout_ms - 1
+	await _walk.frames(4)
+	assert_bool(rows.is_busy()).is_true()  # One ms short of the timeout: still waiting.
 	_walk.h.clock_ms = _walk.settings.billing_timeout_ms
 	await _walk.until(func() -> bool: return not rows.is_busy())
 	assert_bool(rows.is_busy()).is_false()
@@ -272,3 +285,76 @@ func test_a_rewarded_ad_that_opens_and_never_closes_holds_the_next_match_until_i
 		_walk.settings.reward_start_credits
 	)
 	assert_int(ads.pending_start_credits()).is_equal(0)
+
+
+## Settings with a returning EEA user: consent has run, so the Privacy options row is there.
+func _privacy_settings() -> SettingsScreen:
+	await _walk.open()
+	var ump: FakeUmp = AdServiceHarness.ump(_walk.ads)
+	ump.consent_required = true
+	await _walk.ads.ensure_consent()
+	var screen: SettingsScreen = await _walk.show_settings()
+	assert_bool(screen.privacy_button.visible).is_true()
+	return screen
+
+
+func test_privacy_options_that_fail_to_show_return_at_once_and_the_row_works_again() -> void:
+	var screen: SettingsScreen = await _privacy_settings()
+	var ump: FakeUmp = AdServiceHarness.ump(_walk.ads)
+	var base: int = ump.forms_shown  # The consent form of the setup.
+	ump.show_fails = true
+	_walk.press(screen.privacy_button)
+	await _walk.frames(4)
+	assert_int(ump.forms_shown).is_equal(base + 1)
+	ump.show_fails = false  # The row is not stuck: a second tap asks again and the form closes.
+	_walk.press(screen.privacy_button)
+	await _walk.frames(4)
+	assert_int(ump.forms_shown).is_equal(base + 2)
+
+
+func test_a_privacy_options_form_that_never_closes_holds_consent_until_it_closes() -> void:
+	var screen: SettingsScreen = await _privacy_settings()
+	var ads: Node = _walk.ads
+	var ump: FakeUmp = AdServiceHarness.ump(ads)
+	var base: int = ump.forms_shown
+	ump.form_never_closes = true
+	_walk.press(screen.privacy_button)
+	await _walk.frames(4)
+	assert_int(ump.forms_shown).is_equal(base + 1)
+	# There is no timeout on a shown form (ConsentFlow): far past the consent timeout it holds.
+	_walk.h.clock_ms = _walk.settings.consent_timeout_ms * 10
+	await _walk.frames(6)
+	_walk.press(screen.privacy_button)  # One form at a time: no second form.
+	await _walk.frames(2)
+	assert_int(ump.forms_shown).is_equal(base + 1)
+	var waiting: Array = AdServiceHarness.start(func() -> bool: return await ads.ensure_consent())
+	await _walk.frames(6)
+	assert_array(waiting).is_empty()  # A consent call waits for the open form.
+	ump.dismiss(true)  # The close.
+	await _walk.until(func() -> bool: return not waiting.is_empty())
+	assert_array(waiting).is_equal([true])
+	assert_int(ump.forms_shown).is_equal(base + 1)
+
+
+func test_a_double_xp_ad_that_never_opens_ends_at_its_timeout_and_the_flow_goes_on() -> void:
+	await _walk.open()
+	var map: MapSelect = await _walk.show_map_select()
+	await _walk.start_match(map)
+	await _walk.end_match(1)
+	var offer: DoubleXpOffer = _walk.result().offer
+	assert_bool(offer.is_offered()).is_true()
+	_walk.fake.show_never_opens = true
+	_walk.fake.ignore_cancel = true
+	_walk.press(offer._button)
+	await _walk.frames(4)
+	assert_bool(offer._button.disabled).is_true()  # The show is awaited.
+	_walk.h.clock_ms = _timeout_ms() - 1
+	await _walk.frames(4)
+	assert_bool(offer._button.disabled).is_true()
+	_walk.h.clock_ms = _timeout_ms()
+	await _walk.until(func() -> bool: return not offer._button.disabled)
+	assert_bool(offer._button.disabled).is_false()
+	assert_int(_walk.rewarded()).is_equal(1)  # It was asked for,
+	assert_bool(_walk.flow.last_award().bonus_applied).is_false()  # and paid nothing.
+	await _walk.leave()  # Back is not stuck.
+	assert_int(_walk.menus).is_equal(1)

@@ -33,7 +33,7 @@ func test_consent_is_asked_first_and_no_ad_call_comes_before_it() -> void:
 	var ump: FakeUmp = AdServiceHarness.ump(ads)
 	ump.consent_required = true
 	ump.info_never_answers = true
-	AdServiceHarness.play_three_matches(ads)  # The caps would allow an interstitial.
+	_walk.make_interstitial_due()  # The caps would allow an interstitial.
 	# The boot: the intro awaits the real `ensure_consent`; a menu with its band is already up.
 	var player: IntroPlayer = _rig.make(self, _size, false, false, Callable(ads, "ensure_consent"))
 	_rig.loader.finish()
@@ -93,8 +93,24 @@ func test_five_matches_show_an_interstitial_only_where_the_caps_allow() -> void:
 	await _walk.open()
 	var ads: Node = _walk.ads
 	var ticks: Array[int] = _durations()
-	var expected: Array[bool] = _expected_shows(ticks)
-	assert_bool(expected.has(true) and expected.has(false)).is_true()  # Both kinds are played.
+	# The literal table below is worked out by hand for these data values.
+	(
+		assert_int(_walk.settings.interstitial_free_matches)
+		. override_failure_message(
+			"the literal table assumes 2 free matches; rework it for another value"
+		)
+		. is_equal(2)
+	)
+	assert_int(_walk.settings.interstitial_min_play_s).is_greater(2)
+	assert_int(_walk.settings.interstitial_per_match).is_equal(1)
+	# Play seconds per match: [min, 1, 1, min - 1, 1]; the counter restarts at a shown one.
+	# 1: completed 1, not past the 2 free matches: blocked by that rule alone (min s of play is
+	#    there already).
+	# 2: completed 2, still free: blocked, 1 + min s of play carried.
+	# 3: first past the free matches, the carried play time is over min: shown, counter 0.
+	# 4: min - 1 s: one second short of the minimum: blocked by play time alone.
+	# 5: that second more, min s in all across two matches: shown.
+	var expected: Array[bool] = [false, false, true, false, true]
 	var shown_before: int = 0
 	for index: int in MATCHES:
 		var label: String = "match %d" % (index + 1)
@@ -159,7 +175,7 @@ func test_the_start_bonus_is_granted_once_and_taken_once_by_the_next_match() -> 
 func test_remove_ads_ends_the_band_and_the_interstitial_and_keeps_the_rewarded_offers() -> void:
 	await _walk.open()
 	var ads: Node = _walk.ads
-	AdServiceHarness.play_three_matches(ads)  # Interstitials are due.
+	_walk.make_interstitial_due()  # Interstitials are due.
 	await _walk.show(_walk.main_menu())
 	assert_float(_walk.band().reserved_px()).is_greater(0.0)
 	# The control: with the entitlement missing, a finished match shows its interstitial.
@@ -204,41 +220,15 @@ func test_remove_ads_ends_the_band_and_the_interstitial_and_keeps_the_rewarded_o
 	await _walk.leave()
 	assert_int(_walk.interstitials()).is_equal(shown)
 	assert_bool(await ads.maybe_show_interstitial(POST_MATCH)).is_false()
-	assert_int(_walk.fake.calls.count("show:" + AdBackend.KIND_INTERSTITIAL)).is_equal(shown)
+	var reason: StringName = AdCaps.denial_reason(_walk.settings, ads._ledger, POST_MATCH, true)
+	assert_str(String(reason)).is_equal("remove_ads")
 
 
-## The ticks each of the five matches runs: long where the caps can show one (the first match past
-## `interstitial_free_matches`, then again after one short match), short everywhere else.
+## The seconds each of the five matches plays, from the data (see the table in the five-match test).
 func _durations() -> Array[int]:
-	var settings: AdsSettingsDef = _walk.settings
-	var long_ticks: int = settings.interstitial_min_play_s * Sim.TICK_RATE
+	var min_s: int = _walk.settings.interstitial_min_play_s
+	var seconds: Array[int] = [min_s, 1, 1, min_s - 1, 1]
 	var out: Array[int] = []
-	for number: int in range(1, MATCHES + 1):
-		var long: bool = (
-			number == settings.interstitial_free_matches + 1
-			or number == settings.interstitial_free_matches + 3
-		)
-		out.append(long_ticks if long else 1)
-	return out
-
-
-## What the caps' rule says, worked out here from the data and the play times (the plan's table:
-## nothing until `interstitial_free_matches` matches are done, then one after
-## `interstitial_min_play_s` of play, which starts the count again).
-func _expected_shows(ticks: Array[int]) -> Array[bool]:
-	var settings: AdsSettingsDef = _walk.settings
-	var out: Array[bool] = []
-	var completed: int = 0
-	var played_s: int = 0
-	for match_ticks: int in ticks:
-		completed += 1
-		@warning_ignore("integer_division")
-		played_s += match_ticks / Sim.TICK_RATE
-		var due: bool = (
-			completed > settings.interstitial_free_matches
-			and played_s >= settings.interstitial_min_play_s
-		)
-		out.append(due)
-		if due:
-			played_s = 0
+	for second: int in seconds:
+		out.append(second * Sim.TICK_RATE)
 	return out
