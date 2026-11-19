@@ -69,6 +69,8 @@ func test_it_is_hidden_when_no_ad_is_loaded_and_a_stray_tap_grants_nothing() -> 
 	var offer: StartCreditsOffer = _offer()
 	assert_bool(offer.is_offered()).is_false()
 	assert_float(_button(offer).modulate.a).is_equal(0.0)  # Only its space is held.
+	assert_int(_button(offer).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_int(_button(offer).focus_mode).is_equal(Control.FOCUS_NONE)
 	_clock += 10000
 	_button(offer).pressed.emit()
 	await AdServiceHarness.frames(3)
@@ -105,7 +107,10 @@ func test_a_granted_bonus_shows_the_pending_state_and_no_second_offer() -> void:
 	var settings: AdsSettingsDef = _settings()
 	assert_bool(offer.is_pending()).is_true()
 	assert_bool(offer.is_offered()).is_false()
-	assert_bool(_button(offer).disabled).is_true()
+	# Untappable but not greyed (a greyed button reads as a locked map).
+	assert_bool(_button(offer).disabled).is_false()
+	assert_int(_button(offer).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_int(_button(offer).focus_mode).is_equal(Control.FOCUS_NONE)
 	assert_float(_button(offer).modulate.a).is_equal(1.0)
 	assert_str(_button(offer).text).is_equal(
 		(settings.reward_credits_pending_text % settings.reward_start_credits).to_upper()
@@ -165,3 +170,61 @@ func test_the_ads_texts_hold_exactly_one_number() -> void:
 		bad.reward_credits_pending_text = text
 		assert_str("\n".join(bad.validate())).override_failure_message(text).contains("credits")
 	assert_array(_settings().validate()).is_empty()
+
+
+func test_a_screen_freed_while_the_ad_is_open_still_gets_the_grant_in_the_ledger() -> void:
+	var offer: StartCreditsOffer = _offer()
+	_fake().show_never_closes = true
+	_clock += _settings().reward_arm_ms
+	_button(offer).pressed.emit()
+	await AdServiceHarness.frames(3)
+	assert_bool(offer.is_running()).is_true()
+	_screen.free()  # The offer goes with it; the callback is bound to the service.
+	_fake().finish_show()
+	await AdServiceHarness.frames(3)
+	assert_int(_service.pending_start_credits()).is_equal(_settings().reward_start_credits)
+
+
+func test_two_relays_firing_do_not_stack_the_bonus() -> void:
+	var offer: StartCreditsOffer = _offer()
+	var grant: Callable = _service.grant_start_credits_bonus.bind(_settings().reward_start_credits)
+	RewardRelay.new(offer, grant).fire()
+	RewardRelay.new(offer, grant).fire()
+	assert_int(_service.pending_start_credits()).is_equal(_settings().reward_start_credits)
+
+
+func test_a_ledger_above_the_cap_advertises_no_more_than_the_cap_pays() -> void:
+	_service._ledger.pending_start_credits = _settings().start_credits_bonus_max + 900
+	assert_int(_service.pending_start_credits()).is_equal(_settings().start_credits_bonus_max)
+	assert_int(_service.take_start_credits_bonus()).is_equal(_settings().start_credits_bonus_max)
+
+
+func test_consent_that_said_no_collapses_the_offer_for_the_visit() -> void:
+	_service._set_can_request(false)
+	var offer: StartCreditsOffer = _offer()
+	assert_bool(offer.visible).is_false()
+	assert_bool(offer.is_offered()).is_false()
+	_service._set_can_request(true)  # A late yes waits for the next visit.
+	offer.refresh()
+	assert_bool(offer.visible).is_false()
+	_screen.hide()
+	_screen.show()
+	offer.refresh()
+	assert_bool(offer.is_offered()).is_true()
+
+
+func test_unknown_consent_keeps_the_space_and_a_late_no_does_not_shrink_it() -> void:
+	_service._consent_known = false
+	_service._can_request_ads = false
+	var offer: StartCreditsOffer = _offer()
+	assert_bool(offer.visible).is_true()
+	assert_bool(offer.is_offered()).is_false()
+	_service._set_can_request(false)
+	offer.refresh()
+	assert_bool(offer.visible).is_true()  # Never shrinks while the screen is visible.
+
+
+func test_a_pending_bonus_keeps_the_offer_although_consent_said_no() -> void:
+	assert_bool(_service.grant_start_credits_bonus(300)).is_true()
+	_service._set_can_request(false)
+	assert_bool(_offer().is_pending()).is_true()

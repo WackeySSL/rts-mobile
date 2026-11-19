@@ -248,7 +248,7 @@ body = "Tap Skirmish on the main menu, choose the map, your side and the compute
 script = ExtResource("3_ent")
 id = &"menus-start-credits"
 title = "Extra starting credits"
-body = "On the Skirmish screen, below Start, you may tap +500 credits next match to watch an ad. When the ad pays out (not when you close it early) the bonus waits for your next match and the button says it is ready; the match you start next begins with those credits, once. It only shows when an ad is ready, nothing plays unless you tap, and it stays even if you removed the other ads."
+body = "On the Skirmish screen, below Start, you may tap \"+500 CREDITS NEXT MATCH\" to watch an ad (Start waits until it is over). When the ad pays out (not when you close it early) the bonus waits for your next match and the button reads \"+500 CREDITS READY\"; the match you start next begins with those credits, once. It only shows when an ad is ready, nothing plays unless you tap, and it stays even if you removed the other ads."
 
 [sub_resource type="Resource" id="e22"]
 script = ExtResource("3_ent")

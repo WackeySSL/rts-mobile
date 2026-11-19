@@ -39,6 +39,8 @@ const WIDGET_METHODS: Dictionary = {
 	"remove_ads_price_text": [[], TYPE_STRING],
 	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
 	"pending_start_credits": [[], TYPE_INT],
+	"can_request_ads": [[], TYPE_BOOL],
+	"consent_known": [[], TYPE_BOOL],
 	"settle_fullscreen": [[], TYPE_NIL],
 }
 

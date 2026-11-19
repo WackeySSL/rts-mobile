@@ -278,17 +278,17 @@ func _bands() -> Array[Node]:
 func _ad_nodes() -> Array[Node]:
 	var found: Array[Node] = []
 	for node: Node in _main.find_children("*", "", true, false):
-		if _is_hidden_result_offer(node):
-			continue  # See _is_hidden_result_offer.
+		if _is_hidden_offer(node):
+			continue  # See _is_hidden_offer.
 		var script: Script = node.get_script()
 		if script != null and script.resource_path.contains("/ads/"):
 			found.append(node)
 	return found
 
 
-## The match result's rewarded offer (admob-policy matrix): its own slot under the result screen,
-## and not visible while the battle runs.
-static func _is_hidden_result_offer(node: Node) -> bool:
+## A rewarded offer left in the tree (admob-policy matrix): the result screen's Double XP offer or
+## the map select's credits offer, each in its own slot, and not visible while the battle runs.
+static func _is_hidden_offer(node: Node) -> bool:
 	var parent: Node = node.get_parent()
 	var result_offer: bool = node is DoubleXpOffer and parent.owner is ResultScreen
 	var credits_offer: bool = node is StartCreditsOffer and parent.owner is MapSelect

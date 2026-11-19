@@ -1,3 +1,4 @@
+# gdlint: ignore=max-public-methods
 extends Node
 ## The one facade for ads, consent and the Remove ads purchase (ADR 0039 section 1).
 ## Phase 5 calls only what is declared here; the signals, methods and their types are the
@@ -49,6 +50,7 @@ var debug_geography_eea: bool = false
 
 ## Consent's answer: whether ads may be requested at all. Only `_set_can_request` writes it.
 var _can_request_ads: bool = false
+var _consent_known: bool = false
 var _consent: ConsentFlow = ConsentFlow.new(_make_consent(not fake_auto_close), OS.is_debug_build)
 var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
@@ -233,7 +235,17 @@ func take_start_credits_bonus() -> int:
 
 ## Internal (P433). The start-credits bonus waiting for the next match (0 when none); read only.
 func pending_start_credits() -> int:
-	return _ledger.pending_start_credits
+	return mini(_ledger.pending_start_credits, _settings.start_credits_bonus_max)
+
+
+## Internal (P433). Whether ads may be requested, as consent last answered; read only.
+func can_request_ads() -> bool:
+	return _can_request_ads
+
+
+## Internal (P433). True once consent has answered (granted or not); false while it is unknown.
+func consent_known() -> bool:
+	return _consent_known
 
 
 ## Internal (Phase 6 widgets; P433's grant after the rewarded callback). Records the pending
@@ -334,6 +346,7 @@ func _refresh_banner() -> void:
 ## banner, and announces the answer.
 func _set_can_request(allowed: bool) -> void:
 	_can_request_ads = allowed
+	_consent_known = true
 	if not allowed:
 		_runs.cancel_unopened()
 	if allowed and not _initialised:

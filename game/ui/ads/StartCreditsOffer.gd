@@ -12,6 +12,10 @@ extends RewardedOffer
 ## No layout shift (the ad policy forbids it): while it holds a slot the offer keeps its full height
 ## (the button, invisible and untappable until an ad is ready, plus `banner_gap_dp` below), so an ad
 ## that loads late moves nothing, START included. A shown button ignores taps for `reward_arm_ms`.
+## One exception, decided once per visit when the screen opens: with consent already answered "no
+## ads" and no bonus pending, the offer takes no space at all. It never grows or shrinks while the
+## screen is visible; a late consent waits for the next visit, and unknown consent keeps the space.
+## `granted` (the base's signal) may emit more than once per offer: a grant does not end the offer.
 
 const PLACEMENT: StringName = &"start_credits"
 
@@ -21,6 +25,8 @@ var now_ms: Callable = Time.get_ticks_msec
 var _live: bool = false
 var _pending: bool = false
 var _armed_at_ms: int = 1 << 60
+var _decided: bool = false
+var _collapsed: bool = false
 
 
 func _init() -> void:
@@ -48,6 +54,11 @@ func is_offered() -> bool:
 	return _live and is_visible_in_tree()
 
 
+## True while the offer's ad is loading, open or closing (START waits for it).
+func is_running() -> bool:
+	return _busy
+
+
 ## True while the granted bonus waits for the next match.
 func is_pending() -> bool:
 	return _pending and is_visible_in_tree()
@@ -71,10 +82,10 @@ func _pending_now() -> bool:
 func _show(on: bool) -> void:
 	var was: bool = _live
 	_pending = _claimed_scope != null and _pending_now()
-	_live = on and not _pending
-	visible = _claimed_scope != null
+	_decide_visit()
+	_live = on and not _pending and not _collapsed
+	visible = _claimed_scope != null and not _collapsed
 	_button.modulate.a = float(_live or _pending)  # 0 while it only holds its space.
-	_button.disabled = _pending
 	_button.mouse_filter = Control.MOUSE_FILTER_STOP if _live else Control.MOUSE_FILTER_IGNORE
 	_button.focus_mode = Control.FOCUS_ALL if _live else Control.FOCUS_NONE
 	if _pending:
@@ -86,10 +97,31 @@ func _show(on: bool) -> void:
 		_armed_at_ms = int(now_ms.call()) + settings.reward_arm_ms
 
 
+## Giving up the slot (the screen hides, another service) ends the visit.
+func _release() -> void:
+	super()
+	_decided = false
+
+
+## Once per visit, when the offer takes its slot: collapse for consent that said no.
+func _decide_visit() -> void:
+	if _claimed_scope == null:
+		_decided = false
+		_collapsed = false
+	elif not _decided:
+		_decided = true
+		var svc: AdServiceScript = _resolve_service()
+		_collapsed = (
+			svc != null and svc.consent_known() and not svc.can_request_ads() and not _pending
+		)
+
+
 func _on_pressed() -> void:
 	if not _live or int(now_ms.call()) < _armed_at_ms:
 		return
 	var svc: AdServiceScript = _resolve_service()
+	if svc == null:
+		return
 	on_reward = svc.grant_start_credits_bonus.bind(settings.reward_start_credits)
 	super()
 

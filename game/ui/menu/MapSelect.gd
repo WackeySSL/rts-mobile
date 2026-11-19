@@ -127,8 +127,8 @@ func on_back() -> bool:
 
 
 func _on_start() -> void:
-	if _starting or not _can_start():
-		return
+	if _starting or not _can_start() or offer.is_running():
+		return  # Not while the credits ad runs: the bonus is taken at START, so it must land first.
 	var setup: MatchSetup = build_setup()
 	if setup == null:
 		push_warning("MapSelect: no scenario for %s / %s / %s" % [map_id, side, level])

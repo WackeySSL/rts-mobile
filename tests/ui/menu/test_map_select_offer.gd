@@ -55,13 +55,16 @@ func _close() -> void:
 		_service = null
 
 
-func _open(size: Vector2i, fill: bool) -> void:
+func _open(size: Vector2i, fill: bool, consent: Variant = true) -> void:
 	var profile: UiMetrics = _profile_with_window(size)
 	UiScale.set_override(profile)
 	get_window().size = size
 	await await_idle_frame()
-	_service = _h.make(true)  # A fresh service per size: the loaded ad is part of its state.
+	# A fresh service per size: the loaded ad is part of its state.
+	_service = _h.make(consent != false)
 	add_child(_service)
+	if consent == null:
+		_service._consent_known = false  # Consent has not answered yet.
 	AdServiceHarness.fake(_service).fill = fill
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
 	add_child(_menu)
@@ -73,6 +76,7 @@ func _open(size: Vector2i, fill: bool) -> void:
 	stack.push(_screen)
 	_screen.offer.use_service(_service)
 	_screen.offer.now_ms = func() -> int: return _clock
+	_clock = 1 << 40  # Past the arm time the offer took on the real clock while it opened.
 	for _frame: int in range(3):
 		await await_idle_frame()
 
@@ -142,6 +146,64 @@ func test_nothing_moves_when_the_ad_loads_late_is_granted_or_taken() -> void:
 		await await_idle_frame()
 		assert_bool(_screen.offer.is_pending()).override_failure_message(label).is_false()
 		assert_array(_rects()).override_failure_message(label).is_equal(before_rects)
+		_close()
+		UiScale.clear_override()
+
+
+func test_start_waits_while_the_credits_ad_runs_and_then_takes_the_bonus() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], true)
+	AdServiceHarness.fake(_service).show_never_closes = true
+	_clock += AdsSettingsDef.load_default().reward_arm_ms
+	_button().pressed.emit()
+	await AdServiceHarness.frames(3)
+	assert_bool(_screen.offer.is_running()).is_true()
+	_screen._on_start()  # START while the ad is still open.
+	assert_array(_flow.started).is_empty()  # No match was begun.
+	AdServiceHarness.fake(_service).finish_show()
+	await AdServiceHarness.frames(3)
+	assert_bool(_screen.offer.is_pending()).is_true()
+	_screen._on_start()
+	assert_int(_flow.started.size()).is_equal(1)
+	assert_int(_service.take_start_credits_bonus()).is_equal(
+		AdsSettingsDef.load_default().reward_start_credits
+	)
+
+
+func test_a_hidden_and_shown_screen_clears_the_pending_state_by_itself() -> void:
+	await _open(ScreenSizes.LANDSCAPE[0], true)
+	_clock += AdsSettingsDef.load_default().reward_arm_ms
+	_button().pressed.emit()
+	await AdServiceHarness.frames(3)
+	assert_bool(_screen.offer.is_pending()).is_true()
+	_screen.hide()
+	_service.take_start_credits_bonus()
+	_screen.show()
+	await await_idle_frame()  # No manual refresh: the visibility binding does it.
+	assert_bool(_screen.offer.is_pending()).is_false()
+
+
+func test_consent_that_said_no_collapses_the_band_and_unknown_consent_reserves_it() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		var label: String = str(size)
+		await _open(size, true, false)
+		assert_bool(_screen.offer.visible).override_failure_message(label).is_false()
+		assert_float(_screen.offer.get_parent().size.y).override_failure_message(label).is_equal(
+			0.0
+		)
+		var collapsed: Array[Rect2] = _rects()
+		_service._set_can_request(true)  # A late yes: nothing moves while visible.
+		_screen.offer.refresh()
+		await await_idle_frame()
+		assert_array(_rects()).override_failure_message(label).is_equal(collapsed)
+		_close()
+		UiScale.clear_override()
+		await _open(size, true, null)
+		assert_bool(_screen.offer.visible).override_failure_message(label).is_true()
+		var reserved: Array[Rect2] = _rects()
+		_service._set_can_request(false)  # A late no: nothing moves either.
+		_screen.offer.refresh()
+		await await_idle_frame()
+		assert_array(_rects()).override_failure_message(label).is_equal(reserved)
 		_close()
 		UiScale.clear_override()
 
