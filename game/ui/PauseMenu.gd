@@ -108,6 +108,8 @@ var _vibration: Button
 var _sound: Button
 var _music: Button
 var _exit_button: Button
+var _restart_button: Button
+var _starting: bool = false  ## A restart waits on MenuFlow (a late ad may be closing).
 var _settings: Button
 var _help: MenuStack  ## The How to play overlay while it is open.
 var _restart_dialog: ConfirmDialog
@@ -136,7 +138,9 @@ func _ready() -> void:
 	add_label(_left, "PAUSED", &"CapsBigTitle")
 	_build_card()
 	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton", PRIMARY_LOOK)
-	_add_action("RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN)
+	_restart_button = _add_action(
+		"RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN
+	)
 	_add_action("SURRENDER", "surrender", _surrender_dialog_open, &"SurrenderButton", DANGER)
 	_actions.add_child(_pair)
 	_add_action("HOW TO PLAY", "", _open_help, &"HelpButton", PLAIN, _pair)
@@ -326,7 +330,7 @@ func _notification(what: int) -> void:
 ## Decided at once, before the overlay's own deferred pop runs: the overlay (the How to play
 ## screen) takes Back itself; an open question closes (keep playing); then the menu toggles.
 func _on_back() -> void:
-	if _help != null or feed == null:
+	if _starting or _help != null or feed == null:
 		return
 	if visible and _asking():
 		_close_dialogs()
@@ -658,9 +662,14 @@ func _exit_dialog_open() -> void:
 ## mid-match restart counts nothing and shows no ad); the dev path otherwise.
 func _restart() -> void:
 	if _owned():
+		if _starting:
+			return
+		_set_starting(true)
 		var error: Error = await _flow().call(&"restart") as Error
-		if error != OK:
+		if error != OK:  # Refused (busy, a bad setup): the buttons come back live.
 			push_warning("PauseMenu: restart refused (%s)" % error_string(error))
+		if is_instance_valid(self):
+			_set_starting(false)
 		return
 	DevRoutes.open_main_with(
 		get_tree(),
@@ -669,6 +678,22 @@ func _restart() -> void:
 		runner.opponent_levels,
 		runner.first_opponent
 	)
+
+
+## While MenuFlow prepares the new match (it may wait for a late ad to close) every button is off
+## and Restart reads "STARTING…" (the result screen's Play again; `MapSelectText.STARTING`). It
+## pins its minimum width to the one its own text gave, so the column does not move. Back is
+## swallowed too (`_on_back`).
+func _set_starting(starting: bool) -> void:
+	_starting = starting
+	_restart_button.custom_minimum_size.x = (
+		_restart_button.get_combined_minimum_size().x if starting else UiScale.dp_vec(0.0, 0.0).x
+	)
+	_restart_button.text = tr(MapSelectText.STARTING) if starting else "RESTART"
+	for button: Button in _glyphed:
+		button.disabled = starting
+	if not starting:
+		_show_exit()  # Settings is off again where no route is registered.
 
 
 ## Resumes first, so the tick that carries the Command runs.
