@@ -209,6 +209,7 @@ and never changed; when a row is deleted, add its id to `RETIRED` in
 | Id | Action | Result | Teach |
 |---|---|---|---|
 | factions-two | Open the dev menu (in a debug or preview build: the pause menu's "Developer menu" button), choose Easy, Normal or Hard (Normal is chosen each time the menu opens; the words "Level: ..." beside the title "Dev menu" name the choice), then "Skirmish (Derrick League)" or "Skirmish (Lumen Accord)" | A match on Kestrel Flats begins, and you play that side from the top of the map while the computer plays the other side from the bottom, at the level you chose. You play the Derrick League (oil and gas) or the Lumen Accord (green energy); each side has its own buildings and units, and your build drawer shows only yours. Your units and buildings wear your side's colour, orange for the Derrick League and cyan for the Lumen Accord, and the computer's wear the other one | yes |
+| factions-sides | Choose your side on the Skirmish screen (Derrick League or Lumen Accord) | The match starts with that side: you play the Derrick League (oil and gas, orange) or the Lumen Accord (green energy, cyan), and the computer plays the other one in its colour. Each side has its own buildings and units, and your build drawer shows only yours. The choice is marked with ">" (see Open Skirmish, Menus) | |
 
 ## The computer opponent
 | Id | Action | Result | Teach |
