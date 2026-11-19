@@ -17,6 +17,8 @@ func copy_from(other: OpponentAi) -> void:
 	economy = other.economy
 	production = other.production
 	striker = other.striker
+	# Off (no layer type), so the intel slot's scout tick stays the three managers' alone (P295).
+	miner = AiMines.create(OpponentDef.new(), AiDifficultyDef.new())
 
 
 func _run_army_slot(view: PlayerView, _out: Array[Command]) -> void:

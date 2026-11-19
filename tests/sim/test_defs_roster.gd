@@ -46,6 +46,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 		"fossil_weld_shed",
 		"rifle_squad",
 		"rocket_squad",
+		"fossil_patchers",
 		"light_tank",
 		"heavy_tank",
 		"artillery",
@@ -62,7 +63,7 @@ func test_the_faction_file_lists_the_roster_in_the_adr_order() -> void:
 	assert_array(listed).is_equal(wanted)
 
 
-func test_the_data_holds_the_thirteen_buildings_and_the_ten_units() -> void:
+func test_the_data_holds_the_thirteen_buildings_and_the_eleven_units() -> void:
 	var ids: Array[String] = []
 	for path: String in _own_files():
 		ids.append(path.get_file().get_basename())
@@ -82,6 +83,7 @@ func test_the_data_holds_the_thirteen_buildings_and_the_ten_units() -> void:
 		"fossil_weld_shed",
 		"rifle_squad",
 		"rocket_squad",
+		"fossil_patchers",
 		"light_tank",
 		"heavy_tank",
 		"artillery",
@@ -487,7 +489,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			"vehicle_factory"
 		]
 	)
-	assert_array(buildable[INFANTRY]).is_equal(["rifle_squad", "rocket_squad"])
+	assert_array(buildable[INFANTRY]).is_equal(["fossil_patchers", "rifle_squad", "rocket_squad"])
 	assert_array(buildable[VEHICLES]).is_equal(
 		[
 			"artillery",
@@ -502,7 +504,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 
 ## The paths of the unit files of the faction these cases read, in file order.
 ## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre,
-## P291 the Bunk Wagon, P292 the Shot Truck, P279 the Weld Shed.
+## P291 the Bunk Wagon, P292 the Shot Truck, P279 the Weld Shed, P280 the Patchers.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -511,7 +513,6 @@ func _own_files() -> Array[String]:
 			in [
 				"fossil_transport",
 				"fossil_drone",
-				"fossil_patchers",  # P280
 			]
 		):
 			continue

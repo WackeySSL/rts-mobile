@@ -43,6 +43,8 @@ var _rank_label: Label
 var _xp_label: Label
 var _xp_bar: ProgressBar
 var _progression: ProgressionScript
+var _sides: HBoxContainer
+var _names: Array[Label] = []
 
 
 func _ready() -> void:
@@ -143,7 +145,40 @@ func _build_header() -> void:
 		name_label.text = tr(side[1] as StringName)
 		name_label.theme_type_variation = side[2] as StringName
 		sides.add_child(name_label)
+		_names.append(name_label)
+	_sides = sides
+	_fit_names.call_deferred()
 	_label(tr(MainMenuText.TAGLINE), &"").autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+## The screen's layout hook: the row is fitted again once every handler of the resize has run.
+func _apply() -> void:
+	super()
+	if _sides != null:
+		_fit_names.call_deferred()
+
+
+## Compact and centred while the row's natural width fits the widest column the screen allows (the
+## column grows to it); when it does not (a 360 dp phone held upright) the names take the room left
+## and wrap by word. The emblems and "vs"
+## keep their size.
+func _fit_names() -> void:
+	if _sides == null or not is_inside_tree():
+		return
+	var natural: float = 0.0
+	for child: Node in _sides.get_children():
+		var label: Label = child as Label
+		if label != null and _names.has(label):
+			var font: Font = label.get_theme_font("font")
+			var size: int = label.get_theme_font_size("font_size")
+			natural += font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, size).x
+		else:
+			natural += (child as Control).get_combined_minimum_size().x
+	natural += _sides.get_theme_constant("separation") * (_sides.get_child_count() - 1)
+	var wrap: bool = natural > column_room_px()  # The column grows to a row that fits.
+	for label: Label in _names:
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if wrap else Control.SIZE_FILL
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 
 
 func _build_rank() -> void:

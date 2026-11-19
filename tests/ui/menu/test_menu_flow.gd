@@ -32,6 +32,9 @@ class FakeAds:
 		completed_calls += 1
 		last_seconds = play_seconds
 
+	func settle_fullscreen() -> void:
+		pass
+
 	func maybe_show_interstitial(placement: StringName) -> bool:
 		interstitial_calls += 1
 		last_placement = placement

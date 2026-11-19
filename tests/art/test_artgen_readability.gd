@@ -96,7 +96,7 @@ func test_every_walk_and_idle_frame_is_identifiable_at_32_px_in_greyscale() -> v
 					_blit(picture, _raster(model, part, dir, frame), layouts[part], Vector2.ZERO)
 					_assert_identifiable("%s %s d%02d f%d" % [path, part, dir, frame], picture)
 					seen += 1
-	assert_int(seen).is_equal(4 * 8 * (4 + 2))
+	assert_int(seen).is_equal(6 * 8 * (4 + 2))  # the four squads and the two medic squads (P280)
 
 
 ## `picture` shrunk to 32 px in greyscale still has a body and a spread of tones.
