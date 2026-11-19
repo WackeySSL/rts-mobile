@@ -55,6 +55,15 @@ func late_count() -> int:
 	return _lates.size()
 
 
+## True while a run still holds up a match: the one being awaited (loading, or shown and not yet
+## open; its own deadline bounds that, then it goes late) or a late one, see
+## `FullscreenRun.is_settling`.
+func has_settling(cap_ms: int) -> bool:
+	if _active != null:
+		return true
+	return _lates.any(func(run: FullscreenRun) -> bool: return run.is_settling(cap_ms))
+
+
 func _on_opened(placement: StringName, _run: FullscreenRun) -> void:
 	opened.emit(placement)
 

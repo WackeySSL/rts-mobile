@@ -32,6 +32,9 @@ class FakeAds:
 		completed_calls += 1
 		last_seconds = play_seconds
 
+	func settle_fullscreen() -> void:
+		pass
+
 	func maybe_show_interstitial(placement: StringName) -> bool:
 		interstitial_calls += 1
 		last_placement = placement
@@ -346,8 +349,10 @@ func test_the_requested_screen_is_taken_once() -> void:
 	assert_str(_flow.take_pending_screen()).is_equal("skirmish")
 
 
-func test_continue_match_is_a_stub_until_the_restorer() -> void:
-	assert_int(await _flow.continue_match()).is_equal(ERR_UNAVAILABLE)
+func test_continue_match_without_a_file_changes_nothing() -> void:
+	assert_int(await _flow.continue_match()).is_equal(ERR_FILE_NOT_FOUND)
+	assert_int(_menus).is_equal(0)
+	assert_int(_mains.size()).is_equal(0)
 
 
 func test_the_real_ad_service_with_auto_close_reaches_the_menu() -> void:
