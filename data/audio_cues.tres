@@ -26,6 +26,11 @@
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/mine/blast_1.wav" id="mine_blast_1"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/mine/blast_2.wav" id="mine_blast_2"]
 
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/rupture_launch_1.wav" id="strike_rupture_launch_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/rupture_land_1.wav" id="strike_rupture_land_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/blackout_1.wav" id="strike_blackout_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/sweep_1.wav" id="strike_sweep_1"]
+
 [sub_resource type="Resource" id="cue_shot_rifle"]
 script = ExtResource("2_def")
 id = &"shot_rifle"
@@ -206,9 +211,65 @@ tone_ms = 90
 noise_permille = 100
 variants = 1
 
+[sub_resource type="Resource" id="cue_strike_rupture_launch"]
+script = ExtResource("2_def")
+id = &"strike_rupture_launch"
+streams = Array[AudioStream]([ExtResource("strike_rupture_launch_1")])
+volume_db = -4.0
+pitch_steps = PackedInt32Array(1000)
+priority = 5
+max_voices = 2
+cooldown_ms = 0
+tone_hz = 200
+tone_ms = 700
+noise_permille = 400
+variants = 1
+
+[sub_resource type="Resource" id="cue_strike_rupture_land"]
+script = ExtResource("2_def")
+id = &"strike_rupture_land"
+streams = Array[AudioStream]([ExtResource("strike_rupture_land_1")])
+volume_db = -2.0
+pitch_steps = PackedInt32Array(1000)
+priority = 5
+max_voices = 2
+cooldown_ms = 0
+tone_hz = 60
+tone_ms = 900
+noise_permille = 500
+variants = 1
+
+[sub_resource type="Resource" id="cue_strike_blackout"]
+script = ExtResource("2_def")
+id = &"strike_blackout"
+streams = Array[AudioStream]([ExtResource("strike_blackout_1")])
+volume_db = -4.0
+pitch_steps = PackedInt32Array(1000)
+priority = 4
+max_voices = 2
+cooldown_ms = 0
+tone_hz = 120
+tone_ms = 600
+noise_permille = 300
+variants = 1
+
+[sub_resource type="Resource" id="cue_strike_sweep"]
+script = ExtResource("2_def")
+id = &"strike_sweep"
+streams = Array[AudioStream]([ExtResource("strike_sweep_1")])
+volume_db = -8.0
+pitch_steps = PackedInt32Array(1000)
+priority = 3
+max_voices = 1
+cooldown_ms = 0
+tone_hz = 220
+tone_ms = 800
+noise_permille = 50
+variants = 1
+
 [resource]
 script = ExtResource("1_table")
-cues = Array[ExtResource("2_def")]([SubResource("cue_shot_rifle"), SubResource("cue_shot_cannon"), SubResource("cue_shot_rocket"), SubResource("cue_shot_artillery"), SubResource("cue_impact_light"), SubResource("cue_impact_heavy"), SubResource("cue_death_foot"), SubResource("cue_death_vehicle"), SubResource("cue_death_air"), SubResource("cue_death_building"), SubResource("cue_sold"), SubResource("cue_mine_blast"), SubResource("cue_repaired"), SubResource("cue_unloaded")])
+cues = Array[ExtResource("2_def")]([SubResource("cue_shot_rifle"), SubResource("cue_shot_cannon"), SubResource("cue_shot_rocket"), SubResource("cue_shot_artillery"), SubResource("cue_impact_light"), SubResource("cue_impact_heavy"), SubResource("cue_death_foot"), SubResource("cue_death_vehicle"), SubResource("cue_death_air"), SubResource("cue_death_building"), SubResource("cue_sold"), SubResource("cue_mine_blast"), SubResource("cue_repaired"), SubResource("cue_unloaded"), SubResource("cue_strike_rupture_launch"), SubResource("cue_strike_rupture_land"), SubResource("cue_strike_blackout"), SubResource("cue_strike_sweep")])
 shot_cues = Dictionary[StringName, StringName]({&"rifle": &"shot_rifle", &"hoist_crew_gun": &"shot_rifle", &"kite_crew_gun": &"shot_rifle", &"tank_cannon": &"shot_cannon", &"heavy_cannon": &"shot_cannon", &"turret_gun": &"shot_cannon", &"redoubt_gun": &"shot_cannon", &"rocket": &"shot_rocket", &"breaker_rocket": &"shot_rocket", &"sky_needle_gun": &"shot_rocket", &"artillery_gun": &"shot_artillery", &"arcline_gun": &"shot_artillery", &"burst_stack_gun": &"shot_artillery"})
 impact_cues = Dictionary[StringName, StringName]({&"tank_cannon": &"impact_heavy", &"heavy_cannon": &"impact_heavy", &"turret_gun": &"impact_heavy", &"redoubt_gun": &"impact_heavy", &"rocket": &"impact_heavy", &"breaker_rocket": &"impact_heavy", &"sky_needle_gun": &"impact_heavy", &"artillery_gun": &"impact_heavy", &"arcline_gun": &"impact_heavy", &"burst_stack_gun": &"impact_heavy"})
 shot_hitscan = &"shot_rifle"
@@ -222,3 +283,7 @@ death_vehicle = &"death_vehicle"
 death_air = &"death_air"
 death_building = &"death_building"
 sold = &"sold"
+strike_rupture_launch = &"strike_rupture_launch"
+strike_rupture_land = &"strike_rupture_land"
+strike_blackout = &"strike_blackout"
+strike_sweep = &"strike_sweep"
