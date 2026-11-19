@@ -3,10 +3,15 @@ extends VBoxContainer
 ## The Remove ads and Restore purchases rows (ADR 0039 section 8, plan P434), the widget of
 ## Settings' `PurchaseSlot`. It only calls the AdService facade: `has_remove_ads`,
 ## `remove_ads_price_text`, `purchase_remove_ads`, `restore_purchases` and `entitlement_changed`.
+## - Space (P445, the rule of the rewarded offers): while the store has not answered the rows keep
+##   their full height, invisible and untouchable, so nothing below them moves when the answer
+##   comes. They collapse to 0 only when the store is already known unavailable at the moment they
+##   would take their place; that is decided once per visit (a screen re-entering the tree starts
+##   a new visit). A late answer never resizes: a price fills the reserved space, an unavailable
+##   store leaves it empty for the rest of the visit.
 ## - "Remove ads" with the store's price text shows only while the entitlement is not held and the
-##   store has a price. An empty price means billing is unavailable (or not answered yet, and the
-##   rows poll until it does), so the row stays hidden, never a spinner. AdService cannot tell
-##   "still answering" from "no store" without a new API, so no space is reserved for it.
+##   store has a price (`store_state` AVAILABLE), never a spinner. While the store answers the rows
+##   poll for it.
 ## - "Restore purchases" shows with the same rule (no store, nothing to restore from), and stays
 ##   while the entitlement is held.
 ## - Rows that appear ignore touches for `reward_arm_ms`, so a tap meant for the button that stood
@@ -34,6 +39,10 @@ var restore_button: Button
 var _busy: bool = false
 var _timer: Timer
 var _price: String = ""
+## Decided at the visit's first refresh: the rows take no space for this visit.
+var _collapsed: bool = false
+var _decided: bool = false
+var _live: bool = false
 var _armed_at_ms: int = 0
 var _arm_ms: int = AdsSettingsDef.load_default().reward_arm_ms
 
@@ -57,8 +66,9 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE and _timer != null:
-		# Back from a screen: an entitlement may have changed meanwhile. Deferred, because the
-		# parent is notified before the child Timer is in the tree.
+		# Back from a screen: a new visit, and an entitlement may have changed meanwhile. Deferred,
+		# because the parent is notified before the child Timer is in the tree.
+		_decided = false
 		refresh.call_deferred()
 
 
@@ -70,17 +80,28 @@ func is_busy() -> bool:
 ## Lays the rows out again from the service's answers.
 func refresh() -> void:
 	_price = _store_price()
-	var billing: bool = _in_slot() and not _price.is_empty()
-	var remove_shown: bool = billing and not _owned()
-	if (billing and not restore_button.visible) or (remove_shown and not remove_button.visible):
+	var state: int = _store_state()
+	var in_slot: bool = _in_slot()
+	if in_slot and not _decided:
+		_decided = true
+		_collapsed = state == Purchases.StoreState.UNAVAILABLE
+	var reserved: bool = in_slot and not _collapsed
+	var live: bool = reserved and state == Purchases.StoreState.AVAILABLE and not _price.is_empty()
+	if live and not _live:
 		_armed_at_ms = int(now_ms.call()) + _arm_ms
-	remove_button.visible = remove_shown
-	restore_button.visible = billing
-	visible = billing
+	_live = live
+	remove_button.visible = reserved and not _owned()
+	restore_button.visible = reserved
+	visible = reserved
+	modulate.a = 1.0 if live else 0.0  # Reserved but empty: the space only.
+	for button: Button in [remove_button, restore_button]:
+		button.mouse_filter = Control.MOUSE_FILTER_STOP if live else Control.MOUSE_FILTER_IGNORE
+		button.focus_mode = Control.FOCUS_ALL if live else Control.FOCUS_NONE
+		button.disabled = _busy or not live
 	_fit()
 	if _timer == null or not _timer.is_inside_tree():
 		return  # A timer starts only in the tree; the enter-tree refresh covers the rest.
-	if _in_slot() and _price.is_empty():
+	if reserved and state == Purchases.StoreState.UNKNOWN:
 		_timer.start()  # The store has not answered yet: ask again.
 	else:
 		_timer.stop()
@@ -94,6 +115,13 @@ func _store_price() -> String:
 	if service == null or not service.has_method(&"remove_ads_price_text"):
 		return ""
 	return String(service.call(&"remove_ads_price_text"))
+
+
+## `Purchases.StoreState` from the service; a service that cannot say counts as unavailable.
+func _store_state() -> int:
+	if service == null or not service.has_method(&"store_state"):
+		return Purchases.StoreState.UNAVAILABLE
+	return int(service.call(&"store_state"))
 
 
 func _owned() -> bool:
@@ -138,8 +166,8 @@ func _on_restore() -> void:
 
 
 func _run(button: Button, method: StringName, busy_text: StringName) -> void:
-	if _busy or service == null or not service.has_method(method):
-		return  # One call at a time: a second tap does nothing.
+	if _busy or not _live or service == null or not service.has_method(method):
+		return  # One call at a time: a second tap does nothing (nor on reserved, empty rows).
 	if int(now_ms.call()) < _armed_at_ms:
 		return  # The rows have only just appeared.
 	_busy = true
@@ -155,8 +183,8 @@ func _run(button: Button, method: StringName, busy_text: StringName) -> void:
 
 
 func _set_disabled(on: bool) -> void:
-	remove_button.disabled = on
-	restore_button.disabled = on
+	remove_button.disabled = on or not _live
+	restore_button.disabled = on or not _live
 
 
 func _row(action: Callable) -> Button:

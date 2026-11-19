@@ -48,6 +48,8 @@ var _rank: Node
 var _flow: Node
 var _save: Node
 var _progression: Node
+## Set by the store-row tests: the AdService stand-in Settings talks to (null: the autoload).
+var _store: CountingPurchaseService = null
 
 
 func before() -> void:
@@ -174,6 +176,75 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 			)
 		_close()
 		UiScale.clear_override()
+
+
+func test_a_late_store_answer_moves_nothing_in_settings_at_every_size() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		_store = auto_free(CountingPurchaseService.new())
+		_store.answer("")
+		_store.state = Purchases.StoreState.UNKNOWN  # The store has not answered yet.
+		await _open(SETTINGS, _profile_with_window(size))
+		var rows: RemoveAdsRows = _store_rows()
+		var answering: Array[Rect2] = _rects_from(rows)
+		assert_bool(rows.visible).override_failure_message(str(size)).is_true()
+		assert_float(rows.size.y).override_failure_message(str(size)).is_greater(0.0)
+		_store.answer("kr 19,00")  # The price arrives.
+		rows.refresh()
+		await _settle()
+		_assert_rects(answering, _rects_from(rows), "%s price arrives" % size)
+		_close()
+		UiScale.clear_override()
+		_store = null
+
+
+func test_a_late_unavailable_store_moves_nothing_in_settings_at_every_size() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		_store = auto_free(CountingPurchaseService.new())
+		_store.answer("")
+		_store.state = Purchases.StoreState.UNKNOWN
+		await _open(SETTINGS, _profile_with_window(size))
+		var rows: RemoveAdsRows = _store_rows()
+		var answering: Array[Rect2] = _rects_from(rows)
+		_store.answer("")  # Unavailable after the space was reserved: it stays, empty.
+		rows.refresh()
+		await _settle()
+		_assert_rects(answering, _rects_from(rows), "%s unavailable" % size)
+		assert_float(rows.modulate.a).is_equal(0.0)
+		_close()
+		UiScale.clear_override()
+		_store = null
+
+
+func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		_store = auto_free(CountingPurchaseService.new())
+		_store.answer("kr 19,00")
+		await _open(SETTINGS, _profile_with_window(size))
+		var rows: RemoveAdsRows = _store_rows()
+		var slot: Control = rows.get_parent() as Control
+		var shown: Array[Rect2] = _rects_from(rows)
+		var reserved_h: float = slot.size.y
+		_close()
+		_store.answer("")
+		await _open(SETTINGS, _profile_with_window(size))
+		rows = _store_rows()
+		slot = rows.get_parent() as Control
+		var label: String = str(size)
+		assert_bool(slot.visible).override_failure_message(label).is_false()
+		assert_bool(rows.visible).override_failure_message(label).is_false()
+		var collapsed: Array[Rect2] = _rects_from(rows)
+		assert_int(collapsed.size()).override_failure_message(label).is_equal(shown.size() - 2)
+		var rise: float = reserved_h + roundf(UiScale.dp(MenuScreen.GAP_DP))
+		for index: int in collapsed.size():
+			var before: Rect2 = shown[index + 2]
+			(
+				assert_float(before.position.y - collapsed[index].position.y)
+				. override_failure_message(label)
+				. is_equal_approx(rise, TOLERANCE_PX)
+			)
+		_close()
+		UiScale.clear_override()
+		_store = null
 
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
@@ -396,6 +467,38 @@ func _side_names() -> Array[Label]:
 	return found
 
 
+func _store_rows() -> RemoveAdsRows:
+	return (_screen as SettingsScreen).remove_rows
+
+
+## The rects of the two rows and then of every visible control below their slot, in column order.
+func _rects_from(rows: RemoveAdsRows) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	if rows.visible:
+		out.append(rows.remove_button.get_global_rect())
+		out.append(rows.restore_button.get_global_rect())
+	var slot: Node = rows.get_parent()
+	var after_slot: bool = false
+	for child: Node in slot.get_parent().get_children():
+		if child == slot:
+			after_slot = true
+		elif after_slot and child is Control and (child as Control).visible:
+			out.append((child as Control).get_global_rect())
+	return out
+
+
+func _assert_rects(expected: Array[Rect2], actual: Array[Rect2], label: String) -> void:
+	assert_int(actual.size()).override_failure_message(label).is_equal(expected.size())
+	for index: int in mini(expected.size(), actual.size()):
+		(
+			assert_bool(actual[index].is_equal_approx(expected[index]))
+			. override_failure_message(
+				"%s #%d: %s became %s" % [label, index, expected[index], actual[index]]
+			)
+			. is_true()
+		)
+
+
 ## The visible controls under `node` in tree order; a freed-later child is left out.
 func _collect(node: Node, into: Array[Control]) -> void:
 	for child: Node in node.get_children():
@@ -449,6 +552,8 @@ func _make_screen(kind: StringName) -> MenuScreen:
 			var settings: SettingsScreen = SettingsScreen.new()
 			settings.routes = MenuRoutes.new()
 			settings.dev_enabled = func() -> bool: return true  # The longest column.
+			if _store != null:
+				settings.ad_service = _store
 			return settings
 		HOW_LIST, HOW_REAL_SECTION:
 			return HowToPlayScreen.new()  # No help: the real data.

@@ -50,19 +50,18 @@ func test_no_store_hides_both_rows_and_the_slot() -> void:
 	assert_bool(rows.visible).is_false()
 
 
-func test_a_late_price_shows_the_rows_and_no_service_hides_them() -> void:
-	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
-	fake.price = ""
+func test_a_late_price_fills_the_reserved_rows_and_no_service_hides_them() -> void:
+	var fake: CountingPurchaseService = _answering()
 	var rows: RemoveAdsRows = _rows(fake)
-	assert_bool(rows.visible).is_false()
-	assert_bool(rows._timer.is_stopped()).is_false()  # Polling while the price is empty.
+	_assert_reserved(rows)
+	assert_bool(rows._timer.is_stopped()).is_false()  # Polling while the store has not answered.
 	rows._timer.timeout.emit()
-	assert_bool(rows.visible).is_false()
+	_assert_reserved(rows)
 	assert_bool(rows._timer.is_stopped()).is_false()
-	fake.price = PRICE
+	fake.answer(PRICE)
 	rows._timer.timeout.emit()  # What the poll timer does.
-	assert_bool(rows.remove_button.visible).is_true()
-	assert_bool(rows._timer.is_stopped()).is_true()  # Stops once there is a price.
+	_assert_live(rows)
+	assert_bool(rows._timer.is_stopped()).is_true()  # Stops once the store has answered.
 	var bare: RemoveAdsRows = _rows(auto_free(Node.new()))
 	assert_bool(bare.visible).is_false()
 
@@ -137,9 +136,8 @@ func test_outside_a_slot_the_widget_never_shows() -> void:
 	assert_bool(rows.restore_button.visible).is_false()
 
 
-func test_rows_with_an_empty_price_poll_again_after_leaving_and_re_entering_the_tree() -> void:
-	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
-	fake.price = ""
+func test_rows_still_waiting_poll_again_after_leaving_and_re_entering_the_tree() -> void:
+	var fake: CountingPurchaseService = _answering()
 	var rows: RemoveAdsRows = _rows(fake)
 	var slot: Node = rows.get_parent()
 	slot.remove_child(rows)
@@ -148,10 +146,10 @@ func test_rows_with_an_empty_price_poll_again_after_leaving_and_re_entering_the_
 	await await_idle_frame()
 	assert_bool(rows._timer.is_inside_tree()).is_true()
 	assert_bool(rows._timer.is_stopped()).is_false()
-	assert_bool(rows.visible).is_false()
-	fake.price = PRICE
+	_assert_reserved(rows)
+	fake.answer(PRICE)
 	rows._timer.timeout.emit()
-	assert_bool(rows.remove_button.visible).is_true()
+	_assert_live(rows)
 	assert_bool(rows._timer.is_stopped()).is_true()
 
 
@@ -168,6 +166,32 @@ func test_a_narrow_remove_button_shortens_the_title_and_keeps_the_price() -> voi
 	assert_str(button.text).contains("…")
 	assert_str(button.text).ends_with(AdServiceHarness.billing(_service).price)
 	assert_int(button.text.length()).is_less(full.length() + 1)
+
+
+## A store that has not answered yet (no price).
+func _answering() -> CountingPurchaseService:
+	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
+	fake.price = ""
+	fake.state = Purchases.StoreState.UNKNOWN
+	return fake
+
+
+## The space is kept (visible to layout) but nothing shows and nothing can be tapped.
+func _assert_reserved(rows: RemoveAdsRows) -> void:
+	assert_bool(rows.visible).is_true()
+	assert_bool(rows.remove_button.visible).is_true()
+	assert_bool(rows.restore_button.visible).is_true()
+	assert_float(rows.modulate.a).is_equal(0.0)
+	assert_int(rows.remove_button.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_bool(rows.remove_button.disabled).is_true()
+
+
+func _assert_live(rows: RemoveAdsRows) -> void:
+	assert_bool(rows.remove_button.visible).is_true()
+	assert_bool(rows.restore_button.visible).is_true()
+	assert_float(rows.modulate.a).is_equal(1.0)
+	assert_int(rows.remove_button.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
+	assert_bool(rows.remove_button.disabled).is_false()
 
 
 ## The widget in a `PurchaseSlot` of its own, in the tree.
@@ -188,10 +212,10 @@ func _rows(service: Node) -> RemoveAdsRows:
 func test_new_rows_ignore_touches_for_the_arm_delay() -> void:
 	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
 	var rows: RemoveAdsRows = _rows(fake)
-	fake.price = ""
-	rows.refresh()  # The store goes away, then answers: the rows appear again.
+	fake.state = Purchases.StoreState.UNKNOWN
+	rows.refresh()  # The store goes quiet, then answers: the rows fill in again.
 	_clock_ms = 100000
-	fake.price = PRICE
+	fake.state = Purchases.StoreState.AVAILABLE
 	rows.refresh()
 	rows.remove_button.pressed.emit()
 	assert_int(fake.purchases).is_equal(0)  # Just appeared: a stray tap does nothing.

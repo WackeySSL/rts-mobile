@@ -20,6 +20,9 @@ extends RefCounted
 ## Fires when the entitlement changes from what `owned` reports, with the new state.
 signal entitlement_changed(has_remove_ads: bool)
 
+## What the store has answered for the product, as `store_state` returns it (P445).
+enum StoreState { UNKNOWN, AVAILABLE, UNAVAILABLE }
+
 ## After this many timeouts without a sheet an unanswered purchase stops blocking new ones.
 const RESULT_GRACE_FACTOR: int = 4
 ## No deadline: wait for the condition however long it takes.
@@ -60,6 +63,23 @@ func price_text() -> String:
 		if _backend.product_state(_product_id) == BillingBackend.QueryState.IDLE:
 			_backend.query_product(_product_id)
 	return _backend.price_text(_product_id)
+
+
+## Read only, starts nothing: UNKNOWN while the connection or the product query has not answered,
+## UNAVAILABLE when the store is not there or has no such product (or no price), else AVAILABLE.
+## `price_text` is what starts the connection, so a caller asks that first.
+func store_state() -> int:
+	match _backend.connection_state():
+		BillingBackend.ConnState.UNAVAILABLE:
+			return StoreState.UNAVAILABLE
+		BillingBackend.ConnState.READY:
+			match _backend.product_state(_product_id):
+				BillingBackend.QueryState.FAILED:
+					return StoreState.UNAVAILABLE
+				BillingBackend.QueryState.DONE:
+					var priced: bool = not _backend.price_text(_product_id).is_empty()
+					return StoreState.AVAILABLE if priced else StoreState.UNAVAILABLE
+	return StoreState.UNKNOWN
 
 
 ## True once the entitlement is held. False at the deadline before the sheet shows, on cancel,
