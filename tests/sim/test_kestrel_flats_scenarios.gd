@@ -13,6 +13,9 @@ const RENEW_PATH: String = "res://data/factions/renew.tres"
 const TICKS: int = 1800
 ## Per scenario, the faction of players 1 and 2 and the blocks of its spawns: owner, type id, count,
 ## origin tile, columns, spacing and jitter. No block has jitter, so no seed reaches a position.
+## Heron Fords' four scenario files (plan row P550): the cheap start checks below run on them too.
+const HERON_STEM: String = "res://data/scenarios/skirmish_heron_fords"
+const HERON_SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
 const FACTION_FILES: Dictionary[String, Array] = {
 	Rig.SKIRMISH_PATH: [FOSSIL_PATH, RENEW_PATH],
 	Rig.MIRRORED_PATH: [RENEW_PATH, FOSSIL_PATH],
@@ -33,6 +36,14 @@ const BLOCKS: Dictionary[String, Array] = {
 		[2, "rifle_squad", 2, Vector2i(50, 52), 2, 2000, 0],
 	],
 }
+
+
+## Kestrel Flats' two scenarios and Heron Fords' four.
+func _checked_paths() -> Array[String]:
+	var found: Array[String] = Rig.PATHS.duplicate()
+	for suffix: String in HERON_SUFFIXES:
+		found.append("%s%s.tres" % [HERON_STEM, suffix])
+	return found
 
 
 func _both() -> Array[Array]:
@@ -137,7 +148,7 @@ func test_the_two_sides_are_a_half_turn_of_each_other() -> void:
 
 
 func test_every_start_footprint_passes_the_placement_rule_for_its_owner() -> void:
-	for path: String in Rig.PATHS:
+	for path: String in _checked_paths():
 		var world: World = Rig.world(path)
 		var checked: int = 0
 		for player: int in [1, 2]:
@@ -175,7 +186,7 @@ func test_a_run_of_1800_ticks_without_commands_drops_nothing(
 	impl: int, _test_parameters := _both()
 ) -> void:
 	var none: Array[Command] = []
-	for path: String in Rig.PATHS:
+	for path: String in _checked_paths():
 		var scenario: ScenarioDef = load(path) as ScenarioDef
 		var world: World = Rig.world(path)
 		assert_array(SimImpls.use(world, impl)).is_empty()

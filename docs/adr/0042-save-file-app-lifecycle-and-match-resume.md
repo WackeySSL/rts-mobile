@@ -95,6 +95,18 @@ No personal data, nothing that leaves the device, no timestamps from the system 
 All writes are small (a few KB for the save; under 1 MB compressed for the resume file, estimated),
 well inside iOS's few seconds.
 
+Note (2026-11-18, row P409): a full-screen ad that has not opened by `fullscreen_timeout_ms` is
+abandoned by its caller, but AdMob cannot recall a started show, so it may still open later, over the
+next battle. `MenuFlow._begin` now awaits `AdService.settle_fullscreen()` first. It returns at once when
+no late run (an interstitial or a rewarded ad) holds up a match. Otherwise it waits until each late ad
+has failed or, once opened, closed (no cap: the ad is on screen). A late ad that never answers is waited
+for only until `fullscreen_late_cap_ms` (20 s, `data/ads_settings.tres`) after its own timeout, so one
+dropped show holds up no later start; the run keeps listening and still pairs a late open. While the flow
+waits, both result buttons and START on the map select are off, Play again and START read "STARTING…",
+and the phone's Back button does nothing on the map select. Accepted remainder: a late run past its cap
+that never answered can still open late over a match; the cap trades that rare case against a player
+stuck on a screen. This note changes no accepted text above.
+
 ### 6. Resuming a match: replay the log (option A), not a snapshot
 **Write.** On `PAUSED`, `MenuFlow` (which holds the running main scene) calls `runner.wait_idle()`,
 then `ResumeStore.write(setup, runner.replay)`: `user://resume.bin`, written temp + rename, holding

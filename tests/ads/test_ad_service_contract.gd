@@ -28,7 +28,8 @@ const METHODS: Dictionary = {
 	"take_start_credits_bonus": [[], TYPE_INT],
 }
 ## Internal methods Phase 6's widgets may call, pinned like METHODS: P403's rewarded API and
-## banner show and hide, and P406's Remove ads price text. Phase 5 never calls these.
+## banner show and hide, P406's Remove ads price text, and P409's MenuFlow wait.
+## Phase 5 never calls these.
 const WIDGET_METHODS: Dictionary = {
 	"rewarded_ready": [[["placement", TYPE_STRING_NAME]], TYPE_BOOL],
 	"show_rewarded": [[["placement", TYPE_STRING_NAME], ["on_reward", TYPE_CALLABLE]], TYPE_BOOL],
@@ -37,6 +38,7 @@ const WIDGET_METHODS: Dictionary = {
 	"banner_height_preview_dp": [[], TYPE_INT],
 	"remove_ads_price_text": [[], TYPE_STRING],
 	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
+	"settle_fullscreen": [[], TYPE_NIL],
 }
 
 var _script: GDScript = load(SCRIPT_PATH) as GDScript
