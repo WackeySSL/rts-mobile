@@ -103,12 +103,12 @@ func test_layout_at_the_six_sizes() -> void:
 		UiScale.clear_override()
 
 
-func test_the_offer_slot_is_empty_and_the_banner_slot_has_no_band_of_its_own() -> void:
+func test_the_offer_slot_holds_only_the_credits_offer_and_the_banner_slot_has_no_band() -> void:
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false, false)
 	var offer: OfferSlot = _screen.column.get_node("OfferSlot") as OfferSlot
 	assert_object(offer.owner).is_same(_screen)
-	assert_int(offer.get_child_count()).is_equal(0)
-	assert_bool(offer.visible).is_false()
+	assert_int(offer.get_child_count()).is_equal(1)
+	assert_object(offer.get_child(0)).is_same(_screen.offer)
 	assert_bool(_screen.slot.has_band()).is_false()
 	assert_float(_screen.slot.size.y).is_equal_approx(0.0, 0.01)
 
