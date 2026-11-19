@@ -11,10 +11,12 @@ var streams: Array[AudioStream] = []
 var positions: Array[Vector2] = []
 var pitches: Array[float] = []
 var ended: int = 0
+## While set, `can_play` says no, as a muted service does.
+var muted: bool = false
 
 
 func can_play(_bus: StringName) -> bool:
-	return true
+	return not muted
 
 
 func begin_tick() -> void:
