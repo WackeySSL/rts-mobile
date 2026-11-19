@@ -4,13 +4,25 @@ extends GdUnitTestSuite
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 
+var _window_size_before: Vector2i
 var _quit_on_go_back_before: bool = false
 var _menu: Control
+var _profile: UiMetrics
 var _started: Array[StringName] = []
 
 
+func before() -> void:
+	_window_size_before = get_window().size
+
+
+func after() -> void:
+	get_window().size = _window_size_before
+
+
 func before_test() -> void:
+	_profile = UiProfiles.all()[&"desktop"]
 	PrefsRig.begin()
 	_started.clear()
 	_quit_on_go_back_before = get_tree().quit_on_go_back
@@ -22,6 +34,7 @@ func after_test() -> void:
 		remove_child(_menu)
 		_menu.free()
 		_menu = null
+	UiScale.clear_override()
 	PrefsRig.end()
 
 
@@ -35,6 +48,13 @@ func test_a_first_launch_starts_basics_once_the_intro_hands_over_and_remembers_t
 	await _open(true)  # The next launch.
 	await _hand_over()
 	assert_int(_started.size()).is_equal(1)
+
+
+func test_the_first_launch_starts_basics_upright_too() -> void:
+	_profile = UiProfiles.portrait()[&"desktop_portrait"]
+	await _open(true)
+	await _hand_over()
+	assert_array(_started).is_equal([&"basics"])
 
 
 func test_a_menu_the_intro_did_not_make_starts_nothing() -> void:
@@ -69,6 +89,10 @@ func _hand_over() -> void:
 
 
 func _open(offer: bool, handed_over: bool = false, pending: StringName = &"") -> void:
+	var profile: UiMetrics = _profile  # The banner's slot needs a known screen.
+	UiScale.set_override(profile)
+	get_window().size = profile.window_size
+	await await_idle_frame()
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
 	var stack: MenuStack = _menu.get_node("MenuStack") as MenuStack
 	stack.slide_ms = 0
