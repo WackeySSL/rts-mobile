@@ -240,6 +240,38 @@ func test_the_walk_with_an_opponent_ai_finds_no_node_and_no_resource() -> void:
 	assert_bool(visited.has((ai as OpponentAi).memory.get_instance_id())).is_true()
 
 
+## The walk with a TutorialAi (built by the factory from a script with a step of each kind) finds no
+## Node and no Resource either, before and after a run in which it thinks: it copies the script into
+## ints and arrays and keeps neither the def nor its steps.
+func test_the_walk_with_a_tutorial_ai_finds_no_node_and_no_resource() -> void:
+	var job: TickJob = _arena_job()
+	var def: TutorialScriptDef = TutorialScriptDef.new()
+	var first: TutorialStepDef = TutorialStepDef.new()
+	first.id = &"first"
+	first.trigger = TutorialStepDef.Trigger.TICK
+	first.action = TutorialStepDef.Action.STOP
+	var second: TutorialStepDef = TutorialStepDef.new()
+	second.id = &"second"
+	second.after_step = &"first"
+	second.action = TutorialStepDef.Action.QUEUE
+	second.action_type = &"rifle_squad"
+	def.steps = [first, second]
+	var stream: DetRandom = DetRandom.create(SEED, DetRandom.STREAM_AI_BASE + 2)
+	var ai: AiController = AiFactory.create(def, null, 2, stream)
+	assert_bool(ai is TutorialAi).is_true()
+	ai.think_offset = 0
+	job.controllers.append(ai)
+	var visited: Dictionary = {}
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+	job.run()
+	assert_int(ai.work_max).is_greater(0)
+	assert_int((ai as TutorialAi).fired_count()).is_greater(0)
+	visited.clear()
+	assert_array(_engine_objects(job, visited)).is_empty()
+	assert_bool(visited.has(ai.get_instance_id())).is_true()
+
+
 ## think_usec is 0 on a tick that collects no batch (none seated, none made the tick before), and on
 ## the tick that collects one it is that batch's time, at least 1 (ADR 0038 section 7): a think at
 ## tick 15 reads on tick 16.

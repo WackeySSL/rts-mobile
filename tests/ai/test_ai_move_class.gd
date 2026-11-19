@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The move class the intel manager gives the scout's goal key (plan row P177b, ADR 0030 section
-## 4) is the tab's: vehicles tracked, the rest on foot. `PlayerView` has no `type_move_class`, so
-## this walks the shipped and the frozen rosters and pins the rule it rests on.
+## 4) is the unit's own class (P295), and the tab's (vehicles tracked, the rest on foot) when the
+## view has none. This walks the shipped and the frozen rosters and pins the rule the fallback
+## rests on.
 
 const DIRS: Array[String] = ["res://data/units/", "res://data/dev/arena/units/"]
 const Rig: GDScript = preload("res://tests/ai/support/opponent_rig.gd")
@@ -68,10 +69,9 @@ func test_each_scout_type_is_a_tracked_vehicle() -> void:
 		assert_int(found).is_greater(0)
 
 
-## The known gap: `AiMemory.class_of` reads the tab only, so it keys TRACKED for the wheeled three,
-## which the sim drives on a WHEELED field. The row that gives `PlayerView` a copied
-## `type_move_class` (before P304b spawns them, see the ground plan) flips this to WHEELED.
-func test_class_of_still_calls_the_wheeled_vehicles_tracked() -> void:
+## `PlayerView` copies `type_move_class` (P295), and `AiMemory.class_of` reads it, so the wheeled
+## three key WHEELED; a view with no class column falls back to the tab (vehicles tracked).
+func test_class_of_keys_the_wheeled_vehicles_wheeled() -> void:
 	for id: String in WHEELED_VEHICLES:
 		var def: UnitDef = load("res://data/units/%s.tres" % id) as UnitDef
 		var view: PlayerView = PlayerView.new()
@@ -79,4 +79,9 @@ func test_class_of_still_calls_the_wheeled_vehicles_tracked() -> void:
 		assert_int(AiMemory.class_of(view, 0)).override_failure_message(id).is_equal(
 			AiIntel.TRACKED
 		)
+		view.type_move_class = PackedInt32Array([def.move_class])
+		assert_int(AiMemory.class_of(view, 0)).override_failure_message(id).is_equal(
+			AiMemory.WHEELED
+		)
 		assert_int(def.move_class).is_equal(World.MoveClass.WHEELED)
+	assert_int(AiMemory.WHEELED).is_equal(World.MoveClass.WHEELED)
