@@ -25,40 +25,50 @@ func after_test() -> void:
 	PrefsRig.end()
 
 
-func test_a_first_launch_starts_basics_once_and_remembers_the_offer() -> void:
+func test_a_first_launch_starts_basics_once_the_intro_hands_over_and_remembers_the_offer() -> void:
 	await _open(true)
+	assert_int(_started.size()).is_equal(0)  # The intro still owns the screen.
+	await _hand_over()
 	assert_array(_started).is_equal([&"basics"])
 	assert_bool(TutorialStart.first_launch_due()).is_false()
 	_close()
 	await _open(true)  # The next launch.
+	await _hand_over()
 	assert_int(_started.size()).is_equal(1)
 
 
-func test_it_waits_while_the_intro_owns_the_screen() -> void:
-	await _open(true, false)
+func test_a_menu_the_intro_did_not_make_starts_nothing() -> void:
+	await _open(true, true)  # Loaded after a match: its stack is not waiting for an intro.
+	await await_idle_frame()
 	assert_int(_started.size()).is_equal(0)
-	(_menu.get_node("MenuStack") as MenuStack).back_enabled = true
-	await await_idle_frame()
-	await await_idle_frame()
-	assert_array(_started).is_equal([&"basics"])
+	assert_bool(TutorialStart.first_launch_due()).is_true()
 
 
 func test_a_menu_without_the_switch_or_with_progress_starts_nothing() -> void:
 	await _open(false)
+	await _hand_over()
 	assert_int(_started.size()).is_equal(0)
 	assert_bool(TutorialStart.first_launch_due()).is_true()
 	_close()
 	TutorialDirector.mark_done(&"basics")
 	await _open(true)
+	await _hand_over()
 	assert_int(_started.size()).is_equal(0)
 
 
 func test_a_pending_screen_means_no_first_launch_start() -> void:
-	await _open(true, true, &"fake")
+	await _open(true, false, &"fake")
+	await _hand_over()
 	assert_int(_started.size()).is_equal(0)
 
 
-func _open(offer: bool, handed_over: bool = true, pending: StringName = &"") -> void:
+func _hand_over() -> void:
+	(_menu.get_node("MenuStack") as MenuStack).back_enabled = true
+	await await_idle_frame()
+	await await_idle_frame()
+
+
+func _open(offer: bool, handed_over: bool = false, pending: StringName = &"") -> void:
 	_menu = (load(MENU_SCENE) as PackedScene).instantiate()
 	var stack: MenuStack = _menu.get_node("MenuStack") as MenuStack
 	stack.slide_ms = 0

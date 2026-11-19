@@ -6,7 +6,9 @@ extends Node
 ## asked for (a lesson's end returns to the tutorial screen), if its route is registered; a route
 ## nobody registered, or one whose factory gives nothing, is dropped with a warning.
 ## On a first launch (`offer_first_launch`, set in `main_menu.tscn` only) the first lesson starts as
-## soon as the boot intro has handed the menu over (`MenuStack.back_enabled`), once (P544).
+## soon as the boot intro has handed the menu over (`MenuStack.back_enabled`), once (P544). Only a
+## menu the intro made (its stack waits for the hand-over) offers it: a menu loaded after a match
+## or by a test never starts a lesson.
 
 @export var stack_path: NodePath = ^"../MenuStack"
 @export var offer_first_launch: bool = false
@@ -31,7 +33,7 @@ func _ready() -> void:
 	stack.push(main)
 	var pending: StringName = take_pending.call()
 	if pending == &"":
-		if offer_first_launch and TutorialStart.first_launch_due():
+		if offer_first_launch and not stack.back_enabled and TutorialStart.first_launch_due():
 			TutorialStart.mark_offered()
 			_start_first_lesson(stack)
 		return
