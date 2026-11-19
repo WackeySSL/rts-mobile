@@ -27,13 +27,18 @@ const REFINERY: Dictionary[StringName, StringName] = {
 
 var _world: World
 var _controllers: Array = []
+var _duels: Dictionary[String, Dictionary] = {}
 
 
-func test_every_building_stands_on_buildable_ground_without_overlap() -> void:
+func test_the_ai_never_has_a_command_refused_and_every_building_stands_on_buildable_ground(
+) -> void:
 	for stem: String in STEMS:
 		for suffix: String in SUFFIXES:
 			var path: String = stem + suffix + ".tres"
 			_duel(path)
+			# The AI asks the sim's own rule before every PLACE, so none may come back refused.
+			assert_int(_duels[path]["places"]).override_failure_message(path).is_greater(4)
+			assert_int(_world.dropped_commands).override_failure_message(path).is_equal(0)
 			var taken: Dictionary[int, int] = {}
 			var count: int = 0
 			for player: int in [1, 2]:
@@ -77,16 +82,32 @@ func test_the_staging_point_is_open_ground_on_the_own_side_of_the_map() -> void:
 				assert_int(gap_home).override_failure_message(note).is_less(gap_enemy)
 
 
+## Plays every scenario once for all the tests: the World, the controllers and the PLACE Commands
+## the two sent.
+func before() -> void:
+	for stem: String in STEMS:
+		for suffix: String in SUFFIXES:
+			var path: String = stem + suffix + ".tres"
+			var scenario: ScenarioDef = load(path) as ScenarioDef
+			var world: World = World.from_scenario(
+				scenario, DetRandom.create(SEED, DetRandom.STREAM_SIM)
+			)
+			var loop: MatchLoop = Rig.loop_of(world, SEED)
+			var controllers: Array = []
+			for player: int in [1, 2]:
+				controllers.append(
+					Opp.opponent(String(scenario.factions[player].id), "normal", player, SEED)
+				)
+			var places: int = 0
+			for command: Command in Rig.run(world, loop, controllers, TICKS):
+				places += 1 if command.type == Command.Type.PLACE else 0
+			_duels[path] = {"world": world, "controllers": controllers, "places": places}
+
+
+## Makes the played World and controllers of `path` the suite's.
 func _duel(path: String) -> void:
-	var scenario: ScenarioDef = load(path) as ScenarioDef
-	_world = World.from_scenario(scenario, DetRandom.create(SEED, DetRandom.STREAM_SIM))
-	var loop: MatchLoop = Rig.loop_of(_world, SEED)
-	_controllers.clear()
-	for player: int in [1, 2]:
-		_controllers.append(
-			Opp.opponent(String(scenario.factions[player].id), "normal", player, SEED)
-		)
-	Rig.run(_world, loop, _controllers, TICKS)
+	_world = _duels[path]["world"]
+	_controllers = _duels[path]["controllers"]
 
 
 ## Every footprint tile of building `row` is buildable ground and not one of an earlier building.
