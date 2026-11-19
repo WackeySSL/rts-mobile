@@ -33,6 +33,9 @@ signal ad_opened(placement: StringName)
 ## Fires when a full-screen ad closes, with its placement.
 signal ad_closed(placement: StringName)
 
+## What consent has answered so far, as `consent_state()` returns it (P433).
+enum ConsentState { UNKNOWN, NO, YES }
+
 const SaveServiceScript: GDScript = preload("res://game/meta/save_service.gd")
 
 ## True: fake full-screen ads and fake flows close at once (gdUnit4, headless). False: the fake
@@ -49,6 +52,7 @@ var debug_geography_eea: bool = false
 
 ## Consent's answer: whether ads may be requested at all. Only `_set_can_request` writes it.
 var _can_request_ads: bool = false
+var _consent_known: bool = false
 var _consent: ConsentFlow = ConsentFlow.new(_make_consent(not fake_auto_close), OS.is_debug_build)
 var _initialised: bool = false
 var _settings: AdsSettingsDef = AdsSettingsDef.load_default()
@@ -231,6 +235,19 @@ func take_start_credits_bonus() -> int:
 	return taken
 
 
+## Internal (P433). The start-credits bonus waiting for the next match (0 when none); read only.
+func pending_start_credits() -> int:
+	return mini(_ledger.pending_start_credits, _settings.start_credits_bonus_max)
+
+
+## Internal (P433). What consent last answered, read only: UNKNOWN until it has answered, then NO
+## (ads may not be requested) or YES.
+func consent_state() -> int:
+	if not _consent_known:
+		return ConsentState.UNKNOWN
+	return ConsentState.YES if _can_request_ads else ConsentState.NO
+
+
 ## Internal (Phase 6 widgets; P433's grant after the rewarded callback). Records the pending
 ## start-credits bonus, at most `start_credits_bonus_max`, and saves it at once (ADR 0039 section
 ## 7). False, and nothing changes, while a bonus is already pending.
@@ -329,6 +346,7 @@ func _refresh_banner() -> void:
 ## banner, and announces the answer.
 func _set_can_request(allowed: bool) -> void:
 	_can_request_ads = allowed
+	_consent_known = true
 	if not allowed:
 		_runs.cancel_unopened()
 	if allowed and not _initialised:
