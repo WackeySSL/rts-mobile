@@ -44,6 +44,7 @@ var open_dev: Callable = _open_dev
 var in_match: Callable = _in_match
 
 var purchase_slot: VBoxContainer
+var remove_rows: RemoveAdsRows
 var sound_slider: HSlider
 var music_slider: HSlider
 var vibration_toggle: Button
@@ -67,12 +68,15 @@ func _ready() -> void:
 	reduced_toggle = _toggle(REDUCED, MenuPrefs.reduced_effects(), _on_reduced)
 	if not in_match.call():  # In battle neither node exists, so no widget can land there.
 		privacy_button = add_button(tr(PRIVACY), _ask_privacy)
-		purchase_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6).
+		purchase_slot = VBoxContainer.new()
 		purchase_slot.name = &"PurchaseSlot"
 		purchase_slot.visible = false
 		purchase_slot.child_entered_tree.connect(_watch_slot_child)
 		purchase_slot.child_exiting_tree.connect(_sync_later)
 		column.add_child(purchase_slot)
+		remove_rows = RemoveAdsRows.new()
+		remove_rows.service = ad_service
+		purchase_slot.add_child(remove_rows)  # P434: hides itself with no store (or no AdService).
 	_route_button(REPLAY, MenuRoutes.TUTORIAL)
 	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
 	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
@@ -90,6 +94,11 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_EXIT_TREE and _built:
 		if routes.changed.is_connected(_refresh):
 			routes.changed.disconnect(_refresh)
+
+
+## Back is refused while a purchase or restore call is open: its rows resume on this screen.
+func on_back() -> bool:
+	return remove_rows != null and remove_rows.is_busy()
 
 
 func _listen() -> void:
@@ -161,8 +170,9 @@ func _open(route: StringName) -> void:
 
 ## The slot is hidden, so 0 tall, while no child shows (as the `OfferSlot` is).
 func _watch_slot_child(child: Node) -> void:
-	if child is Control:
-		(child as Control).visibility_changed.connect(_sync_later)
+	var control: Control = child as Control
+	if control != null and not control.visibility_changed.is_connected(_sync_later):
+		control.visibility_changed.connect(_sync_later)  # The screen re-enters the tree on Back.
 	_sync_later()
 
 
