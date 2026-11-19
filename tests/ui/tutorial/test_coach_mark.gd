@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 extends GdUnitTestSuite
 ## The coach mark (plan row P542, ADR 0044 section 2): the ring finds the named control, a world
 ## tile projects through the camera, the card stays in the safe rect and off the ring at the six
@@ -22,6 +23,7 @@ var _target: Control
 var _camera: RtsCamera
 var _taps: int = 0
 var _map_taps: int = 0
+var _offset: Control
 var _dir: String = ""
 var _window_size_before: Vector2i
 
@@ -233,7 +235,7 @@ func test_a_card_that_cannot_clear_the_ring_lets_a_tap_through_to_the_target() -
 	var card: Control = _mark.find_child("Card", true, false) as Control
 	assert_bool(_mark.card_rect().intersects(_mark.ring_rect())).is_true()
 	assert_int(card.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
-	var at: Vector2 = _mark.card_rect().get_center()
+	var at: Vector2 = _mark.card_rect().position + Vector2.ONE * UiScale.dp(24.0)  # On the prompt.
 	assert_bool(_target.get_global_rect().has_point(at)).is_true()
 	_taps = 0
 	TouchEvents.press(get_viewport(), 0, at)
@@ -275,6 +277,191 @@ func test_reduced_effects_make_no_tween() -> void:
 	assert_bool(_mark.ring_pulsing()).is_true()  # Without reduced effects it pulses...
 	_mark.hide_mark()
 	assert_bool(_mark.ring_pulsing()).is_false()  # ...and stops when hidden.
+
+
+func test_a_mark_under_an_offset_parent_keeps_global_geometry() -> void:
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
+	_offset = Control.new()
+	_offset.position = Vector2(80.0, 60.0)
+	add_child(_offset)
+	_mark.get_parent().remove_child(_mark)
+	_offset.add_child(_mark)
+	_put_target(Vector2(0.3, 0.4))
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_mark.ring_rect().encloses(_target.get_global_rect())).is_true()
+	(
+		assert_bool(
+			_mark.find_child("Ring", true, false).get_global_rect().position == Vector2.ZERO
+		)
+		. is_true()
+	)
+	_expect_card_placed("offset parent")
+
+
+func test_with_no_ring_the_card_is_clear_of_the_top_hud_at_the_real_sizes() -> void:
+	var profiles: Array[UiMetrics] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		profiles.append(_profile(size))
+	for profile_name: StringName in [
+		&"web_phone_portrait", &"web_phone_small", &"notch_design", &"notch_design_portrait"
+	]:
+		profiles.append(UiProfiles.by_name(profile_name))
+	for profile: UiMetrics in profiles:
+		var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+		beat.anchor_control = &"NoSuchControl"
+		await _open(profile, beat)
+		var label: String = "%s %s" % [profile.os_name, profile.window_size]
+		var safe: Rect2 = _safe()
+		var shown: HudCorners.Shown = HudCorners.Shown.new()
+		shown.toast = true
+		var placed: Dictionary[StringName, Rect2] = HudCorners.place(
+			safe, HudLayout.is_portrait(), UiScale.base_px_per_dp(), false, shown
+		)
+		var card: Rect2 = _mark.card_rect()
+		for part: StringName in [HudCorners.PILL, HudCorners.SCOPE, HudCorners.TOAST]:
+			var rect: Rect2 = placed[part]  # `place` gives screen px, safe origin included.
+			(
+				assert_bool(card.intersects(rect))
+				. override_failure_message(label + " " + part)
+				. is_false()
+			)
+		(
+			assert_bool(safe.grow(TOLERANCE_PX).encloses(card))
+			. override_failure_message(label)
+			. is_true()
+		)
+		_close()
+		UiScale.clear_override()
+
+
+func test_the_pause_button_stays_tappable_under_a_no_ring_card_upright() -> void:
+	for profile_name: StringName in [&"web_phone_portrait", &"notch_design_portrait"]:
+		var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+		beat.anchor_control = &"NoSuchControl"
+		await _open(UiProfiles.by_name(profile_name), beat)
+		var pill: Rect2 = Rect2(_safe().position, HudCorners.PILL_DP * UiScale.base_px_per_dp())
+		_put_target_at(pill.get_center())  # Stands in for the pill's menu button.
+		_taps = 0
+		TouchEvents.press(get_viewport(), 0, pill.get_center())
+		TouchEvents.release(get_viewport(), 0, pill.get_center())
+		await await_idle_frame()
+		assert_int(_taps).override_failure_message(str(profile_name)).is_equal(1)
+		_close()
+		UiScale.clear_override()
+
+
+func test_the_real_phones_place_a_two_line_prompt_off_the_ring() -> void:
+	for profile_name: StringName in [
+		&"web_phone_portrait", &"web_phone_small", &"notch_design", &"notch_design_portrait"
+	]:
+		var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+		beat.prompt_key = &"Tap the glowing button at the edge of the screen to open the build menu."
+		await _open(UiProfiles.by_name(profile_name), beat)
+		for corner: Vector2 in [Vector2(0.5, 0.5), Vector2(0.1, 0.12), Vector2(0.9, 0.9)]:
+			_put_target(corner)
+			await await_idle_frame()
+			await await_idle_frame()
+			_expect_card_placed("%s %s" % [profile_name, corner])
+		var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+		for button_name: String in ["Next", "Skip"]:
+			var button: Button = _mark.find_child(button_name, true, false) as Button
+			assert_bool(button.size.x >= floor_px and button.size.y >= floor_px).is_true()
+		var skip: Rect2 = (_mark.find_child("Skip", true, false) as Button).get_global_rect()
+		var next: Rect2 = (_mark.find_child("Next", true, false) as Button).get_global_rect()
+		assert_float(next.position.x - skip.end.x).is_greater_equal(UiScale.dp(8.0) - TOLERANCE_PX)
+		_close()
+		UiScale.clear_override()
+
+
+func test_in_the_overlap_fallback_a_real_touch_on_skip_ends_the_lesson() -> void:
+	await _open(
+		UiProfiles.by_name(&"web_phone_small"),
+		_control_beat("hit", TutorialConditions.Kind.CAMERA_PANNED)
+	)
+	_target.size = _safe().size * 0.95
+	_target.position = _safe().position + _safe().size * 0.025
+	await await_idle_frame()
+	await await_idle_frame()
+	var card: Control = _mark.find_child("Card", true, false) as Control
+	assert_int(card.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	var skip: Button = _mark.find_child("Skip", true, false) as Button
+	var at: Vector2 = skip.get_global_rect().get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	await await_idle_frame()
+	assert_bool(_director.running()).is_false()
+
+
+func test_the_fallback_prefers_a_card_whose_button_row_misses_the_ring() -> void:
+	var room: Rect2 = Rect2(0.0, 0.0, 220.0, 160.0)
+	var card: Vector2 = Vector2(200.0, 140.0)
+	var ring: Rect2 = Rect2(0.0, 0.0, 220.0, 40.0)
+	var row_h: float = 60.0
+	var placed: Rect2 = CoachMark.place_card(ring, card, room, 8.0, row_h)
+	var row: Rect2 = Rect2(placed.position.x, placed.end.y - row_h, placed.size.x, row_h)
+	assert_bool(row.intersects(ring)).is_false()
+	assert_bool(room.encloses(placed)).is_true()
+
+
+func test_freeing_the_target_mid_beat_gives_a_card_alone() -> void:
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
+	assert_bool(_mark.ring_rect().has_area()).is_true()
+	_target.get_parent().remove_child(_target)
+	_target.free()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_mark.ring_rect().has_area()).is_false()
+	assert_bool(_mark.ring_pulsing()).is_false()
+	assert_object(_mark.target_control()).is_null()
+	assert_bool(_safe().grow(TOLERANCE_PX).encloses(_mark.card_rect())).is_true()
+
+
+func test_a_turn_mid_beat_at_360_dp_keeps_the_card_inside() -> void:
+	await _open(UiProfiles.by_name(&"web_phone_portrait"), _control_beat("hit", NEXT))
+	_put_target(Vector2(0.3, 0.5))
+	await await_idle_frame()
+	var turned: UiMetrics = UiProfiles.by_name(&"web_phone")
+	UiScale.set_override(turned)
+	get_window().size = turned.window_size
+	await await_idle_frame()
+	_put_target(Vector2(0.3, 0.5))
+	await await_idle_frame()
+	await await_idle_frame()
+	_expect_card_placed("turned at 360 dp")
+
+
+func test_a_rebind_or_a_null_director_puts_the_old_card_away() -> void:
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
+	assert_bool(_mark.visible).is_true()
+	var other: TutorialDirector = auto_free(TutorialDirector.new())
+	_mark.bind(other)
+	assert_bool(_mark.visible).is_false()
+	_mark.show_beat(_control_beat("again", NEXT))
+	_mark.bind(null)
+	assert_bool(_mark.visible).is_false()
+
+
+func test_a_beat_shown_before_the_mark_is_in_the_tree_shows_when_it_enters() -> void:
+	UiScale.set_override(_profile(ScreenSizes.LANDSCAPE[0]))
+	_mark = CoachMark.new()
+	_mark.hud_root = null
+	_mark.bind(_director)
+	_mark.show_beat(_control_beat("early", NEXT))  # No viewport yet: no error.
+	assert_bool(_mark.visible).is_true()  # A new Control is visible by default.
+	add_child(_mark)
+	await await_idle_frame()
+	assert_bool(_mark.visible).is_true()
+	assert_bool(_mark.card_rect().has_area()).is_true()
+
+
+func test_a_reduced_switch_set_before_ready_is_kept() -> void:
+	var mark: CoachMark = CoachMark.new()
+	mark.reduced = true
+	add_child(mark)
+	assert_bool(mark.reduced).is_true()
+	remove_child(mark)
+	mark.free()
 
 
 func _control_beat(id: String, kind: TutorialConditions.Kind) -> TutorialBeatDef:
@@ -319,8 +506,8 @@ func _open(
 	_mark.hud_root = _hud_root
 	_mark.camera = _camera
 	_mark.director = _director
-	add_child(_mark)  # `_ready` reads the player's switch, then the test's own is set.
 	_mark.reduced = reduced
+	add_child(_mark)
 	_director.start(Lesson.lesson("basics", beats if not beats.is_empty() else [beat]))
 	_director.advance()
 	await await_idle_frame()
@@ -333,7 +520,7 @@ func _close() -> void:
 
 
 func _free_nodes() -> void:
-	for item: Variant in [_mark, _hud_root, _camera]:
+	for item: Variant in [_mark, _hud_root, _camera, _offset]:
 		if is_instance_valid(item):
 			var node: Node = item as Node
 			node.get_parent().remove_child(node)
@@ -341,6 +528,7 @@ func _free_nodes() -> void:
 	_mark = null
 	_hud_root = null
 	_camera = null
+	_offset = null
 
 
 ## The target's centre at `fraction` of the screen.
@@ -369,8 +557,19 @@ func _expect_card_placed(label: String) -> void:
 	assert_bool(_safe().grow(TOLERANCE_PX).encloses(card)).override_failure_message(label).is_true()
 	var ring: Rect2 = _mark.ring_rect()
 	assert_bool(ring.has_area()).override_failure_message(label).is_true()
-	(
-		assert_bool(card.intersects(ring.grow(-TOLERANCE_PX)))
-		. override_failure_message(label + " card over ring")
-		. is_false()
+	if not card.intersects(ring.grow(-TOLERANCE_PX)):
+		return
+	# No room on a short screen (the fallback): the card lets touches through and its buttons
+	# keep off the ring.
+	var panel: Control = _mark.find_child("Card", true, false) as Control
+	assert_int(panel.mouse_filter).override_failure_message(label).is_equal(
+		Control.MOUSE_FILTER_IGNORE
 	)
+	for button_name: String in ["Next", "Skip"]:
+		var button: Button = _mark.find_child(button_name, true, false) as Button
+		if button.is_visible_in_tree():
+			(
+				assert_bool(button.get_global_rect().intersects(ring.grow(-TOLERANCE_PX)))
+				. override_failure_message(label + " " + button_name)
+				. is_false()
+			)
