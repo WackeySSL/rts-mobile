@@ -67,12 +67,15 @@ func _ready() -> void:
 	reduced_toggle = _toggle(REDUCED, MenuPrefs.reduced_effects(), _on_reduced)
 	if not in_match.call():  # In battle neither node exists, so no widget can land there.
 		privacy_button = add_button(tr(PRIVACY), _ask_privacy)
-		purchase_slot = VBoxContainer.new()  # Phase 6's P434 fills it (G6).
+		purchase_slot = VBoxContainer.new()
 		purchase_slot.name = &"PurchaseSlot"
 		purchase_slot.visible = false
 		purchase_slot.child_entered_tree.connect(_watch_slot_child)
 		purchase_slot.child_exiting_tree.connect(_sync_later)
 		column.add_child(purchase_slot)
+		var rows: RemoveAdsRows = RemoveAdsRows.new()
+		rows.service = ad_service
+		purchase_slot.add_child(rows)  # P434: hides itself with no store (or no AdService).
 	_route_button(REPLAY, MenuRoutes.TUTORIAL)
 	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
 	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
