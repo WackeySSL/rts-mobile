@@ -3,12 +3,15 @@
 # .github/workflows/balance.yml's `shards` job, or the names of the sets that its `summarise` job
 # merges, for the suite in SUITE. tests/project/test_ci_balance_workflow.gd runs this script and pins the table.
 # Usage: bash scripts/ci/balance-plan.sh matrix|sets
-# Env:   SUITE   balance (default), gate or custom
+# Env:   SUITE   balance (default), gate, maps or custom
 #        custom only: LEVELS (default normal,normal), SCENARIOS (default cross), MATCHES (default 20),
-#        SEED_START (default 1)
-# Output: matrix  one line of JSON, {"include":[{set, levels, scenarios, seed_start, matches, name}, ...]}
+#        SEED_START (default 1), MAP (kestrel, heron, curlew or all; default kestrel)
+# Output: matrix  one line of JSON, {"include":[{set, levels, scenarios, map, seed_start, matches, name}, ...]}
 #         sets    the set names, space separated; a set's shard reports are build/balance/<set>-*.json
-# Sets:  balance runs the five sets of the table below. gate runs the held-out set, seeds 1001-1100. custom
+# Sets:  maps (P554) runs the two later maps, one set each: heron-fords (Heron Fords, map_2) and
+#        curlew-crags (Curlew Crags, map_3), Normal against Normal on `cross`, seeds 1-50 (the first
+#        seeds of the balance sets, none from 1000 up). The report's median length is per map.
+#        balance runs the five sets of the table below. gate runs the held-out set, seeds 1001-1100. custom
 #        plays one set in shards of at most 25 matches and refuses a seed range that reaches 1000-1100 (1000
 #        bounds the balance sets and the gate plays 1001-1100, which stay unplayed, section 6; the rerun's
 #        1101-1200 is allowed) or whose last seed has more than 9 digits (run-sim-smoke.sh's limit).
@@ -30,9 +33,10 @@ suite="${SUITE:-balance}"
 rows=()
 sets=()
 
-# add SET LEVELS SCENARIOS SEED_START MATCHES: one shard; its report is <SET>-<A>-<B>-<SEED_START>.json.
+# add SET LEVELS SCENARIOS SEED_START MATCHES [MAP]: one shard; its report is <SET>-<A>-<B>-<SEED_START>.json.
+# MAP is kestrel unless given.
 add() {
-  rows+=("{\"set\":\"$1\",\"levels\":\"$2\",\"scenarios\":\"$3\",\"seed_start\":$4,\"matches\":$5,\"name\":\"$1-${2/,/-}-$4\"}")
+  rows+=("{\"set\":\"$1\",\"levels\":\"$2\",\"scenarios\":\"$3\",\"map\":\"${6:-kestrel}\",\"seed_start\":$4,\"matches\":$5,\"name\":\"$1-${2/,/-}-$4\"}")
 }
 
 bad() {
@@ -57,17 +61,29 @@ case "$suite" in
     sets=(gate)
     for s in 1001 1026 1051 1076; do add gate normal,normal cross "$s" 25; done
     ;;
+  maps)
+    sets=(heron-fords curlew-crags)
+    for s in 1 26; do
+      add heron-fords normal,normal cross "$s" 25 heron
+      add curlew-crags normal,normal cross "$s" 25 curlew
+    done
+    ;;
   custom)
     sets=(custom)
     levels="${LEVELS:-normal,normal}"
     scenarios="${SCENARIOS:-cross}"
     matches="${MATCHES:-20}"
     seed_start="${SEED_START:-1}"
+    map="${MAP:-kestrel}"
     [[ "$levels" =~ ^(easy|normal|hard|dummy),(easy|normal|hard|dummy)$ ]] ||
       bad "LEVELS must be two of easy, normal, hard, dummy, like normal,hard"
     case "$scenarios" in
       cross | derrick | lumen | fossil-mirror | renew-mirror) ;;
       *) bad "SCENARIOS must be cross, derrick, lumen, fossil-mirror or renew-mirror" ;;
+    esac
+    case "$map" in
+      kestrel | heron | curlew | all) ;;
+      *) bad "MAP must be kestrel, heron, curlew or all" ;;
     esac
     [[ "$matches" =~ ^[1-9][0-9]{0,2}$ ]] && [ "$matches" -le 200 ] ||
       bad "MATCHES must be 1 to 200"
@@ -82,12 +98,12 @@ case "$suite" in
     while [ "$left" -gt 0 ]; do
       n=25
       [ "$left" -ge "$n" ] || n="$left"
-      add custom "$levels" "$scenarios" "$seed" "$n"
+      add custom "$levels" "$scenarios" "$seed" "$n" "$map"
       seed=$((seed + n))
       left=$((left - n))
     done
     ;;
-  *) bad "SUITE must be balance, gate or custom" ;;
+  *) bad "SUITE must be balance, gate, maps or custom" ;;
 esac
 
 if [ "$mode" = "sets" ]; then

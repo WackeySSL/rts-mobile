@@ -204,7 +204,7 @@ func test_a_beat_waits_for_the_scripted_opponents_step() -> void:
 		)
 	)
 	var ai: TutorialAi = Tut.ai_of(def)
-	_director.ai = ai
+	_runner._job.controllers = [ai]  # The director asks the runner; nothing is injected.
 	_director.start(
 		Lesson.lesson("basics", [Lesson.beat("attack", NEXT, {"after_ai_step": &"go"})])
 	)
@@ -221,13 +221,16 @@ func test_a_beat_waits_for_the_scripted_opponents_step() -> void:
 	assert_array(_shown).is_equal([&"attack"])
 
 
-func test_a_gate_with_no_opponent_set_warns_and_opens() -> void:
+func test_a_gate_with_no_opponent_seated_warns_and_opens() -> void:
 	var lesson: TutorialLessonDef = Lesson.lesson(
 		"basics", [Lesson.beat("a", NEXT, {"after_ai_step": &"go"})]
 	)
+	_director.start(lesson)
+	_director.advance()
+	assert_array(_shown).is_empty()
 	(
-		assert_error(func() -> void: _director.start(lesson))
-		. is_push_warning("TutorialDirector: beat a waits for the opponent, none is set")
+		assert_error(func() -> void: _runner.ticked.emit(0))
+		. is_push_warning("TutorialDirector: beat a waits for the opponent, none is seated")
 	)
 	_director.advance()
 	assert_array(_shown).is_equal([&"a"])

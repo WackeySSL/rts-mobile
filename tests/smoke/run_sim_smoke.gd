@@ -5,7 +5,7 @@ extends SceneTree
 ## `--report PATH` is given.
 ##
 ## Run: godot --headless --path . -s res://tests/smoke/run_sim_smoke.gd -- [--matches N]
-##      [--report PATH] [--seed-start S] [--levels A,B] [--scenarios KIND] [--ticks T]
+##      [--report PATH] [--seed-start S] [--levels A,B] [--scenarios KIND] [--map MAP] [--ticks T]
 ##      (PATH is an absolute file path; the shell script resolves it and checks the other flags)
 ## Output: lines that start with "run-sim-smoke: ": the implementation, the match lines, then either
 ##   "run-sim-smoke: OK, N matches of at most T ticks, impl I, K timeouts, stale drops within the
@@ -30,6 +30,7 @@ func _run(args: PackedStringArray) -> int:
 	var seed_start: int = 1
 	var levels: Array[String] = Smoke.DEFAULT_LEVELS.duplicate()
 	var kind: String = Smoke.KIND_CROSS
+	var map: String = Smoke.MAP_KESTREL
 	var ticks: int = Smoke.TICKS
 	var index: int = 0
 	while index < args.size():
@@ -46,6 +47,8 @@ func _run(args: PackedStringArray) -> int:
 			ticks = int(value)
 		elif args[index] == "--scenarios" and Smoke.KINDS.has(value):
 			kind = value
+		elif args[index] == "--map" and Smoke.MAP_CHOICES.has(value):
+			map = value
 		elif args[index] == "--levels" and not parsed.is_empty():
 			levels = parsed
 		else:
@@ -55,7 +58,7 @@ func _run(args: PackedStringArray) -> int:
 						"run-sim-smoke: bad argument '%s' (usage: --matches N --report PATH --seed-start S"
 						% args[index]
 					)
-					+ " --levels A,B --scenarios KIND --ticks T)"
+					+ " --levels A,B --scenarios KIND --map MAP --ticks T)"
 				)
 			)
 			return 2
@@ -69,12 +72,14 @@ func _run(args: PackedStringArray) -> int:
 	var records: Array[Dictionary] = []
 	var drops: Dictionary[int, int] = {}
 	for number: int in range(1, matches + 1):
-		var record: Dictionary = Smoke.play(seed_start + number - 1, ticks, kind, levels, drops)
+		var record: Dictionary = Smoke.play(
+			seed_start + number - 1, ticks, kind, levels, drops, map
+		)
 		records.append(record)
 		print(Smoke.line(record, number, matches, drops))
 	var failures: PackedStringArray = Smoke.failures(records, drops)
 	if not report_path.is_empty():
-		var data: Dictionary = Smoke.report(records, matches, ticks, seed_start, levels, kind)
+		var data: Dictionary = Smoke.report(records, matches, ticks, seed_start, levels, kind, map)
 		if not Smoke.write_report(report_path, data):
 			failures.append("cannot write the report to %s" % report_path)
 	print(Smoke.summary(records, ticks, impl, failures))

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TutorialScriptDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/TutorialScriptDef.gd" id="1_script"]
+[ext_resource type="Script" path="res://game/ai/TutorialStepDef.gd" id="2_step"]
+
+[sub_resource type="Resource" id="Step_00"]
+script = ExtResource("2_step")
+id = &"poke"
+threshold = 450
+action_type = &"renew_rifle"
+target = 0
+target_tile = Vector2i(9, 14)
+
+[resource]
+script = ExtResource("1_script")
+id = &"support_enemy"
+hq_type = &"renew_hq"
+steps = Array[ExtResource("2_step")]([SubResource("Step_00")])

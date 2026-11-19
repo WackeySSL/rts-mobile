@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Headless AI-vs-AI smoke run with fixed seeds (plan rows P95 and P186, ADR 0020 question 2 and
-# ADR 0031 sections 1 to 3): N full matches (default 3) on Kestrel Flats, each player a computer
+# ADR 0031 sections 1 to 3): N full matches (default 3) on Kestrel Flats or the map of --map, each player a computer
 # opponent (AiFactory: the faction's OpponentDef at a difficulty, or its dummy), seeds S to S+N-1.
 # A match ends at its end or after --ticks ticks (default 13,500 = 15 minutes of game); a match
 # still running then is a "timeout", which is not a failure. The loop is tests/smoke/smoke_run.gd
@@ -10,7 +10,7 @@
 # GDScript reference; the run prints it and the report stores it. Balance runs (many matches) run
 # only in GitHub Actions.
 # Usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH] [--seed-start S]
-#          [--levels A,B] [--scenarios KIND] [--ticks T]
+#          [--levels A,B] [--scenarios KIND] [--map MAP] [--ticks T]
 #   --matches N     number of matches, a positive integer (default 3)
 #   --report PATH   also write a JSON report (schema 2, ADR 0031 section 3) to PATH (parent
 #                   directories are created). A relative PATH is relative to the repository root.
@@ -20,6 +20,11 @@
 #   --scenarios K   cross (default: odd seeds on skirmish_kestrel_flats, even seeds on its mirrored
 #                   twin, so each faction holds each seat in half the matches), derrick, lumen,
 #                   fossil-mirror or renew-mirror
+#   --map MAP       the map the scenario kind is played on (P554): kestrel (default, Kestrel Flats),
+#                   heron (Heron Fords, map_2), curlew (Curlew Crags, map_3) or all (the maps in
+#                   turn by seed: seed mod 3, so six seeds in a row play each map from both seats
+#                   under cross). The scenario files are skirmish_<map> and its _mirrored,
+#                   _fossil_mirror and _renew_mirror twins; the report names the map.
 #   --ticks T       the cap per match, a positive integer (default 13500)
 #   Numbers have at most 9 digits and no leading zero.
 # Env:   GODOT=<binary> (default: godot); GITHUB_SHA is stored in the report as `commit` (else
@@ -46,7 +51,7 @@ PATTERN='SCRIPT ERROR|^ERROR:|Parse Error'
 
 usage() {
   echo "usage: bash scripts/run-sim-smoke.sh [--matches N] [--report PATH] [--seed-start S]" \
-    "[--levels A,B] [--scenarios KIND] [--ticks T]" >&2
+    "[--levels A,B] [--scenarios KIND] [--map MAP] [--ticks T]" >&2
 }
 
 matches=3
@@ -54,6 +59,7 @@ report=""
 seed_start=""
 levels=""
 scenarios=""
+map=""
 ticks=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -75,7 +81,7 @@ while [ $# -gt 0 ]; do
       report="$2"
       shift 2
       ;;
-    --seed-start | --levels | --scenarios | --ticks)
+    --seed-start | --levels | --scenarios | --map | --ticks)
       if [ $# -lt 2 ] || [ -z "$2" ]; then
         echo "run-sim-smoke: $1 needs a value" >&2
         usage
@@ -85,6 +91,7 @@ while [ $# -gt 0 ]; do
         --seed-start) seed_start="$2" ;;
         --levels) levels="$2" ;;
         --scenarios) scenarios="$2" ;;
+        --map) map="$2" ;;
         --ticks) ticks="$2" ;;
       esac
       shift 2
@@ -133,6 +140,13 @@ case "$scenarios" in
     exit 2
     ;;
 esac
+case "$map" in
+  '' | kestrel | heron | curlew | all) ;;
+  *)
+    echo "run-sim-smoke: --map must be kestrel, heron, curlew or all, got '${map}'" >&2
+    exit 2
+    ;;
+esac
 
 if ! command -v "$GODOT" >/dev/null 2>&1; then
   echo "run-sim-smoke: GODOT MISSING: '$GODOT' is not on PATH (set GODOT=/path/to/godot)" >&2
@@ -163,6 +177,7 @@ fi
 [ -z "$seed_start" ] || args+=(--seed-start "$seed_start")
 [ -z "$levels" ] || args+=(--levels "$levels")
 [ -z "$scenarios" ] || args+=(--scenarios "$scenarios")
+[ -z "$map" ] || args+=(--map "$map")
 [ -z "$ticks" ] || args+=(--ticks "$ticks")
 
 log="$(mktemp -t sim-smoke.XXXXXX)"

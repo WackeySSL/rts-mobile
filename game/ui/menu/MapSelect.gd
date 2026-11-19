@@ -5,8 +5,9 @@ extends MenuScreen
 ## `Progression`) is dimmed and shows its rank; it cannot be chosen. START builds a `MatchSetup`
 ## and awaits `MenuFlow.start_match`; a second tap while it runs does nothing, and a refused start
 ## (ERR_BUSY or another error) is reported with `push_warning` and leaves the button live. The
-## computer plays the other side. The banner band is the slot's (empty until P430); no ad call
-## lives here. It is a menu: no Command, no sim.
+## computer plays the other side. The banner band is the slot's; the offer slot holds Phase 6's
+## `StartCreditsOffer` (P433), which owns every ad call; none lives here. It is a menu: no
+## Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
@@ -33,6 +34,8 @@ const LEVEL_TEXT: Dictionary[StringName, StringName] = {
 var progression: ProgressionScript = null
 var flow: FlowScript = null
 var catalog: MapCatalog = null
+## The starting-credits offer in the slot (game/ui/ads/); it owns every ad call, this screen none.
+var offer: StartCreditsOffer
 
 var map_id: StringName = &""
 var side: StringName = FOSSIL
@@ -67,8 +70,8 @@ func _ready() -> void:
 	for id: StringName in LEVELS:
 		_levels[id] = _choice(id, _pick_level, null)
 	_start = add_button(tr(MapSelectText.START), _on_start)
-	# Phase 6's rewarded offer widget plugs into this slot (P433); it lands empty and calls no ad.
-	OfferSlot.add_to(column, self)
+	offer = StartCreditsOffer.new()
+	OfferSlot.add_to(column, self).add_child(offer)
 	_progression_defaults()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
@@ -124,8 +127,8 @@ func on_back() -> bool:
 
 
 func _on_start() -> void:
-	if _starting or not _can_start():
-		return
+	if _starting or not _can_start() or offer.is_running():
+		return  # Not while the credits ad runs: START could not tell its result yet.
 	var setup: MatchSetup = build_setup()
 	if setup == null:
 		push_warning("MapSelect: no scenario for %s / %s / %s" % [map_id, side, level])

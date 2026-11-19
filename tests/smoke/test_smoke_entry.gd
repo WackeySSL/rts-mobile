@@ -65,6 +65,24 @@ func test_the_entry_plays_the_seeds_scenario_levels_and_ticks_it_is_given() -> v
 	assert_array(seeds).is_equal([7, 8])
 
 
+## P554: `--map` plays that map's scenario files and the report names the map.
+func test_the_entry_plays_the_map_it_is_given() -> void:
+	var folder: DirAccess = DirAccess.create_temp("smoke_entry_map_")
+	var path: String = folder.get_current_dir().path_join("r.json")
+	var result: Dictionary = _entry(
+		["--matches", "2", "--ticks", "15", "--map", "curlew", "--report", path]
+	)
+	assert_int(result["code"]).is_equal(0)
+	assert_str(result["text"]).not_contains("ERROR:")
+	var report: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+	assert_str(report["map"]).is_equal("curlew")
+	var scenarios: Array = []
+	for record: Dictionary in report["matches"]:
+		scenarios.append(String(record["scenario"]).get_file().get_basename())
+	assert_array(scenarios).is_equal(["skirmish_curlew_crags", "skirmish_curlew_crags_mirrored"])
+	assert_int(_entry(["--map", "map_3"])["code"]).is_equal(2)
+
+
 func test_the_entry_exits_2_on_a_bad_argument() -> void:
 	for args: Array in [["--levels", "normal"], ["--ticks", "0"], ["--bogus", "1"]]:
 		var arguments: Array[String] = []
