@@ -1,4 +1,3 @@
-# gdlint: ignore=max-public-methods
 extends Node
 ## The one facade for ads, consent and the Remove ads purchase (ADR 0039 section 1).
 ## Phase 5 calls only what is declared here; the signals, methods and their types are the
@@ -33,6 +32,9 @@ signal banner_changed(height_dp: int)
 signal ad_opened(placement: StringName)
 ## Fires when a full-screen ad closes, with its placement.
 signal ad_closed(placement: StringName)
+
+## What consent has answered so far, as `consent_state()` returns it (P433).
+enum ConsentState { UNKNOWN, NO, YES }
 
 const SaveServiceScript: GDScript = preload("res://game/meta/save_service.gd")
 
@@ -238,14 +240,12 @@ func pending_start_credits() -> int:
 	return mini(_ledger.pending_start_credits, _settings.start_credits_bonus_max)
 
 
-## Internal (P433). Whether ads may be requested, as consent last answered; read only.
-func can_request_ads() -> bool:
-	return _can_request_ads
-
-
-## Internal (P433). True once consent has answered (granted or not); false while it is unknown.
-func consent_known() -> bool:
-	return _consent_known
+## Internal (P433). What consent last answered, read only: UNKNOWN until it has answered, then NO
+## (ads may not be requested) or YES.
+func consent_state() -> int:
+	if not _consent_known:
+		return ConsentState.UNKNOWN
+	return ConsentState.YES if _can_request_ads else ConsentState.NO
 
 
 ## Internal (Phase 6 widgets; P433's grant after the rewarded callback). Records the pending

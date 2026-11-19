@@ -5,10 +5,10 @@ extends RewardedOffer
 ## `grant_start_credits_bonus(reward_start_credits)` runs only inside the SDK's reward callback
 ## (RewardRelay), bound to the service, never to the screen. The grant lands in the ledger's
 ## `ads` section; this widget writes no `MatchSetup` (MenuFlow takes the bonus at match start,
-## once). Once the bonus is pending the button shows the pending text, disabled, and no second ad
-## is offered; it clears by itself after the match start took the bonus (the recheck timer and the
-## screen's visibility ask the service again). Remove ads does not hide it: rewarded stays. Text
-## and amount come from `data/ads_settings.tres`.
+## once). Once the bonus is pending the button shows the pending text, untappable but not greyed,
+## and no second ad is offered; it clears by itself after the match start took the bonus (the
+## recheck timer and the screen's visibility ask the service again). Remove ads does not hide it:
+## rewarded stays. Text and amount come from `data/ads_settings.tres`.
 ## No layout shift (the ad policy forbids it): while it holds a slot the offer keeps its full height
 ## (the button, invisible and untappable until an ad is ready, plus `banner_gap_dp` below), so an ad
 ## that loads late moves nothing, START included. A shown button ignores taps for `reward_arm_ms`.
@@ -112,7 +112,7 @@ func _decide_visit() -> void:
 		_decided = true
 		var svc: AdServiceScript = _resolve_service()
 		_collapsed = (
-			svc != null and svc.consent_known() and not svc.can_request_ads() and not _pending
+			svc != null and svc.consent_state() == AdServiceScript.ConsentState.NO and not _pending
 		)
 
 

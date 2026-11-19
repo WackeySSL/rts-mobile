@@ -141,7 +141,8 @@ func take_pending_screen() -> StringName:
 	return screen
 
 
-## Starts a match from `setup`. A skirmish gets a fresh seed and the pending start-credits bonus;
+## Starts a match from `setup`. A skirmish gets a fresh seed and the pending start-credits bonus
+## (taken after the fullscreen settle, so a late rewarded ad that pays meanwhile counts);
 ## a lesson keeps its own seed and takes no bonus (the grant stays for the next skirmish). Nothing
 ## changes and the error comes back (the caller reports it) when the setup is refused (see
 ## `MatchSetup.apply`; the bonus is taken only after the setup passed), or ERR_BUSY.
@@ -154,8 +155,7 @@ func start_match(setup: MatchSetup) -> Error:
 	_busy = true
 	if setup.lesson_id == &"":
 		setup.match_seed = int(seed_source.call()) & DetRandom.SEED_MASK
-		setup.bonus_starting_credits = int(ads.take_start_credits_bonus())
-	var error: Error = await _begin(setup)
+	var error: Error = await _begin(setup, setup.lesson_id == &"")
 	_busy = false
 	return error
 
@@ -317,8 +317,11 @@ func _check(setup: MatchSetup) -> Error:
 
 ## The setup has passed `_check`. Emits `match_loading`, waits for the card to be drawn, builds the
 ## scene.
-func _begin(setup: MatchSetup) -> Error:
+func _begin(setup: MatchSetup, take_bonus: bool = false) -> Error:
 	await ads.settle_fullscreen()
+	if take_bonus:
+		# After the settle: a rewarded ad that opened late and paid meanwhile counts for this match.
+		setup.bonus_starting_credits = int(ads.take_start_credits_bonus())
 	var serial: int = _serial
 	match_loading.emit(setup)
 	await loading_frame.call()

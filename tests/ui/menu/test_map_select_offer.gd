@@ -164,6 +164,8 @@ func test_start_waits_while_the_credits_ad_runs_and_then_takes_the_bonus() -> vo
 	assert_bool(_screen.offer.is_pending()).is_true()
 	_screen._on_start()
 	assert_int(_flow.started.size()).is_equal(1)
+	# The fake flow does not take the bonus, so this checks that it is still pending, not that
+	# MatchSetup carries it.
 	assert_int(_service.take_start_credits_bonus()).is_equal(
 		AdsSettingsDef.load_default().reward_start_credits
 	)

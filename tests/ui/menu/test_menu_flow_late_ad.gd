@@ -180,3 +180,31 @@ func test_with_nothing_pending_nothing_extra_is_awaited() -> void:
 	await _frames(3)
 	assert_array(out).is_equal([OK])
 	assert_int(_mains.size()).is_equal(1)
+
+
+func test_a_late_credits_ad_that_pays_during_the_settle_counts_for_this_match() -> void:
+	await _frames(3)  # Let the rewarded ad load.
+	_fake.show_never_opens = true
+	_fake.ignore_cancel = true
+	var credits: int = _ads._settings.reward_start_credits
+	var shown: Array = AdServiceHarness.start(
+		func() -> bool:
+			return await _ads.show_rewarded(
+				&"start_credits", _ads.grant_start_credits_bonus.bind(credits)
+			)
+	)
+	await _frames(3)
+	_h.clock_ms = _ads._settings.fullscreen_timeout_ms  # The show times out and stays pending.
+	await _frames(4)
+	assert_array(shown).is_not_empty()
+	assert_int(_ads.pending_start_credits()).is_equal(0)  # Not paid yet.
+	var out: Array = AdServiceHarness.start(func() -> int: return await _flow.start_match(_setup()))
+	await _frames(4)
+	assert_array(out).is_empty()
+	assert_int(_mains.size()).override_failure_message("no main while the ad is late").is_equal(0)
+	assert_int(_loading).is_equal(0)
+	_fake.open_late(AdBackend.KIND_REWARDED)  # It opens and pays during the settle.
+	await _frames(4)
+	assert_array(out).is_equal([OK])
+	assert_int(_flow.current_setup().bonus_starting_credits).is_equal(credits)
+	assert_int(_ads.pending_start_credits()).is_equal(0)

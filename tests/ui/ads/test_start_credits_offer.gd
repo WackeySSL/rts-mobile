@@ -224,6 +224,15 @@ func test_unknown_consent_keeps_the_space_and_a_late_no_does_not_shrink_it() -> 
 	assert_bool(offer.visible).is_true()  # Never shrinks while the screen is visible.
 
 
+func test_consent_state_reads_unknown_no_and_yes() -> void:
+	_service._consent_known = false
+	assert_int(_service.consent_state()).is_equal(_service.ConsentState.UNKNOWN)
+	_service._set_can_request(false)
+	assert_int(_service.consent_state()).is_equal(_service.ConsentState.NO)
+	_service._set_can_request(true)
+	assert_int(_service.consent_state()).is_equal(_service.ConsentState.YES)
+
+
 func test_a_pending_bonus_keeps_the_offer_although_consent_said_no() -> void:
 	assert_bool(_service.grant_start_credits_bonus(300)).is_true()
 	_service._set_can_request(false)
