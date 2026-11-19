@@ -90,6 +90,8 @@ func _process(_delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if phase == Phase.DONE:
 		return
+	if not _wait.done:
+		return  # The consent form (drawn above the intro) owns every tap until consent ends.
 	var touch: bool = event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed
 	var click: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed
 	if touch or click:
