@@ -9,6 +9,12 @@ const ID_PATTERN: String = "^[a-z0-9]+(-[a-z0-9]+)+$"
 @export var id: StringName = &""
 @export var title_key: StringName = &""
 @export var beats: Array[TutorialBeatDef] = []
+## The match of the lesson (ADR 0044 section 1): its scenario on a `data/maps/tutorial_*.tres`, the
+## scripted opponent that plays player 2 (`TutorialAi` through `AiFactory`), and the seed of the
+## match. A lesson is a match of its own, replayable from the seed.
+@export var scenario: ScenarioDef
+@export var enemy: TutorialScriptDef
+@export var match_seed: int = 1
 ## The seconds the lesson aims for; the beats' budgets must fit in it (Basics 180).
 @export var target_s: int = 180
 
