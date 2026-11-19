@@ -86,7 +86,7 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 	assert_bool(resume.get_global_rect().has_point(ring.get_center())).is_true()
 	assert_bool(mark.card_rect().intersects(resume.get_global_rect())).is_false()
 	assert_int(mark.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
-	# At each of the six sizes the card stands clear of every other button of the menu and of the
+	# At each of the six sizes the card stands 8 dp clear of every other button of the menu and of the
 	# banner foot, and the dialogs (the pause menu's questions, the sell question) and the result
 	# screen are drawn above it.
 	for size: Vector2i in Sizes.ALL:
@@ -101,9 +101,10 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 			var shown: bool = control.is_visible_in_tree() and not control is ConfirmDialog
 			var covered: bool = control is Button or control is AdBannerBand
 			if shown and covered and control != resume and control.get_global_rect().has_area():
-				var label: String = "%s %s under the card at %s" % [size, control.name, card]
+				var air: float = UiScale.dp(16.0 if control is AdBannerBand else 8.0) - 0.01
+				var label: String = "%s %s within the card's air at %s" % [size, control.name, card]
 				(
-					assert_bool(card.intersects(control.get_global_rect()))
+					assert_bool(card.grow(air).intersects(control.get_global_rect()))
 					. override_failure_message(label)
 					. is_false()
 				)

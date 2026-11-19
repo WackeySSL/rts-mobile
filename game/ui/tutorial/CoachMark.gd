@@ -26,6 +26,7 @@ extends Control
 
 const CARD_WIDTH_DP: float = 360.0  ## Widest the card gets; less where the room is narrower.
 const GAP_DP: float = 16.0  ## Between the ring and the card.
+const BUTTON_AIR_DP: float = 8.0  ## Between the card and another button of a menu it stands over.
 const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
@@ -287,8 +288,8 @@ func _blocked_rects() -> Array[Rect2]:
 		var control: Control = node as Control
 		if control == _target or not control.is_visible_in_tree():
 			continue
-		if control is Button:
-			found.append(control.get_global_rect())
+		if control is Button:  # A card that touches the buttons looks cramped: keep 8 dp off them.
+			found.append(control.get_global_rect().grow(BUTTON_AIR_DP * _dp))
 		elif control is AdBannerBand:  # Content keeps the buttons' gap from an ad (ad policy).
 			found.append(control.get_global_rect().grow(GAP_DP * _dp))
 	return found
