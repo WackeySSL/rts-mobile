@@ -149,6 +149,25 @@ func test_the_new_flags_reach_godot_in_a_fixed_order() -> void:
 		_run(_project(), ["--scenarios", kind])
 
 
+## P554: `--map` comes after `--scenarios` and before `--ticks`, takes the three maps and `all`,
+## and leaves the other flags as they were.
+func test_the_map_flag_reaches_godot_between_scenarios_and_ticks() -> void:
+	var root: String = _project()
+	_run(root, ["--ticks", "900", "--map", "curlew", "--scenarios", "cross", "--matches", "1"])
+	assert_str(_read(root, "calls.txt")).is_equal(
+		ENTRY + " --matches 1 --scenarios cross --map curlew --ticks 900\n"
+	)
+	for map: String in ["kestrel", "heron", "curlew", "all"]:
+		_run(_project(), ["--map", map])
+	for bad: Array in [["--map"], ["--map", ""], ["--map", "map_2"], ["--map", "Heron"]]:
+		var root_bad: String = _project()
+		var arguments: Array[String] = []
+		arguments.assign(bad)
+		_run(root_bad, arguments, 2)
+		assert_bool(FileAccess.file_exists(root_bad.path_join("calls.txt"))).is_false()
+		assert_str(_read(root_bad, "stderr.txt")).contains("run-sim-smoke: ")
+
+
 func test_a_bad_flag_exits_2_and_never_starts_godot() -> void:
 	var bad: Array[Array] = [
 		["--matches"],
@@ -199,7 +218,7 @@ func test_help_prints_the_usage_and_exits_0() -> void:
 	_run(root, ["--help"])
 	assert_str(_read(root, "stderr.txt")).contains("[--matches N] [--report PATH]")
 	assert_str(_read(root, "stderr.txt")).contains("[--seed-start S] [--levels A,B]")
-	assert_str(_read(root, "stderr.txt")).contains("[--scenarios KIND] [--ticks T]")
+	assert_str(_read(root, "stderr.txt")).contains("[--scenarios KIND] [--map MAP] [--ticks T]")
 	assert_bool(FileAccess.file_exists(root.path_join("calls.txt"))).is_false()
 
 

@@ -58,7 +58,10 @@ const GATE_SCENARIOS: String = "cross"
 ## Ticks per minute (15 Hz).
 const TICKS_PER_MINUTE: int = 900
 ## The fields every shard of one set must share; `levels` is compared as an unordered pair.
-const MERGE_FIELDS: Array[String] = ["commit", "impl", "ticks_per_match", "scenarios", "levels"]
+## `map` (P554) is compared too; a report from before it has none and merges with its like.
+const MERGE_FIELDS: Array[String] = [
+	"commit", "impl", "ticks_per_match", "scenarios", "levels", "map"
+]
 
 
 func _initialize() -> void:
@@ -189,6 +192,8 @@ static func build(reports: Array[Dictionary], names: Array[String], gate: bool) 
 		"scenarios": reports[0]["scenarios"],
 		"matches": matches,
 	}
+	if reports[0].has("map"):
+		merged["map"] = reports[0]["map"]
 	var rosters: Dictionary[String, Array] = rosters_of(_factions_of(matches))
 	var problem: String = _roster_problem(rosters)
 	if not problem.is_empty():
@@ -249,6 +254,7 @@ static func summarize(
 	var flow_total: int = 0
 	var flow_most: int = 0
 	var lengths: Array[int] = []
+	var map_lengths: Dictionary[String, Array] = {}
 	var hashes: Dictionary[String, bool] = {}
 	for record: Dictionary in matches:
 		ends[record["end"]] = ends.get(record["end"], 0) + 1
@@ -259,6 +265,12 @@ static func summarize(
 		flow_total += int(record["flow_full_ticks"])
 		flow_most = maxi(flow_most, int(record["flow_full_ticks"]))
 		lengths.append(int(record["ticks"]))
+		var map_id: String = Smoke.map_of_path(String(record.get("scenario", "")))
+		if map_id.is_empty():
+			map_id = "other"
+		if not map_lengths.has(map_id):
+			map_lengths[map_id] = []
+		map_lengths[map_id].append(int(record["ticks"]))
 		hashes[String(record["state_hash"])] = true
 	lengths.sort()
 	var summary: Dictionary = {
@@ -278,6 +290,7 @@ static func summarize(
 			"p90": _percentile(lengths, 90),
 			"max": 0 if lengths.is_empty() else lengths[-1],
 		},
+		"length_by_map": _length_by_map(map_lengths),
 		"types": _types(matches, rosters),
 		"air_tech": _air_tech(matches),
 		"distinct_final_hashes": hashes.size(),
@@ -291,6 +304,22 @@ static func summarize(
 	if gate:
 		summary["gate"] = _gate(summary, report, rosters)
 	return summary
+
+
+## The match length per map (P554): `{map id: {matches, median, p90}}` from the tick counts of
+## each map's matches (`map_lengths`). The overall median is `length_ticks`.
+static func _length_by_map(map_lengths: Dictionary[String, Array]) -> Dictionary:
+	var by_map: Dictionary = {}
+	for map_id: String in map_lengths:
+		var lengths: Array[int] = []
+		lengths.assign(map_lengths[map_id])
+		lengths.sort()
+		by_map[map_id] = {
+			"matches": lengths.size(),
+			"median": _median(lengths),
+			"p90": _percentile(lengths, 90),
+		}
+	return by_map
 
 
 ## Win shares in per-mille per value of the player field `field`, a draw or timeout counting half
@@ -642,6 +671,28 @@ static func markdown(report: Dictionary) -> String:
 				]
 			)
 		)
+	)
+	lines.append("")
+	lines.append("| Map | Matches | Median | 90th percentile |")
+	lines.append("| --- | --- | --- | --- |")
+	var by_map: Dictionary = summary["length_by_map"]
+	for map_id: String in _sorted(by_map.keys()):
+		var map_length: Dictionary = by_map[map_id]
+		(
+			lines
+			. append(
+				_row(
+					[
+						map_id,
+						map_length["matches"],
+						_minutes(map_length["median"]),
+						_minutes(map_length["p90"]),
+					]
+				)
+			)
+		)
+	lines.append(
+		_row(["all maps", summary["matches"], _minutes(length["median"]), _minutes(length["p90"])])
 	)
 	lines.append("")
 	lines.append("### Unit types")
