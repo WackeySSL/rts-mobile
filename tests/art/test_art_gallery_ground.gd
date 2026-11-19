@@ -39,7 +39,7 @@ func test_the_terrain_page_is_built_when_first_shown_and_sits_on_the_off_map_col
 	for child: Node in page.get_node(CONTENT.trim_suffix("/")).get_children():
 		if not child is Label:
 			names.append(child.name)
-	assert_array(names).is_equal([&"Patch", &"Map", &"Fields", &"Props"])
+	assert_array(names).is_equal([&"Patch", &"Map", &"Fields", &"Props", &"Look"])
 
 
 func test_the_patch_is_six_terrains_of_six_cells_with_a_and_b_alternating_in_the_diamond_grid(
@@ -59,6 +59,27 @@ func test_the_patch_is_six_terrains_of_six_cells_with_a_and_b_alternating_in_the
 			var want: Vector2 = Vector2((column - row) * 32.0, (column + row) * 16.0)
 			assert_vector(sprite.position - first).override_failure_message(path).is_equal(want)
 			assert_vector(sprite.texture.get_size()).is_equal(Vector2(64, 32))
+
+
+## P551: the page's last block is a cut of Heron Fords drawn in its own look: water, sand and grass
+## from `ground_looks/heron`, every other terrain from the standard tiles.
+func test_the_look_block_cuts_heron_fords_and_draws_it_in_its_own_ground_look() -> void:
+	var gallery: Control = await _open_gallery()
+	var look: Node2D = _show(gallery).get_node(CONTENT + "Look")
+	var cut: Rect2i = TerrainPage.LOOK_CUT
+	assert_int(look.get_child_count()).is_equal(cut.size.x * cut.size.y)
+	var map: MapDef = load(TerrainPage.LOOK_MAP) as MapDef
+	assert_str(String(map.ground_look)).is_equal("heron")
+	var seen: Dictionary[String, bool] = {}
+	for sprite: Node in look.get_children():
+		var path: String = (sprite as Sprite2D).texture.resource_path
+		seen[path.get_file().get_basename().trim_suffix("_a").trim_suffix("_b")] = (path.contains(
+			"/ground_looks/heron/"
+		))
+	assert_bool(seen["water"]).is_true()
+	assert_bool(seen["sand"]).is_true()
+	assert_bool(seen["grass"]).is_true()
+	assert_bool(seen.get("rock", false)).is_false()
 
 
 func test_the_map_mixes_the_terrains_with_an_oil_and_a_gas_field_wellheads_and_two_craters(
@@ -193,7 +214,7 @@ func test_everything_is_clear_of_the_two_corner_buttons_and_inside_the_page_widt
 				. is_false()
 			)
 		labels.append(label.get_global_rect())
-	assert_int(labels.size()).is_equal(3)
+	assert_int(labels.size()).is_equal(4)
 	assert_int(seen).is_greater(250)
 
 

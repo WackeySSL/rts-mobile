@@ -4,11 +4,17 @@ extends Control
 ## variants, a small map that mixes them with an oil and a gas field (the stages as stripes across
 ## each) with a wellhead on every field and a crater on grass and on sand, the six field stages as
 ## blocks of 3 x 3 cells, and the wellhead and the crater at the camera zoom levels on grass and on
-## sand. Tiles are the imported textures (half the 2x art), so a tile is 64 x 32 px at zoom 1.
+## sand, and a cut of Heron Fords' river and ford in its own ground look (P551). Tiles are the
+## imported textures (half the 2x art), so a tile is 64 x 32 px at zoom 1.
 ## Built on first show; view-only.
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const FIELD_ART: String = "res://assets/art/svg/fields/%s.svg"
+const LOOK_ART: String = "res://assets/art/svg/ground_looks/%s/%s_%s.svg"
+const LOOK_MAP: String = "res://data/maps/heron_fords.tres"
+## The cut of that map the page shows: the first column, the first row and the size in cells; it
+## holds the bank, the river and the first ford.
+const LOOK_CUT: Rect2i = Rect2i(8, 24, 14, 12)
 const CRATER_ART: String = "res://assets/art/svg/decals/crater.svg"
 ## The colour the clear colour shows outside the map's diamond (STYLE.md, "Fog and terrain").
 const OFF_MAP_COLOR: Color = Color("16191D")
@@ -91,7 +97,7 @@ func _build() -> void:
 	var content: Control = Control.new()
 	content.name = "Content"
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.custom_minimum_size = Vector2(1232.0 + 2.0 * GAP_PX, 1000.0)
+	content.custom_minimum_size = Vector2(1232.0 + 2.0 * GAP_PX, 1500.0)
 	scroll.add_child(content)
 	var top: float = FIRST_TOP_PX
 	_label(content, "Ground: grass sand scrub rock water ore", GAP_PX, top)
@@ -103,6 +109,29 @@ func _build() -> void:
 	_add_blocks(content, top + LABEL_PX)
 	top += 150.0
 	_add_props(content, top)
+	top += 200.0
+	_label(content, "Heron Fords: the map's own ground, river and ford", GAP_PX, top)
+	_add_look(content, Vector2(GAP_PX + 14.0 * 32.0, top + LABEL_PX))
+
+
+## The cut of the map `LOOK_MAP` with the tiles of its `ground_look` where it has them.
+func _add_look(parent: Control, origin: Vector2) -> void:
+	var look: Node2D = Node2D.new()
+	look.name = "Look"
+	parent.add_child(look)
+	var map: MapDef = load(LOOK_MAP) as MapDef
+	var ids: Dictionary[String, String] = {}
+	for terrain: TerrainDef in map.terrain.terrains:
+		ids[terrain.symbol] = String(terrain.id)
+	for row: int in LOOK_CUT.size.y:
+		for column: int in LOOK_CUT.size.x:
+			var symbol: String = map.rows[LOOK_CUT.position.y + row][LOOK_CUT.position.x + column]
+			var id: String = ids[symbol]
+			var variant: String = "ab"[(column + row) % 2]
+			var path: String = LOOK_ART % [map.ground_look, id, variant]
+			if not ResourceLoader.exists(path):
+				path = GROUND_ART % [id, variant]
+			look.add_child(_sprite(path, cell_centre(origin, column, row)))
 
 
 func _add_patch(parent: Control, origin: Vector2) -> void:

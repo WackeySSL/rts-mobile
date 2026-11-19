@@ -2768,6 +2768,44 @@ against unexplored ground), and it is neutral (saturation under 0.30), so no sid
 is near it. P116 sets it as the clear colour; the gallery's Terrain page draws it behind everything,
 `OFF_MAP_COLOR` in `game/view/art_gallery_ground.gd`, which `tests/art` pins to this text.
 
+## Map looks (P551, plan answer 5)
+A map may carry its own ground look: `MapDef.ground_look`, a folder name under
+`assets/art/svg/ground_looks/<look>/` (view only, like `field_kinds`: `WorldLoad` never reads it, so no
+hash, digest or fairness number depends on it; empty = the standard tiles, as Kestrel Flats and Curlew
+Crags have). The folder holds the diamonds `<terrain_id>_a.svg` and `_b.svg` of only the terrains the
+look changes; `GroundAtlas.build(ids, look)` puts them in the **same keys and slots** as the standard
+tiles (a terrain that the look has both variants of, else the standard one), so a look adds no tile, no
+terrain id and no byte to the page, `GroundLayer` still picks a or b by `(column + row) % 2`, and the
+minimap and the 8 px bake keep the standard colours. A look is a recolour or a redraw of an existing
+terrain, never a new terrain (answer 5: no new tiles).
+
+Each file follows "Iso ground tiles": 128 x 64 at 2x, imported at scale 0.5, the same base colour to every
+edge, no rim, details clipped to the `inner` ground square (the current lines of the water excepted, below),
+two comments, `<!-- Pattern: ... -->` second, 2 to 4 KB, no gradient, filter, text or raster. Each tile keeps
+the greyscale level of the terrain it replaces to within 2 levels (`tests/art/test_ground_look_heron.gd`
+pins it, the seams, the rim and the files).
+
+**Heron Fords** (`heron`, `data/maps/heron_fords.tres`): a river valley with two sand fords. Silhouette in
+one line: a broad blue river whose current lines run down the whole valley, banks and fords of pale
+river shingle, and a meadow with tall tufts and a few flowers.
+
+| Terrain | Tile | Differs from the standard tile by | Tones (new ones in bold) |
+| --- | --- | --- | --- |
+| water | river | two long mid-blue current lines along +gx that leave the tile at gy -0.24 and +0.2 in both variants, so they run unbroken from tile to tile down the river (the only details clipped to the full diamond, not the `inner` square); a short pale crest on each, two ripples between them, two swells | base #2A5978, #3C7396 current and ripples, #8FBBD2 crests, #285574 and #306180 swells |
+| sand | shingle | a spread of ten round pebbles, every third a flat stone with a lit top, two damp patches and one shade line under a crest, in place of four long ripples, so the banks and the fords read as gravel | base #CDB98F, #B59F72 shade line, #E4D6B3 crest and flat-stone top, **#D9C8A0** pebble top, #A58F63 pebble shade, #D6C49E and #C4AF84 patches |
+| grass | meadow | five tall three-blade tufts (9 px high, not 6) and four small pale flowers | base #6F8F57, #5E7D4A and #86A66B tufts, #688A50 and #789A5F patches, **#D9C97A** flower, **#F1E7B4** flower lit side |
+
+Greyscale (32 px, Rec. 601, mean over the diamond; standard in brackets): water a 82.2 and b 82.5 (82.6
+and 82.5), sand 185.0 and 185.0 (185.1 and 184.9), grass 126.5 and 126.5 (125.8 and 125.7). Scrub, rock and
+ore are the standard tiles. Light is the one light of "Light": top lit, shadow to the south-east.
+
+**Gallery**: the Terrain page ends with "Heron Fords: the map's own ground, river and ford", a 14 x 12 cut of
+the real map (columns 8 to 21, rows 24 to 35: the bank, the river and the first ford) drawn in its look
+(`art_gallery_ground.gd`, `LOOK_CUT`; `test_art_gallery_ground.gd` pins it).
+
+**Atlas pins**: unchanged. The ground page holds the same 12 tiles, six field stages and two props in the same
+slots whatever the look; pages 1 and 2 of the sorted world and the life atlas are not touched.
+
 ## Fields
 ADR 0023 sections 2, 6 and 11; plan row P105 (P116 draws them). A field is the merged ore cells
 (`ore_cell`, `ore_amount`, `ore_cell_max` 20): each cell is an `ore` ground diamond (`ground/ore_a`
@@ -3269,3 +3307,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-17 | v1.45 (P292, art-director, ADR 0037 sections 8 and 14): the Shot Truck (`fossil_shot_truck`) and the Seeder (`renew_seeder`), the minelayers, as 16-direction hull and shadow models with item cards and roster entries after the carriers ("The minelayers" under "Units", Catalogue rows); the four mine marks of both factions, own and known (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`, the known with the notched rim), and the glyphs `glyph_mine` and `glyph_hold` (Bar row of the Hud page); the sorted world's page 1 2472, 2407 and 2341 to 2582, 2526 and 2435 and page 2 2264, 1264 and 1286 to 2486, 1386 and 1386 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2628, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect as two kinds of `fx/life_atlas.svg` (`drone`, two rotor-blur frames, and `drone_shadow`, the Drone Dock's drone, two rows on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1478 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-19 | v1.48 (P551, art-director, plan answer 5): the Map looks section: `MapDef.ground_look` (view only) and the `assets/art/svg/ground_looks/<look>/` folders, and the first look, Heron Fords' (`heron`): river water with current lines that run on from tile to tile, shingle sand and meadow grass, six hand-written diamonds in the same keys and slots of the ground page (no new terrain, no new tile, no atlas pin moves); the Terrain page of the gallery ends with a cut of the map in its look. |

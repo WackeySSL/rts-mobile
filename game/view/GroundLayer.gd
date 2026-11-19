@@ -18,6 +18,7 @@ const CLEAR_COLOR_SETTING: String = "rendering/environment/defaults/default_clea
 
 var _art: GroundAtlas
 var _ids: Array[StringName] = []  ## The terrain ids `_art` was built for.
+var _look: StringName = &""  ## The map's ground look `_art` was built for.
 var _fields: FieldLayer = FieldLayer.new()
 var _serial: int = -1  ## match_serial of the fill.
 var _version: int = -1  ## map_version of the fill.
@@ -83,9 +84,12 @@ func _sync() -> void:
 ## fill and its fields.
 func _begin(snap: MatchSnapshot) -> void:
 	_serial = snap.match_serial
-	if _art == null or _ids != snap.terrain_ids:
+	var map: MapDef = runner.scenario.map if runner.scenario != null else null
+	var look: StringName = map.ground_look if map != null else &""
+	if _art == null or _ids != snap.terrain_ids or _look != look:
 		_ids = snap.terrain_ids.duplicate()
-		_art = GroundAtlas.build(_ids)
+		_look = look
+		_art = GroundAtlas.build(_ids, look)
 	tile_set = _art.tile_set
 	clear()
 	_cols = snap.map_cols
