@@ -170,7 +170,11 @@ func test_the_script_defaults_of_an_opponent_def_are_the_fossil_file() -> void:
 	skip.append_array(_AIR_FIELDS)
 	skip.append("mine_layer_type")  # Off by default (P295), like the air types.
 	skip.append("mine_scout_reach_percent")
+	skip.append("stall_window_ticks")  # Off by default (P555b), so the frozen files play as before.
 	_assert_defaults_equal(OpponentDef.new(), Rig.def_of("fossil"), skip)
+	assert_int(OpponentDef.new().stall_window_ticks).is_equal(0)
+	for faction: String in Rig.FACTIONS:
+		assert_int(Rig.def_of(faction).stall_window_ticks).is_greater(0)
 	assert_str(String(OpponentDef.new().mine_layer_type)).is_empty()
 	var fresh: OpponentDef = OpponentDef.new()
 	assert_array([fresh.aa_type, fresh.fighter_type, fresh.bomber_type]).is_equal([&"", &"", &""])
