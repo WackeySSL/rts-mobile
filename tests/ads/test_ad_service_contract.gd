@@ -38,6 +38,7 @@ const WIDGET_METHODS: Dictionary = {
 	"banner_height_preview_dp": [[], TYPE_INT],
 	"remove_ads_price_text": [[], TYPE_STRING],
 	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
+	"pending_start_credits": [[], TYPE_INT],
 	"settle_fullscreen": [[], TYPE_NIL],
 }
 

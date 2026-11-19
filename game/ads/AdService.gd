@@ -231,6 +231,11 @@ func take_start_credits_bonus() -> int:
 	return taken
 
 
+## Internal (P433). The start-credits bonus waiting for the next match (0 when none); read only.
+func pending_start_credits() -> int:
+	return _ledger.pending_start_credits
+
+
 ## Internal (Phase 6 widgets; P433's grant after the rewarded callback). Records the pending
 ## start-credits bonus, at most `start_credits_bonus_max`, and saves it at once (ADR 0039 section
 ## 7). False, and nothing changes, while a bonus is already pending.

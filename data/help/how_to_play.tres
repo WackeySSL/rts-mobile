@@ -244,6 +244,12 @@ id = &"menus-skirmish"
 title = "Start a skirmish"
 body = "Tap Skirmish on the main menu, choose the map, your side and the computer's level, then tap Start. A map or level that is greyed out shows the rank that opens it."
 
+[sub_resource type="Resource" id="e20c"]
+script = ExtResource("3_ent")
+id = &"menus-start-credits"
+title = "Extra starting credits"
+body = "On the Skirmish screen, below Start, you may tap +500 credits next match to watch an ad. When the ad pays out (not when you close it early) the bonus waits for your next match and the button says it is ready; the match you start next begins with those credits, once. It only shows when an ad is ready, nothing plays unless you tap, and it stays even if you removed the other ads."
+
 [sub_resource type="Resource" id="e22"]
 script = ExtResource("3_ent")
 id = &"menus-settings"
@@ -254,7 +260,7 @@ body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and 
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e22")])
+entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e20c"), SubResource("e22")])
 
 [sub_resource type="Resource" id="e21"]
 script = ExtResource("3_ent")

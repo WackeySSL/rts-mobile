@@ -290,9 +290,10 @@ func _ad_nodes() -> Array[Node]:
 ## and not visible while the battle runs.
 static func _is_hidden_result_offer(node: Node) -> bool:
 	var parent: Node = node.get_parent()
+	var result_offer: bool = node is DoubleXpOffer and parent.owner is ResultScreen
+	var credits_offer: bool = node is StartCreditsOffer and parent.owner is MapSelect
 	return (
-		node is DoubleXpOffer
+		(result_offer or credits_offer)
 		and parent is OfferSlot
-		and parent.owner is ResultScreen
-		and not (node as DoubleXpOffer).is_visible_in_tree()
+		and not (node as CanvasItem).is_visible_in_tree()
 	)
