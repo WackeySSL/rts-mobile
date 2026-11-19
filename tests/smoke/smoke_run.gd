@@ -41,7 +41,7 @@ const LEVEL_DUMMY: String = "dummy"
 const LEVELS: Array[String] = ["easy", "normal", "hard", "dummy"]
 const DEFAULT_LEVELS: Array[String] = ["normal", "normal"]
 ## The unit orders whose units may die in the lag tick (ADR 0038 section 6, REPAIR from P283,
-## STANCE from P300).
+## STANCE from P300, LAY_MINE from P295).
 const _UNIT_ORDERS: Array[int] = [
 	Command.Type.ATTACK_MOVE,
 	Command.Type.MOVE,
@@ -49,6 +49,7 @@ const _UNIT_ORDERS: Array[int] = [
 	Command.Type.STOP,
 	Command.Type.STANCE,
 	Command.Type.REPAIR,
+	Command.Type.LAY_MINE,
 ]
 ## The seats of players 1 and 2 (the scenarios put player 1 at the top).
 const SEATS: Array[String] = ["top", "bottom"]

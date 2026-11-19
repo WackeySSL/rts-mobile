@@ -388,7 +388,8 @@ func _order(
 
 
 ## Makes `owner`'s keys the cells of `goal` for `classes` (a bit per move class) and those it holds
-## there; its other keys go. A full cache makes the scout and repair keys yield. False: no room.
+## there; its other keys go. A full cache makes the scout, repair and mine keys yield. False: no
+## room.
 func _hold(memory: AiMemory, owner: int, goal: Vector2i, classes: int) -> bool:
 	var saved: Array[PackedInt32Array] = memory.goal_snapshot()
 	var wanted: int = classes
@@ -400,7 +401,7 @@ func _hold(memory: AiMemory, owner: int, goal: Vector2i, classes: int) -> bool:
 		):
 			wanted |= 1 << memory.goal_class[at]
 	memory.release_owner(owner)
-	for move_class: int in [AiMemory.FOOT, AiMemory.TRACKED]:
+	for move_class: int in [AiMemory.FOOT, AiMemory.WHEELED, AiMemory.TRACKED]:
 		if (
 			wanted & (1 << move_class) == 0
 			or memory.add_goal_key(goal.x, goal.y, move_class, owner)

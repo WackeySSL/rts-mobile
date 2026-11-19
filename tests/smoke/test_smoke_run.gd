@@ -637,10 +637,14 @@ func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 ## died in the lag tick; the stale rest is an ATTACK no unit can hit any more, or a PLACE whose
 ## credits were spent. P279 rostered the repair buildings, so Normal and Hard now build one (P283's
 ## `AiEconomy._add_repair_building`): the pins moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443].
+## P295 moved them again: Normal and Hard queue a minelayer and send LAY_MINE and MOVE orders (a
+## layer may be gone in the lag tick), so the Commands sent and the stale drops differ.
 func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	var hard: Array[String] = ["hard", "hard"]
-	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]) and P279.
-	var cases: Array = [[1, hard, [2, 2, 500]], [2, hard, [6, 4, 527]], [1, NORMAL, [0, 0, 432]]]
+	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]), P279 ([2, 2,
+	# 500], [6, 4, 527], [0, 0, 432]), P295 ([2, 2, 581], [1, 1, 530], [0, 0, 430] at its first push)
+	# and its review rounds ([1, 1, 547], [8, 7, 691], [0, 0, 452]).
+	var cases: Array = [[1, hard, [9, 8, 585]], [2, hard, [2, 2, 586]], [1, NORMAL, [0, 0, 452]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0

@@ -10,12 +10,13 @@ extends RefCounted
 ## Squad states.
 enum SquadState { HOME, WAVE, RETREAT }
 ## The owners of a goal key: the staging point (rally, retreat), the army goal, the scout's way and
-## the repair building's tile (`AiRepair`, P283).
-enum Owner { STAGING, ARMY, SCOUT, REPAIR }
+## the repair building's tile (`AiRepair`, P283) and the minelayer's goal (`AiMines`, P295).
+enum Owner { STAGING, ARMY, SCOUT, REPAIR, MINE }
 ## The value of a point, an id or a tick that is not set.
 const NONE: int = -1
 ## The move classes a goal key names (`World.MoveClass`; a data test pins that for every roster).
 const FOOT: int = 0
+const WHEELED: int = 1
 const TRACKED: int = 2
 
 ## The caps, from the def and the first view (`unit_cap` is 0 until a think has set it).
@@ -140,8 +141,9 @@ var hp_value: PackedInt32Array = PackedInt32Array()
 var withdrawn_id: PackedInt32Array = PackedInt32Array()
 ## The live flow-cache keys of the AI's orders (ADR 0030 section 4): goal cell in tiles and move
 ## class, at most `goal_keys_max`, and who uses each: a mask of `1 << Owner` bits (AiArmy writes
-## STAGING and ARMY and clears the SCOUT and REPAIR bits when the cap is full, AiIntel writes SCOUT,
-## AiRepair writes REPAIR: the repair building's tile, only while a sent vehicle moves). The army
+## STAGING and ARMY and clears the SCOUT, REPAIR and MINE bits when the cap is full, AiIntel writes
+## SCOUT, AiRepair writes REPAIR: the repair building's tile, only while a sent vehicle moves, and
+## AiMines writes MINE: the goal of the layer last ordered, only while a layer moves). The army
 ## goal is one cell at a time: AiArmy releases its key before it adds the next. The scout's key is
 ## added only while the army goal is free or single-class.
 var goal_x: PackedInt32Array = PackedInt32Array()
@@ -179,8 +181,13 @@ static func create(def: OpponentDef) -> AiMemory:
 	return memory
 
 
-## The move class of the type `type`: its tab's (vehicles tracked, the rest on foot).
+## The move class of the type `type`: the type's own (P295; a wheeled unit keys WHEELED), else its
+## tab's (vehicles tracked, the rest on foot) for a view with no class column.
 static func class_of(view: PlayerView, type: int) -> int:
+	if type >= 0 and type < view.type_move_class.size():
+		var own: int = view.type_move_class[type]
+		if own == FOOT or own == WHEELED or own == TRACKED:
+			return own
 	var tab: int = view.type_tab[type] if type >= 0 and type < view.type_tab.size() else -1
 	return TRACKED if tab == PlayerView.Tab.VEHICLES else FOOT
 
@@ -251,10 +258,11 @@ func goal_room(owner: int) -> int:
 	return goal_keys_max - live
 
 
-## The army's keys win a full cache: the scout's key gives way, then the repair building's, each
-## only when its release makes room and only while the cache is still full (`AiArmy._hold`).
+## The army's keys win a full cache: the scout's key gives way, then the repair building's, then
+## the minelayer's, each only when its release makes room and only while the cache is still full
+## (`AiArmy._hold`).
 func yield_keys() -> void:
-	for owner: int in [Owner.SCOUT, Owner.REPAIR]:
+	for owner: int in [Owner.SCOUT, Owner.REPAIR, Owner.MINE]:
 		if goal_x.size() < goal_keys_max:
 			return
 		if goal_room(owner) > 0:
