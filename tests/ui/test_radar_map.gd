@@ -601,7 +601,7 @@ func _expect_clear_of_hud(why: String, map: Rect2) -> void:
 ## The open full map and the open drawer are one unfold at a time (ADR 0025 section 1), in both
 ## orientations: the drawer folds the map when it opens (a pinned map too, the pin outliving it) and
 ## the map folds the drawer, so the map never meets the drawer's backdrop, tabs or cards, and a tap
-## on a tab reaches the tab. BUILD, a tap on an own producer and (upright, where the scope stays in
+## on a tab reaches the tab. BUILD and (upright, where the scope stays in
 ## view) the scope's tap each swap the one for the other. At every screen, the design's insets and a
 ## screen too short for the box under the scope among them.
 func test_the_open_map_and_the_open_drawer_are_one_unfold_and_the_tabs_take_the_touch() -> void:
@@ -644,10 +644,11 @@ func test_the_open_map_and_the_open_drawer_are_one_unfold_and_the_tabs_take_the_
 		assert_array(_sent).override_failure_message(why).is_empty()
 
 
-## A tap on an own producer opens the drawer and folds a pinned map, leaving the pin; a turn keeps
+## Selecting an own producer no longer opens the drawer (P310): a pinned map stays as it is, and so
+## does its pin; a turn keeps
 ## the full map and the drawer as they are, each in its place in the other orientation (HOW_TO_PLAY,
 ## "Turn the phone").
-func test_a_producer_tap_swaps_the_map_for_the_drawer_and_a_turn_keeps_either() -> void:
+func test_a_producer_selection_leaves_the_pinned_map_and_a_turn_keeps_either_unfold() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size)
 		_feed.set_process(false)
@@ -656,8 +657,8 @@ func test_a_producer_tap_swaps_the_map_for_the_drawer_and_a_turn_keeps_either() 
 		_state.open(HudState.Unfold.RADAR)
 		await _settle()
 		_controller.selection.set_ids(PackedInt32Array([HQ]))
-		assert_bool(_sidebar.is_open()).override_failure_message(why).is_true()
-		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.DRAWER)
+		assert_bool(_sidebar.is_open()).override_failure_message(why).is_false()
+		assert_int(_state.current).override_failure_message(why).is_equal(HudState.Unfold.RADAR)
 		assert_bool(_state.pinned).override_failure_message(why).is_true()
 		_controller.selection.clear()
 		_state.pinned = false

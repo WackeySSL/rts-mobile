@@ -18,6 +18,9 @@ const XP: StringName = &"MAIN_XP"
 const XP_TOP: StringName = &"MAIN_XP_TOP"
 const VERSION: StringName = &"MAIN_VERSION"
 const COPYRIGHT: StringName = &"MAIN_COPYRIGHT"
+const RESTORING: StringName = &"MAIN_RESTORING"
+const RESTORE_CANCEL: StringName = &"MAIN_RESTORE_CANCEL"
+const RESTORE_FAILED: StringName = &"MAIN_RESTORE_FAILED"
 
 const ENGLISH: Dictionary[StringName, String] = {
 	TITLE: "TREADLINE",
@@ -35,6 +38,9 @@ const ENGLISH: Dictionary[StringName, String] = {
 	XP_TOP: "%d XP",
 	VERSION: "v%s · © AppCode ApS",
 	COPYRIGHT: "© AppCode ApS",
+	RESTORING: "Restoring your match",
+	RESTORE_CANCEL: "CANCEL",
+	RESTORE_FAILED: "That match could not be restored. It has been discarded.",
 }
 
 static var _registered: bool = false

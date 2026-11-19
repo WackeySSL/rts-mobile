@@ -444,6 +444,93 @@ above stand):
   (its tab; ADR 0024 Q3 A kept); after a placement that began in the drawer ends by a build or the
   X (ADR 0024 R1 kept; a strike aim leaves it closed). **Closes** on its close button, a map gesture
   (§1), a swipe, the start of placement or of a strike aim, `PAUSE`. No pin (§6).
+  (2026-11-18, P310; Michael, after a phone test) Selecting an own producer no longer opens the
+  drawer. The accepted text above, "on a tap that selects an own producer (its tab; ADR 0024 Q3 A
+  kept)", made the drawer come up whenever he tapped a building to mend it in combat, and upright
+  its sheet then covered the command bar and Mend. The tap now only selects the building (Mend and
+  Sell show) and sets the drawer's tab to that producer's, so BUILD opens there. A tap on the map
+  folds an open drawer as every map gesture does (§1) and the selection never reopens it; a
+  selection that comes by another path while the drawer is open switches its tab and leaves it
+  open. BUILD and the Ready chip still open it.
+
+
+Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
+accepted): a finished structure waiting at the Structures head has no work left, so it is the item
+that "finishes first" and **the ring shows full** until it is placed (until P130).
+
+Note (2026-11-05, P26ay docs): P130 is not built (Michael, 2026-11-05), so the Ready chip, the READY
+state and the full ring until placement stay; "interim" and "until P130" above no longer apply, and
+a construction never occurs, so the ring and the count badge read the queues' items alone.
+
+Status note (2026-11-03, P26ar docs; lead decisions on P120c #295, as merged; the text and the note
+above stand):
+- **Stalled** means that no queue head advanced between two published snapshots. Low power is no
+  exception and needs none: on low power alone, every head still advances, at
+  `low_power_percent` (a unit head at the cap or with no free exit does not). So a producer that is
+  blacked out (or destroyed) on low power is a stall like any other.
+- A pinned full map on very short screens during the strike aim: see §7's note.
+
+### 5. The build drawer
+- **Container:** ADR 0024's clipping holder and slide (M1): `menu_slide_ms` (160) drives the
+  drawer in from the right edge in landscape (the width slides) and up from the bottom in portrait
+  (the height slides); input never waits; a turn ends the slide at its target. `BuildSidebar`
+  keeps its class name, its tests and its wiring; P120 rewrites its layout (a rename is not worth
+  the churn).
+- **Landscape: a side panel** at the right edge, the full safe height, 40 % of the screen width,
+  clamped to [312, 420] dp (three 88 dp cards, two gaps and 16 dp padding each side is 312); its
+  backdrop runs to the screen's right edge, its content stays in the safe rect. It covers the scope
+  and the right column; the pill hides (§3). On a short screen the card grid scrolls: on
+  `web_phone_small` (280 dp safe height) the head (48), the tabs (48), the queue row (56 and its
+  20 dp label) and three 8 dp gaps leave 84 dp, less than one 96 dp card row, so the grid is a
+  vertical scroll there (a test pins it).
+- **Portrait: a bottom sheet** of the full width and half the screen height, at least the head,
+  the tabs, one row of cards and the queue row (about 312 dp); taller content scrolls inside the
+  sheet. The command bar and BUILD hide under it; the pill hides; the scope stays.
+- **Swipe to close** (the design's rule; a lead decision of 2026-11-01): a drag toward the edge the
+  drawer came from, past `drawer_swipe_dp` (`data/input_settings.tres`, 48), closes it. In
+  landscape any horizontal drag on the panel counts (the grid scrolls vertically); in portrait only
+  a drag that starts on the sheet's head with its handle counts, because the grid's own scroll is
+  vertical. ADR 0024's "Alternatives" left a swipe for later; this takes it, for closing only.
+- **From the top:** the head (48 dp): the economy (credits with "+N/min", the power bar with
+  "used/made POWER") and the close button (48 dp, a chevron towards the edge it leaves by); the tabs
+  (48 dp, an icon and the name: Structures, Infantry, Vehicles; never "Base", §16); the card grid;
+  the queue row.
+- **Cards:** 88 x 96 dp (landscape) and 92 x 100 dp (portrait) at least; the columns are as many as
+  fit (three in the landscape panel; upright three on the 6-inch phone and at 360 dp, four on a
+  screen about 450 dp wide or wider), never fewer than two. A card shows the item card picture
+  (P85e), the name and the price (tabular). States, each
+  with a shape as well as a colour (ADR 0019 §1's tile states kept and named as the design names
+  them): **ready to buy** (available); **in production** (the head: the picture fills with the
+  percent, "xN" badge); **queued** ("xN" badge, no fill); **selected** (the structure that started
+  placement, accent border); **too expensive** (red price and stripes; a tap shakes it, as today;
+  see question 6); **queue full** (P85b's FULL, stripes and a "FULL" word, the shape the review
+  asked for); **locked** (padlock, dimmed, and the words "Needs <display_name>" of the missing
+  requirement or producer); **ready** (structures, until P130: "Ready" banner; a tap starts
+  placement).
+- **Taps:** a unit card: +1 (`QUEUE`). A long-press on a unit card (`long_press_ms`): as many
+  `QUEUE`s as the queue has room for and the credits pay, at most `queue_hold_count`
+  (`data/input_settings.tres`, 5) (answer 2 A; before it the long-press cancelled the last one of
+  the type, ADR 0019 Q2). A structure card: as today until P130
+  (queue it, or start placement when it is ready), then ADR 0026's tap-to-place.
+- **Queue row** (the open tab's queue): the producer's display name and "N IN QUEUE" (after
+  ADR 0026, on Structures: "CONSTRUCTION" and the building's name and percent, or "NOTHING
+  BUILDING" with the hint "Tap a building, then place it on the map"), then one 56 dp thumb per item,
+  the head with a progress bar, empty slots dashed. **A tap on an item cancels it** (`CANCEL [tab,
+  slot]`, full refund, ADR 0018 §5) with the haptic. After a cancel the row ignores taps until the
+  next published snapshot shows the queue again, so a quick second tap never sends a slot index the
+  first cancel has shifted. The design's repeat button is dropped: no repeat production exists.
+- **Opens** on BUILD, on the Ready chip (Structures tab) and on a tap that selects an own producer
+  (its tab; ADR 0024 Q3 A kept); after a placement that began in the drawer ends by a build or the
+  X (ADR 0024 R1 kept; a strike aim leaves it closed). **Closes** on its close button, a map gesture
+  (§1), a swipe, the start of placement or of a strike aim, `PAUSE`. No pin (§6).
+  (2026-11-18, P310; Michael, after a phone test) A tap that selects an own producer no longer
+  opens the drawer. The accepted text above, "on a tap that selects an own producer (its tab; ADR
+  0024 Q3 A kept)", made the drawer come up whenever he tapped a building to mend it in combat,
+  over the battle. The tap now only selects the building (Mend and Sell show in the command bar);
+  when the drawer is already open, the tap switches it to that producer's tab, and a second tap on
+  the selected producer takes it back to its tab, as before. BUILD and the Ready chip still open
+  it. The drawer a map gesture folds is remembered for that tap (`HudState.drawer_folded_by_gesture`),
+  so an open drawer stays open on the new tab.
 
 Status note (2026-11-03, the docs row after wave y; P120 #285 as merged; the text above stays as
 accepted):
@@ -692,7 +779,13 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
 - **Stop also works during placement and the strike aim** (a lead decision): it is a tap on the
   HUD, not on the map, and this section names no exception.
 - **The chip's label** asks for its text's width, capped at 140 dp (`CommandBar.LABEL_MAX_DP`), and
-  the bar grows with it, so a building's name is not cut to the health bar's width.
+  the bar grows with it, so a building's name is not cut to the health bar's width. (2026-11-18,
+  P310; Michael, after a phone test) That text is replaced for a building: its chip no longer
+  shows a name, own or enemy, in both orientations, only its item card with the health bar under
+  it (not beside it). The name was so wide upright that it pushed Mend and Sell off the screen;
+  now Deselect, the chip and Mend and Sell fit the 264 dp beside BUILD of a 360 dp wide phone
+  without scrolling (the `web_phone_portrait` and `notch_design_portrait` profiles pin it). The
+  label stays for a unit type's "xN" count.
 - **A fogged enemy building** selected in the chip shows no health, as `HealthBarLayer` hides its
   bar.
 - **The bar is a plain Control.** Only the chip uses the theme variation `SelectionPanel`, which

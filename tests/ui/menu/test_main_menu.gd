@@ -25,6 +25,7 @@ var _save: Node
 var _progression: Node
 var _routes: MenuRoutes
 var _resume: Array[bool] = [false]
+var _notice: Array[StringName] = [&""]
 var _quits: Array[int] = [0]
 var _version_before: Variant
 
@@ -47,6 +48,7 @@ func before_test() -> void:
 	_progression.call("bind", _save, null)
 	_routes = MenuRoutes.new()
 	_resume[0] = false
+	_notice[0] = &""
 	_quits[0] = 0
 	_version_before = (
 		ProjectSettings.get_setting(VERSION_KEY)
@@ -174,6 +176,14 @@ func test_continue_shows_only_with_a_resume_file() -> void:
 	assert_bool(shown.call()).is_true()
 
 
+func test_a_failed_restore_leaves_a_notice_on_the_menu() -> void:
+	_notice[0] = MainMenuText.RESTORE_FAILED
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var texts: Array[String] = []
+	_collect(_main, texts)
+	assert_array(texts).contains([MainMenuText.ENGLISH[MainMenuText.RESTORE_FAILED]])
+
+
 func test_a_route_nobody_registered_is_disabled_and_a_registered_one_opens() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	var buttons: Array[Button] = _buttons()
@@ -271,6 +281,7 @@ func _open(profile: UiMetrics, consent: bool) -> void:
 	_main.progression = _progression
 	_main.ad_service = _ads
 	_main.resume_check = func() -> bool: return _resume[0]
+	_main.take_notice = func() -> StringName: return _notice[0]
 	_stack.push(_main)
 	for _frame: int in range(3):
 		await await_idle_frame()
