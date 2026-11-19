@@ -8,6 +8,7 @@ interstitial_free_matches = 2
 interstitial_min_play_s = 240
 interstitial_per_match = 1
 fullscreen_timeout_ms = 8000
+fullscreen_late_cap_ms = 20000
 billing_timeout_ms = 8000
 consent_timeout_ms = 10000
 reward_xp_multiplier = 2

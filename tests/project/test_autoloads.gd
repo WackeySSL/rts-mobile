@@ -12,15 +12,18 @@ const SERVICE_SCRIPTS: Dictionary = {
 	"SaveService": "res://game/meta/save_service.gd",
 	"Progression": "res://game/meta/progression_service.gd",
 	"MenuFlow": "res://game/ui/menu/menu_flow_service.gd",
+	"DeployCardService": "res://game/ui/menu/deploy_card_service.gd",
 }
 const SIM_DIR: String = "res://game/sim/"
 ## Autoloads are ready in list order, so a service must be listed after what its `_ready` reads
 ## (ADR 0039 section 10: AdService reads SaveService's `ads` section; Phase 5's Progression, when
 ## it exists, may be read by it). A dependency that is not listed is not checked.
-## MenuFlow (ADR 0043 section 6) calls AdService and Progression, so it is listed last.
+## MenuFlow (ADR 0043 section 6) calls AdService and Progression, so it is listed after them
+## (DeployCardService follows it).
 const MUST_PRECEDE: Dictionary = {
 	"AdService": ["SaveService", "Progression"],
 	"MenuFlow": ["SaveService", "Progression", "AdService"],
+	"DeployCardService": ["MenuFlow"],
 }
 
 

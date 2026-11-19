@@ -58,6 +58,12 @@ func _ready() -> void:
 	_apply()
 
 
+## The widest the column can be: the safe width inside the gaps, less the scroll bar's width.
+func column_room_px() -> float:
+	var inside: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), GAP_DP)
+	return maxf(inside.size.x - scroll.get_v_scroll_bar().get_combined_minimum_size().x, 0.0)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
 		_apply()  # A screen back from under another one lays itself out for the screen it is on.

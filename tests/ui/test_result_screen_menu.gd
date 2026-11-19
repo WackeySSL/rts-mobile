@@ -235,6 +235,72 @@ func test_the_offer_slot_holds_the_hidden_double_xp_offer_and_is_0_tall() -> voi
 	assert_bool(slot.is_visible_in_tree()).is_false()
 
 
+func test_both_buttons_are_off_and_play_again_reads_starting_while_the_flow_runs() -> void:
+	await _open(130, 30)
+	MatchRig.end(_main, [2])
+	var screen: ResultScreen = _screen()
+	var back: Button = screen.find_child("BackButton", true, false)
+	var again: Button = screen.find_child("PlayAgainButton", true, false)
+	var again_text: String = again.text
+	var back_text: String = back.text
+	for tap: Button in [again, back]:
+		tap.pressed.emit()
+		var expected: String = tr(MapSelectText.STARTING) if tap == again else again_text
+		assert_str(again.text).is_equal(expected)  # Only the Play again path says "STARTING…".
+		assert_str(back.text).is_equal(back_text)
+		assert_bool(again.disabled).is_true()
+		assert_bool(back.disabled).is_true()
+		_flow.release.emit()
+		await await_idle_frame()
+		assert_str(again.text).is_equal(again_text)
+		assert_bool(again.disabled or back.disabled).is_false()
+	# A refused restart restores both too.
+	_flow.refuse = ERR_BUSY
+	await (
+		assert_error(func() -> void: again.pressed.emit())
+		. is_push_warning("ResultScreen: restart refused (Busy)")
+	)
+	assert_str(again.text).is_equal(again_text)
+	assert_bool(again.disabled or back.disabled).is_false()
+
+
+func test_play_again_keeps_its_rect_while_it_reads_starting_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		get_window().size = size
+		await await_idle_frame()
+		await _open(110, 30)
+		MatchRig.end(_main, [2])
+		_screen().settle()
+		await await_idle_frame()
+		var again: Button = _screen().find_child("PlayAgainButton", true, false)
+		var back: Button = _screen().find_child("BackButton", true, false)
+		var again_rect: Rect2 = again.get_global_rect()
+		var back_rect: Rect2 = back.get_global_rect()
+		again.pressed.emit()
+		await await_idle_frame()
+		assert_str(again.text).is_equal(tr(MapSelectText.STARTING))
+		var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
+		assert_bool(again.size.y >= floor_px).override_failure_message(str(size)).is_true()
+		assert_object(again.get_global_rect()).override_failure_message(str(size)).is_equal(
+			again_rect
+		)
+		assert_object(back.get_global_rect()).override_failure_message(str(size)).is_equal(
+			back_rect
+		)
+		_flow.release.emit()
+		await await_idle_frame()
+		assert_str(again.text).is_equal("PLAY AGAIN")
+		assert_object(again.get_global_rect()).override_failure_message(str(size)).is_equal(
+			again_rect
+		)
+		assert_object(back.get_global_rect()).override_failure_message(str(size)).is_equal(
+			back_rect
+		)
+		_main.free()
+		CommandQueue.clear()
+		await await_idle_frame()
+
+
 func test_the_layout_with_the_xp_block_fits_the_six_sizes() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size
