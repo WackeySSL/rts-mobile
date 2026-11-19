@@ -16,9 +16,7 @@ const WORKER: int = MatchRunner.TickMode.WORKER
 ## that posts it and the call that must find it in flight.
 const DELAY_MSEC: int = 30
 const FRAME: float = 1.0 / 60.0
-const WARNING_TEXT: String = (
-	"MatchRunner: controller_of(2) while a job or the AI thread runs (ADR 0038)"
-)
+const WARNING_TEXT: String = "MatchRunner: controller_of(2) while a job or the AI thread runs (ADR 0038)"
 
 var _runners: Array[MatchRunner] = []
 var _probes: Array[SimProbe] = []
