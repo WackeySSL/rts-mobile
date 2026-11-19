@@ -30,7 +30,9 @@ func run_consent(now_ms: Callable, timeout_ms: int, debug_eea: bool) -> bool:
 	return _finish(allowed)
 
 
-## Awaitable until the privacy options form closes; nothing when none is required.
+## Awaitable until the privacy options form closes; nothing when none is required. Gives up at
+## `timeout_ms` if the form has not shown (the flow is then free again); once shown it waits for
+## the close with no timeout.
 func run_privacy_options(now_ms: Callable, timeout_ms: int) -> void:
 	if _busy:
 		await settled

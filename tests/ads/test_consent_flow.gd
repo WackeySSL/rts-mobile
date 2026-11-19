@@ -86,6 +86,107 @@ func test_the_inert_base_backend_ends_every_wait_and_requests_no_ads() -> void:
 	assert_bool(base.can_request_ads()).is_false()
 
 
+# --- the privacy options deadline -------------------------------------------------------------
+
+
+func _privacy_ump() -> FakeUmp:
+	var ump: FakeUmp = FakeUmp.new()
+	ump.consent_required = true
+	ump.update_info(false)
+	return ump
+
+
+func _tick() -> void:
+	await (Engine.get_main_loop() as SceneTree).process_frame
+
+
+func test_privacy_options_that_never_show_return_at_the_timeout_and_free_the_flow() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.show_never_shows = true
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
+	var flow: ConsentFlow = _flow(ump, false)
+	var settled: Array[bool] = []
+	flow.settled.connect(func(can: bool) -> void: settled.append(can))
+	var done: Array[bool] = []
+	var run: Callable = func() -> void:
+		await flow.run_privacy_options(now, 1000)
+		done.append(true)
+	run.call()
+	clock[0] = 999
+	await _tick()
+	await _tick()
+	assert_array(done).is_empty()  # One ms short: still waiting.
+	assert_array(settled).is_empty()
+	clock[0] = 1000
+	await _tick()
+	await _tick()
+	assert_array(done).is_equal([true])
+	assert_array(settled).is_equal([false])  # The flow finished and is free again; no consent yet.
+	assert_int(ump.form_dismissed.get_connections().size()).is_equal(0)
+	assert_int(ump.form_shown.get_connections().size()).is_equal(0)
+	# A later consent run does not await the dead flow.
+	ump.show_never_shows = false
+	ump.show_held_form()  # The late show of the dead flow comes and closes by itself.
+	assert_bool(await flow.run_consent(now, 1000, false)).is_true()
+
+
+func test_a_privacy_options_form_that_showed_is_waited_for_past_the_timeout() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.form_never_closes = true
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
+	var flow: ConsentFlow = _flow(ump, false)
+	var done: Array[bool] = []
+	var run: Callable = func() -> void:
+		await flow.run_privacy_options(now, 1000)
+		done.append(true)
+	run.call()
+	clock[0] = 100000  # Far past the timeout.
+	await _tick()
+	await _tick()
+	assert_int(ump.forms_shown).is_equal(1)
+	assert_array(done).is_empty()  # Shown: no timeout.
+	ump.dismiss(true)
+	assert_array(done).is_equal([true])
+
+
+func test_a_privacy_options_show_that_comes_late_is_ignored_without_a_second_finish() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.show_never_shows = true
+	ump.form_never_closes = true
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
+	var flow: ConsentFlow = _flow(ump, false)
+	var settled: Array[bool] = []
+	flow.settled.connect(func(can: bool) -> void: settled.append(can))
+	var run: Callable = func() -> void: await flow.run_privacy_options(now, 1000)
+	run.call()
+	clock[0] = 1000
+	await _tick()
+	await _tick()
+	assert_array(settled).has_size(1)
+	ump.show_held_form()  # The late show: nobody waits for it.
+	assert_int(ump.forms_shown).is_equal(1)
+	ump.dismiss(true)  # The late close.
+	assert_array(settled).has_size(1)  # Not finished twice.
+	# The flow works again: a new run shows and finishes normally.
+	ump.show_never_shows = false
+	ump.form_never_closes = false
+	await flow.run_privacy_options(now, 1000)
+	assert_int(ump.forms_shown).is_equal(2)
+	assert_array(settled).has_size(2)
+
+
+func test_a_failed_privacy_options_show_ends_the_wait_without_the_timeout() -> void:
+	var ump: FakeUmp = _privacy_ump()
+	ump.show_fails = true
+	var flow: ConsentFlow = _flow(ump, false)
+	var frame: int = Engine.get_process_frames()
+	await flow.run_privacy_options(_now, 1000)
+	assert_int(Engine.get_process_frames()).is_equal(frame)
+
+
 # --- the debug geography --------------------------------------------------------------------
 
 

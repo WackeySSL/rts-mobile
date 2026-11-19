@@ -143,6 +143,9 @@ func show_privacy_options() -> void:
 		return
 	_connect_signals()
 	ump.show_privacy_options_form()
+	# The plugin has no "shown" callback: the hand-over counts as shown, so a form the player has
+	# open is never cut by a deadline (ConsentBackend.form_shown).
+	form_shown.emit()
 
 
 func _plugin(singleton: String) -> Object:

@@ -19,6 +19,8 @@ var form_load_fails: bool = false
 var form_never_loads: bool = false
 var form_never_closes: bool = false
 var show_fails: bool = false
+## A show that never opens: no form, no dismissal, until `show_held_form` (a late show).
+var show_never_shows: bool = false
 var offline: bool = false
 ## Fake-only: forms close at once. Set by ConsentFlow from `fake_auto_close`.
 var auto_close: bool = true
@@ -36,6 +38,8 @@ var _status: Status = Status.UNKNOWN
 var _eea_user: bool = false
 var _is_open: bool = false
 var _node: FakeConsentForm = null
+var _held_with_close: bool = false
+var _is_held: bool = false
 
 
 func update_info(debug_eea: bool) -> void:
@@ -106,14 +110,30 @@ func close_unchanged() -> void:
 		_end()
 
 
+## Test hook: a show held by `show_never_shows` opens now (it came late).
+func show_held_form() -> void:
+	if _is_held:
+		_is_held = false
+		_open(_held_with_close)
+
+
 func _show(with_close: bool) -> void:
-	if _is_open:
+	if _is_open or _is_held:
 		return
+	if show_never_shows:
+		_is_held = true
+		_held_with_close = with_close
+		return
+	_open(with_close)
+
+
+func _open(with_close: bool) -> void:
 	forms_shown += 1
 	if show_fails:
 		form_dismissed.emit()
 		return
 	_is_open = true
+	form_shown.emit()
 	if form_never_closes:
 		return
 	if auto_close:
