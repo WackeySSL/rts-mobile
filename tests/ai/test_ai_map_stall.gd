@@ -8,22 +8,22 @@ extends "res://tests/ai/support/map_suite.gd"
 
 const STEM: String = "res://data/scenarios/skirmish_curlew_crags"
 const SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
-const WEST: Vector3i = Vector3i(8, 5, 26)
-const CENTRE: Vector3i = Vector3i(25, 6, 26)
-const EAST: Vector3i = Vector3i(43, 5, 26)
+const START: Vector2i = Vector2i(24, 24)
 
 
-func _walled(suffix: String, army_x: int, army_y: int) -> int:
-	_start("%s%s.tres" % [STEM, suffix], army_x, army_y)
-	_seal(WEST.x, WEST.y, WEST.z)
-	_seal(CENTRE.x, CENTRE.y, CENTRE.z)
-	_seal(EAST.x, EAST.y, EAST.z)
-	return _walls_alive()
+func before_test() -> void:
+	_crossings = [Vector3i(8, 5, 26), Vector3i(25, 6, 26), Vector3i(43, 5, 26)]
+	_band = Vector2i(26, 29)
 
 
 func test_a_wave_stalled_before_three_walled_passes_shoots_a_wall_and_reaches_the_base() -> void:
 	for suffix: String in SUFFIXES:
-		var standing: int = _walled(suffix, 24, 24)
+		_start("%s%s.tres" % [STEM, suffix], START.x, START.y)
+		for index: int in _crossings.size():
+			_seal_crossing(index)
+		var standing: int = _walls_alive()
+		for index: int in _crossings.size():
+			assert_bool(_blocked(index)).override_failure_message(suffix).is_true()
 		_run_until(_reached_base)
 		assert_bool(_reached_base()).override_failure_message(suffix).is_true()
 		assert_int(_walls_alive()).override_failure_message(suffix).is_less(standing)
