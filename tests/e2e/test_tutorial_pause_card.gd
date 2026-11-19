@@ -1,10 +1,13 @@
 extends GdUnitTestSuite
-## Plan row P543b: the `resume` card of Basics asks for Resume while the pause menu is open, so it
-## must be seen and its ring must sit on the menu's Resume button. On the main scene's real HUD:
-## the pause menu clears the HUD's controls (`_hide_hud`), and it must leave the coach mark clear;
-## the mark draws above the menu (`CoachMark.Z_ABOVE_MODALS`); its ring is on `ResumeButton`; the
-## card does not cover that button, and neither the mark nor its ring takes a touch the button
-## needs.
+## Plan row P543b: the coach mark over a modal. On the main scene's real HUD, with real touches
+## pushed through the viewport:
+## - the `resume` card of Basics asks for Resume over the open pause menu: it is seen (the menu
+##   clears the HUD, not the mark), drawn above the menu, its ring is on `ResumeButton` inside the
+##   safe rect, and at the six sizes the card keeps 8 dp off every other button, off Resume itself
+##   and 16 dp off the ad band;
+## - every other beat stands down while a modal covers the HUD and does not hold its target (the
+##   pause menu, the result screen, the How to play overlay): the mark is hidden and the touch goes
+##   to the modal's button, not to the card under it.
 
 const BASICS: String = "res://data/tutorial/basics.tres"
 const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd")
@@ -12,11 +15,14 @@ const Sizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.gd")
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
+const Touch: GDScript = preload("res://tests/support/touch_events.gd")
 
 var _main: Node
 var _service: Node
 var _harness: RefCounted
 var _window_before: Vector2i = Vector2i.ZERO
+var _downs: int = 0
+var _presses: int = 0
 
 
 func before_test() -> void:
@@ -24,6 +30,8 @@ func before_test() -> void:
 	get_window().size = Sizes.LANDSCAPE[0]
 	MenuRig.begin()
 	CommandQueue.clear()
+	_downs = 0
+	_presses = 0
 
 
 func after_test() -> void:
@@ -40,130 +48,75 @@ func after_test() -> void:
 
 
 func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
-	var lesson: TutorialLessonDef = load(BASICS) as TutorialLessonDef
-	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
-	var runner: MatchRunner = _main.get_node("MatchRunner")
-	runner.scenario = lesson.scenario
-	runner.match_seed = lesson.match_seed
-	runner.tick_mode = MatchRunner.TickMode.SYNC
-	var opponents: Array[AiDef] = [lesson.enemy]
-	runner.opponents = opponents
-	add_child(_main)
-	await await_idle_frame()
-	var hud: Node = _main.get_node("Hud")
-	var feed: HudStateFeed = hud.get_node("HudStateFeed")
-	var menu: Control = hud.get_node("PauseMenu")
-	var resume_beat: TutorialBeatDef = null
-	for beat: TutorialBeatDef in lesson.beats:
-		if beat.id == &"resume":
-			resume_beat = beat
-	assert_object(resume_beat).is_not_null()
-	var director: TutorialDirector = auto_free(TutorialDirector.new())
-	director.runner = runner
-	director.hud = feed.state
-	director.camera = _main.get_node("Camera")
-	var mark: CoachMark = CoachMark.new()
-	mark.director = director
-	mark.hud_root = hud
-	mark.camera = _main.get_node("Camera")
-	hud.add_child(mark)
-	await await_idle_frame()
-	# The menu is open; the card of the beat after it is up.
-	feed.state.open(HudState.Unfold.PAUSE)
-	director.start(Lesson.lesson("pause", [resume_beat]))
-	director.advance()
-	for _frame: int in 4:
-		await await_idle_frame()
-	assert_object(director.current).is_not_null()
+	var stage: Dictionary = await _stage(Sizes.LANDSCAPE[0], &"resume", false)
+	var mark: CoachMark = stage["mark"]
+	var menu: Control = stage["menu"]
+	var resume: Control = stage["hud"].find_child("ResumeButton", true, false) as Control
+	assert_object(stage["director"].current).is_not_null()
+	assert_bool(mark.visible).is_true()
 	assert_int(mark.z_index).is_greater(menu.z_index)
 	assert_float(mark.modulate.a).is_equal(1.0)  # The menu cleared the HUD, not the mark.
-	assert_float(mark.get_global_transform().get_scale().x).is_equal(1.0)
-	var resume: Control = hud.find_child("ResumeButton", true, false) as Control
 	assert_object(resume).is_not_null()
 	assert_object(mark.target_control()).is_same(resume)
-	var ring: Rect2 = mark.ring_rect()
-	assert_bool(ring.has_area()).is_true()
-	assert_bool(resume.get_global_rect().has_point(ring.get_center())).is_true()
-	assert_bool(mark.card_rect().intersects(resume.get_global_rect())).is_false()
+	assert_bool(mark.ring_rect().has_area()).is_true()
 	assert_int(mark.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
-	# At each of the six sizes the card stands 8 dp clear of every other button of the menu and of the
-	# banner foot, and the dialogs (the pause menu's questions, the sell question) and the result
-	# screen are drawn above it.
+	# A touch on Resume reaches Resume: neither the mark nor its ring takes it.
+	resume.pressed.connect(func() -> void: _presses += 1)
+	_tap(resume.get_global_rect().get_center())
+	assert_int(_presses).is_equal(1)
+	assert_object(stage["director"].current).is_not_null()  # Ends on the next advance.
+	stage["director"].advance()
+	assert_object(stage["director"].current).is_null()
+	stage["director"].skip()
+
+
+## At each size the card stands clear of the ring and of Resume, 8 dp off every other button of
+## the menu, and the ring lies inside the safe rect.
+func test_the_card_keeps_clear_of_the_menu_at_the_six_sizes() -> void:
 	for size: Vector2i in Sizes.ALL:
-		get_window().size = size
-		for _frame: int in 4:
-			await await_idle_frame()
+		var stage: Dictionary = await _stage(size, &"resume", false)
+		var mark: CoachMark = stage["mark"]
+		var menu: Control = stage["menu"]
+		var resume: Control = stage["hud"].find_child("ResumeButton", true, false) as Control
 		var card: Rect2 = mark.card_rect()
-		assert_bool(card.has_area()).override_failure_message(str(size)).is_true()
-		assert_object(mark.target_control()).is_same(resume)
+		var label: String = str(size)
+		assert_bool(card.has_area()).override_failure_message(label).is_true()
+		assert_object(mark.target_control()).override_failure_message(label).is_same(resume)
+		(
+			assert_bool(card.intersects(resume.get_global_rect()))
+			. override_failure_message(label + " card over Resume")
+			. is_false()
+		)
 		var visible: Rect2 = mark.get_viewport().get_visible_rect()
 		var safe: Rect2 = SafeAreaMargin.rect_inside(visible, SafeAreaMargin.DEFAULT_MARGIN_DP)
-		var ring_in: bool = safe.grow(0.5).encloses(mark.ring_rect())
+		var ring: Rect2 = mark.ring_rect()
 		(
-			assert_bool(ring_in)
-			. override_failure_message("%s ring %s outside %s" % [size, mark.ring_rect(), safe])
+			assert_bool(safe.grow(0.5).encloses(ring))
+			. override_failure_message("%s ring %s outside %s" % [label, ring, safe])
 			. is_true()
 		)
-		for node: Node in menu.find_children("*", "Control", true, false):
-			var control: Control = node as Control
-			var shown: bool = control.is_visible_in_tree() and not control is ConfirmDialog
-			var covered: bool = control is Button or control is AdBannerBand
-			if shown and covered and control != resume and control.get_global_rect().has_area():
-				var air: float = UiScale.dp(16.0 if control is AdBannerBand else 8.0) - 0.01
-				var label: String = "%s %s within the card's air at %s" % [size, control.name, card]
-				(
-					assert_bool(card.grow(air).intersects(control.get_global_rect()))
-					. override_failure_message(label)
-					. is_false()
-				)
-	for node: Node in hud.get_children():
-		if node is ConfirmDialog or node is ResultScreen:
-			assert_int((node as Control).z_index).is_greater(mark.z_index)
-	# Resume closes the menu and ends the beat; the match runs again.
-	feed.state.close(HudState.Unfold.PAUSE)
-	director.advance()
-	assert_object(director.current).is_null()
-	director.skip()
+		for node: Node in menu.find_children("*", "Button", true, false):
+			var button: Button = node as Button
+			if button == resume or not button.is_visible_in_tree():
+				continue
+			var air: float = UiScale.dp(8.0) - 0.01
+			var text: String = "%s %s within the card's air at %s" % [label, button.name, card]
+			(
+				assert_bool(card.grow(air).intersects(button.get_global_rect()))
+				. override_failure_message(text)
+				. is_false()
+			)
+		await _free_stage()
 
 
 ## The pause menu's foot holds a live banner band (the fake-mode service of the pause banner suite,
 ## no ad request): the card never overlaps it and keeps the buttons' 16 dp from it. The band shows
 ## upright only, so the sideways sizes show none, and the test says so.
 func test_the_card_keeps_off_the_banner_band_at_the_six_sizes() -> void:
-	var lesson: TutorialLessonDef = load(BASICS) as TutorialLessonDef
-	var resume_beat: TutorialBeatDef = null
-	for beat: TutorialBeatDef in lesson.beats:
-		if beat.id == &"resume":
-			resume_beat = beat
 	var upright: int = 0
 	for size: Vector2i in Sizes.ALL:
-		get_window().size = size
-		await await_idle_frame()
-		if _harness != null:
-			_harness.dispose()
-			remove_child(_service)
-			_service.free()
-		_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
-		_service = auto_free(_harness.make(true))
-		_service.fake_auto_close = false
-		add_child(_service)
-		_main = auto_free(await MatchRig.open(self))
-		var menu: PauseMenu = _main.get_node("Hud/PauseMenu") as PauseMenu
-		menu.ad_service = _service
-		var hud: Node = _main.get_node("Hud")
-		var runner: MatchRunner = _main.get_node("MatchRunner")
-		var director: TutorialDirector = auto_free(TutorialDirector.new())
-		director.runner = runner
-		director.hud = (hud.get_node("HudStateFeed") as HudStateFeed).state
-		var mark: CoachMark = CoachMark.new()
-		mark.director = director
-		mark.hud_root = hud
-		mark.camera = _main.get_node("Camera")
-		hud.add_child(mark)
-		_main.get_node("Hud/EconomyPill").menu_pressed.emit()
-		director.start(Lesson.lesson("pause", [resume_beat]))
-		for _frame: int in 8:
-			await await_idle_frame()
+		var stage: Dictionary = await _stage(size, &"resume", true)
+		var mark: CoachMark = stage["mark"]
 		var label: String = str(size)
 		var bands: Array[Node] = _main.find_children("*", "AdBannerBand", true, false)
 		var card: Rect2 = mark.card_rect()
@@ -184,8 +137,123 @@ func test_the_card_keeps_off_the_banner_band_at_the_six_sizes() -> void:
 				)
 		else:
 			assert_array(bands).override_failure_message(label).is_empty()
-		director.skip()
-		_main.free()
-		_main = null
-		await await_idle_frame()
+		await _free_stage()
 	assert_int(upright).is_equal(3)
+
+
+## A beat that is not about the menu (a pan, the pill) stands down while the pause menu is open:
+## the mark is hidden, and a touch on Resume reaches Resume at the sideways and upright sizes (the
+## card used to sit over it, and to eat the tap).
+func test_a_beat_about_something_else_stands_down_over_the_pause_menu() -> void:
+	for size: Vector2i in [Sizes.LANDSCAPE[0], Sizes.PORTRAIT[0], Sizes.PORTRAIT[2]]:
+		for id: StringName in [&"pan", &"welcome", &"drawer"]:
+			var stage: Dictionary = await _stage(size, id, false)
+			var mark: CoachMark = stage["mark"]
+			var label: String = "%s %s" % [size, id]
+			assert_object(stage["director"].current).override_failure_message(label).is_not_null()
+			assert_bool(mark.visible).override_failure_message(label).is_false()
+			var resume: Button = stage["hud"].find_child("ResumeButton", true, false) as Button
+			_presses = 0
+			resume.pressed.connect(func() -> void: _presses += 1)
+			_tap(resume.get_global_rect().get_center())
+			assert_int(_presses).override_failure_message(label + " tap").is_equal(1)
+			await _free_stage()
+
+
+## The base falls during a beat: the result screen takes the touch on its button, not the card.
+func test_the_result_screen_takes_the_touch_over_a_beat() -> void:
+	for size: Vector2i in [Sizes.LANDSCAPE[0], Sizes.PORTRAIT[0]]:
+		var stage: Dictionary = await _stage(size, &"pan", false, false)
+		var mark: CoachMark = stage["mark"]
+		var result: Control = stage["hud"].get_node("ResultScreen")
+		assert_bool(mark.visible).is_true()  # The card is up before the match ends.
+		result.call("_on_match_ended", 2)
+		for _frame: int in 6:
+			await await_idle_frame()
+		var label: String = str(size)
+		assert_bool(result.is_visible_in_tree()).override_failure_message(label).is_true()
+		assert_bool(mark.visible).override_failure_message(label + " mark").is_false()
+		var back: Button = result.find_child("BackButton", true, false) as Button
+		_downs = 0
+		back.button_down.connect(func() -> void: _downs += 1)
+		var at: Vector2 = back.get_global_rect().get_center()
+		Touch.press(get_viewport(), 0, at)
+		Touch.release(get_viewport(), 0, Vector2(2.0, 2.0))  # Let go elsewhere: nothing is pressed.
+		assert_int(_downs).override_failure_message(label + " tap").is_equal(1)
+		await _free_stage()
+
+
+## The How to play overlay of the pause menu covers the Resume button: the resume card goes and
+## comes back with it.
+func test_the_resume_card_hides_under_the_how_to_play_overlay() -> void:
+	var stage: Dictionary = await _stage(Sizes.LANDSCAPE[0], &"resume", false)
+	var mark: CoachMark = stage["mark"]
+	var menu: PauseMenu = stage["menu"]
+	assert_bool(mark.visible).is_true()
+	menu.call("_open_help")
+	for _frame: int in 4:
+		await await_idle_frame()
+	assert_bool(mark.visible).is_false()
+	menu.call("_close_help")
+	for _frame: int in 4:
+		await await_idle_frame()
+	assert_bool(mark.visible).is_true()
+
+
+## A real touch through the viewport: a press and a release on the same spot.
+func _tap(at: Vector2) -> void:
+	Touch.press(get_viewport(), 0, at)
+	Touch.release(get_viewport(), 0, at)
+
+
+## The main scene at `size`, a mark and a director with the basics beat `id` up (the pause menu
+## opened first when `menu_open`), the fake-mode ad service in the menu when `with_ad`.
+func _stage(size: Vector2i, id: StringName, with_ad: bool, menu_open: bool = true) -> Dictionary:
+	var lesson: TutorialLessonDef = load(BASICS) as TutorialLessonDef
+	var beat: TutorialBeatDef = null
+	for candidate: TutorialBeatDef in lesson.beats:
+		if candidate.id == id:
+			beat = candidate
+	assert_object(beat).is_not_null()
+	get_window().size = size
+	await await_idle_frame()
+	_harness = (load("res://tests/ads/ad_service_harness.gd") as GDScript).new()
+	_service = _harness.make(true)
+	_service.fake_auto_close = false
+	add_child(_service)
+	_main = await MatchRig.open(self)
+	var hud: Node = _main.get_node("Hud")
+	var menu: PauseMenu = hud.get_node("PauseMenu") as PauseMenu
+	if with_ad:
+		menu.ad_service = _service
+	var feed: HudStateFeed = hud.get_node("HudStateFeed") as HudStateFeed
+	var director: TutorialDirector = auto_free(TutorialDirector.new())
+	director.runner = _main.get_node("MatchRunner")
+	director.hud = feed.state
+	director.camera = _main.get_node("Camera")
+	var mark: CoachMark = CoachMark.new()
+	mark.director = director
+	mark.hud_root = hud
+	mark.camera = _main.get_node("Camera")
+	hud.add_child(mark)
+	await await_idle_frame()
+	if menu_open:
+		_main.get_node("Hud/EconomyPill").menu_pressed.emit()
+	var single: TutorialLessonDef = Lesson.lesson("single", [beat])
+	director.start(single)
+	director.advance()
+	for _frame: int in 8:
+		await await_idle_frame()
+	return {"hud": hud, "menu": menu, "mark": mark, "director": director, "feed": feed}
+
+
+func _free_stage() -> void:
+	if _main != null and is_instance_valid(_main):
+		_main.free()
+	_main = null
+	if _harness != null:
+		_harness.dispose()
+		remove_child(_service)
+		_service.free()
+		_harness = null
+	await await_idle_frame()

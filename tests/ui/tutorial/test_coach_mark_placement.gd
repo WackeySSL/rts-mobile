@@ -208,6 +208,26 @@ func test_blocked_rects_are_kept_clear_when_a_place_exists() -> void:
 		assert_bool(placed.intersects(rect)).is_false()
 
 
+## When no place clears the buttons' air, the card drops that air but never the ad band: the band
+## and its 16 dp stay a hard constraint (ad policy), and the bottom of the room, where it sits, is
+## no candidate.
+func test_the_band_stays_a_hard_constraint_when_the_buttons_leave_no_room() -> void:
+	var room: Rect2 = Rect2(0.0, 0.0, 400.0, 600.0)
+	var card: Vector2 = Vector2(300.0, 100.0)
+	var ring: Rect2 = Rect2(50.0, 100.0, 300.0, 50.0)
+	var band: Rect2 = Rect2(0.0, 440.0, 400.0, 160.0)
+	var everywhere: Array[Rect2] = [room]  # No place keeps off the buttons.
+	var hard: Array[Rect2] = [band]
+	var placed: Rect2 = CoachMark.place_card(ring, card, room, 8.0, 0.0, everywhere, hard)
+	assert_bool(placed.intersects(band)).is_false()
+	assert_bool(placed.intersects(ring)).is_false()
+	assert_bool(room.encloses(placed)).is_true()
+	# Even when the ring leaves the band's side as the only free one, the band is not touched.
+	var low: Rect2 = Rect2(50.0, 200.0, 300.0, 200.0)
+	var squeezed: Rect2 = CoachMark.place_card(low, card, room, 8.0, 0.0, everywhere, hard)
+	assert_bool(squeezed.intersects(band)).is_false()
+
+
 func test_a_turn_mid_beat_at_360_dp_keeps_the_card_inside() -> void:
 	await _open(UiProfiles.by_name(&"web_phone_portrait"), _control_beat("hit", NEXT))
 	_put_target(Vector2(0.3, 0.5))

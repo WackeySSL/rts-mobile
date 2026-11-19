@@ -68,7 +68,6 @@ func _ready() -> void:
 	_grid = GridContainer.new()
 	_xp_bar = ProgressBar.new()
 	super()
-	z_index = CoachMark.Z_ABOVE_MODALS + 1  # The result is shown over a tutorial card.
 	column.add_child(_body)
 	var banner: VBoxContainer = VBoxContainer.new()
 	_body.add_child(banner)

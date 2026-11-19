@@ -51,6 +51,12 @@ reads are on `TutorialConditions`. A few rules that the tests enforce (`test_les
 - A beat that opens a modal (the pause menu holds the match, and tick time stops) is followed by
   a beat whose card asks for the way out and whose condition is that it closed (`UNFOLD_CLOSED`
   with the unfold): a delay in ticks does not pass while the match is held.
+- The coach mark stands down (hidden, no drawing, no touch) while a visible modal covers the HUD and
+  does not hold the beat's target: the pause menu, a question, the result screen, the menu's
+  How to play overlay. So a card is never over a menu it has nothing to say about, and a player who
+  pauses mid-lesson, or a phone call that pauses the app, finds the menu clear. Only a beat whose
+  target is inside the modal (the `resume` card) shows over it, and it keeps 8 dp off the menu's
+  other buttons and 16 dp off an ad band.
 - A beat that is true when it shows (a tanker that already loaded) ends by itself: give it an
   action the player does, or show it before the thing happens.
 

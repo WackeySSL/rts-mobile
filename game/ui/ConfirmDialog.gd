@@ -19,7 +19,6 @@ var _no: Button
 
 func _ready() -> void:
 	super()
-	z_index = CoachMark.Z_ABOVE_MODALS + 1  # A question is answered before a tutorial card is read.
 	add_label(column, question, &"CapsTitle")
 	add_label(column, detail, &"Label")
 	var row: HBoxContainer = HBoxContainer.new()
