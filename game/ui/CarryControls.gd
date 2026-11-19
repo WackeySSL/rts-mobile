@@ -127,3 +127,9 @@ func _follow() -> void:
 		_confirm.position = group.position
 	if _cancel.position != cancel_at:
 		_cancel.position = cancel_at
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return

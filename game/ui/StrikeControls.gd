@@ -170,3 +170,9 @@ func _least() -> Vector2:
 				least.x + ask.x + (_dp_px * GAP_DP if least.x > 0.0 else 0.0), maxf(least.y, ask.y)
 			)
 	return least
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return

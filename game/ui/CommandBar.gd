@@ -927,3 +927,9 @@ func place() -> void:
 	# The scroll takes touches only while the orders overflow it: else its empty part is the map's.
 	var overflow: bool = _orders.get_combined_minimum_size().x > _scroll.size.x + 0.5
 	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS if overflow else Control.MOUSE_FILTER_IGNORE
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return

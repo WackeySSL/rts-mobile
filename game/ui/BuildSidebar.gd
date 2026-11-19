@@ -857,3 +857,9 @@ func _apply_extent(extent: float) -> void:
 	if top != _told.x or zone != _told.y:
 		_told = Vector2(top, zone)
 		zone_changed.emit(top, zone)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return

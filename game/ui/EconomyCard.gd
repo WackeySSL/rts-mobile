@@ -90,6 +90,9 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return
 	if what == NOTIFICATION_THEME_CHANGED and _power_glyph != null:
 		_tint()
 

@@ -151,3 +151,9 @@ func _apply_dp() -> void:
 	_row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	if visible:
 		place()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return

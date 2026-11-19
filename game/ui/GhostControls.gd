@@ -215,3 +215,9 @@ static func _clear(at: Rect2, hud: Array[Rect2]) -> bool:
 		):
 			return false
 	return true
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(self)
+		return
