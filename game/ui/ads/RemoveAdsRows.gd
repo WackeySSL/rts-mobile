@@ -14,7 +14,8 @@ extends VBoxContainer
 ## - While a call runs both rows are disabled and the tapped one reads WORKING… (RESTORING… for
 ##   Restore); a second tap is ignored. The rows come back after, also when the screen left the
 ##   tree meanwhile (Back is refused while a call runs, so it is never freed under it).
-## - The price is never the part that is cut: a title too long for the row shortens, not the price.
+## - A title too long for the row shortens before the price does; only a price wider than the
+##   whole row (down to one title character) can still be clipped.
 ## - Outside a node named `PurchaseSlot` the widget never shows (a battle's Settings has no slot).
 ## Rows are at least 48 dp; their height does not change with the text.
 
@@ -56,7 +57,9 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE and _timer != null:
-		refresh()  # Back from a screen: an entitlement may have changed meanwhile.
+		# Back from a screen: an entitlement may have changed meanwhile. Deferred, because the
+		# parent is notified before the child Timer is in the tree.
+		refresh.call_deferred()
 
 
 ## True while a purchase or restore call is open: Settings keeps itself open then.
@@ -75,7 +78,7 @@ func refresh() -> void:
 	restore_button.visible = billing
 	visible = billing
 	_fit()
-	if not is_inside_tree():
+	if _timer == null or not _timer.is_inside_tree():
 		return  # A timer starts only in the tree; the enter-tree refresh covers the rest.
 	if _in_slot() and _price.is_empty():
 		_timer.start()  # The store has not answered yet: ask again.

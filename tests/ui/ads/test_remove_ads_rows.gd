@@ -137,6 +137,39 @@ func test_outside_a_slot_the_widget_never_shows() -> void:
 	assert_bool(rows.restore_button.visible).is_false()
 
 
+func test_rows_with_an_empty_price_poll_again_after_leaving_and_re_entering_the_tree() -> void:
+	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
+	fake.price = ""
+	var rows: RemoveAdsRows = _rows(fake)
+	var slot: Node = rows.get_parent()
+	slot.remove_child(rows)
+	assert_bool(rows._timer.is_inside_tree()).is_false()
+	slot.add_child(rows)  # The enter-tree refresh is deferred, so the Timer is in the tree by then.
+	await await_idle_frame()
+	assert_bool(rows._timer.is_inside_tree()).is_true()
+	assert_bool(rows._timer.is_stopped()).is_false()
+	assert_bool(rows.visible).is_false()
+	fake.price = PRICE
+	rows._timer.timeout.emit()
+	assert_bool(rows.remove_button.visible).is_true()
+	assert_bool(rows._timer.is_stopped()).is_true()
+
+
+func test_a_narrow_remove_button_shortens_the_title_and_keeps_the_price() -> void:
+	var rows: RemoveAdsRows = _rows(_service)
+	var button: Button = rows.remove_button
+	var full: String = button.text
+	var font: Font = button.get_theme_font("font")
+	var font_size: int = button.get_theme_font_size("font_size")
+	var pad: float = button.get_theme_stylebox("normal").get_minimum_size().x
+	var full_width: float = font.get_string_size(full, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	button.size.x = full_width * 0.8 + pad  # Forced narrower than the whole text needs.
+	rows._fit()
+	assert_str(button.text).contains("…")
+	assert_str(button.text).ends_with(AdServiceHarness.billing(_service).price)
+	assert_int(button.text.length()).is_less(full.length() + 1)
+
+
 ## The widget in a `PurchaseSlot` of its own, in the tree.
 func _rows(service: Node) -> RemoveAdsRows:
 	var host: Control = auto_free(Control.new())
@@ -195,7 +228,8 @@ func test_an_entitlement_change_off_the_tree_is_safe_and_shows_on_return() -> vo
 	fake.entitlement_changed.emit(true)  # No timer may start outside the tree.
 	assert_bool(rows._timer.is_stopped()).is_true()
 	fake.price = PRICE
-	add_child(host)  # The enter-tree refresh catches up.
+	add_child(host)  # The enter-tree refresh (deferred) catches up.
+	await await_idle_frame()
 	assert_bool(rows.remove_button.visible).is_false()
 	assert_bool(rows.restore_button.visible).is_true()
 
