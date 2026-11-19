@@ -140,3 +140,29 @@ func test_the_attack_books_the_army_key_at_the_waves_goal_not_at_the_building() 
 		var army_key: bool = _memory.goal_owner[at] & (1 << AiMemory.Owner.ARMY) != 0
 		held = held or (army_key and Vector2i(_memory.goal_x[at], _memory.goal_y[at]) == goal)
 	assert_bool(held).is_true()
+
+
+func test_the_building_stays_in_view_and_the_next_answer_is_the_retry_not_a_second_attack() -> void:
+	_stalled(_stall_def())
+	var tick: int = FIRST
+	while _army.stall_retries() == 0 and tick < LAST + 600:
+		_think(tick)
+		tick += 15
+	assert_int(_army.stall_retries()).is_equal(1)
+	assert_int(_army.stall_attacks()).is_equal(1)
+
+
+func test_the_attack_goes_to_the_nearer_of_two_buildings_in_view() -> void:
+	_stalled(_stall_def())
+	# The farther building has the lower id, so neither "farthest" nor "lowest id" passes.
+	var far: int = AiRig.give(_world, 2, "power_plant", 22, 24)
+	var near: int = AiRig.give(_world, 2, "power_plant", 16, 19)
+	_see_all()
+	var targets: Array[int] = []
+	for tick: int in range(FIRST, LAST, 15):
+		_think(tick)
+		for command: Command in _of(Command.Type.ATTACK):
+			targets.append(command.target_id)
+	assert_array(targets).is_not_empty()
+	assert_int(targets[0]).is_equal(near)
+	assert_bool(near != far).is_true()
