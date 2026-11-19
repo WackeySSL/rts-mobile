@@ -12,6 +12,8 @@ const DOC: String = "res://docs/HOW_TO_PLAY.md"
 const LESSON_DIR: String = "res://data/tutorial/"
 const NOT_FOR_PLAYERS: String = "Not yet in the game"
 const TEACH_MARK: String = "yes"
+## The Teach cell is the mark or empty: "Yes", "no" or "x" would silently drop a row from Teach.
+const TEACH_CELLS: Array[String] = ["", TEACH_MARK]
 ## Teach row id -> the plan row that covers it. Empty today: every Teach row is in a lesson.
 const PENDING: Dictionary[String, String] = {}
 
@@ -67,6 +69,21 @@ func test_the_pending_list_is_empty() -> void:
 		assert_array(PENDING.keys())
 		. override_failure_message(
 			"PENDING must be empty at the gate (P560): %s" % ", ".join(PENDING.keys())
+		)
+		. is_empty()
+	)
+
+
+## Every row of the doc, the "Not yet in the game" ones too, has a Teach cell of the vocabulary.
+func test_every_teach_cell_is_empty_or_the_mark() -> void:
+	var off: Array[String] = []
+	for row: Dictionary in _rows(true):
+		if not TEACH_CELLS.has(row["cell"]):
+			off.append("%s ('%s')" % [row["id"], row["cell"]])
+	(
+		assert_array(off)
+		. override_failure_message(
+			"Teach cells must be empty or '%s': %s" % [TEACH_MARK, ", ".join(off)]
 		)
 		. is_empty()
 	)
@@ -150,9 +167,9 @@ func _lessons() -> Array[TutorialLessonDef]:
 	return found
 
 
-## The rows of the tables outside the "Not yet in the game" section, as {"id", "teach"}. The Teach
-## mark is the last cell of the row.
-func _rows() -> Array[Dictionary]:
+## The rows of the tables outside the "Not yet in the game" section, as {"id", "teach", "cell"}
+## (`with_later` adds the Not-yet rows). The Teach mark is the last cell of the row.
+func _rows(with_later: bool = false) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	var section: String = ""
 	var in_table: bool = false
@@ -165,16 +182,11 @@ func _rows() -> Array[Dictionary]:
 		elif in_table and line.begins_with("|---"):
 			continue
 		elif in_table and line.begins_with("|"):
-			if section != NOT_FOR_PLAYERS:
+			if with_later or section != NOT_FOR_PLAYERS:
 				var cells: PackedStringArray = line.split("|")
-				(
-					rows
-					. append(
-						{
-							"id": cells[1].strip_edges(),
-							"teach": cells[cells.size() - 2].strip_edges() == TEACH_MARK,
-						}
-					)
+				var cell: String = cells[cells.size() - 2].strip_edges()
+				rows.append(
+					{"id": cells[1].strip_edges(), "teach": cell == TEACH_MARK, "cell": cell}
 				)
 		else:
 			in_table = false

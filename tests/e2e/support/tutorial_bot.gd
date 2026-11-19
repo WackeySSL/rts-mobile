@@ -9,14 +9,22 @@ extends RefCounted
 ## beat that could not be finished.
 ##
 ## What is real: the controls it taps are found by the name the lesson's beats and the authoring
-## notes use (`BuildButton`, `TabInfantry`, `Tile_<type>`, `PlaceConfirm`, `StrikeButton` ...) and
-## must exist, show and be enabled when it taps them, so a renamed or hidden HUD control fails the
-## run; the placement ghost is moved by a TAP gesture through `PlayerController.handle_gesture`;
-## every order is a Command through the controller's sink and `CommandQueue`; the match ticks
-## through `MatchRunner.run_ticks`, with the scripted enemy thinking as in a game.
-## What is not: the finger. A unit selection sets the selection model's ids (the gesture recognizer
-## is `tests/input/`'s), a move is `PlayerController.move_selected_to`, a radar tap is the scope's
-## own touch handler fed one press and one release, a button tap is its `pressed` signal.
+## notes use (`BuildButton`, `TabInfantry`, `Tile_<type>`, `PlaceConfirm`, `StrikeButton`, the
+## card's `Next` ...) and must exist, show and be enabled when it taps them, so a renamed or hidden
+## HUD control fails the run. Every order a player gives on the map is a TAP gesture through
+## `PlayerController.handle_gesture` at the screen point of the ground or the enemy (the placement
+## ghost, the move, the harvest, the attack and the strike aim), so the controller decides what the
+## tap means: a tap outside a field's reach is a MOVE, and the harvest beat then fails. Every
+## Command goes through the controller's sink (the bot keeps a copy to see what a tap sent), and the
+## match ticks through `MatchRunner.run_ticks`, with the scripted enemy thinking as in a game.
+## What is not a finger, and why it is equivalent:
+## - A unit selection sets the selection model's ids, `select_all_army` is the group column's
+##   "all army" button's call (a box or a double-tap ends in `selection.set_ids` too).
+## - A card tap is `ItemTile.chose` (what its press-and-release emits), a button tap is the
+##   button's `pressed` (or `toggled`) signal, a radar tap is the scope's own touch handler fed one
+##   press and one release.
+## - The camera is moved by `pan_by_screen`, `step_zoom` (what a drag and a pinch end in) and
+##   `centre_on` (a player pans the target into view before a tap).
 ##
 ## Time is counted in ticks, never measured. `think_ticks` is how long the bot waits after a card
 ## shows before it acts (a slow player); the card's own pause holds the match, so a paused beat
@@ -28,6 +36,10 @@ const FRAME_EVERY: int = 2
 ## A beat that is still open after this many ticks of match time has failed. Far above every
 ## beat's budget: a training or a build waits for the sim, and a fighting beat for the enemy.
 const BEAT_CAP_TICKS: int = 3600
+## Steps (one per loop, a frame each while the match is held) a beat may take, and steps in a row
+## that the match may stay paused: a held beat or an open menu that nothing ends fails by this.
+const BEAT_CAP_STEPS: int = 7200
+const PAUSED_CAP_STEPS: int = 300
 ## The whole lesson's cap, a safeguard against a loop that keeps shifting beats.
 const LESSON_CAP_TICKS: int = 12000
 ## How long a card waits for its ring before the bot acts (3 s of match time).
@@ -70,6 +82,10 @@ var _missing: Array[String] = []
 var _ringless: Array[String] = []
 var _contact: int = -1
 var _ring_noted: bool = false
+var _sent: Array[Command] = []
+var _beat_steps: int = 0
+var _stuck_steps: int = 0
+var _last_id: StringName = &""
 
 
 ## `suite` is the node that owns the frames (the test suite); `main` is the main scene, already in
@@ -86,6 +102,13 @@ func _init(suite: Node, main: Node) -> void:
 	_feed = _hud.get_node("HudStateFeed")
 	_sidebar = _hud.find_child("BuildSidebar", true, false) as BuildSidebar
 	_runner.set_process(false)  # The bot ticks the match; real frame time would tick it too.
+	_controller.command_sink = _on_command
+
+
+## The controller's sink: the bot keeps a copy of what a tap sent, and the queue takes it.
+func _on_command(command: Command) -> void:
+	_sent.append(command)
+	CommandQueue.submit(command)
 
 
 ## Plays `lesson` to its end. The result: `done` (the lesson ended), `skipped`, `failure` (what
@@ -104,6 +127,7 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 	_director.strike_aim = _strike_aim
 	_director.lesson_done.connect(func(_id: StringName) -> void: _finished = true)
 	_director.lesson_skipped.connect(func(_id: StringName) -> void: _skipped = true)
+	_director.beat_shown.connect(_on_shown)
 	_director.beat_done.connect(func(beat: TutorialBeatDef) -> void: _done_at[beat.id] = _tick())
 	_mark = CoachMark.new()
 	_mark.director = _director
@@ -141,9 +165,13 @@ func _step() -> void:
 	if not is_instance_valid(_runner):
 		_failure = "the main scene was freed under the run"
 		return
+	_beat_steps += 1
 	if not _runner.paused:
 		_runner.run_ticks(1)
 		_ticks_run += 1
+		_stuck_steps = 0
+	else:
+		_stuck_steps += 1
 	_director.advance()
 	_watch_contact()
 	await _move()
@@ -183,6 +211,13 @@ func _check_ends() -> void:
 		_failure = "the match ended (winner %d) before the lesson did" % snap.winner
 	elif _ticks_run > LESSON_CAP_TICKS:
 		_failure = "the lesson is over %d ticks long" % LESSON_CAP_TICKS
+	elif _stuck_steps > PAUSED_CAP_STEPS:
+		_failure = (
+			"the match stayed paused for %d steps at beat '%s' (a held card or an open menu)"
+			% [PAUSED_CAP_STEPS, _where()]
+		)
+	elif _beat_steps > BEAT_CAP_STEPS:
+		_failure = "beat '%s' took more than %d steps" % [_where(), BEAT_CAP_STEPS]
 	elif _beat != null and _ticks_run - _beat_tick > BEAT_CAP_TICKS and not _runner.paused:
 		_failure = (
 			"beat '%s' (kind %d) is not done after %d ticks"
@@ -202,6 +237,8 @@ func _move() -> void:
 		return
 	if beat != _beat:
 		_beat = beat
+		_last_id = beat.id
+		_beat_steps = 0
 		_beat_tick = _ticks_run
 		_shown[beat.id] = _tick()
 		_acted_tick = -REORDER_TICKS
@@ -213,7 +250,7 @@ func _move() -> void:
 	if not _ring_settled(beat, waited):
 		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
-		_director.next()
+		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
 		return
 	await _act(beat)
 
@@ -316,15 +353,36 @@ func _go_to_area(beat: TutorialBeatDef) -> void:
 			% [beat.id, ids.size(), beat.type_id, beat.count]
 		)
 		return
-	_controller.selection.set_ids(ids)
+	# A tap on bare ground of the area: the middle first, then the tiles round it. A tap that
+	# lands on one of the own units selects it instead (nothing is sent), so the squads are
+	# selected again for the next tile.
 	var middle: Vector2i = beat.area.position * 2 + beat.area.size  # twice the centre, tiles
-	_controller.move_selected_to(middle * (Sim.MILLI_PER_TILE / 2))
+	var tiles: Array[Vector2i] = [middle * (Sim.MILLI_PER_TILE / 2)]
+	for dy: int in beat.area.size.y:
+		for dx: int in beat.area.size.x:
+			var tile: Vector2i = beat.area.position + Vector2i(dx, dy)
+			tiles.append(tile * Sim.MILLI_PER_TILE + Vector2i.ONE * (Sim.MILLI_PER_TILE / 2))
+	for at: Vector2i in tiles:
+		_controller.selection.set_ids(ids)
+		var before: int = _sent.size()
+		_tap_ground(at)
+		if _sent.size() > before and _sent[-1].type == Command.Type.MOVE:
+			return
+	_failure = "beat '%s': no tap on its area sends a MOVE" % beat.id
 
 
-## Sends the own harvesters to the oil near the beat's tile.
+## Selects the own tankers and taps the ground at the beat's tile, as a player does: the controller
+## decides whether that is a HARVEST (ore within `harvest_pick_milli`) or a MOVE.
 func _harvest() -> void:
 	if not _due():
 		return
+	_tap_field(_beat)
+
+
+## Taps the beat's tile with the tankers selected; the tap must send a HARVEST, and the run fails
+## with the beat's id when it sends a MOVE (the tile is out of the ore's reach: a player cannot
+## finish the beat either).
+func _tap_field(beat: TutorialBeatDef) -> void:
 	var ids: PackedInt32Array = PackedInt32Array()
 	var snap: MatchSnapshot = _runner.snapshot
 	for row: int in snap.unit_count():
@@ -336,20 +394,33 @@ func _harvest() -> void:
 		):
 			ids.append(snap.unit_id[row])
 	if ids.is_empty():
-		_failure = "beat '%s': no own harvester" % _where()
+		_failure = "beat '%s': no own harvester" % beat.id
 		return
-	var at: Vector2i = (
-		_beat.anchor_tile * Sim.MILLI_PER_TILE + Vector2i.ONE * (Sim.MILLI_PER_TILE / 2)
-	)
-	CommandQueue.submit(Command.harvest(PLAYER, ids, at.x, at.y))
+	_controller.selection.set_ids(ids)
+	var before: int = _sent.size()
+	_tap_ground(beat.anchor_tile * Sim.MILLI_PER_TILE + Vector2i.ONE * (Sim.MILLI_PER_TILE / 2))
+	if _sent.size() == before or _sent[-1].type != Command.Type.HARVEST:
+		_failure = (
+			"beat '%s': a tap at its tile %s does not send a HARVEST (sent %s)"
+			% [beat.id, beat.anchor_tile, "nothing" if _sent.size() == before else _sent[-1].type]
+		)
 
 
-## Sends every own fighting unit at the nearest enemy row, as an attack-move.
+## A card showed: the harvest beat is tried at once, so that a beat the sim satisfies by itself
+## (the tanker already works) still has its tap checked.
+func _on_shown(beat: TutorialBeatDef) -> void:
+	if beat.kind == TutorialConditions.Kind.HARVESTED:
+		_tap_field(beat)
+
+
+## Selects the whole army, then taps the nearest enemy (the view first panned onto it): the
+## controller sends the ATTACK of the units that can hit it.
 func _attack() -> void:
 	if not _due():
 		return
 	var snap: MatchSnapshot = _runner.snapshot
-	var army: PackedInt32Array = OrderRules.all_army(snap, PLAYER)
+	_controller.select_all_army()
+	var army: PackedInt32Array = _controller.selection.selected
 	if army.is_empty():
 		_failure = "beat '%s': no army left to attack with" % _where()
 		return
@@ -357,20 +428,27 @@ func _attack() -> void:
 	if goal.x < 0:
 		_failure = "beat '%s': no enemy to attack" % _where()
 		return
-	CommandQueue.submit(Command.attack_move(PLAYER, army, goal.x, goal.y))
+	_tap_ground(goal)
 
 
+## One TAP gesture on the ground point `ground` (milli-tiles): the view is panned onto it first.
+func _tap_ground(ground: Vector2i) -> void:
+	var at: Vector2 = IsoProjection.ground_to_px(ground.x, ground.y)
+	_camera.centre_on(at)
+	_camera.force_update_scroll()  # The pick reads the canvas transform the camera sets.
+	var tap: GestureEvent = GestureEvent.new()
+	tap.kind = GestureEvent.Kind.TAP
+	tap.position = _camera.world_to_screen(at)
+	_controller.handle_gesture(tap)
+
+
+## One step of the zoom toward `level`, sent again only after `REORDER_TICKS` (the snap is a
+## tween of real time that the frames of the loop play; the director sees the new level).
 func _zoom(level: int) -> void:
-	var guard: int = 0
-	while _camera.zoom_level_index() != level and guard < 4:
-		var up: int = 1 if _camera.zoom_level_index() < level else -1
-		_camera.step_zoom(up, _camera.get_viewport_rect().size * 0.5)
-		guard += 1
-		for _frame: int in 20:
-			await _suite.get_tree().process_frame
-			if _camera.zoom_level_index() == level:
-				break
-	_director.advance()
+	if _camera.zoom_level_index() == level or not _due():
+		return
+	var up: int = 1 if _camera.zoom_level_index() < level else -1
+	_camera.step_zoom(up, _camera.get_viewport_rect().size * 0.5)
 
 
 ## One pan of the view by a finger's 400 px; the next try goes the other way when the map's edge
@@ -440,7 +518,7 @@ func _aim() -> void:
 		if goal.x < 0:
 			_failure = "beat '%s': no enemy to aim at" % _where()
 			return
-		_strike_aim.place(goal)
+		_tap_ground(goal)  # The controller hands the tap to the aim.
 
 
 ## Taps the check mark of the aim.
@@ -585,12 +663,21 @@ func _need(node_name: StringName) -> Control:
 ## Taps a button: its toggle when something listens to that, its `pressed` otherwise.
 func _press(node_name: StringName) -> void:
 	var button: BaseButton = _need(node_name) as BaseButton
-	if button == null:
+	if button == null and _failure.is_empty():
+		_failure = "beat '%s': %s is no button" % [_where(), node_name]
+	_press_button(button, String(node_name))
+
+
+func _press_button(button: BaseButton, label: String) -> void:
+	if button == null or not _failure.is_empty():
 		if _failure.is_empty():
-			_failure = "beat '%s': %s is no button" % [_where(), node_name]
+			_failure = "beat '%s': %s is not there" % [_where(), label]
+		return
+	if not button.is_visible_in_tree():
+		_failure = "beat '%s': %s is not shown" % [_where(), label]
 		return
 	if button.disabled:
-		_failure = "beat '%s': the button %s is disabled" % [_where(), node_name]
+		_failure = "beat '%s': %s is disabled" % [_where(), label]
 		return
 	if button.toggle_mode and not button.toggled.get_connections().is_empty():
 		button.button_pressed = not button.button_pressed
@@ -663,4 +750,6 @@ func _lesson_type_name(type: int) -> String:
 
 ## Where the run is, for a failure line.
 func _where() -> String:
-	return String(_beat.id) if _beat != null else "(between two beats)"
+	if _beat != null:
+		return String(_beat.id)
+	return "after %s" % _last_id if _last_id != &"" else "(before the first beat)"
