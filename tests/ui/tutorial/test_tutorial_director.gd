@@ -221,6 +221,31 @@ func test_a_beat_waits_for_the_scripted_opponents_step() -> void:
 	assert_array(_shown).is_equal([&"attack"])
 
 
+func test_a_done_beat_is_told_to_the_opponent_on_the_next_published_tick() -> void:
+	var def: TutorialScriptDef = TutorialScriptDef.new()
+	def.steps.append(
+		Tut.step(
+			"go",
+			TutorialStepDef.Trigger.BEAT,
+			TutorialStepDef.Action.ATTACK_MOVE,
+			{"trigger_beat": &"a", "threshold": 20}
+		)
+	)
+	var ai: TutorialAi = Tut.ai_of(def)
+	_runner._job.controllers = [ai]
+	_director.start(Lesson.lesson("basics", [Lesson.beat("a", NEXT), Lesson.beat("b", NEXT)]))
+	_play(7)
+	_director.advance()
+	assert_bool(_director.next()).is_true()
+	_play(3)  # The beat was done on tick 7.
+	assert_array(ai._noted_ids).is_empty()  # Not told yet: no tick has been published since.
+	_runner.ticked.emit(10)
+	assert_array(ai._noted_ids).is_equal([&"a"])
+	assert_array(Array(ai._noted_at)).is_equal([7])
+	_runner.ticked.emit(11)  # Told once.
+	assert_array(ai._noted_ids).has_size(1)
+
+
 func test_a_gate_with_no_opponent_seated_warns_and_opens() -> void:
 	var lesson: TutorialLessonDef = Lesson.lesson(
 		"basics", [Lesson.beat("a", NEXT, {"after_ai_step": &"go"})]

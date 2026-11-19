@@ -10,6 +10,9 @@ const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 ## The lessons are played on a phone: its dp sets the hit radii a tap is judged by.
 const PHONE: StringName = &"android_6in"
+## Ticks a card waits before the bot acts: 4 s and 8 s of match time.
+const SLOW_4S: int = 60
+const SLOW_8S: int = 120
 const LESSON_DIR: String = "res://data/tutorial/"
 
 var _main: Node2D
@@ -53,6 +56,29 @@ func test_the_bot_finishes_air() -> void:
 
 func test_the_bot_finishes_support() -> void:
 	await _finishes(&"support")
+
+
+## A slow player (4 s a card, 8 s a card) is still told the enemy is coming before it is at the
+## base: the wave leaves on the player's progress (`groups`), not on a clock (plan row P543c).
+func test_basics_tells_of_the_wave_before_contact_at_4_s_a_card() -> void:
+	await _incoming_before_contact(SLOW_4S)
+
+
+func test_basics_tells_of_the_wave_before_contact_at_8_s_a_card() -> void:
+	await _incoming_before_contact(SLOW_8S)
+
+
+func _incoming_before_contact(think_ticks: int) -> void:
+	var result: Dictionary = await _finishes(&"basics", think_ticks)
+	var shown: Dictionary = result["shown"]
+	var contact: int = result["contact"]
+	var label: String = (
+		"think %d: incoming at %d, contact at %d" % [think_ticks, shown[&"incoming"], contact]
+	)
+	print("TutorialBot ", label)
+	assert_int(shown[&"incoming"]).override_failure_message(label).is_greater(0)
+	if contact >= 0:
+		assert_int(shown[&"incoming"]).override_failure_message(label).is_less(contact)
 
 
 ## Plays `id` and checks the run ended the lesson, with every anchor control a node of the HUD.

@@ -42,6 +42,10 @@ var _step_count: int = 0
 
 var _trigger: PackedInt32Array = PackedInt32Array()
 var _trigger_type: Array[StringName] = []
+## The beat each step's `BEAT` trigger waits for, the beats that were noted and the tick each was.
+var _trigger_beat: Array[StringName] = []
+var _noted_ids: Array[StringName] = []
+var _noted_at: PackedInt32Array = PackedInt32Array()
 var _threshold: PackedInt32Array = PackedInt32Array()
 var _radius: PackedInt32Array = PackedInt32Array()
 var _action: PackedInt32Array = PackedInt32Array()
@@ -87,6 +91,7 @@ static func create(def: TutorialScriptDef, player_id: int, rng: DetRandom) -> Tu
 		ai._step_ids.append(step.id)
 		ai._trigger.append(step.trigger)
 		ai._trigger_type.append(step.trigger_type)
+		ai._trigger_beat.append(step.trigger_beat)
 		ai._threshold.append(step.threshold)
 		ai._radius.append(maxi(step.trigger_radius_tiles, 0) * PlayerView.MILLI_PER_TILE)
 		ai._action.append(step.action)
@@ -148,6 +153,20 @@ func fired_count() -> int:
 		if tick != NOT_FIRED:
 			total += 1
 	return total
+
+
+## The director's word that the lesson's beat `id` was done at match tick `tick` (the published
+## tick it saw it on). The one way progress of the player's lesson reaches the script, and it is
+## data, never the UI: a `BEAT` step fires `threshold` ticks after it, on the think that sees the
+## view's tick that far on. Called only by the main thread after `MatchRunner.wait_idle()` (the
+## same window in which it reads `has_fired`), so the AI thread is not thinking. A beat is noted
+## once and only when a step waits for it. The firing tick is a function of `tick` and the
+## think grid, so a run with the same beat ticks gives the same Commands.
+func note_beat(id: StringName, tick: int) -> void:
+	if _noted_ids.has(id) or not _trigger_beat.has(id):
+		return
+	_noted_ids.append(id)
+	_noted_at.append(tick)
 
 
 func think(view: PlayerView, out: Array[Command]) -> void:
@@ -247,19 +266,24 @@ func _order(index: int, ids: PackedInt32Array, dest: Vector2i) -> Command:
 func _holds(index: int, view: PlayerView) -> bool:
 	var need: int = _threshold[index]
 	var type: int = _type_of(_trigger_type[index], view)
+	var holds: bool = false
 	match _trigger[index]:
 		TutorialStepDef.Trigger.TICK:
-			return view.tick >= need
+			holds = view.tick >= need
 		TutorialStepDef.Trigger.CREDITS:
-			return view.credits >= need
+			holds = view.credits >= need
+		TutorialStepDef.Trigger.BEAT:
+			var noted: int = _noted_ids.find(_trigger_beat[index])
+			holds = noted >= 0 and view.tick >= _noted_at[noted] + need
 		TutorialStepDef.Trigger.OWN_AT_LEAST:
-			return _own_count(type) >= need
+			holds = _own_count(type) >= need
 		TutorialStepDef.Trigger.OWN_AT_MOST:
-			return _own_count(type) <= need
+			holds = _own_count(type) <= need
 		TutorialStepDef.Trigger.ENEMY_SEEN:
-			return _enemies(view, type, -1) >= need
+			holds = _enemies(view, type, -1) >= need
 		_:
-			return _enemies(view, type, _radius[index]) >= need
+			holds = _enemies(view, type, _radius[index]) >= need
+	return holds
 
 
 ## The type index of `id`, MISSING (-1) for any type when `id` is empty, ABSENT when the roster

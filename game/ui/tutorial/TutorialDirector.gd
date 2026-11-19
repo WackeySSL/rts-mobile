@@ -23,7 +23,9 @@ extends Node
 ## The scripted opponent is read only in `_on_ticked`, after `runner.wait_idle()` (ADR 0038 section
 ## 2): the main thread never reads a controller while a batch runs. The director asks the runner for
 ## it (`controller_of` the seat `first_opponent`) at that moment and keeps nothing: the next match,
-## and `start()`, have new controllers. Nothing hands it a `TutorialAi` from outside.
+## and `start()`, have new controllers. Nothing hands it a `TutorialAi` from outside. It also tells
+## the script which beats are done (`note_beat`, for a step that waits for the player's progress):
+## the beat's id and the published tick, queued by `_complete` and sent at the next `ticked`.
 
 ## The prompt of a beat is up (`current` is that beat).
 signal beat_shown(beat: TutorialBeatDef)
@@ -61,6 +63,9 @@ var _start: TutorialContext = null
 var _ctx: TutorialContext = TutorialContext.new()  ## Refilled each frame, never reallocated.
 ## The snapshot a tick-driven condition was last checked on: it is checked again on a new one only.
 var _checked: MatchSnapshot = null
+## Beats done and the tick each was, not yet told to the scripted opponent (next published tick).
+var _notes: Array[StringName] = []
+var _note_ticks: PackedInt32Array = PackedInt32Array()
 
 
 ## Before the runner in each frame, so a re-pause lands before the runner's tick can run.
@@ -184,18 +189,33 @@ func _tick() -> int:
 	return snap.tick if snap != null else 0
 
 
-## A tick was published: the one moment the scripted opponent may be read (nothing is in flight).
+## A tick was published: the one moment the scripted opponent may be read or told something
+## (nothing is in flight after `wait_idle()`). It tells the script the beats done since the last
+## tick (`TutorialAi.note_beat`, with the tick they were done on) and, in a gap that waits for a
+## step, reads whether it fired.
 func _on_ticked(_tick_number: int) -> void:
-	if _phase != Phase.GAP or _gate_open or not runner.wait_idle():
+	var waiting: bool = _phase == Phase.GAP and not _gate_open
+	if (not waiting and _notes.is_empty()) or not runner.wait_idle():
 		return
 	var ai: TutorialAi = runner.controller_of(runner.first_opponent) as TutorialAi
 	if ai == null:
-		push_warning(
-			"TutorialDirector: beat %s waits for the opponent, none is seated" % current_beat().id
-		)
-		_gate_open = true
+		_notes.clear()
+		_note_ticks.clear()
+		if waiting:
+			push_warning(
+				(
+					"TutorialDirector: beat %s waits for the opponent, none is seated"
+					% current_beat().id
+				)
+			)
+			_gate_open = true
 		return
-	_gate_open = ai.has_fired(current_beat().after_ai_step)
+	for index: int in _notes.size():
+		ai.note_beat(_notes[index], _note_ticks[index])
+	_notes.clear()
+	_note_ticks.clear()
+	if waiting:
+		_gate_open = ai.has_fired(current_beat().after_ai_step)
 
 
 func _enter_gap() -> void:
@@ -218,6 +238,8 @@ func _show() -> void:
 
 func _complete() -> void:
 	var done: TutorialBeatDef = current
+	_notes.append(done.id)
+	_note_ticks.append(_tick())
 	_release_pause()
 	_index += 1
 	_gap_from = _tick()
@@ -237,6 +259,8 @@ func _stop_quietly() -> void:
 	_phase = Phase.IDLE
 	current = null
 	lesson = null
+	_notes.clear()
+	_note_ticks.clear()
 	_start = null
 	if runner != null and runner.ticked.is_connected(_on_ticked):
 		runner.ticked.disconnect(_on_ticked)

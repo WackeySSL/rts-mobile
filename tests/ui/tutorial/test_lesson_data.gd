@@ -167,6 +167,28 @@ func test_every_after_ai_step_is_a_step_of_the_enemy() -> void:
 				assert_bool(steps.has(beat.after_ai_step)).override_failure_message(label).is_true()
 
 
+## A step that waits for a beat (`BEAT`) names a beat of its lesson, and that beat comes before the
+## beat that waits for the step: otherwise the card would wait for a beat it can only reach after.
+func test_a_beat_trigger_names_an_earlier_beat_than_the_card_that_waits_for_it() -> void:
+	var steps_with_beats: int = 0
+	for id: StringName in LESSONS:
+		var lesson: TutorialLessonDef = _lesson(id)
+		var order: Array[StringName] = []
+		for beat: TutorialBeatDef in lesson.beats:
+			order.append(beat.id)
+		for step: TutorialStepDef in lesson.enemy.steps:
+			if step.trigger != TutorialStepDef.Trigger.BEAT:
+				continue
+			steps_with_beats += 1
+			var label: String = "%s/%s waits for %s" % [id, step.id, step.trigger_beat]
+			assert_bool(order.has(step.trigger_beat)).override_failure_message(label).is_true()
+			for beat: TutorialBeatDef in lesson.beats:
+				if beat.after_ai_step == step.id:
+					var before: bool = order.find(step.trigger_beat) < order.find(beat.id)
+					assert_bool(before).override_failure_message(label + " too late").is_true()
+	assert_int(steps_with_beats).is_greater(0)
+
+
 ## The enemy is seated through the runner as a match does it (an `AiFactory` controller), and its
 ## script resolves: every `after_step` names a step, every step id is unique, every type it names is
 ## in the match, and a QUEUE step has a producer of its own in the scenario.
