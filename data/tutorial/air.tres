@@ -1,0 +1,105 @@
+[gd_resource type="Resource" script_class="TutorialLessonDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Resource" path="res://data/scenarios/tutorial_air.tres" id="3_scenario"]
+[ext_resource type="Resource" path="res://data/tutorial/air_enemy.tres" id="4_enemy"]
+
+[sub_resource type="Resource" id="Beat_00"]
+script = ExtResource("2_beat")
+id = &"airfield"
+prompt_key = &"tutorial.air.airfield"
+anchor = 2
+anchor_tile = Vector2i(15, 5)
+covers = Array[StringName]([&"buildings-build-airfield"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_01"]
+script = ExtResource("2_beat")
+id = &"fighter"
+prompt_key = &"tutorial.air.fighter"
+anchor = 1
+anchor_control = &"TabFlight"
+kind = 5
+type_id = &"fossil_fighter"
+covers = Array[StringName]([&"units-build-aircraft"])
+budget_s = 20
+
+[sub_resource type="Resource" id="Beat_02"]
+script = ExtResource("2_beat")
+id = &"tap-air"
+prompt_key = &"tutorial.air.tap-air"
+kind = 1
+type_id = &"fossil_fighter"
+covers = Array[StringName]([&"selection-tap-aircraft"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_03"]
+script = ExtResource("2_beat")
+id = &"unreachable"
+prompt_key = &"tutorial.air.unreachable"
+covers = Array[StringName]([&"orders-attack-unreachable"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_04"]
+script = ExtResource("2_beat")
+id = &"bomber"
+prompt_key = &"tutorial.air.bomber"
+covers = Array[StringName]([&"orders-bomber-reload"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_05"]
+script = ExtResource("2_beat")
+id = &"home"
+prompt_key = &"tutorial.air.home"
+anchor = 1
+anchor_control = &"Home"
+covers = Array[StringName]([&"orders-home"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_06"]
+script = ExtResource("2_beat")
+id = &"raid"
+prompt_key = &"tutorial.air.raid"
+covers = Array[StringName]([&"combat-anti-air-building"])
+after_ai_step = &"raid"
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_07"]
+script = ExtResource("2_beat")
+id = &"wagon"
+prompt_key = &"tutorial.air.wagon"
+anchor = 1
+anchor_control = &"TabVehicles"
+kind = 5
+type_id = &"fossil_bunk_wagon"
+covers = Array[StringName]([&"units-build-carrier"])
+budget_s = 20
+
+[sub_resource type="Resource" id="Beat_08"]
+script = ExtResource("2_beat")
+id = &"board"
+prompt_key = &"tutorial.air.board"
+anchor = 1
+anchor_control = &"Board"
+covers = Array[StringName]([&"orders-board"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_09"]
+script = ExtResource("2_beat")
+id = &"unload"
+prompt_key = &"tutorial.air.unload"
+anchor = 1
+anchor_control = &"Unload"
+covers = Array[StringName]([&"orders-unload"])
+budget_s = 6
+
+[resource]
+script = ExtResource("1_lesson")
+id = &"air"
+title_key = &"tutorial.air.title"
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09")])
+target_s = 90
+scenario = ExtResource("3_scenario")
+enemy = ExtResource("4_enemy")
+match_seed = 3

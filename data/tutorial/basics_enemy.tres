@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="TutorialScriptDef" format=3]
+
+[ext_resource type="Script" path="res://game/ai/TutorialScriptDef.gd" id="1_script"]
+[ext_resource type="Script" path="res://game/ai/TutorialStepDef.gd" id="2_step"]
+
+[sub_resource type="Resource" id="Step_00"]
+script = ExtResource("2_step")
+id = &"train"
+action = 0
+action_type = &"renew_rifle"
+count = 3
+
+[sub_resource type="Resource" id="Step_01"]
+script = ExtResource("2_step")
+id = &"wave"
+threshold = 1800
+action_type = &"renew_rifle"
+count = 4
+target = 0
+target_tile = Vector2i(11, 10)
+
+[sub_resource type="Resource" id="Step_02"]
+script = ExtResource("2_step")
+id = &"defend"
+trigger = 1
+threshold = 1
+trigger_radius_tiles = 8
+action_type = &"renew_rifle"
+target = 2
+
+[resource]
+script = ExtResource("1_script")
+id = &"basics_enemy"
+hq_type = &"renew_hq"
+steps = Array[ExtResource("2_step")]([SubResource("Step_00"), SubResource("Step_01"), SubResource("Step_02")])

@@ -20,8 +20,10 @@ extends Node
 ## unpauses when it closes, so the director pauses again on the next frame (a held beat stays held);
 ## it never unpauses while the pause menu is open, and it unpauses only what it paused.
 ##
-## The scripted opponent (`ai`) is read only in `_on_ticked`, after `runner.wait_idle()` (ADR 0038
-## section 2): the main thread never reads a controller while a batch runs.
+## The scripted opponent is read only in `_on_ticked`, after `runner.wait_idle()` (ADR 0038 section
+## 2): the main thread never reads a controller while a batch runs. The director asks the runner for
+## it (`controller_of` the seat `first_opponent`) at that moment and keeps nothing: the next match,
+## and `start()`, have new controllers. Nothing hands it a `TutorialAi` from outside.
 
 ## The prompt of a beat is up (`current` is that beat).
 signal beat_shown(beat: TutorialBeatDef)
@@ -44,8 +46,6 @@ var camera: RtsCamera
 var sidebar: BuildSidebar
 var placement: PlacementController
 var strike_aim: StrikeAim
-## The scripted opponent of the lesson's match, for `after_ai_step` (null: no beat waits for it).
-var ai: TutorialAi
 ## The beat on show; null in a gap and when no lesson runs.
 var current: TutorialBeatDef = null
 var lesson: TutorialLessonDef = null
@@ -91,6 +91,7 @@ static func mark_done(lesson_id: StringName) -> bool:
 
 ## Starts `def` on the running match. A lesson that is running is dropped without a signal.
 func start(def: TutorialLessonDef) -> void:
+	TutorialText.register()  # The prompts are English keys; the card calls tr() on them.
 	_stop_quietly()
 	lesson = def
 	_index = 0
@@ -185,21 +186,22 @@ func _tick() -> int:
 
 ## A tick was published: the one moment the scripted opponent may be read (nothing is in flight).
 func _on_ticked(_tick_number: int) -> void:
-	if _phase != Phase.GAP or _gate_open or ai == null:
+	if _phase != Phase.GAP or _gate_open or not runner.wait_idle():
 		return
-	if runner.wait_idle():
-		_gate_open = ai.has_fired(current_beat().after_ai_step)
+	var ai: TutorialAi = runner.controller_of(runner.first_opponent) as TutorialAi
+	if ai == null:
+		push_warning(
+			"TutorialDirector: beat %s waits for the opponent, none is seated" % current_beat().id
+		)
+		_gate_open = true
+		return
+	_gate_open = ai.has_fired(current_beat().after_ai_step)
 
 
 func _enter_gap() -> void:
 	_phase = Phase.GAP
 	current = null
 	_gate_open = current_beat().after_ai_step == &""
-	if not _gate_open and ai == null:
-		push_warning(
-			"TutorialDirector: beat %s waits for the opponent, none is set" % current_beat().id
-		)
-		_gate_open = true
 
 
 func _show() -> void:

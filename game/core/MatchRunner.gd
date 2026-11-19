@@ -352,6 +352,27 @@ func wait_idle(timeout_msec: int = WAIT_CAP_MSEC) -> bool:
 	return _take_ai_done(timeout_msec)
 
 
+## The controller of `player_id`'s seat, or null when no seat of that player has one (a human). A
+## read-only view for the tutorial director: it reads the scripted opponent's fired steps and
+## nothing else, and never keeps what it gets across start() (the next match has new controllers).
+## Guarded like `world`, but with a warning (the caller asks on a published tick): while a WORKER
+## job runs, or while the AI batch of the job is awaited (ADR 0038 section 2), the controllers
+## belong to the AI thread, so it logs a warning and returns null. Call wait_idle() first.
+func controller_of(player_id: int) -> AiController:
+	if not shared_access_allowed(_mode, _state) or _job.batch.awaiting:
+		push_warning(
+			(
+				"MatchRunner: controller_of(%d) while a job or the AI thread runs (ADR 0038)"
+				% player_id
+			)
+		)
+		return null
+	for controller: AiController in _job.controllers:
+		if controller.player_id == player_id:
+			return controller
+	return null
+
+
 ## True while a posted job's `done` token is not taken (RUNNING).
 func job_in_flight() -> bool:
 	return _state == HandOff.RUNNING
