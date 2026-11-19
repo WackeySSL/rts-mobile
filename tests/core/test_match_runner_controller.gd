@@ -16,7 +16,8 @@ const WORKER: int = MatchRunner.TickMode.WORKER
 ## that posts it and the call that must find it in flight.
 const DELAY_MSEC: int = 30
 const FRAME: float = 1.0 / 60.0
-const WARNING_TEXT: String = "MatchRunner: controller_of(2) while a job or the AI thread runs (ADR 0038)"
+const WARNING_TEXT: String = "MatchRunner: controller_of(2) while a job or the AI thread runs "
+const WARNING_END: String = "(ADR 0038)"
 
 var _runners: Array[MatchRunner] = []
 var _probes: Array[SimProbe] = []
@@ -60,7 +61,7 @@ func test_it_warns_and_gives_null_while_a_worker_job_runs() -> void:
 	assert_bool(runner.job_in_flight()).is_true()
 	(
 		assert_error(func() -> void: assert_object(runner.controller_of(2)).is_null())
-		. is_push_warning(WARNING_TEXT)
+		. is_push_warning(WARNING_TEXT + WARNING_END)
 	)
 	assert_bool(runner.wait_idle()).is_true()
 	assert_object(runner.controller_of(2)).is_not_null()
@@ -80,7 +81,7 @@ func test_it_warns_and_gives_null_while_the_ai_batch_is_awaited() -> void:
 	assert_bool(runner._ai_thread != null and runner._ai_thread.is_started()).is_true()
 	(
 		assert_error(func() -> void: assert_object(runner.controller_of(2)).is_null())
-		. is_push_warning(WARNING_TEXT)
+		. is_push_warning(WARNING_TEXT + WARNING_END)
 	)
 	assert_bool(runner.wait_idle()).is_true()
 	assert_object(runner.controller_of(2)).is_same(slow)
