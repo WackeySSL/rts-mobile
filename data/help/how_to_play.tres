@@ -254,13 +254,13 @@ body = "Tap a unit to select only that unit. Tap anywhere on its picture, not on
 script = ExtResource("3_ent")
 id = &"selection-tap-building"
 title = "Select a building"
-body = "Tap your own building to select it. It gets four corner brackets and a health bar. If a unit stands at the same spot, the unit is selected instead. A Headquarters, barracks or vehicle factory also opens the build drawer on the tab it builds."
+body = "Tap your own building to select it. It gets four corner brackets and a health bar, and the bar at the bottom left shows its picture and health. Mend shows for any finished building of yours, and Sell for all of them except the Headquarters. Neither shows on a construction site. If a unit stands at the same spot, the unit is selected instead. Selecting a Headquarters, barracks, vehicle factory, airfield or engineering centre does not open the build drawer."
 
 [sub_resource type="Resource" id="e39"]
 script = ExtResource("3_ent")
 id = &"selection-tap-enemy-building"
 title = "Look at an enemy building"
-body = "With nothing selected, tap an enemy building you can see. An amber frame and its health bar show, and the bar at the bottom left names it. You can only look. It takes no orders."
+body = "With nothing selected, tap an enemy building you can see. An amber frame and its health bar show, and the bar at the bottom left shows its picture and health. You can only look. It takes no orders, and a building hidden by the fog cannot be tapped."
 
 [sub_resource type="Resource" id="e40"]
 script = ExtResource("3_ent")
@@ -296,7 +296,7 @@ body = "Hold and drag a box with none of your units inside, and the selection is
 script = ExtResource("3_ent")
 id = &"selection-chip"
 title = "What you selected"
-body = "The bar at the bottom left shows your selection. There is one card for each unit type, with its picture, how many there are and a health bar. A building shows its picture, name and health bar. Types that do not fit are counted in a +N card. The bar goes away when nothing is selected."
+body = "The bar at the bottom left shows your selection. There is one card for each unit type, with its picture, how many there are and a health bar. A building shows its picture and health bar, with no name, so Mend and Sell stay on the screen. Types that do not fit are counted in a +N card. An enemy building's card has amber corners and an amber bar with a notch. The bar goes away when nothing is selected. Tapping a card does nothing."
 
 [sub_resource type="Resource" id="e46"]
 script = ExtResource("3_ent")
@@ -710,7 +710,7 @@ body = "Hold a card to cancel the last one of that kind you queued. You get all 
 script = ExtResource("3_ent")
 id = &"build-menu-select-producer"
 title = "Tap a building to build"
-body = "Tap your Headquarters, barracks, vehicle factory, airfield or engineering centre. It is selected and the drawer comes up on the tab it builds. If you opened another tab, tap the building again to go back to its tab."
+body = "Tap your Headquarters, barracks, vehicle factory, airfield or engineering centre to select it. Mend and Sell show, and the build drawer does not come up, so you can mend a building with the map in view. An open drawer folds with the tap on the map, like any tap there. The drawer's tab is set to the one the building builds, and BUILD opens the drawer on it. If you opened another tab, tap the building again and BUILD is back on its tab."
 
 [sub_resource type="Resource" id="e106"]
 script = ExtResource("3_ent")
@@ -728,7 +728,7 @@ body = "Every tab lists only the buildings and units of your own side, and those
 script = ExtResource("3_ent")
 id = &"build-menu-during-placement"
 title = "The drawer while you place"
-body = "You can tap BUILD while you place a building. The ghost stays and the cards come back. When you finish or cancel a placement, the drawer does not come back by itself. Tap BUILD for it."
+body = "You can tap BUILD while you place a building. The ghost stays and the cards come back. The drawer slides away again with the next touch of the map, or when you tap a Ready card. Tapping one of your producers does not bring it up. When you finish or cancel a placement, the drawer does not come back by itself. Tap BUILD for it."
 
 [sub_resource type="Resource" id="e109"]
 script = ExtResource("3_ent")
@@ -972,23 +972,35 @@ body = "The main menu has one column of big buttons: Continue, when a game can b
 
 [sub_resource type="Resource" id="e144"]
 script = ExtResource("3_ent")
+id = &"menus-continue"
+title = "Continue a match"
+body = "The match is saved when the game goes to the background. If the game was closed meanwhile, the main menu shows CONTINUE above Skirmish. It shows only while there is a match to resume. Tap it and a bar shows the match being played again, which takes longer for a longer match. CANCEL stops it and keeps the match for later. The match then opens paused: tap Resume to go on. If the saved match cannot be rebuilt, because the game was updated or the file is damaged, it is thrown away and the menu says so. You lose no XP."
+
+[sub_resource type="Resource" id="e145"]
+script = ExtResource("3_ent")
 id = &"menus-skirmish"
 title = "Start a skirmish"
 body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. The maps are Kestrel Flats and, from rank 2, Heron Fords, a valley split by a river that only two fords cross. A map or level that is greyed out shows the rank that opens it, such as Hard at rank 3. While the match loads, the button reads STARTING and a second tap does nothing. Back does nothing until the match starts."
 
-[sub_resource type="Resource" id="e145"]
+[sub_resource type="Resource" id="e146"]
 script = ExtResource("3_ent")
 id = &"menus-how-to-play"
 title = "How to play"
 body = "Tap How to play on the main menu to see a list of sections. Tap one to read it. Long sections scroll. Tap All sections, or the phone's Back button, to return to the list."
 
-[sub_resource type="Resource" id="e146"]
+[sub_resource type="Resource" id="e147"]
 script = ExtResource("3_ent")
 id = &"menus-settings"
 title = "Settings"
 body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
 
-[sub_resource type="Resource" id="e147"]
+[sub_resource type="Resource" id="e148"]
+script = ExtResource("3_ent")
+id = &"menus-deploy"
+title = "Starting a match"
+body = "When you tap START on Skirmish, or start a lesson, a still card covers the screen while the match is made. It shows the game icon, the word DEPLOYING and the map's name. It goes away by itself when the match is ready, and also if the match could not start."
+
+[sub_resource type="Resource" id="e149"]
 script = ExtResource("3_ent")
 id = &"menus-licences"
 title = "Licences"
@@ -998,9 +1010,9 @@ body = "Open Licences in Settings to see what the game is built on, such as its 
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e146"), SubResource("e147")])
+entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e146"), SubResource("e147"), SubResource("e148"), SubResource("e149")])
 
-[sub_resource type="Resource" id="e148"]
+[sub_resource type="Resource" id="e150"]
 script = ExtResource("3_ent")
 id = &"the-intro-skip"
 title = "Skip the intro"
@@ -1010,7 +1022,7 @@ body = "Tap the screen while the game starts to stop the intro. If the game is r
 script = ExtResource("2_sec")
 id = &"the-intro"
 title = "The intro"
-entries = Array[ExtResource("3_ent")]([SubResource("e148")])
+entries = Array[ExtResource("3_ent")]([SubResource("e150")])
 
 [resource]
 script = ExtResource("1_def")
