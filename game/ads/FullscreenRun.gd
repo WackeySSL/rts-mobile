@@ -31,6 +31,7 @@ var _connected: bool = false
 var _shown: bool = false
 var _cancelled: bool = false
 var _timed_out: bool = false
+var _late_at_ms: int = 0
 var _is_opened: bool = false
 var _is_closed: bool = false
 var _failed: bool = false
@@ -66,6 +67,7 @@ func execute() -> bool:
 	while not _is_opened and not _failed:
 		if _cancelled or int(_now_ms.call()) >= deadline:
 			_timed_out = true
+			_late_at_ms = int(_now_ms.call())
 			if not _cancelled:
 				_backend.cancel_show(_kind)
 			return false
@@ -82,6 +84,15 @@ func execute() -> bool:
 ## True while the run timed out and its ad may still open or is open and not yet closed.
 func is_late_pending() -> bool:
 	return _timed_out and _connected and not _is_closed
+
+
+## True while a caller about to build a match must still wait for this run: it opened and has not
+## closed (no cap, the ad is on screen), or it never answered and `cap_ms` has not passed since it
+## timed out. Past the cap it only keeps listening (to pair and count a late open).
+func is_settling(cap_ms: int) -> bool:
+	if not is_late_pending():
+		return false
+	return _is_opened or int(_now_ms.call()) < _late_at_ms + cap_ms
 
 
 ## The run's ad kind.

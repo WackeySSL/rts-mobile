@@ -13,18 +13,15 @@ const Rig: GDScript = preload("res://tests/sim/support/production_worlds.gd")
 ## The shipped unit files: this suite checks every shipped faction, so it builds on them.
 const UNITS_DIR: String = "res://data/units"
 const FACTIONS_DIR: String = "res://data/factions"
-## Files with no roster entry yet: the transports and the drone squads (P266), and the medic squads
-## (P280). Each row removes its own names (P245 rostered the fighters and bombers, P249 the
-## engineering centres, P279 the repair buildings, P291 the ground carriers, P292 the minelayers).
+## Files with no roster entry yet: the transports and the drone squads (P266). Each row removes its
+## own names (P245 rostered the fighters and bombers, P249 the engineering centres, P279 the repair
+## buildings, P280 the medic squads, P291 the ground carriers, P292 the minelayers).
 const AIR_UNLISTED: Array[String] = [
 	# The transports and drone squads (P266).
 	"fossil_transport",
 	"renew_transport",
 	"fossil_drone",
 	"renew_drone",
-	# The medic squads (P280).
-	"fossil_patchers",
-	"renew_menders",
 ]
 ## The sidebar tabs (World.Tab): the Headquarters is the building that produces STRUCTURES.
 const STRUCTURES: int = 0

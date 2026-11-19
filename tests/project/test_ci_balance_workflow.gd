@@ -25,6 +25,7 @@ const BALANCE_PATHS: Array[String] = [
 	'      - "!data/scenarios/tutorial_*"',
 	'      - "!game/ai/TutorialAi.gd"',
 	'      - "!game/ai/TutorialScriptDef.gd"',
+	'      - "!game/ai/TutorialStepDef.gd"',
 ]
 const BALANCE_INPUTS: Array[String] = [
 	"      suite:",

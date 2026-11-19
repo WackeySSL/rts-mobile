@@ -154,6 +154,9 @@ var first_opponent: int = FIRST_OPPONENT
 ## sim to `RulesDef.bonus_credits_max` (plan P512; MatchSetup.apply writes both).
 var bonus_credits: int = 0
 var bonus_seat: int = 0
+## Set by the Restorer (plan P515) on a runner it has started and played to the saved tick, off the
+## tree: `_ready` then does not start a second match over it.
+var restored: bool = false
 
 ## The World, `loop`, `replay` and `probe` belong to the worker while a job runs (ADR 0012
 ## section 1): read or swap them in SYNC mode, inside `ticked` or after wait_idle(). Each is a
@@ -262,7 +265,7 @@ var _probe: SimProbe
 
 
 func _ready() -> void:
-	if scenario != null:
+	if scenario != null and not restored:
 		start()
 
 

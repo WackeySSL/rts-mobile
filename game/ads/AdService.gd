@@ -202,6 +202,19 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 	return shown
 
 
+## Awaitable. Returns at once, without awaiting a frame, when no full-screen run is active (loading
+## or shown, not yet closed) or late (shown by a run that timed out, and neither failed nor closed),
+## or every late run is past its cap. Otherwise
+## waits until each late ad failed or, once opened, closed (no cap: it is on screen). A late ad that
+## never answers is waited for only until `fullscreen_late_cap_ms` after its own timeout, so one
+## dropped show holds up no later call. AdMob cannot recall a started show, so a caller about to put
+## a match on screen awaits this first: no ad opens over a battle (ADR 0042 section 5). Both kinds
+## count: a late rewarded ad also opens unasked once the player has left its screen.
+func settle_fullscreen() -> void:
+	while _runs.has_settling(_settings.fullscreen_late_cap_ms):
+		await (Engine.get_main_loop() as SceneTree).process_frame
+
+
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.
 func note_match_completed(play_seconds: int) -> void:
 	_ledger.note_match_completed(play_seconds)

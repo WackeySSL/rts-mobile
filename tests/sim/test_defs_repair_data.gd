@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The repair buildings' and medic squads' data (plan row P278, ADR 0037 sections 5 and 6,
 ## docs/GDD.md): per faction one repair building and one medic squad. The roster entries come with
-## the art rows P279 (buildings, rostered) and P280 (medics): the medics are not buildable yet.
+## the art rows P279 (buildings) and P280 (medics), which put all four in the rosters.
 ## The GDD and the ADR give the names, costs, power, requirements, classes, hp per period, reach,
 ## slots and cost percents of the buildings, and the medics' hit points, speed (the Menders'),
 ## reach, hp per period (per 15 ticks), slots, seek and cost. Starting values with no source: the
@@ -150,17 +150,12 @@ func test_names_fit_the_limit_and_are_unique() -> void:
 		seen[shown] = true
 
 
-## The buildings joined their rosters with P279 (the sheds); P280 deletes this case (the medics).
-func test_the_sheds_are_rostered_and_the_medics_not_yet() -> void:
-	for id: String in SHEDS.keys():
+## The buildings joined their rosters with P279 (the sheds), the medics with P280.
+func test_the_sheds_and_the_medics_are_rostered() -> void:
+	for id: String in SHEDS.keys() + MEDICS.keys():
 		var def: UnitDef = _def(id)
 		var faction: FactionDef = load("res://data/factions/%s.tres" % def.faction)
 		assert_bool(faction.roster.has(def)).override_failure_message(id).is_true()
-	for id: String in MEDICS.keys():
-		var def: UnitDef = _def(id)
-		var faction: FactionDef = load("res://data/factions/%s.tres" % def.faction)
-		# The medics' roster entries come with P280.
-		assert_bool(faction.roster.has(def)).override_failure_message(id).is_false()
 
 
 func _def(id: String) -> UnitDef:
