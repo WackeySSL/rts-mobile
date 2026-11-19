@@ -36,6 +36,9 @@ const FIND_EVERY: int = 15  ## Frames between looks for a control that is not th
 const ELLIPSE_STEPS: int = 40
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const EPSILON: float = 0.01
+## Drawn above every other control of the layer, the pause menu included, whatever order the mark
+## was added in: the card that asks for Resume must be seen over the open menu.
+const Z_ABOVE_MODALS: int = 100
 
 var director: TutorialDirector
 var camera: RtsCamera
@@ -72,6 +75,7 @@ var _next_find: int = 0
 
 
 func _ready() -> void:
+	z_index = Z_ABOVE_MODALS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	reduced = reduced or MenuPrefs.reduced_effects()
