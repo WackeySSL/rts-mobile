@@ -10,7 +10,6 @@ extends Control
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const FIELD_ART: String = "res://assets/art/svg/fields/%s.svg"
-const LOOK_ART: String = "res://assets/art/svg/ground_looks/%s/%s_%s.svg"
 const LOOK_MAP: String = "res://data/maps/heron_fords.tres"
 ## The cut of that map the page shows: the first column, the first row and the size in cells; it
 ## holds the bank, the river and the first ford.
@@ -128,9 +127,7 @@ func _add_look(parent: Control, origin: Vector2) -> void:
 			var symbol: String = map.rows[LOOK_CUT.position.y + row][LOOK_CUT.position.x + column]
 			var id: String = ids[symbol]
 			var variant: String = "ab"[(column + row) % 2]
-			var path: String = LOOK_ART % [map.ground_look, id, variant]
-			if not ResourceLoader.exists(path):
-				path = GROUND_ART % [id, variant]
+			var path: String = GroundAtlas.path_of(StringName(id), variant, map.ground_look)
 			look.add_child(_sprite(path, cell_centre(origin, column, row)))
 
 

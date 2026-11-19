@@ -15,6 +15,8 @@ const NO_COORDS: Vector2i = Vector2i(-1, -1)  ## What `GroundAtlas.coords` says 
 const CLEAR_COLOR_SETTING: String = "rendering/environment/defaults/default_clear_color"
 
 @export var runner: MatchRunner
+## The folder of the map looks; tests point it at a fixture.
+@export var look_root: String = GroundAtlas.LOOK_ROOT
 
 var _art: GroundAtlas
 var _ids: Array[StringName] = []  ## The terrain ids `_art` was built for.
@@ -89,7 +91,7 @@ func _begin(snap: MatchSnapshot) -> void:
 	if _art == null or _ids != snap.terrain_ids or _look != look:
 		_ids = snap.terrain_ids.duplicate()
 		_look = look
-		_art = GroundAtlas.build(_ids, look)
+		_art = GroundAtlas.build(_ids, look, look_root)
 	tile_set = _art.tile_set
 	clear()
 	_cols = snap.map_cols

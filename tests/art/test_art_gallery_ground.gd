@@ -70,16 +70,17 @@ func test_the_look_block_cuts_heron_fords_and_draws_it_in_its_own_ground_look() 
 	assert_int(look.get_child_count()).is_equal(cut.size.x * cut.size.y)
 	var map: MapDef = load(TerrainPage.LOOK_MAP) as MapDef
 	assert_str(String(map.ground_look)).is_equal("heron")
-	var seen: Dictionary[String, bool] = {}
+	var styled: Array[String] = ["water", "sand", "grass"]
+	var found: Dictionary[String, bool] = {}
 	for sprite: Node in look.get_children():
 		var path: String = (sprite as Sprite2D).texture.resource_path
-		seen[path.get_file().get_basename().trim_suffix("_a").trim_suffix("_b")] = (path.contains(
-			"/ground_looks/heron/"
-		))
-	assert_bool(seen["water"]).is_true()
-	assert_bool(seen["sand"]).is_true()
-	assert_bool(seen["grass"]).is_true()
-	assert_bool(seen.get("rock", false)).is_false()
+		var id: String = path.get_file().get_basename().trim_suffix("_a").trim_suffix("_b")
+		found[id] = true
+		# A terrain the look has comes from the look, every other one from the standard tiles.
+		var want: String = "/ground_looks/heron/" if styled.has(id) else "/svg/ground/"
+		assert_str(path).override_failure_message(path).contains(want)
+	for id: String in styled:
+		assert_bool(found.get(id, false)).override_failure_message(id).is_true()
 
 
 func test_the_map_mixes_the_terrains_with_an_oil_and_a_gas_field_wellheads_and_two_craters(

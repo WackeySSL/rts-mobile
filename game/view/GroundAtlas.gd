@@ -8,7 +8,8 @@ extends RefCounted
 ## from the page itself (`use_texture_padding` off: the gutter does that job).
 
 const GROUND_PATH: String = "res://assets/art/svg/ground/%s_%s.svg"
-const LOOK_PATH: String = "res://assets/art/svg/ground_looks/%s/%s_%s.svg"
+const LOOK_ROOT: String = "res://assets/art/svg/ground_looks"  ## The folders of the looks.
+const LOOK_PATH: String = "%s/%s/%s_%s.svg"  ## Root, look, terrain id and variant.
 const FIELD_PATH: String = "res://assets/art/svg/fields/%s.svg"
 const TILE_PX: Vector2i = Vector2i(64, 32)  ## One cell's diamond; the art is 128 x 64 at 2x.
 const KINDS: Array[StringName] = [&"oil", &"gas"]
@@ -29,12 +30,14 @@ var _tiles: Dictionary[StringName, Vector2i] = {}  ## Key -> coordinates in the 
 ## 64 x 32 tile, has no tile (`coords` says (-1, -1)) and its cells stay empty. With a `look` (a
 ## folder of `ground_looks/`, STYLE.md "Map looks") a terrain that the look has both diamonds for
 ## uses those in the same keys and the same slots, so the page is no bigger than without one.
-static func build(terrain_ids: Array[StringName], look: StringName = &"") -> GroundAtlas:
+static func build(
+	terrain_ids: Array[StringName], look: StringName = &"", root: String = LOOK_ROOT
+) -> GroundAtlas:
 	var result: GroundAtlas = GroundAtlas.new()
 	var tiles: Dictionary[StringName, Texture2D] = {}
 	for id: StringName in terrain_ids:
 		for variant: String in ["a", "b"]:
-			_add(tiles, StringName("%s_%s" % [id, variant]), _path(id, variant, look))
+			_add(tiles, StringName("%s_%s" % [id, variant]), path_of(id, variant, look, root))
 	for kind: StringName in KINDS:
 		for stage: StringName in STAGES:
 			var key: StringName = StringName("%s_%s" % [kind, stage])
@@ -69,19 +72,22 @@ func region(key: StringName) -> Rect2i:
 
 
 ## The path of a diamond: the look's when the look has both variants of the terrain, else the
-## standard one.
-static func _path(id: StringName, variant: String, look: StringName) -> String:
-	if look != &"" and has_look(id, look):
-		return LOOK_PATH % [look, id, variant]
+## standard one (a look with only one of the two is no look for that terrain). `root` is the folder
+## of the looks, which a test points at a fixture.
+static func path_of(
+	id: StringName, variant: String, look: StringName, root: String = LOOK_ROOT
+) -> String:
+	if has_look(id, look, root):
+		return LOOK_PATH % [root, look, id, variant]
 	return GROUND_PATH % [id, variant]
 
 
-## Whether the look `look` has both diamonds of the terrain `id`.
-static func has_look(id: StringName, look: StringName) -> bool:
+## Whether the look `look` under `root` has both diamonds of the terrain `id`.
+static func has_look(id: StringName, look: StringName, root: String = LOOK_ROOT) -> bool:
 	return (
 		look != &""
-		and ResourceLoader.exists(LOOK_PATH % [look, id, "a"])
-		and ResourceLoader.exists(LOOK_PATH % [look, id, "b"])
+		and ResourceLoader.exists(LOOK_PATH % [root, look, id, "a"])
+		and ResourceLoader.exists(LOOK_PATH % [root, look, id, "b"])
 	)
 
 
