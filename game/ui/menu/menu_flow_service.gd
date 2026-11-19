@@ -228,7 +228,8 @@ func continue_match() -> Error:
 	_restorer = null
 	main.free()
 	if error != ERR_SKIP:
-		ResumeStore.delete()
+		if error != ERR_TIMEOUT:  # A runner that would not go idle: the file itself is good.
+			ResumeStore.delete()
 		_pending_notice = MainMenuText.RESTORE_FAILED
 	_to_menu()
 	return error

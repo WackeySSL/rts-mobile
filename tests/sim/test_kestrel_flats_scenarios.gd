@@ -16,6 +16,8 @@ const TICKS: int = 1800
 ## Heron Fords' four scenario files (plan row P550): the cheap start checks below run on them too.
 const HERON_STEM: String = "res://data/scenarios/skirmish_heron_fords"
 const HERON_SUFFIXES: Array[String] = ["", "_mirrored", "_fossil_mirror", "_renew_mirror"]
+## Curlew Crags' four scenario files (plan row P552), checked like Heron Fords'.
+const CURLEW_STEM: String = "res://data/scenarios/skirmish_curlew_crags"
 const FACTION_FILES: Dictionary[String, Array] = {
 	Rig.SKIRMISH_PATH: [FOSSIL_PATH, RENEW_PATH],
 	Rig.MIRRORED_PATH: [RENEW_PATH, FOSSIL_PATH],
@@ -38,11 +40,12 @@ const BLOCKS: Dictionary[String, Array] = {
 }
 
 
-## Kestrel Flats' two scenarios and Heron Fords' four.
+## Kestrel Flats' two scenarios, Heron Fords' four and Curlew Crags' four.
 func _checked_paths() -> Array[String]:
 	var found: Array[String] = Rig.PATHS.duplicate()
 	for suffix: String in HERON_SUFFIXES:
 		found.append("%s%s.tres" % [HERON_STEM, suffix])
+		found.append("%s%s.tres" % [CURLEW_STEM, suffix])
 	return found
 
 
@@ -124,6 +127,21 @@ func test_each_side_starts_with_a_headquarters_and_two_rifle_squads_of_its_facti
 			)
 		for player: int in [1, 2]:
 			assert_int(world.credits[player]).is_equal(world.start_credits)
+
+
+func test_every_spawn_uses_its_seats_faction_on_all_checked_scenarios() -> void:
+	for path: String in _checked_paths():
+		var scenario: ScenarioDef = load(path) as ScenarioDef
+		var seats: Dictionary[int, int] = {}
+		for spawn: SpawnDef in scenario.spawns:
+			var faction: FactionDef = scenario.factions[spawn.owner]
+			assert_str(String(spawn.unit.faction)).override_failure_message(path).is_equal(
+				String(faction.id)
+			)
+			seats[spawn.owner] = spawn.count + seats.get(spawn.owner, 0)
+		# A Headquarters and two rifle squads of the seat's faction, for both seats.
+		assert_int(seats[1]).override_failure_message(path).is_equal(3)
+		assert_int(seats[2]).override_failure_message(path).is_equal(3)
 
 
 func test_the_two_sides_are_a_half_turn_of_each_other() -> void:

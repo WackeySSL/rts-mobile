@@ -44,7 +44,9 @@ func _written() -> Array:
 
 
 func _file(setup: MatchSetup, runner: MatchRunner, tick: int, version: String) -> PackedByteArray:
-	return ResumeStore.encode(setup, runner.replay, tick, runner.world.defs_hash(), version)
+	return ResumeStore.encode(
+		setup, runner.replay, tick, runner.world.defs_hash(), version, runner.world.state_hash()
+	)
 
 
 func _decode(bytes: PackedByteArray) -> ResumeData:
@@ -57,7 +59,13 @@ func _sealed(pair: Array, mutate: Callable, tick: int = TICKS) -> PackedByteArra
 	var raw: PackedByteArray = runner.replay.to_bytes()
 	var body: PackedByteArray = raw.compress(ResumeStore.COMPRESSION)
 	var header: Dictionary = ResumeStore.make_header(
-		pair[0], tick, runner.world.defs_hash(), ResumeStore.app_version(), raw.size(), body.size()
+		pair[0],
+		tick,
+		runner.world.defs_hash(),
+		ResumeStore.app_version(),
+		raw.size(),
+		body.size(),
+		runner.world.state_hash()
 	)
 	mutate.call(header)
 	return ResumeStore.seal(JSON.stringify(header).to_utf8_buffer(), body)
@@ -128,7 +136,7 @@ func test_a_tampered_tick_or_seat_is_refused() -> void:
 func test_a_header_changed_after_the_check_is_refused() -> void:
 	var pair: Array = _written()
 	var bytes: PackedByteArray = ResumeStore.encode(
-		pair[0], (pair[1] as MatchRunner).replay, TICKS, 5, ResumeStore.app_version()
+		pair[0], (pair[1] as MatchRunner).replay, TICKS, 5, ResumeStore.app_version(), 1
 	)
 	bytes[ResumeStore.FIXED_BYTES + 3] ^= 1
 	_refused(bytes)
@@ -138,7 +146,12 @@ func test_a_header_defs_hash_that_is_not_the_log_s_is_refused() -> void:
 	var pair: Array = _written()
 	var runner: MatchRunner = pair[1]
 	var bytes: PackedByteArray = ResumeStore.encode(
-		pair[0], runner.replay, TICKS, runner.world.defs_hash() + 1, ResumeStore.app_version()
+		pair[0],
+		runner.replay,
+		TICKS,
+		runner.world.defs_hash() + 1,
+		ResumeStore.app_version(),
+		runner.world.state_hash()
 	)
 	_refused(bytes)
 
@@ -180,6 +193,6 @@ func test_a_cut_file_is_refused() -> void:
 func test_encode_refuses_unusable_input() -> void:
 	var pair: Array = _written()
 	var replay: Replay = (pair[1] as MatchRunner).replay
-	assert_bool(ResumeStore.encode(null, replay, 1, 1, "x").is_empty()).is_true()
-	assert_bool(ResumeStore.encode(pair[0], null, 1, 1, "x").is_empty()).is_true()
-	assert_bool(ResumeStore.encode(pair[0], replay, -1, 1, "x").is_empty()).is_true()
+	assert_bool(ResumeStore.encode(null, replay, 1, 1, "x", 1).is_empty()).is_true()
+	assert_bool(ResumeStore.encode(pair[0], null, 1, 1, "x", 1).is_empty()).is_true()
+	assert_bool(ResumeStore.encode(pair[0], replay, -1, 1, "x", 1).is_empty()).is_true()
