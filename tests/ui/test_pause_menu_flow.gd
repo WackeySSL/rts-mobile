@@ -54,6 +54,9 @@ class FakeAds:
 	func note_match_completed(_seconds: int) -> void:
 		calls += 1
 
+	func settle_fullscreen() -> void:
+		pass
+
 	func maybe_show_interstitial(_placement: StringName) -> bool:
 		calls += 1
 		return false

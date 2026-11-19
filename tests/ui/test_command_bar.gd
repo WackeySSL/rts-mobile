@@ -238,16 +238,23 @@ func test_a_placement_that_begins_during_the_aim_keeps_the_frozen_layout() -> vo
 		assert_bool(_bar.visible).override_failure_message(str(profile)).is_true()
 
 
-## The chip asks for its text: a building's name and a 3-digit count are not cut to the health
-## bar's width, and the bar grows to them (landscape: its width; upright: the chip stays inside).
+## The chip asks for its text: a 3-digit count is not cut to the health bar's width, and the bar
+## grows to it (landscape: its width; upright: the chip stays inside). A building's chip has no
+## name (P310): its label is hidden and asks for nothing.
 func test_the_chip_is_as_wide_as_its_text() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null)
 		await _select([BORE])
 		var label: Label = _bar.find_child("Count", true, false) as Label
-		assert_str(label.text).is_equal("Deep Bore")
-		_assert_label_fits(label, str(size))
-		for text: String in ["×120", "×30"] + _building_names():
+		assert_str(label.text).override_failure_message(str(size)).is_empty()
+		assert_bool(label.visible).override_failure_message(str(size)).is_false()
+		assert_float(label.custom_minimum_size.x).is_equal(0.0)
+		await _select([ENEMY_HQ])  # An enemy building's chip has no name either.
+		assert_bool(label.visible).override_failure_message(str(size)).is_false()
+		await _select([RIFLE])
+		assert_str(label.text).is_equal("×1")
+		assert_bool(label.visible).is_true()
+		for text: String in ["×120", "×30"]:
 			label.text = text
 			_bar._fit_label()
 			await await_idle_frame()
@@ -273,18 +280,6 @@ func _assert_label_fits(label: Label, why: String) -> void:
 		)
 		. is_true()
 	)
-
-
-## The display names of every structure of both factions in data/units.
-func _building_names() -> Array[String]:
-	var names: Array[String] = []
-	for file: String in DirAccess.get_files_at("res://data/units"):
-		if not file.ends_with(".tres"):
-			continue
-		var def: UnitDef = load("res://data/units/%s" % file) as UnitDef
-		if def != null and def.speed == 0 and def.display_name.length() > 8:
-			names.append(def.display_name)
-	return names
 
 
 ## A selected enemy building the fog hides shows no health, one the player sees does.

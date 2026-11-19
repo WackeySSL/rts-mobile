@@ -598,6 +598,72 @@ the carriers in each faction's roster (Vehicles tab); each needs its faction's r
   and sand. The Hud page shows `glyph_mine` and `glyph_hold` in its Bar row; `glyph_home` sits in the Pause row because a row
   holds ten glyphs at most between the corner buttons and the Bar row now has ten.
 
+### The medic squads (P280)
+
+The medic squads of both factions (ADR 0037 sections 6 and 14, docs/GDD.md): the Derrick League's **Patchers**
+(`fossil_patchers`) and the Lumen Accord's **Menders** (`renew_menders`). Each is an `inf` model of **two figures**
+(the combat squads have three) with a hull in 8 directions, a `walk` of 4 frames, an `idle` of 2, a cast shadow and an
+item card, built as the four squads are (P139's poses, one frame apart per figure). They follow the rocket squads in
+each faction's roster (Infantry tab, built at the barracks); neither has a weapon, so neither has a muzzle point.
+
+| Model | Silhouette |
+| --- | --- |
+| `fossil_patchers` | Two stocky figures in olive coveralls under round steel pot helmets with a warm goggle strip, one ahead with a wide steel kit chest on its back under a team-colour lid and a warm lamp, the other behind with a long rust roll of patch line across its shoulders with a team-colour cap at each end and a steel flask at its hip, a team-colour yoke across each chest. |
+| `renew_menders` | Two lean figures in blue-grey suits under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and banded in team colour, the other with a smaller banded case slung low behind it and a slim arm held out ahead with a mint hand light at its tip, a team-colour yoke across each chest. |
+
+- **Kit marks, no emblem.** ADR 0037 forbids a red cross, crescent or crystal (the Geneva emblems) and any look that
+  borrows another game's medic: each side's kit mark is its own. The League's is the **orange team band** (the lid
+  and caps and the yoke are the key triad, the warm lamp and goggles are `lamp`); the Accord's a **mint ring** round
+  the case (the one `mint` hexagonal ring on each figure's case, a second mint piece on the visor and the hand
+  light). `test_medic_art.gd` holds both and finds no reddish hex in either default view.
+- **Apart from the neighbours.** Two figures, not three: each squad is a pair with one carried thing a figure, where
+  the Rig Hands carry rifles and the Wildcatters tubes. The Patchers' big boxy chest and long roll and the Menders'
+  tall white cases read at 32 px in greyscale where the combat squads' long tubes and rifles do not
+  (`test_medic_art.gd` holds each medic's 32 px silhouette under 0.85 overlap with the four squads and the other
+  medic). Measured at the default view, hull only: Patchers 0.29 (Rig Hands), 0.36 (Wildcatters), 0.31 (Linemen),
+  0.40 (Breakers) and 0.80 against the Menders; Menders 0.32, 0.38, 0.31 and 0.45 against the same four. The two
+  medic squads are the closest pair (two figures side by side in a leader-and-follower pose); the faction colour
+  tells them apart in play.
+- **Team colour.** A yoke across each chest (a box between olive straps, so its top is covered and no team piece is a
+  roof plate, `test_artgen_plates.gd`), a team lid on the Patchers' chest and a team cap on each end of their roll,
+  and on each Mender's case a team band as tall as the case's upper half under a thin white cap, so the band shows
+  from behind where the case hides the chest. Team share at zoom 1 in the default view (d06 Patchers, d10 Menders),
+  all seven frames (hull, 4 walk, 2 idle): 8.8 to 11.2 % and 9.5 to 11.0 %, in the rule's 8 to 12 %; in every
+  direction and frame 3.2 to 16.1 % and 3.3 to 11.5 % (`test_medic_art.gd` holds 3 to 17 %). The lowest views are
+  Patchers d00 and Menders d04. The first drafts had a chest band 0.27 tile wide hidden under the upper torso (3 % in the default
+  view, 0 % in d00), a flat team cap on each case and a flat yoke with an open top (the plate rule refused both),
+  round bolsters whose shaded faces left the exact key colours in 5 % of the view, and a case band half as tall
+  that left the Menders' back views at 1.4 to 4.5 % (the Linemen's are 8.6 to 10.2 %).
+- **Poses.** `stride_milli` 352 for the Patchers (legs 0.15 tile, as the Rig Hands) and 376 for the Menders (0.16, as
+  the Linemen): at 67 and 80 milli-tiles a tick they walk 2.9 and 3.2 cycles a second (`test_artgen_poses.gd` holds
+  every squad to 1.5 to 3.5). The angles are the windows of "Squad poses" above (36 and 10 degrees about the hip, 25
+  about z for the octagonal steel helmet, 30 for the hexagonal white one) and the shifts put the planted foot on the
+  ground. Idle: the heads look opposite ways and each figure fidgets one foot in the other's frame, so the pair never
+  stands in the same pose. No arm moves: what a figure carries moves with its body.
+- **Canvas** (2x px, width x height of the union of a part's frames): Patchers hull 72 x 62, walk 72 x 62, idle 76 x
+  62, shadow 150 x 78; Menders 58 x 60, 58 x 62, 62 x 62 and 128 x 66; at most 11.2 KB a file. Page 1 of the atlas
+  grows by 102, 105 and 96 rows (cross-faction, Derrick League mirror, Lumen Accord mirror: 2730, 2657, 2598) and
+  page 2 by 6, 70 and 70 (2510, 1456, 1478); both stay under the 3584 budget.
+- **Gallery.** The Iso page lists them by themselves and shows their item cards and, under the directions, one line
+  of the walk and idle frames in each triad; the Life page has the drone below.
+
+#### Drone effect (P280)
+
+The Lumen Accord's repair drone is two kinds of the life atlas (`fx/life_atlas.svg`, "Life effects" above: `drone`,
+2 frames, and `drone_shadow`), not an atlas of its own: ADR 0037 sections 5 and 13 give the repair effects no draw
+calls of their own, so the drone shares the one fx texture. The texture side is ready (one atlas, no extra draw
+call); P281 still needs an `FxRing` extension (a start-to-end move and frame cycling, since a ring puff only drifts and
+keeps one frame, and `GroundFx` has no ring) or direct region draws in `AirFx._draw`. It is **the Drone Dock's drone**
+(the dock's `drn` group, `renew_drone_dock.tres`): **a ceramic hexagonal body with a large pale glass dome and a thin
+titanium band under a mint light, on two crossed graphite arms that end in four solid dark rotor discs with a spoke
+across each**, 28 x 14 px at zoom 1 against the dock's 26 x 15, with the same mean tone (129 against 129, a
+luminance of 0 to 255), so it does not grow or change tone when it leaves the rack. The dock's team band is a
+titanium band here (the effect carries no team colour). Two frames alternate for the rotor blur (the spokes turned;
+the ink boxes of the two are equal, so nothing jitters when they swap), the shadow is one soft ellipse in a group at
+35 % opacity. The gallery's Life page shows the frames and the shadow like any kind, and
+`tests/art/test_life_atlases.gd` holds the cells, the ink, the colours, the equal frames and the shared anchor. The
+drone flies free: it is never drawn sitting on a vehicle.
+
 ### Derrick League units (P101)
 Plan row P101 replaces the six unit blockouts of the Derrick League by modelled units under the same
 art ids (ADR 0023 sections 6 and 7), regenerated with `bash scripts/gen-art.sh`: 16 hull frames
@@ -2046,6 +2112,8 @@ in doubt, choose a plainer real-world form.
 | Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with a team-colour band and stud beside it and team bands on the cab and the bed rails. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
 | Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
 | Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. | `svg/marks/mine_<faction>_<own\|known>.svg`, 144x96, ground point (72, 60), Keep File |
+| Patchers (`fossil_patchers`) | Two stocky olive figures under round steel pot helmets with a warm goggle strip, one with a wide steel kit chest and a warm lamp on its back under a team lid, the other with a long rust roll of patch line over its shoulders with a team cap at each end, a team yoke across each chest. | `iso/fossil/inf/fossil_patchers_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 72x62, from `models/fossil/fossil_patchers.tres` |
+| Menders (`renew_menders`) | Two lean blue-grey figures under white hexagonal helmets with a mint visor strip, one with a white hexagonal case on its back ringed in mint and banded in team colour, the other with a smaller banded case slung low behind it and a slim arm held out with a mint hand light, a team yoke across each chest. | `iso/renew/inf/renew_menders_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 58x60, from `models/renew/renew_menders.tres` |
 | Rigworks | A wide concrete works hall with a raised control block and a tall round steel chimney behind it, a pipe rack down its right wall and a team-coloured gantry crane over the dark bay door on its front. | `iso/fossil/bld/headquarters_{hull,shadow}.svg`, 384 wide |
 | Turbine Hall | A long concrete turbine hall under a gabled steel roof with a team band round its walls and a team cap along its ridge, a bank of three fan housings with team rings along its right wall and two banded round steel stacks behind it. | `iso/fossil/bld/power_plant_{hull,shadow}.svg`, 256 wide |
 | Oil Works | Two steel gas spheres on legs with team ring girders and a tall twice-banded reaction column behind a low banded concrete process shed, with an open dock hopper on its front wall, a pipe run between them and a thin flare stack carrying a warm lamp. | `iso/fossil/bld/refinery_{hull,shadow}.svg`, 384 wide |
@@ -2307,7 +2375,8 @@ scale 0.5 like `fx/effects_atlas.svg`, so a region's numbers are px of the impor
 camera zoom 1 are world px, and the SVG is twice as large.
 - `fx/life_atlas.svg`, 552 x 536 at 2x (276 x 268 px, about 24 KB): the sprites of `GroundFx` (z 3) and
   `AirFx` (z 25), the smokes, the flames, the sparks and the dust, and (P167, ADR 0029) the hit flash,
-  chips, embers, gas jet, dust cloud and glow of the damage and hit layers.
+  chips, embers, gas jet, dust cloud and glow of the damage and hit layers, and (P280, ADR 0037 section 14)
+  the repair drone and its shadow (`drone`, `drone_shadow`) of the Drone Dock's repairs.
 - `fx/strike_atlas.svg`, 480 x 472 at 2x (240 x 236 px, about 10 KB): the sprites of `StrikeFx` (z 55), the
   two superweapon looks.
 
@@ -2341,6 +2410,8 @@ strips touch their region's edge at one end, below).
 | `ember` | life | 142, 164, 14, 14 | 2 | 18 | centre 7, 7 | A glowing fleck under a charcoal edge: a squat diamond, and a teardrop with a white spot; yellow with a pale core. | the ruin's embers (P148, P165) |
 | `glow` | life | 140, 206, 56, 56 | 1 | 0 | centre 28, 28 | Seven stepped concentric discs of warm yellow (#FFE066) at 0.12 alpha each, no edge and no blur, so the centre is about 0.6 and the rim thin; drawn under every fire in one pass with normal alpha. | the glow pass under fires (P148) |
 | `jet` | life | 182, 164, 40, 18 | 2 | 44 | nozzle 2, 9 | A sideways gas flame that leaves a hole to the right: blunt at the nozzle, drawn out to a tip that flicks up in one frame and down in the other, four yellow-white tones with a white heart under a charcoal edge. | the burning gas jet of a hole in a tank or sphere at SKADET (P148) |
+| `drone` | life | 204, 190, 30, 28 | 2 | 34 | centre 15, 13 | The Lumen Accord's repair drone, as the Drone Dock's: a ceramic hexagonal body with a large pale dome in a glass rim and a thin titanium band, a mint light below, on two crossed graphite arms with a solid dark rotor disc at each end and a spoke across it, the spokes turned between the two frames (the rotor blur). No team colour. | the drone of the Drone Dock's repairs (P281) |
+| `drone_shadow` | life | 204, 226, 30, 16 | 1 | 0 | centre 15, 8 | A soft dark ellipse in one group at 35 % opacity (a drone's shadow on the ground). | the drone's ground shadow (P281) |
 | `lance_down` | strike | 0, 0, 34, 164 | 1 | 0 | tip 17, 157 | The Deep Bore's lance falling: a dark auger bit, a long cone of steel with a lit left half and a shaded right half and four slanting helical flights cut across it, below a heavy square collar with a lit top and a dark foot, and above the collar the burn: five narrow, straight yellow-white streaks of unequal length on flat bases that sit on the collar, swept back up the fall with no round foot, so it never reads as a torch and it hands over into `trail`. | `StrikeFx` the fall (P141) |
 | `lance_up` | strike | 38, 0, 34, 164 | 1 | 0 | tip 17, 7 | The same lance rising: point up, collar below the cone, a ragged spray of yellow-white tongues falling away below the collar. It is drawn on its own, not as the other turned upside down: the collar's lit band is still on top, its dark foot below, and the light still catches the upper edge of each flight. | the launch (P141) |
 | `trail` | strike | 76, 0, 16, 64 | 1 | 0 | bottom centre 8, 64 | A tapering yellow-white streak, white at its flush bottom edge and fading to nothing towards the point; a layer stretches it up the fall behind the lance. | the fall (P141) |
@@ -2404,6 +2475,8 @@ Derrick League, 169 to 213 for the Lumen Accord). Every colour of both files is 
   #FFE066 (hue 47.8) at alpha 0.12 a disc. The glow is a warm yellow with a hue above 46 degrees, clear
   of the Derrick League's band (1.6 to 45.3), so it never reads as a team colour. No filter, no blur, no
   pattern: softness is stacked alpha.
+- **Drone (P280)**, no key band: ceramic top #D5DBDC, titanium band, side and rotor spokes #8A9398, graphite arms,
+  rotors and edges #414A51, dome #F2F6F8 with a glass rim #B4C8CF, mint light #A8F5B0, shadow #1C2127 at 35 %.
 - **Mint** (the Lumen Accord's status light, hue 127 degrees, outside both key bands): #A8F5B0 body,
   #D8FFE0 light line, #FFFFFF heart, edge #1F5C3A.
 
@@ -3195,3 +3268,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-17 | v1.44 (P291, art-director, ADR 0037 sections 7 and 14): the Bunk Wagon (`fossil_bunk_wagon`) and the Linecar (`renew_linecar`), the ground carriers, as 16-direction hull and shadow models with item cards and roster entries after the bomber ("The ground carriers" under "Units", Catalogue rows); the sorted world's page 1 2367, 2279 and 2266 to 2472, 2407 and 2341 and page 2 2046, 1158 and 1244 to 2264, 1264 and 1286 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-17 | v1.45 (P292, art-director, ADR 0037 sections 8 and 14): the Shot Truck (`fossil_shot_truck`) and the Seeder (`renew_seeder`), the minelayers, as 16-direction hull and shadow models with item cards and roster entries after the carriers ("The minelayers" under "Units", Catalogue rows); the four mine marks of both factions, own and known (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`, the known with the notched rim), and the glyphs `glyph_mine` and `glyph_hold` (Bar row of the Hud page); the sorted world's page 1 2472, 2407 and 2341 to 2582, 2526 and 2435 and page 2 2264, 1264 and 1286 to 2486, 1386 and 1386 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2628, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
+| 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect as two kinds of `fx/life_atlas.svg` (`drone`, two rotor-blur frames, and `drone_shadow`, the Drone Dock's drone, two rows on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1478 (cross-faction, Derrick League mirror, Lumen Accord mirror). |

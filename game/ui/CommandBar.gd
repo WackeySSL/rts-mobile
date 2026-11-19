@@ -2,10 +2,11 @@ class_name CommandBar
 extends Control
 ## The command bar (ADR 0025 section 9, plan P122): bottom left (upright too) while something is
 ## selected. From its start: Deselect (48 x 64 dp, `glyph_deselect` over "CLEAR"), the selection
-## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" or a
-## building's name, its health; then a "+N" chip for the types left out; an enemy building's chip
-## wears P115b's look: amber corner brackets round its picture and an amber health bar with a notch
-## in its top edge) and the orders the game has, from `ORDERS`: each is `for` units (Stop) or for
+## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" for
+## units (a building shows no name, its health bar under its card; Michael, 2026-11-18, P310), then
+## a "+N" chip for the types left out; an enemy building's chip wears P115b's look: amber corner
+## brackets round its picture and an amber health bar with a notch in its top edge) and the orders
+## the game has, from `ORDERS`: each is `for` units (Stop) or for
 ## one own complete building (Mend, Sell); Home (P244) is for units with an aircraft that has an
 ## airfield and sends one REPAIR to each airfield the aircraft are homed at
 ## (`PlayerController.home`); Repair (P282, P282b) shows for ground units a complete own repair
@@ -13,9 +14,10 @@ extends Control
 ## nearest (`RepairRules`, `PlayerController.repair`), beside Home in a mixed selection. Orders
 ## that do not fit scroll sideways inside the bar, a button never shrinks below 56 dp. Board
 ## (squads selected, an own carrier on the map with a free seat) and Unload (a loaded carrier
-## selected) are order aims (`CarryAim`, P265): a tap starts the aim, a second tap on the lit button
-## ends it, and the slot stays frozen while it runs. A carrier's chip shows its seats as pips,
-## filled for each squad aboard.
+## selected) and Mine (minelayers selected; its word is "n/cap", dim at the cap) are order aims
+## (`CarryAim`, P265, P294): a tap starts the aim, a second tap on the lit button ends it, and the
+## slot stays frozen while it runs. A carrier's chip shows its seats as pips, filled for each squad
+## aboard.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -53,7 +55,7 @@ const PIP_GAP_DP: float = 3.0
 const SHAKE_DP: float = 6.0  ## How far a refused Board shakes its face, and for how long a step.
 const SHAKE_S: float = 0.05
 const PIPS_MAX: int = 8  ## The most pips a chip shows (a fleet's seats are summed).
-const LABEL_MAX_DP: float = 140.0  ## The most a building's name or a count may ask of the bar.
+const LABEL_MAX_DP: float = 140.0  ## The most a count may ask of the bar.
 const CAPTION: StringName = &"ItemCaption"
 const NUMBER: StringName = &"NumberLabel"
 const CHIP: StringName = &"SelectionPanel"  ## The backdrop variation of the theme.
@@ -62,13 +64,14 @@ const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' 
 ## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
 ## with an aircraft that has an airfield to go to), &"repair" (ground units a repair building
 ## serves; dim while none is damaged), &"building", &"squads" (Board) or &"carrier"
-## (Unload).
+## (Unload) or &"layers" (Mine: its word is the laid mines over the cap, "7/12"; dim at the cap).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
 	{"id": &"home", "glyph": "home", "label": "HOME", "for": &"air"},
 	{"id": &"repair", "glyph": "repair", "label": "REPAIR", "for": &"repair"},
 	{"id": &"board", "glyph": "board", "label": "BOARD", "for": &"squads"},
 	{"id": &"unload", "glyph": "unload", "label": "UNLOAD", "for": &"carrier"},
+	{"id": &"mine", "glyph": "mine", "label": "MINE", "for": &"layers"},
 	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
 	{"id": &"sell", "glyph": "sell", "label": "SELL", "for": &"building"},
 ]
@@ -123,23 +126,24 @@ var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 var _repair: bool = false  ## A repair building serves a selected ground unit: Repair shows.
 var _repair_ready: bool = false  ## ... and one of those units is damaged: Repair is tappable.
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
+var _mine_shown: Vector2i = Vector2i(-1, -1)  ## The "n/cap" the Mine word shows.
 
 
-## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
+## One selected type: its item card, "xN" (a building: no name, the health bar under its card).
 class Chip:
 	extends PanelContainer
 
 	var card: TextureRect = TextureRect.new()
-	var label: Label = Label.new()  ## "xN" for units, the name of a building.
+	var label: Label = Label.new()  ## "xN" for units; empty and hidden for a building.
 	var health: HealthBar = HealthBar.new()
 	var pips: Pips = Pips.new()  ## A carrier's seats; hidden for any other type.
+	var line: BoxContainer = BoxContainer.new()  ## Card and text side by side; a building stacks them.
 	var type: StringName = &""  ## The card's type, to load it once.
 	var enemy: bool = false
 
 	func _init() -> void:
 		theme_type_variation = CHIP
 		mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the read-only chip is no order.
-		var line: HBoxContainer = HBoxContainer.new()
 		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.name = "Card"
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -170,7 +174,13 @@ class Chip:
 	## Writes the chip for one type; an enemy building wears P115b's look (brackets, amber bar).
 	func show_type(snap: MatchSnapshot, group: Group, as_enemy: bool) -> void:
 		var units: bool = not group.building
-		var text: String = "×%d" % group.count if units else snap.type_names[group.type]
+		var text: String = "×%d" % group.count if units else ""  # A building: its card, no name.
+		label.visible = units
+		line.vertical = not units  # A building: the health bar under its card, not beside it.
+		if units:
+			line.remove_theme_constant_override(&"separation")
+		else:
+			line.add_theme_constant_override(&"separation", 0)
 		if label.text != text:
 			label.text = text
 			fit_label()
@@ -187,8 +197,8 @@ class Chip:
 		health.value = group.hp
 		health.visible = not group.fogged
 
-	## The label asks for its text's width, at most `LABEL_MAX_DP` (a longer name is cut), so the
-	## chip and the bar grow to it instead of cutting every building name to the health bar's width.
+	## The label asks for its text's width, at most `LABEL_MAX_DP`, so the chip and the bar grow to
+	## a 3-digit count instead of cutting it to the health bar's width.
 	func fit_label() -> void:
 		var font: Font = label.get_theme_font(&"font")
 		var font_px: int = label.get_theme_font_size(&"font_size")
@@ -339,6 +349,7 @@ func _ready() -> void:
 	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
 	_buttons[&"board"].toggle_mode = true  # Lit while its aim is open.
 	_buttons[&"unload"].toggle_mode = true
+	_buttons[&"mine"].toggle_mode = true
 	_buttons[&"sell"].button_down.connect(_sell_down)
 	_buttons[&"sell"].button_up.connect(func() -> void: _sell_down_now = false)
 	if sell_card != null:
@@ -413,6 +424,9 @@ func _order(id: StringName) -> void:
 				_on_carry_changed()  # A refused start must not leave the toggle lit.
 		&"unload":
 			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.UNLOAD):
+				_on_carry_changed()
+		&"mine":
+			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.MINE):
 				_on_carry_changed()
 		&"mend":
 			var snap: MatchSnapshot = runner.snapshot
@@ -642,6 +656,8 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt3
 			shown = row >= 0 and _building_order(id, snap, row)
 		elif order["for"] == &"squads" or order["for"] == &"carrier":
 			shown = units_ok and _carry_order(id, snap, ids)
+		elif order["for"] == &"layers":
+			shown = units_ok and _mine_order(snap, ids)
 		_buttons[id].visible = shown
 		if order["for"] == &"repair":
 			_sync_toggle(_buttons[id], false, _repair_ready)  # Dim, like Mend at full health.
@@ -676,10 +692,32 @@ func _carry_order(id: StringName, snap: MatchSnapshot, ids: PackedInt32Array) ->
 	return shown
 
 
+## Whether Mine shows (a minelayer is selected, or its aim runs) and its state: lit while the aim
+## runs, dim at the cap (Michael, 2026-11-17), the word "n/cap" (written when it changes).
+func _mine_order(snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
+	if carry_aim == null or snap == null:
+		return false
+	var player: int = _local()
+	var on: bool = carry_aim.mode == CarryAim.Mode.MINE
+	if not on and CarryRules.layers_in(snap, ids, player).is_empty():
+		return false
+	var laid: int = snap.own_mine_count(player)
+	_sync_toggle(_buttons[&"mine"], on, on or laid < snap.mine_cap)
+	var shown: Vector2i = Vector2i(laid, snap.mine_cap)
+	if shown != _mine_shown:  # The word is written when the count or the cap changes.
+		_mine_shown = shown
+		(_buttons[&"mine"].get_node("Face/Word") as Label).text = "%d/%d" % [laid, snap.mine_cap]
+	return true
+
+
 ## A refused tap of the open aim: that order's button face shakes sideways (the plate stays).
 func _shake_order() -> void:
 	shakes += 1
-	var id: StringName = &"unload" if carry_aim.mode == CarryAim.Mode.UNLOAD else &"board"
+	var id: StringName = &"board"
+	if carry_aim.mode == CarryAim.Mode.UNLOAD:
+		id = &"unload"
+	elif carry_aim.mode == CarryAim.Mode.MINE:
+		id = &"mine"
 	var face: Control = _buttons[id].get_node("Face")
 	var reach: float = UiScale.dp(SHAKE_DP)
 	var tween: Tween = create_tween()

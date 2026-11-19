@@ -1,13 +1,15 @@
 extends Node
 ## The one owner of scene changes between the menu and a match (ADR 0043 section 6). No class_name:
-## this is an autoload (tests/project/test_autoloads.gd), listed last, after AdService.
+## this is an autoload (tests/project/test_autoloads.gd), listed after AdService; DeployCardService
+## follows it.
 ##
 ## `start_match(setup)` seeds the match, takes the Phase 6 start-credits bonus (a skirmish only),
-## emits `match_loading(setup)`, waits one frame so the loading card is drawn, and changes to a new
-## main scene. `start_match`, `restart`, `leave_match` and `continue_match` are coroutines: always
-## `await` them. While one runs, the others return ERR_BUSY (leave_match and return_to_menu do
-## nothing), so a new match is never torn down by a late menu change; every await re-checks the
-## match serial before it acts.
+## emits `match_loading(setup)`, waits two frames so the loading card is drawn (a start from a tap
+## arrives before the frame is drawn: the first frame only ends the tap's own), and changes to a new
+## main scene; `match_start_finished(error)` follows when the start is over. `start_match`,
+## `restart`, `leave_match` and `continue_match` are coroutines: always `await` them. While one
+## runs, the others return ERR_BUSY (leave_match and return_to_menu do nothing), so a new match is
+## never torn down by a late menu change; every await re-checks the match serial before it acts.
 ## When the runner reports the end, the summary is built and `Progression.award_match` runs once;
 ## `leave_match()` (the result screen's Back) then counts the match for the ad caps
 ## (`note_match_completed`, once per match) and awaits the post-match interstitial before the menu.
@@ -26,15 +28,23 @@ extends Node
 ## `note_match_completed` and `maybe_show_interstitial`, so lessons never count toward Phase 6's
 ## new-player ad grace or its caps.
 ## The seams of other rows, which never edit this file: `current_runner()`, `current_setup()`,
-## `match_loading`, `mark_surrendered()`, `last_award()`, `take_pending_screen()`; P515 fills
-## `continue_match()`. No game rule and no number lives here, and no Command is sent.
+## `match_loading`, `mark_surrendered()`, `last_award()`, `take_pending_screen()`,
+## `take_pending_notice()`, `cancel_restore()`; `continue_match()` is P515's. No game rule and no
+## number lives here, and no Command is sent.
 
-## Emitted after the bonus and the seed are written and before the main scene is built; one frame
-## is awaited after it, so a loading card is drawn.
+## Emitted after the bonus and the seed are written and before the main scene is built; two frames
+## are awaited after it, so a loading card is drawn.
 signal match_loading(setup: MatchSetup)
+## Emitted when a start that emitted `match_loading` is over: OK once the new main scene has been
+## handed to `switch_to_main` (it may enter the tree a frame later), else the error (a refused
+## setup, a scene that could not be changed, ERR_BUSY when the match was forgotten meanwhile).
+## The deploy card (P536) hides on it.
+signal match_start_finished(error: Error)
 ## Emitted once per match when its end has been scored; `award` is null for a lesson that paid
 ## nothing or a save that could not take the write.
 signal match_scored(summary: MatchSummary, award: XpAward)
+## A restore began; the restore screen reads `progressed` from `restorer`.
+signal restore_started(restorer: Restorer)
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
@@ -52,8 +62,11 @@ var seed_source: Callable = _random_seed
 ## Both return an Error.
 var switch_to_main: Callable = _switch_to_main
 var switch_to_menu: Callable = _switch_to_menu
-## Returns the Signal awaited after `match_loading`; tests drive their own.
+## Awaited after `match_loading`: a coroutine (or a Signal) that returns once two frames passed;
+## tests drive their own.
 var loading_frame: Callable = _next_frame
+## Builds the main scene a restore plays into; tests give a light one.
+var make_main: Callable = _instantiate_main
 
 ## Held here so the cached resource the views share stays alive (a const's field is read-only).
 var _life: LifeSettings = LIFE
@@ -68,9 +81,13 @@ var _counted: bool = false  ## note_match_completed ran for the current match.
 var _busy: bool = false  ## A start, restart or leave is in flight.
 var _serial: int = 0  ## Bumped whenever a match is forgotten or begun.
 var _pending_screen: StringName = &""
+var _pending_notice: StringName = &""
+var _restorer: Restorer = null
 
 
 func _ready() -> void:
+	if get_parent() == get_tree().root:  # The autoload; a suite's own flow installs none.
+		ResumeWatcher.install(get_tree(), self)
 	ads = AdService
 	MenuPrefs.apply_audio(AudioService)  # AudioService loads before SaveService (P526).
 	# The main scene (boot.tscn, whose root is the IntroPlayer) entered the tree before this
@@ -170,11 +187,82 @@ func restart() -> Error:
 	return error
 
 
-## The restore of ADR 0042 section 6; P515 fills it. Until then there is nothing to continue.
+## The restore of ADR 0042 section 6 (a `Restorer`, plan P515): no `match_loading`, so the watcher
+## keeps the file it restores from. Another build's file, or one that does not replay to its
+## checkpoints, is deleted and the menu opens with a notice (`take_pending_notice`); Cancel keeps
+## it.
 func continue_match() -> Error:
 	if _busy:
 		return ERR_BUSY
-	return ERR_UNAVAILABLE
+	var had_file: bool = FileAccess.file_exists(ResumeStore.path())
+	var data: ResumeData = ResumeStore.read()
+	if data == null:
+		if had_file:  # A refused file is deleted by `read`; the screen must not wait on it.
+			_pending_notice = MainMenuText.RESTORE_FAILED
+			_to_menu()
+		return ERR_FILE_NOT_FOUND
+	_busy = true
+	apply_reduced()
+	var main: Node = make_main.call() as Node
+	_restorer = Restorer.new()
+	add_child(_restorer)
+	restore_started.emit(_restorer)
+	var error: Error = _restorer.begin(data, main)
+	if error == OK:
+		error = await _restorer.finished
+	if error == OK:
+		_forget_match()
+		_busy = true
+		_main = main
+		_runner = _restorer.runner
+		_setup = data.setup
+		_runner.match_ended.connect(_on_match_ended)
+		error = switch_to_main.call(main) as Error
+		if error == OK:
+			_open_pause_when_ready(main)
+			_restorer.hand_over(main)
+			_restorer = null
+			_busy = false
+			return OK
+	_restorer.abandon()
+	_restorer = null
+	main.free()
+	if error != ERR_SKIP:
+		ResumeStore.delete()
+		_pending_notice = MainMenuText.RESTORE_FAILED
+	_to_menu()
+	return error
+
+
+## The restore screen's Cancel or Back: the file stays. With no restore running (the file was
+## refused) it leaves for the menu.
+func cancel_restore() -> void:
+	if _restorer != null:
+		_restorer.cancel()
+	elif not _busy:
+		_to_menu()
+
+
+## The restored match opens under the pause menu (the unfold a pause tap asks for).
+func _open_pause_when_ready(main: Node) -> void:
+	if main.is_node_ready():
+		_open_pause(main)
+	else:
+		main.ready.connect(_open_pause.bind(main), CONNECT_ONE_SHOT)
+
+
+func _open_pause(main: Node) -> void:
+	for node: Node in main.find_children("*", "PauseMenu", true, false):
+		var menu: PauseMenu = node as PauseMenu
+		if menu != null and menu.feed != null:
+			menu.feed.state.open(HudState.Unfold.PAUSE)
+
+
+## The notice key the menu shows once (a failed restore), then &"".
+func take_pending_notice() -> StringName:
+	var notice: StringName = _pending_notice
+	_pending_notice = &""
+	return notice
 
 
 ## Leaves a finished match for the menu (the result screen's Back), asking it to open `screen`
@@ -227,12 +315,15 @@ func _check(setup: MatchSetup) -> Error:
 	return error
 
 
-## The setup has passed `_check`. Emits `match_loading`, waits one frame, builds the scene.
+## The setup has passed `_check`. Emits `match_loading`, waits for the card to be drawn, builds the
+## scene.
 func _begin(setup: MatchSetup) -> Error:
+	await ads.settle_fullscreen()
 	var serial: int = _serial
 	match_loading.emit(setup)
 	await loading_frame.call()
 	if serial != _serial:
+		match_start_finished.emit(ERR_BUSY)
 		return ERR_BUSY
 	apply_reduced()
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
@@ -240,6 +331,7 @@ func _begin(setup: MatchSetup) -> Error:
 	var error: Error = setup.apply(runner)
 	if error != OK:
 		main.free()
+		match_start_finished.emit(error)
 		return error
 	_forget_match()
 	_main = main
@@ -250,6 +342,7 @@ func _begin(setup: MatchSetup) -> Error:
 	if error != OK:
 		_forget_match()
 		main.free()
+	match_start_finished.emit(error)
 	return error
 
 
@@ -317,8 +410,15 @@ func _switch_to_menu() -> Error:
 	return get_tree().change_scene_to_file(MENU_SCENE)
 
 
-func _next_frame() -> Signal:
-	return get_tree().process_frame
+func _instantiate_main() -> Node:
+	return (load(MAIN_SCENE) as PackedScene).instantiate()
+
+
+## Two process frames: input runs before the frame's draw, so a start from a tap resumes after the
+## first one before anything is drawn; the second is the frame in which the card is drawn.
+func _next_frame() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
 
 
 func _random_seed() -> int:
