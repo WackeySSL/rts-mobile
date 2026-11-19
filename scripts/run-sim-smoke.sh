@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Headless AI-vs-AI smoke run with fixed seeds (plan rows P95 and P186, ADR 0020 question 2 and
-# ADR 0031 sections 1 to 3): N full matches (default 3) on Kestrel Flats, each player a computer
+# ADR 0031 sections 1 to 3): N full matches (default 3) on Kestrel Flats or the map of --map, each player a computer
 # opponent (AiFactory: the faction's OpponentDef at a difficulty, or its dummy), seeds S to S+N-1.
 # A match ends at its end or after --ticks ticks (default 13,500 = 15 minutes of game); a match
 # still running then is a "timeout", which is not a failure. The loop is tests/smoke/smoke_run.gd

@@ -45,4 +45,11 @@ func test_the_default_map_is_kestrel_and_all_rotates_by_seed() -> void:
 		assert_bool(ResourceLoader.exists(path)).is_true()
 	assert_int(seen.size()).is_equal(6)
 	assert_array(maps.keys()).contains_exactly_in_any_order(["kestrel", "heron", "curlew"])
+	# The rotation itself: the map of seed n is MAPS[n mod 3], so a changed formula breaks this.
+	assert_str(Smoke.map_of_seed("all", 1)).is_equal("heron")
+	assert_str(Smoke.map_of_seed("all", 2)).is_equal("curlew")
+	assert_str(Smoke.map_of_seed("all", 3)).is_equal("kestrel")
+	assert_str(Smoke.map_of_seed("all", 4)).is_equal("heron")
+	assert_str(Smoke.map_of_seed("all", 1002)).is_equal("kestrel")
+	assert_str(Smoke.map_of_seed("curlew", 1)).is_equal("curlew")
 	assert_array(Smoke.MAP_CHOICES).is_equal(["kestrel", "heron", "curlew", "all"])

@@ -53,8 +53,9 @@ on:
         type: string
         default: "20"
       map:
-        description: "custom: the map the scenarios are played on: kestrel (Kestrel Flats), heron (Heron Fords, map_2), curlew (Curlew Crags, map_3) or all (the maps in turn by seed)"
-        type: string
+        description: "custom: the map the scenarios are played on: kestrel (Kestrel Flats), heron (Heron Fords, map_2) or curlew (Curlew Crags, map_3)"
+        type: choice
+        options: [kestrel, heron, curlew]
         default: kestrel
       seed_start:
         description: "custom: the first seed (a range that reaches 1000-1100 is refused: 1000 bounds the balance sets, the gate plays 1001-1100)"
@@ -283,7 +284,7 @@ jobs:
           retention-days: 90
 
   # No checkout and no repository code: it reads the markdown the summarise job made and talks to the issue. Only a push
-  # run and a balance or gate run of `main` post; a custom run, or a run of another branch, keeps the artifact only. Event data
+  # run and a balance, gate or maps run of `main` post; a custom run, or a run of another branch, keeps the artifact only. Event data
   # reaches the scripts only through env.
   post:
     needs: [build, summarise]

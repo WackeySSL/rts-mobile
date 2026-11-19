@@ -80,7 +80,12 @@ func test_the_workflow_hands_the_map_from_the_input_to_the_plan_and_the_shard() 
 	var text: String = FileAccess.get_file_as_string(BALANCE)
 	assert_str(text).contains("        options: [balance, gate, maps, custom]")
 	assert_str(text).contains('      map:\n        description: "custom: the map')
-	assert_str(text).contains("        default: kestrel\n")
+	(
+		assert_str(text)
+		. contains(
+			"        type: choice\n        options: [kestrel, heron, curlew]\n        default: kestrel\n"
+		)
+	)
 	assert_str(text).contains("          MAP: ${{ inputs.map }}\n")
 	assert_str(text).contains("          MAP: ${{ matrix.map }}\n")
 	assert_str(text).contains('--scenarios "$SCENARIOS" --map "$MAP" --report')
