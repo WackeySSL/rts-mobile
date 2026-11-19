@@ -380,7 +380,7 @@ func _ring_box() -> Rect2:
 	box = Rect2(box.get_center() - fit * 0.5, fit)
 	var top_left: Vector2 = _safe_rect.position
 	box.position = box.position.clamp(top_left, (_safe_rect.end - box.size).max(top_left))
-	return box
+	return box.intersection(_safe_rect) if box.intersects(_safe_rect) else box  # Never past an edge.
 
 
 ## Keeps `_target` the named control while it stands and shows; looks again for a missing one

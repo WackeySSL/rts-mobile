@@ -96,6 +96,14 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 		var card: Rect2 = mark.card_rect()
 		assert_bool(card.has_area()).override_failure_message(str(size)).is_true()
 		assert_object(mark.target_control()).is_same(resume)
+		var visible: Rect2 = mark.get_viewport().get_visible_rect()
+		var safe: Rect2 = SafeAreaMargin.rect_inside(visible, SafeAreaMargin.DEFAULT_MARGIN_DP)
+		var ring_in: bool = safe.grow(0.5).encloses(mark.ring_rect())
+		(
+			assert_bool(ring_in)
+			. override_failure_message("%s ring %s outside %s" % [size, mark.ring_rect(), safe])
+			. is_true()
+		)
 		for node: Node in menu.find_children("*", "Control", true, false):
 			var control: Control = node as Control
 			var shown: bool = control.is_visible_in_tree() and not control is ConfirmDialog
