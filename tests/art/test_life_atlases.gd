@@ -95,7 +95,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 			row["anchor"]
 		)
 	assert_array(kinds).is_equal(LifeRegions.ATLAS.keys())
-	assert_int(kinds.size()).is_equal(27)
+	assert_int(kinds.size()).is_equal(29)  # 27 and the repair drone's two (P280)
 	assert_dict(Support.joins()).is_equal(LifeRegions.JOIN)
 	var text: String = Support.section().replace("\n", " ")
 	for strip: StringName in LifeRegions.MAX_STRETCH:
@@ -108,7 +108,7 @@ func test_the_style_table_is_the_table_of_life_regions() -> void:
 ## from the style guide, and the ink test below holds the SVG to the same cells.
 func test_every_frame_region_is_the_cell_the_style_guide_implies() -> void:
 	var cells: Array[Dictionary] = Support.cells()
-	assert_int(cells.size()).is_equal(48)
+	assert_int(cells.size()).is_equal(51)  # 48 and the drone's three (P280)
 	for cell: Dictionary in cells:
 		var kind: StringName = cell["kind"]
 		var label: String = "%s %d" % [kind, cell["frame"]]
@@ -139,6 +139,30 @@ func test_every_frame_has_ink_in_a_clear_cell_and_nothing_lies_outside_the_cells
 		problems.append_array(_stray_ink(image, cells, atlas))
 		problems.append_array(_close_cells(cells, atlas))
 		assert_array(problems).override_failure_message(atlas + str(problems)).is_empty()
+
+
+## The repair drone (P280): the two rotor-blur frames have the same ink box inside their cells (so
+## nothing jitters when they swap), the drone and its shadow share the anchor's x (the shadow sits
+## straight under the body), and the shadow's own ink is centred on its anchor and lies wholly
+## below the drone's ink.
+func test_the_drone_frames_have_equal_ink_boxes_and_the_shadow_sits_under_the_body() -> void:
+	var image: Image = _image("life")
+	var boxes: Array[Rect2i] = []
+	for frame: int in LifeRegions.FRAMES[&"drone"]:
+		var cell: Rect2i = LifeRegions.region(&"drone", frame)
+		boxes.append(_ink_box(image, cell))
+	assert_that(boxes[1]).is_equal(boxes[0])
+	assert_float(LifeRegions.ANCHOR[&"drone"].x).is_equal(LifeRegions.ANCHOR[&"drone_shadow"].x)
+	var shadow_cell: Rect2i = LifeRegions.region(&"drone_shadow", 0)
+	var shadow: Rect2i = _faint_box(image, shadow_cell)
+	var centre: Vector2 = Vector2(shadow.position) + Vector2(shadow.size) / 2.0
+	assert_float(absf(centre.x - LifeRegions.ANCHOR[&"drone_shadow"].x)).is_less_equal(1.0)
+	assert_float(absf(centre.y - LifeRegions.ANCHOR[&"drone_shadow"].y)).is_less_equal(1.0)
+	var drone_cell: Rect2i = LifeRegions.region(&"drone", 0)
+	var drone: Rect2i = _ink_box(image, drone_cell)
+	assert_int(shadow_cell.position.y + shadow.position.y).is_greater(
+		drone_cell.position.y + drone.end.y
+	)
 
 
 ## ADR 0027 section 4: life effects carry no team colour. Every authored colour first, then every
@@ -461,3 +485,18 @@ func _luminance(colour: Color) -> float:
 
 func _image(atlas: String) -> Image:
 	return (load(ATLAS_PATHS[atlas]) as Texture2D).get_image()
+
+
+## Like `_ink_box`, in cell px, but over every pixel with any ink (alpha above 0.02): a soft shadow
+## never reaches the half alpha `_ink_box` asks for.
+func _faint_box(image: Image, cell: Rect2i) -> Rect2i:
+	var box: Rect2i = Rect2i()
+	var first: bool = true
+	for y: int in cell.size.y:
+		for x: int in cell.size.x:
+			if image.get_pixel(cell.position.x + x, cell.position.y + y).a <= 0.02:
+				continue
+			var point: Rect2i = Rect2i(Vector2i(x, y), Vector2i.ONE)
+			box = point if first else box.merge(point)
+			first = false
+	return box

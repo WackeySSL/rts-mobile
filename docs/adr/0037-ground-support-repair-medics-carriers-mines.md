@@ -804,6 +804,27 @@ then.
   members whose weapon may hit the target's layer, so a held gun that cannot hit a low-air target
   keeps its `ATTACK_MOVE` instead of standing idle (P298) for the whole focus. The smoke's expired
   rule counts `STANCE` and `REPAIR` as unit orders (§6 of ADR 0038).
+- Note (2026-11-18, P295, as built; it changes §8's "AI" bullets and §10's table row "Mines"):
+  `AiMines` runs in the INTEL slot after `AiStrikes` and orders the layers it has with `LAY_MINE` and
+  `MOVE`; the layer itself is queued by `AiProduction` next to the medic (`QUEUE`, a producer, the
+  requirement, queue room, the unit cap and the credits left, for the layer and one mine). The level
+  fields `mine_target`, `mine_layers` and `mine_scout_ahead` and the def's `mine_layer_type` and
+  `mine_scout_reach_percent` default off; the spacing, reach and leg (`mine_spacing_tiles`,
+  `mine_sweep_reach_tiles`, `mine_scout_leg_tiles`) default to the fossil values. Easy and the frozen
+  4b copies set 0 and no type (starting values, no source yet). A type that is armed, not mobile or
+  has no mine weapon is no layer, and a rules cap of 0 turns it off. The route is the line from the
+  own Headquarters to the base estimate (else its mirror), not the ghosts; the mines go on its own
+  half, `mine_spacing_tiles` apart, so the target is capped by the cells (about 4 on a 34-tile
+  route, so Hard's 8 is a ceiling). A layer is on one duty at a time and is left alone until it has
+  stood idle for a lay or a sweep. Sweeps and the Hard scout legs (a leg of `mine_scout_leg_tiles`
+  past the own half, as far as `mine_scout_reach_percent` of the route, then back to the edge of the
+  own half; the legs start again after each wave) wait while a wave is in the field. A lay that
+  leaves no mine on a real refusal (not for credits or the cap) marks its cell blocked until the
+  route moves. `PlayerView` gained `type_mine_weapon`, `type_mine_cost`, `type_move_class` and the
+  rules `mine_cap`, `mine_lay_ticks` and `sweep_ticks`. `AiMemory.class_of` reads `type_move_class`
+  (the wheeled gap is closed for `class_of` only: `AiArmy._stage` and `AiRepair` still key by tab).
+  The goal key owner `MINE` holds one key per moving layer and yields last (after the scout's and the
+  repair building's).
 
 ### 16. Tests (what is proven headless)
 - **Sale:** refund at full, half and 1 hp; HQ and site refused; `SOLD` -3 gives DIED flag 3 while

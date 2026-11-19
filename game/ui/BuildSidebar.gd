@@ -15,9 +15,11 @@ extends Control
 ## Command, nothing in the sim. A match starts closed. A gesture on the map, the start of placement
 ## or of a strike aim, another unfold and the close button fold it (the feed and the state do the
 ## folding; a swipe past `drawer_swipe_dp` toward the edge it came from does too: landscape any
-## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD and a
-## tap that selects an own producer (its tab, `set_selected`) open it; the end of a placement (a
-## build, the X, the match's end) does not: the drawer stays down (Michael, 2026-11-05).
+## horizontal drag on the panel, portrait a drag that starts on the handle or the tabs). BUILD and
+## the Ready chip open it; selecting an own producer never does (Michael, 2026-11-18, P310: mending
+## a building in combat must not open it): it only sets the tab, so BUILD opens there
+## (`set_selected`); the end of a placement (a build, the X, the match's end) does
+## not open it: the drawer stays down (Michael, 2026-11-05).
 ## Starting a placement from the drawer again (a READY card tapped while one runs) closes it, as
 ## the first start did.
 ## This node is the clipping holder (a plain `Control` with `clip_contents`), over the part of
@@ -311,10 +313,10 @@ func select_tab(index: int) -> void:
 
 
 ## The selection hook (ADR 0019 section 1, ADR 0024 section 6): a lone own building that produces a
-## tab opens it, and opens the drawer (the tap's own map gesture closed it a moment ago in the same
-## frame, and the last request wins). The building selection (plan P84d) needs only to put the
-## building's id in the selection; units and anything else leave the open tab and the state as they
-## are.
+## tab sets that tab and never opens or closes the drawer (P310): a tap on the map folds it as every
+## map gesture does, and BUILD then opens on the building's tab. The building selection (plan P84d)
+## needs only to put the building's id in the selection; units and anything else leave the tab and
+## the state as they are.
 func set_selected(ids: PackedInt32Array) -> void:
 	var snap: MatchSnapshot = null if runner == null else runner.snapshot
 	if snap == null or ids.size() != 1:
@@ -324,7 +326,6 @@ func set_selected(ids: PackedInt32Array) -> void:
 		var produces: int = snap.type_produces[snap.type_index[row]]
 		if produces >= 0 and produces < _tabs.size():
 			select_tab(produces)
-			open()
 
 
 static func _entry(values: PackedInt32Array, player: int) -> int:

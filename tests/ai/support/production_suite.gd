@@ -52,6 +52,7 @@ func _level(level: String) -> AiDifficultyDef:
 	var made: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
 	made.counter_percent = COUNTER[level]
 	made.reaction_ticks = 30
+	made.mine_target = 0  # The layer queue is test_ai_mines' (P295): no layer joins the draws.
 	return made
 
 

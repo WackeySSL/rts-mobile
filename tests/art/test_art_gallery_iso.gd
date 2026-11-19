@@ -74,6 +74,21 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 					. override_failure_message("%s %s %s" % [path, ground, row_name])
 					. is_equal(want)
 				)
+			# A squad with poses shows its walk and idle frames in one line per triad (P280): 4 + 2
+			# rigs, on their shadow, on each ground; nothing else has the rows.
+			var posed: bool = model.pose_frames(&"walk") > 0
+			for triad_name: String in ROWS:
+				var poses_path: String = "Scroll/Content/%s/Poses%s" % [ground, triad_name]
+				assert_bool(page.has_node(poses_path)).override_failure_message(path).is_equal(
+					posed
+				)
+				if posed:
+					var shown: Array[Node] = page.get_node(poses_path).get_children().filter(
+						func(node: Node) -> bool: return node is Node2D
+					)
+					assert_int(shown.size()).override_failure_message(path).is_equal(6)
+					assert_str(shown[0].name).is_equal("Walk0")
+					assert_str(shown[5].name).is_equal("Idle1")
 			# The minelayers also show their faction's two mine marks in both triads at three zooms
 			# (P292): 2 triads x own and known x 3 zooms = 12 sprites; no other type has the row.
 			var marks_path: String = "Scroll/Content/%s/MineMarks" % ground
@@ -86,7 +101,7 @@ func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at
 				assert_int(sprites.size()).override_failure_message(path).is_equal(12)
 		page.get_node("Next").pressed.emit()
 		await await_idle_frame()
-	assert_int(seen.size()).is_equal(46)  # 28 + the P236 to P279 types
+	assert_int(seen.size()).is_equal(48)  # 28 + the P236 to P280 types
 	# The last step went round to the first type again.
 	assert_str((page.get_node("Title") as Label).text).contains("artillery")
 	page.get_node("Previous").pressed.emit()

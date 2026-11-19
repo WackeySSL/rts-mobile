@@ -24,7 +24,7 @@ var _flow: Node
 var _ads: Node
 var _harness: RefCounted
 var _catalog: MapCatalog  ## The real one.
-var _shown: MapCatalog  ## What the screen gets: the real one plus a locked second map.
+var _shown: MapCatalog  ## What the screen gets: a copy of the real one (map 2 is locked).
 
 
 func before() -> void:
@@ -40,7 +40,7 @@ func before_test() -> void:
 	_progression = FakeRank.new()
 	_flow = FakeFlow.new()
 	_catalog = load(MapCatalog.DEFAULT_PATH) as MapCatalog
-	_shown = _two_maps()
+	_shown = _catalog_copy()
 
 
 func after_test() -> void:
@@ -197,6 +197,36 @@ func test_start_sends_one_setup_and_a_second_tap_does_nothing() -> void:
 	assert_int(_flow.started.size()).is_equal(1)  # Started: the screen stays closed to taps.
 
 
+func test_start_reads_starting_while_the_match_is_prepared() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.START))
+	_screen._start.pressed.emit()
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.STARTING))
+	assert_bool(_screen._start.disabled).is_true()
+	_flow.release.emit()
+	await await_idle_frame()
+
+
+func test_back_does_nothing_while_the_match_starts_and_pops_otherwise() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	assert_bool(_screen.on_back()).is_false()
+	_screen._start.pressed.emit()
+	assert_bool(_screen.on_back()).is_true()
+	_flow.release.emit()
+	await await_idle_frame()
+
+
+func test_a_refused_start_restores_the_start_label() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	_flow.refuse = ERR_BUSY
+	await (
+		assert_error(func() -> void: _screen._start.pressed.emit())
+		. is_push_warning("MapSelect: the match did not start (Busy)")
+	)
+	assert_str(_screen._start.text).is_equal(tr(MapSelectText.START))
+	assert_bool(_screen._start.disabled).is_false()
+
+
 func test_the_other_side_plays_the_mirrored_scenario_against_the_derrick_league() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	_screen._sides[&"renew"].pressed.emit()
@@ -225,28 +255,39 @@ func test_a_refused_start_keeps_the_button_live() -> void:
 	_flow.release.emit()
 
 
-func test_the_catalog_is_kestrel_flats_and_pins_the_scenario_files() -> void:
-	assert_array(_catalog.map_ids()).is_equal([&"kestrel_flats"])
+func test_the_catalog_lists_both_maps_and_pins_their_scenario_files() -> void:
+	assert_array(_catalog.map_ids()).is_equal([&"kestrel_flats", &"map_2"])
 	assert_str(_catalog.title(&"kestrel_flats")).is_equal("Kestrel Flats")
-	var on_disk: Array[String] = []
-	for file_name: String in DirAccess.get_files_at("res://data/scenarios"):
-		if file_name.begins_with("skirmish_kestrel_flats") and file_name.ends_with(".tres"):
-			on_disk.append("res://data/scenarios/" + file_name)
-	on_disk.sort()
-	var listed: Array[String] = _catalog.all_paths()
-	listed.sort()
-	assert_array(listed).is_equal(on_disk)
-	var kestrel: MapDef = load("res://data/maps/kestrel_flats.tres") as MapDef
-	var combos: Dictionary = {}
-	for row: Dictionary in _catalog.entries[0][MapCatalog.KEY_SCENARIOS] as Array:
-		var scenario: ScenarioDef = load(row[MapCatalog.KEY_PATH] as String) as ScenarioDef
-		assert_object(scenario).is_not_null()
-		assert_object(scenario.map).is_same(kestrel)
-		assert_str(String(scenario.factions[1].id)).is_equal(String(row[MapCatalog.KEY_PLAYER]))
-		assert_str(String(scenario.factions[2].id)).is_equal(String(row[MapCatalog.KEY_OPPONENT]))
-		combos["%s/%s" % [row[MapCatalog.KEY_PLAYER], row[MapCatalog.KEY_OPPONENT]]] = true
-	assert_int(combos.size()).is_equal(4)  # Both sides and their mirrors.
+	assert_str(_catalog.title(&"map_2")).is_equal("Heron Fords")
+	var stems: Array[String] = ["skirmish_kestrel_flats", "skirmish_heron_fords"]
+	var maps: Array[String] = [
+		"res://data/maps/kestrel_flats.tres", "res://data/maps/heron_fords.tres"
+	]
+	for index: int in 2:
+		var on_disk: Array[String] = []
+		for file_name: String in DirAccess.get_files_at("res://data/scenarios"):
+			if file_name.begins_with(stems[index]) and file_name.ends_with(".tres"):
+				on_disk.append("res://data/scenarios/" + file_name)
+		on_disk.sort()
+		var listed: Array[String] = []
+		for row: Dictionary in _catalog.entries[index][MapCatalog.KEY_SCENARIOS] as Array:
+			listed.append(row[MapCatalog.KEY_PATH] as String)
+		listed.sort()
+		assert_array(listed).is_equal(on_disk)
+		var map: MapDef = load(maps[index]) as MapDef
+		var combos: Dictionary = {}
+		for row: Dictionary in _catalog.entries[index][MapCatalog.KEY_SCENARIOS] as Array:
+			var scenario: ScenarioDef = load(row[MapCatalog.KEY_PATH] as String) as ScenarioDef
+			assert_object(scenario).is_not_null()
+			assert_object(scenario.map).is_same(map)
+			assert_str(String(scenario.factions[1].id)).is_equal(String(row[MapCatalog.KEY_PLAYER]))
+			assert_str(String(scenario.factions[2].id)).is_equal(
+				String(row[MapCatalog.KEY_OPPONENT])
+			)
+			combos["%s/%s" % [row[MapCatalog.KEY_PLAYER], row[MapCatalog.KEY_OPPONENT]]] = true
+		assert_int(combos.size()).is_equal(4)  # Both sides and their mirrors.
 	assert_str(_catalog.scenario_path(&"kestrel_flats", &"fossil", &"renew")).is_not_empty()
+	assert_str(_catalog.scenario_path(&"map_2", &"renew", &"fossil")).is_not_empty()
 	assert_str(_catalog.scenario_path(&"nowhere", &"fossil", &"renew")).is_empty()
 
 
@@ -305,17 +346,10 @@ func _open(profile: UiMetrics, consent: bool, host_band: bool = true) -> void:
 		await await_idle_frame()
 
 
-## The real catalog plus a second map as P550 will add it, so the lock has a map to hide behind.
-func _two_maps() -> MapCatalog:
+## A copy of the real catalog (map 2 behind its lock), so a test may reorder it.
+func _catalog_copy() -> MapCatalog:
 	var catalog: MapCatalog = MapCatalog.new()
 	catalog.entries = _catalog.entries.duplicate(true)
-	catalog.entries.append(
-		{
-			MapCatalog.KEY_ID: &"map_2",
-			MapCatalog.KEY_TITLE: "River Valley",
-			MapCatalog.KEY_SCENARIOS: []
-		}
-	)
 	return catalog
 
 

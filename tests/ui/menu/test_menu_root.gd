@@ -49,6 +49,7 @@ func _check_defaults() -> void:
 	assert_bool(_routes.has(MenuRoutes.HOW_TO_PLAY)).is_true()
 	assert_bool(_routes.has(MenuRoutes.SKIRMISH)).is_true()  # P525 registered it.
 	assert_bool(_routes.has(MenuRoutes.SETTINGS)).is_true()
+	assert_bool(_routes.has(MenuRoutes.CONTINUE)).is_true()  # P515 (shown only with a file).
 	assert_int(_stack.depth()).is_equal(1)
 	var main: MainMenu = _stack.current() as MainMenu
 	var enabled: Array[String] = []
@@ -56,7 +57,7 @@ func _check_defaults() -> void:
 		var button: Button = child as Button
 		if button != null and not button.disabled:
 			enabled.append(button.text)
-	assert_array(enabled).is_equal(["SKIRMISH", "HOW TO PLAY", "SETTINGS"])
+	assert_array(enabled).is_equal(["CONTINUE", "SKIRMISH", "HOW TO PLAY", "SETTINGS"])
 	main.column.get_child(_index_of(main, "HOW TO PLAY")).emit_signal("pressed")
 	assert_object(_stack.current()).is_instanceof(HowToPlayScreen)
 

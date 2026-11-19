@@ -168,6 +168,18 @@ connects to `runner.ticked`, reads `runner.snapshot.events` once per tick and ne
   and version as the page states it, the date checked, and what was changed (cut, normalised,
   mixed). A pack's own licence file is kept beside its files. Art-director rejects a file whose page
   hints at sampled third-party material or whose uploader is not its author.
+  Note (Michael, 2026-11-18, P504): a file uploaded by someone other than its author is allowed
+  when its page names the author and states the author's own licence declaration; its CREDITS row
+  records both the author and the uploader. Anonymous re-uploads stay rejected. Combat sounds use
+  real recordings (CC0 or CC-BY), not sfxgen synthesis; sfxgen stays for radio chirps and UI
+  (P505). No Freesound API key for now: P504 ships the OpenGameArt set (a ship cannon for the tank
+  gun, a layered cannon for artillery), which may be upgraded later.
+  Note (2026-11-18, P504c): the tank gun, the artillery and the rocket now come from Freesound
+  recordings, downloaded by hand from the website (still no API key). The tank gun and the
+  artillery use Yle's 1958 field recording of a 76 mm field gun (CC BY 4.0, uploaded by Yle's own
+  archive account): its two nearest shots for the tank gun, two farther shots for the artillery.
+  The rocket is a hobby rocket launch recorded by its uploader (CC0). Every other combat cue keeps
+  its OpenGameArt file.
 - **CC-BY attribution in the game:** the Licences screen lists every CC-BY file's credit line
   (question 9; ADR 0043 §7). P508's scan checks that every file has a row and an allowed licence;
   it cannot check that the row is true.
