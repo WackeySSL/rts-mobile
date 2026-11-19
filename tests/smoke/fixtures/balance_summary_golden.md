@@ -19,6 +19,11 @@ Commit `abc123`, impl `native`, levels `normal,normal`, scenarios `cross`, at mo
 
 Median 8.9 min, 90th percentile 8.9 min, longest 8.9 min (8000, 8000 and 8000 ticks).
 
+| Map | Matches | Median | 90th percentile |
+| --- | --- | --- | --- |
+| kestrel | 4 | 8.9 min | 8.9 min |
+| all maps | 4 | 8.9 min | 8.9 min |
+
 ### Unit types
 
 | Faction | Type | Produced | Share | Kills per 1 000 credits | Survival | Built in |
