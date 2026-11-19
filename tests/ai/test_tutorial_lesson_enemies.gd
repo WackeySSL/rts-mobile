@@ -1,0 +1,101 @@
+extends GdUnitTestSuite
+## The scripted enemies of the four lessons (plan row P543), played headless on the lesson's own
+## scenario and seed through `MatchRunner` (SYNC), the way a lesson's match is seated: the steps
+## fire when their triggers hold and on their ticks, so the beats that wait for them
+## (`after_ai_step`) are opened, and an idle player's Headquarters outlives the script. The runner
+## is never put in the tree, and the director is not involved: its gate is in the director suites.
+
+const LESSON_DIR: String = "res://data/tutorial/"
+const LOCAL: int = 1
+const FOE: int = 2
+## Ticks after a TICK trigger's threshold that its step has to have fired in (one think and the
+## wait of an order step for its units).
+const SLACK: int = 60
+
+
+func test_basics_trains_then_sends_the_wave_and_the_base_stands() -> void:
+	var runner: MatchRunner = _play(&"basics", 2700)
+	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
+	assert_bool(ai.has_fired(&"train")).is_true()
+	assert_int(ai.fired_tick_of(&"wave")).is_between(1800, 1800 + SLACK)
+	assert_bool(ai.has_fired(&"defend")).is_false()  # Nothing of the player's came near.
+	# Three came with the start and three were trained; the wave met the player's squads.
+	assert_int(_count(runner.world, FOE, &"renew_rifle")).is_between(3, 6)
+	assert_int(runner.world.stat_lost_units[LOCAL] + runner.world.stat_lost_units[FOE]).is_greater(
+		0
+	)
+	assert_int(_count(runner.world, LOCAL, &"headquarters")).is_equal(1)
+	assert_int(runner.world.match_end_tick).is_equal(0)
+
+
+func test_basics_defends_when_the_player_comes_near_its_base() -> void:
+	var runner: MatchRunner = _runner(&"basics")
+	runner.run_ticks(60)
+	var world: World = runner.world
+	var squads: PackedInt32Array = PackedInt32Array()
+	var type: int = world.type_ids.find(&"rifle_squad")
+	for row: int in world.unit_count():
+		if world.owner[row] == LOCAL and world.type_index[row] == type:
+			squads.append(world.unit_id[row])
+	CommandQueue.submit(Command.move(LOCAL, squads, 24000, 24000))
+	runner.run_ticks(1500)
+	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
+	assert_bool(ai.has_fired(&"defend")).is_true()
+	assert_int(ai.fired_tick_of(&"defend")).is_less(1800)  # The view opened it, not the clock.
+
+
+func test_strikes_gathers_the_squads_early_for_the_strike() -> void:
+	var ai: TutorialAi = _fired(&"strikes", 400)
+	assert_int(ai.fired_tick_of(&"gather")).is_between(150, 150 + SLACK)
+
+
+func test_air_sends_one_fighter_over_the_base_after_a_minute() -> void:
+	var ai: TutorialAi = _fired(&"air", 1100)
+	assert_int(ai.fired_tick_of(&"raid")).is_between(900, 900 + SLACK)
+
+
+func test_support_pokes_the_tanks_and_the_base_stands() -> void:
+	var runner: MatchRunner = _play(&"support", 1500)
+	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
+	assert_int(ai.fired_tick_of(&"poke")).is_between(450, 450 + SLACK)
+	assert_int(_count(runner.world, LOCAL, &"headquarters")).is_equal(1)
+	assert_int(runner.world.match_end_tick).is_equal(0)
+
+
+## The same lesson and seed give the same Command log: a lesson replays.
+func test_a_lesson_replays_from_its_seed() -> void:
+	var first: MatchRunner = _play(&"basics", 600)
+	var second: MatchRunner = _play(&"basics", 600)
+	assert_array(first.replay.commands).is_equal(second.replay.commands)
+	assert_int(first.last_hash).is_equal(second.last_hash)
+	assert_int(first.replay.commands.size()).is_greater(0)  # The enemy queued its squads.
+
+
+func _runner(id: StringName) -> MatchRunner:
+	var lesson: TutorialLessonDef = load("%s%s.tres" % [LESSON_DIR, id]) as TutorialLessonDef
+	var runner: MatchRunner = auto_free(MatchRunner.new())
+	runner.scenario = lesson.scenario
+	runner.match_seed = lesson.match_seed
+	runner.tick_mode = MatchRunner.TickMode.SYNC
+	runner.opponents = [lesson.enemy]
+	runner.start()
+	return runner
+
+
+func _play(id: StringName, ticks: int) -> MatchRunner:
+	var runner: MatchRunner = _runner(id)
+	runner.run_ticks(ticks)
+	return runner
+
+
+func _fired(id: StringName, ticks: int) -> TutorialAi:
+	return _play(id, ticks).controller_of(FOE) as TutorialAi
+
+
+func _count(world: World, player: int, type_id: StringName) -> int:
+	var type: int = world.type_ids.find(type_id)
+	var found: int = 0
+	for row: int in world.unit_count():
+		if world.owner[row] == player and world.type_index[row] == type:
+			found += 1
+	return found

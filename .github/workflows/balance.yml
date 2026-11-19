@@ -3,7 +3,7 @@ name: Balance run
 # The balance run (P190, ADR 0031 section 5): headless AI-vs-AI matches on the native kernels, in shards, summarised per set
 # and posted as one comment on the open issue labelled `balance`. A development tool that runs on GitHub's machines: players
 # never see it. Never a required check, never on a pull request, no schedule. It starts after a merge that changes the AI, the
-# sim, the data or the native code, and by hand (`workflow_dispatch`: suite balance, gate or custom). The gate run (suite=gate)
+# sim, the data or the native code, and by hand (`workflow_dispatch`: suite balance, gate, maps or custom). The gate run (suite=gate)
 # plays the held-out seeds 1001-1100 on `main` (section 6); a custom run (the tuning PR's "after") keeps its artifact only.
 # A run plays the commit it is dispatched on ("Use workflow from"); there is no ref input, so github.sha is the commit played.
 # scripts/ci/balance-plan.sh owns the shard table and
@@ -36,9 +36,9 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: "balance: the five sets; gate: the held-out seeds 1001-1100; custom: one set below (artifact only); gate runs on main only"
+        description: "balance: the five sets; gate: the held-out seeds 1001-1100; maps: Heron Fords and Curlew Crags (map_2, map_3), one set each; custom: one set below (artifact only); gate runs on main only"
         type: choice
-        options: [balance, gate, custom]
+        options: [balance, gate, maps, custom]
         default: balance
       levels:
         description: "custom: the two controllers, like normal,hard (easy, normal, hard, dummy)"
@@ -52,6 +52,11 @@ on:
         description: "custom: the number of matches, 1 to 200"
         type: string
         default: "20"
+      map:
+        description: "custom: the map the scenarios are played on: kestrel (Kestrel Flats), heron (Heron Fords, map_2) or curlew (Curlew Crags, map_3)"
+        type: choice
+        options: [kestrel, heron, curlew]
+        default: kestrel
       seed_start:
         description: "custom: the first seed (a range that reaches 1000-1100 is refused: 1000 bounds the balance sets, the gate plays 1001-1100)"
         type: string
@@ -112,6 +117,7 @@ jobs:
           SUITE: ${{ inputs.suite || 'balance' }}
           LEVELS: ${{ inputs.levels }}
           SCENARIOS: ${{ inputs.scenarios }}
+          MAP: ${{ inputs.map }}
           MATCHES: ${{ inputs.matches }}
           SEED_START: ${{ inputs.seed_start }}
         run: |
@@ -195,8 +201,9 @@ jobs:
           SEED_START: ${{ matrix.seed_start }}
           LEVELS: ${{ matrix.levels }}
           SCENARIOS: ${{ matrix.scenarios }}
+          MAP: ${{ matrix.map }}
         run: |
-          GITHUB_SHA="$BUILD_SHA" bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START" --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"
+          GITHUB_SHA="$BUILD_SHA" bash scripts/run-sim-smoke.sh --matches "$MATCHES" --seed-start "$SEED_START" --levels "$LEVELS" --scenarios "$SCENARIOS" --map "$MAP" --report "build/balance/$SHARD.json"
 
       # The balance run measures the native kernels (ADR 0031 section 1): a shard that fell back to GDScript fails. The
       # report must also name the commit that was built.
@@ -277,7 +284,7 @@ jobs:
           retention-days: 90
 
   # No checkout and no repository code: it reads the markdown the summarise job made and talks to the issue. Only a push
-  # run and a balance or gate run of `main` post; a custom run, or a run of another branch, keeps the artifact only. Event data
+  # run and a balance, gate or maps run of `main` post; a custom run, or a run of another branch, keeps the artifact only. Event data
   # reaches the scripts only through env.
   post:
     needs: [build, summarise]

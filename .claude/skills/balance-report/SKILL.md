@@ -16,10 +16,13 @@ artifact instead of running step 1.
 1. Per set, run `bash scripts/run-sim-smoke.sh --matches N --seed-start S --levels A,B
    --scenarios KIND --report build/balance/<set>-<A>-<B>-<S>.json` for each shard, then
    `bash scripts/balance-summary.sh --out build/balance/<set>.json <the set's shard reports>`
-   (ADR 0031 §2, §4).
+   (ADR 0031 §2, §4). `--map kestrel|heron|curlew|all` picks the map (Kestrel Flats, Heron Fords,
+   Curlew Crags; `all` rotates by seed). `balance.yml` suite `maps` plays Heron Fords and Curlew
+   Crags as the sets `heron-fords` and `curlew-crags`; a custom run takes the `map` input.
 2. Write `docs/balance/<yyyy-mm-dd>.md` with:
    - win rate per side and per difficulty pairing, with N,
-   - match length: median and 90th percentile in minutes,
+   - match length: median and 90th percentile in minutes, per map (kestrel, heron, curlew) and over
+     all maps (the summary's "Match length" table),
    - per unit type: production share, kills per 1000 credits spent, survival rate,
    - what moved compared with the previous report in `docs/balance/` (same seeds).
 3. Flag any win rate outside 40-60%, a median match length outside 8-10 minutes, and any unit

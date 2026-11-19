@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="TutorialLessonDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Resource" path="res://data/scenarios/tutorial_support.tres" id="3_scenario"]
+[ext_resource type="Resource" path="res://data/tutorial/support_enemy.tres" id="4_enemy"]
+
+[sub_resource type="Resource" id="Beat_00"]
+script = ExtResource("2_beat")
+id = &"select-plant"
+prompt_key = &"tutorial.support.select-plant"
+anchor = 2
+anchor_tile = Vector2i(8, 4)
+kind = 1
+type_id = &"power_plant"
+covers = Array[StringName]([&"selection-tap-building"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_01"]
+script = ExtResource("2_beat")
+id = &"mend"
+prompt_key = &"tutorial.support.mend"
+anchor = 1
+anchor_control = &"Mend"
+covers = Array[StringName]([&"buildings-mend"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_02"]
+script = ExtResource("2_beat")
+id = &"sell"
+prompt_key = &"tutorial.support.sell"
+anchor = 1
+anchor_control = &"Sell"
+covers = Array[StringName]([&"buildings-sell"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_03"]
+script = ExtResource("2_beat")
+id = &"sell-last"
+prompt_key = &"tutorial.support.sell-last"
+covers = Array[StringName]([&"buildings-sell-last"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_04"]
+script = ExtResource("2_beat")
+id = &"poke"
+prompt_key = &"tutorial.support.poke"
+delay_ticks = 120
+after_ai_step = &"poke"
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_05"]
+script = ExtResource("2_beat")
+id = &"tanks"
+prompt_key = &"tutorial.support.tanks"
+anchor = 2
+anchor_tile = Vector2i(9, 14)
+kind = 1
+type_id = &"light_tank"
+count = 2
+covers = Array[StringName]([&"selection-double-tap"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_06"]
+script = ExtResource("2_beat")
+id = &"repair"
+prompt_key = &"tutorial.support.repair"
+anchor = 1
+anchor_control = &"Repair"
+covers = Array[StringName]([&"orders-repair", &"buildings-build-repair"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_07"]
+script = ExtResource("2_beat")
+id = &"medics"
+prompt_key = &"tutorial.support.medics"
+anchor = 1
+anchor_control = &"TabInfantry"
+kind = 5
+type_id = &"fossil_patchers"
+covers = Array[StringName]([&"units-medic-squad-build", &"orders-attack-medics"])
+budget_s = 12
+
+[sub_resource type="Resource" id="Beat_08"]
+script = ExtResource("2_beat")
+id = &"shot-truck"
+prompt_key = &"tutorial.support.shot-truck"
+anchor = 1
+anchor_control = &"TabVehicles"
+kind = 5
+type_id = &"fossil_shot_truck"
+covers = Array[StringName]([&"units-build-minelayer"])
+budget_s = 20
+
+[sub_resource type="Resource" id="Beat_09"]
+script = ExtResource("2_beat")
+id = &"mine"
+prompt_key = &"tutorial.support.mine"
+anchor = 1
+anchor_control = &"Mine"
+covers = Array[StringName]([&"orders-lay-mine"])
+budget_s = 8
+
+[sub_resource type="Resource" id="Beat_10"]
+script = ExtResource("2_beat")
+id = &"hidden"
+prompt_key = &"tutorial.support.hidden"
+covers = Array[StringName]([&"fog-hidden-mine"])
+budget_s = 5
+
+[resource]
+script = ExtResource("1_lesson")
+id = &"support"
+title_key = &"tutorial.support.title"
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10")])
+target_s = 90
+scenario = ExtResource("3_scenario")
+enemy = ExtResource("4_enemy")
+match_seed = 4
