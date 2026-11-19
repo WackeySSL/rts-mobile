@@ -256,11 +256,17 @@ id = &"menus-settings"
 title = "Settings"
 body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Your choices are kept on the phone."
 
+[sub_resource type="Resource" id="e23"]
+script = ExtResource("3_ent")
+id = &"menus-purchases"
+title = "Remove ads and Restore"
+body = "In Settings, tap Remove ads (the price is the store's) to remove every banner, also the one in the pause menu, and the ads between matches. The offers you choose to watch for a reward stay. Restore purchases brings back a purchase you made before, for example on a new phone. If the store answers a moment after Settings opens, the buttons appear then and the ones below move down. Neither button shows where the store cannot be reached, nor in Settings opened from the pause menu."
+
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e20c"), SubResource("e22")])
+entries = Array[ExtResource("3_ent")]([SubResource("e20"), SubResource("e20b"), SubResource("e20c"), SubResource("e22"), SubResource("e23")])
 
 [sub_resource type="Resource" id="e21"]
 script = ExtResource("3_ent")
