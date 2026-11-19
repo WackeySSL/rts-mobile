@@ -8,6 +8,9 @@ const ID_PATTERN: String = "^[a-z0-9]+(-[a-z0-9]+)+$"
 
 @export var id: StringName = &""
 @export var title_key: StringName = &""
+## The one-line goal the pause menu shows in place of the skirmish's objective (a key of
+## `data/tutorial/text_en.tres`).
+@export var objective_key: StringName = &""
 @export var beats: Array[TutorialBeatDef] = []
 ## The match of the lesson (ADR 0044 section 1): its scenario on a `data/maps/tutorial_*.tres`, the
 ## scripted opponent that plays player 2 (`TutorialAi` through `AiFactory`), and the seed of the

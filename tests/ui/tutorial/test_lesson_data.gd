@@ -225,10 +225,11 @@ func test_queue_steps_of_one_type_keep_their_script_order() -> void:
 
 
 func test_every_prompt_has_its_english_text_and_no_text_is_left_over() -> void:
-	var used: Array[StringName] = []
+	var used: Array[StringName] = [TutorialText.KICKER]
 	for id: StringName in LESSONS:
 		var lesson: TutorialLessonDef = _lesson(id)
 		used.append(lesson.title_key)
+		used.append(lesson.objective_key)
 		for beat: TutorialBeatDef in lesson.beats:
 			used.append(beat.prompt_key)
 	var words: Dictionary[StringName, String] = TutorialText.raw()

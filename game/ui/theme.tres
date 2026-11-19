@@ -1077,6 +1077,7 @@ AdCaption/base_type = &"Label"
 AdCaption/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
 AdCaption/font_sizes/font_size = 14
 PauseButton/base_type = &"CapsButton"
+PauseButton/styles/disabled = SubResource("StyleBoxFlat_pause_plate")
 PauseButton/styles/focus = SubResource("StyleBoxFlat_pause_focus")
 PauseButton/styles/hover = SubResource("StyleBoxFlat_pause_plate")
 PauseButton/styles/hover_pressed = SubResource("StyleBoxFlat_pause_plate_down")

@@ -63,7 +63,12 @@ keys = PackedStringArray(
 "tutorial.support.medics",
 "tutorial.support.shot-truck",
 "tutorial.support.mine",
-"tutorial.support.hidden"
+"tutorial.support.hidden",
+"tutorial.kicker",
+"tutorial.basics.objective",
+"tutorial.strikes.objective",
+"tutorial.air.objective",
+"tutorial.support.objective"
 )
 words = PackedStringArray(
 "Basics",
@@ -124,5 +129,10 @@ words = PackedStringArray(
 "Open the Infantry tab and tap {fossil_patchers}. A medic squad mends hurt squads near it for free, but carries no weapon.",
 "Open the Vehicles tab and tap {fossil_shot_truck}. It lays mines and finds hidden ones.",
 "Select the truck, tap MINE, tap the ground, then the check mark. The button counts your mines. Tap Next.",
-"Enemy mines are hidden: no mark, nothing on the radar. A ground unit that walks over one sets it off. Your truck finds them. Tap Next."
+"Enemy mines are hidden: no mark, nothing on the radar. A ground unit that walks over one sets it off. Your truck finds them. Tap Next.",
+"TUTORIAL",
+"Follow the coach cards to learn the controls.",
+"Learn to aim a strike and to use the satellite.",
+"Learn aircraft, Home and carriers.",
+"Learn repair, sale and mines."
 )
