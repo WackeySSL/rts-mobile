@@ -980,7 +980,7 @@ body = "The match is saved when the game goes to the background. If the game was
 script = ExtResource("3_ent")
 id = &"menus-skirmish"
 title = "Start a skirmish"
-body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. The maps are Kestrel Flats and, from rank 2, Heron Fords, a valley split by a river that only two fords cross. A map or level that is greyed out shows the rank that opens it, such as Hard at rank 3. While the match loads, the button reads STARTING and a second tap does nothing. Back does nothing until the match starts."
+body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. The maps are Kestrel Flats; from rank 2, Heron Fords, a valley split by a river that only two fords cross; and from rank 4, Curlew Crags, a rocky highland with a base on each plateau, three narrow passes through the central ridge and oil and gas fields on raised ground reached by ramps. A map or level that is greyed out shows the rank that opens it, such as Hard at rank 3. While the match loads, the button reads STARTING and a second tap does nothing. Back does nothing until the match starts."
 
 [sub_resource type="Resource" id="e146"]
 script = ExtResource("3_ent")
