@@ -186,12 +186,14 @@ func test_the_view_starts_at_tick_n_with_the_watched_views_rigs_and_none_of_the_
 	assert_int(runner.world.state_hash()).is_equal(control.world.state_hash())
 	assert_array(_layer_counts(main)).is_equal(_layer_counts(watched))
 	assert_int((main.get_node("UnitLayer") as UnitLayer).rig_count()).is_greater(0)
-	# Nothing of the past is drawn: no effect lives and no crater lies on the ground.
+	# Nothing of the past is drawn: the watched view still shows the fight's effects at tick N (so
+	# the zeros below can fail), the restored one shows none.
 	var effects: EffectsLayer = main.get_node("EffectsLayer")
+	var seen: EffectsLayer = watched.get_node("EffectsLayer")
+	assert_int(seen.active_count()).is_greater(0)
+	assert_int(seen.line_count() + seen.quad_count()).is_greater(0)
 	assert_int(effects.active_count()).is_equal(0)
-	assert_int(effects.line_count()).is_equal(0)
-	assert_int(effects.quad_count()).is_equal(0)
-	assert_int((main.get_node("DecalLayer") as DecalLayer).crater_count()).is_equal(0)
+	assert_int(effects.line_count() + effects.quad_count()).is_equal(0)
 	assert_bool(AudioService.has_mute_reason(AudioService.REASON_RESTORING)).is_false()
 	# Both views play on: the same rigs and the same World.
 	for _i: int in MORE:

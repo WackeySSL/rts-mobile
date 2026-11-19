@@ -19,7 +19,7 @@ extends RefCounted
 ## the match ends, is left or replaced; the restore calls `read` and, on a failed restore,
 ## `delete`. A tutorial lesson is never written (the lesson restarts).
 
-const FORMAT: int = 1
+const FORMAT: int = 2  # 2: the header holds `end_hash` (P516); format 1 files are refused.
 const FILE_NAME: String = "resume.bin"
 const SECTION: StringName = &"match"
 const MAGIC: PackedByteArray = [0x52, 0x53, 0x4D, 0x31]  # "RSM1"

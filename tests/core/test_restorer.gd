@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## Files live in the PrefsRig folder.
 
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
+const StuckRunner: GDScript = preload("res://tests/core/support/stuck_runner.gd")
 const SCENARIO: String = DevRoutes.SKIRMISH_DERRICK
 const PLAYER: int = 1
 const UNITS: PackedInt32Array = [1, 2, 3]
@@ -316,3 +317,37 @@ func test_the_end_hash_of_a_checkpoint_tick_is_checked_too() -> void:
 	var restorer: Restorer = _restorer()
 	assert_int(restorer.begin(data, _scene())).is_equal(OK)
 	assert_array(_run(restorer)).is_equal([ERR_FILE_CORRUPT])
+
+
+func test_a_file_written_at_tick_zero_restores_without_playing_a_tick() -> void:
+	var played: Array = _played(0)
+	var data: ResumeData = played[1]
+	assert_int(data.tick).is_equal(0)
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, _scene())).is_equal(OK)
+	assert_array(_run(restorer)).is_equal([OK])
+	assert_int(restorer.last_frame_ticks).is_equal(0)
+	assert_int(restorer.runner.snapshot.tick).is_equal(0)
+	assert_bool(restorer.runner.paused).is_true()
+
+
+func test_a_file_written_at_tick_zero_with_a_wrong_end_hash_is_refused() -> void:
+	var data: ResumeData = _played(0)[1]
+	data.end_hash += 1
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, _scene())).is_equal(OK)
+	assert_array(_run(restorer)).is_equal([ERR_FILE_CORRUPT])
+
+
+func test_a_runner_that_does_not_go_idle_ends_the_restore_with_a_timeout() -> void:
+	var data: ResumeData = _played(40)[1]
+	var scene: Node = auto_free(Node.new())
+	var runner: MatchRunner = StuckRunner.new()
+	runner.name = "MatchRunner"
+	scene.add_child(runner)
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(data, scene)).is_equal(OK)
+	runner.stuck = true
+	assert_array(_run(restorer)).is_equal([ERR_TIMEOUT])
+	assert_bool(ResumeStore.has_file()).is_true()  # The Restorer never touches the file.
+	assert_bool(ResumeWatcher.restoring).is_false()

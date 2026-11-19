@@ -72,6 +72,9 @@ func _process(_delta: float) -> void:
 	var started: int = int(clock.call())
 	last_frame_ticks = 0
 	while _active:
+		if runner.snapshot.tick >= _data.tick:
+			_arrive()  # A file written at tick 0: nothing to play, only the end hash to compare.
+			break
 		_play_tick()
 		last_frame_ticks += 1
 		if int(clock.call()) - started >= slice_usec:
@@ -145,9 +148,16 @@ func _play_tick() -> void:
 	elif not _check(now):
 		_finish(ERR_FILE_CORRUPT)
 	elif now >= _data.tick:
-		# The checkpoints stop up to 14 ticks short of the stored tick: the end hash closes the gap.
-		var same: bool = runner.wait_idle() and runner.world.state_hash() == _data.end_hash
-		_finish(OK if same else ERR_FILE_CORRUPT)
+		_arrive()
+
+
+## At the stored tick: the checkpoints stop up to 14 ticks short of it, so the end hash closes the
+## gap. A runner that does not go idle is a timeout (the file is good), not a corrupt file.
+func _arrive() -> void:
+	if not runner.wait_idle():
+		_finish(ERR_TIMEOUT)
+	else:
+		_finish(OK if runner.world.state_hash() == _data.end_hash else ERR_FILE_CORRUPT)
 
 
 ## Compares the checkpoints up to `tick` with the runner's hash; false on the first difference.

@@ -102,3 +102,22 @@ func test_a_missing_or_unreadable_end_hash_is_refused() -> void:
 	_refused(_sealed(pair, func(h: Dictionary) -> void: h.erase(ResumeStore.K_END)))
 	_refused(_sealed(pair, func(h: Dictionary) -> void: h[ResumeStore.K_END] = "abc"))
 	_refused(_sealed(pair, func(h: Dictionary) -> void: h[ResumeStore.K_END] = 5))
+
+
+func test_the_format_is_2_and_a_format_1_file_is_refused_and_deleted() -> void:
+	assert_int(ResumeStore.FORMAT).is_equal(2)
+	var pair: Array = _runner()
+	var old: PackedByteArray = _sealed(
+		pair,
+		func(h: Dictionary) -> void:
+			h[ResumeStore.K_FORMAT] = 1
+			h.erase(ResumeStore.K_END)
+	)
+	_refused(old)
+	var file: FileAccess = FileAccess.open(ResumeStore.path(), FileAccess.WRITE)
+	file.store_buffer(old)
+	file.close()
+	_warnings.clear()
+	assert_object(ResumeStore.read()).is_null()
+	assert_int(_warnings.size()).is_equal(1)
+	assert_bool(FileAccess.file_exists(ResumeStore.path())).is_false()

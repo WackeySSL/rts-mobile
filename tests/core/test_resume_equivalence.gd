@@ -1,24 +1,28 @@
 extends GdUnitTestSuite
 ## Resume proofs (plan P516, ADR 0042 sections 6 and 7): a skirmish written at tick 300 and at tick
-## 3,000, read back, restored by the Restorer and played on equals the uninterrupted match. The
-## reference is one GDSCRIPT, SYNC match with the Hard AI; each of the four runners
+## 3,007 (not a checkpoint tick, so the end hash has a gap to close), read back, restored by the
+## Restorer and played on equals the uninterrupted match. The reference is one GDSCRIPT, SYNC match
+## with the Hard AI (a second seed and order schedule is one more); each of the four runners
 ## (GDSCRIPT and AUTO, each SYNC and WORKER with the AI on its own thread) restores both files,
 ## compares the World's state hash and the file's end hash at the stored tick, then plays 100 ticks
 ## more with the reference's own orders and must end on the reference's hash, with the reference's
 ## checkpoint hashes. The restore feeds no order to `CommandQueue.submitted`. Refusals: a damaged
 ## log, another defs_hash, another app version, a changed checkpoint, a changed end hash.
 ##
-## A thread suite (the AI thread): it runs three times in a row (CLAUDE.md). The 3,000-tick case
+## A thread suite (the AI thread): it runs three times in a row (CLAUDE.md). The 3,007-tick case
 ## stays in the regular suite: the whole file runs in a few seconds, so nothing is gated. In WORKER
 ## mode `run_ticks` plays inline and only the AI thinks on its own thread (ADR 0038). Ticks are
 ## counted, never timed: the Restorer's clock is a counter.
 
+const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 const SCENARIO: String = DevRoutes.SKIRMISH_DERRICK
 const SEED: int = 4242
 const PLAYER: int = 1
 const UNITS: PackedInt32Array = [1, 2, 3]
 const EARLY: int = 300
-const LATE: int = 3000
+const LATE: int = 3007
+const OTHER_SEED: int = 9001
+const OTHER_EVERY: int = 170
 const MORE: int = 100
 const ORDER_EVERY: int = 250
 const SLICE_TICKS: int = 64
@@ -28,9 +32,13 @@ const WORKER: int = MatchRunner.TickMode.WORKER
 const GDSCRIPT: int = MatchRunner.SimImpl.GDSCRIPT
 const AUTO: int = MatchRunner.SimImpl.AUTO
 
-## The reference: the files at EARLY and LATE as bytes, and the hashes at each stage.
-var _bytes: Dictionary[int, PackedByteArray] = {}
-var _hash_at: Dictionary[int, int] = {}
+## The references, by seed: {bytes: {stage: file bytes}, hash_at: {tick: hash}, checkpoints}.
+## `_seed` and `_every` are the match and the order schedule in use; the first reference is SEED.
+var _refs: Dictionary[int, Dictionary] = {}
+var _seed: int = SEED
+var _every: int = ORDER_EVERY
+var _bytes: Dictionary = {}
+var _hash_at: Dictionary = {}
 var _checkpoints: PackedInt64Array = PackedInt64Array()
 var _clock: int = 0
 var _submitted: int = 0
@@ -39,28 +47,50 @@ var _warnings: Array[String] = []
 
 func before() -> void:
 	CommandQueue.clear()
+	_refs[SEED] = _reference(SEED, ORDER_EVERY)
+	_refs[OTHER_SEED] = _reference(OTHER_SEED, OTHER_EVERY)
+	_use(SEED)
+
+
+## Selects the reference of `seed` and its order schedule.
+func _use(seed: int) -> void:
+	_seed = seed
+	_every = ORDER_EVERY if seed == SEED else OTHER_EVERY
+	_bytes = _refs[seed]["bytes"]
+	_hash_at = _refs[seed]["hash_at"]
+	_checkpoints = _refs[seed]["checkpoints"]
+
+
+## One uninterrupted GDSCRIPT, SYNC match: the files at EARLY and LATE and the hashes along the way.
+func _reference(seed: int, every: int) -> Dictionary:
+	_seed = seed
+	_every = every
+	var ref: Dictionary = {"bytes": {}, "hash_at": {}, "checkpoints": PackedInt64Array()}
 	var runner: MatchRunner = auto_free(MatchRunner.new())
 	assert_int(_setup().apply(runner)).is_equal(OK)
 	runner.start()
 	for stage: int in [EARLY, LATE]:
 		_play_to(runner, stage)
-		_hash_at[stage] = runner.world.state_hash()
-		_bytes[stage] = ResumeStore.encode(
+		ref["hash_at"][stage] = runner.world.state_hash()
+		ref["bytes"][stage] = ResumeStore.encode(
 			_setup(),
 			runner.replay,
 			stage,
 			runner.world.defs_hash(),
 			ResumeStore.app_version(),
-			_hash_at[stage]
+			ref["hash_at"][stage]
 		)
-		assert_bool(_bytes[stage].is_empty()).is_false()
+		assert_bool((ref["bytes"][stage] as PackedByteArray).is_empty()).is_false()
 		_play_to(runner, stage + MORE)
-		_hash_at[stage + MORE] = runner.world.state_hash()
-	_checkpoints = PackedInt64Array(runner.replay.checkpoint_hashes)
+		ref["hash_at"][stage + MORE] = runner.world.state_hash()
+	ref["checkpoints"] = PackedInt64Array(runner.replay.checkpoint_hashes)
 	CommandQueue.clear()
+	return ref
 
 
 func before_test() -> void:
+	PrefsRig.begin()
+	_use(SEED)
 	_clock = 0
 	_submitted = 0
 	_warnings.clear()
@@ -73,12 +103,13 @@ func after_test() -> void:
 	ResumeWatcher.restoring = false
 	AudioService.clear_mute_reason(AudioService.REASON_RESTORING)
 	CommandQueue.clear()
+	PrefsRig.end()
 
 
 func _setup() -> MatchSetup:
 	var setup: MatchSetup = MatchSetup.new()
 	setup.scenario_path = SCENARIO
-	setup.match_seed = SEED
+	setup.match_seed = _seed
 	setup.opponents = [load(DevRoutes.OPPONENT_RENEW) as AiDef]
 	setup.opponent_levels = [load(DevRoutes.LEVEL_HARD) as AiDifficultyDef]
 	return setup
@@ -87,9 +118,9 @@ func _setup() -> MatchSetup:
 ## The local player's order for tick `tick`, or null: a move or a stop every ORDER_EVERY ticks from
 ## tick 20, so both files hold orders and the play after each restore has more.
 func _order(tick: int) -> Command:
-	if tick < 20 or (tick - 20) % ORDER_EVERY != 0:
+	if tick < 20 or (tick - 20) % _every != 0:
 		return null
-	var step: int = (tick - 20) / ORDER_EVERY
+	var step: int = (tick - 20) / _every
 	if step % 3 == 2:
 		return Command.stop(PLAYER, UNITS)
 	var east: bool = step % 3 == 0
@@ -192,20 +223,80 @@ func test_a_restore_at_tick_300_equals_the_uninterrupted_match_auto_worker() -> 
 	_prove(EARLY, AUTO, WORKER)
 
 
-func test_a_restore_at_tick_3000_equals_the_uninterrupted_match_gdscript_sync() -> void:
+func test_a_restore_at_tick_3007_equals_the_uninterrupted_match_gdscript_sync() -> void:
 	_prove(LATE, GDSCRIPT, SYNC)
 
 
-func test_a_restore_at_tick_3000_equals_the_uninterrupted_match_auto_sync() -> void:
+func test_a_restore_at_tick_3007_equals_the_uninterrupted_match_auto_sync() -> void:
 	_prove(LATE, AUTO, SYNC)
 
 
-func test_a_restore_at_tick_3000_equals_the_uninterrupted_match_gdscript_worker() -> void:
+func test_a_restore_at_tick_3007_equals_the_uninterrupted_match_gdscript_worker() -> void:
 	_prove(LATE, GDSCRIPT, WORKER)
 
 
-func test_a_restore_at_tick_3000_equals_the_uninterrupted_match_auto_worker() -> void:
+func test_a_restore_at_tick_3007_equals_the_uninterrupted_match_auto_worker() -> void:
 	_prove(LATE, AUTO, WORKER)
+
+
+func test_a_restore_under_another_seed_and_order_schedule_equals_its_match() -> void:
+	_use(OTHER_SEED)
+	_prove(LATE, AUTO, WORKER)
+	_prove(EARLY, GDSCRIPT, SYNC)
+
+
+## Frames the way the game plays them: the runner's own `_process`, until it has reached `tick`.
+func _play_free(runner: MatchRunner, tick: int) -> bool:
+	var frames: int = 0
+	while runner.snapshot.tick < tick and frames < 4000:
+		runner._process(0.07)
+		frames += 1
+		OS.delay_msec(2)
+	return runner.wait_idle() and runner.snapshot.tick >= tick
+
+
+func test_a_worker_restore_played_on_by_frames_uses_the_sim_worker_and_keeps_the_checkpoints(
+) -> void:
+	var scene: Node = _scene(GDSCRIPT, WORKER)
+	var restorer: Restorer = _restorer()
+	assert_int(restorer.begin(_data(EARLY), scene)).is_equal(OK)
+	assert_int(_run(restorer)).is_equal(OK)
+	var runner: MatchRunner = restorer.runner
+	assert_bool(runner.worker_active()).is_false()  # The restore played inline.
+	runner.paused = false
+	# The next local order is at tick 520: up to tick 450 the free play is the reference's.
+	assert_bool(_play_free(runner, 450)).is_true()
+	assert_bool(runner.worker_active()).is_true()
+	var count: int = 450 / Replay.CHECKPOINT_PERIOD
+	var hashes: PackedInt64Array = PackedInt64Array(runner.replay.checkpoint_hashes)
+	assert_array(hashes.slice(0, count)).is_equal(_checkpoints.slice(0, count))
+	restorer.abandon()
+	assert_bool(runner.wait_idle()).is_true()
+
+
+func test_a_file_written_from_a_free_running_worker_restores_in_sync_and_worker() -> void:
+	var setup: MatchSetup = _setup()
+	var live: MatchRunner = auto_free(MatchRunner.new())
+	assert_int(setup.apply(live)).is_equal(OK)
+	live.tick_mode = WORKER as MatchRunner.TickMode
+	live.start()
+	assert_bool(_play_free(live, 27)).is_true()
+	# The sim worker is on its next job now, as at a pause between frames.
+	live._process(0.07)
+	assert_int(ResumeStore.write_from(live, setup)).is_equal(OK)
+	var data: ResumeData = ResumeStore.read()
+	assert_object(data).is_not_null()
+	assert_bool(live.worker_active()).is_true()
+	assert_bool(live.wait_idle()).is_true()
+	assert_int(data.tick).is_equal(live.world.tick)
+	for mode: int in [SYNC, WORKER]:
+		var restorer: Restorer = _restorer()
+		assert_int(restorer.begin(data, _scene(GDSCRIPT, mode))).is_equal(OK)
+		assert_int(_run(restorer)).is_equal(OK)
+		assert_int(restorer.runner.world.tick).is_equal(data.tick)
+		assert_int(restorer.runner.world.state_hash()).is_equal(data.end_hash)
+		restorer.abandon()
+		assert_bool(restorer.runner.wait_idle()).is_true()
 
 
 # --- Refusals ---------------------------------------------------------------------------------
