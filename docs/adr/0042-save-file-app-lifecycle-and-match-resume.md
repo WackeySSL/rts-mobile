@@ -132,7 +132,8 @@ resumed (the lesson restarts).
      about 5 % (the frame's own work). The battle's frame pacing does not apply: nothing is
      drawn.
 3. At each checkpoint tick the loop's hash must equal the log's. A mismatch stops the restore,
-   deletes the file and says the match could not be restored (no XP, no penalty).
+   deletes the file and says the match could not be restored (no XP, no penalty). The header also holds the World's hash at the stored tick (`end_hash`), compared at the
+   last tick: the checkpoints stop up to 14 ticks before it.
 4. At the last logged tick the scene enters the tree, paused under the pause menu. The view layers
    start from a first snapshot at tick N (P516 proves it; wrecks and craters of the past are not
    redrawn). The new runner's own replay is the same log again, so a second background save works.
@@ -143,7 +144,7 @@ state format to keep in lockstep with `STATE_FORMAT` and with the AI's fields; i
 "the sim is a pure function of its log". **Cost:** time grows with the match. Estimate on the phone:
 1-2.5 ms of CPU per tick with the AI, so 9-23 s for 10 minutes and 14-34 s for 15; with the 50 ms
 slice the wall time is about 1.05 times that: **about 10-24 s for 10 minutes and 15-36 s for 15**
-(unverified; P516 prints CI's ticks per second, and Michael's phone measures it).
+(unverified; P516b prints CI's ticks per second, and Michael's phone measures it).
 
 **Trigger for B.** If Michael's phone restores a 10-minute match in more than 15 s of wall time
 with the 50 ms slice, a new ADR designs option B (below) or a hybrid; A stays the fallback and the

@@ -7,11 +7,12 @@ extends Node
 ## one): the local player's logged Commands of tick t go in through `CommandQueue.submit_logged`
 ## (no `submitted`, so no order chirp), then `run_ticks(1)`. The AI is not fed from the log; it
 ## thinks on the same views and makes its own Commands again. At every checkpoint tick the runner's
-## hash must equal the log's; a mismatch, a stall or another `defs_hash` ends the restore with an
-## error. At the stored tick `finished(OK)` comes and the runner is paused: the caller puts `main`
-## in the tree and calls `hand_over(main)`, which drops the mute reason when it has entered the
-## tree, then the Restorer frees itself. The watcher flag ends with the finish. A caller that does
-## not use the match calls `abandon()`.
+## hash must equal the log's and the World's hash at the stored tick the file's end hash (the
+## checkpoints stop up to 14 ticks short of it); a mismatch, a stall or another `defs_hash` ends the
+## restore with an error. At the stored tick `finished(OK)` comes and the runner is paused: the
+## caller puts `main` in the tree and calls `hand_over(main)`, which drops the mute reason when it
+## has entered the tree, then the Restorer frees itself. The watcher flag ends with the finish. A
+## caller that does not use the match calls `abandon()`.
 ## Integers only; time is read here (game/core), never in `game/sim`.
 
 ## Ticks played so far of `total`, after each frame's slice.
@@ -71,6 +72,9 @@ func _process(_delta: float) -> void:
 	var started: int = int(clock.call())
 	last_frame_ticks = 0
 	while _active:
+		if runner.snapshot.tick >= _data.tick:
+			_arrive()  # A file written at tick 0: nothing to play, only the end hash to compare.
+			break
 		_play_tick()
 		last_frame_ticks += 1
 		if int(clock.call()) - started >= slice_usec:
@@ -144,7 +148,16 @@ func _play_tick() -> void:
 	elif not _check(now):
 		_finish(ERR_FILE_CORRUPT)
 	elif now >= _data.tick:
-		_finish(OK)
+		_arrive()
+
+
+## At the stored tick: the checkpoints stop up to 14 ticks short of it, so the end hash closes the
+## gap. A runner that does not go idle is a timeout (the file is good), not a corrupt file.
+func _arrive() -> void:
+	if not runner.wait_idle():
+		_finish(ERR_TIMEOUT)
+	else:
+		_finish(OK if runner.world.state_hash() == _data.end_hash else ERR_FILE_CORRUPT)
 
 
 ## Compares the checkpoints up to `tick` with the runner's hash; false on the first difference.

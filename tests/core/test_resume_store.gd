@@ -50,7 +50,9 @@ func _written() -> Array:
 
 
 func _file(setup: MatchSetup, runner: MatchRunner, tick: int, version: String) -> PackedByteArray:
-	return ResumeStore.encode(setup, runner.replay, tick, runner.world.defs_hash(), version)
+	return ResumeStore.encode(
+		setup, runner.replay, tick, runner.world.defs_hash(), version, runner.world.state_hash()
+	)
 
 
 func _put(bytes: PackedByteArray) -> void:
