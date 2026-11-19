@@ -13,9 +13,10 @@ extends Control
 ## nearest (`RepairRules`, `PlayerController.repair`), beside Home in a mixed selection. Orders
 ## that do not fit scroll sideways inside the bar, a button never shrinks below 56 dp. Board
 ## (squads selected, an own carrier on the map with a free seat) and Unload (a loaded carrier
-## selected) are order aims (`CarryAim`, P265): a tap starts the aim, a second tap on the lit button
-## ends it, and the slot stays frozen while it runs. A carrier's chip shows its seats as pips,
-## filled for each squad aboard.
+## selected) and Mine (minelayers selected; its word is "n/cap", dim at the cap) are order aims
+## (`CarryAim`, P265, P294): a tap starts the aim, a second tap on the lit button ends it, and the
+## slot stays frozen while it runs. A carrier's chip shows its seats as pips, filled for each squad
+## aboard.
 ## A row that adds an order adds an `ORDERS` entry with its `for`, its glyph and its HOW_TO_PLAY
 ## line, and one arm of `_order` (the tap) and, for a building order, one of `_building_order`
 ## (whether it shows, and its state); `_sync_toggle` and `_fix_width(id)` serve a lit order and a
@@ -62,13 +63,14 @@ const FRAME: StringName = &"SelectionFrame"  ## The theme type of the brackets' 
 ## The orders, in the bar's order: id, glyph, word, and what it is `for`: &"units", &"air" (units
 ## with an aircraft that has an airfield to go to), &"repair" (ground units a repair building
 ## serves; dim while none is damaged), &"building", &"squads" (Board) or &"carrier"
-## (Unload).
+## (Unload) or &"layers" (Mine: its word is the laid mines over the cap, "7/12"; dim at the cap).
 const ORDERS: Array[Dictionary] = [
 	{"id": &"stop", "glyph": "stop", "label": "STOP", "for": &"units"},
 	{"id": &"home", "glyph": "home", "label": "HOME", "for": &"air"},
 	{"id": &"repair", "glyph": "repair", "label": "REPAIR", "for": &"repair"},
 	{"id": &"board", "glyph": "board", "label": "BOARD", "for": &"squads"},
 	{"id": &"unload", "glyph": "unload", "label": "UNLOAD", "for": &"carrier"},
+	{"id": &"mine", "glyph": "mine", "label": "MINE", "for": &"layers"},
 	{"id": &"mend", "glyph": "repair", "label": "MEND", "for": &"building"},
 	{"id": &"sell", "glyph": "sell", "label": "SELL", "for": &"building"},
 ]
@@ -123,6 +125,7 @@ var _fields: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
 var _repair: bool = false  ## A repair building serves a selected ground unit: Repair shows.
 var _repair_ready: bool = false  ## ... and one of those units is damaged: Repair is tappable.
 var _served: PackedInt32Array = PackedInt32Array()  ## Scratch for that test.
+var _mine_shown: Vector2i = Vector2i(-1, -1)  ## The "n/cap" the Mine word shows.
 
 
 ## One selected type: its item card, "xN" (a building: its name) and the health of its rows.
@@ -339,6 +342,7 @@ func _ready() -> void:
 	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
 	_buttons[&"board"].toggle_mode = true  # Lit while its aim is open.
 	_buttons[&"unload"].toggle_mode = true
+	_buttons[&"mine"].toggle_mode = true
 	_buttons[&"sell"].button_down.connect(_sell_down)
 	_buttons[&"sell"].button_up.connect(func() -> void: _sell_down_now = false)
 	if sell_card != null:
@@ -413,6 +417,9 @@ func _order(id: StringName) -> void:
 				_on_carry_changed()  # A refused start must not leave the toggle lit.
 		&"unload":
 			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.UNLOAD):
+				_on_carry_changed()
+		&"mine":
+			if carry_aim != null and not carry_aim.toggle(CarryAim.Mode.MINE):
 				_on_carry_changed()
 		&"mend":
 			var snap: MatchSnapshot = runner.snapshot
@@ -642,6 +649,8 @@ func _sync_orders(snap: MatchSnapshot, units_ok: bool, row: int, ids: PackedInt3
 			shown = row >= 0 and _building_order(id, snap, row)
 		elif order["for"] == &"squads" or order["for"] == &"carrier":
 			shown = units_ok and _carry_order(id, snap, ids)
+		elif order["for"] == &"layers":
+			shown = units_ok and _mine_order(snap, ids)
 		_buttons[id].visible = shown
 		if order["for"] == &"repair":
 			_sync_toggle(_buttons[id], false, _repair_ready)  # Dim, like Mend at full health.
@@ -676,10 +685,32 @@ func _carry_order(id: StringName, snap: MatchSnapshot, ids: PackedInt32Array) ->
 	return shown
 
 
+## Whether Mine shows (a minelayer is selected, or its aim runs) and its state: lit while the aim
+## runs, dim at the cap (Michael, 2026-11-17), the word "n/cap" (written when it changes).
+func _mine_order(snap: MatchSnapshot, ids: PackedInt32Array) -> bool:
+	if carry_aim == null or snap == null:
+		return false
+	var player: int = _local()
+	var on: bool = carry_aim.mode == CarryAim.Mode.MINE
+	if not on and CarryRules.layers_in(snap, ids, player).is_empty():
+		return false
+	var laid: int = snap.own_mine_count(player)
+	_sync_toggle(_buttons[&"mine"], on, on or laid < snap.mine_cap)
+	var shown: Vector2i = Vector2i(laid, snap.mine_cap)
+	if shown != _mine_shown:  # The word is written when the count or the cap changes.
+		_mine_shown = shown
+		(_buttons[&"mine"].get_node("Face/Word") as Label).text = "%d/%d" % [laid, snap.mine_cap]
+	return true
+
+
 ## A refused tap of the open aim: that order's button face shakes sideways (the plate stays).
 func _shake_order() -> void:
 	shakes += 1
-	var id: StringName = &"unload" if carry_aim.mode == CarryAim.Mode.UNLOAD else &"board"
+	var id: StringName = &"board"
+	if carry_aim.mode == CarryAim.Mode.UNLOAD:
+		id = &"unload"
+	elif carry_aim.mode == CarryAim.Mode.MINE:
+		id = &"mine"
 	var face: Control = _buttons[id].get_node("Face")
 	var reach: float = UiScale.dp(SHAKE_DP)
 	var tween: Tween = create_tween()

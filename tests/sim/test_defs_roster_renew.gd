@@ -61,7 +61,7 @@ const CHARACTER: Array[Array] = [
 ]
 
 
-func test_the_faction_file_lists_the_thirteen_buildings_and_the_ten_units_in_the_adr_order(
+func test_the_faction_file_lists_the_thirteen_buildings_and_the_eleven_units_in_the_adr_order(
 ) -> void:
 	var wanted: Array[String] = [
 		"renew_hq",
@@ -79,6 +79,7 @@ func test_the_faction_file_lists_the_thirteen_buildings_and_the_ten_units_in_the
 		"renew_drone_dock",
 		"renew_rifle",
 		"renew_rocket",
+		"renew_menders",
 		"renew_scout",
 		"renew_tank",
 		"renew_artillery",
@@ -508,7 +509,7 @@ func test_every_buildable_file_has_a_tab_that_exactly_one_building_produces() ->
 			]
 		)
 	)
-	assert_array(buildable[INFANTRY]).is_equal(["renew_rifle", "renew_rocket"])
+	assert_array(buildable[INFANTRY]).is_equal(["renew_menders", "renew_rifle", "renew_rocket"])
 	assert_array(buildable[VEHICLES]).is_equal(
 		[
 			"renew_artillery",
@@ -531,7 +532,7 @@ func _per_second(gun: WeaponDef, armour: int) -> int:
 
 ## The paths of the unit files that name the faction, in file order.
 ## P245b rostered the airfield, P245 the fighter and the bomber, P249 the engineering centre,
-## P291 the Linecar, P292 the Seeder, P279 the Drone Dock.
+## P291 the Linecar, P292 the Seeder, P279 the Drone Dock, P280 the Menders.
 func _own_files() -> Array[String]:
 	var found: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
@@ -540,7 +541,6 @@ func _own_files() -> Array[String]:
 			in [
 				"renew_transport",
 				"renew_drone",
-				"renew_menders",  # P280
 			]
 		):
 			continue

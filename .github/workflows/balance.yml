@@ -32,6 +32,7 @@ on:
       - "!data/scenarios/tutorial_*"
       - "!game/ai/TutorialAi.gd"
       - "!game/ai/TutorialScriptDef.gd"
+      - "!game/ai/TutorialStepDef.gd"
   workflow_dispatch:
     inputs:
       suite:

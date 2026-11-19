@@ -84,6 +84,13 @@ extends Resource
 ## has not explored after marching this many ticks since the pick is given up. 0 = off. Easy does
 ## not search.
 @export var search_hold_ticks: int = 0
+## Mines (ADR 0037 section 8, plan row P295; off by default like the fields above, so the frozen
+## files play as before): `AiMines` keeps this many own mines laid on the own half of the route and
+## this many minelayers (0 = none, Easy), and `mine_scout_ahead` 1 sends an idle layer, which never
+## sets a mine off and finds mines within its detect range, ahead along the route (Hard).
+@export var mine_target: int = 0
+@export var mine_layers: int = 0
+@export var mine_scout_ahead: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
