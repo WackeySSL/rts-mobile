@@ -2,12 +2,36 @@
 
 [ext_resource type="Script" path="res://game/view/audio/AudioCueTable.gd" id="1_table"]
 [ext_resource type="Script" path="res://game/view/audio/AudioCueDef.gd" id="2_def"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/rifle_1.wav" id="shot_rifle_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/rifle_2.wav" id="shot_rifle_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/rifle_3.wav" id="shot_rifle_3"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/cannon_1.wav" id="shot_cannon_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/cannon_2.wav" id="shot_cannon_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/rocket_1.wav" id="shot_rocket_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/artillery_1.wav" id="shot_artillery_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shot/artillery_2.wav" id="shot_artillery_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/impact/light_1.wav" id="impact_light_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/impact/light_2.wav" id="impact_light_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/impact/light_3.wav" id="impact_light_3"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/impact/heavy_1.wav" id="impact_heavy_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/impact/heavy_2.wav" id="impact_heavy_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/foot_1.wav" id="death_foot_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/foot_2.wav" id="death_foot_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/foot_3.wav" id="death_foot_3"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/vehicle_1.wav" id="death_vehicle_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/vehicle_2.wav" id="death_vehicle_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/air_1.wav" id="death_air_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/air_2.wav" id="death_air_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death/building_1.wav" id="death_building_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mine/blast_1.wav" id="mine_blast_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mine/blast_2.wav" id="mine_blast_2"]
 
 [sub_resource type="Resource" id="cue_shot_rifle"]
 script = ExtResource("2_def")
 id = &"shot_rifle"
-volume_db = -8.0
-pitch_steps = PackedInt32Array(1000, 1050, 950)
+streams = Array[AudioStream]([ExtResource("shot_rifle_1"), ExtResource("shot_rifle_2"), ExtResource("shot_rifle_3")])
+volume_db = -9.0
+pitch_steps = PackedInt32Array(1000, 1030, 970)
 priority = 1
 max_voices = 4
 tone_hz = 1400
@@ -18,7 +42,8 @@ variants = 3
 [sub_resource type="Resource" id="cue_shot_cannon"]
 script = ExtResource("2_def")
 id = &"shot_cannon"
-volume_db = -3.0
+streams = Array[AudioStream]([ExtResource("shot_cannon_1"), ExtResource("shot_cannon_2")])
+volume_db = -4.0
 pitch_steps = PackedInt32Array(1000, 970, 1030)
 priority = 3
 max_voices = 3
@@ -30,7 +55,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_shot_rocket"]
 script = ExtResource("2_def")
 id = &"shot_rocket"
-volume_db = -4.0
+streams = Array[AudioStream]([ExtResource("shot_rocket_1")])
+volume_db = -6.0
 pitch_steps = PackedInt32Array(1000, 960, 1040)
 priority = 3
 max_voices = 3
@@ -42,7 +68,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_shot_artillery"]
 script = ExtResource("2_def")
 id = &"shot_artillery"
-volume_db = -2.0
+streams = Array[AudioStream]([ExtResource("shot_artillery_1"), ExtResource("shot_artillery_2")])
+volume_db = -3.0
 pitch_steps = PackedInt32Array(1000, 950)
 priority = 3
 max_voices = 2
@@ -54,7 +81,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_impact_light"]
 script = ExtResource("2_def")
 id = &"impact_light"
-volume_db = -9.0
+streams = Array[AudioStream]([ExtResource("impact_light_1"), ExtResource("impact_light_2"), ExtResource("impact_light_3")])
+volume_db = -12.0
 pitch_steps = PackedInt32Array(1000, 1080, 920)
 priority = 1
 max_voices = 4
@@ -66,7 +94,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_impact_heavy"]
 script = ExtResource("2_def")
 id = &"impact_heavy"
-volume_db = -4.0
+streams = Array[AudioStream]([ExtResource("impact_heavy_1"), ExtResource("impact_heavy_2")])
+volume_db = -6.0
 pitch_steps = PackedInt32Array(1000, 950, 1050)
 priority = 2
 max_voices = 3
@@ -78,7 +107,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_death_foot"]
 script = ExtResource("2_def")
 id = &"death_foot"
-volume_db = -6.0
+streams = Array[AudioStream]([ExtResource("death_foot_1"), ExtResource("death_foot_2"), ExtResource("death_foot_3")])
+volume_db = -10.0
 pitch_steps = PackedInt32Array(1000, 1100, 900)
 priority = 2
 max_voices = 4
@@ -90,7 +120,8 @@ variants = 3
 [sub_resource type="Resource" id="cue_death_vehicle"]
 script = ExtResource("2_def")
 id = &"death_vehicle"
-volume_db = 0.0
+streams = Array[AudioStream]([ExtResource("death_vehicle_1"), ExtResource("death_vehicle_2")])
+volume_db = -4.0
 pitch_steps = PackedInt32Array(1000, 950)
 priority = 4
 max_voices = 3
@@ -102,7 +133,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_death_air"]
 script = ExtResource("2_def")
 id = &"death_air"
-volume_db = -2.0
+streams = Array[AudioStream]([ExtResource("death_air_1"), ExtResource("death_air_2")])
+volume_db = -5.0
 pitch_steps = PackedInt32Array(1000, 950)
 priority = 4
 max_voices = 3
@@ -114,7 +146,8 @@ variants = 2
 [sub_resource type="Resource" id="cue_death_building"]
 script = ExtResource("2_def")
 id = &"death_building"
-volume_db = 0.0
+streams = Array[AudioStream]([ExtResource("death_building_1")])
+volume_db = -2.0
 pitch_steps = PackedInt32Array(1000)
 priority = 5
 max_voices = 2
@@ -138,7 +171,8 @@ variants = 1
 [sub_resource type="Resource" id="cue_mine_blast"]
 script = ExtResource("2_def")
 id = &"mine_blast"
-volume_db = -1.0
+streams = Array[AudioStream]([ExtResource("mine_blast_1"), ExtResource("mine_blast_2")])
+volume_db = -4.0
 pitch_steps = PackedInt32Array(1000, 950)
 priority = 4
 max_voices = 2
