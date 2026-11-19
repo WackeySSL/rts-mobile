@@ -1,6 +1,6 @@
 class_name CarryMarkLayer
 extends Node2D
-## What the Board and Unload aims put on the map (P265b), at z 65 with the strike's marks.
+## What the Board, Unload and Mine aims put on the map (P265b), at z 65 with the strike's marks.
 ## Unload: the chevron (`glyph_unload_mark`, tinted amber at run time) with the tip of its lower
 ## chevron on the ground point. Board: a ring round the ringed carrier, at its drawn place (its
 ## rig: a flyer's in `air_layer`, ringed on the ground under its shadow like P244's selection ring;
@@ -82,6 +82,9 @@ func _draw() -> void:
 		var at: Vector2 = IsoProjection.ground_to_px(aim.point.x, aim.point.y)
 		draw_texture_rect(ART, chevron_rect(at, unit), false, TINT)
 		return
+	if aim.mode == CarryAim.Mode.MINE:
+		_draw_mine(unit)
+		return
 	var centre: Vector2 = ring_centre()
 	if centre == Vector2.INF:
 		return
@@ -89,3 +92,14 @@ func _draw() -> void:
 	for step: int in POINTS + 1:
 		_ring[step] = centre + _unit[step] * half
 	draw_polyline(_ring, TINT, STROKE_DP * unit)
+
+
+## Mine: a dot on the ground point and the blast ring round it, the ground circle of the mine's
+## blast radius (a 2:1 ellipse), the line `STROKE_DP` wide.
+func _draw_mine(unit: float) -> void:
+	var at: Vector2 = IsoProjection.ground_to_px(aim.point.x, aim.point.y)
+	var half: Vector2 = IsoProjection.ellipse_px(aim.blast_milli())
+	for step: int in POINTS + 1:
+		_ring[step] = at + _unit[step] * half
+	draw_polyline(_ring, TINT, STROKE_DP * unit)
+	draw_circle(at, STROKE_DP * 1.5 * unit, TINT)
