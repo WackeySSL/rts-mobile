@@ -15,6 +15,7 @@ extends GdUnitTestSuite
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const BORE: int = 1
 const TANK: int = 2
@@ -107,11 +108,13 @@ func _tap(control: Control) -> void:
 
 
 ## A new scene at `size`, its match paused, the Commands caught, the clock the test's.
-func _open(size: Vector2i, extra: Array) -> void:
+func _open(size: Vector2i, extra: Array, metrics: UiMetrics = null) -> void:
 	if _main != null and is_instance_valid(_main):
 		remove_child(_main)
 		_main.free()
 	UiScale.clear_override()
+	if metrics != null:
+		UiScale.set_override(metrics)
 	get_window().size = size
 	await await_idle_frame()
 	_main = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())

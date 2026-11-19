@@ -214,8 +214,9 @@ plan's "Interim places" say where each part stands meanwhile.
   (cards at least 88 x 96 dp, as many columns as fit (two or more on every supported screen),
   stretched so a full row ends at the right edge; it scrolls on short screens).
   No queue row: a long press on a card cancels. It slides over `menu_slide_ms`; no pin. It opens on
-  BUILD and on a producer's selection (its tab); never on its own after a placement (Michael,
-  2026-11-05).
+  BUILD and on the Ready chip; never on its own after a placement (Michael, 2026-11-05). Selecting
+  an own producer sets the drawer's tab to the producer's but never opens it; a map tap folds an
+  open drawer as any map gesture does, so MEND and SELL stay in view (Michael, 2026-11-18, P310).
 - The command bar: Deselect (48 x 64 dp) at its start, then the selection chip, then the orders
   the selection has, each at least 56 x 64 dp: for units Stop, Hold, Home (aircraft), Repair
   (ground units that an own repair building serves), Board (squads, while the player has a

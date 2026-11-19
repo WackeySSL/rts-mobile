@@ -13,3 +13,4 @@ static func register(routes: MenuRoutes) -> void:
 	routes.register(MenuRoutes.SKIRMISH, MapSelect.new)
 	routes.register(MenuRoutes.SETTINGS, SettingsScreen.new)
 	routes.register(MenuRoutes.LICENCES, LicencesScreen.new)
+	routes.register(MenuRoutes.CONTINUE, RestoreScreen.new)
