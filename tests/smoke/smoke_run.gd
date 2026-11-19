@@ -31,6 +31,20 @@ const FLATS: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const FLATS_MIRRORED: String = "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres"
 const FOSSIL_MIRROR: String = "res://data/scenarios/skirmish_kestrel_flats_fossil_mirror.tres"
 const RENEW_MIRROR: String = "res://data/scenarios/skirmish_kestrel_flats_renew_mirror.tres"
+## `--map` (P554): the map the scenario kind is played on. The other maps have the same four
+## scenarios under their own file names (skirmish_<map>, _mirrored, _fossil_mirror, _renew_mirror).
+## `all` rotates the maps by seed (seed mod 3), so with the `cross` kind's seed parity, six
+## consecutive seeds play every map from both seats. The report names the map of the run.
+const MAP_KESTREL: String = "kestrel"
+const MAP_ALL: String = "all"
+const MAPS: Array[String] = ["kestrel", "heron", "curlew"]
+const MAP_CHOICES: Array[String] = ["kestrel", "heron", "curlew", "all"]
+## The scenario file stem of each map: Kestrel Flats, Heron Fords (map_2) and Curlew Crags (map_3).
+const MAP_STEMS: Dictionary[String, String] = {
+	"kestrel": "skirmish_kestrel_flats",
+	"heron": "skirmish_heron_fords",
+	"curlew": "skirmish_curlew_crags",
+}
 ## `--scenarios`: `cross` plays the odd seeds on FLATS and the even ones on FLATS_MIRRORED, so each
 ## faction holds each seat in half the matches.
 const KIND_CROSS: String = "cross"
@@ -81,9 +95,10 @@ static func play(
 	ticks: int = TICKS,
 	kind: String = KIND_CROSS,
 	levels: Array[String] = DEFAULT_LEVELS,
-	drops: Dictionary[int, int] = {}
+	drops: Dictionary[int, int] = {},
+	map: String = MAP_KESTREL
 ) -> Dictionary:
-	var match_setup: Dictionary = start(match_seed, kind, levels)
+	var match_setup: Dictionary = start(match_seed, kind, levels, map)
 	var world: World = match_setup["world"]
 	var counter: SmokeCount = match_setup["counter"]
 	var controllers: Array[AiController] = match_setup["controllers"]
@@ -100,8 +115,10 @@ static func play(
 ## The match of `match_seed` ready to run: `path`, `world` (on the implementation AUTO picks, a
 ## problem of the library is a push_error, which the script's error scan fails), `loop`, `seats`,
 ## `controllers` and a `counter` that has read the scenario's rows.
-static func start(match_seed: int, kind: String, levels: Array[String]) -> Dictionary:
-	var path: String = scenario_path(kind, match_seed)
+static func start(
+	match_seed: int, kind: String, levels: Array[String], map: String = MAP_KESTREL
+) -> Dictionary:
+	var path: String = scenario_path(kind, match_seed, map)
 	var world: World = world_of(match_seed, path)
 	seat_income(world, levels)
 	var problems: Array[String] = attach_impl(world)
@@ -120,19 +137,35 @@ static func start(match_seed: int, kind: String, levels: Array[String]) -> Dicti
 	}
 
 
-## The scenario file that seed `match_seed` plays under the scenario kind `kind`.
-static func scenario_path(kind: String, match_seed: int) -> String:
+## The scenario file that seed `match_seed` plays under the scenario kind `kind` on the map `map`
+## (`all` picks the map of the seed).
+static func scenario_path(kind: String, match_seed: int, map: String = MAP_KESTREL) -> String:
+	var stem: String = String(MAP_STEMS[map_of_seed(map, match_seed)])
+	var pattern: String = "res://data/scenarios/%s%s.tres"
 	match kind:
 		"derrick":
-			return FLATS
+			return pattern % [stem, ""]
 		"lumen":
-			return FLATS_MIRRORED
+			return pattern % [stem, "_mirrored"]
 		"fossil-mirror":
-			return FOSSIL_MIRROR
+			return pattern % [stem, "_fossil_mirror"]
 		"renew-mirror":
-			return RENEW_MIRROR
+			return pattern % [stem, "_renew_mirror"]
 		_:
-			return FLATS if match_seed % 2 == 1 else FLATS_MIRRORED
+			return pattern % [stem, "" if match_seed % 2 == 1 else "_mirrored"]
+
+
+## The map seed `match_seed` plays under the `--map` value `map`: itself, or for `all` the rotation.
+static func map_of_seed(map: String, match_seed: int) -> String:
+	return MAPS[match_seed % MAPS.size()] if map == MAP_ALL else map
+
+
+## The map id (kestrel, heron or curlew) of the scenario file at `path`, "" for any other file.
+static func map_of_path(path: String) -> String:
+	for map: String in MAPS:
+		if path.get_file().begins_with(String(MAP_STEMS[map])):
+			return map
+	return ""
 
 
 ## The implementation AUTO picks: native when the library loads, else GDScript.
@@ -340,7 +373,8 @@ static func report(
 	ticks: int = TICKS,
 	seed_start: int = 1,
 	levels: Array[String] = DEFAULT_LEVELS,
-	kind: String = KIND_CROSS
+	kind: String = KIND_CROSS,
+	map: String = MAP_KESTREL
 ) -> Dictionary:
 	var commit: String = OS.get_environment("GITHUB_SHA")
 	return {
@@ -353,6 +387,7 @@ static func report(
 		"matches_requested": requested,
 		"levels": levels,
 		"scenarios": kind,
+		"map": map,
 		"matches": records,
 	}
 

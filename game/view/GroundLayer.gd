@@ -15,9 +15,12 @@ const NO_COORDS: Vector2i = Vector2i(-1, -1)  ## What `GroundAtlas.coords` says 
 const CLEAR_COLOR_SETTING: String = "rendering/environment/defaults/default_clear_color"
 
 @export var runner: MatchRunner
+## The folder of the map looks; tests point it at a fixture.
+@export var look_root: String = GroundAtlas.LOOK_ROOT
 
 var _art: GroundAtlas
 var _ids: Array[StringName] = []  ## The terrain ids `_art` was built for.
+var _look: StringName = &""  ## The map's ground look `_art` was built for.
 var _fields: FieldLayer = FieldLayer.new()
 var _serial: int = -1  ## match_serial of the fill.
 var _version: int = -1  ## map_version of the fill.
@@ -83,9 +86,12 @@ func _sync() -> void:
 ## fill and its fields.
 func _begin(snap: MatchSnapshot) -> void:
 	_serial = snap.match_serial
-	if _art == null or _ids != snap.terrain_ids:
+	var map: MapDef = runner.scenario.map if runner.scenario != null else null
+	var look: StringName = map.ground_look if map != null else &""
+	if _art == null or _ids != snap.terrain_ids or _look != look:
 		_ids = snap.terrain_ids.duplicate()
-		_art = GroundAtlas.build(_ids)
+		_look = look
+		_art = GroundAtlas.build(_ids, look, look_root)
 	tile_set = _art.tile_set
 	clear()
 	_cols = snap.map_cols
