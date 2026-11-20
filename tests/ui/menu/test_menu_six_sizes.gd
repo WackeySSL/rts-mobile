@@ -209,7 +209,8 @@ func test_a_late_unavailable_store_moves_nothing_in_settings_at_every_size() -> 
 		rows.refresh()
 		await _settle()
 		_assert_rects(answering, _rects_from(rows), "%s unavailable" % size)
-		assert_float(rows.modulate.a).is_equal(0.0)
+		assert_bool(rows.remove_button.flat).is_true()
+		assert_str(rows.remove_button.text).is_empty()
 		_close()
 		UiScale.clear_override()
 		_store = null

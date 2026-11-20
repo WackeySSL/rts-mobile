@@ -181,7 +181,8 @@ func _assert_reserved(rows: RemoveAdsRows) -> void:
 	assert_bool(rows.visible).is_true()
 	assert_bool(rows.remove_button.visible).is_true()
 	assert_bool(rows.restore_button.visible).is_true()
-	assert_float(rows.modulate.a).is_equal(0.0)
+	assert_bool(rows.remove_button.flat).is_true()
+	assert_str(rows.remove_button.text).is_empty()
 	assert_int(rows.remove_button.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_bool(rows.remove_button.disabled).is_true()
 
@@ -189,7 +190,7 @@ func _assert_reserved(rows: RemoveAdsRows) -> void:
 func _assert_live(rows: RemoveAdsRows) -> void:
 	assert_bool(rows.remove_button.visible).is_true()
 	assert_bool(rows.restore_button.visible).is_true()
-	assert_float(rows.modulate.a).is_equal(1.0)
+	assert_bool(rows.remove_button.flat).is_false()
 	assert_int(rows.remove_button.mouse_filter).is_equal(Control.MOUSE_FILTER_STOP)
 	assert_bool(rows.remove_button.disabled).is_false()
 

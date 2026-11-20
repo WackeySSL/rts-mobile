@@ -93,11 +93,13 @@ func refresh() -> void:
 	remove_button.visible = reserved and not _owned()
 	restore_button.visible = reserved
 	visible = reserved
-	modulate.a = 1.0 if live else 0.0  # Reserved but empty: the space only.
 	for button: Button in [remove_button, restore_button]:
+		button.flat = not live  # Reserved but empty: no plate and (below) no text, the space only.
 		button.mouse_filter = Control.MOUSE_FILTER_STOP if live else Control.MOUSE_FILTER_IGNORE
 		button.focus_mode = Control.FOCUS_ALL if live else Control.FOCUS_NONE
 		button.disabled = _busy or not live
+	if not _busy:
+		restore_button.text = tr(RemoveAdsText.RESTORE) if live else ""
 	_fit()
 	if _timer == null or not _timer.is_inside_tree():
 		return  # A timer starts only in the tree; the enter-tree refresh covers the rest.
@@ -135,6 +137,9 @@ func _owned() -> bool:
 ## The Remove ads text: title and price, the title shortened until the whole text fits.
 func _fit() -> void:
 	if _busy or remove_button == null:
+		return
+	if not _live:
+		remove_button.text = ""
 		return
 	var title: String = tr(RemoveAdsText.REMOVE)
 	var text: String = tr(RemoveAdsText.PRICED) % [title, _price]
