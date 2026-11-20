@@ -99,6 +99,9 @@ vendored: the facts in the notes under §2, §3 and §5 come from the vendored v
 wrappers and mocks (`addons/admob`), and the device-only ones are marked.
 
 Note (2026-11-17, P400d docs): the widgets' `price_text` above is `remove_ads_price_text` in code.
+Note (2026-11-20, P400i docs, row P445): `remove_ads_price_text` became `remove_ads_store() ->
+Dictionary {state, price}` (state UNKNOWN, AVAILABLE or UNAVAILABLE), so Settings can keep the
+store rows' room while the store answers; the facade stays at 20 public methods.
 
 ### 2. Modes; gameplay never waits for an ad
 - **AdMob mode** only when all hold: the OS is Android, not the editor, the plugin's singleton

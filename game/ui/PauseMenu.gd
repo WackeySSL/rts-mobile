@@ -52,6 +52,7 @@ const TIGHT_DP: float = 8.0  ## The gap between buttons and between the card's r
 const BUTTON_GAP_DP: float = 12.0  ## The glyph's gap to the word.
 const PLAIN: StringName = &"PauseButton"
 const DANGER: StringName = &"PauseDanger"
+const STARTING_LOOK: StringName = &"PauseStarting"  ## Restart while the match is prepared.
 const PRIMARY_LOOK: StringName = &"PausePrimary"  ## At build; `_show_side` swaps in the side's.
 const CHIP_LOOK: StringName = &"PauseChip"
 const CHIP_OFF: StringName = &"PauseChipOff"
@@ -108,6 +109,9 @@ var _vibration: Button
 var _sound: Button
 var _music: Button
 var _exit_button: Button
+var _restart_button: Button
+var _starting: bool = false  ## A restart waits on MenuFlow (a late ad may be closing).
+var _enabled_before: Dictionary[Button, bool] = {}  ## What `disabled` was when it began.
 var _settings: Button
 var _help: MenuStack  ## The How to play overlay while it is open.
 var _restart_dialog: ConfirmDialog
@@ -136,7 +140,9 @@ func _ready() -> void:
 	add_label(_left, "PAUSED", &"CapsBigTitle")
 	_build_card()
 	_resume = _add_action("RESUME", "resume", _resume_pressed, &"ResumeButton", PRIMARY_LOOK)
-	_add_action("RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN)
+	_restart_button = _add_action(
+		"RESTART", "restart", _restart_dialog_open, &"RestartButton", PLAIN
+	)
 	_add_action("SURRENDER", "surrender", _surrender_dialog_open, &"SurrenderButton", DANGER)
 	_actions.add_child(_pair)
 	_add_action("HOW TO PLAY", "", _open_help, &"HelpButton", PLAIN, _pair)
@@ -326,7 +332,7 @@ func _notification(what: int) -> void:
 ## Decided at once, before the overlay's own deferred pop runs: the overlay (the How to play
 ## screen) takes Back itself; an open question closes (keep playing); then the menu toggles.
 func _on_back() -> void:
-	if _help != null or feed == null:
+	if _starting or _help != null or feed == null:
 		return
 	if visible and _asking():
 		_close_dialogs()
@@ -645,7 +651,8 @@ func _resume_pressed() -> void:
 
 
 func _restart_dialog_open() -> void:
-	_restart_dialog.open()
+	if not _starting:
+		_restart_dialog.open()
 
 
 func _surrender_dialog_open() -> void:
@@ -660,9 +667,16 @@ func _exit_dialog_open() -> void:
 ## mid-match restart counts nothing and shows no ad); the dev path otherwise.
 func _restart() -> void:
 	if _owned():
+		if _starting:
+			return
+		_set_starting(true)
 		var error: Error = await _flow().call(&"restart") as Error
-		if error != OK:
+		if error != OK:  # Refused (busy, a bad setup): the buttons come back live.
 			push_warning("PauseMenu: restart refused (%s)" % error_string(error))
+		if is_inside_tree():  # A started match frees the menu: nothing to give back then.
+			_set_starting(false)
+			if visible:
+				_resume.grab_focus()
 		return
 	DevRoutes.open_main_with(
 		get_tree(),
@@ -671,6 +685,26 @@ func _restart() -> void:
 		runner.opponent_levels,
 		runner.first_opponent
 	)
+
+
+## While MenuFlow prepares the new match (it may wait for a late ad to close) every button is off
+## and Restart reads "STARTING…" (the result screen's Play again; `MapSelectText.STARTING`). Its
+## `PauseStarting` look keeps the normal plate and the full-contrast word while disabled, so a tap
+## gives no click, no pressed plate and no focus. The buttons come back as they were, and Settings
+## is read again (a route may have been registered meanwhile). Back is swallowed (`_on_back`).
+func _set_starting(starting: bool) -> void:
+	_starting = starting
+	_restart_button.text = tr(MapSelectText.STARTING) if starting else "RESTART"
+	_restart_button.theme_type_variation = STARTING_LOOK if starting else PLAIN
+	if starting:
+		for button: Button in _glyphed:
+			_enabled_before[button] = button.disabled
+			button.disabled = true
+		return
+	for button: Button in _enabled_before:
+		button.disabled = _enabled_before[button]
+	_enabled_before.clear()
+	_show_exit()
 
 
 ## Resumes first, so the tick that carries the Command runs.
