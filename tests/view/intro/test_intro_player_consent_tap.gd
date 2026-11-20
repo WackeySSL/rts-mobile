@@ -8,6 +8,7 @@ const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 
 var _rig: IntroRig = IntroRig.new()
 var _size: Vector2 = Vector2(ScreenSizes.ALL[0])
@@ -17,10 +18,6 @@ var _ump: FakeUmp = null
 
 func before() -> void:
 	_window_size_before = get_window().size
-
-
-func after() -> void:
-	get_window().size = _window_size_before
 
 
 func before_test() -> void:
@@ -35,7 +32,7 @@ func after_test() -> void:
 	if _ump != null:
 		_ump.close_unchanged()
 	_rig.teardown(self)
-	UiScale.clear_override()
+	UiStateGuard.restore(get_window(), _window_size_before)  # Per test, not only at the end.
 
 
 ## The fake consent call of the dev APK: the info update, then the form, then its answer.
