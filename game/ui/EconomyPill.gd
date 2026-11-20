@@ -161,6 +161,23 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented(
+			[
+				_bar,
+				_chip,
+				_chip_text,
+				_credits,
+				_credits_tap,
+				_divider,
+				_line,
+				_menu,
+				_numbers,
+				_power_tap,
+				_word
+			]
+		)
+		return
 	if what == NOTIFICATION_THEME_CHANGED and _power_glyph != null:
 		_tint()
 		_fit_bar_text()

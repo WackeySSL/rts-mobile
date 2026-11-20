@@ -168,3 +168,78 @@ func test_without_the_plugin_ads_stay_unrequested_and_forms_dismiss_at_once() ->
 	bare.show_form()
 	bare.show_privacy_options()
 	assert_int(_dismissed).is_equal(2)
+
+
+# --- the privacy options deadline on the real backend (P421b) ---------------------------------
+
+
+func _flow() -> ConsentFlow:
+	_info.privacy_options_status = UmpPluginBackend.PLUGIN_REQUIRED
+	_backend.update_info(false)
+	return ConsentFlow.new(_backend, func() -> bool: return false)
+
+
+func test_a_privacy_show_the_plugin_never_answers_is_cut_at_the_timeout_and_frees_the_flow(
+) -> void:
+	var flow: ConsentFlow = _flow()
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
+	var settled: Array[bool] = []
+	flow.settled.connect(func(can: bool) -> void: settled.append(can))
+	var done: Array[bool] = []
+	var run: Callable = func() -> void:
+		await flow.run_privacy_options(now, 1000)
+		done.append(true)
+	run.call()
+	clock[0] = 999
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(done).is_empty()  # No focus-out and one ms short: still waiting.
+	clock[0] = 1000
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(done).is_equal([true])
+	assert_array(settled).is_empty()  # A cut announces nothing: the cached answer never rises.
+	assert_bool(flow.needs_recheck).is_true()
+	# The next consent run re-reads: it starts with a fresh info update and clears the mark.
+	var updates: int = _set.count("update")
+	var consent: Array[bool] = []
+	var again: Callable = func() -> void: consent.append(await flow.run_consent(now, 1000, false))
+	again.call()
+	assert_int(_set.count("update")).is_equal(updates + 1)
+	assert_bool(flow.needs_recheck).is_false()
+	clock[0] = 2000
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(consent).is_equal([false])  # The update never answered: fail closed.
+
+
+func test_a_focus_out_after_the_hand_over_stands_in_for_shown_and_the_wait_has_no_timeout() -> void:
+	var flow: ConsentFlow = _flow()
+	var clock: Array[int] = [0]
+	var now: Callable = func() -> int: return clock[0]
+	var done: Array[bool] = []
+	var run: Callable = func() -> void:
+		await flow.run_privacy_options(now, 1000)
+		done.append(true)
+	run.call()
+	_backend.notify_app_paused()  # The native form covers the activity.
+	clock[0] = 100000
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(done).is_empty()  # Shown: held past the deadline.
+	assert_bool(flow.needs_recheck).is_false()
+	_ump.on_privacy_options_form_dismissed_listener.emit({})
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(done).is_equal([true])
+
+
+func test_a_pause_with_no_privacy_show_pending_does_nothing() -> void:
+	var shown: Array[bool] = []
+	_backend.form_shown.connect(func() -> void: shown.append(true))
+	_backend.notify_app_paused()
+	_backend.show_privacy_options()
+	_backend.cancel_pending_show()  # A cut run forgets the show.
+	_backend.notify_app_paused()
+	assert_array(shown).is_empty()

@@ -26,6 +26,7 @@ extends Control
 
 const CARD_WIDTH_DP: float = 360.0  ## Widest the card gets; less where the room is narrower.
 const GAP_DP: float = 16.0  ## Between the ring and the card.
+const BUTTON_AIR_DP: float = 8.0  ## Between the card and another button of a menu it stands over.
 const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
@@ -36,6 +37,9 @@ const FIND_EVERY: int = 15  ## Frames between looks for a control that is not th
 const ELLIPSE_STEPS: int = 40
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const EPSILON: float = 0.01
+## Drawn above every other control of the layer, the pause menu included, whatever order the mark
+## was added in: the card that asks for Resume must be seen over the open menu.
+const Z_ABOVE_MODALS: int = 100
 
 var director: TutorialDirector
 var camera: RtsCamera
@@ -69,9 +73,15 @@ var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
 var _again: int = 0  ## Layouts still to make for the change in hand.
 var _next_find: int = 0
+var _blocked_now: Array[Rect2] = []  ## What the card was last placed clear of.
+var _hard_now: Array[Rect2] = []
+var _blocked_modal: Node = null  ## The modal whose buttons are cached, and when to look again.
+var _blocked_controls: Array[Control] = []
+var _blocked_scan: int = 0
 
 
 func _ready() -> void:
+	z_index = Z_ABOVE_MODALS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	reduced = reduced or MenuPrefs.reduced_effects()
@@ -195,9 +205,19 @@ static func top_row_dp(portrait: bool) -> float:
 ## row at the card's foot. The candidates, in order: below the ring, above, right, left, then the
 ## top and the bottom of `room`, each slid into `room` and taken when it clears the ring. None
 ## clearing it, the one whose button row misses the ring most, then the one that overlaps it
-## least. With no ring: the top centre of `room`.
+## least. With no ring: the top centre of `room`. `blocked` are rects the card should not cover (the
+## other buttons of a menu the ring is in) and `hard` rects it never covers (an ad band, ad policy):
+## when there are any, the sides, corners and a grid of `room` are tried too. The first place that
+## clears the ring and both lists is taken; none, the first that clears the ring and `hard`; none
+## of those, the fallback below, which still keeps off `hard` wherever a place does.
 static func place_card(
-	ring: Rect2, card: Vector2, room: Rect2, gap: float, row_h: float = 0.0
+	ring: Rect2,
+	card: Vector2,
+	room: Rect2,
+	gap: float,
+	row_h: float = 0.0,
+	blocked: Array[Rect2] = [],
+	hard: Array[Rect2] = []
 ) -> Rect2:
 	var fit: Vector2 = card.min(room.size)
 	var top: Vector2 = Vector2(room.get_center().x - fit.x * 0.5, room.position.y)
@@ -213,10 +233,44 @@ static func place_card(
 		Vector2(across, room.position.y),
 		Vector2(across, room.end.y - fit.y),
 	]
+	var spread: Array[Vector2] = []
+	if not blocked.is_empty() or not hard.is_empty():
+		spread = tries.duplicate()
+		(
+			spread
+			. append_array(
+				[
+					Vector2(room.position.x, centre.y - fit.y * 0.5),
+					Vector2(room.end.x - fit.x, centre.y - fit.y * 0.5),
+					room.position,
+					Vector2(room.end.x - fit.x, room.position.y),
+					Vector2(room.position.x, room.end.y - fit.y),
+					room.end - fit,
+				]
+			)
+		)
+		var step: float = maxf(fit.y * 0.5, 1.0)
+		for x: float in [room.position.x, across, room.end.x - fit.x]:
+			var y: float = room.position.y
+			while y <= room.end.y - fit.y + EPSILON:
+				spread.append(Vector2(x, y))
+				y += step
+		for keep_soft: bool in [true, false]:  # Button air may go; the ring and the band may not.
+			for at: Vector2 in spread:
+				var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
+				if box.intersection(ring).get_area() > EPSILON or _hits_any(box, hard):
+					continue
+				if not keep_soft or not _hits_any(box, blocked):
+					return box
 	var best: Rect2 = Rect2(top, fit)
 	var least_row: float = INF
 	var least: float = INF
-	for at: Vector2 in tries:
+	var pool: Array[Vector2] = tries if hard.is_empty() else _clear_of(tries, fit, room, hard)
+	if pool.is_empty():
+		pool = _clear_of(spread, fit, room, hard)
+	if pool.is_empty():
+		pool = tries
+	for at: Vector2 in pool:
 		var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
 		var over: float = box.intersection(ring).get_area()
 		if over <= EPSILON:
@@ -230,6 +284,79 @@ static func place_card(
 	return best
 
 
+## The places of `at` whose card, slid into `room`, misses every rect of `rects`.
+static func _clear_of(
+	at: Array[Vector2], fit: Vector2, room: Rect2, rects: Array[Rect2]
+) -> Array[Vector2]:
+	var found: Array[Vector2] = []
+	for place: Vector2 in at:
+		if not _hits_any(Rect2(place.clamp(room.position, room.end - fit), fit), rects):
+			found.append(place)
+	return found
+
+
+static func _hits_any(box: Rect2, rects: Array[Rect2]) -> bool:
+	for rect: Rect2 in rects:
+		if box.intersects(rect):
+			return true
+	return false
+
+
+## The rects the card keeps clear of, when the target is in a modal (a ModalFrame, as the pause menu
+## is): into `soft` the modal's other visible buttons, grown 8 dp (button air), into `hard` its ad
+## band, grown 16 dp (ad policy). The controls are found once per open menu (and again every
+## `FIND_EVERY` frames, for a button that comes and goes), the rects are read each frame.
+func _collect_blocked(soft: Array[Rect2], hard: Array[Rect2]) -> void:
+	var modal: Node = _target
+	while modal != null and not modal is ModalFrame:
+		modal = modal.get_parent()
+	if modal == null:
+		_blocked_modal = null
+		return
+	var frame: int = Engine.get_process_frames()
+	if modal != _blocked_modal or frame >= _blocked_scan:
+		_blocked_modal = modal
+		_blocked_scan = frame + FIND_EVERY
+		_blocked_controls.clear()
+		for node: Node in modal.find_children("*", "Control", true, false):
+			if node != _target and (node is Button or node is AdBannerBand):
+				_blocked_controls.append(node as Control)
+	for control: Control in _blocked_controls:
+		if not is_instance_valid(control) or not control.is_visible_in_tree():
+			continue
+		if control is AdBannerBand:  # Content keeps the buttons' gap from an ad (ad policy).
+			hard.append(control.get_global_rect().grow(GAP_DP * _dp))
+		else:  # A card that touches the buttons looks cramped: keep 8 dp off them.
+			soft.append(control.get_global_rect().grow(BUTTON_AIR_DP * _dp))
+
+
+## Whether the mark must stand down: a visible modal (the pause menu, a question, the result
+## screen, an overlay of the menu) covers the HUD and does not hold this beat's target, so the card
+## and its ring would sit over a menu they have nothing to say about and would eat its taps. Only a
+## card that points into the modal shows over it (the `resume` card over the pause menu).
+func _covered() -> bool:
+	var host: Node = get_parent()
+	if host == null:
+		return false
+	for node: Node in host.get_children():
+		if _covers(node):
+			return true
+		if node is ModalFrame:  # The questions and the overlays of a menu are its children.
+			for inner: Node in node.get_children():
+				if _covers(inner):
+					return true
+	return false
+
+
+func _covers(node: Node) -> bool:
+	var control: Control = node as Control
+	if control == null or control == self or not (control is ModalFrame or control is MenuStack):
+		return false
+	if not control.is_visible_in_tree():
+		return false
+	return not (is_instance_valid(_target) and control.is_ancestor_of(_target))
+
+
 func _process(_delta: float) -> void:
 	_update()
 
@@ -239,12 +366,25 @@ func _update() -> void:
 	if _beat == null or not is_inside_tree():
 		return
 	_resolve_target()
+	var covered: bool = _covered()
+	if covered == visible:  # The state changed: a hidden mark draws nothing and takes no touch.
+		visible = not covered
+		_dirty = true
+		if covered:
+			_stop_pulse()
+	if covered:
+		return
 	var ring: Rect2 = _ring_box()
+	var blocked: Array[Rect2] = []
+	var hard: Array[Rect2] = []
+	_collect_blocked(blocked, hard)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
 	var changed: bool = (
 		_dirty
 		or ring != _ring_now
+		or blocked != _blocked_now
+		or hard != _hard_now
 		or stalled != _stalled_now
 		or can_next != _can_next_now
 		or size != _size_now
@@ -255,6 +395,8 @@ func _update() -> void:
 		_again = 2  # A label shapes its wrapped text a frame after its width changes: look twice.
 	_dirty = false
 	_ring_now = ring
+	_blocked_now = blocked
+	_hard_now = hard
 	_stalled_now = stalled
 	_can_next_now = can_next
 	_size_now = size
@@ -279,7 +421,7 @@ func _update() -> void:
 	_card.custom_minimum_size = Vector2(width, 0.0)
 	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
 	var row_h: float = MIN_TARGET_DP * _dp + panel.get_margin(SIDE_BOTTOM)
-	var placed: Rect2 = place_card(ring, _card.size, _room, GAP_DP * _dp, row_h)
+	var placed: Rect2 = place_card(ring, _card.size, _room, GAP_DP * _dp, row_h, blocked, hard)
 	_card.global_position = placed.position
 	# A card that could not clear the ring lets touches through, so it never blocks the target.
 	var covers: bool = placed.intersection(ring).get_area() > EPSILON
@@ -312,7 +454,7 @@ func _ring_box() -> Rect2:
 	box = Rect2(box.get_center() - fit * 0.5, fit)
 	var top_left: Vector2 = _safe_rect.position
 	box.position = box.position.clamp(top_left, (_safe_rect.end - box.size).max(top_left))
-	return box
+	return box.intersection(_safe_rect) if box.intersects(_safe_rect) else box  # Never past an edge.
 
 
 ## Keeps `_target` the named control while it stands and shows; looks again for a missing one
@@ -347,7 +489,7 @@ func _draw_ring() -> void:
 	for turn: int in 2 if _stalled_now else 1:  # Stalled: a second, outer ring.
 		var grow: float = line * 2.0 * turn + _pulse_value * PULSE_PX_DP * _dp
 		if _beat.anchor == TutorialBeatDef.Anchor.CONTROL:
-			_ring.draw_rect(_ring_now.grow(grow), tone, false, line)
+			_ring.draw_rect(_ring_now.grow(grow).intersection(_safe_rect), tone, false, line)
 		else:
 			_ring.draw_set_transform(centre, 0.0, (half + Vector2(grow, grow)) / half)
 			_ring.draw_polyline(_points, tone, line, true)

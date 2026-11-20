@@ -100,6 +100,12 @@ func _process(_delta: float) -> void:
 	_follow()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented([_cancel, _confirm])
+		return
+
+
 ## Shows the buttons while the mode is on and no finger holds the ghost, and puts them beside it.
 func _follow() -> void:
 	var shown: bool = placement.active and not placement.dragging
