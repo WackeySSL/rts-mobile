@@ -5,6 +5,10 @@ extends Node
 ## `custom_minimum_size` in `_ready` and whenever the viewport's size changes (rotation, a browser
 ## toolbar), because the dp factor changes with it. Setting `min_dp` later applies it at once.
 
+## Emitted after each application, so an owner that adds a floor of its own (a width pin while a
+## label is longer) can re-add it after the reset, for the new layout (P443).
+signal applied
+
 @export var min_dp: Vector2 = Vector2(48, 48):
 	set(value):
 		min_dp = value
@@ -22,3 +26,4 @@ func _apply() -> void:
 	if control == null:
 		return
 	control.custom_minimum_size = UiScale.dp_vec(min_dp.x, min_dp.y)
+	applied.emit()
