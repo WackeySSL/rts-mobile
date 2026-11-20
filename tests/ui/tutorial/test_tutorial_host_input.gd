@@ -65,6 +65,11 @@ func after_test() -> void:
 	_main = null
 	CommandQueue.clear()
 	MenuRig.end()
+	UiScale.clear_override()
+	var tree: SceneTree = get_tree()
+	if tree.current_scene != null:  # A button that left the match changes the scene.
+		tree.current_scene.free()
+		tree.current_scene = null
 	get_window().size = _window_before
 
 
@@ -117,8 +122,32 @@ func test_the_result_screen_button_takes_its_tap_over_the_lessons_card() -> void
 		await await_idle_frame()
 		assert_int(results.leaves).override_failure_message(str(size)).is_equal(1)
 		assert_array(_flow.left).override_failure_message(str(size)).is_empty()  # Not Skip's.
+		assert_object(get_tree().current_scene).override_failure_message(str(size)).is_null()
 		_free_stage()
 		remove_child(results)
+
+
+## The Sell question over a beat: its Sell button takes the tap, and the card stands down.
+func test_the_sell_question_takes_its_tap_over_the_lessons_card() -> void:
+	for size: Vector2i in [Sizes.LANDSCAPE[0], Sizes.PORTRAIT[0]]:
+		await _stage(size, false)
+		var label: String = str(size)
+		assert_bool(_host.mark.visible).override_failure_message(label + " before").is_true()
+		var card: ConfirmDialog = _hud.find_child("SellCard", true, false) as ConfirmDialog
+		var sold: Array[int] = [0]
+		card.confirmed.connect(func() -> void: sold[0] += 1)
+		card.open()
+		for _frame: int in 4:
+			await await_idle_frame()
+		assert_bool(card.visible).override_failure_message(label).is_true()
+		assert_bool(_host.mark.visible).override_failure_message(label + " mark").is_false()
+		_tap(card.find_child("YesButton", true, false).get_global_rect().get_center())
+		await await_idle_frame()
+		assert_int(sold[0]).override_failure_message(label + " tap").is_equal(1)
+		assert_bool(card.visible).override_failure_message(label + " closed").is_false()
+		assert_array(_flow.left).override_failure_message(label).is_empty()  # Not Skip's.
+		assert_object(get_tree().current_scene).override_failure_message(label).is_null()
+		_free_stage()
 
 
 func _tap(at: Vector2) -> void:
