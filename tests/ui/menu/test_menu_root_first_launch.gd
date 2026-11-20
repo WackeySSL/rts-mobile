@@ -11,6 +11,7 @@ var _quit_on_go_back_before: bool = false
 var _menu: Control
 var _profile: UiMetrics
 var _started: Array[StringName] = []
+var _result: Error = OK
 
 
 func before() -> void:
@@ -25,6 +26,7 @@ func before_test() -> void:
 	_profile = UiProfiles.all()[&"desktop"]
 	PrefsRig.begin()
 	_started.clear()
+	_result = OK
 	_quit_on_go_back_before = get_tree().quit_on_go_back
 
 
@@ -38,16 +40,40 @@ func after_test() -> void:
 	PrefsRig.end()
 
 
-func test_a_first_launch_starts_basics_once_the_intro_hands_over_and_remembers_the_offer() -> void:
+func test_a_first_launch_starts_basics_after_the_intro_and_offers_it_again_until_it_is_dealt_with(
+) -> void:
 	await _open(true)
 	assert_int(_started.size()).is_equal(0)  # The intro still owns the screen.
 	await _hand_over()
 	assert_array(_started).is_equal([&"basics"])
-	assert_bool(TutorialStart.first_launch_due()).is_false()
+	assert_bool(TutorialStart.first_launch_due()).is_true()  # Started is not spent: a kill restarts.
 	_close()
-	await _open(true)  # The next launch.
+	await _open(true)  # The next launch, after the app was killed during Basics.
 	await _hand_over()
+	assert_int(_started.size()).is_equal(2)
+	TutorialStart.note_left(&"basics")  # Skip lesson or Leave tutorial.
+	_close()
+	await _open(true)
+	await _hand_over()
+	assert_int(_started.size()).is_equal(2)
+
+
+func test_a_refused_start_warns_and_the_offer_stays() -> void:
+	_result = ERR_BUSY
+	await _open(true)
+	await (
+		assert_error(func() -> void: await _hand_over())
+		. is_push_warning("MenuRoot: Basics did not start (Busy)")
+	)
 	assert_int(_started.size()).is_equal(1)
+	assert_bool(TutorialStart.first_launch_due()).is_true()
+
+
+func test_a_player_who_updated_the_app_gets_no_lesson() -> void:
+	SaveService.set_section(&"progress", {"xp": 120})  # A save from before the tutorial existed.
+	await _open(true)
+	await _hand_over()
+	assert_int(_started.size()).is_equal(0)
 
 
 func test_the_first_launch_starts_basics_upright_too() -> void:
@@ -106,7 +132,7 @@ func _open(offer: bool, handed_over: bool = false, pending: StringName = &"") ->
 	root.take_pending = func() -> StringName: return pending
 	root.start_lesson = func(id: StringName) -> Error:
 		_started.append(id)
-		return OK
+		return _result
 	_menu.add_child(root)
 	add_child(_menu)
 	await await_idle_frame()

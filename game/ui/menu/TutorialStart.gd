@@ -50,15 +50,42 @@ static func next_lesson() -> StringName:
 	return &""
 
 
-## True on a first launch: Basics was never offered and nothing was finished.
+## True on a first launch: a save with no play history (no XP or award, no completed match, no
+## resume file) where Basics was neither finished nor explicitly left (`note_left`). A player who
+## updated the app keeps their Continue file and rank: they are never a first launch. A Basics
+## that was refused, or cut short by a kill, is offered again (ADR 0044 section 1: a lesson
+## restarts).
 static func first_launch_due() -> bool:
 	var offered: Variant = SaveService.get_section(TutorialDirector.SECTION).get(KEY_OFFERED, false)
-	return offered != true and TutorialDirector.lessons_done().is_empty()
+	if offered == true or TutorialDirector.is_done(ORDER[0]):
+		return false
+	return not has_play_history()
 
 
-## Records that Basics was offered (once; the section's other keys stay). False when the save
-## refused it.
+## Whether the save shows the player has played: rank XP or an award, a completed match, a resume
+## file.
+static func has_play_history() -> bool:
+	var progress: Dictionary = SaveService.get_section(&"progress")
+	var awards: Variant = progress.get("awards", [])
+	var ads: Dictionary = SaveService.get_section(&"ads")
+	return (
+		int(progress.get("xp", 0)) > 0
+		or (awards is Array and not (awards as Array).is_empty())
+		or int(ads.get("completed_matches", 0)) > 0
+		or ResumeStore.has_file()
+	)
+
+
+## Records that Basics was dealt with (finished is saved by the director; this is the explicit
+## skip). False when the save refused it.
 static func mark_offered() -> bool:
 	var values: Dictionary = SaveService.get_section(TutorialDirector.SECTION)
 	values[KEY_OFFERED] = true
 	return SaveService.set_section(TutorialDirector.SECTION, values)
+
+
+## The player left lesson `id` on purpose (Skip lesson, Leave tutorial): leaving Basics ends the
+## first-launch offer. A kill or a refused start never calls this.
+static func note_left(id: StringName) -> void:
+	if id == ORDER[0]:
+		mark_offered()

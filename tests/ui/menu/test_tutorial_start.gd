@@ -47,15 +47,36 @@ func test_the_next_lesson_is_the_first_one_not_done() -> void:
 	assert_str(String(TutorialStart.next_lesson())).is_equal("")
 
 
-func test_the_first_launch_is_due_once_and_a_finished_lesson_ends_it() -> void:
+func test_the_first_launch_is_due_until_basics_is_finished_or_left_on_purpose() -> void:
 	assert_bool(TutorialStart.first_launch_due()).is_true()
 	assert_bool(TutorialStart.mark_offered()).is_true()
 	assert_bool(TutorialStart.first_launch_due()).is_false()
 	assert_bool(SaveService.get_section(TutorialDirector.SECTION).get("offered")).is_true()
 	SaveService.set_section(TutorialDirector.SECTION, {})
+	TutorialStart.note_left(&"strikes")  # A drill says nothing about Basics.
 	assert_bool(TutorialStart.first_launch_due()).is_true()
-	TutorialDirector.mark_done(&"basics")  # An old save with progress and no flag.
+	TutorialDirector.mark_done(&"air")
+	assert_bool(TutorialStart.first_launch_due()).is_true()
+	TutorialStart.note_left(&"basics")  # Skip lesson or Leave tutorial.
 	assert_bool(TutorialStart.first_launch_due()).is_false()
+	SaveService.set_section(TutorialDirector.SECTION, {})
+	TutorialDirector.mark_done(&"basics")  # Finished.
+	assert_bool(TutorialStart.first_launch_due()).is_false()
+
+
+func test_a_player_with_play_history_is_never_a_first_launch() -> void:
+	assert_bool(TutorialStart.has_play_history()).is_false()
+	SaveService.set_section(&"progress", {"xp": 40})
+	assert_bool(TutorialStart.has_play_history()).is_true()
+	assert_bool(TutorialStart.first_launch_due()).is_false()
+	SaveService.set_section(&"progress", {"awards": [{"id": "a"}]})
+	assert_bool(TutorialStart.first_launch_due()).is_false()
+	SaveService.set_section(&"progress", {})
+	assert_bool(TutorialStart.first_launch_due()).is_true()
+	SaveService.set_section(&"ads", {"completed_matches": 3})
+	assert_bool(TutorialStart.first_launch_due()).is_false()
+	SaveService.set_section(&"ads", {})
+	assert_bool(TutorialStart.first_launch_due()).is_true()  # A new player: nothing played.
 
 
 func test_offering_keeps_the_done_marks() -> void:

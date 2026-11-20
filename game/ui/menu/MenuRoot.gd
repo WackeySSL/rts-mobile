@@ -34,7 +34,6 @@ func _ready() -> void:
 	var pending: StringName = take_pending.call()
 	if pending == &"":
 		if offer_first_launch and not stack.back_enabled and TutorialStart.first_launch_due():
-			TutorialStart.mark_offered()
 			_start_first_lesson(stack)
 		return
 	var screen: MenuScreen = routes.make(pending)
@@ -47,5 +46,9 @@ func _ready() -> void:
 func _start_first_lesson(stack: MenuStack) -> void:
 	while not stack.back_enabled and is_inside_tree():  # The intro still owns the screen.
 		await get_tree().process_frame
-	if is_inside_tree():
-		await start_lesson.call(TutorialStart.ORDER[0])
+	if not is_inside_tree():
+		return
+	# Offered again next launch until Basics is finished or left on purpose (`note_left`).
+	var error: Error = await start_lesson.call(TutorialStart.ORDER[0]) as Error
+	if error != OK:
+		push_warning("MenuRoot: Basics did not start (%s)" % error_string(error))

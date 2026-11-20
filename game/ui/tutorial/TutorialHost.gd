@@ -70,6 +70,7 @@ static func _find(root: Node, type_name: String) -> Node:
 	return found[0] if not found.is_empty() else null
 
 
-func _leave(_id: StringName) -> void:
+func _leave(id: StringName) -> void:
+	TutorialStart.note_left(id)  # Only Skip reaches here for an unfinished lesson (done is saved).
 	if flow != null and flow.has_method(&"return_to_menu"):
 		flow.call_deferred(&"return_to_menu", TutorialStart.RETURN_SCREEN)

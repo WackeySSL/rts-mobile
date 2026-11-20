@@ -11,6 +11,7 @@ class FlowStub:
 	extends Node
 	var runner: MatchRunner = null
 	var setup: MatchSetup = null
+	var left: Array[StringName] = []
 
 	func current_runner() -> MatchRunner:
 		return runner
@@ -18,8 +19,11 @@ class FlowStub:
 	func current_setup() -> MatchSetup:
 		return setup
 
-	func return_to_menu(_screen: StringName = &"") -> void:
+	func mark_surrendered() -> void:
 		pass
+
+	func return_to_menu(screen: StringName = &"") -> void:
+		left.append(screen)
 
 
 var _quit_on_go_back_before: bool = true
@@ -78,6 +82,29 @@ func test_settings_stays_on_in_a_lesson_and_a_disabled_button_keeps_its_frame() 
 	assert_object(framed).is_not_null()  # A frame, not the bare text of a theme with no style.
 	assert_float(framed.bg_color.a).is_greater(0.0)
 	assert_bool(framed.bg_color == plate.bg_color).is_true()
+
+
+## Where Leave goes: the Tutorial screen from a lesson, the plain menu from a skirmish.
+func test_leave_goes_to_the_tutorial_screen_in_a_lesson_and_to_the_menu_in_a_skirmish() -> void:
+	await _open_main()
+	await _open_menu()
+	_exit_through_the_question()
+	assert_array(_flow.left).is_equal([&""])
+	_state.close(HudState.Unfold.PAUSE)
+	_flow.setup = MatchSetup.new()
+	_flow.setup.lesson_id = &"strikes"
+	await _open_menu()
+	_exit_through_the_question()
+	assert_array(_flow.left).is_equal([&"", &"tutorial"])
+	assert_bool(TutorialStart.first_launch_due()).is_true()  # A drill is not Basics.
+
+
+func _exit_through_the_question() -> void:
+	(_menu.find_child("ExitButton", true, false) as Button).pressed.emit()
+	for dialog: Node in _menu.find_children("*", "ConfirmDialog", true, false):
+		if (dialog as ConfirmDialog).visible:
+			dialog.find_child("YesButton", true, false).pressed.emit()
+			return
 
 
 func _open_main() -> void:

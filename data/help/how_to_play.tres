@@ -1024,7 +1024,7 @@ body = "In Settings, tap Remove ads (the price is the store's) to remove every b
 script = ExtResource("3_ent")
 id = &"menus-tutorial"
 title = "Tutorial"
-body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself, and Skip lesson on its cards leaves it. A lesson you leave starts from the top next time."
+body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself, and Skip lesson on its cards leaves it. A lesson you leave starts from the top next time. During a match Settings has no Replay tutorial; leave the match first."
 
 [sub_resource type="Resource" id="e22t2"]
 script = ExtResource("3_ent")
