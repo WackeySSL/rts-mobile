@@ -21,7 +21,6 @@ var _main: Node
 var _service: Node
 var _harness: RefCounted
 var _window_before: Vector2i = Vector2i.ZERO
-var _downs: int = 0
 var _presses: int = 0
 
 
@@ -30,7 +29,6 @@ func before_test() -> void:
 	get_window().size = Sizes.LANDSCAPE[0]
 	MenuRig.begin()
 	CommandQueue.clear()
-	_downs = 0
 	_presses = 0
 
 
@@ -44,6 +42,11 @@ func after_test() -> void:
 		_harness = null
 	CommandQueue.clear()
 	MenuRig.end()
+	UiScale.clear_override()
+	var tree: SceneTree = get_tree()
+	if tree.current_scene != null:
+		tree.current_scene.free()
+		tree.current_scene = null
 	get_window().size = _window_before
 
 
@@ -167,19 +170,22 @@ func test_the_result_screen_takes_the_touch_over_a_beat() -> void:
 		var mark: CoachMark = stage["mark"]
 		var result: Control = stage["hud"].get_node("ResultScreen")
 		assert_bool(mark.visible).is_true()  # The card is up before the match ends.
-		result.call("_on_match_ended", 2)
+		MatchRig.end(_main, [1])  # Player 1 surrenders: the real end of a match.
 		for _frame: int in 6:
 			await await_idle_frame()
 		var label: String = str(size)
 		assert_bool(result.is_visible_in_tree()).override_failure_message(label).is_true()
 		assert_bool(mark.visible).override_failure_message(label + " mark").is_false()
 		var back: Button = result.find_child("BackButton", true, false) as Button
-		_downs = 0
-		back.button_down.connect(func() -> void: _downs += 1)
-		var at: Vector2 = back.get_global_rect().get_center()
-		Touch.press(get_viewport(), 0, at)
-		Touch.release(get_viewport(), 0, Vector2(2.0, 2.0))  # Let go elsewhere: nothing is pressed.
-		assert_int(_downs).override_failure_message(label + " tap").is_equal(1)
+		# The button's own action would leave the match for the dev menu: swap it for a counter.
+		for connection: Dictionary in back.pressed.get_connections():
+			back.pressed.disconnect(connection["callable"])
+		_presses = 0
+		back.pressed.connect(func() -> void: _presses += 1)
+		_tap(back.get_global_rect().get_center())
+		assert_int(_presses).override_failure_message(label + " tap").is_equal(1)
+		await await_idle_frame()
+		assert_object(get_tree().current_scene).override_failure_message(label + " left").is_null()
 		await _free_stage()
 
 
@@ -248,6 +254,10 @@ func _stage(size: Vector2i, id: StringName, with_ad: bool, menu_open: bool = tru
 
 
 func _free_stage() -> void:
+	var tree: SceneTree = get_tree()
+	if tree.current_scene != null:  # A button that left the match changes the scene.
+		tree.current_scene.free()
+		tree.current_scene = null
 	if _main != null and is_instance_valid(_main):
 		_main.free()
 	_main = null
