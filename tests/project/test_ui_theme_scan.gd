@@ -695,6 +695,42 @@ func test_the_dp_steps_exception_covers_its_sizes_and_never_a_colour_or_a_font()
 
 ## The project theme stays unset: it would restyle the developer scenes, which keep their looks.
 ## The HUD roots carry the theme instead (tests/ui/test_ui_theme.gd).
+## Every Pause* button look (the variations that reach PauseButton) has a disabled plate, own or
+## from its base, and its own dimmed font and icon colours: no pause button falls back to
+## Godot's grey plate when MenuFlow's start (P442) switches it off.
+func test_every_pause_button_look_defines_its_disabled_plate_and_colours() -> void:
+	var theme: Theme = load(THEME_PATH) as Theme
+	var checked: int = 0
+	for look: StringName in theme.get_type_list():
+		if not look.begins_with("Pause") or not _reaches(theme, look, &"PauseButton"):
+			continue
+		checked += 1
+		assert_bool(_has_plate(theme, look)).override_failure_message(str(look)).is_true()
+		for color: StringName in [&"font_disabled_color", &"icon_disabled_color"]:
+			(
+				assert_bool(theme.has_color(color, look))
+				. override_failure_message("%s %s" % [look, color])
+				. is_true()
+			)
+	assert_int(checked).is_equal(7)
+
+
+func _reaches(theme: Theme, look: StringName, target: StringName) -> bool:
+	while look != &"":
+		if look == target:
+			return true
+		look = theme.get_type_variation_base(look)
+	return false
+
+
+func _has_plate(theme: Theme, look: StringName) -> bool:
+	while look != &"":
+		if theme.has_stylebox(&"disabled", look):
+			return true
+		look = theme.get_type_variation_base(look)
+	return false
+
+
 func test_the_project_sets_no_theme_and_the_hud_theme_is_a_theme_resource() -> void:
 	assert_str(str(ProjectSettings.get_setting("gui/theme/custom", ""))).is_empty()
 	assert_str(str(ProjectSettings.get_setting("gui/theme/custom_font", ""))).is_empty()

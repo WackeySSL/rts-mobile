@@ -11,6 +11,7 @@ const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const SKIRMISH: String = "res://data/scenarios/skirmish_kestrel_flats.tres"
 const DUMMY: String = "res://data/ai/dummy_renew.tres"
 const LEVEL: String = "res://data/ai/difficulty/hard.tres"
+const TOLERANCE_PX: float = 0.5
 const OTHERS: Array[StringName] = [
 	&"ResumeButton",
 	&"SurrenderButton",
@@ -120,39 +121,64 @@ func _gated_flow() -> GatedFlow:
 
 func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> void:
 	var flow: GatedFlow = await _gated_flow()
+	var settings_off: bool = _button(&"SettingsButton").disabled  # No route in the rig.
 	_confirm_restart()
 	await await_idle_frame()
 	assert_str(_button(&"RestartButton").text).is_equal(tr(MapSelectText.STARTING))
 	assert_str(_button(&"RestartButton").text).is_equal("STARTING…")
 	for other: StringName in OTHERS:
 		assert_bool(_button(other).disabled).is_true()
+	assert_bool(_button(&"RestartButton").disabled).is_false()  # Keeps the full-contrast word.
 	_menu._on_back()  # Android Back: swallowed, the menu stays open.
-	_button(&"RestartButton").pressed.emit()
+	_button(&"RestartButton").pressed.emit()  # A second Restart: no question opens.
+	_menu._restart()  # Nor does a second confirmed restart reach the flow.
 	await await_idle_frame()
 	assert_bool(_state.is_open(HudState.Unfold.PAUSE)).is_true()
+	for dialog: Node in _menu.find_children("*", "ConfirmDialog", true, false):
+		assert_bool((dialog as ConfirmDialog).visible).is_false()
 	assert_int(flow.calls).is_equal(1)
 	flow.released.emit()
 	await await_idle_frame()
 	assert_str(_button(&"RestartButton").text).is_equal("RESTART")
-	assert_bool(_button(&"RestartButton").disabled).is_false()
+	for other: StringName in OTHERS:
+		var expected: bool = settings_off if other == &"SettingsButton" else false
+		assert_bool(_button(other).disabled).override_failure_message(str(other)).is_equal(expected)
 
 
-func test_the_restart_button_does_not_move_when_it_reads_starting_at_the_six_sizes() -> void:
+func test_nothing_moves_while_restart_reads_starting_at_the_six_sizes() -> void:
 	await _gated_flow()
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size
-		await await_idle_frame()
-		await await_idle_frame()
-		var before: Rect2 = _button(&"RestartButton").get_global_rect()
-		_menu._set_starting(true)
-		await await_idle_frame()
+		for _i: int in 5:
+			await await_idle_frame()
 		var label: String = "at %s" % size
-		var during: Rect2 = _button(&"RestartButton").get_global_rect()
-		assert_vector(during.position).override_failure_message(label).is_equal(before.position)
-		assert_vector(during.size).override_failure_message(label).is_equal(before.size)
+		var before: Array[Rect2] = _rects()
+		_menu._set_starting(true)
+		for _i: int in 5:
+			await await_idle_frame()
+		assert_array(_rects()).override_failure_message(label).is_equal(before)
+		var band: Control = _menu._band
+		if band != null and band.visible:
+			var gap: float = (
+				band.get_global_rect().position.y - _menu._toggles.get_global_rect().end.y
+			)
+			assert_float(gap).override_failure_message(label).is_greater_equal(
+				UiScale.dp(16.0) - TOLERANCE_PX
+			)
 		_menu._set_starting(false)
-		await await_idle_frame()
-		assert_vector(_button(&"RestartButton").get_global_rect().size).is_equal(before.size)
+		for _i: int in 2:
+			await await_idle_frame()
+		assert_array(_rects()).override_failure_message(label).is_equal(before)
+
+
+## Column, Restart button and foot band; an empty rect stands for no band.
+func _rects() -> Array[Rect2]:
+	var band: Control = _menu._band
+	return [
+		_menu.column.get_global_rect(),
+		_button(&"RestartButton").get_global_rect(),
+		band.get_global_rect() if band != null and band.visible else Rect2(),
+	]
 
 
 func test_a_refused_restart_gives_the_buttons_back() -> void:
@@ -170,6 +196,7 @@ func test_a_refused_restart_gives_the_buttons_back() -> void:
 	assert_bool(_button(&"RestartButton").disabled).is_false()
 	assert_bool(_button(&"ResumeButton").disabled).is_false()
 	assert_bool(_button(&"ExitButton").disabled).is_false()
+	assert_object(_menu.get_viewport().gui_get_focus_owner()).is_same(_button(&"ResumeButton"))
 	_menu._on_back()  # Back works again: it closes the menu.
 	assert_bool(_state.is_open(HudState.Unfold.PAUSE)).is_false()
 
