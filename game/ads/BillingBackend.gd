@@ -60,7 +60,9 @@ func query_product(_product_id: String) -> void:
 	pass
 
 
-## The store's localised price text; empty unless `product_state` is DONE.
+## The store's localised price text; empty unless `product_state` is DONE. A backend may reset
+## its product state on a reconnect: Purchases keeps the first price it saw for the session, so a
+## live Remove ads row never flips back while the store reloads.
 func price_text(_product_id: String) -> String:
 	return ""
 

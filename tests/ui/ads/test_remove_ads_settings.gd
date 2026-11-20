@@ -64,7 +64,7 @@ func test_the_rows_are_48_dp_and_nothing_below_the_slot_moves_at_the_six_sizes()
 	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
 	_service = fake
 	for size: Vector2i in ScreenSizes.ALL:
-		fake.price = PRICE
+		fake.answer(PRICE)
 		fake.owned = false
 		await _open(_profile_for(size))
 		var label: String = str(size)
@@ -94,12 +94,12 @@ func test_the_rows_are_48_dp_and_nothing_below_the_slot_moves_at_the_six_sizes()
 		assert_bool(slot.visible).override_failure_message(label).is_true()
 		var owned: Array[Rect2] = _below(slot)
 		_assert_moved(shown, owned, slot_shown - slot.size.y, label + " owned")
-		# No store: the slot is 0 tall and the controls below only moved up by its height.
-		fake.price = ""
+		# The store goes quiet after the rows took their place: the space stays, empty.
+		fake.answer("")
 		rows.refresh()
 		await AdServiceHarness.frames(2)
-		assert_bool(slot.visible).override_failure_message(label).is_false()
-		_assert_moved(shown, _below(slot), slot_shown + float(_gap_px()), label + " hidden")
+		assert_bool(slot.visible).override_failure_message(label).is_true()
+		_assert_same(owned, _below(slot), label + " late unavailable")
 		_close()
 
 
