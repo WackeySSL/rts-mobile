@@ -39,7 +39,9 @@ func test_the_terrain_page_is_built_when_first_shown_and_sits_on_the_off_map_col
 	for child: Node in page.get_node(CONTENT.trim_suffix("/")).get_children():
 		if not child is Label:
 			names.append(child.name)
-	assert_array(names).is_equal([&"Patch", &"Map", &"Fields", &"Props"])
+	assert_array(names).is_equal(
+		[&"Patch", &"Map", &"Fields", &"Props", &"HeronLook", &"CragsLook"]
+	)
 
 
 func test_the_patch_is_six_terrains_of_six_cells_with_a_and_b_alternating_in_the_diamond_grid(
@@ -59,6 +61,38 @@ func test_the_patch_is_six_terrains_of_six_cells_with_a_and_b_alternating_in_the
 			var want: Vector2 = Vector2((column - row) * 32.0, (column + row) * 16.0)
 			assert_vector(sprite.position - first).override_failure_message(path).is_equal(want)
 			assert_vector(sprite.texture.get_size()).is_equal(Vector2(64, 32))
+
+
+## P551 and P553: the page's last blocks are cuts of Heron Fords and Curlew Crags drawn in their
+## own ground looks: the look's tiles for the terrains it has, the standard tiles for the rest.
+func test_the_look_blocks_cut_the_real_maps_and_draw_them_in_their_own_ground_looks() -> void:
+	var gallery: Control = await _open_gallery()
+	var page: Control = _show(gallery)
+	var want: Dictionary[String, Array] = {
+		"HeronLook": ["heron", "water", "sand", "grass"],
+		"CragsLook": ["crags", "rock", "scrub", "sand", "grass"],
+	}
+	assert_int(TerrainPage.LOOKS.size()).is_equal(2)
+	for look: Dictionary in TerrainPage.LOOKS:
+		var block: Node2D = page.get_node(CONTENT + String(look[&"name"]))
+		var cut: Rect2i = look[&"cut"]
+		assert_int(block.get_child_count()).is_equal(cut.size.x * cut.size.y)
+		var map: MapDef = load(look[&"map"]) as MapDef
+		var folder: String = want[String(look[&"name"])][0]
+		assert_str(String(map.ground_look)).is_equal(folder)
+		var styled: Array = want[String(look[&"name"])].slice(1)
+		var found: Dictionary[String, bool] = {}
+		for sprite: Node in block.get_children():
+			var path: String = (sprite as Sprite2D).texture.resource_path
+			var id: String = path.get_file().get_basename().trim_suffix("_a").trim_suffix("_b")
+			found[id] = true
+			# A terrain the look has comes from the look, every other one from the standard tiles.
+			var folder_of: String = (
+				"/ground_looks/%s/" % folder if styled.has(id) else "/svg/ground/"
+			)
+			assert_str(path).override_failure_message(path).contains(folder_of)
+		for id: String in styled:
+			assert_bool(found.get(id, false)).override_failure_message(id).is_true()
 
 
 func test_the_map_mixes_the_terrains_with_an_oil_and_a_gas_field_wellheads_and_two_craters(
@@ -193,7 +227,7 @@ func test_everything_is_clear_of_the_two_corner_buttons_and_inside_the_page_widt
 				. is_false()
 			)
 		labels.append(label.get_global_rect())
-	assert_int(labels.size()).is_equal(3)
+	assert_int(labels.size()).is_equal(5)
 	assert_int(seen).is_greater(250)
 
 

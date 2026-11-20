@@ -1,0 +1,37 @@
+<!-- Grass diamond b (Curlew Crags): one 128 x 64 tile of thin upland turf, the base colour to every edge. -->
+<!-- Pattern: Mid green turf worn thin, two bare soft patches, six short sprigs and three small grey stones with a lit top and a dark foot, nothing within 5 px of an edge. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+<defs><clipPath id="inner"><polygon points="64,5.1 117.8,32 64,58.9 10.2,32"/></clipPath></defs>
+<polygon points="64,-1.3 130.6,32 64,65.3 -2.6,32" fill="#6F8F57"/>
+<g clip-path="url(#inner)">
+<polygon points="91.2,39.2 82.1,39.4 71.4,38.4 65.1,33 64,28.3 67.8,24.3 78.8,26.5 88.7,29.6 94.3,35" fill="#688A50"/>
+<polygon points="51.3,38.5 43.9,38.8 35.1,37.5 32,33.1 33.6,29.6 40.2,27.9 48,31.1 53.4,34.9" fill="#789A5F"/>
+<polygon points="72.6,44.8 73.8,38.8 74.6,44.8" fill="#5E7D4A"/>
+<polygon points="73.8,44.8 75.8,40 76,44.8" fill="#5E7D4A"/>
+<polygon points="73,44.8 73.8,38.8 73.8,44.8" fill="#86A66B"/>
+<polygon points="43.2,41.6 44.4,35.6 45.2,41.6" fill="#5E7D4A"/>
+<polygon points="44.4,41.6 46.4,36.8 46.6,41.6" fill="#5E7D4A"/>
+<polygon points="43.6,41.6 44.4,35.6 44.4,41.6" fill="#86A66B"/>
+<polygon points="44.5,23 45.7,17 46.5,23" fill="#5E7D4A"/>
+<polygon points="45.7,23 47.7,18.2 47.9,23" fill="#5E7D4A"/>
+<polygon points="44.9,23 45.7,17 45.7,23" fill="#86A66B"/>
+<polygon points="82.9,28.2 84.1,22.2 84.9,28.2" fill="#5E7D4A"/>
+<polygon points="84.1,28.2 86.1,23.4 86.3,28.2" fill="#5E7D4A"/>
+<polygon points="83.3,28.2 84.1,22.2 84.1,28.2" fill="#86A66B"/>
+<polygon points="71.4,17.3 72.6,11.3 73.4,17.3" fill="#5E7D4A"/>
+<polygon points="72.6,17.3 74.6,12.5 74.8,17.3" fill="#5E7D4A"/>
+<polygon points="71.8,17.3 72.6,11.3 72.6,17.3" fill="#86A66B"/>
+<polygon points="94.4,35.2 95.6,29.2 96.4,35.2" fill="#5E7D4A"/>
+<polygon points="95.6,35.2 97.6,30.4 97.8,35.2" fill="#5E7D4A"/>
+<polygon points="94.8,35.2 95.6,29.2 95.6,35.2" fill="#86A66B"/>
+<ellipse cx="52.2" cy="33" rx="5" ry="2.2" fill="#524E4B"/>
+<polygon points="47.2,32 49.2,28.5 54.2,29 55.7,32" fill="#7A7671"/>
+<polygon points="49.2,28.5 54.2,29 51.2,30.8" fill="#A29D97"/>
+<ellipse cx="77.8" cy="39.4" rx="5" ry="2.2" fill="#524E4B"/>
+<polygon points="72.8,38.4 74.8,34.9 79.8,35.4 81.3,38.4" fill="#7A7671"/>
+<polygon points="74.8,34.9 79.8,35.4 76.8,37.2" fill="#A29D97"/>
+<ellipse cx="65" cy="17.6" rx="5" ry="2.2" fill="#524E4B"/>
+<polygon points="60,16.6 62,13.1 67,13.6 68.5,16.6" fill="#7A7671"/>
+<polygon points="62,13.1 67,13.6 64,15.4" fill="#A29D97"/>
+</g>
+</svg>

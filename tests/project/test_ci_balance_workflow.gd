@@ -32,6 +32,7 @@ const BALANCE_INPUTS: Array[String] = [
 	"      levels:",
 	"      scenarios:",
 	"      matches:",
+	"      map:",
 	"      seed_start:",
 ]
 const BALANCE_CONCURRENCY: Array[String] = [
@@ -110,7 +111,7 @@ func test_balance_workflow_runs_on_a_filtered_push_and_by_hand_only() -> void:
 	# The path list's own entries are also at six spaces.
 	inputs = inputs.filter(func(line: String) -> bool: return not line.begins_with("      - "))
 	assert_array(inputs).contains_exactly(BALANCE_INPUTS)
-	assert_array(Array(block)).contains(["        options: [balance, gate, custom]"])
+	assert_array(Array(block)).contains(["        options: [balance, gate, maps, custom]"])
 	assert_array(Array(block)).contains(["        default: balance"])
 	for line: String in lines:
 		if line.strip_edges().begins_with("#"):
@@ -217,12 +218,12 @@ func test_balance_workflow_calls_the_scripts_and_keeps_the_artifact() -> void:
 	var run: String = (
 		'GITHUB_SHA="$BUILD_SHA" bash scripts/run-sim-smoke.sh --matches "$MATCHES"'
 		+ ' --seed-start "$SEED_START"'
-		+ ' --levels "$LEVELS" --scenarios "$SCENARIOS" --report "build/balance/$SHARD.json"'
+		+ ' --levels "$LEVELS" --scenarios "$SCENARIOS" --map "$MAP" --report "build/balance/$SHARD.json"'
 	)
 	assert_array(shard).contains([run, "BUILD_SHA: ${{ needs.build.outputs.sha }}"])
 	# The runner resets GITHUB_* in a step's env, so it is never set there.
 	assert_bool(shard.has("GITHUB_SHA: ${{ needs.build.outputs.sha }}")).is_false()
-	for field: String in ["matches", "seed_start", "levels", "scenarios", "name"]:
+	for field: String in ["matches", "seed_start", "levels", "scenarios", "map", "name"]:
 		(
 			assert_bool(
 				shard.any(

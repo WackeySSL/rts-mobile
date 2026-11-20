@@ -1,0 +1,259 @@
+[gd_resource type="Resource" script_class="TutorialLessonDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Resource" path="res://data/scenarios/tutorial_basics.tres" id="3_scenario"]
+[ext_resource type="Resource" path="res://data/tutorial/basics_enemy.tres" id="4_enemy"]
+
+[sub_resource type="Resource" id="Beat_00"]
+script = ExtResource("2_beat")
+id = &"welcome"
+prompt_key = &"tutorial.basics.welcome"
+anchor = 1
+anchor_control = &"EconomyPill"
+covers = Array[StringName]([&"the-screen-in-battle-hud", &"build-menu-look-screen", &"factions-two"])
+pause = true
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_01"]
+script = ExtResource("2_beat")
+id = &"pan"
+prompt_key = &"tutorial.basics.pan"
+kind = 9
+count = 300
+covers = Array[StringName]([&"camera-pan"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_02"]
+script = ExtResource("2_beat")
+id = &"zoom"
+prompt_key = &"tutorial.basics.zoom"
+kind = 8
+value = 2
+covers = Array[StringName]([&"camera-pinch"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_03"]
+script = ExtResource("2_beat")
+id = &"radar"
+prompt_key = &"tutorial.basics.radar"
+anchor = 1
+anchor_control = &"RadarScope"
+kind = 10
+value = 2
+covers = Array[StringName]([&"camera-radar"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_04"]
+script = ExtResource("2_beat")
+id = &"fog"
+prompt_key = &"tutorial.basics.fog"
+covers = Array[StringName]([&"fog-sight"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_05"]
+script = ExtResource("2_beat")
+id = &"box"
+prompt_key = &"tutorial.basics.box"
+anchor = 2
+anchor_tile = Vector2i(10, 6)
+kind = 1
+type_id = &"rifle_squad"
+count = 2
+covers = Array[StringName]([&"selection-box"])
+budget_s = 7
+
+[sub_resource type="Resource" id="Beat_06"]
+script = ExtResource("2_beat")
+id = &"clear"
+prompt_key = &"tutorial.basics.clear"
+anchor = 1
+anchor_control = &"Deselect"
+covers = Array[StringName]([&"selection-deselect", &"selection-box-empty", &"selection-tap-ground"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_07"]
+script = ExtResource("2_beat")
+id = &"double"
+prompt_key = &"tutorial.basics.double"
+anchor = 2
+anchor_tile = Vector2i(10, 6)
+kind = 1
+type_id = &"rifle_squad"
+count = 4
+covers = Array[StringName]([&"selection-double-tap", &"selection-tap"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_08"]
+script = ExtResource("2_beat")
+id = &"move"
+prompt_key = &"tutorial.basics.move"
+anchor = 1
+anchor_control = &"Stop"
+kind = 2
+type_id = &"rifle_squad"
+count = 3
+area = Rect2i(9, 13, 5, 3)
+covers = Array[StringName]([&"orders-move", &"orders-stop"])
+budget_s = 10
+
+[sub_resource type="Resource" id="Beat_09"]
+script = ExtResource("2_beat")
+id = &"across"
+prompt_key = &"tutorial.basics.across"
+anchor = 2
+anchor_tile = Vector2i(20, 11)
+kind = 2
+type_id = &"rifle_squad"
+count = 3
+area = Rect2i(18, 9, 5, 5)
+covers = Array[StringName]([&"terrain-blocked", &"camera-hold-full-map"])
+budget_s = 12
+
+[sub_resource type="Resource" id="Beat_10"]
+script = ExtResource("2_beat")
+id = &"drawer"
+prompt_key = &"tutorial.basics.drawer"
+anchor = 1
+anchor_control = &"BuildButton"
+kind = 11
+covers = Array[StringName]([&"build-menu-drawer"])
+budget_s = 5
+
+[sub_resource type="Resource" id="Beat_11"]
+script = ExtResource("2_beat")
+id = &"low-power"
+prompt_key = &"tutorial.basics.low-power"
+anchor = 1
+anchor_control = &"PowerBar"
+covers = Array[StringName]([&"the-screen-in-battle-low-power"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_12"]
+script = ExtResource("2_beat")
+id = &"power"
+prompt_key = &"tutorial.basics.power"
+anchor = 1
+anchor_control = &"Tile_power_plant"
+kind = 12
+type_id = &"power_plant"
+covers = Array[StringName]([&"build-menu-queue-item", &"build-menu-place-start"])
+budget_s = 13
+
+[sub_resource type="Resource" id="Beat_13"]
+script = ExtResource("2_beat")
+id = &"placed"
+prompt_key = &"tutorial.basics.placed"
+anchor = 1
+anchor_control = &"PlaceConfirm"
+kind = 3
+type_id = &"power_plant"
+covers = Array[StringName]([&"build-menu-drag-ghost", &"build-menu-during-placement", &"build-menu-confirm"])
+budget_s = 8
+
+[sub_resource type="Resource" id="Beat_14"]
+script = ExtResource("2_beat")
+id = &"close"
+prompt_key = &"tutorial.basics.close"
+anchor = 1
+anchor_control = &"BuildButton"
+covers = Array[StringName]([&"build-menu-close", &"build-menu-cancel-item"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_15"]
+script = ExtResource("2_beat")
+id = &"field"
+prompt_key = &"tutorial.basics.field"
+anchor = 2
+anchor_tile = Vector2i(9, 10)
+kind = 6
+count = 100
+covers = Array[StringName]([&"economy-oil-field", &"economy-credits", &"orders-tanker-field"])
+budget_s = 12
+
+[sub_resource type="Resource" id="Beat_16"]
+script = ExtResource("2_beat")
+id = &"barracks"
+prompt_key = &"tutorial.basics.barracks"
+anchor = 1
+anchor_control = &"Tile_barracks"
+kind = 4
+type_id = &"barracks"
+covers = Array[StringName]([&"build-menu-tabs"])
+budget_s = 15
+
+[sub_resource type="Resource" id="Beat_17"]
+script = ExtResource("2_beat")
+id = &"train"
+prompt_key = &"tutorial.basics.train"
+anchor = 1
+anchor_control = &"TabInfantry"
+kind = 5
+type_id = &"rifle_squad"
+count = 6
+covers = Array[StringName]([&"build-menu-select-producer"])
+budget_s = 10
+
+[sub_resource type="Resource" id="Beat_18"]
+script = ExtResource("2_beat")
+id = &"rally"
+prompt_key = &"tutorial.basics.rally"
+covers = Array[StringName]([&"orders-rally"])
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_19"]
+script = ExtResource("2_beat")
+id = &"groups"
+prompt_key = &"tutorial.basics.groups"
+anchor = 1
+anchor_control = &"AddGroup"
+kind = 15
+count = 2
+value = 1
+covers = Array[StringName]([&"groups-save", &"groups-overwrite", &"groups-column"])
+budget_s = 8
+
+[sub_resource type="Resource" id="Beat_20"]
+script = ExtResource("2_beat")
+id = &"incoming"
+prompt_key = &"tutorial.basics.incoming"
+covers = Array[StringName]([&"combat-under-attack"])
+after_ai_step = &"wave"
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_21"]
+script = ExtResource("2_beat")
+id = &"attack"
+prompt_key = &"tutorial.basics.attack"
+kind = 7
+covers = Array[StringName]([&"orders-attack", &"combat-keep-fighting"])
+budget_s = 15
+
+[sub_resource type="Resource" id="Beat_22"]
+script = ExtResource("2_beat")
+id = &"pause"
+prompt_key = &"tutorial.basics.pause"
+anchor = 1
+anchor_control = &"Menu"
+kind = 10
+value = 4
+covers = Array[StringName]([&"pause-menu", &"pause-confirm", &"menus-continue"])
+budget_s = 6
+
+[sub_resource type="Resource" id="Beat_23"]
+script = ExtResource("2_beat")
+id = &"win"
+prompt_key = &"tutorial.basics.win"
+covers = Array[StringName]([&"winning-destroy", &"the-computer-opponent-levels"])
+delay_ticks = 30
+budget_s = 4
+
+[resource]
+script = ExtResource("1_lesson")
+id = &"basics"
+title_key = &"tutorial.basics.title"
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12"), SubResource("Beat_13"), SubResource("Beat_14"), SubResource("Beat_15"), SubResource("Beat_16"), SubResource("Beat_17"), SubResource("Beat_18"), SubResource("Beat_19"), SubResource("Beat_20"), SubResource("Beat_21"), SubResource("Beat_22"), SubResource("Beat_23")])
+target_s = 180
+scenario = ExtResource("3_scenario")
+enemy = ExtResource("4_enemy")
+match_seed = 1

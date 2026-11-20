@@ -4,11 +4,29 @@ extends Control
 ## variants, a small map that mixes them with an oil and a gas field (the stages as stripes across
 ## each) with a wellhead on every field and a crater on grass and on sand, the six field stages as
 ## blocks of 3 x 3 cells, and the wellhead and the crater at the camera zoom levels on grass and on
-## sand. Tiles are the imported textures (half the 2x art), so a tile is 64 x 32 px at zoom 1.
+## sand, and a cut of Heron Fords' river and ford in its own ground look (P551). Tiles are the
+## imported textures (half the 2x art), so a tile is 64 x 32 px at zoom 1.
 ## Built on first show; view-only.
 
 const GROUND_ART: String = "res://assets/art/svg/ground/%s_%s.svg"
 const FIELD_ART: String = "res://assets/art/svg/fields/%s.svg"
+## The map looks the page ends with, each a cut of a real map (the first column, the first row and
+## the size in cells) drawn with the tiles of its `ground_look`: Heron Fords' bank, river and first
+## ford (P551), and Curlew Crags' central ridge at its middle pass with the mesa above it (P553).
+const LOOKS: Array[Dictionary] = [
+	{
+		&"name": "HeronLook",
+		&"label": "Heron Fords: the map's own ground, river and ford",
+		&"map": "res://data/maps/heron_fords.tres",
+		&"cut": Rect2i(8, 24, 14, 12),
+	},
+	{
+		&"name": "CragsLook",
+		&"label": "Curlew Crags: the map's own ground, ridge and pass",
+		&"map": "res://data/maps/curlew_crags.tres",
+		&"cut": Rect2i(13, 15, 20, 17),
+	},
+]
 const CRATER_ART: String = "res://assets/art/svg/decals/crater.svg"
 ## The colour the clear colour shows outside the map's diamond (STYLE.md, "Fog and terrain").
 const OFF_MAP_COLOR: Color = Color("16191D")
@@ -91,7 +109,7 @@ func _build() -> void:
 	var content: Control = Control.new()
 	content.name = "Content"
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.custom_minimum_size = Vector2(1232.0 + 2.0 * GAP_PX, 1000.0)
+	content.custom_minimum_size = Vector2(1232.0 + 2.0 * GAP_PX, 2200.0)
 	scroll.add_child(content)
 	var top: float = FIRST_TOP_PX
 	_label(content, "Ground: grass sand scrub rock water ore", GAP_PX, top)
@@ -103,6 +121,31 @@ func _build() -> void:
 	_add_blocks(content, top + LABEL_PX)
 	top += 150.0
 	_add_props(content, top)
+	top += 200.0
+	for look: Dictionary in LOOKS:
+		var cut: Rect2i = look[&"cut"]
+		_label(content, look[&"label"], GAP_PX, top)
+		_add_look(content, Vector2(GAP_PX + cut.size.y * 32.0, top + LABEL_PX), look)
+		top += LABEL_PX + (cut.size.x + cut.size.y) * 16.0 + 48.0
+
+
+## The cut of `look`'s map with the tiles of its `ground_look` where it has them.
+func _add_look(parent: Control, origin: Vector2, look: Dictionary) -> void:
+	var block: Node2D = Node2D.new()
+	block.name = look[&"name"]
+	parent.add_child(block)
+	var cut: Rect2i = look[&"cut"]
+	var map: MapDef = load(look[&"map"]) as MapDef
+	var ids: Dictionary[String, String] = {}
+	for terrain: TerrainDef in map.terrain.terrains:
+		ids[terrain.symbol] = String(terrain.id)
+	for row: int in cut.size.y:
+		for column: int in cut.size.x:
+			var symbol: String = map.rows[cut.position.y + row][cut.position.x + column]
+			var id: String = ids[symbol]
+			var variant: String = "ab"[(column + row) % 2]
+			var path: String = GroundAtlas.path_of(StringName(id), variant, map.ground_look)
+			block.add_child(_sprite(path, cell_centre(origin, column, row)))
 
 
 func _add_patch(parent: Control, origin: Vector2) -> void:
