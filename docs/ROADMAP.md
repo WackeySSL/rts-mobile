@@ -126,7 +126,7 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   boot splash instead of Godot's default
 - [ ] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
   (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6
-- [ ] Second and third map
+- [x] Second and third map (Heron Fords and Curlew Crags: P550-P555c, merged by wave 26, 2026-11-19)
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes
 

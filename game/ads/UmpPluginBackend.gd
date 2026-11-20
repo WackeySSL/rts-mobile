@@ -34,6 +34,8 @@ const GEOGRAPHY_EEA: int = 1
 var _lookup: Callable
 var _test_device_hash: Callable
 var _connected: bool = false
+## A privacy show was handed over and no focus-out or pause has stood in for "shown" yet.
+var _privacy_pending: bool = false
 var _info: Step = Step.PENDING
 var _form: Step = Step.PENDING
 var _form_uid: int = -1
@@ -142,7 +144,21 @@ func show_privacy_options() -> void:
 		form_dismissed.emit()
 		return
 	_connect_signals()
+	_privacy_pending = true
 	ump.show_privacy_options_form()
+
+
+## The plugin has no "shown" callback (ADR 0039 section 3). A native form covers the Godot
+## activity, so the first focus-out or pause after a privacy show stands in for "shown"
+## (to confirm on device, P422).
+func notify_app_paused() -> void:
+	if _privacy_pending:
+		_privacy_pending = false
+		form_shown.emit()
+
+
+func cancel_pending_show() -> void:
+	_privacy_pending = false
 
 
 func _plugin(singleton: String) -> Object:
@@ -205,4 +221,5 @@ func _on_form_dismissed(_uid: int, _error: Dictionary = {}) -> void:
 
 
 func _on_options_dismissed(_error: Dictionary = {}) -> void:
+	_privacy_pending = false
 	form_dismissed.emit()

@@ -2768,7 +2768,7 @@ against unexplored ground), and it is neutral (saturation under 0.30), so no sid
 is near it. P116 sets it as the clear colour; the gallery's Terrain page draws it behind everything,
 `OFF_MAP_COLOR` in `game/view/art_gallery_ground.gd`, which `tests/art` pins to this text.
 
-## Map looks (P551, plan answer 5)
+## Map looks (P551 and P553, plan answer 5)
 A map may carry its own ground look: `MapDef.ground_look`, a folder name under
 `assets/art/svg/ground_looks/<look>/` (view only, like `field_kinds`: `WorldLoad` never reads it, so no
 hash, digest or fairness number depends on it; empty = the standard tiles, as Kestrel Flats and Curlew
@@ -2782,8 +2782,9 @@ terrain, never a new terrain (answer 5: no new tiles).
 The files are written as SVG by a small projection script kept outside the repository (the committed SVG is the source; the same as the P105 tiles). Each file follows "Iso ground tiles": 128 x 64 at 2x, imported at scale 0.5, the same base colour to every
 edge, no rim, details clipped to the `inner` ground square (the current lines of the water excepted, below),
 two comments, `<!-- Pattern: ... -->` second, 2 to 4 KB, no gradient, filter, text or raster. Each tile keeps
-the greyscale level of the terrain it replaces to within 2 levels (`tests/art/test_ground_look_heron.gd`
-pins it, the seams, the rim and the files).
+the greyscale level of the terrain it replaces to within 1 level (`tests/art/ground_look_support.gd` holds the checks every look shares: the files, the
+diamond, the rim, the seams, the greyscale, a and b differing and the atlas; `test_ground_look_heron.gd` and
+`test_ground_look_crags.gd` run them on their folders).
 
 **Heron Fords** (`heron`, `data/maps/heron_fords.tres`): a river valley with two sand fords. Silhouette in
 one line: a broad blue river whose current lines run down the whole valley, banks and fords of pale
@@ -2799,9 +2800,28 @@ Greyscale (32 px, Rec. 601, mean over the diamond; standard in brackets): water 
 and 82.5), sand 185.0 and 185.0 (185.1 and 184.9), grass 126.5 and 126.5 (125.8 and 125.7). Scrub, rock and
 ore are the standard tiles. Light is the one light of "Light": top lit, shadow to the south-east.
 
-**Gallery**: the Terrain page ends with "Heron Fords: the map's own ground, river and ford", a 14 x 12 cut of
-the real map (columns 8 to 21, rows 24 to 35: the bank, the river and the first ford) drawn in its look
-(`art_gallery_ground.gd`, `LOOK_CUT`; `test_art_gallery_ground.gd` pins it).
+**Curlew Crags** (`crags`, `data/maps/curlew_crags.tres`): a rocky highland of plateaus, a central ridge
+with three narrow passes and fields on raised ground. Silhouette in one line: banded cliff rock in flat
+strata, pass floors of baked cracked plates, and thin upland turf with grey stones and thorn heath. It
+re-skins four terrains and leaves water and ore standard (the map has none of the first and the ore keeps
+its field earth).
+
+| Terrain | Tile | Differs from the standard tile by | Tones (new ones in bold) |
+| --- | --- | --- | --- |
+| rock | cliff | three flat strata that run along +gx, each a lit lip (a thin line), a mid face and a dark foot, cut by two short cracks across them and three chips, in place of five boulders, so a ridge or a mesa wall reads as banded rock | base #726E69, #7A7671 face, #8C8782 lip, #524E4B foot, **#3F3C3A** crack, #A29D97 chips |
+| sand | pass floor | four cracks that run from a middle point to the four edges, two raised plates between them (one lit, one shaded, a light top edge on each), and three loose chips, in place of ripples, so a pass is flat cracked ground | base #CDB98F, #B59F72 cracks, #D6C49E and #C4AF84 plates, #E4D6B3 plate edge and chip top, #A58F63 chip shade |
+| grass | upland | six short sprigs (6 px) and three small grey stones with a lit top and a dark foot, two bare patches, in place of seven tufts | base #6F8F57, #5E7D4A and #86A66B sprigs, #688A50 and #789A5F patches, #7A7671 stone, #A29D97 stone top, #524E4B stone shade |
+| scrub | thorn heath | four jagged thorn bushes (seven points, a lit left side, a flat dark foot, a light shadow to the south-east) in place of five round domes | base #58653F, #6B7A4F bush, #8C9A6B lit side, #4B5733 foot and patch, #5D6B45 patch |
+
+Greyscale (32 px; standard in brackets): rock a 109.8 and b 109.6 (109.1 and 110.4), sand 184.9 and 185.4
+(185.1 and 184.9), grass 125.6 and 125.6 (125.8 and 125.7), scrub 96.1 and 96.3 (96.9 and 96.2); every tile is
+within 1 level. Against Heron Fords it differs in every terrain it shares (sand, grass) and in what it
+adds: Heron is water and flowers, Crags is stone and thorn.
+
+**Gallery**: the Terrain page ends with one block for each look (`art_gallery_ground.gd`, `LOOKS`; `test_art_gallery_ground.gd` pins them), each a cut of
+the real map drawn in its look: "Heron Fords: the map's own ground, river and ford" (14 x 12, columns 8 to 21, rows 24 to 35: the bank, the river and
+the first ford) and "Curlew Crags: the map's own ground, ridge and pass" (20 x 17, columns 13 to 32, rows 15 to 31: the mesa with its ore, the ridge, its
+middle pass and the scrub).
 
 **Atlas pins**: unchanged. The ground page holds the same 12 tiles, six field stages and two props in the same
 slots whatever the look; pages 1 and 2 of the sorted world and the life atlas are not touched.
@@ -3308,3 +3328,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-18 | v1.46 (P279, art-director, ADR 0037 sections 5 and 14): the Weld Shed (`fossil_weld_shed`) and the Drone Dock (`renew_drone_dock`), the repair buildings, as 2 x 2 models with an 8-frame `anim` loop, a KRITISK picture that shows the inside, no SKADET picture, a shadow and an item card, and their roster entries after the engineering centres ("The repair buildings" under "Buildings", Catalogue rows); the sorted world's page 1 2582, 2526 and 2435 to 2628, 2552 and 2502 and page 2 2486, 1386 and 1386 to 2504, 1386 and 1408 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect as two kinds of `fx/life_atlas.svg` (`drone`, two rotor-blur frames, and `drone_shadow`, the Drone Dock's drone, two rows on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1478 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-19 | v1.48 (P551, art-director, plan answer 5): the Map looks section: `MapDef.ground_look` (view only) and the `assets/art/svg/ground_looks/<look>/` folders, and the first look, Heron Fords' (`heron`): river water with current lines that run on from tile to tile, shingle sand and meadow grass, six diamonds written as SVG by a small projection script kept outside the repository (the committed SVG is the source, as for P105), in the same keys and slots of the ground page (no new terrain, no new tile, no atlas pin moves); the Terrain page of the gallery ends with a cut of the map in its look. |
+| 2026-11-19 | v1.49 (P553, art-director, plan answer 5): the second map look, Curlew Crags' (`crags`): rock, sand, grass and scrub re-skinned as banded cliff, cracked pass floor, thin upland turf and thorn heath (eight diamonds written as SVG by a small projection script kept outside the repository, the committed SVG being the source, in the same keys and slots; no new terrain, no atlas pin moves), its table in "Map looks", the shared look checks in `tests/art/ground_look_support.gd` and a second block on the gallery's Terrain page. |

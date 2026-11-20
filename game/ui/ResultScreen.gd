@@ -18,15 +18,10 @@ extends ModalFrame
 const MenuFlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AudioServiceScript: GDScript = preload("res://game/view/audio/audio_service.gd")
-const PLAY_AGAIN_TEXT: String = "PLAY AGAIN"
 const XP_BAR_DP: float = 12.0
 const XP_FILL_SECONDS: float = 1.2  ## The whole fill; a rank-up gives each half its share.
-const RANK_UP_TEXT: String = "RANK UP!"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EMBLEM_DP: float = 64.0
-const STAT_NAMES: Array[String] = [
-	"Units built", "Units lost", "Buildings lost", "Credits harvested"
-]
 
 @export var runner: MatchRunner
 ## Tests inject these before the match ends; null means the autoloads. `rank_xp` is the XP each
@@ -59,10 +54,12 @@ var _title: Label
 var _time: Label
 var _grid: GridContainer
 var _again: Button
+var _again_floor: DpMinSize
 var _back_button: Button
 
 
 func _ready() -> void:
+	ResultText.register()  # Before any `tr()` below.
 	_body = BoxContainer.new()  # Before `super()`, whose `_apply_dp` sizes them.
 	_emblem = TextureRect.new()
 	_grid = GridContainer.new()
@@ -88,7 +85,7 @@ func _ready() -> void:
 	_xp_bar.show_percentage = false
 	_xp_box.add_child(_xp_bar)
 	_xp_text = add_label(_xp_box, "", &"NumberLabel")
-	_rank_up = add_label(_xp_box, RANK_UP_TEXT, &"CapsTitle")
+	_rank_up = add_label(_xp_box, tr(ResultText.RANK_UP), &"CapsTitle")
 	_rank_up.name = &"RankUp"
 	_rank_up.visible = false
 	_body.add_child(_grid)
@@ -98,9 +95,15 @@ func _ready() -> void:
 	var row: HBoxContainer = HBoxContainer.new()
 	column.add_child(row)
 	MapSelectText.register()
-	_again = add_button(row, PLAY_AGAIN_TEXT, _play_again)
+	_again = add_button(row, _again_text(), _play_again)
 	_again.name = &"PlayAgainButton"
-	_back_button = add_button(row, "BACK", _back)
+	var floors: Array[Node] = _again.find_children("*", "DpMinSize", false, false)
+	if floors.size() == 1:  # Exactly one: a change to `add_button` must not drop the re-pin.
+		_again_floor = floors[0] as DpMinSize
+		_again_floor.applied.connect(_pin_again)  # After DpMinSize's reset, UiScale and theme.
+	else:
+		push_error("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
+	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
 	progression = progression if progression != null else (Progression as ProgressionScript)
@@ -126,9 +129,9 @@ func _on_match_ended(winner: int) -> void:
 	var result: String = "draw" if winner == 0 else ("victory" if winner == local else "defeat")
 	_emblem.texture = load(EMBLEM_ART % result) as Texture2D
 	_emblem.modulate = get_theme_color(StringName(result), &"ResultScreen")
-	_title.text = result.to_upper()
+	_title.text = tr(ResultText.title_key(result))
 	var seconds: int = snap.match_end_tick / Sim.TICK_RATE
-	_time.text = "Match time %d:%02d" % [seconds / 60, seconds % 60]
+	_time.text = tr(ResultText.MATCH_TIME) % [seconds / 60, seconds % 60]
 	for cell: Node in _grid.get_children():
 		_grid.remove_child(cell)
 		cell.free()
@@ -139,12 +142,12 @@ func _on_match_ended(winner: int) -> void:
 	_grid.columns = players + 1
 	add_label(_grid, "", &"Label")
 	for player: int in range(1, players + 1):
-		var who: String = (
-			"You" if player == local else ("Enemy" if players == 2 else "P%d" % player)
-		)
+		var who: String = tr(ResultText.YOU)
+		if player != local:
+			who = tr(ResultText.ENEMY) if players == 2 else tr(ResultText.PLAYER_N) % player
 		add_label(_grid, who, &"Label")
-	for line: int in STAT_NAMES.size():
-		add_label(_grid, STAT_NAMES[line], &"Label")
+	for line: int in ResultText.STAT_KEYS.size():
+		add_label(_grid, tr(ResultText.STAT_KEYS[line]), &"Label")
 		for player: int in range(1, players + 1):
 			var number: Label = add_label(_grid, str(counts[line][player]), &"NumberLabel")
 			number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -208,7 +211,7 @@ func _show_xp() -> void:
 	_xp_view = xp_view(progression.xp(), award.base_xp, table)
 	_xp_box.visible = true
 	_xp_box.modulate.a = float(_xp_box.visible)  # 1: shown.
-	_gained.text = "+%d XP" % award.base_xp
+	_gained.text = tr(ResultText.XP_GAINED) % award.base_xp
 	_rank_up.visible = false
 	_set_range(_xp_view["from_floor"], _xp_view["from_next"])
 	_xp_bar.value = _xp_view["old"]
@@ -232,7 +235,7 @@ func _on_xp_changed() -> void:
 	var table: PackedInt32Array = rank_xp if not rank_xp.is_empty() else _table()
 	var gained: int = progression.xp() - int(_xp_view["old"])
 	_xp_view = xp_view(progression.xp(), gained, table)
-	_gained.text = "+%d XP" % gained
+	_gained.text = tr(ResultText.XP_GAINED) % gained
 	_xp_text.text = _xp_line()
 	_set_range(_xp_view["from_floor"], _xp_view["from_next"])
 	_rank_label.text = _rank_text(_xp_view["old_rank"])
@@ -265,14 +268,14 @@ func _set_range(floor_xp: int, next_xp: int) -> void:
 
 
 func _rank_text(rank: int) -> String:
-	return "RANK %d  %s" % [rank, progression.title(rank).to_upper()]
+	return tr(ResultText.RANK_LINE) % [rank, progression.title(rank).to_upper()]
 
 
 func _xp_line() -> String:
 	var total: int = _xp_view["total"]
 	if _xp_view["top"]:
-		return "%d XP" % total
-	return "%d / %d XP" % [total, _xp_view["next"]]
+		return tr(ResultText.XP_TOTAL) % total
+	return tr(ResultText.XP_PROGRESS) % [total, _xp_view["next"]]
 
 
 func _table() -> PackedInt32Array:
@@ -343,13 +346,29 @@ func _back() -> void:
 
 ## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
 ## off; on the Play again path that button reads "STARTING…". It pins its minimum width to the one
-## its own text gave, so the row (both rects) does not move when the text changes.
+## its idle text gives, so the row (both rects) does not move when the text changes. `DpMinSize`
+## resets the minimum on a turn and then emits `applied`, which re-pins it for the new layout. The
+## pin is a floor: the idle width must bound the translated STARTING, or the button grows past it
+## (unclipped, but its rect then moves).
 func _set_leaving(leaving: bool, again_path: bool) -> void:
 	_leaving = leaving
 	if again_path:
-		_again.custom_minimum_size.x = (
-			_again.get_combined_minimum_size().x if leaving else UiScale.dp_vec(BUTTON_DP.x, 0.0).x
-		)
-		_again.text = tr(MapSelectText.STARTING) if leaving else PLAY_AGAIN_TEXT
+		_again.text = tr(MapSelectText.STARTING) if leaving else _again_text()
+		_again.custom_minimum_size.x = UiScale.dp(_again_floor.min_dp.x)
+		_pin_again()
 	_again.disabled = leaving
 	_back_button.disabled = leaving
+
+
+func _again_text() -> String:
+	return tr(ResultText.PLAY_AGAIN)
+
+
+func _pin_again() -> void:
+	if not _leaving:
+		return
+	var shown: String = _again.text
+	_again.text = _again_text()  # Measured with the idle text, which sets the idle rects.
+	var idle_x: float = _again.get_combined_minimum_size().x
+	_again.text = shown
+	_again.custom_minimum_size.x = idle_x

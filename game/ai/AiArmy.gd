@@ -81,6 +81,8 @@ var _lo: Vector2i = Vector2i.ZERO
 var _hi: Vector2i = Vector2i.ZERO
 ## The unseen-hit response (`AiUnseen`, P179b), made in `create`.
 var _unseen: AiUnseen = AiUnseen.new()
+## The answer to a stalled wave (`AiStall`, P555b), made in `create`.
+var _stall: AiStall = AiStall.new()
 ## Scratch for the swap of the withdrawn list of `_step_back`.
 var _kept: PackedInt32Array = PackedInt32Array()
 ## The ids under the step-back percent that have not stepped back yet (`_step_back`).
@@ -105,9 +107,31 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army.retreat_percent = maxi(level.retreat_percent, 0)
 	army.retreat_ratio = maxi(level.retreat_ratio_percent, 0)
 	army._unseen.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
+	army._stall = AiStall.create(def)
 	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
 	army.focus_fire = level.focus_fire > 0
 	return army
+
+
+## The `ATTACK` orders on a building the stall answer sent over the match (`AiStall`).
+func stall_attacks() -> int:
+	return _stall.attacks
+
+
+## The scout orders the stall answer sent over the match (`AiStall`).
+func stall_scouts() -> int:
+	return _stall.scouts
+
+
+## The orders back to the target the stall answer sent over the match (`AiStall`).
+func stall_retries() -> int:
+	return _stall.retries
+
+
+## Whether the wave is in a fight: a focus target is set, or a seen enemy that can hit the ground
+## stands within the defence radius of it (the answer to a stall leaves such a wave alone).
+func wave_engaged(view: PlayerView, memory: AiMemory) -> bool:
+	return memory.squad_focus[WAVE] != AiMemory.NONE or _near(view, memory, _wave_at) > 0
 
 
 func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]) -> void:
@@ -425,6 +449,9 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 		_tally(view, memory)
 		var retreating: bool = memory.squad_state[WAVE] == AiMemory.SquadState.RETREAT
 		if _wave_units > 0 and not retreating:
+			var members: PackedInt32Array = _members(memory, true, WAVE)
+			if _stall.run(self, view, memory, out, members, _wave_at, _wave_idle):
+				return
 			_fight(view, memory, out, all_in)
 			return
 		if _wave_units > 0 and retreating and not all_in and _restage(view, memory, out):
@@ -591,6 +618,7 @@ func _launch(
 	memory.squad_role[WAVE] = ROLE_WAVE
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
 	memory.squad_launch_value[WAVE] = value
+	_stall.reset()
 	memory.squad_goal_x[WAVE] = goal.x
 	memory.squad_goal_y[WAVE] = goal.y
 	memory.squad_focus[WAVE] = AiMemory.NONE

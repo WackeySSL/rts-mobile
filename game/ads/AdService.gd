@@ -134,6 +134,10 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED:
 		_restore_silently()
+		if _consent.needs_recheck:
+			ensure_consent()  # A cut privacy run: re-read the status, fail closed if it changed.
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		_consent.backend.notify_app_paused()
 
 
 ## Awaitable; always finishes. True means ads may be requested. Runs the consent info update and
@@ -179,10 +183,18 @@ func restore_purchases() -> bool:
 	return await _purchases.restore(_now_ms, _settings.billing_timeout_ms)
 
 
-## Internal (Phase 6 widgets). The store's localised price text for Remove ads, empty until known
-## or when billing is unavailable: the row is hidden then. Never a literal in the game.
-func remove_ads_price_text() -> String:
-	return _purchases.price_text()
+## Internal (Phase 6 widgets; P445). What the store has answered for Remove ads, as
+## `{"state": Purchases.StoreState, "price": String}`. The price is the store's localised text,
+## empty until known and when billing is unavailable; never a literal in the game. The state is
+## UNKNOWN while the store connects or loads the product, AVAILABLE with a price (latched for the
+## session), UNAVAILABLE with no store or product, and also once `billing_timeout_ms` passed since
+## the latest attempt with no answer. It starts the connection and the product query, and issues a
+## failed or unanswered attempt again once `billing_timeout_ms` old (a fresh attempt is UNKNOWN for
+## that long). A row reserves its space while UNKNOWN.
+func remove_ads_store() -> Dictionary:
+	var price: String = _purchases.price_text(_now_ms, _settings.billing_timeout_ms)
+	var state: int = _purchases.store_state(_now_ms, _settings.billing_timeout_ms)
+	return {"state": state, "price": price}
 
 
 ## Synchronous. The banner's height while one may show (consent, no Remove ads, a band asked for

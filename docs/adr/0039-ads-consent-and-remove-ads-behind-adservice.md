@@ -99,6 +99,9 @@ vendored: the facts in the notes under §2, §3 and §5 come from the vendored v
 wrappers and mocks (`addons/admob`), and the device-only ones are marked.
 
 Note (2026-11-17, P400d docs): the widgets' `price_text` above is `remove_ads_price_text` in code.
+Note (2026-11-20, P400i docs, row P445): `remove_ads_price_text` became `remove_ads_store() ->
+Dictionary {state, price}` (state UNKNOWN, AVAILABLE or UNAVAILABLE), so Settings can keep the
+store rows' room while the store answers; the facade stays at 20 public methods.
 
 ### 2. Modes; gameplay never waits for an ad
 - **AdMob mode** only when all hold: the OS is Android, not the editor, the plugin's singleton
@@ -142,6 +145,12 @@ Note (2026-11-17, P400d docs; P405 findings, Poing godot-admob v5.1.0):
   Every load asks the gate again.
 - `is_privacy_options_required()` is UMP's answer; `show_privacy_options()` shows UMP's form and
   returns when it closes.
+- Note 2026-11-19 (P421b): the plugin has no "shown" callback for the privacy options form. The
+  deadline (`consent_timeout_ms`) applies only until the form has shown; the fake backend reports
+  it, the real device uses a proxy: the first focus-out or pause after the hand-over (a native form
+  covers the Godot activity). With no proxy by the deadline the run is cut, and a cut fails closed:
+  nothing is announced, the cached "can request" value does not change, and the next resume or
+  `ensure_consent` re-runs the info update and re-reads the status. **To confirm on device (P422).**
 - UMP's form is expected to need the real AdMob App ID with a configured GDPR message (Google's
   sample App ID may not show it), which is why the internal build carries the real App ID
   (Michael's answer 10 A): **to confirm in P404/P405**.

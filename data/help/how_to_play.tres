@@ -620,7 +620,7 @@ body = "Tap Resume to close the menu and carry on where you stopped."
 script = ExtResource("3_ent")
 id = &"pause-confirm"
 title = "Restart, Surrender and Exit"
-body = "Each of these asks first. Keep playing closes the question and the match stays paused. Restart starts a new match with the same setup. Exit to menu goes back to the main menu, and the match is lost. Surrender loses the match at once."
+body = "Each of these asks first. Keep playing closes the question and the match stays paused. Restart starts a new match with the same setup. While the match gets ready, Restart reads STARTING and a second tap does nothing. The other buttons and the phone's Back button wait. Exit to menu goes back to the main menu, and the match is lost. Surrender loses the match at once."
 
 [sub_resource type="Resource" id="e92"]
 script = ExtResource("3_ent")
@@ -1017,7 +1017,7 @@ body = "On the Skirmish screen, below Start, you may tap \"+500 CREDITS NEXT MAT
 script = ExtResource("3_ent")
 id = &"menus-purchases"
 title = "Remove ads and Restore"
-body = "In Settings, tap Remove ads (the price is the store's) to remove every banner, also the one in the pause menu, and the ads between matches. The offers you choose to watch for a reward stay. Restore purchases brings back a purchase you made before, for example on a new phone. If the store answers a moment after Settings opens, the buttons appear then and the ones below move down. Neither button shows where the store cannot be reached, nor in Settings opened from the pause menu."
+body = "In Settings, tap Remove ads (the price is the store's) to remove every banner, also the one in the pause menu, and the ads between matches. The offers you choose to watch for a reward stay. Restore purchases brings back a purchase you made before, for example on a new phone. Settings keeps room for them while the store is still answering, so nothing moves when they appear a moment after it opens. Neither button shows (and no room is kept) where the store is known to be out of reach when Settings opens, nor in Settings opened from the pause menu."
 
 
 [sub_resource type="Resource" id="e22t1"]
@@ -1042,7 +1042,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"),
 script = ExtResource("3_ent")
 id = &"the-intro-skip"
 title = "Skip the intro"
-body = "Tap the screen while the game starts to stop the intro. If the game is ready, the menu opens right away."
+body = "Tap the screen while the game starts to stop the intro. If the game is ready, the menu opens right away. While the privacy form is open, your tap also reaches the form."
 
 [sub_resource type="Resource" id="s19"]
 script = ExtResource("2_sec")
