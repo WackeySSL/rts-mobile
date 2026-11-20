@@ -6,6 +6,8 @@ extends Node
 signal entitlement_changed(has_remove_ads: bool)
 signal release
 var price: String = "kr 19,00"
+## `Purchases.StoreState` the store reports; tests move it with `answer`.
+var state: int = Purchases.StoreState.AVAILABLE
 var owned: bool = false
 var purchases: int = 0
 var restores: int = 0
@@ -19,8 +21,18 @@ func is_privacy_options_required() -> bool:
 	return false
 
 
-func remove_ads_price_text() -> String:
-	return price
+func remove_ads_store() -> Dictionary:
+	return {"state": state, "price": price}
+
+
+## The store answers: a price (AVAILABLE) or none (UNAVAILABLE).
+func answer(new_price: String) -> void:
+	price = new_price
+	state = (
+		Purchases.StoreState.AVAILABLE
+		if not new_price.is_empty()
+		else Purchases.StoreState.UNAVAILABLE
+	)
 
 
 func purchase_remove_ads() -> bool:

@@ -20,12 +20,22 @@ extends RefCounted
 ## Fires when the entitlement changes from what `owned` reports, with the new state.
 signal entitlement_changed(has_remove_ads: bool)
 
+## What the store has answered for the product, as `store_state` returns it (P445).
+enum StoreState { UNKNOWN, AVAILABLE, UNAVAILABLE }
+
 ## After this many timeouts without a sheet an unanswered purchase stops blocking new ones.
 const RESULT_GRACE_FACTOR: int = 4
 ## No deadline: wait for the condition however long it takes.
 const NO_DEADLINE: int = -1
 
 var _backend: BillingBackend
+## The first price the store gave (kept for the session), and when the latest connection and
+## product query were issued (-1: none yet); a failed or pending attempt is retried `timeout_ms`
+## after these.
+var _price: String = ""
+var _connect_at_ms: int = -1
+var _query_at_ms: int = -1
+var _expired_seen: bool = false
 var _product_id: String
 var _owned: Callable
 var _busy: bool = false
@@ -52,14 +62,70 @@ func _init(backend: BillingBackend, product_id: String, owned: Callable) -> void
 
 
 ## The store's price text for the product, empty until known or when the store has no such
-## product. Starts the connection and the product query when idle; never blocks.
-func price_text() -> String:
-	if _backend.connection_state() == BillingBackend.ConnState.IDLE:
+## product. Once a price is known it stays for the session, also when the backend resets its query
+## on a reconnect; a query that ends FAILED while connected (the product was delisted) clears it.
+## Starts the connection and the product query when idle. A connection or query that failed or is
+## still pending after `timeout_ms` (counted from the attempt) is issued again, so a later visit
+## gets a fresh attempt; a pending one is first left to show as final for one call. Never without
+## a clock. Never blocks.
+func price_text(now_ms: Callable = Callable(), timeout_ms: int = 0) -> String:
+	var now: int = _now(now_ms)
+	var connection: BillingBackend.ConnState = _backend.connection_state()
+	var connecting: bool = connection == BillingBackend.ConnState.CONNECTING
+	if connection != BillingBackend.ConnState.READY and _connect_at_ms < 0:
+		_connect_at_ms = now  # An attempt made elsewhere (a restore): its wait starts now.
+	if (
+		connection == BillingBackend.ConnState.IDLE
+		or (
+			connection != BillingBackend.ConnState.READY
+			and _retry_due(_connect_at_ms, now, timeout_ms, connecting)
+		)
+	):
+		_connect_at_ms = now
+		_expired_seen = false
 		_backend.connect_store()
+	var queried: BillingBackend.QueryState = _backend.product_state(_product_id)
+	var loading: bool = queried == BillingBackend.QueryState.LOADING
 	if _backend.connection_state() == BillingBackend.ConnState.READY:
-		if _backend.product_state(_product_id) == BillingBackend.QueryState.IDLE:
+		if queried != BillingBackend.QueryState.DONE and _query_at_ms < 0:
+			_query_at_ms = now
+		if (
+			queried == BillingBackend.QueryState.IDLE
+			or (
+				queried != BillingBackend.QueryState.DONE
+				and _retry_due(_query_at_ms, now, timeout_ms, loading)
+			)
+		):
+			_query_at_ms = now
+			_expired_seen = false
 			_backend.query_product(_product_id)
-	return _backend.price_text(_product_id)
+	var price: String = _backend.price_text(_product_id)
+	if not price.is_empty():
+		_price = price
+	elif _delisted():
+		_price = ""
+	return _price
+
+
+## Read only, starts nothing: AVAILABLE once the product has a price (latched for the session);
+## UNAVAILABLE when the store is not there, has no such product, or has not answered within
+## `timeout_ms` of its latest attempt (never without a clock); else UNKNOWN. `price_text` is what
+## starts the attempts, so a caller asks that first.
+func store_state(now_ms: Callable = Callable(), timeout_ms: int = 0) -> int:
+	var connection: BillingBackend.ConnState = _backend.connection_state()
+	if not _price.is_empty() and not _delisted():
+		return StoreState.AVAILABLE
+	if _backend.product_state(_product_id) == BillingBackend.QueryState.DONE:
+		var priced: bool = not _backend.price_text(_product_id).is_empty()
+		return StoreState.AVAILABLE if priced else StoreState.UNAVAILABLE
+	if connection == BillingBackend.ConnState.UNAVAILABLE or _delisted():
+		return StoreState.UNAVAILABLE
+	var since: int = (
+		_query_at_ms if connection == BillingBackend.ConnState.READY else _connect_at_ms
+	)
+	if timeout_ms > 0 and since >= 0 and _now(now_ms) - since >= timeout_ms:
+		return StoreState.UNAVAILABLE
+	return StoreState.UNKNOWN
 
 
 ## True once the entitlement is held. False at the deadline before the sheet shows, on cancel,
@@ -130,6 +196,30 @@ func restore(now_ms: Callable, timeout_ms: int) -> bool:
 	if not pending and not _sheet_open:
 		_awaiting_result = false
 	return _is_owned()
+
+
+func _now(now_ms: Callable) -> int:
+	return int(now_ms.call()) if now_ms.is_valid() else 0
+
+
+## True when the attempt made at `at` is `timeout_ms` old: it failed (retry at once) or still has
+## no answer. A pending one is first left to show as final (`store_state`, and the rows stop
+## polling); only the next call issues it again, so a deadline is always seen.
+func _retry_due(at: int, now: int, timeout_ms: int, pending: bool) -> bool:
+	if timeout_ms <= 0 or at < 0 or now - at < timeout_ms:
+		return false
+	if pending and not _expired_seen:
+		_expired_seen = true
+		return false
+	return true
+
+
+## The store is connected and says the product is not there.
+func _delisted() -> bool:
+	return (
+		_backend.connection_state() == BillingBackend.ConnState.READY
+		and _backend.product_state(_product_id) == BillingBackend.QueryState.FAILED
+	)
 
 
 func _is_owned() -> bool:

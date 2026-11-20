@@ -312,6 +312,39 @@ func test_privacy_options_that_fail_to_show_return_at_once_and_the_row_works_aga
 	assert_int(ump.forms_shown).is_equal(base + 2)
 
 
+func test_privacy_options_that_never_show_return_at_the_consent_timeout_and_the_row_works() -> void:
+	var screen: SettingsScreen = await _privacy_settings()
+	var ads: Node = _walk.ads
+	var ump: FakeUmp = AdServiceHarness.ump(ads)
+	var base: int = ump.forms_shown
+	var timeout: int = _walk.settings.consent_timeout_ms
+	ump.show_never_shows = true
+	_walk.press(screen.privacy_button)
+	await _walk.frames(4)
+	assert_bool(screen._asking).is_true()  # Waiting.
+	_walk.h.clock_ms = timeout - 1
+	await _walk.frames(4)
+	assert_bool(screen._asking).is_true()  # Still busy at -1 ms.
+	var waiting: Array = AdServiceHarness.start(func() -> bool: return await ads.ensure_consent())
+	await _walk.frames(4)
+	assert_array(waiting).is_empty()  # A consent call waits for the one flow.
+	_walk.h.clock_ms = timeout
+	await _walk.until(func() -> bool: return not screen._asking)
+	assert_bool(screen._asking).is_false()  # Returned at the limit.
+	assert_int(ump.forms_shown).is_equal(base)  # No form ever showed.
+	await _walk.until(func() -> bool: return not waiting.is_empty())
+	assert_array(waiting).is_equal([true])  # The waiting consent call returned too.
+	# The row works again, and a following ensure_consent returns.
+	ump.show_never_shows = false
+	ump.show_held_form()  # The late show of the dead call: nobody waits for it, nothing breaks.
+	assert_bool(screen._asking).is_false()
+	_walk.press(screen.privacy_button)
+	await _walk.frames(4)
+	assert_int(ump.forms_shown).is_equal(base + 2)
+	assert_bool(screen._asking).is_false()
+	assert_bool(await ads.ensure_consent()).is_true()
+
+
 func test_a_privacy_options_form_that_never_closes_holds_consent_until_it_closes() -> void:
 	var screen: SettingsScreen = await _privacy_settings()
 	var ads: Node = _walk.ads
