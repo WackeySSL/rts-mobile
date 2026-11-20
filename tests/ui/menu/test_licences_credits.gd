@@ -15,9 +15,9 @@ const ROW_TITLE: String = "Asset credits (CC BY)"
 ## The columns of a CREDITS.md table: File, Author, Source URL, Licence, Notes.
 const COLUMNS: int = 5
 ## The closed set of Licence cells, optionally followed by a parenthetical. CC BY-SA, NC and ND are
-## absent on purpose. MIT is the repository's own placeholder SVG, own work (CLAUDE.md Legal).
+## absent on purpose, and so is MIT: no asset may be MIT, only code is (CLAUDE.md Legal, ADR 0046).
 const ALLOWED: String = (
-	"^(CC0 1\\.0|CC[ -]BY [34]\\.0|SIL OFL 1\\.1|MIT|All rights reserved)" + "( \\(.*\\))?$"
+	"^(CC0 1\\.0|CC[ -]BY [34]\\.0|SIL OFL 1\\.1|All rights reserved)" + "( \\(.*\\))?$"
 )
 ## Any Creative Commons mention in the Licence or Source cell (the Notes may discuss rules).
 const CC_MENTION: String = (
@@ -108,6 +108,8 @@ func test_the_licence_check_rejects_the_forbidden_and_unknown_licences() -> void
 		"CC BY",
 		"Attribution 4.0 International",
 		"https://creativecommons.org/licenses/by/4.0/",
+		# No asset may be MIT; only code is (ADR 0046): own art is "All rights reserved (AppCode ApS)".
+		"MIT",
 		"Royalty free",
 		"",
 	]:
