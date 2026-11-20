@@ -174,7 +174,7 @@ func _text_width(button: Button, text: String) -> float:
 	return wide
 
 
-## Without a `DpMinSize` on PLAY AGAIN the error is reported and the button still turns both off.
+## Without a `DpMinSize` on PLAY AGAIN the warning is reported and the button still turns both off.
 func test_without_a_dp_min_size_pressing_play_again_still_disables_both_buttons() -> void:
 	await _open(110, 30, true)
 	MatchRig.end(_main, [2])
@@ -243,8 +243,8 @@ func _swap_screen(main: Node) -> void:
 ## A main scene whose screen takes the fakes: the player at `total` XP after `gained`, owned by the
 ## fake flow.
 func _open(total: int, gained: int, drop_floor: bool = false) -> void:
-	if drop_floor:  # The error is expected, once, from `_ready`.
-		await assert_error(_open_floorless).is_push_error(
+	if drop_floor:  # The warning is expected, once, from `_ready`.
+		await assert_error(_open_floorless).is_push_warning(
 			"ResultScreen: PLAY AGAIN has 0 DpMinSize nodes, not 1"
 		)
 	else:

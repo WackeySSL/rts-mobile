@@ -101,7 +101,7 @@ func _ready() -> void:
 		# After DpMinSize's reset, UiScale and theme.
 		(floors[0] as DpMinSize).applied.connect(_pin_again)
 	else:
-		push_error("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
+		push_warning("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
 	_pin_again()  # After BACK: the pin leaves its width room.

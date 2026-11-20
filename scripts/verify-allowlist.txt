@@ -8,8 +8,3 @@
 # runs in CI (job android-debug-apk, run 38117776194). Delete the entry when the project sets an
 # icon (ROADMAP Phase 7).
 ^ERROR: No project icon specified\.[ ]
-
-# tests/ui/test_result_screen_turn.gd builds a ResultScreen without its DpMinSize on purpose and
-# asserts this push_error (gdUnit's assert_error checks it but the engine still prints it). The
-# message is exact and only ResultScreen._ready emits it (P443b, verify run on a33bff91).
-^ERROR: ResultScreen: PLAY AGAIN has 0 DpMinSize nodes, not 1$
