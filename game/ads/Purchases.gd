@@ -65,20 +65,20 @@ func price_text() -> String:
 	return _backend.price_text(_product_id)
 
 
-## Read only, starts nothing: UNKNOWN while the connection or the product query has not answered,
-## UNAVAILABLE when the store is not there or has no such product (or no price), else AVAILABLE.
-## `price_text` is what starts the connection, so a caller asks that first.
+## Read only, starts nothing: AVAILABLE once the product has a price (it stays so if the connection
+## drops later, as `price_text` keeps answering); UNAVAILABLE when the store is not there or has no
+## such product; UNKNOWN while the connection or the product query has not answered. `price_text`
+## is what starts the connection, so a caller asks that first.
 func store_state() -> int:
-	match _backend.connection_state():
-		BillingBackend.ConnState.UNAVAILABLE:
-			return StoreState.UNAVAILABLE
-		BillingBackend.ConnState.READY:
-			match _backend.product_state(_product_id):
-				BillingBackend.QueryState.FAILED:
-					return StoreState.UNAVAILABLE
-				BillingBackend.QueryState.DONE:
-					var priced: bool = not _backend.price_text(_product_id).is_empty()
-					return StoreState.AVAILABLE if priced else StoreState.UNAVAILABLE
+	var queried: BillingBackend.QueryState = _backend.product_state(_product_id)
+	if queried == BillingBackend.QueryState.DONE:
+		var priced: bool = not _backend.price_text(_product_id).is_empty()
+		return StoreState.AVAILABLE if priced else StoreState.UNAVAILABLE
+	var connection: BillingBackend.ConnState = _backend.connection_state()
+	if connection == BillingBackend.ConnState.UNAVAILABLE:
+		return StoreState.UNAVAILABLE
+	if connection == BillingBackend.ConnState.READY and queried == BillingBackend.QueryState.FAILED:
+		return StoreState.UNAVAILABLE
 	return StoreState.UNKNOWN
 
 

@@ -43,3 +43,10 @@ func test_store_state_is_unavailable_without_a_store_or_a_product() -> void:
 	lacking.price_text()
 	assert_int(lacking.store_state()).is_equal(Purchases.StoreState.UNAVAILABLE)
 	assert_int(_make(BillingBackend.new()).store_state()).is_equal(Purchases.StoreState.UNAVAILABLE)
+
+
+func test_a_known_price_stays_available_when_the_connection_drops_later() -> void:
+	_purchases.price_text()
+	_fake.connect_never_answers = true
+	_fake.connect_store()  # Connecting again, and it never ends.
+	assert_int(_purchases.store_state()).is_equal(Purchases.StoreState.AVAILABLE)
