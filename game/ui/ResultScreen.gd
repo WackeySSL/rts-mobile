@@ -100,6 +100,9 @@ func _ready() -> void:
 	MapSelectText.register()
 	_again = add_button(row, PLAY_AGAIN_TEXT, _play_again)
 	_again.name = &"PlayAgainButton"
+	for child: Node in _again.get_children():
+		if child is DpMinSize:
+			(child as DpMinSize).applied.connect(_pin_again)
 	_back_button = add_button(row, "BACK", _back)
 	_back_button.name = &"BackButton"
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
@@ -343,13 +346,23 @@ func _back() -> void:
 
 ## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
 ## off; on the Play again path that button reads "STARTING…". It pins its minimum width to the one
-## its own text gave, so the row (both rects) does not move when the text changes.
+## its idle text gives, so the row (both rects) does not move when the text changes. `DpMinSize`
+## resets the minimum on a turn and then emits `applied`, which re-pins it for the new layout.
 func _set_leaving(leaving: bool, again_path: bool) -> void:
 	_leaving = leaving
 	if again_path:
-		_again.custom_minimum_size.x = (
-			_again.get_combined_minimum_size().x if leaving else UiScale.dp_vec(BUTTON_DP.x, 0.0).x
-		)
 		_again.text = tr(MapSelectText.STARTING) if leaving else PLAY_AGAIN_TEXT
+		_again.custom_minimum_size.x = UiScale.dp_vec(BUTTON_DP.x, 0.0).x
+		_pin_again()
 	_again.disabled = leaving
 	_back_button.disabled = leaving
+
+
+func _pin_again() -> void:
+	if not _leaving or _again.text == PLAY_AGAIN_TEXT:
+		return
+	var shown: String = _again.text
+	_again.text = PLAY_AGAIN_TEXT  # Measured with the idle text, which sets the idle rects.
+	var idle_x: float = _again.get_combined_minimum_size().x
+	_again.text = shown
+	_again.custom_minimum_size.x = idle_x

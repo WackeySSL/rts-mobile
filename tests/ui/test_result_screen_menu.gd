@@ -301,6 +301,49 @@ func test_play_again_keeps_its_rect_while_it_reads_starting_at_the_six_sizes() -
 		await await_idle_frame()
 
 
+func test_a_turn_while_starting_keeps_both_rects_and_the_text_unclipped() -> void:
+	var sizes: Array[Vector2i] = ScreenSizes.ALL
+	for i: int in sizes.size():
+		var size: Vector2i = sizes[i]
+		var turned: Vector2i = sizes[(i + 3) % sizes.size()]  # The same phone held the other way.
+		get_window().size = size
+		await await_idle_frame()
+		await _open(110, 30)
+		MatchRig.end(_main, [2])
+		_screen().settle()
+		await await_idle_frame()
+		var again: Button = _screen().find_child("PlayAgainButton", true, false)
+		var back: Button = _screen().find_child("BackButton", true, false)
+		var row: Control = again.get_parent() as Control
+		get_window().size = turned
+		await await_idle_frame()
+		await await_idle_frame()
+		var idle_again: Rect2 = again.get_global_rect()
+		var idle_back: Rect2 = back.get_global_rect()
+		var idle_row: Rect2 = row.get_global_rect()
+		again.pressed.emit()
+		await await_idle_frame()
+		get_window().size = size  # Turn there and back while it reads STARTING.
+		await await_idle_frame()
+		get_window().size = turned
+		await await_idle_frame()
+		await await_idle_frame()
+		var label: String = "%s -> %s" % [size, turned]
+		assert_str(again.text).is_equal(tr(MapSelectText.STARTING))
+		assert_object(again.get_global_rect()).override_failure_message(label).is_equal(idle_again)
+		assert_object(back.get_global_rect()).override_failure_message(label).is_equal(idle_back)
+		assert_object(row.get_global_rect()).override_failure_message(label).is_equal(idle_row)
+		var clipped: bool = again.get_combined_minimum_size().x > again.size.x + TOLERANCE_PX
+		assert_bool(clipped).override_failure_message(label).is_false()
+		var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
+		assert_bool(again.size.y >= floor_px).override_failure_message(label).is_true()
+		_flow.release.emit()
+		await await_idle_frame()
+		_main.free()
+		CommandQueue.clear()
+		await await_idle_frame()
+
+
 func test_the_layout_with_the_xp_block_fits_the_six_sizes() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size

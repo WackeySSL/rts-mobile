@@ -210,6 +210,32 @@ func test_start_reads_starting_while_the_match_is_prepared() -> void:
 	await await_idle_frame()
 
 
+func test_a_turn_while_starting_keeps_the_start_rect_and_its_text_unclipped() -> void:
+	var sizes: Array[Vector2i] = ScreenSizes.ALL
+	for i: int in sizes.size():
+		var turned: Vector2i = sizes[(i + 3) % sizes.size()]  # The same phone held the other way.
+		await _open(_profile_with_window(turned), false)
+		var idle: Rect2 = _screen._start.get_global_rect()
+		_close()
+		await _open(_profile_with_window(sizes[i]), false)
+		_screen._start.pressed.emit()
+		UiScale.set_override(_profile_with_window(turned))
+		get_window().size = turned
+		await await_idle_frame()
+		await await_idle_frame()
+		var label: String = "%s -> %s" % [sizes[i], turned]
+		var start: Button = _screen._start
+		assert_str(start.text).is_equal(tr(MapSelectText.STARTING))
+		assert_object(start.get_global_rect()).override_failure_message(label).is_equal(idle)
+		var clipped: bool = start.get_combined_minimum_size().x > start.size.x + TOLERANCE_PX
+		assert_bool(clipped).override_failure_message(label).is_false()
+		var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+		assert_bool(start.size.y >= floor_px).override_failure_message(label).is_true()
+		_flow.release.emit()
+		await await_idle_frame()
+		_close()
+
+
 func test_back_does_nothing_while_the_match_starts_and_pops_otherwise() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
 	assert_bool(_screen.on_back()).is_false()
