@@ -158,6 +158,19 @@ func test_the_hud_conditions() -> void:
 	assert_bool(_check(tab, ctx)).is_false()
 
 
+func test_unfold_closed_holds_once_the_pause_menu_is_gone() -> void:
+	var ctx: TutorialContext = Lesson.context(Rig.start())
+	var resumed: TutorialBeatDef = Lesson.beat(
+		"a", TutorialConditions.Kind.UNFOLD_CLOSED, {"value": HudState.Unfold.PAUSE}
+	)
+	assert_bool(_check(resumed, ctx)).is_true()  # Nothing is open.
+	ctx.hud.open(HudState.Unfold.PAUSE)
+	assert_bool(_check(resumed, ctx)).is_false()
+	ctx.hud.close(HudState.Unfold.PAUSE)
+	assert_bool(_check(resumed, ctx)).is_true()
+	assert_bool(TutorialConditions.needs_ticks(TutorialConditions.Kind.UNFOLD_CLOSED)).is_false()
+
+
 func test_placing_and_the_strike_aim() -> void:
 	var world: World = Rig.start()
 	var ctx: TutorialContext = Lesson.context(world)

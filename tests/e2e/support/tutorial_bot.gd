@@ -317,6 +317,8 @@ func _act(beat: TutorialBeatDef) -> void:
 			_pan()
 		TutorialConditions.Kind.UNFOLD_OPEN:
 			await _unfold(beat.value)
+		TutorialConditions.Kind.UNFOLD_CLOSED:
+			_press(&"ResumeButton")  # The card asks for Resume.
 		TutorialConditions.Kind.DRAWER_TAB:
 			await _drawer_tab(beat.value)
 		TutorialConditions.Kind.GROUP_SAVED:
