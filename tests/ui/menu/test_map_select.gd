@@ -210,6 +210,8 @@ func test_start_reads_starting_while_the_match_is_prepared() -> void:
 	await await_idle_frame()
 
 
+## A lock-in guard: MapSelect pins no width (START expands in its own row), so this cannot fail
+## without P443; it keeps a future pin from being wiped by a turn.
 func test_a_turn_while_starting_keeps_the_start_rect_and_its_text_unclipped() -> void:
 	var sizes: Array[Vector2i] = ScreenSizes.ALL
 	for i: int in sizes.size():
