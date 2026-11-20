@@ -134,6 +134,10 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED:
 		_restore_silently()
+		if _consent.needs_recheck:
+			ensure_consent()  # A cut privacy run: re-read the status, fail closed if it changed.
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		_consent.backend.notify_app_paused()
 
 
 ## Awaitable; always finishes. True means ads may be requested. Runs the consent info update and
