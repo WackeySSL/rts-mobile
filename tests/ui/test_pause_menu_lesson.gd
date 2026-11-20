@@ -81,7 +81,11 @@ func test_settings_stays_on_in_a_lesson_and_a_disabled_button_keeps_its_frame() 
 	var plate: StyleBoxFlat = settings.get_theme_stylebox("normal") as StyleBoxFlat
 	assert_object(framed).is_not_null()  # A frame, not the bare text of a theme with no style.
 	assert_float(framed.bg_color.a).is_greater(0.0)
-	assert_bool(framed.bg_color == plate.bg_color).is_true()
+	# Framed like the normal plate (an edge and its corners), whichever dimming the theme gives it.
+	assert_int(framed.border_width_left).is_greater_equal(1)
+	assert_int(framed.border_width_top).is_greater_equal(1)
+	assert_int(framed.corner_radius_top_left).is_equal(plate.corner_radius_top_left)
+	assert_int(framed.corner_radius_bottom_right).is_equal(plate.corner_radius_bottom_right)
 
 
 ## Where Leave goes: the Tutorial screen from a lesson, the plain menu from a skirmish.
