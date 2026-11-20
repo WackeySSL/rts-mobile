@@ -361,7 +361,10 @@ func _again_text() -> String:
 
 ## Pins the minimum width to the wider of the idle and the STARTING text (and the dp floor) with
 ## the current theme and scale, but never wider than the row can be: the inner safe width less the
-## plate, BACK's minimum and the gap. A longer text is trimmed with "…" instead of overflowing.
+## plate, the vertical scrollbar while it shows, BACK's minimum and the gap. A longer text is
+## trimmed with "…" instead of overflowing. BACK's floor is set here (what its own `DpMinSize`
+## sets next, from the same dp), because PLAY AGAIN's `applied` fires before BACK's reset on a dp
+## change; that is synchronous, so it needs no deferred call and nothing shows a frame late.
 ## Without a `DpMinSize` (the error state) the floor is `BUTTON_DP` itself and nothing re-pins on a
 ## turn; with one, it resets the minimum on a turn and emits `applied`, which re-pins it.
 func _pin_again() -> void:
@@ -379,7 +382,11 @@ func _pin_again() -> void:
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
 	var plate: float = panel.get_combined_minimum_size().x - column.get_combined_minimum_size().x
+	var bar: VScrollBar = (panel.get_parent().get_parent() as ScrollContainer).get_v_scroll_bar()
 	var room: float = inner.size.x - plate
+	if bar.visible:
+		room -= bar.get_combined_minimum_size().x
+	_back_button.custom_minimum_size.x = floor_px
 	room -= _back_button.get_combined_minimum_size().x + row.get_theme_constant("separation")
 	_again.custom_minimum_size.x = clampf(wide, floor_px, maxf(floor_px, room))
 	_again.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

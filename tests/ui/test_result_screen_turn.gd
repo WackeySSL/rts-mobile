@@ -18,6 +18,8 @@ const TABLE: PackedInt32Array = [0, 100, 250, 500]
 const LONG_STARTING: String = "STARTING NEXT MATCH…"
 ## Too long for the phone's portrait row beside BACK: the pin is clamped and the text trimmed.
 const OVERFLOW_STARTING: String = "STARTING THE NEXT MATCH, PLEASE WAIT…"
+## Too long even for the 720x1280 portrait row, where the dp is larger than on the 20:9 phone.
+const WAY_TOO_LONG_STARTING: String = "STARTING THE NEXT MATCH, PLEASE WAIT WHILE WE PREPARE…"
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -28,6 +30,7 @@ var _xx_table: Translation = null
 var _locale_before: String = ""
 var _long_text: String = ""  ## Set while a longer STARTING is installed ("" in English).
 var _trimmed: int = 0  ## How many checks saw PLAY AGAIN's text wider than its button.
+var _trimmed_at: Array[Vector2i] = []  ## The window sizes of those checks.
 
 
 func before() -> void:
@@ -49,6 +52,7 @@ func after_test() -> void:
 		_xx_table = null
 	_long_text = ""
 	_trimmed = 0
+	_trimmed_at.clear()
 	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
@@ -91,6 +95,40 @@ func test_an_overflowing_starting_text_is_trimmed_and_the_row_stays_inside() -> 
 	_install_xx(OVERFLOW_STARTING)
 	await _walk_sizes()
 	assert_bool(_trimmed > 0).is_true()
+	assert_bool(_trimmed_at.has(ScreenSizes.PORTRAIT[1])).is_true()  # The 20:9 portrait phone.
+
+
+## A dp change (a browser resize, not a turn) with the overflow text: PLAY AGAIN's `applied` fires
+## before BACK's own `DpMinSize` resets BACK's minimum, so the clamp must not use BACK's old floor.
+## One `size_changed` is emitted by hand and the minimums read at once, before any layout or a
+## second emission could hide the order. The dp rises from 0.75 to 1.5 at the 720x1280 window.
+func test_a_dp_change_keeps_the_overflow_row_inside_in_the_same_emission() -> void:
+	_install_xx(WAY_TOO_LONG_STARTING)
+	var size: Vector2i = ScreenSizes.PORTRAIT[0]
+	_set_window(size, false)
+	await await_idle_frame()
+	await _open(110, 30)
+	MatchRig.end(_main, [2])
+	_screen().settle()
+	await await_idle_frame()
+	var again: Button = _screen().find_child("PlayAgainButton", true, false)
+	var row: Control = again.get_parent() as Control
+	again.pressed.emit()
+	await await_idle_frame()
+	for scale: float in [0.75, 1.5, 0.75, 1.25]:
+		UiScale.set_override(UiMetrics.create("Linux", 96, scale, 1.0, size, Rect2i()))
+		_screen().get_viewport().size_changed.emit()
+		var inner: Rect2 = SafeAreaMargin.rect_inside(
+			row.get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+		)
+		var label: String = "dp scale %s" % scale
+		var wide: float = row.get_combined_minimum_size().x
+		assert_bool(wide <= inner.size.x + TOLERANCE_PX).override_failure_message(label).is_true()
+	_flow.release.emit()
+	await await_idle_frame()
+	_main.free()
+	CommandQueue.clear()
+	await await_idle_frame()
 
 
 ## The six sizes, then the notch profile both ways.
@@ -130,16 +168,22 @@ func _turn_while_starting(first: Vector2i, turned: Vector2i, inset: bool) -> voi
 	_set_window(turned, inset)
 	await await_idle_frame()
 	await await_idle_frame()
+	var label: String = "%s -> %s inset %s" % [first, turned, inset]
 	var idle_again: Rect2 = again.get_global_rect()
 	var idle_back: Rect2 = back.get_global_rect()
 	var idle_row: Rect2 = row.get_global_rect()
 	var idle_text: String = again.text
+	if _long_text.is_empty():  # English: the idle text is never trimmed.
+		(
+			assert_bool(_text_width(again, idle_text) <= again.size.x + TOLERANCE_PX)
+			. override_failure_message(label)
+			. is_true()
+		)
 	again.pressed.emit()
 	await await_idle_frame()
 	_set_window(first, inset)  # Turn there and back while it reads STARTING.
 	await await_idle_frame()
 	await await_idle_frame()
-	var label: String = "%s -> %s inset %s" % [first, turned, inset]
 	_assert_row_fits(again, row, label + " (mid-turn)")
 	_set_window(turned, inset)
 	await await_idle_frame()
@@ -213,6 +257,7 @@ func _assert_row_fits(again: Button, row: Control, label: String) -> void:
 	assert_int(again.text_overrun_behavior).is_equal(TextServer.OVERRUN_TRIM_ELLIPSIS)
 	if _text_width(again, again.text) > again.size.x + TOLERANCE_PX:
 		_trimmed += 1
+		_trimmed_at.append(get_window().size)
 	var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
 	assert_bool(again.size.y >= floor_px).override_failure_message(label).is_true()
 	assert_bool(back.size.y >= floor_px).override_failure_message(label).is_true()
@@ -220,8 +265,19 @@ func _assert_row_fits(again: Button, row: Control, label: String) -> void:
 	assert_bool(back_wide).override_failure_message(label).is_true()
 	var row_wide: bool = row.get_combined_minimum_size().x <= row.size.x + TOLERANCE_PX
 	assert_bool(row_wide).override_failure_message(label).is_true()
-	var safe: Rect2 = UiScale.safe_rect_base().grow(TOLERANCE_PX)
-	assert_bool(safe.encloses(row.get_global_rect())).override_failure_message(label).is_true()
+	# The inner rect the clamp uses (the 12 dp inset), not the bare safe rect.
+	var inner: Rect2 = SafeAreaMargin.rect_inside(
+		row.get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	(
+		assert_bool(inner.grow(TOLERANCE_PX).encloses(row.get_global_rect()))
+		. override_failure_message(label)
+		. is_true()
+	)
+	var scroll: ScrollContainer = _screen().find_children("*", "ScrollContainer", true, false)[0]
+	# The panel never scrolls here (its content is shorter than the shortest size), so `room` has no
+	# scrollbar to pay for; `_pin_again` still subtracts it if one ever shows.
+	assert_bool(scroll.get_v_scroll_bar().visible).override_failure_message(label).is_false()
 
 
 ## The main scene with PLAY AGAIN's `DpMinSize` left out.
