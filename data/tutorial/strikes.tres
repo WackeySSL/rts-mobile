@@ -65,7 +65,7 @@ script = ExtResource("2_beat")
 id = &"sat-fire"
 prompt_key = &"tutorial.strikes.sat-fire"
 anchor = 1
-anchor_control = &"StrikeConfirm"
+anchor_control = &"StrikeButton"
 covers = Array[StringName]([&"superweapon-satellite-fire"])
 budget_s = 6
 

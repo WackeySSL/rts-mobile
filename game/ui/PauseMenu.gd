@@ -422,7 +422,9 @@ func _hide_hud() -> void:
 			covered.append(node)
 	for node: Node in covered:
 		var control: Control = node as Control
-		if control == null or control == self or control is ResultScreen or is_ancestor_of(control):
+		if control == null or control == self or control is ResultScreen or control is CoachMark:
+			continue
+		if is_ancestor_of(control):
 			continue
 		_hidden[control] = control.modulate
 		control.modulate = get_theme_color(&"hidden", &"PauseHud")

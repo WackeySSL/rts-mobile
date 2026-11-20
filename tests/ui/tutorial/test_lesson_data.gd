@@ -88,7 +88,7 @@ func test_every_beat_has_a_condition_kind_and_parameters_that_fit_it() -> void:
 			match beat.kind:
 				TutorialConditions.Kind.ZOOM_LEVEL:
 					assert_int(beat.value).override_failure_message(label).is_between(0, zooms - 1)
-				TutorialConditions.Kind.UNFOLD_OPEN:
+				TutorialConditions.Kind.UNFOLD_OPEN, TutorialConditions.Kind.UNFOLD_CLOSED:
 					assert_bool(UNFOLDS.has(beat.value)).override_failure_message(label).is_true()
 				TutorialConditions.Kind.DRAWER_TAB:
 					assert_int(beat.value).override_failure_message(label).is_between(0, 4)

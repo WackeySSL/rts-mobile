@@ -16,6 +16,16 @@ budget_s = 6
 
 [sub_resource type="Resource" id="Beat_01"]
 script = ExtResource("2_beat")
+id = &"flight-tab"
+prompt_key = &"tutorial.air.flight-tab"
+anchor = 1
+anchor_control = &"BuildButton"
+kind = 11
+value = 3
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_02"]
+script = ExtResource("2_beat")
 id = &"fighter"
 prompt_key = &"tutorial.air.fighter"
 anchor = 1
@@ -25,7 +35,7 @@ type_id = &"fossil_fighter"
 covers = Array[StringName]([&"units-build-aircraft"])
 budget_s = 20
 
-[sub_resource type="Resource" id="Beat_02"]
+[sub_resource type="Resource" id="Beat_03"]
 script = ExtResource("2_beat")
 id = &"tap-air"
 prompt_key = &"tutorial.air.tap-air"
@@ -34,21 +44,21 @@ type_id = &"fossil_fighter"
 covers = Array[StringName]([&"selection-tap-aircraft"])
 budget_s = 6
 
-[sub_resource type="Resource" id="Beat_03"]
+[sub_resource type="Resource" id="Beat_04"]
 script = ExtResource("2_beat")
 id = &"unreachable"
 prompt_key = &"tutorial.air.unreachable"
 covers = Array[StringName]([&"orders-attack-unreachable"])
 budget_s = 4
 
-[sub_resource type="Resource" id="Beat_04"]
+[sub_resource type="Resource" id="Beat_05"]
 script = ExtResource("2_beat")
 id = &"bomber"
 prompt_key = &"tutorial.air.bomber"
 covers = Array[StringName]([&"orders-bomber-reload"])
 budget_s = 4
 
-[sub_resource type="Resource" id="Beat_05"]
+[sub_resource type="Resource" id="Beat_06"]
 script = ExtResource("2_beat")
 id = &"home"
 prompt_key = &"tutorial.air.home"
@@ -57,7 +67,7 @@ anchor_control = &"Home"
 covers = Array[StringName]([&"orders-home"])
 budget_s = 4
 
-[sub_resource type="Resource" id="Beat_06"]
+[sub_resource type="Resource" id="Beat_07"]
 script = ExtResource("2_beat")
 id = &"raid"
 prompt_key = &"tutorial.air.raid"
@@ -66,7 +76,7 @@ delay_ticks = 60
 after_ai_step = &"raid"
 budget_s = 5
 
-[sub_resource type="Resource" id="Beat_07"]
+[sub_resource type="Resource" id="Beat_08"]
 script = ExtResource("2_beat")
 id = &"wagon"
 prompt_key = &"tutorial.air.wagon"
@@ -77,7 +87,18 @@ type_id = &"fossil_bunk_wagon"
 covers = Array[StringName]([&"units-build-carrier"])
 budget_s = 20
 
-[sub_resource type="Resource" id="Beat_08"]
+[sub_resource type="Resource" id="Beat_09"]
+script = ExtResource("2_beat")
+id = &"select-squads"
+prompt_key = &"tutorial.air.select-squads"
+anchor = 2
+anchor_tile = Vector2i(9, 14)
+kind = 1
+type_id = &"rifle_squad"
+count = 2
+budget_s = 4
+
+[sub_resource type="Resource" id="Beat_10"]
 script = ExtResource("2_beat")
 id = &"board"
 prompt_key = &"tutorial.air.board"
@@ -86,12 +107,10 @@ anchor_control = &"Board"
 covers = Array[StringName]([&"orders-board"])
 budget_s = 6
 
-[sub_resource type="Resource" id="Beat_09"]
+[sub_resource type="Resource" id="Beat_11"]
 script = ExtResource("2_beat")
 id = &"unload"
 prompt_key = &"tutorial.air.unload"
-anchor = 1
-anchor_control = &"Unload"
 covers = Array[StringName]([&"orders-unload"])
 budget_s = 6
 
@@ -100,7 +119,7 @@ script = ExtResource("1_lesson")
 id = &"air"
 title_key = &"tutorial.air.title"
 objective_key = &"tutorial.air.objective"
-beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09")])
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11")])
 target_s = 90
 scenario = ExtResource("3_scenario")
 enemy = ExtResource("4_enemy")
