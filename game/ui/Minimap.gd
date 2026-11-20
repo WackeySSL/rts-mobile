@@ -114,7 +114,7 @@ func _process(_delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented([_frame])
 		return
 	if what == NOTIFICATION_THEME_CHANGED:
 		_frame.queue_redraw()

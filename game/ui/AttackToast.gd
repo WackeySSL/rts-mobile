@@ -155,5 +155,5 @@ func _apply_dp() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented([_row, _glyph, _title, _hint])
 		return

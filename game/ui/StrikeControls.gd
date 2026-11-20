@@ -174,5 +174,5 @@ func _least() -> Vector2:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented([_cancel, _confirm, _strike])
 		return

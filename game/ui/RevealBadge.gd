@@ -174,5 +174,5 @@ func _draw() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented([_text])
 		return

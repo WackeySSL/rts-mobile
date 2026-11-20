@@ -131,5 +131,5 @@ func _follow() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented([_cancel, _confirm])
 		return

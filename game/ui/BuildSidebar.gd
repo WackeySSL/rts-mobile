@@ -861,5 +861,23 @@ func _apply_extent(extent: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented(self)
+		DetachedParts.free_unparented(
+			[
+				_backdrop,
+				_chevron,
+				_close,
+				_grab,
+				_grab_spacer,
+				_grid,
+				_grid_room,
+				_handle,
+				_handle_box,
+				_items,
+				_items_fit,
+				_pad,
+				_pull_plate,
+				_stack,
+				_tab_row
+			]
+		)
 		return
