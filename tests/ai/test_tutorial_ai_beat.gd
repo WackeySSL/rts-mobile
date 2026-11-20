@@ -29,10 +29,16 @@ func test_a_beat_is_noted_once_and_only_when_a_step_waits_for_it() -> void:
 	var world: World = Tut.start()
 	var loop: MatchLoop = Rig.loop_of(world)
 	var ai: TutorialAi = Tut.ai_of(_def())
-	ai.note_beat(&"unrelated", 5)
+	ai.note_beat(&"unrelated", 5)  # No step waits for it: it is not kept.
 	ai.note_beat(&"groups", 100)
 	ai.note_beat(&"groups", 3)  # The first word stands.
-	_run(world, loop, 100 + AFTER)
+	assert_array(ai._noted_ids).is_equal([&"groups"])
+	assert_array(Array(ai._noted_at)).is_equal([100])
+	_run(world, loop, 100 + AFTER - 1)
+	Tut.think(world, ai)
+	# The second word (tick 3) would have opened it long ago; the first (100) not yet.
+	assert_bool(ai.has_fired(&"go")).is_false()
+	_run(world, loop, 1)
 	Tut.think(world, ai)
 	assert_int(ai.fired_tick_of(&"go")).is_equal(100 + AFTER)
 

@@ -182,10 +182,15 @@ func test_a_beat_trigger_names_an_earlier_beat_than_the_card_that_waits_for_it()
 			steps_with_beats += 1
 			var label: String = "%s/%s waits for %s" % [id, step.id, step.trigger_beat]
 			assert_bool(order.has(step.trigger_beat)).override_failure_message(label).is_true()
+			assert_int(step.threshold).override_failure_message(label + " delay").is_greater_equal(
+				1
+			)
+			var at: int = order.find(step.trigger_beat)
 			for beat: TutorialBeatDef in lesson.beats:
-				if beat.after_ai_step == step.id:
-					var before: bool = order.find(step.trigger_beat) < order.find(beat.id)
-					assert_bool(before).override_failure_message(label + " too late").is_true()
+				# A card waits on this step, or on a step that waits (`after_step`) for it.
+				if _waits_through(lesson.enemy.steps, beat.after_ai_step, step.id):
+					var late: String = "%s: card %s is not after the beat" % [label, beat.id]
+					assert_bool(at < order.find(beat.id)).override_failure_message(late).is_true()
 	assert_int(steps_with_beats).is_greater(0)
 
 
@@ -333,6 +338,21 @@ func test_the_strikes_drill_charges_one_building_and_leaves_one_running() -> voi
 			charging += 1
 	assert_int(ready).is_equal(1)
 	assert_int(charging).is_equal(1)
+
+
+## Whether the step `from` is the step `target`, or waits for it through its `after_step` chain.
+func _waits_through(steps: Array[TutorialStepDef], from: StringName, target: StringName) -> bool:
+	var at: StringName = from
+	for _hop: int in steps.size() + 1:
+		if at == &"":
+			return false
+		if at == target:
+			return true
+		var next: int = steps.find_custom(func(one: TutorialStepDef) -> bool: return one.id == at)
+		if next < 0:
+			return false
+		at = steps[next].after_step
+	return false
 
 
 func _lesson(id: StringName) -> TutorialLessonDef:

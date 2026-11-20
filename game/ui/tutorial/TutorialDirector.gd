@@ -238,6 +238,9 @@ func _show() -> void:
 
 func _complete() -> void:
 	var done: TutorialBeatDef = current
+	# Queued for the opponent at the next published tick. The lesson's last beat is queued too and
+	# dropped at once by `_stop_quietly` below: nothing waits for the end of a lesson, so no step
+	# loses a word it could use.
 	_notes.append(done.id)
 	_note_ticks.append(_tick())
 	_release_pause()
@@ -259,7 +262,7 @@ func _stop_quietly() -> void:
 	_phase = Phase.IDLE
 	current = null
 	lesson = null
-	_notes.clear()
+	_notes.clear()  # Nothing is told after a lesson's end, a skip or a restart: the match is over.
 	_note_ticks.clear()
 	_start = null
 	if runner != null and runner.ticked.is_connected(_on_ticked):
