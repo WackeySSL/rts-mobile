@@ -70,6 +70,7 @@ func test_reserved_rows_have_the_height_of_live_ones_and_take_no_touch() -> void
 	fake.answer(PRICE)
 	rows.refresh()
 	await await_idle_frame()
+	_assert_live(rows)
 	assert_float(rows.get_combined_minimum_size().y).is_equal(reserved)
 
 
@@ -85,9 +86,32 @@ func test_a_store_that_never_answers_turns_unavailable_at_the_timeout_and_pollin
 	assert_bool(rows._timer.is_stopped()).is_false()
 	_harness.clock_ms = timeout
 	rows._timer.timeout.emit()
-	assert_int(_service.remove_ads_store()["state"]).is_equal(Purchases.StoreState.UNAVAILABLE)
+	var final: int = _service._purchases.store_state(_service._now_ms, timeout)  # Read only.
+	assert_int(final).is_equal(Purchases.StoreState.UNAVAILABLE)
 	_assert_reserved(rows)  # The space stays, empty, for this visit.
 	assert_bool(rows._timer.is_stopped()).is_true()
+
+
+func test_a_retry_after_an_offline_visit_shows_reserved_then_live_and_never_collapses() -> void:
+	var store: FakeBilling = AdServiceHarness.billing(_service)
+	var timeout: int = AdsSettingsDef.load_default().billing_timeout_ms
+	store.store_available = false
+	var first: RemoveAdsRows = _rows(_service)  # Visit 1: offline, collapsed.
+	assert_bool(first.visible).is_false()
+	store.store_available = true
+	store.late_answers = true  # The store answers one step late, as the Play backend does.
+	_harness.clock_ms = timeout + 1  # Far past the first attempt's deadline.
+	var second: RemoveAdsRows = _rows(_service)  # Visit 2: the retry connects.
+	_assert_reserved(second)
+	assert_bool(second._timer.is_stopped()).is_false()
+	store.answer_late()  # Connected; the next poll asks for the product.
+	second._timer.timeout.emit()
+	_assert_reserved(second)
+	assert_bool(second._timer.is_stopped()).is_false()
+	store.answer_late()  # The product arrives.
+	second._timer.timeout.emit()
+	_assert_live(second)
+	assert_bool(second._timer.is_stopped()).is_true()
 
 
 func test_the_fake_billing_knobs_drive_the_store_state_and_the_rows() -> void:

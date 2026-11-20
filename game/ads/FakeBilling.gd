@@ -15,6 +15,9 @@ const DEFAULT_PRICE: String = "Test price"
 var store_available: bool = true
 ## The connection stays CONNECTING.
 var connect_never_answers: bool = false
+## A connect or a product query answers one step late: it stays CONNECTING or LOADING until
+## `answer_late`, as a real store does (never synchronously).
+var late_answers: bool = false
 ## A connect resets the product query (the price is gone until it is asked again), as a store
 ## client may on a reconnect.
 var reset_product_on_connect: bool = false
@@ -62,6 +65,7 @@ var _pending: bool = false
 var _sheet_open: bool = false
 var _token_count: int = 0
 var _sheet_node: FakeBillingSheet = null
+var _late: Array[StringName] = []
 
 
 func connection_state() -> BillingBackend.ConnState:
@@ -73,10 +77,11 @@ func connect_store() -> void:
 		_product = BillingBackend.QueryState.IDLE
 	if connect_never_answers:
 		_connection = BillingBackend.ConnState.CONNECTING
-	elif store_available:
-		_connection = BillingBackend.ConnState.READY
+	elif late_answers:
+		_connection = BillingBackend.ConnState.CONNECTING
+		_late.append(&"connect")
 	else:
-		_connection = BillingBackend.ConnState.UNAVAILABLE
+		_settle_connection()
 
 
 func product_state(_product_id: String) -> BillingBackend.QueryState:
@@ -86,10 +91,34 @@ func product_state(_product_id: String) -> BillingBackend.QueryState:
 func query_product(_product_id: String) -> void:
 	if product_never_answers:
 		_product = BillingBackend.QueryState.LOADING
-	elif product_found:
-		_product = BillingBackend.QueryState.DONE
+	elif late_answers:
+		_product = BillingBackend.QueryState.LOADING
+		_late.append(&"product")
 	else:
-		_product = BillingBackend.QueryState.FAILED
+		_settle_product()
+
+
+## Answers the connects and queries that `late_answers` held back.
+func answer_late() -> void:
+	var held: Array[StringName] = _late.duplicate()
+	_late.clear()
+	for step: StringName in held:
+		if step == &"connect":
+			_settle_connection()
+		else:
+			_settle_product()
+
+
+func _settle_connection() -> void:
+	_connection = (
+		BillingBackend.ConnState.READY if store_available else BillingBackend.ConnState.UNAVAILABLE
+	)
+
+
+func _settle_product() -> void:
+	_product = (
+		BillingBackend.QueryState.DONE if product_found else BillingBackend.QueryState.FAILED
+	)
 
 
 func price_text(_product_id: String) -> String:

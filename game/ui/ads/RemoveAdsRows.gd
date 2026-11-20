@@ -8,11 +8,13 @@ extends VBoxContainer
 ##   comes. They collapse to 0 only when the store is already known unavailable at the moment they
 ##   would take their place; that is decided once per visit (a screen re-entering the tree starts
 ##   a new visit). A late answer never resizes: a price fills the reserved space, an unavailable
-##   store leaves it empty for the rest of the visit. (An entitlement change mid-visit, a refund
-##   or a silent restore, can still add or remove the Remove ads row and so resize.)
+##   store leaves it empty (a refresh after a still later price, for example on
+##   `entitlement_changed`, fills it again, still without a resize). An entitlement change
+##   mid-visit (a refund, a silent restore) can still add or remove the Remove ads row and so
+##   resize.
 ## - "Remove ads" with the store's price text shows only while the entitlement is not held and the
-##   store has a price (`store_state` AVAILABLE), never a spinner. While the store answers the rows
-##   poll for it.
+##   store has a price (`remove_ads_store` state AVAILABLE), never a spinner. While the store
+##   answers the rows poll for it.
 ## - "Restore purchases" shows with the same rule (no store, nothing to restore from), and stays
 ##   while the entitlement is held.
 ## - Rows that appear ignore touches for `reward_arm_ms`, so a tap meant for the button that stood

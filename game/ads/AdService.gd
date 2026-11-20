@@ -183,9 +183,10 @@ func restore_purchases() -> bool:
 ## `{"state": Purchases.StoreState, "price": String}`. The price is the store's localised text,
 ## empty until known and when billing is unavailable; never a literal in the game. The state is
 ## UNKNOWN while the store connects or loads the product, AVAILABLE with a price (latched for the
-## session), UNAVAILABLE with no store or product, and also once `billing_timeout_ms` passed with no
-## answer. It starts the connection and the product query, and retries a failure at most once per
-## `billing_timeout_ms`. A row reserves its space while UNKNOWN.
+## session), UNAVAILABLE with no store or product, and also once `billing_timeout_ms` passed since
+## the latest attempt with no answer. It starts the connection and the product query, and issues a
+## failed or unanswered attempt again once `billing_timeout_ms` old (a fresh attempt is UNKNOWN for
+## that long). A row reserves its space while UNKNOWN.
 func remove_ads_store() -> Dictionary:
 	var price: String = _purchases.price_text(_now_ms, _settings.billing_timeout_ms)
 	var state: int = _purchases.store_state(_now_ms, _settings.billing_timeout_ms)
