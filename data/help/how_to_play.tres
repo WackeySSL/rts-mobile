@@ -620,7 +620,7 @@ body = "Tap Resume to close the menu and carry on where you stopped."
 script = ExtResource("3_ent")
 id = &"pause-confirm"
 title = "Restart, Surrender and Exit"
-body = "Each of these asks first. Keep playing closes the question and the match stays paused. Restart starts a new match with the same setup. Exit to menu goes back to the main menu, and the match is lost. Surrender loses the match at once."
+body = "Each of these asks first. Keep playing closes the question and the match stays paused. Restart starts a new match with the same setup. While the match gets ready, Restart reads STARTING and a second tap does nothing. The other buttons and the phone's Back button wait. Exit to menu goes back to the main menu, and the match is lost. Surrender loses the match at once."
 
 [sub_resource type="Resource" id="e92"]
 script = ExtResource("3_ent")
