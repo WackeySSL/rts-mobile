@@ -170,3 +170,9 @@ func _draw() -> void:
 		var corner: Rect2 = Rect2(_badge.end - _badge.size * 0.5, _badge.size * 0.42)
 		var text: Color = get_theme_color(&"text", SweepMark.TOKENS)
 		SweepMark.pause(self, corner, text, get_theme_color(&"panel", SweepMark.TOKENS))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented([_text])
+		return

@@ -96,6 +96,9 @@ func cancel_gestures() -> void:
 
 ## A finger that was down when the app lost focus may never send its release, as in TouchInput.
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented([_collapse, _head, _panel, _pin, _title])
+		return
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		cancel_gestures()
 

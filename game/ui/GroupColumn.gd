@@ -237,3 +237,9 @@ func _apply_dp() -> void:
 	_icon.custom_minimum_size = UiScale.dp_vec(ICON_DP, ICON_DP)
 	_add.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(ICON_DP)))
 	place()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		DetachedParts.free_unparented([_add, _all, _content, _icon, _scroll])
+		return
