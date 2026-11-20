@@ -3,12 +3,15 @@ extends GdUnitTestSuite
 ## product query answer, UNAVAILABLE without a store, a product or a price, else AVAILABLE.
 
 const PRODUCT: String = "remove_ads"
+const TIMEOUT_MS: int = 8000
 
 var _fake: FakeBilling
 var _purchases: Purchases
+var _clock_ms: int = 0
 
 
 func before_test() -> void:
+	_clock_ms = 0
 	_fake = FakeBilling.new()
 	_purchases = _make(_fake)
 
@@ -50,3 +53,72 @@ func test_a_known_price_stays_available_when_the_connection_drops_later() -> voi
 	_fake.connect_never_answers = true
 	_fake.connect_store()  # Connecting again, and it never ends.
 	assert_int(_purchases.store_state()).is_equal(Purchases.StoreState.AVAILABLE)
+
+
+func _now() -> int:
+	return _clock_ms
+
+
+func _ask() -> String:
+	return _purchases.price_text(_now, TIMEOUT_MS)
+
+
+func _state() -> int:
+	return _purchases.store_state(_now, TIMEOUT_MS)
+
+
+func test_unknown_turns_unavailable_at_the_timeout_since_the_first_query() -> void:
+	_fake.connect_never_answers = true
+	_ask()
+	_clock_ms = TIMEOUT_MS - 1
+	assert_int(_state()).is_equal(Purchases.StoreState.UNKNOWN)
+	_clock_ms = TIMEOUT_MS
+	assert_int(_state()).is_equal(Purchases.StoreState.UNAVAILABLE)
+	assert_int(_purchases.store_state()).is_equal(Purchases.StoreState.UNKNOWN)  # No clock, no limit.
+
+
+func test_a_known_price_is_latched_when_the_backend_resets_on_a_reconnect() -> void:
+	assert_str(_ask()).is_equal(FakeBilling.DEFAULT_PRICE)
+	_fake.reset_product_on_connect = true
+	_fake.connect_never_answers = true
+	_fake.connect_store()  # Reconnecting: the fake forgets the product and its price.
+	assert_str(_fake.price_text(PRODUCT)).is_empty()
+	assert_int(_fake.product_state(PRODUCT)).is_equal(BillingBackend.QueryState.IDLE)
+	assert_int(_state()).is_equal(Purchases.StoreState.AVAILABLE)
+	assert_str(_ask()).is_equal(FakeBilling.DEFAULT_PRICE)
+
+
+func test_a_failed_connection_is_retried_at_most_once_per_interval() -> void:
+	_fake.store_available = false
+	assert_str(_ask()).is_empty()  # Connecting ends UNAVAILABLE.
+	assert_str(_ask()).is_empty()  # The failure is seen: the wait starts now.
+	_fake.store_available = true
+	_clock_ms = TIMEOUT_MS - 1
+	assert_str(_ask()).is_empty()  # Too early: no retry.
+	assert_int(_fake.connection_state()).is_equal(BillingBackend.ConnState.UNAVAILABLE)
+	_clock_ms = TIMEOUT_MS
+	assert_str(_ask()).is_equal(FakeBilling.DEFAULT_PRICE)  # The retry ran.
+	assert_int(_state()).is_equal(Purchases.StoreState.AVAILABLE)
+
+
+func test_a_failed_product_is_retried_at_most_once_per_interval() -> void:
+	_fake.product_found = false
+	assert_str(_ask()).is_empty()
+	assert_int(_state()).is_equal(Purchases.StoreState.UNAVAILABLE)
+	assert_str(_ask()).is_empty()  # The failure is seen: the wait starts now.
+	_fake.product_found = true
+	_clock_ms = TIMEOUT_MS - 1
+	assert_str(_ask()).is_empty()
+	assert_int(_fake.product_state(PRODUCT)).is_equal(BillingBackend.QueryState.FAILED)
+	_clock_ms = TIMEOUT_MS
+	assert_str(_ask()).is_equal(FakeBilling.DEFAULT_PRICE)
+	assert_int(_state()).is_equal(Purchases.StoreState.AVAILABLE)
+	assert_int(_purchases.store_state()).is_equal(Purchases.StoreState.AVAILABLE)
+
+
+func test_without_a_clock_a_failure_is_never_retried() -> void:
+	_fake.store_available = false
+	_purchases.price_text()
+	_fake.store_available = true
+	_purchases.price_text()
+	assert_int(_fake.connection_state()).is_equal(BillingBackend.ConnState.UNAVAILABLE)

@@ -80,21 +80,21 @@ func test_a_reparent_in_one_frame_keeps_the_native_view() -> void:
 
 func test_the_preview_is_useful_before_the_first_load_and_makes_no_request() -> void:
 	_set.of(AdMobBackend.S_SIZE).banner_size = {"width": 360, "height": 56}
-	assert_int(_service.banner_height_dp(true)).is_equal(56)
+	assert_int(_service.banner_height_preview_dp()).is_equal(56)
 	assert_int(_set.count("create")).is_equal(0)
 	assert_int(_service.banner_height_dp()).is_equal(0)
 
 
 func test_the_preview_is_zero_where_no_banner_may_show() -> void:
 	_service._set_can_request(false)
-	assert_int(_service.banner_height_dp(true)).is_equal(0)
+	assert_int(_service.banner_height_preview_dp()).is_equal(0)
 	_service._set_can_request(true)
-	assert_int(_service.banner_height_dp(true)).is_greater(0)
+	assert_int(_service.banner_height_preview_dp()).is_greater(0)
 	_service._ledger.remove_ads = true
-	assert_int(_service.banner_height_dp(true)).is_equal(0)
+	assert_int(_service.banner_height_preview_dp()).is_equal(0)
 	_service._ledger.remove_ads = false
 	_service._initialised = false
-	assert_int(_service.banner_height_dp(true)).is_equal(0)
+	assert_int(_service.banner_height_preview_dp()).is_equal(0)
 
 
 func _creates() -> int:

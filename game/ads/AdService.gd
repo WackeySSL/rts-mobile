@@ -179,29 +179,23 @@ func restore_purchases() -> bool:
 	return await _purchases.restore(_now_ms, _settings.billing_timeout_ms)
 
 
-## Internal (Phase 6 widgets). The store's localised price text for Remove ads, empty until known
-## or when billing is unavailable: the row is hidden then. Never a literal in the game.
-func remove_ads_price_text() -> String:
-	return _purchases.price_text()
-
-
-## Internal (P445). Whether the store has answered for Remove ads, read only: UNKNOWN while it
-## connects or loads the product, then AVAILABLE (a price) or UNAVAILABLE (no store, no product).
-## Values are `Purchases.StoreState`. Lets a row reserve its space while the store answers.
-func store_state() -> int:
-	return _purchases.store_state()
+## Internal (Phase 6 widgets; P445). What the store has answered for Remove ads, as
+## `{"state": Purchases.StoreState, "price": String}`. The price is the store's localised text,
+## empty until known and when billing is unavailable; never a literal in the game. The state is
+## UNKNOWN while the store connects or loads the product, AVAILABLE with a price (latched for the
+## session), UNAVAILABLE with no store or product, and also once `billing_timeout_ms` passed with no
+## answer. It starts the connection and the product query, and retries a failure at most once per
+## `billing_timeout_ms`. A row reserves its space while UNKNOWN.
+func remove_ads_store() -> Dictionary:
+	var price: String = _purchases.price_text(_now_ms, _settings.billing_timeout_ms)
+	var state: int = _purchases.store_state(_now_ms, _settings.billing_timeout_ms)
+	return {"state": state, "price": price}
 
 
 ## Synchronous. The banner's height while one may show (consent, no Remove ads, a band asked for
-## it through `show_banner`), else 0. With `preview` (P435, internal) the height a band would get
-## if it asked now, with no request made: lets a host see whether the banner fits before it shows
-## one. 0 where none may show.
-func banner_height_dp(preview: bool = false) -> int:
-	if not preview:
-		return _banner_height
-	if _initialised and _can_request_ads and not _ledger.remove_ads:
-		return _backend.banner_height_preview_dp()
-	return 0
+## it through `show_banner`), else 0.
+func banner_height_dp() -> int:
+	return _banner_height
 
 
 ## Awaitable. True means one interstitial showed and closed. Returns false at once when the caps
@@ -300,6 +294,14 @@ func show_rewarded(placement: StringName, on_reward: Callable = Callable()) -> b
 	var rewarded: bool = await _run_fullscreen(AdBackend.KIND_REWARDED, placement, on_reward)
 	_request_rewarded_load()
 	return rewarded
+
+
+## Internal (P435). The height a band would get if it asked now, with no request made: lets a host
+## see whether the banner fits before it shows one. 0 where none may show.
+func banner_height_preview_dp() -> int:
+	if _initialised and _can_request_ads and not _ledger.remove_ads:
+		return _backend.banner_height_preview_dp()
+	return 0
 
 
 ## Internal, called by the banner band on `enter_tree`. Requests are counted: the banner shows

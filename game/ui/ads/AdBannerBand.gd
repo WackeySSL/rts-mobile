@@ -132,7 +132,7 @@ func reserved_px() -> float:
 
 ## What `reserved_px` would be once shown now (no request is made; 0 where no banner may show).
 func preview_reserved_px() -> float:
-	return _reserve_for(_bound.banner_height_dp(true) if _bound != null else 0)
+	return _reserve_for(_bound.banner_height_preview_dp() if _bound != null else 0)
 
 
 func _reserve_for(height_dp: int) -> float:

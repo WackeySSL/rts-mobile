@@ -15,6 +15,9 @@ const DEFAULT_PRICE: String = "Test price"
 var store_available: bool = true
 ## The connection stays CONNECTING.
 var connect_never_answers: bool = false
+## A connect resets the product query (the price is gone until it is asked again), as a store
+## client may on a reconnect.
+var reset_product_on_connect: bool = false
 ## false: the store does not know the product.
 var product_found: bool = true
 ## The product query stays LOADING.
@@ -66,6 +69,8 @@ func connection_state() -> BillingBackend.ConnState:
 
 
 func connect_store() -> void:
+	if reset_product_on_connect:
+		_product = BillingBackend.QueryState.IDLE
 	if connect_never_answers:
 		_connection = BillingBackend.ConnState.CONNECTING
 	elif store_available:

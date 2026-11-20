@@ -124,10 +124,10 @@ func test_the_facade_timeout_comes_from_the_data() -> void:
 
 func test_the_price_text_is_the_fakes_placeholder_and_empty_when_unavailable() -> void:
 	var service: Node = _service()
-	assert_str(service.remove_ads_price_text()).is_equal(FakeBilling.DEFAULT_PRICE)
+	assert_str(service.remove_ads_store()["price"]).is_equal(FakeBilling.DEFAULT_PRICE)
 	var other: Node = _service()
 	AdServiceHarness.billing(other).store_available = false
-	assert_str(other.remove_ads_price_text()).is_empty()
+	assert_str(other.remove_ads_store()["price"]).is_empty()
 
 
 func test_a_late_purchase_result_sets_the_ledger_emits_and_hides_the_banner() -> void:

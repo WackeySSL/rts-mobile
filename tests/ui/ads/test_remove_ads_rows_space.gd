@@ -61,8 +61,10 @@ func test_reserved_rows_have_the_height_of_live_ones_and_take_no_touch() -> void
 	var rows: RemoveAdsRows = _rows(fake)
 	await await_idle_frame()
 	var reserved: float = rows.get_combined_minimum_size().y
-	var remove_h: float = rows.remove_button.get_combined_minimum_size().y
-	assert_float(reserved).is_greater_equal(remove_h * 2.0)
+	var live: CountingPurchaseService = auto_free(CountingPurchaseService.new())
+	var live_rows: RemoveAdsRows = _rows(live)
+	await await_idle_frame()
+	assert_float(reserved).is_equal(live_rows.get_combined_minimum_size().y)
 	assert_int(rows.remove_button.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_int(rows.restore_button.focus_mode).is_equal(Control.FOCUS_NONE)
 	fake.answer(PRICE)
@@ -71,17 +73,34 @@ func test_reserved_rows_have_the_height_of_live_ones_and_take_no_touch() -> void
 	assert_float(rows.get_combined_minimum_size().y).is_equal(reserved)
 
 
+func test_a_store_that_never_answers_turns_unavailable_at_the_timeout_and_polling_stops() -> void:
+	var timeout: int = AdsSettingsDef.load_default().billing_timeout_ms
+	AdServiceHarness.billing(_service).connect_never_answers = true
+	var rows: RemoveAdsRows = _rows(_service)
+	_assert_reserved(rows)
+	assert_bool(rows._timer.is_stopped()).is_false()
+	_harness.clock_ms = timeout - 1
+	rows._timer.timeout.emit()
+	assert_int(_service.remove_ads_store()["state"]).is_equal(Purchases.StoreState.UNKNOWN)
+	assert_bool(rows._timer.is_stopped()).is_false()
+	_harness.clock_ms = timeout
+	rows._timer.timeout.emit()
+	assert_int(_service.remove_ads_store()["state"]).is_equal(Purchases.StoreState.UNAVAILABLE)
+	_assert_reserved(rows)  # The space stays, empty, for this visit.
+	assert_bool(rows._timer.is_stopped()).is_true()
+
+
 func test_the_fake_billing_knobs_drive_the_store_state_and_the_rows() -> void:
 	var store: FakeBilling = AdServiceHarness.billing(_service)
 	store.connect_never_answers = true  # Still connecting: reserved, polling.
 	var rows: RemoveAdsRows = _rows(_service)
-	assert_int(_service.store_state()).is_equal(Purchases.StoreState.UNKNOWN)
+	assert_int(_service.remove_ads_store()["state"]).is_equal(Purchases.StoreState.UNKNOWN)
 	_assert_reserved(rows)
 	store.connect_never_answers = false
 	store.connect_store()
 	rows.refresh()
 	_assert_live(rows)
-	assert_int(_service.store_state()).is_equal(Purchases.StoreState.AVAILABLE)
+	assert_int(_service.remove_ads_store()["state"]).is_equal(Purchases.StoreState.AVAILABLE)
 
 
 ## A store that has not answered yet (no price).

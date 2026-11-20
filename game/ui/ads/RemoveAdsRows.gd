@@ -2,13 +2,14 @@ class_name RemoveAdsRows
 extends VBoxContainer
 ## The Remove ads and Restore purchases rows (ADR 0039 section 8, plan P434), the widget of
 ## Settings' `PurchaseSlot`. It only calls the AdService facade: `has_remove_ads`,
-## `remove_ads_price_text`, `purchase_remove_ads`, `restore_purchases` and `entitlement_changed`.
+## `remove_ads_store`, `purchase_remove_ads`, `restore_purchases` and `entitlement_changed`.
 ## - Space (P445, the rule of the rewarded offers): while the store has not answered the rows keep
 ##   their full height, invisible and untouchable, so nothing below them moves when the answer
 ##   comes. They collapse to 0 only when the store is already known unavailable at the moment they
 ##   would take their place; that is decided once per visit (a screen re-entering the tree starts
 ##   a new visit). A late answer never resizes: a price fills the reserved space, an unavailable
-##   store leaves it empty for the rest of the visit.
+##   store leaves it empty for the rest of the visit. (An entitlement change mid-visit, a refund
+##   or a silent restore, can still add or remove the Remove ads row and so resize.)
 ## - "Remove ads" with the store's price text shows only while the entitlement is not held and the
 ##   store has a price (`store_state` AVAILABLE), never a spinner. While the store answers the rows
 ##   poll for it.
@@ -79,8 +80,9 @@ func is_busy() -> bool:
 
 ## Lays the rows out again from the service's answers.
 func refresh() -> void:
-	_price = _store_price()
-	var state: int = _store_state()
+	var store: Dictionary = _store()
+	_price = String(store["price"])
+	var state: int = int(store["state"])
 	var in_slot: bool = _in_slot()
 	if in_slot and not _decided:
 		_decided = true
@@ -113,17 +115,12 @@ func _in_slot() -> bool:
 	return get_parent() != null and get_parent().name == SLOT_NAME
 
 
-func _store_price() -> String:
-	if service == null or not service.has_method(&"remove_ads_price_text"):
-		return ""
-	return String(service.call(&"remove_ads_price_text"))
-
-
-## `Purchases.StoreState` from the service; a service that cannot say counts as unavailable.
-func _store_state() -> int:
-	if service == null or not service.has_method(&"store_state"):
-		return Purchases.StoreState.UNAVAILABLE
-	return int(service.call(&"store_state"))
+## The service's `remove_ads_store` answer (`Purchases.StoreState` and the price text); a service
+## that cannot say counts as unavailable.
+func _store() -> Dictionary:
+	if service == null or not service.has_method(&"remove_ads_store"):
+		return {"state": Purchases.StoreState.UNAVAILABLE, "price": ""}
+	return service.call(&"remove_ads_store")
 
 
 func _owned() -> bool:

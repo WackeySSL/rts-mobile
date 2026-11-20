@@ -179,41 +179,57 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 
 
 func test_a_late_store_answer_moves_nothing_in_settings_at_every_size() -> void:
-	for size: Vector2i in ScreenSizes.ALL:
-		_store = auto_free(CountingPurchaseService.new())
-		_store.answer("")
-		_store.state = Purchases.StoreState.UNKNOWN  # The store has not answered yet.
-		await _open(SETTINGS, _profile_with_window(size))
-		var rows: RemoveAdsRows = _store_rows()
-		var answering: Array[Rect2] = _rects_from(rows)
-		assert_bool(rows.visible).override_failure_message(str(size)).is_true()
-		assert_float(rows.size.y).override_failure_message(str(size)).is_greater(0.0)
-		_store.answer("kr 19,00")  # The price arrives.
-		rows.refresh()
-		await _settle()
-		_assert_rects(answering, _rects_from(rows), "%s price arrives" % size)
-		_close()
-		UiScale.clear_override()
-		_store = null
+	for profile: UiMetrics in _late_answer_profiles():
+		await _late_answer(profile, "kr 19,00")
 
 
 func test_a_late_unavailable_store_moves_nothing_in_settings_at_every_size() -> void:
+	for profile: UiMetrics in _late_answer_profiles():
+		await _late_answer(profile, "")
+
+
+## The six sizes, then the 6-inch phone with the design's safe-area insets, landscape and portrait.
+func _late_answer_profiles() -> Array[UiMetrics]:
+	var profiles: Array[UiMetrics] = []
 	for size: Vector2i in ScreenSizes.ALL:
-		_store = auto_free(CountingPurchaseService.new())
-		_store.answer("")
-		_store.state = Purchases.StoreState.UNKNOWN
-		await _open(SETTINGS, _profile_with_window(size))
-		var rows: RemoveAdsRows = _store_rows()
-		var answering: Array[Rect2] = _rects_from(rows)
-		_store.answer("")  # Unavailable after the space was reserved: it stays, empty.
-		rows.refresh()
-		await _settle()
-		_assert_rects(answering, _rects_from(rows), "%s unavailable" % size)
-		assert_bool(rows.remove_button.flat).is_true()
-		assert_str(rows.remove_button.text).is_empty()
-		_close()
-		UiScale.clear_override()
-		_store = null
+		profiles.append(_profile_with_window(size))
+	var notch: Dictionary[StringName, UiMetrics] = UiProfiles.notch_design()
+	profiles.append(notch[&"notch_design"])
+	profiles.append(notch[&"notch_design_portrait"])
+	return profiles
+
+
+## Settings opens while the store has not answered; then it answers (`price` empty: unavailable).
+## The reserved buttons are 48 dp, and the rects, the scroll range and the content height stay.
+func _late_answer(profile: UiMetrics, price: String) -> void:
+	var label: String = "%s %s -> %s" % [profile.window_size, profile.safe_area, price]
+	_store = auto_free(CountingPurchaseService.new())
+	_store.answer("")
+	_store.state = Purchases.StoreState.UNKNOWN  # The store has not answered yet.
+	await _open(SETTINGS, profile)
+	var rows: RemoveAdsRows = _store_rows()
+	var answering: Array[Rect2] = _rects_from(rows)
+	var bar: VScrollBar = _screen.scroll.get_v_scroll_bar()
+	var content: Control = _screen.scroll.get_child(0) as Control
+	var range_before: float = bar.max_value
+	var height_before: float = content.size.y
+	assert_bool(rows.visible).override_failure_message(label).is_true()
+	for index: int in range(2):
+		assert_float(answering[index].size.y).override_failure_message(label).is_greater_equal(
+			UiScale.dp(TOUCH_DP) - TOLERANCE_PX
+		)
+	_store.answer(price)
+	rows.refresh()
+	await _settle()
+	_assert_rects(answering, _rects_from(rows), label)
+	assert_float(bar.max_value).override_failure_message(label + " range").is_equal(range_before)
+	assert_float(content.size.y).override_failure_message(label + " content").is_equal(
+		height_before
+	)
+	assert_bool(rows.remove_button.flat).is_equal(price.is_empty())
+	_close()
+	UiScale.clear_override()
+	_store = null
 
 
 func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void:

@@ -22,21 +22,21 @@ const METHODS: Dictionary = {
 	"has_remove_ads": [[], TYPE_BOOL],
 	"purchase_remove_ads": [[], TYPE_BOOL],
 	"restore_purchases": [[], TYPE_BOOL],
-	"banner_height_dp": [[["preview", TYPE_BOOL]], TYPE_INT],
+	"banner_height_dp": [[], TYPE_INT],
 	"maybe_show_interstitial": [[["placement", TYPE_STRING_NAME]], TYPE_BOOL],
 	"note_match_completed": [[["play_seconds", TYPE_INT]], TYPE_NIL],
 	"take_start_credits_bonus": [[], TYPE_INT],
 }
 ## Internal methods Phase 6's widgets may call, pinned like METHODS: P403's rewarded API and
-## banner show and hide, P406's Remove ads price text, and P409's MenuFlow wait.
+## banner show and hide, P406's Remove ads price with P445's store state, and P409's MenuFlow wait.
 ## Phase 5 never calls these.
 const WIDGET_METHODS: Dictionary = {
 	"rewarded_ready": [[["placement", TYPE_STRING_NAME]], TYPE_BOOL],
 	"show_rewarded": [[["placement", TYPE_STRING_NAME], ["on_reward", TYPE_CALLABLE]], TYPE_BOOL],
 	"show_banner": [[], TYPE_NIL],
 	"hide_banner": [[], TYPE_NIL],
-	"remove_ads_price_text": [[], TYPE_STRING],
-	"store_state": [[], TYPE_INT],
+	"banner_height_preview_dp": [[], TYPE_INT],
+	"remove_ads_store": [[], TYPE_DICTIONARY],
 	"grant_start_credits_bonus": [[["amount", TYPE_INT]], TYPE_BOOL],
 	"pending_start_credits": [[], TYPE_INT],
 	"consent_state": [[], TYPE_INT],

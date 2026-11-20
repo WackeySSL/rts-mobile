@@ -21,12 +21,8 @@ func is_privacy_options_required() -> bool:
 	return false
 
 
-func remove_ads_price_text() -> String:
-	return price
-
-
-func store_state() -> int:
-	return state
+func remove_ads_store() -> Dictionary:
+	return {"state": state, "price": price}
 
 
 ## The store answers: a price (AVAILABLE) or none (UNAVAILABLE).
