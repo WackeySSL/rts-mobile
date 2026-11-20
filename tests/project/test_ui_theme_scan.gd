@@ -693,26 +693,49 @@ func test_the_dp_steps_exception_covers_its_sizes_and_never_a_colour_or_a_font()
 		assert_array(rules).override_failure_message(line).is_equal(["look_written_in_code"])
 
 
-## The project theme stays unset: it would restyle the developer scenes, which keep their looks.
-## The HUD roots carry the theme instead (tests/ui/test_ui_theme.gd).
 ## Every Pause* button look (the variations that reach PauseButton) has a disabled plate, own or
-## from its base, and its own dimmed font and icon colours: no pause button falls back to
-## Godot's grey plate when MenuFlow's start (P442) switches it off.
+## from its base, and its own font and icon colours for it: no pause button falls back to
+## Godot's grey plate when MenuFlow's start (P442) switches it off. The disabled word keeps at
+## least 3:1 (WCAG relative luminance) over the plate's colour over the pause scrim (over black).
 func test_every_pause_button_look_defines_its_disabled_plate_and_colours() -> void:
 	var theme: Theme = load(THEME_PATH) as Theme
+	var scrim: Color = (theme.get_stylebox(&"panel", &"Scrim") as StyleBoxFlat).bg_color
+	var ground: Color = Color.BLACK.blend(scrim)
 	var checked: int = 0
 	for look: StringName in theme.get_type_list():
 		if not look.begins_with("Pause") or not _reaches(theme, look, &"PauseButton"):
 			continue
 		checked += 1
-		assert_bool(_has_plate(theme, look)).override_failure_message(str(look)).is_true()
+		var plate: StyleBox = _plate(theme, look)
+		assert_object(plate).override_failure_message(str(look)).is_instanceof(StyleBoxFlat)
 		for color: StringName in [&"font_disabled_color", &"icon_disabled_color"]:
 			(
 				assert_bool(theme.has_color(color, look))
 				. override_failure_message("%s %s" % [look, color])
 				. is_true()
 			)
-	assert_int(checked).is_equal(7)
+		var back: Color = ground.blend((plate as StyleBoxFlat).bg_color)
+		var word: Color = back.blend(theme.get_color(&"font_disabled_color", look))
+		(
+			assert_float(_contrast(word, back))
+			. override_failure_message("%s disabled word over its plate" % look)
+			. is_greater_equal(3.0)
+		)
+	assert_int(checked).is_equal(8)
+
+
+## WCAG 2 contrast ratio of two opaque colours.
+func _contrast(a: Color, b: Color) -> float:
+	var high: float = maxf(_luminance(a), _luminance(b))
+	var low: float = minf(_luminance(a), _luminance(b))
+	return (high + 0.05) / (low + 0.05)
+
+
+func _luminance(c: Color) -> float:
+	var channels: Array[float] = []
+	for value: float in [c.r, c.g, c.b]:
+		channels.append(value / 12.92 if value <= 0.03928 else pow((value + 0.055) / 1.055, 2.4))
+	return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
 
 
 func _reaches(theme: Theme, look: StringName, target: StringName) -> bool:
@@ -723,14 +746,16 @@ func _reaches(theme: Theme, look: StringName, target: StringName) -> bool:
 	return false
 
 
-func _has_plate(theme: Theme, look: StringName) -> bool:
+func _plate(theme: Theme, look: StringName) -> StyleBox:
 	while look != &"":
 		if theme.has_stylebox(&"disabled", look):
-			return true
+			return theme.get_stylebox(&"disabled", look)
 		look = theme.get_type_variation_base(look)
-	return false
+	return null
 
 
+## The project theme stays unset: it would restyle the developer scenes, which keep their looks.
+## The HUD roots carry the theme instead (tests/ui/test_ui_theme.gd).
 func test_the_project_sets_no_theme_and_the_hud_theme_is_a_theme_resource() -> void:
 	assert_str(str(ProjectSettings.get_setting("gui/theme/custom", ""))).is_empty()
 	assert_str(str(ProjectSettings.get_setting("gui/theme/custom_font", ""))).is_empty()

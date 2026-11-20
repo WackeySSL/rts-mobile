@@ -47,7 +47,7 @@
 ; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
 ; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, DeployBackdrop, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
-; PausePrimaryFossil, PauseDanger, PauseChip, PauseChipFossil, PauseChipOff, the ad banner band's AdCaption, and the menu screens' MenuTitle, SideNameRenew, SideNameFossil, MenuSideCard (Renew, Fossil), MenuSlider (Fossil), MenuToggleRow, MenuToggle (Fossil, Off), MenuTab, MenuTabOn, MenuMapCard (On, Locked), MenuRankBadge, MenuRankLabel and MenuXpBar; P519) are set by
+; PausePrimaryFossil, PauseDanger, PauseStarting, PauseChip, PauseChipFossil, PauseChipOff, the ad banner band's AdCaption, and the menu screens' MenuTitle, SideNameRenew, SideNameFossil, MenuSideCard (Renew, Fossil), MenuSlider (Fossil), MenuToggleRow, MenuToggle (Fossil, Off), MenuTab, MenuTabOn, MenuMapCard (On, Locked), MenuRankBadge, MenuRankLabel and MenuXpBar; P519) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The tabs of the build sidebar get their tints from the icon colours of SidebarTab; the glyphs of
@@ -517,12 +517,12 @@ content_margin_left = 16.0
 content_margin_top = 0.0
 content_margin_right = 16.0
 content_margin_bottom = 0.0
-bg_color = Color(0.12156863, 0.65098039, 0.78431373, 0.4)
+bg_color = Color(0.07058824, 0.09411765, 0.11372549, 0.5)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.12156863, 0.65098039, 0.78431373, 0.5)
+border_color = Color(0.38431373, 0.83921569, 0.93333333, 0.6)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -533,12 +533,12 @@ content_margin_left = 16.0
 content_margin_top = 0.0
 content_margin_right = 16.0
 content_margin_bottom = 0.0
-bg_color = Color(0.87843137, 0.4627451, 0.15686275, 0.4)
+bg_color = Color(0.07058824, 0.09411765, 0.11372549, 0.5)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.87843137, 0.4627451, 0.15686275, 0.5)
+border_color = Color(1, 0.63529412, 0.36078431, 0.6)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -1133,6 +1133,10 @@ PauseButton/styles/hover = SubResource("StyleBoxFlat_pause_plate")
 PauseButton/styles/hover_pressed = SubResource("StyleBoxFlat_pause_plate_down")
 PauseButton/styles/normal = SubResource("StyleBoxFlat_pause_plate")
 PauseButton/styles/pressed = SubResource("StyleBoxFlat_pause_plate_down")
+PauseStarting/base_type = &"PauseButton"
+PauseStarting/colors/font_disabled_color = Color(1, 1, 1, 1)
+PauseStarting/colors/icon_disabled_color = Color(1, 1, 1, 1)
+PauseStarting/styles/disabled = SubResource("StyleBoxFlat_pause_plate")
 PausePrimary/base_type = &"PauseButton"
 PausePrimary/colors/font_color = Color(0.01960784, 0.1254902, 0.16470588, 1)
 PausePrimary/colors/font_focus_color = Color(0.01960784, 0.1254902, 0.16470588, 1)
@@ -1144,8 +1148,8 @@ PausePrimary/colors/icon_hover_color = Color(0.01960784, 0.1254902, 0.16470588, 
 PausePrimary/colors/icon_hover_pressed_color = Color(0.01960784, 0.1254902, 0.16470588, 1)
 PausePrimary/colors/icon_normal_color = Color(0.01960784, 0.1254902, 0.16470588, 1)
 PausePrimary/colors/icon_pressed_color = Color(0.01960784, 0.1254902, 0.16470588, 1)
-PausePrimary/colors/font_disabled_color = Color(0.01960784, 0.1254902, 0.16470588, 0.6)
-PausePrimary/colors/icon_disabled_color = Color(0.01960784, 0.1254902, 0.16470588, 0.6)
+PausePrimary/colors/font_disabled_color = Color(0.38431373, 0.83921569, 0.93333333, 0.6)
+PausePrimary/colors/icon_disabled_color = Color(0.38431373, 0.83921569, 0.93333333, 0.6)
 PausePrimary/styles/disabled = SubResource("StyleBoxFlat_pause_primary_disabled")
 PausePrimary/styles/hover = SubResource("StyleBoxFlat_pause_primary")
 PausePrimary/styles/hover_pressed = SubResource("StyleBoxFlat_pause_primary_down")
@@ -1162,8 +1166,8 @@ PausePrimaryFossil/colors/icon_hover_color = Color(0.16470588, 0.07843137, 0.019
 PausePrimaryFossil/colors/icon_hover_pressed_color = Color(0.16470588, 0.07843137, 0.01960784, 1)
 PausePrimaryFossil/colors/icon_normal_color = Color(0.16470588, 0.07843137, 0.01960784, 1)
 PausePrimaryFossil/colors/icon_pressed_color = Color(0.16470588, 0.07843137, 0.01960784, 1)
-PausePrimaryFossil/colors/font_disabled_color = Color(0.16470588, 0.07843137, 0.01960784, 0.6)
-PausePrimaryFossil/colors/icon_disabled_color = Color(0.16470588, 0.07843137, 0.01960784, 0.6)
+PausePrimaryFossil/colors/font_disabled_color = Color(1, 0.63529412, 0.36078431, 0.6)
+PausePrimaryFossil/colors/icon_disabled_color = Color(1, 0.63529412, 0.36078431, 0.6)
 PausePrimaryFossil/styles/disabled = SubResource("StyleBoxFlat_pause_primary_fossil_disabled")
 PausePrimaryFossil/styles/hover = SubResource("StyleBoxFlat_pause_primary_fossil")
 PausePrimaryFossil/styles/hover_pressed = SubResource("StyleBoxFlat_pause_primary_fossil_down")
@@ -1180,8 +1184,8 @@ PauseDanger/colors/icon_hover_color = Color(1, 0.35294118, 0.23529412, 1)
 PauseDanger/colors/icon_hover_pressed_color = Color(1, 0.35294118, 0.23529412, 1)
 PauseDanger/colors/icon_normal_color = Color(1, 0.35294118, 0.23529412, 1)
 PauseDanger/colors/icon_pressed_color = Color(1, 0.35294118, 0.23529412, 1)
-PauseDanger/colors/font_disabled_color = Color(1, 0.35294118, 0.23529412, 0.6)
-PauseDanger/colors/icon_disabled_color = Color(1, 0.35294118, 0.23529412, 0.6)
+PauseDanger/colors/font_disabled_color = Color(1, 0.35294118, 0.23529412, 0.75)
+PauseDanger/colors/icon_disabled_color = Color(1, 0.35294118, 0.23529412, 0.75)
 PauseChip/base_type = &"PauseButton"
 PauseChip/font_sizes/font_size = 18
 PauseChip/colors/font_color = Color(0.38431373, 0.83921569, 0.93333333, 1)

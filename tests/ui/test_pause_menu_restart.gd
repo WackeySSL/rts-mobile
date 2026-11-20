@@ -103,7 +103,9 @@ func _confirm_restart() -> void:
 	_button(&"RestartButton").pressed.emit()
 	for dialog: Node in _menu.find_children("*", "ConfirmDialog", true, false):
 		if (dialog as ConfirmDialog).visible:
-			dialog.find_child("YesButton", true, false).pressed.emit()
+			var yes: Button = dialog.find_child("YesButton", true, false) as Button
+			yes.grab_focus()  # As a tap would: the focus is on the question, not on Resume.
+			yes.pressed.emit()
 			return
 
 
@@ -128,7 +130,9 @@ func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> voi
 	assert_str(_button(&"RestartButton").text).is_equal("STARTING…")
 	for other: StringName in OTHERS:
 		assert_bool(_button(other).disabled).is_true()
-	assert_bool(_button(&"RestartButton").disabled).is_false()  # Keeps the full-contrast word.
+	# Disabled (no click, no pressed plate), with the look that keeps the word at full contrast.
+	assert_bool(_button(&"RestartButton").disabled).is_true()
+	assert_str(_button(&"RestartButton").theme_type_variation).is_equal("PauseStarting")
 	_menu._on_back()  # Android Back: swallowed, the menu stays open.
 	_button(&"RestartButton").pressed.emit()  # A second Restart: no question opens.
 	_menu._restart()  # Nor does a second confirmed restart reach the flow.
@@ -140,6 +144,8 @@ func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> voi
 	flow.released.emit()
 	await await_idle_frame()
 	assert_str(_button(&"RestartButton").text).is_equal("RESTART")
+	assert_str(_button(&"RestartButton").theme_type_variation).is_equal("PauseButton")
+	assert_bool(_button(&"RestartButton").disabled).is_false()
 	for other: StringName in OTHERS:
 		var expected: bool = settings_off if other == &"SettingsButton" else false
 		assert_bool(_button(other).disabled).override_failure_message(str(other)).is_equal(expected)
@@ -147,6 +153,8 @@ func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> voi
 
 func test_nothing_moves_while_restart_reads_starting_at_the_six_sizes() -> void:
 	await _gated_flow()
+	var gaps_checked: int = 0
+	var portrait_gaps_checked: int = 0
 	for size: Vector2i in ScreenSizes.ALL:
 		get_window().size = size
 		for _i: int in 5:
@@ -165,10 +173,15 @@ func test_nothing_moves_while_restart_reads_starting_at_the_six_sizes() -> void:
 			assert_float(gap).override_failure_message(label).is_greater_equal(
 				UiScale.dp(16.0) - TOLERANCE_PX
 			)
+			gaps_checked += 1
+			portrait_gaps_checked += 1 if size.y > size.x else 0
 		_menu._set_starting(false)
 		for _i: int in 2:
 			await await_idle_frame()
 		assert_array(_rects()).override_failure_message(label).is_equal(before)
+	# The banner stands upright only: the gap check must have run on a portrait size at least.
+	assert_int(portrait_gaps_checked).is_greater_equal(1)
+	assert_int(gaps_checked).is_equal(portrait_gaps_checked)
 
 
 ## Column, Restart button and foot band; an empty rect stands for no band.

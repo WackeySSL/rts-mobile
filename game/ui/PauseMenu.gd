@@ -52,6 +52,7 @@ const TIGHT_DP: float = 8.0  ## The gap between buttons and between the card's r
 const BUTTON_GAP_DP: float = 12.0  ## The glyph's gap to the word.
 const PLAIN: StringName = &"PauseButton"
 const DANGER: StringName = &"PauseDanger"
+const STARTING_LOOK: StringName = &"PauseStarting"  ## Restart while the match is prepared.
 const PRIMARY_LOOK: StringName = &"PausePrimary"  ## At build; `_show_side` swaps in the side's.
 const CHIP_LOOK: StringName = &"PauseChip"
 const CHIP_OFF: StringName = &"PauseChipOff"
@@ -684,23 +685,24 @@ func _restart() -> void:
 	)
 
 
-## While MenuFlow prepares the new match (it may wait for a late ad to close) the other buttons are
-## off and Restart reads "STARTING…" (the result screen's Play again; `MapSelectText.STARTING`).
-## Restart stays enabled so its "STARTING…" keeps the full-contrast word (a disabled look would
-## dim it); `_restart_dialog_open` and `_restart` ignore it meanwhile. The buttons come back as
-## they were. Back is swallowed too (`_on_back`).
+## While MenuFlow prepares the new match (it may wait for a late ad to close) every button is off
+## and Restart reads "STARTING…" (the result screen's Play again; `MapSelectText.STARTING`). Its
+## `PauseStarting` look keeps the normal plate and the full-contrast word while disabled, so a tap
+## gives no click, no pressed plate and no focus. The buttons come back as they were, and Settings
+## is read again (a route may have been registered meanwhile). Back is swallowed (`_on_back`).
 func _set_starting(starting: bool) -> void:
 	_starting = starting
 	_restart_button.text = tr(MapSelectText.STARTING) if starting else "RESTART"
+	_restart_button.theme_type_variation = STARTING_LOOK if starting else PLAIN
 	if starting:
 		for button: Button in _glyphed:
-			if button != _restart_button:
-				_enabled_before[button] = button.disabled
-				button.disabled = true
+			_enabled_before[button] = button.disabled
+			button.disabled = true
 		return
 	for button: Button in _enabled_before:
 		button.disabled = _enabled_before[button]
 	_enabled_before.clear()
+	_show_exit()
 
 
 ## Resumes first, so the tick that carries the Command runs.
