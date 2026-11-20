@@ -30,6 +30,8 @@ var _xx_table: Translation = null
 var _locale_before: String = ""
 var _long_text: String = ""  ## Set while a longer STARTING is installed ("" in English).
 var _trimmed: int = 0  ## How many checks saw PLAY AGAIN's text wider than its button.
+var _allow_bar: bool = false  ## The short-window checks: the panel may scroll.
+var _bar_seen: int = 0  ## How many checks saw the scrollbar showing.
 var _trimmed_at: Array[Vector2i] = []  ## The window sizes of those checks.
 
 
@@ -53,6 +55,8 @@ func after_test() -> void:
 	_long_text = ""
 	_trimmed = 0
 	_trimmed_at.clear()
+	_allow_bar = false
+	_bar_seen = 0
 	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
@@ -111,7 +115,7 @@ func test_a_dp_change_keeps_the_overflow_row_inside_in_the_same_emission() -> vo
 	MatchRig.end(_main, [2])
 	_screen().settle()
 	await await_idle_frame()
-	var again: Button = _screen().find_child("PlayAgainButton", true, false)
+	var again: Button = _screen().find_child("PlayAgainButton", true, false) as Button
 	var row: Control = again.get_parent() as Control
 	again.pressed.emit()
 	await await_idle_frame()
@@ -122,13 +126,47 @@ func test_a_dp_change_keeps_the_overflow_row_inside_in_the_same_emission() -> vo
 			row.get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 		)
 		var label: String = "dp scale %s" % scale
-		var wide: float = row.get_combined_minimum_size().x
+		# The clamp's promise: the row, the plate and any scrollbar fit the inner width.
+		var scroll: ScrollContainer = _scroll_of(_screen())
+		var bar: float = 0.0
+		if scroll.get_v_scroll_bar().visible:
+			bar = scroll.get_v_scroll_bar().get_combined_minimum_size().x
+		var plate: float = (
+			_screen().panel.get_combined_minimum_size().x
+			- _screen().column.get_combined_minimum_size().x
+		)
+		var wide: float = row.get_combined_minimum_size().x + plate + bar
 		assert_bool(wide <= inner.size.x + TOLERANCE_PX).override_failure_message(label).is_true()
 	_flow.release.emit()
 	await await_idle_frame()
 	_main.free()
 	CommandQueue.clear()
 	await await_idle_frame()
+
+
+## The phone's landscape window cut to 5/6 of its height (1280x600) and the portrait window that
+## gives the same dp, with plain English and with the overflow text. Whether the panel scrolls
+## there is asserted explicitly; either way the row stays inside the inner rect (the check also
+## has the 48 dp heights and the trimmed-or-whole text), English PLAY AGAIN is whole.
+func test_short_windows_keep_the_row_inside_whether_or_not_the_panel_scrolls() -> void:
+	_allow_bar = true
+	var land: Vector2i = ScreenSizes.LANDSCAPE[0]
+	var port: Vector2i = ScreenSizes.PORTRAIT[0]
+	var shorts: Array[Vector2i] = [
+		Vector2i(land.x, land.y * 5 / 6), Vector2i(port.x, port.x * 3 / 2)
+	]
+	for size: Vector2i in shorts:
+		await _turn_while_starting(size, size, false)
+	assert_int(_trimmed).is_equal(0)  # English, whole at the idle text.
+	assert_int(_bar_seen).is_equal(0)  # It does not scroll at 1280x600 or the portrait twin.
+	_install_xx(OVERFLOW_STARTING)
+	for size: Vector2i in shorts:
+		await _turn_while_starting(size, size, false)
+	assert_int(_bar_seen).is_equal(0)
+	# A quarter of the height (a stress size): it must scroll; the row stays inside in width.
+	var tiny: Vector2i = Vector2i(land.x, land.y / 4)
+	await _turn_while_starting(tiny, tiny, false)
+	assert_bool(_bar_seen > 0).is_true()
 
 
 ## The six sizes, then the notch profile both ways.
@@ -162,8 +200,8 @@ func _turn_while_starting(first: Vector2i, turned: Vector2i, inset: bool) -> voi
 	MatchRig.end(_main, [2])
 	_screen().settle()
 	await await_idle_frame()
-	var again: Button = _screen().find_child("PlayAgainButton", true, false)
-	var back: Button = _screen().find_child("BackButton", true, false)
+	var again: Button = _screen().find_child("PlayAgainButton", true, false) as Button
+	var back: Button = _screen().find_child("BackButton", true, false) as Button
 	var row: Control = again.get_parent() as Control
 	_set_window(turned, inset)
 	await await_idle_frame()
@@ -224,8 +262,8 @@ func test_without_a_dp_min_size_pressing_play_again_still_disables_both_buttons(
 	MatchRig.end(_main, [2])
 	_screen().settle()
 	await await_idle_frame()
-	var again: Button = _screen().find_child("PlayAgainButton", true, false)
-	var back: Button = _screen().find_child("BackButton", true, false)
+	var again: Button = _screen().find_child("PlayAgainButton", true, false) as Button
+	var back: Button = _screen().find_child("BackButton", true, false) as Button
 	# Guards the `_pin_again()` call in `_ready`: no `applied` ever fires here.
 	assert_bool(again.custom_minimum_size.x >= UiScale.dp(ModalFrame.BUTTON_DP.x)).is_true()
 	again.pressed.emit()
@@ -269,15 +307,23 @@ func _assert_row_fits(again: Button, row: Control, label: String) -> void:
 	var inner: Rect2 = SafeAreaMargin.rect_inside(
 		row.get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
-	(
-		assert_bool(inner.grow(TOLERANCE_PX).encloses(row.get_global_rect()))
-		. override_failure_message(label)
-		. is_true()
-	)
-	var scroll: ScrollContainer = _screen().find_children("*", "ScrollContainer", true, false)[0]
+	var rect: Rect2 = row.get_global_rect()
+	var held: Rect2 = inner.grow(TOLERANCE_PX)
+	if _scroll_of(_screen()).get_v_scroll_bar().visible:  # Scrolled: only the width is held.
+		held = Rect2(held.position.x, rect.position.y, held.size.x, rect.size.y)
+	var inside: bool = held.encloses(rect)
+	assert_bool(inside).override_failure_message(label).is_true()
+	var scroll: ScrollContainer = _scroll_of(_screen())
 	# The panel never scrolls here (its content is shorter than the shortest size), so `room` has no
 	# scrollbar to pay for; `_pin_again` still subtracts it if one ever shows.
-	assert_bool(scroll.get_v_scroll_bar().visible).override_failure_message(label).is_false()
+	var bar_shows: bool = scroll.get_v_scroll_bar().visible
+	_bar_seen += int(bar_shows)
+	if not _allow_bar:
+		assert_bool(bar_shows).override_failure_message(label).is_false()
+
+
+func _scroll_of(screen: ResultScreen) -> ScrollContainer:
+	return screen.find_children("*", "ScrollContainer", true, false)[0] as ScrollContainer
 
 
 ## The main scene with PLAY AGAIN's `DpMinSize` left out.

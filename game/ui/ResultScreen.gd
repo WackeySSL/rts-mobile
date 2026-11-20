@@ -55,6 +55,7 @@ var _time: Label
 var _grid: GridContainer
 var _again: Button
 var _back_button: Button
+var _scroll: ScrollContainer  ## The panel's scroll; its bar takes width while it shows.
 
 
 func _ready() -> void:
@@ -104,6 +105,12 @@ func _ready() -> void:
 		push_warning("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
+	var node: Node = panel
+	while node != null and not node is ScrollContainer:
+		node = node.get_parent()
+	_scroll = node as ScrollContainer
+	if _scroll != null:  # A bar that shows after the pin takes width: re-pin (a no-op when equal).
+		_scroll.get_v_scroll_bar().visibility_changed.connect(_pin_again)
 	_pin_again()  # After BACK: the pin leaves its width room.
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
 	progression = progression if progression != null else (Progression as ProgressionScript)
@@ -361,13 +368,17 @@ func _again_text() -> String:
 
 ## Pins the minimum width to the wider of the idle and the STARTING text (and the dp floor) with
 ## the current theme and scale, but never wider than the row can be: the inner safe width less the
-## plate, the vertical scrollbar while it shows, BACK's minimum and the gap. A longer text is
-## trimmed with "…" instead of overflowing. BACK's floor is set here (what its own `DpMinSize`
-## sets next, from the same dp), because PLAY AGAIN's `applied` fires before BACK's reset on a dp
-## change; that is synchronous, so it needs no deferred call and nothing shows a frame late.
+## plate, the vertical scrollbar while it shows (its `visibility_changed` re-pins, since the flag
+## is stale inside one emission), BACK's minimum and the gap. A longer text is
+## trimmed with "…" instead of overflowing. BACK's floor is set here (its own `DpMinSize`'s
+## `min_dp.x`, or `BUTTON_DP` without one, at the same dp as what it sets next), because PLAY
+## AGAIN's `applied` fires before BACK's reset on a dp change; that is synchronous, so it needs no
+## deferred call and nothing shows a frame late.
 ## Without a `DpMinSize` (the error state) the floor is `BUTTON_DP` itself and nothing re-pins on a
 ## turn; with one, it resets the minimum on a turn and emits `applied`, which re-pins it.
 func _pin_again() -> void:
+	if not is_inside_tree():  # The bar's `visibility_changed` also fires as the scene leaves.
+		return
 	var shown: String = _again.text
 	var floor_px: float = UiScale.dp(BUTTON_DP.x)
 	var wide: float = floor_px
@@ -382,11 +393,15 @@ func _pin_again() -> void:
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
 	var plate: float = panel.get_combined_minimum_size().x - column.get_combined_minimum_size().x
-	var bar: VScrollBar = (panel.get_parent().get_parent() as ScrollContainer).get_v_scroll_bar()
 	var room: float = inner.size.x - plate
-	if bar.visible:
+	var bar: VScrollBar = _scroll.get_v_scroll_bar() if _scroll != null else null
+	if bar != null and bar.visible:
 		room -= bar.get_combined_minimum_size().x
-	_back_button.custom_minimum_size.x = floor_px
+	var back_floor: Array[Node] = _back_button.find_children("*", "DpMinSize", false, false)
+	var back_dp: float = (
+		(back_floor[0] as DpMinSize).min_dp.x if back_floor.size() == 1 else BUTTON_DP.x
+	)
+	_back_button.custom_minimum_size.x = UiScale.dp(back_dp)
 	room -= _back_button.get_combined_minimum_size().x + row.get_theme_constant("separation")
 	_again.custom_minimum_size.x = clampf(wide, floor_px, maxf(floor_px, room))
 	_again.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
