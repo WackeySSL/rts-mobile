@@ -94,7 +94,9 @@ func _input(event: InputEvent) -> void:
 	var click: bool = event is InputEventMouseButton and (event as InputEventMouseButton).pressed
 	if touch or click:
 		skip()
-		get_viewport().set_input_as_handled()
+		# While consent runs the tap goes on, so a consent form drawn above the intro gets it.
+		if _wait.done:
+			get_viewport().set_input_as_handled()
 
 
 func _notification(what: int) -> void:
