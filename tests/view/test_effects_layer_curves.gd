@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 const Rig: GDScript = preload("res://tests/view/support/effects_rig.gd")
 const ATLAS_PATH: String = "res://assets/art/svg/fx/effects_atlas.svg"
 const ALPHA_TOL: float = 0.0001
@@ -33,6 +34,13 @@ var _layer: EffectsLayer
 
 
 func before() -> void:
+	(
+		assert_array(UiStateGuard.leaks(get_tree()))
+		. override_failure_message(
+			"an earlier suite leaked UI state (likely a tests/view/intro suite, window or UiScale)"
+		)
+		. is_empty()
+	)
 	_window_size_before = get_window().size
 
 
