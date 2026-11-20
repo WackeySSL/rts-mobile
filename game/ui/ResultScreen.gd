@@ -102,9 +102,9 @@ func _ready() -> void:
 		(floors[0] as DpMinSize).applied.connect(_pin_again)
 	else:
 		push_error("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
-	_pin_again()
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
+	_pin_again()  # After BACK: the pin leaves its width room.
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
 	progression = progression if progression != null else (Progression as ProgressionScript)
 	audio = audio if audio != null else (AudioService as AudioServiceScript)
@@ -360,14 +360,26 @@ func _again_text() -> String:
 
 
 ## Pins the minimum width to the wider of the idle and the STARTING text (and the dp floor) with
-## the current theme and scale. Without a `DpMinSize` the floor is `BUTTON_DP` itself. `DpMinSize`
-## resets the minimum on a turn and then emits `applied`, which re-pins it for the new layout.
+## the current theme and scale, but never wider than the row can be: the inner safe width less the
+## plate, BACK's minimum and the gap. A longer text is trimmed with "…" instead of overflowing.
+## Without a `DpMinSize` (the error state) the floor is `BUTTON_DP` itself and nothing re-pins on a
+## turn; with one, it resets the minimum on a turn and emits `applied`, which re-pins it.
 func _pin_again() -> void:
 	var shown: String = _again.text
-	var wide: float = 0.0
-	_again.custom_minimum_size.x = UiScale.dp(BUTTON_DP.x)
+	var floor_px: float = UiScale.dp(BUTTON_DP.x)
+	var wide: float = floor_px
+	_again.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING  # Trimmed text has no minimum.
+	_again.custom_minimum_size.x = floor_px
 	for text: String in [_again_text(), tr(MapSelectText.STARTING)]:
 		_again.text = text
 		wide = maxf(wide, _again.get_combined_minimum_size().x)
 	_again.text = shown
-	_again.custom_minimum_size.x = wide
+	var row: Control = _again.get_parent() as Control
+	var inner: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	var plate: float = panel.get_combined_minimum_size().x - column.get_combined_minimum_size().x
+	var room: float = inner.size.x - plate
+	room -= _back_button.get_combined_minimum_size().x + row.get_theme_constant("separation")
+	_again.custom_minimum_size.x = clampf(wide, floor_px, maxf(floor_px, room))
+	_again.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

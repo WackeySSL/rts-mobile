@@ -16,6 +16,8 @@ const MIN_DP: float = 48.0
 const TOLERANCE_PX: float = 0.5
 const TABLE: PackedInt32Array = [0, 100, 250, 500]
 const LONG_STARTING: String = "STARTING NEXT MATCH…"
+## Too long for the phone's portrait row beside BACK: the pin is clamped and the text trimmed.
+const OVERFLOW_STARTING: String = "STARTING THE NEXT MATCH, PLEASE WAIT…"
 
 var _window_size_before: Vector2i
 var _main: Node
@@ -24,6 +26,8 @@ var _progression: FakeProgression
 var _audio: FakeAudio
 var _xx_table: Translation = null
 var _locale_before: String = ""
+var _long_text: String = ""  ## Set while a longer STARTING is installed ("" in English).
+var _trimmed: int = 0  ## How many checks saw PLAY AGAIN's text wider than its button.
 
 
 func before() -> void:
@@ -43,6 +47,8 @@ func after_test() -> void:
 		TranslationServer.set_locale(_locale_before)
 		TranslationServer.remove_translation(_xx_table)
 		_xx_table = null
+	_long_text = ""
+	_trimmed = 0
 	MenuRig.end()
 	UiScale.clear_override()
 	CommandQueue.clear()
@@ -62,27 +68,51 @@ func test_a_turn_while_starting_keeps_both_rects_and_the_text_unclipped() -> voi
 	var sizes: Array[Vector2i] = ScreenSizes.ALL
 	for i: int in sizes.size():
 		await _turn_while_starting(sizes[i], sizes[(i + 3) % sizes.size()], false)
+	assert_int(_trimmed).is_equal(0)  # English: no ellipsis at any size.
 
 
 ## The same with the design's notch insets (a simulated safe area), phone sizes only.
 func test_a_turn_while_starting_inside_a_safe_area_inset() -> void:
 	await _turn_while_starting(ScreenSizes.LANDSCAPE[0], ScreenSizes.PORTRAIT[0], true)
 	await _turn_while_starting(ScreenSizes.PORTRAIT[0], ScreenSizes.LANDSCAPE[0], true)
+	assert_int(_trimmed).is_equal(0)
 
 
-## A much longer STARTING than the idle label: the pin is the wider of the two, so the rects are
-## the idle ones and the text stays whole, at the six sizes and in the notch profile.
+## A longer STARTING than the idle label: the pin is the wider of the two (or the room), so the
+## rects are the idle ones, at the six sizes and in the notch profile.
 func test_a_long_starting_text_keeps_the_rects_and_is_not_clipped() -> void:
-	_xx_table = Translation.new()
-	_locale_before = TranslationServer.get_locale()  # Before `add_translation` changes anything.
-	_xx_table.locale = "xx"
-	_xx_table.add_message(MapSelectText.STARTING, LONG_STARTING)
-	TranslationServer.add_translation(_xx_table)
-	TranslationServer.set_locale("xx")
+	_install_xx(LONG_STARTING)
+	await _walk_sizes()
+
+
+## A STARTING too long for the portrait phone's row: the pin stops at the room beside BACK, the
+## text is trimmed with an ellipsis, and the row stays inside the safe area with the rects of idle.
+func test_an_overflowing_starting_text_is_trimmed_and_the_row_stays_inside() -> void:
+	_install_xx(OVERFLOW_STARTING)
+	await _walk_sizes()
+	assert_bool(_trimmed > 0).is_true()
+
+
+## The six sizes, then the notch profile both ways.
+func _walk_sizes() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _turn_while_starting(size, size, false)
 	await _turn_while_starting(ScreenSizes.LANDSCAPE[0], ScreenSizes.PORTRAIT[0], true)
 	await _turn_while_starting(ScreenSizes.PORTRAIT[0], ScreenSizes.LANDSCAPE[0], true)
+
+
+## Makes STARTING read `text` through an "xx" table, and fails at once when it does not (so the
+## long-text checks cannot pass by reading the English text on both sides).
+func _install_xx(text: String) -> void:
+	_xx_table = Translation.new()
+	_locale_before = TranslationServer.get_locale()  # Before `add_translation` changes anything.
+	_xx_table.locale = "xx"
+	_xx_table.add_message(MapSelectText.STARTING, text)
+	TranslationServer.add_translation(_xx_table)
+	TranslationServer.set_locale("xx")
+	assert_str(TranslationServer.get_locale()).is_equal("xx")
+	assert_str(tr(MapSelectText.STARTING)).is_equal(text)
+	_long_text = text
 
 
 ## Opens at `first`, turns to `turned` and records the idle rects, presses PLAY AGAIN, turns
@@ -115,8 +145,8 @@ func _turn_while_starting(first: Vector2i, turned: Vector2i, inset: bool) -> voi
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_str(again.text).is_equal(tr(MapSelectText.STARTING))
-	if TranslationServer.get_locale() == "xx":  # The table matched: the text really is longer.
-		assert_str(again.text).override_failure_message(label).is_equal(LONG_STARTING)
+	if not _long_text.is_empty():  # `_install_xx` proved the table: the text really is longer.
+		assert_str(again.text).override_failure_message(label).is_equal(_long_text)
 		assert_bool(_text_width(again, again.text) > _text_width(again, idle_text)).is_true()
 	assert_object(again.get_global_rect()).override_failure_message(label).is_equal(idle_again)
 	assert_object(back.get_global_rect()).override_failure_message(label).is_equal(idle_back)
@@ -129,15 +159,18 @@ func _turn_while_starting(first: Vector2i, turned: Vector2i, inset: bool) -> voi
 	await await_idle_frame()
 
 
-## The button's own minimum width for `text`, without the pin.
+## The button's own minimum width for `text`: no pin, no trimming.
 func _text_width(button: Button, text: String) -> float:
 	var shown: String = button.text
 	var pinned: float = button.custom_minimum_size.x
+	var overrun: TextServer.OverrunBehavior = button.text_overrun_behavior
 	button.text = text
 	button.custom_minimum_size.x = 0.0
+	button.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	var wide: float = button.get_combined_minimum_size().x
 	button.text = shown
 	button.custom_minimum_size.x = pinned
+	button.text_overrun_behavior = overrun
 	return wide
 
 
@@ -149,6 +182,7 @@ func test_without_a_dp_min_size_pressing_play_again_still_disables_both_buttons(
 	await await_idle_frame()
 	var again: Button = _screen().find_child("PlayAgainButton", true, false)
 	var back: Button = _screen().find_child("BackButton", true, false)
+	# Guards the `_pin_again()` call in `_ready`: no `applied` ever fires here.
 	assert_bool(again.custom_minimum_size.x >= UiScale.dp(ModalFrame.BUTTON_DP.x)).is_true()
 	again.pressed.emit()
 	await await_idle_frame()
@@ -172,13 +206,18 @@ func _set_window(size: Vector2i, inset: bool) -> void:
 	get_window().size = size
 
 
-## The label whole, the 48 dp height kept, the row at least its own minimum and inside the safe
-## rect.
+## The label whole or, when wider than the button, trimmed with an ellipsis; the 48 dp heights kept
+## (BACK at its minimum width too); the row at least its own minimum and inside the safe rect.
 func _assert_row_fits(again: Button, row: Control, label: String) -> void:
-	var clipped: bool = again.get_combined_minimum_size().x > again.size.x + TOLERANCE_PX
-	assert_bool(clipped).override_failure_message(label).is_false()
+	var back: Button = row.get_child(1) as Button
+	assert_int(again.text_overrun_behavior).is_equal(TextServer.OVERRUN_TRIM_ELLIPSIS)
+	if _text_width(again, again.text) > again.size.x + TOLERANCE_PX:
+		_trimmed += 1
 	var floor_px: float = UiScale.dp(MIN_DP) - TOLERANCE_PX
 	assert_bool(again.size.y >= floor_px).override_failure_message(label).is_true()
+	assert_bool(back.size.y >= floor_px).override_failure_message(label).is_true()
+	var back_wide: bool = back.get_combined_minimum_size().x <= back.size.x + TOLERANCE_PX
+	assert_bool(back_wide).override_failure_message(label).is_true()
 	var row_wide: bool = row.get_combined_minimum_size().x <= row.size.x + TOLERANCE_PX
 	assert_bool(row_wide).override_failure_message(label).is_true()
 	var safe: Rect2 = UiScale.safe_rect_base().grow(TOLERANCE_PX)
@@ -192,8 +231,13 @@ func _open_floorless() -> void:
 
 func _swap_screen(main: Node) -> void:
 	var screen: Control = main.get_node("Hud/ResultScreen")
-	screen.set_script(NoFloorScreen)  # A new script drops the scene's `runner`.
-	screen.set("runner", main.get_node("MatchRunner"))
+	var kept: Dictionary[String, Variant] = {}  # A new script drops the scene's script variables.
+	for info: Dictionary in screen.get_property_list():
+		if (info["usage"] as int) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			kept[info["name"] as String] = screen.get(info["name"] as String)
+	screen.set_script(NoFloorScreen)
+	for key: String in kept:
+		screen.set(key, kept[key])
 
 
 ## A main scene whose screen takes the fakes: the player at `total` XP after `gained`, owned by the

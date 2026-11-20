@@ -9,6 +9,7 @@ const SIDE: StringName = &"MAPSEL_SIDE"
 const LEVEL: StringName = &"MAPSEL_LEVEL"
 const START: StringName = &"MAPSEL_START"
 ## Shared with the result screen's Play again: shown while the next match is prepared.
+## Translator note: keep it about as short as PLAY AGAIN; a longer text is trimmed with "…".
 const STARTING: StringName = &"MAPSEL_STARTING"
 const LOCKED: StringName = &"MAPSEL_LOCKED"
 const CHOSEN: StringName = &"MAPSEL_CHOSEN"
