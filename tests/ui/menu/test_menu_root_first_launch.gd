@@ -108,6 +108,30 @@ func test_a_pending_screen_means_no_first_launch_start() -> void:
 	assert_int(_started.size()).is_equal(0)
 
 
+## The scene the intro hands over to (`main_menu.tscn`, its own MenuRoot with the switch set) offers
+## Basics on a fresh save, at the hand-over: the offer a menu test with no play history would start
+## for real, here counted by a stub that loads no match.
+func test_the_real_main_menu_scene_offers_basics_at_the_hand_over_on_a_fresh_save() -> void:
+	var profile: UiMetrics = _profile
+	UiScale.set_override(profile)
+	get_window().size = profile.window_size
+	await await_idle_frame()
+	_menu = (load("res://scenes/menu/main_menu.tscn") as PackedScene).instantiate()
+	var root: MenuRoot = _menu.get_node("MenuRoot") as MenuRoot
+	assert_bool(root.offer_first_launch).is_true()
+	root.start_lesson = func(id: StringName) -> Error:
+		_started.append(id)
+		return OK
+	(_menu.get_node("MenuStack") as MenuStack).back_enabled = false  # The intro's doing.
+	add_child(_menu)
+	await await_idle_frame()
+	assert_int(_started.size()).is_equal(0)
+	await _hand_over()
+	assert_array(_started).is_equal([&"basics"])
+	_close()
+	MenuRoutes.shared.clear()  # The menu registered the app's routes in the shared table.
+
+
 func _hand_over() -> void:
 	(_menu.get_node("MenuStack") as MenuStack).back_enabled = true
 	await await_idle_frame()
