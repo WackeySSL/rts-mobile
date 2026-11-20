@@ -377,7 +377,9 @@ func _again_text() -> String:
 ## Without a `DpMinSize` (the error state) the floor is `BUTTON_DP` itself and nothing re-pins on a
 ## turn; with one, it resets the minimum on a turn and emits `applied`, which re-pins it.
 func _pin_again() -> void:
-	if not is_inside_tree():  # The bar's `visibility_changed` also fires as the scene leaves.
+	# On a normal exit the bar's emission arrives while the screen is still in the tree; this only
+	# catches one during teardown, after it has left.
+	if not is_inside_tree():
 		return
 	var shown: String = _again.text
 	var floor_px: float = UiScale.dp(BUTTON_DP.x)

@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const NoFloorScreen: GDScript = preload("res://tests/ui/support/result_screen_no_floor.gd")
 const FakeFlow: GDScript = preload("res://tests/ui/support/fake_menu_flow.gd")
@@ -39,10 +40,6 @@ func before() -> void:
 	_window_size_before = get_window().size
 
 
-func after() -> void:
-	get_window().size = _window_size_before
-
-
 func before_test() -> void:
 	MenuRig.begin()
 
@@ -58,7 +55,7 @@ func after_test() -> void:
 	_allow_bar = false
 	_bar_seen = 0
 	MenuRig.end()
-	UiScale.clear_override()
+	UiStateGuard.restore(get_window(), _window_size_before)  # No test leaves its size behind.
 	CommandQueue.clear()
 	_free_fakes()
 
@@ -314,8 +311,8 @@ func _assert_row_fits(again: Button, row: Control, label: String) -> void:
 	var inside: bool = held.encloses(rect)
 	assert_bool(inside).override_failure_message(label).is_true()
 	var scroll: ScrollContainer = _scroll_of(_screen())
-	# The panel never scrolls here (its content is shorter than the shortest size), so `room` has no
-	# scrollbar to pay for; `_pin_again` still subtracts it if one ever shows.
+	# The panel scrolls only at the 1280x180 stress size, which sets `_allow_bar`; at every other size
+	# it must not, so `room` has no scrollbar to pay for there.
 	var bar_shows: bool = scroll.get_v_scroll_bar().visible
 	_bar_seen += int(bar_shows)
 	if not _allow_bar:
