@@ -10,6 +10,7 @@ const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const Sizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const Touch: GDScript = preload("res://tests/support/touch_events.gd")
+const ResultFlow: GDScript = preload("res://tests/ui/support/fake_menu_flow.gd")
 
 
 class FlowStub:
@@ -29,19 +30,6 @@ class FlowStub:
 
 	func return_to_menu(screen: StringName = &"") -> void:
 		left.append(screen)
-
-
-## A flow whose Back counts and changes no scene.
-class ResultFlow:
-	extends "res://game/ui/menu/menu_flow_service.gd"
-	var leaves: int = 0
-	var owned: MatchRunner = null
-
-	func current_runner() -> MatchRunner:
-		return owned
-
-	func leave_match(_screen: StringName = &"") -> void:
-		leaves += 1
 
 
 var _window_before: Vector2i = Vector2i.ZERO
@@ -110,8 +98,8 @@ func test_the_result_screen_button_takes_its_tap_over_the_lessons_card() -> void
 	for size: Vector2i in [Sizes.LANDSCAPE[0], Sizes.PORTRAIT[0]]:
 		await _stage(size, false)
 		var result: Control = _hud.get_node("ResultScreen")
-		var results: ResultFlow = auto_free(ResultFlow.new())
-		results.owned = _flow.runner  # The flow owns the match, so Back leaves through it.
+		var results: Node = auto_free(ResultFlow.new())
+		results.runner = _flow.runner  # The flow owns the match, so Back leaves through it.
 		add_child(results)
 		result.flow = results
 		result.call("_on_match_ended", 2)
