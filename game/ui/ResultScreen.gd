@@ -54,6 +54,7 @@ var _title: Label
 var _time: Label
 var _grid: GridContainer
 var _again: Button
+var _again_floor: DpMinSize
 var _back_button: Button
 
 
@@ -96,9 +97,12 @@ func _ready() -> void:
 	MapSelectText.register()
 	_again = add_button(row, _again_text(), _play_again)
 	_again.name = &"PlayAgainButton"
-	for child: Node in _again.get_children():
-		if child is DpMinSize:
-			(child as DpMinSize).applied.connect(_pin_again)
+	var floors: Array[Node] = _again.find_children("*", "DpMinSize", false, false)
+	if floors.size() == 1:  # Exactly one: a change to `add_button` must not drop the re-pin.
+		_again_floor = floors[0] as DpMinSize
+		_again_floor.applied.connect(_pin_again)  # After DpMinSize's reset, UiScale and theme.
+	else:
+		push_error("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
 	flow = flow if flow != null else (MenuFlow as MenuFlowScript)  # The setter connects.
@@ -343,12 +347,14 @@ func _back() -> void:
 ## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
 ## off; on the Play again path that button reads "STARTING…". It pins its minimum width to the one
 ## its idle text gives, so the row (both rects) does not move when the text changes. `DpMinSize`
-## resets the minimum on a turn and then emits `applied`, which re-pins it for the new layout.
+## resets the minimum on a turn and then emits `applied`, which re-pins it for the new layout. The
+## pin is a floor: the idle width must bound the translated STARTING, or the button grows past it
+## (unclipped, but its rect then moves).
 func _set_leaving(leaving: bool, again_path: bool) -> void:
 	_leaving = leaving
 	if again_path:
 		_again.text = tr(MapSelectText.STARTING) if leaving else _again_text()
-		_again.custom_minimum_size.x = UiScale.dp_vec(BUTTON_DP.x, 0.0).x
+		_again.custom_minimum_size.x = UiScale.dp(_again_floor.min_dp.x)
 		_pin_again()
 	_again.disabled = leaving
 	_back_button.disabled = leaving
@@ -359,7 +365,7 @@ func _again_text() -> String:
 
 
 func _pin_again() -> void:
-	if not _leaving or _again.text == _again_text():
+	if not _leaving:
 		return
 	var shown: String = _again.text
 	_again.text = _again_text()  # Measured with the idle text, which sets the idle rects.
