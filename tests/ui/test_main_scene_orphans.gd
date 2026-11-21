@@ -1,22 +1,7 @@
 extends GdUnitTestSuite
-## The main battle scene, and each HUD script that builds parts for itself, leave no orphan nodes
-## when freed without ever entering the tree (P446). A part that a script builds in code and parents
-## only in `_ready` must be freed by its owner (`DetachedParts`).
-
-const HUD_SCRIPTS: Array[String] = [
-	"res://game/ui/AttackToast.gd",
-	"res://game/ui/BuildSidebar.gd",
-	"res://game/ui/CarryControls.gd",
-	"res://game/ui/CommandBar.gd",
-	"res://game/ui/EconomyCard.gd",
-	"res://game/ui/EconomyPill.gd",
-	"res://game/ui/GhostControls.gd",
-	"res://game/ui/GroupColumn.gd",
-	"res://game/ui/Minimap.gd",
-	"res://game/ui/RadarMap.gd",
-	"res://game/ui/RevealBadge.gd",
-	"res://game/ui/StrikeControls.gd",
-]
+## The main battle scene leaves no orphan nodes when freed without ever entering the tree (P446).
+## A part that a script builds in code and parents only in `_ready` must be freed by its owner
+## (`DetachedParts`). The per-script check is in test_hud_part_ownership.gd.
 
 
 func _orphans() -> int:
@@ -45,22 +30,8 @@ func test_main_scene_entered_then_freed_leaves_no_orphans() -> void:
 	await await_idle_frame()
 	remove_child(root)
 	root.free()
-	await await_idle_frame()
+	# One idle frame is enough (a second changed nothing in three runs): it lets the frees that
+	# `_ready` and the menus queued (queue_free, deferred calls) land before the count is read.
 	await await_idle_frame()
 	var leaked: int = _orphans() - before
 	assert_int(leaked).override_failure_message("orphans leaked: %d" % leaked).is_equal(0)
-
-
-func test_each_hud_script_freed_outside_the_tree_leaves_no_orphans() -> void:
-	await await_idle_frame()
-	for path: String in HUD_SCRIPTS:
-		var script: GDScript = load(path)
-		var before: int = _orphans()
-		var node: Node = script.new()
-		node.free()
-		var leaked: int = _orphans() - before
-		(
-			assert_int(leaked)
-			. override_failure_message("%s: orphans leaked: %d" % [path, leaked])
-			. is_equal(0)
-		)
