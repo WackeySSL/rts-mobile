@@ -106,15 +106,19 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   finds mines and holds position
 
 ## Phase 5: Polish and meta
-- [ ] Main menu, map select, settings (sound, haptics, reduced effects (ADR 0027), privacy options placeholder)
-- [ ] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
+- [x] Main menu, map select, settings (sound, haptics, reduced effects (ADR 0027), privacy options placeholder)
+  (2026-11-21: P522 #508, P524 #512, P524b #527, P519 #526, P525 #541, P526 #542, P526b #556)
+- [x] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
+  (2026-11-21: P510 #495, P510b #496, P511 #497, P525 #541 (locks), P532 #529, P514 #559, P515 #570,
+  P516 #577, P531 #528 (pause on background))
 - [ ] Sound effects (CC0 or generated) and music volume
 - [ ] An interactive tutorial that teaches how to play: a lesson of about 3 minutes that starts on
   first launch, plus short drills, which together include every entry marked Teach in
   `docs/HOW_TO_PLAY.md`; all can be replayed from the menu (Michael, 2026-11-15; ADR 0044 §1)
-- [ ] "How to play" screen in the main menu and the pause menu that explains every entry in
-  `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win)
-- [ ] Licences screen in the menu that shows `Engine.get_license_text()`,
+- [x] "How to play" screen in the main menu and the pause menu that explains every entry in
+  `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win) (2026-11-21: P527 #514,
+  P530 #558, P531 #528, P528 #581; "every entry" read as every row outside "Not yet in the game")
+- [x] Licences screen in the menu that shows `Engine.get_license_text()`,
   `Engine.get_copyright_info()` and the full texts from `Engine.get_license_info()` (Play builds
   need an in-game notice), plus the LLVM libc++ licence (`docs/licenses/llvm-libc++/`) on Android,
   because Godot's Android template ships `libc++_shared.so` (Phase 2 plan, P26l), and godot-cpp's
@@ -123,9 +127,10 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   (`assets/art/fonts/*/OFL.txt`, SIL Open Font License; ADR 0025 §13, P118b; until this screen exists
   they ship beside every build in `THIRD_PARTY_LICENSES.txt` and in the pack), the notice of the
   game's own art and audio (`assets/LICENSE.md`, all rights reserved; ADR 0046), and the game's own
-  boot splash instead of Godot's default
-- [ ] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
-  (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6
+  boot splash instead of Godot's default (2026-11-21: P529 #530, P520 #506, P533 #531)
+- [x] Every menu screen (main menu, map select, settings, tutorial, How to play, Licences) works in portrait and landscape
+  (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6 (2026-11-21: P534 #571; the tutorial
+  screen in its own suite, P544 #602, its overlays P542 #576 and P543b #593; follow-up P562)
 - [x] Second and third map (Heron Fords and Curlew Crags: P550-P555c, merged by wave 26, 2026-11-19)
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes
