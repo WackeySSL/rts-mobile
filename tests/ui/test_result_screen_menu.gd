@@ -147,6 +147,41 @@ func test_back_and_play_again_call_the_flow_once_and_a_second_tap_does_nothing()
 	_flow.release.emit()
 
 
+func test_back_after_a_lesson_asks_for_the_tutorial_screen_and_a_skirmish_for_the_menu() -> void:
+	await _open(130, 30)
+	MatchRig.end(_main, [2])
+	var back: Button = _screen().find_child("BackButton", true, false)
+	_flow.setup = MatchSetup.new()  # A skirmish.
+	back.pressed.emit()
+	assert_str(_flow.last_screen).is_equal("")
+	_flow.release.emit()
+	await await_idle_frame()
+	_flow.setup.lesson_id = &"basics"
+	back.pressed.emit()
+	assert_str(_flow.last_screen).is_equal(TutorialStart.RETURN_SCREEN)
+	assert_str(_flow.last_screen).is_equal("tutorial")
+	_flow.release.emit()
+
+
+func test_the_phones_back_button_follows_the_same_routes() -> void:
+	await _open(130, 30)
+	var screen: ResultScreen = _screen()
+	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)  # Hidden: the match is running.
+	assert_int(_flow.leaves).is_equal(0)
+	MatchRig.end(_main, [2])
+	_flow.setup = MatchSetup.new()
+	_flow.setup.lesson_id = &"basics"
+	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)  # A second request does nothing.
+	assert_array([_flow.leaves, _flow.last_screen]).is_equal([1, &"tutorial"])
+	_flow.release.emit()
+	await await_idle_frame()
+	_flow.setup.lesson_id = &""
+	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	assert_array([_flow.leaves, _flow.last_screen]).is_equal([2, &""])
+	_flow.release.emit()
+
+
 func test_the_sting_plays_once_per_match_by_outcome() -> void:
 	await _open(130, 30)
 	MatchRig.end(_main, [2])
