@@ -632,11 +632,14 @@ jobs:
 
   # P410c (ADR 0040 section 4): the Play bundle on pull requests, signed with a key generated for the run, nothing
   # uploaded and no secret read. Not a required check. Google's Maven is blocked in cloud sessions, so this is the only
-  # proof of the Gradle export. The caches are restored only (a PR ref must not push main's caches out); warming them
-  # on main is a follow-up.
+  # proof of the Gradle export. The caches are restored only (a PR ref must not push main's caches out). The one
+  # exception is the Gradle cache: GitHub shows a PR only the caches saved on main, and no other job runs a Gradle
+  # export, so this job also runs on a push to main (same steps, still no secret, nothing uploaded) and saves the
+  # Gradle cache there. Without it every PR downloaded the whole AGP dependency set from Maven Central and a
+  # rate limit (HTTP 429) failed the check.
   android-aab:
     needs: verify
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -697,13 +700,18 @@ jobs:
       - name: Install Godot (editor, web templates and the Gradle build template)
         run: bash scripts/ci/install-godot.sh --android-source
 
+      # restore-keys lets a PR use main's newest Gradle cache while the plugin pins have changed and main has not yet
+      # saved the new key; Gradle fetches only what is missing.
       - name: Cache Gradle
+        id: gradle-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ env.GODOT_VERSION }}-${{ hashFiles('scripts/ci/install-android-plugins.sh', 'scripts/ci/install-godot.sh') }}
+          restore-keys: |
+            gradle-${{ env.GODOT_VERSION }}-
 
       # The key is made for this run, in RUNNER_TEMP, and deleted below. keytool reads the password from the
       # environment, so it is on no command line.
@@ -720,6 +728,17 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_USER="aabcheck" \
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$AAB_KEY_PASSWORD" \
           bash scripts/export-android.sh --aab
+
+      # Only a push to main saves (a cache key is write-once, and a PR ref's cache is invisible to other PRs). Only after a
+      # green export, and only when the exact key missed, so main never stores a half-filled or duplicate cache.
+      - name: Save the Gradle cache (main only)
+        if: success() && github.event_name == 'push' && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ env.GODOT_VERSION }}-${{ hashFiles('scripts/ci/install-android-plugins.sh', 'scripts/ci/install-godot.sh') }}
 
       # What Gradle was asked for (the plugin writes it into android/build); the resolved version is in the Gradle log.
       - name: Log the Google Mobile Ads SDK version
