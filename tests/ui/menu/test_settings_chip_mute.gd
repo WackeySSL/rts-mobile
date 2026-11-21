@@ -141,6 +141,22 @@ func test_a_chip_mute_that_outlives_the_match_reads_off_on_the_main_menu() -> vo
 	assert_int(MenuPrefs.music_step(-1)).is_equal(3)
 
 
+## First launch, Settings never opened: nothing is saved, and the chip's mute still reads OFF; a bus
+## at its default reads the number.
+func test_with_no_save_a_chip_mute_reads_off_and_a_default_bus_reads_its_number() -> void:
+	_audio.steps = {&"Music": 0, &"Sfx": 0}
+	await _open()
+	assert_str(_value(_screen.sound_slider)).is_equal("OFF")
+	assert_str(_value(_screen.music_slider)).is_equal("OFF")
+	_close()
+	var settings: AudioSettings = _audio.settings
+	_audio.steps = {&"Music": settings.default_music_step, &"Sfx": settings.default_sfx_step}
+	await _open()
+	assert_str(_value(_screen.sound_slider)).is_equal(str(settings.default_sfx_step))
+	assert_str(_value(_screen.music_slider)).is_equal(str(settings.default_music_step))
+	assert_int(_audio.sets).is_equal(0)
+
+
 func test_a_player_saved_zero_reads_0_not_off() -> void:
 	MenuPrefs.set_sound_step(0)
 	MenuPrefs.set_music_step(0)

@@ -395,13 +395,25 @@ func test_the_purchase_slot_shows_with_a_visible_child_and_is_0_tall_without() -
 	assert_bool(slot.visible).is_false()
 
 
-func test_saved_steps_out_of_range_are_clamped() -> void:
+func test_steps_the_service_holds_out_of_range_are_clamped() -> void:
 	MenuPrefs.set_sound_step(15)
 	MenuPrefs.set_music_step(-2)
 	MenuPrefs.apply_audio(_audio)  # MenuFlow puts the save on the service at launch.
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
 	assert_int(int(_screen.sound_slider.value)).is_equal(10)
 	assert_int(int(_screen.music_slider.value)).is_equal(0)
+
+
+## No audio service: the saved steps are what the sliders read, clamped to 0..top.
+func test_saved_steps_out_of_range_are_clamped_without_an_audio_service() -> void:
+	MenuPrefs.set_sound_step(15)
+	MenuPrefs.set_music_step(-2)
+	var screen: SettingsScreen = auto_free(SettingsScreen.new())
+	screen.audio = null  # Not in the tree, so `_ready` does not look the autoload up.
+	assert_int(int(screen.call("_initial", &"Sfx", MenuPrefs.sound_step))).is_equal(10)
+	assert_int(int(screen.call("_initial", &"Music", MenuPrefs.music_step))).is_equal(0)
+	MenuPrefs.set_sound_step(4)
+	assert_int(int(screen.call("_initial", &"Sfx", MenuPrefs.sound_step))).is_equal(4)
 
 
 func test_freeing_the_screen_during_the_privacy_await_is_safe() -> void:
