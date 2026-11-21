@@ -167,6 +167,33 @@ func test_every_after_ai_step_is_a_step_of_the_enemy() -> void:
 				assert_bool(steps.has(beat.after_ai_step)).override_failure_message(label).is_true()
 
 
+## A step that waits for a beat (`BEAT`) names a beat of its lesson, and that beat comes before the
+## beat that waits for the step: otherwise the card would wait for a beat it can only reach after.
+func test_a_beat_trigger_names_an_earlier_beat_than_the_card_that_waits_for_it() -> void:
+	var steps_with_beats: int = 0
+	for id: StringName in LESSONS:
+		var lesson: TutorialLessonDef = _lesson(id)
+		var order: Array[StringName] = []
+		for beat: TutorialBeatDef in lesson.beats:
+			order.append(beat.id)
+		for step: TutorialStepDef in lesson.enemy.steps:
+			if step.trigger != TutorialStepDef.Trigger.BEAT:
+				continue
+			steps_with_beats += 1
+			var label: String = "%s/%s waits for %s" % [id, step.id, step.trigger_beat]
+			assert_bool(order.has(step.trigger_beat)).override_failure_message(label).is_true()
+			assert_int(step.threshold).override_failure_message(label + " delay").is_greater_equal(
+				1
+			)
+			var at: int = order.find(step.trigger_beat)
+			for beat: TutorialBeatDef in lesson.beats:
+				# A card waits on this step, or on a step that waits (`after_step`) for it.
+				if _waits_through(lesson.enemy.steps, beat.after_ai_step, step.id):
+					var late: String = "%s: card %s is not after the beat" % [label, beat.id]
+					assert_bool(at < order.find(beat.id)).override_failure_message(late).is_true()
+	assert_int(steps_with_beats).is_greater(0)
+
+
 ## The enemy is seated through the runner as a match does it (an `AiFactory` controller), and its
 ## script resolves: every `after_step` names a step, every step id is unique, every type it names is
 ## in the match, and a QUEUE step has a producer of its own in the scenario.
@@ -311,6 +338,21 @@ func test_the_strikes_drill_charges_one_building_and_leaves_one_running() -> voi
 			charging += 1
 	assert_int(ready).is_equal(1)
 	assert_int(charging).is_equal(1)
+
+
+## Whether the step `from` is the step `target`, or waits for it through its `after_step` chain.
+func _waits_through(steps: Array[TutorialStepDef], from: StringName, target: StringName) -> bool:
+	var at: StringName = from
+	for _hop: int in steps.size() + 1:
+		if at == &"":
+			return false
+		if at == target:
+			return true
+		var next: int = steps.find_custom(func(one: TutorialStepDef) -> bool: return one.id == at)
+		if next < 0:
+			return false
+		at = steps[next].after_step
+	return false
 
 
 func _lesson(id: StringName) -> TutorialLessonDef:
