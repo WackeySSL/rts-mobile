@@ -228,7 +228,7 @@ func _take_census(view: PlayerView) -> bool:
 	for kind: int in _have.size():
 		if _have[kind] > 0:
 			_ever[kind] = 1
-			_ever_unit = _ever_unit or view.type_foot_w[kind] == 0
+			_ever_unit = _ever_unit or _is_unit(view, kind)
 	work += 1
 	return true
 
@@ -267,22 +267,54 @@ func _try(index: int, view: PlayerView, out: Array[Command]) -> void:
 	_fired[index] = view.tick
 
 
-## Whether the order step has no unit left to send and none is on its way, after it had some: the
-## player's lesson killed them all (or the roster lacks the type). Own rows and queued items of its
-## type (any unit that moves when it names none) are counted, so a squad still being trained is
-## waited for, and so is a type that has never been on the field.
+## Whether the order step has no unit left to send and none can come, after it had some: the
+## player's lesson killed them all (or the roster lacks the type, which is warned about). A unit
+## that `_units` would send counts as left, and so does a queued one while a producer of its tab
+## stands (a queue with no producer is never built), and so does a type an unfired QUEUE step of
+## the script may still train. A type that has never been on the field is waited for.
 func _gone(index: int, view: PlayerView) -> bool:
 	var type: int = _type_of(_action_type[index], view)
 	if type == ABSENT:
+		push_warning(
+			(
+				"TutorialAi: step %s sends %s, which no roster has"
+				% [_step_ids[index], _action_type[index]]
+			)
+		)
 		return true
-	if type == PlayerView.MISSING:
-		if not _ever_unit:
+	var seen: bool = _ever_unit if type == PlayerView.MISSING else _ever[type] == 1
+	if not seen or _may_train(type, view):
+		return false
+	for kind: int in _have.size():
+		if (type == PlayerView.MISSING or kind == type) and _left(kind, view):
 			return false
-		for kind: int in _have.size():
-			if _have[kind] > 0 and view.type_foot_w[kind] == 0:
-				return false
+	return true
+
+
+## Whether a unit of `kind` that `_units` would send stands now or is queued with a live producer.
+func _left(kind: int, view: PlayerView) -> bool:
+	if not _is_unit(view, kind):
+		return false
+	if _owned[kind] > 0:
 		return true
-	return _ever[type] == 1 and _have[type] == 0
+	var tab: int = view.type_tab[kind]
+	return _have[kind] > _owned[kind] and tab >= 0 and tab < PlayerView.TABS and _producers[tab] > 0
+
+
+## Whether `kind` is a type that moves and fights, what `_units` sends.
+func _is_unit(view: PlayerView, kind: int) -> bool:
+	return view.type_foot_w[kind] == 0 and DummyDefence.is_combat(view, kind)
+
+
+## Whether a QUEUE step of the script that has not fired yet may still train `type` (any type when
+## MISSING).
+func _may_train(type: int, view: PlayerView) -> bool:
+	for step: int in _step_count:
+		if _fired[step] != NOT_FIRED or _action[step] != TutorialStepDef.Action.QUEUE:
+			continue
+		if type == PlayerView.MISSING or _type_of(_action_type[step], view) == type:
+			return true
+	return false
 
 
 func _order(index: int, ids: PackedInt32Array, dest: Vector2i) -> Command:

@@ -37,9 +37,16 @@ static func names() -> Dictionary[String, String]:
 		if faction == null:
 			push_warning("TutorialText: %s did not load" % path)
 			continue
-		for unit: UnitDef in faction.roster:
-			found[String(unit.type_id)] = unit.display_name
+		merge_names(found, faction)
 	return found
+
+
+## Adds the names of `faction`'s units to `found`; a type id that is already there keeps its name,
+## so the first faction (the player's) wins a clash.
+static func merge_names(found: Dictionary[String, String], faction: FactionDef) -> void:
+	for unit: UnitDef in faction.roster:
+		if not found.has(String(unit.type_id)):
+			found[String(unit.type_id)] = unit.display_name
 
 
 ## The words with every `{type_id}` replaced by its display name.

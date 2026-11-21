@@ -129,6 +129,8 @@ its `PlayerView` shows, so a trigger like `ENEMY_NEAR` reacts to the player and 
 - An order step whose units are all gone (none owned or queued: the player's lesson killed them)
   counts as fired with no Command, so the card that waits for it still shows and the lesson goes
   on. Name the enemy's unit by `{type_id}` in a prompt: the names come from both factions.
+  After such an empty fire the gated card announces an attack that never comes: accepted as the
+  price of never hanging a lesson.
 
 ## What to run
 
