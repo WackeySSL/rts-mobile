@@ -30,6 +30,12 @@
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/rupture_land_1.wav" id="strike_rupture_land_1"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/blackout_1.wav" id="strike_blackout_1"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/strike/sweep_1.wav" id="strike_sweep_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/building/sold_1.wav" id="sfx_sold_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/building/repair_1.wav" id="sfx_repair_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/unit/unload_1.wav" id="sfx_unload_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/unit/ready_1.wav" id="sfx_unit_ready_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/building/placed_1.wav" id="sfx_placed_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/unit/board_1.wav" id="sfx_board_1"]
 
 [sub_resource type="Resource" id="cue_shot_rifle"]
 script = ExtResource("2_def")
@@ -164,14 +170,11 @@ variants = 1
 [sub_resource type="Resource" id="cue_sold"]
 script = ExtResource("2_def")
 id = &"sold"
-volume_db = -4.0
+streams = Array[AudioStream]([ExtResource("sfx_sold_1")])
+volume_db = -7.0
 pitch_steps = PackedInt32Array(1000)
 priority = 2
 max_voices = 1
-tone_hz = 400
-tone_ms = 200
-noise_permille = 200
-variants = 1
 
 [sub_resource type="Resource" id="cue_mine_blast"]
 script = ExtResource("2_def")
@@ -189,27 +192,21 @@ variants = 2
 [sub_resource type="Resource" id="cue_repaired"]
 script = ExtResource("2_def")
 id = &"repaired"
-volume_db = -10.0
-pitch_steps = PackedInt32Array(1000)
+streams = Array[AudioStream]([ExtResource("sfx_repair_1")])
+volume_db = -13.0
+pitch_steps = PackedInt32Array(1000, 1030, 970)
 cooldown_ms = 400
 priority = 1
 max_voices = 1
-tone_hz = 1800
-tone_ms = 120
-noise_permille = 200
-variants = 1
 
 [sub_resource type="Resource" id="cue_unloaded"]
 script = ExtResource("2_def")
 id = &"unloaded"
-volume_db = -7.0
-pitch_steps = PackedInt32Array(1000)
+streams = Array[AudioStream]([ExtResource("sfx_unload_1")])
+volume_db = -11.0
+pitch_steps = PackedInt32Array(1000, 1030, 970)
 priority = 1
 max_voices = 2
-tone_hz = 250
-tone_ms = 90
-noise_permille = 100
-variants = 1
 
 [sub_resource type="Resource" id="cue_strike_rupture_launch"]
 script = ExtResource("2_def")
@@ -267,9 +264,37 @@ tone_ms = 800
 noise_permille = 50
 variants = 1
 
+[sub_resource type="Resource" id="cue_unit_ready"]
+script = ExtResource("2_def")
+id = &"unit_ready"
+streams = Array[AudioStream]([ExtResource("sfx_unit_ready_1")])
+volume_db = -17.0
+pitch_steps = PackedInt32Array(1000)
+cooldown_ms = 250
+priority = 3
+max_voices = 1
+
+[sub_resource type="Resource" id="cue_building_placed"]
+script = ExtResource("2_def")
+id = &"building_placed"
+streams = Array[AudioStream]([ExtResource("sfx_placed_1")])
+volume_db = -9.5
+pitch_steps = PackedInt32Array(1000, 1030, 970)
+priority = 2
+max_voices = 2
+
+[sub_resource type="Resource" id="cue_board"]
+script = ExtResource("2_def")
+id = &"board"
+streams = Array[AudioStream]([ExtResource("sfx_board_1")])
+volume_db = -12.0
+pitch_steps = PackedInt32Array(1000, 1030, 970)
+priority = 1
+max_voices = 3
+
 [resource]
 script = ExtResource("1_table")
-cues = Array[ExtResource("2_def")]([SubResource("cue_shot_rifle"), SubResource("cue_shot_cannon"), SubResource("cue_shot_rocket"), SubResource("cue_shot_artillery"), SubResource("cue_impact_light"), SubResource("cue_impact_heavy"), SubResource("cue_death_foot"), SubResource("cue_death_vehicle"), SubResource("cue_death_air"), SubResource("cue_death_building"), SubResource("cue_sold"), SubResource("cue_mine_blast"), SubResource("cue_repaired"), SubResource("cue_unloaded"), SubResource("cue_strike_rupture_launch"), SubResource("cue_strike_rupture_land"), SubResource("cue_strike_blackout"), SubResource("cue_strike_sweep")])
+cues = Array[ExtResource("2_def")]([SubResource("cue_shot_rifle"), SubResource("cue_shot_cannon"), SubResource("cue_shot_rocket"), SubResource("cue_shot_artillery"), SubResource("cue_impact_light"), SubResource("cue_impact_heavy"), SubResource("cue_death_foot"), SubResource("cue_death_vehicle"), SubResource("cue_death_air"), SubResource("cue_death_building"), SubResource("cue_sold"), SubResource("cue_mine_blast"), SubResource("cue_repaired"), SubResource("cue_unloaded"), SubResource("cue_strike_rupture_launch"), SubResource("cue_strike_rupture_land"), SubResource("cue_strike_blackout"), SubResource("cue_strike_sweep"), SubResource("cue_unit_ready"), SubResource("cue_building_placed"), SubResource("cue_board")])
 shot_cues = Dictionary[StringName, StringName]({&"rifle": &"shot_rifle", &"hoist_crew_gun": &"shot_rifle", &"kite_crew_gun": &"shot_rifle", &"tank_cannon": &"shot_cannon", &"heavy_cannon": &"shot_cannon", &"turret_gun": &"shot_cannon", &"redoubt_gun": &"shot_cannon", &"rocket": &"shot_rocket", &"breaker_rocket": &"shot_rocket", &"sky_needle_gun": &"shot_rocket", &"artillery_gun": &"shot_artillery", &"arcline_gun": &"shot_artillery", &"burst_stack_gun": &"shot_artillery"})
 impact_cues = Dictionary[StringName, StringName]({&"tank_cannon": &"impact_heavy", &"heavy_cannon": &"impact_heavy", &"turret_gun": &"impact_heavy", &"redoubt_gun": &"impact_heavy", &"rocket": &"impact_heavy", &"breaker_rocket": &"impact_heavy", &"sky_needle_gun": &"impact_heavy", &"artillery_gun": &"impact_heavy", &"arcline_gun": &"impact_heavy", &"burst_stack_gun": &"impact_heavy"})
 shot_hitscan = &"shot_rifle"
@@ -283,6 +308,9 @@ death_vehicle = &"death_vehicle"
 death_air = &"death_air"
 death_building = &"death_building"
 sold = &"sold"
+unit_ready = &"unit_ready"
+building_placed = &"building_placed"
+board = &"board"
 strike_rupture_launch = &"strike_rupture_launch"
 strike_rupture_land = &"strike_rupture_land"
 strike_blackout = &"strike_blackout"

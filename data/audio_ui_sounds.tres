@@ -1,13 +1,31 @@
 [gd_resource type="Resource" script_class="UiSoundsDef" format=3]
 
 [ext_resource type="Script" path="res://game/view/audio/UiSoundsDef.gd" id="1_ui"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/radio/order_1.wav" id="order_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/radio/order_2.wav" id="order_2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/radio/order_3.wav" id="order_3"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/radio/alert_1.wav" id="alert_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/building/complete_1.wav" id="ready_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/radio/low_power_1.wav" id="power_1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/building/mend_1.wav" id="mend_1"]
 
 [resource]
 script = ExtResource("1_ui")
 click_db = 0.0
 click_priority = 0
-order_db = -4.0
+order_streams = Array[AudioStream]([ExtResource("order_1"), ExtResource("order_2"), ExtResource("order_3")])
+order_db = -20.0
 order_priority = 1
-alert_db = 0.0
+alert_stream = ExtResource("alert_1")
+alert_db = -18.5
 alert_priority = 2
+ready_stream = ExtResource("ready_1")
+ready_db = -13.0
+ready_priority = 2
+power_stream = ExtResource("power_1")
+power_db = -11.0
+power_priority = 2
+mend_stream = ExtResource("mend_1")
+mend_db = -15.0
+mend_priority = 1
 max_voices = 1

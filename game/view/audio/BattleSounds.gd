@@ -11,15 +11,17 @@ extends Node
 ## it was fired (delay 0) is never in the air in a snapshot, so it has no boom, as it has no burst
 ## (the shipped delay is 45). A blackout sounds when it is fired, at its point, when that is its
 ## owner's or seen, a sweep's hum at the view's centre, its owner's only. A warning of an enemy
-## strike is a UI cue. SPAWNED is not here yet.
+## strike is a UI cue. SPAWNED sounds for the viewer's own rows only (no enemy production leaks
+## through the fog): an own unit's "ready" at the middle of the view, whatever the camera shows, and
+## an own building's "placed" at the building.
 ##
 ## Fairness: a sound plays only where `EffectsLayer` would show the effect, by the tile of the
 ## point in that tick's fog (`FogLayer.is_seen`, read-only); the death of an own unit always
 ## sounds, as its effect always shows. A SHOT sounds at the shooter when its tile is seen; a
 ## hitscan SHOT (projectile speed 0, which lands no IMPACT) from an unseen shooter at a seen
 ## target sounds at the target, as its tracer shows then. A DIED record with flag 1 (a cancelled
-## site) or 2 (boarded) plays nothing, flag 3 (sold) the pack-up. `reveal_enemies` hears
-## everything (the perf arena).
+## site) plays nothing, flag 2 (boarded) the boarding clunk and flag 3 (sold) the pack-up.
+## `reveal_enemies` hears everything (the perf arena).
 ##
 ## A point farther than `hear_margin_px` (world px) from the view is not played. Events of one
 ## cue in a tick make one voice, louder by `stack_db` for each extra one, and the cue is quiet
@@ -91,6 +93,9 @@ var _blast: int = -1
 var _repair: int = -1
 var _unload: int = -1
 var _sold: int = -1
+var _unit_ready: int = -1
+var _placed: int = -1
+var _board: int = -1
 var _rupture_launch: int = -1
 var _rupture_land: int = -1
 var _blackout: int = -1
@@ -175,6 +180,9 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 		World.Event.STRIKE:
 			_read_strike(snap, events, at, viewer)
 			return
+		World.Event.SPAWNED:
+			_read_spawn(snap, events, at, viewer)
+			return
 		_:
 			return
 	if cue < 0:
@@ -191,6 +199,24 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 	if not _ear.has_point(point):
 		return
 	_add(cue, point, events[at + 1])
+
+
+## A SPAWNED record `[SPAWNED, id, x, y, type index, owner]`: the viewer's own rows only. A unit's
+## "ready" sounds at the middle of the view (as the sweep does), so it is heard wherever the camera
+## is; a building's "placed" sounds where it stands.
+func _read_spawn(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) -> void:
+	if events[at + 5] != viewer:
+		return
+	var type: int = events[at + 4]
+	var building: bool = (
+		type >= 0
+		and type < snap.type_armour.size()
+		and snap.type_armour[type] == World.Armour.BUILDING
+	)
+	if building:
+		_hear(snap, _placed, events[at + 2], events[at + 3], true, events[at + 1], viewer)
+	elif _unit_ready >= 0:
+		_add(_unit_ready, _ear.get_center(), events[at + 1])
 
 
 ## A STRIKE record `[STRIKE, building id, x, y, kind, owner, landing tick, 0]`.
@@ -241,7 +267,8 @@ func _hear(snap: MatchSnapshot, cue: int, x: int, y: int, own: bool, id: int, vi
 		_add(cue, point, id)
 
 
-## The cue of a DIED record: none for a cancelled site or a boarding, the pack-up for a sale.
+## The cue of a DIED record: none for a cancelled site, the clunk for a boarding, the pack-up for
+## a sale.
 func _death_cue(events: PackedInt32Array, at: int) -> int:
 	match events[at + Removal.DIED_FLAG_AT]:
 		0:
@@ -249,6 +276,8 @@ func _death_cue(events: PackedInt32Array, at: int) -> int:
 			return _death[type] if type >= 0 and type < _death.size() else -1
 		Removal.FLAG_SOLD:
 			return _sold
+		Removal.FLAG_BOARDED:
+			return _board
 	return -1
 
 
@@ -385,6 +414,9 @@ func _build(snap: MatchSnapshot) -> void:
 	_repair = table.index_of(table.repaired)
 	_unload = table.index_of(table.unloaded)
 	_sold = table.index_of(table.sold)
+	_unit_ready = table.index_of(table.unit_ready)
+	_placed = table.index_of(table.building_placed)
+	_board = table.index_of(table.board)
 	_rupture_launch = table.index_of(table.strike_rupture_launch)
 	_rupture_land = table.index_of(table.strike_rupture_land)
 	_blackout = table.index_of(table.strike_blackout)
