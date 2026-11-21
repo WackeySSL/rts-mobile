@@ -28,4 +28,5 @@ power_priority = 2
 mend_stream = ExtResource("mend_1")
 mend_db = -15.0
 mend_priority = 1
+silent_commands = PackedInt32Array(10, 17)
 max_voices = 1

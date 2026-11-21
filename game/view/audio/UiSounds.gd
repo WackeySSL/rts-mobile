@@ -160,6 +160,8 @@ func _on_submitted(command: Command) -> void:
 		return
 	if command.player_id == local_player:
 		_click_pending = false
+		if def.silent_commands.has(command.type):
+			return  # The sim's own cue (placed, sold) sounds instead.
 		var mend_on: bool = (
 			command.type == Command.Type.MEND
 			and not command.payload.is_empty()

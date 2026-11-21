@@ -176,3 +176,14 @@ func test_the_ready_chip_and_the_low_power_pill_chirp() -> void:
 	button.ready_changed.emit()
 	pill.low_power_started.emit()
 	assert_array(audio.cues).is_equal([&"ui_ready", &"ui_low_power"])
+
+
+func test_a_placed_or_sold_building_gives_no_order_chirp_but_a_move_does() -> void:
+	var audio: FakeAudio = auto_free(FakeAudio.new())
+	var queue: Node = _queue()
+	_ui_sounds(audio, queue)
+	queue.submit(Command.place(1, 5000, 5000, 0))
+	queue.submit(Command.sell(1, 5))
+	assert_int(audio.cues.size()).is_equal(0)
+	queue.submit(Command.move(1, PackedInt32Array([1]), 5000, 5000))
+	assert_array(audio.cues).is_equal([&"ui_order"])

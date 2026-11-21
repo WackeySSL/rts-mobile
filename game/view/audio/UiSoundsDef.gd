@@ -25,5 +25,8 @@ extends Resource
 @export var mend_stream: AudioStream
 @export var mend_db: float = 0.0
 @export var mend_priority: int = 1
+## Command types that have a sound of their own (a building placed, a building sold), so they give
+## no order chirp. `Command.Type` values.
+@export var silent_commands: PackedInt32Array = PackedInt32Array()
 ## Voices one cue may hold at once on the Ui bus; a new one replaces its own oldest.
 @export var max_voices: int = 1

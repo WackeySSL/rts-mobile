@@ -203,7 +203,8 @@ func _read(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) 
 
 ## A SPAWNED record `[SPAWNED, id, x, y, type index, owner]`: the viewer's own rows only. A unit's
 ## "ready" sounds at the middle of the view (as the sweep does), so it is heard wherever the camera
-## is; a building's "placed" sounds where it stands.
+## is; a building's "placed" sounds where it stands. "Ready" also sounds for own spawns that
+## do not come from a factory (the free harvester, aircraft at a pad).
 func _read_spawn(snap: MatchSnapshot, events: PackedInt32Array, at: int, viewer: int) -> void:
 	if events[at + 5] != viewer:
 		return

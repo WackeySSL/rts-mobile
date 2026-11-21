@@ -42,5 +42,5 @@ family = &"radio"
 sample_rate = 22050
 duration = 0.2
 seed_value = 23
-gain = 2.3549
+gain = 2.004
 layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1")])
