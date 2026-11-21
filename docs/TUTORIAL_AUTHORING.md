@@ -106,7 +106,8 @@ its `PlayerView` shows, so a trigger like `ENEMY_NEAR` reacts to the player and 
   a controller). The test checks every name against `step_ids()`.
 - A wave that a beat talks about leaves on the player's progress, not on the clock: a `BEAT`
   trigger (`trigger_beat`, `threshold` ticks after it). A clock step (`TICK`) is right for what no
-  beat waits for; a slow player reads a card in 8 s or more, so a clocked wave reaches the base
+  beat waits for (the strikes drill's `gather`); the basics wave, the air raid and the support poke
+  are `BEAT` steps; a slow player reads a card in 8 s or more, so a clocked wave reaches the base
   before the card about it (it did, by about 60 s). The director tells the script a beat is done
   (`TutorialAi.note_beat`, with the published tick, after `wait_idle()`); the step fires on the
   first think at or after that tick plus the threshold, so the same beat ticks give the same
