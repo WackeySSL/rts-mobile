@@ -105,6 +105,7 @@ func _ready() -> void:
 		push_warning("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
+	_back_button.set_meta(UiSounds.META_CUE, UiSounds.CUE_BACK)
 	var node: Node = panel
 	while node != null and not node is ScrollContainer:
 		node = node.get_parent()

@@ -11,6 +11,8 @@ extends Control
 ## It holds no game rule and sends no Command. Call `push` and the rest once the stack is ready.
 
 signal screen_changed(screen: MenuScreen)
+## The phone's Back button was used (not the on-screen Back, which is a button); UiSounds hears it.
+signal back_requested
 
 @export var slide_ms: int = 200
 ## Handed to every screen as its opaque backdrop (set in menu.tscn).
@@ -56,6 +58,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if not back_enabled:
 			return
+		back_requested.emit()
 		back.call_deferred()  # Never change scenes inside a notification dispatch.
 	elif what == NOTIFICATION_PREDELETE:
 		for screen: MenuScreen in _screens:  # The covered ones are not our children: free them.

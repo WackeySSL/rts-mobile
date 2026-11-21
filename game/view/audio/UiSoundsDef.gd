@@ -7,6 +7,15 @@ extends Resource
 @export var click_stream: AudioStream
 @export var click_db: float = 0.0
 @export var click_priority: int = 0
+@export var back_stream: AudioStream
+@export var back_db: float = 0.0
+@export var back_priority: int = 0
+@export var confirm_stream: AudioStream
+@export var confirm_db: float = 0.0
+@export var confirm_priority: int = 0
+@export var refuse_stream: AudioStream
+@export var refuse_db: float = 0.0
+@export var refuse_priority: int = 0
 @export var order_stream: AudioStream
 @export var order_db: float = -4.0
 @export var order_priority: int = 1

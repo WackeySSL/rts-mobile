@@ -44,6 +44,9 @@ func _stream() -> AudioStreamWAV:
 func _make_sounds() -> UiSounds:
 	var def: UiSoundsDef = UiSoundsDef.new()
 	def.click_stream = _stream()
+	def.back_stream = _stream()
+	def.confirm_stream = _stream()
+	def.refuse_stream = _stream()
 	def.order_stream = _stream()
 	def.alert_stream = _stream()
 	var sounds: UiSounds = UiSounds.new()

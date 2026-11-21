@@ -26,7 +26,10 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	_no = add_button(row, no_text, _answer.bind(false))
 	_no.name = &"NoButton"
-	add_button(row, yes_text, _answer.bind(true)).name = &"YesButton"
+	_no.set_meta(UiSounds.META_CUE, UiSounds.CUE_BACK)
+	var yes: Button = add_button(row, yes_text, _answer.bind(true))
+	yes.name = &"YesButton"
+	yes.set_meta(UiSounds.META_CUE, UiSounds.CUE_CONFIRM)
 
 
 func open() -> void:
