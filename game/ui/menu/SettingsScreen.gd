@@ -62,8 +62,10 @@ func _ready() -> void:
 	ad_service = ad_service if ad_service != null else tree.root.get_node_or_null("AdService")
 	_heading()
 	var top: int = _top_step()
-	sound_slider = _slider(SOUND, top, _initial(&"Sfx", MenuPrefs.sound_step), _on_sound)
-	music_slider = _slider(MUSIC, top, _initial(&"Music", MenuPrefs.music_step), _on_music)
+	var sound: int = _initial(&"Sfx", MenuPrefs.sound_step)
+	var music: int = _initial(&"Music", MenuPrefs.music_step)
+	sound_slider = _slider(SOUND, top, sound, _on_sound, _chip_muted(sound, MenuPrefs.sound_step))
+	music_slider = _slider(MUSIC, top, music, _on_music, _chip_muted(music, MenuPrefs.music_step))
 	vibration_toggle = _toggle(VIBRATION, HudPrefs.haptics_enabled(), _on_vibration)
 	reduced_toggle = _toggle(REDUCED, MenuPrefs.reduced_effects(), _on_reduced)
 	if not in_match.call():  # In battle neither node exists, so no widget can land there.
@@ -130,11 +132,17 @@ func _top_step() -> int:
 	return int(audio.get("settings").steps) if audio != null else 10
 
 
-## What the bus plays now, so a chip mute on the pause menu reads 0 here (the save is kept; a drag
-## unmutes and saves); the saved step, else the top one, with no audio service.
+## What the bus plays now, so a chip mute (the pause menu's, which lasts the session, also on the
+## main menu after the match) reads 0 here: the save is kept and a drag unmutes and saves. The saved
+## step, else the top one, with no audio service.
 func _initial(bus: StringName, saved: Callable) -> int:
 	var step: int = int(audio.call("get_step", bus)) if audio != null else saved.call(_top_step())
 	return clampi(step, 0, _top_step())
+
+
+## The bus plays 0 while a step above 0 is saved: a chip's session mute, not the player's own 0.
+func _chip_muted(step: int, saved: Callable) -> bool:
+	return step == 0 and int(saved.call(0)) > 0
 
 
 func _on_sound(value: float) -> void:
@@ -210,8 +218,8 @@ func _heading() -> void:
 	column.add_child(label)
 
 
-## A row of 48 dp or more: a name, a slider of whole steps and its value.
-func _slider(text: String, top: int, value: int, changed: Callable) -> HSlider:
+## A row of 48 dp or more: a name, a slider of whole steps and its value (OFF while `muted`).
+func _slider(text: String, top: int, value: int, changed: Callable, muted: bool) -> HSlider:
 	var row: HBoxContainer = _row(text)
 	var slider: HSlider = HSlider.new()
 	slider.theme_type_variation = &"MenuSlider"
@@ -225,7 +233,7 @@ func _slider(text: String, top: int, value: int, changed: Callable) -> HSlider:
 	row.add_child(slider)
 	var number: Label = Label.new()
 	number.name = &"Value"
-	number.text = str(value)
+	number.text = tr(OFF) if muted else str(value)  # A chip mute reads like the chip: OFF.
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_floor(number, VALUE_DP)
 	row.add_child(number)

@@ -992,7 +992,7 @@ body = "Tap How to play on the main menu to see a list of sections. Tap one to r
 script = ExtResource("3_ent")
 id = &"menus-settings"
 title = "Settings"
-body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. While a sound is switched off on the pause menu, its slider shows 0; moving it switches the sound back on. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
+body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. While a sound is switched off on the pause menu, its slider reads OFF; moving it above 0 switches the sound back on. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
 
 [sub_resource type="Resource" id="e148"]
 script = ExtResource("3_ent")

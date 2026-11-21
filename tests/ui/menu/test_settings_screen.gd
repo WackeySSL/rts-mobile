@@ -202,6 +202,12 @@ func test_sliders_save_apply_and_reload() -> void:
 	MenuPrefs.apply_audio(other)
 	assert_array(other.sound_sets).is_equal([3])
 	assert_int(other.steps[&"Music"]).is_equal(0)
+	_close()  # A launch: the save goes on a fresh service, and Settings reads that.
+	_audio.steps = {&"Music": 7, &"Sfx": 10}
+	MenuPrefs.apply_audio(_audio)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	assert_int(int(_screen.sound_slider.value)).is_equal(3)
+	assert_int(int(_screen.music_slider.value)).is_equal(0)
 
 
 func test_vibration_and_reduced_effects_save_and_reload() -> void:
