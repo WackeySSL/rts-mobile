@@ -111,7 +111,7 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
 - [x] Commander rank, XP, unlocks and local save; save and resume when the app goes to the background
   (2026-11-21: P510 #495, P510b #496, P511 #497, P525 #541 (locks), P532 #529, P514 #559, P515 #570,
   P516 #577, P531 #528 (pause on background))
-- [ ] Sound effects (CC0 or generated) and music volume
+- [ ] Sound effects (CC0, CC-BY or made in this repo) and music volume
 - [ ] An interactive tutorial that teaches how to play: a lesson of about 3 minutes that starts on
   first launch, plus short drills, which together include every entry marked Teach in
   `docs/HOW_TO_PLAY.md`; all can be replayed from the menu (Michael, 2026-11-15; ADR 0044 §1)
