@@ -8,6 +8,8 @@ signal release
 var runner: MatchRunner
 var award: XpAward
 var restarts: int = 0
+var setup: MatchSetup
+var last_screen: StringName = &"unset"
 var leaves: int = 0
 ## Not OK: `restart` returns it at once and `leave_match` returns at once (a refused, busy call).
 var refuse: Error = OK
@@ -15,6 +17,10 @@ var refuse: Error = OK
 
 func current_runner() -> MatchRunner:
 	return runner
+
+
+func current_setup() -> MatchSetup:
+	return setup
 
 
 func last_award() -> XpAward:
@@ -29,8 +35,9 @@ func restart() -> Error:
 	return OK
 
 
-func leave_match(_screen: StringName = &"") -> void:
+func leave_match(screen: StringName = &"") -> void:
 	leaves += 1
+	last_screen = screen
 	if refuse != OK:
 		return
 	await release
