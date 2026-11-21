@@ -104,6 +104,17 @@ its `PlayerView` shows, so a trigger like `ENEMY_NEAR` reacts to the player and 
 - `after_ai_step` on a beat names a step of the lesson's enemy; the prompt waits for it to have fired
   (the director reads it after `wait_idle()`, through `MatchRunner.controller_of`; never inject
   a controller). The test checks every name against `step_ids()`.
+- A wave that a beat talks about leaves on the player's progress, not on the clock: a `BEAT`
+  trigger (`trigger_beat`, `threshold` ticks after it). A clock step (`TICK`) is right for what no
+  beat waits for; a slow player reads a card in 8 s or more, so a clocked wave reaches the base
+  before the card about it (it did, by about 60 s). The director tells the script a beat is done
+  (`TutorialAi.note_beat`, with the published tick, after `wait_idle()`); the step fires on the
+  first think at or after that tick plus the threshold, so the same beat ticks give the same
+  Commands. The threshold is at least 1 tick (a data test): a word lands at the next published
+  tick, so a 0 would race the think of the tick the beat ended on. The step fires on the think
+  grid (15 ticks), so a delay is rounded up to the next think, not exact. Put the `BEAT` step's beat just before the card that waits for the step
+  (`after_ai_step`), with the walk of the units from their start to the base in mind: the card
+  shows as the wave leaves, and the bot's 4 s and 8 s runs pin that it is before contact.
 - Two QUEUE steps of one type count each other's items. Put them in script order, or chain the
   later one with `after_step`; a step never waits for one that comes after it (checked).
 - A QUEUE step needs a producer of its own in the scenario and credits for its items.

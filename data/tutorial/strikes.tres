@@ -94,6 +94,7 @@ budget_s = 4
 script = ExtResource("1_lesson")
 id = &"strikes"
 title_key = &"tutorial.strikes.title"
+objective_key = &"tutorial.strikes.objective"
 beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09")])
 target_s = 60
 scenario = ExtResource("3_scenario")

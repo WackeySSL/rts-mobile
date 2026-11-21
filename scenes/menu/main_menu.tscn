@@ -7,3 +7,4 @@
 
 [node name="MenuRoot" type="Node" parent="." index="2"]
 script = ExtResource("2_root")
+offer_first_launch = true

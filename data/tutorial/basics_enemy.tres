@@ -13,7 +13,9 @@ count = 3
 [sub_resource type="Resource" id="Step_01"]
 script = ExtResource("2_step")
 id = &"wave"
-threshold = 1800
+trigger = 6
+threshold = 15
+trigger_beat = &"groups"
 action_type = &"renew_rifle"
 count = 4
 target = 0

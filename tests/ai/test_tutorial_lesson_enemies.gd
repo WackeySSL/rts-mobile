@@ -11,19 +11,22 @@ const FOE: int = 2
 ## Ticks after a TICK trigger's threshold that its step has to have fired in (one think and the
 ## wait of an order step for its units).
 const SLACK: int = 60
+## The tick the test says the player finished the beat `groups` on.
+const GROUPS_TICK: int = 900
 
 
-func test_basics_trains_then_sends_the_wave_and_the_base_stands() -> void:
-	var runner: MatchRunner = _play(&"basics", 2700)
+func test_basics_trains_then_sends_the_wave_when_the_groups_beat_is_done() -> void:
+	var runner: MatchRunner = _play(&"basics", GROUPS_TICK)
 	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
 	assert_bool(ai.has_fired(&"train")).is_true()
-	assert_int(ai.fired_tick_of(&"wave")).is_between(1800, 1800 + SLACK)
+	assert_bool(ai.has_fired(&"wave")).is_false()  # No clock opens it, only the beat.
+	ai.note_beat(&"groups", GROUPS_TICK)
+	runner.run_ticks(2700 - GROUPS_TICK)
+	assert_int(ai.fired_tick_of(&"wave")).is_between(GROUPS_TICK + 15, GROUPS_TICK + 15 + SLACK)
 	assert_bool(ai.has_fired(&"defend")).is_false()  # Nothing of the player's came near.
-	# Three came with the start and three were trained; the wave met the player's squads.
+	# Three came with the start and three were trained; the wave stands at the player's base.
 	assert_int(_count(runner.world, FOE, &"renew_rifle")).is_between(3, 6)
-	assert_int(runner.world.stat_lost_units[LOCAL] + runner.world.stat_lost_units[FOE]).is_greater(
-		0
-	)
+	assert_int(_at_target(runner.world)).is_greater_equal(3)
 	assert_int(_count(runner.world, LOCAL, &"headquarters")).is_equal(1)
 	assert_int(runner.world.match_end_tick).is_equal(0)
 
@@ -41,7 +44,7 @@ func test_basics_defends_when_the_player_comes_near_its_base() -> void:
 	runner.run_ticks(1500)
 	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
 	assert_bool(ai.has_fired(&"defend")).is_true()
-	assert_int(ai.fired_tick_of(&"defend")).is_less(1800)  # The view opened it, not the clock.
+	assert_bool(ai.has_fired(&"wave")).is_false()  # The view opened it, not the beat.
 
 
 func test_strikes_gathers_the_squads_early_for_the_strike() -> void:
@@ -63,12 +66,35 @@ func test_support_pokes_the_tanks_and_the_base_stands() -> void:
 
 
 ## The same lesson and seed give the same Command log: a lesson replays.
-func test_a_lesson_replays_from_its_seed() -> void:
-	var first: MatchRunner = _play(&"basics", 600)
-	var second: MatchRunner = _play(&"basics", 600)
+func test_a_lesson_replays_from_its_seed_and_its_beat_ticks() -> void:
+	var first: MatchRunner = _with_groups_at(600)
+	var second: MatchRunner = _with_groups_at(600)
 	assert_array(first.replay.commands).is_equal(second.replay.commands)
 	assert_int(first.last_hash).is_equal(second.last_hash)
 	assert_int(first.replay.commands.size()).is_greater(0)  # The enemy queued its squads.
+	# The wave left on the beat's tick plus its delay, so a later beat means a later wave.
+	var later: MatchRunner = _with_groups_at(660)
+	assert_array(later.replay.commands).is_not_equal(first.replay.commands)
+
+
+## A basics match to tick 900 where the player finished `groups` on `tick`.
+func _with_groups_at(tick: int) -> MatchRunner:
+	var runner: MatchRunner = _play(&"basics", tick)
+	(runner.controller_of(FOE) as TutorialAi).note_beat(&"groups", tick)
+	runner.run_ticks(900 - tick)
+	return runner
+
+
+## Enemy rifles within 4 tiles of the wave's target tile (11, 10).
+func _at_target(world: World) -> int:
+	var found: int = 0
+	var type: int = world.type_ids.find(&"renew_rifle")
+	for row: int in world.unit_count():
+		if world.owner[row] != FOE or world.type_index[row] != type:
+			continue
+		if absi(world.pos_x[row] - 11500) <= 4000 and absi(world.pos_y[row] - 10500) <= 4000:
+			found += 1
+	return found
 
 
 func _runner(id: StringName) -> MatchRunner:

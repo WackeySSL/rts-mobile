@@ -77,7 +77,8 @@ func _ready() -> void:
 		remove_rows = RemoveAdsRows.new()
 		remove_rows.service = ad_service
 		purchase_slot.add_child(remove_rows)  # P434: hides itself with no store (or no AdService).
-	_route_button(REPLAY, MenuRoutes.TUTORIAL)
+	if not in_match.call():  # A lesson starts a new match: never over the one that is running.
+		_route_button(REPLAY, MenuRoutes.TUTORIAL)
 	_route_button(HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)
 	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
 	if dev_enabled.call():

@@ -14,7 +14,12 @@ extends Resource
 ## - OWN_AT_LEAST / OWN_AT_MOST: the player owns at least / at most `threshold` rows of
 ##   `trigger_type` (any type when empty).
 ## - CREDITS: the player has at least `threshold` credits.
-enum Trigger { TICK, ENEMY_NEAR, ENEMY_SEEN, OWN_AT_LEAST, OWN_AT_MOST, CREDITS }
+## - BEAT: the lesson's beat `trigger_beat` was done `threshold` ticks ago or more. The director
+##   tells the script of a beat it finished through `TutorialAi.note_beat` (see there): a step
+##   that waits for the player's progress, not for the clock. A beat that was never noted never
+##   fires it.
+## Append only: the values are stored in `data/tutorial/*.tres`.
+enum Trigger { TICK, ENEMY_NEAR, ENEMY_SEEN, OWN_AT_LEAST, OWN_AT_MOST, CREDITS, BEAT }
 
 ## What a step does.
 ## - QUEUE: queue `count` items of `action_type` (one at a time as its queue has room, the credits
@@ -39,6 +44,8 @@ enum Target { TILE, HOME, TRIGGER }
 @export var trigger_type: StringName = &""
 @export var threshold: int = 0
 @export var trigger_radius_tiles: int = 0
+## `Trigger.BEAT`: the id of the beat (of the lesson that plays this script) the step waits for.
+@export var trigger_beat: StringName = &""
 @export var action: Action = Action.ATTACK_MOVE
 @export var action_type: StringName = &""
 @export var count: int = 0

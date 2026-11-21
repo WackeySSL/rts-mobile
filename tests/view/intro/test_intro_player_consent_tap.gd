@@ -8,6 +8,7 @@ const MENU_PATH: String = "res://scenes/menu/main_menu.tscn"
 const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 
 var _rig: IntroRig = IntroRig.new()
@@ -21,6 +22,10 @@ func before() -> void:
 
 
 func before_test() -> void:
+	# The hand-over opens the real main menu, whose first-launch offer would start Basics on a save
+	# with no play history (P544): this save has some, so no lesson and no match scene starts.
+	PrefsRig.begin()
+	SaveService.set_section(&"progress", {"xp": 10})
 	var profile: UiMetrics = _profile_with_window(Vector2i(_size))
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
@@ -32,6 +37,7 @@ func after_test() -> void:
 	if _ump != null:
 		_ump.close_unchanged()
 	_rig.teardown(self)
+	PrefsRig.end()
 	UiStateGuard.restore(get_window(), _window_size_before)  # Per test, not only at the end.
 
 
