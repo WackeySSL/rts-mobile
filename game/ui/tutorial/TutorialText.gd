@@ -8,8 +8,11 @@ extends RefCounted
 ## The pause menu's kicker line over a lesson's title, where a skirmish reads "SKIRMISH".
 const KICKER: StringName = &"tutorial.kicker"
 const TEXT_PATH: String = "res://data/tutorial/text_en.tres"
-## The faction the lessons are played as: its roster gives the card names.
-const FACTION_PATH: String = "res://data/factions/fossil.tres"
+## The factions of the lessons' matches, the player's first: their rosters give the unit names.
+const FACTION_PATHS: Array[String] = [
+	"res://data/factions/fossil.tres",
+	"res://data/factions/renew.tres",
+]
 
 static var _registered: bool = false
 
@@ -26,15 +29,16 @@ static func raw() -> Dictionary[StringName, String]:
 	return table
 
 
-## The display name of every unit of the lessons' faction, by type id.
+## The display name of every unit of the lessons' factions, by type id.
 static func names() -> Dictionary[String, String]:
 	var found: Dictionary[String, String] = {}
-	var faction: FactionDef = load(FACTION_PATH) as FactionDef
-	if faction == null:
-		push_warning("TutorialText: %s did not load" % FACTION_PATH)
-		return found
-	for unit: UnitDef in faction.roster:
-		found[String(unit.type_id)] = unit.display_name
+	for path: String in FACTION_PATHS:
+		var faction: FactionDef = load(path) as FactionDef
+		if faction == null:
+			push_warning("TutorialText: %s did not load" % path)
+			continue
+		for unit: UnitDef in faction.roster:
+			found[String(unit.type_id)] = unit.display_name
 	return found
 
 

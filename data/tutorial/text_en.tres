@@ -122,7 +122,7 @@ words = PackedStringArray(
 "Tap BUILD, then the Flight tab.",
 "Open the Flight tab and tap {fossil_fighter}. It appears over a free pad.",
 "Tap the aircraft itself, not its shadow, to select it.",
-"A fighter hits aircraft only. Tap an enemy tank and nothing is ordered: the marker shakes. Tap Next.",
+"A fighter hits aircraft only. Tap an enemy {renew_rifle} and nothing is ordered: the marker shakes. Tap Next.",
 "A bomber drops its bombs, flies home to reload and waits on its pad. Tap an enemy to send it out again. Tap Next.",
 "With aircraft selected, tap HOME and they fly back to their pads to reload and be repaired. Tap Next.",
 "An enemy aircraft is coming for your base. Your {fossil_aa} fires on its own, at aircraft only. Tap Next.",

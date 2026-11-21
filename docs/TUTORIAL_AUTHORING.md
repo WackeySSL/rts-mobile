@@ -37,10 +37,11 @@ reads are on `TutorialConditions`. A few rules that the tests enforce (`test_les
 - `delay_ticks` waits in match time, so a paused match does not count. A beat that must come
   after the pause menu closes (it shows while the menu is up otherwise) gets a delay.
 - A prompt that talks about what the enemy is doing waits for it to be true: a step's tick is the
-  think that sent the order, and the order takes effect a tick later and then travels. Give the
-  beat a `delay_ticks` of the walk or flight (the poke's first hit lands about 110 ticks after its
-  step, the raid's fighter is over the base about 55 ticks after), or word the prompt as what is
-  about to happen.
+  think that sent the order, and the order takes effect a tick later and then travels. Word the
+  prompt as what is about to happen ("is coming", "on their way") and show it as the step fires,
+  with the walk or flight longer than the card is on screen (the basics wave, the air raid and the
+  support poke reach the base 65 to 250 ticks after their cards); or give the beat a `delay_ticks`
+  of the walk.
 - A card is named by `{type_id}` in the text, so the prompt shows the display name the card has.
 
 - A beat's target must be on screen when its card shows (the bot's run asserts no ring is missing).
@@ -121,8 +122,13 @@ its `PlayerView` shows, so a trigger like `ENEMY_NEAR` reacts to the player and 
 - A QUEUE step needs a producer of its own in the scenario and credits for its items.
 - A step that orders units waits until it has units to send and a place to send them (a `TILE`, a
   `HOME` building or the `TRIGGER` row), so give the enemy the units at the start.
-- The enemy's walk takes real time (a squad walks about a tile a second): set a wave's tick so that
-  it arrives when the beats that talk about it are on. The play test pins each step's tick.
+- The enemy's walk takes real time (a squad walks about a tile a second): a wave leaves on a
+  `BEAT` (all three do: the basics wave, the air raid, the support poke), so it never arrives
+  before the card that talks about it; the bot's 4 s and 8 s runs pin that. Only the strikes
+  drill's `gather` is on the clock.
+- An order step whose units are all gone (none owned or queued: the player's lesson killed them)
+  counts as fired with no Command, so the card that waits for it still shows and the lesson goes
+  on. Name the enemy's unit by `{type_id}` in a prompt: the names come from both factions.
 
 ## What to run
 
