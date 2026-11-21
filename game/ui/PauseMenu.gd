@@ -38,6 +38,7 @@ extends ModalFrame
 ## match has ended.
 
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
+const KICKER: String = "SKIRMISH"
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const EMBLEM_ART: String = "res://assets/art/svg/icons/emblem_%s.svg"
@@ -101,6 +102,8 @@ var _emblem: TextureRect
 var _badge: PanelContainer
 var _side: StringName = FALLBACK_SIDE
 var _title: Label
+var _kicker: Label
+var _objective: Label
 var _hidden: Dictionary[Control, Color] = {}  ## The HUD controls hidden while PAUSE shows.
 var _time: Label
 var _lost: Label
@@ -212,7 +215,7 @@ func _build_card() -> void:
 	var words: VBoxContainer = VBoxContainer.new()
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(words)
-	add_label(words, "SKIRMISH", &"PauseMuted")
+	_kicker = add_label(words, KICKER, &"PauseMuted")
 	_title = add_label(words, "", &"CapsTitle")
 	_title.clip_text = true
 	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -225,9 +228,9 @@ func _build_card() -> void:
 	_fix_size(circle, Vector2(CHECK_DP, CHECK_DP))
 	circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	item.add_child(circle)
-	var objective: Label = add_label(item, OBJECTIVE, &"Label")
-	objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective = add_label(item, OBJECTIVE, &"Label")
+	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var foot: HBoxContainer = HBoxContainer.new()
 	_loose.append(foot)
 	rows.add_child(foot)
@@ -370,6 +373,14 @@ func _fill_card() -> void:
 	var scenario: ScenarioDef = runner.scenario
 	var source: String = scenario.map.resource_path if scenario.map != null else ""
 	_title.text = source.get_file().get_basename().capitalize().to_upper()
+	_kicker.text = KICKER
+	_objective.text = OBJECTIVE
+	var lesson: TutorialLessonDef = _lesson_def()
+	if lesson != null:  # A lesson reads its own title and goal, never the skirmish's.
+		TutorialText.register()
+		_kicker.text = tr(TutorialText.KICKER)
+		_title.text = tr(lesson.title_key).to_upper()
+		_objective.text = tr(lesson.objective_key)
 	_title.visible = _title.text != ""
 	var snap: MatchSnapshot = runner.snapshot
 	var seconds: int = 0 if snap == null else snap.tick / Sim.TICK_RATE
@@ -589,6 +600,14 @@ func _is_lesson() -> bool:
 	return setup != null and setup.lesson_id != &""
 
 
+## The lesson this match plays, or null for any other match.
+func _lesson_def() -> TutorialLessonDef:
+	var setup: MatchSetup = _flow().call(&"current_setup") as MatchSetup if _owned() else null
+	return (
+		TutorialStart.lesson(setup.lesson_id) if setup != null and setup.lesson_id != &"" else null
+	)
+
+
 ## A lesson's Exit reads "LEAVE TUTORIAL" (it goes to the menu the same way: no ad is touched).
 func _show_exit() -> void:
 	var lesson: bool = _is_lesson()
@@ -723,7 +742,12 @@ func _surrender() -> void:
 ## Exit to menu and Leave tutorial: no XP, no ad bookkeeping (MenuFlow.return_to_menu).
 func _exit_match() -> void:
 	if _owned():
-		_flow().call(&"return_to_menu")
+		# A lesson's Leave tutorial lands on the Tutorial screen, where the lesson can start again;
+		# leaving Basics on purpose ends the first-launch offer.
+		var lesson: TutorialLessonDef = _lesson_def()
+		if lesson != null:
+			TutorialStart.note_left(lesson.id)
+		_flow().call(&"return_to_menu", TutorialStart.RETURN_SCREEN if _is_lesson() else &"")
 		return
 	_open_dev_menu()
 

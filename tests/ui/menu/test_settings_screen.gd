@@ -434,9 +434,12 @@ func test_in_a_match_neither_the_privacy_row_nor_the_purchase_slot_is_built() ->
 	assert_bool(_button("PRIVACY OPTIONS") == null).is_true()
 	assert_object(_screen.sound_slider).is_not_null()  # The plain settings stay.
 	assert_object(_button("HOW TO PLAY")).is_not_null()
+	# A lesson starts a new match: Replay tutorial is not offered over the one that runs.
+	assert_object(_button("REPLAY TUTORIAL")).is_null()
 	_close()
 	_in_match[0] = false  # From the main menu both are built again.
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	assert_object(_button("REPLAY TUTORIAL")).is_not_null()
 	assert_bool(_screen.privacy_button.visible).is_true()
 	assert_object(_screen.purchase_slot).is_not_null()
 

@@ -5,6 +5,8 @@ extends RefCounted
 ## The words are data (`data/tutorial/text_en.tres`) and name the lessons' faction's cards by
 ## `{type_id}`, which `register()` replaces with the unit's display name.
 
+## The pause menu's kicker line over a lesson's title, where a skirmish reads "SKIRMISH".
+const KICKER: StringName = &"tutorial.kicker"
 const TEXT_PATH: String = "res://data/tutorial/text_en.tres"
 ## The faction the lessons are played as: its roster gives the card names.
 const FACTION_PATH: String = "res://data/factions/fossil.tres"
