@@ -60,6 +60,19 @@ func _step(job: PackedStringArray, step_name: String) -> PackedStringArray:
 	return out
 
 
+## The lines of a step's `path: |` block. actions/cache derives its version from them in order, so
+## the restore and the save must list the same paths in the same order.
+func _paths(step: PackedStringArray) -> PackedStringArray:
+	var start: int = step.find("path: |")
+	assert_int(start).is_greater(-1)
+	var out: PackedStringArray = PackedStringArray()
+	for line: String in step.slice(start + 1):
+		if line.begins_with("key: "):
+			break
+		out.append(line)
+	return out
+
+
 func test_android_aab_job_is_read_only_and_deletes_its_key() -> void:
 	var job: PackedStringArray = _job()
 	assert_str(job[0]).is_equal("    needs: verify")
@@ -112,17 +125,16 @@ func test_gradle_cache_is_saved_on_main_under_the_key_the_restore_reads() -> voi
 	assert_str(save[2]).starts_with(
 		"uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
 	)
-	(
-		assert_array(Array(save))
-		. contains(
-			[
-				SAVE_IF,
-				"~/.gradle/caches",
-				"~/.gradle/wrapper",
-			]
-		)
+	assert_array(Array(save)).contains([SAVE_IF])
+	var paths: Array[String] = ["~/.gradle/caches", "~/.gradle/wrapper"]
+	assert_array(Array(_paths(restore))).contains_exactly(paths)
+	assert_array(Array(_paths(save))).contains_exactly(paths)
+	var prefix: String = "gradle-${{ env.GODOT_VERSION }}-"
+	assert_str(restore_key).starts_with("key: " + prefix)
+	assert_array(Array(restore)).contains(
+		["id: gradle-cache", "restore-keys: |", prefix, "gradle-"]
 	)
-	assert_array(Array(restore)).contains(["id: gradle-cache", "gradle-${{ env.GODOT_VERSION }}-"])
+	assert_array(Array(restore).slice(-2)).contains_exactly([prefix, "gradle-"])
 	var text: String = "\n".join(save)
 	for banned: String in ["keystore", "secrets.", "RUNNER_TEMP", "AAB_KEY"]:
 		assert_str(text).not_contains(banned)

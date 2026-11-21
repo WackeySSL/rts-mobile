@@ -4,8 +4,9 @@ name: CI
 # export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
-# "android-aab" (P410c) follows verify on pull requests and exports the Play bundle with a generated key, nothing
-# uploaded; it is not a required check.
+# "android-aab" (P410c) follows verify on pull requests and on a push to main and exports the Play bundle with a
+# generated key, nothing uploaded; on main it also saves the Gradle cache that the pull requests restore. It is not a
+# required check.
 # "android-perf-apk" (P51r) follows verify on a push to main and on a manual run and exports the release-template perf
 # APK of the gate, and on a push to main "android-perf-release" publishes it as the rolling pre-release
 # android-perf-release.
@@ -701,7 +702,7 @@ jobs:
         run: bash scripts/ci/install-godot.sh --android-source
 
       # restore-keys lets a PR use main's newest Gradle cache while the plugin pins have changed and main has not yet
-      # saved the new key; Gradle fetches only what is missing.
+      # saved the new key (the second line also covers a Godot version bump); Gradle fetches only what is missing.
       - name: Cache Gradle
         id: gradle-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -712,6 +713,7 @@ jobs:
           key: gradle-${{ env.GODOT_VERSION }}-${{ hashFiles('scripts/ci/install-android-plugins.sh', 'scripts/ci/install-godot.sh') }}
           restore-keys: |
             gradle-${{ env.GODOT_VERSION }}-
+            gradle-
 
       # The key is made for this run, in RUNNER_TEMP, and deleted below. keytool reads the password from the
       # environment, so it is on no command line.
