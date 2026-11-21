@@ -392,6 +392,7 @@ func test_the_purchase_slot_shows_with_a_visible_child_and_is_0_tall_without() -
 func test_saved_steps_out_of_range_are_clamped() -> void:
 	MenuPrefs.set_sound_step(15)
 	MenuPrefs.set_music_step(-2)
+	MenuPrefs.apply_audio(_audio)  # MenuFlow puts the save on the service at launch.
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
 	assert_int(int(_screen.sound_slider.value)).is_equal(10)
 	assert_int(int(_screen.music_slider.value)).is_equal(0)

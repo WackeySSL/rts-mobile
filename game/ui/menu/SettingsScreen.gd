@@ -130,10 +130,11 @@ func _top_step() -> int:
 	return int(audio.get("settings").steps) if audio != null else 10
 
 
-## The saved step, else what the audio service has now (`bus`), else the top step.
+## What the bus plays now, so a chip mute on the pause menu reads 0 here (the save is kept; a drag
+## unmutes and saves); the saved step, else the top one, with no audio service.
 func _initial(bus: StringName, saved: Callable) -> int:
-	var now: int = int(audio.call("get_step", bus)) if audio != null else _top_step()
-	return clampi(saved.call(now), 0, _top_step())
+	var step: int = int(audio.call("get_step", bus)) if audio != null else saved.call(_top_step())
+	return clampi(step, 0, _top_step())
 
 
 func _on_sound(value: float) -> void:
