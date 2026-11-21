@@ -6,7 +6,9 @@
 [sub_resource type="Resource" id="Step_00"]
 script = ExtResource("2_step")
 id = &"raid"
-threshold = 900
+trigger = 6
+threshold = 15
+trigger_beat = &"home"
 action_type = &"renew_fighter"
 target = 0
 target_tile = Vector2i(15, 6)

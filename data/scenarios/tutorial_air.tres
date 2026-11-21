@@ -136,7 +136,7 @@ script = ExtResource("2_spawn")
 owner = 2
 unit = ExtResource("u13_renew_fighter")
 count = 1
-origin_tile = Vector2i(22, 20)
+origin_tile = Vector2i(30, 28)
 
 [resource]
 script = ExtResource("1_scenario")
