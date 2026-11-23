@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
 ## Plan P508 (ADR 0041 section 7, ADR 0046): the asset scan for everything under assets/audio/.
 ## Every file has a row in assets/CREDITS.md with a source and an allowed licence (CC0 1.0, CC BY
-## 3.0 or 4.0, or "This repository (tools/sfxgen)" with "All rights reserved (AppCode ApS)"); sound
-## effects are mono 16-bit WAV at 22,050 or 44,100 Hz that never reach full scale, music is Ogg
-## Vorbis; all audio together stays inside the 12 MB budget; no stream a cue names is missing and
-## no file is left unused. The scan proves a row exists and is allowed; it cannot prove it true.
+## 3.0 or 4.0, or "This repository (tools/sfxgen)" or "(tools/musgen)" with "All rights reserved
+## (AppCode ApS)"); sound effects are mono 16-bit WAV at 22,050 or 44,100 Hz that never reach full
+## scale, music is Ogg Vorbis; all audio together stays inside the 12 MB budget; no stream a cue
+## names is missing and no file is left unused. The scan proves a row exists and is allowed; it
+## cannot prove it true.
 
 const AUDIO: String = "res://assets/audio"
 const CREDITS: String = "res://assets/CREDITS.md"
@@ -149,7 +150,11 @@ func _row_for(rows: Array[PackedStringArray], file: String) -> PackedStringArray
 
 
 func _is_generated(source: String) -> bool:
-	return source.to_lower().begins_with("this repository (tools/sfxgen)")
+	var lower: String = source.to_lower()
+	return (
+		lower.begins_with("this repository (tools/sfxgen)")
+		or lower.begins_with("this repository (tools/musgen)")
+	)
 
 
 func _allowed_licence(licence: String) -> bool:

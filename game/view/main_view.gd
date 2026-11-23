@@ -11,6 +11,10 @@ extends Node2D
 @export var ui_sounds: UiSounds
 @export var attack_cues: AttackCues
 
+## The service that plays the music: the `AudioService` autoload unless a test sets another node
+## with `play_music`.
+var audio: Node = null
+
 
 func _ready() -> void:
 	var scenario: ScenarioDef = runner.scenario
@@ -20,4 +24,12 @@ func _ready() -> void:
 	)
 	ui_sounds.local_player = scenario.local_player
 	ui_sounds.connect_attack_cues(attack_cues)
+	runner.ticked.connect(_on_first_tick, CONNECT_ONE_SHOT)
 	TutorialHost.attach(self)  # Only a lesson's match gets a director (P544).
+
+
+## The battle music starts with the first published tick (ADR 0041 section 5), once.
+func _on_first_tick(_tick: int) -> void:
+	audio = audio if audio != null else get_node_or_null("/root/AudioService")
+	if audio != null:
+		audio.call(&"play_music", &"battle")
