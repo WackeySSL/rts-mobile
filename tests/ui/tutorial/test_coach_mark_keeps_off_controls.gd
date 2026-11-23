@@ -20,6 +20,10 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const OVERLAP_PX2: float = 4.0  ## Less area than this is rounding, not a covered button.
 const TILE_MARGIN_DP: float = 8.0
 const TABS: int = 5
+const TOLERANCE_PX: float = 0.5
+## Real phones of ui_profiles.gd run besides the six sizes: where the screen has no free place the
+## card may stand on a button (the least it can), but never on the beat's own control or tile.
+const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Kinds a player ends with a gesture on the map, which folds the drawer (HudState.map_gesture).
 const MAP_KINDS: Array[TutorialConditions.Kind] = [
 	TutorialConditions.Kind.SELECTED,
@@ -46,6 +50,7 @@ var _mark: CoachMark
 var _director: TutorialDirector
 var _selection: SelectionModel
 var _own: PackedInt32Array = PackedInt32Array()
+var _fallbacks: Array[String] = []
 
 
 func before() -> void:
@@ -77,12 +82,21 @@ func after_test() -> void:
 
 func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_sizes() -> void:
 	var lessons: Array[TutorialLessonDef] = _lessons()
+	var profiles: Array[UiMetrics] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		profiles.append(_profile(size))
+	var extras: Array[UiMetrics] = []
+	for profile_name: StringName in EXTRA_PROFILES:
+		extras.append(UiProfiles.by_name(profile_name))
+	profiles.append_array(extras)
+	_fallbacks.clear()
 	assert_int(lessons.size()).is_greater_equal(4)
 	var seen: int = 0
 	var found: Array[String] = []
 	for lesson: TutorialLessonDef in lessons:
-		for size: Vector2i in ScreenSizes.ALL:
-			await _open(lesson, size)
+		for profile: UiMetrics in profiles:
+			var strict: bool = not extras.has(profile)
+			await _open(lesson, profile)
 			var carried: Dictionary = {
 				"unfold": HudState.Unfold.NONE, "tab": 0, "select": false, "groups": 0
 			}
@@ -94,7 +108,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 						await _enter(now)
 						await _show(lesson, beat)
 						seen += 1
-						found.append_array(_covered(lesson, beat, size, now))
+						found.append_array(_covered(lesson, beat, profile, now, strict))
 						var missing: bool = (
 							beat.anchor == TutorialBeatDef.Anchor.CONTROL
 							and _mark.target_control() == null
@@ -108,10 +122,21 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 	assert_int(seen).is_greater(100)
 	for line: String in found:
 		print("SWEEP ", line)
+	for line: String in _fallbacks:
+		print("FALLBACK ", line)
 	assert_array(found).override_failure_message("\n".join(found)).is_empty()
 
 
 ## The lessons of the folder, every file whose resource is a lesson.
+## The profile of the six sizes that has window size `size`.
+func _profile(size: Vector2i) -> UiMetrics:
+	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
+		for profile_name: StringName in profiles:
+			if profiles[profile_name].window_size == size:
+				return profiles[profile_name]
+	return null
+
+
 func _lessons() -> Array[TutorialLessonDef]:
 	var found: Array[TutorialLessonDef] = []
 	var names: PackedStringArray = DirAccess.get_files_at(LESSON_DIR)
@@ -204,19 +229,24 @@ func _show(lesson: TutorialLessonDef, beat: TutorialBeatDef) -> void:
 ## What the card covers in the state on show: the visible, enabled HUD buttons that are not its own,
 ## and the anchored tile. One line each.
 func _covered(
-	lesson: TutorialLessonDef, beat: TutorialBeatDef, size: Vector2i, state: Dictionary
+	lesson: TutorialLessonDef,
+	beat: TutorialBeatDef,
+	profile: UiMetrics,
+	state: Dictionary,
+	strict: bool
 ) -> Array[String]:
 	var lines: Array[String] = []
 	if not _mark.visible:
 		return lines  # A menu covers the HUD and the mark stands down.
 	var card: Rect2 = _mark.card_rect()
 	var label: String = (
-		"%s/%s %dx%d unfold=%d tab=%d select=%s groups=%d"
+		"%s/%s %s %dx%d unfold=%d tab=%d select=%s groups=%d"
 		% [
 			lesson.id,
 			beat.id,
-			size.x,
-			size.y,
+			profile.os_name,
+			profile.window_size.x,
+			profile.window_size.y,
 			state["unfold"],
 			state["tab"],
 			state["select"],
@@ -233,7 +263,19 @@ func _covered(
 			continue
 		var shown: Rect2 = _on_screen(button)
 		if card.intersection(shown).get_area() > OVERLAP_PX2:
-			lines.append("%s covers %s %s" % [label, _path(button), shown])
+			var line: String = "%s covers %s %s" % [label, _path(button), shown]
+			if strict or button == _mark.target_control():
+				lines.append(line)  # The anchor is never covered, a fallback or not.
+			else:
+				_fallbacks.append(line)  # The least-overlap place of a screen with no free one.
+	var panel: Rect2 = card.grow(TOLERANCE_PX)
+	for part: StringName in [&"Skip", &"Next"]:  # The card's own buttons stand on its panel.
+		var own: Button = _mark.find_child(String(part), true, false) as Button
+		if own != null and own.is_visible_in_tree() and not panel.encloses(own.get_global_rect()):
+			lines.append("%s: %s is outside the card %s" % [label, part, card])
+	var least: float = _mark.find_child("Card", true, false).get_combined_minimum_size().y
+	if card.size.y + TOLERANCE_PX < least:
+		lines.append("%s: the card is %s high, its text needs %s" % [label, card.size.y, least])
 	if beat.anchor == TutorialBeatDef.Anchor.TILE:
 		var camera: RtsCamera = _main.get_node("Camera") as RtsCamera
 		var world: Vector2 = IsoProjection.cell_centre_px(beat.anchor_tile.x, beat.anchor_tile.y)
@@ -260,15 +302,9 @@ func _path(node: Node) -> String:
 
 
 ## A main scene of `lesson`'s scenario at `size`, paused, with a coach mark and a director on it.
-func _open(lesson: TutorialLessonDef, size: Vector2i) -> void:
-	var profile: UiMetrics = null
-	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
-		for profile_name: StringName in profiles:
-			if profiles[profile_name].window_size == size:
-				profile = profiles[profile_name]
-	assert_object(profile).override_failure_message(str(size)).is_not_null()
+func _open(lesson: TutorialLessonDef, profile: UiMetrics) -> void:
 	UiScale.set_override(profile)
-	get_window().size = size
+	get_window().size = profile.window_size
 	await await_idle_frame()
 	_main = (load(MAIN_SCENE) as PackedScene).instantiate()
 	var runner: MatchRunner = _main.get_node("MatchRunner")

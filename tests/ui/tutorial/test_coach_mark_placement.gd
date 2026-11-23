@@ -285,3 +285,90 @@ func test_a_control_that_appears_mid_beat_moves_the_card() -> void:
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_bool(_safe().grow(TOLERANCE_PX).encloses(_mark.card_rect())).is_true()
+
+
+## The height `_fit_card` gives a width is the one its text needs at that width, not the one of the
+## width before: the panel holds Skip and Next at every share (a stale minimum let them hang below).
+func test_a_narrower_card_is_as_high_as_its_text_needs() -> void:
+	var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+	beat.anchor_control = &"NoSuchControl"
+	beat.prompt_key = &"Open the Infantry tab and tap Rig Hands twice to train two squads, then wait."
+	await _open(UiProfiles.by_name(&"android_6in_portrait"), beat)
+	var full: float = CoachMark.CARD_WIDTH_DP * UiScale.base_px_per_dp()
+	var heights: Array[float] = []
+	for share: float in CoachMark.WIDTH_SHARES:
+		var fitted: Vector2 = _mark._fit_card(full * share)
+		await await_idle_frame()  # Whatever settles late shows as a different minimum.
+		await await_idle_frame()
+		var panel: Control = _mark.find_child("Card", true, false) as Control
+		assert_float(fitted.y).override_failure_message(str(share)).is_equal_approx(
+			panel.get_combined_minimum_size().y, TOLERANCE_PX
+		)
+		heights.append(fitted.y)
+	print("B1 HEIGHTS ", heights)
+	assert_float(heights[2]).is_greater(heights[0])  # Narrower is taller.
+
+
+## Where the only place that touches no button is flush against two of them (less than the air from
+## each), the card goes there and not on a button.
+func test_the_only_free_place_may_be_flush_against_buttons() -> void:
+	var room: Rect2 = Rect2(0.0, 0.0, 400.0, 300.0)
+	var card: Vector2 = Vector2(380.0, 100.0)
+	var above: Rect2 = Rect2(0.0, 0.0, 400.0, 95.0)
+	var below: Rect2 = Rect2(0.0, 205.0, 400.0, 95.0)  # 110 between them; the air needs 116.
+	var blocked: Array[Rect2] = [above, below]
+	var placed: Rect2 = CoachMark.place_card(Rect2(), card, room, 8.0, 0.0, blocked, [], 8.0)
+	assert_bool(placed.intersects(above)).is_false()
+	assert_bool(placed.intersects(below)).is_false()
+	assert_bool(room.encloses(placed)).is_true()
+	# With no place that clears them all, the one that covers the least wins.
+	var blanket: Array[Rect2] = [above, below, Rect2(0.0, 95.0, 400.0, 110.0)]
+	var least: Rect2 = CoachMark.place_card(Rect2(), card, room, 8.0, 0.0, blanket, [], 8.0)
+	assert_bool(room.encloses(least)).is_true()
+	assert_float(CoachMark._overlap(least, blanket, 0.0)).is_less_equal(
+		CoachMark._overlap(Rect2(10.0, 100.0, 380.0, 100.0), blanket, 0.0)
+	)
+
+
+## A button scrolled out of its list's view is not a button the player can tap, so the card does not
+## keep off the place it would stand on.
+func test_a_button_scrolled_out_of_view_is_not_kept_off() -> void:
+	var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+	beat.anchor_control = &"NoSuchControl"
+	await _open(UiProfiles.by_name(&"web_phone_portrait"), beat)
+	var base: Rect2 = _mark.card_rect()
+	var list: ScrollContainer = ScrollContainer.new()
+	list.position = base.position - Vector2(0.0, 100.0)
+	list.size = Vector2(base.size.x, 40.0)
+	_hud_root.add_child(list)
+	var content: Control = Control.new()
+	content.custom_minimum_size = Vector2(base.size.x, 400.0)
+	list.add_child(content)
+	var hidden: Button = Button.new()
+	hidden.position = Vector2(0.0, 100.0)  # Below the 40 px the list shows: on `base`, out of view.
+	hidden.size = base.size
+	content.add_child(hidden)
+	await await_idle_frame()
+	assert_bool(hidden.get_global_rect().intersects(base)).is_true()
+	for _frame: int in 20:
+		await await_idle_frame()
+	assert_vector(_mark.card_rect().position).is_equal_approx(base.position, Vector2.ONE)
+
+
+## A card that still stands clear is left where it is when the ring moves a little (a camera pan):
+## no search, no hopping.
+func test_a_card_that_still_stands_clear_stays_when_the_ring_moves() -> void:
+	await _open(UiProfiles.by_name(&"web_phone_portrait"), _control_beat("hit", NEXT))
+	_put_target(Vector2(0.5, 0.5))
+	await await_idle_frame()
+	await await_idle_frame()
+	await await_idle_frame()
+	var before: Vector2 = _mark.card_rect().position
+	_target.global_position += Vector2(0.0, 6.0)  # A fresh search would follow it down.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_vector(_mark.card_rect().position).is_equal(before)
+	_target.global_position = _mark.card_rect().get_center() - _target.size * 0.5  # Under the card.
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_mark.card_rect().intersects(_mark.ring_rect())).is_false()
