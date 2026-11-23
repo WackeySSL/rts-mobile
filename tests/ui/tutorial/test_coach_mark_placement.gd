@@ -240,3 +240,48 @@ func test_a_turn_mid_beat_at_360_dp_keeps_the_card_inside() -> void:
 	await await_idle_frame()
 	await await_idle_frame()
 	_expect_card_placed("turned at 360 dp")
+
+
+## With no ring the card still keeps off the buttons it is given (a group column at the left edge
+## under a top-centre card of the full width).
+func test_with_no_ring_the_card_keeps_off_blocked_buttons() -> void:
+	var room: Rect2 = Rect2(0.0, 100.0, 400.0, 600.0)
+	var card: Vector2 = Vector2(380.0, 100.0)
+	var column: Rect2 = Rect2(0.0, 100.0, 60.0, 250.0)
+	var blocked: Array[Rect2] = [column]
+	var placed: Rect2 = CoachMark.place_card(Rect2(), card, room, 8.0, 0.0, blocked, [], 8.0)
+	assert_bool(room.encloses(placed)).is_true()
+	assert_bool(placed.intersects(column)).is_false()
+	assert_bool(placed.position.y >= column.end.y + 8.0).is_true()  # Below it, with the air.
+	var free: Rect2 = CoachMark.place_card(Rect2(), card, room, 8.0)
+	assert_vector(free.position).is_equal(Vector2(10.0, 100.0))  # Nothing to keep off: top centre.
+
+
+## When the air cannot be kept the card still never covers the button itself.
+func test_the_air_may_go_but_the_button_stays_clear() -> void:
+	var room: Rect2 = Rect2(0.0, 0.0, 400.0, 220.0)
+	var card: Vector2 = Vector2(380.0, 100.0)
+	var button: Rect2 = Rect2(0.0, 105.0, 60.0, 50.0)  # 5 px of room above it, 65 below.
+	var blocked: Array[Rect2] = [button]
+	var placed: Rect2 = CoachMark.place_card(Rect2(), card, room, 8.0, 0.0, blocked, [], 8.0)
+	assert_bool(placed.intersects(button)).is_false()
+
+
+## A button that shows mid-beat (a group chip) moves the card off it on the next frames; one that
+## goes away lets it settle again.
+func test_a_control_that_appears_mid_beat_moves_the_card() -> void:
+	var beat: TutorialBeatDef = _control_beat("hit", NEXT)
+	beat.anchor_control = &"NoSuchControl"
+	await _open(UiProfiles.by_name(&"web_phone_portrait"), beat)
+	var chip: Button = Button.new()
+	chip.size = Vector2.ONE * UiScale.dp(48.0)
+	_hud_root.add_child(chip)
+	chip.global_position = _mark.card_rect().position + Vector2.ONE * UiScale.dp(8.0)
+	for _frame: int in 20:  # The controls are listed again within `FIND_EVERY` frames.
+		await await_idle_frame()
+	assert_bool(_mark.card_rect().intersects(chip.get_global_rect())).is_false()
+	assert_bool(_safe().grow(TOLERANCE_PX).encloses(_mark.card_rect())).is_true()
+	chip.hide()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(_safe().grow(TOLERANCE_PX).encloses(_mark.card_rect())).is_true()
