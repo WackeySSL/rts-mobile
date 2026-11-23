@@ -3,10 +3,10 @@
 **In short, for Michael:** when the Dusk Array fires, every enemy building in its ring also takes
 one overload hit of 200 (from a weapon file in `data/`, like the Deep Bore's). A building with
 200 hp or less left is destroyed by it. For the 30 s of the blackout, those buildings also give
-their owner no sight: the fog closes in wherever only they saw. If the strike catches the victim's radar
-building (Signal Mast or Relay Post) and they have no other working one, their round radar and full
-map go dark for that time. Units are not touched: they keep moving, shooting and seeing. The
-computer loses exactly the same sight as a human, because it reads the same fog.
+their owner no sight: the fog closes in wherever only they saw. If the strike catches the victim's
+radar building (Signal Mast or Relay Post) and they have no other working one, their round radar
+and full map go dark for that time. Units are not touched: they keep moving, shooting and seeing.
+The computer loses exactly the same sight as a human, because it reads the same fog.
 
 Status: **proposed**. The two changes were decided by Michael on 2026-11-23 (overload damage of
 about 200 from data; a vision cut for the length of the blackout, the exact rule left to the
@@ -156,9 +156,10 @@ What exists that this builds on:
   Each makes one pass over `building_rows` and allocates nothing. It is a module of its own so that
   P574 does not edit `Strike.gd` while P572 does. `MatchSnapshot` calls them once per capture
   for each player (on the worker, after the step) into two preallocated per-player arrays,
-  `radar_dark` and `radar_dark_until`, with the World's new tick (`snap.tick`) as the stamp. That is the stamp `BuildingLayer`'s offline glyph uses, so the glyph
-  and the dark scope start and stop on the same snapshot. The scope goes dark on the snapshot of
-  the firing step, because the blackout is applied in COMMANDS.
+  `radar_dark` and `radar_dark_until`, with the World's new tick (`snap.tick`) as the stamp. That
+  is the stamp `BuildingLayer`'s offline glyph uses, so the glyph and the dark scope start and stop
+  on the same snapshot. The scope goes dark on the snapshot of the firing step, because the
+  blackout is applied in COMMANDS.
 - **Hash.** Derived from hashed columns. No hash section, no `STATE_FORMAT` change. Adding
   `type_radar` moves every `defs_hash` pin, the frozen arena's included (a new array in the
   digest), but no state golden.

@@ -103,8 +103,8 @@ Mutation testing (at most about 10 chosen mutants) for P572, P573 and P574.
 - **Wave 2:** P572, P573 and P574 in parallel, after P570 merges and the "before" run has started.
   They touch different lines of `WorldShape.gd` and `WorldLoad.gd`, and each re-pins `defs_hash`
   pins. Verify their combined tree once before the second and third merge. Expect each later one to
-  re-pin the same `defs_hash` pins again on rebase. No interaction review is needed: they touch
-  different systems.
+  re-pin the same `defs_hash` pins again when it merges main in. No interaction review is needed:
+  they touch different systems.
 - **Wave 3:** P575 (after P574), P575b (after P572) and P576 (after P573 and P574) in parallel.
   P575 and P575b both edit HOW_TO_PLAY, in different rows.
 - **Wave 4:** P577, then P578.
@@ -129,9 +129,9 @@ Mutation testing (at most about 10 chosen mutants) for P572, P573 and P574.
 6. **Balance swing.** The Lumen Accord may now win too often in Hard-vs-Hard. Three data levers:
    damage, the rule switch, and the radar flags. Mend pays the overload back, which softens it.
    P577 decides, and any tuning is a later row with Michael's yes.
-7. **Re-pin churn.** Three parallel rows move the same `defs_hash` pins. Each re-pins on rebase,
-   names the pins and gives the reason. The frozen arena's state goldens must stay unchanged, and a
-   test guards that.
+7. **Re-pin churn.** Three parallel rows move the same `defs_hash` pins. Each re-pins when it merges
+   main in, names the pins and gives the reason. The frozen arena's state goldens must stay
+   unchanged, and a test guards that.
 8. **Tutorial strike drill.** `tutorial_strikes.tres` loads the shipped Dusk Array, so the overload
    may kill a building a later beat needs. P572 runs the tutorial suites, and a failure goes back to
    the tutorial owner, not into a data tweak.
