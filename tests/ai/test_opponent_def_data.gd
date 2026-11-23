@@ -75,11 +75,11 @@ const _LEVELS: Dictionary[String, Array] = {
 		2,
 		1800,
 		2700,
-		4050,
-		4000,
-		25,
+		2850,
+		3000,
+		30,
 		300,
-		10800,
+		6900,
 		40,
 		200,
 		0,
@@ -104,11 +104,11 @@ const _LEVELS: Dictionary[String, Array] = {
 		3,
 		1350,
 		1800,
-		3600,
-		5000,
-		30,
+		2550,
+		3750,
+		36,
 		150,
-		9900,
+		6300,
 		50,
 		150,
 		30,
@@ -149,6 +149,11 @@ func test_easy_never_uses_the_strike_and_no_level_gets_a_money_bonus() -> void:
 func test_the_script_defaults_of_a_level_are_normals_file() -> void:
 	var skip: Array[String] = []
 	skip.assign(_OFF_BY_DEFAULT.keys())
+	# P556 tuned Normal's wave and all-in numbers in the data only; the script defaults keep the
+	# values the rigs of tests/ai/ were built on, so those four are not compared here.
+	skip.append_array(
+		["wave_first_tick", "wave_first_strength", "wave_growth_percent", "all_in_tick"]
+	)
 	_assert_defaults_equal(AiDifficultyDef.new(), Rig.level_of("normal"), skip)
 
 
