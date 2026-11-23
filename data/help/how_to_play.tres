@@ -938,7 +938,7 @@ body = "Tap Surrender in the pause menu. A question appears. Keep playing closes
 script = ExtResource("3_ent")
 id = &"winning-result"
 title = "The result screen"
-body = "When the match ends, a screen shows VICTORY, DEFEAT or DRAW and the time the match took. It lists the units built, units lost, buildings lost and credits harvested, for you and the enemy. A match from the main menu also shows the XP you earned and your rank bar filling up. Play again starts a new match with the same setup. Back returns to the main menu."
+body = "When the match ends, a screen shows VICTORY, DEFEAT or DRAW and the time the match took. It lists the units built, units lost, buildings lost and credits harvested, for you and the enemy. A match from the main menu also shows the XP you earned and your rank bar filling up. Play again starts a new match with the same setup. Back, or the phone's Back button, returns to the main menu. After a lesson it returns to the Tutorial screen, and Play again plays that lesson again."
 
 [sub_resource type="Resource" id="e140"]
 script = ExtResource("3_ent")

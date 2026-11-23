@@ -5,9 +5,10 @@ extends ModalFrame
 ## buildings lost and credits harvested, from the published snapshot. "Play again" opens a new main
 ## scene for the same scenario, opponents and level, "Back" the dev menu until Phase 5's start page.
 ## Started from the menu (`MenuFlow` owns the match, ADR 0043 section 6) the buttons are the flow's:
-## "Back" awaits `leave_match()` (counts the match, then the menu) and "Play again" awaits
-## `restart()`; a second tap while one runs does nothing. The screen also shows the XP the match
-## paid and the rank bar filling from the old XP to the new (a rank-up restarts the bar in the new
+## "Back" awaits `leave_match()` (counts the match, then the menu; the Tutorial screen after a
+## lesson) and "Play again" awaits `restart()`; a second tap while one runs does
+## nothing. The screen also shows the XP the match paid and the rank bar filling from the old XP
+## to the new (a rank-up restarts the bar in the new
 ## rank, ADR 0045), and plays the victory or defeat sting once. Sideways the banner and the table
 ## stand side by side, upright one above the other.
 ## The `OfferSlot` under the table (game/ui/menu/OfferSlot.gd) is hidden and 0 tall while it holds
@@ -347,8 +348,21 @@ func _back() -> void:
 		DevRoutes.open(get_tree(), DevRoutes.DEV_MENU_SCENE)
 		return
 	_set_leaving(true, false)
-	await flow.leave_match()
+	await flow.leave_match(_back_screen())
 	_set_leaving(false, false)
+
+
+## Where Back lands: a lesson (P544) returns to the Tutorial screen, a skirmish to the main menu
+## (&""). Play again after a lesson still restarts the lesson.
+func _back_screen() -> StringName:
+	var setup: MatchSetup = flow.current_setup()
+	return TutorialStart.RETURN_SCREEN if setup != null and setup.lesson_id != &"" else &""
+
+
+## The phone's Back button on the shown result is the Back button.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_visible_in_tree():
+		_back()
 
 
 ## While the flow prepares the next match (it may wait for a late ad to close) both buttons are
