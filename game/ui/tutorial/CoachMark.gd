@@ -17,7 +17,11 @@ extends Control
 ## The card is placed by `place_card`: below the ring, else above, right, left, slid into the room
 ## and never over the ring; with no ring it stands at the top centre of the room. The room is the
 ## safe rect below the top HUD row (the pill, the scope and the attack toast's slot, ADR 0025
-## section 2: `top_row_dp`), so the card never covers the pause button or the scope. When the beat
+## section 2: `top_row_dp`), so the card never covers the pause button or the scope. Besides the
+## ring it keeps off every visible, enabled button of the HUD (the open drawer's tabs, items and
+## close button, the group chips, the command bar; in a menu, that menu's buttons), 8 dp away where
+## there is room, and goes narrower (3/4, then 3/5) before it would stand on one; it is placed again
+## when one appears, moves or goes. When the beat
 ## is `stalled()` the card shows a hint line and the ring turns amber and doubles (a shape change as
 ## well as a colour). The ring pulses unless `reduced` (the Reduced effects switch): then there is
 ## no Tween at all.
@@ -37,6 +41,10 @@ const FIND_EVERY: int = 15  ## Frames between looks for a control that is not th
 const ELLIPSE_STEPS: int = 40
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const EPSILON: float = 0.01
+const WIDTH_SHARES: Array[float] = [1.0, 0.75, 0.6]  ## Of the card's width, in the order tried.
+const COST_BAND: float = 1.0e9  ## See `_cost`: far more than any screen area.
+const COST_RING: float = 1.0e12
+const MAX_COLUMNS: int = 9  ## Columns of the search grid in `place_card`.
 ## Drawn above every other control of the layer, the pause menu included, whatever order the mark
 ## was added in: the card that asks for Resume must be seen over the open menu.
 const Z_ABOVE_MODALS: int = 100
@@ -75,6 +83,9 @@ var _again: int = 0  ## Layouts still to make for the change in hand.
 var _next_find: int = 0
 var _blocked_now: Array[Rect2] = []  ## What the card was last placed clear of.
 var _hard_now: Array[Rect2] = []
+var _blocked_next: Array[Rect2] = []  ## This frame's, swapped with the two above on a layout.
+var _hard_next: Array[Rect2] = []
+var _placed_now: bool = false  ## The card stands somewhere `_update` chose.
 var _blocked_modal: Node = null  ## The modal whose buttons are cached, and when to look again.
 var _blocked_controls: Array[Control] = []
 var _blocked_scan: int = 0
@@ -153,6 +164,7 @@ func show_beat(beat: TutorialBeatDef) -> void:
 		return
 	_target = null
 	_next_find = 0
+	_blocked_scan = 0  # The beat's controls may be new: list them again.
 	_dirty = true
 	_measure()
 	_prompt.text = tr(String(beat.prompt_key))
@@ -162,6 +174,7 @@ func show_beat(beat: TutorialBeatDef) -> void:
 
 
 func hide_mark() -> void:
+	_placed_now = false
 	_beat = null
 	_target = null
 	_ring_now = Rect2()
@@ -205,11 +218,13 @@ static func top_row_dp(portrait: bool) -> float:
 ## row at the card's foot. The candidates, in order: below the ring, above, right, left, then the
 ## top and the bottom of `room`, each slid into `room` and taken when it clears the ring. None
 ## clearing it, the one whose button row misses the ring most, then the one that overlaps it
-## least. With no ring: the top centre of `room`. `blocked` are rects the card should not cover (the
-## other buttons of a menu the ring is in) and `hard` rects it never covers (an ad band, ad policy):
-## when there are any, the sides, corners and a grid of `room` are tried too. The first place that
-## clears the ring and both lists is taken; none, the first that clears the ring and `hard`; none
-## of those, the fallback below, which still keeps off `hard` wherever a place does.
+## least. With no ring and nothing to keep off: the top centre of `room`. `blocked` are rects the
+## card should not cover (the buttons of the HUD or of the menu the ring is in), kept `air` away
+## while a place has room, and `hard` rects it never covers (an ad band, ad policy): when there are
+## any, the sides, corners and a grid of `room` are tried too (with no ring, the top centre first).
+## The first place that clears the ring and both lists is taken; none, the first that clears the
+## ring, the `blocked` rects themselves and `hard`; none of those, the first that clears the ring
+## and `hard`; none of those, the fallback below, which keeps off `hard` wherever a place does.
 static func place_card(
 	ring: Rect2,
 	card: Vector2,
@@ -217,24 +232,28 @@ static func place_card(
 	gap: float,
 	row_h: float = 0.0,
 	blocked: Array[Rect2] = [],
-	hard: Array[Rect2] = []
+	hard: Array[Rect2] = [],
+	air: float = 0.0
 ) -> Rect2:
 	var fit: Vector2 = card.min(room.size)
 	var top: Vector2 = Vector2(room.get_center().x - fit.x * 0.5, room.position.y)
-	if not ring.has_area():
+	var searching: bool = not blocked.is_empty() or not hard.is_empty()
+	if not ring.has_area() and not searching:
 		return Rect2(top, fit)
-	var centre: Vector2 = ring.get_center()
+	var centre: Vector2 = ring.get_center() if ring.has_area() else room.get_center()
 	var across: float = centre.x - fit.x * 0.5
-	var tries: Array[Vector2] = [
-		Vector2(across, ring.end.y + gap),
-		Vector2(across, ring.position.y - gap - fit.y),
-		Vector2(ring.end.x + gap, centre.y - fit.y * 0.5),
-		Vector2(ring.position.x - gap - fit.x, centre.y - fit.y * 0.5),
-		Vector2(across, room.position.y),
-		Vector2(across, room.end.y - fit.y),
-	]
+	var tries: Array[Vector2] = [top]  # With no ring: the top centre, then the search below.
+	if ring.has_area():
+		tries = [
+			Vector2(across, ring.end.y + gap),
+			Vector2(across, ring.position.y - gap - fit.y),
+			Vector2(ring.end.x + gap, centre.y - fit.y * 0.5),
+			Vector2(ring.position.x - gap - fit.x, centre.y - fit.y * 0.5),
+			Vector2(across, room.position.y),
+			Vector2(across, room.end.y - fit.y),
+		]
 	var spread: Array[Vector2] = []
-	if not blocked.is_empty() or not hard.is_empty():
+	if searching:
 		spread = tries.duplicate()
 		(
 			spread
@@ -250,18 +269,39 @@ static func place_card(
 			)
 		)
 		var step: float = maxf(fit.y * 0.5, 1.0)
-		for x: float in [room.position.x, across, room.end.x - fit.x]:
+		var columns: Array[float] = [across, room.position.x, room.end.x - fit.x]
+		var x_step: float = maxf(fit.x * 0.5, 1.0)
+		var x_at: float = room.position.x + x_step
+		while x_at < room.end.x - fit.x - EPSILON and columns.size() < MAX_COLUMNS:
+			columns.append(x_at)  # A narrow gap between two panels may fit none of the three.
+			x_at += x_step
+		for x: float in columns:
 			var y: float = room.position.y
 			while y <= room.end.y - fit.y + EPSILON:
 				spread.append(Vector2(x, y))
 				y += step
-		for keep_soft: bool in [true, false]:  # Button air may go; the ring and the band may not.
-			for at: Vector2 in spread:
-				var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
-				if box.intersection(ring).get_area() > EPSILON or _hits_any(box, hard):
-					continue
-				if not keep_soft or not _hits_any(box, blocked):
-					return box
+		var open_spots: Array[Rect2] = []  # The places that clear the ring and the band.
+		for at: Vector2 in spread:
+			var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
+			if box.intersection(ring).get_area() > EPSILON or _hits_any(box, hard):
+				continue
+			if not _hits_any(box, blocked, air):
+				return box
+			open_spots.append(box)
+		# No place keeps the air: the one that overlaps the buttons least (flush against one, when
+		# that touches none), then the one that comes nearest to keeping the air.
+		var least_over: float = INF
+		var least_near: float = INF
+		var pick: Rect2 = Rect2()
+		for box: Rect2 in open_spots:
+			var over: float = _overlap(box, blocked, 0.0)
+			var near: float = _overlap(box, blocked, air)
+			if over < least_over - EPSILON or (over <= least_over + EPSILON and near < least_near):
+				least_over = over
+				least_near = near
+				pick = box
+		if not open_spots.is_empty():
+			return pick
 	var best: Rect2 = Rect2(top, fit)
 	var least_row: float = INF
 	var least: float = INF
@@ -295,39 +335,70 @@ static func _clear_of(
 	return found
 
 
-static func _hits_any(box: Rect2, rects: Array[Rect2]) -> bool:
+## The area of `box` that lies on `rects` (each grown by `air`).
+static func _overlap(box: Rect2, rects: Array[Rect2], air: float) -> float:
+	var area: float = 0.0
 	for rect: Rect2 in rects:
-		if box.intersects(rect):
+		area += box.intersection(rect.grow(air) if air > 0.0 else rect).get_area()
+	return area
+
+
+static func _hits_any(box: Rect2, rects: Array[Rect2], air: float = 0.0) -> bool:
+	for rect: Rect2 in rects:
+		if box.intersects(rect.grow(air) if air > 0.0 else rect):
 			return true
 	return false
 
 
-## The rects the card keeps clear of, when the target is in a modal (a ModalFrame, as the pause menu
-## is): into `soft` the modal's other visible buttons, grown 8 dp (button air), into `hard` its ad
-## band, grown 16 dp (ad policy). The controls are found once per open menu (and again every
-## `FIND_EVERY` frames, for a button that comes and goes), the rects are read each frame.
+## The rects the card keeps clear of: into `soft` every visible, enabled button of the scope; into
+## `hard` the scope's ad band, grown 16 dp (ad policy). The scope is the modal the target is in (a
+## ModalFrame, as the pause menu is), else the whole HUD under `hud_root`, so the card never stands
+## on a control the beat needs next: the open drawer's tabs, items and close button, the group
+## chips, the command bar. The controls are listed once per scope (and again every `FIND_EVERY`
+## frames and on a new beat, for one built later); whether each shows and its rect are read each
+## frame, so a chip that appears or a drawer that slides in re-places the card at once.
 func _collect_blocked(soft: Array[Rect2], hard: Array[Rect2]) -> void:
 	var modal: Node = _target
 	while modal != null and not modal is ModalFrame:
 		modal = modal.get_parent()
-	if modal == null:
+	var scope: Node = modal if modal != null else hud_root
+	if scope == null:
 		_blocked_modal = null
 		return
 	var frame: int = Engine.get_process_frames()
-	if modal != _blocked_modal or frame >= _blocked_scan:
-		_blocked_modal = modal
+	if scope != _blocked_modal or frame >= _blocked_scan:
+		_blocked_modal = scope
 		_blocked_scan = frame + FIND_EVERY
 		_blocked_controls.clear()
-		for node: Node in modal.find_children("*", "Control", true, false):
-			if node != _target and (node is Button or node is AdBannerBand):
-				_blocked_controls.append(node as Control)
+		for type_name: String in ["BaseButton", "AdBannerBand"]:  # Typed finds skip the rest.
+			for node: Node in scope.find_children("*", type_name, true, false):
+				if node != _target and not is_ancestor_of(node):
+					_blocked_controls.append(node as Control)
 	for control: Control in _blocked_controls:
 		if not is_instance_valid(control) or not control.is_visible_in_tree():
 			continue
+		var button: BaseButton = control as BaseButton
+		if button != null and button.disabled:
+			continue
+		var shown: Rect2 = _visible_rect(control)
+		if not shown.has_area():
+			continue
 		if control is AdBannerBand:  # Content keeps the buttons' gap from an ad (ad policy).
-			hard.append(control.get_global_rect().grow(GAP_DP * _dp))
-		else:  # A card that touches the buttons looks cramped: keep 8 dp off them.
-			soft.append(control.get_global_rect().grow(BUTTON_AIR_DP * _dp))
+			hard.append(shown.grow(GAP_DP * _dp))
+		else:  # `place_card` keeps `BUTTON_AIR_DP` off them while a place has room.
+			soft.append(shown)
+
+
+## `control`'s rect as the player sees it: cut by the scroll areas it stands in and by the screen.
+func _visible_rect(control: Control) -> Rect2:
+	var shown: Rect2 = control.get_global_rect()
+	var up: Node = control.get_parent()
+	while up != null and up != hud_root:
+		var area: ScrollContainer = up as ScrollContainer
+		if area != null:
+			shown = shown.intersection(area.get_global_rect())
+		up = up.get_parent()
+	return shown.intersection(Rect2(Vector2.ZERO, _view))
 
 
 ## Whether the mark must stand down: a visible modal (the pause menu, a question, the result
@@ -375,27 +446,33 @@ func _update() -> void:
 	if covered:
 		return
 	var ring: Rect2 = _ring_box()
-	var blocked: Array[Rect2] = []
-	var hard: Array[Rect2] = []
+	var blocked: Array[Rect2] = _blocked_next
+	var hard: Array[Rect2] = _hard_next
+	blocked.clear()
+	hard.clear()
 	_collect_blocked(blocked, hard)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
+	var reshaped: bool = (
+		_dirty or stalled != _stalled_now or can_next != _can_next_now or size != _size_now
+	)
 	var changed: bool = (
-		_dirty
-		or ring != _ring_now
-		or blocked != _blocked_now
-		or hard != _hard_now
-		or stalled != _stalled_now
-		or can_next != _can_next_now
-		or size != _size_now
+		reshaped or ring != _ring_now or blocked != _blocked_now or hard != _hard_now
 	)
 	if not changed and _again == 0:
 		return
-	if changed:
+	# A card that still stands clear (a camera pan moves a tile's ring) is left where it is: no
+	# search, no hopping.
+	var keep: bool = (
+		not reshaped and _again == 0 and _placed_now and _is_clear(card_rect(), ring, blocked, hard)
+	)
+	if changed and not keep:
 		_again = 2  # A label shapes its wrapped text a frame after its width changes: look twice.
 	_dirty = false
 	_ring_now = ring
+	_blocked_next = _blocked_now  # The frame's arrays become the last ones; the old ones are reused.
 	_blocked_now = blocked
+	_hard_next = _hard_now
 	_hard_now = hard
 	_stalled_now = stalled
 	_can_next_now = can_next
@@ -412,21 +489,70 @@ func _update() -> void:
 		_start_pulse()
 	else:
 		_stop_pulse()
-	var width: float = minf(CARD_WIDTH_DP * _dp, _room.size.x)
-	var panel: StyleBox = _card.get_theme_stylebox(&"panel")
-	var inner: float = width - panel.get_minimum_size().x
-	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
-		label.custom_minimum_size.x = inner
-		label.size.x = inner
-	_card.custom_minimum_size = Vector2(width, 0.0)
-	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
-	var row_h: float = MIN_TARGET_DP * _dp + panel.get_margin(SIDE_BOTTOM)
-	var placed: Rect2 = place_card(ring, _card.size, _room, GAP_DP * _dp, row_h, blocked, hard)
+	if keep:
+		_card.mouse_filter = Control.MOUSE_FILTER_STOP  # It stands clear of the ring.
+		return
+	var full: float = minf(CARD_WIDTH_DP * _dp, _room.size.x)
+	var row_h: float = (
+		MIN_TARGET_DP * _dp + _card.get_theme_stylebox(&"panel").get_margin(SIDE_BOTTOM)
+	)
+	var air: float = BUTTON_AIR_DP * _dp
+	var placed: Rect2 = Rect2()
+	var chosen: float = full
+	var least: float = INF
+	for share: float in WIDTH_SHARES:  # A narrower card where the full one has no free place.
+		var size_now: Vector2 = _fit_card(full * share)
+		var at: Rect2 = place_card(ring, size_now, _room, GAP_DP * _dp, row_h, blocked, hard, air)
+		var cost: float = _cost(at, ring, blocked, hard)
+		if cost <= least:  # A tie goes to the narrower card.
+			least = cost
+			placed = at
+			chosen = size_now.x
+		if cost <= 0.0:
+			break
+	_fit_card(chosen)
+	_placed_now = true
 	_card.global_position = placed.position
 	# A card that could not clear the ring lets touches through, so it never blocks the target.
 	var covers: bool = placed.intersection(ring).get_area() > EPSILON
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if covers else Control.MOUSE_FILTER_STOP
 	_again -= 1
+
+
+## Gives the card `width` px (more when its buttons need it) and the height its wrapped text needs
+## at that width; returns the size. The labels' and the box's cached minimums are dropped first, or
+## the height read is the one of the width before.
+func _fit_card(width: float) -> Vector2:
+	var panel: StyleBox = _card.get_theme_stylebox(&"panel")
+	var column: Control = _prompt.get_parent() as Control
+	_row.update_minimum_size()
+	var wide: float = maxf(width, _row.get_combined_minimum_size().x + panel.get_minimum_size().x)
+	var inner: float = wide - panel.get_minimum_size().x
+	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
+		label.custom_minimum_size.x = inner
+		label.size.x = inner
+		label.update_minimum_size()
+	column.update_minimum_size()
+	_card.custom_minimum_size = Vector2(wide, 0.0)
+	_card.update_minimum_size()
+	_card.size = Vector2(wide, _card.get_combined_minimum_size().y)
+	return _card.size
+
+
+## Whether `box` is off the ring, the hard rects and every blocked button.
+func _is_clear(box: Rect2, ring: Rect2, blocked: Array[Rect2], hard: Array[Rect2]) -> bool:
+	return _cost(box, ring, blocked, hard) <= 0.0
+
+
+## What `box` costs: a ring under it outweighs the band, the band outweighs a button, a button costs
+## the area it is covered by. Nought: a free place.
+static func _cost(box: Rect2, ring: Rect2, blocked: Array[Rect2], hard: Array[Rect2]) -> float:
+	var cost: float = _overlap(box, blocked, 0.0)
+	if _hits_any(box, hard):
+		cost += COST_BAND
+	if box.intersection(ring).get_area() > EPSILON:
+		cost += COST_RING
+	return cost
 
 
 ## The ring's box from the beat, global px: a control's rect grown a little, or the tile's ground
