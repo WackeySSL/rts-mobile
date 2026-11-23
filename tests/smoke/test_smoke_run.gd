@@ -647,8 +647,9 @@ func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]), P279 ([2, 2,
 	# 500], [6, 4, 527], [0, 0, 432]), P295 alone ([9, 8, 585], [2, 2, 586], [0, 0, 452]), P280
 	# alone ([4, 3, 604], [2, 2, 580], [0, 0, 454]) and the two together (the lead, wave 21), then by
-	# P556 (earlier waves and all-in at Normal and Hard) from [4, 3, 631], [3, 3, 565] and [0, 0, 445].
-	var cases: Array = [[1, hard, [2, 1, 743]], [2, hard, [1, 1, 754]], [1, NORMAL, [0, 0, 457]]]
+	# P556 (earlier waves and all-in at Normal and Hard) from [4, 3, 631], [3, 3, 565] and [0, 0, 445],
+	# then by P250e (the all-in wave gathers a group) from [2, 1, 743], [1, 1, 754] and [0, 0, 457].
+	var cases: Array = [[1, hard, [1, 0, 677]], [2, hard, [1, 1, 694]], [1, NORMAL, [1, 0, 392]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0
