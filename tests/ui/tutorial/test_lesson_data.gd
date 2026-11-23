@@ -307,7 +307,9 @@ func test_prompts_name_cards_by_their_display_names() -> void:
 			. is_false()
 		)
 	for type: String in cards:
-		for wrong: String in [type.capitalize(), type.trim_prefix("fossil_").capitalize()]:
+		for wrong: String in [
+			type.capitalize(), type.trim_prefix("fossil_").trim_prefix("renew_").capitalize()
+		]:
 			if real.has(wrong):
 				continue
 			var word: RegEx = RegEx.create_from_string("\\b%s\\b" % wrong)  # Not "Strikes".
@@ -318,6 +320,19 @@ func test_prompts_name_cards_by_their_display_names() -> void:
 					. override_failure_message(label)
 					. is_false()
 				)
+
+
+## Two factions that name one type id differently: the first (the player's) keeps its name.
+func test_the_first_faction_wins_a_name_clash() -> void:
+	var found: Dictionary[String, String] = {}
+	for label: String in ["Mine", "Theirs"]:
+		var unit: UnitDef = UnitDef.new()
+		unit.type_id = &"shared"
+		unit.display_name = label
+		var faction: FactionDef = FactionDef.new()
+		faction.roster.append(unit)
+		TutorialText.merge_names(found, faction)
+	assert_str(found["shared"]).is_equal("Mine")
 
 
 ## A strike building of a drill is ready when its drill needs it and not before: the Deep Bore has

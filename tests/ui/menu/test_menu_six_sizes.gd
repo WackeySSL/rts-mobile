@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## Every menu screen at the six sizes of ADR 0015 section 6 and at every profile's portrait twin
-## (plan P534): the main menu, the map select, Settings, How to play (the list, a real section and
-## a long one) and Licences (the list and a long text). On each one at each size:
+## (plan P534, P562): the main menu, the map select, Settings, How to play (the list, a real
+## section and a long one), Licences (the list and a long text) and the Tutorial screen (pushed
+## over the main menu, as MenuRoutes.TUTORIAL does). On each one at each size:
 ## - every button and slider is 48 dp or more in both directions;
 ## - the column and the scroll are inside the safe rect, and no control of the column runs past its
 ##   left or right edge (no horizontal overflow);
@@ -10,14 +11,14 @@ extends GdUnitTestSuite
 ## Turning the device on each screen (the pairs of ADR 0015 section 6 and the notch design, both
 ## ways) keeps the MenuStack depth, the screen, its open section or text and the scroll position
 ## (as far as the turned layout's range allows), and the layout checks hold again after the turn.
-## Not covered: the tutorial screen (P544, plan row P534's dependency) is not built yet, and the
-## result screen is a modal of the match HUD (`ModalFrame`), not a menu screen; its sizes are in
-## test_result_screen.gd.
+## Not covered: the result screen is a modal of the match HUD (`ModalFrame`), not a menu screen;
+## its sizes are in test_result_screen.gd.
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
+const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 const SAVE_SCRIPT: String = "res://game/meta/save_service.gd"
 const SERVICE_SCRIPT: String = "res://game/meta/progression_service.gd"
 const FakeRank: GDScript = preload("res://tests/ui/support/fake_rank_progression.gd")
@@ -33,6 +34,7 @@ const HOW_REAL_SECTION: StringName = &"how_to_play_real_section"
 const HOW_LONG_SECTION: StringName = &"how_to_play_long_section"
 const LICENCES_LIST: StringName = &"licences_list"
 const LICENCES_TEXT: StringName = &"licences_text"
+const TUTORIAL: StringName = &"tutorial"
 ## The only profile whose safe width is narrower than the side row: its names wrap.
 const WRAPPING_PROFILE: StringName = &"web_phone_portrait"
 ## Profiles whose row is wider than the asked column but fits the safe width: the column grows.
@@ -44,6 +46,8 @@ var _quit_on_go_back_before: bool = true
 var _menu: Control
 var _stack: MenuStack
 var _screen: MenuScreen
+## The screen under the open one when the kind is pushed over the main menu (TUTORIAL), else null.
+var _root: MenuScreen = null
 var _rank: Node
 var _flow: Node
 var _save: Node
@@ -73,8 +77,8 @@ func before_test() -> void:
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
-	UiScale.clear_override()
 	_close()
+	UiStateGuard.restore(get_window(), _window_size_before)
 	for node: Node in [_rank, _flow, _progression, _save]:
 		if is_instance_valid(node):
 			node.free()
@@ -178,14 +182,10 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 		UiScale.clear_override()
 
 
-func test_a_late_store_answer_moves_nothing_in_settings_at_every_size() -> void:
-	for profile: UiMetrics in _late_answer_profiles():
-		await _late_answer(profile, "kr 19,00")
-
-
-func test_a_late_unavailable_store_moves_nothing_in_settings_at_every_size() -> void:
-	for profile: UiMetrics in _late_answer_profiles():
-		await _late_answer(profile, "")
+func test_a_late_store_answer_or_a_late_unavailable_store_moves_nothing_in_settings() -> void:
+	for price: String in ["kr 19,00", ""]:  # An answer, then "unavailable".
+		for profile: UiMetrics in _late_answer_profiles():
+			await _late_answer(profile, price)
 
 
 ## The six sizes, then the 6-inch phone with the design's safe-area insets, landscape and portrait.
@@ -265,7 +265,9 @@ func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void
 
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
-	for kind: StringName in [MAIN, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST]:
+	for kind: StringName in [
+		MAIN, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
+	]:
 		await _check_turns(kind, false)
 
 
@@ -275,6 +277,52 @@ func test_turning_the_device_on_a_long_how_to_play_section_keeps_the_scroll() ->
 
 func test_turning_the_device_on_a_long_licence_text_keeps_the_scroll() -> void:
 	await _check_turns(LICENCES_TEXT, true)
+
+
+## Tutorial scrolls where its column is taller than the window; at least one covered size must
+## scroll, or the turn test above would never hold a position.
+func test_the_tutorial_screen_fits_at_every_size_and_keeps_its_scroll_through_a_turn() -> void:
+	await _check_every_size(TUTORIAL, false)
+	# It scrolls only where the window is short: the small landscape phones. A short portrait
+	# window (the phone's safe area cut down) gives a second scrolling size for the other way.
+	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
+	var upright: UiMetrics = _profile_with_window(
+		Vector2i(landscape.window_size.y, landscape.window_size.x)
+	)
+	var short: UiMetrics = UiProfiles.with_safe_area(
+		upright, Rect2i(0, 0, upright.window_size.x, 460)
+	)
+	var kept_same: int = await _scroll_through_turn(landscape, short, "landscape -> short")
+	var clamped: int = await _scroll_through_turn(short, landscape, "short -> landscape")
+	# A scroll that fits both is kept as it was; one that no longer fits is cut to the new range.
+	assert_int(kept_same).override_failure_message("landscape -> short").is_greater(0)
+	assert_int(clamped).override_failure_message("short -> landscape").is_greater(0)
+
+
+## Tutorial over the main menu at `from`, scrolled to its foot, turned to `to`: the stack is still
+## main menu -> Tutorial and the scroll is the same, or the new maximum when that shrank.
+## Returns the position it ended at (the test demands it is not 0: a held one).
+func _scroll_through_turn(from: UiMetrics, to: UiMetrics, label: String) -> int:
+	await _open(TUTORIAL, from)
+	var screen: MenuScreen = _screen
+	var scroll: ScrollContainer = _screen.scroll
+	var bar: VScrollBar = scroll.get_v_scroll_bar()
+	scroll.scroll_vertical = maxi(floori(bar.max_value - bar.page), 0)
+	await await_idle_frame()
+	var kept: int = scroll.scroll_vertical
+	assert_int(kept).override_failure_message(label + " scrolled").is_greater(0)
+	await _turn(to)
+	_assert_same_stack(label + " turned", screen, 2, TUTORIAL)
+	var expected: int = mini(kept, maxi(floori(bar.max_value - bar.page), 0))
+	(
+		assert_int(scroll.scroll_vertical)
+		. override_failure_message("%s: kept %d, expected %d" % [label, kept, expected])
+		. is_equal(expected)
+	)
+	var ended: int = scroll.scroll_vertical
+	_close()
+	UiScale.clear_override()
+	return ended
 
 
 ## The kind at every profile: the layout checks; `must_scroll` also demands a scroll range.
@@ -352,6 +400,14 @@ func _assert_same_stack(label: String, screen: MenuScreen, depth: int, kind: Str
 			. override_failure_message(label + " section")
 			. is_equal(open)
 		)
+	if kind == TUTORIAL:
+		(
+			assert_bool(_stack._screens.size() == 2 and _stack._screens[0] == _root)
+			. override_failure_message(label + " main menu below")
+			. is_true()
+		)
+		assert_bool(_root is MainMenu).override_failure_message(label + " root").is_true()
+		assert_bool(screen is TutorialScreen).override_failure_message(label + " top").is_true()
 	if screen is LicencesScreen:
 		(
 			assert_bool((screen as LicencesScreen).open_entry != null)
@@ -539,7 +595,12 @@ func _open(kind: StringName, profile: UiMetrics) -> void:
 	add_child(_menu)
 	_stack = _menu.get_node("MenuStack") as MenuStack
 	_stack.slide_ms = 0
-	if kind != MAIN:
+	_root = null
+	if kind == TUTORIAL:
+		_root = _make_screen(MAIN)  # The tutorial opens over the main menu.
+		_stack.push(_root)
+		await await_idle_frame()
+	elif kind != MAIN:
 		_stack.push(MenuScreen.new())
 		await await_idle_frame()
 	_screen = _make_screen(kind)
@@ -572,17 +633,25 @@ func _make_screen(kind: StringName) -> MenuScreen:
 			if _store != null:
 				settings.ad_service = _store
 			return settings
-		HOW_LIST, HOW_REAL_SECTION:
-			return HowToPlayScreen.new()  # No help: the real data.
-		HOW_LONG_SECTION:
-			var how: HowToPlayScreen = HowToPlayScreen.new()
-			how.help = _long_help(60)
+		HOW_LIST, HOW_REAL_SECTION, HOW_LONG_SECTION:
+			var how: HowToPlayScreen = HowToPlayScreen.new()  # No help: the real data.
+			if kind == HOW_LONG_SECTION:
+				how.help = _long_help(60)
 			return how
+	if kind == TUTORIAL:
+		var tutorial: TutorialScreen = TutorialScreen.new()
+		tutorial.flow = _flow
+		return tutorial
 	return LicencesScreen.new()  # No catalog: the build's own.
 
 
 func _depth_of(kind: StringName) -> int:
 	return 1 if kind == MAIN else 2
+
+
+## The profile with the same screen turned: the portrait twin of a landscape one and back.
+func _portrait_twin(profile: UiMetrics) -> UiMetrics:
+	return _profile_with_window(Vector2i(profile.window_size.y, profile.window_size.x))
 
 
 func _press_first_button() -> void:
