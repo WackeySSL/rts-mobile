@@ -5,10 +5,12 @@ extends Node
 ## with the meta `no_click` is silent; the meta `ui_cue` names another cue, `ui_back` or
 ## `ui_confirm` (an unknown value warns once and clicks); a tap on a disabled button plays refuse
 ## unless it is only a wait (`UiWait` sets `no_click`); a `back_requested` signal on any node
-## (`MenuStack`, `PauseMenu`, `ResultScreen`, `ConfirmDialog`) plays back), a chirp
-## when the local player gives an order (`CommandQueue.submitted`) and the alert chirp when
-## `AttackCues` raises a cue.
-## It reads and plays; it never writes the sim or a Command. The sounds are `UiSoundsDef`'s.
+## (`MenuStack`, `PauseMenu`, `ResultScreen`, `ConfirmDialog`) plays back), a chirp when the local
+## player gives an order (`CommandQueue.submitted`; the chirps take turns, and switching a
+## building's repair on has its own sound), the alert chirp when `AttackCues` raises a cue, the
+## "ready" chirp when the build button's Ready chip shows and the low-power warning when the
+## economy pill turns low. It reads and plays; it never writes the sim or a Command. The sounds
+## are `UiSoundsDef`'s.
 ##
 ## All connections live while the node is in the tree (`_enter_tree` to `_exit_tree`); outside it
 ## nothing plays.
@@ -27,6 +29,9 @@ const CUE_CONFIRM: StringName = &"ui_confirm"
 const CUE_REFUSE: StringName = &"ui_refuse"
 const CUE_ORDER: StringName = &"ui_order"
 const CUE_ALERT: StringName = &"ui_alert"
+const CUE_READY: StringName = &"ui_ready"
+const CUE_POWER: StringName = &"ui_low_power"
+const CUE_MEND: StringName = &"ui_mend"
 
 ## False in the menu, where nobody gives orders: the node then ignores the command queue.
 @export var chirp_orders: bool = true
@@ -44,6 +49,9 @@ var _cues: AttackCues
 var _order_frame: int = -1  ## The process frame of the last local order.
 var _warned_cue: bool = false
 var _pending: StringName = &""  ## The cue that waits for the end of the frame.
+var _build_button: BuildButton
+var _pill: EconomyPill
+var _orders: int = 0
 var _warned_unset: bool = false
 
 
@@ -59,6 +67,7 @@ func _enter_tree() -> void:
 	if chirp_orders and queue != null and not queue.is_connected(&"submitted", _on_submitted):
 		queue.connect(&"submitted", _on_submitted)
 	_link_cues(true)
+	_link_hud(true)
 	var tree: SceneTree = get_tree()
 	if not tree.node_added.is_connected(_on_node_added):
 		tree.node_added.connect(_on_node_added)
@@ -75,6 +84,40 @@ func _exit_tree() -> void:
 	if queue != null and queue.is_connected(&"submitted", _on_submitted):
 		queue.disconnect(&"submitted", _on_submitted)
 	_link_cues(false)
+	_link_hud(false)
+
+
+## Plays the "ready" chirp when `button`'s Ready chip shows and the low-power warning when `pill`
+## turns low (read-only connects; either may be null).
+func connect_hud(button: BuildButton, pill: EconomyPill) -> void:
+	_link_hud(false)
+	_build_button = button
+	_pill = pill
+	_link_hud(is_inside_tree())
+
+
+func _link_hud(on: bool) -> void:
+	if _build_button != null:
+		_link(_build_button.ready_changed, _on_ready_changed, on)
+	if _pill != null:
+		_link(_pill.low_power_started, _on_low_power, on)
+
+
+func _link(source: Signal, target: Callable, on: bool) -> void:
+	if on and not source.is_connected(target):
+		source.connect(target)
+	elif not on and source.is_connected(target):
+		source.disconnect(target)
+
+
+func _on_ready_changed() -> void:
+	if def != null and _build_button != null and _build_button.ready_type >= 0:
+		_play(def.ready_stream, CUE_READY, def.ready_priority, def.ready_db)
+
+
+func _on_low_power() -> void:
+	if def != null:
+		_play(def.power_stream, CUE_POWER, def.power_priority, def.power_db)
 
 
 ## Plays the alert chirp whenever `cues` raises a cue (read-only). One cue source at a time.
@@ -178,9 +221,22 @@ func _on_submitted(command: Command) -> void:
 			push_warning("UiSounds: local_player is not set; orders do not chirp")
 		return
 	if command.player_id == local_player:
-		_pending = &""
 		_order_frame = Engine.get_process_frames()
-		_play(def.order_stream, CUE_ORDER, def.order_priority, def.order_db)
+		if _pending == CUE_CLICK or _pending == CUE_CONFIRM:
+			_pending = &""
+		if def.silent_commands.has(command.type):
+			return  # The sim's own cue (placed, sold) sounds instead.
+		var mend_on: bool = (
+			command.type == Command.Type.MEND
+			and not command.payload.is_empty()
+			and command.payload[0] == 1
+		)
+		if mend_on and def.mend_stream != null:
+			_play(def.mend_stream, CUE_MEND, def.mend_priority, def.mend_db)
+		elif not def.order_streams.is_empty():
+			var stream: AudioStream = def.order_streams[_orders % def.order_streams.size()]
+			_orders += 1
+			_play(stream, CUE_ORDER, def.order_priority, def.order_db)
 
 
 ## One chirp per `cue_changed` while a cue shows: a new attacked area or a replaced cue chirps

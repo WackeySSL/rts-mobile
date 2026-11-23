@@ -36,7 +36,7 @@ func before_test() -> void:
 	def.back_stream = stream
 	def.confirm_stream = stream
 	def.refuse_stream = stream
-	def.order_stream = stream
+	def.order_streams = [stream]
 	_sounds = auto_free(UiSounds.new())
 	_sounds.def = def
 	_sounds.audio = _audio
@@ -130,3 +130,22 @@ func test_a_wait_puts_back_a_no_click_the_button_had_before() -> void:
 	UiWait.hold(plain, true)
 	UiWait.hold(plain, false)
 	assert_bool(plain.has_meta(&"no_click")).is_false()
+
+
+func test_a_click_pending_first_then_an_order_in_the_same_frame_plays_only_the_chirp() -> void:
+	var button: Button = auto_free(Button.new())
+	add_child(button)
+	button.pressed.emit()  # The click waits for the end of the frame.
+	_order()
+	await _frames()
+	assert_array(_audio.cues).is_equal([UiSounds.CUE_ORDER])
+
+
+func test_an_order_does_not_cancel_a_pending_back_or_refuse() -> void:
+	var back: Button = auto_free(Button.new())
+	back.set_meta(&"ui_cue", &"ui_back")
+	add_child(back)
+	back.pressed.emit()
+	_order()
+	await _frames()
+	assert_array(_audio.cues).is_equal([UiSounds.CUE_ORDER, UiSounds.CUE_BACK])

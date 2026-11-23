@@ -24,6 +24,7 @@ extends PanelContainer
 ## does not shrink below it, so the layout's cap would no longer work.
 
 signal menu_pressed
+signal low_power_started  ## The power turned low (not on every refresh while it stays low).
 signal economy_pressed  ## The credits or the power was tapped; the pill asks for the card itself.
 
 const ICON_ART: String = "res://assets/art/svg/icons/%s.svg"
@@ -469,6 +470,8 @@ func _show(made: int, used: int) -> void:
 	_numbers.set_text("%d/%d" % [used, made])
 	if low != _low:
 		_low = low
+		if low:
+			low_power_started.emit()
 		theme_type_variation = LOW_VARIATION if low else VARIATION
 		_bar.theme_type_variation = BAR_LOW_VARIATION if low else BAR_VARIATION
 		_numbers.variation = NUMBER_LOW_VARIATION if low else NUMBER_VARIATION
