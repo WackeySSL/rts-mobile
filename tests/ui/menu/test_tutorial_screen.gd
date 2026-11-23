@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+const UiStateGuard: GDScript = preload("res://tests/support/ui_state_guard.gd")
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 const FakeFlow: GDScript = preload("res://tests/ui/support/fake_start_flow.gd")
 const TOLERANCE_PX: float = 0.5
@@ -34,7 +35,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
-	UiScale.clear_override()
+	UiStateGuard.restore(get_window(), _window_size_before)
 	if _menu != null:
 		remove_child(_menu)
 		_menu.free()
@@ -84,6 +85,29 @@ func test_a_finished_lesson_shows_done_in_words_and_the_next_one_moves_on() -> v
 	_screen.refresh()  # What the screen does when it is back on top of the stack.
 	assert_str(_buttons()[1].text).is_equal("STRIKES AND THE SATELLITE   DONE")
 	assert_str(_buttons()[2].text).is_equal("AIRCRAFT AND CARRIERS   NEXT")
+
+
+func test_the_next_lesson_is_scrolled_into_view_when_earlier_ones_are_done() -> void:
+	for id: StringName in TutorialStart.ORDER.slice(0, TutorialStart.ORDER.size() - 1):
+		TutorialDirector.mark_done(id)
+	var profiles: Array[UiMetrics] = [
+		_profile_with_window(ScreenSizes.PORTRAIT[0]),
+		UiProfiles.notch_design()[&"notch_design_portrait"],
+		_profile_with_window(ScreenSizes.LANDSCAPE[0]),
+	]
+	for profile: UiMetrics in profiles:
+		await _open(profile)
+		var next: Button = _buttons()[TutorialStart.ORDER.size() - 1]
+		var label: String = "%s: %s" % [profile.window_size, next.text]
+		assert_str(next.text).override_failure_message(label).ends_with("NEXT")
+		var visible_rect: Rect2 = _screen.scroll.get_global_rect()
+		(
+			assert_bool(visible_rect.grow(TOLERANCE_PX).encloses(next.get_global_rect()))
+			. override_failure_message(label)
+			. is_true()
+		)
+		_close()
+		UiScale.clear_override()
 
 
 func test_a_tap_starts_that_lesson_once_even_when_it_is_done() -> void:

@@ -159,7 +159,6 @@ func test_back_after_a_lesson_asks_for_the_tutorial_screen_and_a_skirmish_for_th
 	_flow.setup.lesson_id = &"basics"
 	back.pressed.emit()
 	assert_str(_flow.last_screen).is_equal(TutorialStart.RETURN_SCREEN)
-	assert_str(_flow.last_screen).is_equal("tutorial")
 	_flow.release.emit()
 
 

@@ -347,7 +347,8 @@ func test_the_requested_screen_is_taken_once() -> void:
 	await _flow.start_match(_setup())
 	await _flow.leave_match(&"skirmish")
 	assert_str(_flow.take_pending_screen()).is_equal("skirmish")
-	# Back after a lesson (P448): the Tutorial screen and no interstitial; a skirmish keeps its one.
+	# leave_match given RETURN_SCREEN explicitly (existing behaviour): that screen is queued and no
+	# interstitial plays after a lesson.
 	await _flow.start_match(_setup(&"lesson_one"))
 	_surrender_local()
 	await _flow.leave_match(TutorialStart.RETURN_SCREEN)

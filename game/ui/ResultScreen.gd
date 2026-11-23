@@ -2,15 +2,15 @@ class_name ResultScreen
 extends ModalFrame
 ## The result screen (ADR 0019 section 6, plan P90): on `match_ended` it covers the HUD with the
 ## outcome as an emblem and a word, the match time and each player's units built and lost,
-## buildings lost and credits harvested, from the published snapshot. "Play again" opens a new main
-## scene for the same scenario, opponents and level, "Back" the dev menu until Phase 5's start page.
-## Started from the menu (`MenuFlow` owns the match, ADR 0043 section 6) the buttons are the flow's:
-## "Back" awaits `leave_match()` (counts the match, then the menu; the Tutorial screen after a
-## lesson) and "Play again" awaits `restart()`; a second tap while one runs does
-## nothing. The screen also shows the XP the match paid and the rank bar filling from the old XP
-## to the new (a rank-up restarts the bar in the new
-## rank, ADR 0045), and plays the victory or defeat sting once. Sideways the banner and the table
-## stand side by side, upright one above the other.
+## buildings lost and credits harvested, from the published snapshot. Started from the menu
+## (`MenuFlow` owns the match, ADR 0043 section 6) the buttons are the flow's: "Back" awaits
+## `leave_match()` (counts the match, then the menu; the Tutorial screen after a lesson) and
+## "Play again" awaits `restart()`; a second tap while one runs does nothing. Started from the
+## dev menu, "Play again" opens a new main scene for the same scenario, opponents and level, and
+## "Back" the dev menu. The screen also shows the XP the match paid and the rank bar filling from
+## the old XP to the new (a rank-up restarts the bar in the new rank, ADR 0045), and plays the
+## victory or defeat sting once. Sideways the banner and the table stand side by side, upright one
+## above the other.
 ## The `OfferSlot` under the table (game/ui/menu/OfferSlot.gd) is hidden and 0 tall while it holds
 ## no visible child; its one child is the `DoubleXpOffer` (game/ui/ads/, plan P432), which owns
 ## every ad call and shows only for a scored award. This script calls no ad; it hands the offer
