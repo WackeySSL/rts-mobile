@@ -40,7 +40,7 @@ func _ready() -> void:
 			push_warning("TutorialScreen: no lesson file for %s" % id)
 			continue
 		_buttons[id] = add_button("", _on_lesson.bind(id))
-	add_button(tr(BACK), _go_back).set_meta(UiSounds.META_CUE, UiSounds.CUE_BACK)
+	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
 	refresh()
 
 

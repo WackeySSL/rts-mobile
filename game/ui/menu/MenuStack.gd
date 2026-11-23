@@ -11,7 +11,9 @@ extends Control
 ## It holds no game rule and sends no Command. Call `push` and the rest once the stack is ready.
 
 signal screen_changed(screen: MenuScreen)
-## The phone's Back button was used (not the on-screen Back, which is a button); UiSounds hears it.
+## A Back was handled: a screen popped or the quit question opened or closed (the phone's Back
+## and `back()`; a swallowed one or one during a slide is silent). UiSounds plays the back cue once
+## per frame, also when the on-screen Back button's own meta asks for it in that frame.
 signal back_requested
 
 @export var slide_ms: int = 200
@@ -58,7 +60,6 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if not back_enabled:
 			return
-		back_requested.emit()
 		back.call_deferred()  # Never change scenes inside a notification dispatch.
 	elif what == NOTIFICATION_PREDELETE:
 		for screen: MenuScreen in _screens:  # The covered ones are not our children: free them.
@@ -130,12 +131,14 @@ func back() -> void:
 	if is_sliding():
 		return
 	if _quit.visible:
+		back_requested.emit()
 		_quit.close()
 		_restore_focus(current())
 		return
 	var top: MenuScreen = current()
 	if top != null and top.on_back():
-		return
+		return  # The screen swallowed it (a start in flight, a busy row): no cue.
+	back_requested.emit()
 	if not pop():
 		_remember_focus(top)
 		_quit.open()

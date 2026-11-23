@@ -43,7 +43,7 @@ func _show_list() -> void:
 	_heading(tr(TITLE))
 	for section: HelpSectionDef in help.sections:
 		add_button(tr(section.title).to_upper(), _show_section.bind(section))
-	add_button(tr(BACK), _go_back).set_meta(UiSounds.META_CUE, UiSounds.CUE_BACK)
+	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
 	scroll.scroll_vertical = 0
 
 

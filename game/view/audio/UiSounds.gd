@@ -2,10 +2,12 @@ class_name UiSounds
 extends Node
 ## The interface sounds of ADR 0041 section 4, on the Ui bus through AudioService: a click on every
 ## `BaseButton` (hooked through `SceneTree.node_added`, so no HUD or menu file is edited; a button
-## with the meta `no_click` is silent; the meta `ui_cue` names another cue: `back`, `confirm`; a
-## tap on a disabled button plays `refuse`; the phone's Back button plays `back` through a
-## `back_requested` signal on any node, which `MenuStack` has), a chirp when the local player
-## gives an order (`CommandQueue.submitted`) and the alert chirp when `AttackCues` raises a cue.
+## with the meta `no_click` is silent; the meta `ui_cue` names another cue, `ui_back` or
+## `ui_confirm` (an unknown value warns once and clicks); a tap on a disabled button plays refuse
+## unless it is only a wait (`UiWait` sets `no_click`); a `back_requested` signal on any node
+## (`MenuStack`, `PauseMenu`, `ResultScreen`, `ConfirmDialog`) plays back), a chirp
+## when the local player gives an order (`CommandQueue.submitted`) and the alert chirp when
+## `AttackCues` raises a cue.
 ## It reads and plays; it never writes the sim or a Command. The sounds are `UiSoundsDef`'s.
 ##
 ## All connections live while the node is in the tree (`_enter_tree` to `_exit_tree`); outside it
@@ -39,6 +41,8 @@ var audio: Node
 var queue: Node
 
 var _cues: AttackCues
+var _order_frame: int = -1  ## The process frame of the last local order.
+var _warned_cue: bool = false
 var _pending: StringName = &""  ## The cue that waits for the end of the frame.
 var _warned_unset: bool = false
 
@@ -111,7 +115,13 @@ func _hook(button: BaseButton) -> void:
 func _on_pressed(button: BaseButton) -> void:
 	if button.get_meta(META_NO_CLICK, false):
 		return
-	_queue_cue(StringName(button.get_meta(META_CUE, CUE_CLICK)))
+	var cue: StringName = StringName(button.get_meta(META_CUE, CUE_CLICK))
+	if cue != CUE_CLICK and cue != CUE_BACK and cue != CUE_CONFIRM:
+		if not _warned_cue:
+			_warned_cue = true
+			push_warning("UiSounds: unknown ui_cue '%s'; it clicks" % cue)
+		cue = CUE_CLICK
+	_queue_cue(cue)
 
 
 ## A press on a disabled button is a refused action. A touch also arrives as an emulated mouse
@@ -133,6 +143,11 @@ func _on_back() -> void:
 
 
 func _queue_cue(cue: StringName) -> void:
+	# One cue per press: an order given in this frame (a confirm or button that sends a Command)
+	# has its chirp already, whichever of the two came first.
+	var ordered: bool = _order_frame == Engine.get_process_frames()
+	if ordered and (cue == CUE_CLICK or cue == CUE_CONFIRM):
+		return
 	if is_inside_tree() and _pending == &"":
 		_pending = cue
 		_flush.call_deferred()
@@ -164,6 +179,7 @@ func _on_submitted(command: Command) -> void:
 		return
 	if command.player_id == local_player:
 		_pending = &""
+		_order_frame = Engine.get_process_frames()
 		_play(def.order_stream, CUE_ORDER, def.order_priority, def.order_db)
 
 

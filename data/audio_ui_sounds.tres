@@ -9,16 +9,16 @@
 [resource]
 script = ExtResource("1_ui")
 click_stream = ExtResource("2_ui_tap")
-click_db = -4.0
+click_db = -11.0
 click_priority = 0
 back_stream = ExtResource("3_ui_back")
-back_db = -4.0
+back_db = -10.0
 back_priority = 0
 confirm_stream = ExtResource("4_ui_confirm")
-confirm_db = -3.0
+confirm_db = -8.0
 confirm_priority = 0
 refuse_stream = ExtResource("5_ui_refuse")
-refuse_db = -3.0
+refuse_db = -9.0
 refuse_priority = 0
 order_db = -4.0
 order_priority = 1

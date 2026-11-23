@@ -102,6 +102,7 @@ func refresh() -> void:
 		button.mouse_filter = Control.MOUSE_FILTER_STOP if live else Control.MOUSE_FILTER_IGNORE
 		button.focus_mode = Control.FOCUS_ALL if live else Control.FOCUS_NONE
 		button.disabled = _busy or not live
+		UiWait.hold(button, _busy)
 	if not _busy:
 		restore_button.text = tr(RemoveAdsText.RESTORE) if live else ""
 	_fit()
@@ -189,6 +190,8 @@ func _run(button: Button, method: StringName, busy_text: StringName) -> void:
 func _set_disabled(on: bool) -> void:
 	remove_button.disabled = on or not _live
 	restore_button.disabled = on or not _live
+	UiWait.hold(remove_button, on)
+	UiWait.hold(restore_button, on)
 
 
 func _row(action: Callable) -> Button:

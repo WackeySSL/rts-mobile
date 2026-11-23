@@ -183,8 +183,11 @@ func test_a_back_requested_signal_plays_the_back_cue_also_on_a_node_in_the_tree_
 	var early: BackSource = auto_free(BackSource.new())
 	add_child(early)
 	add_child(_sounds)
+	var fake: FakeAudio = auto_free(FakeAudio.new())
+	_sounds.audio = fake
 	early.back_requested.emit()
 	await _frames()
+	assert_array(fake.cues).is_equal([UiSounds.CUE_BACK])
 	assert_int(late.back_requested.get_connections().size()).is_equal(1)
 
 
@@ -194,8 +197,10 @@ func test_the_phone_back_button_of_the_menu_stack_emits_the_signal() -> void:
 	var hits: Array[int] = [0]
 	stack.back_requested.connect(func() -> void: hits[0] += 1)
 	stack.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+	await _frames()  # The back is handled deferred; the root opens its quit question.
 	stack.back_enabled = false
 	stack.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+	await _frames()
 	assert_int(hits[0]).is_equal(1)
 
 
