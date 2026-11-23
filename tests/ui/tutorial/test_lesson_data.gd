@@ -52,6 +52,47 @@ func test_basics_is_three_minutes_and_the_drills_about_one_or_two() -> void:
 		assert_int(_lesson(id).target_s).override_failure_message(String(id)).is_between(60, 90)
 
 
+## The budgets of a lesson add up to no more than its target (P543f: the sum is pinned).
+func test_the_budgets_of_each_lesson_stay_within_its_target() -> void:
+	for id: StringName in LESSONS:
+		var lesson: TutorialLessonDef = _lesson(id)
+		var total: int = 0
+		for beat: TutorialBeatDef in lesson.beats:
+			total += beat.budget_s
+		assert_int(total).override_failure_message(String(id)).is_less_equal(lesson.target_s)
+	var basics: int = 0
+	for beat: TutorialBeatDef in _lesson(&"basics").beats:
+		basics += beat.budget_s
+	assert_int(basics).is_equal(180)
+
+
+## P543f: the move beat marks the ground the squads must reach (a tile inside its area, not the Stop
+## button), and the Stop card comes right after it.
+func test_the_move_beat_marks_ground_inside_its_area_and_stop_follows() -> void:
+	var lesson: TutorialLessonDef = _lesson(&"basics")
+	var ids: Array[StringName] = []
+	for beat: TutorialBeatDef in lesson.beats:
+		ids.append(beat.id)
+	var at: int = ids.find(&"move")
+	assert_int(at).is_greater_equal(0)
+	var move: TutorialBeatDef = lesson.beats[at]
+	assert_int(move.anchor).is_equal(TutorialBeatDef.Anchor.TILE)
+	assert_bool(move.area.has_point(move.anchor_tile)).is_true()
+	assert_array(move.covers).is_equal([&"orders-move"])
+	assert_str(String(ids[at + 1])).is_equal("stop")
+	var stop: TutorialBeatDef = lesson.beats[at + 1]
+	assert_int(stop.anchor).is_equal(TutorialBeatDef.Anchor.CONTROL)
+	assert_str(String(stop.anchor_control)).is_equal("Stop")
+	assert_array(stop.covers).is_equal([&"orders-stop"])
+
+
+## P543f: a player may save one squad as a group, so the groups beat asks for one.
+func test_the_groups_beat_asks_for_one_squad() -> void:
+	for beat: TutorialBeatDef in _lesson(&"basics").beats:
+		if beat.kind == TutorialConditions.Kind.GROUP_SAVED:
+			assert_int(beat.count).override_failure_message(String(beat.id)).is_equal(1)
+
+
 func test_every_covers_id_is_a_row_of_the_how_to_play_list() -> void:
 	var rows: Array[StringName] = _how_to_play_ids()
 	assert_int(rows.size()).is_greater(100)

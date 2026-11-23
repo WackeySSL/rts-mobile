@@ -88,14 +88,23 @@ budget_s = 6
 script = ExtResource("2_beat")
 id = &"move"
 prompt_key = &"tutorial.basics.move"
-anchor = 1
-anchor_control = &"Stop"
+anchor = 2
+anchor_tile = Vector2i(10, 14)
 kind = 2
 type_id = &"rifle_squad"
 count = 3
-area = Rect2i(9, 13, 5, 3)
-covers = Array[StringName]([&"orders-move", &"orders-stop"])
-budget_s = 10
+area = Rect2i(7, 12, 7, 5)
+covers = Array[StringName]([&"orders-move"])
+budget_s = 8
+
+[sub_resource type="Resource" id="Beat_08b"]
+script = ExtResource("2_beat")
+id = &"stop"
+prompt_key = &"tutorial.basics.stop"
+anchor = 1
+anchor_control = &"Stop"
+covers = Array[StringName]([&"orders-stop"])
+budget_s = 3
 
 [sub_resource type="Resource" id="Beat_09"]
 script = ExtResource("2_beat")
@@ -218,7 +227,7 @@ script = ExtResource("2_beat")
 id = &"rally"
 prompt_key = &"tutorial.basics.rally"
 covers = Array[StringName]([&"orders-rally"])
-budget_s = 4
+budget_s = 3
 
 [sub_resource type="Resource" id="Beat_21"]
 script = ExtResource("2_beat")
@@ -227,7 +236,7 @@ prompt_key = &"tutorial.basics.groups"
 anchor = 1
 anchor_control = &"AddGroup"
 kind = 15
-count = 2
+count = 1
 value = 1
 covers = Array[StringName]([&"groups-save", &"groups-overwrite", &"groups-column"])
 budget_s = 8
@@ -283,7 +292,7 @@ script = ExtResource("1_lesson")
 id = &"basics"
 title_key = &"tutorial.basics.title"
 objective_key = &"tutorial.basics.objective"
-beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12"), SubResource("Beat_13"), SubResource("Beat_14"), SubResource("Beat_15"), SubResource("Beat_16"), SubResource("Beat_17"), SubResource("Beat_18"), SubResource("Beat_19"), SubResource("Beat_20"), SubResource("Beat_21"), SubResource("Beat_22"), SubResource("Beat_23"), SubResource("Beat_24"), SubResource("Beat_25"), SubResource("Beat_26")])
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_08b"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12"), SubResource("Beat_13"), SubResource("Beat_14"), SubResource("Beat_15"), SubResource("Beat_16"), SubResource("Beat_17"), SubResource("Beat_18"), SubResource("Beat_19"), SubResource("Beat_20"), SubResource("Beat_21"), SubResource("Beat_22"), SubResource("Beat_23"), SubResource("Beat_24"), SubResource("Beat_25"), SubResource("Beat_26")])
 target_s = 180
 scenario = ExtResource("3_scenario")
 enemy = ExtResource("4_enemy")
