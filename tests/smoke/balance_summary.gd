@@ -20,6 +20,7 @@ const TABLE_HEAD: String = (
 	+ "| Flow full (total, most) |"
 )
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
+const StrikeSummary: GDScript = preload("res://tests/smoke/strike_summary.gd")
 
 const PREFIX: String = "balance-summary: "
 const FACTION_PATH: String = "res://data/factions/%s.tres"
@@ -300,6 +301,7 @@ static func summarize(
 	var levels: Array[String] = _strings(report["levels"])
 	if levels[0] != levels[1]:
 		summary["by_level"] = _shares(matches, "level")
+	summary["strikes"] = StrikeSummary.build(matches, levels[0] != levels[1])
 	summary["flags"] = _flags(summary)
 	if gate:
 		summary["gate"] = _gate(summary, report, rosters)
@@ -771,6 +773,7 @@ static func markdown(report: Dictionary) -> String:
 		"Kills by layer are all credited kills, structures included, by the dead row's layer."
 	)
 	lines.append("")
+	StrikeSummary.append_lines(summary["strikes"], lines)
 	lines.append("### Flags")
 	lines.append("")
 	if summary["flags"].is_empty():
