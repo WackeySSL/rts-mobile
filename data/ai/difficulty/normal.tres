@@ -45,3 +45,9 @@ mine_layers = 1
 mine_scout_ahead = 0
 commands_per_think_max = 8
 income_percent = 100
+; Starting values for the Phase 4b balance run (P250e), no source yet.
+group_min_size = 8
+group_gather_ticks = 900
+wave_regroup_spread_tiles = 7
+wave_regroup_ticks = 600
+wave_lead_percent = 300

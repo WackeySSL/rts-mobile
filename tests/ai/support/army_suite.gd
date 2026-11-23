@@ -36,6 +36,9 @@ func _plain(level: String) -> AiDifficultyDef:
 	var plain: AiDifficultyDef = Rig.level_of(level).duplicate() as AiDifficultyDef
 	plain.unit_retreat_hp_percent = 0
 	plain.focus_fire = 0
+	plain.group_min_size = 0
+	plain.wave_regroup_spread_tiles = 0
+	plain.wave_lead_percent = 0
 	return plain
 
 

@@ -83,6 +83,8 @@ var _hi: Vector2i = Vector2i.ZERO
 var _unseen: AiUnseen = AiUnseen.new()
 ## The answer to a stalled wave (`AiStall`, P555b), made in `create`.
 var _stall: AiStall = AiStall.new()
+## The gather and the regroup of the all-in wave (`AiGroups`, P250e), made in `create`.
+var _groups: AiGroups = AiGroups.new()
 ## Scratch for the swap of the withdrawn list of `_step_back`.
 var _kept: PackedInt32Array = PackedInt32Array()
 ## The ids under the step-back percent that have not stepped back yet (`_step_back`).
@@ -108,9 +110,15 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	army.retreat_ratio = maxi(level.retreat_ratio_percent, 0)
 	army._unseen.shift_tiles = maxi(def.unseen_hit_shift_tiles, 0)
 	army._stall = AiStall.create(def)
+	army._groups = AiGroups.create(level)
 	army.unit_retreat_hp = clampi(level.unit_retreat_hp_percent, 0, 100)
 	army.focus_fire = level.focus_fire > 0
 	return army
+
+
+## Groups sent after a gather, gathers ended by the timeout and halts ordered (`AiGroups`).
+func group_stats() -> Array[int]:
+	return [_groups.gathered, _groups.timeouts, _groups.halts, _groups.closings]
 
 
 ## The `ATTACK` orders on a building the stall answer sent over the match (`AiStall`).
@@ -450,7 +458,10 @@ func _wave(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Comman
 		var retreating: bool = memory.squad_state[WAVE] == AiMemory.SquadState.RETREAT
 		if _wave_units > 0 and not retreating:
 			var members: PackedInt32Array = _members(memory, true, WAVE)
-			if _stall.run(self, view, memory, out, members, _wave_at, _wave_idle):
+			if (
+				not _groups.regrouping
+				and _stall.run(self, view, memory, out, members, _wave_at, _wave_idle)
+			):
 				return
 			_fight(view, memory, out, all_in)
 			return
@@ -503,6 +514,8 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	if not all_in and _pull_back(view, memory, out):
 		return
 	var focused: bool = focus_fire and _focus(view, memory, out, WAVE)
+	if all_in and not focused and _groups.run(self, view, memory, out):
+		return
 	var goal: Vector2i = Vector2i(memory.squad_goal_x[WAVE], memory.squad_goal_y[WAVE])
 	var target: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	var wave: PackedInt32Array = _members(memory, true, WAVE)
@@ -520,6 +533,7 @@ func _fight(view: PlayerView, memory: AiMemory, out: Array[Command], all_in: boo
 	var home: PackedInt32Array = _members(memory, true)
 	if (
 		not home.is_empty()
+		and not _groups.holding(self, view, memory, home.size())
 		and _order(view, memory, out, home, goal, AiMemory.Owner.ARMY, _at(goal))
 	):
 		_join_wave(memory, true)
@@ -611,6 +625,8 @@ func _launch(
 	var value: int = _home_value if all_in else _ready_value
 	if ids.is_empty() or (not all_in and value < _strength(memory.wave_count)):
 		return
+	if all_in and _groups.holding(self, view, memory, ids.size()):
+		return
 	var goal: Vector2i = Vector2i(memory.base_x, memory.base_y)
 	if not _order(view, memory, out, ids, goal, AiMemory.Owner.ARMY, _at(goal)):
 		return
@@ -619,6 +635,7 @@ func _launch(
 	memory.squad_state[WAVE] = AiMemory.SquadState.WAVE
 	memory.squad_launch_value[WAVE] = value
 	_stall.reset()
+	_groups.reset()
 	memory.squad_goal_x[WAVE] = goal.x
 	memory.squad_goal_y[WAVE] = goal.y
 	memory.squad_focus[WAVE] = AiMemory.NONE
@@ -670,6 +687,7 @@ func _disband(memory: AiMemory) -> void:
 	memory.squad_goal_y[WAVE] = AiMemory.NONE
 	memory.squad_focus[WAVE] = AiMemory.NONE
 	memory.wave_start_tick = AiMemory.NONE
+	_groups.reset()
 	if held:
 		memory.release_owner(AiMemory.Owner.ARMY)
 

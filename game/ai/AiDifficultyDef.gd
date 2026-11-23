@@ -91,6 +91,19 @@ extends Resource
 @export var mine_target: int = 0
 @export var mine_layers: int = 0
 @export var mine_scout_ahead: int = 0
+## Grouped waves (plan row P250e; off by default like the fields above, so the frozen files play
+## as before). From the all-in tick the home units wait at the staging point and join the wave
+## together, when `group_min_size` are there or the first has waited `group_gather_ticks`. A wave
+## whose farthest member is over `wave_regroup_spread_tiles` from its centre halts there until the
+## farthest is within half of it or `wave_regroup_ticks` pass (`AiGroups`). 0 = off. Easy does none
+## of it.
+@export var group_min_size: int = 0
+@export var group_gather_ticks: int = 0
+@export var wave_regroup_spread_tiles: int = 0
+@export var wave_regroup_ticks: int = 0
+## The closing push: a wave whose front is at the target and worth this percent of the seen enemy
+## value near it or more is reinforced by the home units at once, without the gather. 0 = never.
+@export var wave_lead_percent: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).
