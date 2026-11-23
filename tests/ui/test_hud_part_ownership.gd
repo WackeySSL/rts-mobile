@@ -9,15 +9,21 @@ const FREE_CALL: String = "DetachedParts.free_unparented("
 ## A private member initialized with a constructor, typed or not: `var _x: Button = Button.new()`.
 const MEMBER: String = r"(?m)^var\s+(_\w+)\s*(?::\s*\w+)?\s*(?::=|=)\s*(\w+)\.new\(\)"
 
+## Global class name -> its base, built once for the suite.
+var _bases: Dictionary = {}
 
-## The class a script name or global class name stands for, or "" when it is not a Node.
-func _is_node_class(type_name: String) -> bool:
-	var bases: Dictionary = {}
+
+func before() -> void:
+	_bases.clear()
 	for entry: Dictionary in ProjectSettings.get_global_class_list():
-		bases[str(entry["class"])] = str(entry["base"])
+		_bases[str(entry["class"])] = str(entry["base"])
+
+
+## Whether a script name or global class name stands for a Node class.
+func _is_node_class(type_name: String) -> bool:
 	var name: String = type_name
-	while bases.has(name):
-		name = str(bases[name])
+	while _bases.has(name):
+		name = str(_bases[name])
 	return ClassDB.class_exists(name) and ClassDB.is_parent_class(name, "Node")
 
 
