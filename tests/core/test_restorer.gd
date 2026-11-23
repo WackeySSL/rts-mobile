@@ -19,6 +19,7 @@ var _clock: int = 0
 class FakeFlow:
 	extends Node
 	signal match_loading(setup: MatchSetup)
+	signal match_start_finished(error: Error)
 	var runner: MatchRunner = null
 	var setup: MatchSetup = null
 
@@ -256,6 +257,7 @@ func test_the_watcher_keeps_the_file_and_writes_nothing_during_a_restore() -> vo
 	assert_int(restorer.begin(played[1] as ResumeData, _scene())).is_equal(OK)
 	restorer._process(0.0)
 	flow.match_loading.emit(flow.setup)
+	flow.match_start_finished.emit(OK)
 	assert_bool(ResumeStore.has_file()).is_true()
 	assert_int(watcher.write_now()).is_equal(ERR_BUSY)
 	watcher.notification(NOTIFICATION_APPLICATION_PAUSED)
@@ -263,6 +265,7 @@ func test_the_watcher_keeps_the_file_and_writes_nothing_during_a_restore() -> vo
 	restorer.cancel()
 	# After the restore a match start deletes the file again.
 	flow.match_loading.emit(flow.setup)
+	flow.match_start_finished.emit(OK)
 	assert_bool(ResumeStore.has_file()).is_false()
 
 

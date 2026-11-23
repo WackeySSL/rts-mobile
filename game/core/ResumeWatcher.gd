@@ -5,7 +5,9 @@ extends Node
 ## - on `NOTIFICATION_APPLICATION_PAUSED` it takes `current_runner()` and `current_setup()` and
 ##   writes the file (ADR 0042 section 5); with no match running it does nothing, so the file of a
 ##   killed match stays for Continue;
-## - `match_loading` (a new match or a restart) deletes the file;
+## - `match_start_finished(OK)` (a new match or a restart is in) deletes the file; `match_loading`
+##   does not, since it now comes before the ads settle (P450) and a start that fails or is killed
+##   there must keep the file of the earlier match;
 ## - the runner's `match_ended` deletes it;
 ## - when the tracked runner is no longer MenuFlow's (Exit to menu, a restart, a new match) the
 ##   file is deleted; the app quitting keeps it, as MenuFlow keeps its runner then.
@@ -18,7 +20,7 @@ extends Node
 ## clears it.
 static var restoring: bool = false
 
-## The node with MenuFlow's seams: `current_runner()`, `current_setup()` and `match_loading`.
+## The node with MenuFlow's seams: `current_runner()`, `current_setup()` and `match_start_finished`.
 var flow: Node = null
 
 var _tracked: MatchRunner = null
@@ -41,7 +43,8 @@ func _init() -> void:
 ## Follows `menu_flow`.
 func bind(menu_flow: Node) -> void:
 	flow = menu_flow
-	flow.match_loading.connect(_on_match_loading)
+	if flow.has_signal(&"match_start_finished"):
+		flow.connect(&"match_start_finished", _on_match_start_finished)
 
 
 func _process(_delta: float) -> void:
@@ -80,8 +83,8 @@ func write_now() -> Error:
 	return ResumeStore.write_from(runner, setup)
 
 
-func _on_match_loading(_setup: MatchSetup) -> void:
-	if not restoring:
+func _on_match_start_finished(error: Error) -> void:
+	if error == OK and not restoring:
 		ResumeStore.delete()
 
 

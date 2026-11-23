@@ -9,19 +9,22 @@ extends CanvasLayer
 ##
 ## It assumes no frame order: it reads `match_loading`, `match_start_finished(error)` and
 ## `current_runner()`. On an error the card goes away at once; on OK it goes away when a runner
-## that did not exist at the signal stands in the tree (the match is ready). `HARD_FRAMES` is the
-## last word, so it is never left stuck. It sits above every scene and takes every touch.
+## that did not exist at the signal stands in the tree (the match is ready). The card shows before
+## the ads settle (P450), so it waits through it. A time backstop
+## (`AdsSettingsDef.deploy_backstop_ms`: ms, not frames, so the refresh rate does not matter) is the
+## last word, so it is never left stuck; it never fires while a full-screen ad is open. It sits
+## above every scene and takes every touch.
 
 const ICON: Texture2D = preload("res://assets/art/svg/icon/app_icon.svg")
 const THEME: Theme = preload("res://game/ui/theme.tres")
 const LAYER: int = 90
 const ICON_DP: float = 160.0
 const GAP_DP: float = 16.0
-## Frames after which the card goes away whatever happens (a backstop, never the normal way out).
-## Above the ads settle bound (P450): the card now shows before that wait.
-const HARD_FRAMES: int = 1800
 
 var catalog: MapCatalog = null  ## Tests inject; null loads the catalog on first use.
+## The clock of the backstop (ms); tests replace it.
+var now_ms: Callable = Time.get_ticks_msec
+var backstop_ms: int = AdsSettingsDef.load_default().deploy_backstop_ms
 
 var _flow: Node = null
 var _root: Control = null
@@ -29,7 +32,8 @@ var _column: VBoxContainer = null
 var _icon: TextureRect = null
 var _map: Label = null
 var _old_runner: MatchRunner = null
-var _frames: int = 0
+var _since_ms: int = 0  ## When the start began, or the last ad closed.
+var _ad_open: bool = false
 var _started: bool = false  ## match_start_finished(OK) came: the runner is on its way.
 
 
@@ -47,6 +51,10 @@ func attach(flow: Node) -> void:
 	_flow = flow
 	flow.match_loading.connect(_on_match_loading)
 	flow.match_start_finished.connect(_on_match_start_finished)
+	var ads: Object = flow.get("ads")
+	if ads != null and ads.has_signal("ad_opened"):
+		ads.connect("ad_opened", _on_ad_opened)
+		ads.connect("ad_closed", _on_ad_closed)
 
 
 ## Whether the card is on screen.
@@ -61,7 +69,8 @@ func map_name() -> String:
 
 func _on_match_loading(setup: MatchSetup) -> void:
 	_old_runner = _flow.current_runner()  # A restart still holds the old match until the new one.
-	_frames = 0
+	_since_ms = int(now_ms.call())
+	_ad_open = false
 	_started = false
 	_map.text = _title_of(setup)
 	_map.visible = _map.text != ""
@@ -78,15 +87,23 @@ func _on_match_start_finished(error: Error) -> void:
 		_started = true
 
 
+func _on_ad_opened(_placement: StringName) -> void:
+	_ad_open = true
+
+
+func _on_ad_closed(_placement: StringName) -> void:
+	_ad_open = false
+	_since_ms = int(now_ms.call())
+
+
 func _process(_delta: float) -> void:
 	if not is_showing():
 		return
-	_frames += 1
 	var runner: MatchRunner = _flow.current_runner()
 	var fresh: bool = runner != null and runner != _old_runner
 	if _started and fresh and runner.is_inside_tree():
 		_set_shown(false)  # The match is ready.
-	elif _frames >= HARD_FRAMES:
+	elif not _ad_open and int(now_ms.call()) - _since_ms >= backstop_ms:
 		_set_shown(false)
 
 

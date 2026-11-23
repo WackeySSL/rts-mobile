@@ -18,8 +18,8 @@ const _MIN_FULLSCREEN_MS: int = 1000
 const _MAX_FULLSCREEN_MS: int = 30000
 const _MIN_LATE_CAP_MS: int = 1
 const _MAX_LATE_CAP_MS: int = 600000
-const _MIN_SETTLE_MS: int = 1
-const _MAX_SETTLE_MS: int = 120000
+const _MIN_BACKSTOP_MS: int = 1000
+const _MAX_BACKSTOP_MS: int = 600000
 const _MIN_BILLING_MS: int = 1000
 const _MAX_BILLING_MS: int = 30000
 const _MIN_CONSENT_MS: int = 1000
@@ -50,9 +50,10 @@ static var _default: AdsSettingsDef
 ## The longest wait for a late full-screen ad (one that timed out) to fail or close before the next
 ## match is built (ms); see `AdService.settle_fullscreen`.
 @export_range(_MIN_LATE_CAP_MS, _MAX_LATE_CAP_MS) var fullscreen_late_cap_ms: int = 20000
-## The longest `AdService.settle_fullscreen` waits for any full-screen run before a match start
-## carries on without it (ms); a hard bound, so a start can never hang on an ad that never answers.
-@export_range(_MIN_SETTLE_MS, _MAX_SETTLE_MS) var start_settle_bound_ms: int = 30000
+## The DeployCard's last-resort backstop (ms): it goes away this long after a start began even if no
+## `match_start_finished` came, never while a full-screen ad is open. Must stay above
+## `fullscreen_timeout_ms + fullscreen_late_cap_ms`, the longest the ads settle can hold a start.
+@export_range(_MIN_BACKSTOP_MS, _MAX_BACKSTOP_MS) var deploy_backstop_ms: int = 45000
 ## The longest wait for the store sheet to show, or for a restore's answer (ms).
 @export_range(_MIN_BILLING_MS, _MAX_BILLING_MS) var billing_timeout_ms: int = 8000
 ## The longest wait for the consent info and the form to load (ms).
@@ -113,7 +114,9 @@ func validate() -> PackedStringArray:
 	_check(
 		out, "fullscreen_late_cap_ms", fullscreen_late_cap_ms, _MIN_LATE_CAP_MS, _MAX_LATE_CAP_MS
 	)
-	_check(out, "start_settle_bound_ms", start_settle_bound_ms, _MIN_SETTLE_MS, _MAX_SETTLE_MS)
+	_check(out, "deploy_backstop_ms", deploy_backstop_ms, _MIN_BACKSTOP_MS, _MAX_BACKSTOP_MS)
+	if deploy_backstop_ms <= fullscreen_timeout_ms + fullscreen_late_cap_ms:
+		out.append("deploy_backstop_ms must exceed fullscreen_timeout_ms + fullscreen_late_cap_ms")
 	_check(out, "billing_timeout_ms", billing_timeout_ms, _MIN_BILLING_MS, _MAX_BILLING_MS)
 	_check(out, "consent_timeout_ms", consent_timeout_ms, _MIN_CONSENT_MS, _MAX_CONSENT_MS)
 	_check(out, "reward_xp_multiplier", reward_xp_multiplier, _MIN_XP_MULT, _MAX_XP_MULT)

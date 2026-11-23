@@ -3,14 +3,15 @@ extends Node
 ## this is an autoload (tests/project/test_autoloads.gd), listed after AdService; DeployCardService
 ## follows it.
 ##
-## `start_match(setup)` seeds the match, emits `match_loading(setup)` at once (before any await),
-## takes the Phase 6 start-credits bonus (a skirmish only) after the ads settle (bounded), waits two
-## frames so the loading card is drawn (a start from a tap arrives before the frame is drawn: the
-## follows when the start is over. `start_match`,
-## follows when the start is over. `start_match`,
-## `restart`, `leave_match` and `continue_match` are coroutines: always `await` them. While one
-## runs, the others return ERR_BUSY (leave_match and return_to_menu do nothing), so a new match is
-## never torn down by a late menu change; every await re-checks the match serial before it acts.
+## `start_match(setup)` seeds the match, emits `match_loading(setup)` at once (before any await, so
+## the loading card shows in the same frame), takes the Phase 6 start-credits bonus (a skirmish
+## only) once the ads settle, waits two frames so the loading card is drawn (a start from a tap
+## arrives before the frame is drawn: the first frame only ends the tap's own), and changes to a new
+## main scene; `match_start_finished(error)` follows when the start is over, on every path.
+## `start_match`, `restart`, `leave_match` and `continue_match` are coroutines: always `await` them.
+## While one runs, the others return ERR_BUSY (leave_match and return_to_menu do nothing), so a new
+## match is never torn down by a late menu change; every await re-checks the match serial before it
+## acts.
 ## When the runner reports the end, the summary is built and `Progression.award_match` runs once;
 ## `leave_match()` (the result screen's Back) then counts the match for the ad caps
 ## (`note_match_completed`, once per match) and awaits the post-match interstitial before the menu.
