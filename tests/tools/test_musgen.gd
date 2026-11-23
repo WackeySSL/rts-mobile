@@ -147,13 +147,39 @@ func test_a_wrong_argument_exits_2() -> void:
 
 func test_the_encoder_writes_an_ogg() -> void:
 	var output: Array = []
-	if OS.execute("ffmpeg", ["-version"], output) != OK:
-		return  # No ffmpeg here: the generator test above covers the exit code.
+	var status: int = OS.execute("ffmpeg", ["-version"], output)
+	assert_int(status).override_failure_message("ffmpeg is needed to run this suite").is_equal(0)
 	assert_int(ResourceSaver.save(_params(), PARAMS_FILE)).is_equal(OK)
 	var result: Array = _cli(["--params", PARAMS_FILE, "--out", CLI_OUT])
 	assert_int(result[0]).is_equal(0)
 	var head: PackedByteArray = FileAccess.get_file_as_bytes(CLI_OUT + "/fixture.ogg")
 	assert_str(head.slice(0, 4).get_string_from_ascii()).is_equal("OggS")
+
+
+func test_a_shipped_sting_dies_away_before_its_end() -> void:
+	for id: String in ["victory", "defeat"]:
+		var params: MusicParams = load("res://tools/musgen/params/%s.tres" % id) as MusicParams
+		var left: PackedFloat32Array = MusicSynth.render(params)[0]
+		var window: int = int(0.3 * float(params.sample_rate))
+		var middle: float = _rms(left, left.size() / 2 - window / 2, window)
+		var end: float = _rms(left, left.size() - window, window)
+		var drop_db: float = linear_to_db(middle) - linear_to_db(end)
+		assert_float(drop_db).override_failure_message("%s: %s dB" % [id, drop_db]).is_greater(12.0)
+
+
+func test_problems_names_an_empty_chord_and_a_drum_without_a_pitch() -> void:
+	var params: MusicParams = _params()
+	assert_array(params.problems()).is_empty()
+	params.chords.append(PackedInt32Array())
+	params.lanes[2].voice.freq = 0.0
+	assert_int(params.problems().size()).is_equal(2)
+
+
+func _rms(samples: PackedFloat32Array, from: int, count: int) -> float:
+	var sum: float = 0.0
+	for i: int in range(from, from + count):
+		sum += samples[i] * samples[i]
+	return sqrt(sum / float(count))
 
 
 ## Runs gen_music.gd in a child Godot; returns [exit code, its output].

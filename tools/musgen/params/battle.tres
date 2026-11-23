@@ -203,6 +203,7 @@ script = ExtResource("3_ccy3t")
 id = &"battle"
 bpm = 116.0
 bars = 24
+peak_db = -10.0
 seed_value = 506
 chords = Array[PackedInt32Array]([PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(55, 60, 64), PackedInt32Array(55, 59, 62), PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(57, 62, 65), PackedInt32Array(56, 59, 64), PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(55, 59, 62), PackedInt32Array(56, 59, 64)])
 roots = PackedInt32Array(45, 41, 48, 43, 45, 41, 38, 40, 45, 41, 43, 40)

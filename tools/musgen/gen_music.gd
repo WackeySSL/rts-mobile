@@ -53,7 +53,7 @@ func _parse(args: PackedStringArray) -> Dictionary:
 	while i < args.size():
 		if args[i] == "--params" and i + 1 < args.size():
 			i += 1
-			options["params"] = args[i] if args[i].contains("://") else "res://" + args[i]
+			options["params"] = args[i] if args[i].is_absolute_path() else "res://" + args[i]
 		elif args[i] == "--out" and i + 1 < args.size():
 			i += 1
 			options["out"] = args[i].trim_suffix("/")
@@ -91,6 +91,7 @@ func _render(path: String, root: String, ffmpeg: String) -> bool:
 		return false
 	var wav: String = "user://musgen_%s.wav" % params.id
 	if MusicSynth.to_stream(params).save_to_wav(wav) != OK:
+		DirAccess.remove_absolute(wav)  # A failed save can leave a partial file.
 		print("gen-music: cannot write %s" % wav)
 		return false
 	var out: String = params.output_path(root)

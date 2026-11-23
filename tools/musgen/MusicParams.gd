@@ -58,7 +58,15 @@ func problems() -> Array[String]:
 		found.append("bars, chord_bars, chords and roots must be set")
 	if lanes.is_empty():
 		found.append("needs at least one lane")
+	for chord: PackedInt32Array in chords:
+		if chord.is_empty():
+			found.append("a chord has no notes")
 	for lane: MusicLane in lanes:
 		if lane == null or lane.voice == null:
 			found.append("a lane has no voice")
+		elif (
+			lane.kind == MusicLane.Kind.DRUM
+			and (lane.voice.freq <= 0.0 or lane.voice.freq_end <= 0.0)
+		):
+			found.append("drum lane '%s': freq and freq_end must be above 0" % lane.lane_name)
 	return found

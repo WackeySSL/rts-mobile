@@ -54,7 +54,8 @@ static func _lane(params: MusicParams, lane: MusicLane, index: int, mix: Mix) ->
 			if bar % params.chord_bars == 0:
 				var hold: float = params.chord_bars * bar_s
 				if not params.loop and bar + params.chord_bars >= params.bars:
-					hold += params.tail
+					# The last chord's release ends with the file, not after it.
+					hold = maxf(hold + params.tail - voice.release, 0.0)
 				_pad(params, lane, voice, chord, start, hold, index * 97 + bar, mix)
 			continue
 		var pattern: String = lane.pattern_for(bar)
@@ -157,12 +158,12 @@ static func _voice(
 	var gl: float = cos(pan_angle) * gain
 	var gr: float = sin(pan_angle) * gain
 	var send: float = float(at[4])
-	var rng: int = SfxSynth._seed_state(params.seed_value, int(at[5]))
+	var rng: int = SfxSynth.seed_state(params.seed_value, int(at[5]))
 	var phase: float = float(rng & 0xFFFF) / 65536.0
 	var step: float = pow(voice.freq_end / voice.freq, 1.0 / maxf(float(count), 1.0))
 	var f: float = voice.freq
-	var lp_k: float = SfxSynth._coef(voice.lowpass, rate)
-	var hp_k: float = SfxSynth._coef(voice.highpass, rate)
+	var lp_k: float = SfxSynth.coef(voice.lowpass, rate)
+	var hp_k: float = SfxSynth.coef(voice.highpass, rate)
 	var lp1: float = 0.0
 	var lp2: float = 0.0
 	var hp_in: float = 0.0
@@ -182,11 +183,11 @@ static func _voice(
 			env1 = voice.envelope(float(i + CONTROL) / rate)
 		var x: float
 		if noise:
-			rng = SfxSynth._next(rng)
+			rng = SfxSynth.next_state(rng)
 			x = float(rng & 0xFFFF) / 32767.5 - 1.0
 		else:
 			phase = fposmod(phase + f / rate, 1.0)
-			x = SfxSynth._osc(voice.wave, phase, voice.duty)
+			x = SfxSynth.osc(voice.wave, phase, voice.duty)
 			f *= step
 		if lp_k > 0.0:
 			lp1 += lp_k * (x - lp1)

@@ -65,11 +65,7 @@ func test_the_menu_asks_for_the_menu_music_when_it_is_ready() -> void:
 
 func test_the_first_published_tick_asks_for_the_battle_music_once() -> void:
 	var fake: FakeAudio = auto_free(FakeAudio.new())
-	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
-	_main.set("audio", fake)
-	var runner: MatchRunner = _main.get_node("MatchRunner")
-	runner.scenario = Rig.scenario_for(1, "headquarters", [], ROSTER)
-	runner.paused = true
+	var runner: MatchRunner = _new_main(fake)
 	add_child(_main)
 	await await_idle_frame()
 	assert_array(fake.asked).is_empty()
@@ -84,3 +80,27 @@ func _profile_with_window(size: Vector2i) -> UiMetrics:
 			if profiles[profile_name].window_size == size:
 				return profiles[profile_name]
 	return null
+
+
+func test_a_restored_match_asks_for_the_battle_music_when_it_enters_the_tree() -> void:
+	var fake: FakeAudio = auto_free(FakeAudio.new())
+	var runner: MatchRunner = _new_main(fake)
+	runner.restored = true  # As the Restorer plays it: off the tree, up to the stored tick.
+	runner.start()
+	runner.run_ticks(3)
+	assert_array(fake.asked).is_empty()
+	add_child(_main)
+	await await_idle_frame()
+	assert_array(fake.asked).is_equal([&"battle"])
+	runner.ticked.emit(4)
+	assert_array(fake.asked).is_equal([&"battle"])
+
+
+## The main scene with `fake` as its music service, its runner paused and not started.
+func _new_main(fake: FakeAudio) -> MatchRunner:
+	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	_main.set("audio", fake)
+	var runner: MatchRunner = _main.get_node("MatchRunner")
+	runner.scenario = Rig.scenario_for(1, "headquarters", [], ROSTER)
+	runner.paused = true
+	return runner

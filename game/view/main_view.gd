@@ -27,7 +27,10 @@ func _ready() -> void:
 	)
 	ui_sounds.local_player = scenario.local_player
 	ui_sounds.connect_attack_cues(attack_cues)
-	runner.ticked.connect(_on_first_tick, CONNECT_ONE_SHOT)
+	if runner.snapshot != null and runner.snapshot.tick > 0:
+		_on_first_tick(runner.snapshot.tick)  # A restored match enters paused at its stored tick.
+	else:
+		runner.ticked.connect(_on_first_tick, CONNECT_ONE_SHOT)
 	if build_button != null or economy_pill != null:
 		ui_sounds.connect_hud(build_button, economy_pill)
 	TutorialHost.attach(self)  # Only a lesson's match gets a director (P544).

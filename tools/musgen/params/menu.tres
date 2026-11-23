@@ -22,7 +22,7 @@ kind = 0
 voice = SubResource("Resource_1gvk1")
 level = 0.55
 pan = 0.85
-detune_cents = 9.0
+detune_cents = 6.0
 send = 0.2
 patterns = PackedStringArray()
 

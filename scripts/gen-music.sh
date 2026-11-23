@@ -2,7 +2,8 @@
 # Render the generated music from its parameter files (plan row P506, ADR 0041 section 5).
 # Usage: bash scripts/gen-music.sh [--params PATH] [--out DIR] [--ffmpeg PATH]
 # Output: assets/audio/music/<id>.ogg (stereo Ogg Vorbis, quality 3) through a temporary WAV and
-#         ffmpeg with libvorbis. Deterministic for the same parameters on one platform.
+#         ffmpeg with libvorbis. Deterministic for the same parameters with the same toolchain
+#         (Godot, ffmpeg and libvorbis).
 # Env:    GODOT=<binary> (default: godot), MUSGEN_FFMPEG=<binary> (default: ffmpeg).
 # Exit:   0 done, 1 invalid parameter file, encoder failure or Godot script error, 2 wrong argument
 #         or missing parameter file, 3 Godot missing, 4 ffmpeg or its libvorbis encoder missing
