@@ -43,3 +43,9 @@ mend_floor = 0
 repair_retreat_percent = 0
 medic_per_squads = 0
 repair_wave_retreat = 0
+; Grouped waves (P250e) are off in the frozen arena.
+group_min_size = 0
+group_gather_ticks = 0
+wave_regroup_spread_tiles = 0
+wave_regroup_ticks = 0
+wave_lead_percent = 0
