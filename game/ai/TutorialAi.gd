@@ -17,7 +17,9 @@ extends AiController
 ## the think its trigger first held, and sends the rest again on each later think until they are
 ## seen. So two QUEUE steps of one type count the items of the steps before them in the script as
 ## their own baseline and the later ones' as theirs: put such steps in script order, or chain them
-## with `after_step`. A fired step never fires again. Same views in, same Commands out.
+## with `after_step`. A fired step never fires again. An order step whose units are all gone
+## (none owned or queued) counts as fired, with no Command, so a card that waits for it is not
+## held for ever. Same views in, same Commands out.
 ##
 ## For the director (P541, P543): `step_count()`, `step_ids()`, `has_fired(id)`, `fired_tick_of(id)`
 ## and `fired_count()` tell which steps have played. A step's tick is the tick T of the view of the
@@ -69,6 +71,10 @@ var _owned: PackedInt32Array = PackedInt32Array()
 var _producers: PackedInt32Array = PackedInt32Array()
 var _complete: PackedInt32Array = PackedInt32Array()
 var _have: PackedInt32Array = PackedInt32Array()
+## Per type, 1 once the player has had a row or a queued item of it at any think, and whether it has
+## had a unit that moves: what makes "none left" mean gone, not "not trained yet".
+var _ever: PackedInt32Array = PackedInt32Array()
+var _ever_unit: bool = false
 var _added: PackedInt32Array = PackedInt32Array()
 var _budget: int = 0
 var _xs: PackedInt32Array = PackedInt32Array()
@@ -217,6 +223,12 @@ func _take_census(view: PlayerView) -> bool:
 	for tab: int in PlayerView.TABS:
 		for slot: int in view.queue_count[tab]:
 			_have[view.queue_type[tab * view.queue_slots + slot]] += 1
+	if _ever.size() != _have.size():
+		_ever.resize(_have.size())
+	for kind: int in _have.size():
+		if _have[kind] > 0:
+			_ever[kind] = 1
+			_ever_unit = _ever_unit or _is_unit(view, kind)
 	work += 1
 	return true
 
@@ -244,12 +256,65 @@ func _try(index: int, view: PlayerView, out: Array[Command]) -> void:
 	var units: PackedInt32Array = _units(index, view)
 	var dest: Vector2i = _destination(index, view)
 	var stop: bool = _action[index] == TutorialStepDef.Action.STOP
+	if units.is_empty() and _gone(index, view):
+		_fired[index] = view.tick  # Nothing to send, now or later: a card that waits goes on.
+		return
 	if units.is_empty() or (dest.x < 0 and not stop):
 		return
 	for first: int in range(0, units.size(), Command.MAX_UNITS):
 		var ids: PackedInt32Array = units.slice(first, first + Command.MAX_UNITS)
 		out.append(_order(index, ids, dest))
 	_fired[index] = view.tick
+
+
+## Whether the order step has no unit left to send and none can come, after it had some: the
+## player's lesson killed them all (or the roster lacks the type, which is warned about). A unit
+## that `_units` would send counts as left, and so does a queued one while a producer of its tab
+## stands (a queue with no producer is never built), and so does a type an unfired QUEUE step of
+## the script may still train. A type that has never been on the field is waited for.
+func _gone(index: int, view: PlayerView) -> bool:
+	var type: int = _type_of(_action_type[index], view)
+	if type == ABSENT:
+		push_warning(
+			(
+				"TutorialAi: step %s sends %s, which no roster has"
+				% [_step_ids[index], _action_type[index]]
+			)
+		)
+		return true
+	var seen: bool = _ever_unit if type == PlayerView.MISSING else _ever[type] == 1
+	if not seen or _may_train(type, view):
+		return false
+	for kind: int in _have.size():
+		if (type == PlayerView.MISSING or kind == type) and _left(kind, view):
+			return false
+	return true
+
+
+## Whether a unit of `kind` that `_units` would send stands now or is queued with a live producer.
+func _left(kind: int, view: PlayerView) -> bool:
+	if not _is_unit(view, kind):
+		return false
+	if _owned[kind] > 0:
+		return true
+	var tab: int = view.type_tab[kind]
+	return _have[kind] > _owned[kind] and tab >= 0 and tab < PlayerView.TABS and _producers[tab] > 0
+
+
+## Whether `kind` is a type that moves and fights, what `_units` sends.
+func _is_unit(view: PlayerView, kind: int) -> bool:
+	return view.type_foot_w[kind] == 0 and DummyDefence.is_combat(view, kind)
+
+
+## Whether a QUEUE step of the script that has not fired yet may still train `type` (any type when
+## MISSING).
+func _may_train(type: int, view: PlayerView) -> bool:
+	for step: int in _step_count:
+		if _fired[step] != NOT_FIRED or _action[step] != TutorialStepDef.Action.QUEUE:
+			continue
+		if type == PlayerView.MISSING or _type_of(_action_type[step], view) == type:
+			return true
+	return false
 
 
 func _order(index: int, ids: PackedInt32Array, dest: Vector2i) -> Command:

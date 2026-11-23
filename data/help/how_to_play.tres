@@ -938,7 +938,7 @@ body = "Tap Surrender in the pause menu. A question appears. Keep playing closes
 script = ExtResource("3_ent")
 id = &"winning-result"
 title = "The result screen"
-body = "When the match ends, a screen shows VICTORY, DEFEAT or DRAW and the time the match took. It lists the units built, units lost, buildings lost and credits harvested, for you and the enemy. A match from the main menu also shows the XP you earned and your rank bar filling up. Play again starts a new match with the same setup. Back returns to the main menu."
+body = "When the match ends, a screen shows VICTORY, DEFEAT or DRAW and the time the match took. It lists the units built, units lost, buildings lost and credits harvested, for you and the enemy. A match from the main menu also shows the XP you earned and your rank bar filling up. Play again starts a new match with the same setup. Back, or the phone's Back button, returns to the main menu. After a lesson it returns to the Tutorial screen, and Play again plays that lesson again."
 
 [sub_resource type="Resource" id="e140"]
 script = ExtResource("3_ent")
@@ -992,7 +992,7 @@ body = "Tap How to play on the main menu to see a list of sections. Tap one to r
 script = ExtResource("3_ent")
 id = &"menus-settings"
 title = "Settings"
-body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
+body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. While a sound is switched off on the pause menu, its slider reads OFF; moving it above 0 switches the sound back on. Settings also holds Replay tutorial, How to play and Licences. Your choices are kept on the phone."
 
 [sub_resource type="Resource" id="e148"]
 script = ExtResource("3_ent")

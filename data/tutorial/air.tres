@@ -72,7 +72,6 @@ script = ExtResource("2_beat")
 id = &"raid"
 prompt_key = &"tutorial.air.raid"
 covers = Array[StringName]([&"combat-anti-air-building"])
-delay_ticks = 60
 after_ai_step = &"raid"
 budget_s = 5
 
