@@ -112,9 +112,11 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   (2026-11-21: P510 #495, P510b #496, P511 #497, P525 #541 (locks), P532 #529, P514 #559, P515 #570,
   P516 #577, P531 #528 (pause on background))
 - [ ] Sound effects (CC0, CC-BY or made in this repo) and music volume
-- [ ] An interactive tutorial that teaches how to play: a lesson of about 3 minutes that starts on
+- [x] An interactive tutorial that teaches how to play: a lesson of about 3 minutes that starts on
   first launch, plus short drills, which together include every entry marked Teach in
   `docs/HOW_TO_PLAY.md`; all can be replayed from the menu (Michael, 2026-11-15; ADR 0044 §1)
+  (2026-11-23: P540 #560, P541 #566, P542 #576, P543 #584, P543b #593, P543c #603, P543d #607,
+  P543e #612, P544 #602, P545 #592)
 - [x] "How to play" screen in the main menu and the pause menu that explains every entry in
   `docs/HOW_TO_PLAY.md` (controls, units, buildings, economy, how to win) (2026-11-21: P527 #514,
   P530 #558, P531 #528, P528 #581; "every entry" read as every row outside "Not yet in the game")
