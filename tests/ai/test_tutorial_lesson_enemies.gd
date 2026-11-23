@@ -8,8 +8,8 @@ extends GdUnitTestSuite
 const LESSON_DIR: String = "res://data/tutorial/"
 const LOCAL: int = 1
 const FOE: int = 2
-## Ticks after a TICK trigger's threshold that its step has to have fired in (one think and the
-## wait of an order step for its units).
+## Ticks after a trigger's tick (a clock threshold, or a noted beat plus its delay) that its step
+## has to have fired in (one think and the wait of an order step for its units).
 const SLACK: int = 60
 ## The tick the test says the player finished the beat `groups` on.
 const GROUPS_TICK: int = 900
