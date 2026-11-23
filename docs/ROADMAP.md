@@ -135,7 +135,9 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   screen in its own suite, P544 #602, its overlays P542 #576 and P543b #593; follow-up P562)
 - [x] Second and third map (Heron Fords and Curlew Crags: P550-P555c, merged by wave 26, 2026-11-19)
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
-  covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes
+  covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes in
+  human-vs-AI playtests (Michael, 2026-11-23: AI-vs-AI Normal at 12-15 minutes is accepted; P556,
+  `docs/balance/2026-11-23-p556-match-length.md`)
 
 ## Phase 6: Monetization and Android delivery
 - [ ] Poing AdMob plugin for Android, `AdService` with fake mode, caps from data
