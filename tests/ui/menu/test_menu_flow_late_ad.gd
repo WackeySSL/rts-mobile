@@ -95,7 +95,6 @@ func _wait_out_the_timeout(call: Callable) -> Array:
 
 func _assert_nothing_built(when: String) -> void:
 	assert_int(_mains.size()).override_failure_message(when + ": main scene").is_equal(1)
-	assert_int(_loading).override_failure_message(when + ": match_loading").is_equal(0)
 
 
 func test_restart_builds_the_match_only_after_the_late_ad_closes() -> void:
@@ -202,9 +201,34 @@ func test_a_late_credits_ad_that_pays_during_the_settle_counts_for_this_match() 
 	await _frames(4)
 	assert_array(out).is_empty()
 	assert_int(_mains.size()).override_failure_message("no main while the ad is late").is_equal(0)
-	assert_int(_loading).is_equal(0)
+	assert_int(_loading).is_equal(1)  # P450: the card shows while the settle waits.
 	_fake.open_late(AdBackend.KIND_REWARDED)  # It opens and pays during the settle.
 	await _frames(4)
 	assert_array(out).is_equal([OK])
 	assert_int(_flow.current_setup().bonus_starting_credits).is_equal(credits)
 	assert_int(_ads.pending_start_credits()).is_equal(0)
+
+
+func test_a_never_settling_ad_still_starts_the_match_within_the_bound() -> void:
+	# P450: a run that never answers (the web preview's hang) holds the start only up to the bound.
+	_ads._settings = _ads._settings.duplicate()
+	_ads._settings.start_settle_bound_ms = 50
+	_ads._settings.fullscreen_late_cap_ms = 600000
+	await _frames(3)
+	_fake.show_never_opens = true
+	_fake.ignore_cancel = true
+	AdServiceHarness.start(
+		func() -> bool: return await _ads.show_rewarded(&"double_xp", Callable())
+	)
+	await _frames(3)
+	_h.clock_ms = _ads._settings.fullscreen_timeout_ms  # Timed out, still late, never settles.
+	await _frames(3)
+	var begun: int = _h.clock_ms
+	var out: Array = AdServiceHarness.start(func() -> int: return await _flow.start_match(_setup()))
+	assert_int(_loading).override_failure_message("card at once").is_equal(1)
+	await _frames(4)
+	assert_array(out).override_failure_message("still inside the bound").is_empty()
+	_h.clock_ms = begun + _ads._settings.start_settle_bound_ms
+	await _frames(4)
+	assert_array(out).is_equal([OK])
+	assert_int(_mains.size()).is_equal(1)

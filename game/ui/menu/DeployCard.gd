@@ -18,7 +18,8 @@ const LAYER: int = 90
 const ICON_DP: float = 160.0
 const GAP_DP: float = 16.0
 ## Frames after which the card goes away whatever happens (a backstop, never the normal way out).
-const HARD_FRAMES: int = 120
+## Above the ads settle bound (P450): the card now shows before that wait.
+const HARD_FRAMES: int = 1800
 
 var catalog: MapCatalog = null  ## Tests inject; null loads the catalog on first use.
 

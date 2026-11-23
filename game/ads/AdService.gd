@@ -219,16 +219,23 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 
 
 ## Awaitable. Returns at once, without awaiting a frame, when no full-screen run is active (loading
-## or shown, not yet closed) or late (shown by a run that timed out, and neither failed nor closed),
-## or every late run is past its cap. Otherwise
-## waits until each late ad failed or, once opened, closed (no cap: it is on screen). A late ad that
-## never answers is waited for only until `fullscreen_late_cap_ms` after its own timeout, so one
-## dropped show holds up no later call. AdMob cannot recall a started show, so a caller about to put
-## a match on screen awaits this first: no ad opens over a battle (ADR 0042 section 5). Both kinds
-## count: a late rewarded ad also opens unasked once the player has left its screen.
+## or shown, not yet closed) or late (shown by a run that timed out, and neither failed nor
+## closed), or every late run is past its cap. Otherwise waits until each late ad failed or, once
+## opened, closed (no cap of its own: it is on screen). A late ad that never answers is waited for
+## only until `fullscreen_late_cap_ms` after its own timeout, so one dropped show holds up no later
+## call. Whatever the runs do, it gives up after `start_settle_bound_ms` (the caller carries on,
+## and a hang shows in the console log). AdMob cannot recall a started show, so a caller about to
+## put a match on screen awaits this first: no ad opens over a battle (ADR 0042 section 5). Both
+## kinds count: a late rewarded ad also opens unasked once the player has left its screen.
 func settle_fullscreen() -> void:
+	var begun: int = int(_now_ms.call())
+	print("AdService: settle_fullscreen begin")
 	while _runs.has_settling(_settings.fullscreen_late_cap_ms):
+		if int(_now_ms.call()) - begun >= _settings.start_settle_bound_ms:
+			print("AdService: settle_fullscreen hit its bound, carrying on")
+			return
 		await (Engine.get_main_loop() as SceneTree).process_frame
+	print("AdService: settle_fullscreen done")
 
 
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.

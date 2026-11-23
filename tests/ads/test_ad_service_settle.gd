@@ -123,11 +123,29 @@ func test_settle_waits_for_the_close_of_an_ad_that_opened_just_inside_the_cap() 
 	_h.clock_ms = start + cap - 1
 	await AdServiceHarness.frames(2)
 	rig.fake.open_late()
-	_h.clock_ms = start + cap * 3  # An ad on screen is waited for without a cap.
+	var bound: int = rig.service._settings.start_settle_bound_ms
+	_h.clock_ms = start + bound - 1  # An ad on screen is waited for, up to the hard bound only.
 	await AdServiceHarness.frames(3)
 	assert_array(out).is_empty()
 	rig.fake.finish_show()
 	await AdServiceHarness.frames(2)
+	assert_array(out).is_equal([true])
+
+
+func test_settle_gives_up_at_the_hard_bound_on_an_ad_that_never_closes() -> void:
+	# P450: no run, however stuck, holds a match start longer than `start_settle_bound_ms`.
+	var rig: LateRig = await _late_rig(AdBackend.KIND_INTERSTITIAL)
+	if rig == null:
+		return
+	rig.fake.show_never_closes = true
+	var start: int = _h.clock_ms
+	var out: Array = _settle(rig.service)
+	rig.fake.open_late()
+	_h.clock_ms = start + rig.service._settings.start_settle_bound_ms - 1
+	await AdServiceHarness.frames(3)
+	assert_array(out).is_empty()
+	_h.clock_ms = start + rig.service._settings.start_settle_bound_ms
+	await AdServiceHarness.frames(3)
 	assert_array(out).is_equal([true])
 
 
