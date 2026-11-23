@@ -8,21 +8,23 @@ radar building (Signal Mast or Relay Post) and they have no other working one, t
 and full map go dark for that time. Units are not touched: they keep moving, shooting and seeing.
 The computer loses exactly the same sight as a human, because it reads the same fog.
 
-Status: **proposed**. The two changes were decided by Michael on 2026-11-23 (overload damage of
-about 200 from data; a vision cut for the length of the blackout, the exact rule left to the
-architect). Four questions below need his answers before the code rows start. Written by the
-architect on branch `claude/p57x-dusk-overload-plan` (base `main` at 56694ad1). Plan:
-`docs/plans/2026-11-23-dusk-overload.md` (rows P570-P578).
+Status: **accepted, 2026-11-23 (Michael)**. Michael decided the two changes that day (overload
+damage of about 200 from data; a vision cut for the length of the blackout, the exact rule left
+to the architect) and answered the four questions the same day with "ja ja ja nej": 1 yes, 2 A,
+3 yes, 4 A (see "Questions for Michael"). Written by the architect on branch
+`claude/p57x-dusk-overload-plan` (base `main` at 56694ad1); accepted in row P570 on the same
+branch. Plan: `docs/plans/2026-11-23-dusk-overload.md` (rows P570-P578).
 
-Amends, by dated status notes that P570 writes once this ADR is accepted (no accepted text is
+Amends, by the dated status notes P570 wrote (2026-11-23) in each ADR below (no accepted text is
 rewritten):
 - ADR 0023 §10, "Blackout": the blackout now also takes hp (§1 below). Its status note of
   2026-10-27 ("the blackout holds none" strike weapon) is superseded: the Dusk Array holds one.
   "Units are not affected" stands.
 - ADR 0025 §7, "Never offline", and its question 5: narrowed. The radar never depends on the
   player's own state (owning a radar, power); only an enemy Dusk Array on the radar building darkens
-  it (§3). This needs Michael's yes (question 1), because it reverses his own answer to question 5.
-- ADR 0025 §8's open question (a strike raises no attack cue): answered by question 3.
+  it (§3). Michael said yes (question 1), which reverses his own answer to question 5 for this
+  one case.
+- ADR 0025 §8's open question (a strike raises no attack cue): answered yes by question 3.
 - ADR 0010 §1 (a row is re-stamped only when its cell changed): a row also loses its disc while its
   building is blacked out (§2).
 - ADR 0013 §5, the FOG kernel: it reads one more row column (`offline_until`) and one more rule
@@ -75,7 +77,7 @@ What exists that this builds on:
   hp is already 0 or less (sold or cancelled this tick, or killed by an earlier overload in the same
   COMMANDS) is skipped, so a death is never counted twice. Units are never in `building_rows`, so
   no unit loses hp. The firing player's own buildings are untouched.
-- **Can it kill? Yes** (question 2, recommended A). A building with hp at or below the hit falls to
+- **Can it kill? Yes** (question 2, answered A). A building with hp at or below the hit falls to
   0 and dies at that tick's REMOVE, exactly like a sold row. It is offline in its last tick (no
   shot, no power, no production). `Outcome.count_losses` counts it in `stat_lost_buildings`, its
   DIED record has flag 0 (a real loss, so the collapse and the crater show), and `Outcome.run` sees
@@ -179,8 +181,8 @@ What exists that this builds on:
   its camera jump and its hold-to-send, the rim wedges and the map ping. The attack toast at the
   top stays (ADR 0025 §8: it is not the radar). The AI has no overview to lose: it already reads
   its whole `PlayerView` every think. So for the radar part, the human pays an attention cost that
-  the AI does not. Question 4 asks whether to mirror it. The recommendation is no: pillar 4 is about
-  the same rules and no unscouted vision, and both hold. The cost of not mirroring is that an
+  the AI does not. It is not mirrored (question 4, answered A): pillar 4 is about the same rules
+  and no unscouted vision, and both hold. The cost of not mirroring is that an
   AI-fired Dusk Array weighs a little more on a human than a human's does on the AI (Risks, plan).
 - **What the human victim sees:** the fog closing in round the blacked-out buildings, the offline
   glyph over them (today's), the overload's sparks and the damage stages (P575b). If their radar is
@@ -211,8 +213,9 @@ What exists that this builds on:
   enemies who saw it fall drop their record of it, as today.
 - **Placement** reads `explored`, not `visible`, so building near a blinded base works as before.
 - **Attack cues (ADR 0025 §8).** An overload kill raises the victim's cue through its DIED record,
-  with no new code. Question 3 asks for one cue per strike for the victim's buildings hit out of
-  view, from the STRIKE record (P575b).
+  with no new code. Besides, one cue per strike is raised for the victim's buildings hit out of
+  view, from the STRIKE record (question 3, answered yes; P575b): the toast and the scope's rim
+  wedge as for a hit, and only the toast while the victim's radar is dark.
 
 ### 6. Determinism, replay and hashes
 - Integers only. Every number comes from data: the weapon (200, percents), the radius and length
@@ -281,7 +284,7 @@ Each feature row updates its own rows in the same PR (CLAUDE.md):
   are attacked. A second radar that works, or one you finish meanwhile, keeps it on". The row's id
   goes into `data/help/how_to_play.tres`.
 - `camera-radar` (P575): one clause pointing to `superweapon-blackout-radar`.
-- `combat-under-attack` (P575b, only if question 3 is yes): "A Dusk Array's overload on your
+- `combat-under-attack` (P575b, question 3 answered yes): "A Dusk Array's overload on your
   buildings out of view raises one too".
 - `superweapon-computer` (P576): fix "Normal and Hard" to what ships (only Hard's build orders
   build a strike building since P192b), and add the radar tie-break.
@@ -342,6 +345,14 @@ win rate and match length by faction, before and after. Balance runs only on Git
   GDD says "Units are not affected".
 
 ## Questions for Michael
+Answered by Michael on 2026-11-23, "ja ja ja nej" (yes to the recommendations of 1, 2 and 3, and no
+to the handicap of 4):
+1. **Yes:** the radar goes dark, with our own look (dark disc, switched-off sign, countdown ring).
+2. **A:** the overload can destroy a building with 200 hp or less left.
+3. **Yes:** one attack cue per strike for the victim's buildings hit out of view.
+4. **A:** no AI handicap; the computer loses the same sight and has no overview to lose.
+
+The questions as asked:
 1. **The radar going dark** reverses your answer to ADR 0025 question 5 ("the radar is never
    offline") for one case only: an enemy Dusk Array on your radar building, while you have no other
    working radar. It never depends on owning a radar or on power. The look is a dark disc with our

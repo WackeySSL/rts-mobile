@@ -858,6 +858,17 @@ accepted):
   enemy building only while `BuildingLayer.is_shown`. No ring stays on the ground after a
   blackout fires; the amber circle is `StrikeMarkerLayer`'s aim, drawn only while aiming.
 
+Status note (2026-11-23, P570 docs; ADR 0047 accepted 2026-11-23; the text above stays as
+accepted): ADR 0047 §1 and §2 amend the **Blackout**. In the same pass and the same apply, every
+building it reaches also loses the hit of the Dusk Array's `strike_weapon`
+(`data/weapons/renew_overload.tres`), through a `Strike.hit_damage` shared with the rupture. A
+building at or below that hit dies at the tick's REMOVE, as a sold row does. So the blackout no
+longer writes only `offline_until`, and the 2026-10-27 note's "the blackout holds none" is
+superseded: the Dusk Array holds a strike weapon, and still no unit or building has it as its
+`weapon`. While `blackout_sight_cut` is 1 (`data/rules.tres`), a blacked-out building also has no
+sight disc (`FogUpdate.run`). "Units are not affected" stands. The frozen arena (`data/dev/arena/`)
+keeps neither, so it behaves as before.
+
 ### 11. Economy: oil and gas fields on the merged ore loop
 - **Mapping:** a field is the merged ore cells (`ore_cell`, `ore_amount`, `ore_cell_max` 20,
   `ore_regrow_ticks` 150); the tanker is the harvester (`harvest_capacity`, SEEK, MINE, RETURN,

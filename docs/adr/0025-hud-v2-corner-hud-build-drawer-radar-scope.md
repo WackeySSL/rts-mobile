@@ -689,6 +689,15 @@ map open), a pinned full map cannot stand beside the pill and the strike aim's r
 its least width. It folds when the aim begins (the pin stays), and a tap on the scope opens it
 again after the aim. A follow-up row will let `HudCorners` leave MAP out instead.
 
+Status note (2026-11-23, P570 docs; ADR 0047 accepted 2026-11-23; the text above stays as
+accepted): ADR 0047 §3 and §8 narrow **Never offline** to "never offline by the player's own
+state". Owning no radar building, or low power, still never darkens the scope. One case does: an
+enemy Dusk Array blacks out the player's radar building (`type_radar`: Signal Mast, Relay Post) and
+the player has no other complete radar that is online. For that time the scope shows the panel's
+dark disc, the offline glyph and a draining amber ring, with no word, noise or sound. A tap gives
+a nudge and opens nothing, and an open full map folds. The rule is `Radar.dark`, derived per
+snapshot (rows P574, P575).
+
 ### 8. Attack cues
 - **Detection** (P89's rule, moved): a `SHOT` or `IMPACT` event on an own row whose point is
   outside the camera's visible world rect raises one cue per area (`attack_cue_area_tiles`) and
@@ -721,6 +730,12 @@ accepted):
   writes neither, so only a row the rupture kills raises one (by its `DIED`). This section
   is silent on strikes. Whether a strike should raise its own cue (perhaps from P133's `STRIKE`
   event) is for a later row, with Michael if it changes what the player is told.
+
+Status note (2026-11-23, P570 docs; ADR 0047 accepted 2026-11-23; the text above stays as
+accepted): the open question above is answered **yes** for the Dusk Array (ADR 0047 question 3).
+A STRIKE record of kind 2 raises one cue per strike when an own building lies inside its radius
+and the point is out of view: the toast, and the scope's rim wedge unless the local player's radar
+is dark (row P575b). The Deep Bore keeps today's rule (only its kills raise a cue, by their `DIED`).
 
 ### 9. The command bar, the groups and the portrait BUILD lift
 - **Shows** as §1 says (and keeps its slot through placement and the strike aim). It holds, from
@@ -1225,6 +1240,10 @@ the tagline are decisions above (§12, §14, §8; the tagline in P126's PR).
 5. **Radar offline** without a radar building or on low power (the design): a new gameplay rule,
    and Command & Conquer's own (ADR 0023 §13). Recommended: no; the radar is always on. **Answered
    no.**
+   Status note (2026-11-23, P570 docs; the answer above stays as given): Michael said yes on
+   2026-11-23 to ADR 0047 question 1, which narrows this answer for one case: an enemy Dusk Array on
+   the player's only working radar building darkens the scope for the blackout (ADR 0047 §3). A
+   missing radar building or low power still never does.
 6. **Queue without the money** (the design: an item too expensive can still be queued and BUILD
    waits for credits). That is pay-as-you-go, a sim change to "paid when queued" (your answer of
    2026-10-22). Recommended: no; "stalled" shows a queue that cannot go on for other reasons.

@@ -1,6 +1,6 @@
 ---
 name: project-dusk-overload-decisions
-description: ADR 0047 (proposed 2026-11-23): Dusk Array overload 200 from data + vision cut + radar dark; plan rows P570-P578
+description: ADR 0047 (accepted 2026-11-23): Dusk Array overload 200 from data + vision cut + radar dark; plan rows P570-P578
 metadata:
   type: project
 ---
@@ -13,3 +13,4 @@ metadata:
 - Pitfall: gate every new sim rule by data defaults that the frozen `data/dev/arena/` lacks (rule int 0, flag false, weapon -1) so arena state goldens never move; new TYPE/RULE entries still move every defs_hash pin.
 - Pitfall: a GDScript-only fog unstamp that keeps fog_cell breaks Removal's dying-row unstamp (double -1) and stamp_fog; change the wanted cell inside FOG instead (twin edit).
 - Pitfall: HOW_TO_PLAY says Normal builds strikes, but only Hard's strong build orders do (P192b); P576 fixes `superweapon-computer`. Parallel rows must edit different HOW_TO_PLAY rows.
+- ACCEPTED 2026-11-23 (Michael "ja ja ja nej": 1 yes dark radar with own look, 2 A lethal, 3 yes one cue per strike out of view (no rim wedge while dark), 4 A no AI handicap). P570 done on `claude/p57x-dusk-overload-plan` on top of the lead's 0d34f78c: GDD §Superweapons applied, dated notes in ADR 0023 §10, 0025 §7 + Q5 + §8, 0010 §1, 0013 §5; P575b now includes the AttackCues cue and `combat-under-attack`.

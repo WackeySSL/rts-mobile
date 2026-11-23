@@ -1170,6 +1170,12 @@ absorbs next to the C++ phases.
 - **Exit route:** web on C++ (§7, option B). It would allow deleting the twins and needs its own
   ADR after the Phase 2 gate. It is not adopted now.
 
+Status note (2026-11-23, P570 docs; ADR 0047 accepted 2026-11-23; the text above stays as
+accepted): the FOG kernel and its twin change together in row P573 (ADR 0047 §2). `fog.h`'s `Rows`
+gains `offline_until` (read only) and `Rules` gains `blackout_sight_cut`, read from the World by
+`kernel_fog.cpp`, with `world_access.h`'s column id if it lacks one. `FogUpdate.run` stays the
+reference, and the lockstep suites gain crafted blackout cases.
+
 ### 6. Threading
 ADR 0012 §2 applies to kernels unchanged: they run inside `Sim.step`, on the worker in `WORKER`
 mode or inline in `SYNC`, with the same code. In addition:
