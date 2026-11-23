@@ -347,6 +347,19 @@ func test_the_requested_screen_is_taken_once() -> void:
 	await _flow.start_match(_setup())
 	await _flow.leave_match(&"skirmish")
 	assert_str(_flow.take_pending_screen()).is_equal("skirmish")
+	# leave_match given RETURN_SCREEN explicitly (existing behaviour): that screen is queued and no
+	# interstitial plays after a lesson.
+	await _flow.start_match(_setup(&"lesson_one"))
+	_surrender_local()
+	await _flow.leave_match(TutorialStart.RETURN_SCREEN)
+	assert_str(_flow.take_pending_screen()).is_equal("tutorial")
+	assert_int(_ads.interstitial_calls).is_equal(0)
+	# A skirmish keeps the main menu and its interstitial.
+	await _flow.start_match(_setup())
+	_surrender_local()
+	await _flow.leave_match()
+	assert_str(_flow.take_pending_screen()).is_equal("")
+	assert_int(_ads.interstitial_calls).is_equal(1)
 
 
 func test_continue_match_without_a_file_changes_nothing() -> void:
