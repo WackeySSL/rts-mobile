@@ -104,6 +104,11 @@ extends Resource
 ## The closing push: a wave whose front is at the target and worth this percent of the seen enemy
 ## value near it or more is reinforced by the home units at once, without the gather. 0 = never.
 @export var wave_lead_percent: int = 0
+## Credits production leaves unspent (plan row P250e, iteration 2): its Commands apply a tick after
+## the view, and the mend and the ground repair draw credits every tick in between, so a QUEUE that
+## spent the credits to the last one was refused (a stale drop). 0 = spend to the last credit (the
+## default, so the frozen files play as before; Easy has no mend or repair and spends to it).
+@export var spend_margin_credits: int = 0
 ## The most Commands one think sends: Easy's slow hands.
 @export var commands_per_think_max: int = 8
 ## Income of the player in percent. 100 at every level (ADR 0030 section 8, answer 1 C).

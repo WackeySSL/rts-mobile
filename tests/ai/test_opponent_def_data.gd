@@ -33,6 +33,7 @@ const _OFF_BY_DEFAULT: Dictionary[String, int] = {
 	"wave_regroup_spread_tiles": 0,
 	"wave_regroup_ticks": 0,
 	"wave_lead_percent": 0,
+	"spend_margin_credits": 0,
 }
 const _AIR_FIELDS: Array[String] = [
 	"aa_type", "fighter_type", "bomber_type", "air_weights", "fighter_seen_weight"

@@ -63,6 +63,7 @@ func _start(
 	own.wave_first_tick = WAVE_TICK
 	own.wave_first_strength = WAVE_STRENGTH
 	own.scout_first_tick = CAP * 10
+	own.spend_margin_credits = 0  # The stall answer's numbers were made without the margin (P250e).
 	var def: OpponentDef = Opp.def_of(_faction)
 	if stall_window >= 0 or scout_units >= 0:
 		def = def.duplicate() as OpponentDef

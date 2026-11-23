@@ -51,3 +51,5 @@ group_gather_ticks = 900
 wave_regroup_spread_tiles = 7
 wave_regroup_ticks = 600
 wave_lead_percent = 300
+; Production keeps this many credits back for the mend and repair that draw them between view and apply (P250e).
+spend_margin_credits = 40

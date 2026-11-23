@@ -57,6 +57,8 @@ var spent_credits: int = 0
 var role_queued: PackedInt32Array = PackedInt32Array()
 
 var _player: int = 0
+## Credits left unspent (`spend_margin_credits`).
+var _margin: int = 0
 var _role_ids: Array[StringName] = []
 var _vehicle_ids: Array[StringName] = []
 var _weights: PackedInt32Array = PackedInt32Array()
@@ -114,6 +116,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, player_id: int) -> 
 	var production: AiProduction = AiProduction.new()
 	var tier: int = clampi(level.build_order_tier, 0, OpponentDef.TIERS - 1)
 	production._player = player_id
+	production._margin = maxi(level.spend_margin_credits, 0)
 	production._role_ids.resize(_ROLES)
 	production._role_ids[OpponentDef.Role.ANTI_INFANTRY] = def.anti_infantry_type
 	production._role_ids[OpponentDef.Role.ANTI_VEHICLE] = &""
@@ -157,7 +160,7 @@ func run(view: PlayerView, memory: AiMemory, rng: DetRandom, out: Array[Command]
 		return
 	if scout != _NONE and _owned[scout] > 0:
 		scout = _NONE
-	_budget = maxi(view.credits - memory.reserve_credits, 0)
+	_budget = maxi(view.credits - memory.reserve_credits - _margin, 0)
 	_closed_tab = -1
 	if scout != _NONE and _queue_scout(view, memory, out, scout):
 		_closed_tab = view.type_tab[scout]
