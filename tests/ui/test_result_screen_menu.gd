@@ -165,14 +165,18 @@ func test_back_after_a_lesson_asks_for_the_tutorial_screen_and_a_skirmish_for_th
 func test_the_phones_back_button_follows_the_same_routes() -> void:
 	await _open(130, 30)
 	var screen: ResultScreen = _screen()
+	var backs: Array[int] = [0]
+	screen.back_requested.connect(func() -> void: backs[0] += 1)
 	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)  # Hidden: the match is running.
 	assert_int(_flow.leaves).is_equal(0)
+	assert_int(backs[0]).is_equal(0)
 	MatchRig.end(_main, [2])
 	_flow.setup = MatchSetup.new()
 	_flow.setup.lesson_id = &"basics"
 	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 	screen.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)  # A second request does nothing.
 	assert_array([_flow.leaves, _flow.last_screen]).is_equal([1, &"tutorial"])
+	assert_int(backs[0]).is_equal(1)  # The second request is silent.
 	_flow.release.emit()
 	await await_idle_frame()
 	_flow.setup.lesson_id = &""

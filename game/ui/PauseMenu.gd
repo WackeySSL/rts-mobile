@@ -37,6 +37,9 @@ extends ModalFrame
 ## The result screen is later in the scene and covers this menu; the menu does not open once the
 ## match has ended.
 
+## The phone's Back button did something here (UiSounds plays the back cue).
+signal back_requested
+
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
 const KICKER: String = "SKIRMISH"
 const OBJECTIVE: String = "Destroy the enemy Headquarters and every production building."
@@ -338,11 +341,14 @@ func _on_back() -> void:
 	if _starting or _help != null or feed == null:
 		return
 	if visible and _asking():
+		back_requested.emit()
 		_close_dialogs()
 		_resume.grab_focus()
 	elif feed.state.is_open(HudState.Unfold.PAUSE):
+		back_requested.emit()
 		_resume_pressed()
 	elif _can_open():
+		back_requested.emit()
 		feed.state.open(HudState.Unfold.PAUSE)
 
 
@@ -719,9 +725,11 @@ func _set_starting(starting: bool) -> void:
 		for button: Button in _glyphed:
 			_enabled_before[button] = button.disabled
 			button.disabled = true
+			UiWait.hold(button, true)
 		return
 	for button: Button in _enabled_before:
 		button.disabled = _enabled_before[button]
+		UiWait.hold(button, false)
 	_enabled_before.clear()
 	_show_exit()
 

@@ -133,7 +133,12 @@ func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> voi
 	# Disabled (no click, no pressed plate), with the look that keeps the word at full contrast.
 	assert_bool(_button(&"RestartButton").disabled).is_true()
 	assert_str(_button(&"RestartButton").theme_type_variation).is_equal("PauseStarting")
+	for other: StringName in OTHERS:  # A wait, not a refusal: a tap on them gives no sound.
+		assert_bool(bool(_button(other).get_meta(&"no_click", false))).is_true()
+	var backs: Array[int] = [0]
+	_menu.back_requested.connect(func() -> void: backs[0] += 1)
 	_menu._on_back()  # Android Back: swallowed, the menu stays open.
+	assert_int(backs[0]).is_equal(0)
 	_button(&"RestartButton").pressed.emit()  # A second Restart: no question opens.
 	_menu._restart()  # Nor does a second confirmed restart reach the flow.
 	await await_idle_frame()
@@ -146,6 +151,7 @@ func test_restart_shows_starting_and_ignores_the_other_buttons_and_back() -> voi
 	assert_str(_button(&"RestartButton").text).is_equal("RESTART")
 	assert_str(_button(&"RestartButton").theme_type_variation).is_equal("PauseButton")
 	assert_bool(_button(&"RestartButton").disabled).is_false()
+	assert_bool(_button(&"RestartButton").has_meta(&"no_click")).is_false()
 	for other: StringName in OTHERS:
 		var expected: bool = settings_off if other == &"SettingsButton" else false
 		assert_bool(_button(other).disabled).override_failure_message(str(other)).is_equal(expected)

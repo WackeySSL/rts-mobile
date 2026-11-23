@@ -29,6 +29,8 @@ const IDS: PackedStringArray = [
 	"integer_division",
 	"*",
 	"DpMinSize",
+	"ui_cue",
+	"ui_back",
 ]
 ## `xp_view`'s keys: allowed only as `"key":` or `["key"]`.
 const DICT_KEYS: PackedStringArray = [

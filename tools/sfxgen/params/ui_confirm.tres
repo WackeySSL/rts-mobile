@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="SfxParams" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://tools/sfxgen/SfxParams.gd" id="1_params"]
+[ext_resource type="Script" path="res://tools/sfxgen/SfxLayer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="Resource_0"]
+script = ExtResource("2_layer")
+wave = 3
+freq = 660
+freq_end = 660
+duty = 0.5
+amp = 0.6
+start = 0.0
+length = 0.09
+attack = 0.004
+decay = 0.025
+sustain = 0.5
+release = 0.05
+lowpass = 3200
+highpass = 0
+
+[sub_resource type="Resource" id="Resource_1"]
+script = ExtResource("2_layer")
+wave = 3
+freq = 990
+freq_end = 990
+duty = 0.5
+amp = 0.6
+start = 0.07
+length = 0.13
+attack = 0.004
+decay = 0.03
+sustain = 0.5
+release = 0.08
+lowpass = 3200
+highpass = 0
+
+[sub_resource type="Resource" id="Resource_2"]
+script = ExtResource("2_layer")
+wave = 0
+freq = 1980
+freq_end = 1980
+duty = 0.5
+amp = 0.12
+start = 0.07
+length = 0.13
+attack = 0.004
+decay = 0.03
+sustain = 0.4
+release = 0.08
+lowpass = 0
+highpass = 0
+
+[resource]
+script = ExtResource("1_params")
+id = &"confirm"
+family = &"ui"
+sample_rate = 22050
+duration = 0.2
+seed_value = 13
+gain = 0.85
+layers = Array[ExtResource("2_layer")]([SubResource("Resource_0"), SubResource("Resource_1"), SubResource("Resource_2")])

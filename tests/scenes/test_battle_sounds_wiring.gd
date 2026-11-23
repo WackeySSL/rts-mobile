@@ -49,3 +49,15 @@ func test_main_scene_wires_ui_sounds_to_the_local_player_and_cues() -> void:
 	var cues: AttackCues = scene.get_node(^"Hud/AttackCues") as AttackCues
 	assert_int(ui.local_player).is_equal(runner.scenario.local_player)
 	assert_bool(cues.cue_changed.is_connected(ui._on_cue_changed)).is_true()
+
+
+func test_main_scene_wires_ui_sounds_to_the_ready_chip_and_the_power_pill() -> void:
+	var scene: Node = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+	add_child(scene)
+	var ui: UiSounds = scene.get_node(^"UiSounds") as UiSounds
+	var button: BuildButton = scene.get_node(^"Hud/BuildButton") as BuildButton
+	var pill: EconomyPill = scene.get_node(^"Hud/EconomyPill") as EconomyPill
+	assert_object(scene.build_button).is_same(button)
+	assert_object(scene.economy_pill).is_same(pill)
+	assert_bool(button.ready_changed.is_connected(ui._on_ready_changed)).is_true()
+	assert_bool(pill.low_power_started.is_connected(ui._on_low_power)).is_true()

@@ -45,6 +45,19 @@ func before_test() -> void:
 	MenuRig.begin()
 
 
+func test_low_power_started_fires_on_the_edge_and_again_after_a_recovery() -> void:
+	await _open()
+	var edges: Array[int] = [0]
+	_pill.low_power_started.connect(func() -> void: edges[0] += 1)
+	_publish(1500, 100, 40)
+	_publish(1500, 100, 120)
+	_publish(1500, 100, 130)
+	assert_int(edges[0]).is_equal(1)
+	_publish(1500, 100, 40)
+	_publish(1500, 100, 120)
+	assert_int(edges[0]).is_equal(2)
+
+
 func test_it_shows_the_local_players_credits_and_power_and_nobody_elses() -> void:
 	await _open()
 	_publish(1500, 100, 40)

@@ -87,7 +87,10 @@ func test_replace_swaps_the_top_without_getting_deeper() -> void:
 func test_back_pops_a_screen_above_the_root() -> void:
 	await _push()
 	var next: MenuScreen = await _push()
+	var backs: Array[int] = [0]
+	_stack.back_requested.connect(func() -> void: backs[0] += 1)
 	_stack.back()
+	assert_int(backs[0]).is_equal(1)
 	await await_idle_frame()
 	assert_int(_stack.depth()).is_equal(1)
 	assert_bool(is_instance_valid(next)).is_false()
@@ -99,20 +102,27 @@ func test_a_screen_that_uses_back_keeps_its_place() -> void:
 	var greedy: MenuScreen = Greedy.new()
 	_stack.push(greedy)
 	await await_idle_frame()
+	var backs: Array[int] = [0]
+	_stack.back_requested.connect(func() -> void: backs[0] += 1)
 	_stack.back()
 	assert_int(_stack.depth()).is_equal(2)
 	assert_int(greedy.get("asked") as int).is_equal(1)
+	assert_int(backs[0]).is_equal(0)  # Swallowed: no cue.
 
 
 func test_back_at_the_root_asks_to_quit_and_back_again_closes_it() -> void:
 	await _push()
+	var backs: Array[int] = [0]
+	_stack.back_requested.connect(func() -> void: backs[0] += 1)
 	_stack.back()
 	assert_bool(_stack.is_asking_to_quit()).is_true()
+	assert_int(backs[0]).is_equal(1)
 	assert_int(_quit_calls[0]).is_equal(0)
 	_stack.back()  # Back closes the question (its cancel).
 	assert_bool(_stack.is_asking_to_quit()).is_false()
 	assert_int(_quit_calls[0]).is_equal(0)
 	assert_int(_stack.depth()).is_equal(1)
+	assert_int(backs[0]).is_equal(2)
 
 
 func test_the_quit_question_reads_its_words_from_the_english_table() -> void:

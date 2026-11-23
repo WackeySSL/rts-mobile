@@ -90,8 +90,10 @@ func test_busy_disables_both_rows_labels_the_tapped_one_and_restores_after() -> 
 	assert_bool(rows.restore_button.disabled).is_true()
 	assert_str(rows.restore_button.text).is_equal("RESTORING…")
 	assert_str(rows.remove_button.text).is_equal(before_text)
+	assert_bool(bool(rows.remove_button.get_meta(&"no_click", false))).is_true()  # A wait.
 	fake.release.emit()
 	await await_idle_frame()
+	assert_bool(rows.remove_button.has_meta(&"no_click")).is_false()
 	assert_bool(rows.remove_button.disabled).is_false()
 	assert_bool(rows.restore_button.disabled).is_false()
 	assert_str(rows.restore_button.text).is_equal("RESTORE PURCHASES")

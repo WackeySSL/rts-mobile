@@ -204,6 +204,8 @@ func test_app_pause_and_focus_out_open_the_menu_and_pause_the_match() -> void:
 
 func test_back_opens_and_closes_the_menu_and_closes_a_question_first() -> void:
 	await _open_main()
+	var backs: Array[int] = [0]
+	_menu.back_requested.connect(func() -> void: backs[0] += 1)
 	_menu.propagate_notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 	await await_idle_frame()
 	assert_bool(_menu.visible).is_true()
@@ -215,6 +217,7 @@ func test_back_opens_and_closes_the_menu_and_closes_a_question_first() -> void:
 	_menu.propagate_notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 	await await_idle_frame()
 	assert_bool(_menu.visible).is_false()
+	assert_int(backs[0]).is_equal(3)  # Open, the question closed, close: each did something.
 
 
 func test_the_menu_does_not_open_over_a_result() -> void:

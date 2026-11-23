@@ -16,6 +16,9 @@ extends ModalFrame
 ## every ad call and shows only for a scored award. This script calls no ad; it hands the offer
 ## the award and follows `Progression.xp_changed`, so a Double XP bonus moves the bar.
 
+## The phone's Back button was used on the shown result (UiSounds plays the back cue).
+signal back_requested
+
 const MenuFlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AudioServiceScript: GDScript = preload("res://game/view/audio/audio_service.gd")
@@ -106,6 +109,7 @@ func _ready() -> void:
 		push_warning("ResultScreen: PLAY AGAIN has %d DpMinSize nodes, not 1" % floors.size())
 	_back_button = add_button(row, tr(ResultText.BACK), _back)
 	_back_button.name = &"BackButton"
+	_back_button.set_meta(&"ui_cue", &"ui_back")
 	var node: Node = panel
 	while node != null and not node is ScrollContainer:
 		node = node.get_parent()
@@ -362,6 +366,8 @@ func _back_screen() -> StringName:
 ## The phone's Back button on the shown result is the Back button.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_visible_in_tree():
+		if not _leaving:
+			back_requested.emit()
 		_back()
 
 
@@ -374,6 +380,8 @@ func _set_leaving(leaving: bool, again_path: bool) -> void:
 		_again.text = tr(MapSelectText.STARTING) if leaving else _again_text()
 	_again.disabled = leaving
 	_back_button.disabled = leaving
+	UiWait.hold(_again, leaving)
+	UiWait.hold(_back_button, leaving)
 
 
 func _again_text() -> String:
