@@ -59,26 +59,44 @@ func test_the_bot_finishes_support() -> void:
 
 
 ## A slow player (4 s a card, 8 s a card) is still told the enemy is coming before it is at the
-## base: the wave leaves on the player's progress (`groups`), not on a clock (plan row P543c).
+## base: the wave, the raid and the poke leave on the player's progress (a `BEAT` step), not on a
+## clock (plan rows P543c and P543d). Contact is an enemy unit within 8 tiles of an own building.
 func test_basics_tells_of_the_wave_before_contact_at_4_s_a_card() -> void:
-	await _incoming_before_contact(SLOW_4S)
+	await _card_before_contact(&"basics", &"incoming", SLOW_4S)
 
 
 func test_basics_tells_of_the_wave_before_contact_at_8_s_a_card() -> void:
-	await _incoming_before_contact(SLOW_8S)
+	await _card_before_contact(&"basics", &"incoming", SLOW_8S)
 
 
-func _incoming_before_contact(think_ticks: int) -> void:
-	var result: Dictionary = await _finishes(&"basics", think_ticks)
+func test_air_tells_of_the_raid_before_contact_at_4_s_a_card() -> void:
+	await _card_before_contact(&"air", &"raid", SLOW_4S)
+
+
+func test_air_tells_of_the_raid_before_contact_at_8_s_a_card() -> void:
+	await _card_before_contact(&"air", &"raid", SLOW_8S)
+
+
+func test_support_tells_of_the_poke_before_contact_at_4_s_a_card() -> void:
+	await _card_before_contact(&"support", &"poke", SLOW_4S)
+
+
+func test_support_tells_of_the_poke_before_contact_at_8_s_a_card() -> void:
+	await _card_before_contact(&"support", &"poke", SLOW_8S)
+
+
+func _card_before_contact(id: StringName, card: StringName, think_ticks: int) -> void:
+	var result: Dictionary = await _finishes(id, think_ticks)
 	var shown: Dictionary = result["shown"]
 	var contact: int = result["contact"]
 	var label: String = (
-		"think %d: incoming at %d, contact at %d" % [think_ticks, shown[&"incoming"], contact]
+		"%s think %d: %s at %d, contact at %d" % [id, think_ticks, card, shown[card], contact]
 	)
 	print("TutorialBot ", label)
-	assert_int(shown[&"incoming"]).override_failure_message(label).is_greater(0)
-	if contact >= 0:
-		assert_int(shown[&"incoming"]).override_failure_message(label).is_less(contact)
+	assert_int(shown[card]).override_failure_message(label).is_greater(0)
+	# The enemy does arrive in a slow run, so the order of the two ticks is a real check.
+	assert_int(contact).override_failure_message(label).is_greater(0)
+	assert_int(shown[card]).override_failure_message(label).is_less(contact)
 
 
 ## Plays `id` and checks the run ended the lesson, with every anchor control a node of the HUD.

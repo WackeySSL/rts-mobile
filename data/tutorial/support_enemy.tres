@@ -6,7 +6,9 @@
 [sub_resource type="Resource" id="Step_00"]
 script = ExtResource("2_step")
 id = &"poke"
-threshold = 450
+trigger = 6
+threshold = 15
+trigger_beat = &"sell-last"
 action_type = &"renew_rifle"
 target = 0
 target_tile = Vector2i(9, 14)

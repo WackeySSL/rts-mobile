@@ -13,6 +13,9 @@ const FOE: int = 2
 const SLACK: int = 60
 ## The tick the test says the player finished the beat `groups` on.
 const GROUPS_TICK: int = 900
+## The ticks the tests say the player finished `home` (air) and `sell-last` (support) on.
+const HOME_TICK: int = 400
+const SELL_LAST_TICK: int = 300
 
 
 func test_basics_trains_then_sends_the_wave_when_the_groups_beat_is_done() -> void:
@@ -52,15 +55,23 @@ func test_strikes_gathers_the_squads_early_for_the_strike() -> void:
 	assert_int(ai.fired_tick_of(&"gather")).is_between(150, 150 + SLACK)
 
 
-func test_air_sends_one_fighter_over_the_base_after_a_minute() -> void:
-	var ai: TutorialAi = _fired(&"air", 1100)
-	assert_int(ai.fired_tick_of(&"raid")).is_between(900, 900 + SLACK)
-
-
-func test_support_pokes_the_tanks_and_the_base_stands() -> void:
-	var runner: MatchRunner = _play(&"support", 1500)
+func test_air_sends_one_fighter_when_the_home_beat_is_done() -> void:
+	var runner: MatchRunner = _play(&"air", HOME_TICK)
 	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
-	assert_int(ai.fired_tick_of(&"poke")).is_between(450, 450 + SLACK)
+	assert_bool(ai.has_fired(&"raid")).is_false()  # No clock opens it, only the beat.
+	ai.note_beat(&"home", HOME_TICK)
+	runner.run_ticks(300)
+	assert_int(ai.fired_tick_of(&"raid")).is_between(HOME_TICK + 15, HOME_TICK + 15 + SLACK)
+
+
+func test_support_sends_the_squads_when_the_sell_last_beat_is_done() -> void:
+	var runner: MatchRunner = _play(&"support", SELL_LAST_TICK)
+	var ai: TutorialAi = runner.controller_of(FOE) as TutorialAi
+	assert_bool(ai.has_fired(&"poke")).is_false()
+	ai.note_beat(&"sell-last", SELL_LAST_TICK)
+	runner.run_ticks(900)
+	var at: int = ai.fired_tick_of(&"poke")
+	assert_int(at).is_between(SELL_LAST_TICK + 15, SELL_LAST_TICK + 15 + SLACK)
 	assert_int(_count(runner.world, LOCAL, &"headquarters")).is_equal(1)
 	assert_int(runner.world.match_end_tick).is_equal(0)
 
