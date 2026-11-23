@@ -46,6 +46,30 @@ func test_the_bot_finishes_basics() -> void:
 	await _finishes(&"basics")
 
 
+## Michael's phone (P543f): the player sends the squads, taps STOP while they walk, and has to send
+## them again. The lesson must go on, the STOP must have gone out, and the move beat must have
+## ended only once the squads stood in its area.
+func test_the_bot_stops_mid_move_sends_again_and_finishes_basics() -> void:
+	var lesson: TutorialLessonDef = load("%sbasics.tres" % LESSON_DIR) as TutorialLessonDef
+	var result: Dictionary = await _play(lesson, 0, true)
+	assert_str(result["failure"]).is_empty()
+	assert_bool(result["done"]).is_true()
+	assert_int(result["stops"]).is_equal(1)
+	assert_array(result["ringless"]).is_empty()
+	var done_at: Dictionary = result["done_at"]
+	var shown: Dictionary = result["shown"]
+	assert_int(done_at[&"move"]).is_less_equal(shown[&"stop"])
+
+
+## Michael's phone (P543f): one squad saved as group 1 is enough to end the `groups` beat.
+func test_a_single_squad_saved_as_group_1_finishes_basics() -> void:
+	var lesson: TutorialLessonDef = load("%sbasics.tres" % LESSON_DIR) as TutorialLessonDef
+	var result: Dictionary = await _play(lesson, 0, false, true)
+	assert_str(result["failure"]).is_empty()
+	assert_bool(result["done"]).is_true()
+	assert_bool(result["done_at"].has(&"groups")).is_true()
+
+
 func test_the_bot_finishes_strikes() -> void:
 	await _finishes(&"strikes")
 
@@ -128,7 +152,12 @@ func _finishes(id: StringName, think_ticks: int = 0) -> Dictionary:
 	return result
 
 
-func _play(lesson: TutorialLessonDef, think_ticks: int) -> Dictionary:
+func _play(
+	lesson: TutorialLessonDef,
+	think_ticks: int,
+	stop_mid_move: bool = false,
+	single_squad_group: bool = false
+) -> Dictionary:
 	var phone: UiMetrics = UiProfiles.by_name(PHONE)
 	UiScale.set_override(phone)
 	get_window().size = phone.window_size
@@ -144,6 +173,8 @@ func _play(lesson: TutorialLessonDef, think_ticks: int) -> Dictionary:
 	await await_idle_frame()
 	var bot: RefCounted = Bot.new(self, _main)
 	bot.think_ticks = think_ticks
+	bot.stop_mid_move = stop_mid_move
+	bot.single_squad_group = single_squad_group
 	return await bot.play(lesson)
 
 
