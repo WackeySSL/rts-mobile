@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="SfxParams" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://tools/sfxgen/SfxParams.gd" id="1_params"]
+[ext_resource type="Script" path="res://tools/sfxgen/SfxLayer.gd" id="2_layer"]
+
+[sub_resource type="Resource" id="layer_0"]
+script = ExtResource("2_layer")
+wave = 1
+freq = 1000.0
+freq_end = 1000.0
+duty = 0.5
+amp = 0.3
+start = 0.0
+length = 0.03
+attack = 0.001
+decay = 0.01
+sustain = 0.4
+release = 0.01
+lowpass = 3500.0
+highpass = 0.0
+
+[sub_resource type="Resource" id="layer_1"]
+script = ExtResource("2_layer")
+wave = 1
+freq = 1000.0
+freq_end = 1000.0
+duty = 0.5
+amp = 0.3
+start = 0.06
+length = 0.03
+attack = 0.001
+decay = 0.01
+sustain = 0.4
+release = 0.01
+lowpass = 3500.0
+highpass = 0.0
+
+[sub_resource type="Resource" id="layer_2"]
+script = ExtResource("2_layer")
+wave = 1
+freq = 1000.0
+freq_end = 1000.0
+duty = 0.5
+amp = 0.3
+start = 0.12
+length = 0.03
+attack = 0.001
+decay = 0.01
+sustain = 0.4
+release = 0.01
+lowpass = 3500.0
+highpass = 0.0
+
+[sub_resource type="Resource" id="layer_3"]
+script = ExtResource("2_layer")
+wave = 1
+freq = 1000.0
+freq_end = 1000.0
+duty = 0.5
+amp = 0.3
+start = 0.18
+length = 0.03
+attack = 0.001
+decay = 0.01
+sustain = 0.4
+release = 0.01
+lowpass = 3500.0
+highpass = 0.0
+
+[sub_resource type="Resource" id="layer_4"]
+script = ExtResource("2_layer")
+wave = 3
+freq = 360.0
+freq_end = 720.0
+duty = 0.5
+amp = 0.45
+start = 0.2
+length = 0.2
+attack = 0.01
+decay = 0.05
+sustain = 0.6
+release = 0.1
+lowpass = 0.0
+highpass = 0.0
+
+[resource]
+script = ExtResource("1_params")
+id = &"mend_1"
+family = &"building"
+sample_rate = 22050
+duration = 0.4
+seed_value = 15
+gain = 2.0374
+layers = Array[ExtResource("2_layer")]([SubResource("layer_0"), SubResource("layer_1"), SubResource("layer_2"), SubResource("layer_3"), SubResource("layer_4")])

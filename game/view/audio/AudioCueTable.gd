@@ -22,6 +22,11 @@ extends Resource
 @export var death_building: StringName = &""
 ## A sold building's pack-up (DIED flag 3).
 @export var sold: StringName = &""
+## An own unit comes out of its factory (SPAWNED of a mobile type, own rows only), an own building
+## is placed (SPAWNED of a building type, own rows only) and a unit boards a carrier (DIED flag 2).
+@export var unit_ready: StringName = &""
+@export var building_placed: StringName = &""
+@export var board: StringName = &""
 ## The strikes (`World.Event.STRIKE`, `Strike.Kind`): the rupture's launch when it is accepted and
 ## its landing at the landing tick, the blackout when it is fired and the sweep's hum.
 @export var strike_rupture_launch: StringName = &""

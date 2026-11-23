@@ -55,13 +55,15 @@
 [ext_resource type="Script" path="res://game/view/CarryMarkLayer.gd" id="94_carry_marks"]
 [ext_resource type="Script" path="res://game/ui/CarryControls.gd" id="95_carry_controls"]
 
-[node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera", "ui_sounds", "attack_cues")]
+[node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera", "ui_sounds", "attack_cues", "build_button", "economy_pill")]
 script = ExtResource("4_main")
 runner = NodePath("MatchRunner")
 map_view = NodePath("MapView")
 camera = NodePath("Camera")
 ui_sounds = NodePath("UiSounds")
 attack_cues = NodePath("Hud/AttackCues")
+build_button = NodePath("Hud/BuildButton")
+economy_pill = NodePath("Hud/EconomyPill")
 
 [node name="MatchRunner" type="Node" parent="."]
 script = ExtResource("7_runner")

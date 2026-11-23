@@ -2,9 +2,15 @@ class_name UiSounds
 extends Node
 ## The interface sounds of ADR 0041 section 4, on the Ui bus through AudioService: a click on every
 ## `BaseButton` (hooked through `SceneTree.node_added`, so no HUD or menu file is edited; a button
-## with the meta `no_click` is silent), a chirp when the local player gives an order
-## (`CommandQueue.submitted`) and the alert chirp when `AttackCues` raises a cue. It reads and
-## plays; it never writes the sim or a Command. The sounds are `UiSoundsDef`'s.
+## with the meta `no_click` is silent; the meta `ui_cue` names another cue, `ui_back` or
+## `ui_confirm` (an unknown value warns once and clicks); a tap on a disabled button plays refuse
+## unless it is only a wait (`UiWait` sets `no_click`); a `back_requested` signal on any node
+## (`MenuStack`, `PauseMenu`, `ResultScreen`, `ConfirmDialog`) plays back), a chirp when the local
+## player gives an order (`CommandQueue.submitted`; the chirps take turns, and switching a
+## building's repair on has its own sound), the alert chirp when `AttackCues` raises a cue, the
+## "ready" chirp when the build button's Ready chip shows and the low-power warning when the
+## economy pill turns low. It reads and plays; it never writes the sim or a Command. The sounds
+## are `UiSoundsDef`'s.
 ##
 ## All connections live while the node is in the tree (`_enter_tree` to `_exit_tree`); outside it
 ## nothing plays.
@@ -16,8 +22,19 @@ extends Node
 const DEF_PATH: String = "res://data/audio_ui_sounds.tres"
 const META_NO_CLICK: StringName = &"no_click"
 const CUE_CLICK: StringName = &"ui_click"
+const META_CUE: StringName = &"ui_cue"
+const SIGNAL_BACK: StringName = &"back_requested"
+const CUE_BACK: StringName = &"ui_back"
+const CUE_CONFIRM: StringName = &"ui_confirm"
+const CUE_REFUSE: StringName = &"ui_refuse"
 const CUE_ORDER: StringName = &"ui_order"
 const CUE_ALERT: StringName = &"ui_alert"
+const CUE_READY: StringName = &"ui_ready"
+const CUE_POWER: StringName = &"ui_low_power"
+const CUE_MEND: StringName = &"ui_mend"
+
+## False in the menu, where nobody gives orders: the node then ignores the command queue.
+@export var chirp_orders: bool = true
 
 ## Only this player's orders chirp. The match setup must set it from the scenario's local player;
 ## while it is -1 no order chirps (one warning at the first order).
@@ -29,7 +46,12 @@ var audio: Node
 var queue: Node
 
 var _cues: AttackCues
-var _click_pending: bool = false
+var _order_frame: int = -1  ## The process frame of the last local order.
+var _warned_cue: bool = false
+var _pending: StringName = &""  ## The cue that waits for the end of the frame.
+var _build_button: BuildButton
+var _pill: EconomyPill
+var _orders: int = 0
 var _warned_unset: bool = false
 
 
@@ -42,25 +64,60 @@ func _enter_tree() -> void:
 		audio = get_node_or_null(^"/root/AudioService")
 	if queue == null:
 		queue = get_node_or_null(^"/root/CommandQueue")
-	if queue != null and not queue.is_connected(&"submitted", _on_submitted):
+	if chirp_orders and queue != null and not queue.is_connected(&"submitted", _on_submitted):
 		queue.connect(&"submitted", _on_submitted)
 	_link_cues(true)
+	_link_hud(true)
 	var tree: SceneTree = get_tree()
 	if not tree.node_added.is_connected(_on_node_added):
 		tree.node_added.connect(_on_node_added)
 	# Buttons that were in the tree before this node.
-	for node: Node in tree.root.find_children("*", "BaseButton", true, false):
-		_hook(node as BaseButton)
+	for node: Node in tree.root.find_children("*", "", true, false):
+		_on_node_added(node)
 
 
 func _exit_tree() -> void:
-	_click_pending = false
+	_pending = &""
 	var tree: SceneTree = get_tree()
 	if tree != null and tree.node_added.is_connected(_on_node_added):
 		tree.node_added.disconnect(_on_node_added)
 	if queue != null and queue.is_connected(&"submitted", _on_submitted):
 		queue.disconnect(&"submitted", _on_submitted)
 	_link_cues(false)
+	_link_hud(false)
+
+
+## Plays the "ready" chirp when `button`'s Ready chip shows and the low-power warning when `pill`
+## turns low (read-only connects; either may be null).
+func connect_hud(button: BuildButton, pill: EconomyPill) -> void:
+	_link_hud(false)
+	_build_button = button
+	_pill = pill
+	_link_hud(is_inside_tree())
+
+
+func _link_hud(on: bool) -> void:
+	if _build_button != null:
+		_link(_build_button.ready_changed, _on_ready_changed, on)
+	if _pill != null:
+		_link(_pill.low_power_started, _on_low_power, on)
+
+
+func _link(source: Signal, target: Callable, on: bool) -> void:
+	if on and not source.is_connected(target):
+		source.connect(target)
+	elif not on and source.is_connected(target):
+		source.disconnect(target)
+
+
+func _on_ready_changed() -> void:
+	if def != null and _build_button != null and _build_button.ready_type >= 0:
+		_play(def.ready_stream, CUE_READY, def.ready_priority, def.ready_db)
+
+
+func _on_low_power() -> void:
+	if def != null:
+		_play(def.power_stream, CUE_POWER, def.power_priority, def.power_db)
 
 
 ## Plays the alert chirp whenever `cues` raises a cue (read-only). One cue source at a time.
@@ -83,28 +140,76 @@ func _link_cues(on: bool) -> void:
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
 		_hook(node as BaseButton)
+	elif node.has_signal(SIGNAL_BACK) and not node.is_connected(SIGNAL_BACK, _on_back):
+		node.connect(SIGNAL_BACK, _on_back)
 
 
 func _hook(button: BaseButton) -> void:
 	var callback: Callable = _on_pressed.bind(button)
 	if not button.pressed.is_connected(callback):
 		button.pressed.connect(callback)
+	var gui: Callable = _on_gui_input.bind(button)
+	if not button.gui_input.is_connected(gui):
+		button.gui_input.connect(gui)
 
 
-## The meta is read at the press, so a button may set it after it entered the tree. The click
+## The meta is read at the press, so a button may set it after it entered the tree. The cue
 ## waits for the end of the frame (see the class comment).
 func _on_pressed(button: BaseButton) -> void:
-	if not is_inside_tree() or button.get_meta(META_NO_CLICK, false):
+	if button.get_meta(META_NO_CLICK, false):
 		return
-	if not _click_pending:
-		_click_pending = true
-		_flush_click.call_deferred()
+	var cue: StringName = StringName(button.get_meta(META_CUE, CUE_CLICK))
+	if cue != CUE_CLICK and cue != CUE_BACK and cue != CUE_CONFIRM:
+		if not _warned_cue:
+			_warned_cue = true
+			push_warning("UiSounds: unknown ui_cue '%s'; it clicks" % cue)
+		cue = CUE_CLICK
+	_queue_cue(cue)
 
 
-func _flush_click() -> void:
-	if _click_pending and def != null:
-		_click_pending = false
-		_play(def.click_stream, CUE_CLICK, def.click_priority, def.click_db)
+## A press on a disabled button is a refused action. A touch also arrives as an emulated mouse
+## press; the one pending slot keeps it to one cue.
+func _on_gui_input(event: InputEvent, button: BaseButton) -> void:
+	if not button.disabled or button.get_meta(META_NO_CLICK, false):
+		return
+	var mouse: InputEventMouseButton = event as InputEventMouseButton
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if (
+		(mouse != null and mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT)
+		or (touch != null and touch.pressed)
+	):
+		_queue_cue(CUE_REFUSE)
+
+
+func _on_back() -> void:
+	_queue_cue(CUE_BACK)
+
+
+func _queue_cue(cue: StringName) -> void:
+	# One cue per press: an order given in this frame (a confirm or button that sends a Command)
+	# has its chirp already, whichever of the two came first.
+	var ordered: bool = _order_frame == Engine.get_process_frames()
+	if ordered and (cue == CUE_CLICK or cue == CUE_CONFIRM):
+		return
+	if is_inside_tree() and _pending == &"":
+		_pending = cue
+		_flush.call_deferred()
+
+
+func _flush() -> void:
+	if _pending == &"" or def == null:
+		return
+	var cue: StringName = _pending
+	_pending = &""
+	match cue:
+		CUE_BACK:
+			_play(def.back_stream, cue, def.back_priority, def.back_db)
+		CUE_CONFIRM:
+			_play(def.confirm_stream, cue, def.confirm_priority, def.confirm_db)
+		CUE_REFUSE:
+			_play(def.refuse_stream, cue, def.refuse_priority, def.refuse_db)
+		_:
+			_play(def.click_stream, CUE_CLICK, def.click_priority, def.click_db)
 
 
 func _on_submitted(command: Command) -> void:
@@ -116,8 +221,22 @@ func _on_submitted(command: Command) -> void:
 			push_warning("UiSounds: local_player is not set; orders do not chirp")
 		return
 	if command.player_id == local_player:
-		_click_pending = false
-		_play(def.order_stream, CUE_ORDER, def.order_priority, def.order_db)
+		_order_frame = Engine.get_process_frames()
+		if _pending == CUE_CLICK or _pending == CUE_CONFIRM:
+			_pending = &""
+		if def.silent_commands.has(command.type):
+			return  # The sim's own cue (placed, sold) sounds instead.
+		var mend_on: bool = (
+			command.type == Command.Type.MEND
+			and not command.payload.is_empty()
+			and command.payload[0] == 1
+		)
+		if mend_on and def.mend_stream != null:
+			_play(def.mend_stream, CUE_MEND, def.mend_priority, def.mend_db)
+		elif not def.order_streams.is_empty():
+			var stream: AudioStream = def.order_streams[_orders % def.order_streams.size()]
+			_orders += 1
+			_play(stream, CUE_ORDER, def.order_priority, def.order_db)
 
 
 ## One chirp per `cue_changed` while a cue shows: a new attacked area or a replaced cue chirps

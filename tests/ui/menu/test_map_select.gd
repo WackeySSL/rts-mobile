@@ -123,6 +123,8 @@ func test_locks_follow_the_rank() -> void:
 	assert_bool(_screen._levels[&"normal"].disabled).is_false()
 	assert_bool(_screen._levels[&"hard"].disabled).is_true()
 	assert_str(_screen._levels[&"hard"].text).contains("RANK 3")
+	# A locked choice is a refusal, not a wait: no `no_click`, so a tap on it plays the refuse cue.
+	assert_bool(_screen._maps[&"map_2"].has_meta(&"no_click")).is_false()
 	for locked: StringName in [&"map_2", &"map_3"]:
 		assert_str(String(_screen._map_cards[locked].theme_type_variation)).is_equal(
 			"MenuMapCardLocked"
@@ -206,6 +208,7 @@ func test_start_reads_starting_while_the_match_is_prepared() -> void:
 	_screen._start.pressed.emit()
 	assert_str(_screen._start.text).is_equal(tr(MapSelectText.STARTING))
 	assert_bool(_screen._start.disabled).is_true()
+	assert_bool(bool(_screen._start.get_meta(&"no_click", false))).is_true()  # A wait, no refuse.
 	_flow.release.emit()
 	await await_idle_frame()
 

@@ -48,12 +48,24 @@ const RING_GRACE_TICKS: int = 45
 const CONTACT_TILES: int = 8
 ## An order that has not done its work is sent again after this many ticks.
 const REORDER_TICKS: int = 150
+## Ticks after the first MOVE of a `move` beat that a bot with `stop_mid_move` taps STOP at.
+const STOP_AFTER_TICKS: int = 8
 const SELF_PAN: Array[Vector2] = [
 	Vector2(-400, 0), Vector2(400, 0), Vector2(0, -400), Vector2(0, 400)
 ]
 
 ## How many ticks the bot waits after a card shows before it acts.
 var think_ticks: int = 0
+## Set by a test: in a `move` beat the bot taps STOP a few ticks after its first MOVE (the squads
+## halt short of the mark, as on Michael's phone) and then sends them again.
+var stop_mid_move: bool = false
+## Set by a test: the `groups` beat is played with one squad selected, as a player may.
+var single_squad_group: bool = false
+## How many STOP commands the bot sent, by tapping the Stop button.
+var stops_sent: int = 0
+
+## The tick the STOP goes out at, -1 when none is due.
+var _stop_at: int = -1
 
 var _suite: Node
 var _main: Node
@@ -148,6 +160,7 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 		"missing": _missing,
 		"ringless": _ringless,
 		"contact": _contact,
+		"stops": stops_sent,
 	}
 	_director.skip()
 	_mark.queue_free()
@@ -248,6 +261,13 @@ func _move() -> void:
 	if waited < think_ticks and not _runner.paused:
 		return
 	if not _ring_settled(beat, waited):
+		return
+	if (
+		_stop_at >= 0
+		and _ticks_run >= _stop_at
+		and beat.kind == TutorialConditions.Kind.UNITS_IN_AREA
+	):
+		_tap_stop(beat)
 		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
 		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
@@ -369,8 +389,21 @@ func _go_to_area(beat: TutorialBeatDef) -> void:
 		var before: int = _sent.size()
 		_tap_ground(at)
 		if _sent.size() > before and _sent[-1].type == Command.Type.MOVE:
+			if stop_mid_move and stops_sent == 0 and _stop_at < 0:
+				_stop_at = _ticks_run + STOP_AFTER_TICKS
 			return
 	_failure = "beat '%s': no tap on its area sends a MOVE" % beat.id
+
+
+## Taps the Stop button with the squads selected, and lets the next step send them again.
+func _tap_stop(beat: TutorialBeatDef) -> void:
+	_stop_at = -1
+	_controller.selection.set_ids(_own_unit_ids(beat.type_id))
+	var before: int = _sent.size()
+	_press(&"Stop")
+	if _sent.size() > before and _sent[-1].type == Command.Type.STOP:
+		stops_sent += 1
+	_acted_tick = -REORDER_TICKS  # The MOVE goes out again at the next step.
 
 
 ## Selects the own tankers and taps the ground at the beat's tile, as a player does: the controller
@@ -500,6 +533,10 @@ func _save_group(slot: int) -> void:
 	if not _due():
 		return
 	_controller.select_all_army()
+	if single_squad_group:
+		var ids: PackedInt32Array = _own_unit_ids(&"rifle_squad")
+		if not ids.is_empty():
+			_controller.selection.set_ids(PackedInt32Array([ids[0]]))
 	if not _controller.units_selected():
 		_failure = "beat '%s': no squads to save as group %d" % [_where(), slot]
 		return

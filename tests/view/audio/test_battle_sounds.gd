@@ -129,19 +129,20 @@ func test_a_point_beyond_the_hear_margin_is_silent() -> void:
 	assert_int(_spy.plays).is_equal(1)
 
 
-func test_the_died_flags_cancelled_and_boarded_are_silent_and_sold_packs_up() -> void:
-	for flag: int in [Removal.FLAG_CANCELLED, Removal.FLAG_BOARDED]:
-		_now_ms += 1000
-		_deliver(_died(flag))
-		assert_int(_spy.plays).override_failure_message("flag %d" % flag).is_equal(0)
+func test_the_died_flags_cancelled_is_silent_boarded_clunks_and_sold_packs_up() -> void:
+	_deliver(_died(Removal.FLAG_CANCELLED))
+	assert_int(_spy.plays).is_equal(0)
+	_now_ms += 1000
+	_deliver(_died(Removal.FLAG_BOARDED))
+	assert_array(_spy.cues).is_equal([&"board"])
 	_now_ms += 1000
 	_deliver(_died(Removal.FLAG_SOLD))
-	assert_array(_spy.cues).is_equal([&"sold"])
+	assert_array(_spy.cues).is_equal([&"board", &"sold"])
 	_now_ms += 1000
 	_runner.snapshot.type_move_class[_tank] = World.MoveClass.FOOT
 	_sounds._serial = -1  # A new match builds the tables again.
 	_deliver(_died(0))
-	assert_array(_spy.cues).is_equal([&"sold", &"death_foot"])
+	assert_array(_spy.cues).is_equal([&"board", &"sold", &"death_foot"])
 
 
 func test_a_death_cue_follows_the_move_class_and_a_building_collapses() -> void:

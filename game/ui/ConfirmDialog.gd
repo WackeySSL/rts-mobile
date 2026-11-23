@@ -7,6 +7,8 @@ extends ModalFrame
 
 signal confirmed
 signal cancelled
+## A tap outside answered no (UiSounds plays the back cue; a button answer has its own meta).
+signal back_requested
 
 @export var question: String = ""
 @export var detail: String = ""
@@ -26,7 +28,10 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	_no = add_button(row, no_text, _answer.bind(false))
 	_no.name = &"NoButton"
-	add_button(row, yes_text, _answer.bind(true)).name = &"YesButton"
+	_no.set_meta(&"ui_cue", &"ui_back")
+	var yes: Button = add_button(row, yes_text, _answer.bind(true))
+	yes.name = &"YesButton"
+	yes.set_meta(&"ui_cue", &"ui_confirm")
 
 
 func open() -> void:
@@ -40,6 +45,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if not panel.get_global_rect().has_point(touch.position):
 		get_viewport().set_input_as_handled()
+		back_requested.emit()
 		_answer(false)
 
 

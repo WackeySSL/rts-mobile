@@ -49,7 +49,7 @@ func _show_list() -> void:
 	_heading(tr(TITLE))
 	for entry: LicenceEntry in _entries:
 		add_button(entry.title.to_upper(), _show_entry.bind(entry))
-	add_button(tr(BACK), _go_back)
+	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
 	scroll.scroll_vertical = 0
 
 
