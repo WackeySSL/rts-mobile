@@ -28,9 +28,17 @@ const FOOT: int = World.MoveClass.FOOT
 ## The Reason `player` gets for a building of `type_index` with its top-left tile at (origin_col,
 ## origin_row). OCCUPIED counts a mobile row of any owner whose disc (centre and `type_radius`)
 ## touches the footprint rectangle, the edge included. A player who owns no building is TOO_FAR
-## from every tile.
+## from every tile. `lag_ticks` (0 for the sim and the ghost) widens each mobile row's disc by the
+## distance its type moves in that many ticks: a Command made from this state is applied
+## `lag_ticks` ticks later (ADR 0038 section 1), and a unit that steps onto the footprint in between
+## would get it dropped (P580).
 static func reason(
-	input: PlacementInput, player: int, type_index: int, origin_col: int, origin_row: int
+	input: PlacementInput,
+	player: int,
+	type_index: int,
+	origin_col: int,
+	origin_row: int,
+	lag_ticks: int = 0
 ) -> int:
 	var width: int = _entry(input.type_foot_w, type_index)
 	var height: int = _entry(input.type_foot_h, type_index)
@@ -45,7 +53,7 @@ static func reason(
 		return Reason.OUTSIDE
 	if _bad_ground(input, origin_col, origin_row, width, height):
 		return Reason.GROUND
-	if _occupied(input, origin_col, origin_row, width, height):
+	if _occupied(input, origin_col, origin_row, width, height, lag_ticks):
 		return Reason.OCCUPIED
 	return _reach_and_cap(input, player, origin_col, origin_row, width, height)
 
@@ -76,7 +84,9 @@ static func _bad_ground(
 
 ## Whether the disc of a mobile row touches the footprint rectangle: the squared distance from its
 ## centre to the nearest point of the rectangle is at most the squared radius.
-static func _occupied(input: PlacementInput, col: int, line: int, width: int, height: int) -> bool:
+static func _occupied(
+	input: PlacementInput, col: int, line: int, width: int, height: int, lag_ticks: int
+) -> bool:
 	var tile: int = World.MILLI_PER_TILE
 	var left: int = col * tile
 	var right: int = (col + width) * tile
@@ -89,11 +99,12 @@ static func _occupied(input: PlacementInput, col: int, line: int, width: int, he
 	var radii: PackedInt32Array = input.type_radius
 	for row: int in mini(types.size(), mini(pos_x.size(), pos_y.size())):
 		var type: int = types[row]
-		if _entry(speeds, type) <= 0:
+		var speed: int = _entry(speeds, type)
+		if speed <= 0:
 			continue
 		var dx: int = maxi(maxi(left - pos_x[row], pos_x[row] - right), 0)
 		var dy: int = maxi(maxi(top - pos_y[row], pos_y[row] - bottom), 0)
-		var radius: int = _entry(radii, type)
+		var radius: int = _entry(radii, type) + speed * lag_ticks
 		if dx * dx + dy * dy <= radius * radius:
 			return true
 	return false

@@ -109,6 +109,8 @@ enum Order {
 ## The answer for what the player cannot see or ask: a hidden row, a row index outside the table, an
 ## own column of someone else's row, an id or a type name that no row or type has.
 const MISSING: int = -1
+## Ticks between the view a Command is made from and the step that applies it (ADR 0038 section 1).
+const COMMAND_LAG_TICKS: int = 1
 ## How many production tabs there are, and the units of a position: 1 tile is 1,000 milli-tiles
 ## and a building's position is its footprint centre (origin * 1000 + foot * 500).
 const TABS: int = World.TABS
@@ -421,9 +423,11 @@ func is_explored(cell: int) -> bool:
 
 
 ## `Placement.reason` for this player: the `Placement.Reason` that a building of `type_index` with
-## its top-left tile at (`col`, `row`) gets now, 0 (OK) when a PLACE there would be applied.
-func placement(type_index: int, col: int, row: int) -> int:
-	return Placement.reason(_input, player, type_index, col, row)
+## its top-left tile at (`col`, `row`) gets now, 0 (OK) when a PLACE there would be applied. With
+## `lag_ticks` above 0 a mobile row counts as far as it can move in that many ticks
+## (`COMMAND_LAG_TICKS` for a Command sent from this view), so OK holds when the PLACE lands later.
+func placement(type_index: int, col: int, row: int, lag_ticks: int = 0) -> int:
+	return Placement.reason(_input, player, type_index, col, row, lag_ticks)
 
 
 ## The type index of the type id `id` (`&"refinery"`), MISSING when the roster has none.

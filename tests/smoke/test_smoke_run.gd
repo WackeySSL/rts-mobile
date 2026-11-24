@@ -661,7 +661,10 @@ func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]), P279 ([2, 2,
 	# 500], [6, 4, 527], [0, 0, 432]), P295 alone ([9, 8, 585], [2, 2, 586], [0, 0, 452]), P280
 	# alone ([4, 3, 604], [2, 2, 580], [0, 0, 454]) and the two together (the lead, wave 21).
-	var cases: Array = [[1, hard, [4, 3, 631]], [2, hard, [3, 3, 565]], [1, NORMAL, [0, 0, 445]]]
+	# P580 (a PLACE slot a unit can reach in the lag tick is left for the next think) took the PLACE
+	# drop out and moved the matches on: [4, 3, 631], [3, 3, 565] and [0, 0, 445] before. Every
+	# drop left is expired (a unit or an ATTACK target that died in the lag tick).
+	var cases: Array = [[1, hard, [5, 5, 661]], [2, hard, [3, 3, 629]], [1, NORMAL, [0, 0, 408]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0
