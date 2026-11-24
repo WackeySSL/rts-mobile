@@ -79,3 +79,22 @@ func test_the_fallback_toast_and_the_tall_bar_leave_no_room() -> void:
 	assert_that(dock).is_equal(Rect2())
 	assert_bool(GuideDock.has_room(dock, 1.0)).is_false()
 	assert_bool(GuideDockRig.free_rect(rects, safe, 1.0)).is_false()
+
+
+## The same state with the short (64 dp) bar: the dock stands under the toast with room to spare.
+func test_the_short_bar_leaves_room_in_the_cutout_drawer_state() -> void:
+	var safe: Rect2 = Rect2(0, 0, 710, 280)
+	var rects: Dictionary[StringName, Rect2] = {
+		HudCorners.DRAWER: Rect2(397.7, 0, 312.3, 280),
+		HudCorners.PILL: Rect2(0, 0, 200, 48),
+		HudCorners.TOAST: Rect2(64, 64, 277.7, 48),
+		HudCorners.BAR: Rect2(0, 216, 120, 64),
+		HudCorners.READY: Rect2(592, 224, 112, 48),
+		HudCorners.group_key(0): Rect2(0, 56, 56, 56),
+	}
+	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, rects, SETTINGS)
+	assert_bool(GuideDock.has_room(dock, 1.0)).is_true()
+	assert_float(dock.size.y).is_greater_equal(GuideDock.MIN_DP)
+	for key: StringName in [HudCorners.TOAST, HudCorners.DRAWER, HudCorners.BAR]:
+		var apart: float = GuideDockRig.gap(dock, rects[key])
+		assert_float(apart).override_failure_message(str(key)).is_greater_equal(8.0 - 0.01)

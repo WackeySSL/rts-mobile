@@ -27,7 +27,7 @@ static func rects(
 	safe: Rect2, portrait: bool, dp: float, args: Array
 ) -> Dictionary[StringName, Rect2]:
 	var extra: Array = args.slice(5)
-	extra.resize(3)
+	extra.resize(4)
 	var shown: HudCorners.Shown = GuideDock.shown_for_dock(
 		portrait,
 		args[0],
@@ -36,6 +36,14 @@ static func rects(
 		args[3],
 		extra[0] == true,
 		extra[1] == true,
-		extra[2] == true
+		extra[2] == true,
+		extra[3] != false
 	)
 	return GuideDock.hud_for_dock(safe, portrait, dp, args[4], shown)
+
+
+## The distance between two rects along the axis that separates them (negative while they overlap).
+static func gap(a: Rect2, b: Rect2) -> float:
+	var across: float = maxf(a.position.x - b.end.x, b.position.x - a.end.x)
+	var down: float = maxf(a.position.y - b.end.y, b.position.y - a.end.y)
+	return maxf(across, down)

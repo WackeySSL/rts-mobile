@@ -35,7 +35,8 @@ const RIGHT_PARTS: Array[StringName] = [
 ## The `Shown` the dock reads. Landscape keeps the full map reserved whether or not it is open, so
 ## the card never moves with the radar; upright the map counts only while it is open (the dock then
 ## drops under it) and the toast slot is kept in its place while it is not. `ready`, `aim` and `bar`
-## are the parts of the same names that show; `aim` implies the strike button.
+## are the parts of the same names that show; `aim` implies the strike button; `bar_tall` is the
+## bar's height (tall while Stop shows or the orders wrap, else short).
 static func shown_for_dock(
 	portrait: bool,
 	map_open: bool,
@@ -44,7 +45,8 @@ static func shown_for_dock(
 	strike: bool,
 	ready: bool = false,
 	aim: bool = false,
-	bar: bool = false
+	bar: bool = false,
+	bar_tall: bool = true
 ) -> HudCorners.Shown:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.map = map_open or not portrait
@@ -55,6 +57,7 @@ static func shown_for_dock(
 	shown.aim = aim
 	shown.ready = ready
 	shown.bar = bar
+	shown.bar_tall = bar_tall
 	return shown
 
 
@@ -73,6 +76,7 @@ static func hud_for_dock(
 	open.aim = shown.aim
 	open.ready = shown.ready
 	open.bar = shown.bar
+	open.bar_tall = shown.bar_tall
 	open.bar_width = shown.bar_width
 	open.pill_width = shown.pill_width
 	open.toast = true

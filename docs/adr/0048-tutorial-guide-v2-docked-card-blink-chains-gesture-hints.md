@@ -117,7 +117,8 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   at least 48 x 48 dp (the tab's size, §2) fits beside every reserved part, and `GuideDock.has_room`
   says so. The card then folds to its tab (§2) and stays folded until the layout changes. Opening
   the folded tab is the player's explicit choice and may overlay the HUD until it is closed. This
-  is rare, and both states are limited to the smallest landscape profile:
+  is rare. Both states need the tall command bar (106 dp: while Stop shows or the orders wrap; with
+  the short 64 dp bar there is room in both) and are limited to the smallest landscape profile:
   1. 776 x 280 dp with the group buttons in several columns (five buttons, one to a column, beside
      the 106 dp command bar), the bar, the Ready chip and the strike aim on together: the group row
      (x up to 312) and the pinned map (from x 320) leave no x range, and moving the card below the

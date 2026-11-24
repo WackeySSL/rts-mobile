@@ -5,9 +5,15 @@ extends GdUnitTestSuite
 
 const CornersRig: GDScript = preload("res://tests/ui/support/corners_rig.gd")
 const TOLERANCE: float = 0.01
-## ready, aim, bar: none; the Ready chip and the bar; the strike aim; all three.
+## ready, aim, bar, bar_tall: none; the Ready chip and the tall bar; the same with the short bar;
+## the strike aim; all three with the tall bar; all three with the short bar.
 const EXTRAS: Array[Array] = [
-	[false, false, false], [true, false, true], [false, true, false], [true, true, true]
+	[false, false, false, true],
+	[true, false, true, true],
+	[true, false, true, false],
+	[false, true, false, true],
+	[true, true, true, true],
+	[true, true, true, false],
 ]
 const GuideDockRig: GDScript = preload("res://tests/ui/tutorial/support/guide_dock_rig.gd")
 const SETTINGS: Dictionary[StringName, float] = {
@@ -75,12 +81,14 @@ func test_every_rule_at_every_size_and_profile() -> void:
 										and extra[0]
 										and extra[1]
 										and extra[2]
+										and extra[3]
 									)
 									var cutout: bool = (
 										not portrait
 										and drawer
 										and extra[0]
 										and extra[2]
+										and extra[3]
 										and screen["label"] == "web_phone_small with a cutout"
 									)
 									(
@@ -347,21 +355,9 @@ func _pin(
 		assert_float(pair[0]).override_failure_message(at).is_equal_approx(pair[1], 1.0)
 
 
-## `args`: map_open, drawer, groups, strike, mirror, then optionally ready, aim, bar.
+## `args`: map_open, drawer, groups, strike, mirror, then optionally ready, aim, bar, bar_tall.
 func _rects(safe: Rect2, portrait: bool, dp: float, args: Array) -> Dictionary[StringName, Rect2]:
-	var extra: Array = args.slice(5)
-	extra.resize(3)
-	var shown: HudCorners.Shown = GuideDock.shown_for_dock(
-		portrait,
-		args[0],
-		args[1],
-		args[2],
-		args[3],
-		extra[0] == true,
-		extra[1] == true,
-		extra[2] == true
-	)
-	return GuideDock.hud_for_dock(safe, portrait, dp, args[4], shown)
+	return GuideDockRig.rects(safe, portrait, dp, args)
 
 
 func _dock(safe: Rect2, portrait: bool, dp: float, args: Array) -> Rect2:
