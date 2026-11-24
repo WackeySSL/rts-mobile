@@ -21,7 +21,8 @@ extends RefCounted
 ## `faction`, `seat`, `ai` (the AiDef id), `level`, `credits`, `units` and `buildings` (the rows
 ## alive at the end), `built`, `lost_units`, `lost_buildings`, `harvested`, `defeated_tick`, the
 ## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`), its
-## `kills_by_layer` map, `reveals` and `research` (P254; added keys, schema 2 unchanged) and the
+## `kills_by_layer` map, `reveals` and `research` (P254; added keys, schema 2 unchanged), the eleven
+## strike keys of SmokeCount.STRIKE_KEYS (P571, ADR 0047 section 12; added keys too) and the
 ## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
@@ -294,6 +295,8 @@ static func run(
 		AiDriver.lagged_tick(world, controllers, commands, batch)
 		expired += expired_in(world, commands) - gone_at_view
 		gone_at_view = expired_in(world, batch.commands)
+		if counter != null:
+			counter.before_step(world, commands)
 		loop.step(world, commands)
 		commands.clear()
 		if counter != null:
