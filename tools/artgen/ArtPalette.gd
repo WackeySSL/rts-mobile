@@ -57,6 +57,8 @@ const GRIT: Dictionary[StringName, String] = {
 	&"hazard": "#D9B222",
 	&"trim": "#27395C",
 	&"glow": "#9FE9FF",
+	&"armour": "#D9621C",
+	&"armourdk": "#9E4413",
 }
 ## The two flat tones of `interior`: the top and left faces, and the right faces (no light ramp).
 const INTERIOR_TONES: Array[String] = ["#1A1715", "#100E0D"]

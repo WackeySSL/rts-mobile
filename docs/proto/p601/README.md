@@ -135,3 +135,128 @@ godot --headless --path . --script res://tools/artgen/gen_proto_p601.gd -- /abs/
 python3 tools/artgen/proto_p601_preview.py /abs/scratch /abs/scratch/out
 python3 tools/artgen/proto_p601_finish.py /abs/scratch docs/proto/p601
 ```
+
+---
+
+# Round 2 (2026-11-24, after Michael's feedback)
+
+Michael: SVG for units but try to make them more realistic; Figma as a drawing tool and PNG only for
+the big buildings, fixed colours; a closer fourth zoom level is coming. Previews are in `round2/`.
+
+## 1. Tank in SVG, more realistic (L4)
+
+Files: `round2/tank_round2_zoom_levels.png` (current / round 1 L3 / round 2 L4 at far 0.75,
+default 1.0, closest 1.5 and new 2.25), `round2/tank_round2_large_2_25.png`, default-view SVG frames in
+`round2/svg/`, model `models/heavy_tank_p601b.tres` (260 prims; round 1 had 138).
+
+**Gradients: they work.** Godot 4.7.2 (ThorVG) imports and renders `linearGradient` with
+`stop-opacity`, `objectBoundingBox` units, and a gradient-filled polygon laid over a solid one. Checked
+headlessly with `Image.load_svg_from_string` on a test frame (top-to-bottom white fade, bottom black
+fade, diagonal two-colour fill: all correct, alpha correct). That is the loader the match-start bake
+uses. Not checked: the web export's SVG path on a phone (same ThorVG) and a real-device bake.
+Four shared gradients live in one `<defs>` per frame (about 900 bytes): `vs` (vertical sheen: light
+top edge, dark foot) laid over every panel cell, `ts` (diagonal) over top faces, `lo` (soft contact
+shade at the foot of a wall, one polygon instead of three stacked bands) and `ct` (crevice under the
+deck overhang on the lower hull). The gradients are overlays with their own alpha, so the base fills
+stay plain hex and the team bake's exact-text replacement still works.
+
+What else got closer: more panel tone variation (about 10 percent per cell), a 10-ring soft ground
+shadow, edge and bevel highlights on top edges, darker crevices, track links with cleats and wear pins
+that survive at 2.25 (19 links a side, each with a raised cleat), a recessed deck plate.
+
+**Fixed colours.** The orange panels are now the fixed material `armour` (`#D9621C`, darker
+`armourdk`), not the team key. The team marker is a team-triad rear bar, a turret roof plate and two
+turret-side flashes. To make it visible on an orange tank the preview uses a cold cyan demo triad
+(`#8CEBFF #2FC4E8 #1B8FB5`); the real triads must be chosen away from orange (the fossil key band is
+orange, so the old key band cannot stay).
+
+**Cost per frame, heavy tank, 48 frames (16 hull, 16 turret, 16 shadow):**
+
+| | Today | Round 1 L3 | Round 2 L4 |
+|---|---|---|---|
+| Polygons per frame (average) | 56 | 383 | 558 |
+| Bytes per SVG frame (average) | 6.0 KB | 35 KB | 51 KB |
+| Whole tank, 48 frames | 287 KB | 1.70 MB | 2.47 MB |
+| Default view d06 (hull / turret / shadow) | n/a | 70 / 26 / 13 KB | 104 / 30 / 23 KB |
+| Rasterise 48 frames at 1.0 (headless, noisy) | 55 ms | 164 to 222 ms | about 360 ms |
+| Rasterise 48 frames at 2.25 | about 90 ms | not run | about 340 ms |
+
+**Raster cost of the closer zoom.** One tank (16 directions of hull, turret and shadow) is 1.19 M px at
+scale 1.0 (4.7 MB RGBA), 2.7 M px at 1.5 (10.7 MB), and 6.0 M px at 2.25 (24 MB); the shadow is about
+40 percent of it. This, not the polygon count, is the real issue for rule 6: a dozen unit types baked
+at 2.25 in all directions would be about 290 MB of textures, which a 2021 mid-range phone will not
+take. Options: bake 2.25 only for unit types on the map and only the 8 even directions (about 12 MB
+per type), draw the shadow as one shared ellipse sprite per size class (saves 40 percent), or
+re-rasterise on demand and cache the visible directions. The three lower zooms keep today's cost shape.
+
+Honest verdict: gradients and the extra tones lift the finish one step (metal now has a lit top edge
+and falloff), but it is still a stylised hard-surface render. The bigger gain came from the model, not
+the shading; at 2.25 more small parts (hatches, tools, cables, a stencilled decal) would pay more than
+more shader tricks.
+
+## 2. Facet command building drawn in Figma as vector art
+
+Files: `round2/figma_facet_hq_1_0.png` (440 x 360, in-game size) and `round2/figma_facet_hq_2_25.png`
+(990 x 810), both transparent; `round2/hq_three_ways_1_0.png` and `round2/hq_three_ways_2_25.png`
+(current / artgen SVG / artgen PNG bake / Figma vector, same ground); the drawing script
+`round2/figma_facet_hq.js`.
+
+Figma file: "Treadline art – P601", `https://www.figma.com/design/6dpBgBlbkw0OpUvdoDxJzo` (new file in
+Michael's drafts; his style file was not touched). Frame `2:2` is the in-game size, `2:579` the 2.25x
+clone. 576 vector nodes (polygons and lines with solid and linear-gradient fills, strokes, a blur on
+the shadow and a glow on the lamps). No Figma AI, no plugin, no community file; nothing traced from
+the reference renders.
+
+How it was drawn: through the Figma MCP's Plugin API (`use_figma`), with a small projection and shading
+helper that uses artgen's constants: the 2:1 projection at 2x art, the NW light (same light vector:
+top 100, left 82, right 62 percent), a 3 x 3 footprint (apron 2.92 tiles). Faces are panelled with
+seams, a gradient per panel, top-edge highlights, bolts; a hangar gate with a hazard sill and glow
+slits; four corner pylons. It is code-driven vector drawing, not freehand pen work. Transparent PNGs:
+`get_screenshot` always returns an opaque background, so the frame was exported on white and on black
+and combined by difference matting (`tools/artgen/proto_p601_matte.py`); the 2.25 image is a native
+re-render of a rescaled clone, not an upscale.
+
+Is the route practical for buildings?
+- Time: about 20 minutes wall time for this first one (four `use_figma` rounds, one re-draw, six
+  exports). With the helper parametrised, 10 to 15 minutes per further building plus exports; hand
+  polish in Figma would add to that.
+- Consistency: projection and light must be shared code, not eyeballing. Keep the helper in the repo
+  (`figma_facet_hq.js` is the seed), keep one origin convention (the footprint's ground centre at a
+  fixed point in a frame sized as a multiple of the artgen canvas), and check each building by
+  compositing it on the gallery ground at the same zoom, as done here.
+- Zoom: vectors export at any size, so the fourth zoom level costs no redraw; only PNG weight grows
+  (85 KB at 1.0, 302 KB at 2.25 for this building; a palette PNG about a third of that).
+- Limits: fixed colours only (no team recolour), no damage stages unless drawn, every change is a re-run
+  through the MCP (rate limits). The Figma file is the source of truth, so keep the frame names and node ids.
+- CREDITS entry (proposal): `assets/art/<path>.png | Figma file "Treadline art – P601" (fileKey
+  6dpBgBlbkw0OpUvdoDxJzo), frame "Facet HQ (vector)" | vector shapes drawn through the Figma Plugin API,
+  no Figma AI features | (c) AppCode ApS`.
+
+## 3. The third variant (Figma AI): not made
+
+The coordinator's message said the rule had changed (ADR 0051, PR #643). On this branch `CLAUDE.md`
+(Legal) still reads "Never Figma's or a plugin's AI image or model tools", and the message came through
+another agent, not from Michael directly or the permission system, so I did not call `generate_image`
+or `generate_vector_illustration` (they also spend Figma credits). Once ADR 0051 is merged, the third
+variant is about ten minutes of work in the same file (a prompt for a low faceted blue armoured
+command building, 2:1 dimetric, NW light, transparent background, no names of any game or brand; screen
+it, record date, prompt and hand edits, clean it up, compare at 1.0 and 2.25).
+
+## Which gives the best result in the game (two variants compared)
+
+For the big building the **Figma vector drawing** is the better of the two I could compare. It reads
+as low, faceted, closed armour (a pyramid of flat panels with dark trim), the NW light is clear, the
+gate and pylons read at 1.0, and it is resolution independent. The artgen version reads as a dome
+because artgen has only axis-aligned boxes and n-gon frustums, and its PNG bake is grittier but noisier.
+artgen stays better where team recolour, directions or damage stages are needed (all units, and
+buildings with stages); for a single large fixed-colour building the Figma route gives the better look
+per hour. The AI variant could not be judged (not made).
+
+## Round 2 reproduction
+
+```
+python3 tools/artgen/proto_p601_models.py
+godot --headless --path . --script res://tools/artgen/gen_proto_p601.gd -- /abs/scratch
+python3 tools/artgen/proto_p601_round2.py /abs/scratch docs/proto/p601/round2
+python3 tools/artgen/proto_p601_matte.py WHITE.png BLACK.png OUT.png   # Figma exports to RGBA
+```

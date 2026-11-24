@@ -12,6 +12,7 @@ import proto_p601_bake as bake  # noqa: E402
 
 S = sys.argv[1]
 OUT = sys.argv[2]
+R2 = len(sys.argv) > 3
 ZOOMS = [("far 0.75", 0.75), ("default 1.0", 1.0), ("closest 1.5", 1.5)]
 
 
@@ -58,7 +59,7 @@ def scene(model_id, variant, zoom, size, dir_=6, turret_dir=None):
     dd = 0 if model_id == "hq" else max(dir_, 0)
     td = dd if turret_dir is None else turret_dir
     sc = round(zoom * 100)
-    folder = "cur" if variant == "cur" else "L3"
+    folder = "cur" if variant == "cur" else ("L4" if model_id == "tank2" else "L3")
     shadow = load(f"{S}/png/{folder}/{model_id}_shadow_d{dd:02d}_s{sc}.png")
     put(img, shadow, lay["shadow"]["origin"], centre, zoom)
     if variant == "png":
@@ -189,7 +190,7 @@ def directions(name):
     grid(rows, pad=3).save(f"{OUT}/{name}", optimize=True)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and not R2:
     os.makedirs(OUT, exist_ok=True)
     zoom_sheet("tank", (230, 170), "tank_zoom_levels.png", dy=-14)
     large("tank", (260, 200), "tank_large.png", dy=-20)

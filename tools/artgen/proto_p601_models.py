@@ -20,7 +20,8 @@ def line(shape, part, mat, cx, cy, z0, sx, sy, sz, **opt):
     return " ".join(words)
 
 
-def tank():
+def tank(r2=False):
+    A = "armour" if r2 else "team"
     L = []
     h = lambda *a, **k: L.append(line("box", "hull", *a, **k))
     pr = lambda *a, **k: L.append(line("prism", "hull", *a, **k))
@@ -32,6 +33,10 @@ def tank():
         for i in range(19):
             x = -0.558 + i * 0.062
             h("darksteel" if i % 2 else "rubber", x, yc, 0.20, 0.050, 0.20, 0.028)
+            if r2:
+                h("gunmetal", x + 0.005, yc, 0.228, 0.014, 0.17, 0.012)
+                h("wornsteel", x - 0.02, yc - 0.092, 0.2, 0.008, 0.012, 0.03)
+                h("wornsteel", x - 0.02, yc + 0.092, 0.2, 0.008, 0.012, 0.03)
         for x in (-0.56, 0.56):
             pr("darksteel", x, s * 0.515, 0.02, 0.21, 0.03, 0.21, axis="y", sides=10)
             pr("wornsteel", x, s * 0.535, 0.075, 0.09, 0.02, 0.09, axis="y", sides=8)
@@ -40,11 +45,11 @@ def tank():
             pr("gunmetal", x, s * 0.535, 0.075, 0.06, 0.02, 0.06, axis="y", sides=6)
         # side skirt: four armour panels with gaps, hazard end plates front and rear
         for x in (-0.42, -0.14, 0.14, 0.42):
-            h("team", x, s * 0.545, 0.11, 0.26, 0.035, 0.15)
+            h(A, x, s * 0.545, 0.11, 0.26, 0.035, 0.15)
         h("hazard", 0.605, s * 0.50, 0.07, 0.02, 0.10, 0.11)
         h("hazard", -0.605, s * 0.50, 0.07, 0.02, 0.10, 0.11)
         # front mudguard slope over the track nose
-        wd("team", 0.50, s * 0.40, 0.225, 0.22, 0.22, 0.05, slope=1)
+        wd(A, 0.50, s * 0.40, 0.225, 0.22, 0.22, 0.05, slope=1)
         # add-on armour blocks on the hull flank
         for x in (-0.40, -0.22, -0.04, 0.14, 0.32):
             h("gunmetal", x, s * 0.345, 0.21, 0.15, 0.04, 0.09)
@@ -52,8 +57,8 @@ def tank():
         pr("darksteel", -0.50, s * 0.22, 0.31, 0.075, 0.075, 0.09, sides=8)
         pr("wornsteel", -0.50, s * 0.22, 0.40, 0.05, 0.05, 0.01, sides=8)
     h("gunmetal", 0, 0, 0.03, 1.14, 0.56, 0.17)               # lower tub
-    h("team", -0.04, 0, 0.20, 1.0, 0.62, 0.11)                # upper deck
-    wd("team", 0.59, 0, 0.20, 0.26, 0.62, 0.11, slope=1)      # glacis
+    h(A, -0.04, 0, 0.20, 1.0, 0.62, 0.11)                # upper deck
+    wd(A, 0.59, 0, 0.20, 0.26, 0.62, 0.11, slope=1)      # glacis
     h("darksteel", 0.725, 0, 0.09, 0.03, 0.52, 0.12)          # lower front plate
     h("hazard", 0.742, 0, 0.115, 0.012, 0.46, 0.05)           # hazard bar
     for s in (-1, 1):
@@ -65,14 +70,18 @@ def tank():
         h("gunmetal", -0.40, -0.18 + i * 0.06, 0.34, 0.30, 0.025, 0.014)
     h("gunmetal", -0.575, 0, 0.215, 0.05, 0.50, 0.085)
     pr("darksteel", -0.35, 0.27, 0.31, 0.018, 0.018, 0.34, sides=4)
+    if r2:
+        h("armourdk", -0.10, 0, 0.31, 0.26, 0.40, 0.008)       # recessed deck plate
+        h("team", -0.575, 0, 0.30, 0.05, 0.50, 0.012)           # team marker bar, rear
+        h("gunmetal", 0.20, 0, 0.31, 0.10, 0.30, 0.012)
     # turret
     t = lambda shape, *a, **k: L.append(line(shape, "turret", *a, **k))
     t("prism", "darksteel", 0, 0, 0, 0.68, 0.68, 0.035, sides=12)
-    t("box", "team", -0.06, 0, 0.035, 0.64, 0.54, 0.075)
-    t("prism", "team", -0.07, 0, 0.11, 0.62, 0.52, 0.085, sides=4, taper=0.74)
-    t("wedge", "team", 0.29, 0, 0.035, 0.20, 0.54, 0.075, slope=1)
+    t("box", A, -0.06, 0, 0.035, 0.64, 0.54, 0.075)
+    t("prism", A, -0.07, 0, 0.11, 0.62, 0.52, 0.085, sides=4, taper=0.74)
+    t("wedge", A, 0.29, 0, 0.035, 0.20, 0.54, 0.075, slope=1)
     t("box", "darksteel", 0.405, 0, 0.055, 0.07, 0.26, 0.115)  # mantlet
-    t("box", "team", -0.44, 0, 0.04, 0.12, 0.46, 0.12)         # bustle
+    t("box", A, -0.44, 0, 0.04, 0.12, 0.46, 0.12)         # bustle
     for x in (-0.47, -0.41):
         t("box", "gunmetal", x, 0, 0.04, 0.02, 0.48, 0.125)
     for s in (-1, 1):
@@ -89,7 +98,12 @@ def tank():
     t("prism", "darksteel", 0.72, 0, 0.0775, 0.11, 0.095, 0.095, axis="x", sides=8)   # fume extractor
     t("prism", "hazard", 0.97, 0, 0.088, 0.035, 0.074, 0.074, axis="x", sides=8)      # barrel band
     t("box", "darksteel", 1.145, 0, 0.0825, 0.09, 0.085, 0.075)                # muzzle brake
-    return L, "heavy_tank_p601", "fossil", "veh", 0, (0, 0, 0.31), (
+    if r2:
+        t("box", "team", -0.12, 0, 0.195, 0.22, 0.30, 0.012)                   # team roof plate
+        for s in (-1, 1):
+            t("box", "team", -0.30, s * 0.275, 0.1, 0.16, 0.012, 0.05)         # team side flash
+            t("box", "gunmetal", -0.30, s * 0.18, 0.115, 0.12, 0.1, 0.012)
+    return L, "heavy_tank_p601b" if r2 else "heavy_tank_p601", "fossil", "veh", 0, (0, 0, 0.31), (
         "Nordvaern-style heavy tank: a low wide slab of dark gunmetal on two broad tracks with"
         " hazard-striped end plates, a stepped orange armour deck and glacis, a faceted orange"
         " turret with a rear bustle and a long gun with a hazard band.")
@@ -172,4 +186,5 @@ def write(model):
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     write(tank())
+    write(tank(True))
     write(building())

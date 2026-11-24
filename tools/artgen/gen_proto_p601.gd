@@ -7,7 +7,8 @@ extends SceneTree
 ## Committed samples (default direction, level 3) go to res://docs/proto/p601/svg/.
 
 const DOCS: String = "res://docs/proto/p601"
-const SCALES: Array[float] = [0.75, 1.0, 1.5, 2.5]
+const SCALES: Array[float] = [0.75, 1.0, 1.5, 2.25, 2.5]
+const TEAM_DEMO: Array[String] = ["#8CEBFF", "#2FC4E8", "#1B8FB5"]
 const BLUE: Array[String] = ["#68A8F2", "#2F6FD0", "#1B4A9C"]
 const JOBS: Array[Dictionary] = [
 	{
@@ -21,6 +22,16 @@ const JOBS: Array[Dictionary] = [
 		"proto": "res://docs/proto/p601/models/helix_hq_p601.tres",
 		"current": "res://assets/art/models/renew/renew_hq.tres",
 		"dir": -1,
+	},
+	{
+		"id": "tank2",
+		"proto": "res://docs/proto/p601/models/heavy_tank_p601b.tres",
+		"current": "res://assets/art/models/fossil/heavy_tank.tres",
+		"dir": 6,
+		"levels": [3, 4],
+		"final": 4,
+		"skip_current": true,
+		"docs": "round2/svg",
 	},
 ]
 
@@ -36,9 +47,15 @@ func _init() -> void:
 		return
 	_scratch = args[0]
 	for tile: String in ["sand_a", "sand_b", "rock_a", "rock_b"]:
-		var text: String = FileAccess.get_file_as_string("res://assets/art/svg/ground/%s.svg" % tile)
+		var text: String = FileAccess.get_file_as_string(
+			"res://assets/art/svg/ground/%s.svg" % tile
+		)
 		for scale: float in SCALES:
-			_raster(text, scale, _scratch.path_join("png/ground/%s_s%d.png" % [tile, roundi(scale * 100.0)]))
+			_raster(
+				text,
+				scale,
+				_scratch.path_join("png/ground/%s_s%d.png" % [tile, roundi(scale * 100.0)])
+			)
 	for job: Dictionary in JOBS:
 		_job(job)
 	_write(_scratch.path_join("stats.json"), JSON.stringify(_stats, "  "))
@@ -61,13 +78,19 @@ func _job(job: Dictionary) -> void:
 		turret_dirs = proto.directions(&"turret")
 	var manifest: Dictionary = {"id": id, "dir": job["dir"], "parts": parts}
 	# 1. Current art: rasterise the committed frames, record layouts and sizes.
-	_current(current, id, manifest, parts)
+	if not job.get("skip_current", false):
+		_current(current, id, manifest, parts)
 	# 2. Prototype at each level.
 	if proto.faction == &"renew":
 		ArtPalette.key_override = {&"renew": BLUE}
+	elif id == "tank2":
+		ArtPalette.key_override = {&"fossil": TEAM_DEMO}
 	var level_stats: Dictionary = {}
-	for level: int in 4:
-		level_stats[str(level)] = _proto_level(proto, id, level, parts, dirs, turret_dirs, manifest)
+	var levels: Array = job.get("levels", [0, 1, 2, 3])
+	for level: int in levels:
+		level_stats[str(level)] = _proto_level(
+			proto, id, level, parts, dirs, turret_dirs, manifest, job
+		)
 	ArtPalette.key_override = {}
 	_stats[id] = {"levels": level_stats}
 	_write(_scratch.path_join("%s_manifest.json" % id), JSON.stringify(manifest, "  "))
@@ -112,8 +135,10 @@ func _proto_level(
 	parts: Array[StringName],
 	dirs: Array[int],
 	turret_dirs: Array[int],
-	manifest: Dictionary
+	manifest: Dictionary,
+	job: Dictionary
 ) -> Dictionary:
+	var final: int = job.get("final", 3)
 	var shadow_prims: Array[ArtPrim] = model.shadow_prims()
 	var shots: Dictionary = {}
 	var box_all: Dictionary = {}
@@ -128,7 +153,7 @@ func _proto_level(
 			var turn: float = ArtGen.yaw(dir) if dir >= 0 else 0.0
 			var polys: Array[ArtDetail.DPoly] = []
 			if part == ArtModel.SHADOW:
-				polys = ArtDetail.shadow(shadow_prims, turn)
+				polys = ArtDetail.shadow(shadow_prims, turn, 10 if level >= 4 else 6)
 			else:
 				polys = ArtDetail.render(model.primitives(part), turn, model.faction, level)
 			polys_by_dir[dir] = polys
@@ -153,7 +178,12 @@ func _proto_level(
 				"%s %s d%02d level %d: P601 prototype, do not edit" % [id, part, dir, level]
 			)
 			var text: String = ArtDetail.svg(
-				comment, lay.size, lay.origin, polys, 0.4 if part == ArtModel.SHADOW else 1.0
+				comment,
+				lay.size,
+				lay.origin,
+				polys,
+				0.4 if part == ArtModel.SHADOW else 1.0,
+				level >= 4
 			)
 			bytes += text.length()
 			poly_count += polys.size()
@@ -161,11 +191,11 @@ func _proto_level(
 			for p: ArtDetail.DPoly in polys:
 				kinds[str(p.kind)] = int(kinds.get(str(p.kind), 0)) + 1
 			var is_default: bool = dir == int(manifest["dir"]) or (dir < 0)
-			if level == 3:
+			if level == final:
 				if is_default:
 					_write(
 						ProjectSettings.globalize_path(DOCS).path_join(
-							"svg/%s_%s_d%02d.svg" % [id, part, maxi(dir, 0)]
+							"%s/%s_%s_d%02d.svg" % [job.get("docs", "svg"), id, part, maxi(dir, 0)]
 						),
 						text
 					)
@@ -178,13 +208,13 @@ func _proto_level(
 						_scratch.path_join("geom/%s_%s_d%02d.json" % [id, part, maxi(dir, 0)])
 					)
 			var wanted: Array[float] = []
-			if level == 3:
+			if level == final:
 				wanted = _scales_for(dir, int(manifest["dir"]))
 			elif is_default:
 				wanted = [1.5]
 			for scale: float in wanted:
 				_raster(text, scale, _png("L%d" % level, id, part, maxi(dir, 0), scale))
-	if level == 3:
+	if level == final:
 		var mounts: Dictionary = {}
 		for dir: int in dirs:
 			var m: Vector2 = ArtGen.mount_px(model, dir)
@@ -226,7 +256,9 @@ func _geometry(polys: Array[ArtDetail.DPoly], lay: ArtGen.Layout, path: String) 
 
 
 func _faction() -> StringName:
-	return &"renew" if not ArtPalette.key_override.is_empty() else &"fossil"
+	if ArtPalette.key_override.has(&"renew"):
+		return &"renew"
+	return &"fossil"
 
 
 func _scales_for(dir: int, default_dir: int) -> Array[float]:

@@ -12,14 +12,38 @@ const SEAM: float = 0.5  ## A seam is the panel colour at this factor.
 const GAP_PX: float = 1.1  ## Seam width at 2x.
 const EMISSIVE: Array[StringName] = [&"glow", &"lamp"]
 const PANELLED: Array[StringName] = [
-	&"team", &"gunmetal", &"darksteel", &"wornsteel", &"trim", &"hazard"
+	&"team", &"gunmetal", &"darksteel", &"wornsteel", &"trim", &"hazard", &"armour", &"armourdk"
 ]
-const BOLTED: Array[StringName] = [&"team", &"gunmetal", &"darksteel", &"trim"]
+const BOLTED: Array[StringName] = [&"team", &"gunmetal", &"darksteel", &"trim", &"armour"]
 const CELL: Dictionary[StringName, float] = {
-	&"team": 0.30, &"gunmetal": 0.22, &"darksteel": 0.2, &"wornsteel": 0.2, &"trim": 0.4
+	&"team": 0.30,
+	&"armour": 0.30,
+	&"armourdk": 0.3,
+	&"gunmetal": 0.22,
+	&"darksteel": 0.2,
+	&"wornsteel": 0.2,
+	&"trim": 0.4
 }
 const STRIPE_TILES: float = 0.075  ## Hazard stripe width along the face, in tiles.
 const MIN_FACE_PX: float = 5.0
+
+const DEFS: String = (
+	"<defs>"
+	+ '<linearGradient id="vs" x1="0" y1="0" x2="0" y2="1">'
+	+ '<stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>'
+	+ '<stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>'
+	+ '<stop offset="1" stop-color="#000000" stop-opacity="0.38"/></linearGradient>'
+	+ '<linearGradient id="ts" x1="0" y1="0" x2="1" y2="1">'
+	+ '<stop offset="0" stop-color="#FFFFFF" stop-opacity="0.2"/>'
+	+ '<stop offset="1" stop-color="#000000" stop-opacity="0.18"/></linearGradient>'
+	+ '<linearGradient id="lo" x1="0" y1="1" x2="0" y2="0">'
+	+ '<stop offset="0" stop-color="#000000" stop-opacity="0.5"/>'
+	+ '<stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>'
+	+ '<linearGradient id="ct" x1="0" y1="0" x2="0" y2="1">'
+	+ '<stop offset="0" stop-color="#000000" stop-opacity="0.45"/>'
+	+ '<stop offset="1" stop-color="#000000" stop-opacity="0"/></linearGradient>'
+	+ "</defs>"
+)
 
 
 ## One drawn polygon with the data the PNG bake needs (3D points and normal of a `face`).
@@ -197,7 +221,7 @@ static func _quad_detail(
 	var cs: float = CELL.get(mat, 0.25)
 	var nu: int = maxi(1, roundi(lu / cs))
 	var nv: int = maxi(1, roundi(lv / cs))
-	if mat == &"team" and lu * lv < 0.03:
+	if (mat == &"team" or mat == &"armour") and lu * lv < 0.03:
 		nu = 1
 		nv = 1
 	base.fill = hex(_dark(col, SEAM))
@@ -213,7 +237,7 @@ static func _quad_detail(
 			var q: PackedVector2Array = PackedVector2Array(
 				[_bil(sp, u0, v0), _bil(sp, u1, v0), _bil(sp, u1, v1), _bil(sp, u0, v1)]
 			)
-			var jitter: float = 1.0 + (_h(pi, fi, i, j) - 0.5) * 0.12
+			var jitter: float = 1.0 + (_h(pi, fi, i, j) - 0.5) * (0.12 if level < 4 else 0.2)
 			var cc: Color = Color(
 				clampf(col.r * jitter, 0, 1),
 				clampf(col.g * jitter, 0, 1),
@@ -222,6 +246,8 @@ static func _quad_detail(
 			var cell: DPoly = _poly(q, cc, &"panel")
 			cell.prim = pi
 			out.append(cell)
+			if level >= 4:
+				out.append(_grad_poly(q, "ts" if is_top else "vs"))
 			if level >= 3 and su / nu > 9.0 and sv / nv > 6.0:
 				_bevel(out, q, cc)
 			if bolted:
@@ -239,11 +265,59 @@ static func _quad_detail(
 					out.append(_poly(dot, _dark(cc, 0.42), &"bolt"))
 	if level < 3:
 		return
-	_contact_bands(out, pts3, sp, normal)
-	if mat == ArtPalette.TEAM and not is_top and lu * lv > 0.05:
+	if level >= 4:
+		_contact_soft(out, pts3, sp, normal, mat)
+	else:
+		_contact_bands(out, pts3, sp, normal)
+	if (mat == ArtPalette.TEAM or mat == &"armour") and not is_top and lu * lv > 0.05:
 		_chips(out, faction, sp, pi, fi, normal)
 	if not is_top and lu * lv > 0.05:
 		_streaks(out, sp, pts3, pi, fi)
+
+
+static func _grad_poly(pts: PackedVector2Array, id: String) -> DPoly:
+	var poly: DPoly = DPoly.new()
+	poly.points = pts
+	poly.fill = "url(#%s)" % id
+	poly.kind = &"sheen"
+	poly.stroke_px = 0
+	return poly
+
+
+## L4: one gradient polygon at the foot of a vertical face (soft contact AO), and a crevice under
+## the overhang at the top of low hull faces.
+static func _contact_soft(
+	out: Array[DPoly],
+	pts3: PackedVector3Array,
+	sp: PackedVector2Array,
+	normal: Vector3,
+	mat: StringName
+) -> void:
+	if absf(normal.z) > 0.3:
+		return
+	var order: Array[int] = [0, 1, 2, 3]
+	order.sort_custom(func(a: int, b: int) -> bool: return pts3[a].z < pts3[b].z)
+	var b0: int = order[0]
+	var b1: int = order[1]
+	if absf(pts3[b0].z - pts3[b1].z) > 0.01 or pts3[order[2]].z - pts3[b0].z < 0.05:
+		return
+	var t0: int = -1
+	var t1: int = -1
+	for n: int in [(b0 + 1) % 4, (b0 + 3) % 4]:
+		if n != b1:
+			t0 = n
+	for n: int in [(b1 + 1) % 4, (b1 + 3) % 4]:
+		if n != b0:
+			t1 = n
+	var band: PackedVector2Array = PackedVector2Array(
+		[sp[b0], sp[b1], sp[b1].lerp(sp[t1], 0.5), sp[b0].lerp(sp[t0], 0.5)]
+	)
+	out.append(_grad_poly(band, "lo"))
+	if mat in [&"gunmetal", &"darksteel"] and pts3[order[2]].z < 0.4:
+		var top: PackedVector2Array = PackedVector2Array(
+			[sp[b0].lerp(sp[t0], 0.78), sp[b1].lerp(sp[t1], 0.78), sp[t1], sp[t0]]
+		)
+		out.append(_grad_poly(top, "ct"))
 
 
 static func _bevel(out: Array[DPoly], q: PackedVector2Array, c: Color) -> void:
@@ -429,16 +503,16 @@ static func _ring_detail(
 
 ## The soft ground shadow of a model turned by `yaw`: six stepped rings of occlusion, a contact
 ## line and the cast shadow. Black polygons; the writer puts them in one group at one opacity.
-static func shadow(prims: Array[ArtPrim], yaw: float) -> Array[DPoly]:
+static func shadow(prims: Array[ArtPrim], yaw: float, rings: int = 6) -> Array[DPoly]:
 	var out: Array[DPoly] = []
 	var outline: Array[Vector2] = ArtShadow._hull(ArtShadow._ground(prims, yaw, ArtShadow.GROUND_Z))
 	if outline.size() >= 3:
-		for step: int in range(6, 0, -1):
-			var ring: Array[Vector2] = ArtShadow._grow(outline, 0.26 * step / 6.0)
+		for step: int in range(rings, 0, -1):
+			var ring: Array[Vector2] = ArtShadow._grow(outline, 0.26 * step / rings)
 			var poly: DPoly = DPoly.new()
 			poly.points = ArtShadow._screen(ring).points
 			poly.fill = "#000000"
-			poly.opacity = 0.2
+			poly.opacity = 1.2 / rings
 			poly.stroke_px = 0
 			poly.kind = &"shadow"
 			out.append(poly)
@@ -469,7 +543,12 @@ static func _num(value: float) -> String:
 
 ## The SVG text: `g` with polygons, origin applied. `opacity` is the group's (a shadow's).
 static func svg(
-	comment: String, size: Vector2i, origin: Vector2i, polys: Array[DPoly], opacity: float = 1.0
+	comment: String,
+	size: Vector2i,
+	origin: Vector2i,
+	polys: Array[DPoly],
+	opacity: float = 1.0,
+	defs: bool = false
 ) -> String:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append("<!-- %s -->" % comment)
@@ -482,6 +561,8 @@ static func svg(
 	var group: String = 'stroke-width="1" stroke-linejoin="round"'
 	if opacity < 1.0:
 		group += ' opacity="%s"' % _num(opacity * 100.0 / 100.0)
+	if defs:
+		lines.append(DEFS)
 	lines.append("<g %s>" % group)
 	for poly: DPoly in polys:
 		var pts: PackedStringArray = PackedStringArray()
