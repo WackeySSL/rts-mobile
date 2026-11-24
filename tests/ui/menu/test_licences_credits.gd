@@ -16,8 +16,10 @@ const ROW_TITLE: String = "Asset credits (CC BY)"
 const COLUMNS: int = 5
 ## The closed set of Licence cells, optionally followed by a parenthetical. CC BY-SA, NC and ND are
 ## absent on purpose, and so is MIT: no asset may be MIT, only code is (CLAUDE.md Legal, ADR 0046).
+## The AI-made marking of ADR 0051 is allowed whole (its rows are checked by test_credits_ai_rows).
 const ALLOWED: String = (
-	"^(CC0 1\\.0|CC[ -]BY [34]\\.0|SIL OFL 1\\.1|All rights reserved)" + "( \\(.*\\))?$"
+	"^(CC0 1\\.0|CC[ -]BY [34]\\.0|SIL OFL 1\\.1|All rights reserved"
+	+ "|AI-made with Figma AI, no copyright claimed by AppCode ApS)( \\(.*\\))?$"
 )
 ## Any Creative Commons mention in the Licence or Source cell (the Notes may discuss rules).
 const CC_MENTION: String = (
