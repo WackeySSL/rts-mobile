@@ -105,3 +105,15 @@ Unchanged between the runs: the median length of 13500 ticks is outside 7200 to 
 this), and the unit-share flags (for example `fossil_bunk_wagon` and `renew_linecar` never
 produced, `rifle_squad` and `renew_rifle` above 40 percent) are the same list as before. No new
 flag from the strike changes.
+
+## 8. Michael's answers (2026-11-24)
+
+"Ja til begge":
+
+1. Yes, the AI gets a radar bonus: a data value in `OpponentDef` that adds to the Dusk Array ring's
+   value when the ring covers a seen or remembered enemy radar. Row P576b (ai-dev). Then a new
+   after-run, P577b, with the same settings: radar-dark seconds above 0, and win shares and the Bore
+   unchanged.
+2. Yes, the Array stays a control tool. No change to `renew_overload.tres` or `renew_strike.tres`.
+
+P578 records both answers in ADR 0047.
