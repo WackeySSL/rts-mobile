@@ -9,6 +9,12 @@ them against existing games and real military names, from the architect's knowle
 trademark search (plan revision 5, "Risks"). The title
 stays "Treadline". No accepted text changed.
 
+Status note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the factions are renamed
+Nordværn (`fossil`) and Facet (`renew`). The Phase 7 trademark search covers both names in place
+of Derrick League and Lumen Accord. Michael also runs the free EUIPO/TMview and USPTO searches for
+"Treadline", "Nordværn" and "Facet" himself (ADR 0049, answer 8). The title, the store
+title and `dk.appcode.rts` do not change. No accepted text changed.
+
 ## Context
 Google Play locks the applicationId at the first upload of an app, including an upload to
 internal testing. That upload happens in Phase 6, before the Phase 7 naming step in the
