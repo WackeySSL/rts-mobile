@@ -1,0 +1,103 @@
+[gd_resource type="Resource" script_class="MusicParams" format=3]
+
+[ext_resource type="Script" path="res://tools/musgen/MusicLane.gd" id="1_ukfm5"]
+[ext_resource type="Script" path="res://tools/sfxgen/SfxLayer.gd" id="2_uc1no"]
+[ext_resource type="Script" path="res://tools/musgen/MusicParams.gd" id="3_oplt5"]
+
+[sub_resource type="Resource" id="Resource_hcl5w"]
+script = ExtResource("2_uc1no")
+wave = 2
+freq = 1.0
+freq_end = 1.0
+attack = 0.15
+decay = 0.3
+sustain = 0.8
+release = 1.6
+lowpass = 700.0
+
+[sub_resource type="Resource" id="Resource_2jtl3"]
+script = ExtResource("1_ukfm5")
+lane_name = &"pad"
+kind = 0
+voice = SubResource("Resource_hcl5w")
+level = 0.6
+pan = 0.85
+detune_cents = 14.0
+send = 0.3
+patterns = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_eoh5t"]
+script = ExtResource("2_uc1no")
+wave = 2
+freq = 1.0
+freq_end = 1.0
+amp = 0.8
+attack = 0.02
+decay = 0.2
+sustain = 0.8
+release = 0.5
+lowpass = 450.0
+
+[sub_resource type="Resource" id="Resource_ks55o"]
+script = ExtResource("1_ukfm5")
+lane_name = &"bass"
+kind = 1
+voice = SubResource("Resource_eoh5t")
+level = 0.7
+gate = 0.95
+patterns = PackedStringArray("x...............")
+
+[sub_resource type="Resource" id="Resource_xh8vn"]
+script = ExtResource("2_uc1no")
+wave = 3
+freq = 1.0
+freq_end = 1.0
+amp = 0.6
+attack = 0.006
+decay = 0.4
+sustain = 0.0
+release = 0.4
+lowpass = 1800.0
+
+[sub_resource type="Resource" id="Resource_4kxdj"]
+script = ExtResource("1_ukfm5")
+lane_name = &"arp"
+kind = 2
+voice = SubResource("Resource_xh8vn")
+send = 0.6
+octave_shift = 12
+gate = 0.9
+arp_dir = 1
+patterns = PackedStringArray("x...x...x...x...")
+
+[sub_resource type="Resource" id="Resource_x5wth"]
+script = ExtResource("2_uc1no")
+freq = 95.0
+freq_end = 38.0
+amp = 1.0
+length = 0.7
+attack = 0.003
+decay = 0.3
+sustain = 0.0
+release = 0.2
+
+[sub_resource type="Resource" id="Resource_0gmhg"]
+script = ExtResource("1_ukfm5")
+lane_name = &"thump"
+voice = SubResource("Resource_x5wth")
+level = 0.8
+patterns = PackedStringArray("x...............", "................", "x...............")
+
+[resource]
+script = ExtResource("3_oplt5")
+id = &"defeat"
+bpm = 108.0
+bars = 3
+seed_value = 506
+loop = false
+tail = 0.6
+peak_db = -8.0
+chord_bars = 1
+chords = Array[PackedInt32Array]([PackedInt32Array(62, 65, 69, 72), PackedInt32Array(58, 62, 65, 69), PackedInt32Array(57, 60, 64, 69)])
+roots = PackedInt32Array(38, 46, 45)
+lanes = Array[ExtResource("1_ukfm5")]([SubResource("Resource_2jtl3"), SubResource("Resource_ks55o"), SubResource("Resource_4kxdj"), SubResource("Resource_0gmhg")])

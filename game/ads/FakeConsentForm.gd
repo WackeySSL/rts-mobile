@@ -7,9 +7,19 @@ extends CanvasLayer
 
 const LAYER: int = 130
 const BUTTON_MIN_DP: Vector2 = Vector2(160, 64)
+## Visible on the dim backdrop (P450): light text on a mid fill with a light border; the contrast
+## is pinned by tests/ads/test_fake_consent_form.gd.
+const BACKDROP: Color = Color(0.1, 0.1, 0.12, 1.0)
+const BUTTON_FILL: Color = Color(0.2, 0.3, 0.5, 1.0)
+const BUTTON_TEXT: Color = Color(1.0, 1.0, 1.0, 1.0)
+const BUTTON_BORDER: Color = Color(0.85, 0.9, 1.0, 1.0)
+const BUTTON_PRESSED: Color = Color(0.1, 0.17, 0.33, 1.0)
+const BORDER_DP: float = 2.0
+const RADIUS_DP: float = 8.0
 
 var _area: Control = null
 var _buttons: Array[Button] = []
+var _styles: Array[StyleBoxFlat] = []
 
 
 ## Accept and Decline always; Close (the form dismissed, nothing changed) only for `with_close`.
@@ -21,7 +31,7 @@ static func build(
 	layer.layer = LAYER
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	var dim: ColorRect = ColorRect.new()
-	dim.color = Color(0.1, 0.1, 0.12, 1.0)
+	dim.color = BACKDROP
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(dim)
 	layer._area = Control.new()
@@ -56,6 +66,9 @@ func layout() -> void:
 	_area.size = safe.size
 	for button: Button in _buttons:
 		button.custom_minimum_size = UiScale.dp_vec(BUTTON_MIN_DP.x, BUTTON_MIN_DP.y)
+	for style: StyleBoxFlat in _styles:
+		style.set_border_width_all(maxi(1, roundi(UiScale.dp(BORDER_DP))))
+		style.set_corner_radius_all(roundi(UiScale.dp(RADIUS_DP)))
 
 
 func _add_button(box: Container, caption: String, on_press: Callable) -> void:
@@ -63,5 +76,15 @@ func _add_button(box: Container, caption: String, on_press: Callable) -> void:
 	button.name = caption
 	button.text = caption
 	button.pressed.connect(on_press)
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var style: StyleBoxFlat = StyleBoxFlat.new()
+		style.bg_color = BUTTON_PRESSED if state == "pressed" else BUTTON_FILL
+		style.border_color = BUTTON_BORDER
+		_styles.append(style)
+		button.add_theme_stylebox_override(state, style)
+	for color_name: String in [
+		"font_color", "font_hover_color", "font_pressed_color", "font_focus_color"
+	]:
+		button.add_theme_color_override(color_name, BUTTON_TEXT)
 	_buttons.append(button)
 	box.add_child(button)

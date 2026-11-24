@@ -24,6 +24,26 @@ class FakeFlow:
 		return runner if is_instance_valid(runner) else null
 
 
+class FakeFlowWithAds:
+	extends Node
+	signal match_loading(setup: MatchSetup)
+	signal match_start_finished(error: Error)
+	var ads: Node = null
+
+	func _init() -> void:
+		ads = AdSignals.new()
+		add_child(ads)
+
+	func current_runner() -> MatchRunner:
+		return null
+
+
+class AdSignals:
+	extends Node
+	signal ad_opened(placement: StringName)
+	signal ad_closed(placement: StringName)
+
+
 class FakeAds:
 	extends Node
 
@@ -150,9 +170,46 @@ func test_an_error_hides_the_card_at_once() -> void:
 
 
 func test_the_backstop_hides_a_card_whose_start_never_ends() -> void:
+	var clock: Array[int] = [0]
+	_card.now_ms = func() -> int: return clock[0]
 	_fake.match_loading.emit(_setup())
-	await _frames(DeployCard.HARD_FRAMES + 2)
+	clock[0] = _card.backstop_ms - 1
+	await _frames(2)
+	assert_bool(_card.is_showing()).is_true()
+	clock[0] = _card.backstop_ms
+	await _frames(2)
 	assert_bool(_card.is_showing()).is_false()
+
+
+func test_the_card_stays_through_a_28_s_settle_at_any_frame_rate() -> void:
+	# P450: timeout (8 s) + late cap (20 s) is the longest an unopened ad holds a start. The backstop
+	# counts ms, so a 120 Hz screen (many frames in 28 s) does not end the card early.
+	var clock: Array[int] = [0]
+	_card.now_ms = func() -> int: return clock[0]
+	_fake.match_loading.emit(_setup())
+	for _i: int in 28:
+		clock[0] += 1000
+		await _frames(120)
+	assert_bool(_card.is_showing()).is_true()
+
+
+func test_the_backstop_waits_for_an_open_ad_and_restarts_when_it_closes() -> void:
+	var flow: FakeFlowWithAds = auto_free(FakeFlowWithAds.new())
+	add_child(flow)
+	var card: DeployCard = _make_card(flow)
+	var clock: Array[int] = [0]
+	card.now_ms = func() -> int: return clock[0]
+	flow.match_loading.emit(_setup())
+	flow.ads.ad_opened.emit(&"post_match")
+	clock[0] = card.backstop_ms * 3
+	await _frames(2)
+	assert_bool(card.is_showing()).override_failure_message("open ad").is_true()
+	flow.ads.ad_closed.emit(&"post_match")
+	await _frames(2)
+	assert_bool(card.is_showing()).override_failure_message("just closed").is_true()
+	clock[0] += card.backstop_ms
+	await _frames(2)
+	assert_bool(card.is_showing()).is_false()
 
 
 func test_a_paused_tree_does_not_freeze_the_card() -> void:

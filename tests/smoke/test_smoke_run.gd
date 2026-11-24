@@ -58,6 +58,7 @@ const SCHEMA_1_MATCH_KEYS: Array[String] = [
 ]
 const PLAYER_KEYS: Array[String] = [
 	"ai",
+	"blackout_building_ticks",
 	"buildings",
 	"built",
 	"commands",
@@ -74,12 +75,22 @@ const PLAYER_KEYS: Array[String] = [
 	"lost_units",
 	"player",
 	"produced",
+	"radar_dark_ticks",
 	"research",
 	"retreats",
 	"reveals",
 	"scouts",
 	"seat",
+	"sight_cells_lost",
+	"sight_cut_building_ticks",
 	"spent",
+	"strike_damage_enemy",
+	"strike_damage_own",
+	"strike_fires_blackout",
+	"strike_fires_rupture",
+	"strike_kills_buildings",
+	"strike_kills_own",
+	"strike_kills_units",
 	"strikes",
 	"structures",
 	"think_work_max",
@@ -348,17 +359,20 @@ func test_the_counting_reads_spawns_and_free_units_from_events() -> void:
 	(
 		assert_array(counts.keys())
 		. contains_exactly_in_any_order(
-			[
-				"produced",
-				"free",
-				"lost",
-				"kills",
-				"spent",
-				"structures",
-				"kills_by_layer",
-				"reveals",
-				"research",
-			]
+			(
+				[
+					"produced",
+					"free",
+					"lost",
+					"kills",
+					"spent",
+					"structures",
+					"kills_by_layer",
+					"reveals",
+					"research",
+				]
+				+ SmokeCount.STRIKE_KEYS
+			)
 		)
 	)
 

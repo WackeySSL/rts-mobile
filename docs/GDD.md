@@ -112,8 +112,12 @@ One per faction, built after the radar. It charges for 5 minutes from completion
 taps its button and a spot and confirms:
 - **Deep Bore** (Derrick League): after a 3-second warning every player sees, the ground splits
   and everything within 3 tiles, own units and buildings included, takes heavy damage.
-- **Dusk Array** (Lumen Accord): enemy buildings within 4 tiles go dark for 30 seconds: no
-  power, defences silent, production paused. Units are not affected.
+- **Dusk Array** (Lumen Accord): at once and with no warning, every enemy building within 4
+  tiles takes an overload hit (200 damage, enough to finish off a badly damaged building) and
+  goes dark for 30 seconds: no power, defences silent, production paused, and no sight, so the
+  fog closes in wherever only those buildings saw. If it catches the victim's radar building and
+  they have no other working one, their radar goes dark for that time too.
+  Units are not affected: they keep moving, shooting and seeing with their own eyes.
 
 No freeze weapons. The Phase 3 dummy opponent never builds or fires one; Phase 4's AI does.
 

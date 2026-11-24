@@ -225,10 +225,16 @@ func maybe_show_interstitial(placement: StringName) -> bool:
 ## never answers is waited for only until `fullscreen_late_cap_ms` after its own timeout, so one
 ## dropped show holds up no later call. AdMob cannot recall a started show, so a caller about to put
 ## a match on screen awaits this first: no ad opens over a battle (ADR 0042 section 5). Both kinds
-## count: a late rewarded ad also opens unasked once the player has left its screen.
+## count: a late rewarded ad also opens unasked once the player has left its screen. It prints a
+## line when it waits and one when it is done, so a stall shows in the web console.
 func settle_fullscreen() -> void:
+	if not _runs.has_settling(_settings.fullscreen_late_cap_ms):
+		return
+	var begun: int = int(_now_ms.call())
+	print("AdService: settle_fullscreen waiting for a full-screen run")
 	while _runs.has_settling(_settings.fullscreen_late_cap_ms):
 		await (Engine.get_main_loop() as SceneTree).process_frame
+	print("AdService: settle_fullscreen done after %d ms" % (int(_now_ms.call()) - begun))
 
 
 ## Called once per finished match (win, loss, surrender) with its play time in whole seconds.

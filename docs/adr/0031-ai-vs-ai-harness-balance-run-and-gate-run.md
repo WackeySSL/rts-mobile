@@ -69,6 +69,12 @@ and `research` (`{upgrade id: 1}` for each bit of `world.upgrades` at the end), 
 with an "Air and tech" markdown table. Keys are only added, schema 2 and every existing key are
 unchanged, and an older report counts 0. Check 4 already reads the rosters (16 types, P245).
 
+Status note (2026-11-23, Michael; P556-doc docs): the AI-vs-AI median length is now advisory for
+Normal: 12-15 minutes is accepted (lever 3, `docs/balance/2026-11-23-p556-match-length.md`). The
+8-10 minute target moves to human-vs-AI playtests (ROADMAP Phase 5 gate). §4's flag (a median
+outside 7 200-9 000 ticks), every other threshold and the scripts stay as they are; the flag is read,
+not judged. No accepted text changed.
+
 ## Acceptance note (2026-11-06)
 Michael answered the eight questions of ADR 0030 and this ADR in chat on 2026-11-06. The lead had
 numbered them 1-8 in chat (1-3 are ADR 0030's, 4-8 are this ADR's). Verbatim: "1 C, 2 A, 3 Ja, 4 A,

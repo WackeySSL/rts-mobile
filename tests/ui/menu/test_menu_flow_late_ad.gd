@@ -83,19 +83,20 @@ func _ended_match() -> void:
 
 ## Runs `leave` (restart or leave_match then start_match) until the show has timed out, and checks
 ## that no match was built before and after the 8 s deadline.
-func _wait_out_the_timeout(call: Callable) -> Array:
+func _wait_out_the_timeout(call: Callable, loading: int = 1) -> Array:
 	var out: Array = AdServiceHarness.start(call)
 	await _frames(3)
-	_assert_nothing_built("before the timeout")
+	_assert_nothing_built("before the timeout", 0)  # Still in the post-match ad.
 	_h.clock_ms = _ads._settings.fullscreen_timeout_ms
 	await _frames(4)
-	_assert_nothing_built("after the timeout, ad still late")
+	_assert_nothing_built("after the timeout, ad still late", loading)
 	return out
 
 
-func _assert_nothing_built(when: String) -> void:
+func _assert_nothing_built(when: String, loading: int = 1) -> void:
 	assert_int(_mains.size()).override_failure_message(when + ": main scene").is_equal(1)
-	assert_int(_loading).override_failure_message(when + ": match_loading").is_equal(0)
+	# P450: a start's card is up from the first frame; leave_match starts nothing.
+	assert_int(_loading).override_failure_message(when + ": match_loading").is_equal(loading)
 
 
 func test_restart_builds_the_match_only_after_the_late_ad_closes() -> void:
@@ -159,7 +160,8 @@ func test_start_match_after_leave_match_waits_for_the_late_ad() -> void:
 	var left: Array = await _wait_out_the_timeout(
 		func() -> bool:
 			await _flow.leave_match()
-			return true
+			return true,
+		0
 	)
 	# leave_match carries on to the menu after the timeout; the late ad is still pending.
 	assert_array(left).is_equal([true])
@@ -202,9 +204,66 @@ func test_a_late_credits_ad_that_pays_during_the_settle_counts_for_this_match() 
 	await _frames(4)
 	assert_array(out).is_empty()
 	assert_int(_mains.size()).override_failure_message("no main while the ad is late").is_equal(0)
-	assert_int(_loading).is_equal(0)
+	assert_int(_loading).is_equal(1)  # P450: the card shows while the settle waits.
 	_fake.open_late(AdBackend.KIND_REWARDED)  # It opens and pays during the settle.
 	await _frames(4)
 	assert_array(out).is_equal([OK])
 	assert_int(_flow.current_setup().bonus_starting_credits).is_equal(credits)
 	assert_int(_ads.pending_start_credits()).is_equal(0)
+
+
+func _card() -> DeployCard:
+	var card: DeployCard = auto_free(DeployCard.new())
+	add_child(card)
+	card.attach(_flow)
+	return card
+
+
+func _late_rewarded(opens: bool) -> void:
+	await _frames(3)  # Let the rewarded ad load.
+	_fake.show_never_opens = true
+	_fake.ignore_cancel = true
+	AdServiceHarness.start(
+		func() -> bool: return await _ads.show_rewarded(&"double_xp", Callable())
+	)
+	await _frames(3)
+	_h.clock_ms = _ads._settings.fullscreen_timeout_ms  # Timed out, still late.
+	await _frames(3)
+	if opens:
+		_fake.show_never_closes = true
+		_fake.open_late(AdBackend.KIND_REWARDED)
+		await _frames(2)
+
+
+func test_a_run_that_never_answers_holds_the_start_for_timeout_plus_cap_and_no_longer() -> void:
+	# P450: the real bound of the stall. The card is up the whole time.
+	var card: DeployCard = _card()
+	await _late_rewarded(false)
+	var begun: int = _h.clock_ms
+	var out: Array = AdServiceHarness.start(func() -> int: return await _flow.start_match(_setup()))
+	assert_bool(card.is_showing()).override_failure_message("card at once").is_true()
+	var cap: int = _ads._settings.fullscreen_late_cap_ms
+	_h.clock_ms = begun + cap - 1
+	await _frames(4)
+	assert_array(out).is_empty()
+	assert_bool(card.is_showing()).override_failure_message("card while waiting").is_true()
+	_h.clock_ms = begun + cap
+	await _frames(4)
+	assert_array(out).is_equal([OK])
+	assert_int(_mains.size()).is_equal(1)
+	assert_bool(_h.clock_ms <= _ads._settings.fullscreen_timeout_ms + cap).is_true()
+
+
+func test_an_open_ad_keeps_the_start_waiting_with_the_card_up() -> void:
+	var card: DeployCard = _card()
+	await _late_rewarded(true)
+	var out: Array = AdServiceHarness.start(func() -> int: return await _flow.start_match(_setup()))
+	_h.clock_ms += _ads._settings.fullscreen_late_cap_ms * 10  # No cap on an ad on screen.
+	await _frames(4)
+	assert_array(out).is_empty()
+	assert_int(_mains.size()).override_failure_message("no match under an open ad").is_equal(0)
+	assert_bool(card.is_showing()).override_failure_message("card under the ad").is_true()
+	_fake.finish_show()
+	await _frames(4)
+	assert_array(out).is_equal([OK])
+	assert_int(_mains.size()).is_equal(1)
