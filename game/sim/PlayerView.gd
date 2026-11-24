@@ -30,7 +30,9 @@ extends RefCounted
 ##   which is `Placement.reason` for this player (the answer a PLACE would get now). Placement
 ##   reads every row, as the sim's PLACE does, so a tile held by a mobile enemy row that the
 ##   player does not see answers OCCUPIED: the sim would refuse that PLACE too, and a controller
-##   that never sends a refused Command needs the same answer.
+##   that never sends a refused Command needs the same answer. With `lag_ticks` above 0 an unseen
+##   enemy unit up to one step outside its disc can make the AI skip a slot the sim would accept: a
+##   tiny leak, accepted because the AI only skips a slot.
 ## - The last-seen records (plan row P77, ADR 0017 section 3): the buildings the player saw and has
 ##   not seen gone (`LastSeen`), as its own block of the World's ghost arrays with the player
 ##   stripped off, copied in `of` like the queue slices: `ghost_count` records, record `i` being

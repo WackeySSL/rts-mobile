@@ -252,7 +252,11 @@ think: a Command is dropped only when what it names is gone or blocked.
   mobile unit (a tanker walking to the ore) stepped onto the first slot's footprint in the lag tick
   (`Placement.Reason.OCCUPIED`), 0.6 per match. `AiEconomy._place` now asks `PlayerView.placement`
   with `PlayerView.COMMAND_LAG_TICKS` (1), which widens each mobile row's disc by the distance it
-  moves in that many ticks; the sim and the ghost keep lag 0. The stale PLACE drops of the three
+  moves in that many ticks; the sim and the ghost keep lag 0. The margin is the unit's own step, the
+  usual case: a separation push or a unit spawned or unloaded in the lag tick stays a rare residual
+  drop. The margin reads every row, as the placement rule does, so an unseen enemy unit up to one
+  step outside its disc can make the AI skip a slot the sim would accept: a tiny leak, accepted
+  because the AI only skips a slot. The stale PLACE drops of the three
   fixed seeds are 0. The expired rest is by design: Hard's focus fire sends the group an `ATTACK` on
   the weakest seen enemy, which the group's own fire often kills in the lag tick, and its step-back
   sends a unit under `unit_retreat_hp_percent` a `MOVE` that dies in the lag tick. Both are Hard's

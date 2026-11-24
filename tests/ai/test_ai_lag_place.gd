@@ -28,7 +28,12 @@ func test_a_slot_a_unit_reaches_in_the_lag_tick_is_not_placed_and_nothing_is_dro
 		Placement.Reason.OCCUPIED
 	)
 	var place: Command = _place(world)
+	assert_object(place).is_not_null()
 	assert_array(_tile_of(place)).is_not_equal(first)
+	var chosen: Array[int] = _tile_of(place)
+	assert_int(view.placement(head, chosen[0], chosen[1], PlayerView.COMMAND_LAG_TICKS)).is_equal(
+		Placement.Reason.OK
+	)
 	# The view of tick T is taken; step T (the lag tick) runs; the Command lands in step T+1.
 	AiRig.step(world, loop)
 	AiRig.step(world, loop, [place])
@@ -52,20 +57,53 @@ func test_the_same_slot_is_dropped_when_it_is_sent_without_the_lag_margin() -> v
 	assert_int(AiRig.count_of(world, 1, HEAD)).is_equal(0)
 
 
-func test_a_lag_of_zero_ticks_keeps_the_placement_rule_the_sim_and_the_ghost_use() -> void:
-	var world: World = _world(true)
-	var view: PlayerView = PlayerView.of(world, 1)
-	var head: int = AiRig.type_of(world, HEAD)
+func test_the_lag_is_one_tick_and_the_margin_is_one_step() -> void:
+	# ADR 0038 section 1: the Commands made from the view of tick T enter step T + 1.
+	assert_int(PlayerView.COMMAND_LAG_TICKS).is_equal(1)
 	var first: Array[int] = _tile_of(_place(_world(false)))
-	assert_int(view.placement(head, first[0], first[1], 0)).is_equal(
-		view.placement(head, first[0], first[1])
+	var world: World = _world(false)
+	var head: int = AiRig.type_of(world, HEAD)
+	var mover: int = AiRig.type_of(world, MOVER)
+	var gap: int = world.type_radius[mover] + world.type_speed[mover] + 1
+	var middle: int = (first[1] * 2 + world.type_foot_h[head]) * PlayerView.MILLI_PER_TILE / 2
+	AiRig.add_unit_of(world, 1, MOVER, first[0] * PlayerView.MILLI_PER_TILE - gap, middle)
+	var view: PlayerView = PlayerView.of(world, 1)
+	# One milli-tile past one step: the lag-1 margin leaves the slot, a margin of two steps does not.
+	assert_int(view.placement(head, first[0], first[1], PlayerView.COMMAND_LAG_TICKS)).is_equal(
+		Placement.Reason.OK
 	)
-	assert_int(view.placement(head, first[0], first[1])).is_equal(Placement.Reason.OK)
+	assert_int(view.placement(head, first[0], first[1], 2)).is_equal(Placement.Reason.OCCUPIED)
+
+
+func test_the_sim_path_still_accepts_at_lag_zero_what_the_ai_skips_at_lag_one() -> void:
+	var first: Array[int] = _tile_of(_place(_world(false)))
+	var world: World = _world(true)
+	var head: int = AiRig.type_of(world, HEAD)
+	var input: PlacementInput = PlacementInput.of_world(world)
+	# The default argument is what Production and the ghost call: lag 0, the rule as it was.
+	assert_int(Placement.reason(input, 1, head, first[0], first[1])).is_equal(Placement.Reason.OK)
+	(
+		assert_int(
+			PlayerView.of(world, 1).placement(
+				head, first[0], first[1], PlayerView.COMMAND_LAG_TICKS
+			)
+		)
+		. is_equal(Placement.Reason.OCCUPIED)
+	)
+	var command: Command = Command.place(
+		1,
+		first[0] * PlayerView.MILLI_PER_TILE + PlayerView.TILE_CENTRE,
+		first[1] * PlayerView.MILLI_PER_TILE + PlayerView.TILE_CENTRE,
+		head
+	)
+	command.tick = world.tick
+	assert_bool(Production.apply_place(world, command)).is_true()
 
 
 ## A start for player 1 (fossil) with a ready `HEAD` at the front of its STRUCTURES queue, the map
 ## explored and credits to spare. With `crafted`, a harvester stands left of the first slot's
 ## footprint, half a step further out than its radius, and has been ordered onto the footprint.
+@warning_ignore("integer_division")
 func _world(crafted: bool) -> World:
 	var world: World = FactionRig.start("fossil", "renew")
 	Power.run(world)

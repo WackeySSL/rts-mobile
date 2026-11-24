@@ -649,8 +649,9 @@ func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 ## The fixed-seed pins of the stale drops (ADR 0038 section 6, the lead's note of 2026-11-14): the
 ## full matches of the smoke's seeds 1 and 2 at Hard and seed 1 at Normal, [dropped, expired,
 ## Commands sent]. Every expired drop is a unit order whose units died or an ATTACK whose target
-## died in the lag tick; the stale rest is an ATTACK no unit can hit any more, or a PLACE whose
-## credits were spent. P279 rostered the repair buildings, so Normal and Hard now build one (P283's
+## died in the lag tick; the stale rest is an ATTACK no unit can hit any more or has left sight
+## (P580 took the PLACE drops out: the AI leaves a slot a unit can reach in the lag tick). P279
+## rostered the repair buildings, so Normal and Hard now build one (P283's
 ## `AiEconomy._add_repair_building`): the pins moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443].
 ## P280 rostered the medic squads, so `AiProduction` now queues them (P283's `medic_per_squads`) and
 ## `AiRepair` (run after `AiArmy`) sends them with the waves; P295 has Normal and Hard queue a

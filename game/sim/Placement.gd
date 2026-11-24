@@ -31,7 +31,8 @@ const FOOT: int = World.MoveClass.FOOT
 ## from every tile. `lag_ticks` (0 for the sim and the ghost) widens each mobile row's disc by the
 ## distance its type moves in that many ticks: a Command made from this state is applied
 ## `lag_ticks` ticks later (ADR 0038 section 1), and a unit that steps onto the footprint in between
-## would get it dropped (P580).
+## would get it dropped (P580). The margin is the unit's own step, the usual case; a separation
+## push, a unit spawned or unloaded in the lag tick and the like stay a rare residual drop.
 static func reason(
 	input: PlacementInput,
 	player: int,
