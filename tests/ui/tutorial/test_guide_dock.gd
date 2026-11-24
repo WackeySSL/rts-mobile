@@ -81,7 +81,7 @@ func test_every_rule_at_every_size_and_profile() -> void:
 										and extra[0]
 										and extra[1]
 										and extra[2]
-										and extra[3]
+										and str(screen["label"]).begins_with("web_phone_small")
 									)
 									var cutout: bool = (
 										not portrait

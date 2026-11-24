@@ -98,3 +98,30 @@ func test_the_short_bar_leaves_room_in_the_cutout_drawer_state() -> void:
 	for key: StringName in [HudCorners.TOAST, HudCorners.DRAWER, HudCorners.BAR]:
 		var apart: float = GuideDockRig.gap(dock, rects[key])
 		assert_float(apart).override_failure_message(str(key)).is_greater_equal(8.0 - 0.01)
+
+
+## `web_phone_small with a cutout`, the short bar, five groups, the aim: the groups stack two high
+## (x 0-184) and meet the map the aim row pushes left (x 246-486): 46 dp of width.
+func test_the_short_bar_squeezes_the_width_between_the_groups_and_the_pinned_map() -> void:
+	var safe: Rect2 = Rect2(0, 0, 710, 280)
+	var rects: Dictionary[StringName, Rect2] = {
+		HudCorners.PILL: Rect2(0, 0, 200, 48),
+		HudCorners.BAR: Rect2(0, 216, 120, 64),
+		HudCorners.BUILD: Rect2(646, 216, 64, 64),
+		HudCorners.READY: Rect2(526, 224, 112, 48),
+		HudCorners.STRIKE: Rect2(638, 136, 72, 72),
+		HudCorners.STRIKE_ROW: Rect2(494, 140, 136, 64),
+		HudCorners.SCOPE: Rect2(654, 0, 56, 56),
+		HudCorners.MAP: Rect2(246, 0, 240, 168),
+		HudCorners.REVEAL: Rect2(662, 80, 48, 48),
+		HudCorners.REVEAL_LINE: Rect2(434, 80, 220, 48),
+	}
+	var spots: Array[Vector2] = [
+		Vector2(0, 56), Vector2(0, 120), Vector2(64, 56), Vector2(64, 120), Vector2(128, 56)
+	]
+	for index: int in spots.size():
+		rects[HudCorners.group_key(index)] = Rect2(spots[index], Vector2(56, 56))
+	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, rects, SETTINGS)
+	assert_that(dock).is_equal(Rect2())
+	assert_bool(GuideDock.has_room(dock, 1.0)).is_false()
+	assert_bool(GuideDockRig.free_rect(rects, safe, 1.0)).is_false()
