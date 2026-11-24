@@ -164,6 +164,54 @@ def building():
         " pylons and a hazard-edged hangar gate.")
 
 
+def nord():
+    """A Nordvaern vehicle works in the same style (fixed orange armour, gunmetal, hazard)."""
+    L = []
+    b = lambda *a, **k: L.append(line("box", "hull", *a, **k))
+    p = lambda *a, **k: L.append(line("prism", "hull", *a, **k))
+    w = lambda *a, **k: L.append(line("wedge", "hull", *a, **k))
+    b("darksteel", 0, 0, 0, 2.92, 2.92, 0.05)
+    for i in range(10):
+        b("hazard" if i % 2 == 0 else "rubber", -1.32 + i * 0.29, 1.36, 0.05, 0.2, 0.1, 0.012)
+        b("hazard" if i % 2 == 0 else "rubber", 1.36, -1.32 + i * 0.29, 0.05, 0.1, 0.2, 0.012)
+    # main hall
+    b("gunmetal", -0.35, -0.1, 0.05, 2.0, 2.0, 0.16)                 # plinth course
+    b("armour", -0.35, -0.1, 0.21, 2.0, 2.0, 0.62)                   # hall walls
+    b("armourdk", -0.35, -0.1, 0.83, 2.04, 2.04, 0.05)               # eave band
+    b("gunmetal", -0.35, -0.1, 0.88, 1.8, 1.8, 0.08)                 # roof deck
+    for i in range(3):                                               # roof vent blocks with slats
+        cx = -0.95 + i * 0.6
+        b("darksteel", cx, -0.55, 0.96, 0.4, 0.5, 0.14)
+        for k in range(4):
+            b("gunmetal", cx, -0.7 + k * 0.1, 1.1, 0.36, 0.03, 0.014)
+    b("armour", -0.2, 0.55, 0.96, 1.2, 0.5, 0.2)                     # roof annex
+    b("team", -0.2, 0.55, 1.16, 0.5, 0.3, 0.014)                     # team marker plate
+    for cx, cy in ((-1.0, 0.1), (-0.55, 0.1)):                       # twin stacks
+        p("darksteel", cx, cy, 0.96, 0.3, 0.3, 0.7, sides=10)
+        p("hazard", cx, cy, 1.5, 0.32, 0.32, 0.06, sides=10)
+        p("wornsteel", cx, cy, 1.66, 0.26, 0.26, 0.02, sides=10)
+    # loading bay on +x: big doors, gantry, ramp
+    b("darksteel", 0.67, -0.1, 0.05, 0.1, 1.5, 0.52)
+    b("rubber", 0.73, -0.1, 0.08, 0.04, 1.3, 0.42)
+    b("hazard", 0.76, -0.1, 0.08, 0.012, 1.3, 0.05)
+    for sy in (-0.5, 0.5):
+        b("gunmetal", 0.78, -0.1 + sy, 0.05, 0.16, 0.16, 0.7)
+    b("gunmetal", 0.78, -0.1, 0.75, 0.16, 1.2, 0.1)
+    w("darksteel", 1.2, -0.1, 0.0, 0.7, 1.3, 0.1, slope=1)
+    # fuel tanks in the +x/-y corner
+    p("gunmetal", 1.05, -0.95, 0.05, 0.5, 0.9, 0.5, axis="y", sides=12)
+    p("darksteel", 1.05, -0.95, 0.3, 0.12, 0.92, 0.1, axis="y", sides=8)
+    p("hazard", 1.05, -1.27, 0.05, 0.5, 0.05, 0.5, axis="y", sides=12)
+    # side crane arm on +y
+    b("gunmetal", -1.3, 1.1, 0.05, 0.2, 0.2, 1.1)
+    b("gunmetal", -0.6, 1.1, 1.05, 1.5, 0.16, 0.12)
+    b("hazard", -0.6, 1.1, 1.17, 1.5, 0.16, 0.014)
+    return L, "nord_works_p601", "fossil", "bld", 3, (0, 0, 0), (
+        "Nordvaern-style vehicle works: a broad low orange armoured hall with a dark eave band, a flat roof"
+        " with slatted vent blocks and twin hazard-banded stacks, a loading bay with a gantry on one side"
+        " and a fuel tank in a corner, on a hazard-edged apron.")
+
+
 def write(model):
     L, art_id, faction, cat, foot, mount, sil = model
     prims = ",\n".join('"%s"' % x for x in L)
@@ -187,4 +235,5 @@ if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     write(tank())
     write(tank(True))
+    write(nord())
     write(building())

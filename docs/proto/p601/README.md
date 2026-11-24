@@ -260,3 +260,107 @@ godot --headless --path . --script res://tools/artgen/gen_proto_p601.gd -- /abs/
 python3 tools/artgen/proto_p601_round2.py /abs/scratch docs/proto/p601/round2
 python3 tools/artgen/proto_p601_matte.py WHITE.png BLACK.png OUT.png   # Figma exports to RGBA
 ```
+
+---
+
+# Round 3 (P637): the building route comparison as three whole scenes
+
+Rule now on main: Figma's own AI features may make shipping art (ADR 0051, CLAUDE.md Legal, Michael
+2026-11-24). Michael preferred the artgen SVG Facet HQ of round 2 and set the rule that the graphics
+must hang together as one whole (ADR 0050 section 8, the same-scene check). So the three building
+routes are compared inside one scene each, not side by side as lone sprites. Files in `scene/`.
+
+## The three scenes
+
+Identical except for the Facet command building: the same desert and rock ground (our own sand and rock
+tiles), the same Nordværn works from artgen (new model `nord_works_p601`, L4 SVG with fixed orange
+armour, hazard edges, twin stacks, loading bay; note the `team` marker plate on its roof), three L4
+tanks (fixed orange, team marker) at three headings (d06, d04, d10), the same footprints, light and
+zoom. Zoom 1.0 and 2.0 (device px of the 2x art).
+
+| | scene 1.0 | scene 2.0 |
+|---|---|---|
+| (a) artgen SVG HQ (round-2 L3) | `scene/scene_a_svg_1_0.png` | `scene/scene_a_svg_2_0.png` |
+| (b) Figma vector HQ | `scene/scene_b_figma_vector_1_0.png` | `scene/scene_b_figma_vector_2_0.png` |
+| (c) Figma AI HQ | `scene/scene_c_figma_ai_1_0.png` | `scene/scene_c_figma_ai_2_0.png` |
+| side by side | `scene/sheet_1_0.png` | `scene/sheet_2_0.png` (cropped to the HQ and tanks) |
+
+Also: `scene/figma_ai_raw_1280x960.png` (the AI picture as generated), `scene/figma_ai_cutout_1_0.png`
+and `_2_0.png` (hand-fitted), `round2/figma_facet_hq_2_0.png` (the vector drawing re-rendered natively
+at 2.0), `scene/svg/` (the Nordværn works frame). Script: `tools/artgen/proto_p601_scene.py`.
+
+## The Figma AI building (record for CREDITS)
+
+- Feature: Figma MCP `generate_image`, model `gpt-image-2.5-flare`, 1536 x 1152 requested, 1280 x 960
+  returned. Date 2026-11-24. File "Treadline art – P601" (`6dpBgBlbkw0OpUvdoDxJzo`), node `3:2`
+  (layer renamed to carry the provenance). One generation, no re-rolls (no cherry-picking).
+- Prompt (short): "Stylised hard-surface game building sprite, isometric 2:1 dimetric view: camera 30
+  degrees above the horizon, turned 45 degrees ... one low faceted armoured command hall on a dark
+  gunmetal square apron three tiles by three tiles, hazard edge ... stepped six-sided pyramid of sloped
+  saturated blue armour panels with seams and bolts, darker navy trim bands, closed and windowless,
+  short sensor mast with a cyan beacon, four small square pylons with glowing cyan lights at the apron
+  corners, a hangar gate with a hazard-striped sill and cyan light slits ... strong single light from the
+  upper left, soft contact shadow to the lower right ... plain flat solid bright green background." No
+  game, studio, faction, unit or brand named; no style of another game asked for.
+- Hand edits (`tools/artgen/proto_p601_ai_prep.py`, no repainting): green background keyed out with
+  despill; vertical squash by 0.756 because the model drew the apron at about 1.5:1, not 2:1
+  (ADR 0051 requires our 2:1 view; the squash also flattens the building's height, see below); scaled
+  so the apron is 2.92 tiles wide (our 3x3 footprint); the picture had no ground shadow, so the artgen
+  HQ shadow polygon is used under it in the scene.
+- Screen against C&C, Red Alert and other games (done by me, as the art director, by eye): no text, no
+  insignia, no crystal ore, no faction mark, no unit or building silhouette that I can match to an
+  existing game; blue faceted hall, hazard apron and cyan corner lights are generic sci-fi hard surface.
+  One thing to watch, and for Michael to judge once: a stepped pyramid is a common building shape and some
+  games have a large pyramid base; ours is shallow, hex-faceted and blue with a hazard apron, but a
+  human should look at it before it ships. My check is limited to what I can recognise; it is not a
+  search against every game.
+- CREDITS row (proposal, only if it were to ship): `assets/art/...png | Figma file "Treadline art –
+  P601" frame 3:2 | AI-made with Figma AI, no copyright claimed by AppCode ApS | feature generate_image
+  (gpt-image-2.5-flare), 2026-11-24, prompt: stepped faceted blue armoured command hall, 2:1 dimetric,
+  NW light, green background; hand edits: background keyed, squashed to 2:1, scaled to footprint |
+  screened: no resemblance found (pyramid shape flagged)`.
+
+## Verdict: which gives the most coherent whole
+
+Blunt answer: **(a) the artgen SVG is the most coherent whole. (b) the Figma vector is second and the
+best silhouette. (c) the Figma AI picture is the best looking alone and the one that breaks the scene.**
+
+- Edge style. Tanks, the Nordværn works and (a) all have the same thin dark outline and crisp flat
+  panels with a 1 px seam gap. (b) uses the same construction (seams, strokes, gradients) and sits in
+  well. (c) has no outline: its edges are soft, painted and anti-aliased, so next to the tanks it looks
+  like another renderer, most of all at 2.0.
+- Light. (a) and (b) use the same light function as the tanks (top 100, left 82, right 62 percent), so
+  the shading steps match face for face. (c) has its own painterly light: baked specular on the panels,
+  a lit rim on the apron, rounded falloff. It is roughly north-west, but not the same light, and it has no
+  cast shadow of its own (I had to borrow ours).
+- Detail density. The tanks and the works carry panels about 0.3 tile wide with small bolts. (a) matches.
+  (b) is close, with slightly larger panels. (c) has fewer, larger plates with big rivets and a hazard
+  apron that is a fine print of tiny stripes next to our chunky stripes; its apron even carries a tiled
+  plate texture the ground tiles do not have. Detail is more but not at our scale, so it reads as a
+  different resolution.
+- Tone. (a) and (b) use our palette: the same blue triad, the same gunmetal and hazard yellow as the
+  tanks and the works. (c) is a deeper, glossier cobalt with a high-contrast navy; it is the loudest
+  object in the scene.
+- Form. (b) is the most convincing "low, faceted, closed armour" (a crisp six-sided pyramid). (a) is the
+  dome, because artgen only has axis-aligned boxes and n-gon frustums. (c) is also a pyramid, but
+  after the 2:1 correction it sits low and wide, flatter than the buildings around it.
+- Cost to use: (a) is code, recolourable, damage stages possible; (b) is a Figma script and a PNG per zoom;
+  (c) is one credit and a PNG that cannot be rerendered at another zoom (one raster, 1280 px source).
+
+What I would do: ship the artgen route for everything that sits on the map (units and buildings),
+and give artgen the (b) silhouette (a chamfered box and rotated prisms, so facets come out crisp), plus
+the L4 gradients on the building. Use Figma AI where it stands alone: menu and loading art, portraits,
+store art, and as a reference picture to model from, not as an in-scene sprite, unless its edges, light,
+detail scale and palette are brought to the game's by a hand pass; at that point it is cheaper to
+model it. A single AI sprite will always look best in isolation and wrong in the whole.
+
+Known limits of this comparison: one AI generation (a re-roll with a "dark outline, flat shading,
+matches tiles" prompt might narrow the gap; I did not tune the prompt toward our look), a 2:1 correction
+that costs the AI picture some height, and the demo cyan team marker. Scenes are 960 x 520 at 1.0 with
+three tanks; no gameplay UI.
+
+Reproduce: `python3 tools/artgen/proto_p601_models.py`, the Godot driver as in round 2, then
+`python3 tools/artgen/proto_p601_ai_prep.py RAW OUT [scale]` and
+`python3 tools/artgen/proto_p601_scene.py /abs/scratch docs/proto/p601/scene`.
+
+Cost note: the Nordværn works hull frame is 404 KB of SVG (61 prims, many cells and bolts on large walls) against 210 KB for the Facet HQ; large buildings need a detail budget (no bolts on big walls) before this goes near a roster.

@@ -7,7 +7,7 @@ extends SceneTree
 ## Committed samples (default direction, level 3) go to res://docs/proto/p601/svg/.
 
 const DOCS: String = "res://docs/proto/p601"
-const SCALES: Array[float] = [0.75, 1.0, 1.5, 2.25, 2.5]
+const SCALES: Array[float] = [0.75, 1.0, 1.5, 2.0, 2.25, 2.5]
 const TEAM_DEMO: Array[String] = ["#8CEBFF", "#2FC4E8", "#1B8FB5"]
 const BLUE: Array[String] = ["#68A8F2", "#2F6FD0", "#1B4A9C"]
 const JOBS: Array[Dictionary] = [
@@ -32,6 +32,17 @@ const JOBS: Array[Dictionary] = [
 		"final": 4,
 		"skip_current": true,
 		"docs": "round2/svg",
+		"all_scales": true,
+	},
+	{
+		"id": "nord",
+		"proto": "res://docs/proto/p601/models/nord_works_p601.tres",
+		"current": "res://assets/art/models/fossil/headquarters.tres",
+		"dir": -1,
+		"levels": [4],
+		"final": 4,
+		"skip_current": true,
+		"docs": "scene/svg",
 	},
 ]
 
@@ -83,7 +94,7 @@ func _job(job: Dictionary) -> void:
 	# 2. Prototype at each level.
 	if proto.faction == &"renew":
 		ArtPalette.key_override = {&"renew": BLUE}
-	elif id == "tank2":
+	elif id == "tank2" or id == "nord":
 		ArtPalette.key_override = {&"fossil": TEAM_DEMO}
 	var level_stats: Dictionary = {}
 	var levels: Array = job.get("levels", [0, 1, 2, 3])
@@ -209,7 +220,7 @@ func _proto_level(
 					)
 			var wanted: Array[float] = []
 			if level == final:
-				wanted = _scales_for(dir, int(manifest["dir"]))
+				wanted = _scales_for(dir, int(manifest["dir"]), job.get("all_scales", false))
 			elif is_default:
 				wanted = [1.5]
 			for scale: float in wanted:
@@ -261,9 +272,11 @@ func _faction() -> StringName:
 	return &"fossil"
 
 
-func _scales_for(dir: int, default_dir: int) -> Array[float]:
+func _scales_for(dir: int, default_dir: int, all_scales: bool = false) -> Array[float]:
 	if dir == default_dir or dir < 0:
 		return SCALES
+	if all_scales:
+		return [1.0, 2.0]
 	return [1.0]
 
 
