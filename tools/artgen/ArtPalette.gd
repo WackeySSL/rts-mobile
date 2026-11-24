@@ -47,6 +47,17 @@ const SHARED: Dictionary[StringName, String] = {
 	&"slab": "#8F8A7F", &"hole": "#20262B", &"rebar": "#4A4038", &"beam": "#5C645B"
 }
 const INTERIOR: StringName = &"interior"
+## P601 prototype only: gritty-style materials shared by both factions (own hex values), and a key
+## triad override (set by the prototype script) so a faction's panels can use another colour.
+const GRIT: Dictionary[StringName, String] = {
+	&"gunmetal": "#4B5256",
+	&"darksteel": "#30363A",
+	&"wornsteel": "#8D9396",
+	&"rubber": "#25282B",
+	&"hazard": "#D9B222",
+	&"trim": "#27395C",
+	&"glow": "#9FE9FF",
+}
 ## The two flat tones of `interior`: the top and left faces, and the right faces (no light ramp).
 const INTERIOR_TONES: Array[String] = ["#1A1715", "#100E0D"]
 const BAND_DEGREES: float = 20.0  ## ADR 0023 section 5: the key band's half width.
@@ -57,12 +68,15 @@ const CHAR: String = "#2A2522"
 const DARK_EDGE: float = 0.45  ## The edge of a material: its mid tone at this factor.
 const LIGHT_EDGE: float = 0.4  ## The thin light edge on top faces: top tone towards white.
 
+static var key_override: Dictionary = {}
+
 
 static func has_material(faction: StringName, material: StringName) -> bool:
 	return (
 		material == TEAM
 		or material == INTERIOR
 		or SHARED.has(material)
+		or GRIT.has(material)
 		or MATERIALS.get(faction, {}).has(material)
 	)
 
@@ -70,7 +84,7 @@ static func has_material(faction: StringName, material: StringName) -> bool:
 ## The fill of a face of `material` at `level` (TOP, LEFT or RIGHT), as "#RRGGBB".
 static func tone(faction: StringName, material: StringName, level: int) -> String:
 	if material == TEAM:
-		return KEYS[faction][level]
+		return key_override.get(faction, KEYS[faction])[level]
 	if material == INTERIOR:
 		return INTERIOR_TONES[1 if level == RIGHT else 0]
 	return _hex(_channels(faction, material, SHADES[level] / SHADES[LEFT]))
@@ -119,12 +133,19 @@ static func char_leaves_band(faction: StringName, percent: float) -> bool:
 
 
 static func _channels(faction: StringName, material: StringName, factor: float) -> Vector3:
-	var mid: Color = Color(
-		SHARED[material] if SHARED.has(material) else MATERIALS[faction][material]
-	)
+	var mid: Color = Color(mid_hex(faction, material))
 	var scaled: Vector3 = Vector3(mid.r8, mid.g8, mid.b8) * factor
 	return scaled.clamp(Vector3.ZERO, Vector3(255.0, 255.0, 255.0))
 
 
 static func _hex(channels: Vector3) -> String:
 	return "#%02X%02X%02X" % [roundi(channels.x), roundi(channels.y), roundi(channels.z)]
+
+
+## P601: the left-face hex of any material, the team one included.
+static func mid_hex(faction: StringName, material: StringName) -> String:
+	if material == TEAM:
+		return key_override.get(faction, KEYS[faction])[LEFT]
+	if GRIT.has(material):
+		return GRIT[material]
+	return SHARED[material] if SHARED.has(material) else MATERIALS[faction][material]
