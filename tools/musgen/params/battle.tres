@@ -1,0 +1,210 @@
+[gd_resource type="Resource" script_class="MusicParams" format=3]
+
+[ext_resource type="Script" path="res://tools/musgen/MusicLane.gd" id="1_abgfs"]
+[ext_resource type="Script" path="res://tools/sfxgen/SfxLayer.gd" id="2_63b0f"]
+[ext_resource type="Script" path="res://tools/musgen/MusicParams.gd" id="3_ccy3t"]
+
+[sub_resource type="Resource" id="Resource_rod6e"]
+script = ExtResource("2_63b0f")
+freq = 125.0
+freq_end = 42.0
+amp = 1.0
+length = 0.3
+attack = 0.002
+decay = 0.14
+sustain = 0.0
+release = 0.1
+
+[sub_resource type="Resource" id="Resource_oq5ob"]
+script = ExtResource("1_abgfs")
+lane_name = &"kick"
+voice = SubResource("Resource_rod6e")
+level = 0.9
+patterns = PackedStringArray("x...x...x...x...", "x...x...x...x...", "x...x...x..xx...", "x...x...x...x..x")
+fill = "x...x...x..xx.xx"
+fill_every = 8
+
+[sub_resource type="Resource" id="Resource_2xxnx"]
+script = ExtResource("2_63b0f")
+wave = 4
+amp = 0.8
+attack = 0.001
+decay = 0.12
+sustain = 0.0
+release = 0.08
+lowpass = 6500.0
+highpass = 1500.0
+
+[sub_resource type="Resource" id="Resource_kq647"]
+script = ExtResource("1_abgfs")
+lane_name = &"snare"
+voice = SubResource("Resource_2xxnx")
+level = 0.55
+pan = 0.05
+patterns = PackedStringArray("....x.......x...", "....x.......x..g")
+fill = "....x...x.xxxxxx"
+fill_every = 8
+
+[sub_resource type="Resource" id="Resource_8icor"]
+script = ExtResource("2_63b0f")
+wave = 3
+freq = 210.0
+freq_end = 120.0
+amp = 0.8
+length = 0.14
+attack = 0.001
+decay = 0.1
+sustain = 0.0
+
+[sub_resource type="Resource" id="Resource_ivswp"]
+script = ExtResource("1_abgfs")
+lane_name = &"snare_body"
+voice = SubResource("Resource_8icor")
+level = 0.45
+patterns = PackedStringArray("....x.......x...", "....x.......x..g")
+fill = "....x...x.xxxxxx"
+fill_every = 8
+
+[sub_resource type="Resource" id="Resource_wdrwt"]
+script = ExtResource("2_63b0f")
+wave = 4
+amp = 0.7
+length = 0.06
+attack = 0.001
+decay = 0.03
+sustain = 0.0
+release = 0.02
+highpass = 7000.0
+
+[sub_resource type="Resource" id="Resource_4xgqe"]
+script = ExtResource("1_abgfs")
+lane_name = &"hats"
+voice = SubResource("Resource_wdrwt")
+level = 0.28
+pan = 0.25
+patterns = PackedStringArray("o.x.o.x.o.x.o.x.", "o.xgo.xgo.xgo.xx", "o.x.o.x.o.x.o.x.", "o.xgo.xgo.xgoxxg")
+fill = "xgxgxgxgxxxxxxxx"
+fill_every = 8
+mask = "001111111111111111111111"
+
+[sub_resource type="Resource" id="Resource_kmboo"]
+script = ExtResource("2_63b0f")
+wave = 4
+amp = 0.6
+length = 1.6
+attack = 0.002
+decay = 0.6
+sustain = 0.15
+release = 1.0
+highpass = 4500.0
+
+[sub_resource type="Resource" id="Resource_7thv1"]
+script = ExtResource("1_abgfs")
+lane_name = &"crash"
+voice = SubResource("Resource_kmboo")
+level = 0.3
+pan = -0.3
+patterns = PackedStringArray("x...............")
+mask = "100000010000000100000001"
+
+[sub_resource type="Resource" id="Resource_8dx71"]
+script = ExtResource("2_63b0f")
+wave = 2
+freq = 1.0
+freq_end = 1.0
+amp = 0.8
+attack = 0.004
+decay = 0.08
+sustain = 0.7
+release = 0.06
+lowpass = 700.0
+
+[sub_resource type="Resource" id="Resource_qsxje"]
+script = ExtResource("1_abgfs")
+lane_name = &"bass"
+kind = 1
+voice = SubResource("Resource_8dx71")
+level = 0.85
+gate = 0.85
+patterns = PackedStringArray("x.xxx.o.x.xxx.f.", "x.xxx.o.x.xxo.x.", "x.xxx.f.x.xxx.o.", "x.xxo.xxx.x.f.xx")
+
+[sub_resource type="Resource" id="Resource_ehn6v"]
+script = ExtResource("2_63b0f")
+wave = 2
+freq = 1.0
+freq_end = 1.0
+attack = 0.5
+decay = 0.3
+sustain = 0.8
+release = 0.9
+lowpass = 900.0
+
+[sub_resource type="Resource" id="Resource_bfbvq"]
+script = ExtResource("1_abgfs")
+lane_name = &"pad"
+kind = 0
+voice = SubResource("Resource_ehn6v")
+level = 0.45
+pan = 0.8
+detune_cents = 8.0
+send = 0.2
+patterns = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4udhr"]
+script = ExtResource("2_63b0f")
+wave = 2
+freq = 1.0
+freq_end = 1.0
+attack = 3.6
+decay = 0.0
+sustain = 1.0
+release = 1.6
+lowpass = 2200.0
+
+[sub_resource type="Resource" id="Resource_khn8u"]
+script = ExtResource("1_abgfs")
+lane_name = &"swell"
+kind = 0
+voice = SubResource("Resource_4udhr")
+level = 0.35
+pan = 0.9
+detune_cents = 12.0
+octave_shift = 12
+patterns = PackedStringArray()
+mask = "000000100000001000000010"
+
+[sub_resource type="Resource" id="Resource_66tgo"]
+script = ExtResource("2_63b0f")
+wave = 1
+freq = 1.0
+freq_end = 1.0
+duty = 0.35
+attack = 0.003
+decay = 0.12
+sustain = 0.05
+lowpass = 2400.0
+
+[sub_resource type="Resource" id="Resource_fxaqv"]
+script = ExtResource("1_abgfs")
+lane_name = &"arp"
+kind = 2
+voice = SubResource("Resource_66tgo")
+level = 0.22
+pan = 0.3
+send = 0.5
+octave_shift = 12
+gate = 0.5
+arp_dir = 2
+patterns = PackedStringArray("x.xx.xx.x.xx.xx.")
+mask = "000000001111111100001111"
+
+[resource]
+script = ExtResource("3_ccy3t")
+id = &"battle"
+bpm = 116.0
+bars = 24
+peak_db = -10.0
+seed_value = 506
+chords = Array[PackedInt32Array]([PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(55, 60, 64), PackedInt32Array(55, 59, 62), PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(57, 62, 65), PackedInt32Array(56, 59, 64), PackedInt32Array(57, 60, 64), PackedInt32Array(57, 60, 65), PackedInt32Array(55, 59, 62), PackedInt32Array(56, 59, 64)])
+roots = PackedInt32Array(45, 41, 48, 43, 45, 41, 38, 40, 45, 41, 43, 40)
+lanes = Array[ExtResource("1_abgfs")]([SubResource("Resource_oq5ob"), SubResource("Resource_kq647"), SubResource("Resource_ivswp"), SubResource("Resource_4xgqe"), SubResource("Resource_7thv1"), SubResource("Resource_qsxje"), SubResource("Resource_bfbvq"), SubResource("Resource_khn8u"), SubResource("Resource_fxaqv")])

@@ -17,11 +17,17 @@ extends Node
 var routes: MenuRoutes = MenuRoutes.shared
 var register_defaults: bool = true
 var take_pending: Callable = func() -> StringName: return MenuFlow.take_pending_screen()
+## The service that plays the menu music: the `AudioService` autoload unless a test sets another
+## node with `play_music`.
+var audio: Node = null
 var start_lesson: Callable = func(id: StringName) -> Error:
 	return await TutorialStart.start(MenuFlow, id)
 
 
 func _ready() -> void:
+	audio = audio if audio != null else get_node_or_null("/root/AudioService")
+	if audio != null:
+		audio.call(&"play_music", &"menu")  # ADR 0041 section 5: the menu music starts with the menu.
 	var stack: MenuStack = get_node_or_null(stack_path) as MenuStack
 	if stack == null:
 		push_error("MenuRoot: no MenuStack at %s (from %s)" % [stack_path, get_path()])

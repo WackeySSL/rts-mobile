@@ -14,6 +14,10 @@ extends Node2D
 @export var build_button: BuildButton
 @export var economy_pill: EconomyPill
 
+## The service that plays the music: the `AudioService` autoload unless a test sets another node
+## with `play_music`.
+var audio: Node = null
+
 
 func _ready() -> void:
 	var scenario: ScenarioDef = runner.scenario
@@ -23,6 +27,17 @@ func _ready() -> void:
 	)
 	ui_sounds.local_player = scenario.local_player
 	ui_sounds.connect_attack_cues(attack_cues)
+	if runner.snapshot != null and runner.snapshot.tick > 0:
+		_on_first_tick(runner.snapshot.tick)  # A restored match enters paused at its stored tick.
+	else:
+		runner.ticked.connect(_on_first_tick, CONNECT_ONE_SHOT)
 	if build_button != null or economy_pill != null:
 		ui_sounds.connect_hud(build_button, economy_pill)
 	TutorialHost.attach(self)  # Only a lesson's match gets a director (P544).
+
+
+## The battle music starts with the first published tick (ADR 0041 section 5), once.
+func _on_first_tick(_tick: int) -> void:
+	audio = audio if audio != null else get_node_or_null("/root/AudioService")
+	if audio != null:
+		audio.call(&"play_music", &"battle")

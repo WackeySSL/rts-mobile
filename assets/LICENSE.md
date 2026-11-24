@@ -10,8 +10,8 @@ in `docs/store/`:
   effects, decals, ground and fields (`assets/art/svg/`, `assets/art/iso/`);
 - the 3D model data the art generator builds them from (`assets/art/models/`) and the other model,
   pose and sheet definitions under `assets/`;
-- sounds and music under `assets/audio/`, including the future output of `tools/sfxgen/` (Phase 5)
-  and its parameter files where they live under `assets/`;
+- sounds and music under `assets/audio/`, including the output of `tools/sfxgen/` and `tools/musgen/`
+  and their parameter files where they live under `assets/`;
 - the store graphics drawn for the game (`docs/store/*.png`).
 
 Without written permission from AppCode ApS they may not be copied, modified, redistributed,
@@ -24,7 +24,7 @@ repository; you may not distribute them or a build that contains them.
 (the SIL OFL fonts with their `OFL.txt`, the Godot logo, any CC0 or CC-BY file). Each keeps its
 own licence as listed there.
 
-**Code:** the source code (including `tools/artgen/` and `tools/sfxgen/`), the data in `data/` and
+**Code:** the source code (including `tools/artgen/`, `tools/sfxgen/` and `tools/musgen/`), the data in `data/` and
 the test fixtures in `tests/` (their stand-in SVGs included) stay under the MIT licence in the root
 [LICENSE](../LICENSE). The game's name and logo are reserved by AppCode ApS.
 
