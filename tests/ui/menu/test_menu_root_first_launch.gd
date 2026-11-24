@@ -3,8 +3,24 @@ extends GdUnitTestSuite
 ## intro has handed the menu over, and only where `offer_first_launch` is set (main_menu.tscn).
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
+const MAIN_MENU: String = "res://scenes/menu/main_menu.tscn"
 const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
+
+const FLOW: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
+
+
+## An ads service whose settle never returns: the start waits there for good.
+class StuckAds:
+	extends Node
+	signal never
+
+	func take_start_credits_bonus() -> int:
+		return 0
+
+	func settle_fullscreen() -> void:
+		await never
+
 
 var _window_size_before: Vector2i
 var _quit_on_go_back_before: bool = false
@@ -116,7 +132,7 @@ func test_the_real_main_menu_scene_offers_basics_at_the_hand_over_on_a_fresh_sav
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
-	_menu = (load("res://scenes/menu/main_menu.tscn") as PackedScene).instantiate()
+	_menu = (load(MAIN_MENU) as PackedScene).instantiate()
 	var root: MenuRoot = _menu.get_node("MenuRoot") as MenuRoot
 	assert_bool(root.offer_first_launch).is_true()
 	root.start_lesson = func(id: StringName) -> Error:
@@ -130,6 +146,33 @@ func test_the_real_main_menu_scene_offers_basics_at_the_hand_over_on_a_fresh_sav
 	assert_array(_started).is_equal([&"basics"])
 	_close()
 	MenuRoutes.shared.clear()  # The menu registered the app's routes in the shared table.
+
+
+## P450: through the real MenuRoot path, the DeployCard is up as soon as the intro hands over,
+## though the ads settle never returns.
+func test_the_deploy_card_shows_at_the_hand_over_whatever_the_ads_settle_does() -> void:
+	UiScale.set_override(_profile)
+	get_window().size = _profile.window_size
+	await await_idle_frame()
+	var ads: StuckAds = auto_free(StuckAds.new())
+	add_child(ads)
+	var flow: Node = auto_free(FLOW.new())
+	add_child(flow)
+	flow.ads = ads
+	var card: DeployCard = auto_free(DeployCard.new())
+	add_child(card)
+	card.attach(flow)
+	_menu = (load(MAIN_MENU) as PackedScene).instantiate()
+	var root: MenuRoot = _menu.get_node("MenuRoot") as MenuRoot
+	root.start_lesson = func(id: StringName) -> Error: return await TutorialStart.start(flow, id)
+	(_menu.get_node("MenuStack") as MenuStack).back_enabled = false
+	add_child(_menu)
+	await await_idle_frame()
+	assert_bool(card.is_showing()).override_failure_message("before the hand-over").is_false()
+	await _hand_over()
+	assert_bool(card.is_showing()).override_failure_message("after the hand-over").is_true()
+	_close()
+	MenuRoutes.shared.clear()
 
 
 func _hand_over() -> void:

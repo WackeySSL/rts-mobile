@@ -11,6 +11,7 @@ const TICKS: int = 40
 class FakeFlow:
 	extends Node
 	signal match_loading(setup: MatchSetup)
+	signal match_start_finished(error: Error)
 	var runner: MatchRunner = null
 	var setup: MatchSetup = null
 
@@ -80,12 +81,23 @@ func test_the_app_pause_with_no_match_keeps_the_file_of_a_killed_one() -> void:
 	assert_bool(ResumeStore.has_file()).is_true()
 
 
-func test_a_new_match_or_restart_deletes_the_file() -> void:
+func test_a_new_match_or_restart_deletes_the_file_once_it_is_in() -> void:
 	_written()
 	var flow: FakeFlow = auto_free(FakeFlow.new())
 	_watched(flow)
 	flow.match_loading.emit(_setup())
+	assert_bool(ResumeStore.has_file()).override_failure_message("loading only").is_true()
+	flow.match_start_finished.emit(OK)
 	assert_bool(ResumeStore.has_file()).is_false()
+
+
+func test_a_start_that_fails_keeps_the_file() -> void:
+	_written()
+	var flow: FakeFlow = auto_free(FakeFlow.new())
+	_watched(flow)
+	flow.match_loading.emit(_setup())
+	flow.match_start_finished.emit(ERR_BUSY)
+	assert_bool(ResumeStore.has_file()).is_true()
 
 
 func test_the_end_of_the_match_deletes_the_file() -> void:

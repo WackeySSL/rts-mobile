@@ -3,13 +3,15 @@ extends Node
 ## this is an autoload (tests/project/test_autoloads.gd), listed after AdService; DeployCardService
 ## follows it.
 ##
-## `start_match(setup)` seeds the match, takes the Phase 6 start-credits bonus (a skirmish only),
-## emits `match_loading(setup)`, waits two frames so the loading card is drawn (a start from a tap
+## `start_match(setup)` seeds the match, emits `match_loading(setup)` at once (before any await, so
+## the loading card shows in the same frame), takes the Phase 6 start-credits bonus (a skirmish
+## only) once the ads settle, waits two frames so the loading card is drawn (a start from a tap
 ## arrives before the frame is drawn: the first frame only ends the tap's own), and changes to a new
-## main scene; `match_start_finished(error)` follows when the start is over. `start_match`,
-## `restart`, `leave_match` and `continue_match` are coroutines: always `await` them. While one
-## runs, the others return ERR_BUSY (leave_match and return_to_menu do nothing), so a new match is
-## never torn down by a late menu change; every await re-checks the match serial before it acts.
+## main scene; `match_start_finished(error)` follows when the start is over, on every path.
+## `start_match`, `restart`, `leave_match` and `continue_match` are coroutines: always `await` them.
+## While one runs, the others return ERR_BUSY (leave_match and return_to_menu do nothing), so a new
+## match is never torn down by a late menu change; every await re-checks the match serial before it
+## acts.
 ## When the runner reports the end, the summary is built and `Progression.award_match` runs once;
 ## `leave_match()` (the result screen's Back) then counts the match for the ad caps
 ## (`note_match_completed`, once per match) and awaits the post-match interstitial before the menu.
@@ -316,15 +318,17 @@ func _check(setup: MatchSetup) -> Error:
 	return error
 
 
-## The setup has passed `_check`. Emits `match_loading`, waits for the card to be drawn, builds the
-## scene.
+## The setup has passed `_check`. Emits `match_loading` first, settles ads (bounded), waits for the
+## card to be drawn, builds the scene.
 func _begin(setup: MatchSetup, take_bonus: bool = false) -> Error:
+	var serial: int = _serial
+	# At once, before any await: the DeployCard shows in this frame, so a slow settle or load never
+	# leaves the menu looking dead (P450).
+	match_loading.emit(setup)
 	await ads.settle_fullscreen()
 	if take_bonus:
 		# After the settle: a rewarded ad that opened late and paid meanwhile counts for this match.
 		setup.bonus_starting_credits = int(ads.take_start_credits_bonus())
-	var serial: int = _serial
-	match_loading.emit(setup)
 	await loading_frame.call()
 	if serial != _serial:
 		match_start_finished.emit(ERR_BUSY)
