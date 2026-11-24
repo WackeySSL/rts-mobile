@@ -58,7 +58,8 @@ func test_the_strike_files_hold_the_gdd_times_and_radii_in_ticks_and_milli_tiles
 		[BLACKOUT, charge, 4 * World.MILLI_PER_TILE, 0, 30 * Sim.TICK_RATE]
 	)
 	assert_int(bore.charge_ticks).is_equal(4500)
-	assert_object(array.strike_weapon).is_null()
+	# The blackout holds the overload weapon since ADR 0047 section 1 (P572).
+	assert_str(array.strike_weapon.resource_path).is_equal(WEAPONS_DIR + "/renew_overload.tres")
 
 
 ## The rupture's weapon: damage 600 at 100 percent against every armour class (ADR 0023 section
@@ -74,19 +75,30 @@ func test_the_rupture_weapon_file_holds_its_starting_stats() -> void:
 	assert_array([weapon.range, weapon.min_range, weapon.projectile_speed]).is_equal([0, 0, 0])
 
 
+## The Dusk Array's overload weapon (ADR 0047 section 1): 200 damage against building armour only
+## (0 against the unit classes), ground only, no range and no flight, in a file of its own.
+func test_the_overload_weapon_file_holds_its_starting_stats() -> void:
+	var weapon: WeaponDef = (load(UNITS_DIR + "/renew_strike.tres") as BuildingDef).strike_weapon
+	assert_str(String(weapon.id)).is_equal("renew_overload")
+	assert_int(weapon.damage).is_equal(200)
+	assert_array(Array(weapon.vs_armour)).is_equal([0, 0, 0, 100])
+	assert_int(weapon.targets).is_equal(1)
+	assert_array([weapon.range, weapon.min_range, weapon.projectile_speed]).is_equal([0, 0, 0])
+
+
 ## A strike weapon is nobody's gun: no unit or building file holds it as its `weapon` (the only way
 ## Combat and Targeting reach a weapon), and no gun has its id (the World merges weapons by id, the
 ## first winning). Every file but the two strike buildings (and a Reveal building, whose rules are
 ## air_rules.gd's) has no strike at all: kind 0, the numbers 0 and no weapon, so a strike
 ## cannot hide in another roster entry.
 func test_no_unit_fires_the_strike_weapon_and_no_other_file_has_a_strike() -> void:
-	var weapon_id: StringName = &"fossil_rupture"
+	var weapon_ids: Array[StringName] = [&"fossil_rupture", &"renew_overload"]
 	var struck: Array[String] = []
 	for path: String in FileScan.list_files(UNITS_DIR, ".tres"):
 		var unit: UnitDef = load(path)
 		var file: String = path.get_file()
 		if unit.weapon != null:
-			assert_bool(unit.weapon.id == weapon_id).override_failure_message(file).is_false()
+			assert_bool(unit.weapon.id in weapon_ids).override_failure_message(file).is_false()
 		var building: BuildingDef = unit as BuildingDef
 		if building == null:
 			continue
@@ -129,7 +141,7 @@ func test_the_strike_checks_report_the_kind_the_count_and_each_number_that_break
 		["alpha: 2 strike types, not 1"]
 	)
 	# Another faction's kind, and each number of a rupture or a blackout that is 0, a number the
-	# kind does not read that is set, a weapon that is missing and a weapon on a blackout.
+	# kind does not read that is set, and a weapon that is missing (the overload is the blackout's).
 	assert_array(_strike_problems(_faction([_array()]), RUPTURE)).is_equal(["array: kind 2, not 1"])
 	var rupture: Array = [
 		["charge_ticks", 0, "bore: charge_ticks is not above 0"],
@@ -143,7 +155,7 @@ func test_the_strike_checks_report_the_kind_the_count_and_each_number_that_break
 		["strike_radius", 0, "array: strike_radius is not above 0"],
 		["strike_ticks", 0, "array: strike_ticks is not above 0"],
 		["strike_delay", 1, "array: strike_delay is set, but a blackout does not read it"],
-		["strike_weapon", _gun(), "array: a blackout holds a strike weapon"],
+		["strike_weapon", null, "array: no strike weapon"],
 	]
 	for row: Array in rupture:
 		var broken: BuildingDef = _bore()
@@ -237,10 +249,7 @@ func _strike_problems(faction: FactionDef, kind: int) -> PackedStringArray:
 	for key: String in unread:
 		if unread[key] != 0:
 			problems.append("%s: %s is set, but a %s does not read it" % [name, key, reader])
-	if kind == BLACKOUT:
-		if strike.strike_weapon != null:
-			problems.append("%s: a blackout holds a strike weapon" % name)
-	elif strike.strike_weapon == null:
+	if strike.strike_weapon == null:  # Both kinds hold one: the overload is the blackout's (ADR 0047).
 		problems.append("%s: no strike weapon" % name)
 	else:
 		problems.append_array(_weapon_problems(name, strike.strike_weapon))
@@ -313,6 +322,7 @@ func _array() -> BuildingDef:
 	building.charge_ticks = 4500
 	building.strike_radius = 4000
 	building.strike_ticks = 450
+	building.strike_weapon = _gun()
 	return building
 
 

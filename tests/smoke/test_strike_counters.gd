@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## sim would make, the records it would write, and `after_step`. Nothing here runs the sim, so the
 ## suite pins what the counter reads (the hp before the step, the STRIKE and DIED records, the
 ## rows' `offline_until` and `fog_cell`, the fog counts) and not the rules of the strike, which
-## land in P572 to P574.
+## land in P572 to P574 (the overload is P572's).
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
@@ -201,8 +201,8 @@ func test_a_hit_at_the_hp_kills_and_the_taken_percent_is_applied() -> void:
 
 
 ## The blackout's overload: building rows of other owners in the radius, from the weapon of the
-## firing type, with units, own rows and rows with no hp untouched. The shipped Renew strike has no
-## weapon yet (P572), so it is given the rupture's weapon at 200 here.
+## firing type, with units, own rows and rows with no hp untouched. The test world's Renew strike is
+## given the rupture's weapon at 200 here.
 func test_a_blackout_counts_the_overload_on_buildings_of_others() -> void:
 	_world.type_strike_weapon[_renew_strike] = _wp
 	_world.weapon_damage[_wp] = 200
@@ -235,9 +235,9 @@ func test_a_blackout_counts_the_overload_on_buildings_of_others() -> void:
 	assert_int(mine["strike_kills_own"]).is_equal(0)
 
 
-## The shipped Renew strike has no weapon yet: a blackout fires and does no damage.
+## A Dusk Array with no weapon (-1, the frozen arena's): a blackout fires and does no damage.
 func test_a_blackout_with_no_weapon_does_no_damage() -> void:
-	assert_int(_world.type_strike_weapon[_renew_strike]).is_equal(-1)
+	_world.type_strike_weapon[_renew_strike] = -1
 	_put(FIRER, 1, _renew_strike, FAR, FAR, 900)
 	_put(VICTIM_A, 2, _building, POINT, POINT, 10)
 	var counter: SmokeCount = SmokeCount.new(2)

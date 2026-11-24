@@ -374,7 +374,6 @@ func _effect(
 	var types: PackedInt32Array = _pre["type"]
 	var hit_points: PackedInt32Array = _pre["hp"]
 	var reach: int = radius * radius
-	var armours: int = World.Armour.size()
 	var valid: bool = weapon >= 0 and weapon < world.weapon_damage.size()
 	for row: int in ids.size():
 		if hit_points[row] <= 0 or not valid:
@@ -391,10 +390,7 @@ func _effect(
 				continue
 		elif (world.weapon_targets[weapon] & world.type_layer_bit[type]) == 0:
 			continue
-		var percent: int = world.weapon_vs_armour[weapon * armours + world.type_armour[type]]
-		var hit: int = Combat.damage(
-			world.weapon_damage[weapon], percent, Combat.PERCENT, Upgrades.taken(world, owner, type)
-		)
+		var hit: int = Strike.damage_to(world, owner, type, weapon)
 		if hit <= 0:
 			continue
 		var taken: int = mini(hit, hit_points[row])

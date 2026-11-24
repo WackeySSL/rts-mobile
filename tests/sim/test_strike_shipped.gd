@@ -156,6 +156,7 @@ func test_the_blackout_takes_enemy_buildings_in_its_radius_offline_for_exactly_i
 	var whole: Array[int] = _totals(world, 1)
 	var own: Array[int] = _totals(world, 2)
 	assert_array(whole).is_equal(_power_of(world, 1, []))
+	var hp_before: Array[int] = _hp_of(world, ids)
 	Strikes.step(world, [Strikes.fire(ARRAY, 2, POINT)])
 	assert_int(world.dropped_commands).is_equal(0)
 	var until: int = world.tick + length  # The firing stamp is the tick the step left behind.
@@ -166,6 +167,12 @@ func test_the_blackout_takes_enemy_buildings_in_its_radius_offline_for_exactly_i
 		var inside: bool = _distance_squared(centre, POINT) <= radius * radius
 		var wanted: int = until if inside and world.owner[row] == 1 else 0
 		assert_int(world.offline_until[row]).override_failure_message(str(id)).is_equal(wanted)
+		# The overload (ADR 0047 section 1): the shipped Dusk Array's 200 on the hit buildings only.
+		var lost: int = 200 if wanted > 0 else 0
+		var at: int = ids.find(id)
+		assert_int(Strikes.hp_of(world, id)).override_failure_message(str(id)).is_equal(
+			hp_before[at] - lost
+		)
 		if wanted > 0:
 			hit.append(id)
 	assert_int(hit.size()).is_greater(2)
@@ -213,7 +220,10 @@ func test_the_rupture_type_is_the_deep_bore_when_both_rosters_are_loaded_in_eith
 		var weapon: int = world.type_strike_weapon[bore]
 		assert_str(String(world.weapon_ids[weapon])).is_equal("fossil_rupture")
 		assert_int(world.weapon_damage[weapon]).is_greater(0)
-		assert_int(world.type_strike_weapon[array]).is_equal(-1)
+		# The Dusk Array holds the overload weapon (ADR 0047 section 1), which is not the rupture's.
+		var overload: int = world.type_strike_weapon[array]
+		assert_str(String(world.weapon_ids[overload])).is_equal("renew_overload")
+		assert_int(overload).is_not_equal(weapon)
 
 
 ## A World of the shipped rosters of `paths` (the factions of players 1 and 2, in that order) with

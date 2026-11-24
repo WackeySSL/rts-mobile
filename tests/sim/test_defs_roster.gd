@@ -254,9 +254,10 @@ func test_the_new_weapon_files_hold_their_starting_stats() -> void:
 	# the Burst Stack and the Sky Needle, rostered by P239b) or the four air weapons (P242,
 	# test_defs_air_units: the fighters' and bombers' guns, whose types have no roster entry until
 	# P245) or the two drone squads' guns (P264, test_defs_carriers, until P266) or the two mines
-	# (P290, test_defs_ground_support, held by the minelayers until P292), each used by what names it.
+	# (P290, test_defs_ground_support, held by the minelayers until P292) or the Dusk Array's
+	# overload (renew_overload, P572: no gun, test_defs_strike_data), each used by what names it.
 	var files: Array[String] = FileScan.list_files(WEAPONS_DIR, ".tres")
-	assert_int(files.size()).is_equal(20)
+	assert_int(files.size()).is_equal(21)
 	assert_str(_unit("heavy_tank").weapon.resource_path).is_equal(
 		WEAPONS_DIR + "/heavy_cannon.tres"
 	)

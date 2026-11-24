@@ -27,15 +27,16 @@ const TYPES: Array[String] = ["bore", "array", "hq", "plant", "rifle", "jeep", "
 
 
 ## The rig's world with `players` players (player 3 owns nothing); without `revealed` the fog is
-## real and every row is stamped.
-static func world(revealed: bool = true, players: int = 2) -> World:
+## real and every row is stamped. With `overload` the array holds the shipped overload's numbers
+## (ADR 0047 section 1: 200 damage, 100 percent against building armour and nothing else).
+static func world(revealed: bool = true, players: int = 2, overload: bool = false) -> World:
 	var headquarters: BuildingDef = _building("hq", 3, 1000)
 	headquarters.produces = World.Tab.STRUCTURES
 	var plant: BuildingDef = _building("plant", 3, 1000)
 	plant.power = 100
 	var units: Array[UnitDef] = [
 		_bore(),
-		_array(),
+		_array(overload),
 		headquarters,
 		plant,
 		_unit("rifle", World.Armour.INFANTRY),
@@ -154,8 +155,14 @@ static func _bore() -> BuildingDef:
 	return def
 
 
-static func _array() -> BuildingDef:
+static func _array(overload: bool = false) -> BuildingDef:
 	var def: BuildingDef = _building("array", 3, 1500)
+	if overload:
+		var weapon: WeaponDef = WeaponDef.new()
+		weapon.id = &"array_overload"
+		weapon.damage = 200
+		weapon.vs_armour = PackedInt32Array([0, 0, 0, 100])
+		def.strike_weapon = weapon
 	def.strike_kind = 2
 	def.charge_ticks = 30
 	def.strike_radius = 4000
