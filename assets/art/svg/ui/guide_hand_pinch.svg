@@ -1,0 +1,20 @@
+<!-- Guide hand, pinching: white and grey only, tinted at run time (the tutorial's gesture hint for a zoom; the two fingertips are the two touch points, about 50 px apart at x 74 y 52 and x 126 y 52). -->
+<!-- Shape: a plump palm from the front with a thumb and an index finger standing up from it as two short capsules that lean in toward each other, a clear gap between their tips. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="216" viewBox="0 0 216 216">
+  <!-- edge -->
+  <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="10" stroke-linejoin="round">
+    <rect x="44" y="104" width="124" height="94" rx="32"/>
+    <rect x="47" y="50" width="30" height="94" rx="15" transform="rotate(8 62 140)"/>
+    <rect x="123" y="50" width="30" height="94" rx="15" transform="rotate(-8 138 140)"/>
+  </g>
+  <!-- bodies -->
+  <g fill="#FFFFFF">
+    <rect x="44" y="104" width="124" height="94" rx="32"/>
+    <rect x="47" y="50" width="30" height="94" rx="15" transform="rotate(8 62 140)"/>
+    <rect x="123" y="50" width="30" height="94" rx="15" transform="rotate(-8 138 140)"/>
+  </g>
+  <!-- shade: the palm's lower right and each finger's outer edge -->
+  <path d="M168 154 V166 Q168 198 136 198 H92 Q142 192 150 154 Z" fill="#BFBFBF"/>
+  <rect x="47" y="64" width="8" height="64" rx="4" fill="#BFBFBF" transform="rotate(8 62 140)"/>
+  <rect x="145" y="64" width="8" height="64" rx="4" fill="#BFBFBF" transform="rotate(-8 138 140)"/>
+</svg>
