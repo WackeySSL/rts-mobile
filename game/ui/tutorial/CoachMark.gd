@@ -23,10 +23,10 @@ extends Control
 ## there is room, and goes narrower (3/4, then 3/5) before it would stand on one; it is placed again
 ## when one appears, moves or goes. When the beat
 ## is `stalled()` the card shows a hint line and the ring turns amber and doubles (a shape change as
-## well as a colour). The ring pulses unless `reduced` (the Reduced effects switch): then there is
+## well as a colour). The ring blinks unless `reduced` (the Reduced effects switch): then there is
 ## no Tween at all.
 ## Looks come from `theme.tres`: PauseCard, PauseButton, PausePrimary and PauseMuted for the card,
-## AccentRenew and HudTokens for the ring. No colour literal.
+## GuideTokens for the ring. No colour literal.
 
 const CARD_WIDTH_DP: float = 360.0  ## Widest the card gets; less where the room is narrower.
 const GAP_DP: float = 16.0  ## Between the ring and the card.
@@ -35,8 +35,7 @@ const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
 const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
-const PULSE_S: float = 0.8
-const PULSE_PX_DP: float = 4.0  ## How far the ring breathes out.
+const REDUCED_LINE_DP: float = 1.0  ## Reduced effects: a steady frame, this much thicker.
 const FIND_EVERY: int = 15  ## Frames between looks for a control that is not there.
 const ELLIPSE_STEPS: int = 40
 const THEME_PATH: String = "res://game/ui/theme.tres"
@@ -53,8 +52,16 @@ var director: TutorialDirector
 var camera: RtsCamera
 ## The node under which the anchor controls are looked up by name.
 var hud_root: Node
-## Reduced effects: no pulse. `_ready` adds the player's switch; a test may set it before.
-var reduced: bool = false
+## Every number of the blink (ADR 0048 section 7); a test may swap a copy in.
+var settings: GuideSettingsDef = preload("res://data/tutorial/guide_settings.tres"):
+	set(value):
+		settings = value
+		_restart_blink()
+## Reduced effects: a steady frame, no Tween. `_ready` adds the player switch; tests may set it.
+var reduced: bool = false:
+	set(value):
+		reduced = value
+		_restart_blink()
 
 var _ring: Control
 var _card: PanelContainer
@@ -65,8 +72,8 @@ var _next: Button
 var _skip: Button
 var _beat: TutorialBeatDef = null
 var _target: Control = null
-var _pulse: Tween = null
-var _pulse_value: float = 0.0
+var _blink: Tween = null
+var _blink_alpha: float = 1.0  ## The frame's opacity now.
 var _own_theme: bool = false
 var _dp: float = 1.0  ## The metrics, read by `_measure` on a resize and never per frame.
 var _view: Vector2 = Vector2.ZERO
@@ -181,7 +188,7 @@ func hide_mark() -> void:
 	visible = false
 	if _ring != null:
 		set_process(false)
-	_stop_pulse()
+	_stop_blink()
 
 
 ## The control the ring is on (null: no control beat, or none found or shown).
@@ -199,8 +206,29 @@ func card_rect() -> Rect2:
 	return Rect2(_card.global_position, _card.size)
 
 
-func ring_pulsing() -> bool:
-	return _pulse != null and _pulse.is_valid()
+## The frame's opacity now: 1.0 steady, else eased between the low alpha and 1.0.
+func ring_alpha() -> float:
+	return _blink_alpha
+
+
+## The frame's line, px: Reduced effects makes it 1 dp thicker.
+func ring_line_px() -> float:
+	return (RING_LINE_DP + (REDUCED_LINE_DP if reduced else 0.0)) * _dp
+
+
+## The frame's colour now (the blink's opacity in its alpha) and how many rings it draws.
+func ring_tone() -> Color:
+	var tone: Color = get_theme_color(&"ring_stalled" if _stalled_now else &"ring", &"GuideTokens")
+	tone.a *= _blink_alpha
+	return tone
+
+
+func ring_count() -> int:
+	return 2 if _stalled_now else 1
+
+
+func ring_blinking() -> bool:
+	return _blink != null and _blink.is_valid()
 
 
 ## The height of the top HUD row, dp, that the card keeps clear of (ADR 0025 section 2): the scope
@@ -442,7 +470,7 @@ func _update() -> void:
 		visible = not covered
 		_dirty = true
 		if covered:
-			_stop_pulse()
+			_stop_blink()
 	if covered:
 		return
 	var ring: Rect2 = _ring_box()
@@ -486,9 +514,9 @@ func _update() -> void:
 		_points = _ellipse(ring.size * 0.5)
 	_ring.queue_redraw()
 	if ring.has_area():
-		_start_pulse()
+		_start_blink()
 	else:
-		_stop_pulse()
+		_stop_blink()
 	if keep:
 		_card.mouse_filter = Control.MOUSE_FILTER_STOP  # It stands clear of the ring.
 		return
@@ -604,16 +632,12 @@ func _resolve_target() -> void:
 func _draw_ring() -> void:
 	if not _ring_now.has_area() or _beat == null:
 		return
-	var tone: Color = (
-		get_theme_color(&"money", &"HudTokens")
-		if _stalled_now
-		else get_theme_color(&"light", &"AccentRenew")
-	)
-	var line: float = RING_LINE_DP * _dp
+	var tone: Color = ring_tone()
+	var line: float = ring_line_px()
 	var centre: Vector2 = _ring_now.get_center()
 	var half: Vector2 = _ring_now.size * 0.5
-	for turn: int in 2 if _stalled_now else 1:  # Stalled: a second, outer ring.
-		var grow: float = line * 2.0 * turn + _pulse_value * PULSE_PX_DP * _dp
+	for turn: int in ring_count():  # Stalled: a second, outer ring.
+		var grow: float = line * 2.0 * turn
 		if _beat.anchor == TutorialBeatDef.Anchor.CONTROL:
 			_ring.draw_rect(_ring_now.grow(grow).intersection(_safe_rect), tone, false, line)
 		else:
@@ -631,24 +655,34 @@ static func _ellipse(half: Vector2) -> PackedVector2Array:
 	return points
 
 
-func _start_pulse() -> void:
-	if reduced or ring_pulsing():
+func _start_blink() -> void:
+	if reduced or ring_blinking() or settings.blink_period_ms <= 0:
 		return
-	_pulse = create_tween().set_loops()
-	_pulse.tween_method(_set_pulse, 0.0, 1.0, PULSE_S)
-	_pulse.tween_method(_set_pulse, 1.0, 0.0, PULSE_S)
+	var low: float = settings.blink_low_alpha_pct / 100.0
+	var half: float = settings.blink_period_ms / 2000.0
+	_blink = create_tween().set_loops()
+	_blink.tween_method(_set_blink, 1.0, low, half).set_trans(Tween.TRANS_SINE)
+	_blink.tween_method(_set_blink, low, 1.0, half).set_trans(Tween.TRANS_SINE)
 
 
-func _set_pulse(value: float) -> void:
-	_pulse_value = value
+## A changed switch or settings kills the Tween; the next look makes the right one.
+func _restart_blink() -> void:
+	_stop_blink()
+	if _ring != null and _beat != null and is_inside_tree():
+		_dirty = true
+		_update()
+
+
+func _set_blink(value: float) -> void:
+	_blink_alpha = value
 	_ring.queue_redraw()
 
 
-func _stop_pulse() -> void:
-	if _pulse != null:
-		_pulse.kill()
-		_pulse = null
-	_pulse_value = 0.0
+func _stop_blink() -> void:
+	if _blink != null:
+		_blink.kill()
+		_blink = null
+	_blink_alpha = 1.0
 
 
 ## A card button, at least 48 dp each way.

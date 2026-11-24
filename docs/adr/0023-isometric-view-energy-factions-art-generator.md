@@ -66,6 +66,13 @@ Status note (2026-11-05, P26bb docs; the Phase 3 gate): §2 carries a dated stat
 (#342): the tanker's cargo bar leaves the sort's z for the health bars' z (30), so the base arena
 is back to 13 draw calls. No accepted text changed.
 
+Status note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24, ADR 0050 proposed): §6's
+display names change. The Derrick League shows as **Nordværn** and the Lumen Accord as **Facet**
+(row P607). The ids `fossil` and `renew`, the rosters, the unit and building names and the
+energy-bloc lore stay (answers 3 A and 4 A). The look of §5 and §6 moves toward fixed faction
+colours with a small team marker and richer generated detail. That is ADR 0050 (proposed), not
+this text. No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |

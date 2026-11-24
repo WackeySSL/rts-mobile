@@ -972,6 +972,12 @@ with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
   PR.
 - **Sizes stay `touch-ui-rules`'**: body at least 14 sp, HUD numbers at least 18 sp.
 
+Note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the token values move to Michael's
+Treadline Figma look (row P604; P602 reads them). The type names stay. `AccentRenew` becomes
+Facet's blue in place of the cyan, and `AccentFossil` Nordværn's orange, at the hues of ADR 0050
+§3. Both keep this section's hue and contrast checks. Big Shoulders and Chakra Petch stay. A mono
+face comes only if the file uses one (answer 6).
+
 ### 14. Left-handed mode
 - Later: the switch comes with Phase 5's settings (a scope decision from the roadmap, not a
   question). From P119 on, `HudCorners.place`
@@ -1014,6 +1020,11 @@ the rows "Interstitial at most one per 3 min" (answer 2 A: the caps stand, now i
 `data/ads_settings.tres`) and "Rewarded 'double reward' on the end screen" (answer 1 A: Double XP
 on the result screen, row P432). The pause menu's banner is upright only (§11's note of
 2026-11-15); the end screen still shows none.
+
+Note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the Treadline design is overruled
+where ADR 0049 §4 says, with the same sources: no Move, Attack, Guard, Patrol or Train buttons,
+no radio line, no objectives panel in skirmish, a still loading card, no ad beyond the upright
+pause foot, and the corner geometry kept (answer 1 A).
 
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
