@@ -372,7 +372,7 @@ visible = false
 theme = ExtResource("16_theme")
 script = ExtResource("42_economy_card")
 
-[node name="RadarScope" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "camera", "safe_area", "cues")]
+[node name="RadarScope" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "camera", "safe_area", "cues", "runner")]
 theme = ExtResource("16_theme")
 script = ExtResource("42_scope")
 feed = NodePath("../HudStateFeed")
@@ -380,6 +380,7 @@ minimap = NodePath("../RadarMap/Minimap")
 camera = NodePath("../../Camera")
 safe_area = NodePath("../SafeArea")
 cues = NodePath("../AttackCues")
+runner = NodePath("../../MatchRunner")
 
 [node name="RadarMap" type="Control" parent="Hud" node_paths=PackedStringArray("feed", "minimap", "safe_area", "strike_row", "pill", "group_column", "build_button")]
 visible = false

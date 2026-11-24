@@ -1036,6 +1036,7 @@ HudTokens/colors/money = Color(0.94901961, 0.75686275, 0.30588235, 1)
 HudTokens/colors/ok = Color(0.43137255, 0.8627451, 0.37254902, 1)
 HudTokens/colors/panel = Color(0.03921569, 0.05490196, 0.06666667, 0.84)
 HudTokens/colors/text = Color(1, 1, 1, 1)
+HudTokens/colors/warning = Color(0.96078431, 0.64705882, 0.14117647, 1)
 HudPanel/base_type = &"PanelContainer"
 HudPanel/styles/panel = SubResource("StyleBoxFlat_hud_panel")
 ; The accent of each side (ADR 0025 section 13): the faction of the local player's own rows, read as
