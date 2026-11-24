@@ -10,15 +10,25 @@ drawer, it moves back to BUILD. A drawn hand shows the gesture: a tap, a double 
 a drag to pan, a box drag and a two-finger pinch. With Reduced effects on, the frame stops
 blinking and the hand stands still. This holds for Basics and for all three drills.
 
-Status: **proposed, 2026-11-24.** Written by the architect on branch
-`claude/p58x-guide-v2-plan` (base `main` at 53fabb24) with the plan
-`docs/plans/2026-11-24-guide-v2.md` (rows P582-P596). Five questions for Michael are at the end.
-This ADR is not accepted until he answers them.
+Status: **accepted, 2026-11-24 (Michael: "Ja til alle", yes to every recommendation of the five
+questions).** Written by the architect on branch `claude/p58x-guide-v2-plan` (base `main` at
+53fabb24) with the plan `docs/plans/2026-11-24-guide-v2.md` (rows P582-P596). Accepted in row
+P583 on the same branch (PR #634).
 
 Amends ADR 0044 §2 (the `CoachMark` paragraph: "a ring on the anchor and a prompt card (text, Next
 where a beat is read-only, Skip lesson), placed by ADR 0015's rules"). P583 writes a dated status
-note in ADR 0044 on acceptance. No accepted text is rewritten. Retires the free-place search of
-plan row P543g (#620), which was a plan row, not an ADR (§8).
+note in ADR 0044 on acceptance (done, 2026-11-24). No accepted text is rewritten. Retires the
+free-place search of plan row P543g (#620), which was a plan row, not an ADR (§8).
+
+## Michael's answers (2026-11-24)
+1. **Where the card docks:** at the top, under the pill and the radar, between the group buttons and
+   the full map, never over them (§1).
+2. **The counter:** "3/26", the form `n/N` (§2).
+3. **A target under the open card:** A. The card stays, turns see-through and lets the touch
+   through, and the frame and the hand show on top (§3).
+4. **Skip lesson:** only on each lesson's first card. After that, "Leave tutorial" in the pause menu
+   is the way out (it is on `main`: `PauseMenu`'s Exit reads "LEAVE TUTORIAL" in a lesson) (§2).
+5. **The hand with Reduced effects:** a still hand in the gesture's key pose, with arrows (§6).
 
 ## Michael's request (2026-11-24, after Basics on his phone, upright; the lead's translation)
 1. The help text sits in the same place every time, maybe at the very top, and can be folded away.
@@ -99,7 +109,7 @@ plan row P543g (#620), which was a plan row, not an ADR (§8).
   | 6-inch landscape (safe 890 x 387) | 73, 64, 560 (room 64-642) | 174 |
   | `web_phone` (890 x 331), with strike button | 64, 64, 498 (map left of the column) | 149 |
   | `web_phone_small` (776 x 280), without / with strike button | 64, 64, 512 / 64, 64, 384 | 126 |
-  | `web_phone_portrait` (336 x 676) | 64, 120, 272; map open: 64, 250, 272 | 210 (sheet open), else 304 |
+  | `web_phone_portrait` (336 x 676) | 64, 120, 272; map open: 64, 250, 272 | 304; sheet open 210 |
 
 ### 2. The card and its tab
 - **The open card** has two forms, chosen by the dock's width:
@@ -111,20 +121,20 @@ plan row P543g (#620), which was a plan row, not an ADR (§8).
     on a read-only beat.
 
   In both forms the hint line shows only when the beat has stalled, and Skip shows only on a
-  lesson's first beat (question 4), at the foot, 12 dp from Next. In landscape the head row would
+  lesson's first beat (answer 4), at the foot, 12 dp from Next. In landscape the head row would
   cost 48 dp of a 280 dp screen, so the wide form has none. The look is the theme's `PauseCard`
   panel, as today.
 - **The tab** is one button, at least 48 x 48 dp: the step counter and a fold chevron. It stands at
   the dock's top corner on the scope's side (top right; mirrored, top left). It is the same control
   in both states, so the counter never moves.
 - **Folded:** only the tab shows, in its place. The rest of the dock is free for the map.
-- **The counter:** `n/N` (question 2). `n` is the number of the beat on show (1-based) and `N` is
-  the lesson's beat count. A step is a beat. The sub-targets of a chain (§5) are part of their beat
-  and do not count. Read-only beats count: the player taps Next on them. No beat is optional. If one
-  becomes optional later, it counts like any other until an ADR says otherwise. In a gap between
-  beats (`delay_ticks`, or waiting for the scripted enemy's step), the folded tab stays with the
-  next beat's number, so the dock does not flicker. After the merges of P593, the lessons
-  have Basics 26, Strikes 10, Air 11 and Support 12 steps.
+- **The counter:** `n/N`, for example "3/26" (answer 2). `n` is the number of the beat on show
+  (1-based) and `N` is the lesson's beat count. A step is a beat. The sub-targets of a chain (§5)
+  are part of their beat and do not count. Read-only beats count: the player taps Next on them. No
+  beat is optional. If one becomes optional later, it counts like any other until an ADR says
+  otherwise. In a gap between beats (`delay_ticks`, or waiting for the scripted enemy's step), the
+  folded tab stays with the next beat's number, so the dock does not flicker. After the merges of
+  P593, the lessons have Basics 26, Strikes 10, Air 11 and Support 12 steps.
 - **Fold rules:**
   - Every new beat opens the card (Michael's rule). The fold state is not kept from step to step or
     from lesson to lesson, and it is never saved.
@@ -132,17 +142,17 @@ plan row P543g (#620), which was a plan row, not an ADR (§8).
   - A beat that turns `stalled()` opens the card once, because the hint line is new.
   - A turn or a resize keeps the fold state.
   - The radio chirp plays when a new beat shows (ADR 0044 §2), not on a fold.
-- **Skip** (question 4, recommended): only on a lesson's first card. After that, the pause menu's
-  "Leave tutorial" (P531, ADR 0044 §2) is the way out at any time. Skip next to the fold control
-  invites a slip that ends the lesson. A dock 272 dp wide upright has no room for Skip, Next and
-  the tab in one row.
+- **Skip** (answer 4): only on a lesson's first card. After that, the pause menu's
+  "Leave tutorial" (P531, ADR 0044 §2; on `main` already) is the way out at any time. Skip next to
+  the fold control would invite a slip that ends the lesson. A dock 272 dp wide upright has no room
+  for Skip, Next and the tab in one row.
 
 ### 3. The target is never hidden
 - HUD targets cannot lie under the open card (§1).
 - Some targets can: a world tile, a control that follows the world (the ghost's check mark and X,
   ADR 0024), and a button of a modal the beat points into (Resume on the pause menu). When the
   active target's ring, grown by 8 dp, or the gesture hint's bounds meet the open
-  card, the card **stays where it is** (question 3, recommended) and does three things:
+  card, the card **stays where it is** (answer 3, A) and does three things:
   - Its body turns see-through (the theme's `GuideCardThrough` panel).
   - Its body lets touches through. Only the tab, Next and Skip take a touch.
   - The ring and the hand are drawn above it.
@@ -249,7 +259,7 @@ plan row P543g (#620), which was a plan row, not an ADR (§8).
   - While any touch is down, and for `hint_idle_ms` (2000) after the last release, the hint hides.
     A fake finger never moves while a real one does.
   - It loops while the beat is on show, also when stalled, and goes with the beat.
-- **Reduced effects** (question 5, recommended): no motion. The hand stands still in its key pose
+- **Reduced effects** (answer 5): no motion. The hand stands still in its key pose
   (finger on the point; for a drag, an arrow along the path; for a pinch, both fingertips with
   outward or inward arrows). ADR 0027 §8 keeps what tells the player something, and this does.
 - **Art:** two hand-written SVGs, `assets/art/svg/ui/guide_hand_point.svg` (one finger) and
@@ -328,7 +338,7 @@ plan row P543g (#620), which was a plan row, not an ADR (§8).
     Its old "covers no button" assertion is replaced by the dock's rule.
   - `test_coach_mark_placement.gd` loses the search's tests. It keeps the 48 dp buttons, the turn,
     the offset parent, Skip by a real touch and the pass-through on the ring.
-  - `test_coach_mark.gd`: Skip only on the first beat (question 4); the reduced test also covers
+  - `test_coach_mark.gd`: Skip only on the first beat (answer 4); the reduced test also covers
     the blink and the hint.
   - `test_lesson_data.gd`: the lead-in rules, the drawer lint, gestures that fit their kind (PINCH
     only with `ZOOM_LEVEL`, DRAG with `CAMERA_PANNED` or a vector), and the merged beats' covers and
@@ -365,11 +375,11 @@ the trademark list of ADR 0023 §13 ("Skip lesson", "Next", the step counter).
 ### 12. What this amends
 - **ADR 0044 §2** (P583's dated note):
   - The card is docked (§1), with a tab and a counter (§2).
-  - Skip is on the first card only (question 4).
+  - Skip is on the first card only (answer 4).
   - The ring blinks (§4) and follows a chain (§5), and gesture hints are added (§6).
-- **`touch-ui-rules`** (P596, with Michael's yes): a "Tutorial guide" paragraph. The dock is under
-  the top row and never covers a corner part. The fold tab is 48 dp. The blink is at most 3 Hz and
-  steady with reduced effects. The hint takes no input.
+- **`touch-ui-rules`** (P596, with Michael's yes to its text): a "Tutorial guide" paragraph. The
+  dock is under the top row and never covers a corner part. The fold tab is 48 dp. The blink is at
+  most 3 Hz and steady with reduced effects. The hint takes no input.
 - **`docs/HOW_TO_PLAY.md`:** a new row `menus-tutorial-guide` (not Teach) and its help text. P585
   adds the row with the blinking frame. Later rows extend it: the card at the top (P588), the fold
   tab and the counter (P589), the frame moving on (P591) and the hand (P592). The rows
@@ -389,11 +399,10 @@ the trademark list of ADR 0023 §13 ("Skip lesson", "Next", the step counter).
 ## Alternatives considered
 - **Keep the search, but prefer the top.** This was rejected. The card would still jump whenever
   the top is taken, and the search's cost and test surface stay.
-- **Dock at the bottom.** This was rejected as the recommendation (question 1). The bottom holds
-  BUILD, the strike button, the command bar and, upright, the drawer sheet. Those are the controls
-  most beats point at.
-- **Fold the card by itself when it covers the target** (question 3, B). This was rejected as the
-  recommendation. At a new step the player would never see the text Michael wants shown.
+- **Dock at the bottom.** This was rejected (answer 1). The bottom holds BUILD, the strike button,
+  the command bar and, upright, the drawer sheet. Those are the controls most beats point at.
+- **Fold the card by itself when it covers the target** (question 3, B). This was rejected
+  (answer 3). At a new step the player would never see the text Michael wants shown.
 - **Move the camera so the target is in view.** This was rejected. It takes the camera from the
   player and breaks the pan beat.
 - **Count steps as lead-ins plus beats.** This was rejected. The total would change with the
@@ -401,17 +410,20 @@ the trademark list of ADR 0023 §13 ("Skip lesson", "Next", the step counter).
 - **A latched chain** (a step once passed stays passed). This was rejected. Closing the drawer
   would leave the ring on a hidden tab.
 
-## Questions for Michael
+## Questions for Michael (answered 2026-11-24: "Ja til alle", every recommendation)
 1. **Where the card docks.** At the top, just under the pill and the radar, between the group
    buttons and the full map, never over them (recommended). Or at the bottom, above BUILD and the
-   command bar.
+   command bar. **Answer: the top.**
 2. **The counter.** "3/26" (recommended: short, shows both numbers, needs no translation). Or "23
-   left". Or "Step 3 of 26".
+   left". Or "Step 3 of 26". **Answer: "3/26".**
 3. **When the target lies under the open card** (a spot on the map, mostly on small landscape
    screens). A: the card stays, turns see-through and lets the touch through, and the blinking frame
    and the hand show on top (recommended). B: the card folds itself to the tab for that step.
+   **Answer: A.**
 4. **Skip lesson.** Only on each lesson's first card, and "Leave tutorial" in the pause menu at any
    time (recommended: the narrow upright card has no room for Skip, Next and the fold tab, and Skip
    beside the fold invites a slip). Or keep Skip on every card, which makes the card taller.
+   **Answer: first card only, plus "Leave tutorial".**
 5. **The hand with Reduced effects on.** A still hand in the gesture's pose, with arrows
    (recommended: Reduced effects keeps what tells the player something). Or no hand at all.
+   **Answer: a still hand with arrows.**
