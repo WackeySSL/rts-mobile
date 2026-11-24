@@ -100,8 +100,8 @@ func test_the_factions_are_listed_by_player_and_the_second_scenario_swaps_them()
 	var first: ScenarioDef = load(Rig.SKIRMISH_PATH) as ScenarioDef
 	assert_str(String(first.factions[1].id)).is_equal("fossil")
 	assert_str(String(first.factions[2].id)).is_equal("renew")
-	assert_str(first.factions[1].display_name).is_equal("Derrick League")
-	assert_str(first.factions[2].display_name).is_equal("Lumen Accord")
+	assert_str(first.factions[1].display_name).is_equal("Nordværn")
+	assert_str(first.factions[2].display_name).is_equal("Facet")
 	var second: ScenarioDef = load(Rig.MIRRORED_PATH) as ScenarioDef
 	assert_object(second.factions[1]).is_same(first.factions[2])
 	assert_object(second.factions[2]).is_same(first.factions[1])

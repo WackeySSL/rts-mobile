@@ -16,7 +16,7 @@ extends Control
 ## view-only.
 
 const FACTION_NAMES: Dictionary[StringName, String] = {
-	&"fossil": "Derrick League", &"renew": "Lumen Accord"
+	&"fossil": "Nordværn", &"renew": "Facet"
 }
 ## The players' triads (ADR 0023 section 5): player 1 Signal, player 2 Arktisk.
 const TRIADS: Array[Array] = [
