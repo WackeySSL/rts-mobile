@@ -1,0 +1,30 @@
+<!-- Guide hand, pointing: white and grey only, tinted at run time (the tutorial's gesture hint for a tap, a press and a drag; the fingertip, at x 87 y 14, is the point it marks). -->
+<!-- Shape: a closed fist seen from the front with one long index finger standing straight up from its left, three short knuckle bumps to the finger's right and a stubby thumb tucked in at the fist's left side. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="216" height="216" viewBox="0 0 216 216">
+  <!-- edge: every part once in the dark grey, a little fatter than its body -->
+  <g fill="#4D4D4D" stroke="#4D4D4D" stroke-width="10" stroke-linejoin="round">
+    <rect x="70" y="18" width="34" height="120" rx="17"/>
+    <rect x="56" y="92" width="116" height="104" rx="30"/>
+    <rect x="104" y="84" width="22" height="50" rx="11"/>
+    <rect x="126" y="84" width="22" height="50" rx="11"/>
+    <rect x="148" y="84" width="22" height="50" rx="11"/>
+    <rect x="34" y="112" width="40" height="60" rx="18" transform="rotate(-20 54 142)"/>
+  </g>
+  <!-- bodies: the lit planes, so white -->
+  <g fill="#FFFFFF">
+    <rect x="70" y="18" width="34" height="120" rx="17"/>
+    <rect x="56" y="92" width="116" height="104" rx="30"/>
+    <rect x="104" y="84" width="22" height="50" rx="11"/>
+    <rect x="126" y="84" width="22" height="50" rx="11"/>
+    <rect x="148" y="84" width="22" height="50" rx="11"/>
+    <rect x="34" y="112" width="40" height="60" rx="18" transform="rotate(-20 54 142)"/>
+  </g>
+  <!-- shade: the fist's lower right and the index finger's right side -->
+  <path d="M172 150 V166 Q172 196 142 196 H100 Q150 190 156 150 Z" fill="#BFBFBF"/>
+  <rect x="94" y="30" width="10" height="100" rx="5" fill="#BFBFBF"/>
+  <!-- the creases between the knuckle bumps, dark -->
+  <g fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linecap="round">
+    <line x1="126" y1="116" x2="126" y2="136"/>
+    <line x1="148" y1="116" x2="148" y2="136"/>
+  </g>
+</svg>
