@@ -68,7 +68,7 @@ func test_every_rule_at_every_size_and_profile() -> void:
 								)
 								if GuideDock.has_room(dock, dp):
 									_check(dock, rects, safe, portrait, dp, why)
-								else:  # Folding is only for the extreme state, and then it is true.
+								else:  # Folding is for two states only (ADR 0048 section 1).
 									var extreme: bool = (
 										not portrait
 										and groups == 5
@@ -76,7 +76,18 @@ func test_every_rule_at_every_size_and_profile() -> void:
 										and extra[1]
 										and extra[2]
 									)
-									assert_bool(extreme).override_failure_message(why).is_true()
+									var cutout: bool = (
+										not portrait
+										and drawer
+										and extra[0]
+										and extra[2]
+										and screen["label"] == "web_phone_small with a cutout"
+									)
+									(
+										assert_bool(extreme or cutout)
+										. override_failure_message(why)
+										. is_true()
+									)
 									(
 										assert_bool(GuideDockRig.free_rect(rects, safe, dp))
 										. override_failure_message(why)

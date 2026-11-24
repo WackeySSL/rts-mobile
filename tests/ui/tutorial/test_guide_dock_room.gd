@@ -60,3 +60,22 @@ func test_a_group_button_below_the_dock_does_not_narrow_it() -> void:
 func _dock(safe: Rect2, portrait: bool, args: Array) -> Rect2:
 	var rects: Dictionary[StringName, Rect2] = GuideDockRig.rects(safe, portrait, 1.0, args)
 	return GuideDock.place(safe, portrait, 1.0, false, rects, SETTINGS)
+
+
+## `web_phone_small with a cutout` (710 x 280 dp), the drawer open, the Ready chip and the 106 dp
+## bar on: the fallback toast spans to the panel's handle clearance, so the dock can only stand
+## under it, and the bar leaves 46 dp there.
+func test_the_fallback_toast_and_the_tall_bar_leave_no_room() -> void:
+	var safe: Rect2 = Rect2(0, 0, 710, 280)
+	var rects: Dictionary[StringName, Rect2] = {
+		HudCorners.DRAWER: Rect2(397.7, 0, 312.3, 280),
+		HudCorners.PILL: Rect2(0, 0, 200, 48),
+		HudCorners.TOAST: Rect2(64, 64, 277.7, 48),
+		HudCorners.BAR: Rect2(0, 174, 120, 106),
+		HudCorners.READY: Rect2(592, 224, 112, 48),
+		HudCorners.group_key(0): Rect2(0, 56, 56, 56),
+	}
+	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, rects, SETTINGS)
+	assert_that(dock).is_equal(Rect2())
+	assert_bool(GuideDock.has_room(dock, 1.0)).is_false()
+	assert_bool(GuideDockRig.free_rect(rects, safe, 1.0)).is_false()

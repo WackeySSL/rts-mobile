@@ -117,11 +117,18 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   at least 48 x 48 dp (the tab's size, §2) fits beside every reserved part, and `GuideDock.has_room`
   says so. The card then folds to its tab (§2) and stays folded until the layout changes. Opening
   the folded tab is the player's explicit choice and may overlay the HUD until it is closed. This
-  is rare. It needs the smallest landscape size (776 x 280 dp) with the group buttons in several
-  columns (five buttons, one to a column, beside the 106 dp command bar), the bar, the Ready chip
-  and the strike aim on together: the group row (x up to 312) and the pinned map (from x 320) then
-  leave no x range, and moving the card below the group row leaves 46 dp. Folding never happens on
-  the profiles of the indicative table (the tests pin that).
+  is rare, and both states are limited to the smallest landscape profile:
+  1. 776 x 280 dp with the group buttons in several columns (five buttons, one to a column, beside
+     the 106 dp command bar), the bar, the Ready chip and the strike aim on together: the group row
+     (x up to 312) and the pinned map (from x 320) leave no x range, and moving the card below the
+     group row leaves 46 dp.
+  2. `web_phone_small` with a cutout (about 710 x 280 dp), the drawer open, the bar and the Ready
+     chip on: the pill and the open panel leave under 200 dp for the toast, so it stands under the
+     top line and spans to the handle's clearance, nothing is left beside it, and the 106 dp bar
+     leaves 46 dp under it.
+
+  In both, the card stays reachable through its tab. Folding never happens on the profiles of the
+  indicative table (the tests pin that).
 
 ### 2. The card and its tab
 - **The open card** has two forms, chosen by the dock's width:
