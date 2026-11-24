@@ -440,7 +440,7 @@ body = "A bar shows above a unit that is selected or was just hurt. Your bars ar
 script = ExtResource("3_ent")
 id = &"combat-under-attack"
 title = "Under attack"
-body = "When something of yours is hit out of view, a red message appears at the top. Tap it to jump the view there. A red wedge on the rim of the radar points that way, and the full map shows a ping. A hit close to the last one soon after does not raise a new message."
+body = "When something of yours is hit out of view, a red message appears at the top. Tap it to jump the view there. A red wedge on the rim of the radar points that way, and the full map shows a ping. A hit close to the last one soon after does not raise a new message. An enemy strike that shuts down your buildings out of view raises one message too."
 
 [sub_resource type="Resource" id="s6"]
 script = ExtResource("2_sec")

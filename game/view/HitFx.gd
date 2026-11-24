@@ -12,7 +12,9 @@ extends RefCounted
 ## the flame pass, the last, so smoke and clouds do not cover a hit. `reduced` keeps the flash and
 ## drops the chips. A hit whose spot is outside the view rect `AirFx` passes is not drawn, as the
 ## damage ring's puffs are not, so a siege off screen does not push the flashes in view out of the
-## ring. No camera shake. View only; allocates nothing after `read`.
+## ring. A blackout STRIKE (ADR 0047 section 8) gives each shown building in its radius that is not
+## the firer's one flash and chips (`_sparks`), the lowest ids first while the ring has room.
+## No camera shake. View only; allocates nothing after `read`.
 ## A stated deviation from ADR 0029 section 7: the chips fly straight along one of the
 ## `hit_chip_fly_px` and fade, not in "short arcs"; an arc needs a velocity per puff in `FxRing`.
 
@@ -85,6 +87,40 @@ func emit(snap: MatchSnapshot, life: LifeSettings, buildings: BuildingLayer, vie
 			var weapon: int = events[at + 5]
 			if weapon >= 0 and weapon < speeds.size() and speeds[weapon] == 0:
 				_hit(snap, at, LifeClock.mix(events[at + 1], snap.tick), 6, life, buildings, view)
+		elif kind == World.Event.STRIKE and events[at + 4] == Strike.Kind.BLACKOUT:
+			_sparks(snap, at, life, buildings, view)
+
+
+# The overload's sparks (ADR 0047 sections 1 and 8) of the blackout record at `at`: a flash and
+# chips on every shown building that is not the firer's within the firing type's radius of the
+# point, by squared distance on the snapshot's positions. The rows are in ascending id order and
+# the ring is not overwritten: once it is full the higher ids get none, so the lowest ids show. A
+# building with a DIED record in this tick shows its collapse instead, and one that is not shown,
+# nothing.
+func _sparks(
+	snap: MatchSnapshot, at: int, life: LifeSettings, buildings: BuildingLayer, view: Rect2
+) -> void:
+	var events: PackedInt32Array = snap.events
+	var firer: int = snap.index_of(events[at + 1])
+	if firer < 0 or snap.type_index[firer] >= snap.type_strike_radius.size():
+		return
+	var radius: int = snap.type_strike_radius[snap.type_index[firer]]
+	for row: int in snap.unit_count():
+		if ring.count() >= life.hit_slots:
+			return
+		var dx: int = snap.pos_x[row] - events[at + 2]
+		var dy: int = snap.pos_y[row] - events[at + 3]
+		if snap.owner[row] == events[at + 5] or dx * dx + dy * dy > radius * radius:
+			continue
+		if not WorldSort.is_building(snap, snap.type_index[row]):
+			continue
+		var id: int = snap.unit_id[row]
+		if not buildings.is_shown(buildings.row_of(id)) or _died(events, id):
+			continue
+		var box: Rect2 = buildings.frame_box(row)
+		if box.size == Vector2.ZERO or not view.has_point(box.get_center()):
+			continue
+		_burst(id, box.get_center(), snap.tick, life, true)
 
 
 # The hit of the record at `at`, id `id`, whose point is at `at + point` and `at + point + 1`.
@@ -121,7 +157,13 @@ func _hit(
 	)
 	if not view.has_point(spot):
 		return
-	var born: float = LifeClock.tick_ms(snap.tick)
+	_burst(id, spot, snap.tick, life, false)
+
+
+# The flash of hit `id` at `spot` and, unless `reduced`, its chips, born at tick `tick`. With
+# `spare` the chips stop when the ring is full, so they never push out an earlier flash.
+func _burst(id: int, spot: Vector2, tick: int, life: LifeSettings, spare: bool) -> void:
+	var born: float = LifeClock.tick_ms(tick)
 	ring.add(Style.FLASH, spot, born, LifeClock.mix(id, SALT_LOOK))
 	if life.reduced:
 		return
@@ -132,6 +174,8 @@ func _hit(
 		return
 	var first: int = LifeClock.pick(id, SALT_LOOK, dirs)
 	for k: int in chips:
+		if spare and ring.count() >= life.hit_slots:
+			return
 		ring.add(Style.CHIP + (first + k) % dirs, spot, born, LifeClock.mix(id, SALT_LOOK + 1 + k))
 
 

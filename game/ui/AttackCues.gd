@@ -9,6 +9,10 @@ extends Node
 ## not a swap on every hit. A hit in the shown cue's own area keeps that cue up, so a steady attack
 ## shows one cue without a gap. A newer cue replaces the one that shows; a cue lives
 ## `attack_toast_ms` of frame time. A new match clears everything.
+## A blackout STRIKE record (the Dusk Array, ADR 0047 section 5) of another player raises one cue
+## when an own building lies within its radius (squared distance on the snapshot) and its point is
+## outside the view; it names the lowest own building id there and is the toast alone, with
+## `rim_wedge` false, while the player's radar is dark. A rupture raises none of its own.
 ## The toast, the scope's rim wedge and the full map's ping read it; none of them keeps a copy.
 ## The numbers are `data/input_settings.tres`'s (ADR 0019 section 5).
 
@@ -23,6 +27,7 @@ const NEVER: float = -1.0e9
 
 var active: bool = false
 var point: Vector2 = Vector2.ZERO  ## World px (the iso screen space) of the hit.
+var rim_wedge: bool = true  ## False for a cue that is the toast alone (the radar is dark).
 var title: String = ""  ## "<NAME> UNDER ATTACK", "UNITS UNDER ATTACK" for a unit.
 
 var _left_ms: float = 0.0  ## What the shown cue has left.
@@ -104,17 +109,47 @@ func scan(snap: MatchSnapshot, player: int, view: Rect2) -> bool:
 			type = snap.type_index[row]
 			var shot: bool = kind == World.Event.SHOT
 			ground = Vector2i(events[at + (6 if shot else 2)], events[at + (7 if shot else 3)])
+		elif kind == World.Event.STRIKE and events[at + 4] == Strike.Kind.BLACKOUT:
+			type = _struck_type(snap, at, player)
+			ground = Vector2i(events[at + 2], events[at + 3])
+			if type < 0:
+				continue
 		else:
 			continue
 		if not view.has_point(IsoProjection.ground_to_px(ground.x, ground.y)):
-			raised = _note(snap, type, ground) or raised
+			var dark: bool = kind == World.Event.STRIKE and _radar_dark(snap, player)
+			raised = _note(snap, type, ground, not dark) or raised
 	return raised
+
+
+## The type of the lowest-id own building within the radius of the blackout record at `at` (the
+## firing type's), or -1 for none, or a record of `player`'s own strike.
+func _struck_type(snap: MatchSnapshot, at: int, player: int) -> int:
+	var events: PackedInt32Array = snap.events
+	var firer: int = snap.index_of(events[at + 1])
+	if events[at + 5] == player or firer < 0:
+		return -1
+	if snap.type_index[firer] >= snap.type_strike_radius.size():
+		return -1
+	var radius: int = snap.type_strike_radius[snap.type_index[firer]]
+	for row: int in snap.unit_count():
+		if snap.owner[row] != player or snap.type_foot_w[snap.type_index[row]] <= 0:
+			continue
+		var dx: int = snap.pos_x[row] - events[at + 2]
+		var dy: int = snap.pos_y[row] - events[at + 3]
+		if dx * dx + dy * dy <= radius * radius:
+			return snap.type_index[row]
+	return -1
+
+
+func _radar_dark(snap: MatchSnapshot, player: int) -> bool:
+	return player < snap.radar_dark.size() and snap.radar_dark[player] != 0
 
 
 ## One hit out of view. In the shown cue's own area it keeps that cue up (a steady attack is one
 ## cue, with no gap). A repeat in another area that is still within its interval raises nothing;
 ## anything else raises a cue.
-func _note(snap: MatchSnapshot, type: int, ground: Vector2i) -> bool:
+func _note(snap: MatchSnapshot, type: int, ground: Vector2i, rim: bool = true) -> bool:
 	var area: int = _area_of(ground)
 	if area >= 0 and active and area == _shown_area:
 		_left_ms = float(_settings().attack_toast_ms)
@@ -133,6 +168,7 @@ func _note(snap: MatchSnapshot, type: int, ground: Vector2i) -> bool:
 	_area_y[area] = ground.y
 	_area_ms[area] = _clock_ms
 	_shown_area = area
+	rim_wedge = rim
 	var building: bool = snap.type_foot_w[type] > 0
 	title = (snap.type_names[type].to_upper() if building else "UNITS") + " UNDER ATTACK"
 	point = IsoProjection.ground_to_px(ground.x, ground.y)
