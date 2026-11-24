@@ -37,6 +37,8 @@ env:
   GDTOOLKIT_VERSION: "4.5.0"
   SCONS_VERSION: "4.9.1"
   CLANG_FORMAT_VERSION: "20.1.8"
+  # The web load guard (P451b): the browser it drives is the one this version downloads.
+  PLAYWRIGHT_VERSION: "1.55.0"
   # godot-cpp's SConstruct caches objects here, outside the workspace (the tree stays clean).
   SCONS_CACHE: /home/runner/.cache/rts-mobile-scons
 
@@ -87,6 +89,10 @@ jobs:
       - name: Offline test of the AAB export and its checks
         run: bash scripts/ci/test-aab.sh
 
+      # The web load guard's own test (P451b): usage errors and verdicts against a stub playwright module.
+      - name: Offline test of the web load guard
+        run: bash scripts/ci/test-check-web-load.sh
+
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
         run: |
@@ -124,6 +130,37 @@ jobs:
       # non-empty artifacts, wasm size, threads off and the dev_menu custom feature.
       - name: Export web build
         run: bash scripts/export-web.sh
+
+      # P451b: export-web.sh scans only the export log. A script that exports fine but does not compile in the
+      # running build, or a main menu that is dead, only shows in the browser. The build is loaded in headless
+      # Chromium (Pixel 7 emulation) twice: with a fresh profile, and with a minimal save written into the
+      # IndexedDB that backs user://, where the main menu must come up and answer a tap on SKIRMISH. Each load waits
+      # for the boot marker (boot_ms=, 90 s at most) and then watches the console for 5 s: SCRIPT ERROR, Parse
+      # Error, Compile Error, Failed to load script. About 2 min with a warm browser cache. Playwright is installed
+      # outside the workspace (the tree stays clean); the Chromium download is cached under the pinned version.
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          # ubuntu-24.04 is spelled out because the job's runs-on is; change both together.
+          key: playwright-${{ env.PLAYWRIGHT_VERSION }}-chromium-ubuntu-24.04
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" "playwright@${PLAYWRIGHT_VERSION}"
+          if [ "${CACHE_HIT}" = "true" ]; then
+            "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install-deps chromium
+          else
+            "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          fi
+        env:
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+
+      - name: Load the web build in headless Chromium
+        run: bash scripts/ci/check-web-load.sh build/web
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
 
       # verify.sh's dirty marker uses `git diff --quiet`, which misses untracked files such as a
       # forgotten .gd.uid or .import file. build/ and reports/ are git-ignored.
