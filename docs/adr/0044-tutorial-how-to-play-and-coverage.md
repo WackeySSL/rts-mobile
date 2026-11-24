@@ -69,6 +69,21 @@ the plan are this ADR's.
   Tutorial screen, Settings and How to play. One-time XP per lesson (ADR 0045).
 - Text only, with a radio chirp per card (question 2).
 
+Status note (2026-11-24, P583; ADR 0048 accepted by Michael, "Ja til alle"; the text above stays
+as accepted): ADR 0048 (tutorial guide v2) amends the `CoachMark` bullet above.
+- **The card is docked** in one place under the top HUD row (ADR 0048 §1). It is no longer placed
+  beside the ring by ADR 0015's rules, and P543g's free-place search is retired (ADR 0048 §8).
+- **A tab with the step counter** (`n/N`, for example "3/26") folds and unfolds the card. The card
+  opens again at every new beat (ADR 0048 §2).
+- **Skip lesson** is on a lesson's first card only. After that, "Leave tutorial" in the pause menu
+  is the way out (ADR 0048 §2).
+- **The ring blinks**, and it holds still with Reduced effects (ADR 0048 §4). It follows a beat's
+  chain of sub-targets (`lead_in`, ADR 0048 §5).
+- **Gesture hints:** a drawn hand shows the gesture, and it stands still with Reduced effects (ADR
+  0048 §6).
+- A card over a target turns see-through and lets touches through (ADR 0048 §3). "It never takes
+  a gesture the beat asks for" stands.
+
 ### 3. The How to play screen
 - Opened from the main menu, Settings and the pause menu (P531). Sections as in `HOW_TO_PLAY.md`;
   each row's player text.
