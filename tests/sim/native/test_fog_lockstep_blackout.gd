@@ -11,7 +11,8 @@ extends GdUnitTestSuite
 ##   library has: blackouts written the way a strike writes them (`offline_until` = stamp + length),
 ##   one written again while the first stands, a row that dies while cut, a blackout that outlasts
 ##   the run, a row added already blacked out (never stamped), and the rule switched off and on
-##   again in the middle, over walkers that move, die and are born.
+##   again in the middle, and player 2's map sweep standing over a cut (the kernel unstamps under
+##   Reveal's +1), over walkers that move and are born.
 ## - Seeded random blackouts on every row over walkers, 24 states.
 ## The floors are measured and set at about two thirds of the figures beside each one.
 
@@ -23,7 +24,9 @@ const TICKS: int = 60
 const STATES: int = 24
 ## The script, in ticks: a blackout of id 1 (14 steps), of id 3 (20), of id 5 (30, still on at the
 ## end), id 1's again while it stands (and again once it is over), the death of id 3 while cut, a
-## row added already blacked out, and the rule off and on.
+## row added already blacked out, the rule off and on, and player 2's map sweep on from tick 5 to
+## the death of its site at tick 48, so that id 3's cut and the sweep's +1 meet (the kernel unstamps
+## under the whole-map count: no flip, no dirty entry).
 const BLACK_1: int = 3
 const BLACK_3: int = 8
 const BLACK_5: int = 12
@@ -31,6 +34,8 @@ const BLACK_1_AGAIN: int = 10
 const BLACK_1_LATER: int = 24
 const KILL_3: int = 16
 const ADD_CUT: int = 20
+const SWEEP_ON: int = 5
+const SWEEP_OFF: int = 48
 const RULE_OFF: int = 34
 const RULE_ON: int = 42
 ## The scripted run of both cadences and both masks together, measured: 14 cuts.
@@ -59,8 +64,8 @@ func _build(period: int, rule: int) -> World:
 ## What a strike writes: the stamp of the tick plus the length, kept if it is longer already.
 func _black_out(world: World, id: int, tick: int, length: int) -> void:
 	var row: int = world.index_of(id)
-	if row >= 0:
-		world.offline_until[row] = maxi(world.offline_until[row], tick + 1 + length)
+	assert_int(row).override_failure_message("id %d is gone" % id).is_greater_equal(0)
+	world.offline_until[row] = maxi(world.offline_until[row], tick + 1 + length)
 
 
 func _script(world: World, tick: int, salt: int) -> Array[Command]:
@@ -76,8 +81,15 @@ func _script(world: World, tick: int, salt: int) -> Array[Command]:
 		_black_out(world, 1, tick, 6)
 	elif tick == KILL_3:
 		var row: int = world.index_of(3)
-		if row >= 0:
-			world.hp[row] = 0
+		assert_int(row).override_failure_message("id 3 is gone").is_greater_equal(0)
+		world.hp[row] = 0
+	elif tick == SWEEP_ON:
+		world.reveal_site[2] = 4
+		world.reveal[2] = Reveal.State.ON
+	elif tick == SWEEP_OFF:
+		var site: int = world.index_of(4)
+		assert_int(site).override_failure_message("id 4 is gone").is_greater_equal(0)
+		world.hp[site] = 0
 	elif tick == ADD_CUT:
 		var added: int = world.add_unit(2, 0, Worlds.centre(3), Worlds.centre(3))
 		_black_out(world, added, tick, 25)
@@ -85,7 +97,7 @@ func _script(world: World, tick: int, salt: int) -> Array[Command]:
 		world.blackout_sight_cut = 0
 	elif tick == RULE_ON:
 		world.blackout_sight_cut = 1
-	return Orders.walkers(world, tick, salt, 3, 3)
+	return Orders.walkers(world, tick, salt, 0, 3)
 
 
 ## Seeded blackouts: about one row in 25 each tick is blacked out for 1 to 40 steps.
@@ -106,8 +118,12 @@ func test_a_scripted_blackout_matches_the_twin_at_both_cadences_and_masks() -> v
 			rig.derive_every = 1
 			var orders: Callable = _script.bind(5 + period)
 			var label: String = "period %d, mask %d" % [period, mask]
+			var swept: int = 0
 			for _tick: int in TICKS:
 				assert_str(rig.step(orders)).override_failure_message(label).is_empty()
+				swept += int(rig.worlds[0].reveal[2] == Reveal.State.ON)
+			assert_int(swept).override_failure_message(label).is_greater(30)
+			assert_int(rig.tally()[&"cuts"]).override_failure_message(label).is_greater_equal(2)
 			cuts += rig.tally()[&"cuts"]
 	assert_int(cuts).is_greater_equal(SCRIPT_CUTS_FLOOR)
 

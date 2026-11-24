@@ -6,6 +6,9 @@ extends GdUnitTestSuite
 ## Sim.step runs it, and the two Worlds are compared in full (StateDiff). The twin's targets are
 ## held to what the rule says, so two versions that agree on the wrong answer fail as well.
 ##
+## The lookout is a unit type with a hand-written `offline_until` (no strike writes one on a unit;
+## the lockstep only needs a row the cut can reach).
+##
 ## Player 1's gun (id 1, sight 1500, reach 4000) stands at tile (10, 10), its lookout (id 2, sight
 ## 4000, no weapon) at tile (9, 10), and player 2's gun (id 3) at tile (13, 10): 3 tiles from the
 ## gun, outside the gun's own disc (1 tile) and inside the lookout's (4 tiles). The enemy moves,

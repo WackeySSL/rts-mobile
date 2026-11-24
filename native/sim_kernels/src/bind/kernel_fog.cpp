@@ -2,11 +2,12 @@
 // of each of their rows to the cell of its position, in place over the arrays of the World and of its FogGrid (the visible
 // counts, the explored bytes, the version, the dirty-list blocks, their counts and flags, and the `listed` marks), and the
 // cells the stamps cover are added to stats[FOG_CELLS]. FogUpdate.begin (the dirty lists emptied before the removal),
-// World.remove_dead's unstamp and World.prepare's initial stamp stay GDScript. A row that is blacked out while `blackout_sight_cut` is 1 wants cell -1 (ADR 0047 section 2). The rules are core/fog.h's, a mirror of
+// World.remove_dead's unstamp and World.prepare's initial stamp stay GDScript. A row that is blacked out while `blackout_sight_cut` is 1 wants cell -1
+// (ADR 0047 section 2). The rules are core/fog.h's, a mirror of
 // FogUpdate.gd and FogGrid.gd; this file borrows the arrays once on entry and adds the count on exit.
 // Twin: game/sim/FogUpdate.gd (run). Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both
 // implementations and tests/sim/native/test_fog_kernel.gd; lockstep (P46n2): tests/sim/native/test_fog_lockstep.gd,
-// test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
+// test_fog_lockstep_cases.gd, test_fog_lockstep_random.gd and test_fog_lockstep_blackout.gd (the vision cut, P573). MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>

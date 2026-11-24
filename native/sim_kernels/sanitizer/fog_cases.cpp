@@ -3,8 +3,9 @@
 // array at its exact size. The states come from the seed-42 arena (the dumps of tests/sim/native/sanitizer/dump_states.gd) and from
 // crafted scenes. Sanitizers judge memory and undefined behaviour, not answers: the discs and flips of the rules are the gdUnit4
 // suites' (test_fog*.gd under both implementations, test_fog_kernel.gd), and only what needs no second implementation is checked
-// here (no dirty count past its block, a mark is 0 or 1, a row that moved stands on a cell of the map (or is cut, -1, while the vision cut is on), the cells covered stay within
-// what the stamps can reach). The build has no -fwrapv, so the range that core/fog.h records is run at its edges: positions and
+// here (no dirty count past its block, a mark is 0 or 1, a row that moved stands on a cell of the map or is cut, -1, while the
+// vision cut is on and its `offline_until` is above `tick + 1`, the cells covered stay within what the stamps can reach). The
+// build has no -fwrapv, so the range that core/fog.h records is run at its edges: positions and
 // counts at the ends of int32, a tick near 2^62, the cadence at the ends of int64, and masks whose tables hold the ends of int32.
 // Plain C++17, no Godot header. MIT.
 // Twin: bind/kernel_fog.cpp (call() below is the same fog::run, with the arrays of the World replaced by vectors). A change to that
@@ -90,8 +91,8 @@ void check(const State &state, const std::vector<int32_t> &before, int64_t cover
 		}
 	}
 	for (size_t row = 0; row < state.fog_cell.size(); row++) {
-		// -1 is a cut row (ADR 0047 section 2), possible only while the rule is on.
-		const bool cut = state.fog_cell[row] == -1 && state.rules.blackout_sight_cut == 1;
+		// -1 is a cut row (ADR 0047 section 2): only while the rule is on and the row is blacked out at the stamp tick + 1.
+		const bool cut = state.fog_cell[row] == -1 && state.rules.blackout_sight_cut == 1 && state.offline_until[row] > state.rules.tick + 1;
 		if (state.fog_cell[row] != before[row] && !cut && (state.fog_cell[row] < 0 || state.fog_cell[row] >= state.cells)) {
 			throw Finding(where + "row " + std::to_string(row) + " moved to the cell " + std::to_string(state.fog_cell[row]));
 		}

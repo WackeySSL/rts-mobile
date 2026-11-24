@@ -1,11 +1,13 @@
 extends GdUnitTestSuite
-## The vision cut at rule 0 is bit for bit what main did before P573 (plan row P573, ADR 0047 section
-## 6): a match in which a Dusk Array blacks a building out, run on the rig of strike_worlds.gd with
-## the rule left at its default 0, ends on the state hash that the commit before the cut (47d3f7c5)
-## gave for the same match, in the GDScript twin and in the FOG kernel. The rule at 1 gives another
-## one, so the comparison is not blind to what the cut writes (`fog_cell` of the cut rows).
-## The match: the array of player 1 fires at the point of the rig with a shed of player 2 on it and a
-## tank of player 1 two tiles off, then 60 more ticks.
+## The vision cut at rule 0 is bit for bit what main did before P573 (plan row P573, ADR 0047
+## section 6): a match in which a Dusk Array blacks a building out, run on the rig of
+## strike_worlds.gd with the rule left at its default 0, ends on the state hash that the commit
+## before the cut (47d3f7c5) gave for the same match, in the GDScript twin and in the FOG kernel.
+## The rule at 1 gives another one, so the comparison is not blind to what the cut writes
+## (`fog_cell` of the cut rows). The match: the array of player 1 fires at the point of the rig
+## with a shed of player 2 on it and a tank of player 1 two tiles off, then 60 more ticks.
+## A re-pin of MAIN_HASH (a change that moves the rig's match on purpose) means recomputing the
+## hash on the parent commit of that change, never on the change itself.
 
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
 const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")

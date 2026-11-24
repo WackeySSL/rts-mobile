@@ -44,7 +44,8 @@ var dirty_capacity: int = 0
 ## cell of the player's block while its map sweep is stamped (`revealed`, ADR 0036 section 11).
 ## Derived state, not hashed (ADR 0016): it equals the discs of the player's rows (owner,
 ## type_index and fog_cell, which are hashed) stamped at their cells and the sweep of the player
-## whose `reveal` is 1 (hashed), and a test rebuilds it from them.
+## whose `reveal` is 1 (hashed), and a test rebuilds it from them. A row blacked out while
+## `blackout_sight_cut` is 1 has `fog_cell` -1 and so no disc (ADR 0047 section 2).
 var visible: PackedInt32Array = PackedInt32Array()
 ## 1 once any disc of the player has covered the cell, same layout. Never cleared.
 var explored: PackedByteArray = PackedByteArray()

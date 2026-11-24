@@ -10,8 +10,14 @@ extends GdUnitTestSuite
 const Worlds: GDScript = preload("res://tests/sim/support/fog_worlds.gd")
 const Derivation: GDScript = preload("res://tests/sim/support/fog_derivation.gd")
 const Strikes: GDScript = preload("res://tests/sim/support/strike_worlds.gd")
+const SimImpls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const SIGHTS: Array[int] = [3000]
 const TILE: int = World.MILLI_PER_TILE
+
+
+## Both FOG implementations: the strike-rig tests below run in the twin and in the kernel.
+func _both() -> Array[Array]:
+	return SimImpls.CASES.duplicate(true)
 
 
 ## Player 1's row (id 1) on tile (10, 10) and player 2's (id 2) on tile (20, 10), one type of sight
@@ -119,11 +125,11 @@ func test_the_disc_comes_back_when_the_blackout_ends() -> void:
 	assert_array(Array(world.fog.visible)).is_equal(Array(before))
 
 
-func test_another_building_or_a_unit_still_covers_the_cells_a_cut_row_shared() -> void:
+func test_a_unit_still_covers_the_cells_a_cut_building_shared() -> void:
 	var world: World = _field(1)
 	var unit: int = world.add_unit(1, 0, Worlds.centre(12), Worlds.centre(10))
 	_phase(world)  # Stamps the added unit.
-	var shared: int = 11 * 30 + 10 - 30  # Tile (10, 9) lies in both discs.
+	var shared: int = 10 * 30 + 10  # Tile (10, 10), the cut row's own, lies in both discs.
 	assert_int(world.fog.visible[shared]).is_equal(2)
 	world.offline_until[0] = 50
 	_phase(world)
@@ -192,8 +198,9 @@ func test_prepare_leaves_a_row_that_is_offline_unstamped() -> void:
 ## The rig world with real fog and the rule on, a Dusk Array of player 1 ready to fire, a shed of
 ## player 2 on the strike's point, and a tank of player 1 two tiles from the shed, which only the
 ## shed sees of player 2's rows (the shipped HQ stands far away).
-func _rig() -> Dictionary:
+func _rig(impl: int) -> Dictionary:
 	var world: World = Strikes.world(false)
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.FOG)).is_empty()
 	world.blackout_sight_cut = 1
 	Strikes.run_to(world, Strikes.fire_tick(world, Strikes.ARRAY))
 	var shed: int = world.add_building(2, Strikes.type_of(world, "shed"), 15, 10)
@@ -207,8 +214,10 @@ func _turn(world: World, player: int, tick: int) -> bool:
 	return (tick - player + 1) % world.fog_period_ticks == 0
 
 
-func test_a_blacked_out_shed_blinds_its_owner_and_the_sight_returns() -> void:
-	var rig: Dictionary = _rig()
+func test_a_blacked_out_shed_blinds_its_owner_and_the_sight_returns(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var rig: Dictionary = _rig(impl)
 	var world: World = rig.world
 	var shed_row: int = world.index_of(rig.shed)
 	var fire_tick: int = world.tick
@@ -251,9 +260,11 @@ func test_a_blacked_out_shed_blinds_its_owner_and_the_sight_returns() -> void:
 
 ## ADR 0047 section 4: the fog a victim loses is the fog every reader of it loses, so the view of
 ## player 2 (what its AI reads) says exactly what its fog block says, with the cut and without it.
-func test_the_victims_view_equals_its_fog_block_with_and_without_the_cut() -> void:
+func test_the_victims_view_equals_its_fog_block_with_and_without_the_cut(
+	impl: int, _test_parameters := _both()
+) -> void:
 	for rule: int in [1, 0]:
-		var rig: Dictionary = _rig()
+		var rig: Dictionary = _rig(impl)
 		var world: World = rig.world
 		world.blackout_sight_cut = rule
 		var rifle_row: int = world.index_of(rig.rifle)
@@ -276,8 +287,10 @@ func test_the_victims_view_equals_its_fog_block_with_and_without_the_cut() -> vo
 			)
 
 
-func test_units_keep_their_sight_and_no_unit_row_gets_an_offline_until() -> void:
-	var rig: Dictionary = _rig()
+func test_units_keep_their_sight_and_no_unit_row_gets_an_offline_until(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var rig: Dictionary = _rig(impl)
 	var world: World = rig.world
 	var rifle_row: int = world.index_of(rig.rifle)  # Player 2's unit, inside the ring.
 	Strikes.step(world, [Strikes.fire(Strikes.ARRAY)])
@@ -316,8 +329,9 @@ func _remembered(world: World, player: int) -> Array[int]:
 ## Player 2's shed on the strike's point sees player 1's building A (id of `plant`, 3 tiles off);
 ## the array fires at the 7th tick and `later` is a building that player 1 raises in the shed's disc
 ## after the cut. Returns [world, plant id, later id]; the World has stepped 14 ticks past the fire.
-func _memory_match(rule: int) -> Array:
+func _memory_match(rule: int, impl: int) -> Array:
 	var world: World = Strikes.world(false)
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.FOG)).is_empty()
 	world.blackout_sight_cut = rule
 	world.add_building(2, Strikes.type_of(world, "shed"), 15, 10)
 	var plant: int = world.add_building(1, Strikes.type_of(world, "plant"), 17, 9)
@@ -334,8 +348,10 @@ func _memory_match(rule: int) -> Array:
 	return [world, plant, later]
 
 
-func test_last_seen_keeps_its_record_and_makes_none_where_nothing_sees() -> void:
-	var cut: Array = _memory_match(1)
+func test_last_seen_keeps_its_record_and_makes_none_where_nothing_sees(
+	impl: int, _test_parameters := _both()
+) -> void:
+	var cut: Array = _memory_match(1, impl)
 	var world: World = cut[0]
 	var shed_row: int = world.index_of(6)
 	assert_int(world.fog_cell[shed_row]).is_equal(-1)  # The shed is cut.
@@ -343,12 +359,15 @@ func test_last_seen_keeps_its_record_and_makes_none_where_nothing_sees() -> void
 	assert_array(_remembered(world, 2)).is_equal([cut[1]])
 	assert_bool(Targeting.sees(world, 2, 16500, 12500)).is_false()
 	# Without the cut the shed still sees the new building and remembers it.
-	var open: Array = _memory_match(0)
+	var open: Array = _memory_match(0, impl)
 	assert_array(_remembered(open[0], 2)).is_equal([open[1], open[2]])
 
 
-func test_a_sweep_that_is_on_still_shows_the_whole_map_during_a_cut() -> void:
+func test_a_sweep_that_is_on_still_shows_the_whole_map_during_a_cut(
+	impl: int, _test_parameters := _both()
+) -> void:
 	var world: World = Strikes.world(false)
+	assert_array(SimImpls.attach(world, impl, SimProbe.Phase.FOG)).is_empty()
 	world.blackout_sight_cut = 1
 	var shed: int = world.add_building(2, Strikes.type_of(world, "shed"), 15, 10)
 	Strikes.stamp(world)

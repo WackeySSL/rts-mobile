@@ -13,9 +13,9 @@
 // Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both implementations (the last through
 // tests/sim/support/fog_stamper.gd, as there is no test-only bound entry) and tests/sim/native/test_fog_kernel.gd (the names,
 // the in-place writes, the guards and the range); lockstep (P46n2, the 900-tick arena runs and the crafted cases):
-// tests/sim/native/test_fog_lockstep.gd, test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
+// tests/sim/native/test_fog_lockstep.gd, test_fog_lockstep_cases.gd, test_fog_lockstep_random.gd and test_fog_lockstep_blackout.gd (the vision cut, P573). MIT.
 //
-// Range. The pass is exact in int64 while `tick - player + 1` stays inside int64 (a match counter, a few million at the
+// Range. The pass is exact in int64 while `tick - player + 1` and `tick + 1` (the blackout stamp, computed on every call) stay inside int64 (a match counter, a few million at the
 // most), and while the sides of the grid make its cells (configure() does): the sizes of the arrays are checked against
 // `player_count * cells`, not against `cols * rows`, so a grid that says otherwise is no fog at all (see usable()) and no
 // index can overflow. The mask tables are as add_mask() builds them: a radius and half-widths below 2^31 (an int32 element).

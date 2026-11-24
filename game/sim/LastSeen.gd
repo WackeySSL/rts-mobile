@@ -4,12 +4,12 @@ extends RefCounted
 ## last phase of a tick, updates the records of the players whose fog turn FOG ran this tick
 ## (`FogUpdate`'s rule: player p on the ticks with `(tick - p + 1) % fog_period_ticks == 0`), so a
 ## player's memory moves when its sight does. A record is a building a player saw and has not seen
-## gone: its id, type, owner and cell (the tile of its footprint centre, the row's `fog_cell`; the
-## footprint follows from the cell and the type's size, as the view draws it). Record `i` of player
-## `p` is entry `p * ghost_cap + i` of the four record arrays of `World.GHOST_ARRAYS`, live below
-## `ghost_count[p]`. The records are history: hashed, live entries only (`WorldHash`), and nothing
-## in the sim reads them; `PlayerView` copies a player's block, and the view draws them (plan row
-## P115c). The phase is GDScript only (ADR 0017 section 8).
+## gone: its id, type, owner and cell (the tile of its footprint centre, taken from the row's
+## position; the footprint follows from the cell and the type's size, as the view draws it).
+## Record `i` of player `p` is entry `p * ghost_cap + i` of the four record arrays of
+## `World.GHOST_ARRAYS`, live below `ghost_count[p]`. The records are history: hashed, live entries
+## only (`WorldHash`), and nothing in the sim reads them; `PlayerView` copies a player's block, and
+## the view draws them (plan row P115c). The phase is GDScript only (ADR 0017 section 8).
 ##
 ## A building is seen when any cell of its footprint is visible to the player (P77b), the rule of
 ## `BuildingLayer.is_seen` and `any_cell_seen`: a building seen at a corner is remembered, and a
