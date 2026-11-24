@@ -299,3 +299,72 @@ func test_units_keep_their_sight_and_no_unit_row_gets_an_offline_until() -> void
 	assert_bool(world.fog_cell[rifle_row] >= 0).is_true()
 	assert_bool(world.fog_cell[world.index_of(rig.shed)] == -1).is_true()
 	assert_bool(Targeting.sees(world, 2, 16500, 12500)).is_true()  # The rifle's own sight.
+
+
+# ---- LastSeen and the sweep ----
+
+
+## The ids of the buildings player `player` remembers.
+func _remembered(world: World, player: int) -> Array[int]:
+	var found: Array[int] = []
+	var first: int = player * world.ghost_cap
+	for record: int in world.ghost_count[player]:
+		found.append(world.ghost_id[first + record])
+	return found
+
+
+## Player 2's shed on the strike's point sees player 1's building A (id of `plant`, 3 tiles off);
+## the array fires at the 7th tick and `later` is a building that player 1 raises in the shed's disc
+## after the cut. Returns [world, plant id, later id]; the World has stepped 14 ticks past the fire.
+func _memory_match(rule: int) -> Array:
+	var world: World = Strikes.world(false)
+	world.blackout_sight_cut = rule
+	world.add_building(2, Strikes.type_of(world, "shed"), 15, 10)
+	var plant: int = world.add_building(1, Strikes.type_of(world, "plant"), 17, 9)
+	Strikes.stamp(world)
+	Strikes.run_to(world, Strikes.fire_tick(world, Strikes.ARRAY))
+	assert_array(_remembered(world, 2)).is_equal([plant])  # Seen before the strike.
+	Strikes.step(world, [Strikes.fire(Strikes.ARRAY)])
+	for _step: int in 6:
+		Strikes.step(world)
+	var later: int = world.add_building(1, Strikes.type_of(world, "shed"), 16, 12)
+	Strikes.stamp(world)
+	for _step: int in 7:
+		Strikes.step(world)
+	return [world, plant, later]
+
+
+func test_last_seen_keeps_its_record_and_makes_none_where_nothing_sees() -> void:
+	var cut: Array = _memory_match(1)
+	var world: World = cut[0]
+	var shed_row: int = world.index_of(6)
+	assert_int(world.fog_cell[shed_row]).is_equal(-1)  # The shed is cut.
+	# The record of the building seen before the cut stays, and the one raised in the dark has none.
+	assert_array(_remembered(world, 2)).is_equal([cut[1]])
+	assert_bool(Targeting.sees(world, 2, 16500, 12500)).is_false()
+	# Without the cut the shed still sees the new building and remembers it.
+	var open: Array = _memory_match(0)
+	assert_array(_remembered(open[0], 2)).is_equal([open[1], open[2]])
+
+
+func test_a_sweep_that_is_on_still_shows_the_whole_map_during_a_cut() -> void:
+	var world: World = Strikes.world(false)
+	world.blackout_sight_cut = 1
+	var shed: int = world.add_building(2, Strikes.type_of(world, "shed"), 15, 10)
+	Strikes.stamp(world)
+	# Player 2's headquarters (id 5, outside the ring) stands in for its space centre.
+	world.reveal_site[2] = Strikes.HQ_2
+	world.reveal[2] = Reveal.State.ON
+	Strikes.run_to(world, Strikes.fire_tick(world, Strikes.ARRAY))
+	Strikes.step(world, [Strikes.fire(Strikes.ARRAY)])
+	for _step: int in 8:
+		Strikes.step(world)
+	assert_int(world.fog_cell[world.index_of(shed)]).is_equal(-1)
+	assert_int(world.reveal[2]).is_equal(Reveal.State.ON)
+	var fog: FogGrid = world.fog
+	for at: int in fog.cells:
+		assert_int(fog.visible[fog.cells + at]).override_failure_message("cell %d" % at).is_greater(
+			0
+		)
+	assert_bool(Targeting.sees(world, 2, 28500, 1500)).is_true()
+	assert_str(Derivation.mismatch(world)).is_empty()
