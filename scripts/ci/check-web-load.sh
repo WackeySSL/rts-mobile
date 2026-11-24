@@ -22,9 +22,11 @@
 #        1 a SCRIPT ERROR / Parse Error / Compile Error / Failed to load script / boot_error line, or an
 #          uncaught page error (the lines are printed; at once, also before the boot marker)
 #        2 usage error (also a port above 65535), or DIR has no index.html
-#        4 the main menu did not answer the tap on SKIRMISH (the screen did not change)
+#        4 the main menu is not what showed: the screen kept changing before the tap on SKIRMISH, or did not
+#          change after it
 #        3 no boot marker within the boot timeout (the engine did not start; the last console lines and the
-#          page text are printed), a tool is missing, the server did not start, or the browser could not
+#          page text are printed), the seeded save is not in IndexedDB after the boot, a tool is missing, the
+#          server did not start, or the browser could not
 #          load the page
 # Always stops the server it started. Bash 3.2 compatible.
 set -euo pipefail

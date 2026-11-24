@@ -12,7 +12,10 @@
 //   under /userfs, the file /userfs/godot/app_userdata/rts-mobile/save.cfg, format of game/meta/save_service.gd:
 //   a "; sha256=<hex of the body>" line, then the ConfigFile text). The page is loaded again, booted, watched, and
 //   the SKIRMISH button of the main menu is tapped: the screen must change (screenshots before and after).
-//   A menu that did not come up, or does not answer, fails the check.
+//   Before the tap the screen must be static (two screenshots 500 ms apart are equal): with a save that is not
+//   read, the first-launch lesson would start a match, the screen would always change, and a tap check would
+//   pass on it. The save is also read back from IndexedDB (xp=500 must still be in it). The console is checked
+//   once more after the tap. A menu that did not come up, is not static, or does not answer fails the check.
 //
 // The boot marker is the console line "boot_ms=<n>" that IntroPlayer prints once the intro has handed over the
 // menu (game/view/intro/IntroPlayer.gd). The page's `load` event comes long before the wasm and the pack are
@@ -27,9 +30,10 @@
 //         marker)
 //       2 usage error
 //       3 no boot marker within the boot timeout (the engine did not start: no WebGL2, a 404, a failed wasm; the
-//         last console lines and the page text are printed), the save could not be written, the browser could
-//         not be started, or the page could not be loaded
-//       4 the main menu did not answer: the screen did not change after the tap on SKIRMISH
+//         last console lines and the page text are printed), the save could not be written or is not in
+//         IndexedDB after the boot, the browser could not be started, or the page could not be loaded
+//       4 the main menu is not what showed: the screen kept changing before the tap, or did not change after the tap
+//         on SKIRMISH
 'use strict';
 
 // What Godot prints to the browser console when a script does not compile or load. "SCRIPT ERROR" covers runtime
@@ -41,9 +45,14 @@ const TAIL_LINES = 15;
 // Fractions of the viewport (x, y). Accept: FakeConsentForm, measured on a 412x839 viewport. SKIRMISH: the first
 // button of the main menu.
 const TAP_ACCEPT = [0.5, 0.469];
+// SKIRMISH is the second button of the main menu (MainMenu._ready builds CONTINUE, SKIRMISH, TUTORIAL, HOW TO
+// PLAY, SETTINGS in that order). CONTINUE is hidden while there is no resume file, which is the case in this
+// clean profile, so SKIRMISH sits first on the screen; with CONTINUE visible this position would be CONTINUE
+// (and the check would still see the screen change). Reorder MainMenu and this fraction moves.
 const TAP_SKIRMISH = [0.5, 0.2185];
 const SAVE_DIR = '/userfs/godot/app_userdata/rts-mobile';
-const SAVE_BODY = '[meta]\n\nversion=1\napp_version=""\n\n[progress]\n\nxp=500\n';
+const SAVE_XP = 500;
+const SAVE_BODY = '[meta]\n\nversion=1\napp_version=""\n\n[progress]\n\nxp=' + SAVE_XP + '\n';
 
 class Fail extends Error {
   constructor(code, lines) {
@@ -96,6 +105,11 @@ async function boot(context, url, label, watchSeconds, bootTimeoutSeconds) {
   let lastTap = 0;
   while (!booted && !failNow && Date.now() < deadline) {
     if (Date.now() - started > 1500 && Date.now() - lastTap >= 1000) {
+      // A round trip to the page delivers the console events that are already on their way, so a marker printed
+      // just before is seen here, and no tap lands on the live menu (where the position is the gap above the
+      // rank label, no button, in any case).
+      await page.evaluate(() => 0);
+      if (booted || failNow) break;
       const vp = page.viewportSize();
       await page.touchscreen.tap(vp.width * TAP_ACCEPT[0], vp.height * TAP_ACCEPT[1]);
       lastTap = Date.now();
@@ -122,12 +136,38 @@ async function boot(context, url, label, watchSeconds, bootTimeoutSeconds) {
   }
   // After the marker, or after a hit (for the "at:" lines that follow it), keep watching.
   await page.waitForTimeout(failNow ? 500 : watchSeconds * 1000);
-  if (hits.length > 0) {
-    const lines = [label + ': the web build logged script errors' + (booted ? '' : ' before it booted') + ':'];
-    for (const line of hits.slice(0, 40)) lines.push('  ' + line);
-    throw new Fail(1, lines);
-  }
-  return { page, bootText };
+  failOnHits(label, hits, booted ? 'after it booted' : 'before it booted');
+  // `hits` goes on filling while the page lives: the caller checks it again later.
+  return { page, bootText, hits };
+}
+
+function failOnHits(label, hits, when) {
+  if (hits.length === 0) return;
+  const lines = [label + ': the web build logged script errors ' + when + ':'];
+  for (const line of hits.slice(0, 40)) lines.push('  ' + line);
+  throw new Fail(1, lines);
+}
+
+// The text of the save file as IndexedDB holds it ('' when there is none).
+async function readSave(page) {
+  return page.evaluate(async (file) => {
+    const db = await new Promise((resolve, reject) => {
+      const rq = indexedDB.open('/userfs');
+      rq.onsuccess = () => resolve(rq.result);
+      rq.onerror = () => reject(rq.error);
+    });
+    try {
+      if (!db.objectStoreNames.contains('FILE_DATA')) return '';
+      const entry = await new Promise((resolve, reject) => {
+        const rq = db.transaction('FILE_DATA', 'readonly').objectStore('FILE_DATA').get(file);
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error);
+      });
+      return entry && entry.contents ? new TextDecoder().decode(entry.contents) : '';
+    } finally {
+      db.close();
+    }
+  }, SAVE_DIR + '/save.cfg');
 }
 
 // Writes the save into the IDBFS database of the page's origin. `page` must be on that origin and must not run the
@@ -207,19 +247,39 @@ async function main() {
     await seeder.close();
     const second = await boot(context, base + '/index.html', 'phase 2 (non-empty save)', watchSeconds, bootTimeoutSeconds);
     const page = second.page;
-    const clip = () => {
-      const vp = page.viewportSize();
-      return { x: 0, y: 0, width: vp.width, height: Math.floor(vp.height * 0.55) }; // the buttons, not the ad banner
-    };
-    const before = await page.screenshot({ clip: clip() });
+    let saved = '';
+    try {
+      saved = await readSave(page);
+    } catch (e) {
+      saved = '(not readable: ' + e.message + ')';
+    }
+    if (!saved.includes('xp=' + SAVE_XP)) {
+      throw new Fail(3, [
+        'phase 2 (non-empty save): the save is not in IndexedDB after the boot (xp=' + SAVE_XP + ' is missing), ' +
+          'so the engine did not run with it',
+        '  save.cfg: ' + (saved ? JSON.stringify(saved.slice(0, 200)) : '(none)'),
+      ]);
+    }
     const vp = page.viewportSize();
+    const clip = { x: 0, y: 0, width: vp.width, height: Math.floor(vp.height * 0.55) }; // the buttons, not the ad banner
+    // The main menu is static. A screen that is still changing is something else (with a save that was not read:
+    // the first-launch lesson and its match), and a tap check would pass on it.
+    const still1 = await page.screenshot({ clip });
+    await page.waitForTimeout(500);
+    const still2 = await page.screenshot({ clip });
+    if (!still1.equals(still2)) {
+      throw new Fail(4, [
+        'phase 2 (non-empty save): the screen kept changing before the tap, so it is not the static main menu',
+        '  (the save was probably not read, and the first-launch lesson or a match is running)',
+      ]);
+    }
     await page.touchscreen.tap(vp.width * TAP_SKIRMISH[0], vp.height * TAP_SKIRMISH[1]);
     await page.waitForTimeout(2000);
-    const after = await page.screenshot({ clip: clip() });
-    if (before.equals(after)) {
+    const after = await page.screenshot({ clip });
+    failOnHits('phase 2 (non-empty save)', second.hits, 'after the tap on SKIRMISH');
+    if (still2.equals(after)) {
       throw new Fail(4, [
         'phase 2 (non-empty save): the main menu did not answer: the screen did not change after a tap on SKIRMISH',
-        '  (or the menu did not show: the page looked the same 2 s after the tap)',
       ]);
     }
     console.log(

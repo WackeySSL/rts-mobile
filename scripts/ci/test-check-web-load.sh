@@ -16,8 +16,10 @@ trap 'rm -rf "${root:?}"' EXIT
 mkdir -p "$root/site" "$root/mods/playwright"
 echo '<html></html>' >"$root/site/index.html"
 # The stub plays the part of the browser. On every load of index.html it replays the lines of FAKE_CONSOLE (one per
-# line) as console messages, and throws FAKE_PAGEERROR as an uncaught page error. Screenshots differ from one
-# call to the next unless FAKE_MENU is "dead". FAKE_SEED_FAIL makes the page.evaluate that writes the save throw.
+# line) as console messages, and throws FAKE_PAGEERROR as an uncaught page error. The screen is static until a
+# tap, then changes; FAKE_MENU=dead keeps it static after the tap, FAKE_MENU=animated changes it all the time.
+# FAKE_LATE_ERROR is a console line the tap produces. FAKE_SEED_FAIL makes the evaluate that writes the save throw.
+# FAKE_SAVE_READ is what the save reads back as (default: a save with xp=500).
 cat >"$root/mods/playwright/index.js" <<'JS'
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.min(ms, 20)));
 module.exports = {
@@ -30,18 +32,28 @@ module.exports = {
           const handlers = [];
           const errHandlers = [];
           let shots = 0;
+          let tapped = false;
           return {
             on: (ev, fn) => { (ev === 'console' ? handlers : errHandlers).push(fn); },
             close: async () => {},
             viewportSize: () => ({ width: 412, height: 839 }),
-            touchscreen: { tap: async () => {} },
-            screenshot: async () => Buffer.from(process.env.FAKE_MENU === 'dead' ? 'same' : 'shot' + shots++),
+            touchscreen: {
+              tap: async () => {
+                tapped = true;
+                if (process.env.FAKE_LATE_ERROR) handlers.forEach((fn) => fn({ text: () => process.env.FAKE_LATE_ERROR }));
+              },
+            },
+            screenshot: async () => {
+              if (process.env.FAKE_MENU === 'animated') return Buffer.from('frame' + shots++);
+              return Buffer.from(tapped && process.env.FAKE_MENU !== 'dead' ? 'next screen' : 'main menu');
+            },
             evaluate: async (fn, arg) => {
               if (arg && arg.dir) {
                 if (process.env.FAKE_SEED_FAIL) throw new Error('VersionError');
                 return undefined;
               }
-              return 'stub page text';
+              if (typeof arg === 'string') return process.env.FAKE_SAVE_READ === undefined ? 'xp=500\n' : process.env.FAKE_SAVE_READ;
+              return String(fn).includes('status-notice') ? 'stub page text' : 0;
             },
             goto: async (url) => {
               if (!/index\.html$/.test(url)) return;
@@ -106,10 +118,20 @@ FAKE_PAGEERROR='RuntimeError: abort' expect "page error" 1 $run
 # An "at:" line that does not follow a hit is not collected.
 # shellcheck disable=SC2086
 FAKE_CONSOLE=$'boot_ms=5000\n   at: stray (res://b.gd:1)' expect "stray at: line" 0 $run
-# Phase 2: the menu does not answer the tap, and the save cannot be written.
+# Phase 2: the menu does not answer the tap, a screen that never stops changing, an error after the tap, and the
+# save that cannot be written or is not there after the boot.
 # shellcheck disable=SC2086
 FAKE_MENU=dead FAKE_CONSOLE='boot_ms=5000' expect "dead menu" 4 $run
 printed 'did not answer'
+# shellcheck disable=SC2086
+FAKE_MENU=animated FAKE_CONSOLE='boot_ms=5000' expect "animated screen, no main menu" 4 $run
+printed 'kept changing'
+# shellcheck disable=SC2086
+FAKE_LATE_ERROR='SCRIPT ERROR: Invalid call. Nonexistent function.' FAKE_CONSOLE='boot_ms=5000' expect "error after the tap" 1 $run
+printed 'after the tap on SKIRMISH'
+# shellcheck disable=SC2086
+FAKE_SAVE_READ='' FAKE_CONSOLE='boot_ms=5000' expect "save not read back" 3 $run
+printed 'not in IndexedDB'
 # shellcheck disable=SC2086
 FAKE_SEED_FAIL=1 FAKE_CONSOLE='boot_ms=5000' expect "save not written" 3 $run
 printed 'could not write the save'
