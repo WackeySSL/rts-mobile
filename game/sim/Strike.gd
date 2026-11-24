@@ -67,7 +67,20 @@ extends RefCounted
 ## `Production.run` does not advance the queue of an offline producer; units are not affected, and
 ## a SUPERWEAPON of an offline strike building is dropped (above). The firing player's own
 ## buildings, and every row outside the radius, are untouched. Low power and a defeated owner do
-## not change any of it, and no state besides `offline_until` is written.
+## not change any of it.
+##
+## The overload (ADR 0047 section 1). When the firing type holds a strike weapon
+## (`type_strike_weapon` 0 or more: the shipped Dusk Array's `renew_overload`, 200 damage against
+## BUILDING armour only), the same pass also takes `hit_damage` off the `hp` of each building it
+## reaches, right after setting its `offline_until`, in the same ascending row order. A row whose
+## `hp` is 0 or less (sold or cancelled earlier in this tick's COMMANDS, or killed by an earlier
+## overload) is skipped, so a death is never counted twice. A row whose `hp` falls to 0 or less dies
+## at this tick's REMOVE like a sold row (DIED flag 0, so `Outcome.count_losses` counts it in
+## `stat_lost_buildings` and `Outcome.run` sees it on the same tick); TARGETING and FIRE may still
+## aim at it in its last tick. A SELL applied before the strike (command order) skips the sold row,
+## and one applied after it pays on the lower `hp`. Two strikes in one tick stack, each its own
+## pass. Units are never in `building_rows`, so none loses `hp`, and mines are not cleared. With no
+## weapon (-1, the frozen arena's Dusk Array) the pass writes `offline_until` only, as before P572.
 ##
 ## The rupture (`run`, called by `Sim.step` right after `Combat.fire` and before `FogUpdate.begin`
 ## and `World.remove_dead`, inside the FIRE mark: no new phase, no second `remove_dead`). For every
@@ -75,8 +88,8 @@ extends RefCounted
 ## play, the "not above" only keeps a hand-built World from waiting for ever), the strike clears
 ## (`strike_tick` 0; the point stays, for the view's crater) and every row whose position is within
 ## the radius of the point, own rows and neutral ones included, by squared distance and in ascending
-## row order, loses the weapon's damage times its percent against the row's armour, like a shot
-## (`Combat.fire`: at least 1, none when the percent is 0); a row on a layer the strike
+## row order, loses `hit_damage` (the weapon's damage times its percent against the row's armour,
+## like a shot (`Combat.fire`): at least 1, none when the percent is 0); a row on a layer the strike
 ## weapon cannot hit (`weapon_targets & type_layer_bit`, P238: the shipped rupture is ground only,
 ## so air and low air rows are skipped) loses nothing; the blackout and the sweep are unchanged.
 ## The rows only lose `hp` here and die at this tick's REMOVE, exactly as a row killed by a shot:
@@ -221,16 +234,11 @@ static func _land(world: World, player: int) -> void:
 		return
 	var radius: int = world.type_strike_radius[type]
 	var reach: int = radius * radius
-	var damage: int = world.weapon_damage[weapon]
-	var percents: int = weapon * World.Armour.size()
-	var percent_of: PackedInt32Array = world.weapon_vs_armour
-	var armour_of: PackedInt32Array = world.type_armour
 	var types: PackedInt32Array = world.type_index
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
 	var hit_points: PackedInt32Array = world.hp
 	var layer_bit: PackedInt32Array = world.type_layer_bit
-	var owners: PackedInt32Array = world.owner
 	var hits: int = world.weapon_targets[weapon]
 	for row: int in hit_points.size():
 		var dx: int = pos_x[row] - point_x
@@ -239,29 +247,55 @@ static func _land(world: World, player: int) -> void:
 			continue
 		if (hits & layer_bit[types[row]]) == 0:
 			continue  # The strike weapon's layers (ADR 0036 section 5: ground only, so air is skipped).
-		var percent: int = percent_of[percents + armour_of[types[row]]]
-		if percent > 0:
-			var taken: int = Upgrades.taken(world, owners[row], types[row])
-			hit_points[row] -= Combat.damage(damage, percent, Combat.PERCENT, taken)
+		hit_points[row] -= hit_damage(world, row, weapon)
+
+
+## What strike weapon `weapon` takes off row `row`: `damage_to` for the row's owner and type. The
+## rupture's landing and the blackout's overload both call it (ADR 0047 section 1). The caller
+## checks that `weapon` is inside the weapon tables.
+static func hit_damage(world: World, row: int, weapon: int) -> int:
+	return damage_to(world, world.owner[row], world.type_index[row], weapon)
+
+
+## The rule behind `hit_damage`, by owner and type, so that a reader holding a row's owner and type
+## from before a REMOVE (the smoke harness: rows move when the dead go) uses the same formula: the
+## weapon's damage times its percent against the type's armour and the owner's `Upgrades.taken`,
+## like a shot (`Combat.fire`), at least 1 when the percent is above 0 and 0 when it is 0.
+static func damage_to(world: World, player: int, type: int, weapon: int) -> int:
+	var percent: int = world.weapon_vs_armour[
+		weapon * World.Armour.size() + world.type_armour[type]
+	]
+	if percent <= 0:
+		return 0
+	var taken: int = Upgrades.taken(world, player, type)
+	return Combat.damage(world.weapon_damage[weapon], percent, Combat.PERCENT, taken)
 
 
 ## The blackout of `player`'s strike building of type `type` around (point_x, point_y): every
 ## building row of another owner within the type's radius goes offline until the stamp plus the
-## type's length (see the header). The building list is brought up to date first (a no-op when
-## `rows_version` has not moved since a QUEUE or ECONOMY did); a type past the length table has no
-## length, so it blacks out nothing.
+## type's length and, when the type holds a strike weapon, takes its overload hit (see the header).
+## The building list is brought up to date first (a no-op when `rows_version` has not moved since a
+## QUEUE or ECONOMY did); a type past the length table has no length, so it blacks out nothing.
 static func _black_out(world: World, player: int, type: int, point_x: int, point_y: int) -> void:
 	if type >= world.type_strike_ticks.size() or type >= world.type_strike_radius.size():
 		return
 	Buildings.rebuild_lists(world)
+	var weapon: int = (
+		world.type_strike_weapon[type] if type < world.type_strike_weapon.size() else -1
+	)
+	if weapon >= world.weapon_damage.size():
+		weapon = -1  # A weapon past the tables is no overload.
 	var reach: int = world.type_strike_radius[type] * world.type_strike_radius[type]
 	var until: int = world.tick + 1 + world.type_strike_ticks[type]
 	var owners: PackedInt32Array = world.owner
 	var pos_x: PackedInt32Array = world.pos_x
 	var pos_y: PackedInt32Array = world.pos_y
 	var offline: PackedInt32Array = world.offline_until
+	var hit_points: PackedInt32Array = world.hp
 	for row: int in world.building_rows:
 		var dx: int = pos_x[row] - point_x
 		var dy: int = pos_y[row] - point_y
 		if owners[row] != player and dx * dx + dy * dy <= reach:
 			offline[row] = maxi(offline[row], until)
+			if weapon >= 0 and hit_points[row] > 0:
+				hit_points[row] -= hit_damage(world, row, weapon)
