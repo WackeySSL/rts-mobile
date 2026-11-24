@@ -13,7 +13,10 @@ extends SimProbe
 ## `fog_cell` stamps the disc of its new cell and then, if it was stamped, unstamps the old one. A
 ## disc is the in-map tiles whose centre is within the sight of the row's type (the pad sight 0 for
 ## a type with no entry), found by testing every tile of the square around it (dx * 1000)^2 + (dy *
-## 1000)^2 <= sight^2, so it shares no mask table with the code under test. A stamp adds its delta
+## 1000)^2 <= sight^2, so it shares no mask table with the code under test. A row that is blacked
+## out while `blackout_sight_cut` is 1 (`offline_until` above `tick + 1`, ADR 0047 section 2) wants
+## no cell: it only unstamps its old disc, if it has one, and its `fog_cell` becomes -1.
+## A stamp adds its delta
 ## to the visible count of every cell, marks a cell with a count above 0 as explored, and lists a
 ## cell that flips (a count crossing 0) once per update, at the end of the block of its player,
 ## until the block is full (then the player's flag is set and the cell is not marked); a stamp that
@@ -60,7 +63,8 @@ const NAMES: Array[StringName] = [
 	&"quiet_stamps",
 	&"deaths",
 	&"deaths_stamped",
-	&"death_on_turn"
+	&"death_on_turn",
+	&"cuts"
 ]
 const TILE: int = World.MILLI_PER_TILE
 const FOG_CELLS: int = World.Stat.FOG_CELLS
@@ -195,12 +199,20 @@ func _move_rows(rows: int, players: int) -> void:
 			continue
 		tally[&"turns"] += 1
 		var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
+		if world.blackout_sight_cut == 1 and world.offline_until[row] > world.tick + 1:
+			cell = -1
 		var old: int = _fog_cells[row]
 		if cell == old:
 			tally[&"stays"] += 1
 			continue
 		var type: int = world.type_index[row]
 		var sight: int = world.type_sight[type] if type < pad else World.TYPE_PAD_SIGHT
+		if cell < 0:
+			tally[&"cuts"] += 1
+			tally[&"unstamps"] += 1
+			_stamp(player, old, sight, -1)
+			_fog_cells[row] = -1
+			continue
 		tally[&"first_stamps" if old < 0 else &"restamps"] += 1
 		tally[&"unstamps"] += int(old >= 0)
 		tally[&"pad_moves"] += int(type >= pad)

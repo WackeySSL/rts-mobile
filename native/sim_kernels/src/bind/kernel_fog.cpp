@@ -2,11 +2,12 @@
 // of each of their rows to the cell of its position, in place over the arrays of the World and of its FogGrid (the visible
 // counts, the explored bytes, the version, the dirty-list blocks, their counts and flags, and the `listed` marks), and the
 // cells the stamps cover are added to stats[FOG_CELLS]. FogUpdate.begin (the dirty lists emptied before the removal),
-// World.remove_dead's unstamp and World.prepare's initial stamp stay GDScript. The rules are core/fog.h's, a mirror of
+// World.remove_dead's unstamp and World.prepare's initial stamp stay GDScript. A row that is blacked out while `blackout_sight_cut` is 1 wants cell -1
+// (ADR 0047 section 2). The rules are core/fog.h's, a mirror of
 // FogUpdate.gd and FogGrid.gd; this file borrows the arrays once on entry and adds the count on exit.
 // Twin: game/sim/FogUpdate.gd (run). Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both
 // implementations and tests/sim/native/test_fog_kernel.gd; lockstep (P46n2): tests/sim/native/test_fog_lockstep.gd,
-// test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
+// test_fog_lockstep_cases.gd, test_fog_lockstep_random.gd and test_fog_lockstep_blackout.gd (the vision cut, P573). MIT.
 #include "sim_kernels.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -38,6 +39,7 @@ void SimKernels::fog(Object *world) const {
 	const Borrowed<const int32_t> type_index = access.read_i32(world, ID_WORLD_type_index);
 	const Borrowed<const int32_t> pos_x = access.read_i32(world, ID_WORLD_pos_x);
 	const Borrowed<const int32_t> pos_y = access.read_i32(world, ID_WORLD_pos_y);
+	const Borrowed<const int32_t> offline_until = access.read_i32(world, ID_WORLD_offline_until);
 	const Borrowed<const int32_t> type_sight = access.read_i32(world, ID_WORLD_type_sight);
 	const Borrowed<const int32_t> mask_start = access.read_i32(fog_grid, ID_FOG_mask_start);
 	const Borrowed<const int32_t> mask_radius = access.read_i32(fog_grid, ID_FOG_mask_radius);
@@ -74,11 +76,13 @@ void SimKernels::fog(Object *world) const {
 	rows.type_index = type_index.view;
 	rows.pos_x = pos_x.view;
 	rows.pos_y = pos_y.view;
+	rows.offline_until = offline_until.view;
 	rows.fog_cell = fog_cell.view;
 	fog::Rules rules;
 	rules.tick = access.int_in(world, ID_WORLD_tick);
 	rules.fog_period_ticks = access.int_in(world, ID_WORLD_fog_period_ticks);
 	rules.pad_mask = type_sight.view.size();
+	rules.blackout_sight_cut = access.int_in(world, ID_WORLD_blackout_sight_cut);
 
 	const int64_t covered = fog::run(grid, rows, rules);
 	stats.view.set(STAT_FOG_CELLS, stats.view.get(STAT_FOG_CELLS) + covered);

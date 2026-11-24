@@ -13,9 +13,9 @@
 // Tests: tests/sim/test_fog.gd, test_fog_edges.gd and test_fog_grid.gd under both implementations (the last through
 // tests/sim/support/fog_stamper.gd, as there is no test-only bound entry) and tests/sim/native/test_fog_kernel.gd (the names,
 // the in-place writes, the guards and the range); lockstep (P46n2, the 900-tick arena runs and the crafted cases):
-// tests/sim/native/test_fog_lockstep.gd, test_fog_lockstep_cases.gd and test_fog_lockstep_random.gd. MIT.
+// tests/sim/native/test_fog_lockstep.gd, test_fog_lockstep_cases.gd, test_fog_lockstep_random.gd and test_fog_lockstep_blackout.gd (the vision cut, P573). MIT.
 //
-// Range. The pass is exact in int64 while `tick - player + 1` stays inside int64 (a match counter, a few million at the
+// Range. The pass is exact in int64 while `tick - player + 1` and `tick + 1` (the blackout stamp, computed on every call) stay inside int64 (a match counter, a few million at the
 // most), and while the sides of the grid make its cells (configure() does): the sizes of the arrays are checked against
 // `player_count * cells`, not against `cols * rows`, so a grid that says otherwise is no fog at all (see usable()) and no
 // index can overflow. The mask tables are as add_mask() builds them: a radius and half-widths below 2^31 (an int32 element).
@@ -42,17 +42,20 @@ struct Grid {
 };
 
 // The per-row columns of the World that the update reads or writes (World.ROW_ARRAYS): the owner (0 = none), the type index,
-// the position in milli-tiles and `fog_cell`, the cell last stamped (-1 = none). `count` is the number of rows.
+// the position in milli-tiles, `offline_until` (the tick a blacked-out building comes back, 0 = on; ADR 0047 section 2) and
+// `fog_cell`, the cell last stamped (-1 = none). `count` is the number of rows.
 struct Rows {
 	int64_t count = 0;
-	ArrayView<const int32_t> owner, type_index, pos_x, pos_y;
+	ArrayView<const int32_t> owner, type_index, pos_x, pos_y, offline_until;
 	ArrayView<int32_t> fog_cell;
 };
 
 // The ints of the World that the update reads: the tick, the cadence (data/rules.tres, used as the twin uses it: a period
-// below 1 is 1) and the id of the pad mask, `type_sight.size()`. A type index past the pad takes the pad mask (sight 0).
+// below 1 is 1), the id of the pad mask, `type_sight.size()`, and the vision cut (`blackout_sight_cut`, ADR 0047 section 2: 1 =
+// a row whose `offline_until` is above `tick + 1` has no disc, so its wanted cell is -1). A type index past the pad takes the pad
+// mask (sight 0).
 struct Rules {
-	int64_t tick = 0, fog_period_ticks = 0, pad_mask = 0;
+	int64_t tick = 0, fog_period_ticks = 0, pad_mask = 0, blackout_sight_cut = 0;
 };
 
 // FogGrid.stamp: `delta` (+1 stamps, -1 unstamps) to the visible count of every cell of the mask's disc centred on `cell`,
@@ -61,7 +64,7 @@ struct Rules {
 void stamp(Grid &grid, int64_t player, int64_t cell, int64_t mask, int64_t delta);
 
 // FogUpdate.run: the rows of the players whose turn it is move their disc from `fog_cell` to the cell of their position
-// (a row not stamped yet, -1, only stamps). Returns the cells those stamps cover, clipped to the map, which the caller adds
+// (a row not stamped yet, -1, only stamps; a row cut while blacked out wants -1 and only unstamps). Returns the cells those stamps cover, clipped to the map, which the caller adds
 // to stats[FOG_CELLS]. A grid with no cells, or sides that do not make its cells, does nothing and returns 0.
 int64_t run(Grid &grid, Rows &rows, const Rules &rules);
 

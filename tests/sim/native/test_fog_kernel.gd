@@ -25,17 +25,19 @@ const SCOUT: int = 0
 const POST: int = 1
 const INT32_MAX: int = 2147483647
 const INT32_MIN: int = -2147483648
-## What the kernel gets or sets, in table order: the two ints of the World, the columns that the
+## What the kernel gets or sets, in table order: the three ints of the World, the columns that the
 ## update reads or writes, the sight table (its size is the id of the pad mask) and the grid.
 const FOG_NAMES: Array[String] = [
 	"WORLD.tick",
 	"WORLD.fog_period_ticks",
+	"WORLD.blackout_sight_cut",
 	"WORLD.unit_id",
 	"WORLD.owner",
 	"WORLD.type_index",
 	"WORLD.pos_x",
 	"WORLD.pos_y",
 	"WORLD.fog_cell",
+	"WORLD.offline_until",
 	"WORLD.stats",
 	"WORLD.type_sight",
 	"FOG.cols",

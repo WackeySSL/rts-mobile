@@ -79,6 +79,7 @@ func test_rules_def_has_exactly_the_starting_ints() -> void:
 		"sweep_ticks": 30,
 		"mine_known_cap": 24,
 		"bonus_credits_max": 0,  # P512: no setup bonus unless data says so.
+		"blackout_sight_cut": 0,  # P573: a blacked-out building keeps its sight.
 	}
 	var rules: RulesDef = RulesDef.new()
 	var fields: Array[String] = []
@@ -86,7 +87,7 @@ func test_rules_def_has_exactly_the_starting_ints() -> void:
 		if (int(info["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE) != 0:
 			fields.append(String(info["name"]))
 			assert_int(int(info["type"])).is_equal(TYPE_INT)
-	assert_int(fields.size()).is_equal(49)
+	assert_int(fields.size()).is_equal(50)
 	assert_array(fields).contains_exactly_in_any_order(expected.keys())
 	for field: String in expected:
 		assert_that(rules.get(field)).override_failure_message(field).is_equal(expected[field])

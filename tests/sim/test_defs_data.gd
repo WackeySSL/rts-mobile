@@ -4,8 +4,7 @@ extends GdUnitTestSuite
 ## data/dev/arena/rules.tres for the three pinned scenarios, data/rules.tres for the rest). The perf
 ## arena map and scenario (P27c, ADR 0011 section 4) are pinned here too.
 ## The air, repair-role and upgrade rules (P231) are in tests/sim/support/air_rules.gd and
-## test_defs_data_air.gd: a new def rule of that kind goes there, and the range of move_class, tab,
-## produces and strike_kind stays here, read from the World enums.
+## test_defs_data_air.gd; the ranges of move_class, tab, produces and strike_kind stay here.
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const Frozen: GDScript = preload("res://tests/sim/support/frozen_scenarios.gd")
@@ -147,6 +146,7 @@ func test_rules_file_holds_the_42_starting_ints_and_the_defaults_equal_the_froze
 		"sweep_ticks": 30,
 		"mine_known_cap": 24,
 		"bonus_credits_max": 500,  # P512: the Phase 6 start-credits grant.
+		"blackout_sight_cut": 1,  # P573: a blacked-out building gives no sight.
 	}
 	var rules: RulesDef = load(RULES_PATH)
 	var defaults: RulesDef = RulesDef.new()
