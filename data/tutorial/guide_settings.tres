@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="GuideSettingsDef" format=3]
+
+[ext_resource type="Script" path="res://game/ui/tutorial/GuideSettingsDef.gd" id="1_guide"]
+
+[resource]
+script = ExtResource("1_guide")
+card_max_width_dp = 560.0
+card_wide_dp = 440.0
+card_max_height_pct = 45
+blink_period_ms = 800
+blink_low_alpha_pct = 25
+hint_cycle_ms = 1600
+hint_rest_ms = 800
+hint_idle_ms = 2000
+hint_tap_ms = 180
+hint_drag_ms = 900
+hint_pinch_ms = 900
+hint_hold_extra_ms = 400
+hint_size_dp = 72.0

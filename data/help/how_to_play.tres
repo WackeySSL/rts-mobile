@@ -1032,6 +1032,12 @@ id = &"menus-tutorial"
 title = "Tutorial"
 body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself, and Skip lesson on its cards leaves it. A lesson you leave starts from the top next time. During a match Settings has no Replay tutorial; leave the match first."
 
+[sub_resource type="Resource" id="e22t3"]
+script = ExtResource("3_ent")
+id = &"menus-tutorial-guide"
+title = "The blinking frame"
+body = "In a lesson, the frame around the thing to tap blinks, so you can see where to touch. It never goes fully dark. If a card waits a long time, the frame turns amber and doubles. With Reduced effects on in Settings, the frame holds still and is a little thicker."
+
 [sub_resource type="Resource" id="e22t2"]
 script = ExtResource("3_ent")
 id = &"menus-tutorial-end"
@@ -1042,7 +1048,7 @@ body = "When you finish the last card, tap Skip lesson, or tap Leave tutorial in
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149"), SubResource("e22t1"), SubResource("e22t2")])
+entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149"), SubResource("e22t1"), SubResource("e22t3"), SubResource("e22t2")])
 
 [sub_resource type="Resource" id="e150"]
 script = ExtResource("3_ent")

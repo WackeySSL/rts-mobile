@@ -348,6 +348,22 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_guide_through"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.05882353, 0.07843137, 0.09411765, 0.35)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.17254902, 0.21960784, 0.24313725, 0.6)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pause_badge"]
 bg_color = Color(0.07058824, 0.09411765, 0.11372549, 0.96)
 border_width_left = 2
@@ -1111,6 +1127,16 @@ DeployBackdrop/styles/panel = SubResource("StyleBoxFlat_deploy")
 ; The pause menu (PauseMenu.gd, P124b): see the block of sub-resources above.
 PauseHud/base_type = &"Control"
 PauseHud/colors/hidden = Color(1, 1, 1, 0)
+; The tutorial guide (ADR 0048 sections 3 and 4). GuideTokens: ring is a copy of AccentRenew/light and
+; does not follow the faction; it is the frame round the thing to tap. ring_stalled the HUD's amber, hint_fill and hint_line the gesture
+; hand. GuideCardThrough: the card's plate while it is see-through over a target, touches pass.
+GuideTokens/base_type = &"Control"
+GuideTokens/colors/hint_fill = Color(1, 1, 1, 0.9)
+GuideTokens/colors/hint_line = Color(0.05882353, 0.07843137, 0.09411765, 1)
+GuideTokens/colors/ring = Color(0.38431373, 0.83921569, 0.93333333, 1)
+GuideTokens/colors/ring_stalled = Color(0.94901961, 0.75686275, 0.30588235, 1)
+GuideCardThrough/base_type = &"PanelContainer"
+GuideCardThrough/styles/panel = SubResource("StyleBoxFlat_guide_through")
 PauseCard/base_type = &"PanelContainer"
 PauseCard/styles/panel = SubResource("StyleBoxFlat_pause_card")
 PauseBadge/base_type = &"PanelContainer"

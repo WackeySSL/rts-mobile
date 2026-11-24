@@ -146,14 +146,16 @@ func test_a_stalled_beat_shows_the_hint_and_a_read_only_one_does_not() -> void:
 func test_reduced_effects_make_no_tween() -> void:
 	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT), false, [], true)
 	await await_idle_frame()
-	assert_bool(_mark.ring_pulsing()).is_false()
+	assert_bool(_mark.ring_blinking()).is_false()
 	assert_int(get_tree().get_processed_tweens().size()).is_equal(0)
+	assert_float(_mark.ring_alpha()).is_equal(1.0)
+	assert_float(_mark.ring_line_px()).is_equal(UiScale.dp(CoachMark.RING_LINE_DP + 1.0))
 	_close()
 	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
 	await await_idle_frame()
-	assert_bool(_mark.ring_pulsing()).is_true()  # Without reduced effects it pulses...
+	assert_bool(_mark.ring_blinking()).is_true()  # Without reduced effects it blinks...
 	_mark.hide_mark()
-	assert_bool(_mark.ring_pulsing()).is_false()  # ...and stops when hidden.
+	assert_bool(_mark.ring_blinking()).is_false()  # ...and stops when hidden.
 
 
 func test_freeing_the_target_mid_beat_gives_a_card_alone() -> void:
@@ -164,7 +166,7 @@ func test_freeing_the_target_mid_beat_gives_a_card_alone() -> void:
 	await await_idle_frame()
 	await await_idle_frame()
 	assert_bool(_mark.ring_rect().has_area()).is_false()
-	assert_bool(_mark.ring_pulsing()).is_false()
+	assert_bool(_mark.ring_blinking()).is_false()
 	assert_object(_mark.target_control()).is_null()
 	assert_bool(_safe().grow(TOLERANCE_PX).encloses(_mark.card_rect())).is_true()
 
