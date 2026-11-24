@@ -149,6 +149,7 @@ class Chip:
 	func _init() -> void:
 		theme_type_variation = CHIP
 		mouse_filter = Control.MOUSE_FILTER_STOP  # A touch on the read-only chip is no order.
+		size_flags_vertical = Control.SIZE_SHRINK_END  # Its own height, on the keys' bottom line.
 		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.name = "Card"
 		card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -552,6 +553,7 @@ func _build_more() -> void:
 	_more_chip.name = "More"
 	_more_chip.theme_type_variation = CHIP
 	_more_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_more_chip.size_flags_vertical = Control.SIZE_SHRINK_END  # As a chip: not the bar's height.
 	_more_chip.visible = false
 	_more.name = "Number"
 	_more.theme_type_variation = NUMBER

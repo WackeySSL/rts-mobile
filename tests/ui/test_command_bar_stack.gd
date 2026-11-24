@@ -103,6 +103,36 @@ func test_stop_stands_above_clear_in_one_column() -> void:
 		)
 
 
+## The chips and "+N" keep their own height on the bar's bottom line (P581, Michael's phone, a
+## building's chip stood the full 106 dp beside 48 dp keys): with one building and with three unit
+## types, each shown chip is no taller than `CHIP_H_DP` and ends where Clear ends.
+func test_chips_keep_their_height_on_the_bottom_line() -> void:
+	for entry: Array in _cases():
+		await _open(entry[0], entry[1])
+		for ids: Array in [[3], IDS]:
+			await _select(ids)
+			var clear: Rect2 = _bar.find_child("Deselect", true, false).get_global_rect()
+			var shown: int = 0
+			for child: Node in _bar.find_children("*", "PanelContainer", true, false):
+				var chip: Control = child as Control
+				if not (chip.name.begins_with("Chip") or chip.name == "More"):
+					continue
+				if not chip.is_visible_in_tree():
+					continue
+				shown += 1
+				var rect: Rect2 = chip.get_global_rect()
+				var why: String = "%s %s %s: %s clear %s" % [entry[2], ids, chip.name, rect, clear]
+				assert_float(rect.size.y).override_failure_message(why).is_less_equal(
+					UiScale.dp(CommandBar.CHIP_H_DP) + 0.5
+				)
+				(
+					assert_float(absf(rect.end.y - clear.end.y))
+					. override_failure_message(why)
+					. is_less_equal(1.0)
+				)
+			assert_int(shown).override_failure_message("%s %s" % [entry[2], ids]).is_greater(0)
+
+
 func _assert_clear(why: String) -> void:
 	var build: Control = _main.get_node("Hud").find_child("BuildButton", true, false)
 	var build_rect: Rect2 = build.get_global_rect()
