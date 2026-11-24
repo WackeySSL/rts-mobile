@@ -1,7 +1,8 @@
 class_name CommandBar
 extends Control
 ## The command bar (ADR 0025 section 9, plan P122): bottom left (upright too) while something is
-## selected. From its start: Deselect (48 x 64 dp, `glyph_deselect` over "CLEAR"), the selection
+## selected. From its start: one column with Stop above Deselect (56 x 48 dp each, `glyph_deselect`
+## over "CLEAR"; without Stop, Deselect keeps the bottom place), the selection
 ## chips (one per selected type while they fit in the bar's room: the type's item card, "xN" for
 ## units (a building shows no name, its health bar under its card; Michael, 2026-11-18, P310), then
 ## a "+N" chip for the types left out; an enemy building's chip wears P115b's look: amber corner
@@ -12,7 +13,9 @@ extends Control
 ## (`PlayerController.home`); Repair (P282, P282b) shows for ground units a complete own repair
 ## building serves, dimmed and not tappable while none is damaged, and sends one REPAIR to the
 ## nearest (`RepairRules`, `PlayerController.repair`), beside Home in a mixed selection. Orders
-## that do not fit scroll sideways inside the bar, a button never shrinks below 56 dp. Board
+## that do not fit in the bar's room beside BUILD wrap into a second row (`OrderFlow`, at most two
+## rows, 2 x 48 dp: the bar is 106 dp high, P581) and never run under BUILD or scroll; a
+## button never shrinks below 56 x 48 dp. Board
 ## (squads selected, an own carrier on the map with a free seat) and Unload (a loaded carrier
 ## selected) and Mine (minelayers selected; its word is "n/cap", dim at the cap) are order aims
 ## (`CarryAim`, P265, P294): a tap starts the aim, a second tap on the lit button ends it, and the
@@ -46,9 +49,11 @@ signal order_pressed(id: StringName)
 const ICON_ART: String = "res://assets/art/iso/icons/item_%s.svg"  ## The generated item cards.
 const GLYPH_ART: String = "res://assets/art/svg/icons/glyph_%s.svg"
 const CARD_DP: float = 40.0
-const CLEAR_DP: Vector2 = Vector2(48.0, 64.0)
-const ORDER_DP: Vector2 = Vector2(56.0, 64.0)  ## An order button's least size.
-const GLYPH_DP: float = 28.0
+const CHIP_H_DP: float = 64.0  ## A chip's least height (and the "+N" plate's).
+const KEY_DP: Vector2 = Vector2(56.0, 48.0)  ## Stop and Deselect, stacked: Stop above Clear.
+const ORDER_DP: Vector2 = Vector2(56.0, 48.0)  ## An order button's least size.
+const GLYPH_DP: float = 22.0
+const ORDER_ROWS: int = 2  ## The rows of orders the bar's height holds (2 x 48 dp and a gap).
 const HEALTH_DP: Vector2 = Vector2(40.0, 6.0)
 const PIP_DP: float = 8.0  ## A passenger pip: a square, filled for a squad aboard, else an outline.
 const PIP_GAP_DP: float = 3.0
@@ -103,8 +108,8 @@ var _chips: Array[Chip] = []  ## One per selected type; the first from the start
 var _types: int = 0  ## The selected types, the first `_types` of `_chips` hold one.
 var _more_chip: PanelContainer = PanelContainer.new()  ## "+N": the types the bar has no room for.
 var _more: Label = Label.new()
-var _scroll: ScrollContainer = ScrollContainer.new()
-var _orders: HBoxContainer = HBoxContainer.new()
+var _keys: VBoxContainer = VBoxContainer.new()  ## Stop above Clear: one column.
+var _orders: OrderFlow = OrderFlow.new()  ## The other orders; a second row when one does not fit.
 var _buttons: Dictionary[StringName, Button] = {}
 var _has: bool = false  ## Something is selected.
 var _frozen: bool = false  ## A mode runs: the slot is `_held`.
@@ -208,7 +213,7 @@ class Chip:
 		label.custom_minimum_size.x = minf(ceilf(text_px), UiScale.dp(LABEL_MAX_DP))
 
 	func apply_dp() -> void:
-		custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
+		custom_minimum_size = UiScale.dp_vec(0.0, CHIP_H_DP)
 		card.custom_minimum_size = UiScale.dp_vec(CARD_DP, CARD_DP)
 		health.custom_minimum_size = UiScale.dp_vec(HEALTH_DP.x, HEALTH_DP.y)
 		pips.apply_dp()
@@ -336,14 +341,10 @@ func _ready() -> void:
 	_build_clear()
 	_build_more()
 	_chip_for(0)  # The first chip stands from the start, the others when a selection needs them.
-	_scroll.name = "Orders"
-	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # Touch scrolls, no bar.
-	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	_orders.name = "Orders"
 	_orders.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_scroll.add_child(_orders)
-	_row.add_child(_scroll)
+	_orders.size_flags_vertical = Control.SIZE_SHRINK_END
+	_row.add_child(_orders)
 	for order: Dictionary in ORDERS:
 		_add_order(order)
 	_buttons[&"mend"].toggle_mode = true  # Lit (pressed) while the building mends.
@@ -392,7 +393,12 @@ func _build_clear() -> void:
 	_clear.name = "Deselect"
 	_clear.focus_mode = Control.FOCUS_NONE
 	_face(_clear, "deselect", "CLEAR")
-	_row.add_child(_clear)
+	_keys.name = "Keys"
+	_keys.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_keys.size_flags_vertical = Control.SIZE_SHRINK_END  # Clear keeps its place without Stop.
+	_keys.alignment = BoxContainer.ALIGNMENT_END
+	_keys.add_child(_clear)
+	_row.add_child(_keys)
 
 
 func _add_order(order: Dictionary) -> void:
@@ -406,7 +412,11 @@ func _add_order(order: Dictionary) -> void:
 			order_pressed.emit(id)
 			_order(id)
 	)
-	_orders.add_child(button)
+	if id == &"stop":
+		_keys.add_child(button)
+		_keys.move_child(button, 0)  # Above Clear.
+	else:
+		_orders.add_child(button)
 	_buttons[id] = button
 
 
@@ -570,13 +580,15 @@ func _chip_for(index: int) -> Chip:
 ## Sizes are dp, so they follow a resize.
 func _apply_dp() -> void:
 	_row.add_theme_constant_override("separation", roundi(UiScale.dp(HudCorners.GAP_DP)))
-	_orders.add_theme_constant_override("separation", roundi(UiScale.dp(HudCorners.GAP_DP)))
-	_clear.custom_minimum_size = UiScale.dp_vec(CLEAR_DP.x, CLEAR_DP.y)
-	_more_chip.custom_minimum_size = UiScale.dp_vec(0.0, CLEAR_DP.y)
+	_keys.add_theme_constant_override("separation", roundi(UiScale.dp(HudCorners.GAP_DP)))
+	_orders.gap = roundf(UiScale.dp(HudCorners.GAP_DP))
+	_clear.custom_minimum_size = UiScale.dp_vec(KEY_DP.x, KEY_DP.y)
+	_more_chip.custom_minimum_size = UiScale.dp_vec(0.0, CHIP_H_DP)
 	for chip: Chip in _chips:
 		chip.apply_dp()
 	for button: Button in _buttons.values():
 		button.custom_minimum_size = UiScale.dp_vec(ORDER_DP.x, ORDER_DP.y)
+	_buttons[&"stop"].custom_minimum_size = UiScale.dp_vec(KEY_DP.x, KEY_DP.y)
 	for button: Button in [_clear] + _buttons.values():
 		var icon: Control = button.get_node("Face/Glyph")
 		icon.custom_minimum_size = UiScale.dp_vec(GLYPH_DP, GLYPH_DP)
@@ -815,16 +827,14 @@ func _fix_width(id: StringName) -> void:
 ## screen has), less Deselect, the orders and the gaps, so the fit never depends on the width it
 ## gave.
 func _fit_chips() -> void:
+	_plan_orders()
 	var shown: int = _types
-	if _types > 1:  # One type always shows its chip.
+	if _types > 0:
 		var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
-		var rects: Dictionary[StringName, Rect2] = _rects(true)
-		var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
-		if _frozen:
-			room = minf(room, _held_px)  # The bar never grows under the thumb.
-		room -= _clear.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
-		# Even the first chip may give way (more than one type), so "+N" alone counts the types
-		# and Stop never scrolls out; one type always shows its chip.
+		var room: float = _room()  # The bar never grows under the thumb.
+		room -= _keys.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
+		# Even the first chip may give way, so "+N" alone counts the types, and the orders never
+		# run under BUILD; a single type shows its chip as long as the orders in two rows leave room.
 		for count: int in range(_types, -1, -1):
 			shown = count
 			var need: float = gap * (count + 1)  # Between Deselect, the chips, "+N" and the orders.
@@ -835,11 +845,40 @@ func _fit_chips() -> void:
 				need += gap + _more_chip.get_combined_minimum_size().x
 			if need <= room:
 				break
+			if count == 0:
+				shown = -1  # Not even "+N" fits beside the orders: nothing but the keys and orders.
 	for index: int in _chips.size():
 		_chips[index].visible = index < shown
-	_more_chip.visible = shown < _types
-	if shown < _types:
+	_more_chip.visible = 0 <= shown and shown < _types
+	if _more_chip.visible:
 		_more.text = "+%d" % (_types - shown)
+
+
+## The most the bar may take now: what `HudCorners.place` leaves it beside BUILD (the strike button
+## and its aim row, the Ready chip), and while a mode runs no more than the width it held.
+func _room() -> float:
+	var rects: Dictionary[StringName, Rect2] = _rects(true)
+	var room: float = rects[HudCorners.BAR].size.x if rects.has(HudCorners.BAR) else INF
+	return minf(room, _held_px) if _frozen else room
+
+
+## Sets how wide the orders may be: their own width in one row while that and the first chip fit
+## beside the keys in the bar's room (what `HudCorners.place` leaves beside BUILD, and the width
+## held while a mode runs), else what is left, so they wrap into a second row and never run
+## under BUILD.
+## The width of one button is the least; the chips and "+N" take what the orders leave.
+func _plan_orders() -> void:
+	var gap: float = roundf(UiScale.dp(HudCorners.GAP_DP))
+	var left: float = _room() - _keys.get_combined_minimum_size().x - gap
+	var natural: float = _orders.natural_width()
+	var with_chip: float = left
+	if _types > 0:
+		with_chip -= _chips[0].get_combined_minimum_size().x + gap
+	var rows: float = _orders.width_for_rows(ORDER_ROWS)
+	var wrap: float = natural
+	if natural > with_chip:  # Wrap to what is left, but never into more rows than the bar holds.
+		wrap = with_chip if rows <= with_chip else clampf(left, rows, natural)  # Else no chip.
+	_orders.wrap_width = maxf(wrap, UiScale.dp(ORDER_DP.x))
 
 
 ## Every chip's label asks for its own text again (the text or the dp changed).
@@ -857,7 +896,7 @@ func _update_slot() -> void:
 	)
 	if moded and not _frozen:
 		_held = _slot  # The slot the bar has as the mode begins, not what the selection says now.
-		_held_px = size.x  # And its width: no selection widens the bar under the thumb.
+		_held_px = minf(size.x, _room())  # And its width (no more than the aim leaves it).
 	var changed: bool = moded != _frozen
 	_frozen = moded
 	_slot = _held if _frozen else _has
@@ -882,7 +921,7 @@ func _publish() -> void:
 
 ## The width the content asks for, in dp: the row, and the orders the scroll does not count.
 func _content_dp() -> float:
-	var asks: float = _row.get_combined_minimum_size().x + _orders.get_combined_minimum_size().x
+	var asks: float = _row.get_combined_minimum_size().x
 	return ceilf(asks) / UiScale.base_px_per_dp()  # Whole px, so the row never asks for more.
 
 
@@ -901,6 +940,9 @@ func _rects(widest: bool) -> Dictionary[StringName, Rect2]:
 	if widest:
 		shown.bar_width = INF
 	shown.ready = build_button != null and build_button.ready_type >= 0
+	if strike_aim != null:  # The strike button and its aim row stand beside the taller bar.
+		shown.strike = strike_aim.owned
+		shown.aim = strike_aim.active
 	var margin_dp: float = (
 		SafeAreaMargin.DEFAULT_MARGIN_DP if safe_area == null else safe_area.margin_dp
 	)
@@ -911,8 +953,10 @@ func _rects(widest: bool) -> Dictionary[StringName, Rect2]:
 ## Takes the rect `HudCorners.place` gives the bar; hidden without a slot, under the upright sheet
 ## and in the pause menu.
 func place() -> void:
-	if _types > 1:
+	if _types > 0:
 		_fit_chips()  # The room changes with the Ready chip, the drawer and the window.
+	else:
+		_plan_orders()
 	var rects: Dictionary[StringName, Rect2] = _rects(false)
 	_row.layout_direction = (
 		Control.LAYOUT_DIRECTION_RTL if mirror else Control.LAYOUT_DIRECTION_LTR
@@ -922,14 +966,12 @@ func place() -> void:
 		position = rects[HudCorners.BAR].position
 		size = rects[HudCorners.BAR].size
 		_row.size = size  # The row is the bar's size now; a row that grew once must not stay grown.
+		_row.position.y = minf(0.0, size.y - _row.get_combined_minimum_size().y)  # Grows upward.
 	if not is_equal_approx(_content_dp(), _published):  # The sizes settled after the last tell.
 		_queue_publish()
-	# The scroll takes touches only while the orders overflow it: else its empty part is the map's.
-	var overflow: bool = _orders.get_combined_minimum_size().x > _scroll.size.x + 0.5
-	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS if overflow else Control.MOUSE_FILTER_IGNORE
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		DetachedParts.free_unparented([_clear, _more, _more_chip, _orders, _row, _scroll])
+		DetachedParts.free_unparented([_clear, _more, _more_chip, _keys, _orders, _row])
 		return

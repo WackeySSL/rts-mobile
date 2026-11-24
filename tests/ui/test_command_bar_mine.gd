@@ -71,7 +71,7 @@ func test_mine_shows_for_minelayers_only_and_is_at_least_48_dp() -> void:
 			UiScale.dp(56.0) - 0.5
 		)
 		assert_float(button.size.y).override_failure_message(why).is_greater_equal(
-			UiScale.dp(64.0) - 0.5
+			UiScale.dp(48.0) - 0.5
 		)
 		assert_float(minf(least.x, least.y)).override_failure_message(why).is_greater_equal(
 			UiScale.dp(48.0) - 0.5

@@ -64,7 +64,7 @@ func before_test() -> void:
 
 ## 1, 2, 3 and 5 types: the chips that fit show, then "+N" counts the types left out; no chip is
 ## cut by the bar, one more chip would not have fitted, and the row runs Deselect, the chips in
-## selection order, "+N", the orders: plain and mirrored.
+## selection order, "+N", the orders (Stop above Deselect): plain and mirrored.
 func test_the_chips_that_fit_then_plus_n_at_the_narrowest_phones_in_both_orientations() -> void:
 	for profile: StringName in [&"web_phone_portrait"]:  # Sideways every type fits: see below.
 		await _open(UiProfiles.by_name(profile))
@@ -396,15 +396,19 @@ func _assert_fit(why: String, types: int) -> bool:
 	return shown < types
 
 
-## The row from Deselect: the shown chips in selection order, "+N", then Stop, strictly left to
+## The row from the Deselect column: the shown chips in selection order, "+N", then the first
+## order, strictly left to
 ## right (right to left when mirrored).
 func _assert_order(why: String, mirrored: bool) -> void:
 	var xs: Array[float] = [(_hud("Deselect") as Control).get_global_rect().get_center().x]
 	for control: Control in _shown_controls():
 		xs.append(control.get_global_rect().get_center().x)
-	var stop: Button = _bar.order_button(&"stop")
-	if stop.is_visible_in_tree():
-		xs.append(stop.get_global_rect().get_center().x)
+	# Stop stands above Deselect in the same column (P581), so it has no place of its own here.
+	var orders: Control = _bar.find_child("Orders", true, false)
+	for order: Node in orders.get_children():
+		if (order as Control).visible:
+			xs.append((order as Control).get_global_rect().get_center().x)
+			break  # The first order of the first row; the others may wrap under it.
 	for index: int in range(1, xs.size()):
 		var ordered: bool = xs[index] < xs[index - 1] if mirrored else xs[index] > xs[index - 1]
 		assert_bool(ordered).override_failure_message("%s: order %s" % [why, xs]).is_true()
@@ -454,8 +458,7 @@ func _assert_none_would_fit(why: String, shown: int, types: int) -> void:
 ## What the row asks for: Deselect, the shown chips, "+N" and the gaps, and the orders.
 func _row_ask() -> float:
 	var row: Control = _bar.get_node("Row")
-	var orders: Control = _bar.find_child("Orders", true, false).get_child(0)
-	return row.get_combined_minimum_size().x + orders.get_combined_minimum_size().x
+	return row.get_combined_minimum_size().x  # The orders stand in the row.
 
 
 ## The room the bar may take at the most (while a mode runs: the width it had as the mode began).
@@ -565,7 +568,8 @@ func _open(metrics: UiMetrics) -> void:
 
 
 ## Lead, 2026-11-05: Deselect and the orders come first, so upright Stop is fully inside the bar
-## and its scroll takes no touch (never scrolled out), with the Ready chip showing too, at every
+## and the orders wrap into a second row instead of scrolling, with the Ready chip showing too, at
+## every
 ## portrait profile and at a 296 dp safe width (a 320 dp phone), with 1, 3 and 5 types: one type
 ## shows its chip, and types that do not fit are counted in "+N" (alone where not even one chip and
 ## "+N" fit).
@@ -585,12 +589,11 @@ func test_upright_stop_is_always_inside_the_bar_and_the_chips_take_what_is_left(
 			await await_idle_frame()
 			var why: String = "%s, %d types" % [label, types]
 			_assert_stop_inside(why)
-			var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
-			assert_object(scroll).override_failure_message(why).is_not_null()
-			assert_int(scroll.mouse_filter).override_failure_message(why).is_equal(
+			var orders: OrderFlow = _bar.find_child("Orders", true, false) as OrderFlow
+			assert_object(orders).override_failure_message(why).is_not_null()
+			assert_int(orders.mouse_filter).override_failure_message(why).is_equal(
 				Control.MOUSE_FILTER_IGNORE
 			)
-			assert_int(scroll.scroll_horizontal).override_failure_message(why).is_equal(0)
 			if types == 1:
 				assert_int(_shown_chips()).override_failure_message(why).is_equal(1)
 			cut_seen = _assert_fit(why, types) or cut_seen
