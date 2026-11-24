@@ -89,9 +89,10 @@ func test_upright_the_corners_are_the_landscape_corners_at_every_portrait_screen
 			)
 			var bar: Rect2 = with_bar[HudCorners.BAR]
 			assert_float(bar.position.x).is_equal_approx(safe.position.x, TOLERANCE)
-			# Upright the bar's room is BUILD's only: the Ready chip is in the right column.
+			# Upright the bar's room is the strike button's (72 dp, wider than BUILD, and in the bar's
+			# 106 dp height, P581): the Ready chip is in the right column above the bar.
 			assert_float(bar.end.x).override_failure_message(why).is_equal_approx(
-				build.position.x - 8.0 * dp, TOLERANCE
+				with_bar[HudCorners.STRIKE].position.x - 8.0 * dp, TOLERANCE
 			)
 			# The strike button a gap above BUILD, the row to its left at its height.
 			var strike: Rect2 = with_bar[HudCorners.STRIKE]
@@ -104,7 +105,9 @@ func test_upright_the_corners_are_the_landscape_corners_at_every_portrait_screen
 				var lone: Dictionary[StringName, Rect2] = HudCorners.place(
 					safe, true, dp, false, _shown(["ready"], 5)
 				)
-				assert_float(build.position.y - lone[HudCorners.READY].end.y).is_equal_approx(
+				# Alone it stands a gap above the bar's top (taller than BUILD, P581), bar or none.
+				var bar_top: float = safe.end.y - HudCorners.BAR_DP.y * dp
+				assert_float(bar_top - lone[HudCorners.READY].end.y).is_equal_approx(
 					8.0 * dp, TOLERANCE
 				)
 			checked += 1

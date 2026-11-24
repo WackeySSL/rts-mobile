@@ -411,9 +411,13 @@ func test_the_ready_chip_follows_the_strike_building_upright() -> void:
 	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
 	_aim.owned = false  # The Deep Bore is gone: nothing else happens.
 	_aim.changed.emit()
-	assert_float(_rect("BuildButton").position.y - _rect("ReadyChip").end.y).is_equal_approx(
-		gap, 1.5
+	# Without the strike button it stands a gap above the command bar's top, which is taller than
+	# BUILD (Stop above Clear, P581), whether the bar shows or not.
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
+	var bar_top: float = safe.end.y - UiScale.dp(HudCorners.BAR_DP.y)
+	assert_float(bar_top - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)
 	_aim.owned = true  # And gained again.
 	_aim.changed.emit()
 	assert_float(strike.position.y - _rect("ReadyChip").end.y).is_equal_approx(gap, 1.5)

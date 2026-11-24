@@ -27,7 +27,13 @@ const PILL_MAX_DP: float = 372.0
 const SCOPE_DP: float = 56.0
 const BUILD_DP: float = 64.0
 const READY_DP: Vector2 = Vector2(112.0, 48.0)
-const BAR_DP: Vector2 = Vector2(120.0, 64.0)  ## Least width (Deselect and a chip) and height.
+## The bar's least width (the keys and a chip) and its TALL height: Stop above Clear is 2 x 48 dp
+## and a gap, and 2 dp more keep the pixel rounding inside (P581). The tall bar stands while Stop
+## shows or the orders wrap into a second row; `bar_height` gives the height in use.
+const BAR_DP: Vector2 = Vector2(120.0, 106.0)
+## The SHORT bar's height (units off, one row): a chip's 64 dp, the pre-P581 height, which also
+## holds one 48 dp row.
+const BAR_SHORT_DP: float = 64.0
 const GROUP_DP: float = 56.0
 const REVEAL_DP: float = 48.0  ## The enemy sweep's badge (P235), a square.
 const REVEAL_LINE_DP: Vector2 = Vector2(160.0, 220.0)  ## The warning line's least and most width.
@@ -73,6 +79,7 @@ class Shown:
 	var pill_width: float = 0.0  ## The pill's content width; 0 is its least.
 	var bar: bool = false  ## The command bar (a selection, or the slot a mode keeps).
 	var bar_width: float = 0.0  ## Content width; 0 is the least.
+	var bar_tall: bool = true  ## The bar is `BAR_DP.y` high (else `BAR_SHORT_DP`).
 	var ready: bool = false  ## The Ready chip (until ADR 0026's UI row).
 	var strike: bool = false  ## The strike button.
 	var aim: bool = false  ## The strike aim's check mark and X.
@@ -102,6 +109,7 @@ static func place(
 	var side: bool = shown.drawer and not portrait
 	var sheet: bool = shown.drawer and portrait
 	var bar_on: bool = shown.bar and not sheet
+	var bar_h: float = bar_height(shown)
 	# The right column, from the bottom up: BUILD (in the corner, bar or none, in both orientations;
 	# Michael, 2026-11-05), the strike button.
 	var build: Rect2 = Rect2(w - BUILD_DP, h - BUILD_DP, BUILD_DP, BUILD_DP)
@@ -120,7 +128,10 @@ static func place(
 			# stands in the right column, a gap above the strike button (or BUILD): nothing below
 			# it moves (lead decision, 2026-11-05).
 			if portrait:
-				var below: float = strike.position.y if shown.strike else build.position.y
+				# The bar is taller than BUILD (Stop above Clear), so the chip clears its top too.
+				var below: float = (
+					strike.position.y if shown.strike else minf(build.position.y, h - bar_h)
+				)
 				out[READY] = Rect2(
 					w - READY_DP.x, below - GAP_DP - READY_DP.y, READY_DP.x, READY_DP.y
 				)
@@ -172,7 +183,9 @@ static func place(
 		var row: Rect2 = out.get(STRIKE_ROW, Rect2())
 		var next: Rect2 = strike if shown.strike else build
 		next = out[READY] if out.has(READY) and portrait else next
-		_map(out, w, portrait, next, row, column_end)
+		if bar_on and next.position.y > h - bar_h:  # The bar is taller than BUILD.
+			next.position.y = h - bar_h
+		_map(out, w, portrait, next, row, column_end, h - bar_h if bar_on else INF)
 	if shown.reveal and not shown.drawer and not shown.map:
 		_reveal(out, w, portrait, build, strike if shown.strike else Rect2(), shown, column_end)
 	if shown.toast and not shown.map:
@@ -225,16 +238,32 @@ static func _drawer(w: float, h: float, portrait: bool) -> Rect2:
 	return Rect2(w - width, 0.0, width, h)
 
 
+## The height of the bar in use: tall (`BAR_DP.y`) or short (`BAR_SHORT_DP`).
+static func bar_height(shown: Shown) -> float:
+	return BAR_DP.y if shown.bar_tall else BAR_SHORT_DP
+
+
 ## The command bar: bottom left, as wide as its content and no wider than the room beside BUILD
 ## (and, sideways, the Ready chip) or the open panel; the same upright (Michael, 2026-11-05), where
 ## the Ready chip stands in the right column instead.
 static func _bar(
 	w: float, h: float, portrait: bool, shown: Shown, open: Rect2, side: bool
 ) -> Rect2:
-	var taken: float = BUILD_DP + GAP_DP
-	taken += READY_DP.x + GAP_DP if shown.ready and not portrait else 0.0
+	# The bar (`bar_h` high) stands beside the right column, whose parts reach into its height:
+	# BUILD, the strike button (72 dp, wider than BUILD) with its aim row, and sideways the Ready
+	# chip left of BUILD (upright it stands above the bar).
+	var bar_h: float = bar_height(shown)
+	var taken: float = BUILD_DP
+	if shown.strike:
+		taken = maxf(taken, StrikeButton.SIZE_DP)
+		if shown.aim:
+			var row: float = 2.0 * StrikeControls.ACTION_DP + StrikeControls.GAP_DP
+			taken = maxf(taken, StrikeButton.SIZE_DP + GAP_DP + row)
+	if shown.ready and not portrait:
+		taken = maxf(taken, BUILD_DP + GAP_DP + READY_DP.x)
+	taken += GAP_DP
 	var room: float = w - (open.size.x + GAP_DP if side else taken)
-	return Rect2(0.0, h - BAR_DP.y, minf(maxf(shown.bar_width, BAR_DP.x), room), BAR_DP.y)
+	return Rect2(0.0, h - bar_h, minf(maxf(shown.bar_width, BAR_DP.x), room), bar_h)
 
 
 ## The toast: portrait, under the pill, a gap under the scope's foot (the scope is 56 dp, the pill's
@@ -274,14 +303,16 @@ static func _toast(
 ## Left of the column, while the strike aim's row (`row`, empty when it does not show) stands in
 ## its way, the map ends a gap left of the row and narrows (the box stays 2:1, 192 dp wide at the
 ## least) to start a gap right of the pill and of the group column (`column_end`, 0 for none), the
-## larger of the two: the pinned map and the aim meet only here.
+## larger of the two: the pinned map and the aim meet only here. A bar showing (`bar_top`, its top
+## edge; INF for none) keeps the pinned map a gap above it.
 static func _map(
 	out: Dictionary[StringName, Rect2],
 	w: float,
 	portrait: bool,
 	next: Rect2,
 	row: Rect2,
-	column_end: float
+	column_end: float,
+	bar_top: float
 ) -> void:
 	var cap: Vector2 = MAP_BOX_PORTRAIT_DP if portrait else MAP_BOX_DP
 	var top: float = SCOPE_DP + GAP_DP
@@ -299,6 +330,9 @@ static func _map(
 			var from: float = out[PILL].end.x + GAP_DP if out.has(PILL) else 0.0
 			from = maxf(from, column_end + GAP_DP if column_end > 0.0 else 0.0)
 			width = clampf(right - from, 2.0 * MAP_BOX_LEAST_H_DP, cap.x)
+		# Pinned to the top it stays a gap short of the bar's top (the bar is taller than BUILD).
+		width = minf(width, (bar_top - GAP_DP - MAP_HEAD_DP) * cap.x / cap.y)
+		width = maxf(width, 2.0 * MAP_BOX_LEAST_H_DP)
 		box = Rect2(right - width, MAP_HEAD_DP, width, width * cap.y / cap.x)
 	out[MAP_HEAD] = Rect2(box.position.x, box.position.y - MAP_HEAD_DP, box.size.x, MAP_HEAD_DP)
 	out[MAP_BOX] = box
@@ -318,7 +352,7 @@ static func _groups(
 	columns: int,
 	sheet_top: float
 ) -> int:
-	var bottom: float = h - (BAR_DP.y + GAP_DP if bar_on else 0.0)
+	var bottom: float = h - (bar_height(shown) + GAP_DP if bar_on else 0.0)
 	if sheet_top >= 0.0:
 		bottom = sheet_top - GAP_DP
 	var top: float = minf(PILL_DP.y + GAP_DP, bottom - GROUP_DP)

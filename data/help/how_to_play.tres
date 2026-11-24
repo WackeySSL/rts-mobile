@@ -302,7 +302,7 @@ body = "The bar at the bottom left shows your selection. There is one card for e
 script = ExtResource("3_ent")
 id = &"selection-deselect"
 title = "Clear the selection"
-body = "Tap CLEAR, the first button of the bar, to select nothing. It works for units and buildings, and for an enemy building you looked at. It sends no order. While you place a building or aim a strike, CLEAR stays in the bar so the buttons do not move."
+body = "Tap CLEAR, the bottom button of the bar's first column, under Stop, to select nothing. It works for units and buildings, and for an enemy building you looked at. It sends no order. While you place a building or aim a strike, CLEAR stays in the bar so the buttons do not move."
 
 [sub_resource type="Resource" id="e47"]
 script = ExtResource("3_ent")
@@ -320,7 +320,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e37"), SubResource("e38"), S
 script = ExtResource("3_ent")
 id = &"orders-stop"
 title = "Stop"
-body = "Select units and tap Stop. They stop where they are. A tanker you stop goes back to work by itself after a few seconds. There is no Attack button. Tap the ground to move, and tap an enemy to attack."
+body = "Select units and tap Stop, the button above CLEAR at the left end of the bar. They stop where they are. A tanker you stop goes back to work by itself after a few seconds. There is no Attack button. Tap the ground to move, and tap an enemy to attack."
 
 [sub_resource type="Resource" id="e49"]
 script = ExtResource("3_ent")

@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## The command bar (plan P122, ADR 0025 sections 1 and 9) in the main scene at the six sizes of
-## ScreenSizes.ALL: it shows for a selection and hides without one; Deselect (48 x 64 dp) clears
+## ScreenSizes.ALL: it shows for a selection and hides without one; Deselect (56 x 48 dp, Stop
+## stacked above it) clears
 ## units, an own building and an enemy building with no Command; Stop sends one STOP for units and
 ## a building has no order; there is no Attack button; the bar keeps its slot during placement and
 ## the strike aim (the bar's place and width stay, with an empty plate); upright BUILD stays in the
@@ -68,7 +69,7 @@ func test_the_bar_shows_for_a_selection_and_hides_without_one_at_every_size() ->
 		assert_bool(_bar.visible).override_failure_message(why).is_false()
 
 
-func test_deselect_is_48_by_64_dp_at_the_bars_start_sideways_and_upright_mirrored_too() -> void:
+func test_deselect_is_48_dp_high_with_stop_above_it_sideways_and_upright_mirrored_too() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(size, null)
 		await _select([TANK])
@@ -78,13 +79,17 @@ func test_deselect_is_48_by_64_dp_at_the_bars_start_sideways_and_upright_mirrore
 			UiScale.dp(48.0) - TOLERANCE_PX
 		)
 		assert_float(clear.size.y).override_failure_message(why).is_greater_equal(
-			UiScale.dp(64.0) - TOLERANCE_PX
+			UiScale.dp(48.0) - TOLERANCE_PX
 		)
 		var bar: Rect2 = _bar.get_global_rect()
 		assert_float(clear.position.x).override_failure_message(why).is_equal_approx(
 			bar.position.x, 1.5
 		)
-		assert_bool(clear.position.x < _rect("Stop").position.x).is_true()
+		var stop: Rect2 = _rect("Stop")
+		assert_float(stop.end.y).override_failure_message(why).is_less_equal(clear.position.y + 1.0)
+		assert_float(stop.position.x).override_failure_message(why).is_equal_approx(
+			clear.position.x, 1.5
+		)
 		_bar.mirror = true
 		_bar.place()
 		await await_idle_frame()
@@ -92,7 +97,9 @@ func test_deselect_is_48_by_64_dp_at_the_bars_start_sideways_and_upright_mirrore
 		clear = _rect("Deselect")
 		var mirrored: String = "%s mirrored: clear %s, bar %s" % [why, clear, bar]
 		assert_float(clear.end.x).override_failure_message(mirrored).is_equal_approx(bar.end.x, 1.5)
-		assert_bool(clear.position.x > _rect("Stop").position.x).is_true()
+		assert_float(_rect("Stop").end.x).override_failure_message(mirrored).is_equal_approx(
+			clear.end.x, 1.5
+		)
 
 
 func test_deselect_clears_units_an_own_building_and_an_enemy_building_with_no_command() -> void:
