@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
 ## The Home order of the command bar (plan P244, ADR 0036 section 12) in the main scene at the six
 ## sizes of ScreenSizes.ALL: it shows only while an own aircraft is selected, beside Stop and at
-## least 56 x 64 dp (the bar's order size), and one tap sends one REPAIR per airfield with the
+## least 56 x 48 dp (the bar's order size), and one tap sends one REPAIR per airfield with the
 ## aircraft homed at it, with no aim; a tank alone, a drone squad (which flies low and is no REPAIR
 ## row) and aircraft with no airfield of the player's have no Home, because a button that does
 ## nothing never shows. The layout also runs on every UiProfiles profile, sideways, upright and
-## with the notch design's insets, and the button is whole or a half-cut cue in the scroll.
+## with the notch design's insets, and the button is whole inside the bar.
 ## Own: light tank 1, fighter 2, bomber 3, airfield 4, drone squad 5; enemy Headquarters 6.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
@@ -141,20 +141,15 @@ func _home() -> Button:
 	return _bar.order_button(&"home")
 
 
-## Home is 56 x 64 dp at least and inside the safe area; inside the order scroll, or cut by it with
-## part of it showing (the scroll takes touches then: the rule's cue that the orders go on).
+## Home is 56 x 48 dp at least, whole inside the bar (it wraps into a second row, never scrolls)
+## and the bar is inside the safe area.
 func _assert_whole_or_cue(why: String) -> void:
 	var rect: Rect2 = _home().get_global_rect()
 	assert_float(rect.size.x).override_failure_message(why).is_greater_equal(UiScale.dp(56.0) - 0.5)
-	assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(64.0) - 0.5)
-	var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
-	var clip: Rect2 = scroll.get_global_rect()
-	var detail: String = "%s: home %s, orders %s" % [why, rect, clip]
-	if not clip.grow(0.5).encloses(rect):
-		assert_bool(clip.intersects(rect)).override_failure_message(detail).is_true()
-		assert_int(scroll.mouse_filter).override_failure_message(detail).is_equal(
-			Control.MOUSE_FILTER_PASS
-		)
+	assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(48.0) - 0.5)
+	var clip: Rect2 = _bar.get_global_rect()
+	var detail: String = "%s: home %s, bar %s" % [why, rect, clip]
+	assert_bool(clip.grow(0.5).encloses(rect)).override_failure_message(detail).is_true()
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 0.0)
 	assert_bool(safe.grow(0.5).encloses(clip)).override_failure_message(detail).is_true()
 
