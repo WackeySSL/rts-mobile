@@ -16,6 +16,11 @@ extends Node
 ## `can_next()`, `next()`, `skip()`, `stalled()`, `progress()` and `running()`; the static
 ## `lessons_done()`, `is_done()` and `mark_done()`.
 ##
+## Chained targets (ADR 0048 section 5): `active_target()` is the step of the beat's chain the
+## player is on (`TutorialChain.active`, re-evaluated every frame, also on a paused beat), and
+## `target_changed` fires once when it moves to another step. At `beat_shown` the step is already
+## set, with no signal of its own.
+##
 ## Pause: a beat with `pause` holds `runner.paused` from its prompt to its end. The pause menu
 ## unpauses when it closes, so the director pauses again on the next frame (a held beat stays held);
 ## it never unpauses while the pause menu is open, and it unpauses only what it paused.
@@ -35,6 +40,8 @@ signal beat_done(beat: TutorialBeatDef)
 signal lesson_done(lesson_id: StringName)
 ## The lesson was skipped, or a new match began under it. Nothing is saved.
 signal lesson_skipped(lesson_id: StringName)
+## The active step of the beat's chain moved to another step (`active_target()` is the new one).
+signal target_changed(target: TutorialLeadInDef)
 
 enum Phase { IDLE, GAP, SHOWING }
 
@@ -60,6 +67,9 @@ var _shown_at: int = 0
 var _gate_open: bool = true
 var _holding: bool = false
 var _start: TutorialContext = null
+## The beat's own anchor as the chain's last step, built once per beat; and the active step's index.
+var _final: TutorialLeadInDef = null
+var _step: int = -1
 var _ctx: TutorialContext = TutorialContext.new()  ## Refilled each frame, never reallocated.
 ## The snapshot a tick-driven condition was last checked on: it is checked again on a new one only.
 var _checked: MatchSnapshot = null
@@ -172,12 +182,24 @@ func advance() -> void:
 			_show()
 	else:
 		var ctx: TutorialContext = _fill()
+		var step: int = TutorialChain.active(current, ctx)
+		if step != _step:
+			_step = step
+			target_changed.emit(active_target())
 		if TutorialConditions.needs_ticks(current.kind):
 			if snap == _checked:
 				return
 			_checked = snap
 		if TutorialConditions.check(current, ctx, _start):
 			_complete()
+
+
+## The step of the beat's chain the player is on: a lead-in, or the beat's own anchor as a step.
+## Null in a gap and when no lesson runs.
+func active_target() -> TutorialLeadInDef:
+	if _phase != Phase.SHOWING or _step < 0:
+		return null
+	return current.lead_in[_step] if _step < current.lead_in.size() else _final
 
 
 func current_beat() -> TutorialBeatDef:
@@ -228,7 +250,10 @@ func _show() -> void:
 	_phase = Phase.SHOWING
 	current = current_beat()
 	_shown_at = _tick()
-	_start = _fill().baseline()
+	var ctx: TutorialContext = _fill()
+	_start = ctx.baseline()
+	_final = TutorialChain.final_step(current)
+	_step = TutorialChain.active(current, ctx)
 	_checked = null
 	if current.pause and runner != null:
 		runner.paused = true
@@ -244,6 +269,7 @@ func _complete() -> void:
 	_notes.append(done.id)
 	_note_ticks.append(_tick())
 	_release_pause()
+	_step = -1
 	_index += 1
 	_gap_from = _tick()
 	if _index >= lesson.beats.size():
@@ -265,6 +291,8 @@ func _stop_quietly() -> void:
 	_notes.clear()  # Nothing is told after a lesson's end, a skip or a restart: the match is over.
 	_note_ticks.clear()
 	_start = null
+	_final = null
+	_step = -1
 	if runner != null and runner.ticked.is_connected(_on_ticked):
 		runner.ticked.disconnect(_on_ticked)
 	if CommandQueue.submitted.is_connected(_on_submitted):

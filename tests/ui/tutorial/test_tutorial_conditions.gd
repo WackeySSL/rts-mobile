@@ -255,3 +255,54 @@ func test_a_pinch_about_a_point_is_no_pan() -> void:
 	assert_bool(_check(pan, ctx, start)).is_false()
 	ctx.camera_zoom = start.camera_zoom
 	assert_bool(_check(pan, ctx, start)).is_true()
+
+
+func test_strike_aiming_holds_with_or_without_a_point() -> void:
+	var ctx: TutorialContext = Lesson.context(Rig.start())
+	var aiming: TutorialBeatDef = Lesson.beat("a", TutorialConditions.Kind.STRIKE_AIMING)
+	assert_int(TutorialConditions.Kind.STRIKE_AIMING).is_equal(18)  # Stored in data: append only.
+	assert_bool(_check(aiming, ctx)).is_false()
+	ctx.strike_aiming = true
+	assert_bool(_check(aiming, ctx)).is_true()
+	ctx.strike_has_point = true
+	assert_bool(_check(aiming, ctx)).is_true()
+	ctx.strike_aiming = false
+	assert_bool(_check(aiming, ctx)).is_false()
+	assert_bool(TutorialConditions.needs_ticks(TutorialConditions.Kind.STRIKE_AIMING)).is_false()
+
+
+func test_check_kind_equals_check_for_every_kind() -> void:
+	var world: World = Rig.start()
+	var ctx: TutorialContext = Lesson.context(world)
+	ctx.hud.open(HudState.Unfold.DRAWER)
+	ctx.drawer_tab = World.Tab.INFANTRY
+	ctx.zoom_level = 2
+	ctx.camera_centre = Vector2(300, 0)
+	ctx.placement_type = Rig.type_of(world, "barracks")
+	ctx.strike_aiming = true
+	ctx.strike_has_point = true
+	ctx.selection.set_ids(PackedInt32Array([Lesson.row_id(world, 1, "rifle_squad")]))
+	var start: TutorialContext = Lesson.context(world)
+	var area: Rect2i = Rect2i(0, 0, 20, 20)
+	var seen: int = 0
+	for kind: int in TutorialConditions.Kind.values():
+		for type_id: StringName in [&"", &"rifle_squad", &"nope"]:
+			var beat: TutorialBeatDef = Lesson.beat(
+				"k", kind, {"type_id": type_id, "count": 1, "area": area, "value": 2}
+			)
+			var direct: bool = TutorialConditions.check_kind(
+				beat.kind, beat.type_id, beat.count, beat.area, beat.value, ctx, start
+			)
+			assert_bool(direct).is_equal(TutorialConditions.check(beat, ctx, start))
+			seen += 1
+	assert_int(seen).is_equal(TutorialConditions.Kind.size() * 3)
+
+
+func test_lead_in_kinds_are_the_ui_state_kinds_without_ticks() -> void:
+	for kind: TutorialConditions.Kind in TutorialConditions.LEAD_IN_KINDS:
+		assert_bool(TutorialConditions.needs_ticks(kind)).is_false()
+	assert_bool(TutorialConditions.LEAD_IN_KINDS.has(TutorialConditions.Kind.NEXT)).is_false()
+	(
+		assert_bool(TutorialConditions.LEAD_IN_KINDS.has(TutorialConditions.Kind.CAMERA_PANNED))
+		. is_false()
+	)

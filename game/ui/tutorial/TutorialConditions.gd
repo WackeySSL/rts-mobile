@@ -28,6 +28,7 @@ extends RefCounted
 ## - STRIKE_PENDING: the player's strike is in flight.
 ## - GROUP_SAVED: control group `value` holds at least `count` units.
 ## - MATCH_WON: the match ended with the local player the winner.
+## - STRIKE_AIMING: the strike aim is on, with a point set or not.
 ## Append only: the values are stored in `data/tutorial/*.tres`.
 enum Kind {
 	NEXT,
@@ -48,7 +49,20 @@ enum Kind {
 	GROUP_SAVED,
 	MATCH_WON,
 	UNFOLD_CLOSED,
+	STRIKE_AIMING,
 }
+
+## The kinds a lead-in step may use (ADR 0048 section 5): UI state only, none needs ticks.
+const LEAD_IN_KINDS: Array[Kind] = [
+	Kind.SELECTED,
+	Kind.UNFOLD_OPEN,
+	Kind.UNFOLD_CLOSED,
+	Kind.DRAWER_TAB,
+	Kind.PLACING,
+	Kind.STRIKE_AIMED,
+	Kind.STRIKE_AIMING,
+	Kind.ZOOM_LEVEL,
+]
 
 ## The kinds that only the sim's ticks can make true: a beat that pauses the match cannot use them.
 const NEEDS_TICKS: Array[Kind] = [
@@ -70,49 +84,64 @@ static func needs_ticks(kind: Kind) -> bool:
 
 ## Whether the beat's condition holds in `ctx`; `start` is the context from when the beat showed.
 static func check(beat: TutorialBeatDef, ctx: TutorialContext, start: TutorialContext) -> bool:
+	return check_kind(beat.kind, beat.type_id, beat.count, beat.area, beat.value, ctx, start)
+
+
+## `check` on the bare parameters, so a lead-in step (which has no count or area) shares it.
+static func check_kind(
+	kind: Kind,
+	type_id: StringName,
+	count: int,
+	area: Rect2i,
+	value: int,
+	ctx: TutorialContext,
+	start: TutorialContext
+) -> bool:
 	var snap: MatchSnapshot = ctx.snapshot
-	match beat.kind:
+	match kind:
 		Kind.ZOOM_LEVEL:
-			return ctx.zoom_level == beat.value
+			return ctx.zoom_level == value
 		Kind.CAMERA_PANNED:
 			return (
 				is_equal_approx(ctx.camera_zoom, start.camera_zoom)
-				and ctx.camera_centre.distance_to(start.camera_centre) >= float(beat.count)
+				and ctx.camera_centre.distance_to(start.camera_centre) >= float(count)
 			)
 		Kind.UNFOLD_OPEN:
-			return ctx.hud != null and int(ctx.hud.current) == beat.value
+			return ctx.hud != null and int(ctx.hud.current) == value
 		Kind.UNFOLD_CLOSED:
-			return ctx.hud != null and int(ctx.hud.current) != beat.value
+			return ctx.hud != null and int(ctx.hud.current) != value
 		Kind.DRAWER_TAB:
 			return (
 				ctx.hud != null
 				and ctx.hud.is_open(HudState.Unfold.DRAWER)
-				and ctx.drawer_tab == beat.value
+				and ctx.drawer_tab == value
 			)
+		Kind.STRIKE_AIMING:
+			return ctx.strike_aiming
 		Kind.STRIKE_AIMED:
 			return ctx.strike_aiming and ctx.strike_has_point
 		Kind.GROUP_SAVED:
-			return ctx.selection != null and ctx.selection.group_size(beat.value) >= beat.count
+			return ctx.selection != null and ctx.selection.group_size(value) >= count
 		Kind.NEXT:
 			return false
 	if snap == null or snap.type_ids.is_empty():
 		return false
-	var type: int = _type_of(snap, beat.type_id)
-	match beat.kind:
+	var type: int = _type_of(snap, type_id)
+	match kind:
 		Kind.SELECTED:
-			return ctx.selection != null and _selected(snap, ctx.selection, type) >= beat.count
+			return ctx.selection != null and _selected(snap, ctx.selection, type) >= count
 		Kind.UNITS_IN_AREA:
-			return _own(snap, ctx.local_player, type, 0, beat.area) >= beat.count
+			return _own(snap, ctx.local_player, type, 0, area) >= count
 		Kind.BUILDING_PLACED:
-			return _own(snap, ctx.local_player, type, 1, Rect2i()) >= beat.count
+			return _own(snap, ctx.local_player, type, 1, Rect2i()) >= count
 		Kind.BUILDING_DONE:
-			return _own(snap, ctx.local_player, type, 2, Rect2i()) >= beat.count
+			return _own(snap, ctx.local_player, type, 2, Rect2i()) >= count
 		Kind.OWN_AT_LEAST:
-			return _own(snap, ctx.local_player, type, 3, Rect2i()) >= beat.count
+			return _own(snap, ctx.local_player, type, 3, Rect2i()) >= count
 		Kind.HARVESTED:
-			return _at(snap.stat_harvested, ctx.local_player) >= beat.count
+			return _at(snap.stat_harvested, ctx.local_player) >= count
 		Kind.ENEMY_LOSSES:
-			return _enemy_losses(snap, ctx.local_player) >= beat.count
+			return _enemy_losses(snap, ctx.local_player) >= count
 		Kind.PLACING:
 			return ctx.placement_type >= 0 and (type == -1 or ctx.placement_type == type)
 		Kind.STRIKE_PENDING:
