@@ -101,11 +101,6 @@ static func place(
 	var parts: Dictionary[StringName, Rect2] = {}  # dp from the safe top left, unmirrored.
 	for key: StringName in hud_rects:
 		parts[key] = _to_dp(hud_rects[key], safe, dp, mirror)
-	var left: float = 0.0
-	var index: int = 0
-	while parts.has(HudCorners.group_key(index)):
-		left = maxf(left, parts[HudCorners.group_key(index)].end.x + GAP_DP)
-		index += 1
 	var top: float = HudCorners.SCOPE_DP + GAP_DP  # Landscape: under the scope.
 	if portrait:  # The toast slot's foot, kept free whether or not a toast shows.
 		top += HudCorners.TOAST_H_DP + GAP_DP
@@ -115,6 +110,13 @@ static func place(
 		top = maxf(top, parts[HudCorners.MAP].end.y + GAP_DP)
 	var cap: float = h * settings_values.get(MAX_HEIGHT_KEY, DEFAULT_MAX_HEIGHT_PCT) / 100.0
 	var bottom: float = minf(top + cap, h)
+	var left: float = 0.0  # Right of the group buttons, but not of those that stand below the dock.
+	var index: int = 0
+	while parts.has(HudCorners.group_key(index)):
+		var group: Rect2 = parts[HudCorners.group_key(index)]
+		if group.position.y < bottom + GAP_DP:
+			left = maxf(left, group.end.x + GAP_DP)
+		index += 1
 	if parts.has(AD_BAND):
 		bottom = minf(bottom, parts[AD_BAND].position.y - AD_GAP_DP)
 	var right: float = w

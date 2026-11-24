@@ -251,6 +251,18 @@ func test_the_close_handle_of_the_side_panel_is_cleared() -> void:
 	assert_float(dock.end.x).is_equal_approx(478.0, 0.01)  # 534 - 48 - 8.
 
 
+func test_a_group_button_below_the_dock_does_not_narrow_it() -> void:
+	var safe: Rect2 = Rect2(0, 0, 890, 387)
+	var near: Dictionary[StringName, Rect2] = {HudCorners.group_key(0): Rect2(0, 56, 56, 56)}
+	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, near, SETTINGS)
+	var far: Dictionary[StringName, Rect2] = near.duplicate()
+	far[HudCorners.group_key(1)] = Rect2(64, 330, 56, 56)  # Under the dock's foot (238).
+	assert_that(GuideDock.place(safe, false, 1.0, false, far, SETTINGS)).is_equal(dock)
+	far[HudCorners.group_key(1)] = Rect2(64, 200, 56, 56)  # In the dock's rows.
+	var narrowed: Rect2 = GuideDock.place(safe, false, 1.0, false, far, SETTINGS)
+	assert_float(narrowed.position.x).is_greater_equal(128.0)
+
+
 func test_empty_settings_take_the_defaults() -> void:
 	var safe: Rect2 = Rect2(0, 0, 890, 387)
 	var rects: Dictionary[StringName, Rect2] = {}
