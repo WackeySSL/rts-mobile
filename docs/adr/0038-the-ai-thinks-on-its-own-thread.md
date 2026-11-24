@@ -247,6 +247,21 @@ think: a Command is dropped only when what it names is gone or blocked.
   goes to the P250 follow-up list. P188's matches (`test_ai_determinism`: Normal vs Hard, 2700 ticks,
   and the 900-tick strike match) drop 0 on the shipped path.
 
+- **(2026-11-24, P580) The stale PLACE drop.** The balance run 45328608622 (Hard against Hard, 100
+  matches) counted 366 drops: 306 expired and 60 stale. Every stale drop was the same PLACE: a
+  mobile unit (a tanker walking to the ore) stepped onto the first slot's footprint in the lag tick
+  (`Placement.Reason.OCCUPIED`), 0.6 per match. `AiEconomy._place` now asks `PlayerView.placement`
+  with `PlayerView.COMMAND_LAG_TICKS` (1), which widens each mobile row's disc by the distance it
+  moves in that many ticks; the sim and the ghost keep lag 0. The margin is the unit's own step, the
+  usual case: a separation push or a unit spawned or unloaded in the lag tick stays a rare residual
+  drop. The margin reads every row, as the placement rule does, so an unseen enemy unit up to one
+  step outside its disc can make the AI skip a slot the sim would accept: a tiny leak, accepted
+  because the AI only skips a slot. The stale PLACE drops of the three
+  fixed seeds are 0. The expired rest is by design: Hard's focus fire sends the group an `ATTACK` on
+  the weakest seen enemy, which the group's own fire often kills in the lag tick, and its step-back
+  sends a unit under `unit_retreat_hp_percent` a `MOVE` that dies in the lag tick. Both are Hard's
+  only (Normal has neither), which is why Hard shows more expired drops than Normal.
+
 ### 7. The card: `ai_wait`, the think and `perf_ai_4b`
 - **`ai_wait`.** `MatchSnapshot` gets `ai_wait_usec`: the time step 1 of §1 blocked on the batch
   (0 when it was ready, when none was in flight, and always in `SYNC`). The card's report-only AI

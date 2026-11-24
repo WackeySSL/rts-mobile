@@ -872,7 +872,7 @@ body = "When a Dusk Array switches off your radar building and you have no other
 script = ExtResource("3_ent")
 id = &"superweapon-computer"
 title = "The computer's strikes"
-body = "On Normal and Hard the computer builds its side's superweapon and fires it. The Derrick League's Deep Bore comes with the red warning ring, so move out of it. The Lumen Accord's Dusk Array comes without warning and hits your production buildings. Easy never builds one."
+body = "On Hard the computer builds its side's superweapon and fires it. The Derrick League's Deep Bore comes with the red warning ring, so move out of it. The Lumen Accord's Dusk Array comes without warning and hits your production buildings; between two equal choices it takes the one whose ring also covers a radar building of yours that it has seen. Easy and Normal never build one."
 
 [sub_resource type="Resource" id="s14"]
 script = ExtResource("2_sec")
