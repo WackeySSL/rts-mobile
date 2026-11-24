@@ -21,6 +21,11 @@ forecast) and §5 (key colours in shadow frames), ADR 0027 §9 (the forecast it 
 "nothing tints a sorted sprite", ADR 0022 question 3's team share of a model, ADR 0011 §3's
 one-texture ring.
 
+Status note (2026-11-24, P621b docs; ADR 0050 accepted 2026-11-24): §4's team pad and ring stay. They
+now take the one sentinel key triad that ADR 0050 §3 puts in place of the per-faction keys, so
+they wear the same colour as the unit's team marker (by default own white, the computer red).
+No accepted text changed.
+
 Status note (2026-11-13, P200b, the lead): the answers are recorded above and under "Questions".
 The dated notes are placed: ADR 0010 §2 (fog colour), ADR 0023 §2 (z table, grade layers, forecast)
 and §5 (key colours in unit shadow frames), ADR 0027 §3 (the forecast; ADR 0027 carries it in §3's

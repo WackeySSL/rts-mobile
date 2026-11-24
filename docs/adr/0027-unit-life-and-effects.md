@@ -36,6 +36,12 @@ Status note (2026-11-13, P200b, the lead; ADR 0035 accepted 2026-11-09): ADR 003
 (18 ordinary, 19 with a strike, about 25 at worst), with a pointer at the end of §9. No accepted
 text changed.
 
+Status note (2026-11-24, P621b docs; ADR 0050 accepted 2026-11-24): §4's page rule (3584 rows at
+bake scale 1.0) is unchanged by the detail levels, because the canvases keep their size. ADR 0050
+§1 adds per-frame budgets (units 600 polygons and 64 KB; a 3x3 building 1,500 polygons and 128
+KB). The fourth zoom level (2.0) is baked at today's scale and is soft past 1.5 by choice (ADR
+0050 §6). No accepted text changed.
+
 ## Michael's answers (2026-11-02)
 1. **Now:** the life lanes run beside HUD v2; where the lead must choose, HUD and the Phase 3 gate
    rows go first.
