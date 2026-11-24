@@ -78,6 +78,7 @@ func test_from_scenario_copies_the_unit_weapon_and_terrain_tables_of_the_arena()
 		&"type_mine_cost": [0, 0, 0],
 		&"type_mine_aware": [0, 0, 0],
 		&"type_detect_milli": [0, 0, 0],
+		&"type_radar": [0, 0, 0],
 		&"weapon_targets": [1, 1, 1],
 		&"weapon_blast_milli": [0, 0, 0],
 		&"weapon_range": [4500, 4000, 5000],

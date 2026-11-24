@@ -38,3 +38,7 @@ var produces: int = -1
 ## footprint origin each, inside the footprint. 0 pads = not an airfield.
 @export var pads: int = 0
 @export var pad_offsets: Array[Vector2i] = []
+
+## A radar building (ADR 0047 section 3): the Signal Mast and the Relay Post. A player whose
+## complete radar buildings are all switched off by a Dusk Array has a dark radar scope (`Radar`).
+@export var radar: bool = false

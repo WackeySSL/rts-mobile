@@ -58,6 +58,7 @@ const COPIED: Array[StringName] = [
 	&"type_strike_kind",
 	&"type_charge_ticks",
 	&"type_strike_radius",
+	&"type_radar",
 	&"type_layer_bit",
 	&"type_pads",
 	&"type_repair_classes",
@@ -281,6 +282,13 @@ var type_faction: PackedInt32Array = PackedInt32Array()
 var type_strike_kind: PackedInt32Array = PackedInt32Array()
 var type_charge_ticks: PackedInt32Array = PackedInt32Array()
 var type_strike_radius: PackedInt32Array = PackedInt32Array()
+## 1 for a radar building (ADR 0047 section 3), else 0.
+var type_radar: PackedInt32Array = PackedInt32Array()
+## Per player (index 0 unused), derived once per capture by `Radar` with `tick` as the stamp: 1 when
+## the player's radar scope is dark, and the stamp it ends at (0 when not dark). Not World columns,
+## so no coverage list names them (ADR 0047 section 3).
+var radar_dark: PackedInt32Array = PackedInt32Array()
+var radar_dark_until: PackedInt32Array = PackedInt32Array()
 ## The layer bit of each type (World.Layer: 1 ground, 2 air, 4 low air) and the layers each weapon
 ## may hit, for the view and input (ADR 0036 section 5).
 var type_layer_bit: PackedInt32Array = PackedInt32Array()
@@ -570,6 +578,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	type_strike_kind = world.type_strike_kind.duplicate()
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
+	type_radar = world.type_radar.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
 	type_pads = world.type_pads.duplicate()
 	type_repair_classes = world.type_repair_classes.duplicate()
@@ -593,6 +602,7 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 	terrain_buildable = world.terrain_buildable.duplicate()
 	ore_cell = world.ore_cell.duplicate()
 	_capture_players(world)
+	_capture_radar(world)
 	type_ids = world.type_ids.duplicate()
 	faction_ids = world.faction_ids.duplicate()
 	weapon_ids = world.weapon_ids.duplicate()
@@ -616,6 +626,18 @@ func capture(world: World, previous: MatchSnapshot) -> void:
 		prev_pos_y = previous.pos_y
 	else:
 		_align_prev(previous.unit_id, previous.pos_x, previous.pos_y)
+
+
+## `radar_dark` and `radar_dark_until` for players 1 to `player_count`, stamped with `tick`. The two
+## arrays are sized on the first capture and then only written in place.
+func _capture_radar(world: World) -> void:
+	var size: int = world.player_count + 1
+	if radar_dark.size() != size:
+		radar_dark.resize(size)
+		radar_dark_until.resize(size)
+	for player: int in range(1, size):
+		radar_dark[player] = 1 if Radar.dark(world, player, tick) else 0
+		radar_dark_until[player] = Radar.dark_until(world, player, tick)
 
 
 ## The player, ore and ghost arrays and the power totals (ADR 0017 section 6), by duplicate().

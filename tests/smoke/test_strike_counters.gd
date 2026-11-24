@@ -437,8 +437,8 @@ func test_sight_cells_lost_of_a_rupture_are_read_from_the_landing_step() -> void
 	assert_int(counter.strike[2]["sight_cells_lost"]).is_equal(1)  # Cell 9 went before it.
 
 
-## Until P574 there is no `type_radar`: offline buildings never darken a radar.
-func test_radar_dark_ticks_read_zero_while_the_world_has_no_radar_table() -> void:
+## A type that is no radar never darkens one, offline or not.
+func test_radar_dark_ticks_read_zero_while_no_type_is_a_radar() -> void:
 	_put(VICTIM_A, 2, _building, POINT, POINT, 500)
 	_world.offline_until[VICTIM_A] = 10
 	var counter: SmokeCount = SmokeCount.new(2)
@@ -450,9 +450,9 @@ func test_radar_dark_ticks_read_zero_while_the_world_has_no_radar_table() -> voi
 	assert_int(counter.strike[2]["radar_dark_ticks"]).is_equal(0)
 
 
-## The rule of ADR 0047 section 3 from a radar table (the one P574 adds to the World): dark when a
-## complete radar is offline and no complete radar is online.
-func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() -> void:
+## The rule of ADR 0047 section 3 (`Radar.dark` over the World's `type_radar`): dark when a complete
+## radar is offline and no complete radar is online.
+func test_radar_dark_ticks_follow_the_rule_for_a_world_with_radar_types() -> void:
 	_put(VICTIM_A, 2, _hq, POINT, POINT, 500)  # Radar, offline until 10.
 	_put(VICTIM_B, 2, _hq, POINT, POINT, 500)  # Radar, becomes online later.
 	_put(OWN, 2, _rifle, POINT, POINT, 500)  # Not a radar.
@@ -460,10 +460,7 @@ func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() ->
 	_world.offline_until[VICTIM_B] = 6
 	var counter: SmokeCount = SmokeCount.new(2)
 	counter.start(_world)
-	var flags: PackedInt32Array = PackedInt32Array()
-	flags.resize(_world.type_ids.size())
-	flags[_hq] = 1
-	counter.radar_flags = flags
+	_world.type_radar[_hq] = 1
 	# Stamps 1 to 5: both radars offline: dark. 6 to 9: B is back online: not dark. 10: A back.
 	for tick: int in range(1, 12):
 		_world.tick = tick
@@ -476,7 +473,6 @@ func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() ->
 	_world.offline_until[VICTIM_A] = 100
 	var again: SmokeCount = SmokeCount.new(2)
 	again.start(_world)
-	again.radar_flags = counter.radar_flags
 	_world.tick = 20
 	again.after_step(_world)
 	assert_int(again.strike[2]["radar_dark_ticks"]).is_equal(1)

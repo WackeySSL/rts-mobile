@@ -255,6 +255,7 @@ static func _air_for(world: World, unit: UnitDef, building: BuildingDef) -> void
 	world.type_mine_cost.append(unit.mine_cost)
 	world.type_mine_aware.append(1 if unit.mine_aware else 0)
 	world.type_detect_milli.append(unit.detect_milli)
+	world.type_radar.append(1 if building != null and building.radar else 0)
 
 
 ## Appends an upgrade (ADR 0036 sections 2 and 3) once per id, up to World.UPGRADES_MAX: its stat
@@ -596,6 +597,7 @@ static func pad_types(world: World, types: int) -> void:
 		world.type_mine_cost,
 		world.type_mine_aware,
 		world.type_detect_milli,
+		world.type_radar,
 	]:
 		_pad(table, types, World.TYPE_PAD_V0)
 	_pad(world.type_max_hp, types, World.TYPE_PAD_MAX_HP)

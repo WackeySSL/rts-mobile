@@ -218,6 +218,7 @@ func test_prepare_pads_every_type_table_to_the_type_count_and_keeps_entries() ->
 		&"type_mine_cost": [0, 0, 0],
 		&"type_mine_aware": [0, 0, 0],
 		&"type_detect_milli": [0, 0, 0],
+		&"type_radar": [0, 0, 0],
 	}
 	assert_array(World.TYPE_ARRAYS).is_equal(expected.keys())
 	for _pass: int in 2:
@@ -379,7 +380,7 @@ func test_the_shape_lists_cover_every_array_and_int_property_once() -> void:
 		else:
 			others.append(column)
 	# P285's 152, P246's three mod_*, P276's repair_rows, P286's stance, nine mine arrays, mine_at.
-	assert_int(packed.size()).is_equal(168)  # P512: bonus_credits.
+	assert_int(packed.size()).is_equal(169)  # P512: bonus_credits; P574: type_radar.
 	assert_int(ints.size()).is_equal(72)  # P286: two mine ints; P512: bonus_credits_max.
 	# Every Packed*Array is an int32 table but the byte map tables and the names. Members that are
 	# neither an int nor a Packed*Array sit in no list: the id tables, the stream, the four helper
