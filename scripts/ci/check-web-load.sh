@@ -3,39 +3,52 @@
 # export-web.sh only scans the export log; a script that exports fine but does not compile in the
 # running build (a class_name used before the global class cache knows it, for instance) shows only
 # in the browser console. This is the guard for that.
-# Usage: bash scripts/ci/check-web-load.sh [--port N] [--seconds N] DIR
-#   DIR        the web export (holds index.html), e.g. build/web
-#   --port     localhost port of the throwaway static server (default 8811)
-#   --seconds  how long the console is watched after the page loaded (default 15)
+# Usage: bash scripts/ci/check-web-load.sh [--port N] [--seconds N] [--boot-timeout N] DIR
+#   DIR             the web export (holds index.html), e.g. build/web
+#   --port          localhost port of the throwaway static server, 1-65535 (default 8811)
+#   --seconds       how long the console is watched after the boot marker (default 5)
+#   --boot-timeout  how long to wait for the boot marker, the console line boot_ms=<n> that the intro prints
+#                   once the menu is up (default 90). The page's load event comes long before the engine
+#                   has fetched its wasm and pack, so the watch window starts at the marker.
 # Env:   NODE_PATH  where `playwright` resolves from (default: the global npm root)
-# Method: a fresh browser profile, no seeded save. A script that does not compile is logged at the first
-#         load, before any menu shows, so no save or tap is needed to reach it (tested on 56694ad1,
-#         whose menu_routes_defaults.gd errors at the first load with an empty save too). The server sends no
-#         COOP/COEP headers: the build is no-threads and has to run without them, as on GitHub Pages.
+# Method: two phases in one headless Chromium (Pixel 7), details in web-load-check.js. Phase 1 boots with a
+#         fresh profile (a script that does not compile is logged here whatever the save). Phase 2 writes a
+#         minimal valid save (rank XP 500) into the IndexedDB that Godot mounts as user://, boots again, so the
+#         main menu (not the first-launch lesson) is what MenuRoot builds, and taps SKIRMISH: the screen must
+#         change. The consent form of the web preview is tapped away (Accept) at every start. The server sends
+#         no COOP/COEP headers: the build is no-threads and has to run without them, as on GitHub Pages.
 # Needs: python3, node, the playwright package and a Chromium it can launch.
-# Exit:  0 no script error in the console
-#        1 a SCRIPT ERROR / Parse Error / Compile Error / Failed to load script line, or an uncaught
-#          page error (the lines are printed)
-#        2 usage error, or DIR has no index.html
-#        3 a tool is missing, the server did not start, or the browser could not load the page
+# Exit:  0 both phases booted, the console shows no script error and the menu answered
+#        1 a SCRIPT ERROR / Parse Error / Compile Error / Failed to load script / boot_error line, or an
+#          uncaught page error (the lines are printed; at once, also before the boot marker)
+#        2 usage error (also a port above 65535), or DIR has no index.html
+#        4 the main menu did not answer the tap on SKIRMISH (the screen did not change)
+#        3 no boot marker within the boot timeout (the engine did not start; the last console lines and the
+#          page text are printed), a tool is missing, the server did not start, or the browser could not
+#          load the page
 # Always stops the server it started. Bash 3.2 compatible.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-usage() { echo "usage: bash scripts/ci/check-web-load.sh [--port N] [--seconds N] DIR" >&2; }
+usage() { echo "usage: bash scripts/ci/check-web-load.sh [--port N] [--seconds N] [--boot-timeout N] DIR" >&2; }
 
 port=8811
-seconds=15
+seconds=5
+boot_timeout=90
 dir=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --port | --seconds)
+    --port | --seconds | --boot-timeout)
       if [ $# -lt 2 ] || ! [[ "$2" =~ ^[0-9]+$ ]] || [ "$2" -eq 0 ]; then
         usage
         echo "check-web-load: $1 needs a positive number" >&2
         exit 2
       fi
-      if [ "$1" = "--port" ]; then port="$2"; else seconds="$2"; fi
+      case "$1" in
+        --port) port="$2" ;;
+        --seconds) seconds="$2" ;;
+        *) boot_timeout="$2" ;;
+      esac
       shift 2
       ;;
     -h | --help)
@@ -60,6 +73,11 @@ while [ $# -gt 0 ]; do
 done
 if [ -z "$dir" ]; then
   usage
+  exit 2
+fi
+if [ "$port" -gt 65535 ]; then
+  usage
+  echo "check-web-load: --port must be 65535 or below" >&2
   exit 2
 fi
 if [ ! -s "$dir/index.html" ]; then
@@ -97,11 +115,16 @@ for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   fi
   sleep 0.25
 done
+# The probe may have reached another process that already held the port (ours would have died on bind).
+if [ "$up" = 1 ]; then
+  sleep 0.3 # a server that lost the bind race needs a moment to exit
+  kill -0 "$server_pid" 2>/dev/null || up=0
+fi
 if [ "$up" != 1 ]; then
   echo "check-web-load: the static server did not start on port $port (port in use?)" >&2
   exit 3
 fi
 
 rc=0
-node "$here/web-load-check.js" "http://127.0.0.1:$port/index.html" "$seconds" || rc=$?
+node "$here/web-load-check.js" "http://127.0.0.1:$port" "$seconds" "$boot_timeout" || rc=$?
 exit "$rc"

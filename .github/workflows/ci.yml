@@ -132,15 +132,18 @@ jobs:
         run: bash scripts/export-web.sh
 
       # P451b: export-web.sh scans only the export log. A script that exports fine but does not compile in the
-      # running build only shows in the browser console, so the build is loaded in headless Chromium (Pixel 7
-      # emulation) and the console watched for 15 s: SCRIPT ERROR, Parse Error, Compile Error, Failed to load
-      # script. About 1.5 min with a warm browser cache. Playwright is installed outside the workspace (the tree
-      # stays clean); the Chromium download is cached under the pinned Playwright version.
+      # running build, or a main menu that is dead, only shows in the browser. The build is loaded in headless
+      # Chromium (Pixel 7 emulation) twice: with a fresh profile, and with a minimal save written into the
+      # IndexedDB that backs user://, where the main menu must come up and answer a tap on SKIRMISH. Each load waits
+      # for the boot marker (boot_ms=, 90 s at most) and then watches the console for 5 s: SCRIPT ERROR, Parse
+      # Error, Compile Error, Failed to load script. About 2 min with a warm browser cache. Playwright is installed
+      # outside the workspace (the tree stays clean); the Chromium download is cached under the pinned version.
       - name: Cache the Playwright browser
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
+          # ubuntu-24.04 is spelled out because the job's runs-on is; change both together.
           key: playwright-${{ env.PLAYWRIGHT_VERSION }}-chromium-ubuntu-24.04
 
       - name: Install Playwright and Chromium

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Offline test of scripts/ci/check-web-load.sh (P451b): the usage errors, and the verdict for a console
-# with and without a script error, against a stub `playwright` module (no browser, no Godot).
+# Offline test of scripts/ci/check-web-load.sh (P451b): the usage errors, and the verdict for each console and
+# menu behaviour, against a stub `playwright` module (no browser, no Godot).
 # Needs: bash, python3, node. ci.yml runs it in the verify job.
 # Usage: bash scripts/ci/test-check-web-load.sh      Exit: 0 all cases pass, 1 a case failed, 3 a tool is missing.
 set -euo pipefail
@@ -15,8 +15,11 @@ root="$(mktemp -d)"
 trap 'rm -rf "${root:?}"' EXIT
 mkdir -p "$root/site" "$root/mods/playwright"
 echo '<html></html>' >"$root/site/index.html"
-# The stub replays the lines of FAKE_CONSOLE (one per line) as console messages when the page loads.
+# The stub plays the part of the browser. On every load of index.html it replays the lines of FAKE_CONSOLE (one per
+# line) as console messages, and throws FAKE_PAGEERROR as an uncaught page error. Screenshots differ from one
+# call to the next unless FAKE_MENU is "dead". FAKE_SEED_FAIL makes the page.evaluate that writes the save throw.
 cat >"$root/mods/playwright/index.js" <<'JS'
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.min(ms, 20)));
 module.exports = {
   devices: { 'Pixel 7': {} },
   chromium: {
@@ -25,14 +28,29 @@ module.exports = {
       newContext: async () => ({
         newPage: async () => {
           const handlers = [];
+          const errHandlers = [];
+          let shots = 0;
           return {
-            on: (ev, fn) => { if (ev === 'console') handlers.push(fn); },
-            goto: async () => {
+            on: (ev, fn) => { (ev === 'console' ? handlers : errHandlers).push(fn); },
+            close: async () => {},
+            viewportSize: () => ({ width: 412, height: 839 }),
+            touchscreen: { tap: async () => {} },
+            screenshot: async () => Buffer.from(process.env.FAKE_MENU === 'dead' ? 'same' : 'shot' + shots++),
+            evaluate: async (fn, arg) => {
+              if (arg && arg.dir) {
+                if (process.env.FAKE_SEED_FAIL) throw new Error('VersionError');
+                return undefined;
+              }
+              return 'stub page text';
+            },
+            goto: async (url) => {
+              if (!/index\.html$/.test(url)) return;
+              if (process.env.FAKE_PAGEERROR) errHandlers.forEach((fn) => fn(new Error(process.env.FAKE_PAGEERROR)));
               for (const text of (process.env.FAKE_CONSOLE || '').split('\n').filter(Boolean)) {
                 handlers.forEach((fn) => fn({ text: () => text }));
               }
             },
-            waitForTimeout: async () => {},
+            waitForTimeout: sleep,
           };
         },
       }),
@@ -53,19 +71,48 @@ expect() { # name, expected exit, command...
     echo "ok   $name"
   fi
 }
+printed() { # what the last run must have printed
+  grep -q -- "$1" "$root/out" || {
+    echo "FAIL the last run did not print '$1'"
+    sed 's/^/    /' "$root/out"
+    failures=$((failures + 1))
+  }
+}
 check="$repo/scripts/ci/check-web-load.sh"
 export NODE_PATH="$root/mods"
 expect "no directory" 2 bash "$check"
 expect "missing directory" 2 bash "$check" "$root/nowhere"
 expect "bad port" 2 bash "$check" --port x "$root/site"
+expect "port above 65535" 2 bash "$check" --port 65536 "$root/site"
+expect "bad boot timeout" 2 bash "$check" --boot-timeout 0 "$root/site"
 expect "unknown flag" 2 bash "$check" --nope "$root/site"
-FAKE_CONSOLE=$'Godot Engine v4.7.2\nGL Driver Message' expect "clean console" 0 bash "$check" --port 8893 --seconds 1 "$root/site"
-FAKE_CONSOLE=$'Godot Engine\nSCRIPT ERROR: Parse Error: Cannot find member "new" in base "X".' expect "parse error" 1 bash "$check" --port 8893 --seconds 1 "$root/site"
-grep -q 'Parse Error' "$root/out" || {
-  echo "FAIL the failing run did not print the matching line"
-  failures=$((failures + 1))
-}
-FAKE_CONSOLE='ERROR: Failed to load script "res://a.gd" with error "Compilation failed".' expect "failed to load script" 1 bash "$check" --port 8893 --seconds 1 "$root/site"
+run="bash $check --port 8893 --seconds 1 --boot-timeout 1 $root/site"
+# shellcheck disable=SC2086 # $run is a word list on purpose
+FAKE_CONSOLE=$'Godot Engine v4.7.2\nGL Driver Message\nboot_ms=5123' expect "marker then clean" 0 $run
+printed 'boot_ms=5123'
+# shellcheck disable=SC2086
+FAKE_CONSOLE=$'Godot Engine v4.7.2\nGL Driver Message' expect "no marker" 3 $run
+printed 'GL Driver Message'
+printed 'stub page text'
+# shellcheck disable=SC2086
+FAKE_CONSOLE=$'Godot Engine\nSCRIPT ERROR: Parse Error: Cannot find member "new" in base "X".\n   at: GDScript::reload (res://a.gd:12)' expect "parse error before marker" 1 $run
+printed 'a.gd:12'
+# shellcheck disable=SC2086
+FAKE_CONSOLE=$'boot_ms=5000\nERROR: Failed to load script "res://a.gd" with error "Compilation failed".' expect "failed to load script after marker" 1 $run
+# shellcheck disable=SC2086
+FAKE_CONSOLE=$'boot_error: res://menu.tscn did not load' expect "boot_error" 1 $run
+# shellcheck disable=SC2086
+FAKE_PAGEERROR='RuntimeError: abort' expect "page error" 1 $run
+# An "at:" line that does not follow a hit is not collected.
+# shellcheck disable=SC2086
+FAKE_CONSOLE=$'boot_ms=5000\n   at: stray (res://b.gd:1)' expect "stray at: line" 0 $run
+# Phase 2: the menu does not answer the tap, and the save cannot be written.
+# shellcheck disable=SC2086
+FAKE_MENU=dead FAKE_CONSOLE='boot_ms=5000' expect "dead menu" 4 $run
+printed 'did not answer'
+# shellcheck disable=SC2086
+FAKE_SEED_FAIL=1 FAKE_CONSOLE='boot_ms=5000' expect "save not written" 3 $run
+printed 'could not write the save'
 if [ "$failures" -ne 0 ]; then
   echo "test-check-web-load: $failures case(s) failed" >&2
   exit 1
