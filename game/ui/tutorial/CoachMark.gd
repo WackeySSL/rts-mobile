@@ -53,9 +53,15 @@ var camera: RtsCamera
 ## The node under which the anchor controls are looked up by name.
 var hud_root: Node
 ## Every number of the blink (ADR 0048 section 7); a test may swap a copy in.
-var settings: GuideSettingsDef = preload("res://data/tutorial/guide_settings.tres")
+var settings: GuideSettingsDef = preload("res://data/tutorial/guide_settings.tres"):
+	set(value):
+		settings = value
+		_restart_blink()
 ## Reduced effects: a steady frame, no Tween. `_ready` adds the player switch; tests may set it.
-var reduced: bool = false
+var reduced: bool = false:
+	set(value):
+		reduced = value
+		_restart_blink()
 
 var _ring: Control
 var _card: PanelContainer
@@ -208,6 +214,17 @@ func ring_alpha() -> float:
 ## The frame's line, px: Reduced effects makes it 1 dp thicker.
 func ring_line_px() -> float:
 	return (RING_LINE_DP + (REDUCED_LINE_DP if reduced else 0.0)) * _dp
+
+
+## The frame's colour now (the blink's opacity in its alpha) and how many rings it draws.
+func ring_tone() -> Color:
+	var tone: Color = get_theme_color(&"ring_stalled" if _stalled_now else &"ring", &"GuideTokens")
+	tone.a *= _blink_alpha
+	return tone
+
+
+func ring_count() -> int:
+	return 2 if _stalled_now else 1
 
 
 func ring_blinking() -> bool:
@@ -615,12 +632,11 @@ func _resolve_target() -> void:
 func _draw_ring() -> void:
 	if not _ring_now.has_area() or _beat == null:
 		return
-	var tone: Color = get_theme_color(&"ring_stalled" if _stalled_now else &"ring", &"GuideTokens")
-	tone.a *= _blink_alpha
+	var tone: Color = ring_tone()
 	var line: float = ring_line_px()
 	var centre: Vector2 = _ring_now.get_center()
 	var half: Vector2 = _ring_now.size * 0.5
-	for turn: int in 2 if _stalled_now else 1:  # Stalled: a second, outer ring.
+	for turn: int in ring_count():  # Stalled: a second, outer ring.
 		var grow: float = line * 2.0 * turn
 		if _beat.anchor == TutorialBeatDef.Anchor.CONTROL:
 			_ring.draw_rect(_ring_now.grow(grow).intersection(_safe_rect), tone, false, line)
@@ -640,13 +656,21 @@ static func _ellipse(half: Vector2) -> PackedVector2Array:
 
 
 func _start_blink() -> void:
-	if reduced or ring_blinking():
+	if reduced or ring_blinking() or settings.blink_period_ms <= 0:
 		return
 	var low: float = settings.blink_low_alpha_pct / 100.0
 	var half: float = settings.blink_period_ms / 2000.0
 	_blink = create_tween().set_loops()
 	_blink.tween_method(_set_blink, 1.0, low, half).set_trans(Tween.TRANS_SINE)
 	_blink.tween_method(_set_blink, low, 1.0, half).set_trans(Tween.TRANS_SINE)
+
+
+## A changed switch or settings kills the Tween; the next look makes the right one.
+func _restart_blink() -> void:
+	_stop_blink()
+	if _ring != null and _beat != null and is_inside_tree():
+		_dirty = true
+		_update()
 
 
 func _set_blink(value: float) -> void:

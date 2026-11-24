@@ -1127,8 +1127,8 @@ DeployBackdrop/styles/panel = SubResource("StyleBoxFlat_deploy")
 ; The pause menu (PauseMenu.gd, P124b): see the block of sub-resources above.
 PauseHud/base_type = &"Control"
 PauseHud/colors/hidden = Color(1, 1, 1, 0)
-; The tutorial guide (ADR 0048 sections 3 and 4). GuideTokens: ring is the frame round the thing to
-; tap (the faction accent's light), ring_stalled the HUD's amber, hint_fill and hint_line the gesture
+; The tutorial guide (ADR 0048 sections 3 and 4). GuideTokens: ring is a copy of AccentRenew/light and
+; does not follow the faction; it is the frame round the thing to tap. ring_stalled the HUD's amber, hint_fill and hint_line the gesture
 ; hand. GuideCardThrough: the card's plate while it is see-through over a target, touches pass.
 GuideTokens/base_type = &"Control"
 GuideTokens/colors/hint_fill = Color(1, 1, 1, 0.9)
