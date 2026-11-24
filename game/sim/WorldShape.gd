@@ -279,6 +279,7 @@ const RULE_SCALARS: Array[StringName] = [
 	&"sweep_ticks",
 	&"mine_known_cap",
 	&"bonus_credits_max",
+	&"blackout_sight_cut",
 ]
 ## The other int properties, none in the state hash: the map size, the view's rows_version,
 ## native_phases (which implementation runs a phase is never state, ADR 0013 section 3), the map
@@ -342,7 +343,8 @@ const UNHASHED_SCALARS: Array[StringName] = [
 	&"mine_arm_ticks",
 	&"sweep_ticks",
 	&"mine_known_cap",
-	&"bonus_credits_max"
+	&"bonus_credits_max",
+	&"blackout_sight_cut",
 ]
 ## The members that are not state (ADR 0013 section 3): the coverage test, the state hash and the
 ## reachability walk skip exactly these. `kernels` is the native kernels object, or null.

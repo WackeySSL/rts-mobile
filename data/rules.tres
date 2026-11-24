@@ -53,3 +53,4 @@ mine_arm_ticks = 15
 sweep_ticks = 30
 mine_known_cap = 24
 bonus_credits_max = 500
+blackout_sight_cut = 1

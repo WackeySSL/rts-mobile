@@ -407,6 +407,7 @@ static func copy_rules(world: World, rules: RulesDef) -> void:
 	world.sweep_ticks = rules.sweep_ticks
 	world.mine_known_cap = rules.mine_known_cap
 	world.bonus_credits_max = rules.bonus_credits_max
+	world.blackout_sight_cut = rules.blackout_sight_cut
 
 
 ## Sets `World.income_percent` of `player`, the percent of `credits_per_ore` that player's unloads
@@ -633,9 +634,11 @@ static func _pad(table: PackedInt32Array, size: int, value: int) -> void:
 ## mask added later changes nothing). Then the disc of every row of a player (1..player_count) at
 ## its cell, so the first frame of a match shows each player's own vision and the tick-0 hash
 ## includes it (ADR 0010 section 1), then the sweep of each player whose `reveal` is 1 (P233). No
-## map, no cells: nothing is stamped. It counts nothing in `stats`. World.prepare calls it. It
-## expects a freshly configured fog and clears each player's `revealed` flag anyway, so a call on a
-## reused fog stays correct.
+## map, no cells: nothing is stamped. While `blackout_sight_cut` is 1 a row with `offline_until`
+## above `world.tick` is left unstamped (`fog_cell` -1, ADR 0047 section 2), so a hand-built World's
+## fog matches what a run would have; on a fresh match nothing is offline. It counts nothing in
+## `stats`. World.prepare calls it. It expects a freshly configured fog and clears each player's
+## `revealed` flag anyway, so a call on a reused fog stays correct.
 static func stamp_fog(world: World) -> void:
 	var fog: FogGrid = world.fog
 	for sight: int in world.type_sight:
@@ -647,9 +650,13 @@ static func stamp_fog(world: World) -> void:
 	var owners: PackedInt32Array = world.owner
 	var types: PackedInt32Array = world.type_index
 	var stamped: PackedInt32Array = world.fog_cell
+	var offline: PackedInt32Array = world.offline_until
+	var cut: bool = world.blackout_sight_cut == 1
 	for row: int in owners.size():
 		var player: int = owners[row]
 		if player >= 1 and player <= world.player_count:
+			if cut and offline[row] > world.tick:
+				continue
 			var cell: int = world.cell_of(world.pos_x[row], world.pos_y[row])
 			fog.stamp(player, cell, mini(types[row], pad), 1)
 			stamped[row] = cell

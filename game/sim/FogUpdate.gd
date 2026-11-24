@@ -10,6 +10,15 @@ extends RefCounted
 ## the type index, or `type_sight.size()`, the pad mask (sight 0) that prepare() adds after one mask
 ## per type, for a type with no entry; and `fog_cell` is the cell last stamped.
 ##
+## A blacked-out building has no disc (ADR 0047 section 2): while the rule int `blackout_sight_cut`
+## is 1 and a row's `offline_until` is above the stamp `world.tick + 1` (the stamp `Strike`, `Power`
+## and `Reveal` use), its wanted cell is -1 instead of the cell of its position. The walk does the
+## rest: the old disc is taken away, `fog_cell` becomes -1, and the disc is stamped again on the
+## owner's first turn at or after the step where the building is back (at most `fog_period_ticks -
+## 1` steps late, the same on every machine). Only buildings ever have an `offline_until`, so units
+## keep their sight. A row that dies cut has `fog_cell` -1, and World.remove_dead takes nothing
+## away.
+##
 ## `run` has a C++ twin, the FOG kernel (native/sim_kernels, core/fog.cpp, ADR 0013 section 5):
 ## it hands the whole phase to it when the World's mask has its bit, and a change to `run`,
 ## `_covered` or `FogGrid.stamp` edits both and passes the kernel's tests. `begin`, the unstamp of
@@ -33,7 +42,7 @@ static func begin(world: World) -> void:
 ## cell of their position (a row not stamped yet, -1, only stamps), and stats[FOG_CELLS] grows by
 ## the cells those stamps cover, clipped to the map. A row of owner 0 or past player_count has no
 ## fog, and a grid with no cells or sides that do not make its cells has none at all.
-## The cell is World.cell_of inlined.
+## The cell is World.cell_of inlined, and -1 for a row that is blacked out while the rule is on.
 @warning_ignore("integer_division")
 static func run(world: World) -> void:
 	if ((world.native_phases >> SimProbe.Phase.FOG) & 1) == 1:
@@ -54,6 +63,9 @@ static func run(world: World) -> void:
 	var xs: PackedInt32Array = world.pos_x
 	var ys: PackedInt32Array = world.pos_y
 	var stamped: PackedInt32Array = world.fog_cell
+	var offline: PackedInt32Array = world.offline_until
+	var cut: int = world.blackout_sight_cut
+	var stamp: int = tick + 1
 	var starts: PackedInt32Array = fog.mask_start
 	var radii: PackedInt32Array = fog.mask_radius
 	var half: PackedInt32Array = fog.mask_half
@@ -81,14 +93,17 @@ static func run(world: World) -> void:
 				cols - 1
 			)
 		)
+		if cut == 1 and offline[row] > stamp:
+			cell = -1
 		var old: int = stamped[row]
 		if cell == old:
 			continue
 		var mask: int = mini(types[row], pad)
 		var radius: int = radii[mask]
 		var first: int = starts[mask] + radius
-		fog.stamp(player, cell, mask, 1)
-		covered += _covered(cell, cols, map_rows, radius, first, half)
+		if cell >= 0:
+			fog.stamp(player, cell, mask, 1)
+			covered += _covered(cell, cols, map_rows, radius, first, half)
 		if old >= 0:
 			fog.stamp(player, old, mask, -1)
 			covered += _covered(old, cols, map_rows, radius, first, half)

@@ -104,3 +104,7 @@ extends Resource
 ## The most credits a match setup may add to one player's start (the Phase 6 grant, plan P512).
 ## 0 grants nothing; `WorldLoad.set_bonus_credits` clamps to it.
 @export var bonus_credits_max: int = 0
+
+## Vision cut (ADR 0047 section 2): 1 = a blacked-out building (`offline_until` above the stamp)
+## has no sight disc, 0 = it keeps it. The frozen arena's rules leave it at 0.
+@export var blackout_sight_cut: int = 0
