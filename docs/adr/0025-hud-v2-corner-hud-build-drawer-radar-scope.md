@@ -810,6 +810,16 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
   (above: "an enemy building its amber frame and notch (P115b)"). Both go into P122c's row of
   `docs/plans/2026-11-01-hud-v2.md`.
 
+Status note (2026-11-24, P581; Michael's phone screenshot of 2026-11-24, MINE under BUILD; the
+text and notes above stay as accepted, this note replaces their sizes and the overflow rule):
+- **The bar is 106 dp high** (`HudCorners.BAR_DP.y`): two 48 dp keys and a gap, with 2 dp for
+  pixel rounding.
+- **Stop sits above CLEAR** in one column of 56 x 48 dp keys at the bar's start (mirrored in
+  left-handed mode); without Stop, CLEAR keeps the bottom place.
+- **The other orders** (56 x 48 dp) wrap into at most 2 rows in `OrderFlow`. There is no scroll,
+  and no order runs under BUILD (the "Overflow" line above no longer holds).
+- **The chip gives way** to "+N", or to nothing, when the orders leave it no room.
+
 ### 10. The strike button
 - The strike button (P112, 72 dp: `StrikeButton.SIZE_DP` with its 40 dp card, 6 dp ring and foot
   label, kept) moves from the top line (landscape) and the right edge (portrait) to 8 dp above
