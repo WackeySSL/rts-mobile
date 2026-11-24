@@ -3,8 +3,8 @@ extends RefCounted
 ## Where the guide's open card stands (ADR 0048 section 1, plan row P584): one pure function of the
 ## rects `HudCorners.place` returns, so the dock is tested on crafted inputs at the six sizes and
 ## never searched per frame. Knows no node, no screen and no time. Rects are base px inside `safe`;
-## every size below is in dp. Mirrored (left-handed) input is detected from the pill's side and the
-## whole dock flips with it.
+## every size below is in dp. Mirrored (left-handed) input is flagged by the caller, and the whole
+## dock flips with it.
 ## `settings_values` carries the `GuideSettingsDef` fields the dock reads (P585 builds the resource;
 ## the names are the plan's and ADR 0048's): `card_max_width_dp` (560) and `card_max_height_pct`
 ## (45). A key left out takes that default.
@@ -31,46 +31,88 @@ const RIGHT_PARTS: Array[StringName] = [
 
 ## The `Shown` the dock reads. Landscape keeps the full map reserved whether or not it is open, so
 ## the card never moves with the radar; upright the map counts only while it is open (the dock then
-## drops under it) and the toast slot is kept in its place while it is not.
+## drops under it) and the toast slot is kept in its place while it is not. `ready`, `aim` and `bar`
+## are the parts of the same names that show; `aim` implies the strike button.
 static func shown_for_dock(
-	portrait: bool, map_open: bool, drawer: bool, groups: int, strike: bool
+	portrait: bool,
+	map_open: bool,
+	drawer: bool,
+	groups: int,
+	strike: bool,
+	ready: bool = false,
+	aim: bool = false,
+	bar: bool = false
 ) -> HudCorners.Shown:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	shown.map = map_open or not portrait
 	shown.toast = portrait and not map_open
 	shown.drawer = drawer
 	shown.groups = groups
-	shown.strike = strike
+	shown.strike = strike or aim
+	shown.aim = aim
+	shown.ready = ready
+	shown.bar = bar
 	return shown
 
 
-## The open card's largest rect in base px: under the top row, right of the group column, left of
-## the full map and the open panel's handle, at most `card_max_width_dp` wide (centred in the room)
-## and `card_max_height_pct` of the safe height high, and short of the sheet and the ad band.
-## Empty (size zero) where no room is left.
+## The rects the dock reads: `HudCorners.place` of `shown` (the map reserved), plus what that call
+## leaves out while the map shows: the toast (the slot, or the fallback under the top line beside
+## an open panel) and the enemy sweep's badge and warning line, taken from a second call with the
+## map closed. The card never covers them (ADR 0048 section 1), so they are reserved, not exempt.
+static func hud_for_dock(
+	safe: Rect2, portrait: bool, dp: float, mirror: bool, shown: HudCorners.Shown
+) -> Dictionary[StringName, Rect2]:
+	var out: Dictionary[StringName, Rect2] = HudCorners.place(safe, portrait, dp, mirror, shown)
+	var open: HudCorners.Shown = HudCorners.Shown.new()
+	open.drawer = shown.drawer
+	open.groups = shown.groups
+	open.strike = shown.strike
+	open.aim = shown.aim
+	open.ready = shown.ready
+	open.bar = shown.bar
+	open.bar_width = shown.bar_width
+	open.pill_width = shown.pill_width
+	open.toast = true
+	open.reveal = true
+	open.reveal_line = true
+	var extra: Dictionary[StringName, Rect2] = HudCorners.place(safe, portrait, dp, mirror, open)
+	for key: StringName in [HudCorners.TOAST, HudCorners.REVEAL, HudCorners.REVEAL_LINE]:
+		if extra.has(key) and not out.has(key):
+			out[key] = extra[key]
+	return out
+
+
+## The open card's largest allowed rect in base px (P588 sizes the card to its content and
+## top-aligns it): under the top row and the toast, right of the group column, left of the full map
+## and the open panel's handle, at most `card_max_width_dp` wide (centred in the room) and
+## `card_max_height_pct` of the safe height high, and short of the sheet, the command bar, the
+## right column and the ad band. Empty (size zero) where no room is left. `hud_rects` come from
+## `hud_for_dock`; `mirror` is the flag they were placed with.
 static func place(
 	safe: Rect2,
 	portrait: bool,
 	dp: float,
+	mirror: bool,
 	hud_rects: Dictionary[StringName, Rect2],
 	settings_values: Dictionary[StringName, float]
 ) -> Rect2:
-	var pill: Rect2 = hud_rects.get(HudCorners.PILL, Rect2())
-	var mirror: bool = pill.size.x > 0.0 and pill.get_center().x > safe.get_center().x
 	var w: float = safe.size.x / dp
 	var h: float = safe.size.y / dp
 	var parts: Dictionary[StringName, Rect2] = {}  # dp from the safe top left, unmirrored.
 	for key: StringName in hud_rects:
 		parts[key] = _to_dp(hud_rects[key], safe, dp, mirror)
 	var left: float = 0.0
-	for key: StringName in parts:
-		if str(key).begins_with("group_"):
-			left = maxf(left, parts[key].end.x + GAP_DP)
+	var index: int = 0
+	while parts.has(HudCorners.group_key(index)):
+		left = maxf(left, parts[HudCorners.group_key(index)].end.x + GAP_DP)
+		index += 1
 	var top: float = HudCorners.SCOPE_DP + GAP_DP  # Landscape: under the scope.
 	if portrait:  # The toast slot's foot, kept free whether or not a toast shows.
 		top += HudCorners.TOAST_H_DP + GAP_DP
-		if parts.has(HudCorners.MAP):  # Dropped under the open map.
-			top = maxf(top, parts[HudCorners.MAP].end.y + GAP_DP)
+	if parts.has(HudCorners.TOAST):  # The fallback toast under the top line too.
+		top = maxf(top, parts[HudCorners.TOAST].end.y + GAP_DP)
+	if portrait and parts.has(HudCorners.MAP):  # Dropped under the open map.
+		top = maxf(top, parts[HudCorners.MAP].end.y + GAP_DP)
 	var cap: float = h * settings_values.get(MAX_HEIGHT_KEY, DEFAULT_MAX_HEIGHT_PCT) / 100.0
 	var bottom: float = minf(top + cap, h)
 	if parts.has(AD_BAND):
@@ -89,8 +131,11 @@ static func place(
 		if portrait:  # The right column below the dock: it ends a gap above its topmost part.
 			if part.end.x > left and part.position.y >= top:
 				bottom = minf(bottom, part.position.y - GAP_DP)
-		elif part.position.y < bottom and part.end.y > top:
+		elif part.position.y < bottom + GAP_DP and part.end.y > top:
 			right = minf(right, part.position.x - GAP_DP)
+	var bar: Rect2 = parts.get(HudCorners.BAR, Rect2())
+	if bar.size.x > 0.0 and bar.end.x > left and bar.position.x < right and bar.position.y >= top:
+		bottom = minf(bottom, bar.position.y - GAP_DP)
 	var room: float = right - left
 	var height: float = bottom - top
 	if room <= 0.0 or height <= 0.0:
@@ -100,15 +145,17 @@ static func place(
 	return _to_px(dock, safe, dp, mirror)
 
 
-## Where a hand with no anchor points: the middle of the open field under the dock, left of the
-## open panel and above the sheet, the command bar and BUILD. Base px.
+## Where a hand with no anchor points: the middle of the open field under the card's foot (`foot`,
+## a y in base px; below zero it is the dock's own foot), left of the open panel and above the
+## sheet, the command bar and BUILD, and clear of the group column, the strike button and its aim
+## row, the Ready chip and the enemy sweep's badge and line. Base px.
 static func field_point(
-	safe: Rect2, dock: Rect2, hud_rects: Dictionary[StringName, Rect2]
+	safe: Rect2, dock: Rect2, hud_rects: Dictionary[StringName, Rect2], foot: float = -1.0
 ) -> Vector2:
 	var left: float = safe.position.x
 	var right: float = safe.end.x
 	var bottom: float = safe.end.y
-	var top: float = dock.end.y if dock.size.y > 0.0 else safe.position.y
+	var top: float = foot if foot >= 0.0 else dock.end.y if dock.size.y > 0.0 else safe.position.y
 	for key: StringName in [HudCorners.BAR, HudCorners.BUILD]:
 		if hud_rects.has(key):
 			bottom = minf(bottom, hud_rects[key].position.y)
@@ -120,7 +167,27 @@ static func field_point(
 			right = open.position.x
 		else:
 			left = open.end.x
-	return Vector2((left + right) * 0.5, (top + maxf(bottom, top)) * 0.5)
+	bottom = maxf(bottom, top)
+	var keys: Array[StringName] = [
+		HudCorners.READY,
+		HudCorners.STRIKE,
+		HudCorners.STRIKE_ROW,
+		HudCorners.REVEAL,
+		HudCorners.REVEAL_LINE
+	]
+	var index: int = 0
+	while hud_rects.has(HudCorners.group_key(index)):
+		keys.append(HudCorners.group_key(index))
+		index += 1
+	for key: StringName in keys:
+		var part: Rect2 = hud_rects.get(key, Rect2())
+		if part.size.x <= 0.0 or part.position.y >= bottom or part.end.y <= top:
+			continue
+		if part.get_center().x > safe.get_center().x:
+			right = minf(right, part.position.x)
+		else:
+			left = maxf(left, part.end.x)
+	return Vector2((left + right) * 0.5, (top + bottom) * 0.5)
 
 
 static func _to_dp(rect: Rect2, safe: Rect2, dp: float, mirror: bool) -> Rect2:
