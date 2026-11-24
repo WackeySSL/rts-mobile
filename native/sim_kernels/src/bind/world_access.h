@@ -121,6 +121,7 @@ struct Entry {
 	X(WORLD, flow_cache_size, INT, NONE, 0) \
 	X(WORLD, retarget_period_ticks, INT, NONE, PH_T) \
 	X(WORLD, fog_period_ticks, INT, NONE, PH_G) \
+	X(WORLD, blackout_sight_cut, INT, NONE, PH_G) \
 	X(WORLD, line_check_period_ticks, INT, NONE, PH_T | PH_I) \
 	X(WORLD, stall_ticks, INT, NONE, PH_I) \
 	X(WORLD, stall_range_spacings, INT, NONE, PH_I) \
@@ -150,6 +151,7 @@ struct Entry {
 	X(WORLD, best_dist, I32, ROWS, PH_T | PH_I) \
 	X(WORLD, stall, I32, ROWS, PH_T | PH_I) \
 	X(WORLD, fog_cell, I32, ROWS, PH_G) \
+	X(WORLD, offline_until, I32, ROWS, PH_G) \
 	X(WORLD, intent_x, I32, MAX_ROWS, PH_S | PH_I) \
 	X(WORLD, intent_y, I32, MAX_ROWS, PH_S | PH_I) \
 	X(WORLD, push_x, I32, MAX_ROWS, PH_S | PH_I) \

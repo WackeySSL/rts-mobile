@@ -111,6 +111,7 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 		return 0;
 	}
 	const int64_t period = larger(rules.fog_period_ticks, 1);
+	const int64_t blackout_stamp = rules.tick + 1; // the stamp Strike, Power and Reveal use
 	int64_t total = 0;
 	for (int64_t row = 0; row < rows.count; row++) {
 		const int64_t player = rows.owner.get(row);
@@ -118,7 +119,10 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 		if (player < 1 || player > grid.player_count || (rules.tick - player + 1) % period != 0) {
 			continue;
 		}
-		const int64_t cell = clamp(fixed_math::centre_side(rows.pos_y.get(row), grid.rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(fixed_math::centre_side(rows.pos_x.get(row), grid.cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.cols - 1);
+		int64_t cell = clamp(fixed_math::centre_side(rows.pos_y.get(row), grid.rows * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.rows - 1) * grid.cols + clamp(fixed_math::centre_side(rows.pos_x.get(row), grid.cols * MILLI_PER_TILE) / MILLI_PER_TILE, 0, grid.cols - 1);
+		if (rules.blackout_sight_cut == 1 && rows.offline_until.get(row) > blackout_stamp) {
+			cell = -1;
+		}
 		const int64_t old = rows.fog_cell.get(row);
 		if (cell == old) {
 			continue;
@@ -126,8 +130,10 @@ int64_t run(Grid &grid, Rows &rows, const Rules &rules) {
 		const int64_t mask = smaller(rows.type_index.get(row), rules.pad_mask);
 		const int64_t radius = grid.mask_radius.get(mask);
 		const int64_t first = grid.mask_start.get(mask) + radius;
-		stamp(grid, player, cell, mask, 1);
-		total += covered(grid, cell, radius, first);
+		if (cell >= 0) {
+			stamp(grid, player, cell, mask, 1);
+			total += covered(grid, cell, radius, first);
+		}
 		if (old >= 0) {
 			stamp(grid, player, old, mask, -1);
 			total += covered(grid, old, radius, first);

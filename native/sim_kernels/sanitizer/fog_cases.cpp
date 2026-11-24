@@ -3,7 +3,7 @@
 // array at its exact size. The states come from the seed-42 arena (the dumps of tests/sim/native/sanitizer/dump_states.gd) and from
 // crafted scenes. Sanitizers judge memory and undefined behaviour, not answers: the discs and flips of the rules are the gdUnit4
 // suites' (test_fog*.gd under both implementations, test_fog_kernel.gd), and only what needs no second implementation is checked
-// here (no dirty count past its block, a mark is 0 or 1, a row that moved stands on a cell of the map, the cells covered stay within
+// here (no dirty count past its block, a mark is 0 or 1, a row that moved stands on a cell of the map (or is cut, -1, while the vision cut is on), the cells covered stay within
 // what the stamps can reach). The build has no -fwrapv, so the range that core/fog.h records is run at its edges: positions and
 // counts at the ends of int32, a tick near 2^62, the cadence at the ends of int64, and masks whose tables hold the ends of int32.
 // Plain C++17, no Godot header. MIT.
@@ -27,7 +27,7 @@ constexpr int64_t TICK_TOP = int64_t(1) << 61; // a tick near the top of the ran
 struct State {
 	fog::Rules rules;
 	int64_t cols = 0, rows = 0, cells = 0, player_count = 0, dirty_capacity = 0;
-	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, fog_cell;
+	std::vector<int32_t> unit_id, owner, type_index, pos_x, pos_y, offline_until, fog_cell;
 	std::vector<int32_t> visible, version, dirty, dirty_count, dirty_full, mask_start, mask_radius, mask_half;
 	std::vector<uint8_t> explored, listed;
 };
@@ -66,6 +66,7 @@ int64_t call(State &state) {
 	rows.type_index = cview(state.type_index);
 	rows.pos_x = cview(state.pos_x);
 	rows.pos_y = cview(state.pos_y);
+	rows.offline_until = cview(state.offline_until);
 	rows.fog_cell = view(state.fog_cell);
 	return fog::run(grid, rows, state.rules);
 }
@@ -89,7 +90,9 @@ void check(const State &state, const std::vector<int32_t> &before, int64_t cover
 		}
 	}
 	for (size_t row = 0; row < state.fog_cell.size(); row++) {
-		if (state.fog_cell[row] != before[row] && (state.fog_cell[row] < 0 || state.fog_cell[row] >= state.cells)) {
+		// -1 is a cut row (ADR 0047 section 2), possible only while the rule is on.
+		const bool cut = state.fog_cell[row] == -1 && state.rules.blackout_sight_cut == 1;
+		if (state.fog_cell[row] != before[row] && !cut && (state.fog_cell[row] < 0 || state.fog_cell[row] >= state.cells)) {
 			throw Finding(where + "row " + std::to_string(row) + " moved to the cell " + std::to_string(state.fog_cell[row]));
 		}
 	}
@@ -120,6 +123,7 @@ State from_dump(const Dump &dump) {
 		{ "world.pos_x", &State::pos_x },
 		{ "world.pos_y", &State::pos_y },
 		{ "world.fog_cell", &State::fog_cell },
+		{ "world.offline_until", &State::offline_until },
 		{ "fog.visible", &State::visible },
 		{ "fog.version", &State::version },
 		{ "fog.dirty", &State::dirty },
@@ -136,6 +140,7 @@ State from_dump(const Dump &dump) {
 	state.listed = dump.bytes("fog.listed");
 	state.rules.tick = dump.scalar("world.tick");
 	state.rules.fog_period_ticks = dump.scalar("world.fog_period_ticks");
+	state.rules.blackout_sight_cut = dump.scalar("world.blackout_sight_cut");
 	state.rules.pad_mask = static_cast<int64_t>(dump.ints("world.type_sight").size());
 	state.cols = dump.scalar("fog.cols");
 	state.rows = dump.scalar("fog.rows");
@@ -143,7 +148,7 @@ State from_dump(const Dump &dump) {
 	state.player_count = dump.scalar("fog.player_count");
 	state.dirty_capacity = dump.scalar("fog.dirty_capacity");
 	const size_t units = state.unit_id.size();
-	for (const std::vector<int32_t> *column : { &state.owner, &state.type_index, &state.pos_x, &state.pos_y, &state.fog_cell }) {
+	for (const std::vector<int32_t> *column : { &state.owner, &state.type_index, &state.pos_x, &state.pos_y, &state.offline_until, &state.fog_cell }) {
 		if (column->size() != units) {
 			throw std::runtime_error("a row column of the dump does not have one entry per unit");
 		}
@@ -189,6 +194,20 @@ void on_dump(const Dump &dump, Tally &tally) {
 		State state = base;
 		state.rules.tick = tick;
 		play(state, tally, "late tick");
+	}
+	// The vision cut (ADR 0047 section 2): the rule at its values, every row blacked out at the ends of int32 and around the stamp
+	// `tick + 1`, at ticks across the range, over rows that are stamped and rows that are not.
+	for (const int64_t cut : { int64_t(0), int64_t(1), int64_t(2), int64_t(-1), INT64_MAX, INT64_MIN }) {
+		for (const int32_t until : { INT32_MIN, -1, 0, 1, 2, 5, 12, 1000, INT32_MAX }) {
+			for (const int64_t tick : { int64_t(0), int64_t(1), int64_t(4), int64_t(11), int64_t(12), int64_t(1) << 40, TICK_TOP }) {
+				State state = base;
+				state.rules.blackout_sight_cut = cut;
+				state.rules.tick = tick;
+				state.rules.fog_period_ticks = 1;
+				fill_all(state.offline_until, until);
+				play(state, tally, "vision cut");
+			}
+		}
 	}
 	for (const int64_t period : { INT64_MIN, int64_t(-1), int64_t(0), int64_t(1), int64_t(2), int64_t(3), int64_t(5), int64_t(1000), INT64_MAX }) {
 		State state = base;
@@ -318,6 +337,7 @@ void add_row(State &state, int32_t owner, int32_t type, int64_t x, int64_t y, in
 	state.type_index.push_back(type);
 	state.pos_x.push_back(static_cast<int32_t>(x * TILE + TILE / 2));
 	state.pos_y.push_back(static_cast<int32_t>(y * TILE + TILE / 2));
+	state.offline_until.push_back(0);
 	state.fog_cell.push_back(stamped);
 }
 
@@ -487,7 +507,48 @@ void hostile_tables(Tally &tally) {
 	}
 }
 
+// The vision cut on the scenes the kernel meets: rows blacked out for part of a run and then back, on a 9 x 9 map with two players, the
+// cadence of 1 and of 3, rows added already cut (never stamped), a cut that outlasts the run, the rule switched off in the middle and
+// offline_until at the ends of int32, with the dirty lists emptied between the updates as FogUpdate.begin does.
+void blackout_scenes(Tally &tally) {
+	for (const int64_t period : { int64_t(1), int64_t(3) }) {
+		State state;
+		configure(state, 9, 9, 2);
+		add_masks(state);
+		state.rules.fog_period_ticks = period;
+		state.rules.blackout_sight_cut = 1;
+		for (int32_t row = 0; row < 14; row++) {
+			add_row(state, 1 + row % 2, row % 6, (row * 4) % 9, (row * 2) % 9, -1);
+		}
+		const int32_t lengths[] = { 0, 3, 7, 12, 30, INT32_MAX, INT32_MIN };
+		for (int64_t step = 0; step < 24; step++) {
+			state.rules.tick = step;
+			if (step % 5 == 0) {
+				for (size_t row = 0; row < state.offline_until.size(); row++) {
+					const int32_t pick = lengths[(static_cast<size_t>(step) + row) % 7];
+					state.offline_until[row] = (pick == INT32_MAX || pick == INT32_MIN) ? pick : static_cast<int32_t>(step + 1 + pick);
+				}
+			}
+			if (step == 14) {
+				state.rules.blackout_sight_cut = 0;
+			} else if (step == 18) {
+				state.rules.blackout_sight_cut = 1;
+			}
+			std::fill(state.listed.begin(), state.listed.end(), 0);
+			fill_all(state.dirty_count, 0);
+			fill_all(state.dirty_full, 0);
+			play(state, tally, "blackout scene");
+		}
+		// A row added while its building is cut stays unstamped; one that dies cut leaves nothing to take away (no row is removed here).
+		add_row(state, 1, 1, 4, 4, -1);
+		state.offline_until.back() = INT32_MAX;
+		state.rules.tick = 40;
+		play(state, tally, "added cut");
+	}
+}
+
 void crafted(Tally &tally) {
+	blackout_scenes(tally);
 	edge_scenes(tally);
 	full_blocks(tally);
 	range_edges(tally);
