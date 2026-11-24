@@ -23,6 +23,19 @@ static func beat(
 	return made
 
 
+## A lead-in step on the control `control` that holds when `kind` holds with `value`.
+static func lead_in(
+	control: String, kind: TutorialConditions.Kind, value: int = 0, type_id: StringName = &""
+) -> TutorialLeadInDef:
+	var made: TutorialLeadInDef = TutorialLeadInDef.new()
+	made.anchor = TutorialBeatDef.Anchor.CONTROL
+	made.anchor_control = StringName(control)
+	made.kind = kind
+	made.value = value
+	made.type_id = type_id
+	return made
+
+
 ## A lesson of `beats` (a plain Array: a literal of a preloaded script is not typed).
 static func lesson(id: String, beats: Array, target_s: int = 180) -> TutorialLessonDef:
 	var made: TutorialLessonDef = TutorialLessonDef.new()

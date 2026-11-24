@@ -9,6 +9,11 @@ extends Resource
 ## Append only: the values are stored in `data/tutorial/*.tres`.
 enum Anchor { NONE, CONTROL, TILE }
 
+## The gesture the hand hint plays (ADR 0048 section 6). `AUTO` lets the mark choose: a tap on a
+## control, a pinch for a zoom beat, a drag for a pan beat, otherwise none.
+## Append only: the values are stored in `data/tutorial/*.tres`.
+enum Gesture { AUTO, NONE, TAP, DOUBLE_TAP, LONG_PRESS, DRAG, BOX, PINCH_OUT, PINCH_IN }
+
 ## Unique in its lesson; progress and tests name the beat by it.
 @export var id: StringName = &""
 ## The translation key of the prompt text (English through translation keys, ADR 0044 section 3).
@@ -39,3 +44,9 @@ enum Anchor { NONE, CONTROL, TILE }
 ## Seconds the beat is budgeted: a beat whose condition is still open after it is `stalled`, so the
 ## card may offer Next or a hint; and the lesson's budgets sum to its target (ADR 0044 section 5).
 @export var budget_s: int = 10
+## The steps to pass before the anchor, in order (ADR 0048 section 5): the anchor stays the final
+## target. Empty: the anchor alone.
+@export var lead_in: Array[TutorialLeadInDef] = []
+@export var gesture: Gesture = Gesture.AUTO
+## The drag or box diagonal in dp (zero: the gesture's default, the pan's 160 dp to the left).
+@export var gesture_vector_dp: Vector2i = Vector2i.ZERO
