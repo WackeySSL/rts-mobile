@@ -197,6 +197,14 @@ keeping them out of `FogGrid` leaves the FOG kernel's checked list as it is. The
 (`game/sim/PlayerView.gd`, pure) arrives in plan row P78 with the shape §1 reserves (ADR 0020 §1),
 and the scan over `game/ai` in P78q.
 
+Status note (2026-11-23, P570 docs; ADR 0047 accepted 2026-11-23; the text above stays as
+accepted): ADR 0047 §2 adds one case to the update's re-stamp rule. While `blackout_sight_cut` is 1
+(`data/rules.tres`), a row whose `offline_until` is above the stamp (`world.tick + 1`) wants no
+cell (-1). On its owner's fog turn its disc is taken away and `fog_cell` becomes -1, and on the
+first turn after the blackout the disc is stamped again. `WorldLoad.stamp_fog` leaves such a row
+unstamped. `Removal` already skips a row with `fog_cell` -1. Only buildings get an
+`offline_until`, so unit sight is unchanged. The frozen arena keeps the rule at 0 (row P573).
+
 ### 2. View rendering (`game/view/FogLayer.gd`)
 - A `Sprite2D` with an `ImageTexture` of `map_cols x map_rows` pixels in `FORMAT_RGBA8`,
   `centered = false` at the map origin, scaled by `ViewScale.PX_PER_TILE`, `texture_filter =
