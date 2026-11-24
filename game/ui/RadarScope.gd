@@ -9,6 +9,11 @@ extends Control
 ## polygon of 32 points (the Compatibility renderer, no shader), cut to the map's diamond where the
 ## camera is near an edge, over the HUD panel's dark disc; the camera's frame is a white rectangle
 ## clipped to the disc. The camera's centre is the disc's centre, so the frame is always centred.
+## While the local radar is dark (ADR 0047 section 8; `snapshot.radar_dark`) the crop, frame, cue
+## and ping give way to the panel disc, the offline glyph (amber) at its middle and a thin amber
+## ring on the rim that drains clockwise to `radar_dark_until`; no word, no noise. A tap on it
+## nudges the scope and opens nothing, and an open full map folds with its hold-to-send. The crop
+## returns on the next paint; the picture goes on painting meanwhile (`Minimap`).
 ## It redraws when the camera moves (its centre, its zoom or the view) or the picture is painted
 ## anew, a resize or a theme change, and never per frame at rest.
 ## A tap (a press and a release on it by one finger) opens `RADAR` (`HudState`), whose full map is
@@ -21,19 +26,31 @@ const RING_DP: float = 2.0  ## The rim's line, the HUD panel's edge colour.
 const WEDGE_HALF: float = 0.4  ## Half the cue wedge's spread on the rim (radians).
 const WEDGE_DEPTH_DP: float = 10.0  ## How far its tip reaches in from the rim.
 const PING_DP: float = 5.0  ## The ping's ring radius when the hit is inside the scope.
+const GLYPH: Texture2D = preload("res://assets/art/svg/icons/glyph_offline.svg")
+const GLYPH_DP: float = 28.0  ## The dark face's glyph, square, at the middle.
+const DRAIN_DP: float = 2.0  ## The amber ring's line.
+const DRAIN_STEPS: int = 48  ## The ring is redrawn when its drained part moves by one of these.
+const NUDGE_S: float = 0.06  ## The dark tap's press-in, as the charging strike button's.
 
 @export var feed: HudStateFeed  ## `state.open(RADAR)` on a tap; its settings give the radius.
 @export var minimap: Minimap  ## The picture, painted at the fog's cadence.
 @export var camera: RtsCamera  ## The centre of the crop and the frame.
 @export var safe_area: SafeAreaMargin  ## Its gap is the safe rect's (ADR 0025 section 2).
 @export var cues: AttackCues  ## An attack cue shows as a rim wedge, or a ping inside (section 8).
+@export var runner: MatchRunner  ## Its snapshot says whether the local radar is dark.
 
+var nudges: int = 0  ## Taps on the dark scope (a seam for the tests).
 var _finger: int = -1  ## The index of the finger that pressed on the scope, else -1.
 var _view: Rect2 = Rect2()  ## The camera's visible world rect at the last draw.
 var _paints: int = -1  ## The picture's `redraw_count()` at the last draw.
 var _draws: int = 0
 var _wedges: int = 0
 var _rings: int = 0
+var _dark: bool = false  ## The local radar is dark in the snapshot last seen.
+var _dark_until: int = 0  ## `radar_dark_until` of the local player, in ticks.
+var _dark_tick: int = 0  ## The tick of that snapshot.
+var _dark_span: int = 0  ## The most ticks the dark time had left since it began: the ring's full.
+var _drain_step: int = 0  ## The ring's step at the last draw.
 
 
 func _ready() -> void:
@@ -64,6 +81,24 @@ func place() -> void:
 	position = rect.position
 	size = rect.size
 	queue_redraw()
+
+
+## Whether the scope shows its dark face.
+func is_dark() -> bool:
+	return _dark
+
+
+## The share of the dark time that is left, 1 at its start and 0 at its end, from the ticks: the
+## ring's drained part. `span` is the ticks that were left when it began.
+static func ring_fraction(until: int, tick: int, span: int) -> float:
+	if span <= 0:
+		return 0.0
+	return clampf(float(until - tick) / float(span), 0.0, 1.0)
+
+
+## The ring's share now.
+func drain_fraction() -> float:
+	return ring_fraction(_dark_until, _dark_tick, _dark_span)
 
 
 ## How many times the scope was drawn: on a move of the camera or a new picture, never per frame.
@@ -145,8 +180,51 @@ func _gui_input(event: InputEvent) -> void:
 	elif touch.index == _finger:
 		_finger = -1
 		if not touch.canceled and Rect2(Vector2.ZERO, size).has_point(touch.position):
-			if feed != null:
+			if _dark:
+				nudge()
+			elif feed != null:
 				feed.state.open(HudState.Unfold.RADAR)
+
+
+## A short press-in: the tap of a dark scope, which opens nothing.
+func nudge() -> void:
+	nudges += 1
+	pivot_offset = size * 0.5
+	var tween: Tween = create_tween()
+	tween.tween_property(self, "scale", Vector2.ONE * 0.9, NUDGE_S)
+	tween.tween_property(self, "scale", Vector2.ONE, NUDGE_S)
+
+
+## Reads the snapshot: the face shows and hides with the flag, the full map folds (and its hold is
+## cancelled) while it is dark, and the ring is redrawn when it drained by a step.
+func _poll_dark() -> void:
+	var snap: MatchSnapshot = null if runner == null else runner.snapshot
+	var player: int = 0 if snap == null else FogLayer.local_player_of(runner)
+	var dark: bool = (
+		snap != null
+		and player >= 0
+		and player < snap.radar_dark.size()
+		and snap.radar_dark[player] != 0
+	)
+	if not dark:
+		if _dark:
+			_dark = false
+			_dark_span = 0
+			queue_redraw()
+		return
+	_dark_until = snap.radar_dark_until[player]
+	_dark_tick = snap.tick
+	if not _dark:
+		_dark = true
+		_dark_span = 0
+		queue_redraw()
+	_dark_span = maxi(_dark_span, _dark_until - _dark_tick)
+	if feed != null and feed.state.is_open(HudState.Unfold.RADAR):
+		feed.state.close(HudState.Unfold.RADAR)
+		if minimap != null:
+			minimap.cancel_gestures()
+	if roundi(drain_fraction() * DRAIN_STEPS) != _drain_step:
+		queue_redraw()
 
 
 ## A modal covers the screen: a finger that went down here is spent (TouchInput.CANCEL_GROUP).
@@ -161,6 +239,7 @@ func _notification(what: int) -> void:
 
 ## Draws again when the camera moved or the picture is new; at rest this is a few comparisons.
 func _process(_delta: float) -> void:
+	_poll_dark()
 	if camera == null:
 		return
 	var view: Rect2 = camera.visible_world_rect()
@@ -176,6 +255,9 @@ func _draw() -> void:
 	var centre: Vector2 = size * 0.5
 	var disc: PackedVector2Array = disc_points(centre, _radius())
 	draw_colored_polygon(disc, get_theme_color(&"panel", TOKENS))
+	if _dark:
+		_draw_dark(centre)
+		return
 	var texture: ImageTexture = null if minimap == null else minimap.picture().texture()
 	if texture != null:
 		var cols: int = minimap.picture().cols()
@@ -192,6 +274,24 @@ func _draw() -> void:
 	var ring: PackedVector2Array = disc.duplicate()
 	ring.append(disc[0])
 	draw_polyline(ring, get_theme_color(&"border", TOKENS), UiScale.dp(RING_DP))
+
+
+## The dark face over the panel disc: the offline glyph, the amber ring that drains clockwise from
+## the top, and the rim.
+func _draw_dark(centre: Vector2) -> void:
+	var amber: Color = get_theme_color(&"warning", TOKENS)  # The glyph's and the ring's amber.
+	var side: float = UiScale.dp(GLYPH_DP)
+	draw_texture_rect(
+		GLYPH, Rect2(centre - Vector2.ONE * side * 0.5, Vector2.ONE * side), false, amber
+	)
+	_drain_step = roundi(drain_fraction() * DRAIN_STEPS)
+	var line: float = UiScale.dp(DRAIN_DP)
+	if _drain_step > 0:
+		var from: float = -PI * 0.5 + TAU * (1.0 - float(_drain_step) / DRAIN_STEPS)
+		draw_arc(centre, _radius() - line * 1.5, from, TAU - PI * 0.5, DRAIN_STEPS, amber, line)
+	var rim: PackedVector2Array = disc_points(centre, _radius())
+	rim.append(rim[0])
+	draw_polyline(rim, get_theme_color(&"border", TOKENS), UiScale.dp(RING_DP))
 
 
 ## Where the shown cue is on the scope, from its middle (the screen's directions); zero for none.
