@@ -324,7 +324,7 @@ func _place(view: PlayerView, memory: AiMemory, out: Array[Command]) -> void:
 		var col: int = tile.x
 		var line: int = tile.y
 		placement_tries += 1
-		if view.placement(head, col, line) == Placement.Reason.OK:
+		if view.placement(head, col, line, PlayerView.COMMAND_LAG_TICKS) == Placement.Reason.OK:
 			memory.spent()
 			placed += 1
 			memory.spiral_resume = 0
