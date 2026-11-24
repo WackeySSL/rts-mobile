@@ -336,6 +336,8 @@ var type_mine_weapon: PackedInt32Array = PackedInt32Array()
 var type_mine_cost: PackedInt32Array = PackedInt32Array()
 var type_mine_aware: PackedInt32Array = PackedInt32Array()
 var type_detect_milli: PackedInt32Array = PackedInt32Array()
+## 1 for a radar building (`BuildingDef.radar`, ADR 0047 section 3), else 0. Read by `Radar`.
+var type_radar: PackedInt32Array = PackedInt32Array()
 var pad_offset_x: PackedInt32Array = PackedInt32Array()
 var pad_offset_y: PackedInt32Array = PackedInt32Array()
 ## Per upgrade, in the order of the listed factions' `upgrades` (at most UPGRADES_MAX): the id, the

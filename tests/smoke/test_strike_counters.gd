@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## sim would make, the records it would write, and `after_step`. Nothing here runs the sim, so the
 ## suite pins what the counter reads (the hp before the step, the STRIKE and DIED records, the
 ## rows' `offline_until` and `fog_cell`, the fog counts) and not the rules of the strike, which
-## land in P572 to P574.
+## land in P572 to P574 (the overload is P572's).
 
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
@@ -201,8 +201,8 @@ func test_a_hit_at_the_hp_kills_and_the_taken_percent_is_applied() -> void:
 
 
 ## The blackout's overload: building rows of other owners in the radius, from the weapon of the
-## firing type, with units, own rows and rows with no hp untouched. The shipped Renew strike has no
-## weapon yet (P572), so it is given the rupture's weapon at 200 here.
+## firing type, with units, own rows and rows with no hp untouched. The test world's Renew strike is
+## given the rupture's weapon at 200 here.
 func test_a_blackout_counts_the_overload_on_buildings_of_others() -> void:
 	_world.type_strike_weapon[_renew_strike] = _wp
 	_world.weapon_damage[_wp] = 200
@@ -235,9 +235,9 @@ func test_a_blackout_counts_the_overload_on_buildings_of_others() -> void:
 	assert_int(mine["strike_kills_own"]).is_equal(0)
 
 
-## The shipped Renew strike has no weapon yet: a blackout fires and does no damage.
+## A Dusk Array with no weapon (-1, the frozen arena's): a blackout fires and does no damage.
 func test_a_blackout_with_no_weapon_does_no_damage() -> void:
-	assert_int(_world.type_strike_weapon[_renew_strike]).is_equal(-1)
+	_world.type_strike_weapon[_renew_strike] = -1
 	_put(FIRER, 1, _renew_strike, FAR, FAR, 900)
 	_put(VICTIM_A, 2, _building, POINT, POINT, 10)
 	var counter: SmokeCount = SmokeCount.new(2)
@@ -437,8 +437,8 @@ func test_sight_cells_lost_of_a_rupture_are_read_from_the_landing_step() -> void
 	assert_int(counter.strike[2]["sight_cells_lost"]).is_equal(1)  # Cell 9 went before it.
 
 
-## Until P574 there is no `type_radar`: offline buildings never darken a radar.
-func test_radar_dark_ticks_read_zero_while_the_world_has_no_radar_table() -> void:
+## A type that is no radar never darkens one, offline or not.
+func test_radar_dark_ticks_read_zero_while_no_type_is_a_radar() -> void:
 	_put(VICTIM_A, 2, _building, POINT, POINT, 500)
 	_world.offline_until[VICTIM_A] = 10
 	var counter: SmokeCount = SmokeCount.new(2)
@@ -450,9 +450,9 @@ func test_radar_dark_ticks_read_zero_while_the_world_has_no_radar_table() -> voi
 	assert_int(counter.strike[2]["radar_dark_ticks"]).is_equal(0)
 
 
-## The rule of ADR 0047 section 3 from a radar table (the one P574 adds to the World): dark when a
-## complete radar is offline and no complete radar is online.
-func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() -> void:
+## The rule of ADR 0047 section 3 (`Radar.dark` over the World's `type_radar`): dark when a complete
+## radar is offline and no complete radar is online.
+func test_radar_dark_ticks_follow_the_rule_for_a_world_with_radar_types() -> void:
 	_put(VICTIM_A, 2, _hq, POINT, POINT, 500)  # Radar, offline until 10.
 	_put(VICTIM_B, 2, _hq, POINT, POINT, 500)  # Radar, becomes online later.
 	_put(OWN, 2, _rifle, POINT, POINT, 500)  # Not a radar.
@@ -460,10 +460,7 @@ func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() ->
 	_world.offline_until[VICTIM_B] = 6
 	var counter: SmokeCount = SmokeCount.new(2)
 	counter.start(_world)
-	var flags: PackedInt32Array = PackedInt32Array()
-	flags.resize(_world.type_ids.size())
-	flags[_hq] = 1
-	counter.radar_flags = flags
+	_world.type_radar[_hq] = 1
 	# Stamps 1 to 5: both radars offline: dark. 6 to 9: B is back online: not dark. 10: A back.
 	for tick: int in range(1, 12):
 		_world.tick = tick
@@ -476,7 +473,6 @@ func test_radar_dark_ticks_follow_the_rule_once_the_world_has_a_radar_table() ->
 	_world.offline_until[VICTIM_A] = 100
 	var again: SmokeCount = SmokeCount.new(2)
 	again.start(_world)
-	again.radar_flags = counter.radar_flags
 	_world.tick = 20
 	again.after_step(_world)
 	assert_int(again.strike[2]["radar_dark_ticks"]).is_equal(1)

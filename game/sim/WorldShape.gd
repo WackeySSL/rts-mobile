@@ -94,6 +94,7 @@ const TYPE_ARRAYS: Array[StringName] = [
 	&"type_mine_cost",
 	&"type_mine_aware",
 	&"type_detect_milli",
+	&"type_radar",
 ]
 ## The landing pad offsets (ADR 0036 section 3, a pad_offsets table beside `type_pads`): entries
 ## `type_pad_first[type]` to `+ type_pads[type]` of both lists are the tile offsets, from the

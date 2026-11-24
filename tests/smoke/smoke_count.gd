@@ -48,9 +48,9 @@ extends RefCounted
 ##   `sight_cut_building_ticks` (own
 ##   buildings with `fog_cell` -1 while offline), `sight_cells_lost` (per strike: cells visible
 ##   in the victim's block at the end of the step before the effect and not visible after the
-##   victim's first fog turn at or after it) and `radar_dark_ticks` (steps in which the player has
-##   a complete offline radar building and no complete online one; 0 while the World has no
-##   `type_radar`, which P574 adds).
+##   victim's first fog turn at or after it) and `radar_dark_ticks` (steps in which `Radar.dark` is
+##   true for the player at the step's stamp: a complete offline radar building and no complete
+##   online one; 0 for a World whose types have no radar).
 ## - `first_drop_tick`: the tick of the first step after which `dropped_commands` was above 0, -1
 ##   while none was (a harness failure names it).
 ## - Free-unit edges: a refused `spawn_free` (unit cap, no exit) in the tick of its refinery
@@ -90,9 +90,6 @@ var kills_by_layer: Array[Dictionary] = []
 var reveals: Array[int] = []
 ## Index p holds player p's strike keys: `STRIKE_KEYS` entry -> count.
 var strike: Array[Dictionary] = []
-## The type table of radar buildings (0 or 1), read from the World at `start` when it has one (P574
-## adds `type_radar`); empty means no radar, so `radar_dark_ticks` stays 0.
-var radar_flags: PackedInt32Array = PackedInt32Array()
 ## The ticks after which every slot of the World's flow cache was referenced (ADR 0030 section 4).
 var flow_full_ticks: int = 0
 var first_drop_tick: int = -1
@@ -150,9 +147,6 @@ func start(world: World) -> void:
 		if player < gifts.size():
 			_bump(gifts[player], String(world.type_ids[type]))
 		_watch_until = maxi(_watch_until, world.offline_until[row])
-	var flags: Variant = world.get("type_radar")
-	if flags is PackedInt32Array:
-		radar_flags = flags
 
 
 ## Reads what the coming step needs from the World as it stands: when `commands` hold a SUPERWEAPON
@@ -374,7 +368,6 @@ func _effect(
 	var types: PackedInt32Array = _pre["type"]
 	var hit_points: PackedInt32Array = _pre["hp"]
 	var reach: int = radius * radius
-	var armours: int = World.Armour.size()
 	var valid: bool = weapon >= 0 and weapon < world.weapon_damage.size()
 	for row: int in ids.size():
 		if hit_points[row] <= 0 or not valid:
@@ -391,10 +384,7 @@ func _effect(
 				continue
 		elif (world.weapon_targets[weapon] & world.type_layer_bit[type]) == 0:
 			continue
-		var percent: int = world.weapon_vs_armour[weapon * armours + world.type_armour[type]]
-		var hit: int = Combat.damage(
-			world.weapon_damage[weapon], percent, Combat.PERCENT, Upgrades.taken(world, owner, type)
-		)
+		var hit: int = Strike.damage_to(world, owner, type, weapon)
 		if hit <= 0:
 			continue
 		var taken: int = mini(hit, hit_points[row])
@@ -441,26 +431,19 @@ func _settle_cells(world: World) -> void:
 ## of the step that ran is `world.tick`).
 func _count_offline(world: World) -> void:
 	var stamp: int = world.tick
-	var off: Dictionary[int, bool] = {}
-	var on: Dictionary[int, bool] = {}
 	for row: int in world.unit_count():
 		var player: int = world.owner[row]
 		var type: int = world.type_index[row]
 		if player < 1 or player >= strike.size() or world.type_foot_w[type] <= 0:
 			continue
-		var radar: bool = type < radar_flags.size() and radar_flags[type] == 1
 		var complete: bool = world.build_left[row] == 0
 		if world.offline_until[row] > stamp:
 			if complete:
 				strike[player]["blackout_building_ticks"] += 1
-				if radar:
-					off[player] = true
 			if world.fog_cell[row] == -1:
 				strike[player]["sight_cut_building_ticks"] += 1
-		elif radar and complete:
-			on[player] = true
-	for player: int in off:
-		if not on.has(player):
+	for player: int in range(1, strike.size()):
+		if Radar.dark(world, player, stamp):
 			strike[player]["radar_dark_ticks"] += 1
 
 

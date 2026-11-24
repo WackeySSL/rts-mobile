@@ -824,7 +824,7 @@ body = "When the ring has closed, a fireball bursts and the ground splits. Every
 script = ExtResource("3_ent")
 id = &"superweapon-blackout"
 title = "A Dusk Array is fired"
-body = "A blackout switches off every enemy building near the spot for a while. It does not shoot, its power counts for nothing and its queue stands still. There is no warning before it. A net of light settles on the spot where you can see it."
+body = "A blackout switches off every enemy building near the spot for a while. It does not shoot, its power counts for nothing and its queue stands still. It also takes an overload hit, and a building with little health left is destroyed. There is no warning before it. A net of light settles on the spot where you can see it."
 
 [sub_resource type="Resource" id="e124"]
 script = ExtResource("3_ent")

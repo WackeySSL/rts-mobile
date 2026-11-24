@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/sim/defs/BuildingDef.gd" id="1_building"]
 [ext_resource type="Resource" path="res://data/units/renew_radar.tres" id="2_requires"]
+[ext_resource type="Resource" path="res://data/weapons/renew_overload.tres" id="3_overload"]
 
 [resource]
 script = ExtResource("1_building")
@@ -21,3 +22,4 @@ strike_kind = 2
 charge_ticks = 4500
 strike_radius = 4000
 strike_ticks = 450
+strike_weapon = ExtResource("3_overload")
