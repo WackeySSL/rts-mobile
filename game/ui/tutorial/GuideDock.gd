@@ -15,6 +15,9 @@ const MAX_WIDTH_KEY: StringName = &"card_max_width_dp"
 const MAX_HEIGHT_KEY: StringName = &"card_max_height_pct"
 const DEFAULT_MAX_WIDTH_DP: float = 560.0
 const DEFAULT_MAX_HEIGHT_PCT: float = 45.0
+## The least dock: the tab's 48 x 48 dp touch target (ADR 0048 section 2). Under it `place` finds no
+## room and the card folds to its tab.
+const MIN_DP: float = 48.0
 ## An ad band's rect, when the caller has one (the pause menu): the dock ends 16 dp above it.
 const AD_BAND: StringName = &"ad_band"
 ## The parts left of which a landscape dock must end when they stand in its rows.
@@ -86,8 +89,8 @@ static func hud_for_dock(
 ## top-aligns it): under the top row and the toast, right of the group column, left of the full map
 ## and the open panel's handle, at most `card_max_width_dp` wide (centred in the room) and
 ## `card_max_height_pct` of the safe height high, and short of the sheet, the command bar, the
-## right column and the ad band. Empty (size zero) where no room is left. `hud_rects` come from
-## `hud_for_dock`; `mirror` is the flag they were placed with.
+## right column and the ad band. Empty (size zero) where less than `MIN_DP` each way is left
+## (`has_room`). `hud_rects` come from `hud_for_dock`; `mirror` is the flag they were placed with.
 static func place(
 	safe: Rect2,
 	portrait: bool,
@@ -140,11 +143,17 @@ static func place(
 		bottom = minf(bottom, bar.position.y - GAP_DP)
 	var room: float = right - left
 	var height: float = bottom - top
-	if room <= 0.0 or height <= 0.0:
+	if room < MIN_DP or height < MIN_DP:
 		return Rect2()
 	var width: float = minf(room, settings_values.get(MAX_WIDTH_KEY, DEFAULT_MAX_WIDTH_DP))
 	var dock: Rect2 = Rect2(left + (room - width) * 0.5, top, width, height)
 	return _to_px(dock, safe, dp, mirror)
+
+
+## Whether `place` found room (`dock` is its result, `dp` the one it was placed with). When it did
+## not, the card folds to its tab until the layout changes (ADR 0048 section 1).
+static func has_room(dock: Rect2, dp: float) -> bool:
+	return dock.size.x >= MIN_DP * dp - 0.01 and dock.size.y >= MIN_DP * dp - 0.01
 
 
 ## Where a hand with no anchor points: the middle of the open field under the card's foot (`foot`,

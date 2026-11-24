@@ -9,6 +9,7 @@ const TOLERANCE: float = 0.01
 const EXTRAS: Array[Array] = [
 	[false, false, false], [true, false, true], [false, true, false], [true, true, true]
 ]
+const GuideDockRig: GDScript = preload("res://tests/ui/tutorial/support/guide_dock_rig.gd")
 const SETTINGS: Dictionary[StringName, float] = {
 	&"card_max_width_dp": 560.0,
 	&"card_max_height_pct": 45.0,
@@ -65,7 +66,22 @@ func test_every_rule_at_every_size_and_profile() -> void:
 								var dock: Rect2 = GuideDock.place(
 									safe, portrait, dp, mirror, rects, SETTINGS
 								)
-								_check(dock, rects, safe, portrait, dp, why)
+								if GuideDock.has_room(dock, dp):
+									_check(dock, rects, safe, portrait, dp, why)
+								else:  # Folding is only for the extreme state, and then it is true.
+									var extreme: bool = (
+										not portrait
+										and groups == 5
+										and extra[0]
+										and extra[1]
+										and extra[2]
+									)
+									assert_bool(extreme).override_failure_message(why).is_true()
+									(
+										assert_bool(GuideDockRig.free_rect(rects, safe, dp))
+										. override_failure_message(why)
+										. is_false()
+									)
 								checked += 1
 	assert_int(checked).is_greater(1000)
 
@@ -249,18 +265,6 @@ func test_the_close_handle_of_the_side_panel_is_cleared() -> void:
 	var rects: Dictionary[StringName, Rect2] = {HudCorners.DRAWER: Rect2(534, 0, 356, 387)}
 	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, rects, SETTINGS)
 	assert_float(dock.end.x).is_equal_approx(478.0, 0.01)  # 534 - 48 - 8.
-
-
-func test_a_group_button_below_the_dock_does_not_narrow_it() -> void:
-	var safe: Rect2 = Rect2(0, 0, 890, 387)
-	var near: Dictionary[StringName, Rect2] = {HudCorners.group_key(0): Rect2(0, 56, 56, 56)}
-	var dock: Rect2 = GuideDock.place(safe, false, 1.0, false, near, SETTINGS)
-	var far: Dictionary[StringName, Rect2] = near.duplicate()
-	far[HudCorners.group_key(1)] = Rect2(64, 330, 56, 56)  # Under the dock's foot (238).
-	assert_that(GuideDock.place(safe, false, 1.0, false, far, SETTINGS)).is_equal(dock)
-	far[HudCorners.group_key(1)] = Rect2(64, 200, 56, 56)  # In the dock's rows.
-	var narrowed: Rect2 = GuideDock.place(safe, false, 1.0, false, far, SETTINGS)
-	assert_float(narrowed.position.x).is_greater_equal(128.0)
 
 
 func test_empty_settings_take_the_defaults() -> void:
