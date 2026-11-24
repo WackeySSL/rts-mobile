@@ -37,6 +37,11 @@ func _plant(world: World, col: int, line: int, player: int = 1) -> int:
 	return _reason(world, player, "power_plant", col, line)
 
 
+func _plant_lag(world: World, col: int, line: int, lag: int) -> int:
+	var input: PlacementInput = PlacementInput.of_world(world)
+	return Placement.reason(input, 1, Worlds.type_of(world, "power_plant"), col, line, lag)
+
+
 func _unexplore(world: World, player: int, col: int, line: int) -> void:
 	world.fog.explored[(player - 1) * COLS * ROWS + line * COLS + col] = 0
 
@@ -107,6 +112,40 @@ func test_a_unit_whose_disc_touches_the_footprint_occupies_it() -> void:
 	world.owner[row] = 2
 	assert_int(_plant(world, 6, 2)).is_equal(OCCUPIED)
 	assert_int(_plant(world, 9, 2)).is_equal(OK)
+
+
+func test_the_lag_widens_a_mobile_disc_by_exactly_its_speed_times_the_ticks() -> void:
+	var world: World = _world()
+	var radius: int = world.type_radius[0]
+	var speed: int = world.type_speed[0]
+	assert_int(speed).is_greater(0)
+	# The footprint (6, 2) spans x 6000..8000 and y 2000..4000.
+	var row: int = _unit_at(world, 6000 - radius - speed, 3000)
+	assert_int(_plant_lag(world, 6, 2, 0)).is_equal(OK)
+	assert_int(_plant_lag(world, 6, 2, 1)).is_equal(OCCUPIED)
+	world.pos_x[row] -= 1
+	assert_int(_plant_lag(world, 6, 2, 1)).is_equal(OK)
+	assert_int(_plant_lag(world, 6, 2, 2)).is_equal(OCCUPIED)
+	# The corner: (3, 4, 5) times a 127th of the reach is on the disc at five ticks (300 + 5 * 67).
+	world.pos_x[row] = 6000 - 3 * 127
+	world.pos_y[row] = 2000 - 4 * 127
+	assert_int(speed * 5 + radius).is_equal(5 * 127)
+	assert_int(_plant_lag(world, 6, 2, 5)).is_equal(OCCUPIED)
+	world.pos_x[row] -= 1
+	assert_int(_plant_lag(world, 6, 2, 5)).is_equal(OK)
+
+
+func test_a_lag_does_not_change_the_answer_for_rows_that_cannot_move() -> void:
+	var world: World = _world()
+	# The Headquarters (a building row, speed 0) lies beside both footprints.
+	for lag: int in [1, 3]:
+		assert_int(_plant_lag(world, 6, 2, lag)).is_equal(_plant_lag(world, 6, 2, 0))
+		assert_int(_plant_lag(world, 6, 2, lag)).is_equal(OK)
+		assert_int(_plant_lag(world, 3, 3, lag)).is_equal(_plant_lag(world, 3, 3, 0))
+	_unit_at(world, 7000, 3000)
+	for lag: int in [1, 3]:
+		assert_int(_plant_lag(world, 6, 2, lag)).is_equal(OCCUPIED)
+		assert_int(_plant_lag(world, 6, 2, 0)).is_equal(OCCUPIED)
 
 
 func test_ground_the_player_never_explored_is_placeable_near_their_own_buildings() -> void:

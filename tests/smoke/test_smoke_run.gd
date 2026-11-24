@@ -649,8 +649,9 @@ func test_stale_drops_over_the_bound_fail_the_run_and_the_report() -> void:
 ## The fixed-seed pins of the stale drops (ADR 0038 section 6, the lead's note of 2026-11-14): the
 ## full matches of the smoke's seeds 1 and 2 at Hard and seed 1 at Normal, [dropped, expired,
 ## Commands sent]. Every expired drop is a unit order whose units died or an ATTACK whose target
-## died in the lag tick; the stale rest is an ATTACK no unit can hit any more, or a PLACE whose
-## credits were spent. P279 rostered the repair buildings, so Normal and Hard now build one (P283's
+## died in the lag tick; the stale rest is an ATTACK no unit can hit any more or has left sight
+## (P580 took the PLACE drops out: the AI leaves a slot a unit can reach in the lag tick). P279
+## rostered the repair buildings, so Normal and Hard now build one (P283's
 ## `AiEconomy._add_repair_building`): the pins moved from [8, 8, 595], [1, 0, 543] and [0, 0, 443].
 ## P280 rostered the medic squads, so `AiProduction` now queues them (P283's `medic_per_squads`) and
 ## `AiRepair` (run after `AiArmy`) sends them with the waves; P295 has Normal and Hard queue a
@@ -661,7 +662,10 @@ func test_the_stale_and_expired_drops_of_the_fixed_seeds_are_pinned() -> void:
 	# Re-pinned by P250, P250b, P300 (from [8, 7, 475], [10, 8, 515], [1, 1, 366]), P279 ([2, 2,
 	# 500], [6, 4, 527], [0, 0, 432]), P295 alone ([9, 8, 585], [2, 2, 586], [0, 0, 452]), P280
 	# alone ([4, 3, 604], [2, 2, 580], [0, 0, 454]) and the two together (the lead, wave 21).
-	var cases: Array = [[1, hard, [4, 3, 631]], [2, hard, [3, 3, 565]], [1, NORMAL, [0, 0, 445]]]
+	# P580 (a PLACE slot a unit can reach in the lag tick is left for the next think) took the PLACE
+	# drop out and moved the matches on: [4, 3, 631], [3, 3, 565] and [0, 0, 445] before. Every
+	# drop left is expired (a unit or an ATTACK target that died in the lag tick).
+	var cases: Array = [[1, hard, [5, 5, 661]], [2, hard, [3, 3, 629]], [1, NORMAL, [0, 0, 408]]]
 	for fixed: Array in cases:
 		var record: Dictionary = Smoke.play(fixed[0], Smoke.TICKS, "cross", fixed[1])
 		var sent: int = 0

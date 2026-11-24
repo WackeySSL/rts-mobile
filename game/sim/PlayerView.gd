@@ -30,7 +30,9 @@ extends RefCounted
 ##   which is `Placement.reason` for this player (the answer a PLACE would get now). Placement
 ##   reads every row, as the sim's PLACE does, so a tile held by a mobile enemy row that the
 ##   player does not see answers OCCUPIED: the sim would refuse that PLACE too, and a controller
-##   that never sends a refused Command needs the same answer.
+##   that never sends a refused Command needs the same answer. With `lag_ticks` above 0 an unseen
+##   enemy unit up to one step outside its disc can make the AI skip a slot the sim would accept: a
+##   tiny leak, accepted because the AI only skips a slot.
 ## - The last-seen records (plan row P77, ADR 0017 section 3): the buildings the player saw and has
 ##   not seen gone (`LastSeen`), as its own block of the World's ghost arrays with the player
 ##   stripped off, copied in `of` like the queue slices: `ghost_count` records, record `i` being
@@ -109,6 +111,8 @@ enum Order {
 ## The answer for what the player cannot see or ask: a hidden row, a row index outside the table, an
 ## own column of someone else's row, an id or a type name that no row or type has.
 const MISSING: int = -1
+## Ticks between the view a Command is made from and the step that applies it (ADR 0038 section 1).
+const COMMAND_LAG_TICKS: int = 1
 ## How many production tabs there are, and the units of a position: 1 tile is 1,000 milli-tiles
 ## and a building's position is its footprint centre (origin * 1000 + foot * 500).
 const TABS: int = World.TABS
@@ -200,6 +204,8 @@ var type_min_range: PackedInt32Array = PackedInt32Array()
 var type_sight: PackedInt32Array = PackedInt32Array()
 var type_faction: PackedInt32Array = PackedInt32Array()
 var type_strike_kind: PackedInt32Array = PackedInt32Array()
+## 1 for a radar building (`type_radar`; static type data, P576), else 0.
+var type_radar: PackedInt32Array = PackedInt32Array()
 var type_strike_radius: PackedInt32Array = PackedInt32Array()
 var type_charge_ticks: PackedInt32Array = PackedInt32Array()
 ## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
@@ -421,9 +427,11 @@ func is_explored(cell: int) -> bool:
 
 
 ## `Placement.reason` for this player: the `Placement.Reason` that a building of `type_index` with
-## its top-left tile at (`col`, `row`) gets now, 0 (OK) when a PLACE there would be applied.
-func placement(type_index: int, col: int, row: int) -> int:
-	return Placement.reason(_input, player, type_index, col, row)
+## its top-left tile at (`col`, `row`) gets now, 0 (OK) when a PLACE there would be applied. With
+## `lag_ticks` above 0 a mobile row counts as far as it can move in that many ticks
+## (`COMMAND_LAG_TICKS` for a Command sent from this view), so OK holds when the PLACE lands later.
+func placement(type_index: int, col: int, row: int, lag_ticks: int = 0) -> int:
+	return Placement.reason(_input, player, type_index, col, row, lag_ticks)
 
 
 ## The type index of the type id `id` (`&"refinery"`), MISSING when the roster has none.
@@ -488,6 +496,7 @@ func _take_tables(world: World) -> void:
 	type_sight = world.type_sight.duplicate()
 	type_faction = world.type_faction.duplicate()
 	type_strike_kind = world.type_strike_kind.duplicate()
+	type_radar = world.type_radar.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()
