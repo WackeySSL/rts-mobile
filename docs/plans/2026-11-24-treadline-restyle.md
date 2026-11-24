@@ -6,8 +6,9 @@ rows P600, P603 and P621, on branch `claude/p600-treadline-plan` (PR #642).
 Decisions:
 - `docs/adr/0049-treadline-restyle.md`, **accepted** 2026-11-24 with Michael's answers (row
   P603, done on this branch).
-- `docs/adr/0050-art-pipeline-svg-units-png-buildings-fixed-colours-deeper-zoom.md`, **proposed**:
-  five questions.
+- `docs/adr/0050-art-pipeline-svg-units-png-buildings-fixed-colours-deeper-zoom.md`, **proposed**.
+  Answers 2-5 are in. Question 1, the building route, waits for P637's comparison. It also
+  records Michael's rule of one coherent look (§8).
 - ADR 0051 (#643, accepted by the lead's row P622): Figma's own AI features may make art that
   ships.
 
@@ -23,8 +24,11 @@ Michael's decisions and answers of 2026-11-24:
 2. Rename the factions only: **Nordværn** (orange, today's Derrick League, id `fossil`) and
    **Facet** (blue, today's Lumen Accord, id `renew`). Unit and building names and the lore stay
    (answers 3 A, 4 A). The title Treadline stays (ADR 0006). The text stays English.
-3. Make units more realistic in SVG. Use PNG only for the large buildings, made in Figma. Use
-   fixed faction colours with a small team marker (ADR 0050).
+3. **One coherent look across all graphics** (units, buildings, terrain, effects, UI icons, item
+   cards). Every art route and batch passes the same-scene check (ADR 0050 §8). Units become more
+   realistic in SVG, with fixed faction colours and a small team marker. The large buildings
+   use one route, chosen by comparison. The default is artgen SVG; PNG from Figma comes only if
+   Figma AI clearly wins (ADR 0050 §2).
 4. A zoom level closer than today's (ADR 0050 §6).
 
 Scope guard. Not in this plan:
@@ -47,7 +51,8 @@ These go to the lead's follow-up list if a row asks for them.
 | Names | `data/factions/*.tres`, `MainMenuText.gd`, `MapSelectText.gd`, `data/help/how_to_play.tres`, `data/tutorial/text_en.tres`, `docs/GDD.md` | P607, P608 |
 | Generator | `tools/artgen/` (`ArtModel`, `ArtPalette`, a detail renderer, macros), `assets/art/models/**`, `assets/art/iso/**` | P630-P632, P638-P647 |
 | Bake and view | `game/view/IsoAtlas.gd`, `IsoSheetDef`, `WorldSort.gd` (the key table, the marker overlay), the galleries | P632, P635 |
-| Figma art | the Figma file "Treadline — building art"; PNG under `assets/art/iso/*/bld/`; CREDITS rows | P636, P637, P644, P645 |
+| Same-scene check | a composer in `tools/artgen`, `tools/artgen/same_scene.tres`, `tests/art/test_same_scene.gd` | P629, every art row |
+| Figma art (only if a Figma route wins) | the Figma file "Treadline — building art"; PNG under `assets/art/iso/*/bld/`; CREDITS rows | P635, P636, P644, P645 |
 | Zoom | `data/input_settings.tres`, `InputSettings.gd`, `RtsCamera.gd` tests; `TutorialConditions.gd` (Kind 19), `data/tutorial/basics.tres` | P633, P634 |
 | Docs | ADRs 0049, 0050; `svg-art-style`, `assets/art/STYLE.md`, `docs/HOW_TO_PLAY.md` | P602, P621b, P630b, P649 |
 
@@ -102,7 +107,10 @@ Nothing in `game/sim`, `game/ai`, `game/core` or `native/`. Two rows start a bal
   - Polygon and byte budgets per frame hold.
   - The key band holds against the sentinel, and the bake replaces it for all eight triads.
   - The share bands hold, and the page rows stay inside the 40-row tolerance.
-- **PNG path** (P635):
+- **Same scene** (P629): the sheet builds headless for both factions at four zooms; the light
+  order, tone bands, edge rule, detail-density band and contact-shadow style hold for every
+  sprite on it.
+- **PNG path** (P635, only if a Figma route wins):
   - A crafted PNG sheet bakes into page 1, with no second texture.
   - The marker is baked per player.
   - The page budget is unchanged for an equal canvas.
@@ -118,6 +126,7 @@ Nothing in `game/sim`, `game/ai`, `game/core` or `native/`. Two rows start a bal
   - Silhouettes tell apart in a mirror match.
   - Marker and faction shares are in their bands.
   - The page budget holds.
+  - The same-scene check is green, and its sheet is attached to the PR.
   - The CREDITS rows (an AI-made row has ADR 0051 §4's fields).
 - **View only** (P619): the tutorial bot's Basics under the new theme gives the same log and
   hash.
@@ -154,25 +163,26 @@ CLAUDE.md). `tools/artgen` code counts.
 | P619 | qa-engineer | P609-P618 | **UI restyle proof**: the size scan in both orientations, the view-only check, screenshots | the named suites | none | 0 (tests) |
 | P620 | architect + lead | P619 | **UI phone check and close-out** (skirmish and Basics, both orientations, Reduced effects on and off, HUD draw calls); ADR 0049 implementation note | Michael's yes | none | 0 |
 | P621 | architect | P601, Michael's answer | **Done on this branch.** ADR 0050 (proposed) | docs lens | none | 0 |
-| P621b | architect | Michael's answers to ADR 0050 | **ADR 0050 accepted.** Dated notes in ADR 0023 §5, 0027 §4 and 0035 §4; rows checked against the answers | docs lens | none | 0 |
-| P630 | art-director | P621b | **Generator features, no output change** (ADR 0050 §1): chamfered box, rotated primitives, face decals, per-primitive detail override, macros (tracks, wheel sets, grilles, hatches, pylons). The batch lists of P638-P647 are fixed in this PR from `assets/art/iso/index.tres` | `--check` byte-identical for every model; `ArtModel.problems` for the new primitives | none | ~300 |
-| P630b | architect + art-director | P621b | **`svg-art-style` and STYLE.md text** of ADR 0050 §4 (with Michael's yes, answer 5) | docs lens | none | 0 |
+| P621b | architect | P637 and Michael's pick | **ADR 0050 accepted** with answer 1 (the building route). Dated notes in ADR 0023 §5, 0027 §4 and 0035 §4. Under the default (artgen), P635 and P636 are struck and P644 and P645 become SVG batches | docs lens | none | 0 |
+| P629 | art-director | ADR 0050 answers 2-5 (in) | **The same-scene check** (ADR 0050 §8): a headless composer in `tools/artgen` (the bake's SVG loader, PNG decode, `Image` blends) builds the sheet: both factions' units and buildings on the same ground tiles, four zooms, the world grade, a mirror pair, effects, cards and glyphs. `test_same_scene.gd` with the bands in `tools/artgen/same_scene.tres` (outside `data/`). Today's art is the first baseline | the composer runs headless; the bands hold for today's art; a crafted off-light sprite fails | none | ~200 |
+| P630 | art-director | ADR 0050 answers 2-5 (in) | **Generator features, no output change** (ADR 0050 §1): chamfered box, rotated primitives (so a Facet building reads as facets, not a dome), face decals, per-primitive detail override, macros (tracks, wheel sets, grilles, hatches, pylons). The batch lists of P638-P647 are fixed in this PR from `assets/art/iso/index.tres` | `--check` byte-identical for every model; `ArtModel.problems` for the new primitives | none | ~300 |
+| P630b | architect + art-director | answer 5 (in) | **`svg-art-style` and STYLE.md text** of ADR 0050 §4 (yes given), plus §8's same-scene rule; the PNG rule only after P621b picks a Figma route | docs lens | none | 0 |
 | P631 | art-director | P630 | **The detail renderer in the generator**, rewritten with P601's `ArtDetail` as reference: per-model `detail` 0-3, hash-seeded, metal sheen gradients from L2 (answer 4) | detail 0 byte-identical; allowed elements per level; gradient ids and no key in a gradient; polygon and 64 KB budgets; `--check` stable at every level | none | ~350 |
 | P632 | art-director | P630 | **Fixed faction colours and the team marker, the migration** (ADR 0050 §3): one sentinel key triad; fixed Nordværn and Facet materials; every frame regenerated (hex only); the bake's key table; gallery triads; `TEAM_SHARE` 2-12 % for the transition; `FACTION_SHARE` for detail at least 1; default marker colours (answer 3) in the match routes | the key band against the sentinel; only sentinel hexes in frames; the bake for all eight triads (gradients too); the page within 40 rows; the route default test | none | ~150 |
 | P633 | ai-dev | P592, P594 merged | **Zoom in the tutorial** (ADR 0050 §6): Kind 19 `ZOOM_AT_LEAST`; Basics `zoom` uses it with value 2; `problems()` takes the pinch with it; the hint's AUTO rule; "four zoom levels" in the prompt | `test_tutorial_conditions.gd` (Kind 19); `test_lesson_data.gd`; `test_tutorial_run.gd` (ends at level 2 and at 3) | none | ~40 |
 | P634 | touch-ux-dev | P633 | **The fourth zoom level** 2.0 (answer 2) appended to `zoom_levels` and the `InputSettings` default; camera, picker, minimap and edge-pan tests over four levels; the gallery zoom row; `test_lift_sheets.gd`'s list. One balance run | `test_input_settings.gd`; the camera suites; `test_minimap.gd`; `test_picker.gd`; `test_placement_edge_pan.gd`; the cross-file fact | `camera-pinch` ("four zoom levels") and its help text | ~30 |
-| P635 | gameplay-dev (view) | P632 | **The PNG path in the bake** (ADR 0050 §2): `IsoSheetDef` PNG parts, one Lanczos resize to the bake scale, a blit into the same page; the `marker` overlay part, baked per player, hidden at KRITISK | a crafted PNG sheet on page 1; no second texture; the marker per player; the page budget for an equal canvas | none | ~200 |
-| P636 | art-director | P621b | **The Figma building file and template**: AppCode ApS's file "Treadline — building art"; artgen exports the footprint templates (diamond, anchor, height guide, light arrow, canvas); STYLE.md "Figma-made buildings" (drawn or Figma AI under ADR 0051; never plugin AI, community files or the style file's pictures) | docs lens; the template's numbers equal the sheets' (a test) | none | ~60 |
-| P637 | art-director | P635, P636 | **Figma prototype building**: the Nordværn Headquarters (Rigworks), body, `dmg2` and card through P635, drawn by us or with Figma AI (CREDITS marked, screened); gallery and phone screenshots. **Michael's look gates P644 and P645** | the per-batch checks; CREDITS fields | none | art |
-| P638 | art-director | P631, P632 | **Nordværn ground vehicles** at L2 (scout tank, tank, artillery, tanker): fixed panels, marker | per-batch checks | none | art |
+| P635 | gameplay-dev (view) | P621b picks a Figma route; P632 | **Only if a Figma route wins. The PNG path in the bake** (ADR 0050 §2): `IsoSheetDef` PNG parts, one Lanczos resize to the bake scale, a blit into the same page; the `marker` overlay part, baked per player, hidden at KRITISK | a crafted PNG sheet on page 1; no second texture; the marker per player; the page budget for an equal canvas | none | ~200 |
+| P636 | art-director | P621b picks a Figma route | **Only if a Figma route wins. The Figma building file and template**: AppCode ApS's file "Treadline — building art"; artgen exports the footprint templates (diamond, anchor, height guide, light arrow, canvas), with round 2's `figma_facet_hq.js` helper as the seed; STYLE.md "Figma-made buildings" | docs lens; the template's numbers equal the sheets' (a test) | none | ~60 |
+| P637 | art-director | #643 (ADR 0051) merged; P629 | **The building route comparison** (ADR 0050 §2, question 1). The Facet headquarters is made a third way, with Figma AI under ADR 0051 (prompt naming no game or brand, the resemblance screen, date, prompt and hand edits recorded). The comparison sheet sets it beside round 2's artgen SVG and Figma-vector versions, the round-2 tank and the Nordværn headquarters, in P629's same scene at four zooms, with the band results per route. Nothing is committed to `assets/`: the sheet goes on the PR. **Michael picks one route**; Figma AI must clearly win, else the default (artgen SVG) | the same-scene bands per route, reported | none | 0 |
+| P638 | art-director | P629, P631, P632 | **Nordværn ground vehicles** at L2 (scout tank, tank, artillery, tanker): fixed panels, marker | per-batch checks | none | art |
 | P639 | art-director | P638 | **Facet ground vehicles** at L2 | per-batch checks | none | art |
 | P640 | art-director | P639 | **Nordværn squads** (all infantry, poses) | per-batch checks | none | art |
 | P641 | art-director | P640 | **Facet squads** | per-batch checks | none | art |
 | P642 | art-director | P641 | **Nordværn support and air** (carrier, minelayer, aircraft) | per-batch checks | none | art |
 | P643 | art-director | P642 | **Facet support and air** | per-batch checks | none | art |
-| P644 | art-director | P637 and Michael's look | **Nordværn 3x3 buildings in Figma**, the other five | per-batch checks; CREDITS | none | art |
-| P645 | art-director | P644 | **Facet 3x3 buildings in Figma** (six) | per-batch checks; CREDITS | none | art |
-| P646 | art-director | P643 | **Nordværn 2x2 and 1x1 buildings** at SVG L2 without bolts | per-batch checks | none | art |
+| P644 | art-director | P621b; P635 and P636 if a Figma route wins, else P631 and P632 | **Nordværn 3x3 buildings in the chosen route** (all six). By default artgen SVG at L2 without bolts, with the marker in the frames | per-batch checks; CREDITS if Figma | none | art |
+| P645 | art-director | P644 | **Facet 3x3 buildings in the chosen route** (all six) | per-batch checks; CREDITS if Figma | none | art |
+| P646 | art-director | P643; under the default also P645 (one page-pin PR at a time) | **Nordværn 2x2 and 1x1 buildings** at SVG L2 without bolts | per-batch checks | none | art |
 | P647 | art-director | P646 | **Facet 2x2 and 1x1 buildings**; the last batch to merge narrows `TEAM_SHARE` to 2-6 % | per-batch checks; the narrowed band | none | art |
 | P648 | qa-engineer | P634, P647, P645 | **Art proof**: the page budgets, readability over all rosters, mirror matches, zoom at four levels, CI's `atlas_bake_ms` against twice today's | the named suites | none | 0 (tests) |
 | P649 | architect + lead | P648 | **Art phone check and close-out**: Michael plays a cross and a mirror match, zooms to 2.0, reads the bake time; ADR 0050 implementation note; memory | Michael's yes | none | 0 |
@@ -182,22 +192,25 @@ CLAUDE.md). `tools/artgen` code counts.
 - **Now:**
   - P602 (lane F, art-director).
   - P607 (lane N, gameplay-dev).
-  - Michael answers ADR 0050, then P621b.
+  - P629, P630 and P630b (ADR 0050's answers 2-5 are in), and P633 once P592 and P594 merge.
+  - P637 once #643 merges. Michael's pick, then P621b.
 - **UI lane H (touch-ux-dev):** P604 (after P602 and P585), P609, P610 (after P581), P616, P617,
   then P611, P612 and P618 as guide v2's gates open (P591, P592, P595).
 - **UI lane M (touch-ux-dev):** P613 (after P604 and P607), P614, P615.
-- **Art lane G (art-director, generator):** P630, then P631 and P632 (in parallel: P631 touches
+- **Art lane G (art-director, generator):** P629 and P630, then P631 and P632 (in parallel: P631 touches
   the renderer, P632 the palette and the frames, with a combined-tree verify), then P638 to P643,
   then P646 and P647.
-- **Art lane F (art-director, Figma):** P602, P636, then P637 (after P635), then P644 and P645
-  after Michael's look.
-- **Lane N:** P607, then P635 (after P632).
+- **Art lane F (art-director):** P602, then P637 (after #643 and P629). Then, by the pick: under
+  the default, P644 and P645 join lane G as SVG batches after P643; if a Figma route wins, P636,
+  then P644 and P645 after P635.
+- **Lane N:** P607, then P635 (only if a Figma route wins).
 - **Zoom:** P633 (lane A, ai-dev, after P592 and P594), then P634 (lane H).
 - **Close-out:** P619 then P620 (UI); P648 then P649 (art).
 - **Critical paths:**
   - UI: P602 → P604 → P609 → P618 → P619 → P620, gated by guide v2's P595.
-  - Art: P621b → P630 → P632 → P638 … P643 → P646 → P647 → P648 → P649. That is fourteen rows,
-    the longer one. Lane F's Figma buildings run beside it.
+  - Art: P630 → P632 → P638 … P643 → P644 → P645 → P646 → P647 → P648 → P649 under the default,
+    the longer one. The building route (P637 → P621b) runs beside the unit batches and must be
+    settled before P644.
 - **Shared pins:** every art batch moves `tests/view/test_iso_atlas_budget.gd`'s page pins, so at
   most one page-changing PR is open at a time across lanes F and G. `theme.tres` goes one open
   PR per lane, in disjoint type blocks (H: `Hud*`, `Order*`, `Item*`, `Guide*`; M: `Menu*`), with a
@@ -217,10 +230,11 @@ CLAUDE.md). `tools/artgen` code counts.
 ## Risks
 1. **The read-out was not done by the architect** (no Figma tools in that session). P602 checks
    ADR 0049 §3 and lists differences before P604.
-2. **AI-made building pictures** (ADR 0051): a look close to another game, mismatched `dmg2` or
-   anim parts, a wrong projection or light. Mitigations: the resemblance screen, edits of one
-   picture, the footprint template, and Michael's look at P637 before the batches. No copyright
-   claim on them (ADR 0051 §5).
+2. **A mixed look** (Michael: "helhed … ikke tilfældigt", one whole, not random). One route for
+   all large buildings, the same-scene check on every art PR, and the default to artgen keep
+   one source. If Figma AI wins, its risks remain: a look close to another game, mismatched
+   `dmg2` or anim parts, a wrong projection or light, and no copyright claim (ADR 0051 §5).
+   The mitigations are the resemblance screen, edits of one picture and the footprint template.
 3. **The bake time grows** with L2 units (about 2 to 3 times). The budget is twice today's on the
    phone (P648 and P649). Levers in order: L1 for far parts, then 8 vehicle directions.
 4. **Softness at zoom 2.0** is accepted by design, and Michael judges it in P649. The only lever,
@@ -234,6 +248,9 @@ CLAUDE.md). `tools/artgen` code counts.
 8. **Draw calls:** one UI texture at most. Building markers ride the same page, so they add no
    call.
 9. **Scope creep** from the file. ADR 0049 §4 names each item. New asks go to the follow-up list.
+10. **The bands of the same-scene check** may be too loose to catch a mismatch, or too tight
+    for real variety. P629 sets them from today's art, and Michael's eye on each sheet is the
+    final check. Band changes go through the review.
 
 ## Michael's answers
 - **ADR 0049** (2026-11-24, "A, SVG til enheder …, faste farver, Facet …", then "ja til
@@ -243,4 +260,12 @@ CLAUDE.md). `tools/artgen` code counts.
   - 6 no mono face unless the file uses one.
   - 7 A.
   - 8 yes: Michael runs the free searches.
-- **ADR 0050:** pending (five questions).
+- **ADR 0050** (2026-11-24, "ja til alle 4, men vi skal have afgjort om det er figma Ai der
+  vinder, vi skal have en helhed i grafikken hele vejen rundt så det virker gennemarbejdet og
+  ikke tilfældigt"):
+  - 2: zoom 2.0, appended, soft past 1.5.
+  - 3: markers own white and computer red, with a dark rim.
+  - 4: gradient sheen.
+  - 5: the `svg-art-style` text.
+  - 1 open: the building route after P637. The default is artgen SVG with no PNG path.
+  - The principle of one coherent look, the same-scene check (§8).

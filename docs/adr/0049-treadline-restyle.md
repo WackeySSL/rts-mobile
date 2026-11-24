@@ -275,6 +275,11 @@ moves to Phase 7 as the first step of any rename that the trademark search force
   large buildings, Figma as a drawing tool. ADR 0050 (row P621) decides it. ADR 0051 adds Figma
   AI for single-view art. No art row starts before ADR 0050 is accepted.
 
+  Note (2026-11-24, after ADR 0050's answers 2-5): the art rows that do not depend on ADR 0050's
+  open question 1 (the building route) may start: the generator, the colour migration, the zoom
+  and the unit batches. The building rows wait for the route (plan, P621b). ADR 0050 §8 adds
+  Michael's rule of one coherent look across all graphics.
+
 ### 8. Sequencing against guide v2
 - **It runs now, with no guide wait:** P602 (the read-out, docs only) and P601 (already running).
   The rename (P607) and the menu rows (P613-P615) touch no guide file.
