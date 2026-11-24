@@ -860,7 +860,7 @@ body = "When an enemy fires a sweep, a line says Enemy sweep on you for a few se
 script = ExtResource("3_ent")
 id = &"superweapon-switched-off"
 title = "A building is switched off"
-body = "An amber bolt with a slash stands over a building while it is switched off, yours or an enemy's you can see. It goes when the building comes back on."
+body = "An amber bolt with a slash stands over a building while it is switched off, yours or an enemy's you can see. It goes when the building comes back on. A switched-off building sees nothing: the fog closes in where only switched-off buildings saw, unless one of your units or another building sees it. Your units still see."
 
 [sub_resource type="Resource" id="e_blackout_radar"]
 script = ExtResource("3_ent")

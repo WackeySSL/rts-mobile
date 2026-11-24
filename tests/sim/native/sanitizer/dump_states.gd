@@ -65,9 +65,10 @@ extends SceneTree
 ##
 ## The FOG kernel (P46n) reads the unit_id, owner, type_index, pos_x, pos_y and tick records of the
 ## kernels above, and adds, in _write_fog:
-##   world.fog_period_ticks, fog.cols, fog.rows, fog.cells, fog.player_count and
-##   fog.dirty_capacity (S); world.fog_cell, world.type_sight, fog.visible, fog.version, fog.dirty,
-##   fog.dirty_count, fog.dirty_full, fog.mask_start, fog.mask_radius and fog.mask_half (I);
+##   world.fog_period_ticks, world.blackout_sight_cut (P573), fog.cols, fog.rows, fog.cells,
+##   fog.player_count and fog.dirty_capacity (S); world.offline_until (P573), world.fog_cell,
+##   world.type_sight, fog.visible, fog.version, fog.dirty, fog.dirty_count, fog.dirty_full,
+##   fog.mask_start, fog.mask_radius and fog.mask_half (I);
 ##   fog.explored and fog.listed (B). The dump is the state the next FOG phase finds: the rows of
 ##   the player whose turn comes have moved since their last stamp.
 ##
@@ -366,6 +367,8 @@ func _write_targeting(file: FileAccess, world: World) -> void:
 func _write_fog(file: FileAccess, world: World) -> void:
 	var fog: FogGrid = world.fog
 	_scalar(file, "world.fog_period_ticks", world.fog_period_ticks)
+	_scalar(file, "world.blackout_sight_cut", world.blackout_sight_cut)
+	_ints(file, "world.offline_until", world.offline_until)
 	for member: StringName in FOG_SCALARS:
 		_scalar(file, "fog.%s" % member, fog.get(member))
 	_ints(file, "world.fog_cell", world.fog_cell)

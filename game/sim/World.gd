@@ -245,6 +245,8 @@ var sweep_ticks: int = 0
 var mine_known_cap: int = 0
 ## The most a match setup adds to one player's start credits (RulesDef.bonus_credits_max).
 var bonus_credits_max: int = 0
+## 1 = a blacked-out building gives no sight (RulesDef.blackout_sight_cut; FogUpdate, ADR 0047).
+var blackout_sight_cut: int = 0
 
 ## Per type. The index is the order of first appearance in the scenario's spawns, then its roster.
 ## The ranges named on these tables and the weapon tables hold for data that passes test_defs_data;
