@@ -14,6 +14,9 @@ extends RefCounted
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx;
 ## `broken`, `rod` and the helper `petals` (generator v5b, below).
+## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630; the
+## renderer that reads it is P631's, so it changes no output yet). A line that begins with a macro
+## name (`ArtMacro`: tracks, wheels, grille, hatch, pylon) expands to several primitives.
 ## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
 ## on, so the intact picture has none of them (ADR 0028 section 3).
 ## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
@@ -44,6 +47,7 @@ const ANIM: StringName = &"anim"
 const ALL_PARTS: Array[StringName] = [&"hull", &"turret", &"head", &"anim"]
 const AXES: String = "xyz"
 const FIELDS: int = 9
+const MAX_DETAIL: int = 3  ## The top of `detail=` (the model's detail levels, ADR 0050 section 1).
 
 var shape: StringName = &"box"
 var part: StringName = &"hull"
@@ -57,6 +61,7 @@ var slope: float = 0.0
 var axis: int = 2
 var group: StringName = &""
 var damage: int = 0  ## The stage it appears from; 0 is always drawn.
+var detail: int = -1  ## 0 to 3: overrides the model's detail level for this primitive; -1 none.
 var hidden: bool = false  ## A `hide` move of a damage pose: not drawn.
 var char_percent: float = 0.0  ## A `char` move: faces mixed this far towards the char colour.
 var teeth: int = 5  ## `broken`: points on the top edge.
@@ -114,6 +119,8 @@ static func parse(line: String) -> ArtPrim:
 static func parse_all(line: String) -> Array[ArtPrim]:
 	var words: PackedStringArray = line.split(" ", false)
 	var found: Array[ArtPrim] = []
+	if words.size() > 0 and StringName(words[0]) in ArtMacro.NAMES:
+		return ArtMacro.expand(line)
 	if words.size() < 1 or words[0] != "petals":
 		var one: ArtPrim = parse(line)
 		if one != null:
@@ -304,6 +311,9 @@ func _set_option(word: String) -> bool:
 		"damage":
 			damage = int(value)
 			allowed = pair[1].is_valid_int() and damage >= 1 and damage <= 2
+		"detail":
+			detail = int(value)
+			allowed = pair[1].is_valid_int() and detail >= 0 and detail <= MAX_DETAIL
 		"taper":
 			taper = value
 			allowed = taper > 0.0 and shape in [&"box", &"wedge", &"prism"]
