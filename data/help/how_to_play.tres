@@ -32,7 +32,7 @@ body = "The camera stops at the edge of the map. You can scroll the edge up to t
 script = ExtResource("3_ent")
 id = &"camera-radar"
 title = "The radar and the full map"
-body = "The round radar at the top right shows the ground around your view. Tap it to unfold the whole map. Tap or drag on the map to jump the view there. Black ground is ground you have never seen, and dimmed ground is ground you saw before. Your units and buildings show in your colour. Enemies show only where you see them now: a cross is a unit and a rounded blob is a building. The map folds away after a few seconds. Tap the pin to keep it open, or the arrows button to fold it at once."
+body = "The round radar at the top right shows the ground around your view. Tap it to unfold the whole map. Tap or drag on the map to jump the view there. Black ground is ground you have never seen, and dimmed ground is ground you saw before. Your units and buildings show in your colour. Enemies show only where you see them now: a cross is a unit and a rounded blob is a building. The map folds away after a few seconds. Tap the pin to keep it open, or the arrows button to fold it at once. If a Dusk Array switches off your radar building, the radar goes dark and the map folds."
 
 [sub_resource type="Resource" id="e6"]
 script = ExtResource("3_ent")
@@ -862,6 +862,12 @@ id = &"superweapon-switched-off"
 title = "A building is switched off"
 body = "An amber bolt with a slash stands over a building while it is switched off, yours or an enemy's you can see. It goes when the building comes back on. A switched-off building sees nothing: the fog closes in where only switched-off buildings saw, unless one of your units or another building sees it. Your units still see."
 
+[sub_resource type="Resource" id="e_blackout_radar"]
+script = ExtResource("3_ent")
+id = &"superweapon-blackout-radar"
+title = "Your radar goes dark"
+body = "When a Dusk Array switches off your radar building and you have no other one working, the round radar goes dark: the switched-off sign in its middle and an amber ring that runs down until it comes back. Tapping it opens nothing, and an open full map folds away. The message at the top still tells you when you are attacked. A second radar that works, or one you finish meanwhile, keeps it on."
+
 [sub_resource type="Resource" id="e130"]
 script = ExtResource("3_ent")
 id = &"superweapon-computer"
@@ -872,7 +878,7 @@ body = "On Normal and Hard the computer builds its side's superweapon and fires 
 script = ExtResource("2_sec")
 id = &"superweapon"
 title = "Superweapon"
-entries = Array[ExtResource("3_ent")]([SubResource("e116"), SubResource("e117"), SubResource("e118"), SubResource("e119"), SubResource("e120"), SubResource("e121"), SubResource("e122"), SubResource("e123"), SubResource("e124"), SubResource("e125"), SubResource("e126"), SubResource("e127"), SubResource("e128"), SubResource("e129"), SubResource("e130")])
+entries = Array[ExtResource("3_ent")]([SubResource("e116"), SubResource("e117"), SubResource("e118"), SubResource("e119"), SubResource("e120"), SubResource("e121"), SubResource("e122"), SubResource("e123"), SubResource("e124"), SubResource("e125"), SubResource("e126"), SubResource("e127"), SubResource("e128"), SubResource("e129"), SubResource("e_blackout_radar"), SubResource("e130")])
 
 [sub_resource type="Resource" id="e131"]
 script = ExtResource("3_ent")
