@@ -309,6 +309,26 @@ func test_a_building_selected_before_the_mode_widens_the_bar_by_stop_at_the_most
 		_placement.cancel()
 
 
+## The height holds with the width (P581): a building selected before the mode leaves a short bar
+## (64 dp), and "All army" during placement adds Stop without making the bar tall; after the mode
+## the bar follows the selection (tall).
+func test_the_bar_height_holds_while_a_mode_runs() -> void:
+	await _open(UiProfiles.by_name(&"android_6in"))
+	await _select([BORE])
+	assert_float(_bar.size.y).is_equal_approx(UiScale.dp(HudCorners.BAR_SHORT_DP), 1.5)
+	_make_ready()
+	var snap: MatchSnapshot = _main.get_node("MatchRunner").snapshot
+	assert_bool(_placement.begin(PlacementRig.plant(snap))).is_true()
+	await await_idle_frame()
+	await _select(TYPES)
+	assert_bool(_bar.order_button(&"stop").is_visible_in_tree()).is_true()
+	assert_float(_bar.size.y).is_equal_approx(UiScale.dp(HudCorners.BAR_SHORT_DP), 1.5)
+	_placement.cancel()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_float(_bar.size.y).is_equal_approx(UiScale.dp(HudCorners.BAR_DP.y), 1.5)
+
+
 ## The reviewer's run: one tank, placement, the ghost dragged low and left near the bar's end, then
 ## "All army": the check mark and X stay where they are.
 func test_all_army_does_not_move_the_ghosts_check_mark_and_x_next_to_the_bar() -> void:

@@ -812,8 +812,14 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
 
 Status note (2026-11-24, P581; Michael's phone screenshot of 2026-11-24, MINE under BUILD; the
 text and notes above stay as accepted, this note replaces their sizes and the overflow rule):
-- **The bar is 106 dp high** (`HudCorners.BAR_DP.y`): two 48 dp keys and a gap, with 2 dp for
-  pixel rounding.
+- **The bar has two heights** (Michael, 2026-11-24). **Tall, 106 dp** (`HudCorners.BAR_DP.y`): two
+  48 dp keys and a gap, with 2 dp for pixel rounding; it stands while Stop shows (units selected)
+  or the orders wrap into a second row. **Short, 64 dp** (`HudCorners.BAR_SHORT_DP`, the pre-P581
+  height, a chip's): everything else, for example a building with CLEAR, Mend and Sell, or only
+  CLEAR. CLEAR, the chip and the orders stand on the bottom line in both. `CommandBar` publishes
+  the height with the width (`HudState.set_bar`, `HudCorners.Shown.bar_tall`), and the group
+  columns, the upright Ready chip and the pinned map follow the height in use. While a mode
+  (placement, strike aim) holds the bar, the height holds too.
 - **Stop sits above CLEAR** in one column of 56 x 48 dp keys at the bar's start (mirrored in
   left-handed mode); without Stop, CLEAR keeps the bottom place.
 - **The other orders** (56 x 48 dp) wrap into at most 2 rows in `OrderFlow`. There is no scroll,

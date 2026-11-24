@@ -470,6 +470,32 @@ func _screens() -> Array[Dictionary]:
 	return CornersRig.screens()
 
 
+## The short bar (64 dp, P581) and the tall one (106 dp): the bar rect, the group columns' foot, the
+## upright Ready chip and the pinned map's clamp follow the height in use.
+func test_the_short_bar_is_64_dp_and_the_parts_follow_the_height_in_use() -> void:
+	var safe: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)  # web_phone_portrait, upright.
+	for tall: bool in [true, false]:
+		var high: float = HudCorners.BAR_DP.y if tall else HudCorners.BAR_SHORT_DP
+		var why: String = "tall %s" % tall
+		var shown: HudCorners.Shown = _shown(["bar", "ready"], 12)
+		shown.bar_tall = tall
+		var out: Dictionary[StringName, Rect2] = _place(safe, true, shown)
+		_assert_rect(out[HudCorners.BAR], Rect2(0.0, 676.0 - high, 120.0, high))
+		# The Ready chip stands a gap above the bar's top (and never lower than BUILD's top).
+		assert_float(out[HudCorners.READY].end.y).override_failure_message(why).is_equal(
+			minf(612.0, 676.0 - high) - 8.0
+		)
+		var foot: float = 0.0  # The group column ends a gap above the bar.
+		for index: int in 12:
+			foot = maxf(foot, out[HudCorners.group_key(index)].end.y)
+		assert_float(foot).override_failure_message(why).is_less_equal(676.0 - high - 8.0)
+	var map: HudCorners.Shown = _shown(["bar", "map"], 1)
+	map.bar_tall = false
+	var landscape: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 890.0, 331.0), false, map)
+	# The short bar leaves the map the room it had before P581 (web_phone: 240 x 168).
+	_assert_rect(landscape[HudCorners.MAP], Rect2(650.0, 64.0, 240.0, 168.0))
+
+
 func _shown(names: Array[String], groups: int = 1, bar_width: float = 0.0) -> HudCorners.Shown:
 	return CornersRig.shown(names, groups, bar_width)
 

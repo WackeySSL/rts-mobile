@@ -133,6 +133,40 @@ func test_chips_keep_their_height_on_the_bottom_line() -> void:
 			assert_int(shown).override_failure_message("%s %s" % [entry[2], ids]).is_greater(0)
 
 
+## The bar is short (64 dp) with no Stop and one row, tall (106 dp) with Stop or a second row.
+func test_the_bar_is_short_without_stop_and_tall_with_stop_or_a_second_row() -> void:
+	var wrapped: int = 0
+	for entry: Array in _cases():
+		await _open(entry[0], entry[1])
+		var why: String = entry[2]
+		await _select([3])  # The Weld Shed: CLEAR, Mend, Sell, no Stop.
+		var orders: OrderFlow = _bar.find_child("Orders", true, false) as OrderFlow
+		var tall: bool = orders.rows() > 1
+		assert_float(_bar.size.y).override_failure_message(why + " building").is_equal_approx(
+			UiScale.dp(HudCorners.BAR_DP.y if tall else HudCorners.BAR_SHORT_DP), 1.5
+		)
+		_assert_clear(why + " building")
+		await _select([])
+		await _select(IDS)  # Units: Stop shows.
+		assert_float(_bar.size.y).override_failure_message(why + " units").is_equal_approx(
+			UiScale.dp(HudCorners.BAR_DP.y), 1.5
+		)
+		_assert_clear(why + " units")
+		await _select([3])
+		for order: Dictionary in CommandBar.ORDERS:  # The five orders a selection can show at once.
+			if order["id"] != &"stop":  # Mend and Sell hide: no selection shows them with these.
+				_bar.order_button(order["id"]).visible = order["for"] != &"building"
+		await await_idle_frame()
+		await await_idle_frame()
+		tall = orders.rows() > 1
+		wrapped += 1 if tall else 0
+		assert_float(_bar.size.y).override_failure_message(why + " forced").is_equal_approx(
+			UiScale.dp(HudCorners.BAR_DP.y if tall else HudCorners.BAR_SHORT_DP), 1.5
+		)
+		_assert_clear(why + " forced")
+	assert_int(wrapped).override_failure_message("no size wrapped the forced orders").is_greater(0)
+
+
 func _assert_clear(why: String) -> void:
 	var build: Control = _main.get_node("Hud").find_child("BuildButton", true, false)
 	var build_rect: Rect2 = build.get_global_rect()

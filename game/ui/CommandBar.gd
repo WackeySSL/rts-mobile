@@ -117,6 +117,9 @@ var _held: bool = false
 var _held_px: float = 0.0  ## The bar's width as the mode began: the room while it runs.
 var _slot: bool = false  ## The bar holds its place (shown or an empty plate).
 var _publish_queued: bool = false
+var _tall: bool = true  ## The bar is tall: Stop shows or the orders take a second row.
+var _held_tall: bool = true  ## `_tall` as the mode began: the height holds like the width.
+var _published_tall: bool = true
 var _published: float = 0.0  ## The content width last told to the state, dp.
 var _arm: SellArm = SellArm.new()
 var _wide: Dictionary[StringName, Array] = {}  ## Order id -> [caption, widest word].
@@ -898,6 +901,7 @@ func _update_slot() -> void:
 	)
 	if moded and not _frozen:
 		_held = _slot  # The slot the bar has as the mode begins, not what the selection says now.
+		_held_tall = _tall
 		_held_px = minf(size.x, _room())  # And its width (no more than the aim leaves it).
 	var changed: bool = moded != _frozen
 	_frozen = moded
@@ -917,7 +921,8 @@ func _queue_publish() -> void:
 func _publish() -> void:
 	_publish_queued = false
 	_published = _content_dp()
-	feed.state.set_bar(_slot, _published)
+	_published_tall = _tall
+	feed.state.set_bar(_slot, _published, _tall)
 	place()
 
 
@@ -938,6 +943,7 @@ func _rects(widest: bool) -> Dictionary[StringName, Rect2]:
 	var shown: HudCorners.Shown = HudCorners.Shown.new()
 	feed.state.fill(shown)
 	feed.state.fill_bar(shown)
+	shown.bar_tall = _tall
 	shown.bar = true  # Its own rect is asked for whether it holds the slot or not.
 	if widest:
 		shown.bar_width = INF
@@ -959,6 +965,9 @@ func place() -> void:
 		_fit_chips()  # The room changes with the Ready chip, the drawer and the window.
 	else:
 		_plan_orders()
+	# Tall while Stop shows or the orders wrap (wrapping follows the width, never the height); a
+	# mode holds the height it began with.
+	_tall = _held_tall if _frozen else (_buttons[&"stop"].visible or _orders.rows() > 1)
 	var rects: Dictionary[StringName, Rect2] = _rects(false)
 	_row.layout_direction = (
 		Control.LAYOUT_DIRECTION_RTL if mirror else Control.LAYOUT_DIRECTION_LTR
@@ -969,7 +978,8 @@ func place() -> void:
 		size = rects[HudCorners.BAR].size
 		_row.size = size  # The row is the bar's size now; a row that grew once must not stay grown.
 		_row.position.y = minf(0.0, size.y - _row.get_combined_minimum_size().y)  # Grows upward.
-	if not is_equal_approx(_content_dp(), _published):  # The sizes settled after the last tell.
+	# The sizes settled after the last tell.
+	if _tall != _published_tall or not is_equal_approx(_content_dp(), _published):
 		_queue_publish()
 
 
