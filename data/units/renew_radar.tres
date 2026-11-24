@@ -17,3 +17,4 @@ tab = 0
 requires = ExtResource("2_requires")
 footprint = Vector2i(2, 2)
 power = -30
+radar = true

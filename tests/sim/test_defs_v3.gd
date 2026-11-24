@@ -34,6 +34,7 @@ const GROUND_FIELDS: Array[String] = [
 	"carry_eject_percent", "mine_weapon", "mine_cost", "mine_aware", "detect_milli"
 ]
 const PAD_FIELDS: Array[String] = ["pads", "pad_offsets"]
+const RADAR_FIELDS: Array[String] = ["radar"]  # P574, ADR 0047 section 3.
 const TAB_HINT: String = "None:-1,Structures:0,Infantry:1,Vehicles:2,Flight:3,Research:4"
 const STRIKE_HINT: String = "None:0,Rupture:1,Blackout:2,Reveal:3"
 
@@ -76,7 +77,7 @@ func test_building_def_is_a_unit_def_with_a_one_tile_footprint_and_nothing_else_
 
 func test_building_def_adds_exactly_its_own_fields_to_a_unit_def() -> void:
 	assert_array(_own_fields(UnitDef.new(), BuildingDef.new())).is_equal(
-		BUILDING_FIELDS + STRIKE_FIELDS + PAD_FIELDS
+		BUILDING_FIELDS + STRIKE_FIELDS + PAD_FIELDS + RADAR_FIELDS
 	)
 	var types: Dictionary[String, int] = {}
 	for info: Dictionary in BuildingDef.new().get_property_list():
