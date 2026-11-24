@@ -9,6 +9,11 @@ Status: **accepted, 2026-11-15** (Michael answered "Ja" in chat the same day to 
 proposal of this scope). Written by the architect on branch `claude/p26ca-asset-licence` (base
 `main` at 4456e53b), row P26ca.
 
+Status note, 2026-11-24 (ADR 0051): files made with Figma's AI features, which `assets/CREDITS.md`
+marks "AI-made with Figma AI, no copyright claimed by AppCode ApS", are outside item 2's
+"all rights reserved"; `assets/LICENSE.md` will name the exclusion (row P623). Everything else
+here stands.
+
 Supersedes:
 - README "Licence": "Assets: SVG drawn in this repository is MIT like the code", and the matching
   header line of `assets/CREDITS.md` ("SVG drawn as code in this repository is MIT like the rest
