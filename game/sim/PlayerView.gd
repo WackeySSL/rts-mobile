@@ -200,6 +200,8 @@ var type_min_range: PackedInt32Array = PackedInt32Array()
 var type_sight: PackedInt32Array = PackedInt32Array()
 var type_faction: PackedInt32Array = PackedInt32Array()
 var type_strike_kind: PackedInt32Array = PackedInt32Array()
+## 1 for a radar building (`type_radar`; static type data, P576), else 0.
+var type_radar: PackedInt32Array = PackedInt32Array()
 var type_strike_radius: PackedInt32Array = PackedInt32Array()
 var type_charge_ticks: PackedInt32Array = PackedInt32Array()
 ## The percent the type's weapon does against each armour class, flat `type * 4 + class`; all 0 for
@@ -488,6 +490,7 @@ func _take_tables(world: World) -> void:
 	type_sight = world.type_sight.duplicate()
 	type_faction = world.type_faction.duplicate()
 	type_strike_kind = world.type_strike_kind.duplicate()
+	type_radar = world.type_radar.duplicate()
 	type_strike_radius = world.type_strike_radius.duplicate()
 	type_charge_ticks = world.type_charge_ticks.duplicate()
 	type_layer_bit = world.type_layer_bit.duplicate()

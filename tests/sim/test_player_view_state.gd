@@ -338,8 +338,8 @@ func test_no_public_array_of_the_view_is_one_of_the_worlds() -> void:
 	# `weapon_targets`), `reveal_state` of P233, `own_stance` of P298, the six mine lists of P288
 	# and the two repair role tables of P283, and the five air and tech tables of P250
 	# (`type_pads`, `type_upgrade` and the three upgrade lists), and the three mine tables of P295
-	# (`type_mine_weapon`, `type_mine_cost` and `type_move_class`).
-	assert_int(touched).is_equal(56)
+	# (`type_mine_weapon`, `type_mine_cost` and `type_move_class`), and `type_radar` of P576.
+	assert_int(touched).is_equal(57)
 	assert_int(world.state_hash()).is_equal(state)
 	assert_int(world.defs_hash()).is_equal(defs)
 	assert_array(Array(world.type_cost)).is_equal(Array(costs))

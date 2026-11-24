@@ -13,7 +13,9 @@ extends RefCounted
 ## walking there and the shot lands 45 ticks later), once that value is not below
 ## `strike_min_value`. A Dusk Array (blackout) fires once per wave, while the wave has a live
 ## member, on the producer cluster of most value, preferring the producers within reach of
-## the wave's goal. The two are told apart by the view's `type_strike_kind`, not by a name. Both
+## the wave's goal; of two clusters of equal value, the one whose ring also covers a seen or
+## remembered enemy radar building (`type_radar`; counted tests, ADR 0047 section 9) wins.
+## The two are told apart by the view's `type_strike_kind`, not by a name. Both
 ## read only what the AI may know: the seen enemy buildings, combat units and other units (tankers)
 ## that `AiIntel` listed, and the ghosts. A thing counts once its type's first sighting is
 ## `reaction_ticks` old.
@@ -67,6 +69,9 @@ var _value: PackedInt32Array = PackedInt32Array()
 var _keys: PackedInt64Array = PackedInt64Array()
 var _bx: PackedInt32Array = PackedInt32Array()
 var _by: PackedInt32Array = PackedInt32Array()
+## The known enemy radar buildings (milli-tiles), gathered for the Dusk Array's tie-break.
+var _rx: PackedInt32Array = PackedInt32Array()
+var _ry: PackedInt32Array = PackedInt32Array()
 
 
 ## A manager that copies what it reads of `def` and `level`.
@@ -156,6 +161,7 @@ func _bore_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i:
 ## reach of the wave's goal when there are any, else among all.
 func _cluster_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i:
 	_gather(view, memory, true)
+	_gather_radars(view, memory)
 	_bx.clear()  # A blackout hits no own building: nothing keeps a point clear.
 	_by.clear()
 	var goal: Vector2i = Vector2i(
@@ -166,6 +172,45 @@ func _cluster_point(view: PlayerView, memory: AiMemory, radius: int) -> Vector2i
 		if near != _NONE:
 			return near
 	return _best(view, memory, radius, 1, _NONE)
+
+
+## Fills `_rx`, `_ry` with the enemy radar buildings the AI may act on: the seen ones (the list
+## `refresh` made) and the remembered ones, whose type's first sighting is `reaction_ticks` old.
+func _gather_radars(view: PlayerView, memory: AiMemory) -> void:
+	_rx.clear()
+	_ry.clear()
+	var flags: PackedInt32Array = view.type_radar
+	for id: int in memory.seen_site_id:
+		var row: int = view.row_of(id)
+		if row < 0:
+			continue
+		var type: int = view.row_type(row)
+		if type >= 0 and type < flags.size() and flags[type] != 0 and _known(view, memory, type):
+			var pos: Vector2i = view.row_pos(row)
+			_rx.append(pos.x)
+			_ry.append(pos.y)
+	for record: int in view.ghost_count:
+		var type: int = view.ghost_type[record]
+		if type < 0 or type >= flags.size() or flags[type] == 0 or view.ghost_owner[record] <= 0:
+			continue
+		if AiIntel.remembered(view, record) and _known(view, memory, type):
+			var pos: Vector2i = view.ghost_pos(record)
+			_rx.append(pos.x)
+			_ry.append(pos.y)
+
+
+## Whether the ring of radius `reach` (squared) round (`x`, `y`) holds a known enemy radar: one
+## counted test per radar, none (and false) when the cap would be passed.
+func _covers_radar(x: int, y: int, reach: int) -> bool:
+	if tests + _rx.size() > _tests_max:
+		return false
+	tests += _rx.size()
+	for at: int in _rx.size():
+		var dx: int = _rx[at] - x
+		var dy: int = _ry[at] - y
+		if dx * dx + dy * dy <= reach:
+			return true
+	return false
 
 
 ## Fills the scratch with the enemy things the AI may act on, at most `_tests_max` of them: the
@@ -298,6 +343,7 @@ func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Ve
 	_rank(view, memory)
 	var best_sum: int = maxi(least, 1) - 1
 	var best: Vector2i = _NONE
+	var best_radar: int = -1  # Whether the best's ring covers a radar: -1 not yet asked.
 	for step: int in count:
 		var anchor: int = _THING_MASK - (_keys[count - 1 - step] & _THING_MASK)
 		if goal != _NONE and _far(_x[anchor], _y[anchor], goal.x, goal.y, reach):
@@ -322,6 +368,14 @@ func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Ve
 		if sum > best_sum:
 			best_sum = sum
 			best = Vector2i(_x[anchor], _y[anchor])
+			best_radar = -1
+		elif sum == best_sum and best != _NONE and not _rx.is_empty():
+			# An equal value (only the Dusk Array gathers radars): the ring over a radar wins.
+			if best_radar < 0:
+				best_radar = 1 if _covers_radar(best.x, best.y, reach) else 0
+			if best_radar == 0 and _covers_radar(anchor_x, anchor_y, reach):
+				best = Vector2i(anchor_x, anchor_y)
+				best_radar = 1
 	return best
 
 
