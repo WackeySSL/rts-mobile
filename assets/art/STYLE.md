@@ -1004,6 +1004,26 @@ without its damage lines and compares them). Smoke, fire and sparks are never dr
 - **Originality.** Walls, floors, rebar, beams, a snapped chimney, a torn tank: plain real-world
   collapse of the building's own materials, in the Derrick League's palette.
 
+### Detail levels (P631)
+ADR 0050 section 1. `ArtModel.detail` (0 to 3, default 0) sets how much ink `tools/artgen/ArtDetail.gd` puts
+on a model's box, wedge and prism faces; a primitive's `detail=L` overrides it, and `decals` lines
+(`ArtDecal`) are drawn from level 2. Nothing is random: each variation is a hash of the art id and the
+primitive's key, so `--check` is stable. Every extra sits right after the face it dresses, with no edge.
+
+| Level | Adds | Elements in the file |
+| --- | --- | --- |
+| 0 | nothing: today's three flat tones, byte for byte | `svg`, `g`, `polygon` |
+| 1 | panel seams: black `fill-opacity` 0.25 strips along 0.3 tile cells of a quad face (not under 8 px, not under 0.03 tile2) | `svg`, `g`, `polygon` |
+| 2 | 1 plus cell tints (white or black at 0.06), two bolts on a face of 0.04 to 0.25 tile2, the model's decals (number, hazard, vent; paint #E9E5D6 and #D8C428 at the face's level, a black backing at 0.6, 0.35 and 0.55) and metal sheen: a vertical `linearGradient` as the fill of a lit (top or left) face of a metal material, 12 x 12 px or more, two stops from the material's own ladder | `svg`, `defs`, `linearGradient`, `stop`, `g`, `polygon` |
+| 3 | 2 plus bevels (white 0.3 on the highest edge, black 0.28 on the lowest) and three stepped contact bands (black 0.07, 0.09, 0.12) at the foot of a vertical face on the ground. Chips and grime stay off | as 2 |
+
+- **Gradients.** Ids are `s0`, `s1` ... in first use in the file, one per distinct stop pair, and are
+  never in a shadow frame. A team face and a key colour are never in one: every extra on a key face is
+  black or white at some opacity, so the bake's key swap needs nothing here.
+- **Budgets per frame** (`tests/art/test_artgen_detail.gd`): at most 600 polygons for a unit hull and
+  64 KB per generated unit frame.
+- **Not drawn at any level:** spheres, rods, `broken` boxes and the item card (which stays flat).
+
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
 - Canvas at 2x: an ore cell 128x128, a rally flag 128x128. (The top-down units' 64x64, 96x96,
@@ -3591,3 +3611,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-19 | v1.48 (P551, art-director, plan answer 5): the Map looks section: `MapDef.ground_look` (view only) and the `assets/art/svg/ground_looks/<look>/` folders, and the first look, Heron Fords' (`heron`): river water with current lines that run on from tile to tile, shingle sand and meadow grass, six diamonds written as SVG by a small projection script kept outside the repository (the committed SVG is the source, as for P105), in the same keys and slots of the ground page (no new terrain, no new tile, no atlas pin moves); the Terrain page of the gallery ends with a cut of the map in its look. |
 | 2026-11-19 | v1.49 (P553, art-director, plan answer 5): the second map look, Curlew Crags' (`crags`): rock, sand, grass and scrub re-skinned as banded cliff, cracked pass floor, thin upland turf and thorn heath (eight diamonds written as SVG by a small projection script kept outside the repository, the committed SVG being the source, in the same keys and slots; no new terrain, no atlas pin moves), its table in "Map looks", the shared look checks in `tests/art/ground_look_support.gd` and a second block on the gallery's Terrain page. |
 | 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
+| 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
