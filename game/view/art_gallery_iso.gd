@@ -15,9 +15,7 @@ extends Control
 ## model's `damage` and `hang` points, over the hull and under the turret. Built on first show;
 ## view-only.
 
-const FACTION_NAMES: Dictionary[StringName, String] = {
-	&"fossil": "Derrick League", &"renew": "Lumen Accord"
-}
+const FACTION_NAMES: Dictionary[StringName, String] = {&"fossil": "Nordværn", &"renew": "Facet"}
 ## The default team colours (ADR 0050 section 3, answer 3): your own Sne (white), the computer's
 ## Karmin (red). The frames carry the sentinel key, which each row replaces.
 const TRIADS: Array[Array] = [

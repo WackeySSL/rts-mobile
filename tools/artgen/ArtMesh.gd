@@ -31,17 +31,16 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 		_broken(prim, found)
 		return _placed(prim, found)
 	var dims: Vector3 = _dims(prim)
-	var sides: int = prim.sides
-	var circ: float = 0.5 / cos(PI / sides)
+	var ring: PackedVector2Array = ring_points(prim)
+	var sides: int = ring.size()
 	var bottom: PackedVector3Array = PackedVector3Array()
 	var top: PackedVector3Array = PackedVector3Array()
 	# The mean of the corners lies inside a convex solid. The middle of the box does not do: a wedge
 	# of slope 1 has its sloped face through it, and a normal oriented against it is a coin toss.
 	var inside: Vector3 = Vector3.ZERO
 	for i: int in sides:
-		var ring: Vector2 = dir((i + 0.5) * 360.0 / sides) * circ
-		var u: float = ring.x * dims.x
-		var v: float = ring.y * dims.y
+		var u: float = ring[i].x * dims.x
+		var v: float = ring[i].y * dims.y
 		var t: float = u / dims.x + 0.5
 		var drop: float = prim.slope * t if prim.slope >= 0.0 else -prim.slope * (1.0 - t)
 		bottom.append(_local(prim, u, v, 0.0))
@@ -54,6 +53,34 @@ static func faces(prim: ArtPrim) -> Array[Face]:
 	_add(found, top, inside)
 	_add(found, bottom, inside)
 	return _placed(prim, found)
+
+
+## The ring of a primitive's section in units of its extent (u, v from -0.5 to 0.5), counter-
+## clockwise: a prism's `sides` points turned by `turn` degrees, a box's four corners, or, with
+## `chamfer=c`, the eight points of a box whose vertical edges are cut at 45 degrees, each cut c
+## tiles along both sides of its corner (P630c).
+static func ring_points(prim: ArtPrim) -> PackedVector2Array:
+	var found: PackedVector2Array = PackedVector2Array()
+	var dims: Vector3 = _dims(prim)
+	if prim.chamfer > 0.0:
+		var hx: float = 0.5
+		var hy: float = 0.5
+		var cx: float = prim.chamfer / dims.x
+		var cy: float = prim.chamfer / dims.y
+		for corner: Vector2 in [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]:
+			# Arriving from the previous corner, along the edge, and leaving along the next.
+			var first: Vector2 = Vector2(corner.x * hx, corner.y * (hy - cy))
+			var second: Vector2 = Vector2(corner.x * (hx - cx), corner.y * hy)
+			if corner.x * corner.y < 0.0:
+				first = Vector2(corner.x * (hx - cx), corner.y * hy)
+				second = Vector2(corner.x * hx, corner.y * (hy - cy))
+			found.append(first)
+			found.append(second)
+		return found
+	var circ: float = 0.5 / cos(PI / prim.sides)
+	for i: int in prim.sides:
+		found.append(dir((i + 0.5) * 360.0 / prim.sides + prim.turn) * circ)
+	return found
 
 
 ## `found` with the faces placed by the moves of `prim`.

@@ -25,8 +25,8 @@ const RESTORE_FAILED: StringName = &"MAIN_RESTORE_FAILED"
 const ENGLISH: Dictionary[StringName, String] = {
 	TITLE: "TREADLINE",
 	TAGLINE: "Oil and gas against wind and sun. Choose your side.",
-	SIDE_FOSSIL: "DERRICK LEAGUE",
-	SIDE_RENEW: "LUMEN ACCORD",
+	SIDE_FOSSIL: "NORDVÆRN",
+	SIDE_RENEW: "FACET",
 	VS: "vs",
 	CONTINUE: "CONTINUE",
 	SKIRMISH: "SKIRMISH",

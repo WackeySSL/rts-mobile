@@ -35,7 +35,7 @@ func test_the_iso_page_is_built_when_it_is_first_shown_and_names_the_first_type(
 	assert_str((gallery.get_node("%PageButton") as Button).text).is_equal("Iso")
 	var paths: Array[String] = ArtGen.model_paths()
 	assert_str((page.get_node("Title") as Label).text).is_equal(
-		"1 / %d  Derrick League: artillery (veh)" % paths.size()
+		"1 / %d  Nordværn: artillery (veh)" % paths.size()
 	)
 	for ground: String in ["Grass", "Sand"]:
 		var names: Array[StringName] = []

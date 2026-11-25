@@ -1,11 +1,11 @@
 extends GdUnitTestSuite
-## The two Skirmish routes (plan P90, rev 5, ADR 0025 answer 7): the dev menu has "Skirmish (Derrick
-## League)" and "Skirmish (Lumen Accord)" first; each opens the main scene on Kestrel Flats with the
-## player on that side as player 1, the computer of the other side as `MatchRunner.opponents` (plan
-## P183: `OpponentAi`), the build menu of the player's own side only, and the player's units in the
-## colour of that side: orange for the Derrick League, cyan for the Lumen Accord, the other player
-## in the other colour: since P632 (ADR 0050 section 3, answer 3) the team marker is your own white
-## (Sne) and the computer's red (Karmin) on every route, the scenario's `team_triads`. The
+## The two Skirmish routes (plan P90, rev 5, ADR 0025 answer 7): the dev menu has
+## "Skirmish (Nordværn)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
+## with the player on that side as player 1, the computer of the other side as
+## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
+## and the player's units in the other colour: since P632 (ADR 0050 section 3, answer 3) the team
+## marker is your own white (Sne) and the computer's red (Karmin) on every route, the scenario's
+## `team_triads`. The
 ## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -14,7 +14,7 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ROUTES: Array[Dictionary] = [
 	{
 		"button": "SkirmishDerrickButton",
-		"text": "Skirmish (Derrick League)",
+		"text": "Skirmish (Nordværn)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats.tres",
 		"opponent": &"opponent_renew",
 		"own_hq": &"headquarters",
@@ -25,7 +25,7 @@ const ROUTES: Array[Dictionary] = [
 	},
 	{
 		"button": "SkirmishLumenButton",
-		"text": "Skirmish (Lumen Accord)",
+		"text": "Skirmish (Facet)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats_mirrored.tres",
 		"opponent": &"opponent_fossil",
 		"own_hq": &"renew_hq",
