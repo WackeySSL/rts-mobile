@@ -180,6 +180,10 @@ Where this file and an ADR disagree, the ADR wins; fix this file.
   the view which cells changed. Each player's dirty list is a fixed block of one flat
   `PackedInt32Array` with count and "full" arrays, sized in `configure()`; `begin_update` resets
   a count and never resizes (ADR 0013 §2).
+- Sight cut (ADR 0047 §2, P573): a row that must give no sight gets wanted cell -1 inside FOG
+  (`FogUpdate.run` and `core/fog.cpp` alike; today `blackout_sight_cut == 1` and `offline_until >
+  tick + 1`), and `WorldLoad.stamp_fog` skips it (`offline_until > tick`); never unstamp it
+  elsewhere, or `Removal` and `stamp_fog` take its disc away twice.
 - AI code reads the World only through `PlayerView` (ADR 0010, ADR 0020 §1; P78). Easy and
   Normal AI read only their own player's visibility.
 
