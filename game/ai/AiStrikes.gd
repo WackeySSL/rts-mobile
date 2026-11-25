@@ -13,8 +13,10 @@ extends RefCounted
 ## walking there and the shot lands 45 ticks later), once that value is not below
 ## `strike_min_value`. A Dusk Array (blackout) fires once per wave, while the wave has a live
 ## member, on the producer cluster of most value, preferring the producers within reach of
-## the wave's goal; of two clusters of equal value, the one whose ring also covers a seen or
-## remembered enemy radar building (`type_radar`; counted tests, ADR 0047 section 9) wins.
+## the wave's goal. A ring that also covers a seen or remembered enemy radar building
+## (`type_radar`; counted tests, ADR 0047 section 9) scores its value plus `strike_radar_bonus`
+## (P576b), so it beats a slightly richer ring, and wins a tie of the score. The bonus never counts
+## toward `strike_min_value`, which reads the raw value.
 ## The two are told apart by the view's `type_strike_kind`, not by a name. Both
 ## read only what the AI may know: the seen enemy buildings, combat units and other units (tankers)
 ## that `AiIntel` listed, and the ghosts. A thing counts once its type's first sighting is
@@ -58,6 +60,7 @@ var _uses: bool = false
 var _strike_id: StringName = &""
 var _min_value: int = 0
 var _tests_max: int = 0
+var _radar_bonus: int = 0
 var _reaction: int = 0
 ## The strike type as an index of the view's roster, found on the first run (-2: not yet).
 var _type: int = -2
@@ -81,6 +84,7 @@ static func create(def: OpponentDef, level: AiDifficultyDef, _player_id: int) ->
 	strike._strike_id = def.strike_type
 	strike._min_value = maxi(def.strike_min_value, 0)
 	strike._tests_max = clampi(def.target_tests_max, 1, _THINGS_MAX)
+	strike._radar_bonus = maxi(def.strike_radar_bonus, 0)
 	strike._reaction = maxi(level.reaction_ticks, 0)
 	return strike
 
@@ -335,13 +339,15 @@ func _keep(x: int, y: int, lo: Vector2i, hi: Vector2i) -> void:
 
 
 ## The best anchor among the scratch (see the header): the thing whose `radius` holds the largest
-## sum of value, not below `least` (at least 1). With a `goal` (not `_NONE`) only anchors within
-## `radius` of it count. A tie in the sum goes to the earlier anchor tried.
+## sum of value, not below `least` (at least 1), plus the radar bonus for a ring over a known radar.
+## With a `goal` (not `_NONE`) only anchors within `radius` of it count. A tie in the score goes to
+## the ring over a radar, else to the earlier anchor tried.
 func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Vector2i) -> Vector2i:
 	var count: int = _x.size()
 	var reach: int = radius * radius
 	_rank(view, memory)
-	var best_sum: int = maxi(least, 1) - 1
+	var floor_value: int = maxi(least, 1)
+	var best_score: int = -1  # The sum plus the radar bonus of the best so far.
 	var best: Vector2i = _NONE
 	var best_radar: int = -1  # Whether the best's ring covers a radar: -1 not yet asked.
 	for step: int in count:
@@ -365,17 +371,29 @@ func _best(view: PlayerView, memory: AiMemory, radius: int, least: int, goal: Ve
 			if dx * dx + dy * dy <= reach:
 				sum += _value[other]
 		tests += count
-		if sum > best_sum:
-			best_sum = sum
-			best = Vector2i(_x[anchor], _y[anchor])
-			best_radar = -1
-		elif sum == best_sum and best != _NONE and not _rx.is_empty():
-			# An equal value (only the Dusk Array gathers radars): the ring over a radar wins.
+		if sum < floor_value:
+			continue  # The minimum reads the raw sum: a radar bonus never makes a poor ring fire.
+		var covers: int = -1  # Whether this ring covers a radar: -1 not yet asked.
+		var score: int = sum
+		# Asked only when the bonus could still win or tie it: a poorer ring costs no radar test.
+		if _radar_bonus > 0 and not _rx.is_empty() and sum + _radar_bonus >= best_score:
+			covers = 1 if _covers_radar(anchor_x, anchor_y, reach) else 0
+			if covers == 1:
+				score += _radar_bonus
+		if score > best_score:
+			best_score = score
+			best = Vector2i(anchor_x, anchor_y)
+			best_radar = covers
+		elif score == best_score and best != _NONE and not _rx.is_empty():
+			# An equal score (only the Dusk Array gathers radars): the ring over a radar wins.
 			if best_radar < 0:
 				best_radar = 1 if _covers_radar(best.x, best.y, reach) else 0
-			if best_radar == 0 and _covers_radar(anchor_x, anchor_y, reach):
-				best = Vector2i(anchor_x, anchor_y)
-				best_radar = 1
+			if best_radar == 0:
+				if covers < 0:
+					covers = 1 if _covers_radar(anchor_x, anchor_y, reach) else 0
+				if covers == 1:
+					best = Vector2i(anchor_x, anchor_y)
+					best_radar = 1
 	return best
 
 

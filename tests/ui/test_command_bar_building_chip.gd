@@ -5,7 +5,7 @@ extends "res://tests/ui/support/building_orders_suite.gd"
 ## selected at the six sizes of ScreenSizes.ALL and at the two real 360 dp wide phones held upright
 ## (`web_phone_portrait`, `notch_design_portrait`; the six sizes run at headless density, wider in
 ## dp): the chip, the bar and Mend and Sell (Sell not for a Headquarters) stand inside the safe
-## area, the orders are at least 56 x 64 dp and none is clipped or scrolled off by the bar. The
+## area, the orders are at least 56 x 48 dp and none is outside the bar. The
 ## widest state, Mend lit and Sell armed with a refund, is checked on the dearest one.
 
 const PER_SCENE: int = 12  ## Buildings spawned in one scene, in the free band below the base.
@@ -90,8 +90,7 @@ func _assert_orders_fit(why: String, with_sell: bool) -> void:
 		. override_failure_message("%s: bar %s, safe %s" % [why, _bar.get_global_rect(), safe])
 		. is_true()
 	)
-	var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
-	var room: Rect2 = scroll.get_global_rect().grow(TOLERANCE_PX)
+	var room: Rect2 = _bar.get_global_rect().grow(TOLERANCE_PX)
 	var ids: Array = [&"mend", &"sell"] if with_sell else [&"mend"]
 	for id: StringName in ids:
 		var button: Button = _bar.order_button(id)
@@ -101,7 +100,7 @@ func _assert_orders_fit(why: String, with_sell: bool) -> void:
 			UiScale.dp(56.0) - TOLERANCE_PX
 		)
 		assert_float(rect.size.y).override_failure_message(why + " " + id).is_greater_equal(
-			UiScale.dp(64.0) - TOLERANCE_PX
+			UiScale.dp(48.0) - TOLERANCE_PX
 		)
 		(
 			assert_bool(safe.encloses(rect.grow(-0.5)))
@@ -110,13 +109,9 @@ func _assert_orders_fit(why: String, with_sell: bool) -> void:
 		)
 		(
 			assert_bool(room.encloses(rect))
-			. override_failure_message(
-				"%s %s: %s clipped by the orders' scroll %s" % [why, id, rect, room]
-			)
+			. override_failure_message("%s %s: %s outside the bar %s" % [why, id, rect, room])
 			. is_true()
 		)
-	var bar: HScrollBar = scroll.get_h_scroll_bar()
-	assert_float(bar.max_value - bar.page).override_failure_message(why + ": scrolls").is_less(1.0)
 
 
 func _safe() -> Rect2:

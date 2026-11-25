@@ -26,10 +26,10 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 	var lined: Dictionary[StringName, Rect2] = _place(small, false, _shown(["bar", "strike"], 4))
 	_assert_rect(lined[HudCorners.BUILD], Rect2(712.0, 216.0, 64.0, 64.0))
 	_assert_rect(lined[HudCorners.STRIKE], Rect2(704.0, 136.0, 72.0, 72.0))
-	assert_int(_column(lined, 4)).is_equal(2)  # 152 dp with the bar: two to a column.
+	assert_int(_column(lined, 4)).is_equal(1)  # 110 dp with the bar (106 dp high, P581): one.
 	_assert_rect(lined[HudCorners.group_key(0)], Rect2(0.0, 56.0, 56.0, 56.0))
-	_assert_rect(lined[HudCorners.group_key(1)], Rect2(0.0, 120.0, 56.0, 56.0))
-	_assert_rect(lined[HudCorners.group_key(2)], Rect2(64.0, 56.0, 56.0, 56.0))
+	_assert_rect(lined[HudCorners.group_key(1)], Rect2(64.0, 56.0, 56.0, 56.0))
+	_assert_rect(lined[HudCorners.group_key(2)], Rect2(128.0, 56.0, 56.0, 56.0))
 	# The bar, as wide as it asks, ends a gap before BUILD's column (72 dp), before the Ready chip's
 	# 120 dp more, and before the open panel (the panel is 312 dp here: 40 % of 776 is less).
 	var wide: Dictionary[StringName, Rect2] = _place(small, false, _shown(["bar"], 1, 2000.0))
@@ -53,24 +53,24 @@ func test_the_adr_table_of_numbers_row_by_row() -> void:
 	lined = _place(phone, false, _shown(["bar", "strike"], 6))
 	_assert_rect(lined[HudCorners.BUILD], Rect2(826.0, 267.0, 64.0, 64.0))
 	_assert_rect(lined[HudCorners.STRIKE], Rect2(818.0, 187.0, 72.0, 72.0))
-	assert_int(_column(lined, 6)).is_equal(3)  # 203 dp.
+	assert_int(_column(lined, 6)).is_equal(2)  # 161 dp with the bar (106 dp high).
 	assert_int(_column(_place(phone, false, _shown([], 6)), 6)).is_equal(4)  # 275 dp.
 	map = _place(phone, false, _shown(["bar", "strike", "map"]))
 	_assert_rect(map[HudCorners.MAP], Rect2(570.0, 0.0, 240.0, 168.0))  # The strike button blocks.
 	map = _place(phone, false, _shown(["bar", "map"]))
-	_assert_rect(map[HudCorners.MAP], Rect2(650.0, 64.0, 240.0, 168.0))
+	_assert_rect(map[HudCorners.MAP], Rect2(680.0, 64.0, 210.0, 153.0))  # A gap above the bar.
 	# The 6-inch phone, landscape: 914 x 411, safe 890 x 387.
 	var big: Rect2 = Rect2(0.0, 0.0, 890.0, 387.0)
 	lined = _place(big, false, _shown(["bar", "strike", "map"], 6))
 	_assert_rect(lined[HudCorners.BUILD], Rect2(826.0, 323.0, 64.0, 64.0))
 	_assert_rect(lined[HudCorners.STRIKE], Rect2(818.0, 243.0, 72.0, 72.0))
 	_assert_rect(lined[HudCorners.MAP], Rect2(650.0, 64.0, 240.0, 168.0))
-	assert_int(_column(lined, 6)).is_equal(4)  # 259 dp with the bar.
+	assert_int(_column(lined, 6)).is_equal(3)  # 217 dp with the bar.
 	# web_phone_portrait: 360 x 700, safe 336 x 676.
 	var upright: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)
 	lined = _place(upright, true, _shown(["bar", "strike", "map"], 5))
 	# Michael, 2026-11-05: the landscape corners upright too.
-	_assert_rect(lined[HudCorners.BAR], Rect2(0.0, 612.0, 120.0, 64.0))  # As wide as its content.
+	_assert_rect(lined[HudCorners.BAR], Rect2(0.0, 570.0, 120.0, 106.0))  # As wide as its content.
 	_assert_rect(lined[HudCorners.BUILD], Rect2(272.0, 612.0, 64.0, 64.0))  # The corner.
 	_assert_rect(lined[HudCorners.STRIKE], Rect2(264.0, 532.0, 72.0, 72.0))
 	_assert_rect(lined[HudCorners.MAP], Rect2(76.0, 64.0, 260.0, 178.0))
@@ -419,7 +419,7 @@ func test_the_sizes_the_adr_names_hold_at_every_screen() -> void:
 				sizes[key].y, TOLERANCE
 			)
 		assert_float(out[HudCorners.PILL].size.y / dp).is_equal_approx(48.0, TOLERANCE)
-		assert_float(out[HudCorners.BAR].size.y / dp).is_equal_approx(64.0, TOLERANCE)
+		assert_float(out[HudCorners.BAR].size.y / dp).is_equal_approx(106.0, TOLERANCE)
 		assert_float(out[HudCorners.STRIKE_ROW].size.y / dp).is_equal_approx(64.0, TOLERANCE)
 
 
@@ -468,6 +468,32 @@ func _describe(shown: HudCorners.Shown) -> String:
 
 func _screens() -> Array[Dictionary]:
 	return CornersRig.screens()
+
+
+## The short bar (64 dp, P581) and the tall one (106 dp): the bar rect, the group columns' foot, the
+## upright Ready chip and the pinned map's clamp follow the height in use.
+func test_the_short_bar_is_64_dp_and_the_parts_follow_the_height_in_use() -> void:
+	var safe: Rect2 = Rect2(0.0, 0.0, 336.0, 676.0)  # web_phone_portrait, upright.
+	for tall: bool in [true, false]:
+		var high: float = HudCorners.BAR_DP.y if tall else HudCorners.BAR_SHORT_DP
+		var why: String = "tall %s" % tall
+		var shown: HudCorners.Shown = _shown(["bar", "ready"], 12)
+		shown.bar_tall = tall
+		var out: Dictionary[StringName, Rect2] = _place(safe, true, shown)
+		_assert_rect(out[HudCorners.BAR], Rect2(0.0, 676.0 - high, 120.0, high))
+		# The Ready chip stands a gap above the bar's top (and never lower than BUILD's top).
+		assert_float(out[HudCorners.READY].end.y).override_failure_message(why).is_equal(
+			minf(612.0, 676.0 - high) - 8.0
+		)
+		var foot: float = 0.0  # The group column ends a gap above the bar.
+		for index: int in 12:
+			foot = maxf(foot, out[HudCorners.group_key(index)].end.y)
+		assert_float(foot).override_failure_message(why).is_less_equal(676.0 - high - 8.0)
+	var map: HudCorners.Shown = _shown(["bar", "map"], 1)
+	map.bar_tall = false
+	var landscape: Dictionary[StringName, Rect2] = _place(Rect2(0.0, 0.0, 890.0, 331.0), false, map)
+	# The short bar leaves the map the room it had before P581 (web_phone: 240 x 168).
+	_assert_rect(landscape[HudCorners.MAP], Rect2(650.0, 64.0, 240.0, 168.0))
 
 
 func _shown(names: Array[String], groups: int = 1, bar_width: float = 0.0) -> HudCorners.Shown:

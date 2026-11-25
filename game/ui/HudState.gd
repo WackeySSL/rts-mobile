@@ -52,6 +52,7 @@ var pinned: bool:
 
 var _current: Unfold = Unfold.NONE
 var _bar: bool = false  ## The command bar holds its slot (a selection, or the slot a mode keeps).
+var _bar_tall: bool = true  ## The bar is tall (Stop shows or the orders wrap), else short.
 var _bar_width: float = 0.0  ## The bar's content width in dp (landscape), 0 for its least.
 var _pinned: bool = false
 var _idle_ms: float = 0.0  ## Frame time since the full map opened or was touched.
@@ -139,14 +140,15 @@ func fill(shown: HudCorners.Shown) -> void:
 	shown.card = _current == Unfold.ECONOMY
 
 
-## The command bar's slot and width changed (`CommandBar`): the parts that stand by it (the group
-## column's foot, the full map) place themselves again through `changed`, which carries
-## the open unfold unchanged. Nothing is emitted when neither value moved.
-func set_bar(slot: bool, width_dp: float) -> void:
-	if slot == _bar and is_equal_approx(width_dp, _bar_width):
+## The command bar's slot, width or height (`tall`) changed (`CommandBar`): the parts that stand by
+## it (the group column's foot, the full map) place themselves again through `changed`, which
+## carries the open unfold unchanged. Nothing is emitted when neither value moved.
+func set_bar(slot: bool, width_dp: float, tall: bool = true) -> void:
+	if slot == _bar and is_equal_approx(width_dp, _bar_width) and tall == _bar_tall:
 		return
 	_bar = slot
 	_bar_width = width_dp
+	_bar_tall = tall
 	changed.emit(_current)
 
 
@@ -155,6 +157,7 @@ func set_bar(slot: bool, width_dp: float) -> void:
 func fill_bar(shown: HudCorners.Shown) -> void:
 	shown.bar = _bar
 	shown.bar_width = _bar_width
+	shown.bar_tall = _bar_tall
 
 
 func _fold_for_map() -> void:

@@ -13,6 +13,12 @@ fits), with the reason "vi bruger alligevel andre ting i spillet som vi ikke har
 copyright of AI-made images in the EU, the risk of output close to an existing game, and that one
 picture from one angle does not give a unit's 8 to 16 directions. Written by the lead, row P622.
 
+Status note (2026-11-24, P621b docs; ADR 0050 accepted 2026-11-24): after P637's same-scene
+comparison, Michael chose generator SVG for every building on the map ("ja, kør med generator-SVG
+og Figma AI til menuer"). So §2's "large building pictures" item does not apply on the map.
+Figma AI makes stand-alone art: menu and loading backdrops, portraits and store art (ADR 0050
+§2), and serves as reference. No accepted text changed.
+
 Amends:
 - CLAUDE.md, Legal: "Never Figma's or a plugin's AI image or model tools" (Michael, 2026-11-09)
   and "no AI images from outside tools". Figma's own AI features are now allowed; a plugin's AI
