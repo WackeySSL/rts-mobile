@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"artillery"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Mortar Rig: a six-wheeled olive flatbed with an armoured cab under an orange sloped roof, orange flank strips and two rust crates, a rimmed team plate on the bed, and a turning rig of two steel cheek plates on an orange block that cradle a fat mortar tube with an orange band, raised in steps towards the front."
+silhouette = "Mortar Rig: a six-wheeled grey flatbed with an orange armoured cab wearing a rimmed team plate on its roof, orange flank walls and one orange and one grey crate at the tail, and a turning rig of two orange cheek plates that cradle a fat mortar tube with orange breech and band, raised in steps towards the front."
 mount = Vector3(-0.2, 0, 0.26)
 detail = 2
 prims = PackedStringArray(
@@ -19,7 +19,7 @@ prims = PackedStringArray(
 "prism hull faction 0 0.36 0.045 0.17 0.025 0.17 axis=y sides=8",
 "prism hull faction -0.45 -0.36 0.045 0.17 0.025 0.17 axis=y sides=8",
 "prism hull faction -0.45 0.36 0.045 0.17 0.025 0.17 axis=y sides=8",
-"box hull olive 0.47 0 0.2 0.4 0.58 0.05",
+"box hull iron 0.47 0 0.2 0.4 0.58 0.05",
 "box hull faction 0.47 0 0.25 0.4 0.58 0.2 detail=1",
 "box hull iron 0.47 0 0.45 0.3 0.5 0.02",
 "box hull lamp 0.47 0 0.47 0.26 0.46 0.012",
@@ -30,10 +30,10 @@ prims = PackedStringArray(
 "box hull faction -0.2 -0.26 0.2 0.8 0.02 0.1",
 "box hull faction -0.2 0.26 0.2 0.8 0.02 0.1",
 "box hull faction -0.53 -0.1 0.26 0.2 0.2 0.16",
-"box hull rust -0.53 0.13 0.26 0.2 0.2 0.12",
+"box hull steel -0.53 0.13 0.26 0.2 0.2 0.12",
 "box hull faction 0.69 0 0.1 0.08 0.5 0.1",
-"box hull olive -0.1 -0.215 0.11 0.8 0.02 0.08",
-"box hull olive -0.1 0.215 0.11 0.8 0.02 0.08",
+"box hull iron -0.1 -0.215 0.11 0.8 0.02 0.08",
+"box hull iron -0.1 0.215 0.11 0.8 0.02 0.08",
 "prism turret steel 0 0 0 0.42 0.42 0.05 sides=10",
 "prism turret iron 0 0 0.05 0.46 0.46 0.04 sides=10",
 "box turret faction 0 0 0.09 0.34 0.36 0.08",
