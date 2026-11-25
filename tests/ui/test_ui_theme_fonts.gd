@@ -227,21 +227,23 @@ func test_the_tablet_and_the_desktop_window_are_pinned_above_the_phones_band() -
 			)
 
 
-func test_the_hud_tokens_are_the_values_of_the_adr() -> void:
+## The HudTokens and HudPanel are the values of STYLE.md "Tokens v3 (P604)" (the ADR 0025 values are
+## superseded).
+func test_the_hud_tokens_are_the_tokens_v3_values_of_style_md() -> void:
 	var theme: Theme = HudThemes.source()
-	assert_str(_hex(theme, &"border", &"HudTokens")).is_equal("2c383e")
-	assert_str(_hex(theme, &"money", &"HudTokens")).is_equal("f2c14e")
-	assert_str(_hex(theme, &"danger", &"HudTokens")).is_equal("ff5a3c")
-	assert_str(_hex(theme, &"ok", &"HudTokens")).is_equal("6edc5f")
-	assert_str(_hex(theme, &"text", &"HudTokens")).is_equal("ffffff")
+	assert_str(_hex(theme, &"border", &"HudTokens")).is_equal("33434a")
+	assert_str(_hex(theme, &"money", &"HudTokens")).is_equal("f4b653")
+	assert_str(_hex(theme, &"danger", &"HudTokens")).is_equal("ff4560")
+	assert_str(_hex(theme, &"ok", &"HudTokens")).is_equal("afc58d")
+	assert_str(_hex(theme, &"text", &"HudTokens")).is_equal("e9ece7")
 	var panel: Color = theme.get_color(&"panel", &"HudTokens")
-	assert_str(panel.to_html(false)).is_equal("0a0e11")
+	assert_str(panel.to_html(false)).is_equal("101a20")
 	assert_float(panel.a).is_equal_approx(0.84, 0.0001)
 	# The panel as a StyleBox: the same colour, flat (no shadow, no blur), a 1 dp edge, 8 dp corners.
 	var box: StyleBoxFlat = theme.get_stylebox(&"panel", &"HudPanel") as StyleBoxFlat
 	assert_object(box).is_not_null()
 	assert_that(box.bg_color).is_equal(panel)
-	assert_str(box.border_color.to_html(false)).is_equal("2c383e")
+	assert_str(box.border_color.to_html(false)).is_equal("33434a")
 	assert_int(box.shadow_size).is_equal(0)
 	for side: int in 4:
 		assert_int(box.get_border_width(side)).is_equal(1)
@@ -252,29 +254,29 @@ func test_the_hud_tokens_are_the_values_of_the_adr() -> void:
 		assert_str(theme.get_color(name, &"HudTokens").to_html(false)).is_not_equal("ff9446")
 
 
-func test_the_lumen_accord_accent_is_the_designs_cyan_pair() -> void:
+func test_the_facet_accent_is_a_blue_pair() -> void:
 	var theme: Theme = HudThemes.source()
-	assert_str(_hex(theme, &"accent", &"AccentRenew")).is_equal("1fa6c8")
-	assert_str(_hex(theme, &"light", &"AccentRenew")).is_equal("62d6ee")
-	assert_str(_hex(theme, &"on_accent", &"AccentRenew")).is_equal("05202a")
+	assert_str(_hex(theme, &"accent", &"AccentRenew")).is_equal("40a3ff")
+	assert_str(_hex(theme, &"light", &"AccentRenew")).is_equal("8cc8ff")
+	assert_str(_hex(theme, &"on_accent", &"AccentRenew")).is_equal("05090c")
 
 
-func test_the_derrick_league_accent_is_an_orange_pair() -> void:
+func test_the_nordvaern_accent_is_an_orange_pair() -> void:
 	var theme: Theme = HudThemes.source()
-	assert_str(_hex(theme, &"accent", &"AccentFossil")).is_equal("e07628")
-	assert_str(_hex(theme, &"light", &"AccentFossil")).is_equal("ffa25c")
-	assert_str(_hex(theme, &"on_accent", &"AccentFossil")).is_equal("2a1405")
+	assert_str(_hex(theme, &"accent", &"AccentFossil")).is_equal("ff6e1f")
+	assert_str(_hex(theme, &"light", &"AccentFossil")).is_equal("ffa06a")
+	assert_str(_hex(theme, &"on_accent", &"AccentFossil")).is_equal("05090c")
 
 
-## ADR 0025 section 13, check one: a hue at least 15 degrees from danger (about 9) and from money
-## (about 42), for the accent and for its light. Both sides, so that a later pair of Lumen Accord
+## ADR 0025 section 13, check one: a hue at least 15 degrees from danger (about 351) and from money
+## (about 37), for the accent and for its light. Both sides, so that a later pair of Lumen Accord
 ## cannot drift toward a token either.
 func test_each_accent_and_its_light_keep_their_hue_apart_from_danger_and_money() -> void:
 	var theme: Theme = HudThemes.source()
 	var danger_hue: float = theme.get_color(&"danger", &"HudTokens").h * 360.0
 	var money_hue: float = theme.get_color(&"money", &"HudTokens").h * 360.0
-	assert_float(danger_hue).is_equal_approx(9.2, 0.1)
-	assert_float(money_hue).is_equal_approx(42.1, 0.1)
+	assert_float(danger_hue).is_equal_approx(351.3, 0.1)
+	assert_float(money_hue).is_equal_approx(36.9, 0.1)
 	for side: StringName in [&"AccentRenew", &"AccentFossil"]:
 		for item: StringName in [&"accent", &"light"]:
 			var hue: float = theme.get_color(item, side).h * 360.0
