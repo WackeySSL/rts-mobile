@@ -220,12 +220,13 @@ func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() 
 	var signal_hull: Image = (rig.get_node("Hull") as Sprite2D).texture.get_image()
 	var kobolt: Node2D = page.get_node("Scroll/Content/Grass/Kobolt/Dir06")
 	var kobolt_hull: Image = (kobolt.get_node("Hull") as Sprite2D).texture.get_image()
-	# The mid tone is the left face of the team band; its top is a thin ledge that a texture at
-	# gallery size blurs into the edge.
-	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[1])).is_true()
-	assert_bool(_has_colour(signal_hull, KOBOLT_KEYS[1])).is_false()
-	assert_bool(_has_colour(kobolt_hull, KOBOLT_KEYS[1])).is_true()
-	assert_bool(_has_colour(kobolt_hull, SIGNAL_KEYS[1])).is_false()
+	# The team marker is a flat plate (ADR 0050 section 3), so its light tone is the face that
+	# shows. The mid tones cannot tell the rows apart: Signal's mid tone sits inside the fixed
+	# Nordvaern orange, whose edges blend into it.
+	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[0])).is_true()
+	assert_bool(_has_colour(signal_hull, KOBOLT_KEYS[0])).is_false()
+	assert_bool(_has_colour(kobolt_hull, KOBOLT_KEYS[0])).is_true()
+	# (Signal's tones are inside the fixed orange, so the Kobolt row cannot be free of them.)
 	# Grass and sand show the same frame: one texture.
 	var sand_rig: Node2D = page.get_node("Scroll/Content/Sand/Signal/Dir06")
 	assert_object((sand_rig.get_node("Hull") as Sprite2D).texture).is_same(
