@@ -4,6 +4,8 @@ extends "res://tests/ui/tutorial/support/coach_mark_suite.gd"
 ## has settled, a card out of view puts the ring on its list's nearest edge (up and down, or
 ## sideways), and the director-less and rebind paths.
 
+const Spy: GDScript = preload("res://tests/ui/tutorial/support/spy_sidebar.gd")
+
 
 ## A chained beat: a lead-in on `CoachTarget` that holds once the drawer is open, then the beat's
 ## own anchor `final`, a second control at the screen's lower part.
@@ -56,20 +58,13 @@ func test_the_ring_follows_the_chain_on_target_changed() -> void:
 	assert_object(_mark.target_control()).is_same(_target)
 
 
-class SpySidebar:
-	extends BuildSidebar
-	var asked: Array[ItemTile] = []
-
-	func _ready() -> void:  # No HUD feed here: the spy only counts the asks.
-		pass
-
-	func reveal_tile(tile: ItemTile) -> void:
-		asked.append(tile)
+func _asked(sidebar: BuildSidebar) -> int:
+	return (sidebar.get(&"asked") as Array).size()
 
 
 ## A spy sidebar over a vertical list of 200 dp with `gap` px above the card `Tile_probe`.
 func _list_with_card(gap: float) -> Array:
-	var sidebar: SpySidebar = SpySidebar.new()
+	var sidebar: BuildSidebar = Spy.new()
 	_hud_root.add_child(sidebar)
 	var list: ScrollContainer = ScrollContainer.new()
 	list.size = Vector2(UiScale.dp(200.0), UiScale.dp(200.0))
@@ -95,7 +90,7 @@ func _enter_step() -> void:
 func test_a_card_out_of_view_puts_the_ring_on_the_lists_edge_and_is_revealed_once() -> void:
 	await _open(_profile(ScreenSizes.PORTRAIT[0]), _chained(&"Tile_probe"))
 	var parts: Array = _list_with_card(UiScale.dp(600.0))
-	var sidebar: SpySidebar = parts[0]
+	var sidebar: BuildSidebar = parts[0]
 	var list: ScrollContainer = parts[1]
 	var tile: ItemTile = parts[3]
 	await await_idle_frame()
@@ -103,7 +98,7 @@ func test_a_card_out_of_view_puts_the_ring_on_the_lists_edge_and_is_revealed_onc
 	for _i: int in 6:
 		await await_idle_frame()
 	assert_object(_mark.target_control()).is_same(tile)
-	assert_int(sidebar.asked.size()).is_equal(1)  # Six frames, one ask.
+	assert_int(_asked(sidebar)).is_equal(1)  # Six frames, one ask.
 	var area: Rect2 = list.get_global_rect()
 	var ring: Rect2 = _mark.ring_rect()
 	assert_float(ring.get_center().y).is_greater(area.get_center().y)  # The edge nearest the card.
@@ -112,7 +107,7 @@ func test_a_card_out_of_view_puts_the_ring_on_the_lists_edge_and_is_revealed_onc
 	list.scroll_vertical = 700  # The player scrolls by hand: the card comes into view, no new ask.
 	for _i: int in 4:
 		await await_idle_frame()
-	assert_int(sidebar.asked.size()).is_equal(1)
+	assert_int(_asked(sidebar)).is_equal(1)
 	var seen: Rect2 = tile.get_global_rect().intersection(area)
 	assert_bool(seen.has_area()).is_true()
 	assert_bool(_mark.ring_rect().encloses(seen)).is_true()  # Over the card, not the edge strip.
@@ -121,23 +116,23 @@ func test_a_card_out_of_view_puts_the_ring_on_the_lists_edge_and_is_revealed_onc
 	_enter_step()  # The step is entered again: it asks again, once.
 	for _i: int in 5:
 		await await_idle_frame()
-	assert_int(sidebar.asked.size()).is_equal(2)
+	assert_int(_asked(sidebar)).is_equal(2)
 
 
 func test_the_reveal_waits_for_the_layout_to_settle_on_a_step_entry() -> void:
 	await _open(_profile(ScreenSizes.PORTRAIT[0]), _chained(&"Tile_probe"))
 	var parts: Array = _list_with_card(UiScale.dp(100.0))
-	var sidebar: SpySidebar = parts[0]
+	var sidebar: BuildSidebar = parts[0]
 	var spacer: Control = parts[2]
 	await await_idle_frame()
 	_enter_step()
 	for step: int in 4:  # The grid is still sorting: the card moves for four frames.
 		spacer.custom_minimum_size.y += UiScale.dp(10.0)
 		await await_idle_frame()
-		assert_int(sidebar.asked.size()).override_failure_message("frame %d" % step).is_equal(0)
+		assert_int(_asked(sidebar)).override_failure_message("frame %d" % step).is_equal(0)
 	for _i: int in 6:
 		await await_idle_frame()
-	assert_int(sidebar.asked.size()).is_equal(1)
+	assert_int(_asked(sidebar)).is_equal(1)
 
 
 func test_a_card_of_a_sideways_list_puts_the_ring_on_its_left_or_right_edge() -> void:
