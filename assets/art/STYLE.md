@@ -1041,6 +1041,22 @@ primitive's key, so `--check` is stable. Every extra sits right after the face i
   64 KB per generated unit frame.
 - **Not drawn at any level:** spheres, rods, `broken` boxes and the item card (which stays flat).
 
+### Same-scene saturation (P638)
+The same-scene check (`bash scripts/same-scene.sh`, bands in `tools/artgen/same_scene.tres`) judges
+saturation twice, because a fixed faction panel is saturated by design (orange 0.88, blue 0.75):
+- `tone_sat` (0.06 to 0.30) is the mean saturation of the **neutral body**: every opaque pixel that
+  is not faction material and not the team marker. FACTION_SHARE and TEAM_SHARE already bound the
+  area of those two, so the cap judges the greys and olives that carry the unit.
+- `tone_sat_all_max` (0.55) is the mean over **every** opaque pixel, so a sprite that is nearly all
+  panel still fails.
+- Faction material, to the classifier, is a hue within 15 degrees of Nordvaern orange or Facet blue
+  at a saturation of 0.35 or more (`faction_hues`, `faction_hue_band`, `faction_sat_min`), which
+  takes in the panels' light and dark tones and their edges but not rust, olive or bluegrey, whose
+  saturation is under 0.30. The sentinel and the route triads count as the marker.
+- The floor fell from 0.14 to 0.06: a body of iron, steel and olive reads 0.09 to 0.12 once the
+  panels are taken out.
+
+
 ## Scale
 - 1 tile = 64 px in game at zoom 1. Author at 2x: 1 tile = 128 px in the SVG.
 - Canvas at 2x: an ore cell 128x128, a rally flag 128x128. (The top-down units' 64x64, 96x96,
@@ -3630,3 +3646,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
 | 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
+| 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
