@@ -14,7 +14,10 @@ static func frame(
 	comment: String, size: Vector2i, origin: Vector2i, polys: Array[ArtRender.Poly]
 ) -> String:
 	var attributes: String = 'stroke-width="%d" stroke-linejoin="round"' % EDGE_PX
-	return document(comment, size, group(attributes, polys, Vector2(origin)))
+	var ids: Dictionary[String, String] = ArtDetail.sheen_ids(polys)
+	var body: PackedStringArray = ArtDetail.defs(ids)
+	body.append_array(group(attributes, polys, Vector2(origin), 1.0, ids))
+	return document(comment, size, body)
 
 
 ## One frame of a cast shadow: its polygons are black and one group makes them 35 % together, so
@@ -46,7 +49,8 @@ static func group(
 	attributes: String,
 	polys: Array[ArtRender.Poly],
 	origin: Vector2 = Vector2.ZERO,
-	scale: float = 1.0
+	scale: float = 1.0,
+	ids: Dictionary[String, String] = {}
 ) -> PackedStringArray:
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append("<g %s>" % attributes if attributes != "" else "<g>")
@@ -67,7 +71,7 @@ static func group(
 		lines.append(
 			(
 				'<polygon points="%s" fill="%s"%s%s%s/>'
-				% [" ".join(points), poly.fill, opacity, edge, width]
+				% [" ".join(points), ids.get(poly.fill, poly.fill), opacity, edge, width]
 			)
 		)
 	lines.append("</g>")

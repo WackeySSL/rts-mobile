@@ -151,6 +151,8 @@ static func clip_below(polys: Array[Poly], max_y: float) -> Array[Poly]:
 			cut.fill = poly.fill
 			cut.stroke = poly.stroke
 			cut.prim = poly.prim
+			cut.fill_opacity = poly.fill_opacity
+			cut.stroke_px = poly.stroke_px
 			out.append(cut)
 	return out
 

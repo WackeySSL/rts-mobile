@@ -14,8 +14,8 @@ extends RefCounted
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx;
 ## `broken`, `rod` and the helper `petals` (generator v5b, below).
-## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630; the
-## renderer that reads it is P631's, so it changes no output yet). A line that begins with a macro
+## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630;
+## `ArtDetail` reads it, P631). A line that begins with a macro
 ## name (`ArtMacro`: tracks, wheels, grille, hatch, pylon) expands to several primitives.
 ## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
 ## on, so the intact picture has none of them (ADR 0028 section 3).
