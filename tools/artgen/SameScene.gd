@@ -196,9 +196,13 @@ static func problems(label: String, m: Dictionary, b: SameSceneBands) -> PackedS
 		&"shadow_alpha": b.shadow_alpha
 	}
 	for key: StringName in low:
+		if key == &"up_down" and b.exempt_up.has(StringName(label)):
+			continue
 		if m[key] < low[key]:
 			out.append("%s %s %.3f below %.3f" % [label, key, m[key], low[key]])
 	for key: StringName in span:
+		if key == &"sat" and b.exempt_sat.has(StringName(label)):
+			continue
 		if m[key] < span[key].x or m[key] > span[key].y:
 			out.append("%s %s %.3f outside %s" % [label, key, m[key], span[key]])
 	if m[&"black_edge"] > b.black_edge_max:

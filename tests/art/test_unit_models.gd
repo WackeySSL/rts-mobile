@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## League units" and "Lumen Accord units"): each is named in its silhouette line, a squad is three
 ## figures, a vehicle has the wheels or tracks its line says and stands in its size class, the gun
 ## of an armed vehicle is the thing that reaches farthest forward and stands on the centre line (one
-## barrel), the team colour is 2 to 12 % of the default view for the transition (P632; the art
-## rows aimed at 8 to 12 %, ADR 0023 section 5), each Lumen Accord unit carries the faction's
+## barrel), the team colour is 2 to 12 % of the default view, a transition value accepted 2026-11-25 (P632;
+## P647 restores 6 to 14 %), each Lumen Accord unit carries the faction's
 ## hexagon and mint light, and the
 ## top-down unit files are gone. Frames, sheets, shadows and the 32 px reading are pinned for every
 ## type in test_artgen*.gd.

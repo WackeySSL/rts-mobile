@@ -43,6 +43,23 @@ func test_the_mirror_row_differs_only_in_the_marker() -> void:
 		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(0.02, 0.3)
 
 
+## The transition list (2026-11-25, P632) may only shrink: every listed id still misses its band,
+## and a model that is fixed has to leave the list (P647 empties it).
+func test_every_exempt_id_still_misses_its_band() -> void:
+	assert_int(_bands.exempt_sat.size()).is_greater(0)
+	for id: StringName in _bands.exempt_sat:
+		assert_bool(_bands.roster.has(String(id))).override_failure_message(id).is_true()
+		var m: Dictionary = SameScene.measure(SameScene.sprite(id, _bands, 1.0))
+		assert_float(m[&"sat"]).override_failure_message("%s left sat" % id).is_less(
+			_bands.tone_sat.x
+		)
+	for id: StringName in _bands.exempt_up:
+		var m: Dictionary = SameScene.measure(SameScene.sprite(id, _bands, 1.0))
+		assert_float(m[&"up_down"]).override_failure_message("%s left up" % id).is_less(
+			_bands.light_up_min
+		)
+
+
 func test_todays_art_holds_every_band() -> void:
 	assert_array(SameScene.audit(_bands)).is_empty()
 	assert_int(_bands.roster.size()).is_greater_equal(16)

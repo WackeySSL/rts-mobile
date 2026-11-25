@@ -21,14 +21,32 @@ effects = Dictionary[String, Rect2i]({
 })
 grade_warm = Color(1, 0.93, 0.8, 0.08)
 grade_cool = Color(0.8, 0.9, 1, 0.08)
-; P632 transition: your own marker is white, so the old models, which paint their whole team areas
-; in it, read lighter and greyer than in the old orange and cyan; the model batches raise these again.
-light_up_min = -0.17
+light_up_min = -0.16
 light_left_min = -0.04
 shadow_dx_min = -0.05
 tone_value = Vector2(0.45, 0.75)
-tone_sat = Vector2(0.05, 0.3)
+tone_sat = Vector2(0.14, 0.3)
 black_edge_max = 0.02
 density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
 spread_min = 80.0
+exempt_sat = Dictionary[StringName, float]({
+&"light_tank": 0.129,
+&"artillery": 0.116,
+&"harvester": 0.096,
+&"headquarters": 0.098,
+&"refinery": 0.1,
+&"power_plant": 0.091,
+&"vehicle_factory": 0.104,
+&"renew_scout": 0.078,
+&"renew_tank": 0.11,
+&"renew_artillery": 0.093,
+&"renew_tanker": 0.095,
+&"renew_hq": 0.063,
+&"renew_refinery": 0.073,
+&"renew_power": 0.1,
+&"renew_factory": 0.091
+})
+exempt_up = Dictionary[StringName, float]({
+&"refinery": -0.161
+})
