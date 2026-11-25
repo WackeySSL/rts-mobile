@@ -3,7 +3,8 @@ extends "res://game/view/art_gallery_iso.gd"
 ## page's list, buttons and title, over the building models only. One building at a time stands on
 ## the iso ground with a tank of its faction in front of it and one behind it, at the camera zoom
 ## levels 1, 0.75 and 1.5 in the two default team colours Sne and Karmin,
-## the scene on grass left and on sand right. It draws what a match draws: the frames come from the atlas `IsoAtlas` bakes for the
+## the scene on grass left and on sand right. It draws what a match draws: the frames come from
+## the atlas `IsoAtlas` bakes for the
 ## two players (the faction's key triad replaced by the player's), a sprite is a region of it at
 ## `0.5 / bake_scale` times the zoom, the rigs are children of one y-sorted node (a thing south of
 ## another is drawn after it, as `WorldSort` does) and the cast shadows lie under every body. A
