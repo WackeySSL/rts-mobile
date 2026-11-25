@@ -66,13 +66,15 @@ func test_five_tabs_fit_the_drawer_at_every_size_and_the_open_tab_keeps_its_name
 
 ## Which names show with tab `open` open (letters of the tabs, a dot for an icon alone) on the
 ## profile: every name where the row has the room; only the open tab's where it has not; none on
-## the 320 dp phone for Structures and Research, 11.6 and 3.6 dp short of room (Flight fits).
+## the 320 dp phone for Structures, short of room (Flight and Research fit). P605 re-pin: the tab
+## names are Roboto Condensed Bold now, narrower, so the portrait phone shows every name and the
+## 320 dp phone shows Research's (11.6 dp short before, now fits).
 func _expected_names(profile: StringName, open: int) -> String:
 	match profile:
-		&"web_phone_small", &"web_phone_portrait", &"notch_design":
+		&"web_phone_small", &"notch_design":
 			return {0: "S....", 3: "...F.", 4: "....R"}[open]
 		&"phone_320":
-			return {0: ".....", 3: "...F.", 4: "....."}[open]
+			return {0: ".....", 3: "...F.", 4: "....R"}[open]
 		&"android_410", &"android_440", &"android_480":
 			return "?"  # Whatever fits: the row's rounding decides (`_fit_tabs`).
 	return "SIVFR"
@@ -96,7 +98,11 @@ func test_the_tabs_fit_every_profile_with_five_tabs() -> void:
 			var names: String = _assert_tabs(why)  # The row within its room is asserted there.
 			var expected: String = _expected_names(profile, open)
 			if expected != "?":
-				assert_str(names).override_failure_message(why).is_equal(expected)
+				(
+					assert_str(names)
+					. override_failure_message("%s: names %s, expected %s" % [why, names, expected])
+					. is_equal(expected)
+				)
 
 
 func test_the_cards_are_whole_inside_the_drawer_with_their_names_whole_in_one_or_two_lines(

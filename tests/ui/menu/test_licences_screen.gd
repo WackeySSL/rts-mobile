@@ -43,8 +43,9 @@ func test_the_catalog_lists_the_engine_the_fonts_the_assets_and_the_plugins() ->
 		"Asset credits (CC BY)",
 		"Godot Engine",
 		"Godot copyright",
-		"Big Shoulders font",
-		"Chakra Petch font",
+		"Roboto Condensed font",
+		"Inter font",
+		"IBM Plex Mono font",
 		"Poing AdMob plugin",
 	]:
 		assert_array(titles).contains([expected])
@@ -89,7 +90,7 @@ func test_the_build_facts_come_from_the_feature_tags_and_the_editor() -> void:
 
 func test_both_ofl_texts_and_the_poing_text_are_real() -> void:
 	var rows: Array[LicenceEntry] = _catalog(false, false).build()
-	for font: String in ["Big Shoulders font", "Chakra Petch font"]:
+	for font: String in ["Roboto Condensed font", "Inter font", "IBM Plex Mono font"]:
 		assert_str(_row(rows, font).text).contains("SIL Open Font License")
 	assert_str(_row(rows, "Poing AdMob plugin").text).contains("MIT")
 

@@ -972,6 +972,21 @@ with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
   PR.
 - **Sizes stay `touch-ui-rules`'**: body at least 14 sp, HUD numbers at least 18 sp.
 
+Note (2026-11-25, P605; ADR 0049 amendment of the same day): Michael chose the Figma type, so the
+fonts of the bullet above are replaced. The process (unmodified upstream files, `OFL.txt` beside
+them, a CREDITS row, the theme as the only reference, one `FontVariation` per tracked class) and
+the sizes are unchanged. The families now are:
+
+| Family | Files | Role | Upstream, tag | Licence |
+| --- | --- | --- | --- | --- |
+| Roboto Condensed | `RobotoCondensed-Bold.ttf` | titles, headings, side and menu names | `googlefonts/roboto-3-classic` `v3.016` | SIL OFL 1.1, no Reserved Font Name |
+| Inter | `Inter-Regular.ttf`, `Inter-Bold.ttf` | body text (Regular, the theme's default), buttons and plate names (Bold) | `rsms/inter` `v4.1` | SIL OFL 1.1, no Reserved Font Name |
+| IBM Plex Mono | `IBMPlexMono-Regular.ttf` | labels and numbers (count badges, power numbers, the pill word) | `IBM/plex` `@ibm/plex-mono@2.5.0` | SIL OFL 1.1, Reserved Font Name "Plex" (files unmodified) |
+
+Static files only, the weights that the Figma type scale uses. The tracking rule (+6 to +14 %) and
+the `tnum` fallback stay as written: Plex Mono's digits are fixed width, and the code keeps the
+digit slots until P618 decides. Big Shoulders and Chakra Petch are removed.
+
 Note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the token values move to Michael's
 Treadline Figma look (row P604; P602 reads them). The type names stay. `AccentRenew` becomes
 Facet's blue in place of the cyan, and `AccentFossil` Nordværn's orange, at the hues of ADR 0050

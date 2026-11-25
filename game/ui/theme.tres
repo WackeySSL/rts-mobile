@@ -13,22 +13,23 @@
 ; record. BoxOverlay's fill and outline are also FeedbackStyle.FILL and OUTLINE, which the
 ; world-space move markers draw with (game/view): a new palette changes both.
 ;
-; Fonts (P118, SIL OFL 1.1, the unmodified upstream files of assets/art/fonts/): Chakra Petch is
-; the body and number face, weight 500 as the theme's default font, 600 for NumberLabel and
-; 700 for the numbers that sit across a bar or a plate (PowerNumber, ItemCost). The file has no
-; OpenType tnum (checked in P118), so the digits of a number that changes keep fixed slots in
-; code (P119), not a font feature. Big Shoulders Display ExtraBold (800: upstream's ExtraBold
-; instance, whose OS/2 weight class is 733 and which Godot reads as 700, so the face is chosen by
-; file and never by weight), the condensed upper-case display cut, is the face of buttons and
-; titles in three size classes (CapsButton, CapsTitle, CapsBigTitle), each its own FontVariation
-; whose spacing_glyph is the tracking in whole base px: the dp step turns the font size into px and
-; leaves the tracking. ADR 0025 section 13 asks 6 to 14 % of the size. One whole-px tracking cannot
-; hold that over the profiles' dp-to-px ratios of 1.0 to 2.37, so it is held on the phones (ratios
-; 1.75 to 2.37: 7.1 to 10.3 %) and not on the tablet (13.3 to 14.3 %) or the desktop window (16.7 to
-; 18.2 %), which sit above the band; tests/ui/test_ui_theme_fonts.gd pins all three. The three
+; Fonts (P605, ADR 0049 amendment of 2026-11-25, SIL OFL 1.1, the unmodified upstream files of
+; assets/art/fonts/): Michael's Figma type, three faces. Inter is the body face (Regular as the
+; theme's default font) and the button face (Bold: CapsButton). IBM Plex Mono Regular is the label
+; and number face (NumberLabel, ItemCost, PowerNumber). Roboto Condensed Bold is the display face of
+; titles and headings (CapsTitle, CapsBigTitle, MenuTitle, AttackTitle, the side names) and, being
+; the narrow one, of the names and words on the tight cards and tabs (ItemCaption, ItemSash, PillWord:
+; Inter at 14 dp was 2 to 3 % too wide for the 102 dp card). Plex Mono's digits are fixed width, but the digits of a number that changes keep their
+; fixed slots in code for now (P119; P618 may drop them). The titles and buttons are upper case
+; written in the text itself, each in its own FontVariation whose spacing_glyph is the tracking in
+; whole base px: the dp step turns the font size into px and leaves the tracking. ADR 0025 section
+; 13 asks 6 to 14 % of the size. One whole-px tracking cannot hold that over the profiles' dp-to-px
+; ratios of 1.0 to 2.37, so it is held on the phones (ratios 1.75 to 2.37) and not on the tablet or
+; the desktop window, which sit above the band; tests/ui/test_ui_theme_fonts.gd pins all three. The
 ; tracking entries are listed in metadata/base_px, but they are inert today: the dp step reads only
 ; font_sizes/ and styles/ and never touches a font, so the entries mark what a later step that
-; scales fonts must leave alone. HudTokens holds the colours of ADR 0025 section 13, HudPanel the flat panel (no blur, a flat box is cheap on a weak phone),
+; scales fonts must leave alone. HudTokens holds the colours of ADR 0025 section 13, HudPanel the
+; flat panel (no blur, a flat box is cheap on a weak phone),
 ; AccentRenew and AccentFossil the accent of each side (accent, light and the text on the accent,
 ; read with get_theme_color by the faction's id). The design's fixed enemy colour #FF9446 is not
 ; a token. Palette rows: STYLE.md "Palette".
@@ -54,39 +55,41 @@
 ; the economy pill (EconomyPill.gd) read HudTokens with get_theme_color.
 [gd_resource type="Theme" format=3]
 
-[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-Medium.ttf" id="1_chakra_500"]
-[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-SemiBold.ttf" id="2_chakra_600"]
-[ext_resource type="FontFile" path="res://assets/art/fonts/chakra-petch/ChakraPetch-Bold.ttf" id="3_chakra_700"]
-[ext_resource type="FontFile" path="res://assets/art/fonts/big-shoulders/BigShouldersDisplay-ExtraBold.ttf" id="4_shoulders_800"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/inter/Inter-Regular.ttf" id="1_inter_400"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/inter/Inter-Bold.ttf" id="2_inter_700"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf" id="3_plex_400"]
+[ext_resource type="FontFile" path="res://assets/art/fonts/roboto-condensed/RobotoCondensed-Bold.ttf" id="4_roboto_700"]
 
-; Big Shoulders Display ExtraBold at the three size classes: the tracking in whole base px (the
-; font size of each class is under CapsButton, CapsTitle and CapsBigTitle below, in dp).
+; The caps faces at the three size classes (Inter Bold for the button, Roboto Condensed Bold for the
+; titles): the tracking in whole base px (the font size of each class is under CapsButton, CapsTitle
+; and CapsBigTitle below, in dp).
 [sub_resource type="FontVariation" id="FontVariation_caps_button"]
-base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 4
+base_font = ExtResource("2_inter_700")
+spacing_glyph = 3
 
 [sub_resource type="FontVariation" id="FontVariation_caps_title"]
-base_font = ExtResource("4_shoulders_800")
+base_font = ExtResource("4_roboto_700")
 spacing_glyph = 5
 
 [sub_resource type="FontVariation" id="FontVariation_caps_big_title"]
-base_font = ExtResource("4_shoulders_800")
+base_font = ExtResource("4_roboto_700")
 spacing_glyph = 6
 
-; The word "LOW POWER" of the economy pill (PillWord): the same face at 14 dp, so its tracking is
-; 3 base px (the 4 of CapsButton is tuned for 22 dp and would be 14 to 16 % of the size here).
+; The word "LOW POWER" of the economy pill (PillWord): the caps face at 14 dp, so its tracking is
+; 2 base px (6.1 to 8.2 % of the size on the phones; 3 made the low-power pill 9 px wider than the
+; radar map's narrow-screen fit allows).
 [sub_resource type="FontVariation" id="FontVariation_menu_title"]
-base_font = ExtResource("4_shoulders_800")
+base_font = ExtResource("4_roboto_700")
 spacing_glyph = 8
 
 [sub_resource type="FontVariation" id="FontVariation_pill_word"]
-base_font = ExtResource("4_shoulders_800")
-spacing_glyph = 3
+base_font = ExtResource("4_roboto_700")
+spacing_glyph = 2
 
-; The title of the attack toast (AttackToast.gd): the same face at 16 dp with 3 px tracking (ADR 0025
+; The title of the attack toast (AttackToast.gd): the same face at 15 dp with 3 px tracking (ADR 0025
 ; section 13's 6 to 14 % band), so that the longest building name ("TURBINE HALL UNDER ATTACK") fits.
 [sub_resource type="FontVariation" id="FontVariation_attack_title"]
-base_font = ExtResource("4_shoulders_800")
+base_font = ExtResource("4_roboto_700")
 spacing_glyph = 3
 
 ; The HUD v2 panel (ADR 0025 section 13): rgba(10, 14, 17, 0.84), a flat box with no blur, a 1 dp
@@ -884,8 +887,8 @@ fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
 
 [resource]
-; The body face: Chakra Petch 500 (the file's header says where the other weights go).
-default_font = ExtResource("1_chakra_500")
+; The body face: Inter Regular (the file's header says where the other faces go).
+default_font = ExtResource("1_inter_400")
 ; The long-press anchor and the selection box (BoxOverlay.gd): fill, dark pass, stroke.
 BoxOverlay/colors/fill = Color(1, 1, 1, 0.15)
 BoxOverlay/colors/outline = Color(0.10980392, 0.12941177, 0.15294118, 1)
@@ -899,7 +902,7 @@ DevButton/font_sizes/font_size = 40
 Label/font_sizes/font_size = 16
 NumberLabel/base_type = &"Label"
 NumberLabel/font_sizes/font_size = 20
-NumberLabel/fonts/font = ExtResource("2_chakra_600")
+NumberLabel/fonts/font = ExtResource("3_plex_400")
 ; The command bar chip's backdrop (the variation keeps its old name, SelectionPanel).
 SelectionPanel/base_type = &"PanelContainer"
 SelectionPanel/styles/panel = SubResource("StyleBoxFlat_backdrop")
@@ -955,7 +958,7 @@ ReadyBadge/styles/pressed = SubResource("StyleBoxFlat_badge_pressed")
 ; amber when the money is short), the banner is 14 dp, dark on the green (5.8:1). The name under the
 ; plate of a landscape card is 14 dp, white on the tile's dark plate.
 ; A locked card's sash (ItemSash, P120j): the band (#D9E0E8) with a dark edge line, the missing
-; building's name on it in Chakra Petch Bold 14 dp, dark on the light (13.8:1), one line that a test
+; building's name on it in Inter Bold 14 dp, dark on the light (13.8:1), one line that a test
 ; pins against ItemTile.sash_room_px; the seal is a dark disc with a white padlock. The tile draws
 ; them.
 ItemTile/base_type = &"Button"
@@ -971,7 +974,7 @@ ItemTile/styles/pressed = SubResource("StyleBoxFlat_tab_open")
 ItemCost/base_type = &"NumberLabel"
 ItemCost/colors/font_color = Color(1, 1, 1, 1)
 ItemCost/font_sizes/font_size = 18
-ItemCost/fonts/font = ExtResource("3_chakra_700")
+ItemCost/fonts/font = ExtResource("3_plex_400")
 ItemCost/styles/normal = SubResource("StyleBoxFlat_plate")
 ItemCostLow/base_type = &"ItemCost"
 ItemCostLow/colors/font_color = Color(0.96078431, 0.64705882, 0.14117647, 1)
@@ -982,6 +985,7 @@ ItemBanner/styles/normal = SubResource("StyleBoxFlat_power")
 ItemCaption/base_type = &"Label"
 ItemCaption/colors/font_color = Color(1, 1, 1, 1)
 ItemCaption/font_sizes/font_size = 14
+ItemCaption/fonts/font = ExtResource("4_roboto_700")
 ItemCaptionDim/base_type = &"ItemCaption"
 ItemCaptionDim/colors/font_color = Color(0.46, 0.5, 0.55, 1)
 ItemCaptionOn/base_type = &"ItemCaption"
@@ -1005,7 +1009,7 @@ ItemSash/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 ItemSash/colors/seal = Color(0.06, 0.08, 0.11, 1)
 ItemSash/colors/seal_glyph = Color(1, 1, 1, 1)
 ItemSash/font_sizes/font_size = 14
-ItemSash/fonts/font = ExtResource("3_chakra_700")
+ItemSash/fonts/font = ExtResource("4_roboto_700")
 ; The strike controls (StrikeButton.gd, StrikeControls.gd, plan P112): the item tile's plates. The ring
 ; around the strike button's card is drawn in these colours: the track, the charge so far and the full
 ; ring of a strike that can fire (the power bar's green). The check mark is green, the X white.
@@ -1035,12 +1039,12 @@ PowerNumber/base_type = &"NumberLabel"
 PowerNumber/colors/font_color = Color(1, 1, 1, 1)
 PowerNumber/colors/font_outline_color = Color(0.06, 0.08, 0.11, 1)
 PowerNumber/font_sizes/font_size = 18
-PowerNumber/fonts/font = ExtResource("3_chakra_700")
+PowerNumber/fonts/font = ExtResource("3_plex_400")
 PowerNumberLow/base_type = &"NumberLabel"
 PowerNumberLow/colors/font_color = Color(0.06, 0.08, 0.11, 1)
 PowerNumberLow/colors/font_outline_color = Color(0.06, 0.08, 0.11, 0)
 PowerNumberLow/font_sizes/font_size = 18
-PowerNumberLow/fonts/font = ExtResource("3_chakra_700")
+PowerNumberLow/fonts/font = ExtResource("3_plex_400")
 ; The HUD v2 tokens (P118, ADR 0025 section 13; STYLE.md "Palette"): the panel's rgba(10, 14, 17,
 ; 0.84) for a draw call that is not a StyleBox (the radar scope), its edge #2C383E, money and power
 ; #F2C14E, danger #FF5A3C, ok and income #6EDC5F, and the text on the dark panel, white. The design's
@@ -1069,9 +1073,9 @@ AccentFossil/base_type = &"Control"
 AccentFossil/colors/accent = Color(0.87843137, 0.4627451, 0.15686275, 1)
 AccentFossil/colors/light = Color(1, 0.63529412, 0.36078431, 1)
 AccentFossil/colors/on_accent = Color(0.16470588, 0.07843137, 0.01960784, 1)
-; Buttons and titles: Big Shoulders Display ExtraBold, upper case written in the text itself (a
+; Buttons (Inter Bold) and titles (Roboto Condensed Bold), upper case written in the text itself (a
 ; Button has no case property, a Label has `uppercase`: one rule serves both), white. The size is
-; dp, the tracking base px (the file's header): a button 22 dp with 4 px, a title 28 dp with 5 px,
+; dp, the tracking base px (the file's header): a button 15 dp with 3 px, a title 26 dp with 5 px,
 ; a big title 36 dp with 6 px.
 CapsButton/base_type = &"Button"
 CapsButton/colors/font_color = Color(1, 1, 1, 1)
@@ -1079,11 +1083,11 @@ CapsButton/colors/font_focus_color = Color(1, 1, 1, 1)
 CapsButton/colors/font_hover_color = Color(1, 1, 1, 1)
 CapsButton/colors/font_hover_pressed_color = Color(1, 1, 1, 1)
 CapsButton/colors/font_pressed_color = Color(1, 1, 1, 1)
-CapsButton/font_sizes/font_size = 22
+CapsButton/font_sizes/font_size = 15
 CapsButton/fonts/font = SubResource("FontVariation_caps_button")
 CapsTitle/base_type = &"Label"
 CapsTitle/colors/font_color = Color(1, 1, 1, 1)
-CapsTitle/font_sizes/font_size = 28
+CapsTitle/font_sizes/font_size = 26
 CapsTitle/fonts/font = SubResource("FontVariation_caps_title")
 CapsBigTitle/base_type = &"Label"
 CapsBigTitle/colors/font_color = Color(1, 1, 1, 1)
@@ -1112,7 +1116,7 @@ PillWord/font_sizes/font_size = 14
 PillWord/fonts/font = SubResource("FontVariation_pill_word")
 AttackTitle/base_type = &"Label"
 AttackTitle/colors/font_color = Color(1, 1, 1, 1)
-AttackTitle/font_sizes/font_size = 16
+AttackTitle/font_sizes/font_size = 15
 AttackTitle/fonts/font = SubResource("FontVariation_attack_title")
 ; The result screen (ResultScreen.gd, plan P90): the tint of the emblem, STYLE.md "Icons and glyphs"
 ; (glyph_victory #30A46C, glyph_defeat #E5484D, glyph_draw #9AA5B1); the word beside it says the rest.

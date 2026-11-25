@@ -15,7 +15,8 @@ const STRIKE_SPAWNS: Array[Array] = [
 const BORE: int = 1  ## The Deep Bore of STRIKE_SPAWNS.
 const TOLERANCE_PX: float = 1.5
 ## Window widths (px at 3 px per dp) either side of the pinned map's fold: the first keeps it.
-const FOLD_WIDTHS: Array[int] = [2046, 2022]
+## P605 re-pin: the pill is narrower in the new type, so the fold moved from 2022-2046 to 2004-2016.
+const FOLD_WIDTHS: Array[int] = [2016, 2004]
 
 var _window_size_before: Vector2i
 var _main: Node2D

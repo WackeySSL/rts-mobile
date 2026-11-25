@@ -59,8 +59,10 @@ func test_the_ground_support_units_are_in_the_checked_names() -> void:
 ## (`ItemTile.RESEARCH_LINES`),
 ## so each name breaks between words into at most two lines, each whole in the card's caption room,
 ## at every profile. "Heavy Bombs" (86.8-90.3 dp) and "Focus Bombs" (85.3-88.6 dp at web_phone,
-## web_phone_small and android_6in) are wider than the one-line room (83.4-83.8 dp): the test
-## pins that, so the second line stays needed and a change of the card or the theme shows here.
+## web_phone_small and android_6in) were wider than the one-line room (83.4-83.8 dp) in the old
+## face.
+## P605 re-pin: in Roboto Condensed Bold every name fits one line, so the test no longer demands
+## that a second line is needed anywhere; it still demands that each name fits in at most two.
 func test_every_upgrade_name_fits_the_research_card() -> void:
 	var names: PackedStringArray = PackedStringArray()
 	var files: PackedStringArray = DirAccess.get_files_at("res://data/upgrades")
@@ -70,7 +72,6 @@ func test_every_upgrade_name_fits_the_research_card() -> void:
 			names.append((load("res://data/upgrades/" + file) as UpgradeDef).display_name)
 	assert_int(names.size()).is_greater_equal(4)
 	var misfits: PackedStringArray = PackedStringArray()
-	var overruns: int = 0
 	for profile: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
 		for profile_name: StringName in profile:
 			UiScale.set_override(profile[profile_name])
@@ -86,7 +87,6 @@ func test_every_upgrade_name_fits_the_research_card() -> void:
 				var paragraph: TextParagraph = TextParagraph.new()
 				paragraph.add_string(shown, font, size)
 				paragraph.width = room
-				overruns += 1 if _width(theme, ItemTile.CAPTION_VARIATION, shown) > room else 0
 				var widest: float = 0.0
 				for line: int in paragraph.get_line_count():
 					widest = maxf(widest, paragraph.get_line_size(line).x)
@@ -104,7 +104,6 @@ func test_every_upgrade_name_fits_the_research_card() -> void:
 						)
 					)
 	assert_array(misfits).override_failure_message("\n".join(misfits)).is_empty()
-	assert_int(overruns).is_greater(0)  # The second line is needed somewhere.
 
 
 ## The repair buildings' and medic squads' names (P278) are in the checked set, as captions (nothing
