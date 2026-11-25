@@ -160,6 +160,41 @@ static func has_room(dock: Rect2, dp: float) -> bool:
 	return dock.size.x >= MIN_DP * dp - 0.01 and dock.size.y >= MIN_DP * dp - 0.01
 
 
+## The folded tab's own slot (ADR 0048 section 1, "No room"): a `MIN_DP` square in the top row, on
+## the scope's side. It is the one nearest the scope (right; mirrored, left) that stands `GAP_DP`
+## clear of every part of `hud_rects` but the economy card, the open panel's close handle (a
+## `HudCorners.CLOSE_DP` strip left of it) included, so it never covers one. The attack toast's slot
+## is a part: only where a wide pill leaves none, a second look lets the tab stand on that slot
+## (a toast is brief, the tab stays) and clear of the rest. Empty where even that finds no place.
+## A 1 dp scan, run when the layout changes and never per frame. Base px.
+static func tab_slot(
+	safe: Rect2, dp: float, mirror: bool, hud_rects: Dictionary[StringName, Rect2]
+) -> Rect2:
+	var w: float = safe.size.x / dp
+	var parts: Dictionary[StringName, Rect2] = {}
+	for key: StringName in hud_rects:
+		if key != HudCorners.CARD:
+			parts[key] = _to_dp(hud_rects[key], safe, dp, mirror)
+	var panel: Rect2 = parts.get(HudCorners.DRAWER, Rect2())
+	if panel.size.x > 0.0 and panel.size.x < w - 1.0:  # The side panel's handle, a strip of it.
+		parts[&"handle"] = Rect2(
+			panel.position.x - HudCorners.CLOSE_DP, 0.0, HudCorners.CLOSE_DP, panel.size.y
+		)
+	for skip_toast: bool in [false, true]:
+		var x: float = w - MIN_DP
+		while x >= 0.0:
+			var square: Rect2 = Rect2(x, 0.0, MIN_DP, MIN_DP).grow(GAP_DP - 0.01)
+			var clear: bool = true
+			for key: StringName in parts:
+				if not (skip_toast and key == HudCorners.TOAST) and square.intersects(parts[key]):
+					clear = false
+					break
+			if clear:
+				return _to_px(Rect2(x, 0.0, MIN_DP, MIN_DP), safe, dp, mirror)
+			x -= 1.0
+	return Rect2()
+
+
 ## Where a hand with no anchor points: the middle of the open field under the card's foot (`foot`,
 ## a y in base px; below zero it is the dock's own foot), left of the open panel and above the
 ## sheet, the command bar and BUILD, and clear of the group column, the strike button and its aim

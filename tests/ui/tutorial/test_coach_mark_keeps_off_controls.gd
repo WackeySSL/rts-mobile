@@ -1,9 +1,16 @@
 extends GdUnitTestSuite
-## The sweep of the coach mark's card (plan row P543g): for every beat of every lesson file in
-## `data/tutorial/` (read from the folder, so a lesson or a beat added later is covered at once), at
-## the six sizes of ADR 0015 section 6, the real HUD in the state the beat expects, the card
-## covers no visible, enabled HUD button of its own (the drawer's tabs, items and close button
-## included) and not the tile a TILE beat points at.
+## The sweep of the docked card (plan rows P543g and P588, ADR 0048 sections 1, 3 and 9): for every
+## beat of every lesson file in `data/tutorial/` (read from the folder, so a lesson or a beat added
+## later is covered at once), at the six sizes of ADR 0015 section 6 and the two small real phones,
+## the real HUD in the state the beat expects:
+## - the card is inside the dock and on no `HudCorners` part but the economy card (and covers no
+##   visible, enabled HUD button of its own), and not the tile a TILE beat points at;
+## - the prompt fits the dock's height cap;
+## - the card stands 16 dp from an ad band;
+## - where the card covers the beat's control (a modal's button, the ghost's check mark) it is
+##   see-through and a pushed touch reaches the control through it, and it is see-through for no
+##   other HUD control;
+## - the dock has room on the six sizes; a fold (small phone only) shows the tab in the safe rect.
 ## The state of a beat is what the beats before it leave (a drawer opened on a tab stays open until
 ## a beat closes it), plus the state its own condition asks for (DRAWER_TAB: the drawer on that
 ## tab; UNFOLD_OPEN and UNFOLD_CLOSED: that unfold open), plus, when the named control is not on
@@ -13,16 +20,61 @@ extends GdUnitTestSuite
 const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd")
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
+const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const LESSON_DIR: String = "res://data/tutorial/"
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const OVERLAP_PX2: float = 4.0  ## Less area than this is rounding, not a covered button.
 const TILE_MARGIN_DP: float = 8.0
+const AD_GAP_DP: float = 16.0
+## The ratchet: on the smallest phone (docks of 102 to 126 dp, under `card_wide_dp`, so P589's wide
+## form does not help; only P593's shorter prompts do) these "lesson/beat" prompts are longer than
+## the dock and scroll in the card today. Any other prompt that scrolls, anywhere, fails; the card
+## is inside its dock in every case. P593 empties the list.
+const SMALL: StringName = &"web_phone_small"
+const SCROLLS: Array[String] = [
+	"air/airfield",
+	"air/board",
+	"air/bomber",
+	"air/home",
+	"air/wagon",
+	"basics/across",
+	"basics/attack",
+	"basics/clear",
+	"basics/drawer",
+	"basics/fog",
+	"basics/groups",
+	"basics/incoming",
+	"basics/low-power",
+	"basics/open-structures",
+	"basics/pause",
+	"basics/placed",
+	"basics/stop",
+	"basics/welcome",
+	"basics/win",
+	"strikes/aim",
+	"strikes/enemy-sweep",
+	"strikes/fire",
+	"strikes/impact",
+	"strikes/off",
+	"strikes/own",
+	"strikes/sat",
+	"strikes/sat-on",
+	"strikes/sat-pause",
+	"support/hidden",
+	"support/medics",
+	"support/mend",
+	"support/mine",
+	"support/repair",
+	"support/sell",
+	"support/sell-last",
+]
+## Controls that follow the world (ADR 0048 section 3): the card may be see-through over them.
+const WORLD_CONTROLS: Array[StringName] = [&"PlaceConfirm"]
 const TABS: int = 5
 const TOLERANCE_PX: float = 0.5
-## Real phones of ui_profiles.gd run besides the six sizes: where the screen has no free place the
-## card may stand on a button (the least it can), but never on the beat's own control or tile.
+## Real phones of ui_profiles.gd run besides the six sizes; only these may fold the card to its tab.
 const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Kinds a player ends with a gesture on the map, which folds the drawer (HudState.map_gesture).
 const MAP_KINDS: Array[TutorialConditions.Kind] = [
@@ -50,7 +102,11 @@ var _mark: CoachMark
 var _director: TutorialDirector
 var _selection: SelectionModel
 var _own: PackedInt32Array = PackedInt32Array()
-var _fallbacks: Array[String] = []
+var _pushed: int = 0
+var _folds: int = 0
+var _over: int = 0
+var _pushes: int = 0
+var _parts_now: Dictionary[StringName, Rect2] = {}
 
 
 func before() -> void:
@@ -89,7 +145,9 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 	for profile_name: StringName in EXTRA_PROFILES:
 		extras.append(UiProfiles.by_name(profile_name))
 	profiles.append_array(extras)
-	_fallbacks.clear()
+	_folds = 0
+	_over = 0
+	_pushes = 0
 	assert_int(lessons.size()).is_greater_equal(4)
 	var seen: int = 0
 	var found: Array[String] = []
@@ -108,7 +166,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 						await _enter(now)
 						await _show(lesson, beat)
 						seen += 1
-						found.append_array(_covered(lesson, beat, profile, now, strict))
+						found.append_array(await _checks(lesson, beat, profile, now, strict))
 						var missing: bool = (
 							beat.anchor == TutorialBeatDef.Anchor.CONTROL
 							and _mark.target_control() == null
@@ -122,8 +180,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 	assert_int(seen).is_greater(100)
 	for line: String in found:
 		print("SWEEP ", line)
-	for line: String in _fallbacks:
-		print("FALLBACK ", line)
+	print("FOLDS ", _folds, " OVER_CAP ", _over, " PUSHES ", _pushes)
 	assert_array(found).override_failure_message("\n".join(found)).is_empty()
 
 
@@ -226,9 +283,8 @@ func _show(lesson: TutorialLessonDef, beat: TutorialBeatDef) -> void:
 			await await_idle_frame()
 
 
-## What the card covers in the state on show: the visible, enabled HUD buttons that are not its own,
-## and the anchored tile. One line each.
-func _covered(
+## What is wrong with the card in the state on show, one line each.
+func _checks(
 	lesson: TutorialLessonDef,
 	beat: TutorialBeatDef,
 	profile: UiMetrics,
@@ -238,7 +294,7 @@ func _covered(
 	var lines: Array[String] = []
 	if not _mark.visible:
 		return lines  # A menu covers the HUD and the mark stands down.
-	var card: Rect2 = _mark.card_rect()
+	var dp: float = UiScale.base_px_per_dp()
 	var label: String = (
 		"%s/%s %s %dx%d unfold=%d tab=%d select=%s groups=%d"
 		% [
@@ -253,36 +309,156 @@ func _covered(
 			state["groups"]
 		]
 	)
+	var dock: Rect2 = _mark.dock_rect()
+	if not GuideDock.has_room(dock, dp):
+		_folds += 1
+		if strict:
+			lines.append("%s: no room for the card, it folds to its tab" % label)
+		var tab: Rect2 = _mark.tab_rect()
+		if not tab.has_area() or not _safe().grow(TOLERANCE_PX).encloses(tab):
+			lines.append("%s: the folded tab %s is not inside the safe rect" % [label, tab])
+		return lines
+	var card: Rect2 = _mark.card_rect()
+	if _mark.prompt_scrolls():
+		var small: bool = profile.window_size == UiProfiles.by_name(SMALL).window_size
+		_over += 1
+		if not (small and SCROLLS.has("%s/%s" % [lesson.id, beat.id])):
+			lines.append("%s: the prompt scrolls, the dock is %s high" % [label, dock.size.y])
+	if not dock.grow(TOLERANCE_PX).encloses(card):
+		lines.append("%s: the card %s is outside the dock %s" % [label, card, dock])
+	for part: StringName in [&"Skip", &"Next"]:  # The card's own buttons stand on its panel.
+		var own: Button = _mark.find_child(String(part), true, false) as Button
+		if own != null and own.is_visible_in_tree():
+			if not _mark.card_rect().grow(TOLERANCE_PX).encloses(own.get_global_rect()):
+				lines.append("%s: %s is outside the card %s" % [label, part, card])
+	var needs: float = _mark.find_child("Card", true, false).get_combined_minimum_size().y
+	if _mark.card_rect().size.y + TOLERANCE_PX < needs:
+		lines.append("%s: the card is %s high, its text needs %s" % [label, card.size.y, needs])
+	_read_parts()
+	for part: StringName in _parts_now:
+		var rect: Rect2 = _parts_now[part]
+		if part != HudCorners.CARD and card.intersection(rect).get_area() > OVERLAP_PX2:
+			lines.append("%s: the card covers the HUD part %s %s" % [label, part, rect])
 	var scope: Node = _layer
 	for modal: Node in _layer.find_children("*", "ModalFrame", true, false):
 		if (modal as Control).is_visible_in_tree():
 			scope = modal  # A menu takes every touch: the buttons behind it cannot be tapped.
-	for node: Node in scope.find_children("*", "BaseButton", true, false):
-		var button: BaseButton = node as BaseButton
-		if button.disabled or _mark.is_ancestor_of(button) or not button.is_visible_in_tree():
-			continue
-		var shown: Rect2 = _on_screen(button)
-		if card.intersection(shown).get_area() > OVERLAP_PX2:
-			var line: String = "%s covers %s %s" % [label, _path(button), shown]
-			if strict or button == _mark.target_control():
-				lines.append(line)  # The anchor is never covered, a fallback or not.
-			else:
-				_fallbacks.append(line)  # The least-overlap place of a screen with no free one.
-	var panel: Rect2 = card.grow(TOLERANCE_PX)
-	for part: StringName in [&"Skip", &"Next"]:  # The card's own buttons stand on its panel.
-		var own: Button = _mark.find_child(String(part), true, false) as Button
-		if own != null and own.is_visible_in_tree() and not panel.encloses(own.get_global_rect()):
-			lines.append("%s: %s is outside the card %s" % [label, part, card])
-	var least: float = _mark.find_child("Card", true, false).get_combined_minimum_size().y
-	if card.size.y + TOLERANCE_PX < least:
-		lines.append("%s: the card is %s high, its text needs %s" % [label, card.size.y, least])
+	if scope == _layer:  # In a modal the card's body passes touches, so its buttons are no check.
+		for node: Node in scope.find_children("*", "BaseButton", true, false):
+			var button: BaseButton = node as BaseButton
+			if button.disabled or _mark.is_ancestor_of(button) or not button.is_visible_in_tree():
+				continue
+			var shown: Rect2 = _on_screen(button)
+			if card.intersection(shown).get_area() > OVERLAP_PX2:
+				lines.append("%s: the card covers %s %s" % [label, _path(button), shown])
+	else:  # Over a modal Skip hides and Next stays only 8 dp clear of the menu's buttons.
+		for own: Button in [
+			_mark.find_child("Skip"), _mark.find_child("Next"), _mark.find_child("Tab")
+		]:
+			if own == null or not own.is_visible_in_tree():
+				continue
+			var mine: Rect2 = own.get_global_rect().grow(UiScale.dp(8.0) - 0.01)
+			for node: Node in scope.find_children("*", "BaseButton", true, false):
+				var other: Control = node as Control
+				if other.is_visible_in_tree() and mine.intersects(_on_screen(other)):
+					lines.append("%s: %s is under 8 dp from %s" % [label, own.name, _path(other)])
+	var apart: Rect2 = card.grow(AD_GAP_DP * dp - TOLERANCE_PX)
+	for node: Node in scope.find_children("*", "AdBannerBand", true, false):
+		var band: Control = node as Control
+		if band.is_visible_in_tree() and apart.intersects(_on_screen(band)):
+			lines.append("%s: the card is under %s dp from the ad band" % [label, AD_GAP_DP])
+	lines.append_array(await _through(label, beat, card, scope))
 	if beat.anchor == TutorialBeatDef.Anchor.TILE:
+		var body: Control = _mark.find_child("Card", true, false) as Control
 		var camera: RtsCamera = _main.get_node("Camera") as RtsCamera
 		var world: Vector2 = IsoProjection.cell_centre_px(beat.anchor_tile.x, beat.anchor_tile.y)
 		var point: Vector2 = camera.world_to_screen(world)
-		if card.grow(UiScale.dp(TILE_MARGIN_DP)).has_point(point):
-			lines.append("%s covers the tile %s at %s" % [label, beat.anchor_tile, point])
+		if card.grow(UiScale.dp(TILE_MARGIN_DP)).has_point(point):  # Allowed: the card is see-through.
+			if not _mark.see_through() or body.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+				lines.append(
+					"%s: the card covers the tile %s at %s" % [label, beat.anchor_tile, point]
+				)
 	return lines
+
+
+## The see-through rules: the card is see-through only over a tile, a modal's button or a control
+## that follows the world; where it covers the beat's control a pushed touch reaches it.
+func _through(label: String, beat: TutorialBeatDef, card: Rect2, scope: Node) -> Array[String]:
+	var lines: Array[String] = []
+	var allowed: bool = (
+		beat.anchor == TutorialBeatDef.Anchor.TILE
+		or scope != _layer
+		or WORLD_CONTROLS.has(beat.anchor_control)
+	)
+	if _mark.see_through() and not allowed:
+		lines.append(
+			(
+				"%s: the card %s is see-through over a HUD control, ring %s target %s"
+				% [label, card, _mark.ring_rect(), _mark.target_control()]
+			)
+		)
+	var target: Control = _mark.target_control()
+	if target == null:
+		return lines
+	var overlap: Rect2 = card.intersection(_on_screen(target))
+	if overlap.get_area() <= OVERLAP_PX2:
+		return lines
+	if not _mark.see_through():
+		lines.append("%s: the card covers %s but is not see-through" % [label, _path(target)])
+	var body: Control = _mark.find_child("Card", true, false) as Control
+	if body.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		lines.append("%s: the card's body takes the touch meant for %s" % [label, _path(target)])
+		return lines
+	_pushed = 0
+	_pushes += 1
+	target.gui_input.connect(_on_pushed)
+	var at: Vector2 = overlap.get_center()
+	TouchEvents.press(get_viewport(), 0, at)
+	await await_idle_frame()
+	TouchEvents.release(get_viewport(), 0, Vector2.ONE)  # Off the button: no press completes.
+	target.gui_input.disconnect(_on_pushed)
+	if _pushed == 0:
+		lines.append("%s: a touch at %s did not reach %s" % [label, at, _path(target)])
+	return lines
+
+
+func _on_pushed(event: InputEvent) -> void:
+	if event is InputEventMouseButton or event is InputEventScreenTouch:
+		_pushed += 1
+
+
+## The HUD's parts as `GuideDock.hud_for_dock` places them for what the real nodes show now, read
+## from the nodes and not from the mark.
+func _read_parts() -> void:
+	var portrait: bool = HudLayout.is_portrait()
+	var dp: float = UiScale.base_px_per_dp()
+	var shown: HudCorners.Shown = HudCorners.Shown.new()
+	_feed.state.fill(shown)
+	_feed.state.fill_bar(shown)
+	var column: GroupColumn = _layer.find_children("*", "GroupColumn", true, false)[0]
+	var build: BuildButton = _layer.find_children("*", "BuildButton", true, false)[0]
+	var pill: EconomyPill = _layer.find_children("*", "EconomyPill", true, false)[0]
+	var aim: StrikeAim = _director.strike_aim
+	var dock_shown: HudCorners.Shown = GuideDock.shown_for_dock(
+		portrait,
+		shown.map,
+		shown.drawer,
+		column.item_count(),
+		aim != null and aim.owned,
+		build.ready_type >= 0,
+		aim != null and aim.active,
+		shown.bar,
+		shown.bar_tall
+	)
+	dock_shown.bar_width = shown.bar_width
+	dock_shown.pill_width = pill.size.x / dp
+	_parts_now = GuideDock.hud_for_dock(_safe(), portrait, dp, false, dock_shown)
+
+
+func _safe() -> Rect2:
+	return SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
 
 
 ## `button`'s rect as the player sees it: cut by the scroll areas it stands in and by the screen.
@@ -326,6 +502,7 @@ func _open(lesson: TutorialLessonDef, profile: UiMetrics) -> void:
 	_director.selection = _selection
 	_director.camera = _main.get_node("Camera") as RtsCamera
 	_director.sidebar = _sidebar
+	_director.strike_aim = _main.find_children("*", "StrikeAim", true, false)[0] as StrikeAim
 	_main.add_child(_director)
 	_mark = CoachMark.new()
 	_mark.director = _director

@@ -131,6 +131,17 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
 
   In both, the card stays reachable through its tab. Folding never happens on the profiles of the
   indicative table (the tests pin that).
+- **The folded tab's slot** (P588, `GuideDock.tab_slot`): with no dock there is no corner to stand
+  in, so the tab has its own slot. It is a 48 x 48 dp square on the top edge of the safe rect (the
+  top row) and the one nearest the scope (top right; mirrored, top left), 8 dp clear of every
+  reserved part, the open side panel's close handle (a 48 dp strip left of the panel) included. The
+  attack toast's slot is one of the parts. Only where a wide pill leaves no square between it and
+  the toast does a second look let the tab stand on the toast's slot (a toast is brief; the tab
+  stays) and clear of the rest. A 1 dp scan, run when the layout changes. In both fold states (the
+  tests pin the geometry, with the pill at its least width) the slot is free: right of the toast
+  and left of the scope in state 1 (x 664 on 776 dp, x 598 on 710 dp), left of the close handle in
+  state 2 (x 294 on 710 dp). A tap on the tab opens the card under the top row over the HUD, and a
+  new layout folds it again.
 
 ### 2. The card and its tab
 - **The open card** has two forms, chosen by the dock's width:
@@ -172,7 +183,7 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
 - HUD targets cannot lie under the open card (§1).
 - Some targets can: a world tile, a control that follows the world (the ghost's check mark and X,
   ADR 0024), and a button of a modal the beat points into (Resume on the pause menu). When the
-  active target's ring, grown by 8 dp, or the gesture hint's bounds meet the open
+  active target's ring's own box (no growth, see below), or the gesture hint's bounds meet the open
   card, the card **stays where it is** (answer 3, A) and does three things:
   - Its body turns see-through (the theme's `GuideCardThrough` panel).
   - Its body lets touches through. Only the tab, Next and Skip take a touch.
@@ -180,7 +191,19 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   The target then stays visible and takes its tap, drag or long press through the card. Today's
   rule "a card that could not clear the ring lets touches through" (P542) carries over.
 - Over a modal (the `resume` beat on the pause menu) the card's body always lets touches through,
-  so no button of the menu, Leave tutorial included, is ever blocked.
+  so no button of the menu, Leave tutorial included, is ever blocked. While a modal is open the
+  card's Skip hides (the pause menu has Leave tutorial), and Next shows only if it stands at least
+  8 dp clear of every button of the modal.
+- **P588 refinements:**
+  - The see-through test uses the active ring's own box, with no 8 dp growth. The dock already keeps
+    8 dp from every HUD part and the ring stands 6 dp outside its control, so a grown ring would
+    meet the card at every HUD neighbour (the pill, the scope, the group column) and turn it
+    see-through for a target that is not under it.
+  - A control's ring is cut at the safe edge, not shifted off its control; a tile's ring still
+    shifts (it is pinned to the nearest edge).
+  - The card never grows past its dock. When a prompt is taller than the dock, the card keeps the
+    dock's height and the prompt scrolls inside it (a touch drag, no bar); the buttons keep their
+    foot row. Where the dock is too narrow for Skip and Next side by side, they stack.
 - The card stands down under a modal that does not hold the target (P543b's `_covered()`, kept).
 
 ### 4. The blinking frame

@@ -14,8 +14,8 @@ extends RefCounted
 ## `prism`, a ring of `sides` (default 12, width across the flats) that `taper` scales at the top
 ## and `axis` (x, y or z, default z) lays along its length (sx, sy or sz); `sphere` of diameter sx;
 ## `broken`, `rod` and the helper `petals` (generator v5b, below).
-## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630; the
-## renderer that reads it is P631's, so it changes no output yet). A line that begins with a macro
+## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630;
+## `ArtDetail` reads it, P631). A line that begins with a macro
 ## name (`ArtMacro`: tracks, wheels, grille, hatch, pylon) expands to several primitives.
 ## `chamfer=C` (a box or wedge, 0 < C < half of the shorter of sx and sy) cuts its four vertical
 ## edges at 45 degrees, C tiles along each side, so the section is an octagon; `turn=D` (a prism,
