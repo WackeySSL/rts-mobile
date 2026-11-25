@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_support.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/support_enemy.tres" id="4_enemy"]
 
@@ -79,27 +80,53 @@ kind = 11
 value = 1
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_08_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_08_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabInfantry"
+kind = 11
+value = 1
+
 [sub_resource type="Resource" id="Beat_08"]
 script = ExtResource("2_beat")
 id = &"medics"
 prompt_key = &"tutorial.support.medics"
 anchor = 1
-anchor_control = &"TabInfantry"
+anchor_control = &"Tile_fossil_patchers"
 kind = 5
 type_id = &"fossil_patchers"
 covers = Array[StringName]([&"units-medic-squad-build", &"orders-attack-medics"])
 budget_s = 12
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_08_build"), SubResource("Beat_08_tab")])
+
+[sub_resource type="Resource" id="Beat_09_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_09_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabVehicles"
+kind = 11
+value = 2
 
 [sub_resource type="Resource" id="Beat_09"]
 script = ExtResource("2_beat")
 id = &"shot-truck"
 prompt_key = &"tutorial.support.shot-truck"
 anchor = 1
-anchor_control = &"TabVehicles"
+anchor_control = &"Tile_fossil_shot_truck"
 kind = 5
 type_id = &"fossil_shot_truck"
 covers = Array[StringName]([&"units-build-minelayer"])
 budget_s = 20
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_09_build"), SubResource("Beat_09_tab")])
 
 [sub_resource type="Resource" id="Beat_10"]
 script = ExtResource("2_beat")

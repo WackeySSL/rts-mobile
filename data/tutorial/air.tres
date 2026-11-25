@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_air.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/air_enemy.tres" id="4_enemy"]
 
@@ -24,16 +25,29 @@ kind = 11
 value = 3
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_02_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_02_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabFlight"
+kind = 11
+value = 3
+
 [sub_resource type="Resource" id="Beat_02"]
 script = ExtResource("2_beat")
 id = &"fighter"
 prompt_key = &"tutorial.air.fighter"
 anchor = 1
-anchor_control = &"TabFlight"
+anchor_control = &"Tile_fossil_fighter"
 kind = 5
 type_id = &"fossil_fighter"
 covers = Array[StringName]([&"units-build-aircraft"])
 budget_s = 20
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_02_build"), SubResource("Beat_02_tab")])
 
 [sub_resource type="Resource" id="Beat_03"]
 script = ExtResource("2_beat")
@@ -75,16 +89,29 @@ covers = Array[StringName]([&"combat-anti-air-building"])
 after_ai_step = &"raid"
 budget_s = 5
 
+[sub_resource type="Resource" id="Beat_08_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_08_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabVehicles"
+kind = 11
+value = 2
+
 [sub_resource type="Resource" id="Beat_08"]
 script = ExtResource("2_beat")
 id = &"wagon"
 prompt_key = &"tutorial.air.wagon"
 anchor = 1
-anchor_control = &"TabVehicles"
+anchor_control = &"Tile_fossil_bunk_wagon"
 kind = 5
 type_id = &"fossil_bunk_wagon"
 covers = Array[StringName]([&"units-build-carrier"])
 budget_s = 20
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_08_build"), SubResource("Beat_08_tab")])
 
 [sub_resource type="Resource" id="Beat_09"]
 script = ExtResource("2_beat")

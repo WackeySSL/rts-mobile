@@ -224,7 +224,8 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
 
 ### 4. The blinking frame
 - The ring (on a control a rounded frame 6 dp outside it, on a tile the ground ellipse, at least a
-  48 dp target) now **blinks**: its opacity eases between `blink_low_alpha_pct` (25) and 100 over
+  48 dp target) now **blinks**: its opacity eases between `blink_low_alpha_pct` (50; first 25, raised in P591: at 25 the dim
+  phase had 1.8:1 against the HUD panel, at 50 it has 3.4:1) and 100 over
   `blink_period_ms` (800). That is 1.25 blinks a second, under the 3-flash-per-second limit
   (WCAG 2.3.1), and it is never fully off. The 4 dp breathing goes. One looping Tween, as today.
 - **Colour:** the theme, not code. A new `GuideTokens` type in `game/ui/theme.tres` has `ring` (the
@@ -279,6 +280,11 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   the list scrolls to its top, as the Ready chip does. The ask waits until the card's rect has
   held for 2 looks, since the grid sorts and the drawer slides after a tab change. A list that
   scrolls sideways only (the command bar) gets the strip on its left or right edge.
+  *Deviation (P591, Michael's phone test of Basics 21/28).* The tab-anchored training beats ended
+  on the tab, so with the tab already open the ring never reached the card. `train` (Basics),
+  `medics` and `shot-truck` (Support) and `fighter` and `wagon` (Air) now chain BUILD, then the tab,
+  to the item's card (`Tile_*`) as their final target. The rest of the lead-ins stay with P593. The
+  chain itself was right: the director takes the furthest satisfied step at the start of a beat.
 - **All lessons** (Michael's item 5). A lint in `test_lesson_data.gd` says that every beat whose
   final target is a drawer card or tab (`Tile_*`, `Tab*`) has a lead-in that opens the drawer. One
   whose target is a drawer card also has the tab's lead-in. The sweep (§10) starts every beat in
