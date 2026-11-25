@@ -1036,7 +1036,7 @@ body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see th
 script = ExtResource("3_ent")
 id = &"menus-tutorial-guide"
 title = "The blinking frame"
-body = "In a lesson, the frame around the thing to tap blinks, so you can see where to touch. It never goes fully dark. If a card waits a long time, the frame turns amber and doubles. With Reduced effects on in Settings, the frame holds still and is a little thicker."
+body = "In a lesson, the card stands at the top, under the credits and the radar, and stays there. If the frame lands under the card, the card turns see-through and your tap goes through. On the smallest phones a small tab shows at the top when there is no room; tap it to open the card. The frame around the thing to tap blinks, so you can see where to touch. It never goes fully dark. If a card waits a long time, the frame turns amber and doubles. With Reduced effects on in Settings, the frame holds still and is a little thicker."
 
 [sub_resource type="Resource" id="e22t2"]
 script = ExtResource("3_ent")

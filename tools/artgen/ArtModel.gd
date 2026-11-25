@@ -59,7 +59,10 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var mount: Vector3 = Vector3.ZERO
 ## One primitive per entry, see `ArtPrim`.
 @export var prims: PackedStringArray = PackedStringArray()
-## The face decals, one line each (see `ArtDecal`); the detail renderer draws them (P631).
+## The detail level of the model, 0 to 3 (ADR 0050 section 1; `ArtDetail` lists what each draws).
+## 0 is the flat three-tone look and every existing model's. A primitive's `detail=` overrides it.
+@export var detail: int = 0
+## The face decals, one line each (see `ArtDecal`); `ArtDetail` draws them from level 2 (P631).
 @export var decals: PackedStringArray = PackedStringArray()
 ## The poses, one line each: `<part> <frames>` says that a pose part has that many frames per
 ## direction (2 to 16), `<part> <frame> <group> shift|turn ...` is a move of a group in one frame
@@ -388,6 +391,8 @@ func problems() -> PackedStringArray:
 			found.append(
 				"%s: group= is for hull and anim primitives, which poses move: %s" % [art_id, line]
 			)
+	if detail < 0 or detail > ArtPrim.MAX_DETAIL:
+		found.append("%s: detail is 0 to %d, not %d" % [art_id, ArtPrim.MAX_DETAIL, detail])
 	found.append_array(_decal_problems())
 	if primitives(&"hull").is_empty():
 		found.append("%s: no hull primitive" % art_id)
