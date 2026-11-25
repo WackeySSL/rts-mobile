@@ -59,6 +59,8 @@ const MARKS: Array[StringName] = [&"tracks", &"wheels"]
 @export var mount: Vector3 = Vector3.ZERO
 ## One primitive per entry, see `ArtPrim`.
 @export var prims: PackedStringArray = PackedStringArray()
+## The face decals, one line each (see `ArtDecal`); the detail renderer draws them (P631).
+@export var decals: PackedStringArray = PackedStringArray()
 ## The poses, one line each: `<part> <frames>` says that a pose part has that many frames per
 ## direction (2 to 16), `<part> <frame> <group> shift|turn ...` is a move of a group in one frame
 ## (see `ArtMove`). Frames without a move for a group show it at rest. No pose, no poses.
@@ -386,6 +388,7 @@ func problems() -> PackedStringArray:
 			found.append(
 				"%s: group= is for hull and anim primitives, which poses move: %s" % [art_id, line]
 			)
+	found.append_array(_decal_problems())
 	if primitives(&"hull").is_empty():
 		found.append("%s: no hull primitive" % art_id)
 	if mount == Vector3.ZERO and parts().size() > 1:
@@ -393,6 +396,22 @@ func problems() -> PackedStringArray:
 	found.append_array(_pose_problems())
 	if found.is_empty() and not damage_parts().is_empty():
 		found.append_array(ArtGen.damage_problems(self))
+	return found
+
+
+## What is wrong with the decals: a line that is not one, or one whose primitive line is not a
+## single box, wedge or prism.
+func _decal_problems() -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	for line: String in decals:
+		var decal: ArtDecal = ArtDecal.parse(line)
+		var parsed: Array[ArtPrim] = []
+		if decal != null and decal.prim < prims.size():
+			parsed = ArtPrim.parse_all(prims[decal.prim])
+		if decal == null:
+			found.append("%s: not a decal: %s" % [art_id, line])
+		elif parsed.size() != 1 or parsed[0].shape not in [&"box", &"wedge", &"prism"]:
+			found.append("%s: a decal sits on one box, wedge or prism line: %s" % [art_id, line])
 	return found
 
 

@@ -24,6 +24,8 @@ repository; you may not distribute them or a build that contains them.
 (the SIL OFL fonts with their `OFL.txt`, the Godot logo, any CC0 or CC-BY file). Each keeps its
 own licence as listed there.
 
+**AI-made files:** every file that [CREDITS.md](CREDITS.md) marks "AI-made with Figma AI, no copyright claimed by AppCode ApS" is outside this notice; AppCode ApS makes no copyright claim on it (ADR 0051).
+
 **Code:** the source code (including `tools/artgen/`, `tools/sfxgen/` and `tools/musgen/`), the data in `data/` and
 the test fixtures in `tests/` (their stand-in SVGs included) stay under the MIT licence in the root
 [LICENSE](../LICENSE). The game's name and logo are reserved by AppCode ApS.
