@@ -108,8 +108,29 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   | --- | --- | --- |
   | 6-inch landscape (safe 890 x 387) | 73, 64, 560 (room 64-642) | 174 |
   | `web_phone` (890 x 331), with strike button | 64, 64, 498 (map left of the column) | 149 |
-  | `web_phone_small` (776 x 280), without / with strike button | 64, 64, 512 / 64, 64, 384 | 126 |
-  | `web_phone_portrait` (336 x 676) | 64, 120, 272; map open: 64, 250, 272 | 304; sheet open 210 |
+  | `web_phone_small` (776 x 280), without / with strike button | 64, 64, 428 / 64, 64, 384 | 126 |
+  | `web_phone_portrait` (336 x 676) | 64, 120, 272; map open: 64, 250, 272 | 304; map open 298; sheet open 210 |
+
+  The sweep line (landscape) and the sweep badge (upright) are reserved too, which is why two rows
+  are lower than they would be without them.
+- **No room: the card folds to its tab.** `GuideDock.place` returns an empty rect when no rect of
+  at least 48 x 48 dp (the tab's size, §2) fits beside every reserved part, and `GuideDock.has_room`
+  says so. The card then folds to its tab (§2) and stays folded until the layout changes. Opening
+  the folded tab is the player's explicit choice and may overlay the HUD until it is closed. This
+  is rare, and both states are limited to the smallest landscape profile (`web_phone_small`):
+  1. Five group buttons, the bar, the Ready chip and the strike aim on together, at either bar
+     height, with or without a cutout. With the tall bar (106 dp: while Stop shows or the orders
+     wrap) the group row (x up to 312) and the pinned map (from x 320) leave no x range, and moving
+     the card below the group row leaves 46 dp of height. With the short 64 dp bar the groups stack
+     two high (x 0-184) and meet the pinned map that the aim row pushes left (x 246-486), so
+     only 46 dp of width is left.
+  2. A cutout (about 710 x 280 dp), the drawer open, the bar and the Ready chip on, and the tall bar
+     only: the pill and the open panel leave under 200 dp for the toast, so it stands under the
+     top line and spans to the handle's clearance, nothing is left beside it, and the 106 dp bar
+     leaves 46 dp under it. With the short bar there is room.
+
+  In both, the card stays reachable through its tab. Folding never happens on the profiles of the
+  indicative table (the tests pin that).
 
 ### 2. The card and its tab
 - **The open card** has two forms, chosen by the dock's width:
