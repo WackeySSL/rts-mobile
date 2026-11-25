@@ -17,6 +17,10 @@ extends RefCounted
 ## `detail=L` (0 to 3) sets the detail level of this primitive alone, over the model's (P630; the
 ## renderer that reads it is P631's, so it changes no output yet). A line that begins with a macro
 ## name (`ArtMacro`: tracks, wheels, grille, hatch, pylon) expands to several primitives.
+## `chamfer=C` (a box or wedge, 0 < C < half of the shorter of sx and sy) cuts its four vertical
+## edges at 45 degrees, C tiles along each side, so the section is an octagon; `turn=D` (a prism,
+## -360 to 360) turns its ring D degrees about its axis, so a 6-sided prism sits point-up or
+## flat-up (P630c, ADR 0050 section 2; a `taper` and a `slope` still apply to both).
 ## `damage=K` (1 or 2, a hull primitive of a building) draws the primitive only from damage stage K
 ## on, so the intact picture has none of them (ADR 0028 section 3).
 ## `group` names the pose group the primitive belongs to (ADR 0027 section 4): a pose moves the
@@ -61,6 +65,8 @@ var slope: float = 0.0
 var axis: int = 2
 var group: StringName = &""
 var damage: int = 0  ## The stage it appears from; 0 is always drawn.
+var chamfer: float = 0.0  ## `box`, `wedge`: the cut of the vertical edges, in tiles; 0 none.
+var turn: float = 0.0  ## `prism`: degrees its ring is turned about its axis.
 var detail: int = -1  ## 0 to 3: overrides the model's detail level for this primitive; -1 none.
 var hidden: bool = false  ## A `hide` move of a damage pose: not drawn.
 var char_percent: float = 0.0  ## A `char` move: faces mixed this far towards the char colour.
@@ -278,7 +284,7 @@ func _rest_box() -> AABB:
 	if shape == &"prism":
 		var f: Vector2 = Vector2.ZERO
 		for i: int in sides:
-			var a: float = (i + 0.5) * TAU / sides
+			var a: float = (i + 0.5) * TAU / sides + deg_to_rad(turn)
 			f = f.max(Vector2(absf(cos(a)), absf(sin(a))))
 		f *= 1.0 / cos(PI / sides)
 		match axis:
@@ -311,6 +317,14 @@ func _set_option(word: String) -> bool:
 		"damage":
 			damage = int(value)
 			allowed = pair[1].is_valid_int() and damage >= 1 and damage <= 2
+		"chamfer":
+			chamfer = value
+			allowed = (
+				shape in [&"box", &"wedge"] and value > 0.0 and value < minf(size.x, size.y) / 2.0
+			)
+		"turn":
+			turn = value
+			allowed = shape == &"prism" and absf(turn) <= 360.0
 		"detail":
 			detail = int(value)
 			allowed = pair[1].is_valid_int() and detail >= 0 and detail <= MAX_DETAIL
