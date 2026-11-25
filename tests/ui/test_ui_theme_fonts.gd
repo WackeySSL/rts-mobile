@@ -1,22 +1,29 @@
 extends GdUnitTestSuite
 ## The fonts, the tokens and the accent pairs of `game/ui/theme.tres` (plan row P118, ADR 0025
-## section 13): Chakra Petch for the body and the numbers (500 by default, 600 for a number, 700 for
-## a number that sits across a bar or a plate), Big Shoulders Display ExtraBold for buttons and
-## titles in three size classes whose tracking is whole base px and so is left alone by the dp step,
+## section 13; the faces since P605, Michael's Figma type): Inter for the body (Regular by default)
+## and the buttons (Bold), IBM Plex Mono Regular for the numbers, Roboto Condensed Bold for the
+## titles, in size classes whose tracking is whole base px and so is left alone by the dp step,
 ## the HUD tokens, and one accent pair per side with the two checks of the ADR for the Derrick
 ## League's: its hue at least 15 degrees from danger and from money, and the text on the accent at
 ## contrast 4.5 or more.
 
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
-const CHAKRA: String = "res://assets/art/fonts/chakra-petch/"
-const SHOULDERS: String = "res://assets/art/fonts/big-shoulders/BigShouldersDisplay-ExtraBold.ttf"
-## The size classes of Big Shoulders as the theme is meant to have them: type, base type, font size
-## in dp, tracking in base px. Every test that needs a number reads the theme and compares.
+const INTER: String = "res://assets/art/fonts/inter/"
+const PLEX: String = "res://assets/art/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf"
+const ROBOTO: String = "res://assets/art/fonts/roboto-condensed/RobotoCondensed-Bold.ttf"
+## The size classes as the theme is meant to have them: type, base type, font file, font size in dp,
+## tracking in base px. Every test that needs a number reads the theme and compares.
 const CLASSES: Array[Dictionary] = [
-	{"type": &"CapsButton", "base": &"Button", "dp": 22, "tracking": 4},
-	{"type": &"CapsTitle", "base": &"Label", "dp": 28, "tracking": 5},
-	{"type": &"CapsBigTitle", "base": &"Label", "dp": 36, "tracking": 6},
+	{
+		"type": &"CapsButton",
+		"base": &"Button",
+		"font": INTER + "Inter-Bold.ttf",
+		"dp": 15,
+		"tracking": 3,
+	},
+	{"type": &"CapsTitle", "base": &"Label", "font": ROBOTO, "dp": 26, "tracking": 5},
+	{"type": &"CapsBigTitle", "base": &"Label", "font": ROBOTO, "dp": 36, "tracking": 6},
 ]
 ## ADR 0025 section 13: tracking +6 to +14 % of the size. One tracking in base px cannot hold that
 ## band at every profile: the dp-to-px ratios run from 1.0 (the desktop window) to 2.37
@@ -34,9 +41,10 @@ const PHONES: Array[StringName] = [
 ]
 const TABLETS: Array[StringName] = [&"web_tablet", &"web_tablet_portrait"]
 const DESKTOPS: Array[StringName] = [&"desktop", &"desktop_portrait"]
-## The shares that the tablet and the desktop window have today (13.3 to 14.3 %, 16.7 to 18.2 %).
-const TABLET_SHARE: Array[float] = [0.130, 0.144]
-const DESKTOP_SHARE: Array[float] = [0.165, 0.183]
+## The shares that the tablet and the desktop window have today (13.3 to 15.2 %, 16.7 to 20 %;
+## P605 re-pin: the button is 15 dp and the title 26 dp now, with the same whole-px tracking).
+const TABLET_SHARE: Array[float] = [0.130, 0.161]
+const DESKTOP_SHARE: Array[float] = [0.165, 0.201]
 ## ADR 0025 section 13's checks of an accent.
 const MIN_HUE_DISTANCE: float = 15.0
 const MIN_TEXT_CONTRAST: float = 4.5
@@ -53,22 +61,25 @@ func after_test() -> void:
 	UiScale.clear_override()
 
 
-func test_chakra_petch_is_the_default_font_and_gives_numbers_their_heavier_weights() -> void:
+func test_inter_is_the_default_font_and_plex_mono_gives_the_numbers_their_face() -> void:
 	var theme: Theme = HudThemes.source()
-	assert_str(theme.default_font.resource_path).is_equal(CHAKRA + "ChakraPetch-Medium.ttf")
-	assert_str(_font_path(&"Label", &"")).is_equal(CHAKRA + "ChakraPetch-Medium.ttf")
-	assert_str(_font_path(&"Label", &"NumberLabel")).is_equal(CHAKRA + "ChakraPetch-SemiBold.ttf")
-	# The chain of a type variation reaches the weight of its base: ItemCostLow is an ItemCost.
+	assert_str(theme.default_font.resource_path).is_equal(INTER + "Inter-Regular.ttf")
+	assert_str(_font_path(&"Label", &"")).is_equal(INTER + "Inter-Regular.ttf")
+	assert_str(_font_path(&"Label", &"NumberLabel")).is_equal(PLEX)
+	# The chain of a type variation reaches the face of its base: ItemCostLow is an ItemCost.
 	for variation: StringName in [&"PowerNumber", &"PowerNumberLow", &"ItemCost", &"ItemCostLow"]:
-		var found: String = _font_path(&"Label", variation)
-		assert_str(found).override_failure_message(variation).is_equal(
-			CHAKRA + "ChakraPetch-Bold.ttf"
+		assert_str(_font_path(&"Label", variation)).override_failure_message(variation).is_equal(
+			PLEX
 		)
-	assert_str(_font_path(&"Button", &"")).is_equal(CHAKRA + "ChakraPetch-Medium.ttf")
+	# The names and words on the tight cards, tabs and plates take the narrow face.
+	for variation: StringName in [&"ItemSash", &"ItemCaption", &"ItemCaptionDim"]:
+		assert_str(_font_path(&"Label", variation)).override_failure_message(variation).is_equal(
+			ROBOTO
+		)
+	assert_str(_font_path(&"Button", &"")).is_equal(INTER + "Inter-Regular.ttf")
 
 
-func test_each_big_shoulders_class_has_its_own_font_variation_with_the_tracking_in_base_px(
-) -> void:
+func test_each_size_class_has_its_own_font_variation_with_the_tracking_in_base_px() -> void:
 	var theme: Theme = HudThemes.source()
 	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
 	var variations: Array[FontVariation] = []
@@ -81,7 +92,7 @@ func test_each_big_shoulders_class_has_its_own_font_variation_with_the_tracking_
 		var font: Font = theme.get_font(&"font", type)
 		assert_object(font).override_failure_message(str(type)).is_instanceof(FontVariation)
 		var variation: FontVariation = font as FontVariation
-		assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
+		assert_str(variation.base_font.resource_path).is_equal(spec["font"])
 		assert_int(variation.spacing_glyph).override_failure_message(str(type)).is_equal(
 			spec["tracking"]
 		)
@@ -137,15 +148,15 @@ func test_the_tracking_stays_within_six_to_fourteen_percent_at_every_phone_profi
 			)
 
 
-## The word of the economy pill (P119) is Big Shoulders at 14 dp with its own variation and a
-## tracking of 3 base px (CapsButton's 4 is tuned for 22 dp and is 14 to 16 % of 14 dp): listed in
-## `base_px`, not shared with a class, and inside the band on the phones like the classes.
+## The word of the economy pill (P119) is Roboto Condensed Bold at 14 dp with its own variation and
+## a tracking of 2 base px (P605: 3 made the low-power pill too wide for the narrow screen): listed
+## in `base_px`, not shared with a class, and inside the band on the phones like the classes.
 func test_the_pill_word_has_its_own_font_variation_with_the_tracking_inside_the_band() -> void:
 	var theme: Theme = HudThemes.source()
 	var variation: FontVariation = theme.get_font(&"font", &"PillWord") as FontVariation
 	assert_object(variation).is_not_null()
-	assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
-	assert_int(variation.spacing_glyph).is_equal(3)
+	assert_str(variation.base_font.resource_path).is_equal(ROBOTO)
+	assert_int(variation.spacing_glyph).is_equal(2)
 	assert_int(theme.get_font_size(&"font_size", &"PillWord")).is_equal(14)
 	assert_str(str(theme.get_type_variation_base(&"PillWord"))).is_equal("Label")
 	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
@@ -162,15 +173,16 @@ func test_the_pill_word_has_its_own_font_variation_with_the_tracking_inside_the_
 		assert_float(share).override_failure_message(why).is_between(BAND_LOW, BAND_HIGH)
 
 
-## The attack toast's title (P123) is Big Shoulders at 16 dp with 3 base px of tracking, its own
-## variation, listed in `base_px`, and inside the band on the phones like the classes.
+## The attack toast's title (P123) is Roboto Condensed Bold at 15 dp (P605: 16 was 1 % too wide on
+## the portrait phone) with 3 base px of tracking, its own variation, listed in `base_px`, and
+## inside the band on the phones like the classes.
 func test_the_attack_title_has_its_own_font_variation_with_the_tracking_inside_the_band() -> void:
 	var theme: Theme = HudThemes.source()
 	var variation: FontVariation = theme.get_font(&"font", &"AttackTitle") as FontVariation
 	assert_object(variation).is_not_null()
-	assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
+	assert_str(variation.base_font.resource_path).is_equal(ROBOTO)
 	assert_int(variation.spacing_glyph).is_equal(3)
-	assert_int(theme.get_font_size(&"font_size", &"AttackTitle")).is_equal(16)
+	assert_int(theme.get_font_size(&"font_size", &"AttackTitle")).is_equal(15)
 	assert_str(str(theme.get_type_variation_base(&"AttackTitle"))).is_equal("Label")
 	var kept: PackedStringArray = theme.get_meta(HudTheme.BASE_PX_META)
 	assert_array(kept).contains(["AttackTitle/fonts/font"])
@@ -375,7 +387,7 @@ func test_the_menu_text_looks_hold_the_tracking_inside_the_band_on_the_phones() 
 	for look: StringName in want:
 		var variation: FontVariation = theme.get_font(&"font", look) as FontVariation
 		assert_object(variation).override_failure_message(str(look)).is_not_null()
-		assert_str(variation.base_font.resource_path).is_equal(SHOULDERS)
+		assert_str(variation.base_font.resource_path).is_equal(ROBOTO)
 		assert_int(theme.get_font_size(&"font_size", look)).is_equal(want[look][0])
 		assert_int(variation.spacing_glyph).is_equal(want[look][1])
 		assert_array(kept).contains(["%s/fonts/font" % look])

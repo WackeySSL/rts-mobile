@@ -218,7 +218,10 @@ tokens.
   them in a test.
 - **Team colours.** Answer 5 is superseded by "faste farver" (fixed colours): fixed faction
   panels and a small team marker. ADR 0050 §3 decides it and plans its rows.
-- **Type.** Big Shoulders (titles, buttons) and Chakra Petch (body, numbers) stay where the file's
+- **Type.** Amendment (2026-11-25): Michael chose the Figma type, three faces: Roboto Condensed
+  (titles and headings), Inter (body text and buttons) and IBM Plex Mono (labels and numbers).
+  Big Shoulders and Chakra Petch are removed, files and CREDITS rows with them (P605). The older
+  text of this bullet follows as it was written, for the record: Big Shoulders (titles, buttons) and Chakra Petch (body, numbers) stay where the file's
   faces are close to them. A monospace label face is added only if P602 finds the file uses one
   (answer 6). Then it is one weight of an OFL 1.1 family: JetBrains Mono, or IBM Plex Mono with
   its "Plex" reserved name, so its files stay unmodified. It covers æøåäöüß and follows the ADR

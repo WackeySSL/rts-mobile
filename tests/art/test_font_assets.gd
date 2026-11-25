@@ -1,10 +1,12 @@
 extends GdUnitTestSuite
-## The HUD's fonts (plan row P118, ADR 0025 section 13): Big Shoulders Display ExtraBold and Chakra
-## Petch at 500, 600 and 700, SIL OFL 1.1, the unmodified upstream files under
-## `assets/art/fonts/<family>/`. Every font file has the family's `OFL.txt` beside it and a row in
-## `assets/CREDITS.md`, no family declares a Reserved Font Name (so the files could be subset and
-## renamed later; they are not), every file is the file that was downloaded (the pinned SHA-256),
-## and each one holds the Danish and German letters of the GDD's languages.
+## The UI's fonts (plan row P605, ADR 0049 amendment of 2026-11-25, ADR 0025 section 13): Michael's
+## Figma type, three families, SIL OFL 1.1, the unmodified upstream files under
+## `assets/art/fonts/<family>/`: Roboto Condensed Bold (display), Inter Regular and Bold (body and
+## buttons) and IBM Plex Mono Regular (labels and numbers). Every font file has the family's
+## `OFL.txt` beside it and a row in `assets/CREDITS.md`, every file is the file that was downloaded
+## (the pinned SHA-256), each one holds the Danish and German letters of the GDD's languages, and
+## nothing under `game/`, `scenes/` or `data/` names the two faces that went (Big Shoulders, Chakra
+## Petch).
 
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 const FONT_DIR: String = "res://assets/art/fonts"
@@ -19,23 +21,29 @@ const LETTERS: String = "æøåäöüßÆØÅÄÖÜ"
 ## The SHA-256 of every file of the folder as downloaded (see CREDITS.md for the sources). A new
 ## font or a new version of one changes this table and its CREDITS row in the same PR.
 const UPSTREAM_SHA256: Dictionary[String, String] = {
-	"big-shoulders/BigShouldersDisplay-ExtraBold.ttf":
-	"9850b5a13ed25975abbf7ec175d76b26e0e115016d9945b782b08179c27ea4f2",
-	"big-shoulders/OFL.txt": "338f9c050f19daeda1d597243faf79f3a3d437c338af58cb7047617d0ce08771",
-	"chakra-petch/ChakraPetch-Bold.ttf":
-	"65fbf76d95651697275e19db4d717c0e95a789ddd3476478b05292104db278a0",
-	"chakra-petch/ChakraPetch-Medium.ttf":
-	"d480f4f97405fac3600652e2e14fd0b14339031c0af4da11582994878f04d919",
-	"chakra-petch/ChakraPetch-SemiBold.ttf":
-	"45264de3204ddbd5fb3e14a2402acd5c630d16650ae5fc221d2c52da46a6734b",
-	"chakra-petch/OFL.txt": "13831d02389d917d22fcfa6c79f98f8acbf61d230add0e73a4d4dc5f3bfb9e56",
+	"ibm-plex-mono/IBMPlexMono-Regular.ttf":
+	"7c6fbddca4b700be918f5f6183d9bd4464fa427fe435f0b480d77fe2bb8c5a43",
+	"ibm-plex-mono/OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+	"inter/Inter-Bold.ttf": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f",
+	"inter/Inter-Regular.ttf": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+	"inter/OFL.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+	"roboto-condensed/OFL.txt": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41",
+	"roboto-condensed/RobotoCondensed-Bold.ttf":
+	"dd4dffb78aa4bfe0fc7185c75570ddef7d6faf9695405f918b2a313588f4942c",
 }
-## The weight that the file's own name table gives it, by file: what the theme relies on.
-const WEIGHTS: Dictionary[String, int] = {
-	"chakra-petch/ChakraPetch-Medium.ttf": 500,
-	"chakra-petch/ChakraPetch-SemiBold.ttf": 600,
-	"chakra-petch/ChakraPetch-Bold.ttf": 700,
+## The weight Godot reads from each file, and the name table's family: what the theme relies on.
+const FACES: Dictionary[String, Array] = {
+	"roboto-condensed/RobotoCondensed-Bold.ttf": [700, "Roboto Condensed"],
+	"inter/Inter-Regular.ttf": [400, "Inter"],
+	"inter/Inter-Bold.ttf": [700, "Inter"],
+	"ibm-plex-mono/IBMPlexMono-Regular.ttf": [400, "IBM Plex Mono"],
 }
+## The words that name a face of the retired set; nothing of the game may mention them.
+const RETIRED: Array[String] = ["big-shoulders", "bigshoulders", "big shoulders", "chakra"]
+const SCAN_ROOTS: Array[String] = ["res://game", "res://scenes", "res://data"]
+const SCAN_EXTENSIONS: Array[String] = [".gd", ".tscn", ".tres", ".res", ".json", ".cfg", ".md"]
+## The Nordic letters of the GDD's Danish text, which the task names one by one.
+const NORDIC: String = "ÆæØøÅå"
 
 
 func test_every_font_file_has_an_ofl_text_beside_it_and_a_credits_row() -> void:
@@ -57,17 +65,17 @@ func test_every_font_file_has_an_ofl_text_beside_it_and_a_credits_row() -> void:
 		)
 
 
-## The copyright lines before the licence text may add "with Reserved Font Name ..."; none does, so
-## the OFL's rule on renaming a modified font does not bind us, and the files are unmodified anyway.
-func test_no_family_declares_a_reserved_font_name() -> void:
+## The copyright line before the licence text may add "with Reserved Font Name ...": only IBM's does
+## ("Plex"). The OFL's rule on renaming binds a modified version only, and the files are unmodified,
+## so the reserved name changes nothing here; this pins which family has one, so another is noticed.
+func test_only_ibm_plex_declares_a_reserved_font_name() -> void:
 	for path: String in _font_files():
 		var ofl: String = path.get_base_dir().path_join(OFL_NAME)
 		var text: String = FileAccess.get_file_as_string(ofl)
 		var header: String = text.substr(0, text.find(LICENCE_START))
 		assert_int(text.find(LICENCE_START)).override_failure_message(ofl).is_greater(0)
-		assert_str(header.to_lower()).override_failure_message(ofl).not_contains(
-			"reserved font name"
-		)
+		var declares: bool = header.to_lower().contains("reserved font name")
+		assert_bool(declares).override_failure_message(ofl).is_equal(path.contains("ibm-plex-mono"))
 
 
 ## Unmodified upstream files: the folder holds exactly the pinned set, each with its hash.
@@ -100,46 +108,70 @@ func test_every_font_has_the_danish_and_german_letters() -> void:
 		assert_str(missing).override_failure_message("%s lacks" % path).is_empty()
 
 
-func test_the_chakra_petch_files_are_the_weights_the_theme_names() -> void:
-	for name: String in WEIGHTS:
+## The task's own check, letter by letter: Æ, æ, Ø, ø, Å and å are glyphs of every face.
+func test_every_font_has_ae_oe_aa_in_both_cases() -> void:
+	assert_int(_font_files().size()).is_equal(FACES.size())
+	for path: String in _font_files():
+		var font: FontFile = load(path)
+		for letter: String in NORDIC:
+			(
+				assert_bool(font.has_char(letter.unicode_at(0)))
+				. override_failure_message("%s has no %s" % [path, letter])
+				. is_true()
+			)
+
+
+func test_the_files_are_the_weights_and_families_the_theme_names() -> void:
+	for name: String in FACES:
 		var font: FontFile = load(FONT_DIR.path_join(name))
-		assert_int(font.font_weight).override_failure_message(name).is_equal(WEIGHTS[name])
-		assert_str(font.get_font_name()).override_failure_message(name).contains("Chakra Petch")
+		assert_int(font.font_weight).override_failure_message(name).is_equal(FACES[name][0])
+		assert_str(font.get_font_name()).override_failure_message(name).contains(FACES[name][1])
 
 
-## The theme and CREDITS call the Big Shoulders file "800". Its OS/2 weight class is 733 (upstream's
-## ExtraBold instance) and Godot reads 700: the face is picked by file, never by weight, and this
-## pins what Godot reads, so a new upstream file that reads otherwise is noticed.
-func test_big_shoulders_extrabold_reads_as_weight_700_in_godot() -> void:
-	var font: FontFile = load(FONT_DIR.path_join("big-shoulders/BigShouldersDisplay-ExtraBold.ttf"))
-	assert_int(font.font_weight).is_equal(700)
-	assert_str(font.get_font_name()).is_equal("Big Shoulders Display ExtraBold")
-	assert_str(font.get_font_style_name()).is_equal("ExtraBold")
-
-
-## The theme says the digits of a changing number keep fixed slots in code because Chakra Petch has
-## no `tnum`. A new version of the font that has one fails here: the theme's header, the CREDITS row
-## and P119's fallback change in the same PR. The reason for the slots is that the digits are
-## proportional: the "1" is much narrower than the "0".
-func test_chakra_petch_has_no_tabular_figures_so_the_digits_keep_fixed_slots() -> void:
-	var server: TextServer = TextServerManager.get_primary_interface()
-	var tnum: int = server.name_to_tag("tnum")
-	for name: String in WEIGHTS:
-		var font: FontFile = load(FONT_DIR.path_join(name))
-		var features: Dictionary = font.get_supported_feature_list()
-		assert_bool(features.has(tnum)).override_failure_message(name).is_false()
+## Static files only: a variable font has variation axes, and none of these has one.
+func test_no_font_is_a_variable_font() -> void:
+	for path: String in _font_files():
+		var font: FontFile = load(path)
 		(
-			assert_bool(features.has(server.name_to_tag("kern")))
-			. override_failure_message(name)
+			assert_bool(font.get_supported_variation_list().is_empty())
+			. override_failure_message(path)
 			. is_true()
 		)
-		var one: float = font.get_char_size("1".unicode_at(0), 100).x
-		var zero: float = font.get_char_size("0".unicode_at(0), 100).x
+
+
+## Plex Mono is fixed width: every digit is as wide as the "0", so the clock, the count and the
+## credits could drop the per-digit slot code (P618). The slots stay for now (P119), and DigitRow
+## measures the theme's font, so it would keep working with a proportional face too.
+func test_plex_mono_digits_are_all_one_width() -> void:
+	var font: FontFile = load(FONT_DIR.path_join("ibm-plex-mono/IBMPlexMono-Regular.ttf"))
+	var zero: float = font.get_char_size("0".unicode_at(0), 100).x
+	for digit: String in "123456789":
+		var width: float = font.get_char_size(digit.unicode_at(0), 100).x
+		assert_float(width).override_failure_message(digit).is_equal_approx(zero, 0.01)
+
+
+## The two retired faces are gone: no script, scene, resource or data file under `game/`,
+## `scenes/` or `data/` names them, in code or in a comment, and their folders are gone.
+func test_nothing_references_the_retired_fonts() -> void:
+	for folder: String in ["big-shoulders", "chakra-petch"]:
 		(
-			assert_float(one)
-			. override_failure_message("%s: 1 is %s, 0 is %s" % [name, one, zero])
-			. is_less(zero * 0.75)
+			assert_bool(DirAccess.dir_exists_absolute(FONT_DIR.path_join(folder)))
+			. override_failure_message(folder)
+			. is_false()
 		)
+	var scanned: int = 0
+	for root: String in SCAN_ROOTS:
+		for extension: String in SCAN_EXTENSIONS:
+			for path: String in FileScan.list_files(root, extension):
+				var text: String = FileAccess.get_file_as_string(path).to_lower()
+				scanned += 1
+				for word: String in RETIRED:
+					(
+						assert_bool(text.contains(word))
+						. override_failure_message("%s names the retired font '%s'" % [path, word])
+						. is_false()
+					)
+	assert_int(scanned).is_greater(100)
 
 
 ## The font files of the folder: every file with a font extension below it.

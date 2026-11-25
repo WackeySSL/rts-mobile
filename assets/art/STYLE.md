@@ -2110,7 +2110,7 @@ the ground (92 and 86), and 70 to 84 % on the others, and it is 52.8 or more fro
 ten (the offline glyph) on every ground.
 
 ## Menu looks (P519, ADR 0043 section 5)
-Type variations of `game/ui/theme.tres` for the menu screens. They are the pause menu's plates: the chips (toggle and tab) #12181D at 96 % (dim, the off and unpicked state: #0F1418 at 60 %), the cards, the row and the badge #0F1418 at 94 %; edge #2C383E, 8 dp corners on chips, rows and badge, 12 dp corners and 12 dp inside on cards with the accent pairs of ADR 0025 section 13: the accent (#1FA6C8 Lumen Accord, #E07628 Derrick League) is an edge or a fill, the light (#62D6EE, #FFA25C) is text. The screens' opaque backdrop is #1C2127. A text look reads at 4.5:1 or more on its plate or the backdrop (`tests/ui/test_menu_theme.gd`); every Button look is at least 48 dp tall; accent never carries meaning alone (the word says ON or OFF).
+Type variations of `game/ui/theme.tres` for the menu screens. They are the pause menu's plates: the chips (toggle and tab) #12181D at 96 % (dim, the off and unpicked state: #0F1418 at 60 %), the cards, the row and the badge #0F1418 at 94 %; edge #33434A, 8 dp corners on chips, rows and badge, 12 dp corners and 12 dp inside on cards with the accent pairs of ADR 0025 section 13: the accent (#1FA6C8 Lumen Accord, #E07628 Derrick League) is an edge or a fill, the light (#62D6EE, #FFA25C) is text. The screens' opaque backdrop is #1C2127. A text look reads at 4.5:1 or more on its plate or the backdrop (`tests/ui/test_menu_theme.gd`); every Button look is at least 48 dp tall; accent never carries meaning alone (the word says ON or OFF).
 
 | Variation (base) | Use | Look |
 | --- | --- | --- |
@@ -2227,6 +2227,29 @@ or team-colour change). Source "P602" is the read-out table above; "adjusted" sa
   to `text`.
 
 ### Type scale
+**Shipped (P605, Michael's choice of 2026-11-25, ADR 0049 amendment):** the three faces below are the
+game's UI type, as unmodified static upstream files under `assets/art/fonts/<family>/`: Roboto
+Condensed **Bold** (`roboto-condensed/RobotoCondensed-Bold.ttf`), Inter **Regular and Bold**
+(`inter/`) and IBM Plex Mono **Regular** (`ibm-plex-mono/`), all SIL OFL 1.1; the CREDITS rows give
+tags and commits. Big Shoulders and Chakra Petch are gone. The theme maps them as follows: Inter
+Regular is the default font (body, Labels, Buttons); Inter Bold is `CapsButton` (15 dp with 3 px
+tracking: the button word; Figma's action button is Inter Bold 14); Roboto Condensed Bold is
+`CapsTitle` (26 dp, the file's screen-title size), `CapsBigTitle`, `MenuTitle`, `AttackTitle` (15 dp),
+the side names and, as the narrow face for the tight cards, tabs and plates, `ItemCaption` (and its
+Dim, On and Warn looks), `ItemSash` and `PillWord` (2 px tracking); Plex Mono Regular is
+`NumberLabel`, `ItemCost`, `PowerNumber` (and its Low pair). Roboto Condensed Bold is about 19 %
+wider than the old Big Shoulders caps and Inter Bold about 38 %, so P605 took the sizes down where
+a title, a button or a name no longer fitted: the button 22 to 15 dp, the screen title 28 to 26 dp,
+the attack title 16 to 15 dp, the guide prompt 16 to 15 dp (`GuidePrompt`: Inter wraps four prompts into a scroll at 16 on the small phone), with the button tracking 4 to 3 px and the pill word 3 to 2 px. The file's
+Inter 12 command words stay Roboto Condensed Bold 14 (`ItemCaption`): Inter at 14 sp was 2 to 3 %
+too wide for the 102 dp card at the 6 inch phone and in the tabs. The ADR 0025 band of +6 to +14 %
+tracking holds on the phones; the tablet and desktop window sit above it as before.
+The roles in the file that the theme has no look for yet (card names, key figures, stat lines, the
+header, tabs) take these faces as their rows are restyled (P609 to P617). Gaps: the file's
+ExtraBold (the 87 px intro logo) is a weight of the variable Roboto, which this repository does not
+ship (static files only), so the logo is Bold; the file's Regular for the loading subtitle is not
+shipped until a look uses it (no unused weights).
+
 Three faces, all from the file's text nodes:
 | Face (file) | Weight | Role |
 | --- | --- | --- |
@@ -2368,8 +2391,8 @@ ADR 0049 answer 6, **P605 runs**.
 - **Face and licence.** IBM Plex Mono, copyright IBM Corp., SIL Open Font License 1.1 with the
   reserved font name "Plex", from `github.com/IBM/plex`. The files stay unmodified and ship with their
   `OFL.txt` under `assets/art/fonts/ibm-plex-mono/`, a CREDITS row, the Licences screen and the
-  export notices (ADR 0025 section 13). P605 confirms the licence text and the reserved name against
-  the upstream `OFL.txt` when it downloads the file; this read-out did not fetch the font.
+  export notices (ADR 0025 section 13). P605 confirmed the licence text and the reserved name
+  against the upstream `OFL.txt` of tag `@ibm/plex-mono@2.5.0`.
 - **Weight and size.** One file, Regular (400). The file has no bold mono and no italic.
 - **Coverage.** The file's labels use these symbols next to the text: ◈ (credits), ϟ (power), ●, ■, △,
   ✓, ◇, ☑, □, ⌄, ‹, →, ★, ↑, ╱, ⌁. Which of them Plex Mono itself carries was not checked (Figma
@@ -2377,10 +2400,9 @@ ADR 0049 answer 6, **P605 runs**.
   marks are our own glyph icons (`EconomyPill`), and P605's test checks æøåäöüß and the digits and
   punctuation of the HUD only.
 - **The two other faces.** The file sets titles in Roboto Condensed and body in Inter. ADR 0049
-  section 5 keeps Big Shoulders (titles, buttons) and Chakra Petch (body, numbers) where those are
-  close; Chakra Petch is squarer than Inter, Big Shoulders narrower than Roboto Condensed. This is
-  Michael's call and it is not changed here; if he wants the file's faces, each is its own
-  ADR 0025 section 13 row (both are OFL or Apache families).
+  section 5 first kept Big Shoulders and Chakra Petch where those were close. Michael then chose
+  the file's faces (2026-11-25), and P605 shipped Roboto Condensed and Inter (both OFL 1.1; the
+  Roboto 3 release is OFL, not the Apache 2.0 of old Roboto).
 - **Fixed-width digits.** Plex Mono's digits are fixed width, so the clock, the count and the credits
   can drop the per-digit slot code in P618 if Michael wants that; not decided here.
 
@@ -3372,8 +3394,8 @@ palette first, then the three places from it.
 2. **Terrain**: the `colors` and `tiles` exports of `game/view/MapView.gd`, with the gallery's
    copies and the "Fog and terrain" section above.
 3. **UI**: the central Theme of plan row P58, `game/ui/theme.tres`. It holds the HUD's fonts
-   (Chakra Petch as the default font and for numbers; Big Shoulders Display ExtraBold as one
-   `FontVariation` per size class of buttons and titles, P118), the font sizes, the selection
+   (Inter as the default font and for buttons, Plex Mono for numbers, Roboto Condensed Bold as one
+   `FontVariation` per size class of titles, P118 and P605), the font sizes, the selection
    panel's backdrop (palette row "HUD panel backdrop"), the HUD v2 tokens and the two accent pairs
    (the palette rows marked (v2)) and the colours of the selection box and anchor. The text and
    button colours and the Button StyleBoxes are the engine's defaults and are not in the file: a
@@ -3390,7 +3412,7 @@ palette first, then the three places from it.
    row in `assets/CREDITS.md` (author, source URL, licence) and its licence text beside every build
    (P118b) and, from Phase 5's settings on, in its Licences screen, and is referenced only from the
    theme: `tests/project/test_ui_theme_scan.gd` flags a font named in any other script, scene or
-   resource under `game/` and `scenes/`. The tracking of a Big Shoulders `FontVariation`
+   resource under `game/` and `scenes/`. The tracking of a caps `FontVariation`
    (`spacing_glyph`, whole base px) is not scaled by the dp step and is listed in `metadata/base_px`;
    the three classes (button 22 dp with 4 px, title 28 dp with 5 px, big title 36 dp with 6 px) keep
    it at 7.1 to 10.3 % of the size on every phone profile of `ui_profiles.gd` (ratios 1.75 to 2.37;
@@ -3398,9 +3420,9 @@ palette first, then the three places from it.
    to 18.2 % in the desktop window (1.0, the dev window): one whole-px tracking cannot hold the
    band over ratios of 1.0 to 2.37, and the phones are what it is held for. The dp step reads only
    `font_sizes/` and `styles/`, so the three `*/fonts/font` entries in `metadata/base_px` are inert
-   today and mark what a later step that scales fonts must leave alone. Chakra Petch has no
-   OpenType `tnum` (its digits are proportional), so a number that changes keeps fixed digit slots
-   in code (P119).
+   today and mark what a later step that scales fonts must leave alone. The numbers' Plex Mono has
+   fixed-width digits; a number that changes still keeps fixed digit slots in code (P119) until
+   P618 decides to drop them.
 
 Besides the three places, the same new look also replaces, in the same PR:
 - **The art without a naming convention**, in place. The selection ring
@@ -3646,4 +3668,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
 | 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
+| 2026-11-25 | v1.53 (P605, art-director, ADR 0049 amendment): the UI type is Michael's Figma type: Roboto Condensed Bold, Inter Regular and Bold, IBM Plex Mono Regular, static unmodified OFL 1.1 files; Big Shoulders and Chakra Petch removed; the Type scale section says which theme type uses which face; the Menu looks edge colour reads #33434A. |
 | 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |

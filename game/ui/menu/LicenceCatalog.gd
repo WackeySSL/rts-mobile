@@ -15,6 +15,8 @@ const ASSET_LICENCE: String = "res://assets/LICENSE.md"
 const CREDITS: String = "res://assets/CREDITS.md"
 const FONT_DIR: String = "res://assets/art/fonts/"
 const OFL_NAME: String = "OFL.txt"
+## A family whose folder name does not capitalise into its name.
+const FAMILY_NAMES: Dictionary[String, String] = {"ibm-plex-mono": "IBM Plex Mono"}
 const LIBCXX: String = "llvm-libc++/LICENSE.TXT"
 const GODOT_CPP: String = "godot-cpp-4.5-stable/LICENSE.md"
 const POING_ADMOB: String = "poing-godot-admob-5.1.0/LICENSE.txt"
@@ -58,7 +60,8 @@ func build() -> Array[LicenceEntry]:
 	if kernels:
 		rows.append(_packed(tr("godot-cpp"), GODOT_CPP))
 	for family: String in _font_folders():
-		var title: String = family.replace("-", " ").capitalize() + tr(" font")
+		var family_name: String = FAMILY_NAMES.get(family, family.replace("-", " ").capitalize())
+		var title: String = family_name + tr(" font")
 		rows.append(LicenceEntry.make(title, _read(FONT_DIR + family + "/" + OFL_NAME, title)))
 	rows.append(_packed(tr("Poing AdMob plugin"), POING_ADMOB))
 	if FileAccess.file_exists(LICENCES_DIR + PLAY_BILLING):

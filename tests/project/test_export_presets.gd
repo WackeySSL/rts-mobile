@@ -215,7 +215,7 @@ func test_web_preset_exports_the_project_icon_as_the_favicon() -> void:
 func test_every_preset_packs_the_ofl_text_of_each_font_folder() -> void:
 	var config: ConfigFile = _config()
 	var texts: Array[String] = FileScan.list_files(FONT_DIR, OFL_NAME)
-	assert_int(texts.size()).is_greater_equal(2)  # Big Shoulders and Chakra Petch.
+	assert_int(texts.size()).is_greater_equal(3)  # Roboto Condensed, Inter and IBM Plex Mono.
 	texts.append(FUTURE_OFL)
 	for section: String in ALL_PRESETS:
 		var include: String = config.get_value(section, "include_filter", "")

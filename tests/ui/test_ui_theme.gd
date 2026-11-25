@@ -16,7 +16,7 @@ const ARMY_FONT_DP: float = 18.0
 const NUMBER_FONT_DP: float = 20.0
 const DEV_FONT_PX: int = 40  ## Base px, not dp.
 ## What the file keeps in base px: the Dev button's size and, since P118, the three tracking
-## entries of the Big Shoulders FontVariations and, since P119, the pill word's
+## entries of the caps FontVariations and, since P119, the pill word's
 ## (tests/ui/test_ui_theme_fonts.gd); P519 adds the menu title, the side names and the slider
 ## thumbs.
 const BASE_PX_ENTRIES: Array[String] = [

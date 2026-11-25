@@ -288,7 +288,10 @@ func test_the_tutorial_screen_fits_at_every_size_and_keeps_its_scroll_through_a_
 	await _check_every_size(TUTORIAL, false)
 	# It scrolls only where the window is short: the small landscape phones. A short portrait
 	# window (the phone's safe area cut down) gives a second scrolling size for the other way.
-	var landscape: UiMetrics = UiProfiles.by_name(&"android_6in")
+	# P605 re-pin: Inter wraps the lesson text into fewer lines than Chakra Petch did, so the column
+	# is a little shorter and android_6in (719 dp page) no longer scrolls; notch_design (the same
+	# window with the design's insets) still does (73 px), so the turn starts from that one.
+	var landscape: UiMetrics = UiProfiles.by_name(&"notch_design")
 	var upright: UiMetrics = _profile_with_window(
 		Vector2i(landscape.window_size.y, landscape.window_size.x)
 	)
