@@ -35,10 +35,13 @@ const HOW_LONG_SECTION: StringName = &"how_to_play_long_section"
 const LICENCES_LIST: StringName = &"licences_list"
 const LICENCES_TEXT: StringName = &"licences_text"
 const TUTORIAL: StringName = &"tutorial"
-## The only profile whose safe width is narrower than the side row: its names wrap.
-const WRAPPING_PROFILE: StringName = &"web_phone_portrait"
+## The profile whose safe width is narrower than the side row: its names wrap. P607 re-pin: the
+## names NORDVÆRN and FACET are shorter than DERRICK LEAGUE and LUMEN ACCORD, so the row fits at
+## every size and none wraps. A later longer name sets it again (the wrap branch below stays).
+const WRAPPING_PROFILE: StringName = &""
 ## Profiles whose row is wider than the asked column but fits the safe width: the column grows.
-const GROWN_PROFILES: Array[StringName] = [&"web_phone", &"web_phone_small", &"notch_design"]
+## P607 re-pin: empty, for the same reason (it was web_phone, web_phone_small, notch_design).
+const GROWN_PROFILES: Array[StringName] = []
 const LONG_TEXT_ROW: String = "GODOT COPYRIGHT"
 
 var _window_size_before: Vector2i

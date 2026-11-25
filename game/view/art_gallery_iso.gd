@@ -15,9 +15,7 @@ extends Control
 ## model's `damage` and `hang` points, over the hull and under the turret. Built on first show;
 ## view-only.
 
-const FACTION_NAMES: Dictionary[StringName, String] = {
-	&"fossil": "Derrick League", &"renew": "Lumen Accord"
-}
+const FACTION_NAMES: Dictionary[StringName, String] = {&"fossil": "Nordværn", &"renew": "Facet"}
 ## The players' triads (ADR 0023 section 5): player 1 Signal, player 2 Arktisk.
 const TRIADS: Array[Array] = [
 	["#FF9446", "#E8681F", "#B04B12"],
