@@ -1030,19 +1030,19 @@ body = "In Settings, tap Remove ads (the price is the store's) to remove every b
 script = ExtResource("3_ent")
 id = &"menus-tutorial"
 title = "Tutorial"
-body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself, and Skip lesson on its cards leaves it. A lesson you leave starts from the top next time. During a match Settings has no Replay tutorial; leave the match first."
+body = "Tap Tutorial on the main menu, or Replay tutorial in Settings, to see the lessons: Basics first, then three short ones. A finished lesson says DONE and the next to play says NEXT. Tap a lesson to start it, even one you have finished. The first time you start the game, Basics begins by itself. Only the first card of a lesson has Skip lesson; Leave tutorial in the pause menu ends a lesson at any time. A lesson you leave starts from the top next time. During a match Settings has no Replay tutorial; leave the match first."
 
 [sub_resource type="Resource" id="e22t3"]
 script = ExtResource("3_ent")
 id = &"menus-tutorial-guide"
 title = "The blinking frame"
-body = "In a lesson, the card stands at the top, under the credits and the radar, and stays there. If the frame lands under the card, the card turns see-through and your tap goes through. On the smallest phones a small tab shows at the top when there is no room; tap it to open the card. The frame around the thing to tap blinks, so you can see where to touch. It never goes fully dark. If a card waits a long time, the frame turns amber and doubles. With Reduced effects on in Settings, the frame holds still and is a little thicker."
+body = "In a lesson, the card stands at the top, under the credits and the radar, and stays there. If the frame lands under the card, the card turns see-through and your tap goes through. A small tab at the card's corner shows which card you are on, for example 3/26. Tap it to put the card away and tap it again to open it. Each new card opens by itself, and so does a card that has waited a long time. Between two cards the tab stays alone with the next number. On the smallest phones, where there is no room for the card, only the tab shows; tap it to open the card. The frame around the thing to tap blinks, so you can see where to touch. It never goes fully dark. If a card waits a long time, the frame turns amber and doubles. With Reduced effects on in Settings, the frame holds still and is a little thicker."
 
 [sub_resource type="Resource" id="e22t2"]
 script = ExtResource("3_ent")
 id = &"menus-tutorial-end"
 title = "Finish or leave a lesson"
-body = "When you finish the last card, tap Skip lesson, or tap Leave tutorial in the pause menu, the Tutorial screen opens again. A lesson you finished is marked DONE."
+body = "When you finish the last card, tap Skip lesson on the first card, or tap Leave tutorial in the pause menu (at any time), the Tutorial screen opens again. A lesson you finished is marked DONE."
 
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
