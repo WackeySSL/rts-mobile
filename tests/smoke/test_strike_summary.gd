@@ -130,6 +130,25 @@ func test_the_dusk_radar_counts_are_summed_and_listed() -> void:
 	assert_bool("\n".join(lines).contains("| faction renew | 4 | 3 | 1 | 1 |")).is_true()
 
 
+## The table's Fires column counts blackouts only: a group's ruptures stay out, and a group with no
+## blackout has no row.
+func test_the_radar_table_counts_blackouts_only() -> void:
+	var matches: Array[Dictionary] = _matches(1, ["normal", "hard"])
+	_put(matches[0], 0, "strike_fires_rupture", 5)  # Fossil's Deep Bore.
+	_put(matches[0], 1, "strike_fires_blackout", 4)
+	_put(matches[0], 1, "dusk_fires_radar_known", 4)
+	var strikes: Dictionary = _merge(matches)["summary"]["strikes"]
+	var lines: PackedStringArray = PackedStringArray()
+	StrikeSummary.append_lines(strikes, lines)
+	var text: String = "\n".join(lines)
+	var radar_part: String = text.substr(text.find("### Dusk radar knowledge"))
+	assert_bool(radar_part.contains("| faction renew | 4 | 4 | 0 | 0 |")).is_true()
+	assert_bool(radar_part.contains("| level hard | 4 | 4 | 0 | 0 |")).is_true()
+	assert_bool(radar_part.contains("fossil")).is_false()
+	assert_bool(radar_part.contains("level normal")).is_false()
+	assert_bool(text.find("### Strikes") < text.find("### Dusk radar knowledge")).is_true()
+
+
 func _matches(count: int, levels: Array[String]) -> Array[Dictionary]:
 	var matches: Array[Dictionary] = []
 	for index: int in count:

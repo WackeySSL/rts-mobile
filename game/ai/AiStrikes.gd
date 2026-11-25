@@ -224,6 +224,8 @@ func _count_radar_fire(at: Vector2i, reach: int) -> void:
 			return
 
 
+## Whether the ring of radius `reach` (squared) round (`x`, `y`) holds a known enemy radar; no
+## counting.
 func _ring_holds_radar(x: int, y: int, reach: int) -> bool:
 	for at: int in _rx.size():
 		var dx: int = _rx[at] - x
@@ -239,12 +241,7 @@ func _covers_radar(x: int, y: int, reach: int) -> bool:
 	if tests + _rx.size() > _tests_max:
 		return false
 	tests += _rx.size()
-	for at: int in _rx.size():
-		var dx: int = _rx[at] - x
-		var dy: int = _ry[at] - y
-		if dx * dx + dy * dy <= reach:
-			return true
-	return false
+	return _ring_holds_radar(x, y, reach)
 
 
 ## Fills the scratch with the enemy things the AI may act on, at most `_tests_max` of them: the

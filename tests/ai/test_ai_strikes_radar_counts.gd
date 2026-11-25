@@ -20,7 +20,7 @@ func test_a_known_radar_out_of_every_ring_is_known_but_not_coverable() -> void:
 	_flag_radars()
 	_cluster()
 	_enemy_building("vehicle_factory", 10, 31)
-	_enemy_building("fossil_radar", 11, 24)  # 5.5 tiles from the twin, far from the cluster.
+	_enemy_building("fossil_radar", 11, 24)  # About 7.5 tiles from the twin, far from the cluster.
 	_see_all()
 	_wave(1, AiMemory.SquadState.WAVE)
 	_fire(READY)
