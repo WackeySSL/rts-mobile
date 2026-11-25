@@ -2207,7 +2207,7 @@ Dim, On and Warn looks), `ItemSash` and `PillWord` (2 px tracking); Plex Mono Re
 `NumberLabel`, `ItemCost`, `PowerNumber` (and its Low pair). Roboto Condensed Bold is about 19 %
 wider than the old Big Shoulders caps and Inter Bold about 38 %, so P605 took the sizes down where
 a title, a button or a name no longer fitted: the button 22 to 15 dp, the screen title 28 to 26 dp,
-the attack title 16 to 15 dp, the default Label 16 to 15 dp (Inter wraps the guide prompts into a scroll at 16 on the small phone), with the button tracking 4 to 3 px and the pill word 3 to 2 px. The file's
+the attack title 16 to 15 dp, the guide prompt 16 to 15 dp (`GuidePrompt`: Inter wraps four prompts into a scroll at 16 on the small phone), with the button tracking 4 to 3 px and the pill word 3 to 2 px. The file's
 Inter 12 command words stay Roboto Condensed Bold 14 (`ItemCaption`): Inter at 14 sp was 2 to 3 %
 too wide for the 102 dp card at the 6 inch phone and in the tabs. The ADR 0025 band of +6 to +14 %
 tracking holds on the phones; the tablet and desktop window sit above it as before.
