@@ -41,11 +41,10 @@ const TAB_CLEAR_DP: float = 8.0  ## The least between the tab's rect and a card 
 const MIN_TEXT_DP: float = 120.0  ## The least width of the prompt beside the buttons' column.
 const RING_LINE_DP: float = 3.0
 const RING_GROW_DP: float = GuideRing.RING_GROW_DP
-const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
+const MIN_TARGET_DP: float = GuideRing.MIN_TARGET_DP
 const REDUCED_LINE_DP: float = 1.0  ## Reduced effects: a steady frame, this much thicker.
 const PILL_STEP_DP: float = 8.0  ## The pill width is read in steps of this.
-const FIND_EVERY: int = 15  ## Frames between looks for a control that is not there.
-const ELLIPSE_STEPS: int = 40
+const FIND_EVERY: int = GuideLookup.FIND_EVERY
 const CARD_VARIATION: StringName = &"PauseCard"
 const THROUGH_VARIATION: StringName = &"GuideCardThrough"
 const THEME_PATH: String = "res://game/ui/theme.tres"
@@ -100,7 +99,6 @@ var _skip: Button
 var _beat: TutorialBeatDef = null
 var _aim: TutorialLeadInDef = null  ## The step of the chain the ring is on (ADR 0048 section 5).
 var _fallback: TutorialLeadInDef = null  ## The beat's own anchor as a step: no director.
-var _revealed: bool = false  ## This step's drawer card was asked into view already.
 var _target: Control = null
 var _blink: Tween = null
 var _blink_alpha: float = 1.0  ## The frame's opacity now.
@@ -117,7 +115,6 @@ var _points: PackedVector2Array = PackedVector2Array()  ## The tile ring, about 
 var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
 var _again: int = 0  ## Layouts still to make for the change in hand.
-var _next_find: int = 0
 var _card_box: Rect2 = Rect2()  ## The card as last laid out, global px (empty: not shown).
 var _through_now: bool = false  ## The card is see-through: the ring meets it.
 var _modal_now: bool = false  ## The target is in a modal: the card's body takes no touch.
@@ -130,9 +127,7 @@ var _columns: GroupColumn = null
 var _build: BuildButton = null
 var _pill: EconomyPill = null
 var _next_hud: int = 0
-var _band_scope: Node = null  ## The scope whose ad bands are cached, and when to look again.
-var _bands: Array[Control] = []
-var _band_scan: int = 0
+var _lookup: GuideLookup = GuideLookup.new()
 var _tab: Button
 
 
@@ -242,7 +237,7 @@ func show_beat(beat: TutorialBeatDef) -> void:
 	_sync_aim()
 	if _ring == null:
 		return
-	_band_scan = 0  # The beat's controls may be new: list them again.
+	_lookup.rescan()
 	_gap = false
 	_arm_open = true
 	_dirty = true
@@ -472,28 +467,10 @@ func _modal_of(node: Node) -> Node:
 	return node
 
 
-## The visible rect of the ad band of the scope the target is in (the modal, else the HUD): the dock
-## ends 16 dp above it (ad policy). The bands are listed once per scope and again every `FIND_EVERY`
-## frames; whether one shows and its rect are read each frame. Empty with none.
+## The visible rect of the ad band of the scope the target is in (the modal, else the HUD).
 func _ad_band() -> Rect2:
 	var modal: Node = _modal_of(_target)
-	var scope: Node = modal if modal != null else hud_root
-	if scope == null:
-		_band_scope = null
-		return Rect2()
-	var frame: int = Engine.get_process_frames()
-	if scope != _band_scope or frame >= _band_scan:
-		_band_scope = scope
-		_band_scan = frame + FIND_EVERY
-		_bands.clear()
-		for node: Node in scope.find_children("*", "AdBannerBand", true, false):
-			_bands.append(node as Control)
-	for band: Control in _bands:
-		if is_instance_valid(band) and band.is_visible_in_tree():
-			var shown: Rect2 = _visible_rect(band)
-			if shown.has_area():
-				return shown
-	return Rect2()
+	return _lookup.ad_band(modal if modal != null else hud_root, hud_root, _view)
 
 
 ## `control`'s rect as the player sees it: cut by the scroll areas it stands in and by the screen.
@@ -501,31 +478,9 @@ func _visible_rect(control: Control) -> Rect2:
 	return GuideRing.visible_rect(control, hud_root, _view)
 
 
-## Whether the mark must stand down: a visible modal (the pause menu, a question, the result
-## screen, an overlay of the menu) covers the HUD and does not hold this beat's target, so the card
-## and its ring would sit over a menu they have nothing to say about and would eat its taps. Only a
-## card that points into the modal shows over it (the `resume` card over the pause menu).
+## Whether the mark must stand down for a visible modal that does not hold the target.
 func _covered() -> bool:
-	var host: Node = get_parent()
-	if host == null:
-		return false
-	for node: Node in host.get_children():
-		if _covers(node):
-			return true
-		if node is ModalFrame:  # The questions and the overlays of a menu are its children.
-			for inner: Node in node.get_children():
-				if _covers(inner):
-					return true
-	return false
-
-
-func _covers(node: Node) -> bool:
-	var control: Control = node as Control
-	if control == null or control == self or not (control is ModalFrame or control is MenuStack):
-		return false
-	if not control.is_visible_in_tree():
-		return false
-	return not (is_instance_valid(_target) and control.is_ancestor_of(_target))
+	return GuideLookup.covered(get_parent(), self, _target)
 
 
 func _process(_delta: float) -> void:
@@ -537,9 +492,10 @@ func _process(_delta: float) -> void:
 func _update() -> void:
 	if (_beat == null and not _gap) or not is_inside_tree():
 		return
+	if not is_instance_valid(_target):
+		_target = null  # Freed with its HUD: never passed on.
 	_sync_aim()
 	_resolve_target()
-	_reveal_once()
 	var covered: bool = _covered()
 	if covered == visible:  # The state changed: a hidden mark draws nothing and takes no touch.
 		visible = not covered
@@ -581,7 +537,7 @@ func _update() -> void:
 	_ring.size = _view
 	if ring.size != _points_for:
 		_points_for = ring.size
-		_points = _ellipse(ring.size * 0.5)
+		_points = GuideRing.ellipse(ring.size * 0.5)
 	_ring.queue_redraw()
 	if ring.has_area():
 		_start_blink()
@@ -661,12 +617,7 @@ func _first_card() -> bool:
 
 ## Whether the card's visible Next is under 8 dp from a visible button of `modal`.
 func _touches_modal(modal: Node) -> bool:
-	var next: Rect2 = Rect2(_next.global_position, _next.size).grow(8.0 * _dp - 0.01)
-	for node: Node in modal.find_children("*", "BaseButton", true, false):
-		var button: Control = node as Control
-		if button.is_visible_in_tree() and next.intersects(button.get_global_rect()):
-			return true
-	return false
+	return GuideLookup.touches(Rect2(_next.global_position, _next.size), modal, _dp)
 
 
 func _on_tab() -> void:
@@ -791,8 +742,7 @@ func _sync_aim() -> void:
 		return
 	_aim = want
 	_target = null
-	_next_find = 0
-	_revealed = false
+	_lookup.reset_step()
 	_dirty = true
 
 
@@ -803,34 +753,9 @@ func _on_target_changed(_step: TutorialLeadInDef) -> void:
 		_update()
 
 
-## Asks the sidebar once per step entry to scroll a drawer card clear of the foot room; a player
-## who scrolls away is not fought (ADR 0048 section 5).
-func _reveal_once() -> void:
-	var tile: ItemTile = _target as ItemTile
-	if _revealed or tile == null or tile.size.y <= 0.0:
-		return
-	var sidebar: Node = GuideRing.sidebar_of(tile)
-	if sidebar != null:
-		_revealed = true
-		sidebar.call(&"reveal_tile", tile)
-
-
-## Keeps `_target` the named control while it stands and shows; looks again for a missing one
-## every `FIND_EVERY` frames, not every frame.
 func _resolve_target() -> void:
-	if _aim == null or _aim.anchor != TutorialBeatDef.Anchor.CONTROL:
-		_target = null
-		return
-	if is_instance_valid(_target) and _target.is_visible_in_tree():
-		return
-	_target = null
-	var frame: int = Engine.get_process_frames()
-	if hud_root == null or _aim.anchor_control == &"" or frame < _next_find:
-		return
-	_next_find = frame + FIND_EVERY
-	var found: Control = hud_root.find_child(String(_aim.anchor_control), true, false) as Control
-	if found != null and found.is_visible_in_tree():
-		_target = found
+	_target = _lookup.find(_aim, hud_root, _target)
+	_lookup.reveal(_target as ItemTile)
 
 
 func _draw_ring() -> void:
@@ -848,15 +773,6 @@ func _draw_ring() -> void:
 			_ring.draw_set_transform(centre, 0.0, (half + Vector2(grow, grow)) / half)
 			_ring.draw_polyline(_points, tone, line, true)
 			_ring.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-
-## The ellipse of semi-axes `half`, about the origin, closed.
-static func _ellipse(half: Vector2) -> PackedVector2Array:
-	var points: PackedVector2Array = PackedVector2Array()
-	for step: int in ELLIPSE_STEPS + 1:
-		var angle: float = TAU * float(step) / ELLIPSE_STEPS
-		points.append(Vector2(cos(angle), sin(angle)) * half)
-	return points
 
 
 func _start_blink() -> void:

@@ -241,6 +241,8 @@ func test_reveal_tile_clears_the_upright_foot_room_and_the_ready_chip_scrolls_th
 		assert_float(last.get_global_rect().end.y).is_less_equal(safe.end.y + TOLERANCE_PX)
 		items.scroll_vertical = 0
 		last.state = ItemTile.State.READY
+		for other: ItemTile in tiles:  # `show_ready` takes the first READY card: it must be `last`.
+			assert_bool(other == last or other.state != ItemTile.State.READY).is_true()
 		await _sidebar.show_ready()
 		assert_int(items.scroll_vertical).override_failure_message(str(name)).is_equal(by_reveal)
 	assert_int(scrolling).override_failure_message("no upright grid scrolled").is_greater(0)

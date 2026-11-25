@@ -5,6 +5,7 @@ extends RefCounted
 
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
+const ELLIPSE_STEPS: int = 40
 
 
 ## The ring's box for step `aim`, global px: a control's rect grown a little (the part of a card in
@@ -72,19 +73,39 @@ static func list_of(control: Control, hud_root: Node) -> ScrollContainer:
 	return null
 
 
-## The nearest ancestor of `tile` that can reveal a card (the `BuildSidebar`), or null.
-static func sidebar_of(tile: Control) -> Node:
+## The `BuildSidebar` that holds `tile`, or null.
+static func sidebar_of(tile: Control) -> BuildSidebar:
 	var up: Node = tile.get_parent()
-	while up != null and not up.has_method(&"reveal_tile"):
+	while up != null and not up is BuildSidebar:
 		up = up.get_parent()
-	return up
+	return up as BuildSidebar
 
 
-## A least-size strip on the edge of `list` nearest to the scrolled-out `card` (global px).
+## A least-size strip on the edge of `list` nearest to the scrolled-out `card` (global px): the top
+## or bottom edge of a list that scrolls up and down, the left or right one of a list that scrolls
+## sideways only (the command bar).
 static func _edge(list: ScrollContainer, card: Rect2, dp: float) -> Rect2:
 	var area: Rect2 = list.get_global_rect()
 	var strip: float = MIN_TARGET_DP * dp
+	var sideways: bool = (
+		list.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED
+		and list.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED
+	)
+	if sideways:
+		var before: bool = card.get_center().x < area.get_center().x
+		return Rect2(
+			area.position.x if before else area.end.x - strip, area.position.y, strip, area.size.y
+		)
 	var above: bool = card.get_center().y < area.get_center().y
 	return Rect2(
 		area.position.x, area.position.y if above else area.end.y - strip, area.size.x, strip
 	)
+
+
+## The ellipse of semi-axes `half`, about the origin, closed.
+static func ellipse(half: Vector2) -> PackedVector2Array:
+	var points: PackedVector2Array = PackedVector2Array()
+	for step: int in ELLIPSE_STEPS + 1:
+		var angle: float = TAU * float(step) / ELLIPSE_STEPS
+		points.append(Vector2(cos(angle), sin(angle)) * half)
+	return points

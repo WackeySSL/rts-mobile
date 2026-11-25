@@ -273,6 +273,12 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   clear of the upright foot room. A player who scrolls away is not fought. The ring is clipped to
   the visible part (`_visible_rect`, kept). While the card is out of view entirely, the ring sits on
   the list's edge nearest to it, and the hint is a drag in the scroll direction.
+  *Deviation (P591).* The ask is made once per step entry whether or not the card is in view,
+  because the foot room under the gesture bar lies inside the scroll rect, so a card standing in it
+  counts as "in view" yet is not clear. It is a no-op for a card already clear; a card taller than
+  the list scrolls to its top, as the Ready chip does. The ask waits until the card's rect has
+  held for 2 looks, since the grid sorts and the drawer slides after a tab change. A list that
+  scrolls sideways only (the command bar) gets the strip on its left or right edge.
 - **All lessons** (Michael's item 5). A lint in `test_lesson_data.gd` says that every beat whose
   final target is a drawer card or tab (`Tile_*`, `Tab*`) has a lead-in that opens the drawer. One
   whose target is a drawer card also has the tab's lead-in. The sweep (§10) starts every beat in

@@ -213,7 +213,32 @@ func _lessons() -> Array[TutorialLessonDef]:
 			var lesson: TutorialLessonDef = load(LESSON_DIR + file_name) as TutorialLessonDef
 			if lesson != null:
 				found.append(lesson)
+	found.append(_chained_lesson(found[0]))
 	return found
+
+
+## A fixture, not lesson data: one beat that chains BUILD, then the Infantry tab, on `base`'s
+## scenario. The sweep fails if the mark ignores the chain (ring on the tab with the drawer shut).
+func _chained_lesson(base: TutorialLessonDef) -> TutorialLessonDef:
+	var beat: TutorialBeatDef = Lesson.beat(
+		"chain",
+		TutorialConditions.Kind.DRAWER_TAB,
+		{
+			"anchor": TutorialBeatDef.Anchor.CONTROL,
+			"anchor_control": &"TabInfantry",
+			"value": World.Tab.INFANTRY,
+			"lead_in":
+			[
+				Lesson.lead_in(
+					"BuildButton", TutorialConditions.Kind.UNFOLD_OPEN, HudState.Unfold.DRAWER
+				)
+			]
+		}
+	)
+	var made: TutorialLessonDef = Lesson.lesson("chain-fixture", [beat])
+	made.scenario = base.scenario
+	made.title_key = base.title_key
+	return made
 
 
 ## What a beat leaves behind it: the unfold and the drawer's tab its condition waits for.
@@ -338,6 +363,23 @@ func _checks(
 			state["groups"]
 		]
 	)
+	var aim: TutorialLeadInDef = _aimed(beat)
+	var target: Control = _mark.target_control()
+	if target != null and target.name != aim.anchor_control:
+		lines.append(
+			"%s: the ring is on %s, the chain says %s" % [label, target.name, aim.anchor_control]
+		)
+	if (
+		target == null
+		and aim.anchor == TutorialBeatDef.Anchor.CONTROL
+		and not beat.lead_in.is_empty()
+	):
+		lines.append(
+			(
+				"%s: a chained beat's step %s has no control under the ring"
+				% [label, aim.anchor_control]
+			)
+		)
 	var dock: Rect2 = _mark.dock_rect()
 	if not GuideDock.has_room(dock, dp):
 		_folds += 1
@@ -411,12 +453,6 @@ func _checks(
 	_unfolds += 1
 	if _director.current != null and _mark.visible and not _mark.card_open():  # Not ended meanwhile.
 		lines.append("%s: a second tap on the tab did not unfold the card" % label)
-	var aim: TutorialLeadInDef = _aimed(beat)
-	var target: Control = _mark.target_control()
-	if target != null and target.name != aim.anchor_control:
-		lines.append(
-			"%s: the ring is on %s, the chain says %s" % [label, target.name, aim.anchor_control]
-		)
 	if aim.anchor == TutorialBeatDef.Anchor.TILE:
 		var body: Control = _mark.find_child("Card", true, false) as Control
 		var camera: RtsCamera = _main.get_node("Camera") as RtsCamera
