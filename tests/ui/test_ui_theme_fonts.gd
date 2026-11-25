@@ -215,7 +215,9 @@ func test_the_tablet_and_the_desktop_window_are_pinned_above_the_phones_band() -
 			)
 
 
-func test_the_hud_tokens_are_the_values_of_the_adr() -> void:
+## The HudTokens and HudPanel are the values of STYLE.md "Tokens v3 (P604)" (the ADR 0025 values are
+## superseded).
+func test_the_hud_tokens_are_the_tokens_v3_values_of_style_md() -> void:
 	var theme: Theme = HudThemes.source()
 	assert_str(_hex(theme, &"border", &"HudTokens")).is_equal("33434a")
 	assert_str(_hex(theme, &"money", &"HudTokens")).is_equal("f4b653")
