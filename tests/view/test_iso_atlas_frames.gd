@@ -9,7 +9,7 @@ extends GdUnitTestSuite
 ## paths (a frame with no text) are not tested on purpose: they print "ERROR:" even when asserted
 ## (ADR 0002, Consequences).
 
-const KEY: PackedStringArray = ["#FF9446", "#E8681F", "#B04B12"]  ## Signal, the Derrick League's.
+const KEY: PackedStringArray = ["#F07AF0", "#D234D2", "#9A1F9A"]  ## The sentinel key triad.
 const ARKTISK: PackedStringArray = ["#62D6EE", "#1FA6C8", "#137C99"]
 const FRAME: Vector2i = Vector2i(8, 4)  ## A crafted frame: its own colour, then a key stripe.
 const HEAD: String = '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">'

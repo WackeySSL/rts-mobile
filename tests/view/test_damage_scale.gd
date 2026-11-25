@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## The damage patches are baked at 75 % (plan P157b, ADR 0028 section 3 amended 2026-11-03): a
 ## crafted sheet with a body, a shadow and `dmg1`/`dmg2` parts of 100x100 art px.
 
-const KEY: PackedStringArray = ["#FF9446", "#E8681F", "#B04B12"]
+const KEY: PackedStringArray = ["#F07AF0", "#D234D2", "#9A1F9A"]  ## The sentinel key triad.
 const TRIAD: PackedStringArray = ["#62D6EE", "#1FA6C8", "#137C99"]
 const ART_PX: int = 100
 

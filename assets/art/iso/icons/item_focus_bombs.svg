@@ -28,13 +28,13 @@
 <polygon points="108,122 122,115 122,116.5 108,123.5" fill="#2A3036"/>
 </g>
 <g>
-<polygon points="8,2 36,2 2,36 2,8" fill="#1FA6C8"/>
+<polygon points="8,2 36,2 2,36 2,8" fill="#D234D2"/>
 </g>
 <!-- Shape: one slim white bomb standing nose down with a glass nose, graphite fins and a team band, inside two team-coloured focus rings with four ticks -->
 <g fill="none" stroke-linecap="butt">
-  <circle cx="64" cy="64" r="36" stroke="#1FA6C8" stroke-width="5"/>
-  <circle cx="64" cy="64" r="23" stroke="#62D6EE" stroke-width="3"/>
-  <path d="M64 18 V32 M64 96 V110 M18 64 H32 M96 64 H110" stroke="#1FA6C8" stroke-width="5"/>
+  <circle cx="64" cy="64" r="36" stroke="#D234D2" stroke-width="5"/>
+  <circle cx="64" cy="64" r="23" stroke="#F07AF0" stroke-width="3"/>
+  <path d="M64 18 V32 M64 96 V110 M18 64 H32 M96 64 H110" stroke="#D234D2" stroke-width="5"/>
 </g>
 <g transform="translate(0 -6) translate(0 0)">
   <polygon points="44,38 52,46 52,62 44,54" fill="#4F5A63"/>
@@ -43,8 +43,8 @@
   <path d="M52 44 H64 V110 C58 108 52 100 52 88 Z" fill="#FFFFFF"/>
   <path d="M64 44 H76 V88 C76 100 70 108 64 110 Z" fill="#A1A6A6"/>
   <path d="M53 92 C54 100 58 107 64 110 C70 107 74 100 75 92 Z" fill="#B4C8CF"/>
-  <polygon points="52,62 76,62 76,70 52,70" fill="#1FA6C8"/>
-  <polygon points="52,62 76,62 76,65 52,65" fill="#62D6EE"/>
+  <polygon points="52,62 76,62 76,70 52,70" fill="#D234D2"/>
+  <polygon points="52,62 76,62 76,65 52,65" fill="#F07AF0"/>
   <rect x="60" y="76" width="4" height="4" fill="#A8F5B0"/>
 </g>
 <g transform="translate(0 -6) translate(0 0)" fill="none" stroke-width="2" stroke-linejoin="round">
@@ -52,6 +52,6 @@
   <polygon points="84,38 76,46 76,62 84,54" stroke="#1D2124"/>
   <path d="M52 44 H76 V88 C76 100 70 108 64 110 C58 108 52 100 52 88 Z" stroke="#606363"/>
   <path d="M53 92 C54 100 58 107 64 110 C70 107 74 100 75 92 Z" stroke="#515A5D"/>
-  <polygon points="52,62 76,62 76,70 52,70" stroke="#137C99"/>
+  <polygon points="52,62 76,62 76,70 52,70" stroke="#9A1F9A"/>
 </g>
 </svg>

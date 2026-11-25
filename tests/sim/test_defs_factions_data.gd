@@ -213,12 +213,11 @@ func test_the_chain_checks_report_the_headquarters_and_producers_a_faction_needs
 
 ## A faction file holds its id (the file name), a display name, an emblem art id and a key triad of
 ## three `#RRGGBB` strings in capitals (the bake replaces exact strings, ADR 0023 section 5) from
-## light to dark; no two factions share a name, an emblem or a colour. The values of both factions
-## are the ADR's (sections 5 and 6).
+## light to dark; no two factions share a name or an emblem. Both carry the one sentinel triad
+## (ADR 0050 section 3), which the bake replaces with the player's.
 func test_every_faction_file_holds_its_id_names_emblem_and_key_triad() -> void:
 	var names: Dictionary[String, String] = {}
 	var emblems: Dictionary[String, String] = {}
-	var colours: Dictionary[String, String] = {}
 	for path: String in FileScan.list_files(FACTIONS_DIR, ".tres"):
 		var faction: FactionDef = load(path)
 		var file: String = path.get_file().get_basename()
@@ -239,20 +238,18 @@ func test_every_faction_file_holds_its_id_names_emblem_and_key_triad() -> void:
 				and hex == hex.to_upper()
 			)
 			assert_bool(well_formed).override_failure_message(file + " " + hex).is_true()
-			assert_bool(colours.has(hex)).override_failure_message(file + " " + hex).is_false()
-			colours[hex] = file
 			luminance.append(Color.html(hex).get_luminance())
 		assert_bool(luminance[0] > luminance[1] and luminance[1] > luminance[2]).is_true()
 	var fossil: FactionDef = load(FACTIONS_DIR + "/fossil.tres")
 	assert_array([fossil.id, fossil.display_name, fossil.emblem]).is_equal(
 		[&"fossil", "Derrick League", &"emblem_fossil"]
 	)
-	assert_array(Array(fossil.key_triad)).is_equal(["#FF9446", "#E8681F", "#B04B12"])
+	assert_array(Array(fossil.key_triad)).is_equal(ArtPalette.SENTINEL)
 	var renew: FactionDef = load(FACTIONS_DIR + "/renew.tres")
 	assert_array([renew.id, renew.display_name, renew.emblem]).is_equal(
 		[&"renew", "Lumen Accord", &"emblem_renew"]
 	)
-	assert_array(Array(renew.key_triad)).is_equal(["#62D6EE", "#1FA6C8", "#137C99"])
+	assert_array(Array(renew.key_triad)).is_equal(ArtPalette.SENTINEL)
 
 
 ## The names the player reads: every unit and building file has one (an empty name would read as

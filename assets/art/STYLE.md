@@ -399,15 +399,30 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   `test_artgen_cards.gd` the cards and the ellipse, `test_gen_art_cli.gd` the exit codes of
   `scripts/gen-art.sh` and `tools/artgen/gen_art.gd` (`--check` of a model that is not committed
   is exit 4).
-- **The key band** (ADR 0023 section 5): a colour other than the faction's three key colours must
-  not have an HSV hue within 20 degrees of a key colour's hue and a saturation of at least 0.30.
-  The Derrick League's band is 1.6 to 45.3 degrees, the Lumen Accord's 170.3 to 213.0. Greys and
-  muted materials are free; how the art reads with the other six triads is the gallery's check.
+- **The key band** (ADR 0023 section 5, ADR 0050 section 3, P632): a colour other than the
+  sentinel's three must not have an HSV hue within 20 degrees of the sentinel's hue (300, so
+  280 to 320 degrees) and a saturation of at least 0.30. One band for both factions. Greys and
+  muted materials are free.
+- **The sentinel key triad** (P632): light #F07AF0, mid #D234D2, dark #9A1F9A, magenta at hue 300.
+  Only the team marker is painted in it (material `team`), in both factions. It is never seen in
+  the game: the match-start bake replaces these three strings with the player's triad, in fills,
+  strokes and gradient stops alike (`IsoPlayerArt.recolour`, one pass). A gradient of any other
+  material never holds a sentinel hex (ADR 0050 section 1). The item cards are no player's, so
+  they draw the marker in the faction's fixed colour.
+- **The fixed faction colours** (P632): material `faction`, never replaced by the bake. Nordvaern
+  (`fossil`) orange #FF6E1F, Facet (`renew`) blue #40A3FF, as the mid tone of the left face; the
+  top and the right face follow the ladder (100 % and 62 % of the top). They are the hues of the HUD
+  accents `AccentFossil` and `AccentRenew`.
+- **Shares** (P632): the marker is 2 to 12 % of a sprite's opaque pixels in its default view for
+  the transition, while the old models still paint their whole team areas in the marker; the last
+  model batch narrows it to 2 to 6 % (ADR 0050 section 3). A model at detail 1 or more paints
+  15 to 85 % of its default view in the fixed faction colour.
 - **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
   #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
-  #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. Art keys its team
-  zones in its faction's own triad (Derrick League Signal, Lumen Accord Arktisk); the bake replaces
-  those six strings with the player's. Player 1 Signal, player 2 Arktisk.
+  #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. These eight are what a
+  player can wear. The default marker colours of the match routes are your own Sne (player 1) and
+  the computer's Karmin (player 2), `team_triads` `(0, 6, 2)` in every Skirmish scenario; the
+  galleries show Sne and Karmin. Signal and Arktisk are no longer any faction's key.
 
 ### Palette per faction
 The mid tone of each material (ADR 0023 section 6 as changed by the key band). Four colours of the
@@ -3556,3 +3571,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-19 | v1.48 (P551, art-director, plan answer 5): the Map looks section: `MapDef.ground_look` (view only) and the `assets/art/svg/ground_looks/<look>/` folders, and the first look, Heron Fords' (`heron`): river water with current lines that run on from tile to tile, shingle sand and meadow grass, six diamonds written as SVG by a small projection script kept outside the repository (the committed SVG is the source, as for P105), in the same keys and slots of the ground page (no new terrain, no new tile, no atlas pin moves); the Terrain page of the gallery ends with a cut of the map in its look. |
 | 2026-11-19 | v1.49 (P553, art-director, plan answer 5): the second map look, Curlew Crags' (`crags`): rock, sand, grass and scrub re-skinned as banded cliff, cracked pass floor, thin upland turf and thorn heath (eight diamonds written as SVG by a small projection script kept outside the repository, the committed SVG being the source, in the same keys and slots; no new terrain, no atlas pin moves), its table in "Map looks", the shared look checks in `tests/art/ground_look_support.gd` and a second block on the gallery's Terrain page. |
 | 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
+| 2026-11-25 | v1.51 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the galleries and the same-scene sheet in Sne and Karmin, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the default marker colours in the Skirmish scenarios |

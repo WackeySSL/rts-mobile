@@ -3,8 +3,9 @@ extends GdUnitTestSuite
 ## League units" and "Lumen Accord units"): each is named in its silhouette line, a squad is three
 ## figures, a vehicle has the wheels or tracks its line says and stands in its size class, the gun
 ## of an armed vehicle is the thing that reaches farthest forward and stands on the centre line (one
-## barrel), the team colour is 6 to 14 % of the default view (the art rows aim at 8 to 12 %, ADR
-## 0023 section 5), each Lumen Accord unit carries the faction's hexagon and mint light, and the
+## barrel), the team colour is 2 to 12 % of the default view for the transition (P632; the art
+## rows aimed at 8 to 12 %, ADR 0023 section 5), each Lumen Accord unit carries the faction's
+## hexagon and mint light, and the
 ## top-down unit files are gone. Frames, sheets, shadows and the 32 px reading are pinned for every
 ## type in test_artgen*.gd.
 
@@ -63,7 +64,7 @@ const WHEELS: Dictionary[String, int] = {
 	"renew_tanker": 4,
 }
 const FIGURE_LINK: float = 0.12  ## Tiles: two ground contacts this close are one figure's legs.
-const TEAM_SHARE: Vector2 = Vector2(0.06, 0.14)
+const TEAM_SHARE: Vector2 = Vector2(0.02, 0.12)
 const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
 const SCALE: float = 0.5  ## 2x art at zoom 1.
 const PAGE: Vector2i = Vector2i(320, 320)
@@ -272,7 +273,7 @@ func test_every_lumen_accord_unit_has_a_hexagon_and_a_mint_light() -> void:
 		assert_int(mint).override_failure_message(id).is_greater(0)
 
 
-func test_the_team_colour_is_6_to_14_percent_of_the_default_view() -> void:
+func test_the_team_colour_is_2_to_12_percent_of_the_default_view() -> void:
 	for id: String in NAMES:
 		var share: float = _team_share(_model(id))
 		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(

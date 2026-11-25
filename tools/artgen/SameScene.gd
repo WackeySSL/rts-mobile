@@ -14,6 +14,9 @@ const GAP: int = 8
 const SIDE_PX: int = 32
 const EDGE_STEP: float = 0.08  ## Luminance jump between neighbours that counts as an edge.
 const DARK: float = 0.06
+## The marker of the player's own units: Sne (white), the default of ADR 0050 section 3, answer 3;
+## `mirror_triad` is the computer's. A frame carries the sentinel key, never shown as it is.
+const OWN_TRIAD: int = 6
 
 
 ## One sprite, ready to blend: its body and cast shadow as images on the same canvas.
@@ -28,14 +31,16 @@ static func load_bands() -> SameSceneBands:
 	return load(BANDS_PATH) as SameSceneBands
 
 
-## The sprite of `art_id` for a player wearing `triad` (the faction's own key when empty).
+## The sprite of `art_id` for a player wearing `triad` (your own Sne when empty).
 static func sprite(
 	art_id: StringName, bands: SameSceneBands, zoom: float, triad: PackedStringArray = []
 ) -> Sprite:
 	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(art_id)
-	var keys: PackedStringArray = PackedStringArray(ArtPalette.KEYS[sheet.faction])
+	var own: PackedStringArray = PackedStringArray(WorldSort.TRIADS[OWN_TRIAD])
 	var art: IsoPlayerArt = IsoPlayerArt.make(
-		sheet.faction, keys, keys if triad.is_empty() else triad
+		sheet.faction,
+		PackedStringArray(ArtPalette.KEYS[sheet.faction]),
+		own if triad.is_empty() else triad
 	)
 	var dirs: PackedInt32Array = sheet.directions(&"hull")
 	var want: int = bands.wanted_dir.get(sheet.faction, 0)
@@ -267,8 +272,9 @@ static func _plain(image: Image) -> Sprite:
 	return s
 
 
-## The sheet: the scene's four sprites on every zoom, a mirror pair, the effects, all graded as the
-## world is, then the item cards and glyphs as the HUD draws them.
+## The sheet: the scene's four sprites on every zoom, a mirror row (the same unit and the same
+## building in your own Sne and the computer's Karmin, so that only the marker differs), the
+## effects, all graded as the world is, then the item cards and glyphs as the HUD draws them.
 static func sheet(b: SameSceneBands) -> Image:
 	var world: Array = []
 	var y: int = 0

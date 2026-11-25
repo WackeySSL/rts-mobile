@@ -5,8 +5,10 @@ extends RefCounted
 
 ## The key-share bands of ADR 0029 section 5: the share of the intact picture's key-band pixels
 ## that is still key-band at SKADET and KRITISK (the sheet's 70 % and 35 %, with room). SKADET's
-## band is kept for the stage index only: it shows the intact picture now (ADR 0034).
-const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.20, 0.50)]
+## band is kept for the stage index only: it shows the intact picture now (ADR 0034). KRITISK's is
+## 0.15 to 0.55 for the transition to the sentinel key (P632, a narrower magenta band reads a few
+## pixels differently); the last model batch of ADR 0050 section 3 puts it back to 0.20 to 0.50.
+const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.15, 0.55)]
 const SCALE: float = 0.5  ## The 2x art at zoom 1.
 const MIN_ALPHA: float = 0.5  ## A pixel more transparent than this is not ink.
 ## The crafted building: a body, a tower that carries the beacon, a stack, four team panels, a
