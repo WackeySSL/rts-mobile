@@ -14,6 +14,7 @@ extends GdUnitTestSuite
 
 const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd")
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
+const MidPlay: GDScript = preload("res://tests/ui/tutorial/support/midplay_fixture.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
@@ -22,21 +23,6 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const TOLERANCE_PX: float = 0.5
 const OVERLAP_PX2: float = 4.0
 const GROUPS: int = 3
-## The ratchet: beats whose control exists only in the middle of play, which the sweep cannot set
-## up from a start state: a placement ghost (`PlaceConfirm`), a strike aim with its point
-## (`StrikeConfirm`), an aircraft or a carrier the lesson built (`Home`, `Board`), a damaged unit
-## beside a repair building (`Repair`), minelayers (`Mine`), a building that mends (`Mend`). Each
-## is driven by `tests/e2e/test_tutorial_run.gd`, where the bot taps the ring's control. A beat on
-## the list that shows its ring in the sweep fails: it leaves the list.
-const NEEDS_PLAY: Array[String] = [
-	"air/board",
-	"air/home",
-	"basics/placed",
-	"strikes/fire",
-	"support/mend",
-	"support/mine",
-	"support/repair",
-]
 const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Which selection a start state holds: nothing, the player's units, one building (`BUILDINGS` plus
 ## its index in the player's list).
@@ -113,13 +99,15 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 			var carried: Dictionary = {"unfold": HudState.Unfold.NONE, "tab": 0, "select": NONE}
 			for beat: TutorialBeatDef in lesson.beats:
 				if beat.anchor != TutorialBeatDef.Anchor.NONE:
-					var result: Array = await _judge(lesson, beat, profile, carried)
-					var problems: Array[String] = result[1] as Array[String]
 					var pair: String = "%s/%s" % [lesson.id, beat.id]
-					if NEEDS_PLAY.has(pair):
-						if problems.is_empty():
-							found.append("%s is on NEEDS_PLAY and shows its ring: remove it" % pair)
-						problems.clear()
+					var result: Array
+					if MidPlay.has(pair):
+						result = await _judge_midplay(lesson, beat, profile, pair)
+						_close()
+						await _open(lesson, profile)  # Back to the plain match for the beats after it.
+					else:
+						result = await _judge(lesson, beat, profile, carried)
+					var problems: Array[String] = result[1] as Array[String]
 					judged += 1
 					chained += int(result[0])
 					found.append_array(problems)
@@ -180,6 +168,27 @@ func test_a_beat_that_asks_for_units_ends_on_their_card_not_on_a_tab() -> void:
 					. override_failure_message(ends)
 					. is_false()
 				)
+
+
+## Judges `beat` in the mid-play state its fixture builds: a fresh match with the fixture's units
+## in the scenario, then the fixture's own taps, then the chain of the beat.
+func _judge_midplay(
+	lesson: TutorialLessonDef, beat: TutorialBeatDef, profile: UiMetrics, pair: String
+) -> Array:
+	_close()
+	await _open(lesson, profile, MidPlay.scenario_for(pair, lesson.scenario))
+	var fixture: Object = MidPlay.new(self, _main, _selection, _sidebar)
+	_feed.state.close(_feed.state.current)
+	await fixture.prepare(pair)
+	var label: String = (
+		"%s %s %dx%d" % [pair, profile.os_name, profile.window_size.x, profile.window_size.y]
+	)
+	if not String(fixture.failure).is_empty():
+		return [false, ["%s: fixture: %s" % [label, fixture.failure]] as Array[String]]
+	await _show(lesson, beat)
+	if _director.active_target() == null:
+		return [false, ["%s: the beat ended before it showed its ring" % label] as Array[String]]
+	return await _drive(lesson, beat, profile, {"unfold": 0, "tab": 0, "select": NONE})
 
 
 ## Judges `beat` in the first start state that shows its ring and drives its chain to the end.
@@ -373,13 +382,13 @@ func _show(lesson: TutorialLessonDef, beat: TutorialBeatDef) -> void:
 			await await_idle_frame()
 
 
-func _open(lesson: TutorialLessonDef, profile: UiMetrics) -> void:
+func _open(lesson: TutorialLessonDef, profile: UiMetrics, scenario: ScenarioDef = null) -> void:
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
 	_main = (load(MAIN_SCENE) as PackedScene).instantiate()
 	var runner: MatchRunner = _main.get_node("MatchRunner")
-	runner.scenario = lesson.scenario
+	runner.scenario = lesson.scenario if scenario == null else scenario
 	runner.paused = true
 	add_child(_main)
 	await await_idle_frame()
