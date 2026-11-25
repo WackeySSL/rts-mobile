@@ -28,11 +28,48 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const OVERLAP_PX2: float = 4.0  ## Less area than this is rounding, not a covered button.
 const TILE_MARGIN_DP: float = 8.0
 const AD_GAP_DP: float = 16.0
-## The smallest phone's cap (126 dp) is under what the single-column card needs for the longest
-## prompts: P589's wide form takes the buttons out of the foot row and P593 shortens the rest.
-## There the cap is counted (`CAPPED`), not asserted; every other check holds on the part of the
-## card inside the dock. P589 or P593 drops this exemption.
-const CAP_EXEMPT: StringName = &"web_phone_small"
+## The ratchet: on the smallest phone (docks of 102 to 126 dp, under `card_wide_dp`, so P589's wide
+## form does not help; only P593's shorter prompts do) these "lesson/beat" prompts are longer than
+## the dock and scroll in the card today. Any other prompt that scrolls, anywhere, fails; the card
+## is inside its dock in every case. P593 empties the list.
+const SMALL: StringName = &"web_phone_small"
+const SCROLLS: Array[String] = [
+	"air/airfield",
+	"air/board",
+	"air/bomber",
+	"air/home",
+	"air/wagon",
+	"basics/across",
+	"basics/attack",
+	"basics/clear",
+	"basics/drawer",
+	"basics/fog",
+	"basics/groups",
+	"basics/incoming",
+	"basics/low-power",
+	"basics/open-structures",
+	"basics/pause",
+	"basics/placed",
+	"basics/stop",
+	"basics/welcome",
+	"basics/win",
+	"strikes/aim",
+	"strikes/enemy-sweep",
+	"strikes/fire",
+	"strikes/impact",
+	"strikes/off",
+	"strikes/own",
+	"strikes/sat",
+	"strikes/sat-on",
+	"strikes/sat-pause",
+	"support/hidden",
+	"support/medics",
+	"support/mend",
+	"support/mine",
+	"support/repair",
+	"support/sell",
+	"support/sell-last",
+]
 ## Controls that follow the world (ADR 0048 section 3): the card may be see-through over them.
 const WORLD_CONTROLS: Array[StringName] = [&"PlaceConfirm"]
 const TABS: int = 5
@@ -282,15 +319,11 @@ func _checks(
 			lines.append("%s: the folded tab %s is not inside the safe rect" % [label, tab])
 		return lines
 	var card: Rect2 = _mark.card_rect()
-	var over: bool = card.size.y > dock.size.y + TOLERANCE_PX
-	if over:
-		if profile.window_size == UiProfiles.by_name(CAP_EXEMPT).window_size:
-			_over += 1
-			card.size.y = dock.size.y  # The rest is judged on the part inside the dock.
-		else:
-			lines.append(
-				"%s: the prompt needs %s, the cap is %s" % [label, card.size.y, dock.size.y]
-			)
+	if _mark.prompt_scrolls():
+		var small: bool = profile.window_size == UiProfiles.by_name(SMALL).window_size
+		_over += 1
+		if not (small and SCROLLS.has("%s/%s" % [lesson.id, beat.id])):
+			lines.append("%s: the prompt scrolls, the dock is %s high" % [label, dock.size.y])
 	if not dock.grow(TOLERANCE_PX).encloses(card):
 		lines.append("%s: the card %s is outside the dock %s" % [label, card, dock])
 	for part: StringName in [&"Skip", &"Next"]:  # The card's own buttons stand on its panel.
@@ -318,6 +351,17 @@ func _checks(
 			var shown: Rect2 = _on_screen(button)
 			if card.intersection(shown).get_area() > OVERLAP_PX2:
 				lines.append("%s: the card covers %s %s" % [label, _path(button), shown])
+	else:  # Over a modal Skip hides and Next stays only 8 dp clear of the menu's buttons.
+		for own: Button in [
+			_mark.find_child("Skip"), _mark.find_child("Next"), _mark.find_child("Tab")
+		]:
+			if own == null or not own.is_visible_in_tree():
+				continue
+			var mine: Rect2 = own.get_global_rect().grow(UiScale.dp(8.0) - 0.01)
+			for node: Node in scope.find_children("*", "BaseButton", true, false):
+				var other: Control = node as Control
+				if other.is_visible_in_tree() and mine.intersects(_on_screen(other)):
+					lines.append("%s: %s is under 8 dp from %s" % [label, own.name, _path(other)])
 	var apart: Rect2 = card.grow(AD_GAP_DP * dp - TOLERANCE_PX)
 	for node: Node in scope.find_children("*", "AdBannerBand", true, false):
 		var band: Control = node as Control

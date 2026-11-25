@@ -104,6 +104,24 @@ func test_the_card_docks_over_the_menu_and_lets_touches_through_at_the_six_sizes
 			. override_failure_message("%s ring %s outside %s" % [label, ring, safe])
 			. is_true()
 		)
+		var air: float = UiScale.dp(8.0) - 0.01  # The card's buttons clear every menu button.
+		for own: Button in [
+			mark.find_child("Skip", true, false), mark.find_child("Next", true, false)
+		]:
+			if own == null or not own.is_visible_in_tree():
+				continue
+			for node: Node in stage["menu"].find_children("*", "Button", true, false):
+				var other: Button = node as Button
+				if other.is_visible_in_tree():
+					var near: bool = own.get_global_rect().grow(air).intersects(
+						other.get_global_rect()
+					)
+					(
+						assert_bool(near)
+						. override_failure_message("%s %s near %s" % [label, own.name, other.name])
+						. is_false()
+					)
+		assert_bool((mark.find_child("Skip", true, false) as Button).visible).is_false()
 		_presses = 0
 		resume.pressed.connect(func() -> void: _presses += 1)
 		_tap(resume.get_global_rect().get_center())

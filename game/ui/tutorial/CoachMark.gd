@@ -66,7 +66,9 @@ var _ring: Control
 var _card: PanelContainer
 var _prompt: Label
 var _hint: Label
-var _row: HBoxContainer
+var _row: BoxContainer  ## Skip and Next: a row, stacked where the dock is too narrow for both.
+var _scroll: ScrollContainer  ## The prompt and hint: scrolls where the dock is too short.
+var _content: VBoxContainer
 var _next: Button
 var _skip: Button
 var _beat: TutorialBeatDef = null
@@ -125,11 +127,19 @@ func _ready() -> void:
 	_hint.name = "Hint"
 	_hint.theme_type_variation = &"PauseMuted"
 	_hint.text = tr("Stuck? Try what the card says, or tap Skip to leave.")
+	_scroll = ScrollContainer.new()
+	_scroll.name = "PromptScroll"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # A drag scrolls.
+	column.add_child(_scroll)
+	_content = VBoxContainer.new()
+	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scroll.add_child(_content)
 	for label: Label in [_prompt, _hint]:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		column.add_child(label)
-	_row = HBoxContainer.new()
+		_content.add_child(label)
+	_row = BoxContainer.new()
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row.alignment = BoxContainer.ALIGNMENT_END
 	column.add_child(_row)
@@ -192,6 +202,8 @@ func show_beat(beat: TutorialBeatDef) -> void:
 	_dirty = true
 	_measure()
 	_prompt.text = tr(String(beat.prompt_key))
+	if _scroll.scroll_vertical != 0:
+		_scroll.scroll_vertical = 0
 	visible = true
 	set_process(true)
 	_update()
@@ -308,7 +320,9 @@ func _refresh_dock() -> bool:
 		| int(shown.bar) << 6
 		| int(shown.bar_tall) << 7
 	)
-	var key: int = flags | groups << 8 | roundi(shown.bar_width) << 16 | pill << 32
+	var key: int = (
+		flags | groups << 8 | roundi(shown.bar_width) << 16 | int(mirror) << 30 | pill << 32
+	)
 	if key == _dock_key and band == _dock_band:
 		return false
 	_dock_key = key
@@ -506,7 +520,7 @@ func _layout_card(ring: Rect2) -> void:
 	var folded: bool = not GuideDock.has_room(_dock, _dp)
 	var slotted: bool = folded and _tab_slot.has_area()
 	_tab.visible = slotted
-	_tab.position = _tab_slot.position
+	_tab.global_position = _tab_slot.position
 	_tab.size = _tab_slot.size
 	_card.visible = not slotted or _tab_open  # With no slot at all, the card shows overlaid.
 	if not _card.visible:
@@ -520,13 +534,30 @@ func _layout_card(ring: Rect2) -> void:
 			_room.position + Vector2((_room.size.x - width) * 0.5, 0.0),
 			Vector2(width, _room.size.y)
 		)
-	_fit_card(stand.size.x)
+	_skip.visible = not _modal_now  # The pause menu has Leave tutorial; Skip would block its buttons.
+	_fit_card(stand.size.x, stand.size.y)
 	_card.global_position = stand.position
 	_card_box = Rect2(stand.position, _card.size)
 	_through_now = _meets(ring)
 	_card.theme_type_variation = THROUGH_VARIATION if _through_now else CARD_VARIATION
 	var passes: bool = _through_now or _modal_now
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if passes else Control.MOUSE_FILTER_STOP
+	var filter: Control.MouseFilter = (
+		Control.MOUSE_FILTER_IGNORE if passes else Control.MOUSE_FILTER_STOP
+	)
+	_card.mouse_filter = filter
+	_scroll.mouse_filter = filter
+	if _modal_now and _next.visible and _touches_modal(_modal_of(_target)):
+		_next.visible = false  # Next shows over a modal only where it clears every button of it.
+
+
+## Whether the card's visible Next is under 8 dp from a visible button of `modal`.
+func _touches_modal(modal: Node) -> bool:
+	var next: Rect2 = Rect2(_next.global_position, _next.size).grow(8.0 * _dp - 0.01)
+	for node: Node in modal.find_children("*", "BaseButton", true, false):
+		var button: Control = node as Control
+		if button.is_visible_in_tree() and next.intersects(button.get_global_rect()):
+			return true
+	return false
 
 
 func _on_tab() -> void:
@@ -535,24 +566,44 @@ func _on_tab() -> void:
 	_update()
 
 
-## Gives the card `width` px (more when its buttons need it) and the height its wrapped text needs
-## at that width; returns the size. The labels' and the box's cached minimums are dropped first, or
-## the height read is the one of the width before.
-func _fit_card(width: float) -> Vector2:
-	var panel: StyleBox = _card.get_theme_stylebox(&"panel")
-	var column: Control = _prompt.get_parent() as Control
+## Gives the card `width` px, never more, and the height its wrapped text needs at that width, at
+## most `max_height`: past that the prompt scrolls in its own area and the buttons keep their foot
+## row. The row stacks where the width cannot hold Skip and Next side by side. Returns the size. The
+## labels' and the box's cached minimums are dropped first, or the height read is the one of the
+## width before.
+func _fit_card(width: float, max_height: float = INF) -> Vector2:
+	var margin: Vector2 = _card.get_theme_stylebox(&"panel").get_minimum_size()
+	var inner: float = floorf(width - margin.x)  # Whole px: a label is never over.
+	var gap: float = BUTTON_GAP_DP * _dp
+	var across: float = 0.0
+	for button: Button in [_skip, _next]:
+		button.clip_text = false
+		if button.visible:
+			across += button.get_combined_minimum_size().x + (gap if across > 0.0 else 0.0)
+	_row.vertical = across > inner
+	for button: Button in [_skip, _next]:
+		button.clip_text = _row.vertical  # Stacked, a button is as wide as the card and trims.
 	_row.update_minimum_size()
-	var wide: float = maxf(width, _row.get_combined_minimum_size().x + panel.get_minimum_size().x)
-	var inner: float = floorf(wide - panel.get_minimum_size().x)  # Whole px: a label is never over.
 	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
 		label.custom_minimum_size.x = inner
 		label.size.x = inner
 		label.update_minimum_size()
+	_content.custom_minimum_size.x = inner
+	_content.update_minimum_size()
+	var column: Control = _scroll.get_parent() as Control
+	var foot: float = _row.get_combined_minimum_size().y + column.get_theme_constant(&"separation")
+	var room: float = maxf(floorf(max_height - margin.y - foot), 0.0)
+	_scroll.custom_minimum_size = Vector2(inner, minf(_content.get_combined_minimum_size().y, room))
 	column.update_minimum_size()
-	_card.custom_minimum_size = Vector2(wide, 0.0)
+	_card.custom_minimum_size = Vector2(width, 0.0)
 	_card.update_minimum_size()
-	_card.size = Vector2(wide, _card.get_combined_minimum_size().y)
+	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
 	return _card.size
+
+
+## Whether the prompt is longer than its area and scrolls (the dock is too short for it).
+func prompt_scrolls() -> bool:
+	return _scroll.get_v_scroll_bar().max_value > _scroll.get_v_scroll_bar().page + 0.5
 
 
 ## The ring's box from the beat, global px: a control's rect grown a little, or the tile's ground
@@ -666,6 +717,7 @@ func _button(node_name: String, text: String, variation: StringName) -> Button:
 	button.text = tr(text)
 	button.theme_type_variation = variation
 	button.focus_mode = Control.FOCUS_NONE
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	_row.add_child(button)
 	return button
