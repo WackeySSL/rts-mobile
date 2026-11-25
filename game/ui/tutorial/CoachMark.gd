@@ -695,6 +695,8 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 			count += 1
 			widest = maxf(widest, button.get_combined_minimum_size().x)
 			across += button.get_combined_minimum_size().x + (gap if across > 0.0 else 0.0)
+	if wide and inner - widest - gap < MIN_TEXT_DP * _dp:
+		wide = false  # Not even a column beside the prompt leaves it its least width.
 	var text_width: float = inner
 	_head.visible = not wide
 	_side_pad.visible = wide
