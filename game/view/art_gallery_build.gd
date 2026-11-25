@@ -2,7 +2,7 @@ extends "res://game/view/art_gallery_iso.gd"
 ## The Build page of the art gallery (plan rows P103 and P104, ADR 0023 sections 2 and 5): the Iso
 ## page's list, buttons and title, over the building models only. One building at a time stands on
 ## the iso ground with a tank of its faction in front of it and one behind it, at the camera zoom
-## levels 1, 0.75 and 1.5 in the two triads Signal and Arktisk, the scene on grass left and on sand
+## levels 1, 0.75 and 1.5 in the two default team colours Sne and Karmin, the scene on grass left and on sand
 ## right. It draws what a match draws: the frames come from the atlas `IsoAtlas` bakes for the
 ## two players (the faction's key triad replaced by the player's), a sprite is a region of it at
 ## `0.5 / bake_scale` times the zoom, the rigs are children of one y-sorted node (a thing south of
@@ -88,7 +88,7 @@ func _process(delta: float) -> void:
 		play.play(_clock_ms)
 
 
-## The name of a section: the zoom in percent and the triad, `Zoom75Arktisk`.
+## The name of a section: the zoom in percent and the triad, `Zoom75Karmin`.
 static func section_name(zoom: float, triad: int) -> String:
 	return "Zoom%d%s" % [roundi(zoom * 100.0), TRIAD_NAMES[triad]]
 
@@ -166,7 +166,7 @@ func _fill() -> void:
 	_icon.texture = load(ArtGen.icon_path(model)) as Texture2D
 	var emblem: String = EMBLEM_ART % model.faction
 	_emblem.texture = load(emblem) as Texture2D if ResourceLoader.exists(emblem) else null
-	_emblem.modulate = Color(ArtPalette.KEYS[model.faction][ArtPalette.LEFT])
+	_emblem.modulate = Color(ArtPalette.MATERIALS[model.faction][ArtPalette.FACTION])
 	var index: IsoIndex = load(IsoIndex.PATH) as IsoIndex
 	var building: IsoSheetDef = index.sheet(model.art_id)
 	var tank: IsoSheetDef = index.sheet(TANKS[model.faction])

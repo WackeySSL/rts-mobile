@@ -22,5 +22,5 @@ script = ExtResource("1_faction")
 id = &"fossil"
 display_name = "Derrick League"
 emblem = &"emblem_fossil"
-key_triad = PackedStringArray("#FF9446", "#E8681F", "#B04B12")
+key_triad = PackedStringArray("#F07AF0", "#D234D2", "#9A1F9A")
 roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker")])

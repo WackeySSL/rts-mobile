@@ -2,7 +2,7 @@ extends Control
 ## The Iso page of the art gallery (plan row P99, ADR 0023 section 5): the generated blockouts of
 ## both factions, one type at a time (the two buttons step through them), every direction of the
 ## type at gameplay zoom in both team colours, and its default view at the camera zoom levels 0.75,
-## 1 and 1.5. The grass half shows the frames in the Signal triad, the sand half in the Arktisk
+## 1 and 1.5. The grass half shows the frames in the Sne triad, the sand half in the Karmin
 ## one; the rows repeat for the second triad under the first. A frame is the SVG text with the
 ## faction's key triad replaced by the player's (the match-start bake does the same, ADR 0023
 ## section 2) and rasterised at 0.5 x zoom; until the per-match atlas exists (P113) the page
@@ -18,12 +18,13 @@ extends Control
 const FACTION_NAMES: Dictionary[StringName, String] = {
 	&"fossil": "Derrick League", &"renew": "Lumen Accord"
 }
-## The players' triads (ADR 0023 section 5): player 1 Signal, player 2 Arktisk.
+## The default team colours (ADR 0050 section 3, answer 3): your own Sne (white), the computer's
+## Karmin (red). The frames carry the sentinel key, which each row replaces.
 const TRIADS: Array[Array] = [
-	["#FF9446", "#E8681F", "#B04B12"],
-	["#62D6EE", "#1FA6C8", "#137C99"],
+	["#FFFFFF", "#DCE2E6", "#A3ACB3"],
+	["#F26A5E", "#CF3A2E", "#922219"],
 ]
-const TRIAD_NAMES: Array[String] = ["Signal", "Arktisk"]
+const TRIAD_NAMES: Array[String] = ["Sne", "Karmin"]
 const BASE_SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]  ## The camera zoom levels.
 const HALF_WIDTH_PX: float = 640.0  ## One ground at the 16:9 base size.
@@ -229,7 +230,7 @@ func _shows_damage(model: ArtModel) -> bool:
 
 
 ## The Damage rows of one ground: a line of 8 per 8 directions at zoom 1, for stage 1 and then
-## stage 2, in the Signal triad. Returns the height it took.
+## stage 2, in the Sne triad. Returns the height it took.
 func _damage_section(
 	ground: ColorRect,
 	model: ArtModel,

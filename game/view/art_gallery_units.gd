@@ -11,10 +11,11 @@ extends RefCounted
 ## poses (plan row P139): its `Hull` sprite stands, walks, stands and fidgets in turn in the same
 ## default view (`advance`), so that a phone shows how the three figures step. View-only.
 
-## The players' triads (ADR 0023 section 5), light, mid, dark: player 1 Signal, player 2 Arktisk.
+## The default team colours (ADR 0050 section 3), light, mid, dark: your own Sne, the computer's
+## Karmin.
 const TRIADS: Array[Array] = [
-	["#FF9446", "#E8681F", "#B04B12"],
-	["#62D6EE", "#1FA6C8", "#137C99"],
+	["#FFFFFF", "#DCE2E6", "#A3ACB3"],
+	["#F26A5E", "#CF3A2E", "#922219"],
 ]
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
 ## The Lumen Accord's art ids start with this; the Derrick League's have no prefix.

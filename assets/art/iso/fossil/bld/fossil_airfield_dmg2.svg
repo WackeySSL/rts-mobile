@@ -46,9 +46,9 @@
 <polygon points="63,128.4 2.8,98.3 2.8,96.7 63,126.8" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="123.2,98.3 63,128.4 63,126.8 123.2,96.7" fill="#2D302B" stroke="#1B1C1A"/>
 <polygon points="63,126.8 2.8,96.7 63,66.6 123.2,96.7" fill="#484D46" stroke="#919490"/>
-<polygon points="63,124.9 6.7,96.7 6.7,95.2 63,123.3" fill="#E8681F" stroke="#B04B12"/>
-<polygon points="119.3,96.7 63,124.9 63,123.3 119.3,95.2" fill="#B04B12" stroke="#B04B12"/>
-<polygon points="63,123.3 6.7,95.2 63,67 119.3,95.2" fill="#FF9446" stroke="#FF9446"/>
+<polygon points="63,124.9 6.7,96.7 6.7,95.2 63,123.3" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="119.3,96.7 63,124.9 63,123.3 119.3,95.2" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="63,123.3 6.7,95.2 63,67 119.3,95.2" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="63,116.3 20.8,95.2 20.8,93.6 63,114.7" fill="#9F9A8E" stroke="#484540"/>
 <polygon points="105.2,95.2 63,116.3 63,114.7 105.2,93.6" fill="#78746B" stroke="#484540"/>
 <polygon points="63,114.7 20.8,93.6 63,72.5 105.2,93.6" fill="#C2BCAD" stroke="#DAD7CE"/>
@@ -77,9 +77,9 @@
 <polygon points="319,128.4 258.8,98.3 258.8,96.7 319,126.8" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="379.2,98.3 319,128.4 319,126.8 379.2,96.7" fill="#2D302B" stroke="#1B1C1A"/>
 <polygon points="319,126.8 258.8,96.7 319,66.6 379.2,96.7" fill="#484D46" stroke="#919490"/>
-<polygon points="319,124.9 262.7,96.7 262.7,95.2 319,123.3" fill="#E8681F" stroke="#B04B12"/>
-<polygon points="375.3,96.7 319,124.9 319,123.3 375.3,95.2" fill="#B04B12" stroke="#B04B12"/>
-<polygon points="319,123.3 262.7,95.2 319,67 375.3,95.2" fill="#FF9446" stroke="#FF9446"/>
+<polygon points="319,124.9 262.7,96.7 262.7,95.2 319,123.3" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="375.3,96.7 319,124.9 319,123.3 375.3,95.2" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="319,123.3 262.7,95.2 319,67 375.3,95.2" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="319,116.3 276.8,95.2 276.8,93.6 319,114.7" fill="#9F9A8E" stroke="#484540"/>
 <polygon points="361.2,95.2 319,116.3 319,114.7 361.2,93.6" fill="#78746B" stroke="#484540"/>
 <polygon points="319,114.7 276.8,93.6 319,72.5 361.2,93.6" fill="#C2BCAD" stroke="#DAD7CE"/>
