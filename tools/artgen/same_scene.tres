@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="SameSceneBands" format=3]
+
+[ext_resource type="Script" path="res://tools/artgen/SameSceneBands.gd" id="1_bands"]
+
+[resource]
+script = ExtResource("1_bands")
+scene = PackedStringArray("heavy_tank", "headquarters", "renew_tank", "renew_hq")
+roster = PackedStringArray("light_tank", "heavy_tank", "artillery", "harvester", "headquarters", "refinery", "power_plant", "vehicle_factory", "renew_scout", "renew_tank", "renew_artillery", "renew_tanker", "renew_hq", "renew_refinery", "renew_power", "renew_factory")
+wanted_dir = Dictionary[StringName, int]({
+&"fossil": 6,
+&"renew": 10
+})
+terrains = PackedStringArray("grass", "scrub", "sand", "rock", "ore")
+zooms = PackedFloat32Array(0.75, 1, 1.5, 2)
+mirror_triad = PackedStringArray("#F26A5E", "#CF3A2E", "#922219")
+glyphs = PackedStringArray("res://assets/art/svg/icons/glyph_repair.svg", "res://assets/art/svg/icons/glyph_power.svg", "res://assets/art/svg/icons/glyph_sell.svg", "res://assets/art/svg/icons/glyph_alert.svg")
+effects = Dictionary[String, Rect2i]({
+"burst": Rect2i(0, 0, 80, 80),
+"puff": Rect2i(84, 0, 56, 56),
+"flash": Rect2i(144, 0, 32, 32)
+})
+grade_warm = Color(1, 0.93, 0.8, 0.08)
+grade_cool = Color(0.8, 0.9, 1, 0.08)
+light_up_min = -0.16
+light_left_min = -0.04
+shadow_dx_min = -0.05
+tone_value = Vector2(0.45, 0.75)
+tone_sat = Vector2(0.14, 0.3)
+black_edge_max = 0.02
+density = Vector2(30, 75)
+shadow_alpha = Vector2(0.3, 0.4)
+spread_min = 80.0
