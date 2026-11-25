@@ -73,6 +73,13 @@ energy-bloc lore stay (answers 3 A and 4 A). The look of §5 and §6 moves towar
 colours with a small team marker and richer generated detail. That is ADR 0050 (proposed), not
 this text. No accepted text changed.
 
+Status note (2026-11-24, P621b docs; ADR 0050 accepted 2026-11-24): §5's pipeline holds and goes
+further. Every unit and building on the map stays generator SVG, now with detail levels, metal
+sheen gradients and two new primitives (a chamfered box, rotated prisms). Figma AI makes only
+stand-alone pictures (menus, portraits, store art). §5's two per-faction key triads give way to
+one sentinel key: the factions get fixed colours, and the team colour moves to a small marker
+(ADR 0050 §3). No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |

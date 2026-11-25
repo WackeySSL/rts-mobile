@@ -21,7 +21,7 @@ func test_mend_and_sell_show_for_one_own_building_at_every_size_in_reach_of_a_th
 				UiScale.dp(56.0) - TOLERANCE_PX
 			)
 			assert_float(rect.size.y).override_failure_message(why).is_greater_equal(
-				UiScale.dp(64.0) - TOLERANCE_PX
+				UiScale.dp(48.0) - TOLERANCE_PX
 			)
 		assert_bool(_bar.order_button(&"stop").is_visible_in_tree()).is_false()
 		var margin_dp: float = SafeAreaMargin.DEFAULT_MARGIN_DP

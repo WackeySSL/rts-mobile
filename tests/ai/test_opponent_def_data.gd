@@ -210,6 +210,13 @@ func test_the_opponent_files_hold_the_numbers_of_the_adr(
 	)
 
 
+func test_the_radar_bonus_is_the_renew_files_only() -> void:
+	# P576b: the Dusk Array's bonus is one radar building's cost; the Deep Bore's def has none.
+	assert_int(OpponentDef.new().strike_radar_bonus).is_equal(0)
+	assert_int(Rig.def_of("fossil").strike_radar_bonus).is_equal(0)
+	assert_int(Rig.def_of("renew").strike_radar_bonus).is_equal(800)
+
+
 func test_the_ignored_inherited_fields_are_at_their_script_defaults(
 	faction: String, _test_parameters := _factions()
 ) -> void:

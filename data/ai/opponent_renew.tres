@@ -55,3 +55,6 @@ target_tests_max = 512
 goal_keys_max = 4
 spiral_slots = 64
 strike_min_value = 3000
+; One radar building's cost (data/units/fossil_radar.tres, 800): a radar ring beats a ring up to one
+; radar richer, not a factory (1,800) cluster.
+strike_radar_bonus = 800

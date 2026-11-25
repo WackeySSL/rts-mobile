@@ -2070,6 +2070,232 @@ Type variations of `game/ui/theme.tres` for the menu screens. They are the pause
 | `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp #F2C14E edge; 22 dp text in #F2C14E |
 | `MenuXpBar` (ProgressBar) | the XP bar | #2C383E track, #F2C14E fill, 4 dp corners |
 
+## Treadline UI look (P602, ADR 0049 sections 1 to 3)
+A read-out of Michael's Figma file (file key `HsBPSXZ6PTRp6KkdhEi6bT`, read 2026-11-24, read-only). It is
+the input of P604 (tokens v3) and the later UI rows. It is a design direction, not an asset: no picture,
+crop or colour sample from the file is in the repository, and nothing here was measured from a raster
+image. Every value below comes from vector and text nodes (fills, strokes, text styles, frame sizes).
+
+**How it was read.** `get_metadata` for the whole page (21 frames: 11 landscape and 9 portrait boards,
+2 faction sheets for each side, 1 terrain sheet), `get_design_context` (code and values only, no
+screenshot, no asset URL fetched) for the landscape boards Battle, Main menu, Skirmish, Loading, Pause,
+Victory, Production, Intro, the four faction sheets and the terrain sheet, and `get_variable_defs` for
+Battle, Main menu and the Nordværn unit sheet. Campaign and Unit details (out of scope, ADR 0049
+decision 2) and the nine portrait boards were read by structure (`get_metadata`: sizes, order, names),
+not by text. **The file defines no Figma variables or styles** (`get_variable_defs` is `{}` on all
+three nodes): every colour is a literal fill, so the token names below are ours (proposals for P604),
+not the file's. Board size: landscape 932 x 430 and portrait 430 x 932 "board px"; the sheets are 1600
+wide. The values are quoted in board px and read as dp at that board size (the game's base is
+1280 x 720, so P604 scales them with `HudTheme`'s dp step).
+
+### Colours (role, proposed token, hex)
+| Role | Proposed token (theme type) | Hex | Where the file uses it |
+| --- | --- | --- | --- |
+| Page and screen ground | `ground` (`HudTokens`, new) | #080E12 | every board; also the fill of map tints (22 % "map tone") |
+| Deepest plate (health bar track, map marker plate, text on the amber button) | `ground_deep` (new) | #05090C | health bar track, strategic position plate, text on amber |
+| Panel | `panel` (`HudTokens`, today alpha 0.84 of #0A0E11) | #101A20 | cards, tables, command panel, production card |
+| Panel, raised or input | `panel_raised` (new) | #18262D | command buttons, value boxes, tabs, doctrine bar, unselected cards in sheets |
+| Touch button fill | `touch` (new) | #23353E | Pause, Close, group info button (the 48 dp "Touch" frames) |
+| Overlay plate | `scrim_panel` (new) | #080E12 at 85 % | objectives panel, map tags, alert, radio line |
+| Line, border, track | `border` (`HudTokens`, today #2C383E) | #33434A | every 1 px border, dividers, progress track |
+| Text | `text` (`HudTokens`, today white) | #E9ECE7 (a few touch labels #E9EFEA) | titles, values |
+| Text, secondary | `text_dim` (new) | #94A6AB | labels, body copy, units |
+| Text, muted | `text_mute` (new) | #5C727B | inactive numbers, hints, footers |
+| Action, money, selected, status | `action` / `money` (`HudTokens.money`, today #F2C14E) | #F4B653 (the filled primary button #F4B74D) | primary button fill, credits "◈ 12.450", selected tab and card edge, section eyebrows, status chips, sliders, progress fill, side marker of Nordværn in screens |
+| Action wash (selected plate, chip fill) | `action_wash` (new) | #32271A | selected faction card, chip fill, active tab fill |
+| Good, power | `ok` (`HudTokens.ok`, today #6EDC5F) | #AFC58D | power "ϟ 840 / 1.200", health fill, "Klar", done objective |
+| Info, enemy contact, alert | `info` (new) | #61CFD9 | alert border and triangle, enemy tags, Helix side in screens, map marker C |
+| Nordværn, fixed faction colour (sheets) | `AccentFossil.accent` | #FF6E1F | the faction sheets: titles, 2 px card edges, names |
+| Facet (the file's "Helix"), fixed faction colour (sheets) | `AccentRenew.accent` | #40A3FF | the faction sheets: titles, 2 px card edges, names |
+| Facet wash | `AccentRenew` plate (new) | #0E1F33 | the "recommended force" card on the blue sheet |
+| Danger, warning | `danger`, `warning` | **none in the file** | the file has no red and no amber warning; it shows an alert in cyan |
+
+What these show, and what P604 must decide:
+- **Two oranges and two blues.** The screens colour a side by its UI accent (Nordværn = amber
+  #F4B653, Helix = cyan #61CFD9). The faction sheets colour the same sides by their unit colour
+  (#FF6E1F, #40A3FF). ADR 0050 section 3 fixes the faction colours; the sheet pair is the one to
+  take for units, markers and the faction accents. Amber stays the action and money colour. Cyan
+  becomes the `info` token for contacts and alerts (it is no longer a faction colour).
+- **The action amber is the money colour.** The file uses one amber for the primary button, credits,
+  selection and status. ADR 0025 section 13's rule "accent never carries meaning alone" holds, but the
+  money token and the action token are one hue here (36.9 and 38.1 degrees against today's money
+  #F2C14E at 42.1). P604 may keep one token or split them; `HudTokens.money` moving to #F4B653 is a
+  5.2 degree change.
+- **Hue and contrast checks of ADR 0025 section 13, measured on the file's values (4.5:1 and 15
+  degrees asked):**
+  - #FF6E1F (hue 21.2) against #F4B653 (36.9): 15.7 degrees, passes narrowly. Against today's
+    `danger` #FF5A3C (hue 9.3): **11.9 degrees, fails**. P604 must move `danger` toward red (hue 0
+    to 4, for example a red near #FF4B4B) or relax the check in the ADR with Michael's yes. The file
+    gives no value to follow.
+  - #40A3FF (hue 208.9) and #61CFD9 (185.0): 23.9 degrees apart; both are far from danger and money.
+  - Text #05090C on #FF6E1F: 7.1:1; on #40A3FF: 7.5:1; on #F4B653: 11.1:1 (the button, #080E12 on
+    #F4B74D, is 10.8:1). Text on the panel #101A20: #E9ECE7 14.8:1, #94A6AB 7.0:1, **#5C727B only
+    3.5:1** (below 4.5:1: the muted text is for numbers and hints only, never for the one line that
+    carries a meaning).
+  - #FF6E1F and #40A3FF on the panel: 6.3:1 and 6.6:1, so a faction word in its colour on a panel
+    reads.
+- The hairline #33434A on the panel is 1.7:1: a border is decoration, never the only mark of a state
+  (the selected state also changes the fill and the weight, see below).
+- The existing design's fixed enemy colour #FF9446 (ADR 0025) has no counterpart in the file.
+
+### Type scale
+Three faces, all from the file's text nodes:
+| Face (file) | Weight | Role |
+| --- | --- | --- |
+| Roboto Condensed | Bold (ExtraBold for the intro logo, Regular for the loading subtitle) | titles, screen names, card names, key figures, menu items |
+| Inter | Regular and Bold | body copy, button words (Bold), table cells, value boxes, tabs, command labels |
+| **IBM Plex Mono** | Regular (one weight) | labels, status chips, eyebrows, counters, credits and clock, stat lines, the system line |
+
+Sizes (board px; Latin text; the file's tiny sizes are marked):
+| Step | Face and use |
+| --- | --- |
+| 87 | Roboto Condensed ExtraBold, intro logo, tracking -1.7 |
+| 50, 44, 42 | Roboto Condensed Bold: sheet title (50), victory headline (44), main-menu logo and loading map name (42, tracking -0.6) |
+| 31, 26 | Roboto Condensed Bold: card headline (31), screen title, faction name, key figure (26) |
+| 23, 19, 18.6, 18, 16.6 | Roboto Condensed Bold: card name (23), area name (19), campaign card headline (18.6), mission name and "Feltråd" (18), production card name (16.6) |
+| 17 | Plex Mono: credits in the top bar (the largest mono size) |
+| 14 | Inter Bold 14 with 0.5 tracking: action button word. Inter Regular 14: body and value box. Roboto Condensed Bold 14: menu item. Plex Mono 14: queue line |
+| 13 | Inter Bold 13: touch-button label; Inter Bold 13 with 4 tracking, caps: the header "TREADLINE / ..." |
+| 12 | the working label size: Plex Mono 12 for eyebrows, chips, counters, the system line; Inter 12 for field labels and command words |
+| 11, 10 | Plex Mono: stat lines and units on cards (11, 10), Inter 11 notes |
+| 6.4 to 8.7 | map tags and the legend on the small map: **below the 14 sp floor of `touch-ui-rules`; not adopted** (P604 sets a floor) |
+
+Tracking: 0 for body; 0.3 to 0.5 for button words; 1 for section eyebrows ("SPILLERPLADSER",
+"MÅLOPFYLDELSE"); 1.7 to 3.5 for taglines in mono; 4 for the Inter Bold header. Line height is 1.35
+for Plex Mono and Roboto Condensed text blocks. Case: Plex Mono and the header are written in capitals
+in the text itself (as `CapsButton` does today). HUD numbers in the file are 12 to 17 px: ours stay
+at 18 sp or more (`touch-ui-rules`), and body text at 14 sp or more.
+
+### Panels, borders, corners
+- **Corners are square.** No radius appears on any panel, button, chip, input, card or bar in the file
+  (the only rounded rectangles are image fills). Today's theme uses radii of 4 to 8 dp (`MenuXpBar`
+  4 dp, `MenuToggleRow` 8 dp): the restyle moves them to 0 (flat `StyleBoxFlat`, ADR 0049 section 4).
+- **Border weights.** 1 px #33434A for a panel, card, table, input and button at rest. 2 px for a
+  faction card, a selection and a sheet card (the faction colour or the action amber). A 2 px left
+  bar in the action amber marks the first main-menu item. A top rule of 1 px (2 px for the battle
+  command panel) separates a bar from the map. The tab underline is 2 px (amber when open,
+  #33434A when not).
+- **Fills.** Plates are flat colours: #101A20 (panel), #18262D (raised or input), #23353E (touch
+  button), #080E12 at 50 to 85 % (overlays on the map, menu items at rest at 50 %), #32271A (selected
+  or chip). The gradient `Læseskygge` (left to right, #080E12 at 96 % to 0 %, midpoint 65 % at 50 %)
+  and a flat tint `Kontrastlag` (10 to 70 %) sit on the backdrop picture of Intro, Main menu, Pause
+  and Victory only; the file has no blur, glow, shadow or stripe on any control.
+- **States.** Selected: amber 2 px edge on #32271A, or amber text on #18262D with a 2 px amber
+  underline (tabs, chips). Primary: amber fill with #05090C text and an arrow glyph. Secondary: #101A20
+  fill, 1 px #33434A edge, #E9ECE7 text, arrow glyph. Inactive: text #5C727B or #94A6AB.
+- **Progress.** The track is #33434A, the fill is the action amber (loading 4 px with a 2.3 px fill,
+  production 6.4 px, slider 3.9 px, campaign 1.7 px).
+- **Chips and tags.** A status chip is 28 px high, 10 px side padding, #32271A fill, 1 px amber edge,
+  Plex Mono 12 in amber. A map tag is #080E12 at 85 % with 4.7 px padding.
+
+### Spacing
+- **Screen gutter** 44 px on the landscape boards (24 px portrait; 56 px on the sheets). Header band
+  74 px (title board) or 48 px (battle top bar), system line 26 to 28 px at the foot with a 1 px top
+  rule (a design annotation: the `ANDROID / iOS · TOUCH` text is not shipped).
+- **Gaps.** 5 px between command buttons, 6 px inside a text group, 8 px in a stack of buttons or
+  fields and between tabs, 10 to 12 px between cards, 16 px in the sheet grids, 22 px between sheet
+  blocks.
+- **Padding.** Panels 12 px (16 px on the campaign card, 20 px on the doctrine bar); buttons and
+  menu items 12 px sideways; cards 10 to 14 px; chips 10 by 6.
+- **Sizes.** Touch frames are 48 px high (Pause 68 x 48, group info 194 x 48, Build/Train 100 x 48, a
+  command button 60 x 48, an action button 224 to 414 x 48, a tab 48). **One thing is lower than 48:
+  the main-menu items (46 px high).** P613 keeps 48 dp.
+- **Icons.** 16 px in a command button (above a 12 px word), 18 px beside an action word, 10.5 px in
+  the campaign card's button.
+
+### The order glyphs
+The command panel has six buttons, each an icon over a word, in the order Flyt, Angrib, Bevogt, Stop,
+Patrulje, Reparér. The icon nodes are SVG exports named `move`, `crosshair`, `shield`, `hand`, `route`
+and `wrench` (16 px), plus `play` and `arrow-right` (18 px) on action buttons. The names are those of
+a common open icon set; ADR 0049 section 1 says the glyphs are never vectorised from the file, so
+P610a draws our own from simple shapes. The mapping to our orders:
+| File glyph | File word | Our order (ADR 0049 section 3) | Glyph for P610a |
+| --- | --- | --- | --- |
+| move (arrows) | Flyt (Move) | none (a ground tap moves) | not drawn |
+| crosshair | Angrib (Attack) | none (an enemy tap attacks) | not drawn |
+| shield | Bevogt (Guard) | not in the game | not drawn |
+| hand | Stop | STOP | new: our own open-palm stop sign |
+| route | Patrulje (Patrol) | not in the game | not drawn |
+| wrench | Reparér (Repair) | REPAIR (units to a repair building), MEND (buildings) | a spanner for REPAIR and a spanner on a plate for MEND |
+P610a also needs CLEAR, HOME, BOARD, UNLOAD, MINE and SELL, which the file does not have. The new
+glyphs follow the file's weight: a 1.5 px stroke at 16 px, a single colour tinted by the theme.
+
+### Check of ADR 0049 section 3 against every screen
+Agrees (no change to section 3): the top bar's credits, power, unit count, clock and Pause; the six
+order words; the alert and the radio line (not built); the battle map under the HUD; Pause, Loading,
+Victory and Production existing as screens; Unit details and Campaign out of scope.
+
+Differences found (each is a new fact for the rows named; none changes a decision already made):
+| # | Screen | The file | Section 3 or our game | Affects |
+| --- | --- | --- | --- | --- |
+| 1 | Battle (L) | Objectives panel (200 x 110) top left over the map, the alert (290 x 44) top right, radio line bottom left of the map | No panel in skirmish; the alert has its own slot; no radio line | none (decided); the alert's place in the file collides with our radar, which section 4 settles |
+| 2 | Battle (L) | Minimap bottom left (100 x 68) in a full-width 100 px command panel | Radar top right (answer 1 A) | none |
+| 3 | Battle (P) | **No minimap at all** in portrait; the top bar is two rows (136 px, with the status-bar inset) | Radar stays | P609 (look only) |
+| 4 | Battle | Power shown as text "840 / 1.200"; the credits at 17 px; a unit count "42 / 100"; the clock "12:48" | Power bar in the pill; count and clock via P618 | P618 may show power as a number as well |
+| 5 | Battle | Build/Train is a 100 x 48 amber rectangle | BUILD is a round 64 dp button | none (round is kept) |
+| 6 | Battle | World labels on the map ("A / NORDVÆRN · HOVEDBASE", ore field tags, "HELIX / KONTAKT 03") at 6.4 px | None | **not built**; new feature, below the size floor. Follow-up list |
+| 7 | Battle | Selected unit: ellipse ring and a 35 x 3 px health bar in #AFC58D | Rings and health bars exist | none |
+| 8 | Main menu | Six numbered items (Fortsæt felttog, Nyt felttog, Træfning, Flerspiller, Krigsarkiv, Indstillinger) in a 2 x 3 grid, each 220 x 46: **number, word and arrow, no icon**; a campaign card on the right; a profile line "LEVEL 07" | Section 3 says "icon and word tiles"; no Campaign or Multiplayer | P613: the tiles take the file's number-word-arrow pattern only if Michael prefers it to icon-and-word; items are 46 px in the file, ours stay 48 dp |
+| 9 | Skirmish | Player table with four slots, team letters and status; start resources, unit cap, victory condition, game speed and three rule toggles (fog, explore, superweapons) | `MapSelect` has map, side, level, Start | **not built** (new options and multiplayer slots); the faction cards with the one-line pitches are adoptable |
+| 10 | Loading | A progress bar at 78 %, a tip with counter "07 / 18", map coordinates, "KLARGØR TERRÆN..." | A still card, no bar (the bake blocks) | none (decided); the tip line could be a static line: follow-up |
+| 11 | Pause | Save game, Load game, Restart mission; settings in four tabs with Apply and Reset; no ad band | Resume file only (ADR 0042); settings apply at once; the foot banner stays | P616: Save, Load and the Apply step are not built |
+| 12 | Victory | Stars, five figures, objectives list, "new unit unlocked" card, "next operation" card | Emblem, word, stats, Back, Play again, Double XP by choice | P617 takes the stat strip and the look; stars, objectives, unlock and next operation are campaign features, not built |
+| 13 | Production | A **centred modal** (732 x 270) over a dimmed map with a "Luk" button; four tabs; cards 174 x 168; a queue line with a bar | A drawer over the live map (side panel or bottom sheet) | P611 keeps the drawer; the file's card content (name, price, state word) is adopted |
+| 14 | All boards | A 26 to 28 px system line with design notes ("ANDROID / iOS · TOUCH", "VISUELT DESIGN") | none | annotations, not shipped |
+| 15 | Economy | The file's resource is **"Ravmalm" (amber ore)**, harvested by an "ore harvester" and refined to credits; "ore does not regenerate" | Oil and gas fields (ADR 0023 section 11; lore: oil and gas against wind and sun) | none to build. Our economy and lore stay (ADR 0049 answer 4 A). No glowing-ore look is adopted |
+| 16 | Sheets | Per side: 8 vehicles and 4 soldiers (the blue side adds 3 specialists); 13 buildings (orange), 16 (blue) | Our rosters differ | reference for ADR 0050 only |
+
+### Names in the file, screened (ADR 0049 section 2)
+The screen is ADR 0023 section 13 plus the C&C, Red Alert, Generals, Tiberian Sun and StarCraft names
+known to the reviewer. It is not a trademark search (Phase 7 box). Result classes: clear, low (a
+generic word that an existing game also uses), risky (a name or term of an existing game), blocked.
+Names read in Danish; the English meaning is given where it matters.
+
+| Name in the file | Result | Note |
+| --- | --- | --- |
+| Treadline (game), Krigen om Nord (tagline), Askehavn, Isbrud, Isfronten, Nordhavet, Krigsarkiv, the person names Lind and Voss | clear | |
+| **Nordværn** | clear | no game of that name known to the reviewer; Michael runs the registry search (answer 8) |
+| **Helix**, "Helix-konsortiet", every "Helix · ..." card, "Helix-forsvar", "Helix-modstykke" | **blocked** | ADR 0049 section 2: a *Generals - Zero Hour* unit. The file still carries it on every screen; the game says **Facet**. The glyph `⌁ H` becomes `F` |
+| X-7 »Prisme« (Prism) | **risky** | *Prism Tank* (Red Alert 2). Do not use "Prism" for a unit; "Facet" is the better word for the side |
+| X-9 »Aegis« | risky (low) | *Aegis Cruiser* (Red Alert 2) and a real naval system. Avoid |
+| **Ionreaktor** (Ion reactor) | **risky** | ADR 0049 section 2 lists "Ion ..." names (*Ion Cannon*). Avoid |
+| Spøgelse (Ghost) | risky (low) | *Ghost* is a StarCraft unit. Avoid |
+| Krigsfabrik (War Factory) | risky | *War Factory* is the C&C and Red Alert building name. Our name is the Vehicle Factory family; do not adopt |
+| Byggecentral (Construction Yard) | low | the C&C term in Danish compound form; ours is original |
+| Raffinaderi, Kraftværk, Kaserne, Radarstation, Reparationsdepot, Helikopterplads, Teknologilab, Malmlager | low | plain genre words (refinery, power plant, barracks, radar, repair depot, helipad, tech lab, silo); not adopted as names |
+| Malmhøster, Høster (harvester) | low | the genre word; ours is original |
+| K-7 »Bastion«, P-6 »Skjold«, S-2 »Los«, H-4 »Muldvarp«, M-12 »Morter«, L-9 »Himmelværn«, B-1 »Fundament«, H-8 »Ravn«, X-1 »Frø«, X-2 »Pil«, X-4, X-6 »Kapsel«, X-8 »Vinge«, X-12 »Lanse« | clear | real words and the pattern letter-number-name; none matches a known unit. Not adopted (answer 3 A: today's names stay) |
+| Riffelskytte, Panserværn, Feltingeniør, Sanitetssoldat, Vogter, Stik, Pulsskytte, Lansesoldat, Tekniker, Feltheler | clear | plain role words |
+| Bastiontårn, Sikkerhedsport, Panservæg, Skjoldmur, Sluseport, Ressourceboks, Luftdok, Servicedok, Forskningsspire, Sensornexus, Panserstøberi, Vogterakademi, Malmkonverter, Kommandokerne, Knudepunkt, Relæ, Lansetårn | clear | descriptive compounds |
+| Ravmalm (amber ore), "Ravlys" | clear as a name | the glowing crystal look is not adopted (ADR 0049 section 2: reads as Tiberium) |
+| "Hold broen. Forstærkninger er på vej." (radio line) | clear | not an announcer phrase of C&C; the radio line is not built anyway |
+
+None of the file's unit or building names is used in the game (answer 3 A). The two to remove from any
+future text are Helix and its cards, Prisme, Aegis, Ionreaktor and Krigsfabrik.
+
+### Mono face (answer 6)
+**Yes, the file uses one**: IBM Plex Mono, Regular only, for every label (eyebrows, chips, counters,
+credits and clock, stat lines, the system line, the loading status) in all screens and sheets. So per
+ADR 0049 answer 6, **P605 runs**.
+- **Face and licence.** IBM Plex Mono, copyright IBM Corp., SIL Open Font License 1.1 with the
+  reserved font name "Plex", from `github.com/IBM/plex`. The files stay unmodified and ship with their
+  `OFL.txt` under `assets/art/fonts/ibm-plex-mono/`, a CREDITS row, the Licences screen and the
+  export notices (ADR 0025 section 13). P605 confirms the licence text and the reserved name against
+  the upstream `OFL.txt` when it downloads the file; this read-out did not fetch the font.
+- **Weight and size.** One file, Regular (400). The file has no bold mono and no italic.
+- **Coverage.** The file's labels use these symbols next to the text: ◈ (credits), ϟ (power), ●, ■, △,
+  ✓, ◇, ☑, □, ⌄, ‹, →, ★, ↑, ╱, ⌁. Which of them Plex Mono itself carries was not checked (Figma
+  may draw some from a fallback font). **The game does not rely on any of them**: the credits and power
+  marks are our own glyph icons (`EconomyPill`), and P605's test checks æøåäöüß and the digits and
+  punctuation of the HUD only.
+- **The two other faces.** The file sets titles in Roboto Condensed and body in Inter. ADR 0049
+  section 5 keeps Big Shoulders (titles, buttons) and Chakra Petch (body, numbers) where those are
+  close; Chakra Petch is squarer than Inter, Big Shoulders narrower than Roboto Condensed. This is
+  Michael's call and it is not changed here; if he wants the file's faces, each is its own
+  ADR 0025 section 13 row (both are OFL or Apache families).
+- **Fixed-width digits.** Plex Mono's digits are fixed width, so the clock, the count and the credits
+  can drop the per-digit slot code in P618 if Michael wants that; not decided here.
+
 ## Rally flags
 Each producing tab has a rally flag (ADR 0019 section 3). Two layers share one 128x128 canvas at
 import scale 0.5, so 64 px in game, and the **foot of the pole is the canvas centre**: centre the
@@ -3329,3 +3555,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-18 | v1.47 (P280, art-director, ADR 0037 sections 6 and 14): the Patchers (`fossil_patchers`) and the Menders (`renew_menders`), the medic squads, as two-figure `inf` models with an 8-direction hull, a walk of 4, an idle of 2, a shadow and an item card, and their roster entries after the rocket squads ("The medic squads" under "Units", Catalogue rows); the repair drone effect as two kinds of `fx/life_atlas.svg` (`drone`, two rotor-blur frames, and `drone_shadow`, the Drone Dock's drone, two rows on the gallery's Life page); the sorted world's page 1 2628, 2552 and 2502 to 2730, 2657 and 2598 and page 2 2504, 1386 and 1408 to 2510, 1456 and 1478 (cross-faction, Derrick League mirror, Lumen Accord mirror). |
 | 2026-11-19 | v1.48 (P551, art-director, plan answer 5): the Map looks section: `MapDef.ground_look` (view only) and the `assets/art/svg/ground_looks/<look>/` folders, and the first look, Heron Fords' (`heron`): river water with current lines that run on from tile to tile, shingle sand and meadow grass, six diamonds written as SVG by a small projection script kept outside the repository (the committed SVG is the source, as for P105), in the same keys and slots of the ground page (no new terrain, no new tile, no atlas pin moves); the Terrain page of the gallery ends with a cut of the map in its look. |
 | 2026-11-19 | v1.49 (P553, art-director, plan answer 5): the second map look, Curlew Crags' (`crags`): rock, sand, grass and scrub re-skinned as banded cliff, cracked pass floor, thin upland turf and thorn heath (eight diamonds written as SVG by a small projection script kept outside the repository, the committed SVG being the source, in the same keys and slots; no new terrain, no atlas pin moves), its table in "Map looks", the shared look checks in `tests/art/ground_look_support.gd` and a second block on the gallery's Terrain page. |
+| 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
