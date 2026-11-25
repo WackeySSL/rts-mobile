@@ -389,7 +389,8 @@ func _checks(
 	_tabs += 1
 	if _mark.card_open():
 		lines.append("%s: a tap on the tab did not fold the card" % label)
-	lines.append_array(_tab_checks(label, dock))
+	if _director.current != null and _mark.visible:  # The beat may have ended meanwhile.
+		lines.append_array(_tab_checks(label, dock))
 	_tab_press()
 	await await_idle_frame()
 	if _director.current != null and _mark.visible and not _mark.card_open():  # Not ended meanwhile.
