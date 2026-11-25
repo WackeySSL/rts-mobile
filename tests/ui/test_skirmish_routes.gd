@@ -3,9 +3,9 @@ extends GdUnitTestSuite
 ## "Skirmish (Nordværn)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
 ## with the player on that side as player 1, the computer of the other side as
 ## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
-## and the player's units in the other colour: since P632 (ADR 0050 section 3, answer 3) the team
-## marker is your own white (Sne) and the computer's red (Karmin) on every route, the scenario's
-## `team_triads`. The
+## and the player's units in its side's colour, the other player's in the other side's (orange for
+## Nordvaern, blue for Facet: the scenario's `team_triads`; P647 switches the markers to your own
+## white, Sne, and the computer's red, Karmin, ADR 0050 section 3 answer 3). The
 ## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -20,8 +20,8 @@ const ROUTES: Array[Dictionary] = [
 		"own_hq": &"headquarters",
 		"other_hq": &"renew_hq",
 		"own_faction": &"fossil",
-		"own_triad": 6,
-		"other_triad": 2,
+		"own_triad": 0,
+		"other_triad": 3,
 	},
 	{
 		"button": "SkirmishLumenButton",
@@ -31,15 +31,17 @@ const ROUTES: Array[Dictionary] = [
 		"own_hq": &"renew_hq",
 		"other_hq": &"headquarters",
 		"own_faction": &"renew",
-		"own_triad": 6,
-		"other_triad": 2,
+		"own_triad": 3,
+		"other_triad": 0,
 	},
 ]
 ## Player 1's Headquarters tile in both scenarios (the minimap paints its footprint).
 const HQ_TILE: Vector2i = Vector2i(7, 7)
-## The default marker colours (WorldSort.TRIADS): your own Sne, the computer's Karmin.
-const OWN_DEFAULT: int = 6
-const OTHER_DEFAULT: int = 2
+## The interim marker colours (WorldSort.TRIADS): Nordvaern orange, Facet blue (Kobolt). The default
+## markers of ADR 0050 section 3 (own Sne, the computer's Karmin) switch in with P647, the last
+## model batch; until then the old models wear the side's colour on their whole team areas.
+const ORANGE: int = 0
+const BLUE: int = 3
 const THINK_TICKS: int = 150
 
 var _window_size_before: Vector2i
@@ -216,21 +218,32 @@ func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
 		)
 
 
-func test_every_skirmish_scenario_defaults_to_own_white_and_the_computer_red() -> void:
+## Interim, 2026-11-25 (P632; P647 switches to Sne and Karmin): each player of every Skirmish
+## scenario wears its side's colour, orange for Nordvaern and blue for Facet, and in a mirror of one
+## side the second player wears the other side's colour.
+func test_every_skirmish_scenario_gives_each_player_its_sides_colour() -> void:
 	var seen: int = 0
 	for file: String in DirAccess.get_files_at("res://data/scenarios"):
 		if not file.begins_with("skirmish_") or not file.ends_with(".tres"):
 			continue
 		var scenario: ScenarioDef = load("res://data/scenarios/" + file)
-		assert_array(scenario.team_triads).override_failure_message(file).is_equal(
-			PackedInt32Array([0, OWN_DEFAULT, OTHER_DEFAULT])
+		var first: int = ORANGE if scenario.factions[1].id == &"fossil" else BLUE
+		var second: int = ORANGE if scenario.factions[2].id == &"fossil" else BLUE
+		if first == second:
+			second = BLUE if first == ORANGE else ORANGE
+		(
+			assert_int(WorldSort.triad_index(scenario.team_triads, 1))
+			. override_failure_message(file)
+			. is_equal(first)
 		)
-		assert_int(WorldSort.triad_index(scenario.team_triads, 1)).is_equal(OWN_DEFAULT)
-		assert_int(WorldSort.triad_index(scenario.team_triads, 2)).is_equal(OTHER_DEFAULT)
+		(
+			assert_int(WorldSort.triad_index(scenario.team_triads, 2))
+			. override_failure_message(file)
+			. is_equal(second)
+		)
 		seen += 1
 	assert_int(seen).is_equal(12)
-	assert_array(WorldSort.TRIADS[OWN_DEFAULT]).is_equal(["#FFFFFF", "#DCE2E6", "#A3ACB3"])
-	assert_array(WorldSort.TRIADS[OTHER_DEFAULT]).is_equal(["#F26A5E", "#CF3A2E", "#922219"])
+	assert_array(WorldSort.TRIADS[BLUE]).is_equal(["#7AA2F7", "#3F6FE0", "#27479E"])
 
 
 ## The type id of player `player`'s Headquarters: the first of its buildings with "hq" in its id or

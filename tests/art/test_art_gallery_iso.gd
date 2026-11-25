@@ -8,10 +8,10 @@ extends GdUnitTestSuite
 const Iso: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const ISO_PAGE: int = 4
-const ROWS: Array[String] = ["Sne", "Karmin"]
+const ROWS: Array[String] = ["Signal", "Kobolt"]
 const ZOOM_RIGS: Array[String] = ["Zoom75", "Zoom100", "Zoom150"]
-const SNE_KEYS: Array[String] = ["#FFFFFF", "#DCE2E6", "#A3ACB3"]
-const KARMIN_KEYS: Array[String] = ["#F26A5E", "#CF3A2E", "#922219"]
+const SIGNAL_KEYS: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]
+const KOBOLT_KEYS: Array[String] = ["#7AA2F7", "#3F6FE0", "#27479E"]
 const BASE: Vector2 = Vector2(1280, 720)
 
 
@@ -42,7 +42,7 @@ func test_the_iso_page_is_built_when_it_is_first_shown_and_names_the_first_type(
 		for row: Node in page.get_node("Scroll/Content/" + ground).get_children():
 			names.append(row.name)
 		# The artillery is a vehicle: the Damage rows (P160) come after its two triads.
-		assert_array(names).is_equal([&"Sne", &"Karmin", &"Damage"])
+		assert_array(names).is_equal([&"Signal", &"Kobolt", &"Damage"])
 
 
 func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at_three_zooms(
@@ -204,10 +204,10 @@ func test_a_vehicle_shows_its_16_directions_at_stage_1_and_2_with_the_neutral_ov
 func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = _show(gallery)
-	# The first type is the Derrick League's artillery; its key triad is Sne.
+	# The first type is the Derrick League's artillery; its key triad is Signal.
 	var model: ArtModel = load(ArtGen.model_paths()[0]) as ArtModel
 	assert_str(model.art_id).is_equal("artillery")
-	var rig: Node2D = page.get_node("Scroll/Content/Grass/Sne/Dir06")
+	var rig: Node2D = page.get_node("Scroll/Content/Grass/Signal/Dir06")
 	var turret: Sprite2D = rig.get_node("Turret")
 	var factor: float = 0.5
 	assert_vector(turret.position).is_equal_approx(
@@ -217,17 +217,17 @@ func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() 
 	assert_vector(turret.offset).is_equal_approx(
 		-Vector2(layouts[&"turret"].origin) * factor, Vector2.ONE * 1e-3
 	)
-	var sne_hull: Image = (rig.get_node("Hull") as Sprite2D).texture.get_image()
-	var karmin: Node2D = page.get_node("Scroll/Content/Grass/Karmin/Dir06")
-	var karmin_hull: Image = (karmin.get_node("Hull") as Sprite2D).texture.get_image()
+	var signal_hull: Image = (rig.get_node("Hull") as Sprite2D).texture.get_image()
+	var kobolt: Node2D = page.get_node("Scroll/Content/Grass/Kobolt/Dir06")
+	var kobolt_hull: Image = (kobolt.get_node("Hull") as Sprite2D).texture.get_image()
 	# The mid tone is the left face of the team band; its top is a thin ledge that a texture at
 	# gallery size blurs into the edge.
-	assert_bool(_has_colour(sne_hull, SNE_KEYS[1])).is_true()
-	assert_bool(_has_colour(sne_hull, KARMIN_KEYS[1])).is_false()
-	assert_bool(_has_colour(karmin_hull, KARMIN_KEYS[1])).is_true()
-	assert_bool(_has_colour(karmin_hull, SNE_KEYS[1])).is_false()
+	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[1])).is_true()
+	assert_bool(_has_colour(signal_hull, KOBOLT_KEYS[1])).is_false()
+	assert_bool(_has_colour(kobolt_hull, KOBOLT_KEYS[1])).is_true()
+	assert_bool(_has_colour(kobolt_hull, SIGNAL_KEYS[1])).is_false()
 	# Grass and sand show the same frame: one texture.
-	var sand_rig: Node2D = page.get_node("Scroll/Content/Sand/Sne/Dir06")
+	var sand_rig: Node2D = page.get_node("Scroll/Content/Sand/Signal/Dir06")
 	assert_object((sand_rig.get_node("Hull") as Sprite2D).texture).is_same(
 		(rig.get_node("Hull") as Sprite2D).texture
 	)

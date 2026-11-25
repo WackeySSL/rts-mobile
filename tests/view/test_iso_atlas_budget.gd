@@ -140,12 +140,12 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	var other: Vector2i = _page(others)
 	_assert_within_budget("cross-faction in other triads", other)
 	assert_int(absi(other.y - page.y)).is_less_equal(OTHER_TRIADS_PX)
-	# The default marker colours of the routes, your own Sne and the computer's Karmin (P632, ADR
+	# The routes' interim colours (orange, Kobolt) and the coming defaults, Sne and Karmin (P632, ADR
 	# 0050 section 3): the page of the sentinel migration stays within the same 40 rows.
-	var defaults: Array[IsoPlayerArt] = [_art(&"fossil", 6), _art(&"renew", 2)]
-	var routes: Vector2i = _page(defaults)
-	_assert_within_budget("cross-faction in Sne and Karmin", routes)
-	assert_int(absi(routes.y - TODAY_CROSS)).is_less_equal(OTHER_TRIADS_PX)
+	for pair: Array in [[0, 3], [6, 2]]:
+		var routes: Vector2i = _page([_art(&"fossil", pair[0]), _art(&"renew", pair[1])])
+		_assert_within_budget("cross-faction in triads %s" % [pair], routes)
+		assert_int(absi(routes.y - TODAY_CROSS)).is_less_equal(OTHER_TRIADS_PX)
 	# Page 2, the shadows: the same budget, its own pin (P204's team pads make it triad-dependent).
 	var second: Vector2i = _page(players, IsoAtlas.PAGE_UNSORTED)
 	_assert_within_budget("cross-faction page 2", second)

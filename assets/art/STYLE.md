@@ -420,9 +420,11 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
   #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
   #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. These eight are what a
-  player can wear. The default marker colours of the match routes are your own Sne (player 1) and
-  the computer's Karmin (player 2), `team_triads` `(0, 6, 2)` in every Skirmish scenario; the
-  galleries show Sne and Karmin. Signal and Arktisk are no longer any faction's key.
+  player can wear. Interim (2026-11-25, P632): the Skirmish scenarios name the side's own colour in
+  `team_triads`, Nordvaern Signal (0), Facet Kobolt (3, the blue nearest #40A3FF), and the second
+  player of a mirror the other one; the galleries and the same-scene sheet show the same. The default
+  marker colours of ADR 0050 answer 3, your own Sne and the computer's Karmin, switch in with P647,
+  the last model batch. Signal and Arktisk are no longer any faction's key.
 
 ### Palette per faction
 The mid tone of each material (ADR 0023 section 6 as changed by the key band). Four colours of the
@@ -3627,4 +3629,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-19 | v1.49 (P553, art-director, plan answer 5): the second map look, Curlew Crags' (`crags`): rock, sand, grass and scrub re-skinned as banded cliff, cracked pass floor, thin upland turf and thorn heath (eight diamonds written as SVG by a small projection script kept outside the repository, the committed SVG being the source, in the same keys and slots; no new terrain, no atlas pin moves), its table in "Map looks", the shared look checks in `tests/art/ground_look_support.gd` and a second block on the gallery's Terrain page. |
 | 2026-11-24 | v1.50 (P602, art-director, ADR 0049 sections 1 to 3): the Treadline UI look section: the colours (role, proposed token, hex), type scale, panel, border and corner rules, spacing and order glyphs read from the Figma file's vector and text nodes (no picture used); the check of ADR 0049 section 3 against every screen; the name screen; and the mono-face finding (IBM Plex Mono, so P605 runs). Docs only. |
 | 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
-| 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the galleries and the same-scene sheet in Sne and Karmin, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the default marker colours in the Skirmish scenarios |
+| 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |

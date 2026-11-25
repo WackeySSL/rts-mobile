@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Units page of the art gallery (plan rows P101 and P102, ADR 0023): the six Derrick League
-## units and the six Lumen Accord units as the generator draws them, a line for team A (the Sne
-## triad) and one for team B (Karmin) of each faction on each ground with the names under team B's
+## units and the six Lumen Accord units as the generator draws them, a line for team A (the Signal
+## triad) and one for team B (Kobolt) of each faction on each ground with the names under team B's
 ## line, the Derrick League's two lines above the Lumen Accord's two, and the Flarejack in the
 ## scene's zoom row at the camera zoom levels, sharp at each. The page keeps the effects atlas and
 ## the terrain patch (tests/art/test_art_assets.gd); the pages after it are in
@@ -33,8 +33,8 @@ const ARMED: Array[String] = [
 	"light_tank", "heavy_tank", "artillery", "renew_scout", "renew_tank", "renew_artillery"
 ]
 ## The key triads of ADR 0023 section 5: team A's units carry the first, team B's the second.
-const SNE: Array[String] = ["#FFFFFF", "#DCE2E6", "#A3ACB3"]
-const KARMIN: Array[String] = ["#F26A5E", "#CF3A2E", "#922219"]
+const SIGNAL: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]
+const KOBOLT: Array[String] = ["#7AA2F7", "#3F6FE0", "#27479E"]
 const TOLERANCE: float = 0.05  ## Summed difference of the three channels in 0 to 1.
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
 ## The squads that play poses, with the faction folder of their model.
@@ -116,8 +116,8 @@ func test_each_ground_has_a_line_of_each_factions_six_units_for_team_a_and_one_f
 
 
 ## The team colour is in the SVG text, replaced per player as the match-start bake does: a unit of
-## team A holds the Sne colours and none of Karmin, a unit of team B the other way round.
-func test_team_a_is_drawn_in_the_sne_triad_and_team_b_in_karmin() -> void:
+## team A holds the Signal colours and none of Kobolt, a unit of team B the other way round.
+func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_kobolt() -> void:
 	var gallery: Control = await _open_gallery()
 	for ground: String in ["Grass", "Sand"]:
 		for row_name: String in ROWS:
@@ -128,7 +128,10 @@ func test_team_a_is_drawn_in_the_sne_triad_and_team_b_in_karmin() -> void:
 						((rig as Node2D).get_node("Hull") as Sprite2D).texture.get_image()
 					)
 					var path: String = "%s %s %s" % [ground, row_name, rig.name]
-					_assert_team(hull, is_a, path)
+					var own: int = _pixels_of(hull, SIGNAL if is_a else KOBOLT)
+					var other: int = _pixels_of(hull, KOBOLT if is_a else SIGNAL)
+					assert_int(own).override_failure_message(path).is_greater(0)
+					assert_int(other).override_failure_message(path).is_equal(0)
 
 
 ## The zoom row is in the scene (tests/project pins its scales to the camera levels): the Flarejack
@@ -153,7 +156,9 @@ func test_the_zoom_row_shows_the_flarejack_at_each_camera_zoom_in_its_grounds_te
 				canvas * 0.5 * zoom, Vector2.ONE * 1.0
 			)
 			var image: Image = hull.texture.get_image()
-			_assert_team(image, ground == "Grass", ground)
+			var own: Array[String] = SIGNAL if ground == "Grass" else KOBOLT
+			assert_int(_pixels_of(image, own)).override_failure_message(ground).is_greater(0)
+			assert_int(_pixels_of(image, KOBOLT if ground == "Grass" else SIGNAL)).is_equal(0)
 		scales.sort()
 		assert_array(scales).is_equal(LEVELS)
 
@@ -351,7 +356,7 @@ func _frame_data(model: ArtModel, part: StringName, frame: int, triad: int) -> P
 	var text: String = FileAccess.get_file_as_string(
 		ArtGen.frame_path(model, part, model.default_dir(), frame)
 	)
-	var triads: Array[Array] = [SNE, KARMIN]
+	var triads: Array[Array] = [SIGNAL, KOBOLT]
 	for tone: int in 3:
 		text = text.replace(ArtPalette.KEYS[model.faction][tone], triads[triad][tone])
 	var image: Image = Image.new()
@@ -360,17 +365,6 @@ func _frame_data(model: ArtModel, part: StringName, frame: int, triad: int) -> P
 
 
 ## The pixels of `image` that are within `TOLERANCE` of one of the three colours of a triad.
-## Team A carries Sne and no Karmin, team B Karmin. Sne is a white, which greys of the art come
-## near, so only the red tells the teams apart and Sne is only required to be there.
-func _assert_team(image: Image, is_a: bool, label: String) -> void:
-	var red: int = _pixels_of(image, KARMIN)
-	if is_a:
-		assert_int(_pixels_of(image, SNE)).override_failure_message(label).is_greater(0)
-		assert_int(red).override_failure_message(label).is_equal(0)
-	else:
-		assert_int(red).override_failure_message(label).is_greater(0)
-
-
 func _pixels_of(image: Image, triad: Array[String]) -> int:
 	var keys: Array[Color] = []
 	for hex: String in triad:

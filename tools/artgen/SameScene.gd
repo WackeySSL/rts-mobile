@@ -14,9 +14,13 @@ const GAP: int = 8
 const SIDE_PX: int = 32
 const EDGE_STEP: float = 0.08  ## Luminance jump between neighbours that counts as an edge.
 const DARK: float = 0.06
-## The marker of the player's own units: Sne (white), the default of ADR 0050 section 3, answer 3;
-## `mirror_triad` is the computer's. A frame carries the sentinel key, never shown as it is.
-const OWN_TRIAD: Array[String] = ["#FFFFFF", "#DCE2E6", "#A3ACB3"]
+## What a Skirmish route gives each side (interim, P632; `WorldSort.TRIADS` 0 and 3): Nordvaern's
+## orange, Facet's blue (Kobolt). `mirror_of` is what the second player of a mirror of one side
+## wears: the other side's colour. P647 switches the routes to your own Sne and the computer's
+## Karmin (ADR 0050 section 3).
+const ROUTE_TRIAD: Dictionary[StringName, Array] = {
+	&"fossil": ["#FF9446", "#E8681F", "#B04B12"], &"renew": ["#7AA2F7", "#3F6FE0", "#27479E"]
+}
 
 
 ## One sprite, ready to blend: its body and cast shadow as images on the same canvas.
@@ -27,16 +31,22 @@ class Sprite:
 	var ground: Vector2i  ## The ground point in the images.
 
 
+## The colour the second player of a mirror route of `art_id`'s side wears.
+static func mirror_of(art_id: StringName) -> PackedStringArray:
+	var faction: StringName = (load(IsoIndex.PATH) as IsoIndex).sheet(art_id).faction
+	return PackedStringArray(ROUTE_TRIAD[&"renew" if faction == &"fossil" else &"fossil"])
+
+
 static func load_bands() -> SameSceneBands:
 	return load(BANDS_PATH) as SameSceneBands
 
 
-## The sprite of `art_id` for a player wearing `triad` (your own Sne when empty).
+## The sprite of `art_id` for a player wearing `triad` (its side's route colour when empty).
 static func sprite(
 	art_id: StringName, bands: SameSceneBands, zoom: float, triad: PackedStringArray = []
 ) -> Sprite:
 	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(art_id)
-	var own: PackedStringArray = PackedStringArray(OWN_TRIAD)
+	var own: PackedStringArray = PackedStringArray(ROUTE_TRIAD[sheet.faction])
 	var art: IsoPlayerArt = IsoPlayerArt.make(
 		sheet.faction,
 		PackedStringArray(ArtPalette.KEYS[sheet.faction]),
@@ -277,8 +287,9 @@ static func _plain(image: Image) -> Sprite:
 
 
 ## The sheet: the scene's four sprites on every zoom, a mirror row (the same unit and the same
-## building in your own Sne and the computer's Karmin, so that only the marker differs), the
-## effects, all graded as the world is, then the item cards and glyphs as the HUD draws them.
+## building as the first and the second player of a mirror route, so that only the team colour
+## differs), the effects, all graded as the world is, then the item cards and glyphs as the HUD
+## draws them.
 static func sheet(b: SameSceneBands) -> Image:
 	var world: Array = []
 	var y: int = 0
@@ -290,7 +301,7 @@ static func sheet(b: SameSceneBands) -> Image:
 	var mirror: Array[Sprite] = []
 	for at: int in [0, 2]:
 		mirror.append(sprite(StringName(b.scene[at]), b, 1.0))
-		mirror.append(sprite(StringName(b.scene[at]), b, 1.0, b.mirror_triad))
+		mirror.append(sprite(StringName(b.scene[at]), b, 1.0, mirror_of(StringName(b.scene[at]))))
 	y += _row(world, mirror, b, 1.0, y, 0)
 	var atlas: Image = _raster(
 		IsoAtlas.read_text("res://assets/art/svg/fx/effects_atlas.svg"), ART_SCALE

@@ -12,7 +12,6 @@ wanted_dir = Dictionary[StringName, int]({
 })
 terrains = PackedStringArray("grass", "scrub", "sand", "rock", "ore")
 zooms = PackedFloat32Array(0.75, 1, 1.5, 2)
-mirror_triad = PackedStringArray("#F26A5E", "#CF3A2E", "#922219")
 glyphs = PackedStringArray("res://assets/art/svg/icons/glyph_repair.svg", "res://assets/art/svg/icons/glyph_power.svg", "res://assets/art/svg/icons/glyph_sell.svg", "res://assets/art/svg/icons/glyph_alert.svg")
 effects = Dictionary[String, Rect2i]({
 "burst": Rect2i(0, 0, 80, 80),
@@ -30,23 +29,8 @@ black_edge_max = 0.02
 density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
 spread_min = 80.0
-exempt_sat = Dictionary[StringName, float]({
-&"light_tank": 0.129,
-&"artillery": 0.116,
-&"harvester": 0.096,
-&"headquarters": 0.098,
-&"refinery": 0.1,
-&"power_plant": 0.091,
-&"vehicle_factory": 0.104,
-&"renew_scout": 0.078,
-&"renew_tank": 0.11,
-&"renew_artillery": 0.093,
-&"renew_tanker": 0.095,
-&"renew_hq": 0.063,
-&"renew_refinery": 0.073,
-&"renew_power": 0.1,
-&"renew_factory": 0.091
-})
-exempt_up = Dictionary[StringName, float]({
-&"refinery": -0.161
-})
+; Transition exemptions (2026-11-25, P632), art id -> measured value that misses the saturation
+; (`exempt_sat`) or the up/down light band (`exempt_up`). Shrink-only; empty since the routes wear
+; the sides' own colours. P647 switches the routes to Sne and Karmin and may need entries again.
+exempt_sat = Dictionary[StringName, float]({})
+exempt_up = Dictionary[StringName, float]({})

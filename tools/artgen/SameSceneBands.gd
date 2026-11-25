@@ -10,7 +10,6 @@ extends Resource
 @export var wanted_dir: Dictionary[StringName, int] = {}  ## Faction -> the default view of a unit.
 @export var terrains: PackedStringArray = PackedStringArray()
 @export var zooms: PackedFloat32Array = PackedFloat32Array()
-@export var mirror_triad: PackedStringArray = PackedStringArray()  ## The second player's triad.
 @export var glyphs: PackedStringArray = PackedStringArray()
 @export var effects: Dictionary[String, Rect2i] = {}  ## Name -> region of the effects atlas, px.
 @export var grade_warm: Color = Color.WHITE  ## ADR 0035 section 3: warm at the top left,

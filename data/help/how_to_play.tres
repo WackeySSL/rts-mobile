@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit keeps its side's colour, carries a marker in your team colour (white for you, red for the computer) and has a shadow on the ground. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit wears your team colour and has a shadow on the ground. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -146,7 +146,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e11"), SubResource("e12"), S
 script = ExtResource("3_ent")
 id = &"buildings-look"
 title = "Your buildings"
-body = "Each building stands on its footprint in its side's colour with a marker in your team colour, and has a soft shadow. Some have moving parts, such as turning antennas or spinning rotors. A unit in front of a building is drawn over it, and one behind it is hidden by it."
+body = "Each building stands on its footprint in your team colour and has a soft shadow. Some have moving parts, such as turning antennas or spinning rotors. A unit in front of a building is drawn over it, and one behind it is hidden by it."
 
 [sub_resource type="Resource" id="e22"]
 script = ExtResource("3_ent")
@@ -884,7 +884,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e116"), SubResource("e117"),
 script = ExtResource("3_ent")
 id = &"factions-two"
 title = "Playing a side"
-body = "In a match you play your side from the top of the map, and the computer plays the other side from the bottom. Each side keeps its own colour, orange for Nordværn and blue for Facet. Your units and buildings carry a white marker, and the computer's carry a red one."
+body = "In a match you play your side from the top of the map, and the computer plays the other side from the bottom. Your units and buildings wear your side's colour, orange for Nordværn and blue for Facet. The computer's wear the other one."
 
 [sub_resource type="Resource" id="e132"]
 script = ExtResource("3_ent")
