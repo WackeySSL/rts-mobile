@@ -898,8 +898,8 @@ Button/font_sizes/font_size = 18
 ; The Dev button of the main screen: 40 base px, not dp (see metadata/base_px).
 DevButton/base_type = &"Button"
 DevButton/font_sizes/font_size = 40
-; The labels' size, 16 dp, and the command bar chip's count (NumberLabel), 20 dp.
-Label/font_sizes/font_size = 16
+; The labels' size, 15 dp (P605: Inter is wider than the old body face; 15 keeps the guide prompts out of their scroll), and the command bar chip's count (NumberLabel), 20 dp.
+Label/font_sizes/font_size = 15
 NumberLabel/base_type = &"Label"
 NumberLabel/font_sizes/font_size = 20
 NumberLabel/fonts/font = ExtResource("3_plex_400")
