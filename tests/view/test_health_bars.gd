@@ -308,7 +308,11 @@ func test_the_ring_does_not_place_the_bar() -> void:
 	_camera.zoom = Vector2(1.5, 1.5)
 	_frame()
 	var ring: Sprite2D = _units.rig(1).get_node("Ring")
-	assert_float(ring.radius * 1.5).is_equal_approx(37.335, 0.01)
+	var snap: MatchSnapshot = _units.runner.snapshot
+	var type: int = snap.type_index[1]
+	var sheet: IsoSheetDef = _units.world_sort.sheet(snap.type_ids[type])
+	var want: float = RingSize.semi_px(snap.type_selection_radius[type], sheet, 1.75 / 1.5)
+	assert_float(ring.radius).is_equal_approx(want, 0.01)  # The hull's footprint (P651).
 	var at: Vector2 = _units.unit_screen_position(1)
 	var bottom: float = _camera.world_to_screen(_box(1).end).y
 	assert_float(at.y - bottom).is_equal_approx(_lift(&"light_tank") * 1.5 + 1.75, 0.05)
