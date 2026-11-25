@@ -28,11 +28,12 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const OVERLAP_PX2: float = 4.0  ## Less area than this is rounding, not a covered button.
 const TILE_MARGIN_DP: float = 8.0
 const AD_GAP_DP: float = 16.0
-## The ratchet: on the smallest phone (docks of 102 to 126 dp, under `card_wide_dp`, so P589's wide
-## form does not help; only P593's shorter prompts do) these "lesson/beat" prompts are longer than
+## The ratchet: on the smallest phone (docks of 102 to 126 dp, where P589's wide form helps only so
+## far; P593's shorter prompts do the rest) these "lesson/beat" prompts are longer than
 ## the dock and scroll in the card today. Any other prompt that scrolls, anywhere, fails; the card
 ## is inside its dock in every case. P593 empties the list.
 const SMALL: StringName = &"web_phone_small"
+const PHONE_PORTRAIT: StringName = &"web_phone_portrait"
 const SCROLLS: Array[String] = [
 	"air/airfield",
 	"air/board",
@@ -70,6 +71,8 @@ const SCROLLS: Array[String] = [
 	"support/sell",
 	"support/sell-last",
 ]
+## The same for the portrait phone's 304 dp dock: the head row costs 48 dp of it.
+const SCROLLS_PORTRAIT: Array[String] = ["basics/low-power", "basics/incoming"]
 ## Controls that follow the world (ADR 0048 section 3): the card may be see-through over them.
 const WORLD_CONTROLS: Array[StringName] = [&"PlaceConfirm"]
 const TABS: int = 5
@@ -104,6 +107,7 @@ var _selection: SelectionModel
 var _own: PackedInt32Array = PackedInt32Array()
 var _pushed: int = 0
 var _folds: int = 0
+var _tabs: int = 0
 var _over: int = 0
 var _pushes: int = 0
 var _parts_now: Dictionary[StringName, Rect2] = {}
@@ -146,6 +150,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 		extras.append(UiProfiles.by_name(profile_name))
 	profiles.append_array(extras)
 	_folds = 0
+	_tabs = 0
 	_over = 0
 	_pushes = 0
 	assert_int(lessons.size()).is_greater_equal(4)
@@ -180,7 +185,8 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 	assert_int(seen).is_greater(100)
 	for line: String in found:
 		print("SWEEP ", line)
-	print("FOLDS ", _folds, " OVER_CAP ", _over, " PUSHES ", _pushes)
+	print("FOLDS ", _folds, " TABS ", _tabs, " OVER_CAP ", _over, " PUSHES ", _pushes)
+	assert_int(_tabs).override_failure_message("no folded tab was exercised").is_greater(100)
 	assert_array(found).override_failure_message("\n".join(found)).is_empty()
 
 
@@ -272,8 +278,16 @@ func _show(lesson: TutorialLessonDef, beat: TutorialBeatDef) -> void:
 	shown.after_ai_step = &""
 	shown.pause = false
 	_director.skip()
-	_director.start(Lesson.lesson(String(lesson.id), [shown]))
-	_director.advance()
+	if beat == lesson.beats[0]:  # The lesson's first card: Skip shows.
+		_director.start(Lesson.lesson(String(lesson.id), [shown]))
+		_director.advance()
+	else:  # A later card: a read-only first beat is done, so Skip is gone as in the game.
+		var first: TutorialBeatDef = shown.duplicate() as TutorialBeatDef
+		first.kind = TutorialConditions.Kind.NEXT
+		_director.start(Lesson.lesson(String(lesson.id), [first, shown]))
+		_director.advance()
+		_director.next()
+		_director.advance()
 	for _frame: int in 3:
 		await await_idle_frame()
 	if not _mark.visible and not _director.running():
@@ -314,15 +328,15 @@ func _checks(
 		_folds += 1
 		if strict:
 			lines.append("%s: no room for the card, it folds to its tab" % label)
-		var tab: Rect2 = _mark.tab_rect()
-		if not tab.has_area() or not _safe().grow(TOLERANCE_PX).encloses(tab):
-			lines.append("%s: the folded tab %s is not inside the safe rect" % [label, tab])
+		lines.append_array(_tab_checks(label, dock))
 		return lines
 	var card: Rect2 = _mark.card_rect()
 	if _mark.prompt_scrolls():
+		var pair: String = "%s/%s" % [lesson.id, beat.id]
 		var small: bool = profile.window_size == UiProfiles.by_name(SMALL).window_size
+		var upright: bool = profile.window_size == UiProfiles.by_name(PHONE_PORTRAIT).window_size
 		_over += 1
-		if not (small and SCROLLS.has("%s/%s" % [lesson.id, beat.id])):
+		if not ((small and SCROLLS.has(pair)) or (upright and SCROLLS_PORTRAIT.has(pair))):
 			lines.append("%s: the prompt scrolls, the dock is %s high" % [label, dock.size.y])
 	if not dock.grow(TOLERANCE_PX).encloses(card):
 		lines.append("%s: the card %s is outside the dock %s" % [label, card, dock])
@@ -368,6 +382,18 @@ func _checks(
 		if band.is_visible_in_tree() and apart.intersects(_on_screen(band)):
 			lines.append("%s: the card is under %s dp from the ad band" % [label, AD_GAP_DP])
 	lines.append_array(await _through(label, beat, card, scope))
+	lines.append_array(_tab_checks(label, dock))
+	_tab_press()  # Fold the card to its tab: the tab stands in its place and the card is gone.
+	await await_idle_frame()
+	_folds += 1
+	_tabs += 1
+	if _mark.card_open():
+		lines.append("%s: a tap on the tab did not fold the card" % label)
+	lines.append_array(_tab_checks(label, dock))
+	_tab_press()
+	await await_idle_frame()
+	if _director.current != null and _mark.visible and not _mark.card_open():  # Not ended meanwhile.
+		lines.append("%s: a second tap on the tab did not unfold the card" % label)
 	if beat.anchor == TutorialBeatDef.Anchor.TILE:
 		var body: Control = _mark.find_child("Card", true, false) as Control
 		var camera: RtsCamera = _main.get_node("Camera") as RtsCamera
@@ -379,6 +405,37 @@ func _checks(
 					"%s: the card covers the tile %s at %s" % [label, beat.anchor_tile, point]
 				)
 	return lines
+
+
+## The tab, folded or open: at least 48 dp, inside the safe rect, on no `HudCorners` part (the
+## economy card and the attack toast's slot aside), and on the dock's scope-side corner when the
+## dock has room. `dock` is the one in force.
+func _tab_checks(label: String, dock: Rect2) -> Array[String]:
+	var lines: Array[String] = []
+	var tab: Rect2 = _mark.tab_rect()
+	var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+	if not tab.has_area():
+		lines.append("%s: the tab does not show" % label)
+		return lines
+	if tab.size.x < floor_px or tab.size.y < floor_px:
+		lines.append("%s: the tab %s is under 48 dp" % [label, tab])
+	if not _safe().grow(TOLERANCE_PX).encloses(tab):
+		lines.append("%s: the tab %s is not inside the safe rect" % [label, tab])
+	_read_parts()
+	for part: StringName in _parts_now:
+		var rect: Rect2 = _parts_now[part]
+		if part == HudCorners.CARD or part == HudCorners.TOAST:
+			continue
+		if tab.intersection(rect).get_area() > OVERLAP_PX2:
+			lines.append("%s: the tab %s covers the HUD part %s %s" % [label, tab, part, rect])
+	if GuideDock.has_room(dock, UiScale.base_px_per_dp()):
+		if not dock.grow(TOLERANCE_PX).encloses(tab):
+			lines.append("%s: the tab %s is outside the dock %s" % [label, tab, dock])
+	return lines
+
+
+func _tab_press() -> void:
+	(_mark.find_child("Tab", true, false) as Button).pressed.emit()
 
 
 ## The see-through rules: the card is see-through only over a tile, a modal's button or a control

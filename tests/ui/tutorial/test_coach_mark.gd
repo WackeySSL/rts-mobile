@@ -82,12 +82,15 @@ func test_a_beat_done_hides_the_card_until_the_next_prompt() -> void:
 	late.delay_ticks = 30
 	await _open(_profile(ScreenSizes.LANDSCAPE[0]), read, false, [read, late])
 	_director.next()
-	assert_bool(_mark.visible).is_false()  # In the gap.
+	assert_bool(_mark.card_open()).is_false()  # In the gap: the tab alone, the next number.
+	assert_bool(_mark.tab_rect().has_area()).is_true()
+	assert_str(_mark.counter_text()).is_equal("2/2")
+	assert_bool(_mark.ring_rect().has_area()).is_false()
 	for _i: int in 30:
 		Rig.step(_world, _loop)
 	_runner.snapshot = Lesson.snapshot(_world)
 	_director.advance()
-	assert_bool(_mark.visible).is_true()
+	assert_bool(_mark.card_open()).is_true()
 
 
 func test_a_tap_on_the_ring_target_reaches_it_and_the_ring_and_root_ignore() -> void:
@@ -202,3 +205,36 @@ func test_a_reduced_switch_set_before_ready_is_kept() -> void:
 	assert_bool(mark.reduced).is_true()
 	remove_child(mark)
 	mark.free()
+
+
+func test_skip_is_on_the_first_card_only_and_next_on_read_only_beats() -> void:
+	var first: TutorialBeatDef = _control_beat("first", NEXT)
+	var second: TutorialBeatDef = _control_beat("second", NEXT)
+	var third: TutorialBeatDef = _control_beat("third", TutorialConditions.Kind.CAMERA_PANNED)
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), first, false, [first, second, third])
+	var skip: Button = _mark.find_child("Skip", true, false) as Button
+	var next: Button = _mark.find_child("Next", true, false) as Button
+	assert_bool(skip.is_visible_in_tree() and next.is_visible_in_tree()).is_true()
+	var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+	for button: Button in [skip, next]:
+		assert_bool(button.size.x >= floor_px and button.size.y >= floor_px).is_true()
+	var a: Rect2 = skip.get_global_rect()
+	var b: Rect2 = next.get_global_rect()
+	var apart: float = maxf(
+		maxf(b.position.x - a.end.x, a.position.x - b.end.x),
+		maxf(b.position.y - a.end.y, a.position.y - b.end.y)
+	)
+	assert_float(apart).is_greater_equal(UiScale.dp(12.0) - TOLERANCE_PX)
+	_director.next()
+	_director.advance()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(skip.is_visible_in_tree()).is_false()
+	assert_bool(next.is_visible_in_tree()).is_true()
+	_director.next()
+	_director.advance()
+	await await_idle_frame()
+	await await_idle_frame()
+	assert_bool(next.is_visible_in_tree()).is_false()  # An action beat has no Next.
+	assert_bool(skip.is_visible_in_tree()).is_false()
+	_close()

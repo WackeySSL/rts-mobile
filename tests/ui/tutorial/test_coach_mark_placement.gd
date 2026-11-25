@@ -229,7 +229,11 @@ func test_the_real_phones_dock_a_two_line_prompt_with_48_dp_buttons_12_dp_apart(
 			assert_bool(button.size.x >= floor_px and button.size.y >= floor_px).is_true()
 		var skip: Rect2 = (_mark.find_child("Skip", true, false) as Button).get_global_rect()
 		var next: Rect2 = (_mark.find_child("Next", true, false) as Button).get_global_rect()
-		assert_float(next.position.x - skip.end.x).is_greater_equal(UiScale.dp(12.0) - TOLERANCE_PX)
+		var apart: float = maxf(
+			maxf(next.position.x - skip.end.x, skip.position.x - next.end.x),
+			maxf(next.position.y - skip.end.y, skip.position.y - next.end.y)
+		)  # Side by side (narrow) or one under the other (wide).
+		assert_float(apart).is_greater_equal(UiScale.dp(12.0) - TOLERANCE_PX)
 		_close()
 		UiScale.clear_override()
 
@@ -281,8 +285,13 @@ func test_with_no_room_the_card_folds_to_its_tab_and_the_tab_opens_it() -> void:
 	_close()
 
 
-func test_a_beat_with_room_shows_no_tab() -> void:
+func test_a_beat_with_room_shows_the_tab_at_the_docks_scope_side_corner() -> void:
 	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _control_beat("hit", NEXT))
-	assert_bool((_mark.find_child("Tab", true, false) as Button).visible).is_false()
-	assert_that(_mark.tab_rect()).is_equal(Rect2())
+	var tab: Rect2 = _mark.tab_rect()
+	var dock: Rect2 = _mark.dock_rect()
+	var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
+	assert_bool(tab.size.x >= floor_px and tab.size.y >= floor_px).is_true()
+	assert_float(tab.end.x).is_equal_approx(dock.end.x, TOLERANCE_PX)
+	assert_float(tab.position.y).is_equal_approx(dock.position.y, TOLERANCE_PX)
+	assert_bool(_mark.card_rect().encloses(tab)).is_true()
 	_close()

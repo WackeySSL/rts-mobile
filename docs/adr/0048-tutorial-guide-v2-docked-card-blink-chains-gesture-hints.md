@@ -179,6 +179,18 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   the fold control would invite a slip that ends the lesson. A dock 272 dp wide upright has no room
   for Skip, Next and the tab in one row.
 
+- **Implementation note (P589).** Two deviations, both forced by the 126 dp dock of the smallest
+  landscape phone (`web_phone_small`, 384 to 428 dp wide):
+  1. The wide form is used for the dock's width at least `card_wide_dp` **or any landscape dock**.
+     The narrow form's head row and foot row cost 96 dp of a 126 dp dock and left the prompt no
+     height. Only a portrait dock below `card_wide_dp` is narrow.
+  2. Where the dock's height cannot hold the tab, a 12 dp gap and Next (and Skip) in one column, the
+     gap between the tab and Next shrinks down to 4 dp, and Skip and Next sit side by side under
+     the tab. The 12 dp between Skip and Next stands in both cases.
+  The hint line no longer names Skip ("Stuck? Try what the card says, or leave from the menu.").
+  The tab is a button with the counter over a 14 dp chevron (turned half way when folded), so it
+  fits the 48 dp square of `GuideDock.tab_slot`.
+
 ### 3. The target is never hidden
 - HUD targets cannot lie under the open card (§1).
 - Some targets can: a world tile, a control that follows the world (the ghost's check mark and X,
