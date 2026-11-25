@@ -267,6 +267,13 @@ What exists that this builds on:
   know.
 - `AiStrikes` counts no overload kills and no darkness. The data stays tunable, and the
   measurement (P577) decides whether the AI should aim for damage.
+- Amendment (2026-11-24 and 2026-11-25, Michael; recorded by P578). 2026-11-24, "Ja til begge":
+  a ring over a seen or remembered enemy radar scores its value plus `OpponentDef.strike_radar_bonus`
+  (P576b, #644; Facet 800, Nordværn 0), and the Dusk Array stays a control tool with no data
+  change. 2026-11-25, "Dusk anbefaling": the AI's Dusk Array hits the producers it has seen. The
+  radar bonus stays and works whenever a radar is known. Radar-dark is no longer a balance target
+  for the AI. Scouting does not change, and the AI does not hold its fire. The P577c counters stay
+  in the balance report. See the implementation note.
 
 ### 10. HOW_TO_PLAY rows
 Each feature row updates its own rows in the same PR (CLAUDE.md):
@@ -367,3 +374,43 @@ The questions as asked:
 4. **The computer has no radar screen to lose.** It loses the same sight as you, but not the
    overview. A: accept that (recommended). B: give the computer a matching handicap while its radar
    is dark (it only "looks" near its base). B is new AI rules for a screen effect.
+
+## Implementation note (2026-11-25, P578)
+Factions by display name: Nordværn (`fossil`, the Deep Bore) and Facet (`renew`, the Dusk Array).
+
+**Rows as merged on `main`:**
+
+| Row | PR | Commit | What |
+| --- | --- | --- | --- |
+| P570 | #622 | a9906e19 | This ADR accepted, the plan and the GDD text |
+| P571 | #624 | 47d3f7c5 | Strike counters in the smoke and balance reports (§12) |
+| P574 | #628 | 0115d7d0 | The radar-dark rule and its snapshot fields (§3) |
+| P572 | #630 | 8cc092e8 | The overload, 200 on every enemy building it blacks out (§1) |
+| P575 | #631 | ea0c5013 | The dark radar scope (§8) |
+| P575b | #632 | 5ce5796d | Overload sparks and one attack cue per strike out of view (§5, §8) |
+| P573 | #633 | 53fabb24 | The vision cut, sim and FOG kernel (§2) |
+| P576 | #635 | fb587e8e | The AI's radar tie-break (§9) |
+| P577 | #638 | 52b2649e | Measured before and after (§12) |
+| P576b | #644 | 044aef83 | The AI's radar data bonus, `OpponentDef.strike_radar_bonus` (§9 amendment) |
+| P577c | #654 | open | Diagnostic counters only (`fires_radar_known`, `_coverable`, `_chosen`); no AI change |
+| P578 | this branch | | This note, the §9 amendment, the plan and the skill line |
+
+**Measured result.** Before and after: `docs/balance/2026-11-24-dusk-overload.md`. Two later runs,
+on GitHub Actions with the same settings (`custom`, `hard,hard`, `cross`, 100 matches, `kestrel`,
+seeds 1-100):
+- P577b, run 45526901791 on 044aef83 (P576b merged): radar-dark still 0 over 96 fires. Win shares
+  500/500, and all 100 matches timed out. The Array dealt 509 damage a fire.
+- P577c, run 45529605402 on 1f22b6a9 (#654's head): a known enemy radar on 0 of 96 Dusk fires
+  (coverable 0, chosen 0). Both sides build their radar in every match. The Dusk Array fires about
+  once per match, late (`charge_ticks` 4500), and Facet waves rarely get inside the Nordværn base:
+  Nordværn lost 24 buildings in 100 matches, Facet 661. So the AI never sees the radar.
+- Ruled out by reading the code: a radar dropped on the path from sighting to `_gather_radars`
+  (the `WorldLoad` radar flag, `PlayerView`, `AiIntel`, `AiStrikes`), and ring distance (the radar
+  takes spiral slot 6, about 3.5 tiles from the factory, inside the 4-tile ring).
+
+**Decision (Michael, 2026-11-25, "Dusk anbefaling").** Accepted as measured: see the §9 amendment.
+Radar-dark stays a rule for every player (§3, §8) and the counters keep measuring it, but no AI
+balance run has to reach it.
+
+**Data changes.** None. P577 proposed none beyond the radar bonus (P576b, applied with Michael's
+yes). `renew_overload.tres` and `renew_strike.tres` are unchanged (Michael, 2026-11-24).
