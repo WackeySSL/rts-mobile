@@ -129,6 +129,7 @@ jobs:
       - name: Install the native toolchain (SCons, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils
 
       - name: Read the native cache key

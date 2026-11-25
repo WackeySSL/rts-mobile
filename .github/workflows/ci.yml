@@ -98,6 +98,7 @@ jobs:
         run: |
           pipx install "scons==${SCONS_VERSION}"
           pipx install "clang-format==${CLANG_FORMAT_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils ffmpeg
 
       # The native caches (ADR 0013 section 8). build-native.sh owns the pins and prints the key. The key
@@ -289,6 +290,7 @@ jobs:
       - name: Install the native toolchain (SCons, clang, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils clang
 
       - name: Read the native cache key
@@ -350,6 +352,7 @@ jobs:
       - name: Install the native toolchain (SCons, clang, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils clang
 
       # --arch arm64 is the host's architecture: build-native.sh exits 2 on another one, so a runner that
@@ -449,6 +452,7 @@ jobs:
       - name: Install the native toolchain (SCons, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils
 
       - name: Read the native cache key
@@ -527,6 +531,7 @@ jobs:
       - name: Install the native toolchain (SCons, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils
 
       # The ELF and libc++ symbol checks that export-android.sh runs on the packed library (ADR 0013 section 10),
@@ -696,6 +701,7 @@ jobs:
       - name: Install the native toolchain (SCons, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils
 
       - name: Read the native cache keys
@@ -858,6 +864,7 @@ jobs:
       - name: Install the native toolchain (SCons, binutils)
         run: |
           pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends binutils
 
       # The generated .gdextension names all six libraries, so the host's Linux library comes first (as in
