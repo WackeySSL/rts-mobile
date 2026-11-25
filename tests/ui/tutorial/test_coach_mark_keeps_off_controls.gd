@@ -71,7 +71,8 @@ const SCROLLS: Array[String] = [
 	"support/sell",
 	"support/sell-last",
 ]
-## The same for the portrait phone's 304 dp dock: the head row costs 48 dp of it.
+## The same for the portrait phone's 304 dp dock: the head row costs 48 dp of it. P593's shorter
+## prompts empty it, like `SCROLLS`.
 const SCROLLS_PORTRAIT: Array[String] = ["basics/low-power", "basics/incoming"]
 ## Controls that follow the world (ADR 0048 section 3): the card may be see-through over them.
 const WORLD_CONTROLS: Array[StringName] = [&"PlaceConfirm"]
@@ -108,6 +109,7 @@ var _own: PackedInt32Array = PackedInt32Array()
 var _pushed: int = 0
 var _folds: int = 0
 var _tabs: int = 0
+var _unfolds: int = 0
 var _over: int = 0
 var _pushes: int = 0
 var _parts_now: Dictionary[StringName, Rect2] = {}
@@ -151,6 +153,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 	profiles.append_array(extras)
 	_folds = 0
 	_tabs = 0
+	_unfolds = 0
 	_over = 0
 	_pushes = 0
 	assert_int(lessons.size()).is_greater_equal(4)
@@ -187,6 +190,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 		print("SWEEP ", line)
 	print("FOLDS ", _folds, " TABS ", _tabs, " OVER_CAP ", _over, " PUSHES ", _pushes)
 	assert_int(_tabs).override_failure_message("no folded tab was exercised").is_greater(100)
+	assert_int(_unfolds).override_failure_message("no unfold was exercised").is_greater(100)
 	assert_array(found).override_failure_message("\n".join(found)).is_empty()
 
 
@@ -393,6 +397,7 @@ func _checks(
 		lines.append_array(_tab_checks(label, dock))
 	_tab_press()
 	await await_idle_frame()
+	_unfolds += 1
 	if _director.current != null and _mark.visible and not _mark.card_open():  # Not ended meanwhile.
 		lines.append("%s: a second tap on the tab did not unfold the card" % label)
 	if beat.anchor == TutorialBeatDef.Anchor.TILE:
@@ -422,14 +427,25 @@ func _tab_checks(label: String, dock: Rect2) -> Array[String]:
 		lines.append("%s: the tab %s is under 48 dp" % [label, tab])
 	if not _safe().grow(TOLERANCE_PX).encloses(tab):
 		lines.append("%s: the tab %s is not inside the safe rect" % [label, tab])
+	var has_room: bool = GuideDock.has_room(dock, UiScale.base_px_per_dp())
+	for own: Button in [_mark.find_child("Skip"), _mark.find_child("Next")]:
+		if own != null and own.is_visible_in_tree():
+			if tab.grow(UiScale.dp(8.0) - TOLERANCE_PX).intersects(own.get_global_rect()):
+				lines.append(
+					(
+						"%s: the tab %s is under 8 dp from %s %s"
+						% [label, tab, own.name, own.get_global_rect()]
+					)
+				)
 	_read_parts()
 	for part: StringName in _parts_now:
 		var rect: Rect2 = _parts_now[part]
-		if part == HudCorners.CARD or part == HudCorners.TOAST:
+		var slot_second_look: bool = part == HudCorners.TOAST and not has_room
+		if part == HudCorners.CARD or slot_second_look:
 			continue
 		if tab.intersection(rect).get_area() > OVERLAP_PX2:
 			lines.append("%s: the tab %s covers the HUD part %s %s" % [label, tab, part, rect])
-	if GuideDock.has_room(dock, UiScale.base_px_per_dp()):
+	if has_room:
 		if not dock.grow(TOLERANCE_PX).encloses(tab):
 			lines.append("%s: the tab %s is outside the dock %s" % [label, tab, dock])
 	return lines

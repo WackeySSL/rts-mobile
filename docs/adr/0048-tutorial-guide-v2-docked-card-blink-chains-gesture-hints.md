@@ -184,9 +184,13 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   1. The wide form is used for the dock's width at least `card_wide_dp` **or any landscape dock**.
      The narrow form's head row and foot row cost 96 dp of a 126 dp dock and left the prompt no
      height. Only a portrait dock below `card_wide_dp` is narrow.
-  2. Where the dock's height cannot hold the tab, a 12 dp gap and Next (and Skip) in one column, the
-     gap between the tab and Next shrinks down to 4 dp, and Skip and Next sit side by side under
-     the tab. The 12 dp between Skip and Next stands in both cases.
+  2. The tab stands flush in the card's corner and the buttons' column starts one card margin
+     (12 dp) below its foot, so the real gap between the tab's rect and Next (or Skip) is that
+     margin plus the column's separation, never under 8 dp (measured: 17.6 dp on
+     `web_phone_small`). Where the dock's height cannot hold the tab and the buttons in one
+     column, Skip and Next sit side by side under the tab, and where even that does not fit,
+     beside it. Where the prompt would get under 120 dp beside the column, the buttons stack in a
+     column under the tab instead. The 12 dp between Skip and Next stands in every case.
   The hint line no longer names Skip ("Stuck? Try what the card says, or leave from the menu.").
   The tab is a button with the counter over a 14 dp chevron (turned half way when folded), so it
   fits the 48 dp square of `GuideDock.tab_slot`.

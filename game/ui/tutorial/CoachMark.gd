@@ -37,7 +37,8 @@ extends Control
 ## PausePrimary and PauseMuted for the card, GuideTokens for the ring. No colour literal.
 
 const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
-const SIDE_MIN_GAP_DP: float = 4.0  ## Tab to Next, only where the dock's height leaves no more.
+const TAB_CLEAR_DP: float = 8.0  ## The least between the tab's rect and a card button's.
+const MIN_TEXT_DP: float = 120.0  ## The least width of the prompt beside the buttons' column.
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
 const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
@@ -701,24 +702,34 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 	_main.move_child(_side, 0 if mirror and wide else 1)
 	_head.move_child(_head_pad, 0 if mirror else 1)
 	_side.visible = wide or count > 0
+	_row.visible = count > 0  # An action beat has no button: the row takes no height.
 	if wide:  # The buttons go under the tab, stacked or in a row, else beside it, by the height.
 		var stacked: float = count * least + maxf(count - 1.0, 0.0) * gap
-		var tight: float = SIDE_MIN_GAP_DP * _dp
+		# The tab stands at the card's corner, the pad `margin.top` below it: the real gap between
+		# the tab and the button under it is that margin plus the separation (at least 8 dp).
+		var top_margin: float = _card.get_theme_stylebox(&"panel").get_margin(SIDE_TOP)
+		var tight: float = maxf(TAB_CLEAR_DP * _dp - top_margin, 0.0)
 		var avail: float = max_height - margin.y
 		var beside: bool = count > 0 and least + tight + least > avail
+		var side: float = least
+		if count > 0:
+			side = across + gap + least if beside else maxf(least, across)
+		var under: bool = not beside and least + tight + stacked <= avail
+		if count > 0 and inner - side - gap < MIN_TEXT_DP * _dp:  # Too little left for the prompt:
+			beside = false  # the buttons stack in a column under the tab, whatever the height.
+			under = true
+		if under:
+			side = widest if count > 0 else least
 		_side.vertical = not beside
 		_side.move_child(_side_pad, 0 if mirror or not beside else 1)
-		_row.vertical = not beside and least + tight + stacked <= avail
-		var below: float = stacked if _row.vertical else least  # The row's height under the tab.
+		_row.vertical = under
+		var below: float = stacked if under else least  # The row's height under the tab.
 		_side.add_theme_constant_override(
 			"separation",
-			floori(clampf(avail - least - below, tight, gap)) if not beside else roundi(gap)
+			roundi(gap) if beside else floori(clampf(avail - least - below, tight, gap))
 		)
-		var side: float = widest if _row.vertical else maxf(least, across)
-		if beside:
-			side = across + gap + least
 		_side.custom_minimum_size.x = side
-		text_width = inner - side - gap
+		text_width = maxf(inner - side - gap, minf(MIN_TEXT_DP * _dp, inner))
 	else:
 		_side.vertical = true
 		_row.vertical = across > inner
