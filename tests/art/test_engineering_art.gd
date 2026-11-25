@@ -152,24 +152,24 @@ func test_a_research_card_paints_only_palette_tones_and_its_key_triad() -> void:
 			. is_empty()
 		)
 		var team: int = 0
-		for hex: String in ArtPalette.KEYS[faction]:
-			team += "\n".join(picture).count(hex)
+		for level: int in 3:  # A card is no player's: its team zones wear the faction colour.
+			team += "\n".join(picture).count(ArtPalette.tone(faction, ArtPalette.FACTION, level))
 		assert_int(team).override_failure_message(id + " has no team colour").is_greater(0)
 
 
 ## The checker itself bites: each of these planted colours is refused.
 func test_the_card_colour_check_refuses_a_bad_colour() -> void:
-	var good: String = '<path d="M0 0" fill="#FF9446" stroke="none"/>'
+	var good: String = '<path d="M0 0" fill="#D234D2" stroke="none"/>'
 	assert_array(Array(_colour_problems(&"fossil", PackedStringArray([good])))).is_empty()
 	for bad: String in [
 		'fill="#F94"',
 		'fill="red"',
 		'fill="rgb(255,0,0)"',
-		"fill='#FF9446'",
-		'stroke="#FF0000"',  # Not a tone: a pure red in the key band.
-		'fill="#FF9447"',  # A shade next to the triad, in the key band.
+		"fill='#D234D2'",
+		'stroke="#FF00FF"',  # Not a tone: a pure magenta in the key band.
+		'fill="#D234D3"',  # A shade next to the triad, in the key band.
 		'fill="#123456"',  # Not a palette tone.
-		'fill="#ff9446"',  # Lower case.
+		'fill="#d234d2"',  # Lower case.
 	]:
 		var line: PackedStringArray = PackedStringArray(['<path d="M0 0" %s/>' % bad])
 		(

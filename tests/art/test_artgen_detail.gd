@@ -132,7 +132,7 @@ func test_gradient_ids_are_in_order_and_hold_no_key_colour() -> void:
 	assert_int(checked).is_greater(100)
 	# A team face is never a gradient: its fill is a key hex, every key hex is a polygon fill.
 	var hull: String = _hull(2)
-	assert_str(hull).contains('fill="#E8681F"')
+	assert_str(hull).contains('fill="#D234D2"')
 	assert_int(hull.count("stop-color=")).is_equal(2 * hull.count("<linearGradient"))
 
 

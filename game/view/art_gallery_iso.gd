@@ -2,7 +2,7 @@ extends Control
 ## The Iso page of the art gallery (plan row P99, ADR 0023 section 5): the generated blockouts of
 ## both factions, one type at a time (the two buttons step through them), every direction of the
 ## type at gameplay zoom in both team colours, and its default view at the camera zoom levels 0.75,
-## 1 and 1.5. The grass half shows the frames in the Signal triad, the sand half in the Arktisk
+## 1 and 1.5. The grass half shows the frames in the Signal triad, the sand half in the Kobolt
 ## one; the rows repeat for the second triad under the first. A frame is the SVG text with the
 ## faction's key triad replaced by the player's (the match-start bake does the same, ADR 0023
 ## section 2) and rasterised at 0.5 x zoom; until the per-match atlas exists (P113) the page
@@ -16,12 +16,12 @@ extends Control
 ## view-only.
 
 const FACTION_NAMES: Dictionary[StringName, String] = {&"fossil": "Nordværn", &"renew": "Facet"}
-## The players' triads (ADR 0023 section 5): player 1 Signal, player 2 Arktisk.
+## The players' triads (ADR 0023 section 5): player 1 Signal, player 2 Kobolt.
 const TRIADS: Array[Array] = [
 	["#FF9446", "#E8681F", "#B04B12"],
-	["#62D6EE", "#1FA6C8", "#137C99"],
+	["#7AA2F7", "#3F6FE0", "#27479E"],
 ]
-const TRIAD_NAMES: Array[String] = ["Signal", "Arktisk"]
+const TRIAD_NAMES: Array[String] = ["Signal", "Kobolt"]
 const BASE_SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const ZOOMS: Array[float] = [0.75, 1.0, 1.5]  ## The camera zoom levels.
 const HALF_WIDTH_PX: float = 640.0  ## One ground at the 16:9 base size.

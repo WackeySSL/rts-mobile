@@ -2,8 +2,9 @@ class_name ArtIcon
 extends RefCounted
 ## The item card of a type (ADR 0023 section 5, the canvas's "Byggekort"): its default view
 ## (`d06`, `d10` for the Lumen Accord, the one view of a building) and its cast shadow on a dark
-## plate with a faint 2:1 grid and a corner in the faction's key colour, 128 x 128 px. It is a
-## texture import like every UI icon, so the faction's own key triad stays as drawn.
+## plate with a faint 2:1 grid and a corner in the faction's fixed colour, 128 x 128 px. It is a
+## texture import like every UI icon, no player's atlas bakes it, so the sentinel key of a team
+## zone is drawn in the faction's own fixed colour (ADR 0050 section 3).
 
 const SIZE: int = 128
 const PLATE: String = "#1C2127"
@@ -14,7 +15,7 @@ const GRID_LINE_PX: float = 1.5
 const INSET_PX: float = 6.0  ## The grid and the picture keep this far from the card's edge.
 const FIT_PX: Vector2 = Vector2(104.0, 92.0)  ## The room for the picture and its shadow.
 const MAX_SCALE: float = 1.5  ## A small unit is enlarged, not past this.
-const CORNER_PX: int = 36  ## The key-colour corner, top left.
+const CORNER_PX: int = 36  ## The faction-colour corner, top left.
 
 
 ## The SVG text of the card of `model`.
@@ -33,6 +34,9 @@ static func card(model: ArtModel) -> String:
 			for i: int in poly.points.size():
 				poly.points[i] += at
 		body.append_array(parts)
+	for poly: ArtRender.Poly in body:
+		poly.fill = _dressed(poly.fill, model.faction)
+		poly.stroke = _dressed(poly.stroke, model.faction)
 	var shadow: Array[ArtRender.Poly] = ArtShadow.polys(model.shadow_prims(), yaw)
 	var box: Rect2 = ArtRender.bounds(shadow + body)
 	var scale: float = minf(minf(FIT_PX.x / box.size.x, FIT_PX.y / box.size.y), MAX_SCALE)
@@ -63,11 +67,17 @@ static func _plate() -> ArtRender.Poly:
 	return plate
 
 
-## The corner in the faction's key colour, over the grid.
+## `hex` with a sentinel key colour swapped for the faction's fixed colour of the same tone.
+static func _dressed(hex: String, faction: StringName) -> String:
+	var at: int = ArtPalette.SENTINEL.find(hex)
+	return hex if at < 0 else ArtPalette.tone(faction, ArtPalette.FACTION, at)
+
+
+## The corner in the faction's fixed colour, over the grid.
 static func _corner(faction: StringName) -> ArtRender.Poly:
 	var corner: ArtRender.Poly = ArtRender.Poly.new()
 	corner.points = _points([[8, 2], [CORNER_PX, 2], [2, CORNER_PX], [2, 8]])
-	corner.fill = ArtPalette.KEYS[faction][1]
+	corner.fill = ArtPalette.tone(faction, ArtPalette.FACTION, ArtPalette.LEFT)
 	return corner
 
 

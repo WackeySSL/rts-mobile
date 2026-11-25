@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Units page of the art gallery (plan rows P101 and P102, ADR 0023): the six Derrick League
 ## units and the six Lumen Accord units as the generator draws them, a line for team A (the Signal
-## triad) and one for team B (Arktisk) of each faction on each ground with the names under team B's
+## triad) and one for team B (Kobolt) of each faction on each ground with the names under team B's
 ## line, the Derrick League's two lines above the Lumen Accord's two, and the Flarejack in the
 ## scene's zoom row at the camera zoom levels, sharp at each. The page keeps the effects atlas and
 ## the terrain patch (tests/art/test_art_assets.gd); the pages after it are in
@@ -34,7 +34,7 @@ const ARMED: Array[String] = [
 ]
 ## The key triads of ADR 0023 section 5: team A's units carry the first, team B's the second.
 const SIGNAL: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]
-const ARKTISK: Array[String] = ["#62D6EE", "#1FA6C8", "#137C99"]
+const KOBOLT: Array[String] = ["#7AA2F7", "#3F6FE0", "#27479E"]
 const TOLERANCE: float = 0.05  ## Summed difference of the three channels in 0 to 1.
 const LEVELS: Array[float] = [0.75, 1.0, 1.5]
 ## The squads that play poses, with the faction folder of their model.
@@ -116,8 +116,8 @@ func test_each_ground_has_a_line_of_each_factions_six_units_for_team_a_and_one_f
 
 
 ## The team colour is in the SVG text, replaced per player as the match-start bake does: a unit of
-## team A holds the Signal colours and none of Arktisk, a unit of team B the other way round.
-func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_arktisk() -> void:
+## team A holds the Signal colours and none of Kobolt, a unit of team B the other way round.
+func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_kobolt() -> void:
 	var gallery: Control = await _open_gallery()
 	for ground: String in ["Grass", "Sand"]:
 		for row_name: String in ROWS:
@@ -128,8 +128,8 @@ func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_arktisk() -> void:
 						((rig as Node2D).get_node("Hull") as Sprite2D).texture.get_image()
 					)
 					var path: String = "%s %s %s" % [ground, row_name, rig.name]
-					var own: int = _pixels_of(hull, SIGNAL if is_a else ARKTISK)
-					var other: int = _pixels_of(hull, ARKTISK if is_a else SIGNAL)
+					var own: int = _pixels_of(hull, SIGNAL if is_a else KOBOLT)
+					var other: int = _pixels_of(hull, KOBOLT if is_a else SIGNAL)
 					assert_int(own).override_failure_message(path).is_greater(0)
 					assert_int(other).override_failure_message(path).is_equal(0)
 
@@ -156,9 +156,9 @@ func test_the_zoom_row_shows_the_flarejack_at_each_camera_zoom_in_its_grounds_te
 				canvas * 0.5 * zoom, Vector2.ONE * 1.0
 			)
 			var image: Image = hull.texture.get_image()
-			var own: Array[String] = SIGNAL if ground == "Grass" else ARKTISK
+			var own: Array[String] = SIGNAL if ground == "Grass" else KOBOLT
 			assert_int(_pixels_of(image, own)).override_failure_message(ground).is_greater(0)
-			assert_int(_pixels_of(image, ARKTISK if ground == "Grass" else SIGNAL)).is_equal(0)
+			assert_int(_pixels_of(image, KOBOLT if ground == "Grass" else SIGNAL)).is_equal(0)
 		scales.sort()
 		assert_array(scales).is_equal(LEVELS)
 
@@ -356,7 +356,7 @@ func _frame_data(model: ArtModel, part: StringName, frame: int, triad: int) -> P
 	var text: String = FileAccess.get_file_as_string(
 		ArtGen.frame_path(model, part, model.default_dir(), frame)
 	)
-	var triads: Array[Array] = [SIGNAL, ARKTISK]
+	var triads: Array[Array] = [SIGNAL, KOBOLT]
 	for tone: int in 3:
 		text = text.replace(ArtPalette.KEYS[model.faction][tone], triads[triad][tone])
 	var image: Image = Image.new()

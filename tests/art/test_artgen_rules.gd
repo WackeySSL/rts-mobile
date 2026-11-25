@@ -186,7 +186,7 @@ func test_a_sphere_is_three_discs_the_lit_one_up_and_left() -> void:
 	assert_str(polys[2].fill).is_equal(ArtPalette.tone(&"fossil", &"steel", ArtPalette.TOP))
 
 
-func test_a_material_is_its_mid_tone_and_the_team_is_the_key_triad() -> void:
+func test_a_material_is_its_mid_tone_and_the_team_is_the_sentinel_triad() -> void:
 	assert_str(ArtPalette.tone(&"fossil", &"steel", ArtPalette.LEFT)).is_equal("#6B7366")
 	assert_str(ArtPalette.tone(&"fossil", &"steel", ArtPalette.TOP)).is_equal("#828C7C")
 	assert_str(ArtPalette.tone(&"fossil", &"steel", ArtPalette.RIGHT)).is_equal("#51574D")
@@ -202,8 +202,12 @@ func test_a_material_is_its_mid_tone_and_the_team_is_the_key_triad() -> void:
 		assert_str(ArtPalette.edge(faction, ArtPalette.TEAM, false)).is_equal(
 			ArtPalette.KEYS[faction][2]
 		)
-	assert_array(ArtPalette.KEYS[&"fossil"]).is_equal(["#FF9446", "#E8681F", "#B04B12"])
-	assert_array(ArtPalette.KEYS[&"renew"]).is_equal(["#62D6EE", "#1FA6C8", "#137C99"])
+	# One sentinel triad, magenta at hue 300, for both factions; the faction colours are fixed
+	# materials (Nordvaern orange, Facet blue) that the bake never touches.
+	assert_array(ArtPalette.KEYS[&"fossil"]).is_equal(["#F07AF0", "#D234D2", "#9A1F9A"])
+	assert_array(ArtPalette.KEYS[&"renew"]).is_equal(ArtPalette.KEYS[&"fossil"])
+	assert_str(ArtPalette.tone(&"fossil", ArtPalette.FACTION, ArtPalette.LEFT)).is_equal("#FF6E1F")
+	assert_str(ArtPalette.tone(&"renew", ArtPalette.FACTION, ArtPalette.LEFT)).is_equal("#40A3FF")
 	assert_bool(ArtPalette.has_material(&"fossil", &"ceramic")).is_false()
 	assert_bool(ArtPalette.has_material(&"renew", &"team")).is_true()
 
@@ -306,7 +310,7 @@ func test_a_synthetic_model_builds_48_frames_a_sheet_and_a_card_and_the_same_byt
 	)
 	assert_str(ArtGen.IMPORT_TEXT).is_equal('[remap]\n\nimporter="keep"\n')
 	assert_bool(ArtGen.build(model) == files).is_true()
-	assert_str(files["res://assets/art/iso/renew/veh/x_hull_d06.svg"]).contains("#62D6EE")
+	assert_str(files["res://assets/art/iso/renew/veh/x_hull_d06.svg"]).contains("#F07AF0")
 	assert_str(files["res://assets/art/iso/renew/veh/x_hull_d06.svg"].split("\n")[0]).contains(
 		ArtGen.MARKER
 	)

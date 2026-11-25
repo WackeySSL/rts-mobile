@@ -10,8 +10,9 @@ extends GdUnitTestSuite
 const DIR: String = MineMarkArt.PATH
 const FACTIONS: Array[String] = ["fossil", "renew"]
 const KINDS: Array[String] = ["own", "known"]
+## The one sentinel triad of both factions (ADR 0050 section 3): the bake gives it the player's.
 const KEYS: Dictionary[String, Array] = {
-	"fossil": ["#FF9446", "#E8681F", "#B04B12"], "renew": ["#62D6EE", "#1FA6C8", "#137C99"]
+	"fossil": ["#F07AF0", "#D234D2", "#9A1F9A"], "renew": ["#F07AF0", "#D234D2", "#9A1F9A"]
 }
 const ALLOWED: PackedStringArray = [
 	"svg", "g", "path", "ellipse", "circle", "polygon", "rect", "polyline", "line"
@@ -49,9 +50,8 @@ func test_only_the_allowed_tags_are_used_and_no_text_image_or_filter() -> void:
 				assert_bool(text.contains(banned)).is_false()
 
 
-func test_each_mark_carries_its_factions_whole_key_triad_and_no_other_key_hue() -> void:
+func test_each_mark_carries_the_whole_sentinel_triad_and_no_other_key_hue() -> void:
 	for faction: String in FACTIONS:
-		var other: String = "renew" if faction == "fossil" else "fossil"
 		for kind: String in KINDS:
 			var text: String = FileAccess.get_file_as_string(DIR % [faction, kind]).to_upper()
 			for key: String in KEYS[faction]:
@@ -60,8 +60,8 @@ func test_each_mark_carries_its_factions_whole_key_triad_and_no_other_key_hue() 
 					. override_failure_message("%s %s lacks %s" % [faction, kind, key])
 					. is_true()
 				)
-			for key: String in KEYS[other]:
-				assert_bool(text.contains(key)).is_false()
+			for retired: String in ["#FF9446", "#E8681F", "#62D6EE", "#1FA6C8"]:
+				assert_bool(text.contains(retired)).override_failure_message(retired).is_false()
 			var hex: RegEx = RegEx.create_from_string("#[0-9A-Fa-f]{6}")
 			for found: RegExMatch in hex.search_all(text):
 				var colour: Color = Color(found.get_string())

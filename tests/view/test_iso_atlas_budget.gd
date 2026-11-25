@@ -113,7 +113,7 @@ const TODAY2_MIRROR_LUMEN: int = 1478
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
 const CRAFTED: String = (
 	'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4">'
-	+ '<polygon points="0,0 8,0 8,4" fill="#E8681F"/></svg>'
+	+ '<polygon points="0,0 8,0 8,4" fill="#D234D2"/></svg>'
 )
 
 const CRAFTED_ROOT: String = "res://tests/crafted_damage"
@@ -140,6 +140,12 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	var other: Vector2i = _page(others)
 	_assert_within_budget("cross-faction in other triads", other)
 	assert_int(absi(other.y - page.y)).is_less_equal(OTHER_TRIADS_PX)
+	# The routes' interim colours (orange, Kobolt) and the coming defaults, Sne and Karmin (P632, ADR
+	# 0050 section 3): the page of the sentinel migration stays within the same 40 rows.
+	for pair: Array in [[0, 3], [6, 2]]:
+		var routes: Vector2i = _page([_art(&"fossil", pair[0]), _art(&"renew", pair[1])])
+		_assert_within_budget("cross-faction in triads %s" % [pair], routes)
+		assert_int(absi(routes.y - TODAY_CROSS)).is_less_equal(OTHER_TRIADS_PX)
 	# Page 2, the shadows: the same budget, its own pin (P204's team pads make it triad-dependent).
 	var second: Vector2i = _page(players, IsoAtlas.PAGE_UNSORTED)
 	_assert_within_budget("cross-faction page 2", second)

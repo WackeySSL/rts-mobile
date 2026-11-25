@@ -32,9 +32,10 @@ func test_every_type_has_a_card_of_128_px_made_of_polygons_in_its_own_factions_c
 			assert_array(ALLOWED_TAGS).override_failure_message(path).contains(
 				[found.get_string(1)]
 			)
-		assert_bool(card.contains(ArtPalette.KEYS[model.faction][1])).is_true()
-		var other: StringName = &"renew" if model.faction == &"fossil" else &"fossil"
-		for key: String in ArtPalette.KEYS[other]:
+		var own: String = ArtPalette.tone(model.faction, ArtPalette.FACTION, ArtPalette.LEFT)
+		assert_bool(card.contains(own)).is_true()
+		# A card is no player's: the sentinel key never shows, a team zone wears the faction colour.
+		for key: String in ArtPalette.SENTINEL:
 			assert_bool(card.contains(key)).override_failure_message(path + " " + key).is_false()
 		assert_bool(FileAccess.file_exists(ArtGen.icon_path(model) + ".import")).is_true()
 
@@ -60,6 +61,11 @@ func test_a_card_ends_in_the_default_view_of_the_hull_and_its_turret_over_the_sh
 				want.append_array(
 					_fills(FileAccess.get_file_as_string(ArtGen.frame_path(model, part, dir)))
 				)
+		# A card is no player's: the sentinel marker is drawn in the faction's fixed colour.
+		for at: int in want.size():
+			var key: int = ArtPalette.SENTINEL.find(want[at])
+			if key >= 0:
+				want[at] = ArtPalette.tone(model.faction, ArtPalette.FACTION, key)
 		var fills: Array[String] = _fills(FileAccess.get_file_as_string(ArtGen.icon_path(model)))
 		(
 			assert_array(fills.slice(fills.size() - want.size()))
@@ -80,7 +86,7 @@ func test_a_card_is_a_plate_with_a_faint_grid_a_key_corner_and_a_picture_inside_
 		assert_float(image.get_pixel(0, 0).a).is_less(0.1)
 		assert_float(image.get_pixel(64, 64).a).is_greater(0.99)
 		var corner: Color = image.get_pixelv(KEY_CORNER_AT)
-		var key: Color = Color(ArtPalette.KEYS[model.faction][1])
+		var key: Color = Color(ArtPalette.tone(model.faction, ArtPalette.FACTION, ArtPalette.LEFT))
 		assert_float(_distance(corner, key)).override_failure_message(path).is_less(0.03)
 		var grid: int = 0
 		var picture: int = 0

@@ -9,7 +9,7 @@ extends GdUnitTestSuite
 ## without text) are not tested on purpose: they print "ERROR:" even when a test asserts them,
 ## which the error scan of verify.sh and CI turns into a failure (ADR 0002, Consequences).
 
-const KEY: PackedStringArray = ["#FF9446", "#E8681F", "#B04B12"]  ## Signal, the Derrick League's.
+const KEY: PackedStringArray = ["#F07AF0", "#D234D2", "#9A1F9A"]  ## The sentinel key triad.
 const ARKTISK: PackedStringArray = ["#62D6EE", "#1FA6C8", "#137C99"]
 const KARMIN: PackedStringArray = ["#F26A5E", "#CF3A2E", "#922219"]
 const GREY: String = "#808080"
