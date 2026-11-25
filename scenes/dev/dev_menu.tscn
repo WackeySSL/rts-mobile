@@ -108,7 +108,7 @@ columns = 3
 [node name="SkirmishDerrickButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Skirmish (Derrick League)"
+text = "Skirmish (Nordværn)"
 
 [node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/SkirmishDerrickButton"]
 script = ExtResource("5_dp")
@@ -117,7 +117,7 @@ min_dp = Vector2(240, 48)
 [node name="SkirmishLumenButton" type="Button" parent="SafeArea/Scroll/Center/Column/Grid"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Skirmish (Lumen Accord)"
+text = "Skirmish (Facet)"
 
 [node name="DpMinSize" type="Node" parent="SafeArea/Scroll/Center/Column/Grid/SkirmishLumenButton"]
 script = ExtResource("5_dp")
