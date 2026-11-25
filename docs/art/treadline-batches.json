@@ -1,0 +1,15 @@
+{
+	"about": "The restyle batches of plan rows P638-P647 (docs/plans/2026-11-24-treadline-restyle.md), fixed in P630 from assets/art/iso/index.tres. Every art id of the index is in exactly one batch; tests/art/test_restyle_batches.gd keeps the file and the index in step. Faction ids are the models' (fossil = Nordvaern, renew = Facet).",
+	"batches": [
+		{"row": "P638", "faction": "fossil", "what": "ground vehicles", "ids": ["light_tank", "heavy_tank", "artillery", "harvester"]},
+		{"row": "P639", "faction": "renew", "what": "ground vehicles", "ids": ["renew_scout", "renew_tank", "renew_artillery", "renew_tanker"]},
+		{"row": "P640", "faction": "fossil", "what": "squads", "ids": ["rifle_squad", "rocket_squad", "fossil_patchers"]},
+		{"row": "P641", "faction": "renew", "what": "squads", "ids": ["renew_rifle", "renew_rocket", "renew_menders"]},
+		{"row": "P642", "faction": "fossil", "what": "support and air", "ids": ["fossil_bunk_wagon", "fossil_shot_truck", "fossil_fighter", "fossil_bomber"]},
+		{"row": "P643", "faction": "renew", "what": "support and air", "ids": ["renew_linecar", "renew_seeder", "renew_fighter", "renew_bomber"]},
+		{"row": "P644", "faction": "fossil", "what": "3x3 buildings", "ids": ["headquarters", "refinery", "vehicle_factory", "fossil_airfield", "fossil_space", "fossil_strike"]},
+		{"row": "P645", "faction": "renew", "what": "3x3 buildings", "ids": ["renew_hq", "renew_refinery", "renew_factory", "renew_airfield", "renew_space", "renew_strike"]},
+		{"row": "P646", "faction": "fossil", "what": "2x2 and 1x1 buildings", "ids": ["barracks", "power_plant", "fossil_engineering", "fossil_radar", "fossil_weld_shed", "defence_turret", "fossil_aa"]},
+		{"row": "P647", "faction": "renew", "what": "2x2 and 1x1 buildings", "ids": ["renew_barracks", "renew_power", "renew_engineering", "renew_radar", "renew_drone_dock", "renew_defence", "renew_aa"]}
+	]
+}
