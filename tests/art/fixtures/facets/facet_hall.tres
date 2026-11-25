@@ -8,13 +8,19 @@ art_id = &"facet_hall_fixture"
 faction = &"renew"
 category = &"bld"
 footprint = 3
-silhouette = "A low faceted hall: a chamfered plinth and body under a sloped, chamfered roof, one team band round it, a flat-up hex and a point-up hex on the roof and a turned octagon drum on top."
+silhouette = "A low faceted hall: a chamfered plinth and body with a glass slit under a sloped, chamfered roof, one team band round it, two vented doors, a flat-up and a point-up hex and a turned octagon drum on the roof."
 prims = PackedStringArray(
 "box hull graphite 0 0 0 2.6 2.6 0.08 chamfer=0.5",
-"box hull ceramic 0 0 0.08 2.2 2.2 0.4 chamfer=0.45",
+"box hull titanium 0 0 0.08 2.2 2.2 0.3 chamfer=0.45",
+"box hull glass 0 0 0.38 2.24 2.24 0.1 chamfer=0.46",
 "box hull team 0 0 0.48 2.28 2.28 0.1 chamfer=0.47",
-"wedge hull ceramic 0 0 0.58 1.8 1.8 0.3 chamfer=0.4 slope=0.5",
-"prism hull ceramic 0.5 -0.5 0.88 0.5 0.5 0.2 sides=6",
-"prism hull bluegrey -0.5 0.5 0.88 0.5 0.5 0.2 sides=6 turn=30",
-"prism hull ceramic 0 0 0.88 0.4 0.4 0.3 sides=8 turn=22.5 taper=0.7"
+"wedge hull bluegrey 0 0 0.58 1.8 1.8 0.3 chamfer=0.4 slope=0.5",
+"box hull graphite 0.95 0 0.08 0.2 0.8 0.34",
+"box hull graphite 0 0.95 0.08 0.8 0.2 0.34",
+"box hull mint 1.07 0 0.2 0.03 0.4 0.06",
+"prism hull titanium 0.5 -0.5 0.88 0.5 0.5 0.2 sides=6",
+"prism hull graphite -0.5 0.5 0.88 0.5 0.5 0.2 sides=6 turn=30",
+"prism hull bluegrey 0 0 0.88 0.4 0.4 0.3 sides=8 turn=22.5 taper=0.7",
+"box hull graphite -0.5 -0.5 0.88 0.4 0.4 0.12 chamfer=0.1",
+"box hull mint 0.5 0.5 0.88 0.2 0.2 0.1 chamfer=0.05"
 )

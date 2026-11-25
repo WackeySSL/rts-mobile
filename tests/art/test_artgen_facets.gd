@@ -91,10 +91,15 @@ func test_bad_values_are_refused_by_the_primitive_and_the_model() -> void:
 	assert_object(ArtPrim.parse("wedge hull steel 0 0 0 2 1 0.5 chamfer=0.2")).is_not_null()
 
 
-func test_the_hall_frames_hold_the_tone_bands_at_every_yaw() -> void:
-	# TODO(P629): switch to the same-scene band helper of `tools/artgen` once P629 is merged; this
-	# is the local copy of its bands that apply to one model: every face is one of its material's
-	# three tones in light order (top, left, right), every edge one of its two edge colours.
+func test_the_hall_holds_the_same_scene_bands_at_zoom_1() -> void:
+	var bands: SameSceneBands = SameScene.load_bands()
+	var sprite: SameScene.Sprite = _hall_sprite(bands)
+	var measured: Dictionary = SameScene.measure(sprite)
+	var misses: PackedStringArray = SameScene.problems("facet_hall", measured, bands)
+	assert_array(misses).override_failure_message("%s\n%s" % [measured, misses]).is_empty()
+
+
+func test_every_face_of_the_hall_is_one_of_its_materials_three_tones_at_every_yaw() -> void:
 	var model: ArtModel = _hall()
 	var prims: Array[ArtPrim] = model.primitives(&"hull")
 	var faces: int = 0
@@ -105,29 +110,46 @@ func test_the_hall_frames_hold_the_tone_bands_at_every_yaw() -> void:
 			for level: int in [ArtPalette.TOP, ArtPalette.LEFT, ArtPalette.RIGHT]:
 				tones.append(ArtPalette.tone(model.faction, material, level))
 			assert_bool(poly.fill in tones).override_failure_message(str(material)).is_true()
-			(
-				assert_bool(
-					(
-						poly.stroke
-						in [
-							ArtPalette.edge(model.faction, material, true),
-							ArtPalette.edge(model.faction, material, false)
-						]
-					)
-				)
-				. is_true()
-			)
 			faces += 1
 	assert_int(faces).is_greater(16 * 20)
-	for material: StringName in [&"graphite", &"ceramic", &"bluegrey", ArtPalette.TEAM]:
-		var lum: Array[float] = []
-		for level: int in [ArtPalette.TOP, ArtPalette.LEFT, ArtPalette.RIGHT]:
-			lum.append(Color(ArtPalette.tone(model.faction, material, level)).get_luminance())
-		(
-			assert_bool(lum[0] > lum[1] and lum[1] > lum[2])
-			. override_failure_message(str(material))
-			. is_true()
-		)
+
+
+## The hall as `SameScene.sprite` lays a building out (hull and shadow on one canvas, 2x art at
+## zoom 1.0), from frames built in memory: the fixture has no files and is not in the index.
+func _hall_sprite(bands: SameSceneBands) -> SameScene.Sprite:
+	var files: Dictionary[String, String] = ArtGen.build(_hall())
+	var sheet_text: String = ""
+	for path: String in files:
+		if path.ends_with("_sheet.tres") and "/facet_hall_fixture" in path:
+			sheet_text = files[path]
+	DirAccess.make_dir_recursive_absolute("user://facet_hall")
+	var file: FileAccess = FileAccess.open("user://facet_hall/sheet.tres", FileAccess.WRITE)
+	file.store_string(sheet_text)
+	file.close()
+	var sheet: IsoSheetDef = (
+		ResourceLoader.load("user://facet_hall/sheet.tres", "", ResourceLoader.CACHE_MODE_IGNORE)
+		as IsoSheetDef
+	)
+	assert_object(sheet).is_not_null()
+	var scale: float = SameScene.ART_SCALE
+	var union: Rect2 = Rect2()
+	for part: StringName in [&"shadow", &"hull"]:
+		var rect: Rect2 = Rect2(-Vector2(sheet.origin(part)), sheet.frame_size(part))
+		union = rect if union.size == Vector2.ZERO else union.merge(rect)
+	var out: SameScene.Sprite = SameScene.Sprite.new()
+	out.id = &"facet_hall_fixture"
+	var size: Vector2i = Vector2i((union.size * scale).ceil()) + Vector2i.ONE
+	out.body = Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+	out.shadow = Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+	out.ground = Vector2i(-union.position * scale)
+	for part: StringName in [&"shadow", &"hull"]:
+		var image: Image = Image.new()
+		image.load_svg_from_string(files[sheet.path(part, -1)], scale)
+		var at: Vector2i = Vector2i((-Vector2(sheet.origin(part)) - union.position) * scale)
+		var target: Image = out.shadow if part == &"shadow" else out.body
+		target.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), at)
+	assert_object(bands).is_not_null()
+	return out
 
 
 func test_the_hall_builds_every_frame_inside_the_3x3_budget() -> void:
