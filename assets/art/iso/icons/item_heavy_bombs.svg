@@ -28,7 +28,7 @@
 <polygon points="108,122 122,115 122,116.5 108,123.5" fill="#2A3036"/>
 </g>
 <g>
-<polygon points="8,2 36,2 2,36 2,8" fill="#D234D2"/>
+<polygon points="8,2 36,2 2,36 2,8" fill="#FF6E1F"/>
 </g>
 <!-- Shape: one fat olive bomb casing with two team rings and rust fins lying on a diagonal, nose down right, with a smaller bomb of the same kind beside it for the heavier one to be measured against -->
 <g transform="translate(81 60) rotate(30) scale(0.78) translate(-64 -74)">
@@ -37,18 +37,18 @@
   <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" fill="#7D8562"/>
   <path d="M28 60 H84 C98 60 106 63 110 68 H28 Z" fill="#98A278"/>
   <path d="M28 82 H86 C100 82 108 79 111 76 C108 85 98 88 84 88 H28 Z" fill="#5F654A"/>
-  <path d="M52 60 H61 V88 H52 Z" fill="#D234D2"/>
-  <path d="M52 60 H61 V66 H52 Z" fill="#F07AF0"/>
-  <path d="M74 60 H83 V88 H74 Z" fill="#D234D2"/>
-  <path d="M74 60 H83 V66 H74 Z" fill="#F07AF0"/>
+  <path d="M52 60 H61 V88 H52 Z" fill="#FF6E1F"/>
+  <path d="M52 60 H61 V66 H52 Z" fill="#FF8626"/>
+  <path d="M74 60 H83 V88 H74 Z" fill="#FF6E1F"/>
+  <path d="M74 60 H83 V66 H74 Z" fill="#FF8626"/>
   <rect x="32" y="67" width="14" height="5" fill="#FFF1D6"/>
 </g>
 <g transform="translate(81 60) rotate(30) scale(0.78) translate(-64 -74)" fill="none" stroke-width="2.56" stroke-linejoin="round">
   <polygon points="20,48 40,48 46,62 28,62" stroke="#322A24"/>
   <polygon points="20,100 40,100 46,86 28,86" stroke="#322A24"/>
   <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" stroke="#383C2C"/>
-  <path d="M52 60 H61 V88 H52 Z" stroke="#9A1F9A"/>
-  <path d="M74 60 H83 V88 H74 Z" stroke="#9A1F9A"/>
+  <path d="M52 60 H61 V88 H52 Z" stroke="#C15317"/>
+  <path d="M74 60 H83 V88 H74 Z" stroke="#C15317"/>
   <rect x="32" y="67" width="14" height="5" stroke="#736C60"/>
 </g>
 <g transform="translate(39 88) rotate(30) scale(0.5) translate(-64 -74)">
@@ -57,18 +57,18 @@
   <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" fill="#7D8562"/>
   <path d="M28 60 H84 C98 60 106 63 110 68 H28 Z" fill="#98A278"/>
   <path d="M28 82 H86 C100 82 108 79 111 76 C108 85 98 88 84 88 H28 Z" fill="#5F654A"/>
-  <path d="M52 60 H61 V88 H52 Z" fill="#D234D2"/>
-  <path d="M52 60 H61 V66 H52 Z" fill="#F07AF0"/>
-  <path d="M74 60 H83 V88 H74 Z" fill="#D234D2"/>
-  <path d="M74 60 H83 V66 H74 Z" fill="#F07AF0"/>
+  <path d="M52 60 H61 V88 H52 Z" fill="#FF6E1F"/>
+  <path d="M52 60 H61 V66 H52 Z" fill="#FF8626"/>
+  <path d="M74 60 H83 V88 H74 Z" fill="#FF6E1F"/>
+  <path d="M74 60 H83 V66 H74 Z" fill="#FF8626"/>
   <rect x="32" y="67" width="14" height="5" fill="#FFF1D6"/>
 </g>
 <g transform="translate(39 88) rotate(30) scale(0.5) translate(-64 -74)" fill="none" stroke-width="4" stroke-linejoin="round">
   <polygon points="20,48 40,48 46,62 28,62" stroke="#322A24"/>
   <polygon points="20,100 40,100 46,86 28,86" stroke="#322A24"/>
   <path d="M28 60 H84 C102 60 112 66 112 74 C112 82 102 88 84 88 H28 Z" stroke="#383C2C"/>
-  <path d="M52 60 H61 V88 H52 Z" stroke="#9A1F9A"/>
-  <path d="M74 60 H83 V88 H74 Z" stroke="#9A1F9A"/>
+  <path d="M52 60 H61 V88 H52 Z" stroke="#C15317"/>
+  <path d="M74 60 H83 V88 H74 Z" stroke="#C15317"/>
   <rect x="32" y="67" width="14" height="5" stroke="#736C60"/>
 </g>
 </svg>

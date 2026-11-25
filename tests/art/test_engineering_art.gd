@@ -152,8 +152,8 @@ func test_a_research_card_paints_only_palette_tones_and_its_key_triad() -> void:
 			. is_empty()
 		)
 		var team: int = 0
-		for hex: String in ArtPalette.KEYS[faction]:
-			team += "\n".join(picture).count(hex)
+		for level: int in 3:  # A card is no player's: its team zones wear the faction colour.
+			team += "\n".join(picture).count(ArtPalette.tone(faction, ArtPalette.FACTION, level))
 		assert_int(team).override_failure_message(id + " has no team colour").is_greater(0)
 
 

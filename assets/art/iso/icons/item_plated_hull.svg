@@ -28,7 +28,7 @@
 <polygon points="108,122 122,115 122,116.5 108,123.5" fill="#2A3036"/>
 </g>
 <g>
-<polygon points="8,2 36,2 2,36 2,8" fill="#D234D2"/>
+<polygon points="8,2 36,2 2,36 2,8" fill="#FF6E1F"/>
 </g>
 <!-- Shape: one steel shield with a rust double plate over its upper half, a team band across its middle, a second steel plate below it and six lamp rivets -->
 <g transform="translate(64 64) scale(0.9) translate(-64 -65)">
@@ -39,8 +39,8 @@
   <path d="M64 28 L94 36 V60 H64 Z" fill="#53463C"/>
   <path d="M30 66 H98 V70 C98 84 84 96 64 104 C44 96 30 84 30 70 Z" fill="#6B7366"/>
   <path d="M30 66 H64 V104 C44 96 30 84 30 70 Z" fill="#828C7C"/>
-  <polygon points="26,60 102,60 102,67 26,67" fill="#D234D2"/>
-  <polygon points="26,60 102,60 102,63 26,63" fill="#F07AF0"/>
+  <polygon points="26,60 102,60 102,67 26,67" fill="#FF6E1F"/>
+  <polygon points="26,60 102,60 102,63 26,63" fill="#FF8626"/>
   <circle cx="42" cy="44" r="3" fill="#FFF1D6"/>
   <circle cx="64" cy="38" r="3" fill="#FFF1D6"/>
   <circle cx="86" cy="44" r="3" fill="#FFF1D6"/>
@@ -53,7 +53,7 @@
   <path d="M64 18 L24 30 V62 C24 86 42 102 64 112 Z" stroke="#30342E"/>
   <path d="M34 36 L64 28 L94 36 V60 H34 Z" stroke="#322A24"/>
   <path d="M30 66 H98 V70 C98 84 84 96 64 104 C44 96 30 84 30 70 Z" stroke="#30342E"/>
-  <polygon points="26,60 102,60 102,67 26,67" stroke="#9A1F9A"/>
+  <polygon points="26,60 102,60 102,67 26,67" stroke="#C15317"/>
   <circle cx="42" cy="44" r="3" stroke="#736C60"/>
   <circle cx="64" cy="38" r="3" stroke="#736C60"/>
   <circle cx="86" cy="44" r="3" stroke="#736C60"/>
