@@ -41,13 +41,26 @@ const BAR_DP: Vector2 = Vector2(24.0, 28.0)  ## The bar's least size; it takes t
 const TAP_DP: float = 48.0
 const GAP_DP: float = 4.0
 const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers and the word in the bar (P605: was 2).
-## The widest power reading the pill is sized for (P605): "used/made" with four digits each. The cap
-## is real: `building_cap` 40 (data/rules.tres) times the most power one building gives (100) is
-## 4000 made, and 40 buildings drawing at most 60 are 2400 used, so 4 digits each way; 9999/9999
-## is the next round figure above it. The pill asks the layout for this width in every state, so it
-## does not change width as the reading grows; where the layout has less to give (the 360 dp upright
-## phone) what does not fit drops, as before, and never runs over the bar's edge.
-const WIDEST_POWER: String = "9999/9999"
+## The widest power reading the pill is sized for (P605b): "used/made" in the thousands form
+## (`power_text`). Below 10k a figure shows as thousands with one decimal and a "k", from 10k as
+## whole thousands, so a figure is at most 4 characters and the reading 9 ("9.9k/9.9k"). The real
+## readings stay under it (the building cap times the most power one building gives is well under
+## 10k); a figure of 10k and over is a guard that is never wider. The pill asks the layout for this
+## width in every state, so it does not change width as the reading grows, and the numbers never
+## drop at any profile.
+const WIDEST_POWER: String = "9.9k/9.9k"
+const THOUSAND: int = 1000  ## From here a power figure shows in thousands.
+const TEN_THOUSAND: int = 10000  ## From here in whole thousands.
+## The upright phone at its narrowest (P605b: 360 dp wide, `HudCorners` leaves the pill 272 dp). The
+## widest reading needs 19 dp more in the bar there than the pill's parts leave it, taken in this
+## order (the taps stay 48 dp, the credits keep their 5 digit slots, the pill's gap to the scope
+## stays): 1. the divider goes (6 dp with its gap), the gaps between the parts of the line go
+## (8 dp) and the gaps inside a tap area are 2 dp (4 dp); 2. the coin and the bolt are 22 dp
+## instead of 24 (4 dp).
+const TIGHT_WIDTH_DP: float = 380.0
+const TIGHT_LINE_GAP_DP: float = 0.0
+const TIGHT_TAP_GAP_DP: float = 2.0
+const TIGHT_GLYPH_DP: float = 22.0
 const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the bar.
 const SLACK_DP: float = 1.0  ## What the containers' rounding to whole px may take of the bar.
 ## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
@@ -231,7 +244,7 @@ func refresh() -> void:
 ## The menu button and its divider show or hide (shown from `_ready` on, P124).
 func set_menu_shown(shown: bool) -> void:
 	_menu.visible = shown
-	_divider.visible = shown
+	_divider.visible = shown and not _is_tight()
 
 
 ## Whether the pill shows low power.
@@ -409,6 +422,31 @@ func _wanted_dp() -> float:
 	return (content + maxf(more, 0.0)) / UiScale.base_px_per_dp()
 
 
+## The power reading of the pill, "used/made". Each figure stands alone: below 1000 it is the
+## integer, below 10k thousands with one decimal and a "k" ("1.2k"; a ".0" drops: "2k"), from 10k
+## whole thousands ("12k"). The pill never shows more headroom than there is: used rounds up and
+## made rounds down to the shown precision. Integer math only.
+static func power_text(used: int, made: int) -> String:
+	return "%s/%s" % [_thousands(used, true), _thousands(made, false)]
+
+
+@warning_ignore("integer_division")
+static func _thousands(value: int, round_up: bool) -> String:
+	if value < THOUSAND:
+		return str(value)
+	if value >= TEN_THOUSAND:
+		return "%dk" % (_div(value, THOUSAND, round_up))
+	var tenths: int = _div(value, THOUSAND / 10, round_up)  # Tenths of a thousand.
+	if tenths % 10 == 0:
+		return "%dk" % (tenths / 10)
+	return "%d.%dk" % [tenths / 10, tenths % 10]
+
+
+@warning_ignore("integer_division")
+static func _div(value: int, by: int, round_up: bool) -> int:
+	return (value + by - 1) / by if round_up else value / by
+
+
 static func _entry(values: PackedInt32Array, player: int) -> int:
 	return values[player] if player >= 0 and player < values.size() else 0
 
@@ -475,7 +513,7 @@ func _show(made: int, used: int) -> void:
 	var low: bool = used > made
 	_bar.max_value = maxi(made, 1)
 	_bar.value = _bar.max_value if low else used
-	_numbers.set_text("%d/%d" % [used, made])
+	_numbers.set_text(power_text(used, made))
 	if low != _low:
 		_low = low
 		if low:
@@ -511,11 +549,27 @@ func _fit_bar_text() -> void:
 	_numbers.visible = not _word.visible and _numbers.get_combined_minimum_size().x <= room
 
 
+## Whether the screen is the upright phone at its narrowest (`TIGHT_WIDTH_DP`).
+func _is_tight() -> bool:
+	if not HudLayout.is_portrait():
+		return false
+	return get_viewport().get_visible_rect().size.x / UiScale.base_px_per_dp() < TIGHT_WIDTH_DP
+
+
 ## Sizes are dp, so they follow a resize.
 func _apply_dp() -> void:
-	_line.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+	var tight: bool = _is_tight()
+	_line.add_theme_constant_override(
+		"separation", roundi(UiScale.dp(TIGHT_LINE_GAP_DP if tight else GAP_DP))
+	)
 	for tap: TapArea in [_credits_tap, _power_tap]:
-		tap.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
+		tap.add_theme_constant_override(
+			"separation", roundi(UiScale.dp(TIGHT_TAP_GAP_DP if tight else GAP_DP))
+		)
+	var glyph_dp: float = TIGHT_GLYPH_DP if tight else GLYPH_DP
+	for glyph: TextureRect in [_credits_glyph, _power_glyph]:
+		(glyph.get_child(0) as DpMinSize).min_dp = Vector2(glyph_dp, glyph_dp)
+	_divider.visible = _menu.visible and not _is_tight()
 	_menu.add_theme_constant_override("icon_max_width", roundi(UiScale.dp(MENU_ICON_DP)))
 	_tint()
 	_fit_bar_text()
