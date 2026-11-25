@@ -144,14 +144,15 @@ func test_the_bar_draws_the_fill_as_its_share_of_the_track_in_gold_with_a_white_
 func test_the_bar_stands_under_the_selection_ring_at_every_zoom() -> void:
 	var row: int = _spawn(FOSSIL, 8000)
 	var snap: MatchSnapshot = _runner.snapshot
-	var radius: int = snap.type_selection_radius[snap.type_index[row]] + UnitLayer.RING_PAD_MILLI
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[type])
 	for zoom: float in [0.5, 1.0, 2.0]:
 		_camera.zoom = Vector2(zoom, zoom)
 		_layer._process(0.0)
 		var unit: float = UiScale.base_px_per_dp() / zoom
-		var ring_low: float = maxf(
-			IsoProjection.ellipse_px(radius).y,
-			UnitLayer.RING_MIN_DP * unit * IsoProjection.GROUND_FLATTEN
+		var ring_low: float = (
+			RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)
+			* IsoProjection.GROUND_FLATTEN
 		)
 		var top: float = _bar(row).position.y
 		assert_float(top).is_greater_equal(ring_low + unit)  # Clear of the ring, with a gap.

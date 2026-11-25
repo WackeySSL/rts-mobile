@@ -192,7 +192,7 @@ func _process(delta: float) -> void:
 		_update_rigs(snap, delta)
 		_kick_rigs(snap)
 		_write_damage()
-		TankerCargo.follow_all(snap, _rigs, _dp_px, camera)
+		TankerCargo.follow_all(snap, _rigs, _dp_px, camera, world_sort)
 		if not _ringed.is_empty() and camera.zoom.x != _ring_zoom:
 			_refresh_rings(snap)
 
@@ -653,12 +653,9 @@ func _refresh_rings(snap: MatchSnapshot) -> void:
 	var types: PackedInt32Array = snap.type_index
 	var radii: PackedInt32Array = snap.type_selection_radius
 	for row: int in _ringed:
-		var ring: Ring = _rings[row]
-		var semi: Vector2 = IsoProjection.ellipse_px(radii[types[row]] + RING_PAD_MILLI)
-		var grow: float = maxf(1.0, RING_MIN_DP * unit / semi.x)  # The smallest ring: RING_MIN_DP.
-		ring.radius = semi.x * grow
-		ring.unit = unit
-		ring.scale = Vector2.ONE * (semi.x * grow / RING_TEX_RX_PX)
+		var type: int = types[row]
+		var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+		RingSize.apply(_rings[row], RingSize.semi_px(radii[type], sheet, unit), unit)
 
 
 ## The frame index (`d<NN>`) of grid angle `angle` among the `counts` frames of a part: `d06` faces

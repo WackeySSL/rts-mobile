@@ -326,20 +326,22 @@ func test_a_ring_is_sized_for_the_selection_radius_of_its_own_unit_type() -> voi
 	_layer.set_selected(PackedInt32Array([1, 2]))
 	# Selection radius 500 and 350 milli, 50 more: the ground ellipse's horizontal semi-axis is
 	# r * 32 * sqrt(2) / 1000 px (24.89 and 18.10), the vertical one half of it.
-	for want: Array in [[0, 24.8901], [1, 18.1019]]:
-		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
-		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
-		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
+	for row: int in [0, 1]:
+		var want: float = _ring_want(row, 1.0)  # Over the radius's ellipse: the art (P651).
+		var ring: Sprite2D = _rig(row).get_node("Ring")
+		assert_float(ring.radius).is_equal_approx(want, 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want, 0.001)
 		assert_float(ring.scale.y).is_equal(ring.scale.x)  # One scale: the texture is 2:1.
 	# A selection reads the dp again, also when no resize came in between: 1.75 px per dp, so both
 	# rings are under the 18 dp minimum (31.5 px) and grow to it, the shape kept (2:1).
 	UiScale.set_override(UiProfiles.by_name(&"android_6in"))
 	_layer.set_selected(PackedInt32Array([1, 2]))
-	for want: Array in [[0, 31.5], [1, 31.5]]:
-		var ring: Sprite2D = _rig(want[0]).get_node("Ring")
+	for row: int in [0, 1]:
+		var want: float = _ring_want(row, 1.75)
+		var ring: Sprite2D = _rig(row).get_node("Ring")
 		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
-		assert_float(ring.radius).is_equal_approx(want[1], 0.001)
-		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want[1], 0.001)
+		assert_float(ring.radius).is_equal_approx(want, 0.001)
+		assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(want, 0.001)
 		assert_float(ring.scale.y).is_equal(ring.scale.x)  # One scale: the texture is 2:1.
 
 
@@ -383,7 +385,7 @@ func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world(
 	assert_that(_rig(0).position).is_equal(Vector2(-320, 432))  # Alpha 0 shows the old tick.
 	_layer.set_selected(TANK_1)
 	assert_that(_rig(0).get_child(1).name).is_equal(&"Ring")
-	assert_float(_rig(0).get_child(1).radius).is_equal_approx(24.8901, 0.001)
+	assert_float(_rig(0).get_child(1).radius).is_equal_approx(_ring_want(0, 1.0), 0.001)
 	var pick: PickSnapshot = PickSnapshot.new()
 	_layer.fill_pick_snapshot(pick, 24.0)
 	assert_array(pick.ids).is_equal(PackedInt32Array(range(1, 41)))
@@ -455,3 +457,11 @@ func _extra_layer() -> UnitLayer:
 	add_child(layer)
 	layer.set_process(false)
 	return layer
+
+
+## The ring's horizontal semi-axis `RingSize` gives row `row`, where 1 dp is `unit` world px.
+func _ring_want(row: int, unit: float) -> float:
+	var snap: MatchSnapshot = _runner.snapshot
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[type])
+	return RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)

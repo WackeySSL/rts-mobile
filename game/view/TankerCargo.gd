@@ -54,20 +54,17 @@ static func make(rig: Node2D) -> TankerCargo:
 ## and taken by another tanker shows that tanker's load in the frame it is taken, so no bar keeps
 ## the last unit's. Writes only what changed.
 static func follow_all(
-	snap: MatchSnapshot, rigs: Array[Node2D], dp_px: float, camera: Camera2D
+	snap: MatchSnapshot, rigs: Array[Node2D], dp_px: float, camera: Camera2D, world_sort: WorldSort
 ) -> void:
 	var unit: float = dp_px / (camera.zoom.x if camera != null else 1.0)
 	for row: int in rigs.size():
 		var rig: UnitLayer.Rig = rigs[row] as UnitLayer.Rig
 		if rig != null and rig.cargo != null:
 			var type: int = snap.type_index[row]
-			var semi: float = (
-				IsoProjection
-				. ellipse_px(snap.type_selection_radius[type] + UnitLayer.RING_PAD_MILLI)
-				. y
-			)
-			var ring: float = maxf(
-				semi, UnitLayer.RING_MIN_DP * unit * IsoProjection.GROUND_FLATTEN
+			var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+			var ring: float = (
+				RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)
+				* IsoProjection.GROUND_FLATTEN
 			)
 			rig.cargo.follow(snap.cargo[row], snap.type_harvest[type], unit, ring + GAP_DP * unit)
 
