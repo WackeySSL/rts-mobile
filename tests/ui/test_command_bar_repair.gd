@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Repair order of the command bar (plan P282, ADR 0037 section 9) in the main scene at the six
 ## sizes of ScreenSizes.ALL: it shows while a complete own repair building serves a selected own
-## ground unit, dimmed and not tappable until one is damaged (P282b), at least 56 x 64 dp, and one
+## ground unit, dimmed and not tappable until one is damaged (P282b), at least 56 x 48 dp, and one
 ## tap sends one REPAIR with the damaged units that building serves to the nearest, with no
 ## aim. A mixed selection shows Home and Repair side by side, each sending its own rows; medics
 ## and an attack:
@@ -272,20 +272,15 @@ func _hurt(ids: Array) -> void:
 		_runner.snapshot.hp[row] = _runner.snapshot.hp[row] / 2
 
 
-## Repair is 56 x 64 dp at least and inside the safe area; inside the order scroll, or cut by it
-## with part of it showing (the scroll takes touches then: the rule's cue that orders go on).
+## Repair is 56 x 48 dp at least, whole inside the bar (it wraps into a second row, never scrolls)
+## and the bar is inside the safe area.
 func _assert_whole_or_cue(why: String, button: Button = null) -> void:
 	var rect: Rect2 = (button if button != null else _repair()).get_global_rect()
 	assert_float(rect.size.x).override_failure_message(why).is_greater_equal(UiScale.dp(56.0) - 0.5)
-	assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(64.0) - 0.5)
-	var scroll: ScrollContainer = _bar.find_child("Orders", true, false) as ScrollContainer
-	var clip: Rect2 = scroll.get_global_rect()
-	var detail: String = "%s: repair %s, orders %s" % [why, rect, clip]
-	if not clip.grow(0.5).encloses(rect):
-		assert_bool(clip.intersects(rect)).override_failure_message(detail).is_true()
-		assert_int(scroll.mouse_filter).override_failure_message(detail).is_equal(
-			Control.MOUSE_FILTER_PASS
-		)
+	assert_float(rect.size.y).override_failure_message(why).is_greater_equal(UiScale.dp(48.0) - 0.5)
+	var clip: Rect2 = _bar.get_global_rect()
+	var detail: String = "%s: repair %s, bar %s" % [why, rect, clip]
+	assert_bool(clip.grow(0.5).encloses(rect)).override_failure_message(detail).is_true()
 	var safe: Rect2 = SafeAreaMargin.rect_inside(get_viewport().get_visible_rect(), 0.0)
 	assert_bool(safe.grow(0.5).encloses(clip)).override_failure_message(detail).is_true()
 

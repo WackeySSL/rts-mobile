@@ -371,9 +371,9 @@ func test_the_ready_chip_stands_where_the_layout_puts_it() -> void:
 		var at: String = "%s: chip %s, BUILD %s" % [why, rect, build]
 		assert_float(rect.size.x).override_failure_message(at).is_equal_approx(112.0 * dp, 1.5)
 		assert_float(rect.size.y).override_failure_message(at).is_equal_approx(48.0 * dp, 1.5)
-		if HudLayout.is_portrait():  # In the right column, a gap above BUILD (no strike building).
+		if HudLayout.is_portrait():  # In the right column, a gap above the bar (no strike building).
 			(
-				assert_float(build.position.y - rect.end.y)
+				assert_float(safe.end.y - UiScale.dp(HudCorners.BAR_DP.y) - rect.end.y)
 				. override_failure_message(at)
 				. is_equal_approx(8.0 * dp, 1.5)
 			)

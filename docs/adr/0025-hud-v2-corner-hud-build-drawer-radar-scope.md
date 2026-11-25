@@ -810,6 +810,22 @@ Notes (2026-11-04, P26aw docs; P122 #321 as merged; the text above stays as acce
   (above: "an enemy building its amber frame and notch (P115b)"). Both go into P122c's row of
   `docs/plans/2026-11-01-hud-v2.md`.
 
+Status note (2026-11-24, P581; Michael's phone screenshot of 2026-11-24, MINE under BUILD; the
+text and notes above stay as accepted, this note replaces their sizes and the overflow rule):
+- **The bar has two heights** (Michael, 2026-11-24). **Tall, 106 dp** (`HudCorners.BAR_DP.y`): two
+  48 dp keys and a gap, with 2 dp for pixel rounding; it stands while Stop shows (units selected)
+  or the orders wrap into a second row. **Short, 64 dp** (`HudCorners.BAR_SHORT_DP`, the pre-P581
+  height, a chip's): everything else, for example a building with CLEAR, Mend and Sell, or only
+  CLEAR. CLEAR, the chip and the orders stand on the bottom line in both. `CommandBar` publishes
+  the height with the width (`HudState.set_bar`, `HudCorners.Shown.bar_tall`), and the group
+  columns, the upright Ready chip and the pinned map follow the height in use. While a mode
+  (placement, strike aim) holds the bar, the height holds too.
+- **Stop sits above CLEAR** in one column of 56 x 48 dp keys at the bar's start (mirrored in
+  left-handed mode); without Stop, CLEAR keeps the bottom place.
+- **The other orders** (56 x 48 dp) wrap into at most 2 rows in `OrderFlow`. There is no scroll,
+  and no order runs under BUILD (the "Overflow" line above no longer holds).
+- **The chip gives way** to "+N", or to nothing, when the orders leave it no room.
+
 ### 10. The strike button
 - The strike button (P112, 72 dp: `StrikeButton.SIZE_DP` with its 40 dp card, 6 dp ring and foot
   label, kept) moves from the top line (landscape) and the right edge (portrait) to 8 dp above
@@ -956,6 +972,12 @@ with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
   PR.
 - **Sizes stay `touch-ui-rules`'**: body at least 14 sp, HUD numbers at least 18 sp.
 
+Note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the token values move to Michael's
+Treadline Figma look (row P604; P602 reads them). The type names stay. `AccentRenew` becomes
+Facet's blue in place of the cyan, and `AccentFossil` Nordværn's orange, at the hues of ADR 0050
+§3. Both keep this section's hue and contrast checks. Big Shoulders and Chakra Petch stay. A mono
+face comes only if the file uses one (answer 6).
+
 ### 14. Left-handed mode
 - Later: the switch comes with Phase 5's settings (a scope decision from the roadmap, not a
   question). From P119 on, `HudCorners.place`
@@ -998,6 +1020,11 @@ the rows "Interstitial at most one per 3 min" (answer 2 A: the caps stand, now i
 `data/ads_settings.tres`) and "Rewarded 'double reward' on the end screen" (answer 1 A: Double XP
 on the result screen, row P432). The pause menu's banner is upright only (§11's note of
 2026-11-15); the end screen still shows none.
+
+Note (2026-11-24, P603 docs; ADR 0049 accepted 2026-11-24): the Treadline design is overruled
+where ADR 0049 §4 says, with the same sources: no Move, Attack, Guard, Patrol or Train buttons,
+no radio line, no objectives panel in skirmish, a still loading card, no ad beyond the upright
+pause foot, and the corner geometry kept (answer 1 A).
 
 ### 16. Legal
 - **The layout is not Command & Conquer's.** C&C's and Red Alert's sidebar is a permanent column at
