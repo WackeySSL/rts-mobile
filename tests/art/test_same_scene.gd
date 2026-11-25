@@ -103,6 +103,47 @@ func test_a_flat_sprite_fails_the_tone_and_density_bands() -> void:
 	assert_str(text).contains("value")
 
 
+func test_a_garish_neutral_body_fails_the_neutral_band_and_pure_panels_the_whole_sprite_band(
+) -> void:
+	var garish: SameScene.Sprite = SameScene.sprite(HQ, _bands, 1.0)
+	garish.body.fill_rect(garish.body.get_used_rect(), Color("#2EC24A"))
+	assert_str("\n".join(_problems_of(garish))).contains("sat 0.")
+	var panels: SameScene.Sprite = SameScene.sprite(HQ, _bands, 1.0)
+	var box: Rect2i = panels.body.get_used_rect()
+	panels.body.fill_rect(box, Color(0.45, 0.45, 0.45))
+	panels.body.fill_rect(
+		Rect2i(box.position, Vector2i(box.size.x * 4 / 5, box.size.y)), Color("#FF6E1F")
+	)
+	var text: String = "\n".join(_problems_of(panels))
+	assert_str(text).contains("sat_all")
+	# The panels are not the neutral body: only the grey fifth counts for `tone_sat`.
+	assert_float(SameScene.measure(panels)[&"sat"]).is_less(0.01)
+
+
+## Every material of both palettes that is not the fixed faction colour is neutral to the
+## classifier (hue and saturation, whatever its tone), the faction colours are not, and the
+## sentinel and the route triads count as the marker.
+func test_the_classifier_calls_every_non_faction_material_neutral() -> void:
+	for faction: StringName in ArtPalette.MATERIALS:
+		for material: StringName in ArtPalette.MATERIALS[faction]:
+			for level: int in 3:
+				var hex: String = ArtPalette.tone(faction, material, level)
+				var edge: String = ArtPalette.edge(faction, material, level == 0)
+				for tone: String in [hex, edge]:
+					var found: bool = SameScene.is_faction(Color(tone), _bands)
+					(
+						assert_bool(found)
+						. override_failure_message("%s %s %s" % [faction, material, tone])
+						. is_equal(material == ArtPalette.FACTION)
+					)
+	for material: StringName in ArtPalette.SHARED:
+		for level: int in 3:
+			var tone: String = ArtPalette.tone(&"fossil", material, level)
+			assert_bool(SameScene.is_faction(Color(tone), _bands)).is_false()
+	for hex: String in ArtPalette.SENTINEL + SameScene.ROUTE_TRIAD[&"fossil"]:
+		assert_bool(SameScene.is_faction(Color(hex), _bands)).is_true()
+
+
 func _problems(id: StringName) -> PackedStringArray:
 	return _problems_of(SameScene.sprite(id, _bands, 1.0))
 

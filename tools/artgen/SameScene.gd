@@ -103,11 +103,14 @@ static func _luma(c: Color) -> float:
 ## The numbers the bands judge, for one sprite at zoom 1.0. Light from the north-west puts more
 ## luminance in the upper and the left half of a body than in the lower and the right half.
 static func measure(s: Sprite) -> Dictionary:
+	var bands: SameSceneBands = load_bands()
 	var box: Rect2i = s.body.get_used_rect()
 	var halves: PackedFloat64Array = PackedFloat64Array([0.0, 0.0, 0.0, 0.0])  # up, down, left, right
 	var counts: PackedInt32Array = PackedInt32Array([0, 0, 0, 0])
 	var value: float = 0.0
 	var sat: float = 0.0
+	var sat_all: float = 0.0
+	var neutral: int = 0
 	var area: int = 0
 	var rim: int = 0
 	var rim_dark: int = 0
@@ -120,7 +123,10 @@ static func measure(s: Sprite) -> Dictionary:
 			var l: float = _luma(c)
 			area += 1
 			value += c.v
-			sat += c.s
+			sat_all += c.s
+			if not is_faction(c, bands):
+				sat += c.s
+				neutral += 1
 			for i: int in [0 if y < box.get_center().y else 1, 2 if x < box.get_center().x else 3]:
 				halves[i] += l
 				counts[i] += 1
@@ -137,12 +143,31 @@ static func measure(s: Sprite) -> Dictionary:
 		&"left_right": half.call(2) - half.call(3),
 		&"shadow_dx": (_centre(s.shadow).x - _centre(s.body).x) / maxf(box.size.x, 1.0),
 		&"value": value / maxi(area, 1),
-		&"sat": sat / maxi(area, 1),
+		&"sat": sat / maxi(neutral, 1),
+		&"sat_all": sat_all / maxi(area, 1),
 		&"black_edge": float(rim_dark) / maxi(rim, 1),
 		&"density": 100.0 * edges / maxi(area, 1),
 		&"shadow_alpha": _peak_alpha(s.shadow),
 		&"spread": _spread(s.body),
 	}
+
+
+## Whether `c` is fixed faction material or the team marker rather than the neutral body: its hue
+## is in a faction's hue band at a saturation of `faction_sat_min` or more, or it is within
+## `key_tolerance` of the sentinel or a route triad (P638, `SameSceneBands` "Faction classifier").
+static func is_faction(c: Color, b: SameSceneBands) -> bool:
+	if c.s >= b.faction_sat_min:
+		for hue: float in b.faction_hues:
+			var gap: float = absf(c.h * 360.0 - hue)
+			if minf(gap, 360.0 - gap) <= b.faction_hue_band:
+				return true
+	var triads: Array = [ArtPalette.SENTINEL, ROUTE_TRIAD[&"fossil"], ROUTE_TRIAD[&"renew"]]
+	for triad: Array in triads:
+		for hex: String in triad:
+			var k: Color = Color(hex)
+			if absf(c.r - k.r) + absf(c.g - k.g) + absf(c.b - k.b) < b.key_tolerance:
+				return true
+	return false
 
 
 static func _on_rim(image: Image, x: int, y: int) -> bool:
@@ -215,6 +240,8 @@ static func problems(label: String, m: Dictionary, b: SameSceneBands) -> PackedS
 			continue
 		if m[key] < span[key].x or m[key] > span[key].y:
 			out.append("%s %s %.3f outside %s" % [label, key, m[key], span[key]])
+	if m[&"sat_all"] > b.tone_sat_all_max:
+		out.append("%s sat_all %.3f above %.3f" % [label, m[&"sat_all"], b.tone_sat_all_max])
 	if m[&"black_edge"] > b.black_edge_max:
 		out.append("%s black_edge %.3f above %.3f" % [label, m[&"black_edge"], b.black_edge_max])
 	return out
