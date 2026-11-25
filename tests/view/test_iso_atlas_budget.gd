@@ -94,30 +94,41 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## packer never goes back to an earlier shelf) and page 2 from 2510, 1456 and 1478 to 2512, 1458
 ## and 1478 (+2, +2 and 0). Page 1 has left 853 rows on the cross-faction page, 1002 on the Derrick
 ## League mirror and 986 on the Lumen Accord mirror; page 2 has left 1072, 2126 and 2106.
-## P638: 2730 + 1; P280: 2628 + 102; P279: 2582 + 46; P292: 2472 + 110; P291: 2367 + 105;
+## P639 (the Facet ground vehicles, rebuilt at detail 2 the same way) moved page 1 from 2731, 2582
+## and 2598 to 2725, 2582 and 2525 (-6, 0 and -73: the Facet hulls and turrets got tighter boxes
+## and the Lumen mirror's shelves fall differently) and page 2 from 2512, 1458 and 1478 to 2516,
+## 1458 and 1478 (+4, 0 and 0). Page 1 has left 859 rows on the cross-faction page, 1002 on the
+## Derrick League mirror and 1059 on the Lumen Accord mirror; page 2 has left 1068, 2126 and 2106.
+## P639: 2731 - 6; P638: 2730 + 1; P280: 2628 + 102; P279: 2582 + 46; P292: 2472 + 110; P291: 2367 +
+## 105;
 ## P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_CROSS: int = 2731
-## P638: 2657 - 75; P280: 2552 + 105; P279: 2526 + 26; P292: 2407 + 119; P291: 2279 + 128;
+const TODAY_CROSS: int = 2725
+## P639: 2582 + 0; P638: 2657 - 75; P280: 2552 + 105; P279: 2526 + 26; P292: 2407 + 119; P291: 2279
+## + 128;
 ## P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
 const TODAY_MIRROR_DERRICK: int = 2582
-## P280: 2502 + 96; P279: 2435 + 67; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 + 28
+## P639: 2598 - 73; P280: 2502 + 96; P279: 2435 + 67; P292: 2341 + 94; P291: 2266 + 75; P249: 2238 +
+## 28
 ## (P245b: 2167 + 71; P239b: 2068 + 99).
-const TODAY_MIRROR_LUMEN: int = 2598
+const TODAY_MIRROR_LUMEN: int = 2525
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players. The packer fills shelves tallest first and never goes back to an
 ## earlier shelf, so a shadow added pushes shorter cells on and the trailing shelves grow. An
 ## aircraft's hull carries the team colour, so it has a slot per player (P245).
-## P638: 2510 + 2; P280: 2504 + 6; P279: 2486 + 18; P292: 2264 + 222; P291: 2046 + 218;
+## P639: 2512 + 4; P638: 2510 + 2; P280: 2504 + 6; P279: 2486 + 18; P292: 2264 + 222; P291: 2046 +
+## 218;
 ## P249: 1986 + 60
 ## (P245: 1514 + 472; P203: 1116 + 398, the pads).
-const TODAY2_CROSS: int = 2512
-## P638: 1456 + 2; P280: 1386 + 70; P279: 1386 + 0; P292: 1264 + 122; P291: 1158 + 106;
+const TODAY2_CROSS: int = 2516
+## P639: 1458 + 0; P638: 1456 + 2; P280: 1386 + 70; P279: 1386 + 0; P292: 1264 + 122; P291: 1158 +
+## 106;
 ## P249: 1094 + 64
 ## (P245: 782 + 312; P245b: 780 + 2).
 const TODAY2_MIRROR_DERRICK: int = 1458
-## P280: 1408 + 70; P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 + 46
+## P639: 1478 + 0; P280: 1408 + 70; P279: 1386 + 22; P292: 1286 + 100; P291: 1244 + 42; P249: 1198 +
+## 46
 ## (P245: 814 + 384; P203: 634 + 180).
 const TODAY2_MIRROR_LUMEN: int = 1478
 const OTHER_TRIADS_PX: int = 40  ## How far another pair of triads may move the page.
