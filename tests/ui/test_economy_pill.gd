@@ -233,19 +233,23 @@ func test_on_the_narrowest_portrait_the_pill_ends_before_the_scopes_corner() -> 
 					assert_bool(inside).override_failure_message(why + text).is_true()
 
 
-## P605: the widest reading never touches the bar's edges. The pill is sized for "9999/9999" (the
-## cap: 40 buildings of at most 100 power is 4000, 4 digits each way); whatever reading shows has at
-## least `TEXT_PAD_DP` clear on each side inside the bar, at every size of both orientations. The
-## 3 + 3 digit reading "200/220" shows everywhere (it ran into the bar's border on the upright
-## 360 dp phone before); "9999/9999" shows everywhere except where the layout's cap on the pill
-## leaves the bar too short (the upright phone), where it drops and the layout stays whole.
-func test_the_widest_reading_keeps_clear_of_the_bars_edges_at_every_size() -> void:
+## P605b: the widest reading never touches the bar's edges and never drops. The pill is sized for
+## "9.9k/9.9k" (the thousands form), so at every profile of both orientations, the 360 dp upright
+## phone included, every reading shows with at least `TEXT_PAD_DP` clear on each side inside the
+## bar, on low power too (then the word has the place, the numbers come back with the power).
+func test_the_numbers_never_drop_and_keep_clear_of_the_bars_edges_at_every_size() -> void:
 	await _open()
-	var wide_shown: int = 0
-	var profiles: Array[StringName] = _every_profile()
-	for profile: StringName in profiles:
+	var readings: Array[Vector2i] = [  # Made, used.
+		Vector2i(220, 200),
+		Vector2i(3900, 1300),  # The worst real reading: 9 characters ("1.3k/3.9k").
+		Vector2i(9900, 9900),  # The guard of the widest form, "9.9k/9.9k".
+		Vector2i(9999, 9999),
+		Vector2i(99999, 99999),  # From 10k whole thousands: "100k/99k".
+		Vector2i(6, 9),  # Low power: the word has the place; the numbers show on the next reading.
+	]
+	for profile: StringName in _every_profile():
 		await _turn(profile)
-		for reading: Vector2i in [Vector2i(220, 200), Vector2i(9999, 9999), Vector2i(4000, 2400)]:
+		for reading: Vector2i in readings:
 			_publish(2000, reading.x, reading.y)
 			await await_idle_frame()
 			await await_idle_frame()
@@ -253,24 +257,20 @@ func test_the_widest_reading_keeps_clear_of_the_bars_edges_at_every_size() -> vo
 			var bar: Rect2 = _rect("PowerBar")
 			var pad: float = UiScale.dp(EconomyPill.TEXT_PAD_DP)
 			var why: String = "%s %s: text %s in bar %s" % [profile, reading, text.size, bar.size]
-			if text.visible:
-				var clear: float = (bar.size.x - text.get_combined_minimum_size().x) / 2.0
-				assert_float(clear).override_failure_message(why).is_greater_equal(pad - 0.5)
-				(
-					assert_bool(bar.grow(0.5).encloses(text.get_global_rect()))
-					. override_failure_message(why)
-					. is_true()
-				)
-			if reading == Vector2i(220, 200):
-				assert_bool(text.visible).override_failure_message(why).is_true()
-			if reading == Vector2i(9999, 9999) and text.visible:
-				wide_shown += 1
-	assert_int(wide_shown).is_greater_equal(profiles.size() - 1)  # Only the upright phone drops.
+			var low: bool = reading.x < reading.y
+			assert_bool(_node("PowerWord").visible).override_failure_message(why).is_equal(low)
+			if low:
+				continue
+			assert_bool(text.visible).override_failure_message(why).is_true()
+			var clear: float = (bar.size.x - text.get_combined_minimum_size().x) / 2.0
+			assert_float(clear).override_failure_message(why).is_greater_equal(pad - 0.5)
+			var inside: bool = bar.grow(0.5).encloses(text.get_global_rect())
+			assert_bool(inside).override_failure_message(why).is_true()
 
 
 ## A turn changes the bar's width without a new snapshot, so the bar's own `resized` makes the
 ## numbers follow it (a container sorts a frame after the handlers). At every profile the numbers
-## show exactly where they fit the bar.
+## show exactly where they fit the bar, and since P605b they fit at every profile.
 func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 	await _open()
 	var shown: Dictionary[bool, int] = {true: 0, false: 0}
@@ -290,8 +290,8 @@ func test_the_numbers_follow_the_bar_when_a_turn_changes_its_width() -> void:
 				. is_equal(fits)
 			)
 			shown[text.visible] += 1
-	assert_int(shown[true]).is_greater(0)  # Not vacuous: some bars hold the numbers, some not.
-	assert_int(shown[false]).is_greater(0)  # The 360 dp portrait has no room for 11 digits.
+	assert_int(shown[true]).is_greater(0)
+	assert_int(shown[false]).is_equal(0)  # The numbers never drop.
 
 
 ## The numbers are in the middle of the bar, not hanging from its top: a line of text is taller

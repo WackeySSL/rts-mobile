@@ -112,7 +112,9 @@ func test_the_pill_is_48_dp_high_with_tap_areas_of_48_dp_and_the_menu_button() -
 		var pill_rect: Rect2 = _pill.get_global_rect()
 		var shown: String = "%s: menu %s in pill %s" % [profile, menu_rect, pill_rect]
 		assert_bool((_node("Menu") as Control).visible).override_failure_message(shown).is_true()
-		assert_bool((_node("Divider") as Control).visible).is_true()
+		# P605b: the divider goes on the narrowest upright phone, where the bar needs its room.
+		var tight: bool = _pill.call("_is_tight")
+		assert_bool((_node("Divider") as Control).visible).is_not_equal(tight)
 		# The button is 48 x 48 dp (its glyph is capped, not its own 128 px) and so is the pill high.
 		assert_float(menu_rect.size.x / dp).override_failure_message(shown).is_between(47.5, 48.5)
 		assert_float(menu_rect.size.y / dp).override_failure_message(shown).is_between(47.5, 48.5)
@@ -215,7 +217,8 @@ func test_the_pill_takes_its_rect_from_the_layout_at_every_size_and_after_a_turn
 
 
 ## The credits line (plan P85c, now the pill's): the glyph, the number, the bolt and the bar sit
-## inside the pill, clear of each other, and the glyphs are at least 24 dp.
+## inside the pill, clear of each other, and the glyphs are at least 24 dp (22 dp on the narrowest
+## upright phone, P605b).
 func test_the_pills_parts_are_inside_it_clear_of_each_other_and_the_glyphs_24_dp() -> void:
 	await _open()
 	for profile: StringName in _every_profile():
@@ -233,9 +236,88 @@ func test_the_pills_parts_are_inside_it_clear_of_each_other_and_the_glyphs_24_dp
 		for glyph: String in ["CreditsGlyph", "PowerGlyph"]:
 			var size: Vector2 = _rect(glyph).size
 			var small: String = "%s: %s is %s" % [profile, glyph, size]
-			var least: float = UiScale.dp(24.0) - 0.5
+			var wide: float = EconomyPill.TIGHT_GLYPH_DP if _pill.call("_is_tight") else 24.0
+			var least: float = UiScale.dp(wide) - 0.5
 			assert_float(size.x).override_failure_message(small).is_greater_equal(least)
 			assert_float(size.y).override_failure_message(small).is_greater_equal(least)
+
+
+## P605b: on the 360 dp upright phone the widest reading gets its room from the divider and the gaps
+## and then the glyphs, never from a touch target, the credits' digit slots or the gap to the scope.
+## The parts stay in a row without overlap, every tap area is 48 dp, the glyphs stay 22 dp and the
+## pill ends at least 8 dp before the scope.
+func test_the_narrowest_upright_phone_keeps_its_targets_slots_and_gap_to_the_scope() -> void:
+	await _open()
+	await _turn(&"web_phone_portrait")
+	_publish(2000, 9900, 9900)
+	await await_idle_frame()
+	await await_idle_frame()
+	var dp: float = UiScale.base_px_per_dp()
+	var parts: Array[Control] = [_node("Menu"), _node("CreditsTap"), _node("PowerTap")]
+	for index: int in parts.size():
+		var rect: Rect2 = parts[index].get_global_rect()
+		assert_float(rect.size.x / dp).is_greater_equal(47.5)
+		assert_float(rect.size.y / dp).is_greater_equal(47.5)
+		if index > 0:
+			var before: Rect2 = parts[index - 1].get_global_rect()
+			assert_float(rect.position.x).is_greater_equal(before.end.x - 0.5)  # No overlap.
+	assert_bool(_node("Divider").visible).is_false()
+	assert_float(_node("CreditsGlyph").size.x / dp).is_equal_approx(EconomyPill.TIGHT_GLYPH_DP, 0.5)
+	assert_float(_node("Credits").get_combined_minimum_size().x).is_greater_equal(
+		EconomyPill.CREDITS_DIGITS * (_node("Credits") as DigitRow).width_of("0") - 0.5
+	)
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+	)
+	var scope_left: float = safe.end.x - HudCorners.SCOPE_DP * dp
+	assert_float((scope_left - _pill.get_global_rect().end.x) / dp).is_greater_equal(7.5)
+	assert_bool(_node("PowerText").visible).is_true()
+	await _turn(&"android_6in")  # Elsewhere the divider and the 24 dp glyphs stay.
+	assert_bool(_node("Divider").visible).is_true()
+	assert_float(_node("CreditsGlyph").size.x / UiScale.base_px_per_dp()).is_equal_approx(
+		EconomyPill.GLYPH_DP, 0.5
+	)
+
+
+## The thousands form (P605b): below 1000 the integer, below 10k one decimal and a "k", from 10k
+## whole thousands (a ".0" drops), each figure on its own; used rounds up and made rounds down, so
+## the pill never shows more headroom than there is.
+func test_the_power_reading_shows_thousands_with_a_k_and_rounds_against_the_player() -> void:
+	var cases: Dictionary[Vector2i, String] = {  # Used, made.
+		Vector2i(0, 0): "0/0",
+		Vector2i(999, 999): "999/999",
+		Vector2i(200, 220): "200/220",
+		Vector2i(950, 1200): "950/1.2k",
+		Vector2i(1000, 1000): "1k/1k",
+		Vector2i(1049, 1049): "1.1k/1k",  # Used up, made down.
+		Vector2i(1050, 1050): "1.1k/1k",
+		Vector2i(1001, 1001): "1.1k/1k",
+		Vector2i(2449, 2400): "2.5k/2.4k",  # Never "2.4k/2.4k".
+		Vector2i(2400, 2449): "2.4k/2.4k",
+		Vector2i(1999, 1999): "2k/1.9k",
+		Vector2i(3900, 1300): "3.9k/1.3k",
+		Vector2i(9900, 9900): "9.9k/9.9k",
+		Vector2i(9901, 9999): "10k/9.9k",  # Used rounds up into the whole-thousand form.
+		Vector2i(9999, 9999): "10k/9.9k",
+		Vector2i(10000, 10000): "10k/10k",
+		Vector2i(10001, 10999): "11k/10k",
+		Vector2i(99999, 99999): "100k/99k",
+	}
+	for reading: Vector2i in cases:
+		var text: String = EconomyPill.power_text(reading.x, reading.y)
+		assert_str(text).override_failure_message(str(reading)).is_equal(cases[reading])
+
+
+## Low power comes from the exact integers, not from the shown text: 2449 used against 2400 made
+## reads "2.5k/2.4k" and is low, 2401 used against 2449 made reads "2.5k/2.4k" and is not.
+func test_low_power_follows_the_exact_numbers_not_the_shown_text() -> void:
+	await _open()
+	_publish(2000, 2400, 2449)
+	assert_bool(_pill.is_low()).is_true()
+	assert_str(_numbers().text).is_equal("2.5k/2.4k")
+	_publish(2000, 2449, 2401)
+	assert_bool(_pill.is_low()).is_false()
+	assert_str(_numbers().text).is_equal("2.5k/2.4k")
 
 
 func _shown_like_the_pill() -> HudCorners.Shown:
