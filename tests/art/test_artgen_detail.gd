@@ -9,6 +9,11 @@ const WITH_SHEEN: Array[String] = ["svg", "g", "polygon", "defs", "linearGradien
 const UNIT_POLYS: int = 600  ## ADR 0050 section 1: a unit hull at level 2.
 const UNIT_BYTES: int = 64 * 1024
 const NUMBER_PAINT: String = "#E9E5D6"
+## The models that have opted in, by restyle batch (docs/art/treadline-batches.json); every other
+## model of the game is at detail 0 until its own batch. P638: the Nordvaern ground vehicles.
+const OPTED_IN: Dictionary[String, int] = {
+	"light_tank": 2, "heavy_tank": 2, "artillery": 2, "harvester": 2
+}
 
 
 func _tags(text: String) -> Array[String]:
@@ -57,9 +62,12 @@ func test_detail_0_is_the_flat_renderer_byte_for_byte() -> void:
 		assert_str(got[i].fill).is_equal(want[i].fill)
 
 
-func test_no_model_of_the_game_opts_in_yet() -> void:
+func test_only_the_models_of_a_finished_batch_opt_in() -> void:
 	for path: String in ArtGen.model_paths():
-		assert_int((load(path) as ArtModel).detail).override_failure_message(path).is_equal(0)
+		var model: ArtModel = load(path) as ArtModel
+		assert_int(model.detail).override_failure_message(path).is_equal(
+			OPTED_IN.get(String(model.art_id), 0)
+		)
 
 
 func test_each_level_uses_only_its_allowed_elements() -> void:
@@ -145,6 +153,34 @@ func test_the_budgets_hold_at_every_level() -> void:
 			if not path.contains("_shadow"):
 				worst = maxi(worst, _polygons(text))
 		assert_int(worst).is_less(UNIT_POLYS)
+
+
+## The unit budget on the real frames (ADR 0050 section 1): every frame of an opted-in unit, its
+## shadows too, has at most 600 polygons and 64 KB (P638).
+func test_every_frame_of_an_opted_in_unit_holds_the_unit_budget() -> void:
+	var built: Dictionary[String, String] = ArtGen.build_all()
+	var seen: int = 0
+	for path: String in built:
+		if not path.ends_with(".svg") or not _opted_in(path):
+			continue
+		var text: String = built[path]
+		assert_int(text.length()).override_failure_message(path).is_less(UNIT_BYTES)
+		assert_int(_polygons(text)).override_failure_message(path).is_less(UNIT_POLYS)
+		seen += 1
+	# Hull, turret and shadow of three units, hull and shadow of the tanker, 16 directions each.
+	assert_int(seen).is_equal(11 * 16)
+
+
+func _opted_in(path: String) -> bool:
+	var name: String = path.get_file()
+	for id: String in OPTED_IN:
+		if (
+			name.begins_with(id + "_hull_")
+			or name.begins_with(id + "_turret_")
+			or name.begins_with(id + "_shadow_")
+		):
+			return true
+	return false
 
 
 func test_two_builds_give_the_same_bytes_at_every_level() -> void:

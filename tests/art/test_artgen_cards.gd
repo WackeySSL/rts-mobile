@@ -50,14 +50,19 @@ func test_a_card_ends_in_the_default_view_of_the_hull_and_its_turret_over_the_sh
 				ArtGen.frame_path(model, &"hull", -1 if model.category == &"bld" else dir)
 			)
 		)
-		if not model.primitives(ArtPrim.ANIM).is_empty():
+		if model.detail > 0:
+			# The card is drawn flat (ArtIcon): a model at detail 1 or more has panels, seams and
+			# sheen in its frames and none on its card, which keeps the frames' silhouette and
+			# the faction colour (P638).
+			want = _flat_fills(model, dir)
+		elif not model.primitives(ArtPrim.ANIM).is_empty():
 			# The moving element of a building stands at rest in the card, sorted with the hull.
 			var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
 			want.clear()
 			for poly: ArtRender.Poly in ArtRender.render(at_rest, 0.0, model.faction):
 				want.append(poly.fill)
 		for part: StringName in [&"turret", &"head"]:
-			if model.parts().has(part):
+			if model.parts().has(part) and model.detail == 0:
 				want.append_array(
 					_fills(FileAccess.get_file_as_string(ArtGen.frame_path(model, part, dir)))
 				)
@@ -178,6 +183,21 @@ func test_the_style_guide_states_the_ellipse_and_the_card() -> void:
 		"`d06`, `d10` for the Lumen Accord",
 	]:
 		assert_bool(guide.contains(words)).override_failure_message(words).is_true()
+
+
+## The fills of the flat default view of `model`: the hull, then the turret or head.
+func _flat_fills(model: ArtModel, dir: int) -> Array[String]:
+	var found: Array[String] = []
+	var yaw: float = 0.0 if model.category == &"bld" else ArtGen.yaw(dir)
+	var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
+	for poly: ArtRender.Poly in ArtRender.render(at_rest, yaw, model.faction):
+		found.append(poly.fill)
+	for part: StringName in [&"turret", &"head"]:
+		for poly: ArtRender.Poly in ArtRender.render(
+			model.primitives(part), ArtGen.yaw(dir), model.faction
+		):
+			found.append(poly.fill)
+	return found
 
 
 func _fills(text: String) -> Array[String]:

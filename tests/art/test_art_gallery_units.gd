@@ -124,14 +124,15 @@ func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_kobolt() -> void:
 			var is_a: bool = row_name.ends_with("A")
 			for rig: Node in gallery.get_node("%s/%s" % [ground, row_name]).get_children():
 				if rig is Node2D:
-					var hull: Image = (
-						((rig as Node2D).get_node("Hull") as Sprite2D).texture.get_image()
-					)
+					var images: Array[Image] = _team_images(rig as Node2D)
 					var path: String = "%s %s %s" % [ground, row_name, rig.name]
-					var own: int = _pixels_of(hull, SIGNAL if is_a else KOBOLT)
-					var other: int = _pixels_of(hull, KOBOLT if is_a else SIGNAL)
+					var own: int = _pixels_in(images, SIGNAL if is_a else KOBOLT)
+					var other: int = _pixels_in(images, KOBOLT if is_a else SIGNAL)
 					assert_int(own).override_failure_message(path).is_greater(0)
-					assert_int(other).override_failure_message(path).is_equal(0)
+					# Signal's tones sit inside the fixed Nordvaern orange, so a redrawn Nordvaern
+					# unit of team B cannot be free of them (ADR 0050 section 3).
+					if is_a or not _has_fixed_orange(String(rig.name).to_snake_case()):
+						assert_int(other).override_failure_message(path).is_equal(0)
 
 
 ## The zoom row is in the scene (tests/project pins its scales to the camera levels): the Flarejack
@@ -155,10 +156,12 @@ func test_the_zoom_row_shows_the_flarejack_at_each_camera_zoom_in_its_grounds_te
 			assert_vector(Vector2(hull.texture.get_size())).is_equal_approx(
 				canvas * 0.5 * zoom, Vector2.ONE * 1.0
 			)
-			var image: Image = hull.texture.get_image()
+			var images: Array[Image] = _team_images(rig)
 			var own: Array[String] = SIGNAL if ground == "Grass" else KOBOLT
-			assert_int(_pixels_of(image, own)).override_failure_message(ground).is_greater(0)
-			assert_int(_pixels_of(image, KOBOLT if ground == "Grass" else SIGNAL)).is_equal(0)
+			assert_int(_pixels_in(images, own)).override_failure_message(ground).is_greater(0)
+			if ground == "Grass" or not _has_fixed_orange("light_tank"):
+				var other: Array[String] = KOBOLT if ground == "Grass" else SIGNAL
+				assert_int(_pixels_in(images, other)).is_equal(0)
 		scales.sort()
 		assert_array(scales).is_equal(LEVELS)
 
@@ -362,6 +365,29 @@ func _frame_data(model: ArtModel, part: StringName, frame: int, triad: int) -> P
 	var image: Image = Image.new()
 	image.load_svg_from_string(text, 0.5)
 	return image.get_data()
+
+
+## The images that can hold the team marker of a rig: its hull and, when it has one, its gun.
+func _team_images(rig: Node2D) -> Array[Image]:
+	var images: Array[Image] = [(rig.get_node("Hull") as Sprite2D).texture.get_image()]
+	if rig.has_node("Gun"):
+		images.append((rig.get_node("Gun") as Sprite2D).texture.get_image())
+	return images
+
+
+func _pixels_in(images: Array[Image], triad: Array[String]) -> int:
+	var found: int = 0
+	for image: Image in images:
+		found += _pixels_of(image, triad)
+	return found
+
+
+## Whether the model of `id` has the fixed faction colour in panels (a detail of 1 or more).
+func _has_fixed_orange(id: String) -> bool:
+	for path: String in ArtGen.model_paths():
+		if path.ends_with("/%s.tres" % id):
+			return (load(path) as ArtModel).detail > 0
+	return false
 
 
 ## The pixels of `image` that are within `TOLERANCE` of one of the three colours of a triad.
