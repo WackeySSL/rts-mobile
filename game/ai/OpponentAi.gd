@@ -138,4 +138,7 @@ func _run_intel_slot(view: PlayerView, out: Array[Command]) -> void:
 	striker.run(view, memory, rng, out)
 	work += striker.passes
 	strikes = striker.strikes
+	dusk_fires_radar_known = striker.fires_radar_known
+	dusk_fires_radar_coverable = striker.fires_radar_coverable
+	dusk_fires_radar_chosen = striker.fires_radar_chosen
 	miner.run(view, memory, out)

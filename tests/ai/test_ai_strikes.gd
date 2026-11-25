@@ -50,6 +50,24 @@ func test_the_sim_takes_the_shot_and_sets_the_rupture_on_the_point() -> void:
 	assert_int(_world.strike_tick[1]).is_not_equal(0)
 
 
+## The radar diagnostics (P577c) are the Dusk Array's: a Deep Bore fire leaves them at 0.
+func test_a_deep_bore_fire_leaves_the_radar_counters_at_zero() -> void:
+	_cluster()
+	_fire(READY)
+	_fire(KNOWN)
+	assert_int(_striker.strikes).is_equal(1)
+	(
+		assert_array(
+			[
+				_striker.fires_radar_known,
+				_striker.fires_radar_coverable,
+				_striker.fires_radar_chosen
+			]
+		)
+		. is_equal([0, 0, 0])
+	)
+
+
 func test_the_shot_waits_for_the_minimum_and_a_value_equal_to_it_fires() -> void:
 	_cluster()
 	_arm_strikes("normal", 1, "fossil", 2201)

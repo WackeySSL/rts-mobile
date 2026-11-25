@@ -3,8 +3,9 @@ extends RefCounted
 ## keys of a player entry (`SmokeCount.STRIKE_KEYS`) summed per faction and per level, and the mean
 ## per fire. A report from before the keys has none of them and counts 0 everywhere.
 ##
-## A group is `{"player_matches", "fires", "totals", "caused", "per_fire"}`:
+## A group is `{"player_matches", "fires", "totals", "caused", "radar_fires", "per_fire"}`:
 ## - `fires`: the rupture and blackout fires of the group's players;
+## - `radar_fires`: the Dusk radar counts (`RADAR_KEYS`, P577c) summed over the group's players;
 ## - `totals`: each key summed over the group's players, as recorded;
 ## - `caused`: what those fires did. The firer-side keys (damage, kills) are the group's own; the
 ##   victim-side keys (`VICTIM_KEYS`: a blackout's building-ticks, sight cut, cells lost and dark
@@ -20,6 +21,13 @@ const VICTIM_KEYS: Array[String] = [
 	"sight_cut_building_ticks",
 	"sight_cells_lost",
 	"radar_dark_ticks",
+]
+
+## The Dusk radar counts of a player entry (P577c), summed per group as `radar_fires`.
+const RADAR_KEYS: Array[String] = [
+	"dusk_fires_radar_known",
+	"dusk_fires_radar_coverable",
+	"dusk_fires_radar_chosen",
 ]
 
 ## The `per_fire` entries the table shows, in column order.
@@ -94,6 +102,35 @@ static func append_lines(strikes: Dictionary, lines: PackedStringArray) -> void:
 		)
 	)
 	lines.append("")
+	_append_radar_lines(strikes, lines)
+
+
+## The "Dusk radar" table: per group that fired a blackout, the Dusk Array's fires (blackouts only,
+## not ruptures) by what the firer knew (P577c).
+static func _append_radar_lines(strikes: Dictionary, lines: PackedStringArray) -> void:
+	var rows: Array[String] = []
+	for scope: String in ["by_faction", "by_level"]:
+		var groups: Dictionary = strikes.get(scope, {})
+		var ids: Array = groups.keys()
+		ids.sort()
+		for id: String in ids:
+			var group: Dictionary = groups[id]
+			var radar: Dictionary = group.get("radar_fires", {})
+			var blackouts: int = int(group["totals"]["strike_fires_blackout"])
+			if blackouts == 0:
+				continue
+			var cells: Array[String] = [scope.trim_prefix("by_") + " " + id, str(blackouts)]
+			for key: String in RADAR_KEYS:
+				cells.append(str(radar[key]))
+			rows.append("| %s |" % " | ".join(cells))
+	if rows.is_empty():
+		return
+	lines.append("### Dusk radar knowledge")
+	lines.append("")
+	lines.append("| Group | Fires | Radar known | Coverable | Chosen ring over radar |")
+	lines.append("| --- | --- | --- | --- | --- |")
+	lines.append_array(rows)
+	lines.append("")
 
 
 static func _add(groups: Dictionary, id: String, player: Dictionary, victim: Dictionary) -> void:
@@ -103,11 +140,22 @@ static func _add(groups: Dictionary, id: String, player: Dictionary, victim: Dic
 		for key: String in SmokeCount.STRIKE_KEYS:
 			totals[key] = 0
 			caused[key] = 0
-		groups[id] = {"player_matches": 0, "fires": 0, "totals": totals, "caused": caused}
+		var radar_fires: Dictionary = {}
+		for key: String in RADAR_KEYS:
+			radar_fires[key] = 0
+		groups[id] = {
+			"player_matches": 0,
+			"fires": 0,
+			"totals": totals,
+			"caused": caused,
+			"radar_fires": radar_fires,
+		}
 	var group: Dictionary = groups[id]
 	group["player_matches"] += 1
 	group["fires"] += int(player.get("strike_fires_rupture", 0))
 	group["fires"] += int(player.get("strike_fires_blackout", 0))
+	for key: String in RADAR_KEYS:
+		group["radar_fires"][key] += int(player.get(key, 0))
 	for key: String in SmokeCount.STRIKE_KEYS:
 		group["totals"][key] += int(player.get(key, 0))
 		if VICTIM_KEYS.has(key):
