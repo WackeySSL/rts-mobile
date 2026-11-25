@@ -1,4 +1,4 @@
-# ADR 0050: The art pipeline: one coherent look, richer SVG units, a building route chosen by comparison, fixed faction colours with a team marker, and a closer zoom
+# ADR 0050: The art pipeline: one coherent look, generator SVG for everything on the map, Figma AI for stand-alone art, fixed faction colours with a team marker, and a closer zoom
 
 **In short, for Michael:**
 - **Units:** they stay SVG from our own generator, now with much more detail: panels with seams,
@@ -7,25 +7,27 @@
 - **One look for everything** (your rule): units, buildings, ground, effects, icons and item
   cards must look like one game, never random. Every way of making art has to pass the same
   test: units and buildings side by side on the same ground in the same light.
-- **Large buildings:** still open. We compare the same Facet headquarters made three ways (our
-  generator, Figma vector, Figma AI), and you pick one way for all of them. If Figma AI does not
-  clearly win, everything stays in our generator and there is no PNG.
+- **Buildings:** every unit and every building on the map comes from our generator as SVG. The
+  generator learns bevelled boxes and turned prisms, so buildings get the low, faceted shape of
+  the Figma drawing instead of domes. There is no PNG on the map.
+- **Figma AI** makes only pictures that stand alone: the menu and loading backdrops, portraits
+  and store art. It is never on the map next to units.
 - **Colours:** Nordværn is always orange and Facet always blue. A small marker on each unit and
   building shows whose it is.
 - **Zoom:** you get a fourth, closer level. At that level the sprites are a little soft, because
   baking them sharp would take more than twice today's graphics memory.
 
-You answered questions 2 to 5. Question 1, the building route, waits for the comparison.
+You answered all five questions.
 
-Status: **proposed, 2026-11-24; questions 2-5 answered, question 1 pending** (the building
-route, decided after the comparison of row P637; row P621b then accepts this ADR). Written by
-the architect (row P621) on branch
-`claude/p600-treadline-plan`, after Michael's answer of 2026-11-24 to ADR 0049 and P601 ("A, SVG
-til enheder men prøv om du ikke kan gøre dem mere realistiske. brug gerne figma som tegner og PNG
-kun til de store bygninger, faste farver, Facet. og i spillet skal det være muligt at zoome
-længere ind end det er idag"). Plan: `docs/plans/2026-11-24-treadline-restyle.md`, rows
-P621 and P630-P649 (P622 and P623 are ADR 0051's rows). It is built on P601's prototype: branch `claude/p601-style-proto`,
-`docs/proto/p601/README.md`. That prototype is the reference only and is never merged as it is.
+Status: **accepted, 2026-11-24** (Michael: questions 2-5 "ja til alle 4", question 1 "ja, kør med
+generator-SVG og Figma AI til menuer"; accepted in row P621b on branch
+`claude/p621b-adr0050-accept`, base `main` at 653383c5). Proposed 2026-11-24 by the architect in
+row P621 (PR #642), after Michael's answer to ADR 0049 and P601 ("A, SVG til enheder men prøv om
+du ikke kan gøre dem mere realistiske. brug gerne figma som tegner og PNG kun til de store
+bygninger, faste farver, Facet. og i spillet skal det være muligt at zoome længere ind end det er
+idag"). Plan: `docs/plans/2026-11-24-treadline-restyle.md`. Built on P601's prototype: branch
+`claude/p601-style-proto` (head 6be63003), `docs/proto/p601/README.md`, rounds 1-3. The prototype is
+the reference only and is never merged as it is.
 
 ## Michael's answers (2026-11-24)
 Verbatim: "ja til alle 4, men vi skal have afgjort om det er figma Ai der vinder, vi skal have en
@@ -36,16 +38,23 @@ round, so it looks worked through and not random).
 - **3: own white, the computer red,** each marker with a dark rim (§3).
 - **4: yes,** gradient sheen from detail 2 (§1).
 - **5: yes** to §4's `svg-art-style` text (P630b applies it).
-- **1: open.** On P601 round 2 (`docs/proto/p601/README.md`, "Round 2") Michael preferred the
-  artgen SVG Facet headquarters to the Figma-vector one. A Figma-AI variant is made and compared
-  after ADR 0051 (#643) merges (row P637), and then he picks one building route (§2).
+- **1: "ja, kør med generator-SVG og Figma AI til menuer"** (yes, go with generator SVG, and Figma
+  AI for the menus), after P637's same-scene comparison (`docs/proto/p601/README.md`, "Round 3
+  (P637)"):
+  - (a) artgen SVG was the most coherent whole;
+  - (b) the Figma vector had the best silhouette;
+  - (c) Figma AI looked best alone but broke the scene: no outline, a painterly light of its own,
+    a glossier cobalt and detail at another scale.
+  So everything on the map is generator SVG, with (b)'s faceted form (§2).
 - **New principle: one coherent look** (§8), with the same-scene check as the test for every art
   route.
 
-Amends, on acceptance (dated notes; no accepted text is rewritten):
+Amends (P621b writes the dated notes; no accepted text is rewritten):
 - ADR 0023 §5 (the art pipeline: SVG only, the per-faction key triads).
 - ADR 0035 §4 (the team pad and ring take the marker key).
-- ADR 0027 §4 (the page rule holds, and PNG frames join the same page).
+- ADR 0027 §4 (the page rule holds, and building frames get a budget, §1).
+- ADR 0051 §2 (its "large building pictures" item: on the map they are generator SVG; Figma AI
+  is for stand-alone art).
 - The `svg-art-style` skill (§4, with Michael's yes to the text).
 - `data/input_settings.tres`'s zoom list (§6).
 
@@ -101,88 +110,68 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
     opts in.
   - Units target L2, plus L3's bevels and contact bands. Chips and grime stay off on units: noise
     at far zoom.
-  - Buildings drawn as SVG (2x2, 1x1) use L2, with no bolts on buildings (P601: 800 of the
-    hall's 2,446 polygons).
+  - Every building (3x3 included) uses L2 and L3's bevels, with the building budget below.
   - Every jitter is seeded from the model id and the face index, so `--check` stays byte-stable.
 - **Metal sheen** at detail 2 and up:
   - One `linearGradient` per lit metal face of at least 12 x 12 px, in the frame's `defs`.
   - Ids are `s0`, `s1` … in face order. Two stops from the material's own tone ladder, with fixed
     decimals.
   - Never on key colours (the marker is flat), never in a shadow frame, never in a mask.
-- **Generator features first** (P630, with no change to any output): chamfered boxes, rotated
-  primitives, face decals (numbers, hazard marks, vents), a per-primitive detail override, and
-  macros for tracks, wheel sets, grilles, hatches and pylons. Models get shorter, not longer.
+- **Generator features first, with no change to any output:**
+  - P630: face decals (numbers, hazard marks, vents), a per-primitive detail override, and
+    macros for tracks, wheel sets, grilles, hatches and pylons. Models get shorter, not longer.
+  - P630c: a chamfered (bevelled) box and rotated prisms (n-gon prisms and frustums turned about
+    the vertical axis, with sloped faces). Their target is the facet form (§2).
 - **Budgets per frame** (pinned in `tests/art`):
   - At most 600 polygons for a unit hull at L2. P601's tank was 18,409 over 48 frames, about 380
     each.
-  - At most 64 KB per generated frame. The 28 KB cap stays for hand-drawn files.
+  - At most 64 KB per generated unit frame. The 28 KB cap stays for hand-drawn files.
+  - **Buildings**, per frame (body, `dmg2`; anim crops are capped at a quarter of the body):
+
+    | Footprint | Polygons | Bytes |
+    | --- | --- | --- |
+    | 3x3 | 1,500 | 128 KB |
+    | 2x2 | 900 | 80 KB |
+    | 1x1 | 500 | 48 KB |
+
+    P601's Nordværn works hull frame is 404 KB (round 3) and the round-1 Facet hall 210 KB
+    (2,446 polygons, 800 of them bolts). Both must come down about 2 to 3 times.
+  - **Building detail rules:**
+    - No bolts on faces larger than 0.25 tile² (big walls, roofs and aprons). Bolts only on
+      hatches, pylons, trim and small parts.
+    - Panel cells at least 0.3 tile across, the tanks' panel size (round 3's density match).
+    - Hazard stripes at least 6 px wide at 2x.
   - The page rule of ADR 0027 §4 is unchanged.
 - **Directions stay 16 for vehicles.** Halving them to 8 is the named lever if the bake or the
   size runs over (§5).
 
-### 2. Large buildings: one route, chosen by comparison (question 1, pending)
-- **The rule.** All twelve 3x3 buildings use **one** route, so the set looks like one hand
-  (§8). The candidates are:
-  - artgen SVG at the new detail levels, with P630's chamfered and rotated primitives, so
-    facets read as facets rather than a dome;
-  - a Figma vector drawing;
-  - a Figma-AI picture.
-  The route is not chosen per building.
-- **The comparison** (P637, after #643 merges): the same Facet headquarters is made in all three
-  routes, taking round 2's artgen SVG and Figma-vector versions as they are. Each goes through
-  §8's same-scene check beside the round-2 tank and the Nordværn headquarters, at all four zoom
-  levels. Michael picks.
-- **The default.** If Figma AI does not clearly win, every building stays artgen SVG at the new
-  detail levels. The PNG path and its rows (P635, P636 and the Figma parts of P644 and P645) are
-  dropped, and the 3x3 buildings join the SVG batches. Round 2 already favours artgen: Michael
-  preferred its headquarters. If the Figma-vector route were picked, it would ship as PNG
-  through the same path as below.
-- **If a Figma route wins**, the rest of this section holds.
-- **Made in Figma, in one of two ways.** Art-director works in AppCode ApS's own file
-  "Treadline — building art", in the one route Michael picked. The CREDITS row says which.
-  - **Drawn by us:** vector shapes with the Figma MCP (`use_figma`). This is our own work, all
-    rights reserved (ADR 0046). The CREDITS row names the file and frame (CLAUDE.md Legal,
-    Michael 2026-11-09).
-  - **Made with Figma's own AI features** (ADR 0051, accepted 2026-11-24, Michael's "C"), then
-    edited by hand on the footprint template. The CREDITS row is marked "AI-made with Figma AI,
-    no copyright claimed by AppCode ApS" and gives the feature, the date, a short prompt and
-    the hand edits. The file is outside ADR 0046's reserved scope. No prompt names another game,
-    studio, faction, unit or brand, or asks for its style. Every picture passes ADR 0051 §3's
-    resemblance screen before it is committed (no C&C or Red Alert silhouettes, insignia or
-    interface look, no glowing crystal ore), and the screen is recorded in the row.
-  - **Never** a plugin's AI tools, a community file, a shared library or a stock asset. Never
-    the style file's existing pictures (ADR 0049 §1: their provenance is not recorded).
-- **One building, one picture.** An AI-made body's `dmg2` picture and anim crops are made by
-  editing that same picture, by hand or with Figma's AI edit, never by a fresh prompt. That keeps
-  the parts matched. A picture that misses the 2:1 view, the north-west light or the footprint is
-  redrawn, not shipped (ADR 0051 §2).
-- **What suits Figma:** single views.
-  - The twelve 3x3 buildings: body, `dmg2`, anim crops and their item cards.
-  - Menu and loading backdrops and portraits (ADR 0051 §2). ADR 0049's menu rows may use them.
-  - UI icons and the order glyphs, drawn as vectors and exported as SVG flattened to
-    `svg-art-style`'s hand-drawn elements.
-  **Units stay artgen** (ADR 0051 §2): they need 16 hull and 16 turret directions plus poses in
-  one projection and one light. Unit cards stay rendered from their models, so a card always
-  matches its sprite.
-- **The model stays as the volume.** Each building's artgen model is kept. It makes the cast
-  shadow frame, the footprint and the pick and bar lifts. So a Figma picture gets a correct
-  shadow and stands where the SVG building stood.
-- **Geometry match.** P636 exports a template from artgen per footprint: the 2:1 footprint
-  diamond, the anchor, the height guide, the light arrow and the canvas size of today's sheet.
-  The template is our own geometry. Drawings sit on it, so a PNG building stands where the SVG
-  one stood, with the same pick and bar lifts.
-- **Format:**
-  - 8-bit sRGB RGBA PNG at the sheet's 2x canvas, with no metadata.
-  - The cast shadow stays a generated SVG frame from the model's volume.
-  - Damage keeps ADR 0034's rule: body and `dmg2`, no `dmg1`.
-  - Anim parts are cropped Figma frames on the sheet's anim point.
-  - Smoke and fire stay effects.
-- **The bake** (P635) loads a PNG part, resizes it once to the bake scale (Lanczos) and blits it
-  into **the same page** as the SVG frames. So the sorted world stays one texture and one batch.
-  Same canvas means the same rows: the page budget does not move.
-- **Size:** about 90 to 150 KB per picture (P601: 90 KB). With body, `dmg2`, anim crops and a
-  card for twelve buildings, that is about 3 to 5 MB in the export. Bake time falls for them (a
-  blit, not a raster).
+### 2. Buildings: generator SVG with a faceted form; Figma AI for stand-alone art (answer 1)
+- **Everything on the map is generator SVG:** every unit and every building (3x3, 2x2, 1x1), at
+  the new detail levels, with the team marker in the frames (§3). **There is no PNG on the map.**
+  The PNG bake path and the Figma building rows of the proposal are dropped (plan: P635 and P636
+  struck; P644 and P645 are SVG batches).
+- **The facet form.** Buildings take (b)'s silhouette: low, faceted, closed armour, crisp facets,
+  never the dome that artgen's axis-aligned boxes and n-gon frustums give today (a). The target
+  references are in `docs/proto/p601/` on `claude/p601-style-proto`:
+  - form: `round2/figma_facet_hq_1_0.png` and `scene/scene_b_figma_vector_1_0.png` (and `_2_0`);
+  - the dome to replace: `scene/scene_a_svg_1_0.png`;
+  - the scene it must sit in: the round-3 tanks and the Nordværn works.
+  P630c adds the primitives. The Facet 3x3 batch (P645) rebuilds the Facet headquarters to
+  that form and passes §8's check beside the round-3 scene. The Figma vector stays a reference
+  only; nothing from it is imported.
+- **Figma AI is for stand-alone art only** (ADR 0051):
+  - the main-menu and loading backdrops;
+  - portraits;
+  - store art.
+  It is never on the map and never next to units. Each picture gets ADR 0051 §4's CREDITS row
+  ("AI-made with Figma AI, no copyright claimed by AppCode ApS": file and frame, feature, date,
+  short prompt, hand edits, the screen). Each one also has to sit right with the restyled UI
+  tokens (ADR 0049 §5), so a stand-alone picture still belongs to the one look (§8). P601's
+  round-3 AI headquarters (`scene/figma_ai_raw_1280x960.png`) is not shipped.
+- **Item cards stay rendered from their models**, so a card always matches the sprite it builds.
+  Portraits are used where no card is: first on the main menu's and map select's side cards (one
+  hero portrait per faction). Per-type portraits for production and unit details come with those
+  screens' own rows (unit details is out of scope, ADR 0049).
 
 ### 3. Fixed faction colours and a team marker (replaces ADR 0049 question 5)
 - **The faction colour is a fixed material**, never replaced:
@@ -197,8 +186,7 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   - Readability: a white inner line and a dark rim, so it reads on orange, blue and gunmetal
     (the selection ring's pattern, ADR 0035 §4).
   - It shows at every damage stage except KRITISK (the GDD's "little team colour left").
-  - For PNG buildings it is a separate small SVG overlay part at the sheet's `marker` point,
-    baked per player into the same page.
+  - On buildings it is a roof-edge plate in the frame itself, like the units' (no overlay sprite).
   - ADR 0035's pad and ring stay and take the marker's triad.
 - **One key triad for both factions.**
   - The per-faction keys (#FF9446 #E8681F #B04B12 and #62D6EE #1FA6C8 #137C99) are retired.
@@ -239,23 +227,24 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   in `defs` for metal sheen (ids `s0`, `s1` … in face order, two stops from the material's
   ladder, never a key colour, never in a shadow frame or a mask)." The 64 KB cap for generated
   frames is added beside the 28 KB hand-drawn cap.
-- **New "PNG pictures" rule** (applied only if question 1 picks a Figma route; under the default
-  there is no PNG rule and "units are never PNG" becomes "game art is never PNG"): "PNG only for the 3x3 buildings' body, `dmg2`, anim crops and
-  cards, for backdrops and portraits, and for UI icons, made in Figma (buildings on the artgen
-  footprint template). They are drawn by us from vector shapes, or made with Figma's own AI
-  features under ADR 0051: the CREDITS marking, the resemblance screen, never a plugin's AI,
-  community files or shared libraries. Exported as 8-bit sRGB RGBA at the sheet's 2x canvas with
-  no metadata; a CREDITS row each, naming the Figma file and frame. Units are never PNG."
+- **New "Stand-alone pictures" rule** (the decided form of the proposal's conditional PNG rule;
+  P630b asks Michael's yes to this bullet, since he saw the conditional one): "Game art on the
+  map is never PNG: units, buildings, terrain and effects come from `tools/artgen` or hand-drawn
+  SVG. PNG is only for stand-alone pictures: the menu and loading backdrops, portraits and store
+  art. They may be made with Figma's own AI features under ADR 0051 (the CREDITS marking, the
+  resemblance screen; never a plugin's AI, community files or shared libraries), and must sit
+  right with the UI tokens."
 
 ### 5. Cost against rule 6 and the web
 | | Today | After (estimates; measured per batch) |
 | --- | --- | --- |
-| Draw calls, sprites per unit | 3 sprites, one atlas | Unchanged. The marker is part of the hull frame; on buildings it is one more sprite on the same page, so no extra call |
+| Draw calls, sprites per unit | 3 sprites, one atlas | Unchanged. The marker is part of the frame, on units and buildings |
 | Frame time at 150 units | — | Unchanged: same quads, same fill |
-| Atlas memory (cross-faction) | About 86 MB over two pages | Unchanged: same canvases, plus a few rows for building markers |
+| Atlas memory (cross-faction) | About 86 MB over two pages | Unchanged: same canvases |
 | Unit SVG on disk | `assets/art/iso` 18 MB | About 4 times raw at L2 (P601's tank: 4.4 times; macros and no bolts on buildings bring it down). SVG compresses 8 to 10 times in the pck, so about +6 to 20 MB of export (P601's estimate for L3: 10 to 20) |
-| PNG buildings (only if a Figma route wins) | 0 | About +3 to 5 MB; 0 under the default |
-| Match-start bake | Today's `atlas_bake_ms` | About 2 to 3 times for units, less for the PNG buildings. Budget: at most twice today's on the reference phone (CI and P649 report it; no timing runs in a session). Over that: L1 for far parts, then 8 directions |
+| Buildings' SVG | in the 18 MB | At most 128 KB per 3x3 frame (§1); about 24 buildings with body and `dmg2` stay under about 5 MB raw |
+| Stand-alone pictures (menus) | 0 | A few PNG backdrops and portraits; the web size is reported per PR. They load only in menus, never in the match atlas |
+| Match-start bake | Today's `atlas_bake_ms` | About 2 to 3 times for units and buildings. Budget: at most twice today's on the reference phone (CI and P649 report it; no timing runs in a session). Over that: L1 for far parts, then 8 directions |
 
 ### 6. Deeper zoom: a fourth level at the end
 - **`zoom_levels` becomes (0.75, 1, 1.5, 2.0)** (P634). The new level goes at the end, so indexes
@@ -296,11 +285,9 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   - The bake replaces them for each of the eight triads, inside gradients too.
   - The share bands are checked.
   - Page rows are unchanged within the existing 40-row tolerance.
-- **PNG path** (P635, only if a Figma route wins):
-  - A crafted PNG sheet bakes into page 1 at its region.
-  - No second texture appears.
-  - The marker overlay is baked per player.
-  - The page budget is unchanged for an equal canvas.
+- **Building budgets:** the table of §1 per footprint; no bolt on a face over 0.25 tile².
+- **Facet primitives** (P630c): a chamfered box and a rotated prism give the expected face count
+  and normals. `--check` is byte-identical for every existing model.
 - **Zoom** (P634, P633):
   - Snap to each of the four levels.
   - Pinch overshoot is bounded at the new last level.
@@ -351,11 +338,12 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   reach.
 - One look is the gate for every route (§8). A better single picture that does not match loses,
   and every art PR carries a same-scene sheet.
-- Under the default (artgen wins), all game art has one source and one bake path, and there is
-  no PNG path to build.
-- If a Figma route wins, large buildings can go further (per-pixel shading), at the price of a
-  fixed resolution and a second art source to keep consistent with the generated shadows.
-  AI-made pictures would carry no copyright claim (ADR 0051 §5), so others could copy them.
+- All game art on the map has one source and one bake path. There is no PNG path to build, and
+  damage stages, the team marker and every zoom stay code.
+- Buildings get the Figma vector's form through two new primitives, not through a second art
+  source.
+- Figma AI pictures (menus, portraits, store) carry no copyright claim (ADR 0051 §5), so others
+  may copy them. They are outside the match.
 - Factions read by colour at any distance, and players by a small marker. Mirror matches lean on
   the marker, the pad and the ring.
 - Every committed frame changes bytes once (P632), mechanically.
@@ -370,13 +358,13 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   directions, moving turret or shadow in one projection. That is too many drawings to keep
   consistent.
 - **A sharper bake for the new zoom.** Rejected (§6).
+- **Figma vector or Figma AI buildings on the map** (P637 routes b and c). Rejected by answer 1:
+  (b) needs a second source and PNG per zoom; (c) breaks the scene's edges, light, tone and
+  detail scale.
 
-## Questions for Michael
-1. **Open: the building route.** After P637's comparison of the same Facet headquarters in
-   three routes (artgen SVG, Figma vector, Figma AI), all through §8's same-scene check, pick one
-   route for all twelve 3x3 buildings. Recommended: artgen SVG unless Figma AI clearly wins on
-   both the picture and the fit with the units. That is also the default. The 2x2 and 1x1
-   buildings stay artgen SVG in every case.
+## Questions for Michael (answered 2026-11-24)
+1. **The building route.** Answered 2026-11-24, after P637: **generator SVG** for every building,
+   with Figma AI for the menus ("ja, kør med generator-SVG og Figma AI til menuer").
 2. **The new zoom level.** Answered 2026-11-24: **2.0**, appended, soft past 1.5.
 3. **Default marker colours.** Answered 2026-11-24: **own white, the computer red**, each with a
    dark rim.
