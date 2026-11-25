@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## pushed through the viewport:
 ## - the `resume` card of Basics asks for Resume over the open pause menu: it is seen (the menu
 ##   clears the HUD, not the mark), drawn above the menu, its ring is on `ResumeButton` inside the
-##   safe rect, and at the six sizes the card keeps 8 dp off every other button, off Resume itself
-##   and 16 dp off the ad band;
+##   safe rect, and at the six sizes the card stands in its dock, lets touches through (P588) and
+##   keeps 16 dp off the ad band;
 ## - every other beat stands down while a modal covers the HUD and does not hold its target (the
 ##   pause menu, the result screen, the How to play overlay): the mark is hidden and the touch goes
 ##   to the modal's button, not to the card under it.
@@ -73,22 +73,28 @@ func test_the_resume_card_is_seen_over_the_open_pause_menu() -> void:
 	stage["director"].skip()
 
 
-## At each size the card stands clear of the ring and of Resume, 8 dp off every other button of
-## the menu, and the ring lies inside the safe rect.
-func test_the_card_keeps_clear_of_the_menu_at_the_six_sizes() -> void:
+## At each size the card stands in its dock whatever the menu holds under it, its body lets every
+## touch through (ADR 0048 section 3: over a modal), a touch on Resume reaches Resume where the card
+## covers it, and the ring lies inside the safe rect.
+func test_the_card_docks_over_the_menu_and_lets_touches_through_at_the_six_sizes() -> void:
 	for size: Vector2i in Sizes.ALL:
 		var stage: Dictionary = await _stage(size, &"resume", false)
 		var mark: CoachMark = stage["mark"]
-		var menu: Control = stage["menu"]
-		var resume: Control = stage["hud"].find_child("ResumeButton", true, false) as Control
+		var resume: Button = stage["hud"].find_child("ResumeButton", true, false) as Button
 		var card: Rect2 = mark.card_rect()
 		var label: String = str(size)
 		assert_bool(card.has_area()).override_failure_message(label).is_true()
 		assert_object(mark.target_control()).override_failure_message(label).is_same(resume)
 		(
-			assert_bool(card.intersects(resume.get_global_rect()))
-			. override_failure_message(label + " card over Resume")
-			. is_false()
+			assert_bool(mark.dock_rect().grow(0.5).encloses(card))
+			. override_failure_message(
+				"%s card %s outside the dock %s" % [label, card, mark.dock_rect()]
+			)
+			. is_true()
+		)
+		var body: Control = mark.find_child("Card", true, false) as Control
+		assert_int(body.mouse_filter).override_failure_message(label).is_equal(
+			Control.MOUSE_FILTER_IGNORE
 		)
 		var visible: Rect2 = mark.get_viewport().get_visible_rect()
 		var safe: Rect2 = SafeAreaMargin.rect_inside(visible, SafeAreaMargin.DEFAULT_MARGIN_DP)
@@ -98,17 +104,28 @@ func test_the_card_keeps_clear_of_the_menu_at_the_six_sizes() -> void:
 			. override_failure_message("%s ring %s outside %s" % [label, ring, safe])
 			. is_true()
 		)
-		for node: Node in menu.find_children("*", "Button", true, false):
-			var button: Button = node as Button
-			if button == resume or not button.is_visible_in_tree():
+		var air: float = UiScale.dp(8.0) - 0.01  # The card's buttons clear every menu button.
+		for own: Button in [
+			mark.find_child("Skip", true, false), mark.find_child("Next", true, false)
+		]:
+			if own == null or not own.is_visible_in_tree():
 				continue
-			var air: float = UiScale.dp(8.0) - 0.01
-			var text: String = "%s %s within the card's air at %s" % [label, button.name, card]
-			(
-				assert_bool(card.grow(air).intersects(button.get_global_rect()))
-				. override_failure_message(text)
-				. is_false()
-			)
+			for node: Node in stage["menu"].find_children("*", "Button", true, false):
+				var other: Button = node as Button
+				if other.is_visible_in_tree():
+					var near: bool = own.get_global_rect().grow(air).intersects(
+						other.get_global_rect()
+					)
+					(
+						assert_bool(near)
+						. override_failure_message("%s %s near %s" % [label, own.name, other.name])
+						. is_false()
+					)
+		assert_bool((mark.find_child("Skip", true, false) as Button).visible).is_false()
+		_presses = 0
+		resume.pressed.connect(func() -> void: _presses += 1)
+		_tap(resume.get_global_rect().get_center())
+		assert_int(_presses).override_failure_message(label + " tap on Resume").is_equal(1)
 		await _free_stage()
 
 
