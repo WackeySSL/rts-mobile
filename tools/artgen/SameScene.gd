@@ -16,7 +16,7 @@ const EDGE_STEP: float = 0.08  ## Luminance jump between neighbours that counts 
 const DARK: float = 0.06
 ## The marker of the player's own units: Sne (white), the default of ADR 0050 section 3, answer 3;
 ## `mirror_triad` is the computer's. A frame carries the sentinel key, never shown as it is.
-const OWN_TRIAD: int = 6
+const OWN_TRIAD: Array[String] = ["#FFFFFF", "#DCE2E6", "#A3ACB3"]
 
 
 ## One sprite, ready to blend: its body and cast shadow as images on the same canvas.
@@ -36,7 +36,7 @@ static func sprite(
 	art_id: StringName, bands: SameSceneBands, zoom: float, triad: PackedStringArray = []
 ) -> Sprite:
 	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(art_id)
-	var own: PackedStringArray = PackedStringArray(WorldSort.TRIADS[OWN_TRIAD])
+	var own: PackedStringArray = PackedStringArray(OWN_TRIAD)
 	var art: IsoPlayerArt = IsoPlayerArt.make(
 		sheet.faction,
 		PackedStringArray(ArtPalette.KEYS[sheet.faction]),

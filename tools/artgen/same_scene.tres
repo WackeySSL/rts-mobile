@@ -21,11 +21,13 @@ effects = Dictionary[String, Rect2i]({
 })
 grade_warm = Color(1, 0.93, 0.8, 0.08)
 grade_cool = Color(0.8, 0.9, 1, 0.08)
-light_up_min = -0.16
+; P632 transition: your own marker is white, so the old models, which paint their whole team areas
+; in it, read lighter and greyer than in the old orange and cyan; the model batches raise these again.
+light_up_min = -0.17
 light_left_min = -0.04
 shadow_dx_min = -0.05
 tone_value = Vector2(0.45, 0.75)
-tone_sat = Vector2(0.14, 0.3)
+tone_sat = Vector2(0.05, 0.3)
 black_edge_max = 0.02
 density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
