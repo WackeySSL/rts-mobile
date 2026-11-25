@@ -260,3 +260,20 @@ func test_the_cap_keeps_the_first_things_and_ends_the_run_under_it() -> void:
 	_fire(KNOWN)
 	assert_int(_striker.tests).is_greater(capped)
 	assert_int(_striker.tests).is_less_equal(TESTS)
+
+
+## The Deep Bore does not read the radar bonus (P576b): it gathers no radars, so a bonus on its def
+## changes nothing. The lone factory (1,800) beats the barracks pair and the radar (1,600 in all).
+func test_the_radar_bonus_leaves_the_deep_bore_alone() -> void:
+	_arm_strikes("normal", 1, "fossil", 1000)
+	_striker._radar_bonus = 800
+	_world.type_radar[_world.type_ids.find(&"fossil_radar")] = 1
+	_enemy_building("vehicle_factory", 30, 30)
+	_enemy_building("barracks", 6, 28)
+	_enemy_building("barracks", 8, 28)
+	_enemy_building("fossil_radar", 7, 30)
+	_see_all()
+	_fire(READY)
+	_fire(KNOWN)
+	assert_array(_target()).is_equal([BORE_POINT.x, BORE_POINT.y])
+	assert_bool(_striker._rx.is_empty()).is_true()

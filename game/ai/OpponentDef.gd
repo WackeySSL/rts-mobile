@@ -89,6 +89,9 @@ const TIERS: int = 3
 @export var mine_scout_reach_percent: int = 0
 ## The least enemy value a superweapon shot must hit (credits).
 @export var strike_min_value: int = 3000
+## Credits a Dusk Array ring adds to its value when it also covers a known enemy radar (P576b); 0
+## turns it off. Never counts toward `strike_min_value`.
+@export var strike_radar_bonus: int = 0
 
 
 func _init() -> void:
