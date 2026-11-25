@@ -61,10 +61,10 @@ class Timing:
 	func load_from(guide: GuideSettingsDef, input: InputSettings) -> Timing:
 		cycle_ms = guide.hint_cycle_ms
 		rest_ms = guide.hint_rest_ms
-		tap_ms = guide.hint_tap_ms
-		drag_ms = guide.hint_drag_ms
-		pinch_ms = guide.hint_pinch_ms
-		hold_ms = input.long_press_ms + guide.hint_hold_extra_ms
+		tap_ms = maxi(1, guide.hint_tap_ms)  # No length is 0: a share never divides by it.
+		drag_ms = maxi(1, guide.hint_drag_ms)
+		pinch_ms = maxi(1, guide.hint_pinch_ms)
+		hold_ms = maxi(1, input.long_press_ms + guide.hint_hold_extra_ms)
 		gap_ms = input.double_tap_ms / 2
 		size_dp = guide.hint_size_dp
 		return self
@@ -86,7 +86,7 @@ class Timing:
 
 	## One loop: `cycle_ms`, or longer when the gesture and the rest do not fit in it.
 	func period_ms(kind: TutorialBeatDef.Gesture) -> int:
-		return maxi(cycle_ms, active_ms(kind) + rest_ms)
+		return maxi(1, maxi(cycle_ms, active_ms(kind) + rest_ms))
 
 
 var settings: GuideSettingsDef = preload("res://data/tutorial/guide_settings.tres"):
@@ -115,7 +115,7 @@ var vector_dp: Vector2 = DEFAULT_DRAG_DP:
 
 var _timing: Timing = Timing.new()
 var _pose: Pose = Pose.new()
-var _clock_ms: int = 0
+var _clock: float = 0.0  ## ms, summed as a float so rounded frames do not drift.
 var _loop_ms: int = 0  ## The clock at the start of this showing.
 var _down: Dictionary = {}  ## Touch index -> true, while that finger is down.
 var _last_release_ms: int = -1  ## -1: no touch yet.
@@ -129,22 +129,27 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	advance(roundi(delta * 1000.0))
+	advance(delta * 1000.0)
 
 
 ## Steps the clock. Redraws every frame while the hand moves; with reduced effects only when it
 ## hides or shows again.
-func advance(delta_ms: int) -> void:
-	_clock_ms += delta_ms
+func advance(delta_ms: float) -> void:
+	_clock += delta_ms
 	var hidden: bool = touched_hidden()
-	if not reduced or hidden != _was_hidden:
+	if hidden != _was_hidden or (not hidden and not reduced):
 		queue_redraw()
 	_was_hidden = hidden
 
 
+## The clock in whole ms.
+func now_ms() -> int:
+	return int(_clock)
+
+
 ## Starts the loop at its beginning (a new beat).
 func restart() -> void:
-	_loop_ms = _clock_ms
+	_loop_ms = now_ms()
 	queue_redraw()
 
 
@@ -152,7 +157,7 @@ func restart() -> void:
 func touched_hidden() -> bool:
 	if not _down.is_empty():
 		return true
-	return _last_release_ms >= 0 and _clock_ms - _last_release_ms < settings.hint_idle_ms
+	return _last_release_ms >= 0 and now_ms() - _last_release_ms < settings.hint_idle_ms
 
 
 ## Only reads: never `set_input_as_handled`, never accepts.
@@ -163,13 +168,33 @@ func _input(event: InputEvent) -> void:
 		index = (event as InputEventScreenTouch).index
 		pressed = (event as InputEventScreenTouch).pressed
 	elif event is InputEventMouseButton:
+		# Only the left button is a touch: a wheel notch (the web preview's zoom) is not.
+		if (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+			return
 		pressed = (event as InputEventMouseButton).pressed
 	else:
 		return
 	if pressed:
 		_down[index] = true
 	elif _down.erase(index):
-		_last_release_ms = _clock_ms
+		_last_release_ms = now_ms()
+	_refresh_hidden()
+
+
+## A lost focus never delivers the release: the fingers that were down are let go.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		if not _down.is_empty():
+			_down.clear()
+			_last_release_ms = now_ms()
+			_refresh_hidden()
+
+
+func _refresh_hidden() -> void:
+	var hidden: bool = touched_hidden()
+	if hidden != _was_hidden:
+		_was_hidden = hidden
+		queue_redraw()
 
 
 ## The frame at `t_ms` into the loop of `for_kind`, written into the one reused `Pose`.
@@ -253,13 +278,21 @@ func _reload() -> void:
 	queue_redraw()
 
 
-func _draw() -> void:
+## What `_draw` shows: null while touched or idle, the still key pose with Reduced effects, else
+## the pose of the loop's clock.
+func draw_pose() -> Pose:
 	if touched_hidden():
+		return null
+	if reduced:
+		return key_pose(kind, _timing)
+	return pose(kind, now_ms() - _loop_ms, _timing)
+
+
+func _draw() -> void:
+	var p: Pose = draw_pose()
+	if p == null or p.alpha <= 0.0:
 		return
 	var dp: float = UiScale.base_px_per_dp()
-	var p: Pose = key_pose(kind, _timing) if reduced else pose(kind, _clock_ms - _loop_ms, _timing)
-	if p.alpha <= 0.0:
-		return
 	var fill: Color = get_theme_color(&"hint_fill", &"GuideTokens")
 	var line: Color = get_theme_color(&"hint_line", &"GuideTokens")
 	fill.a *= p.alpha

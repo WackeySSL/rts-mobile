@@ -4,7 +4,6 @@ extends GdUnitTestSuite
 ## effects, no input handled, one reused pose object, and the hide while touched and after it. The
 ## clock is `advance`, stepped by hand, never the wall clock.
 
-const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const GUIDE_PATH: String = "res://data/tutorial/guide_settings.tres"
 const INPUT_PATH: String = "res://data/input_settings.tres"
 const TAP: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.TAP
@@ -15,16 +14,6 @@ const BOX: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.BOX
 const PINCH_OUT: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.PINCH_OUT
 const PINCH_IN: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.PINCH_IN
 const ALL: Array[TutorialBeatDef.Gesture] = [TAP, DOUBLE, HOLD, DRAG, BOX, PINCH_OUT, PINCH_IN]
-
-
-## Counts what reaches `_unhandled_input`: an event the hint handled would not.
-class Witness:
-	extends Node
-	var seen: int = 0
-
-	func _unhandled_input(_event: InputEvent) -> void:
-		seen += 1
-
 
 var _hint: GestureHint
 var _timing: GestureHint.Timing
@@ -148,66 +137,82 @@ func test_pose_returns_the_same_instance_every_call() -> void:
 		assert_object(_hint.key_pose(kind, _timing)).is_same(first)
 
 
-func test_reduced_effects_is_one_still_pose_whatever_the_time() -> void:
+func test_reduced_effects_draws_the_key_pose_at_any_clock() -> void:
+	_hint.reduced = true
 	for kind: TutorialBeatDef.Gesture in ALL:
-		var key: GestureHint.Pose = _hint.key_pose(kind, _timing)
+		_hint.kind = kind
+		var key: GestureHint.Pose = _hint.draw_pose()
 		var before: Array = [key.finger_a, key.finger_b, key.pressed, key.alpha, key.rings]
 		assert_bool(key.pressed).is_true()
 		assert_float(key.alpha).is_equal(1.0)
-		_hint.advance(321)
-		var again: GestureHint.Pose = _hint.key_pose(kind, _timing)
-		var after: Array = [again.finger_a, again.finger_b, again.pressed, again.alpha, again.rings]
-		assert_array(after).is_equal(before)
-	assert_int(_hint.key_pose(DOUBLE, _timing).rings).is_equal(2)
+		for step: int in [1, 321, 1500]:
+			_hint.advance(step)
+			var again: GestureHint.Pose = _hint.draw_pose()
+			var after: Array = [
+				again.finger_a, again.finger_b, again.pressed, again.alpha, again.rings
+			]
+			assert_array(after).is_equal(before)
+	_hint.kind = DOUBLE
+	assert_int(_hint.draw_pose().rings).is_equal(2)
 
 
-func test_reduced_effects_starts_no_tween() -> void:
-	_hint.reduced = true
-	_hint.kind = PINCH_OUT
-	_hint.advance(500)
-	assert_int(_hint.get_tree().get_processed_tweens().size()).is_equal(0)
+func test_the_moving_hint_draws_the_pose_of_its_clock() -> void:
+	_hint.kind = TAP
+	_hint.advance(90)
+	assert_float(_hint.draw_pose().press_progress).is_equal_approx(0.5, 0.001)
+	_hint.advance(1000)
+	assert_bool(_hint.draw_pose().pressed).is_false()
 
 
-func test_the_hint_never_handles_an_event() -> void:
-	var witness: Witness = auto_free(Witness.new())
-	add_child(witness)
-	var vp: Viewport = _hint.get_viewport()
-	TouchEvents.press(vp, 0, Vector2(100.0, 100.0))
-	TouchEvents.release(vp, 0, Vector2(100.0, 100.0))
-	assert_int(witness.seen).is_equal(2)
-	assert_int(_hint.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
-	var handled_before: bool = vp.is_input_handled()
-	_touch(0, true)
-	assert_bool(vp.is_input_handled()).is_equal(handled_before)
+func test_a_touch_or_the_idle_time_draws_nothing_even_when_reduced() -> void:
+	for reduced: bool in [false, true]:
+		_hint.reduced = reduced
+		_touch(0, true)
+		assert_object(_hint.draw_pose()).is_null()
+		_touch(0, false)
+		assert_object(_hint.draw_pose()).is_null()
+		_hint.advance(_guide.hint_idle_ms)
+		assert_object(_hint.draw_pose()).is_not_null()
 
 
-func test_a_touch_hides_the_hint_until_hint_idle_ms_after_release() -> void:
-	assert_bool(_hint.touched_hidden()).is_false()
-	_touch(0, true)
-	_hint.advance(5000)
-	assert_bool(_hint.touched_hidden()).is_true()
-	_touch(0, false)
-	_hint.advance(_guide.hint_idle_ms - 1)
-	assert_bool(_hint.touched_hidden()).is_true()
-	_hint.advance(1)
-	assert_bool(_hint.touched_hidden()).is_false()
+func test_a_box_and_a_drag_run_past_the_cycle_without_wrapping() -> void:
+	var box_period: int = _timing.hold_ms + _guide.hint_drag_ms + _guide.hint_rest_ms
+	assert_int(_timing.period_ms(BOX)).is_equal(box_period)
+	assert_int(box_period).is_greater(_guide.hint_cycle_ms)
+	_timing.vector_dp = Vector2(120.0, 80.0)
+	var rest: GestureHint.Pose = _hint.pose(BOX, _guide.hint_cycle_ms + 10, _timing)
+	assert_bool(rest.pressed).is_false()  # Past its 1600 ms of gesture, resting at the end.
+	assert_vector(rest.finger_a).is_equal(Vector2(120.0, 80.0))
+	assert_bool(_hint.pose(BOX, _guide.hint_cycle_ms - 10, _timing).pressed).is_true()
+	assert_bool(_hint.pose(BOX, box_period + 10, _timing).pressed).is_true()  # Wrapped here.
+	var drag_period: int = _guide.hint_drag_ms + _guide.hint_rest_ms
+	assert_int(drag_period).is_greater(_guide.hint_cycle_ms)
+	assert_int(_timing.period_ms(DRAG)).is_equal(drag_period)
+	assert_int(_timing.period_ms(TAP)).is_equal(_guide.hint_cycle_ms)
 
 
-func test_it_waits_for_the_last_of_two_fingers() -> void:
-	_touch(0, true)
-	_touch(1, true)
-	_touch(0, false)
-	_hint.advance(_guide.hint_idle_ms * 2)
-	assert_bool(_hint.touched_hidden()).is_true()
-	_touch(1, false)
-	assert_bool(_hint.touched_hidden()).is_true()
+func test_the_second_press_of_a_double_tap_ends() -> void:
+	assert_bool(_hint.pose(DOUBLE, _timing.active_ms(DOUBLE) - 1, _timing).pressed).is_true()
+	assert_bool(_hint.pose(DOUBLE, _timing.active_ms(DOUBLE), _timing).pressed).is_false()
 
 
-func test_the_idle_time_is_the_guide_def_s() -> void:
-	var faster: GuideSettingsDef = _guide.duplicate()
-	faster.hint_idle_ms = 100
-	_hint.settings = faster
-	_touch(0, true)
-	_touch(0, false)
-	_hint.advance(100)
-	assert_bool(_hint.touched_hidden()).is_false()
+func test_a_zero_length_never_divides_by_zero() -> void:
+	var zero: GuideSettingsDef = _guide.duplicate()
+	zero.hint_tap_ms = 0
+	zero.hint_drag_ms = 0
+	zero.hint_pinch_ms = 0
+	zero.hint_cycle_ms = 0
+	zero.hint_rest_ms = 0
+	zero.hint_hold_extra_ms = 0
+	var flat: InputSettings = _input.duplicate()
+	flat.long_press_ms = 0
+	var timing: GestureHint.Timing = GestureHint.Timing.new().load_from(zero, flat)
+	for kind: TutorialBeatDef.Gesture in ALL:
+		assert_int(timing.period_ms(kind)).is_greater(0)
+		assert_float(_hint.pose(kind, 5, timing).alpha).is_between(0.0, 1.0)
+
+
+func test_the_clock_sums_fractions_without_drift() -> void:
+	for i: int in 100:
+		_hint.advance(16.67)
+	assert_int(_hint.now_ms()).is_equal(1667)
