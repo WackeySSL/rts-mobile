@@ -27,7 +27,7 @@ signal ready_changed  ## The chip showed or went (`ready_type` crossed -1).
 const ICON: String = "res://assets/art/svg/icons/glyph_menu_open.svg"
 const TOKENS: StringName = &"HudTokens"
 const WORD_FONT: StringName = &"PillWord"  ## 14 dp caps face with its tracking, in the theme.
-const NUMBER_FONT: StringName = &"ItemCost"  ## The badge: 18 sp Chakra Petch, as a card's count.
+const NUMBER_FONT: StringName = &"ItemCost"  ## The badge: 18 sp Plex Mono, as a card's count.
 const WORD: String = "BUILD"
 const RING_DP: float = 4.0
 const GLYPH_DP: float = 26.0

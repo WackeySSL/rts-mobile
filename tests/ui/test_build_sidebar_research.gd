@@ -66,7 +66,9 @@ func test_five_tabs_fit_the_drawer_at_every_size_and_the_open_tab_keeps_its_name
 
 ## Which names show with tab `open` open (letters of the tabs, a dot for an icon alone) on the
 ## profile: every name where the row has the room; only the open tab's where it has not; none on
-## the 320 dp phone for Structures and Research, 11.6 and 3.6 dp short of room (Flight fits).
+## the 320 dp phone for Structures and Research, short of room (Flight fits). P605: a name keeps
+## `TAB_NAME_PAD_DP` each side, which the portrait phone's row cannot hold for all five names, so it
+## shows the open tab's alone.
 func _expected_names(profile: StringName, open: int) -> String:
 	match profile:
 		&"web_phone_small", &"web_phone_portrait", &"notch_design":
@@ -96,7 +98,11 @@ func test_the_tabs_fit_every_profile_with_five_tabs() -> void:
 			var names: String = _assert_tabs(why)  # The row within its room is asserted there.
 			var expected: String = _expected_names(profile, open)
 			if expected != "?":
-				assert_str(names).override_failure_message(why).is_equal(expected)
+				(
+					assert_str(names)
+					. override_failure_message("%s: names %s, expected %s" % [why, names, expected])
+					. is_equal(expected)
+				)
 
 
 func test_the_cards_are_whole_inside_the_drawer_with_their_names_whole_in_one_or_two_lines(
@@ -310,6 +316,19 @@ func _assert_tabs(why: String) -> String:
 			. is_true()
 		)
 		assert_float(wide).override_failure_message(at + " name").is_less_equal(label.size.x + 0.5)
+		# P605: the name keeps its inner padding: the tab is wider than the name by at least the
+		# padding each side, so a name never touches the plate's edge or the next tab's frame.
+		var pad: float = 2.0 * UiScale.dp(BuildSidebar.TAB_NAME_PAD_DP)
+		(
+			assert_float(rect.size.x - wide)
+			. override_failure_message(
+				(
+					"%s: %s is %s wide for a name of %s, padding %s"
+					% [at, tab.name, rect.size.x, wide, pad]
+				)
+			)
+			. is_greater_equal(pad - 0.5)
+		)
 	assert_int(shown).override_failure_message(why).is_equal(5)
 	_assert_close(why, safe, rects)
 	return names

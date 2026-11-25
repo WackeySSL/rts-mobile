@@ -148,6 +148,7 @@ func _ready() -> void:
 	_card.add_child(column)
 	_prompt = Label.new()
 	_prompt.name = "Prompt"
+	_prompt.theme_type_variation = &"GuidePrompt"
 	_hint = Label.new()
 	_hint.name = "Hint"
 	_hint.theme_type_variation = &"PauseMuted"

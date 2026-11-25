@@ -47,12 +47,15 @@ static func short_landscape() -> UiMetrics:
 	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2400, 880), Rect2i())
 
 
-## A narrower short landscape screen than `short_landscape` (the plan's second case): 720 dp by
-## 293, 696 dp of safe width (728 and 704 before P124 put the pill in the corner).
+## A narrower short landscape screen than `short_landscape` (the plan's second case): 764 dp by
+## 293, 764 dp of safe width (728 and 704 before P124 put the pill in the corner). P605 moved it
+## from 2160 px, 720 dp, to 2292 px: the pill is sized for the widest power reading ("9999/9999"),
+## so it is wider at every reading, the fold sits at about 2214 px and the map narrows (to about
+## 219 dp) only between that and about 2364 px.
 ## There the pinned map, the aim's row and the pill fit side by side only because the map narrows
 ## (`HudCorners._map`: about 234 dp instead of 240, and 192 dp when low power widens the pill).
 static func narrow_short_landscape() -> UiMetrics:
-	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2160, 880), Rect2i())
+	return UiMetrics.create("Web", 288, 3.0, 880.0 / 720.0, Vector2i(2292, 880), Rect2i())
 
 
 ## Narrower still: 660 dp by 293, 636 dp of safe width (P124 put the pill in the corner, so the

@@ -77,6 +77,9 @@ const HANDLE_GAP_DP: float = 4.0  ## Above and below the handle.
 const PAD_DP: float = 8.0
 const GAP_DP: float = 8.0
 const CARD_SLACK_PX: float = 2.0  ## The cards leave this much of the width over (px rounding).
+## Clear space each side of a tab's name inside the plate's borders (P605: Roboto Condensed Bold
+## "Structures" filled its tab edge to edge and touched the next tab's selection frame).
+const TAB_NAME_PAD_DP: float = 4.0
 const TAB_GAP_DP: float = 2.0  ## Between the tabs and the close button: "Structures" needs it.
 ## The grid's least height: the drawer's content must fit the safe height on `web_phone_small`
 ## (ADR 0025 section 5: the grid scrolls there), so no whole card row is asked for.
@@ -597,6 +600,7 @@ func _fit_tabs() -> void:
 	var open_px: float = 0.0  # The open tab named, every other one bare.
 	var edges: float = 0.0
 	var bare_px: float = TAB_BARE_DP * _dp_px
+	var pad_px: float = TAB_NAME_PAD_DP * _dp_px
 	for index: int in _tabs.size():
 		if not _tabs[index].visible:
 			continue
@@ -605,7 +609,9 @@ func _fit_tabs() -> void:
 			_tabs[index].get_theme_stylebox(&"normal", TAB_VARIATION) as StyleBoxFlat
 		)
 		edges = plate.get_border_width(SIDE_LEFT) + plate.get_border_width(SIDE_RIGHT)
-		var named_px: float = maxf(TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges)
+		var named_px: float = maxf(
+			TAB_DP * _dp_px, _tab_names[index].get_minimum_size().x + edges + 2.0 * pad_px
+		)
 		names_px += named_px
 		open_px += named_px if index == tab else bare_px
 	var gaps: float = maxi(shown - 1, 0) * roundi(UiScale.dp(TAB_GAP_DP))
@@ -630,7 +636,10 @@ func _set_tab_widths(level: int, shown: int, edges: float) -> void:
 		_tab_names[index].visible = not bare
 		var wide: float = TAB_BARE_DP if bare else TAB_DP
 		if shown > NAMED_TABS_MAX and not bare:  # A named tab is as wide as its name in the borders.
-			wide = maxf(wide, (_tab_names[index].get_minimum_size().x + edges) / _dp_px)
+			wide = maxf(
+				wide,
+				(_tab_names[index].get_minimum_size().x + edges) / _dp_px + 2.0 * TAB_NAME_PAD_DP
+			)
 		for child: Node in _tabs[index].get_children():
 			if child is DpMinSize:
 				(child as DpMinSize).min_dp = Vector2(wide, TAB_DP)

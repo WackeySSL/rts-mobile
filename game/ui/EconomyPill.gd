@@ -40,7 +40,14 @@ const MENU_ICON_DP: float = 28.0  ## The menu button's glyph (the button is 48 d
 const BAR_DP: Vector2 = Vector2(24.0, 28.0)  ## The bar's least size; it takes the rest of the pill.
 const TAP_DP: float = 48.0
 const GAP_DP: float = 4.0
-const TEXT_PAD_DP: float = 2.0  ## Each side of the numbers and the word in the bar.
+const TEXT_PAD_DP: float = 4.0  ## Each side of the numbers and the word in the bar (P605: was 2).
+## The widest power reading the pill is sized for (P605): "used/made" with four digits each. The cap
+## is real: `building_cap` 40 (data/rules.tres) times the most power one building gives (100) is
+## 4000 made, and 40 buildings drawing at most 60 are 2400 used, so 4 digits each way; 9999/9999
+## is the next round figure above it. The pill asks the layout for this width in every state, so it
+## does not change width as the reading grows; where the layout has less to give (the 360 dp upright
+## phone) what does not fit drops, as before, and never runs over the bar's edge.
+const WIDEST_POWER: String = "9999/9999"
 const TEXT_EDGE_DP: float = 2.0  ## The dark edge of the numbers on the bar.
 const SLACK_DP: float = 1.0  ## What the containers' rounding to whole px may take of the bar.
 ## The credits' slot: 99 999. The rules set no ceiling (a snapshot holds an int32); a bigger bank
@@ -396,7 +403,8 @@ func _wanted_dp() -> float:
 	var content: float = _line.get_combined_minimum_size().x
 	content += get_theme_stylebox(&"panel").get_minimum_size().x
 	var text: Control = _word if _low else _numbers
-	var more: float = text.get_combined_minimum_size().x + 2.0 * UiScale.dp(TEXT_PAD_DP)
+	var needs: float = maxf(text.get_combined_minimum_size().x, _numbers.width_of(WIDEST_POWER))
+	var more: float = needs + 2.0 * UiScale.dp(TEXT_PAD_DP)
 	more += UiScale.dp(SLACK_DP) - UiScale.dp(BAR_DP.x)
 	return (content + maxf(more, 0.0)) / UiScale.base_px_per_dp()
 
