@@ -159,8 +159,8 @@ CLAUDE.md). `tools/artgen` code counts.
 | P610 | touch-ux-dev | P604; P581 (#639) merged | **The command bar's look** (icon over word for every order; P581's sizes kept). New glyphs in a sub-row P610a (art-director, own SVG) | `test_command_bar_stack.gd` unchanged; `test_command_bar*` | none | ~80 |
 | P611 | touch-ux-dev | P604; P591 merged | **The build drawer's look**; tile sizes unchanged | `test_build_sidebar*`; `test_item_tile*`; the guide sweep | none | ~80 |
 | P612 | touch-ux-dev | P604; P592 merged | **The guide card in the objectives-panel look** (theme values only, no `CoachMark.gd` edit) | `test_guide_blink.gd`'s token cases; the sweep | none | ~10 |
-| P613 | touch-ux-dev | P604, P607 | **Main menu tiles**; the backdrop token (P650 adds the Figma-AI backdrop) | `test_main_menu.gd` (columns, 48 dp, banner gap); the intro hand-over test | `menus-main` | ~180 |
-| P614 | touch-ux-dev | P613 | **The menu frame and Skirmish** | `test_map_select*`, `test_menu_screen*`, `test_settings_screen*` | `menus-skirmish` if its words change | ~160 |
+| P613 | touch-ux-dev | P604, P607 | **Main menu tiles**; the backdrop token (P650 adds the Figma-AI backdrop). Menu whites move to the text token. | `test_main_menu.gd` (columns, 48 dp, banner gap); the intro hand-over test | `menus-main` | ~180 |
+| P614 | touch-ux-dev | P613 | **The menu frame and Skirmish**. Menu whites move to the text token. | `test_map_select*`, `test_menu_screen*`, `test_settings_screen*` | `menus-skirmish` if its words change | ~160 |
 | P615 | touch-ux-dev | P613 | **Loading** (a still `DeployCard`, no ad) | `test_deploy_card*` | none | ~50 |
 | P616 | touch-ux-dev | P609 | **Pause** (foot banner rules unchanged) | `test_pause_menu*`; `test_tutorial_host_input.gd` | none | ~80 |
 | P617 | touch-ux-dev | P609 | **Victory and defeat** (Double XP by choice, no banner) | `test_result_screen*` | none | ~100 |

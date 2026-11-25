@@ -55,6 +55,12 @@ const _SECTOR_MASK: int = (1 << 24) - 1
 var passes: int = 0
 var tests: int = 0
 var strikes: int = 0
+## Diagnostic counts of the Dusk Array's fires (P577c; they steer nothing): the fires made while
+## at least one enemy radar was known, those where some gathered producer's ring (the goal, the
+## own rows and the test cap left out) could cover a known radar, and those whose chosen ring did.
+var fires_radar_known: int = 0
+var fires_radar_coverable: int = 0
+var fires_radar_chosen: int = 0
 
 var _uses: bool = false
 var _strike_id: StringName = &""
@@ -117,6 +123,7 @@ func run(view: PlayerView, memory: AiMemory, _rng: DetRandom, out: Array[Command
 	strikes += 1
 	if kind == BLACKOUT:
 		memory.strike_wave = memory.wave_count
+		_count_radar_fire(at, radius * radius)
 
 
 ## Whether a wave with a live member is in the field that the Dusk Array has not yet answered.
@@ -203,18 +210,38 @@ func _gather_radars(view: PlayerView, memory: AiMemory) -> void:
 			_ry.append(pos.y)
 
 
-## Whether the ring of radius `reach` (squared) round (`x`, `y`) holds a known enemy radar: one
-## counted test per radar, none (and false) when the cap would be passed.
-func _covers_radar(x: int, y: int, reach: int) -> bool:
-	if tests + _rx.size() > _tests_max:
-		return false
-	tests += _rx.size()
+## Counts the fire at `at` in the radar diagnostics (`_rx` is the list the search just read). An
+## uncounted walk, once per fire.
+func _count_radar_fire(at: Vector2i, reach: int) -> void:
+	if _rx.is_empty():
+		return
+	fires_radar_known += 1
+	if _ring_holds_radar(at.x, at.y, reach):
+		fires_radar_chosen += 1
+	for thing: int in _x.size():
+		if _ring_holds_radar(_x[thing], _y[thing], reach):
+			fires_radar_coverable += 1
+			return
+
+
+## Whether the ring of radius `reach` (squared) round (`x`, `y`) holds a known enemy radar; no
+## counting.
+func _ring_holds_radar(x: int, y: int, reach: int) -> bool:
 	for at: int in _rx.size():
 		var dx: int = _rx[at] - x
 		var dy: int = _ry[at] - y
 		if dx * dx + dy * dy <= reach:
 			return true
 	return false
+
+
+## Whether the ring of radius `reach` (squared) round (`x`, `y`) holds a known enemy radar: one
+## counted test per radar, none (and false) when the cap would be passed.
+func _covers_radar(x: int, y: int, reach: int) -> bool:
+	if tests + _rx.size() > _tests_max:
+		return false
+	tests += _rx.size()
+	return _ring_holds_radar(x, y, reach)
 
 
 ## Fills the scratch with the enemy things the AI may act on, at most `_tests_max` of them: the

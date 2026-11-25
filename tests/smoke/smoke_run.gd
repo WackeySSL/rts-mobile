@@ -23,7 +23,9 @@ extends RefCounted
 ## per type maps of SmokeCount (`produced`, `free`, `lost`, `kills`, `spent`, `structures`), its
 ## `kills_by_layer` map, `reveals` and `research` (P254; added keys, schema 2 unchanged), the eleven
 ## strike keys of SmokeCount.STRIKE_KEYS (P571, ADR 0047 section 12; added keys too) and the
-## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max`.
+## controller's counters `waves`, `retreats`, `scouts`, `strikes`, `commands`, `think_work_max` and
+## the three Dusk radar counts (P577c: `dusk_fires_radar_known`, `dusk_fires_radar_coverable`,
+## `dusk_fires_radar_chosen`; added keys).
 
 const Impls: GDScript = preload("res://tests/sim/support/sim_impls.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
@@ -557,6 +559,9 @@ static func _player(
 		"strikes": controller.strikes,
 		"commands": controller.commands,
 		"think_work_max": controller.work_max,
+		"dusk_fires_radar_known": controller.dusk_fires_radar_known,
+		"dusk_fires_radar_coverable": controller.dusk_fires_radar_coverable,
+		"dusk_fires_radar_chosen": controller.dusk_fires_radar_chosen,
 	}
 	data.merge(counter.player_counts(world, player))
 	return data

@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 const Smoke: GDScript = preload("res://tests/smoke/smoke_run.gd")
 const Summary: GDScript = preload("res://tests/smoke/balance_summary.gd")
 const SmokeCount: GDScript = preload("res://tests/smoke/smoke_count.gd")
+const StrikeSummary: GDScript = preload("res://tests/smoke/strike_summary.gd")
 
 
 func test_the_keys_are_summed_per_faction_and_level_with_the_victims_numbers_per_fire() -> void:
@@ -105,6 +106,47 @@ func test_the_block_survives_a_json_round_trip() -> void:
 	assert_int(group["totals"]["strike_damage_enemy"]).is_equal(1001)
 	assert_int(group["per_fire"]["damage_enemy"]).is_equal(50050)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+## The Dusk radar counts (P577c) are summed per faction and listed in the table; a report without
+## them counts 0.
+func test_the_dusk_radar_counts_are_summed_and_listed() -> void:
+	var matches: Array[Dictionary] = _matches(2, ["normal", "normal"])
+	_put(matches[0], 1, "strike_fires_blackout", 3)
+	_put(matches[0], 1, "dusk_fires_radar_known", 2)
+	_put(matches[0], 1, "dusk_fires_radar_coverable", 1)
+	_put(matches[0], 1, "dusk_fires_radar_chosen", 1)
+	_put(matches[1], 1, "strike_fires_blackout", 1)
+	_put(matches[1], 1, "dusk_fires_radar_known", 1)
+	var strikes: Dictionary = _merge(matches)["summary"]["strikes"]
+	var renew: Dictionary = strikes["by_faction"]["renew"]
+	assert_int(renew["radar_fires"]["dusk_fires_radar_known"]).is_equal(3)
+	assert_int(renew["radar_fires"]["dusk_fires_radar_coverable"]).is_equal(1)
+	assert_int(renew["radar_fires"]["dusk_fires_radar_chosen"]).is_equal(1)
+	var fossil: Dictionary = strikes["by_faction"]["fossil"]
+	assert_int(fossil["radar_fires"]["dusk_fires_radar_known"]).is_equal(0)
+	var lines: PackedStringArray = PackedStringArray()
+	StrikeSummary.append_lines(strikes, lines)
+	assert_bool("\n".join(lines).contains("| faction renew | 4 | 3 | 1 | 1 |")).is_true()
+
+
+## The table's Fires column counts blackouts only: a group's ruptures stay out, and a group with no
+## blackout has no row.
+func test_the_radar_table_counts_blackouts_only() -> void:
+	var matches: Array[Dictionary] = _matches(1, ["normal", "hard"])
+	_put(matches[0], 0, "strike_fires_rupture", 5)  # Fossil's Deep Bore.
+	_put(matches[0], 1, "strike_fires_blackout", 4)
+	_put(matches[0], 1, "dusk_fires_radar_known", 4)
+	var strikes: Dictionary = _merge(matches)["summary"]["strikes"]
+	var lines: PackedStringArray = PackedStringArray()
+	StrikeSummary.append_lines(strikes, lines)
+	var text: String = "\n".join(lines)
+	var radar_part: String = text.substr(text.find("### Dusk radar knowledge"))
+	assert_bool(radar_part.contains("| faction renew | 4 | 4 | 0 | 0 |")).is_true()
+	assert_bool(radar_part.contains("| level hard | 4 | 4 | 0 | 0 |")).is_true()
+	assert_bool(radar_part.contains("fossil")).is_false()
+	assert_bool(radar_part.contains("level normal")).is_false()
+	assert_bool(text.find("### Strikes") < text.find("### Dusk radar knowledge")).is_true()
 
 
 func _matches(count: int, levels: Array[String]) -> Array[Dictionary]:

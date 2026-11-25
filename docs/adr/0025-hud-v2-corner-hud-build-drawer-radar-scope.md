@@ -932,6 +932,9 @@ Settings, the rank badge and the version line. The banner sits in the `AdBannerS
 with the 48 dp gap kept here; Phase 6's `AdBannerBand` (P430) fills it.
 
 ### 13. Look: theme, fonts and the accent
+Status (2026-11-25): the colour values in this section are superseded by tokens v3 (STYLE.md "Tokens v3
+(P604)", ADR 0049, row P604); the checks (15 degrees, 4.5:1) hold.
+
 - **Tokens** (the design's, art-director owns them in STYLE.md and `theme.tres` is the value of
   record, as for the backdrop): panel rgba(10,14,17,0.84) with no blur (a flat StyleBoxFlat:
   cheap on weak phones); border #2C383E; money and power #F2C14E; danger #FF5A3C; ok and income

@@ -200,6 +200,22 @@ func test_each_routes_player_wears_the_colour_of_its_side_and_the_other_the_othe
 
 ## The data behind it: every Skirmish scenario (both sides of all three maps, and the mirrors) names
 ## `(0, 6, 2)`, entry 0 unused, so the default marker colours are the route's rule, not a swap.
+## The fixed faction colours are the HUD accents (ADR 0050 section 3): the art's `faction` material
+## mid of each side equals the theme's accent token. The route test above proves the markers (own
+## units Sne, the computer's Karmin) per route.
+func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
+	var theme: Theme = load("res://game/ui/theme.tres") as Theme
+	var pairs: Dictionary[StringName, StringName] = {
+		&"fossil": &"AccentFossil", &"renew": &"AccentRenew"
+	}
+	for faction: StringName in pairs:
+		var accent: Color = theme.get_color(&"accent", pairs[faction])
+		var mid: Color = Color(ArtPalette.MATERIALS[faction][ArtPalette.FACTION])
+		assert_str(mid.to_html(false)).override_failure_message(faction).is_equal(
+			accent.to_html(false)
+		)
+
+
 func test_every_skirmish_scenario_defaults_to_own_white_and_the_computer_red() -> void:
 	var seen: int = 0
 	for file: String in DirAccess.get_files_at("res://data/scenarios"):

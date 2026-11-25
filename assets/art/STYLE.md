@@ -1054,13 +1054,13 @@ without its damage lines and compares them). Smoke, fire and sparks are never dr
 | Team A / team B / neutral | #2F80ED / #E5484D / #9AA5B1 | 116 / 120 / 163 |
 | UI accents: warning / danger / ok | #F5A524 / #E5484D / #30A46C | |
 | HUD panel backdrop | #0F141C at 78% | 19 |
-| HUD panel (v2) / its edge | #0A0E11 at 84%, no blur / #2C383E | 13 / 53 |
-| HUD money and power (v2) | #F2C14E | 195 |
-| HUD danger (v2) | #FF5A3C | 136 |
-| HUD ok and income (v2) | #6EDC5F | 173 |
-| HUD text on the dark panel (v2) | #FFFFFF | 255 |
-| Accent, Lumen Accord (cyan): accent / light / text on accent (v2) | #1FA6C8 / #62D6EE / #05202A | 130 / 182 / 25 |
-| Accent, Derrick League (orange): accent / light / text on accent (v2) | #E07628 / #FFA25C / #2A1405 | 141 / 182 / 25 |
+| HUD panel / its edge (v3, P604) | #101A20 at 84%, no blur / #33434A | 25 / 65 |
+| HUD money and power (v3) | #F4B653 | 181 |
+| HUD danger (v3) | #FF4560 | 118 |
+| HUD ok and income (v3) | #AFC58D | 181 |
+| HUD text on the dark panel (v3) | #E9ECE7 | 235 |
+| Accent, Facet (blue): accent / light / text on accent (v3, replaces the Lumen Accord cyan #1FA6C8 / #62D6EE) | #40A3FF / #8CC8FF / #05090C | 146 / 192 / 8 |
+| Accent, Nordvaern (orange): accent / light / text on accent (v3, replaces the Derrick League #E07628 / #FFA25C) | #FF6E1F / #FFA06A / #05090C | 141 / 175 / 8 |
 
 Luminance is 0.299 R + 0.587 G + 0.114 B. Use it when you judge the greyscale check below.
 
@@ -1084,6 +1084,8 @@ accents" row above stays for the parts that the HUD v2 rows replace, until each 
 the radar keep their team colours, and the design's fixed "enemy" colour #FF9446 is not a token: it is
 almost the Derrick League accent. The local player's side is the faction of its own rows (P85d's rule);
 accent never carries meaning alone, and the team colours stay per player (GDD).
+(Values in this paragraph and the next are the v2 ones that the hue and contrast checks were first
+made on; the v3 values and gaps are in "Tokens v3 (P604)" under "Treadline UI look".)
 **Danger always carries its glyph (the warning triangle or the "!") where it sits on or next to
 an accent.** The Derrick League's accent #E07628 and danger #FF5A3C have the same brightness
 (WCAG contrast 1.002:1), so only the hue tells them apart; the Lumen Accord's cyan is 1.08:1
@@ -2077,13 +2079,13 @@ Type variations of `game/ui/theme.tres` for the menu screens. They are the pause
 | `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white, own face with 8 px tracking |
 | `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps with 3 px tracking (the row must fit the narrowest column; the AttackTitle face), the side's light |
 | `MenuSideCard` (PanelContainer), `MenuSideCardRenew`, `MenuSideCardFossil` | the side choice on Map select | plate with a 1 dp edge; the picked side's card has a 2 dp accent edge |
-| `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #2C383E, the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
+| `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #33434A (v3), the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
 | `MenuToggleRow` (PanelContainer) | a Settings row: label left, toggle right | plate, 1 dp edge, 8 dp corners |
 | `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
 | `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |
 | `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: 2 dp #C9D1D9 edge; locked: dim plate |
-| `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp #F2C14E edge; 22 dp text in #F2C14E |
-| `MenuXpBar` (ProgressBar) | the XP bar | #2C383E track, #F2C14E fill, 4 dp corners |
+| `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp edge and 22 dp text in `money` (v3 #F4B653) |
+| `MenuXpBar` (ProgressBar) | the XP bar | `border` track (v3 #33434A), `money` fill (v3 #F4B653), 4 dp corners |
 
 ## Treadline UI look (P602, ADR 0049 sections 1 to 3)
 A read-out of Michael's Figma file (file key `HsBPSXZ6PTRp6KkdhEi6bT`, read 2026-11-24, read-only). It is
@@ -2152,6 +2154,39 @@ What these show, and what P604 must decide:
 - The hairline #33434A on the panel is 1.7:1: a border is decoration, never the only mark of a state
   (the selected state also changes the fill and the weight, see below).
 - The existing design's fixed enemy colour #FF9446 (ADR 0025) has no counterpart in the file.
+
+### Tokens v3 (P604)
+`game/ui/theme.tres` carries these values since P604 (values only: no type renamed, no layout, font
+or team-colour change). Source "P602" is the read-out table above; "adjusted" says why.
+| Token (type) | Old | New | Source |
+| --- | --- | --- | --- |
+| `border` (`HudTokens`) | #2C383E | #33434A | P602 |
+| `money` | #F2C14E | #F4B653 | P602 |
+| `ok` | #6EDC5F | #AFC58D | P602 |
+| `text` | #FFFFFF | #E9ECE7 | P602 |
+| `panel` (alpha 0.84 kept) | #0A0E11 | #101A20 | P602 |
+| `danger` | #FF5A3C | **#FF4560** | adjusted: the file has no red; moved toward red (hue 351.3) so Nordvaern orange is 29.9 degrees away (lead's bar 25, ADR 0025 asks 15) |
+| `warning` | #F5A524 | unchanged | the file has none |
+| `AccentRenew` accent / light / on_accent | #1FA6C8 / #62D6EE / #05202A | #40A3FF / #8CC8FF / #05090C | accent and on_accent P602; light adjusted (same hue, lighter) |
+| `AccentFossil` accent / light / on_accent | #E07628 / #FFA25C / #2A1405 | #FF6E1F / #FFA06A / #05090C | accent and on_accent P602; light adjusted (hue 21.7) |
+| `GuideTokens` ring / ring_stalled | Renew light / money | follow: #8CC8FF / #F4B653 | copies |
+| new `ground`, `ground_deep` | | #080E12, #05090C | P602 |
+| new `panel_raised`, `touch` | | #18262D, #23353E | P602 |
+| new `text_dim`, `text_mute` | | #94A6AB, #5C727B | P602 (`text_mute` is 3.5:1 on the panel: numbers and hints only) |
+| new `action_wash` | | #32271A | P602 |
+| new `info` | | #61CFD9 | P602 (the file's cyan) |
+
+- **Danger.** #FF4560 is 29.9 degrees from Nordvaern #FF6E1F (29.4 from its light), 45.6 from money
+  and 142.4 from Facet blue. It is 5.27:1 on the panel (4.5:1 asked).
+- **Accents.** Text #05090C on #FF6E1F is 7.1:1 and on #40A3FF 7.5:1 (4.5:1 asked). Each accent and
+  light is at least 15 degrees from danger and money. `tests/ui/test_ui_theme_tokens.gd` pins all of it.
+- **`info` is not used by alerts.** Alerts keep `warning` and `danger`; `info` is for contacts and
+  enemy tags only.
+- **Interim until P632.** Facet's HUD accent is blue while its units and team triad stay cyan
+  (`WorldSort.TRIADS`); P632 changes the team colours and restores the exact pairing that
+  `test_skirmish_routes.gd` loosened.
+- Menu whites (the literal white font colours of `Menu*`) are not tokens yet; P613 and P614 move them
+  to `text`.
 
 ### Type scale
 Three faces, all from the file's text nodes:
