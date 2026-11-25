@@ -54,6 +54,7 @@ const ARM64_GODOT_STEP: String = "Install Godot (arm64 editor + web no-threads t
 const ARM64_INSTALL_RUN: Array[String] = [
 	"run: |",
 	'pipx install "scons==${SCONS_VERSION}"',
+	"sudo apt-get update",
 	"sudo apt-get install -y --no-install-recommends binutils clang",
 ]
 const ARM64_BUILD_STEP: String = "Build the library (arm64, clang, optimize=speed)"
@@ -138,6 +139,7 @@ const ANDROID_INSTALL_STEP: String = "Install the native toolchain (SCons, binut
 const ANDROID_INSTALL_RUN: Array[String] = [
 	"run: |",
 	'pipx install "scons==${SCONS_VERSION}"',
+	"sudo apt-get update",
 	"sudo apt-get install -y --no-install-recommends binutils",
 ]
 ## P57 (ADR 0013 section 10): the sanitizer jobs.
