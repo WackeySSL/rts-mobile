@@ -7,12 +7,17 @@ extends GdUnitTestSuite
 ## disc, a helmet cap) or its top face is larger than 0.2 square tiles (a slab). A band is covered
 ## by the wall segment above it, a stripe on a deck covers a small part of it, a lintel or a wall
 ## stripe is upright, and a ring lying along a barrel or a drum has no flat top.
-## The share of team pixels in the default view (3 to 20 %) is in test_artgen_readability.gd.
+## The one exception is the team marker of ADR 0050 section 3: a small plate (at most `MARKER`
+## square tiles) with a light line round it (a `lamp` plate under it, larger on every side) and a
+## dark rim round that (an `iron` plate under the lamp, larger again). The share of team pixels in
+## the default view (2 to 12 %) is in test_artgen_readability.gd.
 
 const REST: float = 0.011  ## Tiles: a primitive rests on another when its bottom is this close.
 const OPEN: float = 0.25  ## A top face with less than this share covered is open.
 const CAP: float = 0.3  ## A team primitive covering this share of its support is a cap.
 const SLAB: float = 0.2  ## Square tiles: a larger open top face is a slab, whatever it rests on.
+## Square tiles: the most a rimmed marker plate covers (ADR 0050 section 3).
+const MARKER: float = 0.1
 
 
 func test_no_team_primitive_is_a_roof_plate() -> void:
@@ -60,6 +65,24 @@ func test_the_rule_finds_a_cap_and_a_slab_and_lets_a_band_a_stripe_and_a_ring_pa
 		"box hull olive 0.3 0 0 0.3 0.3 0.3", "prism hull team 0.1 0 0.1 0.12 0.2 0.2 axis=x"
 	]
 	assert_array(_plates(_parse(ring))).override_failure_message("ring").is_empty()
+	var rimmed: Array[String] = [
+		"box hull olive 0 0 0 0.4 0.5 0.3",
+		"box hull iron 0 0 0.3 0.34 0.44 0.02",
+		"box hull lamp 0 0 0.32 0.28 0.38 0.012",
+		"box hull team 0 0 0.332 0.2 0.3 0.02",
+	]
+	assert_array(_plates(_parse(rimmed))).override_failure_message("rimmed marker").is_empty()
+	var bare: Array[String] = [
+		"box hull olive 0 0 0 0.4 0.5 0.3", "box hull team 0 0 0.3 0.2 0.3 0.02"
+	]
+	assert_int(_plates(_parse(bare)).size()).override_failure_message("bare plate").is_equal(1)
+	var large: Array[String] = [
+		"box hull olive 0 0 0 0.6 0.7 0.3",
+		"box hull iron 0 0 0.3 0.54 0.64 0.02",
+		"box hull lamp 0 0 0.32 0.48 0.58 0.012",
+		"box hull team 0 0 0.332 0.4 0.5 0.02",
+	]
+	assert_int(_plates(_parse(large)).size()).override_failure_message("large plate").is_equal(1)
 	var stripe: Array[String] = [
 		"box hull concrete 0 0 0 1.5 1 0.3", "box hull team 0 0.5 0.3 1.5 0.04 0.2"
 	]
@@ -95,9 +118,28 @@ func _plates(prims: Array[ArtPrim]) -> Array[String]:
 				cap = maxf(cap, top.intersection(base).get_area() / base.get_area())
 		if covered / area >= OPEN:
 			continue
+		if area <= MARKER and _rimmed(prim, prims):
+			continue
 		if cap >= CAP or area > SLAB:
 			found.append("%s %s at %s z %.2f" % [prim.shape, prim.size, prim.centre, prim.z0])
 	return found
+
+
+## Whether `plate` rests on a `lamp` plate that is larger than it on every side, which rests on an
+## `iron` plate larger than the lamp on every side: the marker's light line and dark rim.
+func _rimmed(plate: ArtPrim, prims: Array[ArtPrim]) -> bool:
+	var inner: ArtPrim = _under(plate, prims, &"lamp")
+	return inner != null and _under(inner, prims, &"iron") != null
+
+
+## The plate of `material` that `top` rests on and that is larger than `top` on every side.
+func _under(top: ArtPrim, prims: Array[ArtPrim], material: StringName) -> ArtPrim:
+	for other: ArtPrim in prims:
+		if other.material != material or absf(other.z0 + other.size.z - top.z0) >= REST:
+			continue
+		if _footprint(other).encloses(_footprint(top).grow(0.01)):
+			return other
+	return null
 
 
 func _footprint(prim: ArtPrim) -> Rect2:

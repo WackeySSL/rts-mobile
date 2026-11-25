@@ -7,36 +7,31 @@ script = ExtResource("1_model")
 art_id = &"heavy_tank"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Bullhead: a squat olive slab of a tank on two dark tracks, a steel ram plate across its nose, a wide wedge turret with a long gun and two short lamp-topped pipes at its front corners like horns."
+silhouette = "Bullhead: a squat olive slab of a tank on two dark tracks, an orange deck and sloped nose, a steel ram plate with a hazard patch across its front, a wide orange turret with a rimmed team plate, a long gun and two short lamp-topped pipes at its front corners like horns."
 mount = Vector3(0, 0, 0.32)
+detail = 2
 prims = PackedStringArray(
-"box hull iron 0 -0.37 0 1.16 0.2 0.2",
-"box hull iron 0 0.37 0 1.16 0.2 0.2",
-"prism hull steel -0.44 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel -0.22 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0.22 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0.44 -0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel -0.44 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel -0.22 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0.22 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
-"prism hull steel 0.44 0.485 0.03 0.15 0.03 0.15 axis=y sides=8",
+"tracks hull iron 0 -0.37 0 1.16 0.2 0.2 wheels=5 wheel=steel",
+"tracks hull iron 0 0.37 0 1.16 0.2 0.2 wheels=5 wheel=steel",
 "box hull iron 0 0 0.03 1.0 0.54 0.17",
-"box hull olive 0 0 0.2 1.0 0.9 0.12",
-"wedge hull olive 0.61 0 0.2 0.22 0.9 0.12 slope=1",
-"box hull steel 0.74 0 0.06 0.07 0.92 0.22",
-"box hull team 0.785 0 0.12 0.02 0.8 0.07",
-"box hull rust -0.34 0 0.32 0.3 0.5 0.1",
-"box hull team 0 -0.46 0.225 0.8 0.02 0.075",
-"box hull team 0 0.46 0.225 0.8 0.02 0.075",
-"prism turret olive 0 0 0 0.6 0.6 0.05 sides=8",
-"prism turret team 0 0 0.05 0.64 0.64 0.05 sides=8",
-"wedge turret olive 0.04 0 0.1 0.7 0.54 0.15 slope=0.5",
-"box turret team 0 -0.28 0.12 0.4 0.02 0.07",
-"box turret team 0 0.28 0.12 0.4 0.02 0.07",
+"box hull olive 0 0 0.2 1.0 0.9 0.08",
+"box hull faction 0 0 0.28 0.96 0.86 0.04 detail=1",
+"wedge hull faction 0.61 0 0.2 0.22 0.9 0.12 slope=1 detail=1",
+"box hull iron 0.74 0 0.06 0.07 0.92 0.22",
+"grille hull iron -0.34 0 0.32 0.3 0.5 0.08 bars=4 bar=steel",
+"box hull steel 0 -0.46 0.225 0.8 0.02 0.075",
+"box hull steel 0 0.46 0.225 0.8 0.02 0.075",
+"prism turret steel 0 0 0 0.6 0.6 0.05 sides=8",
+"prism turret iron 0 0 0.05 0.64 0.64 0.04 sides=8",
+"box turret faction -0.12 0 0.1 0.46 0.54 0.12 detail=1",
+"wedge turret faction 0.27 0 0.1 0.32 0.54 0.12 slope=1 detail=1",
+"box turret steel 0 -0.28 0.12 0.4 0.02 0.08",
+"box turret steel 0 0.28 0.12 0.4 0.02 0.08",
+"box turret iron -0.2 0 0.22 0.3 0.44 0.02",
+"box turret lamp -0.2 0 0.24 0.26 0.4 0.012",
+"box turret team -0.2 0 0.252 0.2 0.34 0.02",
+"hatch turret steel 0.1 0.15 0.22 0.14 0.14 0.05 lid=iron",
 "box turret iron 0.4 0 0.1 0.06 0.2 0.1",
-"prism turret steel -0.12 0.12 0.245 0.14 0.14 0.04 sides=8",
 "prism turret steel 0.16 -0.31 0.095 0.05 0.05 0.2 sides=6",
 "prism turret steel 0.16 0.31 0.095 0.05 0.05 0.2 sides=6",
 "box turret lamp 0.16 -0.31 0.295 0.05 0.05 0.04",
@@ -45,6 +40,9 @@ prims = PackedStringArray(
 "prism turret iron 0.655 0 0.115 0.14 0.105 0.105 axis=x sides=8",
 "prism turret steel 0.915 0 0.13 0.38 0.075 0.075 axis=x sides=8",
 "box turret iron 1.125 0 0.12 0.07 0.12 0.095"
+)
+decals = PackedStringArray(
+"hazard 6 front 0.5 0.55 0.5"
 )
 emitters = PackedStringArray(
 "exhaust -0.5 0.2 0.45",

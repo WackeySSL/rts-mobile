@@ -398,7 +398,7 @@ func test_the_gallery_terrain_row_is_inside_and_clear_of_the_back_button_atlases
 		for box: Rect2 in avoid:
 			if frame.intersects(box):
 				hits.append(str(box))
-		assert_array(hits).override_failure_message(str(base)).is_empty()
+		assert_array(hits).override_failure_message("%s: %s" % [base, hits]).is_empty()
 		# One at a time: galleries alive together restore quit_on_go_back in a bad order.
 		gallery.get_parent().free()
 

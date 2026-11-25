@@ -7,36 +7,34 @@ script = ExtResource("1_model")
 art_id = &"light_tank"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Flarejack: a low olive doorstop of an armoured car on four fat dark wheels, a long sloping hood, a boxed cab with a team band and a lamp bar, a small gun turret far back over the rear axle and a thin flare pipe with a warm lamp standing off the rear corner."
+silhouette = "Flarejack: a low olive doorstop of an armoured car on four fat dark wheels, an orange sloping hood and orange cab flanks, an orange boxed cab and lamp bar, a small orange gun turret far back over the rear axle wearing a rimmed team plate and a thin flare pipe with a warm lamp standing off the rear corner."
 mount = Vector3(-0.27, 0, 0.3)
+detail = 2
 prims = PackedStringArray(
-"prism hull iron 0.32 -0.31 0 0.26 0.1 0.26 axis=y sides=10",
-"prism hull iron 0.32 0.31 0 0.26 0.1 0.26 axis=y sides=10",
-"prism hull iron -0.3 -0.31 0 0.26 0.1 0.26 axis=y sides=10",
-"prism hull iron -0.3 0.31 0 0.26 0.1 0.26 axis=y sides=10",
-"prism hull steel 0.32 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
-"prism hull steel 0.32 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
-"prism hull steel -0.3 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
-"prism hull steel -0.3 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
+"wheels hull iron 0.01 0 0 0.88 0.72 0.26 n=2 w=0.1",
+"prism hull faction 0.32 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
+"prism hull faction 0.32 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
+"prism hull faction -0.3 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
+"prism hull faction -0.3 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
 "box hull iron 0 0 0.07 0.8 0.4 0.08",
-"box hull olive -0.16 0 0.15 0.58 0.5 0.15",
-"wedge hull olive 0.34 0 0.15 0.42 0.5 0.15 slope=1",
-"box hull team -0.12 -0.26 0.18 0.56 0.02 0.1",
-"box hull team -0.12 0.26 0.18 0.56 0.02 0.1",
+"box hull olive -0.16 0 0.15 0.58 0.5 0.04",
+"box hull faction -0.16 0 0.19 0.58 0.5 0.11 detail=1",
+"wedge hull faction 0.34 0 0.15 0.42 0.5 0.15 slope=1 detail=1",
 "box hull iron 0.58 0 0.13 0.04 0.44 0.1",
-"box hull olive 0.1 0 0.3 0.3 0.4 0.05",
-"box hull team 0.1 0 0.35 0.34 0.44 0.05",
-"box hull olive 0.1 0 0.4 0.3 0.4 0.05",
+"box hull faction 0.1 0 0.3 0.3 0.4 0.1",
 "box hull iron 0.26 0 0.3 0.02 0.32 0.13",
-"box hull lamp 0.07 0 0.45 0.05 0.32 0.03",
+"box hull lamp 0.26 0 0.43 0.04 0.32 0.03",
 "box hull rust -0.49 -0.12 0.16 0.07 0.1 0.14",
 "box hull rust -0.49 0.12 0.16 0.07 0.1 0.14",
 "prism hull steel -0.42 -0.21 0.3 0.05 0.05 0.45 sides=6",
 "prism hull team -0.42 -0.21 0.42 0.08 0.08 0.04 sides=6",
 "box hull lamp -0.42 -0.21 0.75 0.07 0.07 0.07",
 "prism turret iron 0 0 0 0.34 0.34 0.04 sides=8",
-"prism turret team 0 0 0.04 0.38 0.38 0.035 sides=8",
-"box turret olive 0 0 0.075 0.3 0.28 0.1",
+"prism turret faction 0 0 0.04 0.38 0.38 0.035 sides=8",
+"box turret faction 0 0 0.075 0.34 0.34 0.1",
+"box turret iron -0.01 0 0.175 0.3 0.3 0.02",
+"box turret lamp -0.01 0 0.195 0.26 0.26 0.012",
+"box turret team -0.01 0 0.207 0.2 0.2 0.02",
 "prism turret iron 0.22 0 0.1 0.14 0.09 0.09 axis=x sides=8",
 "prism turret steel 0.46 0 0.1175 0.34 0.055 0.055 axis=x sides=6"
 )

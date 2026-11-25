@@ -70,6 +70,10 @@ const HAND_CARDS: Array[String] = [
 	"item_heavy_bombs", "item_plated_hull", "item_focus_bombs", "item_glaze_hull"
 ]
 const MAX_FILE_BYTES: int = 28 * 1024  ## STYLE.md "Technical rules".
+## A generated frame of a model at detail 2 or more: up to 64 KB, and `linearGradient` in `defs` for
+## the metal sheen besides the three elements (ADR 0050 section 1).
+const MAX_DETAIL_FILE_BYTES: int = 64 * 1024
+const DETAIL_TAGS: Array[String] = ["defs", "linearGradient", "stop"]
 const BAND_DEGREES: float = 20.0  ## ADR 0023 section 5: the key band's half width.
 const BAND_SATURATION: float = 0.30
 const ALLOWED_TAGS: Array[String] = ["svg", "g", "polygon"]
@@ -210,15 +214,25 @@ func test_frames_use_only_the_allowed_elements_and_sizes() -> void:
 	var decimals: RegEx = RegEx.create_from_string("\\d\\.\\d\\d")
 	var opacity: RegEx = RegEx.create_from_string('opacity="[^"]*"')
 	var lower_hex: RegEx = RegEx.create_from_string("#[0-9a-f]*[a-f][0-9a-f]*\\b")
+	var detailed: PackedStringArray = PackedStringArray()
+	for model_path: String in ArtGen.model_paths():
+		var model: ArtModel = load(model_path) as ArtModel
+		if model.detail >= 2:
+			detailed.append(String(model.art_id) + "_")
 	for path: String in _fresh:
 		if not path.ends_with(".svg"):
 			continue
 		var text: String = _fresh[path]
-		assert_int(text.length()).override_failure_message(path).is_less(MAX_FILE_BYTES)
+		var rich: bool = false
+		for prefix: String in detailed:
+			rich = rich or path.get_file().begins_with(prefix)
+		var allowed: Array[String] = ALLOWED_TAGS.duplicate()
+		if rich:
+			allowed.append_array(DETAIL_TAGS)
+		var cap: int = MAX_DETAIL_FILE_BYTES if rich else MAX_FILE_BYTES
+		assert_int(text.length()).override_failure_message(path).is_less(cap)
 		for found: RegExMatch in tags.search_all(text):
-			assert_array(ALLOWED_TAGS).override_failure_message(path).contains(
-				[found.get_string(1)]
-			)
+			assert_array(allowed).override_failure_message(path).contains([found.get_string(1)])
 		for banned: String in ["href", "style", "<text", "<image", "<filter", "<script"]:
 			assert_bool(text.contains(banned)).override_failure_message(path).is_false()
 		(
