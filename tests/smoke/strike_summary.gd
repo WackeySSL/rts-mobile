@@ -22,6 +22,13 @@ const VICTIM_KEYS: Array[String] = [
 	"radar_dark_ticks",
 ]
 
+## The Dusk radar counts of a player entry (P577c), summed per group as `radar_fires`.
+const RADAR_KEYS: Array[String] = [
+	"dusk_fires_radar_known",
+	"dusk_fires_radar_coverable",
+	"dusk_fires_radar_chosen",
+]
+
 ## The `per_fire` entries the table shows, in column order.
 const COLUMNS: Array[String] = [
 	"damage_enemy",
@@ -87,12 +94,40 @@ static func append_lines(strikes: Dictionary, lines: PackedStringArray) -> void:
 	lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
 	lines.append_array(rows)
 	lines.append("")
+	_append_radar_lines(strikes, lines)
 	lines.append(
 		(
 			"Per fire, rupture and blackout together. Damage and kills are the firer's; blackout, "
 			+ "sight and radar numbers are the victim's. A rupture's kills are an upper bound."
 		)
 	)
+	lines.append("")
+
+
+## The "Dusk radar" table: per group with a known-radar count, the fires of the Dusk Array by what
+## the firer knew (P577c).
+static func _append_radar_lines(strikes: Dictionary, lines: PackedStringArray) -> void:
+	var rows: Array[String] = []
+	for scope: String in ["by_faction", "by_level"]:
+		var groups: Dictionary = strikes.get(scope, {})
+		var ids: Array = groups.keys()
+		ids.sort()
+		for id: String in ids:
+			var group: Dictionary = groups[id]
+			var radar: Dictionary = group.get("radar_fires", {})
+			if int(group["fires"]) == 0 or radar.is_empty():
+				continue
+			var cells: Array[String] = [scope.trim_prefix("by_") + " " + id, str(group["fires"])]
+			for key: String in RADAR_KEYS:
+				cells.append(str(radar[key]))
+			rows.append("| %s |" % " | ".join(cells))
+	if rows.is_empty():
+		return
+	lines.append("### Dusk radar knowledge")
+	lines.append("")
+	lines.append("| Group | Fires | Radar known | Coverable | Chosen ring over radar |")
+	lines.append("| --- | --- | --- | --- | --- |")
+	lines.append_array(rows)
 	lines.append("")
 
 
@@ -103,11 +138,22 @@ static func _add(groups: Dictionary, id: String, player: Dictionary, victim: Dic
 		for key: String in SmokeCount.STRIKE_KEYS:
 			totals[key] = 0
 			caused[key] = 0
-		groups[id] = {"player_matches": 0, "fires": 0, "totals": totals, "caused": caused}
+		var radar_fires: Dictionary = {}
+		for key: String in RADAR_KEYS:
+			radar_fires[key] = 0
+		groups[id] = {
+			"player_matches": 0,
+			"fires": 0,
+			"totals": totals,
+			"caused": caused,
+			"radar_fires": radar_fires,
+		}
 	var group: Dictionary = groups[id]
 	group["player_matches"] += 1
 	group["fires"] += int(player.get("strike_fires_rupture", 0))
 	group["fires"] += int(player.get("strike_fires_blackout", 0))
+	for key: String in RADAR_KEYS:
+		group["radar_fires"][key] += int(player.get(key, 0))
 	for key: String in SmokeCount.STRIKE_KEYS:
 		group["totals"][key] += int(player.get(key, 0))
 		if VICTIM_KEYS.has(key):

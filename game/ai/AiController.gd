@@ -31,6 +31,11 @@ var waves: int = 0
 var retreats: int = 0
 var scouts: int = 0
 var strikes: int = 0
+## Dusk Array diagnostics (P577c, read by the smoke harness): fires with a known enemy radar, with
+## a producer ring that could cover one, and with the chosen ring over one.
+var dusk_fires_radar_known: int = 0
+var dusk_fires_radar_coverable: int = 0
+var dusk_fires_radar_chosen: int = 0
 var commands: int = 0
 
 
