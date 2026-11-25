@@ -245,12 +245,12 @@ func test_every_faction_file_holds_its_id_names_emblem_and_key_triad() -> void:
 		assert_bool(luminance[0] > luminance[1] and luminance[1] > luminance[2]).is_true()
 	var fossil: FactionDef = load(FACTIONS_DIR + "/fossil.tres")
 	assert_array([fossil.id, fossil.display_name, fossil.emblem]).is_equal(
-		[&"fossil", "Derrick League", &"emblem_fossil"]
+		[&"fossil", "Nordværn", &"emblem_fossil"]
 	)
 	assert_array(Array(fossil.key_triad)).is_equal(["#FF9446", "#E8681F", "#B04B12"])
 	var renew: FactionDef = load(FACTIONS_DIR + "/renew.tres")
 	assert_array([renew.id, renew.display_name, renew.emblem]).is_equal(
-		[&"renew", "Lumen Accord", &"emblem_renew"]
+		[&"renew", "Facet", &"emblem_renew"]
 	)
 	assert_array(Array(renew.key_triad)).is_equal(["#62D6EE", "#1FA6C8", "#137C99"])
 
