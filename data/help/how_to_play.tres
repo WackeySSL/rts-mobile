@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit wears your team colour and has a shadow on the ground. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -668,7 +668,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e89"), SubResource("e90"), S
 script = ExtResource("3_ent")
 id = &"build-menu-look-screen"
 title = "Credits and power"
-body = "The pill at the top left shows your credits and your power. The power bar fills with the power your buildings use against the power they make. On a narrow screen the numbers are left out and the bar says it alone. The pill stays in place while the build drawer is open."
+body = "The pill at the top left shows your credits and your power. The power bar fills with the power your buildings use against the power they make. The numbers always show, on every screen; from 1000 they show as thousands with a k, for example 1.2k/2.4k. The pill stays in place while the build drawer is open."
 
 [sub_resource type="Resource" id="e99"]
 script = ExtResource("3_ent")

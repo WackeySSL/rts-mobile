@@ -24,11 +24,21 @@ light_up_min = -0.16
 light_left_min = -0.04
 shadow_dx_min = -0.05
 tone_value = Vector2(0.45, 0.75)
-tone_sat = Vector2(0.14, 0.3)
+tone_sat = Vector2(0.06, 0.3)
+tone_sat_all_max = 0.55
+faction_hues = PackedFloat32Array(21.2, 208.9)
+faction_hue_band = 15.0
+faction_sat_min = 0.35
+key_tolerance = 0.06
 black_edge_max = 0.02
 density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
 spread_min = 80.0
+; The saturation is judged twice (P638): `tone_sat` over the neutral body only, the pixels that are
+; not fixed faction material (hue within `faction_hue_band` of Nordvaern orange or Facet blue at a
+; saturation of `faction_sat_min` or more) and not the marker, because orange and blue panels are
+; saturated by design and FACTION_SHARE and TEAM_SHARE already bound their area; and
+; `tone_sat_all_max` over every opaque pixel, so a sprite that is nearly all panel still fails.
 ; Transition exemptions (2026-11-25, P632), art id -> measured value that misses the saturation
 ; (`exempt_sat`) or the up/down light band (`exempt_up`). Shrink-only; empty since the routes wear
 ; the sides' own colours. P647 switches the routes to Sne and Karmin and may need entries again.
