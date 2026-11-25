@@ -8,12 +8,17 @@ extends GdUnitTestSuite
 
 const SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const SIDE_PX: int = 32
-const TEAM_SHARE: Vector2 = Vector2(0.03, 0.2)
+## The marker's share of a sprite's opaque pixels: 2 to 12 % for the transition (ADR 0050 section 3,
+## today's whole-team areas are valid markers); the last model batch narrows it to 2 to 6 %.
+const TEAM_SHARE: Vector2 = Vector2(0.02, 0.12)
+## The fixed faction colour's share at detail 1 and up: panels may cover large surfaces.
+const FACTION_SHARE: Vector2 = Vector2(0.15, 0.85)
 const MIN_SPREAD: float = 80.0  ## Luminance, 5th to 95th percentile, 0 to 255.
 const MIN_BODY_PX: int = 150
 const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
 const PAGE: Vector2i = Vector2i(320, 320)
 const GROUND_POINT: Vector2i = Vector2i(160, 200)
+const Support: GDScript = preload("res://tests/art/artgen_v5_support.gd")
 
 var _fresh: Dictionary[String, String] = {}
 
@@ -43,34 +48,82 @@ func test_every_frame_is_a_picture_of_the_size_its_canvas_says() -> void:
 					)
 
 
-func test_the_default_view_of_every_type_has_a_team_share_of_3_to_20_percent() -> void:
+func test_the_default_view_of_every_type_has_a_team_share_of_2_to_12_percent() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		var picture: Image = _default_picture(model)
-		var keys: Array[Color] = []
-		for hex: String in ArtPalette.KEYS[model.faction]:
-			keys.append(Color(hex))
-		var team: int = 0
-		var body: int = 0
-		for y: int in picture.get_height():
-			for x: int in picture.get_width():
-				var pixel: Color = picture.get_pixel(x, y)
-				if pixel.a < 0.95:
-					continue
-				body += 1
-				for key: Color in keys:
-					if (
-						absf(pixel.r - key.r) + absf(pixel.g - key.g) + absf(pixel.b - key.b)
-						< KEY_TOLERANCE
-					):
-						team += 1
-						break
-		var share: float = float(team) / body
+		var share: float = _share(_default_picture(model), ArtPalette.KEYS[model.faction])
 		(
 			assert_float(share)
 			. override_failure_message("%s team share %.3f" % [path, share])
 			. is_between(TEAM_SHARE.x, TEAM_SHARE.y)
 		)
+
+
+## A model at detail 1 or more (ADR 0050 section 1; none is yet, the field arrives with the detail
+## renderer) paints its faction's fixed colour on panels: FACTION_SHARE of its default view.
+func test_a_model_at_detail_1_or_more_has_a_faction_share_in_its_band() -> void:
+	for path: String in ArtGen.model_paths():
+		var model: ArtModel = load(path) as ArtModel
+		if not ("detail" in model) or int(model.get(&"detail")) < 1:
+			continue
+		var share: float = _share(_default_picture(model), _faction_tones(model.faction))
+		(
+			assert_float(share)
+			. override_failure_message("%s faction share %.3f" % [path, share])
+			. is_between(FACTION_SHARE.x, FACTION_SHARE.y)
+		)
+
+
+## The measure bites: a hull of fixed faction material is faction colour, not marker, and the
+## other way round for the same hull in `team`.
+func test_the_share_measure_tells_the_fixed_material_from_the_marker() -> void:
+	for faction: StringName in [&"fossil", &"renew"]:
+		for material: StringName in [&"faction", &"team"]:
+			var model: ArtModel = Support.with_prims(
+				["box hull %s 0 0 0 1.2 1.2 0.8" % material], [], []
+			)
+			model.faction = faction
+			var picture: Image = Support.stage_image(model, 0)
+			var faction_share: float = _share(picture, _faction_tones(faction))
+			var team_share: float = _share(picture, ArtPalette.KEYS[faction])
+			var label: String = "%s %s" % [faction, material]
+			if material == &"faction":
+				assert_float(faction_share).override_failure_message(label).is_greater(0.6)
+				assert_float(team_share).override_failure_message(label).is_equal(0.0)
+			else:
+				assert_float(team_share).override_failure_message(label).is_greater(0.6)
+				assert_float(faction_share).override_failure_message(label).is_equal(0.0)
+
+
+## The share of `picture`'s opaque pixels within `KEY_TOLERANCE` of one of `hexes`.
+func _share(picture: Image, hexes: Array) -> float:
+	var keys: Array[Color] = []
+	for hex: String in hexes:
+		keys.append(Color(hex))
+	var hit: int = 0
+	var body: int = 0
+	for y: int in picture.get_height():
+		for x: int in picture.get_width():
+			var pixel: Color = picture.get_pixel(x, y)
+			if pixel.a < 0.95:
+				continue
+			body += 1
+			for key: Color in keys:
+				if (
+					absf(pixel.r - key.r) + absf(pixel.g - key.g) + absf(pixel.b - key.b)
+					< KEY_TOLERANCE
+				):
+					hit += 1
+					break
+	return float(hit) / maxi(body, 1)
+
+
+## The three tones of the faction's fixed colour: top, left and right face.
+func _faction_tones(faction: StringName) -> Array:
+	var tones: Array = []
+	for level: int in 3:
+		tones.append(ArtPalette.tone(faction, ArtPalette.FACTION, level))
+	return tones
 
 
 func test_the_default_view_of_every_type_is_identifiable_at_32_px_in_greyscale() -> void:

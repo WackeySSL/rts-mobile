@@ -308,21 +308,21 @@ func test_a_part_has_one_canvas_in_every_direction_and_a_building_is_anchored_at
 
 
 func test_the_key_band_is_the_one_of_adr_0023() -> void:
-	# ADR 0023 section 5: hue within 20 degrees of a key colour and saturation of at least 0.30.
-	var ranges: Dictionary[StringName, Vector2] = {
-		&"fossil": Vector2(1.6, 45.3), &"renew": Vector2(170.3, 213.0)
-	}
-	for faction: StringName in ranges:
-		var hues: Array[float] = []
-		for hex: String in ArtPalette.KEYS[faction]:
-			hues.append(Color(hex).h * 360.0)
-		assert_float(hues.min() - BAND_DEGREES).is_equal_approx(ranges[faction].x, 0.1)
-		assert_float(hues.max() + BAND_DEGREES).is_equal_approx(ranges[faction].y, 0.1)
-	# The four canvas colours the ADR changed fall in the band; their replacements do not.
-	for hex: String in ["#8E5A38", "#FFC45C"]:
+	# ADR 0023 section 5, ADR 0050 section 3: hue within 20 degrees of the sentinel's (300, magenta)
+	# and saturation of at least 0.30, one band for both factions.
+	var hues: Array[float] = []
+	for hex: String in ArtPalette.SENTINEL:
+		hues.append(Color(hex).h * 360.0)
+	assert_float(hues.min() - BAND_DEGREES).is_equal_approx(280.0, 0.1)
+	assert_float(hues.max() + BAND_DEGREES).is_equal_approx(320.0, 0.1)
+	assert_dict(ArtPalette.KEYS).is_equal(
+		{&"fossil": ArtPalette.SENTINEL, &"renew": ArtPalette.SENTINEL}
+	)
+	# A magenta is in the band; the fixed faction colours and the old key hues are not.
+	for hex: String in ["#C040C0", "#E070E0"]:
 		assert_bool(_in_band(hex, &"fossil")).override_failure_message(hex).is_true()
-	for hex: String in ["#8AD6E6", "#9BF6FF"]:
-		assert_bool(_in_band(hex, &"renew")).override_failure_message(hex).is_true()
+	for hex: String in ["#FF6E1F", "#40A3FF", "#E8681F", "#1FA6C8"]:
+		assert_bool(_in_band(hex, &"renew")).override_failure_message(hex).is_false()
 	for faction: StringName in ArtPalette.MATERIALS:
 		for material: StringName in ArtPalette.MATERIALS[faction]:
 			var hex: String = ArtPalette.MATERIALS[faction][material]
@@ -335,21 +335,15 @@ func test_the_key_band_is_the_one_of_adr_0023() -> void:
 				assert_bool(_in_band(hex, faction)).override_failure_message(hex).is_false()
 
 
-func test_no_colour_but_the_key_triad_is_in_the_key_band_of_its_faction() -> void:
+func test_no_colour_but_the_sentinel_triad_is_in_the_key_band() -> void:
 	var colour: RegEx = RegEx.create_from_string("#[0-9A-F]{6}")
 	var key_count: Dictionary[String, int] = {}
 	for path: String in _fresh:
 		if not path.ends_with(".svg"):
 			continue
 		var faction: StringName = _faction_of(path)
-		var other: StringName = &"renew" if faction == &"fossil" else &"fossil"
 		for found: RegExMatch in colour.search_all(_fresh[path]):
 			var hex: String = found.get_string()
-			(
-				assert_bool(ArtPalette.KEYS[other].has(hex))
-				. override_failure_message(path + " " + hex)
-				. is_false()
-			)
 			if ArtPalette.KEYS[faction].has(hex):
 				key_count[path] = key_count.get(path, 0) + 1
 			else:

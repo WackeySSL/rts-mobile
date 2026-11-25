@@ -3,7 +3,7 @@ extends RefCounted
 ## The colours of the art generator (ADR 0023 sections 5 and 6, assets/art/STYLE.md "Light" and
 ## "Palette per faction"). A material is one hex colour, the colour of its left face (the mid tone);
 ## the top and the right face are the same colour at 100 % and 62 % of the top (Spec 02: top 100 %,
-## left 82 %, right 62 %). The material `team` is each faction's key triad, light, mid and dark.
+## left 82 %, right 62 %). The material `team` is the sentinel key triad, light, mid and dark.
 
 const TEAM: StringName = &"team"
 ## The three levels of a face: lit from above, the left face, the right face.
@@ -11,12 +11,15 @@ const TOP: int = 0
 const LEFT: int = 1
 const RIGHT: int = 2
 const SHADES: Array[float] = [1.0, 0.82, 0.62]
-## Key triads (light, mid, dark): the only colours a team zone may use. The match-start bake
-## replaces these six hex strings with the player's triad and nothing else.
-const KEYS: Dictionary[StringName, Array] = {
-	&"fossil": ["#FF9446", "#E8681F", "#B04B12"],
-	&"renew": ["#62D6EE", "#1FA6C8", "#137C99"],
-}
+## The one sentinel key triad (light, mid, dark; ADR 0050 section 3): magenta at hue 300, a colour
+## the game never shows, because the match-start bake replaces these three hex strings with the
+## player's triad and nothing else. Only the team marker is painted in it; each faction's own
+## colour is a fixed material (`FACTION`), which the bake never changes.
+const SENTINEL: Array[String] = ["#F07AF0", "#D234D2", "#9A1F9A"]
+## The key triad of each faction: the sentinel for both (the per-faction triads are retired).
+const KEYS: Dictionary[StringName, Array] = {&"fossil": SENTINEL, &"renew": SENTINEL}
+## The fixed faction material: Nordvaern orange, Facet blue (the HUD accents' hues, STYLE.md).
+const FACTION: StringName = &"faction"
 ## ADR 0023 section 6 as changed by the key band: rust #6E5D50, lamp #FFF1D6 (warm white), glass
 ## #B4C8CF and mint #A8F5B0 replace the canvas colours that fell in a key colour's hue band.
 const MATERIALS: Dictionary[StringName, Dictionary] = {
@@ -28,6 +31,7 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"iron": "#3B3F39",
 		&"lamp": "#FFF1D6",
 		&"olive": "#7D8562",
+		&"faction": "#FF6E1F",
 	},
 	&"renew":
 	{
@@ -37,6 +41,7 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"glass": "#B4C8CF",
 		&"bluegrey": "#7D8B96",
 		&"mint": "#A8F5B0",
+		&"faction": "#40A3FF",
 	},
 }
 ## The materials of the damage stages (ADR 0029 section 5), the same in both factions and outside

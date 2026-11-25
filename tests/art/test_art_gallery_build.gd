@@ -13,16 +13,18 @@ const BUILD_PAGE: int = 1
 const BASES: Array[Vector2] = [Vector2(1280, 720), Vector2(1600, 720), Vector2(1280, 960)]
 const SECTIONS: Array[String] = [
 	"Zoom100Signal",
-	"Zoom100Arktisk",
+	"Zoom100Kobolt",
 	"Zoom75Signal",
-	"Zoom75Arktisk",
+	"Zoom75Kobolt",
 	"Zoom150Signal",
-	"Zoom150Arktisk"
+	"Zoom150Kobolt"
 ]
 const ZOOM_OF: Dictionary[String, float] = {"Zoom100": 1.0, "Zoom75": 0.75, "Zoom150": 1.5}
-const TRIAD_OF: Dictionary[String, int] = {"Signal": 0, "Arktisk": 1}
+const TRIAD_OF: Dictionary[String, int] = {"Signal": 0, "Kobolt": 1}
 const SIGNAL_MID: String = "E8681F"
-const ARKTISK_MID: String = "1FA6C8"
+const KOBOLT_MID: String = "3F6FE0"
+const NORDVAERN_ORANGE: String = "FF6E1F"  ## The faction's fixed colour, the emblem's tint.
+const FACET_BLUE: String = "40A3FF"
 const ART_SCALE: float = 0.5
 ## Buildings of both factions the scene is checked on, each with the tank of its faction, and the
 ## two that carry a head.
@@ -95,14 +97,14 @@ func test_the_page_steps_through_every_building_of_both_factions_with_two_big_bu
 	await _show(page, "barracks")
 	var emblem: TextureRect = page.get_node("Emblem")
 	assert_str(emblem.texture.resource_path).ends_with("icons/emblem_fossil.svg")
-	assert_that(emblem.modulate).is_equal(Color(SIGNAL_MID))
+	assert_that(emblem.modulate).is_equal(Color(NORDVAERN_ORANGE))
 	assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).ends_with(
 		"item_barracks.svg"
 	)
-	# The Lumen Accord's building shows the Lumen Accord's emblem, tinted in Arktisk's mid colour.
+	# The Lumen Accord's building shows the Lumen Accord's emblem, tinted in the fixed Facet blue.
 	await _show(page, "renew_barracks")
 	assert_str(emblem.texture.resource_path).ends_with("icons/emblem_renew.svg")
-	assert_that(emblem.modulate).is_equal(Color(ARKTISK_MID))
+	assert_that(emblem.modulate).is_equal(Color(FACET_BLUE))
 	assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).ends_with(
 		"item_renew_barracks.svg"
 	)
@@ -424,9 +426,9 @@ func test_the_defences_head_faces_the_tank_in_front_at_its_mount() -> void:
 			assert_bool(head.region_rect.has_area()).is_true()
 
 
-## Signal in the first row of each zoom and Arktisk in the second: the key triad of the Derrick
+## Signal in the first row of each zoom and Kobolt in the second: the key triad of the Derrick
 ## League's frames is replaced by the player's in the atlas, so the Signal hull has Signal's mid
-## colour and none of Arktisk's, and the Arktisk hull the other way round.
+## colour and none of Kobolt's, and the Kobolt hull the other way round.
 func test_the_two_triads_are_the_two_players_of_the_atlas() -> void:
 	var gallery: Control = await _open_gallery()
 	var page: Control = await _build_page(gallery)
@@ -436,21 +438,21 @@ func test_the_two_triads_are_the_two_players_of_the_atlas() -> void:
 
 
 ## The key triad of the building's faction is replaced by the player's: Signal's mid colour in the
-## first row of each zoom, Arktisk's in the second (the Lumen Accord's own triad stays Arktisk's).
+## first row of each zoom, Kobolt's in the second (the Lumen Accord's own triad stays Kobolt's).
 func _check_triads(page: Control, id: StringName) -> void:
 	var sheet: IsoSheetDef = (load(IsoIndex.PATH) as IsoIndex).sheet(id)
 	var image: Image = page.atlas.texture().get_image()
 	var signal_region: Rect2i = page.atlas.region(id, &"hull", -1, 0)
-	var arktisk_region: Rect2i = page.atlas.region(id, &"hull", -1, 1)
-	assert_bool(signal_region != arktisk_region).is_true()
+	var kobolt_region: Rect2i = page.atlas.region(id, &"hull", -1, 1)
+	assert_bool(signal_region != kobolt_region).is_true()
 	assert_vector(Vector2(signal_region.size)).is_equal(
 		Vector2(sheet.frame_size(&"hull")) * page.atlas.bake_scale()
 	)
 	assert_int(_pixels_near(image, signal_region, SIGNAL_MID)).is_greater(100)
-	assert_int(_pixels_near(image, signal_region, ARKTISK_MID)).is_equal(0)
-	assert_int(_pixels_near(image, arktisk_region, ARKTISK_MID)).is_greater(100)
-	assert_int(_pixels_near(image, arktisk_region, SIGNAL_MID)).is_equal(0)
-	# And the sections use them: the first of each zoom is Signal's, the second Arktisk's.
+	assert_int(_pixels_near(image, signal_region, KOBOLT_MID)).is_equal(0)
+	assert_int(_pixels_near(image, kobolt_region, KOBOLT_MID)).is_greater(100)
+	assert_int(_pixels_near(image, kobolt_region, SIGNAL_MID)).is_equal(0)
+	# And the sections use them: the first of each zoom is Signal's, the second Kobolt's.
 	for ground: String in ["Grass", "Sand"]:
 		for section: Node in page.get_node("Scroll/Content/" + ground).get_children():
 			var hull: Sprite2D = section.get_node("Scene/Rigs/Building/Hull")
@@ -585,7 +587,7 @@ func _zoom(section: Node) -> float:
 
 
 func _triad_name(section: Node) -> String:
-	return "Signal" if String(section.name).ends_with("Signal") else "Arktisk"
+	return "Signal" if String(section.name).ends_with("Signal") else "Kobolt"
 
 
 ## The models of the buildings, in the page's order.

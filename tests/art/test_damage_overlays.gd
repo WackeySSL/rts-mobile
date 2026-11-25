@@ -103,8 +103,9 @@ func test_no_colour_is_in_a_key_band_and_the_embers_are_yellow_white() -> void:
 
 
 func test_the_colour_check_catches_a_key_colour() -> void:
-	assert_bool(_in_key_band(Color("#FF9446"))).is_true()
-	assert_bool(_in_key_band(Color("#1FA6C8"))).is_true()
+	assert_bool(_in_key_band(Color("#D234D2"))).is_true()
+	assert_bool(_in_key_band(Color("#F07AF0"))).is_true()
+	assert_bool(_in_key_band(Color("#FF9446"))).is_false()  # The retired Signal key.
 	assert_bool(_in_key_band(Color("#FFD84D"))).is_false()
 	assert_bool(_in_key_band(Color("#7D8893"))).is_false()
 

@@ -8,10 +8,10 @@ extends GdUnitTestSuite
 const Iso: GDScript = preload("res://game/view/art_gallery_iso.gd")
 const GALLERY_PATH: String = "res://scenes/dev/art_gallery.tscn"
 const ISO_PAGE: int = 4
-const ROWS: Array[String] = ["Signal", "Arktisk"]
+const ROWS: Array[String] = ["Signal", "Kobolt"]
 const ZOOM_RIGS: Array[String] = ["Zoom75", "Zoom100", "Zoom150"]
 const SIGNAL_KEYS: Array[String] = ["#FF9446", "#E8681F", "#B04B12"]
-const ARKTISK_KEYS: Array[String] = ["#62D6EE", "#1FA6C8", "#137C99"]
+const KOBOLT_KEYS: Array[String] = ["#7AA2F7", "#3F6FE0", "#27479E"]
 const BASE: Vector2 = Vector2(1280, 720)
 
 
@@ -42,7 +42,7 @@ func test_the_iso_page_is_built_when_it_is_first_shown_and_names_the_first_type(
 		for row: Node in page.get_node("Scroll/Content/" + ground).get_children():
 			names.append(row.name)
 		# The artillery is a vehicle: the Damage rows (P160) come after its two triads.
-		assert_array(names).is_equal([&"Signal", &"Arktisk", &"Damage"])
+		assert_array(names).is_equal([&"Signal", &"Kobolt", &"Damage"])
 
 
 func test_every_type_shows_each_direction_in_both_triads_and_its_default_view_at_three_zooms(
@@ -218,14 +218,14 @@ func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() 
 		-Vector2(layouts[&"turret"].origin) * factor, Vector2.ONE * 1e-3
 	)
 	var signal_hull: Image = (rig.get_node("Hull") as Sprite2D).texture.get_image()
-	var arktisk: Node2D = page.get_node("Scroll/Content/Grass/Arktisk/Dir06")
-	var arktisk_hull: Image = (arktisk.get_node("Hull") as Sprite2D).texture.get_image()
+	var kobolt: Node2D = page.get_node("Scroll/Content/Grass/Kobolt/Dir06")
+	var kobolt_hull: Image = (kobolt.get_node("Hull") as Sprite2D).texture.get_image()
 	# The mid tone is the left face of the team band; its top is a thin ledge that a texture at
 	# gallery size blurs into the edge.
 	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[1])).is_true()
-	assert_bool(_has_colour(signal_hull, ARKTISK_KEYS[1])).is_false()
-	assert_bool(_has_colour(arktisk_hull, ARKTISK_KEYS[1])).is_true()
-	assert_bool(_has_colour(arktisk_hull, SIGNAL_KEYS[1])).is_false()
+	assert_bool(_has_colour(signal_hull, KOBOLT_KEYS[1])).is_false()
+	assert_bool(_has_colour(kobolt_hull, KOBOLT_KEYS[1])).is_true()
+	assert_bool(_has_colour(kobolt_hull, SIGNAL_KEYS[1])).is_false()
 	# Grass and sand show the same frame: one texture.
 	var sand_rig: Node2D = page.get_node("Scroll/Content/Sand/Signal/Dir06")
 	assert_object((sand_rig.get_node("Hull") as Sprite2D).texture).is_same(

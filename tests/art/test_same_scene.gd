@@ -22,6 +22,52 @@ func test_the_sheet_builds_headless_with_every_zoom_both_factions_and_the_hud_st
 	assert_int(colours.size()).is_greater(200)
 
 
+## The mirror row (P632): the same sprite as the two players of a mirror route has one
+## silhouette and differs only where the marker is, a part of the body (the old models paint their
+## whole team areas in it, 5 to 12 %, and its anti-aliased edges count too).
+func test_the_mirror_row_differs_only_in_the_marker() -> void:
+	for at: int in [0, 2]:  # The sheet's mirror row: a Nordvaern and a Facet unit.
+		var id: StringName = StringName(_bands.scene[at])
+		var own: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0)
+		var other: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0, SameScene.mirror_of(id))
+		assert_vector(Vector2(own.body.get_size())).is_equal(Vector2(other.body.get_size()))
+		var differs: int = 0
+		var body: int = 0
+		for y: int in own.body.get_height():
+			for x: int in own.body.get_width():
+				var a: Color = own.body.get_pixel(x, y)
+				var b: Color = other.body.get_pixel(x, y)
+				assert_float(absf(a.a - b.a)).override_failure_message(String(id)).is_less(0.01)
+				body += 1 if a.a > 0.95 else 0
+				differs += 1 if a.a > 0.95 and not a.is_equal_approx(b) else 0
+		var share: float = float(differs) / maxi(body, 1)
+		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(0.02, 0.3)
+
+
+## The route colours of the sheet are what `WorldSort.TRIADS` gives the sides (interim, P647).
+func test_the_sheet_wears_the_routes_triads() -> void:
+	assert_array(SameScene.ROUTE_TRIAD[&"fossil"]).is_equal(WorldSort.TRIADS[0])
+	assert_array(SameScene.ROUTE_TRIAD[&"renew"]).is_equal(WorldSort.TRIADS[3])
+	assert_array(Array(SameScene.mirror_of(&"heavy_tank"))).is_equal(WorldSort.TRIADS[3])
+	assert_array(Array(SameScene.mirror_of(&"renew_tank"))).is_equal(WorldSort.TRIADS[0])
+
+
+## The transition list (2026-11-25, P632) may only shrink: every listed id still misses its band,
+## and a model that is fixed has to leave the list (P647 empties it).
+func test_every_exempt_id_still_misses_its_band() -> void:
+	for id: StringName in _bands.exempt_sat:
+		assert_bool(_bands.roster.has(String(id))).override_failure_message(id).is_true()
+		var m: Dictionary = SameScene.measure(SameScene.sprite(id, _bands, 1.0))
+		assert_float(m[&"sat"]).override_failure_message("%s left sat" % id).is_less(
+			_bands.tone_sat.x
+		)
+	for id: StringName in _bands.exempt_up:
+		var m: Dictionary = SameScene.measure(SameScene.sprite(id, _bands, 1.0))
+		assert_float(m[&"up_down"]).override_failure_message("%s left up" % id).is_less(
+			_bands.light_up_min
+		)
+
+
 func test_todays_art_holds_every_band() -> void:
 	assert_array(SameScene.audit(_bands)).is_empty()
 	assert_int(_bands.roster.size()).is_greater_equal(16)

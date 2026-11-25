@@ -3,9 +3,9 @@ extends GdUnitTestSuite
 ## "Skirmish (Nordværn)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
 ## with the player on that side as player 1, the computer of the other side as
 ## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
-## and the player's units in the
-## colour of that side: orange for Nordværn, cyan for Facet, the other player
-## in the other colour (the Facet route is the scenario whose `team_triads` swap them). The
+## and the player's units in its side's colour, the other player's in the other side's (orange for
+## Nordvaern, blue for Facet: the scenario's `team_triads`; P647 switches the markers to your own
+## white, Sne, and the computer's red, Karmin, ADR 0050 section 3 answer 3). The
 ## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -21,8 +21,7 @@ const ROUTES: Array[Dictionary] = [
 		"other_hq": &"renew_hq",
 		"own_faction": &"fossil",
 		"own_triad": 0,
-		"other_triad": 1,
-		"accent": &"AccentFossil",
+		"other_triad": 3,
 	},
 	{
 		"button": "SkirmishLumenButton",
@@ -32,17 +31,17 @@ const ROUTES: Array[Dictionary] = [
 		"own_hq": &"renew_hq",
 		"other_hq": &"headquarters",
 		"own_faction": &"renew",
-		"own_triad": 1,
+		"own_triad": 3,
 		"other_triad": 0,
-		"accent": &"AccentRenew",
 	},
 ]
 ## Player 1's Headquarters tile in both scenarios (the minimap paints its footprint).
 const HQ_TILE: Vector2i = Vector2i(7, 7)
-## The hue of an accent and of the team colour it sits beside may differ by this many degrees.
-## P604 moved Facet's accent to blue (#40A3FF) while the team triads are still the old cyan until
-## P632, so the slack is 20 for now (the pair is 15.3 apart); P632 sets it back to 8.
-const HUE_SLACK_DEG: float = 20.0
+## The interim marker colours (WorldSort.TRIADS): Nordvaern orange, Facet blue (Kobolt). The default
+## markers of ADR 0050 section 3 (own Sne, the computer's Karmin) switch in with P647, the last
+## model batch; until then the old models wear the side's colour on their whole team areas.
+const ORANGE: int = 0
+const BLUE: int = 3
 const THINK_TICKS: int = 150
 
 var _window_size_before: Vector2i
@@ -168,9 +167,8 @@ func test_the_build_menu_shows_only_the_players_own_side_in_each_route() -> void
 		CommandQueue.clear()
 
 
-## Your units take your side's colour (answer 7): player 1 wears the triad of its side in the atlas
-## and on the minimap, player 2 the other, and the colour sits beside the side's HUD accent: the
-## Lumen Accord's is the accent itself, the Derrick League's within a few degrees of hue.
+## Your units take the default marker colours (answer 3): player 1 wears Sne in the atlas and on
+## the minimap, player 2 Karmin, whichever side the route plays.
 func test_each_routes_player_wears_the_colour_of_its_side_and_the_other_the_other() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[0]  # Sideways, so that the minimap shows.
 	await await_idle_frame()
@@ -197,29 +195,55 @@ func test_each_routes_player_wears_the_colour_of_its_side_and_the_other_the_othe
 			. override_failure_message(label)
 			. is_equal(Vector3i(Color(own[1]).r8, Color(own[1]).g8, Color(own[1]).b8))
 		)
-		var accent: Color = (main.get_node("Hud/SafeArea") as Control).get_theme_color(
-			&"accent", route["accent"]
-		)
-		var mid: Color = sorted.mid_colour(1)
-		assert_float(absf(mid.h - accent.h) * 360.0).override_failure_message(label).is_less(
-			HUE_SLACK_DEG
-		)
 		main.free()
 		get_tree().current_scene = null
 		CommandQueue.clear()
 
 
-## The data behind it: the Derrick League's scenario names no team colours (the default order
-## holds) and the Lumen Accord's swaps them, entry 0 unused.
-func test_the_scenarios_team_triads_are_the_data_of_the_swap() -> void:
-	var derrick: ScenarioDef = load(ROUTES[0]["scenario"])
-	var lumen: ScenarioDef = load(ROUTES[1]["scenario"])
-	assert_array(derrick.team_triads).is_empty()
-	assert_array(lumen.team_triads).is_equal(PackedInt32Array([0, 1, 0]))
-	for player: int in [1, 2]:
-		assert_int(WorldSort.triad_index(derrick.team_triads, player)).is_equal(player - 1)
-	assert_int(WorldSort.triad_index(lumen.team_triads, 1)).is_equal(1)
-	assert_int(WorldSort.triad_index(lumen.team_triads, 2)).is_equal(0)
+## The data behind it: every Skirmish scenario (both sides of all three maps, and the mirrors) names
+## `(0, 6, 2)`, entry 0 unused, so the default marker colours are the route's rule, not a swap.
+## The fixed faction colours are the HUD accents (ADR 0050 section 3): the art's `faction` material
+## mid of each side equals the theme's accent token. The route test above proves the markers (own
+## units Sne, the computer's Karmin) per route.
+func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
+	var theme: Theme = load("res://game/ui/theme.tres") as Theme
+	var pairs: Dictionary[StringName, StringName] = {
+		&"fossil": &"AccentFossil", &"renew": &"AccentRenew"
+	}
+	for faction: StringName in pairs:
+		var accent: Color = theme.get_color(&"accent", pairs[faction])
+		var mid: Color = Color(ArtPalette.MATERIALS[faction][ArtPalette.FACTION])
+		assert_str(mid.to_html(false)).override_failure_message(faction).is_equal(
+			accent.to_html(false)
+		)
+
+
+## Interim, 2026-11-25 (P632; P647 switches to Sne and Karmin): each player of every Skirmish
+## scenario wears its side's colour, orange for Nordvaern and blue for Facet, and in a mirror of one
+## side the second player wears the other side's colour.
+func test_every_skirmish_scenario_gives_each_player_its_sides_colour() -> void:
+	var seen: int = 0
+	for file: String in DirAccess.get_files_at("res://data/scenarios"):
+		if not file.begins_with("skirmish_") or not file.ends_with(".tres"):
+			continue
+		var scenario: ScenarioDef = load("res://data/scenarios/" + file)
+		var first: int = ORANGE if scenario.factions[1].id == &"fossil" else BLUE
+		var second: int = ORANGE if scenario.factions[2].id == &"fossil" else BLUE
+		if first == second:
+			second = BLUE if first == ORANGE else ORANGE
+		(
+			assert_int(WorldSort.triad_index(scenario.team_triads, 1))
+			. override_failure_message(file)
+			. is_equal(first)
+		)
+		(
+			assert_int(WorldSort.triad_index(scenario.team_triads, 2))
+			. override_failure_message(file)
+			. is_equal(second)
+		)
+		seen += 1
+	assert_int(seen).is_equal(12)
+	assert_array(WorldSort.TRIADS[BLUE]).is_equal(["#7AA2F7", "#3F6FE0", "#27479E"])
 
 
 ## The type id of player `player`'s Headquarters: the first of its buildings with "hq" in its id or

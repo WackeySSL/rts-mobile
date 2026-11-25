@@ -34,18 +34,19 @@ func test_the_minimap_reads_the_same_rule() -> void:
 	assert_int(MinimapImage.team_slot(0, swapped)).is_equal(1)  # As the atlas's slot_of(0).
 
 
-## The atlas bakes the swap: the two players of a scenario with `team_triads` wear each other's
-## triad, and a restart of the same scenario is not baked again.
+## The atlas bakes the swap: the two players of a scenario wear the triads its `team_triads` name
+## (orange and Kobolt blue on the Skirmish routes, interim until P647), and a restart of the same
+## scenario is not baked again.
 func test_the_atlas_players_wear_the_triads_the_scenario_names() -> void:
 	var scenario: ScenarioDef = load("res://data/scenarios/skirmish_kestrel_flats_mirrored.tres")
 	var sorted: WorldSort = auto_free(WorldSort.new())
 	var atlas: IsoAtlas = sorted.bake(scenario)
 	assert_bool(atlas.is_empty()).is_false()
-	assert_str(sorted.mid_colour(1).to_html(false)).is_equal(Color("1FA6C8").to_html(false))
+	assert_str(sorted.mid_colour(1).to_html(false)).is_equal(Color("3F6FE0").to_html(false))
 	assert_str(sorted.mid_colour(2).to_html(false)).is_equal(Color("E8681F").to_html(false))
 	assert_str(sorted.mid_colour(0).to_html(false)).is_equal(sorted.mid_colour(1).to_html(false))
 	assert_object(sorted.bake(scenario)).is_same(atlas)
 	var plain: ScenarioDef = load("res://data/scenarios/skirmish_kestrel_flats.tres")
-	sorted.bake(plain)
+	sorted.bake(plain)  # Nordvaern first: orange for player 1, Facet's blue (Kobolt) for player 2.
 	assert_str(sorted.mid_colour(1).to_html(false)).is_equal(Color("E8681F").to_html(false))
-	assert_str(sorted.mid_colour(2).to_html(false)).is_equal(Color("1FA6C8").to_html(false))
+	assert_str(sorted.mid_colour(2).to_html(false)).is_equal(Color("3F6FE0").to_html(false))

@@ -10,7 +10,6 @@ extends Resource
 @export var wanted_dir: Dictionary[StringName, int] = {}  ## Faction -> the default view of a unit.
 @export var terrains: PackedStringArray = PackedStringArray()
 @export var zooms: PackedFloat32Array = PackedFloat32Array()
-@export var mirror_triad: PackedStringArray = PackedStringArray()  ## The second player's triad.
 @export var glyphs: PackedStringArray = PackedStringArray()
 @export var effects: Dictionary[String, Rect2i] = {}  ## Name -> region of the effects atlas, px.
 @export var grade_warm: Color = Color.WHITE  ## ADR 0035 section 3: warm at the top left,
@@ -26,3 +25,11 @@ extends Resource
 @export var density: Vector2 = Vector2.ZERO  ## Edges per 100 px squared at zoom 1.0.
 @export var shadow_alpha: Vector2 = Vector2.ZERO  ## Peak alpha of the cast shadow.
 @export var spread_min: float = 0.0  ## 32 px greyscale spread, 5th to 95th percentile, 0 to 255.
+
+@export_group("Transition exemptions")
+## 2026-11-25 (P632): old models that paint their whole team areas in the marker read greyer and
+## lighter with your own white one. Art id -> the measured value that misses the band. The audit
+## skips these ids for the saturation band (`exempt_sat`) and the light band (`exempt_up`) only;
+## the list may only shrink, and a model that is fixed leaves it (P647 empties it).
+@export var exempt_sat: Dictionary[StringName, float] = {}
+@export var exempt_up: Dictionary[StringName, float] = {}

@@ -12,7 +12,6 @@ wanted_dir = Dictionary[StringName, int]({
 })
 terrains = PackedStringArray("grass", "scrub", "sand", "rock", "ore")
 zooms = PackedFloat32Array(0.75, 1, 1.5, 2)
-mirror_triad = PackedStringArray("#F26A5E", "#CF3A2E", "#922219")
 glyphs = PackedStringArray("res://assets/art/svg/icons/glyph_repair.svg", "res://assets/art/svg/icons/glyph_power.svg", "res://assets/art/svg/icons/glyph_sell.svg", "res://assets/art/svg/icons/glyph_alert.svg")
 effects = Dictionary[String, Rect2i]({
 "burst": Rect2i(0, 0, 80, 80),
@@ -30,3 +29,8 @@ black_edge_max = 0.02
 density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
 spread_min = 80.0
+; Transition exemptions (2026-11-25, P632), art id -> measured value that misses the saturation
+; (`exempt_sat`) or the up/down light band (`exempt_up`). Shrink-only; empty since the routes wear
+; the sides' own colours. P647 switches the routes to Sne and Karmin and may need entries again.
+exempt_sat = Dictionary[StringName, float]({})
+exempt_up = Dictionary[StringName, float]({})
