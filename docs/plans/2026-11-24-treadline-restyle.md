@@ -183,6 +183,7 @@ CLAUDE.md). `tools/artgen` code counts.
 | P637 | art-director | #643, P601 | **Done** on `claude/p601-style-proto` (6be63003, `docs/proto/p601/README.md` "Round 3 (P637)"): (a) artgen SVG most coherent, (b) Figma vector best silhouette, (c) Figma AI breaks the scene. Not merged | — | none | 0 |
 | P638 | art-director | P629, P631, P632 | **Nordværn ground vehicles** at L2 (scout tank, tank, artillery, tanker): fixed panels, marker | per-batch checks | none | art |
 | P639 | art-director | P638, P630c | **Facet ground vehicles** at L2 | per-batch checks | none | art |
+| P639b | art-director | P639 | **Item cards at the model's detail level.** `ArtIcon` draws each card from the detail view of its model (panels, seams, sheen, decals), for both factions; cards regenerate per faction | `test_artgen_cards` compares each card with the model's detail view; the unit and page budgets hold | none | ~40 |
 | P640 | art-director | P639 | **Nordværn squads** (all infantry, poses) | per-batch checks | none | art |
 | P641 | art-director | P640 | **Facet squads** | per-batch checks | none | art |
 | P642 | art-director | P641 | **Nordværn support and air** (carrier, minelayer, aircraft) | per-batch checks | none | art |
