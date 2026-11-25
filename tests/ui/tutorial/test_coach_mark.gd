@@ -238,3 +238,104 @@ func test_skip_is_on_the_first_card_only_and_next_on_read_only_beats() -> void:
 	assert_bool(next.is_visible_in_tree()).is_false()  # An action beat has no Next.
 	assert_bool(skip.is_visible_in_tree()).is_false()
 	_close()
+
+
+## A chained beat: a lead-in on `CoachTarget` that holds once the drawer is open, then the beat's
+## own anchor `final`, a second control at the screen's lower part.
+func _chained(final: StringName = &"SecondTarget") -> TutorialBeatDef:
+	return Lesson.beat(
+		"chain",
+		TutorialConditions.Kind.CAMERA_PANNED,
+		{
+			"anchor": TutorialBeatDef.Anchor.CONTROL,
+			"anchor_control": final,
+			"lead_in":
+			[
+				Lesson.lead_in(
+					"CoachTarget", TutorialConditions.Kind.UNFOLD_OPEN, HudState.Unfold.DRAWER
+				)
+			]
+		}
+	)
+
+
+func _second(node: Control, name: StringName) -> Control:
+	node.name = name
+	_hud_root.add_child(node)
+	var centre: Vector2 = get_viewport().get_visible_rect().size * Vector2(0.5, 0.75)
+	node.position = centre - node.size * 0.5
+	return node
+
+
+func _plain() -> Control:
+	var second: Control = Control.new()
+	second.size = Vector2.ONE * UiScale.dp(56.0)
+	return _second(second, &"SecondTarget")
+
+
+func test_the_ring_follows_the_chain_on_target_changed() -> void:
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), _chained())
+	var second: Control = _plain()
+	assert_bool(_mark.ring_rect().encloses(_target.get_global_rect())).is_true()
+	var changes: Array[StringName] = []
+	_director.target_changed.connect(
+		func(step: TutorialLeadInDef) -> void: changes.append(step.anchor_control)
+	)
+	_director.hud.open(HudState.Unfold.DRAWER)
+	_director.advance()  # No frame in between: the mark follows the signal itself.
+	assert_array(changes).is_equal([&"SecondTarget"])
+	assert_object(_mark.target_control()).is_same(second)
+	assert_bool(_mark.ring_rect().encloses(second.get_global_rect())).is_true()
+	_director.hud.close(HudState.Unfold.DRAWER)  # The ring goes back to the step before.
+	_director.advance()
+	assert_object(_mark.target_control()).is_same(_target)
+
+
+class SpySidebar:
+	extends Control
+	var asked: Array[ItemTile] = []
+
+	func reveal_tile(tile: ItemTile) -> void:
+		asked.append(tile)
+
+
+func test_a_card_out_of_view_puts_the_ring_on_the_lists_edge_and_is_revealed_once() -> void:
+	await _open(_profile(ScreenSizes.PORTRAIT[0]), _chained(&"Tile_probe"))
+	var sidebar: SpySidebar = SpySidebar.new()
+	_hud_root.add_child(sidebar)
+	var list: ScrollContainer = ScrollContainer.new()
+	list.size = Vector2(UiScale.dp(200.0), UiScale.dp(200.0))
+	list.position = Vector2(UiScale.dp(40.0), UiScale.dp(300.0))
+	sidebar.add_child(list)
+	var column: VBoxContainer = VBoxContainer.new()
+	list.add_child(column)
+	var gap: Control = Control.new()
+	gap.custom_minimum_size = Vector2(UiScale.dp(150.0), UiScale.dp(600.0))
+	column.add_child(gap)
+	var tile: ItemTile = ItemTile.new()
+	tile.name = "Tile_probe"
+	tile.custom_minimum_size = Vector2.ONE * UiScale.dp(96.0)
+	column.add_child(tile)
+	await await_idle_frame()
+	_director.hud.open(HudState.Unfold.DRAWER)
+	_director.advance()
+	for _i: int in 5:
+		await await_idle_frame()
+	assert_object(_mark.target_control()).is_same(tile)
+	assert_int(sidebar.asked.size()).is_equal(1)  # Five frames, one ask.
+	var area: Rect2 = list.get_global_rect()
+	var ring: Rect2 = _mark.ring_rect()
+	assert_float(ring.get_center().y).is_greater(area.get_center().y)  # The edge nearest the card.
+	assert_bool(area.grow(UiScale.dp(8.0)).encloses(ring)).is_true()
+	list.scroll_vertical = 700  # The player scrolls by hand: the card comes into view, no new ask.
+	for _i: int in 3:
+		await await_idle_frame()
+	assert_int(sidebar.asked.size()).is_equal(1)
+	assert_bool(ring.intersects(_mark.ring_rect()) or _mark.ring_rect().has_area()).is_true()
+	assert_bool(area.grow(UiScale.dp(8.0)).encloses(_mark.ring_rect())).is_true()
+	_director.hud.close(HudState.Unfold.DRAWER)
+	_director.advance()
+	_director.hud.open(HudState.Unfold.DRAWER)
+	_director.advance()  # The step is entered again: it asks again, once.
+	await await_idle_frame()
+	assert_int(sidebar.asked.size()).is_equal(2)

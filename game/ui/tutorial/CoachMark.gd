@@ -39,8 +39,8 @@ extends Control
 const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
 const TAB_CLEAR_DP: float = 8.0  ## The least between the tab's rect and a card button's.
 const MIN_TEXT_DP: float = 120.0  ## The least width of the prompt beside the buttons' column.
-const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
+const RING_GROW_DP: float = GuideRing.RING_GROW_DP
 const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
 const REDUCED_LINE_DP: float = 1.0  ## Reduced effects: a steady frame, this much thicker.
 const PILL_STEP_DP: float = 8.0  ## The pill width is read in steps of this.
@@ -98,6 +98,9 @@ var _content: VBoxContainer
 var _next: Button
 var _skip: Button
 var _beat: TutorialBeatDef = null
+var _aim: TutorialLeadInDef = null  ## The step of the chain the ring is on (ADR 0048 section 5).
+var _fallback: TutorialLeadInDef = null  ## The beat's own anchor as a step: no director.
+var _revealed: bool = false  ## This step's drawer card was asked into view already.
 var _target: Control = null
 var _blink: Tween = null
 var _blink_alpha: float = 1.0  ## The frame's opacity now.
@@ -223,6 +226,7 @@ func bind(new_director: TutorialDirector) -> void:
 		return
 	if not director.beat_shown.is_connected(show_beat):
 		director.beat_shown.connect(show_beat)
+		director.target_changed.connect(_on_target_changed)
 		director.beat_done.connect(_on_beat_done)
 		director.lesson_done.connect(_on_lesson_over)
 		director.lesson_skipped.connect(_on_lesson_over)
@@ -233,10 +237,11 @@ func bind(new_director: TutorialDirector) -> void:
 ## Puts the prompt of `beat` up (when the mark is not yet in the tree, as soon as it is).
 func show_beat(beat: TutorialBeatDef) -> void:
 	_beat = beat
+	_fallback = TutorialChain.final_step(beat)
+	_aim = null
+	_sync_aim()
 	if _ring == null:
 		return
-	_target = null
-	_next_find = 0
 	_band_scan = 0  # The beat's controls may be new: list them again.
 	_gap = false
 	_arm_open = true
@@ -257,6 +262,7 @@ func show_beat(beat: TutorialBeatDef) -> void:
 func hide_mark() -> void:
 	_gap = false
 	_beat = null
+	_aim = null
 	_target = null
 	_ring_now = Rect2()
 	visible = false
@@ -268,6 +274,7 @@ func hide_mark() -> void:
 ## Between two beats: nothing but the tab, with the next beat's number (ADR 0048 section 2).
 func _show_gap() -> void:
 	_beat = null
+	_aim = null
 	_target = null
 	_ring_now = Rect2()
 	_gap = true
@@ -491,14 +498,7 @@ func _ad_band() -> Rect2:
 
 ## `control`'s rect as the player sees it: cut by the scroll areas it stands in and by the screen.
 func _visible_rect(control: Control) -> Rect2:
-	var shown: Rect2 = control.get_global_rect()
-	var up: Node = control.get_parent()
-	while up != null and up != hud_root:
-		var area: ScrollContainer = up as ScrollContainer
-		if area != null:
-			shown = shown.intersection(area.get_global_rect())
-		up = up.get_parent()
-	return shown.intersection(Rect2(Vector2.ZERO, _view))
+	return GuideRing.visible_rect(control, hud_root, _view)
 
 
 ## Whether the mark must stand down: a visible modal (the pause menu, a question, the result
@@ -537,7 +537,9 @@ func _process(_delta: float) -> void:
 func _update() -> void:
 	if (_beat == null and not _gap) or not is_inside_tree():
 		return
+	_sync_aim()
 	_resolve_target()
+	_reveal_once()
 	var covered: bool = _covered()
 	if covered == visible:  # The state changed: a hidden mark draws nothing and takes no touch.
 		visible = not covered
@@ -770,58 +772,69 @@ func prompt_scrolls() -> bool:
 	return _scroll.get_v_scroll_bar().max_value > _scroll.get_v_scroll_bar().page + 0.5
 
 
-## The ring's box from the beat, global px: a control's rect grown a little, or the tile's ground
-## ellipse, at least a touch target and pinned into the safe rect. Empty with no anchor or no
-## control to point at. Pure: it reads `_target`, it never looks for one.
+## The ring's box for the active step (`GuideRing.box`). Pure: it reads `_target`, never looks.
 func _ring_box() -> Rect2:
-	var box: Rect2 = Rect2()
 	if _beat == null:
-		return box
-	match _beat.anchor:
-		TutorialBeatDef.Anchor.CONTROL:
-			if not is_instance_valid(_target):
-				return Rect2()
-			box = _target.get_global_rect().grow(RING_GROW_DP * _dp)
-		TutorialBeatDef.Anchor.TILE:
-			if camera == null:
-				return Rect2()
-			var world: Vector2 = IsoProjection.cell_centre_px(
-				_beat.anchor_tile.x, _beat.anchor_tile.y
-			)
-			var radius: Vector2 = IsoProjection.ellipse_px(ViewScale.MILLI_PER_TILE) * camera.zoom
-			box = Rect2(camera.world_to_screen(world) - radius, radius * 2.0)
-		_:
-			return Rect2()
-	var least: float = MIN_TARGET_DP * _dp
-	var fit: Vector2 = box.size.max(Vector2(least, least))
-	box = Rect2(box.get_center() - fit * 0.5, fit)
-	if _beat.anchor == TutorialBeatDef.Anchor.CONTROL and box.intersects(_safe_rect):
-		return box.intersection(_safe_rect)  # A control's frame is cut at the edge, not moved off it.
-	var top_left: Vector2 = _safe_rect.position
-	box.position = box.position.clamp(top_left, (_safe_rect.end - box.size).max(top_left))
-	return box.intersection(_safe_rect) if box.intersects(_safe_rect) else box  # Never past an edge.
+		return Rect2()
+	return GuideRing.box(_aim, _target, camera, hud_root, _view, _safe_rect, _dp)
+
+
+## Takes the active step of the director's chain (the beat's own anchor with no director).
+func _sync_aim() -> void:
+	var want: TutorialLeadInDef = null
+	if _beat != null:
+		if director != null and director.current == _beat:
+			want = director.active_target()
+		if want == null:
+			want = _fallback
+	if want == _aim:
+		return
+	_aim = want
+	_target = null
+	_next_find = 0
+	_revealed = false
+	_dirty = true
+
+
+## The director moved the chain on: look for the new step's control now, not at the next find.
+func _on_target_changed(_step: TutorialLeadInDef) -> void:
+	_sync_aim()
+	if _ring != null:
+		_update()
+
+
+## Asks the sidebar once per step entry to scroll a drawer card clear of the foot room; a player
+## who scrolls away is not fought (ADR 0048 section 5).
+func _reveal_once() -> void:
+	var tile: ItemTile = _target as ItemTile
+	if _revealed or tile == null or tile.size.y <= 0.0:
+		return
+	var sidebar: Node = GuideRing.sidebar_of(tile)
+	if sidebar != null:
+		_revealed = true
+		sidebar.call(&"reveal_tile", tile)
 
 
 ## Keeps `_target` the named control while it stands and shows; looks again for a missing one
 ## every `FIND_EVERY` frames, not every frame.
 func _resolve_target() -> void:
-	if _beat == null or _beat.anchor != TutorialBeatDef.Anchor.CONTROL:
+	if _aim == null or _aim.anchor != TutorialBeatDef.Anchor.CONTROL:
 		_target = null
 		return
 	if is_instance_valid(_target) and _target.is_visible_in_tree():
 		return
 	_target = null
 	var frame: int = Engine.get_process_frames()
-	if hud_root == null or _beat.anchor_control == &"" or frame < _next_find:
+	if hud_root == null or _aim.anchor_control == &"" or frame < _next_find:
 		return
 	_next_find = frame + FIND_EVERY
-	var found: Control = hud_root.find_child(String(_beat.anchor_control), true, false) as Control
+	var found: Control = hud_root.find_child(String(_aim.anchor_control), true, false) as Control
 	if found != null and found.is_visible_in_tree():
 		_target = found
 
 
 func _draw_ring() -> void:
-	if not _ring_now.has_area() or _beat == null:
+	if not _ring_now.has_area() or _aim == null:
 		return
 	var tone: Color = ring_tone()
 	var line: float = ring_line_px()
@@ -829,7 +842,7 @@ func _draw_ring() -> void:
 	var half: Vector2 = _ring_now.size * 0.5
 	for turn: int in ring_count():  # Stalled: a second, outer ring.
 		var grow: float = line * 2.0 * turn
-		if _beat.anchor == TutorialBeatDef.Anchor.CONTROL:
+		if _aim.anchor == TutorialBeatDef.Anchor.CONTROL:
 			_ring.draw_rect(_ring_now.grow(grow).intersection(_safe_rect), tone, false, line)
 		else:
 			_ring.draw_set_transform(centre, 0.0, (half + Vector2(grow, grow)) / half)
@@ -980,6 +993,7 @@ func _on_lesson_over(_id: StringName) -> void:
 func _unbind() -> void:
 	if director.beat_shown.is_connected(show_beat):
 		director.beat_shown.disconnect(show_beat)
+		director.target_changed.disconnect(_on_target_changed)
 		director.beat_done.disconnect(_on_beat_done)
 		director.lesson_done.disconnect(_on_lesson_over)
 		director.lesson_skipped.disconnect(_on_lesson_over)

@@ -176,7 +176,7 @@ func test_the_card_covers_no_control_the_beat_needs_in_any_lesson_at_the_six_siz
 						seen += 1
 						found.append_array(await _checks(lesson, beat, profile, now, strict))
 						var missing: bool = (
-							beat.anchor == TutorialBeatDef.Anchor.CONTROL
+							_aimed(beat).anchor == TutorialBeatDef.Anchor.CONTROL
 							and _mark.target_control() == null
 						)
 						if missing and not bool(now["select"]):  # The control may need a selection.
@@ -231,6 +231,17 @@ func _after(beat: TutorialBeatDef, carried: Dictionary) -> Dictionary:
 			if MAP_KINDS.has(beat.kind):
 				left["unfold"] = HudState.Unfold.NONE  # A gesture on the map folds the drawer.
 	return left
+
+
+## The step of `beat`'s chain the player is on in the HUD as the sweep left it: what the ring must
+## point at (ADR 0048 section 5). A beat with no lead-in is its own anchor.
+func _aimed(beat: TutorialBeatDef) -> TutorialLeadInDef:
+	var ctx: TutorialContext = TutorialContext.new()
+	ctx.hud = _feed.state
+	ctx.selection = _selection
+	ctx.drawer_tab = _sidebar.tab
+	var step: int = TutorialChain.active(beat, ctx)
+	return beat.lead_in[step] if step < beat.lead_in.size() else TutorialChain.final_step(beat)
 
 
 ## The HUD states the card of `beat` is judged in.
@@ -400,15 +411,21 @@ func _checks(
 	_unfolds += 1
 	if _director.current != null and _mark.visible and not _mark.card_open():  # Not ended meanwhile.
 		lines.append("%s: a second tap on the tab did not unfold the card" % label)
-	if beat.anchor == TutorialBeatDef.Anchor.TILE:
+	var aim: TutorialLeadInDef = _aimed(beat)
+	var target: Control = _mark.target_control()
+	if target != null and target.name != aim.anchor_control:
+		lines.append(
+			"%s: the ring is on %s, the chain says %s" % [label, target.name, aim.anchor_control]
+		)
+	if aim.anchor == TutorialBeatDef.Anchor.TILE:
 		var body: Control = _mark.find_child("Card", true, false) as Control
 		var camera: RtsCamera = _main.get_node("Camera") as RtsCamera
-		var world: Vector2 = IsoProjection.cell_centre_px(beat.anchor_tile.x, beat.anchor_tile.y)
+		var world: Vector2 = IsoProjection.cell_centre_px(aim.anchor_tile.x, aim.anchor_tile.y)
 		var point: Vector2 = camera.world_to_screen(world)
 		if card.grow(UiScale.dp(TILE_MARGIN_DP)).has_point(point):  # Allowed: the card is see-through.
 			if not _mark.see_through() or body.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 				lines.append(
-					"%s: the card covers the tile %s at %s" % [label, beat.anchor_tile, point]
+					"%s: the card covers the tile %s at %s" % [label, aim.anchor_tile, point]
 				)
 	return lines
 
@@ -459,10 +476,11 @@ func _tab_press() -> void:
 ## that follows the world; where it covers the beat's control a pushed touch reaches it.
 func _through(label: String, beat: TutorialBeatDef, card: Rect2, scope: Node) -> Array[String]:
 	var lines: Array[String] = []
+	var aim: TutorialLeadInDef = _aimed(beat)
 	var allowed: bool = (
-		beat.anchor == TutorialBeatDef.Anchor.TILE
+		aim.anchor == TutorialBeatDef.Anchor.TILE
 		or scope != _layer
-		or WORLD_CONTROLS.has(beat.anchor_control)
+		or WORLD_CONTROLS.has(aim.anchor_control)
 	)
 	if _mark.see_through() and not allowed:
 		lines.append(
