@@ -85,9 +85,10 @@ func test_detail_is_a_level_from_0_to_3() -> void:
 
 func test_decals_and_macros_leave_every_frame_byte_identical() -> void:
 	# The shipped models use none of them, so `--check` (gen-art.sh) is the proof; this pins that a
-	# model with a decal and a `detail=` renders the same frames as one without.
+	# model with a decal and `detail=0` (the detail renderer, P631, draws from level 1) renders the
+	# same frames as one without.
 	var plain: Array[String] = ["box hull steel 0 0 0 1 1 0.2"]
-	var marked: Array[String] = ["box hull steel 0 0 0 1 1 0.2 detail=2"]
+	var marked: Array[String] = ["box hull steel 0 0 0 1 1 0.2 detail=0"]
 	var a: Dictionary[String, String] = ArtGen.build(_model(plain))
 	var b: Dictionary[String, String] = ArtGen.build(
 		_model(marked, ["number 0 top 0.5 0.5 0.3 n=7"])

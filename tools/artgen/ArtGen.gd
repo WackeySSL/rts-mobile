@@ -177,7 +177,7 @@ static func all_shots(model: ArtModel) -> Dictionary[StringName, Shot]:
 
 ## The polygons of the whole body at damage `stage`, in the stage's own greedy draw order.
 static func stage_polys(model: ArtModel, stage: int) -> Array[ArtRender.Poly]:
-	return ArtRender.render(model.damage_prims(stage), 0.0, model.faction)
+	return ArtDetail.render(model, model.damage_prims(stage), 0.0)
 
 
 ## How far down a damage stage reaches, as a dictionary: `low`, the lowest screen row (px from the
@@ -332,7 +332,7 @@ static func _shoot(model: ArtModel, part: StringName) -> Shot:
 			var polys: Array[ArtRender.Poly] = (
 				ArtShadow.frame(prims, turn, model.category == &"inf")
 				if part == ArtModel.SHADOW
-				else ArtRender.render(prims, turn, model.faction, model.frame_rest(part))
+				else ArtDetail.render(model, prims, turn, model.frame_rest(part))
 			)
 			var bounds: Rect2 = ArtRender.bounds(polys)
 			box = bounds if shot.polys.is_empty() else box.merge(bounds)

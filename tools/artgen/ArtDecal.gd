@@ -9,8 +9,9 @@ extends RefCounted
 ## prism line, not a rod, a `petals` line or a macro. `face` is `top`, `front` (+x), `back` (-x),
 ## `left` (-y) or `right` (+y). `u v` place its centre on the face as fractions 0 to 1 (u along the
 ## face's first axis, v up it or along it), `size` is its width in tiles (above 0, at most 2).
-## Nothing draws a decal yet: the detail renderer (P631) does, so a model with decals has the same
-## frames as one without.
+## `ArtDetail` (P631) draws a decal from detail level 2 on, on the face's own plane: `u` runs along
+## the face's first edge and `v` up its fourth point's edge (up on a side face), so a figure reads
+## upright from outside. A model at detail 0 has the same frames with or without decals.
 
 const KINDS: Array[StringName] = [&"number", &"hazard", &"vent"]
 const FACES: Array[StringName] = [&"top", &"front", &"back", &"left", &"right"]
