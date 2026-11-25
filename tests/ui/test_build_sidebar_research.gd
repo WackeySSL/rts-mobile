@@ -66,15 +66,15 @@ func test_five_tabs_fit_the_drawer_at_every_size_and_the_open_tab_keeps_its_name
 
 ## Which names show with tab `open` open (letters of the tabs, a dot for an icon alone) on the
 ## profile: every name where the row has the room; only the open tab's where it has not; none on
-## the 320 dp phone for Structures, short of room (Flight and Research fit). P605 re-pin: the tab
-## names are Roboto Condensed Bold now, narrower, so the portrait phone shows every name and the
-## 320 dp phone shows Research's (11.6 dp short before, now fits).
+## the 320 dp phone for Structures and Research, short of room (Flight fits). P605: a name keeps
+## `TAB_NAME_PAD_DP` each side, which the portrait phone's row cannot hold for all five names, so it
+## shows the open tab's alone.
 func _expected_names(profile: StringName, open: int) -> String:
 	match profile:
-		&"web_phone_small", &"notch_design":
+		&"web_phone_small", &"web_phone_portrait", &"notch_design":
 			return {0: "S....", 3: "...F.", 4: "....R"}[open]
 		&"phone_320":
-			return {0: ".....", 3: "...F.", 4: "....R"}[open]
+			return {0: ".....", 3: "...F.", 4: "....."}[open]
 		&"android_410", &"android_440", &"android_480":
 			return "?"  # Whatever fits: the row's rounding decides (`_fit_tabs`).
 	return "SIVFR"
@@ -316,6 +316,19 @@ func _assert_tabs(why: String) -> String:
 			. is_true()
 		)
 		assert_float(wide).override_failure_message(at + " name").is_less_equal(label.size.x + 0.5)
+		# P605: the name keeps its inner padding: the tab is wider than the name by at least the
+		# padding each side, so a name never touches the plate's edge or the next tab's frame.
+		var pad: float = 2.0 * UiScale.dp(BuildSidebar.TAB_NAME_PAD_DP)
+		(
+			assert_float(rect.size.x - wide)
+			. override_failure_message(
+				(
+					"%s: %s is %s wide for a name of %s, padding %s"
+					% [at, tab.name, rect.size.x, wide, pad]
+				)
+			)
+			. is_greater_equal(pad - 0.5)
+		)
 	assert_int(shown).override_failure_message(why).is_equal(5)
 	_assert_close(why, safe, rects)
 	return names
