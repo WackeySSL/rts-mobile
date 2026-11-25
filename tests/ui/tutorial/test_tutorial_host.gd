@@ -74,7 +74,10 @@ func test_skip_and_the_last_beat_return_to_the_tutorial_screen() -> void:
 	var host: TutorialHost = TutorialHost.attach(_main, _flow)
 	assert_array(_flow.left).is_empty()
 	host.director.advance()
-	host.director.skip()
+	await await_idle_frame()
+	var skip: Button = host.mark.find_child("Skip", true, false) as Button
+	assert_bool(skip.is_visible_in_tree()).is_true()  # The first card has Skip (answer 4).
+	skip.pressed.emit()
 	await await_idle_frame()
 	assert_array(_flow.left).is_equal([&"tutorial"])
 	host.director.lesson_done.emit(&"basics")
