@@ -131,6 +131,17 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
 
   In both, the card stays reachable through its tab. Folding never happens on the profiles of the
   indicative table (the tests pin that).
+- **The folded tab's slot** (P588, `GuideDock.tab_slot`): with no dock there is no corner to stand
+  in, so the tab has its own slot. It is a 48 x 48 dp square on the top edge of the safe rect (the
+  top row) and the one nearest the scope (top right; mirrored, top left), 8 dp clear of every
+  reserved part, the open side panel's close handle (a 48 dp strip left of the panel) included. The
+  attack toast's slot is one of the parts. Only where a wide pill leaves no square between it and
+  the toast does a second look let the tab stand on the toast's slot (a toast is brief; the tab
+  stays) and clear of the rest. A 1 dp scan, run when the layout changes. In both fold states (the
+  tests pin the geometry, with the pill at its least width) the slot is free: right of the toast
+  and left of the scope in state 1 (x 664 on 776 dp, x 598 on 710 dp), left of the close handle in
+  state 2 (x 294 on 710 dp). A tap on the tab opens the card under the top row over the HUD, and a
+  new layout folds it again.
 
 ### 2. The card and its tab
 - **The open card** has two forms, chosen by the dock's width:

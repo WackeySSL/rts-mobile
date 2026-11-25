@@ -1,49 +1,44 @@
 class_name CoachMark
 extends Control
-## The tutorial's coach mark (plan row P542, ADR 0044 section 2): a ring on the beat's anchor and a
-## prompt card with Next (a read-only beat only) and Skip. Presentation only: it reads the
-## `TutorialDirector`'s signals and calls its `next()` and `skip()`, and sends no Command.
+## The tutorial's coach mark (plan row P542, ADR 0044 section 2, ADR 0048): a ring on the beat's
+## anchor and a prompt card with Next (a read-only beat only) and Skip. Presentation only: it reads
+## the `TutorialDirector`'s signals and calls its `next()` and `skip()`, and sends no Command.
+##
+## The card stands in `GuideDock`'s rect (P588, ADR 0048 section 1): one place, under the top row
+## and clear of every part of the HUD, built from the HUD's own layout and stood again only when
+## that changes (`_refresh_dock`). The search of P543g is gone: the card never moves for a ring.
+## Where no dock has room (`GuideDock.has_room`) only the folded tab shows, in its own slot
+## (`GuideDock.tab_slot`); a tap on it opens the card, which then overlays the HUD under the top
+## row.
 ##
 ## Input: the node and the ring are `MOUSE_FILTER_IGNORE`, so a touch outside the card goes on to
 ## what is under it, and the gesture a beat asks for (a tap on the ring's unit, a drag, a pinch) is
-## never taken. The card's panel is `STOP`, so a tap on the prompt is not a map tap (no stray move
-## or deselect); when `place_card` could not clear the ring the panel is `IGNORE` for that
-## placement, so the target is never blocked. Next and Skip always stop.
+## never taken. The card's body is `STOP`, so a tap on the prompt is not a map tap (no stray move
+## or deselect), except where the ring meets the card (it turns see-through, ADR 0048 section 3)
+## and over a modal (the pause menu), where the body lets every touch through. Next, Skip and the
+## tab always stop.
 ##
 ## The ring is on a HUD control found by node name under `hud_root` (`anchor_control`), or on a
 ## world tile projected through the camera (`anchor_tile`); a tile off the screen pins the ring to
 ## the nearest edge of the safe rect. A control that is missing or hidden gives a card alone. All
 ## positions are global (screen) px, so the mark works under any parent.
-## The card is placed by `place_card`: below the ring, else above, right, left, slid into the room
-## and never over the ring; with no ring it stands at the top centre of the room. The room is the
-## safe rect below the top HUD row (the pill, the scope and the attack toast's slot, ADR 0025
-## section 2: `top_row_dp`), so the card never covers the pause button or the scope. Besides the
-## ring it keeps off every visible, enabled button of the HUD (the open drawer's tabs, items and
-## close button, the group chips, the command bar; in a menu, that menu's buttons), 8 dp away where
-## there is room, and goes narrower (3/4, then 3/5) before it would stand on one; it is placed again
-## when one appears, moves or goes. When the beat
-## is `stalled()` the card shows a hint line and the ring turns amber and doubles (a shape change as
-## well as a colour). The ring blinks unless `reduced` (the Reduced effects switch): then there is
-## no Tween at all.
-## Looks come from `theme.tres`: PauseCard, PauseButton, PausePrimary and PauseMuted for the card,
-## GuideTokens for the ring. No colour literal.
+## When the beat is `stalled()` the card shows a hint line and the ring turns amber and doubles (a
+## shape change as well as a colour). The ring blinks unless `reduced` (the Reduced effects
+## switch): then there is no Tween at all.
+## Looks come from `theme.tres`: PauseCard (GuideCardThrough while see-through), PauseButton,
+## PausePrimary and PauseMuted for the card, GuideTokens for the ring. No colour literal.
 
-const CARD_WIDTH_DP: float = 360.0  ## Widest the card gets; less where the room is narrower.
-const GAP_DP: float = 16.0  ## Between the ring and the card.
-const BUTTON_AIR_DP: float = 8.0  ## Between the card and another button of a menu it stands over.
 const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
 const RING_GROW_DP: float = 6.0  ## The ring stands this far outside a control.
 const RING_LINE_DP: float = 3.0
 const MIN_TARGET_DP: float = 48.0  ## A ring is never smaller than a touch target.
 const REDUCED_LINE_DP: float = 1.0  ## Reduced effects: a steady frame, this much thicker.
+const PILL_STEP_DP: float = 8.0  ## The pill width is read in steps of this.
 const FIND_EVERY: int = 15  ## Frames between looks for a control that is not there.
 const ELLIPSE_STEPS: int = 40
+const CARD_VARIATION: StringName = &"PauseCard"
+const THROUGH_VARIATION: StringName = &"GuideCardThrough"
 const THEME_PATH: String = "res://game/ui/theme.tres"
-const EPSILON: float = 0.01
-const WIDTH_SHARES: Array[float] = [1.0, 0.75, 0.6]  ## Of the card's width, in the order tried.
-const COST_BAND: float = 1.0e9  ## See `_cost`: far more than any screen area.
-const COST_RING: float = 1.0e12
-const MAX_COLUMNS: int = 9  ## Columns of the search grid in `place_card`.
 ## Drawn above every other control of the layer, the pause menu included, whatever order the mark
 ## was added in: the card that asks for Resume must be seen over the open menu.
 const Z_ABOVE_MODALS: int = 100
@@ -52,10 +47,14 @@ var director: TutorialDirector
 var camera: RtsCamera
 ## The node under which the anchor controls are looked up by name.
 var hud_root: Node
+## The left-handed layout (ADR 0025 section 14): the dock flips with the HUD. Not wired in the game
+## yet, as with the command bar's own flag.
+var mirror: bool = false
 ## Every number of the blink (ADR 0048 section 7); a test may swap a copy in.
 var settings: GuideSettingsDef = preload("res://data/tutorial/guide_settings.tres"):
 	set(value):
 		settings = value
+		_dock_key = -1  # The dock reads the card's size cap.
 		_restart_blink()
 ## Reduced effects: a steady frame, no Tween. `_ready` adds the player switch; tests may set it.
 var reduced: bool = false:
@@ -88,14 +87,23 @@ var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
 var _again: int = 0  ## Layouts still to make for the change in hand.
 var _next_find: int = 0
-var _blocked_now: Array[Rect2] = []  ## What the card was last placed clear of.
-var _hard_now: Array[Rect2] = []
-var _blocked_next: Array[Rect2] = []  ## This frame's, swapped with the two above on a layout.
-var _hard_next: Array[Rect2] = []
-var _placed_now: bool = false  ## The card stands somewhere `_update` chose.
-var _blocked_modal: Node = null  ## The modal whose buttons are cached, and when to look again.
-var _blocked_controls: Array[Control] = []
-var _blocked_scan: int = 0
+var _card_box: Rect2 = Rect2()  ## The card as last laid out, global px (empty: not shown).
+var _through_now: bool = false  ## The card is see-through: the ring meets it.
+var _modal_now: bool = false  ## The target is in a modal: the card's body takes no touch.
+var _dock: Rect2 = Rect2()  ## `GuideDock.place` for the layout in force (empty: no room).
+var _tab_slot: Rect2 = Rect2()  ## `GuideDock.tab_slot`: where the folded tab stands.
+var _tab_open: bool = false  ## The player opened the folded card (never kept across a layout).
+var _dock_key: int = -1  ## What the dock was built from, packed; -1 forces the first.
+var _dock_band: Rect2 = Rect2()
+var _shown: HudCorners.Shown = HudCorners.Shown.new()  ## Reused: filled from `HudState` each look.
+var _columns: GroupColumn = null
+var _build: BuildButton = null
+var _pill: EconomyPill = null
+var _next_hud: int = 0
+var _band_scope: Node = null  ## The scope whose ad bands are cached, and when to look again.
+var _bands: Array[Control] = []
+var _band_scan: int = 0
+var _tab: Button
 
 
 func _ready() -> void:
@@ -103,14 +111,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	reduced = reduced or MenuPrefs.reduced_effects()
-	_ring = Control.new()
-	_ring.name = "Ring"
-	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ring.draw.connect(_draw_ring)
-	add_child(_ring)
 	_card = PanelContainer.new()
 	_card.name = "Card"
-	_card.theme_type_variation = &"PauseCard"
+	_card.theme_type_variation = CARD_VARIATION
 	_card.mouse_filter = Control.MOUSE_FILTER_STOP  # Taps on the card are not map taps.
 	add_child(_card)
 	var column: VBoxContainer = VBoxContainer.new()
@@ -134,6 +137,19 @@ func _ready() -> void:
 	_next = _button("Next", "NEXT", &"PausePrimary")
 	_next.pressed.connect(_on_next)
 	_skip.pressed.connect(_on_skip)
+	_tab = Button.new()  # P589 gives it the counter and the chevron; here it is the fold's handle.
+	_tab.name = "Tab"
+	_tab.text = "?"
+	_tab.theme_type_variation = &"PauseButton"
+	_tab.focus_mode = Control.FOCUS_NONE
+	_tab.visible = false
+	_tab.pressed.connect(_on_tab)
+	add_child(_tab)
+	_ring = Control.new()  # Drawn above the card, so a see-through card shows it (section 3).
+	_ring.name = "Ring"
+	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ring.draw.connect(_draw_ring)
+	add_child(_ring)
 	get_viewport().size_changed.connect(_apply_metrics)
 	_apply_metrics()
 	visible = false
@@ -171,7 +187,8 @@ func show_beat(beat: TutorialBeatDef) -> void:
 		return
 	_target = null
 	_next_find = 0
-	_blocked_scan = 0  # The beat's controls may be new: list them again.
+	_band_scan = 0  # The beat's controls may be new: list them again.
+	_tab_open = false
 	_dirty = true
 	_measure()
 	_prompt.text = tr(String(beat.prompt_key))
@@ -181,7 +198,7 @@ func show_beat(beat: TutorialBeatDef) -> void:
 
 
 func hide_mark() -> void:
-	_placed_now = false
+	_tab_open = false
 	_beat = null
 	_target = null
 	_ring_now = Rect2()
@@ -204,6 +221,21 @@ func ring_rect() -> Rect2:
 ## The card's rect in screen px.
 func card_rect() -> Rect2:
 	return Rect2(_card.global_position, _card.size)
+
+
+## The dock the card stands in (an empty rect: no room, the card is folded to its tab).
+func dock_rect() -> Rect2:
+	return _dock
+
+
+## The folded tab's rect in screen px (an empty rect: it does not show).
+func tab_rect() -> Rect2:
+	return Rect2(_tab.global_position, _tab.size) if _tab.visible else Rect2()
+
+
+## Whether the card is see-through now: the ring meets it (ADR 0048 section 3).
+func see_through() -> bool:
+	return _through_now
 
 
 ## The frame's opacity now: 1.0 steady, else eased between the low alpha and 1.0.
@@ -241,180 +273,125 @@ static func top_row_dp(portrait: bool) -> float:
 	return row
 
 
-## Where the card stands: `ring` is the ring's rect (empty: none), `card` the card's size, `room`
-## the rect it must lie in, `gap` the room between them and `row_h` the height of the buttons'
-## row at the card's foot. The candidates, in order: below the ring, above, right, left, then the
-## top and the bottom of `room`, each slid into `room` and taken when it clears the ring. None
-## clearing it, the one whose button row misses the ring most, then the one that overlaps it
-## least. With no ring and nothing to keep off: the top centre of `room`. `blocked` are rects the
-## card should not cover (the buttons of the HUD or of the menu the ring is in), kept `air` away
-## while a place has room, and `hard` rects it never covers (an ad band, ad policy): when there are
-## any, the sides, corners and a grid of `room` are tried too (with no ring, the top centre first).
-## The first place that clears the ring and both lists is taken; none, the first that clears the
-## ring, the `blocked` rects themselves and `hard`; none of those, the first that clears the ring
-## and `hard`; none of those, the fallback below, which keeps off `hard` wherever a place does.
-static func place_card(
-	ring: Rect2,
-	card: Vector2,
-	room: Rect2,
-	gap: float,
-	row_h: float = 0.0,
-	blocked: Array[Rect2] = [],
-	hard: Array[Rect2] = [],
-	air: float = 0.0
-) -> Rect2:
-	var fit: Vector2 = card.min(room.size)
-	var top: Vector2 = Vector2(room.get_center().x - fit.x * 0.5, room.position.y)
-	var searching: bool = not blocked.is_empty() or not hard.is_empty()
-	if not ring.has_area() and not searching:
-		return Rect2(top, fit)
-	var centre: Vector2 = ring.get_center() if ring.has_area() else room.get_center()
-	var across: float = centre.x - fit.x * 0.5
-	var tries: Array[Vector2] = [top]  # With no ring: the top centre, then the search below.
-	if ring.has_area():
-		tries = [
-			Vector2(across, ring.end.y + gap),
-			Vector2(across, ring.position.y - gap - fit.y),
-			Vector2(ring.end.x + gap, centre.y - fit.y * 0.5),
-			Vector2(ring.position.x - gap - fit.x, centre.y - fit.y * 0.5),
-			Vector2(across, room.position.y),
-			Vector2(across, room.end.y - fit.y),
-		]
-	var spread: Array[Vector2] = []
-	if searching:
-		spread = tries.duplicate()
-		(
-			spread
-			. append_array(
-				[
-					Vector2(room.position.x, centre.y - fit.y * 0.5),
-					Vector2(room.end.x - fit.x, centre.y - fit.y * 0.5),
-					room.position,
-					Vector2(room.end.x - fit.x, room.position.y),
-					Vector2(room.position.x, room.end.y - fit.y),
-					room.end - fit,
-				]
-			)
-		)
-		var step: float = maxf(fit.y * 0.5, 1.0)
-		var columns: Array[float] = [across, room.position.x, room.end.x - fit.x]
-		var x_step: float = maxf(fit.x * 0.5, 1.0)
-		var x_at: float = room.position.x + x_step
-		while x_at < room.end.x - fit.x - EPSILON and columns.size() < MAX_COLUMNS:
-			columns.append(x_at)  # A narrow gap between two panels may fit none of the three.
-			x_at += x_step
-		for x: float in columns:
-			var y: float = room.position.y
-			while y <= room.end.y - fit.y + EPSILON:
-				spread.append(Vector2(x, y))
-				y += step
-		var open_spots: Array[Rect2] = []  # The places that clear the ring and the band.
-		for at: Vector2 in spread:
-			var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
-			if box.intersection(ring).get_area() > EPSILON or _hits_any(box, hard):
-				continue
-			if not _hits_any(box, blocked, air):
-				return box
-			open_spots.append(box)
-		# No place keeps the air: the one that overlaps the buttons least (flush against one, when
-		# that touches none), then the one that comes nearest to keeping the air.
-		var least_over: float = INF
-		var least_near: float = INF
-		var pick: Rect2 = Rect2()
-		for box: Rect2 in open_spots:
-			var over: float = _overlap(box, blocked, 0.0)
-			var near: float = _overlap(box, blocked, air)
-			if over < least_over - EPSILON or (over <= least_over + EPSILON and near < least_near):
-				least_over = over
-				least_near = near
-				pick = box
-		if not open_spots.is_empty():
-			return pick
-	var best: Rect2 = Rect2(top, fit)
-	var least_row: float = INF
-	var least: float = INF
-	var pool: Array[Vector2] = tries if hard.is_empty() else _clear_of(tries, fit, room, hard)
-	if pool.is_empty():
-		pool = _clear_of(spread, fit, room, hard)
-	if pool.is_empty():
-		pool = tries
-	for at: Vector2 in pool:
-		var box: Rect2 = Rect2(at.clamp(room.position, room.end - fit), fit)
-		var over: float = box.intersection(ring).get_area()
-		if over <= EPSILON:
-			return box
-		var row: Rect2 = Rect2(box.position.x, box.end.y - row_h, box.size.x, row_h)
-		var row_over: float = row.intersection(ring).get_area()
-		if row_over < least_row - EPSILON or (row_over <= least_row + EPSILON and over < least):
-			least_row = row_over
-			least = over
-			best = box
-	return best
+## The dock and the folded tab's slot, again when what they are built from changed: the screen (a
+## resize or turn calls `_apply_metrics`, which clears the key), the unfolds of `HudState` (drawer,
+## full map, the command bar's slot, width and height: what its `changed` signal reports, read
+## here as the key so a change the signal does not name is seen too), the group column's count,
+## the strike button, the aim, the Ready chip, the pill's width and an ad band. A pure function of
+## `GuideDock`, so nothing is searched. Returns whether it stood them again.
+func _refresh_dock() -> bool:
+	_find_hud()
+	var shown: HudCorners.Shown = _shown
+	shown.drawer = false
+	shown.map = false
+	shown.card = false
+	shown.bar = false
+	shown.bar_width = 0.0
+	shown.bar_tall = true
+	var hud: HudState = director.hud if director != null else null
+	if hud != null:
+		hud.fill(shown)
+		hud.fill_bar(shown)
+	var portrait: bool = HudLayout.is_portrait()
+	var aim: StrikeAim = director.strike_aim if director != null else null
+	var groups: int = _columns.item_count() if is_instance_valid(_columns) else 1
+	var ready: bool = is_instance_valid(_build) and _build.ready_type >= 0
+	var pill: int = ceili(_pill.size.x / _dp / PILL_STEP_DP) if is_instance_valid(_pill) else 0
+	var band: Rect2 = _ad_band()
+	var flags: int = (
+		int(portrait)
+		| int(shown.map) << 1
+		| int(shown.drawer) << 2
+		| int(aim != null and aim.owned) << 3
+		| int(aim != null and aim.active) << 4
+		| int(ready) << 5
+		| int(shown.bar) << 6
+		| int(shown.bar_tall) << 7
+	)
+	var key: int = flags | groups << 8 | roundi(shown.bar_width) << 16 | pill << 32
+	if key == _dock_key and band == _dock_band:
+		return false
+	_dock_key = key
+	_dock_band = band
+	var dock_shown: HudCorners.Shown = GuideDock.shown_for_dock(
+		portrait,
+		shown.map,
+		shown.drawer,
+		groups,
+		aim != null and aim.owned,
+		ready,
+		aim != null and aim.active,
+		shown.bar,
+		shown.bar_tall
+	)
+	dock_shown.bar_width = shown.bar_width
+	dock_shown.pill_width = pill * PILL_STEP_DP
+	var rects: Dictionary[StringName, Rect2] = GuideDock.hud_for_dock(
+		_safe_rect, portrait, _dp, mirror, dock_shown
+	)
+	if band.has_area():
+		rects[GuideDock.AD_BAND] = band
+	var values: Dictionary[StringName, float] = {
+		GuideDock.MAX_WIDTH_KEY: settings.card_max_width_dp,
+		GuideDock.MAX_HEIGHT_KEY: float(settings.card_max_height_pct),
+	}
+	_dock = GuideDock.place(_safe_rect, portrait, _dp, mirror, rects, values)
+	_tab_slot = GuideDock.tab_slot(_safe_rect, _dp, mirror, rects)
+	_tab_open = false  # A folded card stays folded until the layout changes.
+	return true
 
 
-## The places of `at` whose card, slid into `room`, misses every rect of `rects`.
-static func _clear_of(
-	at: Array[Vector2], fit: Vector2, room: Rect2, rects: Array[Rect2]
-) -> Array[Vector2]:
-	var found: Array[Vector2] = []
-	for place: Vector2 in at:
-		if not _hits_any(Rect2(place.clamp(room.position, room.end - fit), fit), rects):
-			found.append(place)
-	return found
-
-
-## The area of `box` that lies on `rects` (each grown by `air`).
-static func _overlap(box: Rect2, rects: Array[Rect2], air: float) -> float:
-	var area: float = 0.0
-	for rect: Rect2 in rects:
-		area += box.intersection(rect.grow(air) if air > 0.0 else rect).get_area()
-	return area
-
-
-static func _hits_any(box: Rect2, rects: Array[Rect2], air: float = 0.0) -> bool:
-	for rect: Rect2 in rects:
-		if box.intersects(rect.grow(air) if air > 0.0 else rect):
-			return true
-	return false
-
-
-## The rects the card keeps clear of: into `soft` every visible, enabled button of the scope; into
-## `hard` the scope's ad band, grown 16 dp (ad policy). The scope is the modal the target is in (a
-## ModalFrame, as the pause menu is), else the whole HUD under `hud_root`, so the card never stands
-## on a control the beat needs next: the open drawer's tabs, items and close button, the group
-## chips, the command bar. The controls are listed once per scope (and again every `FIND_EVERY`
-## frames and on a new beat, for one built later); whether each shows and its rect are read each
-## frame, so a chip that appears or a drawer that slides in re-places the card at once.
-func _collect_blocked(soft: Array[Rect2], hard: Array[Rect2]) -> void:
-	var modal: Node = _target
-	while modal != null and not modal is ModalFrame:
-		modal = modal.get_parent()
-	var scope: Node = modal if modal != null else hud_root
-	if scope == null:
-		_blocked_modal = null
+## Looks for the HUD parts the dock reads (the group column, BUILD, the pill) while one is missing,
+## every `FIND_EVERY` frames.
+func _find_hud() -> void:
+	if hud_root == null:
+		return
+	if is_instance_valid(_columns) and is_instance_valid(_build) and is_instance_valid(_pill):
 		return
 	var frame: int = Engine.get_process_frames()
-	if scope != _blocked_modal or frame >= _blocked_scan:
-		_blocked_modal = scope
-		_blocked_scan = frame + FIND_EVERY
-		_blocked_controls.clear()
-		for type_name: String in ["BaseButton", "AdBannerBand"]:  # Typed finds skip the rest.
-			for node: Node in scope.find_children("*", type_name, true, false):
-				if node != _target and not is_ancestor_of(node):
-					_blocked_controls.append(node as Control)
-	for control: Control in _blocked_controls:
-		if not is_instance_valid(control) or not control.is_visible_in_tree():
-			continue
-		var button: BaseButton = control as BaseButton
-		if button != null and button.disabled:
-			continue
-		var shown: Rect2 = _visible_rect(control)
-		if not shown.has_area():
-			continue
-		if control is AdBannerBand:  # Content keeps the buttons' gap from an ad (ad policy).
-			hard.append(shown.grow(GAP_DP * _dp))
-		else:  # `place_card` keeps `BUTTON_AIR_DP` off them while a place has room.
-			soft.append(shown)
+	if frame < _next_hud:
+		return
+	_next_hud = frame + FIND_EVERY
+	_columns = _first(GroupColumn) as GroupColumn
+	_build = _first(BuildButton) as BuildButton
+	_pill = _first(EconomyPill) as EconomyPill
+
+
+func _first(type: Script) -> Node:
+	for node: Node in hud_root.find_children("*", type.get_global_name(), true, false):
+		return node
+	return null
+
+
+## The modal (a ModalFrame, as the pause menu is) that holds the target, else null.
+func _modal_of(node: Node) -> Node:
+	while node != null and not node is ModalFrame:
+		node = node.get_parent()
+	return node
+
+
+## The visible rect of the ad band of the scope the target is in (the modal, else the HUD): the dock
+## ends 16 dp above it (ad policy). The bands are listed once per scope and again every `FIND_EVERY`
+## frames; whether one shows and its rect are read each frame. Empty with none.
+func _ad_band() -> Rect2:
+	var modal: Node = _modal_of(_target)
+	var scope: Node = modal if modal != null else hud_root
+	if scope == null:
+		_band_scope = null
+		return Rect2()
+	var frame: int = Engine.get_process_frames()
+	if scope != _band_scope or frame >= _band_scan:
+		_band_scope = scope
+		_band_scan = frame + FIND_EVERY
+		_bands.clear()
+		for node: Node in scope.find_children("*", "AdBannerBand", true, false):
+			_bands.append(node as Control)
+	for band: Control in _bands:
+		if is_instance_valid(band) and band.is_visible_in_tree():
+			var shown: Rect2 = _visible_rect(band)
+			if shown.has_area():
+				return shown
+	return Rect2()
 
 
 ## `control`'s rect as the player sees it: cut by the scroll areas it stands in and by the screen.
@@ -460,7 +437,8 @@ func _process(_delta: float) -> void:
 	_update()
 
 
-## One look at the beat: the ring's box and the card's state; the card is laid out only on a change.
+## One look at the beat: the ring's box, the dock and the card's state; the card is laid out only on
+## a change (a new beat, the dock, the buttons that show, the ring meeting or leaving the card).
 func _update() -> void:
 	if _beat == null or not is_inside_tree():
 		return
@@ -474,36 +452,28 @@ func _update() -> void:
 	if covered:
 		return
 	var ring: Rect2 = _ring_box()
-	var blocked: Array[Rect2] = _blocked_next
-	var hard: Array[Rect2] = _hard_next
-	blocked.clear()
-	hard.clear()
-	_collect_blocked(blocked, hard)
+	var docked: bool = _refresh_dock()
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
+	var modal: bool = _modal_of(_target) != null
 	var reshaped: bool = (
-		_dirty or stalled != _stalled_now or can_next != _can_next_now or size != _size_now
+		_dirty
+		or docked
+		or stalled != _stalled_now
+		or can_next != _can_next_now
+		or modal != _modal_now
+		or size != _size_now
 	)
-	var changed: bool = (
-		reshaped or ring != _ring_now or blocked != _blocked_now or hard != _hard_now
-	)
+	var changed: bool = reshaped or ring != _ring_now or _meets(ring) != _through_now
 	if not changed and _again == 0:
 		return
-	# A card that still stands clear (a camera pan moves a tile's ring) is left where it is: no
-	# search, no hopping.
-	var keep: bool = (
-		not reshaped and _again == 0 and _placed_now and _is_clear(card_rect(), ring, blocked, hard)
-	)
-	if changed and not keep:
+	if changed:
 		_again = 2  # A label shapes its wrapped text a frame after its width changes: look twice.
 	_dirty = false
 	_ring_now = ring
-	_blocked_next = _blocked_now  # The frame's arrays become the last ones; the old ones are reused.
-	_blocked_now = blocked
-	_hard_next = _hard_now
-	_hard_now = hard
 	_stalled_now = stalled
 	_can_next_now = can_next
+	_modal_now = modal
 	_size_now = size
 	_next.visible = can_next
 	_hint.visible = stalled
@@ -517,34 +487,52 @@ func _update() -> void:
 		_start_blink()
 	else:
 		_stop_blink()
-	if keep:
-		_card.mouse_filter = Control.MOUSE_FILTER_STOP  # It stands clear of the ring.
-		return
-	var full: float = minf(CARD_WIDTH_DP * _dp, _room.size.x)
-	var row_h: float = (
-		MIN_TARGET_DP * _dp + _card.get_theme_stylebox(&"panel").get_margin(SIDE_BOTTOM)
-	)
-	var air: float = BUTTON_AIR_DP * _dp
-	var placed: Rect2 = Rect2()
-	var chosen: float = full
-	var least: float = INF
-	for share: float in WIDTH_SHARES:  # A narrower card where the full one has no free place.
-		var size_now: Vector2 = _fit_card(full * share)
-		var at: Rect2 = place_card(ring, size_now, _room, GAP_DP * _dp, row_h, blocked, hard, air)
-		var cost: float = _cost(at, ring, blocked, hard)
-		if cost <= least:  # A tie goes to the narrower card.
-			least = cost
-			placed = at
-			chosen = size_now.x
-		if cost <= 0.0:
-			break
-	_fit_card(chosen)
-	_placed_now = true
-	_card.global_position = placed.position
-	# A card that could not clear the ring lets touches through, so it never blocks the target.
-	var covers: bool = placed.intersection(ring).get_area() > EPSILON
-	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if covers else Control.MOUSE_FILTER_STOP
+	_layout_card(ring)
 	_again -= 1
+
+
+## Whether the ring meets the card as laid out last (ADR 0048 section 3). The ring already stands
+## 6 dp outside its control, and the dock stands 8 dp from every HUD part, so a HUD neighbour never
+## meets the card; a tile, a modal's button or the ghost's check mark can.
+func _meets(ring: Rect2) -> bool:
+	return _card.visible and ring.has_area() and _card_box.intersects(ring)
+
+
+## Stands the card in the dock, or on the folded tab's slot when the dock has no room (ADR 0048
+## section 1): the tab shows alone; a tap on it opens the card, which then may overlay the HUD
+## under the top row. Where the ring meets the card the card turns see-through and its body takes
+## no touch (section 3); over a modal its body never takes one. Next, Skip and the tab always do.
+func _layout_card(ring: Rect2) -> void:
+	var folded: bool = not GuideDock.has_room(_dock, _dp)
+	var slotted: bool = folded and _tab_slot.has_area()
+	_tab.visible = slotted
+	_tab.position = _tab_slot.position
+	_tab.size = _tab_slot.size
+	_card.visible = not slotted or _tab_open  # With no slot at all, the card shows overlaid.
+	if not _card.visible:
+		_card_box = Rect2()
+		_through_now = false
+		return
+	var stand: Rect2 = _dock
+	if folded:
+		var width: float = minf(settings.card_max_width_dp * _dp, _room.size.x)
+		stand = Rect2(
+			_room.position + Vector2((_room.size.x - width) * 0.5, 0.0),
+			Vector2(width, _room.size.y)
+		)
+	_fit_card(stand.size.x)
+	_card.global_position = stand.position
+	_card_box = Rect2(stand.position, _card.size)
+	_through_now = _meets(ring)
+	_card.theme_type_variation = THROUGH_VARIATION if _through_now else CARD_VARIATION
+	var passes: bool = _through_now or _modal_now
+	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if passes else Control.MOUSE_FILTER_STOP
+
+
+func _on_tab() -> void:
+	_tab_open = not _tab_open
+	_dirty = true
+	_update()
 
 
 ## Gives the card `width` px (more when its buttons need it) and the height its wrapped text needs
@@ -555,7 +543,7 @@ func _fit_card(width: float) -> Vector2:
 	var column: Control = _prompt.get_parent() as Control
 	_row.update_minimum_size()
 	var wide: float = maxf(width, _row.get_combined_minimum_size().x + panel.get_minimum_size().x)
-	var inner: float = wide - panel.get_minimum_size().x
+	var inner: float = floorf(wide - panel.get_minimum_size().x)  # Whole px: a label is never over.
 	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
 		label.custom_minimum_size.x = inner
 		label.size.x = inner
@@ -565,22 +553,6 @@ func _fit_card(width: float) -> Vector2:
 	_card.update_minimum_size()
 	_card.size = Vector2(wide, _card.get_combined_minimum_size().y)
 	return _card.size
-
-
-## Whether `box` is off the ring, the hard rects and every blocked button.
-func _is_clear(box: Rect2, ring: Rect2, blocked: Array[Rect2], hard: Array[Rect2]) -> bool:
-	return _cost(box, ring, blocked, hard) <= 0.0
-
-
-## What `box` costs: a ring under it outweighs the band, the band outweighs a button, a button costs
-## the area it is covered by. Nought: a free place.
-static func _cost(box: Rect2, ring: Rect2, blocked: Array[Rect2], hard: Array[Rect2]) -> float:
-	var cost: float = _overlap(box, blocked, 0.0)
-	if _hits_any(box, hard):
-		cost += COST_BAND
-	if box.intersection(ring).get_area() > EPSILON:
-		cost += COST_RING
-	return cost
 
 
 ## The ring's box from the beat, global px: a control's rect grown a little, or the tile's ground
@@ -606,6 +578,8 @@ func _ring_box() -> Rect2:
 	var least: float = MIN_TARGET_DP * _dp
 	var fit: Vector2 = box.size.max(Vector2(least, least))
 	box = Rect2(box.get_center() - fit * 0.5, fit)
+	if _beat.anchor == TutorialBeatDef.Anchor.CONTROL and box.intersects(_safe_rect):
+		return box.intersection(_safe_rect)  # A control's frame is cut at the edge, not moved off it.
 	var top_left: Vector2 = _safe_rect.position
 	box.position = box.position.clamp(top_left, (_safe_rect.end - box.size).max(top_left))
 	return box.intersection(_safe_rect) if box.intersects(_safe_rect) else box  # Never past an edge.
@@ -715,8 +689,9 @@ func _apply_metrics() -> void:
 		theme = HudTheme.scaled(load(THEME_PATH), _dp)
 		_own_theme = true
 	_row.add_theme_constant_override("separation", roundi(BUTTON_GAP_DP * _dp))
-	for button: Button in [_skip, _next]:
+	for button: Button in [_skip, _next, _tab]:
 		button.custom_minimum_size = Vector2(MIN_TARGET_DP * _dp, MIN_TARGET_DP * _dp)
+	_dock_key = -1  # A resize or turn: the dock is stood again at the next look.
 	_dirty = true
 
 
