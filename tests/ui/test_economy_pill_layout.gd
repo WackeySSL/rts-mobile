@@ -38,7 +38,7 @@ func before_test() -> void:
 	MenuRig.begin()
 
 
-## The digits keep fixed slots (Chakra Petch has no `tnum`): a digit of any value is as wide as the
+## The digits keep fixed slots (kept in code, P119): a digit of any value is as wide as the
 ## widest, so the same count of digits stands at the same places whatever they are.
 func test_digits_keep_fixed_slots_so_the_figures_do_not_jitter() -> void:
 	await _open()

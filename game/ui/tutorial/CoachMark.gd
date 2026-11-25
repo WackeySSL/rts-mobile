@@ -146,6 +146,7 @@ func _ready() -> void:
 	_card.add_child(column)
 	_prompt = Label.new()
 	_prompt.name = "Prompt"
+	_prompt.theme_type_variation = &"GuidePrompt"
 	_hint = Label.new()
 	_hint.name = "Hint"
 	_hint.theme_type_variation = &"PauseMuted"
@@ -644,10 +645,12 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 	var count: int = 0
 	for button: Button in [_skip, _next]:
 		button.clip_text = false
+		button.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 		if button.visible:
 			count += 1
-			widest = maxf(widest, button.get_combined_minimum_size().x)
-			across += button.get_combined_minimum_size().x + (gap if across > 0.0 else 0.0)
+			var button_width: float = CoachButtonWidth.of(button, MIN_TARGET_DP * _dp)
+			widest = maxf(widest, button_width)
+			across += button_width + (gap if across > 0.0 else 0.0)
 	if wide and inner - widest - gap < MIN_TEXT_DP * _dp:
 		wide = false  # Not even a column beside the prompt leaves it its least width.
 	var text_width: float = inner
@@ -670,9 +673,12 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 		if count > 0:
 			side = across + gap + least if beside else maxf(least, across)
 		var under: bool = not beside and least + tight + stacked <= avail
+		var squeezed: bool = false  # No column fits the height either: the row keeps its words.
 		if count > 0 and inner - side - gap < MIN_TEXT_DP * _dp:  # Too little left for the prompt:
-			beside = false  # the buttons stack in a column under the tab, whatever the height.
-			under = true
+			squeezed = least + tight + stacked > avail
+			if not squeezed:  # the buttons stack in a column under the tab.
+				beside = false
+				under = true
 		if under:
 			side = widest if count > 0 else least
 		_side.vertical = not beside
@@ -685,14 +691,23 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 		)
 		_side.custom_minimum_size.x = side
 		text_width = maxf(inner - side - gap, minf(MIN_TEXT_DP * _dp, inner))
+		if squeezed:  # The prompt takes what is left and scrolls in it.
+			text_width = maxf(inner - side - gap, 0.0)
 	else:
 		_side.vertical = true
 		_row.vertical = across > inner
 		_side.custom_minimum_size.x = 0.0
 	for button: Button in [_skip, _next]:
-		button.clip_text = _row.vertical and not wide  # Stacked, a button is as wide as the card.
-	_row.update_minimum_size()
-	_side.update_minimum_size()
+		# Stacked, a button is as wide as the card: only there may a longer text be trimmed.
+		var own: float = CoachButtonWidth.of(button, MIN_TARGET_DP * _dp)
+		var trim: bool = _row.vertical and not wide and own > inner
+		button.clip_text = trim
+		button.text_overrun_behavior = (
+			TextServer.OVERRUN_TRIM_ELLIPSIS if trim else TextServer.OVERRUN_NO_TRIMMING
+		)
+	for box: Container in [_row, _side, _main]:  # A button's trim drops its minimum: sort again.
+		box.update_minimum_size()
+		box.queue_sort()
 	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
 		label.custom_minimum_size.x = text_width
 		label.size.x = text_width
@@ -850,7 +865,6 @@ func _button(node_name: String, text: String, variation: StringName) -> Button:
 	button.text = tr(text)
 	button.theme_type_variation = variation
 	button.focus_mode = Control.FOCUS_NONE
-	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	_row.add_child(button)
 	return button

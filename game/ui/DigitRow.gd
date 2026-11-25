@@ -1,7 +1,8 @@
 class_name DigitRow
 extends HBoxContainer
-## A number whose digits keep fixed slots (ADR 0025 section 13). Chakra Petch has no `tnum`
-## feature (P118 checked), so a figure that changes cannot rely on tabular digits: each digit is
+## A number whose digits keep fixed slots (ADR 0025 section 13). The body face has no `tnum`
+## feature that the HUD relies on (the old face had none; the numbers' Plex Mono is fixed width, and
+## P618 may drop the slots), so a figure that changes does not rely on tabular digits: each digit is
 ## its own label, as wide as the widest digit of the theme's font, centred in its slot, and the row
 ## keeps room for `slots` digits at least. A "/", a "+" or a "-" keeps its own width. The labels are
 ## made when a longer number first needs them and are reused; the text is written only when it
@@ -70,6 +71,21 @@ func refit() -> void:
 	for label: Label in _labels:
 		label.add_theme_constant_override("outline_size", roundi(UiScale.dp(edge_dp)))
 	_apply_slots()
+
+
+## The width this row would have for `sample` (digits in slots, the other characters at their own
+## advance), at the theme's font and size now: what a reading of that shape needs, unshown.
+func width_of(sample: String) -> float:
+	var font: Font = get_theme_font(&"font", variation)
+	var font_px: int = get_theme_font_size(&"font_size", variation)
+	var wide: float = 0.0
+	for index: int in sample.length():
+		var letter: String = sample[index]
+		if letter >= "0" and letter <= "9":
+			wide += _slot_px
+		else:
+			wide += font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_px).x
+	return wide
 
 
 func _apply_slots() -> void:

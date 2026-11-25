@@ -9,6 +9,14 @@ const FRAME: String = (
 	'<svg width="16" height="4"><polygon fill="#FF9446" stroke="#B04B12"/>'
 	+ '<polygon fill="#E8681F"/><polygon fill="#808080" stroke="#1C2127"/></svg>'
 )
+const SHEEN: String = (
+	'<svg><defs><linearGradient id="s0"><stop offset="0" stop-color="#8A9398"/>'
+	+ '<stop offset="1" stop-color="#6B7366"/></linearGradient>'
+	+ '<linearGradient id="m0"><stop offset="0" stop-color="#F07AF0"/>'
+	+ '<stop offset="1" stop-color="#9A1F9A"/></linearGradient></defs>'
+	+ '<polygon fill="url(#s0)" stroke="#1C2127"/><polygon fill="#D234D2" stroke="#9A1F9A"/>'
+	+ '<polygon fill="url(#m0)" stroke="#F07AF0"/></svg>'
+)
 
 
 func test_each_key_colour_becomes_the_colour_of_its_place_in_the_players_triad() -> void:
@@ -73,3 +81,40 @@ func test_art_is_valid_with_two_triads_of_three_hex_colours_and_distinct_keys() 
 	assert_bool(IsoPlayerArt.make(&"fossil", KEY, twice).is_valid()).is_true()  # A triad may repeat.
 	# Invalid art replaces nothing.
 	assert_str(IsoPlayerArt.make(&"fossil", short, ARKTISK).recolour(FRAME)).is_equal(FRAME)
+
+
+## P632 (ADR 0050 section 3): one sentinel triad for both factions, in the factions' data, is what
+## the bake replaces. A frame holds it in fills, strokes and gradient stops; the bake gives all
+## eight triads their colours in each, leaves every other colour alone, and handles a marker
+## colour inside a gradient (P631's sheen never puts one there, the bake does not rely on it).
+
+
+func test_both_factions_data_carry_the_one_sentinel_triad() -> void:
+	for id: String in ["fossil", "renew"]:
+		for path: String in [
+			"res://data/factions/%s.tres", "res://data/dev/arena/factions/%s.tres"
+		]:
+			var faction: FactionDef = load(path % id) as FactionDef
+			assert_array(Array(faction.key_triad)).is_equal(ArtPalette.SENTINEL)
+
+
+func test_all_eight_triads_replace_the_sentinel_in_fills_strokes_and_gradient_stops() -> void:
+	var sentinel: PackedStringArray = PackedStringArray(ArtPalette.SENTINEL)
+	assert_int(WorldSort.TRIADS.size()).is_equal(8)
+	for faction: StringName in [&"fossil", &"renew"]:
+		for at: int in WorldSort.TRIADS.size():
+			var triad: Array = WorldSort.TRIADS[at]
+			var art: IsoPlayerArt = IsoPlayerArt.make(faction, sentinel, PackedStringArray(triad))
+			var baked: String = art.recolour(SHEEN)
+			var want: String = (
+				SHEEN
+				. replace(sentinel[0], triad[0])
+				. replace(sentinel[1], triad[1])
+				. replace(sentinel[2], triad[2])
+			)
+			assert_str(baked).override_failure_message("triad %d" % at).is_equal(want)
+			for hex: String in sentinel:
+				assert_bool(baked.contains(hex) and not triad.has(hex)).is_false()
+			# The sheen's own stops and the outline are not the marker's.
+			assert_str(baked).contains('stop-color="#8A9398"').contains('stop-color="#6B7366"')
+			assert_str(baked).contains('stroke="#1C2127"')

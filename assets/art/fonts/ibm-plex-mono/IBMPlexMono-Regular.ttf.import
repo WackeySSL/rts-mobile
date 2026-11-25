@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://bsjoy66vxqgjm"
-path="res://.godot/imported/ChakraPetch-SemiBold.ttf-9a5aecbb22313600b8c26fb803dc56f6.fontdata"
+uid="uid://b415hkr10r8j6"
+path="res://.godot/imported/IBMPlexMono-Regular.ttf-3f718f37f28cf6f881707935d7b98158.fontdata"
 
 [deps]
 
-source_file="res://assets/art/fonts/chakra-petch/ChakraPetch-SemiBold.ttf"
-dest_files=["res://.godot/imported/ChakraPetch-SemiBold.ttf-9a5aecbb22313600b8c26fb803dc56f6.fontdata"]
+source_file="res://assets/art/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf"
+dest_files=["res://.godot/imported/IBMPlexMono-Regular.ttf-3f718f37f28cf6f881707935d7b98158.fontdata"]
 
 [params]
 

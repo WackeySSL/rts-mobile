@@ -144,6 +144,7 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   - The page rule of ADR 0027 §4 is unchanged.
 - **Directions stay 16 for vehicles.** Halving them to 8 is the named lever if the bake or the
   size runs over (§5).
+- 2026-11-25: faces with equal sheen stops share one linearGradient (P631).
 
 ### 2. Buildings: generator SVG with a faceted form; Figma AI for stand-alone art (answer 1)
 - **Everything on the map is generator SVG:** every unit and every building (3x3, 2x2, 1x1), at

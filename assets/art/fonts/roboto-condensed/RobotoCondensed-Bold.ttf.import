@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://25hv4ejp26e1"
-path="res://.godot/imported/BigShouldersDisplay-ExtraBold.ttf-2542766a374a9dd628e4696986aad05c.fontdata"
+uid="uid://d3lobufqoxuva"
+path="res://.godot/imported/RobotoCondensed-Bold.ttf-37b98395e3c1d3fa334c5f7f9e4b8ae1.fontdata"
 
 [deps]
 
-source_file="res://assets/art/fonts/big-shoulders/BigShouldersDisplay-ExtraBold.ttf"
-dest_files=["res://.godot/imported/BigShouldersDisplay-ExtraBold.ttf-2542766a374a9dd628e4696986aad05c.fontdata"]
+source_file="res://assets/art/fonts/roboto-condensed/RobotoCondensed-Bold.ttf"
+dest_files=["res://.godot/imported/RobotoCondensed-Bold.ttf-37b98395e3c1d3fa334c5f7f9e4b8ae1.fontdata"]
 
 [params]
 

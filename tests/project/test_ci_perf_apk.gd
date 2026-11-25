@@ -97,6 +97,7 @@ func test_perf_job_builds_the_host_and_release_libraries_before_the_release_inst
 		[
 			"run: |",
 			'pipx install "scons==${SCONS_VERSION}"',
+			"sudo apt-get update",
 			"sudo apt-get install -y --no-install-recommends binutils",
 		]
 	)

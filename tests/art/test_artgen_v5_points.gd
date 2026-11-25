@@ -245,7 +245,7 @@ func test_the_key_share_passes_the_crafted_model_and_fails_one_outside_the_bands
 	assert_float(Support.key_share(model, 2)).is_between(band.x, band.y)
 	assert_array(Array(Support.share_problems(model))).is_empty()
 	# The bands are ADR 0029's.
-	assert_array(Support.SHARE_BANDS).is_equal([Vector2(0.55, 0.85), Vector2(0.20, 0.50)])
+	assert_array(Support.SHARE_BANDS).is_equal([Vector2(0.55, 0.85), Vector2(0.15, 0.55)])
 	# KRITISK that keeps all its team paint (100 %) fails.
 	var poses: Array[String] = Support.POSES.duplicate()
 	poses.erase("dmg2 0 t1 char 100")

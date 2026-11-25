@@ -38,11 +38,11 @@
 <polygon points="73.6,58.4 84.8,43 83.2,41.8 72,57.2" fill="#DAD7CE"/>
 <polygon points="73.6,43.2 73.6,31.5 76.6,31.5 76.6,43.2" fill="#4A4038"/>
 <polygon points="73.7,30.8 77.8,22.2 80.5,23.5 76.4,32.1" fill="#4A4038"/>
-<polygon points="74.4,40.4 68,45.9 74.4,49.1 80.8,43.6" fill="#FF9446" stroke="#FF9446"/>
-<polygon points="68,45.9 61.6,45.8 68,49 74.4,49.1" fill="#FF9446" stroke="#FF9446"/>
-<polygon points="80.8,50.8 68,57.2 68,49 74.4,49.1 80.8,43.6" fill="#B04B12" stroke="#B04B12"/>
-<polygon points="61.6,54 68,57.2 68,49 61.6,45.8" fill="#E8681F" stroke="#B04B12"/>
-<polygon points="75.1,49.8 81.5,44.3 80.2,42.8 73.8,48.3" fill="#FF9446"/>
-<polygon points="68,50 74.4,50.1 74.5,48.1 68.1,48" fill="#FF9446"/>
+<polygon points="74.4,40.4 68,45.9 74.4,49.1 80.8,43.6" fill="#F07AF0" stroke="#F07AF0"/>
+<polygon points="68,45.9 61.6,45.8 68,49 74.4,49.1" fill="#F07AF0" stroke="#F07AF0"/>
+<polygon points="80.8,50.8 68,57.2 68,49 74.4,49.1 80.8,43.6" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="61.6,54 68,57.2 68,49 61.6,45.8" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="75.1,49.8 81.5,44.3 80.2,42.8 73.8,48.3" fill="#F07AF0"/>
+<polygon points="68,50 74.4,50.1 74.5,48.1 68.1,48" fill="#F07AF0"/>
 </g>
 </svg>

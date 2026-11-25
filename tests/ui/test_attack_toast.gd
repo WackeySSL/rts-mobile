@@ -143,8 +143,8 @@ func _expect_title_fits(why: String, whole: bool) -> void:
 	title.text = "TURBINE HALL UNDER ATTACK"
 	await _settle()
 	var font: Font = title.get_theme_font(&"font")
-	# The ADR 0025 section 13 title face (Big Shoulders caps), tinted danger by modulate.
-	assert_str(((font as FontVariation).base_font).resource_path).contains("BigShoulders")
+	# The ADR 0025 section 13 title face (Roboto Condensed Bold caps), tinted danger by modulate.
+	assert_str(((font as FontVariation).base_font).resource_path).contains("RobotoCondensed")
 	assert_object(title.modulate).is_equal(title.get_theme_color(&"danger", &"HudTokens"))
 	var wide: float = (
 		font

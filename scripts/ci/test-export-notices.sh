@@ -517,10 +517,10 @@ for kind in web android release; do
   if [ "$kind" = web ]; then gone="the pack lacks assets/art/fonts"; fi
   fonts_tree "nopack-$kind"
   STUB_NO_OFL=OFL.txt run "nopack-$kind" "$kind"
-  if [ "$rc" = 1 ] && grep -Fq "$gone/big-shoulders/OFL.txt" <<<"$out"; then
+  if [ "$rc" = 1 ] && grep -Fq "$gone/ibm-plex-mono/OFL.txt" <<<"$out"; then
     pass "$kind: exit 1 when the build packs none of the OFL.txt files"
   else
-    fail "$kind: wanted exit 1 and '$gone/big-shoulders/OFL.txt' with no OFL.txt packed, got exit $rc: $(tail -n 1 <<<"$out")"
+    fail "$kind: wanted exit 1 and '$gone/ibm-plex-mono/OFL.txt' with no OFL.txt packed, got exit $rc: $(tail -n 1 <<<"$out")"
   fi
   fonts_tree "nopack-new-$kind"
   STUB_NO_OFL=new-family run "nopack-new-$kind" "$kind"
