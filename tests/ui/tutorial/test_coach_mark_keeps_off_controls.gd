@@ -509,6 +509,31 @@ func _tab_press() -> void:
 	(_mark.find_child("Tab", true, false) as Button).pressed.emit()
 
 
+## The one see-through reason the sweep lets pass for a HUD control (P592): the hand's own bounds
+## meet the card while the ring does not. A ring that meets the card is no exemption, whatever
+## gesture the hand plays.
+static func _hand_alone(ring: Rect2, hand: Rect2, card: Rect2) -> bool:
+	return (
+		hand.has_area()
+		and hand.intersects(card)
+		and not (ring.has_area() and ring.intersects(card))
+	)
+
+
+func test_a_ring_meeting_the_card_is_never_excused_by_the_hand() -> void:
+	var card: Rect2 = Rect2(0.0, 0.0, 200.0, 100.0)
+	var hand: Rect2 = Rect2(150.0, 80.0, 100.0, 100.0)  # A TAP hand reaching the card.
+	assert_bool(_hand_alone(Rect2(300.0, 300.0, 50.0, 50.0), hand, card)).is_true()
+	assert_bool(_hand_alone(Rect2(180.0, 90.0, 50.0, 50.0), hand, card)).is_false()
+	assert_bool(_hand_alone(Rect2(), Rect2(), card)).is_false()
+	(
+		assert_bool(
+			_hand_alone(Rect2(300.0, 300.0, 50.0, 50.0), Rect2(400.0, 400.0, 9.0, 9.0), card)
+		)
+		. is_false()
+	)
+
+
 ## The see-through rules: the card is see-through only over a tile, a modal's button or a control
 ## that follows the world; where it covers the beat's control a pushed touch reaches it.
 func _through(label: String, beat: TutorialBeatDef, card: Rect2, scope: Node) -> Array[String]:
@@ -518,8 +543,8 @@ func _through(label: String, beat: TutorialBeatDef, card: Rect2, scope: Node) ->
 		aim.anchor == TutorialBeatDef.Anchor.TILE
 		or scope != _layer
 		or WORLD_CONTROLS.has(aim.anchor_control)
-		or _mark.gesture_plan().bounds.intersects(card)
-	)  # The hand's reach counts (P592).
+		or _hand_alone(_mark.ring_rect(), _mark.gesture_plan().bounds, card)
+	)
 	var safe: Rect2 = SafeAreaMargin.rect_inside(
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
