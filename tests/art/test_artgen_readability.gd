@@ -59,8 +59,8 @@ func test_the_default_view_of_every_type_has_a_team_share_of_2_to_12_percent() -
 		)
 
 
-## A model at detail 1 or more (ADR 0050 section 1; none is yet, the field arrives with the detail
-## renderer) paints its faction's fixed colour on panels: FACTION_SHARE of its default view. The
+## A model at detail 1 or more (ADR 0050 section 1) paints its faction's fixed colour on panels:
+## FACTION_SHARE of its default view. The
 ## share is the hue-band measure of the same-scene check (P640): the pixels whose hue is within
 ## `faction_hue_band` of the faction's mid hue at a saturation of `faction_sat_min` or more, read
 ## from `same_scene.tres`. Exact tones miss the small faces of infantry, where the 1 px edge and the
@@ -122,10 +122,25 @@ func _share(picture: Image, hexes: Array) -> float:
 	return float(hit) / maxi(body, 1)
 
 
+## The hue of `faction` in the bands: the one of `faction_hues` nearest the mid tone of the
+## faction's fixed colour (the bands list the hues without naming the factions).
+func _faction_hue(bands: SameSceneBands, faction: StringName) -> float:
+	var mid: float = Color(ArtPalette.tone(faction, ArtPalette.FACTION, 1)).h * 360.0
+	var best: float = bands.faction_hues[0]
+	var best_gap: float = 360.0
+	for hue: float in bands.faction_hues:
+		var gap: float = absf(mid - hue)
+		gap = minf(gap, 360.0 - gap)
+		if gap < best_gap:
+			best = hue
+			best_gap = gap
+	return best
+
+
 ## The share of `picture`'s opaque pixels in `faction`'s hue band (bands from `same_scene.tres`).
 func _faction_share(picture: Image, faction: StringName) -> float:
 	var bands: SameSceneBands = SameScene.load_bands()
-	var hue: float = bands.faction_hues[0 if faction == &"fossil" else 1]
+	var hue: float = _faction_hue(bands, faction)
 	var hit: int = 0
 	var body: int = 0
 	for y: int in picture.get_height():
