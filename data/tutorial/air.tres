@@ -107,6 +107,7 @@ lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_08_build"), SubResourc
 script = ExtResource("2_beat")
 id = &"select-squads"
 prompt_key = &"tutorial.air.select-squads"
+gesture = 3
 anchor = 2
 anchor_tile = Vector2i(9, 14)
 kind = 1
