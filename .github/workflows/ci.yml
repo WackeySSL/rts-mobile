@@ -49,7 +49,9 @@ jobs:
     # cancelled at 29:43); 45 leaves room for growth.
     # Wave 12 (about 6240 cases): P245's aircraft frames put the suites at about 42 min on a PR run,
     # and PR #486 was cancelled twice at the 45 min limit; 75 leaves room again.
-    timeout-minutes: 75
+    # Treadline art (about 8150 cases): the L2 vehicle and squad frames (P638-P640) put verify at
+    # 58-73 min on PR runs, and PR #673 was cancelled at the 75 min limit; 100 leaves room again.
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
