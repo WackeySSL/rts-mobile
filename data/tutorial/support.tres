@@ -148,7 +148,6 @@ lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_09_build"), SubResourc
 script = ExtResource("2_beat")
 id = &"select-truck"
 prompt_key = &"tutorial.support.select-truck"
-gesture = 2
 kind = 1
 type_id = &"fossil_shot_truck"
 budget_s = 4

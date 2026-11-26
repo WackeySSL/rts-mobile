@@ -43,7 +43,6 @@ lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_02_build"), SubResourc
 script = ExtResource("2_beat")
 id = &"tap-air"
 prompt_key = &"tutorial.air.tap-air"
-gesture = 2
 kind = 1
 type_id = &"fossil_fighter"
 covers = Array[StringName]([&"selection-tap-aircraft"])
