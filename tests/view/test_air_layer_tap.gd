@@ -46,9 +46,20 @@ func test_the_point_is_the_pick_fill_point_of_every_flyer_row() -> void:
 func test_it_is_the_hull_without_the_bob() -> void:
 	_air._process(0.3)
 	var rig: AirLayer.Rig = _air.rig_of(FIGHTER_ID)
+	assert_float(rig.hull.position.y).is_not_equal(-rig.lift)  # The bob moves the drawn hull.
 	assert_that(_air.tap_point(FIGHTER_ID)).is_equal_approx(
 		rig.global_position - Vector2(0.0, rig.lift), NEAR
 	)
+	assert_float(_air.tap_point(FIGHTER_ID).y).is_not_equal(rig.hull.global_position.y)
+
+
+func test_a_falling_aircraft_is_inf() -> void:
+	assert_that(_air.tap_point(FIGHTER_ID)).is_not_equal(Vector2.INF)
+	_runner.world.hp[_runner.snapshot.index_of(FIGHTER_ID)] = 0
+	_runner.run_ticks(1)
+	_see([Vector2i(8, 8), Vector2i(16, 20)])
+	assert_int(_air.falling_count()).is_equal(1)
+	assert_that(_air.tap_point(FIGHTER_ID)).is_equal(Vector2.INF)
 
 
 func test_the_other_layers_unit_a_fogged_enemy_and_an_unknown_id_are_inf() -> void:

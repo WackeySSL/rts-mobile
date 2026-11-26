@@ -18,6 +18,7 @@ var half: float = 0.0  ## The ring's half size, px.
 var flyer: bool = false
 var in_field: bool = false  ## The point is on the screen and under no HUD part.
 var scans: int = 0  ## Scans made so far (tests).
+var lookups: int = 0  ## `index_of` calls made to find the held row (tests).
 
 var _step: TutorialLeadInDef = null
 var _serial: int = -1
@@ -41,7 +42,8 @@ func update(
 ) -> void:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	var sel: TutorialUnitPickDef = aim.unit if aim != null else null
-	if snap == null or sel == null or camera == null or aim.anchor != TutorialBeatDef.Anchor.UNIT:
+	var bare: bool = camera == null or ground == null or air == null
+	if snap == null or sel == null or bare or aim.anchor != TutorialBeatDef.Anchor.UNIT:
 		_step = aim
 		_forget()
 		return
@@ -88,6 +90,7 @@ func _holds(snap: MatchSnapshot, sel: TutorialUnitPickDef, runner: MatchRunner) 
 	var ids: PackedInt32Array = snap.unit_id
 	var row: int = _row
 	if snap.rows_version != _version or row < 0 or row >= ids.size() or ids[row] != unit_id:
+		lookups += 1
 		row = snap.index_of(unit_id)
 	if row < 0:
 		return false

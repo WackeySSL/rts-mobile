@@ -1,42 +1,8 @@
-extends GdUnitTestSuite
+extends "res://tests/ui/tutorial/support/unit_anchor_suite.gd"
 ## `GuideUnitAnchor` (plan P593b-1, ADR 0048 sections 13.3 and 13.4) on controls_test:
 ## tanks 1-30 are the local player's (rows of 10, ids rising east), 31-40 the enemy's.
 ## The camera stands over a unit so the pick is exact. The resolver reads only the published
 ## snapshot, the camera and the layers' `tap_point`.
-
-const Air: GDScript = preload("res://tests/view/support/air_rig.gd")
-const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
-const SCENARIO: String = "res://data/scenarios/controls_test.tres"
-const SAFE: Rect2 = Rect2(0.0, 0.0, 1280.0, 720.0)
-const NO_RECTS: Dictionary[StringName, Rect2] = {}
-
-var _runner: MatchRunner
-var _camera: RtsCamera
-var _ground: UnitLayer
-var _air: AirLayer
-var _anchor: GuideUnitAnchor
-var _hud: Dictionary[StringName, Rect2] = {}
-
-
-func before_test() -> void:
-	_runner = auto_free(MatchRunner.new())
-	_runner.scenario = load(SCENARIO)
-	_runner.start()
-	_camera = auto_free(RtsCamera.new())
-	add_child(_camera)
-	_ground = auto_free(UnitLayer.new())
-	_ground.runner = _runner
-	_ground.camera = _camera
-	add_child(_ground)
-	_ground.set_process(false)
-	_air = auto_free(Air.layer(self, _runner))
-	_anchor = GuideUnitAnchor.new()
-	_hud = {}
-	_see_all()
-
-
-func after_test() -> void:
-	CommandQueue.clear()
 
 
 func test_nearest_camera_picks_the_closest_own_unit_by_integer_distance() -> void:
@@ -213,52 +179,70 @@ func test_in_field_is_false_under_a_hud_part_but_not_under_the_economy_card() ->
 	assert_bool(_anchor.in_field).is_false()
 
 
-func test_a_moving_target_allocates_nothing_over_sixty_frames() -> void:
+func test_a_moving_target_smoke_no_new_objects_over_sixty_frames() -> void:
+	_hud[HudCorners.BUILD] = Rect2(1000.0, 600.0, 100.0, 80.0)  # The rect loop runs.
+	_hud[HudCorners.PILL] = Rect2(10.0, 10.0, 200.0, 50.0)
+	_hud[HudCorners.BAR] = Rect2(10.0, 640.0, 300.0, 60.0)
+	var aim: TutorialLeadInDef = _aim(
+		TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEAREST_CAMERA
+	)
+	for warm: int in 4:  # The first frames fill the layers' caches.
+		_ground._process(0.016)
+		_update(aim)
+	var objects: float = Performance.get_monitor(Performance.OBJECT_COUNT)
+	var memory: float = Performance.get_monitor(Performance.MEMORY_STATIC)
+	for frame: int in 60:  # The camera moves every frame, so the point does too.
+		_camera.position += Vector2(1.0, 0.5)
+		_update(aim)
+	assert_float(Performance.get_monitor(Performance.OBJECT_COUNT)).is_equal(objects)
+	# MEMORY_STATIC is noisy (the engine itself moves it by a few KB), so it only bounds the growth.
+	var grown: float = Performance.get_monitor(Performance.MEMORY_STATIC) - memory
+	assert_float(grown).is_less(32768.0)
+
+
+func test_a_row_shift_keeps_the_hold_and_the_row_is_reused_while_rows_version_holds() -> void:
+	_look_at(20)
 	var aim: TutorialLeadInDef = _aim(
 		TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEAREST_CAMERA
 	)
 	_update(aim)
+	assert_int(_anchor.unit_id).is_equal(20)
+	var looks: int = _anchor.lookups
+	_tick()
+	_update(aim)  # Rows did not move: the held row is reused, no index_of.
+	assert_int(_anchor.lookups).is_equal(looks)
+	_runner.world.hp[6] = 0  # Unit 7 dies: unit 20 moves up a row.
 	_tick()
 	_update(aim)
-	var objects: float = Performance.get_monitor(Performance.OBJECT_COUNT)
-	for frame: int in 60:
-		_ground._process(0.016)
-		_camera.position += Vector2(1.0, 0.5)
-		if frame % 4 == 0:
-			_runner.run_ticks(1)
-		_update(aim)
-	assert_float(Performance.get_monitor(Performance.OBJECT_COUNT)).is_equal(objects)
+	assert_int(_anchor.unit_id).is_equal(20)
+	assert_int(_anchor.lookups).is_equal(looks + 1)
+	assert_that(_anchor.point).is_equal_approx(
+		_camera.world_to_screen(_ground.tap_point(20)), Vector2(0.01, 0.01)
+	)
+	_tick()
+	_update(aim)
+	assert_int(_anchor.lookups).is_equal(looks + 1)  # The new row is reused in turn.
 
 
-func _aim(side: TutorialUnitPickDef.Whose, pick: TutorialUnitPickDef.Pick) -> TutorialLeadInDef:
-	var def: TutorialUnitPickDef = TutorialUnitPickDef.new()
-	def.side = side
-	def.pick = pick
-	var step: TutorialLeadInDef = TutorialLeadInDef.new()
-	step.anchor = TutorialBeatDef.Anchor.UNIT
-	step.unit = def
-	return step
-
-
-func _update(aim: TutorialLeadInDef) -> void:
-	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud)
-
-
-func _tick() -> void:
-	_runner.run_ticks(1)
-	_see_all()
-
-
-func _see_all() -> void:
-	var fog: FogGrid = _runner.snapshot.fog
-	var tiles: Array = []
-	for cell: int in fog.cells:
-		tiles.append(Vector2i(cell % fog.cols, cell / fog.cols))
-	Buildings.see(_runner.snapshot, 1, tiles)
-
-
-## The camera over unit `id`'s tick position.
-func _look_at(id: int) -> void:
+func test_a_nearest_pick_off_axis_follows_the_integer_distances() -> void:
+	_look_at(7)
+	_camera.position += Vector2(37.0, -53.0)  # Between rows and columns, on no unit.
 	var snap: MatchSnapshot = _runner.snapshot
-	var row: int = snap.index_of(id)
-	_camera.position = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
+	var centre: Vector2i = IsoProjection.px_to_ground(_camera.position)
+	var best: int = -1
+	var best_gap: int = 0
+	for row: int in 30:  # The player's tanks, ascending ids.
+		var dx: int = snap.pos_x[row] - centre.x
+		var dy: int = snap.pos_y[row] - centre.y
+		if best < 0 or dx * dx + dy * dy < best_gap:
+			best = row
+			best_gap = dx * dx + dy * dy
+	_update(_aim(TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEAREST_CAMERA))
+	assert_int(_anchor.unit_id).is_equal(snap.unit_id[best])
+
+
+func test_an_own_unit_on_a_fogged_cell_is_still_picked() -> void:
+	Buildings.see(_runner.snapshot, 1, [])
+	_update(_aim(TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEWEST))
+	assert_int(_anchor.unit_id).is_equal(30)
+	assert_bool(_anchor.point != Vector2.INF).is_true()
