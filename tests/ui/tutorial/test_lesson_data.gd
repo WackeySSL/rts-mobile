@@ -93,6 +93,34 @@ func test_the_groups_beat_asks_for_one_squad() -> void:
 			assert_int(beat.count).override_failure_message(String(beat.id)).is_equal(1)
 
 
+## ADR 0048 section 5: a beat whose final target is a drawer card (`Tile_*`) or tab (`Tab*`) has a
+## lead-in that opens the drawer, and a card also has the lead-in that turns on its tab.
+func test_a_drawer_target_is_led_in_by_the_drawer_and_its_tab() -> void:
+	var checked: int = 0
+	for id: StringName in LESSONS:
+		for beat: TutorialBeatDef in _lesson(id).beats:
+			var name: String = String(beat.anchor_control)
+			var card: bool = name.begins_with("Tile_")
+			if (
+				beat.anchor != TutorialBeatDef.Anchor.CONTROL
+				or not (card or name.begins_with("Tab"))
+			):
+				continue
+			checked += 1
+			var label: String = "%s/%s" % [id, beat.id]
+			var opens: bool = false
+			var tab: bool = false
+			for step: TutorialLeadInDef in beat.lead_in:
+				if step.kind == TutorialConditions.Kind.UNFOLD_OPEN and step.value == 1:
+					opens = true
+				if step.kind == TutorialConditions.Kind.DRAWER_TAB:
+					tab = true
+			assert_bool(opens).override_failure_message(label + " opens no drawer").is_true()
+			if card:
+				assert_bool(tab).override_failure_message(label + " has no tab step").is_true()
+	assert_int(checked).is_greater(5)
+
+
 func test_every_covers_id_is_a_row_of_the_how_to_play_list() -> void:
 	var rows: Array[StringName] = _how_to_play_ids()
 	assert_int(rows.size()).is_greater(100)

@@ -94,6 +94,8 @@ var _missing: Array[String] = []
 var _ringless: Array[String] = []
 var _contact: int = -1
 var _ring_noted: bool = false
+## The lead-in steps of the beat on show that the bot has tapped (each once).
+var _led: Array[TutorialLeadInDef] = []
 var _sent: Array[Command] = []
 var _beat_steps: int = 0
 var _stuck_steps: int = 0
@@ -256,6 +258,7 @@ func _move() -> void:
 		_shown[beat.id] = _tick()
 		_acted_tick = -REORDER_TICKS
 		_ring_noted = false
+		_led.clear()
 		_note_missing(beat)
 	var waited: int = _ticks_run - _beat_tick
 	if waited < think_ticks and not _runner.paused:
@@ -269,10 +272,31 @@ func _move() -> void:
 	):
 		_tap_stop(beat)
 		return
+	if _tap_lead_in(beat):
+		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
 		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
 		return
 	await _act(beat)
+
+
+## Follows the ring through the beat's lead-ins (ADR 0048 section 5, P593): while the active step
+## is a control lead-in not yet tapped, taps `mark.target_control()` (what the ring stands on, as a
+## finger would) and returns true. A ring that stands on another control than the step names is told
+## in `ringless`. A tile step has no control: the beat's own action covers it.
+func _tap_lead_in(beat: TutorialBeatDef) -> bool:
+	var step: TutorialLeadInDef = _director.active_target()
+	if step == null or not beat.lead_in.has(step) or _led.has(step):
+		return false
+	if step.anchor != TutorialBeatDef.Anchor.CONTROL:
+		return false
+	_led.append(step)
+	var target: Control = _mark.target_control()
+	if target == null or target.name != step.anchor_control:
+		_ringless.append("%s: lead-in %s (ring on %s)" % [beat.id, step.anchor_control, target])
+		return false
+	_press_button(target as BaseButton, String(step.anchor_control))
+	return true
 
 
 ## A control anchor must be a node of the HUD at all (`missing`).

@@ -298,6 +298,9 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   BUILD, the Structures tab and the barracks card (passed by `PLACING`) to the check mark
   (`PlaceConfirm`). The scripted enemies' `trigger_beat` ids (`groups`, `home`, `sell-last`) are
   untouched.
+  *Deviation (P593).* A build beat ends on its item card; the placement check is rung by the
+  placement beat (basics/placed), so the ring never points at nothing while the structure builds.
+  `barracks` therefore chains BUILD, the Structures tab and the barracks card, with no check mark.
 
 ### 6. Gesture hints
 - **`GestureHint`** (`game/ui/tutorial/`, a Control child of the mark,
