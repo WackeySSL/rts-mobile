@@ -1489,6 +1489,8 @@ MenuXpBar/styles/fill = SubResource("StyleBoxFlat_menu_xp_fill")
 ; the money amber; MenuScrim: the backdrop shade (its `shade` icon, not used yet).
 MenuItem/base_type = &"CapsButton"
 MenuItem/font_sizes/font_size = 18
+MenuItem/colors/font_disabled_color = Color(0.91372549, 0.9254902, 0.90588235, 0.6)
+MenuItem/styles/disabled = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/focus = SubResource("StyleBoxFlat_pause_focus")
 MenuItem/styles/hover = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_down")
@@ -1512,6 +1514,7 @@ MenuPrimary/colors/icon_normal_color = Color(0.01960784, 0.03529412, 0.04705882,
 MenuPrimary/colors/icon_pressed_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
 MenuPrimary/font_sizes/font_size = 18
 MenuPrimary/colors/font_disabled_color = Color(0.01960784, 0.03529412, 0.04705882, 0.6)
+MenuPrimary/styles/disabled = SubResource("StyleBoxFlat_menu_primary")
 MenuPrimary/styles/focus = SubResource("StyleBoxFlat_pause_focus")
 MenuPrimary/styles/hover = SubResource("StyleBoxFlat_menu_primary")
 MenuPrimary/styles/hover_pressed = SubResource("StyleBoxFlat_menu_primary_down")
