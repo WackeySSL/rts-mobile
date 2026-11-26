@@ -7,28 +7,24 @@ script = ExtResource("1_model")
 art_id = &"fossil_fighter"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Torchjet: a stubby delta of olive steel built from stepped slabs, a fat body down its middle with one big intake, a dark open mouth in a rust lip at the nose, a dark canopy slab on top, a single tall wedge tail fin with a team stripe and a short rust flare stack with a warm lamp at the tail."
+silhouette = "Torchjet: a stubby delta of steel and orange stepped slabs, a fat orange body down its middle with one big intake, a dark open mouth in a steel lip at the nose, a dark canopy slab on top, a single tall orange wedge tail fin with a team stripe, a team band on each wing tip and a short iron flare stack with a warm lamp at the tail."
 fly_px = 26
+detail = 2
 prims = PackedStringArray(
-"prism hull rust -0.5 0 0.4 0.12 0.1 0.1 axis=x sides=6",
+"prism hull iron -0.5 0 0.4 0.12 0.1 0.1 axis=x sides=6",
 "box hull lamp -0.58 0 0.42 0.04 0.06 0.05",
 "box hull steel -0.32 0 0.3 0.2 0.84 0.05",
-"box hull steel -0.15 0 0.3 0.16 0.64 0.05",
+"box hull faction -0.15 0 0.3 0.16 0.64 0.05 detail=1",
 "box hull steel 0.0 0 0.3 0.16 0.44 0.05",
-"box hull steel 0.15 0 0.3 0.16 0.24 0.05",
+"box hull faction 0.15 0 0.3 0.16 0.24 0.05 detail=1",
 "box hull team -0.32 -0.36 0.35 0.14 0.14 0.012",
 "box hull team -0.32 0.36 0.35 0.14 0.14 0.012",
-"box hull team -0.14 -0.24 0.35 0.12 0.14 0.012",
-"box hull team -0.14 0.24 0.35 0.12 0.14 0.012",
-"box hull team 0.0 -0.14 0.35 0.1 0.1 0.012",
-"box hull team 0.0 0.14 0.35 0.1 0.1 0.012",
-"prism hull olive -0.06 0 0.34 0.74 0.3 0.24 axis=x sides=8",
+"prism hull faction -0.06 0 0.34 0.74 0.3 0.24 axis=x sides=8 detail=1",
 "prism hull iron 0.4 0 0.34 0.2 0.3 0.26 axis=x sides=8",
-"prism hull rust 0.5 0 0.33 0.06 0.36 0.3 axis=x sides=8",
+"prism hull steel 0.5 0 0.33 0.06 0.36 0.3 axis=x sides=8",
 "prism hull interior 0.54 0 0.355 0.02 0.26 0.2 axis=x sides=8",
 "box hull iron 0.0 0 0.58 0.26 0.14 0.07",
-"box hull team -0.16 0 0.58 0.12 0.14 0.014",
-"wedge hull olive -0.3 0 0.56 0.26 0.05 0.26 slope=1",
+"wedge hull faction -0.3 0 0.56 0.26 0.05 0.26 slope=1 detail=1",
 "box hull team -0.36 0 0.74 0.1 0.06 0.06"
 )
 emitters = PackedStringArray(

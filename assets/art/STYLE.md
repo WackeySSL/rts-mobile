@@ -500,8 +500,8 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_fighter` | A stubby delta of olive steel built from stepped slabs, a fat body down its middle with one big intake, a dark open mouth in a rust lip at the nose, a dark canopy slab on top, a single tall wedge tail fin with a team stripe and a short rust flare stack with a warm lamp at the tail. |
-| `fossil_bomber` | A fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip. |
+| `fossil_fighter` | A stubby delta of steel and orange stepped slabs, a fat orange body down its middle with one big intake, a dark open mouth in a steel lip at the nose, a dark canopy slab on top, a single tall orange wedge tail fin with a team stripe, a team band on each wing tip and a short iron flare stack with a warm lamp at the tail. |
+| `fossil_bomber` | A fat orange lifting body with a stepped steel and iron drill-bit nose, a short broad concrete wing, two long orange booms either side that each carry an iron drum engine at the front and end in an orange wedge fin, one steel tail plane across the booms and a team band on each wing tip. |
 | `renew_fighter` | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. |
 | `renew_bomber` | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. |
 
@@ -526,6 +526,14 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
   turns away: the team share changes little as the aircraft turns. Share of the default view at zoom 1: 9.0 %
   (Torchjet), 9.4 % (Drillhead), 11.1 % (Glint) and 10.6 % (Sunfall), in the rule's 8 to 12 %; in every direction
   7.4 to 15.5 % (`tests/art/test_aircraft_art.gd` holds 5 to 16 %).
+  **P642:** the Torchjet and the Drillhead are redrawn at detail 2 (fixed Nordværn orange on the fuselage, booms,
+  fin and every other slab, steel, iron and concrete elsewhere; olive and rust are retired for them) and keep only
+  a small team marker: a stripe on the tail fin and a band on each wing tip (the Torchjet), a band on each wing tip
+  (the Drillhead). Aircraft keep stripes and bands instead of P638's rimmed plate: they are thin, flat slabs
+  with nothing to stand a rim round, and a stripe on a wing is no roof plate to `test_artgen_plates.gd`. Share of the
+  default view at zoom 1: 4.6 % (Torchjet) and 3.1 % (Drillhead), in every direction 3.6 to 7.7 % and 1.5 to 3.8 %
+  (`test_aircraft_art.gd` holds 2 to 12 % and 1 to 16 % for a model at detail 2, and the old 8 to 12 % and 5 to 16 %
+  for the Glint and the Sunfall). The orange panels are 45 % (Torchjet) and 39 % (Drillhead) of the default view.
 - **Canvas.** Hull 114 x 92, 162 x 106, 124 x 76 and 182 x 108 px, shadow 124 x 66, 176 x 90, 126 x 66 and 190 x 98,
   in 2x px. An aircraft's sheet has **no tight boxes** (`boxes` is empty): every frame of a flyer is on page 2, which
   is not trimmed (P306). Page 1 of the atlas does not move (2314, 2258, 2238); page 2 grows by 472, 312 and 384 rows
@@ -536,6 +544,8 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
   after P266 (about +420), P204 (about +630) and the remaining building shadows. `perf_air` and `perf_ai_4b` use
   the shipped type ids, so they now bake these frames: their `atlas_page2`, texture MiB and bake ms are larger by
   design, not a regression.
+  **P642:** the two Nordværn aircraft keep their canvases, so they add 0 rows to page 2 on every page (measured with
+  the old models in place: the same 2600 and 1478).
 - **Emitters.** An `exhaust` at the tail and a `damage` point on the hull; no `hang` and no scar (`scar_milli` 0): a
   flyer does not use the neutral overlays, and the Iso page's Damage rows skip it.
 - **Gallery.** The Iso page lists them by themselves and draws each hull `fly_px` above its shadow; the Icons page
@@ -550,7 +560,7 @@ the aircraft in each faction's roster (Vehicles tab). The minelayers follow them
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_bunk_wagon` | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
+| `fossil_bunk_wagon` | A tall riveted crew box in Nordværn orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
 | `renew_linecar` | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. |
 
 - **Apart from the neighbours.** The Bunk Wagon is a box with a hatch and no turret or gun, taller than the Bullhead and
@@ -562,6 +572,11 @@ the aircraft in each faction's roster (Vehicles tab). The minelayers follow them
   d06) and 9.2 % (Linecar, d10), in the rule's 8 to 12 %; in every direction 9.3 to 11.6 % and 8.1 to 11.1 %
   (`test_carrier_art.gd` holds 5 to 16 %). The first Bunk Wagon had side bands only and 1.4 % in its default view,
   the first Linecar a roof stripe only and 6 % in some directions.
+  **P642:** the Bunk Wagon is redrawn at detail 2 (an orange crew box, deck, nose and roof over steel and iron; the
+  olive deck and the rust roof and bumper are retired) and its five bands are replaced by one small rimmed team
+  plate on the roof, as P638's vehicles wear one: 3.0 % of the default view and 3.0 to 4.5 % in every direction
+  (`test_carrier_art.gd` holds 2 to 12 % and 1 to 16 % for a model at detail 2; the Linecar keeps 8 to 12 % and
+  5 to 16 %). The orange panels are 56 % of the default view. Its shadow canvas is now 230 x 118 (was 218 x 112).
 - **Running gear and emitters.** `tracks` for the Bunk Wagon, `wheels` for the Linecar; an `exhaust` at the tail, a
   `damage` point on the roof and a `hang` bracket on the camera side; `scar_milli` 800 and 500.
 - **Canvas.** Hull 158 x 124 and 150 x 92, shadow 218 x 112 and 212 x 108, in 2x px. Page 1 of the atlas grows by 105,
@@ -580,7 +595,7 @@ the carriers in each faction's roster (Vehicles tab); each needs its faction's r
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_shot_truck` | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a team band and a lamp bar on it, and on the bed a long steel drill mast laid slantwise on two rust cradles with its bit reaching past the tail, four fat steel shot cans with a team-colour band and stud standing beside it, and team bands down the bed rails. |
+| `fossil_shot_truck` | A low flatbed truck on six dark wheels with orange hubs, an orange boxed cab with a rimmed team plate on its roof and a lamp bar, and on the orange bed a long steel drill mast on an orange housing laid slantwise on two iron cradles with its bit reaching past the tail, four fat orange shot cans with steel caps standing beside it, and orange rails down the bed. |
 | `renew_seeder` | A light blue-grey four-wheeled planter with a small glass-fronted cab and a team band on its flanks, behind the cab a tall hexagonal glass hopper on a graphite frame on a team-colour flange with a white cap and a mint light, and at the tail a jointed graphite planting arm that drops a white spike towards the ground. |
 
 - **Apart from the neighbours.** The Shot Truck is a flat bed with a mast and four cans on six wheels: no drum
@@ -598,6 +613,12 @@ the carriers in each faction's roster (Vehicles tab); each needs its faction's r
   the rule's 8 to 12 %; in every direction 10.3 to 13.5 % and 5.5 to 11.8 % (`test_minelayer_art.gd` holds 5 to 16
   %). A team ring round the hopper itself was tried and dropped: the draw order put it over the hopper in several
   directions and took the share to 16 to 18 %.
+  **P642:** the Shot Truck is redrawn at detail 2 (an orange cab, bed, bed rails, mast housing, shot cans and wheel
+  hubs over iron and steel; the olive and the rust cradles are retired) and its bands and can bands are replaced by
+  one small rimmed team plate on the cab roof: 3.9 % of the default view and 3.5 to 5.9 % in every direction
+  (`test_minelayer_art.gd` holds 2 to 12 % and 1 to 16 % for a model at detail 2; the Seeder keeps 8 to 12 % and
+  5 to 16 %). The orange panels are 50 % of the default view. Its cab is the Tanker's, so the Shot Truck
+  against the Tanker is 0.74 at 32 px in greyscale (it was 0.71; the test holds 0.85).
 - **Running gear and emitters.** `wheels` for both; an `exhaust` at the tail, a `damage` point on the load and a
   `hang` bracket on the camera side; `scar_milli` 500.
 - **Canvas.** Hull 190 x 138 and 152 x 106 (the default views d06 and d10), shadow 230 x 118 and 206 x 106, in 2x px. Page 1 of the atlas
@@ -2454,13 +2475,13 @@ in doubt, choose a plainer real-world form.
 | Torque (`renew_tank`) | A long low blue-grey hull with a sloping nose on one long continuous dark track a side with a row of titanium road wheels, white side skirts over the tracks under a team stripe, dark roof patches and a hexagonal turret on a team ring carrying one long dark rail barrel with a block at its muzzle. | `iso/renew/veh/renew_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 162x96 |
 | Arcline (`renew_artillery`) | A long white four-wheeled carrier with a short glass-fronted cab and a team band, two stabiliser feet at the tail and, on a hexagonal turntable between two white cheek plates, a slim rail raised in four steps towards the front. | `iso/renew/veh/renew_artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 162x106 |
 | Fuel Runner (`renew_tanker`) | A quick white four-wheeled tanker with a glass-fronted cab and a team band, a mint light bar on the nose and a long round glass tank in white cradle ribs with two team rings, white hexagonal end caps and a dark hatch dome on top. | `iso/renew/veh/renew_tanker_hull_d<NN>.svg`, 16 frames, 174x130, no turret |
-| Torchjet (`fossil_fighter`) | A stubby delta of olive steel built from stepped slabs, a fat body down its middle with one big intake, a dark open mouth in a rust lip at the nose, a dark canopy slab on top, a single tall wedge tail fin with a team stripe and a short rust flare stack with a warm lamp at the tail. | `iso/fossil/veh/fossil_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 114x92, hovers `fly_px` 26 |
-| Drillhead (`fossil_bomber`) | A fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip. | `iso/fossil/veh/fossil_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 162x106, hovers `fly_px` 22 |
+| Torchjet (`fossil_fighter`) | A stubby delta of steel and orange stepped slabs, a fat orange body down its middle with one big intake, a dark open mouth in a steel lip at the nose, a dark canopy slab on top, a single tall orange wedge tail fin with a team stripe, a team band on each wing tip and a short iron flare stack with a warm lamp at the tail. | `iso/fossil/veh/fossil_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 114x92, hovers `fly_px` 26 |
+| Drillhead (`fossil_bomber`) | A fat orange lifting body with a stepped steel and iron drill-bit nose, a short broad concrete wing, two long orange booms either side that each carry an iron drum engine at the front and end in an orange wedge fin, one steel tail plane across the booms and a team band on each wing tip. | `iso/fossil/veh/fossil_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 162x106, hovers `fly_px` 22 |
 | Glint (`renew_fighter`) | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. | `iso/renew/veh/renew_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 124x76, hovers `fly_px` 26 |
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
-| Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted steel crew box on two long dark tracks, an olive deck and sloped nose under it, a rust roof with a round roof hatch, a lamp and a small vent, a team band and three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
+| Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted crew box in Nordværn orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
 | Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
-| Shot Truck (`fossil_shot_truck`) | A low olive flatbed truck on six dark wheels with a blunt boxed cab, a long steel drill mast laid slantwise on the bed with four steel shot cans with a team-colour band and stud beside it and team bands on the cab and the bed rails. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
+| Shot Truck (`fossil_shot_truck`) | A low flatbed truck on six dark wheels with orange hubs, an orange boxed cab with a rimmed team plate on its roof and a lamp bar, and on the orange bed a long steel drill mast on an orange housing laid slantwise on two iron cradles with its bit reaching past the tail, four fat orange shot cans with steel caps standing beside it, and orange rails down the bed. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
 | Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
 | Shot charge and pulse seed marks (`assets/art/svg/marks/mine_<faction>_<own\|known>.svg`) | A squat steel can with an orange cap, and a flat white hexagonal plate with a team ring under a tall white spike with a mint light; the known enemy marks add a ring of dark dashes with a pale inner edge. | `svg/marks/mine_<faction>_<own\|known>.svg`, 144x96, ground point (72, 60), Keep File |
 | Patchers (`fossil_patchers`) | Two stocky olive figures under round steel pot helmets with a warm goggle strip, one with a wide steel kit chest and a warm lamp on its back under a team lid, the other with a long rust roll of patch line over its shoulders with a team cap at each end, a team yoke across each chest. | `iso/fossil/inf/fossil_patchers_{hull,shadow}_d<NN>.svg` and `_{walk,idle}_d<NN>_f<K>.svg`, 8 + 8 + 32 + 16 frames, 72x62, from `models/fossil/fossil_patchers.tres` |
@@ -3687,3 +3708,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
 | 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more; the band is unchanged ; the three Nordvaern squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, fixed orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view), a thin team vest band; `test_medic_art.gd` holds the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %) |
 | 2026-11-26 | v1.56 (P641, art-director, no rule change): the three Facet squads (Linemen, Breakers, Menders) at detail 2: white and graphite bodies, fixed blue hexagonal helmets, shoulder plates and pack or case panels (30 to 40 % of the default view), a thin team chest band, mint kept as Facet's lamp accent on visors, rifle lines and hand light; `test_medic_art.gd` holds the Menders' team share at 2 to 12 % in the default view and 0.2 to 17 % in every direction (was 8 to 12 % and 3 to 17 %) |
+| 2026-11-26 | v1.57 (P642, art-director, no rule change): the Nordvaern Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passes them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` hold 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %) |

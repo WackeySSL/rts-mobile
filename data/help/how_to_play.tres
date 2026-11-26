@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Nordværn's three squads are steel grey with orange hats, shoulder plates and pack panels, and show your team colour on a thin vest band. Facet's three squads are white and graphite with blue helmets, shoulder plates and pack panels, and show your team colour on a thin chest band. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Nordværn's three squads are steel grey with orange hats, shoulder plates and pack panels, and show your team colour on a thin vest band. Nordværn's carrier, minelayer and aircraft are orange and steel too, and show your team colour on one small plate, stripe or band. Facet's three squads are white and graphite with blue helmets, shoulder plates and pack panels, and show your team colour on a thin chest band. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -98,7 +98,7 @@ body = "Open the Flight tab of the build drawer. The cards stay locked until you
 script = ExtResource("3_ent")
 id = &"units-look-aircraft"
 title = "Your aircraft"
-body = "An aircraft hovers above its shadow. It has a stripe in your team colour on its wings. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
+body = "An aircraft hovers above its shadow. Nordværn's Torchjet and Drillhead are orange and steel and show your team colour on a stripe on the fin and on bands at the wing tips; Facet's Glint and Sunfall are white and show it on a stripe on their wings. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
 
 [sub_resource type="Resource" id="e15"]
 script = ExtResource("3_ent")
@@ -122,7 +122,7 @@ body = "Minelayers are built at a vehicle factory, on the Vehicles tab, once you
 script = ExtResource("3_ent")
 id = &"units-look-minelayer"
 title = "Your minelayers"
-body = "The Shot Truck is a flatbed truck with a drill mast and shot cans. The Seeder is a light planter with a tall glass hopper. Both wear your team colour on their sides and cab."
+body = "The Shot Truck is an orange flatbed truck with a drill mast and shot cans, and shows your team colour on a small plate on its cab roof. The Seeder is a light planter with a tall glass hopper, and wears your team colour on its sides and cab."
 
 [sub_resource type="Resource" id="e19"]
 script = ExtResource("3_ent")

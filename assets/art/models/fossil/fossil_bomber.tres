@@ -7,33 +7,27 @@ script = ExtResource("1_model")
 art_id = &"fossil_bomber"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Drillhead: a fat steel lifting body with a stepped rust and iron drill-bit nose, a short broad concrete wing, two long steel booms either side that each carry an iron drum engine at the front and end in a wedge fin, one tail plane across the booms and a team stripe on each boom and wing tip."
+silhouette = "Drillhead: a fat orange lifting body with a stepped steel and iron drill-bit nose, a short broad concrete wing, two long orange booms either side that each carry an iron drum engine at the front and end in an orange wedge fin, one steel tail plane across the booms and a team band on each wing tip."
 fly_px = 22
+detail = 2
 prims = PackedStringArray(
 "box hull steel -0.62 0 0.54 0.2 1.0 0.04",
-"wedge hull steel -0.62 -0.46 0.54 0.24 0.04 0.16 slope=1",
-"wedge hull steel -0.62 0.46 0.54 0.24 0.04 0.16 slope=1",
-"prism hull steel -0.2 -0.46 0.4 0.8 0.14 0.14 axis=x sides=8",
-"prism hull steel -0.2 0.46 0.4 0.8 0.14 0.14 axis=x sides=8",
+"wedge hull faction -0.62 -0.46 0.54 0.24 0.04 0.16 slope=1 detail=1",
+"wedge hull faction -0.62 0.46 0.54 0.24 0.04 0.16 slope=1 detail=1",
+"prism hull faction -0.2 -0.46 0.4 0.8 0.14 0.14 axis=x sides=8 detail=1",
+"prism hull faction -0.2 0.46 0.4 0.8 0.14 0.14 axis=x sides=8 detail=1",
 "prism hull iron 0.26 -0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
 "prism hull iron 0.26 0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
-"prism hull rust 0.4 -0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
-"prism hull rust 0.4 0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
-"box hull team -0.34 -0.46 0.54 0.16 0.12 0.012",
-"box hull team -0.34 0.46 0.54 0.16 0.12 0.012",
-"box hull team -0.06 -0.46 0.54 0.16 0.12 0.012",
-"box hull team -0.06 0.46 0.54 0.16 0.12 0.012",
+"prism hull steel 0.4 -0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
+"prism hull steel 0.4 0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
 "box hull concrete 0.0 0 0.46 0.36 1.28 0.04",
 "box hull team -0.02 -0.56 0.5 0.2 0.14 0.012",
 "box hull team -0.02 0.56 0.5 0.2 0.14 0.012",
-"box hull team 0.2 -0.24 0.5 0.12 0.14 0.012",
-"box hull team 0.2 0.24 0.5 0.12 0.14 0.012",
-"prism hull steel -0.04 0 0.34 0.74 0.5 0.28 axis=x sides=8",
-"box hull rust -0.1 0 0.62 0.36 0.14 0.03",
-"box hull team 0.16 0 0.62 0.1 0.14 0.016",
-"prism hull rust 0.45 0 0.37 0.24 0.38 0.22 axis=x sides=8",
+"prism hull faction -0.04 0 0.34 0.74 0.5 0.28 axis=x sides=8 detail=1",
+"box hull iron -0.1 0 0.62 0.36 0.14 0.03",
+"prism hull steel 0.45 0 0.37 0.24 0.38 0.22 axis=x sides=8",
 "prism hull iron 0.62 0 0.385 0.12 0.3 0.19 axis=x sides=8",
-"prism hull rust 0.72 0 0.4 0.12 0.22 0.15 axis=x sides=8",
+"prism hull steel 0.72 0 0.4 0.12 0.22 0.15 axis=x sides=8",
 "prism hull iron 0.8 0 0.42 0.1 0.12 0.11 axis=x sides=8"
 )
 emitters = PackedStringArray(
