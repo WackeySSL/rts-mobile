@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_strikes.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/strikes_enemy.tres" id="4_enemy"]
 
@@ -14,16 +15,22 @@ anchor_control = &"StrikeButton"
 covers = Array[StringName]([&"superweapon-own"])
 budget_s = 5
 
+[sub_resource type="Resource" id="Beat_01_button"]
+script = ExtResource("9_lead")
+anchor_control = &"StrikeButton"
+kind = 18
+
 [sub_resource type="Resource" id="Beat_01"]
 script = ExtResource("2_beat")
 id = &"aim"
 prompt_key = &"tutorial.strikes.aim"
-anchor = 1
-anchor_control = &"StrikeButton"
+anchor = 2
+anchor_tile = Vector2i(22, 22)
 kind = 13
 covers = Array[StringName]([&"superweapon-strike", &"superweapon-aim-tap"])
 after_ai_step = &"gather"
 budget_s = 12
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_01_button")])
 
 [sub_resource type="Resource" id="Beat_02"]
 script = ExtResource("2_beat")

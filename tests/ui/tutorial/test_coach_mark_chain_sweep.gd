@@ -289,12 +289,40 @@ func _satisfy(step: TutorialLeadInDef) -> bool:
 			_feed.state.open(HudState.Unfold.DRAWER)
 			_sidebar.select_tab(step.value)
 		TutorialConditions.Kind.SELECTED:
-			_selection.set_ids(_own)
+			var ids: PackedInt32Array = _own_of(step.type_id)
+			if ids.is_empty():
+				return false  # A type that is not in the match: a typo in the data.
+			_selection.set_ids(ids)
+		TutorialConditions.Kind.STRIKE_AIMING:
+			var button: BaseButton = _strike_button()
+			if button == null or not button.is_visible_in_tree() or button.disabled:
+				return false
+			button.button_pressed = true  # The real strike button, as a finger toggles it.
 		_:
 			return false
 	for _frame: int in 3:
 		await await_idle_frame()
 	return true
+
+
+## The player's rows of `type_id` (any unit when empty): the whole type for units, the first one
+## for a building (a tap picks one building).
+func _own_of(type_id: StringName) -> PackedInt32Array:
+	if type_id == &"":
+		return _own
+	var runner: MatchRunner = _main.get_node("MatchRunner") as MatchRunner
+	var snap: MatchSnapshot = runner.snapshot
+	var ids: PackedInt32Array = PackedInt32Array()
+	for row: int in snap.unit_count():
+		if snap.owner[row] == 1 and snap.type_ids[snap.type_index[row]] == type_id:
+			ids.append(snap.unit_id[row])
+	if not ids.is_empty() and snap.type_foot_w[snap.type_ids.find(type_id)] > 0:
+		return PackedInt32Array([ids[0]])
+	return ids
+
+
+func _strike_button() -> BaseButton:
+	return _main.get_node("Hud").find_child("StrikeButton", true, false) as BaseButton
 
 
 func _profile(size: Vector2i) -> UiMetrics:
@@ -315,6 +343,95 @@ func _lessons() -> Array[TutorialLessonDef]:
 			if lesson != null:
 				found.append(lesson)
 	return found
+
+
+## Every selection lead-in is driven both ways: with nothing selected the ring stands on the
+## lead-in's own anchor (the AllArmy control, or the tile where the type stands), and once exactly
+## the lead-in's type is selected it moves on to the beat's target. The mid-play beats get their
+## fixture first and the selection is cleared after it. A typo in an anchor tile or a type id fails.
+func test_a_selection_lead_in_points_at_its_anchor_and_then_moves_on() -> void:
+	var profiles: Array[UiMetrics] = []
+	for size: Vector2i in ScreenSizes.ALL:
+		profiles.append(_profile(size))
+	for profile_name: StringName in EXTRA_PROFILES:
+		profiles.append(UiProfiles.by_name(profile_name))
+	var found: Array[String] = []
+	var driven: int = 0
+	for lesson: TutorialLessonDef in _lessons():
+		for beat: TutorialBeatDef in lesson.beats:
+			var lead: TutorialLeadInDef = _selection_lead_in(beat)
+			if lead == null:
+				continue
+			var pair: String = "%s/%s" % [lesson.id, beat.id]
+			for profile: UiMetrics in profiles:
+				var label: String = (
+					"%s %s %dx%d"
+					% [pair, profile.os_name, profile.window_size.x, profile.window_size.y]
+				)
+				var scenario: ScenarioDef = lesson.scenario
+				if MidPlay.has(pair):
+					scenario = MidPlay.scenario_for(pair, scenario)
+				await _open(lesson, profile, scenario)
+				if MidPlay.has(pair):
+					_feed.state.close(_feed.state.current)
+					var fixture: Object = MidPlay.new(self, _main, _selection, _sidebar)
+					await fixture.prepare(pair)
+					if not String(fixture.failure).is_empty():
+						found.append("%s: fixture: %s" % [label, fixture.failure])
+						_close()
+						continue
+				_feed.state.close(_feed.state.current)
+				_selection.clear()
+				await _show(lesson, beat)
+				found.append_array(await _drive_selection(beat, lead, label))
+				driven += 1
+				_close()
+	assert_int(driven).override_failure_message("no selection lead-in was driven").is_greater(40)
+	for line: String in found:
+		print("SELECTION ", line)
+	assert_array(found).override_failure_message("\n".join(found)).is_empty()
+
+
+## The beat's first lead-in of kind SELECTED, null when it has none.
+func _selection_lead_in(beat: TutorialBeatDef) -> TutorialLeadInDef:
+	for step: TutorialLeadInDef in beat.lead_in:
+		if step.kind == TutorialConditions.Kind.SELECTED:
+			return step
+	return null
+
+
+func _drive_selection(
+	beat: TutorialBeatDef, lead: TutorialLeadInDef, label: String
+) -> Array[String]:
+	var lines: Array[String] = []
+	if _director.active_target() != lead:
+		lines.append("%s: with nothing selected the ring is not on the selection step" % label)
+		return lines
+	lines.append_array(_ring_problems(label + " selection step", lead))
+	var ids: PackedInt32Array = _own_of(lead.type_id)
+	if ids.is_empty():
+		lines.append("%s: no own %s to select" % [label, lead.type_id])
+		return lines
+	if lead.anchor == TutorialBeatDef.Anchor.TILE:  # The ring is on a unit of the type, as drawn.
+		var runner: MatchRunner = _main.get_node("MatchRunner") as MatchRunner
+		var row: int = runner.snapshot.index_of(ids[0])
+		var at: Vector2 = _mark.camera.world_to_screen(
+			IsoProjection.ground_to_px(runner.snapshot.pos_x[row], runner.snapshot.pos_y[row])
+		)
+		var ring: Rect2 = _mark.ring_rect()
+		if not ring.grow(ring.size.y / 4.0).has_point(at):  # A unit stands off its tile centre.
+			lines.append("%s: the ring %s is not on the %s at %s" % [label, ring, lead.type_id, at])
+	if not await _satisfy(lead):
+		lines.append("%s: the selection step could not be satisfied" % label)
+		return lines
+	var next: TutorialLeadInDef = _director.active_target()
+	if next == null or beat.lead_in.has(next) and next == lead:
+		lines.append(
+			"%s: the ring stayed on the selection step after its type was selected" % label
+		)
+		return lines
+	lines.append_array(_ring_problems(label + " after the selection", next))
+	return lines
 
 
 ## What a beat leaves behind it: the unfold and the drawer's tab its condition waits for.
@@ -346,6 +463,9 @@ func _states(carried: Dictionary) -> Array[Dictionary]:
 
 
 func _enter(state: Dictionary) -> void:
+	var strike: BaseButton = _strike_button()
+	if strike != null and strike.button_pressed:
+		strike.button_pressed = false  # A beat before left the strike aim on.
 	_feed.state.close(HudState.Unfold.PAUSE)
 	_sidebar.select_tab(int(state["tab"]))
 	_selection.clear()

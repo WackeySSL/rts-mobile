@@ -93,6 +93,57 @@ func test_the_groups_beat_asks_for_one_squad() -> void:
 			assert_int(beat.count).override_failure_message(String(beat.id)).is_equal(1)
 
 
+## ADR 0048 section 5: a beat whose final target is a drawer card (`Tile_*`) or tab (`Tab*`) has a
+## lead-in that opens the drawer, then (for a card) the lead-in that turns on the card's tab, in
+## that order. The tab is the one the sidebar files the card's item under (`World.type_tab`), and
+## the step's own control is that tab's button (`BuildSidebar.TAB_NAMES`).
+func test_a_drawer_target_is_led_in_by_the_drawer_and_its_tab() -> void:
+	var checked: int = 0
+	for id: StringName in LESSONS:
+		var lesson: TutorialLessonDef = _lesson(id)
+		var world: World = World.from_scenario(lesson.scenario)
+		for beat: TutorialBeatDef in lesson.beats:
+			var name: String = String(beat.anchor_control)
+			var card: bool = name.begins_with("Tile_")
+			if (
+				beat.anchor != TutorialBeatDef.Anchor.CONTROL
+				or not (card or name.begins_with("Tab"))
+			):
+				continue
+			checked += 1
+			var label: String = "%s/%s" % [id, beat.id]
+			var opens: int = -1
+			var tab: int = -1
+			for at: int in beat.lead_in.size():
+				var step: TutorialLeadInDef = beat.lead_in[at]
+				if step.kind == TutorialConditions.Kind.UNFOLD_OPEN and step.value == 1:
+					opens = at if opens < 0 else opens
+				if step.kind == TutorialConditions.Kind.DRAWER_TAB:
+					tab = at if tab < 0 else tab
+			assert_int(opens).override_failure_message(label + " opens no drawer").is_greater_equal(
+				0
+			)
+			var want: int = BuildSidebar.TAB_NAMES.find(name.trim_prefix("Tab"))
+			if card:
+				var type: int = world.type_ids.find(StringName(name.trim_prefix("Tile_")))
+				assert_int(type).override_failure_message(label + " card is no type").is_greater(-1)
+				want = world.type_tab[type]
+				assert_int(tab).override_failure_message(label + " has no tab step").is_greater(-1)
+			if tab >= 0:
+				assert_int(opens).override_failure_message(label + " tab before drawer").is_less(
+					tab
+				)
+				var step: TutorialLeadInDef = beat.lead_in[tab]
+				assert_int(step.value).override_failure_message(label + " tab value").is_equal(want)
+				var button: String = "Tab" + BuildSidebar.TAB_NAMES[step.value]
+				(
+					assert_str(String(step.anchor_control))
+					. override_failure_message(label + " tab control")
+					. is_equal(button)
+				)
+	assert_int(checked).is_greater(5)
+
+
 func test_every_covers_id_is_a_row_of_the_how_to_play_list() -> void:
 	var rows: Array[StringName] = _how_to_play_ids()
 	assert_int(rows.size()).is_greater(100)
