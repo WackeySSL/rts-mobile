@@ -15,16 +15,6 @@ anchor_tile = Vector2i(15, 5)
 covers = Array[StringName]([&"buildings-build-airfield"])
 budget_s = 6
 
-[sub_resource type="Resource" id="Beat_01"]
-script = ExtResource("2_beat")
-id = &"flight-tab"
-prompt_key = &"tutorial.air.flight-tab"
-anchor = 1
-anchor_control = &"BuildButton"
-kind = 11
-value = 3
-budget_s = 4
-
 [sub_resource type="Resource" id="Beat_02_build"]
 script = ExtResource("9_lead")
 anchor_control = &"BuildButton"
@@ -46,7 +36,7 @@ anchor_control = &"Tile_fossil_fighter"
 kind = 5
 type_id = &"fossil_fighter"
 covers = Array[StringName]([&"units-build-aircraft"])
-budget_s = 20
+budget_s = 24
 lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_02_build"), SubResource("Beat_02_tab")])
 
 [sub_resource type="Resource" id="Beat_03"]
@@ -145,7 +135,7 @@ script = ExtResource("1_lesson")
 id = &"air"
 title_key = &"tutorial.air.title"
 objective_key = &"tutorial.air.objective"
-beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11")])
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11")])
 target_s = 90
 scenario = ExtResource("3_scenario")
 enemy = ExtResource("4_enemy")

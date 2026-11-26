@@ -26,6 +26,13 @@ anchor_control = &"Mend"
 covers = Array[StringName]([&"buildings-mend"])
 budget_s = 5
 
+[sub_resource type="Resource" id="Beat_02_select"]
+script = ExtResource("9_lead")
+anchor = 2
+anchor_tile = Vector2i(8, 4)
+kind = 1
+type_id = &"power_plant"
+
 [sub_resource type="Resource" id="Beat_02"]
 script = ExtResource("2_beat")
 id = &"sell"
@@ -34,6 +41,7 @@ anchor = 1
 anchor_control = &"Sell"
 covers = Array[StringName]([&"buildings-sell"])
 budget_s = 5
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_02_select")])
 
 [sub_resource type="Resource" id="Beat_03"]
 script = ExtResource("2_beat")
@@ -70,16 +78,6 @@ anchor_control = &"Repair"
 covers = Array[StringName]([&"orders-repair", &"buildings-build-repair"])
 budget_s = 6
 
-[sub_resource type="Resource" id="Beat_07"]
-script = ExtResource("2_beat")
-id = &"infantry-tab"
-prompt_key = &"tutorial.support.infantry-tab"
-anchor = 1
-anchor_control = &"BuildButton"
-kind = 11
-value = 1
-budget_s = 4
-
 [sub_resource type="Resource" id="Beat_08_build"]
 script = ExtResource("9_lead")
 anchor_control = &"BuildButton"
@@ -101,7 +99,7 @@ anchor_control = &"Tile_fossil_patchers"
 kind = 5
 type_id = &"fossil_patchers"
 covers = Array[StringName]([&"units-medic-squad-build", &"orders-attack-medics"])
-budget_s = 12
+budget_s = 16
 lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_08_build"), SubResource("Beat_08_tab")])
 
 [sub_resource type="Resource" id="Beat_09_build"]
@@ -157,7 +155,7 @@ script = ExtResource("1_lesson")
 id = &"support"
 title_key = &"tutorial.support.title"
 objective_key = &"tutorial.support.objective"
-beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12")])
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_08"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12")])
 target_s = 90
 scenario = ExtResource("3_scenario")
 enemy = ExtResource("4_enemy")
