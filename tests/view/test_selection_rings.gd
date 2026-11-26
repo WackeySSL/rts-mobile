@@ -4,9 +4,9 @@ extends GdUnitTestSuite
 ## `ui/selection_ellipse.svg` at the absolute z 3, under the sorted sprites and over the shadows,
 ## sized by one scale of the texture whose horizontal centre-line semi-axis is 72 px, so that its
 ## horizontal semi-axis is the larger of the selection radius's ellipse (`IsoProjection.ellipse_px`,
-## padded 50 milli) and 18 dp on the screen, and its vertical one is half of it. The circle texture
-## of the top-down view is not used by the layer any more. Sizes and dp are those of the window
-## (`UiScale`), which a turn of the window changes.
+## padded 50 milli), 18 dp on the screen and the hull's footprint (`RingSize`, P651), and its
+## vertical one is half of it. The circle texture of the top-down view is not used by the layer any
+## more. Sizes and dp are those of the window (`UiScale`), which a turn of the window changes.
 
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const ArenaRig: GDScript = preload("res://tests/ui/support/arena_rig.gd")
@@ -101,14 +101,15 @@ func _assert_ellipse(layer: UnitLayer, row: int, zoom: float, note: String) -> v
 	assert_float(ring.scale.y * TEX_RY_PX).override_failure_message(note).is_equal_approx(
 		ring.radius * 0.5, 0.001
 	)
-	# The larger of the selection radius's ellipse and the 18 dp minimum (dp / zoom in world px).
-	var semi: float = (
-		IsoProjection.ellipse_px(snap.type_selection_radius[snap.type_index[row]] + PAD_MILLI).x
-	)
-	var least: float = RING_MIN_DP * UiScale.base_px_per_dp() / zoom
-	assert_float(ring.radius).override_failure_message(note).is_equal_approx(
-		maxf(semi, least), 0.001
-	)
+	# `RingSize`: the larger of the selection radius's ellipse, the 18 dp minimum and the hull's
+	# drawn footprint plus its margin (P651, tests/view/test_ring_size.gd).
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = layer.world_sort.sheet(snap.type_ids[type])
+	var unit: float = UiScale.base_px_per_dp() / zoom
+	var semi: float = IsoProjection.ellipse_px(snap.type_selection_radius[type] + PAD_MILLI).x
+	var want: float = RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)
+	assert_float(ring.radius).override_failure_message(note).is_equal_approx(want, 0.001)
+	assert_float(ring.radius).override_failure_message(note).is_greater_equal(semi - 0.001)
 	assert_float(ring.radius * zoom).override_failure_message(note).is_greater_equal(
 		UiScale.dp(RING_MIN_DP) - 0.001
 	)

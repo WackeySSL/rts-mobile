@@ -97,11 +97,12 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px(
 	_controller.selection.set_ids(PackedInt32Array([3, 7]))  # No frame has run.
 	assert_array(_ringed_ids()).is_equal([3, 7])
 	var first_ring: Sprite2D = _layer.rig(2).get_node("Ring")  # Sized in the frame of the tap.
-	assert_float(first_ring.radius).is_equal_approx(24.8901, 0.001)  # (500 + 50) * 32 * sqrt(2) / 1000
+	var want: float = _ring_want(2, 1.0)  # The hull's footprint plus the margin (P651), not 24.89.
+	assert_float(first_ring.radius).is_equal_approx(want, 0.001)
 	assert_float(first_ring.unit).is_equal_approx(1.0, 0.0001)
 	assert_str(first_ring.texture.resource_path).is_equal(RING_TEXTURE)
 	assert_float(UnitLayer.RING_TEX_RX_PX).is_equal(RING_CENTRE_PX)
-	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(24.8901, 0.001)
+	assert_float(first_ring.scale.x * RING_CENTRE_PX).is_equal_approx(want, 0.001)
 	assert_float(first_ring.scale.y).is_equal(first_ring.scale.x)  # One scale: the texture is 2:1
 	var rig_children: Array = _layer.rig(2).get_children()
 	var names: Array = rig_children.map(func(n: Node) -> StringName: return n.name)
@@ -113,10 +114,10 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px(
 	await _use(&"android_6in")  # 1 dp is 1.75 px: 18 dp is 31.5 px, the ellipse 24.89 world px.
 	_layer.set_selected(PackedInt32Array([1]))
 	var ring: Sprite2D = _layer.rig(0).get_node("Ring")
-	for z: Array in [[0.75, 31.5], [1.0, 31.5], [1.5, 37.335]]:
+	for z: Array in [[0.75], [1.0], [1.5]]:
 		_camera.zoom = Vector2(z[0], z[0])
 		_layer._process(0.0)
-		assert_float(ring.radius * z[0]).is_equal_approx(z[1], 0.001)
+		assert_float(ring.radius).is_equal_approx(_ring_want(0, 1.75 / z[0]), 0.001)
 		# The stroke is baked into the texture and scales with the ring (STYLE.md, P34): white R/6
 		# with R/18 of dark on each side, which is 3 dp + 1 dp + 1 dp at the 18 dp minimum radius.
 		# So the checks are the dp (unit) and the scale that sizes the texture to the radius.
@@ -125,7 +126,7 @@ func test_rings_show_for_exactly_the_selected_ids_and_are_31_5_31_5_and_37_3_px(
 		assert_float(ring.scale.y).is_equal(ring.scale.x)
 	await _use(&"desktop")  # A resize under a ring: 1 dp is now 1 px, and the ellipse is larger.
 	assert_float(ring.unit * 1.5).is_equal_approx(1.0, 0.0001)
-	assert_float(ring.radius * 1.5).is_equal_approx(37.335, 0.001)
+	assert_float(ring.radius).is_equal_approx(_ring_want(0, 1.0 / 1.5), 0.001)
 	assert_float(ring.scale.x * RING_CENTRE_PX).is_equal_approx(ring.radius, 0.001)
 	_assert_no_allocation(func() -> void: _layer._process(0.016))
 	_controller.selection.clear()
@@ -364,3 +365,11 @@ func _tap(at: Vector2) -> void:
 	_now_ms += 50
 	TouchEvents.release(get_viewport(), 0, at)
 	_now_ms += 1000
+
+
+## The ring's horizontal semi-axis `RingSize` gives row `row`, where 1 dp is `unit` world px.
+func _ring_want(row: int, unit: float) -> float:
+	var snap: MatchSnapshot = _layer.runner.snapshot
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[type])
+	return RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)

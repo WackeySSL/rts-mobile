@@ -357,16 +357,12 @@ func _ring(rig: Rig) -> void:
 		_ring_zoom = 0.0 if on else _ring_zoom  # A ring that shows is sized at the next frame.
 
 
-## The ring's size, as `UnitLayer._refresh_rings` works it: the selection radius and the pad, at
-## least `RING_MIN_DP` wide; a dp over the zoom is world px.
+## The ring's size, `RingSize`'s, as `UnitLayer._refresh_rings` has it; a dp is `unit` world px.
 func _size_ring(snap: MatchSnapshot, row: int, rig: Rig, unit: float) -> void:
-	var semi: Vector2 = IsoProjection.ellipse_px(
-		snap.type_selection_radius[snap.type_index[row]] + UnitLayer.RING_PAD_MILLI
-	)
-	var grow: float = maxf(1.0, UnitLayer.RING_MIN_DP * unit / semi.x)
-	rig.ring.radius = semi.x * grow
-	rig.ring.unit = unit
-	rig.ring.scale = Vector2.ONE * (semi.x * grow / UnitLayer.RING_TEX_RX_PX)
+	var type: int = snap.type_index[row]
+	var sheet: IsoSheetDef = world_sort.sheet(snap.type_ids[type])
+	var semi: float = RingSize.semi_px(snap.type_selection_radius[type], sheet, unit)
+	RingSize.apply(rig.ring, semi, unit)
 
 
 ## Raises the hull, or the marker, `px` above the rig's ground point; the shadow stays on it.

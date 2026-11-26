@@ -330,7 +330,11 @@ func test_a_resize_between_a_death_and_the_next_frame_sizes_the_rings_of_the_new
 	for row: int in [0, 38]:
 		var ring: Sprite2D = _rig(row).get_node("Ring")
 		assert_float(ring.unit).is_equal_approx(1.75, 0.0001)
-		assert_float(ring.radius).is_equal_approx(31.5, 0.001)  # 18 dp, over the art's 24.89 px.
+		var snap: MatchSnapshot = _runner.snapshot
+		var type: int = snap.type_index[row]
+		var sheet: IsoSheetDef = _layer.world_sort.sheet(snap.type_ids[type])
+		var want: float = RingSize.semi_px(snap.type_selection_radius[type], sheet, 1.75)
+		assert_float(ring.radius).is_equal_approx(want, 0.001)  # The hull's footprint (P651).
 	assert_array(_ringed_ids()).is_equal([2, 40])
 
 

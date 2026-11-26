@@ -9,7 +9,8 @@ extends GdUnitTestSuite
 ## stripe is upright, and a ring lying along a barrel or a drum has no flat top.
 ## The one exception is the team marker of ADR 0050 section 3: a small plate (at most `MARKER`
 ## square tiles) with a light line round it (a `lamp` plate under it, larger on every side) and a
-## dark rim round that (an `iron` plate under the lamp, larger again). The share of team pixels in
+## dark rim round that (an `iron` plate under the lamp, larger again). Facet has no `lamp` or
+## `iron`: its line is `ceramic` and its rim `graphite` (P639). The share of team pixels in
 ## the default view (2 to 12 %) is in test_artgen_readability.gd.
 
 const REST: float = 0.011  ## Tiles: a primitive rests on another when its bottom is this close.
@@ -18,6 +19,9 @@ const CAP: float = 0.3  ## A team primitive covering this share of its support i
 const SLAB: float = 0.2  ## Square tiles: a larger open top face is a slab, whatever it rests on.
 ## Square tiles: the most a rimmed marker plate covers (ADR 0050 section 3).
 const MARKER: float = 0.1
+## The materials of a marker's light line and dark rim: Nordvaern's, then Facet's (P639).
+const LINES: Array[StringName] = [&"lamp", &"ceramic"]
+const RIMS: Array[StringName] = [&"iron", &"graphite"]
 
 
 func test_no_team_primitive_is_a_roof_plate() -> void:
@@ -72,6 +76,13 @@ func test_the_rule_finds_a_cap_and_a_slab_and_lets_a_band_a_stripe_and_a_ring_pa
 		"box hull team 0 0 0.332 0.2 0.3 0.02",
 	]
 	assert_array(_plates(_parse(rimmed))).override_failure_message("rimmed marker").is_empty()
+	var facet: Array[String] = [
+		"box hull ceramic 0 0 0 0.4 0.5 0.3",
+		"box hull graphite 0 0 0.3 0.34 0.44 0.02",
+		"box hull ceramic 0 0 0.32 0.28 0.38 0.012",
+		"box hull team 0 0 0.332 0.2 0.3 0.02",
+	]
+	assert_array(_plates(_parse(facet))).override_failure_message("facet marker").is_empty()
 	var bare: Array[String] = [
 		"box hull olive 0 0 0 0.4 0.5 0.3", "box hull team 0 0 0.3 0.2 0.3 0.02"
 	]
@@ -125,17 +136,18 @@ func _plates(prims: Array[ArtPrim]) -> Array[String]:
 	return found
 
 
-## Whether `plate` rests on a `lamp` plate that is larger than it on every side, which rests on an
-## `iron` plate larger than the lamp on every side: the marker's light line and dark rim.
+## Whether `plate` rests on a light-line plate (`lamp`, or Facet's `ceramic`) that is larger than it
+## on every side, which rests on a dark-rim plate (`iron`, or Facet's `graphite`) larger than the
+## line on every side: the marker's light line and dark rim.
 func _rimmed(plate: ArtPrim, prims: Array[ArtPrim]) -> bool:
-	var inner: ArtPrim = _under(plate, prims, &"lamp")
-	return inner != null and _under(inner, prims, &"iron") != null
+	var inner: ArtPrim = _under(plate, prims, LINES)
+	return inner != null and _under(inner, prims, RIMS) != null
 
 
-## The plate of `material` that `top` rests on and that is larger than `top` on every side.
-func _under(top: ArtPrim, prims: Array[ArtPrim], material: StringName) -> ArtPrim:
+## The plate of one of `materials` that `top` rests on and that is larger than `top` on every side.
+func _under(top: ArtPrim, prims: Array[ArtPrim], materials: Array[StringName]) -> ArtPrim:
 	for other: ArtPrim in prims:
-		if other.material != material or absf(other.z0 + other.size.z - top.z0) >= REST:
+		if other.material not in materials or absf(other.z0 + other.size.z - top.z0) >= REST:
 			continue
 		if _footprint(other).encloses(_footprint(top).grow(0.01)):
 			return other
