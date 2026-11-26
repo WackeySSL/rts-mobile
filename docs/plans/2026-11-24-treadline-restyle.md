@@ -2,14 +2,18 @@
 
 Date: 2026-11-24. Author: architect. Rows P600, P603 and P621 were on branch
 `claude/p600-treadline-plan` (PR #642, merged as 653383c5). Row P621b is on
-`claude/p621b-adr0050-accept`.
+`claude/p621b-adr0050-accept`. Row P621c (2026-11-26, the amendment of ADR 0050 §3 and row P652)
+is on `claude/p621c-team-panels`, cut from `main` at 99d0a5b5.
 
 Decisions:
 - `docs/adr/0049-treadline-restyle.md`, **accepted** 2026-11-24 with Michael's answers (row
   P603, done on this branch).
 - `docs/adr/0050-art-pipeline-svg-units-png-buildings-fixed-colours-deeper-zoom.md`, **accepted**
   2026-11-24 (row P621b). Everything on the map is generator SVG. Figma AI is for stand-alone
-  art. One coherent look (§8).
+  art. One coherent look (§8). **Amended 2026-11-26** (row P621c, the section "Amendment
+  (2026-11-26, P621c)", parts A1-A13; Michael: "A: Holdfarve på pladerne"): the large panels
+  wear the player's team colour, the bodies stay neutral, and shape tells the sides apart. This
+  replaces §3's fixed faction colours with a small team marker.
 - ADR 0051 (#643, accepted by the lead's row P622): Figma's own AI features may make art that
   ships.
 
@@ -27,7 +31,9 @@ Michael's decisions and answers of 2026-11-24:
    (answers 3 A, 4 A). The title Treadline stays (ADR 0006). The text stays English.
 3. **One coherent look across all graphics** (units, buildings, terrain, effects, UI icons, item
    cards). Every art route and batch passes the same-scene check (ADR 0050 §8). Units become more
-   realistic in SVG, with fixed faction colours and a small team marker. Every building is
+   realistic in SVG, with the team colour on their large panels over neutral bodies (ADR 0050's
+   amendment of 2026-11-26; it replaced the fixed faction colours and small team marker of
+   2026-11-24). Every building is
    generator SVG with the Figma vector's faceted form. Figma AI makes only stand-alone art:
    menu and loading backdrops, portraits and store art (ADR 0050 §2, answer 1).
 4. A zoom level closer than today's (ADR 0050 §6).
@@ -50,12 +56,12 @@ These go to the lead's follow-up list if a row asks for them.
 | Top row (geometry) | `EconomyPill.gd`, `HudCorners.gd` (the pill's width only) | P618 |
 | Menus | `MainMenu.gd`, `MenuScreen.gd`, `MapSelect.gd`, `DeployCard.gd`, `PauseMenu.gd`, `ResultScreen.gd` | P613-P617 |
 | Names | `data/factions/*.tres`, `MainMenuText.gd`, `MapSelectText.gd`, `data/help/how_to_play.tres`, `data/tutorial/text_en.tres`, `docs/GDD.md` | P607, P608 |
-| Generator | `tools/artgen/` (`ArtModel`, `ArtPalette`, a detail renderer, macros), `assets/art/models/**`, `assets/art/iso/**` | P630-P632, P630c, P638-P647 |
+| Generator | `tools/artgen/` (`ArtModel`, `ArtPalette`, a detail renderer, macros), `assets/art/models/**`, `assets/art/iso/**` | P630-P632, P630c, P638-P647, P652 |
 | Bake and view | `game/view/IsoAtlas.gd`, `WorldSort.gd` (the key table), the galleries | P632 |
 | Same-scene check | a composer in `tools/artgen`, `tools/artgen/same_scene.tres`, `tests/art/test_same_scene.gd` | P629, every art row |
 | Stand-alone art (Figma AI) | PNG backdrops and portraits under `assets/art/menu/`; `assets/LICENSE.md`; CREDITS rows and their test; `MainMenu.gd`, `DeployCard.gd`, `MapSelect.gd` (placement only) | P623, P650 |
 | Zoom | `data/input_settings.tres`, `InputSettings.gd`, `RtsCamera.gd` tests; `TutorialConditions.gd` (Kind 19), `data/tutorial/basics.tres` | P633, P634 |
-| Docs | ADRs 0049, 0050; `svg-art-style`, `assets/art/STYLE.md`, `docs/HOW_TO_PLAY.md` | P602, P621b, P630b, P649 |
+| Docs | ADRs 0049, 0050; `svg-art-style`, `assets/art/STYLE.md`, `docs/HOW_TO_PLAY.md` | P602, P621b, P621c, P630b, P649, P652 |
 
 Nothing in `game/sim`, `game/ai`, `game/core` or `native/`. Two rows start a balance run (the
 `balance.yml` paths): P607 (`data/factions/`) and P634 (`data/input_settings.tres`).
@@ -75,8 +81,10 @@ Nothing in `game/sim`, `game/ai`, `game/core` or `native/`. Two rows start a bal
   plus new tokens if P602 finds them. No type is renamed.
 - **Art:**
   - `ArtModel.detail` (0-3, default 0 = today's bytes).
-  - Fixed faction materials in `ArtPalette`.
-  - One sentinel key triad in place of the two per-faction keys.
+  - Fixed faction materials in `ArtPalette` (P632). From P652 they colour only the item cards'
+    key and give the HUD accents' hues. No model paints them (ADR 0050 A2).
+  - One sentinel key triad in place of the two per-faction keys. From P652 it is the material of
+    the large panels at detail 2 and up (ADR 0050 A2).
 
 ## Test plan (what is proven headless)
 - **Tokens** (`tests/ui/test_ui_theme_tokens.gd`, new in P604):
@@ -130,7 +138,11 @@ Nothing in `game/sim`, `game/ai`, `game/core` or `native/`. Two rows start a bal
 - **Per art batch:**
   - The 32 px greyscale readability check.
   - Silhouettes tell apart in a mirror match.
-  - Marker and faction shares are in their bands.
+  - At detail 2 and up (ADR 0050 A3, A4, from P652): TEAM_SHARE is 30-65 % of the default view
+    (key band) and 25-75 % in every direction. No model paints `faction`. Each Nordværn and Facet
+    pair of one role overlaps under 0.85 at 32 px in d06 and in d10. Below detail 2 the old
+    2-12 % marker band holds until the model's batch. (This replaces "marker and faction shares
+    are in their bands".)
   - The page budget holds.
   - The same-scene check is green, and its sheet is attached to the PR.
 - **View only** (P619): the tutorial bot's Basics under the new theme gives the same log and
@@ -171,6 +183,7 @@ CLAUDE.md). `tools/artgen` code counts.
 | P620 | architect + lead | P619 | **UI phone check and close-out** (skirmish and Basics, both orientations, Reduced effects on and off, HUD draw calls); ADR 0049 implementation note | Michael's yes | none | 0 |
 | P621 | architect | P601, Michael's answer | **Done (#642).** ADR 0050 (proposed) | docs lens | none | 0 |
 | P621b | architect | Michael's answer 1 | **Done on `claude/p621b-adr0050-accept`.** ADR 0050 accepted ("ja, kør med generator-SVG og Figma AI til menuer"): generator SVG on the map, Figma AI for stand-alone art, the facet form, the building budget. Dated notes in ADR 0023, 0027, 0035 and 0051. P635 and P636 struck, P644 and P645 SVG batches, P630c and P650 added | docs lens | none | 0 |
+| P621c | architect | Michael's decision (2026-11-26) | **Done on `claude/p621c-team-panels`.** ADR 0050 "Amendment (2026-11-26, P621c)" ("A: Holdfarve på pladerne"): team colour on the large panels, neutral bodies, shape tells the sides apart; TEAM_SHARE 30-65 % at detail 2 and up, measured on the 14 detail-2 models on `main` (P642's four from #681); FACTION_SHARE retired, replaced by no `faction` paint and the 32 px shape pairs; KRITISK keeps ADR 0029 §5's band; default colours each side's own (the lead's proposal); `same_scene.tres` frozen. Dated notes in ADR 0035 and 0049. Row P652 added; P643-P647 under the new rule; P647's 2-6 % and Sne/Karmin struck | docs lens | none | 0 |
 | P623 | lead (ADR 0051's lane) | #643 merged | **AI-made files outside the reserved scope** (ADR 0051 §4, §5). One line in `assets/LICENSE.md` excludes every file that `assets/CREDITS.md` marks "AI-made with Figma AI, no copyright claimed by AppCode ApS". A test (`tests/project/test_credits_ai_rows.gd`) checks that each such row has the Figma link and frame, the feature, the date, a short prompt, the hand edits and "screened: …", and that every AI-made path sits under the exclusion | the new test; `test_export_notices` unchanged | none | ~10 |
 | P629 | art-director | ADR 0050 answers 2-5 (in) | **The same-scene check** (ADR 0050 §8): a headless composer in `tools/artgen` (the bake's SVG loader, PNG decode, `Image` blends) builds the sheet: both factions' units and buildings on the same ground tiles, four zooms, the world grade, a mirror pair, effects, cards and glyphs. `test_same_scene.gd` with the bands in `tools/artgen/same_scene.tres` (outside `data/`). Today's art is the first baseline | the composer runs headless; the bands hold for today's art; a crafted off-light sprite fails | none | ~200 |
 | P630 | art-director | ADR 0050 answers 2-5 (in) | **Generator features, no output change** (ADR 0050 §1): face decals, per-primitive detail override, macros (tracks, wheel sets, grilles, hatches, pylons). The batch lists of P638-P647 are fixed in this PR from `assets/art/iso/index.tres` | `--check` byte-identical for every model; `ArtModel.problems` for the new primitives | none | ~300 |
@@ -189,18 +202,20 @@ CLAUDE.md). `tools/artgen` code counts.
 | P640 | art-director | P639 | **Nordværn squads** (all infantry, poses) | per-batch checks | none | art |
 | P641 | art-director | P640 | **Facet squads** | per-batch checks | none | art |
 | P642 | art-director | P641 | **Nordværn support and air** (carrier, minelayer, aircraft) | per-batch checks | none | art |
-| P643 | art-director | P642 | **Facet support and air** | per-batch checks | none | art |
-| P644 | art-director | P643, P630c | **Nordværn 3x3 buildings** (all six) at SVG L2 with L3 bevels, the building budget and the marker plate in the frame; P601's 404 KB works frame is the case to bring under 128 KB | per-batch checks; the building budgets | none | art |
-| P645 | art-director | P644 | **Facet 3x3 buildings** (all six), the headquarters first, rebuilt to the faceted form of P630c's target and passed through P629's check beside the round-3 scene | per-batch checks; the building budgets | none | art |
-| P646 | art-director | P645 (one page-pin PR at a time) | **Nordværn 2x2 and 1x1 buildings** at SVG L2 without bolts | per-batch checks | none | art |
-| P647 | art-director | P646 | **Facet 2x2 and 1x1 buildings**; the last batch to merge narrows `TEAM_SHARE` to 2-6 %; switch the Skirmish routes to the default markers Sne and Karmin (ADR 0050 answer 3; today `team_triads` name Signal and Kobolt), restore KRITISK 20-50 %, the unit share 6-14 %, and empty the same-scene exemption list | per-batch checks; the narrowed band | none | art |
+| P652 | art-director | P642 (#681) merged; P643 waits for it | **Team colour on the large panels: the material swap** (ADR 0050 A2-A4, A9). On all 18 detail-2 models of P638-P642, every `faction` primitive becomes `team`, the sentinel key. Nothing else in a model changes: no geometry, no primitive added or removed, no detail level, decal or pose. **Regenerate** every frame, sheet and item card of the 18 (`bash scripts/gen-art.sh`). **Re-band the suites:** `test_artgen_readability.gd`'s TEAM_SHARE at detail 2 and up by the key band (A3), 30-65 %; FACTION_SHARE's test deleted and replaced by "no model paints `faction`" and the shape-pair test (A4); `test_artgen_plates.gd`'s roof-plate rule scoped to detail below 2; the detail-2 bands of `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` to 30-65 % in the default view and 25-75 % in every direction; `test_same_scene.gd`'s mirror row to 30-80 %; the two mirror page pins of `test_iso_atlas_budget.gd`. **STYLE.md:** rewrite the "Shares", "The sentinel key triad" (panels and plates, not "only the team marker"), "The fixed faction colours" (cards and HUD only), "Triads" (the interim becomes the default), "Same-scene saturation (P638)" and the roof-plate text; the model rows of v1.54-v1.57; a new version row. **Comments** that name P647's switch, rewritten: `SameScene.gd`, `ScenarioDef.gd` (a comment only), `test_skirmish_routes.gd`, `test_team_triads.gd`, `test_iso_atlas_budget.gd`, `test_unit_models.gd`, `artgen_v5_support.gd`. `same_scene.tres` is not touched. The matching `svg-art-style` text goes to the lead for Michael's yes (A11). **PR attachments**, not committed: the same-scene sheet before and after, and a mirror pair per side before and after (Nordværn in Signal beside Nordværn in Kobolt; Facet in Kobolt beside Facet in Signal) | `bash scripts/art-hex-only.sh` exits 0 (P621c's run on the 14: 574 frames, hex only, the same bytes); the item cards are byte-identical; each model diff changes only the material word of `faction` lines; no model paints `faction`; TEAM_SHARE 30-65 % in the default view for all 18 (measured 42.3-62.7 on the 14, P642's four estimated 44-60) and 25-75 % in every direction (31.3-71.3); the seven ground and squad pairs under 0.85 in d06 and d10 (0.31-0.83); the 32 px greyscale spread at least 80 (129-212 raw); the same-scene audit green with `same_scene.tres` byte-identical (`tone_sat` 0.074-0.166, `tone_sat_all` at most 0.536 on the 14); the mirror row 30-80 % (`heavy_tank` 51.0, `renew_tank` 62.3); every page within 3584 rows, the cross-faction pins unchanged (2748, 2594), the mirror pins at P652's measure (the 14 give Nordværn 2615 → 2697 and Facet 2536 → 2596); `--check` clean | `units-look`, `units-look-aircraft`, `units-look-carrier`, `units-look-minelayer`, `units-medic-squad-look` (`.md` and the `data/help/how_to_play.tres` bodies): the large panels wear your team colour over a neutral body | ~15 (comments) + art |
+| P643 | art-director | P652 | **Facet support and air**, drawn under ADR 0050's amendment: team-colour panels over white and graphite bodies, mint lamps as they are, no `faction` paint; TEAM_SHARE 30-65 % (key band) and 25-75 % in every direction; each model's pair with its P642 counterpart under 0.85 in d06 and d10 (the support and air pairs enter the shape test here) | per-batch checks | the look rows of its models | art |
+| P644 | art-director | P643, P630c | **Nordværn 3x3 buildings** (all six) at SVG L2 with L3 bevels and the building budget, drawn under ADR 0050's amendment: team-colour panels over neutral steel, iron and concrete, TEAM_SHARE 30-65 %, a rimmed roof-edge plate allowed as part of the team area; KRITISK keeps ADR 0029 §5's band of the intact team share (A7). P601's 404 KB works frame is the case to bring under 128 KB | per-batch checks; the building budgets | `buildings-look` if its words change | art |
+| P645 | art-director | P644 | **Facet 3x3 buildings** (all six), the headquarters first, rebuilt to the faceted form of P630c's target and passed through P629's check beside the round-3 scene; under ADR 0050's amendment (as P644, white and graphite bodies); each pair with its P644 counterpart under 0.85 in d06 and d10 | per-batch checks; the building budgets | none | art |
+| P646 | art-director | P645 (one page-pin PR at a time) | **Nordværn 2x2 and 1x1 buildings** at SVG L2 without bolts, under ADR 0050's amendment (as P644) | per-batch checks | none | art |
+| P647 | art-director | P646 | **Facet 2x2 and 1x1 buildings** under ADR 0050's amendment (as P645), each pair with its P646 counterpart under 0.85; restore KRITISK 20-50 % (from P632's 15-55 %); the same-scene exemption lists stay empty. After it no model is below detail 2, so P648 may delete the detail-0 branches of the share and plate tests. **Struck (P621c, 2026-11-26):** the narrowing of `TEAM_SHARE` to 2-6 %, the unit share 6-14 % and the switch of the Skirmish routes to Sne and Karmin. The team colour is now the large panels (30-65 %), so no model carries a small marker alone. White or red panels would be a different look from every sheet since P638 and would fail the frozen same-scene bands (Karmin), so the routes keep each side's own colour (the lead's proposal, ADR 0050 A6, which Michael can override) | per-batch checks; KRITISK 20-50 % | none | art |
 | P650 | art-director | P623; P604; P613, P614, P615 | **Figma-AI stand-alone art** (ADR 0050 §2, ADR 0051): the main-menu backdrop, the loading backdrop (`DeployCard`) and one hero portrait per faction for the side cards (main menu, map select), in both orientations' crops. Each PNG has its CREDITS row ("AI-made with Figma AI, no copyright claimed by AppCode ApS"; file and frame, feature, date, the prompt, hand edits) and its resemblance screen recorded. The token check: text over the picture meets 4.5:1 with a theme scrim token, the hue sits with the accents, no detail fights the HUD. The pictures are wired by theme or data reference, never a path literal in code. No picture on the map | P623's test; `test_main_menu.gd`, `test_map_select*`, `test_deploy_card*` at the six sizes with the pictures; the contrast check | none | ~60 |
-| P648 | qa-engineer | P634, P647, P645 | **Art proof**: the page budgets, readability over all rosters, mirror matches, zoom at four levels, CI's `atlas_bake_ms` against twice today's | the named suites | none | 0 (tests) |
+| P648 | qa-engineer | P634, P647, P645 | **Art proof**: the page budgets, readability over all rosters, the shape pairs over all rosters (ADR 0050 A4), mirror matches, zoom at four levels, CI's `atlas_bake_ms` against twice today's; the detail-0 branches of the share and plate tests deleted once no model uses them | the named suites | none | 0 (tests) |
 | P649 | architect + lead | P648 | **Art phone check and close-out**: Michael plays a cross and a mirror match, zooms to 2.0, reads the bake time; ADR 0050 implementation note; memory | Michael's yes | none | 0 |
 
 ### Waves, lanes and the critical path
 - **Done:** P600, P603, P621 (#642), P621b (this branch), P601 and P637 (prototype branch, not
-  merged). Guide v2's P585, P586 and P587 are on `main`; P581 (#639) is open.
+  merged). Guide v2's P585, P586 and P587 are on `main`; P581 (#639) is open. P621c (2026-11-26,
+  `claude/p621c-team-panels`) amends ADR 0050 §3.
 - **Can start right now, each in a free lane:**
   - P602 (art-director, lane F).
   - P607 (gameplay-dev, lane N).
@@ -218,12 +233,13 @@ CLAUDE.md). `tools/artgen` code counts.
   1. P629 and P630.
   2. Then P630c, P631 and P632, in parallel. They touch primitives, the renderer and the
      palette and frames; verify the combined tree.
-  3. Then the batches in series (one page-pin PR at a time): P638 to P643, P644, P645, P646,
-     P647.
+  3. Then the batches in series (one page-pin PR at a time): P638 to P642, then P652 (the swap
+     of ADR 0050's amendment, 2026-11-26), then P643, P644, P645, P646, P647.
 - **Close-out:** P619 then P620 (UI); P648 then P649 (art).
 - **Critical paths:**
-  - Art, the longest: P630 → P631 → P638 → P639 → … → P643 → P644 → P645 → P646 → P647 →
-    P648 → P649. That is 15 rows, all in lane G's series, because each batch moves the page pins.
+  - Art, the longest: P630 → P631 → P638 → P639 → … → P642 → P652 → P643 → P644 → P645 → P646
+    → P647 → P648 → P649. That is 16 rows with P639b, all in lane G's series, because each batch
+    moves the page pins (P652 moves the two mirror pins).
   - UI: P602 → P604 → P609 → P618 → P619 → P620, gated by guide v2's P595.
   - Menus art: P623 and P602 → P604 → P613 → P614 → P615 → P650.
 - **Shared pins:** every art batch moves `tests/view/test_iso_atlas_budget.gd`'s page pins.
@@ -239,6 +255,9 @@ CLAUDE.md). `tools/artgen` code counts.
   - Every side-naming row: P607.
   - `the-screen-in-battle-clock`: P618.
   - `camera-pinch`: P634.
+  - The unit look rows (`units-look`, `units-look-aircraft`, `units-look-carrier`,
+    `units-look-minelayer`, `units-medic-squad-look`): P652, then each later batch for its own
+    models.
   - Guide lane T1 keeps `menus-tutorial-guide`, `menus-tutorial`, `menus-tutorial-end` and
     `menus-settings`.
 
@@ -257,7 +276,8 @@ CLAUDE.md). `tools/artgen` code counts.
    `bake_scale` 1.1, costs about 18 MB and the free page rows (ADR 0050 §6).
 5. **The transition look.** Between P632 and the last batch, old models show today's team bands
    beside remodelled units with fixed panels. This is acceptable on `main`, and no store build
-   depends on it.
+   depends on it. (2026-11-26: from P652 on, the remodelled units wear team panels instead of fixed
+   ones. The old models keep their bands until their batch.)
 6. **The page pins** are edited by every batch, so the batches run in series.
 7. **`theme.tres` friction** between lanes H and M and the guide's P585: disjoint blocks and a
    combined-tree verify.
@@ -267,6 +287,23 @@ CLAUDE.md). `tools/artgen` code counts.
 10. **The bands of the same-scene check** may be too loose to catch a mismatch, or too tight
     for real variety. P629 sets them from today's art, and Michael's eye on each sheet is the
     final check. Band changes go through the review.
+11. **Team panels (P652 and after; ADR 0050's amendment).**
+    - **Faction from shape.** The weakest pair is the Tanker against `renew_tanker`, at 0.83
+      against 0.85 in d10. Single directions (d08, d15) reach 0.86-0.88 and are not banded; there
+      the pad, the ring and the side's default colour carry the read. The swap cannot move a
+      silhouette, so only a later model change can.
+    - **The mirror sprite of `renew_artillery`** in Signal reads `tone_sat_all` 0.562, over 0.55.
+      The audit measures own-colour sprites only, so it does not fail. Michael judges the pair on
+      the sheet.
+    - **The default colours** (each side's own) are the lead's proposal against ADR 0050's
+      answer 3. If Michael keeps Sne and Karmin, that is a new row: a sheet for his eye, the two
+      triads in `SameScene`'s marker list, and a contrast rule for white panels on Facet's
+      ceramic.
+    - **The mirror pages** grow by 82 and 60 rows (five parts gain a key colour). The sorted world
+      still has 887 and 988 rows left on page 1.
+    - **The `svg-art-style` text** of ADR 0050 §4 ("Fixed faction panels may cover large surfaces",
+      the 2-6 % marker) becomes stale. P652 brings the new text to the lead for Michael's yes. The
+      skill is not edited before he says yes.
 
 ## Michael's answers
 - **ADR 0049** (2026-11-24, "A, SVG til enheder …, faste farver, Facet …", then "ja til
@@ -286,3 +323,8 @@ CLAUDE.md). `tools/artgen` code counts.
   - 1 (after P637): "ja, kør med generator-SVG og Figma AI til menuer". Generator SVG for
     everything on the map; Figma AI for stand-alone art.
   - The principle of one coherent look, the same-scene check (§8).
+- **ADR 0050 amendment** (2026-11-26, Michael's answer to the lead's AskUserQuestion, verbatim:
+  "A: Holdfarve på pladerne"): the large panels wear the team colour, the bodies stay neutral,
+  the lamps stay, and the sides are told apart by shape. It reverses §3's fixed faction colours
+  with a small marker (rows P621c and P652). The default colours, each side's own, are the lead's
+  proposal (ADR 0050 A6), which Michael can override; they replace answer 3 until he does.

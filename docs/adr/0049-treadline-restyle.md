@@ -15,6 +15,15 @@ PR #642). Proposed 2026-11-24 by the architect in row P600 on branch
 `claude/p600-treadline-plan` (base `main` at 52b2649e), with the plan
 `docs/plans/2026-11-24-treadline-restyle.md`.
 
+Status note (2026-11-26, P621c docs; ADR 0050 "Amendment (2026-11-26, P621c)", Michael "A:
+Holdfarve på pladerne"): the fixed faction colours behind answer 5, §5's "Team colours" bullet
+and §7's palette line ("Each side carries its fixed faction colour in large panels and stripes …
+A small marker carries the team colour") are replaced. The large panels wear the player's team
+colour, the bodies stay neutral (Nordværn steel and iron, Facet white and graphite), and the
+sides are told apart by shape, as §7's last Art direction line already asks ("in silhouette alone,
+in fog grey and with team colours swapped"). The HUD accents keep the Nordværn orange and Facet
+blue hues. No accepted text changed.
+
 ## Michael's answers (2026-11-24)
 First reply (verbatim: "A, SVG til enheder men prøv om du ikke kan gøre dem mere realistiske.
 brug gerne figma som tegner og PNG kun til de store bygninger, faste farver, Facet. og i spillet
