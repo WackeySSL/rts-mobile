@@ -44,6 +44,8 @@ const PAUSED_CAP_STEPS: int = 300
 const LESSON_CAP_TICKS: int = 12000
 ## How long a card waits for its ring before the bot acts (3 s of match time).
 const RING_GRACE_TICKS: int = 45
+## Looks a control lead-in step waits for the ring to stand on its control.
+const LEAD_LOOKS: int = 30
 ## The distance in tiles that counts as an enemy at the base.
 const CONTACT_TILES: int = 8
 ## An order that has not done its work is sent again after this many ticks.
@@ -61,6 +63,11 @@ var think_ticks: int = 0
 var stop_mid_move: bool = false
 ## Set by a test: the `groups` beat is played with one squad selected, as a player may.
 var single_squad_group: bool = false
+## Set by a test: a beat that has a selection lead-in starts with nothing selected, as when a player
+## has dropped the selection, so the bot follows that step with a real tap on its tile or control.
+var drop_selection: bool = false
+## How many selection lead-in steps the bot followed (a tap on a tile, or the AllArmy control).
+var selection_steps: int = 0
 ## How many STOP commands the bot sent, by tapping the Stop button.
 var stops_sent: int = 0
 
@@ -94,8 +101,11 @@ var _missing: Array[String] = []
 var _ringless: Array[String] = []
 var _contact: int = -1
 var _ring_noted: bool = false
+## The tile step of a selection the bot tapped, to be seen passed on the next look.
+var _pending_tile: TutorialLeadInDef = null
 ## The lead-in steps of the beat on show that the bot has tapped (each once).
 var _led: Array[TutorialLeadInDef] = []
+var _lead_looks: int = 0
 var _sent: Array[Command] = []
 var _beat_steps: int = 0
 var _stuck_steps: int = 0
@@ -163,6 +173,7 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 		"ringless": _ringless,
 		"contact": _contact,
 		"stops": stops_sent,
+		"selection_steps": selection_steps,
 	}
 	_director.skip()
 	_mark.queue_free()
@@ -259,11 +270,15 @@ func _move() -> void:
 		_acted_tick = -REORDER_TICKS
 		_ring_noted = false
 		_led.clear()
+		_lead_looks = 0
+		_pending_tile = null
 		_note_missing(beat)
+		if drop_selection and _selection_lead(beat) != null:
+			_controller.selection.clear()
+			return  # The director looks at the empty selection before the bot acts.
 	var waited: int = _ticks_run - _beat_tick
-	if waited < think_ticks and not _runner.paused:
-		return
-	if not _ring_settled(beat, waited):
+	var thinking: bool = waited < think_ticks and not _runner.paused
+	if thinking or _tap_lead_in(beat) or not _ring_settled(beat, waited):
 		return
 	if (
 		_stop_at >= 0
@@ -272,8 +287,6 @@ func _move() -> void:
 	):
 		_tap_stop(beat)
 		return
-	if _tap_lead_in(beat):
-		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
 		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
 		return
@@ -281,22 +294,48 @@ func _move() -> void:
 
 
 ## Follows the ring through the beat's lead-ins (ADR 0048 section 5, P593): while the active step
-## is a control lead-in not yet tapped, taps `mark.target_control()` (what the ring stands on, as a
-## finger would) and returns true. A ring that stands on another control than the step names is told
-## in `ringless`. A tile step has no control: the beat's own action covers it.
+## is not yet tapped, a control step is tapped on `mark.target_control()` (what the ring stands on,
+## as a finger would) and a tile step with a SELECTED condition by a TAP gesture on the tile through
+## the controller, as a player picks the unit there. Returns true when it tapped. A ring on another
+## control than the step names, and a tile tap that did not pass the step, are told in `ringless`.
 func _tap_lead_in(beat: TutorialBeatDef) -> bool:
 	var step: TutorialLeadInDef = _director.active_target()
+	if _pending_tile != null:
+		if step == _pending_tile:
+			_ringless.append("%s: a tap on tile %s did not select" % [beat.id, step.anchor_tile])
+		_pending_tile = null
 	if step == null or not beat.lead_in.has(step) or _led.has(step):
 		return false
-	if step.anchor != TutorialBeatDef.Anchor.CONTROL:
-		return false
+	if step.anchor == TutorialBeatDef.Anchor.CONTROL and _lead_looks < LEAD_LOOKS:
+		var seen: Control = _mark.target_control()
+		if seen == null or seen.name != step.anchor_control:
+			_lead_looks += 1  # The mark looks again every few frames: give it time.
+			return true
 	_led.append(step)
+	_lead_looks = 0
+	if step.anchor == TutorialBeatDef.Anchor.TILE:
+		if step.kind != TutorialConditions.Kind.SELECTED:
+			return false
+		_pending_tile = step
+		selection_steps += 1
+		_tap_ground(Vector2i(step.anchor_tile.x * 1000 + 500, step.anchor_tile.y * 1000 + 500))
+		return true
 	var target: Control = _mark.target_control()
 	if target == null or target.name != step.anchor_control:
 		_ringless.append("%s: lead-in %s (ring on %s)" % [beat.id, step.anchor_control, target])
 		return false
+	if step.kind == TutorialConditions.Kind.SELECTED:
+		selection_steps += 1
 	_press_button(target as BaseButton, String(step.anchor_control))
 	return true
+
+
+## The beat's lead-in of kind SELECTED, null when it has none.
+func _selection_lead(beat: TutorialBeatDef) -> TutorialLeadInDef:
+	for step: TutorialLeadInDef in beat.lead_in:
+		if step.kind == TutorialConditions.Kind.SELECTED:
+			return step
+	return null
 
 
 ## A control anchor must be a node of the HUD at all (`missing`).
