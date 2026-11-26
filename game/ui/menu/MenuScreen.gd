@@ -75,10 +75,10 @@ func on_back() -> bool:
 	return false
 
 
-## A CapsButton of at least 48 dp calling `action`; `text` is upper case (no case property).
+## A MenuItem (P662) of at least 48 dp calling `action`; `text` is upper case (no case property).
 func add_button(text: String, action: Callable) -> Button:
 	var button: Button = Button.new()
-	button.theme_type_variation = &"CapsButton"
+	button.theme_type_variation = &"MenuItem"
 	button.text = text
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var floor_dp: DpMinSize = DpMinSize.new()

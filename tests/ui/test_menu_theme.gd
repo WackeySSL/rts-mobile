@@ -12,7 +12,14 @@ const FONT_COLOR: Dictionary[String, StringName] = {
 ## The opaque backdrop of every menu screen (scenes/menu/menu.tscn).
 const BACKDROP: Color = Color(0.10980392, 0.12941177, 0.15294118, 1)
 const BUTTONS: Array[StringName] = [
-	&"MenuToggle", &"MenuToggleFossil", &"MenuToggleOff", &"MenuTab", &"MenuTabOn"
+	&"MenuToggle",
+	&"MenuToggleFossil",
+	&"MenuToggleOff",
+	&"MenuTab",
+	&"MenuTabOn",
+	&"MenuItem",
+	&"MenuItemOn",
+	&"MenuPrimary",
 ]
 ## Label looks and the PanelContainer look they sit on (empty: the bare backdrop).
 const LABELS: Dictionary[StringName, StringName] = {
@@ -20,6 +27,7 @@ const LABELS: Dictionary[StringName, StringName] = {
 	&"SideNameRenew": &"",
 	&"SideNameFossil": &"",
 	&"MenuRankLabel": &"MenuRankBadge",
+	&"MenuEyebrow": &"",
 }
 
 
@@ -73,6 +81,11 @@ func test_every_look_exists_with_the_base_the_screens_rely_on() -> void:
 		&"MenuToggleOff": &"MenuToggle",
 		&"MenuTab": &"CapsButton",
 		&"MenuTabOn": &"MenuTab",
+		&"MenuItem": &"CapsButton",
+		&"MenuItemOn": &"MenuItem",
+		&"MenuPrimary": &"CapsButton",
+		&"MenuEyebrow": &"Label",
+		&"MenuScrim": &"Control",
 		&"MenuRankBadge": &"PanelContainer",
 		&"MenuRankLabel": &"CapsTitle",
 		&"MenuXpBar": &"ProgressBar",
@@ -125,3 +138,49 @@ func _contrast(a: Color, b: Color) -> float:
 	var one: float = _luminance(a)
 	var other: float = _luminance(b)
 	return (maxf(one, other) + 0.05) / (minf(one, other) + 0.05)
+
+
+## P662: the eyebrow is at least 14 sp (the floor of touch-ui-rules).
+func test_the_eyebrow_is_at_least_14_sp() -> void:
+	var size: int = HudThemes.source().get_font_size(&"font_size", &"MenuEyebrow")
+	assert_int(size).is_greater_equal(14)
+
+
+## P662: the menu plates are square, but for the emblem and the check circle (shapes, not plates).
+func test_menu_and_pause_plates_are_square() -> void:
+	var theme: Theme = HudThemes.source()
+	var looks: Array[Array] = [
+		[&"MenuItem", &"normal"],
+		[&"MenuItem", &"pressed"],
+		[&"MenuItemOn", &"normal"],
+		[&"MenuPrimary", &"normal"],
+		[&"MenuPrimary", &"pressed"],
+		[&"MenuToggle", &"normal"],
+		[&"MenuTab", &"normal"],
+		[&"PauseButton", &"normal"],
+		[&"PausePrimary", &"normal"],
+		[&"PauseChip", &"normal"],
+	]
+	for look: Array in looks:
+		var box: StyleBoxFlat = theme.get_stylebox(look[1], look[0]) as StyleBoxFlat
+		(
+			assert_int(box.corner_radius_top_left + box.corner_radius_bottom_right)
+			. override_failure_message(str(look))
+			. is_equal(0)
+		)
+	for plate: StringName in [&"MenuSideCard", &"MenuMapCard", &"MenuToggleRow", &"PauseCard"]:
+		var card: StyleBoxFlat = theme.get_stylebox(&"panel", plate) as StyleBoxFlat
+		assert_int(card.corner_radius_top_left).override_failure_message(str(plate)).is_equal(0)
+
+
+## P662: the scrim's three stops are the ground token at 96, 65 and 0 percent.
+func test_the_scrim_gradient_is_the_ground_token() -> void:
+	var theme: Theme = HudThemes.source()
+	var ground: Color = theme.get_color(&"ground", &"HudTokens")
+	var texture: GradientTexture2D = theme.get_icon(&"shade", &"MenuScrim") as GradientTexture2D
+	var stops: PackedColorArray = texture.gradient.colors
+	var alphas: Array[float] = [0.96, 0.65, 0.0]
+	assert_int(stops.size()).is_equal(3)
+	for i: int in 3:
+		assert_str(Color(stops[i], 1.0).to_html(false)).is_equal(ground.to_html(false))
+		assert_float(stops[i].a).is_equal_approx(alphas[i], 0.001)

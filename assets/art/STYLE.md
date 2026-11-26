@@ -2238,8 +2238,23 @@ or team-colour change). Source "P602" is the read-out table above; "adjusted" sa
 - **Interim until P632.** Facet's HUD accent is blue while its units and team triad stay cyan
   (`WorldSort.TRIADS`); P632 changes the team colours and restores the exact pairing that
   `test_skirmish_routes.gd` loosened.
-- Menu whites (the literal white font colours of `Menu*`) are not tokens yet; P613 and P614 move them
-  to `text`.
+- Menu whites: moved to `text` by P662 (see "Menu tokens v2 (P662)" below).
+
+### Menu tokens v2 (P662)
+Theme looks only (`game/ui/theme.tres`); no layout, no new screen. The Figma read-out above is the source.
+| Item | Old | New |
+| --- | --- | --- |
+| Corner radius of every `Menu*` plate, tab, toggle, card, row, badge, track and fill, and of the pause card, buttons, primary, chip and focus ring | 4, 8 or 12 dp | 0 (the round `PauseBadge` emblem and `PauseCheck` circle stay round: shapes, not plates) |
+| White font and icon colours of `CapsButton`, `CapsTitle`, `CapsBigTitle`, `MenuTabOn`, `PauseButton` disabled, `PauseStarting` disabled, and the `PauseButton` focus ring | #FFFFFF | `HudTokens.text` #E9ECE7 (the same value, as a literal in the theme) |
+| `MenuItem` (Button, base `CapsButton`, 18 dp, 14 dp padding, so at least 48 dp) | new | ground at 50 percent, 1 px `border` edge; pressed `panel_raised` |
+| `MenuItemOn` (base `MenuItem`) | new | selected: `action_wash` fill, 2 px `money` edge |
+| `MenuPrimary` (Button, base `CapsButton`) | new | `money` fill, `ground_deep` word (11:1); pressed #F9CC85 |
+| `MenuEyebrow` (Label) | new | Plex Mono 14 sp, 2 px tracking, `money` |
+| `MenuScrim` icon `shade` (GradientTexture2D, left to right) | new | `ground` at 96, 65 and 0 percent (stops 0, 0.5, 1); not used yet (P663) |
+`MenuScreen.add_button` now builds `MenuItem` (was `CapsButton`), so the menu screens' buttons take the
+square item look. The tokens test pins the new text pairs at 4.5:1 and `test_menu_theme.gd` the
+48 dp height, the 14 sp eyebrow, the square plates and the scrim stops.
+
 
 ### Type scale
 **Shipped (P605, Michael's choice of 2026-11-25, ADR 0049 amendment):** the three faces below are the
