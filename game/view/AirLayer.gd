@@ -170,6 +170,17 @@ func rig_of(id: int) -> Rig:
 	return _by_id.get(id)
 
 
+## The world px point a tap picks flyer `id` at: its rig's ground point raised by its hover, the
+## hull of `fill_pick_snapshot` without the bob (ADR 0048 section 13.3). `Vector2.INF` when this
+## layer shows no rig for it: gone, falling, hidden by the fog, or a ground unit. Allocates nothing.
+func tap_point(id: int) -> Vector2:
+	_sync()
+	var rig: Rig = _by_id.get(id)
+	if rig == null or not rig.visible or rig.born_ms >= 0.0:
+		return Vector2.INF
+	return rig.global_position - Vector2(0.0, rig.lift)
+
+
 ## How high above its ground point the hull of type `type` of `snap` hovers, world px at zoom 1:
 ## the sheet's `fly_px` (`low_fly_px` for a LOW_AIR type), the default without art. What a tap picks
 ## the aircraft at (P244). A ground type answers 0.

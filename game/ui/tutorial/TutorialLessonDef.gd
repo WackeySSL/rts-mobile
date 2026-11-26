@@ -61,6 +61,7 @@ func problems() -> PackedStringArray:
 			found.append("%s: a control anchor names no control" % beat.id)
 		if beat.pause and beat.kind != TutorialConditions.Kind.NEXT:
 			found.append("%s: pauses on a condition that is not Next" % beat.id)
+		_unit_problem(found, beat.id, beat.anchor, beat.unit)
 		_gesture_problem(found, beat.id, beat.gesture, beat.kind, beat.gesture_vector_dp)
 		for index: int in beat.lead_in.size():
 			_lead_in_problems(found, beat, index)
@@ -82,9 +83,23 @@ func _lead_in_problems(found: PackedStringArray, beat: TutorialBeatDef, index: i
 		found.append("%s: has no anchor" % label)
 	elif step.anchor == TutorialBeatDef.Anchor.CONTROL and step.anchor_control == &"":
 		found.append("%s: a control anchor names no control" % label)
+	_unit_problem(found, label, step.anchor, step.unit)
 	if not TutorialConditions.LEAD_IN_KINDS.has(step.kind):
 		found.append("%s: kind %d is not a UI-state kind" % [label, step.kind])
 	_gesture_problem(found, label, step.gesture, step.kind, Vector2i.ZERO)
+
+
+## A `UNIT` anchor needs its selector and no other anchor may carry one (ADR 0048 section 13.2).
+func _unit_problem(
+	found: PackedStringArray,
+	label: String,
+	anchor: TutorialBeatDef.Anchor,
+	unit: TutorialUnitPickDef
+) -> void:
+	if anchor == TutorialBeatDef.Anchor.UNIT and unit == null:
+		found.append("%s: a unit anchor has no unit selector" % label)
+	elif anchor != TutorialBeatDef.Anchor.UNIT and unit != null:
+		found.append("%s: a unit selector on an anchor that is not a unit" % label)
 
 
 ## A gesture that does not fit its kind (ADR 0048 section 10): a pinch only with a zoom condition,
