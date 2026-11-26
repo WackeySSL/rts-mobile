@@ -11,7 +11,7 @@ const UNIT_BYTES: int = 64 * 1024
 const NUMBER_PAINT: String = "#E9E5D6"
 ## The models that have opted in, by restyle batch (docs/art/treadline-batches.json); every other
 ## model of the game is at detail 0 until its own batch. P638: the Nordvaern ground vehicles; P639:
-## the Facet ground vehicles.
+## the Facet ground vehicles; P640: the three Nordvaern squads.
 const OPTED_IN: Dictionary[String, int] = {
 	"light_tank": 2,
 	"heavy_tank": 2,
@@ -21,6 +21,9 @@ const OPTED_IN: Dictionary[String, int] = {
 	"renew_tank": 2,
 	"renew_artillery": 2,
 	"renew_tanker": 2,
+	"rifle_squad": 2,
+	"rocket_squad": 2,
+	"fossil_patchers": 2,
 }
 
 
@@ -175,8 +178,9 @@ func test_every_frame_of_an_opted_in_unit_holds_the_unit_budget() -> void:
 		assert_int(text.length()).override_failure_message(path).is_less(UNIT_BYTES)
 		assert_int(_polygons(text)).override_failure_message(path).is_less(UNIT_POLYS)
 		seen += 1
-	# Hull, turret and shadow of six units, hull and shadow of the two tankers, 16 directions each.
-	assert_int(seen).is_equal(22 * 16)
+	# Hull, turret and shadow of six units, hull and shadow of the two tankers, 16 directions each;
+	# hull and shadow of the three squads, 8 directions each (P640).
+	assert_int(seen).is_equal(22 * 16 + 3 * 2 * 8)
 
 
 func _opted_in(path: String) -> bool:

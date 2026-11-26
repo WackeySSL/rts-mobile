@@ -205,7 +205,10 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   5. The galleries' triads follow (`art_gallery_iso.gd`, `art_gallery_units.gd`).
   6. The tests change: `test_artgen_readability.gd`'s `TEAM_SHARE` becomes 2-12 % for the
      transition (today's 8-12 % bands are valid markers), and a `FACTION_SHARE` band applies to
-     models at detail 1 and up.
+     models at detail 1 and up. P640 measures it with the same-scene hue band (within
+     `faction_hue_band` of the faction's mid hue at `faction_sat_min` or more, from
+     `same_scene.tres`) instead of the exact tones, which miss the small faces of infantry; the
+     band stays 15-85 %.
   7. Each model batch then adds the panels, shrinks its marker to 2-6 % and is tested there. The
      last batch to merge narrows `TEAM_SHARE` to 2-6 %.
 - **Default team colours** (question 3): own white (Sne), the computer red (Karmin). This is a
