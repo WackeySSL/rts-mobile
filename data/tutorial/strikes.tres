@@ -24,6 +24,7 @@ kind = 18
 script = ExtResource("2_beat")
 id = &"aim"
 prompt_key = &"tutorial.strikes.aim"
+gesture = 2
 anchor = 2
 anchor_tile = Vector2i(22, 22)
 kind = 13
