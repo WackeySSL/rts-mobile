@@ -12,7 +12,7 @@ Decisions:
   art. One coherent look (§8).
 - ADR 0051 (#643, accepted by the lead's row P622): Figma's own AI features may make art that
   ships.
-- Note (2026-11-26, P660): ADR 0052 (proposed), "Menu look v2", and its plan
+- Note (2026-11-26, P660): ADR 0052 (accepted 2026-11-26, #682), "Menu look v2", and its plan
   [`docs/plans/2026-11-26-menu-look-v2.md`](2026-11-26-menu-look-v2.md) replace the menu rows
   here after Michael's Figma screens: P613 by P664, P614 by P666, P615 by P668, P616 by P669, P617
   by P670, and P650 by P661 and P667. Those rows stay below, marked. The HUD rows (P609-P612,

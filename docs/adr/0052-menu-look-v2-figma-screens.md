@@ -5,13 +5,15 @@ take the look of your Figma screens: a picture behind the menus with a dark shad
 numbered list with arrows, square panels, amber for the action and the three Figma faces. We make
 the pictures new with Figma AI; the pictures inside your file never ship. What stays: buttons of
 at least 48 dp, the ad rules, the corner HUD in battle, the build drawer, English text, RANK and
-not LEVEL, and our own names. Five questions at the end; each has a recommended answer.
+not LEVEL, and our own names. You chose the recommended answer to all five questions (at the end).
 
-Status: **proposed, 2026-11-26** (architect, row P660, branch `claude/p660-adr0052-menu-look`, base
-`main` at 99d0a5b5). Plan: `docs/plans/2026-11-26-menu-look-v2.md`, linked from
-`docs/plans/2026-11-24-treadline-restyle.md`.
+Status: **accepted, 2026-11-26.** Michael's answer (2026-11-26, verbatim): "Godkend alle 5
+(anbefalet)", so A for questions 1 to 5. Proposed the same day by the architect in row P660 on
+branch `claude/p660-adr0052-menu-look` (base `main` at 99d0a5b5, PR #682), and accepted in that
+PR; the planned acceptance row P660b was folded into it. Plan:
+`docs/plans/2026-11-26-menu-look-v2.md`, linked from `docs/plans/2026-11-24-treadline-restyle.md`.
 
-Amends, on acceptance (row P660b adds dated notes; no accepted text is rewritten):
+Amends (dated notes added in PR #682; no accepted text is rewritten):
 - ADR 0049 §3, "Other screens": the Intro, Main menu, Loading and Victory rows (§3 below).
 - ADR 0043 §2 (the open-out meets the backdrop picture) and §5 (the main menu's content).
 - The restyle plan's rows P613 to P617 and P650. They are marked replaced, not deleted.
@@ -108,7 +110,7 @@ Settings, How to play, Licences, Tutorial and Restore take the menu frame's look
     - map coordinates and a loading bar.
     Asks for them go to the lead's follow-up list.
 
-### 3. The look per screen (the recommended answers to the questions)
+### 3. The look per screen (Michael's answers 1 to 5, all A)
 - **Main menu (P664).**
   - The file's pattern for each item: a number, the word, an arrow. The word carries the
     meaning. The number is decoration in `text_mute` and counts the items shown. The arrow is
@@ -187,29 +189,37 @@ Settings, How to play, Licences, Tutorial and Restore take the menu frame's look
 ## Alternatives considered
 - **Use the file's own pictures as backdrops.** Rejected. ADR 0049 §1: their feature, date and
   prompt are unknown, and they were never screened.
-- **Icon-and-word tiles as ADR 0049 §3 wrote.** Possible (question 1 B). It looks less like the
+- **Icon-and-word tiles as ADR 0049 §3 wrote.** Not taken (answer 1 A). It looks less like the
   file.
-- **A title card after the intro.** Rejected as the default, because it adds time (question 3 B).
+- **A title card after the intro.** Not taken (answer 3 A), because it adds time.
 - **A loading bar.** Rejected. The bake blocks the main thread (ADR 0043 §2).
 
-## Questions for Michael
+## Michael's answers (2026-11-26)
+Verbatim: "Godkend alle 5 (anbefalet)". The questions stay as they were asked, with the answer
+under each.
+
 1. **Main menu items.** A: the file's numbered list (a number, the word, an arrow), in one or two
    columns as the width allows. B: icon-and-word tiles as ADR 0049 §3 wrote. **Recommended: A.**
    It is the file's look, and the word still carries the meaning.
    *Dansk: Hovedmenuen som filens nummererede liste med pil (anbefalet), eller som ikon-fliser?*
+   **Answer: A.**
 2. **The card beside the menu.** A: a commander card where the file has its campaign card: rank
    insignia, rank title, XP bar and the next unlock. B: no card; the rank line stays under the
    list as today. **Recommended: A.** There is no campaign, and the rank is the player's progress.
    *Dansk: Et kommandørkort med rang, XP og næste oplåsning i stedet for felttogskortet (anbefalet)?*
+   **Answer: A.**
 3. **Intro into the menu.** A: the open-out reveals the menu backdrop and the logo, with no
    added time. B: a short title card after the open-out, which adds 1 to 2 seconds.
    **Recommended: A.** ADR 0043 §2 says the intro never adds a wait.
    *Dansk: Introen åbner direkte ud i menuens baggrund og logo uden ekstra ventetid (anbefalet)?*
+   **Answer: A.**
 4. **A tip on Loading.** A: one still tip line in a fixed order, which changes each time. B: no
    tip. **Recommended: A.** The card shows for a few seconds anyway, and nothing on it can move.
    *Dansk: En fast tip-linje på indlæsningsskærmen, en ny hver gang (anbefalet)?*
+   **Answer: A.**
 5. **An unlock card on Result.** A: only when the match reached a rank that opens a map or a
    level. B: never. **Recommended: A.** It shows a real unlock, and never a promise the game has
    no feature for.
    *Dansk: Et oplåsningskort på resultatskærmen kun når en bane eller sværhedsgrad faktisk låses
    op (anbefalet)?*
+   **Answer: A.**

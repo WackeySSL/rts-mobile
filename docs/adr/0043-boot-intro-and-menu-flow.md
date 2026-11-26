@@ -103,6 +103,13 @@ open-out; it adds no time. Its CREDITS rows, and the splash PNG's, say "All righ
 - The match-start bake is a separate wait: a still "deploying" card shows before it (P536;
   Michael, question 10).
 
+Note (2026-11-26, P660; ADR 0052 accepted 2026-11-26, answer 3 A; the text above stays as
+accepted): the open-out now ends on the main menu's first frame, which is a Figma-AI backdrop
+picture under a theme scrim with the logo in place (ADR 0052 §3). No title card is added.
+`min_ms`, `max_ms`, `open_ms` and `fade_ms` keep their values, and the intro still never adds a
+wait. The backdrop joins the threaded menu load. With Reduced effects, the cross-fade goes to the
+same frame. The deploying card gets one still tip line and no bar (ADR 0052 §3, answer 4 A).
+
 ### 3. Screens and the stack
 - `scenes/menu/menu.tscn`: a root Control with a `HudTheme` node and the theme, the backdrop, and
   `MenuStack` (`game/ui/menu/`). Screens are code-built Controls (as `PauseMenu` is), each a
@@ -139,6 +146,15 @@ elsewhere). Campaign and Multiplayer are not shown.
   start: nobody writes `LifeSettings.reduced` during a match, ADR 0027 §8), Privacy ("Privacy
   options" when `AdService.is_privacy_options_required()`, tap awaits `show_privacy_options()`),
   the Remove ads / Restore slot, Replay tutorial, How to play, Licences, Developer (debug builds).
+
+Note (2026-11-26, P660; ADR 0052 accepted 2026-11-26, answers 1 and 2 A; the text above stays
+as accepted): the main menu keeps this content and takes the Figma file's look (ADR 0052 §3).
+- Continue, Skirmish, Tutorial, How to play and Settings become a numbered list, each item a
+  number, the word and an arrow, at least 48 dp.
+- The rank badge and XP bar move into a commander card (rank insignia, title, XP bar, the next
+  unlock), beside the list where the measured width allows, else above it.
+- The banner keeps its 48 dp of air. Campaign and Multiplayer stay hidden.
+- The side names are Nordværn and Facet since P607 (ADR 0049).
 
 ### 6. MenuFlow
 Autoload **`MenuFlow`** (`game/ui/menu/menu_flow_service.gd`): the one owner of scene changes.
