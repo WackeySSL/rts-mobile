@@ -10,7 +10,7 @@ const PLATE: Color = Color("1C2127")
 const RIM: Color = Color("2F363D")
 const GRID: Color = Color("2A3036")
 const ELLIPSE: String = "res://assets/art/svg/ui/selection_ellipse.svg"
-const ALLOWED_TAGS: Array[String] = ["svg", "g", "polygon"]
+const ALLOWED_TAGS: Array[String] = ["svg", "defs", "linearGradient", "stop", "g", "polygon"]
 const EDGE_PX: int = 5  ## The band along the card's edge that only the plate may touch.
 const PICTURE_SHARE: Vector2 = Vector2(0.05, 0.6)  ## Of the inner plate, covered by the picture.
 const KEY_CORNER_AT: Vector2i = Vector2i(10, 10)
@@ -27,7 +27,7 @@ func test_every_type_has_a_card_of_128_px_made_of_polygons_in_its_own_factions_c
 		assert_str(lines[0]).contains(ArtGen.MARKER)
 		assert_str(lines[0]).contains(String(model.art_id))
 		assert_str(lines[1]).contains('width="128" height="128" viewBox="0 0 128 128"')
-		assert_int(card.length()).override_failure_message(path).is_less(28 * 1024)
+		assert_int(card.length()).override_failure_message(path).is_less(64 * 1024)
 		for found: RegExMatch in tags.search_all(card):
 			assert_array(ALLOWED_TAGS).override_failure_message(path).contains(
 				[found.get_string(1)]
@@ -50,19 +50,15 @@ func test_a_card_ends_in_the_default_view_of_the_hull_and_its_turret_over_the_sh
 				ArtGen.frame_path(model, &"hull", -1 if model.category == &"bld" else dir)
 			)
 		)
-		if model.detail > 0:
-			# The card is drawn flat (ArtIcon): a model at detail 1 or more has panels, seams and
-			# sheen in its frames and none on its card, which keeps the frames' silhouette and
-			# the faction colour (P638).
-			want = _flat_fills(model, dir)
-		elif not model.primitives(ArtPrim.ANIM).is_empty():
+		if not model.primitives(ArtPrim.ANIM).is_empty():
 			# The moving element of a building stands at rest in the card, sorted with the hull.
 			var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
 			want.clear()
-			for poly: ArtRender.Poly in ArtRender.render(at_rest, 0.0, model.faction):
-				want.append(poly.fill)
+			for poly: ArtRender.Poly in ArtDetail.render(model, at_rest, 0.0):
+				want.append(_fill_of(poly.fill))
+		# The turret or head, drawn at the model's own detail level like its frame (P639b).
 		for part: StringName in [&"turret", &"head"]:
-			if model.parts().has(part) and model.detail == 0:
+			if model.parts().has(part):
 				want.append_array(
 					_fills(FileAccess.get_file_as_string(ArtGen.frame_path(model, part, dir)))
 				)
@@ -80,6 +76,48 @@ func test_a_card_ends_in_the_default_view_of_the_hull_and_its_turret_over_the_sh
 		# The shadow is under it: black polygons come before the first of the picture.
 		var shadow: int = fills.find("#000000")
 		assert_bool(shadow >= 0 and shadow < fills.size() - want.size() + 1).is_true()
+
+
+func test_a_card_has_gradients_of_its_own_ids_and_the_tones_of_its_frames_within_budget() -> void:
+	var seen: int = 0
+	var id_re: RegEx = RegEx.create_from_string('<linearGradient id="(s\\d+)"')
+	var use_re: RegEx = RegEx.create_from_string("url\\(#(s\\d+)\\)")
+	for path: String in ArtGen.model_paths():
+		var model: ArtModel = load(path) as ArtModel
+		var card: String = FileAccess.get_file_as_string(ArtGen.icon_path(model))
+		var ids: Array[String] = []
+		for hit: RegExMatch in id_re.search_all(card):
+			ids.append(hit.get_string(1))
+		var unique: Dictionary = {}
+		for id: String in ids:
+			unique[id] = true
+		assert_int(unique.size()).override_failure_message(path + " ids").is_equal(ids.size())
+		for hit: RegExMatch in use_re.search_all(card):
+			assert_array(ids).override_failure_message(path).contains([hit.get_string(1)])
+		assert_int(card.count("<polygon")).override_failure_message(path).is_less_equal(600)
+		if model.detail == 0:
+			continue
+		# The card holds the sheen tones of the frames it shows, key colours never in one.
+		var dir: int = model.default_dir()
+		var frames: String = FileAccess.get_file_as_string(
+			ArtGen.frame_path(model, &"hull", -1 if model.category == &"bld" else dir)
+		)
+		for part: StringName in [&"turret", &"head"]:
+			if model.parts().has(part):
+				frames += FileAccess.get_file_as_string(ArtGen.frame_path(model, part, dir))
+		assert_array(_stops(card)).override_failure_message(path + " stops").is_equal(
+			_stops(frames)
+		)
+		seen += int(not ids.is_empty())
+	assert_int(seen).is_greater(0)
+
+
+func test_a_detail_zero_card_has_no_gradient() -> void:
+	for path: String in ArtGen.model_paths():
+		var model: ArtModel = load(path) as ArtModel
+		if model.detail == 0:
+			var card: String = FileAccess.get_file_as_string(ArtGen.icon_path(model))
+			assert_bool(card.contains("<defs>")).override_failure_message(path).is_false()
 
 
 func test_a_card_is_a_plate_with_a_faint_grid_a_key_corner_and_a_picture_inside_its_edge() -> void:
@@ -185,26 +223,28 @@ func test_the_style_guide_states_the_ellipse_and_the_card() -> void:
 		assert_bool(guide.contains(words)).override_failure_message(words).is_true()
 
 
-## The fills of the flat default view of `model`: the hull, then the turret or head.
-func _flat_fills(model: ArtModel, dir: int) -> Array[String]:
+## The fills of `text` in order; a sheen gradient reads as "sheen" whatever its id.
+func _fills(text: String) -> Array[String]:
 	var found: Array[String] = []
-	var yaw: float = 0.0 if model.category == &"bld" else ArtGen.yaw(dir)
-	var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
-	for poly: ArtRender.Poly in ArtRender.render(at_rest, yaw, model.faction):
-		found.append(poly.fill)
-	for part: StringName in [&"turret", &"head"]:
-		for poly: ArtRender.Poly in ArtRender.render(
-			model.primitives(part), ArtGen.yaw(dir), model.faction
-		):
-			found.append(poly.fill)
+	var fill: RegEx = RegEx.create_from_string('fill="(#[0-9A-F]{6}|url\\(#s\\d+\\))"')
+	for hit: RegExMatch in fill.search_all(text):
+		found.append(hit.get_string(1) if hit.get_string(1).begins_with("#") else "sheen")
 	return found
 
 
-func _fills(text: String) -> Array[String]:
+## The fill of a polygon as `_fills` reads it.
+func _fill_of(fill: String) -> String:
+	return "sheen" if fill.begins_with(ArtDetail.SHEEN) else fill
+
+
+## The distinct stop colours of the gradients of `text`, sorted.
+func _stops(text: String) -> Array[String]:
 	var found: Array[String] = []
-	var fill: RegEx = RegEx.create_from_string('fill="(#[0-9A-F]{6})"')
-	for hit: RegExMatch in fill.search_all(text):
-		found.append(hit.get_string(1))
+	var stop: RegEx = RegEx.create_from_string('stop-color="(#[0-9A-F]{6})"')
+	for hit: RegExMatch in stop.search_all(text):
+		if not found.has(hit.get_string(1)):
+			found.append(hit.get_string(1))
+	found.sort()
 	return found
 
 

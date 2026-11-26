@@ -24,10 +24,10 @@ static func card(model: ArtModel) -> String:
 	var yaw: float = 0.0 if model.category == &"bld" else ArtGen.yaw(dir)
 	# The moving element of a building stands at rest in the card, sorted with the hull.
 	var at_rest: Array[ArtPrim] = model.primitives(&"hull") + model.primitives(ArtPrim.ANIM)
-	var body: Array[ArtRender.Poly] = ArtRender.render(at_rest, yaw, model.faction)
+	var body: Array[ArtRender.Poly] = ArtDetail.render(model, at_rest, yaw)
 	for part: StringName in [&"turret", &"head"]:
-		var parts: Array[ArtRender.Poly] = ArtRender.render(
-			model.primitives(part), ArtGen.yaw(dir), model.faction
+		var parts: Array[ArtRender.Poly] = ArtDetail.render(
+			model, model.primitives(part), ArtGen.yaw(dir)
 		)
 		var at: Vector2 = ArtGen.mount_px(model, 6 if model.category == &"bld" else dir)
 		for poly: ArtRender.Poly in parts:
@@ -37,6 +37,7 @@ static func card(model: ArtModel) -> String:
 	for poly: ArtRender.Poly in body:
 		poly.fill = _dressed(poly.fill, model.faction)
 		poly.stroke = _dressed(poly.stroke, model.faction)
+	var ids: Dictionary[String, String] = ArtDetail.sheen_ids(body)
 	var shadow: Array[ArtRender.Poly] = ArtShadow.polys(model.shadow_prims(), yaw)
 	var box: Rect2 = ArtRender.bounds(shadow + body)
 	var scale: float = minf(minf(FIT_PX.x / box.size.x, FIT_PX.y / box.size.y), MAX_SCALE)
@@ -44,16 +45,17 @@ static func card(model: ArtModel) -> String:
 	var lines: PackedStringArray = ArtSvg.group('stroke-width="2"', [_plate()])
 	lines.append_array(ArtSvg.group("", _grid()))
 	lines.append_array(ArtSvg.group("", [_corner(model.faction)]))
+	var defs: PackedStringArray = ArtDetail.defs(ids)
 	lines.append_array(ArtSvg.group('opacity="%s"' % ArtShadow.OPACITY, shadow, origin, scale))
 	lines.append_array(
 		ArtSvg.group(
-			'stroke-width="%d" stroke-linejoin="round"' % ArtSvg.EDGE_PX, body, origin, scale
+			'stroke-width="%d" stroke-linejoin="round"' % ArtSvg.EDGE_PX, body, origin, scale, ids
 		)
 	)
 	var comment: String = (
 		"%s item card: %s from assets/art/models, do not edit" % [model.art_id, ArtGen.MARKER]
 	)
-	return ArtSvg.document(comment, Vector2i(SIZE, SIZE), lines)
+	return ArtSvg.document(comment, Vector2i(SIZE, SIZE), defs + lines)
 
 
 ## The plate, a square with its corners cut.
@@ -67,8 +69,14 @@ static func _plate() -> ArtRender.Poly:
 	return plate
 
 
-## `hex` with a sentinel key colour swapped for the faction's fixed colour of the same tone.
+## `hex` with a sentinel key colour swapped for the faction's fixed colour of the same tone; a
+## sheen fill (`sheen:<top>:<bottom>`) is dressed stop by stop.
 static func _dressed(hex: String, faction: StringName) -> String:
+	if hex.begins_with(ArtDetail.SHEEN):
+		var stops: PackedStringArray = hex.trim_prefix(ArtDetail.SHEEN).split(":")
+		for i: int in stops.size():
+			stops[i] = _dressed(stops[i], faction)
+		return ArtDetail.SHEEN + ":".join(stops)
 	var at: int = ArtPalette.SENTINEL.find(hex)
 	return hex if at < 0 else ArtPalette.tone(faction, ArtPalette.FACTION, at)
 
