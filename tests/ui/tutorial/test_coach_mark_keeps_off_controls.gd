@@ -9,7 +9,8 @@ extends GdUnitTestSuite
 ## - the card stands 16 dp from an ad band;
 ## - where the card covers the beat's control (a modal's button, the ghost's check mark) it is
 ##   see-through and a pushed touch reaches the control through it, and it is see-through for no
-##   other HUD control;
+##   other HUD control, but for the hand's reach (P592: the gesture hint stays inside the safe rect
+##   and its box joins the see-through test);
 ## - the dock has room on the six sizes; a fold (small phone only) shows the tab in the safe rect.
 ## The state of a beat is what the beats before it leave (a drawer opened on a tab stays open until
 ## a beat closes it), plus the state its own condition asks for (DRAWER_TAB: the drawer on that
@@ -517,7 +518,16 @@ func _through(label: String, beat: TutorialBeatDef, card: Rect2, scope: Node) ->
 		aim.anchor == TutorialBeatDef.Anchor.TILE
 		or scope != _layer
 		or WORLD_CONTROLS.has(aim.anchor_control)
+		or _mark.gesture_plan().bounds.intersects(card)
+	)  # The hand's reach counts (P592).
+	var safe: Rect2 = SafeAreaMargin.rect_inside(
+		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
+	var hand: Rect2 = _mark.gesture_plan().bounds
+	if hand.has_area() and not safe.grow(0.5).encloses(hand):
+		lines.append(
+			"%s: the hand %s is outside the safe rect" % [label, _mark.gesture_plan().bounds]
+		)
 	if _mark.see_through() and not allowed:
 		lines.append(
 			(

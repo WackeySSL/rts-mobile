@@ -74,6 +74,11 @@ var reduced: bool = false:
 		_restart_blink()
 
 var _ring: Control
+var _gesture: GestureHint  ## The hand (ADR 0048 section 6), drawn above the card and the ring.
+var _gesture_plan: GuideHintPlan = GuideHintPlan.new()
+var _gesture_box: Rect2 = Rect2()  ## What the hand draws, with its margin (see-through test).
+var _gesture_aim: TutorialLeadInDef = null
+var _dock_rects: Dictionary[StringName, Rect2] = {}
 var _card: PanelContainer
 var _prompt: Label
 var _hint: Label
@@ -199,6 +204,10 @@ func _ready() -> void:
 	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ring.draw.connect(_draw_ring)
 	add_child(_ring)
+	_gesture = GestureHint.new()
+	_gesture.name = "GestureHint"
+	_gesture.visible = false
+	add_child(_gesture)
 	get_viewport().size_changed.connect(_apply_metrics)
 	_apply_metrics()
 	visible = false
@@ -261,6 +270,7 @@ func hide_mark() -> void:
 	_aim = null
 	_target = null
 	_ring_now = Rect2()
+	_clear_gesture()
 	visible = false
 	if _ring != null:
 		set_process(false)
@@ -273,6 +283,7 @@ func _show_gap() -> void:
 	_aim = null
 	_target = null
 	_ring_now = Rect2()
+	_clear_gesture()
 	_gap = true
 	_number = director.progress().x + 1
 	_total = director.progress().y
@@ -425,6 +436,7 @@ func _refresh_dock() -> bool:
 	)
 	if band.has_area():
 		rects[GuideDock.AD_BAND] = band
+	_dock_rects = rects
 	var values: Dictionary[StringName, float] = {
 		GuideDock.MAX_WIDTH_KEY: settings.card_max_width_dp,
 		GuideDock.MAX_HEIGHT_KEY: float(settings.card_max_height_pct),
@@ -507,6 +519,7 @@ func _update() -> void:
 		return
 	var ring: Rect2 = _ring_box()
 	var docked: bool = _refresh_dock()
+	_update_gesture(ring)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
 	var modal: bool = _modal_of(_target) != null
@@ -552,7 +565,9 @@ func _update() -> void:
 ## 6 dp outside its control, and the dock stands 8 dp from every HUD part, so a HUD neighbour never
 ## meets the card; a tile, a modal's button or the ghost's check mark can.
 func _meets(ring: Rect2) -> bool:
-	return _card.visible and ring.has_area() and _card_box.intersects(ring)
+	if not _card.visible:
+		return false
+	return (ring.has_area() and _card_box.intersects(ring)) or _card_box.intersects(_gesture_box)
 
 
 ## Stands the card in the dock, or on the folded tab's slot when the dock has no room (ADR 0048
@@ -736,6 +751,48 @@ func _fit_card(width: float, max_height: float = INF) -> Vector2:
 ## Whether the prompt is longer than its area and scrolls (the dock is too short for it).
 func prompt_scrolls() -> bool:
 	return _scroll.get_v_scroll_bar().max_value > _scroll.get_v_scroll_bar().page + 0.5
+
+
+## Plays the hand where `GuideHintPlan` puts it (ADR 0048 section 6) and keeps its box for the
+## see-through test. A new gesture or step starts its loop again.
+func _update_gesture(ring: Rect2) -> void:
+	if _gesture == null:
+		return
+	var foot: float = -1.0  # Below the dock's foot; with no dock, below the card.
+	if not GuideDock.has_room(_dock, _dp) and _card_box.has_area():
+		foot = _card_box.end.y
+	var field: Vector2 = GuideDock.field_point(_safe_rect, _dock, _dock_rects, foot)
+	var lead: bool = _beat != null and _beat.lead_in.has(_aim)
+	var plan: GuideHintPlan = _gesture_plan
+	plan.resolve(_beat, _aim, lead, ring, camera, field, _safe_rect, _dp, settings.hint_size_dp)
+	_gesture_box = plan.bounds
+	var shown: bool = plan.kind != TutorialBeatDef.Gesture.NONE
+	_gesture.visible = shown
+	if not shown:
+		return
+	var again: bool = plan.kind != _gesture.kind or _aim != _gesture_aim
+	_gesture_aim = _aim
+	if _gesture.settings != settings:
+		_gesture.settings = settings
+	_gesture.reduced = reduced
+	_gesture.kind = plan.kind
+	_gesture.vector_dp = plan.vector_dp
+	_gesture.size = Vector2.ONE * settings.hint_size_dp * _dp
+	_gesture.global_position = plan.point - _gesture.size * 0.5
+	if again:
+		_gesture.restart()
+
+
+func _clear_gesture() -> void:
+	_gesture_box = Rect2()
+	_gesture_aim = null
+	if _gesture != null:
+		_gesture.visible = false
+
+
+## The hand's plan for the frame (kind, point, bounds).
+func gesture_plan() -> GuideHintPlan:
+	return _gesture_plan
 
 
 ## The ring's box for the active step (`GuideRing.box`). Pure: it reads `_target`, never looks.
