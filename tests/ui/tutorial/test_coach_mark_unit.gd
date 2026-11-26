@@ -8,6 +8,7 @@ const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd"
 const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const Air: GDScript = preload("res://tests/view/support/air_rig.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
+const CountingFit: GDScript = preload("res://tests/ui/tutorial/support/counting_card_fit.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const NEAR: Vector2 = Vector2(1.0, 1.0)
 
@@ -18,20 +19,8 @@ var _air: AirLayer
 var _director: TutorialDirector
 var _mark: CoachMark
 var _hud_root: Control
-var _fit: CountingFit
+var _fit: GuideCardFit
 var _window_before: Vector2i
-
-
-## A card fit that counts the layouts it is asked for.
-class CountingFit:
-	extends GuideCardFit
-	var count: int = 0
-
-	func fit(
-		width: float, max_height: float, dp: float, mirror: bool, settings: GuideSettingsDef
-	) -> Vector2:
-		count += 1
-		return super(width, max_height, dp, mirror, settings)
 
 
 func before() -> void:
@@ -139,12 +128,12 @@ func test_the_card_turns_back_from_see_through_only_past_the_8_dp_band() -> void
 func test_a_ring_only_move_does_not_lay_the_card_out_again() -> void:
 	await _open(_beat(), 7, true)
 	await _settle()
-	var laid: int = _fit.count
+	var laid: int = _fit.get(&"count")
 	for step: int in 5:
 		_ground.rig(6).position += Vector2(3.0, 1.0)
 		await await_idle_frame()
 	assert_int(laid).is_greater(0)  # The counter does fire for a layout.
-	assert_int(_fit.count).is_equal(laid)
+	assert_int(_fit.get(&"count")).is_equal(laid)
 	assert_that(_mark.ring_rect().get_center()).is_equal_approx(_mark.unit_anchor().point, NEAR)
 
 
