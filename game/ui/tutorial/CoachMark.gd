@@ -36,9 +36,6 @@ extends Control
 ## Looks come from `theme.tres`: PauseCard (GuideCardThrough while see-through), PauseButton,
 ## PausePrimary and PauseMuted for the card, GuideTokens for the ring. No colour literal.
 
-const BUTTON_GAP_DP: float = 12.0  ## Between Skip and Next: a slip must not end the lesson.
-const TAB_CLEAR_DP: float = 8.0  ## The least between the tab's rect and a card button's.
-const MIN_TEXT_DP: float = 120.0  ## The least width of the prompt beside the buttons' column.
 const RING_LINE_DP: float = 3.0
 const RING_GROW_DP: float = GuideRing.RING_GROW_DP
 const MIN_TARGET_DP: float = GuideRing.MIN_TARGET_DP
@@ -81,16 +78,8 @@ var _gesture_aim: TutorialLeadInDef = null
 var _dock_rects: Dictionary[StringName, Rect2] = {}
 var _field: GuideFieldCache = GuideFieldCache.new()
 var _field_of: Callable = _field_point
+var _fit: GuideCardFit = GuideCardFit.new()
 var _card: PanelContainer
-var _prompt: Label
-var _hint: Label
-var _row: BoxContainer  ## Skip and Next: a row, stacked where the dock is too narrow for both.
-var _head: HBoxContainer  ## Narrow form: the lesson's short title and room for the tab.
-var _title: Label
-var _head_pad: Control
-var _main: BoxContainer  ## The prompt and the buttons: side by side (wide) or one over the other.
-var _side: BoxContainer  ## The buttons' column (wide: under the tab's room, else beside it).
-var _side_pad: Control
 var _counter: Label
 var _chevron: TextureRect
 var _number: int = 0  ## The beat on show (1-based; in a gap the next one) and the lesson's count.
@@ -99,10 +88,6 @@ var _open: bool = true  ## The card is unfolded (the player's choice within a be
 var _arm_open: bool = false  ## A new beat or a stall: the next layout unfolds the card.
 var _roomy: bool = true  ## The last dock had room.
 var _gap: bool = false  ## Between two beats: the tab shows alone with the next number.
-var _scroll: ScrollContainer  ## The prompt and hint: scrolls where the dock is too short.
-var _content: VBoxContainer
-var _next: Button
-var _skip: Button
 var _beat: TutorialBeatDef = null
 var _aim: TutorialLeadInDef = null  ## The step of the chain the ring is on (ADR 0048 section 5).
 var _fallback: TutorialLeadInDef = null  ## The beat's own anchor as a step: no director.
@@ -143,63 +128,11 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	reduced = reduced or MenuPrefs.reduced_effects()
-	_card = PanelContainer.new()
-	_card.name = "Card"
-	_card.theme_type_variation = CARD_VARIATION
-	_card.mouse_filter = Control.MOUSE_FILTER_STOP  # Taps on the card are not map taps.
+	_fit.build(CARD_VARIATION)
+	_card = _fit.card
 	add_child(_card)
-	var column: VBoxContainer = VBoxContainer.new()
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_card.add_child(column)
-	_prompt = Label.new()
-	_prompt.name = "Prompt"
-	_prompt.theme_type_variation = &"GuidePrompt"
-	_hint = Label.new()
-	_hint.name = "Hint"
-	_hint.theme_type_variation = &"PauseMuted"
-	_hint.text = tr("Stuck? Try what the card says, or leave from the menu.")
-	_head = HBoxContainer.new()
-	_head.name = "Head"
-	_head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title = Label.new()
-	_title.name = "Title"
-	_title.theme_type_variation = &"PauseMuted"
-	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_head_pad = _pad("HeadPad")
-	_head.add_child(_title)
-	_head.add_child(_head_pad)
-	column.add_child(_head)
-	_main = BoxContainer.new()
-	_main.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(_main)
-	_scroll = ScrollContainer.new()
-	_scroll.name = "PromptScroll"
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # A drag scrolls.
-	_main.add_child(_scroll)
-	_content = VBoxContainer.new()
-	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_scroll.add_child(_content)
-	for label: Label in [_prompt, _hint]:
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_content.add_child(label)
-	_side = BoxContainer.new()
-	_side.name = "Side"
-	_side.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_main.add_child(_side)
-	_side_pad = _pad("SidePad")
-	_side.add_child(_side_pad)
-	_row = BoxContainer.new()
-	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_row.alignment = BoxContainer.ALIGNMENT_END
-	_side.add_child(_row)
-	_skip = _button("Skip", "SKIP LESSON", &"PauseButton")
-	_next = _button("Next", "NEXT", &"PausePrimary")
-	_next.pressed.connect(_on_next)
-	_skip.pressed.connect(_on_skip)
+	_fit.next.pressed.connect(_on_next)
+	_fit.skip.pressed.connect(_on_skip)
 	_build_tab()
 	_ring = Control.new()  # Drawn above the card, so a see-through card shows it (section 3).
 	_ring.name = "Ring"
@@ -256,11 +189,11 @@ func show_beat(beat: TutorialBeatDef) -> void:
 	_measure()
 	_number = director.progress().x + 1 if director != null else 1
 	_total = director.progress().y if director != null else 1
-	_title.text = tr(String(director.lesson.title_key)) if _lesson_known() else ""
+	_fit.title.text = tr(String(director.lesson.title_key)) if _lesson_known() else ""
 	_counter.text = "%d/%d" % [_number, _total]
-	_prompt.text = tr(String(beat.prompt_key))
-	if _scroll.scroll_vertical != 0:
-		_scroll.scroll_vertical = 0
+	_fit.prompt.text = tr(String(beat.prompt_key))
+	if _fit.scroll.scroll_vertical != 0:
+		_fit.scroll.scroll_vertical = 0
 	visible = true
 	set_process(true)
 	_update()
@@ -547,9 +480,9 @@ func _update() -> void:
 	_can_next_now = can_next
 	_modal_now = modal
 	_size_now = size
-	_next.visible = can_next
-	_skip.visible = _first_card()
-	_hint.visible = stalled
+	_fit.next.visible = can_next
+	_fit.skip.visible = _first_card()
+	_fit.hint.visible = stalled
 	_ring.global_position = Vector2.ZERO
 	_ring.size = _view
 	if ring.size != _points_for:
@@ -603,8 +536,8 @@ func _layout_card(ring: Rect2) -> void:
 			_room.position + Vector2((_room.size.x - width) * 0.5, 0.0),
 			Vector2(width, _room.size.y)
 		)
-	_skip.visible = _first_card() and not _modal_now  # The pause menu has Leave tutorial.
-	_fit_card(stand.size.x, stand.size.y)
+	_fit.skip.visible = _first_card() and not _modal_now  # The pause menu has Leave tutorial.
+	_fit.fit(stand.size.x, stand.size.y, _dp, mirror, settings)
 	_card.global_position = stand.position
 	_card_box = Rect2(stand.position, _card.size)
 	_through_now = _meets(ring)
@@ -614,9 +547,9 @@ func _layout_card(ring: Rect2) -> void:
 		Control.MOUSE_FILTER_IGNORE if passes else Control.MOUSE_FILTER_STOP
 	)
 	_card.mouse_filter = filter
-	_scroll.mouse_filter = filter
-	if _modal_now and _next.visible and _touches_modal(_modal_of(_target)):
-		_next.visible = false  # Next shows over a modal only where it clears every button of it.
+	_fit.scroll.mouse_filter = filter
+	if _modal_now and _fit.next.visible and _touches_modal(_modal_of(_target)):
+		_fit.next.visible = false  # Next shows over a modal only where it clears every button of it.
 	if not roomy:
 		_place_tab(false)
 
@@ -640,7 +573,7 @@ func _first_card() -> bool:
 
 ## Whether the card's visible Next is under 8 dp from a visible button of `modal`.
 func _touches_modal(modal: Node) -> bool:
-	return GuideLookup.touches(Rect2(_next.global_position, _next.size), modal, _dp)
+	return GuideLookup.touches(Rect2(_fit.next.global_position, _fit.next.size), modal, _dp)
 
 
 func _on_tab() -> void:
@@ -649,115 +582,9 @@ func _on_tab() -> void:
 	_update()
 
 
-## Gives the card `width` px, never more, and the height its wrapped text needs at that width, at
-## most `max_height`: past that the prompt scrolls in its own area and the buttons keep their foot
-## row. The row stacks where the width cannot hold Skip and Next side by side. Returns the size. The
-## labels' and the box's cached minimums are dropped first, or the height read is the one of the
-## width before.
-func _fit_card(width: float, max_height: float = INF) -> Vector2:
-	var margin: Vector2 = _card.get_theme_stylebox(&"panel").get_minimum_size()
-	var inner: float = floorf(width - margin.x)  # Whole px: a label is never over.
-	var gap: float = BUTTON_GAP_DP * _dp
-	var least: float = ceilf(MIN_TARGET_DP * _dp)  # A button's minimum is whole px.
-	# Wide by the dock's width, and in any landscape dock: a head row would cost 48 dp of the 126 dp
-	# a small phone's dock has (ADR 0048 section 2, deviation noted there).
-	var wide: bool = width >= settings.card_wide_dp * _dp or not HudLayout.is_portrait()
-	var across: float = 0.0
-	var widest: float = least
-	var count: int = 0
-	for button: Button in [_skip, _next]:
-		button.clip_text = false
-		button.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-		if button.visible:
-			count += 1
-			var button_width: float = CoachButtonWidth.of(button, MIN_TARGET_DP * _dp)
-			widest = maxf(widest, button_width)
-			across += button_width + (gap if across > 0.0 else 0.0)
-	if wide and inner - widest - gap < MIN_TEXT_DP * _dp:
-		wide = false  # Not even a column beside the prompt leaves it its least width.
-	var text_width: float = inner
-	_head.visible = not wide
-	_side_pad.visible = wide
-	_main.vertical = not wide
-	_main.move_child(_side, 0 if mirror and wide else 1)
-	_head.move_child(_head_pad, 0 if mirror else 1)
-	_side.visible = wide or count > 0
-	_row.visible = count > 0  # An action beat has no button: the row takes no height.
-	if wide:  # The buttons go under the tab, stacked or in a row, else beside it, by the height.
-		var stacked: float = count * least + maxf(count - 1.0, 0.0) * gap
-		# The tab stands at the card's corner, the pad `margin.top` below it: the real gap between
-		# the tab and the button under it is that margin plus the separation (at least 8 dp).
-		var top_margin: float = _card.get_theme_stylebox(&"panel").get_margin(SIDE_TOP)
-		var tight: float = maxf(TAB_CLEAR_DP * _dp - top_margin, 0.0)
-		var avail: float = max_height - margin.y
-		var beside: bool = count > 0 and least + tight + least > avail
-		var side: float = least
-		if count > 0:
-			side = across + gap + least if beside else maxf(least, across)
-		var under: bool = not beside and least + tight + stacked <= avail
-		var squeezed: bool = false  # No column fits the height either: the row keeps its words.
-		if count > 0 and inner - side - gap < MIN_TEXT_DP * _dp:  # Too little left for the prompt:
-			squeezed = least + tight + stacked > avail
-			if not squeezed:  # the buttons stack in a column under the tab.
-				beside = false
-				under = true
-		if under:
-			side = widest if count > 0 else least
-		_side.vertical = not beside
-		_side.move_child(_side_pad, 0 if mirror or not beside else 1)
-		_row.vertical = under
-		var below: float = stacked if under else least  # The row's height under the tab.
-		_side.add_theme_constant_override(
-			"separation",
-			roundi(gap) if beside else floori(clampf(avail - least - below, tight, gap))
-		)
-		_side.custom_minimum_size.x = side
-		text_width = maxf(inner - side - gap, minf(MIN_TEXT_DP * _dp, inner))
-		if squeezed:  # The prompt takes what is left and scrolls in it.
-			text_width = maxf(inner - side - gap, 0.0)
-	else:
-		_side.vertical = true
-		_row.vertical = across > inner
-		_side.custom_minimum_size.x = 0.0
-	for button: Button in [_skip, _next]:
-		# Stacked, a button is as wide as the card: only there may a longer text be trimmed.
-		var own: float = CoachButtonWidth.of(button, MIN_TARGET_DP * _dp)
-		var trim: bool = _row.vertical and not wide and own > inner
-		button.clip_text = trim
-		button.text_overrun_behavior = (
-			TextServer.OVERRUN_TRIM_ELLIPSIS if trim else TextServer.OVERRUN_NO_TRIMMING
-		)
-	for box: Container in [_row, _side, _main]:  # A button's trim drops its minimum: sort again.
-		box.update_minimum_size()
-		box.queue_sort()
-	for label: Label in [_prompt, _hint]:  # The wrapped height needs the width first.
-		label.custom_minimum_size.x = text_width
-		label.size.x = text_width
-		label.update_minimum_size()
-	_content.custom_minimum_size.x = text_width
-	_content.update_minimum_size()
-	var column: Control = _main.get_parent() as Control
-	var sep: float = column.get_theme_constant(&"separation")
-	var used: float = margin.y
-	if not wide:
-		used += least + sep
-		if count > 0:
-			used += _row.get_combined_minimum_size().y + gap  # `_main`'s own separation.
-	var room: float = maxf(floorf(max_height - used), 0.0)
-	_scroll.custom_minimum_size = Vector2(
-		text_width, minf(_content.get_combined_minimum_size().y, room)
-	)
-	_main.update_minimum_size()
-	column.update_minimum_size()
-	_card.custom_minimum_size = Vector2(width, 0.0)
-	_card.update_minimum_size()
-	_card.size = Vector2(width, _card.get_combined_minimum_size().y)
-	return _card.size
-
-
 ## Whether the prompt is longer than its area and scrolls (the dock is too short for it).
 func prompt_scrolls() -> bool:
-	return _scroll.get_v_scroll_bar().max_value > _scroll.get_v_scroll_bar().page + 0.5
+	return _fit.scroll.get_v_scroll_bar().max_value > _fit.scroll.get_v_scroll_bar().page + 0.5
 
 
 ## Plays the hand where `GuideHintPlan` puts it (ADR 0048 section 6) and keeps its box for the
@@ -890,14 +717,6 @@ func _stop_blink() -> void:
 	_blink_alpha = 1.0
 
 
-## An empty spacer of a touch target's size: the tab stands over it.
-func _pad(node_name: String) -> Control:
-	var pad: Control = Control.new()
-	pad.name = node_name
-	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return pad
-
-
 ## The tab: one button with the counter over a chevron, 48 dp square (it fits the folded slot).
 func _build_tab() -> void:
 	_tab = Button.new()
@@ -928,18 +747,6 @@ func _build_tab() -> void:
 	add_child(_tab)
 
 
-## A card button, at least 48 dp each way.
-func _button(node_name: String, text: String, variation: StringName) -> Button:
-	var button: Button = Button.new()
-	button.name = node_name
-	button.text = tr(text)
-	button.theme_type_variation = variation
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_row.add_child(button)
-	return button
-
-
 ## Reads the dp, the screen and the safe rect: a resize does it, never a frame.
 func _measure() -> void:
 	_dp = UiScale.base_px_per_dp()
@@ -957,13 +764,8 @@ func _apply_metrics() -> void:
 	if theme == null or _own_theme:
 		theme = HudTheme.scaled(load(THEME_PATH), _dp)
 		_own_theme = true
-	for box: Container in [_row, _main]:
-		box.add_theme_constant_override("separation", roundi(BUTTON_GAP_DP * _dp))
-	var least: Vector2 = Vector2(MIN_TARGET_DP, MIN_TARGET_DP) * _dp
-	for button: Button in [_skip, _next, _tab]:
-		button.custom_minimum_size = least
-	for pad: Control in [_head_pad, _side_pad]:
-		pad.custom_minimum_size = least
+	_fit.apply_metrics(_dp)
+	_tab.custom_minimum_size = Vector2(MIN_TARGET_DP, MIN_TARGET_DP) * _dp
 	_chevron.custom_minimum_size = CHEVRON_DP * _dp
 	_dock_key = -1  # A resize or turn: the dock is stood again at the next look.
 	_dirty = true
