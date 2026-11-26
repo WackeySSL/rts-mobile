@@ -621,6 +621,7 @@ Checked against the code (`main` at 59efa29b):
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it
   on a lead-in too, because a tap on a pinned ring selects nothing. An explicit `NONE` still
   suppresses it.
+  An explicit `NONE` is read from the active step's own gesture: a lead-in uses its own, and the final step copies the beat's.
 - **See-through for a moving target** (§3): the card turns see-through when the unit's ring box or
   the hand's bounds meet it. For a `UNIT` aim it turns back only once the ring's box grown by 8 dp
   and the hand's bounds are clear of it. This is a band of hysteresis, so a unit that walks along

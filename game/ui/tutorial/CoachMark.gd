@@ -108,6 +108,7 @@ var _ring_now: Rect2 = Rect2()  ## What the last `_update` laid out.
 var _stalled_now: bool = false
 var _can_next_now: bool = false
 var _size_now: Vector2 = Vector2.ZERO
+var _laid_target: Control = null  ## The target the card was last laid out for.
 var _points: PackedVector2Array = PackedVector2Array()  ## The tile ring, about its centre.
 var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
@@ -481,6 +482,7 @@ func _update() -> void:
 		or can_next != _can_next_now
 		or modal != _modal_now
 		or size != _size_now
+		or _target != _laid_target
 	)
 	if not reshaped and _again == 0:
 		_move_ring(ring)  # Only the ring moved, or nothing: the card is not laid out again.
@@ -493,6 +495,7 @@ func _update() -> void:
 	_can_next_now = can_next
 	_modal_now = modal
 	_size_now = size
+	_laid_target = _target  # A new target (another modal button) lays the card out again.
 	_fit.next.visible = can_next
 	_fit.skip.visible = _first_card()
 	_fit.hint.visible = stalled

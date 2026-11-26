@@ -143,8 +143,133 @@ func test_a_ring_only_move_does_not_lay_the_card_out_again() -> void:
 	for step: int in 5:
 		_ground.rig(6).position += Vector2(3.0, 1.0)
 		await await_idle_frame()
+	assert_int(laid).is_greater(0)  # The counter does fire for a layout.
 	assert_int(_fit.count).is_equal(laid)
 	assert_that(_mark.ring_rect().get_center()).is_equal_approx(_mark.unit_anchor().point, NEAR)
+
+
+func test_a_control_ring_has_no_band() -> void:
+	var beat: TutorialBeatDef = (
+		Lesson
+		. beat(
+			"control",
+			TutorialConditions.Kind.NEXT,
+			{
+				"anchor": TutorialBeatDef.Anchor.CONTROL,
+				"anchor_control": &"CoachTarget",
+				"gesture": TutorialBeatDef.Gesture.NONE,
+			}
+		)
+	)
+	var target: Control = Control.new()
+	target.name = "CoachTarget"
+	var dp: float = UiScale.base_px_per_dp()
+	target.size = Vector2.ONE * 56.0 * dp
+	await _open(beat, 7, false, target)
+	var foot: float = _mark.card_rect().end.y
+	var grow: float = GuideRing.RING_GROW_DP * dp
+	target.position = Vector2(_view().x * 0.5, foot - 2.0 * dp + grow)  # The ring meets the card.
+	await _settle()
+	assert_bool(_mark.see_through()).is_true()
+	target.position.y = foot + 4.0 * dp + grow  # 4 dp clear: a control keeps no band.
+	await _settle()
+	assert_bool(_mark.see_through()).is_false()
+
+
+func test_a_tile_ring_has_no_band() -> void:
+	var snap: MatchSnapshot = _runner.snapshot
+	var tile: Vector2i = Vector2i(snap.map_cols / 2, snap.map_rows / 2)
+	var beat: TutorialBeatDef = (
+		Lesson
+		. beat(
+			"tile",
+			TutorialConditions.Kind.NEXT,
+			{
+				"anchor": TutorialBeatDef.Anchor.TILE,
+				"anchor_tile": tile,
+				"gesture": TutorialBeatDef.Gesture.NONE,
+			}
+		)
+	)
+	await _open(beat, 7)
+	var dp: float = UiScale.base_px_per_dp()
+	var half: float = _mark.ring_rect().size.y * 0.5
+	var foot: float = _mark.card_rect().end.y
+	var cell: Vector2 = IsoProjection.cell_centre_px(tile.x, tile.y)
+	await _centre_tile(cell, foot + half - 2.0 * dp)
+	assert_bool(_mark.see_through()).is_true()
+	await _centre_tile(cell, foot + half + 4.0 * dp)
+	assert_bool(_mark.see_through()).is_false()
+
+
+func test_a_unit_lead_in_off_the_field_gets_the_drag_and_its_own_gesture_rules() -> void:
+	var step: TutorialLeadInDef = TutorialLeadInDef.new()
+	step.anchor = TutorialBeatDef.Anchor.UNIT
+	step.unit = TutorialUnitPickDef.new()
+	step.kind = TutorialConditions.Kind.SELECTED
+	var beat: TutorialBeatDef = (
+		Lesson
+		. beat(
+			"lead",
+			TutorialConditions.Kind.NEXT,
+			{
+				"anchor": TutorialBeatDef.Anchor.CONTROL,
+				"anchor_control": &"CoachTarget",
+				"lead_in": [step],
+				"gesture": TutorialBeatDef.Gesture.NONE,  # The beat's own gesture is not the step's.
+			}
+		)
+	)
+	await _open(beat, 7)
+	_ground.rig(6).position += Vector2(6000.0, 0.0)
+	await _settle()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+	assert_bool(_mark.gesture_plan().off_screen).is_true()
+	step.gesture = TutorialBeatDef.Gesture.NONE  # An explicit NONE on the step suppresses it.
+	_mark._dirty = true
+	await _settle()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.NONE)
+
+
+func test_an_explicit_none_on_the_final_unit_step_suppresses_the_drag() -> void:
+	var beat: TutorialBeatDef = _beat()
+	beat.gesture = TutorialBeatDef.Gesture.NONE
+	await _open(beat, 7)
+	_ground.rig(6).position += Vector2(6000.0, 0.0)
+	await _settle()
+	assert_bool(_mark.unit_anchor().in_field).is_false()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.NONE)
+
+
+func test_a_unit_under_a_dock_rect_is_not_in_the_field_and_gets_the_drag() -> void:
+	await _open(_beat(), 7)
+	var part: Rect2 = _mark._dock_rects[HudCorners.PILL]
+	assert_bool(part.has_area()).is_true()
+	await _put_unit_at(part.get_center())
+	assert_bool(_safe().has_point(_mark.unit_anchor().point)).is_true()  # On the screen.
+	assert_bool(_mark.unit_anchor().in_field).is_false()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+
+
+func test_the_drag_runs_from_the_pinned_edge_toward_the_field_point() -> void:
+	for away: Vector2 in [Vector2(6000.0, 0.0), Vector2(-6000.0, 2000.0), Vector2(0.0, -6000.0)]:
+		await _open(_beat(), 7)
+		_ground.rig(6).position += away
+		await _settle()
+		var plan: GuideHintPlan = _mark.gesture_plan()
+		assert_int(plan.kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+		var want: Vector2 = (_mark._field_point() - plan.point).normalized()
+		(
+			assert_float(plan.vector_dp.normalized().dot(want))
+			. override_failure_message(str(away))
+			. is_greater(0.95)
+		)
+		_mark.get_parent().remove_child(_mark)
+		_mark.free()
+		_hud_root.free()
+		_mark = null
+		_hud_root = null
+		_director.skip()
 
 
 func _beat() -> TutorialBeatDef:
@@ -156,7 +281,7 @@ func _beat() -> TutorialBeatDef:
 
 
 ## The mark over a HUD root with `beat` on show, the camera over unit `id`.
-func _open(beat: TutorialBeatDef, id: int, counting: bool = false) -> void:
+func _open(beat: TutorialBeatDef, id: int, counting: bool = false, target: Control = null) -> void:
 	var snap: MatchSnapshot = _runner.snapshot
 	var row: int = snap.index_of(id)
 	_camera.centre_on(IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row]))
@@ -165,6 +290,8 @@ func _open(beat: TutorialBeatDef, id: int, counting: bool = false) -> void:
 	_hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hud_root)
+	if target != null:
+		_hud_root.add_child(target)
 	_mark = CoachMark.new()
 	_mark.hud_root = _hud_root
 	_mark.camera = _camera
@@ -201,3 +328,22 @@ func _safe() -> Rect2:
 	return SafeAreaMargin.rect_inside(
 		get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
 	)
+
+
+func _view() -> Vector2:
+	return get_viewport().get_visible_rect().size
+
+
+## Moves unit 7 so that its tap point is at screen point `at`.
+func _put_unit_at(at: Vector2) -> void:
+	var rig: Node2D = _ground.rig(6)
+	var lift: Vector2 = rig.global_position - _ground.tap_point(7)
+	rig.global_position = _camera.screen_to_world(at) + lift
+	await _settle()
+
+
+## Centres the camera so that the world point `cell` stands at the middle column, `y` down.
+func _centre_tile(cell: Vector2, y: float) -> void:
+	var at: Vector2 = Vector2(_view().x * 0.5, y)
+	_camera.centre_on(cell - (at - _view() * 0.5) / _camera.zoom)
+	await _settle()
