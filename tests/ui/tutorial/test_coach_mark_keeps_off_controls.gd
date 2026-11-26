@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## the real HUD in the state the beat expects:
 ## - the card is inside the dock and on no `HudCorners` part but the economy card (and covers no
 ##   visible, enabled HUD button of its own), and not the tile a TILE beat points at;
-## - the prompt fits the dock's height cap;
+## - the prompt fits the dock's height cap without scrolling, at every size and in every beat;
 ## - the card stands 16 dp from an ad band;
 ## - where the card covers the beat's control (a modal's button, the ghost's check mark) it is
 ##   see-through and a pushed touch reaches the control through it, and it is see-through for no
@@ -29,51 +29,6 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const OVERLAP_PX2: float = 4.0  ## Less area than this is rounding, not a covered button.
 const TILE_MARGIN_DP: float = 8.0
 const AD_GAP_DP: float = 16.0
-## The ratchet: on the smallest phone (docks of 102 to 126 dp, where P589's wide form helps only so
-## far; P593's shorter prompts do the rest) these "lesson/beat" prompts are longer than
-## the dock and scroll in the card today. Any other prompt that scrolls, anywhere, fails; the card
-## is inside its dock in every case. P593 empties the list.
-const SMALL: StringName = &"web_phone_small"
-const PHONE_PORTRAIT: StringName = &"web_phone_portrait"
-const SCROLLS: Array[String] = [
-	"air/airfield",
-	"air/board",
-	"air/bomber",
-	"air/home",
-	"air/wagon",
-	"basics/across",
-	"basics/attack",
-	"basics/clear",
-	"basics/drawer",
-	"basics/fog",
-	"basics/groups",
-	"basics/incoming",
-	"basics/low-power",
-	"basics/pause",
-	"basics/placed",
-	"basics/stop",
-	"basics/welcome",
-	"basics/win",
-	"strikes/aim",
-	"strikes/enemy-sweep",
-	"strikes/fire",
-	"strikes/impact",
-	"strikes/off",
-	"strikes/own",
-	"strikes/sat",
-	"strikes/sat-on",
-	"strikes/sat-pause",
-	"support/hidden",
-	"support/medics",
-	"support/mend",
-	"support/mine",
-	"support/repair",
-	"support/sell",
-	"support/sell-last",
-]
-## The same for the portrait phone's 304 dp dock: the head row costs 48 dp of it. P593's shorter
-## prompts empty it, like `SCROLLS`.
-const SCROLLS_PORTRAIT: Array[String] = ["basics/low-power", "basics/incoming"]
 ## Controls that follow the world (ADR 0048 section 3): the card may be see-through over them.
 const WORLD_CONTROLS: Array[StringName] = [&"PlaceConfirm"]
 const TABS: int = 5
@@ -389,12 +344,8 @@ func _checks(
 		return lines
 	var card: Rect2 = _mark.card_rect()
 	if _mark.prompt_scrolls():
-		var pair: String = "%s/%s" % [lesson.id, beat.id]
-		var small: bool = profile.window_size == UiProfiles.by_name(SMALL).window_size
-		var upright: bool = profile.window_size == UiProfiles.by_name(PHONE_PORTRAIT).window_size
 		_over += 1
-		if not ((small and SCROLLS.has(pair)) or (upright and SCROLLS_PORTRAIT.has(pair))):
-			lines.append("%s: the prompt scrolls, the dock is %s high" % [label, dock.size.y])
+		lines.append("%s: the prompt scrolls, the dock is %s high" % [label, dock.size.y])
 	if not dock.grow(TOLERANCE_PX).encloses(card):
 		lines.append("%s: the card %s is outside the dock %s" % [label, card, dock])
 	for part: StringName in [&"Skip", &"Next"]:  # The card's own buttons stand on its panel.
