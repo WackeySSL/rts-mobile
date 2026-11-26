@@ -129,6 +129,13 @@ func _init(suite: Node, main: Node) -> void:
 	_controller.command_sink = _on_command
 
 
+## The first node of the main scene whose script class is `type_name`.
+func _layer_of(type_name: String) -> Node:
+	for node: Node in _main.find_children("*", type_name, true, false):
+		return node
+	return null
+
+
 ## The controller's sink: the bot keeps a copy of what a tap sent, and the queue takes it.
 func _on_command(command: Command) -> void:
 	_sent.append(command)
@@ -157,6 +164,9 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 	_mark.director = _director
 	_mark.hud_root = _hud
 	_mark.camera = _camera
+	_mark.runner = _runner
+	_mark.ground_layer = _layer_of("UnitLayer") as UnitLayer
+	_mark.air_layer = _layer_of("AirLayer") as AirLayer
 	_hud.add_child(_mark)
 	await _suite.get_tree().process_frame
 	_director.start(lesson)
@@ -278,7 +288,7 @@ func _move() -> void:
 			return  # The director looks at the empty selection before the bot acts.
 	var waited: int = _ticks_run - _beat_tick
 	var thinking: bool = waited < think_ticks and not _runner.paused
-	if thinking or _tap_lead_in(beat) or not _ring_settled(beat, waited):
+	if thinking or _lead_unit(beat) or _tap_lead_in(beat) or not _ring_settled(beat, waited):
 		return
 	if (
 		_stop_at >= 0
@@ -289,6 +299,10 @@ func _move() -> void:
 		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
 		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
+		return
+	if beat.anchor == TutorialBeatDef.Anchor.UNIT:
+		if _due():
+			_tap_unit()
 		return
 	await _act(beat)
 
@@ -327,6 +341,20 @@ func _tap_lead_in(beat: TutorialBeatDef) -> bool:
 	if step.kind == TutorialConditions.Kind.SELECTED:
 		selection_steps += 1
 	_press_button(target as BaseButton, String(step.anchor_control))
+	return true
+
+
+## A lead-in on a unit (ADR 0048 section 13.7): panned to and tapped through `_tap_unit`. True while
+## the active step is one that is not tapped yet.
+func _lead_unit(beat: TutorialBeatDef) -> bool:
+	var step: TutorialLeadInDef = _director.active_target()
+	if step == null or step.anchor != TutorialBeatDef.Anchor.UNIT or _led.has(step):
+		return false
+	if not beat.lead_in.has(step):
+		return false
+	if _due() and _tap_unit():
+		_led.append(step)
+		selection_steps += int(step.kind == TutorialConditions.Kind.SELECTED)
 	return true
 
 
@@ -527,6 +555,24 @@ func _attack() -> void:
 		_failure = "beat '%s': no enemy to attack" % _where()
 		return
 	_tap_ground(goal)
+
+
+## ADR 0048 section 13.7: a unit the ring stands on is panned into the field when it is not in it,
+## then tapped once at `target_point()` as a finger would. True when it tapped; false with no unit
+## (the card alone) or while it pans.
+func _tap_unit() -> bool:
+	var unit: GuideUnitAnchor = _mark.unit_anchor()
+	if unit.unit_id < 0:
+		return false
+	if not unit.in_field:
+		_camera.centre_on(_camera.screen_to_world(unit.point))
+		_camera.force_update_scroll()
+		return false
+	var tap: GestureEvent = GestureEvent.new()
+	tap.kind = GestureEvent.Kind.TAP
+	tap.position = unit.point
+	_controller.handle_gesture(tap)
+	return true
 
 
 ## One TAP gesture on the ground point `ground` (milli-tiles): the view is panned onto it first.
