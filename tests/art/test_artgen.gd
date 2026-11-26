@@ -219,6 +219,7 @@ func test_frames_use_only_the_allowed_elements_and_sizes() -> void:
 		var model: ArtModel = load(model_path) as ArtModel
 		if model.detail >= 2:
 			detailed.append(String(model.art_id) + "_")
+			detailed.append("item_" + String(model.art_id) + ".")
 	for path: String in _fresh:
 		if not path.ends_with(".svg"):
 			continue
