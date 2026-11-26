@@ -7,53 +7,36 @@ script = ExtResource("1_model")
 art_id = &"renew_tank"
 faction = &"renew"
 category = &"veh"
-silhouette = "Torque: a long low blue-grey hull with a sloping nose that sits on one continuous round-ended dark track a side, each with a row of titanium road wheels, white side skirts over the tracks with a team stripe above them, dark roof patches and a hexagonal turret on a team ring carrying one long dark rail barrel with a block at its muzzle."
-mount = Vector3(0.05, 0, 0.29)
+silhouette = "Torque: a long narrow white lozenge of a hull with a cut-corner blue glacis, two dark tracks of titanium road wheels beside it, blue flank blades, a rimmed team plate on the tail deck and a small point-forward hexagonal turret set back on the hull with one long dark rail barrel and a block at its muzzle."
+mount = Vector3(-0.1, 0, 0.27)
+detail = 2
 prims = PackedStringArray(
-"box hull graphite 0.04 -0.43 0 1.2 0.16 0.15",
-"prism hull graphite -0.56 -0.43 0 0.16 0.16 0.143 axis=y sides=10",
-"prism hull graphite 0.64 -0.43 0 0.16 0.16 0.143 axis=y sides=10",
-"prism hull titanium -0.56 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium -0.32 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium -0.08 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.16 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.4 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.64 -0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"box hull graphite 0.04 0.43 0 1.2 0.16 0.15",
-"prism hull graphite -0.56 0.43 0 0.16 0.16 0.143 axis=y sides=10",
-"prism hull graphite 0.64 0.43 0 0.16 0.16 0.143 axis=y sides=10",
-"prism hull titanium -0.56 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium -0.32 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium -0.08 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.16 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.4 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"prism hull titanium 0.64 0.525 0.02 0.1 0.025 0.1 axis=y sides=8",
-"box hull graphite 0.04 0 0.02 1.1 0.7 0.07",
-"box hull bluegrey -0.1 0 0.09 1 0.66 0.2",
-"wedge hull bluegrey 0.55 0 0.09 0.3 0.66 0.2 slope=0.6",
-"box hull graphite 0.72 0 0.09 0.04 0.66 0.09",
-"box hull team 0.75 0 0.1 0.02 0.3 0.07",
-"box hull ceramic -0.02 -0.36 0.16 1 0.05 0.04",
-"box hull ceramic -0.02 0.36 0.16 1 0.05 0.04",
-"box hull team -0.05 -0.345 0.2 0.9 0.02 0.085",
-"box hull team -0.05 0.345 0.2 0.9 0.02 0.085",
-"box hull graphite -0.34 0.18 0.29 0.3 0.22 0.02",
-"box hull graphite -0.34 -0.18 0.29 0.3 0.22 0.02",
-"box hull graphite 0.38 0 0.27 0.22 0.34 0.02",
-"box hull mint 0.75 -0.25 0.12 0.02 0.1 0.02",
-"box hull mint 0.75 0.25 0.12 0.02 0.1 0.02",
-"prism turret graphite 0 0 0 0.5 0.5 0.04 sides=6",
-"prism turret team 0 0 0.04 0.58 0.58 0.045 sides=6",
-"prism turret ceramic 0 0 0.085 0.48 0.48 0.11 sides=6",
-"prism turret graphite 0 0 0.195 0.34 0.34 0.03 sides=6",
-"box turret mint -0.12 0.1 0.225 0.04 0.05 0.02",
-"prism turret ceramic 0.3 0 0.1 0.18 0.11 0.11 axis=x sides=6",
-"prism turret graphite 0.67 0 0.105 0.8 0.09 0.09 axis=x sides=6",
-"prism turret graphite 1.02 0 0.085 0.16 0.15 0.13 axis=x sides=6"
+"tracks hull graphite 0 -0.34 0 1.3 0.15 0.16 wheels=6 wheel=titanium",
+"tracks hull graphite 0 0.34 0 1.3 0.15 0.16 wheels=6 wheel=titanium",
+"box hull graphite 0 0 0.03 1.1 0.52 0.07 chamfer=0.06",
+"box hull faction 0 -0.34 0.16 1.1 0.15 0.025 detail=1",
+"box hull faction 0 0.34 0.16 1.1 0.15 0.025 detail=1",
+"box hull faction -0.05 0 0.1 0.9 0.5 0.14 chamfer=0.08 detail=1",
+"wedge hull faction 0.5 0 0.1 0.34 0.5 0.14 slope=0.8 chamfer=0.06 detail=1",
+"box hull faction -0.08 0 0.24 0.74 0.46 0.03 chamfer=0.07 detail=1",
+"box hull faction -0.02 -0.255 0.11 0.9 0.02 0.12 detail=1",
+"box hull faction -0.02 0.255 0.11 0.9 0.02 0.12 detail=1",
+"box hull graphite 0.3 0 0.27 0.28 0.44 0.02",
+"box hull ceramic 0.3 0 0.29 0.24 0.4 0.012",
+"box hull team 0.3 0 0.302 0.2 0.36 0.02",
+"box hull mint 0.67 -0.2 0.2 0.02 0.1 0.02",
+"box hull mint 0.67 0.2 0.2 0.02 0.1 0.02",
+"prism turret graphite 0 0 0 0.44 0.44 0.04 sides=6 turn=30",
+"prism turret faction 0 0 0.04 0.4 0.4 0.1 sides=6 turn=30 detail=1",
+"prism turret ceramic 0 0 0.14 0.3 0.3 0.04 sides=6 turn=30",
+"box turret mint -0.1 0.08 0.18 0.04 0.05 0.02",
+"box turret ceramic 0.24 0 0.06 0.14 0.16 0.1 chamfer=0.03",
+"prism turret graphite 0.72 0 0.095 0.84 0.085 0.085 axis=x sides=6",
+"box turret graphite 1.17 0 0.08 0.14 0.14 0.12 chamfer=0.03"
 )
 emitters = PackedStringArray(
 "exhaust -0.62 0.2 0.14",
-"damage -0.36 0 0.3",
+"damage 0.4 -0.12 0.22",
 "hang 0.04 0.4 0.28"
 )
 marks = &"tracks"
