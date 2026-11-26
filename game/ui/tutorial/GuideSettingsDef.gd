@@ -20,3 +20,7 @@ extends Resource
 @export var hint_pinch_ms: int = 0
 @export var hint_hold_extra_ms: int = 0
 @export var hint_size_dp: float = 0.0
+## The room round the hand for the see-through test, and the longest drag toward a tile that is
+## off the screen.
+@export var hint_margin_dp: float = 0.0
+@export var hint_drag_max_dp: float = 0.0

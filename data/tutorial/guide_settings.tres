@@ -17,3 +17,5 @@ hint_drag_ms = 900
 hint_pinch_ms = 900
 hint_hold_extra_ms = 400
 hint_size_dp = 72.0
+hint_margin_dp = 8.0
+hint_drag_max_dp = 240.0

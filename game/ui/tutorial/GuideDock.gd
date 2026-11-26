@@ -31,6 +31,15 @@ const RIGHT_PARTS: Array[StringName] = [
 	HudCorners.REVEAL_LINE,
 ]
 
+## The parts `field_point` keeps clear of (the group column's buttons are added by index).
+const FIELD_KEYS: Array[StringName] = [
+	HudCorners.READY,
+	HudCorners.STRIKE,
+	HudCorners.STRIKE_ROW,
+	HudCorners.REVEAL,
+	HudCorners.REVEAL_LINE
+]
+
 
 ## The `Shown` the dock reads. Landscape keeps the full map reserved whether or not it is open, so
 ## the card never moves with the radar; upright the map counts only while it is open (the dock then
@@ -218,26 +227,25 @@ static func field_point(
 		else:
 			left = open.end.x
 	bottom = maxf(bottom, top)
-	var keys: Array[StringName] = [
-		HudCorners.READY,
-		HudCorners.STRIKE,
-		HudCorners.STRIKE_ROW,
-		HudCorners.REVEAL,
-		HudCorners.REVEAL_LINE
-	]
+	var sides: Vector2 = Vector2(left, right)
+	for key: StringName in FIELD_KEYS:
+		sides = _narrow(hud_rects.get(key, Rect2()), safe, top, bottom, sides)
 	var index: int = 0
 	while hud_rects.has(HudCorners.group_key(index)):
-		keys.append(HudCorners.group_key(index))
+		sides = _narrow(hud_rects[HudCorners.group_key(index)], safe, top, bottom, sides)
 		index += 1
-	for key: StringName in keys:
-		var part: Rect2 = hud_rects.get(key, Rect2())
-		if part.size.x <= 0.0 or part.position.y >= bottom or part.end.y <= top:
-			continue
-		if part.get_center().x > safe.get_center().x:
-			right = minf(right, part.position.x)
-		else:
-			left = maxf(left, part.end.x)
+	left = sides.x
+	right = sides.y
 	return Vector2((left + right) * 0.5, (top + bottom) * 0.5)
+
+
+## `sides` (left, right) narrowed by `part` where it stands in the field's rows.
+static func _narrow(part: Rect2, safe: Rect2, top: float, bottom: float, sides: Vector2) -> Vector2:
+	if part.size.x <= 0.0 or part.position.y >= bottom or part.end.y <= top:
+		return sides
+	if part.get_center().x > safe.get_center().x:
+		return Vector2(sides.x, minf(sides.y, part.position.x))
+	return Vector2(maxf(sides.x, part.end.x), sides.y)
 
 
 static func _to_dp(rect: Rect2, safe: Rect2, dp: float, mirror: bool) -> Rect2:

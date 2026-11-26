@@ -348,7 +348,8 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   - The blink: `blink_period_ms` 800, `blink_low_alpha_pct` 25.
   - The hint: `hint_cycle_ms` 1600, `hint_rest_ms` 800, `hint_idle_ms` 2000, `hint_tap_ms` 180,
     `hint_drag_ms` 900, `hint_pinch_ms` 900, `hint_hold_extra_ms` 400 and
-    `hint_size_dp` 72.
+    `hint_size_dp` 72, `hint_margin_dp` 8 (the see-through test's room round the hand) and
+    `hint_drag_max_dp` 240 (the longest drag toward an off-screen tile).
 
   Colours are in `GuideTokens` (§4). Layout constants that are rules of the HUD (8 dp gaps, 48 dp
   targets) stay `HudCorners`' and `CoachMark`'s constants, as today.
