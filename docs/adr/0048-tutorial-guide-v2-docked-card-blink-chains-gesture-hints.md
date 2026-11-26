@@ -21,7 +21,8 @@ note in ADR 0044 on acceptance (done, 2026-11-24). No accepted text is rewritten
 free-place search of plan row P543g (#620), which was a plan row, not an ADR (§8).
 
 Amended 2026-11-26 by §13 (unit anchors: the frame and the hand on a unit that moves; plan rows
-P593b-0 to P593b-2). The accepted sections §1-§12 stand unchanged.
+P593b-0 to P593b-2). §13 extends §3 (see-through for a moving target), §5 (a unit as a target)
+and §6 (the hand on a unit); the rest of §1-§12 stands unchanged.
 
 ## Michael's answers (2026-11-24)
 1. **Where the card docks:** at the top, under the pill and the radar, between the group buttons and
@@ -536,7 +537,7 @@ Checked against the code (`main` at 59efa29b):
 - The selector does not reuse the beat's `type_id`. That field is the condition's parameter, and
   `ENEMY_LOSSES` ignores it. Two meanings in one field would bind the ring to the condition.
 - **`TutorialLessonDef.problems()`** rejects a `UNIT` anchor with no `unit`, and a `unit` on any
-  other anchor. A `UNIT` lead-in follows §5's lead-in kinds (`SELECTED` in all six beats).
+  other anchor. A `UNIT` lead-in follows §5's lead-in kinds (`SELECTED`, in `home` and `mine`).
 - A lesson file without `UNIT` loads and plays as before.
 
 #### 13.3 Decision: the resolver and the layer accessors
@@ -559,16 +560,17 @@ Checked against the code (`main` at 59efa29b):
   `camera.world_to_screen`.
 - **Per frame**, with no allocation:
   1. Read `runner.snapshot`. With none, there is no unit.
-  2. Another selector (a new step) or another `match_serial` drops the held unit.
-  3. **Only on a new snapshot** (another `tick`): check the held unit again. It must still have a
+  2. Another selector (a new step) or another `match_serial` drops the held unit and scans once
+     on this frame, so a new step never waits a tick for its ring.
+  3. **Otherwise only on a new snapshot** (another `tick`): check the held unit again. It must still have a
      row (`index_of`, skipped while `rows_version` is unchanged: the row is reused), match the
      selector and, for `ENEMY`, stand on a cell the local player sees (`FogLayer.is_seen` on the
      snapshot's fog). If it fails, the hold drops. With no held unit, scan once (13.4). With none
      found, the next scan waits for the next snapshot. That is the throttle (GuideLookup's
      "a control that is not there" rule at the publish rate, at most 15 a second).
   4. **Every frame:** `point` is the held unit's `tap_point`, projected. `half` is the larger of
-     the type's selection ellipse at the camera's zoom (`IsoProjection.ellipse_px` of
-     `type_selection_radius`, the radius the Picker uses) and 24 dp.
+     the type's selection ellipse at the camera's zoom (the larger axis of the Vector2
+     `IsoProjection.ellipse_px` gives for `type_selection_radius`, the radius the Picker uses) and 24 dp.
 - **Never the World.** The resolver reads `runner.snapshot`, the camera, `runner.scenario`'s local
   player (as `FogLayer.local_player_of` does) and the two accessors, nothing else. It never reaches
   into a layer's rigs or pools, and never reads `runner.world`. The test is the one
@@ -609,8 +611,9 @@ Checked against the code (`main` at 59efa29b):
 - **Off the screen:** a unit whose point is outside the safe rect gets its ring pinned to the
   nearest edge (`GuideRing.box`'s existing clamp). The pin slides along the edge as the unit moves.
 - **The field:** `in_field` is true when the point is inside the safe rect and under no rect of
-  `HudCorners.place` (the parts the dock is built from, the economy card excepted). The loop walks
-  the mark's cached `_dock_rects` with no `keys()` or `values()` call. A unit under the open drawer
+  `GuideDock.hud_for_dock` (the `HudCorners.place` parts, the reserved toast and reveal slots and
+  `AD_BAND`; the economy card excepted). The loop walks the mark's cached copy of those rects with
+  no `keys()` or `values()` call. A unit under the open drawer
   sheet, the command bar or a corner part is not in the field. A real finger there would hit the
   HUD.
 - **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
@@ -627,6 +630,9 @@ Checked against the code (`main` at 59efa29b):
   variation and mouse filters change. The card's layout (`_fit_card`) runs only on a reshape (§1's
   triggers, a new step, the buttons, a fold). This fixes the per-frame refit of a tile beat during
   a pan as well.
+- **§5's target rule** (a step's target must be a visible, enabled control or a tile) gains "or a
+  unit the resolver holds". A `UNIT` step with no unit shows the card alone, so no step starts with
+  a ring on nothing.
 - **No unit, no ring:** with no candidate, or a held unit whose `tap_point` is `INF` this frame,
   the ring box is empty and the hand is `NONE`. This is exactly today's behaviour for these beats:
   the card alone. The card never waits for a unit and never blocks the beat.
@@ -669,9 +675,9 @@ target. The table is the default, and the PR says why for any change.
    interpolated points through `UnitLayer.tap_point` and `AirLayer.tap_point`, never a layer's
    internals and never the World (13.3; test: the World swap).
 2. **No per-frame allocation.** Lookups happen only on a new snapshot, a new selector or a new
-   match, and the row is reused while `rows_version` holds. Per frame there are two accessor calls
-   and arithmetic (13.3; test: `Performance.OBJECT_COUNT` unchanged across 60 frames of a moving
-   target, and the scan counter moves once per snapshot at most).
+   match (one scan each), and the row is reused while `rows_version` holds. Per frame there is one accessor call (the layer
+   `WorldSort.is_flyer` names), the projection and arithmetic (13.3; test: `Performance.OBJECT_COUNT` unchanged across 60 frames of a moving
+   target, and the scan counter moves at most once per snapshot or new selector).
 3. **Deterministic pick.** Int squared distances from tick positions, ties by the lower id; the
    hold is added (13.4; tests: crafted ties, both rules).
 4. **Fallback.** No unit gives no ring and no hint, exactly as today. A unit that exists but is off
