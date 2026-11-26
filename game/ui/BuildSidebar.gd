@@ -212,16 +212,22 @@ func show_ready() -> void:
 	await get_tree().process_frame
 	for tile: ItemTile in _tiles:
 		if tile.tab == World.Tab.STRUCTURES and tile.state == ItemTile.State.READY:
-			# Upright the scroll area runs on under the gesture bar: the card must clear the foot room.
-			var clear: float = _items.size.y - _grid_room.get_theme_constant(&"margin_bottom")
-			if tile.size.y > clear:  # A short grid: show the card's top, not its foot.
-				_items.scroll_vertical = roundi(tile.position.y)
-			else:
-				_items.ensure_control_visible(tile)
-				_items.scroll_vertical = maxi(
-					_items.scroll_vertical, ceili(tile.position.y + tile.size.y - clear)
-				)
+			reveal_tile(tile)
 			return
+
+
+## Scrolls the list so `tile` is in view and clear of the foot room (P120i; the tutorial's ring
+## asks for it once per step, ADR 0048 section 5). Upright the scroll area runs on under the
+## gesture bar: the card must clear the foot room. A card taller than the room shows its top.
+func reveal_tile(tile: ItemTile) -> void:
+	var clear: float = _items.size.y - _grid_room.get_theme_constant(&"margin_bottom")
+	if tile.size.y > clear:  # A short grid: show the card's top, not its foot.
+		_items.scroll_vertical = roundi(tile.position.y)
+	else:
+		_items.ensure_control_visible(tile)
+		_items.scroll_vertical = maxi(
+			_items.scroll_vertical, ceili(tile.position.y + tile.size.y - clear)
+		)
 
 
 ## Closes the drawer (its close button; a gesture on the map does it through the feed).

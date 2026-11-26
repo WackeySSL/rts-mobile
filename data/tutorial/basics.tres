@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_basics.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/basics_enemy.tres" id="4_enemy"]
 
@@ -210,17 +211,30 @@ kind = 11
 value = 1
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_19_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_19_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabInfantry"
+kind = 11
+value = 1
+
 [sub_resource type="Resource" id="Beat_19"]
 script = ExtResource("2_beat")
 id = &"train"
 prompt_key = &"tutorial.basics.train"
 anchor = 1
-anchor_control = &"TabInfantry"
+anchor_control = &"Tile_rifle_squad"
 kind = 5
 type_id = &"rifle_squad"
 count = 6
 covers = Array[StringName]([&"build-menu-select-producer"])
 budget_s = 10
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_19_build"), SubResource("Beat_19_tab")])
 
 [sub_resource type="Resource" id="Beat_20"]
 script = ExtResource("2_beat")

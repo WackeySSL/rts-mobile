@@ -215,6 +215,39 @@ func test_upright_the_card_list_reaches_the_screens_edge_and_the_last_row_scroll
 	assert_int(scrolling).override_failure_message("no upright grid scrolled").is_greater(0)
 
 
+## P591: `reveal_tile` is the Ready chip's scroll moved into a method. Upright it brings the last
+## card of a scrolling grid clear of the foot room, and `show_ready` scrolls to the same place.
+func test_reveal_tile_clears_the_upright_foot_room_and_the_ready_chip_scrolls_the_same() -> void:
+	var scrolling: int = 0
+	for name: StringName in [&"android_6in_portrait", &"web_phone_portrait"]:
+		var metrics: UiMetrics = UiProfiles.by_name(name)
+		await _open(metrics.window_size, metrics, true, true)
+		var items: ScrollContainer = _hud("Items")
+		var bar: VScrollBar = items.get_v_scroll_bar()
+		if bar.max_value <= bar.page + 1.0:
+			continue
+		scrolling += 1
+		var tiles: Array[ItemTile] = _visible_tiles()
+		var last: ItemTile = tiles[tiles.size() - 1]
+		var safe: Rect2 = SafeAreaMargin.rect_inside(
+			get_viewport().get_visible_rect(), SafeAreaMargin.DEFAULT_MARGIN_DP
+		)
+		items.scroll_vertical = 0
+		await await_idle_frame()
+		_sidebar.reveal_tile(last)
+		await await_idle_frame()
+		var by_reveal: int = items.scroll_vertical
+		assert_int(by_reveal).override_failure_message(str(name)).is_greater(0)
+		assert_float(last.get_global_rect().end.y).is_less_equal(safe.end.y + TOLERANCE_PX)
+		items.scroll_vertical = 0
+		last.state = ItemTile.State.READY
+		for other: ItemTile in tiles:  # `show_ready` takes the first READY card: it must be `last`.
+			assert_bool(other == last or other.state != ItemTile.State.READY).is_true()
+		await _sidebar.show_ready()
+		assert_int(items.scroll_vertical).override_failure_message(str(name)).is_equal(by_reveal)
+	assert_int(scrolling).override_failure_message("no upright grid scrolled").is_greater(0)
+
+
 ## Sideways nothing moves: the stack keeps the padding at the left, the right (with the edge beyond
 ## the safe rect) and the foot, and none at the top, as before P120i.
 func test_sideways_the_stack_keeps_its_padding_as_before() -> void:

@@ -16,7 +16,7 @@ func test_the_settings_file_holds_the_schema_of_adr_0048_section_7() -> void:
 	assert_float(settings.card_wide_dp).is_equal(440.0)
 	assert_int(settings.card_max_height_pct).is_equal(45)
 	assert_int(settings.blink_period_ms).is_equal(800)
-	assert_int(settings.blink_low_alpha_pct).is_equal(25)
+	assert_int(settings.blink_low_alpha_pct).is_equal(50)
 	assert_int(settings.hint_cycle_ms).is_equal(1600)
 	assert_int(settings.hint_rest_ms).is_equal(800)
 	assert_int(settings.hint_idle_ms).is_equal(2000)
