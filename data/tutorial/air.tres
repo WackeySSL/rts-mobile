@@ -114,6 +114,13 @@ type_id = &"rifle_squad"
 count = 2
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_10_select"]
+script = ExtResource("9_lead")
+anchor = 2
+anchor_tile = Vector2i(9, 14)
+kind = 1
+type_id = &"rifle_squad"
+
 [sub_resource type="Resource" id="Beat_10"]
 script = ExtResource("2_beat")
 id = &"board"
@@ -122,6 +129,7 @@ anchor = 1
 anchor_control = &"Board"
 covers = Array[StringName]([&"orders-board"])
 budget_s = 6
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_10_select")])
 
 [sub_resource type="Resource" id="Beat_11"]
 script = ExtResource("2_beat")

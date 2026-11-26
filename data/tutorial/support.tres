@@ -17,6 +17,13 @@ type_id = &"power_plant"
 covers = Array[StringName]([&"selection-tap-building"])
 budget_s = 6
 
+[sub_resource type="Resource" id="Beat_01_select"]
+script = ExtResource("9_lead")
+anchor = 2
+anchor_tile = Vector2i(8, 4)
+kind = 1
+type_id = &"power_plant"
+
 [sub_resource type="Resource" id="Beat_01"]
 script = ExtResource("2_beat")
 id = &"mend"
@@ -25,6 +32,7 @@ anchor = 1
 anchor_control = &"Mend"
 covers = Array[StringName]([&"buildings-mend"])
 budget_s = 5
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_01_select")])
 
 [sub_resource type="Resource" id="Beat_02_select"]
 script = ExtResource("9_lead")
@@ -69,6 +77,13 @@ count = 2
 covers = Array[StringName]([&"selection-double-tap"])
 budget_s = 6
 
+[sub_resource type="Resource" id="Beat_06_select"]
+script = ExtResource("9_lead")
+anchor = 2
+anchor_tile = Vector2i(9, 14)
+kind = 1
+type_id = &"light_tank"
+
 [sub_resource type="Resource" id="Beat_06"]
 script = ExtResource("2_beat")
 id = &"repair"
@@ -77,6 +92,7 @@ anchor = 1
 anchor_control = &"Repair"
 covers = Array[StringName]([&"orders-repair", &"buildings-build-repair"])
 budget_s = 6
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_06_select")])
 
 [sub_resource type="Resource" id="Beat_08_build"]
 script = ExtResource("9_lead")
