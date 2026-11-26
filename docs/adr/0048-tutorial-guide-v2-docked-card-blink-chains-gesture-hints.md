@@ -470,8 +470,8 @@ the hand taps it. On an aircraft the frame is on the aircraft itself, not on its
 unit is off the screen, the frame waits at the screen's edge and the hand drags toward it. If there
 is no such unit, the step shows its card alone, as today.
 
-Status: **proposed 2026-11-26** by the architect (row P593b, branch `claude/p593b-adr`, base `main`
-at 59efa29b). The lead approved the outline. It changes none of Michael's five answers: it puts the
+Status: **accepted (lead, 2026-11-26)**, held pick included. Proposed the same day by the architect
+(row P593b, branch `claude/p593b-adr`, base `main` at 59efa29b). It changes none of Michael's five answers: it puts the
 frame and the hand of §4 and §6 on the thing to tap where that thing is a unit. No sim, Command,
 snapshot or `STATE_FORMAT` change (§7 holds).
 
@@ -597,6 +597,8 @@ Checked against the code (`main` at 59efa29b):
   distance, and a pan would move it to another unit. That is the jumping §1 was written to end. So
   a unit, once picked, is **held** while it stays a candidate. The pick runs again only when the
   held unit stops being one (dead, carried, fogged, gone) or when the step or the match changes.
+  The re-pick happens on the same frame the held unit stops being a candidate; there is no stale
+  hold, so the frame never stays on a dead unit or on an enemy the fog has hidden.
   The pick is a pure function of (snapshot, camera centre, selector), with ties by id. Which unit
   is held depends on the snapshots and the camera at the pick: given the same of both, it is the
   same.
