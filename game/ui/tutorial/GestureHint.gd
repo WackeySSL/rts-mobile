@@ -113,6 +113,17 @@ var vector_dp: Vector2 = DEFAULT_DRAG_DP:
 		_timing.vector_dp = value
 		queue_redraw()
 
+## Which way the hand hangs off the fingertip: flipped across x or y, the tip staying put, so the
+## glyph fits inside the safe rect (`GuideHintPlan`).
+var flip_x: bool = false:
+	set(value):
+		flip_x = value
+		queue_redraw()
+var flip_y: bool = false:
+	set(value):
+		flip_y = value
+		queue_redraw()
+
 var _timing: Timing = Timing.new()
 var _pose: Pose = Pose.new()
 var _clock: float = 0.0  ## ms, summed as a float so rounded frames do not drift.
@@ -308,11 +319,17 @@ func _draw() -> void:
 		if p.two_fingers:
 			_draw_press(origin + p.finger_b * dp, p, dp, fill, line)
 	var tip: Vector2 = PINCH_TIP if p.two_fingers else POINT_TIP
-	var hand_at: Vector2 = (
-		origin + (Vector2.ZERO if p.two_fingers else p.finger_a * dp) - tip * side
-	)
+	var tip_at: Vector2 = origin + (Vector2.ZERO if p.two_fingers else p.finger_a * dp)
 	var texture: Texture2D = PINCH_TEXTURE if p.two_fingers else POINT_TEXTURE
-	draw_texture_rect(texture, Rect2(hand_at, Vector2(side, side)), false, fill)
+	draw_set_transform(tip_at, 0.0, Vector2(-1.0 if flip_x else 1.0, -1.0 if flip_y else 1.0))
+	draw_texture_rect(texture, Rect2(-tip * side, Vector2(side, side)), false, fill)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## How far the press ring and its stroke reach from the fingertip, in dp (`rings` is 2 for the
+## double tap's key pose); the hand's reach is the plan's to add.
+static func ring_reach_dp(size_dp: float, rings: int) -> float:
+	return size_dp * RING_RADIUS_SHARE + float(rings - 1) * LINE_DP * 2.0 + LINE_DP * 0.8
 
 
 func _draw_press(at: Vector2, p: Pose, dp: float, fill: Color, line: Color) -> void:

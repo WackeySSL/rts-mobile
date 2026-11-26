@@ -79,6 +79,8 @@ var _gesture_plan: GuideHintPlan = GuideHintPlan.new()
 var _gesture_box: Rect2 = Rect2()  ## What the hand draws, with its margin (see-through test).
 var _gesture_aim: TutorialLeadInDef = null
 var _dock_rects: Dictionary[StringName, Rect2] = {}
+var _field: GuideFieldCache = GuideFieldCache.new()
+var _field_of: Callable = _field_point
 var _card: PanelContainer
 var _prompt: Label
 var _hint: Label
@@ -437,6 +439,7 @@ func _refresh_dock() -> bool:
 	if band.has_area():
 		rects[GuideDock.AD_BAND] = band
 	_dock_rects = rects
+	_field.stale()
 	var values: Dictionary[StringName, float] = {
 		GuideDock.MAX_WIDTH_KEY: settings.card_max_width_dp,
 		GuideDock.MAX_HEIGHT_KEY: float(settings.card_max_height_pct),
@@ -557,7 +560,11 @@ func _update() -> void:
 		_start_blink()
 	else:
 		_stop_blink()
+	var hand: Rect2 = _gesture_box
 	_layout_card(ring)
+	_update_gesture(ring)  # Again: the card's box stands now.
+	if _gesture_box != hand:
+		_again = 3
 	_again -= 1
 
 
@@ -758,13 +765,9 @@ func prompt_scrolls() -> bool:
 func _update_gesture(ring: Rect2) -> void:
 	if _gesture == null:
 		return
-	var foot: float = -1.0  # Below the dock's foot; with no dock, below the card.
-	if not GuideDock.has_room(_dock, _dp) and _card_box.has_area():
-		foot = _card_box.end.y
-	var field: Vector2 = GuideDock.field_point(_safe_rect, _dock, _dock_rects, foot)
 	var lead: bool = _beat != null and _beat.lead_in.has(_aim)
 	var plan: GuideHintPlan = _gesture_plan
-	plan.resolve(_beat, _aim, lead, ring, camera, field, _safe_rect, _dp, settings.hint_size_dp)
+	plan.resolve(_beat, _aim, lead, ring, camera, _field_of, _safe_rect, _dp, settings)
 	_gesture_box = plan.bounds
 	var shown: bool = plan.kind != TutorialBeatDef.Gesture.NONE
 	_gesture.visible = shown
@@ -777,10 +780,20 @@ func _update_gesture(ring: Rect2) -> void:
 	_gesture.reduced = reduced
 	_gesture.kind = plan.kind
 	_gesture.vector_dp = plan.vector_dp
+	_gesture.flip_x = plan.flip_x
+	_gesture.flip_y = plan.flip_y
 	_gesture.size = Vector2.ONE * settings.hint_size_dp * _dp
 	_gesture.global_position = plan.point - _gesture.size * 0.5
 	if again:
 		_gesture.restart()
+
+
+## The free field's point, made again only when the dock or the card's foot changed.
+func _field_point() -> Vector2:
+	var foot: float = -1.0  # The dock's foot; with no room, the card's.
+	if not GuideDock.has_room(_dock, _dp) and _card_box.has_area():
+		foot = _card_box.end.y
+	return _field.point(_safe_rect, _dock, _dock_rects, foot)
 
 
 func _clear_gesture() -> void:

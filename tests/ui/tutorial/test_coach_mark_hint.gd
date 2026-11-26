@@ -66,7 +66,17 @@ func test_a_control_at_the_edge_keeps_the_hand_inside_the_safe_rect() -> void:
 			await _open(profile, _control_beat("hit", NEXT))
 			_put_target(corner)
 			await _settle()
-			_expect_inside("%s %s" % [profile.window_size, corner])
+			var label: String = "%s %s" % [profile.window_size, corner]
+			_expect_inside(label)
+			# The fingertip stays on the control's centre; the hand hangs the other way.
+			(
+				assert_bool(_mark.ring_rect().has_point(_plan().point))
+				. override_failure_message(label)
+				. is_true()
+			)
+			assert_vector(_plan().point).override_failure_message(label).is_equal_approx(
+				_mark.ring_rect().get_center(), Vector2.ONE
+			)
 			_close()
 
 
@@ -133,7 +143,7 @@ func test_a_tile_off_the_screen_is_a_drag_toward_the_field() -> void:
 		var tile: Vector2 = _camera.world_to_screen(IsoProjection.cell_centre_px(60, 60))
 		var toward: Vector2 = _safe().get_center() - tile
 		assert_bool(plan.vector_dp.dot(toward) > 0.0).override_failure_message(label).is_true()
-		assert_float(plan.vector_dp.length()).is_less_equal(GuideHintPlan.DRAG_MAX_DP + 0.01)
+		assert_float(plan.vector_dp.length()).is_less_equal(_mark.settings.hint_drag_max_dp + 0.01)
 		_expect_inside(label)
 		_close()
 
@@ -224,12 +234,97 @@ func test_the_hands_box_joins_the_see_through_test() -> void:
 		var card: Rect2 = _mark.card_rect()
 		var label: String = str(size)
 		# The ring stands 6 dp clear of the card, yet the hand's ring and margin reach it.
-		_put_target_at(Vector2(card.get_center().x, card.end.y + 40.0 * dp))
+		_put_target_at(Vector2(card.get_center().x, card.end.y + 36.0 * dp))
 		await _settle()
 		assert_bool(_mark.ring_rect().intersects(_mark.card_rect())).is_false()
 		assert_bool(_plan().bounds.intersects(_mark.card_rect())).is_true()
-		assert_bool(_mark.see_through()).override_failure_message(label).is_true()
+		(
+			assert_bool(_mark.see_through())
+			. override_failure_message(
+				(
+					"%s hand %s card %s ring %s"
+					% [label, _plan().bounds, _mark.card_rect(), _mark.ring_rect()]
+				)
+			)
+			. is_true()
+		)
 		_put_target_at(Vector2(card.get_center().x, card.end.y + 140.0 * dp))
 		await _settle()
 		assert_bool(_mark.see_through()).override_failure_message(label).is_false()
+		_close()
+
+
+func _far_tile(side: Vector2) -> void:
+	var view: Vector2 = get_viewport().get_visible_rect().size
+	var world: Vector2 = IsoProjection.cell_centre_px(30, 30)
+	_camera.centre_on(world - side * view / _camera.zoom)
+
+
+func test_an_off_screen_tile_drags_toward_the_field_from_each_side() -> void:
+	var sides: Array[Vector2] = [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]
+	for size: Vector2i in [ScreenSizes.LANDSCAPE[0], ScreenSizes.PORTRAIT[0]]:
+		for gesture: TutorialBeatDef.Gesture in [
+			TutorialBeatDef.Gesture.AUTO, TutorialBeatDef.Gesture.TAP, TutorialBeatDef.Gesture.BOX
+		]:
+			await _open(_profile(size), _tile_beat(Vector2i(30, 30), {"gesture": gesture}), true)
+			for side: Vector2 in sides:
+				_far_tile(side)
+				await _settle()
+				var label: String = "%s %s %s" % [size, gesture, side]
+				var plan: GuideHintPlan = _plan()
+				assert_int(plan.kind).override_failure_message(label).is_equal(
+					TutorialBeatDef.Gesture.DRAG
+				)
+				assert_bool(plan.off_screen).override_failure_message(label).is_true()
+				var tile: Vector2 = _camera.world_to_screen(IsoProjection.cell_centre_px(30, 30))
+				var toward: Vector2 = _safe().get_center() - tile
+				(
+					assert_bool(plan.vector_dp.dot(toward) > 0.0)
+					. override_failure_message(label)
+					. is_true()
+				)
+				assert_float(plan.vector_dp.length()).override_failure_message(label).is_less_equal(
+					_mark.settings.hint_drag_max_dp + 0.01
+				)
+				_expect_inside(label)
+			_close()
+
+
+func test_an_explicit_none_suppresses_the_drag_toward_an_off_screen_tile() -> void:
+	var beat: TutorialBeatDef = _tile_beat(
+		Vector2i(30, 30), {"gesture": TutorialBeatDef.Gesture.NONE}
+	)
+	await _open(_profile(ScreenSizes.LANDSCAPE[0]), beat, true)
+	_far_tile(Vector2.LEFT)
+	await _settle()
+	assert_int(_plan().kind).is_equal(TutorialBeatDef.Gesture.NONE)
+	assert_bool(_hand().visible).is_false()
+	_close()
+
+
+func test_the_reduced_key_poses_arrows_lie_inside_the_hands_box() -> void:
+	for profile: UiMetrics in _profiles():
+		await _open(profile, Lesson.beat("pan", PAN), true, [], true)
+		var dp: float = UiScale.base_px_per_dp()
+		var label: String = str(profile.window_size)
+		var plan: GuideHintPlan = _plan()
+		(
+			assert_bool(plan.bounds.grow(0.5).has_point(plan.point + plan.vector_dp * dp))
+			. override_failure_message(label)
+			. is_true()
+		)
+		_close()
+		await _open(profile, Lesson.beat("zoom", ZOOM, {"value": 2}), true, [], true)
+		_camera.zoom = Vector2.ONE * _camera.settings.zoom_levels[0]
+		await _settle()
+		plan = _plan()
+		var far: Vector2 = (
+			GestureHint.PINCH_AXIS * _mark.settings.hint_size_dp * dp * GestureHint.SPREAD_FAR_SHARE
+		)
+		for end: Vector2 in [far, -far]:
+			(
+				assert_bool(plan.bounds.grow(0.5).has_point(plan.point + end))
+				. override_failure_message(label)
+				. is_true()
+			)
 		_close()
