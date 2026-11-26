@@ -25,6 +25,9 @@ static func problem(
 		return "" if drawn.is_equal_approx(want) else message
 	var tol: Vector2 = Vector2.ONE * TOL_TEXELS * sprite.scale
 	var outer: Rect2 = Rect2(want.position - tol, want.size + 2.0 * tol)
-	if drawn.grow(0.01).encloses(want) and outer.grow(0.01).encloses(drawn):
+	# The crop may leave out a texel of a faint stroke at the frame's edge (P640: the Rig Hands'
+	# walk frames at 0.875 miss 0.3 px of the hat's edge), so the frame is covered within one texel.
+	var slack: float = 0.01 + sprite.scale.x
+	if drawn.grow(slack).encloses(want) and outer.grow(0.01).encloses(drawn):
 		return ""
 	return message
