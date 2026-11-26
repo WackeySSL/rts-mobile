@@ -10,8 +10,8 @@ const ELLIPSE_STEPS: int = 40
 
 ## The ring's box for step `aim`, global px: a control's rect grown a little (the part of a card in
 ## a scroll list that is in view, or the list's edge nearest a card scrolled out of it), or the
-## tile's ground ellipse, at least a touch target and pinned into `safe`. Empty with no anchor or no
-## control to point at.
+## tile's ground ellipse, or the ring `unit` holds on a unit, at least a touch target and pinned
+## into `safe`. Empty with no anchor or no control or unit to point at.
 static func box(
 	aim: TutorialLeadInDef,
 	target: Control,
@@ -19,7 +19,8 @@ static func box(
 	hud_root: Node,
 	view: Vector2,
 	safe: Rect2,
-	dp: float
+	dp: float,
+	unit: GuideUnitAnchor = null
 ) -> Rect2:
 	var rect: Rect2 = Rect2()
 	if aim == null:
@@ -40,6 +41,11 @@ static func box(
 			var world: Vector2 = IsoProjection.cell_centre_px(aim.anchor_tile.x, aim.anchor_tile.y)
 			var radius: Vector2 = IsoProjection.ellipse_px(ViewScale.MILLI_PER_TILE) * camera.zoom
 			rect = Rect2(camera.world_to_screen(world) - radius, radius * 2.0)
+		TutorialBeatDef.Anchor.UNIT:
+			if unit == null or unit.point == Vector2.INF:
+				return Rect2()  # No unit: the card alone.
+			var reach: Vector2 = Vector2(unit.half, unit.half)
+			rect = Rect2(unit.point - reach, reach * 2.0)  # Pinned to the edge below when off screen.
 		_:
 			return Rect2()
 	var least: float = MIN_TARGET_DP * dp

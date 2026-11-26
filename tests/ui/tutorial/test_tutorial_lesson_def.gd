@@ -57,6 +57,23 @@ func test_problems_name_each_fault() -> void:
 	assert_str(text).contains("exceed the target")
 
 
+func test_a_unit_anchor_needs_its_selector_and_no_other_anchor_may_carry_one() -> void:
+	var lesson: TutorialLessonDef = _fixture()
+	lesson.beats[0].anchor = TutorialBeatDef.Anchor.UNIT
+	assert_str("\n".join(lesson.problems())).contains("unit anchor has no unit selector")
+	lesson.beats[0].unit = TutorialUnitPickDef.new()
+	assert_array(Array(lesson.problems())).is_empty()
+	lesson.beats[0].anchor = TutorialBeatDef.Anchor.NONE
+	assert_str("\n".join(lesson.problems())).contains("selector on an anchor that is not a unit")
+	var step: TutorialLeadInDef = TutorialLeadInDef.new()
+	step.anchor = TutorialBeatDef.Anchor.UNIT
+	lesson.beats[0].unit = null
+	lesson.beats[0].lead_in = [step]
+	assert_str("\n".join(lesson.problems())).contains("lead-in 0: a unit anchor has no unit")
+	step.unit = TutorialUnitPickDef.new()
+	assert_array(Array(lesson.problems())).is_empty()
+
+
 func test_a_lesson_with_no_beats_is_a_problem() -> void:
 	var empty: TutorialLessonDef = Lesson.lesson("none", [])
 	assert_int(empty.problems().size()).is_equal(1)

@@ -286,6 +286,23 @@ func unit_screen_position(index: int) -> Vector2:
 	return camera.world_to_screen(UnitPick.row_position(self, runner, _rigs, index))
 
 
+## The world px point a tap picks unit `id` at: its rig's place raised by the sheet's centre lift,
+## the point `UnitPick.fill` gives the Picker (ADR 0048 section 13.3). `Vector2.INF` when this layer
+## shows no rig for it: gone, hidden by the fog, a building, or a flyer (`AirLayer.tap_point`).
+## Allocates nothing.
+func tap_point(id: int) -> Vector2:
+	var snap: MatchSnapshot = _sync_rigs()
+	var row: int = snap.index_of(id) if snap != null else -1
+	if row < 0 or row >= _rigs.size() or _rigs[row] == null or not is_shown(row):
+		return Vector2.INF
+	var type: int = snap.type_index[row]
+	var armour: int = (
+		snap.type_armour[type] if type < snap.type_armour.size() else World.Armour.LIGHT
+	)
+	var lift: float = SpriteLift.centre_lift_px(_sheets[row], armour)
+	return _rigs[row].global_position - Vector2(0.0, lift)
+
+
 ## Rings exactly the units in `ids` at once. Unknown ids are skipped.
 func set_selected(ids: PackedInt32Array) -> void:
 	var snap: MatchSnapshot = _sync_rigs()
