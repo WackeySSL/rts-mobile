@@ -23,8 +23,16 @@ const OTHERS: Array[StringName] = [
 	&"fossil_patchers",
 	&"renew_menders"
 ]
-const SHARE: Vector2 = Vector2(0.08, 0.12)
-const SHARE_WIDE: Vector2 = Vector2(0.03, 0.17)
+## The default view's marker share: the Menders stay at 8 to 12 %; the Patchers (P640) wear a thin
+## vest band, a clamp and end caps over a steel body, 3 to 12 %.
+const SHARE: Dictionary[StringName, Vector2] = {
+	&"fossil_patchers": Vector2(0.03, 0.12), &"renew_menders": Vector2(0.08, 0.12)
+}
+## Every direction and frame: 3 to 17 %, the Patchers 0.5 to 17 % (P640: seen from the front the
+## exact key colour is a thin band on a small face).
+const SHARE_WIDE: Dictionary[StringName, Vector2] = {
+	&"fossil_patchers": Vector2(0.005, 0.17), &"renew_menders": Vector2(0.03, 0.17)
+}
 const MAX_OVERLAP: float = 0.85
 const STRIDE: Dictionary[StringName, int] = {&"fossil_patchers": 352, &"renew_menders": 376}
 ## The kit marks of ADR 0037 section 6: the League's is the team band, the Accord's a mint ring.
@@ -100,7 +108,7 @@ func test_the_team_share_of_the_default_view_is_8_to_12_percent_in_every_frame()
 				. override_failure_message(
 					"%s d%02d %s%d: %.3f" % [id, dir, frame[0], frame[1], share]
 				)
-				. is_between(SHARE.x, SHARE.y)
+				. is_between(SHARE[id].x, SHARE[id].y)
 			)
 
 
@@ -114,7 +122,7 @@ func test_the_team_share_holds_in_every_direction_and_frame() -> void:
 					. override_failure_message(
 						"%s d%02d %s%d: %.3f" % [id, dir, frame[0], frame[1], share]
 					)
-					. is_between(SHARE_WIDE.x, SHARE_WIDE.y)
+					. is_between(SHARE_WIDE[id].x, SHARE_WIDE[id].y)
 				)
 
 

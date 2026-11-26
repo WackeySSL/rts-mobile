@@ -135,7 +135,10 @@ func _faction_share(picture: Image, faction: StringName) -> float:
 				continue
 			body += 1
 			var gap: float = absf(pixel.h * 360.0 - hue)
-			if pixel.s >= bands.faction_sat_min and minf(gap, 360.0 - gap) <= bands.faction_hue_band:
+			if (
+				pixel.s >= bands.faction_sat_min
+				and minf(gap, 360.0 - gap) <= bands.faction_hue_band
+			):
 				hit += 1
 	return float(hit) / maxi(body, 1)
 

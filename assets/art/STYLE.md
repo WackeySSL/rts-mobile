@@ -421,7 +421,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   faction's mid hue at a saturation of `faction_sat_min` or more (both and the hues in
   `tools/artgen/same_scene.tres`), not the exact three tones, which miss the small faces of
   infantry (the 1 px edge and the anti-aliasing take a face under 5 px wide). Measured on the
-  eleven models at detail 2: 32 to 58 %.
+  eleven models at detail 2: 30 to 58 % (the Patchers 33, the Rig Hands 33, the Wildcatters 31).
 - **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
   #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
   #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. These eight are what a
@@ -638,6 +638,10 @@ each faction's roster (Infantry tab, built at the barracks); neither has a weapo
   and caps and the yoke are the key triad, the warm lamp and goggles are `lamp`); the Accord's a **mint ring** round
   the case (the one `mint` hexagonal ring on each figure's case, a second mint piece on the visor and the hand
   light). `test_medic_art.gd` holds both and finds no reddish hex in either default view.
+  **P640:** the Patchers are redrawn at detail 2 (steel-grey body, orange hard hats, shoulder plates and clamp, the
+  chest and the kit chest carry a thin team band and the roll's end caps keep the key triad; a slim lamp mast stands
+  up from the kit chest, which keeps the pair apart from the Menders: 0.70 against 0.80 before); the olive, the lid and
+  the yoke of this paragraph are retired for them.
 - **Apart from the neighbours.** Two figures, not three: each squad is a pair with one carried thing a figure, where
   the Rig Hands carry rifles and the Wildcatters tubes. The Patchers' big boxy chest and long roll and the Menders'
   tall white cases read at 32 px in greyscale where the combat squads' long tubes and rifles do not
@@ -699,8 +703,8 @@ the figures below). Hull canvases are at 2x, in px; a unit's gun frame has its o
 
 | Art id | Name | Hull canvas | What makes it |
 | --- | --- | --- | --- |
-| `rifle_squad` | Rig Hands | 86 x 66 | Three figures in a tight arrowhead: dark breather mask, pale brimmed hard hat with a warm lamp, olive coverall, a team vest band across chest and arms, a dark rifle across the chest, a steel pack. |
-| `rocket_squad` | Wildcatters | 104 x 74 | Three figures in a zig-zag file: dark breather mask under a round steel pot helmet with a warm goggle strip, a team vest band, a long dark tube on the right shoulder with a flared back end and a team ring at its mouth, a rust pack. |
+| `rifle_squad` | Rig Hands | 86 x 66 | Three steel-grey figures in a tight arrowhead (P640): dark breather mask with a steel canister, pale brim under a square orange hard hat with a warm lamp, an orange plate on each shoulder, a small team vest band across chest and arms, a dark rifle across the chest, a dark pack with an orange panel. |
+| `rocket_squad` | Wildcatters | 104 x 74 | Three steel-grey figures in a zig-zag file (P640): dark breather mask under a tall square orange hard hat with a warm visor strip, an orange plate on the left shoulder, a team vest band, a long dark tube on the right shoulder with a flared back end and a team ring at its mouth, a rust pack with an orange panel and lid. |
 | `light_tank` | Flarejack | 120 x 116 | A low armoured car shaped like a doorstop: four fat wheels, a long sloping hood, a boxed cab with a team band and a lamp bar, a small gun turret far back over the rear axle, two rust fuel cans, and a slim flare pipe with a warm lamp off the rear corner. |
 | `heavy_tank` | Bullhead | 166 x 104 | A squat slab on two dark tracks with road wheels: a steel ram plate across the nose with a team stripe, a sloping glacis, a wide wedge turret on a team ring with one long gun in three segments and a muzzle brake, two short lamp-topped pipes at the turret's front corners (the horns), flank stripes. |
 | `artillery` | Mortar Rig | 144 x 100 | A six-wheeled flatbed: a sloped armoured cab with a team band, two rust crates on the bed and, on a turning ring, two steel cheek plates that cradle a fat mortar tube raised in steps towards the front, with a team ring on the tube. |
@@ -719,8 +723,8 @@ the figures below). Hull canvases are at 2x, in px; a unit's gun frame has its o
 - **No face is drawn.** Every head is a dark breather mask under a hat or helmet (the canvas's gas
   masks, kept; the fur hats and long coats are dropped as geography), so no figure reads as a person
   of a colour or a caricature (ADR 0023 decision 1).
-- **Distinct at 32 px**: the Rig Hands are three pale hats over dark legs, the Wildcatters three
-  dark heads with long tubes, the Flarejack an armoured car with a mast, the Bullhead a slab with a
+- **Distinct at 32 px**: the Rig Hands are three orange hats over dark legs with a rifle across each chest, the Wildcatters three
+  tall orange hats with long tubes, the Flarejack an armoured car with a mast, the Bullhead a slab with a
   long gun and a stripe along its flank, the Mortar Rig a truck with a ribbed tube pointing up, the
   Tanker a long truck with a drum.
 - **Modelling notes.** A hood or a glacis is a wedge with `slope=1` (P101 used `slope=0.95` until
@@ -2432,8 +2436,8 @@ in doubt, choose a plainer real-world form.
 ## Catalogue
 | Unit | Silhouette | Files |
 | --- | --- | --- |
-| Rig Hands (`rifle_squad`) | Three olive riflemen in a tight arrowhead, each in a dark breather mask and a pale brimmed hard hat with a warm lamp, a team-coloured vest band across the chest and arms and a dark rifle held across the chest. | `iso/fossil/inf/rifle_squad_hull_d<NN>.svg`, 8 frames, 86x66, from `models/fossil/rifle_squad.tres` |
-| Wildcatters (`rocket_squad`) | Three olive launcher crews in a zig-zag file, each in a dark breather mask under a round steel pot helmet with a warm goggle strip, a team-coloured vest band, a long dark tube with a flared back end on the right shoulder and a team ring at its mouth. | `iso/fossil/inf/rocket_squad_hull_d<NN>.svg`, 8 frames, 104x74 |
+| Rig Hands (`rifle_squad`) | Three steel-grey riflemen in a tight arrowhead, each in a dark breather mask under a pale brim and a square orange hard hat with a warm lamp, an orange plate on each shoulder, a small team-coloured vest band across the chest and arms and a dark rifle held across the chest. | `iso/fossil/inf/rifle_squad_hull_d<NN>.svg`, 8 frames, 86x66, from `models/fossil/rifle_squad.tres` |
+| Wildcatters (`rocket_squad`) | Three steel-grey launcher crews in a zig-zag file, each in a dark breather mask under a tall square orange hard hat with a warm visor strip, an orange plate on the left shoulder, a team-coloured vest band, a long dark tube with a flared back end on the right shoulder and a team ring at its mouth. | `iso/fossil/inf/rocket_squad_hull_d<NN>.svg`, 8 frames, 104x74 |
 | Flarejack (`light_tank`) | A low olive doorstop of an armoured car on four fat dark wheels, a long sloping hood, a boxed cab with a team band and a lamp bar, a small gun turret far back over the rear axle and a thin flare pipe with a warm lamp standing off the rear corner. | `iso/fossil/veh/light_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 120x116 |
 | Bullhead (`heavy_tank`) | A squat olive slab of a tank on two dark tracks, a steel ram plate across its nose, a wide wedge turret with a long gun and two short lamp-topped pipes at its front corners like horns. | `iso/fossil/veh/heavy_tank_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 166x104 |
 | Mortar Rig (`artillery`) | A six-wheeled olive flatbed with a sloped armoured cab, a team band and two rust crates, and on the bed a turning rig of two steel cheek plates that cradle a fat mortar tube raised in steps towards the front. | `iso/fossil/veh/artillery_{hull,turret}_d<NN>.svg`, 16 + 16 frames, 144x100 |
@@ -3675,4 +3679,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
 | 2026-11-25 | v1.53 (P605, art-director, ADR 0049 amendment): the UI type is Michael's Figma type: Roboto Condensed Bold, Inter Regular and Bold, IBM Plex Mono Regular, static unmodified OFL 1.1 files; Big Shoulders and Chakra Petch removed; the Type scale section says which theme type uses which face; the Menu looks edge colour reads #33434A. |
 | 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
-| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more; the band is unchanged |
+| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more; the band is unchanged ; the three Nordvaern squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, fixed orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view), a thin team vest band; `test_medic_art.gd` holds the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %) |
