@@ -416,7 +416,12 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **Shares** (P632): the marker is 2 to 12 % of a sprite's opaque pixels in its default view for
   the transition, while the old models still paint their whole team areas in the marker; the last
   model batch narrows it to 2 to 6 % (ADR 0050 section 3). A model at detail 1 or more paints
-  15 to 85 % of its default view in the fixed faction colour.
+  15 to 85 % of its default view in the fixed faction colour. The share is the hue-band measure of
+  the same-scene check (P640): the opaque pixels whose hue is within `faction_hue_band` of the
+  faction's mid hue at a saturation of `faction_sat_min` or more (both and the hues in
+  `tools/artgen/same_scene.tres`), not the exact three tones, which miss the small faces of
+  infantry (the 1 px edge and the anti-aliasing take a face under 5 px wide). Measured on the
+  eleven models at detail 2: 32 to 58 %.
 - **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
   #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
   #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. These eight are what a
@@ -3670,3 +3675,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
 | 2026-11-25 | v1.53 (P605, art-director, ADR 0049 amendment): the UI type is Michael's Figma type: Roboto Condensed Bold, Inter Regular and Bold, IBM Plex Mono Regular, static unmodified OFL 1.1 files; Big Shoulders and Chakra Petch removed; the Type scale section says which theme type uses which face; the Menu looks edge colour reads #33434A. |
 | 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
+| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more; the band is unchanged |
