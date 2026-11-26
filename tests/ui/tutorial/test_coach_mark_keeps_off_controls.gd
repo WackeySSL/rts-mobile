@@ -49,7 +49,6 @@ const SCROLLS: Array[String] = [
 	"basics/groups",
 	"basics/incoming",
 	"basics/low-power",
-	"basics/open-structures",
 	"basics/pause",
 	"basics/placed",
 	"basics/stop",

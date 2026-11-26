@@ -64,6 +64,12 @@ count = 2
 covers = Array[StringName]([&"selection-box"])
 budget_s = 7
 
+[sub_resource type="Resource" id="Beat_06_select"]
+script = ExtResource("9_lead")
+anchor_control = &"AllArmy"
+kind = 1
+type_id = &"rifle_squad"
+
 [sub_resource type="Resource" id="Beat_06"]
 script = ExtResource("2_beat")
 id = &"clear"
@@ -72,6 +78,7 @@ anchor = 1
 anchor_control = &"Deselect"
 covers = Array[StringName]([&"selection-deselect", &"selection-box-empty", &"selection-tap-ground"])
 budget_s = 4
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_06_select")])
 
 [sub_resource type="Resource" id="Beat_07"]
 script = ExtResource("2_beat")
@@ -98,6 +105,12 @@ area = Rect2i(7, 12, 7, 5)
 covers = Array[StringName]([&"orders-move"])
 budget_s = 8
 
+[sub_resource type="Resource" id="Beat_08b_select"]
+script = ExtResource("9_lead")
+anchor_control = &"AllArmy"
+kind = 1
+type_id = &"rifle_squad"
+
 [sub_resource type="Resource" id="Beat_08b"]
 script = ExtResource("2_beat")
 id = &"stop"
@@ -106,6 +119,7 @@ anchor = 1
 anchor_control = &"Stop"
 covers = Array[StringName]([&"orders-stop"])
 budget_s = 3
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_08b_select")])
 
 [sub_resource type="Resource" id="Beat_09"]
 script = ExtResource("2_beat")
@@ -139,6 +153,18 @@ anchor_control = &"PowerBar"
 covers = Array[StringName]([&"the-screen-in-battle-low-power"])
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_12_build"]
+script = ExtResource("9_lead")
+anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_12_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabStructures"
+kind = 11
+value = 0
+
 [sub_resource type="Resource" id="Beat_12"]
 script = ExtResource("2_beat")
 id = &"power"
@@ -149,6 +175,7 @@ kind = 12
 type_id = &"power_plant"
 covers = Array[StringName]([&"build-menu-queue-item", &"build-menu-place-start"])
 budget_s = 13
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_12_build"), SubResource("Beat_12_tab")])
 
 [sub_resource type="Resource" id="Beat_13"]
 script = ExtResource("2_beat")
@@ -181,14 +208,17 @@ type_id = &"harvester"
 covers = Array[StringName]([&"economy-oil-field", &"economy-credits", &"orders-tanker-field"])
 budget_s = 5
 
-[sub_resource type="Resource" id="Beat_16"]
-script = ExtResource("2_beat")
-id = &"open-structures"
-prompt_key = &"tutorial.basics.open-structures"
-anchor = 1
+[sub_resource type="Resource" id="Beat_17_build"]
+script = ExtResource("9_lead")
 anchor_control = &"BuildButton"
+kind = 10
+value = 1
+
+[sub_resource type="Resource" id="Beat_17_tab"]
+script = ExtResource("9_lead")
+anchor_control = &"TabStructures"
 kind = 11
-budget_s = 4
+value = 0
 
 [sub_resource type="Resource" id="Beat_17"]
 script = ExtResource("2_beat")
@@ -199,17 +229,8 @@ anchor_control = &"Tile_barracks"
 kind = 4
 type_id = &"barracks"
 covers = Array[StringName]([&"build-menu-tabs"])
-budget_s = 15
-
-[sub_resource type="Resource" id="Beat_18"]
-script = ExtResource("2_beat")
-id = &"infantry-tab"
-prompt_key = &"tutorial.basics.infantry-tab"
-anchor = 1
-anchor_control = &"BuildButton"
-kind = 11
-value = 1
-budget_s = 4
+budget_s = 19
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_17_build"), SubResource("Beat_17_tab")])
 
 [sub_resource type="Resource" id="Beat_19_build"]
 script = ExtResource("9_lead")
@@ -233,7 +254,7 @@ kind = 5
 type_id = &"rifle_squad"
 count = 6
 covers = Array[StringName]([&"build-menu-select-producer"])
-budget_s = 10
+budget_s = 14
 lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_19_build"), SubResource("Beat_19_tab")])
 
 [sub_resource type="Resource" id="Beat_20"]
@@ -306,7 +327,7 @@ script = ExtResource("1_lesson")
 id = &"basics"
 title_key = &"tutorial.basics.title"
 objective_key = &"tutorial.basics.objective"
-beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_08b"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12"), SubResource("Beat_13"), SubResource("Beat_14"), SubResource("Beat_15"), SubResource("Beat_16"), SubResource("Beat_17"), SubResource("Beat_18"), SubResource("Beat_19"), SubResource("Beat_20"), SubResource("Beat_21"), SubResource("Beat_22"), SubResource("Beat_23"), SubResource("Beat_24"), SubResource("Beat_25"), SubResource("Beat_26")])
+beats = Array[ExtResource("2_beat")]([SubResource("Beat_00"), SubResource("Beat_01"), SubResource("Beat_02"), SubResource("Beat_03"), SubResource("Beat_04"), SubResource("Beat_05"), SubResource("Beat_06"), SubResource("Beat_07"), SubResource("Beat_08"), SubResource("Beat_08b"), SubResource("Beat_09"), SubResource("Beat_10"), SubResource("Beat_11"), SubResource("Beat_12"), SubResource("Beat_13"), SubResource("Beat_14"), SubResource("Beat_15"), SubResource("Beat_17"), SubResource("Beat_19"), SubResource("Beat_20"), SubResource("Beat_21"), SubResource("Beat_22"), SubResource("Beat_23"), SubResource("Beat_24"), SubResource("Beat_25"), SubResource("Beat_26")])
 target_s = 180
 scenario = ExtResource("3_scenario")
 enemy = ExtResource("4_enemy")

@@ -70,6 +70,33 @@ func test_a_single_squad_saved_as_group_1_finishes_basics() -> void:
 	assert_bool(result["done_at"].has(&"groups")).is_true()
 
 
+## ADR 0048 section 5 (P593): with the selection dropped before each beat that has a selection
+## lead-in, the bot follows that step with a real tap (the AllArmy control, or a TAP gesture on the
+## tile through the controller) and the lesson still ends, with no ring missing.
+func test_the_bot_follows_the_selection_lead_ins_of_support_and_air() -> void:
+	for id: StringName in [&"support", &"air"]:
+		var lesson: TutorialLessonDef = load("%s%s.tres" % [LESSON_DIR, id]) as TutorialLessonDef
+		var result: Dictionary = await _play(lesson, 0, false, false, true)
+		var label: String = "%s: %s %s" % [id, result["failure"], result["ringless"]]
+		assert_str(result["failure"]).override_failure_message(label).is_empty()
+		assert_bool(result["done"]).override_failure_message(label).is_true()
+		assert_array(result["ringless"]).override_failure_message(label).is_empty()
+		var expected: int = 3 if id == &"support" else 1  # sell, mend, repair; board.
+		assert_int(result["selection_steps"]).override_failure_message(label).is_equal(expected)
+		CommandQueue.clear()
+		_main.get_parent().remove_child(_main)
+		_main.free()
+
+
+func test_the_bot_follows_the_selection_lead_ins_of_basics() -> void:
+	var lesson: TutorialLessonDef = load("%sbasics.tres" % LESSON_DIR) as TutorialLessonDef
+	var result: Dictionary = await _play(lesson, 0, false, false, true)
+	assert_str(result["failure"]).is_empty()
+	assert_bool(result["done"]).is_true()
+	assert_array(result["ringless"]).is_empty()
+	assert_int(result["selection_steps"]).is_equal(2)  # clear, stop.
+
+
 func test_the_bot_finishes_strikes() -> void:
 	await _finishes(&"strikes")
 
@@ -156,7 +183,8 @@ func _play(
 	lesson: TutorialLessonDef,
 	think_ticks: int,
 	stop_mid_move: bool = false,
-	single_squad_group: bool = false
+	single_squad_group: bool = false,
+	drop_selection: bool = false
 ) -> Dictionary:
 	var phone: UiMetrics = UiProfiles.by_name(PHONE)
 	UiScale.set_override(phone)
@@ -175,6 +203,7 @@ func _play(
 	bot.think_ticks = think_ticks
 	bot.stop_mid_move = stop_mid_move
 	bot.single_squad_group = single_squad_group
+	bot.drop_selection = drop_selection
 	return await bot.play(lesson)
 
 

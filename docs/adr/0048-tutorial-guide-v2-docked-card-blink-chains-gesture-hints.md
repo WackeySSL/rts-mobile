@@ -295,9 +295,10 @@ free-place search of plan row P543g (#620), which was a plan row, not an ADR (§
   `flight-tab` into `fighter`). Their `covers` were empty, so coverage is unchanged, and their
   budgets add to the next beat. The tab-anchored beats get the item card as their final target.
   `power` chains BUILD, then the Structures tab, to the power plant's card. `barracks` chains
-  BUILD, the Structures tab and the barracks card (passed by `PLACING`) to the check mark
-  (`PlaceConfirm`). The scripted enemies' `trigger_beat` ids (`groups`, `home`, `sell-last`) are
-  untouched.
+  BUILD, then the Structures tab, to the barracks card. The scripted enemies' `trigger_beat` ids
+  (`groups`, `home`, `sell-last`) are untouched.
+  *Deviation (P593).* A build beat ends on its item card; the placement check is rung by the
+  placement beat (basics/placed), so the ring never points at nothing while the structure builds.
 
 ### 6. Gesture hints
 - **`GestureHint`** (`game/ui/tutorial/`, a Control child of the mark,
