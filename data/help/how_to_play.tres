@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Nordværn's three squads are steel grey with orange hats, shoulder plates and pack panels, and show your team colour on a thin vest band. Facet's three squads are white and graphite with blue helmets, shoulder plates and pack panels, and show your team colour on a thin chest band. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -134,7 +134,7 @@ body = "Medics are built at a barracks, on the Infantry tab, like any squad. A m
 script = ExtResource("3_ent")
 id = &"units-medic-squad-look"
 title = "Your medics"
-body = "A medic squad is two figures. The Patchers wear olive coveralls and steel helmets and carry a kit chest and a roll of patch line. The Menders wear blue-grey suits and white helmets and carry white cases. Each wears a band in your team colour on the chest."
+body = "A medic squad is two figures. The Patchers wear steel-grey coveralls and orange hard hats and carry a kit chest and a roll of patch line. The Menders wear white and graphite suits and blue helmets and carry white cases ringed in blue. Each wears a band in your team colour on the chest."
 
 [sub_resource type="Resource" id="s2"]
 script = ExtResource("2_sec")

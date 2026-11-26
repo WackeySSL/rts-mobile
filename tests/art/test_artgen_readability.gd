@@ -59,14 +59,18 @@ func test_the_default_view_of_every_type_has_a_team_share_of_2_to_12_percent() -
 		)
 
 
-## A model at detail 1 or more (ADR 0050 section 1; none is yet, the field arrives with the detail
-## renderer) paints its faction's fixed colour on panels: FACTION_SHARE of its default view.
+## A model at detail 1 or more (ADR 0050 section 1) paints its faction's fixed colour on panels:
+## FACTION_SHARE of its default view. The
+## share is the hue-band measure of the same-scene check (P640): the pixels whose hue is within
+## `faction_hue_band` of the faction's mid hue at a saturation of `faction_sat_min` or more, read
+## from `same_scene.tres`. Exact tones miss the small faces of infantry, where the 1 px edge and the
+## anti-aliasing take every pixel of a face under 5 px wide.
 func test_a_model_at_detail_1_or_more_has_a_faction_share_in_its_band() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
 		if not ("detail" in model) or int(model.get(&"detail")) < 1:
 			continue
-		var share: float = _share(_default_picture(model), _faction_tones(model.faction))
+		var share: float = _faction_share(_default_picture(model), model.faction)
 		(
 			assert_float(share)
 			. override_failure_message("%s faction share %.3f" % [path, share])
@@ -84,7 +88,7 @@ func test_the_share_measure_tells_the_fixed_material_from_the_marker() -> void:
 			)
 			model.faction = faction
 			var picture: Image = Support.stage_image(model, 0)
-			var faction_share: float = _share(picture, _faction_tones(faction))
+			var faction_share: float = _faction_share(picture, faction)
 			var team_share: float = _share(picture, ArtPalette.KEYS[faction])
 			var label: String = "%s %s" % [faction, material]
 			if material == &"faction":
@@ -118,12 +122,40 @@ func _share(picture: Image, hexes: Array) -> float:
 	return float(hit) / maxi(body, 1)
 
 
-## The three tones of the faction's fixed colour: top, left and right face.
-func _faction_tones(faction: StringName) -> Array:
-	var tones: Array = []
-	for level: int in 3:
-		tones.append(ArtPalette.tone(faction, ArtPalette.FACTION, level))
-	return tones
+## The hue of `faction` in the bands: the one of `faction_hues` nearest the mid tone of the
+## faction's fixed colour (the bands list the hues without naming the factions).
+func _faction_hue(bands: SameSceneBands, faction: StringName) -> float:
+	var mid: float = Color(ArtPalette.tone(faction, ArtPalette.FACTION, 1)).h * 360.0
+	var best: float = bands.faction_hues[0]
+	var best_gap: float = 360.0
+	for hue: float in bands.faction_hues:
+		var gap: float = absf(mid - hue)
+		gap = minf(gap, 360.0 - gap)
+		if gap < best_gap:
+			best = hue
+			best_gap = gap
+	return best
+
+
+## The share of `picture`'s opaque pixels in `faction`'s hue band (bands from `same_scene.tres`).
+func _faction_share(picture: Image, faction: StringName) -> float:
+	var bands: SameSceneBands = SameScene.load_bands()
+	var hue: float = _faction_hue(bands, faction)
+	var hit: int = 0
+	var body: int = 0
+	for y: int in picture.get_height():
+		for x: int in picture.get_width():
+			var pixel: Color = picture.get_pixel(x, y)
+			if pixel.a < 0.95:
+				continue
+			body += 1
+			var gap: float = absf(pixel.h * 360.0 - hue)
+			if (
+				pixel.s >= bands.faction_sat_min
+				and minf(gap, 360.0 - gap) <= bands.faction_hue_band
+			):
+				hit += 1
+	return float(hit) / maxi(body, 1)
 
 
 func test_the_default_view_of_every_type_is_identifiable_at_32_px_in_greyscale() -> void:

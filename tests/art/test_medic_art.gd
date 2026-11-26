@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## Patchers (`fossil_patchers`) and the Lumen Accord's Menders (`renew_menders`). Each is an `inf`
 ## model of two figures with a hull in 8 directions, a walk of 4 frames, an idle of 2 and a cast
 ## shadow, and an item card. It pins the sheet's parts and frames, the stride of the walk, the team
-## share at zoom 1 (8 to 12 % in every frame of the default view, a wider band in the other
+## share at zoom 1 (2 to 12 % in every frame of the default view, a wider band in the other
 ## directions), a shadow that is one connected mark, the two figures, the colour of the kit mark,
 ## and the silhouettes at 32 px in greyscale against the four squads. That the bytes equal a fresh
 ## run is test_artgen.gd.
@@ -23,8 +23,17 @@ const OTHERS: Array[StringName] = [
 	&"fossil_patchers",
 	&"renew_menders"
 ]
-const SHARE: Vector2 = Vector2(0.08, 0.12)
-const SHARE_WIDE: Vector2 = Vector2(0.03, 0.17)
+## The default view's marker share: the Patchers (P640) wear a thin vest band, a clamp and end caps
+## over a steel body, 3 to 12 %; the Menders (P641) a thin chest band and a ring on each case over
+## a white and graphite body, 2 to 12 % (the general rule).
+const SHARE: Dictionary[StringName, Vector2] = {
+	&"fossil_patchers": Vector2(0.03, 0.12), &"renew_menders": Vector2(0.02, 0.12)
+}
+## Every direction and frame: the Patchers 0.5 to 17 % (P640: seen from the front the exact key
+## colour is a thin band on a small face), the Menders 0.2 to 17 % (P641, the same reason).
+const SHARE_WIDE: Dictionary[StringName, Vector2] = {
+	&"fossil_patchers": Vector2(0.005, 0.17), &"renew_menders": Vector2(0.002, 0.17)
+}
 const MAX_OVERLAP: float = 0.85
 const STRIDE: Dictionary[StringName, int] = {&"fossil_patchers": 352, &"renew_menders": 376}
 ## The kit marks of ADR 0037 section 6: the League's is the team band, the Accord's a mint ring.
@@ -90,7 +99,7 @@ func test_a_squad_is_two_figures_and_the_walk_cadence_is_in_the_pinned_band() ->
 		assert_float(cycles).override_failure_message("%s %.2f" % [id, cycles]).is_between(1.5, 3.5)
 
 
-func test_the_team_share_of_the_default_view_is_8_to_12_percent_in_every_frame() -> void:
+func test_the_team_share_of_the_default_view_is_2_to_12_percent_in_every_frame() -> void:
 	for id: StringName in IDS:
 		var dir: int = _model(id).default_dir()
 		for frame: Array in _frames():
@@ -100,7 +109,7 @@ func test_the_team_share_of_the_default_view_is_8_to_12_percent_in_every_frame()
 				. override_failure_message(
 					"%s d%02d %s%d: %.3f" % [id, dir, frame[0], frame[1], share]
 				)
-				. is_between(SHARE.x, SHARE.y)
+				. is_between(SHARE[id].x, SHARE[id].y)
 			)
 
 
@@ -114,7 +123,7 @@ func test_the_team_share_holds_in_every_direction_and_frame() -> void:
 					. override_failure_message(
 						"%s d%02d %s%d: %.3f" % [id, dir, frame[0], frame[1], share]
 					)
-					. is_between(SHARE_WIDE.x, SHARE_WIDE.y)
+					. is_between(SHARE_WIDE[id].x, SHARE_WIDE[id].y)
 				)
 
 

@@ -366,6 +366,10 @@ func test_the_pose_frames_use_only_the_palette_of_their_faction() -> void:
 					var text: String = FileAccess.get_file_as_string(
 						ArtGen.frame_path(model, part, dir, frame)
 					)
+					# The stops of a detail-2 sheen gradient are tints of a material's tones (P640).
+					var defs: int = text.find("</defs>")
+					if defs >= 0:
+						text = text.substr(defs)
 					for hit: RegExMatch in colour.search_all(text):
 						found += 1
 						(
