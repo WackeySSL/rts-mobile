@@ -20,6 +20,10 @@ where a beat is read-only, Skip lesson), placed by ADR 0015's rules"). P583 writ
 note in ADR 0044 on acceptance (done, 2026-11-24). No accepted text is rewritten. Retires the
 free-place search of plan row P543g (#620), which was a plan row, not an ADR (§8).
 
+Amended 2026-11-26 by §13 (unit anchors: the frame and the hand on a unit that moves; plan rows
+P593b-0 to P593b-2). §13 extends §3 (see-through for a moving target), §5 (a unit as a target)
+and §6 (the hand on a unit); the rest of §1-§12 stands unchanged.
+
 ## Michael's answers (2026-11-24)
 1. **Where the card docks:** at the top, under the pill and the radar, between the group buttons and
    the full map, never over them (§1).
@@ -459,6 +463,263 @@ the trademark list of ADR 0023 §13 ("Skip lesson", "Next", the step counter).
   tab and the counter (P589), the frame moving on (P591) and the hand (P592). The rows
   `menus-tutorial` and `menus-tutorial-end` change for Skip (P589). `menus-settings` changes for
   the frame and the hand under Reduced effects (P592).
+
+### 13. Unit anchors (amendment, 2026-11-26, plan rows P593b-0 to P593b-2)
+**In short, for Michael:** where a step asks you to tap a unit (your fighter, the shot truck you
+just built, the nearest enemy), the blinking frame now stands on that unit and moves with it, and
+the hand taps it. On an aircraft the frame is on the aircraft itself, not on its shadow. If the
+unit is off the screen, the frame waits at the screen's edge and the hand drags toward it. If there
+is no such unit, the step shows its card alone, as today.
+
+Status: **accepted (lead, 2026-11-26)**, held pick included. Proposed the same day by the architect
+(row P593b, branch `claude/p593b-adr`, base `main` at 59efa29b). It changes none of Michael's five answers: it puts the
+frame and the hand of §4 and §6 on the thing to tap where that thing is a unit. No sim, Command,
+snapshot or `STATE_FORMAT` change (§7 holds).
+
+#### 13.1 Context
+After P593 and P594, six beats point at nothing useful, because their target has no fixed tile or
+is hidden:
+
+| Beat | Today | What the player must touch |
+| --- | --- | --- |
+| basics `groups` | ring on `AddGroup`, which is hidden after `rally` (the barracks is selected, so no save) | `AllArmy`, then `AddGroup` |
+| basics `attack` | no anchor, no hint (P594's `NO_HINT`) | an enemy unit, which moves |
+| air `tap-air` | no anchor, no hint (`NO_HINT`) | the fighter's body, which hovers above its shadow |
+| air `home` | ring on `Home`, which shows only with an aircraft selected | the fighter, then `Home` |
+| support `select-truck` | no anchor, no hint (`NO_HINT`) | the shot truck built in the lesson |
+| support `mine` | ring on `Mine`, which shows only with the truck selected | the shot truck, then `Mine` |
+
+Checked against the code (`main` at 59efa29b):
+- `AllArmy` is always in the group column (`GroupColumn._refill`); it is hidden only when the
+  column itself has no room (the upright drawer sheet). The plan row's "AllArmy exists only once a
+  group does" was wrong. `groups` therefore needs no unit anchor: a `CONTROL` lead-in on
+  `AllArmy`, as P593 gave `clear` and `stop` (`Beat_06_select`, `Beat_08b_select`).
+- Anchor resolution already lives outside `CoachMark`: `GuideRing.box` (control or tile to the
+  ring's rect, the 48 dp floor, the safe-edge pin), `GuideLookup.find` (a control by name,
+  throttled) and `GuideHintPlan.resolve` (the hand's point and the off-screen drag). `CoachMark`
+  keeps about 50 lines of glue (`_ring_box`, `_sync_aim`, `_resolve_target`, `_draw_ring`,
+  `_update_gesture`). It is at 999 lines, one under gdlint's 1000-line cap.
+- A tap picks a ground unit at its lifted centre (`UnitPick.fill`: the rig's ground point raised
+  by `SpriteLift.centre_lift_px`) and an aircraft at its hull (`AirLayer.fill_pick_snapshot`: the
+  rig's ground point raised by `rig.lift`, without the bob). `UnitLayer.unit_screen_position` is
+  the ground point and, for an aircraft (no rig in `UnitLayer`), the tick's position, not the
+  interpolated one. It cannot serve.
+- `MatchSnapshot` has no serial of its own. The runner publishes one new snapshot per tick, so
+  `(match_serial, tick)` names a snapshot, and `rows_version` says whether row indices moved.
+- `CoachMark._update` lays the card out again (`_layout_card`, so `_fit_card` and its label
+  measuring) whenever the ring's box moves. On a tile beat that happens only while the camera
+  pans. A ring on a moving unit would refit the card in every frame.
+
+#### 13.2 Decision: the data
+- **`TutorialBeatDef.Anchor` gains `UNIT`** (value 3, appended).
+- **The selector is a sub-resource**, `TutorialUnitPickDef` (`game/ui/tutorial/`, data only):
+  - `side: Side` (`OWN`, `ENEMY`; append only). `ENEMY` is any owner other than the local player
+    and other than 0.
+  - `type_id: StringName`: one type, or any mobile type when empty.
+  - `pick: Pick` (`NEAREST_CAMERA`, `NEWEST`; append only).
+- **Both `TutorialBeatDef` and `TutorialLeadInDef` gain `unit: TutorialUnitPickDef`** (default
+  null). A lead-in needs it, because `home` and `mine` select the unit in a lead-in before their
+  `CONTROL` target. `TutorialChain.final_step` copies the reference. The def is read-only and is
+  never written at runtime.
+- In `.tres` the selector is a `[sub_resource]` like a lead-in, for example `attack`:
+
+  ```
+  [sub_resource type="Resource" id="Beat_23_unit"]
+  script = ExtResource("10_unit")   # TutorialUnitPickDef
+  side = 1                          # ENEMY
+  pick = 0                          # NEAREST_CAMERA
+
+  [sub_resource type="Resource" id="Beat_23"]
+  ...
+  anchor = 3                        # UNIT
+  unit = SubResource("Beat_23_unit")
+  ```
+- The selector does not reuse the beat's `type_id`. That field is the condition's parameter, and
+  `ENEMY_LOSSES` ignores it. Two meanings in one field would bind the ring to the condition.
+- **`TutorialLessonDef.problems()`** rejects a `UNIT` anchor with no `unit`, and a `unit` on any
+  other anchor. A `UNIT` lead-in follows §5's lead-in kinds (`SELECTED`, in `home` and `mine`).
+- A lesson file without `UNIT` loads and plays as before.
+
+#### 13.3 Decision: the resolver and the layer accessors
+- **`GuideUnitAnchor`** (`game/ui/tutorial/`, a `RefCounted` next to `GuideLookup`, owned by the
+  mark). It resolves the active step's selector to one unit and gives its screen point every frame.
+  It keeps only ints and the result: the held unit's id, its row, the `(match_serial, tick,
+  rows_version)` it last checked, `point` (base px, `Vector2.INF` for none), `half` (the ring's
+  half size, px), `flyer` and `in_field`.
+- **Two read-only accessors on the layers**, one formula each with their pick fill:
+  - `UnitLayer.tap_point(id: int) -> Vector2`
+  - `AirLayer.tap_point(id: int) -> Vector2`
+
+  Each returns the world-px point that a tap picks the unit at: the lifted centre of
+  `UnitPick.fill`, or the hull of `AirLayer.fill_pick_snapshot`, so an aircraft's body without the
+  bob. It is interpolated (the rig's place this frame). It returns `Vector2.INF` when that layer has
+  no shown rig for the id: gone, falling, hidden by fog, a building, or the other layer's unit.
+  Each syncs as `unit_screen_position` does (cheap when nothing changed) and allocates nothing. They
+  take an id, not a row, so a caller never holds a row of an older `rows_version`. The resolver
+  calls the layer that `WorldSort.is_flyer(snap, type)` names and projects the point with
+  `camera.world_to_screen`.
+- **Per frame**, with no allocation:
+  1. Read `runner.snapshot`. With none, there is no unit.
+  2. Another selector (a new step) or another `match_serial` drops the held unit and scans once
+     on this frame, so a new step never waits a tick for its ring.
+  3. **Otherwise only on a new snapshot** (another `tick`): check the held unit again. It must still have a
+     row (`index_of`, skipped while `rows_version` is unchanged: the row is reused), match the
+     selector and, for `ENEMY`, stand on a cell the local player sees (`FogLayer.is_seen` on the
+     snapshot's fog). If it fails, the hold drops. With no held unit, scan once (13.4). With none
+     found, the next scan waits for the next snapshot. That is the throttle (GuideLookup's
+     "a control that is not there" rule at the publish rate, at most 15 a second).
+  4. **Every frame:** `point` is the held unit's `tap_point`, projected. `half` is the larger of
+     the type's selection ellipse at the camera's zoom (the larger axis of the Vector2
+     `IsoProjection.ellipse_px` gives for `type_selection_radius`, the radius the Picker uses) and 24 dp.
+- **Never the World.** The resolver reads `runner.snapshot`, the camera, `runner.scenario`'s local
+  player (as `FogLayer.local_player_of` does) and the two accessors, nothing else. It never reaches
+  into a layer's rigs or pools, and never reads `runner.world`. The test is the one
+  `test_unit_layer.gd` uses ("draws from the published snapshot and never reads the world"): swap
+  `runner.world` for an empty World, and the resolver still finds its unit.
+- **Where it plugs in.** `GuideRing.box` and `GuideHintPlan.resolve` each gain one `UNIT` branch
+  and an optional last parameter `unit: GuideUnitAnchor = null`. Both read the resolver's result
+  and never resolve it themselves. `CoachMark` gets the glue: it calls `update` once a frame
+  before `_ring_box`, and three getters for the bot and the sweep: `target_unit() -> int` (-1 for
+  none), `target_point() -> Vector2` and `target_in_field() -> bool`. `TutorialHost` hands the
+  mark the runner and the two layers, found by type as it does the others.
+
+#### 13.4 Decision: the pick rule
+- **Candidates:** rows of the snapshot whose owner fits `side`, whose type is `type_id` (any when
+  empty) and has no footprint (a building has a fixed tile and uses `TILE`). For `ENEMY`, only
+  rows on a cell the local player sees. Fog is never leaked, and an enemy the player cannot see
+  cannot be tapped.
+- **`NEAREST_CAMERA`:** the smallest squared distance in milli-tiles (int) between the row's tick
+  position (`pos_x`, `pos_y`, never the interpolated one) and the camera's centre, taken once per
+  scan as `IsoProjection.px_to_ground` of the centre. **`NEWEST`:** the highest unit id. Ids rise
+  and are never reused, so this is the unit made last.
+- **Ties** break by the lower unit id. One scan over the rows, with the snapshot's arrays aliased
+  into typed locals before the loop.
+- **The hold (a change to the outline).** The outline asked for the lookup on every new snapshot.
+  A fresh nearest-pick at 15 Hz would hop the frame between two enemies at almost the same
+  distance, and a pan would move it to another unit. That is the jumping §1 was written to end. So
+  a unit, once picked, is **held** while it stays a candidate. The pick runs again only when the
+  held unit stops being one (dead, carried, fogged, gone) or when the step or the match changes.
+  The re-pick happens on the same frame the held unit stops being a candidate; there is no stale
+  hold, so the frame never stays on a dead unit or on an enemy the fog has hidden.
+  The pick is a pure function of (snapshot, camera centre, selector), with ties by id. Which unit
+  is held depends on the snapshots and the camera at the pick: given the same of both, it is the
+  same.
+
+#### 13.5 Decision: the ring, the edge, the field and the card
+- **The ring** on a unit is the tile's ground ellipse (`_draw_ring`'s non-control branch), centred
+  on `point`, of `half` and at least 48 dp. It blinks, turns amber and doubles as §4 says.
+- **Off the screen:** a unit whose point is outside the safe rect gets its ring pinned to the
+  nearest edge (`GuideRing.box`'s existing clamp). The pin slides along the edge as the unit moves.
+- **The field:** `in_field` is true when the point is inside the safe rect and under no rect of
+  `GuideDock.hud_for_dock` (the `HudCorners.place` parts, the reserved toast and reveal slots and
+  `AD_BAND`; the economy card excepted). The loop walks the mark's cached copy of those rects with
+  no `keys()` or `values()` call. A unit under the open drawer
+  sheet, the command bar or a corner part is not in the field. A real finger there would hit the
+  HUD.
+- **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
+  field gets §6's off-screen `DRAG` from the point (clamped into the safe rect) toward the field's
+  point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it
+  on a lead-in too, because a tap on a pinned ring selects nothing. An explicit `NONE` still
+  suppresses it.
+- **See-through for a moving target** (§3): the card turns see-through when the unit's ring box or
+  the hand's bounds meet it. For a `UNIT` aim it turns back only once the ring's box grown by 8 dp
+  and the hand's bounds are clear of it. This is a band of hysteresis, so a unit that walks along
+  the card's edge does not flicker the card. Tiles and controls keep §3's rule unchanged.
+- **No refit for a moving ring.** In `_update`, a change of the ring's box alone redraws the ring,
+  replans the hand and runs the see-through test. On a see-through flip only the card's theme
+  variation and mouse filters change. The card's layout (`_fit_card`) runs only on a reshape (§1's
+  triggers, a new step, the buttons, a fold). This fixes the per-frame refit of a tile beat during
+  a pan as well.
+- **§5's target rule** (a step's target must be a visible, enabled control or a tile) gains "or a
+  unit the resolver holds". A `UNIT` step with no unit shows the card alone, so no step starts with
+  a ring on nothing.
+- **No unit, no ring:** with no candidate, or a held unit whose `tap_point` is `INF` this frame,
+  the ring box is empty and the hand is `NONE`. This is exactly today's behaviour for these beats:
+  the card alone. The card never waits for a unit and never blocks the beat.
+- The ring may trail its rig by one frame where the mark's `_process` runs before the layer's. At
+  the speeds of the game that is under 2 px. The bot and the tests read after a frame.
+
+#### 13.6 Decision: the six beats (content, P593b-2)
+| Beat | Lead-ins | Final target |
+| --- | --- | --- |
+| basics `groups` | `CONTROL AllArmy`, `SELECTED rifle_squad`; a drawer-closing step before it if the sweep finds the column hidden upright | `CONTROL AddGroup` (kept) |
+| basics `attack` | `CONTROL AllArmy`, `SELECTED` (the army type), where the sweep finds the army unselected after `incoming` | `UNIT` `ENEMY`, any type, `NEAREST_CAMERA`, `TAP` |
+| air `tap-air` | none | `UNIT` `OWN` `fossil_fighter`, `NEWEST` |
+| air `home` | `UNIT` `OWN` `fossil_fighter`, `NEWEST`, `SELECTED fossil_fighter` | `CONTROL Home` (kept) |
+| support `select-truck` | none | `UNIT` `OWN` `fossil_shot_truck`, `NEWEST` |
+| support `mine` | `UNIT` `OWN` `fossil_shot_truck`, `NEWEST`, `SELECTED fossil_shot_truck` | `CONTROL Mine` (kept) |
+
+Beat ids, conditions, covers, budgets and the scripted enemies' `trigger_beat` ids (`groups`,
+`home`) are unchanged. ai-dev may choose another pick or type where the sweep shows a better
+target. The table is the default, and the PR says why for any change.
+
+#### 13.7 Decision: the bot and the proof
+- **`TutorialBot`** taps a `UNIT` step as a finger would. If `mark.target_in_field()` is false, it
+  centres the camera on the unit's tick position (as `_tap_ground` does) and waits one frame. Then
+  it sends one `TAP` gesture at `mark.target_point()` through the controller. A step that does not
+  pass (a lead-in) or a beat that does not end after the tap is told in `ringless`.
+  - For `attack` the army is selected first (by the lead-in, or by the bot's own `select_all_army`
+    where the data has none). The tap must send an `ATTACK` whose `target_id` is
+    `mark.target_unit()`. That proves the ring is on an enemy the Picker takes.
+  - The bot's own `_select` and `_attack` picks stay for beats without a `UNIT` anchor.
+- **The proof of the body, not the shadow:** in the chain sweep, a pushed screen touch (viewport
+  input, not the controller) at `target_point()` selects the fighter. The test also asserts that
+  the point is the hull's (`AirLayer`'s pick point) and stands `rig.lift` times the zoom above the
+  shadow's.
+- **View only** (§9) still holds: the guide sends nothing. P595's view-only run compares command
+  logs, and the bot's `ATTACK` names the unit id, not a pixel, so the log does not depend on
+  interpolation.
+
+#### 13.8 The lead's constraints, as built into this decision
+1. **Snapshot and accessors only.** The resolver reads the published `MatchSnapshot` and the
+   interpolated points through `UnitLayer.tap_point` and `AirLayer.tap_point`, never a layer's
+   internals and never the World (13.3; test: the World swap).
+2. **No per-frame allocation.** Lookups happen only on a new snapshot, a new selector or a new
+   match (one scan each), and the row is reused while `rows_version` holds. Per frame there is one accessor call (the layer
+   `WorldSort.is_flyer` names), the projection and arithmetic (13.3; test: `Performance.OBJECT_COUNT` unchanged across 60 frames of a moving
+   target, and the scan counter moves at most once per snapshot or new selector).
+3. **Deterministic pick.** Int squared distances from tick positions, ties by the lower id; the
+   hold is added (13.4; tests: crafted ties, both rules).
+4. **Fallback.** No unit gives no ring and no hint, exactly as today. A unit that exists but is off
+   the screen gets the edge pin and the drag (13.5).
+5. **Size.** P593b-0 (running now) moves the card layout (`_fit_card`, `_layout_card` and the dock
+   glue) into `GuideCardFit.gd`, so `CoachMark.gd` is at most 900 lines. P593b-1 stays under about
+   250 production lines and adds at most about 40 to `CoachMark.gd`.
+
+#### 13.9 Alternatives considered
+- **One `GuideAnchor` with one entry point** (`resolve(aim, target, camera, hud_root, view, safe,
+  dp, out)`), folding `GuideRing.box`'s anchor match and `GuideHintPlan`'s tile point into one
+  place, with `UNIT` as one more branch. Not now. It moves about 100 lines of reviewed code (P591,
+  P592) and costs about 200 changed lines before `UNIT` adds anything. That breaks P593b-1's
+  budget, and today there is no second user of the fold. The resolver keeps `UNIT`'s state in one
+  class, and the two pure functions each read its result in one branch. If a fourth anchor kind
+  comes (a building by selector, say), the fold gets its own refactor row first.
+- **Tile anchors refreshed by the lesson** (write the unit's tile into the beat at runtime). This
+  was rejected. It writes a shared Resource, the ring would jump tile by tile, and an aircraft's
+  body is not on its tile.
+- **Ring the selection instead of a unit** (wait until the player has selected something). This
+  was rejected. The beats exist to teach the selection.
+- **Read the `PickSnapshot`** the Picker fills. This was rejected. It is filled per tap for the
+  controller, not per frame, and a second filler would touch every row in every frame (150 rows,
+  rule 6).
+- **Re-pick on every snapshot** (the outline as written). This was rejected for the hop described
+  in 13.4.
+- **Nearest to the own army** for `attack`. This was rejected for now. The camera's centre is what
+  the player looks at, and it needs no second scan. A `Pick` value can be appended later.
+
+#### 13.10 Consequences
+- Every beat that asks for a map action has a frame and a hand. P594's `NO_HINT` list goes
+  (P593b-2).
+- The guide reads two more view nodes (`UnitLayer`, `AirLayer`) through one method each. A change
+  to the pick point (a new lift rule) must keep `tap_point` equal to the pick fill. A test pins
+  both layers against their `fill_pick_snapshot` for every row.
+- A moving ring no longer refits the card. Tile beats gain this during a pan too.
+- `CoachMark` keeps its glue role. New anchor logic lives in `GuideUnitAnchor`, `GuideRing` and
+  `GuideHintPlan`.
+- The held unit can differ from the one nearest now (after a pan). That is accepted: the frame
+  stays on one unit until it is gone.
+- HOW_TO_PLAY: `menus-tutorial-guide` gains one sentence (P593b-1): the frame can stand on a unit
+  and follow it; on an aircraft it is on the aircraft, not its shadow.
 
 ## Consequences
 - The card no longer jumps. Its place depends only on the screen, the drawer and the full map.
