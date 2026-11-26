@@ -113,3 +113,13 @@ func test_the_final_step_copies_the_beats_anchor_and_gesture() -> void:
 	assert_int(step.anchor).is_equal(TutorialBeatDef.Anchor.CONTROL)
 	assert_int(step.kind).is_equal(TutorialConditions.Kind.BUILDING_PLACED)
 	assert_int(step.gesture).is_equal(TutorialBeatDef.Gesture.LONG_PRESS)
+
+
+func test_the_final_step_carries_the_unit_selector() -> void:
+	var beat: TutorialBeatDef = Lesson.beat("a", TutorialConditions.Kind.NEXT)
+	beat.anchor = TutorialBeatDef.Anchor.UNIT
+	beat.unit = TutorialUnitPickDef.new()
+	beat.unit.pick = TutorialUnitPickDef.Pick.NEWEST
+	var step: TutorialLeadInDef = TutorialChain.final_step(beat)
+	assert_int(step.anchor).is_equal(TutorialBeatDef.Anchor.UNIT)
+	assert_object(step.unit).is_same(beat.unit)

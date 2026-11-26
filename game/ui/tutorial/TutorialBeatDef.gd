@@ -5,9 +5,9 @@ extends Resource
 ## Data only (`data/tutorial/`, CLAUDE.md rule 5): every timing and count is a field here.
 
 ## What `anchor` points the coach mark at: nothing (a card alone), a HUD control by node name, or a
-## world tile.
+## world tile, or a unit chosen by `unit` (ADR 0048 section 13).
 ## Append only: the values are stored in `data/tutorial/*.tres`.
-enum Anchor { NONE, CONTROL, TILE }
+enum Anchor { NONE, CONTROL, TILE, UNIT }
 
 ## The gesture the hand hint plays (ADR 0048 section 6). `AUTO` lets the mark choose: a tap on a
 ## control, a pinch for a zoom beat, a drag for a pan beat, otherwise none.
@@ -23,6 +23,8 @@ enum Gesture { AUTO, NONE, TAP, DOUBLE_TAP, LONG_PRESS, DRAG, BOX, PINCH_OUT, PI
 @export var anchor_control: StringName = &""
 ## The tile (`Anchor.TILE`).
 @export var anchor_tile: Vector2i = Vector2i.ZERO
+## The unit selector (`Anchor.UNIT` only; null on every other anchor).
+@export var unit: TutorialUnitPickDef = null
 ## The condition that ends the beat, and its parameters (see `TutorialConditions.Kind` for which
 ## each kind reads): a type id (any type when empty), a count, a tile rectangle, and one int (a zoom
 ## level, a drawer tab, a `HudState.Unfold`, a group slot).

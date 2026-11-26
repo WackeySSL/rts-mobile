@@ -513,7 +513,7 @@ Checked against the code (`main` at 59efa29b):
 #### 13.2 Decision: the data
 - **`TutorialBeatDef.Anchor` gains `UNIT`** (value 3, appended).
 - **The selector is a sub-resource**, `TutorialUnitPickDef` (`game/ui/tutorial/`, data only):
-  - `side: Side` (`OWN`, `ENEMY`; append only). `ENEMY` is any owner other than the local player
+  - `side: Whose` (`OWN`, `ENEMY`; append only). The enum is `Whose`, not `Side`, because a class-level `Side` collides with Godot's global `Side` enum and fails to parse. `ENEMY` is any owner other than the local player
     and other than 0.
   - `type_id: StringName`: one type, or any mobile type when empty.
   - `pick: Pick` (`NEAREST_CAMERA`, `NEWEST`; append only).
@@ -607,7 +607,7 @@ Checked against the code (`main` at 59efa29b):
 
 #### 13.5 Decision: the ring, the edge, the field and the card
 - **The ring** on a unit is the tile's ground ellipse (`_draw_ring`'s non-control branch), centred
-  on `point`, of `half` and at least 48 dp. It blinks, turns amber and doubles as §4 says.
+  on `point`, of `half` and at least 48 dp. As built the unit ring is square (a round ring of radius `half`), not the tile's 2:1 ellipse. It blinks, turns amber and doubles as §4 says.
 - **Off the screen:** a unit whose point is outside the safe rect gets its ring pinned to the
   nearest edge (`GuideRing.box`'s existing clamp). The pin slides along the edge as the unit moves.
 - **The field:** `in_field` is true when the point is inside the safe rect and under no rect of

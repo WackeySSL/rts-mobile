@@ -25,6 +25,7 @@ static func final_step(beat: TutorialBeatDef) -> TutorialLeadInDef:
 	step.anchor = beat.anchor
 	step.anchor_control = beat.anchor_control
 	step.anchor_tile = beat.anchor_tile
+	step.unit = beat.unit
 	step.kind = beat.kind
 	step.value = beat.value
 	step.type_id = beat.type_id

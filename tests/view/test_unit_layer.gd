@@ -394,6 +394,27 @@ func test_the_layer_draws_from_the_published_snapshot_and_never_reads_the_world(
 	assert_int(_extra_layer().rig_count()).is_equal(40)  # A layer made after the swap.
 
 
+func test_tap_point_is_the_point_the_picker_gives_each_shown_row_and_inf_for_the_rest() -> void:
+	_camera.position = Vector2(-300, 400)
+	_layer._process(0.0)
+	var pick: PickSnapshot = PickSnapshot.new()
+	_layer.fill_pick_snapshot(pick, 24.0)
+	var seen: int = 0
+	for row: int in pick.ids.size():
+		var at: Vector2 = _layer.tap_point(pick.ids[row])
+		if pick.pickable[row] == 0:
+			assert_that(at).is_equal(Vector2.INF)
+			continue
+		seen += 1
+		assert_that(_camera.world_to_screen(at)).is_equal_approx(
+			pick.screen_pos[row], Vector2(0.01, 0.01)
+		)
+	assert_int(seen).is_greater(0)
+	assert_that(_layer.tap_point(9999)).is_equal(Vector2.INF)  # Gone.
+	_runner.world = World.new()  # Never the World.
+	assert_that(_layer.tap_point(1)).is_not_equal(Vector2.INF)
+
+
 func _rig(row: int) -> Node2D:
 	return _layer.rig(row)
 
