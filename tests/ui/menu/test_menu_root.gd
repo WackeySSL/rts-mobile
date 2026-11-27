@@ -53,12 +53,14 @@ func _check_defaults() -> void:
 	assert_int(_stack.depth()).is_equal(1)
 	var main: MainMenu = _stack.current() as MainMenu
 	var enabled: Array[String] = []
-	for child: Node in main.column.get_children():
+	for child: Node in main._list.get_children():  # Continue is enabled, shown only with a file.
 		var button: Button = child as Button
 		if button != null and not button.disabled:
 			enabled.append(button.text)
 	assert_array(enabled).is_equal(["CONTINUE", "SKIRMISH", "TUTORIAL", "HOW TO PLAY", "SETTINGS"])
-	main.column.get_child(_index_of(main, "HOW TO PLAY")).emit_signal("pressed")
+	for button: Button in main.items():
+		if button.text == "HOW TO PLAY":
+			button.emit_signal("pressed")
 	assert_object(_stack.current()).is_instanceof(HowToPlayScreen)
 
 
@@ -171,14 +173,6 @@ func _close() -> void:
 	remove_child(_menu)
 	_menu.free()
 	_menu = null
-
-
-func _index_of(screen: MenuScreen, text: String) -> int:
-	for index: int in range(screen.column.get_child_count()):
-		var button: Button = screen.column.get_child(index) as Button
-		if button != null and button.text == text:
-			return index
-	return -1
 
 
 func _profile_with_window(size: Vector2i) -> UiMetrics:

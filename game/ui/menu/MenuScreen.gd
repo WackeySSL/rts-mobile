@@ -18,6 +18,8 @@ var see_through: bool = false
 var column: VBoxContainer
 var scroll: ScrollContainer
 var slot: AdBannerSlot
+## True: the column sits at the top left of the scroll, not centred (the main menu's, P664).
+var top_left: bool = false
 
 var _frame: MarginContainer
 var _gap: MarginContainer
@@ -48,11 +50,12 @@ func _ready() -> void:
 	_gap = MarginContainer.new()
 	_gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_gap)
-	var centre: CenterContainer = CenterContainer.new()
+	var centre: Container = VBoxContainer.new() if top_left else CenterContainer.new()
 	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gap.add_child(centre)
 	column = VBoxContainer.new()
 	column.name = &"Column"
+	column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	centre.add_child(column)
 	slot = AdBannerSlot.new()
 	slot.name = &"AdBannerSlot"

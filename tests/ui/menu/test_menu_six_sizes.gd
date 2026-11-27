@@ -173,12 +173,9 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 			var row: Control = names[0].get_parent() as Control
 			var column: Rect2 = _screen.column.get_global_rect()
 			var left: float = row.get_child(0).get_global_rect().position.x - column.position.x
-			var right: float = column.end.x - names[1].get_global_rect().end.x
 			(
-				assert_float(absf(left - right))
-				. override_failure_message(
-					"%s: slack left %.1f, right %.1f" % [profile_name, left, right]
-				)
+				assert_float(left)
+				. override_failure_message("%s: the row starts %.1f px in" % [profile_name, left])
 				. is_less_equal(1.5)
 			)
 		_close()

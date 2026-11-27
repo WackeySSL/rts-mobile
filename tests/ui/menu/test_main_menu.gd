@@ -106,10 +106,7 @@ func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes
 				. is_true()
 			)
 		var shown: int = 0
-		for child: Node in _main.column.get_children():
-			var button: Button = child as Button
-			if button == null or not button.visible:
-				continue
+		for button: Button in _main.items():
 			shown += 1
 			(
 				assert_float(button.get_global_rect().size.y)
@@ -295,11 +292,7 @@ func _close() -> void:
 
 
 func _buttons() -> Array[Button]:
-	var found: Array[Button] = []
-	for child: Node in _main.column.get_children():
-		if child is Button and (child as Button).visible:
-			found.append(child as Button)
-	return found
+	return _main.items()
 
 
 func _collect(node: Node, into: Array[String]) -> void:

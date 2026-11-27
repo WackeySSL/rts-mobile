@@ -14,6 +14,11 @@ const TUTORIAL: StringName = &"MAIN_TUTORIAL"
 const HOW_TO_PLAY: StringName = &"MAIN_HOW_TO_PLAY"
 const SETTINGS: StringName = &"MAIN_SETTINGS"
 const RANK: StringName = &"MAIN_RANK"
+const CARD: StringName = &"MAIN_CARD"
+const NEXT: StringName = &"MAIN_NEXT"
+const UNLOCK_MAP: StringName = &"MAIN_UNLOCK_MAP"
+const UNLOCK_OPPONENT: StringName = &"MAIN_UNLOCK_OPPONENT"
+const UNLOCK_DONE: StringName = &"MAIN_UNLOCK_DONE"
 const XP: StringName = &"MAIN_XP"
 const XP_TOP: StringName = &"MAIN_XP_TOP"
 const VERSION: StringName = &"MAIN_VERSION"
@@ -34,6 +39,11 @@ const ENGLISH: Dictionary[StringName, String] = {
 	HOW_TO_PLAY: "HOW TO PLAY",
 	SETTINGS: "SETTINGS",
 	RANK: "RANK %d  %s",
+	CARD: "COMMANDER",
+	NEXT: "NEXT UNLOCK",
+	UNLOCK_MAP: "%s at rank %d",
+	UNLOCK_OPPONENT: "%s opponent at rank %d",
+	UNLOCK_DONE: "Everything is open.",
 	XP: "%d / %d XP",
 	XP_TOP: "%d XP",
 	VERSION: "v%s · © AppCode ApS",

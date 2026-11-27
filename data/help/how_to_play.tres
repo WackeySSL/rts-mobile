@@ -974,7 +974,7 @@ body = "Press Back on the main menu and the game asks if you want to quit. Stay,
 script = ExtResource("3_ent")
 id = &"menus-main"
 title = "The main menu"
-body = "The main menu has one column of big buttons: Continue, when a game can be resumed, then Skirmish, Tutorial, How to play and Settings. Under them are your rank and a bar that fills as you earn XP. On a short screen the column scrolls."
+body = "The main menu is a numbered list of big buttons, each with its arrow: Continue, when a game can be resumed, then Skirmish, Tutorial, How to play and Settings. The numbers count the buttons shown. Your commander card has your rank with its stripes, a bar that fills as you earn XP and the next map or computer opponent you will open, with its rank. It stands beside the list where the screen is wide enough, and above it where it is not. On a short screen the column scrolls."
 
 [sub_resource type="Resource" id="e144"]
 script = ExtResource("3_ent")

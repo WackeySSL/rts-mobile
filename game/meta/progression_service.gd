@@ -89,6 +89,19 @@ func unlock_rank(kind: StringName, id: StringName) -> int:
 	return 1
 
 
+## The nearest unlock above the current rank, as its {rank, kind, id} row, or {} when none is left.
+func next_unlock() -> Dictionary:
+	var best: Dictionary = {}
+	if _def == null:
+		return best
+	var current: int = rank()
+	for row: Dictionary in _def.unlocks:
+		var at: int = int(row[&"rank"])
+		if at > current and (best.is_empty() or at < int(best[&"rank"])):
+			best = row
+	return best
+
+
 func is_unlocked(kind: StringName, id: StringName) -> bool:
 	return rank() >= unlock_rank(kind, id)
 
