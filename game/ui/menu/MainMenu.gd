@@ -128,8 +128,8 @@ func _refresh() -> void:
 			var first: bool = shown == 1
 			button.theme_type_variation = &"MenuRowOn" if first else &"MenuRow"
 			_numbers[button].theme_type_variation = &"MenuNumberOn" if first else &"MenuNumber"
-			_arrows[button].modulate = (
-				_arrows[button].get_theme_color(&"ground_deep", TOKENS) if first else Color.WHITE
+			_arrows[button].modulate = _arrows[button].get_theme_color(
+				&"ground_deep" if first else &"text", TOKENS
 			)
 	_footer.disabled = not routes.has(MenuRoutes.RANK)
 	_refresh_profile()
