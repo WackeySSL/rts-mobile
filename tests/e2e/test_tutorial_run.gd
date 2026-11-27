@@ -81,8 +81,12 @@ func test_the_bot_follows_the_selection_lead_ins_of_support_and_air() -> void:
 		assert_str(result["failure"]).override_failure_message(label).is_empty()
 		assert_bool(result["done"]).override_failure_message(label).is_true()
 		assert_array(result["ringless"]).override_failure_message(label).is_empty()
-		var expected: int = 3 if id == &"support" else 1  # sell, mend, repair; board.
+		# sell, mend, repair, then the truck for mine; board, then the fighter for home.
+		var expected: int = 4 if id == &"support" else 2
 		assert_int(result["selection_steps"]).override_failure_message(label).is_equal(expected)
+		# The ring stands on a unit twice per lesson (the unit beat, the lead-in before the control),
+		# and the bot taps it each time.
+		assert_int(result["unit_taps"]).override_failure_message(label).is_equal(2)
 		CommandQueue.clear()
 		_main.get_parent().remove_child(_main)
 		_main.free()
@@ -94,7 +98,8 @@ func test_the_bot_follows_the_selection_lead_ins_of_basics() -> void:
 	assert_str(result["failure"]).is_empty()
 	assert_bool(result["done"]).is_true()
 	assert_array(result["ringless"]).is_empty()
-	assert_int(result["selection_steps"]).is_equal(2)  # clear, stop.
+	assert_int(result["selection_steps"]).is_equal(4)  # clear, stop, groups, attack.
+	assert_int(result["unit_taps"]).is_equal(1)  # The nearest enemy of `attack`.
 
 
 func test_the_bot_finishes_strikes() -> void:
@@ -176,6 +181,12 @@ func _finishes(id: StringName, think_ticks: int = 0) -> Dictionary:
 	_assert_order(lesson, result)
 	# A beat's target is on the screen when its card shows (TUTORIAL_AUTHORING): no ring is missing.
 	assert_array(result["ringless"]).override_failure_message(String(id)).is_empty()
+	# The bot taps the ring on each unit step: the attack's enemy, the fighter, the shot truck (their
+	# selection lead-ins are already met by the beat before).
+	var taps: int = 0 if id == &"strikes" else 1
+	assert_int(result["unit_taps"]).override_failure_message(String(id) + " unit taps").is_equal(
+		taps
+	)
 	return result
 
 

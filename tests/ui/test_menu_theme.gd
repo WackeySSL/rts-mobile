@@ -184,3 +184,20 @@ func test_the_scrim_gradient_is_the_ground_token() -> void:
 	for i: int in 3:
 		assert_str(Color(stops[i], 1.0).to_html(false)).is_equal(ground.to_html(false))
 		assert_float(stops[i].a).is_equal_approx(alphas[i], 0.001)
+
+
+## P663: text over the scrim drawn over a white pixel reads (4.5:1) where the scrim is not clear, so
+## the test holds for any picture. The clear stop carries no text.
+func test_text_over_the_scrim_over_white_reads() -> void:
+	var theme: Theme = HudThemes.source()
+	var text: Color = theme.get_color(&"text", &"HudTokens")
+	var texture: GradientTexture2D = theme.get_icon(&"shade", &"MenuScrim") as GradientTexture2D
+	for stop: int in 2:
+		var shade: Color = texture.gradient.colors[stop]
+		var over_white: Color = Color.WHITE.lerp(Color(shade, 1.0), shade.a)
+		var ratio: float = _contrast(text, over_white)
+		(
+			assert_float(ratio)
+			. override_failure_message("stop %d: %.2f:1" % [stop, ratio])
+			. is_greater_equal(MIN_CONTRAST)
+		)

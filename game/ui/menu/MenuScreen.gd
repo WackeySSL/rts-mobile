@@ -13,6 +13,8 @@ const BUTTON_DP: Vector2 = Vector2(0.0, 48.0)
 
 ## The opaque colour behind the column; the stack gives it (from the scene).
 var backdrop_color: Color
+## The stack draws a picture under every screen, so the screen adds no colour of its own.
+var see_through: bool = false
 var column: VBoxContainer
 var scroll: ScrollContainer
 var slot: AdBannerSlot
@@ -24,12 +26,13 @@ var _gap: MarginContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	var backdrop: ColorRect = ColorRect.new()
-	backdrop.name = &"Backdrop"
-	backdrop.color = backdrop_color
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(backdrop)
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if not see_through:
+		var backdrop: ColorRect = ColorRect.new()
+		backdrop.name = &"Backdrop"
+		backdrop.color = backdrop_color
+		backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(backdrop)
+		backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_frame = MarginContainer.new()
 	_frame.name = &"Frame"
 	add_child(_frame)
