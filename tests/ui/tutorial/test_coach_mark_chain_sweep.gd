@@ -24,6 +24,16 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const TOLERANCE_PX: float = 0.5
 const OVERLAP_PX2: float = 4.0
 const GROUPS: int = 3
+## The beats with a UNIT step (a beat's own or a lead-in), each touch-proved at every size.
+const UNIT_BEATS: Array[String] = [
+	"basics/attack", "air/tap-air", "air/home", "support/select-truck", "support/mine"
+]
+## The "lesson/beat WxH" pairs where the unit stands under the card's Next button, so the finger
+## pans first. OPEN DESIGN GAP: the card's buttons (Next, Skip, the tab) take a touch even when
+## the card is see-through, and the guide does not count them as hiding the field, so a unit under
+## one is "in the field" yet cannot be tapped. The sweep pans like a finger; this list pins where.
+## It must match exactly: a new pair is a new overlap, a missing one a stale entry.
+const BUTTON_PANS: Array[String] = ["support/mine 2400x912"]
 const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Which selection a start state holds: nothing, the player's units, one building (`BUILDINGS` plus
 ## its index in the player's list).
@@ -56,6 +66,9 @@ var _director: TutorialDirector
 var _selection: SelectionModel
 var _camera: RtsCamera
 var _air: AirLayer
+var _proofs: Array[String] = []  ## The "lesson/beat WxH" of every touch proof that ran.
+var _button_pans: Array[String] = []  ## The same, where the unit stood under a card button.
+var _proof_key: String = ""
 var _sent: Array[Command] = []  ## What the controller sent since the last touch proof.
 var _own: PackedInt32Array = PackedInt32Array()
 var _own_buildings: PackedInt32Array = PackedInt32Array()
@@ -97,6 +110,8 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 	var found: Array[String] = []
 	var judged: int = 0
 	var chained: int = 0
+	_proofs.clear()
+	_button_pans.clear()
 	for lesson: TutorialLessonDef in _lessons():
 		for profile: UiMetrics in profiles:
 			await _open(lesson, profile)
@@ -119,6 +134,19 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 			_close()
 	assert_int(judged).is_greater(100)
 	assert_int(chained).override_failure_message("no chained beat was driven").is_greater(8)
+	var missing: Array[String] = []
+	for profile: UiMetrics in profiles:
+		for beat_pair: String in UNIT_BEATS:
+			var key: String = "%s %dx%d" % [beat_pair, profile.window_size.x, profile.window_size.y]
+			if not _proofs.has(key):
+				missing.append(key)
+	assert_array(missing).override_failure_message("no touch proof: %s" % [missing]).is_empty()
+	var pans: Array[String] = []
+	for key: String in _button_pans:
+		if not pans.has(key):
+			pans.append(key)
+	pans.sort()
+	assert_array(pans).override_failure_message("button pans %s" % [pans]).is_equal(BUTTON_PANS)
 	for line: String in found:
 		print("CHAIN ", line)
 	print("CHAIN judged ", judged, " chained ", chained)
@@ -243,6 +271,9 @@ func _drive(
 			break
 		steps += 1
 		if step.anchor == TutorialBeatDef.Anchor.UNIT:
+			_proof_key = (
+				"%s/%s %dx%d" % [lesson.id, beat.id, profile.window_size.x, profile.window_size.y]
+			)
 			lines.append_array(await _touch_proof("%s step %d" % [label, steps - 1], beat, step))
 			if beat.lead_in.has(step) and _director.active_target() != step:
 				continue  # The touch passed the lead-in step: the next step is judged.
@@ -570,9 +601,12 @@ func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef)
 	var id: int = unit.unit_id
 	if id < 0:
 		return lines  # `_ring_problems` told it.
+	_proofs.append(_proof_key)
 	# A finger pans a unit that is out of the field, or under one of the card's buttons (they take
 	# a touch even when the card is see-through), to where it can be tapped: first centred, then
 	# on the lower part of the screen.
+	if unit.in_field and _under_a_card_button(unit.point):
+		_button_pans.append(_proof_key)
 	var view: Rect2 = get_viewport().get_visible_rect()
 	for want: Vector2 in [Vector2(0.5, 0.5), Vector2(0.5, 0.65), Vector2(0.25, 0.65)]:
 		if unit.in_field and not _under_a_card_button(unit.point):

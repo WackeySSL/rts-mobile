@@ -4,8 +4,9 @@ extends GdUnitTestSuite
 ## `test_lesson_data.gd`, which is at gdlint's public-method cap:
 ## - every `UNIT` anchor, on a beat or a lead-in, carries a selector, and no lesson has a problem;
 ## - each of the six beats has the lead-ins and the target of the table;
-## - the beats keep their ids, order, conditions and budgets (the scripted enemies' `trigger_beat`
-##   ids `groups` and `home` among them).
+## - the beats keep their ids, conditions and budgets, and `groups` and `home` keep their place and
+##   covers;
+## - every `trigger_beat` of the scripted enemies names a beat of its lesson.
 
 const LESSON_DIR: String = "res://data/tutorial/"
 const LESSONS: Array[StringName] = [&"basics", &"strikes", &"air", &"support"]
@@ -99,6 +100,31 @@ func test_the_beats_keep_their_ids_conditions_and_budgets() -> void:
 		assert_int(beat.budget_s).override_failure_message(label).is_equal(table[label][1])
 	assert_int(_beat(&"basics", &"groups").value).is_equal(1)
 	assert_int(_beat(&"basics", &"groups").count).is_equal(1)
+
+
+## `groups` and `home` are the beats the scripted enemies wait for: a rename or a move breaks them.
+func test_the_trigger_beats_of_the_enemies_exist_and_the_two_unit_beats_hold_their_place() -> void:
+	var seen: int = 0
+	for id: StringName in LESSONS:
+		var enemy: TutorialScriptDef = _lesson(id).enemy
+		var ids: Array[StringName] = []
+		for beat: TutorialBeatDef in _lesson(id).beats:
+			ids.append(beat.id)
+		for step: TutorialStepDef in enemy.steps:
+			if step.trigger_beat != &"":
+				seen += 1
+				(
+					assert_bool(ids.has(step.trigger_beat))
+					. override_failure_message("%s: trigger_beat %s" % [id, step.trigger_beat])
+					. is_true()
+				)
+	assert_int(seen).is_equal(3)  # groups, home, sell-last.
+	var groups: TutorialBeatDef = _beat(&"basics", &"groups")
+	assert_int(_lesson(&"basics").beats.find(groups)).is_equal(20)
+	assert_array(groups.covers).is_equal([&"groups-save", &"groups-overwrite", &"groups-column"])
+	var home: TutorialBeatDef = _beat(&"air", &"home")
+	assert_int(_lesson(&"air").beats.find(home)).is_equal(5)
+	assert_array(home.covers).is_equal([&"orders-home"])
 
 
 func _assert_army_lead(lead: TutorialLeadInDef) -> void:
