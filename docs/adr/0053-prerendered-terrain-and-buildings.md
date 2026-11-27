@@ -13,10 +13,16 @@
 - **Team colour** on the 3D buildings is put in by the game when a match starts. It is exact to
   about 3 of 255 colour steps, and it costs nothing while you play.
 - **The game gets about 7.5 MB bigger** (APK and web).
-- Seven questions are open (at the end). The status stays **proposed** until you answer them.
+- You answered all seven questions with the recommended answer (at the end).
 
-Status: **proposed, 2026-11-27**, by the architect in row P654 on branch
-`claude/p654-prerender-adr` (base `main` at 7648d987). Plan: `docs/plans/2026-11-27-prerender.md`.
+Status: **accepted, 2026-11-27.** Michael's answer to the seven questions (2026-11-27, the lead's
+AskUserQuestion), verbatim: "Godkend alle 7 (anbefalet)", so the recommended answer to questions 1 to 7. Proposed
+the same day by the architect in row P654 on branch `claude/p654-prerender-adr` (base `main` at
+7648d987), and accepted in that PR; the planned acceptance row P654b was folded into it. Plan:
+`docs/plans/2026-11-27-prerender.md`.
+
+**Acceptance note.** CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (approved by Michael's answer 2), before any PNG art merges (P656 / P644). No row edits CLAUDE.md. The tool rows P656a and P656b may merge before
+that edit; no PNG frame or kit tile may.
 Evidence: two prototype branches that are never merged, and that stay the reference:
 - `claude/p653-prerender-prototype` (head 5d2fa55d), `docs/proto/p653/README.md`: a tank, a 3x3
   building and a terrain patch, pre-rendered from the repo's own model data.
@@ -35,10 +41,11 @@ Evidence: two prototype branches that are never merged, and that stay the refere
 4. 2026-11-27: "Ironward (Recommended)". Nordværn is renamed Ironward and Facet stays. This ADR
    says Ironward. The ids (`fossil`, `renew`) and file names do not change. Row P657 renames the
    existing text.
+5. 2026-11-27, to this ADR's seven questions: "Godkend alle 7 (anbefalet)" (approve all 7, recommended).
 
-His answers settle the scope (§1) and the reversal (§2). They do not settle the density, the
-recolour route, the bake toolchain, the CLAUDE.md lines, the size or the order of the building
-batches. Those are this ADR's proposals, and the questions at the end ask about them.
+Answers 1 to 4 settle the scope (§1) and the reversal (§2). Answer 5 settles the rest: the
+method (density, recolour, bake toolchain), the CLAUDE.md lines, the size, roads as decoration,
+the order of the building batches, the SVG units' look and the ground bands.
 
 **Form: a new ADR, not an amendment of ADR 0050.** The repo uses an amendment section for a
 dated change confined to one part of an accepted ADR. That covers ADR 0004's and ADR 0012's
@@ -60,8 +67,8 @@ ADR 0050 itself followed the same rule when it amended ADR 0023 §5's pipeline f
 - ADR 0050 §1's building budget: the polygon column, for pre-rendered buildings. It is replaced
   by §7's triangle cap. The byte column stays.
 - ADR 0050 §5's row "Buildings' SVG", and the Consequences' "There is no PNG path to build".
-- ADR 0023 §5 (SVG frames from `tools/artgen`), for terrain and buildings. Its note is placed at
-  acceptance (row P654b), as P621b placed ADR 0050's.
+- ADR 0023 §5 (SVG frames from `tools/artgen`), for terrain and buildings. Its status note is
+  placed in this PR, at acceptance, as P621b placed ADR 0050's.
 
 **Holds unchanged:**
 - ADR 0050 §8 (one coherent look, the same-scene check) and its frozen `same_scene.tres` (A8).
@@ -373,15 +380,16 @@ No sim rule, Command, `STATE_FORMAT`, hash, `data/` value or balance number chan
   - `assets/CREDITS.md` gets one own-work row per group: the kit, each building batch and the
     cards. Each row names the source model files and "rendered by tools/prerender", with the
     licence "All rights reserved (AppCode ApS)".
-- **CLAUDE.md lines that need Michael's yes** (question 2). The lead edits CLAUDE.md, not a row:
+- **CLAUDE.md lines, approved by Michael's answer 2** (2026-11-27). The lead edits CLAUDE.md, not
+  a row:
   - **Legal,** "Assets: only SVG authored in this repo …": add "or PNG rendered in this repo by
     `tools/prerender/` from the repo's own model data (ADR 0053)".
   - **Layout:** add `tools/prerender/`, the bake of terrain and buildings, 3D models to PNG frames
     (ADR 0053).
   - **Stack:** add one clause saying Forward+ over Vulkan is used only inside the offline bake
     tool, and that the game stays Compatibility.
-  Until he says yes, no PNG frame or kit tile is merged. The tool rows (P656a, P656b) can merge
-  before that.
+  CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (approved by Michael's answer 2), before any PNG art merges (P656 / P644). The tool rows (P656a,
+  P656b) can merge before that.
 - **The `svg-art-style` skill** (ADR 0050 §4's "Stand-alone pictures" bullet, if P630b applied
   it) gets a matching note through the lead. No skill is edited in this PR.
 
@@ -437,7 +445,7 @@ No sim rule, Command, `STATE_FORMAT`, hash, `data/` value or balance number chan
     terrain.
 - **Roads are decoration** in a map look's decor list, under `assets/art/terrain/looks/`. They do
   not change movement, because the sim has no road terrain. A road that sped units up would be a
-  sim and balance change for a later phase (question 4). `HOW_TO_PLAY.md` says roads are only
+  sim and balance change for a later phase (question 4, answered: decoration only). `HOW_TO_PLAY.md` says roads are only
   looks.
 
 ### 8. Same-scene coherence with SVG units on pre-rendered terrain (ADR 0050 §8)
@@ -536,21 +544,29 @@ judges the look in P659.
 - **Code-built meshes per building** (P655's `DetailTank.gd`). Rejected for production: art
   belongs in reserved data, and a 1,200-line file per model fails the lint and the review.
 
-## Questions for Michael (open; recommended answer first)
+## Questions for Michael (answered 2026-11-27: "Godkend alle 7 (anbefalet)")
 1. **Accept this ADR as written**: 1x only, team colour by one GPU pass at match start, a pinned
    bake container, and CI checking hashes without re-rendering. Recommended: yes.
+   **Answered:** "Godkend alle 7 (anbefalet)". Accepted as written.
 2. **CLAUDE.md**: allow "PNG rendered in this repo by `tools/prerender/` from our own model data"
    in Legal, add `tools/prerender/` to Layout, and note in Stack that Forward+ is used only in the
    bake tool (§6). Recommended: yes. The lead edits CLAUDE.md.
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes; the lead edits the three lines before any PNG art merges
+   (P656 / P644).
 3. **Size**: the APK and the web build grow by about 7.5 MB, capped at 10 MB. Recommended: yes.
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes: about +7.5 MB, at most +10 MB.
 4. **Roads**: decoration only in the map looks, with no speed change (recommended). The
    alternatives are no roads now, or later as a real terrain with a speed change (a sim and
    balance change, a later phase).
+   **Answered:** "Godkend alle 7 (anbefalet)". Roads are decoration only (P656f).
 5. **The Facet buildings and the small buildings wait for your look check** (P645 after P659), so
    nothing is made twice if you say no to 3D buildings. Recommended: yes.
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes: P645-P647 wait for P659.
 6. **The SVG unit restyle toward P655** (P658, one row for all 18 detail-2 models): darker
    gunmetal bodies, team colour on the turret and the skirt or side panels, a gun 0.2 tile longer;
    Ironward first, Facet in its own white and graphite. The gate measure already passes every
    frozen same-scene band (§1), so no band moves. Recommended: yes.
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes: P658's steel look, as one row.
 7. **The ground in the same-scene check** gets its own bands (§8): calmer than the units, at most
    5 % of it in the orange or blue hue, and no magenta. Recommended: yes.
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes: separate, calmer ground bands in `same_scene_ground.tres`.

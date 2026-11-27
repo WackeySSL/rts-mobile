@@ -45,6 +45,11 @@ start. Units stay generator SVG under this ADR as amended. §8, the amendment's 
 budget for buildings and §6 still bind the pre-rendered art. Until ADR 0053 is accepted, this ADR
 stands as written. No accepted text changed.
 
+Status note (2026-11-27, P654, acceptance): ADR 0053 is **accepted** (Michael, verbatim:
+"Godkend alle 7 (anbefalet)"). From now on terrain and buildings are pre-rendered PNG from our own 3D model
+data, and §2's first bullet and §4's "Stand-alone pictures" bullet no longer bind those two
+classes. Units stay generator SVG under this ADR as amended. No accepted text changed.
+
 ## Michael's answers (2026-11-24)
 Verbatim: "ja til alle 4, men vi skal have afgjort om det er figma Ai der vinder, vi skal have en
 helhed i grafikken hele vejen rundt så det virker gennemarbejdet og ikke tilfældigt" (yes to
@@ -192,6 +197,7 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
 - 2026-11-27 (P654): ADR 0053 (proposed) would make terrain and buildings pre-rendered PNG from
   our own 3D models, in place of this section's first bullet for those two classes. Units stay
   generator SVG. See the status note at the top.
+- 2026-11-27 (P654): ADR 0053 is accepted; the line above holds.
 
 ### 3. Fixed faction colours and a team marker (replaces ADR 0049 question 5)
 - **The faction colour is a fixed material**, never replaced:

@@ -1,10 +1,10 @@
 ---
 name: project-prerender-decisions
-description: ADR 0053 PROPOSED 2026-11-27 (P654): pre-rendered 3D terrain + buildings at 1x, SVG units for now, bake-time GPU recolour; plan docs/plans/2026-11-27-prerender.md rows P656a-P659
+description: ADR 0053 ACCEPTED 2026-11-27 in P654 ("Godkend alle 7 (anbefalet)"): pre-rendered 3D terrain + buildings at 1x, SVG units for now, bake-time GPU recolour; plan docs/plans/2026-11-27-prerender.md rows P656a-P659
 metadata:
   type: project
 ---
-# Pre-render (ADR 0053 PROPOSED, 2026-11-27, P654)
+# Pre-render (ADR 0053 ACCEPTED 2026-11-27 in P654 itself)
 
 - Branch `claude/p654-prerender-adr`, base 7648d987. Michael: "Trinvis: terræn + én detaljeret tank (Recommended)" (11-26), "3D til terræn + bygninger, SVG-enheder" and "Vi kan starte der og så kan tanks laves til 3D senere når jeg har set det?" (11-27, lead yes), "Ironward (Recommended)" (Nordværn renamed; ids unchanged; P657 renames old text).
 - New ADR, not an 0050 amendment: it reverses 0050 answer 1 for two art classes, adds a toolchain, a renderer outside Stack and CLAUDE.md lines. Notes placed in ADR 0050 (top + end of §2); ADR 0023 §5 note waits for acceptance (P654b).
@@ -18,3 +18,5 @@ metadata:
 - Pitfall: a CPU per-pixel recolour in GDScript of ~3 M keyed building texels per player is seconds on a phone; building texels measured from sheet canvases: 7.95 M (both factions, untrimmed, dmg2 at 0.75^2), 6.0 M keyed, SVG 1.38 MB.
 - P658 gate MET (throwaway on c09c91be): heavy_tank s3 iron #2B2E32/steel #5C6066/body #4A4D52 as NEW materials (team 43.2 %, spread 142.5, overlap 0.78 -> 0.685 with gun +0.2 tile); renew_tank t2 graphite #2B2E32/titanium #5C6066 (team 52.1 %). Binding: black_edge_max first (#212427 fails), light_left_min second, Ironward only (#25282B = -0.042): body tones >= ~#25282B. Longer barrel moving muzzle points = separate row.
 - Pitfall: the lead's brief said P658 is one row; I split it into six. Keep a row the brief defines as one row unless the 400-line rule forces a split, and name the split condition.
+- ACCEPTED 2026-11-27 (Michael "Godkend alle 7 (anbefalet)": method, CLAUDE.md lines, +7.5 MB cap 10, roads decoration, P645-P647 after P659, P658 steel look, separate calmer ground bands); P654b folded into P654; status notes in ADR 0023 (before "Decisions in short") and a second one in ADR 0050 (the proposed-time note left as written).
+- Pitfall: agents cannot edit CLAUDE.md (refused, even for the coordinator); approved CLAUDE.md lines go to the lead as exact wording in the hand-back, and the ADR/plan say "edited by the lead before any PNG art merges (P656 / P644)".
