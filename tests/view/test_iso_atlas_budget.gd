@@ -115,6 +115,13 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## keep their sizes, so the aircraft, which take a slot per player on a mirror page, add 0 on
 ## every page (measured with the old aircraft models in place: the same 2600 and 1478). Page 1 has
 ## left 836, 969 and 1048 rows; page 2 has left 984, 2106 and 2104.
+## P652 (team colour on the large panels, ADR 0050 amendment A2: the 18 detail-2 models paint `team`
+## where they painted `faction`) left the cross-faction page 1 at 2748 and page 2 at 2600, and the
+## mirror page 2 at 1478 and 1480. It moved the two mirror pages' page 1 from 2615 and 2536 to 2697
+## and 2596 (+82 and +60): five parts gain a key colour (the Bullhead's hull and the turrets of the
+## Mortar Rig, `renew_scout`, `renew_tank` and `renew_artillery`), and a frame that a key colour
+## touches is baked per player, so a mirror match bakes it twice. Page 1 has left 836 rows on the
+## cross-faction page, 887 on the Derrick League mirror and 988 on the Lumen Accord mirror.
 ## P641: 2744 + 4; P640: 2725 + 19; P639: 2731 - 6; P638: 2730 + 1; P280: 2628 + 102; P279: 2582
 ## + 46;
 ## P292: 2472 + 110; P291: 2367 +
@@ -122,19 +129,19 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
 const TODAY_CROSS: int = 2748
-## P641: 2615 + 0; P640: 2582 + 33; P639: 2582 + 0; P638: 2657 - 75; P280: 2552 + 105; P279: 2526
-## + 26;
+## P652: 2615 + 82; P641: 2615 + 0; P640: 2582 + 33; P639: 2582 + 0; P638: 2657 - 75;
+## P280: 2552 + 105; P279: 2526 + 26;
 ## P292: 2407 + 119; P291: 2279
 ## + 128;
 ## P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
-const TODAY_MIRROR_DERRICK: int = 2615
-## P641: 2525 + 11; P640: 2525 + 0; P639: 2598 - 73; P280: 2502 + 96; P279: 2435 + 67; P292: 2341
-## + 94;
+const TODAY_MIRROR_DERRICK: int = 2697
+## P652: 2536 + 60; P641: 2525 + 11; P640: 2525 + 0; P639: 2598 - 73; P280: 2502 + 96;
+## P279: 2435 + 67; P292: 2341 + 94;
 ## P291: 2266 + 75; P249: 2238 +
 ## 28
 ## (P245b: 2167 + 71; P239b: 2068 + 99).
-const TODAY_MIRROR_LUMEN: int = 2536
+const TODAY_MIRROR_LUMEN: int = 2596
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players. The packer fills shelves tallest first and never goes back to an
 ## earlier shelf, so a shadow added pushes shorter cells on and the trailing shelves grow. An
@@ -189,8 +196,8 @@ func test_the_cross_faction_page_at_full_scale_is_within_the_budget() -> void:
 	var other: Vector2i = _page(others)
 	_assert_within_budget("cross-faction in other triads", other)
 	assert_int(absi(other.y - page.y)).is_less_equal(OTHER_TRIADS_PX)
-	# The routes' interim colours (orange, Kobolt) and the coming defaults, Sne and Karmin (P632, ADR
-	# 0050 section 3): the page of the sentinel migration stays within the same 40 rows.
+	# The routes' default colours (orange, Kobolt: each side's own, ADR 0050 amendment A6) and
+	# another pair of triads: the page stays within the same 40 rows.
 	for pair: Array in [[0, 3], [6, 2]]:
 		var routes: Vector2i = _page([_art(&"fossil", pair[0]), _art(&"renew", pair[1])])
 		_assert_within_budget("cross-faction in triads %s" % [pair], routes)

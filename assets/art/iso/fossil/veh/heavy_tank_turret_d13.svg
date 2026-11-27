@@ -56,16 +56,16 @@
 <polygon points="107.3,32.5 105.6,34.6 105.6,31.5 107.3,29.4" fill="#C1B6A2" stroke="#736C60"/>
 <polygon points="105.6,34.6 101.4,33.8 101.4,30.6 105.6,31.5" fill="#FFF1D6" stroke="#736C60"/>
 <polygon points="103.1,28.5 107.3,29.4 105.6,31.5 101.4,30.6" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="107.2,51 88.4,73.5 88.4,64.1 107.2,41.6" fill="#C15317" stroke="#73320E"/>
+<polygon points="107.2,51 88.4,73.5 88.4,64.1 107.2,41.6" fill="#9A1F9A" stroke="#9A1F9A"/>
 <polygon points="98.2,61.8 97.4,62.7 97.4,53.3 98.2,52.4" fill="#000000" fill-opacity="0.25"/>
-<polygon points="88.4,73.5 61.7,68 88.4,64.1" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="80.4,45.4 107.2,41.6 88.4,64.1 61.7,68" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="88.4,73.5 61.7,68 88.4,64.1" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="80.4,45.4 107.2,41.6 88.4,64.1 61.7,68" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="71.4,56.3 98.2,52.4 97.4,53.3 70.7,57.2" fill="#000000" fill-opacity="0.25"/>
-<polygon points="145.6,58.9 126.9,81.5 126.9,72.1 145.6,49.5" fill="#C15317" stroke="#73320E"/>
+<polygon points="145.6,58.9 126.9,81.5 126.9,72.1 145.6,49.5" fill="#9A1F9A" stroke="#9A1F9A"/>
 <polygon points="136.6,69.8 135.9,70.7 135.9,61.3 136.6,60.4" fill="#000000" fill-opacity="0.25"/>
-<polygon points="126.9,81.5 88.4,73.5 88.4,64.1 126.9,72.1" fill="#FF6E1F" stroke="#73320E"/>
+<polygon points="126.9,81.5 88.4,73.5 88.4,64.1 126.9,72.1" fill="#D234D2" stroke="#9A1F9A"/>
 <polygon points="108.3,77.7 107.1,77.4 107.1,68 108.3,68.2" fill="#000000" fill-opacity="0.25"/>
-<polygon points="107.2,41.6 145.6,49.5 126.9,72.1 88.4,64.1" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="107.2,41.6 145.6,49.5 126.9,72.1 88.4,64.1" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="125.8,45.4 127,45.7 108.3,68.2 107.1,68" fill="#000000" fill-opacity="0.25"/>
 <polygon points="98.2,52.4 136.6,60.4 135.9,61.3 97.4,53.3" fill="#000000" fill-opacity="0.25"/>
 <polygon points="110.3,47.2 109,48.7 109,46.4 110.3,44.8" fill="#51574D" stroke="#30342E"/>

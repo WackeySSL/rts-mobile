@@ -11,14 +11,14 @@
 <polygon points="30.7,38.1 28.6,29.8 28.6,27.1 30.7,35.3" fill="#414A51" stroke="#1D2124"/>
 <polygon points="59.4,36.2 46.2,41.3 46.2,38.5 59.4,33.5" fill="#31383D" stroke="#1D2124"/>
 <polygon points="46.2,38.5 30.7,35.3 28.6,27.1 41.8,22 57.3,25.2 59.4,33.5" fill="url(#s0)" stroke="#969CA1"/>
-<polygon points="46.5,39.6 29.1,36 29.1,32.8 46.5,36.4" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="29.1,36 26.6,26.7 26.6,23.5 29.1,32.8" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="61.4,33.9 46.5,39.6 46.5,36.4 61.4,30.7" fill="#307BC1" stroke="#1D4973"/>
-<polygon points="46.5,36.4 29.1,32.8 26.6,23.5 41.5,17.8 58.9,21.4 61.4,30.7" fill="#4EC7FF" stroke="#95DDFF"/>
-<polygon points="46,34.9 31.6,31.9 31.6,25.2 46,28.2" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="31.6,31.9 29.5,24.1 29.5,17.5 31.6,25.2" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="58.5,30.1 46,34.9 46,28.2 58.5,23.5" fill="#307BC1" stroke="#1D4973"/>
-<polygon points="46,28.2 31.6,25.2 29.5,17.5 42,12.7 56.4,15.7 58.5,23.5" fill="#4EC7FF" stroke="#95DDFF"/>
+<polygon points="46.5,39.6 29.1,36 29.1,32.8 46.5,36.4" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="29.1,36 26.6,26.7 26.6,23.5 29.1,32.8" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="61.4,33.9 46.5,39.6 46.5,36.4 61.4,30.7" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="46.5,36.4 29.1,32.8 26.6,23.5 41.5,17.8 58.9,21.4 61.4,30.7" fill="#F07AF0" stroke="#F07AF0"/>
+<polygon points="46,34.9 31.6,31.9 31.6,25.2 46,28.2" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="31.6,31.9 29.5,24.1 29.5,17.5 31.6,25.2" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="58.5,30.1 46,34.9 46,28.2 58.5,23.5" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="46,28.2 31.6,25.2 29.5,17.5 42,12.7 56.4,15.7 58.5,23.5" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="40.5,21.2 37.1,20.5 37.1,18.9 40.5,19.6" fill="#A8F5B0" stroke="#4C6E4F"/>
 <polygon points="42.5,18.7 40.5,21.2 40.5,19.6 42.5,17.1" fill="#7FB985" stroke="#4C6E4F"/>
 <polygon points="40.5,19.6 37.1,18.9 39.2,16.4 42.5,17.1" fill="#CDFFD7" stroke="#E1FFE7"/>

@@ -7,7 +7,8 @@ extends RefCounted
 ## that is still key-band at SKADET and KRITISK (the sheet's 70 % and 35 %, with room). SKADET's
 ## band is kept for the stage index only: it shows the intact picture now (ADR 0034). KRITISK's is
 ## 0.15 to 0.55 as a transition value, accepted 2026-11-25 (P632: a narrower magenta band reads a
-## few pixels differently); P647 restores 0.20 to 0.50.
+## few pixels differently); P647 restores 0.20 to 0.50. With the 30 % floor of TEAM_SHARE (ADR 0050
+## amendment A3, A7) that leaves at least 6 % of the intact picture in team colour on a wreck.
 const SHARE_BANDS: Array[Vector2] = [Vector2(0.55, 0.85), Vector2(0.15, 0.55)]
 const SCALE: float = 0.5  ## The 2x art at zoom 1.
 const MIN_ALPHA: float = 0.5  ## A pixel more transparent than this is not ink.
