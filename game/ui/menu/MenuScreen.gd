@@ -40,7 +40,7 @@ func _ready() -> void:
 	var rows: VBoxContainer = VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 0)
 	_frame.add_child(rows)
-	scroll = ScrollContainer.new()
+	scroll = TouchScroll.new()
 	scroll.name = &"Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
