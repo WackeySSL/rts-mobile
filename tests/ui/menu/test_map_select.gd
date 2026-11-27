@@ -105,7 +105,7 @@ func test_layout_at_the_six_sizes() -> void:
 
 func test_the_offer_slot_holds_only_the_credits_offer_and_the_banner_slot_has_no_band() -> void:
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false, false)
-	var offer: OfferSlot = _screen.column.get_node("OfferSlot") as OfferSlot
+	var offer: OfferSlot = _screen.find_child("OfferSlot", true, false) as OfferSlot
 	assert_object(offer.owner).is_same(_screen)
 	assert_int(offer.get_child_count()).is_equal(1)
 	assert_object(offer.get_child(0)).is_same(_screen.offer)
@@ -132,18 +132,27 @@ func test_locks_follow_the_rank() -> void:
 	assert_str(String(_screen._map_cards[&"kestrel_flats"].theme_type_variation)).is_equal(
 		"MenuMapCardOn"
 	)
-	# Picked against unpicked: the side card and the level chip.
+	# Picked against unpicked: the side card (amber when chosen, its faction's accent otherwise), its
+	# tag and the level chip.
 	assert_str(String(_screen._side_cards[&"fossil"].theme_type_variation)).is_equal(
-		"MenuSideCardFossil"
+		"MenuSideCardOn"
 	)
-	assert_str(String(_screen._side_cards[&"renew"].theme_type_variation)).is_equal("MenuSideCard")
+	assert_str(String(_screen._side_cards[&"renew"].theme_type_variation)).is_equal(
+		"MenuSideCardRenew"
+	)
+	assert_str(_screen._tags[&"fossil"].text).is_equal("SELECTED")
+	assert_str(_screen._tags[&"renew"].text).is_equal("ALTERNATIVE")
 	assert_str(String(_screen._levels[&"normal"].theme_type_variation)).is_equal("MenuTabOn")
 	assert_str(String(_screen._levels[&"easy"].theme_type_variation)).is_equal("MenuTab")
 	_screen._sides[&"renew"].pressed.emit()
 	assert_str(String(_screen._side_cards[&"renew"].theme_type_variation)).is_equal(
-		"MenuSideCardRenew"
+		"MenuSideCardOn"
 	)
-	assert_str(String(_screen._side_cards[&"fossil"].theme_type_variation)).is_equal("MenuSideCard")
+	assert_str(String(_screen._side_cards[&"fossil"].theme_type_variation)).is_equal(
+		"MenuSideCardFossil"
+	)
+	assert_str(_screen._tags[&"renew"].text).is_equal("SELECTED")
+	assert_str(_screen._tags[&"fossil"].text).is_equal("ALTERNATIVE")
 	_progression.rank_now = 3
 	_progression.xp_changed.emit()
 	assert_bool(_screen._maps[&"map_2"].disabled).is_false()
@@ -410,7 +419,7 @@ func _collect_buttons(node: Node, into: Array[Button]) -> void:
 	for child: Node in node.get_children():
 		if child is Button and (child as Button).visible:
 			into.append(child as Button)
-		if child is PanelContainer or child is OfferSlot:
+		if not child is OfferSlot:  # The offer's own button is its slot's (test_offer_slot.gd).
 			_collect_buttons(child, into)
 
 

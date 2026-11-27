@@ -28,6 +28,8 @@ const LABELS: Dictionary[StringName, StringName] = {
 	&"SideNameFossil": &"",
 	&"MenuRankLabel": &"MenuRankBadge",
 	&"MenuEyebrow": &"",
+	&"MenuCardTagRenew": &"MenuSideCardRenew",
+	&"MenuCardTagFossil": &"MenuSideCardFossil",
 }
 
 
@@ -72,6 +74,9 @@ func test_every_look_exists_with_the_base_the_screens_rely_on() -> void:
 		&"MenuSideCard": &"PanelContainer",
 		&"MenuSideCardRenew": &"MenuSideCard",
 		&"MenuSideCardFossil": &"MenuSideCard",
+		&"MenuSideCardOn": &"MenuSideCard",
+		&"MenuCardTagRenew": &"MenuEyebrow",
+		&"MenuCardTagFossil": &"MenuEyebrow",
 		&"MenuMapCard": &"PanelContainer",
 		&"MenuMapCardOn": &"MenuMapCard",
 		&"MenuMapCardLocked": &"MenuMapCard",
@@ -168,7 +173,7 @@ func test_menu_and_pause_plates_are_square() -> void:
 			. override_failure_message(str(look))
 			. is_equal(0)
 		)
-	for plate: StringName in [&"MenuSideCard", &"MenuMapCard", &"MenuToggleRow", &"PauseCard"]:
+	for plate: StringName in [&"MenuSideCard", &"MenuSideCardOn", &"MenuMapCard", &"MenuToggleRow", &"PauseCard"]:
 		var card: StyleBoxFlat = theme.get_stylebox(&"panel", plate) as StyleBoxFlat
 		assert_int(card.corner_radius_top_left).override_failure_message(str(plate)).is_equal(0)
 
