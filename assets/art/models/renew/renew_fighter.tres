@@ -7,29 +7,27 @@ script = ExtResource("1_model")
 art_id = &"renew_fighter"
 faction = &"renew"
 category = &"veh"
-silhouette = "Glint: a slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear."
+silhouette = "Glint: a slim titanium hexagonal-section body with a white dorsal strip, a team-colour panel on top and a glass bubble canopy, a thin titanium rail barrel ahead, a team-colour wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear."
 fly_px = 26
+detail = 2
 prims = PackedStringArray(
 "prism hull graphite -0.5 0 0.37 0.12 0.18 0.13 axis=x sides=6",
-"box hull ceramic -0.34 -0.16 0.34 0.28 0.14 0.035",
-"box hull ceramic -0.34 0.16 0.34 0.28 0.14 0.035",
-"box hull ceramic -0.22 -0.3 0.34 0.28 0.16 0.035",
-"box hull ceramic -0.22 0.3 0.34 0.28 0.16 0.035",
-"box hull ceramic -0.1 -0.44 0.34 0.28 0.14 0.035",
-"box hull ceramic -0.1 0.44 0.34 0.28 0.14 0.035",
-"box hull team -0.1 -0.46 0.375 0.11 0.1 0.014",
-"box hull team -0.1 0.46 0.375 0.11 0.1 0.014",
-"box hull team -0.22 -0.3 0.375 0.12 0.1 0.014",
-"box hull team -0.22 0.3 0.375 0.12 0.1 0.014",
-"box hull team -0.34 -0.16 0.375 0.1 0.08 0.014",
-"box hull team -0.34 0.16 0.375 0.1 0.08 0.014",
-"prism hull ceramic -0.04 0 0.34 0.9 0.2 0.16 axis=x sides=6",
-"box hull graphite -0.26 0 0.5 0.3 0.08 0.02",
-"box hull team -0.2 0 0.52 0.1 0.07 0.014",
+"box hull team -0.34 -0.16 0.34 0.28 0.14 0.035 chamfer=0.02 detail=1",
+"box hull team -0.34 0.16 0.34 0.28 0.14 0.035 chamfer=0.02 detail=1",
+"box hull team -0.22 -0.3 0.34 0.28 0.16 0.035 chamfer=0.02 detail=1",
+"box hull team -0.22 0.3 0.34 0.28 0.16 0.035 chamfer=0.02 detail=1",
+"box hull team -0.1 -0.44 0.34 0.28 0.14 0.035 chamfer=0.02 detail=1",
+"box hull team -0.1 0.44 0.34 0.28 0.14 0.035 chamfer=0.02 detail=1",
+"box hull ceramic -0.04 -0.37 0.375 0.04 0.24 0.012",
+"box hull ceramic -0.04 0.37 0.375 0.04 0.24 0.012",
+"prism hull titanium -0.04 0 0.34 0.9 0.2 0.16 axis=x sides=6",
+"box hull ceramic -0.1 0 0.5 0.6 0.1 0.012",
+"box hull graphite -0.26 0 0.5 0.34 0.1 0.02 chamfer=0.02",
+"box hull team -0.2 0 0.52 0.24 0.08 0.014 detail=1",
 "prism hull glass 0.14 0 0.44 0.3 0.15 0.1 sides=6 taper=0.6",
 "prism hull titanium 0.54 0 0.4 0.24 0.03 0.03 axis=x sides=6",
-"box hull ceramic -0.4 -0.1 0.45 0.16 0.03 0.16",
-"box hull ceramic -0.4 0.1 0.45 0.16 0.03 0.16",
+"box hull titanium -0.4 -0.1 0.45 0.16 0.03 0.16",
+"box hull titanium -0.4 0.1 0.45 0.16 0.03 0.16",
 "box hull mint -0.44 -0.1 0.6 0.04 0.045 0.035",
 "box hull mint -0.44 0.1 0.6 0.04 0.045 0.035"
 )
