@@ -9,7 +9,6 @@ extends MenuScreen
 ## stays empty. No Command, no sim.
 
 const TITLE: String = "TUTORIAL"
-const BACK: String = "BACK"
 const DONE_MARK: String = "DONE"
 const NEXT_MARK: String = "NEXT"
 const HINT: String = "Each lesson is a short match. Finished ones can be played again."
@@ -40,7 +39,7 @@ func _ready() -> void:
 			push_warning("TutorialScreen: no lesson file for %s" % id)
 			continue
 		_buttons[id] = add_button("", _on_lesson.bind(id))
-	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
+	use_footer()
 	refresh()
 
 
@@ -81,10 +80,8 @@ func _on_lesson(id: StringName) -> void:
 			refresh()
 
 
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()
+func screen_name() -> String:
+	return tr(TITLE)
 
 
 func _flow() -> Node:
