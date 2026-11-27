@@ -628,6 +628,7 @@ Checked against the code (`main` at 59efa29b):
   band: where the x move lands in one HUD rect and the y move in another there is no hand (it fails
   safe). It applies to any off-field UNIT drag, not only under a button. The drag's end is not
   checked: a Button fires only when the press began on it, and the vector is unchanged.
+  What the hint draws at the start must be clear too (P593b-5): the press ring's square (`GestureHint.ring_reach_dp`) and the hand's box may not meet a button grown by the band or a HUD rect, so each candidate lies that much further from the blocked rect.
 - **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
   field gets §6's off-screen `DRAG` from the point (clamped into the safe rect) toward the field's
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it

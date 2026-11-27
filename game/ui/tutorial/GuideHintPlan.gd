@@ -116,15 +116,25 @@ func resolve(
 
 
 ## Moves the drag's start (`point`) to the nearest free point of the field, keeping the vector: the
-## start itself when it is free, else a point `START_GAP_DP` past each side of a button or HUD rect
-## grown by the band, each with the hand's box brought into `safe`. A drag that starts on a card
-## button would press it, and the map would not pan (plan row P593b-4). False when none is free.
+## start itself when it is free, else a point past each side of a button or HUD rect grown by the
+## band, each with the hand's box brought into `safe`. A drag that starts on a card button would
+## press it, and the map would not pan (plan row P593b-4). What the hint draws at the start must be
+## clear too (plan row P593b-5): each candidate lies the drawn hint's reach past the grown rect (the
+## press ring's `ring_reach_dp` or the hand's side, the larger, on that side), and one whose ring
+## square or hand box meets a button or HUD rect is dropped. False when none is free.
 @warning_ignore("integer_division")
 func _free_start(unit: GuideUnitAnchor, safe: Rect2, dp: float, settings: GuideSettingsDef) -> bool:
 	var home: Vector2 = point
 	var best: float = INF
 	var pick: Vector2 = Vector2.INF
 	var gap: float = START_GAP_DP * dp
+	var side: float = settings.hint_size_dp * dp
+	var reach: float = GestureHint.ring_reach_dp(settings.hint_size_dp, 1) * dp
+	var tip: Vector2 = GestureHint.POINT_TIP
+	var left: float = maxf(reach, tip.x * side) + gap  # How far the drawn hint hangs each side.
+	var right: float = maxf(reach, (1.0 - tip.x) * side) + gap
+	var above: float = maxf(reach, tip.y * side) + gap
+	var below: float = maxf(reach, (1.0 - tip.y) * side) + gap
 	_edges.clear()
 	unit.edge_rects(_edges)
 	for turn: int in 1 + _edges.size() * 4:
@@ -133,17 +143,20 @@ func _free_start(unit: GuideUnitAnchor, safe: Rect2, dp: float, settings: GuideS
 			var edge: Rect2 = _edges[(turn - 1) / 4]
 			match (turn - 1) % 4:
 				0:
-					at.x = edge.position.x - gap
+					at.x = edge.position.x - right
 				1:
-					at.x = edge.end.x + gap
+					at.x = edge.end.x + left
 				2:
-					at.y = edge.position.y - gap
+					at.y = edge.position.y - below
 				_:
-					at.y = edge.end.y + gap
+					at.y = edge.end.y + above
 		point = at
 		at += _inside(_bounds(TutorialBeatDef.Gesture.DRAG, dp, settings, false, false), safe)
 		var away: float = at.distance_squared_to(unit.point)
-		if away < best and unit.clear_at(at):
+		var ring: Rect2 = Rect2(at - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+		var hand: Rect2 = Rect2(at - tip * side, Vector2(side, side))
+		var free: bool = unit.clear_at(at) and unit.clear_box(ring) and unit.clear_box(hand)
+		if away < best and free:
 			best = away
 			pick = at
 	point = pick if pick != Vector2.INF else home

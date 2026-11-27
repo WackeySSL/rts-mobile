@@ -91,7 +91,7 @@ func test_the_band_and_the_dp_grow_the_buttons_the_start_must_clear() -> void:
 func test_the_nearest_free_point_wins() -> void:
 	_buttons = _tall_button()
 	_run(_buttons)
-	var band: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP
+	var band: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP + _hang_right()
 	# The button reaches 20 px left of the unit and 60 right: its left side is the nearer.
 	assert_float(_plan.point.x).is_equal_approx(_buttons[0].position.x - band, 0.01)
 	assert_float(_plan.point.y).is_equal_approx(_anchor.point.y, 0.01)
@@ -123,8 +123,8 @@ func test_the_card_rect_does_not_block_a_start_inside_it() -> void:
 	var card: Rect2 = _hud[HudCorners.CARD]
 	assert_bool(card.has_point(_plan.point)).is_true()
 	assert_bool(_buttons[0].grow(GuideUnitAnchor.THROUGH_BAND_DP).has_point(_plan.point)).is_false()
-	var gap: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP
-	assert_float(_plan.point.distance_to(at)).is_less(30.0 + gap + 1.0)  # Just outside the band.
+	var gap: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP + _hang_right()
+	assert_float(_plan.point.distance_to(at)).is_less(30.0 + gap + 1.0)  # Just outside the hint.
 
 
 func test_a_move_along_one_axis_that_lands_in_another_rect_leaves_no_hand() -> void:
@@ -138,6 +138,43 @@ func test_a_move_along_one_axis_that_lands_in_another_rect_leaves_no_hand() -> v
 	_run(_buttons)
 	assert_bool(_anchor.clear_at(Vector2(100.0, 100.0))).is_true()
 	assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.NONE)
+
+
+func test_the_drawn_ring_and_hand_clear_next_skip_and_the_tab() -> void:
+	for dp: float in [1.0, 2.5]:
+		for count: int in [1, 2, 3]:
+			_buttons = _buttons_at(count)
+			_hud[HudCorners.PILL] = Rect2(_anchor.point + Vector2(0.0, 90.0), Vector2(200.0, 40.0))
+			_anchor.update(_aim_def, _runner, _camera, _ground, _air, SAFE, dp, _hud, _buttons)
+			_plan.resolve(
+				_beat_def,
+				_aim_def,
+				false,
+				Rect2(),
+				_camera,
+				_field_of,
+				SAFE,
+				dp,
+				_settings,
+				_anchor
+			)
+			assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+			_assert_drawn_clear(dp, "%d at %s dp" % [count, dp])
+
+
+func test_a_start_the_point_and_band_rule_passed_is_moved_off_the_ring_and_hand() -> void:
+	_anchor_up()
+	var at: Vector2 = _anchor.point
+	# The P593b-4 rule (point outside the rect grown by the band) passes just left of the button,
+	# but the 64 dp hand's box reaches 38 px right of the tip into it.
+	_buttons = [Rect2(at + Vector2(-12.0, -100.0), Vector2(160.0, 200.0))]
+	_run(_buttons)
+	assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+	var old: Vector2 = Vector2(_buttons[0].position.x - GuideUnitAnchor.THROUGH_BAND_DP - 1.0, at.y)
+	assert_bool(_anchor.clear_at(old)).is_true()  # The old rule would take this start...
+	assert_bool(_drawn(old, 1.0)[1].intersects(_buttons[0])).is_true()  # ...and draw on the button.
+	_assert_drawn_clear(1.0, "old rule")
+	assert_bool(_plan.point.x < old.x).is_true()
 
 
 func _field_of() -> Vector2:
@@ -174,6 +211,31 @@ func _run(buttons: Array[Rect2], safe: Rect2 = SAFE) -> void:
 	_plan.resolve(
 		_beat_def, _aim_def, false, Rect2(), _camera, _field_of, safe, 1.0, _settings, _anchor
 	)
+
+
+## How far the hand's box hangs right of the tip, or the ring's reach if that is more: px at dp 1.
+func _hang_right() -> float:
+	var side: float = _settings.hint_size_dp
+	var reach: float = GestureHint.ring_reach_dp(side, 1)
+	return maxf(reach, (1.0 - GestureHint.POINT_TIP.x) * side)
+
+
+## The drawn ring's square and the hand's box (the tip at `at`, no flip) at `dp`.
+func _drawn(at: Vector2, dp: float) -> Array[Rect2]:
+	var side: float = _settings.hint_size_dp * dp
+	var reach: float = GestureHint.ring_reach_dp(_settings.hint_size_dp, 1) * dp
+	var ring: Rect2 = Rect2(at - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+	var hand: Rect2 = Rect2(at - GestureHint.POINT_TIP * side, Vector2(side, side))
+	return [ring, hand]
+
+
+func _assert_drawn_clear(dp: float, label: String) -> void:
+	for box: Rect2 in _drawn(_plan.point, dp):
+		for rect: Rect2 in _buttons:
+			assert_bool(box.intersects(rect)).override_failure_message(label).is_false()
+		for key: StringName in _hud:
+			if key != HudCorners.CARD:
+				assert_bool(box.intersects(_hud[key])).override_failure_message(label).is_false()
 
 
 func _assert_free(at: Vector2, count: int) -> void:

@@ -515,6 +515,20 @@ func _drag_proof(label: String, id: int) -> Array[String]:
 		var rect: Rect2 = mark._dock_rects[key]
 		if key != HudCorners.CARD and rect.has_point(plan.point):
 			lines.append("%s: the drag starts at %s under HUD part %s" % [label, plan.point, key])
+	# What the hint draws at the start (plan row P593b-5): the press ring and the hand's box.
+	var side: float = mark.settings.hint_size_dp * dp
+	var reach: float = GestureHint.ring_reach_dp(mark.settings.hint_size_dp, 1) * dp
+	var ring: Rect2 = Rect2(plan.point - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+	var hand: Rect2 = Rect2(plan.point - GestureHint.POINT_TIP * side, Vector2(side, side))
+	for box: Rect2 in [ring, hand]:
+		for button: BaseButton in buttons:
+			if box.intersects(button.get_global_rect()):
+				lines.append("%s: the hint drawn at %s meets %s" % [label, plan.point, button.name])
+		for key: StringName in mark._dock_rects:
+			if key != HudCorners.CARD and box.intersects(mark._dock_rects[key]):
+				lines.append(
+					"%s: the hint drawn at %s meets HUD part %s" % [label, plan.point, key]
+				)
 	var before: Vector2 = camera.position
 	var beat: TutorialBeatDef = director.current_beat()
 	var progress: Vector2i = director.progress()
