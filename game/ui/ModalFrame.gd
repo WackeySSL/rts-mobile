@@ -24,7 +24,7 @@ func _ready() -> void:
 	var safe: SafeAreaMargin = SafeAreaMargin.new()
 	add_child(safe)
 	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var scroll: ScrollContainer = ScrollContainer.new()
+	var scroll: ScrollContainer = TouchScroll.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	safe.add_child(scroll)
 	var centre: CenterContainer = CenterContainer.new()
