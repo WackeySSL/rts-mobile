@@ -7,70 +7,70 @@
 [sub_resource type="Resource" id="m_ground"]
 script = ExtResource("1_mat")
 id = &"ground"
-base = Color(0.4841, 0.439, 0.3836, 1)
+base = Color(0.484, 0.4391, 0.3835, 1)
 roughness = 0.92
 kind = 6
 
 [sub_resource type="Resource" id="m_r_dark"]
 script = ExtResource("1_mat")
 id = &"r_dark"
-base = Color(0.4551, 0.4127, 0.3605, 1)
+base = Color(0.455, 0.4127, 0.3605, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_light"]
 script = ExtResource("1_mat")
 id = &"r_light"
-base = Color(0.5132, 0.4654, 0.4066, 1)
+base = Color(0.5131, 0.4654, 0.4066, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_face"]
 script = ExtResource("1_mat")
 id = &"r_face"
-base = Color(0.7746, 0.7024, 0.6137, 1)
+base = Color(0.7744, 0.7025, 0.6137, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_face2"]
 script = ExtResource("1_mat")
 id = &"r_face2"
-base = Color(0.6777, 0.6012, 0.4807, 1)
+base = Color(0.6776, 0.6014, 0.4807, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_face3"]
 script = ExtResource("1_mat")
 id = &"r_face3"
-base = Color(0.5809, 0.5268, 0.4603, 1)
+base = Color(0.5808, 0.5269, 0.4603, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_top"]
 script = ExtResource("1_mat")
 id = &"r_top"
-base = Color(0.702, 0.6366, 0.5562, 1)
+base = Color(0.7018, 0.6367, 0.5561, 1)
 roughness = 0.88
 kind = 6
 
 [sub_resource type="Resource" id="m_g_boulder"]
 script = ExtResource("1_mat")
 id = &"g_boulder"
-base = Color(0.3776, 0.3424, 0.2992, 1)
+base = Color(0.3775, 0.3425, 0.2992, 1)
 roughness = 0.85
 kind = 6
 
 [sub_resource type="Resource" id="m_g_shade"]
 script = ExtResource("1_mat")
 id = &"g_shade"
-base = Color(0.4357, 0.3951, 0.3452, 1)
+base = Color(0.4356, 0.3952, 0.3452, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_r_cliff"]
 script = ExtResource("1_mat")
 id = &"r_cliff"
-base = Color(0.8956, 0.8122, 0.7096, 1)
+base = Color(0.8954, 0.8123, 0.7096, 1)
 roughness = 0.9
 kind = 7
 

@@ -34,6 +34,8 @@ func test_both_ends_are_pinned_whatever_the_seed() -> void:
 		var one: Array[float] = _end_heights(_wall(1), at)
 		assert_int(one.size()).is_greater(10)
 		assert_array(one).is_equal(_end_heights(_wall(99), at))
+	var w: BakeMesh.Batch = _wall(4)
+	assert_array(_end_heights(w, FOOT_A)).is_equal(_end_heights(w, FOOT_B))
 
 
 func test_the_wall_stays_within_its_height_and_the_triangle_cap() -> void:
@@ -46,9 +48,11 @@ func test_the_wall_stays_within_its_height_and_the_triangle_cap() -> void:
 
 
 func test_the_face_looks_away_from_the_tile_centre() -> void:
+	# The face is 64 x 20 cells; the back wall has 64 columns. Only the face is a majority.
 	var batch: BakeMesh.Batch = _wall(5)
 	var outward: int = 0
-	for i: int in batch.vertices.size():
-		if batch.normals[i].x > 0.5:
-			outward += 1
-	assert_int(outward).is_greater(100)
+	var inward: int = 0
+	for n: Vector3 in batch.normals:
+		outward += 1 if n.x > 0.5 else 0
+		inward += 1 if n.x < -0.5 else 0
+	assert_int(outward).is_greater(4 * inward)

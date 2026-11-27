@@ -201,15 +201,17 @@ static func cliff(
 	amp: float,
 	seed_value: int
 ) -> void:
-	const NU: int = 48
+	const NU: int = 64
 	const NV: int = 20
 	var along: Vector3 = (b - a).normalized()
 	var out: Vector3 = Vector3(-along.y, along.x, 0.0)
-	if out.dot((a + b) * 0.5) < 0.0:
+	var side: float = out.dot((a + b) * 0.5)
+	if side < 0.0 or (side == 0.0 and (out.x < 0.0 or (out.x == 0.0 and out.y < 0.0))):
 		out = -out
 	var noise: FastNoiseLite = FastNoiseLite.new()
 	noise.seed = seed_value
 	noise.frequency = 1.0
+	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
 	var length: float = a.distance_to(b)
 	var tops: PackedFloat32Array = PackedFloat32Array()
 	var face: Array[PackedVector3Array] = []
@@ -235,8 +237,8 @@ static func cliff(
 		for j: int in NV + 1:
 			var v: float = float(j) / NV
 			var groove: float = (
-				0.6 * noise.get_noise_2d(u * length * 17.0, v * 1.6)
-				+ 0.4 * noise.get_noise_2d(u * length * 41.0, v * 0.7 + 9.0)
+				0.6 * noise.get_noise_2d(u * length * 14.0, v * 1.6)
+				+ 0.4 * noise.get_noise_2d(u * length * 26.0, v * 0.7 + 9.0)
 			)
 			var lip: float = smoothstep(0.8, 1.0, v) * (0.5 + noise.get_noise_2d(u * 9.0, 5.5))
 			column.append(
@@ -264,10 +266,9 @@ static func cliff(
 		var g0: Vector3 = a.lerp(b, float(i) / NU) + back
 		var g1: Vector3 = a.lerp(b, float(i + 1) / NU) + back
 		var o: Array[Vector3] = [-out, -out, -out]
-		m.tri(mat, [g0, g1, g0 + Vector3(0.0, 0.0, tops[i])], o, flat)
-		m.tri(
-			mat, [g1, g1 + Vector3(0.0, 0.0, tops[i + 1]), g0 + Vector3(0.0, 0.0, tops[i])], o, flat
-		)
+		# Its top row is the cap's rear edge, so that the wall and the cap close.
+		m.tri(mat, [g0, g1, p0 + back], o, flat)
+		m.tri(mat, [g1, p1 + back, p0 + back], o, flat)
 	for end: int in [0, NU]:
 		var s: Vector3 = along if end == NU else -along
 		var c: PackedVector3Array = face[end]

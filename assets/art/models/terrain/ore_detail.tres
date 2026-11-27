@@ -7,35 +7,35 @@
 [sub_resource type="Resource" id="m_ground"]
 script = ExtResource("1_mat")
 id = &"ground"
-base = Color(0.3972, 0.3177, 0.25, 1)
+base = Color(0.3972, 0.3176, 0.2499, 1)
 roughness = 0.92
 kind = 6
 
 [sub_resource type="Resource" id="m_o_dark"]
 script = ExtResource("1_mat")
 id = &"o_dark"
-base = Color(0.3178, 0.2541, 0.2, 1)
+base = Color(0.3178, 0.2541, 0.1999, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_o_rim"]
 script = ExtResource("1_mat")
 id = &"o_rim"
-base = Color(0.4449, 0.3558, 0.28, 1)
+base = Color(0.4449, 0.3557, 0.2799, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_o_light"]
 script = ExtResource("1_mat")
 id = &"o_light"
-base = Color(0.425, 0.3399, 0.2675, 1)
+base = Color(0.425, 0.3399, 0.2674, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_o_mid"]
 script = ExtResource("1_mat")
 id = &"o_mid"
-base = Color(0.532, 0.4817, 0.3646, 1)
+base = Color(0.5315, 0.4809, 0.3635, 1)
 roughness = 0.9
 kind = 6
 

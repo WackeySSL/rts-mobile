@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="m_ground"]
 script = ExtResource("1_mat")
 id = &"ground"
-base = Color(0.2621, 0.4332, 0.4962, 1)
+base = Color(0.262, 0.4332, 0.4962, 1)
 roughness = 0.12
 kind = 6
 

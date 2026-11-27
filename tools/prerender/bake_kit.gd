@@ -48,8 +48,6 @@ func _pieces(model: DetailModel) -> int:
 	for part: StringName in model.part_names():
 		var mesh: BakeMesh = BakeMesh.new(model.art_id)
 		model.build(part, mesh)
-		for material: ShaderMaterial in materials.values():
-			material.set_shader_parameter("phase", _phase(model, part))
 		var node: Node3D = mesh.to_node(materials)
 		if node == null:
 			push_error("bake_kit refuses " + mesh.cap_error())
@@ -65,16 +63,6 @@ func _pieces(model: DetailModel) -> int:
 		made += 1 if piece.save_png(String(_opts.out).path_join(name)) == OK else 0
 		print("bake_kit: %s %d triangles, %s" % [name, mesh.triangles, piece.get_size()])
 	return made
-
-
-## Where the finest grain starts for `part`: a fixed hash of the model's seed and the part's name.
-func _phase(model: DetailModel, part: StringName) -> Vector3:
-	var key: int = String(part).hash() & 0xFFFF
-	return Vector3(
-		DetailModel.hash01(model.variation_seed, key, 1),
-		0.0,
-		DetailModel.hash01(model.variation_seed, key, 2)
-	)
 
 
 ## The canvas holds the diamond at the foot and RISE_MAX rows of headroom; its centre is the model's
