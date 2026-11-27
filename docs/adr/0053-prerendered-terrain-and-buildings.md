@@ -5,7 +5,7 @@
   P653 and P655 tests. The ground gets roads, cliff edges, shores and more variety. The
   buildings get real light, edges and shadow.
 - **Units stay generator SVG for now.** They take P655's lessons as SVG: darker gunmetal bodies,
-  team colour on the turret and the side panels, and a stronger turret and gun (row P658). You
+  team colour on the turret and the side panels, and a longer gun (row P658). You
   decide whether units go 3D after you have seen 3D terrain and buildings in the game with the
   SVG units on top (row P659).
 - **Sharpness stays as today.** Twice the sharpness would need about 350 MB of graphics memory,
@@ -143,13 +143,27 @@ No sim rule, Command, `STATE_FORMAT`, hash, `data/` value or balance number chan
     They keep the team panels of ADR 0050 A1 and A7's KRITISK band. The recolour (§4) therefore
     lands with the first building batch, P644. Terrain has no team colour, so P656 does not need
     it.
-- **Units stay generator SVG** (ADR 0050 §1 as amended). They take P655's gains in SVG, in row
-  P658:
-  - darker gunmetal neutral bodies;
-  - the team colour on the turret and the skirt or side panels;
-  - a stronger turret and gun silhouette.
-  Ironward goes first (`heavy_tank` first). Facet keeps its own white and graphite language. The
-  row is gated on a same-scene band measurement (the plan).
+- **Units stay generator SVG** (ADR 0050 §1 as amended). They take P655's gains in SVG, in one
+  row, P658, over all 18 detail-2 models (and P643's four, if P643 merges first). It splits into
+  P658a (Ironward) and P658b (Facet) only if its production diff goes over about 400 lines.
+  - Darker gunmetal neutral bodies, as new materials, not the shared iron and steel.
+  - The team colour on the turret and the skirt or side panels.
+  - A gun 0.2 tile longer. A taller turret gave no gain and is not taken. If the longer barrel
+    would move projectile spawns (muzzle points in `game/view` or `data/`), that change is a
+    separate row.
+  Ironward goes first. Facet keeps its own white and graphite language.
+- **P658's same-scene gate is met.** It was a throwaway measure on `main` at c09c91be, with
+  nothing committed. Both models pass every band of the frozen `same_scene.tres`:
+
+  | Model | Body materials | `tone_sat` | `tone_sat_all` | 32 px spread | TEAM_SHARE | Max mirror overlap |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Ironward `heavy_tank` (P652 swap, gunmetal step s3) | iron #2B2E32, steel #5C6066, body #4A4D52 | 0.132 | 0.379 | 142.5 | 43.2 % | 0.78, 0.685 with the longer gun (spread -3) |
+  | Facet `renew_tank` (t2) | graphite #2B2E32, titanium #5C6066, white kept | 0.113 | 0.325 | 199.5 | 52.1 % | — |
+
+  **Two bands bind, and they set the design limit.** `black_edge_max` (0.02) binds first: iron
+  #212427 gives 0.223. `light_left_min` (-0.04) binds second, on Ironward only: s3b #25282B gives
+  -0.042. So no body tone goes darker than about #25282B, and a right side is never much darker
+  than its left.
 - **3D units are an open decision for Michael**, taken after he has seen 3D terrain and buildings
   in the game with the SVG units on top (row P659, after P644). No unit row is planned now. If he
   says yes, a new ADR (or an amendment of this one) and a plan follow. P655 is their starting
@@ -534,9 +548,9 @@ judges the look in P659.
    balance change, a later phase).
 5. **The Facet buildings and the small buildings wait for your look check** (P645 after P659), so
    nothing is made twice if you say no to 3D buildings. Recommended: yes.
-6. **The SVG unit restyle toward P655** (P658): darker gunmetal bodies, team colour on the turret
-   and the skirt or side panels, a stronger turret and gun; Ironward first, `heavy_tank` first;
-   Facet in its own white and graphite. If the frozen same-scene bands block the darker bodies,
-   the lead asks you before any band moves. Recommended: yes.
+6. **The SVG unit restyle toward P655** (P658, one row for all 18 detail-2 models): darker
+   gunmetal bodies, team colour on the turret and the skirt or side panels, a gun 0.2 tile longer;
+   Ironward first, Facet in its own white and graphite. The gate measure already passes every
+   frozen same-scene band (§1), so no band moves. Recommended: yes.
 7. **The ground in the same-scene check** gets its own bands (§8): calmer than the units, at most
    5 % of it in the orange or blue hue, and no magenta. Recommended: yes.

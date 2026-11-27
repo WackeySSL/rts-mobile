@@ -16,7 +16,8 @@ This plan takes over these rows of `docs/plans/2026-11-24-treadline-restyle.md` 
 accepted:
 - P644 to P647 become the pre-rendered building batches here. They keep their numbers and are
   split into parts.
-- P643 stays an SVG batch. It waits for P658's Facet rows, so it is drawn once, to the new rules.
+- P643 stays an SVG batch drawn under ADR 0050's amendment and waits only on P652. If P658 lands
+  first, P643 follows P658's materials. If P643 lands first, P658 includes its four models.
 
 The rows there are marked, not deleted. P648 and P649 (art proof and close-out) stay there, after
 P647.
@@ -32,7 +33,8 @@ Michael, 2026-11-27: "3D til terræn + bygninger, SVG-enheder". So:
    panels recoloured at match start. Ironward's 3x3 buildings come first, with the recolour pass
    (P644).
 3. **The SVG units restyled toward P655**: darker gunmetal bodies, team colour on the turret and
-   the skirt or side panels, a stronger turret and gun. Ironward first, `heavy_tank` first (P658).
+   the skirt or side panels, a longer gun. One row for all 18 detail-2 models, Ironward first,
+   Facet in its own white and graphite language (P658). Its band gate is already met (below).
 4. **Michael's look check** (P659): 3D terrain and buildings in the game with the SVG units on
    top. There he decides whether units go 3D. No unit pre-render row is planned before that.
 
@@ -57,7 +59,7 @@ These go to the lead's follow-up list.
 | Recolour | `game/view/TeamRecolour.gd` (twin), `team_recolour.gdshader`, `TeamRecolourPass.gd`; a CI render step (`scripts/ci/run-render-tests.sh`, `.github/workflows/ci.yml`) | P644a |
 | Atlas | `game/view/IsoAtlas.gd` (PNG frames, keyed parts), `WorldSort.gd` (owns the pass), `tools/artgen` (sheets of owned ids: `.png` paths, no SVG), the galleries | P644a2 |
 | Same-scene check | `tools/artgen` composer (kit ground, twin-recoloured PNG buildings), `tools/artgen/same_scene_ground.tres` (new), `tests/art/test_same_scene.gd` | P656e |
-| SVG units | `assets/art/models/**` (units), `assets/art/iso/**` (frames), STYLE.md | P658-P658f, P643 |
+| SVG units | `assets/art/models/**` (units), `assets/art/iso/**` (frames), `tools/artgen` `ArtPalette` (new body materials), STYLE.md | P658, P643 |
 | Docs | ADR 0050 (note), ADR 0023 (note at acceptance), `assets/CREDITS.md`, `assets/art/STYLE.md`, `docs/HOW_TO_PLAY.md`, `docs/ROADMAP.md` | P654, P654b and the art rows |
 
 Nothing in `game/sim`, `game/ai`, `game/core`, `native/` or `data/`. No row starts a balance run
@@ -121,7 +123,7 @@ Nothing in `game/sim`, `game/ai`, `game/core`, `native/` or `data/`. No row star
   - the 32 px greyscale spread at least 80;
   - the bytes per frame: 3x3 128 KB, 2x2 80 KB, 1x1 48 KB;
   - the page pins, and the manifest.
-- **Per SVG unit row** (P658-P658f, P643):
+- **Per SVG unit row** (P658, P643):
   - the frozen same-scene audit green;
   - TEAM_SHARE 30-65 % (key band, A3) in the default view and 25-75 % in every direction;
   - the shape pairs under 0.85;
@@ -149,18 +151,13 @@ CLAUDE.md). Code in `tools/` counts, as in the restyle plan.
 | P656e | art-director | P656c | **The same-scene sheet on the kit ground.** The composer draws the kit's tiles in place of the SVG diamonds, and PNG buildings through the twin once P644a has merged (until then the SVG ones); `tools/artgen/same_scene_ground.tres` (new) with ADR 0053 §8's ground bands, set from today's diamonds and the kit; `same_scene.tres` untouched. The PR attaches the sheet at four zooms | the frozen audit green; the ground bands green; a crafted over-saturated ground tile fails | none | ~150 |
 | P656d | gameplay-dev | P656c | **The ground wiring** (ADR 0053 §7): `TerrainKit.gd` (the pure piece choice, a fixed cell hash for the variants), `GroundAtlas` on the kit page, `GroundLayer`'s base and edge layers at scale 0.5, rewrites of the changed cells and their 8 neighbours, the lip rule, the SVG fallback. `PerfBases`' forecast constants and their test move only if the edge layer adds a call | the choice tables; the lip rule on every shipped map; the write bounds; `covers_map()` and the fallback; the page budget; `test_ground_*` and `test_perf_bases.gd` | `terrain-basics` (blends, cliffs at rock, shores at water, four arrangements) | ~300 |
 | P656f | gameplay-dev | P656d; question 4 "decoration" | **Roads as decoration** in the map looks (`assets/art/terrain/looks/<look>/decor.tres`, cells and road pieces; a road replaces the base piece). No sim or movement change | the decor list loads; road cells only on passable ground; the write bound unchanged; no `data/` file touched | **New row** `terrain-roads`: roads are only looks, units are not faster on them | ~120 |
-| P658 | art-director | P652 merged; ADR 0053 question 6 answered | **The SVG unit restyle toward P655: the gate and `heavy_tank`.** First, a throwaway measure of a restyled `heavy_tank`: darker gunmetal body, team colour on the turret and the skirt plates, a stronger turret and gun. It is measured against the frozen `same_scene.tres` (`tone_value`, `tone_sat`, `tone_sat_all_max`), TEAM_SHARE 30-65 %, the pair with `renew_tank` under 0.85 and the spread at least 80. **If any band fails, the row stops and brings the numbers to the architect; no band moves without Michael's yes (A8).** Then `heavy_tank` is committed. STYLE.md "Unit restyle (P658)" with the rules for the rows after it | the per-unit checks; `--check` clean | `units-look` if its words change | art |
-| P658b | art-director | P658 | **Ironward vehicles**: `light_tank`, `artillery`, `harvester` to P658's rules | per-unit checks | as P658 | art |
-| P658c | art-director | P658b | **Ironward squads**: `rifle_squad`, `rocket_squad`, `fossil_patchers` (pack and shoulder panels as team colour, darker kit) | per-unit checks, every direction 25-75 % | `units-medic-squad-look` if its words change | art |
-| P658d | art-director | P658c | **Ironward support and air**: `fossil_bunk_wagon`, `fossil_shot_truck`, `fossil_fighter`, `fossil_bomber` | per-unit checks | the look rows of its models | art |
-| P658e | art-director | P658b | **Facet vehicles in Facet's own language**: `renew_scout`, `renew_tank`, `renew_artillery`, `renew_tanker`, with white and graphite bodies, team panels on the turret and side plates, and crisper facets. The pairs are re-measured against P658-P658b | per-unit checks | as P658 | art |
-| P658f | art-director | P658e, P658c | **Facet squads**: `renew_rifle`, `renew_rocket`, `renew_menders` | per-unit checks | as P658c | art |
-| P643 | art-director | P658f, P658d | (The restyle plan's row, re-ordered.) **Facet support and air** drawn once, to P658's rules | per-unit checks | the look rows of its models | art |
+| P658 | art-director | P652 merged | **The SVG unit restyle toward P655, one row:** all 18 detail-2 models of P638-P642, Ironward first, then Facet in its own white and graphite language; P643's four models too if P643 has merged first. **The band gate is met** (throwaway measure on `main` c09c91be, nothing committed): (1) Ironward `heavy_tank` with the P652 `faction` → `team` swap and gunmetal step s3, as **new** materials (not the shared iron and steel): iron #2B2E32, steel #5C6066, body #4A4D52, reads `tone_sat` 0.132, `tone_sat_all` 0.379, 32 px spread 142.5, max mirror overlap 0.78, TEAM_SHARE 43.2 %, every frozen same-scene band passes; (2) Facet `renew_tank` at t2: graphite #2B2E32, titanium #5C6066, white kept, reads `tone_sat` 0.113, `tone_sat_all` 0.325, spread 199.5, TEAM_SHARE 52.1 %, all pass. **Binding bands, so the design limits:** `black_edge_max` 0.02 binds first (iron #212427 gives 0.223); `light_left_min` -0.04 binds second, Ironward only (s3b #25282B gives -0.042). The darkest body tone stays at about #25282B or lighter, and a right side is never much darker than its left. **The gun:** +0.2 tile longer (mirror overlap 0.78 → 0.685, spread -3); a taller turret gives nothing and is not taken. The team colour sits on the turret and the skirt or side panels (TEAM_SHARE 30-65 %, A3). **Stop rule:** if a longer barrel would move projectile spawns (muzzle points in `game/view` or `data/`), that change is a separate row and this one keeps today's muzzle points. STYLE.md "Unit restyle (P658)". **Split** into P658a (Ironward) and P658b (Facet) only if the production diff (the `ArtPalette` materials and any generator code; model data and frames do not count) goes over about 400 lines | per-unit checks for all its models; the frozen audit green with `same_scene.tres` byte-identical; `--check` clean; the page pins | `units-look`, `units-look-aircraft`, `units-look-carrier`, `units-look-minelayer`, `units-medic-squad-look` if their words change | art (+ materials) |
+| P643 | art-director | P652 | (The restyle plan's row.) **Facet support and air**, still an SVG batch drawn under ADR 0050's amendment. If P658 has merged, it uses P658's materials; if not, P658 later takes these four models too | per-unit checks | the look rows of its models | art |
 | P644a | gameplay-dev | P654b | **The recolour** (ADR 0053 §4): `TeamRecolour.gd` (the twin, `recolour` and `coverage`), `team_recolour.gdshader`, `TeamRecolourPass.gd` (the SubViewport pass, the readback, sync if `force_draw` works on desktop, Android and web, otherwise awaited behind the loading card; never a frame with sentinel magenta). The CI render step under `xvfb-run` with Compatibility. Fixtures: crops of a pre-rendered frame and its ground truth | the twin's error bounds; `coverage`; the render test in CI (at most 1/255); a runner without xvfb stops the row | none | ~250 |
 | P644a2 | gameplay-dev | P644a, P656b | **The PNG path in the atlas**: `IsoAtlas` reads `.png` frames (`keep` importer, `load_png_from_buffer`), takes the keyed parts from the sheet, recolours per player through `WorldSort`'s pass, and resizes with Lanczos only below scale 1.0; `tools/artgen` writes `.png` paths and no SVG for the ids in `tools/prerender/owned.tres`; the galleries show PNG sheets. A fixture PNG building under `tests/art/fixtures` | regions and offsets equal to an SVG sheet of the same canvases; per-player keyed slots; the sentinel under the dummy renderer; `gen-art.sh --check` clean; the gallery tests | none | ~220 |
-| P644b | art-director | P644a2, P656e, P658b | **Ironward 3x3, part 1**: `headquarters`, `refinery`, `vehicle_factory`. Detail data, bake (`hull`, `dmg2` with `char` and `hide`, `shadow`, cards in the faction colour), the manifest, CREDITS, SVG frames and cards deleted, `owned.tres`, the page pins. The PR attaches the same-scene sheet beside the SVG units on the kit ground | per-building checks; TEAM_SHARE by coverage 30-65 %; KRITISK 20-50 %; at most 128 KB a frame; the frozen audit and the ground bands green | `buildings-look` if its words change | art |
+| P644b | art-director | P644a2, P656e, P658 | **Ironward 3x3, part 1**: `headquarters`, `refinery`, `vehicle_factory`. Detail data, bake (`hull`, `dmg2` with `char` and `hide`, `shadow`, cards in the faction colour), the manifest, CREDITS, SVG frames and cards deleted, `owned.tres`, the page pins. The PR attaches the same-scene sheet beside the SVG units on the kit ground | per-building checks; TEAM_SHARE by coverage 30-65 %; KRITISK 20-50 %; at most 128 KB a frame; the frozen audit and the ground bands green | `buildings-look` if its words change | art |
 | P644c | art-director | P644b | **Ironward 3x3, part 2**: `fossil_airfield`, `fossil_space` (16 anim frames), `fossil_strike` (4 anim frames), anim crops at most a quarter of the body | as P644b | as P644b | art |
-| P659 | architect + lead | P644c, P656d, P658b | **Michael's look check of 3D terrain and buildings with SVG units; he decides on 3D units.** He plays a cross and a mirror match on the phone (both orientations, zoom 0.75 to 2.0), with the perf card's draw calls and `atlas_bake_ms`. Recorded: (1) keep pre-rendered buildings (yes: P645 starts; no: P645-P647 return to the restyle plan's SVG batches and P644's ids leave `owned.tres` in one row); (2) 3D units yes or no (yes: a unit ADR and plan with P655 as the start, `heavy_tank` first; no: P658's look is the units' look) | Michael's answers in ADR 0053 | none | 0 |
+| P659 | architect + lead | P644c, P656d, P658 | **Michael's look check of 3D terrain and buildings with SVG units; he decides on 3D units.** He plays a cross and a mirror match on the phone (both orientations, zoom 0.75 to 2.0), with the perf card's draw calls and `atlas_bake_ms`. Recorded: (1) keep pre-rendered buildings (yes: P645 starts; no: P645-P647 return to the restyle plan's SVG batches and P644's ids leave `owned.tres` in one row); (2) 3D units yes or no (yes: a unit ADR and plan with P655 as the start, `heavy_tank` first; no: P658's look is the units' look) | Michael's answers in ADR 0053 | none | 0 |
 | P645a | art-director | P659 (buildings kept) | **Facet 3x3, part 1**: `renew_hq` first, in ADR 0050 §2's faceted form, then `renew_refinery` and `renew_factory`. Each pair with its P644 counterpart under 0.85 in d06 and d10 | as P644b; the pairs | none | art |
 | P645b | art-director | P645a | **Facet 3x3, part 2**: `renew_airfield`, `renew_space`, `renew_strike` | as P645a | none | art |
 | P646a | art-director | P645b | **Ironward 2x2**: `barracks`, `power_plant`, `fossil_engineering`, `fossil_radar` (16 anim frames), `fossil_weld_shed` | as P644b, 80 KB a frame | none | art |
@@ -176,10 +173,10 @@ After P647b come the restyle plan's P648 (art proof) and P649 (art phone check, 
   - Lane P (art-director): P656a → P656b → P656c → P656c2 and P656e.
   - Lane R (gameplay-dev): P644a, then P644a2 (after P656b).
   - Lane W (gameplay-dev): P656d after P656c, then P656f.
-- **Lane G (art-director, the page pins, one PR at a time):** P652 (open), then P658 → P658b →
-  P658c → P658d, with P658e after P658b and P658f after P658e and P658c, then P643. P658 needs
-  only P652 and Michael's answer to question 6, so it can start before P654b.
-- **Buildings:** P644b (after P644a2, P656e, P658b) → P644c → P659 → P645a → P645b → P646a →
+- **Lane G (art-director, the page pins, one PR at a time):** P652 (open), then P658 and P643 in
+  whichever order they are ready (both wait only on P652). P658 does not wait for P654b; its band
+  gate is met.
+- **Buildings:** P644b (after P644a2, P656e, P658) → P644c → P659 → P645a → P645b → P646a →
   P646b → P647a → P647b → P648 → P649. Building bodies keep their canvases, so they do not move
   page 1's rows. Heads do (P646b, P647b). The building rows still go in series, because each one
   edits the manifest and the page pins.
@@ -197,7 +194,7 @@ After P647b come the restyle plan's P648 (art proof) and P649 (art phone check, 
 - `terrain-basics`: P656d.
 - `terrain-roads` (new): P656f.
 - `units-look`, `units-look-aircraft`, `units-look-carrier`, `units-look-minelayer` and
-  `units-medic-squad-look`: the P658 rows and P643, for their own models.
+  `units-medic-squad-look`: P658 and P643, for their own models.
 - `buildings-look`: P644b, then each building row if its words change.
 
 ## Risks
@@ -221,19 +218,21 @@ After P647b come the restyle plan's P648 (art proof) and P649 (art phone check, 
 7. **Ground texture bandwidth.** The kit's density is twice today's ground, and it fills the whole
    screen. It is the same density as the sprites, and with no mipmaps it shimmers in the same way
    at zoom 0.75. P659's phone card is the check.
-8. **The frozen same-scene bands may block P658's darker bodies** (`tone_value` 0.45-0.75). P658
-   measures first and stops if a band fails. A band changes only with Michael's yes (ADR 0050 A8).
-9. **TEAM_SHARE when the team colour is only on the turret and skirts** (P658) may fall under 30 %
-   on hulls with small turrets (the Tanker, the Bunk Wagon). P658's gate measures it, and the
-   side panels make up the share.
+8. **Closed (2026-11-27): the frozen same-scene bands and P658's darker bodies.** The throwaway
+   gate on c09c91be passed every frozen band (`heavy_tank` s3, `renew_tank` t2; numbers in P658's
+   row). What remains is a design limit, not a risk: `black_edge_max` binds at iron #212427 and
+   `light_left_min` at #25282B (Ironward), so no body tone goes darker than about #25282B.
+9. **Closed (2026-11-27): TEAM_SHARE with the team colour on the turret and the side panels.** The
+   gate read 43.2 % (`heavy_tank`) and 52.1 % (`renew_tank`), inside 30-65 %. Each model of P658
+   is still banded by its own test.
 10. **Effort.** About one P638-size row per building (P655's estimate). The 26 buildings are in 8
     rows of 2 to 7 buildings, so a row can run long. A row that runs over splits by building.
 11. **Legal drift.** A Figma look reference used as a template, or one of the file's names, could
     creep in. ADR 0053 §6 and the review's legal lens guard against it. Nothing from the file is
     committed.
 12. **Row numbers.** P656, P658 and P659 were handed out by the lead, and P657 is the rename lane.
-    Parts use letter suffixes so they never take a number another lane holds (grep open branches
-    before adding rows).
+    Parts use letter suffixes (P658a and P658b only if P658 splits), so they never take a number
+    another lane holds (grep open branches before adding rows).
 
 ## Michael's answers
 - 2026-11-26 (the lead's AskUserQuestion), verbatim: "Trinvis: terræn + én detaljeret tank
