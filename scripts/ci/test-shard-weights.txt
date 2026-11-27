@@ -2,16 +2,42 @@
 # whether it runs: a suite that is missing here is still in some shard.
 #   <file>  <seconds>        the suite's estimated run time in seconds
 #   <dir/>  <seconds/case>   the per-case rate of every suite below the directory (default 0.25)
-# Estimates, not measurements: read the per-step times of the shard jobs and adjust.
-tests/art/                                                   0.4
-tests/ui/tutorial/test_coach_mark_chain_sweep.gd             900
-tests/ui/tutorial/test_coach_mark_lead_in_states_air.gd      240
-tests/ui/tutorial/test_coach_mark_lead_in_states_basics.gd   240
-tests/ui/tutorial/test_coach_mark_lead_in_states_support.gd  240
-tests/perf/test_golden_hashes.gd                             150
-tests/perf/test_sim_perf.gd                                  150
-tests/perf/test_air_perf.gd                                  100
-tests/perf/test_base_arena_perf.gd                           100
-tests/perf/test_ai_perf.gd                                   100
-tests/perf/test_ai_4b_perf.gd                                100
-tests/perf/test_restore_perf.gd                               60
+# Measured: seconds per suite from the gdUnit4 "Statistics" lines of run 46048467877 (PR #703, shards 1-4);
+# re-measure from a shard job log when a suite changes a lot. Suites below ~30 s use the per-case rate.
+tests/art/                                                   0.25
+tests/sim/native/                                            0.6
+tests/ui/tutorial/test_coach_mark_chain_sweep.gd             382
+tests/art/test_art_gallery_build.gd                          156
+tests/ui/tutorial/test_coach_mark_lead_in_states_support.gd  119
+tests/e2e/test_tutorial_run.gd                               91
+tests/ui/tutorial/test_coach_mark_keeps_off_controls.gd      81
+tests/ui/tutorial/test_coach_mark_lead_in_states_air.gd      81
+tests/art/test_art_gallery_iso.gd                            77
+tests/art/test_art_gallery_units.gd                          77
+tests/ui/test_touch_target_sizes.gd                          71
+tests/art/test_art_gallery_life_page.gd                      67
+tests/art/test_artgen_readability.gd                         63
+tests/ui/test_perf_air.gd                                    63
+tests/art/test_art_gallery_hud_page.gd                       58
+tests/art/test_gen_art_cli.gd                                57
+tests/art/test_art_gallery_pages.gd                          56
+tests/ui/tutorial/test_coach_mark_lead_in_states_basics.gd   56
+tests/art/test_art_gallery_icon_pages.gd                     55
+tests/art/test_art_gallery_ground.gd                         52
+tests/ui/test_pause_menu.gd                                  46
+tests/art/test_artgen.gd                                     45
+tests/ui/test_result_screen_turn.gd                          45
+tests/ui/test_dev_routes.gd                                  44
+tests/ui/test_result_screen.gd                               37
+tests/ui/test_result_screen_menu.gd                          37
+tests/ui/test_result_screen_offer.gd                         37
+tests/e2e/test_tutorial_pause_card.gd                        36
+tests/ui/tutorial/test_guide_view_only.gd                    35
+tests/ui/test_strike_controls.gd                             32
+tests/perf/test_air_perf.gd                                  4
+tests/perf/test_base_arena_perf.gd                           4
+tests/perf/test_sim_perf.gd                                  4
+tests/perf/test_ai_4b_perf.gd                                2
+tests/perf/test_ai_perf.gd                                   2
+tests/perf/test_golden_hashes.gd                             2
+tests/perf/test_restore_perf.gd                              2
