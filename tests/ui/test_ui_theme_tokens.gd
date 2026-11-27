@@ -115,3 +115,31 @@ func _contrast(a: Color, b: Color) -> float:
 	var one: float = _luminance(a)
 	var other: float = _luminance(b)
 	return (maxf(one, other) + 0.05) / (minf(one, other) + 0.05)
+
+
+## P662: the pairs the menu looks use that the token list does not already cover. The menu item and
+## the eyebrow sit on the ground; the selected item on action_wash; the primary button's word on
+## its amber fill. The muted text is left out on purpose (3.5:1, numbers and hints only).
+func test_menu_token_pairs_have_contrast() -> void:
+	var theme: Theme = HudThemes.source()
+	var text: Color = theme.get_color(&"text", &"HudTokens")
+	var dim: Color = theme.get_color(&"text_dim", &"HudTokens")
+	var money: Color = theme.get_color(&"money", &"HudTokens")
+	var ground: Color = theme.get_color(&"ground", &"HudTokens")
+	var deep: Color = theme.get_color(&"ground_deep", &"HudTokens")
+	var raised: Color = theme.get_color(&"panel_raised", &"HudTokens")
+	var wash: Color = theme.get_color(&"action_wash", &"HudTokens")
+	var pairs: Dictionary[String, Array] = {
+		"text on ground": [text, ground],
+		"text on raised": [text, raised],
+		"text on wash": [text, wash],
+		"text_dim on ground": [dim, ground],
+		"eyebrow money on ground": [money, ground],
+		"money on wash": [money, wash],
+		"ground_deep on money": [deep, money],
+	}
+	for key: String in pairs:
+		var ratio: float = _contrast(pairs[key][0], pairs[key][1])
+		assert_float(ratio).override_failure_message("%s %.2f" % [key, ratio]).is_greater_equal(
+			MIN_CONTRAST
+		)
