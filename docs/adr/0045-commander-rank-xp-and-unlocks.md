@@ -49,6 +49,11 @@ replay. Integer arithmetic only, so tests are exact.
   (multiplier - 1)` once, for one of the last `awards_kept` (8) awards, sets `bonus_applied`,
   saves, emits `xp_changed`, and returns true; any other call returns false.
 
+Note (2026-11-27, ADR 0054, accepted in row P673): `MatchSummary` gains `faction`, `built`,
+`lost_units`, `lost_buildings`, `harvested` and `standing_types`, all from the last snapshot and
+the setup (ADR 0054 §3). `XpAward` gains `trophies`, the trophy ids the award earned. Trophies pay
+no XP; `apply_bonus` and the XP rules above are unchanged.
+
 ### 3. Ranks
 `rank_xp` (a rising list; a data test checks it rises), `rank_titles` (original words, screened in
 Phase 7's trademark step) and an insignia per rank drawn by art-director (SVG, own work). The rank

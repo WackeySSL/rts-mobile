@@ -19,6 +19,7 @@ const BUTTONS: Array[StringName] = [
 	&"MenuTabOn",
 	&"MenuItem",
 	&"MenuItemOn",
+	&"MenuItemTagged",
 	&"MenuPrimary",
 ]
 ## Label looks and the PanelContainer look they sit on (empty: the bare backdrop).
@@ -28,6 +29,7 @@ const LABELS: Dictionary[StringName, StringName] = {
 	&"SideNameFossil": &"",
 	&"MenuRankLabel": &"MenuRankBadge",
 	&"MenuEyebrow": &"",
+	&"MenuTag": &"",
 }
 
 
@@ -83,8 +85,10 @@ func test_every_look_exists_with_the_base_the_screens_rely_on() -> void:
 		&"MenuTabOn": &"MenuTab",
 		&"MenuItem": &"CapsButton",
 		&"MenuItemOn": &"MenuItem",
+		&"MenuItemTagged": &"MenuItem",
 		&"MenuPrimary": &"CapsButton",
 		&"MenuEyebrow": &"Label",
+		&"MenuTag": &"MenuEyebrow",
 		&"MenuScrim": &"Control",
 		&"MenuRankBadge": &"PanelContainer",
 		&"MenuRankLabel": &"CapsTitle",
@@ -153,6 +157,8 @@ func test_menu_and_pause_plates_are_square() -> void:
 		[&"MenuItem", &"normal"],
 		[&"MenuItem", &"pressed"],
 		[&"MenuItemOn", &"normal"],
+		[&"MenuItemTagged", &"normal"],
+		[&"MenuItemTagged", &"pressed"],
 		[&"MenuPrimary", &"normal"],
 		[&"MenuPrimary", &"pressed"],
 		[&"MenuToggle", &"normal"],

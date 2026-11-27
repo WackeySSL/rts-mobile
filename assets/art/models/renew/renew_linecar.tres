@@ -7,7 +7,8 @@ script = ExtResource("1_model")
 art_id = &"renew_linecar"
 faction = &"renew"
 category = &"veh"
-silhouette = "Linecar: a low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail."
+silhouette = "Linecar: a low, long car with cut corners on four dark wheels, its whole lower body and sloped nose in team-colour panels with a thin white sill on each flank, two dark door seams, a long glass roof under a white lid with a team plate, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail."
+detail = 2
 prims = PackedStringArray(
 "prism hull graphite 0.38 -0.31 0 0.28 0.1 0.28 axis=y sides=10",
 "prism hull titanium 0.38 -0.37 0.07 0.13 0.02 0.13 axis=y sides=8",
@@ -17,11 +18,11 @@ prims = PackedStringArray(
 "prism hull titanium -0.38 -0.37 0.07 0.13 0.02 0.13 axis=y sides=8",
 "prism hull graphite -0.38 0.31 0 0.28 0.1 0.28 axis=y sides=10",
 "prism hull titanium -0.38 0.37 0.07 0.13 0.02 0.13 axis=y sides=8",
-"box hull graphite 0 0 0.07 1.1 0.42 0.07",
-"box hull ceramic -0.1 0 0.14 0.9 0.58 0.14",
-"wedge hull ceramic 0.52 0 0.14 0.34 0.58 0.14 slope=0.8",
-"box hull team -0.1 -0.295 0.18 0.64 0.02 0.07",
-"box hull team -0.1 0.295 0.18 0.64 0.02 0.07",
+"box hull graphite 0 0 0.07 1.1 0.42 0.07 chamfer=0.04",
+"box hull team -0.1 0 0.14 0.9 0.58 0.14 chamfer=0.07 detail=1",
+"wedge hull team 0.52 0 0.14 0.34 0.58 0.14 slope=0.8 chamfer=0.06 detail=1",
+"box hull ceramic -0.1 -0.292 0.2 0.6 0.016 0.025",
+"box hull ceramic -0.1 0.292 0.2 0.6 0.016 0.025",
 "box hull graphite -0.2 -0.315 0.15 0.03 0.03 0.12",
 "box hull graphite 0.1 -0.315 0.15 0.03 0.03 0.12",
 "box hull graphite -0.2 0.315 0.15 0.03 0.03 0.12",
@@ -29,9 +30,10 @@ prims = PackedStringArray(
 "box hull graphite -0.1 0 0.28 0.7 0.5 0.03",
 "box hull glass -0.1 0 0.31 0.7 0.5 0.13",
 "wedge hull glass 0.35 0 0.31 0.2 0.5 0.13 slope=1",
-"box hull ceramic -0.12 0 0.44 0.56 0.5 0.03",
-"box hull team -0.12 0 0.47 0.44 0.18 0.02",
-"box hull team -0.56 0 0.17 0.02 0.5 0.03",
+"box hull graphite -0.12 0 0.44 0.58 0.52 0.03 chamfer=0.04",
+"box hull ceramic -0.12 0 0.46 0.54 0.48 0.02 chamfer=0.04",
+"box hull team -0.12 0 0.48 0.46 0.4 0.02 detail=1",
+"box hull team -0.56 0 0.17 0.02 0.5 0.1",
 "box hull mint 0.69 0 0.2 0.02 0.34 0.025",
 "box hull graphite 0.73 0 0.1 0.05 0.52 0.07",
 "box hull graphite -0.6 0 0.1 0.05 0.52 0.07",

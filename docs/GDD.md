@@ -151,6 +151,10 @@ Rewarded ads offer double XP after a match and +500 starting credits for the nex
   Rank 2 opens map 2, rank 3 Hard, rank 4 map 3 (about five matches); each rank gives a title and
   an insignia. **Headquarters skins come after launch**, not at launch (the art page is nearly
   full). Kestrel Flats, Easy and Normal are open from the start.
+- Trophies (Michael, 2026-11-27; ADR 0054): 16 trophies on the Rank screen, earned once and kept
+  (lessons, wins per level, side and map, and four skill feats), beside a progress block (wins
+  per map and level, lessons, matches, wins, time). A trophy pays no XP and no cosmetic at launch,
+  and no ad is tied to one.
 
 ## Monetization
 Rules in the `admob-policy` skill: no ads in battle but one banner at the foot of the open pause

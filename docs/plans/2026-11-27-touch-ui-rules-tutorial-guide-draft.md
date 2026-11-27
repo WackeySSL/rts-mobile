@@ -1,3 +1,5 @@
+Applied to .claude/skills/touch-ui-rules/SKILL.md on 2026-11-27 (Michael's yes); kept for history
+
 # Draft: the `touch-ui-rules` "Tutorial guide" section (ADR 0048 §12, plan row P596)
 
 Date: 2026-11-27. Author: architect (branch `claude/p596-guide-closeout`, base `main` at
