@@ -240,6 +240,27 @@ func test_a_unit_under_a_dock_rect_is_not_in_the_field_and_gets_the_drag() -> vo
 	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.DRAG)
 
 
+func test_a_unit_under_a_card_button_gets_the_drag_and_a_clear_one_the_tap() -> void:
+	await _open(_beat(), 7)
+	var next: Button = _mark._fit.next
+	next.show()  # This beat's condition has no Next of its own: show it as a NEXT beat's would.
+	await _settle()
+	assert_bool(next.is_visible_in_tree()).is_true()
+	var box: Rect2 = Rect2(next.global_position, next.size)
+	await _put_unit_at(box.get_center())
+	assert_bool(_mark.unit_anchor().in_field).is_false()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+	next.hide()  # A hidden Next does not count.
+	await _settle()
+	assert_bool(_mark.unit_anchor().in_field).is_true()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.TAP)
+	next.show()
+	await _settle()
+	await _put_unit_at(_view() * 0.5)
+	assert_bool(_mark.unit_anchor().in_field).is_true()
+	assert_int(_mark.gesture_plan().kind).is_equal(TutorialBeatDef.Gesture.TAP)
+
+
 func test_the_drag_runs_from_the_pinned_edge_toward_the_field_point() -> void:
 	for away: Vector2 in [Vector2(6000.0, 0.0), Vector2(-6000.0, 2000.0), Vector2(0.0, -6000.0)]:
 		await _open(_beat(), 7)
