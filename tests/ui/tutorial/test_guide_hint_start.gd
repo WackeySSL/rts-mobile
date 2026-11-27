@@ -231,8 +231,9 @@ func _drawn(at: Vector2, dp: float) -> Array[Rect2]:
 
 func _assert_drawn_clear(dp: float, label: String) -> void:
 	for box: Rect2 in _drawn(_plan.point, dp):
-		for rect: Rect2 in _buttons:
-			assert_bool(box.intersects(rect)).override_failure_message(label).is_false()
+		for rect: Rect2 in _buttons:  # The code keeps clear of the button grown by the band.
+			var grown: Rect2 = rect.grow(GuideUnitAnchor.THROUGH_BAND_DP * dp)
+			assert_bool(box.intersects(grown)).override_failure_message(label).is_false()
 		for key: StringName in _hud:
 			if key != HudCorners.CARD:
 				assert_bool(box.intersects(_hud[key])).override_failure_message(label).is_false()

@@ -522,7 +522,7 @@ func _drag_proof(label: String, id: int) -> Array[String]:
 	var hand: Rect2 = Rect2(plan.point - GestureHint.POINT_TIP * side, Vector2(side, side))
 	for box: Rect2 in [ring, hand]:
 		for button: BaseButton in buttons:
-			if box.intersects(button.get_global_rect()):
+			if box.intersects(button.get_global_rect().grow(band)):
 				lines.append("%s: the hint drawn at %s meets %s" % [label, plan.point, button.name])
 		for key: StringName in mark._dock_rects:
 			if key != HudCorners.CARD and box.intersects(mark._dock_rects[key]):
