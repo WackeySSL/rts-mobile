@@ -58,7 +58,7 @@ func build(variation: StringName) -> void:
 	main = BoxContainer.new()
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(main)
-	scroll = ScrollContainer.new()
+	scroll = TouchScroll.new()
 	scroll.name = "PromptScroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER  # A drag scrolls.
