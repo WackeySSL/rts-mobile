@@ -109,6 +109,37 @@ func test_leaving_the_tree_stops_the_players_and_lets_go_of_their_streams() -> v
 	add_child(_service)
 
 
+func test_a_late_unmute_after_leaving_the_tree_starts_nothing() -> void:
+	# The service handles its own focus notification after its children have left the tree; a track
+	# that waited for the sound must not start then and hold its stream to the end of the process.
+	_service.call(&"add_mute_reason", &"ad")
+	_service.call(&"play_music", &"menu")
+	assert_int(_players_playing()).is_equal(0)
+	remove_child(_service)
+	_service.call(&"clear_mute_reason", &"ad")
+	for i: int in 2:
+		assert_bool(_deck.player_for_tests(i).playing).is_false()
+		assert_object(_deck.player_for_tests(i).stream).is_null()
+	assert_bool(_deck.play(&"battle")).is_false()
+	add_child(_service)
+
+
+func test_leaving_the_tree_mid_fade_ends_every_tween() -> void:
+	_service.call(&"play_music", &"menu")
+	_finish_fade()
+	_service.call(&"play_music", &"battle")
+	_deck.duck()
+	var fade: Tween = _deck.fade_tween_for_tests()
+	var duck: Tween = _deck.duck_tween_for_tests()
+	assert_bool(fade.is_running()).is_true()
+	remove_child(_service)
+	assert_bool(fade.is_valid()).is_false()
+	assert_bool(duck.is_valid()).is_false()
+	for i: int in 2:
+		assert_object(_deck.player_for_tests(i).stream).is_null()
+	add_child(_service)
+
+
 func test_crossfade_is_halfway_at_half_the_time() -> void:
 	_service.call(&"play_music", &"menu")
 	_finish_fade()
