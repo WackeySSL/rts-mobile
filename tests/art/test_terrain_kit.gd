@@ -173,3 +173,11 @@ func test_the_manifest_lists_every_kit_png_with_its_model() -> void:
 		)
 		. is_empty()
 	)
+
+
+func test_the_sheet_generator_reads_no_detail_model_as_an_art_model() -> void:
+	var paths: Array[String] = ArtGen.model_paths()
+	assert_array(paths).is_not_empty()
+	for path: String in paths:
+		assert_str(path).not_contains("_detail.tres").not_contains("/terrain/")
+		assert_object(load(path) as ArtModel).is_not_null()
