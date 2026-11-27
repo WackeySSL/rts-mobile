@@ -2,23 +2,31 @@ extends GdUnitTestSuite
 ## What the generated blockouts look like when rasterised (plan row P99, svg-art-style "Drawing
 ## rules"): every frame is a valid picture of the size its canvas says, the default view of every
 ## type (d06 for the Derrick League, d10 for the Lumen Accord, the one view of a building) has a
-## team zone of a few percent of its pixels and no more than a fifth (that it is not a roof plate
-## is test_artgen_plates.gd), and shrunk to 32 px in greyscale it still has a body and a spread of
-## tones, so it can be told from the ground. The look itself is the gallery's, on Michael's phone.
+## team zone in its band (a few percent below detail 2, that it is not a roof plate is
+## test_artgen_plates.gd; 30 to 65 % in the key band at detail 2 and up, where the large panels wear
+## the team colour, ADR 0050 amendment A3), and shrunk to 32 px in greyscale it still has a body and
+## a spread of tones, so it can be told from the ground. No model paints the fixed `faction`
+## material, and the two sides of a role read apart by shape (amendment A4). The look itself is the
+## gallery's, on Michael's phone.
 
 const SCALE: float = 0.5  ## 2x art at zoom 1: one tile is 64 px.
 const SIDE_PX: int = 32
-## The marker's share of a sprite's opaque pixels: 2 to 12 % for the transition (ADR 0050 section 3,
-## today's whole-team areas are valid markers); the last model batch narrows it to 2 to 6 %.
+## The marker's share of a sprite's opaque pixels below detail 2: 2 to 12 % in the exact tones of
+## the key (ADR 0050 section 3, today's whole-team areas are valid markers). At detail 2 and up the
+## share is `Pictures.TEAM_BAND`, in the key band (amendment A3).
 const TEAM_SHARE: Vector2 = Vector2(0.02, 0.12)
-## The fixed faction colour's share at detail 1 and up: panels may cover large surfaces.
-const FACTION_SHARE: Vector2 = Vector2(0.15, 0.85)
+## Two silhouettes of one role (a Nordvaern and a Facet model) overlap less than this at 32 px
+## (amendment A4, the repo's `MAX_OVERLAP`), in each of these directions.
+const MAX_OVERLAP: float = 0.85
+const PAIR_DIRS: Array[int] = [6, 10]
+const BATCHES: String = "res://docs/art/treadline-batches.json"
 const MIN_SPREAD: float = 80.0  ## Luminance, 5th to 95th percentile, 0 to 255.
 const MIN_BODY_PX: int = 150
 const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
 const PAGE: Vector2i = Vector2i(320, 320)
 const GROUND_POINT: Vector2i = Vector2i(160, 200)
 const Support: GDScript = preload("res://tests/art/artgen_v5_support.gd")
+const Pictures: GDScript = preload("res://tests/art/building_picture_support.gd")
 
 var _fresh: Dictionary[String, String] = {}
 
@@ -48,39 +56,77 @@ func test_every_frame_is_a_picture_of_the_size_its_canvas_says() -> void:
 					)
 
 
-func test_the_default_view_of_every_type_has_a_team_share_of_2_to_12_percent() -> void:
+func test_the_default_view_of_every_type_has_a_team_share_in_its_band() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		var share: float = _share(_default_picture(model), ArtPalette.KEYS[model.faction])
+		var share: float = Pictures.model_share(model, _default_picture(model))
+		var band: Vector2 = Pictures.model_band(model, false, TEAM_SHARE)
 		(
 			assert_float(share)
-			. override_failure_message("%s team share %.3f" % [path, share])
-			. is_between(TEAM_SHARE.x, TEAM_SHARE.y)
+			. override_failure_message("%s team share %.3f, band %s" % [path, share, band])
+			. is_between(band.x, band.y)
 		)
 
 
-## A model at detail 1 or more (ADR 0050 section 1) paints its faction's fixed colour on panels:
-## FACTION_SHARE of its default view. The
-## share is the hue-band measure of the same-scene check (P640): the pixels whose hue is within
-## `faction_hue_band` of the faction's mid hue at a saturation of `faction_sat_min` or more, read
-## from `same_scene.tres`. Exact tones miss the small faces of infantry, where the 1 px edge and the
-## anti-aliasing take every pixel of a face under 5 px wide.
-func test_a_model_at_detail_1_or_more_has_a_faction_share_in_its_band() -> void:
+## After the swap of P652 no model paints the fixed `faction` material: a fixed orange or blue part
+## on a body would read as a team colour in a mirror match (ADR 0050 amendment A2). `ArtPalette`
+## keeps the material for the item cards and as the classifier's reference hue.
+func test_no_model_paints_the_fixed_faction_material() -> void:
+	var seen: int = 0
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
-		if not ("detail" in model) or int(model.get(&"detail")) < 1:
-			continue
-		var share: float = _faction_share(_default_picture(model), model.faction)
-		(
-			assert_float(share)
-			. override_failure_message("%s faction share %.3f" % [path, share])
-			. is_between(FACTION_SHARE.x, FACTION_SHARE.y)
-		)
+		for part: StringName in model.parts():
+			for prim: ArtPrim in model.primitives(part):
+				seen += 1
+				(
+					assert_str(String(prim.material))
+					. override_failure_message("%s %s paints faction" % [path, part])
+					. is_not_equal(String(ArtPalette.FACTION))
+				)
+	assert_int(seen).is_greater(1000)
 
 
-## The measure bites: a hull of fixed faction material is faction colour, not marker, and the
-## other way round for the same hull in `team`.
-func test_the_share_measure_tells_the_fixed_material_from_the_marker() -> void:
+## The faction reads from shape (amendment A4): for each Nordvaern and Facet model of one role, both
+## at detail 2 or more, the 32 px silhouettes overlap less than `MAX_OVERLAP` in d06 and in d10, the
+## same direction for both. The pairs are the same positions in the two batches of one kind
+## (`docs/art/treadline-batches.json`: P638 with P639, P640 with P641, then P642 with P643 and on
+## as those models reach detail 2). A mask has no colour, so the check holds whichever triad either
+## side wears.
+func test_a_nordvaern_and_a_facet_model_of_one_role_read_apart_by_shape() -> void:
+	var parsed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(BATCHES))
+	var batches: Array = parsed["batches"]
+	var seen: int = 0
+	for at: int in range(0, batches.size() - 1, 2):
+		var fossil: Dictionary = batches[at]
+		var renew: Dictionary = batches[at + 1]
+		assert_str(fossil["what"]).is_equal(renew["what"])
+		for i: int in fossil["ids"].size():
+			var first: ArtModel = (
+				load("res://assets/art/models/fossil/%s.tres" % fossil["ids"][i]) as ArtModel
+			)
+			var second: ArtModel = (
+				load("res://assets/art/models/renew/%s.tres" % renew["ids"][i]) as ArtModel
+			)
+			if first.detail < 2 or second.detail < 2:
+				continue
+			for dir: int in PAIR_DIRS:
+				var overlap: float = Pictures.overlap(
+					Pictures.mask_32(_picture(first, dir)), Pictures.mask_32(_picture(second, dir))
+				)
+				(
+					assert_float(overlap)
+					. override_failure_message(
+						"%s against %s in d%02d: %.2f" % [first.art_id, second.art_id, dir, overlap]
+					)
+					. is_less(MAX_OVERLAP)
+				)
+				seen += 1
+	assert_int(seen).is_greater_equal(14)  # seven pairs, two directions (P638-P641)
+
+
+## The measure bites: a hull of fixed faction material is no team colour, and a hull of `team` is,
+## by the exact tones and by the key band.
+func test_the_share_measure_tells_the_fixed_material_from_the_team_colour() -> void:
 	for faction: StringName in [&"fossil", &"renew"]:
 		for material: StringName in [&"faction", &"team"]:
 			var model: ArtModel = Support.with_prims(
@@ -88,15 +134,15 @@ func test_the_share_measure_tells_the_fixed_material_from_the_marker() -> void:
 			)
 			model.faction = faction
 			var picture: Image = Support.stage_image(model, 0)
-			var faction_share: float = _faction_share(picture, faction)
-			var team_share: float = _share(picture, ArtPalette.KEYS[faction])
+			var exact: float = _share(picture, ArtPalette.KEYS[faction])
+			var band: float = Pictures.band_share(picture)
 			var label: String = "%s %s" % [faction, material]
 			if material == &"faction":
-				assert_float(faction_share).override_failure_message(label).is_greater(0.6)
-				assert_float(team_share).override_failure_message(label).is_equal(0.0)
+				assert_float(exact).override_failure_message(label).is_equal(0.0)
+				assert_float(band).override_failure_message(label).is_equal(0.0)
 			else:
-				assert_float(team_share).override_failure_message(label).is_greater(0.6)
-				assert_float(faction_share).override_failure_message(label).is_equal(0.0)
+				assert_float(exact).override_failure_message(label).is_greater(0.6)
+				assert_float(band).override_failure_message(label).is_greater(0.8)
 
 
 ## The share of `picture`'s opaque pixels within `KEY_TOLERANCE` of one of `hexes`.
@@ -119,42 +165,6 @@ func _share(picture: Image, hexes: Array) -> float:
 				):
 					hit += 1
 					break
-	return float(hit) / maxi(body, 1)
-
-
-## The hue of `faction` in the bands: the one of `faction_hues` nearest the mid tone of the
-## faction's fixed colour (the bands list the hues without naming the factions).
-func _faction_hue(bands: SameSceneBands, faction: StringName) -> float:
-	var mid: float = Color(ArtPalette.tone(faction, ArtPalette.FACTION, 1)).h * 360.0
-	var best: float = bands.faction_hues[0]
-	var best_gap: float = 360.0
-	for hue: float in bands.faction_hues:
-		var gap: float = absf(mid - hue)
-		gap = minf(gap, 360.0 - gap)
-		if gap < best_gap:
-			best = hue
-			best_gap = gap
-	return best
-
-
-## The share of `picture`'s opaque pixels in `faction`'s hue band (bands from `same_scene.tres`).
-func _faction_share(picture: Image, faction: StringName) -> float:
-	var bands: SameSceneBands = SameScene.load_bands()
-	var hue: float = _faction_hue(bands, faction)
-	var hit: int = 0
-	var body: int = 0
-	for y: int in picture.get_height():
-		for x: int in picture.get_width():
-			var pixel: Color = picture.get_pixel(x, y)
-			if pixel.a < 0.95:
-				continue
-			body += 1
-			var gap: float = absf(pixel.h * 360.0 - hue)
-			if (
-				pixel.s >= bands.faction_sat_min
-				and minf(gap, 360.0 - gap) <= bands.faction_hue_band
-			):
-				hit += 1
 	return float(hit) / maxi(body, 1)
 
 
@@ -212,7 +222,11 @@ func _assert_identifiable(label: String, picture: Image) -> void:
 
 ## The default view of a type on a transparent page: the hull, and the turret or head at its mount.
 func _default_picture(model: ArtModel) -> Image:
-	var dir: int = 6 if model.faction == &"fossil" else 10
+	return _picture(model, 6 if model.faction == &"fossil" else 10)
+
+
+## A type facing `dir` (a building's one view) on a transparent page.
+func _picture(model: ArtModel, dir: int) -> Image:
 	var picture: Image = Image.create_empty(PAGE.x, PAGE.y, false, Image.FORMAT_RGBA8)
 	var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
 	_blit(
