@@ -16,6 +16,7 @@ const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const LESSON_DIR: String = "res://data/tutorial/"
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const TOLERANCE_PX: float = 0.5
+const DRAG_STEPS: int = 4  ## Moves of a pushed touch-drag.
 const OVERLAP_PX2: float = 4.0
 const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Which selection a start state holds: nothing, the player's units, one building (`BUILDINGS` plus
@@ -55,6 +56,7 @@ var own: PackedInt32Array = PackedInt32Array()
 var own_buildings: PackedInt32Array = PackedInt32Array()
 
 var _suite: GdUnitTestSuite
+var _pressed: int = 0  ## Presses of the card's buttons during a proof's touch-drag.
 
 
 ## `suite` owns the frames, the window and the tree the main scene is added to.
@@ -442,6 +444,7 @@ func touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef) 
 			lines.append("%s: unit %d is in the field under a card button" % [label, id])
 		if mark.gesture_plan().kind == TutorialBeatDef.Gesture.TAP:
 			lines.append("%s: the hand taps unit %d under a card button" % [label, id])
+		lines.append_array(await _drag_proof(label, id))
 	var view: Rect2 = _suite.get_viewport().get_visible_rect()
 	for want: Vector2 in [Vector2(0.5, 0.5), Vector2(0.5, 0.65), Vector2(0.25, 0.65)]:
 		if unit.in_field:
@@ -485,6 +488,68 @@ func touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef) 
 	elif not selection.selected.has(id):
 		lines.append("%s: a touch at %s did not select unit %d" % [label, at, id])
 	return lines
+
+
+## The hand's drag for a unit under a card button (plan row P593b-4): it starts outside every
+## visible button grown by the band and outside every HUD rect, and a real touch-drag from there
+## along its vector pans the camera and presses nothing: no button's `pressed` fires, the beat and
+## its step stay.
+func _drag_proof(label: String, id: int) -> Array[String]:
+	var lines: Array[String] = []
+	var plan: GuideHintPlan = mark.gesture_plan()
+	if plan.kind != TutorialBeatDef.Gesture.DRAG:
+		lines.append("%s: the hand over unit %d under a card button is not a drag" % [label, id])
+		return lines
+	var dp: float = mark._dp
+	var band: float = GuideUnitAnchor.THROUGH_BAND_DP * dp
+	var buttons: Array[BaseButton] = []
+	for node: Node in mark.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node as BaseButton
+		if button.is_visible_in_tree():
+			buttons.append(button)
+			if button.get_global_rect().grow(band).has_point(plan.point):
+				lines.append(
+					"%s: the drag starts at %s under %s" % [label, plan.point, button.name]
+				)
+	for key: StringName in mark._dock_rects:
+		var rect: Rect2 = mark._dock_rects[key]
+		if key != HudCorners.CARD and rect.has_point(plan.point):
+			lines.append("%s: the drag starts at %s under HUD part %s" % [label, plan.point, key])
+	var before: Vector2 = camera.position
+	var beat: TutorialBeatDef = director.current_beat()
+	var progress: Vector2i = director.progress()
+	var aim: TutorialLeadInDef = director.active_target()
+	var step: Vector2 = plan.vector_dp * dp / DRAG_STEPS
+	var at: Vector2 = plan.point
+	_pressed = 0
+	for button: BaseButton in buttons:
+		button.pressed.connect(_count_press)
+	var view: Viewport = _suite.get_viewport()
+	TouchEvents.press(view, 0, at)
+	for _move: int in DRAG_STEPS:
+		at += step
+		TouchEvents.drag(view, 0, at, step)
+		await _suite.await_idle_frame()
+	TouchEvents.release(view, 0, at)
+	for _frame: int in 3:
+		await _suite.await_idle_frame()
+	for button: BaseButton in buttons:
+		if is_instance_valid(button):
+			button.pressed.disconnect(_count_press)
+	if camera.position.is_equal_approx(before):
+		lines.append("%s: a touch-drag from %s did not pan the camera" % [label, plan.point])
+	if _pressed > 0:
+		lines.append("%s: a touch-drag from %s fired a card button's pressed" % [label, plan.point])
+	var held: bool = director.current_beat() == beat and director.progress() == progress
+	if not held or director.active_target() != aim:
+		lines.append(
+			"%s: the beat or its step changed after a touch-drag from %s" % [label, plan.point]
+		)
+	return lines
+
+
+func _count_press() -> void:
+	_pressed += 1
 
 
 ## Whether a button of the card (Next, Skip, the tab) stands at screen point `at`.

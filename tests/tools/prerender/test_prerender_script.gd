@@ -25,8 +25,9 @@ const PINNED: Dictionary = {
 
 
 func after_test() -> void:
-	if FileAccess.file_exists(VERSIONS):
-		DirAccess.remove_absolute(VERSIONS)
+	for file: String in [VERSIONS, "user://prerender_manifest.tres"]:
+		if FileAccess.file_exists(file):
+			DirAccess.remove_absolute(file)
 
 
 ## Runs `--preflight` against `listing` (name -> version); `tools` is PRERENDER_TOOLS.
@@ -112,6 +113,49 @@ func test_the_pins_in_the_script_are_the_ones_the_adr_names() -> void:
 		if name in ["os", "godot", "python"]:
 			continue
 		assert_str(adr).contains(PINNED[name])
+	var pins: String = FileAccess.get_file_as_string("res://tools/prerender/requirements.txt")
+	assert_str(pins).contains("numpy==%s" % PINNED.numpy).contains("Pillow==%s" % PINNED.pillow)
 	var script: String = FileAccess.get_file_as_string(SCRIPT)
 	for name: String in PINNED:
-		assert_str(script).contains("%s|%s" % [name, PINNED[name].get_slice(".stable", 0)])
+		if name not in ["numpy", "pillow"]:
+			assert_str(script).contains("%s|%s" % [name, PINNED[name].get_slice(".stable", 0)])
+
+
+func test_check_refuses_another_stamp_with_exit_5_and_compares_nothing() -> void:
+	var manifest: FileAccess = FileAccess.open("user://prerender_manifest.tres", FileAccess.WRITE)
+	manifest.store_string('[resource]\nstamp = "Vulkan 1.4.318 - Forward+ - llvmpipe / Mesa 1"\n')
+	manifest = null
+	var run: Dictionary = _check("Vulkan 1.3 - Forward+ - a real GPU / Mesa 2")
+	assert_int(run.code).is_equal(5)
+	assert_str(run.text).contains("STAMP differs").contains("this machine 'Vulkan 1.3")
+	assert_int(_check("Vulkan 1.4.318 - Forward+ - llvmpipe / Mesa 1").code).is_equal(0)
+
+
+func _check(stamp: String) -> Dictionary:
+	var listing: FileAccess = FileAccess.open(VERSIONS, FileAccess.WRITE)
+	for name: String in PINNED:
+		listing.store_line("%s %s" % [name, PINNED[name]])
+	listing = null
+	var output: Array = []
+	var code: int = (
+		OS
+		. execute(
+			"env",
+			[
+				"PRERENDER_VERSIONS_FILE=" + ProjectSettings.globalize_path(VERSIONS),
+				"PRERENDER_TOOLS=bash",
+				"PRERENDER_STAMP=" + stamp,
+				"PRERENDER_SKIP_IMPORT=1",
+				(
+					"PRERENDER_MANIFEST="
+					+ ProjectSettings.globalize_path("user://prerender_manifest.tres")
+				),
+				"bash",
+				ProjectSettings.globalize_path(SCRIPT),
+				"--check",
+			],
+			output,
+			true
+		)
+	)
+	return {"code": code, "text": "".join(output)}

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="ArtManifest" format=3]
+
+[ext_resource type="Script" path="res://tools/prerender/ArtManifest.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+stamp = "Vulkan 1.4.318 - Forward+ - llvmpipe / Mesa 25.2.8-0ubuntu0.24.04.5"
+entries = PackedStringArray()

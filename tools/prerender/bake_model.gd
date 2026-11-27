@@ -41,6 +41,7 @@ func _run() -> void:
 	var made: int = await _bake(model, sheet)
 	_rig.free()
 	BakeMaterials.release()
+	_write_info()
 	print("bake_model: renderer ", stamp())
 	print("bake_model: %s, %d frames in %s" % [model.art_id, made, _opts.out])
 	quit(0 if made > 0 else 1)
@@ -73,7 +74,7 @@ func _bake(model: DetailModel, sheet: IsoSheetDef) -> int:
 			push_error("bake_model refuses " + mesh.cap_error())
 			return 0
 		print("bake_model: %s %s %d triangles" % [model.art_id, part, mesh.triangles])
-	var made: int = 0
+	var made: int = await _shadow(model, sheet)
 	var seat: StringName = &"turret" if nodes.has(&"turret") else &"head"
 	for part: StringName in nodes:
 		if sheet.has_part(part):
@@ -82,6 +83,47 @@ func _bake(model: DetailModel, sheet: IsoSheetDef) -> int:
 		made += await _composite(model.art_id, sheet, nodes[&"hull"], nodes[seat], seat)
 	for node: Node3D in nodes.values():
 		node.free()
+	return made
+
+
+## `bake_info.json`, what the post needs: the bake scale and the shadow band's alpha, read from the
+## frozen same-scene bands (never typed here), and the renderer stamp.
+func _write_info() -> void:
+	var bands: SameSceneBands = load("res://tools/artgen/same_scene.tres") as SameSceneBands
+	var info: Dictionary = {
+		"scale": int(_opts.scale),
+		"shadow_alpha": snappedf((bands.shadow_alpha.x + bands.shadow_alpha.y) * 0.5, 0.001),
+		"renderer": stamp()
+	}
+	var file: FileAccess = FileAccess.open(
+		String(_opts.out).path_join("bake_info.json"), FileAccess.WRITE
+	)
+	file.store_string(JSON.stringify(info, "\t", true) + "\n")
+
+
+## The shadow frame (ADR 0053 section 5): the model's solid parts flattened along +gx by
+## `ArtShadow.REACH` per tile of height, unlit black and opaque; the post sets its alpha. Done in
+## the bake because the geometry is only here.
+func _shadow(model: DetailModel, sheet: IsoSheetDef) -> int:
+	if not sheet.has_part(&"shadow") or model.part_names().has(&"shadow"):
+		return 0
+	var flat: BakeMesh = BakeMesh.new(model.art_id)
+	flat.reach = ArtShadow.REACH
+	for part: StringName in model.part_names():
+		if part not in [&"dmg2", &"anim"]:
+			model.build(part, flat)
+	var black: StandardMaterial3D = StandardMaterial3D.new()
+	black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	black.albedo_color = Color.BLACK
+	black.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var materials: Dictionary = {}
+	for name: StringName in flat.batches:
+		materials[name] = black
+	var node: Node3D = flat.to_node(materials, false)
+	if node == null:
+		return 0
+	var made: int = await _frames(model.art_id, sheet, &"shadow", node)
+	node.free()
 	return made
 
 

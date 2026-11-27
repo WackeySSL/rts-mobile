@@ -28,6 +28,13 @@ var _version: int = -1  ## `rows_version` the held row was read at.
 var _row: int = -1
 var _type: int = -1
 var _under: bool = false  ## The point is under a card button (hysteresis: see `_under_button`).
+## The field's rect, the HUD rects, the buttons and the dp of the last `update`, what `clear_at` and
+## `edge_rects` test a point against. The two containers are the mark's own, which it reuses and
+## clears each frame: they are valid only in the frame of `update`.
+var _safe: Rect2 = Rect2()
+var _hud: Dictionary[StringName, Rect2] = {}
+var _buttons: Array[Rect2] = []
+var _dp: float = 1.0
 
 
 ## Brings the result up to this frame for step `aim`. `rects` are the mark's HUD rects
@@ -45,6 +52,10 @@ func update(
 	rects: Dictionary[StringName, Rect2],
 	buttons: Array[Rect2]
 ) -> void:
+	_safe = safe
+	_dp = dp
+	_hud = rects
+	_buttons = buttons
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	var sel: TutorialUnitPickDef = aim.unit if aim != null else null
 	var bare: bool = camera == null or ground == null or air == null
@@ -84,6 +95,33 @@ func update(
 	for key: StringName in rects:
 		if key != HudCorners.CARD and in_field and rects[key].has_point(point):
 			in_field = false
+
+
+## Whether `at` is free field as of the last `update`: on the screen's safe rect, outside every
+## visible card button grown by `THROUGH_BAND_DP` and outside every HUD rect but the card's. The
+## hand's drag may start only on such a point (plan row P593b-4); a touch there pans, never presses.
+func clear_at(at: Vector2) -> bool:
+	if not _safe.has_point(at):
+		return false
+	var band: float = THROUGH_BAND_DP * _dp
+	for rect: Rect2 in _buttons:
+		if rect.grow(band).has_point(at):
+			return false
+	for key: StringName in _hud:
+		if key != HudCorners.CARD and _hud[key].has_point(at):
+			return false
+	return true
+
+
+## Appends the rects `clear_at` refuses (buttons and HUD rects, grown by the band) to `out`: the
+## edges a free point is looked for along.
+func edge_rects(out: Array[Rect2]) -> void:
+	var band: float = THROUGH_BAND_DP * _dp
+	for rect: Rect2 in _buttons:
+		out.append(rect.grow(band))
+	for key: StringName in _hud:
+		if key != HudCorners.CARD:
+			out.append(_hud[key].grow(band))
 
 
 ## Whether the point is under a button. It is once inside a plain rect and clear only once outside
