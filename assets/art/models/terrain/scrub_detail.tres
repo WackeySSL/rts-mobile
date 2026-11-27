@@ -35,7 +35,7 @@ kind = 6
 [sub_resource type="Resource" id="m_sc_mid"]
 script = ExtResource("1_mat")
 id = &"sc_mid"
-base = Color(0.5648, 0.5814, 0.4109, 1)
+base = Color(0.5918, 0.5949, 0.4284, 1)
 roughness = 0.9
 kind = 6
 

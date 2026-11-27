@@ -9,12 +9,14 @@ extends Resource
 ##   dome     `a` centre, `b` the way it faces, `radius`, `segs`
 ##   torus    `a` centre, `b` the axis, `radius` (ring), `radius2` (tube), `segs`, `sides`
 ##   solid    `planes` (nx, ny, nz, d) outward, `bevel`
+##   cliff    `a` to `b` the foot, `size.y` deep, `size.z` tall, `radius` the groove depth,
+##            `radius2` the noise seed (see `BakeShapes.cliff`)
 ##   quad     `a` centre, `size.x` and `size.y` across: one flat face facing up, no sides (ground)
 ## `mirror` adds the copy across y = 0; `count` repeats along `step`, each copy moved by up to
 ## `jitter` of a step from the model's variation seed.
 
 const SHAPES: Array[StringName] = [
-	&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid", &"quad"
+	&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid", &"quad", &"cliff"
 ]
 
 @export var part: StringName = &"hull"  ## The sheet part it belongs to: hull, turret or head.
@@ -37,18 +39,21 @@ const SHAPES: Array[StringName] = [
 
 ## The highest z the piece reaches, tiles, so a shadow can skip what lies flat on the ground.
 func top() -> float:
+	var above: float = 1.0
 	match shape:
 		&"quad":
-			return a.z
+			above = 0.0
 		&"box", &"bar":
-			return a.z + size.z * 0.5
+			above = size.z * 0.5
 		&"cylinder":
-			return maxf(a.z, b.z)
+			above = maxf(b.z - a.z, 0.0)
 		&"dome":
-			return a.z + radius * BakeShapes.DOME_RISE
+			above = radius * BakeShapes.DOME_RISE
 		&"torus":
-			return a.z + radius2
-	return 1.0
+			above = radius2
+		&"cliff":
+			above = size.z
+	return a.z + above
 
 
 ## Adds the piece to `m`; `flip` is the mirrored copy.
@@ -67,6 +72,8 @@ func emit(m: BakeMesh, flip: bool) -> void:
 			BakeShapes.torus(m, material, a * s, b * s, radius, radius2, segs, sides)
 		&"quad":
 			BakeShapes.quad(m, material, a * s, Vector2(size.x, size.y))
+		&"cliff":
+			BakeShapes.cliff(m, material, a * s, b * s, size.y, size.z, radius, int(radius2))
 		&"solid":
 			var found: Array[Plane] = []
 			for v: Vector4 in planes:

@@ -184,3 +184,92 @@ static func _cap(
 		[normal, normal, normal],
 		flat
 	)
+
+
+## A cliff face (P653's idea: a noise-displaced wall, grooves running top to bottom, a ragged top
+## and an overhanging lip). Its foot runs from `a` to `b` on the ground; the face looks away from
+## the tile centre, the wall is `thick` deep behind it and `height` tall. The grooves are noise
+## fast along the wall and slow up it, `amp` tiles deep at most. Both ends are pinned (no
+## displacement, one height) so that walls which meet match, whatever `seed_value` is.
+static func cliff(
+	m: BakeMesh,
+	mat: StringName,
+	a: Vector3,
+	b: Vector3,
+	thick: float,
+	height: float,
+	amp: float,
+	seed_value: int
+) -> void:
+	const NU: int = 48
+	const NV: int = 20
+	var along: Vector3 = (b - a).normalized()
+	var out: Vector3 = Vector3(-along.y, along.x, 0.0)
+	if out.dot((a + b) * 0.5) < 0.0:
+		out = -out
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.frequency = 1.0
+	var length: float = a.distance_to(b)
+	var tops: PackedFloat32Array = PackedFloat32Array()
+	var face: Array[PackedVector3Array] = []
+	for i: int in NU + 1:
+		var u: float = float(i) / NU
+		var pin: float = smoothstep(0.0, 0.12, minf(u, 1.0 - u))
+		tops.append(
+			(
+				height
+				* (
+					0.9
+					+ (
+						pin
+						* (
+							0.12 * noise.get_noise_2d(u * 5.0, 7.3)
+							+ 0.04 * noise.get_noise_2d(u * 21.0, 3.1)
+						)
+					)
+				)
+			)
+		)
+		var column: PackedVector3Array = PackedVector3Array()
+		for j: int in NV + 1:
+			var v: float = float(j) / NV
+			var groove: float = (
+				0.6 * noise.get_noise_2d(u * length * 17.0, v * 1.6)
+				+ 0.4 * noise.get_noise_2d(u * length * 41.0, v * 0.7 + 9.0)
+			)
+			var lip: float = smoothstep(0.8, 1.0, v) * (0.5 + noise.get_noise_2d(u * 9.0, 5.5))
+			column.append(
+				(
+					a.lerp(b, u)
+					+ out * (pin * amp * (groove + 0.6 * lip))
+					+ Vector3(0.0, 0.0, v * tops[i])
+				)
+			)
+		face.append(column)
+	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
+	var back: Vector3 = -out * thick
+	for i: int in NU:
+		for j: int in NV:
+			var q: Array[Vector3] = [face[i][j], face[i + 1][j], face[i + 1][j + 1], face[i][j + 1]]
+			var n: Vector3 = (q[1] - q[0]).cross(q[3] - q[0]).normalized()
+			n = n if n.dot(out) > 0.0 else -n
+			m.tri(mat, [q[0], q[1], q[2]], [n, n, n], flat)
+			m.tri(mat, [q[0], q[2], q[3]], [n, n, n], flat)
+		var p0: Vector3 = face[i][NV]
+		var p1: Vector3 = face[i + 1][NV]
+		var up: Array[Vector3] = [Vector3.BACK, Vector3.BACK, Vector3.BACK]
+		m.tri(mat, [p0, p1, p0 + back], up, flat)
+		m.tri(mat, [p1, p1 + back, p0 + back], up, flat)
+		var g0: Vector3 = a.lerp(b, float(i) / NU) + back
+		var g1: Vector3 = a.lerp(b, float(i + 1) / NU) + back
+		var o: Array[Vector3] = [-out, -out, -out]
+		m.tri(mat, [g0, g1, g0 + Vector3(0.0, 0.0, tops[i])], o, flat)
+		m.tri(
+			mat, [g1, g1 + Vector3(0.0, 0.0, tops[i + 1]), g0 + Vector3(0.0, 0.0, tops[i])], o, flat
+		)
+	for end: int in [0, NU]:
+		var s: Vector3 = along if end == NU else -along
+		var c: PackedVector3Array = face[end]
+		m.tri(mat, [c[0], c[NV], c[NV] + back], [s, s, s], flat)
+		m.tri(mat, [c[0], c[NV] + back, c[0] + back], [s, s, s], flat)
