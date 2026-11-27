@@ -193,6 +193,7 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 		"stops": stops_sent,
 		"selection_steps": selection_steps,
 		"unit_taps": unit_taps,
+		"reduced": _mark.reduced,
 	}
 	_director.skip()
 	_mark.queue_free()
