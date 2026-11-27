@@ -137,6 +137,14 @@ polish rows (P200-P219, ADR 0034 and ADR 0035) run alongside it.
   (ADR 0015 §5) and is tested at the six sizes of ADR 0015 §6 (2026-11-21: P534 #571; the tutorial
   screen in its own suite, P544 #602, its overlays P542 #576 and P543b #593; follow-up P562)
 - [x] Second and third map (Heron Fords and Curlew Crags: P550-P555c, merged by wave 26, 2026-11-19)
+- [ ] Pre-rendered terrain kit (ADR 0053, accepted 2026-11-27 in P654; `docs/plans/2026-11-27-prerender.md`,
+  rows P656a-P656e): about 80 ground pieces rendered from our own 3D model data at the sprites'
+  density, with four variants of each terrain, blends between terrains, cliff edges at rock and
+  shores at water, on all three maps and their looks, in portrait and landscape. Numbers: the kit
+  PNGs take at most 5 MB, the ground page at most 512 rows of 4096 px, every cell is covered (or
+  falls back to today's SVG diamond), and a lip rises only over cells no unit can enter. At most
+  9 tile writes per changed cell and none per frame, at most 19 draw calls in an ordinary moment,
+  and the same-scene ground bands are green. Michael's look check in P659
 - [ ] Gate: a new player finishes the tutorial without help, every entry in `docs/HOW_TO_PLAY.md` is
   covered by the tutorial or the How to play screen, and the median match takes 8-10 minutes in
   human-vs-AI playtests (Michael, 2026-11-23: AI-vs-AI Normal at 12-15 minutes is accepted; P556,

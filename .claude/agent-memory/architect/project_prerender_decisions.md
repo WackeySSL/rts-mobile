@@ -1,0 +1,23 @@
+---
+name: project-prerender-decisions
+description: ADR 0053 ACCEPTED 2026-11-27 in P654 ("Godkend alle 7 (anbefalet)"): pre-rendered 3D terrain + buildings at 1x, SVG units for now, bake-time GPU recolour; plan docs/plans/2026-11-27-prerender.md rows P656a-P659
+metadata:
+  type: project
+---
+# Pre-render (ADR 0053 ACCEPTED 2026-11-27 in P654 itself)
+
+- Branch `claude/p654-prerender-adr`, base 7648d987. Michael: "Trinvis: terræn + én detaljeret tank (Recommended)" (11-26), "3D til terræn + bygninger, SVG-enheder" and "Vi kan starte der og så kan tanks laves til 3D senere når jeg har set det?" (11-27, lead yes), "Ironward (Recommended)" (Nordværn renamed; ids unchanged; P657 renames old text).
+- New ADR, not an 0050 amendment: it reverses 0050 answer 1 for two art classes, adds a toolchain, a renderer outside Stack and CLAUDE.md lines. Notes placed in ADR 0050 (top + end of §2); ADR 0023 §5 note waits for acceptance (P654b).
+- Decided in the proposal: 1x only (sprites' density; 2x = ~350 MB, 7 pages); recolour = P653 `recolour2` as a canvas shader run ONCE per player at match start via SubViewport + readback into IsoAtlas's per-player slots (sorted world keeps no material, "in white"); GDScript twin `TeamRecolour.gd` = reference, composer, cards, fallback; dummy renderer leaves sentinel; CI-only render test under xvfb (shader vs twin <= 1/255).
+- Bake: Godot 4.7.2 Forward+/lavapipe under xvfb in a pinned image (mesa 25.2.8-0ubuntu0.24.04.5 x5 pkgs, libllvm20, xvfb 21.1.12, numpy 2.5.3, Pillow 12.3.0); committed PNGs + manifest (sha256); CI never re-renders; other Mesa = explicit re-bake row. No non-linear post grade (it breaks the recolour); exposure only.
+- Art = data: building 3D detail in `assets/art/models/<f>/<id>_detail.tres` (reserved), builders in tools/prerender (MIT); artgen still writes every sheet, png paths for ids in `tools/prerender/owned.tres`.
+- Ground: GroundLayer/GroundAtlas (the brief's "TerrainLayer"), base + edge layer at scale 0.5, pure piece choice with a fixed cell hash, lip <= 36 texels only over cells blocked for every move class, <= 9 writes per changed cell, SVG fallback; roads decoration only (Q4).
+- Rows: P654b accept; P656a/b tool, P656c/c2 kit, P656e same-scene ground bands (new `same_scene_ground.tres`; `same_scene.tres` stays frozen), P656d wiring, P656f roads; P658 ONE row for all 18 detail-2 SVG units (lead 2026-11-27; P658a/b split only if prod diff > ~400 lines), P643 waits only on P652 (either order with P658); P644a recolour, P644a2 atlas PNG path, P644b/c Ironward 3x3; P659 Michael's look check (buildings kept? 3D units?); P645a-P647b after P659. ROADMAP Phase 5 row "Pre-rendered terrain kit". 7 questions.
+- Pitfall: "1x" is ambiguous for the ground: today's diamonds import at svg/scale 0.5 (64x32 texels, 1 texel/world px), half the sprites' density; P653's "1x" kit is 128x64 per diamond (4x today's ground texels).
+- Pitfall: CLAUDE.md Legal allows only SVG (hand/artgen), CC0/CC-BY, Figma vector exports and brand files; any PNG from our own renderer needs Michael's yes and a lead edit of CLAUDE.md before art merges.
+- Pitfall: a CPU per-pixel recolour in GDScript of ~3 M keyed building texels per player is seconds on a phone; building texels measured from sheet canvases: 7.95 M (both factions, untrimmed, dmg2 at 0.75^2), 6.0 M keyed, SVG 1.38 MB.
+- P658 gate MET (throwaway on c09c91be): heavy_tank s3 iron #2B2E32/steel #5C6066/body #4A4D52 as NEW materials (team 43.2 %, spread 142.5, overlap 0.78 -> 0.685 with gun +0.2 tile); renew_tank t2 graphite #2B2E32/titanium #5C6066 (team 52.1 %). Binding: black_edge_max first (#212427 fails), light_left_min second, Ironward only (#25282B = -0.042): body tones >= ~#25282B. Longer barrel moving muzzle points = separate row.
+- Pitfall: the lead's brief said P658 is one row; I split it into six. Keep a row the brief defines as one row unless the 400-line rule forces a split, and name the split condition.
+- ACCEPTED 2026-11-27 (Michael "Godkend alle 7 (anbefalet)": method, CLAUDE.md lines, +7.5 MB cap 10, roads decoration, P645-P647 after P659, P658 steel look, separate calmer ground bands); P654b folded into P654; status notes in ADR 0023 (before "Decisions in short") and a second one in ADR 0050 (the proposed-time note left as written).
+- Pitfall: agents cannot edit CLAUDE.md (refused, even for the coordinator); approved CLAUDE.md lines go to the lead as exact wording in the hand-back, and the ADR/plan say "edited by the lead before any PNG art merges (P656 / P644)".
+- The lead's CLAUDE.md edit (Legal, Layout, Stack for tools/prerender) is PR #686, branch claude/p654c-claude-md-prerender, approved by Michael.
