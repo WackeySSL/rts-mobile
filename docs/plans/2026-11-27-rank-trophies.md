@@ -3,7 +3,9 @@
 Date: 2026-11-27. Author: architect. Row P673 is on branch `claude/p673-rank-trophies-plan` (base
 `main` at 5657700e).
 
-Decision: `docs/adr/0054-trophies-and-career-stats.md`, **proposed**. Its questions are below.
+Decision: `docs/adr/0054-trophies-and-career-stats.md`, **accepted** 2026-11-27 in row P673.
+Michael answered the four questions with "Ja til alle anbefalinger" (yes to all recommendations);
+the answers are at the end, and the rows follow them.
 
 It builds on:
 - ADR 0042 (save), ADR 0044 (tutorial section), ADR 0045 (rank, XP, `MatchSummary`).
@@ -11,7 +13,12 @@ It builds on:
 - Row P664: the `RankScreen` with the rank insignia, "RANK n NAME", the XP bar, NEXT UNLOCK, BACK
   and the `_add_section()` seam. It is in progress and not planned here.
 - Row P670: the result look and its unlock card, in progress.
-- Lane P672b: touch-drag scrolling on menu pages.
+- Lane P672b: touch-drag scrolling on menu pages, merged (#708).
+- Row P674: finishing a lesson pays its XP (`MenuFlow.finish_lesson`, `MatchSummary.for_lesson`),
+  merged (#709).
+
+Decided in the same answer, outside this plan: a lesson's XP shows as "+40 XP" on its row of the
+Tutorial screen. That is row P674b, not a P673 row.
 
 ## Goal
 Michael, 2026-11-27 (translated): "The commander/rank square takes far too much room on the front
@@ -25,8 +32,8 @@ Two new sections on the Rank screen:
 
 Plus one "TROPHY EARNED" line on the result screen.
 
-ROADMAP: no checkbox. This extends Phase 5's finished meta. The GDD gets a dated note when
-ADR 0054 is accepted.
+ROADMAP: no checkbox. This extends Phase 5's finished meta. The GDD's "Meta progression" has
+its dated note (P673).
 
 Scope guard. Not in this plan; these go to the lead's follow-up list:
 - Dates on trophies (ADR 0042 §4 allows no clock).
@@ -176,9 +183,9 @@ Back-filled numbers:
 | Rank screen: progress | new `game/ui/menu/RankProgressSection.gd`; `RankScreen.gd` (one line, and two columns where the width fits) | P673e |
 | Result screen | `game/ui/ResultScreen.gd`, `game/ui/ResultText.gd` | P673f |
 | Art | `assets/art/svg/icons/glyph_map.svg`, `glyph_time.svg`, `assets/CREDITS.md` | P673g |
-| Main menu hint (question 3) | `game/ui/menu/MainMenu.gd`, `MainMenuText.gd` | P673h |
-| Rank banner (question 4, only if yes) | `RankScreen.gd` | P673i |
-| Docs | ADR 0054, this plan, `docs/HOW_TO_PLAY.md` and `data/help/how_to_play.tres` (the Rank row, `winning-result`), GDD note, dated notes in ADR 0042 §1 and ADR 0045 §2 | P673 (on acceptance), P673d-f (HOW_TO_PLAY), P673j |
+| Main menu hint (question 3: yes) | `game/ui/menu/MainMenu.gd`, `MainMenuText.gd` | P664 (P673h folded in) |
+| Rank banner (question 4: not now) | none | P673i, not now |
+| Docs | ADR 0054, this plan, `docs/HOW_TO_PLAY.md` and `data/help/how_to_play.tres` (the Rank row, `winning-result`), GDD note, dated notes in ADR 0042 §1 and ADR 0045 §2 | P673 (ADR, notes, GDD: done), P673d-f (HOW_TO_PLAY), P673j |
 
 Nothing in `game/sim`, `game/core`, `game/ai`, `game/view` or `native/`. `data/meta/**` is
 already outside `balance.yml`'s paths, so no balance run starts.
@@ -212,10 +219,12 @@ already outside `balance.yml`'s paths, so no balance run starts.
   - An abandoned match records nothing, as it pays nothing.
   - A surrender counts as finished.
   - A draw counts as finished, not won.
-  - A lesson award checks only the state trophies.
-- **On the Rank screen.** `RankScreen` calls `refresh_trophies()` each time it enters the tree. A
-  finished lesson never reaches an award: it leaves through `return_to_menu`. So the lesson
-  trophies, and the ones the back-fill made due, are stamped there.
+  - A lesson award (`MenuFlow.finish_lesson`, P674) records no career and checks only the state
+    trophies. The director has saved `tutorial.done` before it, so a first finish of Basics earns
+    Briefed in that award.
+- **On the Rank screen.** `RankScreen` calls `refresh_trophies()` each time it enters the tree. It
+  stamps what the back-fill made due: lessons finished before P674 (they paid nothing then), and
+  a lesson replay, which pays nothing and so has no award.
 - **Result screen line** (P673f):
   - The text is "TROPHY EARNED  SHORT WORK", or "2 TROPHIES EARNED  SHORT WORK, UNBROKEN", one
     clipped line.
@@ -229,13 +238,13 @@ already outside `balance.yml`'s paths, so no balance run starts.
 - No rewarded or interstitial ad is tied to a trophy.
 - No trophy needs, counts or rewards watching an ad.
 - Remove ads changes nothing here.
-- **Banner** (question 4). A banner on the Rank screen is allowed, because it is a menu. I
-  recommend none at launch:
+- **Banner** (question 4, answered: none at launch). A banner on the Rank screen is allowed,
+  because it is a menu. The reasons for none:
   - Today only the start page shows a menu banner. The Tutorial, Settings and How to play screens
     keep their foot slot empty.
   - Every visit to the Rank screen passes the main menu's banner.
   - A reward screen with an ad under it feels cheap.
-- If Michael says yes (row P673i):
+- If Michael asks for one later (row P673i, not now):
   - The `AdBannerBand` goes in `MenuScreen`'s foot slot, with `start_page` false.
   - It keeps `banner_gap_dp` (16, `data/ads_settings.tres`) of air above the band.
   - The scroll ends above that air, so BACK and every other control stays at least 16 dp away.
@@ -311,7 +320,7 @@ already outside `balance.yml`'s paths, so no balance run starts.
   - Entering the screen stamps a back-filled lesson trophy.
   - The rows are `MOUSE_FILTER_PASS`, and BACK stays at least 48 dp.
   - A missing glyph draws the frame alone, with a warning and no error.
-  - No banner (unless P673i).
+  - No banner (P673i is not now).
   - The theme scan is green.
 - **Result line** (P673f, `tests/ui/test_result_screen*.gd`, `test_result_screen_offer.gd`):
   - It shows for an award with trophies and stays hidden for none.
@@ -333,7 +342,7 @@ follow Phase 5:
 
 | Row | Owner | Depends | What | Acceptance (tests) | HOW_TO_PLAY | Prod. lines |
 | --- | --- | --- | --- | --- | --- | --- |
-| P673 | architect | none | This plan and ADR 0054 (proposed). On Michael's answers: ADR 0054 accepted in the same PR, with dated notes in ADR 0042 §1 and ADR 0045 §2 and the GDD "Meta progression" note; rows adjusted to the answers | docs lens | none | 0 |
+| P673 | architect | none | This plan and ADR 0054, **accepted** 2026-11-27 with Michael's answers ("Ja til alle anbefalinger"): dated notes in ADR 0042 §1 and ADR 0045 §2, the GDD "Meta progression" note, rows adjusted (P673h folded into P664, P673i not now) | docs lens | none | 0 |
 | P673a | monetization-dev | P673 accepted | **Trophy data:** `TrophyDef` (Kind enum and fields of ADR 0054 §2), `TrophyCatalog` (`trophies`, `hq_type_ids`, `problem()`), `data/meta/trophies.tres` with the 16 trophies of the accepted list | `test_trophy_data.gd` | none | ~120 |
 | P673b | monetization-dev | P673 accepted | **Summary facts:** `MatchSummary.faction`, `built`, `lost_units`, `lost_buildings`, `harvested` and `standing_types` from the end snapshot; `MenuFlow` passes the faction | `test_match_summary.gd`; `test_menu_flow.gd` | none | ~60 |
 | P673c | monetization-dev | P673a, P673b | **Career and the trophy check:** `CareerStats` (read, clamp, carry unknown keys, back-fill, `record`), `TrophyRules`, and the `Progression` wiring (`award_match` records, checks and writes `career` before `progress`; `refresh_trophies`; accessors; `XpAward.trophies`). If it passes ~400 lines, split it: `CareerStats` first, then the rules and the wiring | `test_career_stats.gd`, `test_trophy_rules.gd`, `test_progression_trophies.gd`; the existing `test_progression*` suites unchanged | none | ~290 |
@@ -341,9 +350,9 @@ follow Phase 5:
 | P673d | touch-ux-dev | P673c, P664 merged; P673g for the two glyphs (until then the frame alone) | **Rank screen trophies:** `TrophyBadge` (drawn frame, glyph, pips, lit and dim by token), `RankTrophySection` (heading with the count, 16 rows, hint and progress or EARNED), added through `_add_section()`; `refresh_trophies()` on entry | `test_rank_trophies.gd`; `test_menu_six_sizes.gd` | the Rank row (P664's, e.g. `menus-rank`): trophies | ~200 |
 | P673e | touch-ux-dev | P673c, P664 merged | **Rank screen progress:** `RankProgressSection` (wins grid with locks, lessons, matches, wins, time, fastest win); `RankScreen` puts the two sections side by side where the measured width fits | `test_rank_progress.gd`; `test_menu_six_sizes.gd` | the Rank row: progress | ~180 |
 | P673f | touch-ux-dev | P673c, P670 merged | **Result line:** "TROPHY EARNED" in the XP box above the `OfferSlot`, with the pending rule | `test_result_screen*.gd`, `test_result_screen_offer.gd` | `winning-result` | ~40 |
-| P673h | touch-ux-dev | P664 merged; question 3 | **Main menu hint:** the RANK row reads "03 RANK · SCOUT" (the current title). Nothing else on the main menu | `test_main_menu.gd`; `test_menu_six_sizes.gd` | `menus-main` | ~15 |
-| P673i | touch-ux-dev | P673e; question 4 = yes only | **Rank screen banner:** the band in the foot slot, `start_page` false | `AdBannerSlot` gap test on the Rank screen at the six sizes | the Rank row: the advertisement | ~5 |
-| P673j | qa-engineer, then architect + lead | P673d, P673e, P673f, P672b | **Proof and Michael's phone check:** the Rank screen at the six sizes in both orientations, screenshots; Michael plays a match, sees the result line, opens Rank and scrolls. Then ADR 0054's implementation note and the architect's memory | the named suites; Michael's yes | none | 0 |
+| P673h | touch-ux-dev | — | **Folded into P664.** Question 3 = yes: the RANK row reads "03 RANK · SCOUT" (the current title). P664 now builds the main menu after Michael's Figma, with a small footer profile line, so the hint lands there. No P673 row | P664's `test_main_menu.gd` | `menus-main` (P664) | 0 here |
+| P673i | touch-ux-dev | — | **Not now.** Question 4 = no banner on the Rank screen at launch. Was: the band in the foot slot, `start_page` false, 16 dp clear of every control | — | — | 0 |
+| P673j | qa-engineer, then architect + lead | P673d, P673e, P673f (P672b merged) | **Proof and Michael's phone check:** the Rank screen at the six sizes in both orientations, screenshots; Michael plays a match, sees the result line, opens Rank and scrolls. Then ADR 0054's implementation note and the architect's memory | the named suites; Michael's yes | none | 0 |
 
 ### Waves and lanes
 - **Wave 1**, after ADR 0054 is accepted: P673a, P673b and P673g in parallel. They share no
@@ -353,21 +362,18 @@ follow Phase 5:
   - P673d and P673e each add one `_add_section()` line to `RankScreen.gd`. Verify the combined tree
     once before the second merge.
   - P673f touches only `ResultScreen.gd` and `ResultText.gd`, after P670.
-- **Any time after P664:** P673h, if question 3 is yes. It touches `MainMenu.gd` after P664 and
-  P665, in series.
-- **Last:** P673i, if question 4 is yes; then P673j.
-- **Critical path:** P673a → P673c → P673d → P673j, with P664 and P672b as outside gates.
+- **P673h** is folded into P664 (the title hint on the RANK row). **P673i** is not now.
+- **Last:** P673j.
+- **Critical path:** P673a → P673c → P673d → P673j, with P664 (and P670 for P673f) as outside
+  gates; P672b is merged.
 - **Mutation testing:** none of these rows touches `game/sim/` or `native/`.
 - **Review:** each code row gets 2 lenses and the docs rows 1 (Token budget).
 
 ## Risks
-1. **Lesson XP may never be paid.** This is a finding for the lead, outside this plan.
-   - A lesson ends by its last beat. Then `TutorialHost._leave` calls `MenuFlow.return_to_menu`,
-     which never awards.
-   - No lesson file has a `MATCH_WON` beat.
-   - So ADR 0045's `lesson_xp` looks reachable only if a lesson match ends in the sim first.
-   - Trophies read `tutorial.done` and do not depend on this.
-   - To confirm with one headless run of `tests/e2e/test_tutorial_run.gd` reading `Progression.xp()`.
+1. **Lessons finished before P674.** Until P674 (#709) a finished lesson left through
+   `return_to_menu` and paid no XP, so `progress.lessons` may lack lessons that `tutorial.done`
+   has. Trophies read `tutorial.done`, and the Rank screen's refresh stamps them. P674 fixed the
+   XP; no P673 row changes it.
 2. **The Headquarters rule rests on data.** A Headquarters cannot be built, sold or taken. P673a's
    test pins it. A later ADR that changes it must change `unbroken` or the summary.
 3. **Save keys.** A refused key would refuse the whole `career` write. If the career and the XP
@@ -379,14 +385,21 @@ follow Phase 5:
    That is why the counters are not in `progress` and why there is no version bump.
 6. **Short Work's threshold.** The human-vs-AI target is 8-10 minutes (P556). 10 minutes on
    Normal may be common or rare. It is one number in data. Tune it after P673j.
-7. **Long page.** About 1,000 dp in portrait. It depends on P672b's drag scroll and on where P664
-   puts BACK.
+7. **Long page.** About 1,000 dp in portrait. P672b's drag scroll is merged; it still depends on
+   where P664 puts BACK.
 8. **Rows in flight.** P664 and P670 change the files that P673d, P673e and P673f build on. Those
    rows wait for the merges and read the merged seam, not this plan's guess.
 9. **Scope creep.** NEW badges, dates, Play Games and rewards go to the follow-up list (Scope
    guard).
 
-## Questions for Michael
+## Questions for Michael (answered 2026-11-27)
+Michael, verbatim: "Ja til alle anbefalinger" (yes to all recommendations). So:
+1. The 16 trophies stand, with 10 minutes for Short Work, 10 wins and 25 matches.
+2. No reward at launch: no XP and no cosmetic.
+3. The RANK row shows the title hint ("03 RANK · SCOUT"), in P664 (P673h folded in).
+4. No banner on the Rank screen at launch (P673i not now).
+
+The questions as they were put:
 1. **The trophy list.** Are the 16 trophies above right, with 10 minutes for Short Work, 10 wins
    for Seasoned and 25 matches for Long Haul?
    - Recommended: yes. They cover first steps, every level, both sides, all three maps, the

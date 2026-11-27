@@ -11,16 +11,31 @@
 - Your own save and the testers' saves keep everything. The lessons you finished and the number
   of matches you played count at once. Wins and play time count from the update on, because the
   game never saved them.
+- You said yes to all four recommendations (below).
 
-Status: **proposed, 2026-11-27.** Written by the architect in row P673 on branch
-`claude/p673-rank-trophies-plan` (base `main` at 5657700e), with the plan
+Status: **accepted, 2026-11-27 (Michael: "Ja til alle anbefalinger", yes to every
+recommendation of the plan's four questions; accepted in docs row P673 of the plan).** Proposed
+the same day by the architect in row P673 on branch `claude/p673-rank-trophies-plan` (base `main`
+at 5657700e, merged up to 8693766f before acceptance), with the plan
 `docs/plans/2026-11-27-rank-trophies.md`. Questions 1 to 4 of the plan are this ADR's.
+
+## Michael's answers (2026-11-27)
+Verbatim: "Ja til alle anbefalinger".
+- **Question 1, the trophy list:** the 16 trophies of the plan stand as proposed. Short Work is
+  10 minutes (9000 ticks), Seasoned 10 wins and Long Haul 25 matches, all in data (§2).
+- **Question 2, rewards:** none at launch. No XP and no cosmetic for a trophy (§6).
+- **Question 3, the main menu:** the RANK row keeps a title hint, e.g. "03 RANK · SCOUT". It lands
+  in P664, which now builds the main menu after Michael's Figma with a small footer profile line
+  (plan row P673h, folded into P664).
+- **Question 4, a Rank screen banner:** none at launch (§9). Plan row P673i is not now.
+- Decided in the same answer, outside this ADR: a lesson's XP shows as "+40 XP" on its row of the
+  Tutorial screen (row P674b).
 
 Builds on: ADR 0042 (one save file, sections, versions), ADR 0043 (menu flow), ADR 0044 (the
 tutorial section), ADR 0045 (rank, XP, `MatchSummary`), ADR 0052 (menu look, the drawn rank
 insignia) and row P664 (the Rank screen and its `_add_section()` seam).
 
-Amends by dated notes, written when this ADR is accepted (not before):
+Amends by dated notes, written in P673 on acceptance:
 - ADR 0042 §1: the section list gains `career` (this ADR §4).
 - ADR 0045 §2: `MatchSummary` gains the fields of §3 below.
 - The GDD's "Meta progression": trophies at launch, no reward.
@@ -40,9 +55,12 @@ Amends by dated notes, written when this ADR is accepted (not before):
     8 awards and the lessons paid.
   - `tutorial`: `done`, the lessons finished (the Tutorial screen's DONE mark).
   - Nothing counts wins, wins per map, level or faction, or play time.
-- A finished lesson leaves through `TutorialHost._leave` and `MenuFlow.return_to_menu`, which
-  never awards. No lesson file has a `MATCH_WON` beat. So `progress.lessons` is not a reliable
-  record of the lessons done; `tutorial.done` is.
+- A lesson ends on its last beat, not on a match end. Until P674 (#709) it left through
+  `MenuFlow.return_to_menu`, which never awards, so `progress.lessons` stayed empty for lessons
+  played before P674. Since P674, `MenuFlow.finish_lesson` scores the lesson once
+  (`MatchSummary.for_lesson`, a win with the lesson id) after the director saved `tutorial.done`.
+  `tutorial.done` stays the record of the lessons done; `progress.lessons` is the record of the
+  XP paid.
 - ADR 0045 §1: meta is never sim state, never in a hash or a replay. ADR 0042 §4: no clock time in
   the save.
 
@@ -154,11 +172,13 @@ The game is not released, so the saves concerned are Michael's and the testers'.
   3. Append the new ids to `earned`.
   4. Write.
   5. Put the new ids, in catalog order, on the award: `XpAward.trophies: Array[StringName]`.
-  A lesson award checks the state kinds only. A read-only or refusing save changes nothing (the
+  A lesson award (`MenuFlow.finish_lesson`, P674) records no career and checks the state kinds
+  only; `tutorial.done` already holds the lesson then, so its trophy comes on the result of that
+  award. A read-only or refusing save changes nothing (the
   award is null, as today).
 - **`Progression.refresh_trophies() -> Array[StringName]`**, state kinds only. The Rank screen
-  calls it each time it enters the tree. It stamps the trophies a lesson or the back-fill made due
-  and writes only when something is new.
+  calls it each time it enters the tree. It stamps the trophies the back-fill made due (and a
+  lesson replay, which pays nothing and so has no award) and writes only when something is new.
 - Accessors for the screens: `trophy_catalog()`, `is_earned(id)`, `earned_count()`, `career()`
   (a read-only copy). No new signal: the Rank screen refreshes on entry, and the result screen
   reads the award.
@@ -186,7 +206,7 @@ The game is not released, so the saves concerned are Michael's and the testers'.
 ### 9. Ads
 - No rewarded or interstitial ad is tied to a trophy.
 - No trophy counts or needs an ad.
-- The Rank screen hosts no banner at launch (question 4). Its foot slot stays empty, as on the
+- The Rank screen hosts no banner at launch (question 4, Michael: none). Its foot slot stays empty, as on the
   Tutorial, Settings and How to play screens. If Michael wants one, it is the `AdBannerBand` in
   `MenuScreen`'s foot slot with `start_page` false. That keeps `banner_gap_dp` (16) of air above
   the band. The scroll ends above that air, so no control is ever nearer.
@@ -197,9 +217,8 @@ The game is not released, so the saves concerned are Michael's and the testers'.
 - Back-fill is partial (§5), and the plan says so.
 - The trophy ids are permanent save keys.
 - "Headquarters never destroyed" rests on a data rule that a test pins.
-- `progress.lessons` and `tutorial.done` can differ. Lesson XP looks unpaid for lessons that end
-  by their last beat. That is a separate finding for the lead (plan, risk 1); trophies use
-  `tutorial.done`.
+- `progress.lessons` and `tutorial.done` can differ for lessons finished before P674; trophies use
+  `tutorial.done`, so those lessons still count.
 
 ## Alternatives considered
 - **Counters in `progress`.** Rejected (§4): an older build would erase them.
