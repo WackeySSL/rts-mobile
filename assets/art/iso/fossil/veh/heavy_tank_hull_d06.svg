@@ -144,9 +144,9 @@
 <polygon points="103.3,43 83,32.9 101.1,23.9 121.4,34" fill="#000000" fill-opacity="0.06"/>
 <polygon points="43.5,51.6 23.3,41.5 41.4,32.4 61.7,42.5" fill="#000000" fill-opacity="0.06"/>
 <polygon points="81.9,32.4 61.7,22.3 79.8,13.2 100.1,23.3" fill="#FFFFFF" fill-opacity="0.06"/>
-<polygon points="86.2,72.2 24.8,41.5 24.8,38.3 86.2,69" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="141.2,44.7 86.2,72.2 86.2,69 141.2,41.5" fill="#C15317" stroke="#73320E"/>
-<polygon points="86.2,69 24.8,38.3 79.8,10.8 141.2,41.5" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="86.2,72.2 24.8,41.5 24.8,38.3 86.2,69" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="141.2,44.7 86.2,72.2 86.2,69 141.2,41.5" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="86.2,69 24.8,38.3 79.8,10.8 141.2,41.5" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="66.3,59.1 65.2,58.5 120.2,31 121.3,31.5" fill="#000000" fill-opacity="0.25"/>
 <polygon points="45.8,48.8 44.7,48.3 99.7,20.8 100.8,21.3" fill="#000000" fill-opacity="0.25"/>
 <polygon points="104,60.1 42.6,29.4 43.6,28.9 105.1,59.6" fill="#000000" fill-opacity="0.25"/>
@@ -172,8 +172,8 @@
 <polygon points="78.5,75.2 27.3,49.6 27.3,43.7 78.5,69.3" fill="url(#s2)" stroke="#30342E"/>
 <polygon points="79.8,74.6 78.5,75.2 78.5,69.3 79.8,68.7" fill="#51574D" stroke="#30342E"/>
 <polygon points="78.5,69.3 27.3,43.7 28.6,43.1 79.8,68.7" fill="url(#s3)" stroke="#B4BAB1"/>
-<polygon points="100.3,86.8 86.2,79.7 86.2,70.3" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="100.3,86.8 86.2,70.3 143.8,41.5 157.9,58" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="100.3,86.8 86.2,79.7 86.2,70.3" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="100.3,86.8 86.2,70.3 143.8,41.5 157.9,58" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="118.9,77.4 104.9,61 105.9,60.4 120,76.9" fill="#000000" fill-opacity="0.25"/>
 <polygon points="138.1,67.8 124.1,51.4 125.1,50.8 139.2,67.3" fill="#000000" fill-opacity="0.25"/>
 <polygon points="103.2,99.8 98.7,97.6 98.7,80.3 103.2,82.6" fill="#3B3F39" stroke="#1B1C1A"/>

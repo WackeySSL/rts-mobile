@@ -176,7 +176,9 @@ ADR 0023 section 5; the canvas's Spec 02. One light for the whole game, from the
   it (`test_artgen_plates.gd`): a team primitive is a roof plate when it is flat, its top face is
   open (less than a quarter of it has anything on it) and it covers 30 % of the top it rests on or
   is larger than 0.2 square tiles; a band, a stripe across a deck, an upright lintel and a ring
-  round a barrel or a drum are not.
+  round a barrel or a drum are not. The rule applies to models below detail 2 (P652, ADR 0050
+  amendment A3): at detail 2 and up the team area is large panels by design, and the share bounds
+  it (30 to 65 %, "Shares" below).
 
 ## Generated art
 ADR 0023 section 5; plan rows P99 (the generator and the blockouts) and P99b (shadows, sheets,
@@ -391,9 +393,11 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
 - **Tests** (`tests/art/test_artgen*.gd`): two runs give identical bytes, every committed frame,
   sheet, card and the index equals a fresh run and none is left over, the directions are complete,
   only `svg`, `g` and `polygon` are used, every part has one canvas, a building is anchored at its
-  back corner, the key band holds, every type has a team share of 3 to 20 % in its default view and
-  no team primitive is a roof plate, and each default view has a body and a spread of tones at 32
-  px in greyscale. `test_artgen_shadows.gd` pins the drop (+gx, 0.8 per tile of height, the same
+  back corner, the key band holds, every type has a team share in its band in its default view (2 to
+  12 % below detail 2, 30 to 65 % in the key band at detail 2 and up), no model paints the fixed
+  `faction` material, no team primitive of a model below detail 2 is a roof plate, a Ironward and a
+  Facet model of one role overlap less than 0.85 at 32 px in d06 and d10, and each default view has
+  a body and a spread of tones at 32 px in greyscale. `test_artgen_shadows.gd` pins the drop (+gx, 0.8 per tile of height, the same
   way at every yaw, a sphere's ellipse, one group at 35 %), `test_artgen_sheets.gd` each sheet
   against its frames (canvases, anchors, directions, mounts, lifts, muzzle) and the index,
   `test_artgen_cards.gd` the cards and the ellipse, `test_gen_art_cli.gd` the exit codes of
@@ -403,33 +407,53 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   sentinel's three must not have an HSV hue within 20 degrees of the sentinel's hue (300, so
   280 to 320 degrees) and a saturation of at least 0.30. One band for both factions. Greys and
   muted materials are free.
-- **The sentinel key triad** (P632): light #F07AF0, mid #D234D2, dark #9A1F9A, magenta at hue 300.
-  Only the team marker is painted in it (material `team`), in both factions. It is never seen in
-  the game: the match-start bake replaces these three strings with the player's triad, in fills,
-  strokes and gradient stops alike (`IsoPlayerArt.recolour`, one pass). A gradient of any other
-  material never holds a sentinel hex (ADR 0050 section 1). The item cards are no player's, so
-  they draw the marker in the faction's fixed colour.
-- **The fixed faction colours** (P632): material `faction`, never replaced by the bake. Ironward
-  (`fossil`) orange #FF6E1F, Facet (`renew`) blue #40A3FF, as the mid tone of the left face; the
-  top and the right face follow the ladder (100 % and 62 % of the top). They are the hues of the HUD
-  accents `AccentFossil` and `AccentRenew`.
-- **Shares** (P632): the marker is 2 to 12 % of a sprite's opaque pixels in its default view for
-  the transition, while the old models still paint their whole team areas in the marker; the last
-  model batch narrows it to 2 to 6 % (ADR 0050 section 3). A model at detail 1 or more paints
-  15 to 85 % of its default view in the fixed faction colour. The share is the hue-band measure of
-  the same-scene check (P640): the opaque pixels whose hue is within `faction_hue_band` of the
-  faction's mid hue at a saturation of `faction_sat_min` or more (both and the hues in
-  `tools/artgen/same_scene.tres`), not the exact three tones, which miss the small faces of
-  infantry (the 1 px edge and the anti-aliasing take a face under 5 px wide). Measured on the
-  eleven models at detail 2: 30 to 58 % (the Patchers 33, the Rig Hands 33, the Wildcatters 31).
+- **The sentinel key triad** (P632, P652): light #F07AF0, mid #D234D2, dark #9A1F9A, magenta at hue
+  300. It is the material `team`, in both factions, and from P652 it covers the large panels of every
+  model at detail 2 and up (ADR 0050 amendment A2): Ironward's hoods, cab and turret flanks, hard
+  hats, shoulder plates and pack panels, and Facet's helmets, plates and cases. The small rimmed
+  plates and the aircraft's stripes and bands may stay; they are part of the team area. It is never
+  seen in the game: the match-start bake replaces these three strings with the player's triad, in
+  fills, strokes and gradient stops alike (`IsoPlayerArt.recolour`, one pass). A gradient of any
+  other material never holds a sentinel hex (ADR 0050 section 1). The item cards are no player's,
+  so they draw the panels in the faction's colour.
+- **The fixed faction colours** (P632, P652): material `faction`, never replaced by the bake.
+  Ironward (`fossil`) orange #FF6E1F, Facet (`renew`) blue #40A3FF, as the mid tone of the left
+  face; the top and the right face follow the ladder (100 % and 62 % of the top). They are the hues
+  of the HUD accents `AccentFossil` and `AccentRenew`. From P652 they are for the item cards and the
+  HUD only: no model paints `faction` on the map (a test over every model), because a fixed orange
+  or blue part on a body would read as a team colour in a mirror match. `ArtPalette` keeps the
+  material for the cards and as the classifier's reference hue.
+- **Shares** (P632, P652): below detail 2 the team marker is 2 to 12 % of a sprite's opaque pixels
+  in its default view, measured in the exact tones of the key. At detail 2 and up the large panels
+  wear the team colour: **30 to 65 % of the default view** (a unit's d06 or d10, a building's one
+  view) and **25 to 75 % in every direction** for the suites that band every direction (medic,
+  carrier, minelayer, aircraft). The share is measured on the raw frames, in the key band
+  (`ArtPalette.BAND_DEGREES` 20 degrees of the sentinel's hue 300, a saturation of
+  `ArtPalette.BAND_SATURATION` 0.30 or more), which also counts the seams, tints and edges of a
+  panel that the exact tones miss. The floor is five times the old marker's ceiling, so the owner
+  reads at the far zoom; the ceiling is near the same-scene cap (a unit above about 65 % fails
+  `tone_sat_all_max` in the sheet). A mirror match reads like any other: two colours, one per
+  player. The model descriptions below that say orange or blue panels describe what the default
+  colours show (each side's own); the panels are the team colour. There is no fixed-colour share
+  any more (FACTION_SHARE is retired): the faction reads from **shape**. For each Ironward and
+  Facet model of one role, both at detail 2 or more, the 32 px silhouettes overlap less than 0.85
+  in d06 and in d10 (`test_artgen_readability.gd`; the pairs are the same positions in the batch
+  lists `docs/art/treadline-batches.json`). Measured on the 18 models at detail 2 (P652): 42.3 to
+  62.7 % in the default view (the Bullhead 42.3, `renew_artillery` 62.7; P642's four 43.7 to 58.8),
+  31.3 to 71.3 % in every direction on the 14 of P638 to P641, and the seven pairs overlap 0.31 to
+  0.83. The one miss is the Drillhead seen head-on (d08), 23.3 %, under the 25 % floor of the
+  every-direction band (its other directions read 40.6 to 54.1 %); `test_aircraft_art.gd` holds a
+  22 % floor for that one direction until a model change widens it.
 - **Triads**: Signal #FF9446 #E8681F #B04B12, Arktisk #62D6EE #1FA6C8 #137C99, Karmin #F26A5E
   #CF3A2E #922219, Kobolt #7AA2F7 #3F6FE0 #27479E, Guld #FFDA6B #E6B52E #A47D13, Magenta #F083CF
   #C9439F #8C2A6E, Sne #FFFFFF #DCE2E6 #A3ACB3, Kul #6E737A #44494F #26292D. These eight are what a
-  player can wear. Interim (2026-11-25, P632): the Skirmish scenarios name the side's own colour in
-  `team_triads`, Ironward Signal (0), Facet Kobolt (3, the blue nearest #40A3FF), and the second
-  player of a mirror the other one; the galleries and the same-scene sheet show the same. The default
-  marker colours of ADR 0050 answer 3, your own Sne and the computer's Karmin, switch in with P647,
-  the last model batch. Signal and Arktisk are no longer any faction's key.
+  player can wear. The default (ADR 0050 amendment A6, 2026-11-26, the lead's proposal that Michael
+  can override) is each side's own colour: the Skirmish scenarios name it in `team_triads`,
+  Ironward Signal (0), Facet Kobolt (3, the blue nearest #40A3FF), and the second player of a mirror
+  wears the other one; the galleries and the same-scene sheet show the same. Sne and Karmin as the
+  defaults are struck: white or red panels over 30 to 65 % of a unit would lose Facet's ceramic
+  body (Sne) or fall outside the same-scene classifier (Karmin). Signal and Arktisk are no longer
+  any faction's key.
 
 ### Palette per faction
 The mid tone of each material (ADR 0023 section 6 as changed by the key band). Four colours of the
@@ -1077,20 +1101,27 @@ primitive's key, so `--check` is stable. Every extra sits right after the face i
   64 KB per generated unit frame.
 - **Not drawn at any level:** spheres, rods, `broken` boxes and the item card (which stays flat).
 
-### Same-scene saturation (P638)
-The same-scene check (`bash scripts/same-scene.sh`, bands in `tools/artgen/same_scene.tres`) judges
-saturation twice, because a fixed faction panel is saturated by design (orange 0.88, blue 0.75):
+### Same-scene saturation (P638, P652)
+The same-scene check (`bash scripts/same-scene.sh`, bands in `tools/artgen/same_scene.tres`, frozen
+by ADR 0050 amendment A8) judges saturation twice, because the team panels are saturated by design
+(the default colours: Signal 0.88, Kobolt 0.75):
 - `tone_sat` (0.06 to 0.30) is the mean saturation of the **neutral body**: every opaque pixel that
-  is not faction material and not the team marker. FACTION_SHARE and TEAM_SHARE already bound the
-  area of those two, so the cap judges the greys and olives that carry the unit.
+  is not in the side's hue (the classifier's `is_faction`) and not the team key. TEAM_SHARE already
+  bounds the area of the panels, so the cap judges the greys and olives that carry the unit. The
+  team key is excluded here because a team pixel shows as Signal or Kobolt, which both tests take
+  out.
 - `tone_sat_all_max` (0.55) is the mean over **every** opaque pixel, so a sprite that is nearly all
-  panel still fails.
+  panel still fails. The team key is included here.
 - Faction material, to the classifier, is a hue within 15 degrees of Ironward orange or Facet blue
   at a saturation of 0.35 or more (`faction_hues`, `faction_hue_band`, `faction_sat_min`), which
   takes in the panels' light and dark tones and their edges but not rust, olive or bluegrey, whose
-  saturation is under 0.30. The sentinel and the route triads count as the marker.
+  saturation is under 0.30. The sentinel and the route triads (Signal, Kobolt) count as the team
+  colour. A sheet that wears other triads needs `SameScene.ROUTE_TRIAD` and `is_faction` (code) to
+  learn them; the `.tres` stays as it is.
 - The floor fell from 0.14 to 0.06: a body of iron, steel and olive reads 0.09 to 0.12 once the
   panels are taken out.
+- The mirror row of the sheet (the same unit as the two players of a mirror route) differs only in
+  the team panels: 30 to 80 % of the body (`test_same_scene.gd`).
 
 
 ## Scale
@@ -3720,7 +3751,8 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
 | 2026-11-25 | v1.53 (P605, art-director, ADR 0049 amendment): the UI type is Michael's Figma type: Roboto Condensed Bold, Inter Regular and Bold, IBM Plex Mono Regular, static unmodified OFL 1.1 files; Big Shoulders and Chakra Petch removed; the Type scale section says which theme type uses which face; the Menu looks edge colour reads #33434A. |
-| 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with fixed orange panels and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass; same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
-| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more; the band is unchanged ; the three Nordvaern squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, fixed orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view), a thin team vest band; `test_medic_art.gd` holds the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %) |
-| 2026-11-26 | v1.56 (P641, art-director, no rule change): the three Facet squads (Linemen, Breakers, Menders) at detail 2: white and graphite bodies, fixed blue hexagonal helmets, shoulder plates and pack or case panels (30 to 40 % of the default view), a thin team chest band, mint kept as Facet's lamp accent on visors, rifle lines and hand light; `test_medic_art.gd` holds the Menders' team share at 2 to 12 % in the default view and 0.2 to 17 % in every direction (was 8 to 12 % and 3 to 17 %) |
-| 2026-11-26 | v1.57 (P642, art-director, no rule change): the Nordvaern Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passes them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` hold 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %) |
+| 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Ironward ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with orange panels (the fixed `faction` material then; the sentinel key from P652, so the team colour) and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass (from P652 it applies below detail 2 only); same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
+| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more (retired in P652); the three Ironward squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view, the team colour from P652), a thin team vest band; `test_medic_art.gd` held the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
+| 2026-11-26 | v1.56 (P641, art-director, no rule change): the three Facet squads (Linemen, Breakers, Menders) at detail 2: white and graphite bodies, blue hexagonal helmets, shoulder plates and pack or case panels (30 to 40 % of the default view, the fixed `faction` material then and the team colour from P652), a thin team chest band, mint kept as Facet's lamp accent on visors, rifle lines and hand light; `test_medic_art.gd` held the Menders' team share at 2 to 12 % in the default view and 0.2 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
+| 2026-11-26 | v1.57 (P642, art-director, no rule change): the Ironward Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view, the team colour from P652) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passed them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` held 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %; 30 to 65 % and 25 to 75 % from P652) |
+| 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Ironward name in new text is Ironward (Michael, 2026-11-27) |

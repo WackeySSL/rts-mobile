@@ -77,6 +77,24 @@ func test_the_column_and_the_slot_hold_at_the_six_sizes() -> void:
 		UiScale.clear_override()
 
 
+## P663: the picture under the stack moves nothing: the column stays on the short side in the safe
+## rect and the slot stays at its foot, with the backdrop in the tree, at the six sizes.
+func test_the_backdrop_leaves_the_column_and_the_slot_in_place_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size), true)
+		var label: String = str(size)
+		assert_bool(_stack.has_node("MenuBackdrop")).override_failure_message(label).is_true()
+		var safe: Rect2 = UiScale.safe_rect_base()
+		assert_bool(safe.grow(TOLERANCE_PX).encloses(_screen.column.get_global_rect())).is_true()
+		(
+			assert_float(_screen.slot.get_global_rect().end.y)
+			. override_failure_message(label)
+			. is_equal_approx(safe.end.y, 1.0)
+		)
+		_close()
+		UiScale.clear_override()
+
+
 func test_a_long_column_scrolls_inside_the_safe_rect_at_the_six_sizes() -> void:
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(_profile_with_window(size))
@@ -221,7 +239,7 @@ func test_the_slot_stays_at_the_safe_bottom_under_a_cutout_and_a_gesture_bar() -
 	assert_bool(safe.grow(TOLERANCE_PX).encloses(_screen.column.get_global_rect())).is_true()
 
 
-func _open(profile: UiMetrics) -> void:
+func _open(profile: UiMetrics, with_backdrop: bool = false) -> void:
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size
 	await await_idle_frame()
@@ -229,6 +247,8 @@ func _open(profile: UiMetrics) -> void:
 	add_child(_menu)
 	_stack = _menu.get_node("MenuStack") as MenuStack
 	_stack.slide_ms = 0
+	if with_backdrop:
+		MenuBackdrop.attach(_stack)
 	_screen = MenuScreen.new()
 	_stack.push(_screen)
 	await await_idle_frame()

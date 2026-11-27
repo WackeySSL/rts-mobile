@@ -19,10 +19,10 @@
 <polygon points="121,85.1 98.7,82.1 98.7,79 121,82" fill="#414A51" stroke="#1D2124"/>
 <polygon points="98.7,82.1 92.8,71 92.8,67.9 98.7,79" fill="#414A51" stroke="#1D2124"/>
 <polygon points="92.8,67.9 109,59.8 131.3,62.7 137.2,73.8 121,82 98.7,79" fill="url(#s0)" stroke="#969CA1"/>
-<polygon points="135.2,73.6 120.4,81 120.4,73.1 135.2,65.7" fill="#307BC1" stroke="#1D4973"/>
-<polygon points="120.4,81 100.2,78.3 100.2,70.4 120.4,73.1" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="100.2,78.3 94.8,68.2 94.8,60.3 100.2,70.4" fill="#40A3FF" stroke="#1D4973"/>
-<polygon points="94.8,60.3 109.6,52.9 129.8,55.6 135.2,65.7 120.4,73.1 100.2,70.4" fill="#4EC7FF" stroke="#95DDFF"/>
+<polygon points="135.2,73.6 120.4,81 120.4,73.1 135.2,65.7" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="120.4,81 100.2,78.3 100.2,70.4 120.4,73.1" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="100.2,78.3 94.8,68.2 94.8,60.3 100.2,70.4" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="94.8,60.3 109.6,52.9 129.8,55.6 135.2,65.7 120.4,73.1 100.2,70.4" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="130.1,65.1 119.1,70.6 119.1,67.5 130.1,61.9" fill="#A1A6A6" stroke="#606363"/>
 <polygon points="119.1,70.6 103.9,68.6 103.9,65.4 119.1,67.5" fill="#D5DBDC" stroke="#606363"/>
 <polygon points="103.9,68.6 99.9,61 99.9,57.9 103.9,65.4" fill="#D5DBDC" stroke="#606363"/>

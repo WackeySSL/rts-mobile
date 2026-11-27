@@ -6,7 +6,8 @@ extends GdUnitTestSuite
 ## that `AirLayer` draws its hull at above the shadow. It pins what the row and the style guide
 ## promise: the sheet's parts and lift, that nothing of a model touches the ground (so its shadow
 ## has neither a pad nor a contact line), the team share at zoom 1 (the rule asks for 8 to 12 % in
-## the default view; the other directions are held to a wider band), a shadow that is one
+## the default view at detail 1 and below, 30 to 65 % in the key band at detail 2; the other
+## directions are held to a wider band), a shadow that is one
 ## connected mark, and the silhouettes at 32 px in greyscale against each other. That the bytes
 ## equal a fresh run is test_artgen.gd.
 
@@ -31,11 +32,13 @@ const NAMES: Dictionary[StringName, String] = {
 ## The rule's band in the default view of zoom 1, and the band every other direction keeps.
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
-## A model at detail 2 (P642, the Ironward side) wears a small marker in the key colour: the
-## general rule of 2 to 12 % in the default view (ADR 0050 section 3), and in the other directions
-## a band from 1 % (a plate or a band seen from behind or below is thin).
-const SHARE_OPTED: Vector2 = Vector2(0.02, 0.12)
-const SHARE_WIDE_OPTED: Vector2 = Vector2(0.01, 0.16)
+## A model at detail 2 (P642) wears the team colour on its large panels: 30 to 65 % of the default
+## view and 25 to 75 % in every direction (ADR 0050 amendment A3, `Support.TEAM_BAND`).
+## One exception, measured in P652 (A3 had only estimated P642's four): the Drillhead seen head-on
+## (d08) reads 23.3 %, 1.7 points under the floor, and every other direction of it 40.6 to 54.1 %.
+## Its booms and fins are narrow end-on and the swap cannot widen them; a model change would (a
+## separate row, the lead's call). The floor is 22 % for that one direction until then.
+const WIDE_FLOOR_ID: Dictionary[StringName, float] = {&"fossil_bomber": 0.22}
 ## The hover a sheet may ask for, world px at zoom 1: high enough to clear the shadow and the ring
 ## under it, low enough that the hull still belongs to them. `AirLayer.DEFAULT_FLY_PX` is 28.
 const FLY_PX: Vector2i = Vector2i(16, 36)
@@ -243,11 +246,12 @@ func _drawn_widths(id: StringName) -> Vector2:
 	return found
 
 
-## The team share band of `id`: the general band of a model at detail 2, else the old one.
+## The team share band of `id`: the key band's at detail 2 or more, else the old one.
 func _band(id: StringName, wide: bool) -> Vector2:
-	if _model(id).detail >= 2:
-		return SHARE_WIDE_OPTED if wide else SHARE_OPTED
-	return SHARE_WIDE if wide else SHARE
+	var band: Vector2 = Support.model_band(_model(id), wide, SHARE_WIDE if wide else SHARE)
+	if wide and WIDE_FLOOR_ID.has(id):
+		band.x = WIDE_FLOOR_ID[id]
+	return band
 
 
 func _model(id: StringName) -> ArtModel:
@@ -279,4 +283,4 @@ func _picture(id: StringName, dir: int) -> Image:
 
 ## The team share of the picture facing `dir` at zoom 1.
 func _share(id: StringName, dir: int) -> float:
-	return Support.team_share(_picture(id, dir), FACTION[id])
+	return Support.model_share(_model(id), _picture(id, dir))

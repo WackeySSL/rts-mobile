@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="DetailModel" format=4]
+
+[ext_resource type="Script" path="res://tools/prerender/DetailMaterial.gd" id="1_sgp6q"]
+[ext_resource type="Script" path="res://tools/prerender/DetailPart.gd" id="2_xt02l"]
+[ext_resource type="Script" path="res://tools/prerender/DetailModel.gd" id="3_txcl5"]
+
+[sub_resource type="Resource" id="Resource_xw258"]
+script = ExtResource("1_sgp6q")
+id = &"steel"
+base = Color(0.42, 0.43, 0.46, 1)
+metallic = 0.6
+roughness = 0.42
+
+[sub_resource type="Resource" id="Resource_mr55i"]
+script = ExtResource("1_sgp6q")
+id = &"team"
+base = Color(0.8, 0.2, 0.8, 1)
+metallic = 0.1
+kind = 1
+
+[sub_resource type="Resource" id="Resource_ngs8f"]
+script = ExtResource("2_xt02l")
+material = &"steel"
+a = Vector3(0, 0, 0.1)
+size = Vector3(0.8, 0.4, 0.2)
+planes = PackedVector4Array()
+
+[sub_resource type="Resource" id="Resource_t3v43"]
+script = ExtResource("2_xt02l")
+shape = &"cylinder"
+material = &"steel"
+a = Vector3(0.2, 0.25, 0)
+b = Vector3(0.2, 0.25, 0.2)
+radius = 0.05
+segs = 8
+planes = PackedVector4Array()
+mirror = true
+count = 3
+step = Vector3(0.15, 0, 0)
+jitter = 0.5
+
+[sub_resource type="Resource" id="Resource_cdlen"]
+script = ExtResource("2_xt02l")
+part = &"turret"
+material = &"team"
+a = Vector3(0, 0, 0.1)
+size = Vector3(0.4, 0.3, 0.2)
+planes = PackedVector4Array()
+
+[resource]
+script = ExtResource("3_txcl5")
+art_id = &"fixture_box"
+faction = &"fossil"
+variation_seed = 7
+materials = Array[ExtResource("1_sgp6q")]([SubResource("Resource_xw258"), SubResource("Resource_mr55i")])
+parts = Array[ExtResource("2_xt02l")]([SubResource("Resource_ngs8f"), SubResource("Resource_t3v43"), SubResource("Resource_cdlen")])

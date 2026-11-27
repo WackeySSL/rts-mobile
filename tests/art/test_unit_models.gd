@@ -3,13 +3,14 @@ extends GdUnitTestSuite
 ## League units" and "Lumen Accord units"): each is named in its silhouette line, a squad is three
 ## figures, a vehicle has the wheels or tracks its line says and stands in its size class, the gun
 ## of an armed vehicle is the thing that reaches farthest forward and stands on the centre line (one
-## barrel), the team colour is 2 to 12 % of the default view, a transition value accepted
-## 2026-11-25 (P632; P647 restores 6 to 14 %), each Lumen Accord unit carries the faction's
-## hexagon and mint light, and the
+## barrel), the team colour is 30 to 65 % of the default view (the key band of the large team
+## panels, ADR 0050 amendment A3, P652), each Lumen Accord unit carries the faction's hexagon and
+## mint light, and the
 ## top-down unit files are gone. Frames, sheets, shadows and the 32 px reading are pinned for every
 ## type in test_artgen*.gd.
 
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
+const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
 ## Michael's display names (ADR 0023 answer 2, section 7), by art id.
 const NAMES: Dictionary[String, String] = {
 	"rifle_squad": "Rig Hands",
@@ -64,8 +65,6 @@ const WHEELS: Dictionary[String, int] = {
 	"renew_tanker": 4,
 }
 const FIGURE_LINK: float = 0.12  ## Tiles: two ground contacts this close are one figure's legs.
-const TEAM_SHARE: Vector2 = Vector2(0.02, 0.12)
-const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
 const SCALE: float = 0.5  ## 2x art at zoom 1.
 const PAGE: Vector2i = Vector2i(320, 320)
 const GROUND_POINT: Vector2i = Vector2i(160, 200)
@@ -256,7 +255,9 @@ func test_the_torque_barrel_the_fuel_runner_tank_and_the_linemen_reel_read_at_32
 				hub = minf(hub, prim.size.x)
 			if prim.material == &"team":
 				flange = maxf(flange, prim.size.x)
-	assert_float(hub - flange).is_greater_equal(0.05)
+	# P641 rebuilt the reel with a 0.17 hub inside 0.13 flanges (0.02 of dark rim a side). The flanges
+	# were `faction` then, so this read 0.0 and passed by accident; from P652 they are `team`.
+	assert_float(hub - flange).is_greater_equal(0.035)
 
 
 ## The Lumen Accord's form language (ADR 0023 section 6): hexagons (a helmet, a turret ring, the
@@ -273,11 +274,11 @@ func test_every_lumen_accord_unit_has_a_hexagon_and_a_mint_light() -> void:
 		assert_int(mint).override_failure_message(id).is_greater(0)
 
 
-func test_the_team_colour_is_2_to_12_percent_of_the_default_view() -> void:
+func test_the_team_colour_is_30_to_65_percent_of_the_default_view() -> void:
 	for id: String in NAMES:
 		var share: float = _team_share(_model(id))
 		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(
-			TEAM_SHARE.x, TEAM_SHARE.y
+			Support.TEAM_BAND.x, Support.TEAM_BAND.y
 		)
 
 
@@ -308,8 +309,9 @@ func _extent(prims: Array[ArtPrim]) -> AABB:
 	return box
 
 
-## The share of the default view's pixels that are the faction's key colours, counted as the
-## readability suite counts it (a transparent page, the hull and the turret at its mount).
+## The share of the default view's pixels in the team colour, counted as the readability suite
+## counts it (a transparent page, the hull and the turret at its mount): the key band at detail 2 or
+## more.
 func _team_share(model: ArtModel) -> float:
 	var files: Dictionary[String, String] = ArtGen.build(model)
 	var layouts: Dictionary[StringName, ArtGen.Layout] = ArtGen.layouts(model)
@@ -323,20 +325,4 @@ func _team_share(model: ArtModel) -> float:
 		var offset: Vector2 = Vector2.ZERO if part == &"hull" else ArtGen.mount_px(model, dir)
 		var at: Vector2i = GROUND_POINT + Vector2i((offset - Vector2(layouts[part].origin)) * SCALE)
 		picture.blend_rect(frame, Rect2i(Vector2i.ZERO, frame.get_size()), at)
-	var keys: Array[Color] = []
-	for hex: String in ArtPalette.KEYS[model.faction]:
-		keys.append(Color(hex))
-	var team: int = 0
-	var body: int = 0
-	for y: int in picture.get_height():
-		for x: int in picture.get_width():
-			var pixel: Color = picture.get_pixel(x, y)
-			if pixel.a < 0.95:
-				continue
-			body += 1
-			for key: Color in keys:
-				var gap: float = absf(pixel.r - key.r) + absf(pixel.g - key.g)
-				if gap + absf(pixel.b - key.b) < KEY_TOLERANCE:
-					team += 1
-					break
-	return float(team) / body
+	return Support.model_share(model, picture)
