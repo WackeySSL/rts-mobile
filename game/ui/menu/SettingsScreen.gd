@@ -12,7 +12,7 @@ extends MenuScreen
 ## In battle (opened from the pause menu) no purchase slot and no privacy row (Michael, 2026-11-17).
 ## The saved volume reaches `AudioService` from `MenuFlow._ready`; the reduced switch reaches the
 ## intro, the menu stack and the next match's `LifeSettings` from `MenuFlow` (P526b). No Command,
-## no sim. A BACK button ends the column (the web has no back event, P672a). The foot
+## no sim. The footer's back link leaves it (the web has no back event, P672a). The foot
 ## banner slot stays empty and 0 tall until Phase 6's band.
 
 const ROW_DP: Vector2 = Vector2(0.0, 48.0)
@@ -28,7 +28,6 @@ const PRIVACY: String = "PRIVACY OPTIONS"
 const HOW_TO_PLAY: String = "HOW TO PLAY"
 const REPLAY: String = "REPLAY TUTORIAL"
 const LICENCES_TEXT: String = "LICENCES"
-const BACK: String = "BACK"
 const DEVELOPER_TEXT: String = "DEVELOPER"
 const ON: String = "ON"
 const OFF: String = "OFF"
@@ -90,7 +89,7 @@ func _ready() -> void:
 	_route_button(LICENCES_TEXT, MenuRoutes.LICENCES)
 	if dev_enabled.call():
 		add_button(tr(DEVELOPER_TEXT), func() -> void: open_dev.call())
-	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")  # The web has no back event.
+	use_footer()  # The back link: the web has no back event (P672a).
 	_built = true
 	_listen()
 	_refresh()
@@ -110,11 +109,8 @@ func on_back() -> bool:
 	return remove_rows != null and remove_rows.is_busy()
 
 
-## The on-screen BACK: the stack's `back()`, so `on_back()` still refuses while a purchase runs.
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()
+func screen_name() -> String:
+	return tr(TITLE)
 
 
 func _listen() -> void:

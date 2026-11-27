@@ -962,7 +962,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e137"), SubResource("e138"),
 script = ExtResource("3_ent")
 id = &"menus-back"
 title = "Back"
-body = "Tap BACK at the foot of a screen, or press the phone's Back button, to close it and return to the one before."
+body = "Tap the back link at the bottom left of a menu page, or press the phone's Back button, to close it and return to the one before."
 
 [sub_resource type="Resource" id="e142"]
 script = ExtResource("3_ent")
@@ -986,7 +986,7 @@ body = "The match is saved when the game goes to the background. If the game was
 script = ExtResource("3_ent")
 id = &"menus-skirmish"
 title = "Start a skirmish"
-body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. The maps are Kestrel Flats; from rank 2, Heron Fords, a valley split by a river that only two fords cross; and from rank 4, Curlew Crags, a rocky highland with a base on each plateau, three narrow passes through the central ridge and oil and gas fields on raised ground reached by ramps. A map or level that is greyed out shows the rank that opens it, such as Hard at rank 3. While the match loads, the button reads STARTING and a second tap does nothing. BACK, under Start, returns to the main menu; it does nothing until the match starts."
+body = "Tap Skirmish on the main menu. Choose the map, your side and the computer's level, then tap Start. The maps are Kestrel Flats; from rank 2, Heron Fords, a valley split by a river that only two fords cross; and from rank 4, Curlew Crags, a rocky highland with a base on each plateau, three narrow passes through the central ridge and oil and gas fields on raised ground reached by ramps. A map or level that is greyed out shows the rank that opens it, such as Hard at rank 3. While the match loads, the button reads STARTING and a second tap does nothing. The back link at the bottom left returns to the main menu; it does nothing until the match starts."
 
 [sub_resource type="Resource" id="e146"]
 script = ExtResource("3_ent")
@@ -998,7 +998,7 @@ body = "Tap How to play on the main menu to see a list of sections. Tap one to r
 script = ExtResource("3_ent")
 id = &"menus-settings"
 title = "Settings"
-body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. While a sound is switched off on the pause menu, its slider reads OFF; moving it above 0 switches the sound back on. Settings also holds Replay tutorial, How to play and Licences. Tap BACK at the foot to return. Your choices are kept on the phone."
+body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and to switch Vibration and Reduced effects ON or OFF. Reduced effects takes hold at the next match. While a sound is switched off on the pause menu, its slider reads OFF; moving it above 0 switches the sound back on. Settings also holds Replay tutorial, How to play and Licences. Tap the back link at the bottom left to return. Your choices are kept on the phone."
 
 [sub_resource type="Resource" id="e148"]
 script = ExtResource("3_ent")

@@ -225,7 +225,7 @@ func test_the_back_button_is_refused_while_a_restore_call_is_open() -> void:
 	await _open(_profile_for(ScreenSizes.PORTRAIT[0]))
 	var rows: RemoveAdsRows = _screen.remove_rows
 	rows.now_ms = func() -> int: return Time.get_ticks_msec() + ARM_MS
-	var back: Button = _screen.column.get_child(_screen.column.get_child_count() - 1) as Button
+	var back: Button = _screen.back_link
 	rows.restore_button.pressed.emit()
 	back.pressed.emit()
 	await await_idle_frame()

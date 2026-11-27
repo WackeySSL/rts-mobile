@@ -18,9 +18,15 @@ var see_through: bool = false
 var column: VBoxContainer
 var scroll: ScrollContainer
 var slot: AdBannerSlot
+## The fixed footer bar (P672a): outside the scroll, hidden until a screen calls `use_footer`.
+var footer: PanelContainer
+var back_link: Button
+var hint_label: Label
 
 var _frame: MarginContainer
 var _gap: MarginContainer
+var _footer_on: bool = false
+var _back_name: String = ""
 
 
 func _ready() -> void:
@@ -54,6 +60,7 @@ func _ready() -> void:
 	column = VBoxContainer.new()
 	column.name = &"Column"
 	centre.add_child(column)
+	_build_footer(rows)
 	slot = AdBannerSlot.new()
 	slot.name = &"AdBannerSlot"
 	rows.add_child(slot)  # Last: nothing is below it.
@@ -70,12 +77,84 @@ func column_room_px() -> float:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
 		_apply()  # A screen back from under another one lays itself out for the screen it is on.
+		_refresh_footer.call_deferred()  # The stack lists a pushed screen only after its _ready.
+
+
+## Virtual. The name the footer's back link of the screen above shows: "‹ " and this.
+func screen_name() -> String:
+	return ""
+
+
+## Shows the footer bar with the back link to the screen below (P672a: the web has no back event)
+## and an optional hint at its right. The root screen never calls it.
+func use_footer(hint: String = "") -> void:
+	_footer_on = true
+	hint_label.text = hint
+	footer.visible = true
+	_refresh_footer()
+
+
+## The link reads this name instead of the screen below's (a screen that closes an inner view
+## first, such as a section of How to play, names the list it returns to). "" goes back to the rule.
+func set_back_name(name_text: String) -> void:
+	_back_name = name_text
+	_refresh_footer()
 
 
 ## Virtual. Back (the Android button, ADR 0043 section 4) asks the screen first: true means the
 ## screen used it (it closed a sub-state), false lets the stack pop.
 func on_back() -> bool:
 	return false
+
+
+func _build_footer(rows: VBoxContainer) -> void:
+	footer = PanelContainer.new()
+	footer.name = &"Footer"
+	footer.theme_type_variation = &"MenuFooter"
+	footer.visible = false
+	rows.add_child(footer)
+	var row: HBoxContainer = HBoxContainer.new()
+	footer.add_child(row)
+	back_link = Button.new()
+	back_link.name = &"BackLink"
+	back_link.theme_type_variation = &"MenuFooterLink"
+	back_link.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	back_link.set_meta(&"ui_cue", &"ui_back")
+	var floor_dp: DpMinSize = DpMinSize.new()
+	floor_dp.min_dp = Vector2(48.0, 48.0)
+	back_link.add_child(floor_dp)
+	back_link.pressed.connect(_go_back)
+	row.add_child(back_link)
+	hint_label = Label.new()
+	hint_label.name = &"Hint"
+	hint_label.theme_type_variation = &"MenuFooterHint"
+	hint_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(hint_label)
+
+
+## The link's words: the override, else the screen below's `screen_name()`, else BACK (the first
+## screen of a stack, such as Settings over the pause menu).
+func _refresh_footer() -> void:
+	if not _footer_on or back_link == null:
+		return
+	var name_text: String = _back_name
+	if name_text.is_empty():
+		var stack: MenuStack = get_parent() as MenuStack
+		var below: MenuScreen = stack.screen_below(self) if stack != null else null
+		name_text = below.screen_name() if below != null else ""
+	if name_text.is_empty():
+		name_text = tr("BACK")
+	back_link.text = "\u2039 " + name_text.to_upper()
+
+
+## Pressed back link: the stack's `back()`, so `on_back()` rules still hold.
+func _go_back() -> void:
+	var stack: MenuStack = get_parent() as MenuStack
+	if stack != null:
+		stack.back()
 
 
 ## A MenuItem (P662) of at least 48 dp calling `action`; `text` is upper case (no case property).

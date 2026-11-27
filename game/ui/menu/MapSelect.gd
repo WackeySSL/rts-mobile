@@ -14,7 +14,6 @@ const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
 const SIDE_PLAIN: StringName = &"MenuSideCard"
 const OPPONENT_PATH: String = "res://data/ai/opponent_%s.tres"
 const LEVEL_PATH: String = "res://data/ai/difficulty/%s.tres"
-const BACK: String = "BACK"
 const KIND_MAP: StringName = &"map"
 const KIND_LEVEL: StringName = &"level"
 const FOSSIL: StringName = &"fossil"
@@ -73,7 +72,7 @@ func _ready() -> void:
 	_start = add_button(tr(MapSelectText.START), _on_start)
 	offer = StartCreditsOffer.new()
 	OfferSlot.add_to(column, self).add_child(offer)
-	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")  # The web has no back event.
+	use_footer()  # The back link: the web has no back event (P672a).
 	_progression_defaults()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
@@ -128,11 +127,8 @@ func on_back() -> bool:
 	return _starting
 
 
-## The on-screen BACK: the stack's `back()`, so `on_back()` still holds while the match starts.
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()
+func screen_name() -> String:
+	return tr(MapSelectText.TITLE)
 
 
 func _on_start() -> void:
