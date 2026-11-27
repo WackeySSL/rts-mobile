@@ -12,7 +12,6 @@ const DEF_PATH: String = "res://data/help/how_to_play.tres"
 ## The screen's own words are English source strings: `tr()` returns one as it is until a
 ## translation table (ADR 0043 question 12) has an entry for it.
 const TITLE: String = "HOW TO PLAY"
-const BACK: String = "BACK"
 const ALL_SECTIONS: String = "ALL SECTIONS"
 
 var help: HelpDef
@@ -27,6 +26,7 @@ func _ready() -> void:
 	if help == null:
 		push_error("HowToPlayScreen: cannot load %s" % DEF_PATH)
 		help = HelpDef.new()  # An empty list, so the screen still opens and Back works.
+	use_footer()
 	_show_list()
 
 
@@ -37,18 +37,23 @@ func on_back() -> bool:
 	return true
 
 
+func screen_name() -> String:
+	return tr(TITLE)
+
+
 func _show_list() -> void:
 	open_section = null
 	_clear()
 	_heading(tr(TITLE))
 	for section: HelpSectionDef in help.sections:
 		add_button(tr(section.title).to_upper(), _show_section.bind(section))
-	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
+	set_back_name("")
 	scroll.scroll_vertical = 0
 
 
 func _show_section(section: HelpSectionDef) -> void:
 	open_section = section
+	set_back_name(tr(TITLE))  # A section's back goes to the list.
 	_clear()
 	_heading(tr(section.title))
 	add_button(tr(ALL_SECTIONS), _show_list)
@@ -57,12 +62,6 @@ func _show_section(section: HelpSectionDef) -> void:
 		_body(tr(item.body))
 	add_button(tr(ALL_SECTIONS), _show_list)
 	scroll.scroll_vertical = 0
-
-
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()  # Like the Android Back button: at the root it asks the quit question.
 
 
 func _clear() -> void:
